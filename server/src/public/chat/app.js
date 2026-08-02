@@ -279,9 +279,6 @@ function updateAppHeight() {
   // поле гарантированно не перекрывалось краем клавиатуры).
   const kbHeight = kbOpen ? (_maxVH - h + 5) : 0;
   root.setProperty('--kb-height', kbHeight + 'px');
-  // Явная высота = высота видимой области (visual viewport); это прижимает поле ввода
-  // к низу экрана точнее, чем bottom:0 + padding-bottom
-  root.setProperty('--vv-height', h + 'px');
   // iOS сдвигает весь WebView вверх при фокусе на нижнем поле — компенсируем,
   // чтобы шапка стояла на месте, а двигалось только поле ввода/сообщения
   root.setProperty('--app-top', (vv ? vv.offsetTop : 0) + 'px');

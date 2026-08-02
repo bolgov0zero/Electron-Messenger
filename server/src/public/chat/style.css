@@ -1944,9 +1944,8 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
     background: var(--app-bg);
   }
 
-  /* Экран — флекс-колонка высотой = visual viewport.
-     Высота задаётся явно через --vv-height (обновляется JS при каждом resize),
-     поэтому клавиатура и браузерный хром автоматически учтены без padding-bottom. */
+  /* Экран — флекс-колонка до физического низа (bottom:0 убирает чёрную полосу).
+     Клавиатура компенсируется внутренним padding-bottom (контент поднимается над ней). */
   #screen-main.active {
     display: flex;
     flex-direction: column;
@@ -1954,8 +1953,8 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
     top: var(--app-top, 0px);
     left: 0; right: 0;
     bottom: 0;
-    height: var(--vv-height, auto);
-    padding-bottom: 0;
+    height: auto;
+    padding-bottom: var(--kb-height, 0px);
     box-sizing: border-box;
     overflow: hidden;
   }
