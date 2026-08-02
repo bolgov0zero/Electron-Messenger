@@ -492,7 +492,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
         <span class="server-time" id="clock">—</span>
       </div>
       <div id="topbar-extra" style="display:flex;align-items:center;gap:6px"></div>
-      <button class="btn btn-ghost btn-sm hidden" id="topbar-add-btn" onclick="">
+      <button class="btn btn-ghost hidden" id="topbar-add-btn" onclick="">
         <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         <span id="topbar-add-label">Добавить</span>
       </button>
@@ -1383,11 +1383,6 @@ function setSparkRange(r) {
 
 /* ── ROOMS ── */
 async function renderRooms() {
-  setTopbarActions(`
-    <button class="btn btn-primary btn-sm" onclick="openCreateRoom()">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Создать комнату
-    </button>`);
   [allRooms, allUsersCache] = await Promise.all([api('GET','/api/admin/chats'), api('GET','/api/admin/users')]);
   allRooms = allRooms.filter(c=>c.type==='room');
   renderRoomsTable();
@@ -1567,11 +1562,6 @@ function deleteRoom(id) {
 
 /* ── USERS ── */
 async function renderUsers() {
-  setTopbarActions(`
-    <button class="btn btn-primary btn-sm" onclick="openCreateUser()">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Создать пользователя
-    </button>`);
   allUsers=await api('GET','/api/admin/users');
   renderUsersTable(allUsers);
 }
