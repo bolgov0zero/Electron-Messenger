@@ -241,18 +241,21 @@ function openMobileChat() {
   if (!cm) return;
 
   cm.classList.add('mobile-open');
-  sb?.classList.add('mobile-hidden');
-  if (!_isMobile()) return;
+  if (!_isMobile()) { sb?.classList.add('mobile-hidden'); return; }
 
+  // Freeze both transitions so sidebar and chat start animating in the same frame
   cm.style.transition = 'none';
   cm.style.transform = 'translateX(100%)';
+  if (sb) sb.style.transition = 'none';
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       cm.style.transition = _CHAT_EASE;
       cm.style.transform = '';
+      if (sb) { sb.style.transition = _CHAT_EASE; sb.style.transform = 'translateX(-100%)'; }
       cm.addEventListener('transitionend', () => {
         cm.style.transition = ''; cm.style.transform = '';
+        if (sb) { sb.classList.add('mobile-hidden'); sb.style.transition = ''; sb.style.transform = ''; }
       }, { once: true });
     });
   });
