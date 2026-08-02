@@ -1627,7 +1627,7 @@ function deleteUser(id, name) {
 
 /* ── CHATS ── */
 function chatDisplayName(c) {
-  if (c.type==='direct') return (c.member_names||[]).join(' / ')||'Личный чат';
+  if (c.type==='direct') return (c.member_names||[]).join(' → ')||'Личный чат';
   return c.name||'—';
 }
 function chatTypeBadge(c) {
