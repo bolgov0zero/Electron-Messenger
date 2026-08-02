@@ -152,14 +152,14 @@ code,pre,.mono{font-family:var(--f-mono)}
 .btn-sm{height:28px;padding:0 11px;font-size:11px}
 .btn-xs{height:24px;padding:0 8px;font-size:11px;border-radius:var(--radius-xs)}
 .btn-update{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;font-size:11px;border-radius:5px;border:1px solid var(--c-green);color:var(--c-green-text);background:var(--c-green-dim);cursor:pointer;font-weight:600;transition:opacity .15s}.btn-update:hover{opacity:.8}
-.btn-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;color:var(--c-text2);background:transparent;border:1px solid var(--c-border);border-radius:var(--radius-sm)}.btn-icon:hover{background:var(--bg-hover);color:var(--c-text)}
+.btn-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;color:var(--c-text2);background:transparent;border:none;border-radius:var(--radius-sm)}.btn-icon:hover{background:var(--bg-hover);color:var(--c-text)}
 
 /* ── APP LAYOUT ── */
 #app{display:none;width:100%;height:100vh;overflow:hidden}
 .app-layout{position:fixed;top:var(--topbar-h);left:0;right:0;bottom:0;display:flex;overflow:hidden}
 
 /* ── TOPBAR ── */
-.topbar{position:fixed;top:0;left:0;right:0;height:var(--topbar-h);background:var(--c-surface);border-bottom:1px solid var(--c-border2);display:flex;align-items:center;justify-content:space-between;padding:0 14px;z-index:50;flex-shrink:0}
+.topbar{position:fixed;top:0;left:0;right:0;height:var(--topbar-h);background:var(--c-bg);border-bottom:1px solid var(--c-border2);display:flex;align-items:center;justify-content:space-between;padding:0 14px;z-index:50;flex-shrink:0}
 .topbar-left,.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .topbar-logo{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--c-text)}
 .topbar-logo span{color:var(--c-primary)}
@@ -170,36 +170,28 @@ code,pre,.mono{font-family:var(--f-mono)}
 .server-time{font-family:var(--f-mono);font-size:11px;color:var(--c-muted)}
 
 /* ── SIDEBAR ── */
-.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--c-sb-bg);border-right:1px solid var(--c-sb-border);display:flex;flex-direction:column;overflow:hidden;padding:10px 8px}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--c-bg);border-right:1px solid var(--c-sb-border);display:flex;flex-direction:column;overflow:hidden;padding:10px 8px}
 .sb-av{width:26px;height:26px;border-radius:7px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
 .sb-user-name{font-size:12px;font-weight:600;color:var(--c-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sb-user-email{font-size:10px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 nav{flex:1;padding:4px 0;overflow-y:auto}
 .nav-section{font-size:10px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.07em;padding:0 8px;margin-bottom:4px;margin-top:8px}
-.nav-item{position:relative;display:flex;align-items:center;gap:7px;padding:5px 8px;cursor:pointer;color:var(--c-sb-item);font-size:12px;font-weight:500;border-radius:var(--radius-xs);margin-bottom:2px;transition:background var(--t-fast),color var(--t-fast);overflow:hidden}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;color:var(--c-sb-item);font-size:12px;font-weight:500;border-radius:10px;border:1px solid transparent;margin-bottom:2px;transition:background var(--t-fast),color var(--t-fast),border-color var(--t-fast)}
 .nav-item:hover{background:var(--bg-hover);color:var(--c-text2)}
-.nav-item.active{background:var(--c-sb-act-bg);color:var(--c-sb-act)}
-.nav-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--c-sb-act);border-radius:0 2px 2px 0}
+.nav-item.active{background:var(--c-sb-act-bg);color:var(--c-sb-act);border-color:rgba(58,147,140,.25)}
 .nav-item svg{flex-shrink:0;width:14px;height:14px;opacity:.75}
 .nav-item.active svg{opacity:1}
 .nav-badge{margin-left:auto;font-size:10px;font-weight:700;background:var(--c-surface2);color:var(--c-muted);padding:1px 5px;border-radius:4px;min-width:18px;text-align:center;font-family:var(--f-mono)}
 .nav-item.active .nav-badge{background:var(--c-primary-dim);color:var(--c-sb-act)}
-.sb-ver-wrap{padding:10px;border-top:1px solid var(--c-sb-border)}
-.sb-brand-ver{font-size:10px;color:var(--c-muted);font-family:var(--f-mono)}
 
-/* ── DOTS MENU ── */
-.dots-wrap{position:relative}
-.dots-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:200px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);box-shadow:var(--shadow-xl);padding:4px;z-index:300;animation:popIn .1s ease}
-@keyframes popIn{from{opacity:0;transform:scale(.95) translateY(-4px)}to{opacity:1;transform:scale(1) translateY(0)}}
-.dots-header{display:flex;align-items:center;justify-content:space-between;padding:8px 10px}
-.dots-tool-btn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:var(--radius-xs);background:transparent;color:var(--c-muted);border:1px solid var(--c-border);cursor:pointer;transition:background var(--t-fast),color var(--t-fast)}
-.dots-tool-btn:hover{background:var(--bg-hover);color:var(--c-text)}
-.dots-divider{height:1px;background:var(--c-border2);margin:3px 4px}
-.dots-item{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;font-size:12px;font-weight:500;color:var(--c-text);background:transparent;border:none;border-radius:var(--radius-xs);cursor:pointer;text-align:left;font-family:var(--f-ui);transition:background var(--t-fast)}
-.dots-item:hover{background:var(--bg-hover)}
-.dots-item--danger{color:var(--c-red-text)}.dots-item--danger:hover{background:var(--c-red-dim)}
-.dots-item svg{opacity:.6;width:14px;height:14px;flex-shrink:0}
-.dots-user{display:flex;align-items:center;gap:9px}
+/* ── SIDEBAR BOTTOM ── */
+.sb-bottom{padding:8px;border-top:1px solid var(--c-sb-border);display:flex;align-items:center;gap:6px}
+.sb-profile{flex:1;display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden}
+.sb-profile-info{flex:1;min-width:0}
+.sb-actions{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.sb-action-btn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:transparent;border:none;color:var(--c-muted);cursor:pointer;transition:background var(--t-fast),color var(--t-fast);flex-shrink:0}
+.sb-action-btn:hover{background:var(--bg-hover);color:var(--c-text)}
+.sb-action-btn--danger:hover{background:var(--c-red-dim);color:var(--c-red-text)}
 
 /* ── PAGE BODY ── */
 .page-body{flex:1;overflow-y:auto;padding:20px 24px 24px}
@@ -496,35 +488,6 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
         <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         <span id="topbar-add-label">Добавить</span>
       </button>
-      <div class="dots-wrap" id="dots-wrap">
-        <button class="btn-icon" id="dots-btn" onclick="toggleDotsMenu()">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>
-        </button>
-        <div class="dots-menu hidden" id="dots-menu">
-          <div class="dots-header">
-            <div class="dots-user">
-              <div class="sb-av" id="sb-av">A</div>
-              <div>
-                <div class="sb-user-name" id="sb-name">Admin</div>
-                <div class="sb-user-email" id="sb-email">admin</div>
-              </div>
-            </div>
-            <button class="dots-tool-btn" id="theme-btn" onclick="toggleTheme()" title="Сменить тему">
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" id="theme-icon"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-            </button>
-          </div>
-          <div class="dots-divider"></div>
-          <button class="dots-item" onclick="openSettingsModal();closeDotsMenu()">
-            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            Настройки
-          </button>
-          <div class="dots-divider"></div>
-          <button class="dots-item dots-item--danger" onclick="logout()">
-            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            Выйти
-          </button>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -564,8 +527,25 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <span class="nav-badge" id="nb-push">—</span>
         </div>
       </nav>
-      <div class="sb-ver-wrap">
-        <span class="sb-brand-ver" id="sb-ver">admin</span>
+      <div class="sb-bottom">
+        <div class="sb-profile">
+          <div class="sb-av" id="sb-av">A</div>
+          <div class="sb-profile-info">
+            <div class="sb-user-name" id="sb-name">Admin</div>
+            <div class="sb-user-email" id="sb-email">admin</div>
+          </div>
+        </div>
+        <div class="sb-actions">
+          <button class="sb-action-btn" id="theme-btn" onclick="toggleTheme()" title="Сменить тему">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" id="theme-icon"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </button>
+          <button class="sb-action-btn" onclick="openSettingsModal()" title="Настройки">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+          <button class="sb-action-btn sb-action-btn--danger" onclick="logout()" title="Выйти">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
       </div>
     </aside>
 
@@ -769,16 +749,6 @@ function toggleTheme() {
   applyTheme(t);
 }
 
-function toggleDotsMenu() {
-  document.getElementById('dots-menu').classList.toggle('hidden');
-}
-function closeDotsMenu() {
-  document.getElementById('dots-menu')?.classList.add('hidden');
-}
-document.addEventListener('click', e => {
-  const wrap = document.getElementById('dots-wrap');
-  if (wrap && !wrap.contains(e.target)) closeDotsMenu();
-});
 applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
 
 /* ── CLOCK ── */
