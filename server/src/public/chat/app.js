@@ -283,7 +283,7 @@ function updateAppHeight() {
   // чтобы шапка стояла на месте, а двигалось только поле ввода/сообщения
   root.setProperty('--app-top', (vv ? vv.offsetTop : 0) + 'px');
   // Когда клавиатура открыта — home indicator скрыт, safe-area снизу не нужен
-  root.setProperty('--input-safe-bottom', kbOpen ? '0px' : 'env(safe-area-inset-bottom, 0px)');
+  root.setProperty('--input-safe-bottom', kbOpen ? '0px' : '5px');
   // iOS иногда прокручивает всю страницу при фокусе — возвращаем на место
   if (window.scrollY !== 0) window.scrollTo(0, 0);
   // Держим список у нижнего края, если пользователь был внизу
