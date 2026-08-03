@@ -871,7 +871,8 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 /* ── ROLE PILL ── */
 .role-pill {
   display: inline-flex; align-items: center;
-  font-size: 11px; padding: 1px 8px; border-radius: 6px;
+  height: 18px; line-height: 1;
+  font-size: 11px; padding: 0 8px; border-radius: 6px;
   font-weight: 500; white-space: nowrap;
 }
 .role-pill.teal { background: var(--role-teal-bg); border: 1px solid var(--role-teal-border); color: var(--accent); }
