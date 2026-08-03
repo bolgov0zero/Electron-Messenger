@@ -2575,7 +2575,7 @@ function giRenderMembers(members, canEdit = false) {
   const container = document.getElementById('gi-members');
   if (!container) return;
   container.innerHTML = members
-    .filter(m => m.id !== S.user.id && !S.giRemovedIds.has(m.id))
+    .filter(m => !S.giRemovedIds.has(m.id))
     .map(m => `
       <div class="member-remove-row" id="gim-${m.id}">
         <div class="av av-sm av-round ${avatarColor(m.id)}" data-av-user="${m.id}">${initials(m.display_name)}</div>
