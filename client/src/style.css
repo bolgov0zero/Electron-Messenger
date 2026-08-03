@@ -447,7 +447,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 }
 .sidebar-account .sa-av { width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; }
 .sidebar-account .sa-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sidebar-account .sa-gear { width: 30px; height: 30px; background: var(--search-bg); border: 1px solid var(--border); cursor: pointer; color: var(--muted); display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: background .15s, color .15s; flex-shrink: 0; }
+.sidebar-account .sa-gear { width: 30px; height: 30px; padding: 0; background: var(--search-bg); border: 1px solid var(--border); cursor: pointer; color: var(--muted); display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: background .15s, color .15s; flex-shrink: 0; }
 .sidebar-account .sa-gear:hover { background: var(--hover-row); color: var(--text); }
 
 /* Section labels */
@@ -463,7 +463,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 
 /* Icon buttons */
 .icon-btn {
-  width: 30px; height: 30px;
+  width: 30px; height: 30px; padding: 0;
   background: none; border: none;
   color: var(--muted);
   cursor: pointer;
