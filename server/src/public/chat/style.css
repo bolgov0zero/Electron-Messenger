@@ -2091,6 +2091,35 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
     padding: 10px 14px;
   }
   .sa-gear { width: 36px; height: 36px; border-radius: 8px; }
+
+  /* ── Размеры элементов для мобильных экранов ── */
+  :root { --font-size: 16px; }
+
+  /* Строки чатов */
+  .chat-row { padding: 11px 14px; }
+  .chat-row-av { width: 46px; height: 46px; font-size: 16px; border-radius: 14px; }
+
+  /* Аватар и метаданные сообщений */
+  .irc-av { width: 34px; height: 34px; font-size: 13px; border-radius: 10px; }
+  .irc-name { font-size: 14px; }
+  .irc-time { font-size: 12px; }
+
+  /* Заголовок чата */
+  .chat-header { height: 56px; padding: 0 6px 0 0; }
+  .chat-header .icon-btn { width: 44px; height: 44px; }
+
+  /* Touch-таргеты в сайдбаре */
+  .sa-gear { width: 44px; height: 44px; border-radius: 10px; }
+  .icon-btn { width: 44px; height: 44px; }
+  .btn-new-chat { height: 44px; font-size: 14px; padding: 0 16px; }
+
+  /* Поиск */
+  .sidebar-search { padding: 10px 12px; }
+  .search-wrap input { height: 40px; }
+
+  /* Login */
+  .login-wrap { width: calc(100vw - 32px); max-width: 420px; padding: 32px 24px 28px; }
+  .btn-login { height: 48px; font-size: 15px; border-radius: 14px; }
 }
 
 /* Desktop: hide mobile-only elements */
