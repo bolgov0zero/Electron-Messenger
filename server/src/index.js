@@ -47,6 +47,7 @@ app.use('/api/upload', uploadRouter);
 uploadRouter.startCleanupJob();
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/push',  require('./routes/push'));
+app.use('/api/call',  require('./routes/call'));
 
 app.get('/api/release-notes', (req, res) => {
   const notesPath = path.join(__dirname, '../../RELEASE_NOTES.md');

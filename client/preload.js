@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('electron', {
   fileExists: (filePath) => ipcRenderer.invoke('file-exists', filePath),
   openFile: (filePath) => ipcRenderer.invoke('open-file', filePath),
   resizeWindow: (delta) => ipcRenderer.invoke('resize-window', delta),
+  focusWindow: () => ipcRenderer.send('focus-window'),
   // High Availability
   listDrives: () => ipcRenderer.invoke('ha-list-drives'),
   getHAConfig: () => ipcRenderer.invoke('ha-get-config'),

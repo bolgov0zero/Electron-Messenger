@@ -128,6 +128,14 @@ function getEditTimeLimit() {
   return v > 0 ? v : 120;
 }
 
+function callsEnabled() {
+  const v = db.prepare("SELECT value FROM settings WHERE key = 'calls_enabled'").get()?.value;
+  return v !== '0';
+}
+
+// userId -> { peerId, startedAt }
+const activeCalls = new Map();
+
 function getMessageWithStatus(msgId, viewerId) {
   const msg = db.prepare(`
     SELECT m.id, m.chat_id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions,
@@ -398,6 +406,66 @@ function setup(server) {
         }
       }
 
+      if (data.type === 'call_initiate') {
+        const { peer_id } = data;
+        if (!peer_id || peer_id === user.id) return;
+        if (!callsEnabled()) { ws.send(JSON.stringify({ type: 'call_disabled' })); return; }
+        if (activeCalls.has(user.id)) { ws.send(JSON.stringify({ type: 'call_busy_self' })); return; }
+        const chat = db.prepare(`
+          SELECT c.id FROM chats c
+          JOIN chat_members cm1 ON cm1.chat_id = c.id AND cm1.user_id = ?
+          JOIN chat_members cm2 ON cm2.chat_id = c.id AND cm2.user_id = ?
+          WHERE c.type = 'direct' LIMIT 1
+        `).get(user.id, peer_id);
+        if (!chat) return;
+        if (!hasOpenConnection(peer_id)) {
+          const caller = db.prepare('SELECT display_name FROM users WHERE id = ?').get(user.id);
+          pushToUser(peer_id, {
+            type: 'call',
+            title: 'Входящий звонок',
+            body: caller?.display_name || user.username,
+            callerId: user.id,
+            callerName: caller?.display_name || user.username,
+          });
+          try { db.prepare('INSERT INTO missed_calls (caller_id, callee_id) VALUES (?, ?)').run(user.id, peer_id); } catch {}
+          ws.send(JSON.stringify({ type: 'call_unavailable', peer_id }));
+          return;
+        }
+        if (activeCalls.has(peer_id)) { ws.send(JSON.stringify({ type: 'call_busy', peer_id })); return; }
+        activeCalls.set(user.id, { peerId: peer_id, startedAt: Date.now() });
+        activeCalls.set(peer_id, { peerId: user.id, startedAt: Date.now() });
+        const callerRow = db.prepare('SELECT display_name FROM users WHERE id = ?').get(user.id);
+        sendTo(peer_id, { type: 'call_incoming', caller_id: user.id, caller_name: callerRow?.display_name || user.username });
+      }
+
+      if (data.type === 'call_accept') {
+        const { peer_id } = data;
+        if (!peer_id) return;
+        sendTo(peer_id, { type: 'call_accepted', peer_id: user.id });
+      }
+
+      if (data.type === 'call_reject') {
+        const { peer_id } = data;
+        if (!peer_id) return;
+        activeCalls.delete(user.id);
+        activeCalls.delete(peer_id);
+        sendTo(peer_id, { type: 'call_rejected', peer_id: user.id });
+      }
+
+      if (data.type === 'call_end') {
+        const { peer_id } = data;
+        if (!peer_id) return;
+        activeCalls.delete(user.id);
+        activeCalls.delete(peer_id);
+        sendTo(peer_id, { type: 'call_ended', peer_id: user.id });
+      }
+
+      if (data.type === 'webrtc_offer' || data.type === 'webrtc_answer' || data.type === 'webrtc_ice') {
+        const { peer_id } = data;
+        if (!peer_id) return;
+        sendTo(peer_id, { ...data, peer_id: user.id });
+      }
+
       if (data.type === 'ping') ws.send(JSON.stringify({ type: 'pong' }));
     });
 
@@ -406,6 +474,13 @@ function setup(server) {
       const updEntry = updateProgress.get(ws._connId);
       if (updEntry && updEntry.status === 'restarting') { updEntry.status = 'restarted'; updEntry.pct = 100; }
       connMeta.delete(ws._connId);
+      // Завершить активный звонок при разрыве соединения
+      const activeCall = activeCalls.get(user.id);
+      if (activeCall && !hasOpenConnection(user.id)) {
+        activeCalls.delete(user.id);
+        activeCalls.delete(activeCall.peerId);
+        sendTo(activeCall.peerId, { type: 'call_ended', peer_id: user.id });
+      }
       const conns = clients.get(user.id);
       if (conns) {
         conns.delete(ws);
@@ -417,6 +492,21 @@ function setup(server) {
 
     // Конфигурация для клиента: лимит редактирования подхватывается без релиза клиента
     ws.send(JSON.stringify({ type: 'connected', user_id: user.id, edit_time_limit: getEditTimeLimit() }));
+
+    // Пропущенные звонки
+    setImmediate(() => {
+      try {
+        const missedCalls = db.prepare(`
+          SELECT mc.id, mc.caller_id, u.display_name AS caller_name, mc.occurred_at
+          FROM missed_calls mc JOIN users u ON u.id = mc.caller_id
+          WHERE mc.callee_id = ? ORDER BY mc.occurred_at DESC LIMIT 20
+        `).all(user.id);
+        if (missedCalls.length) {
+          db.prepare('DELETE FROM missed_calls WHERE callee_id = ?').run(user.id);
+          ws.send(JSON.stringify({ type: 'missed_calls', calls: missedCalls }));
+        }
+      } catch {}
+    });
 
     // Авто-доставка при подключении: безопасно, после регистрации всех обработчиков
     setImmediate(() => {

@@ -3,6 +3,7 @@ const db = require('../db');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
+const { execSync } = require('child_process');
 const { authMiddleware, adminMiddleware } = require('../auth');
 const { sendTo, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress } = require('../ws');
 
@@ -21,6 +22,17 @@ function getDirSize(dir) {
 
 function getDirCount(dir) {
   try { return fs.readdirSync(dir).length; } catch { return 0; }
+}
+
+function getTurnStatus() {
+  const configured = !!process.env.TURN_SECRET;
+  if (!configured) return { configured: false, active: false };
+  try {
+    const state = execSync('systemctl is-active coturn 2>/dev/null', { timeout: 2000 }).toString().trim();
+    return { configured: true, active: state === 'active' };
+  } catch {
+    return { configured: true, active: false };
+  }
 }
 
 // ── Версия сервера ──
@@ -76,6 +88,7 @@ router.get('/stats', (req, res) => {
     wsConnections: getConnCount(),
     serverVersion: getLocalVersion(),
     pushSubscriptions: (() => { try { return db.prepare('SELECT COUNT(*) as c FROM push_subscriptions').get().c; } catch { return 0; } })(),
+    ...getTurnStatus(),
   });
 });
 
@@ -278,7 +291,8 @@ router.get('/settings', (req, res) => {
 router.put('/settings', (req, res) => {
   const allowed = ['github_token', 'edit_time_limit',
     'upload_image_max_size', 'upload_image_extensions',
-    'upload_file_max_size', 'upload_file_extensions', 'upload_file_lifetime'];
+    'upload_file_max_size', 'upload_file_extensions', 'upload_file_lifetime',
+    'calls_enabled'];
   const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
   const del = db.prepare('DELETE FROM settings WHERE key = ?');
   const keepEmpty = ['upload_image_extensions', 'upload_file_extensions', 'upload_file_lifetime'];

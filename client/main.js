@@ -377,6 +377,14 @@ ipcMain.on('notify', (_, { title, body, chatId }) => {
   n.show();
 });
 
+ipcMain.on('focus-window', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  }
+});
+
 ipcMain.on('unread', (_, count) => {
   const prev = unreadCount;
   unreadCount = count;

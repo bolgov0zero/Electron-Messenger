@@ -567,6 +567,10 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           Вложения
         </button>
+        <button class="sm-nav-item" data-section="calls" onclick="showSettingsSection('calls')">
+          <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.38a2 2 0 0 1 2-2.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          Звонки
+        </button>
         <button class="sm-nav-item" data-section="update" onclick="showSettingsSection('update')">
           <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           Обновление
@@ -984,6 +988,7 @@ async function refreshDashboardData() {
   try {
     const t0 = Date.now();
     const [s, users] = await Promise.all([api('GET','/api/admin/stats'), api('GET','/api/admin/users')]);
+    _statsCache = s;
     const latency = Date.now() - t0;
 
     const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
@@ -1015,6 +1020,10 @@ async function refreshDashboardData() {
     document.getElementById('dash-push')?.setAttribute('style', `color:${pushColor}`);
     const nbPush = document.getElementById('nb-push');
     if (nbPush) nbPush.textContent = pushCnt;
+    const turnColor = s.turnActive ? 'var(--c-green)' : s.turnConfigured ? 'var(--c-orange)' : 'var(--c-muted)';
+    const turnText = s.turnActive ? 'работает' : s.turnConfigured ? 'не запущен' : 'не настроен';
+    setH('dash-turn', `${dot(turnColor)}${turnText}`);
+    document.getElementById('dash-turn')?.setAttribute('style', `color:${turnColor}`);
     if (s.serverVersion) set('dash-server-version', s.serverVersion);
 
     // Active users
@@ -1235,6 +1244,10 @@ async function renderDashboard() {
               <span class="status-val neutral" id="dash-push">—</span>
             </div>
             <div class="status-row">
+              <span class="status-key">TURN</span>
+              <span class="status-val neutral" id="dash-turn">—</span>
+            </div>
+            <div class="status-row">
               <span class="status-key">DB size</span>
               <span class="status-val neutral" id="dash-db-size">—</span>
             </div>
@@ -1313,6 +1326,10 @@ async function renderDashboard() {
   document.getElementById('dash-push')?.setAttribute('style', `color:${pushColor2}`);
   const nbPush2 = document.getElementById('nb-push');
   if (nbPush2) nbPush2.textContent = pushCnt2;
+  const turnColor2 = s.turnActive ? 'var(--c-green)' : s.turnConfigured ? 'var(--c-orange)' : 'var(--c-muted)';
+  const turnText2 = s.turnActive ? 'работает' : s.turnConfigured ? 'не запущен' : 'не настроен';
+  setEl('dash-turn', `${dot(turnColor2)}${turnText2}`);
+  document.getElementById('dash-turn')?.setAttribute('style', `color:${turnColor2}`);
   if (s.serverVersion) setEl('dash-server-version', s.serverVersion);
 
   // Draw sparkline with real data — timeout ensures grid layout is settled
@@ -2092,6 +2109,7 @@ async function testPushSub(userId, name, btn) {
 /* ── SETTINGS MODAL ── */
 let _settingsData = null;
 let _activeSettingsSection = 'messages';
+let _statsCache = null;
 
 async function openSettingsModal() {
   const [settings, verData] = await Promise.all([api('GET','/api/admin/settings'), api('GET','/api/admin/server/version')]);
@@ -2216,6 +2234,44 @@ function _buildSettingsSectionHtml(section) {
       </div>
     </div>`;
 
+  if (section === 'calls') {
+    const callsOn = s.calls_enabled !== '0';
+    const turnOk = _statsCache?.turnActive;
+    const turnConfigured = _statsCache?.turnConfigured;
+    return `
+    <div class="card">
+      <div class="card-head"><h3>Голосовые звонки</h3></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--c-text)">Включить звонки</div>
+            <div style="font-size:11px;color:var(--c-muted);margin-top:2px">Разрешить пользователям совершать голосовые звонки</div>
+          </div>
+          <label style="display:flex;align-items:center;gap:0;cursor:pointer;position:relative">
+            <input type="checkbox" id="calls-enabled-toggle" ${callsOn ? 'checked' : ''} style="display:none" onchange="saveCallSettings()">
+            <span id="calls-toggle-track" style="display:inline-block;width:40px;height:22px;border-radius:11px;background:${callsOn ? 'var(--c-primary)' : 'var(--c-border)'};transition:background .2s;position:relative;cursor:pointer" onclick="document.getElementById('calls-enabled-toggle').click()">
+              <span style="position:absolute;top:3px;left:${callsOn ? '21px' : '3px'};width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s;pointer-events:none" id="calls-toggle-thumb"></span>
+            </span>
+          </label>
+        </div>
+        <div style="border-top:1px solid var(--c-border);padding-top:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Состояние TURN-сервера</div>
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--c-surface2);border-radius:var(--radius);font-size:12px">
+            <div style="width:8px;height:8px;border-radius:50%;background:${turnOk ? 'var(--c-green)' : turnConfigured ? 'var(--c-orange)' : 'var(--c-muted)'};flex-shrink:0"></div>
+            <span style="color:${turnOk ? 'var(--c-green-text)' : turnConfigured ? 'var(--c-orange-text)' : 'var(--c-muted)'}">
+              ${turnOk ? 'TURN-сервер работает' : turnConfigured ? 'TURN-сервер настроен, но не запущен' : 'TURN-сервер не настроен'}
+            </span>
+          </div>
+          ${!turnConfigured ? `<p style="font-size:11px;color:var(--c-muted);margin-top:8px;line-height:1.7">
+            Звонки работают без TURN-сервера в большинстве сетей (Wi-Fi, офис).<br>
+            Для мобильных сетей и сложных NAT рекомендуется coturn.<br>
+            Он устанавливается автоматически при обновлении через <code style="background:var(--c-surface);padding:1px 5px;border-radius:var(--radius-sm);font-size:11px">electron</code>.
+          </p>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }
+
   if (section === 'update') return `
     <div class="card">
       <div class="card-head">
@@ -2279,6 +2335,18 @@ async function saveEditLimit() {
   if (!val || val < 10) { toast('Минимум 10 секунд','error'); return; }
   await api('PUT','/api/admin/settings',{edit_time_limit:String(val)});
   toast('Лимит сохранён','success');
+}
+
+async function saveCallSettings() {
+  const toggle = document.getElementById('calls-enabled-toggle');
+  const enabled = toggle?.checked;
+  const track = document.getElementById('calls-toggle-track');
+  const thumb = document.getElementById('calls-toggle-thumb');
+  if (track) track.style.background = enabled ? 'var(--c-primary)' : 'var(--c-border)';
+  if (thumb) thumb.style.left = enabled ? '21px' : '3px';
+  await api('PUT', '/api/admin/settings', { calls_enabled: enabled ? '1' : '0' });
+  if (_settingsData) _settingsData.calls_enabled = enabled ? '1' : '0';
+  toast(enabled ? 'Звонки включены' : 'Звонки выключены', 'success');
 }
 
 async function saveGithubToken() {

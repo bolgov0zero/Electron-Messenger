@@ -100,9 +100,11 @@ npm rebuild better-sqlite3 --build-from-source
 mkdir -p "$DB_DIR"
 echo "→ Папка базы данных: $DB_DIR"
 
-# ── Генерация JWT_SECRET ──
+# ── Генерация JWT_SECRET и TURN_SECRET ──
 JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('hex'))")
 echo "→ JWT_SECRET сгенерирован"
+TURN_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+echo "→ TURN_SECRET сгенерирован"
 
 # ── Остановка старых служб если есть ──
 for OLD in electron corp-chat; do
@@ -130,6 +132,7 @@ RestartSec=5
 Environment=NODE_ENV=production
 Environment=PORT=$PORT
 Environment=JWT_SECRET=$JWT_SECRET
+Environment=TURN_SECRET=$TURN_SECRET
 Environment=DB_PATH=$DB_DIR/chat.db
 
 [Install]
@@ -153,6 +156,63 @@ elif [ "$PKG" = "yum" ]; then
 elif [ "$PKG" = "pacman" ]; then
   pacman -Sy --noconfirm sqlite 2>/dev/null || true
 fi
+
+# ── Установка и настройка coturn (TURN-сервер для WebRTC-звонков) ──
+setup_coturn() {
+  echo "→ Установка TURN-сервера (coturn)..."
+  local OK=true
+  if [ "$PKG" = "apt" ]; then
+    apt-get install -y coturn -q >/dev/null 2>&1 || OK=false
+  elif [ "$PKG" = "yum" ]; then
+    (yum install -y coturn >/dev/null 2>&1 || dnf install -y coturn >/dev/null 2>&1) || OK=false
+  elif [ "$PKG" = "pacman" ]; then
+    pacman -Sy --noconfirm coturn >/dev/null 2>&1 || OK=false
+  fi
+  if ! $OK || ! command -v turnserver &>/dev/null; then
+    echo "  Предупреждение: coturn недоступен в репозитории, звонки будут недоступны"
+    return
+  fi
+
+  local SERVER_IP
+  SERVER_IP=$(hostname -I | awk '{print $1}')
+  mkdir -p /var/log/coturn
+  cat > /etc/turnserver.conf <<TURNEOF
+listening-port=3478
+fingerprint
+use-auth-secret
+static-auth-secret=$TURN_SECRET
+realm=$SERVER_IP
+total-quota=100
+no-loopback-peers
+no-multicast-peers
+min-port=49152
+max-port=65535
+log-file=/var/log/coturn/turnserver.log
+TURNEOF
+
+  # Разрешить запуск демона (Debian/Ubuntu)
+  [ -f /etc/default/coturn ] && sed -i 's/^#TURNSERVER_ENABLED=1/TURNSERVER_ENABLED=1/' /etc/default/coturn
+
+  systemctl enable coturn >/dev/null 2>&1 || true
+  systemctl restart coturn >/dev/null 2>&1 || true
+
+  # Открыть порты
+  if command -v ufw &>/dev/null && ufw status 2>/dev/null | grep -q "Status: active"; then
+    ufw allow 3478/udp >/dev/null 2>&1 || true
+    ufw allow 3478/tcp >/dev/null 2>&1 || true
+    ufw allow 49152:65535/udp >/dev/null 2>&1 || true
+    echo "→ Порты открыты (ufw)"
+  elif command -v firewall-cmd &>/dev/null && systemctl is-active --quiet firewalld; then
+    firewall-cmd --permanent --add-port=3478/udp >/dev/null 2>&1 || true
+    firewall-cmd --permanent --add-port=3478/tcp >/dev/null 2>&1 || true
+    firewall-cmd --permanent --add-port=49152-65535/udp >/dev/null 2>&1 || true
+    firewall-cmd --reload >/dev/null 2>&1 || true
+    echo "→ Порты открыты (firewalld)"
+  fi
+
+  echo "→ TURN-сервер настроен (${SERVER_IP}:3478)"
+}
+setup_coturn
 
 # ── Проверка ──
 echo ""

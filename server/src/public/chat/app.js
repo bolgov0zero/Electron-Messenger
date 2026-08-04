@@ -9,6 +9,18 @@ if ('serviceWorker' in navigator) {
         const chat = S.chats.find(c => c.id === e.data.chatId);
         if (chat) openChat(e.data.chatId);
       }
+      if (e.data?.type === 'call_push_incoming') {
+        showIncomingCallUI(e.data.callerId, e.data.callerName);
+      }
+      if (e.data?.type === 'call_push_action') {
+        if (e.data.action === 'accept') {
+          if (_callState() === 'idle') showIncomingCallUI(e.data.callerId, e.data.callerName);
+          acceptCall();
+        } else if (e.data.action === 'reject') {
+          if (_callState() === 'incoming') rejectCall();
+          else if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_reject', peer_id: e.data.callerId }));
+        }
+      }
     });
   });
 }
@@ -1009,6 +1021,9 @@ async function openChat(chatId, aroundId = null) {
         <div class="ch-name">${esc(name)}</div>
         <div class="ch-sub">${sub}</div>
       </div>
+      ${peerId ? `<button class="icon-btn call-header-btn" onclick="startCall(${peerId})" title="Голосовой звонок">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.38a2 2 0 0 1 2-2.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      </button>` : ''}
     </div>
     <div class="messages" id="messages"></div>
     <div id="typing-indicator" class="typing-indicator" style="display:none">
@@ -2401,6 +2416,51 @@ function connectWS() {
     }
 
     if (data.type === 'force_logout') { logout(); }
+
+    if (data.type === 'call_incoming') {
+      showIncomingCallUI(data.caller_id, data.caller_name);
+    }
+    if (data.type === 'call_accepted') {
+      onCallAccepted();
+    }
+    if (data.type === 'call_rejected') {
+      cleanupCall();
+      showActionToast('Звонок отклонён');
+    }
+    if (data.type === 'call_ended') {
+      cleanupCall();
+      showActionToast('Звонок завершён');
+    }
+    if (data.type === 'call_disabled') {
+      cleanupCall();
+      showActionToast('Звонки отключены на этом сервере');
+    }
+    if (data.type === 'call_busy') {
+      cleanupCall();
+      showActionToast('Абонент занят');
+    }
+    if (data.type === 'call_busy_self') {
+      showActionToast('Вы уже в звонке');
+    }
+    if (data.type === 'call_unavailable') {
+      cleanupCall();
+      showActionToast('Звонок отправлен — абонент получит уведомление');
+    }
+    if (data.type === 'missed_calls') {
+      for (const c of data.calls) {
+        showActionToast(`Пропущенный звонок от ${c.caller_name}`);
+        break; // показываем только первый, остальные не шумят
+      }
+    }
+    if (data.type === 'webrtc_offer') {
+      onWebRTCOffer(data);
+    }
+    if (data.type === 'webrtc_answer') {
+      onWebRTCAnswer(data);
+    }
+    if (data.type === 'webrtc_ice') {
+      onWebRTCIce(data);
+    }
   };
 
   ws.onclose = (event) => {
@@ -2855,8 +2915,10 @@ function showChatCtx(e, chatId) {
   const canDelete = !isGroup || chat.created_by === S.user.id || S.user.is_admin;
   const delBtn = document.getElementById('ctx-chat-delete');
   const leaveBtn = document.getElementById('ctx-chat-leave');
+  const callBtn = document.getElementById('ctx-chat-call');
   if (delBtn) delBtn.style.display = canDelete ? '' : 'none';
   if (leaveBtn) leaveBtn.style.display = (isGroup && !canDelete) ? '' : 'none';
+  if (callBtn) callBtn.style.display = chat?.type === 'direct' ? '' : 'none';
   menu.style.top = '-9999px'; menu.style.left = '-9999px';
   menu.style.display = 'block';
   const mw = menu.offsetWidth, mh = menu.offsetHeight;
@@ -2890,6 +2952,14 @@ async function ctxChatDelete() {
   await deleteChat(S.ctxChatId);
 }
 
+function ctxChatCall() {
+  document.getElementById('ctx-chat-menu').style.display = 'none';
+  if (!S.ctxChatId) return;
+  const chat = S.chats.find(c => c.id === S.ctxChatId);
+  const peerId = getPeerUserId(chat);
+  if (peerId) startCall(peerId);
+}
+
 // ── CHAT ACTION SHEET (mobile bottom sheet) ──
 function openChatSheet(chatId) {
   S.ctxChatId = chatId;
@@ -2899,12 +2969,21 @@ function openChatSheet(chatId) {
   if (pinLabel) pinLabel.textContent = chat?.pinned ? 'Открепить' : 'Закрепить';
   const pinBtn = document.getElementById('sheet-pin-btn');
   if (pinBtn) pinBtn.style.display = chat?.type === 'room' ? 'none' : '';
+  const sheetCallBtn = document.getElementById('sheet-call-btn');
+  if (sheetCallBtn) sheetCallBtn.style.display = chat?.type === 'direct' ? '' : 'none';
   document.getElementById('chat-sheet-backdrop').classList.add('open');
   document.getElementById('chat-action-sheet').classList.add('open');
 }
 function closeChatSheet() {
   document.getElementById('chat-sheet-backdrop').classList.remove('open');
   document.getElementById('chat-action-sheet').classList.remove('open');
+}
+async function sheetCallChat() {
+  closeChatSheet();
+  if (!S.ctxChatId) return;
+  const chat = S.chats.find(c => c.id === S.ctxChatId);
+  const peerId = getPeerUserId(chat);
+  if (peerId) startCall(peerId);
 }
 async function sheetPinChat() {
   closeChatSheet();
@@ -2961,4 +3040,217 @@ function showActionToast(text) {
   el.classList.add('visible');
   clearTimeout(_actionToastTimer);
   _actionToastTimer = setTimeout(() => el.classList.remove('visible'), 2500);
+}
+
+// ── VOICE CALLS ──
+let _call = null; // { state, peerId, peerName, pc, localStream, timerInterval }
+let _ringtoneInterval = null;
+
+function _callState() { return _call?.state || 'idle'; }
+
+async function _getTurnConfig() {
+  try {
+    const r = await fetch('/api/call/turn-credentials', { headers: { Authorization: 'Bearer ' + S.token } });
+    if (r.ok) return await r.json();
+  } catch {}
+  return { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+}
+
+function _createPC(config) {
+  const pc = new RTCPeerConnection(config);
+  pc.onicecandidate = e => {
+    if (e.candidate && S.ws?.readyState === 1) {
+      S.ws.send(JSON.stringify({ type: 'webrtc_ice', peer_id: _call?.peerId, candidate: e.candidate }));
+    }
+  };
+  pc.ontrack = e => {
+    const audio = document.getElementById('call-remote-audio');
+    if (audio) audio.srcObject = e.streams[0];
+  };
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'connected') {
+      document.getElementById('call-status-text').textContent = _formatCallTimer(0);
+      startCallTimer();
+    }
+  };
+  return pc;
+}
+
+function startCallTimer() {
+  if (_call?.timerInterval) clearInterval(_call.timerInterval);
+  let sec = 0;
+  if (_call) _call.timerInterval = setInterval(() => {
+    sec++;
+    const el = document.getElementById('call-status-text');
+    if (el) el.textContent = _formatCallTimer(sec);
+  }, 1000);
+}
+
+function _formatCallTimer(sec) {
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+async function startCall(peerId) {
+  if (_callState() !== 'idle') { showActionToast('Вы уже в звонке'); return; }
+  const peer = S.chats.flatMap(c => c.members || []).find(m => m.id === peerId)
+    || { id: peerId, display_name: 'Абонент' };
+  _call = { state: 'outgoing', peerId, peerName: peer.display_name || 'Абонент', pc: null, localStream: null, timerInterval: null };
+  _showCallOverlay('outgoing');
+  if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_initiate', peer_id: peerId }));
+}
+
+async function onCallAccepted() {
+  if (_callState() !== 'outgoing') return;
+  _call.state = 'connecting';
+  document.getElementById('call-status-text').textContent = 'Соединение…';
+  try {
+    const config = await _getTurnConfig();
+    _call.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _call.pc = _createPC(config);
+    _call.localStream.getTracks().forEach(t => _call.pc.addTrack(t, _call.localStream));
+    const offer = await _call.pc.createOffer();
+    await _call.pc.setLocalDescription(offer);
+    if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'webrtc_offer', peer_id: _call.peerId, sdp: offer }));
+    _showCallOverlay('active');
+  } catch (e) {
+    console.error('WebRTC offer error:', e);
+    endCall();
+    showActionToast('Не удалось получить доступ к микрофону');
+  }
+}
+
+function showIncomingCallUI(callerId, callerName) {
+  if (_callState() !== 'idle') {
+    // Уже в звонке — автоотклонение
+    if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_reject', peer_id: callerId }));
+    return;
+  }
+  _call = { state: 'incoming', peerId: callerId, peerName: callerName, pc: null, localStream: null, timerInterval: null };
+  _showCallOverlay('incoming');
+  _startRingtone();
+}
+
+async function acceptCall() {
+  if (_callState() !== 'incoming') return;
+  _stopRingtone();
+  _call.state = 'connecting';
+  document.getElementById('call-status-text').textContent = 'Соединение…';
+  _showCallOverlay('active');
+  try {
+    const config = await _getTurnConfig();
+    _call.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _call.pc = _createPC(config);
+    _call.localStream.getTracks().forEach(t => _call.pc.addTrack(t, _call.localStream));
+  } catch (e) {
+    console.error('getUserMedia error:', e);
+    rejectCall();
+    showActionToast('Не удалось получить доступ к микрофону');
+  }
+  if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_accept', peer_id: _call.peerId }));
+}
+
+function rejectCall() {
+  const peerId = _call?.peerId;
+  cleanupCall();
+  if (peerId && S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_reject', peer_id: peerId }));
+}
+
+function endCall() {
+  const peerId = _call?.peerId;
+  cleanupCall();
+  if (peerId && S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_end', peer_id: peerId }));
+}
+
+function cleanupCall() {
+  _stopRingtone();
+  if (_call) {
+    clearInterval(_call.timerInterval);
+    if (_call.pc) { try { _call.pc.close(); } catch {} }
+    if (_call.localStream) _call.localStream.getTracks().forEach(t => t.stop());
+  }
+  _call = null;
+  const audio = document.getElementById('call-remote-audio');
+  if (audio) { audio.srcObject = null; }
+  document.getElementById('call-overlay').style.display = 'none';
+}
+
+async function onWebRTCOffer(data) {
+  if (!_call?.pc || _callState() === 'outgoing') return;
+  try {
+    await _call.pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+    const answer = await _call.pc.createAnswer();
+    await _call.pc.setLocalDescription(answer);
+    if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'webrtc_answer', peer_id: _call.peerId, sdp: answer }));
+  } catch (e) { console.error('WebRTC offer handling error:', e); }
+}
+
+async function onWebRTCAnswer(data) {
+  if (!_call?.pc) return;
+  try { await _call.pc.setRemoteDescription(new RTCSessionDescription(data.sdp)); } catch (e) { console.error('WebRTC answer error:', e); }
+}
+
+async function onWebRTCIce(data) {
+  if (!_call?.pc || !data.candidate) return;
+  try { await _call.pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch {}
+}
+
+function toggleCallMute() {
+  if (!_call?.localStream) return;
+  const track = _call.localStream.getAudioTracks()[0];
+  if (!track) return;
+  track.enabled = !track.enabled;
+  const btn = document.getElementById('call-mute-btn');
+  if (btn) btn.classList.toggle('call-btn-icon--off', !track.enabled);
+}
+
+function toggleCallSpeaker() {
+  const audio = document.getElementById('call-remote-audio');
+  if (!audio) return;
+  audio.muted = !audio.muted;
+  const btn = document.getElementById('call-speaker-btn');
+  if (btn) btn.classList.toggle('call-btn-icon--off', audio.muted);
+}
+
+function _showCallOverlay(mode) {
+  const overlay = document.getElementById('call-overlay');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  const nameEl = document.getElementById('call-peer-name');
+  const statusEl = document.getElementById('call-status-text');
+  const avatarEl = document.getElementById('call-peer-avatar');
+  const incomingActions = document.getElementById('call-actions-incoming');
+  const activeActions = document.getElementById('call-actions-active');
+  if (nameEl) nameEl.textContent = _call?.peerName || '';
+  if (avatarEl) avatarEl.textContent = (_call?.peerName || '?')[0].toUpperCase();
+  if (incomingActions) incomingActions.style.display = mode === 'incoming' ? '' : 'none';
+  if (activeActions) activeActions.style.display = mode === 'active' ? '' : 'none';
+  if (statusEl) {
+    if (mode === 'outgoing') statusEl.textContent = 'Звонок…';
+    else if (mode === 'incoming') statusEl.textContent = 'Входящий звонок';
+    else statusEl.textContent = 'Соединение…';
+  }
+}
+
+function _startRingtone() {
+  _stopRingtone();
+  // Генерируем рингтон через Web Audio API
+  let ctx;
+  try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return; }
+  function beep() {
+    if (!_ringtoneInterval) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 440;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(); osc.stop(ctx.currentTime + 0.4);
+  }
+  beep();
+  _ringtoneInterval = setInterval(beep, 2000);
+}
+
+function _stopRingtone() {
+  if (_ringtoneInterval) { clearInterval(_ringtoneInterval); _ringtoneInterval = null; }
 }
