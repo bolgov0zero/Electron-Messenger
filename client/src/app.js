@@ -3067,8 +3067,12 @@ async function onCallAccepted() {
     _showCallOverlay('active');
   } catch (e) {
     console.error('WebRTC offer error:', e);
+    const msg = e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError'
+      ? 'Нет доступа к микрофону — разрешите доступ в системных настройках'
+      : e.name === 'NotFoundError' ? 'Микрофон не найден'
+      : 'Ошибка доступа к микрофону';
     endCall();
-    showActionToast('Не удалось получить доступ к микрофону');
+    showActionToast(msg);
   }
 }
 
@@ -3096,13 +3100,16 @@ async function acceptCall() {
     _call.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     _call.pc = _createPC(config);
     _call.localStream.getTracks().forEach(t => _call.pc.addTrack(t, _call.localStream));
+    if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_accept', peer_id: _call.peerId }));
   } catch (e) {
     console.error('getUserMedia error:', e);
+    const msg = e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError'
+      ? 'Нет доступа к микрофону — разрешите доступ в системных настройках'
+      : e.name === 'NotFoundError' ? 'Микрофон не найден'
+      : 'Ошибка доступа к микрофону';
     rejectCall();
-    showActionToast('Не удалось получить доступ к микрофону');
-    return;
+    showActionToast(msg);
   }
-  if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_accept', peer_id: _call.peerId }));
 }
 
 function rejectCall() {
@@ -3172,10 +3179,12 @@ function _showCallOverlay(mode) {
   const nameEl = document.getElementById('call-peer-name');
   const statusEl = document.getElementById('call-status-text');
   const avatarEl = document.getElementById('call-peer-avatar');
+  const outgoingActions = document.getElementById('call-actions-outgoing');
   const incomingActions = document.getElementById('call-actions-incoming');
   const activeActions = document.getElementById('call-actions-active');
   if (nameEl) nameEl.textContent = _call?.peerName || '';
   if (avatarEl) avatarEl.textContent = (_call?.peerName || '?')[0].toUpperCase();
+  if (outgoingActions) outgoingActions.style.display = mode === 'outgoing' ? '' : 'none';
   if (incomingActions) incomingActions.style.display = mode === 'incoming' ? '' : 'none';
   if (activeActions) activeActions.style.display = mode === 'active' ? '' : 'none';
   if (statusEl) {

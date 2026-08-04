@@ -331,6 +331,10 @@ function createWindow() {
   });
   mainWindow.setMenuBarVisibility(false);
   mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
+  mainWindow.webContents.session.setPermissionRequestHandler((wc, permission, callback) => {
+    if (permission === 'media') return callback(true);
+    callback(false);
+  });
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.on('resize', _saveWinBounds);
   mainWindow.on('move', _saveWinBounds);

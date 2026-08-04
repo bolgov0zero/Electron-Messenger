@@ -1,6 +1,6 @@
 {
   "name": "electron",
-  "version": "2.0.82",
+  "version": "2.0.83",
   "description": "Corporate Chat Client",
   "author": "bolgov@me.com",
   "homepage": "https://github.com/bolgov0zero/corp-chat",
@@ -34,7 +34,10 @@
           ]
         }
       ],
-      "icon": "../icons/app/icon-1024.png"
+      "icon": "../icons/app/icon-1024.png",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Требуется для голосовых звонков"
+      }
     },
     "win": {
       "target": [
