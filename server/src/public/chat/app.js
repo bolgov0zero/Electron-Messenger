@@ -891,7 +891,8 @@ function renderChatRow(c) {
   const name = chatName(c);
   const u = S.unread[c.id]||0;
   const lm = c.last_message;
-  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text || (lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
+  let preview;
+  preview = lm ? _msgPreview(lm) : 'Нет сообщений';
   if (preview.length>40) preview = preview.slice(0,40)+'…';
   // Черновик приоритетнее последнего сообщения (как в Telegram)
   const draft = (c.id !== S.activeChatId) ? S.drafts[c.id] : null;
@@ -1430,6 +1431,19 @@ function renderReactions(msgId) {
   return `<div class="reactions">${counts.map(r =>
     `<button class="reaction-btn" onclick="sendReaction(${msgId},'${r.reaction}')">${r.reaction} <span>${r.count}</span></button>`
   ).join('')}</div>`;
+}
+
+function _msgPreview(msg) {
+  if (!msg) return '';
+  if (msg.msg_type === 'call') {
+    let meta = {}; try { meta = JSON.parse(msg.text); } catch {}
+    const isMine = meta.initiator_id === S.user.id;
+    return meta.status === 'missed' ? (isMine ? 'Исходящий звонок · Пропущен' : 'Входящий звонок · Пропущен')
+      : meta.status === 'rejected' ? (isMine ? 'Исходящий звонок · Не принят' : 'Входящий звонок · Отклонён')
+      : isMine ? 'Исходящий звонок' : 'Входящий звонок';
+  }
+  if (msg.deleted) return 'Сообщение удалено';
+  return msg.text || (msg.attachment ? (msg.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (msg.attachment.name || 'Файл')) : '');
 }
 
 function renderMsg(m, isChatGroup, hideTime = false, grouped = false, isLast = true) {
@@ -2269,10 +2283,12 @@ function connectWS() {
         } else if (!isViewing() && message.sender_id !== S.user.id) {
           S.unread[chatId] = (S.unread[chatId]||0)+1;
           if (message.mentions?.includes(S.user.id)) S.unreadMentions[chatId] = (S.unreadMentions[chatId]||0)+1;
-          const title = chatName(chat) || 'Electron';
-          const body = `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
-          webNotify(title, body, chatId);
-          playNotificationSound();
+          if (message.msg_type !== 'call') {
+            const title = chatName(chat) || 'Electron';
+            const body = `${message.sender_name}: ${_msgPreview(message)}`;
+            webNotify(title, body, chatId);
+            playNotificationSound();
+          }
           if (S.ws?.readyState===1) S.ws.send(JSON.stringify({type:'delivered', message_id:message.id}));
         }
       } else if (message.sender_id === S.user.id) {
@@ -2281,11 +2297,13 @@ function connectWS() {
       } else {
         S.unread[chatId] = (S.unread[chatId]||0)+1;
         if (message.mentions?.includes(S.user.id)) S.unreadMentions[chatId] = (S.unreadMentions[chatId]||0)+1;
-        const chat2 = S.chats.find(c=>c.id===chatId);
-        const title = chatName(chat2) || 'Electron';
-        const body = `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
-        webNotify(title, body, chatId);
-        playNotificationSound();
+        if (message.msg_type !== 'call') {
+          const chat2 = S.chats.find(c=>c.id===chatId);
+          const title = chatName(chat2) || 'Electron';
+          const body = `${message.sender_name}: ${_msgPreview(message)}`;
+          webNotify(title, body, chatId);
+          playNotificationSound();
+        }
         if (S.ws?.readyState===1) S.ws.send(JSON.stringify({type:'delivered', message_id:message.id}));
       }
       updateUnreadTotal();
