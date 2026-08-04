@@ -1186,6 +1186,32 @@ function senderNameClass(tag) {
 }
 
 function renderMsgIRC(m, isGroup) {
+  if (m.msg_type === 'call') {
+    let meta = {};
+    try { meta = JSON.parse(m.text); } catch {}
+    const isMine = meta.initiator_id === S.user.id;
+    const status = meta.status || 'ended';
+    const duration = meta.duration || 0;
+    const label = isMine ? 'Исходящий звонок' : 'Входящий звонок';
+    const sub = status === 'rejected' ? 'Не принят'
+      : status === 'missed' ? 'Пропущен'
+      : duration > 0 ? _formatCallTimer(duration) : '';
+    const ok = status === 'ended';
+    const iconColor = ok ? '#22c55e' : '#ef4444';
+    const phoneIcon = ok
+      ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.38a2 2 0 0 1 2-2.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`
+      : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.38a2 2 0 0 1 2-2.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+    return `<div class="irc-row msg-call-row">
+      <div class="msg-call-record">
+        <span class="msg-call-icon" style="color:${iconColor}">${phoneIcon}</span>
+        <span class="msg-call-body">
+          <span class="msg-call-label">${label}</span>
+          ${sub ? `<span class="msg-call-sub">${sub}</span>` : ''}
+        </span>
+        <span class="msg-call-time">${fmtTime(m.sent_at)}</span>
+      </div>
+    </div>`;
+  }
   if (m.status && m.id > 0) S.msgStatus[m.id] = { ...m.status };
   const mine = m.sender_id===S.user.id;
   const time = fmtTime(m.sent_at);
@@ -3134,6 +3160,13 @@ function cleanupCall() {
   _call = null;
   const audio = document.getElementById('call-remote-audio');
   if (audio) { audio.srcObject = null; }
+  document.getElementById('call-muted-banner').style.display = 'none';
+  document.getElementById('call-mic-on').style.display = '';
+  document.getElementById('call-mic-off').style.display = 'none';
+  document.getElementById('call-mute-btn')?.classList.remove('call-btn-icon--off');
+  document.getElementById('call-spk-on').style.display = '';
+  document.getElementById('call-spk-off').style.display = 'none';
+  document.getElementById('call-speaker-btn')?.classList.remove('call-btn-icon--off');
   document.getElementById('call-overlay').style.display = 'none';
 }
 
@@ -3162,14 +3195,21 @@ function toggleCallMute() {
   const track = _call.localStream.getAudioTracks()[0];
   if (!track) return;
   track.enabled = !track.enabled;
-  document.getElementById('call-mute-btn')?.classList.toggle('call-btn-icon--off', !track.enabled);
+  const muted = !track.enabled;
+  document.getElementById('call-mute-btn')?.classList.toggle('call-btn-icon--off', muted);
+  document.getElementById('call-mic-on').style.display = muted ? 'none' : '';
+  document.getElementById('call-mic-off').style.display = muted ? '' : 'none';
+  document.getElementById('call-muted-banner').style.display = muted ? 'flex' : 'none';
 }
 
 function toggleCallSpeaker() {
   const audio = document.getElementById('call-remote-audio');
   if (!audio) return;
   audio.muted = !audio.muted;
-  document.getElementById('call-speaker-btn')?.classList.toggle('call-btn-icon--off', audio.muted);
+  const off = audio.muted;
+  document.getElementById('call-speaker-btn')?.classList.toggle('call-btn-icon--off', off);
+  document.getElementById('call-spk-on').style.display = off ? 'none' : '';
+  document.getElementById('call-spk-off').style.display = off ? '' : 'none';
 }
 
 function _showCallOverlay(mode) {

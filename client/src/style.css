@@ -2072,4 +2072,24 @@ select:focus-visible, .user-row:focus-visible, .chat-item:focus-visible {
   transition: transform .15s, background .15s;
 }
 .call-btn-icon:hover { background: rgba(255,255,255,.25); transform: scale(1.06); }
-.call-btn-icon--off { background: rgba(255,255,255,.35); }
+#call-mute-btn.call-btn-icon--off { background: #ef4444; color: #fff; }
+#call-speaker-btn.call-btn-icon--off { background: rgba(255,255,255,.85); color: #1a1a2e; }
+.call-muted-banner {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  background: rgba(239,68,68,.88); color: #fff;
+  padding: 5px 14px; border-radius: 20px; font-size: 13px;
+  display: flex; align-items: center; gap: 6px; white-space: nowrap;
+  backdrop-filter: blur(4px);
+}
+/* Запись о звонке в чате */
+.msg-call-row { justify-content: center; margin: 2px 0; }
+.msg-call-record {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 7px 14px; border-radius: 16px; cursor: default; user-select: none;
+  background: var(--bg2); border: 1px solid var(--border); max-width: 280px;
+}
+.msg-call-icon { display: flex; align-items: center; flex-shrink: 0; }
+.msg-call-body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.msg-call-label { font-size: 13px; font-weight: 500; color: var(--text); }
+.msg-call-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.msg-call-time { font-size: 11px; color: var(--muted); flex-shrink: 0; margin-left: 2px; }

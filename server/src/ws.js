@@ -82,6 +82,30 @@ function sendTo(userId, payload) {
   getConn(userId).forEach(ws => { if (ws.readyState === 1) ws.send(JSON.stringify(payload)); });
 }
 
+function insertCallRecord(callerId, calleeId, status, durationSec) {
+  try {
+    const chat = db.prepare(`
+      SELECT c.id FROM chats c
+      JOIN chat_members cm1 ON cm1.chat_id = c.id AND cm1.user_id = ?
+      JOIN chat_members cm2 ON cm2.chat_id = c.id AND cm2.user_id = ?
+      WHERE c.type = 'direct' LIMIT 1
+    `).get(callerId, calleeId);
+    if (!chat) return;
+    const text = JSON.stringify({ initiator_id: callerId, status, duration: durationSec });
+    const row = db.prepare(`INSERT INTO messages (chat_id, sender_id, text, msg_type) VALUES (?, ?, ?, 'call')`).run(chat.id, callerId, text);
+    const callerRow = db.prepare(`SELECT COALESCE(display_name, username) as name, tag FROM users WHERE id = ?`).get(callerId);
+    const sentAt = Math.floor(Date.now() / 1000);
+    const msg = {
+      id: row.lastInsertRowid, chat_id: chat.id, text, sent_at: sentAt, msg_type: 'call',
+      sender_id: callerId, sender_name: callerRow?.name || '', sender_tag: callerRow?.tag || null,
+      edited_at: null, deleted: 0, attachment: null, mentions: null,
+      reply_to_id: null, reply_text: null, reply_deleted: null, reply_sender_name: null,
+      status: { delivered: 0, read: 0, total: 0 }, reactions: [],
+    };
+    broadcast(chat.id, { type: 'message', message: msg });
+  } catch (e) { console.error('[call record]', e.message); }
+}
+
 function getStatus(userId) { return userStatus.get(userId) || 'offline'; }
 // Есть ли у пользователя хоть одно активное WS-соединение (для админки)
 function isConnected(userId) {
@@ -428,12 +452,13 @@ function setup(server) {
             callerName: caller?.display_name || user.username,
           });
           try { db.prepare('INSERT INTO missed_calls (caller_id, callee_id) VALUES (?, ?)').run(user.id, peer_id); } catch {}
+          insertCallRecord(user.id, peer_id, 'missed', 0);
           ws.send(JSON.stringify({ type: 'call_unavailable', peer_id }));
           return;
         }
         if (activeCalls.has(peer_id)) { ws.send(JSON.stringify({ type: 'call_busy', peer_id })); return; }
-        activeCalls.set(user.id, { peerId: peer_id, startedAt: Date.now() });
-        activeCalls.set(peer_id, { peerId: user.id, startedAt: Date.now() });
+        activeCalls.set(user.id, { peerId: peer_id, startedAt: Date.now(), initiatorId: user.id });
+        activeCalls.set(peer_id, { peerId: user.id, startedAt: Date.now(), initiatorId: user.id });
         const callerRow = db.prepare('SELECT display_name FROM users WHERE id = ?').get(user.id);
         sendTo(peer_id, { type: 'call_incoming', caller_id: user.id, caller_name: callerRow?.display_name || user.username });
       }
@@ -441,22 +466,36 @@ function setup(server) {
       if (data.type === 'call_accept') {
         const { peer_id } = data;
         if (!peer_id) return;
+        const now = Date.now();
+        const myEntry = activeCalls.get(user.id);
+        const peerEntry = activeCalls.get(peer_id);
+        if (myEntry) myEntry.answeredAt = now;
+        if (peerEntry) peerEntry.answeredAt = now;
         sendTo(peer_id, { type: 'call_accepted', peer_id: user.id });
       }
 
       if (data.type === 'call_reject') {
         const { peer_id } = data;
         if (!peer_id) return;
+        const entry = activeCalls.get(user.id) || activeCalls.get(peer_id);
+        const initiatorId = entry?.initiatorId || peer_id;
+        const calleeId = initiatorId === user.id ? peer_id : user.id;
         activeCalls.delete(user.id);
         activeCalls.delete(peer_id);
+        insertCallRecord(initiatorId, calleeId, 'rejected', 0);
         sendTo(peer_id, { type: 'call_rejected', peer_id: user.id });
       }
 
       if (data.type === 'call_end') {
         const { peer_id } = data;
         if (!peer_id) return;
+        const entry = activeCalls.get(user.id) || activeCalls.get(peer_id);
+        const initiatorId = entry?.initiatorId || user.id;
+        const calleeId = initiatorId === user.id ? peer_id : user.id;
+        const durationSec = entry?.answeredAt ? Math.floor((Date.now() - entry.answeredAt) / 1000) : 0;
         activeCalls.delete(user.id);
         activeCalls.delete(peer_id);
+        insertCallRecord(initiatorId, calleeId, 'ended', durationSec);
         sendTo(peer_id, { type: 'call_ended', peer_id: user.id });
       }
 
@@ -477,8 +516,13 @@ function setup(server) {
       // Завершить активный звонок при разрыве соединения
       const activeCall = activeCalls.get(user.id);
       if (activeCall && !hasOpenConnection(user.id)) {
+        const initiatorId = activeCall.initiatorId || user.id;
+        const calleeId = initiatorId === user.id ? activeCall.peerId : user.id;
+        const durationSec = activeCall.answeredAt ? Math.floor((Date.now() - activeCall.answeredAt) / 1000) : 0;
+        const dropStatus = activeCall.answeredAt ? 'ended' : 'missed';
         activeCalls.delete(user.id);
         activeCalls.delete(activeCall.peerId);
+        insertCallRecord(initiatorId, calleeId, dropStatus, durationSec);
         sendTo(activeCall.peerId, { type: 'call_ended', peer_id: user.id });
       }
       const conns = clients.get(user.id);
