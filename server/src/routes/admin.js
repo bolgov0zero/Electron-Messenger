@@ -26,12 +26,12 @@ function getDirCount(dir) {
 
 function getTurnStatus() {
   const configured = !!process.env.TURN_SECRET;
-  if (!configured) return { configured: false, active: false };
+  if (!configured) return { turnConfigured: false, turnActive: false };
   try {
     const state = execSync('systemctl is-active coturn 2>/dev/null', { timeout: 2000 }).toString().trim();
-    return { configured: true, active: state === 'active' };
+    return { turnConfigured: true, turnActive: state === 'active' };
   } catch {
-    return { configured: true, active: false };
+    return { turnConfigured: true, turnActive: false };
   }
 }
 
