@@ -3089,6 +3089,20 @@ function showActionToast(text) {
 // ── VOICE CALLS ──
 let _call = null; // { state, peerId, peerName, pc, localStream, timerInterval }
 let _ringtoneInterval = null;
+let _micStream = null; // кэш потока микрофона — не останавливаем треки между звонками
+
+async function _getMicStream() {
+  if (_micStream && _micStream.active && _micStream.getAudioTracks().every(t => t.readyState === 'live')) {
+    _micStream.getAudioTracks().forEach(t => { t.enabled = true; });
+    return _micStream;
+  }
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  _micStream = stream;
+  return stream;
+}
+
+// Освобождаем микрофон при закрытии страницы
+window.addEventListener('pagehide', () => { if (_micStream) _micStream.getTracks().forEach(t => t.stop()); });
 
 function _callState() { return _call?.state || 'idle'; }
 
@@ -3151,7 +3165,7 @@ async function onCallAccepted() {
   try {
     if (!navigator.mediaDevices) throw Object.assign(new Error(), { name: 'SecureContextError' });
     const config = await _getTurnConfig();
-    _call.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _call.localStream = await _getMicStream();
     _call.pc = _createPC(config);
     _call.localStream.getTracks().forEach(t => _call.pc.addTrack(t, _call.localStream));
     const offer = await _call.pc.createOffer();
@@ -3191,7 +3205,7 @@ async function acceptCall() {
   try {
     if (!navigator.mediaDevices) throw Object.assign(new Error(), { name: 'SecureContextError' });
     const config = await _getTurnConfig();
-    _call.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _call.localStream = await _getMicStream();
     _call.pc = _createPC(config);
     _call.localStream.getTracks().forEach(t => _call.pc.addTrack(t, _call.localStream));
     if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_accept', peer_id: _call.peerId }));
@@ -3224,7 +3238,8 @@ function cleanupCall() {
   if (_call) {
     clearInterval(_call.timerInterval);
     if (_call.pc) { try { _call.pc.close(); } catch {} }
-    if (_call.localStream) _call.localStream.getTracks().forEach(t => t.stop());
+    // Не останавливаем треки — глушим их, чтобы не запрашивать разрешение повторно
+    if (_micStream) _micStream.getAudioTracks().forEach(t => { t.enabled = false; });
   }
   _call = null;
   const audio = document.getElementById('call-remote-audio');
