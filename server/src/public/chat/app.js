@@ -3172,7 +3172,8 @@ async function onCallAccepted() {
 
 function showIncomingCallUI(callerId, callerName) {
   if (_callState() !== 'idle') {
-    // Уже в звонке — автоотклонение
+    if (_call?.peerId === callerId) return; // деduп: WS и push пришли одновременно
+    // Уже в другом звонке — автоотклонение
     if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_reject', peer_id: callerId }));
     return;
   }

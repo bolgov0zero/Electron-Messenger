@@ -460,6 +460,14 @@ function setup(server) {
         activeCalls.set(user.id, { peerId: peer_id, startedAt: Date.now(), initiatorId: user.id });
         activeCalls.set(peer_id, { peerId: user.id, startedAt: Date.now(), initiatorId: user.id });
         const callerRow = db.prepare('SELECT display_name FROM users WHERE id = ?').get(user.id);
+        // Push всегда — PWA может быть в фоне при живом WS-соединении
+        pushToUser(peer_id, {
+          type: 'call',
+          title: 'Входящий звонок',
+          body: callerRow?.display_name || user.username,
+          callerId: user.id,
+          callerName: callerRow?.display_name || user.username,
+        });
         sendTo(peer_id, { type: 'call_incoming', caller_id: user.id, caller_name: callerRow?.display_name || user.username });
       }
 
