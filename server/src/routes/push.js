@@ -36,6 +36,7 @@ webpush.setVapidDetails(VAPID_CONTACT, vapidKeys.publicKey, vapidKeys.privateKey
 // Экспортируем для использования в ws.js
 function sendPushToUser(userId, payload) {
   const subs = db.prepare('SELECT endpoint, keys FROM push_subscriptions WHERE user_id = ?').all(userId);
+  if (!subs.length) { console.warn(`[Push] нет подписок для user_id=${userId}, тип=${payload?.type||'?'}`); return; }
   subs.forEach(row => {
     const sub = { endpoint: row.endpoint, keys: JSON.parse(row.keys) };
     webpush.sendNotification(sub, JSON.stringify(payload)).catch(err => {
