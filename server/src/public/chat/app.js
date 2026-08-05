@@ -508,10 +508,16 @@ function applySettings() {
   document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('active', b.textContent.trim()===(S.settings.theme==='light'?'Светлая':'Тёмная')));
   document.querySelectorAll('#font-seg button').forEach(b => b.classList.toggle('active', b.textContent.trim()===S.settings.fontSize[0].toUpperCase()));
   const _scale = S.settings.uiScale || 100;
+  const _ratio = _scale / 100;
   document.documentElement.style.zoom = _scale + '%';
+  // При zoom > 100% ширина контента в CSS-пикселях превышает вьюпорт → обрезаем
+  document.documentElement.style.overflowX = _scale > 100 ? 'hidden' : '';
+  document.body.style.overflowX = _scale > 100 ? 'hidden' : '';
+  // Ограничиваем ширину body так, чтобы визуально занимала ровно 100% вьюпорта
+  document.body.style.maxWidth = _scale > 100 ? `${100 / _ratio}vw` : '';
   document.documentElement.style.minHeight = '';
   document.body.style.height = '';
-  document.documentElement.style.setProperty('--vh100', `calc(100dvh / ${_scale / 100})`);
+  document.documentElement.style.setProperty('--vh100', `calc(100dvh / ${_ratio})`);
   document.querySelectorAll('#scale-seg button').forEach(b => b.classList.toggle('active', parseInt(b.textContent) === _scale));
   updateAppHeight();
   updateSidebarThemeIcon();
