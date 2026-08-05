@@ -2249,7 +2249,7 @@ function _buildSettingsSectionHtml(section) {
           </div>
           <label style="display:flex;align-items:center;gap:0;cursor:pointer;position:relative">
             <input type="checkbox" id="calls-enabled-toggle" ${callsOn ? 'checked' : ''} style="display:none" onchange="saveCallSettings()">
-            <span id="calls-toggle-track" style="display:inline-block;width:40px;height:22px;border-radius:11px;background:${callsOn ? 'var(--c-primary)' : 'var(--c-border)'};transition:background .2s;position:relative;cursor:pointer" onclick="document.getElementById('calls-enabled-toggle').click()">
+            <span id="calls-toggle-track" style="display:inline-block;width:40px;height:22px;border-radius:11px;background:${callsOn ? 'var(--c-primary)' : 'var(--c-border)'};transition:background .2s;position:relative;cursor:pointer">
               <span style="position:absolute;top:3px;left:${callsOn ? '21px' : '3px'};width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s;pointer-events:none" id="calls-toggle-thumb"></span>
             </span>
           </label>

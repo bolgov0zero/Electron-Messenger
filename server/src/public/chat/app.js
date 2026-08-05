@@ -1023,7 +1023,7 @@ async function openChat(chatId, aroundId = null) {
         <div class="ch-sub">${sub}</div>
       </div>
       ${peerId ? `<button class="icon-btn call-header-btn" onclick="startCall(${peerId})" title="Голосовой звонок">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.38a2 2 0 0 1 2-2.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        <svg width="17" height="17" viewBox="0 0 24 24"><path fill="currentColor" d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
       </button>` : ''}
     </div>
     <div class="messages" id="messages"></div>
@@ -1481,8 +1481,8 @@ function renderMsgIRC(m, isGroup) {
     const ok = status === 'ended';
     const iconColor = ok ? '#22c55e' : '#ef4444';
     const phoneIcon = ok
-      ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.38a2 2 0 0 1 2-2.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`
-      : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.38a2 2 0 0 1 2-2.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+      ? `<svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>`
+      : `<svg width="16" height="16" viewBox="0 0 24 24" style="transform:rotate(135deg)"><path fill="currentColor" d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>`;
     return `<div class="irc-row msg-call-row">
       <div class="msg-call-record">
         <span class="msg-call-icon" style="color:${iconColor}">${phoneIcon}</span>
@@ -3123,7 +3123,12 @@ function _createPC(config) {
   };
   pc.ontrack = e => {
     const audio = document.getElementById('call-remote-audio');
-    if (audio) audio.srcObject = e.streams[0];
+    if (!audio || !e.streams[0]) return;
+    if (audio.srcObject === e.streams[0]) return;
+    audio.srcObject = e.streams[0];
+    if (_call) _call._remoteStream = e.streams[0];
+    // Явный play() предотвращает параллельный нативный WebRTC-рендер на iOS
+    audio.play().catch(() => {});
   };
   pc.onconnectionstatechange = () => {
     if (pc.connectionState === 'connected') {
@@ -3238,6 +3243,7 @@ function cleanupCall() {
   if (_call) {
     clearInterval(_call.timerInterval);
     if (_call.pc) { try { _call.pc.close(); } catch {} }
+    if (_remoteAudioCtx) { try { _remoteAudioCtx.close(); } catch {} _remoteAudioCtx = null; }
     // Не останавливаем треки — глушим их, чтобы не запрашивать разрешение повторно
     if (_micStream) _micStream.getAudioTracks().forEach(t => { t.enabled = false; });
   }
@@ -3286,11 +3292,34 @@ function toggleCallMute() {
   document.getElementById('call-muted-banner').style.display = muted ? 'flex' : 'none';
 }
 
+let _remoteAudioCtx = null;
+
 function toggleCallSpeaker() {
   const audio = document.getElementById('call-remote-audio');
   if (!audio) return;
-  audio.muted = !audio.muted;
-  const off = audio.muted;
+  // Если уже используем AudioContext (ухо) — переключаемся на <audio> (динамик)
+  const goingSpeaker = !!_remoteAudioCtx;
+  if (goingSpeaker) {
+    try { _remoteAudioCtx.close(); } catch {}
+    _remoteAudioCtx = null;
+    const stream = _call?._remoteStream;
+    if (stream) { audio.srcObject = stream; audio.play().catch(() => {}); }
+  } else {
+    // Переключаемся на AudioContext (ухо/приватный режим)
+    const stream = _call?._remoteStream || audio.srcObject;
+    if (stream) {
+      audio.srcObject = null;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) {
+        _remoteAudioCtx = new Ctx();
+        _remoteAudioCtx.createMediaStreamSource(stream).connect(_remoteAudioCtx.destination);
+      } else {
+        // AudioContext недоступен — возвращаем <audio>
+        audio.srcObject = stream; audio.play().catch(() => {});
+      }
+    }
+  }
+  const off = !goingSpeaker && !!_remoteAudioCtx;
   document.getElementById('call-speaker-btn')?.classList.toggle('call-btn-icon--off', off);
   document.getElementById('call-spk-on').style.display = off ? 'none' : '';
   document.getElementById('call-spk-off').style.display = off ? '' : 'none';
