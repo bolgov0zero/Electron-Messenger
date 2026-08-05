@@ -1,9 +1,9 @@
 'use strict';
 
-const CACHE = 'corp-chat-v61';
+const CACHE = 'corp-chat-v52';
 // index.html (/chat/) намеренно не прекэшируем — он всегда из сети,
 // иначе закэшированная страница может рендериться без актуального viewport/вёрстки
-const STATIC = ['/chat/app.js?v=1.2.105', '/chat/style.css?v=1.2.105', '/chat/manifest.json', '/chat/icons/icon.svg'];
+const STATIC = ['/chat/app.js?v=1.2.094', '/chat/style.css?v=1.2.094', '/chat/manifest.json', '/chat/icons/icon.svg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(
@@ -49,32 +49,6 @@ self.addEventListener('fetch', e => {
 // ── PUSH NOTIFICATIONS ──
 self.addEventListener('push', e => {
   const data = e.data?.json?.() || {};
-
-  // Входящий звонок — всегда показываем уведомление, добавляем кнопки действий
-  if (data.type === 'call') {
-    const options = {
-      body: data.body || 'Входящий звонок',
-      icon: '/chat/icons/icon.svg',
-      badge: '/chat/icons/icon.svg',
-      tag: 'call',
-      renotify: true,
-      requireInteraction: true,
-      actions: [
-        { action: 'accept', title: 'Принять' },
-        { action: 'reject', title: 'Сбросить' },
-      ],
-      data: { type: 'call', callerId: data.callerId, callerName: data.callerName },
-    };
-    e.waitUntil(
-      // Для звонков всегда показываем уведомление и уведомляем открытые вкладки
-      clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-        list.forEach(c => c.postMessage({ type: 'call_push_incoming', callerId: data.callerId, callerName: data.callerName }));
-        return self.registration.showNotification(data.title || 'Входящий звонок', options);
-      }).catch(() => {})
-    );
-    return;
-  }
-
   const title = data.title || 'Новое сообщение';
   const options = {
     body: data.body || '',
@@ -86,8 +60,11 @@ self.addEventListener('push', e => {
   };
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      // Если PWA сейчас открыта и активна — уведомление не нужно:
+      // пользователь уже видит чат через WebSocket.
       const visible = list.some(c => c.visibilityState === 'visible');
       const tasks = visible ? [] : [self.registration.showNotification(title, options)];
+      // Счётчик на иконке PWA обновляем всегда
       if (self.navigator.setAppBadge) {
         if (typeof data.unread === 'number') {
           tasks.push(data.unread > 0 ? self.navigator.setAppBadge(data.unread) : self.navigator.clearAppBadge());
@@ -102,31 +79,7 @@ self.addEventListener('push', e => {
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const notifData = e.notification.data || {};
-  const action = e.action;
-
-  // Обработка кнопок уведомления о звонке
-  if (notifData.type === 'call') {
-    e.waitUntil(
-      clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-        const existing = list.find(c => c.visibilityState === 'visible') || list[0];
-        if (existing) {
-          existing.focus();
-          // Уже открытая вкладка — postMessage работает надёжно
-          const msg = action === 'reject'
-            ? { type: 'call_push_action', action: 'reject', callerId: notifData.callerId }
-            : { type: 'call_push_action', action: 'accept', callerId: notifData.callerId, callerName: notifData.callerName };
-          existing.postMessage(msg);
-        } else {
-          // Приложение закрыто — просто открываем, сервер доставит call_incoming после подключения WS
-          clients.openWindow('/chat/');
-        }
-      })
-    );
-    return;
-  }
-
-  const chatId = notifData.chatId;
+  const chatId = e.notification.data?.chatId;
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       const existing = list.find(c => c.visibilityState === 'visible') || list[0];

@@ -3,7 +3,6 @@ const db = require('../db');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
-const { execSync } = require('child_process');
 const { authMiddleware, adminMiddleware } = require('../auth');
 const { sendTo, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress } = require('../ws');
 
@@ -22,17 +21,6 @@ function getDirSize(dir) {
 
 function getDirCount(dir) {
   try { return fs.readdirSync(dir).length; } catch { return 0; }
-}
-
-function getTurnStatus() {
-  const configured = !!process.env.TURN_SECRET;
-  if (!configured) return { turnConfigured: false, turnActive: false };
-  try {
-    const state = execSync('systemctl is-active coturn 2>/dev/null', { timeout: 2000 }).toString().trim();
-    return { turnConfigured: true, turnActive: state === 'active' };
-  } catch {
-    return { turnConfigured: true, turnActive: false };
-  }
 }
 
 // ── Версия сервера ──
@@ -88,7 +76,6 @@ router.get('/stats', (req, res) => {
     wsConnections: getConnCount(),
     serverVersion: getLocalVersion(),
     pushSubscriptions: (() => { try { return db.prepare('SELECT COUNT(*) as c FROM push_subscriptions').get().c; } catch { return 0; } })(),
-    ...getTurnStatus(),
   });
 });
 
@@ -291,8 +278,7 @@ router.get('/settings', (req, res) => {
 router.put('/settings', (req, res) => {
   const allowed = ['github_token', 'edit_time_limit',
     'upload_image_max_size', 'upload_image_extensions',
-    'upload_file_max_size', 'upload_file_extensions', 'upload_file_lifetime',
-    'calls_enabled'];
+    'upload_file_max_size', 'upload_file_extensions', 'upload_file_lifetime'];
   const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
   const del = db.prepare('DELETE FROM settings WHERE key = ?');
   const keepEmpty = ['upload_image_extensions', 'upload_file_extensions', 'upload_file_lifetime'];
@@ -397,66 +383,15 @@ router.post('/server/update', (req, res) => {
       return res.status(400).json({ error: 'Служба electron не активна или не найдена. Обновление невозможно.' });
     }
     const appDir = path.join(__dirname, '..', '..', '..');
+    // fetch + reset --hard: локальные правки на сервере не блокируют обновление,
+    // untracked-файлы (chat_db) не затрагиваются. Вывод — в journal для диагностики.
     const script = `
-      set -e
-      cd "${appDir}"
-      git fetch origin main
-      git reset --hard origin/main
-      cd server
-      npm install --omit=dev
-      npm rebuild better-sqlite3
-
-      # ── Установка coturn если отсутствует ──
-      if ! command -v turnserver >/dev/null 2>&1; then
-        if [ -f /etc/debian_version ]; then
-          apt-get install -y coturn -q >/dev/null 2>&1 || true
-        elif [ -f /etc/redhat-release ] || [ -f /etc/centos-release ]; then
-          (yum install -y coturn >/dev/null 2>&1 || dnf install -y coturn >/dev/null 2>&1) || true
-        fi
-      fi
-
-      if command -v turnserver >/dev/null 2>&1; then
-        SVCFILE="/etc/systemd/system/electron.service"
-        EXISTING_TURN=$(systemctl show electron --property=Environment --value 2>/dev/null | grep -o 'TURN_SECRET=[^ ]*' | cut -d= -f2- || true)
-        if [ -z "$EXISTING_TURN" ]; then
-          NEW_TURN=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
-          SERVER_IP=$(hostname -I | awk '{print $1}')
-          if grep -q "^Environment=TURN_SECRET" "$SVCFILE" 2>/dev/null; then
-            sed -i "s|^Environment=TURN_SECRET=.*|Environment=TURN_SECRET=$NEW_TURN|" "$SVCFILE"
-          else
-            sed -i "/^\\[Service\\]/a Environment=TURN_SECRET=$NEW_TURN" "$SVCFILE"
-          fi
-          mkdir -p /var/log/coturn
-          cat > /etc/turnserver.conf <<TURNEOF
-listening-port=3478
-fingerprint
-use-auth-secret
-static-auth-secret=$NEW_TURN
-realm=$SERVER_IP
-total-quota=100
-no-loopback-peers
-no-multicast-peers
-min-port=49152
-max-port=65535
-log-file=/var/log/coturn/turnserver.log
-TURNEOF
-          [ -f /etc/default/coturn ] && sed -i 's/^#TURNSERVER_ENABLED=1/TURNSERVER_ENABLED=1/' /etc/default/coturn
-          systemctl daemon-reload
-          if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
-            ufw allow 3478/udp >/dev/null 2>&1 || true
-            ufw allow 3478/tcp >/dev/null 2>&1 || true
-            ufw allow 49152:65535/udp >/dev/null 2>&1 || true
-          elif command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active --quiet firewalld; then
-            firewall-cmd --permanent --add-port=3478/udp >/dev/null 2>&1 || true
-            firewall-cmd --permanent --add-port=3478/tcp >/dev/null 2>&1 || true
-            firewall-cmd --permanent --add-port=49152-65535/udp >/dev/null 2>&1 || true
-            firewall-cmd --reload >/dev/null 2>&1 || true
-          fi
-        fi
-        systemctl enable coturn >/dev/null 2>&1 || true
-        systemctl is-active --quiet coturn || systemctl restart coturn >/dev/null 2>&1 || true
-      fi
-
+      cd "${appDir}" && \
+      git fetch origin main && \
+      git reset --hard origin/main && \
+      cd server && \
+      npm install --omit=dev && \
+      npm rebuild better-sqlite3 && \
       systemctl restart electron
     `;
     res.json({ ok: true });

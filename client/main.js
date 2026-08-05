@@ -331,10 +331,6 @@ function createWindow() {
   });
   mainWindow.setMenuBarVisibility(false);
   mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
-  mainWindow.webContents.session.setPermissionRequestHandler((wc, permission, callback) => {
-    if (permission === 'media') return callback(true);
-    callback(false);
-  });
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.on('resize', _saveWinBounds);
   mainWindow.on('move', _saveWinBounds);
@@ -379,14 +375,6 @@ ipcMain.on('notify', (_, { title, body, chatId }) => {
     if (chatId) mainWindow?.webContents.send('open-chat', chatId);
   });
   n.show();
-});
-
-ipcMain.on('focus-window', () => {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.show();
-    mainWindow.focus();
-  }
 });
 
 ipcMain.on('unread', (_, count) => {

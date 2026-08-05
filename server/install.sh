@@ -33,17 +33,6 @@ fi
 
 echo "→ Дистрибутив: $PKG | Архитектура: $(uname -m)"
 
-# ── Проверка и установка sudo ──
-if ! command -v sudo &>/dev/null; then
-  echo "→ sudo не найден, устанавливаю..."
-  case "$PKG" in
-    apt)    apt-get update -q && apt-get install -y sudo ;;
-    yum)    yum install -y sudo ;;
-    pacman) pacman -Sy --noconfirm sudo ;;
-  esac
-  echo "→ sudo установлен"
-fi
-
 # ── Установка Node.js ──
 install_node_apt() {
   echo "→ Установка Node.js 20..."
@@ -111,11 +100,9 @@ npm rebuild better-sqlite3 --build-from-source
 mkdir -p "$DB_DIR"
 echo "→ Папка базы данных: $DB_DIR"
 
-# ── Генерация JWT_SECRET и TURN_SECRET ──
+# ── Генерация JWT_SECRET ──
 JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('hex'))")
 echo "→ JWT_SECRET сгенерирован"
-TURN_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
-echo "→ TURN_SECRET сгенерирован"
 
 # ── Остановка старых служб если есть ──
 for OLD in electron corp-chat; do
@@ -143,7 +130,6 @@ RestartSec=5
 Environment=NODE_ENV=production
 Environment=PORT=$PORT
 Environment=JWT_SECRET=$JWT_SECRET
-Environment=TURN_SECRET=$TURN_SECRET
 Environment=DB_PATH=$DB_DIR/chat.db
 
 [Install]
@@ -167,87 +153,6 @@ elif [ "$PKG" = "yum" ]; then
 elif [ "$PKG" = "pacman" ]; then
   pacman -Sy --noconfirm sqlite 2>/dev/null || true
 fi
-
-# ── Установка и настройка coturn (TURN-сервер для WebRTC-звонков) ──
-setup_coturn() {
-  echo "→ Установка TURN-сервера (coturn)..."
-  local OK=true
-  if [ "$PKG" = "apt" ]; then
-    apt-get install -y coturn -q >/dev/null 2>&1 || OK=false
-  elif [ "$PKG" = "yum" ]; then
-    (yum install -y coturn >/dev/null 2>&1 || dnf install -y coturn >/dev/null 2>&1) || OK=false
-  elif [ "$PKG" = "pacman" ]; then
-    pacman -Sy --noconfirm coturn >/dev/null 2>&1 || OK=false
-  fi
-  if ! $OK || ! command -v turnserver &>/dev/null; then
-    echo "  Предупреждение: coturn недоступен в репозитории, звонки будут недоступны"
-    return
-  fi
-
-  local PRIVATE_IP PUBLIC_IP
-  PRIVATE_IP=$(hostname -I | awk '{print $1}')
-  PUBLIC_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || \
-              curl -s --max-time 5 https://checkip.amazonaws.com 2>/dev/null || \
-              echo "$PRIVATE_IP")
-  PUBLIC_IP=$(echo "$PUBLIC_IP" | tr -d '[:space:]')
-  [ -z "$PUBLIC_IP" ] && PUBLIC_IP="$PRIVATE_IP"
-
-  mkdir -p /var/log/coturn
-  cat > /etc/turnserver.conf <<TURNEOF
-listening-port=3478
-fingerprint
-use-auth-secret
-static-auth-secret=$TURN_SECRET
-realm=$PUBLIC_IP
-total-quota=100
-no-loopback-peers
-no-multicast-peers
-min-port=49152
-max-port=65535
-log-file=/var/log/coturn/turnserver.log
-TURNEOF
-
-  # Если сервер за NAT — указываем внешний IP явно
-  if [ "$PUBLIC_IP" != "$PRIVATE_IP" ]; then
-    echo "external-ip=$PUBLIC_IP/$PRIVATE_IP" >> /etc/turnserver.conf
-    echo "→ Обнаружен NAT: external-ip=$PUBLIC_IP/$PRIVATE_IP"
-  fi
-
-  # Разрешить запуск демона (Debian/Ubuntu)
-  [ -f /etc/default/coturn ] && sed -i 's/^#TURNSERVER_ENABLED=1/TURNSERVER_ENABLED=1/' /etc/default/coturn
-
-  systemctl enable coturn >/dev/null 2>&1 || true
-  systemctl restart coturn >/dev/null 2>&1 || true
-
-  # Открыть порты
-  if command -v ufw &>/dev/null && ufw status 2>/dev/null | grep -q "Status: active"; then
-    ufw allow 3478/udp >/dev/null 2>&1 || true
-    ufw allow 3478/tcp >/dev/null 2>&1 || true
-    ufw allow 49152:65535/udp >/dev/null 2>&1 || true
-    echo "→ Порты открыты (ufw)"
-  elif command -v firewall-cmd &>/dev/null && systemctl is-active --quiet firewalld; then
-    firewall-cmd --permanent --add-port=3478/udp >/dev/null 2>&1 || true
-    firewall-cmd --permanent --add-port=3478/tcp >/dev/null 2>&1 || true
-    firewall-cmd --permanent --add-port=49152-65535/udp >/dev/null 2>&1 || true
-    firewall-cmd --reload >/dev/null 2>&1 || true
-    echo "→ Порты открыты (firewalld)"
-  fi
-
-  # Прописываем публичный IP в systemd-сервис чтобы call.js знал TURN-хост
-  sed -i "/Environment=TURN_SECRET/a Environment=TURN_HOST=$PUBLIC_IP" "$SERVICE_FILE"
-  systemctl daemon-reload >/dev/null 2>&1 || true
-
-  echo "→ TURN-сервер настроен (${PUBLIC_IP}:3478)"
-  echo ""
-  echo "┌─────────────────────────────────────────────────────────┐"
-  echo "│  ⚠  Для голосовых звонков откройте порты в панели VPS   │"
-  echo "│     (Security Groups / Cloud Firewall / Network Rules):  │"
-  echo "│                                                          │"
-  echo "│     3478  TCP + UDP   — TURN signaling                   │"
-  echo "│     49152–65535  UDP  — TURN relay (медиатрафик)         │"
-  echo "└─────────────────────────────────────────────────────────┘"
-}
-setup_coturn
 
 # ── Проверка ──
 echo ""

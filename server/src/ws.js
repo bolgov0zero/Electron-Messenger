@@ -82,30 +82,6 @@ function sendTo(userId, payload) {
   getConn(userId).forEach(ws => { if (ws.readyState === 1) ws.send(JSON.stringify(payload)); });
 }
 
-function insertCallRecord(callerId, calleeId, status, durationSec) {
-  try {
-    const chat = db.prepare(`
-      SELECT c.id FROM chats c
-      JOIN chat_members cm1 ON cm1.chat_id = c.id AND cm1.user_id = ?
-      JOIN chat_members cm2 ON cm2.chat_id = c.id AND cm2.user_id = ?
-      WHERE c.type = 'direct' LIMIT 1
-    `).get(callerId, calleeId);
-    if (!chat) return;
-    const text = JSON.stringify({ initiator_id: callerId, status, duration: durationSec });
-    const row = db.prepare(`INSERT INTO messages (chat_id, sender_id, text, msg_type) VALUES (?, ?, ?, 'call')`).run(chat.id, callerId, text);
-    const callerRow = db.prepare(`SELECT COALESCE(display_name, username) as name, tag FROM users WHERE id = ?`).get(callerId);
-    const sentAt = Math.floor(Date.now() / 1000);
-    const msg = {
-      id: row.lastInsertRowid, chat_id: chat.id, text, sent_at: sentAt, msg_type: 'call',
-      sender_id: callerId, sender_name: callerRow?.name || '', sender_tag: callerRow?.tag || null,
-      edited_at: null, deleted: 0, attachment: null, mentions: null,
-      reply_to_id: null, reply_text: null, reply_deleted: null, reply_sender_name: null,
-      status: { delivered: 0, read: 0, total: 0 }, reactions: [],
-    };
-    broadcast(chat.id, { type: 'message', message: msg });
-  } catch (e) { console.error('[call record]', e.message); }
-}
-
 function getStatus(userId) { return userStatus.get(userId) || 'offline'; }
 // Есть ли у пользователя хоть одно активное WS-соединение (для админки)
 function isConnected(userId) {
@@ -151,17 +127,6 @@ function getEditTimeLimit() {
   const v = Number(db.prepare("SELECT value FROM settings WHERE key = 'edit_time_limit'").get()?.value);
   return v > 0 ? v : 120;
 }
-
-function callsEnabled() {
-  const v = db.prepare("SELECT value FROM settings WHERE key = 'calls_enabled'").get()?.value;
-  return v !== '0';
-}
-
-// userId -> { peerId, startedAt }
-const activeCalls = new Map();
-
-// calleeId -> { callerId, callerName, timer } — вызов отправлен offline-абоненту, ждём реконнекта
-const pendingCalls = new Map();
 
 function getMessageWithStatus(msgId, viewerId) {
   const msg = db.prepare(`
@@ -433,117 +398,6 @@ function setup(server) {
         }
       }
 
-      if (data.type === 'call_initiate') {
-        const { peer_id } = data;
-        if (!peer_id || peer_id === user.id) return;
-        if (!callsEnabled()) { ws.send(JSON.stringify({ type: 'call_disabled' })); return; }
-        if (activeCalls.has(user.id)) { ws.send(JSON.stringify({ type: 'call_busy_self' })); return; }
-        const chat = db.prepare(`
-          SELECT c.id FROM chats c
-          JOIN chat_members cm1 ON cm1.chat_id = c.id AND cm1.user_id = ?
-          JOIN chat_members cm2 ON cm2.chat_id = c.id AND cm2.user_id = ?
-          WHERE c.type = 'direct' LIMIT 1
-        `).get(user.id, peer_id);
-        if (!chat) return;
-        if (!hasOpenConnection(peer_id)) {
-          if (pendingCalls.has(peer_id)) {
-            // Уже есть ожидающий вызов для этого абонента
-            ws.send(JSON.stringify({ type: 'call_busy', peer_id }));
-            return;
-          }
-          const callerRow2 = db.prepare('SELECT display_name FROM users WHERE id = ?').get(user.id);
-          pushToUser(peer_id, {
-            type: 'call',
-            title: 'Входящий звонок',
-            body: callerRow2?.display_name || user.username,
-            callerId: user.id,
-            callerName: callerRow2?.display_name || user.username,
-          });
-          // Caller помечается как "в ожидании" — блокируем повторный вызов
-          activeCalls.set(user.id, { peerId: peer_id, startedAt: Date.now(), initiatorId: user.id, pending: true });
-          const timer = setTimeout(() => {
-            pendingCalls.delete(peer_id);
-            activeCalls.delete(user.id);
-            try { db.prepare('INSERT INTO missed_calls (caller_id, callee_id) VALUES (?, ?)').run(user.id, peer_id); } catch {}
-            insertCallRecord(user.id, peer_id, 'missed', 0);
-            sendTo(user.id, { type: 'call_unavailable', peer_id });
-          }, 30000);
-          pendingCalls.set(peer_id, { callerId: user.id, callerName: callerRow2?.display_name || user.username, timer });
-          ws.send(JSON.stringify({ type: 'call_ringing', peer_id }));
-          return;
-        }
-        if (activeCalls.has(peer_id)) { ws.send(JSON.stringify({ type: 'call_busy', peer_id })); return; }
-        activeCalls.set(user.id, { peerId: peer_id, startedAt: Date.now(), initiatorId: user.id });
-        activeCalls.set(peer_id, { peerId: user.id, startedAt: Date.now(), initiatorId: user.id });
-        const callerRow = db.prepare('SELECT display_name FROM users WHERE id = ?').get(user.id);
-        // Push всегда — PWA может быть в фоне при живом WS-соединении
-        pushToUser(peer_id, {
-          type: 'call',
-          title: 'Входящий звонок',
-          body: callerRow?.display_name || user.username,
-          callerId: user.id,
-          callerName: callerRow?.display_name || user.username,
-        });
-        sendTo(peer_id, { type: 'call_incoming', caller_id: user.id, caller_name: callerRow?.display_name || user.username });
-      }
-
-      if (data.type === 'call_accept') {
-        const { peer_id } = data;
-        if (!peer_id) return;
-        const now = Date.now();
-        const myEntry = activeCalls.get(user.id);
-        const peerEntry = activeCalls.get(peer_id);
-        if (myEntry) myEntry.answeredAt = now;
-        if (peerEntry) peerEntry.answeredAt = now;
-        // Сбрасываем входящий звонок на других устройствах того же пользователя
-        getConn(user.id).forEach(otherWs => {
-          if (otherWs !== ws && otherWs.readyState === 1)
-            otherWs.send(JSON.stringify({ type: 'call_taken' }));
-        });
-        sendTo(peer_id, { type: 'call_accepted', peer_id: user.id });
-      }
-
-      if (data.type === 'call_reject') {
-        const { peer_id } = data;
-        if (!peer_id) return;
-        // Caller отменяет вызов пока абонент offline (pending)
-        if (pendingCalls.has(peer_id) && pendingCalls.get(peer_id).callerId === user.id) {
-          const pending = pendingCalls.get(peer_id);
-          clearTimeout(pending.timer);
-          pendingCalls.delete(peer_id);
-          activeCalls.delete(user.id);
-          try { db.prepare('INSERT INTO missed_calls (caller_id, callee_id) VALUES (?, ?)').run(user.id, peer_id); } catch {}
-          insertCallRecord(user.id, peer_id, 'missed', 0);
-          return;
-        }
-        const entry = activeCalls.get(user.id) || activeCalls.get(peer_id);
-        const initiatorId = entry?.initiatorId || peer_id;
-        const calleeId = initiatorId === user.id ? peer_id : user.id;
-        activeCalls.delete(user.id);
-        activeCalls.delete(peer_id);
-        insertCallRecord(initiatorId, calleeId, 'rejected', 0);
-        sendTo(peer_id, { type: 'call_rejected', peer_id: user.id });
-      }
-
-      if (data.type === 'call_end') {
-        const { peer_id } = data;
-        if (!peer_id) return;
-        const entry = activeCalls.get(user.id) || activeCalls.get(peer_id);
-        const initiatorId = entry?.initiatorId || user.id;
-        const calleeId = initiatorId === user.id ? peer_id : user.id;
-        const durationSec = entry?.answeredAt ? Math.floor((Date.now() - entry.answeredAt) / 1000) : 0;
-        activeCalls.delete(user.id);
-        activeCalls.delete(peer_id);
-        insertCallRecord(initiatorId, calleeId, 'ended', durationSec);
-        sendTo(peer_id, { type: 'call_ended', peer_id: user.id });
-      }
-
-      if (data.type === 'webrtc_offer' || data.type === 'webrtc_answer' || data.type === 'webrtc_ice') {
-        const { peer_id } = data;
-        if (!peer_id) return;
-        sendTo(peer_id, { ...data, peer_id: user.id });
-      }
-
       if (data.type === 'ping') ws.send(JSON.stringify({ type: 'pong' }));
     });
 
@@ -552,27 +406,6 @@ function setup(server) {
       const updEntry = updateProgress.get(ws._connId);
       if (updEntry && updEntry.status === 'restarting') { updEntry.status = 'restarted'; updEntry.pct = 100; }
       connMeta.delete(ws._connId);
-      // Caller дисконнектился пока ожидал offline-абонента
-      const activeCall = activeCalls.get(user.id);
-      if (activeCall?.pending && !hasOpenConnection(user.id)) {
-        const peerId = activeCall.peerId;
-        const pending = pendingCalls.get(peerId);
-        if (pending) { clearTimeout(pending.timer); pendingCalls.delete(peerId); }
-        activeCalls.delete(user.id);
-        try { db.prepare('INSERT INTO missed_calls (caller_id, callee_id) VALUES (?, ?)').run(user.id, peerId); } catch {}
-        insertCallRecord(user.id, peerId, 'missed', 0);
-      }
-      // Завершить активный звонок при разрыве соединения
-      else if (activeCall && !hasOpenConnection(user.id)) {
-        const initiatorId = activeCall.initiatorId || user.id;
-        const calleeId = initiatorId === user.id ? activeCall.peerId : user.id;
-        const durationSec = activeCall.answeredAt ? Math.floor((Date.now() - activeCall.answeredAt) / 1000) : 0;
-        const dropStatus = activeCall.answeredAt ? 'ended' : 'missed';
-        activeCalls.delete(user.id);
-        activeCalls.delete(activeCall.peerId);
-        insertCallRecord(initiatorId, calleeId, dropStatus, durationSec);
-        sendTo(activeCall.peerId, { type: 'call_ended', peer_id: user.id });
-      }
       const conns = clients.get(user.id);
       if (conns) {
         conns.delete(ws);
@@ -584,33 +417,6 @@ function setup(server) {
 
     // Конфигурация для клиента: лимит редактирования подхватывается без релиза клиента
     ws.send(JSON.stringify({ type: 'connected', user_id: user.id, edit_time_limit: getEditTimeLimit() }));
-
-    // Ожидающий входящий звонок (абонент был offline, теперь подключился)
-    if (pendingCalls.has(user.id)) {
-      const pending = pendingCalls.get(user.id);
-      clearTimeout(pending.timer);
-      pendingCalls.delete(user.id);
-      activeCalls.delete(pending.callerId); // снимаем pending-блок с caller
-      activeCalls.set(user.id, { peerId: pending.callerId, startedAt: Date.now(), initiatorId: pending.callerId });
-      activeCalls.set(pending.callerId, { peerId: user.id, startedAt: Date.now(), initiatorId: pending.callerId });
-      sendTo(pending.callerId, { type: 'call_ringing_live', peer_id: user.id }); // caller: абонент онлайн
-      ws.send(JSON.stringify({ type: 'call_incoming', caller_id: pending.callerId, caller_name: pending.callerName }));
-    }
-
-    // Пропущенные звонки
-    setImmediate(() => {
-      try {
-        const missedCalls = db.prepare(`
-          SELECT mc.id, mc.caller_id, u.display_name AS caller_name, mc.occurred_at
-          FROM missed_calls mc JOIN users u ON u.id = mc.caller_id
-          WHERE mc.callee_id = ? ORDER BY mc.occurred_at DESC LIMIT 20
-        `).all(user.id);
-        if (missedCalls.length) {
-          db.prepare('DELETE FROM missed_calls WHERE callee_id = ?').run(user.id);
-          ws.send(JSON.stringify({ type: 'missed_calls', calls: missedCalls }));
-        }
-      } catch {}
-    });
 
     // Авто-доставка при подключении: безопасно, после регистрации всех обработчиков
     setImmediate(() => {

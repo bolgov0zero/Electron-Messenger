@@ -271,70 +271,7 @@ do_update() {
   npm rebuild better-sqlite3 --build-from-source >>/tmp/electron-update.log 2>&1
   stop_spin 0 "Модули пересобраны"
 
-  # Шаг 6: TURN-сервер (coturn)
-  if ! command -v turnserver &>/dev/null; then
-    start_spin "Установка TURN-сервера (coturn)"
-    TURN_OK=false
-    if [ -f /etc/debian_version ]; then
-      apt-get install -y coturn -q >/dev/null 2>&1 && TURN_OK=true
-    elif [ -f /etc/redhat-release ] || [ -f /etc/centos-release ]; then
-      (yum install -y coturn >/dev/null 2>&1 || dnf install -y coturn >/dev/null 2>&1) && TURN_OK=true
-    fi
-    command -v turnserver &>/dev/null && TURN_OK=true
-    if $TURN_OK; then
-      stop_spin 0 "coturn установлен"
-    else
-      stop_spin 1 "coturn недоступен — пропускаем"
-    fi
-  fi
-
-  if command -v turnserver &>/dev/null; then
-    EXISTING_TURN=$(systemctl show "$SERVICE" --property=Environment --value 2>/dev/null | grep -o 'TURN_SECRET=[^ ]*' | cut -d= -f2- || true)
-    if [ -z "$EXISTING_TURN" ]; then
-      start_spin "Настройка TURN-сервера"
-      NEW_TURN_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
-      SERVER_IP=$(hostname -I | awk '{print $1}')
-      SVCFILE="/etc/systemd/system/${SERVICE}.service"
-      if grep -q "^Environment=TURN_SECRET" "$SVCFILE" 2>/dev/null; then
-        sed -i "s|^Environment=TURN_SECRET=.*|Environment=TURN_SECRET=$NEW_TURN_SECRET|" "$SVCFILE"
-      else
-        sed -i "/^\[Service\]/a Environment=TURN_SECRET=$NEW_TURN_SECRET" "$SVCFILE"
-      fi
-      mkdir -p /var/log/coturn
-      cat > /etc/turnserver.conf <<TURNEOF
-listening-port=3478
-fingerprint
-use-auth-secret
-static-auth-secret=$NEW_TURN_SECRET
-realm=$SERVER_IP
-total-quota=100
-no-loopback-peers
-no-multicast-peers
-min-port=49152
-max-port=65535
-log-file=/var/log/coturn/turnserver.log
-TURNEOF
-      [ -f /etc/default/coturn ] && sed -i 's/^#TURNSERVER_ENABLED=1/TURNSERVER_ENABLED=1/' /etc/default/coturn
-      systemctl daemon-reload >/dev/null 2>&1
-      if command -v ufw &>/dev/null && ufw status 2>/dev/null | grep -q "Status: active"; then
-        ufw allow 3478/udp >/dev/null 2>&1 || true
-        ufw allow 3478/tcp >/dev/null 2>&1 || true
-        ufw allow 49152:65535/udp >/dev/null 2>&1 || true
-      elif command -v firewall-cmd &>/dev/null && systemctl is-active --quiet firewalld; then
-        firewall-cmd --permanent --add-port=3478/udp >/dev/null 2>&1 || true
-        firewall-cmd --permanent --add-port=3478/tcp >/dev/null 2>&1 || true
-        firewall-cmd --permanent --add-port=49152-65535/udp >/dev/null 2>&1 || true
-        firewall-cmd --reload >/dev/null 2>&1 || true
-      fi
-      stop_spin 0 "TURN-сервер настроен"
-    fi
-    systemctl enable coturn >/dev/null 2>&1 || true
-    if ! systemctl is-active --quiet coturn; then
-      systemctl restart coturn >/dev/null 2>&1 || true
-    fi
-  fi
-
-  # Шаг 7: restart
+  # Шаг 6: restart
   start_spin "Перезапуск службы"
   systemctl restart "$SERVICE" >>/tmp/electron-update.log 2>&1
   sleep 2

@@ -29,7 +29,7 @@ function enrichChat(chat, userId) {
     JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = ?
   `).all(chat.id);
   const last = db.prepare(`
-    SELECT m.id, m.text, m.sent_at, m.edited_at, m.deleted, m.msg_type,
+    SELECT m.id, m.text, m.sent_at, m.edited_at, m.deleted,
       COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
     FROM messages m LEFT JOIN users u ON u.id = m.sender_id
     WHERE m.chat_id = ? ORDER BY m.sent_at DESC LIMIT 1

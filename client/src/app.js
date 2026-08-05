@@ -748,8 +748,7 @@ function renderChatRow(c) {
   const name = chatName(c);
   const u = S.unread[c.id]||0;
   const lm = c.last_message;
-  let preview;
-  preview = lm ? _msgPreview(lm) : 'Нет сообщений';
+  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text || (lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
   if (preview.length>40) preview = preview.slice(0,40)+'…';
   // Черновик приоритетнее последнего сообщения (как в Telegram)
   const draft = (c.id !== S.activeChatId) ? S.drafts[c.id] : null;
@@ -870,9 +869,6 @@ async function openChat(chatId, aroundId = null) {
         <div class="ch-sub">${sub}</div>
       </div>
       <div class="chat-header-actions">
-        ${peerId ? `<button class="icon-btn" title="Голосовой звонок" onclick="startCall(${peerId})">
-          <svg width="17" height="17" viewBox="0 0 24 24"><path fill="currentColor" d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
-        </button>` : ''}
         ${isRoom ? '' : `<button class="icon-btn" title="Действия с чатом" onclick="showChatCtx(event, ${chatId})">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
         </button>`}
@@ -1165,19 +1161,6 @@ function renderReactions(msgId) {
   ).join('')}</div>`;
 }
 
-function _msgPreview(msg) {
-  if (!msg) return '';
-  if (msg.msg_type === 'call') {
-    let meta = {}; try { meta = JSON.parse(msg.text); } catch {}
-    const isMine = meta.initiator_id === S.user.id;
-    return meta.status === 'missed' ? (isMine ? 'Исходящий звонок · Пропущен' : 'Входящий звонок · Пропущен')
-      : meta.status === 'rejected' ? (isMine ? 'Исходящий звонок · Не принят' : 'Входящий звонок · Отклонён')
-      : isMine ? 'Исходящий звонок' : 'Входящий звонок';
-  }
-  if (msg.deleted) return 'Сообщение удалено';
-  return msg.text || (msg.attachment ? (msg.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (msg.attachment.name || 'Файл')) : '');
-}
-
 function renderMsg(m, isChatGroup, hideTime = false, grouped = false, isLast = true) {
   return renderMsgIRC(m, grouped);
 }
@@ -1200,32 +1183,6 @@ function senderNameClass(tag) {
 }
 
 function renderMsgIRC(m, isGroup) {
-  if (m.msg_type === 'call') {
-    let meta = {};
-    try { meta = JSON.parse(m.text); } catch {}
-    const isMine = meta.initiator_id === S.user.id;
-    const status = meta.status || 'ended';
-    const duration = meta.duration || 0;
-    const label = isMine ? 'Исходящий звонок' : 'Входящий звонок';
-    const sub = status === 'rejected' ? 'Не принят'
-      : status === 'missed' ? 'Пропущен'
-      : duration > 0 ? _formatCallTimer(duration) : '';
-    const ok = status === 'ended';
-    const iconColor = ok ? '#22c55e' : '#ef4444';
-    const phoneIcon = ok
-      ? `<svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>`
-      : `<svg width="16" height="16" viewBox="0 0 24 24" style="transform:rotate(135deg)"><path fill="currentColor" d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>`;
-    return `<div class="irc-row msg-call-row">
-      <div class="msg-call-record">
-        <span class="msg-call-icon" style="color:${iconColor}">${phoneIcon}</span>
-        <span class="msg-call-body">
-          <span class="msg-call-label">${label}</span>
-          ${sub ? `<span class="msg-call-sub">${sub}</span>` : ''}
-        </span>
-        <span class="msg-call-time">${fmtTime(m.sent_at)}</span>
-      </div>
-    </div>`;
-  }
   if (m.status && m.id > 0) S.msgStatus[m.id] = { ...m.status };
   const mine = m.sender_id===S.user.id;
   const time = fmtTime(m.sent_at);
@@ -2087,12 +2044,10 @@ function connectWS() {
           // Окно скрыто/свёрнуто — уведомляем, не отмечаем прочитанным
           S.unread[chatId] = (S.unread[chatId]||0)+1;
           if (message.mentions?.includes(S.user.id)) S.unreadMentions[chatId] = (S.unreadMentions[chatId]||0)+1;
-          if (message.msg_type !== 'call') {
-            const title = chatName(chat) || 'Electron';
-            const body = `${message.sender_name}: ${_msgPreview(message)}`;
-            window.electron?.notify(title, body, chatId);
-            playNotificationSound();
-          }
+          const title = chatName(chat) || 'Electron';
+          const body = `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+          window.electron?.notify(title, body, chatId);
+          playNotificationSound();
           if (S.ws?.readyState===1) S.ws.send(JSON.stringify({type:'delivered', message_id:message.id}));
         }
       } else if (message.sender_id === S.user.id) {
@@ -2101,13 +2056,11 @@ function connectWS() {
       } else {
         S.unread[chatId] = (S.unread[chatId]||0)+1;
         if (message.mentions?.includes(S.user.id)) S.unreadMentions[chatId] = (S.unreadMentions[chatId]||0)+1;
-        if (message.msg_type !== 'call') {
-          const chat2 = S.chats.find(c=>c.id===chatId);
-          const title = chatName(chat2) || 'Electron';
-          const body = `${message.sender_name}: ${_msgPreview(message)}`;
-          window.electron?.notify(title, body, chatId);
-          playNotificationSound();
-        }
+        const chat2 = S.chats.find(c=>c.id===chatId);
+        const title = chatName(chat2) || 'Electron';
+        const body = `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+        window.electron?.notify(title, body, chatId);
+        playNotificationSound();
         if (S.ws?.readyState===1) S.ws.send(JSON.stringify({type:'delivered', message_id:message.id}));
       }
       updateUnreadTotal();
@@ -2305,32 +2258,6 @@ function connectWS() {
       // Только Electron: полный рестарт процесса. В веб-клиенте команда игнорируется.
       window.electron?.restartApp?.();
     }
-
-    if (data.type === 'call_incoming') {
-      showIncomingCallUI(data.caller_id, data.caller_name);
-    }
-    if (data.type === 'call_accepted') { onCallAccepted(); }
-    if (data.type === 'call_taken') { cleanupCall(); }
-    if (data.type === 'call_rejected') { cleanupCall(); showActionToast('Звонок отклонён'); }
-    if (data.type === 'call_ended') { cleanupCall(); showActionToast('Звонок завершён'); }
-    if (data.type === 'call_disabled') { cleanupCall(); showActionToast('Звонки отключены на этом сервере'); }
-    if (data.type === 'call_busy') { cleanupCall(); showActionToast('Абонент занят'); }
-    if (data.type === 'call_busy_self') { showActionToast('Вы уже в звонке'); }
-    if (data.type === 'call_ringing') {
-      const el = document.getElementById('call-status-text');
-      if (el) el.textContent = 'Ожидание ответа…';
-    }
-    if (data.type === 'call_ringing_live') {
-      const el = document.getElementById('call-status-text');
-      if (el) el.textContent = 'Идёт вызов…';
-    }
-    if (data.type === 'call_unavailable') { cleanupCall(); showActionToast('Нет ответа'); }
-    if (data.type === 'missed_calls') {
-      for (const c of data.calls) { showActionToast(`Пропущенный звонок от ${c.caller_name}`); break; }
-    }
-    if (data.type === 'webrtc_offer') { onWebRTCOffer(data); }
-    if (data.type === 'webrtc_answer') { onWebRTCAnswer(data); }
-    if (data.type === 'webrtc_ice') { onWebRTCIce(data); }
   };
 
   ws.onclose = (event) => {
@@ -2757,10 +2684,8 @@ function showChatCtx(e, chatId) {
   const canDelete = !isGroup || chat.created_by === S.user.id || S.user.is_admin;
   const delBtn = document.getElementById('ctx-chat-delete');
   const leaveBtn = document.getElementById('ctx-chat-leave');
-  const callBtn = document.getElementById('ctx-chat-call');
   if (delBtn) delBtn.style.display = canDelete ? '' : 'none';
   if (leaveBtn) leaveBtn.style.display = (isGroup && !canDelete) ? '' : 'none';
-  if (callBtn) callBtn.style.display = chat?.type === 'direct' ? '' : 'none';
   menu.style.top = '-9999px'; menu.style.left = '-9999px';
   menu.style.display = 'block';
   const mw = menu.offsetWidth, mh = menu.offsetHeight;
@@ -2792,14 +2717,6 @@ async function ctxChatDelete() {
   document.getElementById('ctx-chat-menu').style.display = 'none';
   if (!S.ctxChatId) return;
   await deleteChat(S.ctxChatId);
-}
-
-function ctxChatCall() {
-  document.getElementById('ctx-chat-menu').style.display = 'none';
-  if (!S.ctxChatId) return;
-  const chat = S.chats.find(c => c.id === S.ctxChatId);
-  const peerId = getPeerUserId(chat);
-  if (peerId) startCall(peerId);
 }
 
 // ── MODAL HELPERS ──
@@ -3045,240 +2962,4 @@ async function forceInstallUpdate() {
     document.getElementById('force-update-sub').textContent = 'Ошибка: ' + result.error;
     _wsSendUpdateProgress(0, 'error', result.error);
   }
-}
-
-// ── VOICE CALLS ──
-let _call = null;
-let _ringtoneInterval = null;
-
-function _callState() { return _call?.state || 'idle'; }
-
-async function _getTurnConfig() {
-  try {
-    const r = await fetch('/api/call/turn-credentials', { headers: { Authorization: 'Bearer ' + S.token } });
-    if (r.ok) return await r.json();
-  } catch {}
-  return { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-}
-
-function _createPC(config) {
-  const pc = new RTCPeerConnection(config);
-  pc.onicecandidate = e => {
-    if (e.candidate && S.ws?.readyState === 1) {
-      S.ws.send(JSON.stringify({ type: 'webrtc_ice', peer_id: _call?.peerId, candidate: e.candidate }));
-    }
-  };
-  pc.ontrack = e => {
-    const audio = document.getElementById('call-remote-audio');
-    if (audio) audio.srcObject = e.streams[0];
-  };
-  pc.onconnectionstatechange = () => {
-    if (pc.connectionState === 'connected') {
-      document.getElementById('call-status-text').textContent = _formatCallTimer(0);
-      startCallTimer();
-    }
-  };
-  return pc;
-}
-
-function startCallTimer() {
-  if (_call?.timerInterval) clearInterval(_call.timerInterval);
-  let sec = 0;
-  if (_call) _call.timerInterval = setInterval(() => {
-    sec++;
-    const el = document.getElementById('call-status-text');
-    if (el) el.textContent = _formatCallTimer(sec);
-  }, 1000);
-}
-
-function _formatCallTimer(sec) {
-  const m = Math.floor(sec / 60), s = sec % 60;
-  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-}
-
-async function startCall(peerId) {
-  if (_callState() !== 'idle') { showActionToast('Вы уже в звонке'); return; }
-  const peer = S.chats.flatMap(c => c.members || []).find(m => m.id === peerId)
-    || { id: peerId, display_name: 'Абонент' };
-  _call = { state: 'outgoing', peerId, peerName: peer.display_name || 'Абонент', pc: null, localStream: null, timerInterval: null };
-  _showCallOverlay('outgoing');
-  if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_initiate', peer_id: peerId }));
-}
-
-async function onCallAccepted() {
-  if (_callState() !== 'outgoing') return;
-  _call.state = 'connecting';
-  document.getElementById('call-status-text').textContent = 'Соединение…';
-  try {
-    const config = await _getTurnConfig();
-    _call.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    _call.pc = _createPC(config);
-    _call.localStream.getTracks().forEach(t => _call.pc.addTrack(t, _call.localStream));
-    const offer = await _call.pc.createOffer();
-    await _call.pc.setLocalDescription(offer);
-    if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'webrtc_offer', peer_id: _call.peerId, sdp: offer }));
-    _showCallOverlay('active');
-  } catch (e) {
-    console.error('WebRTC offer error:', e);
-    const msg = e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError'
-      ? 'Нет доступа к микрофону — разрешите доступ в системных настройках'
-      : e.name === 'NotFoundError' ? 'Микрофон не найден'
-      : 'Ошибка доступа к микрофону';
-    endCall();
-    showActionToast(msg);
-  }
-}
-
-function showIncomingCallUI(callerId, callerName) {
-  if (_callState() !== 'idle') {
-    if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_reject', peer_id: callerId }));
-    return;
-  }
-  _call = { state: 'incoming', peerId: callerId, peerName: callerName, pc: null, localStream: null, timerInterval: null };
-  _showCallOverlay('incoming');
-  _startRingtone();
-  // Вывести окно на передний план
-  window.electron?.focusWindow?.();
-  window.electron?.notify?.('Входящий звонок', callerName, null);
-}
-
-async function acceptCall() {
-  if (_callState() !== 'incoming') return;
-  _stopRingtone();
-  _call.state = 'connecting';
-  document.getElementById('call-status-text').textContent = 'Соединение…';
-  _showCallOverlay('active');
-  try {
-    const config = await _getTurnConfig();
-    _call.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    _call.pc = _createPC(config);
-    _call.localStream.getTracks().forEach(t => _call.pc.addTrack(t, _call.localStream));
-    if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_accept', peer_id: _call.peerId }));
-  } catch (e) {
-    console.error('getUserMedia error:', e);
-    const msg = e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError'
-      ? 'Нет доступа к микрофону — разрешите доступ в системных настройках'
-      : e.name === 'NotFoundError' ? 'Микрофон не найден'
-      : 'Ошибка доступа к микрофону';
-    rejectCall();
-    showActionToast(msg);
-  }
-}
-
-function rejectCall() {
-  const peerId = _call?.peerId;
-  cleanupCall();
-  if (peerId && S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_reject', peer_id: peerId }));
-}
-
-function endCall() {
-  const peerId = _call?.peerId;
-  cleanupCall();
-  if (peerId && S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'call_end', peer_id: peerId }));
-}
-
-function cleanupCall() {
-  _stopRingtone();
-  if (_call) {
-    clearInterval(_call.timerInterval);
-    if (_call.pc) { try { _call.pc.close(); } catch {} }
-    if (_call.localStream) _call.localStream.getTracks().forEach(t => t.stop());
-  }
-  _call = null;
-  const audio = document.getElementById('call-remote-audio');
-  if (audio) { audio.srcObject = null; }
-  document.getElementById('call-muted-banner').style.display = 'none';
-  document.getElementById('call-mic-on').style.display = '';
-  document.getElementById('call-mic-off').style.display = 'none';
-  document.getElementById('call-mute-btn')?.classList.remove('call-btn-icon--off');
-  document.getElementById('call-spk-on').style.display = '';
-  document.getElementById('call-spk-off').style.display = 'none';
-  document.getElementById('call-speaker-btn')?.classList.remove('call-btn-icon--off');
-  document.getElementById('call-overlay').style.display = 'none';
-}
-
-async function onWebRTCOffer(data) {
-  if (!_call?.pc) return;
-  try {
-    await _call.pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-    const answer = await _call.pc.createAnswer();
-    await _call.pc.setLocalDescription(answer);
-    if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'webrtc_answer', peer_id: _call.peerId, sdp: answer }));
-  } catch (e) { console.error('WebRTC offer handling error:', e); }
-}
-
-async function onWebRTCAnswer(data) {
-  if (!_call?.pc) return;
-  try { await _call.pc.setRemoteDescription(new RTCSessionDescription(data.sdp)); } catch (e) { console.error('WebRTC answer error:', e); }
-}
-
-async function onWebRTCIce(data) {
-  if (!_call?.pc || !data.candidate) return;
-  try { await _call.pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch {}
-}
-
-function toggleCallMute() {
-  if (!_call?.localStream) return;
-  const track = _call.localStream.getAudioTracks()[0];
-  if (!track) return;
-  track.enabled = !track.enabled;
-  const muted = !track.enabled;
-  document.getElementById('call-mute-btn')?.classList.toggle('call-btn-icon--off', muted);
-  document.getElementById('call-mic-on').style.display = muted ? 'none' : '';
-  document.getElementById('call-mic-off').style.display = muted ? '' : 'none';
-  document.getElementById('call-muted-banner').style.display = muted ? 'flex' : 'none';
-}
-
-function toggleCallSpeaker() {
-  const audio = document.getElementById('call-remote-audio');
-  if (!audio) return;
-  audio.muted = !audio.muted;
-  const off = audio.muted;
-  document.getElementById('call-speaker-btn')?.classList.toggle('call-btn-icon--off', off);
-  document.getElementById('call-spk-on').style.display = off ? 'none' : '';
-  document.getElementById('call-spk-off').style.display = off ? '' : 'none';
-}
-
-function _showCallOverlay(mode) {
-  const overlay = document.getElementById('call-overlay');
-  if (!overlay) return;
-  overlay.style.display = 'flex';
-  const nameEl = document.getElementById('call-peer-name');
-  const statusEl = document.getElementById('call-status-text');
-  const avatarEl = document.getElementById('call-peer-avatar');
-  const outgoingActions = document.getElementById('call-actions-outgoing');
-  const incomingActions = document.getElementById('call-actions-incoming');
-  const activeActions = document.getElementById('call-actions-active');
-  if (nameEl) nameEl.textContent = _call?.peerName || '';
-  if (avatarEl) avatarEl.textContent = (_call?.peerName || '?')[0].toUpperCase();
-  if (outgoingActions) outgoingActions.style.display = mode === 'outgoing' ? '' : 'none';
-  if (incomingActions) incomingActions.style.display = mode === 'incoming' ? '' : 'none';
-  if (activeActions) activeActions.style.display = mode === 'active' ? '' : 'none';
-  if (statusEl) {
-    if (mode === 'outgoing') statusEl.textContent = 'Звонок…';
-    else if (mode === 'incoming') statusEl.textContent = 'Входящий звонок';
-    else statusEl.textContent = 'Соединение…';
-  }
-}
-
-function _startRingtone() {
-  _stopRingtone();
-  let ctx;
-  try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return; }
-  function beep() {
-    if (!_ringtoneInterval) return;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = 440;
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    osc.start(); osc.stop(ctx.currentTime + 0.4);
-  }
-  beep();
-  _ringtoneInterval = setInterval(beep, 2000);
-}
-
-function _stopRingtone() {
-  if (_ringtoneInterval) { clearInterval(_ringtoneInterval); _ringtoneInterval = null; }
 }
