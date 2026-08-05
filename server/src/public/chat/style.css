@@ -65,8 +65,9 @@
   /* Topbar height */
   --topbar-h: 58px;
 
-  /* Viewport height — переопределяется JS при масштабировании */
+  /* Viewport height/width — переопределяются JS при масштабировании (zoom) */
   --vh100: 100dvh;
+  --vw100: 100vw;
 
   /* Radii */
   --radius-sm: 8px;
@@ -1930,15 +1931,16 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
    поле ввода всегда над клавиатурой. Ручного позиционирования нет.
    ══════════════════════════════════════════ */
 @media (max-width: 767px), (pointer: coarse) {
-  :root { --sidebar-w: 100vw; }
+  :root { --sidebar-w: var(--vw100); }
 
   /* Декоративные блобы не нужны на мобильном — просвечивают сквозь шапку */
   .blob { display: none; }
 
-  /* Страница целиком не скроллится — скроллится только список сообщений */
+  /* Страница целиком не скроллится — скроллится только список сообщений.
+     При zoom > 100% var(--vw100)/--vh100 сжимают html/body к физическому вьюпорту. */
   html, body {
-    position: fixed; inset: 0;
-    width: 100%; height: 100%;
+    position: fixed; top: 0; left: 0;
+    width: var(--vw100); height: var(--vh100);
     overflow: hidden;
     overscroll-behavior: none;
     background: var(--app-bg);
@@ -1951,9 +1953,9 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
     flex-direction: column;
     position: fixed;
     top: var(--app-top, 0px);
-    left: 0; right: 0;
-    bottom: 0;
-    height: auto;
+    left: 0;
+    width: var(--vw100);
+    height: calc(var(--vh100) - var(--app-top, 0px));
     padding-bottom: var(--kb-height, 0px);
     box-sizing: border-box;
     overflow: hidden;
@@ -1963,8 +1965,9 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
      Непрозрачный фон = фону приложения, чтобы зона под home-индикатором
      (где виден body) не контрастировала и не выглядела полосой. */
   .sidebar {
-    position: fixed; inset: 0;
-    width: 100%; z-index: 200;
+    position: fixed; top: 0; left: 0;
+    width: var(--vw100); height: var(--vh100);
+    z-index: 200;
     transition: transform .32s cubic-bezier(.32,.72,0,1);
     will-change: transform;
     padding-top: env(safe-area-inset-top, 0px);
@@ -2033,11 +2036,11 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 
 
   .modal {
-    width: calc(100vw - 24px) !important;
+    width: calc(var(--vw100) - 24px) !important;
     max-height: 90vh !important;
     max-width: 480px;
   }
-  .login-wrap { width: calc(100vw - 32px); padding: 28px 20px 24px; }
+  .login-wrap { width: calc(var(--vw100) - 32px); padding: 28px 20px 24px; }
 
   /* Топбар скрыт — навигация через хедер чата и сайдбар */
   .topbar { display: none; }
@@ -2045,7 +2048,8 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
   /* Экран авторизации должен перекрывать всё, включая sidebar с position:fixed */
   #screen-login.active {
     position: fixed;
-    inset: 0;
+    top: 0; left: 0;
+    width: var(--vw100); height: var(--vh100);
     z-index: 500;
   }
 
@@ -2053,9 +2057,9 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
   /* Настройки — полноэкранное окно */
   #modal-settings .modal,
   .settings-modal {
-    width: 100vw !important;
+    width: var(--vw100) !important;
     height: var(--vh100) !important;
-    max-width: 100vw !important;
+    max-width: var(--vw100) !important;
     max-height: var(--vh100) !important;
     border-radius: 0 !important;
     padding-top: env(safe-area-inset-top, 0px);
@@ -2118,8 +2122,16 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
   .search-wrap input { height: 40px; }
 
   /* Login */
-  .login-wrap { width: calc(100vw - 32px); max-width: 420px; padding: 32px 24px 28px; }
+  .login-wrap { width: calc(var(--vw100) - 32px); max-width: 420px; padding: 32px 24px 28px; }
   .btn-login { height: 48px; font-size: 15px; border-radius: 14px; }
+
+  /* Оверлеи-фоны (modal, drawer, action sheet, lightbox, drag) — тоже прижимаем к физическому вьюпорту */
+  .modal-bg, .drawer-bg, .sheet-backdrop, #lightbox, #drag-overlay {
+    right: auto; bottom: auto;
+    width: var(--vw100); height: var(--vh100);
+  }
+  /* Верхний баннер уведомлений — прижимаем ширину, не тянем через right:0 */
+  .notif-banner { right: auto; width: var(--vw100); }
 }
 
 /* Desktop: hide mobile-only elements */

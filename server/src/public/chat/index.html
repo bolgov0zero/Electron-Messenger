@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <script>
-// Применяем масштаб ДО первого layout — без перерисовки и overflow
-(function(){try{var s=JSON.parse(localStorage.getItem('electron_v2')||'{}');var r=(s.settings&&s.settings.uiScale||100)/100;if(r!==1){var m=document.querySelector('meta[name="viewport"]');if(m)m.content='width=device-width,initial-scale='+r+',maximum-scale='+r+',user-scalable=no,viewport-fit=cover';}}catch(e){}})();
+// Применяем масштаб ДО первого layout — без вспышки и без overflow
+(function(){try{var s=JSON.parse(localStorage.getItem('electron_v2')||'{}');var z=(s.settings&&s.settings.uiScale)||100;if(z!==100){var r=z/100;var d=document.documentElement;d.style.zoom=z+'%';d.style.setProperty('--vh100','calc(100dvh / '+r+')');d.style.setProperty('--vw100','calc(100vw / '+r+')');}}catch(e){}})();
 </script>
 <meta name="theme-color" content="#0a0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=1.2.094">
+<link rel="stylesheet" href="style.css?v=1.2.115">
 </head>
 <body>
 
@@ -261,6 +261,6 @@
 </div>
 
 <div id="mention-popup"></div>
-<script src="app.js?v=1.2.094"></script>
+<script src="app.js?v=1.2.115"></script>
 </body>
 </html>
