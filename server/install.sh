@@ -33,6 +33,17 @@ fi
 
 echo "→ Дистрибутив: $PKG | Архитектура: $(uname -m)"
 
+# ── Проверка и установка sudo ──
+if ! command -v sudo &>/dev/null; then
+  echo "→ sudo не найден, устанавливаю..."
+  case "$PKG" in
+    apt)    apt-get update -q && apt-get install -y sudo ;;
+    yum)    yum install -y sudo ;;
+    pacman) pacman -Sy --noconfirm sudo ;;
+  esac
+  echo "→ sudo установлен"
+fi
+
 # ── Установка Node.js ──
 install_node_apt() {
   echo "→ Установка Node.js 20..."
