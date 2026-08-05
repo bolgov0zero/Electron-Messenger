@@ -2310,12 +2310,21 @@ function connectWS() {
       showIncomingCallUI(data.caller_id, data.caller_name);
     }
     if (data.type === 'call_accepted') { onCallAccepted(); }
+    if (data.type === 'call_taken') { cleanupCall(); }
     if (data.type === 'call_rejected') { cleanupCall(); showActionToast('Звонок отклонён'); }
     if (data.type === 'call_ended') { cleanupCall(); showActionToast('Звонок завершён'); }
     if (data.type === 'call_disabled') { cleanupCall(); showActionToast('Звонки отключены на этом сервере'); }
     if (data.type === 'call_busy') { cleanupCall(); showActionToast('Абонент занят'); }
     if (data.type === 'call_busy_self') { showActionToast('Вы уже в звонке'); }
-    if (data.type === 'call_unavailable') { cleanupCall(); showActionToast('Звонок отправлен — абонент получит уведомление'); }
+    if (data.type === 'call_ringing') {
+      const el = document.getElementById('call-status-text');
+      if (el) el.textContent = 'Ожидание ответа…';
+    }
+    if (data.type === 'call_ringing_live') {
+      const el = document.getElementById('call-status-text');
+      if (el) el.textContent = 'Идёт вызов…';
+    }
+    if (data.type === 'call_unavailable') { cleanupCall(); showActionToast('Нет ответа'); }
     if (data.type === 'missed_calls') {
       for (const c of data.calls) { showActionToast(`Пропущенный звонок от ${c.caller_name}`); break; }
     }
