@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<script>
+// Применяем масштаб ДО первого layout — без перерисовки и overflow
+(function(){try{var s=JSON.parse(localStorage.getItem('electron_v2')||'{}');var r=(s.settings&&s.settings.uiScale||100)/100;if(r!==1){var m=document.querySelector('meta[name="viewport"]');if(m)m.content='width=device-width,initial-scale='+r+',maximum-scale='+r+',user-scalable=no,viewport-fit=cover';}}catch(e){}})();
+</script>
 <meta name="theme-color" content="#0a0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

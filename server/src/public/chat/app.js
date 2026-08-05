@@ -508,16 +508,9 @@ function applySettings() {
   document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('active', b.textContent.trim()===(S.settings.theme==='light'?'Светлая':'Тёмная')));
   document.querySelectorAll('#font-seg button').forEach(b => b.classList.toggle('active', b.textContent.trim()===S.settings.fontSize[0].toUpperCase()));
   const _scale = S.settings.uiScale || 100;
-  const _ratio = _scale / 100;
-  document.documentElement.style.zoom = _scale + '%';
-  // При zoom > 100% ширина контента в CSS-пикселях превышает вьюпорт → обрезаем
-  document.documentElement.style.overflowX = _scale > 100 ? 'hidden' : '';
-  document.body.style.overflowX = _scale > 100 ? 'hidden' : '';
-  // Ограничиваем ширину body так, чтобы визуально занимала ровно 100% вьюпорта
-  document.body.style.maxWidth = _scale > 100 ? `${100 / _ratio}vw` : '';
   document.documentElement.style.minHeight = '';
   document.body.style.height = '';
-  document.documentElement.style.setProperty('--vh100', `calc(100dvh / ${_ratio})`);
+  document.documentElement.style.setProperty('--vh100', '100dvh');
   document.querySelectorAll('#scale-seg button').forEach(b => b.classList.toggle('active', parseInt(b.textContent) === _scale));
   updateAppHeight();
   updateSidebarThemeIcon();
@@ -529,7 +522,14 @@ function applySettings() {
 function setTheme(t) { S.settings.theme=t; applySettings(); saveSession(); }
 function toggleTheme() { setTheme(S.settings.theme === 'dark' ? 'light' : 'dark'); }
 function setFontSize(f) { S.settings.fontSize=f; applySettings(); saveSession(); }
-function setUiScale(v) { S.settings.uiScale=v; applySettings(); saveSession(); }
+function setUiScale(v) {
+  S.settings.uiScale = v;
+  saveSession();
+  const r = v / 100;
+  const vp = document.querySelector('meta[name="viewport"]');
+  if (vp) vp.content = `width=device-width,initial-scale=${r},maximum-scale=${r},user-scalable=no,viewport-fit=cover`;
+  applySettings();
+}
 async function openSettings() {
   openModal('modal-settings');
   showSettingsTab('profile');
