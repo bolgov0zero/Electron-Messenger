@@ -19,7 +19,7 @@ const S = {
   chats: [], activeChatId: null,
   ws: null, wsRetry: 0,
   unread: {}, unreadMentions: {}, allUsers: [], drafts: (()=>{ try { return JSON.parse(localStorage.getItem('chat_drafts'))||{}; } catch { return {}; } })(),
-  settings: { theme: 'dark', fontSize: 'medium', uiScale: 100 },
+  settings: { theme: 'dark', fontSize: 'medium', uiScale: window.matchMedia('(max-width: 767px),(pointer:coarse)').matches ? 110 : 100 },
   ctx: { messageId: null, canEdit: false, isMine: false, replyText: '', replySenderName: '' },
   editingMessageId: null,
   replyTo: null,
@@ -508,10 +508,10 @@ function applySettings() {
   document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('active', b.textContent.trim()===(S.settings.theme==='light'?'Светлая':'Тёмная')));
   document.querySelectorAll('#font-seg button').forEach(b => b.classList.toggle('active', b.textContent.trim()===S.settings.fontSize[0].toUpperCase()));
   const _scale = S.settings.uiScale || 100;
-  document.documentElement.style.zoom = _scale !== 100 ? _scale + '%' : '';
+  document.documentElement.style.zoom = _scale + '%';
   document.documentElement.style.minHeight = '';
   document.body.style.height = '';
-  document.documentElement.style.setProperty('--vh100', _scale !== 100 ? `calc(100dvh / ${_scale / 100})` : '100dvh');
+  document.documentElement.style.setProperty('--vh100', `calc(100dvh / ${_scale / 100})`);
   document.querySelectorAll('#scale-seg button').forEach(b => b.classList.toggle('active', parseInt(b.textContent) === _scale));
   updateAppHeight();
   updateSidebarThemeIcon();
@@ -597,6 +597,7 @@ function showSettingsTab(tab) {
           <button onclick="setUiScale(80)">80%</button>
           <button onclick="setUiScale(90)">90%</button>
           <button onclick="setUiScale(100)">100%</button>
+          <button onclick="setUiScale(110)">110%</button>
         </div>
       </div>`;
     applySettings();
