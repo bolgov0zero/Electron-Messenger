@@ -238,6 +238,14 @@ TURNEOF
   systemctl daemon-reload >/dev/null 2>&1 || true
 
   echo "→ TURN-сервер настроен (${PUBLIC_IP}:3478)"
+  echo ""
+  echo "┌─────────────────────────────────────────────────────────┐"
+  echo "│  ⚠  Для голосовых звонков откройте порты в панели VPS   │"
+  echo "│     (Security Groups / Cloud Firewall / Network Rules):  │"
+  echo "│                                                          │"
+  echo "│     3478  TCP + UDP   — TURN signaling                   │"
+  echo "│     49152–65535  UDP  — TURN relay (медиатрафик)         │"
+  echo "└─────────────────────────────────────────────────────────┘"
 }
 setup_coturn
 
