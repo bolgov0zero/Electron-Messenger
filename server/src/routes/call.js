@@ -10,7 +10,7 @@ router.get('/turn-credentials', authMiddleware, (req, res) => {
   const ts = Math.floor(Date.now() / 1000) + 86400;
   const username = String(ts);
   const credential = crypto.createHmac('sha1', secret).update(username).digest('base64');
-  const host = req.hostname;
+  const host = process.env.TURN_HOST || req.hostname;
   res.json({
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },

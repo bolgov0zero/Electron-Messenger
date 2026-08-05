@@ -184,15 +184,21 @@ setup_coturn() {
     return
   fi
 
-  local SERVER_IP
-  SERVER_IP=$(hostname -I | awk '{print $1}')
+  local PRIVATE_IP PUBLIC_IP
+  PRIVATE_IP=$(hostname -I | awk '{print $1}')
+  PUBLIC_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || \
+              curl -s --max-time 5 https://checkip.amazonaws.com 2>/dev/null || \
+              echo "$PRIVATE_IP")
+  PUBLIC_IP=$(echo "$PUBLIC_IP" | tr -d '[:space:]')
+  [ -z "$PUBLIC_IP" ] && PUBLIC_IP="$PRIVATE_IP"
+
   mkdir -p /var/log/coturn
   cat > /etc/turnserver.conf <<TURNEOF
 listening-port=3478
 fingerprint
 use-auth-secret
 static-auth-secret=$TURN_SECRET
-realm=$SERVER_IP
+realm=$PUBLIC_IP
 total-quota=100
 no-loopback-peers
 no-multicast-peers
@@ -200,6 +206,12 @@ min-port=49152
 max-port=65535
 log-file=/var/log/coturn/turnserver.log
 TURNEOF
+
+  # Если сервер за NAT — указываем внешний IP явно
+  if [ "$PUBLIC_IP" != "$PRIVATE_IP" ]; then
+    echo "external-ip=$PUBLIC_IP/$PRIVATE_IP" >> /etc/turnserver.conf
+    echo "→ Обнаружен NAT: external-ip=$PUBLIC_IP/$PRIVATE_IP"
+  fi
 
   # Разрешить запуск демона (Debian/Ubuntu)
   [ -f /etc/default/coturn ] && sed -i 's/^#TURNSERVER_ENABLED=1/TURNSERVER_ENABLED=1/' /etc/default/coturn
@@ -221,7 +233,11 @@ TURNEOF
     echo "→ Порты открыты (firewalld)"
   fi
 
-  echo "→ TURN-сервер настроен (${SERVER_IP}:3478)"
+  # Прописываем публичный IP в systemd-сервис чтобы call.js знал TURN-хост
+  sed -i "/Environment=TURN_SECRET/a Environment=TURN_HOST=$PUBLIC_IP" "$SERVICE_FILE"
+  systemctl daemon-reload >/dev/null 2>&1 || true
+
+  echo "→ TURN-сервер настроен (${PUBLIC_IP}:3478)"
 }
 setup_coturn
 
