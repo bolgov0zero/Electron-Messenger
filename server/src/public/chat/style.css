@@ -1941,13 +1941,27 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
   .blob { display: none; }
 
   /* Страница целиком не скроллится — скроллится только список сообщений.
-     При zoom > 100% var(--vw100)/--vh100 сжимают html/body к физическому вьюпорту. */
-  html, body {
+     Мобильный масштаб реализован через transform: scale на body:
+     — html всегда 100vw × 100dvh (физический вьюпорт),
+     — body имеет размеры var(--vw100) × var(--vh100) (то есть 100vw/ratio в CSS px)
+       и масштабируется transform: scale(var(--ui-scale)), заполняя весь физ. вьюпорт.
+     Transform создаёт containing block для fixed-потомков — они привязываются к body,
+     то есть тоже масштабируются вместе с ним, включая текст. */
+  html {
+    position: fixed; top: 0; left: 0;
+    width: 100vw; height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: var(--app-bg);
+  }
+  body {
     position: fixed; top: 0; left: 0;
     width: var(--vw100); height: var(--vh100);
     overflow: hidden;
     overscroll-behavior: none;
     background: var(--app-bg);
+    transform: scale(var(--ui-scale, 1));
+    transform-origin: 0 0;
   }
 
   /* Экран — флекс-колонка до физического низа (bottom:0 убирает чёрную полосу).

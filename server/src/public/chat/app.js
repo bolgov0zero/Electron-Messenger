@@ -336,6 +336,13 @@ if (window.visualViewport) {
 window.addEventListener('resize', updateAppHeight);
 updateAppHeight();
 
+// При смене форм-фактора (мобильный ↔ десктоп) перестраиваем механизм масштаба
+try {
+  window.matchMedia('(max-width: 767px), (pointer: coarse)').addEventListener('change', () => {
+    if (typeof applySettings === 'function') applySettings();
+  });
+} catch (e) {}
+
 document.addEventListener('focusin', e => {
   if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') {
     // При появлении клавиатуры держим список внизу
@@ -511,14 +518,24 @@ function applySettings() {
   const _ratio = _scale / 100;
   document.documentElement.style.minHeight = '';
   document.body.style.height = '';
-  if (_scale === 100) {
-    document.documentElement.style.zoom = '';
-    document.documentElement.style.setProperty('--vh100', '100dvh');
-    document.documentElement.style.setProperty('--vw100', '100vw');
+  const htmlStyle = document.documentElement.style;
+  // На iOS Safari CSS zoom ненадёжен для текста (часть элементов не масштабируется),
+  // на мобильных используем transform: scale на body (через CSS-переменную --ui-scale).
+  // На десктопе оставляем zoom — там он реализован корректно и лучше рендерит текст.
+  const isMobile = window.matchMedia('(max-width: 767px), (pointer: coarse)').matches;
+  if (isMobile) {
+    htmlStyle.zoom = '';
+    htmlStyle.setProperty('--ui-scale', _ratio);
   } else {
-    document.documentElement.style.zoom = _scale + '%';
-    document.documentElement.style.setProperty('--vh100', `calc(100dvh / ${_ratio})`);
-    document.documentElement.style.setProperty('--vw100', `calc(100vw / ${_ratio})`);
+    htmlStyle.setProperty('--ui-scale', '1');
+    htmlStyle.zoom = _scale === 100 ? '' : (_scale + '%');
+  }
+  if (_ratio === 1) {
+    htmlStyle.setProperty('--vh100', '100dvh');
+    htmlStyle.setProperty('--vw100', '100vw');
+  } else {
+    htmlStyle.setProperty('--vh100', `calc(100dvh / ${_ratio})`);
+    htmlStyle.setProperty('--vw100', `calc(100vw / ${_ratio})`);
   }
   document.querySelectorAll('#scale-seg button').forEach(b => b.classList.toggle('active', parseInt(b.textContent) === _scale));
   updateAppHeight();

@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <script>
 // Применяем масштаб ДО первого layout — без вспышки и без overflow
-(function(){try{var s=JSON.parse(localStorage.getItem('electron_v2')||'{}');var z=(s.settings&&s.settings.uiScale)||100;if(z!==100){var r=z/100;var d=document.documentElement;d.style.zoom=z+'%';d.style.setProperty('--vh100','calc(100dvh / '+r+')');d.style.setProperty('--vw100','calc(100vw / '+r+')');}}catch(e){}})();
+// Мобильный: transform: scale на body через CSS-переменную (CSS zoom ненадёжен для текста в iOS Safari)
+// Десктоп: CSS zoom на html (работает корректно)
+(function(){try{var s=JSON.parse(localStorage.getItem('electron_v2')||'{}');var z=(s.settings&&s.settings.uiScale)||100;var r=z/100;var d=document.documentElement;var mob=matchMedia('(max-width: 767px), (pointer: coarse)').matches;if(mob){d.style.setProperty('--ui-scale',r);}else if(r!==1){d.style.zoom=z+'%';}if(r!==1){d.style.setProperty('--vh100','calc(100dvh / '+r+')');d.style.setProperty('--vw100','calc(100vw / '+r+')');}}catch(e){}})();
 </script>
 <meta name="theme-color" content="#0a0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=1.2.116">
+<link rel="stylesheet" href="style.css?v=1.2.117">
 </head>
 <body>
 
@@ -261,6 +263,6 @@
 </div>
 
 <div id="mention-popup"></div>
-<script src="app.js?v=1.2.116"></script>
+<script src="app.js?v=1.2.117"></script>
 </body>
 </html>
