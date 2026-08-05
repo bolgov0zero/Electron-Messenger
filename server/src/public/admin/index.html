@@ -2112,8 +2112,9 @@ let _activeSettingsSection = 'messages';
 let _statsCache = null;
 
 async function openSettingsModal() {
-  const [settings, verData] = await Promise.all([api('GET','/api/admin/settings'), api('GET','/api/admin/server/version')]);
+  const [settings, verData, stats] = await Promise.all([api('GET','/api/admin/settings'), api('GET','/api/admin/server/version'), api('GET','/api/admin/stats')]);
   _settingsData = { ...settings, _version: verData?.current || '—' };
+  if (stats) _statsCache = stats;
   _activeSettingsSection = 'messages';
   showSettingsSection('messages');
   openModal('modal-settings');
@@ -2267,6 +2268,20 @@ function _buildSettingsSectionHtml(section) {
             Для мобильных сетей и сложных NAT рекомендуется coturn.<br>
             Он устанавливается автоматически при обновлении через <code style="background:var(--c-surface);padding:1px 5px;border-radius:var(--radius-sm);font-size:11px">electron</code>.
           </p>` : ''}
+        </div>
+        <div style="border-top:1px solid var(--c-border);padding-top:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Требуемые порты (VPS / Cloud Firewall)</div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:12px">
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--c-surface2);border-radius:var(--radius)">
+              <code style="font-family:var(--f-mono);font-weight:600;color:var(--c-text);min-width:120px">3478 TCP + UDP</code>
+              <span style="color:var(--c-muted)">TURN-сервер (сигнализация)</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--c-surface2);border-radius:var(--radius)">
+              <code style="font-family:var(--f-mono);font-weight:600;color:var(--c-text);min-width:120px">49152–65535 UDP</code>
+              <span style="color:var(--c-muted)">TURN relay — медиатрафик</span>
+            </div>
+          </div>
+          <p style="font-size:11px;color:var(--c-muted);margin-top:8px;line-height:1.6">Откройте эти порты в Security Groups / Cloud Firewall вашего VPS. Без них звонки между разными сетями (4G ↔ Wi-Fi) работать не будут.</p>
         </div>
       </div>
     </div>`;

@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE = 'corp-chat-v57';
+const CACHE = 'corp-chat-v59';
 // index.html (/chat/) намеренно не прекэшируем — он всегда из сети,
 // иначе закэшированная страница может рендериться без актуального viewport/вёрстки
 const STATIC = ['/chat/app.js?v=1.2.105', '/chat/style.css?v=1.2.105', '/chat/manifest.json', '/chat/icons/icon.svg'];
@@ -109,15 +109,17 @@ self.addEventListener('notificationclick', e => {
   if (notifData.type === 'call') {
     e.waitUntil(
       clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-        const msg = action === 'reject'
-          ? { type: 'call_push_action', action: 'reject', callerId: notifData.callerId }
-          : { type: 'call_push_action', action: 'accept', callerId: notifData.callerId, callerName: notifData.callerName };
         const existing = list.find(c => c.visibilityState === 'visible') || list[0];
         if (existing) {
           existing.focus();
+          // Уже открытая вкладка — postMessage работает надёжно
+          const msg = action === 'reject'
+            ? { type: 'call_push_action', action: 'reject', callerId: notifData.callerId }
+            : { type: 'call_push_action', action: 'accept', callerId: notifData.callerId, callerName: notifData.callerName };
           existing.postMessage(msg);
         } else {
-          clients.openWindow('/chat/').then(w => { if (w) w.postMessage(msg); });
+          // Приложение закрыто — просто открываем, сервер доставит call_incoming после подключения WS
+          clients.openWindow('/chat/');
         }
       })
     );

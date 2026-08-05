@@ -2486,9 +2486,19 @@ function connectWS() {
     if (data.type === 'call_busy_self') {
       showActionToast('Вы уже в звонке');
     }
+    if (data.type === 'call_ringing') {
+      // Абонент offline — уведомление отправлено, ждём 30 сек
+      const el = document.getElementById('call-status-text');
+      if (el) el.textContent = 'Ожидание ответа…';
+    }
+    if (data.type === 'call_ringing_live') {
+      // Абонент подключился, принимает вызов — переходим в обычный режим ожидания
+      const el = document.getElementById('call-status-text');
+      if (el) el.textContent = 'Идёт вызов…';
+    }
     if (data.type === 'call_unavailable') {
       cleanupCall();
-      showActionToast('Звонок отправлен — абонент получит уведомление');
+      showActionToast('Нет ответа');
     }
     if (data.type === 'missed_calls') {
       for (const c of data.calls) {
@@ -3122,13 +3132,9 @@ function _createPC(config) {
     }
   };
   pc.ontrack = e => {
-    const audio = document.getElementById('call-remote-audio');
-    if (!audio || !e.streams[0]) return;
-    if (audio.srcObject === e.streams[0]) return;
-    audio.srcObject = e.streams[0];
+    if (!e.streams[0]) return;
     if (_call) _call._remoteStream = e.streams[0];
-    // Явный play() предотвращает параллельный нативный WebRTC-рендер на iOS
-    audio.play().catch(() => {});
+    _setRemoteAudio(e.streams[0]);
   };
   pc.onconnectionstatechange = () => {
     if (pc.connectionState === 'connected') {
@@ -3243,7 +3249,7 @@ function cleanupCall() {
   if (_call) {
     clearInterval(_call.timerInterval);
     if (_call.pc) { try { _call.pc.close(); } catch {} }
-    if (_remoteAudioCtx) { try { _remoteAudioCtx.close(); } catch {} _remoteAudioCtx = null; }
+    if (_remoteAudioCtx) { try { _remoteAudioCtx.close(); } catch {} _remoteAudioCtx = null; _remoteGainNode = null; }
     // Не останавливаем треки — глушим их, чтобы не запрашивать разрешение повторно
     if (_micStream) _micStream.getAudioTracks().forEach(t => { t.enabled = false; });
   }
@@ -3293,36 +3299,34 @@ function toggleCallMute() {
 }
 
 let _remoteAudioCtx = null;
+let _remoteGainNode = null;
+
+function _setRemoteAudio(stream) {
+  if (_remoteAudioCtx) { try { _remoteAudioCtx.close(); } catch {} _remoteAudioCtx = null; _remoteGainNode = null; }
+  // Всегда сбрасываем srcObject — на iOS это предотвращает двойной аудиопуть
+  const audio = document.getElementById('call-remote-audio');
+  if (audio) audio.srcObject = null;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) {
+    if (audio) { audio.srcObject = stream; audio.play().catch(() => {}); }
+    return;
+  }
+  _remoteAudioCtx = new Ctx();
+  _remoteAudioCtx.resume().catch(() => {});
+  const src = _remoteAudioCtx.createMediaStreamSource(stream);
+  _remoteGainNode = _remoteAudioCtx.createGain();
+  _remoteGainNode.gain.value = 1;
+  src.connect(_remoteGainNode);
+  _remoteGainNode.connect(_remoteAudioCtx.destination);
+}
 
 function toggleCallSpeaker() {
-  const audio = document.getElementById('call-remote-audio');
-  if (!audio) return;
-  // Если уже используем AudioContext (ухо) — переключаемся на <audio> (динамик)
-  const goingSpeaker = !!_remoteAudioCtx;
-  if (goingSpeaker) {
-    try { _remoteAudioCtx.close(); } catch {}
-    _remoteAudioCtx = null;
-    const stream = _call?._remoteStream;
-    if (stream) { audio.srcObject = stream; audio.play().catch(() => {}); }
-  } else {
-    // Переключаемся на AudioContext (ухо/приватный режим)
-    const stream = _call?._remoteStream || audio.srcObject;
-    if (stream) {
-      audio.srcObject = null;
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (Ctx) {
-        _remoteAudioCtx = new Ctx();
-        _remoteAudioCtx.createMediaStreamSource(stream).connect(_remoteAudioCtx.destination);
-      } else {
-        // AudioContext недоступен — возвращаем <audio>
-        audio.srcObject = stream; audio.play().catch(() => {});
-      }
-    }
-  }
-  const off = !goingSpeaker && !!_remoteAudioCtx;
-  document.getElementById('call-speaker-btn')?.classList.toggle('call-btn-icon--off', off);
-  document.getElementById('call-spk-on').style.display = off ? 'none' : '';
-  document.getElementById('call-spk-off').style.display = off ? '' : 'none';
+  const isMuted = _remoteGainNode && _remoteGainNode.gain.value === 0;
+  const nowMuted = !isMuted;
+  if (_remoteGainNode) _remoteGainNode.gain.value = nowMuted ? 0 : 1;
+  document.getElementById('call-speaker-btn')?.classList.toggle('call-btn-icon--off', nowMuted);
+  document.getElementById('call-spk-on').style.display = nowMuted ? 'none' : '';
+  document.getElementById('call-spk-off').style.display = nowMuted ? '' : 'none';
 }
 
 function _showCallOverlay(mode) {
