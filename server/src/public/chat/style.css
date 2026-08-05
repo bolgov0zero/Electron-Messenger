@@ -152,6 +152,10 @@ body { user-select: none; -webkit-user-select: none; }
 html {
   font-size: var(--font-size);
   -webkit-font-smoothing: antialiased;
+  /* Отключаем iOS auto text-size-adjust: иначе он переопределяет zoom для текста
+     и часть элементов (заголовки секций, сообщения) визуально не меняется при масштабе. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 html.font-small  { --font-size: 13px; }
 html.font-medium { --font-size: 14px; }
@@ -2096,8 +2100,10 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
   }
   .sa-gear { width: 36px; height: 36px; border-radius: 8px; }
 
-  /* ── Размеры элементов для мобильных экранов ── */
-  :root { --font-size: 16px; }
+  /* ── Размеры элементов для мобильных экранов ──
+     Дублируем селекторы html.font-* чтобы перебить их специфичность (0,1,1). */
+  html, html.font-small, html.font-medium, html.font-large { --font-size: 16px; }
+  .chat-list-section-label { font-size: 12px; }
 
   /* Строки чатов */
   .chat-row { padding: 11px 14px; }
