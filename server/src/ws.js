@@ -495,6 +495,11 @@ function setup(server) {
         const peerEntry = activeCalls.get(peer_id);
         if (myEntry) myEntry.answeredAt = now;
         if (peerEntry) peerEntry.answeredAt = now;
+        // Сбрасываем входящий звонок на других устройствах того же пользователя
+        getConn(user.id).forEach(otherWs => {
+          if (otherWs !== ws && otherWs.readyState === 1)
+            otherWs.send(JSON.stringify({ type: 'call_taken' }));
+        });
         sendTo(peer_id, { type: 'call_accepted', peer_id: user.id });
       }
 

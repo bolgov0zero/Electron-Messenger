@@ -2486,6 +2486,9 @@ function connectWS() {
     if (data.type === 'call_busy_self') {
       showActionToast('Вы уже в звонке');
     }
+    if (data.type === 'call_taken') {
+      cleanupCall(); // звонок принят на другом устройстве этого же аккаунта
+    }
     if (data.type === 'call_ringing') {
       // Абонент offline — уведомление отправлено, ждём 30 сек
       const el = document.getElementById('call-status-text');
@@ -3297,24 +3300,14 @@ function toggleCallMute() {
   document.getElementById('call-muted-banner').style.display = muted ? 'flex' : 'none';
 }
 
-// На iOS Safari нативный WebRTC-стек автоматически воспроизводит удалённый звук
-// через наушник (earpiece) без какого-либо JS. Любой AudioContext или <audio srcObject>
-// создаёт второй аудиопуть (двойной звук), поэтому на iOS JS-аудио не используем.
-const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
 function _setRemoteAudio(stream) {
   const audio = document.getElementById('call-remote-audio');
-  if (_isIOS) {
-    if (audio) audio.srcObject = null;
-    return;
-  }
   if (audio) { audio.srcObject = stream; audio.play().catch(() => {}); }
 }
 
 function toggleCallSpeaker() {
   const audio = document.getElementById('call-remote-audio');
-  if (_isIOS || !audio) return; // на iOS переключение динамика недоступно из браузера
+  if (!audio) return;
   const nowMuted = audio.volume !== 0;
   audio.volume = nowMuted ? 0 : 1;
   document.getElementById('call-speaker-btn')?.classList.toggle('call-btn-icon--off', nowMuted);
