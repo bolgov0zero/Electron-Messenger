@@ -3249,7 +3249,6 @@ function cleanupCall() {
   if (_call) {
     clearInterval(_call.timerInterval);
     if (_call.pc) { try { _call.pc.close(); } catch {} }
-    if (_remoteAudioCtx) { try { _remoteAudioCtx.close(); } catch {} _remoteAudioCtx = null; _remoteGainNode = null; }
     // Не останавливаем треки — глушим их, чтобы не запрашивать разрешение повторно
     if (_micStream) _micStream.getAudioTracks().forEach(t => { t.enabled = false; });
   }
@@ -3298,32 +3297,26 @@ function toggleCallMute() {
   document.getElementById('call-muted-banner').style.display = muted ? 'flex' : 'none';
 }
 
-let _remoteAudioCtx = null;
-let _remoteGainNode = null;
+// На iOS Safari нативный WebRTC-стек автоматически воспроизводит удалённый звук
+// через наушник (earpiece) без какого-либо JS. Любой AudioContext или <audio srcObject>
+// создаёт второй аудиопуть (двойной звук), поэтому на iOS JS-аудио не используем.
+const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 function _setRemoteAudio(stream) {
-  if (_remoteAudioCtx) { try { _remoteAudioCtx.close(); } catch {} _remoteAudioCtx = null; _remoteGainNode = null; }
-  // Всегда сбрасываем srcObject — на iOS это предотвращает двойной аудиопуть
   const audio = document.getElementById('call-remote-audio');
-  if (audio) audio.srcObject = null;
-  const Ctx = window.AudioContext || window.webkitAudioContext;
-  if (!Ctx) {
-    if (audio) { audio.srcObject = stream; audio.play().catch(() => {}); }
+  if (_isIOS) {
+    if (audio) audio.srcObject = null;
     return;
   }
-  _remoteAudioCtx = new Ctx();
-  _remoteAudioCtx.resume().catch(() => {});
-  const src = _remoteAudioCtx.createMediaStreamSource(stream);
-  _remoteGainNode = _remoteAudioCtx.createGain();
-  _remoteGainNode.gain.value = 1;
-  src.connect(_remoteGainNode);
-  _remoteGainNode.connect(_remoteAudioCtx.destination);
+  if (audio) { audio.srcObject = stream; audio.play().catch(() => {}); }
 }
 
 function toggleCallSpeaker() {
-  const isMuted = _remoteGainNode && _remoteGainNode.gain.value === 0;
-  const nowMuted = !isMuted;
-  if (_remoteGainNode) _remoteGainNode.gain.value = nowMuted ? 0 : 1;
+  const audio = document.getElementById('call-remote-audio');
+  if (_isIOS || !audio) return; // на iOS переключение динамика недоступно из браузера
+  const nowMuted = audio.volume !== 0;
+  audio.volume = nowMuted ? 0 : 1;
   document.getElementById('call-speaker-btn')?.classList.toggle('call-btn-icon--off', nowMuted);
   document.getElementById('call-spk-on').style.display = nowMuted ? 'none' : '';
   document.getElementById('call-spk-off').style.display = nowMuted ? '' : 'none';
