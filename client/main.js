@@ -81,7 +81,7 @@ function semverGt(a, b) {
 function getAssetPattern() {
   if (process.platform === 'win32') return /\.exe$/i;
   if (process.platform === 'darwin') return /\.dmg$/i;
-  return process.arch === 'arm64' ? /arm64\.AppImage$/i : /x86_64\.AppImage$/i;
+  return /\.deb$/i;
 }
 
 ipcMain.handle('check-update', async () => {
@@ -100,7 +100,7 @@ ipcMain.handle('check-update', async () => {
 ipcMain.handle('install-update', async (_, downloadUrl) => {
   // Прерываем предыдущую загрузку, если она ещё идёт
   if (_activeUpdateReq) { try { _activeUpdateReq.abort(); } catch {} _activeUpdateReq = null; }
-  const ext = process.platform === 'win32' ? '.exe' : process.platform === 'darwin' ? '.dmg' : '.AppImage';
+  const ext = process.platform === 'win32' ? '.exe' : process.platform === 'darwin' ? '.dmg' : '.deb';
   const tmpFile = path.join(os.tmpdir(), `electron-update${ext}`);
   try {
     await downloadFile(downloadUrl, tmpFile, p => mainWindow?.webContents.send('update-progress', p));
@@ -120,8 +120,15 @@ ipcMain.handle('install-update', async (_, downloadUrl) => {
       }
       app.isQuiting = true; app.quit();
     } else if (process.platform === 'linux') {
-      fs.chmodSync(tmpFile, 0o755);
-      fs.copyFileSync(tmpFile, process.execPath);
+      // Ставим deb через apt (сам разрешит зависимости и заменит файлы в /opt).
+      // pkexec покажет системный диалог PolicyKit с запросом пароля.
+      const { spawn } = require('child_process');
+      const proc = spawn('pkexec', ['apt-get', 'install', '-y', tmpFile], { stdio: 'ignore' });
+      const code = await new Promise((resolve, reject) => {
+        proc.on('close', resolve);
+        proc.on('error', reject);
+      });
+      if (code !== 0) throw new Error(`Установка отменена или не удалась (код ${code})`);
       app.relaunch(); app.isQuiting = true; app.quit();
     } else if (process.platform === 'darwin') {
       const { execSync } = require('child_process');

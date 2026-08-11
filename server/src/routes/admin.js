@@ -314,7 +314,7 @@ router.post('/clients/:connId/force-update', async (req, res) => {
     // Выбираем ассет по платформе; для Linux предпочитаем x86_64 если платформа не arm
     const asset = platform === 'win32'  ? assets.find(a => /\.exe$/i.test(a.name))
                 : platform === 'darwin' ? assets.find(a => /\.dmg$/i.test(a.name))
-                : assets.find(a => /x86_64\.AppImage$/i.test(a.name)) || assets.find(a => /\.AppImage$/i.test(a.name));
+                : assets.find(a => /\.deb$/i.test(a.name));
     downloadUrl = asset?.browser_download_url || null;
   } catch {}
   initUpdateProgress(connId);

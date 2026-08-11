@@ -24,9 +24,7 @@ jobs:
           - os: ubuntu-latest
             name: Linux
             cmd: build:linux
-            artifact: |
-              client/dist/*.AppImage
-              client/dist/*.deb
+            artifact: "client/dist/*.deb"
 
     runs-on: ${{ matrix.os }}
     name: Build ${{ matrix.name }}
