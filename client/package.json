@@ -1,6 +1,6 @@
 {
   "name": "electron",
-  "version": "2.0.92",
+  "version": "2.0.93",
   "description": "Corporate Chat Client",
   "author": "bolgov@me.com",
   "homepage": "https://github.com/bolgov0zero/corp-chat",
@@ -61,7 +61,10 @@
       ],
       "icon": "../icons/app",
       "category": "Network",
-      "maintainer": "bolgov@me.com"
+      "maintainer": "bolgov@me.com",
+      "desktop": {
+        "Exec": "/opt/Electron/electron --no-sandbox --disable-gpu-sandbox --disable-setuid-sandbox --disable-namespace-sandbox %U"
+      }
     },
     "nsis": {
       "oneClick": false,
