@@ -1,6 +1,16 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, Notification, ipcMain, net } = require('electron');
 
-if (process.platform === 'linux') app.commandLine.appendSwitch('no-sandbox');
+if (process.platform === 'linux') {
+  // Полностью отключаем все подсистемы sandbox: на некоторых конфигурациях
+  // (Ubuntu 24.04+, VM/proxmox с ужесточёнными namespace-политиками) без этого
+  // renderer-процесс падает с ошибкой "No such process" при доступе к /dev/shm.
+  // Приложение подключается только к своему серверу и локальным ресурсам —
+  // sandbox-защита от недоверенного веб-контента здесь избыточна.
+  app.commandLine.appendSwitch('no-sandbox');
+  app.commandLine.appendSwitch('disable-gpu-sandbox');
+  app.commandLine.appendSwitch('disable-setuid-sandbox');
+  app.commandLine.appendSwitch('disable-namespace-sandbox');
+}
 const path = require('path');
 const zlib = require('zlib');
 const fs = require('fs');
