@@ -519,6 +519,19 @@ function shouldStartHidden() {
 
 if (process.platform === 'win32') app.setAppUserModelId('Electron');
 
+// Одна копия приложения: повторный запуск (клик по иконке / вызов из терминала)
+// не создаёт второй процесс, а фокусит уже открытое окно.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  });
+}
+
 app.whenReady().then(() => {
   createWindow();
   createTray();
