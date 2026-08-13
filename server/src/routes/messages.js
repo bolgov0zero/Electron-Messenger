@@ -12,7 +12,7 @@ const MSG_SELECT = `
   SELECT m.id, m.chat_id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions,
     u.id as sender_id, COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.tag as sender_tag,
     m.reply_to_id,
-    rm.text as reply_text, rm.deleted as reply_deleted,
+    rm.text as reply_text, rm.deleted as reply_deleted, rm.attachment as reply_attachment,
     COALESCE(ru.display_name, 'Удалённый аккаунт') as reply_sender_name
   FROM messages m LEFT JOIN users u ON u.id = m.sender_id
   LEFT JOIN messages rm ON rm.id = m.reply_to_id
@@ -111,8 +111,10 @@ router.get('/chat/:chatId', authMiddleware, (req, res) => {
     }
     let mentions = null;
     if (m.mentions) { try { mentions = JSON.parse(m.mentions); } catch {} }
+    let reply_attachment = null;
+    if (m.reply_attachment) { try { reply_attachment = JSON.parse(m.reply_attachment); } catch {} }
     return {
-      ...m, attachment, mentions,
+      ...m, attachment, mentions, reply_attachment,
       status: { delivered: deliveredMap.get(m.id) || 0, read: readMap.get(m.id) || 0, total: memberCount - 1 },
       reactions: reactionsMap.get(m.id) || [],
     };

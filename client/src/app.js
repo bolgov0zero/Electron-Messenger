@@ -910,6 +910,7 @@ async function openChat(chatId, aroundId = null) {
           </button>
         </div>
         <div id="reply-bar" style="display:none" class="input-reply-bar">
+          <img id="reply-bar-thumb" class="reply-bar-thumb" style="display:none" alt="">
           <div class="reply-bar-content">
             <div class="reply-bar-name" id="reply-bar-name"></div>
             <div class="reply-bar-text" id="reply-bar-text"></div>
@@ -1251,10 +1252,22 @@ function renderMsgIRC(m, isGroup) {
   const avColor = avatarColor(m.sender_id);
   const avLetter = initials(m.sender_name).slice(0,1);
   const avImg = `<img src="${httpProto()}://${S.server}/api/users/${m.sender_id}/avatar" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display='none'">`;
+  const rAtt = m.reply_attachment;
+  const rIsImg = rAtt?.mime?.startsWith('image/');
+  const rThumbHtml = rAtt && !m.reply_deleted ? (rIsImg
+    ? `<img src="${httpProto()}://${S.server}${rAtt.thumb || rAtt.url}" class="irc-reply-thumb" onerror="this.style.display='none'">`
+    : `<div class="irc-reply-thumb irc-reply-file"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>`
+  ) : '';
+  const rTextRaw = m.reply_deleted
+    ? 'Сообщение удалено'
+    : (m.reply_text || (rAtt ? (rIsImg ? '📷 Фото' : ('📎 ' + (rAtt.name || 'Файл'))) : ''));
   const replyHtml = m.reply_to_id ? `
-    <div style="border-left:2px solid var(--accent);padding:2px 0 2px 10px;margin-bottom:4px;color:var(--muted);font-size:13px" onclick="scrollToMsg(${m.reply_to_id})">
-      <span style="color:var(--accent);font-weight:600;margin-right:6px">↳ ${esc(m.reply_sender_name || '')}</span>
-      <span style="opacity:.8">${m.reply_deleted ? 'Сообщение удалено' : esc((m.reply_text||'').slice(0,80))}</span>
+    <div class="irc-reply" onclick="scrollToMsg(${m.reply_to_id})">
+      ${rThumbHtml}
+      <div class="irc-reply-body">
+        <div class="irc-reply-name">↳ ${esc(m.reply_sender_name || '')}</div>
+        <div class="irc-reply-text">${esc((rTextRaw || '').slice(0,80))}</div>
+      </div>
     </div>` : '';
 
   // Hover action panel (shown on :hover via CSS)
@@ -1322,7 +1335,8 @@ function renderMsgIRC(m, isGroup) {
     }
   }
 
-  return `<div class="irc-msg${isGroup?' irc-grouped':''}${m._optimistic?' msg-optimistic':''}" data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${m._optimistic?' data-optimistic="1"':''}
+  const attDataAttrs = att?.url ? ` data-msg-att-url="${esc(att.url)}" data-msg-att-thumb="${esc(att.thumb||'')}" data-msg-att-mime="${esc(att.mime||'')}" data-msg-att-name="${esc(att.name||'')}"` : '';
+  return `<div class="irc-msg${isGroup?' irc-grouped':''}${m._optimistic?' msg-optimistic':''}" data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
     oncontextmenu="${!isDeleted?`showCtxMenu(event,${m.id},${m.sent_at},${mine})`:'event.preventDefault()'}">
     ${avCol}
     <div class="irc-content" ondblclick="${!isDeleted?`dblReply(${m.id})`:''}">
@@ -1611,6 +1625,7 @@ function sendOrEdit() {
     reply_to_id: S.replyTo?.id || null,
     reply_text: S.replyTo?.text || null,
     reply_sender_name: S.replyTo?.senderName || null,
+    reply_attachment: S.replyTo?.attachment || null,
     reply_deleted: false,
     attachment: _pendingAttachment || null,
     status: { delivered: 0, read: 0, total: 1 },
@@ -1703,7 +1718,14 @@ function ctxReply() {
     const u = S.allUsers.find(u => u.id === senderIdAttr);
     senderName = u?.display_name || '';
   }
-  S.replyTo = { id: msgId, text: text.slice(0, 100), senderName };
+  const att = msgEl?.dataset.msgAttUrl ? {
+    url: msgEl.dataset.msgAttUrl,
+    thumb: msgEl.dataset.msgAttThumb || null,
+    mime: msgEl.dataset.msgAttMime || '',
+    name: msgEl.dataset.msgAttName || '',
+  } : null;
+  const displayText = text.trim() || (att ? (att.mime.startsWith('image/') ? '📷 Фото' : ('📎 ' + (att.name || 'Файл'))) : '');
+  S.replyTo = { id: msgId, text: displayText.slice(0, 100), senderName, attachment: att };
   showReplyBar();
 }
 
@@ -1712,6 +1734,17 @@ function showReplyBar() {
   if (!bar || !S.replyTo) return;
   document.getElementById('reply-bar-name').textContent = S.replyTo.senderName;
   document.getElementById('reply-bar-text').textContent = S.replyTo.text;
+  const thumb = document.getElementById('reply-bar-thumb');
+  if (thumb) {
+    const att = S.replyTo.attachment;
+    if (att?.url && att.mime?.startsWith('image/')) {
+      thumb.src = `${httpProto()}://${S.server}${att.thumb || att.url}`;
+      thumb.style.display = '';
+    } else {
+      thumb.style.display = 'none';
+      thumb.removeAttribute('src');
+    }
+  }
   bar.style.display = '';
   document.getElementById('composer-pill')?.classList.add('has-reply');
   document.getElementById('msg-input')?.focus();

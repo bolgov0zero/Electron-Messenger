@@ -133,7 +133,8 @@ function getMessageWithStatus(msgId, viewerId) {
     SELECT m.id, m.chat_id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions,
       u.id as sender_id, COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.tag as sender_tag,
       m.reply_to_id,
-      rm.text as reply_text, COALESCE(ru.display_name, 'Удалённый аккаунт') as reply_sender_name
+      rm.text as reply_text, rm.attachment as reply_attachment, rm.deleted as reply_deleted,
+      COALESCE(ru.display_name, 'Удалённый аккаунт') as reply_sender_name
     FROM messages m LEFT JOIN users u ON u.id = m.sender_id
     LEFT JOIN messages rm ON rm.id = m.reply_to_id
     LEFT JOIN users ru ON ru.id = rm.sender_id
@@ -142,6 +143,7 @@ function getMessageWithStatus(msgId, viewerId) {
   if (!msg) return null;
   if (msg.attachment) try { msg.attachment = JSON.parse(msg.attachment); } catch { msg.attachment = null; }
   if (msg.mentions) try { msg.mentions = JSON.parse(msg.mentions); } catch { msg.mentions = null; }
+  if (msg.reply_attachment) try { msg.reply_attachment = JSON.parse(msg.reply_attachment); } catch { msg.reply_attachment = null; }
 
   // IS NOT вместо != — sender_id может быть NULL (удалённый аккаунт)
   const memberCount = db.prepare('SELECT COUNT(*) as c FROM chat_members WHERE chat_id = ? AND user_id IS NOT ?').get(msg.chat_id, msg.sender_id).c;
