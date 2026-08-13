@@ -884,7 +884,12 @@ async function openChat(chatId, aroundId = null) {
         </button>`}
       </div>
     </div>
-    <div class="messages" id="messages"></div>
+    <div class="messages-wrap">
+      <div class="messages" id="messages"></div>
+      <button id="scroll-bottom-btn" class="scroll-bottom-btn" onclick="scrollMessagesToBottom()" title="К последним сообщениям">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+    </div>
     <div id="typing-indicator" class="typing-indicator" style="display:none">
       <span class="typing-dots"><span></span><span></span><span></span></span>
       <span class="typing-name"></span><span class="typing-label"> печатает…</span>
@@ -1063,10 +1068,21 @@ function renderMessages(msgs, stick = true) {
 // ── PAGINATION: подгрузка старых сообщений ──
 function onMessagesScroll() {
   const container = document.getElementById('messages');
-  if (!container || _loadingMore) return;
+  if (!container) return;
   const dist = container.scrollHeight - container.scrollTop - container.clientHeight;
-  if (S.chatHasMore && container.scrollTop < 80) loadMoreMessages();
-  if (S.chatHasMoreAfter && dist < 80) loadMoreAfter();
+  if (!_loadingMore) {
+    if (S.chatHasMore && container.scrollTop < 80) loadMoreMessages();
+    if (S.chatHasMoreAfter && dist < 80) loadMoreAfter();
+  }
+  const btn = document.getElementById('scroll-bottom-btn');
+  if (btn) btn.classList.toggle('visible', dist > 300 || !!S.chatHasMoreAfter);
+}
+
+function scrollMessagesToBottom() {
+  if (S.chatHasMoreAfter && S.activeChatId) { openChat(S.activeChatId); return; }
+  const container = document.getElementById('messages');
+  if (!container) return;
+  container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
 }
 
 async function loadMoreMessages() {

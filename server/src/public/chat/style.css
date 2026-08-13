@@ -680,6 +680,26 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   display: flex; flex-direction: column;
   gap: 4px;
 }
+
+/* Кнопка «к последним» — появляется при прокрутке списка сообщений вверх */
+.scroll-bottom-btn {
+  position: absolute;
+  right: 20px; bottom: 16px;
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: var(--modal-bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  display: none;
+  align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,.18);
+  z-index: 5;
+  opacity: 0;
+  transition: opacity .18s, background .12s, color .12s;
+}
+.scroll-bottom-btn.visible { display: flex; opacity: 1; }
+.scroll-bottom-btn:hover { background: var(--hover-row); color: var(--text); }
 .messages::-webkit-scrollbar { width: 4px; }
 .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
