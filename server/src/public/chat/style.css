@@ -712,7 +712,16 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   gap: 8px;
 }
 
-/* Day separator — «липнет» вверху скролл-контейнера при прокрутке (как в Telegram) */
+/* Каждый день сообщений оборачивается в .day-group — это создаёт отдельный
+   containing block для sticky-разделителя, чтобы бейджи разных дней не
+   накладывались друг на друга при прокрутке. */
+.day-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Day separator — «липнет» вверху своего day-group при прокрутке (как в Telegram) */
 .date-divider {
   align-self: center;
   position: sticky;

@@ -1310,6 +1310,25 @@ function insertUnreadDivider(msgs, unreadCount) {
   });
 }
 
+// Объединяет соседние .day-group с одинаковой датой (после prepend/append на стыке).
+function mergeDayGroups(container) {
+  const groups = Array.from(container.querySelectorAll(':scope > .day-group'));
+  for (let i = 0; i < groups.length - 1; ) {
+    const cur = groups[i];
+    const next = groups[i + 1];
+    const curDate = cur.querySelector('.date-divider span')?.textContent;
+    const nextDate = next.querySelector('.date-divider span')?.textContent;
+    if (curDate && curDate === nextDate) {
+      next.querySelector('.date-divider')?.remove();
+      while (next.firstChild) cur.appendChild(next.firstChild);
+      next.remove();
+      groups.splice(i + 1, 1);
+    } else {
+      i++;
+    }
+  }
+}
+
 function renderMessages(msgs, stick = true) {
   const container = document.getElementById('messages');
   if (!container) return;
@@ -1324,7 +1343,8 @@ function renderMessages(msgs, stick = true) {
     const dateStr = fmtDate(m.sent_at);
     const dayChanged = dateStr !== lastDate;
     if (dayChanged) {
-      html += `<div class="date-divider"><span>${dateStr}</span></div>`;
+      if (lastDate !== '') html += `</div>`;
+      html += `<div class="day-group"><div class="date-divider"><span>${dateStr}</span></div>`;
       lastDate = dateStr;
       lastSenderId = null;
     }
@@ -1337,6 +1357,7 @@ function renderMessages(msgs, stick = true) {
     lastSenderId = m.sender_id;
     lastSentAt = m.sent_at;
   });
+  if (lastDate !== '') html += `</div>`;
   container.innerHTML = html;
   // Ждём завершения layout перед скроллом (иначе scrollHeight ещё не актуален)
   _stickBottom = stick;
@@ -1403,17 +1424,22 @@ function appendMessagesAfter(msgs, chatId) {
   // Продолжаем группировку от последнего отрендеренного сообщения
   const rendered = container.querySelectorAll('[data-msg-id]');
   const lastEl = rendered[rendered.length - 1];
-  let lastDate = '', lastSenderId = null, lastSentAt = 0;
+  let lastSenderId = null, lastSentAt = 0;
   if (lastEl) {
     lastSentAt = parseInt(lastEl.dataset.sentAt) || 0;
     lastSenderId = parseInt(lastEl.dataset.senderId) || null;
-    lastDate = lastSentAt ? fmtDate(lastSentAt) : '';
   }
   let html = '';
+  let lastDate = '';
   msgs.forEach((m, i) => {
     const dateStr = fmtDate(m.sent_at);
     const dayChanged = dateStr !== lastDate;
-    if (dayChanged) { html += `<div class="date-divider"><span>${dateStr}</span></div>`; lastDate = dateStr; lastSenderId = null; }
+    if (dayChanged) {
+      if (lastDate !== '') html += `</div>`;
+      html += `<div class="day-group"><div class="date-divider"><span>${dateStr}</span></div>`;
+      lastDate = dateStr;
+      lastSenderId = null;
+    }
     const grouped = !dayChanged && m.sender_id === lastSenderId && (m.sent_at - lastSentAt) < 300;
     const next = msgs[i + 1];
     const hideTime = !m.deleted && next && sameTimeGroup(m, next) && fmtDate(m.sent_at) === fmtDate(next.sent_at);
@@ -1422,7 +1448,9 @@ function appendMessagesAfter(msgs, chatId) {
     html += renderMsg(m, isChatGroup, hideTime, grouped, isLast);
     lastSenderId = m.sender_id; lastSentAt = m.sent_at;
   });
+  if (lastDate !== '') html += `</div>`;
   container.insertAdjacentHTML('beforeend', html);
+  mergeDayGroups(container);
 }
 
 function prependMessages(msgs, chatId) {
@@ -1440,7 +1468,8 @@ function prependMessages(msgs, chatId) {
     const dateStr = fmtDate(m.sent_at);
     const dayChanged = dateStr !== lastDate;
     if (dayChanged) {
-      html += `<div class="date-divider"><span>${dateStr}</span></div>`;
+      if (lastDate !== '') html += `</div>`;
+      html += `<div class="day-group"><div class="date-divider"><span>${dateStr}</span></div>`;
       lastDate = dateStr;
       lastSenderId = null;
     }
@@ -1452,10 +1481,12 @@ function prependMessages(msgs, chatId) {
     lastSenderId = m.sender_id;
     lastSentAt = m.sent_at;
   });
+  if (lastDate !== '') html += `</div>`;
 
   const prevHeight = container.scrollHeight;
   const prevTop = container.scrollTop;
   container.insertAdjacentHTML('afterbegin', html);
+  mergeDayGroups(container);
   container.scrollTop = prevTop + (container.scrollHeight - prevHeight);
 }
 
@@ -1624,11 +1655,27 @@ function appendMsg(m) {
   if (lastEl && !m.deleted) {
     const prevSenderId = parseInt(lastEl.dataset.senderId || '0');
     const prevTime = parseInt(lastEl.dataset.sentAt || '0');
-    grouped = sameTimeGroup({ sender_id: prevSenderId, sent_at: prevTime }, m);
+    // Группировка не работает через границу дней
+    const prevDate = fmtDate(prevTime);
+    if (prevDate === fmtDate(m.sent_at)) {
+      grouped = sameTimeGroup({ sender_id: prevSenderId, sent_at: prevTime }, m);
+    }
   }
   const isChatGroupAppend = chat?.type==='group' || chat?.type==='room';
-  container.insertAdjacentHTML('beforeend', renderMsg(m, isChatGroupAppend, false, grouped, true));
-  const newEl = container.lastElementChild;
+  const msgHtml = renderMsg(m, isChatGroupAppend, false, grouped, true);
+  const msgDate = fmtDate(m.sent_at);
+  // Ищем последний .day-group; если его дата совпадает — дописываем сообщение туда, иначе создаём новый
+  const groups = container.querySelectorAll(':scope > .day-group');
+  const lastGroup = groups[groups.length - 1];
+  const lastGroupDate = lastGroup?.querySelector('.date-divider span')?.textContent;
+  if (lastGroup && lastGroupDate === msgDate) {
+    lastGroup.insertAdjacentHTML('beforeend', msgHtml);
+  } else {
+    container.insertAdjacentHTML('beforeend',
+      `<div class="day-group"><div class="date-divider"><span>${msgDate}</span></div>${msgHtml}</div>`);
+  }
+  const allNewMsgs = container.querySelectorAll('[data-msg-id]');
+  const newEl = allNewMsgs[allNewMsgs.length - 1];
   if (newEl && !m._optimistic) newEl.classList.add('msg-new');
   stickToBottom(container, newEl, m);
 }
