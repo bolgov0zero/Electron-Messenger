@@ -77,6 +77,16 @@ function confirmLink() {
 
 function initials(n) { return (n||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
 function fmtTime(ts) { return new Date(ts*1000).toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'}); }
+function fmtChatListTime(ts) {
+  const d = new Date(ts*1000), now = new Date();
+  if (d.toDateString() === now.toDateString()) return fmtTime(ts);
+  const diffDays = Math.floor((now - d) / 86400000);
+  if (diffDays < 7) return ['вс','пн','вт','ср','чт','пт','сб'][d.getDay()];
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${dd}.${mm}.${yy}`;
+}
 function fmtDate(ts) {
   const d = new Date(ts*1000), now = new Date();
   if (d.toDateString() === now.toDateString()) return 'Сегодня';
@@ -912,7 +922,7 @@ function renderChatRow(c) {
   const previewHtml = draft
     ? `<span style="color:var(--danger)">Черновик:</span> ${esc(draft.slice(0,34))}`
     : esc(preview);
-  const time = lm ? fmtTime(lm.sent_at) : '';
+  const time = lm ? fmtChatListTime(lm.sent_at) : '';
   const peerId = getPeerUserId(c);
   const dot = peerId ? presenceDot(peerId) : '';
   const pinIcon = c.pinned ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);opacity:.7"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>` : '';
