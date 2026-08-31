@@ -414,7 +414,8 @@ router.get('/webhooks', (req, res) => {
   const webhooks = db.prepare(`
     SELECT w.id, w.token, w.chat_id, w.created_at,
       u.id as user_id, u.display_name as name, u.tag,
-      c.name as chat_name, c.type as chat_type
+      c.name as chat_name, c.type as chat_type,
+      (SELECT COUNT(*) FROM messages m WHERE m.sender_id = w.user_id) as message_count
     FROM webhooks w
     JOIN users u ON u.id = w.user_id
     JOIN chats c ON c.id = w.chat_id

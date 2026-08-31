@@ -2211,13 +2211,13 @@ async function renderWebhooks() {
 }
 
 function _renderWebhooksTable() {
-  const rows = _webhooks.length ? _webhooks.map(whRowHtml).join('') : `<tr><td colspan="5"><div class="empty-state"><p>Вебхуки не созданы</p></div></td></tr>`;
+  const rows = _webhooks.length ? _webhooks.map(whRowHtml).join('') : `<tr><td colspan="6"><div class="empty-state"><p>Вебхуки не созданы</p></div></td></tr>`;
   document.getElementById('page-body').innerHTML = `
     <div class="card">
       <div class="card-head">
         <h3>Вебхуки <span style="color:var(--c-muted);font-weight:500">(${_webhooks.length})</span></h3>
       </div>
-      <table><thead><tr><th>Бот</th><th>Группа / Комната</th><th>URL вебхука</th><th>Создан</th><th>Действия</th></tr></thead>
+      <table><thead><tr><th>Бот</th><th>Группа / Комната</th><th>URL вебхука</th><th>Сообщений</th><th>Создан</th><th>Действия</th></tr></thead>
       <tbody>${rows}</tbody></table>
     </div>`;
 }
@@ -2237,6 +2237,7 @@ function whRowHtml(w) {
         <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
       </button>
     </div></td>
+    <td style="font-family:var(--f-mono);font-size:12px;text-align:right">${w.message_count}</td>
     <td style="color:var(--c-muted);font-size:11px">${fmtDate(w.created_at)}</td>
     <td><div class="td-actions">
       <label class="btn btn-ghost btn-sm" style="cursor:pointer">
