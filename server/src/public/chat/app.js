@@ -886,7 +886,8 @@ function tryLoadAvatar(el, url, fallbackText) {
 function applyAvatars() {
   document.querySelectorAll('[data-av-chat]').forEach(el => {
     const chatId = parseInt(el.dataset.avChat);
-    const chat = S.chats.find(c => c.id === chatId);
+    const chat = S.chats.find(c => c.id === chatId)
+      || Object.values(S.subrooms).flat().find(s => s.id === chatId);
     if (!chat) return;
     if (chat.type === 'direct') {
       const peerId = getPeerUserId(chat);
