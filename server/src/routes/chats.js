@@ -300,6 +300,10 @@ router.delete('/:id', authMiddleware, (req, res) => {
 router.delete('/admin/:id', authMiddleware, adminMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(id);
+  // Удаляем вебхуки комнаты и её подкомнат (нет ON DELETE CASCADE на webhooks.chat_id)
+  const subIds = db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(id).map(r => r.id);
+  [id, ...subIds].forEach(cid => db.prepare('DELETE FROM webhooks WHERE chat_id = ?').run(cid));
+  subIds.forEach(cid => deleteChatFiles(cid));
   deleteChatFiles(id);
   db.prepare('DELETE FROM chats WHERE id = ?').run(id);
   members.forEach(({ user_id }) => sendTo(user_id, { type: 'chat_deleted', chat_id: id }));
