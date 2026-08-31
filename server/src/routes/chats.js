@@ -66,7 +66,9 @@ router.post('/direct', authMiddleware, (req, res) => {
   const targetId = Number(req.body.user_id);
   if (!targetId) return res.status(400).json({ error: 'Missing user_id' });
   if (targetId === req.user.id) return res.status(400).json({ error: 'Cannot create chat with yourself' });
-  if (!db.prepare('SELECT 1 FROM users WHERE id = ?').get(targetId)) return res.status(404).json({ error: 'User not found' });
+  const targetUser = db.prepare('SELECT id, is_bot FROM users WHERE id = ?').get(targetId);
+  if (!targetUser) return res.status(404).json({ error: 'User not found' });
+  if (targetUser.is_bot) return res.status(400).json({ error: 'Cannot create direct chat with a bot' });
   // Check existing (including hidden)
   const existing = db.prepare(`
     SELECT c.id FROM chats c

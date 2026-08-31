@@ -22,7 +22,7 @@ function isImageBuffer(buf) {
 
 // List all users (for starting chats)
 router.get('/', authMiddleware, (req, res) => {
-  const users = db.prepare('SELECT id, username, display_name, tag FROM users WHERE id != ? ORDER BY display_name').all(req.user.id);
+  const users = db.prepare('SELECT id, username, display_name, tag FROM users WHERE id != ? AND (is_bot IS NULL OR is_bot = 0) ORDER BY display_name').all(req.user.id);
   res.json(users);
 });
 

@@ -82,6 +82,15 @@ db.exec(`
     created_at INTEGER DEFAULT (unixepoch())
   );
   CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(user_id);
+
+  CREATE TABLE IF NOT EXISTS webhooks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token TEXT UNIQUE NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    chat_id INTEGER NOT NULL REFERENCES chats(id),
+    created_at INTEGER DEFAULT (unixepoch())
+  );
+  CREATE INDEX IF NOT EXISTS idx_webhooks_token ON webhooks(token);
 `);
 
 fs.mkdirSync(path.join(path.dirname(DB_PATH), 'avatar'), { recursive: true });
@@ -98,6 +107,7 @@ tryAlter('ALTER TABLE users ADD COLUMN tag TEXT DEFAULT NULL');
 tryAlter('ALTER TABLE chat_members ADD COLUMN pinned_at INTEGER');
 tryAlter('ALTER TABLE users ADD COLUMN last_seen_at INTEGER');
 tryAlter('ALTER TABLE messages ADD COLUMN mentions TEXT'); // JSON-массив id упомянутых пользователей
+tryAlter('ALTER TABLE users ADD COLUMN is_bot INTEGER DEFAULT 0');
 
 // ── Полнотекстовый поиск (FTS5, external content) ──
 // Целостность обеспечивается JOIN с messages при выборке: осиротевшие FTS-записи

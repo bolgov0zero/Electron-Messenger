@@ -3,6 +3,7 @@ const db = require('../db');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
+const crypto = require('crypto');
 const { authMiddleware, adminMiddleware } = require('../auth');
 const { sendTo, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress } = require('../ws');
 
@@ -192,7 +193,7 @@ router.get('/users', (req, res) => {
   const fs = require('fs');
   const path = require('path');
   const avatarDir = path.join(__dirname, '..', '..', '..', 'chat_db', 'avatar');
-  const users = db.prepare('SELECT id, username, display_name, is_admin, tag, created_at FROM users ORDER BY created_at DESC').all();
+  const users = db.prepare('SELECT id, username, display_name, is_admin, tag, created_at FROM users WHERE is_bot IS NULL OR is_bot = 0 ORDER BY created_at DESC').all();
   res.json(users.map(u => ({
     ...u,
     connected: isConnected(u.id),
@@ -400,6 +401,75 @@ router.post('/server/update', (req, res) => {
       else console.log('[Update] server update applied:\n', stdout.slice(-500));
     }), 300);
   });
+});
+
+// ── Вебхуки ──
+const AVATAR_DIR = path.join(path.dirname(DB_PATH), 'avatar');
+
+function genToken() {
+  return crypto.randomBytes(24).toString('base64url');
+}
+
+router.get('/webhooks', (req, res) => {
+  const webhooks = db.prepare(`
+    SELECT w.id, w.token, w.chat_id, w.created_at,
+      u.id as user_id, u.display_name as name, u.tag,
+      c.name as chat_name, c.type as chat_type
+    FROM webhooks w
+    JOIN users u ON u.id = w.user_id
+    JOIN chats c ON c.id = w.chat_id
+    ORDER BY w.created_at DESC
+  `).all();
+  res.json(webhooks.map(w => ({
+    ...w,
+    has_avatar: fs.existsSync(path.join(AVATAR_DIR, `${w.user_id}.jpg`)),
+  })));
+});
+
+router.post('/webhooks', (req, res) => {
+  const { name, tag, chat_id } = req.body;
+  if (!name?.trim() || !chat_id) return res.status(400).json({ error: 'Missing fields' });
+  const chat = db.prepare("SELECT id FROM chats WHERE id = ? AND type IN ('group', 'room')").get(Number(chat_id));
+  if (!chat) return res.status(400).json({ error: 'Invalid chat: must be a group or room' });
+
+  const botUsername = 'bot_' + crypto.randomBytes(6).toString('hex');
+  const token = genToken();
+
+  const botResult = db.prepare("INSERT INTO users (username, password_hash, display_name, is_bot, tag) VALUES (?, ?, ?, 1, ?)")
+    .run(botUsername, '*', name.trim(), tag?.trim() || null);
+  const botId = botResult.lastInsertRowid;
+
+  db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)').run(Number(chat_id), botId);
+
+  const whResult = db.prepare('INSERT INTO webhooks (token, user_id, chat_id) VALUES (?, ?, ?)').run(token, botId, Number(chat_id));
+  res.json({ id: Number(whResult.lastInsertRowid), token, user_id: Number(botId) });
+});
+
+router.delete('/webhooks/:id', (req, res) => {
+  const wh = db.prepare('SELECT id FROM webhooks WHERE id = ?').get(Number(req.params.id));
+  if (!wh) return res.status(404).json({ error: 'Not found' });
+  db.prepare('DELETE FROM webhooks WHERE id = ?').run(wh.id);
+  res.json({ ok: true });
+});
+
+router.post('/webhooks/:id/regen-token', (req, res) => {
+  const wh = db.prepare('SELECT id FROM webhooks WHERE id = ?').get(Number(req.params.id));
+  if (!wh) return res.status(404).json({ error: 'Not found' });
+  const newToken = genToken();
+  db.prepare('UPDATE webhooks SET token = ? WHERE id = ?').run(newToken, wh.id);
+  res.json({ ok: true, token: newToken });
+});
+
+router.post('/webhooks/:id/avatar', (req, res) => {
+  const wh = db.prepare('SELECT user_id FROM webhooks WHERE id = ?').get(Number(req.params.id));
+  if (!wh) return res.status(404).json({ error: 'Not found' });
+  const { data } = req.body;
+  if (!data) return res.status(400).json({ error: 'Missing data' });
+  const buf = Buffer.from(data, 'base64');
+  if (!isImgBuf(buf)) return res.status(400).json({ error: 'Not an image' });
+  fs.mkdirSync(AVATAR_DIR, { recursive: true });
+  fs.writeFileSync(path.join(AVATAR_DIR, `${wh.user_id}.jpg`), buf);
+  res.json({ ok: true });
 });
 
 module.exports = router;

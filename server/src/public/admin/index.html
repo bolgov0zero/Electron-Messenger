@@ -520,6 +520,11 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           Уведомления
           <span class="nav-badge" id="nb-push">—</span>
         </div>
+        <div class="nav-item" onclick="nav('webhooks')" data-page="webhooks">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          Вебхуки
+          <span class="nav-badge" id="nb-webhooks">—</span>
+        </div>
       </nav>
       <div class="sb-bottom">
         <div class="sb-profile">
@@ -621,6 +626,26 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-password')">Отмена</button>
       <button class="btn btn-primary" onclick="savePassword()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Webhook modal -->
+<div class="modal-bg" id="modal-webhook">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Создать вебхук</h3>
+      <button class="modal-close" onclick="closeModal('modal-webhook')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg"><label>Имя бота</label><input id="wh-name" placeholder="Например: CI/CD, Мониторинг…"></div>
+      <div class="fg"><label>Тег <span style="color:var(--c-muted);font-weight:400">(необязательно)</span></label><input id="wh-tag" placeholder="Например: bot, system…"></div>
+      <div class="fg"><label>Группа / Комната</label><select id="wh-chat"></select></div>
+      <div class="err" id="wh-err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-webhook')">Отмена</button>
+      <button class="btn btn-primary" onclick="saveWebhook()">Создать</button>
     </div>
   </div>
 </div>
@@ -1088,8 +1113,8 @@ function logout() {
 })();
 
 /* ── NAV ── */
-const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',clients:'Клиенты',push:'Уведомления'};
-const pageRenders = {dashboard:renderDashboard,users:renderUsers,rooms:renderRooms,chats:renderChats,clients:renderClients,push:renderPush};
+const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки'};
+const pageRenders = {dashboard:renderDashboard,users:renderUsers,rooms:renderRooms,chats:renderChats,clients:renderClients,push:renderPush,webhooks:renderWebhooks};
 
 function nav(page) {
   currentPage=page;
@@ -1159,6 +1184,7 @@ async function updateNavBadges() {
     setB('nb-rooms', s.rooms||0);
     setB('nb-chats', (s.chats||0)+(s.groups||0));
     setB('nb-push',  s.pushSubscriptions||0);
+    try { const whs=await api('GET','/api/admin/webhooks'); setB('nb-webhooks',whs.length||0); } catch {}
   } catch {}
 }
 
@@ -2087,6 +2113,120 @@ async function testPushSub(userId, name, btn) {
   }
   btn.disabled = false;
   btn.innerHTML = '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Тест';
+}
+
+/* ── WEBHOOKS ── */
+let _webhooks = [];
+let _webhookChats = [];
+
+async function renderWebhooks() {
+  _webhooks = await api('GET', '/api/admin/webhooks');
+  document.getElementById('nb-webhooks').textContent = _webhooks.length;
+  const extraEl = document.getElementById('topbar-extra');
+  if (extraEl) {
+    extraEl.style.display = '';
+    extraEl.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openCreateWebhook()">
+      <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Создать вебхук
+    </button>`;
+  }
+  _renderWebhooksTable();
+}
+
+function _renderWebhooksTable() {
+  const rows = _webhooks.length ? _webhooks.map(whRowHtml).join('') : `<tr><td colspan="5"><div class="empty-state"><p>Вебхуки не созданы</p></div></td></tr>`;
+  document.getElementById('page-body').innerHTML = `
+    <div class="card">
+      <div class="card-head">
+        <h3>Вебхуки <span style="color:var(--c-muted);font-weight:500">(${_webhooks.length})</span></h3>
+      </div>
+      <table><thead><tr><th>Бот</th><th>Группа / Комната</th><th>URL вебхука</th><th>Создан</th><th>Действия</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+    </div>`;
+}
+
+function whRowHtml(w) {
+  const url = `${location.origin}/api/webhooks/${esc(w.token)}`;
+  const chatBadge = w.chat_type === 'room'
+    ? `<span class="badge badge-blue">${esc(w.chat_name)}</span>`
+    : `<span class="badge badge-purple">${esc(w.chat_name)}</span>`;
+  const avColor = avatarColor(w.user_id);
+  const avLetter = (w.name||'?').slice(0,1).toUpperCase();
+  const avImg = w.has_avatar ? `<img src="/api/users/${w.user_id}/avatar?t=${Date.now()}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display='none'">` : '';
+  const avEl = `<div class="av" style="width:30px;height:30px;border-radius:50%;font-size:12px;background:${avColor};position:relative">${avLetter}${avImg}</div>`;
+  return `<tr>
+    <td><div class="user-cell">${avEl}<div><div class="uc-name">${esc(w.name)}</div>${w.tag?`<div class="uc-sub">${esc(w.tag)}</div>`:''}</div></div></td>
+    <td>${chatBadge}</td>
+    <td><div style="display:flex;align-items:center;gap:6px">
+      <code style="font-size:11px;color:var(--c-muted);max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${url}</code>
+      <button class="btn-icon" title="Скопировать" onclick="copyWh('${esc(url)}')">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+    </div></td>
+    <td style="color:var(--c-muted);font-size:11px">${fmtDate(w.created_at)}</td>
+    <td><div class="td-actions">
+      <label class="btn btn-ghost btn-sm" title="Загрузить аватар" style="cursor:pointer">
+        Аватар<input type="file" accept="image/*" style="display:none" onchange="uploadWhAvatar(${w.id},this)">
+      </label>
+      <button class="btn btn-ghost btn-sm" onclick="regenWhToken(${w.id})">Новый токен</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteWh(${w.id},'${jesc(w.name)}')">Удалить</button>
+    </div></td>
+  </tr>`;
+}
+
+function copyWh(url) {
+  navigator.clipboard.writeText(url).then(() => toast('URL скопирован','success')).catch(()=>toast('Не удалось скопировать','error'));
+}
+
+async function regenWhToken(id) {
+  confirm('Пересоздать токен?', 'Старый URL перестанет работать. Новый токен нужно обновить во всех сервисах.', async () => {
+    const data = await api('POST', `/api/admin/webhooks/${id}/regen-token`);
+    if (data.ok) { toast('Токен обновлён','success'); renderWebhooks(); }
+    else toast(data.error||'Ошибка','error');
+  });
+}
+
+async function deleteWh(id, name) {
+  confirm('Удалить вебхук?', `«${name}» — вебхук будет удалён. Сообщения в группе останутся.`, async () => {
+    const data = await api('DELETE', `/api/admin/webhooks/${id}`);
+    if (data.ok) { toast('Вебхук удалён'); renderWebhooks(); }
+    else toast(data.error||'Ошибка','error');
+  });
+}
+
+async function uploadWhAvatar(id, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const base64 = e.target.result.split(',')[1];
+    const data = await api('POST', `/api/admin/webhooks/${id}/avatar`, { data: base64 });
+    if (data.ok) { toast('Аватар обновлён','success'); renderWebhooks(); }
+    else toast(data.error||'Ошибка','error');
+  };
+  reader.readAsDataURL(file);
+}
+
+async function openCreateWebhook() {
+  _webhookChats = (await api('GET','/api/admin/chats')).filter(c=>c.type==='group'||c.type==='room');
+  const opts = _webhookChats.map(c=>`<option value="${c.id}">${esc(c.name||'—')} (${c.type==='room'?'комната':'группа'})</option>`).join('');
+  document.getElementById('wh-name').value='';
+  document.getElementById('wh-tag').value='';
+  document.getElementById('wh-chat').innerHTML = opts || '<option value="">Нет доступных групп/комнат</option>';
+  document.getElementById('wh-err').textContent='';
+  openModal('modal-webhook');
+  setTimeout(()=>document.getElementById('wh-name').focus(),50);
+}
+
+async function saveWebhook() {
+  const name = document.getElementById('wh-name').value.trim();
+  const tag = document.getElementById('wh-tag').value.trim()||null;
+  const chat_id = Number(document.getElementById('wh-chat').value);
+  document.getElementById('wh-err').textContent='';
+  if (!name || !chat_id) { document.getElementById('wh-err').textContent='Заполните все поля'; return; }
+  const data = await api('POST','/api/admin/webhooks',{name,tag,chat_id});
+  if (data.id) { closeModal('modal-webhook'); toast('Вебхук создан','success'); renderWebhooks(); }
+  else document.getElementById('wh-err').textContent=data.error||'Ошибка';
 }
 
 /* ── SETTINGS MODAL ── */
