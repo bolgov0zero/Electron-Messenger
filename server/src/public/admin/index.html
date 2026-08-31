@@ -630,6 +630,71 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
   </div>
 </div>
 
+<!-- Webhook help modal -->
+<div class="modal-bg" id="modal-webhook-help">
+  <div class="modal" style="width:600px;max-height:88vh">
+    <div class="modal-head">
+      <h3>Инструкция по вебхукам</h3>
+      <button class="modal-close" onclick="closeModal('modal-webhook-help')">✕</button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto;display:flex;flex-direction:column;gap:20px">
+
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--c-text);margin-bottom:8px">Как это работает</div>
+        <div style="font-size:12px;color:var(--c-text2);line-height:1.6">Вебхук — это уникальный URL, привязанный к группе или комнате. Сторонний сервис отправляет на него HTTP-запрос с текстом, и сообщение появляется в чате от имени бота.</div>
+      </div>
+
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--c-text);margin-bottom:8px">GET-запрос (браузер, простые сервисы)</div>
+        <pre style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:10px 12px;font-size:11px;color:var(--c-text);overflow-x:auto;white-space:pre-wrap;word-break:break-all">https://ваш-сервер/api/webhooks/TOKEN?text=Текст+сообщения</pre>
+      </div>
+
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--c-text);margin-bottom:8px">POST-запрос (curl, скрипты)</div>
+        <pre style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:10px 12px;font-size:11px;color:var(--c-text);overflow-x:auto">curl -X POST https://ваш-сервер/api/webhooks/TOKEN \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Деплой завершён"}'</pre>
+      </div>
+
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--c-text);margin-bottom:8px">Форматирование текста</div>
+        <div style="font-size:12px;color:var(--c-text2);margin-bottom:8px">Поддерживаются HTML-теги:</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <pre style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 10px;font-size:11px;color:var(--c-text);margin:0">&lt;b&gt;жирный&lt;/b&gt;
+&lt;i&gt;курсив&lt;/i&gt;
+&lt;u&gt;подчёркнутый&lt;/u&gt;
+&lt;blockquote&gt;цитата&lt;/blockquote&gt;
+&lt;br&gt; — перенос строки</pre>
+          <pre style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 10px;font-size:11px;color:var(--c-text);margin:0">{"text":"Деплой &lt;b&gt;завершён&lt;/b&gt;&lt;br&gt;Версия: 1.4.2"}</pre>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--c-text);margin-bottom:8px">Zabbix</div>
+        <div style="font-size:12px;color:var(--c-text2);margin-bottom:8px">Administration → Media types → Create media type → Webhook</div>
+        <div style="font-size:11px;color:var(--c-muted);margin-bottom:6px">Параметры:</div>
+        <pre style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 10px;font-size:11px;color:var(--c-text);margin-bottom:8px">URL      → https://ваш-сервер/api/webhooks/TOKEN
+Message  → {TRIGGER.STATUS}: {HOST.NAME} — {TRIGGER.NAME}</pre>
+        <div style="font-size:11px;color:var(--c-muted);margin-bottom:6px">Скрипт:</div>
+        <pre style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 10px;font-size:11px;color:var(--c-text)">var params = JSON.parse(value);
+var req = new HttpRequest();
+req.addHeader('Content-Type: application/json');
+var payload = JSON.stringify({ text: params.Message });
+req.post(params.URL, payload);
+return 'OK';</pre>
+      </div>
+
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--c-text);margin-bottom:8px">Ответ сервера</div>
+        <pre style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 10px;font-size:11px;color:var(--c-text)">{"ok":true,"message_id":123}   // успех
+{"ok":false,"error":"..."}     // ошибка</pre>
+        <div style="font-size:11px;color:var(--c-muted);margin-top:6px">Лимит: 30 сообщений в минуту на вебхук.</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <!-- Webhook modal -->
 <div class="modal-bg" id="modal-webhook">
   <div class="modal">
@@ -2132,10 +2197,15 @@ async function renderWebhooks() {
   const extraEl = document.getElementById('topbar-extra');
   if (extraEl) {
     extraEl.style.display = '';
-    extraEl.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openCreateWebhook()">
-      <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Создать вебхук
-    </button>`;
+    extraEl.innerHTML = `
+      <button class="btn btn-ghost btn-sm" onclick="openModal('modal-webhook-help')">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Инструкция
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="openCreateWebhook()">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Создать вебхук
+      </button>`;
   }
   _renderWebhooksTable();
 }
