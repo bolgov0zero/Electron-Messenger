@@ -1437,7 +1437,7 @@ function setSparkRange(r) {
 /* ── ROOMS ── */
 async function renderRooms() {
   [allRooms, allUsersCache] = await Promise.all([api('GET','/api/admin/chats'), api('GET','/api/admin/users')]);
-  allRooms = allRooms.filter(c=>c.type==='room');
+  allRooms = allRooms.filter(c=>c.type==='room' && !c.parent_id);
   renderRoomsTable();
 }
 

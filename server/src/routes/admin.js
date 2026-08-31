@@ -203,7 +203,7 @@ router.get('/users', (req, res) => {
 
 router.get('/chats', (req, res) => {
   const chats = db.prepare(`
-    SELECT c.id, c.type, c.name, c.created_at, c.created_by,
+    SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.parent_id,
       (SELECT COUNT(*) FROM messages WHERE chat_id = c.id AND deleted = 0) as message_count,
       (SELECT COUNT(*) FROM chat_members WHERE chat_id = c.id) as member_count,
       (SELECT GROUP_CONCAT(u.display_name, '|||') FROM users u
