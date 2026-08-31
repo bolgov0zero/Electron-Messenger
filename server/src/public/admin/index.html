@@ -765,6 +765,15 @@ return 'OK';</pre>
         </div>
         <input type="file" id="room-avatar-input" accept="image/*" style="display:none" onchange="onRoomAvatarChange(this)">
       </div>
+      <!-- Подкомнаты (только для комнат) -->
+      <div id="subrooms-section" style="display:none;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--c-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Подкомнаты</div>
+        <div id="subrooms-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px"></div>
+        <div style="display:flex;gap:6px">
+          <input id="subroom-name-input" placeholder="Название подкомнаты" style="flex:1;padding:7px 10px;border:1.5px solid var(--c-border);border-radius:8px;font-size:13px;font-family:var(--f-ui);outline:none;background:var(--c-surface);color:var(--c-text)" onkeydown="if(event.key==='Enter')addSubroom()">
+          <button class="btn btn-primary btn-sm" onclick="addSubroom()">Добавить</button>
+        </div>
+      </div>
       <div class="pp-search" id="members-search-wrap">
         <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="members-search" placeholder="Поиск сотрудников…" oninput="renderMembersLists(this.value)">
@@ -1522,17 +1531,21 @@ function onRoomAvatarChange(input) {
 
 let _membersCur = [], _membersAvail = [], _membersReadonly = false;
 
+let _editRoomId = null;
+
 async function openRoomEdit(chatId, name) {
   membersForChatId=chatId; membersForChatType='room';
+  _editRoomId = chatId;
   selectedAddMembers=new Set();
   _roomEditAvatarBase64=null;
   _membersReadonly=false;
   document.getElementById('members-title').textContent='Изменить комнату';
   document.getElementById('room-edit-meta').style.display='';
+  document.getElementById('subrooms-section').style.display='';
+  document.getElementById('subroom-name-input').value='';
   document.getElementById('room-edit-name').value=name;
   document.getElementById('room-avatar-input').value='';
   document.getElementById('members-search').value='';
-  // Текущая аватарка
   const av=document.getElementById('room-edit-av');
   av.style.backgroundImage=''; av.style.backgroundSize='';
   av.textContent=name?name[0].toUpperCase():'R';
@@ -1544,11 +1557,80 @@ async function openRoomEdit(chatId, name) {
     <span class="pp-footcount" id="members-count"></span>
     <button class="btn btn-ghost" onclick="closeModal('modal-members')">Отмена</button>
     <button class="btn btn-primary" onclick="saveRoomEdit()">Сохранить</button>`;
-  const [members,allU]=await Promise.all([api('GET','/api/admin/chats/'+chatId+'/members'),api('GET','/api/admin/users')]);
+  const [members,allU,subs]=await Promise.all([
+    api('GET','/api/admin/chats/'+chatId+'/members'),
+    api('GET','/api/admin/users'),
+    api('GET','/api/admin/subrooms/'+chatId)
+  ]);
   _membersCur = members;
   _membersAvail = allU.filter(u=>!members.some(m=>m.id===u.id));
+  renderSubroomsList(subs||[]);
   renderMembersLists('');
   openModal('modal-members');
+}
+
+function renderSubroomsList(subs) {
+  const el = document.getElementById('subrooms-list');
+  if (!subs.length) { el.innerHTML='<div style="font-size:12px;color:var(--c-muted)">Подкомнаты не добавлены</div>'; return; }
+  el.innerHTML = subs.map(s=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:7px;background:var(--c-surface2)">
+      <div style="position:relative;width:26px;height:26px;flex-shrink:0">
+        ${avHtml(s.name,26,10,null,false,s.has_avatar,s.id)}
+      </div>
+      <span style="flex:1;font-size:13px">${esc(s.name)}</span>
+      <span style="font-size:11px;color:var(--c-muted)">${s.message_count} сообщ.</span>
+      <label class="btn btn-ghost btn-sm" style="cursor:pointer;font-size:11px">
+        Фото<input type="file" accept="image/*" style="display:none" onchange="uploadSubroomAvatar(${s.id},this)">
+      </label>
+      <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="renameSubroom(${s.id},'${jesc(s.name)}')">✎</button>
+      <button class="btn btn-danger btn-sm" style="font-size:11px" onclick="deleteSubroom(${s.id})">✕</button>
+    </div>`).join('');
+}
+
+async function addSubroom() {
+  const name = document.getElementById('subroom-name-input').value.trim();
+  if (!name) { toast('Введите название','error'); return; }
+  const data = await api('POST','/api/admin/subrooms',{name,room_id:_editRoomId});
+  if (data?.id) {
+    document.getElementById('subroom-name-input').value='';
+    toast('Подкомната добавлена','success');
+    const subs = await api('GET','/api/admin/subrooms/'+_editRoomId);
+    renderSubroomsList(subs||[]);
+  } else toast(data?.error||'Ошибка','error');
+}
+
+async function deleteSubroom(id) {
+  confirm('Удалить подкомнату?','Все сообщения будут удалены.', async ()=>{
+    const data = await api('DELETE','/api/admin/subrooms/'+id);
+    if (data?.ok) {
+      toast('Удалено','success');
+      const subs = await api('GET','/api/admin/subrooms/'+_editRoomId);
+      renderSubroomsList(subs||[]);
+    } else toast(data?.error||'Ошибка','error');
+  });
+}
+
+async function renameSubroom(id, currentName) {
+  const name = prompt('Новое название:', currentName);
+  if (!name?.trim() || name.trim()===currentName) return;
+  const data = await api('PATCH','/api/admin/subrooms/'+id,{name:name.trim()});
+  if (data?.ok) {
+    toast('Переименовано','success');
+    const subs = await api('GET','/api/admin/subrooms/'+_editRoomId);
+    renderSubroomsList(subs||[]);
+  } else toast(data?.error||'Ошибка','error');
+}
+
+async function uploadSubroomAvatar(id, input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const data64 = e.target.result.split(',')[1];
+    const res = await api('POST','/api/admin/subrooms/'+id+'/avatar',{data:data64});
+    if (res?.ok) { toast('Фото обновлено','success'); const subs=await api('GET','/api/admin/subrooms/'+_editRoomId); renderSubroomsList(subs||[]); }
+    else toast(res?.error||'Ошибка','error');
+  };
+  reader.readAsDataURL(file);
 }
 
 function renderMembersLists(filter='') {
@@ -2283,8 +2365,23 @@ async function uploadWhAvatar(id, input) {
 }
 
 async function openCreateWebhook() {
-  _webhookChats = (await api('GET','/api/admin/chats')).filter(c=>c.type==='group'||c.type==='room');
-  const opts = _webhookChats.map(c=>`<option value="${c.id}">${esc(c.name||'—')} (${c.type==='room'?'комната':'группа'})</option>`).join('');
+  const allChats = (await api('GET','/api/admin/chats')).filter(c=>c.type==='group'||c.type==='room');
+  _webhookChats = allChats;
+  let opts = '';
+  for (const c of allChats) {
+    if (c.type==='group') {
+      opts += `<option value="${c.id}">${esc(c.name||'—')} (группа)</option>`;
+    } else {
+      const subs = await api('GET','/api/admin/subrooms/'+c.id);
+      if (subs?.length) {
+        opts += `<optgroup label="${esc(c.name||'—')} (комната)">`;
+        subs.forEach(s => { opts += `<option value="${s.id}">${esc(s.name)}</option>`; });
+        opts += `</optgroup>`;
+      } else {
+        opts += `<option value="${c.id}">${esc(c.name||'—')} (комната)</option>`;
+      }
+    }
+  }
   document.getElementById('wh-name').value='';
   document.getElementById('wh-tag').value='';
   document.getElementById('wh-avatar-input').value='';

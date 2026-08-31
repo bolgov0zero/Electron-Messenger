@@ -473,4 +473,76 @@ router.post('/webhooks/:id/avatar', (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Подкомнаты ──
+router.get('/subrooms/:roomId', (req, res) => {
+  const roomId = Number(req.params.roomId);
+  const room = db.prepare("SELECT id FROM chats WHERE id = ? AND type = 'room' AND parent_id IS NULL").get(roomId);
+  if (!room) return res.status(404).json({ error: 'Not found' });
+  const subrooms = db.prepare('SELECT id, name, position FROM chats WHERE parent_id = ? ORDER BY position, id').all(roomId);
+  res.json(subrooms.map(s => ({
+    ...s,
+    has_avatar: fs.existsSync(path.join(AVATAR_DIR, `chat_${s.id}.jpg`)),
+    message_count: db.prepare('SELECT COUNT(*) as c FROM messages WHERE chat_id = ?').get(s.id).c,
+  })));
+});
+
+router.post('/subrooms', (req, res) => {
+  const { name, room_id } = req.body;
+  if (!name?.trim() || !room_id) return res.status(400).json({ error: 'Missing fields' });
+  const room = db.prepare("SELECT id FROM chats WHERE id = ? AND type = 'room' AND parent_id IS NULL").get(Number(room_id));
+  if (!room) return res.status(400).json({ error: 'Invalid room' });
+  const maxPos = db.prepare('SELECT COALESCE(MAX(position), -1) as m FROM chats WHERE parent_id = ?').get(Number(room_id)).m;
+  const result = db.transaction(() => {
+    const r = db.prepare("INSERT INTO chats (type, name, parent_id, position) VALUES ('room', ?, ?, ?)").run(name.trim(), Number(room_id), maxPos + 1);
+    const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(Number(room_id));
+    const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
+    members.forEach(({ user_id }) => ins.run(r.lastInsertRowid, user_id));
+    return r.lastInsertRowid;
+  })();
+  const { sendTo } = require('../ws');
+  db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(Number(room_id))
+    .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
+  res.json({ id: Number(result) });
+});
+
+router.patch('/subrooms/:id', (req, res) => {
+  const sub = db.prepare('SELECT id, parent_id FROM chats WHERE id = ? AND parent_id IS NOT NULL').get(Number(req.params.id));
+  if (!sub) return res.status(404).json({ error: 'Not found' });
+  const { name } = req.body;
+  if (name?.trim()) db.prepare('UPDATE chats SET name = ? WHERE id = ?').run(name.trim(), sub.id);
+  const { sendTo } = require('../ws');
+  db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(sub.parent_id)
+    .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
+  res.json({ ok: true });
+});
+
+router.delete('/subrooms/:id', (req, res) => {
+  const sub = db.prepare('SELECT id, parent_id FROM chats WHERE id = ? AND parent_id IS NOT NULL').get(Number(req.params.id));
+  if (!sub) return res.status(404).json({ error: 'Not found' });
+  db.prepare('DELETE FROM chats WHERE id = ?').run(sub.id);
+  const { sendTo } = require('../ws');
+  db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(sub.parent_id)
+    .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
+  res.json({ ok: true });
+});
+
+router.post('/subrooms/:id/avatar', (req, res) => {
+  const sub = db.prepare('SELECT id FROM chats WHERE id = ? AND parent_id IS NOT NULL').get(Number(req.params.id));
+  if (!sub) return res.status(404).json({ error: 'Not found' });
+  const { data } = req.body;
+  if (!data) return res.status(400).json({ error: 'Missing data' });
+  const buf = Buffer.from(data, 'base64');
+  if (!isImgBuf(buf)) return res.status(400).json({ error: 'Not an image' });
+  fs.writeFileSync(path.join(AVATAR_DIR, `chat_${sub.id}.jpg`), buf);
+  res.json({ ok: true });
+});
+
+router.post('/subrooms/reorder', (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids)) return res.status(400).json({ error: 'Invalid' });
+  const upd = db.prepare('UPDATE chats SET position = ? WHERE id = ? AND parent_id IS NOT NULL');
+  db.transaction(() => ids.forEach((id, i) => upd.run(i, id)))();
+  res.json({ ok: true });
+});
+
 module.exports = router;

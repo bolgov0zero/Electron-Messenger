@@ -252,13 +252,12 @@ function setup(server) {
         })();
 
         const msg = getMessageWithStatus(msgId, user.id);
+        const chatMeta = db.prepare('SELECT type, name, parent_id FROM chats WHERE id = ?').get(chat_id);
+        if (chatMeta?.parent_id) msg.parent_id = chatMeta.parent_id;
         broadcast(chat_id, { type: 'message', message: msg });
 
         // Push-уведомления всем участникам (кроме отправителя).
-        // Отправляем push независимо от наличия WS-соединения — пользователь
-        // может быть залогинен с нескольких устройств (PC + PWA). Service Worker
-        // сам подавит уведомление, если PWA открыта и активна прямо сейчас.
-        const chat = db.prepare('SELECT type, name FROM chats WHERE id = ?').get(chat_id);
+        const chat = chatMeta;
         const allMembers = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chat_id, user.id);
         const stmtUnread = db.prepare(`
           SELECT COUNT(*) AS c FROM messages m

@@ -108,6 +108,8 @@ tryAlter('ALTER TABLE chat_members ADD COLUMN pinned_at INTEGER');
 tryAlter('ALTER TABLE users ADD COLUMN last_seen_at INTEGER');
 tryAlter('ALTER TABLE messages ADD COLUMN mentions TEXT'); // JSON-массив id упомянутых пользователей
 tryAlter('ALTER TABLE users ADD COLUMN is_bot INTEGER DEFAULT 0');
+tryAlter('ALTER TABLE chats ADD COLUMN parent_id INTEGER REFERENCES chats(id) ON DELETE CASCADE');
+tryAlter('ALTER TABLE chats ADD COLUMN position INTEGER DEFAULT 0');
 
 // ── Полнотекстовый поиск (FTS5, external content) ──
 // Целостность обеспечивается JOIN с messages при выборке: осиротевшие FTS-записи

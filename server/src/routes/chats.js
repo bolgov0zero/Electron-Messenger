@@ -28,26 +28,52 @@ function enrichChat(chat, userId) {
     SELECT u.id, u.username, u.display_name FROM users u
     JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = ?
   `).all(chat.id);
-  const last = db.prepare(`
-    SELECT m.id, m.text, m.sent_at, m.edited_at, m.deleted,
-      COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
-    FROM messages m LEFT JOIN users u ON u.id = m.sender_id
-    WHERE m.chat_id = ? ORDER BY m.sent_at DESC LIMIT 1
-  `).get(chat.id);
-  // Непрочитанные (источник истины для счётчиков и синхронизации между устройствами)
-  const unread = db.prepare(`
-    SELECT COUNT(*) AS c FROM messages m
-    LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-    WHERE m.chat_id = ? AND m.sender_id != ? AND m.deleted = 0 AND ms.read_at IS NULL
-  `).get(userId, chat.id, userId).c;
-  // Непрочитанные упоминания — для бейджа «@» (как в Telegram)
-  const unreadMentions = db.prepare(`
-    SELECT COUNT(*) AS c FROM messages m
-    LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-    WHERE m.chat_id = ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
-      AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
-  `).get(userId, chat.id, userId).c;
-  return { ...chat, members, last_message: last || null, unread, unread_mentions: unreadMentions };
+
+  const subrooms = db.prepare('SELECT id FROM chats WHERE parent_id = ? ORDER BY position, id').all(chat.id);
+  const hasSubrooms = subrooms.length > 0;
+
+  let last, unread, unreadMentions;
+  if (hasSubrooms) {
+    const ids = subrooms.map(s => s.id);
+    const placeholders = ids.map(() => '?').join(',');
+    last = db.prepare(`
+      SELECT m.id, m.text, m.sent_at, m.edited_at, m.deleted,
+        COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
+      FROM messages m LEFT JOIN users u ON u.id = m.sender_id
+      WHERE m.chat_id IN (${placeholders}) ORDER BY m.sent_at DESC LIMIT 1
+    `).get(...ids);
+    unread = db.prepare(`
+      SELECT COUNT(*) AS c FROM messages m
+      LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
+      WHERE m.chat_id IN (${placeholders}) AND m.sender_id != ? AND m.deleted = 0 AND ms.read_at IS NULL
+    `).get(userId, ...ids, userId).c;
+    unreadMentions = db.prepare(`
+      SELECT COUNT(*) AS c FROM messages m
+      LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
+      WHERE m.chat_id IN (${placeholders}) AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
+        AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
+    `).get(userId, ...ids, userId).c;
+  } else {
+    last = db.prepare(`
+      SELECT m.id, m.text, m.sent_at, m.edited_at, m.deleted,
+        COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
+      FROM messages m LEFT JOIN users u ON u.id = m.sender_id
+      WHERE m.chat_id = ? ORDER BY m.sent_at DESC LIMIT 1
+    `).get(chat.id);
+    unread = db.prepare(`
+      SELECT COUNT(*) AS c FROM messages m
+      LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
+      WHERE m.chat_id = ? AND m.sender_id != ? AND m.deleted = 0 AND ms.read_at IS NULL
+    `).get(userId, chat.id, userId).c;
+    unreadMentions = db.prepare(`
+      SELECT COUNT(*) AS c FROM messages m
+      LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
+      WHERE m.chat_id = ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
+        AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
+    `).get(userId, chat.id, userId).c;
+  }
+
+  return { ...chat, members, last_message: last || null, unread, unread_mentions: unreadMentions, has_subrooms: hasSubrooms };
 }
 
 // Get my chats
@@ -55,10 +81,37 @@ router.get('/', authMiddleware, (req, res) => {
   const chats = db.prepare(`
     SELECT c.id, c.type, c.name, c.created_at, c.created_by, cm.pinned_at as pinned
     FROM chats c JOIN chat_members cm ON cm.chat_id = c.id
-    WHERE cm.user_id = ? AND cm.hidden_at IS NULL
+    WHERE cm.user_id = ? AND cm.hidden_at IS NULL AND c.parent_id IS NULL
     ORDER BY (SELECT COALESCE(MAX(sent_at), 0) FROM messages WHERE chat_id = c.id) DESC
   `).all(req.user.id);
   res.json(chats.map(c => enrichChat(c, req.user.id)));
+});
+
+// Get sub-rooms of a room
+router.get('/:id/subrooms', authMiddleware, (req, res) => {
+  const chatId = Number(req.params.id);
+  if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id))
+    return res.status(403).json({ error: 'Forbidden' });
+  const subrooms = db.prepare(`
+    SELECT id, name, position, parent_id FROM chats WHERE parent_id = ? ORDER BY position, id
+  `).all(chatId);
+  const userId = req.user.id;
+  const result = subrooms.map(s => {
+    const unread = db.prepare(`
+      SELECT COUNT(*) AS c FROM messages m
+      LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
+      WHERE m.chat_id = ? AND m.sender_id != ? AND m.deleted = 0 AND ms.read_at IS NULL
+    `).get(userId, s.id, userId).c;
+    const unreadMentions = db.prepare(`
+      SELECT COUNT(*) AS c FROM messages m
+      LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
+      WHERE m.chat_id = ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
+        AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
+    `).get(userId, s.id, userId).c;
+    const has_avatar = fs.existsSync(path2.join(AVATAR_DIR, `chat_${s.id}.jpg`));
+    return { ...s, unread, unread_mentions: unreadMentions, has_avatar };
+  });
+  res.json(result);
 });
 
 // Create direct chat

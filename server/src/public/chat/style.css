@@ -390,6 +390,69 @@ body {
 }
 
 /* ══════════════════════════════════════════
+   SUB-ROOMS PANEL
+   ══════════════════════════════════════════ */
+.subrooms-panel {
+  width: 0; min-width: 0; overflow: hidden;
+  background: var(--side-bg);
+  border-right: none;
+  display: flex; flex-direction: column;
+  transition: width 0.2s ease, min-width 0.2s ease;
+  flex-shrink: 0;
+}
+.subrooms-panel.open {
+  width: 192px; min-width: 192px;
+  border-right: 1px solid var(--border);
+}
+.subrooms-panel-header {
+  padding: 14px 12px 8px;
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted);
+}
+.subrooms-panel-back {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 12px 4px;
+  font-size: 13px; color: var(--accent); cursor: pointer;
+  font-weight: 500;
+}
+.subroom-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px; margin: 1px 6px;
+  border-radius: 8px; cursor: pointer;
+  transition: background .12s;
+}
+.subroom-item:hover { background: var(--hover-row); }
+.subroom-item.active { background: var(--active-row); }
+.subroom-item .sr-av {
+  width: 28px; height: 28px; border-radius: 7px;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff;
+  background-size: cover; background-position: center;
+}
+.subroom-item .sr-name {
+  flex: 1; font-size: 13px; font-weight: 500;
+  color: var(--text); overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.subroom-item.active .sr-name { color: var(--accent); }
+.subroom-unread {
+  background: var(--accent); color: #0c0e10;
+  font-size: 10px; font-weight: 700;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+}
+/* Mobile: sub-rooms panel replaces sidebar */
+@media (max-width: 767px), (pointer: coarse) {
+  .subrooms-panel.open {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    width: var(--sidebar-w); min-width: var(--sidebar-w);
+    z-index: 10;
+    border-right: 1px solid var(--border);
+  }
+}
+
+/* ══════════════════════════════════════════
    SIDEBAR
    ══════════════════════════════════════════ */
 .sidebar {

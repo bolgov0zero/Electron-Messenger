@@ -22,6 +22,9 @@ const S = {
   chatHasMoreAfter: false, // есть ли сообщения ниже (после перехода вглубь истории)
   chatNewestId: null,      // id самого нового загруженного сообщения
   searchResults: null,     // результаты поиска по сообщениям
+  subrooms: {},       // parentId -> [{id, name, unread, unread_mentions, has_avatar}]
+  activeSubroomId: null,  // id активной подкомнаты
+  activeRoomId: null,     // id родительской комнаты с открытой панелью
 };
 
 const SESSION_KEY = 'electron_v2';
@@ -572,12 +575,12 @@ async function loadChats() {
   const chats = await api('GET','/chats');
   if (!chats) return;
   S.chats = chats;
-  // Сервер — источник истины по непрочитанным (синхронизация между устройствами).
-  // Активный чат считаем прочитанным сразу.
   chats.forEach(c => {
     S.unread[c.id] = (c.id === S.activeChatId) ? 0 : (c.unread || 0);
     S.unreadMentions[c.id] = (c.id === S.activeChatId) ? 0 : (c.unread_mentions || 0);
   });
+  // Подгружаем подкомнаты для всех комнат с has_subrooms
+  await Promise.all(chats.filter(c=>c.has_subrooms).map(c => loadSubrooms(c.id)));
   updateUnreadTotal();
   renderChatList();
 }
@@ -840,8 +843,82 @@ function openSearchResult(chatId, msgId) {
   openChat(chatId, msgId);
 }
 
+// ── SUB-ROOMS ──
+async function loadSubrooms(roomId) {
+  const subs = await api('GET', `/chats/${roomId}/subrooms`);
+  if (!subs) return;
+  S.subrooms[roomId] = subs;
+  subs.forEach(s => {
+    if (!(s.id in S.unread)) S.unread[s.id] = s.unread || 0;
+    if (!(s.id in S.unreadMentions)) S.unreadMentions[s.id] = s.unread_mentions || 0;
+  });
+  renderSubroomsPanel(roomId);
+}
+
+function renderSubroomsPanel(roomId) {
+  const panel = document.getElementById('subrooms-panel');
+  const subs = S.subrooms[roomId] || [];
+  if (!subs.length) { closeSubroomsPanel(); return; }
+  panel.classList.add('open');
+  const items = subs.map(s => {
+    const unread = S.unread[s.id] || 0;
+    const badge = unread ? `<span class="subroom-unread">${unread > 99 ? '99+' : unread}</span>` : '';
+    const bg = avatarColor(s.id);
+    const letter = (s.name||'?')[0].toUpperCase();
+    const avStyle = s.has_avatar
+      ? `style="background-color:${bg};background-image:url('${location.protocol}//${S.server}/api/chats/${s.id}/avatar');background-size:cover;background-position:center"`
+      : `style="background:${bg}"`;
+    return `<div class="subroom-item${S.activeSubroomId===s.id?' active':''}" onclick="openSubroom(${s.id})">
+      <div class="sr-av" ${avStyle}>${s.has_avatar?'':letter}</div>
+      <span class="sr-name">${esc(s.name)}</span>
+      ${badge}
+    </div>`;
+  }).join('');
+  const roomName = S.chats.find(c=>c.id===roomId)?.name || 'Комната';
+  panel.innerHTML = `<div class="subrooms-panel-header">${esc(roomName)}</div>${items}`;
+}
+
+function closeSubroomsPanel() {
+  const panel = document.getElementById('subrooms-panel');
+  panel.classList.remove('open');
+  panel.innerHTML = '';
+}
+
+async function openSubroom(subroomId) {
+  S.activeSubroomId = subroomId;
+  const parentId = S.activeRoomId;
+  if (parentId) renderSubroomsPanel(parentId);
+  await openChat(subroomId);
+}
+
 // ── OPEN CHAT ──
 async function openChat(chatId, aroundId = null) {
+  let chat = S.chats.find(c=>c.id===chatId);
+  // Подкомната не в S.chats — строим из S.subrooms
+  if (!chat) {
+    for (const [pid, subs] of Object.entries(S.subrooms)) {
+      const sub = subs.find(s=>s.id===chatId);
+      if (sub) { chat = { id: chatId, type: 'room', name: sub.name, parent_id: Number(pid), members: [] }; break; }
+    }
+  }
+  if (chat?.has_subrooms) {
+    // Комната с подкомнатами — показываем панель, не открываем чат напрямую
+    S.activeRoomId = chatId;
+    S.activeSubroomId = null;
+    renderChatList();
+    await loadSubrooms(chatId);
+    document.getElementById('chat-main').innerHTML = `<div class="empty-state">
+      <div class="empty-icon" style="font-size:36px">📋</div>
+      <p>Выберите подкомнату</p>
+    </div>`;
+    return;
+  }
+  // Если выбираем обычный чат — сбрасываем панель подкомнат
+  if (!chat?.parent_id && !Object.values(S.subrooms).some(arr=>arr.some(s=>s.id===chatId))) {
+    closeSubroomsPanel();
+    S.activeRoomId = null;
+    S.activeSubroomId = null;
+  }
   S.activeChatId = chatId;
   S.chatHasMore = false;
   S.chatOldestId = null;
@@ -854,7 +931,6 @@ async function openChat(chatId, aroundId = null) {
   S.unreadMentions[chatId] = 0;
   updateUnreadTotal();
   renderChatList();
-  const chat = S.chats.find(c=>c.id===chatId);
   const name = chatName(chat);
   const isGroup = chat.type==='group';
   const isRoom = chat.type==='room';
@@ -862,8 +938,9 @@ async function openChat(chatId, aroundId = null) {
   const memberCount = chat.members?.length||0;
   const peerId = getPeerUserId(chat);
   const peerDot = peerId ? presenceDot(peerId) : '';
-  const sub = isRoom ? `🏠 Комната · ${memberCount} участников` : isGroup ? `${memberCount} участников` : (peerId ? peerStatusText(peerId) : 'Личный чат');
-  const nameClickable = (isGroup || isRoom) ? `style="cursor:pointer" onclick="openGroupInfo(${chatId})"` : '';
+  const isSubroom = !!chat?.parent_id;
+  const sub = isSubroom ? `# подкомната` : isRoom ? `🏠 Комната · ${memberCount} участников` : isGroup ? `${memberCount} участников` : (peerId ? peerStatusText(peerId) : 'Личный чат');
+  const nameClickable = (isGroup || (isRoom && !isSubroom)) ? `style="cursor:pointer" onclick="openGroupInfo(${chatId})"` : '';
 
   // Delete button: visible for direct chats and for group creator / admins
   const canDelete = chat.type === 'direct' || S.user.is_admin || isCreator;
@@ -2162,8 +2239,16 @@ function connectWS() {
     if (data.type==='message') {
       const { message } = data;
       const chatId = message.chat_id;
-      const chat = S.chats.find(c=>c.id===chatId);
-      if (chat) chat.last_message = message;
+      const parentId = message.parent_id || null;
+      // Обновляем last_message и unread для родительской комнаты если это подкомната
+      if (parentId) {
+        const parentChat = S.chats.find(c=>c.id===parentId);
+        if (parentChat) parentChat.last_message = message;
+        S.unread[chatId] = (S.unread[chatId]||0) + (message.sender_id !== S.user.id && S.activeChatId !== chatId ? 1 : 0);
+        if (S.activeRoomId === parentId) renderSubroomsPanel(parentId);
+      }
+      const chat = S.chats.find(c=>c.id===chatId) || (parentId ? S.chats.find(c=>c.id===parentId) : null);
+      if (!parentId && chat) chat.last_message = message;
       // Если мы вглуби истории (низ не догружен) — не аппендим, придёт при догрузке
       if (S.activeChatId===chatId && !S.chatHasMoreAfter) {
         // Убираем optimistic-заглушку если она есть (только для своих сообщений)
