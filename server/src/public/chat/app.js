@@ -1116,10 +1116,6 @@ async function openChat(chatId, aroundId = null) {
     S.activeSubroomId = null;
     renderChatList();
     await loadSubrooms(chatId, { render: true });
-    if (_isMobile()) {
-      // На мобильном показываем панель подкомнат поверх sidebar
-      document.querySelector('.sidebar')?.classList.add('mobile-hidden');
-    }
     return;
   }
   if (!chat?.parent_id && !Object.values(S.subrooms).some(arr=>arr.some(s=>s.id===chatId))) {
