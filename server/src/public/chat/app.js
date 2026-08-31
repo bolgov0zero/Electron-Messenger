@@ -387,8 +387,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('ctx-chat-menu').style.display = 'none';
     if (!e.target.closest('#mention-popup')) hideMentionPopup();
     if (!e.target.closest('.composer-pill')) closeEmojiPicker();
+    if (!e.target.closest('#reaction-picker')) hideReactionPicker();
   });
-  document.addEventListener('keydown', e => { if(e.key==='Escape'){ hideCtxMenu(); closeSettings(); }});
+  document.addEventListener('keydown', e => { if(e.key==='Escape'){ hideCtxMenu(); hideReactionPicker(); closeSettings(); }});
 
   document.addEventListener('visibilitychange', refreshActivity);
   // На десктопе окно может быть видимым, но не в фокусе (за другим окном) — тогда
@@ -1710,6 +1711,36 @@ function sendReaction(messageId, reaction) {
 function ctxReact(reaction) {
   hideCtxMenu();
   sendReaction(S.ctx.messageId, reaction);
+}
+
+function showReactionPicker(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('ctx-menu');
+  const x = parseInt(menu.style.left);
+  const y = parseInt(menu.style.top);
+  menu.classList.remove('open');
+  const picker = document.getElementById('reaction-picker');
+  picker.innerHTML = `<div class="rp-grid">${EMOJIS.map(em=>`<button class="rp-btn" onclick="pickerReact('${em}')">${em}</button>`).join('')}</div>`;
+  picker.style.left = '-9999px'; picker.style.top = '-9999px';
+  picker.classList.add('open');
+  const pw = picker.offsetWidth, ph = picker.offsetHeight;
+  const margin = 6;
+  let px = x, py = y;
+  if (px + pw + margin > window.innerWidth) px = window.innerWidth - pw - margin;
+  if (py + ph + margin > window.innerHeight) py = y - ph;
+  if (py < margin) py = margin;
+  if (px < margin) px = margin;
+  picker.style.left = px + 'px';
+  picker.style.top = py + 'px';
+}
+
+function pickerReact(reaction) {
+  document.getElementById('reaction-picker').classList.remove('open');
+  sendReaction(S.ctx.messageId, reaction);
+}
+
+function hideReactionPicker() {
+  document.getElementById('reaction-picker').classList.remove('open');
 }
 
 // ── SEND / EDIT ──

@@ -1791,6 +1791,26 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 .ctx-reaction-btn:hover {
   background: var(--hover-row);
 }
+.ctx-reaction-more {
+  font-size: 13px; color: var(--text2); font-weight: 600;
+}
+#reaction-picker {
+  position: fixed; z-index: 9999;
+  background: var(--menu-bg); border: 1px solid var(--border);
+  border-radius: 12px; padding: 8px;
+  box-shadow: 0 30px 60px rgba(0,0,0,.5);
+  display: none;
+}
+#reaction-picker.open { display: block; }
+.rp-grid {
+  display: grid; grid-template-columns: repeat(6,1fr); gap: 2px;
+}
+.rp-btn {
+  font-size: 20px; padding: 5px; border-radius: 6px;
+  background: none; border: none; cursor: pointer;
+  transition: background .1s; line-height: 1;
+}
+.rp-btn:hover { background: var(--hover-row); }
 
 /* ── NEW CHAT TABS ── */
 .nc-tabs { display: flex; background: var(--search-bg); border: 1px solid var(--border); border-radius: 10px; padding: 4px; gap: 4px; margin-bottom: 14px; }

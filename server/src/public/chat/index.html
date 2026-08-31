@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=1.2.117">
+<link rel="stylesheet" href="style.css?v=1.2.129">
 </head>
 <body>
 
@@ -213,7 +213,7 @@
     <button class="ctx-reaction-btn" data-r="🔥" onclick="ctxReact(this.dataset.r)">🔥</button>
     <button class="ctx-reaction-btn" data-r="🎉" onclick="ctxReact(this.dataset.r)">🎉</button>
     <button class="ctx-reaction-btn" data-r="😢" onclick="ctxReact(this.dataset.r)">😢</button>
-    <button class="ctx-reaction-btn" data-r="😡" onclick="ctxReact(this.dataset.r)">😡</button>
+    <button class="ctx-reaction-btn ctx-reaction-more" onclick="showReactionPicker(event)">→</button>
   </div>
   <button id="ctx-reply-btn" onclick="ctxReply()">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
@@ -263,6 +263,7 @@
 </div>
 
 <div id="mention-popup"></div>
-<script src="app.js?v=1.2.117"></script>
+<div id="reaction-picker"></div>
+<script src="app.js?v=1.2.129"></script>
 </body>
 </html>
