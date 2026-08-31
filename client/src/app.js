@@ -1993,7 +1993,8 @@ function hideCtxMenu() {
   document.getElementById('ctx-menu').classList.remove('open');
 }
 
-function showReactionPicker() {
+function showReactionPicker(e) {
+  e.stopPropagation();
   const menu = document.getElementById('ctx-menu');
   const x = parseInt(menu.style.left);
   const y = parseInt(menu.style.top);
