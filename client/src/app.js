@@ -846,7 +846,7 @@ function openSearchResult(chatId, msgId) {
 }
 
 // ── SUB-ROOMS ──
-async function loadSubrooms(roomId) {
+async function loadSubrooms(roomId, { render = false } = {}) {
   const subs = await api('GET', `/chats/${roomId}/subrooms`);
   if (!subs) return;
   S.subrooms[roomId] = subs;
@@ -854,7 +854,7 @@ async function loadSubrooms(roomId) {
     if (!(s.id in S.unread)) S.unread[s.id] = s.unread || 0;
     if (!(s.id in S.unreadMentions)) S.unreadMentions[s.id] = s.unread_mentions || 0;
   });
-  renderSubroomsPanel(roomId);
+  if (render) renderSubroomsPanel(roomId);
 }
 
 function renderSubroomsPanel(roomId) {
@@ -905,10 +905,11 @@ async function openChat(chatId, aroundId = null) {
   }
   if (chat?.has_subrooms) {
     // Комната с подкомнатами — показываем панель, не открываем чат напрямую
+    S.activeChatId = null;
     S.activeRoomId = chatId;
     S.activeSubroomId = null;
     renderChatList();
-    await loadSubrooms(chatId);
+    await loadSubrooms(chatId, { render: true });
     document.getElementById('chat-main').innerHTML = `<div class="empty-state">
       <div class="empty-icon" style="font-size:36px">📋</div>
       <p>Выберите подкомнату</p>
