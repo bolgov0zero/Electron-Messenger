@@ -1807,9 +1807,9 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 }
 #reaction-picker {
   position: fixed; z-index: 9999;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 10px; padding: 8px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.28);
+  background: var(--menu-bg); border: 1px solid var(--border);
+  border-radius: 12px; padding: 8px;
+  box-shadow: 0 30px 60px rgba(0,0,0,.5);
   display: none;
 }
 #reaction-picker.open { display: block; }
