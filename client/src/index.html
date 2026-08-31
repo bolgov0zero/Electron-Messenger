@@ -273,7 +273,7 @@
     <button class="ctx-reaction-btn" data-r="🔥" onclick="ctxReact(this.dataset.r)">🔥</button>
     <button class="ctx-reaction-btn" data-r="🎉" onclick="ctxReact(this.dataset.r)">🎉</button>
     <button class="ctx-reaction-btn" data-r="😢" onclick="ctxReact(this.dataset.r)">😢</button>
-    <button class="ctx-reaction-btn" data-r="😡" onclick="ctxReact(this.dataset.r)">😡</button>
+    <button class="ctx-reaction-btn ctx-reaction-more" onclick="showReactionPicker()">→</button>
   </div>
   <button id="ctx-reply-btn" onclick="ctxReply()">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
@@ -296,6 +296,9 @@
     Удалить
   </button>
 </div>
+
+<!-- Reaction picker -->
+<div id="reaction-picker"></div>
 
 <!-- Message info modal -->
 <div class="modal-bg" id="modal-msg-info" onclick="if(event.target===this)closeModal('modal-msg-info')">
