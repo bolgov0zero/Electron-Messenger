@@ -758,34 +758,68 @@ async function loadSubrooms(roomId) {
 }
 
 function renderSubroomsPanel(roomId) {
-  const panel = document.getElementById('subrooms-panel');
   const subs = S.subrooms[roomId] || [];
   if (!subs.length) { closeSubroomsPanel(); return; }
-  panel.classList.add('open');
-  const isMob = _isMobile();
-  const backBtn = isMob ? `<div class="subrooms-panel-back" onclick="closeSubroomsPanel(true)">← Все чаты</div>` : '';
-  const items = subs.map(s => {
-    const unread = S.unread[s.id] || 0;
-    const badge = unread ? `<span class="subroom-unread">${unread > 99 ? '99+' : unread}</span>` : '';
-    const bg = avatarColor(s.id);
-    const letter = (s.name||'?')[0].toUpperCase();
-    const avStyle = s.has_avatar
-      ? `style="background-color:${bg};background-image:url('/api/chats/${s.id}/avatar');background-size:cover;background-position:center"`
-      : `style="background:${bg}"`;
-    return `<div class="subroom-item${S.activeSubroomId===s.id?' active':''}" onclick="openSubroom(${s.id})">
-      <div class="sr-av" ${avStyle}>${s.has_avatar?'':letter}</div>
-      <span class="sr-name">${esc(s.name)}</span>
-      ${badge}
-    </div>`;
-  }).join('');
   const roomName = S.chats.find(c=>c.id===roomId)?.name || 'Комната';
-  panel.innerHTML = `${backBtn}<div class="subrooms-panel-header">${esc(roomName)}</div>${items}`;
+
+  if (_isMobile()) {
+    // На мобильном — заменяем содержимое sidebar
+    const chatsList = document.getElementById('chats-list');
+    const subroomsList = document.getElementById('subrooms-sidebar-list');
+    chatsList.style.display = 'none';
+    subroomsList.style.display = '';
+    const items = subs.map(s => {
+      const unread = S.unread[s.id] || 0;
+      const badge = unread ? `<div class="ci-badge">${unread > 99 ? '99+' : unread}</div>` : '';
+      const bg = avatarColor(s.id);
+      const letter = (s.name||'?')[0].toUpperCase();
+      const avEl = `<div class="av av-md av-sq" style="background:${bg};${s.has_avatar?`background-image:url('/api/chats/${s.id}/avatar');background-size:cover;background-position:center`:''}">${s.has_avatar?'':letter}</div>`;
+      return `<div class="chat-item${S.activeSubroomId===s.id?' active':''}" onclick="openSubroom(${s.id})">
+        <div class="av-wrap">${avEl}</div>
+        <div class="ci-body">
+          <div class="ci-top"><span class="ci-name">${esc(s.name)}</span>${badge}</div>
+          <div class="ci-last"><span class="ci-preview"># подкомната</span></div>
+        </div>
+      </div>`;
+    }).join('');
+    subroomsList.innerHTML = `<div class="chat-item" style="cursor:pointer;opacity:.7" onclick="closeSubroomsPanel(true)">
+      <div class="av-wrap"><div class="av av-md" style="background:var(--hover-row);display:flex;align-items:center;justify-content:center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </div></div>
+      <div class="ci-body"><div class="ci-top"><span class="ci-name" style="color:var(--accent)">← Назад к чатам</span></div></div>
+    </div>
+    <div style="padding:2px 14px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">${esc(roomName)}</div>
+    ${items}`;
+  } else {
+    // На десктопе — боковая панель между sidebar и чатом
+    const panel = document.getElementById('subrooms-panel');
+    panel.classList.add('open');
+    const items = subs.map(s => {
+      const unread = S.unread[s.id] || 0;
+      const badge = unread ? `<span class="subroom-unread">${unread > 99 ? '99+' : unread}</span>` : '';
+      const bg = avatarColor(s.id);
+      const letter = (s.name||'?')[0].toUpperCase();
+      const avStyle = s.has_avatar
+        ? `style="background-color:${bg};background-image:url('/api/chats/${s.id}/avatar');background-size:cover;background-position:center"`
+        : `style="background:${bg}"`;
+      return `<div class="subroom-item${S.activeSubroomId===s.id?' active':''}" onclick="openSubroom(${s.id})">
+        <div class="sr-av" ${avStyle}>${s.has_avatar?'':letter}</div>
+        <span class="sr-name">${esc(s.name)}</span>
+        ${badge}
+      </div>`;
+    }).join('');
+    panel.innerHTML = `<div class="subrooms-panel-header">${esc(roomName)}</div>${items}`;
+  }
 }
 
 function closeSubroomsPanel(goBack) {
   const panel = document.getElementById('subrooms-panel');
   panel.classList.remove('open');
   panel.innerHTML = '';
+  const subroomsList = document.getElementById('subrooms-sidebar-list');
+  const chatsList = document.getElementById('chats-list');
+  if (subroomsList) { subroomsList.style.display = 'none'; subroomsList.innerHTML = ''; }
+  if (chatsList) chatsList.style.display = '';
   if (goBack) {
     S.activeRoomId = null;
     S.activeSubroomId = null;
@@ -985,7 +1019,8 @@ function renderChatRow(c) {
   const peerId = getPeerUserId(c);
   const dot = peerId ? presenceDot(peerId) : '';
   const pinIcon = c.pinned ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);opacity:.7"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>` : '';
-  return `<div class="chat-item${c.id===S.activeChatId?' active':''}" data-chat-id="${c.id}" onclick="openChat(${c.id})" oncontextmenu="showChatCtx(event,${c.id})">
+  const isActive = c.id===S.activeChatId || c.id===S.activeRoomId;
+  return `<div class="chat-item${isActive?' active':''}" data-chat-id="${c.id}" onclick="openChat(${c.id})" oncontextmenu="showChatCtx(event,${c.id})">
     <div class="av-wrap">
       <div class="av av-md ${chatAvatarClass(c)}${c.type==='direct'?' av-round':' av-sq'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
       ${dot}

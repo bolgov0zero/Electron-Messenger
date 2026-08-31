@@ -442,14 +442,9 @@ body {
   min-width: 16px; height: 16px; padding: 0 4px;
   border-radius: 8px; display: flex; align-items: center; justify-content: center;
 }
-/* Mobile: sub-rooms panel replaces sidebar */
+/* Mobile: sub-rooms panel hidden, content shown inside sidebar instead */
 @media (max-width: 767px), (pointer: coarse) {
-  .subrooms-panel.open {
-    position: fixed; left: 0; top: 0; bottom: 0;
-    width: var(--sidebar-w); min-width: var(--sidebar-w);
-    z-index: 10;
-    border-right: 1px solid var(--border);
-  }
+  .subrooms-panel { display: none !important; }
 }
 
 /* ══════════════════════════════════════════
