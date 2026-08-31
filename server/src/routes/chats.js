@@ -207,11 +207,15 @@ router.delete('/:id/members/:userId', authMiddleware, (req, res) => {
   const isAdmin = req.user.is_admin;
   if (!isMember && !isAdmin) return res.status(403).json({ error: 'Forbidden' });
   const kickedId = Number(req.params.userId);
+  const chatId = Number(req.params.id);
   // Notify remaining members to reload, kicked user gets chat_deleted
-  const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(req.params.id, kickedId);
-  db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(req.params.id, kickedId);
+  const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chatId, kickedId);
+  const del = db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?');
+  del.run(chatId, kickedId);
+  db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId)
+    .forEach(s => { del.run(s.id, kickedId); sendTo(kickedId, { type: 'chat_deleted', chat_id: s.id }); });
   members.forEach(({ user_id: uid }) => sendTo(uid, { type: 'reload_chats' }));
-  sendTo(kickedId, { type: 'chat_deleted', chat_id: Number(req.params.id) });
+  sendTo(kickedId, { type: 'chat_deleted', chat_id: chatId });
   res.json({ ok: true });
 });
 

@@ -147,8 +147,13 @@ router.post('/rooms', (req, res) => {
 router.post('/chats/:id/members', (req, res) => {
   const { user_id } = req.body;
   if (!user_id) return res.status(400).json({ error: 'Missing user_id' });
-  db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)').run(req.params.id, Number(user_id));
-  sendTo(Number(user_id), { type: 'reload_chats' });
+  const chatId = Number(req.params.id);
+  const userId = Number(user_id);
+  const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
+  ins.run(chatId, userId);
+  db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId)
+    .forEach(s => ins.run(s.id, userId));
+  sendTo(userId, { type: 'reload_chats' });
   res.json({ ok: true });
 });
 
@@ -157,7 +162,10 @@ router.delete('/chats/:id/members/:userId', (req, res) => {
   const chatId = Number(req.params.id);
   const kickedId = Number(req.params.userId);
   const remaining = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chatId, kickedId);
-  db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(chatId, kickedId);
+  const del = db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?');
+  del.run(chatId, kickedId);
+  db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId)
+    .forEach(s => { del.run(s.id, kickedId); sendTo(kickedId, { type: 'chat_deleted', chat_id: s.id }); });
   remaining.forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
   sendTo(kickedId, { type: 'chat_deleted', chat_id: chatId });
   res.json({ ok: true });
