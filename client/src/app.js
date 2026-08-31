@@ -761,7 +761,9 @@ function renderChatList() {
 
 function renderChatRow(c) {
   const name = chatName(c);
-  const u = S.unread[c.id]||0;
+  const u = c.has_subrooms
+    ? (S.subrooms[c.id]||[]).reduce((sum,s)=>sum+(S.unread[s.id]||0),0)
+    : S.unread[c.id]||0;
   const lm = c.last_message;
   let preview = lm ? (lm.deleted ? 'Сообщение удалено' : ((lm.text ? lm.text.replace(/<[^>]*>/g, '') : '') || (lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
   if (preview.length>40) preview = preview.slice(0,40)+'…';
@@ -2243,12 +2245,10 @@ function connectWS() {
       const { message } = data;
       const chatId = message.chat_id;
       const parentId = message.parent_id || null;
-      // Обновляем last_message и unread для родительской комнаты если это подкомната
+      // Обновляем last_message родительской комнаты если это подкомната
       if (parentId) {
         const parentChat = S.chats.find(c=>c.id===parentId);
         if (parentChat) parentChat.last_message = message;
-        S.unread[chatId] = (S.unread[chatId]||0) + (message.sender_id !== S.user.id && S.activeChatId !== chatId ? 1 : 0);
-        if (S.activeRoomId === parentId) renderSubroomsPanel(parentId);
       }
       const chat = S.chats.find(c=>c.id===chatId) || (parentId ? S.chats.find(c=>c.id===parentId) : null);
       if (!parentId && chat) chat.last_message = message;
@@ -2289,6 +2289,7 @@ function connectWS() {
       }
       updateUnreadTotal();
       renderChatList();
+      if (parentId && S.activeRoomId === parentId) renderSubroomsPanel(parentId);
       if (!chat) loadChats();
     }
 

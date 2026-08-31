@@ -37,11 +37,12 @@ function enrichChat(chat, userId) {
     const ids = subrooms.map(s => s.id);
     const placeholders = ids.map(() => '?').join(',');
     last = db.prepare(`
-      SELECT m.id, m.text, m.sent_at, m.edited_at, m.deleted,
+      SELECT m.id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment,
         COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
       WHERE m.chat_id IN (${placeholders}) ORDER BY m.sent_at DESC LIMIT 1
     `).get(...ids);
+    if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
     unread = db.prepare(`
       SELECT COUNT(*) AS c FROM messages m
       LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
@@ -55,11 +56,12 @@ function enrichChat(chat, userId) {
     `).get(userId, ...ids, userId).c;
   } else {
     last = db.prepare(`
-      SELECT m.id, m.text, m.sent_at, m.edited_at, m.deleted,
+      SELECT m.id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment,
         COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
       WHERE m.chat_id = ? ORDER BY m.sent_at DESC LIMIT 1
     `).get(chat.id);
+    if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
     unread = db.prepare(`
       SELECT COUNT(*) AS c FROM messages m
       LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
