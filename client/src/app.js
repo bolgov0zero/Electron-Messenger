@@ -928,6 +928,7 @@ async function openChat(chatId, aroundId = null) {
     S.activeRoomId = null;
     S.activeSubroomId = null;
   }
+  if (S.editingMessageId) cancelEdit();
   S.activeChatId = chatId;
   _loadingChatId = chatId;
   S.chatHasMore = false;
@@ -1633,7 +1634,7 @@ function onMsgInput(el, silent = false) {
   autoResize(el);
   _updateMentionPopup(el);
   // Сохраняем черновик для текущего чата, чтобы он не терялся при переключении
-  if (S.activeChatId) {
+  if (S.activeChatId && !S.editingMessageId) {
     if (el.value) S.drafts[S.activeChatId] = el.value;
     else delete S.drafts[S.activeChatId];
     saveDrafts();
