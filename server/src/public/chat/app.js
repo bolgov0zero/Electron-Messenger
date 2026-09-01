@@ -751,8 +751,8 @@ async function loadSubrooms(roomId, { render = false } = {}) {
   if (!subs) return;
   S.subrooms[roomId] = subs;
   subs.forEach(s => {
-    if (!(s.id in S.unread)) S.unread[s.id] = s.unread || 0;
-    if (!(s.id in S.unreadMentions)) S.unreadMentions[s.id] = s.unread_mentions || 0;
+    S.unread[s.id] = Math.max(S.unread[s.id]||0, s.unread||0);
+    S.unreadMentions[s.id] = Math.max(S.unreadMentions[s.id]||0, s.unread_mentions||0);
   });
   if (render) renderSubroomsPanel(roomId);
 }
@@ -1010,6 +1010,9 @@ function renderChatRow(c) {
   const u = c.has_subrooms
     ? (S.subrooms[c.id]||[]).reduce((sum,s)=>sum+(S.unread[s.id]||0),0)
     : S.unread[c.id]||0;
+  const m = c.has_subrooms
+    ? (S.subrooms[c.id]||[]).reduce((sum,s)=>sum+(S.unreadMentions[s.id]||0),0)
+    : S.unreadMentions[c.id]||0;
   const lm = c.last_message;
   let preview = lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? lm.text.replace(/<[^>]*>/g, '') : (lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
   if (preview.length>40) preview = preview.slice(0,40)+'…';
@@ -1036,7 +1039,7 @@ function renderChatRow(c) {
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
         <span class="ci-preview ci-last" style="flex:1">${previewHtml}</span>
-        ${(S.unreadMentions[c.id]||0)>0?`<div class="unread-badge" style="background:var(--accent)" title="Вас упомянули">@</div>`:''}
+        ${m>0?`<div class="unread-badge" style="background:var(--accent)" title="Вас упомянули">@</div>`:''}
         ${u>0?`<div class="unread-badge">${u}</div>`:''}
       </div>
     </div>
@@ -2569,6 +2572,7 @@ function connectWS() {
     if (data.type==='chat_read') {
       // Чат прочитан на другом устройстве этого пользователя
       S.unread[data.chat_id] = 0;
+      S.unreadMentions[data.chat_id] = 0;
       updateUnreadTotal();
       renderChatList();
     }
