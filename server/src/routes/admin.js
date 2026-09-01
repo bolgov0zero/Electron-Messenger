@@ -20,6 +20,20 @@ function getDirSize(dir) {
   return total;
 }
 
+function deleteChatFiles(chatId) {
+  const rows = db.prepare('SELECT attachment FROM messages WHERE chat_id = ? AND attachment IS NOT NULL').all(chatId);
+  rows.forEach(r => {
+    try {
+      const att = JSON.parse(r.attachment);
+      [att?.url, att?.thumb].forEach(u => {
+        if (!u) return;
+        const fp = path.join(FILES_DIR, path.basename(u));
+        if (fs.existsSync(fp)) fs.unlinkSync(fp);
+      });
+    } catch {}
+  });
+}
+
 function getDirCount(dir) {
   try { return fs.readdirSync(dir).length; } catch { return 0; }
 }
@@ -153,7 +167,8 @@ router.post('/chats/:id/members', (req, res) => {
   ins.run(chatId, userId);
   db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId)
     .forEach(s => ins.run(s.id, userId));
-  sendTo(userId, { type: 'reload_chats' });
+  db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(chatId)
+    .forEach(({ user_id: uid }) => sendTo(uid, { type: 'reload_chats' }));
   res.json({ ok: true });
 });
 
@@ -527,10 +542,10 @@ router.patch('/subrooms/:id', (req, res) => {
 router.delete('/subrooms/:id', (req, res) => {
   const sub = db.prepare('SELECT id, parent_id FROM chats WHERE id = ? AND parent_id IS NOT NULL').get(Number(req.params.id));
   if (!sub) return res.status(404).json({ error: 'Not found' });
+  const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(sub.id);
+  deleteChatFiles(sub.id);
   db.prepare('DELETE FROM chats WHERE id = ?').run(sub.id);
-  const { sendTo } = require('../ws');
-  db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(sub.parent_id)
-    .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
+  members.forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
   res.json({ ok: true });
 });
 

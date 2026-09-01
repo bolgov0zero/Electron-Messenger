@@ -42,6 +42,7 @@ const S = {
 
 const SESSION_KEY = 'electron_v2';
 let _loadingMore = false;
+let _loadingChatId = null;
 const _avatarCache = new Map();
 let _fetchController = new AbortController();
 
@@ -751,8 +752,8 @@ async function loadSubrooms(roomId, { render = false } = {}) {
   if (!subs) return;
   S.subrooms[roomId] = subs;
   subs.forEach(s => {
-    S.unread[s.id] = Math.max(S.unread[s.id]||0, s.unread||0);
-    S.unreadMentions[s.id] = Math.max(S.unreadMentions[s.id]||0, s.unread_mentions||0);
+    S.unread[s.id] = s.unread || 0;
+    S.unreadMentions[s.id] = s.unread_mentions || 0;
   });
   if (render) renderSubroomsPanel(roomId);
 }
@@ -848,7 +849,6 @@ async function openSubroom(subroomId) {
   const parentId = S.activeRoomId;
   if (parentId) renderSubroomsPanel(parentId);
   await openChat(subroomId);
-  if (_isMobile()) openMobileChat();
 }
 
 function chatName(chat) {
@@ -1145,6 +1145,7 @@ async function openChat(chatId, aroundId = null) {
     S.activeSubroomId = null;
   }
   S.activeChatId = chatId;
+  _loadingChatId = chatId;
   S.chatHasMore = false;
   S.chatOldestId = null;
   S.chatHasMoreAfter = false;
@@ -1275,6 +1276,7 @@ async function openChat(chatId, aroundId = null) {
       addSwipeReply(msgsEl2);
     }
   }
+  _loadingChatId = null;
   if (S.activeChatId !== chatId) return;
 
   // Показываем панель чата до autoResize: chat-main нужен display:flex,
@@ -1432,7 +1434,8 @@ function sameTimeGroup(a, b) {
 function insertUnreadDivider(msgs, unreadCount) {
   if (!unreadCount) return;
   const others = msgs.filter(m => m.sender_id !== S.user.id && !m.deleted);
-  const firstUnread = others[others.length - unreadCount];
+  const count = Math.min(unreadCount, others.length);
+  const firstUnread = others[others.length - count];
   if (!firstUnread) return;
   const el = document.querySelector(`[data-msg-id="${firstUnread.id}"]`);
   const container = document.getElementById('messages');
@@ -2518,7 +2521,7 @@ function connectWS() {
       const chat = S.chats.find(c=>c.id===chatId) || (parentId ? S.chats.find(c=>c.id===parentId) : null);
       if (!parentId && chat) chat.last_message = message;
       // Если мы вглуби истории (низ не догружен) — не аппендим, придёт при догрузке
-      if (S.activeChatId===chatId && !S.chatHasMoreAfter) {
+      if (S.activeChatId===chatId && !S.chatHasMoreAfter && _loadingChatId !== chatId) {
         if (message.sender_id === S.user.id) {
           document.querySelector('[data-optimistic="1"]')?.remove();
         }

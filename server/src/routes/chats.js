@@ -51,9 +51,9 @@ function enrichChat(chat, userId) {
     unreadMentions = db.prepare(`
       SELECT COUNT(*) AS c FROM messages m
       LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id IN (${placeholders}) AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
+      WHERE m.chat_id IN (${placeholders}) AND m.sender_id != ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
         AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
-    `).get(userId, ...ids, userId).c;
+    `).get(userId, ...ids, userId, userId).c;
   } else {
     last = db.prepare(`
       SELECT m.id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment,
@@ -70,9 +70,9 @@ function enrichChat(chat, userId) {
     unreadMentions = db.prepare(`
       SELECT COUNT(*) AS c FROM messages m
       LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id = ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
+      WHERE m.chat_id = ? AND m.sender_id != ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
         AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
-    `).get(userId, chat.id, userId).c;
+    `).get(userId, chat.id, userId, userId).c;
   }
 
   return { ...chat, members, last_message: last || null, unread, unread_mentions: unreadMentions, has_subrooms: hasSubrooms };
@@ -107,9 +107,9 @@ router.get('/:id/subrooms', authMiddleware, (req, res) => {
     const unreadMentions = db.prepare(`
       SELECT COUNT(*) AS c FROM messages m
       LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id = ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
+      WHERE m.chat_id = ? AND m.sender_id != ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
         AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
-    `).get(userId, s.id, userId).c;
+    `).get(userId, s.id, userId, userId).c;
     const has_avatar = fs.existsSync(path2.join(AVATAR_DIR, `chat_${s.id}.jpg`));
     return { ...s, unread, unread_mentions: unreadMentions, has_avatar };
   });
@@ -134,7 +134,8 @@ router.post('/direct', authMiddleware, (req, res) => {
   if (existing) {
     // Unhide for requester if it was hidden
     db.prepare('UPDATE chat_members SET hidden_at = NULL WHERE chat_id = ? AND user_id = ?').run(existing.id, req.user.id);
-    return res.json(enrichChat(existing, req.user.id));
+    const existingChat = db.prepare('SELECT * FROM chats WHERE id = ?').get(existing.id);
+    return res.json(enrichChat(existingChat, req.user.id));
   }
   // Чат и участники — в одной транзакции, чтобы при сбое не оставался чат без участников
   const chatId = db.transaction(() => {
@@ -195,7 +196,6 @@ router.post('/:id/members', authMiddleware, (req, res) => {
   // Notify all members (including newly added) to reload chats
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(req.params.id);
   members.forEach(({ user_id: uid }) => sendTo(uid, { type: 'reload_chats' }));
-  sendTo(Number(user_id), { type: 'reload_chats' });
   res.json({ ok: true });
 });
 
@@ -208,12 +208,14 @@ router.delete('/:id/members/:userId', authMiddleware, (req, res) => {
   if (!isMember && !isAdmin) return res.status(403).json({ error: 'Forbidden' });
   const kickedId = Number(req.params.userId);
   const chatId = Number(req.params.id);
-  // Notify remaining members to reload, kicked user gets chat_deleted
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chatId, kickedId);
+  const subrooms = db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId);
   const del = db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?');
-  del.run(chatId, kickedId);
-  db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId)
-    .forEach(s => { del.run(s.id, kickedId); sendTo(kickedId, { type: 'chat_deleted', chat_id: s.id }); });
+  db.transaction(() => {
+    del.run(chatId, kickedId);
+    subrooms.forEach(s => del.run(s.id, kickedId));
+  })();
+  subrooms.forEach(s => sendTo(kickedId, { type: 'chat_deleted', chat_id: s.id }));
   members.forEach(({ user_id: uid }) => sendTo(uid, { type: 'reload_chats' }));
   sendTo(kickedId, { type: 'chat_deleted', chat_id: chatId });
   res.json({ ok: true });

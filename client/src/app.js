@@ -50,6 +50,7 @@ function refreshActivity() {
 
 // ── PAGINATION ──
 let _loadingMore = false; // флаг чтобы не делать двойной запрос
+let _loadingChatId = null;
 
 // ── AVATAR CACHE ──
 const _avatarCache = new Map(); // url -> true (loaded) | false (error)
@@ -856,8 +857,8 @@ async function loadSubrooms(roomId, { render = false } = {}) {
   if (!subs) return;
   S.subrooms[roomId] = subs;
   subs.forEach(s => {
-    S.unread[s.id] = Math.max(S.unread[s.id]||0, s.unread||0);
-    S.unreadMentions[s.id] = Math.max(S.unreadMentions[s.id]||0, s.unread_mentions||0);
+    S.unread[s.id] = s.unread || 0;
+    S.unreadMentions[s.id] = s.unread_mentions || 0;
   });
   if (render) renderSubroomsPanel(roomId);
 }
@@ -928,6 +929,7 @@ async function openChat(chatId, aroundId = null) {
     S.activeSubroomId = null;
   }
   S.activeChatId = chatId;
+  _loadingChatId = chatId;
   S.chatHasMore = false;
   S.chatOldestId = null;
   S.chatHasMoreAfter = false;
@@ -1058,6 +1060,7 @@ async function openChat(chatId, aroundId = null) {
     const msgsEl = document.getElementById('messages');
     if (msgsEl) msgsEl.addEventListener('scroll', onMessagesScroll, { passive: true });
   }
+  _loadingChatId = null;
   // Восстанавливаем черновик (если не переключились на другой чат пока грузились)
   if (S.activeChatId !== chatId) return;
   const inputEl = document.getElementById('msg-input');
@@ -1105,7 +1108,8 @@ function sameTimeGroup(a, b) {
 function insertUnreadDivider(msgs, unreadCount) {
   if (!unreadCount) return;
   const others = msgs.filter(m => m.sender_id !== S.user.id && !m.deleted);
-  const firstUnread = others[others.length - unreadCount];
+  const count = Math.min(unreadCount, others.length);
+  const firstUnread = others[others.length - count];
   if (!firstUnread) return;
   const el = document.querySelector(`[data-msg-id="${firstUnread.id}"]`);
   const container = document.getElementById('messages');
@@ -2256,7 +2260,7 @@ function connectWS() {
       const chat = S.chats.find(c=>c.id===chatId) || (parentId ? S.chats.find(c=>c.id===parentId) : null);
       if (!parentId && chat) chat.last_message = message;
       // Если мы вглуби истории (низ не догружен) — не аппендим, придёт при догрузке
-      if (S.activeChatId===chatId && !S.chatHasMoreAfter) {
+      if (S.activeChatId===chatId && !S.chatHasMoreAfter && _loadingChatId !== chatId) {
         // Убираем optimistic-заглушку если она есть (только для своих сообщений)
         if (message.sender_id === S.user.id) {
           document.querySelector('[data-optimistic="1"]')?.remove();
