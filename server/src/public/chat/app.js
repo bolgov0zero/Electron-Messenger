@@ -764,10 +764,19 @@ function renderSubroomsPanel(roomId) {
   const roomName = S.chats.find(c=>c.id===roomId)?.name || 'Комната';
 
   if (_isMobile()) {
-    // На мобильном — заменяем содержимое sidebar
     const chatsList = document.getElementById('chats-list');
     const sidebarSearch = document.querySelector('.sidebar-search');
     const subroomsList = document.getElementById('subrooms-sidebar-list');
+    // Шапка меняет содержимое (не прячется), чтобы не дёргалась
+    if (sidebarSearch) {
+      if (!sidebarSearch._origHtml) sidebarSearch._origHtml = sidebarSearch.innerHTML;
+      sidebarSearch.innerHTML = `<div class="search-wrap" style="gap:8px">
+        <button onclick="closeSubroomsPanel(true)" style="background:none;border:none;cursor:pointer;color:var(--accent);display:flex;align-items:center;padding:4px;margin-left:-4px;flex-shrink:0">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span style="font-size:15px;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(roomName)}</span>
+      </div>`;
+    }
     const items = subs.map(s => {
       const unread = S.unread[s.id] || 0;
       const badge = unread ? `<div class="ci-badge">${unread > 99 ? '99+' : unread}</div>` : '';
@@ -782,19 +791,30 @@ function renderSubroomsPanel(roomId) {
         </div>
       </div>`;
     }).join('');
-    subroomsList.innerHTML = `<div class="chat-item" style="cursor:pointer;opacity:.7" onclick="closeSubroomsPanel(true)">
-      <div class="av-wrap"><div class="av av-md" style="background:var(--hover-row);display:flex;align-items:center;justify-content:center">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-      </div></div>
-      <div class="ci-body"><div class="ci-top"><span class="ci-name" style="color:var(--accent)">Назад к чатам</span></div></div>
-    </div>
-    <div style="padding:2px 14px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">${esc(roomName)}</div>
-    ${items}`;
-    // Анимация открытия: subroomsList въезжает справа поверх списка чатов
-    subroomsList.style.position = 'absolute';
-    subroomsList.style.inset = '0';
-    subroomsList.style.zIndex = '1';
-    subroomsList.style.background = 'var(--side-bg)';
+    subroomsList.innerHTML = items;
+    // Анимация открытия: список въезжает справа, ниже шапки
+    const headerH = sidebarSearch ? sidebarSearch.offsetHeight : 0;
+    function _srAbsolute() {
+      subroomsList.style.position = 'absolute';
+      subroomsList.style.top = headerH + 'px';
+      subroomsList.style.left = '0';
+      subroomsList.style.right = '0';
+      subroomsList.style.bottom = '0';
+      subroomsList.style.zIndex = '1';
+      subroomsList.style.background = 'var(--side-bg)';
+    }
+    function _srReset() {
+      subroomsList.style.position = '';
+      subroomsList.style.top = '';
+      subroomsList.style.left = '';
+      subroomsList.style.right = '';
+      subroomsList.style.bottom = '';
+      subroomsList.style.zIndex = '';
+      subroomsList.style.background = '';
+      subroomsList.style.transform = '';
+      subroomsList.style.transition = '';
+    }
+    _srAbsolute();
     subroomsList.style.transform = 'translateX(100%)';
     subroomsList.style.transition = 'none';
     subroomsList.style.display = '';
@@ -803,15 +823,9 @@ function renderSubroomsPanel(roomId) {
     subroomsList.style.transform = '';
     subroomsList.addEventListener('transitionend', () => {
       chatsList.style.display = 'none';
-      if (sidebarSearch) sidebarSearch.style.display = 'none';
-      subroomsList.style.position = '';
-      subroomsList.style.inset = '';
-      subroomsList.style.zIndex = '';
-      subroomsList.style.background = '';
-      subroomsList.style.transform = '';
-      subroomsList.style.transition = '';
+      _srReset();
     }, { once: true });
-    // Свайп вправо на списке подкомнат = возврат к главному списку (с анимацией)
+    // Свайп вправо = возврат к списку чатов (с анимацией)
     if (!subroomsList._srSwipeInit) {
       subroomsList._srSwipeInit = true;
       let _srX = 0, _srY = 0, _srDir = false, _srGoing = false;
@@ -828,16 +842,9 @@ function renderSubroomsPanel(roomId) {
           _srDir = true;
           if (dx < 0) return;
           _srGoing = true;
-          // Показываем список чатов за суб-листом
           const cl = document.getElementById('chats-list');
-          const ss = document.querySelector('.sidebar-search');
           if (cl) cl.style.display = '';
-          if (ss) ss.style.display = '';
-          // Поднимаем subroomsList поверх как абсолютный слой
-          subroomsList.style.position = 'absolute';
-          subroomsList.style.inset = '0';
-          subroomsList.style.zIndex = '1';
-          subroomsList.style.background = 'var(--side-bg)';
+          _srAbsolute();
         }
         if (!_srGoing) return;
         subroomsList.style.transform = `translateX(${Math.max(0, dx)}px)`;
@@ -846,20 +853,14 @@ function renderSubroomsPanel(roomId) {
         if (!_srGoing) { _srDir = false; return; }
         const dx = e.changedTouches[0].clientX - _srX;
         subroomsList.style.transition = _CHAT_EASE;
-        function resetSr() {
-          subroomsList.style.position = '';
-          subroomsList.style.inset = '';
-          subroomsList.style.zIndex = '';
-          subroomsList.style.background = '';
-          subroomsList.style.transform = '';
-          subroomsList.style.transition = '';
-        }
         if (dx > 80) {
           subroomsList.style.transform = `translateX(100%)`;
           subroomsList.addEventListener('transitionend', () => {
-            resetSr();
+            _srReset();
             subroomsList.style.display = 'none';
             subroomsList.innerHTML = '';
+            const ss = document.querySelector('.sidebar-search');
+            if (ss && ss._origHtml) { ss.innerHTML = ss._origHtml; ss._origHtml = null; }
             S.activeRoomId = null; S.activeSubroomId = null;
             renderChatList();
           }, { once: true });
@@ -867,10 +868,8 @@ function renderSubroomsPanel(roomId) {
           subroomsList.style.transform = '';
           subroomsList.addEventListener('transitionend', () => {
             const cl = document.getElementById('chats-list');
-            const ss = document.querySelector('.sidebar-search');
             if (cl) cl.style.display = 'none';
-            if (ss) ss.style.display = 'none';
-            resetSr();
+            _srReset();
           }, { once: true });
         }
         _srGoing = false;
@@ -907,7 +906,10 @@ function closeSubroomsPanel(goBack) {
   if (subroomsList) { subroomsList.style.display = 'none'; subroomsList.innerHTML = ''; }
   if (chatsList) chatsList.style.display = '';
   const sidebarSearch = document.querySelector('.sidebar-search');
-  if (sidebarSearch) sidebarSearch.style.display = '';
+  if (sidebarSearch) {
+    sidebarSearch.style.display = '';
+    if (sidebarSearch._origHtml) { sidebarSearch.innerHTML = sidebarSearch._origHtml; sidebarSearch._origHtml = null; }
+  }
   if (goBack) {
     S.activeRoomId = null;
     S.activeSubroomId = null;
