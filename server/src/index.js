@@ -36,15 +36,6 @@ app.get(['/chat', '/chat/', '/chat/index.html'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public/chat/index.html'));
 });
 app.use('/chat', express.static(path.join(__dirname, 'public/chat')));
-app.get('/m/manifest.json', (req, res) => {
-  res.setHeader('Content-Type', 'application/manifest+json');
-  res.sendFile(path.join(__dirname, 'public/m/manifest.json'));
-});
-app.get(['/m', '/m/', '/m/index.html'], (req, res) => {
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.sendFile(path.join(__dirname, 'public/m/index.html'));
-});
-app.use('/m', express.static(path.join(__dirname, 'public/m')));
 app.use('/files', express.static(FILES_DIR));
 
 app.use('/api/auth', require('./routes/auth'));
