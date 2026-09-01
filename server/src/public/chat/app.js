@@ -765,8 +765,10 @@ function renderSubroomsPanel(roomId) {
   if (_isMobile()) {
     // На мобильном — заменяем содержимое sidebar
     const chatsList = document.getElementById('chats-list');
+    const sidebarSearch = document.querySelector('.sidebar-search');
     const subroomsList = document.getElementById('subrooms-sidebar-list');
     chatsList.style.display = 'none';
+    if (sidebarSearch) sidebarSearch.style.display = 'none';
     subroomsList.style.display = '';
     const items = subs.map(s => {
       const unread = S.unread[s.id] || 0;
@@ -786,10 +788,22 @@ function renderSubroomsPanel(roomId) {
       <div class="av-wrap"><div class="av av-md" style="background:var(--hover-row);display:flex;align-items:center;justify-content:center">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
       </div></div>
-      <div class="ci-body"><div class="ci-top"><span class="ci-name" style="color:var(--accent)">← Назад к чатам</span></div></div>
+      <div class="ci-body"><div class="ci-top"><span class="ci-name" style="color:var(--accent)">Назад к чатам</span></div></div>
     </div>
     <div style="padding:2px 14px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">${esc(roomName)}</div>
     ${items}`;
+    // Свайп вправо на списке подкомнат = возврат к главному списку
+    let _srStartX = 0, _srStartY = 0, _srLocked = false;
+    subroomsList.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) return;
+      _srStartX = e.touches[0].clientX; _srStartY = e.touches[0].clientY; _srLocked = false;
+    }, { passive: true });
+    subroomsList.addEventListener('touchend', e => {
+      if (_srLocked) return;
+      const dx = e.changedTouches[0].clientX - _srStartX;
+      const dy = e.changedTouches[0].clientY - _srStartY;
+      if (dx > 60 && Math.abs(dy) < Math.abs(dx)) closeSubroomsPanel(true);
+    }, { passive: true });
   } else {
     // На десктопе — боковая панель между sidebar и чатом
     const panel = document.getElementById('subrooms-panel');
@@ -820,6 +834,8 @@ function closeSubroomsPanel(goBack) {
   const chatsList = document.getElementById('chats-list');
   if (subroomsList) { subroomsList.style.display = 'none'; subroomsList.innerHTML = ''; }
   if (chatsList) chatsList.style.display = '';
+  const sidebarSearch = document.querySelector('.sidebar-search');
+  if (sidebarSearch) sidebarSearch.style.display = '';
   if (goBack) {
     S.activeRoomId = null;
     S.activeSubroomId = null;
