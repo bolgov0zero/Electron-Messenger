@@ -62,7 +62,6 @@ html.font-large  { font-size: 18px; }
 html, body {
   height: 100%;
   overflow: hidden;
-  background: var(--bg);
   color: var(--text);
 }
 body {
@@ -70,6 +69,7 @@ body {
   inset: 0;
   display: flex;
   flex-direction: column;
+  background: var(--surface);
 }
 
 /* ── LOGIN ── */
@@ -129,6 +129,7 @@ body {
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  background: var(--bg);
 }
 .screens-wrap {
   flex: 1;
@@ -291,7 +292,7 @@ body {
   position: absolute;
   right: 0; top: 0; bottom: 0;
   display: flex;
-  z-index: 0;
+  pointer-events: none;
 }
 .cra-btn {
   width: 76px;
@@ -324,7 +325,6 @@ body {
   will-change: transform;
   user-select: none;
   position: relative;
-  z-index: 1;
   width: 100%;
 }
 .chat-row:active { background: var(--hover); }
@@ -436,7 +436,7 @@ html.light .pinned-section .chat-row { background: rgba(0,0,0,.02); }
 /* ── FAB ── */
 .fab {
   position: absolute;
-  bottom: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   right: 20px;
   width: 56px;
   height: 56px;
@@ -898,7 +898,7 @@ html.light .irc-reply { background: rgba(36,129,204,.06); }
 /* ── TOAST ── */
 .toast {
   position: absolute;
-  bottom: 80px;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%) translateY(10px);
   background: rgba(0,0,0,.7);

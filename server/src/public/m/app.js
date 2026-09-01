@@ -459,7 +459,6 @@ function chatName(chat) {
 
 function chatIcon(chat) {
   if (!chat) return '?';
-  if (chat.type === 'room') return '🏠';
   return initials(chatName(chat));
 }
 
@@ -577,7 +576,15 @@ function buildChatRow(c) {
     ? `<div class="cr-mention">@</div><div class="cr-badge">${unread > 99 ? '99+' : unread}</div>`
     : unread > 0 ? `<div class="cr-badge">${unread > 99 ? '99+' : unread}</div>` : '';
 
-  const rowHtml = `<div class="chat-row" data-chat-id="${c.id}" onclick="openChat(${c.id})">
+  const rowHtml = `<div class="chat-row-actions">
+    <button class="cra-btn cra-pin" onclick="pinChat(${c.id},event)">
+      <span class="cra-btn-icon">📌</span>${c.pinned ? 'Открепить' : 'Закрепить'}
+    </button>
+    <button class="cra-btn cra-delete" onclick="deleteChatConfirm(${c.id},event)">
+      <span class="cra-btn-icon">🗑</span>Удалить
+    </button>
+  </div>
+  <div class="chat-row" data-chat-id="${c.id}" onclick="openChat(${c.id})">
     <div class="cr-av ${color}${isSq?' sq':''}" data-av-chat="${c.id}"><span class="cr-av-text">${icon}</span>${isOnline?'<div class="online-dot"></div>':''}</div>
     <div class="cr-body">
       <div class="cr-top">
@@ -590,14 +597,6 @@ function buildChatRow(c) {
         ${badgeHtml}
       </div>
     </div>
-  </div>
-  <div class="chat-row-actions">
-    <button class="cra-btn cra-pin" onclick="pinChat(${c.id},event)">
-      <span class="cra-btn-icon">${c.pinned?'📌':'📌'}</span>${c.pinned ? 'Открепить' : 'Закрепить'}
-    </button>
-    <button class="cra-btn cra-delete" onclick="deleteChatConfirm(${c.id},event)">
-      <span class="cra-btn-icon">🗑</span>Удалить
-    </button>
   </div>`;
 
   return `<div class="chat-row-wrap" data-key="chat-${c.id}">${rowHtml}</div>`;
@@ -698,9 +697,11 @@ function initChatRowSwipe(wrap) {
 
 function snapRow(wrap, toX) {
   const row = wrap.querySelector('.chat-row');
+  const actions = wrap.querySelector('.chat-row-actions');
   if (!row) return;
   row.style.transition = 'transform .25s cubic-bezier(.32,.72,0,1)';
   row.style.transform = toX === 0 ? '' : `translateX(${toX}px)`;
+  if (actions) actions.style.pointerEvents = toX === 0 ? 'none' : '';
 }
 
 function closeAllRows() {
