@@ -768,9 +768,6 @@ function renderSubroomsPanel(roomId) {
     const chatsList = document.getElementById('chats-list');
     const sidebarSearch = document.querySelector('.sidebar-search');
     const subroomsList = document.getElementById('subrooms-sidebar-list');
-    chatsList.style.display = 'none';
-    if (sidebarSearch) sidebarSearch.style.display = 'none';
-    subroomsList.style.display = '';
     const items = subs.map(s => {
       const unread = S.unread[s.id] || 0;
       const badge = unread ? `<div class="ci-badge">${unread > 99 ? '99+' : unread}</div>` : '';
@@ -793,6 +790,27 @@ function renderSubroomsPanel(roomId) {
     </div>
     <div style="padding:2px 14px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">${esc(roomName)}</div>
     ${items}`;
+    // Анимация открытия: subroomsList въезжает справа поверх списка чатов
+    subroomsList.style.position = 'absolute';
+    subroomsList.style.inset = '0';
+    subroomsList.style.zIndex = '1';
+    subroomsList.style.background = 'var(--side-bg)';
+    subroomsList.style.transform = 'translateX(100%)';
+    subroomsList.style.transition = 'none';
+    subroomsList.style.display = '';
+    subroomsList.offsetHeight; // force reflow
+    subroomsList.style.transition = _CHAT_EASE;
+    subroomsList.style.transform = '';
+    subroomsList.addEventListener('transitionend', () => {
+      chatsList.style.display = 'none';
+      if (sidebarSearch) sidebarSearch.style.display = 'none';
+      subroomsList.style.position = '';
+      subroomsList.style.inset = '';
+      subroomsList.style.zIndex = '';
+      subroomsList.style.background = '';
+      subroomsList.style.transform = '';
+      subroomsList.style.transition = '';
+    }, { once: true });
     // Свайп вправо на списке подкомнат = возврат к главному списку (с анимацией)
     if (!subroomsList._srSwipeInit) {
       subroomsList._srSwipeInit = true;
