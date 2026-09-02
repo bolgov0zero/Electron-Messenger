@@ -249,7 +249,7 @@ function mobileSlideTo(panel, title = '') {
   } else {
     if (backBtn) backBtn.style.display = 'flex';
     if (account) account.style.display = 'none';
-    if (titleEl) { titleEl.textContent = title; titleEl.style.display = title ? '' : 'none'; }
+    if (titleEl) { titleEl.textContent = title; titleEl.style.display = title ? 'block' : 'none'; }
     if (actions) actions.style.display = 'none';
   }
 }
