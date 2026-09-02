@@ -2298,10 +2298,109 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
   }
   /* Верхний баннер уведомлений — прижимаем ширину, не тянем через right:0 */
   .notif-banner { right: auto; width: var(--vw100); }
+
+  /* ── Mobile topbar ── */
+  #mobile-topbar {
+    display: flex;
+    align-items: center;
+    height: 52px;
+    min-height: 52px;
+    padding: env(safe-area-inset-top, 0px) 10px 0;
+    gap: 4px;
+    background: var(--sidebar-bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    box-sizing: content-box;
+  }
+  .mtb-back {
+    display: none;
+    width: 40px; height: 40px;
+    align-items: center; justify-content: center;
+    background: none; border: none;
+    color: var(--accent); cursor: pointer;
+    flex-shrink: 0; border-radius: 10px;
+  }
+  .mtb-back:active { background: var(--hover-row); }
+  .mtb-account {
+    display: flex; align-items: center; gap: 8px;
+    flex: 1; min-width: 0; overflow: hidden;
+  }
+  .mtb-av { width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; }
+  .mtb-name {
+    font-size: 13px; font-weight: 600; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .mtb-title {
+    display: none; flex: 1; min-width: 0;
+    font-size: 15px; font-weight: 600; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .mtb-actions { display: flex; gap: 2px; flex-shrink: 0; margin-left: auto; }
+
+  /* ── Mobile slider ── */
+  .app-body { overflow: hidden; }
+
+  #mobile-track {
+    display: flex;
+    flex-direction: row;
+    width: calc(3 * var(--vw100));
+    height: 100%;
+    transform: translateX(0);
+    transition: transform .32s cubic-bezier(.32,.72,0,1);
+    will-change: transform;
+  }
+  #mobile-track.mp-2 { transform: translateX(calc(-1 * var(--vw100))); }
+  #mobile-track.mp-3 { transform: translateX(calc(-2 * var(--vw100))); }
+
+  /* Panel 1: sidebar — перекрываем fixed-позиционирование */
+  .sidebar {
+    position: relative !important;
+    top: auto !important; left: auto !important;
+    z-index: auto !important;
+    width: var(--vw100) !important;
+    min-width: var(--vw100) !important;
+    height: 100%;
+    transform: none !important;
+    transition: none !important;
+    padding-top: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    flex-shrink: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .sidebar.mobile-hidden { transform: none !important; }
+
+  /* Panel 2: mobile subrooms */
+  #mobile-subrooms {
+    display: flex;
+    flex-direction: column;
+    width: var(--vw100);
+    min-width: var(--vw100);
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: var(--sidebar-bg);
+    flex-shrink: 0;
+  }
+
+  /* Panel 3: chat — всегда видим, размер фиксирован */
+  .chat-main {
+    display: flex !important;
+    width: var(--vw100) !important;
+    min-width: var(--vw100) !important;
+    flex: 0 0 var(--vw100) !important;
+  }
+
+  /* Скрываем элементы, замещённые топбаром/слайдером */
+  .sidebar-account { display: none !important; }
+  #subrooms-panel { display: none !important; }
 }
 
 /* Desktop: hide mobile-only elements */
 @media (min-width: 768px) and (pointer: fine) {
+  #mobile-topbar { display: none !important; }
+  #mobile-track { display: contents; }
+  #mobile-subrooms { display: none !important; }
   .mobile-back-btn { display: none !important; }
   .sa-newchat { display: none !important; }
   .sa-theme { display: none !important; }
