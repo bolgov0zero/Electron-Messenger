@@ -1058,7 +1058,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   z-index: 10;
 }
 .ep-grid.open {
-  max-height: 180px;
+  max-height: 280px;
   opacity: 1;
   pointer-events: auto;
 }
@@ -1067,10 +1067,9 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   background: var(--hover-row); border-radius: 8px 8px 0 0;
 }
 .ep-sep { height: 1px; background: var(--border); margin: 0 6px 4px; }
-.ep-scroll { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; padding: 0 6px 6px; }
+.ep-scroll { overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; padding: 0 6px 6px; max-height: 200px; }
 .ep-grid-inner {
-  display: grid; grid-template-rows: repeat(3, 30px); grid-auto-flow: column;
-  grid-auto-columns: 30px; gap: 2px; width: max-content;
+  display: grid; grid-template-columns: repeat(10, 30px); gap: 2px;
 }
 
 .composer-icon-btn {
@@ -1867,10 +1866,9 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 #reaction-picker.open { display: block; }
 .rp-freq { display: flex; gap: 2px; padding: 4px; background: var(--hover-row); border-radius: 8px; margin-bottom: 2px; }
 .rp-sep { height: 1px; background: var(--border); margin: 4px 0; }
-.rp-scroll { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.rp-scroll { overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; max-height: 200px; }
 .rp-grid {
-  display: grid; grid-template-rows: repeat(3, auto); grid-auto-flow: column;
-  grid-auto-columns: 34px; gap: 2px; width: max-content;
+  display: grid; grid-template-columns: repeat(6, 34px); gap: 2px;
 }
 .rp-btn {
   font-size: 20px; padding: 5px; border-radius: 6px;
