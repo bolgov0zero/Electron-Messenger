@@ -1030,7 +1030,7 @@ async function openChat(chatId, aroundId = null) {
           </button>
         </div>
         <div class="composer-pill" id="composer-pill">
-          <div class="ep-grid" id="ep-grid"><div class="ep-grid-inner">${EMOJIS.map(em=>`<button class="emoji-item" onclick="insertEmoji('${em}')">${em}</button>`).join('')}</div></div>
+          <div class="ep-grid" id="ep-grid"><div class="ep-freq"></div><div class="ep-sep"></div><div class="ep-scroll"><div class="ep-grid-inner">${EMOJIS.map(em=>`<button class="emoji-item" onclick="insertEmoji('${em}')">${em}</button>`).join('')}</div></div></div>
           <button class="composer-icon-btn" title="Эмодзи" onclick="toggleEmojiPicker(event)">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 3 4 3 4-3 4-3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
           </button>
@@ -1089,7 +1089,23 @@ async function openChat(chatId, aroundId = null) {
 }
 
 // ── EMOJI PICKER ──
-const EMOJIS = ['😀','😂','😍','😎','🤔','😭','😡','👍','👎','❤️','🔥','🎉','👏','🙏','💪','🤝','😊','🥳','😴','🤣','💯','✅','❌','🚀','⭐','💡','📌','🎯','💬','📷'];
+const EMOJIS = [
+  '😀','😂','😍','😎','🤔','😭','😡','😊','🥳','🤣',
+  '😆','😅','🙄','😬','🥺','😱','😤','😔','🥰','😇',
+  '🤩','😋','😏','🤭','🤫','🥹','😴','🤦','🤷','😳',
+  '👍','👎','👏','🙏','💪','🤝','🤌','🫶','🙌','👀',
+  '❤️','🔥','🎉','💔','🌟','🏆','🎊','💫','🎈','🌈',
+  '💯','✅','❌','🚀','⭐','💡','📌','🎯','💬','📷',
+];
+const EMOJIS_DEFAULT_FREQ = ['👍','❤️','😂','🔥','😎','🎉','😭','🤔'];
+function getEmojiFreq() { try { return JSON.parse(localStorage.getItem('emoji_freq')||'{}'); } catch { return {}; } }
+function trackEmojiUse(em) { const f=getEmojiFreq(); f[em]=(f[em]||0)+1; try { localStorage.setItem('emoji_freq',JSON.stringify(f)); } catch {} }
+function getFreqEmojis(n) {
+  const f=getEmojiFreq();
+  const sorted=Object.entries(f).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+  for (const em of EMOJIS_DEFAULT_FREQ) { if (sorted.length>=n) break; if (!sorted.includes(em)) sorted.push(em); }
+  return sorted.slice(0,n);
+}
 
 function closeEmojiPicker() {
   document.getElementById('ep-grid')?.classList.remove('open');
@@ -1097,10 +1113,16 @@ function closeEmojiPicker() {
 
 function toggleEmojiPicker(e) {
   e.stopPropagation();
-  document.getElementById('ep-grid')?.classList.toggle('open');
+  const panel = document.getElementById('ep-grid');
+  if (!panel) return;
+  if (panel.classList.contains('open')) { panel.classList.remove('open'); return; }
+  const freqEl = panel.querySelector('.ep-freq');
+  if (freqEl) freqEl.innerHTML = getFreqEmojis(8).map(em=>`<button class="emoji-item" onclick="insertEmoji('${em}')">${em}</button>`).join('');
+  panel.classList.add('open');
 }
 
 function insertEmoji(em) {
+  trackEmojiUse(em);
   const input = document.getElementById('msg-input');
   if (!input) return;
   const start = input.selectionStart, end = input.selectionEnd;
@@ -1543,6 +1565,7 @@ function sendReaction(messageId, reaction) {
 }
 
 function ctxReact(reaction) {
+  trackEmojiUse(reaction);
   hideCtxMenu();
   sendReaction(S.ctx.messageId, reaction);
 }
@@ -1780,6 +1803,11 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
   document.getElementById('ctx-edit-btn').style.display = (isMine && S.ctx.canEdit) ? '' : 'none';
   document.getElementById('ctx-delete-btn').style.display = isMine ? '' : 'none';
   document.getElementById('ctx-info-btn').style.display = isMine ? '' : 'none';
+  const ctxReactEl = menu.querySelector('.ctx-reactions');
+  if (ctxReactEl) {
+    const _freq = getFreqEmojis(7);
+    ctxReactEl.innerHTML = _freq.map(em=>`<button class="ctx-reaction-btn" onclick="ctxReact('${em}')">${em}</button>`).join('')+`<button class="ctx-reaction-btn ctx-reaction-more" onclick="showReactionPicker(event)">→</button>`;
+  }
   // Сначала показываем чтобы получить реальные размеры
   menu.style.top = '-9999px'; menu.style.left = '-9999px';
   menu.classList.add('open');
@@ -2105,7 +2133,11 @@ function showReactionPicker(e) {
   const y = parseInt(menu.style.top);
   menu.classList.remove('open');
   const picker = document.getElementById('reaction-picker');
-  picker.innerHTML = `<div class="rp-grid">${EMOJIS.map(em=>`<button class="rp-btn" onclick="pickerReact('${em}')">${em}</button>`).join('')}</div>`;
+  const _rpFreq = getFreqEmojis(8);
+  picker.innerHTML =
+    `<div class="rp-freq">${_rpFreq.map(em=>`<button class="rp-btn" onclick="pickerReact('${em}')">${em}</button>`).join('')}</div>` +
+    `<div class="rp-sep"></div>` +
+    `<div class="rp-scroll"><div class="rp-grid">${EMOJIS.map(em=>`<button class="rp-btn" onclick="pickerReact('${em}')">${em}</button>`).join('')}</div></div>`;
   picker.style.left = '-9999px'; picker.style.top = '-9999px';
   picker.classList.add('open');
   const pw = picker.offsetWidth, ph = picker.offsetHeight;
@@ -2120,6 +2152,7 @@ function showReactionPicker(e) {
 }
 
 function pickerReact(reaction) {
+  trackEmojiUse(reaction);
   document.getElementById('reaction-picker').classList.remove('open');
   sendReaction(S.ctx.messageId, reaction);
 }
