@@ -831,6 +831,16 @@ function renderSubroomsPanel(roomId) {
       </div>`;
     }).join('');
     mp.innerHTML = `<div style="padding:10px 14px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">${esc(roomName)}</div>${items}`;
+    if (!mp._swipeInit) {
+      mp._swipeInit = true;
+      let _sx = 0, _sy = 0;
+      mp.addEventListener('touchstart', e => { _sx = e.touches[0].clientX; _sy = e.touches[0].clientY; }, { passive: true });
+      mp.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].clientX - _sx;
+        const dy = e.changedTouches[0].clientY - _sy;
+        if (dx > 60 && Math.abs(dy) < Math.abs(dx)) mobileSlideBack();
+      }, { passive: true });
+    }
     mobileSlideTo(2);
   } else {
     // На десктопе — боковая панель между sidebar и чатом
@@ -1313,14 +1323,18 @@ async function openChat(chatId, aroundId = null) {
 
   // Показываем панель чата
   if (_isMobile()) {
-    const chat = S.chats.find(c=>c.id===chatId) || (() => {
+    let _slideTitle = '';
+    const _directChat = S.chats.find(c=>c.id===chatId);
+    if (_directChat) {
+      _slideTitle = chatName(_directChat);
+    } else {
       for (const subs of Object.values(S.subrooms)) {
         const s = subs.find(s=>s.id===chatId);
-        if (s) return s;
+        if (s) { _slideTitle = s.name || ''; break; }
       }
-    })();
+    }
     _mobileFromSubrooms = _mobilePanel === 2;
-    mobileSlideTo(3, chat ? chatName(chat) : '');
+    mobileSlideTo(3, _slideTitle);
   } else {
     openMobileChat();
   }
@@ -1375,12 +1389,12 @@ function addSwipeReply(container) {
       if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 6) return;
       dirLocked = true;
     }
-    if (dx <= 0) { // ответ — только свайп вправо
+    if (dx >= 0) { // ответ — только свайп влево
       swipeEl.style.transform = ''; swipeEl.style.transition = 'transform .2s';
       swipeEl = null; return;
     }
     e.preventDefault();
-    const shift = Math.min(dx * 0.45, 50);
+    const shift = Math.max(dx * 0.45, -50);
     swipeEl.style.transform = `translateX(${shift}px)`;
     swipeEl.style.transition = 'none';
   }, { passive: false });
@@ -1412,7 +1426,7 @@ function addSwipeReply(container) {
     if (!swipeEl) return;
     swipeEl.style.transform = '';
     swipeEl.style.transition = 'transform .25s ease';
-    if (dx > 50) {
+    if (dx < -50) {
       const msgId = parseInt(swipeEl.dataset.msgId);
       S.ctx.messageId = msgId;
       ctxReply();
