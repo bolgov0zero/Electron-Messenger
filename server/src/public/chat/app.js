@@ -1543,7 +1543,7 @@ function toggleEmojiPicker(e) {
   if (!panel) return;
   if (panel.classList.contains('open')) { panel.classList.remove('open'); return; }
   const freqEl = panel.querySelector('.ep-freq');
-  if (freqEl) freqEl.innerHTML = `<span class="ep-freq-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>`+getFreqEmojis(8).map(em=>`<button class="emoji-item" onclick="insertEmoji('${em}')">${em}</button>`).join('');
+  if (freqEl) freqEl.innerHTML = `<span class="ep-freq-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>`+getFreqEmojis(9).map(em=>`<button class="emoji-item" onclick="insertEmoji('${em}')">${em}</button>`).join('');
   panel.classList.add('open');
 }
 
@@ -1986,7 +1986,7 @@ function showReactionPicker(e) {
   const y = parseInt(menu.style.top);
   menu.classList.remove('open');
   const picker = document.getElementById('reaction-picker');
-  const _rpFreq = getFreqEmojis(8);
+  const _rpFreq = getFreqEmojis(7);
   picker.innerHTML =
     `<div class="rp-freq">${_rpFreq.map(em=>`<button class="rp-btn" onclick="pickerReact('${em}')">${em}</button>`).join('')}</div>` +
     `<div class="rp-sep"></div>` +
