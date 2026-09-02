@@ -204,7 +204,18 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!e.target.closest('.composer-pill')) closeEmojiPicker();
     if (!e.target.closest('#reaction-picker')) hideReactionPicker();
   });
-  document.addEventListener('keydown', e => { if(e.key==='Escape'){ hideCtxMenu(); hideReactionPicker(); closeSettings(); }});
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const anyOpen = document.getElementById('ctx-menu')?.classList.contains('open') ||
+      document.getElementById('reaction-picker')?.classList.contains('open') ||
+      document.getElementById('ep-grid')?.classList.contains('open') ||
+      document.querySelector('[id^="modal-"].open') ||
+      S.editingMessageId;
+    hideCtxMenu(); hideReactionPicker(); closeSettings();
+    document.getElementById('ep-grid')?.classList.remove('open');
+    if (S.editingMessageId) { cancelEdit(); return; }
+    if (!anyOpen && S.activeChatId) closeActiveChat();
+  });
   window.electron?.onOpenChat(chatId => { const chat = S.chats.find(c=>c.id===chatId); if(chat) openChat(chatId); });
   document.addEventListener('visibilitychange', refreshActivity);
   // Реальный фокус окна из main-процесса — авторитетный признак «пользователь смотрит».
@@ -1668,7 +1679,7 @@ function handleKey(e) {
   if (popup?.style.display !== 'none' && popup?.innerHTML) {
     if (e.key === 'ArrowDown') { e.preventDefault(); _mentionMove(1); return; }
     if (e.key === 'ArrowUp')   { e.preventDefault(); _mentionMove(-1); return; }
-    if (e.key === 'Escape')    { hideMentionPopup(); return; }
+    if (e.key === 'Escape')    { hideMentionPopup(); e.stopPropagation(); return; }
     if (e.key === 'Enter' && _mentionIdx >= 0) {
       e.preventDefault();
       popup.querySelectorAll('.mention-item')[_mentionIdx]?.click();
@@ -2290,6 +2301,12 @@ async function deleteChat(chatId) {
   if (!ok) return;
   await api('DELETE', `/chats/${chatId}`);
   removeChatLocally(chatId);
+}
+
+function closeActiveChat() {
+  S.activeChatId = null;
+  document.getElementById('chat-main').innerHTML = `<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Electron</div><div class="empty-sub">Выберите чат или создайте новый</div></div>`;
+  renderChatList();
 }
 
 function removeChatLocally(chatId) {
