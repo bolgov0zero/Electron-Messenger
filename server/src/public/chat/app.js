@@ -821,7 +821,7 @@ function renderSubroomsPanel(roomId) {
     if (!mp) return;
     const items = subs.map(s => {
       const unread = S.unread[s.id] || 0;
-      const badge = unread ? `<div class="ci-badge">${unread > 99 ? '99+' : unread}</div>` : '';
+      const badge = unread ? `<div class="unread-badge">${unread > 99 ? '99+' : unread}</div>` : '';
       const bg = avatarColor(s.id);
       const letter = (s.name||'?')[0].toUpperCase();
       const avEl = `<div class="av av-md av-sq" style="background:${bg};${s.has_avatar?`background-image:url('/api/chats/${s.id}/avatar');background-size:cover;background-position:center`:''}">${s.has_avatar?'':letter}</div>`;
