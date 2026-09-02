@@ -825,6 +825,27 @@ let allUsers = [], allRooms = [], allChats = [], allUsersCache = [];
 let createRoomSelectedIds = new Set(), selectedAddMembers = new Set();
 let chatFilter = '';
 let sparkRange = '24h';
+
+function resizeAvatarFile(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const s = Math.min(img.width, img.height);
+        ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', 0.88).split(',')[1]);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 /* ── THEME ── */
 const THEME_KEY = 'electron-admin.theme';
 function applyTheme(t) {
@@ -1519,14 +1540,12 @@ let _roomEditAvatarBase64 = null;
 function triggerRoomAvatarUpload() { document.getElementById('room-avatar-input').click(); }
 function onRoomAvatarChange(input) {
   const file = input.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    _roomEditAvatarBase64 = e.target.result.split(',')[1];
+  resizeAvatarFile(file).then(base64 => {
+    _roomEditAvatarBase64 = base64;
     const el = document.getElementById('room-edit-av');
-    el.style.backgroundImage = `url('${e.target.result}')`;
+    el.style.backgroundImage = `url('data:image/jpeg;base64,${base64}')`;
     el.style.backgroundSize = 'cover'; el.textContent = '';
-  };
-  reader.readAsDataURL(file);
+  });
 }
 
 let _membersCur = [], _membersAvail = [], _membersReadonly = false;
@@ -1623,14 +1642,10 @@ async function renameSubroom(id, currentName) {
 
 async function uploadSubroomAvatar(id, input) {
   const file = input.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async e => {
-    const data64 = e.target.result.split(',')[1];
-    const res = await api('POST','/api/admin/subrooms/'+id+'/avatar',{data:data64});
-    if (res?.ok) { toast('Фото обновлено','success'); const subs=await api('GET','/api/admin/subrooms/'+_editRoomId); renderSubroomsList(subs||[]); }
-    else toast(res?.error||'Ошибка','error');
-  };
-  reader.readAsDataURL(file);
+  const base64 = await resizeAvatarFile(file);
+  const res = await api('POST', '/api/admin/subrooms/' + id + '/avatar', { data: base64 });
+  if (res?.ok) { toast('Фото обновлено', 'success'); const subs = await api('GET', '/api/admin/subrooms/' + _editRoomId); renderSubroomsList(subs || []); }
+  else toast(res?.error || 'Ошибка', 'error');
 }
 
 function renderMembersLists(filter='') {
@@ -2352,16 +2367,11 @@ async function deleteWh(id, name) {
 }
 
 async function uploadWhAvatar(id, input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async e => {
-    const base64 = e.target.result.split(',')[1];
-    const data = await api('POST', `/api/admin/webhooks/${id}/avatar`, { data: base64 });
-    if (data.ok) { toast('Аватар обновлён','success'); renderWebhooks(); }
-    else toast(data.error||'Ошибка','error');
-  };
-  reader.readAsDataURL(file);
+  const file = input.files[0]; if (!file) return;
+  const base64 = await resizeAvatarFile(file);
+  const data = await api('POST', `/api/admin/webhooks/${id}/avatar`, { data: base64 });
+  if (data.ok) { toast('Аватар обновлён', 'success'); renderWebhooks(); }
+  else toast(data.error || 'Ошибка', 'error');
 }
 
 async function openCreateWebhook() {
@@ -2402,15 +2412,8 @@ async function saveWebhook() {
   const data = await api('POST','/api/admin/webhooks',{name,tag,chat_id});
   if (!data.id) { document.getElementById('wh-err').textContent=data.error||'Ошибка'; return; }
   if (avatarFile) {
-    await new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = async e => {
-        const base64 = e.target.result.split(',')[1];
-        await api('POST', `/api/admin/webhooks/${data.id}/avatar`, { data: base64 });
-        resolve();
-      };
-      reader.readAsDataURL(avatarFile);
-    });
+    const base64 = await resizeAvatarFile(avatarFile);
+    await api('POST', `/api/admin/webhooks/${data.id}/avatar`, { data: base64 });
   }
   closeModal('modal-webhook');
   toast('Вебхук создан','success');

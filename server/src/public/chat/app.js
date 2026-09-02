@@ -749,18 +749,32 @@ function triggerAvatarUpload() {
   document.getElementById('avatar-file-input').click();
 }
 
+function resizeAvatarFile(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const s = Math.min(img.width, img.height);
+        ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', 0.88).split(',')[1]);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 async function onAvatarFileChange(input) {
   const file = input.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const base64 = e.target.result.split(',')[1];
-    const res = await api('POST', '/users/me/avatar', { data: base64 });
-    if (res?.ok) {
-      updateSettingsAvatar();
-    }
-  };
-  reader.readAsDataURL(file);
+  const base64 = await resizeAvatarFile(file);
+  const res = await api('POST', '/users/me/avatar', { data: base64 });
+  if (res?.ok) updateSettingsAvatar();
 }
 
 // ── NOTIFICATION SOUND ──
@@ -2908,15 +2922,12 @@ function getPeerUserId(chat) {
 function triggerGroupAvatarUpload() { document.getElementById('group-avatar-input').click(); }
 async function onGroupAvatarChange(input) {
   const file = input.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    S.newGroupAvatarBase64 = e.target.result.split(',')[1];
-    const el = document.getElementById('new-group-av');
-    el.style.backgroundImage = `url('${e.target.result}')`;
-    el.style.backgroundSize = 'cover';
-    el.textContent = '';
-  };
-  reader.readAsDataURL(file);
+  const base64 = await resizeAvatarFile(file);
+  S.newGroupAvatarBase64 = base64;
+  const el = document.getElementById('new-group-av');
+  el.style.backgroundImage = `url('data:image/jpeg;base64,${base64}')`;
+  el.style.backgroundSize = 'cover';
+  el.textContent = '';
 }
 
 // ── NEW CHAT MODAL ──
@@ -3186,14 +3197,12 @@ async function giConfirmAdd() {
 function triggerGiAvatarUpload() { document.getElementById('gi-avatar-input').click(); }
 function onGiAvatarChange(input) {
   const file = input.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    S.giAvatarBase64 = e.target.result.split(',')[1];
+  resizeAvatarFile(file).then(base64 => {
+    S.giAvatarBase64 = base64;
     const el = document.getElementById('gi-av');
-    el.style.backgroundImage = `url('${e.target.result}')`;
+    el.style.backgroundImage = `url('data:image/jpeg;base64,${base64}')`;
     el.style.backgroundSize = 'cover'; el.textContent = '';
-  };
-  reader.readAsDataURL(file);
+  });
 }
 
 async function saveGroupEdit() {
