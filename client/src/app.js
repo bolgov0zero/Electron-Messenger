@@ -942,6 +942,7 @@ async function openChat(chatId, aroundId = null) {
   S.unreadMentions[chatId] = 0;
   updateUnreadTotal();
   renderChatList();
+  if (chat?.parent_id) renderSubroomsPanel(chat.parent_id);
   const name = chatName(chat);
   const isGroup = chat.type==='group';
   const isRoom = chat.type==='room';
