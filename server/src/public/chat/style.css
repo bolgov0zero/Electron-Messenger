@@ -2305,12 +2305,11 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
     align-items: center;
     height: 52px;
     min-height: 52px;
-    padding: env(safe-area-inset-top, 0px) 10px 0;
+    padding: 0 10px;
     gap: 4px;
     background: var(--sidebar-bg);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
-    box-sizing: content-box;
   }
   .mtb-back {
     display: none;
@@ -2394,6 +2393,7 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
   /* Скрываем элементы, замещённые топбаром/слайдером */
   .sidebar-account { display: none !important; }
   #subrooms-panel { display: none !important; }
+  .chat-main .chat-header { display: none !important; }
 }
 
 /* Desktop: hide mobile-only elements */

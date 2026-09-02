@@ -267,9 +267,9 @@ function mobileSlideBack() {
   } else if (_mobilePanel === 2) {
     S.activeRoomId = null;
     S.activeSubroomId = null;
-    const mp = document.getElementById('mobile-subrooms');
-    if (mp) mp.innerHTML = '';
     mobileSlideTo(1);
+    const mp = document.getElementById('mobile-subrooms');
+    setTimeout(() => { if (mp) mp.innerHTML = ''; }, 340);
   }
 }
 
