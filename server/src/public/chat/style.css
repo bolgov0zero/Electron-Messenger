@@ -894,7 +894,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   pointer-events: none;
   z-index: 2;
 }
-.irc-msg:hover .irc-actions { opacity: 1; pointer-events: auto; }
+.irc-msg:hover .irc-actions { opacity: 0; pointer-events: none; }
 .irc-action-btn {
   width: 26px; height: 26px;
   border: none; background: none;
@@ -1045,7 +1045,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 /* Сетка смайликов — абсолютно над пилюлей, не влияет на поток */
 .ep-grid {
   position: absolute;
-  bottom: calc(100% + 4px);
+  bottom: calc(100% + 10px);
   left: 0; right: auto;
   width: 340px;
   background: var(--composer-bg);
@@ -1871,7 +1871,7 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
   display: none; width: 274px;
 }
 #reaction-picker.open { display: block; }
-.rp-freq { display: flex; gap: 2px; padding: 4px; background: var(--hover-row); border-radius: 8px; margin-bottom: 2px; }
+.rp-freq { display: flex; gap: 2px; padding: 2px 0; background: var(--hover-row); border-radius: 8px; margin-bottom: 2px; }
 .rp-sep { height: 1px; background: var(--border); margin: 4px 0; }
 .rp-scroll { overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; max-height: 200px; }
 .rp-grid {

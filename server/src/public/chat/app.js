@@ -1484,7 +1484,7 @@ const EMOJIS = [
   // Smileys & faces
   '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃',
   '😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙',
-  '🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🫢',
+  '🥲','😋','😛','😜','🤪','😝','🤦','🤷','🤭','🫢',
   '🫣','🤫','🤔','🫠','🤐','🤨','😐','😑','😶','🫥',
   '😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴',
   '😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵',
@@ -1495,10 +1495,12 @@ const EMOJIS = [
   '👍','👎','👏','🙌','👐','🤲','🤝','🙏','✊','👊',
   '🤛','🤜','🤞','🤟','🤘','🤙','👈','👉','👆','👇',
   '☝️','✌️','🖖','🖐️','✋','🤚','👋','🫳','🫴','🤏',
-  '👌','🤌','🫶','💪','🦾','👂','🦻','👅','👃','🫦',
+  '👌','🤌','🫶','💪','🫵','🖕','💅','🤳','🫸','🫷',
   // People
   '👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓',
   '👴','👵','💂','👮','🕵️','👷','💃','🕺','👸','🤴',
+  '🧑‍🦱','🧑‍🦰','🧑‍🦳','🧑‍🦲','🤰','👼','🎅','🤶','🦸','🦹',
+  '🧙','🧚','🧜','🧝','🧛','🧟','🧎','🧍','🚶','🏃',
   '🧑‍💻','🧑‍🎨','🧑‍🏫','🧑‍🍳','🧑‍🚀','🧑‍🎤','🧑‍⚕️','🧑‍🔬','🧑‍🔧','🧑‍🌾',
   // Animals
   '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯',
@@ -1824,17 +1826,7 @@ function renderMsgIRC(m, isGroup) {
       </div>
     </div>` : '';
 
-  const actionsHtml = isDeleted ? '' : `
-    <div class="irc-actions">
-      <button class="irc-action-btn" data-mid="${m.id}" data-r="👍" onclick="sendReaction(+this.dataset.mid,this.dataset.r)" title="👍">👍</button>
-      <button class="irc-action-btn" data-mid="${m.id}" data-r="❤️" onclick="sendReaction(+this.dataset.mid,this.dataset.r)" title="❤️">❤️</button>
-      <button class="irc-action-btn" data-mid="${m.id}" data-r="😂" onclick="sendReaction(+this.dataset.mid,this.dataset.r)" title="😂">😂</button>
-      <button class="irc-action-btn" data-mid="${m.id}" data-r="👎" onclick="sendReaction(+this.dataset.mid,this.dataset.r)" title="👎">👎</button>
-      <span style="width:1px;background:var(--border);margin:3px 2px;align-self:stretch"></span>
-      <button class="irc-action-btn" onclick="dblReply(${m.id})" title="Ответить">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
-      </button>
-    </div>`;
+  const actionsHtml = '';
 
   const avCol = isGroup
     ? `<div style="width:28px;flex-shrink:0"></div>`
