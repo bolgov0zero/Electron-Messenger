@@ -1651,6 +1651,12 @@ function renderMessages(msgs, stick = true) {
   _stickBottom = stick;
   if (stick) requestAnimationFrame(() => {
     container.scrollTop = container.scrollHeight;
+    container.querySelectorAll('img').forEach(img => {
+      if (img.complete) return;
+      const snap = () => { container.scrollTop = container.scrollHeight; };
+      img.addEventListener('load',  snap, { once: true });
+      img.addEventListener('error', snap, { once: true });
+    });
   });
 }
 
