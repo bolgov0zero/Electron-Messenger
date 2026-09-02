@@ -325,7 +325,8 @@ function updateAppHeight() {
   _maxVH = Math.max(_maxVH, h);
   const kbOpen = (_maxVH - h) > 80;
   const root = document.documentElement.style;
-  const kbHeight = kbOpen ? (_maxVH - h + 5) : 0;
+  // +50 вместо +5: iOS не включает панель QuickType (~44px) в уменьшение visualViewport
+  const kbHeight = kbOpen ? (_maxVH - h + 50) : 0;
   root.setProperty('--kb-height', kbHeight + 'px');
   root.setProperty('--app-top', (vv ? vv.offsetTop : 0) + 'px');
   root.setProperty('--input-safe-bottom', kbOpen ? '0px' : '5px');
