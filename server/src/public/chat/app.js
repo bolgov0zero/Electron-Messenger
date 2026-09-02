@@ -306,7 +306,17 @@ function openMobileChat() {
 // Высота всего экрана = высоте visual viewport. Клавиатура уменьшает
 // viewport → CSS-флексбокс сам сжимает список сообщений, поле ввода
 // остаётся над клавиатурой. Никакого ручного позиционирования.
-let _maxVH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+// _maxVH — максимальная высота viewport, используется для вычисления высоты клавиатуры.
+// Инициализируем через screen.height / dpr, чтобы получить физическую высоту экрана
+// в CSS-пикселях независимо от адресной строки Safari или открытой клавиатуры.
+let _maxVH = (() => {
+  const vv = window.visualViewport;
+  const h = vv ? vv.height : window.innerHeight;
+  if (window.screen && window.devicePixelRatio) {
+    return Math.max(h, Math.round(screen.height / devicePixelRatio));
+  }
+  return h;
+})();
 let _stickBottom = true; // был ли пользователь у нижнего края списка
 
 function updateAppHeight() {
@@ -319,14 +329,6 @@ function updateAppHeight() {
   root.setProperty('--kb-height', kbHeight + 'px');
   root.setProperty('--app-top', (vv ? vv.offsetTop : 0) + 'px');
   root.setProperty('--input-safe-bottom', kbOpen ? '0px' : '5px');
-  // Клавиатура открыта — ставим высоту экрана напрямую из visualViewport
-  // (100dvh на iOS не уменьшается при открытии клавиатуры).
-  // Клавиатура закрыта — убираем переменную, CSS использует 100dvh (стабильна,
-  // не зависит от адресной строки Safari).
-  if (_isMobile()) {
-    if (kbOpen) root.setProperty('--screen-h', h + 'px');
-    else root.removeProperty('--screen-h');
-  }
   if (window.scrollY !== 0) window.scrollTo(0, 0);
   if (_stickBottom) pinMessagesToBottom();
 }

@@ -2119,8 +2119,8 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
     top: var(--app-top, 0px);
     left: 0;
     width: var(--vw100);
-    height: var(--screen-h, calc(var(--vh100) - var(--app-top, 0px)));
-    padding-bottom: 0;
+    height: calc(var(--vh100) - var(--app-top, 0px));
+    padding-bottom: var(--kb-height, 0px);
     box-sizing: border-box;
     overflow: hidden;
   }
