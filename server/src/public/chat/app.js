@@ -315,19 +315,15 @@ function updateAppHeight() {
   _maxVH = Math.max(_maxVH, h);
   const kbOpen = (_maxVH - h) > 80;
   const root = document.documentElement.style;
-  // Экран растянут через inset (top+bottom), без фикс. высоты — низ всегда у края.
-  // Клавиатура поднимает нижнюю границу на свою высоту (+небольшой запас, чтобы
-  // поле гарантированно не перекрывалось краем клавиатуры).
   const kbHeight = kbOpen ? (_maxVH - h + 5) : 0;
   root.setProperty('--kb-height', kbHeight + 'px');
-  // iOS сдвигает весь WebView вверх при фокусе на нижнем поле — компенсируем,
-  // чтобы шапка стояла на месте, а двигалось только поле ввода/сообщения
   root.setProperty('--app-top', (vv ? vv.offsetTop : 0) + 'px');
-  // Когда клавиатура открыта — home indicator скрыт, safe-area снизу не нужен
   root.setProperty('--input-safe-bottom', kbOpen ? '0px' : '5px');
-  // iOS иногда прокручивает всю страницу при фокусе — возвращаем на место
+  // На мобильном задаём высоту экрана напрямую из visualViewport, чтобы
+  // клавиатура гарантированно не перекрывала поле ввода (100dvh на iOS
+  // не всегда уменьшается при открытии клавиатуры).
+  if (_isMobile()) root.setProperty('--screen-h', h + 'px');
   if (window.scrollY !== 0) window.scrollTo(0, 0);
-  // Держим список у нижнего края, если пользователь был внизу
   if (_stickBottom) pinMessagesToBottom();
 }
 
