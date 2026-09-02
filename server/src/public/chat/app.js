@@ -319,10 +319,14 @@ function updateAppHeight() {
   root.setProperty('--kb-height', kbHeight + 'px');
   root.setProperty('--app-top', (vv ? vv.offsetTop : 0) + 'px');
   root.setProperty('--input-safe-bottom', kbOpen ? '0px' : '5px');
-  // На мобильном задаём высоту экрана напрямую из visualViewport, чтобы
-  // клавиатура гарантированно не перекрывала поле ввода (100dvh на iOS
-  // не всегда уменьшается при открытии клавиатуры).
-  if (_isMobile()) root.setProperty('--screen-h', h + 'px');
+  // Клавиатура открыта — ставим высоту экрана напрямую из visualViewport
+  // (100dvh на iOS не уменьшается при открытии клавиатуры).
+  // Клавиатура закрыта — убираем переменную, CSS использует 100dvh (стабильна,
+  // не зависит от адресной строки Safari).
+  if (_isMobile()) {
+    if (kbOpen) root.setProperty('--screen-h', h + 'px');
+    else root.removeProperty('--screen-h');
+  }
   if (window.scrollY !== 0) window.scrollTo(0, 0);
   if (_stickBottom) pinMessagesToBottom();
 }
