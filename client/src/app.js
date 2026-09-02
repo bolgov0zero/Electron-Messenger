@@ -2580,6 +2580,22 @@ function connectWS() {
     S.wsRetry = 0;
     hideServerToast();
     loadChats();
+    // Догружаем сообщения, пришедшие в открытый чат во время разрыва соединения
+    const _ccId = S.activeChatId, _ccNewest = S.chatNewestId;
+    if (_ccId && _ccNewest && !S.chatHasMoreAfter) {
+      api('GET', `/messages/chat/${_ccId}?after=${_ccNewest}&limit=50`).then(data => {
+        if (!data?.messages?.length || S.activeChatId !== _ccId) return;
+        S.chatHasMoreAfter = !!data.hasMoreAfter;
+        S.chatNewestId = data.messages[data.messages.length - 1].id;
+        appendMessagesAfter(data.messages, _ccId);
+        if (isViewing() && S.ws?.readyState === 1) {
+          S.ws.send(JSON.stringify({type:'read', chat_id:_ccId}));
+          S.unread[_ccId] = 0;
+          S.unreadMentions[_ccId] = 0;
+          updateUnreadTotal(); renderChatList();
+        }
+      });
+    }
     // Delay status send: at launch document.hidden may still be true while window is appearing
     setTimeout(() => {
       const initStatus = document.hidden ? 'offline' : 'online';
