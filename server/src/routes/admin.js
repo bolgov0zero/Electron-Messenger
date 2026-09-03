@@ -411,7 +411,7 @@ router.post('/server/update', (req, res) => {
     // untracked-файлы (chat_db) не затрагиваются. Вывод — в journal для диагностики.
     const script = `
       cd "${appDir}" && \
-      git fetch origin main && \
+      GIT_TERMINAL_PROMPT=0 git -c credential.helper='' fetch origin main && \
       git reset --hard origin/main && \
       cd server && \
       npm install --omit=dev && \
