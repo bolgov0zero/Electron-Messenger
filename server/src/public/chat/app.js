@@ -229,7 +229,7 @@ const _CHAT_EASE = 'transform .32s cubic-bezier(.32,.72,0,1)';
 
 const _isMobile = () => window.matchMedia('(max-width: 767px), (pointer: coarse)').matches;
 
-function mobileSlideTo(panel, title = '') {
+function mobileSlideTo(panel, title = '', sub = '') {
   _mobilePanel = panel;
   const track = document.getElementById('mobile-track');
   if (track) {
@@ -239,17 +239,21 @@ function mobileSlideTo(panel, title = '') {
   }
   const backBtn = document.getElementById('mtb-back');
   const account = document.getElementById('mtb-account');
+  const titleWrap = document.getElementById('mtb-title-wrap');
   const titleEl = document.getElementById('mtb-title');
+  const subEl = document.getElementById('mtb-sub');
   const actions = document.querySelector('.mtb-actions');
   if (panel === 1) {
     if (backBtn) backBtn.style.display = 'none';
     if (account) account.style.display = '';
-    if (titleEl) { titleEl.textContent = ''; titleEl.style.display = 'none'; }
+    if (titleWrap) titleWrap.style.display = 'none';
     if (actions) actions.style.display = '';
   } else {
     if (backBtn) backBtn.style.display = 'flex';
     if (account) account.style.display = 'none';
-    if (titleEl) { titleEl.textContent = title; titleEl.style.display = title ? 'block' : 'none'; }
+    if (titleWrap) titleWrap.style.display = title ? 'flex' : 'none';
+    if (titleEl) titleEl.textContent = title;
+    if (subEl) subEl.textContent = sub;
     if (actions) actions.style.display = 'none';
   }
 }
@@ -516,11 +520,11 @@ function logout() {
   const mtbBack = document.getElementById('mtb-back');
   const mtbAcc = document.getElementById('mtb-account');
   const mtbAct = document.querySelector('.mtb-actions');
-  const mtbTit = document.getElementById('mtb-title');
+  const mtbTitWrap = document.getElementById('mtb-title-wrap');
   if (mtbBack) mtbBack.style.display = 'none';
   if (mtbAcc) mtbAcc.style.display = '';
   if (mtbAct) mtbAct.style.display = '';
-  if (mtbTit) { mtbTit.textContent = ''; mtbTit.style.display = 'none'; }
+  if (mtbTitWrap) mtbTitWrap.style.display = 'none';
   document.getElementById('chat-main')?.classList.remove('mobile-open');
   document.querySelector('.sidebar')?.classList.remove('mobile-hidden');
 }
@@ -828,6 +832,8 @@ async function loadSubrooms(roomId, { render = false } = {}) {
   const subs = await api('GET', `/chats/${roomId}/subrooms`);
   if (!subs) return;
   S.subrooms[roomId] = subs;
+  S.unread[roomId] = 0;
+  S.unreadMentions[roomId] = 0;
   subs.forEach(s => {
     S.unread[s.id] = s.unread || 0;
     S.unreadMentions[s.id] = s.unread_mentions || 0;
@@ -852,9 +858,12 @@ function renderSubroomsPanel(roomId) {
       const avEl = `<div class="av av-md av-sq" style="background:${bg};${s.has_avatar?`background-image:url('/api/chats/${s.id}/avatar');background-size:cover;background-position:center`:''}">${s.has_avatar?'':letter}</div>`;
       return `<div class="chat-item${S.activeSubroomId===s.id?' active':''}" onclick="openSubroom(${s.id})">
         <div class="av-wrap">${avEl}</div>
-        <div class="ci-body">
-          <div class="ci-top"><span class="ci-name">${esc(s.name)}</span>${badge}</div>
-          <div class="ci-last"><span class="ci-preview"># подкомната</span></div>
+        <div class="info">
+          <div class="ci-name" style="display:flex;align-items:center;gap:5px">
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name)}</span>
+            ${badge}
+          </div>
+          <div style="margin-top:2px"><span class="ci-preview"># подкомната</span></div>
         </div>
       </div>`;
     }).join('');
@@ -1363,7 +1372,9 @@ async function openChat(chatId, aroundId = null) {
       }
     }
     _mobileFromSubrooms = _mobilePanel === 2;
-    mobileSlideTo(3, _slideTitle);
+    const _slidePeerId = _directChat ? getPeerUserId(_directChat) : null;
+    const _slideSub = _slidePeerId ? peerStatusText(_slidePeerId) : '';
+    mobileSlideTo(3, _slideTitle, _slideSub);
   } else {
     openMobileChat();
   }
@@ -2805,6 +2816,8 @@ function connectWS() {
       if (activeChat?.type === 'direct' && getPeerUserId(activeChat) === data.user_id) {
         const subEl = document.querySelector('.ch-sub');
         if (subEl) subEl.textContent = peerStatusText(data.user_id);
+        const mtbSub = document.getElementById('mtb-sub');
+        if (mtbSub) mtbSub.textContent = peerStatusText(data.user_id);
       }
       const isOnline = data.status === 'online';
       document.querySelectorAll(`.presence-dot[data-user-id="${data.user_id}"]`).forEach(dot => {

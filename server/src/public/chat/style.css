@@ -2344,9 +2344,16 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
     font-size: 13px; font-weight: 600; color: var(--text);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .mtb-title {
+  .mtb-title-wrap {
     display: none; flex: 1; min-width: 0;
+    flex-direction: column; justify-content: center;
+  }
+  .mtb-title {
     font-size: 15px; font-weight: 600; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .mtb-sub {
+    font-size: 11px; color: var(--muted);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .mtb-actions { display: flex; gap: 2px; flex-shrink: 0; margin-left: auto; }

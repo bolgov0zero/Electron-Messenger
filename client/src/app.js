@@ -881,6 +881,8 @@ async function loadSubrooms(roomId, { render = false } = {}) {
   const subs = await api('GET', `/chats/${roomId}/subrooms`);
   if (!subs) return;
   S.subrooms[roomId] = subs;
+  S.unread[roomId] = 0;
+  S.unreadMentions[roomId] = 0;
   subs.forEach(s => {
     S.unread[s.id] = s.unread || 0;
     S.unreadMentions[s.id] = s.unread_mentions || 0;
