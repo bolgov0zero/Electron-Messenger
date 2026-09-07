@@ -1857,12 +1857,13 @@ function senderNameClass(tag) {
 
 function renderMsgIRC(m, isGroup) {
   if (m.status && m.id > 0) S.msgStatus[m.id] = { ...m.status };
-  if (m.id > 0) S.msgData.set(m.id, { forwardData: m.forward_data || null, senderId: m.sender_id, senderName: m.sender_name, senderIsBot: !!m.sender_is_bot, text: m.text, attachment: m.attachment });
+  const isSystem = m.sender_username === '__system__';
+  if (m.id > 0 && !isSystem) S.msgData.set(m.id, { forwardData: m.forward_data || null, senderId: m.sender_id, senderName: m.sender_name, senderIsBot: !!m.sender_is_bot, text: m.text, attachment: m.attachment });
   const mine = m.sender_id===S.user.id;
   const time = fmtTime(m.sent_at);
   const isDeleted = m.deleted;
 
-  if (m.sender_is_bot && !isDeleted) {
+  if (isSystem && !isDeleted) {
     return `<div class="irc-msg" data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}" oncontextmenu="event.preventDefault()" style="padding:2px 0">
       <div style="width:100%;display:flex;justify-content:center;padding:0 20px;box-sizing:border-box">
         <div style="background:rgba(210,55,55,.08);border:1px solid rgba(210,55,55,.2);border-radius:14px;padding:5px 14px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;max-width:80%">
