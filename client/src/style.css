@@ -1035,7 +1035,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 }
 .irc-reply-body { flex: 1; min-width: 0; overflow: hidden; }
 .irc-reply-name { color: var(--accent); font-weight: 600; }
-.irc-reply-text { opacity: .8; white-space: pre-wrap; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; }
+.irc-reply-text { opacity: .8; white-space: pre-wrap; word-break: break-word; }
 
 /* Edit bar */
 .input-edit-bar {
