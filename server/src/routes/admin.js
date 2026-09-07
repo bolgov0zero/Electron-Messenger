@@ -584,9 +584,7 @@ router.post('/subrooms/reorder', (req, res) => {
 // ── Файлы ──
 
 router.get('/files', (req, res) => {
-  let filenames = [];
-  try { filenames = fs.readdirSync(FILES_DIR).filter(f => !f.endsWith('_t.webp')); } catch {}
-
+  // Первичный источник: все вложения из сообщений в БД
   const msgs = db.prepare(`
     SELECT m.id, m.chat_id, m.attachment, m.sent_at,
            u.display_name as sender_name, c.name as chat_name
@@ -596,14 +594,16 @@ router.get('/files', (req, res) => {
     WHERE m.attachment IS NOT NULL AND m.deleted = 0
   `).all();
 
-  const metaMap = new Map();
+  const fileMap = new Map();
   for (const msg of msgs) {
     try {
       const att = JSON.parse(msg.attachment);
-      if (att?.url) {
-        const fname = path.basename(att.url);
-        if (!metaMap.has(fname)) metaMap.set(fname, {
-          mime: att.mime || null,
+      if (!att?.url) continue;
+      const fname = path.basename(att.url);
+      if (fname.endsWith('_t.webp')) continue;
+      if (!fileMap.has(fname)) {
+        fileMap.set(fname, {
+          filename: fname, mime: att.mime || null,
           message_id: msg.id, chat_id: msg.chat_id,
           chat_name: msg.chat_name, sender_name: msg.sender_name, sent_at: msg.sent_at,
         });
@@ -611,9 +611,17 @@ router.get('/files', (req, res) => {
     } catch {}
   }
 
-  const result = filenames.map(filename => {
-    const stat = (() => { try { return fs.statSync(path.join(FILES_DIR, filename)); } catch { return null; } })();
-    return { filename, size: stat?.size ?? 0, mtime: stat?.mtimeMs ?? 0, ...(metaMap.get(filename) || {}) };
+  // Вторичный источник: файлы на диске, не привязанные ни к одному сообщению
+  try {
+    for (const fname of fs.readdirSync(FILES_DIR)) {
+      if (fname.endsWith('_t.webp') || fileMap.has(fname)) continue;
+      fileMap.set(fname, { filename: fname });
+    }
+  } catch {}
+
+  const result = [...fileMap.values()].map(f => {
+    const stat = (() => { try { return fs.statSync(path.join(FILES_DIR, f.filename)); } catch { return null; } })();
+    return { ...f, size: stat?.size ?? 0, mtime: stat?.mtimeMs ?? (f.sent_at ? f.sent_at * 1000 : 0), onDisk: !!stat };
   }).sort((a, b) => b.mtime - a.mtime);
 
   res.json(result);

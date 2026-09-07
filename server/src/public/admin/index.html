@@ -831,27 +831,21 @@ return 'OK';</pre>
     </div>
     <div class="modal-body">
       <div class="fg">
-        <label>Куда отправить</label>
-        <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px">
-          <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:400;cursor:pointer;text-transform:none;letter-spacing:0">
-            <input type="radio" name="ann-mode" value="select" checked onchange="annModeChange()" style="accent-color:var(--c-primary)"> Выбранные чаты
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:400;cursor:pointer;text-transform:none;letter-spacing:0">
-            <input type="radio" name="ann-mode" value="all" onchange="annModeChange()" style="accent-color:var(--c-primary)"> Все группы и комнаты
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:400;cursor:pointer;text-transform:none;letter-spacing:0">
-            <input type="radio" name="ann-mode" value="popup" onchange="annModeChange()" style="accent-color:var(--c-primary)"> Всплывающее окно <span style="color:var(--c-muted)">(только онлайн)</span>
-          </label>
-        </div>
-      </div>
-      <div id="ann-chat-select" class="fg">
-        <label>Чаты</label>
-        <input id="ann-chat-search" class="search-input" placeholder="Поиск…" oninput="renderAnnChatList(this.value)" style="margin-bottom:6px;width:100%">
-        <div id="ann-chat-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:4px"></div>
+        <label>Текст</label>
+        <textarea id="ann-text" rows="3" placeholder="Введите текст объявления…" style="resize:vertical;width:100%;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;color:var(--c-text);font-family:var(--f-ui)"></textarea>
       </div>
       <div class="fg">
-        <label>Текст объявления</label>
-        <textarea id="ann-text" rows="4" style="resize:vertical;width:100%;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;color:var(--c-text);font-family:var(--f-ui)" placeholder="Введите текст…"></textarea>
+        <label>Куда</label>
+        <div id="ann-mode-bar" style="display:flex;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:3px;gap:2px">
+          <button onclick="setAnnMode('select')" data-mode="select" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">Выбранные</button>
+          <button onclick="setAnnMode('all')" data-mode="all" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">Все группы</button>
+          <button onclick="setAnnMode('popup')" data-mode="popup" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">Всплывающее</button>
+        </div>
+        <div style="font-size:10px;color:var(--c-muted);margin-top:4px" id="ann-mode-hint"></div>
+      </div>
+      <div id="ann-chat-select" class="fg" style="display:none">
+        <input id="ann-chat-search" class="search-input" placeholder="Поиск чатов…" oninput="renderAnnChatList(this.value)" style="width:100%;margin-bottom:4px">
+        <div id="ann-chat-list" style="max-height:140px;overflow-y:auto;border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:2px"></div>
       </div>
       <div class="err" id="ann-err"></div>
     </div>
@@ -2914,18 +2908,25 @@ async function renderFiles() {
   function renderTable() {
     const filtered = getFiltered();
     const rows = filtered.length ? filtered.map(f => {
-      const thumb = isImg(f.filename)
-        ? `<img src="/files/${esc(f.filename)}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;display:block" onerror="this.style.display='none'">`
-        : `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">${fileIcon()}</div>`;
+      const missing = f.onDisk === false;
+      const thumb = missing
+        ? `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;opacity:.4">${fileIcon()}</div>`
+        : isImg(f.filename)
+          ? `<img src="/files/${esc(f.filename)}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;display:block" onerror="this.style.display='none'">`
+          : `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">${fileIcon()}</div>`;
       const fname = f.filename.length > 32 ? f.filename.slice(0, 30) + '…' : f.filename;
-      return `<tr>
+      const sizeCell = missing
+        ? `<span style="font-size:10px;color:var(--c-muted);font-style:italic">отсутствует</span>`
+        : fmtSize(f.size);
+      const actionCell = missing ? '' : `<button class="btn btn-danger btn-sm" onclick="deleteFile('${jesc(f.filename)}')">Удалить</button>`;
+      return `<tr style="${missing ? 'opacity:.6' : ''}">
         <td style="width:40px">${thumb}</td>
         <td style="font-size:11px;font-family:var(--f-mono);color:var(--c-text2)" title="${esc(f.filename)}">${esc(fname)}</td>
-        <td style="font-size:11px;color:var(--c-muted)">${fmtSize(f.size)}</td>
+        <td style="font-size:11px;color:var(--c-muted)">${sizeCell}</td>
         <td style="font-size:11px;color:var(--c-text2)">${esc(f.sender_name||'—')}</td>
         <td style="font-size:11px;color:var(--c-text2)">${esc(f.chat_name||'—')}</td>
         <td style="font-size:11px;color:var(--c-muted)">${f.sent_at ? fmtDate(f.sent_at) : '—'}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteFile('${jesc(f.filename)}')">Удалить</button></td>
+        <td>${actionCell}</td>
       </tr>`;
     }).join('') : `<tr><td colspan="7"><div class="empty-state"><p>Нет файлов</p></div></td></tr>`;
 
@@ -2961,21 +2962,35 @@ function deleteFile(filename) {
 
 /* ── ANNOUNCEMENTS ── */
 let annSelectedChats = new Set();
+let annMode = 'select';
+
+const ANN_HINTS = {
+  select: 'Отправить в выбранные группы или комнаты',
+  all: 'Отправить во все группы и комнаты сразу',
+  popup: 'Показать всплывающее окно всем онлайн-пользователям',
+};
+
+function setAnnMode(mode) {
+  annMode = mode;
+  document.querySelectorAll('#ann-mode-bar button').forEach(btn => {
+    const active = btn.dataset.mode === mode;
+    btn.style.background = active ? 'var(--c-bg)' : 'transparent';
+    btn.style.color = active ? 'var(--c-text)' : 'var(--c-muted)';
+    btn.style.fontWeight = active ? '600' : '400';
+    btn.style.boxShadow = active ? '0 1px 3px rgba(0,0,0,.1)' : '';
+  });
+  document.getElementById('ann-chat-select').style.display = mode === 'select' ? '' : 'none';
+  document.getElementById('ann-mode-hint').textContent = ANN_HINTS[mode] || '';
+}
 
 async function openAnnouncementModal() {
   annSelectedChats = new Set();
   document.getElementById('ann-text').value = '';
   document.getElementById('ann-err').textContent = '';
-  document.querySelector('input[name="ann-mode"][value="select"]').checked = true;
-  annModeChange();
   if (!allChats.length) allChats = await api('GET', '/api/admin/chats') || [];
   renderAnnChatList('');
   openModal('modal-announcement');
-}
-
-function annModeChange() {
-  const mode = document.querySelector('input[name="ann-mode"]:checked')?.value;
-  document.getElementById('ann-chat-select').style.display = mode === 'select' ? '' : 'none';
+  setAnnMode('select');
 }
 
 function renderAnnChatList(q) {
@@ -2991,7 +3006,7 @@ function renderAnnChatList(q) {
 function annToggleChat(id, checked) { checked ? annSelectedChats.add(id) : annSelectedChats.delete(id); }
 
 async function sendAnnouncement() {
-  const mode = document.querySelector('input[name="ann-mode"]:checked')?.value;
+  const mode = annMode;
   const text = document.getElementById('ann-text').value.trim();
   const errEl = document.getElementById('ann-err');
   if (!text) { errEl.textContent = 'Введите текст'; return; }
