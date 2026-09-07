@@ -75,7 +75,8 @@ function enrichChat(chat, userId) {
     `).get(userId, chat.id, userId, userId).c;
   }
 
-  return { ...chat, members, last_message: last || null, unread, unread_mentions: unreadMentions, has_subrooms: hasSubrooms };
+  const muted = !!db.prepare('SELECT 1 FROM muted_chats WHERE user_id = ? AND chat_id = ?').get(userId, chat.id);
+  return { ...chat, members, last_message: last || null, unread, unread_mentions: unreadMentions, has_subrooms: hasSubrooms, muted };
 }
 
 // Get my chats
@@ -243,6 +244,21 @@ router.post('/:id/pin', authMiddleware, (req, res) => {
   // Синхронизация на другие устройства пользователя
   sendTo(req.user.id, { type: 'reload_chats' });
   res.json({ ok: true, pinned: !!pinned });
+});
+
+// Mute / unmute chat (личная настройка — не получать push-уведомления из этого чата)
+router.post('/:id/mute', authMiddleware, (req, res) => {
+  const chatId = Number(req.params.id);
+  if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id))
+    return res.status(403).json({ error: 'Forbidden' });
+  db.prepare('INSERT OR IGNORE INTO muted_chats (user_id, chat_id) VALUES (?, ?)').run(req.user.id, chatId);
+  res.json({ ok: true });
+});
+
+router.delete('/:id/mute', authMiddleware, (req, res) => {
+  const chatId = Number(req.params.id);
+  db.prepare('DELETE FROM muted_chats WHERE user_id = ? AND chat_id = ?').run(req.user.id, chatId);
+  res.json({ ok: true });
 });
 
 // Upload group/chat avatar

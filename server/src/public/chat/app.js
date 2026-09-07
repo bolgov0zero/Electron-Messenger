@@ -38,6 +38,7 @@ const S = {
   subrooms: {},
   activeSubroomId: null,
   activeRoomId: null,
+  mutedChats: new Set(),
 };
 
 const SESSION_KEY = 'electron_v2';
@@ -818,6 +819,7 @@ async function loadChats() {
   const chats = await api('GET','/chats');
   if (!chats) return;
   S.chats = chats;
+  S.mutedChats = new Set(chats.filter(c => c.muted).map(c => c.id));
   chats.forEach(c => {
     S.unread[c.id] = (c.id === S.activeChatId) ? 0 : (c.unread || 0);
     S.unreadMentions[c.id] = (c.id === S.activeChatId) ? 0 : (c.unread_mentions || 0);
@@ -1119,6 +1121,7 @@ function renderChatRow(c) {
   const peerId = getPeerUserId(c);
   const dot = peerId ? presenceDot(peerId) : '';
   const pinIcon = c.pinned ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);opacity:.7"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>` : '';
+  const muteIcon = S.mutedChats.has(c.id) ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted);opacity:.7"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="1" y1="1" x2="23" y2="23"/></svg>` : '';
   const isActive = c.id===S.activeChatId || c.id===S.activeRoomId;
   return `<div class="chat-item${isActive?' active':''}" data-chat-id="${c.id}" onclick="openChat(${c.id})" oncontextmenu="showChatCtx(event,${c.id})">
     <div class="av-wrap">
@@ -1128,7 +1131,7 @@ function renderChatRow(c) {
     <div class="info">
       <div class="ci-name" style="display:flex;align-items:center;gap:5px">
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</span>
-        ${pinIcon}
+        ${pinIcon}${muteIcon}
         <span class="ci-time">${time}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
@@ -3337,19 +3340,24 @@ function showChatCtx(e, chatId) {
   e.preventDefault();
   e.stopPropagation();
   const chat = S.chats.find(c => c.id === chatId);
-  // Комнатами управляет только админ через админку — в клиенте меню нет
-  if (chat?.type === 'room') return;
   S.ctxChatId = chatId;
   const menu = document.getElementById('ctx-chat-menu');
-  const pinLabel = document.getElementById('ctx-chat-pin-label');
-  if (pinLabel) pinLabel.textContent = chat?.pinned ? 'Открепить' : 'Закрепить';
-  // Группа: создатель/админ — удаляет, иначе — выходит
+  const isRoom = chat?.type === 'room';
   const isGroup = chat?.type === 'group';
+
+  // pin/delete/leave скрыты для комнат (управляются через админку)
+  const pinBtn = document.getElementById('ctx-chat-pin');
+  const pinLabel = document.getElementById('ctx-chat-pin-label');
+  if (pinBtn) pinBtn.style.display = isRoom ? 'none' : '';
+  if (pinLabel) pinLabel.textContent = chat?.pinned ? 'Открепить' : 'Закрепить';
   const canDelete = !isGroup || chat.created_by === S.user.id || S.user.is_admin;
   const delBtn = document.getElementById('ctx-chat-delete');
   const leaveBtn = document.getElementById('ctx-chat-leave');
-  if (delBtn) delBtn.style.display = canDelete ? '' : 'none';
+  if (delBtn) delBtn.style.display = (isRoom || (!isRoom && !canDelete)) ? 'none' : '';
   if (leaveBtn) leaveBtn.style.display = (isGroup && !canDelete) ? '' : 'none';
+
+  const muteLabel = document.getElementById('ctx-chat-mute-label');
+  if (muteLabel) muteLabel.textContent = S.mutedChats.has(chatId) ? 'Включить звук' : 'Заглушить';
   menu.style.top = '-9999px'; menu.style.left = '-9999px';
   menu.style.display = 'block';
   const mw = menu.offsetWidth, mh = menu.offsetHeight;
@@ -3383,15 +3391,31 @@ async function ctxChatDelete() {
   await deleteChat(S.ctxChatId);
 }
 
+async function ctxChatMute() {
+  document.getElementById('ctx-chat-menu').style.display = 'none';
+  if (!S.ctxChatId) return;
+  if (S.mutedChats.has(S.ctxChatId)) {
+    await api('DELETE', `/chats/${S.ctxChatId}/mute`);
+    S.mutedChats.delete(S.ctxChatId);
+  } else {
+    await api('POST', `/chats/${S.ctxChatId}/mute`);
+    S.mutedChats.add(S.ctxChatId);
+  }
+  renderChatList();
+}
+
 // ── CHAT ACTION SHEET (mobile bottom sheet) ──
 function openChatSheet(chatId) {
   S.ctxChatId = chatId;
   const chat = S.chats.find(c => c.id === chatId);
   document.getElementById('chat-sheet-title').textContent = chat ? chatName(chat) : '';
+  const isRoom = chat?.type === 'room';
   const pinLabel = document.getElementById('sheet-pin-label');
   if (pinLabel) pinLabel.textContent = chat?.pinned ? 'Открепить' : 'Закрепить';
   const pinBtn = document.getElementById('sheet-pin-btn');
-  if (pinBtn) pinBtn.style.display = chat?.type === 'room' ? 'none' : '';
+  if (pinBtn) pinBtn.style.display = isRoom ? 'none' : '';
+  const muteLabel = document.getElementById('sheet-mute-label');
+  if (muteLabel) muteLabel.textContent = S.mutedChats.has(chatId) ? 'Включить звук' : 'Заглушить';
   document.getElementById('chat-sheet-backdrop').classList.add('open');
   document.getElementById('chat-action-sheet').classList.add('open');
 }
@@ -3410,6 +3434,19 @@ async function sheetDeleteChat() {
   closeChatSheet();
   if (!S.ctxChatId) return;
   await deleteChat(S.ctxChatId);
+}
+
+async function sheetMuteChat() {
+  closeChatSheet();
+  if (!S.ctxChatId) return;
+  if (S.mutedChats.has(S.ctxChatId)) {
+    await api('DELETE', `/chats/${S.ctxChatId}/mute`);
+    S.mutedChats.delete(S.ctxChatId);
+  } else {
+    await api('POST', `/chats/${S.ctxChatId}/mute`);
+    S.mutedChats.add(S.ctxChatId);
+  }
+  renderChatList();
 }
 
 // ── MODAL HELPERS ──

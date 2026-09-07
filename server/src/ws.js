@@ -265,7 +265,12 @@ function setup(server) {
           LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
           WHERE m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL
         `);
+        const stmtMuted = db.prepare(
+          'SELECT 1 FROM muted_chats WHERE user_id = ? AND (chat_id = ? OR chat_id = ?)'
+        );
         allMembers.forEach(({ user_id }) => {
+          const parentId = chatMeta?.parent_id || chat_id;
+          if (stmtMuted.get(user_id, chat_id, parentId)) return;
           const chatTitle = chat?.type === 'direct' ? msg.sender_name : (chat?.name || 'Electron');
           const unread = stmtUnread.get(user_id, user_id, user_id).c;
           pushToUser(user_id, {
