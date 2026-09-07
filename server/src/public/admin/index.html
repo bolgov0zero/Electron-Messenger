@@ -576,13 +576,13 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           Вложения
         </button>
-        <button class="sm-nav-item" data-section="update" onclick="showSettingsSection('update')">
-          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          Обновление
-        </button>
         <button class="sm-nav-item" data-section="announcements" onclick="showSettingsSection('announcements')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           Объявления
+        </button>
+        <button class="sm-nav-item" data-section="update" onclick="showSettingsSection('update')">
+          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Обновление
         </button>
       </nav>
       <div class="settings-modal-content" id="settings-modal-content"></div>
@@ -2512,6 +2512,7 @@ function showSettingsSection(section) {
     const inp = document.getElementById('github-token-input');
     if (inp) inp.addEventListener('keydown', e => e.key === 'Enter' && saveGithubToken());
   }
+  if (section === 'announcements') loadAnnouncementProfile();
 }
 
 function _buildSettingsSectionHtml(section) {
@@ -2642,19 +2643,33 @@ function _buildSettingsSectionHtml(section) {
 
   if (section === 'announcements') return `
     <div class="card">
-      <div class="card-head"><h3>Объявления</h3></div>
-      <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
-        <p style="font-size:12px;color:var(--c-text2);line-height:1.7">
-          Имя, от которого будут отправляться системные сообщения в чаты.<br>
-          Применяется при следующей отправке объявления.
+      <div class="card-head"><h3>Системный пользователь</h3></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:16px">
+        <p style="font-size:12px;color:var(--c-text2);line-height:1.7;margin:0">
+          От имени этого пользователя отправляются объявления в чаты.
         </p>
         <div class="fg" style="margin:0">
-          <label>Имя отправителя</label>
-          <div style="display:flex;gap:8px">
-            <input id="ann-name-input" value="${esc(s.announcement_name || 'Система')}" placeholder="Система" style="flex:1">
-            <button class="btn btn-primary" onclick="saveAnnouncementName()">Сохранить</button>
+          <label>Аватар</label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:48px;height:48px;border-radius:50%;overflow:hidden;background:var(--c-surface2);flex-shrink:0;position:relative;border:1px solid var(--c-border)">
+              <img id="sys-av-img" src="" style="width:100%;height:100%;object-fit:cover;display:none" onerror="this.style.display='none'">
+              <div id="sys-av-placeholder" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--c-primary)">С</div>
+            </div>
+            <div>
+              <input type="file" id="sys-av-input" accept="image/*" style="display:none" onchange="onSysAvatarChange(this)">
+              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('sys-av-input').click()">Загрузить…</button>
+            </div>
           </div>
         </div>
+        <div class="fg" style="margin:0">
+          <label>Имя отправителя</label>
+          <input id="ann-name-input" placeholder="Система" style="width:100%">
+        </div>
+        <div class="fg" style="margin:0">
+          <label>Тег <span style="color:var(--c-muted);font-weight:400;text-transform:none;letter-spacing:0">(отображается рядом с именем)</span></label>
+          <input id="ann-tag-input" placeholder="напр. Система" style="width:100%">
+        </div>
+        <button class="btn btn-primary" onclick="saveAnnouncementProfile()" style="align-self:flex-start">Сохранить</button>
       </div>
     </div>`;
 
@@ -3024,11 +3039,40 @@ async function sendAnnouncement() {
   }
 }
 
-async function saveAnnouncementName() {
-  const val = document.getElementById('ann-name-input').value.trim();
-  if (!val) { toast('Введите имя', 'error'); return; }
-  await api('PUT', '/api/admin/settings', { announcement_name: val });
-  toast('Сохранено', 'success');
+async function loadAnnouncementProfile() {
+  const data = await api('GET', '/api/admin/announcement/profile');
+  if (!data) return;
+  const nameInput = document.getElementById('ann-name-input');
+  const tagInput = document.getElementById('ann-tag-input');
+  if (nameInput) nameInput.value = data.name || '';
+  if (tagInput) tagInput.value = data.tag || '';
+  if (data.has_avatar && data.system_user_id) {
+    const img = document.getElementById('sys-av-img');
+    const ph = document.getElementById('sys-av-placeholder');
+    if (img) {
+      img.src = `/api/users/${data.system_user_id}/avatar?t=${Date.now()}`;
+      img.style.display = '';
+      img.onload = () => { if (ph) ph.style.display = 'none'; };
+    }
+  }
+}
+
+async function onSysAvatarChange(input) {
+  if (!input.files[0]) return;
+  const base64 = await resizeAvatarFile(input.files[0]);
+  const data = await api('POST', '/api/admin/announcement/avatar', { data: base64 });
+  if (data?.ok) { toast('Аватар сохранён', 'success'); loadAnnouncementProfile(); }
+  else toast(data?.error || 'Ошибка', 'error');
+  input.value = '';
+}
+
+async function saveAnnouncementProfile() {
+  const name = document.getElementById('ann-name-input')?.value.trim();
+  const tag = document.getElementById('ann-tag-input')?.value.trim();
+  if (!name) { toast('Введите имя', 'error'); return; }
+  const data = await api('POST', '/api/admin/announcement/profile', { name, tag: tag || null });
+  if (data?.ok) toast('Сохранено', 'success');
+  else toast(data?.error || 'Ошибка', 'error');
 }
 </script>
 </body>

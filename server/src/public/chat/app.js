@@ -1861,6 +1861,19 @@ function renderMsgIRC(m, isGroup) {
   const mine = m.sender_id===S.user.id;
   const time = fmtTime(m.sent_at);
   const isDeleted = m.deleted;
+
+  if (m.sender_is_bot && !isDeleted) {
+    return `<div class="irc-msg" data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}" oncontextmenu="event.preventDefault()" style="padding:2px 0">
+      <div style="width:100%;display:flex;justify-content:center;padding:0 20px;box-sizing:border-box">
+        <div style="background:var(--accent-soft);border:1px solid var(--accent-border);border-radius:14px;padding:5px 14px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;max-width:80%">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.55"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span style="word-break:break-word">${esc(m.text)}</span>
+          <span style="font-size:10px;opacity:.4;flex-shrink:0;margin-left:2px">${time}</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
   const bodyText = isDeleted ? '<em class="irc-deleted">Сообщение удалено</em>' : m.sender_is_bot ? m.text + (m.edited_at ? ' <span class="edited-tag">изм.</span>' : '') : linkifyText(m.text) + (m.edited_at?` <span class="edited-tag">изм.</span>`:'');
   const statusIcon = mine && !isDeleted ? renderStatus(m.status) : '';
   const reactionsHtml = isDeleted ? '' : renderReactions(m.id);
@@ -2515,8 +2528,13 @@ function showSystemAnnouncement(text) {
     modal = document.createElement('div');
     modal.id = 'announcement-modal';
     modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center';
-    modal.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:24px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
-      <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text)">Системное объявление</div>
+    modal.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:24px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3);border:1px solid rgba(210,55,55,.22)">
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text);display:flex;align-items:center;gap:8px">
+        <div style="width:24px;height:24px;border-radius:50%;background:rgba(210,55,55,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(200,55,55,.8)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </div>
+        Системное объявление
+      </div>
       <div id="announcement-text" style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap"></div>
       <button onclick="document.getElementById('announcement-modal').style.display='none'" style="margin-top:16px;width:100%;padding:9px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">OK</button>
     </div>`;

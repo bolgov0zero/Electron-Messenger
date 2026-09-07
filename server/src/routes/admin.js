@@ -664,6 +664,44 @@ router.delete('/files/:filename', (req, res) => {
 
 // ── Объявления ──
 
+function getSysUserId() {
+  return Number(db.prepare("SELECT value FROM settings WHERE key = 'system_user_id'").get()?.value) || null;
+}
+
+router.get('/announcement/profile', (req, res) => {
+  const sysId = getSysUserId();
+  if (!sysId) return res.status(404).json({ error: 'System user not found' });
+  const user = db.prepare('SELECT display_name, tag FROM users WHERE id = ?').get(sysId);
+  res.json({
+    system_user_id: sysId,
+    name: user?.display_name || 'Система',
+    tag: user?.tag || null,
+    has_avatar: fs.existsSync(path.join(AVATAR_DIR, `${sysId}.jpg`)),
+  });
+});
+
+router.post('/announcement/profile', (req, res) => {
+  const sysId = getSysUserId();
+  if (!sysId) return res.status(404).json({ error: 'System user not found' });
+  const { name, tag } = req.body;
+  const cleanName = name?.trim() || 'Система';
+  db.prepare('UPDATE users SET display_name = ?, tag = ? WHERE id = ?').run(cleanName, tag?.trim() || null, sysId);
+  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('announcement_name', ?)").run(cleanName);
+  res.json({ ok: true });
+});
+
+router.post('/announcement/avatar', (req, res) => {
+  const sysId = getSysUserId();
+  if (!sysId) return res.status(404).json({ error: 'System user not found' });
+  const { data } = req.body;
+  if (!data) return res.status(400).json({ error: 'Missing data' });
+  const buf = Buffer.from(data, 'base64');
+  if (!isImgBuf(buf)) return res.status(400).json({ error: 'Not an image' });
+  fs.mkdirSync(AVATAR_DIR, { recursive: true });
+  fs.writeFileSync(path.join(AVATAR_DIR, `${sysId}.jpg`), buf);
+  res.json({ ok: true });
+});
+
 router.post('/announcement', (req, res) => {
   const { mode, chat_ids, text } = req.body;
   if (!text?.trim()) return res.status(400).json({ error: 'Нет текста' });
