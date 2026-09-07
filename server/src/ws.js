@@ -142,6 +142,10 @@ function getMessageWithStatus(msgId, viewerId) {
   `).get(msgId);
   if (!msg) return null;
   if (msg.attachment) try { msg.attachment = JSON.parse(msg.attachment); } catch { msg.attachment = null; }
+  if (msg.attachment?.url) {
+    const fname = path.basename(msg.attachment.url);
+    if (!fs.existsSync(path.join(FILES_DIR, fname))) msg.attachment = { ...msg.attachment, expired: true };
+  }
   if (msg.mentions) try { msg.mentions = JSON.parse(msg.mentions); } catch { msg.mentions = null; }
   if (msg.reply_attachment) try { msg.reply_attachment = JSON.parse(msg.reply_attachment); } catch { msg.reply_attachment = null; }
   if (msg.forward_data) try { msg.forward_data = JSON.parse(msg.forward_data); } catch { msg.forward_data = null; }
@@ -500,4 +504,10 @@ function getConnCount() { return connMeta.size; }
 
 function getConnMeta(connId) { return connMeta.get(connId) || null; }
 
-module.exports = { setup, broadcast, sendTo, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };
+function broadcastAll(payload) {
+  for (const [, conns] of clients) {
+    conns.forEach(ws => { if (ws.readyState === 1) ws.send(JSON.stringify(payload)); });
+  }
+}
+
+module.exports = { setup, broadcast, broadcastAll, sendTo, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };

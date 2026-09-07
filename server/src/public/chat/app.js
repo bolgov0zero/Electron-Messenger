@@ -2509,6 +2509,23 @@ function clearImagePreview() {
   }
 }
 
+function showSystemAnnouncement(text) {
+  let modal = document.getElementById('announcement-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'announcement-modal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center';
+    modal.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:24px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text)">Системное объявление</div>
+      <div id="announcement-text" style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap"></div>
+      <button onclick="document.getElementById('announcement-modal').style.display='none'" style="margin-top:16px;width:100%;padding:9px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">OK</button>
+    </div>`;
+    document.body.appendChild(modal);
+  }
+  document.getElementById('announcement-text').textContent = text || '';
+  modal.style.display = 'flex';
+}
+
 function openLightbox(url, filename) {
   let lb = document.getElementById('lightbox');
   if (!lb) {
@@ -2931,6 +2948,7 @@ function connectWS() {
     }
 
     if (data.type === 'force_logout') { logout(true); }
+    if (data.type === 'announcement') { showSystemAnnouncement(data.text); }
   };
 
   ws.onclose = (event) => {

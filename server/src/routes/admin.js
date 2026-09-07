@@ -5,7 +5,7 @@ const fs = require('fs');
 const https = require('https');
 const crypto = require('crypto');
 const { authMiddleware, adminMiddleware } = require('../auth');
-const { sendTo, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress } = require('../ws');
+const { sendTo, broadcast, broadcastAll, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, getMessageWithStatus } = require('../ws');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
 const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
@@ -302,7 +302,8 @@ router.get('/settings', (req, res) => {
 router.put('/settings', (req, res) => {
   const allowed = ['github_token', 'edit_time_limit',
     'upload_image_max_size', 'upload_image_extensions',
-    'upload_file_max_size', 'upload_file_extensions', 'upload_file_lifetime'];
+    'upload_file_max_size', 'upload_file_extensions', 'upload_file_lifetime',
+    'announcement_name'];
   const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
   const del = db.prepare('DELETE FROM settings WHERE key = ?');
   const keepEmpty = ['upload_image_extensions', 'upload_file_extensions', 'upload_file_lifetime'];
@@ -353,6 +354,18 @@ router.get('/updates/progress', (req, res) => {
 // Завершить ВСЕ сессии пользователя (все устройства)
 router.post('/users/:id/logout', (req, res) => {
   sendTo(Number(req.params.id), { type: 'force_logout' });
+  res.json({ ok: true });
+});
+
+// Блокировка / разблокировка пользователя
+router.post('/users/:id/ban', (req, res) => {
+  db.prepare('UPDATE users SET banned = 1 WHERE id = ?').run(Number(req.params.id));
+  sendTo(Number(req.params.id), { type: 'force_logout' });
+  res.json({ ok: true });
+});
+
+router.post('/users/:id/unban', (req, res) => {
+  db.prepare('UPDATE users SET banned = 0 WHERE id = ?').run(Number(req.params.id));
   res.json({ ok: true });
 });
 
@@ -566,6 +579,113 @@ router.post('/subrooms/reorder', (req, res) => {
   const upd = db.prepare('UPDATE chats SET position = ? WHERE id = ? AND parent_id IS NOT NULL');
   db.transaction(() => ids.forEach((id, i) => upd.run(i, id)))();
   res.json({ ok: true });
+});
+
+// ── Файлы ──
+
+router.get('/files', (req, res) => {
+  let filenames = [];
+  try { filenames = fs.readdirSync(FILES_DIR).filter(f => !f.endsWith('_t.webp')); } catch {}
+
+  const msgs = db.prepare(`
+    SELECT m.id, m.chat_id, m.attachment, m.sent_at,
+           u.display_name as sender_name, c.name as chat_name
+    FROM messages m
+    LEFT JOIN users u ON u.id = m.sender_id
+    LEFT JOIN chats c ON c.id = m.chat_id
+    WHERE m.attachment IS NOT NULL AND m.deleted = 0
+  `).all();
+
+  const metaMap = new Map();
+  for (const msg of msgs) {
+    try {
+      const att = JSON.parse(msg.attachment);
+      if (att?.url) {
+        const fname = path.basename(att.url);
+        if (!metaMap.has(fname)) metaMap.set(fname, {
+          mime: att.mime || null,
+          message_id: msg.id, chat_id: msg.chat_id,
+          chat_name: msg.chat_name, sender_name: msg.sender_name, sent_at: msg.sent_at,
+        });
+      }
+    } catch {}
+  }
+
+  const result = filenames.map(filename => {
+    const stat = (() => { try { return fs.statSync(path.join(FILES_DIR, filename)); } catch { return null; } })();
+    return { filename, size: stat?.size ?? 0, mtime: stat?.mtimeMs ?? 0, ...(metaMap.get(filename) || {}) };
+  }).sort((a, b) => b.mtime - a.mtime);
+
+  res.json(result);
+});
+
+router.delete('/files/:filename', (req, res) => {
+  const filename = path.basename(req.params.filename);
+  if (!filename) return res.status(400).json({ error: 'Invalid filename' });
+
+  const withAtt = db.prepare('SELECT id, chat_id FROM messages WHERE deleted = 0 AND attachment LIKE ?').all(`%${filename}%`);
+  const withFwd = db.prepare('SELECT id, chat_id, forward_data FROM messages WHERE deleted = 0 AND forward_data LIKE ?').all(`%${filename}%`);
+
+  // Удалить файл и миниатюру с диска
+  const thumbName = filename.replace(/\.[^.]+$/, '') + '_t.webp';
+  [path.join(FILES_DIR, filename), path.join(FILES_DIR, thumbName)].forEach(p => {
+    try { if (fs.existsSync(p)) fs.unlinkSync(p); } catch {}
+  });
+
+  // Обновить forward_data: убрать url/thumb вложения, добавить expired
+  for (const msg of withFwd) {
+    try {
+      const fd = JSON.parse(msg.forward_data);
+      if (fd?.attachment?.url && path.basename(fd.attachment.url) === filename) {
+        fd.attachment = { name: fd.attachment.name, mime: fd.attachment.mime, expired: true };
+        db.prepare('UPDATE messages SET forward_data = ? WHERE id = ?').run(JSON.stringify(fd), msg.id);
+      }
+    } catch {}
+  }
+
+  // Broadcast message_edited для затронутых сообщений
+  const allAffected = new Map();
+  [...withAtt, ...withFwd].forEach(m => allAffected.set(m.id, m.chat_id));
+  for (const [msgId, chatId] of allAffected) {
+    const updated = getMessageWithStatus(msgId, null);
+    if (updated) broadcast(chatId, { type: 'message_edited', message: updated });
+  }
+
+  res.json({ ok: true });
+});
+
+// ── Объявления ──
+
+router.post('/announcement', (req, res) => {
+  const { mode, chat_ids, text } = req.body;
+  if (!text?.trim()) return res.status(400).json({ error: 'Нет текста' });
+
+  if (mode === 'popup') {
+    broadcastAll({ type: 'announcement', text: text.trim() });
+    return res.json({ ok: true, count: 0 });
+  }
+
+  const sysIdRow = db.prepare("SELECT value FROM settings WHERE key = 'system_user_id'").get();
+  if (!sysIdRow) return res.status(500).json({ error: 'Системный пользователь не найден' });
+  const sysUserId = Number(sysIdRow.value);
+
+  const annName = db.prepare("SELECT value FROM settings WHERE key = 'announcement_name'").get()?.value || 'Система';
+  db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(annName, sysUserId);
+
+  const targetIds = mode === 'all'
+    ? db.prepare("SELECT id FROM chats WHERE type IN ('group', 'room')").all().map(r => r.id)
+    : (chat_ids || []).map(Number).filter(Boolean);
+
+  if (targetIds.length === 0) return res.json({ ok: true, count: 0 });
+
+  const insertMsg = db.prepare('INSERT INTO messages (chat_id, sender_id, text) VALUES (?, ?, ?)');
+  for (const chatId of targetIds) {
+    const r = insertMsg.run(chatId, sysUserId, text.trim());
+    const msg = getMessageWithStatus(r.lastInsertRowid, null);
+    if (msg) broadcast(chatId, { type: 'message', message: msg });
+  }
+
+  res.json({ ok: true, count: targetIds.length });
 });
 
 module.exports = router;

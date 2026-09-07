@@ -510,6 +510,10 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           Чаты и группы
           <span class="nav-badge" id="nb-chats">—</span>
         </div>
+        <div class="nav-item" onclick="nav('files')" data-page="files">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Файлы
+        </div>
         <div class="nav-item" onclick="nav('clients')" data-page="clients">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           Клиенты
@@ -575,6 +579,10 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
         <button class="sm-nav-item" data-section="update" onclick="showSettingsSection('update')">
           <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           Обновление
+        </button>
+        <button class="sm-nav-item" data-section="announcements" onclick="showSettingsSection('announcements')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Объявления
         </button>
       </nav>
       <div class="settings-modal-content" id="settings-modal-content"></div>
@@ -811,6 +819,46 @@ return 'OK';</pre>
       <button class="modal-close" onclick="closeUpdProgModal()">✕</button>
     </div>
     <div class="modal-body" id="upd-prog-list" style="padding:12px 16px;display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+
+<!-- Announcement modal -->
+<div class="modal-bg" id="modal-announcement">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <h3>Системное объявление</h3>
+      <button class="modal-close" onclick="closeModal('modal-announcement')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label>Куда отправить</label>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:2px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:400;cursor:pointer;text-transform:none;letter-spacing:0">
+            <input type="radio" name="ann-mode" value="select" checked onchange="annModeChange()" style="accent-color:var(--c-primary)"> Выбранные чаты
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:400;cursor:pointer;text-transform:none;letter-spacing:0">
+            <input type="radio" name="ann-mode" value="all" onchange="annModeChange()" style="accent-color:var(--c-primary)"> Все группы и комнаты
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:400;cursor:pointer;text-transform:none;letter-spacing:0">
+            <input type="radio" name="ann-mode" value="popup" onchange="annModeChange()" style="accent-color:var(--c-primary)"> Всплывающее окно <span style="color:var(--c-muted)">(только онлайн)</span>
+          </label>
+        </div>
+      </div>
+      <div id="ann-chat-select" class="fg">
+        <label>Чаты</label>
+        <input id="ann-chat-search" class="search-input" placeholder="Поиск…" oninput="renderAnnChatList(this.value)" style="margin-bottom:6px;width:100%">
+        <div id="ann-chat-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:4px"></div>
+      </div>
+      <div class="fg">
+        <label>Текст объявления</label>
+        <textarea id="ann-text" rows="4" style="resize:vertical;width:100%;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;color:var(--c-text);font-family:var(--f-ui)" placeholder="Введите текст…"></textarea>
+      </div>
+      <div class="err" id="ann-err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-announcement')">Отмена</button>
+      <button class="btn btn-primary" onclick="sendAnnouncement()">Отправить</button>
+    </div>
   </div>
 </div>
 
@@ -1215,8 +1263,8 @@ function logout() {
 })();
 
 /* ── NAV ── */
-const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки'};
-const pageRenders = {dashboard:renderDashboard,users:renderUsers,rooms:renderRooms,chats:renderChats,clients:renderClients,push:renderPush,webhooks:renderWebhooks};
+const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',files:'Файлы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки'};
+const pageRenders = {dashboard:renderDashboard,users:renderUsers,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks};
 
 function nav(page) {
   currentPage=page;
@@ -1392,6 +1440,11 @@ async function renderDashboard() {
             <div class="qa-item" onclick="openCreateRoom()">
               <div class="qa-icon" style="background:var(--c-green-dim)"><svg width="11" height="11" fill="none" stroke="var(--c-green-text)" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
               <span class="qa-label">Создать комнату</span>
+              <svg class="qa-arrow" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+            <div class="qa-item" onclick="openAnnouncementModal()">
+              <div class="qa-icon" style="background:var(--c-purple-dim,rgba(139,92,246,.12))"><svg width="11" height="11" fill="none" stroke="var(--c-purple,#8b5cf6)" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+              <span class="qa-label">Системное объявление</span>
               <svg class="qa-arrow" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
             </div>
             <div class="qa-item" onclick="restartService()">
@@ -1712,15 +1765,22 @@ function statusBadge(connected) {
 }
 
 function userRowHtml(u) {
+  const statusCol = u.banned
+    ? '<span class="badge badge-red">Заблокирован</span>'
+    : statusBadge(u.connected);
+  const banBtn = u.banned
+    ? `<button class="btn btn-ghost btn-sm" onclick="unbanUser(${u.id},'${jesc(u.display_name)}')">Разблок</button>`
+    : `<button class="btn btn-ghost btn-sm" onclick="banUser(${u.id},'${jesc(u.display_name)}')">Блок</button>`;
   return `<tr>
     <td><div class="user-cell">${avHtml(u.display_name,30,8,u.id,u.connected,u.has_avatar)}<div><div class="uc-name">${esc(u.display_name)}</div><div class="uc-sub">@${esc(u.username)}</div></div></div></td>
     <td>${u.is_admin?'<span class="badge badge-blue">Администратор</span>':'<span class="badge badge-gray">Пользователь</span>'}</td>
-    <td>${statusBadge(u.connected)}</td>
+    <td>${statusCol}</td>
     <td style="color:var(--c-muted);font-size:11px">${fmtDate(u.created_at)}</td>
     <td><div class="td-actions">
       <button class="btn btn-ghost btn-sm" onclick="openEditUser(${u.id})">Изменить</button>
       <button class="btn btn-ghost btn-sm" onclick="openChangePass(${u.id})">Пароль</button>
       <button class="btn btn-ghost btn-sm" onclick="logoutUserSessions(${u.id},'${jesc(u.display_name)}')" title="Завершить все сессии на всех устройствах">Выход</button>
+      ${banBtn}
       <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id},'${jesc(u.display_name)}')">Удалить</button>
     </div></td>
   </tr>`;
@@ -1818,6 +1878,20 @@ function deleteUser(id, name) {
     toast('Пользователь удалён');
     renderUsers();
   });
+}
+
+function banUser(id, name) {
+  confirm('Заблокировать?', `«${name}» не сможет войти в систему. Активные сессии будут завершены.`, async () => {
+    await api('POST', `/api/admin/users/${id}/ban`);
+    toast('Пользователь заблокирован', 'success');
+    renderUsers();
+  });
+}
+
+async function unbanUser(id, name) {
+  await api('POST', `/api/admin/users/${id}/unban`);
+  toast(`«${name}» разблокирован`, 'success');
+  renderUsers();
 }
 
 /* ── CHATS ── */
@@ -2571,6 +2645,25 @@ function _buildSettingsSectionHtml(section) {
         </div>
       </div>
     </div>`;
+
+  if (section === 'announcements') return `
+    <div class="card">
+      <div class="card-head"><h3>Объявления</h3></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+        <p style="font-size:12px;color:var(--c-text2);line-height:1.7">
+          Имя, от которого будут отправляться системные сообщения в чаты.<br>
+          Применяется при следующей отправке объявления.
+        </p>
+        <div class="fg" style="margin:0">
+          <label>Имя отправителя</label>
+          <div style="display:flex;gap:8px">
+            <input id="ann-name-input" value="${esc(s.announcement_name || 'Система')}" placeholder="Система" style="flex:1">
+            <button class="btn btn-primary" onclick="saveAnnouncementName()">Сохранить</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
   return '';
 }
 
@@ -2794,6 +2887,133 @@ async function doServerUpdateSettings() {
       }
     } catch {}
   }, 1500);
+}
+
+/* ── FILES ── */
+async function renderFiles() {
+  document.getElementById('page-body').innerHTML = `<div style="color:var(--c-muted);font-size:12px;padding:20px 0">Загрузка…</div>`;
+  const files = await api('GET', '/api/admin/files') || [];
+
+  function fmtSize(bytes) {
+    if (!bytes) return '—';
+    if (bytes > 1048576) return (bytes / 1048576).toFixed(1) + ' МБ';
+    return Math.round(bytes / 1024) + ' КБ';
+  }
+  function fileExt(name) { return (name.split('.').pop() || '').toLowerCase(); }
+  function isImg(name) { return ['jpg','jpeg','png','gif','webp','svg'].includes(fileExt(name)); }
+  function fileIcon() {
+    return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+  }
+
+  let searchVal = '';
+  function getFiltered() {
+    const q = searchVal.toLowerCase();
+    return q ? files.filter(f => (f.filename||'').toLowerCase().includes(q) || (f.sender_name||'').toLowerCase().includes(q) || (f.chat_name||'').toLowerCase().includes(q)) : files;
+  }
+
+  function renderTable() {
+    const filtered = getFiltered();
+    const rows = filtered.length ? filtered.map(f => {
+      const thumb = isImg(f.filename)
+        ? `<img src="/files/${esc(f.filename)}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;display:block" onerror="this.style.display='none'">`
+        : `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">${fileIcon()}</div>`;
+      const fname = f.filename.length > 32 ? f.filename.slice(0, 30) + '…' : f.filename;
+      return `<tr>
+        <td style="width:40px">${thumb}</td>
+        <td style="font-size:11px;font-family:var(--f-mono);color:var(--c-text2)" title="${esc(f.filename)}">${esc(fname)}</td>
+        <td style="font-size:11px;color:var(--c-muted)">${fmtSize(f.size)}</td>
+        <td style="font-size:11px;color:var(--c-text2)">${esc(f.sender_name||'—')}</td>
+        <td style="font-size:11px;color:var(--c-text2)">${esc(f.chat_name||'—')}</td>
+        <td style="font-size:11px;color:var(--c-muted)">${f.sent_at ? fmtDate(f.sent_at) : '—'}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteFile('${jesc(f.filename)}')">Удалить</button></td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="7"><div class="empty-state"><p>Нет файлов</p></div></td></tr>`;
+
+    document.getElementById('files-tbody').innerHTML = rows;
+  }
+
+  document.getElementById('page-body').innerHTML = `
+    <div class="card">
+      <div class="card-head">
+        <h3>Файлы <span style="color:var(--c-muted);font-weight:500">(${files.length})</span></h3>
+        <div class="search-box">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input placeholder="Поиск…" id="files-search" oninput="filesSearchHandler(this.value)">
+        </div>
+      </div>
+      <table>
+        <thead><tr><th style="width:40px"></th><th>Файл</th><th>Размер</th><th>Загрузил</th><th>Чат</th><th>Дата</th><th>Действия</th></tr></thead>
+        <tbody id="files-tbody"></tbody>
+      </table>
+    </div>`;
+
+  window.filesSearchHandler = (q) => { searchVal = q; renderTable(); };
+  renderTable();
+}
+
+function deleteFile(filename) {
+  confirm('Удалить файл?', `Файл «${filename}» будет удалён. В чатах появится заглушка «Файл удалён».`, async () => {
+    const data = await api('DELETE', `/api/admin/files/${encodeURIComponent(filename)}`);
+    if (data?.ok) { toast('Файл удалён', 'success'); renderFiles(); }
+    else toast(data?.error || 'Ошибка', 'error');
+  });
+}
+
+/* ── ANNOUNCEMENTS ── */
+let annSelectedChats = new Set();
+
+async function openAnnouncementModal() {
+  annSelectedChats = new Set();
+  document.getElementById('ann-text').value = '';
+  document.getElementById('ann-err').textContent = '';
+  document.querySelector('input[name="ann-mode"][value="select"]').checked = true;
+  annModeChange();
+  if (!allChats.length) allChats = await api('GET', '/api/admin/chats') || [];
+  renderAnnChatList('');
+  openModal('modal-announcement');
+}
+
+function annModeChange() {
+  const mode = document.querySelector('input[name="ann-mode"]:checked')?.value;
+  document.getElementById('ann-chat-select').style.display = mode === 'select' ? '' : 'none';
+}
+
+function renderAnnChatList(q) {
+  const lq = (q||'').toLowerCase();
+  const chats = allChats.filter(c => c.type !== 'direct' && (!lq || (c.name||'').toLowerCase().includes(lq)));
+  document.getElementById('ann-chat-list').innerHTML = chats.map(c => `
+    <label style="display:flex;align-items:center;gap:8px;padding:5px 8px;cursor:pointer;border-radius:6px;font-size:12px;color:var(--c-text2)">
+      <input type="checkbox" ${annSelectedChats.has(c.id)?'checked':''} onchange="annToggleChat(${c.id},this.checked)" style="accent-color:var(--c-primary)">
+      ${esc(c.name||'Чат')} <span style="color:var(--c-muted)">(${c.type==='room'?'комната':'группа'})</span>
+    </label>`).join('') || '<div style="padding:10px;color:var(--c-muted);font-size:12px">Нет групп и комнат</div>';
+}
+
+function annToggleChat(id, checked) { checked ? annSelectedChats.add(id) : annSelectedChats.delete(id); }
+
+async function sendAnnouncement() {
+  const mode = document.querySelector('input[name="ann-mode"]:checked')?.value;
+  const text = document.getElementById('ann-text').value.trim();
+  const errEl = document.getElementById('ann-err');
+  if (!text) { errEl.textContent = 'Введите текст'; return; }
+  if (mode === 'select' && annSelectedChats.size === 0) { errEl.textContent = 'Выберите хотя бы один чат'; return; }
+  errEl.textContent = '';
+  const body = { mode, text };
+  if (mode === 'select') body.chat_ids = [...annSelectedChats];
+  const data = await api('POST', '/api/admin/announcement', body);
+  if (data?.ok) {
+    closeModal('modal-announcement');
+    const msg = mode === 'popup' ? 'Всплывающее объявление отправлено' : `Объявление отправлено в ${data.count} чат(а/ов)`;
+    toast(msg, 'success');
+  } else {
+    errEl.textContent = data?.error || 'Ошибка';
+  }
+}
+
+async function saveAnnouncementName() {
+  const val = document.getElementById('ann-name-input').value.trim();
+  if (!val) { toast('Введите имя', 'error'); return; }
+  await api('PUT', '/api/admin/settings', { announcement_name: val });
+  toast('Сохранено', 'success');
 }
 </script>
 </body>

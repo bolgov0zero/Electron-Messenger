@@ -117,6 +117,7 @@ tryAlter('ALTER TABLE users ADD COLUMN is_bot INTEGER DEFAULT 0');
 tryAlter('ALTER TABLE chats ADD COLUMN parent_id INTEGER REFERENCES chats(id) ON DELETE CASCADE');
 tryAlter('ALTER TABLE chats ADD COLUMN position INTEGER DEFAULT 0');
 tryAlter('ALTER TABLE messages ADD COLUMN forward_data TEXT');
+tryAlter('ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0');
 
 // ── Полнотекстовый поиск (FTS5, external content) ──
 // Целостность обеспечивается JOIN с messages при выборке: осиротевшие FTS-записи
@@ -155,6 +156,13 @@ if (userCount.c === 0) {
   db.prepare('INSERT INTO users (username, password_hash, display_name, is_admin) VALUES (?, ?, ?, 1)')
     .run('admin', hash, 'Administrator');
   console.log('Created default admin: admin / admin');
+}
+
+// Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)
+const sysExists = db.prepare("SELECT id FROM users WHERE username = '__system__'").get();
+if (!sysExists) {
+  const r = db.prepare("INSERT INTO users (username, password_hash, display_name, is_bot) VALUES ('__system__', '', 'Система', 1)").run();
+  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('system_user_id', ?)").run(String(r.lastInsertRowid));
 }
 
 // Periodically let SQLite tune its own query planner stats (safe, read-only analysis)
