@@ -13,7 +13,7 @@ const MSG_SELECT = `
     u.id as sender_id, COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.tag as sender_tag, u.is_bot as sender_is_bot,
     m.reply_to_id,
     rm.text as reply_text, rm.deleted as reply_deleted, rm.attachment as reply_attachment,
-    COALESCE(ru.display_name, 'Удалённый аккаунт') as reply_sender_name
+    COALESCE(ru.display_name, 'Удалённый аккаунт') as reply_sender_name, ru.is_bot as reply_sender_is_bot
   FROM messages m LEFT JOIN users u ON u.id = m.sender_id
   LEFT JOIN messages rm ON rm.id = m.reply_to_id
   LEFT JOIN users ru ON ru.id = rm.sender_id

@@ -1441,7 +1441,7 @@ function senderNameClass(tag) {
 
 function renderMsgIRC(m, isGroup) {
   if (m.status && m.id > 0) S.msgStatus[m.id] = { ...m.status };
-  if (m.id > 0) S.msgData.set(m.id, { forwardData: m.forward_data || null, senderId: m.sender_id, senderName: m.sender_name, text: m.text, attachment: m.attachment });
+  if (m.id > 0) S.msgData.set(m.id, { forwardData: m.forward_data || null, senderId: m.sender_id, senderName: m.sender_name, senderIsBot: !!m.sender_is_bot, text: m.text, attachment: m.attachment });
   const mine = m.sender_id===S.user.id;
   const time = fmtTime(m.sent_at);
   const isDeleted = m.deleted;
@@ -1466,7 +1466,7 @@ function renderMsgIRC(m, isGroup) {
       ${rThumbHtml}
       <div class="irc-reply-body">
         <div class="irc-reply-name">↳ ${esc(m.reply_sender_name || '')}</div>
-        <div class="irc-reply-text">${mdLite(esc(rTextRaw || ''))}</div>
+        <div class="irc-reply-text">${m.reply_sender_is_bot ? (rTextRaw || '') : mdLite(esc(rTextRaw || ''))}</div>
       </div>
     </div>` : '';
 
@@ -1481,7 +1481,7 @@ function renderMsgIRC(m, isGroup) {
       ${fdThumb}
       <div class="irc-reply-body">
         <div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div>
-        <div class="irc-reply-text">${mdLite(esc(fdText))}</div>
+        <div class="irc-reply-text">${fd.is_bot ? fdText : mdLite(esc(fdText))}</div>
       </div>
     </div>`;
   })() : '';
@@ -3127,7 +3127,7 @@ function ctxForward() {
   if (!d) return;
   S.forwardMsg = d.forwardData
     ? { ...d.forwardData }
-    : { user_id: d.senderId, name: d.senderName, text: (d.text || '').slice(0, 200), attachment: d.attachment || null };
+    : { user_id: d.senderId, name: d.senderName, text: (d.text || '').slice(0, 200), attachment: d.attachment || null, is_bot: d.senderIsBot || false };
   openForwardModal();
 }
 
