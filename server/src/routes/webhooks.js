@@ -45,6 +45,8 @@ async function handleWebhook(req, res) {
 
   const result = db.prepare('INSERT INTO messages (chat_id, sender_id, text) VALUES (?, ?, ?)').run(wh.chat_id, wh.user_id, text);
   const msg = getMessageWithStatus(result.lastInsertRowid, null);
+  const chatMeta = db.prepare('SELECT parent_id FROM chats WHERE id = ?').get(wh.chat_id);
+  if (chatMeta?.parent_id) msg.parent_id = chatMeta.parent_id;
   broadcast(wh.chat_id, { type: 'message', message: msg });
 
   // Push notifications
