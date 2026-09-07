@@ -2117,8 +2117,8 @@ function showSystemAnnouncement(text) {
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'announcement-modal';
-    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.4);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center';
-    modal.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:24px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3);border:1px solid rgba(210,55,55,.22)">
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.4);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s ease';
+    modal.innerHTML = `<div id="announcement-card" style="background:linear-gradient(rgba(210,55,55,.07),rgba(210,55,55,.07)) var(--surface);border-radius:16px;padding:24px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3);border:1px solid rgba(210,55,55,.22);transform:scale(.93) translateY(12px);opacity:0;transition:transform .25s cubic-bezier(.34,1.56,.64,1),opacity .2s ease">
       <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text);display:flex;align-items:center;gap:8px">
         <div style="width:24px;height:24px;border-radius:50%;background:rgba(210,55,55,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(200,55,55,.8)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -2126,12 +2126,26 @@ function showSystemAnnouncement(text) {
         Системное объявление
       </div>
       <div id="announcement-text" style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap"></div>
-      <button onclick="document.getElementById('announcement-modal').style.display='none'" style="margin-top:16px;width:100%;padding:9px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">OK</button>
+      <button onclick="closeSystemAnnouncement()" style="margin-top:16px;width:100%;padding:9px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">OK</button>
     </div>`;
     document.body.appendChild(modal);
   }
   document.getElementById('announcement-text').textContent = text || '';
   modal.style.display = 'flex';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    modal.style.opacity = '1';
+    const card = document.getElementById('announcement-card');
+    if (card) { card.style.transform = 'scale(1) translateY(0)'; card.style.opacity = '1'; }
+  }));
+}
+
+function closeSystemAnnouncement() {
+  const modal = document.getElementById('announcement-modal');
+  const card = document.getElementById('announcement-card');
+  if (!modal) return;
+  modal.style.opacity = '0';
+  if (card) { card.style.transform = 'scale(.93) translateY(12px)'; card.style.opacity = '0'; }
+  setTimeout(() => { if (modal) modal.style.display = 'none'; }, 220);
 }
 
 function openLightbox(url, filename) {
