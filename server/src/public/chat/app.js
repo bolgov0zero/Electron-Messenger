@@ -2221,7 +2221,7 @@ function sendOrEdit() {
   if (S.editingMessageId) { submitEdit(); return; }
   const input = document.getElementById('msg-input');
   const text = input?.value.trim();
-  if (!text && !_pendingAttachment) return;
+  if (!text && !_pendingAttachment && !S.forwardMsg) return;
   if (!S.ws||S.ws.readyState!==1) return;
   const payload = { type:'message', chat_id:S.activeChatId, text: text || '' };
   if (S.replyTo) payload.reply_to_id = S.replyTo.id;
@@ -3485,7 +3485,7 @@ function ctxForward() {
   if (!d) return;
   S.forwardMsg = d.forwardData
     ? { ...d.forwardData }
-    : { userId: d.senderId, name: d.senderName, text: (d.text || '').slice(0, 200), attachment: d.attachment || null };
+    : { user_id: d.senderId, name: d.senderName, text: (d.text || '').slice(0, 200), attachment: d.attachment || null };
   openForwardModal();
 }
 
