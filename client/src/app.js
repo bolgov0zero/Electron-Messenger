@@ -2117,7 +2117,7 @@ function showSystemAnnouncement(text) {
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'announcement-modal';
-    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.4);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center';
     modal.innerHTML = `<div style="background:var(--surface);border-radius:16px;padding:24px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3);border:1px solid rgba(210,55,55,.22)">
       <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text);display:flex;align-items:center;gap:8px">
         <div style="width:24px;height:24px;border-radius:50%;background:rgba(210,55,55,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0">
