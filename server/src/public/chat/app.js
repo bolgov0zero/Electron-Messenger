@@ -1866,7 +1866,7 @@ function renderMsgIRC(m, isGroup) {
       ${rThumbHtml}
       <div class="irc-reply-body">
         <div class="irc-reply-name">↳ ${esc(m.reply_sender_name || '')}</div>
-        <div class="irc-reply-text">${esc((rTextRaw || '').slice(0,80))}</div>
+        <div class="irc-reply-text">${mdLite(esc((rTextRaw || '').slice(0,80)))}</div>
       </div>
     </div>` : '';
 
@@ -1877,7 +1877,7 @@ function renderMsgIRC(m, isGroup) {
       ? `<img src="${httpProto()}://${S.server}${fd.attachment.thumb || fd.attachment.url}" class="irc-reply-thumb" onerror="this.style.display='none'">`
       : `<div class="irc-reply-thumb irc-reply-file"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>`) : '';
     const fdText = (fd.text || (fd.attachment ? (fdIsImg ? '📷 Фото' : '📎 ' + (fd.attachment.name || 'Файл')) : '')).slice(0, 80);
-    return `<div class="irc-reply irc-forward-block">${fdThumb}<div class="irc-reply-body"><div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div><div class="irc-reply-text">${esc(fdText)}</div></div></div>`;
+    return `<div class="irc-reply irc-forward-block">${fdThumb}<div class="irc-reply-body"><div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div><div class="irc-reply-text">${mdLite(esc(fdText))}</div></div></div>`;
   })() : '';
 
   const actionsHtml = '';

@@ -1466,7 +1466,7 @@ function renderMsgIRC(m, isGroup) {
       ${rThumbHtml}
       <div class="irc-reply-body">
         <div class="irc-reply-name">↳ ${esc(m.reply_sender_name || '')}</div>
-        <div class="irc-reply-text">${esc((rTextRaw || '').slice(0,80))}</div>
+        <div class="irc-reply-text">${mdLite(esc((rTextRaw || '').slice(0,80)))}</div>
       </div>
     </div>` : '';
 
@@ -1481,7 +1481,7 @@ function renderMsgIRC(m, isGroup) {
       ${fdThumb}
       <div class="irc-reply-body">
         <div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div>
-        <div class="irc-reply-text">${esc(fdText)}</div>
+        <div class="irc-reply-text">${mdLite(esc(fdText))}</div>
       </div>
     </div>`;
   })() : '';
