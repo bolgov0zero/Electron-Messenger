@@ -286,6 +286,10 @@
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
     Ответить
   </button>
+  <button id="ctx-forward-btn" onclick="ctxForward()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>
+    Переслать
+  </button>
   <button id="ctx-copy-btn" onclick="ctxCopy()">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
     Скопировать
@@ -329,6 +333,24 @@
       <button class="modal-btn-ghost" onclick="_confirmReject()">Отмена</button>
       <button class="modal-btn-primary" id="confirm-ok" style="background:var(--danger)" onclick="_confirmResolve()">Удалить</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-forward" onclick="if(event.target===this)closeForwardModal()">
+  <div class="modal" style="width:380px;max-height:80vh;display:flex;flex-direction:column">
+    <div class="modal-hdr">
+      <span>Переслать в...</span>
+      <button class="icon-btn" onclick="closeForwardModal()" style="width:28px;height:28px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div style="padding:6px 14px 8px">
+      <div class="nc-search" style="margin:0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="forward-search" placeholder="Поиск..." oninput="renderForwardList(this.value.toLowerCase())">
+      </div>
+    </div>
+    <div id="forward-list" style="overflow-y:auto;flex:1;padding:0 8px 8px"></div>
   </div>
 </div>
 

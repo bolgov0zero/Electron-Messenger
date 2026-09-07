@@ -1009,6 +1009,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .irc-reply-body { flex: 1; min-width: 0; overflow: hidden; }
 .irc-reply-name { color: var(--accent); font-weight: 600; }
 .irc-reply-text { opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.irc-forward-block { border-left-color: var(--muted); }
 
 /* Edit bar */
 .input-edit-bar {

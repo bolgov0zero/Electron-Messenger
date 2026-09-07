@@ -130,7 +130,7 @@ function getEditTimeLimit() {
 
 function getMessageWithStatus(msgId, viewerId) {
   const msg = db.prepare(`
-    SELECT m.id, m.chat_id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions,
+    SELECT m.id, m.chat_id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data,
       u.id as sender_id, COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.tag as sender_tag, u.is_bot as sender_is_bot,
       m.reply_to_id,
       rm.text as reply_text, rm.attachment as reply_attachment, rm.deleted as reply_deleted,
@@ -144,6 +144,7 @@ function getMessageWithStatus(msgId, viewerId) {
   if (msg.attachment) try { msg.attachment = JSON.parse(msg.attachment); } catch { msg.attachment = null; }
   if (msg.mentions) try { msg.mentions = JSON.parse(msg.mentions); } catch { msg.mentions = null; }
   if (msg.reply_attachment) try { msg.reply_attachment = JSON.parse(msg.reply_attachment); } catch { msg.reply_attachment = null; }
+  if (msg.forward_data) try { msg.forward_data = JSON.parse(msg.forward_data); } catch { msg.forward_data = null; }
 
   // IS NOT вместо != — sender_id может быть NULL (удалённый аккаунт)
   const memberCount = db.prepare('SELECT COUNT(*) as c FROM chat_members WHERE chat_id = ? AND user_id IS NOT ?').get(msg.chat_id, msg.sender_id).c;
@@ -199,7 +200,7 @@ function setup(server) {
         ws._msgTimes = ws._msgTimes.filter(t => nowMs - t < 10_000);
         if (ws._msgTimes.length >= 20) return;
         ws._msgTimes.push(nowMs);
-        const { chat_id, reply_to_id, attachment } = data;
+        const { chat_id, reply_to_id, attachment, forward_data } = data;
         // Лимит как в Telegram (4096 символов) — иначе одно гигантское сообщение
         // разойдётся всем участникам и осядет в БД
         const text = typeof data.text === 'string' ? data.text.trim().slice(0, 4096) : '';
@@ -218,6 +219,11 @@ function setup(server) {
         }
 
         const attJson = attachment ? JSON.stringify(attachment) : null;
+        const fdJson = (forward_data && typeof forward_data === 'object' && forward_data.user_id)
+          ? JSON.stringify({ user_id: forward_data.user_id, name: forward_data.name || '',
+              text: (forward_data.text || '').slice(0, 4096),
+              attachment: forward_data.attachment || null })
+          : null;
 
         // Упоминания: @username участников чата (кроме себя)
         let mentionsJson = null;
@@ -231,14 +237,14 @@ function setup(server) {
         }
 
         // Подготавливаем стейтменты вне транзакции — db.prepare нельзя вызывать внутри неё
-        const stmtInsertMsg = db.prepare('INSERT INTO messages (chat_id, sender_id, text, reply_to_id, attachment, mentions) VALUES (?, ?, ?, ?, ?, ?)');
+        const stmtInsertMsg = db.prepare('INSERT INTO messages (chat_id, sender_id, text, reply_to_id, attachment, mentions, forward_data) VALUES (?, ?, ?, ?, ?, ?, ?)');
         const stmtGetMembers = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?');
         const stmtInsStatus = db.prepare('INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)');
         const stmtUpdDelivered = db.prepare('UPDATE message_status SET delivered_at = COALESCE(delivered_at, unixepoch()) WHERE message_id = ? AND user_id = ?');
 
         // Вставка сообщения и статусов доставки в одной транзакции
         const msgId = db.transaction(() => {
-          const result = stmtInsertMsg.run(chat_id, user.id, text, reply_to_id || null, attJson, mentionsJson);
+          const result = stmtInsertMsg.run(chat_id, user.id, text, reply_to_id || null, attJson, mentionsJson, fdJson);
           const newMsgId = result.lastInsertRowid;
           // Пометить как delivered тем участникам, которые сейчас онлайн (кроме отправителя)
           const members = stmtGetMembers.all(chat_id, user.id);
@@ -345,7 +351,17 @@ function setup(server) {
         const { message_id } = data;
         const msg = db.prepare('SELECT * FROM messages WHERE id = ? AND deleted = 0').get(message_id);
         if (!msg || msg.sender_id !== user.id) return;
-        deleteAttachmentFile(msg.attachment);
+        // Удаляем файл только если на него нет ссылок из других сообщений (в т.ч. пересланных)
+        const attObj = msg.attachment ? (() => { try { return JSON.parse(msg.attachment); } catch { return null; } })() : null;
+        if (attObj?.url) {
+          const fname = path.basename(attObj.url);
+          const refs = db.prepare(
+            "SELECT COUNT(*) as c FROM messages WHERE id != ? AND deleted = 0 AND (attachment LIKE ? OR forward_data LIKE ?)"
+          ).get(message_id, `%${fname}%`, `%${fname}%`).c;
+          if (refs === 0) deleteAttachmentFile(attObj);
+        } else if (msg.attachment) {
+          deleteAttachmentFile(msg.attachment);
+        }
         db.prepare("UPDATE messages SET deleted = 1, text = '', attachment = NULL WHERE id = ?").run(message_id);
         broadcast(msg.chat_id, { type: 'message_deleted', message_id, chat_id: msg.chat_id });
       }

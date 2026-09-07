@@ -26,6 +26,8 @@ const S = {
   activeSubroomId: null,  // id активной подкомнаты
   activeRoomId: null,     // id родительской комнаты с открытой панелью
   mutedChats: new Set(),  // set of muted chat IDs
+  forwardMsg: null,       // {userId, name, text, attachment} — сообщение для пересылки
+  msgData: new Map(),     // msgId -> {forwardData, senderId, senderName, text, attachment}
 };
 
 const SESSION_KEY = 'electron_v2';
@@ -931,6 +933,7 @@ async function openSubroom(subroomId) {
 
 // ── OPEN CHAT ──
 async function openChat(chatId, aroundId = null) {
+  S.msgData.clear();
   let chat = S.chats.find(c=>c.id===chatId);
   // Подкомната не в S.chats — строим из S.subrooms
   if (!chat) {
@@ -1036,6 +1039,15 @@ async function openChat(chatId, aroundId = null) {
             <div class="reply-bar-text" id="reply-bar-text"></div>
           </div>
           <button onclick="hideReplyBar()" class="icon-btn" style="width:24px;height:24px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div id="forward-bar" style="display:none" class="input-reply-bar">
+          <div class="reply-bar-content">
+            <div class="reply-bar-name" id="forward-bar-name"></div>
+            <div class="reply-bar-text" id="forward-bar-text"></div>
+          </div>
+          <button onclick="hideForwardBar()" class="icon-btn" style="width:24px;height:24px">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -1429,6 +1441,7 @@ function senderNameClass(tag) {
 
 function renderMsgIRC(m, isGroup) {
   if (m.status && m.id > 0) S.msgStatus[m.id] = { ...m.status };
+  if (m.id > 0) S.msgData.set(m.id, { forwardData: m.forward_data || null, senderId: m.sender_id, senderName: m.sender_name, text: m.text, attachment: m.attachment });
   const mine = m.sender_id===S.user.id;
   const time = fmtTime(m.sent_at);
   const isDeleted = m.deleted;
@@ -1456,6 +1469,22 @@ function renderMsgIRC(m, isGroup) {
         <div class="irc-reply-text">${esc((rTextRaw || '').slice(0,80))}</div>
       </div>
     </div>` : '';
+
+  const fd = m.forward_data;
+  const forwardHtml = (!isDeleted && fd) ? (() => {
+    const fdIsImg = fd.attachment?.mime?.startsWith('image/');
+    const fdThumb = fd.attachment?.url ? (fdIsImg
+      ? `<img src="${httpProto()}://${S.server}${fd.attachment.thumb || fd.attachment.url}" class="irc-reply-thumb" onerror="this.style.display='none'">`
+      : `<div class="irc-reply-thumb irc-reply-file"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>`) : '';
+    const fdText = (fd.text || (fd.attachment ? (fdIsImg ? '📷 Фото' : '📎 ' + (fd.attachment.name || 'Файл')) : '')).slice(0, 80);
+    return `<div class="irc-reply irc-forward-block">
+      ${fdThumb}
+      <div class="irc-reply-body">
+        <div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div>
+        <div class="irc-reply-text">${esc(fdText)}</div>
+      </div>
+    </div>`;
+  })() : '';
 
   const actionsHtml = '';
 
@@ -1518,6 +1547,7 @@ function renderMsgIRC(m, isGroup) {
     <div class="irc-content" ondblclick="${!isDeleted?`dblReply(${m.id})`:''}">
       ${header}
       ${replyHtml}
+      ${forwardHtml}
       ${attachHtml}
       ${m.text || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}">${bodyText}</div>` : ''}
       ${reactionsHtml}
@@ -1787,6 +1817,7 @@ function sendOrEdit() {
   const payload = { type:'message', chat_id:S.activeChatId, text: text || '' };
   if (S.replyTo) payload.reply_to_id = S.replyTo.id;
   if (_pendingAttachment) payload.attachment = _pendingAttachment;
+  if (S.forwardMsg) payload.forward_data = S.forwardMsg;
 
   // Optimistic: показать сообщение сразу, не дожидаясь echo от сервера
   const tempMsg = {
@@ -1804,6 +1835,7 @@ function sendOrEdit() {
     reply_sender_name: S.replyTo?.senderName || null,
     reply_attachment: S.replyTo?.attachment || null,
     reply_deleted: false,
+    forward_data: S.forwardMsg || null,
     attachment: _pendingAttachment || null,
     status: { delivered: 0, read: 0, total: 1 },
     reactions: [],
@@ -1814,6 +1846,7 @@ function sendOrEdit() {
   S.ws.send(JSON.stringify(payload));
   if (S.chatHasMoreAfter) openChat(S.activeChatId); // мы были вглуби истории — к последним
   hideReplyBar();
+  hideForwardBar();
   clearImagePreview();
   delete S.drafts[S.activeChatId]; saveDrafts(); // черновик отправлен — очищаем
   input.value=''; input.style.height='20px'; input.style.overflow='hidden';
@@ -1847,6 +1880,7 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
   S.ctx.isMine = isMine;
   const menu = document.getElementById('ctx-menu');
   document.getElementById('ctx-reply-btn').style.display = '';
+  document.getElementById('ctx-forward-btn').style.display = '';
   document.getElementById('ctx-copy-btn').style.display = '';
   document.getElementById('ctx-edit-btn').style.display = (isMine && S.ctx.canEdit) ? '' : 'none';
   document.getElementById('ctx-delete-btn').style.display = isMine ? '' : 'none';
@@ -3083,6 +3117,94 @@ async function ctxChatDelete() {
   document.getElementById('ctx-chat-menu').style.display = 'none';
   if (!S.ctxChatId) return;
   await deleteChat(S.ctxChatId);
+}
+
+// ── FORWARD ──
+function ctxForward() {
+  hideCtxMenu();
+  const msgId = S.ctx.messageId;
+  const d = S.msgData.get(msgId);
+  if (!d) return;
+  S.forwardMsg = d.forwardData
+    ? { ...d.forwardData }
+    : { userId: d.senderId, name: d.senderName, text: (d.text || '').slice(0, 200), attachment: d.attachment || null };
+  openForwardModal();
+}
+
+function openForwardModal() {
+  const inp = document.getElementById('forward-search');
+  if (inp) inp.value = '';
+  renderForwardList('');
+  document.getElementById('modal-forward')?.classList.add('open');
+}
+
+function closeForwardModal() {
+  document.getElementById('modal-forward')?.classList.remove('open');
+  S.forwardMsg = null;
+}
+
+function renderForwardList(q = '') {
+  const list = document.getElementById('forward-list');
+  if (!list) return;
+  const chats = S.chats.filter(c => !q || chatName(c).toLowerCase().includes(q));
+  const directUserIds = new Set(
+    S.chats.filter(c => c.type === 'direct')
+      .map(c => c.members?.find(m => m.id !== S.user.id)?.id)
+      .filter(Boolean)
+  );
+  const users = S.allUsers.filter(u =>
+    u.id !== S.user.id && !directUserIds.has(u.id) &&
+    (!q || u.display_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q))
+  );
+  let html = '';
+  if (chats.length) {
+    html += `<div class="chat-list-section-label">Чаты</div>`;
+    html += chats.map(c => `<div class="pp-row" onclick="selectForwardChat(${c.id})" style="cursor:pointer">
+      <div class="av av-sm ${chatAvatarClass(c)}${c.type==='direct'?' av-round':' av-sq'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
+      <span>${esc(chatName(c))}</span>
+    </div>`).join('');
+  }
+  if (users.length) {
+    html += `<div class="chat-list-section-label">Пользователи</div>`;
+    html += users.map(u => `<div class="pp-row" onclick="selectForwardUser(${u.id})" style="cursor:pointer">
+      <div class="av av-sm av-round av-blue" data-av-user="${u.id}">${esc((u.display_name||'?')[0].toUpperCase())}</div>
+      <span>${esc(u.display_name)}</span>
+    </div>`).join('');
+  }
+  if (!html) html = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Нет результатов</div>';
+  list.innerHTML = html;
+  applyAvatars();
+}
+
+async function selectForwardChat(chatId) {
+  document.getElementById('modal-forward')?.classList.remove('open');
+  await openChat(chatId);
+  showForwardBar();
+}
+
+async function selectForwardUser(userId) {
+  document.getElementById('modal-forward')?.classList.remove('open');
+  const data = await api('POST', '/chats/direct', { user_id: userId });
+  if (data?.id) { await loadChats(); await openChat(data.id); showForwardBar(); }
+}
+
+function showForwardBar() {
+  const bar = document.getElementById('forward-bar');
+  if (!bar || !S.forwardMsg) return;
+  document.getElementById('forward-bar-name').textContent = 'Переслано от ' + (S.forwardMsg.name || '');
+  const previewText = S.forwardMsg.text || (S.forwardMsg.attachment ? '📎 Вложение' : '');
+  document.getElementById('forward-bar-text').textContent = previewText.slice(0, 80);
+  bar.style.display = '';
+  document.getElementById('composer-pill')?.classList.add('has-reply');
+  document.getElementById('msg-input')?.focus();
+  _stickyBottom();
+}
+
+function hideForwardBar() {
+  S.forwardMsg = null;
+  const bar = document.getElementById('forward-bar');
+  if (bar) bar.style.display = 'none';
+  document.getElementById('composer-pill')?.classList.remove('has-reply');
 }
 
 // ── MODAL HELPERS ──
