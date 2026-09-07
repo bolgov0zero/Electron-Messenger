@@ -204,7 +204,8 @@ function setup(server) {
         // Лимит как в Telegram (4096 символов) — иначе одно гигантское сообщение
         // разойдётся всем участникам и осядет в БД
         const text = typeof data.text === 'string' ? data.text.trim().slice(0, 4096) : '';
-        if (!chat_id || (!text && !attachment)) return;
+        const hasForward = forward_data && typeof forward_data === 'object' && forward_data.user_id;
+        if (!chat_id || (!text && !attachment && !hasForward)) return;
         if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chat_id, user.id)) return;
         if (reply_to_id) {
           const ref = db.prepare('SELECT chat_id FROM messages WHERE id = ?').get(reply_to_id);
