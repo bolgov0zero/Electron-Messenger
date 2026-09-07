@@ -303,7 +303,7 @@ router.put('/settings', (req, res) => {
   const allowed = ['github_token', 'edit_time_limit',
     'upload_image_max_size', 'upload_image_extensions',
     'upload_file_max_size', 'upload_file_extensions', 'upload_file_lifetime',
-    'announcement_name'];
+    ];
   const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
   const del = db.prepare('DELETE FROM settings WHERE key = ?');
   const keepEmpty = ['upload_image_extensions', 'upload_file_extensions', 'upload_file_lifetime'];
@@ -686,7 +686,6 @@ router.post('/announcement/profile', (req, res) => {
   const { name, tag } = req.body;
   const cleanName = name?.trim() || 'Система';
   db.prepare('UPDATE users SET display_name = ?, tag = ? WHERE id = ?').run(cleanName, tag?.trim() || null, sysId);
-  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('announcement_name', ?)").run(cleanName);
   res.json({ ok: true });
 });
 
@@ -714,9 +713,6 @@ router.post('/announcement', (req, res) => {
   const sysIdRow = db.prepare("SELECT value FROM settings WHERE key = 'system_user_id'").get();
   if (!sysIdRow) return res.status(500).json({ error: 'Системный пользователь не найден' });
   const sysUserId = Number(sysIdRow.value);
-
-  const annName = db.prepare("SELECT value FROM settings WHERE key = 'announcement_name'").get()?.value || 'Система';
-  db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(annName, sysUserId);
 
   const targetIds = mode === 'all'
     ? db.prepare("SELECT id FROM chats WHERE type IN ('group', 'room')").all().map(r => r.id)
