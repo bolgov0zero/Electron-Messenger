@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const db = require('../db');
-const { signToken } = require('../auth');
+const { signToken, authMiddleware } = require('../auth');
 
 // In-memory rate limiter для /login: ip -> { count, resetAt }
 const loginAttempts = new Map();
@@ -59,6 +59,11 @@ router.post('/login', (req, res) => {
 
   const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin });
   res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null } });
+});
+
+router.get('/refresh', authMiddleware, (req, res) => {
+  const token = signToken({ id: req.user.id, username: req.user.username, display_name: req.user.display_name, is_admin: req.user.is_admin });
+  res.json({ token });
 });
 
 router.get('/me', (req, res) => {

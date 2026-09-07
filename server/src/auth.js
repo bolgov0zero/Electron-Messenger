@@ -15,7 +15,7 @@ function getSecret() {
 }
 
 const SECRET = getSecret();
-const EXPIRES_IN = '7d';
+const EXPIRES_IN = '60d';
 
 function signToken(payload) {
   return jwt.sign(payload, SECRET, { expiresIn: EXPIRES_IN });

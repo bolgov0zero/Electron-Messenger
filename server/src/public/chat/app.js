@@ -44,6 +44,17 @@ const S = {
 };
 
 const SESSION_KEY = 'electron_v2';
+const CRED_KEY = 'electron_creds';
+function saveCredentials(u, p) { try { localStorage.setItem(CRED_KEY, JSON.stringify({ u, p })); } catch {} }
+function clearCredentials() { try { localStorage.removeItem(CRED_KEY); } catch {} }
+function fillLoginFromCreds() {
+  try {
+    const c = JSON.parse(localStorage.getItem(CRED_KEY));
+    if (!c) return;
+    const un = document.getElementById('l-username'); if (un && c.u) un.value = c.u;
+    const pw = document.getElementById('l-password'); if (pw && c.p) pw.value = c.p;
+  } catch {}
+}
 let _loadingMore = false;
 let _loadingChatId = null;
 let _mobilePanel = 1;
@@ -416,8 +427,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       new Promise(r => setTimeout(() => r(null), 5000)),
     ]);
     if (S.token && ok !== null) enterApp();
+    else fillLoginFromCreds();
   } else {
     applySettings();
+    fillLoginFromCreds();
   }
 
   document.getElementById('l-password').addEventListener('keydown', e => e.key==='Enter' && doLogin());
@@ -501,17 +514,19 @@ async function doLogin() {
     const data = await res.json();
     if (data.token) {
       Object.assign(S, { token:data.token, user:data.user });
+      saveCredentials(username, password);
       saveSession(); enterApp();
     } else { err.textContent = data.error||'Неверный логин или пароль'; }
   } catch { err.textContent='Не удалось подключиться к серверу'; }
   finally { btn.disabled=false; btn.textContent='Войти'; }
 }
 
-function logout() {
+function logout(intentional = false) {
   _fetchController.abort();
   _fetchController = new AbortController();
   closeSettings();
   if (S.ws) S.ws.close();
+  if (intentional) clearCredentials();
   Object.assign(S, { token:null, user:null, chats:[], activeChatId:null, ws:null, unread:{}, allUsers:[] });
   localStorage.removeItem(SESSION_KEY);
   document.getElementById('screen-main').classList.remove('active');
@@ -530,6 +545,7 @@ function logout() {
   if (mtbTitWrap) mtbTitWrap.style.display = 'none';
   document.getElementById('chat-main')?.classList.remove('mobile-open');
   document.querySelector('.sidebar')?.classList.remove('mobile-hidden');
+  if (!intentional) fillLoginFromCreds();
 }
 
 // ── ENTER APP ──
@@ -667,7 +683,7 @@ function showSettingsTab(tab) {
           <button onclick="saveDisplayName()" class="settings-save-btn">Сохранить</button>
         </div>
       </div>
-      <button class="setting-logout" onclick="logout()">
+      <button class="setting-logout" onclick="logout(true)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         Выйти из аккаунта
       </button>`;
@@ -2914,7 +2930,7 @@ function connectWS() {
       renderChatList();
     }
 
-    if (data.type === 'force_logout') { logout(); }
+    if (data.type === 'force_logout') { logout(true); }
   };
 
   ws.onclose = (event) => {
@@ -2931,6 +2947,7 @@ function connectWS() {
     S.wsRetry = 0;
     hideServerToast();
     loadChats();
+    api('GET', '/auth/refresh').then(d => { if (d?.token) { S.token = d.token; saveSession(); } });
     // Догружаем сообщения, пришедшие в открытый чат во время разрыва соединения
     const _ccId = S.activeChatId, _ccNewest = S.chatNewestId;
     if (_ccId && _ccNewest && !S.chatHasMoreAfter) {
