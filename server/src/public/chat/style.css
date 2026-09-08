@@ -2865,10 +2865,15 @@ html.dark .announcement-title { color: var(--danger); }
    сторон, как сверху и снизу). Слева радиус обычный, как у плашки тега. */
 .reaction-btn {
   padding: 2px 2px 2px 8px; gap: 6px; line-height: 1;
-  border-radius: 9px 999px 999px 9px;
+  border-radius: 999px;
 }
 /* Вровень с кружком аватарки (18px): при 13px глиф выглядел заметно мельче */
-.ra-emoji { font-size: 14px; }
+.ra-emoji {
+  font-size: 14px; line-height: 1;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  /* рисунок смайлика сидит ниже середины своего бокса — подтягиваем вверх */
+  position: relative; top: -.04em;
+}
 .reaction-btn.mine { border-color: var(--accent); background: var(--accent-soft); }
 
 .ra-stack { display: flex; align-items: center; }
@@ -2876,7 +2881,7 @@ html.dark .announcement-title { color: var(--danger); }
   position: relative;
   width: 16px; height: 16px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 8px; font-weight: 600; color: #fff;
+  font-size: 8px; font-weight: 600; color: #fff; line-height: 1;
   flex-shrink: 0;
   /* Обводка цветом подложки: без неё соседние кружки при нахлёсте сливаются */
   box-shadow: 0 0 0 1.5px var(--bubble-bg, var(--card-bg));
