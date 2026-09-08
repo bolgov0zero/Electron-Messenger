@@ -745,7 +745,8 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 /* Кнопка «к последним» — появляется при прокрутке списка сообщений вверх */
 .scroll-bottom-btn {
   position: absolute;
-  right: 20px; bottom: 16px;
+  /* поднимаем над полосой ввода: она лежит поверх ленты */
+  right: 20px; bottom: calc(14px + var(--composer-h, 70px));
   width: 42px; height: 42px;
   border-radius: 50%;
   background: var(--modal-bg);
@@ -977,11 +978,17 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .msg-sender-name.default { color: var(--text); }
 
 /* ── COMPOSER ── */
+/* Полоса ввода лежит ПОВЕРХ ленты и сама прозрачна: фон несёт только композер,
+   поэтому по бокам от него видно сообщения. Лента получает нижний отступ на высоту
+   полосы (--composer-h, её держит watchComposerHeight), чтобы последнее сообщение
+   не пряталось под композером. */
 .chat-input-wrap {
   padding: 14px 20px;
   flex-shrink: 0;
+  position: absolute; left: 0; right: 0; bottom: 0;
+  z-index: 3;
 }
-.composer-inner { max-width: 760px; margin: 0 auto; }
+.composer-inner { max-width: 760px; margin: 0 auto; background: var(--app-bg); border-radius: 12px; }
 
 /* New composer style */
 .composer { padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0; }
@@ -2508,3 +2515,8 @@ html.dark .announcement-title { color: var(--danger); }
 .pin-unpin { width: 26px; height: 26px; flex-shrink: 0; color: var(--muted); }
 
 @media (prefers-reduced-motion: reduce) { .pin-slide { transition: none; } }
+
+/* Полоса ввода лежит поверх ленты — резервируем под неё место, чтобы последнее
+   сообщение не пряталось. В конце файла: базовое правило .messages идёт ниже
+   объявления полосы и иначе перебивало бы отступ. */
+.chat-main .messages { padding-bottom: calc(10px + var(--composer-h, 70px)); }

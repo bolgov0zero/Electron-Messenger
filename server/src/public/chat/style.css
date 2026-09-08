@@ -671,10 +671,14 @@ body.sidebar-hidden.sidebar-peeking .sidebar {
   position: relative;
 }
 
+/* Полоса ввода лежит ПОВЕРХ ленты и сама прозрачна: фон несёт только композер,
+   поэтому по бокам от него видно сообщения. Лента получает нижний отступ на высоту
+   полосы (--composer-h, её держит watchComposerHeight), чтобы последнее сообщение
+   не пряталось под композером. */
 #chat-input-bar {
-  background: var(--app-bg);
-  position: relative;
-  z-index: 1;
+  background: transparent;
+  position: absolute; left: 0; right: 0; bottom: 0;
+  z-index: 3;
 }
 
 .empty-state {
@@ -740,9 +744,16 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 }
 
 /* Кнопка «к последним» — появляется при прокрутке списка сообщений вверх */
+/* Обёртка ленты — точка отсчёта для кнопки прокрутки: раньше она считалась от
+   .chat-main, нижний край которого приходится на поле ввода, и кнопка всплывала
+   поверх композера. */
+.messages-wrap { flex: 1; min-height: 0; position: relative; display: flex; }
+.messages-wrap .messages { flex: 1; }
+
 .scroll-bottom-btn {
   position: absolute;
-  right: 20px; bottom: 16px;
+  /* поднимаем над полосой ввода: она лежит поверх ленты */
+  right: 20px; bottom: calc(14px + var(--composer-h, 70px));
   width: 42px; height: 42px;
   border-radius: 50%;
   background: var(--modal-bg);
@@ -964,7 +975,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   padding: 14px 20px;
   flex-shrink: 0;
 }
-.composer-inner { max-width: 760px; margin: 0 auto; }
+.composer-inner { max-width: 760px; margin: 0 auto; background: var(--app-bg); border-radius: 12px; }
 
 /* Reply preview above composer */
 .input-reply-bar {
@@ -2941,3 +2952,8 @@ html.dark .announcement-title { color: var(--danger); }
   .pin-bar { padding: 4px 6px 4px 14px; }
   .pin-unpin { width: 40px; height: 40px; }
 }
+
+/* Полоса ввода лежит поверх ленты — резервируем под неё место, чтобы последнее
+   сообщение не пряталось. В конце файла: базовое правило .messages идёт ниже
+   объявления полосы и иначе перебивало бы отступ. */
+.chat-main .messages { padding-bottom: calc(10px + var(--composer-h, 70px)); }

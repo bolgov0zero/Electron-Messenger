@@ -1090,6 +1090,21 @@ async function openSubroom(subroomId) {
   await openChat(subroomId);
 }
 
+// Полоса ввода лежит поверх ленты, поэтому её высота нужна ленте как нижний отступ.
+// Высота меняется от ответа, вложения и многострочного текста — следим наблюдателем.
+let _composerRO = null;
+function watchComposerHeight() {
+  const bar = document.getElementById('chat-input-bar') || document.getElementById('input-wrap');
+  const main = document.getElementById('chat-main');
+  if (!bar || !main) return;
+  const apply = () => main.style.setProperty('--composer-h', bar.offsetHeight + 'px');
+  apply();
+  if (_composerRO) _composerRO.disconnect();
+  try {
+    _composerRO = new ResizeObserver(apply);
+    _composerRO.observe(bar);
+  } catch { _composerRO = null; }
+}
 // ── OPEN CHAT ──
 async function openChat(chatId, aroundId = null) {
   S.msgData.clear();
@@ -1260,6 +1275,7 @@ async function openChat(chatId, aroundId = null) {
     S.chatOldestId = data.messages[0]?.id ?? null;
     S.chatNewestId = data.messages[data.messages.length - 1]?.id ?? null;
     renderMessages(data.messages, !aroundId);
+  watchComposerHeight();
     if (aroundId) {
       requestAnimationFrame(() => scrollToMsg(aroundId, true));
     } else {
