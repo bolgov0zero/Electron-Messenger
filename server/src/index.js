@@ -1,6 +1,7 @@
 const http = require('http');
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', 'chat_db', 'chat.db');
 const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
@@ -30,10 +31,22 @@ app.get('/chat/manifest.json', (req, res) => {
   res.setHeader('Content-Type', 'application/manifest+json');
   res.sendFile(path.join(__dirname, 'public/chat/manifest.json'));
 });
-// index.html — всегда свежий (без HTTP-кэша), иначе PWA рендерит старую вёрстку
+// index.html — всегда свежий (без HTTP-кэша), иначе PWA рендерит старую вёрстку.
+// Версию в ?v= подставляем на лету: в файле она была захардкожена и отставала на
+// десятки релизов, из-за чего браузер мог держать в кэше старые style.css и app.js.
+const CHAT_INDEX = path.join(__dirname, 'public/chat/index.html');
+function serverVersion() {
+  try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version; }
+  catch { return '0'; }
+}
 app.get(['/chat', '/chat/', '/chat/index.html'], (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.sendFile(path.join(__dirname, 'public/chat/index.html'));
+  try {
+    const html = fs.readFileSync(CHAT_INDEX, 'utf8').replace(/\?v=[\w.\-]+/g, '?v=' + serverVersion());
+    res.type('html').send(html);
+  } catch {
+    res.sendFile(CHAT_INDEX);
+  }
 });
 app.use('/chat', express.static(path.join(__dirname, 'public/chat')));
 app.use('/files', express.static(FILES_DIR));

@@ -156,20 +156,6 @@ html.font-small  { --font-size: 13px; }
 html.font-medium { --font-size: 14px; }
 html.font-large  { --font-size: 16px; }
 
-/* Эмодзи одним набором на всех системах: без этого рисует шрифт ОС, и в Windows
-   часть смайликов (Unicode 13-14) не отображается вовсе. Подключается только для
-   эмодзи-диапазонов, обычный текст по-прежнему берётся из Inter. */
-@font-face {
-  font-family: 'Noto Color Emoji';
-  src: url('fonts/NotoColorEmoji.woff2') format('woff2');
-  font-display: swap;
-  unicode-range: U+00A9, U+00AE, U+203C, U+2049, U+2122, U+2139, U+2194-21AA,
-    U+231A-231B, U+2328, U+23CF, U+23E9-23FA, U+24C2, U+25AA-25AB, U+25B6, U+25C0,
-    U+25FB-25FE, U+2600-26FF, U+2700-27BF, U+2934-2935, U+2B05-2B07, U+2B1B-2B1C,
-    U+2B50, U+2B55, U+3030, U+303D, U+3297, U+3299, U+FE0F, U+200D, U+20E3,
-    U+1F000-1FAFF, U+E0020-E007F; /* флагов в этой сборке шрифта нет — рисует система */
-}
-
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   background: var(--app-bg);
@@ -178,11 +164,6 @@ body {
   overflow: hidden;
   transition: background .25s, color .25s;
 }
-
-/* Noto подключается только там, где движок умеет COLRv1 (Chromium, Firefox) — класс
-   ставит initEmojiFont(). В Safari и на iOS COLRv1 не поддерживается, там остаются
-   системные эмодзи Apple: они полные, терять нечего. */
-html.emoji-noto body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, 'Noto Color Emoji', sans-serif;}
 
 /* ── SCREENS ── */
 .screen { display: none; height: var(--vh100); }
