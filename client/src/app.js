@@ -229,7 +229,10 @@ async function initEmojiFont() {
     const ua = navigator.userAgent;
     // WebKit без Chromium — не грузим файл впустую
     if (/Safari/.test(ua) && !/Chrome|Chromium|Edg|OPR/.test(ua)) return;
-    await document.fonts.load('40px "Noto Color Emoji"');
+    // Текст обязателен: без него проверяется строка 'BESbswy', которая не входит
+    // в unicode-range нашего @font-face, и файл шрифта просто не скачивается.
+    await document.fonts.load('40px "Noto Color Emoji"', '😀');
+    if (!document.fonts.check('40px "Noto Color Emoji"', '😀')) return;
     const draw = (family) => {
       const c = document.createElement('canvas');
       c.width = c.height = 44;
@@ -1197,8 +1200,8 @@ async function openChat(chatId, aroundId = null) {
         </button>`}
       </div>
     </div>
+    <div id="pin-bar" class="pin-bar" style="display:none"></div>
     <div class="messages-wrap">
-      <div id="pin-bar" class="pin-bar" style="display:none"></div>
     <div class="messages" id="messages"></div>
       <button id="scroll-bottom-btn" class="scroll-bottom-btn" onclick="scrollMessagesToBottom()" title="К последним сообщениям">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
