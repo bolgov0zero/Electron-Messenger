@@ -71,7 +71,7 @@ fi
 rollback() {
   fail "откатываюсь на ${PREV_COMMIT:0:7}"
   git reset --hard "$PREV_COMMIT" >/dev/null 2>&1
-  [ "$DEPS_CHANGED" = "1" ] && (cd "$SERVER_DIR" && npm install --omit=dev >/dev/null 2>&1)
+  [ "$DEPS_CHANGED" = "1" ] && (cd "$SERVER_DIR" && npm install --omit=dev --build-from-source >/dev/null 2>&1)
 }
 
 # ── 3. Останавливаем службу только там, где это действительно нужно
@@ -96,7 +96,7 @@ if [ "$DEPS_CHANGED" = "1" ]; then
     rm -rf "$SERVER_DIR/node_modules"
   fi
   log "устанавливаю зависимости"
-  if ! (cd "$SERVER_DIR" && npm install --omit=dev); then
+  if ! (cd "$SERVER_DIR" && npm install --omit=dev --build-from-source); then
     fail "npm install не отработал"
     rollback
     systemctl start "$SERVICE"
@@ -106,7 +106,7 @@ if [ "$DEPS_CHANGED" = "1" ]; then
   # обычно npm ставит готовую сборку и пересборка не нужна
   if ! (cd "$SERVER_DIR" && node -e "require('better-sqlite3')" >/dev/null 2>&1); then
     log "better-sqlite3 не загружается — пересобираю"
-    if ! (cd "$SERVER_DIR" && npm rebuild better-sqlite3); then
+    if ! (cd "$SERVER_DIR" && npm rebuild better-sqlite3 --build-from-source); then
       fail "пересборка better-sqlite3 не удалась"
       rollback
       systemctl start "$SERVICE"
