@@ -87,6 +87,50 @@ let _fetchController = new AbortController();
 
 // ── UTILS ──
 function saveDrafts() { try { localStorage.setItem('chat_drafts', JSON.stringify(S.drafts)); } catch {} }
+// Склонение существительного при числе: 1 участник / 2 участника / 5 участников
+function plural(n, one, few, many) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b > 1 && b < 5) return few;
+  if (b === 1) return one;
+  return many;
+}
+const nMembers = n => n + ' ' + plural(n, 'участник', 'участника', 'участников');
+
+// ── СМЕНА СОБСТВЕННОГО ПАРОЛЯ ──
+// Раньше пароль мог поменять только администратор, пользователю идти было некуда
+function togglePasswordForm() {
+  const form = document.getElementById('pw-form');
+  const btn = document.getElementById('pw-toggle');
+  if (!form) return;
+  const open = form.style.display !== 'none';
+  form.style.display = open ? 'none' : 'flex';
+  if (btn) btn.textContent = open ? 'Сменить пароль' : 'Отмена';
+  if (!open) setTimeout(() => document.getElementById('pw-old')?.focus(), 50);
+  else ['pw-old','pw-new','pw-new2'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
+}
+
+async function submitOwnPassword() {
+  const msg = document.getElementById('pw-msg');
+  const oldP = document.getElementById('pw-old').value;
+  const newP = document.getElementById('pw-new').value;
+  const newP2 = document.getElementById('pw-new2').value;
+  const fail = t => { msg.style.color = 'var(--danger, #e5484d)'; msg.textContent = t; };
+  if (!oldP || !newP || !newP2) return fail('Заполните все поля');
+  if (newP !== newP2) return fail('Новый пароль и подтверждение не совпадают');
+  const r = await api('POST', '/users/me/password', { old_password: oldP, new_password: newP });
+  if (r?.error) return fail(r.error);
+  msg.style.color = 'var(--accent)';
+  msg.textContent = 'Пароль изменён';
+  ['pw-old','pw-new','pw-new2'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
+  setTimeout(() => {
+    const form = document.getElementById('pw-form'), btn = document.getElementById('pw-toggle');
+    if (form) form.style.display = 'none';
+    if (btn) btn.textContent = 'Сменить пароль';
+    if (msg) msg.textContent = '';
+  }, 1600);
+}
+
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // Markdown-lite: **жирный**, __курсив__, `код` — применяется к уже экранированному тексту
@@ -416,7 +460,7 @@ function showSettingsTab(tab) {
       <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:24px">
         <div style="position:relative">
           <div class="av" id="settings-av" style="width:72px;height:72px;font-size:22px;font-weight:700;cursor:pointer" onclick="triggerAvatarUpload()"></div>
-          <div style="position:absolute;bottom:-4px;right:-4px;width:24px;height:24px;border-radius:7px;background:var(--role-indigo);border:2px solid var(--modal-bg);display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="triggerAvatarUpload()">
+          <div style="position:absolute;bottom:-4px;right:-4px;width:24px;height:24px;border-radius:7px;background:var(--accent);border:2px solid var(--modal-bg);display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="triggerAvatarUpload()">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
           </div>
         </div>
@@ -428,6 +472,17 @@ function showSettingsTab(tab) {
         <div style="display:flex;gap:8px">
           <input id="settings-display-name" class="settings-name-input" value="${esc(u.display_name)}" style="flex:1;background:var(--search-bg);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;font-weight:600;color:var(--text);font-family:inherit;outline:none;pointer-events:auto;border-color:transparent" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent'">
           <button onclick="saveDisplayName()" class="settings-save-btn">Сохранить</button>
+        </div>
+      </div>
+      <div style="margin-bottom:24px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Пароль</div>
+        <button id="pw-toggle" class="settings-save-btn" style="width:100%;justify-content:center" onclick="togglePasswordForm()">Сменить пароль</button>
+        <div id="pw-form" style="display:none;flex-direction:column;gap:8px;margin-top:10px">
+          <input id="pw-old" type="password" placeholder="Текущий пароль" autocomplete="current-password" class="settings-name-input" style="background:var(--search-bg);border:1px solid transparent;border-radius:9px;padding:9px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent'">
+          <input id="pw-new" type="password" placeholder="Новый пароль (от 6 символов)" autocomplete="new-password" class="settings-name-input" style="background:var(--search-bg);border:1px solid transparent;border-radius:9px;padding:9px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent'">
+          <input id="pw-new2" type="password" placeholder="Повторите новый пароль" autocomplete="new-password" class="settings-name-input" style="background:var(--search-bg);border:1px solid transparent;border-radius:9px;padding:9px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent'" onkeydown="if(event.key==='Enter')submitOwnPassword()">
+          <div id="pw-msg" style="font-size:12px;min-height:16px"></div>
+          <button class="settings-save-btn" style="width:100%;justify-content:center" onclick="submitOwnPassword()">Сохранить пароль</button>
         </div>
       </div>
       <button class="setting-logout" onclick="logout(true)">
@@ -774,8 +829,11 @@ function renderChatList() {
       const ta = a.last_message?.sent_at||0, tb = b.last_message?.sent_at||0;
       return tb-ta;
     });
-  const pinned = filtered.filter(c => c.pinned || c.type === 'room');
-  const rest = filtered.filter(c => !c.pinned && c.type !== 'room');
+  // Комнаты и закреплённое — разные вещи: раньше комнаты попадали в секцию
+  // «Закреплённые», хотя пользователь их не закреплял
+  const rooms  = filtered.filter(c => c.type === 'room');
+  const pinned = filtered.filter(c => c.pinned && c.type !== 'room');
+  const rest   = filtered.filter(c => !c.pinned && c.type !== 'room');
 
   // Режим поиска — редкий путь, полная перерисовка
   if (q || S.searchResults) {
@@ -783,11 +841,15 @@ function renderChatList() {
     if (!filtered.length) {
       html += '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Нет чатов</div>';
     } else {
+      if (rooms.length) {
+        html += `<div class="chat-list-section-label">Комнаты</div>`;
+        html += rooms.map(c => renderChatRow(c)).join('');
+      }
       if (pinned.length) {
-        html += `<div class="chat-list-section-label">Закреплённые</div>`;
+        html += `<div class="chat-list-section-label" style="${rooms.length?'padding-top:12px':''}">Закреплённые</div>`;
         html += pinned.map(c => renderChatRow(c)).join('');
       }
-      html += `<div class="chat-list-section-label" style="${pinned.length?'padding-top:12px':''}">Все чаты</div>`;
+      html += `<div class="chat-list-section-label" style="${(rooms.length||pinned.length)?'padding-top:12px':''}">Все чаты</div>`;
       html += rest.map(c => renderChatRow(c)).join('');
     }
     if (S.searchResults) {
@@ -808,11 +870,15 @@ function renderChatList() {
   if (!filtered.length) {
     items.push({ key: 'empty', html: '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Нет чатов</div>' });
   } else {
+    if (rooms.length) {
+      items.push({ key: 'label-rooms', html: '<div class="chat-list-section-label">Комнаты</div>' });
+      rooms.forEach(c => items.push({ key: 'chat-' + c.id, html: renderChatRow(c) }));
+    }
     if (pinned.length) {
-      items.push({ key: 'label-pinned', html: '<div class="chat-list-section-label">Закреплённые</div>' });
+      items.push({ key: 'label-pinned', html: `<div class="chat-list-section-label" style="${rooms.length?'padding-top:12px':''}">Закреплённые</div>` });
       pinned.forEach(c => items.push({ key: 'chat-' + c.id, html: renderChatRow(c) }));
     }
-    items.push({ key: 'label-all', html: `<div class="chat-list-section-label" style="${pinned.length?'padding-top:12px':''}">Все чаты</div>` });
+    items.push({ key: 'label-all', html: `<div class="chat-list-section-label" style="${(rooms.length||pinned.length)?'padding-top:12px':''}">Все чаты</div>` });
     rest.forEach(c => items.push({ key: 'chat-' + c.id, html: renderChatRow(c) }));
   }
   syncChatListKeyed(list, items);
@@ -934,7 +1000,8 @@ function renderSubroomsPanel(roomId) {
     const unread = S.unread[s.id] || 0;
     const badge = unread ? `<span class="subroom-unread">${unread > 99 ? '99+' : unread}</span>` : '';
     const bg = avatarColor(s.id);
-    const letter = (s.name||'?')[0].toUpperCase();
+    // Как у комнат в списке чатов: эмодзи, если своя картинка не задана
+    const letter = '🏠';
     const avStyle = s.has_avatar
       ? `style="background-color:${bg};background-image:url('${httpProto()}://${S.server}/api/chats/${s.id}/avatar');background-size:cover;background-position:center"`
       : `style="background:${bg}"`;
@@ -1014,7 +1081,7 @@ async function openChat(chatId, aroundId = null) {
   const peerId = getPeerUserId(chat);
   const peerDot = peerId ? presenceDot(peerId) : '';
   const isSubroom = !!chat?.parent_id;
-  const sub = isSubroom ? `# подкомната` : isRoom ? `🏠 Комната · ${memberCount} участников` : isGroup ? `${memberCount} участников` : (peerId ? peerStatusText(peerId) : 'Личный чат');
+  const sub = isSubroom ? `# подкомната` : isRoom ? `🏠 Комната · ${nMembers(memberCount)}` : isGroup ? `${nMembers(memberCount)}` : (peerId ? peerStatusText(peerId) : 'Личный чат');
   const nameClickable = (isGroup || (isRoom && !isSubroom)) ? `style="cursor:pointer" onclick="openGroupInfo(${chatId})"` : '';
 
   // Delete button: visible for direct chats and for group creator / admins
@@ -2497,9 +2564,9 @@ async function ctxInfo() {
     const total = data.statuses.length;
     const readUsers = data.statuses.filter(s => s.read_at);
     if (readUsers.length === 0) {
-      body = `<div class="mi-group-count">0 из ${total} участников</div><div class="mi-empty">Пока никто не прочитал</div>`;
+      body = `<div class="mi-group-count">0 из ${nMembers(total)}</div><div class="mi-empty">Пока никто не прочитал</div>`;
     } else {
-      body = `<div class="mi-group-count">${readUsers.length} из ${total} участников</div>`;
+      body = `<div class="mi-group-count">${readUsers.length} из ${nMembers(total)}</div>`;
       body += readUsers.map(s => `<div class="mi-user-row">
         <div class="av mi-av ${avatarColor(s.user_id)}" data-av-user="${s.user_id}">${initials(s.display_name)}</div>
         <div class="mi-user-name">${esc(s.display_name)}</div>

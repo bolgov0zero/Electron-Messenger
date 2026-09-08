@@ -95,8 +95,10 @@ router.get('/:id/subrooms', authMiddleware, (req, res) => {
   const chatId = Number(req.params.id);
   if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id))
     return res.status(403).json({ error: 'Forbidden' });
+  // type отдаём явно: без него клиент не опознаёт подкомнату как комнату и
+  // подставляет заглушку личного чата — отсюда была буква «Ч» вместо иконки
   const subrooms = db.prepare(`
-    SELECT id, name, position, parent_id FROM chats WHERE parent_id = ? ORDER BY position, id
+    SELECT id, name, position, parent_id, type FROM chats WHERE parent_id = ? ORDER BY position, id
   `).all(chatId);
   const userId = req.user.id;
   const result = subrooms.map(s => {
