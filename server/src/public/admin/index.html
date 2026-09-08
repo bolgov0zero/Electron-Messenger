@@ -454,7 +454,9 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .dtp-field .dtp-val{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dtp-field .dtp-reset{color:var(--c-muted);font-size:11px;padding:0 2px;border-radius:4px}
 .dtp-field .dtp-reset:hover{color:var(--c-text)}
-.dtp-pop{position:absolute;top:calc(100% + 4px);left:0;z-index:40;width:236px;padding:10px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius-sm);box-shadow:0 10px 32px rgba(0,0,0,.22)}
+/* Позиция считается при открытии: у модалки overflow:hidden, и абсолютный
+   попап обрезался бы её границами. */
+.dtp-pop{position:fixed;z-index:220;width:236px;padding:10px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius-sm);box-shadow:0 10px 32px rgba(0,0,0,.22)}
 .dtp-pop[hidden]{display:none}
 .dtp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .dtp-head-title{font-size:12px;font-weight:600;color:var(--c-text);text-transform:capitalize}
@@ -3426,7 +3428,38 @@ function dtpToggle(e) {
   document.getElementById('dtp-h').value = String(base.getHours()).padStart(2,'0');
   document.getElementById('dtp-m').value = String(base.getMinutes()).padStart(2,'0');
   dtpRender();
+  dtpPlace();
+}
+
+// Попап висит на fixed-координатах, поэтому его не режут границы модалки.
+// Снизу места нет — раскрываем вверх; по горизонтали прижимаем к экрану.
+function dtpPlace() {
+  const pop = document.getElementById('dtp-pop');
+  const field = pop.closest('.dtp').querySelector('.dtp-field');
+  pop.style.visibility = 'hidden';
   pop.hidden = false;
+
+  // Модалка размывает фон (backdrop-filter) и тем самым становится точкой отсчёта
+  // для fixed-потомков, так что экранные координаты сюда подставлять нельзя.
+  // Ставим ноль, смотрим, куда он попал, и правим на эту разницу.
+  pop.style.left = '0px';
+  pop.style.top = '0px';
+  const zero = pop.getBoundingClientRect();
+
+  const r = field.getBoundingClientRect();
+  // Размер берём из того же rect: offsetHeight не учитывает масштабирование
+  // страницы и оказывается на десяток пикселей больше видимого
+  const h = zero.height, w = zero.width;
+  // Нижняя граница — край модалки, а не экрана: иначе календарь свисает с карточки
+  const box = field.closest('.modal');
+  const limit = Math.min(box ? box.getBoundingClientRect().bottom - 8 : Infinity, window.innerHeight - 8);
+  let top = r.bottom + 4 + h <= limit ? r.bottom + 4 : Math.max(8, r.top - h - 4);
+  top = Math.min(top, window.innerHeight - h - 8);
+  const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
+
+  pop.style.top = (top - zero.top) + 'px';
+  pop.style.left = (left - zero.left) + 'px';
+  pop.style.visibility = '';
 }
 
 function dtpShiftMonth(delta) {
@@ -3456,6 +3489,9 @@ function dtpRender() {
     cells.push(`<button type="button" class="${cls.join(' ')}" ${past?'disabled':''} onclick="dtpPick(${y},${m},${d})">${d}</button>`);
   }
   document.getElementById('dtp-grid').innerHTML = cells.join('');
+  // В месяце может стать на строку больше — при раскрытии вверх пересчитываем
+  const pop = document.getElementById('dtp-pop');
+  if (pop && !pop.hidden) dtpPlace();
 }
 
 function dtpPick(y, m, d) {
@@ -3497,11 +3533,19 @@ function dtpReset() {
   if (pop) pop.hidden = true;
 }
 
-// Клик мимо пикера закрывает его
+// Клик мимо пикера закрывает его. Перехват (capture), а не всплытие: выбор дня
+// перерисовывает сетку, и к моменту всплытия нажатая кнопка уже удалена из
+// документа — closest вернул бы null, и пикер закрывался бы сам от своего же клика.
 document.addEventListener('click', e => {
   const pop = document.getElementById('dtp-pop');
   if (pop && !pop.hidden && !e.target.closest('.dtp')) pop.hidden = true;
-});
+}, true);
+
+// Прокрутка тела модалки или смена размеров окна уводят поле из-под попапа
+['scroll', 'resize'].forEach(ev => window.addEventListener(ev, () => {
+  const pop = document.getElementById('dtp-pop');
+  if (pop && !pop.hidden) pop.hidden = true;
+}, true));
 
 </script>
 </body>
