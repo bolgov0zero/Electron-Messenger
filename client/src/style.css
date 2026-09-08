@@ -378,6 +378,9 @@ body {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  /* точка отсчёта для сайдбара: он всегда накладка, чтобы и скрытие по кнопке,
+     и выезд по наведению анимировались одним и тем же свойством */
+  position: relative;
 }
 
 /* ══════════════════════════════════════════
@@ -438,21 +441,23 @@ body {
   background: var(--side-bg);
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column;
-  position: relative; z-index: 2;
+  position: absolute; left: 0; top: 0; bottom: 0; z-index: 20;
   overflow: hidden;
+  /* сдвигаем процентом от собственной ширины: переход к calc() с переменной
+     Chrome не интерполирует, и свойство застревает на исходном значении */
+  transition: transform .22s cubic-bezier(.4, 0, .2, 1), box-shadow .22s;
 }
+/* Место под сайдбар держит отступ переписки — тогда при скрытии оба свойства
+   (сдвиг сайдбара и отступ) анимируются одновременно и плавно. */
+.chat-main { padding-left: var(--sidebar-w); transition: padding-left .22s cubic-bezier(.4, 0, .2, 1); }
+body.sidebar-hidden .chat-main { padding-left: 0; }
 
 /* Sidebar hidden / peek */
 body.sidebar-notransition .sidebar { transition: none !important; }
 body.sidebar-hidden .app-body { display: flex; }
 body.sidebar-hidden .sidebar {
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: var(--sidebar-w);
-  transform: translateX(calc(-1 * var(--sidebar-w)));
-  z-index: 20;
+  transform: translateX(-100%);
   border-right: none;
-  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s;
 }
 body.sidebar-hidden.sidebar-peeking .sidebar {
   transform: translateX(0);
@@ -2520,3 +2525,17 @@ html.dark .announcement-title { color: var(--danger); }
    сообщение не пряталось. В конце файла: базовое правило .messages идёт ниже
    объявления полосы и иначе перебивало бы отступ. */
 .chat-main .messages { padding-bottom: calc(10px + var(--composer-h, 70px)); }
+
+/* ── ПЛАВНАЯ СМЕНА ТЕМЫ ──
+   Переход вешаем на все элементы, но только на время переключения: класс
+   theme-anim держится доли секунды. Постоянный transition на «*» стоил бы
+   пересчёта на каждом наведении и мешал бы остальным анимациям. */
+html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after {
+  transition: background-color .22s ease, border-color .22s ease, color .22s ease,
+              fill .22s ease, stroke .22s ease, box-shadow .22s ease !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after {
+    transition: none !important;
+  }
+}

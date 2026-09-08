@@ -720,7 +720,16 @@ function applySettings() {
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');
   if (themeColorMeta) themeColorMeta.content = isDark ? '#0b0d14' : '#f7f7fb';
 }
-function setTheme(t) { S.settings.theme=t; applySettings(); saveSession(); }
+// Плавная смена темы: включаем переход цветов только на время переключения,
+// иначе постоянный transition на всех элементах бил бы по отзывчивости.
+let _themeAnimTimer = null;
+function animateThemeSwitch() {
+  const html = document.documentElement;
+  html.classList.add('theme-anim');
+  clearTimeout(_themeAnimTimer);
+  _themeAnimTimer = setTimeout(() => html.classList.remove('theme-anim'), 260);
+}
+function setTheme(t) { animateThemeSwitch(); S.settings.theme=t; applySettings(); saveSession(); }
 function toggleTheme() { setTheme(S.settings.theme === 'dark' ? 'light' : 'dark'); }
 function setFontSize(f) { S.settings.fontSize=f; applySettings(); saveSession(); }
 function setUiScale(v) { S.settings.uiScale = v; applySettings(); saveSession(); }
@@ -2484,7 +2493,8 @@ function renderMsgIRC(m, isFirst = true, isTail = true) {
   const reactionsHtml = isDeleted ? '' : renderReactions(m.id);
   const senderName = esc(m.sender_name);
   const avColor = avatarColor(m.sender_id);
-  const avLetter = initials(m.sender_name).slice(0,1);
+  // аватарка 32px вмещает обе буквы; обрезка до одной осталась от прежних 28px
+  const avLetter = initials(m.sender_name);
   const avImg = `<img src="${httpProto()}://${S.server}/api/users/${m.sender_id}/avatar" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display='none'">`;
   const rAtt = m.reply_attachment;
   const rIsImg = rAtt?.mime?.startsWith('image/');
@@ -4161,7 +4171,7 @@ function showChatCtx(e, chatId) {
   if (leaveBtn) leaveBtn.style.display = (isGroup && !canDelete) ? '' : 'none';
 
   const muteLabel = document.getElementById('ctx-chat-mute-label');
-  if (muteLabel) muteLabel.textContent = S.mutedChats.has(chatId) ? 'Включить звук' : 'Заглушить';
+  if (muteLabel) muteLabel.textContent = S.mutedChats.has(chatId) ? 'Включить уведомления' : 'Выключить уведомления';
   menu.style.top = '-9999px'; menu.style.left = '-9999px';
   menu.style.display = 'block';
   const mw = menu.offsetWidth, mh = menu.offsetHeight;
@@ -4222,7 +4232,7 @@ function openChatSheet(chatId) {
   const pinBtn = document.getElementById('sheet-pin-btn');
   if (pinBtn) pinBtn.style.display = isRoom ? 'none' : '';
   const muteLabel = document.getElementById('sheet-mute-label');
-  if (muteLabel) muteLabel.textContent = S.mutedChats.has(chatId) ? 'Включить звук' : 'Заглушить';
+  if (muteLabel) muteLabel.textContent = S.mutedChats.has(chatId) ? 'Включить уведомления' : 'Выключить уведомления';
   document.getElementById('chat-sheet-backdrop').classList.add('open');
   document.getElementById('chat-action-sheet').classList.add('open');
 }

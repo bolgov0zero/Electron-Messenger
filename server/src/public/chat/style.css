@@ -2957,3 +2957,17 @@ html.dark .announcement-title { color: var(--danger); }
    сообщение не пряталось. В конце файла: базовое правило .messages идёт ниже
    объявления полосы и иначе перебивало бы отступ. */
 .chat-main .messages { padding-bottom: calc(10px + var(--composer-h, 70px)); }
+
+/* ── ПЛАВНАЯ СМЕНА ТЕМЫ ──
+   Переход вешаем на все элементы, но только на время переключения: класс
+   theme-anim держится доли секунды. Постоянный transition на «*» стоил бы
+   пересчёта на каждом наведении и мешал бы остальным анимациям. */
+html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after {
+  transition: background-color .22s ease, border-color .22s ease, color .22s ease,
+              fill .22s ease, stroke .22s ease, box-shadow .22s ease !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after {
+    transition: none !important;
+  }
+}
