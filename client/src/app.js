@@ -218,8 +218,42 @@ function loadSession() {
   try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { return null; }
 }
 
+// ── ЕДИНЫЙ НАБОР ЭМОДЗИ ──
+// Системный шрифт эмодзи зависит от ОС и её версии: в Windows 10 смайлики из Unicode
+// 13-14 не отображаются вовсе. Поэтому подключаем свой набор (Noto Color Emoji).
+// Формат COLRv1 понимают Chromium и Firefox, но не WebKit — в Safari и на iOS шрифт
+// молча отрисовался бы пустыми глифами, поэтому включаем его только после проверки,
+// что движок действительно нарисовал цветной глиф ИМЕННО этим шрифтом.
+async function initEmojiFont() {
+  try {
+    const ua = navigator.userAgent;
+    // WebKit без Chromium — не грузим файл впустую
+    if (/Safari/.test(ua) && !/Chrome|Chromium|Edg|OPR/.test(ua)) return;
+    await document.fonts.load('40px "Noto Color Emoji"');
+    const draw = (family) => {
+      const c = document.createElement('canvas');
+      c.width = c.height = 44;
+      const x = c.getContext('2d', { willReadFrequently: true });
+      x.font = '36px ' + family;
+      x.textBaseline = 'top';
+      x.fillText('😀', 2, 2);
+      return x.getImageData(0, 0, 44, 44).data;
+    };
+    const noto = draw('"Noto Color Emoji"'), sys = draw('sans-serif');
+    let colored = false, differs = false;
+    for (let i = 0; i < noto.length; i += 4) {
+      if (noto[i + 3] > 20 && (Math.abs(noto[i] - noto[i+1]) > 12 || Math.abs(noto[i+1] - noto[i+2]) > 12)) colored = true;
+      if (noto[i] !== sys[i] || noto[i+3] !== sys[i+3]) differs = true;
+      if (colored && differs) break;
+    }
+    // differs — страховка от подмены системным шрифтом, когда Noto не загрузился
+    if (colored && differs) document.documentElement.classList.add('emoji-noto');
+  } catch {}
+}
+
 // ── INIT ──
 window.addEventListener('DOMContentLoaded', async () => {
+  initEmojiFont();
   // Версия — всегда, независимо от сессии
   if (window.electron?.getVersion) {
     window.electron.getVersion().then(v => {
@@ -1961,8 +1995,12 @@ function renderStatus(status) {
 // Умный скролл к низу после появления сообщения: своё — всегда, чужое — если пользователь
 // у дна. Учитывает асинхронную догрузку картинок и вложений (scrollHeight после загрузки
 // вырастет), повторно вызывая прокрутку при `load`/`error` на каждом img.
-function stickToBottom(container, newEl, m) {
-  const dist = container.scrollHeight - container.scrollTop - container.clientHeight;
+function stickToBottom(container, newEl, m, distBefore) {
+  // Отступ от низа берём ДО вставки сообщения: иначе высокое вложение (картинка)
+  // само же выталкивает dist за порог, и автопрокрутка не срабатывает —
+  // сообщение остаётся под полем ввода.
+  const dist = distBefore !== undefined ? distBefore
+    : container.scrollHeight - container.scrollTop - container.clientHeight;
   if (!(m._optimistic || dist < 120)) return;
   const behavior = m._optimistic ? 'instant' : 'smooth';
   const toBottom = () => container.scrollTo({ top: container.scrollHeight, behavior });
@@ -1978,6 +2016,7 @@ function appendMsg(m) {
   const container = document.getElementById('messages');
   if (!container) return;
   if (m.id > 0 && container.querySelector(`[data-msg-id="${m.id}"]`)) return;
+  const distBefore = container.scrollHeight - container.scrollTop - container.clientHeight;
   const chat = S.chats.find(c=>c.id===S.activeChatId);
   const allMsgs = [...container.querySelectorAll('[data-msg-id]')];
   const lastEl = allMsgs[allMsgs.length - 1];
@@ -2006,7 +2045,7 @@ function appendMsg(m) {
   const allNewMsgs = container.querySelectorAll('[data-msg-id]');
   const newEl = allNewMsgs[allNewMsgs.length - 1];
   if (newEl && !m._optimistic) newEl.classList.add('msg-new');
-  stickToBottom(container, newEl, m);
+  stickToBottom(container, newEl, m, distBefore);
 }
 
 function updateMsgInDOM(m) {
