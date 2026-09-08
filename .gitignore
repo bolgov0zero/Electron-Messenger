@@ -5,3 +5,6 @@ server/data/
 design_handoff_chat_redesign/
 chat_db/
 .claude/
+
+# Мусор macOS
+.DS_Store

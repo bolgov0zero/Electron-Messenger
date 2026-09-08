@@ -37,7 +37,7 @@ function enrichChat(chat, userId) {
     const ids = subrooms.map(s => s.id);
     const placeholders = ids.map(() => '?').join(',');
     last = db.prepare(`
-      SELECT m.id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment,
+      SELECT m.id, m.chat_id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment,
         COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
       WHERE m.chat_id IN (${placeholders}) ORDER BY m.sent_at DESC LIMIT 1
@@ -56,7 +56,7 @@ function enrichChat(chat, userId) {
     `).get(userId, ...ids, userId, userId).c;
   } else {
     last = db.prepare(`
-      SELECT m.id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment,
+      SELECT m.id, m.chat_id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment,
         COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
       WHERE m.chat_id = ? ORDER BY m.sent_at DESC LIMIT 1
@@ -73,6 +73,19 @@ function enrichChat(chat, userId) {
       WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
         AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
     `).get(userId, chat.id, userId, userId).c;
+  }
+
+  // Статус доставки последнего сообщения — только для своих: в списке чатов
+  // рядом со временем показываются галочки. Чужие сообщения статуса не требуют,
+  // поэтому лишние запросы для них не делаем.
+  if (last && last.sender_id === userId) {
+    const total = db.prepare('SELECT COUNT(*) AS c FROM chat_members WHERE chat_id = ? AND user_id IS NOT ?')
+      .get(last.chat_id || chat.id, userId).c;
+    const st = db.prepare(`
+      SELECT COUNT(delivered_at) AS d, COUNT(read_at) AS r
+      FROM message_status WHERE message_id = ?
+    `).get(last.id);
+    last.status = { delivered: st?.d || 0, read: st?.r || 0, total };
   }
 
   const muted = !!db.prepare('SELECT 1 FROM muted_chats WHERE user_id = ? AND chat_id = ?').get(userId, chat.id);

@@ -155,7 +155,7 @@ function getMessageWithStatus(msgId, viewerId) {
   const delivered = db.prepare('SELECT COUNT(*) as c FROM message_status WHERE message_id = ? AND delivered_at IS NOT NULL').get(msgId).c;
   const read = db.prepare('SELECT COUNT(*) as c FROM message_status WHERE message_id = ? AND read_at IS NOT NULL').get(msgId).c;
   // Реакции — чтобы WS-payload совпадал по форме с REST /api/messages
-  const reactions = db.prepare('SELECT reaction, COUNT(*) as count FROM reactions WHERE message_id = ? GROUP BY reaction').all(msgId);
+  const reactions = db.prepare('SELECT reaction, COUNT(*) as count, group_concat(user_id) as user_ids FROM reactions WHERE message_id = ? GROUP BY reaction').all(msgId);
 
   return { ...msg, reactions, status: { delivered, read, total: memberCount } };
 }
@@ -400,7 +400,7 @@ function setup(server) {
         } else {
           db.prepare('INSERT OR IGNORE INTO reactions (message_id, user_id, reaction) VALUES (?, ?, ?)').run(message_id, user.id, reaction);
         }
-        const counts = db.prepare('SELECT reaction, COUNT(*) as count FROM reactions WHERE message_id = ? GROUP BY reaction').all(message_id);
+        const counts = db.prepare('SELECT reaction, COUNT(*) as count, group_concat(user_id) as user_ids FROM reactions WHERE message_id = ? GROUP BY reaction').all(message_id);
         broadcast(msg.chat_id, { type: 'reaction_update', message_id, counts });
       }
 

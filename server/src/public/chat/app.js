@@ -521,7 +521,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     hideCtxMenu(); hideReactionPicker(); closeSettings();
     document.getElementById('ep-grid')?.classList.remove('open');
     if (S.editingMessageId) { cancelEdit(); return; }
-    if (!anyOpen && S.activeChatId) closeActiveChat();
+    if (anyOpen) return;
+    // Escape разбирает открытое по одному уровню за нажатие:
+    // сначала чат, следующим нажатием — список подкомнат
+    if (S.activeChatId) { closeActiveChat(); return; }
+    if (S.activeRoomId) { closeSubroomsPanel(true); return; }
   });
 
   document.addEventListener('visibilitychange', refreshActivity);
@@ -1218,6 +1222,51 @@ function renderChatList() {
   applyAvatars();
 }
 
+// Галочка в списке чатов относится к последнему сообщению — обновляем её,
+// когда приходит статус по нему. Иначе она оставалась бы прежней до перезагрузки.
+function applyStatusToChatList(chatId, msgId, kind, readerId) {
+  const chat = S.chats.find(c => c.id === chatId)
+    || S.chats.find(c => (S.subrooms[c.id] || []).some(s => s.id === chatId));
+  const lm = chat?.last_message;
+  if (!lm || !lm.status || lm.id !== msgId || lm.sender_id !== S.user?.id) return;
+  const key = 'list:' + kind + ':' + readerId;
+  if (!S.statusApplied[msgId]) S.statusApplied[msgId] = new Set();
+  if (S.statusApplied[msgId].has(key)) return;
+  S.statusApplied[msgId].add(key);
+  if (kind === 'read') {
+    lm.status.read = Math.min(lm.status.total, lm.status.read + 1);
+    lm.status.delivered = Math.max(lm.status.delivered, lm.status.read);
+  } else {
+    lm.status.delivered = Math.min(lm.status.total, lm.status.delivered + 1);
+  }
+  renderChatList();
+}
+
+// ── ВЫДВИЖНАЯ ЧАСТЬ ПОЛЯ ВВОДА ──
+// Ответ, пересылка, вложение и правка живут внутри композера. Высота задаётся
+// в пикселях по измеренному содержимому, а не через max-height: при коротком
+// содержимом фиксированный max-height смазывает кривую ускорения.
+function syncComposerSlot() {
+  const slot = document.getElementById('composer-slot');
+  const inner = slot?.firstElementChild;
+  if (!slot || !inner) return;
+  const open = [...inner.children].some(el => el.style.display !== 'none');
+  slot.classList.toggle('open', open);
+  slot.style.height = (open ? inner.offsetHeight : 0) + 'px';
+}
+
+// Плашки показываются и прячутся из разных мест — вместо правки каждого
+// вызова следим за их видимостью наблюдателем.
+function initComposerSlot() {
+  const slot = document.getElementById('composer-slot');
+  const inner = slot?.firstElementChild;
+  if (!slot || !inner) return;
+  slot._obs?.disconnect();
+  slot._obs = new MutationObserver(syncComposerSlot);
+  slot._obs.observe(inner, { attributes: true, attributeFilter: ['style'], subtree: true, childList: true });
+  syncComposerSlot();
+}
+
 function renderChatRow(c) {
   const name = chatName(c);
   const u = c.has_subrooms
@@ -1239,6 +1288,9 @@ function renderChatRow(c) {
   const dot = peerId ? presenceDot(peerId) : '';
   const pinIcon = c.pinned ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);opacity:.7"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>` : '';
   const muteIcon = S.mutedChats.has(c.id) ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted);opacity:.7"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="1" y1="1" x2="23" y2="23"/></svg>` : '';
+  // Галочки доставки/прочтения — только если последнее сообщение моё
+  const myStatus = (lm && lm.sender_id === S.user?.id && !lm.deleted && lm.status)
+    ? renderStatus(lm.status) : '';
   const isActive = c.id===S.activeChatId || c.id===S.activeRoomId;
   return `<div class="chat-item${isActive?' active':''}" data-chat-id="${c.id}" onclick="openChat(${c.id})" oncontextmenu="showChatCtx(event,${c.id})">
     <div class="av-wrap">
@@ -1248,7 +1300,7 @@ function renderChatRow(c) {
     <div class="info">
       <div class="ci-name" style="display:flex;align-items:center;gap:5px">
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</span>
-        ${pinIcon}${muteIcon}
+        ${pinIcon}${muteIcon}${myStatus}
         <span class="ci-time">${time}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
@@ -1398,62 +1450,67 @@ async function openChat(chatId, aroundId = null) {
   inputBar.innerHTML = `
     <div class="chat-input-wrap" id="input-wrap">
       <div class="composer-inner">
-        <div id="image-preview-bar" style="display:none" class="input-reply-bar">
-          <img class="img-preview-thumb" src="" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0">
-          <div class="attach-preview-icon" style="display:none;width:40px;height:40px;border-radius:6px;flex-shrink:0;background:var(--surface2);display:none;align-items:center;justify-content:center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          </div>
-          <div class="reply-bar-content">
-            <div class="reply-bar-name">Вложение</div>
-            <div class="reply-bar-text img-preview-name"></div>
-          </div>
-          <button onclick="clearImagePreview()" class="icon-btn" style="width:24px;height:24px">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <div id="reply-bar" style="display:none" class="input-reply-bar">
-          <img id="reply-bar-thumb" class="reply-bar-thumb" style="display:none" alt="">
-          <div class="reply-bar-content">
-            <div class="reply-bar-name" id="reply-bar-name"></div>
-            <div class="reply-bar-text" id="reply-bar-text"></div>
-          </div>
-          <button onclick="hideReplyBar()" class="icon-btn" style="width:24px;height:24px">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <div id="forward-bar" style="display:none" class="input-reply-bar">
-          <div class="reply-bar-content">
-            <div class="reply-bar-name" id="forward-bar-name"></div>
-            <div class="reply-bar-text" id="forward-bar-text"></div>
-          </div>
-          <button onclick="hideForwardBar()" class="icon-btn" style="width:24px;height:24px">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <div id="edit-bar" style="display:none" class="input-edit-bar">
-          <span>Редактирование</span>
-          <button onclick="cancelEdit()" class="icon-btn" style="width:24px;height:24px;color:var(--accent)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
         <div class="composer-pill" id="composer-pill">
           <div class="ep-grid" id="ep-grid"><div class="ep-freq"></div><div class="ep-sep"></div><div class="ep-scroll"><div class="ep-grid-inner">${EMOJIS.map(em=>`<button class="emoji-item" onclick="insertEmoji('${em}')">${em}</button>`).join('')}</div></div></div>
-          <button class="composer-icon-btn" title="Эмодзи" onclick="toggleEmojiPicker(event)">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 3 4 3 4-3 4-3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
-          </button>
-          <button class="composer-icon-btn" title="Прикрепить файл" onclick="pickFile()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-          </button>
-          <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
-          <textarea id="msg-input" rows="1" placeholder="Сообщение…" onkeydown="handleKey(event)" oninput="onMsgInput(this)"></textarea>
-          <button class="send-btn" id="send-btn" onmousedown="event.preventDefault()" onclick="sendOrEdit()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          </button>
+          <div class="composer-slot" id="composer-slot"><div class="composer-slot-inner">
+          <div id="image-preview-bar" style="display:none" class="input-reply-bar">
+            <img class="img-preview-thumb" src="" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0">
+            <div class="attach-preview-icon" style="display:none;width:40px;height:40px;border-radius:6px;flex-shrink:0;background:var(--surface2);display:none;align-items:center;justify-content:center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div class="reply-bar-content">
+              <div class="reply-bar-name">Вложение</div>
+              <div class="reply-bar-text img-preview-name"></div>
+            </div>
+            <button onclick="clearImagePreview()" class="icon-btn" style="width:24px;height:24px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div id="reply-bar" style="display:none" class="input-reply-bar">
+            <img id="reply-bar-thumb" class="reply-bar-thumb" style="display:none" alt="">
+            <div class="reply-bar-content">
+              <div class="reply-bar-name" id="reply-bar-name"></div>
+              <div class="reply-bar-text" id="reply-bar-text"></div>
+            </div>
+            <button onclick="hideReplyBar()" class="icon-btn" style="width:24px;height:24px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div id="forward-bar" style="display:none" class="input-reply-bar">
+            <div class="reply-bar-content">
+              <div class="reply-bar-name" id="forward-bar-name"></div>
+              <div class="reply-bar-text" id="forward-bar-text"></div>
+            </div>
+            <button onclick="hideForwardBar()" class="icon-btn" style="width:24px;height:24px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div id="edit-bar" style="display:none" class="input-edit-bar">
+            <span>Редактирование</span>
+            <button onclick="cancelEdit()" class="icon-btn" style="width:24px;height:24px;color:var(--accent)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          </div></div>
+          <div class="composer-main">
+            <button class="composer-icon-btn" title="Эмодзи" onclick="toggleEmojiPicker(event)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 3 4 3 4-3 4-3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
+            </button>
+            <button class="composer-icon-btn" title="Прикрепить файл" onclick="pickFile()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
+            <textarea id="msg-input" rows="1" placeholder="Сообщение…" onkeydown="handleKey(event)" oninput="onMsgInput(this)"></textarea>
+            <button class="send-btn" id="send-btn" onmousedown="event.preventDefault()" onclick="sendOrEdit()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>`;
 
   requestAnimationFrame(syncInputBarHeight);
+  initComposerSlot();
   applyAvatars();
   const sendBtn = document.getElementById('send-btn');
   if (sendBtn) { sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
@@ -1904,6 +1961,10 @@ function insertEmoji(em) {
 }
 
 // ── RENDER MESSAGES ──
+// Окно группировки: сообщения одного автора в пределах минуты идут одной серией —
+// без повторного имени, со временем у каждого и галочкой только у последнего
+const GROUP_WINDOW_SEC = 60;
+
 function sameTimeGroup(a, b) {
   if (!a || !b) return false;
   if (a.sender_id !== b.sender_id) return false;
@@ -1969,11 +2030,11 @@ function renderMessages(msgs, stick = true) {
       lastDate = dateStr;
       lastSenderId = null;
     }
-    const grouped = !dayChanged && m.sender_id === lastSenderId && (m.sent_at - lastSentAt) < 300;
+    const grouped = !dayChanged && m.sender_id === lastSenderId && (m.sent_at - lastSentAt) < GROUP_WINDOW_SEC;
     const next = msgs[i + 1];
     const hideTime = !m.deleted && next && sameTimeGroup(m, next) && fmtDate(m.sent_at) === fmtDate(next.sent_at);
     const nextDayChanged = next ? fmtDate(next.sent_at) !== dateStr : true;
-    const isLast = !next || nextDayChanged || next.sender_id !== m.sender_id || (next.sent_at - m.sent_at) >= 300;
+    const isLast = !next || nextDayChanged || next.sender_id !== m.sender_id || (next.sent_at - m.sent_at) >= GROUP_WINDOW_SEC;
     html += renderMsg(m, isChatGroup, hideTime, grouped, isLast);
     lastSenderId = m.sender_id;
     lastSentAt = m.sent_at;
@@ -2071,11 +2132,11 @@ function appendMessagesAfter(msgs, chatId) {
       lastDate = dateStr;
       lastSenderId = null;
     }
-    const grouped = !dayChanged && m.sender_id === lastSenderId && (m.sent_at - lastSentAt) < 300;
+    const grouped = !dayChanged && m.sender_id === lastSenderId && (m.sent_at - lastSentAt) < GROUP_WINDOW_SEC;
     const next = msgs[i + 1];
     const hideTime = !m.deleted && next && sameTimeGroup(m, next) && fmtDate(m.sent_at) === fmtDate(next.sent_at);
     const nextDayChanged = next ? fmtDate(next.sent_at) !== dateStr : true;
-    const isLast = !next || nextDayChanged || next.sender_id !== m.sender_id || (next.sent_at - m.sent_at) >= 300;
+    const isLast = !next || nextDayChanged || next.sender_id !== m.sender_id || (next.sent_at - m.sent_at) >= GROUP_WINDOW_SEC;
     html += renderMsg(m, isChatGroup, hideTime, grouped, isLast);
     lastSenderId = m.sender_id; lastSentAt = m.sent_at;
   });
@@ -2104,10 +2165,10 @@ function prependMessages(msgs, chatId) {
       lastDate = dateStr;
       lastSenderId = null;
     }
-    const grouped = !dayChanged && m.sender_id === lastSenderId && (m.sent_at - lastSentAt) < 300;
+    const grouped = !dayChanged && m.sender_id === lastSenderId && (m.sent_at - lastSentAt) < GROUP_WINDOW_SEC;
     const next = msgs[i + 1];
     const nextDayChanged = next ? fmtDate(next.sent_at) !== dateStr : true;
-    const isLast = !next || nextDayChanged || next.sender_id !== m.sender_id || (next.sent_at - m.sent_at) >= 300;
+    const isLast = !next || nextDayChanged || next.sender_id !== m.sender_id || (next.sent_at - m.sent_at) >= GROUP_WINDOW_SEC;
     html += renderMsg(m, isChatGroup, false, grouped, isLast);
     lastSenderId = m.sender_id;
     lastSentAt = m.sent_at;
@@ -2121,12 +2182,36 @@ function prependMessages(msgs, chatId) {
   container.scrollTop = prevTop + (container.scrollHeight - prevHeight);
 }
 
+// Сколько аватарок помещается в чип реакции. Числа рядом нет, полный список
+// виден в подсказке при наведении.
+const REACTION_AVATARS_MAX = 4;
+
+// Аватарки поставивших складываются стопкой: первый сверху, каждый следующий
+// уходит под него и выступает на треть. Обводка цветом фона отделяет соседние
+// кружки — без неё при нахлёсте они сливаются.
+function reactionAvatars(userIds) {
+  const ids = String(userIds || '').split(',').filter(Boolean).map(Number);
+  if (!ids.length) return '';
+  const shown = ids.slice(0, REACTION_AVATARS_MAX);
+  return `<span class="ra-stack">${shown.map((uid, k) => {
+    const u = S.allUsers.find(x => x.id === uid) || (uid === S.user?.id ? S.user : null);
+    const name = u?.display_name || '';
+    const url = `${httpProto()}://${S.server}/api/users/${uid}/avatar?t=${S.avatarTs || 0}`;
+    return `<span class="ra ${avatarColor(uid)}" style="z-index:${20 - k}" title="${esc(name)}">` +
+      `${esc(initials(name) || '?')}` +
+      `<img src="${url}" alt="" onerror="this.style.display='none'">` +
+      `</span>`;
+  }).join('')}</span>`;
+}
+
 function renderReactions(msgId) {
   const counts = S.reactions[msgId] || [];
   if (!counts.length) return '';
-  return `<div class="reactions">${counts.map(r =>
-    `<button class="reaction-btn" data-msg-id="${msgId}" data-reaction="${esc(r.reaction)}" onclick="sendReaction(${msgId},'${r.reaction}')">${r.reaction} <span>${r.count}</span></button>`
-  ).join('')}</div>`;
+  return `<div class="reactions">${counts.map(r => {
+    const mine = String(r.user_ids || '').split(',').includes(String(S.user?.id));
+    return `<button class="reaction-btn${mine ? ' mine' : ''}" data-msg-id="${msgId}" data-reaction="${esc(r.reaction)}" onclick="sendReaction(${msgId},'${r.reaction}')">` +
+      `<span class="ra-emoji">${r.reaction}</span>${reactionAvatars(r.user_ids)}</button>`;
+  }).join('')}</div>`;
 }
 
 // ── ТУЛТИП РЕАКЦИИ: кто поставил ──
@@ -2162,13 +2247,22 @@ async function _rtLoad(msgId) {
 
 function _rtRender(btn, reaction, users) {
   const el = _rtEnsureEl();
-  const MAX = 8;
+  // Смайлик не показываем: подсказка привязана к конкретному чипу, он и так виден.
+  // Предел выше прежних восьми — в чипе теперь только четыре аватарки, и подсказка
+  // осталась единственным местом, где видно остальных. Совсем без предела нельзя:
+  // подсказка не прокручивается (pointer-events: none), длинный список уедет за экран.
+  const MAX = 15;
   const shown = users.slice(0, MAX);
   const rest = users.length - shown.length;
   el.innerHTML =
-    `<span class="rt-emoji">${esc(reaction)}</span>` +
-    shown.map(u => `<span class="rt-name">${esc(u.display_name)}</span>`).join('') +
-    (rest > 0 ? `<span class="rt-name rt-more">и ещё ${rest}</span>` : '');
+    shown.map(u => {
+      const url = `${httpProto()}://${S.server}/api/users/${u.user_id}/avatar?t=${S.avatarTs || 0}`;
+      return `<span class="rt-row">` +
+        `<span class="rt-av ${avatarColor(u.user_id)}">${esc(initials(u.display_name) || '?')}` +
+        `<img src="${url}" alt="" onerror="this.style.display='none'"></span>` +
+        `<span class="rt-name">${esc(u.display_name)}</span></span>`;
+    }).join('') +
+    (rest > 0 ? `<span class="rt-row rt-more">и ещё ${rest}</span>` : '');
 
   // Интерфейс масштабируется через zoom (настройка размера), поэтому
   // getBoundingClientRect отдаёт визуальные пиксели, а style.left/top задаются в
@@ -2338,7 +2432,7 @@ function renderMsgIRC(m, isGroup) {
   }
 
   const attDataAttrs = att?.url ? ` data-msg-att-url="${esc(att.url)}" data-msg-att-thumb="${esc(att.thumb||'')}" data-msg-att-mime="${esc(att.mime||'')}" data-msg-att-name="${esc(att.name||'')}"` : '';
-  return `<div class="irc-msg${isGroup?' irc-grouped':''}${m._optimistic?' msg-optimistic':''}" data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
+  return `<div class="irc-msg${isGroup?' irc-grouped':''}${m._optimistic?' msg-optimistic':''}"${mine?` data-mine="1"`:``} data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
     oncontextmenu="${!isDeleted?`showCtxMenu(event,${m.id},${m.sent_at},${mine})`:'event.preventDefault()'}">
     ${avCol}
     <div class="irc-content" ondblclick="${!isDeleted?`dblReply(${m.id})`:''}">
@@ -3337,6 +3431,13 @@ function connectWS() {
     if (data.type==='status_update') {
       const m = data.message;
       if (m.status) S.msgStatus[m.id] = { ...m.status };
+      // Точный статус с сервера — кладём его в список чатов как есть
+      const _c = S.chats.find(c => c.id === m.chat_id)
+        || S.chats.find(c => (S.subrooms[c.id] || []).some(s => s.id === m.chat_id));
+      if (_c?.last_message && _c.last_message.id === m.id && m.status) {
+        _c.last_message.status = { ...m.status };
+        renderChatList();
+      }
       if (S.activeChatId===m.chat_id && m.sender_id===S.user.id) {
         const wrap = document.querySelector(`[data-msg-id="${m.id}"] .status-wrap`);
         if (wrap) wrap.innerHTML = renderStatus(m.status);
@@ -3344,6 +3445,12 @@ function connectWS() {
     }
 
     if (data.type==='status_range') {
+      // Диапазон мог захватить последнее сообщение чата — обновим галочку в списке
+      const _lm = (S.chats.find(c => c.id === data.chat_id)
+        || S.chats.find(c => (S.subrooms[c.id] || []).some(s => s.id === data.chat_id)))?.last_message;
+      if (_lm && _lm.id >= data.min_id && _lm.id <= data.max_id) {
+        applyStatusToChatList(data.chat_id, _lm.id, data.kind, data.reader_id);
+      }
       if (data.chat_id === S.activeChatId) {
         const eventKey = `${data.kind}:${data.reader_id}`;
         document.querySelectorAll('[data-msg-id]').forEach(el => {
@@ -4062,11 +4169,19 @@ function closeModal(id) {
   const el = document.getElementById(id);
   if (!el || !el.classList.contains('open') || el.classList.contains('closing')) return;
   el.classList.add('closing');
-  const onEnd = e => {
-    if (e.target !== el) return;
+  // Страховка по таймеру: если animationend не придёт (свёрнутое окно, фоновая
+  // вкладка, отключённые анимации), модалка навсегда осталась бы с классом open —
+  // а пока он висит, Escape считает, что что-то открыто, и перестаёт закрывать чат
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
     el.classList.remove('open', 'closing');
     el.removeEventListener('animationend', onEnd);
   };
+  const onEnd = e => { if (e.target === el) finish(); };
+  const timer = setTimeout(finish, 400);
   el.addEventListener('animationend', onEnd);
 }
 

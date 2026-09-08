@@ -951,10 +951,11 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .irc-header-grouped {
   justify-content: flex-end;
   margin-bottom: 0; height: 0; overflow: visible;
-  opacity: 0; transition: opacity .15s;
+  /* Время видно всегда, а не только при наведении: в серии подряд идущих
+     сообщений оно единственный ориентир, когда имя автора уже не выводится */
+  opacity: 1;
   position: relative; z-index: 1;
 }
-.irc-msg:hover .irc-header-grouped { opacity: 1; }
 .irc-text { font-size: 1rem; white-space: pre-wrap; word-break: break-word; color: var(--text); line-height: 1.5; }
 .irc-deleted { opacity: .55; font-style: italic; }
 .irc-msg .reactions { margin-top: 4px; padding: 0; }
@@ -1000,10 +1001,10 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 
 /* Reply preview above composer */
 .input-reply-bar {
-  border-left: 3px solid var(--accent);
-  background: var(--reply-bg);
+  
+  
   padding: 8px 10px 8px 12px;
-  border-radius: 9px 9px 4px 4px;
+  border-radius: 0;
   margin-bottom: 0;
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
@@ -1060,7 +1061,6 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   padding: 8px 8px 8px 14px;
   transition: border-radius .15s;
 }
-.composer-row.has-reply { border-radius: 4px 4px 9px 9px; }
 
 /* Pill */
 .composer-pill {
@@ -1071,7 +1071,6 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   padding: 8px 8px 8px 14px;
   position: relative;
 }
-.composer-pill.has-reply { border-radius: 4px 4px 9px 9px; }
 
 .ep-grid {
   position: absolute;
@@ -2247,3 +2246,121 @@ select:focus-visible, .user-row:focus-visible, .chat-item:focus-visible {
 }
 /* Тема переключается классом .dark на <html> */
 html.dark .announcement-title { color: var(--danger); }
+
+/* Галочки статуса в списке чатов. Цветовые правила выше привязаны к .irc-meta —
+   в строке списка такого родителя нет, и все состояния выглядели одинаково. */
+.ci-name .msg-status { flex-shrink: 0; display: flex; align-items: center; }
+.ci-name .status-sent      { color: var(--muted); opacity: .45; }
+.ci-name .status-delivered { color: var(--muted); }
+.ci-name .status-read      { color: var(--accent); }
+
+/* ── ЕДИНОЕ ПОЛЕ ВВОДА ──
+   Ответ, пересылка, вложение и правка раньше были соседями поля ввода: своя
+   рамка, свой фон, свои скругления, между ними видимый шов. Теперь они внутри
+   композера, а он растёт вверх, сохраняя одно скругление. */
+
+.composer-pill {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
+  gap: 0;
+}
+.composer-main {
+  display: flex; align-items: flex-end; gap: 4px;
+  padding: 8px 8px 8px 14px;
+}
+
+/* Выдвижная часть. overflow только здесь, а не на .composer-pill — иначе
+   обрезался бы пикер эмодзи, который всплывает над полем. Фон прозрачный,
+   поэтому за скругления композера ничего не выпирает. */
+.composer-slot {
+  height: 0;
+  overflow: hidden;
+  transition: height .26s cubic-bezier(.32,.72,0,1);
+}
+.composer-slot-inner {
+  padding: 9px 10px 8px 12px;
+  border-bottom: 1px solid var(--border);
+  transform: translateY(-4px);
+  opacity: 0;
+  transition: transform .26s cubic-bezier(.32,.72,0,1), opacity .18s ease;
+}
+.composer-slot.open .composer-slot-inner { transform: translateY(0); opacity: 1; }
+
+/* Плашки внутри: без собственного фона, рамок и скруглений — они часть поля */
+.composer-slot .input-reply-bar,
+.composer-slot .input-edit-bar {
+  background: none;
+  border: none;
+  border-radius: 0;
+  margin: 0;
+  padding: 0;
+}
+.composer-slot .input-reply-bar + .input-reply-bar,
+.composer-slot .input-reply-bar + .input-edit-bar { margin-top: 8px; }
+
+/* Тонкая полоса — только у цитаты и правки, не у всей плашки */
+.composer-slot #reply-bar,
+.composer-slot #forward-bar,
+.composer-slot .input-edit-bar {
+  border-left: 2px solid var(--accent);
+  padding-left: 9px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer-slot, .composer-slot-inner { transition: none; }
+}
+
+/* Галочка статуса — только у последнего сообщения в серии подряд идущих своих.
+   Время при этом остаётся у каждого. Реализовано селектором :has(), а не
+   пересчётом в JS: иначе состояние пришлось бы синхронизировать при каждой
+   перерисовке и догрузке истории. Где :has() не поддержан, правило просто
+   не применится и галочки останутся у всех — как было раньше. */
+.irc-msg[data-mine]:has(+ .irc-msg[data-mine]) .status-wrap { display: none; }
+
+/* Время в сгруппированной строке лежит поверх текста (шапка нулевой высоты).
+   Резервируем под него место обтеканием, а не отступом: так сужается только
+   первая строка, а последующие используют всю ширину. Без этого длинный текст
+   подходил ко времени вплотную — оставалось 11px. */
+.irc-msg.irc-grouped .irc-text::before {
+  content: '';
+  float: right;
+  width: 64px;
+  height: 1.4em;
+}
+
+/* ── РЕАКЦИИ: смайлик и аватарки поставивших ──
+   Числа нет — кто поставил, видно по аватаркам, полный список в подсказке. */
+.reaction-btn { padding: 2px 7px 2px 8px; gap: 6px; line-height: 1; }
+.ra-emoji { font-size: 13px; }
+.reaction-btn.mine { border-color: var(--accent); background: var(--accent-soft); }
+
+.ra-stack { display: flex; align-items: center; }
+.ra {
+  position: relative;
+  width: 18px; height: 18px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 600; color: #fff;
+  flex-shrink: 0;
+  /* Обводка цветом подложки: без неё соседние кружки при нахлёсте сливаются */
+  box-shadow: 0 0 0 1.5px var(--bubble-bg, var(--card-bg));
+  overflow: hidden;
+}
+/* Каждый следующий уходит под предыдущий и выступает на треть */
+.ra + .ra { margin-left: -12px; }
+.ra img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* Подсказка: строки «аватарка + имя», смайлик не дублируем */
+.reaction-tip { padding: 8px 11px 8px 9px; }
+.rt-row { display: flex; align-items: center; gap: 7px; }
+.rt-row + .rt-row { margin-top: 7px; }
+.rt-av {
+  position: relative;
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 600; color: #fff;
+  flex-shrink: 0; overflow: hidden;
+}
+.rt-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.reaction-tip .rt-name { font-size: 12px; color: var(--text); }
+.reaction-tip .rt-more { color: var(--muted); font-size: 12px; padding-left: 27px; }

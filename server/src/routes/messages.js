@@ -93,10 +93,11 @@ router.get('/chat/:chatId', authMiddleware, (req, res) => {
   if (ids.length) {
     db.prepare(`SELECT message_id, COUNT(delivered_at) as d, COUNT(read_at) as r FROM message_status WHERE message_id IN (${ph}) GROUP BY message_id`)
       .all(...ids).forEach(row => { deliveredMap.set(row.message_id, row.d); readMap.set(row.message_id, row.r); });
-    db.prepare(`SELECT message_id, reaction, COUNT(*) as count FROM reactions WHERE message_id IN (${ph}) GROUP BY message_id, reaction`)
+    db.prepare(`SELECT message_id, reaction, COUNT(*) as count, group_concat(user_id) as user_ids FROM reactions WHERE message_id IN (${ph}) GROUP BY message_id, reaction`)
       .all(...ids).forEach(row => {
         if (!reactionsMap.has(row.message_id)) reactionsMap.set(row.message_id, []);
-        reactionsMap.get(row.message_id).push({ reaction: row.reaction, count: row.count });
+        // user_ids — чтобы клиент показал аватарки поставивших рядом со смайликом
+        reactionsMap.get(row.message_id).push({ reaction: row.reaction, count: row.count, user_ids: row.user_ids });
       });
   }
 
