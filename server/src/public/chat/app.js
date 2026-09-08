@@ -1280,9 +1280,12 @@ function renderChatRow(c) {
   if (preview.length>40) preview = preview.slice(0,40)+'…';
   // Черновик приоритетнее последнего сообщения (как в Telegram)
   const draft = (c.id !== S.activeChatId) ? S.drafts[c.id] : null;
+  // Своё последнее сообщение помечаем «Вы:» — у удалённого пометки нет,
+  // там и так стоит «Сообщение удалено»
+  const minePreview = lm && !lm.deleted && lm.sender_id === S.user?.id;
   const previewHtml = draft
     ? `<span style="color:var(--danger)">Черновик:</span> ${esc(draft.slice(0,34))}`
-    : esc(preview);
+    : (minePreview ? `<span style="color:var(--text2)">Вы:</span> ${esc(preview)}` : esc(preview));
   const time = lm ? fmtChatListTime(lm.sent_at) : '';
   const peerId = getPeerUserId(c);
   const dot = peerId ? presenceDot(peerId) : '';
