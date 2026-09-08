@@ -2235,3 +2235,15 @@ select:focus-visible, .user-row:focus-visible, .chat-item:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .reaction-tip { transition: opacity .01s; transform: none; }
 }
+
+/* Заголовок системного объявления.
+   Отдельный, более тёмный красный для светлой темы: обычный --danger на
+   светло-розовой карточке давал контраст 3.3 — ниже нормы для текста. */
+.announcement-title {
+  display: flex; align-items: center; gap: 9px;
+  margin-bottom: 14px;
+  font-size: 15px; font-weight: 700; letter-spacing: .01em;
+  color: #a8302c;
+}
+/* Тема переключается классом .dark на <html> */
+html.dark .announcement-title { color: var(--danger); }

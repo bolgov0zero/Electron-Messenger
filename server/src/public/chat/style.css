@@ -2661,3 +2661,15 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 .row-swipe-hint.left  { right: -46px; }
 .row-swipe-hint.right { left: -46px; }
 .row-swipe-hint.armed { opacity: 1; background: var(--accent-soft); }
+
+/* Заголовок системного объявления.
+   Отдельный, более тёмный красный для светлой темы: обычный --danger на
+   светло-розовой карточке давал контраст 3.3 — ниже нормы для текста. */
+.announcement-title {
+  display: flex; align-items: center; gap: 9px;
+  margin-bottom: 14px;
+  font-size: 15px; font-weight: 700; letter-spacing: .01em;
+  color: #a8302c;
+}
+/* Тема переключается классом .dark на <html> */
+html.dark .announcement-title { color: var(--danger); }
