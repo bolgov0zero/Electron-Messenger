@@ -97,6 +97,17 @@ db.exec(`
     chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
     PRIMARY KEY (user_id, chat_id)
   );
+
+  -- Закреплённые сообщения. Закрепление снимается само при удалении сообщения
+  -- или чата — за это отвечает ON DELETE CASCADE, отдельной чистки не нужно.
+  CREATE TABLE IF NOT EXISTS pinned_messages (
+    chat_id    INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    pinned_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    pinned_at  INTEGER DEFAULT (unixepoch()),
+    PRIMARY KEY (chat_id, message_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_pinned_chat ON pinned_messages(chat_id, pinned_at DESC);
 `);
 
 fs.mkdirSync(path.join(path.dirname(DB_PATH), 'avatar'), { recursive: true });

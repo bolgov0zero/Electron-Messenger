@@ -1436,6 +1436,7 @@ async function openChat(chatId, aroundId = null) {
         <div class="ch-sub">${sub}</div>
       </div>
     </div>
+    <div id="pin-bar" class="pin-bar" style="display:none"></div>
     <div class="messages" id="messages"></div>
     <div id="typing-indicator" class="typing-indicator" style="display:none">
       <span class="typing-dots"><span></span><span></span><span></span></span>
@@ -1534,6 +1535,10 @@ async function openChat(chatId, aroundId = null) {
     if (aroundId) {
       requestAnimationFrame(() => scrollToMsg(aroundId, true));
     } else {
+      // Закреплённые приходят вместе с историей
+      S.pins = data.pins || [];
+      _pinIdx = 0;
+      renderPinBar();
       insertUnreadDivider(data.messages, _unreadAtOpen);
     }
     const msgsEl2 = document.getElementById('messages');
@@ -2204,6 +2209,79 @@ function reactionAvatars(userIds) {
   }).join('')}</span>`;
 }
 
+
+// ── ЗАКРЕПЛЁННЫЕ СООБЩЕНИЯ ──
+// Плашка под шапкой чата показывает ОДНО закрепление — самое свежее. Нажатие
+// переносит к нему и сменяет плашку на следующее (более старое), по кругу.
+// Рисок слева больше десяти не рисуем: они становятся неразличимы, остаётся счётчик.
+const PIN_TICKS_MAX = 10;
+let _pinIdx = 0;
+
+function pinPreviewText(p) {
+  if (!p) return '';
+  const t = p.text ? p.text.replace(/<[^>]*>/g, '')
+    : (p.attachment ? (p.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (p.attachment.name || 'Файл')) : '');
+  return t.length > 120 ? t.slice(0, 120) + '…' : t;
+}
+
+function renderPinBar() {
+  const bar = document.getElementById('pin-bar');
+  if (!bar) return;
+  const pins = S.pins || [];
+  if (!pins.length) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  if (_pinIdx >= pins.length) _pinIdx = 0;
+  const p = pins[_pinIdx];
+  const many = pins.length > 1;
+  const ticks = (many && pins.length <= PIN_TICKS_MAX)
+    ? `<span class="pin-ticks">${pins.map((_, i) => `<span class="pin-tick${i === _pinIdx ? ' on' : ''}"></span>`).join('')}</span>`
+    : '';
+  const label = many
+    ? `Закреплённое · ${_pinIdx + 1} из ${pins.length}`
+    : 'Закреплённое сообщение';
+  bar.style.display = 'flex';
+  bar.innerHTML = `${ticks}
+    <span class="pin-body" onclick="pinBarClick()">
+      <span class="pin-slide" id="pin-slide">
+        <span class="pin-label">${esc(label)}</span>
+        <span class="pin-text">${esc(p.sender_name)}: ${esc(pinPreviewText(p))}</span>
+      </span>
+    </span>
+    <button class="icon-btn pin-unpin" title="Открепить" onclick="unpinMessage(${p.message_id})">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>`;
+}
+
+// Переход к закреплённому и смена плашки на следующее
+function pinBarClick() {
+  const pins = S.pins || [];
+  if (!pins.length) return;
+  const target = pins[_pinIdx];
+  scrollToMsg(target.message_id, true);
+  if (pins.length < 2) return;
+  const slide = document.getElementById('pin-slide');
+  if (!slide) { _pinIdx = (_pinIdx + 1) % pins.length; renderPinBar(); return; }
+  slide.classList.add('out');
+  setTimeout(() => {
+    _pinIdx = (_pinIdx + 1) % pins.length;
+    renderPinBar();
+    const s2 = document.getElementById('pin-slide');
+    if (!s2) return;
+    s2.classList.add('in');
+    s2.offsetHeight;
+    s2.classList.remove('in');
+  }, 240);
+}
+
+function pinMessage(id)   { S.ws?.send(JSON.stringify({ type: 'pin_message', message_id: id })); }
+function unpinMessage(id) { S.ws?.send(JSON.stringify({ type: 'unpin_message', message_id: id })); }
+
+function ctxTogglePin() {
+  const id = S.ctx.messageId;
+  hideCtxMenu();
+  if (!id) return;
+  (S.pins || []).some(p => p.message_id === id) ? unpinMessage(id) : pinMessage(id);
+}
+
 function renderReactions(msgId) {
   const counts = S.reactions[msgId] || [];
   if (!counts.length) return '';
@@ -2792,6 +2870,9 @@ function cancelEdit() {
 
 // ── CONTEXT MENU ──
 function showCtxMenu(e, msgId, sentAt, isMine) {
+  // «Закрепить» или «Открепить» — по текущему состоянию сообщения
+  const _pinLbl = document.getElementById('ctx-pin-label');
+  if (_pinLbl) _pinLbl.textContent = (S.pins || []).some(p => p.message_id === msgId) ? 'Открепить' : 'Закрепить';
   e.preventDefault(); e.stopPropagation?.();
   S.ctx.messageId = msgId;
   S.ctx.canEdit = isMine && (Date.now()/1000 - sentAt) < (S.editLimit || 120);
@@ -3379,6 +3460,25 @@ function connectWS() {
         S.chatHasMore = false; S.chatOldestId = null;
         const container = document.getElementById('messages');
         if (container) container.innerHTML = '';
+      }
+    }
+
+    if (data.type==='pins_updated') {
+      if (data.chat_id === S.activeChatId) {
+        const wasId = (S.pins || [])[_pinIdx]?.message_id;
+        const wasTop = (S.pins || [])[0]?.message_id;
+        S.pins = data.pins || [];
+        const newTop = S.pins[0]?.message_id;
+        // Появилось новое закрепление — показываем его: плашка всегда открывается
+        // на самом свежем. При откреплении, наоборот, держим текущее сообщение,
+        // чтобы плашка не прыгала, пока её листает кто-то другой.
+        if (newTop !== undefined && newTop !== wasTop) {
+          _pinIdx = 0;
+        } else {
+          const keep = S.pins.findIndex(p => p.message_id === wasId);
+          _pinIdx = keep >= 0 ? keep : 0;
+        }
+        renderPinBar();
       }
     }
 

@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const db = require('../db');
 const { authMiddleware } = require('../auth');
+const { getPins } = require('../ws');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
 const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
@@ -123,7 +124,9 @@ router.get('/chat/:chatId', authMiddleware, (req, res) => {
     };
   });
 
-  res.json({ messages: result, hasMore, hasMoreAfter });
+  // Закреплённые отдаём вместе с историей — отдельный запрос при каждом
+  // открытии чата не нужен
+  res.json({ messages: result, hasMore, hasMoreAfter, pins: getPins(chatId) });
 });
 
 // Кто поставил реакции на сообщение — для тултипа при наведении.

@@ -128,6 +128,23 @@ function getEditTimeLimit() {
   return v > 0 ? v : 120;
 }
 
+// Список закреплённых сообщений чата — свежие первыми: плашка показывает
+// последнее закреплённое, дальше перебор идёт к более старым.
+function getPins(chatId) {
+  return db.prepare(`
+    SELECT p.message_id, p.pinned_by, p.pinned_at,
+      m.text, m.deleted, m.attachment,
+      COALESCE(u.display_name, 'Удалённый аккаунт') AS sender_name
+    FROM pinned_messages p
+    JOIN messages m ON m.id = p.message_id
+    LEFT JOIN users u ON u.id = m.sender_id
+    WHERE p.chat_id = ? AND m.deleted = 0
+    ORDER BY p.pinned_at DESC, p.message_id DESC
+  `).all(chatId).map(r => {
+    if (r.attachment) { try { r.attachment = JSON.parse(r.attachment); } catch { r.attachment = null; } }
+    return r;
+  });
+}
 function getMessageWithStatus(msgId, viewerId) {
   const msg = db.prepare(`
     SELECT m.id, m.chat_id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data,
@@ -354,6 +371,9 @@ function setup(server) {
         db.prepare('UPDATE messages SET text = ?, edited_at = unixepoch() WHERE id = ?').run(text.trim(), message_id);
         const updated = getMessageWithStatus(message_id, user.id);
         broadcast(msg.chat_id, { type: 'message_edited', message: updated });
+        // Если сообщение закреплено — обновим текст в плашке, иначе там останется старый
+        const isPinned = db.prepare('SELECT 1 FROM pinned_messages WHERE message_id = ?').get(message_id);
+        if (isPinned) broadcast(msg.chat_id, { type: 'pins_updated', chat_id: msg.chat_id, pins: getPins(msg.chat_id) });
       }
 
       if (data.type === 'delete_message') {
@@ -373,6 +393,10 @@ function setup(server) {
         }
         db.prepare("UPDATE messages SET deleted = 1, text = '', attachment = NULL WHERE id = ?").run(message_id);
         broadcast(msg.chat_id, { type: 'message_deleted', message_id, chat_id: msg.chat_id });
+        // Удаление мягкое (deleted = 1), поэтому ON DELETE CASCADE не сработает —
+        // снимаем закрепление руками и сообщаем клиентам
+        const wasPinned = db.prepare('DELETE FROM pinned_messages WHERE message_id = ?').run(message_id).changes;
+        if (wasPinned) broadcast(msg.chat_id, { type: 'pins_updated', chat_id: msg.chat_id, pins: getPins(msg.chat_id) });
       }
 
       if (data.type === 'set_status') {
@@ -402,6 +426,21 @@ function setup(server) {
         }
         const counts = db.prepare('SELECT reaction, COUNT(*) as count, group_concat(user_id) as user_ids FROM reactions WHERE message_id = ? GROUP BY reaction').all(message_id);
         broadcast(msg.chat_id, { type: 'reaction_update', message_id, counts });
+      }
+
+      // Закрепление доступно любому участнику чата — открепление тоже
+      if (data.type === 'pin_message' || data.type === 'unpin_message') {
+        const { message_id } = data;
+        const msg = db.prepare('SELECT chat_id FROM messages WHERE id = ? AND deleted = 0').get(message_id);
+        if (!msg) return;
+        if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(msg.chat_id, user.id)) return;
+        if (data.type === 'pin_message') {
+          db.prepare('INSERT OR IGNORE INTO pinned_messages (chat_id, message_id, pinned_by) VALUES (?, ?, ?)')
+            .run(msg.chat_id, message_id, user.id);
+        } else {
+          db.prepare('DELETE FROM pinned_messages WHERE chat_id = ? AND message_id = ?').run(msg.chat_id, message_id);
+        }
+        broadcast(msg.chat_id, { type: 'pins_updated', chat_id: msg.chat_id, pins: getPins(msg.chat_id) });
       }
 
       if (data.type === 'typing') {
@@ -513,4 +552,4 @@ function broadcastAll(payload) {
   }
 }
 
-module.exports = { setup, broadcast, broadcastAll, sendTo, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };
+module.exports = { setup, getPins, broadcast, broadcastAll, sendTo, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };
