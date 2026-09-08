@@ -61,6 +61,7 @@ uploadRouter.startCleanupJob();
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/push',  require('./routes/push'));
 app.use('/api/webhooks', require('./routes/webhooks'));
+app.use('/api/announcements', require('./routes/announcements'));
 
 app.get('/api/release-notes', (req, res) => {
   const notesPath = path.join(__dirname, '../../RELEASE_NOTES.md');
@@ -69,6 +70,9 @@ app.get('/api/release-notes', (req, res) => {
 });
 
 require('./ws').setup(server);
+// Отложенные объявления живут в базе; планировщик поднимает наступившие,
+// в том числе те, чьё время пришло, пока сервер был выключен.
+require('./announcements').startScheduler();
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

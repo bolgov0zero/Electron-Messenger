@@ -444,6 +444,34 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .toggle-switch input:checked + .toggle-track{background:var(--c-primary);border-color:var(--c-primary)}
 .toggle-switch input:checked + .toggle-track .toggle-thumb{transform:translateX(14px);background:#fff}
 
+/* ── DATE-TIME PICKER ── */
+/* Свой, а не <input type="datetime-local">: тот рисуется средствами системы и
+   выпадает из оформления панели. */
+.dtp{position:relative}
+.dtp-field{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);color:var(--c-text);font-size:12px;font-family:var(--f-ui);cursor:pointer;text-align:left;transition:border-color var(--t-fast)}
+.dtp-field:hover{border-color:var(--c-primary)}
+.dtp-field svg{width:13px;height:13px;flex-shrink:0;stroke:var(--c-muted);fill:none;stroke-width:2}
+.dtp-field .dtp-val{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dtp-field .dtp-reset{color:var(--c-muted);font-size:11px;padding:0 2px;border-radius:4px}
+.dtp-field .dtp-reset:hover{color:var(--c-text)}
+.dtp-pop{position:absolute;top:calc(100% + 4px);left:0;z-index:40;width:236px;padding:10px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius-sm);box-shadow:0 10px 32px rgba(0,0,0,.22)}
+.dtp-pop[hidden]{display:none}
+.dtp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.dtp-head-title{font-size:12px;font-weight:600;color:var(--c-text);text-transform:capitalize}
+.dtp-nav{width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:5px;color:var(--c-text2);font-size:14px;cursor:pointer;font-family:var(--f-ui);transition:background var(--t-fast)}
+.dtp-nav:hover{background:var(--bg-hover)}
+.dtp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.dtp-dow{font-size:9px;color:var(--c-muted);text-align:center;padding:2px 0;text-transform:uppercase;letter-spacing:.4px}
+.dtp-day{height:26px;display:flex;align-items:center;justify-content:center;border:none;background:none;border-radius:6px;font-size:11px;color:var(--c-text2);cursor:pointer;font-family:var(--f-ui);transition:background var(--t-fast),color var(--t-fast)}
+.dtp-day:hover:not(:disabled){background:var(--bg-hover);color:var(--c-text)}
+.dtp-day:disabled{color:var(--c-border);cursor:default}
+.dtp-day.other{opacity:.4}
+.dtp-day.today{box-shadow:inset 0 0 0 1px var(--c-border)}
+.dtp-day.sel{background:var(--c-primary);color:#fff;font-weight:600}
+.dtp-foot{display:flex;align-items:center;gap:6px;margin-top:9px;padding-top:9px;border-top:1px solid var(--c-border)}
+.dtp-time{display:flex;align-items:center;gap:3px;font-size:12px;color:var(--c-text2)}
+.dtp-time input{width:34px;padding:4px 0;text-align:center;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:5px;color:var(--c-text);font-size:12px;font-family:var(--f-mono);outline:none}
+.dtp-time input:focus{border-color:var(--c-primary)}
 
 </style>
 </head>
@@ -530,6 +558,11 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
           Вебхуки
           <span class="nav-badge" id="nb-webhooks">—</span>
+        </div>
+        <div class="nav-item" onclick="nav('announcements')" data-page="announcements">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M17 8a5 5 0 0 1 0 8"/></svg>
+          Объявления
+          <span class="nav-badge" id="nb-announcements">—</span>
         </div>
       </nav>
       <div class="sb-bottom">
@@ -635,9 +668,10 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
         <input id="u-password" type="password" placeholder="••••••••" autocomplete="new-password">
       </div>
       <div class="fg">
-        <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:12px;font-weight:500;letter-spacing:0;cursor:pointer">
-          <input type="checkbox" id="u-admin" style="width:14px;height:14px;accent-color:var(--c-primary)">
-          Права администратора
+        <label class="toggle-switch" style="gap:8px">
+          <input type="checkbox" id="u-admin">
+          <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          <span style="font-size:12px;color:var(--c-text2);user-select:none">Права администратора</span>
         </label>
       </div>
       <div class="err" id="u-err"></div>
@@ -855,32 +889,86 @@ return 'OK';</pre>
 <div class="modal-bg" id="modal-announcement">
   <div class="modal modal-sm">
     <div class="modal-head">
-      <h3>Системное объявление</h3>
+      <h3>Новое объявление</h3>
       <button class="modal-close" onclick="closeModal('modal-announcement')">✕</button>
     </div>
     <div class="modal-body">
       <div class="fg">
-        <label>Текст</label>
-        <textarea id="ann-text" rows="3" placeholder="Введите текст объявления…" style="resize:vertical;width:100%;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;color:var(--c-text);font-family:var(--f-ui)"></textarea>
+        <label>Тип</label>
+        <div id="ann-kind-bar" style="display:flex;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:3px;gap:2px">
+          <button onclick="setAnnKind('chat')" data-kind="chat" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">В чаты</button>
+          <button onclick="setAnnKind('popup')" data-kind="popup" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">Всплывающее</button>
+          <button onclick="setAnnKind('banner')" data-kind="banner" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">Полоса</button>
+        </div>
+        <div style="font-size:10px;color:var(--c-muted);margin-top:4px" id="ann-kind-hint"></div>
       </div>
       <div class="fg">
-        <label>Куда</label>
-        <div id="ann-mode-bar" style="display:flex;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:3px;gap:2px">
-          <button onclick="setAnnMode('select')" data-mode="select" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">Выбранные</button>
-          <button onclick="setAnnMode('all')" data-mode="all" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">Все группы</button>
-          <button onclick="setAnnMode('popup')" data-mode="popup" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">Всплывающее</button>
-        </div>
-        <div style="font-size:10px;color:var(--c-muted);margin-top:4px" id="ann-mode-hint"></div>
+        <label>Текст</label>
+        <textarea id="ann-text" rows="3" placeholder="Введите текст объявления…" style="resize:vertical;width:100%;box-sizing:border-box;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;color:var(--c-text);font-family:var(--f-ui)"></textarea>
       </div>
-      <div id="ann-chat-select" class="fg" style="display:none">
-        <input id="ann-chat-search" placeholder="Поиск чатов…" oninput="renderAnnChatList(this.value)" style="width:100%;box-sizing:border-box;margin-bottom:4px;padding:5px 8px;font-size:11px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);color:var(--c-text);font-family:var(--f-ui);outline:none">
-        <div id="ann-chat-list" style="max-height:160px;overflow-y:auto;border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:2px"></div>
+      <div class="fg" id="ann-duration-fg" style="display:none">
+        <label>Время отображения, мин</label>
+        <input id="ann-duration" type="number" min="1" max="10080" value="60" style="width:100%;box-sizing:border-box;padding:7px 10px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);color:var(--c-text);font-size:12px;font-family:var(--f-ui);outline:none">
+      </div>
+      <div class="fg">
+        <label>Время отправки</label>
+        <div class="dtp">
+          <button type="button" class="dtp-field" onclick="dtpToggle(event)">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/></svg>
+            <span class="dtp-val" id="dtp-val">Сейчас</span>
+            <span class="dtp-reset" id="dtp-reset" style="display:none" onclick="event.stopPropagation();dtpReset()">✕</span>
+          </button>
+          <div class="dtp-pop" id="dtp-pop" hidden>
+            <div class="dtp-head">
+              <button type="button" class="dtp-nav" onclick="dtpShiftMonth(-1)">‹</button>
+              <div class="dtp-head-title" id="dtp-title"></div>
+              <button type="button" class="dtp-nav" onclick="dtpShiftMonth(1)">›</button>
+            </div>
+            <div class="dtp-grid" id="dtp-grid"></div>
+            <div class="dtp-foot">
+              <div class="dtp-time">
+                <input id="dtp-h" maxlength="2" inputmode="numeric" oninput="dtpFixTime()">:<input id="dtp-m" maxlength="2" inputmode="numeric" oninput="dtpFixTime()">
+              </div>
+              <button type="button" class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="dtpReset()">Сейчас</button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="dtpApply()">Готово</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="fg">
+        <label id="ann-target-label">Получатели</label>
+        <div id="ann-target-bar" style="display:flex;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:3px;gap:2px">
+          <button onclick="setAnnTarget('all')" data-target="all" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">Всем</button>
+          <button onclick="setAnnTarget('select')" data-target="select" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">Выбрать</button>
+        </div>
+      </div>
+      <div id="ann-select-box" class="fg" style="display:none">
+        <input id="ann-search" placeholder="Поиск…" oninput="renderAnnList(this.value)" style="width:100%;box-sizing:border-box;margin-bottom:4px;padding:5px 8px;font-size:11px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);color:var(--c-text);font-family:var(--f-ui);outline:none">
+        <div id="ann-list" style="max-height:150px;overflow-y:auto;border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:2px"></div>
       </div>
       <div class="err" id="ann-err"></div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-announcement')">Отмена</button>
       <button class="btn btn-primary" onclick="sendAnnouncement()">Отправить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Announcement view modal -->
+<div class="modal-bg" id="modal-ann-view">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <h3>Объявление</h3>
+      <button class="modal-close" onclick="closeModal('modal-ann-view')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="annv-meta" style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:11px;margin-bottom:12px"></div>
+      <div id="annv-text" style="font-size:12px;color:var(--c-text);line-height:1.6;white-space:pre-wrap;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:10px"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="annv-del" style="margin-right:auto">Удалить</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-ann-view')">Закрыть</button>
     </div>
   </div>
 </div>
@@ -1323,8 +1411,8 @@ function logout() {
 })();
 
 /* ── NAV ── */
-const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',files:'Файлы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки'};
-const pageRenders = {dashboard:renderDashboard,users:renderUsers,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks};
+const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',files:'Файлы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки',announcements:'Объявления'};
+const pageRenders = {dashboard:renderDashboard,users:renderUsers,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements};
 
 function nav(page) {
   currentPage=page;
@@ -1342,7 +1430,8 @@ function nav(page) {
   if (addBtn) {
     const addMap = {
       users: {label:'Создать пользователя', fn: () => openCreateUser()},
-      rooms: {label:'Создать комнату', fn: () => openCreateRoom()}
+      rooms: {label:'Создать комнату', fn: () => openCreateRoom()},
+      announcements: {label:'Создать объявление', fn: () => openAnnouncementModal()}
     };
     if (addMap[page]) {
       if (addLabel) addLabel.textContent = addMap[page].label;
@@ -1395,6 +1484,7 @@ async function updateNavBadges() {
     setB('nb-chats', (s.chats||0)+(s.groups||0));
     setB('nb-push',  s.pushSubscriptions||0);
     try { const whs=await api('GET','/api/admin/webhooks'); setB('nb-webhooks',whs.length||0); } catch {}
+    try { const anns=await api('GET','/api/admin/announcements'); setB('nb-announcements',anns.length||0); } catch {}
   } catch {}
 }
 
@@ -3095,68 +3185,323 @@ function deleteFile(filename) {
 }
 
 /* ── ANNOUNCEMENTS ── */
-let annSelectedChats = new Set();
-let annMode = 'select';
-
+const ANN_KINDS = {
+  chat:   { label: 'В чаты',      badge: 'badge-blue'   },
+  popup:  { label: 'Всплывающее', badge: 'badge-purple' },
+  banner: { label: 'Полоса',      badge: 'badge-red'    },
+};
 const ANN_HINTS = {
-  select: 'Отправить в выбранные группы или комнаты',
-  all: 'Отправить во все группы и комнаты сразу',
-  popup: 'Показать всплывающее окно всем онлайн-пользователям',
+  chat:   'Сообщение от системы в группы и комнаты — останется в переписке',
+  popup:  'Окно поверх чата. Увидят только те, кто в сети в момент отправки',
+  banner: 'Полоса вверху окна. Держится заданное время и догоняет тех, кого не было в сети',
 };
 
-function setAnnMode(mode) {
-  annMode = mode;
-  document.querySelectorAll('#ann-mode-bar button').forEach(btn => {
-    const active = btn.dataset.mode === mode;
+let _announcements = [];
+let annKind = 'chat', annTarget = 'all';
+let annSelected = new Set();
+let annStartAt = null;   // unix-секунды или null = «сейчас»
+let _annTick = null;
+
+function fmtDateTime(ts) {
+  return ts ? new Date(ts*1000).toLocaleString('ru',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+}
+
+// Остаток до конца показа: ч:мм:сс, а короче часа — мм:сс
+function fmtLeft(sec) {
+  const s = Math.max(0, sec);
+  const p = n => String(n).padStart(2,'0');
+  return s >= 3600 ? `${Math.floor(s/3600)}:${p(Math.floor(s%3600/60))}:${p(s%60)}` : `${p(Math.floor(s/60))}:${p(s%60)}`;
+}
+
+async function renderAnnouncements() {
+  _announcements = await api('GET', '/api/admin/announcements') || [];
+  const nb = document.getElementById('nb-announcements');
+  if (nb) nb.textContent = _announcements.length;
+
+  const rows = _announcements.length
+    ? _announcements.map(annRowHtml).join('')
+    : `<tr><td colspan="6"><div class="empty-state"><p>Объявлений пока не было</p></div></td></tr>`;
+  document.getElementById('page-body').innerHTML = `
+    <div class="card">
+      <div class="card-head">
+        <h3>Журнал <span style="color:var(--c-muted);font-weight:500">(${_announcements.length})</span></h3>
+      </div>
+      <table><thead><tr><th>Тип</th><th>Автор</th><th>Время начала</th><th>Длительность</th><th>Получатели</th><th>Действия</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+    </div>`;
+
+  startAnnCountdown();
+}
+
+// Обратный отсчёт у активных полос. Интервал гасит себя сам при уходе со страницы.
+function startAnnCountdown() {
+  clearInterval(_annTick);
+  if (!_announcements.some(a => a.kind === 'banner' && a.sent_at)) return;
+  _annTick = setInterval(() => {
+    if (currentPage !== 'announcements') { clearInterval(_annTick); _annTick = null; return; }
+    const now = Math.floor(Date.now()/1000);
+    let ended = false;
+    document.querySelectorAll('.ann-left').forEach(el => {
+      const left = Number(el.dataset.until) - now;
+      if (left <= 0) ended = true; else el.textContent = fmtLeft(left);
+    });
+    // Отсчёт кончился — перечитываем журнал, чтобы строка сменила состояние
+    if (ended) renderAnnouncements();
+  }, 1000);
+}
+
+function annTargetCell(a) {
+  if (a.target === 'all') {
+    return `<span class="badge badge-gray">${a.kind === 'chat' ? 'Все группы' : 'Всем'}</span>`;
+  }
+  const names = a.target_names || [];
+  const shown = names.slice(0, 2).join(', ');
+  const rest = names.length > 2 ? ` +${names.length - 2}` : '';
+  return `<span style="font-size:11px;color:var(--c-text2)" title="${esc(names.join(', '))}">${esc(shown)}${rest}</span>`;
+}
+
+function annRowHtml(a) {
+  const k = ANN_KINDS[a.kind] || { label: a.kind, badge: 'badge-gray' };
+  const now = Math.floor(Date.now()/1000);
+  const pending = !a.sent_at;
+  const start = a.sent_at || a.start_at;
+
+  let dur = '<span style="color:var(--c-muted)">—</span>';
+  if (a.kind === 'banner') {
+    dur = (a.sent_at && a.expires_at > now)
+      ? `<span class="ann-left badge badge-green" data-until="${a.expires_at}" style="font-family:var(--f-mono)">${fmtLeft(a.expires_at - now)}</span>`
+      : `<span style="color:var(--c-text2)">${a.duration_min || 0} мин</span>`;
+  }
+
+  return `<tr style="cursor:pointer" onclick="openAnnView(${a.id})">
+    <td><span class="badge ${k.badge}">${k.label}</span></td>
+    <td style="font-size:11px;color:var(--c-text2)">${esc(a.author_name || '—')}</td>
+    <td style="font-size:11px">${fmtDateTime(start)}${pending ? '<div class="uc-sub" style="color:var(--c-orange-text)">запланировано</div>' : ''}</td>
+    <td>${dur}</td>
+    <td>${annTargetCell(a)}</td>
+    <td onclick="event.stopPropagation()"><div class="td-actions">
+      <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(${a.id})">Удалить</button>
+    </div></td>
+  </tr>`;
+}
+
+function openAnnView(id) {
+  const a = _announcements.find(x => x.id === id);
+  if (!a) return;
+  const k = ANN_KINDS[a.kind] || { label: a.kind };
+  const now = Math.floor(Date.now()/1000);
+  const rows = [['Тип', k.label], ['Автор', a.author_name || '—']];
+
+  if (a.sent_at) rows.push(['Отправлено', fmtDateTime(a.sent_at)]);
+  else rows.push(['Запланировано', fmtDateTime(a.start_at)]);
+
+  if (a.kind === 'banner') {
+    rows.push(['Время показа', `${a.duration_min || 0} мин`]);
+    if (a.sent_at) rows.push(['Состояние', a.expires_at > now ? `осталось ${fmtLeft(a.expires_at - now)}` : 'показ завершён']);
+    rows.push(['Закрыли', String(a.dismissed_count || 0)]);
+  }
+  rows.push([a.kind === 'chat' ? 'Чаты' : 'Получатели',
+    a.target === 'all' ? (a.kind === 'chat' ? 'Все группы и комнаты' : 'Все пользователи') : (a.target_names || []).join(', ') || '—']);
+
+  document.getElementById('annv-meta').innerHTML = rows.map(([n, v]) =>
+    `<div style="color:var(--c-muted)">${n}</div><div style="color:var(--c-text)">${esc(String(v))}</div>`).join('');
+  document.getElementById('annv-text').textContent = a.text || '';
+  document.getElementById('annv-del').onclick = () => { closeModal('modal-ann-view'); deleteAnnouncement(a.id); };
+  openModal('modal-ann-view');
+}
+
+function deleteAnnouncement(id) {
+  const a = _announcements.find(x => x.id === id);
+  const now = Math.floor(Date.now()/1000);
+  const active = a && a.kind === 'banner' && a.sent_at && a.expires_at > now;
+  const hint = !a?.sent_at ? 'Объявление не будет отправлено.'
+    : active ? 'Полоса сразу пропадёт у всех, кто её видит.'
+    : 'Запись исчезнет из журнала. Уже отправленное у людей останется.';
+  confirm('Удалить объявление?', hint, async () => {
+    const data = await api('DELETE', `/api/admin/announcements/${id}`);
+    if (data?.ok) { toast('Объявление удалено'); renderAnnouncements(); }
+    else toast(data?.error || 'Ошибка', 'error');
+  });
+}
+
+/* ── Создание ── */
+
+function _annSegment(barId, attr, value) {
+  document.querySelectorAll(`#${barId} button`).forEach(btn => {
+    const active = btn.dataset[attr] === value;
     btn.style.background = active ? 'var(--c-bg)' : 'transparent';
     btn.style.color = active ? 'var(--c-text)' : 'var(--c-muted)';
     btn.style.fontWeight = active ? '600' : '400';
     btn.style.boxShadow = active ? '0 1px 3px rgba(0,0,0,.1)' : '';
   });
-  document.getElementById('ann-chat-select').style.display = mode === 'select' ? '' : 'none';
-  document.getElementById('ann-mode-hint').textContent = ANN_HINTS[mode] || '';
 }
+
+function setAnnKind(kind) {
+  annKind = kind;
+  annSelected = new Set();
+  _annSegment('ann-kind-bar', 'kind', kind);
+  document.getElementById('ann-kind-hint').textContent = ANN_HINTS[kind] || '';
+  document.getElementById('ann-duration-fg').style.display = kind === 'banner' ? '' : 'none';
+  document.getElementById('ann-target-label').textContent = kind === 'chat' ? 'Куда' : 'Получатели';
+  document.querySelector('#ann-target-bar button[data-target="all"]').textContent = kind === 'chat' ? 'Все группы' : 'Всем';
+  document.querySelector('#ann-target-bar button[data-target="select"]').textContent = kind === 'chat' ? 'Выбрать чаты' : 'Выбрать людей';
+  document.getElementById('ann-search').placeholder = kind === 'chat' ? 'Поиск чатов…' : 'Поиск людей…';
+  renderAnnList(document.getElementById('ann-search').value);
+}
+
+function setAnnTarget(target) {
+  annTarget = target;
+  _annSegment('ann-target-bar', 'target', target);
+  document.getElementById('ann-select-box').style.display = target === 'select' ? '' : 'none';
+  if (target === 'select') renderAnnList(document.getElementById('ann-search').value);
+}
+
+function renderAnnList(q) {
+  const lq = (q || '').toLowerCase();
+  const items = annKind === 'chat'
+    ? allChats.filter(c => c.type !== 'direct' && (!lq || (c.name||'').toLowerCase().includes(lq)))
+        .map(c => ({ id: c.id, name: c.name || 'Чат', sub: c.type === 'room' ? 'комната' : 'группа' }))
+    : allUsersCache.filter(u => !lq || (u.display_name||'').toLowerCase().includes(lq) || (u.username||'').toLowerCase().includes(lq))
+        .map(u => ({ id: u.id, name: u.display_name || u.username, sub: u.username }));
+
+  document.getElementById('ann-list').innerHTML = items.map(i => `
+    <label style="display:flex;align-items:center;gap:6px;padding:3px 6px;cursor:pointer;border-radius:4px;font-size:11px;color:var(--c-text2);line-height:1.3">
+      <input type="checkbox" ${annSelected.has(i.id)?'checked':''} onchange="annToggle(${i.id},this.checked)" style="accent-color:var(--c-primary);width:12px;height:12px;flex-shrink:0">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.name)}</span>
+      <span style="color:var(--c-muted);flex-shrink:0">(${esc(i.sub)})</span>
+    </label>`).join('') || `<div style="padding:6px 8px;color:var(--c-muted);font-size:11px">Ничего не найдено</div>`;
+}
+
+function annToggle(id, checked) { checked ? annSelected.add(id) : annSelected.delete(id); }
 
 async function openAnnouncementModal() {
-  annSelectedChats = new Set();
+  annSelected = new Set();
   document.getElementById('ann-text').value = '';
   document.getElementById('ann-err').textContent = '';
+  document.getElementById('ann-duration').value = 60;
+  document.getElementById('ann-search').value = '';
+  dtpReset();
   if (!allChats.length) allChats = await api('GET', '/api/admin/chats') || [];
-  renderAnnChatList('');
+  if (!allUsersCache.length) allUsersCache = await api('GET', '/api/admin/users') || [];
   openModal('modal-announcement');
-  setAnnMode('select');
+  setAnnKind('chat');
+  setAnnTarget('all');
 }
-
-function renderAnnChatList(q) {
-  const lq = (q||'').toLowerCase();
-  const chats = allChats.filter(c => c.type !== 'direct' && (!lq || (c.name||'').toLowerCase().includes(lq)));
-  document.getElementById('ann-chat-list').innerHTML = chats.map(c => `
-    <label style="display:flex;align-items:center;gap:6px;padding:3px 6px;cursor:pointer;border-radius:4px;font-size:11px;color:var(--c-text2);line-height:1.3">
-      <input type="checkbox" ${annSelectedChats.has(c.id)?'checked':''} onchange="annToggleChat(${c.id},this.checked)" style="accent-color:var(--c-primary);width:12px;height:12px;flex-shrink:0">
-      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name||'Чат')}</span><span style="color:var(--c-muted);flex-shrink:0"> (${c.type==='room'?'комната':'группа'})</span>
-    </label>`).join('') || '<div style="padding:6px 8px;color:var(--c-muted);font-size:11px">Нет групп и комнат</div>';
-}
-
-function annToggleChat(id, checked) { checked ? annSelectedChats.add(id) : annSelectedChats.delete(id); }
 
 async function sendAnnouncement() {
-  const mode = annMode;
   const text = document.getElementById('ann-text').value.trim();
   const errEl = document.getElementById('ann-err');
+  const duration = Number(document.getElementById('ann-duration').value);
   if (!text) { errEl.textContent = 'Введите текст'; return; }
-  if (mode === 'select' && annSelectedChats.size === 0) { errEl.textContent = 'Выберите хотя бы один чат'; return; }
-  errEl.textContent = '';
-  const body = { mode, text };
-  if (mode === 'select') body.chat_ids = [...annSelectedChats];
-  const data = await api('POST', '/api/admin/announcement', body);
-  if (data?.ok) {
-    closeModal('modal-announcement');
-    const msg = mode === 'popup' ? 'Всплывающее объявление отправлено' : `Объявление отправлено в ${data.count} чат(а/ов)`;
-    toast(msg, 'success');
-  } else {
-    errEl.textContent = data?.error || 'Ошибка';
+  if (annTarget === 'select' && annSelected.size === 0) {
+    errEl.textContent = annKind === 'chat' ? 'Выберите хотя бы один чат' : 'Выберите получателей'; return;
   }
+  if (annKind === 'banner' && !(duration > 0)) { errEl.textContent = 'Укажите время отображения'; return; }
+  errEl.textContent = '';
+
+  const data = await api('POST', '/api/admin/announcement', {
+    kind: annKind, text, target: annTarget, targets: [...annSelected],
+    start_at: annStartAt || 0, duration_min: annKind === 'banner' ? duration : 0,
+  });
+  if (!data?.ok) { errEl.textContent = data?.error || 'Ошибка'; return; }
+
+  closeModal('modal-announcement');
+  toast(data.scheduled ? `Запланировано на ${fmtDateTime(annStartAt)}` : 'Объявление отправлено', 'success');
+  if (currentPage === 'announcements') renderAnnouncements();
 }
+
+/* ── DATE-TIME PICKER ── */
+// Свой пикер: системный datetime-local не поддаётся оформлению и выглядит
+// чужеродно. Значение хранится в annStartAt, null = отправить сразу.
+let _dtpView = new Date();   // месяц, который сейчас нарисован
+let _dtpDay = null;          // выбранная дата без времени
+
+function dtpToggle(e) {
+  e?.stopPropagation();
+  const pop = document.getElementById('dtp-pop');
+  if (!pop.hidden) { pop.hidden = true; return; }
+  const base = annStartAt ? new Date(annStartAt*1000) : new Date(Date.now() + 3600e3);
+  _dtpView = new Date(base.getFullYear(), base.getMonth(), 1);
+  _dtpDay = annStartAt ? new Date(base.getFullYear(), base.getMonth(), base.getDate()) : null;
+  document.getElementById('dtp-h').value = String(base.getHours()).padStart(2,'0');
+  document.getElementById('dtp-m').value = String(base.getMinutes()).padStart(2,'0');
+  dtpRender();
+  pop.hidden = false;
+}
+
+function dtpShiftMonth(delta) {
+  _dtpView = new Date(_dtpView.getFullYear(), _dtpView.getMonth() + delta, 1);
+  dtpRender();
+}
+
+function dtpRender() {
+  const y = _dtpView.getFullYear(), m = _dtpView.getMonth();
+  document.getElementById('dtp-title').textContent =
+    _dtpView.toLocaleDateString('ru', { month: 'long', year: 'numeric' });
+
+  // Неделя с понедельника; дни прошедших суток выключены
+  const first = new Date(y, m, 1);
+  const shift = (first.getDay() + 6) % 7;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const cells = ['пн','вт','ср','чт','пт','сб','вс'].map(d => `<div class="dtp-dow">${d}</div>`);
+  for (let i = 0; i < shift; i++) cells.push('<div></div>');
+
+  const days = new Date(y, m + 1, 0).getDate();
+  for (let d = 1; d <= days; d++) {
+    const date = new Date(y, m, d);
+    const past = date < today;
+    const cls = ['dtp-day'];
+    if (+date === +today) cls.push('today');
+    if (_dtpDay && +date === +_dtpDay) cls.push('sel');
+    cells.push(`<button type="button" class="${cls.join(' ')}" ${past?'disabled':''} onclick="dtpPick(${y},${m},${d})">${d}</button>`);
+  }
+  document.getElementById('dtp-grid').innerHTML = cells.join('');
+}
+
+function dtpPick(y, m, d) {
+  _dtpDay = new Date(y, m, d);
+  dtpRender();
+}
+
+function dtpFixTime() {
+  const clamp = (el, max) => {
+    let v = el.value.replace(/\D/g, '').slice(0, 2);
+    if (v !== '' && Number(v) > max) v = String(max);
+    el.value = v;
+  };
+  clamp(document.getElementById('dtp-h'), 23);
+  clamp(document.getElementById('dtp-m'), 59);
+}
+
+function dtpApply() {
+  const h = Number(document.getElementById('dtp-h').value || 0);
+  const mi = Number(document.getElementById('dtp-m').value || 0);
+  const day = _dtpDay || new Date();
+  const when = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, mi, 0);
+  // Прошедшее время смысла не имеет: такое объявление уйдёт сразу же
+  if (when.getTime() <= Date.now()) { dtpReset(); return; }
+  annStartAt = Math.floor(when.getTime() / 1000);
+  document.getElementById('dtp-val').textContent = fmtDateTime(annStartAt);
+  document.getElementById('dtp-reset').style.display = '';
+  document.getElementById('dtp-pop').hidden = true;
+}
+
+function dtpReset() {
+  annStartAt = null;
+  _dtpDay = null;
+  const val = document.getElementById('dtp-val');
+  if (val) val.textContent = 'Сейчас';
+  const reset = document.getElementById('dtp-reset');
+  if (reset) reset.style.display = 'none';
+  const pop = document.getElementById('dtp-pop');
+  if (pop) pop.hidden = true;
+}
+
+// Клик мимо пикера закрывает его
+document.addEventListener('click', e => {
+  const pop = document.getElementById('dtp-pop');
+  if (pop && !pop.hidden && !e.target.closest('.dtp')) pop.hidden = true;
+});
 
 </script>
 </body>

@@ -5,6 +5,7 @@ const fs = require('fs');
 const https = require('https');
 const crypto = require('crypto');
 const { authMiddleware, adminMiddleware } = require('../auth');
+const announcements = require('../announcements');
 const { sendTo, broadcast, broadcastAll, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, getMessageWithStatus } = require('../ws');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
@@ -671,33 +672,47 @@ router.delete('/files/:filename', (req, res) => {
 
 // Профиль системного пользователя (имя, тег, аватар) больше не настраивается:
 // объявление в чате рисуется отдельной плашкой и ни одно из этих полей не показывает.
+//
+// Отправка и планирование живут в announcements.js — сюда приходит уже разобранный
+// запрос. kind: popup | banner | chat, target: all | select.
 router.post('/announcement', (req, res) => {
-  const { mode, chat_ids, text } = req.body;
+  const { kind, text, target, targets, start_at, duration_min } = req.body;
   if (!text?.trim()) return res.status(400).json({ error: 'Нет текста' });
+  if (!['popup', 'banner', 'chat'].includes(kind)) return res.status(400).json({ error: 'Неизвестный тип' });
 
-  if (mode === 'popup') {
-    broadcastAll({ type: 'announcement', text: text.trim() });
-    return res.json({ ok: true, count: 0 });
+  const list = (targets || []).map(Number).filter(Boolean);
+  const tgt = target === 'select' ? 'select' : 'all';
+  if (tgt === 'select' && list.length === 0) {
+    return res.status(400).json({ error: kind === 'chat' ? 'Выберите чаты' : 'Выберите получателей' });
+  }
+  if (kind === 'banner' && !(duration_min > 0)) {
+    return res.status(400).json({ error: 'Укажите время отображения' });
+  }
+  if (kind === 'chat' && !db.prepare("SELECT value FROM settings WHERE key = 'system_user_id'").get()) {
+    return res.status(500).json({ error: 'Системный пользователь не найден' });
   }
 
-  const sysIdRow = db.prepare("SELECT value FROM settings WHERE key = 'system_user_id'").get();
-  if (!sysIdRow) return res.status(500).json({ error: 'Системный пользователь не найден' });
-  const sysUserId = Number(sysIdRow.value);
+  const result = announcements.create({
+    kind,
+    text: text.trim(),
+    author_id: req.user.id,
+    start_at: Number(start_at) || 0,
+    duration_min: Number(duration_min) || 0,
+    target: tgt,
+    targets: list,
+  });
+  res.json({ ok: true, ...result });
+});
 
-  const targetIds = mode === 'all'
-    ? db.prepare("SELECT id FROM chats WHERE type IN ('group', 'room')").all().map(r => r.id)
-    : (chat_ids || []).map(Number).filter(Boolean);
+// Журнал: все объявления всех типов, свежие сверху
+router.get('/announcements', (req, res) => {
+  res.json(announcements.journal());
+});
 
-  if (targetIds.length === 0) return res.json({ ok: true, count: 0 });
-
-  const insertMsg = db.prepare('INSERT INTO messages (chat_id, sender_id, text) VALUES (?, ?, ?)');
-  for (const chatId of targetIds) {
-    const r = insertMsg.run(chatId, sysUserId, text.trim());
-    const msg = getMessageWithStatus(r.lastInsertRowid, null);
-    if (msg) broadcast(chatId, { type: 'message', message: msg });
-  }
-
-  res.json({ ok: true, count: targetIds.length });
+router.delete('/announcements/:id', (req, res) => {
+  const ok = announcements.remove(Number(req.params.id));
+  if (!ok) return res.status(404).json({ error: 'Не найдено' });
+  res.json({ ok: true });
 });
 
 // ── РЕЗЕРВНЫЕ КОПИИ ──

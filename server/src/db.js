@@ -108,6 +108,34 @@ db.exec(`
     PRIMARY KEY (chat_id, message_id)
   );
   CREATE INDEX IF NOT EXISTS idx_pinned_chat ON pinned_messages(chat_id, pinned_at DESC);
+
+  -- Журнал объявлений: и всплывающие, и полосы, и сообщения в чаты. Хранятся в базе,
+  -- а не таймером в памяти, иначе перезапуск сервера съедает всё запланированное.
+  -- kind: popup | banner | chat. targets — JSON-массив id (пользователей или чатов),
+  -- пустой при target = 'all'. sent_at заполняется в момент фактической отправки.
+  CREATE TABLE IF NOT EXISTS announcements (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind         TEXT NOT NULL,
+    text         TEXT NOT NULL,
+    author_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at   INTEGER NOT NULL DEFAULT (unixepoch()),
+    start_at     INTEGER NOT NULL,
+    sent_at      INTEGER,
+    duration_min INTEGER,
+    expires_at   INTEGER,
+    target       TEXT NOT NULL DEFAULT 'all',
+    targets      TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_ann_pending ON announcements(sent_at, start_at);
+
+  -- Крестик на полосе: отметка на пользователе, а не на устройстве, — закрыл на
+  -- работе, дома полоса уже не появится.
+  CREATE TABLE IF NOT EXISTS announcement_dismissed (
+    announcement_id INTEGER NOT NULL REFERENCES announcements(id) ON DELETE CASCADE,
+    user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    dismissed_at    INTEGER NOT NULL DEFAULT (unixepoch()),
+    PRIMARY KEY (announcement_id, user_id)
+  );
 `);
 
 fs.mkdirSync(path.join(path.dirname(DB_PATH), 'avatar'), { recursive: true });

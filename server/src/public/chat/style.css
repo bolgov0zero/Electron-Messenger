@@ -294,9 +294,46 @@ body {
 #login-version { font-weight: 600; margin-left: 5px; color: var(--accent); opacity: .8; }
 .login-copy span { margin-left: 6px; }
 
+/* ── ANNOUNCEMENT BANNER ── */
+/* Занимает то же место, что и плашка «нет соединения»; когда полосы висят,
+   плашка сдвигается вниз на их высоту через --ann-h. */
+#ann-banners {
+  position: fixed; top: 16px; left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 32px));
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 9998; pointer-events: none;
+}
+.ann-banner {
+  display: flex; align-items: center; gap: 10px;
+  box-sizing: border-box; width: 100%;
+  padding: 9px 8px 9px 13px;
+  background-color: var(--modal-bg);
+  background-image: linear-gradient(rgba(210,55,55,.14), rgba(210,55,55,.14));
+  border: 1px solid rgba(210,55,55,.28);
+  border-radius: 9px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+  font-size: 13px; font-weight: 500; color: var(--text);
+  opacity: 0; transform: translateY(-80px);
+  transition: transform .3s cubic-bezier(.34,1.56,.64,1), opacity .3s ease;
+  pointer-events: auto;
+}
+.ann-banner.visible { opacity: 1; transform: translateY(0); }
+.ann-banner-icon { width: 15px; height: 15px; flex-shrink: 0; color: var(--danger); }
+.ann-banner-text { flex: 1; min-width: 0; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ann-banner-close {
+  flex-shrink: 0; width: 24px; height: 24px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; border-radius: 6px;
+  color: var(--muted); cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.ann-banner-close svg { width: 13px; height: 13px; }
+.ann-banner-close:hover { background: var(--hover); color: var(--text); }
+
 /* ── SERVER TOAST ── */
 #server-toast {
-  position: fixed; top: 16px; left: 50%;
+  position: fixed; top: calc(16px + var(--ann-h, 0px)); left: 50%;
   transform: translateX(-50%) translateY(-80px);
   display: flex; align-items: center; gap: 10px;
   padding: 10px 18px;

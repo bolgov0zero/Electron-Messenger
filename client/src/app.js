@@ -504,9 +504,18 @@ function toggleSidebar() {
   // Пока идёт схлопывание, сайдбар остаётся в потоке — иначе соседи прыгнут.
   // Накладку включаем после перехода, показ — сразу, чтобы колонка вернулась.
   clearTimeout(_sidebarOverlayTimer);
-  if (hidden) _sidebarOverlayTimer = setTimeout(
-    () => document.body.classList.add('sidebar-overlay'), 240);
-  else document.body.classList.remove('sidebar-overlay');
+  if (hidden) {
+    _sidebarOverlayTimer = setTimeout(() => {
+      // Переход глушим на один кадр: в накладке сайдбар снова полной ширины, и без
+      // этого браузер анимирует его сдвиг к краю — панель на миг вспыхивает поверх
+      // содержимого. Двойной кадр нужен, чтобы стиль успел примениться без перехода.
+      document.body.classList.add('sidebar-notransition', 'sidebar-overlay');
+      requestAnimationFrame(() => requestAnimationFrame(
+        () => document.body.classList.remove('sidebar-notransition')));
+    }, 240);
+  } else {
+    document.body.classList.remove('sidebar-overlay');
+  }
   localStorage.setItem('sidebarHidden', hidden ? '1' : '');
   window.electron?.resizeWindow(hidden ? -280 : 280);
 }
@@ -2680,6 +2689,78 @@ function closeSystemAnnouncement() {
   setTimeout(() => { if (modal) modal.style.display = 'none'; }, 220);
 }
 
+// ── ПОЛОСА ОБЪЯВЛЕНИЯ ──
+// Второй вид объявления: висит заданное администратором время поверх любого
+// экрана — чата, группы, настроек. Активные запрашиваем при каждом подключении,
+// поэтому объявление доходит и до тех, кого не было в сети в момент отправки.
+// Крестик закрывает её у пользователя навсегда, отметка хранится на сервере.
+const _banners = new Map(); // id -> таймер автоскрытия
+
+function bannerHost() {
+  let host = document.getElementById('ann-banners');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'ann-banners';
+    document.body.appendChild(host);
+  }
+  return host;
+}
+
+// Полоса и плашка «нет соединения» занимают одно место, поэтому вторую сдвигаем
+// вниз ровно на высоту полос.
+function syncBannerOffset() {
+  const host = document.getElementById('ann-banners');
+  const h = host && host.children.length ? host.offsetHeight + 8 : 0;
+  document.documentElement.style.setProperty('--ann-h', h + 'px');
+}
+
+function showBanner(a) {
+  if (!a?.id || _banners.has(a.id)) return;
+  const left = (a.expires_at || 0) * 1000 - Date.now();
+  if (left <= 0) return;
+
+  const el = document.createElement('div');
+  el.className = 'ann-banner';
+  el.dataset.id = a.id;
+  el.innerHTML = `
+    <svg class="ann-banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <span class="ann-banner-text"></span>
+    <button class="ann-banner-close" title="Скрыть">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>`;
+  el.querySelector('.ann-banner-text').textContent = a.text || '';
+  el.querySelector('.ann-banner-close').onclick = () => dismissBanner(a.id);
+  bannerHost().appendChild(el);
+  syncBannerOffset();
+  // Не rAF: в свёрнутом окне кадры не идут, и полоса осталась бы прозрачной
+  setTimeout(() => el.classList.add('visible'), 10);
+
+  _banners.set(a.id, setTimeout(() => hideBanner(a.id), left));
+}
+
+function hideBanner(id) {
+  clearTimeout(_banners.get(id));
+  _banners.delete(id);
+  const el = document.querySelector(`.ann-banner[data-id="${id}"]`);
+  if (!el) return;
+  el.classList.remove('visible');
+  setTimeout(() => { el.remove(); syncBannerOffset(); }, 300);
+}
+
+function dismissBanner(id) {
+  hideBanner(id);
+  api('POST', `/announcements/${id}/dismiss`);
+}
+
+async function loadBanners() {
+  const list = await api('GET', '/announcements/active');
+  if (!Array.isArray(list)) return;
+  // Снятые администратором или истёкшие, пока клиент был без связи, убираем
+  const alive = new Set(list.map(a => a.id));
+  [..._banners.keys()].forEach(id => { if (!alive.has(id)) hideBanner(id); });
+  list.forEach(showBanner);
+}
+
 function openLightbox(url, filename) {
   let lb = document.getElementById('lightbox');
   if (!lb) {
@@ -3283,6 +3364,9 @@ function connectWS() {
       }
     }
 
+    if (data.type === 'banner') showBanner(data.announcement);
+    if (data.type === 'banner_removed') hideBanner(data.id);
+
     if (data.type === 'force_restart') {
       // Только Electron: полный рестарт процесса. В веб-клиенте команда игнорируется.
       window.electron?.restartApp?.();
@@ -3305,6 +3389,7 @@ function connectWS() {
     S.wsRetry = 0;
     hideServerToast();
     loadChats();
+    loadBanners();
     api('GET', '/auth/refresh').then(d => { if (d?.token) { S.token = d.token; saveSession(); } });
     // Догружаем сообщения, пришедшие в открытый чат во время разрыва соединения
     const _ccId = S.activeChatId, _ccNewest = S.chatNewestId;
