@@ -449,8 +449,10 @@ body {
 }
 /* Место под сайдбар держит отступ переписки — тогда при скрытии оба свойства
    (сдвиг сайдбара и отступ) анимируются одновременно и плавно. */
-.chat-main { padding-left: var(--sidebar-w); transition: padding-left .22s cubic-bezier(.4, 0, .2, 1); }
-body.sidebar-hidden .chat-main { padding-left: 0; }
+/* Сдвигаем внешним отступом, а не внутренним: поле ввода внутри — абсолютное,
+   и от внутреннего отступа оно не отсчитывается, из-за чего заезжало под сайдбар. */
+.chat-main { margin-left: var(--sidebar-w); transition: margin-left .22s cubic-bezier(.4, 0, .2, 1); }
+body.sidebar-hidden .chat-main { margin-left: 0; }
 
 /* Sidebar hidden / peek */
 body.sidebar-notransition .sidebar { transition: none !important; }
