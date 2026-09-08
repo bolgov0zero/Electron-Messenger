@@ -421,22 +421,21 @@ router.post('/server/update', (req, res) => {
     if (active !== 'active' && active !== 'activating') {
       return res.status(400).json({ error: 'Служба electron не активна или не найдена. Обновление невозможно.' });
     }
-    const appDir = path.join(__dirname, '..', '..', '..');
-    // fetch + reset --hard: локальные правки на сервере не блокируют обновление,
-    // untracked-файлы (chat_db) не затрагиваются. Вывод — в journal для диагностики.
-    const script = `
-      cd "${appDir}" && \
-      GIT_TERMINAL_PROMPT=0 git -c credential.helper='' fetch origin main && \
-      git reset --hard origin/main && \
-      cd server && \
-      npm install --omit=dev && \
-      npm rebuild better-sqlite3 && \
-      systemctl restart electron
-    `;
+    const updateSh = path.join(__dirname, '..', '..', 'update.sh');
+    // Обновление запускается ОТДЕЛЬНЫМ транзиентным юнитом через systemd-run.
+    // Раньше скрипт был дочерним процессом самого сервера и жил в его cgroup:
+    // при перезапуске службы systemd убивал всю группу — установка обрывалась
+    // на середине, оставляя недописанный better_sqlite3.node, и служба уходила
+    // в цикл падений с SIGBUS. Транзиентный юнит переживает перезапуск сервера.
+    const cmd = `systemd-run --unit=electron-update --collect --description="Обновление Electron" /bin/bash ${JSON.stringify(updateSh)}`;
     res.json({ ok: true });
-    setTimeout(() => exec(script, (err, stdout, stderr) => {
-      if (err) console.error('[Update] server update failed:', err.message, '\n', stderr);
-      else console.log('[Update] server update applied:\n', stdout.slice(-500));
+    setTimeout(() => exec(cmd, (err, stdout, stderr) => {
+      if (err) {
+        console.error('[Update] не удалось запустить обновление:', err.message, '\n', stderr);
+        console.error('[Update] журнал обновления: journalctl -u electron-update');
+      } else {
+        console.log('[Update] обновление запущено отдельным юнитом electron-update');
+      }
     }), 300);
   });
 });
