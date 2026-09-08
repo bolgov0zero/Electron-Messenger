@@ -34,10 +34,6 @@ function deleteChatFiles(chatId) {
   });
 }
 
-function getDirCount(dir) {
-  try { return fs.readdirSync(dir).length; } catch { return 0; }
-}
-
 // ── Версия сервера ──
 const VERSION_FILE = path.join(__dirname, '..', '..', 'version.json');
 function getLocalVersion() {
@@ -89,7 +85,8 @@ router.get('/stats', (req, res) => {
     uptimeSeconds: Math.floor(process.uptime()),
     dbBytes: pageCount * pageSize,
     filesBytes: getDirSize(FILES_DIR),
-    filesCount: getDirCount(FILES_DIR),
+    // тот же счёт, что и во вкладке «Файлы»: без миниатюр и без дублей
+    filesCount: collectFiles().length,
     wsConnections: getConnCount(),
     serverVersion: getLocalVersion(),
     pushSubscriptions: (() => { try { return db.prepare('SELECT COUNT(*) as c FROM push_subscriptions').get().c; } catch { return 0; } })(),
@@ -584,8 +581,10 @@ router.post('/subrooms/reorder', (req, res) => {
 
 // ── Файлы ──
 
-router.get('/files', (req, res) => {
-  // Первичный источник: все вложения из сообщений в БД
+// Список файлов: вложения из живых сообщений плюс то, что лежит на диске без
+// привязки. Миниатюры (_t.webp) не считаются отдельными файлами. Одна функция на
+// дашборд и на вкладку — иначе счётчики расходятся, как было с миниатюрами.
+function collectFiles() {
   const msgs = db.prepare(`
     SELECT m.id, m.chat_id, m.attachment, m.sent_at,
            u.display_name as sender_name, c.name as chat_name
@@ -620,12 +619,14 @@ router.get('/files', (req, res) => {
     }
   } catch {}
 
-  const result = [...fileMap.values()].map(f => {
+  return [...fileMap.values()].map(f => {
     const stat = (() => { try { return fs.statSync(path.join(FILES_DIR, f.filename)); } catch { return null; } })();
     return { ...f, size: stat?.size ?? 0, mtime: stat?.mtimeMs ?? (f.sent_at ? f.sent_at * 1000 : 0), onDisk: !!stat };
   }).sort((a, b) => b.mtime - a.mtime);
+}
 
-  res.json(result);
+router.get('/files', (req, res) => {
+  res.json(collectFiles());
 });
 
 router.delete('/files/:filename', (req, res) => {
