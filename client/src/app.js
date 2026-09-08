@@ -1444,6 +1444,7 @@ function renderMessages(msgs, stick = true) {
   });
   if (lastDate !== '') html += `</div>`;
   container.innerHTML = html;
+  reflowSeries();
   if (stick) {
     container.scrollTop = container.scrollHeight;
     container.querySelectorAll('img').forEach(img => {
@@ -1542,6 +1543,7 @@ function appendMessagesAfter(msgs, chatId) {
   });
   if (lastDate !== '') html += `</div>`;
   container.insertAdjacentHTML('beforeend', html);
+  reflowSeries();
   mergeDayGroups(container);
 }
 
@@ -1579,6 +1581,7 @@ function prependMessages(msgs, chatId) {
   const prevHeight = container.scrollHeight;
   const prevTop = container.scrollTop;
   container.insertAdjacentHTML('afterbegin', html);
+  reflowSeries();
   mergeDayGroups(container);
   container.scrollTop = prevTop + (container.scrollHeight - prevHeight);
 }
@@ -1785,7 +1788,26 @@ document.addEventListener('scroll', _rtHide, true);
 window.addEventListener('blur', _rtHide);
 
 function renderMsg(m, isChatGroup, hideTime = false, grouped = false, isLast = true) {
-  return renderMsgIRC(m, grouped);
+  return renderMsgIRC(m, !grouped, isLast);
+}
+
+// Пересчитывает границы серий по DOM: у первого сообщения серии выводится имя,
+// у последнего — аватарка и срезанный угол. Проще держать это одной функцией,
+// чем править классы соседей при каждой вставке, удалении и догрузке истории.
+function reflowSeries() {
+  const container = document.getElementById('messages');
+  if (!container) return;
+  const msgs = [...container.querySelectorAll('.irc-msg[data-msg-id]')]
+    .filter(el => el.querySelector('.msg-bubble'));
+  msgs.forEach((el, i) => {
+    const sid = el.dataset.senderId, at = Number(el.dataset.sentAt);
+    const day = el.closest('.day-group');
+    const sameSeries = (other) => !!other && other.dataset.senderId === sid
+      && Math.abs(Number(other.dataset.sentAt) - at) < GROUP_WINDOW_SEC
+      && other.closest('.day-group') === day;
+    el.classList.toggle('irc-first', !sameSeries(msgs[i - 1]));
+    el.classList.toggle('irc-tail', !sameSeries(msgs[i + 1]));
+  });
 }
 
 function rolePillHtml(tag) {
@@ -1797,6 +1819,14 @@ function rolePillHtml(tag) {
   return `<span class="role-pill ${cls}">${esc(tag)}</span>`;
 }
 
+// Сообщение без текста кроме смайликов показываем крупно и без пузыря
+const EMOJI_ONLY_RE = /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|\uFE0F|\u200D|\s)+$/u;
+function isEmojiOnly(text) {
+  const t = (text || '').trim();
+  if (!t || t.length > 12) return false;
+  try { return EMOJI_ONLY_RE.test(t) && /\p{Extended_Pictographic}/u.test(t); } catch { return false; }
+}
+
 function senderNameClass(tag) {
   if (!tag) return 'default';
   const t = (tag||'').toLowerCase();
@@ -1805,7 +1835,7 @@ function senderNameClass(tag) {
   return 'default';
 }
 
-function renderMsgIRC(m, isGroup) {
+function renderMsgIRC(m, isFirst = true, isTail = true) {
   if (m.status && m.id > 0) S.msgStatus[m.id] = { ...m.status };
   const isSystem = m.sender_username === '__system__';
   if (m.id > 0 && !isSystem) S.msgData.set(m.id, { forwardData: m.forward_data || null, senderId: m.sender_id, senderName: m.sender_name, senderIsBot: !!m.sender_is_bot, text: m.text, attachment: m.attachment });
@@ -1841,11 +1871,17 @@ function renderMsgIRC(m, isGroup) {
   const rTextRaw = m.reply_deleted
     ? 'Сообщение удалено'
     : (m.reply_text || (rAtt ? (rIsImg ? '📷 Фото' : ('📎 ' + (rAtt.name || 'Файл'))) : ''));
+  // цвет цитаты берём у автора цитируемого: своё — цветом своего пузыря,
+  // чужое — цветом его тега. Стрелка не нужна: полоса слева и так читается.
+  const _replyTagCls = senderNameClass(m.reply_sender_tag);
+  const replyCls = m.reply_sender_id === S.user.id
+    ? 'reply-mine'
+    : 'reply-' + (_replyTagCls === 'default' ? 'plain' : _replyTagCls);
   const replyHtml = m.reply_to_id ? `
-    <div class="irc-reply" onclick="scrollToMsg(${m.reply_to_id})">
+    <div class="irc-reply ${replyCls}" onclick="scrollToMsg(${m.reply_to_id})">
       ${rThumbHtml}
       <div class="irc-reply-body">
-        <div class="irc-reply-name">↳ ${esc(m.reply_sender_name || '')}</div>
+        <div class="irc-reply-name">${esc(m.reply_sender_name || '')}</div>
         <div class="irc-reply-text">${m.reply_sender_is_bot ? (rTextRaw || '') : mdLite(esc(rTextRaw || ''))}</div>
       </div>
     </div>` : '';
@@ -1868,22 +1904,16 @@ function renderMsgIRC(m, isGroup) {
 
   const actionsHtml = '';
 
-  const avCol = isGroup
-    ? `<div style="width:28px;flex-shrink:0"></div>`
-    : `<div class="irc-av av av-round ${avColor}" style="position:relative;flex-shrink:0">${avLetter}${avImg}</div>`;
+  // аватарка есть у каждого сообщения — CSS показывает её только у последнего в серии
+  const avCol = `<div class="irc-av av av-round ${avColor}" style="position:relative;flex-shrink:0">${avLetter}${avImg}</div>`;
 
   const ircTagHtml = m.sender_tag ? rolePillHtml(m.sender_tag) : '';
   const senderCls = senderNameClass(m.sender_tag);
-  const header = isGroup
-    ? `<div class="irc-header irc-header-grouped">
-        <div class="irc-meta"><span class="status-wrap">${statusIcon}</span><span class="irc-time">${time}</span></div>
-       </div>`
-    : `<div class="irc-header">
-        <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">
-          <span class="irc-name msg-sender-name ${senderCls}${mine?' mine':''}">${senderName}</span>${ircTagHtml}
-        </div>
-        <div class="irc-meta"><span class="status-wrap">${statusIcon}</span><span class="irc-time">${time}</span></div>
-       </div>`;
+  // имя и тег стоят над пузырём; у своих и внутри серии их скрывает CSS
+  const header = `<div class="irc-header">
+      <span class="irc-name msg-sender-name ${senderCls}${mine?' mine':''}">${senderName}</span>${ircTagHtml}
+    </div>`;
+  const metaHtml = `<div class="irc-meta"><span class="status-wrap">${statusIcon}</span><span class="irc-time">${time}</span></div>`;
 
   const att = m.attachment;
   let attachHtml = '';
@@ -1921,16 +1951,23 @@ function renderMsgIRC(m, isGroup) {
   }
 
   const attDataAttrs = att?.url ? ` data-msg-att-url="${esc(att.url)}" data-msg-att-thumb="${esc(att.thumb||'')}" data-msg-att-mime="${esc(att.mime||'')}" data-msg-att-name="${esc(att.name||'')}"` : '';
-  return `<div class="irc-msg${isGroup?' irc-grouped':''}${m._optimistic?' msg-optimistic':''}"${mine?` data-mine="1"`:``} data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
+  // сообщение из одного смайлика показываем без пузыря — он проступает по наведению
+  const emojiOnly = !isDeleted && !m.attachment && !m.reply_to_id && !m.forward_data && isEmojiOnly(m.text);
+  const posCls = (isFirst ? ' irc-first' : '') + (isTail ? ' irc-tail' : '') + (emojiOnly ? ' emoji-msg' : '');
+
+  return `<div class="irc-msg${posCls}${m._optimistic?' msg-optimistic':''}"${mine?` data-mine="1"`:``} data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
     oncontextmenu="${!isDeleted?`showCtxMenu(event,${m.id},${m.sent_at},${mine})`:'event.preventDefault()'}">
     ${avCol}
     <div class="irc-content" ondblclick="${!isDeleted?`dblReply(${m.id})`:''}">
       ${header}
-      ${replyHtml}
-      ${forwardHtml}
-      ${attachHtml}
-      ${m.text || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}">${bodyText}</div>` : ''}
-      ${reactionsHtml}
+      <div class="msg-bubble">
+        ${replyHtml}
+        ${forwardHtml}
+        ${attachHtml}
+        ${m.text || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}${emojiOnly?' emoji-only':''}">${bodyText}</div>` : ''}
+        ${metaHtml}
+        ${reactionsHtml}
+      </div>
     </div>
     ${actionsHtml}
   </div>`;
@@ -2010,6 +2047,7 @@ function appendMsg(m) {
   const allNewMsgs = container.querySelectorAll('[data-msg-id]');
   const newEl = allNewMsgs[allNewMsgs.length - 1];
   if (newEl && !m._optimistic) newEl.classList.add('msg-new');
+  reflowSeries();
   stickToBottom(container, newEl, m, distBefore);
 }
 
@@ -2017,7 +2055,9 @@ function updateMsgInDOM(m) {
   const el = document.querySelector(`[data-msg-id="${m.id}"]`);
   if (!el) return;
   const chat = S.chats.find(c=>c.id===S.activeChatId);
-  el.outerHTML = renderMsg(m, chat?.type==='group' || chat?.type==='room');
+  el.outerHTML = renderMsg(m, chat?.type==='group' || chat?.type==='room',
+    false, !el.classList.contains('irc-first'), el.classList.contains('irc-tail'));
+  reflowSeries();
 }
 
 // ── REACTIONS ──
@@ -2289,9 +2329,12 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
   const mw = menu.offsetWidth, mh = menu.offsetHeight;
   const margin = 6;
   const _z = (S.settings.uiScale || 100) / 100;
+  // Вьюпорт переводим в те же единицы, что и style.left/top: при масштабе интерфейса
+  // они не совпадают с window.innerWidth, и меню у края экрана уезжало за границу
+  const vw = window.innerWidth / _z, vh = window.innerHeight / _z;
   let x = e.clientX / _z, y = e.clientY / _z;
-  if (x + mw + margin > window.innerWidth)  x = window.innerWidth  - mw - margin;
-  if (y + mh + margin > window.innerHeight) y = e.clientY / _z - mh;
+  if (x + mw + margin > vw) x = vw - mw - margin;
+  if (y + mh + margin > vh) y = e.clientY / _z - mh;
   if (y < margin) y = margin;
   if (x < margin) x = margin;
   menu.style.left = x + 'px';
@@ -2666,9 +2709,13 @@ function showReactionPicker(e) {
   picker.classList.add('open');
   const pw = picker.offsetWidth, ph = picker.offsetHeight;
   const margin = 6;
+  const _z = (S.settings.uiScale || 100) / 100;
+  // Вьюпорт переводим в те же единицы, что и style.left/top: при масштабе интерфейса
+  // они не совпадают с window.innerWidth, и меню у края экрана уезжало за границу
+  const vw = window.innerWidth / _z, vh = window.innerHeight / _z;
   let px = x, py = y;
-  if (px + pw + margin > window.innerWidth) px = window.innerWidth - pw - margin;
-  if (py + ph + margin > window.innerHeight) py = y - ph;
+  if (px + pw + margin > vw) px = vw - pw - margin;
+  if (py + ph + margin > vh) py = y - ph;
   if (py < margin) py = margin;
   if (px < margin) px = margin;
   picker.style.left = px + 'px';
@@ -2907,12 +2954,13 @@ function connectWS() {
         const el = document.querySelector(`[data-msg-id="${message_id}"]`);
         if (el) {
           const isChatGroup = chat?.type==='group' || chat?.type==='room';
-          const grouped = el.classList.contains('grouped') || el.classList.contains('irc-grouped');
+          const grouped = !el.classList.contains('irc-first');
           const fakeMsg = { id:message_id, deleted:1, text:'', attachment:null,
             sender_id:Number(el.dataset.senderId), sender_name:'', sent_at:Number(el.dataset.sentAt),
             reply_to_id:null, edited_at:null, status:{delivered:0,read:0,total:0}, reactions:[] };
-          const isLastDeleted = !el.nextElementSibling || !el.nextElementSibling.dataset.msgId || el.nextElementSibling.dataset.senderId !== el.dataset.senderId;
+          const isLastDeleted = el.classList.contains('irc-tail');
           el.outerHTML = renderMsg(fakeMsg, isChatGroup, false, grouped, isLastDeleted);
+          reflowSeries();
         }
       }
       renderChatList();
@@ -3591,9 +3639,12 @@ function showChatCtx(e, chatId) {
   const mw = menu.offsetWidth, mh = menu.offsetHeight;
   const margin = 6;
   const _z = (S.settings.uiScale || 100) / 100;
+  // Вьюпорт переводим в те же единицы, что и style.left/top: при масштабе интерфейса
+  // они не совпадают с window.innerWidth, и меню у края экрана уезжало за границу
+  const vw = window.innerWidth / _z, vh = window.innerHeight / _z;
   let x = e.clientX / _z, y = e.clientY / _z;
-  if (x + mw + margin > window.innerWidth) x = window.innerWidth - mw - margin;
-  if (y + mh + margin > window.innerHeight) y = e.clientY / _z - mh;
+  if (x + mw + margin > vw) x = vw - mw - margin;
+  if (y + mh + margin > vh) y = e.clientY / _z - mh;
   if (y < margin) y = margin;
   if (x < margin) x = margin;
   menu.style.left = x + 'px';

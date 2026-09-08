@@ -896,7 +896,6 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   border-radius: 9px;
   position: relative;
 }
-.irc-msg.irc-grouped { padding-top: 1px; padding-bottom: 1px; }
 .irc-msg:hover { background: var(--hover-row); }
 
 /* IRC hover action panel */
@@ -948,14 +947,6 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   font-size: 11px; color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.irc-header-grouped {
-  justify-content: flex-end;
-  margin-bottom: 0; height: 0; overflow: visible;
-  /* Время видно всегда, а не только при наведении: в серии подряд идущих
-     сообщений оно единственный ориентир, когда имя автора уже не выводится */
-  opacity: 1;
-  position: relative; z-index: 1;
-}
 .irc-text { font-size: 1rem; white-space: pre-wrap; word-break: break-word; color: var(--text); line-height: 1.5; }
 .irc-deleted { opacity: .55; font-style: italic; }
 .irc-msg .reactions { margin-top: 4px; padding: 0; }
@@ -970,8 +961,11 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .role-pill {
   display: inline-flex; align-items: center;
   height: 18px; line-height: 1;
-  font-size: 11px; padding: 0 8px; border-radius: 9px;
+  font-size: 11px; padding: 0 8px; border-radius: 7px;
   font-weight: 500; white-space: nowrap;
+  /* строка выравнивается по базовой линии, а у плашки она своя — без этого
+     тег оседает на 1.5px ниже имени */
+  align-self: center;
 }
 .role-pill.teal { background: var(--role-teal-bg); border: 1px solid var(--role-teal-border); color: var(--accent); }
 .role-pill.indigo { background: var(--role-indigo-bg); border: 1px solid var(--role-indigo-border); color: var(--role-indigo); }
@@ -2007,10 +2001,8 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
   70%  { background: var(--accent-soft); }
   100% { background: transparent; }
 }
-.msg-highlight {
-  border-radius: 9px;
-  animation: msgHighlight 2s ease;
-}
+/* красим сам пузырь: строка сообщения прозрачная и тянется во всю ширину ленты */
+.msg-highlight .msg-bubble { animation: msgHighlight 2s ease; }
 
 /* ── Optimistic message ── */
 .msg-optimistic {
@@ -2314,29 +2306,93 @@ html.dark .announcement-title { color: var(--danger); }
   .composer-slot, .composer-slot-inner { transition: none; }
 }
 
-/* Галочка статуса — только у последнего сообщения в серии подряд идущих своих.
-   Время при этом остаётся у каждого. Реализовано селектором :has(), а не
-   пересчётом в JS: иначе состояние пришлось бы синхронизировать при каждой
-   перерисовке и догрузке истории. Где :has() не поддержан, правило просто
-   не применится и галочки останутся у всех — как было раньше. */
-.irc-msg[data-mine]:has(+ .irc-msg[data-mine]) .status-wrap { display: none; }
+/* ══════════════════════════════════════════
+   ПЕРЕПИСКА ПУЗЫРЯМИ
+   Имя и тег стоят НАД пузырём, содержимое (цитата, вложение, текст, время,
+   реакции) — внутри .msg-bubble. Позиция в серии задаётся классами
+   .irc-first (первое) и .irc-tail (последнее): у первого выводится имя,
+   у последнего — аватарка и срезанный угол со стороны автора.
+   ══════════════════════════════════════════ */
+.irc-msg { padding: 1px 12px; background: none; align-items: flex-end; gap: 9px; }
+.irc-msg:hover { background: none; }
+.irc-msg[data-mine] { flex-direction: row-reverse; }
 
-/* Время в сгруппированной строке лежит поверх текста (шапка нулевой высоты).
-   Резервируем под него место обтеканием, а не отступом: так сужается только
-   первая строка, а последующие используют всю ширину. Без этого длинный текст
-   подходил ко времени вплотную — оставалось 11px. */
-.irc-msg.irc-grouped .irc-text::before {
-  content: '';
-  float: right;
-  width: 64px;
-  height: 1.4em;
+.irc-content {
+  position: relative;
+  /* на узком экране ограничение в процентах, иначе пузырь занимает почти всю ширину */
+  flex: 0 1 auto; max-width: min(560px, 82%);
+  display: flex; flex-direction: column; align-items: flex-start;
 }
+.irc-msg[data-mine] .irc-content { align-items: flex-end; }
+
+/* имя и тег — над пузырём, вне его фона */
+.irc-header { align-items: center; margin: 0 0 3px; padding: 0 3px; }
+.irc-msg[data-mine] .irc-header,
+.irc-msg:not(.irc-first) .irc-header { display: none; }
+
+.msg-bubble {
+  position: relative;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 5px 11px;
+  max-width: 100%;
+}
+.irc-msg[data-mine] .msg-bubble {
+  background: var(--accent-soft);
+  border-color: var(--role-teal-border);
+}
+/* срезанный угол — только у последнего пузыря серии, со стороны автора */
+.irc-msg.irc-tail .msg-bubble { border-radius: 14px 14px 14px 5px; }
+.irc-msg.irc-tail[data-mine] .msg-bubble { border-radius: 14px 14px 5px 14px; }
+
+/* аватарка стоит у последнего сообщения серии; у своих её нет вовсе */
+.irc-msg:not(.irc-tail) .irc-av { visibility: hidden; }
+.irc-msg[data-mine] .irc-av { display: none; }
+
+/* время и галочки — в правом нижнем углу пузыря; место под них резервирует ::after */
+.msg-bubble > .irc-meta { position: absolute; bottom: 4px; right: 10px; gap: 3px; }
+.irc-text::after { content: ''; display: inline-block; width: 50px; }
+.irc-msg[data-mine] .irc-text::after { width: 60px; }
+
+/* вложения — под края пузыря */
+.msg-bubble .bubble-image { margin: -5px -11px 5px; border-radius: 13px 13px 4px 4px; overflow: hidden; }
+.msg-bubble .bubble-file { margin: -1px -5px; }
+
+/* сообщение из одного смайлика: крупнее и без пузыря — он проступает при наведении
+   на сам смайлик, а не на всю строку. Время видно всегда и стоит там же, где было бы
+   внутри пузыря, поэтому место под него зарезервировано и ничего не сдвигается. */
+.irc-text.emoji-only { font-size: 2.3em; line-height: 1.2; }
+.irc-msg.emoji-msg .msg-bubble {
+  background: none; border-color: transparent;
+  transition: background .13s ease, border-color .13s ease;
+}
+.irc-msg.emoji-msg .msg-bubble:hover { background: var(--card-bg); border-color: var(--border); }
+.irc-msg.emoji-msg[data-mine] .msg-bubble:hover {
+  background: var(--accent-soft); border-color: var(--role-teal-border);
+}
+
+/* цвет цитаты — по автору цитируемого: своё цветом своего пузыря, чужое цветом тега */
+.irc-reply.reply-mine,   .irc-reply.reply-teal   { border-left-color: var(--accent); }
+.irc-reply.reply-indigo  { border-left-color: var(--role-indigo); }
+.irc-reply.reply-plain   { border-left-color: var(--text2); }
+.irc-reply.reply-mine .irc-reply-name,
+.irc-reply.reply-teal .irc-reply-name   { color: var(--accent); }
+.irc-reply.reply-indigo .irc-reply-name { color: var(--role-indigo); }
+.irc-reply.reply-plain .irc-reply-name  { color: var(--text2); }
+
+/* обводка аватарок в реакциях — под фон пузыря */
+.msg-bubble .ra { box-shadow: 0 0 0 1.5px var(--card-bg); }
+.irc-msg[data-mine] .msg-bubble .ra { box-shadow: none; }
+.reactions { margin-top: 4px; }
+
+@media (prefers-reduced-motion: reduce) { .irc-msg.emoji-msg .msg-bubble { transition: none; } }
 
 /* ── РЕАКЦИИ: смайлик и аватарки поставивших ──
    Числа нет — кто поставил, видно по аватаркам, полный список в подсказке. */
 .reaction-btn { padding: 2px 7px 2px 8px; gap: 6px; line-height: 1; }
 /* Вровень с кружком аватарки (18px): при 13px глиф выглядел заметно мельче */
-.ra-emoji { font-size: 16px; }
+.ra-emoji { font-size: 14px; }
 .reaction-btn.mine { border-color: var(--accent); background: var(--accent-soft); }
 
 .ra-stack { display: flex; align-items: center; }
