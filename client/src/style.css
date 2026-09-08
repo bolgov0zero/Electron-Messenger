@@ -2356,6 +2356,10 @@ html.dark .announcement-title { color: var(--danger); }
 .irc-msg[data-mine] .irc-text::after { width: 60px; }
 
 /* вложения — под края пузыря */
+/* Картинка выходит под края пузыря. Если под ней есть подпись — низ скруглён слабо,
+   а между картинкой и текстом остаётся отступ. Если картинка одна, без подписи и
+   реакций, — она заполняет пузырь целиком, а время получает подложку, иначе
+   на светлом кадре его не видно. */
 .msg-bubble .bubble-image { margin: -5px -11px 5px; border-radius: 13px 13px 4px 4px; overflow: hidden; }
 .msg-bubble .bubble-file { margin: -1px -5px; }
 
@@ -2385,12 +2389,55 @@ html.dark .announcement-title { color: var(--danger); }
 .msg-bubble .ra { box-shadow: 0 0 0 1.5px var(--card-bg); }
 .irc-msg[data-mine] .msg-bubble .ra { box-shadow: none; }
 .reactions { margin-top: 4px; }
+/* Время лежит в правом нижнем углу пузыря. Пока реакций нет, место под него
+   резервирует ::after в тексте; как только они появились — нижняя строка уже их,
+   поэтому резерв переносим на блок реакций, а из текста убираем. */
+.msg-bubble .reactions { padding-right: 44px; }
+.irc-msg[data-mine] .msg-bubble .reactions { padding-right: 56px; }
+.msg-bubble:has(.reactions) .irc-text::after { display: none; }
+
+/* ── Картинка без подписи ──
+   Кадр занимает пузырь целиком, а время, галочки и реакции ложатся поверх него,
+   а не отодвигают низ. У каждого своя тёмная подложка — иначе на светлом кадре
+   их не разобрать. Правила стоят после отступов реакций: те задаются селектором
+   выше по специфичности и иначе перебивали бы сброс. */
+/* Пузырь без подписи — это сам кадр: убираем у него поля, а картинке отрицательные
+   отступы. С ними ширину пузыря задать было нечем (единственный ребёнок в потоке
+   вычитал по 11px с боков) и он схлопывался. */
+.msg-bubble:not(:has(.irc-text)):has(.bubble-image) { padding: 0; }
+.msg-bubble:not(:has(.irc-text)) .bubble-image {
+  margin: 0; border-radius: 13px;
+  /* ширину задаёт сама картинка: пузырь тут подстраивается под неё, а не наоборот */
+  width: 280px; max-width: 100%;
+}
+.msg-bubble:not(:has(.irc-text)) > .irc-meta,
+.irc-msg[data-mine] .msg-bubble:not(:has(.irc-text)) > .irc-meta {
+  bottom: 8px; right: 8px;
+  background: rgba(0,0,0,.5); border-radius: 9px; padding: 2px 7px;
+}
+.msg-bubble:not(:has(.irc-text)) > .irc-meta .irc-time,
+.msg-bubble:not(:has(.irc-text)) > .irc-meta .msg-status { color: #fff; }
+.msg-bubble:not(:has(.irc-text)) > .reactions,
+.irc-msg[data-mine] .msg-bubble:not(:has(.irc-text)) > .reactions {
+  position: absolute; left: 8px; bottom: 8px;
+  margin: 0; padding: 0; max-width: calc(100% - 84px);
+}
+.msg-bubble:not(:has(.irc-text)) > .reactions .reaction-btn {
+  background: rgba(0,0,0,.5); border-color: transparent; color: #fff;
+}
+.msg-bubble:not(:has(.irc-text)) > .reactions .ra { box-shadow: none; }
 
 @media (prefers-reduced-motion: reduce) { .irc-msg.emoji-msg .msg-bubble { transition: none; } }
 
 /* ── РЕАКЦИИ: смайлик и аватарки поставивших ──
    Числа нет — кто поставил, видно по аватаркам, полный список в подсказке. */
-.reaction-btn { padding: 2px 7px 2px 8px; gap: 6px; line-height: 1; }
+/* Правый край чипа огибает кружок аватарки: радиус справа — половина высоты,
+   а отступ подобран так, чтобы дуга шла концентрично кружку (зазор 3px со всех
+   сторон, как сверху и снизу). Слева радиус обычный, как у плашки тега. */
+.reaction-btn {
+  padding: 2px 2px 2px 8px; gap: 6px; line-height: 1;
+  border-radius: 7px 999px 999px 7px;
+}
 /* Вровень с кружком аватарки (18px): при 13px глиф выглядел заметно мельче */
 .ra-emoji { font-size: 14px; }
 .reaction-btn.mine { border-color: var(--accent); background: var(--accent-soft); }
@@ -2398,16 +2445,16 @@ html.dark .announcement-title { color: var(--danger); }
 .ra-stack { display: flex; align-items: center; }
 .ra {
   position: relative;
-  width: 18px; height: 18px; border-radius: 50%;
+  width: 16px; height: 16px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 600; color: #fff;
+  font-size: 8px; font-weight: 600; color: #fff;
   flex-shrink: 0;
   /* Обводка цветом подложки: без неё соседние кружки при нахлёсте сливаются */
   box-shadow: 0 0 0 1.5px var(--bubble-bg, var(--card-bg));
   overflow: hidden;
 }
 /* Каждый следующий уходит под предыдущий и выступает на треть */
-.ra + .ra { margin-left: -12px; }
+.ra + .ra { margin-left: -11px; }
 .ra img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
 /* Подсказка: строки «аватарка + имя», смайлик не дублируем */
