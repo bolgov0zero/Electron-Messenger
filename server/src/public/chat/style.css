@@ -2621,16 +2621,6 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 /* Списки не тянут за собой всю страницу — иначе PWA «пружинит» как сайт */
 .messages, #chats-list, #mobile-subrooms, .users-list { overscroll-behavior: contain; }
 
-/* Свои сообщения: раньше отличались только галочкой у времени и терялись
-   при беглом просмотре. Мягкая подложка и полоса слева, без «пузырей». */
-.irc-msg.irc-mine { background: var(--accent-soft); }
-.irc-msg.irc-mine::before {
-  content: '';
-  position: absolute; left: 0; top: 0; bottom: 0;
-  width: 2px; background: var(--accent); opacity: .55;
-}
-.irc-msg.irc-mine { position: relative; }
-
 /* Действия открытого чата в мобильной шапке */
 .mtb-chat-actions { display: none; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
 

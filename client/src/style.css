@@ -2235,13 +2235,3 @@ select:focus-visible, .user-row:focus-visible, .chat-item:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .reaction-tip { transition: opacity .01s; transform: none; }
 }
-
-/* Свои сообщения: раньше отличались только галочкой у времени и терялись
-   при беглом просмотре. Мягкая подложка и полоса слева, без «пузырей». */
-.irc-msg.irc-mine { background: var(--accent-soft); }
-.irc-msg.irc-mine::before {
-  content: '';
-  position: absolute; left: 0; top: 0; bottom: 0;
-  width: 2px; background: var(--accent); opacity: .55;
-}
-.irc-msg.irc-mine { position: relative; }
