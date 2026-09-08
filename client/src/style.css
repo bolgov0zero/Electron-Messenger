@@ -441,27 +441,36 @@ body {
   background: var(--side-bg);
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column;
-  position: absolute; left: 0; top: 0; bottom: 0; z-index: 20;
+  position: relative; z-index: 2;
   overflow: hidden;
-  /* сдвигаем процентом от собственной ширины: переход к calc() с переменной
-     Chrome не интерполирует, и свойство застревает на исходном значении */
-  transition: transform .22s cubic-bezier(.4, 0, .2, 1), box-shadow .22s;
+  /* Сайдбар остаётся колонкой в потоке: вынутый из него, он накрывал панель
+     подкомнат, которая идёт следующей колонкой. Анимируем ширину — она же
+     плавно двигает соседей, поэтому отдельный отступ переписке не нужен. */
+  transition: width .22s cubic-bezier(.4, 0, .2, 1),
+              min-width .22s cubic-bezier(.4, 0, .2, 1),
+              border-right-width .22s;
 }
-/* Место под сайдбар держит отступ переписки — тогда при скрытии оба свойства
-   (сдвиг сайдбара и отступ) анимируются одновременно и плавно. */
-/* Сдвигаем внешним отступом, а не внутренним: поле ввода внутри — абсолютное,
-   и от внутреннего отступа оно не отсчитывается, из-за чего заезжало под сайдбар. */
-.chat-main { margin-left: var(--sidebar-w); transition: margin-left .22s cubic-bezier(.4, 0, .2, 1); }
-body.sidebar-hidden .chat-main { margin-left: 0; }
 
 /* Sidebar hidden / peek */
 body.sidebar-notransition .sidebar { transition: none !important; }
 body.sidebar-hidden .app-body { display: flex; }
+/* Скрытие идёт в потоке — схлопываем ширину, соседи (в том числе панель
+   подкомнат) плавно занимают место. */
 body.sidebar-hidden .sidebar {
-  transform: translateX(-100%);
-  border-right: none;
+  width: 0; min-width: 0;
+  border-right-width: 0;
 }
-body.sidebar-hidden.sidebar-peeking .sidebar {
+/* Когда схлопывание закончилось, сайдбар переводится в накладку: выезд по
+   наведению всплывает поверх переписки и ничего не раздвигает. Класс
+   ставит toggleSidebar по завершении перехода. */
+body.sidebar-overlay .sidebar {
+  position: absolute; left: 0; top: 0; bottom: 0; z-index: 20;
+  width: var(--sidebar-w); min-width: var(--sidebar-w);
+  border-right-width: 1px;
+  transform: translateX(-100%);
+  transition: transform .22s cubic-bezier(.4, 0, .2, 1), box-shadow .22s;
+}
+body.sidebar-overlay.sidebar-peeking .sidebar {
   transform: translateX(0);
   box-shadow: 4px 0 24px rgba(0,0,0,.2);
 }

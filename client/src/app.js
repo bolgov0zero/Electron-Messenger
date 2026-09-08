@@ -268,7 +268,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('l-server').addEventListener('keydown', e => e.key==='Enter' && document.getElementById('l-username').focus());
   document.getElementById('l-username').addEventListener('keydown', e => e.key==='Enter' && document.getElementById('l-password').focus());
   // Sidebar: restore hidden state, init peek
-  if (localStorage.getItem('sidebarHidden')) document.body.classList.add('sidebar-hidden');
+  if (localStorage.getItem('sidebarHidden')) {
+    document.body.classList.add('sidebar-hidden', 'sidebar-overlay');
+  }
   initSidebarPeek();
 
   document.addEventListener('click', e => {
@@ -434,10 +436,16 @@ function toggleTheme() { setTheme(S.settings.theme === 'dark' ? 'light' : 'dark'
 function setFontSize(f) { S.settings.fontSize=f; applySettings(); saveSession(); }
 function setUiScale(v) { S.settings.uiScale=v; applySettings(); saveSession(); }
 let _sidebarPeekTimer = null;
+let _sidebarOverlayTimer = null;
 function toggleSidebar() {
-  // Переход больше не глушим: сайдбар и отступ переписки едут вместе
   const hidden = document.body.classList.toggle('sidebar-hidden');
   document.body.classList.remove('sidebar-peeking');
+  // Пока идёт схлопывание, сайдбар остаётся в потоке — иначе соседи прыгнут.
+  // Накладку включаем после перехода, показ — сразу, чтобы колонка вернулась.
+  clearTimeout(_sidebarOverlayTimer);
+  if (hidden) _sidebarOverlayTimer = setTimeout(
+    () => document.body.classList.add('sidebar-overlay'), 240);
+  else document.body.classList.remove('sidebar-overlay');
   localStorage.setItem('sidebarHidden', hidden ? '1' : '');
   window.electron?.resizeWindow(hidden ? -280 : 280);
 }
