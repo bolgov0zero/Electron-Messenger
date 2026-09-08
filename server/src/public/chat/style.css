@@ -911,8 +911,8 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .irc-action-btn:hover { background: var(--hover-row); color: var(--text); }
 
 .irc-av {
-  width: 28px; height: 28px;
-  font-size: 11px;
+  width: 32px; height: 32px;
+  font-size: 12px;
   border-radius: 9px;
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
