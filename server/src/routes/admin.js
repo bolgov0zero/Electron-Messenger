@@ -79,10 +79,12 @@ router.get('/stats', (req, res) => {
   const pageCount = db.prepare('PRAGMA page_count').get()['page_count'];
   const pageSize  = db.prepare('PRAGMA page_size').get()['page_size'];
   res.json({
-    users:    db.prepare('SELECT COUNT(*) as c FROM users').get().c,
+    // Считаем ровно то, что видно в списках: без ботов (вебхуки, __system__)
+    // и без подкомнат — иначе бейджи и плитки показывают больше, чем есть на вкладках
+    users:    db.prepare('SELECT COUNT(*) as c FROM users WHERE is_bot IS NULL OR is_bot = 0').get().c,
     chats:    db.prepare("SELECT COUNT(*) as c FROM chats WHERE type='direct'").get().c,
     groups:   db.prepare("SELECT COUNT(*) as c FROM chats WHERE type='group'").get().c,
-    rooms:    db.prepare("SELECT COUNT(*) as c FROM chats WHERE type='room'").get().c,
+    rooms:    db.prepare("SELECT COUNT(*) as c FROM chats WHERE type='room' AND parent_id IS NULL").get().c,
     messages: db.prepare('SELECT COUNT(*) as c FROM messages WHERE deleted = 0').get().c,
     uptimeSeconds: Math.floor(process.uptime()),
     dbBytes: pageCount * pageSize,
@@ -728,6 +730,49 @@ router.post('/announcement', (req, res) => {
   }
 
   res.json({ ok: true, count: targetIds.length });
+});
+
+// ── РЕЗЕРВНЫЕ КОПИИ ──
+// Только по кнопке, без автоматики. db.backup() — штатный онлайн-бэкап SQLite:
+// работает на живой базе с WAL и не блокирует пользователей.
+const BACKUP_DIR = path.join(path.dirname(DB_PATH), 'backups');
+const BACKUP_RE = /^chat-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.db$/;
+
+function listBackups() {
+  try {
+    return fs.readdirSync(BACKUP_DIR)
+      .filter(n => BACKUP_RE.test(n))
+      .map(name => {
+        const st = fs.statSync(path.join(BACKUP_DIR, name));
+        return { name, size: st.size, created_at: Math.floor(st.mtimeMs / 1000) };
+      })
+      .sort((a, b) => b.created_at - a.created_at);
+  } catch { return []; }
+}
+
+router.get('/backups', (req, res) => res.json(listBackups()));
+
+router.post('/backups', async (req, res) => {
+  try {
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    const ts = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
+    const name = `chat-${ts}.db`;
+    await db.backup(path.join(BACKUP_DIR, name));
+    console.log('[Backup] Создана копия:', name);
+    res.json({ ok: true, name, backups: listBackups() });
+  } catch (e) {
+    console.error('[Backup] Ошибка:', e.message);
+    res.status(500).json({ error: 'Не удалось создать копию: ' + e.message });
+  }
+});
+
+router.get('/backups/:name/download', (req, res) => {
+  // Имя сверяем с шаблоном, а не только с basename — иначе путь можно подобрать
+  const name = req.params.name;
+  if (!BACKUP_RE.test(name)) return res.status(400).json({ error: 'Некорректное имя' });
+  const file = path.join(BACKUP_DIR, name);
+  if (!fs.existsSync(file)) return res.status(404).json({ error: 'Копия не найдена' });
+  res.download(file, name);
 });
 
 module.exports = router;

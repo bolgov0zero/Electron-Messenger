@@ -30,9 +30,9 @@ function verifyToken(token) {
 // Заодно display_name/is_admin всегда актуальны, а не заморожены в токене.
 function resolveUser(token) {
   const payload = verifyToken(token);
-  const user = db.prepare('SELECT id, username, display_name, is_admin, banned FROM users WHERE id = ?').get(payload.id);
+  const user = db.prepare('SELECT id, username, display_name, is_admin, banned, must_change_password FROM users WHERE id = ?').get(payload.id);
   if (!user || user.banned) return null;
-  return { ...user, is_admin: !!user.is_admin };
+  return { ...user, is_admin: !!user.is_admin, must_change_password: !!user.must_change_password };
 }
 
 function authMiddleware(req, res, next) {

@@ -56,14 +56,17 @@ router.post('/login', (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
   if (!user || !bcrypt.compareSync(password, user.password_hash))
     return res.status(401).json({ error: 'Invalid credentials' });
+  // Заблокированный отсекается здесь, а не позже: раньше вход «удавался»,
+  // а дальше каждый запрос падал с 401 — человек видел сломанное приложение
+  if (user.banned) return res.status(403).json({ error: 'Учётная запись заблокирована' });
 
   const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin });
-  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null } });
+  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password } });
 });
 
 router.get('/refresh', authMiddleware, (req, res) => {
   const token = signToken({ id: req.user.id, username: req.user.username, display_name: req.user.display_name, is_admin: req.user.is_admin });
-  res.json({ token });
+  res.json({ token, must_change_password: !!req.user.must_change_password });
 });
 
 router.get('/me', (req, res) => {
@@ -72,9 +75,9 @@ router.get('/me', (req, res) => {
   try {
     const { verifyToken } = require('../auth');
     const payload = verifyToken(auth);
-    const user = db.prepare('SELECT id, username, display_name, is_admin, tag FROM users WHERE id = ?').get(payload.id);
+    const user = db.prepare('SELECT id, username, display_name, is_admin, tag, must_change_password FROM users WHERE id = ?').get(payload.id);
     if (!user) return res.status(401).json({ error: 'User not found' });
-    res.json({ ...user, is_admin: !!user.is_admin });
+    res.json({ ...user, is_admin: !!user.is_admin, must_change_password: !!user.must_change_password });
   } catch { res.status(401).json({ error: 'Invalid token' }); }
 });
 

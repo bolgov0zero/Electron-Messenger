@@ -125,6 +125,30 @@ router.get('/chat/:chatId', authMiddleware, (req, res) => {
   res.json({ messages: result, hasMore, hasMoreAfter });
 });
 
+// Кто поставил реакции на сообщение — для тултипа при наведении.
+// Отдельным запросом по наведению, а не в каждом сообщении: имена нужны редко,
+// а в выдаче истории они раздували бы каждый ответ.
+router.get('/:messageId/reactions', authMiddleware, (req, res) => {
+  const msg = db.prepare('SELECT chat_id FROM messages WHERE id = ?').get(req.params.messageId);
+  if (!msg) return res.status(404).json({ error: 'Not found' });
+  if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(msg.chat_id, req.user.id))
+    return res.status(403).json({ error: 'Forbidden' });
+
+  const rows = db.prepare(`
+    SELECT r.reaction, r.user_id, COALESCE(u.display_name, 'Удалённый аккаунт') AS display_name
+    FROM reactions r LEFT JOIN users u ON u.id = r.user_id
+    WHERE r.message_id = ?
+    ORDER BY r.rowid ASC
+  `).all(req.params.messageId);
+
+  const byReaction = {};
+  rows.forEach(r => {
+    if (!byReaction[r.reaction]) byReaction[r.reaction] = [];
+    byReaction[r.reaction].push({ user_id: r.user_id, display_name: r.display_name });
+  });
+  res.json(byReaction);
+});
+
 // Получить детальную информацию о доставке/прочтении одного сообщения
 router.get('/:messageId/info', authMiddleware, (req, res) => {
   const { messageId } = req.params;

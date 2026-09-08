@@ -2572,3 +2572,29 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 .nc-panel-group-settings { padding: 0 14px; flex-shrink: 0; }
 .nc-panel-lists { flex: 1; overflow-y: auto; }
 .nc-panel-lists .nc-list { max-height: none; }
+
+/* Тултип реакции: кто поставил. Появляется по наведению с задержкой 1 сек */
+.reaction-tip {
+  position: fixed;
+  z-index: 400;
+  max-width: 260px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 20px rgba(0,0,0,.28);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.reaction-tip.visible { opacity: 1; transform: translateY(0); }
+.reaction-tip .rt-emoji { font-size: 13px; margin-right: 5px; }
+.reaction-tip .rt-name { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reaction-tip .rt-more { color: var(--muted); }
+@media (prefers-reduced-motion: reduce) {
+  .reaction-tip { transition: opacity .01s; transform: none; }
+}

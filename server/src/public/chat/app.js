@@ -1840,9 +1840,96 @@ function renderReactions(msgId) {
   const counts = S.reactions[msgId] || [];
   if (!counts.length) return '';
   return `<div class="reactions">${counts.map(r =>
-    `<button class="reaction-btn" onclick="sendReaction(${msgId},'${r.reaction}')">${r.reaction} <span>${r.count}</span></button>`
+    `<button class="reaction-btn" data-msg-id="${msgId}" data-reaction="${esc(r.reaction)}" onclick="sendReaction(${msgId},'${r.reaction}')">${r.reaction} <span>${r.count}</span></button>`
   ).join('')}</div>`;
 }
+
+// ── ТУЛТИП РЕАКЦИИ: кто поставил ──
+// Имена тянем по наведению (в сообщениях их нет — раздували бы каждый ответ),
+// секундной задержки хватает, чтобы запрос успел вернуться к показу.
+const _REACTION_TIP_DELAY = 1000;
+let _rtTimer = null, _rtEl = null, _rtBtn = null;
+const _rtCache = new Map(); // msgId -> { reaction: [{user_id, display_name}] }
+
+function _rtInvalidate(msgId) { _rtCache.delete(Number(msgId)); }
+
+function _rtEnsureEl() {
+  if (_rtEl && document.body.contains(_rtEl)) return _rtEl;
+  _rtEl = document.createElement('div');
+  _rtEl.className = 'reaction-tip';
+  document.body.appendChild(_rtEl);
+  return _rtEl;
+}
+
+function _rtHide() {
+  clearTimeout(_rtTimer); _rtTimer = null; _rtBtn = null;
+  if (_rtEl) _rtEl.classList.remove('visible');
+}
+
+async function _rtLoad(msgId) {
+  const key = Number(msgId);
+  if (_rtCache.has(key)) return _rtCache.get(key);
+  const data = await api('GET', `/messages/${key}/reactions`);
+  if (!data || data.error) return null;
+  _rtCache.set(key, data);
+  return data;
+}
+
+function _rtRender(btn, reaction, users) {
+  const el = _rtEnsureEl();
+  const MAX = 8;
+  const shown = users.slice(0, MAX);
+  const rest = users.length - shown.length;
+  el.innerHTML =
+    `<span class="rt-emoji">${esc(reaction)}</span>` +
+    shown.map(u => `<span class="rt-name">${esc(u.display_name)}</span>`).join('') +
+    (rest > 0 ? `<span class="rt-name rt-more">и ещё ${rest}</span>` : '');
+
+  // Интерфейс масштабируется через zoom (настройка размера), поэтому
+  // getBoundingClientRect отдаёт визуальные пиксели, а style.left/top задаются в
+  // CSS-пикселях. Коэффициент берём из самого элемента — не важно, где задан zoom.
+  // offsetWidth/offsetHeight вдобавок не зависят от анимации transform.
+  el.style.left = '0px'; el.style.top = '0px';
+  const z = el.offsetWidth ? (el.getBoundingClientRect().width / el.offsetWidth) : 1;
+  const tw = el.offsetWidth * z, th = el.offsetHeight * z;
+  const r = btn.getBoundingClientRect();
+  let left = r.left + r.width / 2 - tw / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+  // Показываем над бейджем; если сверху не помещается — под ним
+  let top = r.top - th - 8;
+  if (top < 8) top = r.bottom + 8;
+  el.style.left = Math.round(left / z) + 'px';
+  el.style.top = Math.round(top / z) + 'px';
+  el.classList.add('visible');
+}
+
+document.addEventListener('mouseover', e => {
+  const btn = e.target.closest?.('.reaction-btn');
+  if (!btn || btn === _rtBtn) return;
+  _rtHide();
+  _rtBtn = btn;
+  const msgId = btn.dataset.msgId, reaction = btn.dataset.reaction;
+  if (!msgId || !reaction) return;
+  _rtTimer = setTimeout(async () => {
+    try {
+      const data = await _rtLoad(msgId);
+      // За время запроса курсор мог уйти на другой бейдж
+      if (_rtBtn !== btn || !data) return;
+      const users = data[reaction];
+      if (!users || !users.length) return;
+      _rtRender(btn, reaction, users);
+    } catch {}
+  }, _REACTION_TIP_DELAY);
+});
+
+document.addEventListener('mouseout', e => {
+  const btn = e.target.closest?.('.reaction-btn');
+  if (btn && btn === _rtBtn && !btn.contains(e.relatedTarget)) _rtHide();
+});
+
+// Прокрутка/уход со страницы — прячем, иначе тултип «повиснет» в стороне
+document.addEventListener('scroll', _rtHide, true);
+window.addEventListener('blur', _rtHide);
 
 function renderMsg(m, isChatGroup, hideTime = false, grouped = false, isLast = true) {
   return renderMsgIRC(m, grouped);
@@ -2919,6 +3006,7 @@ function connectWS() {
     if (data.type==='reaction_update') {
       const { message_id, counts } = data;
       S.reactions[message_id] = counts;
+      _rtInvalidate(message_id); // состав изменился — тултип перезапросит имена
       if (S.activeChatId) {
         const msgEl = document.querySelector(`[data-msg-id="${message_id}"]`);
         if (msgEl) {

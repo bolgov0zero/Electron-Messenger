@@ -14,15 +14,28 @@ function checkRateLimit(token) {
 }
 
 // Whitelist sanitizer: allows only b, i, u, blockquote, br
+//
+// Разрешённые теги прячем за маркер, ВСЁ остальное экранируем целиком.
+// Раньше вырезались только полные теги, а незакрытый (`<img src=x onerror=...`
+// без `>`) проходил насквозь: браузер достраивал его закрывающей разметкой
+// страницы, обработчик попадал в атрибуты и срабатывал. Сообщения ботов
+// вставляются в DOM без экранирования, поэтому это давало исполнение кода.
 function sanitizeHtml(input) {
   const allowed = new Set(['b', 'i', 'u', 'blockquote', 'br']);
-  return String(input || '').slice(0, 4096)
+  const kept = [];
+  // \x00 — служебный маркер, во входных данных его быть не должно
+  const marked = String(input || '').slice(0, 4096).replace(/\x00/g, '')
     .replace(/<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b[^>]*\/?>/g, (_, slash, tag) => {
       const t = tag.toLowerCase();
       if (!allowed.has(t)) return '';
-      if (t === 'br') return '<br>';
-      return slash ? `</${t}>` : `<${t}>`;
+      kept.push(t === 'br' ? '<br>' : (slash ? `</${t}>` : `<${t}>`));
+      return `\x00${kept.length - 1}\x00`;
     });
+  // Уцелевшие «<» и «>» — это обрывки тегов, они должны стать текстом
+  return marked
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\x00(\d+)\x00/g, (_, i) => kept[Number(i)] ?? '');
 }
 
 async function handleWebhook(req, res) {

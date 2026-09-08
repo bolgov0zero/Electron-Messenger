@@ -584,6 +584,10 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
           Обновление
         </button>
+        <button class="sm-nav-item" data-section="backups" onclick="showSettingsSection('backups')">
+          <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          Резервные копии
+        </button>
       </nav>
       <div class="settings-modal-content" id="settings-modal-content"></div>
     </div>
@@ -591,6 +595,33 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 </div>
 
 <!-- User modal -->
+<!-- Обязательная смена пароля: закрыть нельзя, поэтому без крестика и кнопки отмены -->
+<div class="modal-bg" id="modal-force-pass">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <h3>Смените пароль</h3>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--c-text2);line-height:1.7;margin:0 0 14px">
+        У этой учётной записи стандартный пароль. Задайте свой, чтобы продолжить.
+      </p>
+      <div class="fg"><label>Текущий пароль</label>
+        <input id="fp-old" type="password" placeholder="••••••••" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter')document.getElementById('fp-new').focus()"></div>
+      <div class="fg"><label>Новый пароль</label>
+        <input id="fp-new" type="password" placeholder="минимум 6 символов" autocomplete="new-password"
+          onkeydown="if(event.key==='Enter')document.getElementById('fp-new2').focus()"></div>
+      <div class="fg"><label>Повторите новый пароль</label>
+        <input id="fp-new2" type="password" placeholder="••••••••" autocomplete="new-password"
+          onkeydown="if(event.key==='Enter')submitForcePassword()"></div>
+      <div class="err" id="fp-err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" id="fp-save-btn" onclick="submitForcePassword()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-user">
   <div class="modal modal-sm">
     <div class="modal-head">
@@ -1128,6 +1159,8 @@ function enterApp(user) {
   let savedPage = 'dashboard';
   try { const p = localStorage.getItem('admin-page'); if (p && pageRenders[p]) savedPage = p; } catch {}
   nav(savedPage);
+  // Оба пути входа (логин и восстановленная сессия) приносят актуальный флаг
+  maybeForcePasswordChange();
 }
 
 function startBgClientsPolling() {
@@ -1225,6 +1258,41 @@ async function doLogin() {
     }
     enterApp(currentUser);
   } else { document.getElementById('l-err').textContent=data.error||'Ошибка входа'; }
+}
+
+/* ── ОБЯЗАТЕЛЬНАЯ СМЕНА ПАРОЛЯ ── */
+// Показывается, пока у учётки стоит флаг must_change_password (дефолтный admin).
+// Модалку нельзя закрыть: ни крестика, ни отмены, ни Escape.
+function maybeForcePasswordChange() {
+  if (!currentUser?.must_change_password) return;
+  ['fp-old','fp-new','fp-new2'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const err = document.getElementById('fp-err');
+  if (err) err.textContent = '';
+  openModal('modal-force-pass');
+  setTimeout(() => document.getElementById('fp-old')?.focus(), 150);
+}
+
+async function submitForcePassword() {
+  const err = document.getElementById('fp-err');
+  const oldP = document.getElementById('fp-old').value;
+  const newP = document.getElementById('fp-new').value;
+  const newP2 = document.getElementById('fp-new2').value;
+  err.textContent = '';
+  if (!oldP || !newP || !newP2) { err.textContent = 'Заполните все поля'; return; }
+  if (newP !== newP2) { err.textContent = 'Новый пароль и подтверждение не совпадают'; return; }
+
+  const btn = document.getElementById('fp-save-btn');
+  btn.disabled = true; btn.textContent = 'Сохранение…';
+  try {
+    const r = await api('POST', '/api/users/me/password', { old_password: oldP, new_password: newP });
+    if (r?.error) { err.textContent = r.error; return; }
+    currentUser.must_change_password = false;
+    if (localStorage.getItem('admin_user')) localStorage.setItem('admin_user', JSON.stringify(currentUser));
+    closeModal('modal-force-pass');
+    toast('Пароль изменён', 'success');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Сохранить';
+  }
 }
 
 function logout() {
@@ -2513,10 +2581,96 @@ function showSettingsSection(section) {
     if (inp) inp.addEventListener('keydown', e => e.key === 'Enter' && saveGithubToken());
   }
   if (section === 'announcements') loadAnnouncementProfile();
+  if (section === 'backups') loadBackups();
+}
+
+/* ── РЕЗЕРВНЫЕ КОПИИ ── */
+let _backups = null;
+
+function fmtBytes(b) {
+  if (b < 1024) return b + ' Б';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' КБ';
+  return (b / 1024 / 1024).toFixed(1) + ' МБ';
+}
+
+function fmtBackupDate(ts) {
+  const d = new Date(ts * 1000);
+  return d.toLocaleString('ru', { day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+async function loadBackups() {
+  _backups = await api('GET', '/api/admin/backups');
+  renderBackupsTable();
+}
+
+function renderBackupsTable() {
+  const el = document.getElementById('backups-table-wrap');
+  if (!el) return;
+  if (!_backups || !_backups.length) {
+    el.innerHTML = '<div style="padding:18px;text-align:center;color:var(--c-muted);font-size:12px">Копий пока нет</div>';
+    return;
+  }
+  el.innerHTML = `<table>
+    <thead><tr><th>Дата и время</th><th>Размер</th><th style="width:120px"></th></tr></thead>
+    <tbody>${_backups.map(b => `<tr>
+      <td style="font-family:var(--f-mono);font-size:12px">${fmtBackupDate(b.created_at)}</td>
+      <td style="color:var(--c-text2);font-size:12px">${fmtBytes(b.size)}</td>
+      <td><button class="btn btn-sm" onclick="downloadBackup('${b.name}')">Скачать</button></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+async function createBackup() {
+  const btn = document.getElementById('backup-create-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Создание…'; }
+  try {
+    const r = await api('POST', '/api/admin/backups');
+    if (r?.error) { toast(r.error, 'error'); return; }
+    _backups = r.backups || [];
+    renderBackupsTable();
+    toast('Копия создана', 'success');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Создать копию'; }
+  }
+}
+
+// Скачивание через токен в заголовке: ссылкой не обойтись, авторизация в Bearer
+async function downloadBackup(name) {
+  try {
+    const res = await fetch(`/api/admin/backups/${encodeURIComponent(name)}/download`, {
+      headers: { Authorization: 'Bearer ' + token },
+    });
+    if (!res.ok) { toast('Не удалось скачать копию', 'error'); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch { toast('Не удалось скачать копию', 'error'); }
 }
 
 function _buildSettingsSectionHtml(section) {
   const s = _settingsData;
+  if (section === 'backups') return `
+    <div class="card">
+      <div class="card-head"><h3>Резервные копии</h3></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
+        <p style="font-size:12px;color:var(--c-text2);line-height:1.7">
+          Копия создаётся только по кнопке — автоматического расписания нет.<br>
+          Снимок делается на живой базе и не мешает работе пользователей.<br>
+          Копии лежат на сервере рядом с базой, в папке <code>chat_db/backups</code>.
+        </p>
+        <div>
+          <button class="btn btn-primary" id="backup-create-btn" onclick="createBackup()">Создать копию</button>
+        </div>
+        <div class="tbl-wrap" id="backups-table-wrap">
+          <div style="padding:18px;text-align:center;color:var(--c-muted);font-size:12px">Загрузка…</div>
+        </div>
+      </div>
+    </div>`;
+
   if (section === 'messages') return `
     <div class="card">
       <div class="card-head"><h3>Сообщения</h3></div>

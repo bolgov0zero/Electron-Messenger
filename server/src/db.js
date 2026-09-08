@@ -118,6 +118,8 @@ tryAlter('ALTER TABLE chats ADD COLUMN parent_id INTEGER REFERENCES chats(id) ON
 tryAlter('ALTER TABLE chats ADD COLUMN position INTEGER DEFAULT 0');
 tryAlter('ALTER TABLE messages ADD COLUMN forward_data TEXT');
 tryAlter('ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0');
+// Пароль задан администратором (или это дефолтный admin) — при входе потребуем сменить
+tryAlter('ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0');
 
 // ── Полнотекстовый поиск (FTS5, external content) ──
 // Целостность обеспечивается JOIN с messages при выборке: осиротевшие FTS-записи
@@ -153,10 +155,20 @@ try {
 const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get();
 if (userCount.c === 0) {
   const hash = bcrypt.hashSync('admin', 10);
-  db.prepare('INSERT INTO users (username, password_hash, display_name, is_admin) VALUES (?, ?, ?, 1)')
+  db.prepare('INSERT INTO users (username, password_hash, display_name, is_admin, must_change_password) VALUES (?, ?, ?, 1, 1)')
     .run('admin', hash, 'Administrator');
-  console.log('Created default admin: admin / admin');
+  console.log('Created default admin: admin / admin (потребуется смена пароля при первом входе)');
 }
+
+// Уже работающие установки: если у admin до сих пор дефолтный пароль — требуем смену.
+// Проверяется на каждом старте, пока пароль не сменят.
+try {
+  const adm = db.prepare("SELECT id, password_hash, must_change_password FROM users WHERE username = 'admin'").get();
+  if (adm && !adm.must_change_password && bcrypt.compareSync('admin', adm.password_hash)) {
+    db.prepare('UPDATE users SET must_change_password = 1 WHERE id = ?').run(adm.id);
+    console.warn('[Auth] У пользователя admin дефолтный пароль — при входе будет запрошена смена.');
+  }
+} catch {}
 
 // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)
 const sysExists = db.prepare("SELECT id FROM users WHERE username = '__system__'").get();

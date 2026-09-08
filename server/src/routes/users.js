@@ -106,6 +106,25 @@ router.patch('/:id/password', authMiddleware, adminMiddleware, (req, res) => {
   res.json({ ok: true });
 });
 
+// Смена собственного пароля: старый → новый. Снимает требование смены.
+// Используется модалкой в админке для дефолтного пароля admin.
+const MIN_PASSWORD_LEN = 6;
+router.post('/me/password', authMiddleware, (req, res) => {
+  const { old_password, new_password } = req.body || {};
+  if (!old_password || !new_password) return res.status(400).json({ error: 'Заполните все поля' });
+  if (String(new_password).length < MIN_PASSWORD_LEN)
+    return res.status(400).json({ error: `Пароль должен быть не короче ${MIN_PASSWORD_LEN} символов` });
+  const row = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.user.id);
+  if (!row) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (!bcrypt.compareSync(old_password, row.password_hash))
+    return res.status(400).json({ error: 'Текущий пароль неверен' });
+  if (bcrypt.compareSync(new_password, row.password_hash))
+    return res.status(400).json({ error: 'Новый пароль совпадает со старым' });
+  db.prepare('UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?')
+    .run(bcrypt.hashSync(new_password, 10), req.user.id);
+  res.json({ ok: true });
+});
+
 // Admin: delete user
 // Сообщения и чаты сохраняются: sender_id/created_by обнуляются, отправитель
 // отображается как «Удалённый аккаунт» (практика Telegram). Иначе DELETE падает

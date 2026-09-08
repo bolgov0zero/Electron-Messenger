@@ -19,6 +19,18 @@ const os = require('os');
 // ── AUTO UPDATE ──
 const GITHUB_REPO = 'bolgov0zero/Electron-Messenger';
 
+// Установщик скачивается и ЗАПУСКАЕТСЯ, а адрес приходит из окна приложения.
+// Любая инъекция в рендерер иначе означала бы запуск произвольной программы,
+// поэтому принимаем только ссылку на релиз своего репозитория по https.
+function isTrustedUpdateUrl(url) {
+  try {
+    const u = new URL(String(url));
+    if (u.protocol !== 'https:') return false;
+    if (u.hostname !== 'github.com') return false;
+    return u.pathname.startsWith(`/${GITHUB_REPO}/releases/download/`);
+  } catch { return false; }
+}
+
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
     const req = net.request({ url, redirect: 'follow' });
@@ -108,6 +120,10 @@ ipcMain.handle('check-update', async () => {
 });
 
 ipcMain.handle('install-update', async (_, downloadUrl) => {
+  if (!isTrustedUpdateUrl(downloadUrl)) {
+    console.error('[Update] Отклонён недоверенный адрес:', downloadUrl);
+    return { error: 'Недоверенный адрес обновления' };
+  }
   // Прерываем предыдущую загрузку, если она ещё идёт
   if (_activeUpdateReq) { try { _activeUpdateReq.abort(); } catch {} _activeUpdateReq = null; }
   const ext = process.platform === 'win32' ? '.exe' : process.platform === 'darwin' ? '.dmg' : '.deb';
