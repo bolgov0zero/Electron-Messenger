@@ -2082,7 +2082,13 @@ function renderMessages(msgs, stick = true) {
     container.scrollTop = container.scrollHeight;
     container.querySelectorAll('img').forEach(img => {
       if (img.complete) return;
-      const snap = () => { container.scrollTop = container.scrollHeight; };
+      // Только если пользователь всё ещё у нижнего края: иначе догрузившаяся
+      // картинка отбрасывала вниз того, кто уже листает историю вверх.
+      // Положение считаем на месте, а не по флагу: событие scroll могло ещё не прийти.
+      const snap = () => {
+        if (container.scrollHeight - container.scrollTop - container.clientHeight < 200)
+          container.scrollTop = container.scrollHeight;
+      };
       img.addEventListener('load',  snap, { once: true });
       img.addEventListener('error', snap, { once: true });
     });
@@ -2629,8 +2635,13 @@ function stickToBottom(container, newEl, m, distBefore) {
   if (!(m._optimistic || dist < 120)) return;
   _stickBottom = true;
   const behavior = m._optimistic ? 'instant' : 'smooth';
-  const toBottom = () => container.scrollTo({ top: container.scrollHeight, behavior });
-  requestAnimationFrame(toBottom);
+  const scrollDown = () => container.scrollTo({ top: container.scrollHeight, behavior });
+  // Повторные вызовы приходят по загрузке картинок: к этому моменту пользователь
+  // мог уйти вверх, и дёргать ленту обратно нельзя.
+  const toBottom = () => {
+    if (container.scrollHeight - container.scrollTop - container.clientHeight < 200) scrollDown();
+  };
+  requestAnimationFrame(scrollDown);
   newEl?.querySelectorAll('img').forEach(img => {
     if (img.complete) return;
     img.addEventListener('load',  toBottom, { once: true });

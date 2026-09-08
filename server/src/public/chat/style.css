@@ -768,7 +768,14 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   transition: opacity .18s, background .12s, color .12s;
 }
 .scroll-bottom-btn.visible { display: flex; opacity: 1; }
-.scroll-bottom-btn:hover { background: var(--hover-row); color: var(--text); }
+/* Кнопка лежит поверх переписки, поэтому фон при наведении должен оставаться
+   сплошным: --hover-row это полупрозрачная подложка, сквозь неё просвечивали
+   сообщения. Подсвечиваем рамкой и цветом значка. */
+.scroll-bottom-btn:hover {
+  background: var(--modal-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
 .messages::-webkit-scrollbar { width: 4px; }
 .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9px; }
 
