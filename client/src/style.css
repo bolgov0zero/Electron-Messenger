@@ -2362,6 +2362,9 @@ html.dark .announcement-title { color: var(--danger); }
    на светлом кадре его не видно. */
 .msg-bubble .bubble-image { margin: -5px -11px 5px; border-radius: 13px 13px 4px 4px; overflow: hidden; }
 .msg-bubble .bubble-file { margin: -1px -5px; }
+/* Сообщение, где нет ничего кроме файла: под время нет ни строки текста с распоркой,
+   ни блока реакций, и оно ложится вплотную к иконке скачивания. Резервируем полосу. */
+.msg-bubble:has(> .bubble-file):not(:has(.irc-text)):not(:has(.reactions)) { padding-bottom: 23px; }
 
 /* сообщение из одного смайлика: крупнее и без пузыря — он проступает при наведении
    на сам смайлик, а не на всю строку. Время видно всегда и стоит там же, где было бы
@@ -2396,36 +2399,34 @@ html.dark .announcement-title { color: var(--danger); }
 .irc-msg[data-mine] .msg-bubble .reactions { padding-right: 56px; }
 .msg-bubble:has(.reactions) .irc-text::after { display: none; }
 
-/* ── Картинка без подписи ──
-   Кадр занимает пузырь целиком, а время, галочки и реакции ложатся поверх него,
-   а не отодвигают низ. У каждого своя тёмная подложка — иначе на светлом кадре
-   их не разобрать. Правила стоят после отступов реакций: те задаются селектором
-   выше по специфичности и иначе перебивали бы сброс. */
-/* Пузырь без подписи — это сам кадр: убираем у него поля, а картинке отрицательные
-   отступы. С ними ширину пузыря задать было нечем (единственный ребёнок в потоке
-   вычитал по 11px с боков) и он схлопывался. */
-.msg-bubble:not(:has(.irc-text)):has(.bubble-image) { padding: 0; }
-.msg-bubble:not(:has(.irc-text)) .bubble-image {
+/* ── Сообщение, в котором нет ничего кроме картинки ──
+   Класс .bubble-photo ставит рендер: только тогда кадр занимает пузырь целиком,
+   а время, галочки и реакции ложатся поверх него на затемнённой подложке.
+   Есть подпись, цитата или пересылка — всё идёт обычным порядком, снизу.
+   Правила стоят после отступов реакций: те задаются селектором выше по
+   специфичности и иначе перебивали бы сброс. */
+.msg-bubble.bubble-photo { padding: 0; }
+.msg-bubble.bubble-photo .bubble-image {
   margin: 0; border-radius: 13px;
   /* ширину задаёт сама картинка: пузырь тут подстраивается под неё, а не наоборот */
   width: 280px; max-width: 100%;
 }
-.msg-bubble:not(:has(.irc-text)) > .irc-meta,
-.irc-msg[data-mine] .msg-bubble:not(:has(.irc-text)) > .irc-meta {
+.msg-bubble.bubble-photo > .irc-meta,
+.irc-msg[data-mine] .msg-bubble.bubble-photo > .irc-meta {
   bottom: 8px; right: 8px;
   background: rgba(0,0,0,.5); border-radius: 9px; padding: 2px 7px;
 }
-.msg-bubble:not(:has(.irc-text)) > .irc-meta .irc-time,
-.msg-bubble:not(:has(.irc-text)) > .irc-meta .msg-status { color: #fff; }
-.msg-bubble:not(:has(.irc-text)) > .reactions,
-.irc-msg[data-mine] .msg-bubble:not(:has(.irc-text)) > .reactions {
+.msg-bubble.bubble-photo > .irc-meta .irc-time,
+.msg-bubble.bubble-photo > .irc-meta .msg-status { color: #fff; }
+.msg-bubble.bubble-photo > .reactions,
+.irc-msg[data-mine] .msg-bubble.bubble-photo > .reactions {
   position: absolute; left: 8px; bottom: 8px;
   margin: 0; padding: 0; max-width: calc(100% - 84px);
 }
-.msg-bubble:not(:has(.irc-text)) > .reactions .reaction-btn {
+.msg-bubble.bubble-photo > .reactions .reaction-btn {
   background: rgba(0,0,0,.5); border-color: transparent; color: #fff;
 }
-.msg-bubble:not(:has(.irc-text)) > .reactions .ra { box-shadow: none; }
+.msg-bubble.bubble-photo > .reactions .ra { box-shadow: none; }
 
 @media (prefers-reduced-motion: reduce) { .irc-msg.emoji-msg .msg-bubble { transition: none; } }
 
@@ -2436,7 +2437,7 @@ html.dark .announcement-title { color: var(--danger); }
    сторон, как сверху и снизу). Слева радиус обычный, как у плашки тега. */
 .reaction-btn {
   padding: 2px 2px 2px 8px; gap: 6px; line-height: 1;
-  border-radius: 7px 999px 999px 7px;
+  border-radius: 9px 999px 999px 9px;
 }
 /* Вровень с кружком аватарки (18px): при 13px глиф выглядел заметно мельче */
 .ra-emoji { font-size: 14px; }

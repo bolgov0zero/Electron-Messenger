@@ -1951,6 +1951,10 @@ function renderMsgIRC(m, isFirst = true, isTail = true) {
   }
 
   const attDataAttrs = att?.url ? ` data-msg-att-url="${esc(att.url)}" data-msg-att-thumb="${esc(att.thumb||'')}" data-msg-att-mime="${esc(att.mime||'')}" data-msg-att-name="${esc(att.name||'')}"` : '';
+  // пузырь, в котором нет ничего кроме картинки: кадр занимает его целиком, а время
+  // и реакции ложатся поверх. С подписью, цитатой или пересылкой — обычное поведение
+  const bareImage = !isDeleted && !m.text && !m.reply_to_id && !m.forward_data
+    && !!att?.url && !att.expired && !!att.mime?.startsWith('image/');
   // сообщение из одного смайлика показываем без пузыря — он проступает по наведению
   const emojiOnly = !isDeleted && !m.attachment && !m.reply_to_id && !m.forward_data && isEmojiOnly(m.text);
   const posCls = (isFirst ? ' irc-first' : '') + (isTail ? ' irc-tail' : '') + (emojiOnly ? ' emoji-msg' : '');
@@ -1960,7 +1964,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true) {
     ${avCol}
     <div class="irc-content" ondblclick="${!isDeleted?`dblReply(${m.id})`:''}">
       ${header}
-      <div class="msg-bubble">
+      <div class="msg-bubble${bareImage ? ' bubble-photo' : ''}">
         ${replyHtml}
         ${forwardHtml}
         ${attachHtml}

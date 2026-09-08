@@ -421,6 +421,8 @@ tr:hover .td-actions{opacity:1}
 .modal-settings{width:50vw;height:70vh;max-width:none;max-height:none;min-width:560px}
 .settings-modal-layout{display:flex;flex:1;overflow:hidden;min-height:0}
 .settings-modal-nav{width:160px;min-width:160px;max-width:160px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--c-border);padding:6px;display:flex;flex-direction:column;gap:2px}
+/* «Обновление» стоит особняком — прижимаем к нижнему краю списка */
+.sm-nav-bottom{margin-top:auto}
 .sm-nav-item{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:var(--radius-xs);border:none;background:none;color:var(--c-text2);font-size:12px;font-weight:500;cursor:pointer;text-align:left;width:100%;transition:background var(--t-fast),color var(--t-fast);font-family:var(--f-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sm-nav-item svg{width:15px;height:15px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2}
 .sm-nav-item:hover{background:var(--bg-hover);color:var(--c-text)}
@@ -576,17 +578,13 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           Вложения
         </button>
-        <button class="sm-nav-item" data-section="announcements" onclick="showSettingsSection('announcements')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          Объявления
-        </button>
-        <button class="sm-nav-item" data-section="update" onclick="showSettingsSection('update')">
-          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          Обновление
-        </button>
         <button class="sm-nav-item" data-section="backups" onclick="showSettingsSection('backups')">
           <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
           Резервные копии
+        </button>
+        <button class="sm-nav-item sm-nav-bottom" data-section="update" onclick="showSettingsSection('update')">
+          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Обновление
         </button>
       </nav>
       <div class="settings-modal-content" id="settings-modal-content"></div>
@@ -2580,7 +2578,6 @@ function showSettingsSection(section) {
     const inp = document.getElementById('github-token-input');
     if (inp) inp.addEventListener('keydown', e => e.key === 'Enter' && saveGithubToken());
   }
-  if (section === 'announcements') loadAnnouncementProfile();
   if (section === 'backups') loadBackups();
 }
 
@@ -2792,38 +2789,6 @@ function _buildSettingsSectionHtml(section) {
           </div>
           <div class="su-progress-label" style="font-size:11px;color:var(--c-muted)"></div>
         </div>
-      </div>
-    </div>`;
-
-  if (section === 'announcements') return `
-    <div class="card">
-      <div class="card-head"><h3>Системный пользователь</h3></div>
-      <div class="card-body" style="display:flex;flex-direction:column;gap:16px">
-        <p style="font-size:12px;color:var(--c-text2);line-height:1.7;margin:0">
-          От имени этого пользователя отправляются объявления в чаты.
-        </p>
-        <div class="fg" style="margin:0">
-          <label>Аватар</label>
-          <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:48px;height:48px;border-radius:50%;overflow:hidden;background:var(--c-surface2);flex-shrink:0;position:relative;border:1px solid var(--c-border)">
-              <img id="sys-av-img" src="" style="width:100%;height:100%;object-fit:cover;display:none" onerror="this.style.display='none'">
-              <div id="sys-av-placeholder" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--c-primary)">С</div>
-            </div>
-            <div>
-              <input type="file" id="sys-av-input" accept="image/*" style="display:none" onchange="onSysAvatarChange(this)">
-              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('sys-av-input').click()">Загрузить…</button>
-            </div>
-          </div>
-        </div>
-        <div class="fg" style="margin:0">
-          <label>Имя отправителя</label>
-          <input id="ann-name-input" placeholder="Система" style="width:100%">
-        </div>
-        <div class="fg" style="margin:0">
-          <label>Тег <span style="color:var(--c-muted);font-weight:400;text-transform:none;letter-spacing:0">(отображается рядом с именем)</span></label>
-          <input id="ann-tag-input" placeholder="напр. Система" style="width:100%">
-        </div>
-        <button class="btn btn-primary" onclick="saveAnnouncementProfile()" style="align-self:flex-start">Сохранить</button>
       </div>
     </div>`;
 
@@ -3193,41 +3158,6 @@ async function sendAnnouncement() {
   }
 }
 
-async function loadAnnouncementProfile() {
-  const data = await api('GET', '/api/admin/announcement/profile');
-  if (!data) return;
-  const nameInput = document.getElementById('ann-name-input');
-  const tagInput = document.getElementById('ann-tag-input');
-  if (nameInput) nameInput.value = data.name || '';
-  if (tagInput) tagInput.value = data.tag || '';
-  if (data.has_avatar && data.system_user_id) {
-    const img = document.getElementById('sys-av-img');
-    const ph = document.getElementById('sys-av-placeholder');
-    if (img) {
-      img.src = `/api/users/${data.system_user_id}/avatar?t=${Date.now()}`;
-      img.style.display = '';
-      img.onload = () => { if (ph) ph.style.display = 'none'; };
-    }
-  }
-}
-
-async function onSysAvatarChange(input) {
-  if (!input.files[0]) return;
-  const base64 = await resizeAvatarFile(input.files[0]);
-  const data = await api('POST', '/api/admin/announcement/avatar', { data: base64 });
-  if (data?.ok) { toast('Аватар сохранён', 'success'); loadAnnouncementProfile(); }
-  else toast(data?.error || 'Ошибка', 'error');
-  input.value = '';
-}
-
-async function saveAnnouncementProfile() {
-  const name = document.getElementById('ann-name-input')?.value.trim();
-  const tag = document.getElementById('ann-tag-input')?.value.trim();
-  if (!name) { toast('Введите имя', 'error'); return; }
-  const data = await api('POST', '/api/admin/announcement/profile', { name, tag: tag || null });
-  if (data?.ok) toast('Сохранено', 'success');
-  else toast(data?.error || 'Ошибка', 'error');
-}
 </script>
 </body>
 </html>
