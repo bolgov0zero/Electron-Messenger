@@ -46,12 +46,12 @@ function enrichChat(chat, userId) {
     unread = db.prepare(`
       SELECT COUNT(*) AS c FROM messages m
       LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id IN (${placeholders}) AND m.sender_id != ? AND m.deleted = 0 AND ms.read_at IS NULL
+      WHERE m.chat_id IN (${placeholders}) AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL
     `).get(userId, ...ids, userId).c;
     unreadMentions = db.prepare(`
       SELECT COUNT(*) AS c FROM messages m
       LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id IN (${placeholders}) AND m.sender_id != ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
+      WHERE m.chat_id IN (${placeholders}) AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
         AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
     `).get(userId, ...ids, userId, userId).c;
   } else {
@@ -65,12 +65,12 @@ function enrichChat(chat, userId) {
     unread = db.prepare(`
       SELECT COUNT(*) AS c FROM messages m
       LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id = ? AND m.sender_id != ? AND m.deleted = 0 AND ms.read_at IS NULL
+      WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL
     `).get(userId, chat.id, userId).c;
     unreadMentions = db.prepare(`
       SELECT COUNT(*) AS c FROM messages m
       LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id = ? AND m.sender_id != ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
+      WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
         AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
     `).get(userId, chat.id, userId, userId).c;
   }
@@ -103,12 +103,12 @@ router.get('/:id/subrooms', authMiddleware, (req, res) => {
     const unread = db.prepare(`
       SELECT COUNT(*) AS c FROM messages m
       LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id = ? AND m.sender_id != ? AND m.deleted = 0 AND ms.read_at IS NULL
+      WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL
     `).get(userId, s.id, userId).c;
     const unreadMentions = db.prepare(`
       SELECT COUNT(*) AS c FROM messages m
       LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id = ? AND m.sender_id != ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
+      WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
         AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
     `).get(userId, s.id, userId, userId).c;
     const has_avatar = fs.existsSync(path2.join(AVATAR_DIR, `chat_${s.id}.jpg`));

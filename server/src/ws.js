@@ -298,6 +298,9 @@ function setup(server) {
         const { message_id } = data;
         const msg = db.prepare('SELECT * FROM messages WHERE id = ?').get(message_id);
         if (!msg || msg.sender_id === user.id) return;
+        // Членство в чате — как в обработчике 'read' ниже: иначе можно подтвердить
+        // доставку чужого сообщения и исказить счётчики статусов
+        if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(msg.chat_id, user.id)) return;
         db.prepare('INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)').run(message_id, user.id);
         db.prepare('UPDATE message_status SET delivered_at = unixepoch() WHERE message_id = ? AND user_id = ? AND delivered_at IS NULL').run(message_id, user.id);
         const updated = getMessageWithStatus(message_id, msg.sender_id);

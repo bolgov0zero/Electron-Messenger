@@ -152,6 +152,12 @@ function loadSession() {
 }
 
 // ── WEB NOTIFICATIONS ──
+// Чат заглушён, если замьючен он сам или его родительская комната —
+// тот же критерий, что и на сервере при отправке push
+function isChatMuted(chatId, parentId) {
+  return S.mutedChats.has(chatId) || (!!parentId && S.mutedChats.has(parentId));
+}
+
 function webNotify(title, body, chatId) {
   if (Notification.permission !== 'granted') return;
   const n = new Notification(title, {
@@ -1754,6 +1760,10 @@ async function loadMoreAfter() {
 function appendMessagesAfter(msgs, chatId) {
   const container = document.getElementById('messages');
   if (!container) return;
+  // Отбрасываем уже отрисованные: догрузка после реконнекта может пересечься
+  // с сообщением, которое успело прийти по WS (как в appendMsg)
+  msgs = msgs.filter(m => !(m.id > 0 && container.querySelector(`[data-msg-id="${m.id}"]`)));
+  if (!msgs.length) return;
   const chat = S.chats.find(c => c.id === chatId);
   const isChatGroup = chat?.type === 'group' || chat?.type === 'room';
   msgs.forEach(m => { if (m.reactions?.length) S.reactions[m.id] = m.reactions; });
@@ -2252,7 +2262,12 @@ function sendOrEdit() {
   const input = document.getElementById('msg-input');
   const text = input?.value.trim();
   if (!text && !_pendingAttachment && !S.forwardMsg) return;
-  if (!S.ws||S.ws.readyState!==1) return;
+  // Нет соединения — сообщаем и не теряем набранное молча
+  if (!S.ws||S.ws.readyState!==1) {
+    showActionToast('Нет связи с сервером — сообщение не отправлено');
+    if (S.ws && S.ws.readyState >= 2 && S.token) connectWS();
+    return;
+  }
   const payload = { type:'message', chat_id:S.activeChatId, text: text || '' };
   if (S.replyTo) payload.reply_to_id = S.replyTo.id;
   if (_pendingAttachment) payload.attachment = _pendingAttachment;
@@ -2782,6 +2797,11 @@ async function leaveGroup(chatId) {
 
 // ── WEBSOCKET ──
 function connectWS() {
+  // Реконнект по фокусу мог разойтись с отложенным реконнектом из onclose —
+  // гасим прежний живой сокет, иначе он останется сиротой: сервер будет считать
+  // его активным, а set_status уходит только в текущий → вечный «в сети»
+  const prev = S.ws;
+  if (prev && prev.readyState <= 1) { try { prev.close(); } catch {} }
   const ws = new WebSocket(`${wsProto()}://${S.server}/ws?token=${S.token}`);
   S.ws = ws;
 
@@ -2816,10 +2836,12 @@ function connectWS() {
         } else if (!isViewing() && message.sender_id !== S.user.id) {
           S.unread[chatId] = (S.unread[chatId]||0)+1;
           if (message.mentions?.includes(S.user.id)) S.unreadMentions[chatId] = (S.unreadMentions[chatId]||0)+1;
-          const title = chatName(chat) || 'Electron';
-          const body = `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
-          webNotify(title, body, chatId);
-          playNotificationSound();
+          if (!isChatMuted(chatId, parentId)) {
+            const title = chatName(chat) || 'Electron';
+            const body = `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+            webNotify(title, body, chatId);
+            playNotificationSound();
+          }
           if (S.ws?.readyState===1) S.ws.send(JSON.stringify({type:'delivered', message_id:message.id}));
         }
       } else if (message.sender_id === S.user.id) {
@@ -2828,11 +2850,16 @@ function connectWS() {
       } else {
         S.unread[chatId] = (S.unread[chatId]||0)+1;
         if (message.mentions?.includes(S.user.id)) S.unreadMentions[chatId] = (S.unreadMentions[chatId]||0)+1;
-        const chat2 = S.chats.find(c=>c.id===chatId);
-        const title = chatName(chat2) || 'Electron';
-        const body = `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
-        webNotify(title, body, chatId);
-        playNotificationSound();
+        if (!isChatMuted(chatId, parentId)) {
+          // Подкомнаты нет в S.chats — берём её имя из S.subrooms, иначе имя
+          // родительской комнаты (chat уже содержит этот фолбэк). Раньше здесь
+          // был chatName(undefined) → TypeError, и обработчик обрывался.
+          const _srObj = parentId ? (S.subrooms[parentId]||[]).find(s=>s.id===chatId) : null;
+          const title = _srObj?.name || chatName(chat) || 'Electron';
+          const body = `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+          webNotify(title, body, chatId);
+          playNotificationSound();
+        }
         if (S.ws?.readyState===1) S.ws.send(JSON.stringify({type:'delivered', message_id:message.id}));
       }
       updateUnreadTotal();
@@ -2998,6 +3025,8 @@ function connectWS() {
 
   ws.onclose = (event) => {
     clearInterval(ws._hb);
+    // Нас уже заменил более новый сокет — не реконнектим повторно
+    if (ws !== S.ws) return;
     if (event.code === 1008) { logout(); return; }
     S.wsRetry++;
     const delay = Math.min(1000*S.wsRetry, 10000);
