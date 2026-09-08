@@ -2894,7 +2894,17 @@ function connectWS() {
       logout(true);
     }
 
-    if (data.type === 'announcement') { showSystemAnnouncement(data.text); }
+    if (data.type === 'announcement') {
+      showSystemAnnouncement(data.text);
+      // Окно свёрнуто или не в фокусе — модалку человек не увидит, поэтому
+      // предупреждаем так же, как о новом сообщении. Мут чатов тут не при чём:
+      // это объявление от администрации, а не переписка.
+      if (!isViewing()) {
+        const body = (data.text || '').replace(/\s+/g, ' ').slice(0, 120);
+        window.electron?.notify('Системное объявление', body, null);
+        playNotificationSound();
+      }
+    }
 
     if (data.type === 'force_restart') {
       // Только Electron: полный рестарт процесса. В веб-клиенте команда игнорируется.

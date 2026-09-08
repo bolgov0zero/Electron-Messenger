@@ -3393,7 +3393,17 @@ function connectWS() {
     }
 
     if (data.type === 'force_logout') { logout(true); }
-    if (data.type === 'announcement') { showSystemAnnouncement(data.text); }
+    if (data.type === 'announcement') {
+      showSystemAnnouncement(data.text);
+      // Окно свёрнуто или не в фокусе — модалку человек не увидит, поэтому
+      // предупреждаем так же, как о новом сообщении. Мут чатов тут не при чём:
+      // это объявление от администрации, а не переписка.
+      if (!isViewing()) {
+        const body = (data.text || '').replace(/\s+/g, ' ').slice(0, 120);
+        webNotify('Системное объявление', body, null);
+        playNotificationSound();
+      }
+    }
   };
 
   ws.onclose = (event) => {
