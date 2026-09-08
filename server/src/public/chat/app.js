@@ -108,6 +108,17 @@ async function submitOwnPassword() {
   }, 1600);
 }
 
+// Текст превью последнего сообщения — общий для списка чатов и подкомнат
+function previewText(lm, limit = 40) {
+  let t = lm
+    ? (lm.deleted ? 'Сообщение удалено'
+      : (lm.text ? lm.text.replace(/<[^>]*>/g, '')
+        : (lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (lm.attachment.name || 'Файл')) : '')))
+    : 'Нет сообщений';
+  if (t.length > limit) t = t.slice(0, limit) + '…';
+  return t;
+}
+
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // Markdown-lite: **жирный**, __курсив__, `код` — применяется к уже экранированному тексту
@@ -307,6 +318,7 @@ function mobileSlideTo(panel, title = '', sub = '') {
   const titleEl = document.getElementById('mtb-title');
   const subEl = document.getElementById('mtb-sub');
   const actions = document.querySelector('.mtb-actions');
+  const chatActions = document.getElementById('mtb-chat-actions');
   // Переход на другой экран — снимаем обработчик прошлого чата, иначе он
   // останется висеть на шапке списка подкомнат и откроет чужой состав
   if (titleWrap) { titleWrap.onclick = null; titleWrap.style.cursor = ''; }
@@ -315,6 +327,7 @@ function mobileSlideTo(panel, title = '', sub = '') {
     if (account) account.style.display = '';
     if (titleWrap) titleWrap.style.display = 'none';
     if (actions) actions.style.display = '';
+    if (chatActions) chatActions.style.display = 'none';
   } else {
     if (backBtn) backBtn.style.display = 'flex';
     if (account) account.style.display = 'none';
@@ -322,6 +335,7 @@ function mobileSlideTo(panel, title = '', sub = '') {
     if (titleEl) titleEl.textContent = title;
     if (subEl) subEl.textContent = sub;
     if (actions) actions.style.display = 'none';
+    if (chatActions) chatActions.style.display = (panel === 3 && S.activeChatId) ? 'flex' : 'none';
   }
 }
 
@@ -330,7 +344,8 @@ function mobileSlideBack() {
     S.activeChatId = null;
     S.activeSubroomId = null;
     if (_mobileFromSubrooms) {
-      mobileSlideTo(2);
+      const room = S.chats.find(c => c.id === S.activeRoomId);
+      mobileSlideTo(2, room ? chatName(room) : '', room ? nMembers(room.members?.length || 0) : '');
     } else {
       S.activeRoomId = null;
       mobileSlideTo(1);
@@ -605,6 +620,8 @@ function logout(intentional = false) {
 function enterApp() {
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-main').classList.add('active');
+  initPullGestures();
+  initChatRowSwipe();
   loadChats().then(() => {
     if (S._pendingOpenChatId) {
       const c = S.chats.find(c => c.id === S._pendingOpenChatId);
@@ -940,7 +957,9 @@ function renderSubroomsPanel(roomId) {
       const bg = avatarColor(s.id);
       // Как у комнат в списке чатов: эмодзи, если своя картинка не задана
       const letter = '🏠';
-      const avEl = `<div class="av av-md av-sq" style="background:${bg};${s.has_avatar?`background-image:url('/api/chats/${s.id}/avatar');background-size:cover;background-position:center`:''}">${s.has_avatar?'':letter}</div>`;
+      // avatarColor отдаёт ИМЯ КЛАССА, а не цвет: раньше он подставлялся
+      // в style="background:..." и фон получался прозрачным
+      const avEl = `<div class="av av-md av-sq av-orange" ${s.has_avatar?`style="background-image:url('/api/chats/${s.id}/avatar');background-size:cover;background-position:center"`:''}>${s.has_avatar?'':letter}</div>`;
       return `<div class="chat-item${S.activeSubroomId===s.id?' active':''}" onclick="openSubroom(${s.id})">
         <div class="av-wrap">${avEl}</div>
         <div class="info">
@@ -948,11 +967,12 @@ function renderSubroomsPanel(roomId) {
             <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name)}</span>
             ${badge}
           </div>
-          <div style="margin-top:2px"><span class="ci-preview"># подкомната</span></div>
+          <div style="margin-top:2px"><span class="ci-preview">${esc(previewText(s.last_message))}</span></div>
         </div>
       </div>`;
     }).join('');
-    mp.innerHTML = `<div style="padding:10px 14px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">${esc(roomName)}</div>${items}`;
+    // Название комнаты — в шапку (см. mobileSlideTo ниже), в теле оно дублировалось
+    mp.innerHTML = items;
     if (!mp._swipeInit) {
       mp._swipeInit = true;
       let _sx = 0, _sy = 0;
@@ -963,7 +983,8 @@ function renderSubroomsPanel(roomId) {
         if (dx > 60 && Math.abs(dy) < Math.abs(dx)) mobileSlideBack();
       }, { passive: true });
     }
-    mobileSlideTo(2);
+    // Название комнаты — в шапку: раньше она пустовала, а название дублировалось в теле
+    mobileSlideTo(2, roomName, nMembers((S.chats.find(c => c.id === roomId)?.members?.length) || 0));
   } else {
     // На десктопе — боковая панель между sidebar и чатом
     const panel = document.getElementById('subrooms-panel');
@@ -974,11 +995,12 @@ function renderSubroomsPanel(roomId) {
       const bg = avatarColor(s.id);
       // Как у комнат в списке чатов: эмодзи, если своя картинка не задана
       const letter = '🏠';
+      // avatarColor отдаёт имя класса — как цвет он не работал, фон был прозрачным
       const avStyle = s.has_avatar
-        ? `style="background-color:${bg};background-image:url('/api/chats/${s.id}/avatar');background-size:cover;background-position:center"`
-        : `style="background:${bg}"`;
+        ? `style="background-image:url('/api/chats/${s.id}/avatar');background-size:cover;background-position:center"`
+        : '';
       return `<div class="subroom-item${S.activeSubroomId===s.id?' active':''}" onclick="openSubroom(${s.id})">
-        <div class="sr-av" ${avStyle}>${s.has_avatar?'':letter}</div>
+        <div class="sr-av av-orange" ${avStyle}>${s.has_avatar?'':letter}</div>
         <span class="sr-name">${esc(s.name)}</span>
         ${badge}
       </div>`;
@@ -1505,47 +1527,208 @@ async function openChat(chatId, aroundId = null) {
   if (!_isMobile()) inputEl?.focus();
 }
 
-// ── SWIPE TO REPLY (touch) ──
-const EDGE_BACK_ZONE = 30; // px от левого края — зона жеста «назад»
+// ── СВАЙП ПО СТРОКЕ ЧАТА (мобильный) ──
+// Влево — заглушить/включить звук, вправо — закрепить/открепить.
+// Раньше эти действия жили только за долгим нажатием, о котором не догадаться.
+function initChatRowSwipe() {
+  const list = document.getElementById('chats-list');
+  if (!list || list._rowSwipeInit) return;
+  list._rowSwipeInit = true;
+
+  const ACT_AT = 64;      // порог срабатывания
+  const MAX = 88;         // дальше строка не едет
+  let row = null, x0 = 0, y0 = 0, locked = false, armed = false, dir = 0;
+
+  const reset = (animate = true) => {
+    if (!row) return;
+    row.style.transition = animate ? 'transform .22s ease' : 'none';
+    row.style.transform = '';
+    const hint = row._hint;
+    if (hint) { hint.remove(); row._hint = null; }
+    row = null; locked = false; armed = false; dir = 0;
+  };
+
+  const showHint = (r, isMute) => {
+    if (r._hint) return;
+    const h = document.createElement('div');
+    h.className = 'row-swipe-hint ' + (isMute ? 'left' : 'right');
+    h.textContent = isMute
+      ? (S.mutedChats.has(parseInt(r.dataset.chatId)) ? '🔔' : '🔕')
+      : '📌';
+    r.appendChild(h);
+    r._hint = h;
+  };
+
+  list.addEventListener('touchstart', e => {
+    if (!_isMobile() || e.touches.length !== 1) return;
+    reset(false);
+    row = e.target.closest('[data-chat-id]');
+    if (!row) return;
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    locked = false; armed = false; dir = 0;
+  }, { passive: true });
+
+  list.addEventListener('touchmove', e => {
+    if (!row) return;
+    const dx = e.touches[0].clientX - x0;
+    const dy = e.touches[0].clientY - y0;
+    if (!locked) {
+      if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 10) {
+        if (Math.abs(dy) > 10) { reset(false); }   // это прокрутка — не мешаем
+        return;
+      }
+      locked = true;
+      dir = dx > 0 ? 1 : -1;
+      row.style.position = 'relative';
+      showHint(row, dir < 0);
+    }
+    const shift = Math.max(-MAX, Math.min(MAX, dx * 0.6));
+    row.style.transform = `translateX(${shift}px)`;
+    row.style.transition = 'none';
+    if (!armed && Math.abs(shift) >= ACT_AT * 0.6) { armed = true; haptic(8); row._hint?.classList.add('armed'); }
+    else if (armed && Math.abs(shift) < ACT_AT * 0.6) { armed = false; row._hint?.classList.remove('armed'); }
+  }, { passive: true });
+
+  list.addEventListener('touchend', () => {
+    if (!row || !locked) { reset(false); return; }
+    const fire = armed;
+    const chatId = parseInt(row.dataset.chatId);
+    const wasDir = dir;
+    reset(true);
+    if (!fire) return;
+    haptic(12);
+    S.ctxChatId = chatId;
+    if (wasDir < 0) sheetMuteChat(); else sheetPinChat();
+  }, { passive: true });
+}
+
+// ── ПОТЯНУТЬ ВНИЗ: показать поиск и обновить список (мобильный) ──
+// Поиск больше не занимает место постоянно, а список можно освежить жестом.
+function initPullGestures() {
+  const list = document.getElementById('chats-list');
+  const search = document.querySelector('.sidebar-search');
+  if (!list || !search || list._pullInit) return;
+  list._pullInit = true;
+
+  // Стартуем со свёрнутым поиском — на десктопе класс не действует (см. media)
+  if (_isMobile()) search.classList.add('search-collapsed');
+
+  const spinner = document.createElement('div');
+  spinner.className = 'ptr-spinner';
+  list.parentElement.style.position = list.parentElement.style.position || 'relative';
+  list.parentElement.appendChild(spinner);
+
+  const SEARCH_AT = 60;   // потянули на столько — раскрываем поиск
+  const REFRESH_AT = 110; // и ещё дальше — обновляем список
+  let y0 = 0, pulling = false, armedSearch = false, armedRefresh = false;
+
+  list.addEventListener('touchstart', e => {
+    if (!_isMobile() || e.touches.length !== 1) return;
+    pulling = list.scrollTop <= 0;   // тянуть можно только с самого верха
+    y0 = e.touches[0].clientY;
+    armedSearch = armedRefresh = false;
+  }, { passive: true });
+
+  list.addEventListener('touchmove', e => {
+    if (!pulling) return;
+    const dy = e.touches[0].clientY - y0;
+    if (dy <= 0) { pulling = false; spinner.classList.remove('visible'); return; }
+    if (dy > SEARCH_AT && !armedSearch) {
+      armedSearch = true; haptic(8);
+      search.classList.remove('search-collapsed');
+    }
+    if (dy > REFRESH_AT && !armedRefresh) { armedRefresh = true; haptic(8); spinner.classList.add('visible'); }
+    if (dy <= REFRESH_AT && armedRefresh) { armedRefresh = false; spinner.classList.remove('visible'); }
+  }, { passive: true });
+
+  list.addEventListener('touchend', async () => {
+    if (!pulling) return;
+    pulling = false;
+    if (armedRefresh) {
+      spinner.classList.add('spinning');
+      try { await loadChats(); } catch {}
+      spinner.classList.remove('spinning', 'visible');
+    }
+  }, { passive: true });
+
+  // Прокрутили список вниз — поиск снова прячется, если в нём ничего не набрано
+  list.addEventListener('scroll', () => {
+    if (!_isMobile()) return;
+    const inp = document.getElementById('search');
+    if (list.scrollTop > 40 && !inp?.value && document.activeElement !== inp) {
+      search.classList.add('search-collapsed');
+    }
+  }, { passive: true });
+}
+
+// ── ТАКТИЛЬНЫЙ ОТКЛИК ──
+// Короткий щелчок подтверждает жест раньше, чем глаз успеет заметить изменение
+function haptic(ms = 10) {
+  try { navigator.vibrate?.(ms); } catch {}
+}
+
+// ── SWIPE: назад (вправо) и ответ (влево) ──
+const EDGE_BACK_ZONE = 30; // px от левого края — зона жеста «назад» (десктоп)
 
 function addSwipeReply(container) {
   let startX = 0, startY = 0, swipeEl = null, dirLocked = false, backMode = false;
+  let trackBase = 0, backLive = false, replyArmed = false;
   const chatMain = () => document.getElementById('chat-main');
+  const track = () => document.getElementById('mobile-track');
 
   container.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) return;
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
-    backMode = startX < EDGE_BACK_ZONE; // свайп от левого края = возврат к списку
+    // На мобильном направление решает всё: вправо — назад, влево — ответ.
+    // Раньше «назад» работал только из 30-пиксельной полоски у края.
+    backMode = _isMobile() ? false : startX < EDGE_BACK_ZONE;
     swipeEl = backMode ? null : e.target.closest('[data-msg-id]');
-    dirLocked = false;
+    dirLocked = false; backLive = false; replyArmed = false;
+    trackBase = -(Math.max(1, _mobilePanel) - 1) * window.innerWidth;
   }, { passive: true });
 
   container.addEventListener('touchmove', e => {
     const dx = e.touches[0].clientX - startX;
     const dy = e.touches[0].clientY - startY;
 
+    // Десктоп: прежнее поведение от края экрана
     if (backMode) {
-      if (!_isMobile()) {
-        if (!dirLocked) {
-          if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 8) return;
-          dirLocked = true;
-        }
-        if (dx <= 0) return;
-        e.preventDefault();
-        const cm = chatMain();
-        const shift = `translateX(${Math.min(dx, window.innerWidth)}px)`;
-        if (cm) { cm.style.transform = shift; cm.style.transition = 'none'; }
+      if (!dirLocked) {
+        if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 8) return;
+        dirLocked = true;
       }
+      if (dx <= 0) return;
+      e.preventDefault();
+      const cm = chatMain();
+      const shift = `translateX(${Math.min(dx, window.innerWidth)}px)`;
+      if (cm) { cm.style.transform = shift; cm.style.transition = 'none'; }
+      return;
+    }
+
+    if (!dirLocked) {
+      if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 8) return;
+      dirLocked = true;
+      // Вправо на мобильном — уходим назад, экран поедет за пальцем
+      if (_isMobile() && dx > 0 && _mobilePanel > 1) { backLive = true; swipeEl = null; }
+    }
+
+    if (backLive) {
+      e.preventDefault();
+      const t = track();
+      if (!t) return;
+      // Сопротивление за порогом, чтобы жест ощущался «упругим»
+      const w = window.innerWidth;
+      const raw = Math.max(0, dx);
+      const x = raw > w * 0.6 ? w * 0.6 + (raw - w * 0.6) * 0.25 : raw;
+      t.style.transition = 'none';
+      t.style.transform = `translateX(${trackBase + x}px)`;
+      if (!replyArmed && raw > w * 0.35) { replyArmed = true; haptic(8); } // порог пройден
+      else if (replyArmed && raw <= w * 0.35) replyArmed = false;
       return;
     }
 
     if (!swipeEl) return;
-    // Определяем направление по первым ~8px движения
-    if (!dirLocked) {
-      if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 6) return;
-      dirLocked = true;
-    }
     if (dx >= 0) { // ответ — только свайп влево
       swipeEl.style.transform = ''; swipeEl.style.transition = 'transform .2s';
       swipeEl = null; return;
@@ -1554,27 +1737,36 @@ function addSwipeReply(container) {
     const shift = Math.max(dx * 0.45, -50);
     swipeEl.style.transform = `translateX(${shift}px)`;
     swipeEl.style.transition = 'none';
+    if (!replyArmed && dx < -50) { replyArmed = true; haptic(8); }
+    else if (replyArmed && dx >= -50) replyArmed = false;
   }, { passive: false });
 
   container.addEventListener('touchend', e => {
     const dx = e.changedTouches[0].clientX - startX;
 
+    // Живой возврат на мобильном: доводим анимацию до конца или откатываем
+    if (backLive) {
+      const t = track();
+      backLive = false;
+      if (!t) return;
+      t.style.transition = '';   // вернуть переход из CSS
+      t.style.transform = '';    // снять инлайн — дальше работает класс панели
+      if (dx > window.innerWidth * 0.35) mobileSlideBack();
+      return;
+    }
+
     if (backMode) {
-      if (_isMobile()) {
-        if (dx > window.innerWidth * 0.35) mobileSlideBack();
+      const cm = chatMain();
+      if (cm) cm.style.transition = _CHAT_EASE;
+      if (dx > window.innerWidth * 0.35) {
+        if (cm) cm.style.transform = `translateX(${window.innerWidth}px)`;
+        document.querySelector('.sidebar')?.classList.remove('mobile-hidden');
+        setTimeout(() => mobileBack(false), 320);
       } else {
-        const cm = chatMain();
-        if (cm) cm.style.transition = _CHAT_EASE;
-        if (dx > window.innerWidth * 0.35) {
-          if (cm) cm.style.transform = `translateX(${window.innerWidth}px)`;
-          document.querySelector('.sidebar')?.classList.remove('mobile-hidden');
-          setTimeout(() => mobileBack(false), 320);
-        } else {
-          if (cm) cm.style.transform = '';
-          cm?.addEventListener('transitionend', () => {
-            if (cm) { cm.style.transform = ''; cm.style.transition = ''; }
-          }, { once: true });
-        }
+        if (cm) cm.style.transform = '';
+        cm?.addEventListener('transitionend', () => {
+          if (cm) { cm.style.transform = ''; cm.style.transition = ''; }
+        }, { once: true });
       }
       backMode = false;
       return;
@@ -1594,16 +1786,21 @@ function addSwipeReply(container) {
 
 // ── LONG PRESS → CONTEXT MENU (touch) ──
 let _longPressTimer = null;
+let _lpX = 0, _lpY = 0;
+const LONG_PRESS_MS = 500;   // 600 мс ощущались вязко
+const LONG_PRESS_SLOP = 10;  // палец всегда дрожит: раньше отменяло даже 2px
 document.addEventListener('touchstart', e => {
   const touch = e.touches[0];
+  _lpX = touch.clientX; _lpY = touch.clientY;
   const msgEl = e.target.closest('[data-msg-id]');
   if (msgEl) {
     _longPressTimer = setTimeout(() => {
       const msgId = parseInt(msgEl.dataset.msgId);
       const sentAt = parseInt(msgEl.dataset.sentAt || '0');
       const isMine = parseInt(msgEl.dataset.senderId) === S.user?.id;
+      haptic(12);
       showCtxMenu({ clientX: touch.clientX, clientY: touch.clientY, preventDefault: ()=>{} }, msgId, sentAt, isMine);
-    }, 600);
+    }, LONG_PRESS_MS);
     return;
   }
   // Long-press по элементу списка чатов — выезжающий снизу блок с удалением
@@ -1611,12 +1808,20 @@ document.addEventListener('touchstart', e => {
   if (chatEl) {
     _longPressTimer = setTimeout(() => {
       const chatId = parseInt(chatEl.dataset.chatId);
+      haptic(12);
       openChatSheet(chatId);
-    }, 600);
+    }, LONG_PRESS_MS);
   }
 }, { passive: true });
 document.addEventListener('touchend', () => { clearTimeout(_longPressTimer); _longPressTimer = null; }, { passive: true });
-document.addEventListener('touchmove', () => { clearTimeout(_longPressTimer); _longPressTimer = null; }, { passive: true });
+document.addEventListener('touchmove', e => {
+  if (!_longPressTimer) return;
+  const t = e.touches[0];
+  // Отменяем только при осмысленном движении, а не при микродрожании пальца
+  if (Math.abs(t.clientX - _lpX) > LONG_PRESS_SLOP || Math.abs(t.clientY - _lpY) > LONG_PRESS_SLOP) {
+    clearTimeout(_longPressTimer); _longPressTimer = null;
+  }
+}, { passive: true });
 
 // ── EMOJI PICKER ──
 const EMOJIS = [
@@ -2133,7 +2338,7 @@ function renderMsgIRC(m, isGroup) {
   }
 
   const attDataAttrs = att?.url ? ` data-msg-att-url="${esc(att.url)}" data-msg-att-thumb="${esc(att.thumb||'')}" data-msg-att-mime="${esc(att.mime||'')}" data-msg-att-name="${esc(att.name||'')}"` : '';
-  return `<div class="irc-msg${isGroup?' irc-grouped':''}${m._optimistic?' msg-optimistic':''}" data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
+  return `<div class="irc-msg${isGroup?' irc-grouped':''}${mine?' irc-mine':''}${m._optimistic?' msg-optimistic':''}" data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
     oncontextmenu="${!isDeleted?`showCtxMenu(event,${m.id},${m.sent_at},${mine})`:'event.preventDefault()'}">
     ${avCol}
     <div class="irc-content" ondblclick="${!isDeleted?`dblReply(${m.id})`:''}">

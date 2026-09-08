@@ -114,7 +114,16 @@ router.get('/:id/subrooms', authMiddleware, (req, res) => {
         AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
     `).get(userId, s.id, userId, userId).c;
     const has_avatar = fs.existsSync(path2.join(AVATAR_DIR, `chat_${s.id}.jpg`));
-    return { ...s, unread, unread_mentions: unreadMentions, has_avatar };
+    // Превью последнего сообщения — как в обычном списке чатов: иначе у всех
+    // подкомнат была одинаковая подпись «# подкомната» и не понять, что нового
+    const last = db.prepare(`
+      SELECT m.id, m.text, m.sent_at, m.deleted, m.attachment,
+        COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
+      FROM messages m LEFT JOIN users u ON u.id = m.sender_id
+      WHERE m.chat_id = ? ORDER BY m.sent_at DESC LIMIT 1
+    `).get(s.id);
+    if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
+    return { ...s, unread, unread_mentions: unreadMentions, has_avatar, last_message: last || null };
   });
   res.json(result);
 });

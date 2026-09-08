@@ -1002,11 +1002,12 @@ function renderSubroomsPanel(roomId) {
     const bg = avatarColor(s.id);
     // Как у комнат в списке чатов: эмодзи, если своя картинка не задана
     const letter = '🏠';
+    // avatarColor отдаёт имя класса — как цвет он не работал, фон был прозрачным
     const avStyle = s.has_avatar
-      ? `style="background-color:${bg};background-image:url('${httpProto()}://${S.server}/api/chats/${s.id}/avatar');background-size:cover;background-position:center"`
-      : `style="background:${bg}"`;
+      ? `style="background-image:url('${httpProto()}://${S.server}/api/chats/${s.id}/avatar');background-size:cover;background-position:center"`
+      : '';
     return `<div class="subroom-item${S.activeSubroomId===s.id?' active':''}" onclick="openSubroom(${s.id})">
-      <div class="sr-av" ${avStyle}>${s.has_avatar?'':letter}</div>
+      <div class="sr-av av-orange" ${avStyle}>${s.has_avatar?'':letter}</div>
       <span class="sr-name">${esc(s.name)}</span>
       ${badge}
     </div>`;
@@ -1743,7 +1744,7 @@ function renderMsgIRC(m, isGroup) {
   }
 
   const attDataAttrs = att?.url ? ` data-msg-att-url="${esc(att.url)}" data-msg-att-thumb="${esc(att.thumb||'')}" data-msg-att-mime="${esc(att.mime||'')}" data-msg-att-name="${esc(att.name||'')}"` : '';
-  return `<div class="irc-msg${isGroup?' irc-grouped':''}${m._optimistic?' msg-optimistic':''}" data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
+  return `<div class="irc-msg${isGroup?' irc-grouped':''}${mine?' irc-mine':''}${m._optimistic?' msg-optimistic':''}" data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
     oncontextmenu="${!isDeleted?`showCtxMenu(event,${m.id},${m.sent_at},${mine})`:'event.preventDefault()'}">
     ${avCol}
     <div class="irc-content" ondblclick="${!isDeleted?`dblReply(${m.id})`:''}">
