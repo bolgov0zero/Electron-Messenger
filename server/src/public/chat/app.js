@@ -190,7 +190,19 @@ async function api(method, path, body) {
       body: body ? JSON.stringify(body) : undefined,
       signal: _fetchController.signal,
     });
-    if (res.status === 401) { logout(); return null; }
+    if (res.status === 401) {
+      // Выходим только когда сессия действительно недействительна. Истёкший токен
+      // сначала пробуем продлить, а на прочие отказы (сервер поднимается, база
+      // недоступна) вход не сбрасываем — иначе разлогинивает на ровном месте.
+      const info = await res.json().catch(() => ({}));
+      if (['revoked', 'banned', 'user_not_found'].includes(info.code)) { logout(); return null; }
+      if (info.code === 'expired' && path !== '/auth/refresh') {
+        const ok = await refreshToken();
+        if (ok) return api(method, path, body);
+        logout();
+      }
+      return null;
+    }
     return res.json();
   } catch(e) {
     if (e?.name === 'AbortError') return null;
@@ -198,6 +210,27 @@ async function api(method, path, body) {
   }
 }
 
+// Продление токена: срок 60 дней, но продлеваем раз в сутки при работающем
+// клиенте — тогда он не подходит к концу незаметно.
+let _refreshTimer = null;
+async function refreshToken() {
+  if (!S.token || !S.server) return false;
+  try {
+    const res = await fetch(`${httpProto()}://${S.server}/api/auth/refresh`, {
+      headers: { Authorization: 'Bearer ' + S.token },
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data?.token) return false;
+    S.token = data.token;
+    saveSession();
+    return true;
+  } catch { return false; }
+}
+function startTokenRefresh() {
+  clearInterval(_refreshTimer);
+  _refreshTimer = setInterval(refreshToken, 24 * 60 * 60 * 1000);
+}
 // ── SESSION ──
 function saveSession() {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ server:S.server, token:S.token, user:S.user, settings:S.settings }));
@@ -594,6 +627,7 @@ async function doLogin() {
 }
 
 function logout(intentional = false) {
+  clearInterval(_refreshTimer);
   _fetchController.abort();
   _fetchController = new AbortController();
   closeSettings();
@@ -622,6 +656,7 @@ function logout(intentional = false) {
 
 // ── ENTER APP ──
 function enterApp() {
+  startTokenRefresh();
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-main').classList.add('active');
   initPullGestures();

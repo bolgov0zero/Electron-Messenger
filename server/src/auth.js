@@ -28,24 +28,35 @@ function verifyToken(token) {
 // Сверяем пользователя с БД на каждый запрос: удалённый пользователь или
 // разжалованный админ теряет доступ сразу, а не когда истечёт 7-дневный токен.
 // Заодно display_name/is_admin всегда актуальны, а не заморожены в токене.
+// Причина отказа нужна клиенту: по временной ошибке связи он не должен
+// разлогинивать пользователя, а по отзыву или блокировке — обязан.
+class AuthError extends Error {
+  constructor(code) { super(code); this.code = code; }
+}
+
 function resolveUser(token) {
   const payload = verifyToken(token);
-  const user = db.prepare('SELECT id, username, display_name, is_admin, banned, must_change_password FROM users WHERE id = ?').get(payload.id);
-  if (!user || user.banned) return null;
+  const user = db.prepare('SELECT id, username, display_name, is_admin, banned, must_change_password, sessions_valid_from FROM users WHERE id = ?').get(payload.id);
+  if (!user) throw new AuthError('user_not_found');
+  if (user.banned) throw new AuthError('banned');
+  // iat в секундах, как и отметка. Сравнение нестрогое: токен, выданный в ту же
+  // секунду, что и отзыв, тоже считаем отозванным — иначе он проскочит
+  if (user.sessions_valid_from && payload.iat <= user.sessions_valid_from) throw new AuthError('revoked');
   return { ...user, is_admin: !!user.is_admin, must_change_password: !!user.must_change_password };
 }
 
 function authMiddleware(req, res, next) {
   const header = req.headers['authorization'];
-  if (!header) return res.status(401).json({ error: 'No token' });
+  if (!header) return res.status(401).json({ error: 'No token', code: 'no_token' });
   const token = header.replace('Bearer ', '');
   try {
-    const user = resolveUser(token);
-    if (!user) return res.status(401).json({ error: 'User not found' });
-    req.user = user;
+    req.user = resolveUser(token);
     next();
-  } catch {
-    res.status(401).json({ error: 'Invalid token' });
+  } catch (e) {
+    // code разделяет «сессия больше не действует» и «срок истёк»: по первому
+    // клиент выходит, по второму сначала пробует продлить токен
+    const code = e.code || (e.name === 'TokenExpiredError' ? 'expired' : 'invalid');
+    res.status(401).json({ error: e.message, code });
   }
 }
 
@@ -60,4 +71,4 @@ function wsAuth(token) {
   return user;
 }
 
-module.exports = { signToken, verifyToken, authMiddleware, adminMiddleware, wsAuth };
+module.exports = { signToken, verifyToken, authMiddleware, adminMiddleware, wsAuth, AuthError };

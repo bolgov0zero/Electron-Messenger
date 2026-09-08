@@ -131,6 +131,10 @@ tryAlter('ALTER TABLE messages ADD COLUMN forward_data TEXT');
 tryAlter('ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0');
 // Пароль задан администратором (или это дефолтный admin) — при входе потребуем сменить
 tryAlter('ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0');
+// Отметка отзыва сессий: токены, выданные раньше неё, недействительны.
+// Нужна, чтобы дистанционный выход срабатывал и для выключенных клиентов —
+// сообщение по открытому соединению до них не доходит.
+tryAlter('ALTER TABLE users ADD COLUMN sessions_valid_from INTEGER');
 
 // ── Полнотекстовый поиск (FTS5, external content) ──
 // Целостность обеспечивается JOIN с messages при выборке: осиротевшие FTS-записи

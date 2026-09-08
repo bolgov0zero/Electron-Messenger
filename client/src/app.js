@@ -202,7 +202,19 @@ async function api(method, path, body) {
       body: body ? JSON.stringify(body) : undefined,
       signal: _fetchController.signal,
     });
-    if (res.status === 401) { logout(); return null; }
+    if (res.status === 401) {
+      // Выходим только когда сессия действительно недействительна. Истёкший токен
+      // сначала пробуем продлить, а на прочие отказы (сервер поднимается, база
+      // недоступна) вход не сбрасываем — иначе разлогинивает на ровном месте.
+      const info = await res.json().catch(() => ({}));
+      if (['revoked', 'banned', 'user_not_found'].includes(info.code)) { logout(); return null; }
+      if (info.code === 'expired' && path !== '/auth/refresh') {
+        const ok = await refreshToken();
+        if (ok) return api(method, path, body);
+        logout();
+      }
+      return null;
+    }
     return res.json();
   } catch(e) {
     if (e?.name === 'AbortError') return null;
@@ -210,16 +222,62 @@ async function api(method, path, body) {
   }
 }
 
+// Продление токена: срок 60 дней, но продлеваем раз в сутки при работающем
+// клиенте — тогда он не подходит к концу незаметно.
+let _refreshTimer = null;
+async function refreshToken() {
+  if (!S.token || !S.server) return false;
+  try {
+    const res = await fetch(`${httpProto()}://${S.server}/api/auth/refresh`, {
+      headers: { Authorization: 'Bearer ' + S.token },
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data?.token) return false;
+    S.token = data.token;
+    saveSession();
+    return true;
+  } catch { return false; }
+}
+function startTokenRefresh() {
+  clearInterval(_refreshTimer);
+  _refreshTimer = setInterval(refreshToken, 24 * 60 * 60 * 1000);
+}
 // ── SESSION ──
 function saveSession() {
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ server:S.server, token:S.token, user:S.user, settings:S.settings }));
+  const json = JSON.stringify({ server:S.server, token:S.token, user:S.user, settings:S.settings });
+  localStorage.setItem(SESSION_KEY, json);
+  // Запасная копия: хранилище движка теряется при переустановке с очисткой данных
+  // и при порче профиля, а файл в папке пользователя переживает и то, и другое
+  window.electron?.sessionSave?.(json);
 }
 function loadSession() {
-  try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { return null; }
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
 }
 
 // ── INIT ──
+// Если хранилище движка пустое, поднимаем вход из запасной копии, а адрес сервера
+// берём из имени установщика (Windows) — тогда сотруднику не нужно вводить его руками.
+async function restoreFromDisk() {
+  if (!window.electron) return;
+  try {
+    if (!localStorage.getItem(SESSION_KEY)) {
+      const json = await window.electron.sessionLoad?.();
+      if (json) localStorage.setItem(SESSION_KEY, json);
+    }
+    if (!localStorage.getItem('lastServer')) {
+      const preset = await window.electron.getPresetServer?.();
+      if (preset) localStorage.setItem('lastServer', preset);
+    }
+  } catch {}
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
+  await restoreFromDisk();
   // Версия — всегда, независимо от сессии
   if (window.electron?.getVersion) {
     window.electron.getVersion().then(v => {
@@ -356,6 +414,8 @@ async function doLogin() {
 }
 
 function logout(intentional = false) {
+  clearInterval(_refreshTimer);
+  window.electron?.sessionClear?.();
   _fetchController.abort();
   _fetchController = new AbortController();
   closeSettings();
@@ -375,6 +435,7 @@ function logout(intentional = false) {
 
 // ── ENTER APP ──
 function enterApp() {
+  startTokenRefresh();
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-main').classList.add('active');
   loadDownloadedFiles();

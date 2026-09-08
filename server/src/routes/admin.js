@@ -350,15 +350,18 @@ router.get('/updates/progress', (req, res) => {
   res.json(getUpdateProgress());
 });
 
-// Завершить ВСЕ сессии пользователя (все устройства)
+// Завершить ВСЕ сессии пользователя (все устройства).
+// Отметка нужна для выключенных клиентов: сообщение по соединению до них
+// не дойдёт, а при следующем запуске старый токен уже не подойдёт.
 router.post('/users/:id/logout', (req, res) => {
+  db.prepare('UPDATE users SET sessions_valid_from = unixepoch() WHERE id = ?').run(Number(req.params.id));
   sendTo(Number(req.params.id), { type: 'force_logout' });
   res.json({ ok: true });
 });
 
 // Блокировка / разблокировка пользователя
 router.post('/users/:id/ban', (req, res) => {
-  db.prepare('UPDATE users SET banned = 1 WHERE id = ?').run(Number(req.params.id));
+  db.prepare('UPDATE users SET banned = 1, sessions_valid_from = unixepoch() WHERE id = ?').run(Number(req.params.id));
   sendTo(Number(req.params.id), { type: 'force_logout' });
   res.json({ ok: true });
 });

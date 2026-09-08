@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, Notification, ipcMain, net } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, Notification, ipcMain, net, safeStorage } = require('electron');
 
 if (process.platform === 'linux') {
   // Полностью отключаем все подсистемы sandbox: на некоторых конфигурациях
@@ -418,6 +418,54 @@ ipcMain.on('unread', (_, count) => {
     mainWindow.flashFrame(true);
   }
   if (count === 0 && mainWindow) mainWindow.flashFrame(false);
+});
+
+// ── Запасная копия сессии ──
+// Хранилище движка живёт в профиле приложения и теряется при переустановке с
+// очисткой данных или порче профиля. Дублируем вход в отдельный файл и шифруем
+// средствами системы: прочитать сможет только тот же пользователь на той же машине.
+const SESSION_FILE = path.join(app.getPath('userData'), 'session.bin');
+
+ipcMain.handle('session-save', (_, json) => {
+  try {
+    const data = safeStorage.isEncryptionAvailable()
+      ? safeStorage.encryptString(json)
+      : Buffer.from(json, 'utf8');
+    fs.writeFileSync(SESSION_FILE, data);
+    return true;
+  } catch { return false; }
+});
+
+ipcMain.handle('session-load', () => {
+  try {
+    if (!fs.existsSync(SESSION_FILE)) return null;
+    const buf = fs.readFileSync(SESSION_FILE);
+    return safeStorage.isEncryptionAvailable()
+      ? safeStorage.decryptString(buf)
+      : buf.toString('utf8');
+  } catch { return null; }
+});
+
+ipcMain.handle('session-clear', () => {
+  try { fs.unlinkSync(SESSION_FILE); } catch {}
+  return true;
+});
+
+// ── Адрес сервера из имени установщика (только Windows) ──
+// Установщик Electron_s192.168.1.2-3000.exe кладёт рядом с приложением файл
+// server.cfg, откуда адрес и берётся при первом запуске. Порт отделяется дефисом:
+// двоеточие в именах файлов Windows недопустимо.
+ipcMain.handle('get-preset-server', () => {
+  if (process.platform !== 'win32') return null;
+  try {
+    const cfg = path.join(path.dirname(app.getPath('exe')), 'server.cfg');
+    if (!fs.existsSync(cfg)) return null;
+    const raw = fs.readFileSync(cfg, 'utf8').trim();
+    if (!raw) return null;
+    // host-port → host:port; без порта оставляем как есть
+    const m = raw.match(/^(.+)-(\d{2,5})$/);
+    return m ? `${m[1]}:${m[2]}` : raw;
+  } catch { return null; }
 });
 
 ipcMain.handle('get-platform', () => process.platform);
