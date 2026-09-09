@@ -3388,14 +3388,17 @@ html.dark .announcement-title { color: var(--danger); }
 /* сообщение из одного смайлика: крупнее и без пузыря — он проступает при наведении
    на сам смайлик, а не на всю строку. Время видно всегда и стоит там же, где было бы
    внутри пузыря, поэтому место под него зарезервировано и ничего не сдвигается. */
-.irc-text.emoji-only { font-size: 2.9em; line-height: 1.15; }
+.irc-text.emoji-only { font-size: 4em; line-height: 1.15; }
 .irc-msg.emoji-msg .msg-bubble {
   background: none; border-color: transparent;
   transition: background .13s ease, border-color .13s ease;
 }
 .irc-msg.emoji-msg .msg-bubble:hover { background: var(--card-bg); border-color: var(--border); }
 .irc-msg.emoji-msg[data-mine] .msg-bubble:hover {
-  background: var(--accent-soft); border-color: var(--role-teal-border);
+  /* Акцент полупрозрачный — подкладываем цвет переписки, иначе сквозь пузырь
+     просвечивает узор фона */
+  background: linear-gradient(var(--accent-soft), var(--accent-soft)) var(--chat-bg);
+  border-color: var(--role-teal-border);
 }
 
 /* цвет цитаты — по автору цитируемого: своё цветом своего пузыря, чужое цветом тега */
