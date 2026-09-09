@@ -455,6 +455,16 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
    с одного взгляда, а не только по бейджу в колонке статуса */
 .row-banned .user-cell, .row-banned td:not(:last-child) { opacity: .55; }
 
+/* Фильтры в шапке карточки */
+.card-head-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.filter-select{height:28px;padding:0 8px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-xs);color:var(--c-text2);font-size:11px;font-family:var(--f-ui);cursor:pointer;outline:none;max-width:190px}
+.filter-select:hover{border-color:var(--c-primary)}
+.filter-select:focus{border-color:var(--c-primary);color:var(--c-text)}
+
+/* Прокручивается только содержимое таблицы, заголовки остаются на месте */
+.table-scroll{overflow:auto;max-height:calc(100vh - 240px)}
+.table-scroll thead th{position:sticky;top:0;z-index:2}
+
 /* ── ПРОСМОТР КАРТИНКИ ── */
 /* Только для изображений: у остальных файлов показывать нечего */
 #file-lightbox{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);padding:48px}
@@ -3157,11 +3167,20 @@ async function renderFiles() {
     return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
   }
 
-  let searchVal = '';
+  let searchVal = '', senderVal = '', chatVal = '';
   function getFiltered() {
     const q = searchVal.toLowerCase();
-    return q ? files.filter(f => (f.filename||'').toLowerCase().includes(q) || (f.sender_name||'').toLowerCase().includes(q) || (f.chat_name||'').toLowerCase().includes(q)) : files;
+    return files.filter(f => {
+      if (senderVal && (f.sender_name || '') !== senderVal) return false;
+      if (chatVal && (f.chat_name || '') !== chatVal) return false;
+      if (!q) return true;
+      return (f.filename||'').toLowerCase().includes(q)
+          || (f.sender_name||'').toLowerCase().includes(q)
+          || (f.chat_name||'').toLowerCase().includes(q);
+    });
   }
+  // Списки для фильтров берём из самих файлов: показываем только тех, у кого файлы есть
+  const uniq = key => [...new Set(files.map(f => f[key]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru'));
 
   function renderTable() {
     const filtered = getFiltered();
@@ -3182,31 +3201,46 @@ async function renderFiles() {
         <td style="font-size:11px;font-family:var(--f-mono);color:var(--c-text2)" title="${esc(f.filename)}">${esc(fname)}</td>
         <td style="font-size:11px;color:var(--c-muted)">${sizeCell}</td>
         <td style="font-size:11px;color:var(--c-text2)">${esc(f.sender_name||'—')}</td>
-        <td style="font-size:11px;color:var(--c-text2)">${esc(f.chat_name||'—')}</td>
+        <td style="font-size:11px;color:var(--c-text2)">${f.chat_name ? esc(f.chat_name) + chatKindBadge(f.chat_type) : '—'}</td>
         <td style="font-size:11px;color:var(--c-muted)">${f.sent_at ? fmtDate(f.sent_at) : '—'}</td>
         <td>${actionCell}</td>
       </tr>`;
     }).join('') : `<tr><td colspan="7"><div class="empty-state"><p>Нет файлов</p></div></td></tr>`;
 
     document.getElementById('files-tbody').innerHTML = rows;
+    const cnt = document.getElementById('files-count');
+    if (cnt) cnt.textContent = filtered.length === files.length ? `(${files.length})` : `(${filtered.length} из ${files.length})`;
   }
 
+  const optsHtml = (list) => list.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
   document.getElementById('page-body').innerHTML = `
     <div class="card">
       <div class="card-head">
-        <h3>Файлы <span style="color:var(--c-muted);font-weight:500">(${files.length})</span></h3>
-        <div class="search-box">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input placeholder="Поиск…" id="files-search" oninput="filesSearchHandler(this.value)">
+        <h3>Файлы <span id="files-count" style="color:var(--c-muted);font-weight:500">(${files.length})</span></h3>
+        <div class="card-head-right">
+          <select class="filter-select" id="files-sender" onchange="filesSenderHandler(this.value)">
+            <option value="">Все отправители</option>${optsHtml(uniq('sender_name'))}
+          </select>
+          <select class="filter-select" id="files-chat" onchange="filesChatHandler(this.value)">
+            <option value="">Все чаты</option>${optsHtml(uniq('chat_name'))}
+          </select>
+          <div class="search-box">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input placeholder="Поиск…" id="files-search" oninput="filesSearchHandler(this.value)">
+          </div>
         </div>
       </div>
-      <table>
-        <thead><tr><th style="width:40px"></th><th>Файл</th><th>Размер</th><th>Загрузил</th><th>Чат</th><th>Дата</th><th>Действия</th></tr></thead>
-        <tbody id="files-tbody"></tbody>
-      </table>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th style="width:40px"></th><th>Файл</th><th>Размер</th><th>Загрузил</th><th>Чат</th><th>Дата</th><th>Действия</th></tr></thead>
+          <tbody id="files-tbody"></tbody>
+        </table>
+      </div>
     </div>`;
 
   window.filesSearchHandler = (q) => { searchVal = q; renderTable(); };
+  window.filesSenderHandler = (v) => { senderVal = v; renderTable(); };
+  window.filesChatHandler = (v) => { chatVal = v; renderTable(); };
   renderTable();
 }
 
@@ -3216,6 +3250,14 @@ function deleteFile(filename) {
     if (data?.ok) { toast('Файл удалён', 'success'); renderFiles(); }
     else toast(data?.error || 'Ошибка', 'error');
   });
+}
+
+/* Вид чата рядом с названием: у личных своего имени нет, там имена собеседников */
+function chatKindBadge(type) {
+  if (type === 'direct') return ' <span class="badge badge-gray" style="margin-left:4px">личный</span>';
+  if (type === 'group')  return ' <span class="badge badge-purple" style="margin-left:4px">группа</span>';
+  if (type === 'room')   return ' <span class="badge badge-blue" style="margin-left:4px">комната</span>';
+  return '';
 }
 
 /* ── ПРОСМОТР КАРТИНКИ ── */

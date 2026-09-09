@@ -592,7 +592,7 @@ router.post('/subrooms/reorder', (req, res) => {
 function collectFiles() {
   const msgs = db.prepare(`
     SELECT m.id, m.chat_id, m.attachment, m.sent_at,
-           u.display_name as sender_name, c.name as chat_name
+           u.display_name as sender_name, c.name as chat_name, c.type as chat_type
     FROM messages m
     LEFT JOIN users u ON u.id = m.sender_id
     LEFT JOIN chats c ON c.id = m.chat_id
@@ -610,10 +610,28 @@ function collectFiles() {
         fileMap.set(fname, {
           filename: fname, mime: att.mime || null,
           message_id: msg.id, chat_id: msg.chat_id,
-          chat_name: msg.chat_name, sender_name: msg.sender_name, sent_at: msg.sent_at,
+          chat_name: msg.chat_name, chat_type: msg.chat_type,
+          sender_name: msg.sender_name, sent_at: msg.sent_at,
         });
       }
     } catch {}
+  }
+
+  // У личных чатов нет названия — подставляем имена собеседников, иначе в списке
+  // файлов вместо чата стоял прочерк
+  const directIds = [...new Set([...fileMap.values()].filter(f => f.chat_type === 'direct').map(f => f.chat_id))];
+  if (directIds.length) {
+    const ph = directIds.map(() => '?').join(',');
+    const rows = db.prepare(`
+      SELECT cm.chat_id, COALESCE(u.display_name, 'Удалённый аккаунт') AS name
+      FROM chat_members cm JOIN users u ON u.id = cm.user_id
+      WHERE cm.chat_id IN (${ph}) ORDER BY cm.chat_id, u.display_name
+    `).all(...directIds);
+    const byChat = new Map();
+    rows.forEach(r => { if (!byChat.has(r.chat_id)) byChat.set(r.chat_id, []); byChat.get(r.chat_id).push(r.name); });
+    for (const f of fileMap.values()) {
+      if (f.chat_type === 'direct') f.chat_name = (byChat.get(f.chat_id) || []).join(' — ') || 'Личный чат';
+    }
   }
 
   // Вторичный источник: файлы на диске, не привязанные ни к одному сообщению
