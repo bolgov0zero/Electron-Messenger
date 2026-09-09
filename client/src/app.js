@@ -1459,17 +1459,16 @@ function topicsPanelHtml(roomId) {
   const head = _tpSearchOpen
     ? '<input class="tp-search" id="tp-search" placeholder="Поиск темы" value="' + esc(_tpQuery) + '"' +
       ' oninput="filterTopics(this.value)" onkeydown="if(event.key===\'Escape\')closeTopicSearch()">' +
-      '<button class="tp-icon-btn" onclick="closeTopicSearch()" title="Отменить поиск">' +
+      '<button class="tp-icon-btn on" onclick="closeTopicSearch()" title="Отменить поиск">' +
       '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
     : '<span class="tp-title">' + esc(room?.name || 'Комната') + '</span>' +
-      '<button class="tp-icon-btn" onclick="openTopicSearch()" title="Поиск темы"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>';
+      '<button class="tp-icon-btn on" onclick="openTopicSearch()" title="Поиск темы"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>';
 
-  return '<div class="tp-head">' +
-      '<button class="tp-icon-btn" onclick="leaveRoom()" title="К списку чатов"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>' +
-      head +
-    '</div>' +
+  return '<div class="tp-head">' + head + '</div>' +
     '<div class="tp-list">' +
-      '<div class="chat-list-section-label">Темы' + (n ? ' · ' + n + ' ' + word : '') + '</div>' +
+      // Разделитель вместо подписи раздела — на той же высоте, что и первая
+      // черта в свёрнутом списке чатов
+      '<div class="tp-sep"></div>' +
       (shown.length ? shown.map(topicRow).join('') : '<div class="tp-empty">Ничего не найдено</div>') +
     '</div>';
 }
@@ -1482,8 +1481,7 @@ function filterTopics(q) {
   const subs = S.topics[S.activeRoomId] || [];
   const t = q.trim().toLowerCase();
   const shown = t ? subs.filter(s => s.name.toLowerCase().includes(t)) : subs;
-  const label = list.querySelector('.chat-list-section-label')?.outerHTML || '';
-  list.innerHTML = label + (shown.length
+  list.innerHTML = '<div class="tp-sep"></div>' + (shown.length
     ? shown.map(topicRow).join('')
     : '<div class="tp-empty">Ничего не найдено</div>');
 }
@@ -1514,15 +1512,24 @@ function renderTopicsPanel(roomId) {
   const panel = document.getElementById('topics-panel');
   const subs = S.topics[roomId] || [];
   if (!subs.length) { closeTopicsPanel(); return; }
+  // Анимация появления — только при входе в комнату. Панель перерисовывается
+  // и при выборе темы, и при новом сообщении; без этой проверки список
+  // дёргался каждый раз, будто открывается заново.
+  const wasOpen = panel.classList.contains('open');
   panel.classList.add('open');
   // Сайдбар сжимается в полосу аватарок: место уходит списку тем
   document.body.classList.add('rooms-strip');
   panel.innerHTML = topicsPanelHtml(roomId);
+  if (!wasOpen) {
+    panel.classList.add('tp-enter');
+    setTimeout(() => panel.classList.remove('tp-enter'), 260);
+  }
 }
 
 function closeTopicsPanel() {
   const panel = document.getElementById('topics-panel');
   panel.classList.remove('open');
+  panel.classList.remove('tp-enter');
   panel.innerHTML = '';
   document.body.classList.remove('rooms-strip');
   _tpSearchOpen = false; _tpQuery = '';
@@ -1530,8 +1537,7 @@ function closeTopicsPanel() {
 
 async function openTopic(topicId) {
   S.activeTopicId = topicId;
-  const parentId = S.activeRoomId;
-  if (parentId) renderTopicsPanel(parentId);
+  // Панель перерисует сам openChat — отдельный вызов только гонял бы её дважды
   await openChat(topicId);
 }
 

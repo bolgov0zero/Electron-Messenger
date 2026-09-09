@@ -785,21 +785,25 @@ html.no-emoji-font .md-code {
      тогда подпись раздела и первые строки обоих списков стоят на одной линии */
   height: 73px; flex-shrink: 0;
   padding: 12px 8px 12px 5px;
-  display: flex; align-items: center; gap: 2px;
+  /* Прижимаем к верху и держим высоту 37px — ровно как поле поиска в сайдбаре.
+     При выравнивании по центру содержимое шапки стояло на 6px ниже кнопки
+     в свёрнутой полосе. */
+  display: flex; align-items: flex-start; gap: 2px;
 }
+.tp-head > * { height: 37px; }
 .tp-icon-btn {
-  width: 30px; height: 30px; flex-shrink: 0;
+  width: 37px; height: 37px; flex-shrink: 0;
   border: none; background: none; cursor: pointer; border-radius: 9px;
   color: var(--text2); display: flex; align-items: center; justify-content: center;
   transition: background .12s, color .12s;
 }
 .tp-icon-btn:hover { background: var(--hover-row); color: var(--text); }
 .tp-title {
-  flex: 1; min-width: 0; font-size: 14px; font-weight: 650; color: var(--text);
+  flex: 1; min-width: 0; display: flex; align-items: center; font-size: 14px; font-weight: 650; color: var(--text);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .tp-search {
-  flex: 1; min-width: 0; height: 30px;
+  flex: 1; min-width: 0; height: 37px;
   background: var(--search-bg); border: 1px solid var(--border); border-radius: 9px;
   padding: 0 10px; font-size: 13px; color: var(--text); font-family: inherit; outline: none;
 }
@@ -810,16 +814,52 @@ html.no-emoji-font .md-code {
 .tp-list::-webkit-scrollbar { width: 4px; }
 .tp-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9px; }
 .tp-empty { padding: 18px 14px; text-align: center; color: var(--muted); font-size: 13px; }
+/* Разделитель в списке тем — на той же высоте, что первая черта в полосе:
+   у него та же геометрия, что у подписи раздела, вместо которой он стоит */
+.tp-sep {
+  position: relative; height: 29px;
+  padding: 10px 14px 5px; box-sizing: border-box;
+}
+.tp-sep::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%;
+  height: 1px; background: var(--border);
+}
+/* Кнопка поиска — с подложкой, как поле поиска в сайдбаре */
+.tp-icon-btn.on { background: var(--search-bg); }
+.tp-icon-btn.on:hover { background: var(--hover-row); }
 
 /* ── Сайдбар, сжатый в полосу аватарок ──
    Высоты блоков и строк не меняются, меняется только ширина колонки и
    содержимое — иначе аватарки прыгали бы вверх при входе в комнату. */
-body.rooms-strip .sidebar { width: 64px; min-width: 64px; }
+/* 65, а не 64: правая рамка съедает пиксель, и при 64 строка шириной 58
+   вставала не по центру — слева 3px, справа 2 */
+body.rooms-strip .sidebar { width: 65px; min-width: 65px; }
 body.rooms-strip .sidebar .info,
 body.rooms-strip .sidebar .sa-name,
 body.rooms-strip .sidebar .sa-gear,
 body.rooms-strip .sidebar .search-wrap input,
 body.rooms-strip .sidebar .search-clear { display: none; }
+/* В полосе на месте поиска стоит «назад» — выход из комнаты. Поиск по чатам
+   тут не нужен: полоса и так показывает всё, что помещается. */
+body.rooms-strip .sidebar-search .search-wrap { display: none; }
+body.rooms-strip .sidebar-search .strip-back { display: flex; }
+.strip-back {
+  display: none; width: 100%; height: 37px;
+  border: none; background: var(--search-bg); border-radius: 9px;
+  color: var(--text2); cursor: pointer;
+  align-items: center; justify-content: center;
+  transition: background .12s, color .12s;
+}
+.strip-back:hover { background: var(--hover-row); color: var(--text); }
+/* Подписи разделов в полосе не читаются — вместо них черта той же высоты */
+body.rooms-strip .chat-list-section-label {
+  visibility: visible; position: relative; color: transparent;
+  white-space: nowrap; overflow: hidden;
+}
+body.rooms-strip .chat-list-section-label::after {
+  content: ''; position: absolute; left: 10px; right: 10px; top: 50%;
+  height: 1px; background: var(--border);
+}
 body.rooms-strip .sidebar-search { padding: 12px 12px; }
 body.rooms-strip .search-wrap { justify-content: center; padding: 9px 0; height: 37px; }
 /* Ширина строки задана явно: аватарка 40px плюс по 9px с каждой стороны —
@@ -834,11 +874,6 @@ body.rooms-strip .chats-list .chat-item {
   padding: 9px 0;
 }
 /* подпись раздела прячем, но место оставляем — иначе список уедет вверх */
-body.rooms-strip .chat-list-section-label {
-  visibility: hidden;
-  /* в 64px «Все чаты» переносилось на две строки и раздвигало список */
-  white-space: nowrap; overflow: hidden;
-}
 body.rooms-strip .sidebar-account { justify-content: center; padding: 20px 0; }
 /* счётчик уезжает на угол аватарки; при упоминании показываем только его */
 body.rooms-strip .chats-list .chat-item .unread-badge {
@@ -858,11 +893,11 @@ body.rooms-strip .sidebar { transition: none; }
    начальный кадр вне самой анимации, и если та почему-то не проиграет,
    колонка так и останется сдвинутой на 14px влево. Без них покой — это
    обычное положение, а анимация лишь проигрывается поверх. */
-.topics-panel.open .tp-head,
-.topics-panel.open .tp-list { animation: tpEnter .18s cubic-bezier(.4, 0, .2, 1); }
+.topics-panel.tp-enter .tp-head,
+.topics-panel.tp-enter .tp-list { animation: tpEnter .18s cubic-bezier(.4, 0, .2, 1); }
 @media (prefers-reduced-motion: reduce) {
-  .topics-panel.open .tp-head,
-  .topics-panel.open .tp-list { animation: none; }
+  .topics-panel.tp-enter .tp-head,
+  .topics-panel.tp-enter .tp-list { animation: none; }
 }
 
 /* ══════════════════════════════════════════
