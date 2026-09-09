@@ -535,6 +535,11 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           Пользователи
           <span class="nav-badge" id="nb-users">—</span>
         </div>
+        <div class="nav-item" onclick="nav('clients')" data-page="clients">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Клиенты
+          <span class="nav-badge" id="nb-clients">—</span>
+        </div>
         <div class="nav-item" onclick="nav('rooms')" data-page="rooms">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           Комнаты
@@ -548,11 +553,12 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
         <div class="nav-item" onclick="nav('files')" data-page="files">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
           Файлы
+          <span class="nav-badge" id="nb-files">—</span>
         </div>
-        <div class="nav-item" onclick="nav('clients')" data-page="clients">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          Клиенты
-          <span class="nav-badge" id="nb-clients">—</span>
+        <div class="nav-item" onclick="nav('announcements')" data-page="announcements">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M17 8a5 5 0 0 1 0 8"/></svg>
+          Объявления
+          <span class="nav-badge" id="nb-announcements">—</span>
         </div>
         <div class="nav-item" onclick="nav('push')" data-page="push">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -563,11 +569,6 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
           Вебхуки
           <span class="nav-badge" id="nb-webhooks">—</span>
-        </div>
-        <div class="nav-item" onclick="nav('announcements')" data-page="announcements">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M17 8a5 5 0 0 1 0 8"/></svg>
-          Объявления
-          <span class="nav-badge" id="nb-announcements">—</span>
         </div>
       </nav>
       <div class="sb-bottom">
@@ -1488,6 +1489,7 @@ async function updateNavBadges() {
     setB('nb-rooms', s.rooms||0);
     setB('nb-chats', (s.chats||0)+(s.groups||0));
     setB('nb-push',  s.pushSubscriptions||0);
+    setB('nb-files', s.filesCount||0);
     try { const whs=await api('GET','/api/admin/webhooks'); setB('nb-webhooks',whs.length||0); } catch {}
     try { const anns=await api('GET','/api/admin/announcements'); setB('nb-announcements',anns.length||0); } catch {}
   } catch {}
@@ -3116,6 +3118,8 @@ async function doServerUpdateSettings() {
 async function renderFiles() {
   document.getElementById('page-body').innerHTML = `<div style="color:var(--c-muted);font-size:12px;padding:20px 0">Загрузка…</div>`;
   const files = await api('GET', '/api/admin/files') || [];
+  const nbFiles = document.getElementById('nb-files');
+  if (nbFiles) nbFiles.textContent = files.length;
 
   function fmtSize(bytes) {
     if (!bytes) return '—';
