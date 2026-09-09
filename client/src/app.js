@@ -181,6 +181,22 @@ function fmtDate(ts) {
   return d.toLocaleDateString('ru',{day:'numeric',month:'long'});
 }
 function avatarColor(id) { return ['av-blue','av-green','av-purple','av-orange'][id%4]; }
+
+// Тег пользователя: у себя берём из профиля, у остальных — из списка людей.
+// Нужен там, где на руках только идентификатор (реакции, упоминания, поиск).
+function tagOfUser(id) {
+  if (S.user && id === S.user.id) return S.user.tag;
+  return S.allUsers.find(u => u.id === id)?.tag || null;
+}
+
+// Аватарка красится в цвет тега — тогда человек узнаётся одинаково и в переписке,
+// и в реакциях, и в списках. Без тега остаётся прежний цвет по идентификатору.
+// Только для людей: у чатов и комнат идентификаторы из того же диапазона, и
+// подстановка тега покрасила бы группу в цвет случайного сотрудника.
+function userAvatarColor(id, tag) {
+  const cls = senderNameClass(tag === undefined || tag === null ? tagOfUser(id) : tag);
+  return cls === 'default' ? avatarColor(id) : 'av-' + cls;
+}
 function formatEditLimit(sec) {
   if (sec < 60) return `${sec} сек`;
   const min = Math.round(sec / 60);
@@ -449,7 +465,7 @@ function enterApp() {
   const acAv = document.getElementById('sb-account-av');
   const acName = document.getElementById('sb-account-name');
   if (acAv) {
-    acAv.className = `av sa-av ${avatarColor(S.user.id)}`;
+    acAv.className = `av sa-av ${userAvatarColor(S.user.id, S.user.tag)}`;
     acAv.style.backgroundImage = '';
     acAv.textContent = initials(S.user.display_name);
     const acUrl = `${httpProto()}://${S.server}/api/users/${S.user.id}/avatar?t=${Date.now()}`;
@@ -550,7 +566,7 @@ function showSettingsTab(tab) {
 
   if (tab === 'profile') {
     const u = S.user;
-    const avColor = avatarColor(u.id);
+    const avColor = userAvatarColor(u.id, u.tag);
     content.innerHTML = `
       <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:24px">
         <div style="position:relative">
@@ -697,7 +713,7 @@ async function setAutostart(enabled) { await window.electron?.setAutostart(enabl
 function updateSettingsAvatar() {
   const el = document.getElementById('settings-av');
   if (!el) return;
-  el.className = `av av-lg ${avatarColor(S.user.id)}`;
+  el.className = `av av-lg ${userAvatarColor(S.user.id, S.user.tag)}`;
   const url = `${httpProto()}://${S.server}/api/users/${S.user.id}/avatar?t=${Date.now()}`;
   const img = new Image();
   img.onload = () => {
@@ -805,7 +821,8 @@ function chatName(chat) {
 function chatAvatarClass(chat) {
   if (chat.type==='room') return 'av-orange';
   if (chat.type==='group') return 'av-green';
-  return avatarColor(getPeerUserId(chat) || chat.id);
+  const peer = getPeerUserId(chat);
+  return peer ? userAvatarColor(peer) : avatarColor(chat.id);
 }
 
 function chatIcon(chat) {
@@ -1105,7 +1122,7 @@ function renderSearchRow(r) {
   const title = chat ? chatName(chat) : (r.sender_name || '');
   const snip = esc(r.snippet || '').replaceAll('\u0001', '<b>').replaceAll('\u0002', '</b>');
   return `<div class="chat-item" onclick="openSearchResult(${r.chat_id},${r.id})">
-    <div class="av av-md ${avatarColor(r.sender_id || 0)} av-round">${initials(r.sender_name || '?')}</div>
+    <div class="av av-md ${userAvatarColor(r.sender_id || 0)} av-round">${initials(r.sender_name || '?')}</div>
     <div class="info">
       <div class="ci-name" style="display:flex;align-items:center;gap:5px">
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(title)}</span>
@@ -1419,7 +1436,7 @@ const EMOJI_GROUPS = [
   { key: 'smile', icon: '😀', name: 'Смайлы', items: [
     '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃',
     '😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙',
-    '😋','😛','😜','🤪','😝','🤦','🤷','🤭','🤫','🤔',
+    '😋','😛','😜','🤪','😝','🤭','🤫','🤔',
     '🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥',
     '😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮',
     '🤧','🥵','🥶','🥴','😵','🤯','🤠','😎','🤓','🧐',
@@ -1435,7 +1452,7 @@ const EMOJI_GROUPS = [
     '👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓',
     '👴','👵','💂','👮','🕵️','👷','💃','🕺','👸','🤴',
     '🤰','👼','🎅','🤶','🦸','🦹','🧙','🧚','🧜','🧝',
-    '🧛','🧟','🧎','🧍','🚶','🏃'] },
+    '🧛','🧟','🧎','🧍','🚶','🏃','🤦','🤷'] },
   { key: 'nature', icon: '🐶', name: 'Животные и природа', items: [
     '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯',
     '🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦆','🦅',
@@ -1959,7 +1976,7 @@ function reactionAvatars(userIds) {
     const u = S.allUsers.find(x => x.id === uid) || (uid === S.user?.id ? S.user : null);
     const name = u?.display_name || '';
     const url = `${httpProto()}://${S.server}/api/users/${uid}/avatar?t=${S.avatarTs || 0}`;
-    return `<span class="ra ${avatarColor(uid)}" style="z-index:${20 - k}" title="${esc(name)}">` +
+    return `<span class="ra ${userAvatarColor(uid)}" style="z-index:${20 - k}" title="${esc(name)}">` +
       `${esc(initials(name) || '?')}` +
       `<img src="${url}" alt="" onerror="this.style.display='none'">` +
       `</span>`;
@@ -2093,7 +2110,7 @@ function _rtRender(btn, reaction, users) {
     shown.map(u => {
       const url = `${httpProto()}://${S.server}/api/users/${u.user_id}/avatar?t=${S.avatarTs || 0}`;
       return `<span class="rt-row">` +
-        `<span class="rt-av ${avatarColor(u.user_id)}">${esc(initials(u.display_name) || '?')}` +
+        `<span class="rt-av ${userAvatarColor(u.user_id)}">${esc(initials(u.display_name) || '?')}` +
         `<img src="${url}" alt="" onerror="this.style.display='none'"></span>` +
         `<span class="rt-name">${esc(u.display_name)}</span></span>`;
     }).join('') +
@@ -2170,11 +2187,7 @@ function reflowSeries() {
 
 function rolePillHtml(tag) {
   if (!tag) return '';
-  const tagLow = tag.toLowerCase();
-  let cls = 'default';
-  if (tagLow === 'developer') cls = 'teal';
-  else if (tagLow === 'tester') cls = 'indigo';
-  return `<span class="role-pill ${cls}">${esc(tag)}</span>`;
+  return `<span class="role-pill ${senderNameClass(tag)}">${esc(tag)}</span>`;
 }
 
 // Сообщение без текста кроме смайликов показываем крупно и без пузыря
@@ -2185,12 +2198,18 @@ function isEmojiOnly(text) {
   try { return EMOJI_ONLY_RE.test(t) && /\p{Extended_Pictographic}/u.test(t); } catch { return false; }
 }
 
+// Цвет тега считается из его текста: одна и та же надпись всегда даёт один цвет,
+// и латиница с кириллицей тут равноправны — хеш идёт по кодам символов. Раньше
+// цветными были только developer и tester, всё остальное серым.
+const TAG_COLORS = 8;
 function senderNameClass(tag) {
-  if (!tag) return 'default';
-  const t = (tag||'').toLowerCase();
-  if (t === 'developer') return 'teal';
-  if (t === 'tester') return 'indigo';
-  return 'default';
+  const t = (tag || '').trim().toLowerCase();
+  if (!t) return 'default';
+  // FNV-1a: простое умножение на 31 давало перекос — коды кириллицы идут подряд,
+  // и половина тегов попадала в один цвет
+  let h = 2166136261;
+  for (const ch of t) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  return 'tag-' + (h % TAG_COLORS + 1);
 }
 
 function renderMsgIRC(m, isFirst = true, isTail = true) {
@@ -2217,7 +2236,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true) {
   const statusIcon = mine && !isDeleted ? renderStatus(m.status) : '';
   const reactionsHtml = isDeleted ? '' : renderReactions(m.id);
   const senderName = esc(m.sender_name);
-  const avColor = avatarColor(m.sender_id);
+  const avColor = userAvatarColor(m.sender_id, m.sender_tag);
   // аватарка 32px вмещает обе буквы; обрезка до одной осталась от прежних 28px
   const avLetter = initials(m.sender_name);
   const avImg = `<img src="${httpProto()}://${S.server}/api/users/${m.sender_id}/avatar" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display='none'">`;
@@ -2467,7 +2486,7 @@ function _updateMentionPopup(el) {
   _mentionIdx = -1;
   popup.innerHTML = filtered.map(m =>
     `<div class="mention-item" data-name="${esc(m.display_name||m.username)}" onclick="insertMention('${esc(m.display_name||m.username)}')">
-      <div class="av av-sm av-round ${avatarColor(m.id)}" data-av-user="${m.id}">${initials(m.display_name)}</div>
+      <div class="av av-sm av-round ${userAvatarColor(m.id, m.tag)}" data-av-user="${m.id}">${initials(m.display_name)}</div>
       <div><div class="mn-name">${esc(m.display_name||m.username)}</div><div class="mn-login">@${esc(m.username)}</div></div>
     </div>`
   ).join('');
@@ -3257,7 +3276,7 @@ async function ctxInfo() {
     } else {
       body = `<div class="mi-group-count">${readUsers.length} из ${nMembers(total)}</div>`;
       body += readUsers.map(s => `<div class="mi-user-row">
-        <div class="av mi-av ${avatarColor(s.user_id)}" data-av-user="${s.user_id}">${initials(s.display_name)}</div>
+        <div class="av mi-av ${userAvatarColor(s.user_id)}" data-av-user="${s.user_id}">${initials(s.display_name)}</div>
         <div class="mi-user-name">${esc(s.display_name)}</div>
         <div class="mi-user-time">${fmtDt(s.read_at)}</div>
       </div>`).join('');
@@ -3799,7 +3818,7 @@ async function onGroupAvatarChange(input) {
 // ── NEW CHAT MODAL ──
 // Мини-аватар для списков выбора: инициалы + фото поверх если есть
 function ppAvHtml(u) {
-  return `<div class="pp-av ${avatarColor(u.id)}"><span>${initials(u.display_name)}</span><img src="${httpProto()}://${S.server}/api/users/${u.id}/avatar" loading="lazy" onerror="this.style.display='none'"></div>`;
+  return `<div class="pp-av ${userAvatarColor(u.id, u.tag)}"><span>${initials(u.display_name)}</span><img src="${httpProto()}://${S.server}/api/users/${u.id}/avatar" loading="lazy" onerror="this.style.display='none'"></div>`;
 }
 const PP_CHECK = `<span class="pp-check"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>`;
 
@@ -3981,7 +4000,7 @@ function giRenderMembers(members, canEdit = false) {
     .filter(m => !S.giRemovedIds.has(m.id))
     .map(m => `
       <div class="member-remove-row" id="gim-${m.id}">
-        <div class="av av-sm av-round ${avatarColor(m.id)}" data-av-user="${m.id}">${initials(m.display_name)}</div>
+        <div class="av av-sm av-round ${userAvatarColor(m.id, m.tag)}" data-av-user="${m.id}">${initials(m.display_name)}</div>
         <div class="info"><div class="rname">${esc(m.display_name)}</div><div class="rlogin">@${esc(m.username)}</div></div>
         ${canEdit?`<button class="rm-btn" onclick="giRemoveMember(${m.id})">✕</button>`:''}
       </div>`).join('') || '<div style="font-size:13px;color:var(--muted)">Только вы</div>';
@@ -4037,7 +4056,7 @@ function giRenderAddList(existingMembers) {
   const available = S.allUsers.filter(u => !existingIds.has(u.id) || S.giRemovedIds.has(u.id));
   container.innerHTML = available.map(u => `
     <div class="user-row${S.giAddIds.has(u.id) ? ' selected' : ''}" data-uid="${u.id}" onclick="giToggleAdd(this,${u.id})">
-      <div class="av av-sm av-round ${avatarColor(u.id)}" data-av-user="${u.id}">${initials(u.display_name)}</div>
+      <div class="av av-sm av-round ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}">${initials(u.display_name)}</div>
       <div><div class="uname">${esc(u.display_name)}</div><div class="ulogin">@${esc(u.username)}</div></div>
     </div>`).join('') || '<div style="font-size:13px;color:var(--muted)">Нет доступных</div>';
   applyAvatars();

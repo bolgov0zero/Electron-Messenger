@@ -25,7 +25,7 @@ function deleteChatFiles(chatId) {
 
 function enrichChat(chat, userId) {
   const members = db.prepare(`
-    SELECT u.id, u.username, u.display_name FROM users u
+    SELECT u.id, u.username, u.display_name, u.tag FROM users u
     JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = ?
   `).all(chat.id);
 

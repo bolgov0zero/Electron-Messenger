@@ -48,6 +48,29 @@
   --role-teal-bg:       rgba(29,168,140,0.10);
   --role-teal-border:   rgba(29,168,140,0.25);
 
+  /* Палитра тегов. Цвет выбирается хешем от текста тега, поэтому одинаковая
+     надпись всегда одного цвета. Тройки RGB задаются на тему, фон и рамка
+     считаются из них прозрачностью. */
+  --tag-1: 26,150,124; /* бирюзовый */
+  --tag-2: 80,80,200; /* индиго */
+  --tag-3: 32,110,200; /* синий */
+  --tag-4: 140,72,190; /* фиолетовый */
+  --tag-5: 190,60,130; /* малиновый */
+  --tag-6: 190,90,35; /* оранжевый */
+  --tag-7: 140,110,20; /* охра */
+  --tag-8: 45,140,60; /* зелёный */
+
+  /* Те же цвета для аватарок. Отдельный набор, потому что на кружке текст белый:
+     светлые оттенки тёмной темы с ним не читаются, поэтому здесь они не меняются. */
+  --tag-1-av: 26,150,124; /* бирюзовый */
+  --tag-2-av: 80,80,200; /* индиго */
+  --tag-3-av: 32,110,200; /* синий */
+  --tag-4-av: 140,72,190; /* фиолетовый */
+  --tag-5-av: 190,60,130; /* малиновый */
+  --tag-6-av: 190,90,35; /* оранжевый */
+  --tag-7-av: 140,110,20; /* охра */
+  --tag-8-av: 45,140,60; /* зелёный */
+
   /* Decorative blobs (login only) */
   --blob1: rgba(29,168,140,0.12);
   --blob2: rgba(80,80,200,0.10);
@@ -123,6 +146,16 @@ html.dark {
   --role-indigo-border: rgba(108,108,240,0.3);
   --role-teal-bg:       rgba(41,214,184,0.12);
   --role-teal-border:   rgba(41,214,184,0.3);
+
+  /* Палитра тегов, тёмная тема */
+  --tag-1: 41,214,184; /* бирюзовый */
+  --tag-2: 124,124,245; /* индиго */
+  --tag-3: 95,170,250; /* синий */
+  --tag-4: 190,135,245; /* фиолетовый */
+  --tag-5: 240,120,185; /* малиновый */
+  --tag-6: 240,145,85; /* оранжевый */
+  --tag-7: 220,185,80; /* охра */
+  --tag-8: 105,205,115; /* зелёный */
 
   --blob1: rgba(41,214,184,0.12);
   --blob2: rgba(108,108,240,0.12);
@@ -714,6 +747,16 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 .av-purple { background: #7c3aed; }
 .av-orange { background: #d97706; }
 
+/* Аватарка по тегу — тот же цвет, что у плашки и имени */
+.av-tag-1 { background: rgb(var(--tag-1-av)); }
+.av-tag-2 { background: rgb(var(--tag-2-av)); }
+.av-tag-3 { background: rgb(var(--tag-3-av)); }
+.av-tag-4 { background: rgb(var(--tag-4-av)); }
+.av-tag-5 { background: rgb(var(--tag-5-av)); }
+.av-tag-6 { background: rgb(var(--tag-6-av)); }
+.av-tag-7 { background: rgb(var(--tag-7-av)); }
+.av-tag-8 { background: rgb(var(--tag-8-av)); }
+
 /* ══════════════════════════════════════════
    CHAT MAIN AREA
    ══════════════════════════════════════════ */
@@ -1028,13 +1071,25 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
      тег оседает на 1.5px ниже имени */
   align-self: center;
 }
-.role-pill.teal { background: var(--role-teal-bg); border: 1px solid var(--role-teal-border); color: var(--accent); }
-.role-pill.indigo { background: var(--role-indigo-bg); border: 1px solid var(--role-indigo-border); color: var(--role-indigo); }
+.role-pill.tag-1 { background: rgba(var(--tag-1),.12); border: 1px solid rgba(var(--tag-1),.30); color: rgb(var(--tag-1)); }
+.role-pill.tag-2 { background: rgba(var(--tag-2),.12); border: 1px solid rgba(var(--tag-2),.30); color: rgb(var(--tag-2)); }
+.role-pill.tag-3 { background: rgba(var(--tag-3),.12); border: 1px solid rgba(var(--tag-3),.30); color: rgb(var(--tag-3)); }
+.role-pill.tag-4 { background: rgba(var(--tag-4),.12); border: 1px solid rgba(var(--tag-4),.30); color: rgb(var(--tag-4)); }
+.role-pill.tag-5 { background: rgba(var(--tag-5),.12); border: 1px solid rgba(var(--tag-5),.30); color: rgb(var(--tag-5)); }
+.role-pill.tag-6 { background: rgba(var(--tag-6),.12); border: 1px solid rgba(var(--tag-6),.30); color: rgb(var(--tag-6)); }
+.role-pill.tag-7 { background: rgba(var(--tag-7),.12); border: 1px solid rgba(var(--tag-7),.30); color: rgb(var(--tag-7)); }
+.role-pill.tag-8 { background: rgba(var(--tag-8),.12); border: 1px solid rgba(var(--tag-8),.30); color: rgb(var(--tag-8)); }
 .role-pill.default { background: var(--hover-row); border: 1px solid var(--border); color: var(--text2); }
 
 /* ── MSG SENDER ROW ── */
-.msg-sender-name.teal { color: var(--accent); }
-.msg-sender-name.indigo { color: var(--role-indigo); }
+.msg-sender-name.tag-1 { color: rgb(var(--tag-1)); }
+.msg-sender-name.tag-2 { color: rgb(var(--tag-2)); }
+.msg-sender-name.tag-3 { color: rgb(var(--tag-3)); }
+.msg-sender-name.tag-4 { color: rgb(var(--tag-4)); }
+.msg-sender-name.tag-5 { color: rgb(var(--tag-5)); }
+.msg-sender-name.tag-6 { color: rgb(var(--tag-6)); }
+.msg-sender-name.tag-7 { color: rgb(var(--tag-7)); }
+.msg-sender-name.tag-8 { color: rgb(var(--tag-8)); }
 .msg-sender-name.default { color: var(--text); }
 
 /* ── COMPOSER ── */
@@ -2476,7 +2531,7 @@ html.dark .announcement-title { color: var(--danger); }
 /* сообщение из одного смайлика: крупнее и без пузыря — он проступает при наведении
    на сам смайлик, а не на всю строку. Время видно всегда и стоит там же, где было бы
    внутри пузыря, поэтому место под него зарезервировано и ничего не сдвигается. */
-.irc-text.emoji-only { font-size: 2.3em; line-height: 1.2; }
+.irc-text.emoji-only { font-size: 2.9em; line-height: 1.15; }
 .irc-msg.emoji-msg .msg-bubble {
   background: none; border-color: transparent;
   transition: background .13s ease, border-color .13s ease;
@@ -2487,13 +2542,26 @@ html.dark .announcement-title { color: var(--danger); }
 }
 
 /* цвет цитаты — по автору цитируемого: своё цветом своего пузыря, чужое цветом тега */
-.irc-reply.reply-mine,   .irc-reply.reply-teal   { border-left-color: var(--accent); }
-.irc-reply.reply-indigo  { border-left-color: var(--role-indigo); }
-.irc-reply.reply-plain   { border-left-color: var(--text2); }
-.irc-reply.reply-mine .irc-reply-name,
-.irc-reply.reply-teal .irc-reply-name   { color: var(--accent); }
-.irc-reply.reply-indigo .irc-reply-name { color: var(--role-indigo); }
-.irc-reply.reply-plain .irc-reply-name  { color: var(--text2); }
+.irc-reply.reply-mine { border-left-color: var(--accent); }
+.irc-reply.reply-mine .irc-reply-name { color: var(--accent); }
+.irc-reply.reply-plain { border-left-color: var(--text2); }
+.irc-reply.reply-plain .irc-reply-name { color: var(--text2); }
+.irc-reply.reply-tag-1 { border-left-color: rgb(var(--tag-1)); }
+.irc-reply.reply-tag-1 .irc-reply-name { color: rgb(var(--tag-1)); }
+.irc-reply.reply-tag-2 { border-left-color: rgb(var(--tag-2)); }
+.irc-reply.reply-tag-2 .irc-reply-name { color: rgb(var(--tag-2)); }
+.irc-reply.reply-tag-3 { border-left-color: rgb(var(--tag-3)); }
+.irc-reply.reply-tag-3 .irc-reply-name { color: rgb(var(--tag-3)); }
+.irc-reply.reply-tag-4 { border-left-color: rgb(var(--tag-4)); }
+.irc-reply.reply-tag-4 .irc-reply-name { color: rgb(var(--tag-4)); }
+.irc-reply.reply-tag-5 { border-left-color: rgb(var(--tag-5)); }
+.irc-reply.reply-tag-5 .irc-reply-name { color: rgb(var(--tag-5)); }
+.irc-reply.reply-tag-6 { border-left-color: rgb(var(--tag-6)); }
+.irc-reply.reply-tag-6 .irc-reply-name { color: rgb(var(--tag-6)); }
+.irc-reply.reply-tag-7 { border-left-color: rgb(var(--tag-7)); }
+.irc-reply.reply-tag-7 .irc-reply-name { color: rgb(var(--tag-7)); }
+.irc-reply.reply-tag-8 { border-left-color: rgb(var(--tag-8)); }
+.irc-reply.reply-tag-8 .irc-reply-name { color: rgb(var(--tag-8)); }
 
 /* обводка аватарок в реакциях — под фон пузыря */
 .msg-bubble .ra { box-shadow: 0 0 0 1.5px var(--card-bg); }
