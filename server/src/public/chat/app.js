@@ -801,6 +801,96 @@ function accentDotsHtml() {
 }
 
 
+// ── УЗОР ФОНА ПЕРЕПИСКИ ──
+// Узор лежит в assets/patterns отдельным слоем под сообщениями. В картинке нет
+// цвета — только прозрачность обводки, а красит её тема: слой заливается цветом
+// и обрезается картинкой-маской. Так один файл работает и в светлой теме, и в
+// тёмной, и все три степени заметности — это просто прозрачность слоя.
+// Плитки зеркальные (см. scripts/build-patterns.js), поэтому стыков не видно.
+// Выбор и заметность хранятся на устройстве, как тема и акцент.
+const PATTERNS = [
+  { id: '',          name: 'Без узора' },
+  { id: 'pets',      name: 'Питомцы' },
+  { id: 'doodles',   name: 'Каракули' },
+  { id: 'summer',    name: 'Лето' },
+  { id: 'daily',     name: 'Будни' },
+  { id: 'steampunk', name: 'Стимпанк' },
+];
+// Плитка содержит рисунок дважды по каждой оси (зеркало), поэтому её экранный
+// размер вдвое больше того, каким виден сам рисунок
+const PATTERN_TILE = 680;
+// Три степени заметности; в тёмной теме светлый штрих читается слабее, поэтому базы разные
+const PATTERN_ALPHA = { light: [0.045, 0.07, 0.105], dark: [0.055, 0.085, 0.13] };
+
+function currentPattern() {
+  try { const v = localStorage.getItem('chatPattern'); if (PATTERNS.some(p => p.id === v && v)) return v; } catch {}
+  return '';
+}
+function currentPatternLevel() {
+  const n = Number(localStorage.getItem('chatPatternLevel'));
+  return n === 1 || n === 3 ? n : 2;
+}
+
+function setChatPattern(id) {
+  try { localStorage.setItem('chatPattern', id || ''); } catch {}
+  applyChatPattern();
+  document.querySelectorAll('#pattern-cards .pat-card').forEach(c =>
+    c.classList.toggle('active', c.dataset.pattern === currentPattern()));
+  const line = document.getElementById('pattern-level-line');
+  if (line) line.style.display = currentPattern() ? '' : 'none';
+}
+
+function setPatternLevel(n) {
+  try { localStorage.setItem('chatPatternLevel', String(n)); } catch {}
+  applyChatPattern();
+  document.querySelectorAll('#pattern-seg button').forEach((b, i) =>
+    b.classList.toggle('active', i + 1 === currentPatternLevel()));
+}
+
+function patternUrl(id) {
+  return id ? 'url("assets/patterns/' + id + '.png")' : '';
+}
+
+function applyChatPattern() {
+  const id = currentPattern();
+  const s = document.documentElement.style;
+  if (!id) {
+    // Слой без маски залил бы всю переписку сплошным цветом — гасим прозрачностью
+    s.removeProperty('--chat-pattern');
+    s.removeProperty('--chat-pattern-size');
+    s.removeProperty('--chat-pattern-ink');
+    s.removeProperty('--chat-pattern-alpha');
+    return;
+  }
+  const dark = document.documentElement.classList.contains('dark');
+  s.setProperty('--chat-pattern', patternUrl(id));
+  s.setProperty('--chat-pattern-size', PATTERN_TILE + 'px');
+  s.setProperty('--chat-pattern-ink', dark ? '#ffffff' : '#111318');
+  s.setProperty('--chat-pattern-alpha',
+    String(PATTERN_ALPHA[dark ? 'dark' : 'light'][currentPatternLevel() - 1]));
+}
+
+// Карточки выбора в настройках: сам узор и служит образцом
+function chatPatternCardsHtml() {
+  const cur = currentPattern();
+  return '<div class="pat-cards" id="pattern-cards">' + PATTERNS.map(p =>
+    '<button class="pat-card' + (p.id === cur ? ' active' : '') + '" data-pattern="' + p.id + '"' +
+    ' onclick="setChatPattern(\'' + p.id + '\')">' +
+      '<span class="pat-swatch"></span>' +
+      '<span class="pat-cap">' + p.name + '</span>' +
+    '</button>').join('') + '</div>';
+}
+
+// Маску образцов ставим из кода: в url() есть кавычки, в inline-атрибуте они рвут значение
+function paintPatternSwatches() {
+  document.querySelectorAll('#pattern-cards .pat-card').forEach(card => {
+    const el = card.querySelector('.pat-swatch');
+    const url = patternUrl(card.dataset.pattern) || 'none';
+    el.style.webkitMaskImage = url;
+    el.style.maskImage = url;
+  });
+}
+
 // ── ФОН ПЕРЕПИСКИ ──
 // «Как обычно» — сайдбар и переписка одного цвета; «с разделением» — переписка
 // отделена оттенком: в тёмной теме светлее сайдбара, в светлой темнее.
@@ -884,6 +974,9 @@ function applySettings() {
   if (themeColorMeta) themeColorMeta.content = isDark ? '#0b0d14' : '#f7f7fb';
   applyAccent();
   applyChatBg();
+  applyChatPattern();
+  document.querySelectorAll('#pattern-seg button').forEach((b, i) =>
+    b.classList.toggle('active', i + 1 === currentPatternLevel()));
 }
 // Плавная смена темы: включаем переход цветов только на время переключения,
 // иначе постоянный transition на всех элементах бил бы по отзывчивости.
@@ -984,6 +1077,18 @@ function showSettingsTab(tab) {
         ${chatBgCardsHtml()}
       </div>
       <div class="set-sec">
+        <h4>Узор фона</h4>
+        ${chatPatternCardsHtml()}
+        <div class="set-line" id="pattern-level-line" style="${currentPattern() ? '' : 'display:none'}">
+          <span>Заметность</span>
+          <div class="seg" id="pattern-seg">
+            <button onclick="setPatternLevel(1)">Слабая</button>
+            <button onclick="setPatternLevel(2)">Средняя</button>
+            <button onclick="setPatternLevel(3)">Сильная</button>
+          </div>
+        </div>
+      </div>
+      <div class="set-sec">
         <h4>Текст</h4>
         <div class="set-line">
           <span>Размер текста</span>
@@ -1004,6 +1109,7 @@ function showSettingsTab(tab) {
         </div>
       </div>`;
     applySettings();
+    paintPatternSwatches();
   }
 }
 function closeSettings() { closeModal('modal-settings'); }
@@ -1617,6 +1723,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   S.statusApplied = {};
   _loadingMore = false;
   releaseAnchor(); // удержание от прошлого чата не должно мешать новому
+  releaseStick();
   S.unread[chatId] = 0;
   S.unreadMentions[chatId] = 0;
   updateUnreadTotal();
@@ -1725,7 +1832,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
             </button>
             <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
-            <textarea id="msg-input" rows="1" placeholder="Сообщение…" onkeydown="handleKey(event)" oninput="onMsgInput(this)"></textarea>
+            <textarea id="msg-input" rows="1" placeholder="Сообщение…" onkeydown="handleKey(event)" oninput="onMsgInput(this)" onfocus="closeEmojiPicker()" onpointerdown="closeEmojiPicker()"></textarea>
             <button class="send-btn" id="send-btn" onmousedown="event.preventDefault()" onclick="sendOrEdit()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>
@@ -2276,7 +2383,8 @@ function toggleEmojiPicker(e) {
   const input = document.getElementById('ep-search-input');
   if (input) input.value = '';
   panel.classList.add('open');
-  input?.focus();
+  // На телефоне фокус в поиске поднимает клавиатуру, и она закрывает саму панель
+  if (!window.matchMedia('(max-width: 767px), (pointer: coarse)').matches) input?.focus();
 }
 
 // Считаем по рядам, а не по заголовкам: заголовки липкие, и их offsetTop/rect
@@ -3077,9 +3185,36 @@ function renderStatus(status) {
   </span>`;
 }
 
-// Умный скролл к низу после появления сообщения: своё — всегда, чужое — если пользователь
-// у дна. Учитывает асинхронную догрузку картинок и вложений (scrollHeight после загрузки
-// вырастет), повторно вызывая прокрутку при `load`/`error` на каждом img.
+// Умный скролл к низу после появления сообщения: своё — всегда, чужое — если
+// пользователь у дна.
+//
+// Одной прокрутки мало. Размеры картинки известны только после её загрузки, а
+// плавная прокрутка целится в высоту ленты, снятую в момент вызова. Пока она
+// летит, пузырь дорастает — и лента останавливается ровно на высоту картинки
+// выше нужного: сообщение с фото остаётся под полем ввода, тогда как обычное
+// встаёт на место всегда. Поэтому после прокрутки ещё пару секунд держим дно и
+// возвращаемся туда на каждое изменение высоты — так же, как якорь держит ленту
+// при открытии чата. Тронул прокрутку сам — отпускаем, иначе будет «отскок».
+let _stickRO = null, _stickTimer = null, _stickBehavior = 'smooth';
+
+function _stickDown() {
+  const c = document.getElementById('messages');
+  if (c) c.scrollTo({ top: c.scrollHeight, behavior: _stickBehavior });
+}
+function _stickKey(e) { if (SCROLL_KEYS.includes(e.key)) releaseStick(); }
+
+function releaseStick() {
+  clearTimeout(_stickTimer);
+  _stickTimer = null;
+  _stickRO?.disconnect(); _stickRO = null;
+  const c = document.getElementById('messages');
+  c?.removeEventListener('load', _stickDown, true);
+  c?.removeEventListener('error', _stickDown, true);
+  c?.removeEventListener('wheel', releaseStick);
+  c?.removeEventListener('touchmove', releaseStick);
+  window.removeEventListener('keydown', _stickKey);
+}
+
 function stickToBottom(container, newEl, m, distBefore) {
   // Отступ от низа берём ДО вставки сообщения: иначе высокое вложение (картинка)
   // само же выталкивает dist за порог, и автопрокрутка не срабатывает —
@@ -3088,19 +3223,35 @@ function stickToBottom(container, newEl, m, distBefore) {
     : container.scrollHeight - container.scrollTop - container.clientHeight;
   if (!(m._optimistic || dist < 120)) return;
   _stickBottom = true;
-  const behavior = m._optimistic ? 'instant' : 'smooth';
-  const scrollDown = () => container.scrollTo({ top: container.scrollHeight, behavior });
-  // Повторные вызовы приходят по загрузке картинок: к этому моменту пользователь
-  // мог уйти вверх, и дёргать ленту обратно нельзя.
-  const toBottom = () => {
-    if (container.scrollHeight - container.scrollTop - container.clientHeight < 200) scrollDown();
-  };
-  requestAnimationFrame(scrollDown);
-  newEl?.querySelectorAll('img').forEach(img => {
-    if (img.complete) return;
-    img.addEventListener('load',  toBottom, { once: true });
-    img.addEventListener('error', toBottom, { once: true });
-  });
+  releaseStick();
+  _stickBehavior = m._optimistic ? 'instant' : 'smooth';
+  // На телефоне высота ленты доводится после кадра (клавиатура, visualViewport)
+  requestAnimationFrame(_stickDown);
+
+  try {
+    // Растёт само сообщение: картинка получила размеры, подтянулась цитата.
+    // Первую выдачу наблюдателя пропускаем — высота ещё та же, а лишняя
+    // прокрутка сбила бы уже идущую плавную.
+    let h = newEl ? newEl.getBoundingClientRect().height : 0;
+    _stickRO = new ResizeObserver(() => {
+      const now = newEl.getBoundingClientRect().height;
+      if (Math.abs(now - h) < 0.5) return;
+      h = now;
+      _stickDown();
+    });
+    if (newEl) _stickRO.observe(newEl);
+  } catch {}
+
+  // load не всплывает — слушаем на перехвате: так ловятся и вложенные картинки,
+  // и аватарки, и те, что появятся позже
+  container.addEventListener('load', _stickDown, true);
+  container.addEventListener('error', _stickDown, true);
+
+  // Прокрутка руками отменяет удержание
+  container.addEventListener('wheel', releaseStick, { passive: true });
+  container.addEventListener('touchmove', releaseStick, { passive: true });
+  window.addEventListener('keydown', _stickKey);
+  _stickTimer = setTimeout(releaseStick, 2500);
 }
 
 function appendMsg(m) {

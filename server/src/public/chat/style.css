@@ -369,6 +369,35 @@ body {
 }
 .set-line + .set-line { border-top: 1px solid var(--border); }
 
+/* Выбор узора: образцом служит сам узор */
+.pat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+.pat-card {
+  padding: 0; overflow: hidden; cursor: pointer; font-family: inherit;
+  background: none; border: 1px solid var(--border); border-radius: 10px;
+  transition: border-color .12s, box-shadow .12s;
+}
+.pat-card:hover { border-color: var(--accent-border); }
+.pat-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+/* Образец красится так же, как сама переписка, только заметнее — иначе на
+   карточке 80px шириной узора почти не видно */
+.pat-swatch {
+  display: block; height: 58px;
+  background: var(--text2);
+  /* Рисунок вдвое мельче, чем в переписке: на карточке шириной 160px при полном
+     масштабе поместилась бы пара значков, и узор было бы не узнать. Положение
+     не трогаем — от левого верхнего угла плитки, иначе центр попадает ровно на
+     ось зеркала и образец выглядит симметричной кляксой. */
+  -webkit-mask-size: 480px; mask-size: 480px;
+  -webkit-mask-repeat: repeat; mask-repeat: repeat;
+  opacity: .6;
+}
+.pat-card[data-pattern=""] .pat-swatch { background: var(--chat-bg); opacity: 1; }
+.pat-cap {
+  display: block; padding: 5px 6px 6px; border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--text2); text-align: center;
+}
+.pat-card.active .pat-cap { color: var(--accent); }
+
 .bg-cards { display: flex; gap: 10px; }
 .bg-card {
   flex: 1; padding: 0; overflow: hidden; cursor: pointer;
@@ -840,9 +869,34 @@ body.sidebar-hidden.sidebar-peeking .sidebar {
 .chat-main {
   flex: 1; min-width: 0;
   display: flex; flex-direction: column;
-  background: var(--chat-bg);
+  background-color: var(--chat-bg);
   overflow: hidden;
   position: relative;
+  /* Свой контекст наложения: без него слой узора с z-index -1 ушёл бы не под
+     сообщения, а под сам фон переписки, то есть исчез бы совсем */
+  isolation: isolate;
+}
+/* Узор — отдельный слой между фоном и сообщениями. В картинке цвета нет, только
+   прозрачность обводки: слой заливается цветом темы и обрезается ею как маской.
+   Без выбранного узора переменные не заданы, прозрачность падает в 0 — иначе
+   слой залил бы переписку сплошным цветом. */
+.chat-main::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: var(--chat-pattern-ink, transparent);
+  -webkit-mask-image: var(--chat-pattern, none);
+          mask-image: var(--chat-pattern, none);
+  -webkit-mask-size: var(--chat-pattern-size, auto);
+          mask-size: var(--chat-pattern-size, auto);
+  -webkit-mask-repeat: repeat;
+          mask-repeat: repeat;
+  opacity: var(--chat-pattern-alpha, 0);
+}
+/* На узком экране плитка того же размера выглядит крупно — уменьшаем рисунок */
+@media (max-width: 640px) {
+  .chat-main::before {
+    -webkit-mask-size: calc(var(--chat-pattern-size, 680px) * 0.72);
+            mask-size: calc(var(--chat-pattern-size, 680px) * 0.72);
+  }
 }
 
 /* Полоса ввода лежит ПОВЕРХ ленты и сама прозрачна: фон несёт только композер,
@@ -3085,7 +3139,9 @@ html.dark .announcement-title { color: var(--danger); }
   max-width: 100%;
 }
 .irc-msg[data-mine] .msg-bubble {
-  background: var(--accent-soft);
+  /* Акцент полупрозрачный, поэтому под него подкладываем цвет переписки —
+     иначе сквозь свой пузырь просвечивает узор фона */
+  background: linear-gradient(var(--accent-soft), var(--accent-soft)) var(--chat-bg);
   border-color: var(--role-teal-border);
 }
 /* срезанный угол — только у последнего пузыря серии, со стороны автора */
