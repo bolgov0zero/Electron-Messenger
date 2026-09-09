@@ -1339,6 +1339,9 @@ async function openSubroom(subroomId) {
 }
 
 function chatName(chat) {
+  // Чат может быть ещё не в списке: первое сообщение в новой переписке приходит
+  // раньше, чем догрузится список, — тогда имени нет и его подставит вызывающий
+  if (!chat) return '';
   if (chat.type==='group') return chat.name||'Группа';
   if (chat.type==='room') return chat.name||'Комната';
   const other = chat.members?.find(m=>m.id!==S.user.id);
@@ -4173,7 +4176,7 @@ function connectWS() {
           S.unread[chatId] = (S.unread[chatId]||0)+1;
           if (message.mentions?.includes(S.user.id)) S.unreadMentions[chatId] = (S.unreadMentions[chatId]||0)+1;
           if (!isChatMuted(chatId, parentId)) {
-            const title = chatName(chat) || 'Electron';
+            const title = chatName(chat) || message.sender_name || 'Electron';
             const body = `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
             webNotify(title, body, chatId);
             playNotificationSound();
@@ -4191,7 +4194,7 @@ function connectWS() {
           // родительской комнаты (chat уже содержит этот фолбэк). Раньше здесь
           // был chatName(undefined) → TypeError, и обработчик обрывался.
           const _srObj = parentId ? (S.subrooms[parentId]||[]).find(s=>s.id===chatId) : null;
-          const title = _srObj?.name || chatName(chat) || 'Electron';
+          const title = _srObj?.name || chatName(chat) || message.sender_name || 'Electron';
           const body = `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
           webNotify(title, body, chatId);
           playNotificationSound();

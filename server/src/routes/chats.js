@@ -162,13 +162,17 @@ router.post('/direct', authMiddleware, (req, res) => {
     const existingChat = db.prepare('SELECT * FROM chats WHERE id = ?').get(existing.id);
     return res.json(enrichChat(existingChat, req.user.id));
   }
-  // Чат и участники — в одной транзакции, чтобы при сбое не оставался чат без участников
+  // Чат и участники — в одной транзакции, чтобы при сбое не оставался чат без участников.
+  // Собеседник добавляется скрытым: до первого сообщения у него в списке висела бы
+  // пустая переписка, которую он не заводил. Скрытие снимет отправка первого
+  // сообщения (ws.js) — тем же механизмом, что и после «удалить у себя».
   const chatId = db.transaction(() => {
     const result = db.prepare("INSERT INTO chats (type, created_by) VALUES ('direct', ?)").run(req.user.id);
-    db.prepare('INSERT INTO chat_members (chat_id, user_id) VALUES (?, ?), (?, ?)').run(result.lastInsertRowid, req.user.id, result.lastInsertRowid, targetId);
-    return result.lastInsertRowid;
+    const id = result.lastInsertRowid;
+    db.prepare('INSERT INTO chat_members (chat_id, user_id) VALUES (?, ?)').run(id, req.user.id);
+    db.prepare('INSERT INTO chat_members (chat_id, user_id, hidden_at) VALUES (?, ?, unixepoch())').run(id, targetId);
+    return id;
   })();
-  sendTo(targetId, { type: 'reload_chats' });
   const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
   res.json(enrichChat(chat, req.user.id));
 });
