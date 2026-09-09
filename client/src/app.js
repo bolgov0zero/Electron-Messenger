@@ -1597,33 +1597,47 @@ function syncEmojiTabs() {
     t.setAttribute('aria-selected', String(t.dataset.tab === cur)));
 }
 
-// Поиск по ключевым словам и названию раздела: пустые разделы прячем целиком
+// Поиск: показываем одну ленту найденного, отсортированную по близости совпадения,
+// и возвращаемся к её началу. Раньше совпадения оставались на своих местах в
+// разделах — по запросу «сердце» лента внешне не менялась, и найденное приходилось
+// искать прокруткой у самого низа.
 function filterEmoji(q) {
   const scroll = document.getElementById('ep-scroll');
   if (!scroll) return;
   const query = (q || '').trim().toLowerCase();
-  let total = 0;
-  emojiSections().forEach(g => {
-    const row = scroll.querySelector('[data-row="' + g.key + '"]');
-    const head = scroll.querySelector('[data-head="' + g.key + '"]');
-    if (!row || !head) return;
-    const inGroup = !query || g.name.toLowerCase().includes(query);
-    let shown = 0;
-    row.querySelectorAll('.emoji-item').forEach(btn => {
-      const hit = inGroup || (EMOJI_KEYWORDS[btn.dataset.em] || '').includes(query);
-      btn.hidden = !hit;
-      if (hit) shown++;
+
+  if (!query) {
+    scroll.innerHTML = emojiPickerHtml(emojiSections());
+    scroll.scrollTop = 0;
+    syncEmojiTabs();
+    return;
+  }
+
+  const seen = new Set();
+  const hits = [];
+  EMOJI_GROUPS.forEach(g => {
+    const groupHit = g.name.toLowerCase().includes(query);
+    g.items.forEach(em => {
+      if (seen.has(em)) return;
+      const words = (EMOJI_KEYWORDS[em] || '').split(' ');
+      let score = 0;
+      if (words.includes(query)) score = 3;                      // слово целиком
+      else if (words.some(w => w.startsWith(query))) score = 2;  // начало слова
+      else if (groupHit) score = 1.5;                            // совпало название раздела
+      else if (words.some(w => w.includes(query))) score = 1;    // где-то внутри слова
+      if (score) { seen.add(em); hits.push({ em, score }); }
     });
-    row.hidden = head.hidden = shown === 0;
-    total += shown;
   });
-  let miss = scroll.querySelector('.ep-miss');
-  if (!total) {
-    if (!miss) { miss = document.createElement('div'); miss.className = 'ep-miss'; scroll.append(miss); }
-    miss.textContent = 'Ничего не нашлось';
-    miss.hidden = false;
-  } else if (miss) miss.hidden = true;
-  syncEmojiTabs();
+  hits.sort((a, b) => b.score - a.score);
+
+  scroll.innerHTML = hits.length
+    ? '<div class="ep-head" data-head="found">Найдено: ' + hits.length + '</div>' +
+      '<div class="ep-row" data-row="found">' + hits.map(h =>
+        '<button class="emoji-item" data-em="' + h.em + '" onclick="insertEmoji(\'' + h.em + '\')">' + h.em + '</button>').join('') +
+      '</div>'
+    : '<div class="ep-miss">Ничего не нашлось</div>';
+  scroll.scrollTop = 0;
+  document.querySelectorAll('#ep-tabs .ep-tab').forEach(t => t.setAttribute('aria-selected', 'false'));
 }
 
 function insertEmoji(em) {

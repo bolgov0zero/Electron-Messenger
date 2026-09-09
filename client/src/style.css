@@ -1168,6 +1168,10 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   color: var(--text); font-family: inherit; font-size: 12.5px;
 }
 .ep-search input::placeholder { color: var(--muted); }
+/* Текстовые поля матчат :focus-visible и по клику мышью — вместо рамки вокруг
+   самого поля подсвечиваем границу строки поиска, как в остальных полях */
+.ep-search input:focus-visible { outline: none; }
+.ep-search:focus-within { border-color: var(--accent); }
 .ep-tabs {
   display: flex; gap: 2px; padding: 0 6px; flex-shrink: 0;
   border-bottom: 1px solid var(--border);
