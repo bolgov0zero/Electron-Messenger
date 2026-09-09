@@ -457,9 +457,24 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 
 /* Фильтры в шапке карточки */
 .card-head-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.filter-select{height:28px;padding:0 8px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-xs);color:var(--c-text2);font-size:11px;font-family:var(--f-ui);cursor:pointer;outline:none;max-width:190px}
-.filter-select:hover{border-color:var(--c-primary)}
-.filter-select:focus{border-color:var(--c-primary);color:var(--c-text)}
+
+/* Свой выпадающий список: системный <select> рисуется средствами ОС и выпадает
+   из оформления панели — как и системный datetime-local в объявлениях */
+.fsel{position:relative}
+.fsel-btn{display:flex;align-items:center;gap:6px;height:28px;padding:0 8px;max-width:200px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-xs);color:var(--c-text2);font-size:11px;font-family:var(--f-ui);cursor:pointer;transition:border-color var(--t-fast),color var(--t-fast)}
+.fsel-btn:hover{border-color:var(--c-primary)}
+.fsel-btn.on{border-color:var(--c-primary);color:var(--c-text)}
+.fsel-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fsel-btn svg{width:11px;height:11px;flex-shrink:0;stroke:var(--c-muted);fill:none;stroke-width:2.2;margin-left:auto}
+.fsel-pop{position:absolute;top:calc(100% + 4px);right:0;z-index:40;min-width:100%;max-width:260px;max-height:260px;overflow-y:auto;padding:4px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius-sm);box-shadow:0 10px 32px rgba(0,0,0,.22)}
+.fsel-pop[hidden]{display:none}
+.fsel-opt{display:flex;align-items:center;gap:6px;width:100%;padding:6px 8px;border:none;background:none;border-radius:var(--radius-xs);color:var(--c-text2);font-size:11.5px;font-family:var(--f-ui);text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background var(--t-fast),color var(--t-fast)}
+.fsel-opt:hover{background:var(--bg-hover);color:var(--c-text)}
+.fsel-opt.active{background:var(--c-primary-dim);color:var(--c-primary);font-weight:600}
+.filters-reset{display:flex;align-items:center;gap:5px;height:28px;padding:0 9px;background:none;border:1px solid transparent;border-radius:var(--radius-xs);color:var(--c-muted);font-size:11px;font-family:var(--f-ui);cursor:pointer;transition:background var(--t-fast),color var(--t-fast)}
+.filters-reset:hover{background:var(--c-red-dim);color:var(--c-red-text)}
+.filters-reset[hidden]{display:none}
+.filters-reset svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.2}
 
 /* Прокручивается только содержимое таблицы, заголовки остаются на месте */
 .table-scroll{overflow:auto;max-height:calc(100vh - 240px)}
@@ -3212,22 +3227,21 @@ async function renderFiles() {
     if (cnt) cnt.textContent = filtered.length === files.length ? `(${files.length})` : `(${filtered.length} из ${files.length})`;
   }
 
-  const optsHtml = (list) => list.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
   document.getElementById('page-body').innerHTML = `
     <div class="card">
       <div class="card-head">
         <h3>Файлы <span id="files-count" style="color:var(--c-muted);font-weight:500">(${files.length})</span></h3>
         <div class="card-head-right">
-          <select class="filter-select" id="files-sender" onchange="filesSenderHandler(this.value)">
-            <option value="">Все отправители</option>${optsHtml(uniq('sender_name'))}
-          </select>
-          <select class="filter-select" id="files-chat" onchange="filesChatHandler(this.value)">
-            <option value="">Все чаты</option>${optsHtml(uniq('chat_name'))}
-          </select>
+          ${fselHtml('files-sender', 'Все отправители', uniq('sender_name'), '', 'filesSenderHandler')}
+          ${fselHtml('files-chat', 'Все чаты', uniq('chat_name'), '', 'filesChatHandler')}
           <div class="search-box">
             <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input placeholder="Поиск…" id="files-search" oninput="filesSearchHandler(this.value)">
           </div>
+          <button class="filters-reset" id="files-reset" hidden onclick="filesResetFilters()">
+            <svg viewBox="0 0 24 24" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Сбросить
+          </button>
         </div>
       </div>
       <div class="table-scroll">
@@ -3238,9 +3252,23 @@ async function renderFiles() {
       </div>
     </div>`;
 
-  window.filesSearchHandler = (q) => { searchVal = q; renderTable(); };
-  window.filesSenderHandler = (v) => { senderVal = v; renderTable(); };
-  window.filesChatHandler = (v) => { chatVal = v; renderTable(); };
+  // Кнопка сброса появляется, только когда есть что сбрасывать
+  const syncReset = () => {
+    const btn = document.getElementById('files-reset');
+    if (btn) btn.hidden = !(searchVal || senderVal || chatVal);
+  };
+  window.filesSearchHandler = (q) => { searchVal = q; renderTable(); syncReset(); };
+  window.filesSenderHandler = (v) => { senderVal = v; renderTable(); syncReset(); };
+  window.filesChatHandler = (v) => { chatVal = v; renderTable(); syncReset(); };
+  window.filesResetFilters = () => {
+    searchVal = senderVal = chatVal = '';
+    const inp = document.getElementById('files-search');
+    if (inp) inp.value = '';
+    fselPick('files-sender', '', '');
+    fselPick('files-chat', '', '');
+    renderTable();
+    syncReset();
+  };
   renderTable();
 }
 
@@ -3251,6 +3279,46 @@ function deleteFile(filename) {
     else toast(data?.error || 'Ошибка', 'error');
   });
 }
+
+/* ── ВЫПАДАЮЩИЙ СПИСОК ФИЛЬТРА ── */
+function fselHtml(id, placeholder, options, current, handler) {
+  const opt = (value, label, active) =>
+    `<button class="fsel-opt${active ? ' active' : ''}" data-value="${esc(value)}"` +
+    ` onclick="fselPick('${id}','${handler}',this.dataset.value)">${esc(label)}</button>`;
+  return `<div class="fsel" id="${id}" data-placeholder="${esc(placeholder)}">
+    <button class="fsel-btn${current ? ' on' : ''}" onclick="fselToggle(event,'${id}')">
+      <span>${esc(current || placeholder)}</span>
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="fsel-pop" hidden>
+      ${opt('', placeholder, !current)}
+      ${options.map(o => opt(o, o, o === current)).join('')}
+    </div>
+  </div>`;
+}
+
+function fselToggle(e, id) {
+  e.stopPropagation();
+  const pop = document.querySelector(`#${id} .fsel-pop`);
+  const open = pop.hidden;
+  document.querySelectorAll('.fsel-pop').forEach(p => p.hidden = true);
+  pop.hidden = !open;
+}
+
+function fselPick(id, handler, value) {
+  const box = document.getElementById(id);
+  const btn = box.querySelector('.fsel-btn');
+  btn.querySelector('span').textContent = value || box.dataset.placeholder;
+  btn.classList.toggle('on', !!value);
+  box.querySelectorAll('.fsel-opt').forEach(o => o.classList.toggle('active', o.dataset.value === value));
+  box.querySelector('.fsel-pop').hidden = true;
+  window[handler]?.(value);
+}
+
+// Клик мимо закрывает открытый список
+document.addEventListener('click', e => {
+  if (!e.target.closest('.fsel')) document.querySelectorAll('.fsel-pop').forEach(p => p.hidden = true);
+});
 
 /* Вид чата рядом с названием: у личных своего имени нет, там имена собеседников */
 function chatKindBadge(type) {
