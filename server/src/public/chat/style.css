@@ -1125,7 +1125,6 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 }
 .irc-text { font-size: 1rem; white-space: pre-wrap; word-break: break-word; color: var(--text); line-height: 1.5; }
 .irc-deleted { opacity: .55; font-style: italic; }
-.irc-msg .reactions { margin-top: 4px; padding: 0; }
 
 /* Legacy IRC color classes */
 .av-blue-text   { color: #6366f1; }
@@ -2203,18 +2202,6 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 /* ══════════════════════════════════════════
    REACTIONS
    ══════════════════════════════════════════ */
-.reactions { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 2px; }
-.reaction-btn {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 9px; padding: 2px 8px;
-  font-size: 13px; cursor: pointer;
-  display: flex; align-items: center; gap: 4px;
-  transition: background .12s, border-color .12s; font-family: inherit;
-}
-.reaction-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
-/* Правило от старого вида реакций (со счётчиком) удалено: будучи специфичнее
-   .ra-emoji и .ra, оно перебивало и размер смайлика, и стиль инициалов в аватарках. */
 
 /* ══════════════════════════════════════════
    EMOJI PICKER
@@ -3110,7 +3097,16 @@ html.dark .announcement-title { color: var(--danger); }
 .irc-msg[data-mine] .irc-av { display: none; }
 
 /* время и галочки — в правом нижнем углу пузыря; место под них резервирует ::after */
-.msg-bubble > .irc-meta { position: absolute; bottom: 4px; right: 10px; gap: 3px; }
+/* Время и галочки — на одной линии с последней строкой сообщения. Раньше блок
+   просто прижимался к низу пузыря и оказывался на 3px ниже строки: у него своя
+   высота по содержимому. Теперь высота равна строке текста (line-height 21px),
+   а при реакциях — высоте их ряда, поэтому центры совпадают в обоих случаях. */
+.msg-bubble > .irc-meta {
+  position: absolute; right: 10px; bottom: 5px; gap: 3px;
+  display: flex; align-items: center;
+}
+.msg-bubble:not(.bubble-photo) > .irc-meta { height: 21px; }
+.msg-bubble:not(.bubble-photo):has(.reactions) > .irc-meta { height: 22px; }
 .irc-text::after { content: ''; display: inline-block; width: 50px; }
 .irc-msg[data-mine] .irc-text::after { width: 60px; }
 
@@ -3179,15 +3175,6 @@ html.dark .announcement-title { color: var(--danger); }
 .irc-reply.reply-tag-14 .irc-reply-name { color: rgb(var(--tag-14)); }
 
 /* обводка аватарок в реакциях — под фон пузыря */
-.msg-bubble .ra { box-shadow: 0 0 0 1.5px var(--card-bg); }
-.irc-msg[data-mine] .msg-bubble .ra { box-shadow: none; }
-.reactions { margin-top: 4px; }
-/* Время лежит в правом нижнем углу пузыря. Пока реакций нет, место под него
-   резервирует ::after в тексте; как только они появились — нижняя строка уже их,
-   поэтому резерв переносим на блок реакций, а из текста убираем. */
-.msg-bubble .reactions { padding-right: 44px; }
-.irc-msg[data-mine] .msg-bubble .reactions { padding-right: 56px; }
-.msg-bubble:has(.reactions) .irc-text::after { display: none; }
 
 /* ── Сообщение, в котором нет ничего кроме картинки ──
    Класс .bubble-photo ставит рендер: только тогда кадр занимает пузырь целиком,
@@ -3211,50 +3198,70 @@ html.dark .announcement-title { color: var(--danger); }
 /* «Прочитано» оставляем акцентным, как в обычных сообщениях: белым это
    состояние не отличить от «доставлено» */
 .msg-bubble.bubble-photo > .irc-meta .status-read { color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) { .irc-msg.emoji-msg .msg-bubble { transition: none; } }
+
+
+
+/* ── РЕАКЦИИ ──
+   Собрано одним блоком: раньше правила лежали в трёх местах и перебивали друг
+   друга. Чип — строка фиксированной высоты; смайлик и кружки аватарок имеют
+   одинаковый бокс 16×16 и выравниваются по центру чипа, поэтому их центры
+   совпадают без ручных сдвигов. */
+.reactions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
+/* Время лежит в правом нижнем углу пузыря: пока реакций нет, место под него
+   резервирует ::after в тексте; появились — нижняя строка уже их, и резерв
+   переносится на блок реакций. */
+.msg-bubble .reactions { padding-right: 46px; }
+.irc-msg[data-mine] .msg-bubble .reactions { padding-right: 58px; }
+.msg-bubble:has(.reactions) .irc-text::after { display: none; }
+
+.reaction-btn {
+  /* обводка кружков совпадает с подложкой чипа, иначе при нахлёсте они сливаются */
+  --ra-ring: var(--bubble-bg, var(--card-bg));
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 22px; padding: 0 7px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer; font-family: inherit; line-height: 1;
+  transition: background .12s, border-color .12s;
+}
+.reaction-btn:hover { border-color: var(--accent-border); }
+.reaction-btn.mine { background: var(--reaction-mine); }
+
+.ra-emoji, .ra {
+  width: 16px; height: 16px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+.ra-emoji {
+  font-size: 14px;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  /* поправка на смещение рисунка внутри шрифта, меряется при запуске */
+  transform: translateY(var(--emoji-ink, 0em));
+}
+.ra-stack { display: flex; align-items: center; }
+.ra {
+  position: relative; overflow: hidden;
+  border-radius: 50%;
+  font-size: 8px; font-weight: 600; color: #fff;
+  box-shadow: 0 0 0 1.5px var(--ra-ring);
+}
+.ra + .ra { margin-left: -11px; }
+.ra img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ra-more { font-size: 10px; font-weight: 600; color: var(--muted); line-height: 1; }
+
+/* Реакции поверх картинки: своя тёмная подложка, обводка кружков не нужна */
 .msg-bubble.bubble-photo > .reactions,
 .irc-msg[data-mine] .msg-bubble.bubble-photo > .reactions {
   position: absolute; left: 8px; bottom: 8px;
   margin: 0; padding: 0; max-width: calc(100% - 84px);
 }
-.msg-bubble.bubble-photo > .reactions .reaction-btn {
+.msg-bubble.bubble-photo .reaction-btn {
+  --ra-ring: transparent;
   background: rgba(0,0,0,.5); border-color: transparent; color: #fff;
 }
-.msg-bubble.bubble-photo > .reactions .ra { box-shadow: none; }
-
-@media (prefers-reduced-motion: reduce) { .irc-msg.emoji-msg .msg-bubble { transition: none; } }
-
-/* ── РЕАКЦИИ: смайлик и аватарки поставивших ──
-   Числа нет — кто поставил, видно по аватаркам, полный список в подсказке. */
-/* Правый край чипа огибает кружок аватарки: радиус справа — половина высоты,
-   а отступ подобран так, чтобы дуга шла концентрично кружку (зазор 3px со всех
-   сторон, как сверху и снизу). Слева радиус обычный, как у плашки тега. */
-.reaction-btn {
-  padding: 2px 2px 2px 8px; gap: 6px; line-height: 1;
-  border-radius: 999px;
-}
-/* Вровень с кружком аватарки (18px): при 13px глиф выглядел заметно мельче */
-.ra-emoji {
-  font-size: 14px; line-height: 1;
-  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
-  /* рисунок смайлика сидит ниже середины своего бокса — подтягиваем вверх */
-  position: relative; top: -.04em;
-}
-.reaction-btn.mine { background: var(--reaction-mine); }
-
-.ra-stack { display: flex; align-items: center; }
-.ra {
-  position: relative;
-  width: 16px; height: 16px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 8px; font-weight: 600; color: #fff; line-height: 1;
-  flex-shrink: 0;
-  /* Обводка цветом подложки: без неё соседние кружки при нахлёсте сливаются */
-  box-shadow: 0 0 0 1.5px var(--bubble-bg, var(--card-bg));
-  overflow: hidden;
-}
-/* Каждый следующий уходит под предыдущий и выступает на треть */
-.ra + .ra { margin-left: -11px; }
-.ra img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
 /* Подсказка: строки «аватарка + имя», смайлик не дублируем */
 .reaction-tip { padding: 8px 11px 8px 9px; }

@@ -2094,16 +2094,37 @@ function prependMessages(msgs, chatId) {
 
 // Сколько аватарок помещается в чип реакции. Числа рядом нет, полный список
 // виден в подсказке при наведении.
-const REACTION_AVATARS_MAX = 4;
+const REACTION_AVATARS_MAX = 3;
 
 // Аватарки поставивших складываются стопкой: первый сверху, каждый следующий
 // уходит под него и выступает на треть. Обводка цветом фона отделяет соседние
 // кружки — без неё при нахлёсте они сливаются.
+// Смайлик сидит в своём боксе не по центру: у эмодзи-шрифтов рисунок смещён
+// относительно середины строки, и величина смещения зависит от системы — на macOS
+// одна, на Windows другая. Меряем один раз на крупном кегле (на мелком метрики
+// округляются до целых пикселей и врут) и держим поправку в переменной.
+function calcEmojiInkShift() {
+  try {
+    const c = document.createElement('canvas').getContext('2d');
+    c.font = '100px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+    const m = c.measureText('👍');
+    const ink = (-m.actualBoundingBoxAscent + m.actualBoundingBoxDescent) / 2;
+    const box = (-m.fontBoundingBoxAscent + m.fontBoundingBoxDescent) / 2;
+    const shift = -(ink - box) / 100;
+    if (Number.isFinite(shift) && Math.abs(shift) < 0.3) {
+      document.documentElement.style.setProperty('--emoji-ink', shift.toFixed(4) + 'em');
+    }
+  } catch {}
+}
+document.fonts?.ready?.then(calcEmojiInkShift).catch(() => {});
+calcEmojiInkShift();
+
 function reactionAvatars(userIds) {
   const ids = String(userIds || '').split(',').filter(Boolean).map(Number);
   if (!ids.length) return '';
   const shown = ids.slice(0, REACTION_AVATARS_MAX);
-  return `<span class="ra-stack">${shown.map((uid, k) => {
+  const rest = ids.length - shown.length;
+  const stack = shown.map((uid, k) => {
     const u = S.allUsers.find(x => x.id === uid) || (uid === S.user?.id ? S.user : null);
     const name = u?.display_name || '';
     const url = `${httpProto()}://${S.server}/api/users/${uid}/avatar?t=${S.avatarTs || 0}`;
@@ -2111,7 +2132,9 @@ function reactionAvatars(userIds) {
       `${esc(initials(name) || '?')}` +
       `<img src="${url}" alt="" onerror="this.style.display='none'">` +
       `</span>`;
-  }).join('')}</span>`;
+  }).join('');
+  // Больше трёх кружков не помещается без ущерба ширине — остальных сворачиваем
+  return `<span class="ra-stack">${stack}</span>${rest ? `<span class="ra-more">+${rest}</span>` : ''}`;
 }
 
 
