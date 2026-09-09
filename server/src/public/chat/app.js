@@ -35,8 +35,8 @@ const S = {
   chatHasMoreAfter: false,
   chatNewestId: null,
   searchResults: null,
-  subrooms: {},
-  activeSubroomId: null,
+  topics: {},
+  activeTopicId: null,
   activeRoomId: null,
   mutedChats: new Set(),
   forwardMsg: null,
@@ -58,7 +58,7 @@ function fillLoginFromCreds() {
 let _loadingMore = false;
 let _loadingChatId = null;
 let _mobilePanel = 1;
-let _mobileFromSubrooms = false;
+let _mobileFromTopics = false;
 const _avatarCache = new Map();
 let _fetchController = new AbortController();
 
@@ -108,7 +108,7 @@ async function submitOwnPassword() {
   }, 1600);
 }
 
-// Текст превью последнего сообщения — общий для списка чатов и подкомнат
+// Текст превью последнего сообщения — общий для списка чатов и тем
 function previewText(lm, limit = 40) {
   let t = lm
     ? (lm.deleted ? 'Сообщение удалено'
@@ -369,7 +369,7 @@ function mobileSlideTo(panel, title = '', sub = '') {
   const actions = document.querySelector('.mtb-actions');
   const chatActions = document.getElementById('mtb-chat-actions');
   // Переход на другой экран — снимаем обработчик прошлого чата, иначе он
-  // останется висеть на шапке списка подкомнат и откроет чужой состав
+  // останется висеть на шапке списка тем и откроет чужой состав
   if (titleWrap) { titleWrap.onclick = null; titleWrap.style.cursor = ''; }
   if (panel === 1) {
     if (backBtn) backBtn.style.display = 'none';
@@ -391,8 +391,8 @@ function mobileSlideTo(panel, title = '', sub = '') {
 function mobileSlideBack() {
   if (_mobilePanel === 3) {
     S.activeChatId = null;
-    S.activeSubroomId = null;
-    if (_mobileFromSubrooms) {
+    S.activeTopicId = null;
+    if (_mobileFromTopics) {
       const room = S.chats.find(c => c.id === S.activeRoomId);
       mobileSlideTo(2, room ? chatName(room) : '', room ? nMembers(room.members?.length || 0) : '');
     } else {
@@ -401,9 +401,9 @@ function mobileSlideBack() {
     }
   } else if (_mobilePanel === 2) {
     S.activeRoomId = null;
-    S.activeSubroomId = null;
+    S.activeTopicId = null;
     mobileSlideTo(1);
-    const mp = document.getElementById('mobile-subrooms');
+    const mp = document.getElementById('mobile-topics');
     setTimeout(() => { if (mp) mp.innerHTML = ''; }, 340);
   }
 }
@@ -572,9 +572,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (S.editingMessageId) { cancelEdit(); return; }
     if (anyOpen) return;
     // Escape разбирает открытое по одному уровню за нажатие:
-    // сначала чат, следующим нажатием — список подкомнат
+    // сначала чат, следующим нажатием — список тем
     if (S.activeChatId) { closeActiveChat(); return; }
-    if (S.activeRoomId) { closeSubroomsPanel(true); return; }
+    if (S.activeRoomId) { closeTopicsPanel(true); return; }
   });
 
   document.addEventListener('visibilitychange', refreshActivity);
@@ -655,7 +655,7 @@ function logout(intentional = false) {
   document.getElementById('screen-login').classList.add('active');
   // Reset mobile state
   _mobilePanel = 1;
-  _mobileFromSubrooms = false;
+  _mobileFromTopics = false;
   document.getElementById('mobile-track')?.classList.remove('mp-2', 'mp-3');
   const mtbBack = document.getElementById('mtb-back');
   const mtbAcc = document.getElementById('mtb-account');
@@ -1224,44 +1224,159 @@ async function loadChats() {
     S.unread[c.id] = (c.id === S.activeChatId) ? 0 : (c.unread || 0);
     S.unreadMentions[c.id] = (c.id === S.activeChatId) ? 0 : (c.unread_mentions || 0);
   });
-  await Promise.all(chats.filter(c=>c.has_subrooms).map(c=>loadSubrooms(c.id)));
+  await Promise.all(chats.filter(c=>c.has_topics).map(c=>loadTopics(c.id)));
   updateUnreadTotal();
   renderChatList();
 }
 
 // ── SUB-ROOMS ──
-async function loadSubrooms(roomId, { render = false } = {}) {
-  const subs = await api('GET', `/chats/${roomId}/subrooms`);
+async function loadTopics(roomId, { render = false } = {}) {
+  const subs = await api('GET', `/chats/${roomId}/topics`);
   if (!subs) return;
-  S.subrooms[roomId] = subs;
+  S.topics[roomId] = subs;
   S.unread[roomId] = 0;
   S.unreadMentions[roomId] = 0;
   subs.forEach(s => {
     S.unread[s.id] = s.unread || 0;
     S.unreadMentions[s.id] = s.unread_mentions || 0;
   });
-  if (render) renderSubroomsPanel(roomId);
+  if (render) renderTopicsPanel(roomId);
 }
 
-function renderSubroomsPanel(roomId) {
-  const subs = S.subrooms[roomId] || [];
-  if (!subs.length) { closeSubroomsPanel(); return; }
+// ── СПИСОК ТЕМ ──
+// Строка повторяет строку чата: иконка своего цвета, название, время, превью
+// последнего сообщения и счётчики. Всё это сервер отдаёт вместе со списком —
+// раньше показывалось только название и общий счётчик, и понять, где что
+// происходит, можно было только зайдя внутрь.
+let _tpQuery = '';
+let _tpSearchOpen = false;
+
+function topicRow(s) {
+  const unread = S.unread[s.id] || 0;
+  const mentions = S.unreadMentions[s.id] || 0;
+  const lm = s.last_message;
+  let preview = lm
+    ? (lm.deleted ? 'Сообщение удалено'
+      : ((lm.text ? lm.text.replace(/<[^>]*>/g, '') : '')
+        || (lm.attachment
+          ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (lm.attachment.name || 'Файл'))
+          : '')))
+    : 'Нет сообщений';
+  if (preview.length > 38) preview = preview.slice(0, 38) + '…';
+  // Кто написал — как в списке чатов: своё помечаем «Вы»
+  const mine = lm && !lm.deleted && lm.sender_id === S.user?.id;
+  const who = mine ? 'Вы' : (lm && !lm.deleted ? (lm.sender_name || '').split(' ')[0] : '');
+  const previewHtml = who
+    ? '<span style="color:var(--text2)">' + esc(who) + ':</span> ' + esc(preview)
+    : esc(preview);
+  const time = lm ? fmtChatListTime(lm.sent_at) : '';
+  // Цвет по названию — тот же расчёт, что у тегов и аватарок пользователей.
+  // Раньше у всех тем был один оранжевый домик, и список не читался.
+  const avCls = 'av-' + senderNameClass(s.name);
+  const avStyle = s.has_avatar
+    ? ' style="background-image:url(\'' + '/api/chats/' + s.id + '/avatar' + '\');background-size:cover;background-position:center"'
+    : '';
+  return '<div class="chat-item' + (S.activeTopicId === s.id ? ' active' : '') + '"' +
+    ' data-topic-id="' + s.id + '" onclick="openTopic(' + s.id + ')">' +
+    '<div class="av-wrap"><div class="av av-md av-sq ' + avCls + '"' + avStyle + '>' +
+      (s.has_avatar ? '' : '#') + '</div></div>' +
+    '<div class="info">' +
+      '<div class="ci-name" style="display:flex;align-items:center;gap:5px">' +
+        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(s.name) + '</span>' +
+        '<span class="ci-time">' + time + '</span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:6px;margin-top:2px">' +
+        '<span class="ci-preview" style="flex:1">' + previewHtml + '</span>' +
+        (mentions > 0 ? '<div class="unread-badge" title="Вас упомянули">@</div>' : '') +
+        (unread > 0 ? '<div class="unread-badge">' + (unread > 99 ? '99+' : unread) + '</div>' : '') +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function topicsPanelHtml(roomId) {
+  const room = S.chats.find(c => c.id === roomId);
+  const subs = S.topics[roomId] || [];
+  const q = _tpQuery.trim().toLowerCase();
+  const shown = q ? subs.filter(s => s.name.toLowerCase().includes(q)) : subs;
+  const n = room?.members?.length || 0;
+  const word = (n % 10 === 1 && n % 100 !== 11) ? 'участник'
+    : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? 'участника' : 'участников';
+  // Поиск живёт в той же строке, что название: лишний ряд сдвинул бы список
+  // относительно списка чатов, а они должны стоять строка в строку
+  const head = _tpSearchOpen
+    ? '<input class="tp-search" id="tp-search" placeholder="Поиск темы" value="' + esc(_tpQuery) + '"' +
+      ' oninput="filterTopics(this.value)" onkeydown="if(event.key===\'Escape\')closeTopicSearch()">' +
+      '<button class="tp-icon-btn" onclick="closeTopicSearch()" title="Отменить поиск">' +
+      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
+    : '<span class="tp-title">' + esc(room?.name || 'Комната') + '</span>' +
+      '<button class="tp-icon-btn" onclick="openTopicSearch()" title="Поиск темы"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>';
+
+  return '<div class="tp-head">' +
+      '<button class="tp-icon-btn" onclick="leaveRoom()" title="К списку чатов"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>' +
+      head +
+    '</div>' +
+    '<div class="tp-list">' +
+      '<div class="chat-list-section-label">Темы' + (n ? ' · ' + n + ' ' + word : '') + '</div>' +
+      (shown.length ? shown.map(topicRow).join('') : '<div class="tp-empty">Ничего не найдено</div>') +
+    '</div>';
+}
+
+function filterTopics(q) {
+  _tpQuery = q;
+  const list = document.querySelector('#topics-panel .tp-list');
+  if (!list || !S.activeRoomId) return;
+  // Перерисовываем только список: строку поиска трогать нельзя, слетит курсор
+  const subs = S.topics[S.activeRoomId] || [];
+  const t = q.trim().toLowerCase();
+  const shown = t ? subs.filter(s => s.name.toLowerCase().includes(t)) : subs;
+  const label = list.querySelector('.chat-list-section-label')?.outerHTML || '';
+  list.innerHTML = label + (shown.length
+    ? shown.map(topicRow).join('')
+    : '<div class="tp-empty">Ничего не найдено</div>');
+}
+
+function openTopicSearch() {
+  _tpSearchOpen = true;
+  if (S.activeRoomId) renderTopicsPanel(S.activeRoomId);
+  document.getElementById('tp-search')?.focus();
+}
+function closeTopicSearch() {
+  _tpSearchOpen = false; _tpQuery = '';
+  if (S.activeRoomId) renderTopicsPanel(S.activeRoomId);
+}
+
+// Выход из комнаты: панель уезжает, сайдбар разворачивается обратно
+function leaveRoom() {
+  closeTopicsPanel();
+  S.activeRoomId = null;
+  S.activeTopicId = null;
+  S.activeChatId = null;
+  renderChatList();
+  // Через setChatMainContent: полоса ввода лежит внутри chat-main, и прямая
+  // запись innerHTML снесла бы её вместе с содержимым
+  setChatMainContent('<div class="empty-state">' +
+    '<div class="empty-icon">💬</div><div class="empty-title">Electron</div>' +
+    '<div class="empty-sub">Выберите чат или создайте новый</div></div>');
+}
+
+function renderTopicsPanel(roomId) {
+  const subs = S.topics[roomId] || [];
+  if (!subs.length) { closeTopicsPanel(); return; }
   const roomName = S.chats.find(c=>c.id===roomId)?.name || 'Комната';
 
   if (_isMobile()) {
     // На мобильном — рендерим в панель 2 слайдера
-    const mp = document.getElementById('mobile-subrooms');
+    const mp = document.getElementById('mobile-topics');
     if (!mp) return;
     const items = subs.map(s => {
       const unread = S.unread[s.id] || 0;
       const badge = unread ? `<div class="unread-badge">${unread > 99 ? '99+' : unread}</div>` : '';
-      const bg = avatarColor(s.id);
-      // Как у комнат в списке чатов: эмодзи, если своя картинка не задана
-      const letter = '🏠';
-      // avatarColor отдаёт ИМЯ КЛАССА, а не цвет: раньше он подставлялся
-      // в style="background:..." и фон получался прозрачным
-      const avEl = `<div class="av av-md av-sq av-orange" ${s.has_avatar?`style="background-image:url('/api/chats/${s.id}/avatar');background-size:cover;background-position:center"`:''}>${s.has_avatar?'':letter}</div>`;
-      return `<div class="chat-item${S.activeSubroomId===s.id?' active':''}" onclick="openSubroom(${s.id})">
+      // Цвет по названию — как в десктопной колонке и как у тегов: одинаковые
+      // домики у всех тем не давали различить их взглядом
+      const avCls = 'av-' + senderNameClass(s.name);
+      const avEl = `<div class="av av-md av-sq ${avCls}" ${s.has_avatar?`style="background-image:url('/api/chats/${s.id}/avatar');background-size:cover;background-position:center"`:''}>${s.has_avatar?'':'#'}</div>`;
+      return `<div class="chat-item${S.activeTopicId===s.id?' active':''}" onclick="openTopic(${s.id})">
         <div class="av-wrap">${avEl}</div>
         <div class="info">
           <div class="ci-name" style="display:flex;align-items:center;gap:5px">
@@ -1287,55 +1402,43 @@ function renderSubroomsPanel(roomId) {
     // Название комнаты — в шапку: раньше она пустовала, а название дублировалось в теле
     mobileSlideTo(2, roomName, nMembers((S.chats.find(c => c.id === roomId)?.members?.length) || 0));
   } else {
-    // На десктопе — боковая панель между sidebar и чатом
-    const panel = document.getElementById('subrooms-panel');
+    // На десктопе — колонка между сайдбаром и перепиской; сайдбар при этом
+    // сжимается в полосу аватарок, чтобы список тем встал во всю ширину
+    const panel = document.getElementById('topics-panel');
     panel.classList.add('open');
-    const items = subs.map(s => {
-      const unread = S.unread[s.id] || 0;
-      const badge = unread ? `<span class="subroom-unread">${unread > 99 ? '99+' : unread}</span>` : '';
-      const bg = avatarColor(s.id);
-      // Как у комнат в списке чатов: эмодзи, если своя картинка не задана
-      const letter = '🏠';
-      // avatarColor отдаёт имя класса — как цвет он не работал, фон был прозрачным
-      const avStyle = s.has_avatar
-        ? `style="background-image:url('/api/chats/${s.id}/avatar');background-size:cover;background-position:center"`
-        : '';
-      return `<div class="subroom-item${S.activeSubroomId===s.id?' active':''}" onclick="openSubroom(${s.id})">
-        <div class="sr-av av-orange" ${avStyle}>${s.has_avatar?'':letter}</div>
-        <span class="sr-name">${esc(s.name)}</span>
-        ${badge}
-      </div>`;
-    }).join('');
-    panel.innerHTML = `<div class="subrooms-panel-header">${esc(roomName)}</div>${items}`;
+    document.body.classList.add('rooms-strip');
+    panel.innerHTML = topicsPanelHtml(roomId);
   }
 }
 
-function closeSubroomsPanel(goBack) {
+function closeTopicsPanel(goBack) {
   if (_isMobile()) {
-    const mp = document.getElementById('mobile-subrooms');
+    const mp = document.getElementById('mobile-topics');
     if (mp) mp.innerHTML = '';
     if (goBack) {
       S.activeRoomId = null;
-      S.activeSubroomId = null;
+      S.activeTopicId = null;
       mobileSlideTo(1);
     }
     return;
   }
-  const panel = document.getElementById('subrooms-panel');
+  const panel = document.getElementById('topics-panel');
   panel.classList.remove('open');
   panel.innerHTML = '';
+  document.body.classList.remove('rooms-strip');
+  _tpSearchOpen = false; _tpQuery = '';
   if (goBack) {
     S.activeRoomId = null;
-    S.activeSubroomId = null;
+    S.activeTopicId = null;
     renderChatList();
   }
 }
 
-async function openSubroom(subroomId) {
-  S.activeSubroomId = subroomId;
+async function openTopic(topicId) {
+  S.activeTopicId = topicId;
   const parentId = S.activeRoomId;
-  if (parentId && !_isMobile()) renderSubroomsPanel(parentId);
-  await openChat(subroomId);
+  if (parentId && !_isMobile()) renderTopicsPanel(parentId);
+  await openChat(topicId);
 }
 
 function chatName(chat) {
@@ -1394,7 +1497,7 @@ function applyAvatars() {
   document.querySelectorAll('[data-av-chat]').forEach(el => {
     const chatId = parseInt(el.dataset.avChat);
     const chat = S.chats.find(c => c.id === chatId)
-      || Object.values(S.subrooms).flat().find(s => s.id === chatId);
+      || Object.values(S.topics).flat().find(s => s.id === chatId);
     if (!chat) return;
     if (chat.type === 'direct') {
       const peerId = getPeerUserId(chat);
@@ -1527,7 +1630,7 @@ function renderChatList() {
 // когда приходит статус по нему. Иначе она оставалась бы прежней до перезагрузки.
 function applyStatusToChatList(chatId, msgId, kind, readerId) {
   const chat = S.chats.find(c => c.id === chatId)
-    || S.chats.find(c => (S.subrooms[c.id] || []).some(s => s.id === chatId));
+    || S.chats.find(c => (S.topics[c.id] || []).some(s => s.id === chatId));
   const lm = chat?.last_message;
   if (!lm || !lm.status || lm.id !== msgId || lm.sender_id !== S.user?.id) return;
   const key = 'list:' + kind + ':' + readerId;
@@ -1570,11 +1673,11 @@ function initComposerSlot() {
 
 function renderChatRow(c) {
   const name = chatName(c);
-  const u = c.has_subrooms
-    ? (S.subrooms[c.id]||[]).reduce((sum,s)=>sum+(S.unread[s.id]||0),0)
+  const u = c.has_topics
+    ? (S.topics[c.id]||[]).reduce((sum,s)=>sum+(S.unread[s.id]||0),0)
     : S.unread[c.id]||0;
-  const m = c.has_subrooms
-    ? (S.subrooms[c.id]||[]).reduce((sum,s)=>sum+(S.unreadMentions[s.id]||0),0)
+  const m = c.has_topics
+    ? (S.topics[c.id]||[]).reduce((sum,s)=>sum+(S.unreadMentions[s.id]||0),0)
     : S.unreadMentions[c.id]||0;
   const lm = c.last_message;
   let preview = lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? lm.text.replace(/<[^>]*>/g, '') : (lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
@@ -1698,23 +1801,30 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   S.msgData.clear();
   let chat = S.chats.find(c=>c.id===chatId);
   if (!chat) {
-    for (const [pid, subs] of Object.entries(S.subrooms)) {
+    for (const [pid, subs] of Object.entries(S.topics)) {
       const sub = subs.find(s=>s.id===chatId);
       if (sub) { chat = { id: chatId, type: 'room', name: sub.name, parent_id: Number(pid), members: [] }; break; }
     }
   }
-  if (chat?.has_subrooms) {
+  if (chat?.has_topics) {
     S.activeChatId = null;
     S.activeRoomId = chatId;
-    S.activeSubroomId = null;
+    S.activeTopicId = null;
     renderChatList();
-    await loadSubrooms(chatId, { render: true });
+    await loadTopics(chatId, { render: true });
+    // На десктопе переписка остаётся от прошлого чата, если её не очистить:
+    // мобильная ветка уезжает на другой слайд, а тут никто не подменял содержимое
+    if (!_isMobile()) {
+      setChatMainContent('<div class="empty-state">' +
+        '<div class="empty-icon">📋</div><div class="empty-title">Выберите тему</div>' +
+        '<div class="empty-sub">Слева список тем этой комнаты</div></div>');
+    }
     return;
   }
-  if (!chat?.parent_id && !Object.values(S.subrooms).some(arr=>arr.some(s=>s.id===chatId))) {
-    closeSubroomsPanel();
+  if (!chat?.parent_id && !Object.values(S.topics).some(arr=>arr.some(s=>s.id===chatId))) {
+    closeTopicsPanel();
     S.activeRoomId = null;
-    S.activeSubroomId = null;
+    S.activeTopicId = null;
   }
   if (S.editingMessageId) cancelEdit();
   S.activeChatId = chatId;
@@ -1731,17 +1841,17 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   S.unreadMentions[chatId] = 0;
   updateUnreadTotal();
   renderChatList();
-  if (chat?.parent_id && !_isMobile()) renderSubroomsPanel(chat.parent_id);
+  if (chat?.parent_id && !_isMobile()) renderTopicsPanel(chat.parent_id);
   const name = chatName(chat);
   const isGroup = chat.type==='group';
   const isRoom = chat.type==='room';
-  const isSubroom = !!chat?.parent_id;
+  const isTopic = !!chat?.parent_id;
   const isCreator = chat.created_by === S.user.id;
   const memberCount = chat.members?.length||0;
   const peerId = getPeerUserId(chat);
   const peerDot = peerId ? presenceDot(peerId) : '';
-  const sub = isSubroom ? `# подкомната` : isRoom ? `🏠 Комната · ${nMembers(memberCount)}` : isGroup ? `${nMembers(memberCount)}` : (peerId ? peerStatusText(peerId) : 'Личный чат');
-  const nameClickable = (isGroup || (isRoom && !isSubroom)) ? `style="cursor:pointer" onclick="openGroupInfo(${chatId})"` : '';
+  const sub = isTopic ? `# тема` : isRoom ? `🏠 Комната · ${nMembers(memberCount)}` : isGroup ? `${nMembers(memberCount)}` : (peerId ? peerStatusText(peerId) : 'Личный чат');
+  const nameClickable = (isGroup || (isRoom && !isTopic)) ? `style="cursor:pointer" onclick="openGroupInfo(${chatId})"` : '';
 
   const main = document.getElementById('chat-main');
   setChatMainContent(`
@@ -1904,12 +2014,12 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     if (_directChat) {
       _slideTitle = chatName(_directChat);
     } else {
-      for (const subs of Object.values(S.subrooms)) {
+      for (const subs of Object.values(S.topics)) {
         const s = subs.find(s=>s.id===chatId);
         if (s) { _slideTitle = s.name || ''; break; }
       }
     }
-    _mobileFromSubrooms = _mobilePanel === 2;
+    _mobileFromTopics = _mobilePanel === 2;
     const _slidePeerId = _directChat ? getPeerUserId(_directChat) : null;
     // Подпись та же, что и на десктопе: раньше на мобильном её не было вовсе,
     // и из открытой группы нельзя было узнать даже число участников
@@ -1918,7 +2028,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     // Шапка ведёт в состав группы/комнаты — как кликабельная шапка на десктопе
     const _tw = document.getElementById('mtb-title-wrap');
     if (_tw) {
-      const canOpenInfo = isGroup || (isRoom && !isSubroom);
+      const canOpenInfo = isGroup || (isRoom && !isTopic);
       _tw.onclick = canOpenInfo ? () => openGroupInfo(chatId) : null;
       _tw.style.cursor = canOpenInfo ? 'pointer' : '';
     }
@@ -4195,10 +4305,10 @@ function connectWS() {
         S.unread[chatId] = (S.unread[chatId]||0)+1;
         if (message.mentions?.includes(S.user.id)) S.unreadMentions[chatId] = (S.unreadMentions[chatId]||0)+1;
         if (!isChatMuted(chatId, parentId)) {
-          // Подкомнаты нет в S.chats — берём её имя из S.subrooms, иначе имя
+          // Темы нет в S.chats — берём её имя из S.topics, иначе имя
           // родительской комнаты (chat уже содержит этот фолбэк). Раньше здесь
           // был chatName(undefined) → TypeError, и обработчик обрывался.
-          const _srObj = parentId ? (S.subrooms[parentId]||[]).find(s=>s.id===chatId) : null;
+          const _srObj = parentId ? (S.topics[parentId]||[]).find(s=>s.id===chatId) : null;
           const title = _srObj?.name || chatName(chat) || message.sender_name || 'Electron';
           const body = `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
           webNotify(title, body, chatId);
@@ -4208,7 +4318,7 @@ function connectWS() {
       }
       updateUnreadTotal();
       renderChatList();
-      if (parentId && S.activeRoomId === parentId) renderSubroomsPanel(parentId);
+      if (parentId && S.activeRoomId === parentId) renderTopicsPanel(parentId);
       if (!chat) loadChats();
     }
 
@@ -4334,7 +4444,7 @@ function connectWS() {
       if (m.status) S.msgStatus[m.id] = { ...m.status };
       // Точный статус с сервера — кладём его в список чатов как есть
       const _c = S.chats.find(c => c.id === m.chat_id)
-        || S.chats.find(c => (S.subrooms[c.id] || []).some(s => s.id === m.chat_id));
+        || S.chats.find(c => (S.topics[c.id] || []).some(s => s.id === m.chat_id));
       if (_c?.last_message && _c.last_message.id === m.id && m.status) {
         _c.last_message.status = { ...m.status };
         renderChatList();
@@ -4348,7 +4458,7 @@ function connectWS() {
     if (data.type==='status_range') {
       // Диапазон мог захватить последнее сообщение чата — обновим галочку в списке
       const _lm = (S.chats.find(c => c.id === data.chat_id)
-        || S.chats.find(c => (S.subrooms[c.id] || []).some(s => s.id === data.chat_id)))?.last_message;
+        || S.chats.find(c => (S.topics[c.id] || []).some(s => s.id === data.chat_id)))?.last_message;
       if (_lm && _lm.id >= data.min_id && _lm.id <= data.max_id) {
         applyStatusToChatList(data.chat_id, _lm.id, data.kind, data.reader_id);
       }

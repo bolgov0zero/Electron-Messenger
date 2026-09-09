@@ -29,12 +29,12 @@ function enrichChat(chat, userId) {
     JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = ?
   `).all(chat.id);
 
-  const subrooms = db.prepare('SELECT id FROM chats WHERE parent_id = ? ORDER BY position, id').all(chat.id);
-  const hasSubrooms = subrooms.length > 0;
+  const topics = db.prepare('SELECT id FROM chats WHERE parent_id = ? ORDER BY position, id').all(chat.id);
+  const hasTopics = topics.length > 0;
 
   let last, unread, unreadMentions;
-  if (hasSubrooms) {
-    const ids = subrooms.map(s => s.id);
+  if (hasTopics) {
+    const ids = topics.map(s => s.id);
     const placeholders = ids.map(() => '?').join(',');
     last = db.prepare(`
       SELECT m.id, m.chat_id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment,
@@ -89,7 +89,7 @@ function enrichChat(chat, userId) {
   }
 
   const muted = !!db.prepare('SELECT 1 FROM muted_chats WHERE user_id = ? AND chat_id = ?').get(userId, chat.id);
-  return { ...chat, members, last_message: last || null, unread, unread_mentions: unreadMentions, has_subrooms: hasSubrooms, muted };
+  return { ...chat, members, last_message: last || null, unread, unread_mentions: unreadMentions, has_topics: hasTopics, muted };
 }
 
 // Get my chats
@@ -103,18 +103,18 @@ router.get('/', authMiddleware, (req, res) => {
   res.json(chats.map(c => enrichChat(c, req.user.id)));
 });
 
-// Get sub-rooms of a room
-router.get('/:id/subrooms', authMiddleware, (req, res) => {
+// Список тем комнаты
+router.get('/:id/topics', authMiddleware, (req, res) => {
   const chatId = Number(req.params.id);
   if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id))
     return res.status(403).json({ error: 'Forbidden' });
-  // type отдаём явно: без него клиент не опознаёт подкомнату как комнату и
+  // type отдаём явно: без него клиент не опознаёт тему как комнату и
   // подставляет заглушку личного чата — отсюда была буква «Ч» вместо иконки
-  const subrooms = db.prepare(`
+  const topics = db.prepare(`
     SELECT id, name, position, parent_id, type FROM chats WHERE parent_id = ? ORDER BY position, id
   `).all(chatId);
   const userId = req.user.id;
-  const result = subrooms.map(s => {
+  const result = topics.map(s => {
     const unread = db.prepare(`
       SELECT COUNT(*) AS c FROM messages m
       LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
@@ -128,7 +128,7 @@ router.get('/:id/subrooms', authMiddleware, (req, res) => {
     `).get(userId, s.id, userId, userId).c;
     const has_avatar = fs.existsSync(path2.join(AVATAR_DIR, `chat_${s.id}.jpg`));
     // Превью последнего сообщения — как в обычном списке чатов: иначе у всех
-    // подкомнат была одинаковая подпись «# подкомната» и не понять, что нового
+    // тем была одинаковая подпись «# тема» и не понять, что нового
     const last = db.prepare(`
       SELECT m.id, m.text, m.sent_at, m.deleted, m.attachment,
         COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
@@ -238,13 +238,13 @@ router.delete('/:id/members/:userId', authMiddleware, (req, res) => {
   const kickedId = Number(req.params.userId);
   const chatId = Number(req.params.id);
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chatId, kickedId);
-  const subrooms = db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId);
+  const topics = db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId);
   const del = db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?');
   db.transaction(() => {
     del.run(chatId, kickedId);
-    subrooms.forEach(s => del.run(s.id, kickedId));
+    topics.forEach(s => del.run(s.id, kickedId));
   })();
-  subrooms.forEach(s => sendTo(kickedId, { type: 'chat_deleted', chat_id: s.id }));
+  topics.forEach(s => sendTo(kickedId, { type: 'chat_deleted', chat_id: s.id }));
   members.forEach(({ user_id: uid }) => sendTo(uid, { type: 'reload_chats' }));
   sendTo(kickedId, { type: 'chat_deleted', chat_id: chatId });
   res.json({ ok: true });
@@ -352,7 +352,7 @@ router.delete('/:id', authMiddleware, (req, res) => {
 router.delete('/admin/:id', authMiddleware, adminMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(id);
-  // Удаляем вебхуки комнаты и её подкомнат (нет ON DELETE CASCADE на webhooks.chat_id)
+  // Удаляем вебхуки комнаты и её тем (нет ON DELETE CASCADE на webhooks.chat_id)
   const subIds = db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(id).map(r => r.id);
   [id, ...subIds].forEach(cid => db.prepare('DELETE FROM webhooks WHERE chat_id = ?').run(cid));
   subIds.forEach(cid => deleteChatFiles(cid));

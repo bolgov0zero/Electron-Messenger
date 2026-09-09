@@ -77,7 +77,7 @@ router.get('/stats', (req, res) => {
   const pageSize  = db.prepare('PRAGMA page_size').get()['page_size'];
   res.json({
     // Считаем ровно то, что видно в списках: без ботов (вебхуки, __system__)
-    // и без подкомнат — иначе бейджи и плитки показывают больше, чем есть на вкладках
+    // и без тем — иначе бейджи и плитки показывают больше, чем есть на вкладках
     users:    db.prepare('SELECT COUNT(*) as c FROM users WHERE is_bot IS NULL OR is_bot = 0').get().c,
     chats:    db.prepare("SELECT COUNT(*) as c FROM chats WHERE type='direct'").get().c,
     groups:   db.prepare("SELECT COUNT(*) as c FROM chats WHERE type='group'").get().c,
@@ -512,20 +512,20 @@ router.post('/webhooks/:id/avatar', (req, res) => {
   res.json({ ok: true });
 });
 
-// ── Подкомнаты ──
-router.get('/subrooms/:roomId', (req, res) => {
+// ── Темы ──
+router.get('/topics/:roomId', (req, res) => {
   const roomId = Number(req.params.roomId);
   const room = db.prepare("SELECT id FROM chats WHERE id = ? AND type = 'room' AND parent_id IS NULL").get(roomId);
   if (!room) return res.status(404).json({ error: 'Not found' });
-  const subrooms = db.prepare('SELECT id, name, position FROM chats WHERE parent_id = ? ORDER BY position, id').all(roomId);
-  res.json(subrooms.map(s => ({
+  const topics = db.prepare('SELECT id, name, position FROM chats WHERE parent_id = ? ORDER BY position, id').all(roomId);
+  res.json(topics.map(s => ({
     ...s,
     has_avatar: fs.existsSync(path.join(AVATAR_DIR, `chat_${s.id}.jpg`)),
     message_count: db.prepare('SELECT COUNT(*) as c FROM messages WHERE chat_id = ?').get(s.id).c,
   })));
 });
 
-router.post('/subrooms', (req, res) => {
+router.post('/topics', (req, res) => {
   const { name, room_id } = req.body;
   if (!name?.trim() || !room_id) return res.status(400).json({ error: 'Missing fields' });
   const room = db.prepare("SELECT id FROM chats WHERE id = ? AND type = 'room' AND parent_id IS NULL").get(Number(room_id));
@@ -544,7 +544,7 @@ router.post('/subrooms', (req, res) => {
   res.json({ id: Number(result) });
 });
 
-router.patch('/subrooms/:id', (req, res) => {
+router.patch('/topics/:id', (req, res) => {
   const sub = db.prepare('SELECT id, parent_id FROM chats WHERE id = ? AND parent_id IS NOT NULL').get(Number(req.params.id));
   if (!sub) return res.status(404).json({ error: 'Not found' });
   const { name } = req.body;
@@ -555,7 +555,7 @@ router.patch('/subrooms/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete('/subrooms/:id', (req, res) => {
+router.delete('/topics/:id', (req, res) => {
   const sub = db.prepare('SELECT id, parent_id FROM chats WHERE id = ? AND parent_id IS NOT NULL').get(Number(req.params.id));
   if (!sub) return res.status(404).json({ error: 'Not found' });
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(sub.id);
@@ -565,7 +565,7 @@ router.delete('/subrooms/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-router.post('/subrooms/:id/avatar', (req, res) => {
+router.post('/topics/:id/avatar', (req, res) => {
   const sub = db.prepare('SELECT id FROM chats WHERE id = ? AND parent_id IS NOT NULL').get(Number(req.params.id));
   if (!sub) return res.status(404).json({ error: 'Not found' });
   const { data } = req.body;
@@ -576,7 +576,7 @@ router.post('/subrooms/:id/avatar', (req, res) => {
   res.json({ ok: true });
 });
 
-router.post('/subrooms/reorder', (req, res) => {
+router.post('/topics/reorder', (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids)) return res.status(400).json({ error: 'Invalid' });
   const upd = db.prepare('UPDATE chats SET position = ? WHERE id = ? AND parent_id IS NOT NULL');

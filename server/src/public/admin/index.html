@@ -886,13 +886,13 @@ return 'OK';</pre>
         </div>
         <input type="file" id="room-avatar-input" accept="image/*" style="display:none" onchange="onRoomAvatarChange(this)">
       </div>
-      <!-- Подкомнаты (только для комнат) -->
-      <div id="subrooms-section" style="display:none;margin-bottom:14px">
-        <div style="font-size:12px;font-weight:600;color:var(--c-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Подкомнаты</div>
-        <div id="subrooms-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px"></div>
+      <!-- Темы (только для комнат) -->
+      <div id="topics-section" style="display:none;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--c-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Темы</div>
+        <div id="topics-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px"></div>
         <div style="display:flex;gap:6px">
-          <input id="subroom-name-input" placeholder="Название подкомнаты" style="flex:1;padding:7px 10px;border:1.5px solid var(--c-border);border-radius:8px;font-size:13px;font-family:var(--f-ui);outline:none;background:var(--c-surface);color:var(--c-text)" onkeydown="if(event.key==='Enter')addSubroom()">
-          <button class="btn btn-primary btn-sm" onclick="addSubroom()">Добавить</button>
+          <input id="topic-name-input" placeholder="Название темы" style="flex:1;padding:7px 10px;border:1.5px solid var(--c-border);border-radius:8px;font-size:13px;font-family:var(--f-ui);outline:none;background:var(--c-surface);color:var(--c-text)" onkeydown="if(event.key==='Enter')addTopic()">
+          <button class="btn btn-primary btn-sm" onclick="addTopic()">Добавить</button>
         </div>
       </div>
       <div class="pp-search" id="members-search-wrap">
@@ -1820,8 +1820,8 @@ async function openRoomEdit(chatId, name) {
   _membersReadonly=false;
   document.getElementById('members-title').textContent='Изменить комнату';
   document.getElementById('room-edit-meta').style.display='';
-  document.getElementById('subrooms-section').style.display='';
-  document.getElementById('subroom-name-input').value='';
+  document.getElementById('topics-section').style.display='';
+  document.getElementById('topic-name-input').value='';
   document.getElementById('room-edit-name').value=name;
   document.getElementById('room-avatar-input').value='';
   document.getElementById('members-search').value='';
@@ -1839,18 +1839,18 @@ async function openRoomEdit(chatId, name) {
   const [members,allU,subs]=await Promise.all([
     api('GET','/api/admin/chats/'+chatId+'/members'),
     api('GET','/api/admin/users'),
-    api('GET','/api/admin/subrooms/'+chatId)
+    api('GET','/api/admin/topics/'+chatId)
   ]);
   _membersCur = members;
   _membersAvail = allU.filter(u=>!members.some(m=>m.id===u.id));
-  renderSubroomsList(subs||[]);
+  renderTopicsList(subs||[]);
   renderMembersLists('');
   openModal('modal-members');
 }
 
-function renderSubroomsList(subs) {
-  const el = document.getElementById('subrooms-list');
-  if (!subs.length) { el.innerHTML='<div style="font-size:12px;color:var(--c-muted)">Подкомнаты не добавлены</div>'; return; }
+function renderTopicsList(subs) {
+  const el = document.getElementById('topics-list');
+  if (!subs.length) { el.innerHTML='<div style="font-size:12px;color:var(--c-muted)">Темы не добавлены</div>'; return; }
   el.innerHTML = subs.map(s=>`
     <div style="display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:7px;background:var(--c-surface2)">
       <div style="position:relative;width:26px;height:26px;flex-shrink:0">
@@ -1859,52 +1859,52 @@ function renderSubroomsList(subs) {
       <span style="flex:1;font-size:13px">${esc(s.name)}</span>
       <span style="font-size:11px;color:var(--c-muted)">${s.message_count} сообщ.</span>
       <label class="btn btn-ghost btn-sm" style="cursor:pointer;font-size:11px">
-        Фото<input type="file" accept="image/*" style="display:none" onchange="uploadSubroomAvatar(${s.id},this)">
+        Фото<input type="file" accept="image/*" style="display:none" onchange="uploadTopicAvatar(${s.id},this)">
       </label>
-      <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="renameSubroom(${s.id},'${jesc(s.name)}')">✎</button>
-      <button class="btn btn-danger btn-sm" style="font-size:11px" onclick="deleteSubroom(${s.id})">✕</button>
+      <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="renameTopic(${s.id},'${jesc(s.name)}')">✎</button>
+      <button class="btn btn-danger btn-sm" style="font-size:11px" onclick="deleteTopic(${s.id})">✕</button>
     </div>`).join('');
 }
 
-async function addSubroom() {
-  const name = document.getElementById('subroom-name-input').value.trim();
+async function addTopic() {
+  const name = document.getElementById('topic-name-input').value.trim();
   if (!name) { toast('Введите название','error'); return; }
-  const data = await api('POST','/api/admin/subrooms',{name,room_id:_editRoomId});
+  const data = await api('POST','/api/admin/topics',{name,room_id:_editRoomId});
   if (data?.id) {
-    document.getElementById('subroom-name-input').value='';
-    toast('Подкомната добавлена','success');
-    const subs = await api('GET','/api/admin/subrooms/'+_editRoomId);
-    renderSubroomsList(subs||[]);
+    document.getElementById('topic-name-input').value='';
+    toast('Тема добавлена','success');
+    const subs = await api('GET','/api/admin/topics/'+_editRoomId);
+    renderTopicsList(subs||[]);
   } else toast(data?.error||'Ошибка','error');
 }
 
-async function deleteSubroom(id) {
-  confirm('Удалить подкомнату?','Все сообщения будут удалены.', async ()=>{
-    const data = await api('DELETE','/api/admin/subrooms/'+id);
+async function deleteTopic(id) {
+  confirm('Удалить тему?','Все сообщения будут удалены.', async ()=>{
+    const data = await api('DELETE','/api/admin/topics/'+id);
     if (data?.ok) {
       toast('Удалено','success');
-      const subs = await api('GET','/api/admin/subrooms/'+_editRoomId);
-      renderSubroomsList(subs||[]);
+      const subs = await api('GET','/api/admin/topics/'+_editRoomId);
+      renderTopicsList(subs||[]);
     } else toast(data?.error||'Ошибка','error');
   });
 }
 
-async function renameSubroom(id, currentName) {
+async function renameTopic(id, currentName) {
   const name = prompt('Новое название:', currentName);
   if (!name?.trim() || name.trim()===currentName) return;
-  const data = await api('PATCH','/api/admin/subrooms/'+id,{name:name.trim()});
+  const data = await api('PATCH','/api/admin/topics/'+id,{name:name.trim()});
   if (data?.ok) {
     toast('Переименовано','success');
-    const subs = await api('GET','/api/admin/subrooms/'+_editRoomId);
-    renderSubroomsList(subs||[]);
+    const subs = await api('GET','/api/admin/topics/'+_editRoomId);
+    renderTopicsList(subs||[]);
   } else toast(data?.error||'Ошибка','error');
 }
 
-async function uploadSubroomAvatar(id, input) {
+async function uploadTopicAvatar(id, input) {
   const file = input.files[0]; if (!file) return;
   const base64 = await resizeAvatarFile(file);
-  const res = await api('POST', '/api/admin/subrooms/' + id + '/avatar', { data: base64 });
-  if (res?.ok) { toast('Фото обновлено', 'success'); const subs = await api('GET', '/api/admin/subrooms/' + _editRoomId); renderSubroomsList(subs || []); }
+  const res = await api('POST', '/api/admin/topics/' + id + '/avatar', { data: base64 });
+  if (res?.ok) { toast('Фото обновлено', 'success'); const subs = await api('GET', '/api/admin/topics/' + _editRoomId); renderTopicsList(subs || []); }
   else toast(res?.error || 'Ошибка', 'error');
 }
 
@@ -2663,7 +2663,7 @@ async function openCreateWebhook() {
     if (c.type==='group') {
       opts += `<option value="${c.id}">${esc(c.name||'—')} (группа)</option>`;
     } else {
-      const subs = await api('GET','/api/admin/subrooms/'+c.id);
+      const subs = await api('GET','/api/admin/topics/'+c.id);
       if (subs?.length) {
         opts += `<optgroup label="${esc(c.name||'—')} (комната)">`;
         subs.forEach(s => { opts += `<option value="${s.id}">${esc(s.name)}</option>`; });

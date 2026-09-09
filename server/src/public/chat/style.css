@@ -768,62 +768,79 @@ html.no-emoji-font .md-code {
 }
 
 /* ══════════════════════════════════════════
-   SUB-ROOMS PANEL
-   ══════════════════════════════════════════ */
-.subrooms-panel {
+   ПАНЕЛЬ ТЕМ
+   ══════════════════════════════════════════
+   Внутри комнаты сайдбар сжимается в полосу аватарок, а список тем получает
+   ширину строки чата. Место берётся не у окна: сайдбар отдаёт 216px, список тем
+   забирает 88 — переписка становится шире, чем была до входа в комнату. */
+.topics-panel {
   width: 0; min-width: 0; overflow: hidden;
   background: var(--side-bg);
   border-right: none;
   display: flex; flex-direction: column;
-  transition: width 0.2s ease, min-width 0.2s ease;
+  transition: width 0.2s ease, min-width 0.2s ease, border-right-color 0.2s;
   flex-shrink: 0;
 }
-.subrooms-panel.open {
-  width: 192px; min-width: 192px;
+.topics-panel.open {
+  width: 280px; min-width: 280px;
   border-right: 1px solid var(--border);
 }
-.subrooms-panel-header {
-  padding: 14px 12px 8px;
-  font-size: 11px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .06em;
-  color: var(--muted);
+/* Шапка ровно той же высоты, что строка поиска в сайдбаре: тогда подпись раздела
+   и первые строки обоих списков стоят на одной линии */
+.tp-head {
+  /* Ровно высота строки поиска в сайдбаре (padding 12+12 плюс поле 46) —
+     тогда подпись раздела и первые строки обоих списков стоят на одной линии */
+  height: 73px; flex-shrink: 0;
+  padding: 12px 8px 12px 5px;
+  display: flex; align-items: center; gap: 2px;
 }
-.subrooms-panel-back {
-  display: flex; align-items: center; gap: 6px;
-  padding: 10px 12px 4px;
-  font-size: 13px; color: var(--accent); cursor: pointer;
-  font-weight: 500;
+.tp-icon-btn {
+  width: 30px; height: 30px; flex-shrink: 0;
+  border: none; background: none; cursor: pointer; border-radius: 9px;
+  color: var(--text2); display: flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s;
 }
-.subroom-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 10px; margin: 1px 6px;
-  border-radius: 9px; cursor: pointer;
-  transition: background .12s;
+.tp-icon-btn:hover { background: var(--hover-row); color: var(--text); }
+.tp-title {
+  flex: 1; min-width: 0; font-size: 14px; font-weight: 650; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.subroom-item:hover { background: var(--hover-row); }
-.subroom-item.active { background: var(--active-row); }
-.subroom-item .sr-av {
-  width: 28px; height: 28px; border-radius: 9px;
-  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700; color: #fff;
-  background-size: cover; background-position: center;
+.tp-search {
+  flex: 1; min-width: 0; height: 30px;
+  background: var(--search-bg); border: 1px solid var(--border); border-radius: 9px;
+  padding: 0 10px; font-size: 13px; color: var(--text); font-family: inherit; outline: none;
 }
-.subroom-item .sr-name {
-  flex: 1; font-size: 13px; font-weight: 500;
-  color: var(--text); overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
+.tp-search::placeholder { color: var(--muted); }
+.tp-list { flex: 1; overflow-y: auto; padding: 0 8px 12px; }
+.tp-list::-webkit-scrollbar { width: 4px; }
+.tp-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9px; }
+.tp-empty { padding: 18px 14px; text-align: center; color: var(--muted); font-size: 13px; }
+
+/* ── Сайдбар, сжатый в полосу аватарок ──
+   Высоты блоков и строк не меняются, меняется только ширина колонки и
+   содержимое — иначе аватарки прыгали бы вверх при входе в комнату. */
+body.rooms-strip .sidebar { width: 64px; min-width: 64px; }
+body.rooms-strip .sidebar .info,
+body.rooms-strip .sidebar .sa-name,
+body.rooms-strip .sidebar .sa-gear,
+body.rooms-strip .sidebar .search-wrap input,
+body.rooms-strip .sidebar .search-clear { display: none; }
+body.rooms-strip .sidebar-search { padding: 12px 12px; }
+body.rooms-strip .search-wrap { justify-content: center; padding: 9px 0; height: 37px; }
+body.rooms-strip .chat-item { justify-content: center; padding: 9px 0; }
+/* подпись раздела прячем, но место оставляем — иначе список уедет вверх */
+body.rooms-strip .chat-list-section-label {
+  visibility: hidden;
+  /* в 64px «Все чаты» переносилось на две строки и раздвигало список */
+  white-space: nowrap; overflow: hidden;
 }
-.subroom-item.active .sr-name { color: var(--accent); }
-.subroom-unread {
-  background: var(--accent); color: #0c0e10;
-  font-size: 10px; font-weight: 700;
-  min-width: 16px; height: 16px; padding: 0 4px;
-  border-radius: 9px; display: flex; align-items: center; justify-content: center;
+body.rooms-strip .sidebar-account { justify-content: center; padding: 20px 0; }
+/* счётчик уезжает на угол аватарки; при упоминании показываем только его */
+body.rooms-strip .chat-item .unread-badge {
+  position: absolute; top: 3px; right: 5px;
+  box-shadow: 0 0 0 2px var(--side-bg);
 }
-/* Mobile: sub-rooms panel hidden, content shown inside sidebar instead */
-@media (max-width: 767px), (pointer: coarse) {
-  .subrooms-panel { display: none !important; }
-}
+body.rooms-strip .chat-item .unread-badge + .unread-badge { display: none; }
 
 /* ══════════════════════════════════════════
    SIDEBAR
@@ -861,7 +878,9 @@ body.sidebar-hidden.sidebar-peeking .sidebar {
 .sidebar-top { padding: 14px 14px 0; }
 
 /* Sidebar search */
-.sidebar-search { padding: 12px 14px; flex-shrink: 0; }
+/* высота закреплена: содержимое в свёрнутом сайдбаре другое, а блок должен
+   остаться того же размера — по нему выровнена шапка списка тем */
+.sidebar-search { height: 73px; padding: 12px 14px; flex-shrink: 0; }
 
 /* Sidebar account bar */
 .sidebar-account {
@@ -962,6 +981,9 @@ body.sidebar-hidden.sidebar-peeking .sidebar {
 
 /* Legacy chat-item (kept for JS compat) */
 .chat-item {
+  /* высота задана явно: в свёрнутом сайдбаре подписи скрыты, и строка,
+     считающая высоту по содержимому, стала бы ниже — аватарки съехали бы */
+  height: 58px;
   display: flex; align-items: center; gap: 10px;
   padding: 9px 10px;
   border-radius: 9px;
@@ -2963,8 +2985,8 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
   }
   .sidebar.mobile-hidden { transform: none !important; }
 
-  /* Panel 2: mobile subrooms */
-  #mobile-subrooms {
+  /* Panel 2: mobile topics */
+  #mobile-topics {
     display: flex;
     flex-direction: column;
     width: var(--vw100);
@@ -2986,7 +3008,7 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 
   /* Скрываем элементы, замещённые топбаром/слайдером */
   .sidebar-account { display: none !important; }
-  #subrooms-panel { display: none !important; }
+  #topics-panel { display: none !important; }
   .chat-main .chat-header { display: none !important; }
 }
 
@@ -2994,7 +3016,7 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 @media (min-width: 768px) and (pointer: fine) {
   #mobile-topbar { display: none !important; }
   #mobile-track { display: contents; }
-  #mobile-subrooms { display: none !important; }
+  #mobile-topics { display: none !important; }
   .mobile-back-btn { display: none !important; }
   .sa-newchat { display: none !important; }
   .sa-theme { display: none !important; }
@@ -3178,7 +3200,7 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 * { -webkit-tap-highlight-color: transparent; }
 @media (hover: none) {
   .chat-item:active,
-  .subroom-item:active,
+  .topic-item:active,
   .action-sheet-btn:active,
   .ctx-item:active { background: var(--hover-row); }
   .icon-btn:active,
@@ -3187,7 +3209,7 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 }
 
 /* Списки не тянут за собой всю страницу — иначе PWA «пружинит» как сайт */
-.messages, #chats-list, #mobile-subrooms, .users-list { overscroll-behavior: contain; }
+.messages, #chats-list, #mobile-topics, .users-list { overscroll-behavior: contain; }
 
 /* Действия открытого чата в мобильной шапке */
 .mtb-chat-actions { display: none; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
