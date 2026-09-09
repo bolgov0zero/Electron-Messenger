@@ -3202,6 +3202,9 @@ html.dark .announcement-title { color: var(--danger); }
 }
 .msg-bubble.bubble-photo > .irc-meta .irc-time,
 .msg-bubble.bubble-photo > .irc-meta .msg-status { color: #fff; }
+/* «Прочитано» оставляем акцентным, как в обычных сообщениях: белым это
+   состояние не отличить от «доставлено» */
+.msg-bubble.bubble-photo > .irc-meta .status-read { color: var(--accent); }
 .msg-bubble.bubble-photo > .reactions,
 .irc-msg[data-mine] .msg-bubble.bubble-photo > .reactions {
   position: absolute; left: 8px; bottom: 8px;
