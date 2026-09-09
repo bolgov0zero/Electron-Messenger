@@ -2691,6 +2691,37 @@ function calcEmojiInkShift() {
 }
 document.fonts?.ready?.then(calcEmojiInkShift).catch(() => {});
 calcEmojiInkShift();
+
+// Проверка, что вшитый шрифт смайлов вообще рисуется.
+//
+// Он в формате COLRv1, и не всякий браузер умеет его показывать (Safari — только
+// с 16.4). Беда в том, что при неумении не происходит подмены на системный
+// шрифт: браузер видит, что шрифт подошёл по коду символа, берёт его — и не
+// рисует ничего. Вместо смайлов пустые места. Поэтому проверяем не по наличию
+// шрифта, а по факту: рисуем смайл только этим шрифтом и смотрим, появились ли
+// на холсте цветные точки. Не появились — снимаем шрифт со стека, и возвращаются
+// системные смайлы. Они разные на разных системах, но это несравнимо лучше пустоты.
+async function checkEmojiFont() {
+  const giveUp = () => document.documentElement.classList.add('no-emoji-font');
+  try {
+    await document.fonts.load('64px "Noto Color Emoji"', '😀');
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 64;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    ctx.font = '48px "Noto Color Emoji"';
+    ctx.textBaseline = 'top';
+    ctx.fillText('😀', 0, 0);
+    const d = ctx.getImageData(0, 0, 64, 64).data;
+    let colored = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 20) continue;
+      // цветная точка — та, у которой каналы заметно расходятся
+      if (Math.abs(d[i] - d[i + 1]) > 25 || Math.abs(d[i + 1] - d[i + 2]) > 25) colored++;
+    }
+    if (colored < 40) giveUp();
+  } catch { giveUp(); }
+}
+checkEmojiFont();
 // Шрифт смайлов вшит и подгружается асинхронно: первый замер уходит по системному,
 // поэтому повторяем его, когда шрифт готов, — иначе смайлик в плашке реакции
 // встанет по чужим метрикам

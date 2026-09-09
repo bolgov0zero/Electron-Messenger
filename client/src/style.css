@@ -325,6 +325,17 @@ body {
   overflow: hidden;
   transition: background .25s, color .25s;
 }
+/* Браузер не умеет рисовать вшитый шрифт (см. checkEmojiFont в app.js) —
+   убираем его из стеков, чтобы вернулись системные смайлы вместо пустых мест */
+html.no-emoji-font body,
+html.no-emoji-font .ra-emoji {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui,
+               'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+}
+html.no-emoji-font .md-code {
+  font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+}
+
 
 /* ── SCREENS ── */
 .screen { display: none; height: var(--vh100); }
