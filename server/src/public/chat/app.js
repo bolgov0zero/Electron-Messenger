@@ -1323,15 +1323,26 @@ function topicsPanelHtml(roomId) {
 
 function filterTopics(q) {
   _tpQuery = q;
-  const list = document.querySelector('#topics-panel .tp-list');
+  // На телефоне список живёт в своём контейнере, колонки #topics-panel там нет
+  const list = _isMobile()
+    ? document.getElementById('mobile-topics')
+    : document.querySelector('#topics-panel .tp-list');
   if (!list || !S.activeRoomId) return;
   // Перерисовываем только список: строку поиска трогать нельзя, слетит курсор
   const subs = S.topics[S.activeRoomId] || [];
   const t = q.trim().toLowerCase();
   const shown = t ? subs.filter(s => s.name.toLowerCase().includes(t)) : subs;
-  list.innerHTML = '<div class="tp-sep"></div>' + (shown.length
+  const rows = '<div class="tp-sep"></div>' + (shown.length
     ? shown.map(topicRow).join('')
     : '<div class="tp-empty">Ничего не найдено</div>');
+  if (_isMobile()) {
+    // Строку поиска не трогаем вовсе: даже кратковременное изъятие из документа
+    // снимает с неё фокус, и набор текста прерывался бы на каждой букве
+    [...list.children].forEach(el => { if (!el.classList.contains('mt-search')) el.remove(); });
+    list.insertAdjacentHTML('beforeend', rows);
+  } else {
+    list.innerHTML = rows;
+  }
 }
 
 function openTopicSearch() {
@@ -1367,26 +1378,18 @@ function renderTopicsPanel(roomId) {
     // На мобильном — рендерим в панель 2 слайдера
     const mp = document.getElementById('mobile-topics');
     if (!mp) return;
-    const items = subs.map(s => {
-      const unread = S.unread[s.id] || 0;
-      const badge = unread ? `<div class="unread-badge">${unread > 99 ? '99+' : unread}</div>` : '';
-      // Цвет по названию — как в десктопной колонке и как у тегов: одинаковые
-      // домики у всех тем не давали различить их взглядом
-      const avCls = 'av-' + senderNameClass(s.name);
-      const avEl = `<div class="av av-md av-sq ${avCls}" ${s.has_avatar?`style="background-image:url('/api/chats/${s.id}/avatar');background-size:cover;background-position:center"`:''}>${s.has_avatar?'':'#'}</div>`;
-      return `<div class="chat-item${S.activeTopicId===s.id?' active':''}" onclick="openTopic(${s.id})">
-        <div class="av-wrap">${avEl}</div>
-        <div class="info">
-          <div class="ci-name" style="display:flex;align-items:center;gap:5px">
-            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name)}</span>
-            ${badge}
-          </div>
-          <div style="margin-top:2px"><span class="ci-preview">${esc(previewText(s.last_message))}</span></div>
-        </div>
-      </div>`;
-    }).join('');
-    // Название комнаты — в шапку (см. mobileSlideTo ниже), в теле оно дублировалось
-    mp.innerHTML = items;
+    // Строки те же, что в настольной колонке: одна функция на обе платформы — иначе
+    // списки расходятся, как разошлись раньше (на телефоне не было ни времени,
+    // ни отметки упоминания)
+    const q = _tpQuery.trim().toLowerCase();
+    const shown = q ? subs.filter(x => x.name.toLowerCase().includes(q)) : subs;
+    mp.innerHTML =
+      '<div class="mt-search">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+        '<input id="mt-search-input" placeholder="Поиск темы" value="' + esc(_tpQuery) + '" oninput="filterTopics(this.value)">' +
+      '</div>' +
+      '<div class="tp-sep"></div>' +
+      (shown.length ? shown.map(topicRow).join('') : '<div class="tp-empty">Ничего не найдено</div>');
     if (!mp._swipeInit) {
       mp._swipeInit = true;
       let _sx = 0, _sy = 0;
@@ -1424,6 +1427,7 @@ function closeTopicsPanel(goBack) {
     if (goBack) {
       S.activeRoomId = null;
       S.activeTopicId = null;
+      _tpQuery = '';
       mobileSlideTo(1);
     }
     return;
@@ -1443,7 +1447,13 @@ function closeTopicsPanel(goBack) {
 
 async function openTopic(topicId) {
   S.activeTopicId = topicId;
-  // Панель перерисует сам openChat — отдельный вызов только гонял бы её дважды
+  // На телефоне openChat список не перерисовывает (он уезжает на другой слайд),
+  // поэтому отметку выбранной строки ставим сами — иначе, вернувшись назад,
+  // видно старую
+  if (_isMobile()) {
+    document.querySelectorAll('#mobile-topics .chat-item').forEach(el =>
+      el.classList.toggle('active', Number(el.dataset.topicId) === topicId));
+  }
   await openChat(topicId);
 }
 

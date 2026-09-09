@@ -821,6 +821,20 @@ html.no-emoji-font .md-code {
 .tp-list::-webkit-scrollbar { width: 4px; }
 .tp-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9px; }
 .tp-empty { padding: 18px 14px; text-align: center; color: var(--muted); font-size: 13px; }
+/* Поиск на слайде тем — вид как у поиска чатов, но живёт внутри самого списка:
+   верхняя шапка на телефоне общая для всех слайдов и занята названием комнаты */
+.mt-search {
+  display: flex; align-items: center; gap: 8px;
+  margin: 10px 12px; padding: 9px 12px;
+  background: var(--search-bg); border: 1px solid var(--border);
+  border-radius: 9px; color: var(--muted); flex-shrink: 0;
+}
+.mt-search input {
+  flex: 1; min-width: 0; background: none; border: none; outline: none;
+  font-family: inherit; font-size: 13px; color: var(--text);
+}
+.mt-search input::placeholder { color: var(--muted); }
+#mobile-topics .tp-sep { margin: 0 12px; }
 /* Разделитель в списке тем — на той же высоте, что первая черта в полосе:
    у него та же геометрия, что у подписи раздела, вместо которой он стоит */
 .tp-sep {
