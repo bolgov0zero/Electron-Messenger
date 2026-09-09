@@ -53,25 +53,37 @@
   /* Палитра тегов. Цвет выбирается хешем от текста тега, поэтому одинаковая
      надпись всегда одного цвета. Тройки RGB задаются на тему, фон и рамка
      считаются из них прозрачностью. */
-  --tag-1: 26,150,124; /* бирюзовый */
-  --tag-2: 80,80,200; /* индиго */
-  --tag-3: 32,110,200; /* синий */
-  --tag-4: 140,72,190; /* фиолетовый */
-  --tag-5: 190,60,130; /* малиновый */
-  --tag-6: 190,90,35; /* оранжевый */
-  --tag-7: 140,110,20; /* охра */
-  --tag-8: 45,140,60; /* зелёный */
+  --tag-1: 41,50,96; /* синий */
+  --tag-2: 37,131,37; /* травяной */
+  --tag-3: 131,78,37; /* оранжевый */
+  --tag-4: 34,119,114; /* бирюзовый */
+  --tag-5: 131,37,78; /* малиновый */
+  --tag-6: 106,37,131; /* фиолетовый */
+  --tag-7: 78,96,41; /* оливковый */
+  --tag-8: 34,91,119; /* морской */
+  --tag-9: 131,37,37; /* красный */
+  --tag-10: 44,125,79; /* изумрудный */
+  --tag-11: 30,30,107; /* ультрамарин */
+  --tag-12: 131,112,37; /* охра */
+  --tag-13: 96,41,95; /* сливовый */
+  --tag-14: 96,49,41; /* кирпичный */
 
   /* Те же цвета для аватарок. Отдельный набор, потому что на кружке текст белый:
      светлые оттенки тёмной темы с ним не читаются, поэтому здесь они не меняются. */
-  --tag-1-av: 26,150,124; /* бирюзовый */
-  --tag-2-av: 80,80,200; /* индиго */
-  --tag-3-av: 32,110,200; /* синий */
-  --tag-4-av: 140,72,190; /* фиолетовый */
-  --tag-5-av: 190,60,130; /* малиновый */
-  --tag-6-av: 190,90,35; /* оранжевый */
-  --tag-7-av: 140,110,20; /* охра */
-  --tag-8-av: 45,140,60; /* зелёный */
+  --tag-1-av: 57,67,116; /* синий */
+  --tag-2-av: 48,145,48; /* травяной */
+  --tag-3-av: 161,100,54; /* оранжевый */
+  --tag-4-av: 56,138,132; /* бирюзовый */
+  --tag-5-av: 161,54,100; /* малиновый */
+  --tag-6-av: 132,54,161; /* фиолетовый */
+  --tag-7-av: 97,116,57; /* оливковый */
+  --tag-8-av: 54,125,161; /* морской */
+  --tag-9-av: 116,57,57; /* красный */
+  --tag-10-av: 43,130,81; /* изумрудный */
+  --tag-11-av: 43,43,130; /* ультрамарин */
+  --tag-12-av: 145,126,48; /* охра */
+  --tag-13-av: 116,57,114; /* сливовый */
+  --tag-14-av: 161,68,54; /* кирпичный */
 
   /* Decorative blobs (login only) */
   --blob1: rgba(29,168,140,0.12);
@@ -104,6 +116,10 @@
   --card:       var(--modal-bg);
   --input-bg:   var(--search-bg);
   --chat-bg:    var(--app-bg);
+  --bubble-bg:  var(--card-bg);
+  /* Раздельный фон переписки: в светлой теме она чуть темнее сайдбара, пузыри белые */
+  --chat-split:   #e6e9ec;
+  --bubble-split: #ffffff;
   --hover:      var(--hover-row);
   --sidebar-bg:    var(--side-bg);
   --sidebar-hover: var(--hover-row);
@@ -151,14 +167,20 @@ html.dark {
   --role-teal-border:   rgba(41,214,184,0.3);
 
   /* Палитра тегов, тёмная тема */
-  --tag-1: 41,214,184; /* бирюзовый */
-  --tag-2: 124,124,245; /* индиго */
-  --tag-3: 95,170,250; /* синий */
-  --tag-4: 190,135,245; /* фиолетовый */
-  --tag-5: 240,120,185; /* малиновый */
-  --tag-6: 240,145,85; /* оранжевый */
-  --tag-7: 220,185,80; /* охра */
-  --tag-8: 105,205,115; /* зелёный */
+  --tag-1: 125,136,191; /* синий */
+  --tag-2: 98,218,98; /* травяной */
+  --tag-3: 218,150,98; /* оранжевый */
+  --tag-4: 98,218,210; /* бирюзовый */
+  --tag-5: 218,98,150; /* малиновый */
+  --tag-6: 186,98,218; /* фиолетовый */
+  --tag-7: 200,223,154; /* оливковый */
+  --tag-8: 166,196,211; /* морской */
+  --tag-9: 214,164,164; /* красный */
+  --tag-10: 108,218,156; /* изумрудный */
+  --tag-11: 123,123,224; /* ультрамарин */
+  --tag-12: 218,194,98; /* охра */
+  --tag-13: 221,157,218; /* сливовый */
+  --tag-14: 218,114,98; /* кирпичный */
 
   --blob1: rgba(41,214,184,0.12);
   --blob2: rgba(108,108,240,0.12);
@@ -170,6 +192,10 @@ html.dark {
   --card:       var(--modal-bg);
   --input-bg:   var(--search-bg);
   --chat-bg:    var(--app-bg);
+  --bubble-bg:  var(--card-bg);
+  /* В тёмной теме наоборот — переписка светлее сайдбара, пузыри ещё светлее */
+  --chat-split:   #1b1f23;
+  --bubble-split: #262b31;
   --hover:      var(--hover-row);
   --sidebar-bg:    var(--side-bg);
   --sidebar-hover: var(--hover-row);
@@ -322,6 +348,65 @@ body {
 .login-copy { font-size: 12px; color: var(--muted); text-align: center; }
 #login-version { font-weight: 600; margin-left: 5px; color: var(--accent); opacity: .8; }
 .login-copy span { margin-left: 6px; }
+
+
+/* Вкладка «Внешний вид»: секции с подписями и карточки выбора фона переписки */
+.set-sec { margin-bottom: 18px; }
+.set-sec h4 {
+  margin: 0 0 9px; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+}
+.set-line {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 8px 2px; font-size: 13px; color: var(--text);
+}
+.set-line + .set-line { border-top: 1px solid var(--border); }
+
+.bg-cards { display: flex; gap: 10px; }
+.bg-card {
+  flex: 1; padding: 0; overflow: hidden; cursor: pointer;
+  background: none; border: 1px solid var(--border); border-radius: 10px;
+  transition: border-color .12s, box-shadow .12s;
+  font-family: inherit; text-align: left;
+}
+.bg-card:hover { border-color: var(--accent-border); }
+.bg-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+/* Обе половины красим явно: иначе «как обычно» брал бы фон модалки и выглядел
+   разноцветным, хотя подпись обещает один цвет */
+.bg-skel { display: flex; width: 100%; height: 62px; background: var(--app-bg); }
+.bs-side {
+  width: 34%; background: var(--side-bg); border-right: 1px solid var(--border);
+  padding: 7px 5px; display: flex; flex-direction: column; gap: 5px;
+}
+.bs-chat {
+  flex: 1; background: var(--app-bg);
+  padding: 8px 7px; display: flex; flex-direction: column; gap: 5px; align-items: flex-start;
+}
+.bs-chat.split { background: var(--chat-split); }
+.bg-skel i { display: block; height: 4px; border-radius: 2px; background: var(--muted); opacity: .5; }
+.bs-side i { width: 100%; }
+.bs-chat i { background: var(--text2); opacity: .45; }
+.bs-chat i.a { width: 60%; }
+.bs-chat i.b { width: 78%; }
+.bs-chat i.c { width: 44%; align-self: flex-end; background: var(--accent); opacity: .75; }
+.bg-cap {
+  display: block; padding: 7px 9px 9px; border-top: 1px solid var(--border);
+  font-size: 11.5px; color: var(--text2); line-height: 1.35;
+}
+.bg-cap b { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 1px; }
+.bg-card.active .bg-cap b { color: var(--accent); }
+
+/* Выбор цветового акцента: кружки-образцы в настройках */
+.accent-seg { display: flex; align-items: center; gap: 9px; }
+.accent-dot {
+  width: 22px; height: 22px; padding: 0; flex-shrink: 0;
+  border: none; border-radius: 50%; cursor: pointer;
+  background: var(--dot);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.accent-dot:hover { transform: scale(1.12); }
+.accent-dot.active { box-shadow: 0 0 0 2px var(--modal-bg), 0 0 0 4px var(--dot); }
+@media (prefers-reduced-motion: reduce) { .accent-dot:hover { transform: none; } }
 
 /* ── ANNOUNCEMENT BANNER ── */
 /* Занимает то же место, что и плашка «нет соединения»; когда полосы висят,
@@ -742,7 +827,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   border: 2px solid var(--side-bg);
   background: var(--accent);
 }
-.chat-header .presence-dot { border-color: var(--header-bg); }
+.chat-header .presence-dot { border-color: var(--chat-bg); }
 
 /* Avatar color classes (legacy) */
 .av-blue   { background: #4f46e5; }
@@ -759,6 +844,12 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 .av-tag-6 { background: rgb(var(--tag-6-av)); }
 .av-tag-7 { background: rgb(var(--tag-7-av)); }
 .av-tag-8 { background: rgb(var(--tag-8-av)); }
+.av-tag-9 { background: rgb(var(--tag-9-av)); }
+.av-tag-10 { background: rgb(var(--tag-10-av)); }
+.av-tag-11 { background: rgb(var(--tag-11-av)); }
+.av-tag-12 { background: rgb(var(--tag-12-av)); }
+.av-tag-13 { background: rgb(var(--tag-13-av)); }
+.av-tag-14 { background: rgb(var(--tag-14-av)); }
 
 /* ══════════════════════════════════════════
    CHAT MAIN AREA
@@ -766,7 +857,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 .chat-main {
   flex: 1; min-width: 0;
   display: flex; flex-direction: column;
-  background: var(--app-bg);
+  background: var(--chat-bg);
   overflow: hidden;
   position: relative;
 }
@@ -782,7 +873,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 
 /* ── CHAT HEADER ── */
 .chat-header {
-  background: var(--header-bg);
+  background: var(--chat-bg);
   border-bottom: 1px solid var(--border);
   padding: 0 20px;
   height: 64px;
@@ -1082,6 +1173,12 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .role-pill.tag-6 { background: rgba(var(--tag-6),.12); border: 1px solid rgba(var(--tag-6),.30); color: rgb(var(--tag-6)); }
 .role-pill.tag-7 { background: rgba(var(--tag-7),.12); border: 1px solid rgba(var(--tag-7),.30); color: rgb(var(--tag-7)); }
 .role-pill.tag-8 { background: rgba(var(--tag-8),.12); border: 1px solid rgba(var(--tag-8),.30); color: rgb(var(--tag-8)); }
+.role-pill.tag-9 { background: rgba(var(--tag-9),.12); border: 1px solid rgba(var(--tag-9),.30); color: rgb(var(--tag-9)); }
+.role-pill.tag-10 { background: rgba(var(--tag-10),.12); border: 1px solid rgba(var(--tag-10),.30); color: rgb(var(--tag-10)); }
+.role-pill.tag-11 { background: rgba(var(--tag-11),.12); border: 1px solid rgba(var(--tag-11),.30); color: rgb(var(--tag-11)); }
+.role-pill.tag-12 { background: rgba(var(--tag-12),.12); border: 1px solid rgba(var(--tag-12),.30); color: rgb(var(--tag-12)); }
+.role-pill.tag-13 { background: rgba(var(--tag-13),.12); border: 1px solid rgba(var(--tag-13),.30); color: rgb(var(--tag-13)); }
+.role-pill.tag-14 { background: rgba(var(--tag-14),.12); border: 1px solid rgba(var(--tag-14),.30); color: rgb(var(--tag-14)); }
 .role-pill.default { background: var(--hover-row); border: 1px solid var(--border); color: var(--text2); }
 
 /* ── MSG SENDER ROW ── */
@@ -1093,6 +1190,12 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .msg-sender-name.tag-6 { color: rgb(var(--tag-6)); }
 .msg-sender-name.tag-7 { color: rgb(var(--tag-7)); }
 .msg-sender-name.tag-8 { color: rgb(var(--tag-8)); }
+.msg-sender-name.tag-9 { color: rgb(var(--tag-9)); }
+.msg-sender-name.tag-10 { color: rgb(var(--tag-10)); }
+.msg-sender-name.tag-11 { color: rgb(var(--tag-11)); }
+.msg-sender-name.tag-12 { color: rgb(var(--tag-12)); }
+.msg-sender-name.tag-13 { color: rgb(var(--tag-13)); }
+.msg-sender-name.tag-14 { color: rgb(var(--tag-14)); }
 .msg-sender-name.default { color: var(--text); }
 
 /* ── COMPOSER ── */
@@ -1106,7 +1209,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   position: absolute; left: 0; right: 0; bottom: 0;
   z-index: 3;
 }
-.composer-inner { max-width: 760px; margin: 0 auto; background: var(--app-bg); border-radius: 12px; position: relative; }
+.composer-inner { max-width: 760px; margin: 0 auto; background: var(--chat-bg); border-radius: 12px; position: relative; }
 
 /* New composer style */
 .composer { padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0; }
@@ -1330,7 +1433,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   display: flex; align-items: center; gap: 6px;
   padding: 3px 10px 4px;
   border-radius: 9px;
-  background: var(--app-bg);
+  background: var(--chat-bg);
 }
 .typing-name { font-size: 12px; font-weight: 600; color: var(--muted); }
 .typing-label { font-size: 12px; color: var(--muted); }
@@ -1779,10 +1882,10 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 .mi-step { display: flex; gap: 12px; }
 .mi-step-left { display: flex; flex-direction: column; align-items: center; width: 26px; flex-shrink: 0; }
 .mi-icon { width: 26px; height: 26px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.mi-icon.mi-done    { background: rgba(41,214,184,0.15); border: 1px solid rgba(41,214,184,0.35); }
+.mi-icon.mi-done    { background: rgba(var(--accent-rgb,41,214,184),0.15); border: 1px solid rgba(var(--accent-rgb,41,214,184),0.35); }
 .mi-icon.mi-pending { background: var(--search-bg);      border: 1px solid var(--border); }
 .mi-connector { width: 2px; flex: 1; min-height: 10px; margin: 3px 0; }
-.mi-connector.mi-done    { background: rgba(41,214,184,0.35); }
+.mi-connector.mi-done    { background: rgba(var(--accent-rgb,41,214,184),0.35); }
 .mi-connector.mi-pending { background: var(--border); }
 .mi-step-right { flex: 1; padding-bottom: 12px; }
 .mi-step:last-child .mi-step-right { padding-bottom: 0; }
@@ -1794,7 +1897,7 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 .mi-user-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
 .mi-av { width: 34px; height: 34px; font-size: 13px; border-radius: 9px !important; }
 .mi-user-name { font-size: 13px; font-weight: 600; flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mi-user-time { font-size: 12px; font-weight: 600; color: #29d6b8; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.mi-user-time { font-size: 12px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .mi-empty { text-align: center; padding: 20px 0; color: var(--muted); font-size: 13px; }
 
 /* ── LINK CONFIRM MODAL ── */
@@ -2497,7 +2600,7 @@ html.dark .announcement-title { color: var(--danger); }
 
 .msg-bubble {
   position: relative;
-  background: var(--card-bg);
+  background: var(--bubble-bg);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 5px 11px;
@@ -2565,6 +2668,18 @@ html.dark .announcement-title { color: var(--danger); }
 .irc-reply.reply-tag-7 .irc-reply-name { color: rgb(var(--tag-7)); }
 .irc-reply.reply-tag-8 { border-left-color: rgb(var(--tag-8)); }
 .irc-reply.reply-tag-8 .irc-reply-name { color: rgb(var(--tag-8)); }
+.irc-reply.reply-tag-9 { border-left-color: rgb(var(--tag-9)); }
+.irc-reply.reply-tag-9 .irc-reply-name { color: rgb(var(--tag-9)); }
+.irc-reply.reply-tag-10 { border-left-color: rgb(var(--tag-10)); }
+.irc-reply.reply-tag-10 .irc-reply-name { color: rgb(var(--tag-10)); }
+.irc-reply.reply-tag-11 { border-left-color: rgb(var(--tag-11)); }
+.irc-reply.reply-tag-11 .irc-reply-name { color: rgb(var(--tag-11)); }
+.irc-reply.reply-tag-12 { border-left-color: rgb(var(--tag-12)); }
+.irc-reply.reply-tag-12 .irc-reply-name { color: rgb(var(--tag-12)); }
+.irc-reply.reply-tag-13 { border-left-color: rgb(var(--tag-13)); }
+.irc-reply.reply-tag-13 .irc-reply-name { color: rgb(var(--tag-13)); }
+.irc-reply.reply-tag-14 { border-left-color: rgb(var(--tag-14)); }
+.irc-reply.reply-tag-14 .irc-reply-name { color: rgb(var(--tag-14)); }
 
 /* обводка аватарок в реакциях — под фон пузыря */
 .msg-bubble .ra { box-shadow: 0 0 0 1.5px var(--card-bg); }

@@ -484,6 +484,119 @@ function updateSidebarThemeIcon() {
 }
 
 // ── SETTINGS ──
+// ── ЦВЕТОВОЙ АКЦЕНТ ──
+// Живёт только на устройстве: отдельный ключ в localStorage, на сервер не уходит
+// и в сессию не пишется — поэтому переживает выход из аккаунта, но на другом
+// компьютере у того же человека может быть свой цвет.
+const ACCENTS = {
+  teal:   { name: 'Бирюзовый', light: [29, 168, 140], dark: [41, 214, 184] },
+  blue:   { name: 'Синий',     light: [37, 118, 199], dark: [96, 170, 245] },
+  indigo: { name: 'Индиго',    light: [92, 96, 205],  dark: [143, 148, 245] },
+  plum:   { name: 'Сливовый',  light: [146, 84, 190], dark: [196, 146, 240] },
+  amber:  { name: 'Янтарный',  light: [186, 120, 38], dark: [236, 176, 92] },
+};
+
+function currentAccent() {
+  try { const v = localStorage.getItem('accent'); if (ACCENTS[v]) return v; } catch {}
+  return 'teal';
+}
+
+function setAccent(key) {
+  if (!ACCENTS[key]) return;
+  try { localStorage.setItem('accent', key); } catch {}
+  applyAccent();
+  applyChatBg();
+  document.querySelectorAll('#accent-seg .accent-dot').forEach(b => {
+    b.classList.toggle('active', b.dataset.accent === key);
+    const a = ACCENTS[b.dataset.accent];
+    b.style.setProperty('--dot', 'rgb(' + accentRgb(a).join(',') + ')');
+  });
+}
+
+function accentRgb(a) {
+  return document.documentElement.classList.contains('dark') ? a.dark : a.light;
+}
+
+// Переменные ставим инлайном на <html>: так они перебивают оба набора из таблицы
+// стилей, поэтому пересчитываем при каждой смене темы.
+function applyAccent() {
+  const a = ACCENTS[currentAccent()];
+  const dark = document.documentElement.classList.contains('dark');
+  const c = dark ? a.dark : a.light;
+  const rgba = (arr, alpha) => 'rgba(' + arr.join(',') + ',' + alpha + ')';
+  const hex = arr => '#' + arr.map(v => v.toString(16).padStart(2, '0')).join('');
+  const s = document.documentElement.style;
+  s.setProperty('--accent', hex(c));
+  s.setProperty('--accent-rgb', c.join(','));
+  s.setProperty('--primary', hex(c));
+  s.setProperty('--accent-soft', rgba(c, .10));
+  s.setProperty('--primary-light', rgba(c, .10));
+  s.setProperty('--accent-border', rgba(c, .25));
+  s.setProperty('--accent-shadow', rgba(c, .20));
+  s.setProperty('--reaction-mine', rgba(c, dark ? .15 : .13));
+  s.setProperty('--reply-bg', rgba(c, .08));
+  s.setProperty('--blob1', rgba(c, .12));
+  s.setProperty('--role-teal-bg', rgba(c, dark ? .12 : .10));
+  s.setProperty('--role-teal-border', rgba(c, dark ? .30 : .25));
+  // Подсветку активного чата обе темы берут из светлого варианта — так было и
+  // с бирюзовым, менять не стали
+  s.setProperty('--active-row', rgba(a.dark, .10));
+  s.setProperty('--active-row-border', rgba(a.dark, .25));
+}
+
+function accentDotsHtml() {
+  const cur = currentAccent();
+  return Object.entries(ACCENTS).map(([k, a]) =>
+    '<button class="accent-dot' + (k === cur ? ' active' : '') + '" data-accent="' + k + '"' +
+    ' title="' + a.name + '" aria-label="' + a.name + '"' +
+    ' style="--dot:rgb(' + accentRgb(a).join(',') + ')" onclick="setAccent(\'' + k + '\')"></button>').join('');
+}
+
+
+// ── ФОН ПЕРЕПИСКИ ──
+// «Как обычно» — сайдбар и переписка одного цвета; «с разделением» — переписка
+// отделена оттенком: в тёмной теме светлее сайдбара, в светлой темнее.
+// Значения на каждую тему заданы в стилях, здесь только переключаем ссылки.
+// Хранится на устройстве, как и цвет акцента.
+function currentChatBg() {
+  try { return localStorage.getItem('chatBg') === 'split' ? 'split' : 'plain'; } catch { return 'plain'; }
+}
+
+function setChatBg(mode) {
+  try { localStorage.setItem('chatBg', mode === 'split' ? 'split' : 'plain'); } catch {}
+  applyChatBg();
+  document.querySelectorAll('#chatbg-cards .bg-card').forEach(c =>
+    c.classList.toggle('active', c.dataset.bg === currentChatBg()));
+}
+
+function applyChatBg() {
+  const s = document.documentElement.style;
+  if (currentChatBg() === 'split') {
+    s.setProperty('--chat-bg', 'var(--chat-split)');
+    s.setProperty('--bubble-bg', 'var(--bubble-split)');
+  } else {
+    s.removeProperty('--chat-bg');
+    s.removeProperty('--bubble-bg');
+  }
+}
+
+// Карточки выбора: скелетон окна — слева сайдбар, справа переписка
+function chatBgCardsHtml() {
+  const cur = currentChatBg();
+  const skel = split => `<span class="bg-skel">
+      <span class="bs-side"><i></i><i></i><i></i></span>
+      <span class="bs-chat${split ? ' split' : ''}"><i class="a"></i><i class="b"></i><i class="c"></i></span>
+    </span>`;
+  const card = (mode, title, sub) => `<button class="bg-card${cur === mode ? ' active' : ''}" data-bg="${mode}" onclick="setChatBg('${mode}')">
+      ${skel(mode === 'split')}
+      <span class="bg-cap"><b>${title}</b>${sub}</span>
+    </button>`;
+  return `<div class="bg-cards" id="chatbg-cards">
+    ${card('plain', 'Как обычно', 'Сайдбар и переписка одного цвета')}
+    ${card('split', 'С разделением', 'Переписка отделена оттенком')}
+  </div>`;
+}
+
 function applySettings() {
   const isDark = S.settings.theme === 'dark';
   document.documentElement.classList.toggle('dark', isDark);
@@ -497,6 +610,7 @@ function applySettings() {
   document.body.style.height = '';
   document.documentElement.style.setProperty('--vh100', _scale !== 100 ? `calc(100vh / ${_scale / 100})` : '100vh');
   document.querySelectorAll('#scale-seg button').forEach(b => b.classList.toggle('active', parseInt(b.textContent) === _scale));
+  applyAccent();
   updateSidebarThemeIcon();
 }
 // Плавная смена темы: включаем переход цветов только на время переключения,
@@ -621,30 +735,6 @@ function showSettingsTab(tab) {
       <div class="setting-row" style="margin-bottom:24px">
         <span>Скрыть сайдбар</span>
         <label class="toggle"><input type="checkbox" id="hide-sidebar-chk" ${document.body.classList.contains('sidebar-hidden')?'checked':''} onchange="toggleSidebarPref(this.checked)"><span class="toggle-slider"></span></label>
-      </div>
-      <div style="font-size:11px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:10px">Внешний вид</div>
-      <div class="setting-row" style="border:none">
-        <span>Тема</span>
-        <div class="seg" id="theme-seg">
-          <button onclick="setTheme('light')">Светлая</button>
-          <button onclick="setTheme('dark')">Тёмная</button>
-        </div>
-      </div>
-      <div class="setting-row">
-        <span>Размер текста</span>
-        <div class="seg" id="font-seg">
-          <button onclick="setFontSize('small')">S</button>
-          <button onclick="setFontSize('medium')">M</button>
-          <button onclick="setFontSize('large')">L</button>
-        </div>
-      </div>
-      <div class="setting-row" style="border:none">
-        <span>Масштаб интерфейса</span>
-        <div class="seg" id="scale-seg">
-          <button onclick="setUiScale(80)">80%</button>
-          <button onclick="setUiScale(90)">90%</button>
-          <button onclick="setUiScale(100)">100%</button>
-        </div>
       </div>`;
     applySettings();
     if (typeof window.electron !== 'undefined') {
@@ -653,6 +743,47 @@ function showSettingsTab(tab) {
       window.electron?.getAutostart?.().then(v => { const c = document.getElementById('autostart-chk'); if(c) c.checked=!!v; });
     }
 
+
+  } else if (tab === 'appearance') {
+    content.innerHTML = `
+      <div class="set-sec">
+        <h4>Тема и цвет</h4>
+        <div class="set-line">
+          <span>Тема</span>
+          <div class="seg" id="theme-seg">
+            <button onclick="setTheme('light')">Светлая</button>
+            <button onclick="setTheme('dark')">Тёмная</button>
+          </div>
+        </div>
+        <div class="set-line">
+          <span>Цвет акцента</span>
+          <div class="accent-seg" id="accent-seg">${accentDotsHtml()}</div>
+        </div>
+      </div>
+      <div class="set-sec">
+        <h4>Фон переписки</h4>
+        ${chatBgCardsHtml()}
+      </div>
+      <div class="set-sec">
+        <h4>Текст</h4>
+        <div class="set-line">
+          <span>Размер текста</span>
+          <div class="seg" id="font-seg">
+            <button onclick="setFontSize('small')">S</button>
+            <button onclick="setFontSize('medium')">M</button>
+            <button onclick="setFontSize('large')">L</button>
+          </div>
+        </div>
+        <div class="set-line">
+          <span>Масштаб интерфейса</span>
+          <div class="seg" id="scale-seg">
+            <button onclick="setUiScale(80)">80%</button>
+            <button onclick="setUiScale(90)">90%</button>
+            <button onclick="setUiScale(100)">100%</button>
+          </div>
+        </div>
+      </div>`;
+    applySettings();
   } else if (tab === 'update') {
     content.innerHTML = `
       <div style="display:flex;flex-direction:column;height:100%">
@@ -2201,7 +2332,7 @@ function isEmojiOnly(text) {
 // Цвет тега считается из его текста: одна и та же надпись всегда даёт один цвет,
 // и латиница с кириллицей тут равноправны — хеш идёт по кодам символов. Раньше
 // цветными были только developer и tester, всё остальное серым.
-const TAG_COLORS = 8;
+const TAG_COLORS = 14;
 function senderNameClass(tag) {
   const t = (tag || '').trim().toLowerCase();
   if (!t) return 'default';
@@ -3238,8 +3369,8 @@ async function ctxInfo() {
     return d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
   }
 
-  const icoSingleTeal = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#29d6b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-  const icoDblTeal    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#29d6b8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>`;
+  const icoSingleTeal = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  const icoDblTeal    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>`;
   const icoDblGray    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5b6169" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>`;
 
   function tlStep(label, sub, done, ico, showConn) {
@@ -3506,7 +3637,10 @@ function connectWS() {
           if (existing) {
             existing.outerHTML = reactionsHtml || '';
           } else if (reactionsHtml) {
-            const target = msgEl.querySelector('.irc-content');
+            // Внутрь пузыря, а не в .irc-content: при полной отрисовке реакции
+            // лежат в пузыре, и вставка рядом клала первую реакцию под него —
+            // до перезахода в чат она висела отдельной строкой
+            const target = msgEl.querySelector('.msg-bubble') || msgEl.querySelector('.irc-content');
             if (target) target.insertAdjacentHTML('beforeend', reactionsHtml);
           }
 
