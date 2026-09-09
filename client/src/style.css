@@ -1606,7 +1606,13 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   text-transform: uppercase; color: var(--muted);
   background: var(--composer-bg);
 }
-.ep-row { display: grid; grid-template-columns: repeat(8, 1fr); }
+/* Разделы вне видимой части не размечаются и не рисуются: без этого открытие
+   панели требовало разложить почти две тысячи кнопок разом. Ожидаемую высоту
+   каждому разделу проставляет JS, иначе прокрутка прыгала бы. */
+.ep-row {
+  display: grid; grid-template-columns: repeat(8, 1fr);
+  content-visibility: auto;
+}
 .ep-miss { padding: 22px 10px; text-align: center; color: var(--muted); font-size: 12px; }
 
 .composer-icon-btn {
@@ -2393,10 +2399,13 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 }
 .rp-sep { height: 1px; background: var(--border); margin: 4px 0; }
 .rp-scroll { overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; max-height: 200px; }
+/* Сетка разбита на куски — по той же причине, что и разделы панели смайлов */
+.rp-scroll { display: flex; flex-direction: column; gap: 2px; }
 .rp-grid {
   display: grid;
   grid-template-columns: repeat(7, 34px);
   gap: 2px;
+  content-visibility: auto;
 }
 .rp-btn {
   font-size: 20px; padding: 5px; border-radius: 9px; width: 34px;

@@ -1695,12 +1695,30 @@ function emojiSections() {
   return [{ key: 'freq', icon: '🕘', name: 'Часто используемые', items: getFreqEmojis(16) }, ...EMOJI_GROUPS];
 }
 
-function emojiPickerHtml(sections) {
-  return sections.map(g =>
-    '<div class="ep-head" data-head="' + g.key + '">' + g.name + '</div>' +
-    '<div class="ep-row" data-row="' + g.key + '">' +
+// Смайлов почти две тысячи, и собирать столько кнопок заново на каждое открытие
+// заметно дорого. Разделы, кроме «часто используемых», не меняются — держим их
+// разметку готовой строкой. Плюс каждому разделу проставляем ожидаемую высоту:
+// она нужна правилу content-visibility, чтобы браузер мог не размечать разделы
+// вне видимой части и при этом знал, сколько места под них отвести.
+const EP_COLS = 8, EP_CELL = 40;
+let _epStatic = null;
+
+function emojiSectionHtml(g) {
+  const h = Math.ceil(g.items.length / EP_COLS) * EP_CELL;
+  return '<div class="ep-head" data-head="' + g.key + '">' + g.name + '</div>' +
+    '<div class="ep-row" data-row="' + g.key + '" style="contain-intrinsic-size:auto ' + h + 'px">' +
       g.items.map(em => '<button class="emoji-item" data-em="' + em + '" onclick="insertEmoji(\'' + em + '\')">' + em + '</button>').join('') +
-    '</div>').join('');
+    '</div>';
+}
+
+function emojiPickerHtml(sections) {
+  return sections.map(emojiSectionHtml).join('');
+}
+
+// Готовая разметка панели: постоянная часть из кэша, «часто используемые» заново
+function emojiPickerCached() {
+  if (_epStatic === null) _epStatic = EMOJI_GROUPS.map(emojiSectionHtml).join('');
+  return emojiSectionHtml(emojiSections()[0]) + _epStatic;
 }
 
 function closeEmojiPicker() {
@@ -1716,9 +1734,20 @@ function toggleEmojiPicker(e) {
   const sections = emojiSections();
   const tabs = document.getElementById('ep-tabs');
   const scroll = document.getElementById('ep-scroll');
-  if (tabs) tabs.innerHTML = sections.map((g, i) =>
+  if (tabs && !tabs.firstChild) tabs.innerHTML = sections.map((g, i) =>
     '<button class="ep-tab" data-tab="' + g.key + '" title="' + g.name + '" aria-selected="' + (i === 0) + '" onclick="emojiTabTo(\'' + g.key + '\')">' + g.icon + '</button>').join('');
-  if (scroll) { scroll.innerHTML = emojiPickerHtml(sections); scroll.scrollTop = 0; }
+  // Разметка остаётся в DOM между открытиями: разобрать полторы тысячи кнопок
+  // заново — это те же двадцать миллисекунд на каждый показ панели. Пересобираем,
+  // только если её там нет (первый раз, после поиска) или поменялись «часто
+  // используемые».
+  if (scroll) {
+    const freq = sections[0].items.join('');
+    if (!scroll.firstChild || scroll.dataset.freq !== freq) {
+      scroll.innerHTML = emojiPickerCached();
+      scroll.dataset.freq = freq;
+    }
+    scroll.scrollTop = 0;
+  }
   const input = document.getElementById('ep-search-input');
   if (input) input.value = '';
   panel.classList.add('open');
@@ -1766,7 +1795,8 @@ function filterEmoji(q) {
   const query = (q || '').trim().toLowerCase();
 
   if (!query) {
-    scroll.innerHTML = emojiPickerHtml(emojiSections());
+    scroll.innerHTML = emojiPickerCached();
+    scroll.dataset.freq = emojiSections()[0].items.join('');
     scroll.scrollTop = 0;
     syncEmojiTabs();
     return;
@@ -3424,6 +3454,25 @@ function hideCtxMenu() {
   document.getElementById('ctx-menu').classList.remove('open');
 }
 
+// Сетка реакций — тот же список смайлов. Собираем один раз и режем на куски:
+// так браузер размечает только те, что видно, а не все полторы тысячи сразу.
+const RP_CHUNK = 70;
+let _rpGrid = null;
+function rpGridCached() {
+  if (_rpGrid === null) {
+    const parts = [];
+    for (let i = 0; i < EMOJIS.length; i += RP_CHUNK) {
+      const rows = Math.ceil(Math.min(RP_CHUNK, EMOJIS.length - i) / 7);
+      parts.push('<div class="rp-grid" style="contain-intrinsic-size:auto ' + (rows * 36) + 'px">' +
+        EMOJIS.slice(i, i + RP_CHUNK).map(em =>
+          '<button class="rp-btn" onclick="pickerReact(\'' + em + '\')">' + em + '</button>').join('') +
+        '</div>');
+    }
+    _rpGrid = parts.join('');
+  }
+  return _rpGrid;
+}
+
 function showReactionPicker(e) {
   e.stopPropagation();
   const menu = document.getElementById('ctx-menu');
@@ -3432,10 +3481,17 @@ function showReactionPicker(e) {
   menu.classList.remove('open');
   const picker = document.getElementById('reaction-picker');
   const _rpFreq = getFreqEmojis(7);
-  picker.innerHTML =
-    `<div class="rp-freq">${_rpFreq.map(em=>`<button class="rp-btn" onclick="pickerReact('${em}')">${em}</button>`).join('')}</div>` +
-    `<div class="rp-sep"></div>` +
-    `<div class="rp-scroll"><div class="rp-grid">${EMOJIS.map(em=>`<button class="rp-btn" onclick="pickerReact('${em}')">${em}</button>`).join('')}</div></div>`;
+  // Как и в панели смайлов, разметку держим в DOM и трогаем только верхний ряд
+  const freqKey = _rpFreq.join('');
+  if (!picker.firstChild) {
+    picker.innerHTML =
+      `<div class="rp-freq"></div><div class="rp-sep"></div><div class="rp-scroll">${rpGridCached()}</div>`;
+  }
+  if (picker.dataset.freq !== freqKey) {
+    picker.querySelector('.rp-freq').innerHTML =
+      _rpFreq.map(em => `<button class="rp-btn" onclick="pickerReact('${em}')">${em}</button>`).join('');
+    picker.dataset.freq = freqKey;
+  }
   picker.style.left = '-9999px'; picker.style.top = '-9999px';
   picker.classList.add('open');
   const pw = picker.offsetWidth, ph = picker.offsetHeight;
