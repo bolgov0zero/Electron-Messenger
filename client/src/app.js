@@ -830,7 +830,6 @@ function showSettingsTab(tab) {
         <label class="toggle"><input type="checkbox" id="hide-sidebar-chk" ${document.body.classList.contains('sidebar-hidden')?'checked':''} onchange="toggleSidebarPref(this.checked)"><span class="toggle-slider"></span></label>
       </div>`;
     applySettings();
-    paintPatternSwatches();
     if (typeof window.electron !== 'undefined') {
       const ar = document.getElementById('autostart-row');
       if (ar) ar.style.removeProperty('display');
@@ -890,6 +889,7 @@ function showSettingsTab(tab) {
         </div>
       </div>`;
     applySettings();
+    paintPatternSwatches();
   } else if (tab === 'update') {
     content.innerHTML = `
       <div style="display:flex;flex-direction:column;height:100%">
