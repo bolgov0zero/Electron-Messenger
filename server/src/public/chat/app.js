@@ -1435,7 +1435,9 @@ function watchComposerHeight() {
   } catch { _composerRO = null; }
 }
 // ── OPEN CHAT ──
-async function openChat(chatId, aroundId = null) {
+// forceBottom — открыть заведомо у последнего сообщения, минуя якорь на первом
+// непрочитанном: так возвращаются из глубины истории и после отправки сообщения
+async function openChat(chatId, aroundId = null, forceBottom = false) {
   S.msgData.clear();
   let chat = S.chats.find(c=>c.id===chatId);
   if (!chat) {
@@ -1466,7 +1468,7 @@ async function openChat(chatId, aroundId = null) {
   S.chatNewestId = null;
   S.statusApplied = {};
   _loadingMore = false;
-  const _unreadAtOpen = S.unread[chatId] || 0;
+  releaseAnchor(); // удержание от прошлого чата не должно мешать новому
   S.unread[chatId] = 0;
   S.unreadMentions[chatId] = 0;
   updateUnreadTotal();
@@ -1516,7 +1518,14 @@ async function openChat(chatId, aroundId = null) {
     <div class="chat-input-wrap" id="input-wrap">
       <div class="composer-inner">
         <div class="composer-pill" id="composer-pill">
-          <div class="ep-grid" id="ep-grid"><div class="ep-freq"></div><div class="ep-sep"></div><div class="ep-scroll"><div class="ep-grid-inner">${EMOJIS.map(em=>`<button class="emoji-item" onclick="insertEmoji('${em}')">${em}</button>`).join('')}</div></div></div>
+          <div class="ep-grid" id="ep-grid">
+            <div class="ep-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input id="ep-search-input" placeholder="Поиск смайла" autocomplete="off" oninput="filterEmoji(this.value)">
+            </div>
+            <div class="ep-tabs" id="ep-tabs"></div>
+            <div class="ep-scroll" id="ep-scroll" onscroll="syncEmojiTabs()"></div>
+          </div>
           <div class="composer-slot" id="composer-slot"><div class="composer-slot-inner">
           <div id="image-preview-bar" style="display:none" class="input-reply-bar">
             <img class="img-preview-thumb" src="" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0">
@@ -1579,7 +1588,8 @@ async function openChat(chatId, aroundId = null) {
   applyAvatars();
   const sendBtn = document.getElementById('send-btn');
   if (sendBtn) { sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
-  if (S.ws && isViewing()) S.ws.send(JSON.stringify({type:'read', chat_id: chatId}));
+  // Отметку о прочтении отправляем после загрузки: иначе сервер успевает снять
+  // read_at раньше, чем посчитает первое непрочитанное, и разделитель пропадает
 
   const msgsEl = document.getElementById('messages');
   if (msgsEl) {
@@ -1589,14 +1599,18 @@ async function openChat(chatId, aroundId = null) {
         <div class="skeleton-bubble" style="width:${w}px"></div>
       </div>`).join('')}</div>`;
   }
-  const data = await api('GET', aroundId ? `/messages/chat/${chatId}?around=${aroundId}&limit=50` : `/messages/chat/${chatId}?limit=50`);
+  const data = await api('GET', aroundId
+    ? `/messages/chat/${chatId}?around=${aroundId}&limit=50`
+    : `/messages/chat/${chatId}?limit=50${forceBottom ? '' : '&anchor=unread'}`);
   if (data && S.activeChatId === chatId) {
     S.chatHasMore = data.hasMore;
     S.chatHasMoreAfter = !!data.hasMoreAfter;
     S.chatOldestId = data.messages[0]?.id ?? null;
     S.chatNewestId = data.messages[data.messages.length - 1]?.id ?? null;
-    renderMessages(data.messages, !aroundId);
-  watchComposerHeight();
+    renderMessages(data.messages);
+    // Резерв под полосу ввода выставляем до постановки якоря, иначе он считается
+    // по ещё не зарезервированной высоте
+    watchComposerHeight();
     if (aroundId) {
       requestAnimationFrame(() => scrollToMsg(aroundId, true));
     } else {
@@ -1604,11 +1618,17 @@ async function openChat(chatId, aroundId = null) {
       S.pins = data.pins || [];
       _pinIdx = 0;
       renderPinBar();
-      insertUnreadDivider(data.messages, _unreadAtOpen);
+      const divider = insertUnreadDivider(data.first_unread_id);
+      setAnchor(divider && !forceBottom
+        ? { mode: 'el', id: data.first_unread_id, offset: 8 }
+        : { mode: 'bottom' });
     }
+    if (S.ws && isViewing()) S.ws.send(JSON.stringify({ type: 'read', chat_id: chatId }));
     const msgsEl2 = document.getElementById('messages');
     if (msgsEl2) {
       msgsEl2.addEventListener('scroll', onMessagesScroll, { passive: true });
+      // Прокрутка к якорю прошла до подписки — состояние кнопки «вниз» считаем сами
+      onMessagesScroll();
       // Touch swipe-right on messages = reply (web only)
       addSwipeReply(msgsEl2);
     }
@@ -1950,49 +1970,119 @@ document.addEventListener('touchmove', e => {
   }
 }, { passive: true });
 
-// ── EMOJI PICKER ──
-const EMOJIS = [
-  // Smileys & faces
-  '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃',
-  '😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙',
-  '😋','😛','😜','🤪','😝','🤦','🤷','🤭','🤫','🤔',
-  '🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥',
-  '😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮',
-  '🤧','🥵','🥶','🥴','😵','🤯','🤠','😎','🤓','🧐',
-  '😕','😟','😯','😦','😧','😮','😲','😫','😩','😭',
-  '😤','😠','😡','🤬','😈','👿','💀','☠️','🤡','👹',
-  '👺','💩',
-  // Hands & gestures
-  '👍','👎','👏','🙌','👐','🤲','🤝','🙏','✊','👊',
-  '🤛','🤜','🤞','🤟','🤘','🤙','👈','👉','👆','👇',
-  '☝️','✌️','🖖','🖐️','✋','🤚','👋','👌','💪','🖕',
-  '💅','🤳',
-  // People
-  '👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓',
-  '👴','👵','💂','👮','🕵️','👷','💃','🕺','👸','🤴',
-  '🤰','👼','🎅','🤶','🦸','🦹','🧙','🧚','🧜','🧝',
-  '🧛','🧟','🧎','🧍','🚶','🏃',
-  // Animals
-  '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯',
-  '🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦆','🦅',
-  '🦉','🦇','🐺','🐗','🐴','🦄','🐝','🦋','🐢','🐍',
-  // Nature
-  '🌵','🌲','🌳','🌴','🌱','🌿','🍀','🌸','🌺','🌻',
-  '🌹','🌷','🍁','🍂','🍃','🌾','🌊','🌙','☀️','🌈',
-  // Food & Drink
-  '🍎','🍊','🍋','🍇','🍓','🍒','🍑','🥭','🍍','🥥',
-  '🥝','🍅','🍆','🥑','🥕','🌽','🥦','🍕','🍔','🌮',
-  '🍜','🍣','🍩','🎂','🍦','☕','🍺','🥂','🍾',
-  // Travel & Places
-  '🌍','🌎','🌏','✈️','🚀','🚂','🚗','🛸','⛵','🏔️',
-  // Objects
-  '📱','💻','🖥️','📷','🎥','💡','🔦','💰','💎','🔑',
-  '📚','📝','🎸','🎮','🎲','🏆','🎯','🎉','🎊','🎈',
-  // Symbols
-  '❤️','🧡','💛','💚','💙','💜','🖤','💔','❣️','💕',
-  '💞','💓','💗','💖','💘','💝','🔥','✨','💫','💯',
-  '✅','❌','⭐','🌟','🔔','⏰','⌛','🚩',
+// ── СМАЙЛЫ ──
+// Разложены по разделам: панель открывается вкладками и липкими заголовками, как
+// в телеграме, — плоскую ленту из четырёх сотен смайлов приходилось крутить наугад.
+// Состав списка не менялся: только те, что рисуются и в Windows.
+const EMOJI_GROUPS = [
+  { key: 'smile', icon: '😀', name: 'Смайлы', items: [
+    '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃',
+    '😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙',
+    '😋','😛','😜','🤪','😝','🤦','🤷','🤭','🤫','🤔',
+    '🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥',
+    '😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮',
+    '🤧','🥵','🥶','🥴','😵','🤯','🤠','😎','🤓','🧐',
+    '😕','😟','😯','😦','😧','😮','😲','😫','😩','😭',
+    '😤','😠','😡','🤬','😈','👿','💀','☠️','🤡','👹',
+    '👺','💩'] },
+  { key: 'hands', icon: '👍', name: 'Жесты', items: [
+    '👍','👎','👏','🙌','👐','🤲','🤝','🙏','✊','👊',
+    '🤛','🤜','🤞','🤟','🤘','🤙','👈','👉','👆','👇',
+    '☝️','✌️','🖖','🖐️','✋','🤚','👋','👌','💪','🖕',
+    '💅','🤳'] },
+  { key: 'people', icon: '🧑', name: 'Люди', items: [
+    '👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓',
+    '👴','👵','💂','👮','🕵️','👷','💃','🕺','👸','🤴',
+    '🤰','👼','🎅','🤶','🦸','🦹','🧙','🧚','🧜','🧝',
+    '🧛','🧟','🧎','🧍','🚶','🏃'] },
+  { key: 'nature', icon: '🐶', name: 'Животные и природа', items: [
+    '🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯',
+    '🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🦆','🦅',
+    '🦉','🦇','🐺','🐗','🐴','🦄','🐝','🦋','🐢','🐍',
+    '🌵','🌲','🌳','🌴','🌱','🌿','🍀','🌸','🌺','🌻',
+    '🌹','🌷','🍁','🍂','🍃','🌾','🌊','🌙','☀️','🌈'] },
+  { key: 'food', icon: '🍕', name: 'Еда и напитки', items: [
+    '🍎','🍊','🍋','🍇','🍓','🍒','🍑','🥭','🍍','🥥',
+    '🥝','🍅','🍆','🥑','🥕','🌽','🥦','🍕','🍔','🌮',
+    '🍜','🍣','🍩','🎂','🍦','☕','🍺','🥂','🍾'] },
+  { key: 'travel', icon: '✈️', name: 'Путешествия', items: [
+    '🌍','🌎','🌏','✈️','🚀','🚂','🚗','🛸','⛵','🏔️'] },
+  { key: 'obj', icon: '💡', name: 'Предметы', items: [
+    '📱','💻','🖥️','📷','🎥','💡','🔦','💰','💎','🔑',
+    '📚','📝','🎸','🎮','🎲','🏆','🎯','🎉','🎊','🎈'] },
+  { key: 'sym', icon: '❤️', name: 'Символы', items: [
+    '❤️','🧡','💛','💚','💙','💜','🖤','💔','❣️','💕',
+    '💞','💓','💗','💖','💘','💝','🔥','✨','💫','💯',
+    '✅','❌','⭐','🌟','🔔','⏰','⌛','🚩'] },
 ];
+
+// Плоский список — им пользуется панель реакций
+const EMOJIS = EMOJI_GROUPS.flatMap(g => g.items);
+
+// Слова для поиска. Пишем по-русски и коротко: ищем подстрокой, поэтому «смех»
+// находится и по «сме». Название раздела тоже участвует в поиске.
+const EMOJI_KEYWORDS = {
+  '😀':'улыбка радость','😃':'улыбка радость','😄':'улыбка смех','😁':'улыбка зубы','😆':'смех жмурится',
+  '😅':'смех пот неловко','🤣':'ржу смех катаюсь','😂':'смех слёзы плачу','🙂':'улыбка спокойно','🙃':'вверх ногами ирония',
+  '😉':'подмигивает','😊':'улыбка смущение','😇':'ангел нимб','🥰':'влюблён сердечки','😍':'влюблён глаза сердца',
+  '🤩':'восторг звёзды','😘':'поцелуй чмок','😗':'поцелуй','😚':'поцелуй','😙':'поцелуй',
+  '😋':'вкусно язык','😛':'язык дразнит','😜':'язык подмигивает','🤪':'дурачится безумие','😝':'язык жмурится',
+  '🤦':'фейспалм рука лицо','🤷':'пожимает плечами не знаю','🤭':'ой рука рот','🤫':'тихо тсс молчи','🤔':'думает размышляет вопрос',
+  '🤐':'молчит рот на замок','🤨':'бровь недоверие','😐':'нейтрально','😑':'без эмоций','😶':'без рта молчание',
+  '😏':'ухмылка','😒':'недовольство скука','🙄':'закатывает глаза','😬':'неловко зубы','🤥':'врёт нос',
+  '😌':'облегчение спокойствие','😔':'грусть уныние','😪':'сонный устал','🤤':'слюни хочу','😴':'спит сон',
+  '😷':'маска болезнь','🤒':'температура болеет','🤕':'травма бинт','🤢':'тошнит','🤮':'рвота',
+  '🤧':'чихает насморк','🥵':'жарко жара','🥶':'холодно мороз','🥴':'пьяный кружится','😵':'без сознания',
+  '🤯':'взрыв мозга шок','🤠':'ковбой','😎':'очки крутой','🤓':'ботаник очки','🧐':'монокль изучает',
+  '😕':'растерян','😟':'беспокойство','😯':'удивление','😦':'испуг','😧':'страх',
+  '😮':'удивление ого','😲':'шок изумление','😫':'устал измучен','😩':'страдание','😭':'плачет слёзы рыдает',
+  '😤':'злость пар','😠':'сердится','😡':'ярость злой','🤬':'ругань мат','😈':'чертёнок хитрый',
+  '👿':'демон злой','💀':'череп смерть','☠️':'череп кости опасность','🤡':'клоун','👹':'монстр',
+  '👺':'гоблин','💩':'какашка',
+  '👍':'палец вверх лайк класс','👎':'палец вниз дизлайк','👏':'аплодисменты хлопки браво','🙌':'руки вверх ура','👐':'ладони',
+  '🤲':'ладони просьба','🤝':'рукопожатие договор','🙏':'спасибо мольба пожалуйста','✊':'кулак','👊':'кулак удар',
+  '🤛':'кулак влево','🤜':'кулак вправо','🤞':'скрещенные пальцы удача','🤟':'люблю жест','🤘':'коза рок',
+  '🤙':'позвони','👈':'палец влево','👉':'палец вправо','👆':'палец вверх','👇':'палец вниз',
+  '☝️':'палец вверх внимание','✌️':'мир виктория два','🖖':'вулкан привет','🖐️':'ладонь пять','✋':'стоп ладонь',
+  '🤚':'ладонь тыльная','👋':'привет пока машет','👌':'окей отлично','💪':'сила бицепс','🖕':'средний палец',
+  '💅':'маникюр ногти','🤳':'селфи',
+  '👶':'малыш ребёнок','🧒':'ребёнок','👦':'мальчик','👧':'девочка','🧑':'человек',
+  '👱':'блондин','👨':'мужчина','🧔':'борода мужчина','👩':'женщина','🧓':'пожилой',
+  '👴':'дедушка','👵':'бабушка','💂':'гвардеец','👮':'полицейский','🕵️':'детектив шпион',
+  '👷':'строитель рабочий','💃':'танцует девушка','🕺':'танцует парень','👸':'принцесса','🤴':'принц',
+  '🤰':'беременная','👼':'ангел','🎅':'дед мороз санта','🤶':'снегурочка миссис клаус','🦸':'супергерой',
+  '🦹':'суперзлодей','🧙':'волшебник маг','🧚':'фея','🧜':'русалка','🧝':'эльф',
+  '🧛':'вампир','🧟':'зомби','🧎':'на коленях','🧍':'стоит','🚶':'идёт пешеход','🏃':'бежит спешит',
+  '🐶':'собака пёс щенок','🐱':'кот кошка','🐭':'мышь','🐹':'хомяк','🐰':'заяц кролик',
+  '🦊':'лиса','🐻':'медведь','🐼':'панда','🐨':'коала','🐯':'тигр',
+  '🦁':'лев','🐮':'корова','🐷':'свинья','🐸':'лягушка','🐵':'обезьяна',
+  '🐔':'курица','🐧':'пингвин','🐦':'птица','🦆':'утка','🦅':'орёл',
+  '🦉':'сова','🦇':'летучая мышь','🐺':'волк','🐗':'кабан','🐴':'лошадь конь',
+  '🦄':'единорог','🐝':'пчела','🦋':'бабочка','🐢':'черепаха','🐍':'змея',
+  '🌵':'кактус','🌲':'ёлка дерево','🌳':'дерево','🌴':'пальма','🌱':'росток',
+  '🌿':'ветка зелень','🍀':'клевер удача','🌸':'цветок сакура','🌺':'цветок','🌻':'подсолнух',
+  '🌹':'роза цветок','🌷':'тюльпан','🍁':'клён осень','🍂':'листья осень','🍃':'листья ветер',
+  '🌾':'колосья','🌊':'волна море','🌙':'луна ночь','☀️':'солнце','🌈':'радуга',
+  '🍎':'яблоко','🍊':'апельсин мандарин','🍋':'лимон','🍇':'виноград','🍓':'клубника',
+  '🍒':'вишня черешня','🍑':'персик','🥭':'манго','🍍':'ананас','🥥':'кокос',
+  '🥝':'киви','🍅':'помидор','🍆':'баклажан','🥑':'авокадо','🥕':'морковь',
+  '🌽':'кукуруза','🥦':'брокколи','🍕':'пицца','🍔':'бургер','🌮':'тако',
+  '🍜':'лапша суп','🍣':'суши','🍩':'пончик','🎂':'торт день рождения','🍦':'мороженое',
+  '☕':'кофе чай','🍺':'пиво','🥂':'бокалы праздник','🍾':'шампанское',
+  '🌍':'земля планета','🌎':'земля планета','🌏':'земля планета','✈️':'самолёт полёт','🚀':'ракета запуск',
+  '🚂':'поезд','🚗':'машина авто','🛸':'нло тарелка','⛵':'парусник лодка','🏔️':'горы',
+  '📱':'телефон смартфон','💻':'ноутбук','🖥️':'компьютер монитор','📷':'фотоаппарат фото','🎥':'камера видео',
+  '💡':'лампочка идея','🔦':'фонарик','💰':'деньги мешок','💎':'алмаз бриллиант','🔑':'ключ',
+  '📚':'книги','📝':'заметка запись','🎸':'гитара','🎮':'игра джойстик','🎲':'кубик игра',
+  '🏆':'кубок победа','🎯':'мишень цель','🎉':'праздник хлопушка','🎊':'конфетти','🎈':'шарик',
+  '❤️':'сердце любовь','🧡':'сердце оранжевое','💛':'сердце жёлтое','💚':'сердце зелёное','💙':'сердце синее',
+  '💜':'сердце фиолетовое','🖤':'сердце чёрное','💔':'разбитое сердце','❣️':'сердце восклицание','💕':'два сердца',
+  '💞':'сердца','💓':'сердце бьётся','💗':'сердце растёт','💖':'сердце блестит','💘':'сердце стрела',
+  '💝':'сердце подарок','🔥':'огонь пожар круто','✨':'блёстки искры','💫':'звёзды кружится','💯':'сто отлично',
+  '✅':'галочка готово да','❌':'крестик нет отмена','⭐':'звезда','🌟':'звезда блестит','🔔':'колокольчик уведомление',
+  '⏰':'будильник время','⌛':'песочные часы ожидание','🚩':'флажок отметка',
+};
+
 const EMOJIS_DEFAULT_FREQ = ['👍','❤️','😂','🔥','😎','🎉','😭','🤔'];
 function getEmojiFreq() { try { return JSON.parse(localStorage.getItem('emoji_freq')||'{}'); } catch { return {}; } }
 function trackEmojiUse(em) { const f=getEmojiFreq(); f[em]=(f[em]||0)+1; try { localStorage.setItem('emoji_freq',JSON.stringify(f)); } catch {} }
@@ -2001,6 +2091,19 @@ function getFreqEmojis(n) {
   const sorted=Object.entries(f).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
   for (const em of EMOJIS_DEFAULT_FREQ) { if (sorted.length>=n) break; if (!sorted.includes(em)) sorted.push(em); }
   return sorted.slice(0,n);
+}
+
+// Разделы панели: часто используемые собираются заново при каждом открытии
+function emojiSections() {
+  return [{ key: 'freq', icon: '🕘', name: 'Часто используемые', items: getFreqEmojis(16) }, ...EMOJI_GROUPS];
+}
+
+function emojiPickerHtml(sections) {
+  return sections.map(g =>
+    '<div class="ep-head" data-head="' + g.key + '">' + g.name + '</div>' +
+    '<div class="ep-row" data-row="' + g.key + '">' +
+      g.items.map(em => '<button class="emoji-item" data-em="' + em + '" onclick="insertEmoji(\'' + em + '\')">' + em + '</button>').join('') +
+    '</div>').join('');
 }
 
 function closeEmojiPicker() {
@@ -2012,9 +2115,76 @@ function toggleEmojiPicker(e) {
   const panel = document.getElementById('ep-grid');
   if (!panel) return;
   if (panel.classList.contains('open')) { panel.classList.remove('open'); return; }
-  const freqEl = panel.querySelector('.ep-freq');
-  if (freqEl) freqEl.innerHTML = `<span class="ep-freq-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>`+getFreqEmojis(9).map(em=>`<button class="emoji-item" onclick="insertEmoji('${em}')">${em}</button>`).join('');
+
+  const sections = emojiSections();
+  const tabs = document.getElementById('ep-tabs');
+  const scroll = document.getElementById('ep-scroll');
+  if (tabs) tabs.innerHTML = sections.map((g, i) =>
+    '<button class="ep-tab" data-tab="' + g.key + '" title="' + g.name + '" aria-selected="' + (i === 0) + '" onclick="emojiTabTo(\'' + g.key + '\')">' + g.icon + '</button>').join('');
+  if (scroll) { scroll.innerHTML = emojiPickerHtml(sections); scroll.scrollTop = 0; }
+  const input = document.getElementById('ep-search-input');
+  if (input) input.value = '';
   panel.classList.add('open');
+  input?.focus();
+}
+
+// Считаем по рядам, а не по заголовкам: заголовки липкие, и их offsetTop/rect
+// в прилипшем состоянии показывают не место раздела, а верх ленты
+function emojiTabTo(key) {
+  const scroll = document.getElementById('ep-scroll');
+  const row = scroll?.querySelector('[data-row="' + key + '"]');
+  const head = scroll?.querySelector('[data-head="' + key + '"]');
+  if (!row) return;
+  const delta = row.getBoundingClientRect().top - scroll.getBoundingClientRect().top - (head?.offsetHeight || 0);
+  scroll.scrollTo({ top: scroll.scrollTop + delta, behavior: 'smooth' });
+}
+
+// Активная вкладка следует за прокруткой — как в телеграме
+function syncEmojiTabs() {
+  const scroll = document.getElementById('ep-scroll');
+  if (!scroll) return;
+  const top = scroll.getBoundingClientRect().top;
+  let cur = null, first = null, last = null;
+  scroll.querySelectorAll('[data-row]').forEach(row => {
+    if (row.hidden) return;
+    if (!first) first = row.dataset.row;
+    last = row.dataset.row;
+    if (row.getBoundingClientRect().top - top <= 30) cur = row.dataset.row;
+  });
+  // У дна последний раздел уже не может подняться к верху — подсвечиваем его сами
+  if (scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 4) cur = last;
+  cur = cur || first;
+  document.querySelectorAll('#ep-tabs .ep-tab').forEach(t =>
+    t.setAttribute('aria-selected', String(t.dataset.tab === cur)));
+}
+
+// Поиск по ключевым словам и названию раздела: пустые разделы прячем целиком
+function filterEmoji(q) {
+  const scroll = document.getElementById('ep-scroll');
+  if (!scroll) return;
+  const query = (q || '').trim().toLowerCase();
+  let total = 0;
+  emojiSections().forEach(g => {
+    const row = scroll.querySelector('[data-row="' + g.key + '"]');
+    const head = scroll.querySelector('[data-head="' + g.key + '"]');
+    if (!row || !head) return;
+    const inGroup = !query || g.name.toLowerCase().includes(query);
+    let shown = 0;
+    row.querySelectorAll('.emoji-item').forEach(btn => {
+      const hit = inGroup || (EMOJI_KEYWORDS[btn.dataset.em] || '').includes(query);
+      btn.hidden = !hit;
+      if (hit) shown++;
+    });
+    row.hidden = head.hidden = shown === 0;
+    total += shown;
+  });
+  let miss = scroll.querySelector('.ep-miss');
+  if (!total) {
+    if (!miss) { miss = document.createElement('div'); miss.className = 'ep-miss'; scroll.append(miss); }
+    miss.textContent = 'Ничего не нашлось';
+    miss.hidden = false;
+  } else if (miss) miss.hidden = true;
+  syncEmojiTabs();
 }
 
 function insertEmoji(em) {
@@ -2041,24 +2211,99 @@ function sameTimeGroup(a, b) {
   return ta.getHours() === tb.getHours() && ta.getMinutes() === tb.getMinutes() && ta.toDateString() === tb.toDateString();
 }
 
-// Разделитель «Непрочитанные сообщения» + скролл к нему (как в Telegram)
-function insertUnreadDivider(msgs, unreadCount) {
-  if (!unreadCount) return;
-  const others = msgs.filter(m => m.sender_id !== S.user.id && !m.deleted);
-  const count = Math.min(unreadCount, others.length);
-  const firstUnread = others[others.length - count];
-  if (!firstUnread) return;
-  const el = document.querySelector(`[data-msg-id="${firstUnread.id}"]`);
-  const container = document.getElementById('messages');
-  if (!el || !container) return;
+// Разделитель «Непрочитанные сообщения» перед первым новым (как в Telegram).
+// Идентификатор приходит с сервера — считать его на клиенте нельзя: счётчик
+// расходится, часть могла быть прочитана с другого устройства.
+function insertUnreadDivider(firstUnreadId) {
+  if (!firstUnreadId) return null;
+  const el = document.querySelector(`[data-msg-id="${firstUnreadId}"]`);
+  if (!el) return null;
   const div = document.createElement('div');
   div.className = 'date-divider unread-divider';
+  div.dataset.anchor = '1';
   div.innerHTML = '<span>Непрочитанные сообщения</span>';
   el.parentNode.insertBefore(div, el);
-  // Скроллим к разделителю после rAF-скролла renderMessages «в самый низ»
-  requestAnimationFrame(() => {
-    container.scrollTop = Math.max(div.offsetTop - 60, 0);
-  });
+  return div;
+}
+
+// ── ЯКОРЬ ЛЕНТЫ ──
+// Одной прокрутки при открытии чата недостаточно: после неё лента продолжает
+// менять высоту — грузятся картинки, шрифты и вложения, появляется панель
+// закреплённого, восстановленный черновик растит поле ввода. Поэтому держим
+// якорь: до первого движения пользователя любое изменение возвращает ленту на
+// место. Как только человек тронул прокрутку сам — отпускаем и больше не лезем,
+// иначе получается тот самый «отскок» при догрузке.
+let _anchor = null;          // { mode: 'bottom' } | { mode: 'el', id, offset }
+let _anchorMO = null, _anchorRO = null, _anchorTimer = null;
+
+function applyAnchor() {
+  const c = document.getElementById('messages');
+  if (!c || !_anchor) return;
+  if (_anchor.mode === 'el') {
+    const el = c.querySelector('[data-anchor="1"]') || c.querySelector(`[data-msg-id="${_anchor.id}"]`);
+    // Элемент мог не доехать (сообщение удалили) — тогда обычное дно.
+    // Считаем по rect, а не по offsetTop: у сообщения свой offsetParent (группа дня),
+    // и offsetTop дал бы смещение относительно неё, а не относительно ленты
+    if (el) {
+      const shift = el.getBoundingClientRect().top - c.getBoundingClientRect().top - (_anchor.offset || 0);
+      c.scrollTop = Math.max(0, c.scrollTop + shift);
+      return;
+    }
+  }
+  c.scrollTop = c.scrollHeight;
+}
+
+function releaseAnchor() {
+  clearTimeout(_anchorTimer);
+  _anchorTimer = null;
+  _anchor = null;
+  _anchorMO?.disconnect(); _anchorMO = null;
+  _anchorRO?.disconnect(); _anchorRO = null;
+  window.visualViewport?.removeEventListener('resize', applyAnchor);
+  const c = document.getElementById('messages');
+  c?.removeEventListener('load', applyAnchor, true);
+  c?.removeEventListener('error', applyAnchor, true);
+  c?.removeEventListener('wheel', releaseAnchor);
+  c?.removeEventListener('touchmove', releaseAnchor);
+  window.removeEventListener('keydown', _anchorKey);
+}
+
+const SCROLL_KEYS = ['PageUp','PageDown','Home','End','ArrowUp','ArrowDown',' '];
+function _anchorKey(e) { if (SCROLL_KEYS.includes(e.key)) releaseAnchor(); }
+
+function setAnchor(anchor, ms = 2500) {
+  releaseAnchor();
+  const c = document.getElementById('messages');
+  if (!c) return;
+  _anchor = anchor;
+  // Автопрокрутка к новым сообщениям — только если открылись у дна
+  _stickBottom = anchor.mode === 'bottom';
+  applyAnchor();
+
+  // Что именно поменяло высоту — неважно: наблюдаем и за содержимым, и за
+  // размерами ленты и полосы ввода
+  try {
+    _anchorMO = new MutationObserver(applyAnchor);
+    _anchorMO.observe(c, { childList: true, subtree: true, characterData: true });
+    _anchorRO = new ResizeObserver(applyAnchor);
+    _anchorRO.observe(c);
+    const bar = document.getElementById('chat-input-bar');
+    if (bar) _anchorRO.observe(bar);
+  } catch {}
+
+  // Картинки без известных размеров сдвигают ленту в момент загрузки. Слушаем на
+  // перехвате: load не всплывает, зато так ловятся и те картинки, что появятся
+  // позже, — перебирать их по одной пришлось бы после каждой вставки
+  c.addEventListener('load', applyAnchor, true);
+  c.addEventListener('error', applyAnchor, true);
+  document.fonts?.ready?.then(() => applyAnchor()).catch(() => {});
+  window.visualViewport?.addEventListener('resize', applyAnchor);
+
+  // Прокрутка руками отменяет удержание
+  c.addEventListener('wheel', releaseAnchor, { passive: true });
+  c.addEventListener('touchmove', releaseAnchor, { passive: true });
+  window.addEventListener('keydown', _anchorKey);
+  _anchorTimer = setTimeout(releaseAnchor, ms);
 }
 
 // Объединяет соседние .day-group с одинаковой датой (после prepend/append на стыке).
@@ -2080,7 +2325,8 @@ function mergeDayGroups(container) {
   }
 }
 
-function renderMessages(msgs, stick = true) {
+// Прокруткой после отрисовки занимается якорь (setAnchor) — здесь только разметка
+function renderMessages(msgs) {
   const container = document.getElementById('messages');
   if (!container) return;
   const chat = S.chats.find(c=>c.id===S.activeChatId);
@@ -2111,23 +2357,6 @@ function renderMessages(msgs, stick = true) {
   if (lastDate !== '') html += `</div>`;
   container.innerHTML = html;
   reflowSeries();
-  // Ждём завершения layout перед скроллом (иначе scrollHeight ещё не актуален)
-  _stickBottom = stick;
-  if (stick) requestAnimationFrame(() => {
-    container.scrollTop = container.scrollHeight;
-    container.querySelectorAll('img').forEach(img => {
-      if (img.complete) return;
-      // Только если пользователь всё ещё у нижнего края: иначе догрузившаяся
-      // картинка отбрасывала вниз того, кто уже листает историю вверх.
-      // Положение считаем на месте, а не по флагу: событие scroll могло ещё не прийти.
-      const snap = () => {
-        if (container.scrollHeight - container.scrollTop - container.clientHeight < 200)
-          container.scrollTop = container.scrollHeight;
-      };
-      img.addEventListener('load',  snap, { once: true });
-      img.addEventListener('error', snap, { once: true });
-    });
-  });
 }
 
 function onMessagesScroll() {
@@ -2144,7 +2373,7 @@ function onMessagesScroll() {
 
 function scrollMessagesToBottom() {
   // Если пользователь загружал более старую позицию — перезагружаем чат с самых свежих
-  if (S.chatHasMoreAfter && S.activeChatId) { openChat(S.activeChatId); return; }
+  if (S.chatHasMoreAfter && S.activeChatId) { openChat(S.activeChatId, null, true); return; }
   const container = document.getElementById('messages');
   if (!container) return;
   _stickBottom = true;
@@ -2970,7 +3199,7 @@ function sendOrEdit() {
   if (!S.chatHasMoreAfter) appendMsg(tempMsg);
 
   S.ws.send(JSON.stringify(payload));
-  if (S.chatHasMoreAfter) openChat(S.activeChatId); // мы были вглуби истории — к последним
+  if (S.chatHasMoreAfter) openChat(S.activeChatId, null, true); // мы были вглуби истории — к последним
   hideReplyBar();
   hideForwardBar();
   clearImagePreview();

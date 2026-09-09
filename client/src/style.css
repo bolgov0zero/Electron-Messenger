@@ -1133,6 +1133,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   position: relative;
 }
 
+/* Панель смайлов: поиск, вкладки-разделы и липкие заголовки — как в телеграме */
 .ep-grid {
   position: absolute;
   bottom: calc(100% + 10px);
@@ -1140,7 +1141,8 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   width: 340px;
   background: var(--composer-bg);
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 11px;
+  box-shadow: 0 10px 34px rgba(0,0,0,.22);
   overflow: hidden;
   max-height: 0;
   opacity: 0;
@@ -1149,32 +1151,54 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   z-index: 10;
 }
 .ep-grid.open {
-  max-height: 290px;
+  max-height: 340px;
   opacity: 1;
   pointer-events: auto;
 }
-.ep-freq {
-  display: flex; gap: 2px; align-items: center;
-  margin: 6px 6px 0; padding: 3px 6px;
-  background: var(--hover-row); border-radius: 9px;
+.ep-search {
+  display: flex; align-items: center; gap: 7px; flex-shrink: 0;
+  margin: 8px 8px 6px; padding: 6px 10px;
+  background: var(--search-bg);
+  border: 1px solid var(--border);
+  border-radius: 9px;
 }
-.ep-freq-icon {
+.ep-search svg { width: 13px; height: 13px; color: var(--muted); flex-shrink: 0; }
+.ep-search input {
+  flex: 1; min-width: 0; border: none; background: none; outline: none;
+  color: var(--text); font-family: inherit; font-size: 12.5px;
+}
+.ep-search input::placeholder { color: var(--muted); }
+.ep-tabs {
+  display: flex; gap: 2px; padding: 0 6px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.ep-tab {
+  flex: 1; height: 32px; border: none; background: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px; flex-shrink: 0;
-  color: var(--muted); pointer-events: none;
+  font-size: 16px; border-radius: 8px 8px 0 0; position: relative;
+  filter: grayscale(1) opacity(.5);
+  transition: filter .15s, background .15s;
 }
-.ep-sep {
-  height: 1px; background: var(--border); margin: 4px 6px;
+.ep-tab:hover { background: var(--hover-row); filter: grayscale(.4) opacity(.85); }
+.ep-tab[aria-selected="true"] { filter: none; }
+.ep-tab[aria-selected="true"]::after {
+  content: ""; position: absolute; left: 22%; right: 22%; bottom: -1px; height: 2px;
+  background: var(--accent); border-radius: 2px 2px 0 0;
 }
 .ep-scroll {
   overflow-x: hidden; overflow-y: auto;
-  scrollbar-width: thin; padding: 0 6px 6px; max-height: 210px;
+  scrollbar-width: thin; padding: 0 6px 8px; max-height: 236px;
+  overscroll-behavior: contain;
 }
-.ep-grid-inner {
-  display: grid;
-  grid-template-columns: repeat(10, 30px);
-  gap: 2px;
+.ep-head {
+  position: sticky; top: 0; z-index: 2;
+  padding: 9px 4px 5px;
+  font-size: 10.5px; font-weight: 650; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--muted);
+  background: var(--composer-bg);
 }
+.ep-row { display: grid; grid-template-columns: repeat(8, 1fr); }
+.ep-miss { padding: 22px 10px; text-align: center; color: var(--muted); font-size: 12px; }
 
 .composer-icon-btn {
   width: 30px; height: 30px; flex-shrink: 0;
@@ -2017,14 +2041,15 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 .mention-item .mn-login { font-size: 11px; color: var(--muted); }
 
 .emoji-item {
-  width: 30px; height: 30px;
+  aspect-ratio: 1; width: 100%;
   background: none; border: none;
-  font-size: 18px; cursor: pointer;
+  font-size: 23px; line-height: 1; cursor: pointer;
   border-radius: 9px;
   display: flex; align-items: center; justify-content: center;
-  transition: background .12s;
+  transition: background .12s, transform .12s;
 }
-.emoji-item:hover { background: var(--hover-row); }
+.emoji-item:hover { background: var(--hover-row); transform: scale(1.12); }
+@media (prefers-reduced-motion: reduce) { .emoji-item:hover { transform: none; } }
 
 /* Drag-and-drop overlay */
 #drag-overlay {

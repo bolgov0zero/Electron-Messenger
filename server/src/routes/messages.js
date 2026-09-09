@@ -58,9 +58,30 @@ router.get('/chat/:chatId', authMiddleware, (req, res) => {
   const after  = req.query.after  ? parseInt(req.query.after)  : null;
   const around = req.query.around ? parseInt(req.query.around) : null;
 
+  // Первое непрочитанное считаем на сервере: у клиента счётчик мог разойтись,
+  // часть могла быть прочитана с другого устройства, а при большом числе новых
+  // сообщений нужного просто нет в последней странице.
+  const firstUnreadId = db.prepare(`
+    SELECT MIN(m.id) AS id FROM messages m
+    LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
+    WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL
+  `).get(req.user.id, chatId, req.user.id).id || null;
+
   let messages, hasMore = false, hasMoreAfter = false;
 
-  if (around) {
+  if (req.query.anchor === 'unread' && firstUnreadId) {
+    // Окно, открывающееся на первом непрочитанном: немного переписки выше для
+    // контекста, остальное место отдаём новым сообщениям
+    const ctx = Math.min(20, limit);
+    const beforeRows = db.prepare(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id < ? ORDER BY m.id DESC LIMIT ?`)
+      .all(chatId, firstUnreadId, ctx);
+    const afterRows = db.prepare(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id >= ? ORDER BY m.id ASC LIMIT ?`)
+      .all(chatId, firstUnreadId, limit + 1);
+    hasMore = beforeRows.length === ctx;
+    hasMoreAfter = afterRows.length === limit + 1;
+    if (hasMoreAfter) afterRows.pop();
+    messages = beforeRows.reverse().concat(afterRows);
+  } else if (around) {
     // Окно вокруг сообщения: для перехода из поиска или к цитате
     const half = Math.floor(limit / 2);
     const beforeRows = db.prepare(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id < ? ORDER BY m.id DESC LIMIT ?`)
@@ -127,7 +148,7 @@ router.get('/chat/:chatId', authMiddleware, (req, res) => {
 
   // Закреплённые отдаём вместе с историей — отдельный запрос при каждом
   // открытии чата не нужен
-  res.json({ messages: result, hasMore, hasMoreAfter, pins: getPins(chatId) });
+  res.json({ messages: result, hasMore, hasMoreAfter, pins: getPins(chatId), first_unread_id: firstUnreadId });
 });
 
 // Кто поставил реакции на сообщение — для тултипа при наведении.
