@@ -33,6 +33,8 @@
   /* Accent */
   --accent:        #1fa88c;
   --accent-soft:   rgba(29,168,140,0.10);
+  /* Подложка своей реакции: рамка у чипа обычная, отличие несёт бледная заливка */
+  --reaction-mine: rgba(29,168,140,0.13);
   --accent-border: rgba(29,168,140,0.25);
   --accent-shadow: rgba(29,168,140,0.20);
 
@@ -135,6 +137,7 @@ html.dark {
 
   --accent:        #29d6b8;
   --accent-soft:   rgba(41,214,184,0.10);
+  --reaction-mine: rgba(41,214,184,0.15);
   --accent-border: rgba(41,214,184,0.25);
   --accent-shadow: rgba(41,214,184,0.20);
 
@@ -3057,7 +3060,7 @@ html.dark .announcement-title { color: var(--danger); }
   /* рисунок смайлика сидит ниже середины своего бокса — подтягиваем вверх */
   position: relative; top: -.04em;
 }
-.reaction-btn.mine { border-color: var(--accent); background: var(--accent-soft); }
+.reaction-btn.mine { background: var(--reaction-mine); }
 
 .ra-stack { display: flex; align-items: center; }
 .ra {
