@@ -212,6 +212,10 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 
 /* ── CARD ── */
 .card{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+/* Таблицы шире карточки прокручиваются вбок, а не обрезаются: в узком окне ряд
+   действий (особенно с «Разблокировать») не помещается в отведённую ширину */
+.card:has(table){overflow-x:auto}
+.card table{min-width:640px}
 .card-head{padding:13px 16px;border-bottom:1px solid var(--c-border2);display:flex;align-items:center;justify-content:space-between;gap:10px}
 .card-head h3{font-size:13px;font-weight:700;color:var(--c-text);letter-spacing:-.1px}
 .card-head-left{display:flex;align-items:center;gap:10px}
@@ -262,7 +266,7 @@ td{padding:10px 14px;border-bottom:1px solid var(--c-border2);vertical-align:mid
 tr:last-child td{border-bottom:none}
 tbody tr:hover td{background:var(--c-surface2)}
 .td-id{font-weight:600;color:var(--c-muted);font-family:var(--f-mono);font-size:11px;width:46px}
-.td-actions{display:flex;gap:4px;align-items:center}
+.td-actions{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 
 /* ── AVATAR ── */
 .av-wrap{position:relative;display:inline-flex;flex-shrink:0}
@@ -446,6 +450,21 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .toggle-thumb{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--c-muted);transition:transform var(--t-base),background var(--t-base)}
 .toggle-switch input:checked + .toggle-track{background:var(--c-primary);border-color:var(--c-primary)}
 .toggle-switch input:checked + .toggle-track .toggle-thumb{transform:translateX(14px);background:#fff}
+
+/* Заблокированный пользователь: строка приглушена, чтобы состояние читалось
+   с одного взгляда, а не только по бейджу в колонке статуса */
+.row-banned .user-cell, .row-banned td:not(:last-child) { opacity: .55; }
+
+/* ── ПРОСМОТР КАРТИНКИ ── */
+/* Только для изображений: у остальных файлов показывать нечего */
+#file-lightbox{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);padding:48px}
+#file-lightbox.open{display:flex}
+#file-lightbox img{max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 24px 60px rgba(0,0,0,.5);display:block}
+.fl-cap{position:absolute;left:0;right:0;bottom:18px;text-align:center;font-size:12px;font-family:var(--f-mono);color:#e7eaed;text-shadow:0 1px 4px rgba(0,0,0,.65)}
+.fl-close{position:absolute;top:16px;right:18px;width:32px;height:32px;border:none;border-radius:9px;background:rgba(255,255,255,.12);color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background var(--t-fast)}
+.fl-close:hover{background:rgba(239,68,68,.4)}
+.file-thumb{cursor:zoom-in;transition:opacity var(--t-fast)}
+.file-thumb:hover{opacity:.75}
 
 /* ── DATE-TIME PICKER ── */
 /* Свой, а не <input type="datetime-local">: тот рисуется средствами системы и
@@ -979,6 +998,12 @@ return 'OK';</pre>
   </div>
 </div>
 
+<!-- Просмотр картинки из списка файлов -->
+<div id="file-lightbox" onclick="if(event.target===this)closeFilePreview()">
+  <button class="fl-close" onclick="closeFilePreview()" title="Закрыть">✕</button>
+  <img id="fl-img" alt="">
+  <div class="fl-cap" id="fl-cap"></div>
+</div>
 <div id="toast-container"></div>
 
 <script>
@@ -1926,9 +1951,9 @@ function userRowHtml(u) {
     ? '<span class="badge badge-red">Заблокирован</span>'
     : statusBadge(u.connected);
   const banBtn = u.banned
-    ? `<button class="btn btn-ghost btn-sm" onclick="unbanUser(${u.id},'${jesc(u.display_name)}')">Разблок</button>`
+    ? `<button class="btn btn-ghost btn-sm" onclick="unbanUser(${u.id},'${jesc(u.display_name)}')">Разблокировать</button>`
     : `<button class="btn btn-ghost btn-sm" onclick="banUser(${u.id},'${jesc(u.display_name)}')">Блок</button>`;
-  return `<tr>
+  return `<tr class="${u.banned ? 'row-banned' : ''}">
     <td><div class="user-cell">${avHtml(u.display_name,30,8,u.id,u.connected,u.has_avatar)}<div><div class="uc-name">${esc(u.display_name)}</div><div class="uc-sub">@${esc(u.username)}</div></div></div></td>
     <td>${u.is_admin?'<span class="badge badge-blue">Администратор</span>':'<span class="badge badge-gray">Пользователь</span>'}</td>
     <td>${statusCol}</td>
@@ -3145,7 +3170,7 @@ async function renderFiles() {
       const thumb = missing
         ? `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;opacity:.4">${fileIcon()}</div>`
         : isImg(f.filename)
-          ? `<img src="/files/${esc(f.filename)}" style="width:32px;height:32px;object-fit:cover;border-radius:4px;display:block" onerror="this.style.display='none'">`
+          ? `<img class="file-thumb" src="/files/${esc(f.filename)}" title="Открыть" onclick="openFilePreview('${jesc(f.filename)}')" style="width:32px;height:32px;object-fit:cover;border-radius:4px;display:block" onerror="this.style.display='none'">`
           : `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">${fileIcon()}</div>`;
       const fname = f.filename.length > 32 ? f.filename.slice(0, 30) + '…' : f.filename;
       const sizeCell = missing
@@ -3192,6 +3217,22 @@ function deleteFile(filename) {
     else toast(data?.error || 'Ошибка', 'error');
   });
 }
+
+/* ── ПРОСМОТР КАРТИНКИ ── */
+function openFilePreview(name) {
+  const box = document.getElementById('file-lightbox');
+  document.getElementById('fl-img').src = '/files/' + encodeURIComponent(name);
+  document.getElementById('fl-cap').textContent = name;
+  box.classList.add('open');
+}
+function closeFilePreview() {
+  document.getElementById('file-lightbox')?.classList.remove('open');
+  const img = document.getElementById('fl-img');
+  if (img) img.src = '';
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('file-lightbox')?.classList.contains('open')) closeFilePreview();
+});
 
 /* ── ANNOUNCEMENTS ── */
 const ANN_KINDS = {

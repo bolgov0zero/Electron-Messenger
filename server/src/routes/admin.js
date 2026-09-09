@@ -216,9 +216,10 @@ router.get('/users', (req, res) => {
   const fs = require('fs');
   const path = require('path');
   const avatarDir = path.join(__dirname, '..', '..', '..', 'chat_db', 'avatar');
-  const users = db.prepare('SELECT id, username, display_name, is_admin, tag, created_at FROM users WHERE is_bot IS NULL OR is_bot = 0 ORDER BY created_at DESC').all();
+  const users = db.prepare('SELECT id, username, display_name, is_admin, tag, banned, created_at FROM users WHERE is_bot IS NULL OR is_bot = 0 ORDER BY created_at DESC').all();
   res.json(users.map(u => ({
     ...u,
+    banned: !!u.banned,
     connected: isConnected(u.id),
     has_avatar: fs.existsSync(path.join(avatarDir, `${u.id}.jpg`)),
   })));

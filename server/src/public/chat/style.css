@@ -3119,7 +3119,13 @@ html.dark .announcement-title { color: var(--danger); }
    а между картинкой и текстом остаётся отступ. Если картинка одна, без подписи и
    реакций, — она заполняет пузырь целиком, а время получает подложку, иначе
    на светлом кадре его не видно. */
-.msg-bubble .bubble-image { margin: -5px -11px 5px; border-radius: 13px 13px 4px 4px; overflow: hidden; }
+.msg-bubble .bubble-image:not(.bubble-expired) { margin: -5px -11px 5px; border-radius: 13px 13px 4px 4px; overflow: hidden; }
+/* Заглушка удалённого вложения — это надпись, а не кадр: к краям пузыря её тянуть
+   не надо, иначе текст упирается в границу. Своя подложка, как у файла. */
+.msg-bubble .bubble-image.bubble-expired {
+  margin: 2px 0 4px; padding: 9px 12px; min-height: 0;
+  border-radius: 9px; overflow: hidden;
+}
 .msg-bubble .bubble-file { margin: -1px -5px; }
 /* Сообщение, где нет ничего кроме файла: под время нет ни строки текста с распоркой,
    ни блока реакций, и оно ложится вплотную к иконке скачивания. Резервируем полосу. */
