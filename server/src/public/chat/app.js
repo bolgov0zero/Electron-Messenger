@@ -4097,7 +4097,17 @@ function connectWS() {
       }
     }
 
-    if (data.type === 'banner') showBanner(data.announcement);
+    if (data.type === 'banner') {
+      showBanner(data.announcement);
+      // Предупреждаем так же, как о всплывающем объявлении: окно может быть
+      // свёрнуто, а полоса важна и висит ограниченное время. Мут чатов тут ни
+      // при чём — это объявление от администрации, а не переписка.
+      if (!isViewing()) {
+        const body = (data.announcement?.text || '').replace(/\s+/g, ' ').slice(0, 120);
+        webNotify('Системное объявление', body, null);
+        playNotificationSound();
+      }
+    }
     if (data.type === 'banner_removed') hideBanner(data.id);
   };
 
