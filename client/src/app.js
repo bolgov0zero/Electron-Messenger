@@ -1276,12 +1276,14 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
     </div>
-    <div id="typing-indicator" class="typing-indicator" style="display:none">
-      <span class="typing-dots"><span></span><span></span><span></span></span>
-      <span class="typing-name"></span><span class="typing-label"> печатает…</span>
-    </div>
     <div class="chat-input-wrap" id="input-wrap">
       <div class="composer-inner">
+        <div id="typing-indicator" class="typing-indicator" style="display:none">
+          <span class="typing-pill">
+            <span class="typing-dots"><span></span><span></span><span></span></span>
+            <span class="typing-name"></span><span class="typing-label"> печатает…</span>
+          </span>
+        </div>
         <div class="composer-pill" id="composer-pill">
           <div class="ep-grid" id="ep-grid">
             <div class="ep-search">
@@ -2555,11 +2557,25 @@ function onMsgInput(el, silent = false) {
   typingSendTimer = setTimeout(() => { typingSendTimer = null; }, 1000);
 }
 
+// Стоим ли у нижнего края ленты — считаем на месте, событие scroll могло не прийти
+function atMessagesBottom() {
+  const m = document.getElementById('messages');
+  return !!m && m.scrollHeight - m.scrollTop - m.clientHeight < 40;
+}
+function pinMessagesBottom() {
+  const m = document.getElementById('messages');
+  if (m) m.scrollTop = m.scrollHeight;
+}
+
 function showTyping(chatId, senderName) {
   if (typingTimers[chatId]) clearTimeout(typingTimers[chatId]);
   if (chatId === S.activeChatId) {
     const el = document.getElementById('typing-indicator');
+    // На телефоне подсказка в потоке и уменьшает ленту — если стояли у дна,
+    // возвращаемся туда же, иначе последнее сообщение уезжает под полосу ввода
+    const stick = atMessagesBottom();
     if (el) { el.style.display = 'flex'; el.querySelector('.typing-name').textContent = senderName; }
+    if (stick) pinMessagesBottom();
   }
   // Show in chat list
   const item = document.querySelector(`.chat-item[data-chat-id="${chatId}"] .ci-last`);
@@ -2574,7 +2590,9 @@ function clearTyping(chatId) {
   delete typingTimers[chatId];
   if (chatId === S.activeChatId) {
     const el = document.getElementById('typing-indicator');
+    const stick = atMessagesBottom();
     if (el) el.style.display = 'none';
+    if (stick) pinMessagesBottom();
   }
   const item = document.querySelector(`.chat-item[data-chat-id="${chatId}"] .ci-last`);
   if (item && item.dataset.origText !== undefined) {

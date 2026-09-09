@@ -1048,7 +1048,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   position: absolute; left: 0; right: 0; bottom: 0;
   z-index: 3;
 }
-.composer-inner { max-width: 760px; margin: 0 auto; background: var(--app-bg); border-radius: 12px; }
+.composer-inner { max-width: 760px; margin: 0 auto; background: var(--app-bg); border-radius: 12px; position: relative; }
 
 /* New composer style */
 .composer { padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0; }
@@ -1259,9 +1259,20 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .icon-btn-danger:hover { color: #ef4444 !important; background: var(--danger-bg) !important; }
 
 /* Typing indicator */
+/* Подсказка «печатает…» висит над композером и вне потока: в потоке она
+   оказывалась под полосой ввода (та лежит поверх ленты), а её появление меняло бы
+   высоту полосы и дёргало ленту. Привязана к .composer-inner, поэтому левый край
+   совпадает с полем ввода на любой ширине. Фон свой — под ней видны сообщения. */
 .typing-indicator {
+  position: absolute; bottom: calc(100% + 2px); left: 0;
+  display: flex; align-items: center;
+  pointer-events: none;
+}
+.typing-pill {
   display: flex; align-items: center; gap: 6px;
-  padding: 2px 24px 2px; min-height: 20px;
+  padding: 3px 10px 4px;
+  border-radius: 9px;
+  background: var(--app-bg);
 }
 .typing-name { font-size: 12px; font-weight: 600; color: var(--muted); }
 .typing-label { font-size: 12px; color: var(--muted); }
