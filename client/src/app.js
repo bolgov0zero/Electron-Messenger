@@ -2140,24 +2140,35 @@ calcEmojiInkShift();
 // на холсте цветные точки. Не появились — снимаем шрифт со стека, и возвращаются
 // системные смайлы. Они разные на разных системах, но это несравнимо лучше пустоты.
 async function checkEmojiFont() {
-  const giveUp = () => document.documentElement.classList.add('no-emoji-font');
-  try {
-    await document.fonts.load('64px "Noto Color Emoji"', '😀');
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = 64;
-    const ctx = cv.getContext('2d', { willReadFrequently: true });
-    ctx.font = '48px "Noto Color Emoji"';
-    ctx.textBaseline = 'top';
-    ctx.fillText('😀', 0, 0);
-    const d = ctx.getImageData(0, 0, 64, 64).data;
-    let colored = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i + 3] < 20) continue;
-      // цветная точка — та, у которой каналы заметно расходятся
-      if (Math.abs(d[i] - d[i + 1]) > 25 || Math.abs(d[i + 1] - d[i + 2]) > 25) colored++;
-    }
-    if (colored < 40) giveUp();
-  } catch { giveUp(); }
+  // Рисует ли браузер этот набор — проверяем на деле: кладём смайл на холст
+  // только этим семейством и считаем цветные точки. У рабочего набора их около
+  // 1800, у нерабочего ноль, так что порог можно ставить с большим запасом.
+  const paints = async (family) => {
+    try {
+      await document.fonts.load('64px "' + family + '"', '\u{1F600}');
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = 64;
+      const ctx = cv.getContext('2d', { willReadFrequently: true });
+      ctx.font = '48px "' + family + '"';
+      ctx.textBaseline = 'top';
+      ctx.fillText('\u{1F600}', 0, 0);
+      const d = ctx.getImageData(0, 0, 64, 64).data;
+      let colored = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] < 20) continue;
+        if (Math.abs(d[i] - d[i + 1]) > 25 || Math.abs(d[i + 1] - d[i + 2]) > 25) colored++;
+      }
+      return colored >= 40;
+    } catch { return false; }
+  };
+  // Основной набор — COLRv1, его понимает Chromium, а значит и наш Electron
+  if (await paints('Noto Color Emoji')) return;
+  // Не понял — пробуем OpenType-SVG, его понимает Safari
+  document.documentElement.classList.add('emoji-svg');
+  if (await paints('Noto Emoji SVG')) return;
+  // Ни тот, ни другой — возвращаем системные смайлы
+  document.documentElement.classList.remove('emoji-svg');
+  document.documentElement.classList.add('no-emoji-font');
 }
 checkEmojiFont();
 // Шрифт смайлов вшит и подгружается асинхронно: первый замер уходит по системному,
