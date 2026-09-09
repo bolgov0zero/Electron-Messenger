@@ -344,6 +344,22 @@
   </div>
 </div>
 
+<!-- Новый чат: мастер в два шага -->
+<div class="modal-bg" id="modal-newchat" onclick="if(event.target===this)closeNewChat()">
+  <div class="modal nc-modal">
+    <div class="modal-hdr">
+      <button class="icon-btn nc-back" id="nc-back" style="display:none" onclick="ncBack()" title="Назад">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span id="nc-title" style="flex:1">Новый чат</span>
+      <span class="nc-step" id="nc-step"></span>
+      <button class="icon-btn" onclick="closeNewChat()" style="width:28px;height:28px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="nc-body"></div>
+  </div>
+</div>
 <div class="modal-bg" id="modal-forward" onclick="if(event.target===this)closeForwardModal()">
   <div class="modal" style="width:380px;max-height:80vh;display:flex;flex-direction:column">
     <div class="modal-hdr">

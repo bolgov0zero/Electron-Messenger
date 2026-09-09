@@ -3966,63 +3966,83 @@ function ppAvHtml(u) {
 }
 const PP_CHECK = `<span class="pp-check"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>`;
 
+// ── НОВЫЙ ЧАТ ──
+// Два шага: сначала выбор вида (личный или группа), потом список людей. Раньше
+// на одном экране были вкладки «Личный/Группа», и тип приходилось выбирать до
+// того, как понятно, кого добавляешь.
+const NC_ICON = {
+  person: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  group:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  search: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+};
+
 function openNewChat() {
   S.ncSelected = new Set();
+  S.ncKind = null;
   S.newGroupAvatarBase64 = null;
-  document.getElementById('chat-main').innerHTML = `
-    <div class="gi-panel nc-panel">
-      <div class="gi-top-bar">
-        <button class="icon-btn" onclick="closeNewChat()" title="Закрыть">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <span class="gi-top-title" id="nc-title">Новый чат</span>
-      </div>
-      <div class="nc-panel-body">
-        <div class="nc-panel-tabs">
-          <div class="nc-tabs">
-            <button class="nc-tab active" id="nc-btn-direct" onclick="switchTab('direct')">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              Личный
-            </button>
-            <button class="nc-tab" id="nc-btn-group" onclick="switchTab('group')">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 1-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              Группа
-            </button>
-          </div>
-        </div>
-        <div id="nc-group-settings" style="display:none" class="nc-panel-group-settings">
-          <div class="nc-group-top">
-            <div class="av av-md av-sq av-green" id="new-group-av" style="cursor:pointer;flex-shrink:0" onclick="triggerGroupAvatarUpload()">G</div>
-            <input id="group-name" class="nc-name-input" placeholder="Название группы">
-          </div>
-          <input type="file" id="group-avatar-input" accept="image/*" style="display:none" onchange="onGroupAvatarChange(this)">
-        </div>
-        <div class="nc-search">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="nc-search-input" placeholder="Поиск..." oninput="filterModalUsers(this.value,'tab-direct');filterModalUsers(this.value,'tab-group')">
-        </div>
-        <div class="nc-panel-lists">
-          <div id="tab-direct" class="users-list nc-list"></div>
-          <div id="tab-group" class="users-list nc-list" style="display:none"></div>
-        </div>
-      </div>
-      <div id="nc-footer" style="display:none" class="gi-footer">
-        <button class="modal-btn-ghost" onclick="closeNewChat()">Отмена</button>
-        <button class="modal-btn-primary" onclick="createGroup()">Создать группу</button>
-      </div>
-    </div>`;
-  renderModalUsers('tab-direct', false);
-  renderModalUsers('tab-group', true);
+  ncStep1();
+  openModal('modal-newchat');
 }
 
-function closeNewChat() {
-  const go = () => {
-    if (S.activeChatId) openChat(S.activeChatId);
-    else document.getElementById('chat-main').innerHTML = `<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Чат</div><div class="empty-sub">Выберите чат или создайте новый</div></div>`;
-  };
-  const panel = document.querySelector('.gi-panel');
-  if (panel) { panel.classList.add('gi-closing'); setTimeout(go, 150); }
-  else go();
+function closeNewChat() { closeModal('modal-newchat'); }
+
+function ncHead(title, step, back) {
+  document.getElementById('nc-title').textContent = title;
+  document.getElementById('nc-step').textContent = step;
+  document.getElementById('nc-back').style.display = back ? '' : 'none';
+}
+
+function ncStep1() {
+  S.ncKind = null;
+  S.ncSelected = new Set();
+  ncHead('Новый чат', '', false);
+  document.getElementById('nc-body').innerHTML = `
+    <div class="nc-kinds">
+      <button class="nc-kind" onclick="ncPick('direct')">
+        <span class="nc-kind-ic">${NC_ICON.person}</span>
+        <span class="nc-kind-txt"><b>Личный чат</b><span>Переписка с одним сотрудником</span></span>
+        <span class="nc-kind-go">›</span>
+      </button>
+      <button class="nc-kind" onclick="ncPick('group')">
+        <span class="nc-kind-ic">${NC_ICON.group}</span>
+        <span class="nc-kind-txt"><b>Группа</b><span>Общая переписка с названием и участниками</span></span>
+        <span class="nc-kind-go">›</span>
+      </button>
+    </div>`;
+}
+
+function ncPick(kind) {
+  S.ncKind = kind;
+  S.ncSelected = new Set();
+  const group = kind === 'group';
+  ncHead(group ? 'Новая группа' : 'Личный чат', 'Шаг 2 из 2', true);
+  document.getElementById('nc-body').innerHTML = `
+    ${group ? `<div class="nc-group-bar">
+      <div class="av av-md av-sq av-green" id="new-group-av" style="cursor:pointer;flex-shrink:0" onclick="triggerGroupAvatarUpload()">Г</div>
+      <input id="group-name" class="nc-name-input" placeholder="Название группы" autocomplete="off">
+      <input type="file" id="group-avatar-input" accept="image/*" style="display:none" onchange="onGroupAvatarChange(this)">
+    </div>` : ''}
+    <div class="nc-search">
+      ${NC_ICON.search}
+      <input id="nc-search-input" placeholder="Поиск по имени или логину" autocomplete="off" oninput="filterModalUsers(this.value)">
+    </div>
+    <div id="nc-list" class="users-list nc-list"></div>
+    ${group ? `<div class="nc-foot">
+      <span class="nc-hint" id="nc-hint">Отметьте участников</span>
+      <button class="modal-btn-ghost" onclick="ncBack()">Назад</button>
+      <button class="modal-btn-primary" onclick="createGroup()">Создать группу</button>
+    </div>` : `<div class="nc-foot"><span class="nc-hint">Нажмите на человека — откроется переписка</span></div>`}`;
+  renderModalUsers('nc-list', group);
+  document.getElementById(group ? 'group-name' : 'nc-search-input')?.focus();
+}
+
+function ncBack() { ncStep1(); }
+
+function ncUpdateHint() {
+  const el = document.getElementById('nc-hint');
+  if (!el) return;
+  const n = S.ncSelected?.size || 0;
+  el.textContent = n ? `Выбрано: ${n}` : 'Отметьте участников';
 }
 
 function renderModalUsers(containerId, multi, filter='') {
@@ -4038,12 +4058,8 @@ function renderModalUsers(containerId, multi, filter='') {
     </div>`).join('') || '<div class="pp-empty">Нет пользователей</div>';
 }
 
-function filterModalUsers(q, containerId) {
-  const multi = containerId==='tab-group';
-  // Only filter the visible list
-  const el = document.getElementById(containerId);
-  if (el?.style.display==='none') return;
-  renderModalUsers(containerId, multi, q.toLowerCase());
+function filterModalUsers(q) {
+  renderModalUsers('nc-list', S.ncKind === 'group', (q || '').toLowerCase());
 }
 
 function toggleModalUser(id) {
@@ -4051,12 +4067,13 @@ function toggleModalUser(id) {
   if (S.ncSelected.has(id)) S.ncSelected.delete(id);
   else S.ncSelected.add(id);
   const q = (document.getElementById('nc-search-input')?.value || '').toLowerCase();
-  renderModalUsers('tab-group', true, q);
+  renderModalUsers('nc-list', true, q);
+  ncUpdateHint();
 }
 
 async function startDirect(userId) {
   const data = await api('POST','/chats/direct',{user_id:userId});
-  if (data?.id) { await loadChats(); openChat(data.id); }
+  if (data?.id) { closeNewChat(); await loadChats(); openChat(data.id); }
 }
 
 async function createGroup() {
@@ -4069,19 +4086,11 @@ async function createGroup() {
       await api('POST', `/chats/${data.id}/avatar`, { data: S.newGroupAvatarBase64 });
       S.newGroupAvatarBase64 = null;
     }
+    closeNewChat();
     await loadChats(); openChat(data.id);
   }
 }
 
-function switchTab(tab) {
-  document.querySelectorAll('.nc-type-btn,.nc-tab').forEach(b => b.classList.remove('active'));
-  document.getElementById(`nc-btn-${tab}`)?.classList.add('active');
-  document.getElementById('tab-direct').style.display = tab==='direct' ? 'flex' : 'none';
-  document.getElementById('tab-group').style.display = tab==='group' ? 'flex' : 'none';
-  document.getElementById('nc-group-settings').style.display = tab==='group' ? '' : 'none';
-  document.getElementById('nc-footer').style.display = tab==='group' ? '' : 'none';
-  document.getElementById('nc-title').textContent = tab==='direct' ? 'Новый чат' : 'Новая группа';
-}
 
 // ── GROUP INFO PANEL ──
 async function openGroupInfo(chatId) {
