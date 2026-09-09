@@ -790,7 +790,8 @@ html.no-emoji-font .md-code {
   /* Ровно высота строки поиска в сайдбаре (padding 12+12 плюс поле 46) —
      тогда подпись раздела и первые строки обоих списков стоят на одной линии */
   height: 73px; flex-shrink: 0;
-  padding: 12px 8px 12px 5px;
+  /* слева 10px — по левому краю строк списка тем */
+  padding: 12px 8px 12px 10px;
   /* Прижимаем к верху и держим высоту 37px — ровно как поле поиска в сайдбаре.
      При выравнивании по центру содержимое шапки стояло на 6px ниже кнопки
      в свёрнутой полосе. */
@@ -873,7 +874,14 @@ body.rooms-strip .search-wrap { justify-content: center; padding: 9px 0; height:
    и подсветка выбранной комнаты выходила заметно выше, чем шире. */
 /* Боковые отступы списка в полосе убираем: строка шириной 58px вместе с ними
    не помещалась в 63px и внизу появлялась горизонтальная прокрутка */
-body.rooms-strip .chats-list { padding-left: 0; padding-right: 0; }
+body.rooms-strip .chats-list {
+  padding-left: 0; padding-right: 0;
+  /* Полосу прокрутки прячем: 4px она забирала только справа, и выделенная
+     строка вставала не по центру — 1px слева против 6 справа. Колесом и
+     тачпадом список по-прежнему прокручивается. */
+  scrollbar-width: none;
+}
+body.rooms-strip .chats-list::-webkit-scrollbar { width: 0; height: 0; }
 body.rooms-strip .chats-list .chat-item {
   justify-content: center;
   width: 58px; margin-left: auto; margin-right: auto;
