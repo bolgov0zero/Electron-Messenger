@@ -772,7 +772,6 @@ html.no-emoji-font .md-code {
   background: var(--side-bg);
   border-right: none;
   display: flex; flex-direction: column;
-  transition: width 0.2s ease, min-width 0.2s ease, border-right-color 0.2s;
   flex-shrink: 0;
 }
 .topics-panel.open {
@@ -805,7 +804,9 @@ html.no-emoji-font .md-code {
   padding: 0 10px; font-size: 13px; color: var(--text); font-family: inherit; outline: none;
 }
 .tp-search::placeholder { color: var(--muted); }
-.tp-list { flex: 1; overflow-y: auto; padding: 0 8px 12px; }
+/* По бокам просторнее, чем в списке чатов: колонка шире, и при отступе 8px
+   подсветка выбранной темы почти упиралась в границу с перепиской */
+.tp-list { flex: 1; overflow-y: auto; padding: 0 10px 12px; }
 .tp-list::-webkit-scrollbar { width: 4px; }
 .tp-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9px; }
 .tp-empty { padding: 18px 14px; text-align: center; color: var(--muted); font-size: 13px; }
@@ -821,7 +822,17 @@ body.rooms-strip .sidebar .search-wrap input,
 body.rooms-strip .sidebar .search-clear { display: none; }
 body.rooms-strip .sidebar-search { padding: 12px 12px; }
 body.rooms-strip .search-wrap { justify-content: center; padding: 9px 0; height: 37px; }
-body.rooms-strip .chat-item { justify-content: center; padding: 9px 0; }
+/* Ширина строки задана явно: аватарка 40px плюс по 9px с каждой стороны —
+   столько же, сколько сверху и снизу. Раньше строка растягивалась на всю полосу
+   и подсветка выбранной комнаты выходила заметно выше, чем шире. */
+/* Боковые отступы списка в полосе убираем: строка шириной 58px вместе с ними
+   не помещалась в 63px и внизу появлялась горизонтальная прокрутка */
+body.rooms-strip .chats-list { padding-left: 0; padding-right: 0; }
+body.rooms-strip .chats-list .chat-item {
+  justify-content: center;
+  width: 58px; margin-left: auto; margin-right: auto;
+  padding: 9px 0;
+}
 /* подпись раздела прячем, но место оставляем — иначе список уедет вверх */
 body.rooms-strip .chat-list-section-label {
   visibility: hidden;
@@ -830,11 +841,29 @@ body.rooms-strip .chat-list-section-label {
 }
 body.rooms-strip .sidebar-account { justify-content: center; padding: 20px 0; }
 /* счётчик уезжает на угол аватарки; при упоминании показываем только его */
-body.rooms-strip .chat-item .unread-badge {
+body.rooms-strip .chats-list .chat-item .unread-badge {
   position: absolute; top: 3px; right: 5px;
   box-shadow: 0 0 0 2px var(--side-bg);
 }
-body.rooms-strip .chat-item .unread-badge + .unread-badge { display: none; }
+body.rooms-strip .chats-list .chat-item .unread-badge + .unread-badge { display: none; }
+/* Вход в комнату: колонки меняют ширину мгновенно, поэтому раскладка
+   пересчитывается один раз, а не каждый кадр. Ощущение плавности даёт въезд
+   содержимого — он идёт через transform и opacity, которые раскладку не трогают. */
+body.rooms-strip .sidebar { transition: none; }
+@keyframes tpEnter {
+  from { opacity: 0; transform: translateX(-14px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+/* Ни fill-mode, ни задержки: и то и другое заставляет элемент держать
+   начальный кадр вне самой анимации, и если та почему-то не проиграет,
+   колонка так и останется сдвинутой на 14px влево. Без них покой — это
+   обычное положение, а анимация лишь проигрывается поверх. */
+.topics-panel.open .tp-head,
+.topics-panel.open .tp-list { animation: tpEnter .18s cubic-bezier(.4, 0, .2, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .topics-panel.open .tp-head,
+  .topics-panel.open .tp-list { animation: none; }
+}
 
 /* ══════════════════════════════════════════
    SIDEBAR
@@ -847,9 +876,13 @@ body.rooms-strip .chat-item .unread-badge + .unread-badge { display: none; }
   display: flex; flex-direction: column;
   position: relative; z-index: 2;
   overflow: hidden;
-  /* Сайдбар остаётся колонкой в потоке: вынутый из него, он накрывал панель
-     тем, которая идёт следующей колонкой. Анимируем ширину — она же
-     плавно двигает соседей, поэтому отдельный отступ переписке не нужен. */
+  /* Сайдбар остаётся колонкой в потоке: вынутый из него, он накрывал бы панель
+     тем, которая идёт следующей колонкой.
+     Ширину при входе в комнату НЕ анимируем. Анимация ширины двух соседних
+     колонок заставляет браузер пересчитывать раскладку всей переписки на каждом
+     кадре — отсюда рывки. Вместо этого колонки встают на свои места сразу, одним
+     пересчётом, а плавность даёт появление содержимого: сдвиг и прозрачность
+     считаются на видеокарте и раскладку не трогают. */
   transition: width .22s cubic-bezier(.4, 0, .2, 1),
               min-width .22s cubic-bezier(.4, 0, .2, 1),
               border-right-width .22s;
