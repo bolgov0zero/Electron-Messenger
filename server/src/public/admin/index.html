@@ -126,7 +126,10 @@
 
 /* ── BASE ── */
 html,body{height:100%;overflow:hidden}
-body{font-family:var(--f-ui);background:var(--c-bg);color:var(--c-text);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+/* Панель — рабочий инструмент, а не текст для чтения: случайное выделение при
+   перетаскивании и двойных кликах только мешает. Выделять можно в полях ввода. */
+body{font-family:var(--f-ui);background:var(--c-bg);color:var(--c-text);font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
+input,textarea,select,[contenteditable="true"]{user-select:text;-webkit-user-select:text}
 a{color:var(--c-primary);text-decoration:none}
 code,pre,.mono{font-family:var(--f-mono)}
 
