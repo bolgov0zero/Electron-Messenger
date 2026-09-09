@@ -754,7 +754,6 @@ function setAccent(key) {
   if (!ACCENTS[key]) return;
   try { localStorage.setItem('accent', key); } catch {}
   applyAccent();
-  applyChatBg();
   document.querySelectorAll('#accent-seg .accent-dot').forEach(b => {
     b.classList.toggle('active', b.dataset.accent === key);
     const a = ACCENTS[b.dataset.accent];
@@ -884,6 +883,7 @@ function applySettings() {
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');
   if (themeColorMeta) themeColorMeta.content = isDark ? '#0b0d14' : '#f7f7fb';
   applyAccent();
+  applyChatBg();
 }
 // Плавная смена темы: включаем переход цветов только на время переключения,
 // иначе постоянный transition на всех элементах бил бы по отзывчивости.
@@ -4446,7 +4446,7 @@ function ncStep1() {
     <div class="nc-kinds">
       <button class="nc-kind" onclick="ncPick('direct')">
         <span class="nc-kind-ic">${NC_ICON.person}</span>
-        <span class="nc-kind-txt"><b>Личный чат</b><span>Переписка с одним сотрудником</span></span>
+        <span class="nc-kind-txt"><b>Личный чат</b><span>Личная переписка с пользователем</span></span>
         <span class="nc-kind-go">›</span>
       </button>
       <button class="nc-kind" onclick="ncPick('group')">

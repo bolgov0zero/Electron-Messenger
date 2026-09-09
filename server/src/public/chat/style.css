@@ -2147,6 +2147,18 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 /* ── NEW CHAT TABS ── */
 
 /* ── НОВЫЙ ЧАТ: мастер в два шага ── */
+/* Шапка мастера: заголовок не липнет к стрелке, «шаг» — к крестику */
+#modal-newchat .modal-hdr { gap: 10px; }
+#modal-newchat .nc-step { margin-left: auto; margin-right: 4px; }
+/* Крестик закрытия красный при наведении, как в остальных окнах проекта */
+#modal-newchat .modal-hdr .icon-btn:not(.nc-back):hover {
+  background: var(--danger-bg); color: var(--danger);
+}
+/* Текстовые поля матчат :focus-visible и по клику мышью — рамка вокруг поля
+   поиска здесь не нужна, строка и так выделена */
+.nc-search input:focus-visible { outline: none; }
+.nc-name-input:focus-visible { outline: none; }
+
 .nc-modal { width: 440px; max-height: 84vh; }
 .nc-step { font-size: 11.5px; font-weight: 500; color: var(--muted); flex-shrink: 0; }
 .nc-back { width: 28px; height: 28px; flex-shrink: 0; }
