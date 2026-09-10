@@ -586,10 +586,15 @@ router.get('/webhooks', (req, res) => {
     JOIN chats c ON c.id = w.chat_id
     ORDER BY w.created_at DESC
   `).all();
-  res.json(webhooks.map(w => ({
-    ...w,
-    has_avatar: fs.existsSync(path.join(AVATAR_DIR, `${w.user_id}.jpg`)),
-  })));
+  // Сообщения бота по дням за неделю — видно, пишет ли внешняя система. По чату и времени:
+  // бот пишет в один чат, и запрос идёт по индексу, а не перебором всех сообщений
+  const since = Math.floor(Date.now() / 1000) - 7 * 86400;
+  const weekOf = db.prepare('SELECT CAST((sent_at - ?) / 86400 AS INTEGER) AS d, COUNT(*) AS n FROM messages WHERE chat_id = ? AND sender_id = ? AND sent_at >= ? GROUP BY d');
+  res.json(webhooks.map(w => {
+    const week = [0, 0, 0, 0, 0, 0, 0];
+    weekOf.all(since, w.chat_id, w.user_id, since).forEach(r => { if (r.d >= 0 && r.d < 7) week[r.d] += r.n; });
+    return { ...w, week, has_avatar: fs.existsSync(path.join(AVATAR_DIR, `${w.user_id}.jpg`)) };
+  }));
 });
 
 router.post('/webhooks', (req, res) => {
@@ -717,7 +722,7 @@ router.post('/topics/reorder', (req, res) => {
 // дашборд и на вкладку — иначе счётчики расходятся, как было с миниатюрами.
 function collectFiles() {
   const msgs = db.prepare(`
-    SELECT m.id, m.chat_id, m.attachment, m.sent_at,
+    SELECT m.id, m.chat_id, m.attachment, m.sent_at, m.sender_id,
            u.display_name as sender_name, c.name as chat_name, c.type as chat_type
     FROM messages m
     LEFT JOIN users u ON u.id = m.sender_id
@@ -735,7 +740,7 @@ function collectFiles() {
       if (!fileMap.has(fname)) {
         fileMap.set(fname, {
           filename: fname, mime: att.mime || null,
-          message_id: msg.id, chat_id: msg.chat_id,
+          message_id: msg.id, chat_id: msg.chat_id, sender_id: msg.sender_id,
           chat_name: msg.chat_name, chat_type: msg.chat_type,
           sender_name: msg.sender_name, sent_at: msg.sent_at,
         });
@@ -859,6 +864,11 @@ router.post('/announcement', (req, res) => {
 // Журнал: все объявления всех типов, свежие сверху
 router.get('/announcements', (req, res) => {
   res.json(announcements.journal());
+});
+
+router.post('/announcements/:id/stop', (req, res) => {
+  if (!announcements.stop(Number(req.params.id))) return res.status(400).json({ error: 'Полоса уже не показывается' });
+  res.json({ ok: true });
 });
 
 router.delete('/announcements/:id', (req, res) => {

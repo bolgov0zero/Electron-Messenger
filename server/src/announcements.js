@@ -154,4 +154,14 @@ function remove(id) {
   return true;
 }
 
-module.exports = { create, journal, remove, activeBannersFor, dismiss, startScheduler };
+// Досрочно снять полосу: у всех она исчезает сразу, а запись остаётся в журнале как завершённая
+function stop(id) {
+  const row = db.prepare('SELECT * FROM announcements WHERE id = ?').get(id);
+  const now = Math.floor(Date.now() / 1000);
+  if (!row || row.kind !== 'banner' || !row.sent_at || row.expires_at <= now) return false;
+  db.prepare('UPDATE announcements SET expires_at = ? WHERE id = ?').run(now, id);
+  broadcastAll({ type: 'banner_removed', id: row.id });
+  return true;
+}
+
+module.exports = { create, journal, remove, stop, activeBannersFor, dismiss, startScheduler };

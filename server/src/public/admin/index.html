@@ -604,6 +604,68 @@ tr.ua-banned .ux-cell{opacity:.6}
 .rm-removed .ux-name{text-decoration:line-through;opacity:.6}
 @media (max-width:1000px){ .rm-sum{grid-template-columns:repeat(3,minmax(0,1fr))} .rm-sum>div:nth-child(n+4){grid-column:1/-1;border-left:0;border-top:1px solid var(--c-border2)} .rm-cols{grid-template-columns:1fr} .rm-modal{width:calc(100vw - 24px)} }
 
+/* Файлы, объявления, уведомления, вебхуки */
+.fl-thumb{width:36px;height:36px;border-radius:8px;flex-shrink:0;display:grid;place-items:center;font:700 9px var(--f-mono);color:#fff;letter-spacing:.03em;overflow:hidden;position:relative}
+.fl-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.fl-size{display:inline-flex;align-items:center;gap:8px;font:500 11.5px var(--f-mono);white-space:nowrap}
+.fl-bar{width:48px;height:4px;border-radius:2px;background:var(--c-surface2);overflow:hidden}
+.fl-bar i{display:block;height:100%;background:var(--c-primary);opacity:.6}
+.an-cell{display:flex;flex-direction:column;gap:4px;min-width:0}
+.an-chips{display:flex;gap:4px;flex-wrap:wrap}
+.an-snip{font-size:12px;color:var(--c-text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:440px;white-space:pre-line}
+.an-left{display:flex;flex-direction:column;gap:4px;min-width:130px}
+.an-left>span{font-size:11px;color:var(--c-orange-text);font-weight:600;white-space:nowrap}
+.an-left b{font-family:var(--f-mono)}
+.an-bar{height:4px;border-radius:2px;background:var(--c-surface2);overflow:hidden}
+.an-bar i{display:block;height:100%;background:var(--c-orange);transition:width 1s linear}
+.an-modal{width:620px}
+.an-kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.an-area{align-items:stretch;padding:0 11px;height:auto}
+.an-area textarea{border:0;outline:none;background:none;font:13px/1.45 var(--f-ui);color:var(--c-text);width:100%;resize:vertical;min-height:76px;padding:8px 0}
+.an-seg{display:flex;padding:2px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:8px;width:max-content;max-width:100%}
+.an-seg button{height:26px;padding:0 12px;border:0;background:none;border-radius:6px;font:600 11.5px var(--f-ui);color:var(--c-text2);cursor:pointer}
+.an-seg button[aria-pressed="true"]{background:var(--c-surface);color:var(--c-text);box-shadow:var(--shadow)}
+.rm-pick[aria-pressed="true"]{background:var(--c-primary-dim)}
+.an-check{width:16px;color:var(--c-primary);font-weight:700;text-align:center;flex-shrink:0}
+.an-meta{display:grid;grid-template-columns:110px 1fr;gap:8px 12px;font-size:12px;margin:0;align-items:center}
+.an-meta dt{color:var(--c-text2)}
+.an-meta dd{margin:0;min-width:0}
+/* Превью объявлений — по стилям веб-клиента */
+.an-pv{border-radius:10px;background:var(--c-surface2);padding:12px;display:flex;flex-direction:column;gap:6px}
+.an-pv-ph{color:var(--c-muted)}
+.an-pv-app{position:relative;height:118px;border-radius:9px;background:var(--c-surface);border:1px solid var(--c-border2);overflow:hidden}
+.an-pv-app>i{position:absolute;left:14px;height:9px;border-radius:5px;background:var(--c-surface2)}
+.an-pv-banner{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:min(420px,calc(100% - 20px));display:flex;align-items:center;gap:8px;padding:6px 6px 6px 10px;background-color:var(--c-surface);background-image:linear-gradient(rgba(210,55,55,.14),rgba(210,55,55,.14));border:1px solid rgba(210,55,55,.28);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.14);font-size:12px;font-weight:500;color:var(--c-text)}
+.an-pv-banner svg{width:14px;height:14px;flex-shrink:0;color:var(--c-red)}
+.an-pv-banner span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.an-pv-banner b{flex-shrink:0;width:20px;height:20px;display:grid;place-items:center;color:var(--c-muted);font-weight:400;font-size:13px}
+.an-pv-dim{height:auto;min-height:200px;display:grid;place-items:center;padding:16px}
+.an-pv-dim::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.38)}
+.an-pv-card{position:relative;z-index:1;width:min(300px,100%);background-color:var(--c-surface);background-image:linear-gradient(rgba(210,55,55,.14),rgba(210,55,55,.14));border:1px solid rgba(210,55,55,.22);border-radius:14px;padding:16px;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.an-pv-title{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13.5px;font-weight:700;color:var(--c-red-text)}
+.an-pv-ring{width:24px;height:24px;border-radius:50%;background:var(--c-red-dim);border:1px solid rgba(210,55,55,.3);display:grid;place-items:center;flex-shrink:0}
+.an-pv-ring svg{width:12px;height:12px;color:var(--c-red)}
+.an-pv-text{font-size:12px;line-height:1.6;white-space:pre-wrap;color:var(--c-text)}
+.an-pv-ok{display:block;margin-top:12px;padding:7px;text-align:center;background:var(--c-primary);color:#fff;border-radius:9px;font-size:12px;font-weight:600}
+.an-pv-feed{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:9px;background:var(--c-surface);border:1px solid var(--c-border2)}
+.an-pv-feed>i{display:block;height:22px;border-radius:10px;background:var(--c-surface2)}
+.an-pv-sys{align-self:center;max-width:80%;display:flex;align-items:center;gap:6px;padding:5px 14px;border-radius:14px;background:linear-gradient(rgba(210,55,55,.08),rgba(210,55,55,.08)) var(--c-surface);border:1px solid rgba(210,55,55,.2);font-size:11px;color:var(--c-text2)}
+.an-pv-sys svg{width:11px;height:11px;flex-shrink:0;opacity:.55}
+.an-pv-sys span{word-break:break-word}
+.an-pv-sys small{font-size:10px;opacity:.5;flex-shrink:0}
+.wh-url{display:flex;align-items:center;gap:6px}
+.wh-url code{font:11.5px var(--f-mono);color:var(--c-text2);background:var(--c-surface2);border-radius:6px;padding:3px 7px;white-space:nowrap}
+.wh-select{border:0;outline:none;background:none;font:13px var(--f-ui);color:var(--c-text);width:100%;min-height:34px}
+.wh-ok{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--c-green-dim);border:1px solid rgba(16,185,129,.25)}
+.wh-ok div{flex:1;min-width:0}
+.wh-ok span{display:block;font-size:10.5px;font-weight:700;color:var(--c-green-text);text-transform:uppercase;letter-spacing:.06em}
+.wh-ok code{font:12px var(--f-mono);color:var(--c-text);word-break:break-all}
+.wh-code{background:var(--c-surface2);border-radius:10px;padding:10px 12px;font:11.5px/1.6 var(--f-mono);color:var(--c-text2);white-space:pre-wrap;word-break:break-all;margin:0}
+.an-red{background:var(--c-red-dim);color:var(--c-red-text)}
+.an-kinds .ua-role-opt{display:flex;flex-direction:column;gap:3px}
+.wh-select option,.wh-select optgroup{background:var(--c-surface);color:var(--c-text)}
+@media (max-width:900px){ .an-kinds{grid-template-columns:1fr} .an-modal{width:calc(100vw - 24px)} }
+
 /* ── TABLE ── */
 table{width:100%;border-collapse:collapse}
 th{background:var(--c-surface2);text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--c-border)}
@@ -1023,6 +1085,11 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 <div class="modal-bg" id="modal-user"><form class="modal ua-modal" id="ua-form" novalidate onsubmit="event.preventDefault(); uaSave()"></form></div>
 <div class="modal-bg" id="modal-user-pass"><form class="modal ua-modal ua-sm" id="ua-pass-form" novalidate onsubmit="event.preventDefault(); uaSavePassword()"></form></div>
 
+<!-- Окна разделов «Объявления» и «Вебхуки»: содержимое рисует скрипт. Инструкция идёт ниже, чтобы открываться поверх окна создания -->
+<div class="modal-bg" id="modal-announcement"><div class="modal ua-modal an-modal" id="an-form" role="dialog" aria-modal="true"></div></div>
+<div class="modal-bg" id="modal-ann-view"><div class="modal ua-modal an-modal" id="an-view-form" role="dialog" aria-modal="true"></div></div>
+<div class="modal-bg" id="modal-webhook"><div class="modal ua-modal" id="wh-form" role="dialog" aria-modal="true"></div></div>
+
 <!-- Webhook help modal -->
 <div class="modal-bg" id="modal-webhook-help">
   <div class="modal" style="width:760px;max-height:88vh">
@@ -1088,33 +1155,6 @@ return 'OK';</pre>
   </div>
 </div>
 
-<!-- Webhook modal -->
-<div class="modal-bg" id="modal-webhook">
-  <div class="modal">
-    <div class="modal-head">
-      <h3>Создать вебхук</h3>
-      <button class="modal-close" onclick="closeModal('modal-webhook')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="fg"><label>Имя бота</label><input id="wh-name" placeholder="Например: CI/CD, Мониторинг…"></div>
-      <div class="fg"><label>Тег <span style="color:var(--c-muted);font-weight:400">(необязательно)</span></label><input id="wh-tag" placeholder="Например: bot, system…"></div>
-      <div class="fg"><label>Аватар <span style="color:var(--c-muted);font-weight:400">(необязательно)</span></label>
-        <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
-          <span class="btn btn-ghost btn-sm" style="pointer-events:none">Выбрать файл</span>
-          <span id="wh-avatar-label" style="font-size:12px;color:var(--c-muted)">Выбрать файл…</span>
-          <input type="file" id="wh-avatar-input" accept="image/*" style="display:none" onchange="document.getElementById('wh-avatar-label').textContent=this.files[0]?.name||'Выбрать файл…'">
-        </label>
-      </div>
-      <div class="fg"><label>Группа / Комната</label><select id="wh-chat"></select></div>
-      <div class="err" id="wh-err"></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-ghost" onclick="closeModal('modal-webhook')">Отмена</button>
-      <button class="btn btn-primary" onclick="saveWebhook()">Создать</button>
-    </div>
-  </div>
-</div>
-
 <!-- Окна разделов «Комнаты» и «Чаты и группы»: содержимое рисует скрипт -->
 <div class="modal-bg" id="modal-room"><div class="modal ua-modal rm-modal" id="rm-form" role="dialog" aria-modal="true"></div></div>
 <div class="modal-bg" id="modal-chat-members"><div class="modal ua-modal ua-sm" id="cm-form" role="dialog" aria-modal="true"></div></div>
@@ -1132,94 +1172,6 @@ return 'OK';</pre>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('modal-confirm')">Отмена</button>
       <button class="btn btn-danger" id="confirm-ok">Подтвердить</button>
-    </div>
-  </div>
-</div>
-
-<!-- Announcement modal -->
-<div class="modal-bg" id="modal-announcement">
-  <div class="modal modal-sm">
-    <div class="modal-head">
-      <h3>Новое объявление</h3>
-      <button class="modal-close" onclick="closeModal('modal-announcement')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="fg">
-        <label>Тип</label>
-        <div id="ann-kind-bar" style="display:flex;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:3px;gap:2px">
-          <button onclick="setAnnKind('chat')" data-kind="chat" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">В чаты</button>
-          <button onclick="setAnnKind('popup')" data-kind="popup" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">Всплывающее</button>
-          <button onclick="setAnnKind('banner')" data-kind="banner" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">Полоса</button>
-        </div>
-        <div style="font-size:10px;color:var(--c-muted);margin-top:4px" id="ann-kind-hint"></div>
-      </div>
-      <div class="fg">
-        <label>Текст</label>
-        <textarea id="ann-text" rows="3" placeholder="Введите текст объявления…" style="resize:vertical;width:100%;box-sizing:border-box;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;color:var(--c-text);font-family:var(--f-ui)"></textarea>
-      </div>
-      <div class="fg" id="ann-duration-fg" style="display:none">
-        <label>Время отображения, мин</label>
-        <input id="ann-duration" type="number" min="1" max="10080" value="60" style="width:100%;box-sizing:border-box;padding:7px 10px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);color:var(--c-text);font-size:12px;font-family:var(--f-ui);outline:none">
-      </div>
-      <div class="fg">
-        <label>Время отправки</label>
-        <div class="dtp">
-          <button type="button" class="dtp-field" onclick="dtpToggle(event)">
-            <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/></svg>
-            <span class="dtp-val" id="dtp-val">Сейчас</span>
-            <span class="dtp-reset" id="dtp-reset" style="display:none" onclick="event.stopPropagation();dtpReset()">✕</span>
-          </button>
-          <div class="dtp-pop" id="dtp-pop" hidden>
-            <div class="dtp-head">
-              <button type="button" class="dtp-nav" onclick="dtpShiftMonth(-1)">‹</button>
-              <div class="dtp-head-title" id="dtp-title"></div>
-              <button type="button" class="dtp-nav" onclick="dtpShiftMonth(1)">›</button>
-            </div>
-            <div class="dtp-grid" id="dtp-grid"></div>
-            <div class="dtp-foot">
-              <div class="dtp-time">
-                <input id="dtp-h" maxlength="2" inputmode="numeric" oninput="dtpFixTime()">:<input id="dtp-m" maxlength="2" inputmode="numeric" oninput="dtpFixTime()">
-              </div>
-              <button type="button" class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="dtpReset()">Сейчас</button>
-              <button type="button" class="btn btn-primary btn-sm" onclick="dtpApply()">Готово</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="fg">
-        <label id="ann-target-label">Получатели</label>
-        <div id="ann-target-bar" style="display:flex;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:3px;gap:2px">
-          <button onclick="setAnnTarget('all')" data-target="all" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">Всем</button>
-          <button onclick="setAnnTarget('select')" data-target="select" style="flex:1;padding:6px 4px;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-family:var(--f-ui);transition:background .15s,color .15s">Выбрать</button>
-        </div>
-      </div>
-      <div id="ann-select-box" class="fg" style="display:none">
-        <input id="ann-search" placeholder="Поиск…" oninput="renderAnnList(this.value)" style="width:100%;box-sizing:border-box;margin-bottom:4px;padding:5px 8px;font-size:11px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);color:var(--c-text);font-family:var(--f-ui);outline:none">
-        <div id="ann-list" style="max-height:150px;overflow-y:auto;border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:2px"></div>
-      </div>
-      <div class="err" id="ann-err"></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-ghost" onclick="closeModal('modal-announcement')">Отмена</button>
-      <button class="btn btn-primary" onclick="sendAnnouncement()">Отправить</button>
-    </div>
-  </div>
-</div>
-
-<!-- Announcement view modal -->
-<div class="modal-bg" id="modal-ann-view">
-  <div class="modal modal-sm">
-    <div class="modal-head">
-      <h3>Объявление</h3>
-      <button class="modal-close" onclick="closeModal('modal-ann-view')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div id="annv-meta" style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:11px;margin-bottom:12px"></div>
-      <div id="annv-text" style="font-size:12px;color:var(--c-text);line-height:1.6;white-space:pre-wrap;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:10px"></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-danger" id="annv-del" style="margin-right:auto">Удалить</button>
-      <button class="btn btn-ghost" onclick="closeModal('modal-ann-view')">Закрыть</button>
     </div>
   </div>
 </div>
@@ -1532,7 +1484,8 @@ function nav(page) {
     const addMap = {
       users: {label:'Создать пользователя', fn: () => openCreateUser()},
       rooms: {label:'Создать комнату', fn: () => openCreateRoom()},
-      announcements: {label:'Создать объявление', fn: () => openAnnouncementModal()}
+      announcements: {label:'Создать объявление', fn: () => openAnnouncementModal()},
+      webhooks: {label:'Создать вебхук', fn: () => whOpen()}
     };
     if (addMap[page]) {
       if (addLabel) addLabel.textContent = addMap[page].label;
@@ -3654,245 +3607,341 @@ async function clPollProgress(started) {
 }
 
 /* ── PUSH SUBSCRIPTIONS ── */
+// Раздел «Уведомления»: push-подписки. Видно, у кого уведомления не включены вовсе.
+// «Проверить» шлёт тестовое уведомление на все устройства человека — одному или выбранным разом.
+
+const PS = { filter: 'all', q: '', sel: new Set(), subs: [] };
+const PS_SVC = { google: ['Google', 'rm-direct'], apple: ['Apple', 'rm-empty'], mozilla: ['Mozilla', 'rm-quiet'], microsoft: ['Microsoft', 'rm-group'], other: ['Другой', 'rm-empty'] };
+const PS_BELL = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`;
+function psService(endpoint) {
+  let host = '';
+  try { host = new URL(endpoint).hostname; } catch {}
+  const svc = /googleapis|google\.com/.test(host) ? 'google' : /apple\.com/.test(host) ? 'apple'
+    : /mozilla/.test(host) ? 'mozilla' : /windows\.com|microsoft/.test(host) ? 'microsoft' : 'other';
+  return { svc, host };
+}
+
 async function renderPush() {
-  setTopbarActions(`
-    <button class="btn btn-primary btn-sm" onclick="renderPush()">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-      Обновить
-    </button>`);
-
-  document.getElementById('page-body').innerHTML = `
-    <div class="card">
-      <div class="card-head">
-        <div style="display:flex;align-items:center;gap:8px">
-          <h3>Push-подписки</h3>
-          <span id="push-count" class="badge badge-blue">—</span>
-        </div>
-      </div>
-      <div id="push-table-wrap">
-        <div class="empty-state" style="padding:32px"><p>Загрузка…</p></div>
-      </div>
-    </div>`;
-
-  const subs = await api('GET', '/api/push/subscriptions');
+  setTopbarActions('');
+  const [subs, users] = await Promise.all([api('GET', '/api/push/subscriptions'), api('GET', '/api/admin/users')]);
+  PS.subs = (Array.isArray(subs) ? subs : []).map(s => ({ ...s, ...psService(s.endpoint) }));
+  if (Array.isArray(users)) allUsersCache = users;
   const nb = document.getElementById('nb-push');
-  if (nb) nb.textContent = subs.length;
-  const cnt = document.getElementById('push-count');
-  if (cnt) cnt.textContent = subs.length;
+  if (nb) nb.textContent = PS.subs.length;
+  const ids = new Set(PS.subs.map(s => s.id));
+  PS.sel.forEach(id => { if (!ids.has(id)) PS.sel.delete(id); });
+  psRender();
+}
 
-  const wrap = document.getElementById('push-table-wrap');
-  if (!wrap) return;
+function psRender() {
+  if (currentPage !== 'push') return;
+  const q = PS.q.trim().toLowerCase();
+  const rows = PS.subs.filter(s => PS.filter === 'all' || s.svc === PS.filter)
+    .filter(s => !q || [s.display_name, s.username, s.host].some(x => (x || '').toLowerCase().includes(q)));
+  const people = allUsersCache.filter(u => !u.banned);
+  const withPush = new Set(PS.subs.map(s => s.user_id));
+  const without = people.filter(u => !withPush.has(u.id));
+  const services = Object.keys(PS_SVC).filter(k => PS.subs.some(s => s.svc === k));
+  const allSel = rows.length > 0 && rows.every(s => PS.sel.has(s.id));
+  const shownWithout = without.slice(0, 4).map(u => u.display_name).join(', ') + (without.length > 4 ? ` и ещё ${without.length - 4}` : '');
+  uxKeepFocus(() => {
+    document.getElementById('page-body').innerHTML = `<div class="ux-page">
+      <section class="ux-panel rm-sum">
+        <div><div class="cl-k">Подписок</div><div class="cl-v">${PS.subs.length}</div></div>
+        <div><div class="cl-k">С уведомлениями</div><div class="cl-v">${withPush.size}<small>из ${people.length} ${uxPlural(people.length, 'человека', 'человек', 'человек')}</small></div></div>
+        <div><div class="cl-k">Устройств на человека</div><div class="cl-v">${withPush.size ? (PS.subs.length / withPush.size).toLocaleString('ru-RU', { maximumFractionDigits: 1 }) : '—'}</div></div>
+        <div class="rm-note">${without.length ? `Уведомления не включены: <b>${esc(shownWithout)}</b>. Они узнают о сообщениях, только открыв чат.` : 'Уведомления включены у всех.'}</div>
+        <div></div>
+      </section>
+      <section class="ux-panel">
+        <div class="ux-tb"><h3>Подписки <span>${PS.subs.length}</span></h3>
+          ${uxChips([['all', 'Все', PS.subs.length], ...services.map(k => [k, PS_SVC[k][0], PS.subs.filter(s => s.svc === k).length])], PS.filter, 'psFilter')}
+          <span class="ux-grow"></span>${uxSearch('ps-q', PS.q, 'Человек или сервис', 'psSearch')}</div>
+        ${PS.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${PS.sel.size}</b>
+          <button class="btn btn-ghost btn-sm" onclick="psTest([...PS.sel])">${PS_BELL}Проверить</button>
+          <button class="btn btn-ghost btn-sm" onclick="psDelete([...PS.sel])">${UX_I.trash}Удалить</button>
+          <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="PS.sel.clear(); psRender()">Снять выделение</button></div>` : ''}
+        <div class="ux-tbl"><table>
+          <thead><tr><th style="width:40px"><input type="checkbox" aria-label="Выбрать все" ${allSel ? 'checked' : ''} onchange="psSelAll(this.checked)"></th>
+            <th>Пользователь</th><th>Сервис</th><th>Подписан</th><th></th></tr></thead>
+          <tbody>${rows.map(s => {
+            const name = s.display_name || s.username || '?';
+            return `<tr class="${PS.sel.has(s.id) ? 'sel' : ''}">
+              <td><input type="checkbox" aria-label="Выбрать: ${esc(name)}" ${PS.sel.has(s.id) ? 'checked' : ''} onchange="psToggle(${s.id})"></td>
+              <td><div class="ux-cell">${avHtml(name, 32, 8, s.user_id, false, true)}<div style="min-width:0"><div class="ux-name">${esc(name)}</div><div class="ux-login">@${esc(s.username || '')}</div></div></div></td>
+              <td><span class="rm-chip ${PS_SVC[s.svc][1]}">${PS_SVC[s.svc][0]}</span><div class="rm-sub" style="font-family:var(--f-mono)">${esc(s.host || '—')}</div></td>
+              <td class="rm-last">${esc(uaSeen(s.created_at))}</td>
+              <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" title="Тестовое уведомление на все устройства человека" onclick="psTest([${s.id}])">${PS_BELL}Проверить</button>
+                <button class="ux-ibtn" aria-label="Ещё действия: ${esc(name)}" aria-haspopup="menu" aria-expanded="false" onclick="psMenu(event, ${s.id})">${UX_I.more}</button></div></td>
+            </tr>`;
+          }).join('') || `<tr><td colspan="5"><div class="ux-empty">${PS.subs.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Подписок пока нет'}</div></td></tr>`}</tbody>
+        </table></div>
+      </section></div>`;
+  });
+}
 
-  if (!subs.length) {
-    wrap.innerHTML = `<div class="empty-state" style="padding:40px"><svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>Нет активных подписок</p></div>`;
-    return;
-  }
+function psFilter(k) { PS.filter = k; PS.sel.clear(); psRender(); }
+function psSearch(v) { PS.q = v; psRender(); }
+function psToggle(id) { PS.sel.has(id) ? PS.sel.delete(id) : PS.sel.add(id); psRender(); }
+function psSelAll(on) { PS.subs.forEach(s => on ? PS.sel.add(s.id) : PS.sel.delete(s.id)); psRender(); }
+function psMenu(e, id) {
+  uxOpenMenu(e, 'ps' + id, `
+    <button role="menuitem" onclick="uxCloseMenu(); psTest([${id}])">${PS_BELL}Проверить</button>
+    <hr><button role="menuitem" class="danger" onclick="uxCloseMenu(); psDelete([${id}])">${UX_I.trash}Удалить подписку</button>`);
+}
 
-  function fmtEndpoint(ep) {
+// Тест уходит человеку целиком — на все его подписки, поэтому выбранные строки сводим к людям
+async function psTest(ids) {
+  const users = [...new Set(PS.subs.filter(s => ids.includes(s.id)).map(s => s.user_id))];
+  if (!users.length) return;
+  let failed = [];
+  for (const uid of users) {
     try {
-      const u = new URL(ep);
-      return `<span style="font-family:var(--f-mono);font-size:10px;color:var(--c-muted)">${esc(u.hostname)}</span>`;
-    } catch { return `<span style="font-size:10px;color:var(--c-muted)">${esc(ep.slice(0,40))}…</span>`; }
+      const res = await api('POST', `/api/push/test/${uid}`);
+      (res?.results || []).filter(r => !r.ok).forEach(r => failed.push(`${r.service}: ${r.code || ''} ${r.error || ''}`.trim()));
+      if (!res?.results) failed.push('нет ответа');
+    } catch { failed.push('ошибка запроса'); }
   }
-
-  function fmtTs(ts) {
-    if (!ts) return '—';
-    return new Date(ts * 1000).toLocaleString('ru', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-  }
-
-  wrap.innerHTML = `<table>
-    <thead><tr>
-      <th>Пользователь</th>
-      <th>Сервис</th>
-      <th>Подписан</th>
-      <th></th>
-    </tr></thead>
-    <tbody>
-    ${subs.map(s => `<tr>
-      <td>
-        <div class="user-cell">
-          ${avHtml(s.display_name||s.username,30,8,s.user_id,null,false)}
-          <div>
-            <div class="uc-name">${esc(s.display_name||s.username)}</div>
-            <div class="uc-sub">@${esc(s.username)}</div>
-          </div>
-        </div>
-      </td>
-      <td>${fmtEndpoint(s.endpoint)}</td>
-      <td style="color:var(--c-muted);font-size:11px;font-family:var(--f-mono)">${fmtTs(s.created_at)}</td>
-      <td>
-        <div class="td-actions">
-          <button class="btn btn-ghost btn-sm" onclick="testPushSub(${s.user_id},'${jesc(s.display_name||s.username)}',this)" title="Отправить тестовое уведомление">Тест</button>
-          <button class="btn btn-danger btn-sm" onclick="deletePushSub(${s.id},this)">Удалить</button>
-        </div>
-      </td>
-    </tr>`).join('')}
-    </tbody>
-  </table>`;
+  if (failed.length) toast(esc(`Не дошло: ${failed[0]}${failed.length > 1 ? ` и ещё ${failed.length - 1}` : ''}`), 'error');
+  else toast(users.length > 1 ? `Тестовые уведомления отправлены: ${users.length} ${uxPlural(users.length, 'человеку', 'людям', 'людям')}` : 'Тестовое уведомление отправлено', 'success');
 }
-
-async function deletePushSub(id, btn) {
-  btn.disabled = true;
-  const res = await api('DELETE', `/api/push/subscriptions/${id}`);
-  if (res.ok) { toast('Подписка удалена', 'success'); renderPush(); }
-  else { btn.disabled = false; toast('Ошибка удаления', 'error'); }
-}
-
-async function testPushSub(userId, name, btn) {
-  btn.disabled = true;
-  btn.textContent = '…';
-  try {
-    const res = await api('POST', `/api/push/test/${userId}`);
-    const ok = res.results?.every(r => r.ok);
-    if (ok) {
-      toast(`Тест отправлен → ${name}`, 'success');
-    } else {
-      const errors = (res.results || []).filter(r => !r.ok)
-        .map(r => `${r.service}: ${r.code} — ${r.error}`).join('\n');
-      toast(`Ошибка push для ${name}`, 'error');
-      if (errors) alert('Детали ошибок:\n\n' + errors);
-    }
-  } catch {
-    toast('Ошибка запроса', 'error');
-  }
-  btn.disabled = false;
-  btn.innerHTML = '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Тест';
+function psDelete(ids) {
+  const list = PS.subs.filter(s => ids.includes(s.id));
+  if (!list.length) return;
+  confirm(list.length > 1 ? `Удалить подписки · ${list.length}` : 'Удалить подписку?',
+    `${esc([...new Set(list.map(s => s.display_name || s.username))].join(', '))}\n\nНа эти устройства перестанут приходить уведомления, пока человек не включит их снова.`,
+    async () => {
+      await Promise.all(list.map(s => api('DELETE', `/api/push/subscriptions/${s.id}`)));
+      toast(list.length > 1 ? `Удалено подписок: ${list.length}` : 'Подписка удалена', 'success');
+      PS.sel.clear();
+      renderPush();
+      updateNavBadges();
+    });
 }
 
 /* ── WEBHOOKS ── */
-let _webhooks = [];
-let _webhookChats = [];
+// Раздел «Вебхуки»: боты, которые пишут в чат по запросу извне. По активности за неделю
+// видно, какой бот замолчал — обычно это значит, что у внешней системы сменился адрес.
+
+const WH = { filter: 'all', q: '', sel: new Set(), hooks: [], form: null, opts: [] };
+const whSvg = p => `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const WH_I = {
+  copy: whSvg('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
+  img: whSvg('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>'),
+  key: whSvg('<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.78 7.78 5.5 5.5 0 0 1 7.78-7.78zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>'),
+  book: whSvg('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>'),
+};
+const whUrl = token => `${location.origin}/api/webhooks/${token}`;
+const whActive = h => (h.week || []).some(Boolean);
+const whWeek = h => (h.week || []).reduce((a, b) => a + b, 0);
 
 async function renderWebhooks() {
-  _webhooks = await api('GET', '/api/admin/webhooks');
-  document.getElementById('nb-webhooks').textContent = _webhooks.length;
-  const extraEl = document.getElementById('topbar-extra');
-  if (extraEl) {
-    extraEl.style.display = '';
-    extraEl.innerHTML = `
-      <button class="btn btn-ghost btn-sm" onclick="openModal('modal-webhook-help')">
-        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        Инструкция
-      </button>
-      <button class="btn btn-primary btn-sm" onclick="openCreateWebhook()">
-        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Создать вебхук
-      </button>`;
-  }
-  _renderWebhooksTable();
+  setTopbarActions('');
+  const hooks = await api('GET', '/api/admin/webhooks');
+  WH.hooks = Array.isArray(hooks) ? hooks : [];
+  const nb = document.getElementById('nb-webhooks');
+  if (nb) nb.textContent = WH.hooks.length;
+  const ids = new Set(WH.hooks.map(h => h.id));
+  WH.sel.forEach(id => { if (!ids.has(id)) WH.sel.delete(id); });
+  whRender();
 }
 
-function _renderWebhooksTable() {
-  const rows = _webhooks.length ? _webhooks.map(whRowHtml).join('') : `<tr><td colspan="6"><div class="empty-state"><p>Вебхуки не созданы</p></div></td></tr>`;
-  document.getElementById('page-body').innerHTML = `
-    <div class="card">
-      <div class="card-head">
-        <h3>Вебхуки <span style="color:var(--c-muted);font-weight:500">(${_webhooks.length})</span></h3>
-      </div>
-      <table><thead><tr><th>Бот</th><th>Группа / Комната</th><th>URL вебхука</th><th>Сообщений</th><th>Создан</th><th>Действия</th></tr></thead>
-      <tbody>${rows}</tbody></table>
-    </div>`;
+function whRender() {
+  if (currentPage !== 'webhooks') return;
+  const q = WH.q.trim().toLowerCase();
+  const silent = WH.hooks.filter(h => !whActive(h));
+  const rows = WH.hooks.filter(h => WH.filter === 'all' || (WH.filter === 'active' ? whActive(h) : !whActive(h)))
+    .filter(h => !q || [h.name, h.tag, h.chat_name].some(x => (x || '').toLowerCase().includes(q)));
+  const allSel = rows.length > 0 && rows.every(h => WH.sel.has(h.id));
+  const week = WH.hooks.reduce((s, h) => s + whWeek(h), 0);
+  const silentNames = silent.slice(0, 4).map(h => h.name).join(', ') + (silent.length > 4 ? ` и ещё ${silent.length - 4}` : '');
+  uxKeepFocus(() => {
+    document.getElementById('page-body').innerHTML = `<div class="ux-page">
+      <section class="ux-panel rm-sum">
+        <div><div class="cl-k">Вебхуков</div><div class="cl-v">${WH.hooks.length}</div></div>
+        <div><div class="cl-k">Сообщений</div><div class="cl-v">${rmFmt(week)}<small>за неделю</small></div></div>
+        <div><div class="cl-k">Молчат</div><div class="cl-v">${silent.length}</div></div>
+        <div class="rm-note">${!WH.hooks.length ? 'Вебхуков пока нет — создайте первый, чтобы внешняя система могла писать в чат.'
+          : silent.length ? `Неделю не писали: <b>${esc(silentNames)}</b> — проверьте, не сменился ли адрес у внешней системы.` : 'Все боты писали за последнюю неделю.'}</div>
+        <div><button class="btn btn-ghost" onclick="openModal('modal-webhook-help')">${WH_I.book}Инструкция</button></div>
+      </section>
+      <section class="ux-panel">
+        <div class="ux-tb"><h3>Вебхуки <span>${WH.hooks.length}</span></h3>
+          ${uxChips([['all', 'Все', WH.hooks.length], ['active', 'Пишут', WH.hooks.length - silent.length], ['silent', 'Молчат', silent.length]], WH.filter, 'whFilter')}
+          <span class="ux-grow"></span>${uxSearch('wh-q', WH.q, 'Бот или чат', 'whSearch')}</div>
+        ${WH.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${WH.sel.size}</b><button class="btn btn-ghost btn-sm" onclick="whDelete([...WH.sel])">${UX_I.trash}Удалить</button>
+          <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="WH.sel.clear(); whRender()">Снять выделение</button></div>` : ''}
+        <div class="ux-tbl"><table>
+          <thead><tr><th style="width:40px"><input type="checkbox" aria-label="Выбрать все" ${allSel ? 'checked' : ''} onchange="whSelAll(this.checked)"></th>
+            <th>Бот</th><th>Пишет в</th><th>Адрес</th><th class="rm-num">Сообщений</th><th>Создан</th><th></th></tr></thead>
+          <tbody>${rows.map(h => `<tr class="${WH.sel.has(h.id) ? 'sel' : ''}">
+              <td><input type="checkbox" aria-label="Выбрать: ${esc(h.name)}" ${WH.sel.has(h.id) ? 'checked' : ''} onchange="whToggle(${h.id})"></td>
+              <td><div class="ux-cell">${avHtml(h.name, 34, 9, h.user_id, false, h.has_avatar)}<div style="min-width:0">
+                <div class="ux-name">${esc(h.name)}${h.tag ? `<span class="rm-chip rm-direct">${esc(h.tag)}</span>` : ''}${whActive(h) ? '' : '<span class="rm-chip rm-quiet">молчит</span>'}</div>
+                <div class="rm-sub">бот · вебхук</div></div></div></td>
+              <td><span class="ux-name" style="font-weight:500;font-size:12px">${esc(h.chat_name || '—')}<span class="rm-chip ${h.chat_type === 'group' ? 'rm-group' : 'rm-topics'}">${h.chat_type === 'group' ? 'группа' : 'комната'}</span></span></td>
+              <td><div class="wh-url"><code>…/webhooks/${esc(String(h.token).slice(0, 3))}•••••</code>
+                <button class="ux-ibtn" title="Скопировать адрес" aria-label="Скопировать адрес: ${esc(h.name)}" onclick="whCopy(${h.id})">${WH_I.copy}</button></div></td>
+              <td class="rm-num"><span class="rm-msgs" title="За неделю: ${whWeek(h)}">${rmSpark(h.week || [])}${rmFmt(h.message_count)}</span></td>
+              <td class="rm-last">${esc(fmtDate(h.created_at))}</td>
+              <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="whCopy(${h.id})">${WH_I.copy}Скопировать</button>
+                <button class="ux-ibtn" aria-label="Ещё действия: ${esc(h.name)}" aria-haspopup="menu" aria-expanded="false" onclick="whMenu(event, ${h.id})">${UX_I.more}</button></div></td>
+            </tr>`).join('') || `<tr><td colspan="7"><div class="ux-empty">${WH.hooks.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Вебхуков пока нет'}</div></td></tr>`}</tbody>
+        </table></div>
+      </section></div>`;
+  });
 }
 
-function whRowHtml(w) {
-  const url = `${location.origin}/api/webhooks/${esc(w.token)}`;
-  const chatBadge = w.chat_type === 'room'
-    ? `<span class="badge badge-blue">${esc(w.chat_name)}</span>`
-    : `<span class="badge badge-purple">${esc(w.chat_name)}</span>`;
-  const avEl = avHtml(w.name, 30, 15, w.user_id, false, w.has_avatar);
-  return `<tr>
-    <td><div class="user-cell">${avEl}<div><div class="uc-name">${esc(w.name)}</div>${w.tag?`<div class="uc-sub">${esc(w.tag)}</div>`:''}</div></div></td>
-    <td>${chatBadge}</td>
-    <td><div style="display:flex;align-items:center;gap:6px">
-      <code style="font-size:11px;color:var(--c-muted);max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${url}</code>
-      <button class="btn-icon" title="Скопировать" onclick="copyWh('${esc(url)}')">
-        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-      </button>
-    </div></td>
-    <td style="font-family:var(--f-mono);font-size:12px;text-align:right">${w.message_count}</td>
-    <td style="color:var(--c-muted);font-size:11px">${fmtDate(w.created_at)}</td>
-    <td><div class="td-actions">
-      <label class="btn btn-ghost btn-sm" style="cursor:pointer">
-        Аватар<input type="file" accept="image/*" style="display:none" onchange="uploadWhAvatar(${w.id},this)">
-      </label>
-      <button class="btn btn-ghost btn-sm" onclick="regenWhToken(${w.id})">Новый токен</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteWh(${w.id},'${jesc(w.name)}')">Удалить</button>
-    </div></td>
-  </tr>`;
+function whFilter(k) { WH.filter = k; WH.sel.clear(); whRender(); }
+function whSearch(v) { WH.q = v; whRender(); }
+function whToggle(id) { WH.sel.has(id) ? WH.sel.delete(id) : WH.sel.add(id); whRender(); }
+function whSelAll(on) { WH.hooks.forEach(h => on ? WH.sel.add(h.id) : WH.sel.delete(h.id)); whRender(); }
+function whMenu(e, id) {
+  uxOpenMenu(e, 'wh' + id, `
+    <button role="menuitem" onclick="uxCloseMenu(); whCopy(${id})">${WH_I.copy}Скопировать адрес</button>
+    <button role="menuitem" onclick="uxCloseMenu(); whAvatar(${id})">${WH_I.img}Сменить аватар</button>
+    <button role="menuitem" onclick="uxCloseMenu(); whRegen(${id})">${WH_I.key}Выдать новый адрес</button>
+    <hr><button role="menuitem" class="danger" onclick="uxCloseMenu(); whDelete([${id}])">${UX_I.trash}Удалить вебхук</button>`);
 }
 
-function copyWh(url) {
-  navigator.clipboard.writeText(url).then(() => toast('URL скопирован','success')).catch(()=>toast('Не удалось скопировать','error'));
+function whCopyText(text) {
+  navigator.clipboard.writeText(text).then(() => toast('Адрес скопирован', 'success')).catch(() => toast('Не удалось скопировать', 'error'));
+}
+function whCopy(id) {
+  const h = WH.hooks.find(x => x.id === id);
+  if (h) whCopyText(whUrl(h.token));
 }
 
-async function regenWhToken(id) {
-  confirm('Пересоздать токен?', 'Старый URL перестанет работать. Новый токен нужно обновить во всех сервисах.', async () => {
+// Поле выбора файла создаём на лету: в меню его держать нельзя — меню закрывается раньше, чем выбран файл
+function whPickFile(onPick) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = () => { if (input.files[0]) onPick(input.files[0]); };
+  input.click();
+}
+function whAvatar(id) {
+  whPickFile(async file => {
+    const data = await api('POST', `/api/admin/webhooks/${id}/avatar`, { data: await resizeAvatarFile(file) });
+    if (data?.ok) { toast('Аватар обновлён', 'success'); renderWebhooks(); }
+    else toast(esc(data?.error || 'Не удалось обновить аватар'), 'error');
+  });
+}
+
+function whRegen(id) {
+  const h = WH.hooks.find(x => x.id === id);
+  if (!h) return;
+  confirm('Выдать новый адрес?', `Старый адрес «${esc(h.name)}» перестанет работать сразу. Новый нужно будет вписать во внешнюю систему.`, async () => {
     const data = await api('POST', `/api/admin/webhooks/${id}/regen-token`);
-    if (data.ok) { toast('Токен обновлён','success'); renderWebhooks(); }
-    else toast(data.error||'Ошибка','error');
+    if (data?.ok) { toast('Новый адрес выдан — скопируйте его в строке бота', 'success'); renderWebhooks(); }
+    else toast(esc(data?.error || 'Не удалось выдать адрес'), 'error');
   });
 }
 
-async function deleteWh(id, name) {
-  confirm('Удалить вебхук?', `«${name}» — вебхук будет удалён. Сообщения в группе останутся.`, async () => {
-    const data = await api('DELETE', `/api/admin/webhooks/${id}`);
-    if (data.ok) { toast('Вебхук удалён'); renderWebhooks(); }
-    else toast(data.error||'Ошибка','error');
-  });
+function whDelete(ids) {
+  const list = WH.hooks.filter(h => ids.includes(h.id));
+  if (!list.length) return;
+  confirm(list.length > 1 ? `Удалить вебхуки · ${list.length}` : 'Удалить вебхук?',
+    `${esc(list.map(h => h.name).join(', '))}\n\nВнешние системы больше не смогут писать через эти адреса. Сообщения в чатах останутся.`,
+    async () => {
+      const results = await Promise.all(list.map(h => api('DELETE', `/api/admin/webhooks/${h.id}`)));
+      const failed = results.filter(r => !r?.ok).length;
+      toast(failed ? `Не удалось удалить: ${failed}` : list.length > 1 ? `Удалено вебхуков: ${list.length}` : 'Вебхук удалён', failed ? 'error' : 'success');
+      WH.sel.clear();
+      renderWebhooks();
+      updateNavBadges();
+    });
 }
 
-async function uploadWhAvatar(id, input) {
-  const file = input.files[0]; if (!file) return;
-  const base64 = await resizeAvatarFile(file);
-  const data = await api('POST', `/api/admin/webhooks/${id}/avatar`, { data: base64 });
-  if (data.ok) { toast('Аватар обновлён', 'success'); renderWebhooks(); }
-  else toast(data.error || 'Ошибка', 'error');
-}
-
-async function openCreateWebhook() {
-  const allChats = (await api('GET','/api/admin/chats')).filter(c=>c.type==='group'||c.type==='room');
-  _webhookChats = allChats;
-  let opts = '';
-  for (const c of allChats) {
-    if (c.type==='group') {
-      opts += `<option value="${c.id}">${esc(c.name||'—')} (группа)</option>`;
-    } else {
-      const subs = await api('GET','/api/admin/topics/'+c.id);
-      if (subs?.length) {
-        opts += `<optgroup label="${esc(c.name||'—')} (комната)">`;
-        subs.forEach(s => { opts += `<option value="${s.id}">${esc(s.name)}</option>`; });
-        opts += `</optgroup>`;
-      } else {
-        opts += `<option value="${c.id}">${esc(c.name||'—')} (комната)</option>`;
-      }
-    }
-  }
-  document.getElementById('wh-name').value='';
-  document.getElementById('wh-tag').value='';
-  document.getElementById('wh-avatar-input').value='';
-  document.getElementById('wh-avatar-label').textContent='Выбрать файл…';
-  document.getElementById('wh-chat').innerHTML = opts || '<option value="">Нет доступных групп/комнат</option>';
-  document.getElementById('wh-err').textContent='';
+/* ── Создание ── */
+async function whOpen() {
+  uxCloseMenu();
+  const chats = ((await api('GET', '/api/admin/chats')) || []).filter(c => (c.type === 'group' || c.type === 'room') && !c.parent_id);
+  // Комнату с темами выбирают по теме: бот пишет в конкретную ленту
+  WH.opts = await Promise.all(chats.map(async c => {
+    if (c.type === 'group') return { id: c.id, label: `${c.name || '—'} (группа)` };
+    const topics = (await api('GET', '/api/admin/topics/' + c.id)) || [];
+    return topics.length ? { group: `${c.name || '—'} (комната)`, items: topics.map(t => ({ id: t.id, label: t.name })) } : { id: c.id, label: `${c.name || '—'} (комната)` };
+  }));
+  WH.form = { name: '', tag: '', chat_id: '', avatar: null, err: '', busy: false, created: null };
+  whRenderForm('wh-name');
   openModal('modal-webhook');
-  setTimeout(()=>document.getElementById('wh-name').focus(),50);
+}
+
+function whHeadAv() {
+  const f = WH.form;
+  return f.avatar ? `<span class="av" style="width:38px;height:38px;border-radius:10px;background:url('data:image/jpeg;base64,${f.avatar}') center/cover"></span>` : uaAv(f.name || '?', 38);
+}
+
+function whRenderForm(focusId) {
+  const f = WH.form, el = document.getElementById('wh-form');
+  if (!f || !el) return;
+  const close = `<button type="button" class="modal-close" aria-label="Закрыть" onclick="closeModal('modal-webhook')">✕</button>`;
+  if (f.created) {
+    const url = whUrl(f.created);
+    el.innerHTML = `
+      <div class="ua-head">${whHeadAv()}<div><div class="ua-title">Вебхук создан</div><div class="ua-sub">${esc(f.name)}</div></div>${close}</div>
+      <div class="ua-body">
+        <div class="wh-ok"><div><span>Адрес вебхука</span><code>${esc(url)}</code></div>
+          <button type="button" class="btn btn-ghost btn-sm" data-url="${esc(url)}" onclick="whCopyText(this.dataset.url)">${WH_I.copy}Скопировать</button></div>
+        <div class="ua-field"><label>Пример запроса</label><pre class="wh-code">${esc(`curl -X POST ${url} \\\n  -H "Content-Type: application/json" \\\n  -d '{"text": "Сборка прошла успешно"}'`)}</pre></div>
+        <p class="ua-hint">Адрес — это и есть ключ: кто его знает, тот может писать от имени бота. Если он утёк, выдайте новый в меню «⋯».</p>
+      </div>
+      <div class="ua-foot"><span class="ux-grow"></span><button type="button" class="btn ux-solid" onclick="closeModal('modal-webhook')">Готово</button></div>`;
+    return;
+  }
+  const opt = o => `<option value="${o.id}" ${String(f.chat_id) === String(o.id) ? 'selected' : ''}>${esc(o.label)}</option>`;
+  uaRestoreFocus(() => {
+    el.innerHTML = `
+      <div class="ua-head"><span id="wh-head-av">${whHeadAv()}</span><div><div class="ua-title">Новый вебхук</div><div class="ua-sub">Бот, который пишет в чат по запросу извне</div></div>${close}</div>
+      <div class="ua-body">
+        <div class="ua-row2">
+          <div class="ua-field"><label for="wh-name">Имя бота</label>
+            <div class="ua-inp"><input id="wh-name" value="${esc(f.name)}" placeholder="Например, Мониторинг" maxlength="40" oninput="WH.form.name = this.value; document.getElementById('wh-head-av').innerHTML = whHeadAv()"></div></div>
+          <div class="ua-field"><label for="wh-tag">Тег <span class="opt">· необязательно</span></label>
+            <div class="ua-inp"><input id="wh-tag" value="${esc(f.tag)}" placeholder="бот, CRM" maxlength="20" oninput="WH.form.tag = this.value"></div></div>
+        </div>
+        <div class="ua-field"><label for="wh-chat">Куда писать</label>
+          <div class="ua-inp"><select id="wh-chat" class="wh-select" onchange="WH.form.chat_id = this.value">
+            <option value="" ${f.chat_id ? '' : 'selected'} disabled>Выберите группу, комнату или тему</option>
+            ${WH.opts.map(o => o.group ? `<optgroup label="${esc(o.group)}">${o.items.map(opt).join('')}</optgroup>` : opt(o)).join('')}
+          </select></div>
+          <span class="ua-hint">${WH.opts.length ? 'У комнаты с темами бот пишет в выбранную тему' : 'Сначала создайте группу или комнату'}</span></div>
+        <div class="ua-field"><label>Аватар <span class="opt">· необязательно</span></label>
+          <div style="display:flex;gap:8px"><button type="button" class="btn btn-ghost btn-sm" onclick="whPickFile(whFormAvatar)">${WH_I.img}${f.avatar ? 'Заменить картинку' : 'Загрузить картинку'}</button>
+            ${f.avatar ? '<button type="button" class="btn btn-ghost btn-sm" onclick="WH.form.avatar = null; whRenderForm()">Убрать</button>' : ''}</div></div>
+      </div>
+      <div class="ua-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}
+        <button type="button" class="btn btn-ghost" onclick="openModal('modal-webhook-help')">${WH_I.book}Инструкция</button><span class="ux-grow"></span>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-webhook')">Отмена</button>
+        <button type="button" class="btn ux-solid" ${f.busy ? 'disabled' : ''} onclick="saveWebhook()">${f.busy ? 'Создаю…' : 'Создать'}</button></div>`;
+  }, focusId);
+}
+
+async function whFormAvatar(file) {
+  WH.form.avatar = await resizeAvatarFile(file);
+  whRenderForm();
 }
 
 async function saveWebhook() {
-  const name = document.getElementById('wh-name').value.trim();
-  const tag = document.getElementById('wh-tag').value.trim()||null;
-  const chat_id = Number(document.getElementById('wh-chat').value);
-  const avatarFile = document.getElementById('wh-avatar-input').files[0];
-  document.getElementById('wh-err').textContent='';
-  if (!name || !chat_id) { document.getElementById('wh-err').textContent='Заполните все поля'; return; }
-  const data = await api('POST','/api/admin/webhooks',{name,tag,chat_id});
-  if (!data.id) { document.getElementById('wh-err').textContent=data.error||'Ошибка'; return; }
-  if (avatarFile) {
-    const base64 = await resizeAvatarFile(avatarFile);
-    await api('POST', `/api/admin/webhooks/${data.id}/avatar`, { data: base64 });
-  }
-  closeModal('modal-webhook');
-  toast('Вебхук создан','success');
-  renderWebhooks();
+  const f = WH.form;
+  if (!f || f.busy) return;
+  const name = f.name.trim(), chat_id = Number(f.chat_id);
+  f.err = !name ? 'Укажите имя бота' : !chat_id ? 'Выберите, куда бот будет писать' : '';
+  if (f.err) return whRenderForm(!name ? 'wh-name' : 'wh-chat');
+  f.busy = true;
+  whRenderForm();
+  const data = await api('POST', '/api/admin/webhooks', { name, tag: f.tag.trim() || null, chat_id });
+  f.busy = false;
+  if (!data?.id) { f.err = data?.error || 'Не удалось создать вебхук'; return whRenderForm(); }
+  if (f.avatar) await api('POST', `/api/admin/webhooks/${data.id}/avatar`, { data: f.avatar });
+  await renderWebhooks();
+  const hooks = currentPage === 'webhooks' ? WH.hooks : ((await api('GET', '/api/admin/webhooks')) || []);
+  f.name = name;
+  f.created = hooks.find(h => h.id === data.id)?.token || data.token || null;
+  if (!f.created) { closeModal('modal-webhook'); toast('Вебхук создан', 'success'); return; }
+  whRenderForm();
+  updateNavBadges();
 }
 
 /* ── SETTINGS MODAL ── */
@@ -4359,113 +4408,144 @@ async function doServerUpdateSettings() {
 }
 
 /* ── FILES ── */
+// Раздел «Файлы»: сводка по месту и сроку хранения, фильтры по типу; отправитель и чат —
+// выпадающими списками. Картинку можно открыть прямо здесь, удалить — по одному или разом.
+
+const FL = { filter: 'all', q: '', who: '', chat: '', sel: new Set(), files: [], lifetime: 0 };
+const flSvg = p => `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const FL_I = {
+  eye: flSvg('<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>'),
+  down: flSvg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'),
+};
+const FL_EXT = {
+  image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'heic', 'avif', 'bmp'],
+  video: ['mp4', 'mov', 'webm', 'mkv', 'avi', 'm4v'],
+  doc: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'odt', 'ods', 'odp', 'csv', 'md'],
+};
+const FL_KIND = { image: ['Картинка', '#0d9488'], doc: ['Документ', '#4f46e5'], video: ['Видео', '#db2777'], other: ['Файл', '#d97706'] };
+const FL_BIG = 20 * 1048576;
+const flExt = f => (String(f.filename).includes('.') ? String(f.filename).split('.').pop() : '').toLowerCase();
+function flKind(f) {
+  const mime = f.mime || '', ext = flExt(f);
+  if (mime.startsWith('image/') || FL_EXT.image.includes(ext)) return 'image';
+  if (mime.startsWith('video/') || FL_EXT.video.includes(ext)) return 'video';
+  if (FL_EXT.doc.includes(ext)) return 'doc';
+  return 'other';
+}
+const flUrl = name => '/files/' + encodeURIComponent(name);
+const flShort = name => name.length > 42 ? name.slice(0, 40) + '…' : name;
+const flChatChip = type => type === 'direct' ? '<span class="rm-chip rm-direct">личный</span>'
+  : type === 'group' ? '<span class="rm-chip rm-group">группа</span>' : type === 'room' ? '<span class="rm-chip rm-topics">комната</span>' : '';
+
 async function renderFiles() {
-  document.getElementById('page-body').innerHTML = `<div style="color:var(--c-muted);font-size:12px;padding:20px 0">Загрузка…</div>`;
-  const files = await api('GET', '/api/admin/files') || [];
-  const nbFiles = document.getElementById('nb-files');
-  if (nbFiles) nbFiles.textContent = files.length;
-
-  function fmtSize(bytes) {
-    if (!bytes) return '—';
-    if (bytes > 1048576) return (bytes / 1048576).toFixed(1) + ' МБ';
-    return Math.round(bytes / 1024) + ' КБ';
-  }
-  function fileExt(name) { return (name.split('.').pop() || '').toLowerCase(); }
-  function isImg(name) { return ['jpg','jpeg','png','gif','webp','svg'].includes(fileExt(name)); }
-  function fileIcon() {
-    return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
-  }
-
-  let searchVal = '', senderVal = '', chatVal = '';
-  function getFiltered() {
-    const q = searchVal.toLowerCase();
-    return files.filter(f => {
-      if (senderVal && (f.sender_name || '') !== senderVal) return false;
-      if (chatVal && (f.chat_name || '') !== chatVal) return false;
-      if (!q) return true;
-      return (f.filename||'').toLowerCase().includes(q)
-          || (f.sender_name||'').toLowerCase().includes(q)
-          || (f.chat_name||'').toLowerCase().includes(q);
-    });
-  }
-  // Списки для фильтров берём из самих файлов: показываем только тех, у кого файлы есть
-  const uniq = key => [...new Set(files.map(f => f[key]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru'));
-
-  function renderTable() {
-    const filtered = getFiltered();
-    const rows = filtered.length ? filtered.map(f => {
-      // Сервер отдаёт только файлы, которые есть на диске, — «отсутствующих» строк не бывает
-      const thumb = isImg(f.filename)
-        ? `<img class="file-thumb" src="/files/${esc(f.filename)}" title="Открыть" onclick="openFilePreview('${jesc(f.filename)}')" style="width:32px;height:32px;object-fit:cover;border-radius:4px;display:block" onerror="this.style.display='none'">`
-        : `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">${fileIcon()}</div>`;
-      const fname = f.filename.length > 32 ? f.filename.slice(0, 30) + '…' : f.filename;
-      return `<tr>
-        <td style="width:40px">${thumb}</td>
-        <td style="font-size:11px;font-family:var(--f-mono);color:var(--c-text2)" title="${esc(f.filename)}">${esc(fname)}</td>
-        <td style="font-size:11px;color:var(--c-muted)">${fmtSize(f.size)}</td>
-        <td style="font-size:11px;color:var(--c-text2)">${esc(f.sender_name||'—')}</td>
-        <td style="font-size:11px;color:var(--c-text2)">${f.chat_name ? esc(f.chat_name) + chatKindBadge(f.chat_type) : '—'}</td>
-        <td style="font-size:11px;color:var(--c-muted)">${f.sent_at ? fmtDate(f.sent_at) : '—'}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteFile('${jesc(f.filename)}')">Удалить</button></td>
-      </tr>`;
-    }).join('') : `<tr><td colspan="7"><div class="empty-state"><p>Нет файлов</p></div></td></tr>`;
-
-    document.getElementById('files-tbody').innerHTML = rows;
-    const cnt = document.getElementById('files-count');
-    if (cnt) cnt.textContent = filtered.length === files.length ? `(${files.length})` : `(${filtered.length} из ${files.length})`;
-  }
-
-  document.getElementById('page-body').innerHTML = `
-    <div class="card">
-      <div class="card-head">
-        <h3>Файлы <span id="files-count" style="color:var(--c-muted);font-weight:500">(${files.length})</span></h3>
-        <div class="card-head-right">
-          ${fselHtml('files-sender', 'Все отправители', uniq('sender_name'), '', 'filesSenderHandler')}
-          ${fselHtml('files-chat', 'Все чаты', uniq('chat_name'), '', 'filesChatHandler')}
-          <div class="search-box">
-            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input placeholder="Поиск…" id="files-search" oninput="filesSearchHandler(this.value)">
-          </div>
-          <button class="filters-reset" id="files-reset" hidden onclick="filesResetFilters()">
-            <svg viewBox="0 0 24 24" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            Сбросить
-          </button>
-        </div>
-      </div>
-      <div class="table-scroll">
-        <table>
-          <thead><tr><th style="width:40px"></th><th>Файл</th><th>Размер</th><th>Загрузил</th><th>Чат</th><th>Дата</th><th>Действия</th></tr></thead>
-          <tbody id="files-tbody"></tbody>
-        </table>
-      </div>
-    </div>`;
-
-  // Кнопка сброса появляется, только когда есть что сбрасывать
-  const syncReset = () => {
-    const btn = document.getElementById('files-reset');
-    if (btn) btn.hidden = !(searchVal || senderVal || chatVal);
-  };
-  window.filesSearchHandler = (q) => { searchVal = q; renderTable(); syncReset(); };
-  window.filesSenderHandler = (v) => { senderVal = v; renderTable(); syncReset(); };
-  window.filesChatHandler = (v) => { chatVal = v; renderTable(); syncReset(); };
-  window.filesResetFilters = () => {
-    searchVal = senderVal = chatVal = '';
-    const inp = document.getElementById('files-search');
-    if (inp) inp.value = '';
-    fselPick('files-sender', '', '');
-    fselPick('files-chat', '', '');
-    renderTable();
-    syncReset();
-  };
-  renderTable();
+  setTopbarActions('');
+  const [files, settings] = await Promise.all([api('GET', '/api/admin/files'), api('GET', '/api/admin/settings')]);
+  FL.files = Array.isArray(files) ? files : [];
+  FL.lifetime = Number(settings?.upload_file_lifetime || 0);
+  const nb = document.getElementById('nb-files');
+  if (nb) nb.textContent = FL.files.length;
+  const names = new Set(FL.files.map(f => f.filename));
+  FL.sel.forEach(n => { if (!names.has(n)) FL.sel.delete(n); });
+  flRender();
 }
 
-function deleteFile(filename) {
-  confirm('Удалить файл?', `Файл «${filename}» будет удалён. В чатах появится заглушка «Файл удалён».`, async () => {
-    const data = await api('DELETE', `/api/admin/files/${encodeURIComponent(filename)}`);
-    if (data?.ok) { toast('Файл удалён', 'success'); renderFiles(); }
-    else toast(data?.error || 'Ошибка', 'error');
+function flRender() {
+  if (currentPage !== 'files') return;
+  const q = FL.q.trim().toLowerCase();
+  const rows = FL.files
+    .filter(f => FL.filter === 'all' || (FL.filter === 'big' ? f.size > FL_BIG : flKind(f) === FL.filter))
+    .filter(f => (!FL.who || f.sender_name === FL.who) && (!FL.chat || f.chat_name === FL.chat))
+    .filter(f => !q || [f.filename, f.sender_name, f.chat_name].some(x => (x || '').toLowerCase().includes(q)));
+  const total = FL.files.reduce((s, f) => s + (f.size || 0), 0);
+  const bySender = {};
+  FL.files.forEach(f => { if (f.sender_name) bySender[f.sender_name] = (bySender[f.sender_name] || 0) + (f.size || 0); });
+  const top = Object.entries(bySender).sort((a, b) => b[1] - a[1])[0];
+  const max = Math.max(1, ...FL.files.map(f => f.size || 0));
+  const uniq = key => [...new Set(FL.files.map(f => f[key]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru'));
+  const count = k => FL.files.filter(f => k === 'big' ? f.size > FL_BIG : flKind(f) === k).length;
+  const allSel = rows.length > 0 && rows.every(f => FL.sel.has(f.filename));
+  const days = FL.lifetime ? `${FL.lifetime} ${uxPlural(FL.lifetime, 'день', 'дня', 'дней')}` : '';
+  uxKeepFocus(() => {
+    document.getElementById('page-body').innerHTML = `<div class="ux-page">
+      <section class="ux-panel rm-sum">
+        <div><div class="cl-k">Файлов</div><div class="cl-v">${rmFmt(FL.files.length)}</div></div>
+        <div><div class="cl-k">Занимают</div><div class="cl-v">${hmBytes(total)}</div></div>
+        <div><div class="cl-k">Хранятся</div><div class="cl-v">${FL.lifetime ? `${FL.lifetime}<small>${uxPlural(FL.lifetime, 'день', 'дня', 'дней')}</small>` : 'всегда'}</div></div>
+        <div class="rm-note">${top ? `Больше всего места у <b>${esc(top[0])}</b> — ${hmBytes(top[1])}. ` : ''}${FL.lifetime ? `Файлы старше ${days} удаляются сами.` : 'Автоудаление выключено — файлы хранятся, пока их не удалят.'}</div>
+        <div><button class="btn btn-ghost" onclick="flSettings()">Настройки хранения</button></div>
+      </section>
+      <section class="ux-panel">
+        <div class="ux-tb"><h3>Файлы <span>${FL.files.length}</span></h3>
+          ${uxChips([['all', 'Все', FL.files.length], ['image', 'Картинки', count('image')], ['doc', 'Документы', count('doc')], ['video', 'Видео', count('video')], ['big', 'Больше 20 МБ', count('big')]], FL.filter, 'flFilter')}
+          <span class="ux-grow"></span>
+          ${fselHtml('fl-who', 'Все отправители', uniq('sender_name'), FL.who, 'flWho')}
+          ${fselHtml('fl-chat', 'Все чаты', uniq('chat_name'), FL.chat, 'flChat')}
+          ${uxSearch('fl-q', FL.q, 'Имя файла', 'flSearch')}</div>
+        ${FL.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${FL.sel.size}</b><button class="btn btn-ghost btn-sm" onclick="flDelete([...FL.sel])">${UX_I.trash}Удалить</button>
+          <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="FL.sel.clear(); flRender()">Снять выделение</button></div>` : ''}
+        <div class="ux-tbl"><table>
+          <thead><tr><th style="width:40px"><input type="checkbox" aria-label="Выбрать все" ${allSel ? 'checked' : ''} onchange="flSelAll(this.checked)"></th>
+            <th>Файл</th><th class="rm-num">Размер</th><th>Отправил</th><th>Чат</th><th>Когда</th><th></th></tr></thead>
+          <tbody>${rows.map(f => {
+            const kind = flKind(f), name = jesc(f.filename);
+            const thumb = `<span class="fl-thumb" style="background:${FL_KIND[kind][1]}">${esc((flExt(f) || '?').slice(0, 4).toUpperCase())}${kind === 'image' ? `<img src="${flUrl(f.filename)}" loading="lazy" alt="" onerror="this.remove()">` : ''}</span>`;
+            return `<tr class="${FL.sel.has(f.filename) ? 'sel' : ''}">
+              <td><input type="checkbox" aria-label="Выбрать: ${esc(f.filename)}" ${FL.sel.has(f.filename) ? 'checked' : ''} onchange="flToggle('${name}')"></td>
+              <td><div class="ux-cell">${thumb}<div style="min-width:0"><div class="ux-name" title="${esc(f.filename)}">${esc(flShort(f.filename))}</div><div class="rm-sub">${FL_KIND[kind][0]}</div></div></div></td>
+              <td class="rm-num"><span class="fl-size"><span class="fl-bar"><i style="width:${Math.max(4, (f.size || 0) / max * 100)}%"></i></span>${hmBytes(f.size || 0)}</span></td>
+              <td>${f.sender_name ? `<div class="ux-cell" style="gap:8px">${avHtml(f.sender_name, 24, 7, f.sender_id, false, true)}<span style="white-space:nowrap">${esc(f.sender_name)}</span></div>` : '<span class="rm-sub">без сообщения</span>'}</td>
+              <td>${f.chat_name ? `<span class="ux-name" style="font-weight:500;font-size:12px">${esc(f.chat_name)}${flChatChip(f.chat_type)}</span>` : '<span class="rm-sub">—</span>'}</td>
+              <td class="rm-last">${esc(uaSeen(f.sent_at || Math.floor((f.mtime || 0) / 1000)))}</td>
+              <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="flOpen('${name}')">${FL_I.eye}Открыть</button>
+                <button class="ux-ibtn" aria-label="Ещё действия: ${esc(f.filename)}" aria-haspopup="menu" aria-expanded="false" onclick="flMenu(event, '${name}')">${UX_I.more}</button></div></td>
+            </tr>`;
+          }).join('') || `<tr><td colspan="7"><div class="ux-empty">${FL.files.length ? 'Ничего не нашли. Проверьте запрос или фильтры.' : 'Файлов пока нет'}</div></td></tr>`}</tbody>
+        </table></div>
+      </section></div>`;
   });
+}
+
+function flFilter(k) { FL.filter = k; FL.sel.clear(); flRender(); }
+function flSearch(v) { FL.q = v; flRender(); }
+function flWho(v) { FL.who = v || ''; FL.sel.clear(); flRender(); }
+function flChat(v) { FL.chat = v || ''; FL.sel.clear(); flRender(); }
+function flToggle(name) { FL.sel.has(name) ? FL.sel.delete(name) : FL.sel.add(name); flRender(); }
+function flSelAll(on) { FL.files.forEach(f => on ? FL.sel.add(f.filename) : FL.sel.delete(f.filename)); flRender(); }
+function flSettings() { openSettingsModal().then(() => showSettingsSection('attachments')); }
+
+function flOpen(name) {
+  const f = FL.files.find(x => x.filename === name);
+  if (f && flKind(f) === 'image') openFilePreview(name);
+  else flDownload(name);
+}
+function flDownload(name) {
+  const a = document.createElement('a');
+  a.href = flUrl(name);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+function flMenu(e, name) {
+  const n = jesc(name);
+  uxOpenMenu(e, 'fl' + name, `
+    <button role="menuitem" onclick="uxCloseMenu(); flOpen('${n}')">${FL_I.eye}Открыть</button>
+    <button role="menuitem" onclick="uxCloseMenu(); flDownload('${n}')">${FL_I.down}Скачать</button>
+    <hr><button role="menuitem" class="danger" onclick="uxCloseMenu(); flDelete(['${n}'])">${UX_I.trash}Удалить файл</button>`);
+}
+function flDelete(names) {
+  if (!names.length) return;
+  const shown = names.slice(0, 5).join(', ') + (names.length > 5 ? ` и ещё ${names.length - 5}` : '');
+  confirm(names.length > 1 ? `Удалить файлы · ${names.length}` : 'Удалить файл?',
+    `${esc(shown)}\n\nФайлы исчезнут из чатов — на их месте останется «Файл удалён».`,
+    async () => {
+      const results = await Promise.all(names.map(n => api('DELETE', `/api/admin/files/${encodeURIComponent(n)}`)));
+      const failed = results.filter(r => !r?.ok).length;
+      toast(failed ? `Не удалось удалить: ${failed}` : names.length > 1 ? `Удалено файлов: ${names.length}` : 'Файл удалён', failed ? 'error' : 'success');
+      FL.sel.clear();
+      renderFiles();
+      updateNavBadges();
+    });
 }
 
 /* ── ВЫПАДАЮЩИЙ СПИСОК ФИЛЬТРА ── */
@@ -4533,22 +4613,29 @@ document.addEventListener('keydown', e => {
 });
 
 /* ── ANNOUNCEMENTS ── */
+// Раздел «Объявления»: журнал с состоянием каждой записи — показывается, запланировано, прошло.
+// Окно создания показывает, как объявление увидят люди: полоса, карточка или строка в ленте.
+
 const ANN_KINDS = {
-  chat:   { label: 'В чаты',      badge: 'badge-blue'   },
-  popup:  { label: 'Всплывающее', badge: 'badge-purple' },
-  banner: { label: 'Полоса',      badge: 'badge-red'    },
+  chat:   { label: 'В чаты',      chip: 'rm-direct' },
+  popup:  { label: 'Всплывающее', chip: 'rm-group' },
+  banner: { label: 'Полоса',      chip: 'an-red' },
 };
 const ANN_HINTS = {
-  chat:   'Сообщение от системы в группы и комнаты — останется в переписке',
-  popup:  'Окно поверх чата. Увидят только те, кто в сети в момент отправки',
-  banner: 'Полоса вверху окна. Держится заданное время и догоняет тех, кого не было в сети',
+  chat:   'Строка от системы в группах и комнатах — останется в переписке',
+  popup:  'Карточка поверх окна у тех, кто в сети в момент отправки',
+  banner: 'Тонкая полоса сверху, держится заданное время и догоняет тех, кого не было в сети',
 };
-
-let _announcements = [];
-let annKind = 'chat', annTarget = 'all';
-let annSelected = new Set();
-let annStartAt = null;   // unix-секунды или null = «сейчас»
+const AN = { filter: 'all', q: '', sel: new Set(), list: [], form: null, chats: [] };
+let annStartAt = null;   // unix-секунды или null = «сейчас»; его же меняет календарь
 let _annTick = null;
+const anSvg = p => `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const AN_I = {
+  bell: anSvg('<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>'),
+  stop: anSvg('<rect x="6" y="6" width="12" height="12" rx="2"/>'),
+  eye: anSvg('<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>'),
+  x: anSvg('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
+};
 
 function fmtDateTime(ts) {
   return ts ? new Date(ts*1000).toLocaleString('ru',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
@@ -4561,201 +4648,308 @@ function fmtLeft(sec) {
   return s >= 3600 ? `${Math.floor(s/3600)}:${p(Math.floor(s%3600/60))}:${p(s%60)}` : `${p(Math.floor(s/60))}:${p(s%60)}`;
 }
 
+const anNow = () => Math.floor(Date.now() / 1000);
+function anState(a) {
+  if (!a.sent_at) return 'scheduled';
+  return a.kind === 'banner' && a.expires_at > anNow() ? 'active' : 'past';
+}
+function anIn(sec) {
+  const m = Math.max(1, Math.round(sec / 60));
+  if (m < 60) return `через ${m} ${uxPlural(m, 'минуту', 'минуты', 'минут')}`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `через ${h} ${uxPlural(h, 'час', 'часа', 'часов')}`;
+  const d = Math.round(h / 24);
+  return `через ${d} ${uxPlural(d, 'день', 'дня', 'дней')}`;
+}
+function anTargets(a) {
+  if (a.target === 'all') return a.kind === 'chat' ? 'Все группы и комнаты' : 'Все';
+  const names = a.target_names || [];
+  return names.slice(0, 3).join(', ') + (names.length > 3 ? ` и ещё ${names.length - 3}` : '') || '—';
+}
+
 async function renderAnnouncements() {
-  _announcements = await api('GET', '/api/admin/announcements') || [];
+  setTopbarActions('');
+  const list = await api('GET', '/api/admin/announcements');
+  AN.list = Array.isArray(list) ? list : [];
   const nb = document.getElementById('nb-announcements');
-  if (nb) nb.textContent = _announcements.length;
+  if (nb) nb.textContent = AN.list.length;
+  const ids = new Set(AN.list.map(a => a.id));
+  AN.sel.forEach(id => { if (!ids.has(id)) AN.sel.delete(id); });
+  anRender();
+}
 
-  const rows = _announcements.length
-    ? _announcements.map(annRowHtml).join('')
-    : `<tr><td colspan="6"><div class="empty-state"><p>Объявлений пока не было</p></div></td></tr>`;
-  document.getElementById('page-body').innerHTML = `
-    <div class="card">
-      <div class="card-head">
-        <h3>Журнал <span style="color:var(--c-muted);font-weight:500">(${_announcements.length})</span></h3>
-      </div>
-      <table><thead><tr><th>Тип</th><th>Автор</th><th>Время начала</th><th>Длительность</th><th>Получатели</th><th>Действия</th></tr></thead>
-      <tbody>${rows}</tbody></table>
-    </div>`;
-
+function anRender() {
+  if (currentPage !== 'announcements') return;
+  const now = anNow(), q = AN.q.trim().toLowerCase();
+  const by = s => AN.list.filter(a => anState(a) === s);
+  const active = by('active'), sched = by('scheduled').sort((a, b) => a.start_at - b.start_at);
+  const month = by('past').filter(a => a.sent_at >= now - 30 * 86400).length;
+  const rows = AN.list.filter(a => AN.filter === 'all' || anState(a) === AN.filter)
+    .filter(a => !q || (a.text || '').toLowerCase().includes(q) || (a.author_name || '').toLowerCase().includes(q));
+  const allSel = rows.length > 0 && rows.every(a => AN.sel.has(a.id));
+  const first = active[0];
+  uxKeepFocus(() => {
+    document.getElementById('page-body').innerHTML = `<div class="ux-page">
+      <section class="ux-panel rm-sum">
+        <div><div class="cl-k">Активно сейчас</div><div class="cl-v">${active.length}</div></div>
+        <div><div class="cl-k">Запланировано</div><div class="cl-v">${sched.length}</div></div>
+        <div><div class="cl-k">Отправлено</div><div class="cl-v">${month}<small>за месяц</small></div></div>
+        <div class="rm-note">${first ? `Сейчас показывается полоса — ещё <b class="an-sum-left" data-until="${first.expires_at}">${fmtLeft(first.expires_at - now)}</b>.` : 'Сейчас ничего не показывается.'}
+          ${sched.length ? ` Следующее — <b>${esc(fmtDateTime(sched[0].start_at))}</b>, ${anIn(sched[0].start_at - now)}.` : ''}</div>
+        <div>${first ? `<button class="btn btn-ghost" onclick="anStop(${first.id})">${AN_I.stop}Снять полосу</button>` : ''}</div>
+      </section>
+      <section class="ux-panel">
+        <div class="ux-tb"><h3>Объявления <span>${AN.list.length}</span></h3>
+          ${uxChips([['all', 'Все', AN.list.length], ['active', 'Активные', active.length], ['scheduled', 'Запланированные', sched.length], ['past', 'Прошедшие', by('past').length]], AN.filter, 'anFilter')}
+          <span class="ux-grow"></span>${uxSearch('an-q', AN.q, 'Текст или автор', 'anSearch')}</div>
+        ${AN.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${AN.sel.size}</b><button class="btn btn-ghost btn-sm" onclick="anDelete([...AN.sel])">${UX_I.trash}Удалить</button>
+          <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="AN.sel.clear(); anRender()">Снять выделение</button></div>` : ''}
+        <div class="ux-tbl"><table>
+          <thead><tr><th style="width:40px"><input type="checkbox" aria-label="Выбрать все" ${allSel ? 'checked' : ''} onchange="anSelAll(this.checked)"></th>
+            <th>Объявление</th><th>Кому</th><th>Когда</th><th>Показ</th><th>Автор</th><th></th></tr></thead>
+          <tbody>${rows.map(a => {
+            const st = anState(a), k = ANN_KINDS[a.kind] || { label: a.kind, chip: 'rm-empty' };
+            const start = a.sent_at || a.start_at;
+            const show = a.kind !== 'banner' ? '<span class="rm-sub">—</span>'
+              : st === 'active' ? anLeftHtml(a, now) : `<span class="rm-last">${a.duration_min || 0} мин</span>`;
+            return `<tr class="${AN.sel.has(a.id) ? 'sel' : ''}">
+              <td><input type="checkbox" aria-label="Выбрать объявление" ${AN.sel.has(a.id) ? 'checked' : ''} onchange="anToggle(${a.id})"></td>
+              <td><div class="an-cell"><div class="an-chips"><span class="rm-chip ${k.chip}">${k.label}</span>${st === 'active' ? '<span class="rm-chip rm-topics">показывается</span>' : st === 'scheduled' ? '<span class="rm-chip rm-empty">запланировано</span>' : ''}</div>
+                <div class="an-snip">${esc(a.text || '')}</div></div></td>
+              <td style="max-width:220px"><div class="rm-sub" style="color:var(--c-text2);white-space:normal" title="${esc((a.target_names || []).join(', '))}">${esc(anTargets(a))}</div></td>
+              <td class="rm-last">${esc(fmtDateTime(start))}${st === 'scheduled' ? `<div class="rm-sub">${anIn(a.start_at - now)}</div>` : ''}</td>
+              <td>${show}</td>
+              <td>${a.author_name ? `<div class="ux-cell" style="gap:8px">${avHtml(a.author_name, 22, 6, a.author_id, false, true)}<span style="white-space:nowrap">${esc(a.author_name)}</span></div>` : '<span class="rm-sub">—</span>'}</td>
+              <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="anView(${a.id})">${AN_I.eye}Открыть</button>
+                <button class="ux-ibtn" aria-label="Ещё действия" aria-haspopup="menu" aria-expanded="false" onclick="anMenu(event, ${a.id})">${UX_I.more}</button></div></td>
+            </tr>`;
+          }).join('') || `<tr><td colspan="7"><div class="ux-empty">${AN.list.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Объявлений пока не было'}</div></td></tr>`}</tbody>
+        </table></div>
+      </section></div>`;
+  });
   startAnnCountdown();
+}
+
+function anLeftHtml(a, now) {
+  const total = Math.max(1, (a.duration_min || 0) * 60), left = a.expires_at - now;
+  return `<div class="an-left" data-until="${a.expires_at}" data-total="${total}"><span>ещё <b>${fmtLeft(left)}</b> из ${a.duration_min} мин</span>
+    <div class="an-bar"><i style="width:${Math.min(100, left / total * 100)}%"></i></div></div>`;
 }
 
 // Обратный отсчёт у активных полос. Интервал гасит себя сам при уходе со страницы.
 function startAnnCountdown() {
   clearInterval(_annTick);
-  if (!_announcements.some(a => a.kind === 'banner' && a.sent_at)) return;
+  if (!AN.list.some(a => anState(a) === 'active')) return;
   _annTick = setInterval(() => {
     if (currentPage !== 'announcements') { clearInterval(_annTick); _annTick = null; return; }
-    const now = Math.floor(Date.now()/1000);
+    const now = anNow();
     let ended = false;
-    document.querySelectorAll('.ann-left').forEach(el => {
+    document.querySelectorAll('.an-left, .an-sum-left').forEach(el => {
       const left = Number(el.dataset.until) - now;
-      if (left <= 0) ended = true; else el.textContent = fmtLeft(left);
+      if (left <= 0) { ended = true; return; }
+      const b = el.classList.contains('an-sum-left') ? el : el.querySelector('b');
+      b.textContent = fmtLeft(left);
+      const bar = el.querySelector('.an-bar i');
+      if (bar) bar.style.width = Math.min(100, left / Number(el.dataset.total) * 100) + '%';
     });
     // Отсчёт кончился — перечитываем журнал, чтобы строка сменила состояние
     if (ended) renderAnnouncements();
   }, 1000);
 }
 
-function annTargetCell(a) {
-  if (a.target === 'all') {
-    return `<span class="badge badge-gray">${a.kind === 'chat' ? 'Все группы' : 'Всем'}</span>`;
-  }
-  const names = a.target_names || [];
-  const shown = names.slice(0, 2).join(', ');
-  const rest = names.length > 2 ? ` +${names.length - 2}` : '';
-  return `<span style="font-size:11px;color:var(--c-text2)" title="${esc(names.join(', '))}">${esc(shown)}${rest}</span>`;
-}
-
-function annRowHtml(a) {
-  const k = ANN_KINDS[a.kind] || { label: a.kind, badge: 'badge-gray' };
-  const now = Math.floor(Date.now()/1000);
-  const pending = !a.sent_at;
-  const start = a.sent_at || a.start_at;
-
-  let dur = '<span style="color:var(--c-muted)">—</span>';
-  if (a.kind === 'banner') {
-    dur = (a.sent_at && a.expires_at > now)
-      ? `<span class="ann-left badge badge-green" data-until="${a.expires_at}" style="font-family:var(--f-mono)">${fmtLeft(a.expires_at - now)}</span>`
-      : `<span style="color:var(--c-text2)">${a.duration_min || 0} мин</span>`;
-  }
-
-  return `<tr style="cursor:pointer" onclick="openAnnView(${a.id})">
-    <td><span class="badge ${k.badge}">${k.label}</span></td>
-    <td style="font-size:11px;color:var(--c-text2)">${esc(a.author_name || '—')}</td>
-    <td style="font-size:11px">${fmtDateTime(start)}${pending ? '<div class="uc-sub" style="color:var(--c-orange-text)">запланировано</div>' : ''}</td>
-    <td>${dur}</td>
-    <td>${annTargetCell(a)}</td>
-    <td onclick="event.stopPropagation()"><div class="td-actions">
-      <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(${a.id})">Удалить</button>
-    </div></td>
-  </tr>`;
-}
-
-function openAnnView(id) {
-  const a = _announcements.find(x => x.id === id);
+function anFilter(k) { AN.filter = k; AN.sel.clear(); anRender(); }
+function anSearch(v) { AN.q = v; anRender(); }
+function anToggle(id) { AN.sel.has(id) ? AN.sel.delete(id) : AN.sel.add(id); anRender(); }
+function anSelAll(on) { AN.list.forEach(a => on ? AN.sel.add(a.id) : AN.sel.delete(a.id)); anRender(); }
+function anMenu(e, id) {
+  const a = AN.list.find(x => x.id === id);
   if (!a) return;
-  const k = ANN_KINDS[a.kind] || { label: a.kind };
-  const now = Math.floor(Date.now()/1000);
-  const rows = [['Тип', k.label], ['Автор', a.author_name || '—']];
+  const st = anState(a);
+  uxOpenMenu(e, 'an' + id, `
+    <button role="menuitem" onclick="uxCloseMenu(); anView(${id})">${AN_I.eye}Открыть</button>
+    ${st === 'active' ? `<button role="menuitem" onclick="uxCloseMenu(); anStop(${id})">${AN_I.stop}Снять полосу</button>` : ''}
+    ${st === 'scheduled' ? `<button role="menuitem" onclick="uxCloseMenu(); anDelete([${id}])">${AN_I.x}Отменить отправку</button>` : ''}
+    <hr><button role="menuitem" class="danger" onclick="uxCloseMenu(); anDelete([${id}])">${UX_I.trash}Удалить</button>`);
+}
 
-  if (a.sent_at) rows.push(['Отправлено', fmtDateTime(a.sent_at)]);
-  else rows.push(['Запланировано', fmtDateTime(a.start_at)]);
+// Превью по стилям веб-клиента: полоса, карточка поверх затемнённого окна, строка в ленте
+function anPreview(kind, text) {
+  const t = text ? esc(text) : '<span class="an-pv-ph">Текст появится здесь</span>';
+  if (kind === 'banner') return `<div class="an-pv"><div class="an-pv-app"><i style="top:52px;width:46%"></i><i style="top:70px;width:62%"></i><i style="top:88px;width:38%"></i>
+      <div class="an-pv-banner">${AN_I.bell}<span>${t}</span><b aria-hidden="true">×</b></div></div>
+      <span class="ua-hint">Тонкая полоса сверху поверх окна — пока не истечёт время или человек её не закроет</span></div>`;
+  if (kind === 'popup') return `<div class="an-pv"><div class="an-pv-app an-pv-dim"><i style="top:18px;width:40%"></i><i style="top:36px;width:58%"></i><i style="top:54px;width:34%"></i>
+      <div class="an-pv-card"><div class="an-pv-title"><span class="an-pv-ring">${AN_I.bell}</span>Системное объявление</div><div class="an-pv-text">${t}</div><span class="an-pv-ok">OK</span></div></div>
+      <span class="ua-hint">Карточка по центру поверх затемнённого окна — у тех, кто сейчас в сети; закрывается кнопкой OK</span></div>`;
+  const time = new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+  return `<div class="an-pv"><div class="an-pv-feed"><i style="width:44%"></i><div class="an-pv-sys">${AN_I.bell}<span>${t}</span><small>${time}</small></div><i style="width:30%;margin-left:auto"></i></div>
+    <span class="ua-hint">Строка по центру ленты в выбранных группах и комнатах — остаётся в переписке</span></div>`;
+}
 
+/* ── Просмотр ── */
+function anView(id) {
+  const a = AN.list.find(x => x.id === id);
+  if (!a) return;
+  const st = anState(a), k = ANN_KINDS[a.kind] || { label: a.kind }, now = anNow();
+  const meta = [[a.kind === 'chat' ? 'Куда' : 'Кому', a.target === 'all' ? anTargets(a) : (a.target_names || []).join(', ') || '—']];
+  meta.push([a.sent_at ? 'Отправлено' : 'Запланировано', fmtDateTime(a.sent_at || a.start_at)]);
   if (a.kind === 'banner') {
-    rows.push(['Время показа', `${a.duration_min || 0} мин`]);
-    if (a.sent_at) rows.push(['Состояние', a.expires_at > now ? `осталось ${fmtLeft(a.expires_at - now)}` : 'показ завершён']);
-    rows.push(['Закрыли', String(a.dismissed_count || 0)]);
+    meta.push(['Показ', `${a.duration_min || 0} мин${st === 'active' ? `, осталось ${fmtLeft(a.expires_at - now)}` : st === 'past' ? ', завершён' : ''}`]);
+    meta.push(['Закрыли', String(a.dismissed_count || 0)]);
   }
-  rows.push([a.kind === 'chat' ? 'Чаты' : 'Получатели',
-    a.target === 'all' ? (a.kind === 'chat' ? 'Все группы и комнаты' : 'Все пользователи') : (a.target_names || []).join(', ') || '—']);
-
-  document.getElementById('annv-meta').innerHTML = rows.map(([n, v]) =>
-    `<div style="color:var(--c-muted)">${n}</div><div style="color:var(--c-text)">${esc(String(v))}</div>`).join('');
-  document.getElementById('annv-text').textContent = a.text || '';
-  document.getElementById('annv-del').onclick = () => { closeModal('modal-ann-view'); deleteAnnouncement(a.id); };
+  document.getElementById('an-view-form').innerHTML = `
+    <div class="ua-head">${avHtml(a.author_name || '?', 38, 10, a.author_id, false, true)}
+      <div><div class="ua-title">Объявление · ${k.label}</div><div class="ua-sub">${esc(a.author_name || '—')} · ${esc(fmtDateTime(a.sent_at || a.start_at))}</div></div>
+      <button type="button" class="modal-close" aria-label="Закрыть" onclick="closeModal('modal-ann-view')">✕</button></div>
+    <div class="ua-body">${anPreview(a.kind, a.text)}
+      <dl class="an-meta">${meta.map(([n, v]) => `<dt>${n}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>
+    <div class="ua-foot"><button type="button" class="btn btn-danger btn-sm" onclick="closeModal('modal-ann-view'); anDelete([${a.id}])">${UX_I.trash}Удалить</button><span class="ux-grow"></span>
+      ${st === 'active' ? `<button type="button" class="btn btn-ghost" onclick="closeModal('modal-ann-view'); anStop(${a.id})">${AN_I.stop}Снять полосу</button>` : ''}
+      <button type="button" class="btn ux-solid" onclick="closeModal('modal-ann-view')">Закрыть</button></div>`;
   openModal('modal-ann-view');
 }
 
-function deleteAnnouncement(id) {
-  const a = _announcements.find(x => x.id === id);
-  const now = Math.floor(Date.now()/1000);
-  const active = a && a.kind === 'banner' && a.sent_at && a.expires_at > now;
-  const hint = !a?.sent_at ? 'Объявление не будет отправлено.'
-    : active ? 'Полоса сразу пропадёт у всех, кто её видит.'
+function anStop(id) {
+  confirm('Снять полосу?', 'Полоса сразу исчезнет у всех, кто её видит. Запись останется в журнале.', async () => {
+    const data = await api('POST', `/api/admin/announcements/${id}/stop`);
+    if (data?.ok) { toast('Полоса снята', 'success'); renderAnnouncements(); }
+    else toast(esc(data?.error || 'Не удалось снять полосу'), 'error');
+  });
+}
+
+function anDelete(ids) {
+  const list = AN.list.filter(a => ids.includes(a.id));
+  if (!list.length) return;
+  const st = list.map(anState);
+  const hint = st.includes('active') ? 'Активная полоса сразу исчезнет у всех.'
+    : st.every(s => s === 'scheduled') ? 'Запланированное не будет отправлено.'
     : 'Запись исчезнет из журнала. Уже отправленное у людей останется.';
-  confirm('Удалить объявление?', hint, async () => {
-    const data = await api('DELETE', `/api/admin/announcements/${id}`);
-    if (data?.ok) { toast('Объявление удалено'); renderAnnouncements(); }
-    else toast(data?.error || 'Ошибка', 'error');
+  confirm(list.length > 1 ? `Удалить объявления · ${list.length}` : 'Удалить объявление?', hint, async () => {
+    const results = await Promise.all(list.map(a => api('DELETE', `/api/admin/announcements/${a.id}`)));
+    const failed = results.filter(r => !r?.ok).length;
+    toast(failed ? `Не удалось удалить: ${failed}` : list.length > 1 ? `Удалено объявлений: ${list.length}` : 'Объявление удалено', failed ? 'error' : 'success');
+    AN.sel.clear();
+    renderAnnouncements();
   });
 }
 
 /* ── Создание ── */
-
-function _annSegment(barId, attr, value) {
-  document.querySelectorAll(`#${barId} button`).forEach(btn => {
-    const active = btn.dataset[attr] === value;
-    btn.style.background = active ? 'var(--c-bg)' : 'transparent';
-    btn.style.color = active ? 'var(--c-text)' : 'var(--c-muted)';
-    btn.style.fontWeight = active ? '600' : '400';
-    btn.style.boxShadow = active ? '0 1px 3px rgba(0,0,0,.1)' : '';
-  });
-}
-
-function setAnnKind(kind) {
-  annKind = kind;
-  annSelected = new Set();
-  _annSegment('ann-kind-bar', 'kind', kind);
-  document.getElementById('ann-kind-hint').textContent = ANN_HINTS[kind] || '';
-  document.getElementById('ann-duration-fg').style.display = kind === 'banner' ? '' : 'none';
-  document.getElementById('ann-target-label').textContent = kind === 'chat' ? 'Куда' : 'Получатели';
-  document.querySelector('#ann-target-bar button[data-target="all"]').textContent = kind === 'chat' ? 'Все группы' : 'Всем';
-  document.querySelector('#ann-target-bar button[data-target="select"]').textContent = kind === 'chat' ? 'Выбрать чаты' : 'Выбрать людей';
-  document.getElementById('ann-search').placeholder = kind === 'chat' ? 'Поиск чатов…' : 'Поиск людей…';
-  renderAnnList(document.getElementById('ann-search').value);
-}
-
-function setAnnTarget(target) {
-  annTarget = target;
-  _annSegment('ann-target-bar', 'target', target);
-  document.getElementById('ann-select-box').style.display = target === 'select' ? '' : 'none';
-  if (target === 'select') renderAnnList(document.getElementById('ann-search').value);
-}
-
-function renderAnnList(q) {
-  const lq = (q || '').toLowerCase();
-  const items = annKind === 'chat'
-    ? allChats.filter(c => c.type !== 'direct' && (!lq || (c.name||'').toLowerCase().includes(lq)))
-        .map(c => ({ id: c.id, name: c.name || 'Чат', sub: c.type === 'room' ? 'комната' : 'группа' }))
-    : allUsersCache.filter(u => !lq || (u.display_name||'').toLowerCase().includes(lq) || (u.username||'').toLowerCase().includes(lq))
-        .map(u => ({ id: u.id, name: u.display_name || u.username, sub: u.username }));
-
-  document.getElementById('ann-list').innerHTML = items.map(i => `
-    <label style="display:flex;align-items:center;gap:6px;padding:3px 6px;cursor:pointer;border-radius:4px;font-size:11px;color:var(--c-text2);line-height:1.3">
-      <input type="checkbox" ${annSelected.has(i.id)?'checked':''} onchange="annToggle(${i.id},this.checked)" style="accent-color:var(--c-primary);width:12px;height:12px;flex-shrink:0">
-      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(i.name)}</span>
-      <span style="color:var(--c-muted);flex-shrink:0">(${esc(i.sub)})</span>
-    </label>`).join('') || `<div style="padding:6px 8px;color:var(--c-muted);font-size:11px">Ничего не найдено</div>`;
-}
-
-function annToggle(id, checked) { checked ? annSelected.add(id) : annSelected.delete(id); }
-
 async function openAnnouncementModal() {
-  annSelected = new Set();
-  document.getElementById('ann-text').value = '';
-  document.getElementById('ann-err').textContent = '';
-  document.getElementById('ann-duration').value = 60;
-  document.getElementById('ann-search').value = '';
-  dtpReset();
-  if (!allChats.length) allChats = await api('GET', '/api/admin/chats') || [];
-  if (!allUsersCache.length) allUsersCache = await api('GET', '/api/admin/users') || [];
+  uxCloseMenu();
+  const [chats, users] = await Promise.all([api('GET', '/api/admin/chats'), allUsersCache.length ? allUsersCache : api('GET', '/api/admin/users')]);
+  AN.chats = (Array.isArray(chats) ? chats : []).filter(c => c.type !== 'direct' && !c.parent_id);
+  if (Array.isArray(users)) allUsersCache = users;
+  annStartAt = null;
+  AN.form = { kind: 'chat', text: '', pick: false, who: new Set(), q: '', duration: 60, err: '', busy: false };
+  anRenderForm('an-text');
   openModal('modal-announcement');
-  setAnnKind('chat');
-  setAnnTarget('all');
+}
+
+function anRenderForm(focusId) {
+  const f = AN.form, el = document.getElementById('an-form');
+  if (!f || !el) return;
+  const chat = f.kind === 'chat';
+  uaRestoreFocus(() => {
+    el.innerHTML = `
+      <div class="ua-head"><div><div class="ua-title">Новое объявление</div><div class="ua-sub">Тип, текст, время и получатели</div></div>
+        <button type="button" class="modal-close" aria-label="Закрыть" onclick="closeModal('modal-announcement')">✕</button></div>
+      <div class="ua-body">
+        <div class="an-kinds ua-roles" role="radiogroup" aria-label="Тип объявления">${Object.entries(ANN_KINDS).map(([k, v]) =>
+          `<button type="button" class="ua-role-opt" role="radio" aria-checked="${f.kind === k}" onclick="anSet('kind', '${k}')"><b>${v.label}</b><span>${ANN_HINTS[k]}</span></button>`).join('')}</div>
+        <div class="ua-field"><label for="an-text">Текст</label>
+          <div class="ua-inp an-area"><textarea id="an-text" placeholder="Что сказать людям" oninput="AN.form.text = this.value; document.getElementById('an-pv').innerHTML = anPreview(AN.form.kind, this.value.trim())">${esc(f.text)}</textarea></div></div>
+        <div class="ua-field"><label>Так увидят</label><div id="an-pv">${anPreview(f.kind, f.text.trim())}</div></div>
+        <div class="ua-row2">
+          <div class="ua-field"><label>Когда</label>
+            <div class="dtp">
+              <button type="button" class="dtp-field" onclick="dtpToggle(event)">
+                <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/></svg>
+                <span class="dtp-val" id="dtp-val">${annStartAt ? esc(fmtDateTime(annStartAt)) : 'Сейчас'}</span>
+                <span class="dtp-reset" id="dtp-reset" style="${annStartAt ? '' : 'display:none'}" onclick="event.stopPropagation();dtpReset()">✕</span>
+              </button>
+              <div class="dtp-pop" id="dtp-pop" hidden>
+                <div class="dtp-head">
+                  <button type="button" class="dtp-nav" aria-label="Предыдущий месяц" onclick="dtpShiftMonth(-1)">‹</button>
+                  <div class="dtp-head-title" id="dtp-title"></div>
+                  <button type="button" class="dtp-nav" aria-label="Следующий месяц" onclick="dtpShiftMonth(1)">›</button>
+                </div>
+                <div class="dtp-grid" id="dtp-grid"></div>
+                <div class="dtp-foot">
+                  <div class="dtp-time">
+                    <input id="dtp-h" maxlength="2" inputmode="numeric" aria-label="Часы" oninput="dtpFixTime()">:<input id="dtp-m" maxlength="2" inputmode="numeric" aria-label="Минуты" oninput="dtpFixTime()">
+                  </div>
+                  <button type="button" class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="dtpReset()">Сейчас</button>
+                  <button type="button" class="btn btn-primary btn-sm" onclick="dtpApply()">Готово</button>
+                </div>
+              </div>
+            </div></div>
+          ${f.kind === 'banner' ? `<div class="ua-field"><label for="an-dur">Показывать, мин</label>
+            <div class="ua-inp"><input id="an-dur" type="number" min="1" max="10080" value="${f.duration}" oninput="AN.form.duration = this.value"></div>
+            <span class="ua-hint">Потом полоса исчезнет сама</span></div>` : '<div></div>'}
+        </div>
+        <div class="ua-field"><label>${chat ? 'Куда' : 'Кому'}${f.pick ? ` <span class="opt">· выбрано ${f.who.size}</span>` : ''}</label>
+          <div class="an-seg"><button type="button" aria-pressed="${!f.pick}" onclick="anSet('pick', false)">${chat ? 'Во все группы и комнаты' : 'Всем'}</button>
+            <button type="button" aria-pressed="${f.pick}" onclick="anSet('pick', true)">${chat ? 'Выбрать чаты' : 'Выбрать людей'}</button></div>
+          ${f.pick ? `<div class="ux-search" style="margin-top:8px">${UX_I.search || ''}<input id="an-pq" value="${esc(f.q)}" placeholder="${chat ? 'Поиск чатов' : 'Поиск людей'}" oninput="AN.form.q = this.value; anList()"></div>
+            <div class="rm-list rm-scroll" id="an-list" style="max-height:220px;margin-top:6px">${anListHtml()}</div>` : ''}
+          ${f.kind === 'popup' ? '<span class="ua-hint">Всплывающее увидят только те, кто сейчас в сети</span>' : ''}</div>
+      </div>
+      <div class="ua-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}<span class="ux-grow"></span>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-announcement')">Отмена</button>
+        <button type="button" class="btn ux-solid" ${f.busy ? 'disabled' : ''} onclick="sendAnnouncement()">${f.busy ? 'Отправляю…' : annStartAt ? 'Запланировать' : 'Отправить'}</button></div>`;
+  }, focusId);
+}
+
+function anSet(key, value) {
+  const f = AN.form;
+  f[key] = value;
+  if (key === 'kind') { f.who = new Set(); f.q = ''; }
+  f.err = '';
+  anRenderForm(key === 'pick' && value ? 'an-pq' : null);
+}
+
+function anListHtml() {
+  const f = AN.form, lq = f.q.trim().toLowerCase();
+  const items = f.kind === 'chat'
+    ? AN.chats.filter(c => !lq || (c.name || '').toLowerCase().includes(lq))
+        .map(c => ({ id: c.id, name: c.name || 'Чат', sub: c.type === 'room' ? 'комната' : 'группа', av: avHtml(c.name || '?', 24, 7, null, false, c.has_avatar, c.id) }))
+    : allUsersCache.filter(u => !u.banned && (!lq || (u.display_name || '').toLowerCase().includes(lq) || (u.username || '').toLowerCase().includes(lq)))
+        .map(u => ({ id: u.id, name: u.display_name || u.username, sub: '@' + u.username, av: avHtml(u.display_name || u.username, 24, 7, u.id, false, true) }));
+  return items.map(i => `<button type="button" class="rm-li rm-pick" aria-pressed="${f.who.has(i.id)}" onclick="anPick(${i.id})">${i.av}
+      <div style="flex:1;min-width:0"><div class="ux-name">${esc(i.name)}</div><div class="rm-sub">${esc(i.sub)}</div></div>
+      <span class="an-check" aria-hidden="true">${f.who.has(i.id) ? '✓' : ''}</span></button>`).join('')
+    || '<div class="ux-empty" style="padding:16px">Ничего не найдено</div>';
+}
+function anList() { const el = document.getElementById('an-list'); if (el) el.innerHTML = anListHtml(); }
+function anPick(id) {
+  const f = AN.form;
+  f.who.has(id) ? f.who.delete(id) : f.who.add(id);
+  const scroll = document.getElementById('an-list')?.scrollTop || 0;
+  anRenderForm();
+  const el = document.getElementById('an-list');
+  if (el) el.scrollTop = scroll;
 }
 
 async function sendAnnouncement() {
-  const text = document.getElementById('ann-text').value.trim();
-  const errEl = document.getElementById('ann-err');
-  const duration = Number(document.getElementById('ann-duration').value);
-  if (!text) { errEl.textContent = 'Введите текст'; return; }
-  if (annTarget === 'select' && annSelected.size === 0) {
-    errEl.textContent = annKind === 'chat' ? 'Выберите хотя бы один чат' : 'Выберите получателей'; return;
-  }
-  if (annKind === 'banner' && !(duration > 0)) { errEl.textContent = 'Укажите время отображения'; return; }
-  errEl.textContent = '';
-
+  const f = AN.form;
+  if (!f || f.busy) return;
+  const text = f.text.trim(), duration = Number(f.duration);
+  f.err = !text ? 'Напишите текст объявления'
+    : f.pick && !f.who.size ? (f.kind === 'chat' ? 'Выберите хотя бы один чат' : 'Выберите получателей')
+    : f.kind === 'banner' && !(duration > 0) ? 'Укажите, сколько минут показывать полосу' : '';
+  if (f.err) return anRenderForm(!text ? 'an-text' : null);
+  f.busy = true;
+  anRenderForm();
   const data = await api('POST', '/api/admin/announcement', {
-    kind: annKind, text, target: annTarget, targets: [...annSelected],
-    start_at: annStartAt || 0, duration_min: annKind === 'banner' ? duration : 0,
+    kind: f.kind, text, target: f.pick ? 'select' : 'all', targets: [...f.who],
+    start_at: annStartAt || 0, duration_min: f.kind === 'banner' ? duration : 0,
   });
-  if (!data?.ok) { errEl.textContent = data?.error || 'Ошибка'; return; }
-
+  f.busy = false;
+  if (!data?.ok) { f.err = data?.error || 'Не удалось отправить'; return anRenderForm(); }
   closeModal('modal-announcement');
   toast(data.scheduled ? `Запланировано на ${fmtDateTime(annStartAt)}` : 'Объявление отправлено', 'success');
   if (currentPage === 'announcements') renderAnnouncements();
+  updateNavBadges();
 }
 
 /* ── DATE-TIME PICKER ── */
