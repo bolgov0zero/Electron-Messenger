@@ -108,54 +108,53 @@ router.get('/stats', (req, res) => {
   });
 });
 
-// Message activity for sparkline chart
+// Сообщения за период для графика на главной: 24 часа по часам, неделя и месяц по дням,
+// год по месяцам. Границы — по часовому поясу администратора (tz — смещение в минутах):
+// сервер часто живёт в UTC, и сутки по его часам начинались бы не в полночь.
+// Подсчёт кэшируем: за год это перебор большой части истории, а главная опрашивает
+// каждые 10 секунд — без кэша это было бы видно на графике отклика сервера.
+const ACTIVITY = {
+  '24h': { unit: 'hour', count: 24, ttl: 10e3 },
+  '7d': { unit: 'day', count: 7, ttl: 60e3 },
+  '30d': { unit: 'day', count: 30, ttl: 5 * 60e3 },
+  '1y': { unit: 'month', count: 12, ttl: 5 * 60e3 },
+};
+const activityCache = new Map();
+
 router.get('/activity', (req, res) => {
-  const range = req.query.range || '24h';
+  const range = ACTIVITY[req.query.range] ? req.query.range : '24h';
+  const { unit, count, ttl } = ACTIVITY[range];
+  const tz = Math.max(-840, Math.min(840, Math.round(Number(req.query.tz) || 0)));
+  const cacheKey = `${range}:${tz}`;
+  const hit = activityCache.get(cacheKey);
+  if (hit && Date.now() - hit.at < ttl) return res.json(hit.data);
 
-  if (range === '24h') {
-    // 24 hourly buckets (oldest → newest)
-    const now = Math.floor(Date.now() / 1000);
-    const since = now - 86400;
-    const rows = db.prepare(`
-      SELECT CAST((sent_at - ?) / 3600 AS INTEGER) AS bucket, COUNT(*) AS count
-      FROM messages WHERE deleted=0 AND sent_at >= ?
-      GROUP BY bucket
-    `).all(since, since);
-    const points = new Array(24).fill(0);
-    rows.forEach(r => { if (r.bucket >= 0 && r.bucket < 24) points[r.bucket] = r.count; });
-    const labels = [0, 6, 12, 18, 24].map(offset => {
-      const d = new Date((since + offset * 3600) * 1000);
-      return d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
-    });
-    return res.json({ points, labels });
+  // Считаем в сдвинутом времени: к UTC прибавляем смещение, и UTC-методы Date дают
+  // местные часы и даты. Date.UTC сам переносит отрицательные часы, дни и месяцы.
+  const off = tz * 60;
+  const local = new Date(Date.now() + off * 1000);
+  const [Y, M, D, h] = [local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), local.getUTCHours()];
+  const starts = [];
+  for (let i = count - 1; i >= 0; i--) {
+    starts.push(unit === 'hour' ? Date.UTC(Y, M, D, h - i)
+      : unit === 'day' ? Date.UTC(Y, M, D - i)
+      : Date.UTC(Y, M - i, 1));
   }
-
-  if (range === '7d') {
-    const rows = db.prepare(`
-      SELECT CAST((unixepoch('now') - sent_at) / 86400 AS INTEGER) AS days_ago, COUNT(*) AS count
-      FROM messages WHERE deleted=0 AND sent_at >= unixepoch('now') - 7*86400
-      GROUP BY days_ago
-    `).all();
-    const points = new Array(7).fill(0);
-    rows.forEach(r => { const i = 6 - r.days_ago; if (i >= 0 && i < 7) points[i] = r.count; });
-    const ruDay = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
-    const labels = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(); d.setDate(d.getDate() - (6 - i));
-      return ruDay[d.getDay()];
-    });
-    return res.json({ points, labels });
-  }
-
-  // 30d
+  const format = { hour: '%Y-%m-%d %H', day: '%Y-%m-%d', month: '%Y-%m' }[unit];
   const rows = db.prepare(`
-    SELECT CAST((unixepoch('now') - sent_at) / 86400 AS INTEGER) AS days_ago, COUNT(*) AS count
-    FROM messages WHERE deleted=0 AND sent_at >= unixepoch('now') - 30*86400
-    GROUP BY days_ago
-  `).all();
-  const points = new Array(30).fill(0);
-  rows.forEach(r => { const i = 29 - r.days_ago; if (i >= 0 && i < 30) points[i] = r.count; });
-  const labels = Array.from({ length: 5 }, (_, i) => String(Math.round(i * 7.5) + 1));
-  res.json({ points, labels });
+    SELECT strftime('${format}', sent_at + ?, 'unixepoch') AS k, COUNT(*) AS n
+    FROM messages WHERE deleted = 0 AND sent_at >= ? GROUP BY k
+  `).all(off, Math.floor(starts[0] / 1000) - off);
+  const byKey = new Map(rows.map(r => [r.k, r.n]));
+  const p2 = n => String(n).padStart(2, '0');
+  const keyOf = ms => {
+    const d = new Date(ms);
+    const ym = `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}`;
+    return unit === 'month' ? ym : unit === 'day' ? `${ym}-${p2(d.getUTCDate())}` : `${ym}-${p2(d.getUTCDate())} ${p2(d.getUTCHours())}`;
+  };
+  const data = { range, unit, buckets: starts.map(ms => ({ t: ms - off * 1000, n: byKey.get(keyOf(ms)) || 0 })) };
+  activityCache.set(cacheKey, { at: Date.now(), data });
+  res.json(data);
 });
 
 // Create room (admin only) — notifies members via WS
@@ -495,14 +494,6 @@ router.get('/monitor', (req, res) => {
 router.get('/overview', async (req, res) => {
   const count = sql => db.prepare(sql).get().c;
 
-  // Сутки по часам, выровненные по началу часа — подсказка показывает «14:00–15:00»
-  const now = Math.floor(Date.now() / 1000);
-  const hourStart = Math.floor(now / 3600) * 3600 - 23 * 3600;
-  const hourly = new Array(24).fill(0);
-  db.prepare('SELECT CAST((sent_at - ?) / 3600 AS INTEGER) AS b, COUNT(*) AS c FROM messages WHERE deleted = 0 AND sent_at >= ? GROUP BY b')
-    .all(hourStart, hourStart)
-    .forEach(r => { if (r.b >= 0 && r.b < 24) hourly[r.b] = r.c; });
-
   // Кто в сети: соединения по людям — у одного человека бывает и компьютер, и телефон
   const avatarDir = path.join(path.dirname(DB_PATH), 'avatar');
   const byUser = new Map();
@@ -536,7 +527,6 @@ router.get('/overview', async (req, res) => {
       // Тот же счёт, что во вкладке «Файлы»: файлы на диске без миниатюр
       files: storage.files.count,
     },
-    hourly: { start: hourStart * 1000, counts: hourly },
     online,
   });
 });

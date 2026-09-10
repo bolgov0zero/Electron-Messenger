@@ -235,11 +235,10 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .hm-fact dt{font-size:10px;color:var(--c-muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
 .hm-fact dd{margin:0;font-family:var(--f-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
 .hm-upd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.hm-upd-state{font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.hm-upd-state:empty{display:none}
-.hm-upd-state.ok{color:var(--c-green-text)}
-.hm-upd-state.new{color:var(--c-orange-text)}
-.hm-upd-state.err{color:var(--c-red-text)}
+/* Результат проверки — в самой кнопке, ширина постоянная: строка сервера не перестраивается */
+.hm-upd-btn{min-width:196px;justify-content:center}
+.hm-upd-btn.hm-upd-ok{color:var(--c-green-text)}
+.hm-upd-btn.hm-upd-err{color:var(--c-red-text)}
 .hm-ctl{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .hm-live{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--c-text2);white-space:nowrap}
 .hm-live-dot{width:7px;height:7px;border-radius:50%;background:var(--c-green);animation:hmPulse 2s ease-out infinite}
@@ -339,6 +338,11 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .hm-mini{font-size:12px;font-weight:600;color:var(--c-text2);display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
 .hm-mini span{font-family:var(--f-mono);font-weight:500;color:var(--c-muted);font-size:11px;font-variant-numeric:tabular-nums}
 .hm-mini span.on{color:var(--c-text);font-weight:600}
+.hm-mini-bars{align-items:center;flex-wrap:wrap;row-gap:6px}
+.hm-mini .hm-mini-title{font-family:var(--f-ui);font-size:12px;font-weight:600;color:var(--c-text2)}
+.hm-mini-bars #hm-bars-cap{margin-left:auto}
+.hm-seg-sm button{height:22px;padding:0 8px;font-size:10.5px}
+.hm-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .hm-bars{position:relative;flex:1;min-height:96px;border-radius:6px}
 .hm-bars:focus-visible{outline:2px solid var(--border-focus);outline-offset:3px}
 .hm-bars svg{position:absolute;inset:0;display:block;width:100%;height:100%}
@@ -1315,7 +1319,7 @@ function startBgClientsPolling() {
 // Графики живут своим опросом раз в 2 секунды — см. hmStartMonitor.
 async function refreshDashboardData() {
   if (!token || currentPage !== 'dashboard') return;
-  try { await hmLoadOverview(); } catch {}
+  try { await Promise.all([hmLoadOverview(), hmLoadActivity()]); } catch {}
 }
 
 function startBgDashPolling() {
@@ -1497,10 +1501,18 @@ const HM = {
   overview: null,
   samples: [], events: [], live: {}, ws: null, cores: 1, lastT: 0,
   range: '15m', paused: false, hover: null, barHover: null, down: false,
+  msgRange: '24h', activity: null,
   timer: null, ro: null,
   upd: { busy: false, target: null, check: null },
 };
 try { const r = localStorage.getItem('hm-range'); if (['5m', '15m', '1h'].includes(r)) HM.range = r; } catch {}
+try { const r = localStorage.getItem('hm-msg-range'); if (['24h', '7d', '30d', '1y'].includes(r)) HM.msgRange = r; } catch {}
+const HM_MSG_RANGE = {
+  '24h': { name: '24 часа', title: 'Сообщения за 24 часа' },
+  '7d': { name: 'Неделя', title: 'Сообщения за неделю' },
+  '30d': { name: 'Месяц', title: 'Сообщения за месяц' },
+  '1y': { name: 'Год', title: 'Сообщения за год' },
+};
 
 const $hm = id => document.getElementById(id);
 const hmFmt = (v, d = 0) => v == null || !isFinite(v) ? '—'
@@ -1605,9 +1617,8 @@ async function renderDashboard() {
         <div class="hm-fact"><dt>Версия</dt><dd id="hm-version">—</dd></div>
         <div class="hm-fact"><dt>Подключений</dt><dd id="hm-ws">—</dd></div>
       </dl>
-      <div class="hm-upd">
-        <button class="btn btn-ghost btn-sm" id="hm-upd-btn"></button>
-        <span class="hm-upd-state" id="hm-upd-state" aria-live="polite"></span>
+      <div class="hm-upd" aria-live="polite">
+        <button class="btn btn-ghost btn-sm hm-upd-btn" id="hm-upd-btn"></button>
       </div>
       <div class="hm-ctl">
         <span class="hm-live" id="hm-live"><span class="hm-live-dot"></span><span id="hm-live-text">Обновление каждые 2 с</span></span>
@@ -1631,8 +1642,15 @@ async function renderDashboard() {
       <dl class="hm-kpis hm-chat-kpis" id="hm-chat-kpis"></dl>
       <div class="hm-chat-body">
         <div>
-          <div class="hm-mini">Сообщения за 24 часа <span id="hm-bars-cap" aria-live="polite"></span></div>
-          <div class="hm-bars" id="hm-bars" tabindex="0" aria-label="Сообщения по часам за сутки. Стрелками влево и вправо можно выбрать час"></div>
+          <div class="hm-mini hm-mini-bars">
+            <span class="hm-mini-title" id="hm-bars-title">${HM_MSG_RANGE[HM.msgRange].title}</span>
+            <span id="hm-bars-cap"></span>
+            <div class="hm-seg hm-seg-sm" role="group" aria-label="Период графика сообщений">
+              ${Object.keys(HM_MSG_RANGE).map(r => `<button data-msg-range="${r}" aria-pressed="${HM.msgRange === r}" onclick="hmSetMsgRange('${r}')">${HM_MSG_RANGE[r].name}</button>`).join('')}
+            </div>
+          </div>
+          <span class="hm-sr" id="hm-bars-live" aria-live="polite"></span>
+          <div class="hm-bars" id="hm-bars" tabindex="0" aria-label="График сообщений. Стрелками влево и вправо можно выбрать столбик"></div>
         </div>
         <div>
           <div class="hm-mini">Сейчас в сети <span id="hm-online-cap"></span></div>
@@ -1684,7 +1702,7 @@ async function renderDashboard() {
   HM.ro = new ResizeObserver(() => { hmRenderCharts(); hmRenderBars(); });
   HM.ro.observe($hm('hm'));
   updateNavBadges();
-  await Promise.all([hmLoadOverview(), hmLoadMonitor(true)]);
+  await Promise.all([hmLoadOverview(), hmLoadMonitor(true), hmLoadActivity()]);
   hmStartMonitor();
 }
 
@@ -1693,7 +1711,26 @@ async function hmLoadOverview() {
   if (!o || currentPage !== 'dashboard' || !$hm('hm')) return;
   HM.overview = o;
   hmRenderOverview();
+}
+
+// Сообщения за выбранный период. Подсчёт кэширует сервер, поэтому опрашивать вместе
+// со сводкой не накладно
+async function hmLoadActivity() {
+  const range = HM.msgRange;
+  const a = await hmGet(`/api/admin/activity?range=${range}&tz=${-new Date().getTimezoneOffset()}`);
+  if (!a || range !== HM.msgRange || currentPage !== 'dashboard' || !$hm('hm')) return;
+  HM.activity = a;
   hmRenderBars();
+}
+
+function hmSetMsgRange(r) {
+  if (!HM_MSG_RANGE[r] || r === HM.msgRange) return;
+  HM.msgRange = r;
+  HM.barHover = null;
+  try { localStorage.setItem('hm-msg-range', r); } catch {}
+  document.querySelectorAll('#hm [data-msg-range]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.msgRange === r)));
+  hmText('hm-bars-title', HM_MSG_RANGE[r].title);
+  hmLoadActivity();
 }
 
 function hmRenderOverview() {
@@ -1782,14 +1819,18 @@ function hmRenderOverview() {
   hmRenderHeadlines();
 }
 
-// ── Сообщения по часам: подсказка при наведении, касании и стрелками ──
+// ── Сообщения за период: подсказка при наведении, касании и стрелками ──
+const HM_BARS_PL = 36;
+
 function hmBindBars() {
   const el = $hm('hm-bars');
   if (!el) return;
   const pick = e => {
+    const n = HM.activity?.buckets.length;
+    if (!n) return;
     const r = el.getBoundingClientRect();
-    const i = Math.floor((e.clientX - r.left - 26) / ((r.width - 26) / 24));
-    const next = i >= 0 && i < 24 ? i : null;
+    const i = Math.floor((e.clientX - r.left - HM_BARS_PL) / ((r.width - HM_BARS_PL) / n));
+    const next = i >= 0 && i < n ? i : null;
     if (next !== HM.barHover) { HM.barHover = next; hmRenderBars(); }
   };
   el.addEventListener('pointermove', pick);
@@ -1797,51 +1838,76 @@ function hmBindBars() {
   // На касание подсказка остаётся до следующего касания; мышь — убираем при уходе
   el.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { HM.barHover = null; hmRenderBars(); } });
   el.addEventListener('keydown', e => {
-    if (!['ArrowLeft', 'ArrowRight', 'Escape'].includes(e.key)) return;
+    const n = HM.activity?.buckets.length || 0;
+    if (!n || !['ArrowLeft', 'ArrowRight', 'Escape'].includes(e.key)) return;
     e.preventDefault();
-    HM.barHover = e.key === 'Escape' ? null : Math.min(23, Math.max(0, (HM.barHover ?? 24) + (e.key === 'ArrowLeft' ? -1 : 1)));
+    HM.barHover = e.key === 'Escape' ? null : Math.min(n - 1, Math.max(0, (HM.barHover ?? n) + (e.key === 'ArrowLeft' ? -1 : 1)));
     hmRenderBars();
   });
   el.addEventListener('blur', () => { HM.barHover = null; hmRenderBars(); });
 }
 
+// Подпись в подсказке: час, день или месяц
+function hmBucketName(unit, t) {
+  const d = new Date(t);
+  if (unit === 'hour') return `${hmPad(d.getHours())}:00–${hmPad(new Date(t + 3600e3).getHours())}:00`;
+  if (unit === 'day') return d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' });
+  return d.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }).replace(/\s*г\.$/, '');
+}
+
+// Подпись под осью. Отсчёт от последнего столбика — текущий период подписан всегда
+function hmBucketAxis(unit, t, n, i) {
+  const d = new Date(t), back = n - 1 - i;
+  if (unit === 'hour') return back % 6 === 0 ? hmPad(d.getHours()) : '';
+  if (unit === 'day' && n <= 7) return d.toLocaleDateString('ru-RU', { weekday: 'short' });
+  if (unit === 'day') return back % 7 === 0 ? `${hmPad(d.getDate())}.${hmPad(d.getMonth() + 1)}` : '';
+  return d.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '');
+}
+
 function hmRenderBars() {
-  const el = $hm('hm-bars'), o = HM.overview;
-  if (!el || !o) return;
+  const el = $hm('hm-bars'), a = HM.activity;
+  if (!el || !a) return;
   const W = el.clientWidth, H = el.clientHeight;
   if (!W || !H) return;
-  const { counts, start } = o.hourly;
-  const total = counts.reduce((a, b) => a + b, 0);
-  const pl = 26, pt = 24, pb = 16, iw = W - pl, ih = H - pt - pb;
-  const top = Math.max(10, Math.ceil(Math.max(...counts) * 1.1 / 10) * 10);   // 0 · 15 · 30, без «13»
-  const bw = iw / 24, hv = HM.barHover;
+  const { unit, buckets } = a;
+  const n = buckets.length;
+  const total = buckets.reduce((s, b) => s + b.n, 0);
+  const pl = HM_BARS_PL, pt = 24, pb = 16, iw = W - pl, ih = H - pt - pb;
+  // Верх шкалы — круглое чётное число, чтобы и средняя отметка была целой: 0 · 15 · 30
+  const raw = Math.max(1, ...buckets.map(b => b.n)) * 1.1;
+  const step = Math.pow(10, Math.floor(Math.log10(raw)));
+  let top = Math.ceil(raw / step) * step;
+  if (top % 2) top += step;
+  const bw = iw / n, barW = Math.min(bw * .64, 28);
+  const hv = HM.barHover != null && HM.barHover < n ? HM.barHover : null;
   let svg = '';
   [0, top / 2, top].forEach(v => {
     const y = (pt + ih - v / top * ih).toFixed(1);
     svg += `<line x1="${pl}" x2="${W}" y1="${y}" y2="${y}" style="stroke:var(--c-border2)"/><text x="${pl - 6}" y="${+y + 3.5}" text-anchor="end">${hmFmt(v)}</text>`;
   });
-  counts.forEach((v, i) => {
-    const h = v / top * ih;
-    const opacity = hv == null ? (i === 23 ? 1 : .6) : (i === hv ? 1 : .3);
-    svg += `<rect x="${(pl + i * bw + bw * .18).toFixed(1)}" y="${(pt + ih - h).toFixed(1)}" width="${(bw * .64).toFixed(1)}" height="${Math.max(h, v ? 1.5 : 0).toFixed(1)}" rx="2" style="fill:var(--c-primary);fill-opacity:${opacity}"/>`;
-    if (i % 6 === 0 || i === 23) svg += `<text x="${(pl + i * bw + bw / 2).toFixed(1)}" y="${H - 3}" text-anchor="middle">${hmPad(new Date(start + i * 3600e3).getHours())}</text>`;
+  buckets.forEach((b, i) => {
+    const h = b.n / top * ih;
+    const opacity = hv == null ? (i === n - 1 ? 1 : .6) : (i === hv ? 1 : .3);
+    svg += `<rect x="${(pl + i * bw + (bw - barW) / 2).toFixed(1)}" y="${(pt + ih - h).toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(h, b.n ? 1.5 : 0).toFixed(1)}" rx="2" style="fill:var(--c-primary);fill-opacity:${opacity}"/>`;
+    const label = hmBucketAxis(unit, b.t, n, i);
+    if (label) svg += `<text x="${(pl + i * bw + bw / 2).toFixed(1)}" y="${H - 3}" text-anchor="middle">${label}</text>`;
   });
-  const cap = $hm('hm-bars-cap');
+  let spoken = '';
   if (hv != null) {
-    const n = counts[hv];
-    const label = `${hmPad(new Date(start + hv * 3600e3).getHours())}:00–${hmPad(new Date(start + (hv + 1) * 3600e3).getHours())}:00 · ${hmFmt(n)} ${hmPlural(n, 'сообщение', 'сообщения', 'сообщений')}`;
+    const c = buckets[hv].n;
+    spoken = `${hmBucketName(unit, buckets[hv].t)} · ${hmFmt(c)} ${hmPlural(c, 'сообщение', 'сообщения', 'сообщений')}`;
     // Подпись над столбиком; у краёв сдвигаем внутрь, чтобы не обрезалась
-    const tw = label.length * 6.3 + 16;
+    const tw = spoken.length * 6.3 + 16;
     const cx = Math.min(W - tw / 2 - 1, Math.max(pl + tw / 2, pl + hv * bw + bw / 2));
-    const ty = Math.max(1, pt + ih - n / top * ih - 24);
+    const ty = Math.max(1, pt + ih - c / top * ih - 24);
     svg += `<rect class="tip-bg" x="${(cx - tw / 2).toFixed(1)}" y="${ty.toFixed(1)}" width="${tw.toFixed(1)}" height="19" rx="5"/>`
-      + `<text class="tip" x="${cx.toFixed(1)}" y="${(ty + 13).toFixed(1)}" text-anchor="middle">${label}</text>`;
-    if (cap) { cap.textContent = label; cap.classList.add('on'); }
-  } else if (cap) {
-    cap.textContent = `${hmFmt(total)} всего`;
-    cap.classList.remove('on');
+      + `<text class="tip" x="${cx.toFixed(1)}" y="${(ty + 13).toFixed(1)}" text-anchor="middle">${esc(spoken)}</text>`;
   }
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Сообщения по часам за сутки, всего ${total}">${svg}</svg>`;
+  // Итог в заголовке не меняем при наведении — иначе заголовок прыгал бы по ширине.
+  // Выбранный столбик читалке экрана сообщаем через скрытую живую область.
+  hmText('hm-bars-cap', `${hmFmt(total)} всего`);
+  hmText('hm-bars-live', spoken);
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(HM_MSG_RANGE[HM.msgRange].title)}: всего ${total}">${svg}</svg>`;
 }
 
 // ── Живые графики ──
@@ -2129,45 +2195,49 @@ const HM_STEPS = [['fetch', 'Загрузка с GitHub'], ['deps', 'Устан�
 const hmSpin = svg => svg.replace('<svg', '<svg class="hm-spin"');
 const HM_HIDE_PANEL = `<button class="btn btn-ghost btn-sm" onclick="document.getElementById('hm-upd-panel').hidden = true">Скрыть</button>`;
 
-function hmUpdButton(html, cls, onclick, disabled = false) {
+// Результат проверки показываем в самой кнопке. Отдельная надпись рядом меняла ширину
+// строки сервера, и блок с паузой и периодом перескакивал на следующую строку.
+function hmUpdButton(html, cls, onclick, disabled = false, title = '') {
   const b = $hm('hm-upd-btn');
   if (!b) return;
   b.innerHTML = html;
-  b.className = 'btn btn-sm ' + cls;
+  b.className = 'btn btn-sm hm-upd-btn ' + cls;
   b.disabled = disabled;
   b.onclick = onclick;
+  b.title = title;
 }
-function hmUpdState(cls, html) {
-  const e = $hm('hm-upd-state');
-  if (e) { e.className = 'hm-upd-state ' + cls; e.innerHTML = html; }
-}
+const hmUpdLatest = at => hmUpdButton(HM_ICON.tick + 'Последняя версия', 'btn-ghost hm-upd-ok', hmUpdCheck, false,
+  `Проверено в ${hmClock(at)}. Нажмите, чтобы проверить ещё раз`);
 
 function hmUpdIdle() {
   if (HM.upd.busy) return hmUpdRenderSteps();   // вернулись на главную посреди установки
   hmUpdButton(HM_ICON.refresh + 'Проверить обновления', 'btn-ghost', hmUpdCheck);
   if (HM.upd.check?.hasUpdate) hmUpdOffer(HM.upd.check);
+  else if (HM.upd.check?.latest) hmUpdLatest(HM.upd.checkedAt);
 }
 
 async function hmUpdCheck() {
   hmUpdButton(hmSpin(HM_ICON.refresh) + 'Проверяю…', 'btn-ghost', null, true);
-  hmUpdState('', '');
   const v = await hmGet('/api/admin/server/version');
   if (!$hm('hm') || HM.upd.busy) return;
   HM.upd.check = v;
-  hmUpdButton(HM_ICON.refresh + 'Проверить обновления', 'btn-ghost', hmUpdCheck);
-  if (!v?.latest) { hmUpdState('err', 'Не удалось проверить — GitHub не ответил'); return; }
+  HM.upd.checkedAt = Date.now();
+  if (!v?.latest) {
+    hmUpdButton(HM_ICON.refresh + 'Не удалось проверить', 'btn-ghost hm-upd-err', hmUpdCheck, false, 'GitHub не ответил. Нажмите, чтобы повторить');
+    return;
+  }
   if (!v.hasUpdate) {
     const p = $hm('hm-upd-panel');
     if (p) p.hidden = true;
-    hmUpdState('ok', `${HM_ICON.tick}Установлена последняя версия · ${hmClock(Date.now())}`);
+    hmUpdLatest(HM.upd.checkedAt);
     return;
   }
   hmUpdOffer(v);
 }
 
 function hmUpdOffer(v) {
-  hmUpdState('new', `Доступна ${esc(v.latest)}`);
-  hmUpdButton(HM_ICON.up + 'Установить', 'btn-primary', () => { const p = $hm('hm-upd-panel'); if (p) p.hidden = false; $hm('hm-upd-go')?.focus(); });
+  hmUpdButton(HM_ICON.up + 'Доступна ' + esc(v.latest), 'btn-primary', () => { const p = $hm('hm-upd-panel'); if (p) p.hidden = false; $hm('hm-upd-go')?.focus(); },
+    false, 'Показать подробности и установить');
   const p = $hm('hm-upd-panel');
   if (!p) return;
   p.hidden = false;
@@ -2220,14 +2290,13 @@ async function hmUpdPoll() {
 
 function hmUpdRenderSteps() {
   const u = HM.upd, p = $hm('hm-upd-panel');
-  hmUpdButton(hmSpin(HM_ICON.refresh) + 'Устанавливаю…', 'btn-ghost', null, true);
-  hmUpdState('new', `${esc(u.from || '')} → ${esc(u.target)}`);
+  hmUpdButton(hmSpin(HM_ICON.refresh) + 'Устанавливаю…', 'btn-ghost', null, true, `${u.from || ''} → ${u.target}`);
   hmSyncLive();
   if (!p) return;
   p.hidden = false;
   if (!$hm('hm-upd-steps')) p.innerHTML = `
     <div class="hm-upd-row">
-      <div class="hm-upd-title">Установка <span class="hm-mono">${esc(u.target)}</span></div>
+      <div class="hm-upd-title">Установка <span class="hm-mono">${esc(u.from || '')} → ${esc(u.target)}</span></div>
       <div class="hm-note" id="hm-upd-note"></div>
     </div>
     <ol class="hm-steps" id="hm-upd-steps">${HM_STEPS.map(([k, name]) => `<li data-step="${k}"><span class="ic"></span><span>${name}</span></li>`).join('')}</ol>
@@ -2258,10 +2327,12 @@ function hmUpdRenderSteps() {
 function hmUpdFinish(ok, message) {
   const u = HM.upd;
   u.busy = false;
-  u.check = null;
+  u.check = ok ? { current: u.target, latest: u.target, hasUpdate: false } : null;
+  u.checkedAt = Date.now();
   const bar = $hm('hm-upd-bar');
   if (bar) { bar.style.width = '100%'; bar.style.background = ok ? 'var(--c-green)' : 'var(--c-red)'; }
-  hmUpdButton(HM_ICON.refresh + 'Проверить обновления', 'btn-ghost', hmUpdCheck);
+  if (ok) hmUpdLatest(u.checkedAt);
+  else hmUpdButton(HM_ICON.refresh + 'Проверить обновления', 'btn-ghost', hmUpdCheck);
   hmSyncLive();
   const p = $hm('hm-upd-panel');
   const row = html => {
@@ -2272,12 +2343,10 @@ function hmUpdFinish(ok, message) {
   };
   if (ok) {
     const text = message || `Сервер обновлён до ${u.target} в ${hmClock(Date.now())}`;
-    hmUpdState('ok', HM_ICON.tick + 'Установлена последняя версия');
     row(`<div class="hm-upd-title" style="color:var(--c-green-text)">${esc(text)}</div>${HM_HIDE_PANEL}`);
     toast(esc(message || 'Сервер обновлён и перезапущен'), 'success');
     hmLoadOverview();
   } else {
-    hmUpdState('err', 'Обновление не удалось');
     row(`<div><div class="hm-upd-title" style="color:var(--c-red-text)">Обновление не удалось</div><div class="hm-note">${esc(message)}</div></div>${HM_HIDE_PANEL}`);
     toast(esc(message), 'error');
   }
