@@ -2403,8 +2403,15 @@ function hmUpdRenderSteps() {
 
   const steps = { ...(u.status?.steps || {}) };
   const reported = !!u.status?.startedAt;
-  if (u.status?.running === u.target) steps.verify = { state: 'done' };
-  else if (steps.restart?.state === 'done' || (u.down && steps.fetch?.state === 'done')) steps.verify = { state: 'active' };
+  if (u.status?.running === u.target) {
+    // Сервер уже работает на новой версии — значит, загрузка и перезапуск точно прошли.
+    // update.sh отмечает «перезапуск готов» только через пару секунд после старта службы,
+    // и без этого шаг так и крутился бы рядом с галочкой проверки версии.
+    for (const [k] of HM_STEPS) {
+      if (steps[k]?.state === 'active' || (!steps[k] && (k === 'fetch' || k === 'restart'))) steps[k] = { state: 'done' };
+    }
+    steps.verify = { state: 'done' };
+  } else if (steps.restart?.state === 'done' || (u.down && steps.fetch?.state === 'done')) steps.verify = { state: 'active' };
   let finished = 0;
   for (const [k, name] of HM_STEPS) {
     const li = p.querySelector(`[data-step="${k}"]`);
@@ -3387,7 +3394,10 @@ function clSummary() {
     ? `<button class="btn btn-ghost btn-sm" disabled>${UX_I.refresh.replace('<svg', '<svg class="ux-spin"')}Проверяю…</button>`
     : `<button class="btn btn-ghost btn-sm" onclick="clCheck()"${CL.checkedAt ? ` title="Проверено в ${uxClock(CL.checkedAt)}"` : ''}>${UX_I.refresh}Проверить</button>`;
   return `
-    <div><div class="cl-k">Подключено</div><div class="cl-v">${all.length}<small>${people} ${uxPlural(people, 'человек', 'человека', 'человек')}</small></div></div>
+    <div><div class="cl-k">Подключено</div><div class="cl-v">${all.length}<small>${people === all.length
+      // У каждого по одному устройству — второе число повторяло бы первое
+      ? uxPlural(people, 'человек', 'человека', 'человек')
+      : `${uxPlural(all.length, 'устройство', 'устройства', 'устройств')} у ${people} ${uxPlural(people, 'человека', 'человек', 'человек')}`}</small></div></div>
     <div>
       <div class="cl-k">Версии Electron · ${electron.length} ${uxPlural(electron.length, 'компьютер', 'компьютера', 'компьютеров')}${others ? `, ещё ${others} в браузере` : ''}</div>
       ${electron.length ? `<div class="cl-vbar" role="img" aria-label="Распределение версий Electron">${versions.map(([v, n]) => `<span style="flex:${n};background:${color(v)}" title="${esc(v)}: ${n}"></span>`).join('')}</div>
