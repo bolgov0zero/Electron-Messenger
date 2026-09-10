@@ -1869,6 +1869,7 @@ function emojiPickerCached() {
 }
 
 function closeEmojiPicker() {
+  if (_emojiInserting) return;   // фокус вернули после вставки смайла
   document.getElementById('ep-grid')?.classList.remove('open');
 }
 
@@ -1976,6 +1977,11 @@ function filterEmoji(q) {
   document.querySelectorAll('#ep-tabs .ep-tab').forEach(t => t.setAttribute('aria-selected', 'false'));
 }
 
+// Панель после выбора остаётся открытой: обычно ставят не один смайл, а
+// несколько подряд, и каждый раз открывать её заново утомительно. Закрыть —
+// повторным нажатием на кнопку, кликом мимо композера, Escape или установкой
+// курсора в поле ввода.
+let _emojiInserting = false;
 function insertEmoji(em) {
   trackEmojiUse(em);
   const input = document.getElementById('msg-input');
@@ -1983,9 +1989,12 @@ function insertEmoji(em) {
   const start = input.selectionStart, end = input.selectionEnd;
   input.value = input.value.slice(0, start) + em + input.value.slice(end);
   input.selectionStart = input.selectionEnd = start + em.length;
+  // Возвращаем курсор в поле, но это не то же самое, что поставить его туда
+  // руками: там закрытие панели как раз нужно, поэтому помечаем свой вызов
+  _emojiInserting = true;
   input.focus();
+  _emojiInserting = false;
   autoResize(input);
-  closeEmojiPicker();
 }
 
 // ── RENDER MESSAGES ──
