@@ -666,6 +666,14 @@ tr.ua-banned .ux-cell{opacity:.6}
 .wh-select option,.wh-select optgroup{background:var(--c-surface);color:var(--c-text)}
 @media (max-width:900px){ .an-kinds{grid-template-columns:1fr} .an-modal{width:calc(100vw - 24px)} }
 
+/* ── ПЛАВНАЯ СМЕНА ТЕМЫ ── класс theme-anim держится доли секунды */
+html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after {
+  transition: background-color .22s ease, border-color .22s ease, color .22s ease, fill .22s ease, stroke .22s ease, box-shadow .22s ease !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after { transition: none !important; }
+}
+
 /* ── TABLE ── */
 table{width:100%;border-collapse:collapse}
 th{background:var(--c-surface2);text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--c-border)}
@@ -804,16 +812,138 @@ tr:hover .td-actions{opacity:1}
 .upd-bar{flex:1;height:4px;border-radius:2px;background:var(--c-border);overflow:hidden}
 
 /* ── SETTINGS MODAL ── */
-.modal-settings{width:50vw;height:70vh;max-width:none;max-height:none;min-width:560px}
-.settings-modal-layout{display:flex;flex:1;overflow:hidden;min-height:0}
-.settings-modal-nav{width:160px;min-width:160px;max-width:160px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--c-border);padding:6px;display:flex;flex-direction:column;gap:2px}
-/* «Обновление» стоит особняком — прижимаем к нижнему краю списка */
-.sm-nav-bottom{margin-top:auto}
-.sm-nav-item{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:var(--radius-xs);border:none;background:none;color:var(--c-text2);font-size:12px;font-weight:500;cursor:pointer;text-align:left;width:100%;transition:background var(--t-fast),color var(--t-fast);font-family:var(--f-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sm-nav-item svg{width:15px;height:15px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:2}
-.sm-nav-item:hover{background:var(--bg-hover);color:var(--c-text)}
-.sm-nav-item.active{background:var(--c-primary-dim);color:var(--c-primary)}
-.settings-modal-content{flex:1;min-height:0;overflow-y:auto;padding:20px}
+/* Окно настроек: префикс st-. Разделы слева, строки настроек справа, общий подвал для несохранённого */
+.modal.st-modal{width:min(920px,calc(100vw - 32px));max-width:none;height:min(640px,calc(100vh - 40px));max-height:none;display:grid;grid-template-columns:236px minmax(0,1fr);border-radius:16px}
+.st-nav{background:var(--c-surface2);border-right:1px solid var(--c-border2);padding:16px 10px 12px;display:flex;flex-direction:column;gap:2px;min-height:0;overflow-y:auto}
+.st-nav-list{display:flex;flex-direction:column;gap:2px}
+.st-nav-h{padding:0 8px 14px}
+.st-nav-h h2{font-size:15px;font-weight:700;letter-spacing:-.2px}
+.st-nav-h p{font-size:11px;color:var(--c-muted)}
+.st-nav-h p b{font:600 11px var(--f-mono);color:var(--c-text2)}
+.st-sn{display:flex;align-items:center;gap:10px;width:100%;padding:7px 8px;border-radius:10px;border:1px solid transparent;background:none;text-align:left;cursor:pointer;color:var(--c-text2);font-family:var(--f-ui)}
+.st-sn:hover{background:var(--bg-hover)}
+.st-sn[aria-current="page"]{background:var(--c-surface);border-color:var(--c-border);box-shadow:var(--shadow);color:var(--c-text)}
+.st-sn-ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:var(--c-surface);border:1px solid var(--c-border2);color:var(--c-muted);flex-shrink:0}
+.st-sn-ic svg{width:14px;height:14px}
+.st-sn[aria-current="page"] .st-sn-ic{background:var(--c-primary-dim);border-color:rgba(58,147,140,.35);color:var(--c-primary)}
+.st-sn-tx{min-width:0;flex:1;display:flex;flex-direction:column}
+.st-sn-tx b{font-size:12.5px;font-weight:600}
+.st-sn-tx small{font-size:11px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block}
+.st-dot.ok{background:var(--c-green)} .st-dot.warn{background:var(--c-orange)} .st-dot.edit{background:var(--c-primary);box-shadow:0 0 0 3px var(--c-primary-dim)}
+.st-pane{display:flex;flex-direction:column;min-width:0;min-height:0}
+.st-head{display:flex;align-items:flex-start;gap:12px;padding:16px 22px 14px;border-bottom:1px solid var(--c-border2)}
+.st-head h3{font-size:16px;font-weight:700;letter-spacing:-.2px}
+.st-head p{font-size:12px;color:var(--c-text2)}
+.st-head .modal-close{margin-left:auto;flex-shrink:0}
+.st-body{flex:1;overflow-y:auto;padding:18px 22px 24px;display:flex;flex-direction:column;gap:18px}
+.st-foot{display:flex;align-items:center;gap:8px;padding:10px 22px;border-top:1px solid var(--c-border2);background:var(--c-surface)}
+.st-foot[hidden]{display:none}
+.st-foot.ask{background:var(--c-orange-dim)}
+.st-state{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--c-text2);min-width:0}
+.st-state svg{width:13px;height:13px;flex-shrink:0}
+.st-state.ok{color:var(--c-muted)} .st-state.ok svg{color:var(--c-green)}
+.st-state.warn b{color:var(--c-text)}
+.st-state.bad{color:var(--c-red-text)}
+.st-gt{font-size:10.5px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.07em;margin:0 0 -10px 2px;display:flex;align-items:center;gap:8px}
+.st-gt svg{width:12px;height:12px}
+.st-g{border:1px solid var(--c-border);border-radius:12px;background:var(--c-surface)}
+.st-r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 18px;align-items:center;padding:13px 14px}
+.st-r+.st-r{border-top:1px solid var(--c-border2)}
+.st-r.stack{grid-template-columns:minmax(0,1fr)}
+.st-l b{display:block;font-size:12.5px;font-weight:600}
+.st-l span{display:block;font-size:11.5px;color:var(--c-text2);max-width:62ch;margin-top:1px}
+.st-err{font-size:11px;color:var(--c-red-text)}
+.st-hint{font-size:11px;color:var(--c-muted)}
+.st-hint a{color:var(--c-primary);font-weight:600}
+.st-code{font:11px var(--f-mono);background:var(--c-surface2);border:1px solid var(--c-border2);border-radius:5px;padding:0 5px}
+.st-mono{font-family:var(--f-mono)!important;font-size:12.5px!important}
+.st-seg{display:flex;flex-wrap:wrap;gap:2px;padding:2px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:9px;width:max-content;max-width:100%}
+.st-seg button{height:28px;padding:0 12px;border:0;background:none;border-radius:7px;font:600 11.5px var(--f-ui);color:var(--c-text2);cursor:pointer;white-space:nowrap}
+.st-seg button:hover{color:var(--c-text)}
+.st-seg button[aria-pressed="true"]{background:var(--c-surface);color:var(--c-text);box-shadow:var(--shadow)}
+.st-ctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.st-inp{display:flex;align-items:center;height:34px;border:1px solid var(--border-input);border-radius:9px;background:var(--bg-input);padding:0 4px 0 10px;gap:4px;min-width:0}
+.st-inp:focus-within{border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow)}
+.st-inp.bad{border-color:var(--c-red)}
+.st-inp input,.st-inp select{border:0;outline:none;background-color:transparent;font:13px var(--f-ui);color:var(--c-text);width:100%;min-width:0;height:100%;padding:0;box-shadow:none}
+.st-inp select{cursor:pointer;padding-right:22px;background-position:right 2px center}
+.st-inp select option{background:var(--c-surface);color:var(--c-text)}
+.st-u{font-size:12px;color:var(--c-muted);padding-right:6px;white-space:nowrap}
+.st-num{width:96px}
+.st-num input{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.st-modal input[type=number]{-moz-appearance:textfield}
+.st-modal input::-webkit-outer-spin-button,.st-modal input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.st-eye{width:26px;height:26px;border:0;border-radius:7px;background:none;color:var(--c-text2);display:grid;place-items:center;cursor:pointer;flex-shrink:0}
+.st-eye:hover{background:var(--bg-hover);color:var(--c-text)}
+.st-eye svg{width:14px;height:14px}
+.st-step{display:inline-flex;align-items:center;height:34px;border:1px solid var(--border-input);border-radius:9px;background:var(--bg-input);overflow:hidden}
+.st-step:focus-within{border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow)}
+.st-step.bad{border-color:var(--c-red)}
+.st-step button{width:30px;height:100%;border:0;background:none;color:var(--c-text2);font-size:15px;cursor:pointer}
+.st-step button:hover{background:var(--bg-hover);color:var(--c-text)}
+.st-step input{width:52px;height:100%;border:0;border-inline:1px solid var(--c-border2);border-radius:0;outline:none;background:none;text-align:center;font:500 13px var(--f-mono);color:var(--c-text);padding:0;box-shadow:none}
+.st-step span{font-size:12px;color:var(--c-muted);padding:0 10px 0 8px;border-left:1px solid var(--c-border2);height:100%;display:grid;place-items:center}
+.st-tok{display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-height:38px;padding:5px 6px;border:1px solid var(--border-input);border-radius:9px;background:var(--bg-input);cursor:text}
+.st-tok:focus-within{border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow)}
+.st-tok.bad{border-color:var(--c-red)}
+.st-tk{display:inline-flex;align-items:center;gap:2px;height:24px;padding:0 3px 0 8px;border-radius:6px;background:var(--c-surface2);border:1px solid var(--c-border2);font:500 11.5px var(--f-mono);color:var(--c-text)}
+.st-tk button{width:18px;height:18px;border:0;background:none;border-radius:4px;color:var(--c-muted);cursor:pointer;font-size:13px;line-height:1;padding:0}
+.st-tk button:hover{background:var(--c-red-dim);color:var(--c-red-text)}
+.st-tok input{flex:1;min-width:110px;border:0;outline:none;background:none;font:12px var(--f-mono);color:var(--c-text);height:24px;padding:0 4px;box-shadow:none}
+.st-any{font-size:11.5px;color:var(--c-text2);padding:0 4px;display:inline-flex;align-items:center;gap:5px}
+.st-any svg{width:12px;height:12px;color:var(--c-green)}
+.st-quick{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.st-quick .btn svg{width:11px;height:11px}
+.st-ex{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:9px;background:var(--c-primary-dim);color:var(--c-text);font-size:12px}
+.st-ex svg{width:13px;height:13px;color:var(--c-primary);flex-shrink:0}
+.st-ex b{font-family:var(--f-mono);font-weight:600}
+.st-link{border:0;background:none;color:var(--c-primary);font:600 12px var(--f-ui);cursor:pointer;padding:0;white-space:nowrap}
+.st-link:hover{text-decoration:underline}
+.st-cmp{display:flex;gap:6px;flex-wrap:wrap}
+.st-cmp span{font-size:11px;color:var(--c-text2);background:var(--c-surface2);border-radius:6px;padding:1px 7px}
+.st-cmp b{font-weight:600;color:var(--c-text)}
+.st-stat{display:flex;align-items:center;gap:14px;padding:14px;border-radius:12px;border:1px solid var(--c-border)}
+.st-ring{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex-shrink:0}
+.st-ring svg{width:18px;height:18px}
+.st-stat.ok .st-ring{background:var(--c-green-dim);color:var(--c-green-text)}
+.st-stat.warn{background:var(--c-orange-dim);border-color:rgba(245,158,11,.3)}
+.st-stat.warn .st-ring{background:var(--c-orange-dim);color:var(--c-orange-text)}
+.st-stat.plain .st-ring{background:var(--c-primary-dim);color:var(--c-primary)}
+.st-stat-t{flex:1;min-width:0}
+.st-stat-t b{display:block;font-size:13px;font-weight:700}
+.st-stat-t span{display:block;font-size:11.5px;color:var(--c-text2)}
+.st-stat-t .st-ver{font:700 22px var(--f-mono);letter-spacing:-.5px}
+.st-stat .btn svg,.st-foot .btn svg,.st-r .btn svg{width:12px;height:12px}
+.st-bk{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:10px 14px}
+.st-bk+.st-bk{border-top:1px solid var(--c-border2)}
+.st-bk b{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600}
+.st-bk small{display:block;font:11px var(--f-mono);color:var(--c-muted)}
+.st-sz{font:500 12px var(--f-mono);color:var(--c-text2);font-variant-numeric:tabular-nums}
+.st-bk.new{animation:stFlash 1.6s ease}
+@keyframes stFlash{from{background:var(--c-primary-dim)}to{background:transparent}}
+.st-chip{font-size:10px;font-weight:700;padding:0 7px;border-radius:9px;line-height:18px;white-space:nowrap}
+.st-chip.ok{background:var(--c-green-dim);color:var(--c-green-text)} .st-chip.warn{background:var(--c-orange-dim);color:var(--c-orange-text)} .st-chip.new{background:var(--c-primary-dim);color:var(--c-primary)}
+.st-use{display:flex;gap:10px;align-items:flex-start;padding:10px 14px}
+.st-use+.st-use{border-top:1px solid var(--c-border2)}
+.st-use svg{width:14px;height:14px;color:var(--c-primary);flex-shrink:0;margin-top:2px}
+.st-use b{display:block;font-size:12px;font-weight:600}
+.st-use span{display:block;font-size:11.5px;color:var(--c-text2)}
+.st-notes{padding:12px 14px;font-size:12px;color:var(--c-text2);line-height:1.6;border-top:1px solid var(--c-border2);white-space:pre-line;max-height:220px;overflow-y:auto}
+.st-notes b{color:var(--c-text)}
+.st-spin{width:13px;height:13px;border:2px solid rgba(58,147,140,.35);border-top-color:var(--c-primary);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;display:inline-block}
+.st-spin.light{border-color:rgba(255,255,255,.4);border-top-color:#fff}
+@media (max-width:760px){
+  .modal.st-modal{width:100vw;height:100vh;border-radius:0;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .st-nav{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--c-border2);padding:8px}
+  .st-nav-list{flex-direction:row;gap:4px}
+  .st-nav-h,.st-sn-tx small{display:none}
+  .st-sn{width:auto;flex-shrink:0}
+  .st-r{grid-template-columns:minmax(0,1fr)}
+  .st-bk{grid-template-columns:minmax(0,1fr) auto}
+  .st-sz{display:none}
+}
+@media (prefers-reduced-motion:reduce){ .st-bk.new{animation:none} .st-spin{animation-duration:2s} }
 
 /* ── ROOM NAME INPUT ── */
 #room-name-input{width:100%;padding:9px 12px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);font-size:13px;font-family:var(--f-ui);outline:none;transition:border-color .15s;background:var(--c-surface);color:var(--c-text)}
@@ -1018,40 +1148,8 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 
 <!-- ─── MODALS ─── -->
 
-<!-- Settings modal -->
-<div class="modal-bg" id="modal-settings">
-  <div class="modal modal-settings">
-    <div class="modal-head">
-      <h3>Настройки</h3>
-      <button class="modal-close" onclick="closeModal('modal-settings')">✕</button>
-    </div>
-    <div class="settings-modal-layout">
-      <nav class="settings-modal-nav">
-        <button class="sm-nav-item active" data-section="messages" onclick="showSettingsSection('messages')">
-          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          Сообщения
-        </button>
-        <button class="sm-nav-item" data-section="github" onclick="showSettingsSection('github')">
-          <svg viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
-          GitHub
-        </button>
-        <button class="sm-nav-item" data-section="attachments" onclick="showSettingsSection('attachments')">
-          <svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-          Вложения
-        </button>
-        <button class="sm-nav-item" data-section="backups" onclick="showSettingsSection('backups')">
-          <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-          Резервные копии
-        </button>
-        <button class="sm-nav-item sm-nav-bottom" data-section="update" onclick="showSettingsSection('update')">
-          <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          Обновление
-        </button>
-      </nav>
-      <div class="settings-modal-content" id="settings-modal-content"></div>
-    </div>
-  </div>
-</div>
+<!-- Окно настроек: содержимое рисует скрипт -->
+<div class="modal-bg" id="modal-settings"><div class="modal st-modal" id="st-form" role="dialog" aria-modal="true" aria-labelledby="st-title"></div></div>
 
 <!-- User modal -->
 <!-- Обязательная смена пароля: закрыть нельзя, поэтому без крестика и кнопки отмены -->
@@ -1225,9 +1323,19 @@ function applyTheme(t) {
     }
   }
 }
+// Плавная смена темы, как в клиенте: переход цветов включаем только на время переключения,
+// иначе постоянный transition на всех элементах бил бы по отзывчивости
+let _themeAnimTimer = null;
+function animateThemeSwitch() {
+  const html = document.documentElement;
+  html.classList.add('theme-anim');
+  clearTimeout(_themeAnimTimer);
+  _themeAnimTimer = setTimeout(() => html.classList.remove('theme-anim'), 260);
+}
 function toggleTheme() {
   const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   localStorage.setItem(THEME_KEY, t);
+  animateThemeSwitch();
   applyTheme(t);
 }
 
@@ -1285,11 +1393,10 @@ function fmtUptime(sec) {
   return `${m} мин`;
 }
 
-function fmtBytes(bytes) {
-  if (!bytes) return '—';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024*1024) return `${(bytes/1024).toFixed(1)} KB`;
-  return `${(bytes/1024/1024).toFixed(2)} MB`;
+function fmtBytes(b) {
+  if (b < 1024) return b + ' Б';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' КБ';
+  return (b / 1024 / 1024).toFixed(1) + ' МБ';
 }
 
 function fmtOS(platform, release, installScope) {
@@ -3945,244 +4052,463 @@ async function saveWebhook() {
 }
 
 /* ── SETTINGS MODAL ── */
-let _settingsData = null;
-let _activeSettingsSection = 'messages';
+// Окно настроек: слева разделы с их главным значением, справа строки настроек.
+// Правки «Сообщений» и «Вложений» копятся в черновике и сохраняются одной кнопкой в подвале —
+// переход между разделами их не теряет. Токен, копии и обновление действуют сразу.
 
-async function openSettingsModal() {
-  const [settings, verData] = await Promise.all([api('GET','/api/admin/settings'), api('GET','/api/admin/server/version')]);
-  _settingsData = { ...settings, _version: verData?.current || '—' };
-  _activeSettingsSection = 'messages';
-  showSettingsSection('messages');
+const ST = {
+  sec: 'messages', saved: null, draft: null, editCustom: false, editUnit: 60, lifeCustom: false, tokErr: {},
+  confirmClose: false, saving: false, stats: null, backups: [], bkBusy: false, bkNew: false,
+  gh: { set: false, show: false, err: '', busy: false }, upd: { state: 'idle', v: null },
+};
+const stSvg = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const ST_I = {
+  msg: stSvg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+  clip: stSvg('<path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>'),
+  db: stSvg('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>'),
+  gh: stSvg('<path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>'),
+  upd: stSvg('<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>'),
+  x: stSvg('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
+  check: stSvg('<polyline points="20 6 9 17 4 12"/>'),
+  warn: stSvg('<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'),
+  clock: stSvg('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'),
+  down: stSvg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'),
+  plus: stSvg('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'),
+  img: stSvg('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>'),
+  file: stSvg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'),
+  box: stSvg('<path d="M21 8v13H3V8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/>'),
+  eye: stSvg('<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>'),
+  eyeOff: stSvg('<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>'),
+  key: stSvg('<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L21 2M16 7l3 3"/>'),
+  server: stSvg('<rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/>'),
+};
+const ST_EDIT = [[60, '1 мин'], [120, '2 мин'], [900, '15 мин'], [3600, '1 час'], [172800, '48 часов']];
+const ST_LIFE = [[0, 'Всегда'], [30, '30 дней'], [90, '90 дней'], [365, '1 год']];
+const ST_FORM = { messages: ['edit'], attachments: ['imgMax', 'imgExt', 'fileMax', 'fileExt', 'life'] };
+const ST_IN = { messages: 'в «Сообщениях»', attachments: 'во «Вложениях»' };
+const ST_QUICK = { 'Документы': ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'], 'Архивы': ['zip', 'rar', '7z'], 'Видео': ['mp4', 'mov', 'webm'] };
+const ST_KEYS = {
+  edit: ['edit_time_limit', String], imgMax: ['upload_image_max_size', String], imgExt: ['upload_image_extensions', v => v.join(',')],
+  fileMax: ['upload_file_max_size', String], fileExt: ['upload_file_extensions', v => v.join(',')], life: ['upload_file_lifetime', String],
+};
+const stPad = n => String(n).padStart(2, '0');
+const stClock = d => `${stPad(d.getHours())}:${stPad(d.getMinutes())}`;
+const stClone = o => JSON.parse(JSON.stringify(o));
+function stDur(sec) {
+  if (sec >= 3600 && sec % 3600 === 0) { const h = sec / 3600; return `${h} ${uxPlural(h, 'час', 'часа', 'часов')}`; }
+  if (sec >= 60 && sec % 60 === 0) { const m = sec / 60; return `${m} ${uxPlural(m, 'минута', 'минуты', 'минут')}`; }
+  return `${sec} ${uxPlural(sec, 'секунда', 'секунды', 'секунд')}`;
+}
+function stUptime(sec) {
+  const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
+  if (d) return `${d} ${uxPlural(d, 'день', 'дня', 'дней')}${h ? ` ${h} ч` : ''}`;
+  if (h) return `${h} ч ${m} мин`;
+  return `${Math.max(1, m)} мин`;
+}
+
+function stFromSettings(s) {
+  const list = v => String(v || '').split(',').map(x => x.trim().toLowerCase().replace(/^\.+/, '')).filter(Boolean);
+  ST.saved = {
+    edit: Number(s.edit_time_limit) || 120,
+    imgMax: Number(s.upload_image_max_size) || 10,
+    imgExt: s.upload_image_extensions ? list(s.upload_image_extensions) : ['jpeg', 'jpg', 'png', 'gif', 'webp'],
+    fileMax: Number(s.upload_file_max_size) || 50,
+    fileExt: list(s.upload_file_extensions),
+    life: Number(s.upload_file_lifetime) || 0,
+  };
+  ST.draft = stClone(ST.saved);
+  ST.gh.set = !!s.github_token_set;
+}
+
+async function openSettingsModal(section = 'messages') {
+  const [settings, stats, backups] = await Promise.all([api('GET', '/api/admin/settings'), api('GET', '/api/admin/stats'), api('GET', '/api/admin/backups')]);
+  if (!settings || settings.error) { toast('Не удалось загрузить настройки', 'error'); return; }
+  stFromSettings(settings);
+  Object.assign(ST, { sec: section, stats, backups: Array.isArray(backups) ? backups : [], editCustom: false, lifeCustom: false, tokErr: {}, confirmClose: false, bkNew: false });
+  ST.gh.show = false; ST.gh.err = '';
+  if (ST.upd.state === 'checking') ST.upd.state = 'idle';
+  stRender();
   openModal('modal-settings');
 }
+// Прежнее имя: «Файлы» открывают окно сразу на «Вложениях»
+function showSettingsSection(section) { stGo(section); }
 
-function showSettingsSection(section) {
-  _activeSettingsSection = section;
-  document.querySelectorAll('#modal-settings .sm-nav-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.section === section);
-  });
-  const el = document.getElementById('settings-modal-content');
-  if (!el || !_settingsData) return;
-  el.innerHTML = _buildSettingsSectionHtml(section);
-  if (section === 'github') {
-    const inp = document.getElementById('github-token-input');
-    if (inp) inp.addEventListener('keydown', e => e.key === 'Enter' && saveGithubToken());
-  }
-  if (section === 'backups') loadBackups();
+const stChanged = () => ST.draft ? Object.entries(ST_FORM).flatMap(([sec, keys]) =>
+  keys.filter(k => JSON.stringify(ST.draft[k]) !== JSON.stringify(ST.saved[k])).map(k => ({ sec, k }))) : [];
+function stErrors() {
+  const d = ST.draft, e = {};
+  if (!(d.edit >= 10)) e.edit = 'Срок правки — не меньше 10 секунд';
+  if (!(Number.isInteger(d.imgMax) && d.imgMax >= 1 && d.imgMax <= 500)) e.imgMax = 'Размер картинок — от 1 до 500 МБ';
+  if (!(Number.isInteger(d.fileMax) && d.fileMax >= 1 && d.fileMax <= 500)) e.fileMax = 'Размер файлов — от 1 до 500 МБ';
+  if (!d.imgExt.length) e.imgExt = 'Нужен хотя бы один формат картинок, иначе их нельзя будет отправить';
+  if (!(Number.isInteger(d.life) && d.life >= 0 && d.life <= 3650)) e.life = 'Срок хранения — от 1 до 3650 дней';
+  return e;
+}
+const stLastBackup = () => ST.backups[0];
+const stBackupOld = () => !ST.backups.length || Date.now() / 1000 - stLastBackup().created_at > 7 * 86400;
+const stVersion = () => ST.stats?.serverVersion || '—';
+
+const ST_SECTIONS = [
+  { k: 'messages', label: 'Сообщения', icon: ST_I.msg, desc: 'Что можно делать с уже отправленными сообщениями', meta: () => `${stDur(ST.saved.edit)} на правку` },
+  { k: 'attachments', label: 'Вложения', icon: ST_I.clip, desc: 'Размер, форматы и срок хранения картинок и файлов', meta: () => `до ${ST.saved.imgMax} и ${ST.saved.fileMax} МБ${ST.saved.life ? ` · ${ST.saved.life} дн.` : ''}` },
+  { k: 'backups', label: 'Резервные копии', icon: ST_I.db, desc: 'Снимки базы: сообщения, пользователи, чаты и настройки', meta: () => ST.backups.length ? `последняя ${uaSeen(stLastBackup().created_at)}` : 'копий нет', dot: () => stBackupOld() ? 'warn' : '' },
+  { k: 'github', label: 'GitHub', icon: ST_I.gh, desc: 'Доступ к репозиторию для проверки обновлений', meta: () => ST.gh.set ? 'токен задан' : 'без токена', dot: () => ST.gh.set ? 'ok' : 'warn' },
+  { k: 'update', label: 'Обновление', icon: ST_I.upd, title: 'Обновление сервера', desc: 'Версия сервера и установка новых релизов', meta: () => ST.upd.state === 'available' ? `есть версия ${ST.upd.v.latest}` : `версия ${stVersion()}`, dot: () => ST.upd.state === 'available' ? 'warn' : '' },
+];
+
+function stNavHtml() {
+  const dirty = new Set(stChanged().map(c => c.sec));
+  return ST_SECTIONS.map(s => {
+    const dot = dirty.has(s.k) ? '<i class="st-dot edit" title="Есть несохранённые изменения"></i>' : s.dot?.() ? `<i class="st-dot ${s.dot()}"></i>` : '';
+    return `<button type="button" class="st-sn" aria-current="${ST.sec === s.k ? 'page' : 'false'}" onclick="stGo('${s.k}')"><span class="st-sn-ic">${s.icon}</span>
+      <span class="st-sn-tx"><b>${s.label}</b><small>${esc(s.meta())}</small></span>${dot}</button>`;
+  }).join('');
 }
 
-/* ── РЕЗЕРВНЫЕ КОПИИ ── */
-let _backups = null;
-
-function fmtBytes(b) {
-  if (b < 1024) return b + ' Б';
-  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' КБ';
-  return (b / 1024 / 1024).toFixed(1) + ' МБ';
+// ── Сообщения ──
+function stEditExample() {
+  const sec = ST.draft.edit;
+  if (!(sec >= 10)) return `${ST_I.clock}<span>Укажите срок — не меньше 10 секунд</span>`;
+  const now = new Date(), until = new Date(now.getTime() + sec * 1000);
+  const t = d => stClock(d) + (sec % 60 ? ':' + stPad(d.getSeconds()) : '');
+  const when = until.toDateString() === now.toDateString() ? t(until) : `${until.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' })}, ${t(until)}`;
+  return `${ST_I.clock}<span>Отправленное сейчас, в <b>${t(now)}</b>, можно исправить до <b>${when}</b></span>`;
+}
+function stPaneMessages() {
+  const d = ST.draft, custom = ST.editCustom || !ST_EDIT.some(([v]) => v === d.edit);
+  const n = d.edit / ST.editUnit;
+  return `<div class="st-gt">${ST_I.msg}Редактирование</div>
+    <div class="st-g"><div class="st-r stack">
+      <div class="st-l"><b>Сколько можно править своё сообщение</b><span>Когда срок выйдет, пункт «Изменить» пропадёт из меню сообщения.</span></div>
+      <div class="st-ctl"><div class="st-seg" role="group" aria-label="Срок правки">${ST_EDIT.map(([v, l]) => `<button type="button" aria-pressed="${!custom && d.edit === v}" onclick="stEditPreset(${v})">${l}</button>`).join('')}
+        <button type="button" aria-pressed="${custom}" onclick="stEditPreset('custom')">Своё</button></div>
+        ${custom ? `<div class="st-inp st-num ${stErrors().edit ? 'bad' : ''}" id="st-box-edit"><input id="st-edit-n" type="number" min="1" value="${Number.isInteger(n) ? n : ''}" aria-label="Срок правки" oninput="stEditN(this.value)"></div>
+          <div class="st-inp" style="width:auto"><select aria-label="Единицы" onchange="stEditUnit(+this.value)">${[[1, 'секунд'], [60, 'минут'], [3600, 'часов']].map(([u, l]) => `<option value="${u}" ${ST.editUnit === u ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}
+      </div>
+      <div class="st-ex" id="st-edit-example">${stEditExample()}</div>
+      <div class="st-cmp"><span>Для сравнения:</span><span>WhatsApp — <b>15 минут</b></span><span>Telegram — <b>48 часов</b></span></div>
+    </div></div>
+    <p class="st-hint">Новый срок действует сразу после сохранения; приложения узнают о нём при переподключении.</p>`;
 }
 
-function fmtBackupDate(ts) {
-  const d = new Date(ts * 1000);
-  return d.toLocaleString('ru', { day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit', second: '2-digit' });
+// ── Вложения ──
+function stStepHtml(k) {
+  return `<div class="st-step ${stErrors()[k] ? 'bad' : ''}" id="st-box-${k}"><button type="button" aria-label="Меньше" onclick="stStep('${k}', -1)">−</button>
+    <input id="st-n-${k}" type="number" min="1" max="500" value="${Number.isFinite(ST.draft[k]) ? ST.draft[k] : ''}" aria-label="Размер в мегабайтах" oninput="stNum('${k}', this.value)"><button type="button" aria-label="Больше" onclick="stStep('${k}', 1)">+</button><span>МБ</span></div>`;
+}
+function stTokHtml(k, anyText) {
+  const list = ST.draft[k];
+  return `<div class="st-tok ${stErrors()[k] || ST.tokErr[k] ? 'bad' : ''}" onclick="if(event.target===this)document.getElementById('st-tok-${k}').focus()">
+      ${list.map(x => `<span class="st-tk">${esc(x)}<button type="button" aria-label="Убрать ${esc(x)}" onclick="stTokDel('${k}', '${esc(x)}')">×</button></span>`).join('')}
+      ${!list.length && anyText ? `<span class="st-any">${ST_I.check}${anyText}</span>` : ''}
+      <input id="st-tok-${k}" placeholder="${list.length ? 'ещё формат…' : 'например, pdf'}" aria-label="Добавить формат" autocomplete="off" spellcheck="false"
+        onkeydown="stTokKey(event, '${k}')" oninput="if(/[,;\\s]/.test(this.value))stTokAdd('${k}', this.value)">
+    </div>
+    ${ST.tokErr[k] ? `<div class="st-err">${esc(ST.tokErr[k])}</div>` : ''}`;
+}
+function stPaneAttachments() {
+  const d = ST.draft, s = ST.stats, lifeCustom = ST.lifeCustom || !ST_LIFE.some(([v]) => v === d.life);
+  return `<div class="st-gt">${ST_I.img}Картинки</div>
+    <div class="st-g">
+      <div class="st-r"><div class="st-l"><b>Наибольший размер</b><span>Картинку тяжелее загрузить не получится</span></div>${stStepHtml('imgMax')}</div>
+      <div class="st-r stack"><div class="st-l"><b>Форматы</b><span>Только эти расширения отправляются как картинка с превью. Enter или запятая — добавить.</span></div>${stTokHtml('imgExt')}</div>
+    </div>
+    <div class="st-gt">${ST_I.file}Файлы</div>
+    <div class="st-g">
+      <div class="st-r"><div class="st-l"><b>Наибольший размер</b><span>Касается документов, архивов и всего, что не картинка</span></div>${stStepHtml('fileMax')}</div>
+      <div class="st-r stack"><div class="st-l"><b>Форматы</b><span>Оставьте пустым, чтобы разрешить любые</span></div>${stTokHtml('fileExt', 'Разрешены любые форматы')}
+        <div class="st-quick"><span class="st-hint">Добавить набор:</span>${Object.keys(ST_QUICK).map(n => `<button type="button" class="btn btn-ghost btn-sm" onclick="stQuick('${n}')">${ST_I.plus}${n}</button>`).join('')}
+          ${d.fileExt.length ? '<button type="button" class="btn btn-ghost btn-sm" onclick="stTokClear()">Разрешить любые</button>' : ''}</div></div>
+    </div>
+    <div class="st-gt">${ST_I.box}Хранение</div>
+    <div class="st-g"><div class="st-r stack">
+      <div class="st-l"><b>Сколько хранить файлы</b><span>Старые файлы удаляются сами — проверка раз в 6 часов. В переписке на их месте остаётся «Файл удалён».</span></div>
+      <div class="st-ctl"><div class="st-seg" role="group" aria-label="Срок хранения">${ST_LIFE.map(([v, l]) => `<button type="button" aria-pressed="${!lifeCustom && d.life === v}" onclick="stLifePreset(${v})">${l}</button>`).join('')}
+        <button type="button" aria-pressed="${lifeCustom}" onclick="stLifePreset('custom')">Своё</button></div>
+        ${lifeCustom ? `<div class="st-inp st-num ${stErrors().life ? 'bad' : ''}" id="st-box-life" style="width:130px"><input id="st-n-life" type="number" min="1" max="3650" value="${d.life || ''}" aria-label="Срок хранения в днях" oninput="stNum('life', this.value)"><span class="st-u">дней</span></div>` : ''}
+      </div>
+      ${s ? `<div class="st-ex">${ST_I.box}<span>Сейчас на сервере <b>${rmFmt(s.filesCount)}</b> ${uxPlural(s.filesCount || 0, 'файл', 'файла', 'файлов')}, <b>${hmBytes(s.filesBytes || 0)}</b></span><span class="ux-grow"></span>
+        <button type="button" class="st-link" onclick="stToFiles()">Открыть «Файлы»</button></div>` : ''}
+    </div></div>`;
 }
 
-async function loadBackups() {
-  _backups = await api('GET', '/api/admin/backups');
-  renderBackupsTable();
+// ── Резервные копии ──
+function stPaneBackups() {
+  const last = stLastBackup(), old = stBackupOld();
+  return `<div class="st-stat ${old ? 'warn' : 'ok'}"><span class="st-ring">${old ? ST_I.warn : ST_I.db}</span>
+      <div class="st-stat-t"><b>${last ? `Последняя копия — ${uaSeen(last.created_at)}` : 'Копий пока нет'}</b>
+        <span>${old ? 'Больше недели без копии — сделайте свежую перед обновлением или крупными правками.' : `${hmBytes(last.size)} · всего копий: ${ST.backups.length}`}</span></div>
+      <button type="button" class="btn ux-solid" ${ST.bkBusy ? 'disabled' : ''} onclick="stBackup()">${ST.bkBusy ? '<span class="st-spin light"></span>Создаю…' : `${ST_I.plus}Создать копию`}</button></div>
+    <p class="st-hint">Копия создаётся только по кнопке — расписания нет. Снимок делается на живой базе и не мешает людям работать. Файлы копий лежат на сервере в <code class="st-code">chat_db/backups</code>.</p>
+    ${ST.backups.length ? `<div class="st-gt">${ST_I.db}Копии · ${ST.backups.length}</div>
+    <div class="st-g">${ST.backups.map((b, i) => `<div class="st-bk ${i === 0 && ST.bkNew ? 'new' : ''}">
+        <div><b>${esc(uaSeen(b.created_at))} ${i === 0 && ST.bkNew ? '<span class="st-chip new">новая</span>' : ''}</b><small>${esc(new Date(b.created_at * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }))}</small></div>
+        <span class="st-sz">${hmBytes(b.size)}</span>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="stDownload('${jesc(b.name)}', this)">${ST_I.down}Скачать</button></div>`).join('')}</div>` : ''}`;
 }
 
-function renderBackupsTable() {
-  const el = document.getElementById('backups-table-wrap');
-  if (!el) return;
-  if (!_backups || !_backups.length) {
-    el.innerHTML = '<div style="padding:18px;text-align:center;color:var(--c-muted);font-size:12px">Копий пока нет</div>';
+// ── GitHub ──
+function stPaneGithub() {
+  const g = ST.gh;
+  return `<div class="st-stat ${g.set ? 'ok' : 'warn'}"><span class="st-ring">${g.set ? ST_I.check : ST_I.warn}</span>
+      <div class="st-stat-t"><b>${g.set ? 'Токен задан' : 'Токен не задан'}</b>
+        <span>${g.set ? 'Запросы к GitHub идут с токеном — до 5000 в час.' : 'Анонимный доступ — до 60 запросов в час. При частых проверках обновлений лимит заканчивается.'}</span></div>
+      <span class="st-chip ${g.set ? 'ok' : 'warn'}">${g.set ? '5000' : '60'} / час</span></div>
+    <div class="st-gt">${ST_I.key}Personal Access Token</div>
+    <div class="st-g"><div class="st-r stack">
+      <div class="st-l"><b>${g.set ? 'Заменить токен' : 'Вставьте токен'}</b><span>Токен хранится только на сервере и в браузер не возвращается — даже администратору.</span></div>
+      <div class="st-ctl">
+        <div class="st-inp ${g.err ? 'bad' : ''}" style="flex:1;min-width:220px"><input id="st-gh" type="${g.show ? 'text' : 'password'}" placeholder="${g.set ? '•••••••••••••••••••• (задан)' : 'ghp_… или github_pat_…'}" autocomplete="off" spellcheck="false" class="st-mono" onkeydown="if(event.key==='Enter')stGhSave()">
+          <button type="button" class="st-eye" aria-label="${g.show ? 'Скрыть токен' : 'Показать токен'}" onclick="stGhShow()">${g.show ? ST_I.eyeOff : ST_I.eye}</button></div>
+        <button type="button" class="btn ux-solid" ${g.busy ? 'disabled' : ''} onclick="stGhSave()">Сохранить</button>
+        ${g.set ? `<button type="button" class="btn btn-danger" ${g.busy ? 'disabled' : ''} onclick="stGhDel()">Удалить</button>` : ''}
+      </div>
+      ${g.err ? `<div class="st-err">${esc(g.err)}</div>` : ''}
+      <p class="st-hint">Создать токен: <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=Electron+Admin" target="_blank" rel="noopener">github.com/settings/tokens</a> — достаточно права <code class="st-code">public_repo</code>.</p>
+    </div></div>
+    <div class="st-gt">Для чего нужен</div>
+    <div class="st-g">
+      <div class="st-use">${ST_I.server}<div><b>Проверка обновлений сервера</b><span>Версия и описание релиза для блока обновления на главной</span></div></div>
+      <div class="st-use">${ST_I.upd}<div><b>Версии клиентов</b><span>Последний релиз для сравнения на странице «Клиенты»; ответ кэшируется на 15 минут</span></div></div>
+      <div class="st-use">${ST_I.down}<div><b>Принудительное обновление</b><span>Ссылка на установщик под систему конкретного устройства</span></div></div>
+    </div>`;
+}
+
+// ── Обновление ──
+function stPaneUpdate() {
+  const u = ST.upd, busy = typeof HM !== 'undefined' && HM.upd?.busy;
+  const chip = busy ? `<span class="st-chip new">идёт установка</span>`
+    : u.state === 'checking' ? '<span class="st-state"><span class="st-spin"></span>Проверяю…</span>'
+    : u.state === 'latest' ? '<span class="st-chip ok">последняя версия</span>'
+    : u.state === 'available' ? `<span class="st-chip warn">доступна ${esc(u.v.latest)}</span>`
+    : u.state === 'error' ? '<span class="st-chip warn">не удалось проверить</span>' : '';
+  const up = ST.stats?.uptimeSeconds;
+  return `<div class="st-stat plain"><span class="st-ring">${ST_I.server}</span>
+      <div class="st-stat-t"><span>Установлена версия</span><b class="st-ver">${esc(stVersion())}</b><span>${up ? `Запущена ${stUptime(up)} назад · ` : ''}служба <code class="st-code">electron</code></span></div>
+      ${chip}
+      <button type="button" class="btn btn-ghost" ${u.state === 'checking' || busy ? 'disabled' : ''} onclick="stCheck()">${ST_I.upd}Проверить</button></div>
+    ${busy ? `<div class="st-g"><div class="st-r"><div class="st-l"><b>Устанавливается ${esc(HM.upd.target || '')}</b><span>Ход установки по шагам виден в блоке обновления на главной странице.</span></div>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-settings'); nav('dashboard')">Открыть главную</button></div></div>`
+    : u.state === 'available' ? `<div class="st-g">
+      <div class="st-r"><div class="st-l"><b>Версия ${esc(u.v.latest)}</b><span>Служба перезапустится — у людей пропадёт связь примерно на 10–20 секунд, потом приложения переподключатся сами.</span></div>
+        <button type="button" class="btn ux-solid" onclick="stInstall()">${ST_I.down}Установить</button></div>
+      ${u.v.notes ? `<div class="st-notes"><b>Что нового.</b> ${esc(u.v.notes)}</div>` : ''}
+    </div>`
+    : u.state === 'latest' ? '<p class="st-hint">Обновлений нет. Проверка обращается к GitHub — без токена это расходует анонимный лимит.</p>'
+    : u.state === 'error' ? '<p class="st-hint">GitHub не ответил. Проверьте доступ сервера в интернет или токен в разделе «GitHub» и попробуйте ещё раз.</p>'
+    : '<p class="st-hint">Ход установки показывается по шагам в блоке обновления на главной странице.</p>'}`;
+}
+const ST_PANES = { messages: stPaneMessages, attachments: stPaneAttachments, backups: stPaneBackups, github: stPaneGithub, update: stPaneUpdate };
+
+function stFootRender() {
+  const f = document.getElementById('st-foot');
+  if (!f) return;
+  const ch = stChanged(), errs = Object.values(stErrors());
+  f.classList.toggle('ask', ST.confirmClose);
+  if (!ch.length && !ST_FORM[ST.sec]) { f.hidden = true; return; }
+  f.hidden = false;
+  const busy = ST.saving ? 'disabled' : '';
+  if (ST.confirmClose) {
+    f.innerHTML = `<span class="st-state warn">${ST_I.warn}<span><b>Закрыть без сохранения?</b> Изменения пропадут.</span></span><span class="ux-grow"></span>
+      <button type="button" class="btn btn-ghost" ${busy} onclick="stDiscard(true)">Не сохранять</button>
+      <button type="button" class="btn ux-solid" id="st-foot-save" ${errs.length || ST.saving ? 'disabled' : ''} onclick="stSave(true)">${ST.saving ? 'Сохраняю…' : 'Сохранить и закрыть'}</button>`;
     return;
   }
-  el.innerHTML = `<table>
-    <thead><tr><th>Дата и время</th><th>Размер</th><th style="width:120px"></th></tr></thead>
-    <tbody>${_backups.map(b => `<tr>
-      <td style="font-family:var(--f-mono);font-size:12px">${fmtBackupDate(b.created_at)}</td>
-      <td style="color:var(--c-text2);font-size:12px">${fmtBytes(b.size)}</td>
-      <td><button class="btn btn-sm" onclick="downloadBackup('${b.name}')">Скачать</button></td>
-    </tr>`).join('')}</tbody>
-  </table>`;
+  const secs = [...new Set(ch.map(c => c.sec))];
+  const where = secs.length === 1 && secs[0] !== ST.sec ? ` ${ST_IN[secs[0]]}` : secs.length > 1 ? ' в двух разделах' : '';
+  const state = ch.length && errs.length ? `<span class="st-state bad">${ST_I.warn}${esc(errs[0])}</span>`
+    : ch.length ? `<span class="st-state warn"><i class="st-dot edit"></i><span>Не сохранено: <b>${ch.length} ${uxPlural(ch.length, 'изменение', 'изменения', 'изменений')}</b>${where}</span></span>`
+    : `<span class="st-state ok">${ST_I.check}Все изменения сохранены</span>`;
+  f.innerHTML = `${state}<span class="ux-grow"></span>
+    <button type="button" class="btn btn-ghost" ${ch.length && !ST.saving ? '' : 'disabled'} onclick="stDiscard()">Отменить</button>
+    <button type="button" class="btn ux-solid" ${!ch.length || errs.length || ST.saving ? 'disabled' : ''} onclick="stSave()">${ST.saving ? 'Сохраняю…' : 'Сохранить'}</button>`;
+}
+// Лёгкая перерисовка при вводе: навигация, подвал и подсветка ошибок — без пересоздания полей
+function stChrome() {
+  const nav = document.getElementById('st-nav');
+  if (nav) nav.innerHTML = stNavHtml();
+  stFootRender();
+  const e = stErrors();
+  ['imgMax', 'fileMax', 'life', 'edit'].forEach(k => document.getElementById('st-box-' + k)?.classList.toggle('bad', !!e[k]));
+  const ex = document.getElementById('st-edit-example');
+  if (ex) ex.innerHTML = stEditExample();
+}
+function stRender(focusId) {
+  const el = document.getElementById('st-form');
+  if (!el || !ST.draft) return;
+  const a = document.activeElement, keep = focusId || (a?.id && el.contains(a) ? a.id : null);
+  let caret = null;
+  try { caret = a?.selectionStart; } catch {}
+  const body = document.getElementById('st-body'), scroll = body?.scrollTop || 0;
+  const s = ST_SECTIONS.find(x => x.k === ST.sec);
+  el.innerHTML = `
+    <nav class="st-nav" aria-label="Разделы настроек">
+      <div class="st-nav-h"><h2 id="st-title">Настройки</h2><p>Сервер · версия <b>${esc(stVersion())}</b></p></div>
+      <div id="st-nav" class="st-nav-list">${stNavHtml()}</div>
+    </nav>
+    <section class="st-pane">
+      <header class="st-head"><div><h3>${s.title || s.label}</h3><p>${s.desc}</p></div>
+        <button type="button" class="modal-close" aria-label="Закрыть настройки" onclick="stClose()">✕</button></header>
+      <div class="st-body" id="st-body">${ST_PANES[ST.sec]()}</div>
+      <footer class="st-foot" id="st-foot" hidden></footer>
+    </section>`;
+  stFootRender();
+  const nb = document.getElementById('st-body');
+  if (nb && !focusId) nb.scrollTop = scroll;
+  const f = keep && document.getElementById(keep);
+  if (f) { f.focus(); if (!focusId && caret != null) { try { f.setSelectionRange(caret, caret); } catch {} } }
 }
 
-async function createBackup() {
-  const btn = document.getElementById('backup-create-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Создание…'; }
-  try {
-    const r = await api('POST', '/api/admin/backups');
-    if (r?.error) { toast(r.error, 'error'); return; }
-    _backups = r.backups || [];
-    renderBackupsTable();
-    toast('Копия создана', 'success');
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Создать копию'; }
+function stGo(k) { ST.sec = k; ST.confirmClose = false; ST.bkNew = false; stRender(); const b = document.getElementById('st-body'); if (b) b.scrollTop = 0; }
+function stEditPreset(v) {
+  if (v === 'custom') { ST.editCustom = true; ST.editUnit = ST.draft.edit % 3600 === 0 ? 3600 : ST.draft.edit % 60 === 0 ? 60 : 1; return stRender('st-edit-n'); }
+  ST.editCustom = false; ST.draft.edit = v; stRender();
+}
+function stEditN(v) { ST.draft.edit = v === '' ? NaN : Math.round(Number(v) * ST.editUnit); stChrome(); }
+function stEditUnit(u) { const n = ST.draft.edit / ST.editUnit; ST.editUnit = u; if (Number.isFinite(n)) ST.draft.edit = Math.round(n * u); stRender(); }
+function stNum(k, v) { ST.draft[k] = v === '' ? NaN : Number(v); stChrome(); }
+function stStep(k, delta) {
+  const cur = Number.isFinite(ST.draft[k]) ? Math.round(ST.draft[k]) : 0;
+  ST.draft[k] = Math.max(1, Math.min(500, cur + delta));
+  const inp = document.getElementById('st-n-' + k);
+  if (inp) inp.value = ST.draft[k];
+  stChrome();
+}
+function stLifePreset(v) {
+  if (v === 'custom') { ST.lifeCustom = true; if (!ST.draft.life) ST.draft.life = 180; return stRender('st-n-life'); }
+  ST.lifeCustom = false; ST.draft.life = v; stRender();
+}
+function stTokKey(e, k) {
+  if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); stTokAdd(k, e.target.value); }
+  else if (e.key === 'Backspace' && !e.target.value && ST.draft[k].length) { ST.draft[k] = ST.draft[k].slice(0, -1); stRender('st-tok-' + k); }
+}
+function stTokAdd(k, raw) {
+  const items = String(raw).toLowerCase().split(/[\s,;]+/).map(x => x.replace(/^\.+/, '')).filter(Boolean);
+  const ok = x => /^[a-z0-9]{1,10}$/.test(x);
+  const bad = items.find(x => !ok(x));
+  ST.draft[k] = [...new Set([...ST.draft[k], ...items.filter(ok)])];
+  ST.tokErr[k] = bad ? `«${bad}» не похоже на расширение — только латиница и цифры, без точки` : '';
+  stRender('st-tok-' + k);
+}
+function stTokDel(k, x) { ST.draft[k] = ST.draft[k].filter(y => y !== x); stRender('st-tok-' + k); }
+function stTokClear() { ST.draft.fileExt = []; stRender(); }
+function stQuick(name) { ST.draft.fileExt = [...new Set([...ST.draft.fileExt, ...ST_QUICK[name]])]; stRender(); }
+function stToFiles() {
+  if (stChanged().length) return stClose();
+  closeModal('modal-settings');
+  nav('files');
+}
+
+async function stSave(andClose) {
+  const ch = stChanged();
+  if (!ch.length || Object.keys(stErrors()).length || ST.saving) return;
+  ST.saving = true;
+  stFootRender();
+  const body = Object.fromEntries(ch.map(({ k }) => [ST_KEYS[k][0], ST_KEYS[k][1](ST.draft[k])]));
+  const r = await api('PUT', '/api/admin/settings', body);
+  ST.saving = false;
+  if (!r?.ok) { toast(esc(r?.error || 'Не удалось сохранить настройки'), 'error'); return stFootRender(); }
+  ST.saved = stClone(ST.draft);
+  ST.confirmClose = false;
+  toast(`Настройки сохранены: ${ch.length} ${uxPlural(ch.length, 'изменение', 'изменения', 'изменений')}`, 'success');
+  if (currentPage === 'files' && ch.some(c => c.k === 'life')) renderFiles();
+  if (andClose) return closeModal('modal-settings');
+  stRender();
+}
+function stDiscard(andClose) {
+  ST.draft = stClone(ST.saved);
+  Object.assign(ST, { editCustom: false, lifeCustom: false, tokErr: {}, confirmClose: false });
+  if (andClose) return closeModal('modal-settings');
+  stRender();
+}
+function stClose() {
+  if (stChanged().length) {
+    if (!ST.confirmClose) { ST.confirmClose = true; stFootRender(); document.getElementById('st-foot-save')?.focus(); }
+    return;
   }
+  closeModal('modal-settings');
 }
 
+async function stBackup() {
+  if (ST.bkBusy) return;
+  ST.bkBusy = true;
+  stRender();
+  const r = await api('POST', '/api/admin/backups');
+  ST.bkBusy = false;
+  if (r?.error || !r) { toast(esc(r?.error || 'Не удалось создать копию'), 'error'); return stRender(); }
+  ST.backups = r.backups || ST.backups;
+  ST.bkNew = true;
+  stRender();
+  toast('Копия создана', 'success');
+}
 // Скачивание через токен в заголовке: ссылкой не обойтись, авторизация в Bearer
-async function downloadBackup(name) {
+async function stDownload(name, btn) {
+  if (btn) btn.disabled = true;
   try {
-    const res = await fetch(`/api/admin/backups/${encodeURIComponent(name)}/download`, {
-      headers: { Authorization: 'Bearer ' + token },
-    });
+    const res = await fetch(`/api/admin/backups/${encodeURIComponent(name)}/download`, { headers: { Authorization: 'Bearer ' + token } });
     if (!res.ok) { toast('Не удалось скачать копию', 'error'); return; }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(await res.blob());
     const a = document.createElement('a');
     a.href = url; a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   } catch { toast('Не удалось скачать копию', 'error'); }
+  finally { if (btn) btn.disabled = false; }
 }
 
-function _buildSettingsSectionHtml(section) {
-  const s = _settingsData;
-  if (section === 'backups') return `
-    <div class="card">
-      <div class="card-head"><h3>Резервные копии</h3></div>
-      <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
-        <p style="font-size:12px;color:var(--c-text2);line-height:1.7">
-          Копия создаётся только по кнопке — автоматического расписания нет.<br>
-          Снимок делается на живой базе и не мешает работе пользователей.<br>
-          Копии лежат на сервере рядом с базой, в папке <code>chat_db/backups</code>.
-        </p>
-        <div>
-          <button class="btn btn-primary" id="backup-create-btn" onclick="createBackup()">Создать копию</button>
-        </div>
-        <div class="tbl-wrap" id="backups-table-wrap">
-          <div style="padding:18px;text-align:center;color:var(--c-muted);font-size:12px">Загрузка…</div>
-        </div>
-      </div>
-    </div>`;
+function stGhShow() {
+  const v = document.getElementById('st-gh')?.value || '';
+  ST.gh.show = !ST.gh.show;
+  stRender();
+  const inp = document.getElementById('st-gh');
+  if (inp) { inp.value = v; inp.focus(); }
+}
+async function stGhSave() {
+  const g = ST.gh, v = (document.getElementById('st-gh')?.value || '').trim();
+  g.err = !v ? 'Вставьте токен в поле'
+    : !/^(gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|[0-9a-f]{40})$/.test(v) ? 'Не похоже на токен GitHub — обычно он начинается с ghp_ или github_pat_' : '';
+  if (g.err) { stRender('st-gh'); document.getElementById('st-gh').value = v; return; }
+  g.busy = true;
+  stRender();
+  const r = await api('PUT', '/api/admin/settings', { github_token: v });
+  const s = r?.ok ? await api('GET', '/api/admin/settings') : null;
+  g.busy = false;
+  if (!s) { toast('Не удалось сохранить токен', 'error'); return stRender(); }
+  g.set = !!s.github_token_set; g.show = false;
+  stRender();
+  toast('Токен сохранён', 'success');
+}
+function stGhDel() {
+  confirm('Удалить токен GitHub?', 'Проверки обновлений пойдут анонимно — не больше 60 запросов в час.', async () => {
+    ST.gh.busy = true;
+    stRender();
+    const r = await api('PUT', '/api/admin/settings', { github_token: '' });
+    ST.gh.busy = false;
+    if (r?.ok) { ST.gh.set = false; ST.gh.err = ''; toast('Токен удалён', 'success'); }
+    else toast('Не удалось удалить токен', 'error');
+    stRender();
+  });
+}
 
-  if (section === 'messages') return `
-    <div class="card">
-      <div class="card-head"><h3>Сообщения</h3></div>
-      <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
-        <p style="font-size:12px;color:var(--c-text2);line-height:1.7">
-          Время, в течение которого пользователь может редактировать своё сообщение.<br>
-          Для сравнения: WhatsApp — 15 минут, Telegram — 48 часов.
-        </p>
-        <div class="fg" style="margin:0">
-          <label>Лимит редактирования (секунды)</label>
-          <div style="display:flex;gap:8px">
-            <input id="edit-limit-input" type="number" min="10" step="10"
-              value="${s.edit_time_limit || 120}"
-              style="flex:1;font-family:var(--f-mono);font-size:13px">
-            <button class="btn btn-primary" onclick="saveEditLimit()">Сохранить</button>
-          </div>
-          <div style="margin-top:7px;font-size:11px;color:var(--c-muted)">По умолчанию 120 сек (2 минуты). Применяется сразу, клиенты подхватывают при переподключении.</div>
-        </div>
-      </div>
-    </div>`;
-
-  if (section === 'github') return `
-    <div class="card">
-      <div class="card-head"><h3>GitHub API</h3></div>
-      <div class="card-body" style="display:flex;flex-direction:column;gap:14px">
-        <p style="font-size:12px;color:var(--c-text2);line-height:1.7">
-          GitHub Personal Access Token используется для авторизованных запросов к API.<br>
-          Без токена лимит — <b>60 запросов/час</b>, с токеном — <b>5000 запросов/час</b>.<br>
-          Версия клиентов кэшируется на 15 минут.
-        </p>
-        <div class="fg" style="margin:0">
-          <label>Personal Access Token</label>
-          <div style="display:flex;gap:8px">
-            <input id="github-token-input" type="password"
-              placeholder="${s.github_token_set?'••••••••••••••••••••':'ghp_xxxxxxxxxxxxxxxxxxxx'}"
-              style="flex:1;font-family:var(--f-mono);font-size:13px">
-            <button class="btn btn-primary" onclick="saveGithubToken()">Сохранить</button>
-            ${s.github_token_set?`<button class="btn btn-ghost" onclick="clearGithubToken()">Удалить</button>`:''}
-          </div>
-          ${s.github_token_set
-            ?`<div style="margin-top:7px;font-size:12px;color:var(--c-green-text);display:flex;align-items:center;gap:5px">
-                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-                Токен установлен
-              </div>`
-            :`<div style="margin-top:7px;font-size:12px;color:var(--c-orange-text);display:flex;align-items:center;gap:5px">
-                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                Токен не установлен — используется анонимный доступ
-              </div>`}
-        </div>
-        <p style="font-size:11px;color:var(--c-muted)">
-          Создать токен: <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=Electron+Admin" target="_blank">github.com/settings/tokens</a> — достаточно scope <code style="background:var(--c-surface2);padding:1px 5px;border-radius:var(--radius-sm);font-size:11px">public_repo</code>
-        </p>
-      </div>
-    </div>`;
-
-  if (section === 'attachments') return `
-    <div class="card">
-      <div class="card-head"><h3>Вложения</h3></div>
-      <div class="card-body" style="display:flex;flex-direction:column;gap:20px">
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Изображения</div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <div class="fg" style="margin:0">
-              <label>Макс. размер (МБ)</label>
-              <input id="img-max-size" type="number" min="1" max="500" value="${s.upload_image_max_size || 10}" style="font-family:var(--f-mono);font-size:13px">
-            </div>
-            <div class="fg" style="margin:0">
-              <label>Разрешённые расширения</label>
-              <input id="img-extensions" type="text" value="${s.upload_image_extensions || 'jpeg,jpg,png,gif,webp'}" placeholder="jpeg,jpg,png,gif,webp" style="font-family:var(--f-mono);font-size:13px">
-              <div style="margin-top:5px;font-size:11px;color:var(--c-muted)">Через запятую без пробелов и точек</div>
-            </div>
-          </div>
-        </div>
-        <div style="border-top:1px solid var(--c-border);padding-top:16px">
-          <div style="font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Файлы</div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <div class="fg" style="margin:0">
-              <label>Макс. размер (МБ)</label>
-              <input id="file-max-size" type="number" min="1" max="500" value="${s.upload_file_max_size || 50}" style="font-family:var(--f-mono);font-size:13px">
-            </div>
-            <div class="fg" style="margin:0">
-              <label>Разрешённые расширения</label>
-              <input id="file-extensions" type="text" value="${s.upload_file_extensions || ''}" placeholder="pdf,docx,xlsx,zip (пусто = любые)" style="font-family:var(--f-mono);font-size:13px">
-              <div style="margin-top:5px;font-size:11px;color:var(--c-muted)">Пусто = любые расширения разрешены</div>
-            </div>
-          </div>
-        </div>
-        <div style="border-top:1px solid var(--c-border);padding-top:16px">
-          <div style="font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Хранение</div>
-          <div class="fg" style="margin:0">
-            <label>Время жизни файлов (дни, 0 = навсегда)</label>
-            <input id="file-lifetime" type="number" min="0" max="3650" value="${s.upload_file_lifetime || 0}" style="font-family:var(--f-mono);font-size:13px">
-            <div style="margin-top:5px;font-size:11px;color:var(--c-muted)">Файлы старше указанного числа дней удаляются автоматически. Проверка раз в 6 часов.</div>
-          </div>
-        </div>
-        <button class="btn btn-primary" onclick="saveUploadSettings()" style="align-self:flex-start">Сохранить</button>
-      </div>
-    </div>`;
-
-  if (section === 'update') return `
-    <div class="card">
-      <div class="card-head">
-        <div>
-          <h3>Обновление сервера</h3>
-          <div class="card-sub">Текущая версия: <span style="font-family:var(--f-mono);font-weight:600">${s._version}</span></div>
-        </div>
-      </div>
-      <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <button class="btn btn-ghost" id="su-check-btn" onclick="checkServerUpdateSettings()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Проверить
-          </button>
-          <span id="su-status"></span>
-        </div>
-        <div id="su-progress" style="display:none">
-          <div style="height:4px;border-radius:2px;background:var(--c-border);overflow:hidden;margin-bottom:6px">
-            <div class="su-bar" style="height:100%;width:0%;background:var(--c-primary);border-radius:2px;transition:width 1.8s ease"></div>
-          </div>
-          <div class="su-progress-label" style="font-size:11px;color:var(--c-muted)"></div>
-        </div>
-      </div>
-    </div>`;
-
-  return '';
+async function stCheck() {
+  ST.upd = { state: 'checking', v: null };
+  stRender();
+  const v = await api('GET', '/api/admin/server/version');
+  ST.upd = !v?.latest ? { state: 'error', v: null } : { state: v.hasUpdate ? 'available' : 'latest', v };
+  // Та же проверка нужна главной: там кнопка сразу покажет результат, а установка возьмёт версию отсюда
+  if (v?.latest && typeof HM !== 'undefined') { HM.upd.check = v; HM.upd.checkedAt = Date.now(); }
+  if (document.getElementById('modal-settings')?.classList.contains('open')) stRender();
+}
+// Установка идёт с главной: там шаги, опрос состояния и проверка версии после перезапуска
+async function stInstall() {
+  const v = ST.upd.v;
+  if (!v?.hasUpdate) return;
+  closeModal('modal-settings');
+  HM.upd.check = v;
+  HM.upd.checkedAt = Date.now();
+  nav('dashboard');
+  for (let i = 0; i < 50 && !document.getElementById('hm-upd-panel'); i++) await new Promise(r => setTimeout(r, 100));
+  hmUpdInstall();
 }
 
 function restartService() {
@@ -4216,195 +4542,10 @@ function restartService() {
   );
 }
 
-async function saveEditLimit() {
-  const val = parseInt(document.getElementById('edit-limit-input').value, 10);
-  if (!val || val < 10) { toast('Минимум 10 секунд','error'); return; }
-  await api('PUT','/api/admin/settings',{edit_time_limit:String(val)});
-  toast('Лимит сохранён','success');
-}
-
-async function saveGithubToken() {
-  const val=document.getElementById('github-token-input').value.trim();
-  if (!val) { toast('Введите токен','error'); return; }
-  await api('PUT','/api/admin/settings',{github_token:val});
-  toast('Токен сохранён','success');
-  _settingsData = await api('GET','/api/admin/settings');
-  showSettingsSection('github');
-}
-
-async function clearGithubToken() {
-  await api('PUT','/api/admin/settings',{github_token:''});
-  toast('Токен удалён','success');
-  _settingsData = await api('GET','/api/admin/settings');
-  showSettingsSection('github');
-}
-
-async function saveUploadSettings() {
-  const data = {
-    upload_image_max_size: document.getElementById('img-max-size').value,
-    upload_image_extensions: document.getElementById('img-extensions').value,
-    upload_file_max_size: document.getElementById('file-max-size').value,
-    upload_file_extensions: document.getElementById('file-extensions').value,
-    upload_file_lifetime: document.getElementById('file-lifetime').value,
-  };
-  await api('PUT','/api/admin/settings',data);
-  toast('Настройки вложений сохранены','success');
-}
-
 /* ── TOPBAR HELPER ── */
 function setTopbarActions(html) {
   const extra = document.getElementById('topbar-extra');
   if (extra) { extra.innerHTML = html || ''; extra.style.display = html ? 'flex' : 'none'; }
-}
-
-/* ── SERVER UPDATE (Settings) ── */
-let _updateCheckData = null; // { current, latest, hasUpdate }
-
-async function checkServerUpdateSettings() {
-  const btn = document.getElementById('su-check-btn');
-  const statusEl = document.getElementById('su-status');
-  if (!btn || !statusEl) return;
-
-  btn.disabled = true;
-  btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Проверяю…`;
-  statusEl.innerHTML = '';
-
-  try {
-    const data = await api('GET', '/api/admin/server/version');
-    _updateCheckData = data;
-
-    if (!data) throw new Error('no data');
-
-    if (data.hasUpdate) {
-      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/></svg> Обновить до ${data.latest}`;
-      btn.className = 'btn btn-success';
-      btn.disabled = false;
-      btn.onclick = doServerUpdateSettings;
-      statusEl.innerHTML = `<span style="color:var(--c-orange-text);font-size:12px">Доступна версия ${data.latest}</span>`;
-    } else {
-      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Проверить`;
-      btn.className = 'btn btn-ghost';
-      btn.disabled = false;
-      btn.onclick = checkServerUpdateSettings;
-      statusEl.innerHTML = `<span style="color:var(--c-green-text);font-size:12px;display:flex;align-items:center;gap:5px">
-        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-        Установлена актуальная версия сервера
-      </span>`;
-    }
-  } catch {
-    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Проверить`;
-    btn.className = 'btn btn-ghost';
-    btn.disabled = false;
-    btn.onclick = checkServerUpdateSettings;
-    statusEl.innerHTML = `<span style="color:var(--c-red-text);font-size:12px">Не удалось проверить обновления</span>`;
-  }
-}
-
-function _resetSuBtn(btn) {
-  btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Проверить`;
-  btn.className = 'btn btn-ghost';
-  btn.disabled = false;
-  btn.onclick = checkServerUpdateSettings;
-}
-
-async function doServerUpdateSettings() {
-  const btn = document.getElementById('su-check-btn');
-  const statusEl = document.getElementById('su-status');
-  const progressEl = document.getElementById('su-progress');
-  if (!btn) return;
-
-  btn.disabled = true;
-  btn.innerHTML = '…';
-
-  // Сбрасываем прогресс-бар (в т.ч. при повторном запуске после ошибки)
-  const bar = progressEl ? progressEl.querySelector('.su-bar') : null;
-  const label = progressEl ? progressEl.querySelector('.su-progress-label') : null;
-  if (bar) { bar.style.width = '0%'; bar.style.background = 'var(--c-primary)'; bar.style.transition = 'none'; }
-  if (label) label.textContent = '';
-  if (progressEl) progressEl.style.display = 'block';
-  // небольшая задержка, чтобы браузер применил transition:none перед анимацией
-  await new Promise(r => setTimeout(r, 30));
-  if (bar) bar.style.transition = 'width 1.8s ease';
-
-  const steps = [
-    { pct: 15, text: 'Получение обновления с GitHub…' },
-    { pct: 45, text: 'Установка зависимостей…' },
-    { pct: 75, text: 'Сборка…' },
-    { pct: 90, text: 'Перезапуск службы…' },
-  ];
-  let stepIdx = 0;
-  const advance = setInterval(() => {
-    if (stepIdx < steps.length) {
-      if (bar) bar.style.width = steps[stepIdx].pct + '%';
-      if (label) label.textContent = steps[stepIdx].text;
-      stepIdx++;
-    }
-  }, 2000);
-
-  // Используем сырой fetch: сервер может сбросить соединение в процессе рестарта —
-  // ERR_CONNECTION_RESET здесь норма, не показываем toast «нет связи».
-  let upd = null;
-  try {
-    const r = await fetch('/api/admin/server/update', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-    });
-    if (r.ok) upd = await r.json().catch(() => ({}));
-  } catch { /* сервер перезапустился — переходим к опросу */ }
-
-  // Сервер отклонил обновление (служба не активна / нет прав) — честно показываем ошибку
-  if (upd && upd.error) {
-    clearInterval(advance);
-    if (label) label.textContent = upd.error;
-    if (bar) { bar.style.width = '100%'; bar.style.background = 'var(--c-red)'; }
-    toast(upd.error, 'error');
-    _resetSuBtn(btn);
-    return;
-  }
-  if (statusEl) statusEl.innerHTML = '';
-
-  // Ждём, пока сервер вернётся, и подтверждаем успех по РЕАЛЬНОЙ смене версии,
-  // а не просто по доступности (иначе git pull мог упасть, а служба перезапуститься на старом коде).
-  const target = _updateCheckData?.latest;
-  const startedAt = Date.now();
-  const poll = setInterval(async () => {
-    if (Date.now() - startedAt > 120000) {
-      clearInterval(poll);
-      clearInterval(advance);
-      if (label) label.textContent = 'Обновление не подтверждено за 2 мин — нажмите «Проверить» чтобы повторить';
-      if (bar) { bar.style.width = '100%'; bar.style.background = 'var(--c-red)'; }
-      toast('Обновление не подтверждено', 'error');
-      _resetSuBtn(btn);
-      return;
-    }
-    try {
-      const res = await fetch('/api/admin/stats', { headers: { Authorization: 'Bearer ' + token, 'Cache-Control': 'no-cache' } });
-      if (res.ok) {
-        const s = await res.json();
-        // Успех только если локальная версия реально стала целевой
-        if (s && (!target || s.serverVersion === target)) {
-          clearInterval(poll);
-          clearInterval(advance);
-          if (bar) { bar.style.width = '100%'; bar.style.background = 'var(--c-green)'; }
-          if (label) label.textContent = `Обновлено до ${s.serverVersion || target || ''}`;
-          toast('Сервер обновлён и перезапущен', 'success');
-          _resetSuBtn(btn);
-          // Сбрасываем все кеши — данные могли измениться после обновления
-          allUsers = []; allRooms = []; allChats = []; allUsersCache = [];
-          updateNavBadges();
-          // Перерисовываем раздел обновления если модалка настроек открыта
-          setTimeout(async () => {
-            if (document.getElementById('modal-settings')?.classList.contains('open')) {
-              const verData2 = await api('GET','/api/admin/server/version');
-              if (_settingsData) _settingsData._version = verData2?.current || '—';
-              if (_activeSettingsSection === 'update') showSettingsSection('update');
-            }
-          }, 800);
-        }
-        // иначе сервер ещё на старой версии (идёт сборка/рестарт) — продолжаем ждать
-      }
-    } catch {}
-  }, 1500);
 }
 
 /* ── FILES ── */
