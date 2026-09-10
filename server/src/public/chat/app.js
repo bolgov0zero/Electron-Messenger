@@ -1215,6 +1215,42 @@ function playNotificationSound() {
 }
 
 // ── CHAT LIST ──
+// ── ПУСТЫЕ ЛИЧНЫЕ ЧАТЫ ──
+// Выбрали человека, передумали писать — чат исчезает и у вас, и с сервера.
+// Собеседник его и так не видел (он добавлен скрытым до первого сообщения),
+// поэтому скрытие у себя оставляет чат скрытым у всех, а тогда сервер удаляет
+// строку целиком. Начатый черновик считается началом разговора: с ним чат
+// остаётся, и в списке он помечен как «Черновик».
+async function dropEmptyDirect(chatId) {
+  if (!chatId) return;
+  const chat = S.chats.find(c => c.id === chatId);
+  if (!chat || chat.type !== 'direct') return;
+  if (chat.last_message) return;
+  if ((S.drafts[chatId] || '').trim()) return;
+  try { await api('DELETE', '/chats/' + chatId); } catch { return; }
+  // Сервер пришлёт chat_deleted, но список чистим сразу: иначе пустая строка
+  // мелькает до прихода события
+  S.chats = S.chats.filter(c => c.id !== chatId);
+  delete S.unread[chatId];
+  delete S.unreadMentions[chatId];
+  renderChatList();
+}
+
+// Приложение закрыли, не выходя из пустого чата, — момента «ухожу» не было.
+// Убираем при следующем запуске по тому же правилу. Именно при запуске, один
+// раз: loadChats вызывается и после создания чата, и на событие reload_chats,
+// и уборка на каждый вызов сносила бы только что заведённый чат прямо из-под рук.
+let _emptySwept = false;
+function dropEmptyDirects() {
+  if (_emptySwept) return;
+  _emptySwept = true;
+  S.chats
+    // Открытый сейчас чат не трогаем: он пуст ровно потому, что в нём и сидят
+    .filter(c => c.id !== S.activeChatId && c.type === 'direct'
+      && !c.last_message && !(S.drafts[c.id] || '').trim())
+    .forEach(c => dropEmptyDirect(c.id));
+}
+
 async function loadChats() {
   const chats = await api('GET','/chats');
   if (!chats) return;
@@ -1227,6 +1263,7 @@ async function loadChats() {
   await Promise.all(chats.filter(c=>c.has_topics).map(c=>loadTopics(c.id)));
   updateUnreadTotal();
   renderChatList();
+  dropEmptyDirects();
 }
 
 // ── SUB-ROOMS ──
@@ -1814,6 +1851,8 @@ function watchComposerHeight() {
 // forceBottom — открыть заведомо у последнего сообщения, минуя якорь на первом
 // непрочитанном: так возвращаются из глубины истории и после отправки сообщения
 async function openChat(chatId, aroundId = null, forceBottom = false) {
+  // Уходим из пустого личного чата — он больше не нужен ни здесь, ни на сервере
+  if (S.activeChatId && S.activeChatId !== chatId) dropEmptyDirect(S.activeChatId);
   S.msgData.clear();
   let chat = S.chats.find(c=>c.id===chatId);
   if (!chat) {
