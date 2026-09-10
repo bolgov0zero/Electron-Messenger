@@ -3139,6 +3139,10 @@ function sendOrEdit() {
   hideReplyBar();
   hideForwardBar();
   clearImagePreview();
+  // Сообщение ушло — панель смайлов больше не нужна. Закрываем именно здесь, а
+  // не в начале: при пустом поле или без связи отправки не было, и панель
+  // должна остаться открытой.
+  closeEmojiPicker();
   delete S.drafts[S.activeChatId]; saveDrafts(); // черновик отправлен — очищаем
   input.value=''; input.style.height='20px'; input.style.overflow='hidden';
   const sendBtn = document.getElementById('send-btn');
@@ -3150,6 +3154,7 @@ function submitEdit() {
   const text = input?.value.trim();
   if (!text) { cancelEdit(); return; }
   S.ws.send(JSON.stringify({type:'edit_message', message_id:S.editingMessageId, text}));
+  closeEmojiPicker();
   cancelEdit();
 }
 
