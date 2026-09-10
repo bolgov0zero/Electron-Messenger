@@ -565,10 +565,11 @@ tr.ua-banned .ux-cell{opacity:.6}
 .rm-stack .av{border:2px solid var(--c-surface)}
 .rm-stack>.more{margin-left:8px;font:600 11px var(--f-mono);color:var(--c-text2)}
 .rm-pair{position:relative;width:40px;height:34px;flex-shrink:0}
-.rm-pair>*{position:absolute}
+/* Точнее, чем .av-wrap{position:relative} ниже по файлу — иначе тот перебивал, и аватарки шли столбиком */
+.rm-pair>.av-wrap{position:absolute}
 .rm-pair .av{border:2px solid var(--c-surface)}
-.rm-pair>*:first-child{left:0;top:0}
-.rm-pair>*:last-child{right:0;bottom:0}
+.rm-pair>.av-wrap:first-child{left:0;top:0}
+.rm-pair>.av-wrap:last-child{right:0;bottom:0}
 .ux-tbl th.rm-num,.ux-tbl td.rm-num{text-align:right}
 .rm-msgs{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:11.5px}
 .rm-spark{display:flex;align-items:flex-end;gap:2px;height:16px}
