@@ -642,10 +642,17 @@ function collectFiles() {
     }
   } catch {}
 
-  return [...fileMap.values()].map(f => {
-    const stat = (() => { try { return fs.statSync(path.join(FILES_DIR, f.filename)); } catch { return null; } })();
-    return { ...f, size: stat?.size ?? 0, mtime: stat?.mtimeMs ?? (f.sent_at ? f.sent_at * 1000 : 0), onDisk: !!stat };
-  }).sort((a, b) => b.mtime - a.mtime);
+  // Только то, что действительно лежит на диске. Сообщение с удалённым файлом
+  // живо — в чате у него заглушка «Файл удалён», — но в списке файлов ему
+  // места нет: смотреть и удалять там уже нечего, а строка висела с пометкой
+  // «отсутствует» и завышала счётчик
+  const out = [];
+  for (const f of fileMap.values()) {
+    let stat;
+    try { stat = fs.statSync(path.join(FILES_DIR, f.filename)); } catch { continue; }
+    out.push({ ...f, size: stat.size, mtime: stat.mtimeMs });
+  }
+  return out.sort((a, b) => b.mtime - a.mtime);
 }
 
 router.get('/files', (req, res) => {

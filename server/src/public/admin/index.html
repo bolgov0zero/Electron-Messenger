@@ -3200,25 +3200,19 @@ async function renderFiles() {
   function renderTable() {
     const filtered = getFiltered();
     const rows = filtered.length ? filtered.map(f => {
-      const missing = f.onDisk === false;
-      const thumb = missing
-        ? `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;opacity:.4">${fileIcon()}</div>`
-        : isImg(f.filename)
-          ? `<img class="file-thumb" src="/files/${esc(f.filename)}" title="Открыть" onclick="openFilePreview('${jesc(f.filename)}')" style="width:32px;height:32px;object-fit:cover;border-radius:4px;display:block" onerror="this.style.display='none'">`
-          : `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">${fileIcon()}</div>`;
+      // Сервер отдаёт только файлы, которые есть на диске, — «отсутствующих» строк не бывает
+      const thumb = isImg(f.filename)
+        ? `<img class="file-thumb" src="/files/${esc(f.filename)}" title="Открыть" onclick="openFilePreview('${jesc(f.filename)}')" style="width:32px;height:32px;object-fit:cover;border-radius:4px;display:block" onerror="this.style.display='none'">`
+        : `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center">${fileIcon()}</div>`;
       const fname = f.filename.length > 32 ? f.filename.slice(0, 30) + '…' : f.filename;
-      const sizeCell = missing
-        ? `<span style="font-size:10px;color:var(--c-muted);font-style:italic">отсутствует</span>`
-        : fmtSize(f.size);
-      const actionCell = missing ? '' : `<button class="btn btn-danger btn-sm" onclick="deleteFile('${jesc(f.filename)}')">Удалить</button>`;
-      return `<tr style="${missing ? 'opacity:.6' : ''}">
+      return `<tr>
         <td style="width:40px">${thumb}</td>
         <td style="font-size:11px;font-family:var(--f-mono);color:var(--c-text2)" title="${esc(f.filename)}">${esc(fname)}</td>
-        <td style="font-size:11px;color:var(--c-muted)">${sizeCell}</td>
+        <td style="font-size:11px;color:var(--c-muted)">${fmtSize(f.size)}</td>
         <td style="font-size:11px;color:var(--c-text2)">${esc(f.sender_name||'—')}</td>
         <td style="font-size:11px;color:var(--c-text2)">${f.chat_name ? esc(f.chat_name) + chatKindBadge(f.chat_type) : '—'}</td>
         <td style="font-size:11px;color:var(--c-muted)">${f.sent_at ? fmtDate(f.sent_at) : '—'}</td>
-        <td>${actionCell}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteFile('${jesc(f.filename)}')">Удалить</button></td>
       </tr>`;
     }).join('') : `<tr><td colspan="7"><div class="empty-state"><p>Нет файлов</p></div></td></tr>`;
 
