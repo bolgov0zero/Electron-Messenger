@@ -2495,34 +2495,24 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 .ctx-reaction-more {
   font-size: 13px; color: var(--text2); font-weight: 600;
 }
+/* Панель реакций — та же, что в композере, только уже и ниже. Классы общие,
+   поэтому отличаются здесь только размеры. */
 #reaction-picker {
   position: fixed; z-index: 9999;
   background: var(--menu-bg); border: 1px solid var(--border);
-  border-radius: 9px; padding: 8px;
+  border-radius: 12px; padding: 0;
   box-shadow: 0 30px 60px rgba(0,0,0,.5);
   display: none; width: 274px;
+  overflow: hidden;
 }
-#reaction-picker.open { display: block; }
-.rp-freq {
-  display: flex; gap: 2px; padding: 2px 0;
-  background: var(--hover-row); border-radius: 9px; margin-bottom: 2px;
-}
-.rp-sep { height: 1px; background: var(--border); margin: 4px 0; }
-.rp-scroll { overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; max-height: 200px; }
-/* Сетка разбита на куски — по той же причине, что и разделы панели смайлов */
-.rp-scroll { display: flex; flex-direction: column; gap: 2px; }
-.rp-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 34px);
-  gap: 2px;
-  content-visibility: auto;
-}
-.rp-btn {
-  font-size: 20px; padding: 5px; border-radius: 9px; width: 34px;
-  background: none; border: none; cursor: pointer;
-  transition: background .1s; line-height: 1; text-align: center;
-}
-.rp-btn:hover { background: var(--hover-row); }
+#reaction-picker.open { display: flex; flex-direction: column; }
+#reaction-picker .ep-search { margin: 7px 7px 5px; padding: 5px 9px; }
+#reaction-picker .ep-tabs { padding: 0 5px; }
+#reaction-picker .ep-tab { height: 28px; font-size: 15px; }
+#reaction-picker .ep-scroll { max-height: 186px; padding: 0 5px 6px; }
+#reaction-picker .ep-row { grid-template-columns: repeat(7, 1fr); }
+#reaction-picker .emoji-item { font-size: 20px; }
+#reaction-picker .ep-head { padding: 7px 4px 4px; }
 
 /* ── NEW CHAT TABS ── */
 
