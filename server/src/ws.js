@@ -1,5 +1,12 @@
 const { WebSocketServer } = require('ws');
 const db = require('./db');
+const unreadCounts = require('./unread');
+// Требуем лениво, как и sendPushToUser ниже: push.js при загрузке генерирует
+// ключи, и раньше времени его дёргать не нужно
+function hasPushSubscription(userId) {
+  try { return require('./routes/push').hasPushSubscription(userId); }
+  catch { return false; }
+}
 const { wsAuth } = require('./auth');
 
 // Ленивая загрузка чтобы избежать циклических зависимостей
@@ -289,20 +296,21 @@ function setup(server) {
         // Push-уведомления всем участникам (кроме отправителя).
         const chat = chatMeta;
         const allMembers = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chat_id, user.id);
-        const stmtUnread = db.prepare(`
-          SELECT COUNT(*) AS c FROM messages m
-          JOIN chat_members cm ON cm.chat_id = m.chat_id AND cm.user_id = ?
-          LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-          WHERE m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL
-        `);
         const stmtMuted = db.prepare(
           'SELECT 1 FROM muted_chats WHERE user_id = ? AND (chat_id = ? OR chat_id = ?)'
         );
         allMembers.forEach(({ user_id }) => {
           const parentId = chatMeta?.parent_id || chat_id;
           if (stmtMuted.get(user_id, chat_id, parentId)) return;
+          // Сначала проверяем подписку, потом считаем. Раньше порядок был обратный,
+          // и счётчик непрочитанного (перебор всей переписки человека) считался
+          // каждому получателю на каждое сообщение — включая тех, у кого никакой
+          // подписки нет, то есть всех, кто сидит в настольном клиенте. На группе
+          // из одиннадцати человек это занимало 122 мс, и всё это время сервер
+          // не обслуживал никого: обращения к базе синхронные.
+          if (!hasPushSubscription(user_id)) return;
           const chatTitle = chat?.type === 'direct' ? msg.sender_name : (chat?.name || 'Electron');
-          const unread = stmtUnread.get(user_id, user_id, user_id).c;
+          const unread = unreadCounts.total(user_id);
           pushToUser(user_id, {
             title: chatTitle,
             body: msg.text || (msg.attachment ? '🖼 Изображение' : ''),
@@ -335,6 +343,10 @@ function setup(server) {
           LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
           WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL
         `).all(user.id, chat_id, user.id);
+        // Отметка «докуда прочитано» — до раннего выхода: если непрочитанного нет,
+        // отметку всё равно надо подтянуть к последнему сообщению, иначе она может
+        // отстать и счётчик покажет непрочитанное там, где его нет
+        unreadCounts.markRead(user.id, chat_id);
         if (!unread.length) return;
         // Подготавливаем стейтменты вне транзакции
         const stmtReadInsert = db.prepare('INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)');

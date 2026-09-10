@@ -4,6 +4,7 @@ const fs = require('fs');
 const db = require('../db');
 const { authMiddleware, adminMiddleware } = require('../auth');
 const { sendTo } = require('../ws');
+const unreadCounts = require('../unread');
 
 const DB_DIR = path2.join(__dirname, '..', '..', '..', 'chat_db');
 const AVATAR_DIR = path2.join(DB_DIR, 'avatar');
@@ -43,17 +44,8 @@ function enrichChat(chat, userId) {
       WHERE m.chat_id IN (${placeholders}) ORDER BY m.sent_at DESC LIMIT 1
     `).get(...ids);
     if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
-    unread = db.prepare(`
-      SELECT COUNT(*) AS c FROM messages m
-      LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id IN (${placeholders}) AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL
-    `).get(userId, ...ids, userId).c;
-    unreadMentions = db.prepare(`
-      SELECT COUNT(*) AS c FROM messages m
-      LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id IN (${placeholders}) AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
-        AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
-    `).get(userId, ...ids, userId, userId).c;
+    unread = unreadCounts.inChats(userId, ids);
+    unreadMentions = unreadCounts.mentionsInChats(userId, ids);
   } else {
     last = db.prepare(`
       SELECT m.id, m.chat_id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment,
@@ -62,17 +54,8 @@ function enrichChat(chat, userId) {
       WHERE m.chat_id = ? ORDER BY m.sent_at DESC LIMIT 1
     `).get(chat.id);
     if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
-    unread = db.prepare(`
-      SELECT COUNT(*) AS c FROM messages m
-      LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL
-    `).get(userId, chat.id, userId).c;
-    unreadMentions = db.prepare(`
-      SELECT COUNT(*) AS c FROM messages m
-      LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
-        AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
-    `).get(userId, chat.id, userId, userId).c;
+    unread = unreadCounts.inChat(userId, chat.id);
+    unreadMentions = unreadCounts.mentionsInChat(userId, chat.id);
   }
 
   // Статус доставки последнего сообщения — только для своих: в списке чатов
@@ -115,17 +98,8 @@ router.get('/:id/topics', authMiddleware, (req, res) => {
   `).all(chatId);
   const userId = req.user.id;
   const result = topics.map(s => {
-    const unread = db.prepare(`
-      SELECT COUNT(*) AS c FROM messages m
-      LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL
-    `).get(userId, s.id, userId).c;
-    const unreadMentions = db.prepare(`
-      SELECT COUNT(*) AS c FROM messages m
-      LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-      WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL AND m.mentions IS NOT NULL
-        AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)
-    `).get(userId, s.id, userId, userId).c;
+    const unread = unreadCounts.inChat(userId, s.id);
+    const unreadMentions = unreadCounts.mentionsInChat(userId, s.id);
     const has_avatar = fs.existsSync(path2.join(AVATAR_DIR, `chat_${s.id}.jpg`));
     // Превью последнего сообщения — как в обычном списке чатов: иначе у всех
     // тем была одинаковая подпись «# тема» и не понять, что нового

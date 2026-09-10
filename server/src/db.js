@@ -69,6 +69,20 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_messages_chat_sent    ON messages(chat_id, sent_at);
+  -- Лента и счётчики непрочитанного идут по возрастанию id, а не времени отправки.
+  -- Без этого индекса выборка последних сообщений сортировала во временной
+  -- таблице всю переписку чата, чтобы отдать полсотни строк.
+  CREATE INDEX IF NOT EXISTS idx_messages_chat_id      ON messages(chat_id, id);
+
+  -- Докуда человек прочитал чат. Непрочитанное — хвост новее этой отметки, а не
+  -- перебор всей истории с проверкой message_status по каждому сообщению.
+  -- Подробности в src/unread.js.
+  CREATE TABLE IF NOT EXISTS chat_read_state (
+    user_id      INTEGER NOT NULL,
+    chat_id      INTEGER NOT NULL,
+    last_read_id INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, chat_id)
+  );
   CREATE INDEX IF NOT EXISTS idx_chat_members_user     ON chat_members(user_id);
   CREATE INDEX IF NOT EXISTS idx_chat_members_chat     ON chat_members(chat_id);
   CREATE INDEX IF NOT EXISTS idx_message_status_msg    ON message_status(message_id);
@@ -193,6 +207,29 @@ try {
 } catch (e) {
   console.warn('[FTS] Полнотекстовый поиск недоступен:', e.message);
 }
+
+// Разовое заполнение отметок «докуда прочитано» для уже работающих установок.
+// Берём id прямо перед первым непрочитанным — тогда счётчики после перехода
+// совпадают с прежними до единицы. Если непрочитанного нет, отметка встаёт на
+// последнее сообщение чата.
+try {
+  const filled = db.prepare('SELECT COUNT(*) AS c FROM chat_read_state').get().c;
+  const members = db.prepare('SELECT COUNT(*) AS c FROM chat_members').get().c;
+  if (filled === 0 && members > 0) {
+    db.exec(`
+      INSERT OR REPLACE INTO chat_read_state (user_id, chat_id, last_read_id)
+      SELECT cm.user_id, cm.chat_id, COALESCE(
+        (SELECT MIN(m.id) - 1 FROM messages m
+           LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = cm.user_id
+          WHERE m.chat_id = cm.chat_id AND m.sender_id IS NOT cm.user_id
+            AND m.deleted = 0 AND ms.read_at IS NULL),
+        (SELECT COALESCE(MAX(id), 0) FROM messages WHERE chat_id = cm.chat_id))
+      FROM chat_members cm
+    `);
+    console.log('[DB] Отметки прочтения заполнены:',
+      db.prepare('SELECT COUNT(*) AS c FROM chat_read_state').get().c);
+  }
+} catch (e) { console.error('[DB] Не удалось заполнить отметки прочтения:', e.message); }
 
 // Default admin
 const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get();

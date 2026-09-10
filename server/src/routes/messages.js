@@ -2,6 +2,7 @@ const router = require('express').Router();
 const path = require('path');
 const fs = require('fs');
 const db = require('../db');
+const unreadCounts = require('../unread');
 const { authMiddleware } = require('../auth');
 const { getPins } = require('../ws');
 
@@ -61,11 +62,7 @@ router.get('/chat/:chatId', authMiddleware, (req, res) => {
   // Первое непрочитанное считаем на сервере: у клиента счётчик мог разойтись,
   // часть могла быть прочитана с другого устройства, а при большом числе новых
   // сообщений нужного просто нет в последней странице.
-  const firstUnreadId = db.prepare(`
-    SELECT MIN(m.id) AS id FROM messages m
-    LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-    WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL
-  `).get(req.user.id, chatId, req.user.id).id || null;
+  const firstUnreadId = unreadCounts.firstUnreadId(req.user.id, chatId);
 
   let messages, hasMore = false, hasMoreAfter = false;
 

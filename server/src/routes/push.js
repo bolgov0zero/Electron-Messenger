@@ -134,5 +134,14 @@ router.post('/test/:userId', async (req, res) => {
   res.status(allOk ? 200 : 207).json({ results });
 });
 
+
+// Есть ли у человека подписка на уведомления. Нужна до того, как считать данные
+// для уведомления: подписки нет — считать нечего, а подсчёты недешёвые.
+const stmtHasSub = db.prepare('SELECT 1 FROM push_subscriptions WHERE user_id = ? LIMIT 1');
+function hasPushSubscription(userId) {
+  return !!stmtHasSub.get(userId);
+}
+
 module.exports = router;
 module.exports.sendPushToUser = sendPushToUser;
+module.exports.hasPushSubscription = hasPushSubscription;
