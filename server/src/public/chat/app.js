@@ -3284,30 +3284,25 @@ function renderMsgIRC(m, isFirst = true, isTail = true) {
   const metaHtml = `<div class="irc-meta"><span class="status-wrap">${statusIcon}</span><span class="irc-time">${time}</span></div>`;
 
   const att = m.attachment;
+  // Вложение, которого больше нет. Раньше на его месте оставалась подложка во всю
+  // ширину пузыря, и время с галочками ложилось поверх неё. Теперь это обычная
+  // строка — такая же, как «Сообщение удалено»: место под время она держит сама
+  const attExpired = !isDeleted && !!att?.url && !!att.expired;
   let attachHtml = '';
-  if (!isDeleted && att?.url) {
-    if (att.expired) {
-      const isImg = att.mime?.startsWith('image/');
-      attachHtml = isImg
-        ? `<div class="bubble-image bubble-expired"><span>Файл удалён</span></div>`
-        : `<div class="bubble-file bubble-expired">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <div class="bubble-file-info"><div class="bubble-file-name" style="opacity:.4">${att.name||'Файл'}</div><div class="bubble-file-size">Файл удалён</div></div>
-          </div>`;
+  if (!isDeleted && att?.url && !att.expired) {
+    const attUrl = `${httpProto()}://${S.server}${att.url}`;
+    if (att.mime?.startsWith('image/')) {
+      attachHtml = `<div class="bubble-image" onclick="openLightbox('${attUrl}','${(att.name||'image').replace(/'/g,"\\'")}')"><img src="${httpProto()}://${S.server}${att.thumb || att.url}" loading="lazy"></div>`;
     } else {
-      const attUrl = `${httpProto()}://${S.server}${att.url}`;
-      if (att.mime?.startsWith('image/')) {
-        attachHtml = `<div class="bubble-image" onclick="openLightbox('${attUrl}','${(att.name||'image').replace(/'/g,"\\'")}')"><img src="${httpProto()}://${S.server}${att.thumb || att.url}" loading="lazy"></div>`;
-      } else {
-        const sizeFmt = att.size ? (att.size > 1048576 ? (att.size/1048576).toFixed(1)+' МБ' : Math.round(att.size/1024)+' КБ') : '';
-        attachHtml = `<div class="bubble-file" onclick="downloadAttachment('${attUrl}','${(att.name||'file').replace(/'/g,"\\'")}')">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <div class="bubble-file-info"><div class="bubble-file-name">${att.name||'Файл'}</div>${sizeFmt?`<div class="bubble-file-size">${sizeFmt}</div>`:''}</div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </div>`;
-      }
+      const sizeFmt = att.size ? (att.size > 1048576 ? (att.size/1048576).toFixed(1)+' МБ' : Math.round(att.size/1024)+' КБ') : '';
+      attachHtml = `<div class="bubble-file" onclick="downloadAttachment('${attUrl}','${(att.name||'file').replace(/'/g,"\\'")}')">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <div class="bubble-file-info"><div class="bubble-file-name">${att.name||'Файл'}</div>${sizeFmt?`<div class="bubble-file-size">${sizeFmt}</div>`:''}</div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </div>`;
     }
   }
+  if (attExpired) attachHtml = `<div class="irc-text irc-deleted"><em>Файл удалён</em></div>`;
 
   const attDataAttrs = att?.url ? ` data-msg-att-url="${esc(att.url)}" data-msg-att-thumb="${esc(att.thumb||'')}" data-msg-att-mime="${esc(att.mime||'')}" data-msg-att-name="${esc(att.name||'')}"` : '';
   // пузырь, в котором нет ничего кроме картинки: кадр занимает его целиком, а время
@@ -4195,10 +4190,14 @@ function ctxEdit() {
   if (input) { input.value=text; input.focus(); autoResize(input); }
 }
 
-function ctxDelete() {
+async function ctxDelete() {
   hideCtxMenu();
-  if (!S.ctx.messageId||!S.ws) return;
-  S.ws.send(JSON.stringify({type:'delete_message', message_id:S.ctx.messageId}));
+  // id запоминаем до вопроса: пока висит окно, меню могут открыть на другом сообщении
+  const id = S.ctx.messageId;
+  if (!id) return;
+  if (!await showConfirm('Удалить сообщение? Оно исчезнет у всех участников.')) return;
+  if (!S.ws) return;
+  S.ws.send(JSON.stringify({type:'delete_message', message_id:id}));
 }
 
 async function ctxInfo() {
