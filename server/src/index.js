@@ -73,6 +73,8 @@ require('./ws').setup(server);
 // Отложенные объявления живут в базе; планировщик поднимает наступившие,
 // в том числе те, чьё время пришло, пока сервер был выключен.
 require('./announcements').startScheduler();
+// Нагрузка сервера для живых графиков на главной админки; история переживает перезапуск
+require('./monitor').start();
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const { authMiddleware, adminMiddleware } = require('../auth');
 const announcements = require('../announcements');
 const { sendTo, broadcast, broadcastAll, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, getMessageWithStatus } = require('../ws');
+const monitor = require('../monitor');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
 const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
@@ -37,11 +38,17 @@ function deleteChatFiles(chatId) {
 
 // ── Версия сервера ──
 const VERSION_FILE = path.join(__dirname, '..', '..', 'version.json');
+// Шаги обновления: update.sh дописывает сюда строки, админка читает их через /server/update-status
+const UPDATE_STATUS_FILE = path.join(path.dirname(DB_PATH), 'update-status.log');
 function getLocalVersion() {
   try { return JSON.parse(fs.readFileSync(VERSION_FILE, 'utf8')).version; } catch { return '0.0.0'; }
 }
+// Версия, с которой запущен этот процесс. getLocalVersion читает файл, а update.sh меняет
+// его ещё до перезапуска — по файлу старый процесс рапортовал бы уже новую версию
+const RUNNING_VERSION = getLocalVersion();
 
-function fetchRemoteVersion() {
+// Файл из репозитория на GitHub: версия сервера и описание релиза
+function fetchRepoFile(repoPath) {
   return new Promise((resolve) => {
     try {
       const token = db.prepare("SELECT value FROM settings WHERE key = 'github_token'").get()?.value;
@@ -50,24 +57,31 @@ function fetchRemoteVersion() {
       // Используем GitHub API — не кешируется CDN, в отличие от raw.githubusercontent.com
       const req = https.request({
         hostname: 'api.github.com',
-        path: '/repos/bolgov0zero/Electron-Messenger/contents/server/version.json',
+        path: '/repos/bolgov0zero/Electron-Messenger/contents/' + repoPath,
         headers,
       }, res => {
         let data = '';
         res.on('data', c => data += c);
         res.on('end', () => {
-          try {
-            const json = JSON.parse(data);
-            // Контент закодирован в base64
-            const content = Buffer.from(json.content, 'base64').toString('utf8');
-            resolve(JSON.parse(content).version);
-          } catch { resolve(null); }
+          clearTimeout(timer);
+          // Контент закодирован в base64
+          try { resolve(Buffer.from(JSON.parse(data).content, 'base64').toString('utf8')); }
+          catch { resolve(null); }
         });
       });
-      req.on('error', () => resolve(null));
+      // Общий срок на весь запрос. req.setTimeout не годится: он считает простой уже
+      // открытого соединения, а зависнуть можно раньше — на поиске адреса или подключении,
+      // и тогда кнопка «Проверить» крутилась бы бесконечно
+      const timer = setTimeout(() => { req.destroy(); resolve(null); }, 8000);
+      req.on('error', () => { clearTimeout(timer); resolve(null); });
       req.end();
     } catch { resolve(null); }
   });
+}
+
+async function fetchRemoteVersion() {
+  const content = await fetchRepoFile('server/version.json');
+  try { return JSON.parse(content).version; } catch { return null; }
 }
 
 router.use(authMiddleware, adminMiddleware);
@@ -393,6 +407,7 @@ router.post('/system/restart', (req, res) => {
     if (active !== 'active' && active !== 'activating') {
       return res.status(400).json({ error: 'Служба electron не активна или не найдена. Перезапуск невозможен.' });
     }
+    monitor.addEvent('restart');
     res.json({ ok: true });
     setTimeout(() => exec('systemctl restart electron'), 300);
   });
@@ -409,7 +424,10 @@ function semverGt(a, b) {
 router.get('/server/version', async (req, res) => {
   const local = getLocalVersion();
   const remote = await fetchRemoteVersion();
-  res.json({ current: local, latest: remote, hasUpdate: semverGt(remote, local) });
+  const hasUpdate = semverGt(remote, local);
+  // «Что нового» — описание последнего релиза: в репозитории оно одно и переписывается каждым релизом
+  const notes = hasUpdate ? await fetchRepoFile('RELEASE_NOTES.md') : null;
+  res.json({ current: local, latest: remote, hasUpdate, notes: notes ? notes.trim().slice(0, 4000) : null });
 });
 
 // Обновление сервера с GitHub
@@ -429,16 +447,97 @@ router.post('/server/update', (req, res) => {
     // при перезапуске службы systemd убивал всю группу — установка обрывалась
     // на середине, оставляя недописанный better_sqlite3.node, и служба уходила
     // в цикл падений с SIGBUS. Транзиентный юнит переживает перезапуск сервера.
-    const cmd = `systemd-run --unit=electron-update --collect --description="Обновление Electron" /bin/bash ${JSON.stringify(updateSh)}`;
+    // Файл шагов — с чистого листа: update.sh дописывает в него строки по ходу работы
+    try { fs.writeFileSync(UPDATE_STATUS_FILE, ''); } catch {}
+    const cmd = `systemd-run --unit=electron-update --collect --description="Обновление Electron" --setenv=UPDATE_STATUS_FILE=${JSON.stringify(UPDATE_STATUS_FILE)} /bin/bash ${JSON.stringify(updateSh)}`;
+    // Отметка на графиках: всплеск нагрузки и разрыв при перезапуске — это обновление
+    monitor.addEvent('update');
     res.json({ ok: true });
     setTimeout(() => exec(cmd, (err, stdout, stderr) => {
       if (err) {
         console.error('[Update] не удалось запустить обновление:', err.message, '\n', stderr);
         console.error('[Update] журнал обновления: journalctl -u electron-update');
+        try { fs.appendFileSync(UPDATE_STATUS_FILE, `${Math.floor(Date.now() / 1000)} result failed не удалось запустить обновление\n`); } catch {}
       } else {
         console.log('[Update] обновление запущено отдельным юнитом electron-update');
       }
     }), 300);
+  });
+});
+
+// Ход обновления: что update.sh записал в файл шагов. Пока служба перезапускается,
+// сервер недоступен — админка это переживает и дочитывает шаги, когда он вернётся.
+router.get('/server/update-status', (req, res) => {
+  const steps = {};
+  let result = null, error = null, startedAt = null;
+  let text = '';
+  try { text = fs.readFileSync(UPDATE_STATUS_FILE, 'utf8'); } catch {}
+  for (const line of text.split('\n')) {
+    const m = line.match(/^(\d+) (\w+) (\w+) ?(.*)$/);
+    if (!m) continue;
+    const [, t, step, state, msg] = m;
+    if (!startedAt) startedAt = Number(t) * 1000;
+    if (step === 'result') { result = state; if (msg) error = msg; continue; }
+    steps[step] = { state, msg: msg || null };
+    if (state === 'failed' && msg) error = msg;
+  }
+  res.json({ version: getLocalVersion(), running: RUNNING_VERSION, startedAt, steps, result, error });
+});
+
+// ── Главная: живые графики и сводка ──
+
+// Точки графиков. Первый запрос — весь последний час, дальше только новые (since)
+router.get('/monitor', (req, res) => {
+  res.json({ ...monitor.snapshot(req.query.since), ws: getConnCount() });
+});
+
+// Сводка: сервер, служба, хранилище и чат. Опрашивается реже графиков
+router.get('/overview', async (req, res) => {
+  const count = sql => db.prepare(sql).get().c;
+
+  // Сутки по часам, выровненные по началу часа — подсказка показывает «14:00–15:00»
+  const now = Math.floor(Date.now() / 1000);
+  const hourStart = Math.floor(now / 3600) * 3600 - 23 * 3600;
+  const hourly = new Array(24).fill(0);
+  db.prepare('SELECT CAST((sent_at - ?) / 3600 AS INTEGER) AS b, COUNT(*) AS c FROM messages WHERE deleted = 0 AND sent_at >= ? GROUP BY b')
+    .all(hourStart, hourStart)
+    .forEach(r => { if (r.b >= 0 && r.b < 24) hourly[r.b] = r.c; });
+
+  // Кто в сети: соединения по людям — у одного человека бывает и компьютер, и телефон
+  const avatarDir = path.join(path.dirname(DB_PATH), 'avatar');
+  const byUser = new Map();
+  for (const c of getClients()) {
+    const u = byUser.get(c.userId) || { id: c.userId, name: c.displayName, since: c.connectedAt, clients: [] };
+    u.since = Math.min(u.since, c.connectedAt);
+    u.clients.push({ version: c.clientVersion, platform: c.osPlatform, hostname: c.hostname });
+    byUser.set(c.userId, u);
+  }
+  const online = [...byUser.values()]
+    .sort((a, b) => a.since - b.since)
+    .map(u => ({ ...u, has_avatar: fs.existsSync(path.join(avatarDir, `${u.id}.jpg`)) }));
+
+  const storage = monitor.storageInfo();
+  const cacheSize = db.pragma('cache_size', { simple: true });
+  const pageSize = db.pragma('page_size', { simple: true });
+  res.json({
+    host: monitor.hostInfo(),
+    version: RUNNING_VERSION,
+    uptime: Math.floor(process.uptime()),
+    service: await monitor.serviceInfo(),
+    storage,
+    // Отрицательный cache_size — предел в КиБ, положительный — в страницах
+    sqliteCacheBytes: cacheSize < 0 ? -cacheSize * 1024 : cacheSize * pageSize,
+    chat: {
+      users: count('SELECT COUNT(*) AS c FROM users WHERE is_bot IS NULL OR is_bot = 0'),
+      rooms: count("SELECT COUNT(*) AS c FROM chats WHERE type='room' AND parent_id IS NULL"),
+      groups: count("SELECT COUNT(*) AS c FROM chats WHERE type='group'"),
+      chats: count("SELECT COUNT(*) AS c FROM chats WHERE type='direct'"),
+      messages: count('SELECT COUNT(*) AS c FROM messages WHERE deleted = 0'),
+      // Тот же счёт, что во вкладке «Файлы»: файлы на диске без миниатюр
+      files: storage.files.count,
+    },
+    hourly: { start: hourStart * 1000, counts: hourly },
+    online,
   });
 });
 

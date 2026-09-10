@@ -36,18 +36,35 @@ SERVER_DIR="$APP_DIR/server"
 log()  { echo "[update] $*"; }
 fail() { echo "[update] ОШИБКА: $*" >&2; }
 
-cd "$APP_DIR" || { fail "нет каталога $APP_DIR"; exit 1; }
+# Шаги для админки: строки «время шаг состояние [пояснение]» в файл, путь к
+# которому передаёт admin.js в UPDATE_STATUS_FILE. Админка показывает по ним, что
+# сделано на самом деле, в том числе пропущенные шаги. Из консоли переменной нет —
+# ничего не пишем.
+#   шаги:      fetch · deps · build · restart, итог — result
+#   состояния: active · done · skipped · failed; для result — done · uptodate · failed
+STATUS_FILE="${UPDATE_STATUS_FILE:-}"
+status() {
+  [ -n "$STATUS_FILE" ] || return 0
+  printf '%s %s %s %s\n' "$(date +%s)" "$1" "$2" "${3:-}" >> "$STATUS_FILE" 2>/dev/null || true
+}
+
+cd "$APP_DIR" || { fail "нет каталога $APP_DIR"; status fetch failed "нет каталога приложения"; status result failed; exit 1; }
 
 # ── 1. Смотрим, есть ли что обновлять. Если сеть недоступна — ничего не трогаем.
+status fetch active
 log "проверяю обновления в origin/main"
 if ! GIT_TERMINAL_PROMPT=0 git -c credential.helper='' fetch origin main; then
   fail "не удалось получить изменения из origin (сеть или доступ). Служба не тронута."
+  status fetch failed "не удалось получить обновление с GitHub — служба не тронута"
+  status result failed
   exit 1
 fi
 
 PREV_COMMIT="$(git rev-parse HEAD)"
 if [ "$PREV_COMMIT" = "$(git rev-parse origin/main)" ] && [ "$FORCE_MODULES" = "0" ]; then
   log "уже актуальная версия ($(git rev-parse --short HEAD)), обновление не требуется"
+  status fetch done
+  status result uptodate
   exit 0
 fi
 log "обновление: $(git rev-parse --short HEAD) → $(git rev-parse --short origin/main)"
@@ -83,9 +100,12 @@ fi
 # ── 4. Файлы
 if ! git reset --hard origin/main; then
   fail "не удалось применить обновление"
+  status fetch failed "не удалось применить обновление"
+  status result failed
   [ "$DEPS_CHANGED" = "1" ] && systemctl start "$SERVICE"
   exit 1
 fi
+status fetch done
 
 # ── 5. Зависимости — только если менялись
 if [ "$DEPS_CHANGED" = "1" ]; then
@@ -95,27 +115,41 @@ if [ "$DEPS_CHANGED" = "1" ]; then
     log "удаляю node_modules для чистой установки"
     rm -rf "$SERVER_DIR/node_modules"
   fi
+  status deps active
   log "устанавливаю зависимости"
   if ! (cd "$SERVER_DIR" && npm install --omit=dev --build-from-source); then
     fail "npm install не отработал"
+    status deps failed "npm install не отработал — возвращаю прежнюю версию"
+    status result failed
     rollback
     systemctl start "$SERVICE"
     exit 1
   fi
+  status deps done
   # Пересобираем нативный модуль только если он не грузится:
   # обычно npm ставит готовую сборку и пересборка не нужна
   if ! (cd "$SERVER_DIR" && node -e "require('better-sqlite3')" >/dev/null 2>&1); then
+    status build active
     log "better-sqlite3 не загружается — пересобираю"
     if ! (cd "$SERVER_DIR" && npm rebuild better-sqlite3 --build-from-source); then
       fail "пересборка better-sqlite3 не удалась"
+      status build failed "пересборка better-sqlite3 не удалась — возвращаю прежнюю версию"
+      status result failed
       rollback
       systemctl start "$SERVICE"
       exit 1
     fi
+    status build done
+  else
+    status build skipped
   fi
+else
+  status deps skipped
+  status build skipped
 fi
 
 # ── 6. Пуск (или перезапуск, если службу не останавливали)
+status restart active
 if [ "$DEPS_CHANGED" = "1" ]; then
   log "запускаю $SERVICE"
   systemctl start "$SERVICE"
@@ -127,8 +161,12 @@ fi
 sleep 2
 if systemctl is-active --quiet "$SERVICE"; then
   log "готово, версия $(git rev-parse --short HEAD)"
+  status restart done
+  status result done
 else
   fail "служба не поднялась после обновления"
+  status restart failed "служба не поднялась — возвращаю прежнюю версию"
+  status result failed
   rollback
   systemctl start "$SERVICE"
   exit 1
