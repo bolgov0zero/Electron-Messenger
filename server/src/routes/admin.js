@@ -229,11 +229,18 @@ router.get('/users', (req, res) => {
   const fs = require('fs');
   const path = require('path');
   const avatarDir = path.join(__dirname, '..', '..', '..', 'chat_db', 'avatar');
-  const users = db.prepare('SELECT id, username, display_name, is_admin, tag, banned, created_at FROM users WHERE is_bot IS NULL OR is_bot = 0 ORDER BY created_at DESC').all();
+  const users = db.prepare('SELECT id, username, display_name, is_admin, tag, banned, created_at, last_seen_at FROM users WHERE is_bot IS NULL OR is_bot = 0 ORDER BY created_at DESC').all();
+  // Устройства, с которых человек сейчас в сети: в списке это «Electron 2.15.9 · macOS»
+  const devices = new Map();
+  for (const c of getClients()) {
+    if (!devices.has(c.userId)) devices.set(c.userId, []);
+    devices.get(c.userId).push({ version: c.clientVersion, platform: c.osPlatform, hostname: c.hostname, scope: c.installScope, since: c.connectedAt });
+  }
   res.json(users.map(u => ({
     ...u,
     banned: !!u.banned,
     connected: isConnected(u.id),
+    clients: devices.get(u.id) || [],
     has_avatar: fs.existsSync(path.join(avatarDir, `${u.id}.jpg`)),
   })));
 });

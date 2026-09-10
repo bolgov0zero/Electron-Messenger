@@ -102,6 +102,8 @@ router.patch('/:id', authMiddleware, adminMiddleware, (req, res) => {
 router.patch('/:id/password', authMiddleware, adminMiddleware, (req, res) => {
   const { password } = req.body;
   if (!password) return res.status(400).json({ error: 'Missing password' });
+  if (String(password).length < MIN_PASSWORD_LEN)
+    return res.status(400).json({ error: `Пароль должен быть не короче ${MIN_PASSWORD_LEN} символов` });
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(password, 10), req.params.id);
   res.json({ ok: true });
 });

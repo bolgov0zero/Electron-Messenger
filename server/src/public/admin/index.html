@@ -369,6 +369,182 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 }
 @media (prefers-reduced-motion:reduce){ .hm-live-dot,.hm-spin,.hm-steps li.active .ic{animation:none} .hm-bar span{transition:none} }
 
+/* ── СПИСКИ: ПОЛЬЗОВАТЕЛИ И КЛИЕНТЫ ── */
+/* Общие части — ux-, пользователи — ua-, клиенты — cl-: короткие имена в админке уже заняты */
+.ux-page{display:flex;flex-direction:column;gap:16px;max-width:1360px;margin:0 auto}
+.ux-panel{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);box-shadow:var(--shadow);min-width:0}
+.ux-tb{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px}
+.ux-tb h3{font-size:13px;font-weight:700;display:flex;gap:6px;align-items:baseline}
+.ux-tb h3 span{font-family:var(--f-mono);font-size:11.5px;color:var(--c-muted);font-weight:500}
+.ux-grow{flex:1}
+.ux-chips{display:flex;gap:4px;flex-wrap:wrap}
+.ux-chip{height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--c-border);background:none;color:var(--c-text2);font:500 11.5px var(--f-ui);display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.ux-chip b{font-family:var(--f-mono);font-weight:600;color:var(--c-muted);font-size:10.5px}
+.ux-chip:hover{color:var(--c-text);background:var(--bg-hover)}
+.ux-chip[aria-pressed="true"]{background:var(--c-primary-dim);border-color:rgba(58,147,140,.35);color:var(--c-primary)}
+.ux-chip[aria-pressed="true"] b{color:var(--c-primary)}
+.ux-chip.warn b{color:var(--c-orange-text)}
+.ux-search{display:flex;align-items:center;gap:7px;height:30px;padding:0 10px;border:1px solid var(--c-border);border-radius:var(--radius-sm);background:var(--c-surface2);min-width:220px;color:var(--c-muted)}
+.ux-search:focus-within{border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow)}
+.ux-search svg{width:12px;height:12px;flex-shrink:0}
+.ux-search input{border:0;background:none;outline:none;font:12px var(--f-ui);color:var(--c-text);width:100%}
+.ux-bulk{display:flex;align-items:center;gap:8px;padding:7px 14px;background:var(--c-primary-dim);border-top:1px solid rgba(58,147,140,.35);font-size:12px;flex-wrap:wrap}
+.ux-bulk b{color:var(--c-primary);margin-right:6px}
+.ux-tbl{overflow-x:auto;border-top:1px solid var(--c-border2)}
+.ux-tbl table{width:100%;border-collapse:collapse;min-width:820px}
+.ux-tbl th{background:var(--c-surface2);text-align:left;padding:0 14px;height:34px;font-size:10px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--c-border2);white-space:nowrap}
+.ux-tbl th .ux-sort{border:0;background:none;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;padding:4px 0}
+.ux-tbl th .ux-sort:hover,.ux-tbl th .ux-sort.on{color:var(--c-text2)}
+.ux-tbl td{padding:9px 14px;border-bottom:1px solid var(--c-border2);vertical-align:middle;font-size:12px}
+.ux-tbl tr:last-child td{border-bottom:0}
+.ux-tbl tbody tr:hover td{background:var(--bg-hover)}
+.ux-tbl tr.sel td{background:var(--c-primary-dim)}
+.ux-tbl input[type=checkbox]{accent-color:var(--c-primary);width:14px;height:14px;cursor:pointer;vertical-align:middle}
+.ux-cell{display:flex;align-items:center;gap:11px;min-width:0}
+.ux-name{font-weight:600;font-size:12.5px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.ux-login{font-family:var(--f-mono);font-size:11px;color:var(--c-muted)}
+.ux-actions{display:flex;gap:6px;justify-content:flex-end;align-items:center}
+.ux-ibtn{width:28px;height:28px;display:inline-grid;place-items:center;border-radius:var(--radius-sm);border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text2);cursor:pointer;flex-shrink:0}
+.ux-ibtn svg{width:13px;height:13px}
+.ux-ibtn:hover,.ux-ibtn[aria-expanded="true"]{background:var(--bg-hover);color:var(--c-text)}
+.ux-solid{background:var(--c-primary);color:#fff;border:1px solid var(--c-primary)}
+.ux-solid:hover{background:var(--c-primary-h);color:#fff}
+.btn svg{flex-shrink:0}
+.ux-empty{padding:40px 16px;text-align:center;color:var(--c-muted);font-size:12px}
+.ux-menu{position:fixed;z-index:190;min-width:220px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:11px;box-shadow:var(--shadow-md);padding:4px;animation:toastIn .12s ease}
+.ux-menu button{display:flex;width:100%;align-items:center;gap:9px;padding:7px 9px;border:0;background:none;border-radius:7px;font:500 12px var(--f-ui);color:var(--c-text2);text-align:left;cursor:pointer}
+.ux-menu button svg{width:13px;height:13px}
+.ux-menu button small{margin-left:auto;font-family:var(--f-mono);font-size:10.5px;color:var(--c-muted)}
+.ux-menu button:hover:not([disabled]){background:var(--bg-hover);color:var(--c-text)}
+.ux-menu button[disabled]{opacity:.45;cursor:default}
+.ux-menu .danger{color:var(--c-red-text)}
+.ux-menu .danger:hover:not([disabled]){background:var(--c-red-dim);color:var(--c-red-text)}
+.ux-menu hr{border:0;border-top:1px solid var(--c-border2);margin:4px 2px}
+.ux-menu .note{font-size:10.5px;color:var(--c-muted);padding:4px 9px 6px;max-width:240px}
+.ux-st{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--c-text);min-width:0}
+.ux-st i{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ux-st small{font-size:11px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ux-st.off{color:var(--c-text2)}
+.ux-st.banned{color:var(--c-red-text)}
+.ux-tag{display:inline-block;font-size:9.5px;font-weight:700;padding:0 6px;border-radius:9px;line-height:17px;white-space:nowrap}
+.ux-t0{background:var(--c-blue-dim);color:var(--c-blue-text)}
+.ux-t1{background:var(--c-green-dim);color:var(--c-green-text)}
+.ux-t2{background:var(--c-purple-dim);color:var(--c-purple-text)}
+.ux-t3{background:var(--c-orange-dim);color:var(--c-orange-text)}
+.ux-spin{animation:spin 1s linear infinite}
+
+/* Пользователи */
+.ua-role{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--c-text2);white-space:nowrap}
+.ua-role svg{width:12px;height:12px}
+.ua-role.admin{color:var(--c-primary);font-weight:600}
+tr.ua-banned .ux-cell{opacity:.6}
+.ua-modal{width:520px}
+.ua-modal.ua-sm{width:420px}
+.ua-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--c-border)}
+.ua-head .modal-close{margin-left:auto}
+.ua-title{font-size:14px;font-weight:700}
+.ua-sub{font-size:11.5px;color:var(--c-text2)}
+.ua-body{padding:16px 18px 18px;overflow-y:auto;display:flex;flex-direction:column;gap:20px}
+.ua-sec{display:flex;flex-direction:column;gap:12px}
+.ua-sec-title{font-size:10.5px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.07em}
+.ua-field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.ua-field label{font-size:12px;font-weight:600;color:var(--c-text2)}
+.ua-field label .opt{font-weight:400;color:var(--c-muted)}
+.ua-hint{font-size:11px;color:var(--c-muted)}
+.ua-err{font-size:11px;color:var(--c-red-text)}
+.ua-inp{display:flex;align-items:center;height:36px;border:1px solid var(--border-input);border-radius:9px;background:var(--bg-input);padding:0 4px 0 11px;gap:4px}
+.ua-inp:focus-within{border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow)}
+.ua-inp.bad{border-color:var(--c-red)}
+.ua-inp input{border:0;outline:none;background:none;font:13px var(--f-ui);color:var(--c-text);width:100%;height:100%;min-width:0}
+.ua-inp .pre{font-family:var(--f-mono);color:var(--c-muted);font-size:13px}
+.ua-sfx{border:0;background:none;color:var(--c-text2);cursor:pointer;height:28px;padding:0 8px;border-radius:7px;font:600 11.5px var(--f-ui);display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.ua-sfx svg{width:13px;height:13px}
+.ua-sfx:hover{background:var(--bg-hover);color:var(--c-text)}
+.ua-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ua-preview{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;background:var(--c-surface2)}
+.ua-preview .av{flex-shrink:0}
+.ua-pv-name{font-weight:600;font-size:12.5px;display:flex;gap:6px;align-items:center}
+.ua-pv-name .ph{color:var(--c-muted);font-weight:500}
+.ua-pv-bubble{margin-top:3px;display:inline-block;background:var(--c-surface);border:1px solid var(--c-border2);border-radius:4px 10px 10px 10px;padding:3px 9px;font-size:12px;color:var(--c-text2)}
+.ua-roles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ua-role-opt{border:1px solid var(--c-border);border-radius:10px;padding:10px 12px;cursor:pointer;background:none;text-align:left;color:inherit;font:inherit;display:flex;flex-direction:column;gap:3px}
+.ua-role-opt b{font-size:12.5px;display:flex;align-items:center;gap:6px}
+.ua-role-opt b svg{width:13px;height:13px;color:var(--c-primary)}
+.ua-role-opt span{font-size:11px;color:var(--c-text2);line-height:1.4}
+.ua-role-opt:hover{background:var(--bg-hover)}
+.ua-role-opt[aria-checked="true"]{border-color:var(--c-primary);background:var(--c-primary-dim);box-shadow:inset 0 0 0 1px var(--c-primary)}
+.ua-strength{display:flex;gap:4px;align-items:center}
+.ua-strength i{flex:1;height:3px;border-radius:2px;background:var(--c-border)}
+.ua-strength i.on{background:var(--c-orange)}
+.ua-strength.good i.on{background:var(--c-green)}
+.ua-strength span{font-size:11px;color:var(--c-muted);min-width:70px;text-align:right}
+.ua-check{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--c-text2);cursor:pointer}
+.ua-check input{accent-color:var(--c-primary)}
+.ua-creds{display:flex;align-items:center;gap:10px;padding:9px 10px 9px 12px;border-radius:9px;background:var(--c-green-dim);border:1px solid rgba(16,185,129,.25)}
+.ua-creds div{flex:1;min-width:0}
+.ua-creds span{display:block;font-size:10.5px;font-weight:700;color:var(--c-green-text);text-transform:uppercase;letter-spacing:.06em}
+.ua-creds code{font-family:var(--f-mono);font-size:12px;color:var(--c-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.ua-pw-closed{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--c-border);border-radius:10px}
+.ua-pw-closed b{display:block;font-size:12.5px}
+.ua-pw-closed span{font-size:11px;color:var(--c-muted)}
+.ua-dz{border:1px solid rgba(239,68,68,.22);border-radius:11px;overflow:hidden}
+.ua-dz>summary{list-style:none;cursor:pointer;padding:10px 12px;font-size:12px;font-weight:600;color:var(--c-text2);display:flex;align-items:center;gap:8px}
+.ua-dz>summary::-webkit-details-marker{display:none}
+.ua-dz>summary svg{width:12px;height:12px;transition:transform .15s}
+.ua-dz[open]>summary svg{transform:rotate(90deg)}
+.ua-dz-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;border-top:1px solid var(--c-border2)}
+.ua-dz-row b{font-size:12px;font-weight:600;display:block}
+.ua-dz-row span{font-size:11px;color:var(--c-muted)}
+.ua-foot{display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid var(--c-border)}
+.ua-foot .ux-grow{flex:1}
+
+/* Клиенты */
+.cl-sum{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center}
+.cl-sum>div{padding:12px 16px;min-width:0}
+.cl-sum>div+div{border-left:1px solid var(--c-border2)}
+.cl-k{font-size:10.5px;color:var(--c-text2)}
+.cl-v{font-size:20px;font-weight:800;letter-spacing:-.4px;font-variant-numeric:tabular-nums;line-height:1.2}
+.cl-v small{font-size:12px;font-weight:600;color:var(--c-text2);letter-spacing:0;margin-left:4px}
+.cl-vbar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--c-surface2);gap:2px;margin:7px 0 6px}
+.cl-vbar span{height:100%;min-width:4px}
+.cl-legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;color:var(--c-text2)}
+.cl-legend span{display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.cl-legend i{width:8px;height:8px;border-radius:2px}
+.cl-legend b{font-family:var(--f-mono);font-weight:600;color:var(--c-text)}
+.cl-act{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.cl-latest{font-size:11px;color:var(--c-text2);display:flex;gap:6px;align-items:center;white-space:nowrap}
+.cl-latest b{font-family:var(--f-mono);color:var(--c-text)}
+.cl-restarting{font-size:11px;color:var(--c-purple-text)}
+.cl-host{font-family:var(--f-mono);font-size:11.5px;color:var(--c-text)}
+.cl-ip{font-family:var(--f-mono);font-size:10.5px;color:var(--c-muted)}
+.cl-plat{display:flex;align-items:center;gap:7px;font-size:12px;white-space:nowrap}
+.cl-plat svg{width:14px;height:14px;flex-shrink:0;color:var(--c-text2)}
+.cl-plat small{font-family:var(--f-mono);font-size:10.5px;color:var(--c-muted)}
+.cl-scope{display:inline-block;margin-top:3px;font-size:9.5px;font-weight:700;padding:0 6px;border-radius:9px;line-height:17px;white-space:nowrap}
+.cl-sc-system{background:var(--c-green-dim);color:var(--c-green-text)}
+.cl-sc-profile{background:var(--c-orange-dim);color:var(--c-orange-text)}
+.cl-sc-pwa{background:var(--c-blue-dim);color:var(--c-blue-text)}
+.cl-sc-web{background:var(--c-surface2);color:var(--c-muted)}
+.cl-ver{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:11.5px;font-weight:600;white-space:nowrap}
+.cl-ver svg{width:12px;height:12px}
+.cl-ver.ok{color:var(--c-green-text)}
+.cl-ver.old{color:var(--c-orange-text)}
+.cl-ver.old .to{color:var(--c-text2);font-weight:500}
+.cl-ver.web{color:var(--c-muted);font-family:var(--f-ui);font-weight:500}
+.cl-ver .note{font-family:var(--f-ui);font-weight:500;color:var(--c-muted)}
+.cl-dur{font-family:var(--f-mono);font-size:11.5px;color:var(--c-text2);white-space:nowrap}
+.cl-prog{display:flex;flex-direction:column;gap:4px;min-width:160px}
+.cl-prog-line{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:600;white-space:nowrap}
+.cl-prog-bar{height:4px;border-radius:2px;background:var(--c-surface2);overflow:hidden}
+.cl-prog-bar span{display:block;height:100%;border-radius:2px;transition:width .35s ease}
+.cl-prog.error .cl-prog-line{color:var(--c-red-text)}
+.cl-prog-err{font-size:11px;color:var(--c-text2);display:flex;gap:8px;align-items:center;white-space:normal}
+.cl-prog-err button{border:0;background:none;color:var(--c-primary);font:600 11px var(--f-ui);cursor:pointer;padding:0}
+
+@media (max-width:1000px){ .cl-sum{grid-template-columns:minmax(0,1fr)} .cl-sum>div+div{border-left:0;border-top:1px solid var(--c-border2)} .cl-act{align-items:flex-start} }
+@media (max-width:720px){ .ua-row2,.ua-roles{grid-template-columns:minmax(0,1fr)} .ux-search{min-width:0;flex:1} .ua-modal,.ua-modal.ua-sm{width:calc(100vw - 24px)} }
+@media (prefers-reduced-motion:reduce){ .ux-spin{animation:none} .cl-prog-bar span{transition:none} }
+
 /* ── TABLE ── */
 table{width:100%;border-collapse:collapse}
 th{background:var(--c-surface2);text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--c-border)}
@@ -500,31 +676,11 @@ tr:hover .td-actions{opacity:1}
 .badge-green{animation:none}
 
 /* ── VERSION BADGES ── */
-.ver-ok{color:var(--c-green-text);font-family:var(--f-mono);font-size:11px;font-weight:600}
-.ver-old{color:var(--c-orange-text);font-family:var(--f-mono);font-size:11px;font-weight:700}
 .clients-refresh{font-size:11px;color:var(--c-muted);font-family:var(--f-mono)}
-.ver-wrap{display:inline-flex;align-items:center;gap:5px;position:relative}
-.ver-update-btn{display:inline-flex;align-items:center;color:var(--c-green-text);cursor:default}
-.ver-wrap:hover .ver-tooltip{opacity:1;transform:translateX(-50%) translateY(0)}
-.ver-tooltip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%) translateY(4px);background:var(--c-surface2);border:1px solid var(--c-border);border-radius:6px;padding:5px 10px;font-size:11px;font-family:var(--f-mono);font-weight:600;color:var(--c-text);white-space:nowrap;opacity:0;transition:opacity .15s,transform .15s;pointer-events:none;z-index:10}
-.ver-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--c-border)}
 
 /* ── CLIENT UPDATE PROGRESS MODAL ── */
 .upd-row{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;column-gap:12px;row-gap:6px;padding:12px 14px;border-radius:10px;background:var(--c-surface2);border:1px solid var(--c-border)}
-.upd-row-info{grid-column:1;grid-row:1;display:flex;flex-direction:column;gap:2px}
-.upd-name{font-size:13px;font-weight:600;color:var(--c-text)}
-.upd-host{font-size:11px;color:var(--c-muted);font-family:var(--f-mono)}
-.upd-chip{grid-column:2;grid-row:1;align-self:center;white-space:nowrap;padding:3px 9px;border-radius:var(--radius-sm);font-size:11px;font-weight:700;letter-spacing:.2px}
-.upd-chip-pending{background:var(--c-surface);color:var(--c-muted);border:1px solid var(--c-border)}
-.upd-chip-downloading{background:var(--c-blue-dim);color:var(--c-blue-text)}
-.upd-chip-installing{background:var(--c-orange-dim);color:var(--c-orange-text)}
-.upd-chip-restarting{background:var(--c-purple-dim);color:var(--c-purple-text)}
-.upd-chip-restarted{background:var(--c-green-dim);color:var(--c-green-text)}
-.upd-chip-error{background:var(--c-red-dim);color:var(--c-red-text)}
-.upd-bar-wrap{grid-column:1/-1;grid-row:2;display:flex;align-items:center;gap:8px}
 .upd-bar{flex:1;height:4px;border-radius:2px;background:var(--c-border);overflow:hidden}
-.upd-fill{height:100%;border-radius:2px;transition:width .5s ease,background .3s}
-.upd-pct{font-size:11px;color:var(--c-muted);font-variant-numeric:tabular-nums;min-width:30px;text-align:right}
 
 /* ── SETTINGS MODAL ── */
 .modal-settings{width:50vw;height:70vh;max-width:none;max-height:none;min-width:560px}
@@ -555,7 +711,6 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 
 /* Заблокированный пользователь: строка приглушена, чтобы состояние читалось
    с одного взгляда, а не только по бейджу в колонке статуса */
-.row-banned .user-cell, .row-banned td:not(:last-child) { opacity: .55; }
 
 /* Фильтры в шапке карточки */
 .card-head-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
@@ -805,53 +960,9 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
   </div>
 </div>
 
-<div class="modal-bg" id="modal-user">
-  <div class="modal modal-sm">
-    <div class="modal-head">
-      <h3 id="user-modal-title">Создать пользователя</h3>
-      <button class="modal-close" onclick="closeModal('modal-user')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="fg"><label>Логин</label><input id="u-username" placeholder="username" autocomplete="off"></div>
-      <div class="fg"><label>Отображаемое имя</label><input id="u-display" placeholder="Иван Иванов"></div>
-      <div class="fg"><label>Тег <span style="color:var(--c-muted);font-weight:400;text-transform:none;letter-spacing:0">(необязательно)</span></label><input id="u-tag" placeholder="например: CEO, Dev, HR" maxlength="20" autocomplete="off"></div>
-      <div class="fg">
-        <label>Пароль <span id="u-pass-hint" style="color:var(--c-muted);font-weight:400;text-transform:none;letter-spacing:0">(оставьте пустым, чтобы не менять)</span></label>
-        <input id="u-password" type="password" placeholder="••••••••" autocomplete="new-password">
-      </div>
-      <div class="fg">
-        <label class="toggle-switch" style="gap:8px">
-          <input type="checkbox" id="u-admin">
-          <div class="toggle-track"><div class="toggle-thumb"></div></div>
-          <span style="font-size:12px;color:var(--c-text2);user-select:none">Права администратора</span>
-        </label>
-      </div>
-      <div class="err" id="u-err"></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-ghost" onclick="closeModal('modal-user')">Отмена</button>
-      <button class="btn btn-primary" id="u-save-btn" onclick="saveUser()">Создать</button>
-    </div>
-  </div>
-</div>
-
-<!-- Change password modal -->
-<div class="modal-bg" id="modal-password">
-  <div class="modal modal-sm">
-    <div class="modal-head">
-      <h3>Сменить пароль</h3>
-      <button class="modal-close" onclick="closeModal('modal-password')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="fg"><label>Новый пароль</label><input id="cp-pass" type="password" placeholder="Минимум 6 символов" autocomplete="new-password"></div>
-      <div class="err" id="cp-err"></div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-ghost" onclick="closeModal('modal-password')">Отмена</button>
-      <button class="btn btn-primary" onclick="savePassword()">Сохранить</button>
-    </div>
-  </div>
-</div>
+<!-- Окна раздела «Пользователи»: содержимое рисует скрипт -->
+<div class="modal-bg" id="modal-user"><form class="modal ua-modal" id="ua-form" novalidate onsubmit="event.preventDefault(); uaSave()"></form></div>
+<div class="modal-bg" id="modal-user-pass"><form class="modal ua-modal ua-sm" id="ua-pass-form" novalidate onsubmit="event.preventDefault(); uaSavePassword()"></form></div>
 
 <!-- Webhook help modal -->
 <div class="modal-bg" id="modal-webhook-help">
@@ -1026,17 +1137,6 @@ return 'OK';</pre>
   </div>
 </div>
 
-<!-- Client update progress modal -->
-<div class="modal-bg" id="modal-upd-prog">
-  <div class="modal" style="width:560px;max-height:80vh">
-    <div class="modal-head">
-      <h3>Обновление клиентов</h3>
-      <button class="modal-close" onclick="closeUpdProgModal()">✕</button>
-    </div>
-    <div class="modal-body" id="upd-prog-list" style="padding:12px 16px;display:flex;flex-direction:column;gap:8px"></div>
-  </div>
-</div>
-
 <!-- Announcement modal -->
 <div class="modal-bg" id="modal-announcement">
   <div class="modal modal-sm">
@@ -1136,8 +1236,7 @@ return 'OK';</pre>
 <script>
 /* ── STATE ── */
 let token = null, currentUser = null, currentPage = 'dashboard';
-let editingUserId = null, membersForChatId = null, membersForChatType = null;
-let changingPassIdRef = null;
+let membersForChatId = null, membersForChatType = null;
 let allUsers = [], allRooms = [], allChats = [], allUsersCache = [];
 let createRoomSelectedIds = new Set(), selectedAddMembers = new Set();
 let chatFilter = '';
@@ -2599,144 +2698,468 @@ function deleteRoom(id) {
 }
 
 /* ── USERS ── */
+// Раздел «Пользователи»: таблица с фильтрами, сортировкой и выбором нескольких строк.
+// Частое действие — «Изменить» — на виду, остальные спрятаны в меню «⋯».
+// Окно добавления и изменения: «Профиль» и «Доступ».
+
+// ── Общие части списков: «Пользователи» и «Клиенты» ──
+const uxSvg = (p, sw = 2, fill = false) => `<svg width="12" height="12" viewBox="0 0 24 24" fill="${fill ? 'currentColor' : 'none'}" stroke="${fill ? 'none' : 'currentColor'}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const UX_I = {
+  search: uxSvg('<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'),
+  edit: uxSvg('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'),
+  key: uxSvg('<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L21 2M16 7l3 3M19 4l2 2"/>'),
+  logout: uxSvg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'),
+  ban: uxSvg('<circle cx="12" cy="12" r="9"/><line x1="5.6" y1="5.6" x2="18.4" y2="18.4"/>'),
+  unban: uxSvg('<circle cx="12" cy="12" r="9"/><polyline points="8 12.5 11 15.5 16 9.5"/>'),
+  trash: uxSvg('<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>'),
+  more: uxSvg('<circle cx="12" cy="5" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="12" cy="19" r="1.2"/>', 2.4),
+  eye: uxSvg('<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>'),
+  eyeOff: uxSvg('<path d="M17.9 17.9A10.4 10.4 0 0 1 12 19C5 19 1 12 1 12a18.5 18.5 0 0 1 5.1-5.9M9.9 4.2A9.7 9.7 0 0 1 12 4c7 0 11 8 11 8a18.6 18.6 0 0 1-2.2 3.2"/><line x1="1" y1="1" x2="23" y2="23"/>'),
+  wand: uxSvg('<path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8L19 13M17.8 6.2L19 5M3 21l9-9M12.2 6.2L11 5"/>'),
+  copy: uxSvg('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
+  shield: uxSvg('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'),
+  check: uxSvg('<polyline points="20 6 9 17 4 12"/>', 2.5),
+  chev: uxSvg('<polyline points="9 18 15 12 9 6"/>', 2.5),
+  up: uxSvg('<polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/>', 2.5),
+  refresh: uxSvg('<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>', 2.5),
+  restart: uxSvg('<path d="M18.36 6.64A9 9 0 1 1 12 3v3"/><polyline points="12 1 12 6 17 6"/>'),
+  win32: uxSvg('<path d="M3 5.5l7.5-1v7H3zM11.5 4.4L21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zM11.5 12.5H21V21l-9.5-1.4z"/>', 0, true),
+  darwin: uxSvg('<path d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9s-1.8-.9-3-.9C7 7.3 5.6 8.2 4.8 9.6c-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.5 1.3-2.6 0 0-2.5-1-2.6-3.7zM14.2 5.8c.6-.8 1-1.8.9-2.8-.9 0-2 .6-2.6 1.4-.6.7-1.1 1.7-.9 2.7 1 .1 2-.5 2.6-1.3z"/>', 0, true),
+  linux: uxSvg('<rect x="3" y="4" width="18" height="16" rx="2"/><polyline points="7 10 10 12.5 7 15"/><line x1="12" y1="15" x2="17" y2="15"/>'),
+  phone: uxSvg('<rect x="6" y="2" width="12" height="20" rx="2.5"/><line x1="11" y1="18" x2="13" y2="18"/>'),
+  web: uxSvg('<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/>'),
+};
+const uxPlural = (n, one, few, many) => { const a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many; };
+const uxHash = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) & 0xffff; return h; };
+const uxTag = t => t ? `<span class="ux-tag ux-t${uxHash(t) % 4}">${esc(t)}</span>` : '';
+const uxClock = ms => new Date(ms).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+function uxChips(items, current, handler) {
+  return `<div class="ux-chips" role="group" aria-label="Фильтр">${items.map(([key, label, count, warn]) =>
+    `<button class="ux-chip${warn && count ? ' warn' : ''}" aria-pressed="${current === key}" onclick="${handler}('${key}')">${label}<b>${count}</b></button>`).join('')}</div>`;
+}
+const uxSearch = (id, value, placeholder, handler) =>
+  `<label class="ux-search">${UX_I.search}<input id="${id}" value="${esc(value)}" placeholder="${placeholder}" autocomplete="off" oninput="${handler}(this.value)"></label>`;
+
+// Поиск перерисовывает страницу — возвращаем фокус и курсор туда, где они были
+function uxKeepFocus(fn) {
+  const a = document.activeElement, id = a?.id, caret = a?.selectionStart;
+  fn();
+  const el = id && document.getElementById(id);
+  if (el && el !== a) { el.focus(); try { el.setSelectionRange(caret, caret); } catch {} }
+}
+
+// Меню «⋯»: fixed, чтобы не обрезалось прокруткой таблицы; у нижнего края открывается вверх
+let uxMenuState = null;
+function uxOpenMenu(e, key, html) {
+  e.stopPropagation();
+  const same = uxMenuState?.key === key;
+  uxCloseMenu();
+  if (same) return;
+  const btn = e.currentTarget, r = btn.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'ux-menu';
+  el.setAttribute('role', 'menu');
+  el.innerHTML = html;
+  el.addEventListener('click', ev => ev.stopPropagation());
+  document.body.appendChild(el);
+  el.style.left = Math.max(8, r.right - el.offsetWidth) + 'px';
+  el.style.top = (r.bottom + 6 + el.offsetHeight > innerHeight ? r.top - el.offsetHeight - 6 : r.bottom + 6) + 'px';
+  btn.setAttribute('aria-expanded', 'true');
+  uxMenuState = { key, el, btn };
+  el.querySelector('button:not([disabled])')?.focus();
+}
+function uxCloseMenu() {
+  if (!uxMenuState) return;
+  uxMenuState.el.remove();
+  uxMenuState.btn.setAttribute('aria-expanded', 'false');
+  uxMenuState = null;
+}
+document.addEventListener('click', uxCloseMenu);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') uxCloseMenu(); });
+document.getElementById('page-body')?.addEventListener('scroll', uxCloseMenu);
+
+function uxOsName(platform) {
+  const p = String(platform || '');
+  if (p === 'win32' || /^win/i.test(p)) return 'Windows';
+  if (p === 'darwin' || /mac/i.test(p)) return 'macOS';
+  if (/iphone|ipad|ipod/i.test(p)) return 'iOS';
+  if (/android|arm|aarch/i.test(p)) return 'Android';
+  if (/linux/i.test(p)) return 'Linux';
+  return '';
+}
+
+// ── Пользователи ──
+const UA = { filter: 'all', q: '', sort: { key: 'name', dir: 1 }, sel: new Set(), form: null, editId: null, passId: null };
+
 async function renderUsers() {
-  allUsers=await api('GET','/api/admin/users');
-  renderUsersTable(allUsers);
+  allUsers = await api('GET', '/api/admin/users');
+  const ids = new Set(allUsers.map(u => u.id));
+  UA.sel.forEach(id => { if (!ids.has(id)) UA.sel.delete(id); });
+  uaRender();
 }
 
-function statusBadge(connected) {
-  return connected ? '<span class="badge badge-green">Подключён</span>' : '<span class="badge badge-gray">Отключён</span>';
+const uaOnline = u => !u.banned && u.connected;
+function uaDevices(u) {
+  const name = c => c.version === 'web' ? (c.scope === 'pwa' || c.hostname === 'PWA' ? 'PWA' : 'Веб')
+    : c.version && c.version !== '—' ? `Electron ${c.version}` : 'Клиент';
+  return [...new Set((u.clients || []).map(c => [name(c), uxOsName(c.platform)].filter(Boolean).join(' · ')))].join(', ');
+}
+function uaSeen(ts) {
+  if (!ts) return 'входов не было';
+  const d = new Date(ts * 1000), now = new Date();
+  const time = uxClock(d.getTime());
+  const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(now) - day(d)) / 86400000);
+  if (diff === 0) return `сегодня в ${time}`;
+  if (diff === 1) return `вчера в ${time}`;
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) }) + ` в ${time}`;
+}
+function uaStatus(u) {
+  if (u.banned) return '<span class="ux-st banned"><i style="background:var(--c-red)"></i>Заблокирован</span>';
+  if (uaOnline(u)) return `<span class="ux-st"><i style="background:var(--c-green)"></i>В сети <small>${esc(uaDevices(u))}</small></span>`;
+  return `<span class="ux-st off"><i style="background:var(--c-muted)"></i>Не в сети <small>${esc(uaSeen(u.last_seen_at))}</small></span>`;
+}
+const uaRole = u => u.is_admin ? `<span class="ua-role admin">${UX_I.shield}Администратор</span>` : '<span class="ua-role">Пользователь</span>';
+
+function uaRows() {
+  const q = UA.q.trim().toLowerCase();
+  const rank = u => u.banned ? 2 : uaOnline(u) ? 0 : 1;
+  const byName = (a, b) => a.display_name.localeCompare(b.display_name, 'ru');
+  return allUsers
+    .filter(u => UA.filter === 'all' || (UA.filter === 'online' && uaOnline(u)) || (UA.filter === 'admins' && u.is_admin) || (UA.filter === 'banned' && u.banned))
+    .filter(u => !q || [u.display_name, u.username, u.tag || ''].some(x => x.toLowerCase().includes(q)))
+    .sort((a, b) => {
+      const d = UA.sort.key === 'status' ? rank(a) - rank(b) : UA.sort.key === 'created' ? a.created_at - b.created_at : byName(a, b);
+      return (d || byName(a, b)) * UA.sort.dir;
+    });
 }
 
-function userRowHtml(u) {
-  const statusCol = u.banned
-    ? '<span class="badge badge-red">Заблокирован</span>'
-    : statusBadge(u.connected);
-  const banBtn = u.banned
-    ? `<button class="btn btn-ghost btn-sm" onclick="unbanUser(${u.id},'${jesc(u.display_name)}')">Разблокировать</button>`
-    : `<button class="btn btn-ghost btn-sm" onclick="banUser(${u.id},'${jesc(u.display_name)}')">Блок</button>`;
-  return `<tr class="${u.banned ? 'row-banned' : ''}">
-    <td><div class="user-cell">${avHtml(u.display_name,30,8,u.id,u.connected,u.has_avatar)}<div><div class="uc-name">${esc(u.display_name)}</div><div class="uc-sub">@${esc(u.username)}</div></div></div></td>
-    <td>${u.is_admin?'<span class="badge badge-blue">Администратор</span>':'<span class="badge badge-gray">Пользователь</span>'}</td>
-    <td>${statusCol}</td>
-    <td style="color:var(--c-muted);font-size:11px">${fmtDate(u.created_at)}</td>
-    <td><div class="td-actions">
-      <button class="btn btn-ghost btn-sm" onclick="openEditUser(${u.id})">Изменить</button>
-      <button class="btn btn-ghost btn-sm" onclick="openChangePass(${u.id})">Пароль</button>
-      <button class="btn btn-ghost btn-sm" onclick="logoutUserSessions(${u.id},'${jesc(u.display_name)}')" title="Завершить все сессии на всех устройствах">Выход</button>
-      ${banBtn}
-      <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id},'${jesc(u.display_name)}')">Удалить</button>
-    </div></td>
-  </tr>`;
-}
-
-function renderUsersTable(users) {
-  const rows=users.length?users.map(userRowHtml).join(''):`<tr><td colspan="5"><div class="empty-state"><p>Пользователи не найдены</p></div></td></tr>`;
-  document.getElementById('page-body').innerHTML=`
-    <div class="card">
-      <div class="card-head">
-        <h3>Пользователи <span style="color:var(--c-muted);font-weight:500">(${allUsers.length})</span></h3>
-        <div class="search-box">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input placeholder="Поиск…" oninput="filterUsers(this.value)">
-        </div>
+function uaRender() {
+  if (currentPage !== 'users') return;
+  const rows = uaRows();
+  const n = { all: allUsers.length, online: allUsers.filter(uaOnline).length, admins: allUsers.filter(u => u.is_admin).length, banned: allUsers.filter(u => u.banned).length };
+  const allSel = rows.length > 0 && rows.every(u => UA.sel.has(u.id));
+  const th = (key, label) => `<th><button class="ux-sort${UA.sort.key === key ? ' on' : ''}" onclick="uaSortBy('${key}')">${label}${UA.sort.key === key ? (UA.sort.dir > 0 ? ' ↑' : ' ↓') : ''}</button></th>`;
+  uxKeepFocus(() => {
+    document.getElementById('page-body').innerHTML = `<div class="ux-page"><section class="ux-panel">
+      <div class="ux-tb">
+        <h3>Пользователи <span>${n.all}</span></h3>
+        ${uxChips([['all', 'Все', n.all], ['online', 'В сети', n.online], ['admins', 'Администраторы', n.admins], ['banned', 'Заблокированы', n.banned]], UA.filter, 'uaFilter')}
+        <span class="ux-grow"></span>${uxSearch('ua-q', UA.q, 'Имя, логин или тег', 'uaSearch')}
       </div>
-      <table><thead><tr><th>Пользователь</th><th>Роль</th><th>Статус</th><th>Создан</th><th>Действия</th></tr></thead>
-      <tbody id="users-tbody">${rows}</tbody></table>
-    </div>`;
-}
-
-function filterUsers(q) {
-  const lq=q.toLowerCase();
-  const f=allUsers.filter(u=>u.display_name.toLowerCase().includes(lq)||u.username.toLowerCase().includes(lq));
-  document.getElementById('users-tbody').innerHTML=f.map(userRowHtml).join('')||`<tr><td colspan="5"><div class="empty-state"><p>Ничего не найдено</p></div></td></tr>`;
-}
-
-function openCreateUser() {
-  editingUserId=null;
-  document.getElementById('user-modal-title').textContent='Создать пользователя';
-  document.getElementById('u-save-btn').textContent='Создать';
-  document.getElementById('u-pass-hint').style.display='none';
-  ['u-username','u-display','u-password','u-tag'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('u-admin').checked=false;
-  document.getElementById('u-err').textContent='';
-  openModal('modal-user');
-  setTimeout(()=>document.getElementById('u-username').focus(),50);
-}
-
-function openEditUser(id) {
-  const u=allUsers.find(x=>x.id===id);
-  editingUserId=id;
-  document.getElementById('user-modal-title').textContent='Изменить пользователя';
-  document.getElementById('u-save-btn').textContent='Сохранить';
-  document.getElementById('u-pass-hint').style.display='';
-  document.getElementById('u-username').value=u.username;
-  document.getElementById('u-display').value=u.display_name;
-  document.getElementById('u-tag').value=u.tag||'';
-  document.getElementById('u-password').value='';
-  document.getElementById('u-admin').checked=!!u.is_admin;
-  document.getElementById('u-err').textContent='';
-  openModal('modal-user');
-}
-
-async function saveUser() {
-  const username=document.getElementById('u-username').value.trim();
-  const display_name=document.getElementById('u-display').value.trim();
-  const password=document.getElementById('u-password').value;
-  const is_admin=document.getElementById('u-admin').checked;
-  document.getElementById('u-err').textContent='';
-  if (editingUserId) {
-    const tag=document.getElementById('u-tag').value.trim()||null;
-    const data=await api('PATCH','/api/users/'+editingUserId,{username,display_name,is_admin,tag});
-    if (password) await api('PATCH','/api/users/'+editingUserId+'/password',{password});
-    if (data.ok) { closeModal('modal-user'); toast('Пользователь обновлён','success'); renderUsers(); }
-    else document.getElementById('u-err').textContent=data.error||'Ошибка';
-  } else {
-    if (!username||!display_name||!password) { document.getElementById('u-err').textContent='Заполните все поля'; return; }
-    const tag=document.getElementById('u-tag').value.trim()||null;
-    const data=await api('POST','/api/users',{username,display_name,password,is_admin,tag});
-    if (data.id) { closeModal('modal-user'); toast('Пользователь создан','success'); renderUsers(); }
-    else document.getElementById('u-err').textContent=data.error||'Ошибка';
-  }
-}
-
-function openChangePass(id) { changingPassIdRef=id; document.getElementById('cp-pass').value=''; document.getElementById('cp-err').textContent=''; openModal('modal-password'); }
-async function savePassword() {
-  const password=document.getElementById('cp-pass').value;
-  if (!password) { document.getElementById('cp-err').textContent='Введите пароль'; return; }
-  const data=await api('PATCH','/api/users/'+changingPassIdRef+'/password',{password});
-  if (data.ok) { closeModal('modal-password'); toast('Пароль изменён','success'); }
-  else document.getElementById('cp-err').textContent=data.error||'Ошибка';
-}
-
-function logoutUserSessions(id, name) {
-  confirm('Завершить сессии?', `Пользователь «${name}» будет разлогинен на всех устройствах.`, async () => {
-    await api('POST', `/api/admin/users/${id}/logout`);
-    toast('Сессии завершены','success');
+      ${UA.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${UA.sel.size}</b>
+        <button class="btn btn-ghost btn-sm" onclick="uaLogout([...UA.sel])">${UX_I.logout}Завершить сеансы</button>
+        <button class="btn btn-ghost btn-sm" onclick="uaBan([...UA.sel])">${UX_I.ban}Заблокировать</button>
+        <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="UA.sel.clear(); uaRender()">Снять выделение</button></div>` : ''}
+      <div class="ux-tbl"><table>
+        <thead><tr>
+          <th style="width:40px"><input type="checkbox" aria-label="Выбрать всех" ${allSel ? 'checked' : ''} onchange="uaSelAll(this.checked)"></th>
+          ${th('name', 'Пользователь')}<th>Роль</th>${th('status', 'Статус')}${th('created', 'Создан')}<th></th>
+        </tr></thead>
+        <tbody>${rows.map(u => `<tr class="${UA.sel.has(u.id) ? 'sel' : ''}${u.banned ? ' ua-banned' : ''}">
+          <td><input type="checkbox" aria-label="Выбрать: ${esc(u.display_name)}" ${UA.sel.has(u.id) ? 'checked' : ''} onchange="uaToggle(${u.id})"></td>
+          <td><div class="ux-cell">${avHtml(u.display_name, 34, 9, u.id, uaOnline(u), u.has_avatar)}
+            <div style="min-width:0"><div class="ux-name">${esc(u.display_name)}${uxTag(u.tag)}</div><div class="ux-login">@${esc(u.username)}</div></div></div></td>
+          <td>${uaRole(u)}</td>
+          <td style="max-width:320px">${uaStatus(u)}</td>
+          <td class="cl-dur">${fmtDate(u.created_at)}</td>
+          <td><div class="ux-actions">
+            <button class="btn btn-ghost btn-sm" onclick="openEditUser(${u.id})">${UX_I.edit}Изменить</button>
+            <button class="ux-ibtn" aria-label="Ещё действия: ${esc(u.display_name)}" aria-haspopup="menu" aria-expanded="false" onclick="uaMenu(event, ${u.id})">${UX_I.more}</button>
+          </div></td>
+        </tr>`).join('') || '<tr><td colspan="6"><div class="ux-empty">Никого не нашли. Проверьте запрос или фильтр.</div></td></tr>'}</tbody>
+      </table></div>
+    </section></div>`;
   });
 }
 
-function deleteUser(id, name) {
-  confirm('Удалить пользователя?',`«${name}» будет удалён. Это действие необратимо.`, async ()=>{
-    await api('DELETE','/api/users/'+id);
-    toast('Пользователь удалён');
-    renderUsers();
-  });
+function uaFilter(k) { UA.filter = k; UA.sel.clear(); uaRender(); }
+function uaSearch(v) { UA.q = v; uaRender(); }
+function uaSortBy(key) { UA.sort = UA.sort.key === key ? { key, dir: -UA.sort.dir } : { key, dir: 1 }; uaRender(); }
+function uaToggle(id) { UA.sel.has(id) ? UA.sel.delete(id) : UA.sel.add(id); uaRender(); }
+function uaSelAll(on) { uaRows().forEach(u => on ? UA.sel.add(u.id) : UA.sel.delete(u.id)); uaRender(); }
+
+function uaMenu(e, id) {
+  const u = allUsers.find(x => x.id === id);
+  if (!u) return;
+  const self = currentUser?.id === id, devices = (u.clients || []).length;
+  uxOpenMenu(e, 'ua' + id, `
+    <button role="menuitem" onclick="uxCloseMenu(); uaOpenPassword(${id})">${UX_I.key}Сменить пароль</button>
+    <button role="menuitem" ${devices ? '' : 'disabled'} onclick="uxCloseMenu(); uaLogout([${id}])">${UX_I.logout}Завершить сеансы${devices ? `<small>${devices}</small>` : ''}</button>
+    <button role="menuitem" ${self ? 'disabled' : ''} onclick="uxCloseMenu(); ${u.banned ? `uaUnban(${id})` : `uaBan([${id}])`}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button>
+    <hr><button role="menuitem" class="danger" ${self ? 'disabled' : ''} onclick="uxCloseMenu(); uaDelete(${id})">${UX_I.trash}Удалить</button>`);
 }
 
-function banUser(id, name) {
-  confirm('Заблокировать?', `«${name}» не сможет войти в систему. Активные сессии будут завершены.`, async () => {
-    await api('POST', `/api/admin/users/${id}/ban`);
-    toast('Пользователь заблокирован', 'success');
-    renderUsers();
-  });
+// ── Действия ──
+const uaNames = ids => ids.map(id => allUsers.find(u => u.id === id)?.display_name).filter(Boolean);
+function uaLogout(ids) {
+  if (!ids.length) return;
+  const names = uaNames(ids);
+  confirm(ids.length > 1 ? `Завершить сеансы · ${ids.length}` : 'Завершить сеансы?',
+    `${esc(names.join(', '))} — выход на всех устройствах. Войти снова можно будет.`,
+    async () => {
+      await Promise.all(ids.map(id => api('POST', `/api/admin/users/${id}/logout`)));
+      toast(ids.length > 1 ? `Сеансы завершены: ${ids.length}` : 'Сеансы завершены', 'success');
+      UA.sel.clear();
+      renderUsers();
+    });
 }
-
-async function unbanUser(id, name) {
+function uaBan(ids) {
+  ids = ids.filter(id => id !== currentUser?.id && !allUsers.find(u => u.id === id)?.banned);
+  if (!ids.length) { toast('Выбранные уже заблокированы или это ваша учётная запись'); return; }
+  const names = uaNames(ids);
+  confirm(ids.length > 1 ? `Заблокировать · ${ids.length}` : 'Заблокировать?',
+    `${esc(names.join(', '))} не ${ids.length > 1 ? 'смогут' : 'сможет'} войти, пока вы не разблокируете. Все сеансы завершатся сразу.`,
+    async () => {
+      await Promise.all(ids.map(id => api('POST', `/api/admin/users/${id}/ban`)));
+      toast(ids.length > 1 ? `Заблокировано: ${ids.length}` : 'Пользователь заблокирован', 'success');
+      UA.sel.clear();
+      renderUsers();
+    });
+}
+async function uaUnban(id) {
   await api('POST', `/api/admin/users/${id}/unban`);
-  toast(`«${name}» разблокирован`, 'success');
+  toast(`«${esc(uaNames([id])[0] || '')}» разблокирован`, 'success');
   renderUsers();
 }
+function uaDelete(id) {
+  const name = uaNames([id])[0] || '';
+  confirm('Удалить пользователя?',
+    `«${esc(name)}» будет удалён навсегда.\nСообщения в чатах останутся, отправитель будет подписан «Удалённый аккаунт».`,
+    async () => {
+      const r = await api('DELETE', '/api/users/' + id);
+      if (r?.error) { toast(esc(r.error), 'error'); return; }
+      toast('Пользователь удалён', 'success');
+      UA.sel.delete(id);
+      renderUsers();
+      updateNavBadges();
+    });
+}
+
+// ── Окно: добавление и изменение ──
+const uaBlank = u => ({ name: u?.display_name || '', login: u?.username || '', tag: u?.tag || '', admin: !!u?.is_admin,
+  password: '', show: false, pwOpen: false, generated: false, closeSessions: true, errors: {}, busy: false });
+const uaAv = (name, size) => `<span class="av" style="width:${size}px;height:${size}px;border-radius:${Math.round(size * .26)}px;font-size:${Math.round(size * .36)}px;background:${avColor(name || '?')}">${esc(initials(name))}</span>`;
+
+function openCreateUser() {
+  UA.editId = null;
+  UA.form = uaBlank();
+  document.getElementById('ua-pass-form').innerHTML = '';
+  uaRenderForm();
+  openModal('modal-user');
+  setTimeout(() => document.getElementById('ua-name')?.focus(), 60);
+}
+function openEditUser(id) {
+  const u = allUsers.find(x => x.id === id);
+  if (!u) return;
+  UA.editId = id;
+  UA.form = uaBlank(u);
+  document.getElementById('ua-pass-form').innerHTML = '';
+  uaRenderForm();
+  openModal('modal-user');
+  setTimeout(() => document.getElementById('ua-name')?.focus(), 60);
+}
+
+function uaProfileSection(f) {
+  const err = k => f.errors[k] ? `<span class="ua-err">${f.errors[k]}</span>` : '';
+  return `<div class="ua-sec">
+    <div class="ua-sec-title">Профиль</div>
+    <div class="ua-field"><label for="ua-name">Имя и фамилия</label>
+      <div class="ua-inp${f.errors.name ? ' bad' : ''}"><input id="ua-name" value="${esc(f.name)}" placeholder="Анна Смирнова" autocomplete="off" aria-invalid="${!!f.errors.name}" oninput="uaSet('name', this.value)"></div>${err('name')}</div>
+    <div class="ua-row2">
+      <div class="ua-field"><label for="ua-login">Логин</label>
+        <div class="ua-inp${f.errors.login ? ' bad' : ''}"><span class="pre">@</span><input id="ua-login" value="${esc(f.login)}" placeholder="a.smirnova" autocomplete="off" spellcheck="false" aria-invalid="${!!f.errors.login}"
+          oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''); uaSet('login', this.value)"></div>
+        ${err('login') || '<span class="ua-hint">Латиница, цифры, точка</span>'}</div>
+      <div class="ua-field"><label for="ua-tag">Тег <span class="opt">· необязательно</span></label>
+        <div class="ua-inp"><input id="ua-tag" value="${esc(f.tag)}" maxlength="20" placeholder="HR, Dev, Склад" autocomplete="off" oninput="uaSet('tag', this.value)"></div>
+        <span class="ua-hint">Виден рядом с именем в чате</span></div>
+    </div>
+    <div class="ua-preview" aria-hidden="true"><span id="ua-pv-av">${uaAv(f.name, 32)}</span>
+      <div><div class="ua-pv-name" id="ua-pv-name">${f.name ? esc(f.name) : '<span class="ph">Имя появится здесь</span>'}${uxTag(f.tag)}</div><div class="ua-pv-bubble">Так человека увидят в чате</div></div></div>
+  </div>`;
+}
+function uaAccessSection(f, editing) {
+  return `<div class="ua-sec">
+    <div class="ua-sec-title">Доступ</div>
+    <div class="ua-roles" role="radiogroup" aria-label="Роль">
+      <button type="button" role="radio" class="ua-role-opt" aria-checked="${!f.admin}" onclick="uaSet('admin', false, true)"><b>Пользователь</b><span>Чаты, комнаты и файлы</span></button>
+      <button type="button" role="radio" class="ua-role-opt" aria-checked="${f.admin}" onclick="uaSet('admin', true, true)"><b>${UX_I.shield}Администратор</b><span>И управление в этой панели</span></button>
+    </div>
+    ${editing && !f.pwOpen
+      ? `<div class="ua-pw-closed"><div><b>Пароль</b><span>Остаётся прежним</span></div><button type="button" class="btn btn-ghost btn-sm" onclick="uaSet('pwOpen', true, true, 'ua-pass')">${UX_I.key}Сменить пароль</button></div>`
+      : uaPasswordField(f, editing)}
+  </div>`;
+}
+function uaPasswordField(f, editing) {
+  const s = uaStrength(f.password);
+  return `<div class="ua-field"><label for="ua-pass">${editing ? 'Новый пароль' : 'Пароль'}</label>
+    <div class="ua-inp${f.errors.password ? ' bad' : ''}"><input id="ua-pass" type="${f.show ? 'text' : 'password'}" value="${esc(f.password)}" placeholder="Не короче 6 символов" autocomplete="new-password" aria-invalid="${!!f.errors.password}" oninput="uaSet('password', this.value)">
+      <button type="button" class="ua-sfx" aria-label="${f.show ? 'Скрыть пароль' : 'Показать пароль'}" onclick="uaSet('show', !UA.form.show, true)">${f.show ? UX_I.eyeOff : UX_I.eye}</button>
+      <button type="button" class="ua-sfx" onclick="uaGenerate()">${UX_I.wand}Придумать</button></div>
+    <div class="ua-strength${s.good ? ' good' : ''}" id="ua-strength">${s.html}</div>
+    ${f.errors.password ? `<span class="ua-err">${f.errors.password}</span>` : ''}
+    <div id="ua-creds">${uaCreds(f)}</div>
+  </div>`;
+}
+const uaCreds = f => f.generated && f.password
+  ? `<div class="ua-creds"><div><span>Данные для входа</span><code>@${esc(f.login || 'логин')} · ${esc(f.password)}</code></div><button type="button" class="btn btn-ghost btn-sm" onclick="uaCopy()">${UX_I.copy}Скопировать</button></div>`
+  : '';
+function uaStrength(p) {
+  const score = !p ? 0 : [p.length >= 6, p.length >= 10, /\d/.test(p) && /[a-zа-яё]/i.test(p), /[^a-zа-яё0-9]/i.test(p) || /[A-ZА-ЯЁ]/.test(p)].filter(Boolean).length;
+  const label = !p ? '' : p.length < 6 ? 'Короткий' : score <= 2 ? 'Простой' : score === 3 ? 'Хороший' : 'Надёжный';
+  return { good: score >= 3 && p.length >= 6, html: [0, 1, 2, 3].map(i => `<i class="${i < score ? 'on' : ''}"></i>`).join('') + `<span>${label}</span>` };
+}
+function uaDangerZone(u) {
+  const devices = (u.clients || []).length;
+  return `<details class="ua-dz"><summary>${UX_I.chev}Действия с учётной записью</summary>
+    <div class="ua-dz-row"><div><b>Завершить все сеансы</b><span>Выход на всех устройствах; войти снова можно</span></div>
+      <button type="button" class="btn btn-ghost btn-sm" ${devices ? '' : 'disabled'} onclick="closeModal('modal-user'); uaLogout([${u.id}])">${UX_I.logout}Завершить</button></div>
+    <div class="ua-dz-row"><div><b>${u.banned ? 'Разблокировать' : 'Заблокировать'}</b><span>${u.banned ? 'Снова сможет входить' : 'Не сможет войти, пока не разблокируете'}</span></div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="closeModal('modal-user'); ${u.banned ? `uaUnban(${u.id})` : `uaBan([${u.id}])`}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button></div>
+    <div class="ua-dz-row"><div><b>Удалить пользователя</b><span>Навсегда; сообщения в чатах останутся</span></div>
+      <button type="button" class="btn btn-danger btn-sm" onclick="closeModal('modal-user'); uaDelete(${u.id})">${UX_I.trash}Удалить</button></div>
+  </details>`;
+}
+
+function uaRestoreFocus(fn, focusId) {
+  const a = document.activeElement, id = focusId || a?.id, caret = focusId ? null : a?.selectionStart;
+  fn();
+  const el = id && document.getElementById(id);
+  if (el) { el.focus(); if (caret != null) try { el.setSelectionRange(caret, caret); } catch {} }
+}
+function uaRenderForm(focusId) {
+  const f = UA.form, u = UA.editId ? allUsers.find(x => x.id === UA.editId) : null;
+  const form = document.getElementById('ua-form');
+  if (!form || !f) return;
+  uaRestoreFocus(() => {
+    form.innerHTML = `
+      <div class="ua-head"><span id="ua-head-av">${uaAv(f.name, 38)}</span>
+        <div><div class="ua-title">${u ? esc(u.display_name) : 'Новый пользователь'}</div>
+          <div class="ua-sub">${u ? `@${esc(u.username)} · создан ${fmtDate(u.created_at)}` : 'Логин и пароль передайте сотруднику'}</div></div>
+        <button type="button" class="modal-close" aria-label="Закрыть" onclick="closeModal('modal-user')">✕</button></div>
+      <div class="ua-body">${uaProfileSection(f)}${uaAccessSection(f, !!u)}${u && u.id !== currentUser?.id ? uaDangerZone(u) : ''}</div>
+      <div class="ua-foot">${f.errors.form ? `<span class="ua-err">${esc(f.errors.form)}</span>` : ''}<span class="ux-grow"></span>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-user')">Отмена</button>
+        <button class="btn ux-solid" ${f.busy ? 'disabled' : ''}>${f.busy ? 'Сохраняю…' : u ? 'Сохранить' : 'Создать'}</button></div>`;
+  }, focusId);
+}
+function uaRenderPassword(focusId) {
+  const f = UA.form, u = allUsers.find(x => x.id === UA.passId);
+  const form = document.getElementById('ua-pass-form');
+  if (!form || !f || !u) return;
+  uaRestoreFocus(() => {
+    form.innerHTML = `
+      <div class="ua-head">${avHtml(u.display_name, 34, 9, u.id, false, u.has_avatar)}
+        <div><div class="ua-title">Новый пароль</div><div class="ua-sub">${esc(u.display_name)} · @${esc(u.username)}</div></div>
+        <button type="button" class="modal-close" aria-label="Закрыть" onclick="closeModal('modal-user-pass')">✕</button></div>
+      <div class="ua-body">${uaPasswordField(f, true)}
+        <label class="ua-check"><input type="checkbox" ${f.closeSessions ? 'checked' : ''} onchange="UA.form.closeSessions = this.checked">Завершить сеансы на всех устройствах</label></div>
+      <div class="ua-foot">${f.errors.form ? `<span class="ua-err">${esc(f.errors.form)}</span>` : ''}<span class="ux-grow"></span>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-user-pass')">Отмена</button>
+        <button class="btn ux-solid" ${f.busy ? 'disabled' : ''}>${f.busy ? 'Сохраняю…' : 'Сохранить пароль'}</button></div>`;
+  }, focusId);
+}
+const uaRerender = focusId => UA.passId ? uaRenderPassword(focusId) : uaRenderForm(focusId);
+
+function uaSet(key, value, rerender, focusId) {
+  const f = UA.form;
+  if (!f) return;
+  f[key] = value;
+  if (key === 'password') f.generated = false;
+  if (f.errors[key]) { delete f.errors[key]; rerender = true; }
+  if (rerender) return uaRerender(focusId);
+  // Превью обновляем точечно, без перерисовки формы — чтобы не терять курсор
+  if (key === 'name' || key === 'tag') {
+    const pv = document.getElementById('ua-pv-av'); if (pv) pv.innerHTML = uaAv(f.name, 32);
+    const hv = document.getElementById('ua-head-av'); if (hv) hv.innerHTML = uaAv(f.name, 38);
+    const pn = document.getElementById('ua-pv-name'); if (pn) pn.innerHTML = (f.name ? esc(f.name) : '<span class="ph">Имя появится здесь</span>') + uxTag(f.tag);
+  }
+  if (key === 'password') {
+    const s = uaStrength(f.password), el = document.getElementById('ua-strength');
+    if (el) { el.className = 'ua-strength' + (s.good ? ' good' : ''); el.innerHTML = s.html; }
+  }
+  if (key === 'login' || key === 'password') { const c = document.getElementById('ua-creds'); if (c) c.innerHTML = uaCreds(f); }
+}
+function uaGenerate() {
+  const abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const p = [...crypto.getRandomValues(new Uint32Array(12))].map(n => abc[n % abc.length]).join('').replace(/^(.{4})(.{4})/, '$1-$2-');
+  Object.assign(UA.form, { password: p, show: true, generated: true });
+  delete UA.form.errors.password;
+  uaRerender('ua-pass');
+}
+async function uaCopy() {
+  const f = UA.form;
+  try { await navigator.clipboard.writeText(`Логин: ${f.login}\nПароль: ${f.password}`); toast('Данные для входа скопированы', 'success'); }
+  catch { toast('Не удалось скопировать — выделите текст вручную', 'error'); }
+}
+
+async function uaSave() {
+  const f = UA.form, u = UA.editId ? allUsers.find(x => x.id === UA.editId) : null;
+  if (!f || f.busy) return;
+  const e = {};
+  if (!f.name.trim()) e.name = 'Укажите имя';
+  if (!f.login.trim()) e.login = 'Укажите логин';
+  if ((!u || f.pwOpen) && f.password.length < 6) e.password = u ? 'Не короче 6 символов — или обновите окно, чтобы оставить прежний' : 'Не короче 6 символов';
+  f.errors = e;
+  if (Object.keys(e).length) return uaRenderForm(e.name ? 'ua-name' : e.login ? 'ua-login' : 'ua-pass');
+
+  f.busy = true;
+  uaRenderForm();
+  const body = { username: f.login.trim(), display_name: f.name.trim(), is_admin: f.admin, tag: f.tag.trim() || null };
+  let r;
+  if (u) {
+    r = await api('PATCH', '/api/users/' + u.id, body);
+    if (r?.ok && f.pwOpen) {
+      const p = await api('PATCH', `/api/users/${u.id}/password`, { password: f.password });
+      if (!p?.ok) r = { error: p?.error || 'Пароль не сохранён' };
+    }
+  } else {
+    r = await api('POST', '/api/users', { ...body, password: f.password });
+  }
+  f.busy = false;
+  if (r?.ok || r?.id) {
+    closeModal('modal-user');
+    toast(u ? (f.pwOpen ? 'Сохранено, пароль изменён' : 'Сохранено') : 'Пользователь добавлен', 'success');
+    if (currentPage === 'users') renderUsers();
+    updateNavBadges();
+    return;
+  }
+  if (/exists/i.test(r?.error || '')) f.errors.login = 'Такой логин уже есть';
+  else f.errors.form = r?.error || 'Не удалось сохранить';
+  uaRenderForm(f.errors.login ? 'ua-login' : null);
+}
+
+function uaOpenPassword(id) {
+  const u = allUsers.find(x => x.id === id);
+  if (!u) return;
+  UA.passId = id;
+  UA.form = { ...uaBlank(u), pwOpen: true };
+  document.getElementById('ua-form').innerHTML = '';
+  uaRenderPassword();
+  openModal('modal-user-pass');
+  setTimeout(() => document.getElementById('ua-pass')?.focus(), 60);
+}
+async function uaSavePassword() {
+  const f = UA.form, id = UA.passId;
+  if (!f || f.busy) return;
+  if (f.password.length < 6) { f.errors.password = 'Не короче 6 символов'; return uaRenderPassword('ua-pass'); }
+  f.busy = true;
+  uaRenderPassword();
+  const r = await api('PATCH', `/api/users/${id}/password`, { password: f.password });
+  if (r?.ok && f.closeSessions) await api('POST', `/api/admin/users/${id}/logout`);
+  f.busy = false;
+  if (!r?.ok) { f.errors.form = r?.error || 'Не удалось сменить пароль'; return uaRenderPassword(); }
+  closeModal('modal-user-pass');
+  UA.passId = null;
+  toast(f.closeSessions ? 'Пароль изменён, сеансы завершены' : 'Пароль изменён', 'success');
+  if (currentPage === 'users') renderUsers();
+}
+// Окно пароля закрыли без сохранения — следующая перерисовка формы идёт в окно пользователя
+document.getElementById('modal-user-pass')?.addEventListener('animationend', e => {
+  if (e.currentTarget.classList.contains('closing')) UA.passId = null;
+});
 
 /* ── CHATS ── */
 function chatDisplayName(c) {
@@ -2854,246 +3277,270 @@ async function removeMember(chatId, userId, btn) {
 }
 
 /* ── CLIENTS ── */
+// Раздел «Клиенты»: сверху сводка — сколько подключено, какие версии Electron и кому нужно
+// обновление, ниже таблица подключений. Ход обновления идёт прямо в колонке «Версия» —
+// отдельное окно больше не нужно.
+
+const CL = { filter: 'all', q: '', sel: new Set(), clients: [], latest: null, checkedAt: null, checking: false, prog: [], progTimer: null, key: '' };
+const CL_SCOPE = {
+  system: ['системная', 'Установлен для всех пользователей компьютера'],
+  profile: ['в профиле', 'Установлен только для этого пользователя компьютера'],
+  pwa: ['PWA', 'Установлен как приложение из браузера'],
+  web: ['веб', 'Открыт во вкладке браузера'],
+};
+const CL_STAGE = { pending: ['Ожидает', 'var(--c-muted)'], downloading: ['Загрузка', 'var(--c-blue)'], installing: ['Установка', 'var(--c-orange)'], restarting: ['Перезапуск', 'var(--c-purple)'] };
+
 async function renderClients() {
-  setTopbarActions(`
-    <button class="btn btn-primary btn-sm" onclick="loadClients(true)">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-      Проверить
-    </button>
-    <button class="btn btn-primary btn-sm" id="update-all-btn" onclick="forceUpdateAll()" style="display:none">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-      Обновить всех
-    </button>`);
-
-  document.getElementById('page-body').innerHTML=`
-    <div class="card">
-      <div class="card-head">
-        <div style="display:flex;align-items:center;gap:8px">
-          <h3>Подключённые клиенты</h3>
-          <span id="clients-count" class="badge badge-blue">—</span>
-        </div>
-      </div>
-      <div id="clients-table-wrap">
-        <div class="empty-state" style="padding:32px"><p>Загрузка…</p></div>
-      </div>
-    </div>`;
-
+  setTopbarActions('');
+  CL.key = '';
+  document.getElementById('page-body').innerHTML = '<div class="ux-page" id="cl-page"><div class="ux-empty">Загрузка…</div></div>';
   await loadClients();
+  clPollProgress();   // обновление могло начаться раньше, на другой вкладке
 }
 
-async function loadClients(force=false) {
-  const {clients: rawClients,latestVersion}=await api('GET',`/api/admin/clients${force?'?force=true':''}`);
-  const clients = rawClients.slice().sort((a,b)=>(a.username||'').localeCompare(b.username||'','ru'));
-  // Always update nav badge (works on any page)
-  const nb=document.getElementById('nb-clients');
-  if (nb) nb.textContent=clients.length;
-  // Page-specific updates — only if on clients page
-  const cnt=document.getElementById('clients-count');
-  if (cnt) cnt.textContent=clients.length;
+// Вызывается и фоновым опросом раз в 5 секунд — ради счётчика в меню
+async function loadClients(force = false) {
+  let r;
+  try { r = await api('GET', `/api/admin/clients${force ? '?force=true' : ''}`); } catch { return; }
+  if (!r) return;
+  const name = c => c.displayName || c.username || '';
+  CL.clients = (r.clients || []).slice().sort((a, b) => name(a).localeCompare(name(b), 'ru') || a.connectedAt - b.connectedAt);
+  CL.latest = r.latestVersion || null;
+  if (force || !CL.checkedAt) CL.checkedAt = Date.now();
+  const nb = document.getElementById('nb-clients');
+  if (nb) nb.textContent = CL.clients.length;
+  const ids = new Set(CL.clients.map(c => c.connId));
+  CL.sel.forEach(id => { if (!ids.has(id)) CL.sel.delete(id); });
+  if (currentPage === 'clients') clRender();
+}
 
-  const wrap=document.getElementById('clients-table-wrap');
-  if (!wrap) return;
+const clIsWeb = c => c.clientVersion === 'web' || c.installScope === 'web' || c.installScope === 'pwa';
+const clVerOk = v => /^\d+\.\d+\.\d+/.test(v || '');
+function clGt(a, b) {
+  if (!clVerOk(a) || !clVerOk(b)) return false;
+  const x = a.split('.').map(Number), y = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i];
+  return false;
+}
+const clOutdated = c => !clIsWeb(c) && clGt(CL.latest, c.clientVersion);
+// Запись о ходе обновления — по соединению. После перезапуска клиент приходит новым
+// соединением, поэтому «обновлён» узнаём по тому же человеку и компьютеру.
+const clProg = c => CL.prog.find(p => p.connId === c.connId)
+  || CL.prog.find(p => p.status === 'restarted' && p.username === c.username && p.hostname === c.hostname && Date.now() - p.startedAt < 10 * 60e3);
+const clBusy = c => !!CL_STAGE[clProg(c)?.status];
+const clName = c => c.displayName || c.username || '?';
+const clHost = c => c.hostname === 'Web' ? 'Браузер' : c.hostname === 'PWA' ? 'Приложение из браузера' : (c.hostname || '—');
+function clDuration(ms) {
+  const m = Math.floor(ms / 60000);
+  if (m < 1) return 'меньше минуты';
+  if (m < 60) return `${m} мин`;
+  const h = Math.floor(m / 60);
+  return m % 60 ? `${h} ч ${m % 60} мин` : `${h} ч`;
+}
+function clPlatform(c) {
+  const os = uxOsName(c.osPlatform);
+  const icon = os === 'iOS' || os === 'Android' ? UX_I.phone : clIsWeb(c) ? UX_I.web
+    : os === 'Windows' ? UX_I.win32 : os === 'macOS' ? UX_I.darwin : os === 'Linux' ? UX_I.linux : UX_I.web;
+  const release = !clIsWeb(c) && c.osRelease && c.osRelease !== '—' ? `<small>${esc(c.osRelease)}</small>` : '';
+  const scope = CL_SCOPE[c.installScope];
+  return `<span class="cl-plat">${icon}<span>${os || '—'}</span>${release}</span>${scope ? `<span class="cl-scope cl-sc-${c.installScope}" title="${scope[1]}">${scope[0]}</span>` : ''}`;
+}
 
-  if (!clients.length) {
-    wrap.innerHTML=`<div class="empty-state" style="padding:40px"><svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><p>Нет подключённых клиентов</p></div>`;
-    return;
+function clVersion(c) {
+  const p = clProg(c);
+  if (p?.status === 'error' && p.connId === c.connId) {
+    return `<div class="cl-prog error"><div class="cl-prog-line"><span>Не обновился</span><span class="cl-ip">${esc(c.clientVersion)}</span></div>
+      <div class="cl-prog-err">${esc(p.error || 'Клиент сообщил об ошибке')} <button onclick="clUpdate([${c.connId}], true)">Повторить</button></div></div>`;
   }
-
-  function semverGt(a,b) {
-    if (!a||!b||a==='—'||b==='—') return false;
-    const n=v=>v.split('.').map(Number);
-    const [am,an,ap]=n(a),[bm,bn,bp]=n(b);
-    return am!==bm?am>bm:an!==bn?an>bn:ap>bp;
+  if (p && CL_STAGE[p.status]) {
+    const [stage, color] = CL_STAGE[p.status];
+    const pct = Math.max(0, Math.min(100, p.pct || 0));
+    const width = p.status === 'pending' ? 4 : p.status === 'downloading' ? pct * .8 : p.status === 'installing' ? 88 : 96;
+    return `<div class="cl-prog" role="status"><div class="cl-prog-line" style="color:${color}"><span>${stage}${p.status === 'downloading' ? ` ${Math.round(pct)}%` : p.status === 'restarting' ? '…' : ''}</span>
+      <span class="cl-ip">${esc(c.clientVersion)} → ${esc(CL.latest || '')}</span></div>
+      <div class="cl-prog-bar"><span style="width:${width}%;background:${color}"></span></div></div>`;
   }
+  if (clIsWeb(c)) return '<span class="cl-ver web" title="Веб и PWA загружают свежую версию сами при открытии">обновляется сам</span>';
+  if (!clVerOk(c.clientVersion)) return '<span class="cl-ver web">—</span>';
+  if (clOutdated(c)) return `<span class="cl-ver old" title="Доступна ${esc(CL.latest)}">${UX_I.up}${esc(c.clientVersion)} <span class="to">→ ${esc(CL.latest)}</span></span>`;
+  return `<span class="cl-ver ok">${UX_I.check}${esc(c.clientVersion)}${p?.status === 'restarted' && c.clientVersion === CL.latest ? ' <span class="note">· только что обновлён</span>' : ''}</span>`;
+}
+function clActions(c) {
+  const update = clOutdated(c) && !clBusy(c) ? `<button class="btn btn-primary btn-sm" onclick="clUpdate([${c.connId}])">${UX_I.up}Обновить</button>` : '';
+  return `<div class="ux-actions">${update}<button class="ux-ibtn" aria-label="Действия: ${esc(clHost(c))}" aria-haspopup="menu" aria-expanded="false" onclick="clMenu(event, ${c.connId})">${UX_I.more}</button></div>`;
+}
 
-  const outdated = clients.filter(c => latestVersion && semverGt(latestVersion, c.clientVersion));
-  const updateAllBtn = document.getElementById('update-all-btn');
-  if (updateAllBtn) {
-    updateAllBtn.style.display = outdated.length ? '' : 'none';
-    updateAllBtn.onclick = () => forceUpdateAll(outdated, latestVersion);
-  }
+function clSummary() {
+  const all = CL.clients;
+  const electron = all.filter(c => !clIsWeb(c) && clVerOk(c.clientVersion));
+  const people = new Set(all.map(c => c.userId)).size;
+  const versions = Object.entries(electron.reduce((m, c) => (m[c.clientVersion] = (m[c.clientVersion] || 0) + 1, m), {}))
+    .sort((a, b) => clGt(a[0], b[0]) ? -1 : 1);
+  const [lm, ln] = (CL.latest || '').split('.').map(Number);
+  // Отставание в патч-версии — оранжевым, в минорной и больше — красным
+  const color = v => !CL.latest ? 'var(--c-primary)' : v === CL.latest || clGt(v, CL.latest) ? 'var(--c-green)'
+    : (([m, n]) => m === lm && n === ln ? 'var(--c-orange)' : 'var(--c-red)')(v.split('.').map(Number));
+  const waiting = all.filter(c => clOutdated(c) && !clBusy(c));
+  const restarting = CL.prog.filter(p => p.status === 'restarting' && !all.some(c => c.connId === p.connId));
+  const others = all.length - electron.length;
+  const check = CL.checking
+    ? `<button class="btn btn-ghost btn-sm" disabled>${UX_I.refresh.replace('<svg', '<svg class="ux-spin"')}Проверяю…</button>`
+    : `<button class="btn btn-ghost btn-sm" onclick="clCheck()"${CL.checkedAt ? ` title="Проверено в ${uxClock(CL.checkedAt)}"` : ''}>${UX_I.refresh}Проверить</button>`;
+  return `
+    <div><div class="cl-k">Подключено</div><div class="cl-v">${all.length}<small>${people} ${uxPlural(people, 'человек', 'человека', 'человек')}</small></div></div>
+    <div>
+      <div class="cl-k">Версии Electron · ${electron.length} ${uxPlural(electron.length, 'компьютер', 'компьютера', 'компьютеров')}${others ? `, ещё ${others} в браузере` : ''}</div>
+      ${electron.length ? `<div class="cl-vbar" role="img" aria-label="Распределение версий Electron">${versions.map(([v, n]) => `<span style="flex:${n};background:${color(v)}" title="${esc(v)}: ${n}"></span>`).join('')}</div>
+        <div class="cl-legend">${versions.map(([v, n]) => `<span><i style="background:${color(v)}"></i><b>${esc(v)}</b>${v === CL.latest ? 'актуальная' : ''} · ${n}</span>`).join('')}</div>`
+        : '<div class="cl-k" style="margin-top:6px">Сейчас нет подключённых компьютеров с Electron</div>'}
+      ${restarting.length ? `<div class="cl-restarting">Перезапускаются после обновления: ${esc(restarting.map(p => p.displayName || p.username).join(', '))}</div>` : ''}
+    </div>
+    <div class="cl-act">
+      <span class="cl-latest">Последняя <b>${CL.latest ? esc(CL.latest) : 'неизвестна'}</b> · ${check}</span>
+      ${waiting.length ? `<button class="btn ux-solid btn-sm" onclick="clUpdate(${JSON.stringify(waiting.map(c => c.connId))})">${UX_I.up}Обновить устаревшие · ${waiting.length}</button>`
+        : electron.length && CL.latest ? `<span class="cl-ver ok">${UX_I.check}Все на последней версии</span>` : ''}
+    </div>`;
+}
 
-  function fmtDuration(ms) {
-    const s = Math.floor(ms / 1000);
-    if (s < 60) return `${s}с`;
-    const m = Math.floor(s / 60);
-    if (m < 60) return `${m}м`;
-    const h = Math.floor(m / 60), rm = m % 60;
-    return rm ? `${h}ч ${rm}м` : `${h}ч`;
-  }
+function clRows() {
+  const q = CL.q.trim().toLowerCase();
+  return CL.clients
+    .filter(c => CL.filter === 'all' || (CL.filter === 'old' && clOutdated(c)) || (CL.filter === 'electron' && !clIsWeb(c)) || (CL.filter === 'web' && clIsWeb(c)))
+    .filter(c => !q || [clName(c), c.username, c.hostname, c.clientIp].some(x => String(x || '').toLowerCase().includes(q)));
+}
 
-  function fmtScopeTag(platform, installScope) {
-    if (!installScope) return '';
-    if (installScope === 'pwa') return `<span style="display:inline-block;margin-top:3px;padding:1px 5px;border-radius:var(--radius-sm);font-size:9px;font-weight:700;background:var(--c-blue-dim);color:var(--c-blue-text)">PWA</span>`;
-    if (installScope === 'web') return `<span style="display:inline-block;margin-top:3px;padding:1px 5px;border-radius:var(--radius-sm);font-size:9px;font-weight:700;background:var(--c-surface2);color:var(--c-muted)">Web</span>`;
-    const isSystem = installScope === 'system';
-    const color = isSystem ? 'var(--c-green-text)' : 'var(--c-orange-text)';
-    const bg = isSystem ? 'var(--c-green-dim)' : 'var(--c-orange-dim)';
-    return `<span style="display:inline-block;margin-top:3px;padding:1px 5px;border-radius:var(--radius-sm);font-size:9px;font-weight:700;background:${bg};color:${color}">${isSystem?'system':'profile'}</span>`;
-  }
-
-  // Ключ структуры — всё что влияет на строки, кроме постоянно меняющегося duration.
-  // Если ключ не изменился, обновляем только клетки Онлайн — иначе картинки перерисовываются.
-  const structKey = JSON.stringify({
-    latestVersion,
-    rows: clients.map(c => [c.connId, c.userId, c.clientVersion, c.osPlatform, c.osRelease, c.installScope, c.hostname, c.clientIp, c.displayName, c.username]),
+function clRender() {
+  const page = document.getElementById('cl-page');
+  if (!page) return;
+  const rows = clRows();
+  // Фоновый опрос раз в 5 секунд и ход обновления не пересобирают таблицу: иначе
+  // аватарки перерисовывались бы и мигали. Меняются только сводка, версия, кнопки и время.
+  const key = JSON.stringify([CL.filter, CL.q, [...CL.sel], CL.latest, rows.map(c => [c.connId, c.clientVersion, c.hostname, c.osPlatform, c.osRelease, c.installScope, c.clientIp, c.displayName])]);
+  if (key === CL.key && page.querySelector('tbody')) return clPatch();
+  CL.key = key;
+  const n = { all: CL.clients.length, old: CL.clients.filter(clOutdated).length, electron: CL.clients.filter(c => !clIsWeb(c)).length, web: CL.clients.filter(clIsWeb).length };
+  const allSel = rows.length > 0 && rows.every(c => CL.sel.has(c.connId));
+  const sel = CL.clients.filter(c => CL.sel.has(c.connId));
+  const selOld = sel.filter(c => clOutdated(c) && !clBusy(c)), selElectron = sel.filter(c => !clIsWeb(c));
+  uxKeepFocus(() => {
+    page.innerHTML = `
+      <section class="ux-panel cl-sum" id="cl-sum">${clSummary()}</section>
+      <section class="ux-panel">
+        <div class="ux-tb"><h3>Клиенты <span>${n.all}</span></h3>
+          ${uxChips([['all', 'Все', n.all], ['old', 'Нужно обновить', n.old, true], ['electron', 'Electron', n.electron], ['web', 'Веб и PWA', n.web]], CL.filter, 'clFilter')}
+          <span class="ux-grow"></span>${uxSearch('cl-q', CL.q, 'Человек, компьютер или IP', 'clSearch')}</div>
+        ${CL.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${CL.sel.size}</b>
+          <button class="btn btn-ghost btn-sm" ${selOld.length ? '' : 'disabled'} onclick="clUpdate(${JSON.stringify(selOld.map(c => c.connId))})">${UX_I.up}Обновить · ${selOld.length}</button>
+          <button class="btn btn-ghost btn-sm" ${selElectron.length ? '' : 'disabled'} onclick="clRestart(${JSON.stringify(selElectron.map(c => c.connId))})">${UX_I.restart}Перезапустить</button>
+          <button class="btn btn-ghost btn-sm" onclick="clLogout([...CL.sel])">${UX_I.logout}Завершить сеансы</button>
+          <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="CL.sel.clear(); clRender()">Снять выделение</button></div>` : ''}
+        <div class="ux-tbl"><table style="min-width:900px">
+          <thead><tr><th style="width:40px"><input type="checkbox" aria-label="Выбрать все" ${allSel ? 'checked' : ''} onchange="clSelAll(this.checked)"></th>
+            <th>Пользователь</th><th>Устройство</th><th>Платформа</th><th>Версия</th><th>В сети</th><th></th></tr></thead>
+          <tbody>${rows.map(c => `<tr class="${CL.sel.has(c.connId) ? 'sel' : ''}">
+            <td><input type="checkbox" aria-label="Выбрать: ${esc(clHost(c))}" ${CL.sel.has(c.connId) ? 'checked' : ''} onchange="clToggle(${c.connId})"></td>
+            <td><div class="ux-cell">${avHtml(clName(c), 32, 8, c.userId, null, false)}<div style="min-width:0"><div class="ux-name">${esc(clName(c))}</div><div class="ux-login">@${esc(c.username)}</div></div></div></td>
+            <td><div class="cl-host">${esc(clHost(c))}</div>${c.clientIp && c.clientIp !== '—' ? `<div class="cl-ip">${esc(c.clientIp)}</div>` : ''}</td>
+            <td>${clPlatform(c)}</td>
+            <td data-cl-ver="${c.connId}">${clVersion(c)}</td>
+            <td class="cl-dur" data-cl-dur="${c.connId}">${clDuration(Date.now() - c.connectedAt)}</td>
+            <td data-cl-act="${c.connId}">${clActions(c)}</td>
+          </tr>`).join('') || `<tr><td colspan="7"><div class="ux-empty">${CL.clients.length ? 'Никого не нашли. Проверьте запрос или фильтр.' : 'Сейчас никто не подключён'}</div></td></tr>`}</tbody>
+        </table></div>
+      </section>`;
   });
-  if (window._clientsStructKey === structKey && wrap.querySelector('tbody')) {
-    clients.forEach(c => {
-      const el = wrap.querySelector(`[data-conn-online="${c.connId}"]`);
-      if (el) el.textContent = fmtDuration(Date.now() - c.connectedAt);
-    });
-    return;
-  }
-  window._clientsStructKey = structKey;
-
-  wrap.innerHTML=`<table>
-    <thead><tr>
-      <th>Пользователь</th>
-      <th>Компьютер</th>
-      <th>ОС</th>
-      <th>Статус</th>
-      <th>Версия</th>
-      <th>Онлайн</th>
-      <th></th>
-    </tr></thead>
-    <tbody>
-    ${clients.map(c=>{
-      const hasUpdate=latestVersion&&semverGt(latestVersion,c.clientVersion);
-      const statusBadgeHtml='<span class="badge badge-green">Подключён</span>';
-      const verBadge=hasUpdate
-        ?`<span class="ver-wrap"><span class="ver-old">${esc(c.clientVersion)}</span><span class="ver-update-btn"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg><span class="ver-tooltip">Доступна ${esc(latestVersion)}</span></span></span>`
-        :`<span class="ver-ok">${esc(c.clientVersion)}</span>`;
-      const duration = fmtDuration(Date.now() - c.connectedAt);
-      const ip = c.clientIp && c.clientIp !== '—' ? `<div style="font-size:10px;color:var(--c-muted);font-family:var(--f-mono);margin-top:2px">${esc(c.clientIp)}</div>` : '';
-      const dispName=c.displayName||c.username||'?';
-      return `<tr>
-        <td>
-          <div class="user-cell">
-            ${avHtml(dispName,30,8,c.userId,null,false)}
-            <div>
-              <div class="uc-name">${esc(dispName)}</div>
-              <div class="uc-sub">@${esc(c.username)}</div>
-            </div>
-          </div>
-        </td>
-        <td>
-          <div style="font-family:var(--f-mono);font-size:11px;color:var(--c-text2)">${esc(c.hostname)}</div>
-          ${ip}
-        </td>
-        <td>
-          <div>${fmtOS(c.osPlatform,c.osRelease)}</div>
-          ${fmtScopeTag(c.osPlatform, c.installScope)}
-        </td>
-        <td>${statusBadgeHtml}</td>
-        <td>${verBadge}</td>
-        <td data-conn-online="${c.connId}" style="color:var(--c-muted);font-size:11px;font-family:var(--f-mono)">${duration}</td>
-        <td>
-          <div class="td-actions">
-            ${(c.installScope==='pwa' || c.installScope==='web')
-              ? `<span class="btn btn-sm" style="visibility:hidden;pointer-events:none">Обновить</span>
-                 <span class="btn btn-sm" style="visibility:hidden;pointer-events:none">Перезапуск</span>`
-              : `${hasUpdate
-                  ? `<button class="btn btn-success btn-sm" onclick="forceUpdate(${c.connId},'${jesc(c.displayName||c.username)}','${jesc(c.hostname)}','${jesc(c.clientVersion)}','${jesc(latestVersion||'')}')">Обновить</button>`
-                  : `<button class="btn btn-ghost btn-sm" disabled>Обновить</button>`
-                }
-                <button class="btn btn-ghost btn-sm" onclick="forceRestart(${c.connId},'${jesc(c.displayName||c.username)}','${jesc(c.hostname)}')">Перезапуск</button>`
-            }
-            <button class="btn btn-danger btn-sm" onclick="forceLogout(${c.connId},'${jesc(c.displayName||c.username)}','${jesc(c.hostname)}')">Выйти</button>
-          </div>
-        </td>
-      </tr>`;
-    }).join('')}
-    </tbody>
-  </table>`;
 }
-
-/* ── UPDATE PROGRESS MODAL ── */
-let _updProgPoll = null;
-const _updProgChipLabel = { pending:'Ожидание…', downloading:'Загрузка', installing:'Установка', restarting:'Перезапуск…', restarted:'Обновлён', error:'Ошибка' };
-const _updProgFillColor = { pending:'var(--c-muted)', downloading:'var(--c-blue)', installing:'var(--c-orange)', restarting:'var(--c-purple)', restarted:'var(--c-green)', error:'var(--c-red)' };
-
-function openUpdProgModal(clients) {
-  const list = document.getElementById('upd-prog-list');
-  list.innerHTML = clients.map(c => `
-    <div class="upd-row" data-conn="${c.connId}">
-      <div class="upd-row-info">
-        <div class="upd-name">${esc(c.displayName || c.username || '?')}</div>
-        <div class="upd-host">${esc(c.hostname||'—')} · <span style="font-family:var(--f-mono)">${esc(c.clientVersion||'—')}</span></div>
-      </div>
-      <span class="upd-chip upd-chip-pending">Ожидание…</span>
-      <div class="upd-bar-wrap">
-        <div class="upd-bar"><div class="upd-fill" style="width:0%;background:var(--c-muted)"></div></div>
-        <span class="upd-pct">0%</span>
-      </div>
-    </div>`).join('');
-  openModal('modal-upd-prog');
-  _updProgPoll = setInterval(pollUpdProg, 700);
-}
-
-async function pollUpdProg() {
-  let items; try { items = await api('GET', '/api/admin/updates/progress'); } catch { return; }
-  items.forEach(item => {
-    const row = document.querySelector(`[data-conn="${item.connId}"]`);
-    if (!row) return;
-    const fill = row.querySelector('.upd-fill');
-    const pctEl = row.querySelector('.upd-pct');
-    const chip = row.querySelector('.upd-chip');
-    const st = item.status || 'pending';
-    const pct = item.pct || 0;
-    if (fill) { fill.style.width = pct + '%'; fill.style.background = _updProgFillColor[st] || 'var(--c-muted)'; }
-    if (pctEl) pctEl.textContent = pct + '%';
-    if (chip) {
-      chip.className = `upd-chip upd-chip-${st}`;
-      chip.textContent = st === 'downloading' ? `Загрузка ${pct}%`
-        : st === 'error' ? `Ошибка${item.error ? ': ' + item.error : ''}`
-        : (_updProgChipLabel[st] || st);
-    }
+function clPatch() {
+  const set = (el, html) => { if (el && el._h !== html) { el._h = html; el.innerHTML = html; } };
+  set(document.getElementById('cl-sum'), clSummary());
+  CL.clients.forEach(c => {
+    set(document.querySelector(`[data-cl-ver="${c.connId}"]`), clVersion(c));
+    set(document.querySelector(`[data-cl-act="${c.connId}"]`), clActions(c));
+    const d = document.querySelector(`[data-cl-dur="${c.connId}"]`);
+    if (d) d.textContent = clDuration(Date.now() - c.connectedAt);
   });
 }
 
-function closeUpdProgModal() {
-  clearInterval(_updProgPoll); _updProgPoll = null;
-  closeModal('modal-upd-prog');
+function clFilter(k) { CL.filter = k; CL.sel.clear(); clRender(); }
+function clSearch(v) { CL.q = v; clRender(); }
+function clToggle(id) { CL.sel.has(id) ? CL.sel.delete(id) : CL.sel.add(id); clRender(); }
+function clSelAll(on) { clRows().forEach(c => on ? CL.sel.add(c.connId) : CL.sel.delete(c.connId)); clRender(); }
+
+function clMenu(e, connId) {
+  const c = CL.clients.find(x => x.connId === connId);
+  if (!c) return;
+  const logout = `<button role="menuitem" class="danger" onclick="uxCloseMenu(); clLogout([${connId}])">${UX_I.logout}Завершить сеанс</button>`;
+  uxOpenMenu(e, 'cl' + connId, clIsWeb(c)
+    ? `<div class="note">Веб и PWA обновляются сами — достаточно обновить страницу в браузере</div><hr>${logout}`
+    : `<button role="menuitem" ${clOutdated(c) && !clBusy(c) ? '' : 'disabled'} onclick="uxCloseMenu(); clUpdate([${connId}])">${UX_I.up}Обновить${CL.latest ? ' до ' + esc(CL.latest) : ''}</button>
+       <button role="menuitem" ${clBusy(c) ? 'disabled' : ''} onclick="uxCloseMenu(); clRestart([${connId}])">${UX_I.restart}Перезапустить клиент</button>
+       <hr>${logout}`);
 }
 
-async function forceUpdate(connId,name,hostname,curVer,newVer) {
-  confirm('Принудительное обновление',
-    `Пользователь: ${name}\nКомпьютер: ${hostname}\nТекущая версия: ${curVer} → ${newVer}\n\nКлиент получит команду обновления и перезапустится автоматически.`,
+async function clCheck() {
+  CL.checking = true;
+  clPatch();
+  await loadClients(true);
+  CL.checking = false;
+  clPatch();
+  toast(CL.latest ? `Последняя версия клиента — ${esc(CL.latest)}` : 'Не удалось узнать последнюю версию', CL.latest ? 'success' : 'error');
+}
+
+const clFind = ids => ids.map(id => CL.clients.find(c => c.connId === id)).filter(Boolean);
+const clLines = list => esc(list.map(c => `${clName(c)} — ${clHost(c)}`).join('\n'));
+
+function clUpdate(ids, retry) {
+  const list = clFind(ids);
+  if (!list.length || !CL.latest) return;
+  const run = async () => {
+    await Promise.all(list.map(c => api('POST', `/api/admin/clients/${c.connId}/force-update`)));
+    CL.sel.clear();
+    clPollProgress(true);
+  };
+  if (retry) return run();
+  confirm(list.length > 1 ? `Обновить до ${CL.latest} · ${list.length}` : `Обновить до ${CL.latest}`,
+    `${esc(list.map(c => `${clName(c)} — ${clHost(c)}: ${c.clientVersion}`).join('\n'))}\n\nКлиент скачает новую версию, установит её и перезапустится сам — это займёт около минуты.`,
+    run);
+}
+function clRestart(ids) {
+  const list = clFind(ids).filter(c => !clIsWeb(c));
+  if (!list.length) return;
+  confirm(list.length > 1 ? `Перезапустить клиенты · ${list.length}` : 'Перезапустить клиент?',
+    `${clLines(list)}\n\nПриложение закроется и сразу откроется снова — на пару секунд человек пропадёт из сети.`,
     async () => {
-      await api('POST', `/api/admin/clients/${connId}/force-update`);
-      const clientData = [{ connId, displayName: name, username: name, hostname, clientVersion: curVer }];
-      openUpdProgModal(clientData);
+      await Promise.all(list.map(c => api('POST', `/api/admin/clients/${c.connId}/force-restart`)));
+      toast(list.length > 1 ? `Команда перезапуска отправлена: ${list.length}` : 'Команда перезапуска отправлена', 'success');
+      CL.sel.clear();
+      setTimeout(loadClients, 3000);
     });
 }
-
-async function forceUpdateAll(outdated, latestVersion) {
-  confirm('Обновить всех клиентов',
-    `Устаревших клиентов: ${outdated.length}\nДоступная версия: ${latestVersion}\n\nВсе клиенты получат команду обновления и перезапустятся автоматически.`,
+function clLogout(ids) {
+  const list = clFind(ids);
+  if (!list.length) return;
+  confirm(list.length > 1 ? `Завершить сеансы · ${list.length}` : 'Завершить сеанс?',
+    `${clLines(list)}\n\nНа этом устройстве придётся войти заново. Остальные устройства человека останутся в сети.`,
     async () => {
-      await Promise.all(outdated.map(c => api('POST', `/api/admin/clients/${c.connId}/force-update`)));
-      openUpdProgModal(outdated);
+      await Promise.all(list.map(c => api('POST', `/api/admin/clients/${c.connId}/force-logout`)));
+      toast(list.length > 1 ? `Сеансы завершены: ${list.length}` : 'Сеанс завершён', 'success');
+      CL.sel.clear();
+      setTimeout(loadClients, 1500);
     });
 }
 
-async function forceLogout(connId,name,hostname) {
-  confirm('Принудительный выход',
-    `Пользователь: ${name}\nКомпьютер: ${hostname}\n\nСессия будет завершена, пользователь будет разлогинен.`,
-    async()=>{
-      await api('POST',`/api/admin/clients/${connId}/force-logout`);
-      toast('Сессия завершена','success');
-      setTimeout(loadClients,1500);
-    });
-}
-
-async function forceRestart(connId,name,hostname) {
-  confirm('Перезапуск клиента',
-    `Пользователь: ${name}\nКомпьютер: ${hostname}\n\nКлиент будет перезапущен.`,
-    async()=>{
-      await api('POST',`/api/admin/clients/${connId}/force-restart`);
-      toast('Команда перезапуска отправлена','success');
-      setTimeout(loadClients,3000);
-    });
+// Ход обновления: опрашиваем, пока кто-то обновляется. Перезапустившийся клиент
+// приходит новым соединением — тогда сразу подтягиваем список, не ждём фонового опроса.
+async function clPollProgress(started) {
+  clearTimeout(CL.progTimer);
+  let items = null;
+  try { items = await api('GET', '/api/admin/updates/progress'); } catch {}
+  if (Array.isArray(items)) {
+    const restartedBefore = new Set(CL.prog.filter(p => p.status === 'restarted').map(p => p.connId));
+    CL.prog = items;
+    if (items.some(p => p.status === 'restarted' && !restartedBefore.has(p.connId))) loadClients();
+  }
+  if (currentPage !== 'clients') return;
+  clRender();
+  if (started || CL.prog.some(p => CL_STAGE[p.status])) CL.progTimer = setTimeout(() => clPollProgress(), 800);
 }
 
 /* ── PUSH SUBSCRIPTIONS ── */
