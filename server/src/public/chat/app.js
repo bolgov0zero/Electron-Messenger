@@ -74,51 +74,6 @@ function plural(n, one, few, many) {
 }
 const nMembers = n => n + ' ' + plural(n, 'участник', 'участника', 'участников');
 
-// ── СМЕНА СОБСТВЕННОГО ПАРОЛЯ ──
-// Раньше пароль мог поменять только администратор, пользователю идти было некуда
-function togglePasswordForm() {
-  const form = document.getElementById('pw-form');
-  const btn = document.getElementById('pw-toggle');
-  if (!form) return;
-  const open = form.style.display !== 'none';
-  form.style.display = open ? 'none' : 'flex';
-  if (btn) btn.textContent = open ? 'Сменить пароль' : 'Отмена';
-  if (!open) setTimeout(() => document.getElementById('pw-old')?.focus(), 50);
-  else ['pw-old','pw-new','pw-new2'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
-}
-
-async function submitOwnPassword() {
-  const msg = document.getElementById('pw-msg');
-  const oldP = document.getElementById('pw-old').value;
-  const newP = document.getElementById('pw-new').value;
-  const newP2 = document.getElementById('pw-new2').value;
-  const fail = t => { msg.style.color = 'var(--danger, #e5484d)'; msg.textContent = t; };
-  if (!oldP || !newP || !newP2) return fail('Заполните все поля');
-  if (newP !== newP2) return fail('Новый пароль и подтверждение не совпадают');
-  const r = await api('POST', '/users/me/password', { old_password: oldP, new_password: newP });
-  if (r?.error) return fail(r.error);
-  msg.style.color = 'var(--accent)';
-  msg.textContent = 'Пароль изменён';
-  ['pw-old','pw-new','pw-new2'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
-  setTimeout(() => {
-    const form = document.getElementById('pw-form'), btn = document.getElementById('pw-toggle');
-    if (form) form.style.display = 'none';
-    if (btn) btn.textContent = 'Сменить пароль';
-    if (msg) msg.textContent = '';
-  }, 1600);
-}
-
-// Текст превью последнего сообщения — общий для списка чатов и тем
-function previewText(lm, limit = 40) {
-  let t = lm
-    ? (lm.deleted ? 'Сообщение удалено'
-      : (lm.text ? lm.text.replace(/<[^>]*>/g, '')
-        : (lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (lm.attachment.name || 'Файл')) : '')))
-    : 'Нет сообщений';
-  if (t.length > limit) t = t.slice(0, limit) + '…';
-  return t;
-}
-
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // Markdown-lite: **жирный**, __курсив__, `код` — применяется к уже экранированному тексту
@@ -991,128 +946,326 @@ function setTheme(t) { animateThemeSwitch(); S.settings.theme=t; applySettings()
 function toggleTheme() { setTheme(S.settings.theme === 'dark' ? 'light' : 'dark'); }
 function setFontSize(f) { S.settings.fontSize=f; applySettings(); saveSession(); }
 function setUiScale(v) { S.settings.uiScale = v; applySettings(); saveSession(); }
-async function openSettings() {
-  openModal('modal-settings');
-  showSettingsTab('profile');
-}
+// ── НАСТРОЙКИ ──
+// Окно рисует скрипт: слева карточка профиля и разделы с их главным значением, справа строки
+// настроек группами. Всё, кроме имени и пароля, применяется сразу, как и раньше.
+// Код общий для приложения и веб-клиента: «Обновление», автозапуск и сайдбар есть только
+// в Electron, а на телефоне разделы открываются списком, как в системных настройках.
+const CS = {
+  sec: 'profile', mSec: null, nameDraft: '', nameBusy: false, nameMsg: '',
+  pwOpen: false, pw: { old: '', a: '', b: '' }, pwShow: false, pwErr: '', pwBusy: false, pwDone: false,
+  autostart: null, version: null, avatar: undefined,
+};
+const csIsApp = () => typeof window.electron !== 'undefined';
+const CS_PHONE_MQ = '(max-width: 767px), (pointer: coarse)';
+const csIsPhone = () => !csIsApp() && window.matchMedia(CS_PHONE_MQ).matches;
+const csSvg = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const CS_I = {
+  user: csSvg('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'),
+  gear: csSvg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'),
+  palette: csSvg('<circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.7-.7 1.7-1.6 0-.4-.2-.8-.5-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H16c3.3 0 6-2.7 6-6 0-4.9-4.5-8.6-10-8.6z"/>'),
+  upd: csSvg('<path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/>'),
+  x: csSvg('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
+  pen: csSvg('<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>'),
+  eye: csSvg('<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>'),
+  eyeOff: csSvg('<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>'),
+  out: csSvg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'),
+  check: csSvg('<polyline points="20 6 9 17 4 12"/>'),
+  sun: csSvg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>'),
+  moon: csSvg('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'),
+  play: csSvg('<polygon points="6 4 20 12 6 20 6 4"/>'),
+  back: csSvg('<polyline points="15 18 9 12 15 6"/>'),
+  chev: csSvg('<polyline points="9 18 15 12 9 6"/>'),
+  down: csSvg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'),
+  bolt: csSvg('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'),
+  lock: csSvg('<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
+};
 
-function showSettingsTab(tab) {
-  document.querySelectorAll('.settings-nav-item').forEach(el => {
-    el.classList.toggle('active', el.id === 'snav-' + tab);
+async function openSettings(section = 'profile') {
+  Object.assign(CS, {
+    sec: section, mSec: null, nameDraft: S.user?.display_name || '', nameBusy: false, nameMsg: '',
+    pwOpen: false, pw: { old: '', a: '', b: '' }, pwShow: false, pwErr: '', pwBusy: false, pwDone: false, avatar: undefined,
   });
-  const content = document.getElementById('settings-content');
-  if (!content) return;
-
-  if (tab === 'profile') {
-    const u = S.user;
-    const avColor = userAvatarColor(u.id, u.tag);
-    content.innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:24px">
-        <div style="position:relative">
-          <div class="av" id="settings-av" style="width:72px;height:72px;font-size:22px;font-weight:700;cursor:pointer" onclick="triggerAvatarUpload()"></div>
-          <div style="position:absolute;bottom:-4px;right:-4px;width:24px;height:24px;border-radius:7px;background:var(--accent);border:2px solid var(--modal-bg);display:flex;align-items:center;justify-content:center;cursor:pointer" onclick="triggerAvatarUpload()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-          </div>
-        </div>
-        <div style="font-size:13px;color:var(--text2)">@${esc(u.username)}</div>
-      </div>
-      <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="onAvatarFileChange(this)">
-      <div style="margin-bottom:24px">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Имя пользователя</div>
-        <div style="display:flex;gap:8px">
-          <input id="settings-display-name" class="settings-name-input" value="${esc(u.display_name)}" style="flex:1;background:var(--search-bg);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:13px;font-weight:600;color:var(--text);font-family:inherit;outline:none;pointer-events:auto;border-color:transparent" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent'">
-          <button onclick="saveDisplayName()" class="settings-save-btn">Сохранить</button>
-        </div>
-      </div>
-      <div style="margin-bottom:24px">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Пароль</div>
-        <button id="pw-toggle" class="settings-save-btn" style="width:100%;justify-content:center" onclick="togglePasswordForm()">Сменить пароль</button>
-        <div id="pw-form" style="display:none;flex-direction:column;gap:8px;margin-top:10px">
-          <input id="pw-old" type="password" placeholder="Текущий пароль" autocomplete="current-password" class="settings-name-input" style="background:var(--search-bg);border:1px solid transparent;border-radius:9px;padding:9px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent'">
-          <input id="pw-new" type="password" placeholder="Новый пароль (от 6 символов)" autocomplete="new-password" class="settings-name-input" style="background:var(--search-bg);border:1px solid transparent;border-radius:9px;padding:9px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent'">
-          <input id="pw-new2" type="password" placeholder="Повторите новый пароль" autocomplete="new-password" class="settings-name-input" style="background:var(--search-bg);border:1px solid transparent;border-radius:9px;padding:9px 12px;font-size:13px;color:var(--text);font-family:inherit;outline:none" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='transparent'" onkeydown="if(event.key==='Enter')submitOwnPassword()">
-          <div id="pw-msg" style="font-size:12px;min-height:16px"></div>
-          <button class="settings-save-btn" style="width:100%;justify-content:center" onclick="submitOwnPassword()">Сохранить пароль</button>
-        </div>
-      </div>
-      <button class="setting-logout" onclick="logout(true)">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Выйти из аккаунта
-      </button>`;
-    const avEl = document.getElementById('settings-av');
-    if (avEl) {
-      avEl.className = `av ${avColor}`;
-      avEl.textContent = initials(u.display_name);
-      updateSettingsAvatar();
-    }
-
-  } else if (tab === 'general') {
-    content.innerHTML = `
-      <div style="font-size:11px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;font-weight:700;margin-bottom:10px">Система</div>
-      <div class="setting-row" style="border:none">
-        <span>Звук сообщений</span>
-        <label class="toggle"><input type="checkbox" id="sound-chk" onchange="S.settings.soundEnabled=this.checked;saveSession()" ${S.settings.soundEnabled!==false?'checked':''}><span class="toggle-slider"></span></label>
-      </div>
-`;
-    applySettings();
-
-  } else if (tab === 'appearance') {
-    content.innerHTML = `
-      <div class="set-sec">
-        <h4>Тема и цвет</h4>
-        <div class="set-line">
-          <span>Тема</span>
-          <div class="seg" id="theme-seg">
-            <button onclick="setTheme('light')">Светлая</button>
-            <button onclick="setTheme('dark')">Тёмная</button>
-          </div>
-        </div>
-        <div class="set-line">
-          <span>Цвет акцента</span>
-          <div class="accent-seg" id="accent-seg">${accentDotsHtml()}</div>
-        </div>
-      </div>
-      <div class="set-sec">
-        <h4>Фон переписки</h4>
-        ${chatBgCardsHtml()}
-      </div>
-      <div class="set-sec">
-        <h4>Узор фона</h4>
-        ${chatPatternCardsHtml()}
-        <div class="set-line" id="pattern-level-line" style="${currentPattern() ? '' : 'display:none'}">
-          <span>Заметность</span>
-          <div class="seg" id="pattern-seg">
-            <button onclick="setPatternLevel(1)">Слабая</button>
-            <button onclick="setPatternLevel(2)">Средняя</button>
-            <button onclick="setPatternLevel(3)">Сильная</button>
-          </div>
-        </div>
-      </div>
-      <div class="set-sec">
-        <h4>Текст</h4>
-        <div class="set-line">
-          <span>Размер текста</span>
-          <div class="seg" id="font-seg">
-            <button onclick="setFontSize('small')">S</button>
-            <button onclick="setFontSize('medium')">M</button>
-            <button onclick="setFontSize('large')">L</button>
-          </div>
-        </div>
-        <div class="set-line">
-          <span>Масштаб интерфейса</span>
-          <div class="seg" id="scale-seg">
-            <button onclick="setUiScale(80)">80%</button>
-            <button onclick="setUiScale(90)">90%</button>
-            <button onclick="setUiScale(100)">100%</button>
-            <button onclick="setUiScale(110)">110%</button>
-          </div>
-        </div>
-      </div>`;
-    applySettings();
-    paintPatternSwatches();
+  csRender();
+  openModal('modal-settings');
+  if (csIsApp()) {
+    window.electron?.getAutostart?.().then(v => { CS.autostart = !!v; csRefresh(); });
+    window.electron?.getVersion?.().then(v => { CS.version = v || null; csRefresh(); });
   }
 }
+// Прежнее имя: раздел открывали по вкладке
+function showSettingsTab(tab) { csGo(tab); }
 function closeSettings() { closeModal('modal-settings'); }
+function toggleSidebarPref(checked) {
+  const isHidden = document.body.classList.contains('sidebar-hidden');
+  if (checked !== isHidden) toggleSidebar();
+}
+
+function csSections() {
+  const s = S.settings;
+  const list = [
+    { k: 'profile', label: 'Профиль', icon: CS_I.user, desc: 'Фото, имя и пароль', meta: () => '@' + (S.user?.username || '') },
+    { k: 'general', label: 'Основные', icon: CS_I.gear, desc: csIsApp() ? 'Звук и поведение приложения' : 'Звук сообщений',
+      meta: () => [s.soundEnabled !== false ? 'звук включён' : 'без звука', csIsApp() && CS.autostart ? 'автозапуск' : ''].filter(Boolean).join(' · ') },
+    { k: 'appearance', label: 'Внешний вид', icon: CS_I.palette, desc: 'Тема, цвет, фон переписки и размер текста',
+      meta: () => `${s.theme === 'dark' ? 'Тёмная' : 'Светлая'} · ${ACCENTS[currentAccent()].name.toLowerCase()}` },
+  ];
+  if (csIsApp()) list.push({ k: 'update', label: 'Обновление', icon: CS_I.upd, desc: 'Версия приложения и новые релизы',
+    meta: () => _updateDownloadUrl && _updateVersion ? `есть версия ${_updateVersion}` : CS.version ? `версия ${CS.version}` : 'проверка обновлений',
+    dot: () => !!_updateDownloadUrl });
+  return list;
+}
+
+const csAv = size => `<span class="av cs-av-me ${userAvatarColor(S.user.id, S.user.tag)}" style="width:${size}px;height:${size}px;font-size:${Math.round(size * .34)}px">${esc(initials(S.user.display_name))}</span>`;
+// Фото рисуем во всех аватарках окна сразу: в навигации и в карточке профиля.
+// Адрес запоминаем, чтобы перерисовка окна не качала картинку заново.
+function csPaintAvatars() {
+  document.querySelectorAll('.cs-av-me').forEach(el => {
+    if (CS.avatar) {
+      el.style.backgroundImage = `url('${CS.avatar}')`;
+      el.style.backgroundSize = 'cover';
+      el.style.backgroundPosition = 'center';
+      el.textContent = '';
+    } else {
+      el.style.backgroundImage = '';
+      el.textContent = initials(S.user.display_name);
+    }
+  });
+}
+function updateSettingsAvatar() {
+  if (!S.user) return;
+  const url = `${httpProto()}://${S.server}/api/users/${S.user.id}/avatar?t=${Date.now()}`;
+  const img = new Image();
+  img.onload = () => { CS.avatar = url; csPaintAvatars(); };
+  img.onerror = () => { CS.avatar = null; csPaintAvatars(); };
+  img.src = url;
+}
+
+// ── Профиль ──
+function csPwStrength(p) {
+  if (!p) return null;
+  if (p.length < 6) return { n: 1, t: 'коротковат', c: 'var(--danger)' };
+  let s = 1;
+  if (p.length >= 10) s++;
+  if (/[A-ZА-ЯЁ]/.test(p) && /[a-zа-яё]/.test(p)) s++;
+  if (/\d/.test(p) && /[^\wА-Яа-яЁё]/.test(p)) s++;
+  return [null, { n: 1, t: 'слабый', c: 'var(--danger)' }, { n: 2, t: 'средний', c: 'var(--cs-warn)' }, { n: 3, t: 'хороший', c: 'var(--cs-ok)' }, { n: 4, t: 'надёжный', c: 'var(--cs-ok)' }][s];
+}
+const csPwBar = st => `${[1, 2, 3, 4].map(i => `<i class="${st && i <= st.n ? 'on' : ''}" style="--c:${st?.c || 'transparent'}"></i>`).join('')}<span>${st ? `Пароль ${st.t}` : 'Надёжность'}</span>`;
+const csPwReady = () => { const p = CS.pw; return !!p.old && p.a.length >= 6 && p.a === p.b && p.a !== p.old; };
+function csPwMsg() {
+  const p = CS.pw;
+  if (CS.pwErr) return `<span class="cs-err">${esc(CS.pwErr)}</span>`;
+  if (p.a && p.a.length < 6) { const n = 6 - p.a.length; return `<span class="cs-hint">Ещё ${n} ${plural(n, 'символ', 'символа', 'символов')} до минимума</span>`; }
+  if (p.a && p.old && p.a === p.old) return '<span class="cs-err">Новый пароль совпадает с текущим</span>';
+  if (p.b && p.a !== p.b) return '<span class="cs-err">Пароли не совпадают</span>';
+  if (p.b && p.a === p.b) return '<span class="cs-okt">Пароли совпадают</span>';
+  return '';
+}
+function csPaneProfile() {
+  const u = S.user, draft = CS.nameDraft, ok = draft.trim().length > 0, changed = draft.trim() !== u.display_name;
+  const type = CS.pwShow ? 'text' : 'password';
+  const where = csIsApp() ? 'На этом компьютере' : csIsPhone() ? 'На этом телефоне' : 'В этом браузере';
+  return `<div class="cs-hero">
+      <button type="button" class="cs-av-edit" aria-label="Сменить фото" onclick="triggerAvatarUpload()">${csAv(72)}<span class="cs-badge">${CS_I.pen}</span></button>
+      <div class="cs-hero-t"><b>${esc(u.display_name)}</b><span>@${esc(u.username)}</span>
+        ${u.tag ? `<div class="cs-chips"><span class="cs-chip">${esc(u.tag)}</span></div>` : ''}</div>
+    </div>
+    <div class="cs-gt">Имя</div>
+    <div class="cs-g"><div class="cs-r stack">
+      <div class="cs-l"><b>Как вас видят в чатах</b><span>Логин @${esc(u.username)} не меняется — его задаёт администратор.</span></div>
+      <div class="cs-ctl">
+        <div class="cs-inp ${ok ? '' : 'bad'}" style="flex:1;min-width:180px"><input id="cs-name" value="${esc(draft)}" maxlength="40" aria-label="Имя" autocomplete="off"
+          oninput="csNameInput(this.value)" onkeydown="if(event.key==='Enter')csSaveName(); if(event.key==='Escape'){event.stopPropagation(); this.value=S.user.display_name; csNameInput(this.value)}"><span class="cs-cnt" id="cs-cnt">${draft.length}/40</span></div>
+        <button type="button" class="cs-btn solid" id="cs-name-save" ${ok && changed && !CS.nameBusy ? '' : 'disabled'} onclick="csSaveName()">${CS.nameBusy ? 'Сохраняю…' : 'Сохранить'}</button>
+      </div>
+      <div id="cs-name-msg">${!ok ? '<span class="cs-err">Имя не может быть пустым</span>' : CS.nameMsg === 'ok' ? '<span class="cs-okt">Имя сохранено — его увидят все собеседники</span>' : CS.nameMsg ? `<span class="cs-err">${esc(CS.nameMsg)}</span>` : ''}</div>
+    </div></div>
+    <div class="cs-gt">Безопасность</div>
+    <div class="cs-g">
+      <div class="cs-r"><div class="cs-l"><b>Пароль</b>${CS.pwDone ? '<span class="cs-okt">Пароль изменён</span>' : `<span>${CS.pwOpen ? 'Введите текущий пароль и придумайте новый — от 6 символов' : 'Меняется здесь же, без администратора'}</span>`}</div>
+        ${CS.pwOpen ? '' : `<button type="button" class="cs-btn ghost" onclick="csPwToggle()">${CS_I.lock}Сменить пароль</button>`}</div>
+      ${CS.pwOpen ? `<div class="cs-r stack">
+        <div class="cs-inp"><input id="cs-pw0" type="${type}" placeholder="Текущий пароль" autocomplete="current-password" oninput="csPwInput('old', this.value)">
+          <button type="button" class="cs-eye" aria-label="${CS.pwShow ? 'Скрыть пароли' : 'Показать пароли'}" onclick="csPwEye()">${CS.pwShow ? CS_I.eyeOff : CS_I.eye}</button></div>
+        <div class="cs-inp"><input id="cs-pw1" type="${type}" placeholder="Новый пароль" autocomplete="new-password" oninput="csPwInput('a', this.value)"></div>
+        <div class="cs-pwbar" id="cs-pwbar">${csPwBar(csPwStrength(CS.pw.a))}</div>
+        <div class="cs-inp ${CS.pw.b && CS.pw.a !== CS.pw.b ? 'bad' : ''}" id="cs-pw2box"><input id="cs-pw2" type="${type}" placeholder="Повторите новый пароль" autocomplete="new-password" oninput="csPwInput('b', this.value)" onkeydown="if(event.key==='Enter')submitOwnPassword()"></div>
+        <div id="cs-pwmsg">${csPwMsg()}</div>
+        <div class="cs-ctl"><span class="cs-grow"></span><button type="button" class="cs-btn ghost" onclick="csPwToggle()">Отмена</button>
+          <button type="button" class="cs-btn solid" id="cs-pwsave" ${csPwReady() && !CS.pwBusy ? '' : 'disabled'} onclick="submitOwnPassword()">${CS.pwBusy ? 'Сохраняю…' : 'Сохранить пароль'}</button></div>
+      </div>` : ''}
+    </div>
+    <div class="cs-logout"><div class="cs-l"><b>Выйти из аккаунта</b><span>${where} понадобится снова ввести логин и пароль</span></div>
+      <button type="button" class="cs-btn danger" onclick="logout(true)">${CS_I.out}Выйти</button></div>`;
+}
+function csNameInput(v) {
+  CS.nameDraft = v;
+  CS.nameMsg = '';
+  const ok = v.trim().length > 0, changed = v.trim() !== S.user.display_name;
+  const cnt = document.getElementById('cs-cnt'); if (cnt) cnt.textContent = `${v.length}/40`;
+  const btn = document.getElementById('cs-name-save'); if (btn) btn.disabled = !(ok && changed) || CS.nameBusy;
+  document.getElementById('cs-name')?.parentElement.classList.toggle('bad', !ok);
+  const msg = document.getElementById('cs-name-msg'); if (msg) msg.innerHTML = ok ? '' : '<span class="cs-err">Имя не может быть пустым</span>';
+}
+async function csSaveName() {
+  const name = CS.nameDraft.trim();
+  if (!name || name === S.user.display_name || CS.nameBusy) return;
+  CS.nameBusy = true;
+  csRefresh();
+  const res = await api('PATCH', '/users/me', { display_name: name });
+  CS.nameBusy = false;
+  if (res?.ok) { S.user.display_name = name; CS.nameDraft = name; CS.nameMsg = 'ok'; saveSession(); }
+  else CS.nameMsg = res?.error || 'Не удалось сохранить имя';
+  csRefresh();
+}
+function csPwToggle() {
+  Object.assign(CS, { pwOpen: !CS.pwOpen, pw: { old: '', a: '', b: '' }, pwShow: false, pwErr: '', pwDone: false });
+  csRefresh(CS.pwOpen ? 'cs-pw0' : null);
+}
+function csPwEye() { CS.pwShow = !CS.pwShow; csRefresh(); }
+function csPwInput(k, v) {
+  CS.pw[k] = v;
+  CS.pwErr = '';
+  const bar = document.getElementById('cs-pwbar'); if (bar) bar.innerHTML = csPwBar(csPwStrength(CS.pw.a));
+  const msg = document.getElementById('cs-pwmsg'); if (msg) msg.innerHTML = csPwMsg();
+  document.getElementById('cs-pw2box')?.classList.toggle('bad', !!CS.pw.b && CS.pw.a !== CS.pw.b);
+  const btn = document.getElementById('cs-pwsave'); if (btn) btn.disabled = !csPwReady() || CS.pwBusy;
+}
+async function submitOwnPassword() {
+  if (!csPwReady() || CS.pwBusy) return;
+  CS.pwBusy = true;
+  csRefresh();
+  const r = await api('POST', '/users/me/password', { old_password: CS.pw.old, new_password: CS.pw.a });
+  CS.pwBusy = false;
+  if (!r || r.error) { CS.pwErr = r?.error || 'Не удалось сменить пароль'; return csRefresh('cs-pw0'); }
+  Object.assign(CS, { pwOpen: false, pw: { old: '', a: '', b: '' }, pwShow: false, pwDone: true });
+  csRefresh();
+}
+
+// ── Основные ──
+const csTg = (on, fn, label) => `<button type="button" class="cs-tg" role="switch" aria-checked="${on}" aria-label="${label}" onclick="${fn}"></button>`;
+function csPaneGeneral() {
+  const sound = S.settings.soundEnabled !== false;
+  return `<div class="cs-gt">Уведомления</div>
+    <div class="cs-g"><div class="cs-r"><div class="cs-l"><b>Звук сообщений</b><span>Короткий сигнал, когда приходит новое сообщение</span></div>
+      <div class="cs-ctl"><button type="button" class="cs-btn ghost" ${sound ? '' : 'disabled'} onclick="playNotificationSound()">${CS_I.play}Прослушать</button>${csTg(sound, 'csSound()', 'Звук сообщений')}</div></div></div>
+    ${csIsApp() ? `<div class="cs-gt">Приложение</div>
+    <div class="cs-g">
+      <div class="cs-r"><div class="cs-l"><b>Автозапуск при старте</b><span>Приложение откроется само после входа в систему</span></div>${csTg(!!CS.autostart, 'csAutostart()', 'Автозапуск')}</div>
+      <div class="cs-r"><div class="cs-l"><b>Скрыть сайдбар</b><span>Список чатов прячется и выезжает при наведении на левый край окна</span></div>${csTg(document.body.classList.contains('sidebar-hidden'), 'csHideSidebar()', 'Скрыть сайдбар')}</div>
+    </div>` : `<p class="cs-hint">Разрешение на уведомления меняется ${csIsPhone() ? 'в настройках телефона' : 'в настройках сайта в самом браузере'}.</p>`}`;
+}
+function csSound() { S.settings.soundEnabled = S.settings.soundEnabled === false; saveSession(); csRefresh(); }
+async function csAutostart() { CS.autostart = !CS.autostart; csRefresh(); await setAutostart(CS.autostart); }
+function csHideSidebar() { toggleSidebar(); csRefresh(); }
+
+// ── Внешний вид ──
+function csPaneAppearance() {
+  const s = S.settings, lvl = currentPatternLevel(), scales = csIsApp() ? [80, 90, 100] : [80, 90, 100, 110];
+  const seg = (items, cur, fn, label) => `<div class="cs-seg" role="group" aria-label="${label}">${items.map(([v, t, title]) =>
+    `<button type="button" aria-pressed="${cur === v}" ${title ? `aria-label="${title}" title="${title}"` : ''} onclick="${fn}(${typeof v === 'string' ? `'${v}'` : v}); csRefresh()">${t}</button>`).join('')}</div>`;
+  return `<div class="cs-pv" aria-hidden="true">
+      <div class="cs-pv-side"><i></i><i class="on"></i><i></i><i></i><i></i></div>
+      <div class="cs-pv-chat"><div class="cs-pv-pat"></div><span class="cs-pv-cap">Так будет выглядеть</span>
+        <div class="cs-pv-msg in"><b>Мария</b>Созвон переносим на 15:30<small>14:18</small></div>
+        <div class="cs-pv-msg out">Отлично, успеваю<small>14:19</small></div></div>
+    </div>
+    <div class="cs-gt">Тема и цвет</div>
+    <div class="cs-g">
+      <div class="cs-r"><div class="cs-l"><b>Тема</b></div>${seg([['light', CS_I.sun + 'Светлая'], ['dark', CS_I.moon + 'Тёмная']], s.theme, 'setTheme', 'Тема')}</div>
+      <div class="cs-r"><div class="cs-l"><b>Цвет акцента</b><span>Кнопки, свои сообщения, выделение</span></div>
+        <div class="cs-ctl"><span class="cs-aname">${ACCENTS[currentAccent()].name}</span><div onclick="if(event.target.closest('.accent-dot'))csRefresh()">${accentDotsHtml()}</div></div></div>
+    </div>
+    <div class="cs-gt">Фон переписки</div>
+    <div onclick="if(event.target.closest('.bg-card'))csRefresh()">${chatBgCardsHtml()}</div>
+    <div class="cs-gt">Узор фона</div>
+    <div class="cs-g"><div class="cs-r stack">
+      <div onclick="if(event.target.closest('.pat-card'))csRefresh()">${chatPatternCardsHtml()}</div>
+      ${currentPattern() ? `<div class="cs-ctl cs-between"><div class="cs-l"><b>Заметность</b></div>${seg([[1, 'Слабая'], [2, 'Средняя'], [3, 'Сильная']], lvl, 'setPatternLevel', 'Заметность узора')}</div>` : ''}
+    </div></div>
+    <div class="cs-gt">Текст</div>
+    <div class="cs-g">
+      <div class="cs-r"><div class="cs-l"><b>Размер текста</b><span>Сообщения и список чатов</span></div>
+        ${seg([['small', '<span class="cs-aa" style="font-size:11px">Aa</span>', 'Мелкий'], ['medium', '<span class="cs-aa" style="font-size:13px">Aa</span>', 'Обычный'], ['large', '<span class="cs-aa" style="font-size:16px">Aa</span>', 'Крупный']], s.fontSize, 'setFontSize', 'Размер текста')}</div>
+      <div class="cs-r"><div class="cs-l"><b>Масштаб интерфейса</b><span>Всё окно целиком</span></div>
+        ${seg(scales.map(v => [v, v + '%']), s.uiScale || 100, 'setUiScale', 'Масштаб интерфейса')}</div>
+    </div>`;
+}
+
+// ── Обновление (только приложение) ──
+function csPaneUpdate() {
+  const has = !!_updateDownloadUrl;
+  const date = _updatePublishedAt ? new Date(_updatePublishedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '';
+  return `<div class="cs-ver"><span class="cs-logo">${CS_I.bolt}</span>
+      <div class="cs-ver-t"><span>Установлена версия</span><b>${esc(CS.version || '—')}</b><span>Приложение для компьютера</span></div>
+      ${has ? `<span class="cs-state warn">${CS_I.bolt}Доступна ${esc(_updateVersion || '')}</span>`
+        : `<span class="cs-state" id="update-status-text"></span><button type="button" class="cs-btn ghost" id="update-check-btn" onclick="checkUpdate()">Проверить</button>`}</div>
+    ${has ? `<div class="cs-g">
+      <div class="cs-r"><div class="cs-l"><b>Версия ${esc(_updateVersion || '')}${date ? ' · ' + date : ''}</b><span>Загрузка и установка идут в отдельном окне с прогрессом</span></div>
+        <button type="button" class="cs-btn solid" onclick="closeSettings(); openModal('modal-update')">${CS_I.down}Установить</button></div>
+      ${_updateNotes ? `<div class="cs-notes"><b>Что нового.</b> ${esc(_updateNotes)}</div>` : ''}
+    </div>` : '<p class="cs-hint">Приложение само проверяет обновления после запуска и дальше каждые два часа.</p>'}
+    <div class="cs-copy">2026 © bolgov0zero</div>`;
+}
+const CS_PANES = { profile: csPaneProfile, general: csPaneGeneral, appearance: csPaneAppearance, update: csPaneUpdate };
+
+function csNavHtml(list) {
+  return csSections().map(s => `<button type="button" class="cs-sn" ${list ? '' : `aria-current="${CS.sec === s.k ? 'page' : 'false'}"`} onclick="csGo('${s.k}')">
+    <span class="cs-sn-ic">${s.icon}</span><span class="cs-sn-tx"><b>${s.label}</b><small>${esc(s.meta())}</small></span>${s.dot?.() ? '<i class="cs-dot"></i>' : ''}${list ? `<span class="cs-chev">${CS_I.chev}</span>` : ''}</button>`).join('');
+}
+function csRender(focusId) {
+  const el = document.getElementById('cs-form');
+  if (!el || !S.user) return;
+  const a = document.activeElement, keep = focusId || (a?.id?.startsWith('cs-') && el.contains(a) ? a.id : null);
+  let caret = null;
+  try { caret = a?.selectionStart; } catch {}
+  const scroll = document.getElementById('cs-body')?.scrollTop || 0;
+  const secs = csSections();
+  if (!secs.some(s => s.k === CS.sec)) CS.sec = 'profile';
+  if (CS.mSec && !secs.some(s => s.k === CS.mSec)) CS.mSec = null;
+  const close = `<button type="button" class="cs-x" aria-label="Закрыть настройки" onclick="closeSettings()">${CS_I.x}</button>`;
+  if (csIsPhone()) {
+    const s = CS.mSec && secs.find(x => x.k === CS.mSec);
+    el.className = 'modal cs-modal cs-phone';
+    el.innerHTML = `<div class="cs-mtop">${s ? `<button type="button" class="cs-back" onclick="csGo(null)">${CS_I.back}Назад</button>` : '<span></span>'}<h3>${s ? s.label : 'Настройки'}</h3>${close}</div>
+      <div class="cs-body" id="cs-body">${s ? CS_PANES[s.k]() : `
+        <button type="button" class="cs-hero cs-hero-btn" onclick="csGo('profile')">${csAv(60)}<span class="cs-hero-t"><b>${esc(S.user.display_name)}</b><span>@${esc(S.user.username)}</span></span><span class="cs-chev">${CS_I.chev}</span></button>
+        <div class="cs-g cs-list">${csNavHtml(true)}</div>
+        <p class="cs-hint" style="text-align:center">Веб-версия · 2026 © bolgov0zero</p>`}</div>`;
+  } else {
+    const s = secs.find(x => x.k === CS.sec);
+    el.className = 'modal cs-modal';
+    el.innerHTML = `<nav class="cs-nav" aria-label="Разделы настроек">
+        <button type="button" class="cs-me" aria-current="${CS.sec === 'profile' ? 'page' : 'false'}" onclick="csGo('profile')">${csAv(40)}<span class="cs-me-t"><b>${esc(S.user.display_name)}</b><small>@${esc(S.user.username)}</small></span></button>
+        <div class="cs-nav-list">${csNavHtml(false)}</div>
+        <div class="cs-nav-foot">${csIsApp() ? `Electron${CS.version ? ' ' + esc(CS.version) : ''}` : 'Веб-версия'}<br>2026 © bolgov0zero</div>
+      </nav>
+      <section class="cs-pane">
+        <header class="cs-head"><div><h3>${s.label}</h3><p>${s.desc}</p></div>${close}</header>
+        <div class="cs-body" id="cs-body">${CS_PANES[s.k]()}</div>
+      </section>`;
+  }
+  if (CS.avatar === undefined) { CS.avatar = null; updateSettingsAvatar(); }
+  csPaintAvatars();
+  if (document.getElementById('pattern-cards')) paintPatternSwatches();
+  // Пароли кладём в поля свойством, а не атрибутом разметки
+  [['cs-pw0', 'old'], ['cs-pw1', 'a'], ['cs-pw2', 'b']].forEach(([id, k]) => { const i = document.getElementById(id); if (i) i.value = CS.pw[k]; });
+  const body = document.getElementById('cs-body');
+  if (body && !focusId) body.scrollTop = scroll;
+  const f = keep && document.getElementById(keep);
+  if (f) { f.focus(); if (!focusId && caret != null) { try { f.setSelectionRange(caret, caret); } catch {} } }
+}
+function csRefresh(focusId) {
+  if (document.getElementById('modal-settings')?.classList.contains('open')) csRender(focusId);
+}
+function csGo(k) {
+  if (csIsPhone()) CS.mSec = k; else if (k) CS.sec = k;
+  csRender();
+  const b = document.getElementById('cs-body');
+  if (b) b.scrollTop = 0;
+}
+window.matchMedia(CS_PHONE_MQ).addEventListener?.('change', () => csRefresh());
 function openNameEdit() {
   const input = document.getElementById('settings-display-name');
   const btn = document.getElementById('settings-edit-btn');
@@ -1142,24 +1295,6 @@ async function saveDisplayName() {
   if (btn) btn.textContent = 'Изменить';
 }
 
-function updateSettingsAvatar() {
-  const el = document.getElementById('settings-av');
-  if (!el) return;
-  el.className = `av av-lg ${userAvatarColor(S.user.id, S.user.tag)}`;
-  const url = `${httpProto()}://${S.server}/api/users/${S.user.id}/avatar?t=${Date.now()}`;
-  const img = new Image();
-  img.onload = () => {
-    el.style.backgroundImage = `url('${url}')`;
-    el.style.backgroundSize = 'cover';
-    el.style.backgroundPosition = 'center';
-    el.textContent = '';
-  };
-  img.onerror = () => {
-    el.style.backgroundImage = '';
-    el.textContent = initials(S.user.display_name);
-  };
-  img.src = url;
-}
 
 function triggerAvatarUpload() {
   document.getElementById('avatar-file-input').click();

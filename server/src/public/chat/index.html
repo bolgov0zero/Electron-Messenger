@@ -190,36 +190,11 @@
 
 </div>
 
-<!-- Settings modal -->
-<div class="modal-bg" id="modal-settings" onclick="if(event.target===this)closeModal('modal-settings')">
-  <div class="modal settings-modal">
-    <div class="modal-hdr" style="flex-shrink:0">
-      <span>Настройки</span>
-      <button class="icon-btn icon-btn-danger" onclick="closeModal('modal-settings')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="settings-body">
-      <nav class="settings-nav">
-        <button id="snav-profile" class="settings-nav-item active" onclick="showSettingsTab('profile')">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <span>Профиль</span>
-        </button>
-        <button id="snav-general" class="settings-nav-item" onclick="showSettingsTab('general')">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          <span>Основные</span>
-        </button>
-        <button id="snav-appearance" class="settings-nav-item" onclick="showSettingsTab('appearance')">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.7-.7 1.7-1.6 0-.4-.2-.8-.5-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H16c3.3 0 6-2.7 6-6 0-4.9-4.5-8.6-10-8.6z"/></svg>
-          <span>Внешний вид</span>
-        </button>
-      </nav>
-      <div class="settings-content" id="settings-content"></div>
-    </div>
-    <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="onAvatarFileChange(this)">
-  </div>
+<!-- Окно настроек: содержимое рисует скрипт (openSettings) -->
+<div class="modal-bg" id="modal-settings" onclick="if(event.target===this)closeSettings()">
+  <div class="modal cs-modal" id="cs-form" role="dialog" aria-modal="true" aria-label="Настройки"></div>
+  <input type="file" id="avatar-file-input" accept="image/*" hidden onchange="onAvatarFileChange(this)">
 </div>
-
 
 <!-- Chat list context menu -->
 <div class="ctx-menu" id="ctx-chat-menu">
