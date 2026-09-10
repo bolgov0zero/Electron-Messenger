@@ -254,6 +254,7 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 
 /* Обновление сервера */
 .hm-upd-panel{flex-basis:100%;border-top:1px solid var(--c-border2);margin:2px -14px -9px;padding:10px 14px 11px;display:flex;flex-direction:column;gap:9px}
+.hm-upd-panel.hm-upd-closing{overflow:hidden;opacity:0;padding-top:0;padding-bottom:0;transition:height .35s ease,opacity .25s ease,padding .35s ease}
 .hm-upd-row{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap}
 .hm-upd-title{font-size:12px;font-weight:600}
 .hm-note{font-size:11px;color:var(--c-text2);max-width:72ch}
@@ -559,13 +560,15 @@ tr.ua-banned .ux-cell{opacity:.6}
 .rm-direct{background:var(--c-blue-dim);color:var(--c-blue-text)}
 .rm-sub{font-size:11px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px}
 .rm-stack{display:flex;align-items:center}
-.rm-stack .av{border:2px solid var(--c-surface);margin-left:-7px}
-.rm-stack .av:first-child{margin-left:0}
-.rm-stack .more{margin-left:8px;font:600 11px var(--f-mono);color:var(--c-text2)}
+.rm-stack>*{margin-left:-7px}
+.rm-stack>*:first-child{margin-left:0}
+.rm-stack .av{border:2px solid var(--c-surface)}
+.rm-stack>.more{margin-left:8px;font:600 11px var(--f-mono);color:var(--c-text2)}
 .rm-pair{position:relative;width:40px;height:34px;flex-shrink:0}
-.rm-pair .av{position:absolute;border:2px solid var(--c-surface)}
-.rm-pair .av:first-child{left:0;top:0}
-.rm-pair .av:last-child{right:0;bottom:0}
+.rm-pair>*{position:absolute}
+.rm-pair .av{border:2px solid var(--c-surface)}
+.rm-pair>*:first-child{left:0;top:0}
+.rm-pair>*:last-child{right:0;bottom:0}
 .ux-tbl th.rm-num,.ux-tbl td.rm-num{text-align:right}
 .rm-msgs{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:11.5px}
 .rm-spark{display:flex;align-items:flex-end;gap:2px;height:16px}
@@ -2425,6 +2428,25 @@ function hmUpdRenderSteps() {
     : 'Страницу можно не закрывать — после перезапуска она подключится сама');
 }
 
+// Сворачивает панель обновления плавно: фиксируем текущую высоту и уводим её в ноль
+function hmUpdCollapse() {
+  const p = $hm('hm-upd-panel');
+  if (!p || p.hidden) return;
+  const finish = () => { p.hidden = true; p.classList.remove('hm-upd-closing'); p.style.height = ''; };
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return finish();
+  p.style.height = p.offsetHeight + 'px';
+  p.classList.add('hm-upd-closing');
+  void p.offsetHeight;
+  p.style.height = '0px';
+  setTimeout(finish, 380);
+}
+// После успешного обновления результат уже виден в кнопке — панель прячется сама, с паузой.
+// Не прячем, если за это время снова пошла установка или нашлось новое обновление.
+function hmUpdAutoHide(delay = 3000) {
+  clearTimeout(HM.upd.hideTimer);
+  HM.upd.hideTimer = setTimeout(() => { if (!HM.upd.busy && !HM.upd.check?.hasUpdate) hmUpdCollapse(); }, delay);
+}
+
 function hmUpdFinish(ok, message) {
   const u = HM.upd;
   u.busy = false;
@@ -2447,6 +2469,7 @@ function hmUpdFinish(ok, message) {
     row(`<div class="hm-upd-title" style="color:var(--c-green-text)">${esc(text)}</div>${HM_HIDE_PANEL}`);
     toast(esc(message || 'Сервер обновлён и перезапущен'), 'success');
     hmLoadOverview();
+    hmUpdAutoHide();
   } else {
     row(`<div><div class="hm-upd-title" style="color:var(--c-red-text)">Обновление не удалось</div><div class="hm-note">${esc(message)}</div></div>${HM_HIDE_PANEL}`);
     toast(esc(message), 'error');
@@ -2470,8 +2493,9 @@ const RM_I = {
 const rmFmt = n => Number(n || 0).toLocaleString('ru-RU');
 const rmMsgs = n => `${rmFmt(n)} ${uxPlural(n, 'сообщение', 'сообщения', 'сообщений')}`;
 const rmLast = ts => ts ? uaSeen(ts) : 'сообщений нет';
-const rmStack = (names, max = 4) => names.length
-  ? `<span class="rm-stack">${names.slice(0, max).map(n => uaAv(n, 24)).join('')}${names.length > max ? `<span class="more">+${names.length - max}</span>` : `<span class="more">${names.length}</span>`}</span>`
+// Участники — с настоящими фото: avHtml показывает фото, а под ним буквы на случай, если его нет
+const rmStack = (members, max = 4) => members.length
+  ? `<span class="rm-stack">${members.slice(0, max).map(m => avHtml(m.name, 24, 7, m.id, false, m.has_avatar)).join('')}${members.length > max ? `<span class="more">+${members.length - max}</span>` : `<span class="more">${members.length}</span>`}</span>`
   : '<span class="rm-sub">никого</span>';
 const rmSpark = w => `<span class="rm-spark" title="Сообщения по дням за неделю: ${w.join(', ')}">${w.map(n => `<i style="height:${Math.max(1, Math.round(n / Math.max(1, ...w) * 16))}px"></i>`).join('')}</span>`;
 const rmWeek = r => r.week.reduce((a, b) => a + b, 0);
@@ -2529,7 +2553,7 @@ function rmRender() {
             <td><div class="ux-cell">${avHtml(r.name || '?', 34, 9, null, false, r.has_avatar, r.id)}<div style="min-width:0">
               <div class="ux-name">${esc(r.name || '—')}${r.topics.length ? `<span class="rm-chip rm-topics">${r.topics.length} ${uxPlural(r.topics.length, 'тема', 'темы', 'тем')}</span>` : ''}${quiet(r) ? '<span class="rm-chip rm-quiet">тихая</span>' : ''}</div>
               <div class="rm-sub">${r.topics.length ? esc(r.topics.map(t => t.name).join(' · ')) : 'Без тем'}</div></div></div></td>
-            <td>${rmStack(r.member_names)}</td>
+            <td>${rmStack(r.members || [])}</td>
             <td class="rm-num"><span class="rm-msgs">${rmSpark(r.week)}${rmFmt(r.msgs)}</span></td>
             <td class="rm-last">${esc(rmLast(r.last))}</td>
             <td class="cl-dur">${fmtDate(r.created_at)}</td>
@@ -3233,7 +3257,7 @@ document.getElementById('modal-user-pass')?.addEventListener('animationend', e =
 const CH = { filter: 'all', q: '', sel: new Set(), openId: null, members: [] };
 const chName = c => c.type === 'direct' ? ((c.member_names || []).join(' → ') || 'Личный чат') : (c.name || 'Группа');
 const chAv = (c, size) => c.type === 'direct'
-  ? `<span class="rm-pair">${uaAv(c.member_names?.[0] || '?', 26)}${uaAv(c.member_names?.[1] || '?', 26)}</span>`
+  ? `<span class="rm-pair">${(c.members || []).slice(0, 2).map(m => avHtml(m.name, 26, 8, m.id, false, m.has_avatar)).join('')}</span>`
   : avHtml(c.name || '?', size, 9, null, false, c.has_avatar, c.id);
 
 async function renderChats() {
@@ -3276,7 +3300,7 @@ function chRender() {
             <td><div class="ux-cell">${chAv(c, 34)}<div style="min-width:0">
               <div class="ux-name">${esc(chName(c))}<span class="rm-chip rm-${c.type === 'direct' ? 'direct' : 'group'}">${c.type === 'direct' ? 'личный' : 'группа'}</span>${c.message_count ? '' : '<span class="rm-chip rm-empty">пустой</span>'}</div>
               <div class="rm-sub">${c.type === 'direct' ? 'Переписка двоих' : `${c.member_count} ${uxPlural(c.member_count, 'участник', 'участника', 'участников')}`}</div></div></div></td>
-            <td>${c.type === 'direct' ? '<span class="rm-sub">—</span>' : rmStack(c.member_names || [])}</td>
+            <td>${c.type === 'direct' ? '<span class="rm-sub">—</span>' : rmStack(c.members || [])}</td>
             <td class="rm-num cl-dur">${c.message_count ? rmFmt(c.message_count) : '<span class="rm-sub">0</span>'}</td>
             <td class="rm-last">${esc(rmLast(c.last_at))}</td>
             <td class="cl-dur">${fmtDate(c.created_at)}</td>

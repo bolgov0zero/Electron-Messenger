@@ -251,10 +251,25 @@ router.get('/chats', (req, res) => {
       (SELECT COUNT(*) FROM messages WHERE chat_id = c.id AND deleted = 0) as message_count,
       (SELECT MAX(sent_at) FROM messages WHERE chat_id = c.id AND deleted = 0) as last_at,
       (SELECT COUNT(*) FROM chat_members WHERE chat_id = c.id) as member_count,
-      (SELECT GROUP_CONCAT(u.display_name, '|||') FROM users u
-       JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = c.id ORDER BY cm.joined_at) as member_names
+      (SELECT GROUP_CONCAT(u.id || char(31) || u.display_name, char(30)) FROM users u
+       JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = c.id ORDER BY cm.joined_at) as member_list
     FROM chats c ORDER BY c.created_at DESC
   `).all();
+  // Участники с номером и признаком фото — таблицы показывают настоящие аватарки.
+  // Номер и имя берём одной строкой, чтобы их порядок гарантированно совпадал.
+  const hasPhoto = new Map();
+  const photo = id => {
+    if (!hasPhoto.has(id)) hasPhoto.set(id, fs.existsSync(path.join(AVATAR_DIR, `${id}.jpg`)));
+    return hasPhoto.get(id);
+  };
+  chats.forEach(c => {
+    c.members = (c.member_list ? c.member_list.split('\x1e') : []).map(row => {
+      const [id, name] = row.split('\x1f');
+      return { id: Number(id), name, has_avatar: photo(Number(id)) };
+    });
+    c.member_names = c.members.map(m => m.name);
+    delete c.member_list;
+  });
   // Сообщения за последние 7 дней по дням — мини-график активности в «Комнатах»
   const since = Math.floor(Date.now() / 1000) - 7 * 86400;
   const week = new Map();
@@ -267,7 +282,6 @@ router.get('/chats', (req, res) => {
     });
   res.json(chats.map(c => ({
     ...c,
-    member_names: c.member_names ? c.member_names.split('|||') : [],
     week: week.get(c.id) || [0, 0, 0, 0, 0, 0, 0],
     has_avatar: fs.existsSync(path.join(AVATAR_DIR, `chat_${c.id}.jpg`)),
   })));
