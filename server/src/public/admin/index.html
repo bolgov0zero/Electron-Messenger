@@ -2538,7 +2538,6 @@ function rmRender() {
         <div><div class="cl-k">Участников</div><div class="cl-v">${people}<small>в комнатах</small></div></div>
         <div class="rm-note">${busiest ? `Активнее всего за неделю — <b>${esc(busiest.name)}</b>, ${rmMsgs(rmWeek(busiest))}.` : 'За неделю в комнатах не писали.'}
           ${busiest && silent.length ? ` Без сообщений неделю: <b>${esc(silent.map(r => r.name).join(', '))}</b>.` : ''}</div>
-        <div><button class="btn ux-solid" onclick="openCreateRoom()">${RM_I.plus}Создать комнату</button></div>
       </section>
       <section class="ux-panel">
         <div class="ux-tb"><h3>Комнаты <span>${allRooms.length}</span></h3>
