@@ -545,6 +545,61 @@ tr.ua-banned .ux-cell{opacity:.6}
 @media (max-width:720px){ .ua-row2,.ua-roles{grid-template-columns:minmax(0,1fr)} .ux-search{min-width:0;flex:1} .ua-modal,.ua-modal.ua-sm{width:calc(100vw - 24px)} }
 @media (prefers-reduced-motion:reduce){ .ux-spin{animation:none} .cl-prog-bar span{transition:none} }
 
+/* Комнаты и чаты */
+.rm-sum{display:grid;grid-template-columns:repeat(3,auto) minmax(0,1fr) auto;align-items:center}
+.rm-sum>div{padding:12px 18px;min-width:0}
+.rm-sum>div+div{border-left:1px solid var(--c-border2)}
+.rm-note{font-size:12px;color:var(--c-text2)}
+.rm-note b{color:var(--c-text)}
+.rm-chip{font-size:9.5px;font-weight:700;padding:0 6px;border-radius:9px;line-height:17px;white-space:nowrap}
+.rm-topics{background:var(--c-green-dim);color:var(--c-green-text)}
+.rm-quiet{background:var(--c-orange-dim);color:var(--c-orange-text)}
+.rm-empty{background:var(--c-surface2);color:var(--c-muted)}
+.rm-group{background:var(--c-purple-dim);color:var(--c-purple-text)}
+.rm-direct{background:var(--c-blue-dim);color:var(--c-blue-text)}
+.rm-sub{font-size:11px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:360px}
+.rm-stack{display:flex;align-items:center}
+.rm-stack .av{border:2px solid var(--c-surface);margin-left:-7px}
+.rm-stack .av:first-child{margin-left:0}
+.rm-stack .more{margin-left:8px;font:600 11px var(--f-mono);color:var(--c-text2)}
+.rm-pair{position:relative;width:40px;height:34px;flex-shrink:0}
+.rm-pair .av{position:absolute;border:2px solid var(--c-surface)}
+.rm-pair .av:first-child{left:0;top:0}
+.rm-pair .av:last-child{right:0;bottom:0}
+.ux-tbl th.rm-num,.ux-tbl td.rm-num{text-align:right}
+.rm-msgs{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:11.5px}
+.rm-spark{display:flex;align-items:flex-end;gap:2px;height:16px}
+.rm-spark i{width:4px;border-radius:1px;background:var(--c-primary);opacity:.55}
+.rm-last{font-size:11.5px;color:var(--c-text2);white-space:nowrap}
+.rm-modal{width:600px}
+.rm-tabs{display:flex;gap:4px;padding:0 18px;border-bottom:1px solid var(--c-border)}
+.rm-tabs button{border:0;background:none;padding:10px 6px 9px;font:600 12px var(--f-ui);color:var(--c-text2);border-bottom:2px solid transparent;cursor:pointer;display:flex;gap:6px;align-items:center}
+.rm-tabs button small{font:600 10px var(--f-mono);background:var(--c-surface2);color:var(--c-muted);border-radius:6px;padding:0 5px}
+.rm-tabs button:hover{color:var(--c-text)}
+.rm-tabs button[aria-selected="true"]{color:var(--c-text);border-bottom-color:var(--c-primary)}
+.rm-body{min-height:340px;gap:14px}
+.rm-hint{font-size:11.5px;color:var(--c-text2)}
+.rm-avpick{display:flex;align-items:center;gap:14px;padding:12px;border-radius:10px;background:var(--c-surface2)}
+.rm-list{display:flex;flex-direction:column;border:1px solid var(--c-border2);border-radius:10px;overflow:hidden}
+.rm-li{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--c-surface)}
+.rm-li+.rm-li{border-top:1px solid var(--c-border2)}
+.rm-li[draggable="true"]:hover{background:var(--bg-hover)}
+.rm-li.drop{box-shadow:inset 0 2px 0 var(--c-primary)}
+.rm-handle{color:var(--c-muted);cursor:grab;font-size:13px;letter-spacing:-2px;width:12px;flex-shrink:0}
+.rm-rename{border:1px solid var(--border-focus);border-radius:6px;padding:3px 7px;font:12.5px var(--f-ui);background:var(--bg-input);color:var(--c-text);width:100%;outline:none}
+.rm-add{display:flex;gap:8px}
+.rm-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rm-col-t{font-size:10.5px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;display:flex;justify-content:space-between}
+.rm-scroll{max-height:290px;overflow-y:auto}
+.rm-pick{width:100%;border:0;cursor:pointer;font:inherit;color:inherit;text-align:left}
+.rm-pick:hover{background:var(--bg-hover)}
+.rm-plus{color:var(--c-primary);font-weight:700}
+.rm-dz{border:1px solid rgba(239,68,68,.22);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.rm-dz b{font-size:12px;display:block}
+.rm-dz span{font-size:11px;color:var(--c-muted)}
+.rm-removed .ux-name{text-decoration:line-through;opacity:.6}
+@media (max-width:1000px){ .rm-sum{grid-template-columns:repeat(3,minmax(0,1fr))} .rm-sum>div:nth-child(n+4){grid-column:1/-1;border-left:0;border-top:1px solid var(--c-border2)} .rm-cols{grid-template-columns:1fr} .rm-modal{width:calc(100vw - 24px)} }
+
 /* ── TABLE ── */
 table{width:100%;border-collapse:collapse}
 th{background:var(--c-surface2);text-align:left;padding:8px 14px;font-size:10px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--c-border)}
@@ -1056,69 +1111,9 @@ return 'OK';</pre>
   </div>
 </div>
 
-<!-- Create room modal -->
-<div class="modal-bg" id="modal-create-room">
-  <div class="modal">
-    <div class="modal-head">
-      <h3>Создать комнату</h3>
-      <button class="modal-close" onclick="closeModal('modal-create-room')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="fg" style="margin-bottom:12px"><label>Название комнаты</label><input id="room-name-input" placeholder="Например: Общий, Разработка…"></div>
-      <div class="pp-search">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="cr-search" placeholder="Поиск сотрудников…" oninput="renderCreateRoomUsers(this.value)">
-      </div>
-      <div class="pp-list" id="room-create-users"></div>
-    </div>
-    <div class="modal-foot">
-      <span class="pp-footcount" id="cr-count"></span>
-      <button class="btn btn-ghost" onclick="closeModal('modal-create-room')">Отмена</button>
-      <button class="btn btn-primary" onclick="submitCreateRoom()">Создать</button>
-    </div>
-  </div>
-</div>
-
-<!-- Members modal -->
-<div class="modal-bg" id="modal-members">
-  <div class="modal">
-    <div class="modal-head">
-      <h3 id="members-title">Участники</h3>
-      <button class="modal-close" onclick="closeModal('modal-members')">✕</button>
-    </div>
-    <div class="modal-body">
-      <div id="room-edit-meta" style="display:none;margin-bottom:12px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="position:relative;cursor:pointer;width:40px;height:40px;flex-shrink:0" onclick="triggerRoomAvatarUpload()" title="Сменить фото">
-            <div class="av" id="room-edit-av" style="border-radius:10px;width:40px;height:40px;font-size:15px"></div>
-            <div style="position:absolute;inset:0;background:rgba(0,0,0,.4);border-radius:10px;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0">
-              <svg width="13" height="13" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            </div>
-          </div>
-          <input id="room-edit-name" placeholder="Название комнаты" style="flex:1;padding:9px 12px;border:1.5px solid var(--c-border);border-radius:9px;font-size:13px;font-family:var(--f-ui);outline:none;background:var(--c-surface);color:var(--c-text)">
-        </div>
-        <input type="file" id="room-avatar-input" accept="image/*" style="display:none" onchange="onRoomAvatarChange(this)">
-      </div>
-      <!-- Темы (только для комнат) -->
-      <div id="topics-section" style="display:none;margin-bottom:14px">
-        <div style="font-size:12px;font-weight:600;color:var(--c-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Темы</div>
-        <div id="topics-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px"></div>
-        <div style="display:flex;gap:6px">
-          <input id="topic-name-input" placeholder="Название темы" style="flex:1;padding:7px 10px;border:1.5px solid var(--c-border);border-radius:8px;font-size:13px;font-family:var(--f-ui);outline:none;background:var(--c-surface);color:var(--c-text)" onkeydown="if(event.key==='Enter')addTopic()">
-          <button class="btn btn-primary btn-sm" onclick="addTopic()">Добавить</button>
-        </div>
-      </div>
-      <div class="pp-search" id="members-search-wrap">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="members-search" placeholder="Поиск сотрудников…" oninput="renderMembersLists(this.value)">
-      </div>
-      <div class="pp-list" id="members-pp-list" style="max-height:320px"></div>
-    </div>
-    <div class="modal-foot" id="members-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-members')">Закрыть</button>
-    </div>
-  </div>
-</div>
+<!-- Окна разделов «Комнаты» и «Чаты и группы»: содержимое рисует скрипт -->
+<div class="modal-bg" id="modal-room"><div class="modal ua-modal rm-modal" id="rm-form" role="dialog" aria-modal="true"></div></div>
+<div class="modal-bg" id="modal-chat-members"><div class="modal ua-modal ua-sm" id="cm-form" role="dialog" aria-modal="true"></div></div>
 
 <!-- Confirm modal -->
 <div class="modal-bg" id="modal-confirm">
@@ -2459,249 +2454,312 @@ function hmUpdFinish(ok, message) {
 }
 
 /* ── ROOMS ── */
+// Раздел «Комнаты»: сводка, фильтры, таблица. Окно комнаты — вкладки «Основное · Темы ·
+// Участники»; всё применяется по «Сохранить», чтобы можно было передумать до записи.
+
+const RM = { filter: 'all', q: '', sel: new Set(), form: null, dragFrom: null };
+const rmSvg = p => `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const RM_I = {
+  plus: rmSvg('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'),
+  users: rmSvg('<circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M16 3.1a4 4 0 0 1 0 7.8M21 21v-2a4 4 0 0 0-3-3.9"/>'),
+  topics: rmSvg('<path d="M4 6h16M4 12h10M4 18h7"/>'),
+  img: rmSvg('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>'),
+  x: rmSvg('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'),
+  clear: rmSvg('<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>'),
+};
+const rmFmt = n => Number(n || 0).toLocaleString('ru-RU');
+const rmMsgs = n => `${rmFmt(n)} ${uxPlural(n, 'сообщение', 'сообщения', 'сообщений')}`;
+const rmLast = ts => ts ? uaSeen(ts) : 'сообщений нет';
+const rmStack = (names, max = 4) => names.length
+  ? `<span class="rm-stack">${names.slice(0, max).map(n => uaAv(n, 24)).join('')}${names.length > max ? `<span class="more">+${names.length - max}</span>` : `<span class="more">${names.length}</span>`}</span>`
+  : '<span class="rm-sub">никого</span>';
+const rmSpark = w => `<span class="rm-spark" title="Сообщения по дням за неделю: ${w.join(', ')}">${w.map(n => `<i style="height:${Math.max(1, Math.round(n / Math.max(1, ...w) * 16))}px"></i>`).join('')}</span>`;
+const rmWeek = r => r.week.reduce((a, b) => a + b, 0);
+
 async function renderRooms() {
-  [allRooms, allUsersCache] = await Promise.all([api('GET','/api/admin/chats'), api('GET','/api/admin/users')]);
-  allRooms = allRooms.filter(c=>c.type==='room' && !c.parent_id);
-  renderRoomsTable();
+  const [chats, users] = await Promise.all([api('GET', '/api/admin/chats'), api('GET', '/api/admin/users')]);
+  allUsersCache = users;
+  // У комнаты считаем и её темы: сообщения, последнее сообщение, активность за неделю
+  const topics = chats.filter(c => c.type === 'room' && c.parent_id);
+  allRooms = chats.filter(c => c.type === 'room' && !c.parent_id).map(r => {
+    const own = topics.filter(t => t.parent_id === r.id).sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.id - b.id);
+    const all = [r, ...own];
+    return { ...r, topics: own, msgs: all.reduce((s, c) => s + c.message_count, 0),
+      last: Math.max(0, ...all.map(c => c.last_at || 0)) || null,
+      week: [0, 1, 2, 3, 4, 5, 6].map(i => all.reduce((s, c) => s + (c.week?.[i] || 0), 0)) };
+  });
+  const ids = new Set(allRooms.map(r => r.id));
+  RM.sel.forEach(id => { if (!ids.has(id)) RM.sel.delete(id); });
+  rmRender();
 }
 
-function renderRoomsTable() {
-  const body = document.getElementById('page-body');
-  if (!allRooms.length) {
-    body.innerHTML=`<div class="card"><div class="empty-state">
-      <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      <p>Комнат нет</p><small>Создайте первую комнату</small></div></div>`;
-    return;
-  }
-  const rows = allRooms.map(r=>`
-    <tr>
-      <td class="td-id">#${r.id}</td>
-      <td><div class="user-cell">${avHtml(r.name,28,7,null,false,false,r.id)}<div><div class="uc-name">${esc(r.name||'—')}</div></div></div></td>
-      <td>${r.member_count}</td>
-      <td style="font-family:var(--f-mono);font-size:11px">${r.message_count}</td>
-      <td style="color:var(--c-muted);font-size:11px">${fmtDate(r.created_at)}</td>
-      <td><div class="td-actions">
-        <button class="btn btn-ghost btn-sm" onclick="openRoomEdit(${r.id},'${jesc(r.name||'')}')">Изменить</button>
-        <button class="btn btn-ghost btn-sm" onclick="clearHistory(${r.id})">Очистить</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteRoom(${r.id})">Удалить</button>
-      </div></td>
-    </tr>`).join('');
-  body.innerHTML=`
-    <div class="card">
-      <div class="card-head"><h3>Комнаты <span style="color:var(--c-muted);font-weight:500">(${allRooms.length})</span></h3></div>
-      <table><thead><tr><th>ID</th><th>Название</th><th>Участников</th><th>Сообщений</th><th>Создана</th><th>Действия</th></tr></thead>
-      <tbody>${rows}</tbody></table>
-    </div>`;
-}
-
-// Маленький аватар для people picker: инициалы + фото поверх (если есть)
-function ppAvHtml(u) {
-  const bg = avColor(u.display_name);
-  return `<div class="pp-av" style="background:${bg}"><span>${initials(u.display_name)}</span><img src="/api/users/${u.id}/avatar" loading="lazy" onerror="this.style.display='none'"></div>`;
-}
-const PP_CHECK = `<span class="pp-check"><svg width="9" height="9" fill="none" stroke="currentColor" stroke-width="3.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>`;
-
-async function openCreateRoom() {
-  createRoomSelectedIds = new Set();
-  document.getElementById('room-name-input').value = '';
-  document.getElementById('cr-search').value = '';
-  openModal('modal-create-room');
-  setTimeout(()=>document.getElementById('room-name-input').focus(),50);
-  // Загружаем пользователей если кеш пустой (например, вызов с дашборда)
-  if (!allUsersCache.length) allUsersCache = await api('GET','/api/admin/users');
-  renderCreateRoomUsers('');
-}
-
-function renderCreateRoomUsers(filter='') {
-  const q = (filter||'').toLowerCase();
-  const list = allUsersCache.filter(u => !q || u.display_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q));
-  document.getElementById('room-create-users').innerHTML = list.map(u=>`
-    <div class="pp-row${createRoomSelectedIds.has(u.id)?' on':''}" onclick="toggleRoomUser(${u.id})">
-      ${ppAvHtml(u)}
-      <span class="pp-name">${esc(u.display_name)}</span>
-      ${u.tag?`<span class="pp-tag">${esc(u.tag)}</span>`:''}
-      ${PP_CHECK}
-    </div>`).join('') || '<div class="pp-empty">Никого не найдено</div>';
-  document.getElementById('cr-count').textContent = createRoomSelectedIds.size ? `Выбрано: ${createRoomSelectedIds.size}` : '';
-}
-
-function toggleRoomUser(id) {
-  if (createRoomSelectedIds.has(id)) createRoomSelectedIds.delete(id);
-  else createRoomSelectedIds.add(id);
-  renderCreateRoomUsers(document.getElementById('cr-search').value);
-}
-
-async function submitCreateRoom() {
-  const name=document.getElementById('room-name-input').value.trim();
-  if (!name) { toast('Введите название комнаты','error'); return; }
-  const data=await api('POST','/api/admin/rooms',{name,member_ids:[...createRoomSelectedIds]});
-  if (data?.id) { closeModal('modal-create-room'); toast('Комната создана','success'); renderRooms(); }
-  else toast(data?.error||'Ошибка','error');
-}
-
-let _roomEditAvatarBase64 = null;
-function triggerRoomAvatarUpload() { document.getElementById('room-avatar-input').click(); }
-function onRoomAvatarChange(input) {
-  const file = input.files[0]; if (!file) return;
-  resizeAvatarFile(file).then(base64 => {
-    _roomEditAvatarBase64 = base64;
-    const el = document.getElementById('room-edit-av');
-    el.style.backgroundImage = `url('data:image/jpeg;base64,${base64}')`;
-    el.style.backgroundSize = 'cover'; el.textContent = '';
+function rmRender() {
+  if (currentPage !== 'rooms') return;
+  const q = RM.q.trim().toLowerCase();
+  const quiet = r => rmWeek(r) === 0;
+  const rows = allRooms
+    .filter(r => RM.filter === 'all' || (RM.filter === 'topics' && r.topics.length) || (RM.filter === 'plain' && !r.topics.length) || (RM.filter === 'quiet' && quiet(r)))
+    .filter(r => !q || (r.name || '').toLowerCase().includes(q) || r.topics.some(t => (t.name || '').toLowerCase().includes(q)));
+  const topicsTotal = allRooms.reduce((s, r) => s + r.topics.length, 0);
+  const people = new Set(allRooms.flatMap(r => r.member_names)).size;
+  const busiest = allRooms.filter(rmWeek).sort((a, b) => rmWeek(b) - rmWeek(a))[0];
+  const silent = allRooms.filter(quiet);
+  const allSel = rows.length > 0 && rows.every(r => RM.sel.has(r.id));
+  uxKeepFocus(() => {
+    document.getElementById('page-body').innerHTML = `<div class="ux-page">
+      <section class="ux-panel rm-sum">
+        <div><div class="cl-k">Комнат</div><div class="cl-v">${allRooms.length}</div></div>
+        <div><div class="cl-k">Тем</div><div class="cl-v">${topicsTotal}</div></div>
+        <div><div class="cl-k">Участников</div><div class="cl-v">${people}<small>в комнатах</small></div></div>
+        <div class="rm-note">${busiest ? `Активнее всего за неделю — <b>${esc(busiest.name)}</b>, ${rmMsgs(rmWeek(busiest))}.` : 'За неделю в комнатах не писали.'}
+          ${busiest && silent.length ? ` Без сообщений неделю: <b>${esc(silent.map(r => r.name).join(', '))}</b>.` : ''}</div>
+        <div><button class="btn ux-solid" onclick="openCreateRoom()">${RM_I.plus}Создать комнату</button></div>
+      </section>
+      <section class="ux-panel">
+        <div class="ux-tb"><h3>Комнаты <span>${allRooms.length}</span></h3>
+          ${uxChips([['all', 'Все', allRooms.length], ['topics', 'С темами', allRooms.filter(r => r.topics.length).length], ['plain', 'Без тем', allRooms.filter(r => !r.topics.length).length], ['quiet', 'Тихие', silent.length]], RM.filter, 'rmFilter')}
+          <span class="ux-grow"></span>${uxSearch('rm-q', RM.q, 'Комната или тема', 'rmSearch')}</div>
+        ${RM.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${RM.sel.size}</b><button class="btn btn-ghost btn-sm" onclick="rmDelete([...RM.sel])">${UX_I.trash}Удалить</button>
+          <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="RM.sel.clear(); rmRender()">Снять выделение</button></div>` : ''}
+        <div class="ux-tbl"><table>
+          <thead><tr><th style="width:40px"><input type="checkbox" aria-label="Выбрать все" ${allSel ? 'checked' : ''} onchange="rmSelAll(this.checked)"></th>
+            <th>Комната</th><th>Участники</th><th class="rm-num">Сообщений</th><th>Последнее</th><th>Создана</th><th></th></tr></thead>
+          <tbody>${rows.map(r => `<tr class="${RM.sel.has(r.id) ? 'sel' : ''}">
+            <td><input type="checkbox" aria-label="Выбрать: ${esc(r.name)}" ${RM.sel.has(r.id) ? 'checked' : ''} onchange="rmToggle(${r.id})"></td>
+            <td><div class="ux-cell">${avHtml(r.name || '?', 34, 9, null, false, r.has_avatar, r.id)}<div style="min-width:0">
+              <div class="ux-name">${esc(r.name || '—')}${r.topics.length ? `<span class="rm-chip rm-topics">${r.topics.length} ${uxPlural(r.topics.length, 'тема', 'темы', 'тем')}</span>` : ''}${quiet(r) ? '<span class="rm-chip rm-quiet">тихая</span>' : ''}</div>
+              <div class="rm-sub">${r.topics.length ? esc(r.topics.map(t => t.name).join(' · ')) : 'Без тем'}</div></div></div></td>
+            <td>${rmStack(r.member_names)}</td>
+            <td class="rm-num"><span class="rm-msgs">${rmSpark(r.week)}${rmFmt(r.msgs)}</span></td>
+            <td class="rm-last">${esc(rmLast(r.last))}</td>
+            <td class="cl-dur">${fmtDate(r.created_at)}</td>
+            <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="rmOpen(${r.id})">${UX_I.edit}Изменить</button>
+              <button class="ux-ibtn" aria-label="Ещё действия: ${esc(r.name)}" aria-haspopup="menu" aria-expanded="false" onclick="rmMenu(event, ${r.id})">${UX_I.more}</button></div></td>
+          </tr>`).join('') || `<tr><td colspan="7"><div class="ux-empty">${allRooms.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Комнат пока нет — создайте первую'}</div></td></tr>`}</tbody>
+        </table></div>
+      </section></div>`;
   });
 }
 
-let _membersCur = [], _membersAvail = [], _membersReadonly = false;
-
-let _editRoomId = null;
-
-async function openRoomEdit(chatId, name) {
-  membersForChatId=chatId; membersForChatType='room';
-  _editRoomId = chatId;
-  selectedAddMembers=new Set();
-  _roomEditAvatarBase64=null;
-  _membersReadonly=false;
-  document.getElementById('members-title').textContent='Изменить комнату';
-  document.getElementById('room-edit-meta').style.display='';
-  document.getElementById('topics-section').style.display='';
-  document.getElementById('topic-name-input').value='';
-  document.getElementById('room-edit-name').value=name;
-  document.getElementById('room-avatar-input').value='';
-  document.getElementById('members-search').value='';
-  const av=document.getElementById('room-edit-av');
-  av.style.backgroundImage=''; av.style.backgroundSize='';
-  av.textContent=name?name[0].toUpperCase():'R';
-  av.className='av'; av.style.background=avColor(name||'R');
-  const img=new Image();
-  img.onload=()=>{ av.style.backgroundImage=`url('/api/chats/${chatId}/avatar?t=${Date.now()}')`; av.style.backgroundSize='cover'; av.textContent=''; };
-  img.src=`/api/chats/${chatId}/avatar?t=${Date.now()}`;
-  document.getElementById('members-footer').innerHTML=`
-    <span class="pp-footcount" id="members-count"></span>
-    <button class="btn btn-ghost" onclick="closeModal('modal-members')">Отмена</button>
-    <button class="btn btn-primary" onclick="saveRoomEdit()">Сохранить</button>`;
-  const [members,allU,subs]=await Promise.all([
-    api('GET','/api/admin/chats/'+chatId+'/members'),
-    api('GET','/api/admin/users'),
-    api('GET','/api/admin/topics/'+chatId)
-  ]);
-  _membersCur = members;
-  _membersAvail = allU.filter(u=>!members.some(m=>m.id===u.id));
-  renderTopicsList(subs||[]);
-  renderMembersLists('');
-  openModal('modal-members');
+function rmFilter(k) { RM.filter = k; RM.sel.clear(); rmRender(); }
+function rmSearch(v) { RM.q = v; rmRender(); }
+function rmToggle(id) { RM.sel.has(id) ? RM.sel.delete(id) : RM.sel.add(id); rmRender(); }
+function rmSelAll(on) { document.querySelectorAll('#page-body tbody input[type=checkbox]').forEach(() => {}); allRooms.forEach(r => on ? RM.sel.add(r.id) : RM.sel.delete(r.id)); rmRender(); }
+function rmMenu(e, id) {
+  uxOpenMenu(e, 'rm' + id, `
+    <button role="menuitem" onclick="uxCloseMenu(); rmOpen(${id}, 'topics')">${RM_I.topics}Темы</button>
+    <button role="menuitem" onclick="uxCloseMenu(); rmOpen(${id}, 'members')">${RM_I.users}Участники</button>
+    <button role="menuitem" onclick="uxCloseMenu(); rmClear(${id})">${RM_I.clear}Очистить историю</button>
+    <hr><button role="menuitem" class="danger" onclick="uxCloseMenu(); rmDelete([${id}])">${UX_I.trash}Удалить комнату</button>`);
 }
 
-function renderTopicsList(subs) {
-  const el = document.getElementById('topics-list');
-  if (!subs.length) { el.innerHTML='<div style="font-size:12px;color:var(--c-muted)">Темы не добавлены</div>'; return; }
-  el.innerHTML = subs.map(s=>`
-    <div style="display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:7px;background:var(--c-surface2)">
-      <div style="position:relative;width:26px;height:26px;flex-shrink:0">
-        ${avHtml(s.name,26,10,null,false,s.has_avatar,s.id)}
-      </div>
-      <span style="flex:1;font-size:13px">${esc(s.name)}</span>
-      <span style="font-size:11px;color:var(--c-muted)">${s.message_count} сообщ.</span>
-      <label class="btn btn-ghost btn-sm" style="cursor:pointer;font-size:11px">
-        Фото<input type="file" accept="image/*" style="display:none" onchange="uploadTopicAvatar(${s.id},this)">
-      </label>
-      <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="renameTopic(${s.id},'${jesc(s.name)}')">✎</button>
-      <button class="btn btn-danger btn-sm" style="font-size:11px" onclick="deleteTopic(${s.id})">✕</button>
-    </div>`).join('');
+function rmDelete(ids) {
+  const list = allRooms.filter(r => ids.includes(r.id));
+  if (!list.length) return;
+  confirm(list.length > 1 ? `Удалить комнаты · ${list.length}` : 'Удалить комнату?',
+    `${esc(list.map(r => r.name).join(', '))} — вместе со всеми темами и перепиской. У участников комната исчезнет сразу. Отменить нельзя.`,
+    async () => {
+      await Promise.all(list.map(r => api('DELETE', '/api/chats/admin/' + r.id)));
+      toast(list.length > 1 ? `Удалено комнат: ${list.length}` : 'Комната удалена', 'success');
+      RM.sel.clear();
+      renderRooms();
+      updateNavBadges();
+    });
 }
-
-async function addTopic() {
-  const name = document.getElementById('topic-name-input').value.trim();
-  if (!name) { toast('Введите название','error'); return; }
-  const data = await api('POST','/api/admin/topics',{name,room_id:_editRoomId});
-  if (data?.id) {
-    document.getElementById('topic-name-input').value='';
-    toast('Тема добавлена','success');
-    const subs = await api('GET','/api/admin/topics/'+_editRoomId);
-    renderTopicsList(subs||[]);
-  } else toast(data?.error||'Ошибка','error');
-}
-
-async function deleteTopic(id) {
-  confirm('Удалить тему?','Все сообщения будут удалены.', async ()=>{
-    const data = await api('DELETE','/api/admin/topics/'+id);
-    if (data?.ok) {
-      toast('Удалено','success');
-      const subs = await api('GET','/api/admin/topics/'+_editRoomId);
-      renderTopicsList(subs||[]);
-    } else toast(data?.error||'Ошибка','error');
-  });
-}
-
-async function renameTopic(id, currentName) {
-  const name = prompt('Новое название:', currentName);
-  if (!name?.trim() || name.trim()===currentName) return;
-  const data = await api('PATCH','/api/admin/topics/'+id,{name:name.trim()});
-  if (data?.ok) {
-    toast('Переименовано','success');
-    const subs = await api('GET','/api/admin/topics/'+_editRoomId);
-    renderTopicsList(subs||[]);
-  } else toast(data?.error||'Ошибка','error');
-}
-
-async function uploadTopicAvatar(id, input) {
-  const file = input.files[0]; if (!file) return;
-  const base64 = await resizeAvatarFile(file);
-  const res = await api('POST', '/api/admin/topics/' + id + '/avatar', { data: base64 });
-  if (res?.ok) { toast('Фото обновлено', 'success'); const subs = await api('GET', '/api/admin/topics/' + _editRoomId); renderTopicsList(subs || []); }
-  else toast(res?.error || 'Ошибка', 'error');
-}
-
-function renderMembersLists(filter='') {
-  const q=(filter||'').toLowerCase();
-  const f=u=>!q||u.display_name.toLowerCase().includes(q)||(u.username||'').toLowerCase().includes(q);
-  const cur=_membersCur.filter(f);
-  const avail=_membersReadonly?[]:_membersAvail.filter(f);
-  let html='';
-  if (cur.length) {
-    html+=`<div class="pp-sect">Участники · ${_membersCur.length}</div>`;
-    html+=cur.map(m=>`
-      <div class="pp-row static">
-        ${ppAvHtml(m)}
-        <span class="pp-name">${esc(m.display_name)}</span>
-        ${_membersReadonly?'':`<button class="pp-x" title="Удалить из комнаты" onclick="removeMember(${membersForChatId},${m.id},this)">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>`}
-      </div>`).join('');
-  }
-  if (avail.length) {
-    html+=`<div class="pp-sect">Добавить</div>`;
-    html+=avail.map(u=>`
-      <div class="pp-row${selectedAddMembers.has(u.id)?' on':''}" onclick="toggleAddMember(${u.id})">
-        ${ppAvHtml(u)}
-        <span class="pp-name">${esc(u.display_name)}</span>
-        ${u.tag?`<span class="pp-tag">${esc(u.tag)}</span>`:''}
-        ${PP_CHECK}
-      </div>`).join('');
-  }
-  document.getElementById('members-pp-list').innerHTML = html || '<div class="pp-empty">Никого не найдено</div>';
-  const cnt=document.getElementById('members-count');
-  if (cnt) cnt.textContent = selectedAddMembers.size ? `К добавлению: ${selectedAddMembers.size}` : '';
-}
-
-async function saveRoomEdit() {
-  const name=document.getElementById('room-edit-name').value.trim();
-  const chatId=membersForChatId;
-  const ops=[];
-  if (name) ops.push(api('PATCH',`/api/admin/rooms/${chatId}`,{name}));
-  if (_roomEditAvatarBase64) ops.push(api('POST',`/api/admin/chats/${chatId}/avatar`,{data:_roomEditAvatarBase64}));
-  if (selectedAddMembers.size) ops.push(...[...selectedAddMembers].map(uid=>api('POST',`/api/admin/chats/${chatId}/members`,{user_id:uid})));
-  await Promise.all(ops);
-  toast('Комната обновлена','success');
-  closeModal('modal-members');
-  renderRooms();
-}
-
-function deleteRoom(id) {
-  confirm('Удалить комнату?',`Комната #${id} и все сообщения будут удалены безвозвратно.`, async ()=>{
-    await api('DELETE','/api/chats/admin/'+id);
-    toast('Комната удалена');
+function rmClear(id) {
+  const r = allRooms.find(x => x.id === id);
+  confirm('Очистить историю?', `Все сообщения комнаты «${esc(r?.name || '')}» будут удалены безвозвратно.`, async () => {
+    await api('DELETE', '/api/chats/admin/' + id + '/messages');
+    toast('История очищена', 'success');
     renderRooms();
   });
+}
+
+// ── Окно комнаты ──
+function openCreateRoom() { rmOpen(null); }
+
+async function rmOpen(id, tab = 'main') {
+  uxCloseMenu();
+  if (!allUsersCache.length) allUsersCache = await api('GET', '/api/admin/users');
+  const r = id ? allRooms.find(x => x.id === id) : null;
+  const members = r ? (await api('GET', `/api/admin/chats/${r.id}/members`)) || [] : [];
+  RM.form = {
+    id: r?.id || null, tab, name: r?.name || '', avatar: null, hasAvatar: !!r?.has_avatar,
+    topics: (r?.topics || []).map(t => ({ id: t.id, name: t.name, msgs: t.message_count, avatar: null, hasAvatar: !!t.has_avatar, removed: false })),
+    initialTopics: new Map((r?.topics || []).map(t => [t.id, t.name])),
+    members: new Set(members.map(m => m.id)), initialMembers: new Set(members.map(m => m.id)),
+    mq: '', renaming: null, busy: false, err: '',
+  };
+  rmRenderForm(tab === 'members' ? 'rm-mq' : tab === 'topics' ? 'rm-nt' : 'rm-name');
+  openModal('modal-room');
+}
+
+function rmAv(name, size, base64, chatId, hasAvatar) {
+  const radius = Math.round(size * .28);
+  if (base64) return `<span class="av" style="width:${size}px;height:${size}px;border-radius:${radius}px;background:url('data:image/jpeg;base64,${base64}') center/cover"></span>`;
+  if (chatId && hasAvatar) return avHtml(name || '?', size, radius, null, false, true, chatId);
+  return uaAv(name, size);
+}
+
+function rmRenderForm(focusId) {
+  const f = RM.form, el = document.getElementById('rm-form');
+  if (!f || !el) return;
+  const r = f.id ? allRooms.find(x => x.id === f.id) : null;
+  const live = f.topics.filter(t => !t.removed).length;
+  const tab = (k, label, n) => `<button type="button" role="tab" aria-selected="${f.tab === k}" onclick="rmTab('${k}')">${label}${n != null ? `<small>${n}</small>` : ''}</button>`;
+  let body;
+  if (f.tab === 'topics') {
+    body = `<p class="rm-hint">Темы делят комнату на отдельные ленты. Порядок — как в списке тем у людей: перетащите строку за ⋮⋮.</p>
+      <div class="rm-list">${f.topics.map((t, i) => t.removed
+        ? `<div class="rm-li rm-removed"><span class="rm-handle"></span>${rmAv(t.name, 28, t.avatar, t.id, t.hasAvatar)}<div style="flex:1;min-width:0"><div class="ux-name">${esc(t.name)}</div>
+            <div class="rm-sub">Удалится при сохранении${t.msgs ? ` вместе с ${rmFmt(t.msgs)} ${uxPlural(t.msgs, 'сообщением', 'сообщениями', 'сообщениями')}` : ''}</div></div>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="rmTopic('restore', ${i})">Вернуть</button></div>`
+        : `<div class="rm-li" draggable="true" ondragstart="rmDrag(event, ${i})" ondragover="event.preventDefault(); this.classList.add('drop')" ondragleave="this.classList.remove('drop')" ondrop="rmDrop(event, ${i})">
+            <span class="rm-handle" title="Перетащите, чтобы поменять порядок">⋮⋮</span>${rmAv(t.name, 28, t.avatar, t.id, t.hasAvatar)}
+            <div style="flex:1;min-width:0">${f.renaming === i
+              ? `<input class="rm-rename" id="rm-rn" value="${esc(t.name)}" onkeydown="if(event.key==='Enter'){event.preventDefault(); rmTopic('rename', ${i}, this.value)} if(event.key==='Escape'){event.preventDefault(); rmTopic('rename', ${i})}" onblur="rmTopic('rename', ${i}, this.value)">`
+              : `<div class="ux-name">${esc(t.name)}</div><div class="rm-sub">${t.id ? (t.msgs ? rmMsgs(t.msgs) : 'сообщений пока нет') : 'новая — появится после сохранения'}</div>`}</div>
+            <label class="ux-ibtn" title="Аватар темы" style="cursor:pointer">${RM_I.img}<input type="file" accept="image/*" hidden onchange="rmTopicAvatar(${i}, this)"></label>
+            <button type="button" class="ux-ibtn" aria-label="Переименовать" onclick="rmTopic('edit', ${i})">${UX_I.edit}</button>
+            <button type="button" class="ux-ibtn" aria-label="Удалить тему" onclick="rmTopic('remove', ${i})">${UX_I.trash}</button></div>`).join('')
+        || '<div class="rm-li"><span class="rm-sub">Тем пока нет — вся переписка идёт в одной ленте</span></div>'}</div>
+      <div class="rm-add"><div class="ua-inp" style="flex:1"><input id="rm-nt" placeholder="Новая тема" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); rmTopic('add')}"></div>
+        <button type="button" class="btn btn-primary" onclick="rmTopic('add')">${RM_I.plus}Добавить</button></div>`;
+  } else if (f.tab === 'members') {
+    const q = f.mq.trim().toLowerCase();
+    const match = u => !q || u.display_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q);
+    const inside = allUsersCache.filter(u => f.members.has(u.id) && match(u));
+    const outside = allUsersCache.filter(u => !f.members.has(u.id) && match(u));
+    const person = u => `${avHtml(u.display_name, 28, 8, u.id, false, u.has_avatar)}<div style="flex:1;min-width:0"><div class="ux-name">${esc(u.display_name)}</div>`;
+    body = `<label class="ux-search" style="min-width:0">${UX_I.search}<input id="rm-mq" value="${esc(f.mq)}" placeholder="Найти человека" autocomplete="off" oninput="RM.form.mq = this.value; rmRenderForm()"></label>
+      <div class="rm-cols">
+        <div><div class="rm-col-t"><span>В комнате</span><span>${f.members.size}</span></div><div class="rm-list rm-scroll">${inside.map(u => `<div class="rm-li">${person(u)}
+          <div class="rm-sub">@${esc(u.username)}${f.initialMembers.has(u.id) ? '' : ' · добавится'}</div></div>
+          <button type="button" class="ux-ibtn" aria-label="Убрать: ${esc(u.display_name)}" onclick="rmMember(${u.id})">${RM_I.x}</button></div>`).join('') || '<div class="rm-li"><span class="rm-sub">Никого</span></div>'}</div></div>
+        <div><div class="rm-col-t"><span>Добавить</span><span>${outside.length}</span></div><div class="rm-list rm-scroll">${outside.map(u => `<button type="button" class="rm-li rm-pick" onclick="rmMember(${u.id})">${person(u)}
+          <div class="rm-sub">@${esc(u.username)}${f.initialMembers.has(u.id) ? ' · уберётся' : ''}</div></div><span class="rm-plus">+</span></button>`).join('') || '<div class="rm-li"><span class="rm-sub">Все уже в комнате</span></div>'}</div></div>
+      </div>
+      <p class="rm-hint">Новые участники сразу видят все темы комнаты.</p>`;
+  } else {
+    body = `<div class="ua-field"><label for="rm-name">Название</label>
+        <div class="ua-inp"><input id="rm-name" value="${esc(f.name)}" placeholder="Например, Общая" autocomplete="off" oninput="RM.form.name = this.value; rmLiveAv()" onkeydown="if(event.key==='Enter'){event.preventDefault(); rmSave()}"></div></div>
+      <div class="rm-avpick"><span id="rm-av-big">${rmAv(f.name, 56, f.avatar, f.id, f.hasAvatar)}</span>
+        <div><label class="btn btn-ghost btn-sm" style="cursor:pointer">${RM_I.img}${f.avatar || f.hasAvatar ? 'Заменить аватар' : 'Загрузить аватар'}<input type="file" accept="image/*" hidden onchange="rmPickAvatar(this)"></label>
+          <div class="ua-hint" style="margin-top:5px">Квадратная картинка, лучше от 256 px. Без аватара — буквы названия.</div></div></div>
+      ${r ? `<div class="rm-dz"><div><b>Удалить комнату</b><span>Вместе со всеми темами и перепиской</span></div>
+        <button type="button" class="btn btn-danger btn-sm" onclick="closeModal('modal-room'); rmDelete([${r.id}])">${UX_I.trash}Удалить</button></div>` : ''}`;
+  }
+  uaRestoreFocus(() => {
+    el.innerHTML = `
+      <div class="ua-head"><span id="rm-head-av">${rmAv(f.name, 38, f.avatar, f.id, f.hasAvatar)}</span>
+        <div><div class="ua-title">${r ? esc(r.name) : 'Новая комната'}</div><div class="ua-sub">${r ? `Создана ${fmtDate(r.created_at)} · ${rmMsgs(r.msgs)}` : 'Название, темы и участники'}</div></div>
+        <button type="button" class="modal-close" aria-label="Закрыть" onclick="closeModal('modal-room')">✕</button></div>
+      <div class="rm-tabs" role="tablist">${tab('main', 'Основное')}${tab('topics', 'Темы', live)}${tab('members', 'Участники', f.members.size)}</div>
+      <div class="ua-body rm-body">${body}</div>
+      <div class="ua-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}<span class="ux-grow"></span>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-room')">Отмена</button>
+        <button type="button" class="btn ux-solid" ${f.busy ? 'disabled' : ''} onclick="rmSave()">${f.busy ? 'Сохраняю…' : r ? 'Сохранить' : 'Создать'}</button></div>`;
+  }, focusId);
+}
+
+function rmTab(k) { RM.form.tab = k; RM.form.renaming = null; rmRenderForm(k === 'members' ? 'rm-mq' : k === 'topics' ? 'rm-nt' : 'rm-name'); }
+function rmLiveAv() {
+  const f = RM.form;
+  if (f.avatar || (f.id && f.hasAvatar)) return;
+  const h = document.getElementById('rm-head-av'); if (h) h.innerHTML = uaAv(f.name, 38);
+  const b = document.getElementById('rm-av-big'); if (b) b.innerHTML = uaAv(f.name, 56);
+}
+function rmPickAvatar(input) {
+  const file = input.files?.[0];
+  if (file) resizeAvatarFile(file).then(b64 => { RM.form.avatar = b64; rmRenderForm(); });
+}
+function rmTopicAvatar(i, input) {
+  const file = input.files?.[0];
+  if (file) resizeAvatarFile(file).then(b64 => { RM.form.topics[i].avatar = b64; rmRenderForm(); });
+}
+function rmTopic(action, i, value) {
+  const f = RM.form, t = f.topics[i];
+  if (action === 'add') {
+    const input = document.getElementById('rm-nt'), name = input?.value.trim();
+    if (!name) return;
+    f.topics.push({ id: null, name, msgs: 0, avatar: null, hasAvatar: false, removed: false });
+    return rmRenderForm('rm-nt');
+  }
+  if (action === 'edit') { f.renaming = i; rmRenderForm('rm-rn'); document.getElementById('rm-rn')?.select(); return; }
+  if (action === 'rename') {
+    if (f.renaming !== i) return;          // blur после Enter — уже сохранено
+    if (value?.trim()) t.name = value.trim();
+    f.renaming = null;
+    return rmRenderForm();
+  }
+  if (action === 'remove') { if (t.id) t.removed = true; else f.topics.splice(i, 1); return rmRenderForm(); }
+  if (action === 'restore') { t.removed = false; return rmRenderForm(); }
+}
+function rmDrag(e, i) {
+  RM.dragFrom = i;
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', String(i)); } catch {}
+}
+function rmDrop(e, i) {
+  e.preventDefault();
+  const from = RM.dragFrom;
+  RM.dragFrom = null;
+  if (from == null || from === i) return rmRenderForm();
+  const arr = RM.form.topics;
+  const [moved] = arr.splice(from, 1);
+  arr.splice(i, 0, moved);
+  rmRenderForm();
+}
+function rmMember(id) {
+  const m = RM.form.members;
+  m.has(id) ? m.delete(id) : m.add(id);
+  rmRenderForm();
+}
+
+async function rmSave() {
+  const f = RM.form;
+  if (!f || f.busy) return;
+  const name = f.name.trim();
+  if (!name) { f.tab = 'main'; f.err = 'Укажите название комнаты'; return rmRenderForm('rm-name'); }
+  f.busy = true;
+  f.err = '';
+  rmRenderForm();
+  try {
+    let id = f.id;
+    if (!id) {
+      const r = await api('POST', '/api/admin/rooms', { name, member_ids: [...f.members] });
+      if (!r?.id) throw new Error(r?.error || 'Не удалось создать комнату');
+      id = r.id;
+    } else {
+      if (name !== allRooms.find(x => x.id === id)?.name) {
+        const r = await api('PATCH', `/api/admin/rooms/${id}`, { name });
+        if (!r?.ok) throw new Error(r?.error || 'Не удалось переименовать');
+      }
+      const add = [...f.members].filter(u => !f.initialMembers.has(u));
+      const del = [...f.initialMembers].filter(u => !f.members.has(u));
+      await Promise.all([...add.map(u => api('POST', `/api/admin/chats/${id}/members`, { user_id: u })),
+        ...del.map(u => api('DELETE', `/api/admin/chats/${id}/members/${u}`))]);
+    }
+    if (f.avatar) await api('POST', `/api/admin/chats/${id}/avatar`, { data: f.avatar });
+    // Темы: сначала удалённые, потом переименованные и новые — по порядку, затем сам порядок
+    for (const t of f.topics.filter(t => t.removed && t.id)) await api('DELETE', `/api/admin/topics/${t.id}`);
+    for (const t of f.topics.filter(t => !t.removed)) {
+      if (!t.id) { const r = await api('POST', '/api/admin/topics', { name: t.name, room_id: id }); if (r?.id) t.id = r.id; }
+      else if (f.initialTopics.get(t.id) !== t.name) await api('PATCH', `/api/admin/topics/${t.id}`, { name: t.name });
+      if (t.avatar && t.id) await api('POST', `/api/admin/topics/${t.id}/avatar`, { data: t.avatar });
+    }
+    const order = f.topics.filter(t => !t.removed && t.id).map(t => t.id);
+    if (order.length > 1) await api('POST', '/api/admin/topics/reorder', { ids: order });
+    f.busy = false;
+    closeModal('modal-room');
+    toast(f.id ? 'Комната сохранена' : 'Комната создана', 'success');
+    if (currentPage === 'rooms') renderRooms();
+    updateNavBadges();
+  } catch (e) {
+    f.busy = false;
+    f.err = e.message || 'Не удалось сохранить';
+    rmRenderForm();
+  }
 }
 
 /* ── USERS ── */
@@ -3169,118 +3227,136 @@ document.getElementById('modal-user-pass')?.addEventListener('animationend', e =
 });
 
 /* ── CHATS ── */
-function chatDisplayName(c) {
-  if (c.type==='direct') return (c.member_names||[]).join(' → ')||'Личный чат';
-  return c.name||'—';
-}
-function chatTypeBadge(c) {
-  if (c.type==='group') return '<span class="badge badge-purple">Группа</span>';
-  return '<span class="badge badge-gray">Личный</span>';
-}
-function chatRow(c) {
-  const name=chatDisplayName(c);
-  return `<tr>
-    <td class="td-id">#${c.id}</td>
-    <td>${chatTypeBadge(c)}</td>
-    <td><div class="user-cell">${avHtml(name,28,7,null,false,false,c.id)}<div class="uc-name">${esc(name)}</div></div></td>
-    <td>${c.member_count}</td>
-    <td style="font-family:var(--f-mono);font-size:11px">${c.message_count}</td>
-    <td style="color:var(--c-muted);font-size:11px">${fmtDate(c.created_at)}</td>
-    <td><div class="td-actions">
-      <button class="btn btn-ghost btn-sm" onclick="openMembersReadonly(${c.id},'${jesc(name)}')">Участники</button>
-      <button class="btn btn-ghost btn-sm" onclick="clearHistory(${c.id})">Очистить</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteChat(${c.id})">Удалить</button>
-    </div></td>
-  </tr>`;
-}
+// Раздел «Чаты и группы»: сводка, фильтры, таблица. У личного чата — оба собеседника,
+// у группы — стопка участников. Пустые чаты вынесены в фильтр и удаляются разом.
+
+const CH = { filter: 'all', q: '', sel: new Set(), openId: null, members: [] };
+const chName = c => c.type === 'direct' ? ((c.member_names || []).join(' → ') || 'Личный чат') : (c.name || 'Группа');
+const chAv = (c, size) => c.type === 'direct'
+  ? `<span class="rm-pair">${uaAv(c.member_names?.[0] || '?', 26)}${uaAv(c.member_names?.[1] || '?', 26)}</span>`
+  : avHtml(c.name || '?', size, 9, null, false, c.has_avatar, c.id);
 
 async function renderChats() {
-  chatFilter='';
-  const raw=await api('GET','/api/admin/chats');
-  allChats=raw.filter(c=>c.type!=='room');
-  renderChatsTable(allChats);
+  const raw = await api('GET', '/api/admin/chats');
+  allChats = raw.filter(c => c.type !== 'room');
+  const ids = new Set(allChats.map(c => c.id));
+  CH.sel.forEach(id => { if (!ids.has(id)) CH.sel.delete(id); });
+  chRender();
 }
 
-function renderChatsTable(chats) {
-  const rows=chats.length?chats.map(chatRow).join(''):`<tr><td colspan="7"><div class="empty-state"><p>Чатов нет</p></div></td></tr>`;
-  document.getElementById('page-body').innerHTML=`
-    <div class="filter-pills">
-      <div class="pill ${chatFilter===''?'active':''}" onclick="setChatFilter('')">Все</div>
-      <div class="pill ${chatFilter==='group'?'active':''}" onclick="setChatFilter('group')">Группы</div>
-      <div class="pill ${chatFilter==='direct'?'active':''}" onclick="setChatFilter('direct')">Личные</div>
-    </div>
-    <div class="card">
-      <div class="card-head">
-        <h3>Чаты и группы <span style="color:var(--c-muted);font-weight:500">(${chats.length})</span></h3>
-        <div class="search-box">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input placeholder="Поиск…" oninput="filterChats(this.value)">
-        </div>
-      </div>
-      <table><thead><tr><th>ID</th><th>Тип</th><th>Название</th><th>Участников</th><th>Сообщений</th><th>Создан</th><th>Действия</th></tr></thead>
-      <tbody id="chats-tbody">${rows}</tbody></table>
-    </div>`;
-}
-
-function setChatFilter(f) {
-  chatFilter=f;
-  document.querySelectorAll('.filter-pills .pill').forEach(p=>p.classList.toggle('active',p.textContent.trim()===(f===''?'Все':f==='group'?'Группы':'Личные')));
-  const filtered=f?allChats.filter(c=>c.type===f):allChats;
-  document.getElementById('chats-tbody').innerHTML=filtered.map(chatRow).join('')||`<tr><td colspan="7"><div class="empty-state"><p>Ничего не найдено</p></div></td></tr>`;
-}
-
-function filterChats(q) {
-  const lq=q.toLowerCase();
-  const filtered=allChats.filter(c=>(chatFilter?c.type===chatFilter:true)&&chatDisplayName(c).toLowerCase().includes(lq));
-  document.getElementById('chats-tbody').innerHTML=filtered.map(chatRow).join('')||`<tr><td colspan="7"><div class="empty-state"><p>Ничего не найдено</p></div></td></tr>`;
-}
-
-async function openMembersReadonly(chatId, chatName) {
-  membersForChatId=chatId; membersForChatType=null;
-  _membersReadonly=true;
-  selectedAddMembers=new Set();
-  document.getElementById('members-title').textContent=chatName;
-  document.getElementById('room-edit-meta').style.display='none';
-  document.getElementById('members-search').value='';
-  document.getElementById('members-footer').innerHTML=`<button class="btn btn-ghost" onclick="closeModal('modal-members')">Закрыть</button>`;
-  const members=await api('GET','/api/admin/chats/'+chatId+'/members');
-  _membersCur = members;
-  _membersAvail = [];
-  renderMembersLists('');
-  openModal('modal-members');
-}
-
-function clearHistory(id) {
-  confirm('Очистить историю?',`Все сообщения чата #${id} будут удалены безвозвратно.`, async ()=>{
-    await api('DELETE','/api/chats/admin/'+id+'/messages');
-    toast('История очищена','success');
-    if (currentPage==='rooms') renderRooms(); else renderChats();
+function chRender() {
+  if (currentPage !== 'chats') return;
+  const q = CH.q.trim().toLowerCase();
+  const rows = allChats
+    .filter(c => CH.filter === 'all' || (CH.filter === 'group' && c.type === 'group') || (CH.filter === 'direct' && c.type === 'direct') || (CH.filter === 'empty' && !c.message_count))
+    .filter(c => !q || chName(c).toLowerCase().includes(q) || (c.member_names || []).some(n => n.toLowerCase().includes(q)));
+  const groups = allChats.filter(c => c.type === 'group').length;
+  const empty = allChats.filter(c => !c.message_count);
+  const allSel = rows.length > 0 && rows.every(c => CH.sel.has(c.id));
+  uxKeepFocus(() => {
+    document.getElementById('page-body').innerHTML = `<div class="ux-page">
+      <section class="ux-panel rm-sum">
+        <div><div class="cl-k">Личных чатов</div><div class="cl-v">${allChats.length - groups}</div></div>
+        <div><div class="cl-k">Групп</div><div class="cl-v">${groups}</div></div>
+        <div><div class="cl-k">Сообщений</div><div class="cl-v">${rmFmt(allChats.reduce((s, c) => s + c.message_count, 0))}<small>всего</small></div></div>
+        <div class="rm-note">${empty.length ? `Пустых — <b>${empty.length}</b>: в них ещё никто не написал.` : 'Пустых чатов нет.'}</div>
+        <div>${empty.length ? `<button class="btn btn-ghost" onclick="chDelete(${JSON.stringify(empty.map(c => c.id))})">${UX_I.trash}Удалить пустые · ${empty.length}</button>` : ''}</div>
+      </section>
+      <section class="ux-panel">
+        <div class="ux-tb"><h3>Чаты и группы <span>${allChats.length}</span></h3>
+          ${uxChips([['all', 'Все', allChats.length], ['group', 'Группы', groups], ['direct', 'Личные', allChats.length - groups], ['empty', 'Пустые', empty.length]], CH.filter, 'chFilter')}
+          <span class="ux-grow"></span>${uxSearch('ch-q', CH.q, 'Название или участник', 'chSearch')}</div>
+        ${CH.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${CH.sel.size}</b><button class="btn btn-ghost btn-sm" onclick="chDelete([...CH.sel])">${UX_I.trash}Удалить</button>
+          <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="CH.sel.clear(); chRender()">Снять выделение</button></div>` : ''}
+        <div class="ux-tbl"><table>
+          <thead><tr><th style="width:40px"><input type="checkbox" aria-label="Выбрать все" ${allSel ? 'checked' : ''} onchange="chSelAll(this.checked)"></th>
+            <th>Чат</th><th>Участники</th><th class="rm-num">Сообщений</th><th>Последнее</th><th>Создан</th><th></th></tr></thead>
+          <tbody>${rows.map(c => `<tr class="${CH.sel.has(c.id) ? 'sel' : ''}">
+            <td><input type="checkbox" aria-label="Выбрать: ${esc(chName(c))}" ${CH.sel.has(c.id) ? 'checked' : ''} onchange="chToggle(${c.id})"></td>
+            <td><div class="ux-cell">${chAv(c, 34)}<div style="min-width:0">
+              <div class="ux-name">${esc(chName(c))}<span class="rm-chip rm-${c.type === 'direct' ? 'direct' : 'group'}">${c.type === 'direct' ? 'личный' : 'группа'}</span>${c.message_count ? '' : '<span class="rm-chip rm-empty">пустой</span>'}</div>
+              <div class="rm-sub">${c.type === 'direct' ? 'Переписка двоих' : `${c.member_count} ${uxPlural(c.member_count, 'участник', 'участника', 'участников')}`}</div></div></div></td>
+            <td>${c.type === 'direct' ? '<span class="rm-sub">—</span>' : rmStack(c.member_names || [])}</td>
+            <td class="rm-num cl-dur">${c.message_count ? rmFmt(c.message_count) : '<span class="rm-sub">0</span>'}</td>
+            <td class="rm-last">${esc(rmLast(c.last_at))}</td>
+            <td class="cl-dur">${fmtDate(c.created_at)}</td>
+            <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="chMembers(${c.id})">${RM_I.users}Участники</button>
+              <button class="ux-ibtn" aria-label="Ещё действия: ${esc(chName(c))}" aria-haspopup="menu" aria-expanded="false" onclick="chMenu(event, ${c.id})">${UX_I.more}</button></div></td>
+          </tr>`).join('') || `<tr><td colspan="7"><div class="ux-empty">${allChats.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Чатов пока нет'}</div></td></tr>`}</tbody>
+        </table></div>
+      </section></div>`;
   });
 }
 
-function deleteChat(id) {
-  confirm('Удалить чат?',`Чат #${id} и все сообщения будут удалены безвозвратно.`, async ()=>{
-    await api('DELETE','/api/chats/admin/'+id);
-    toast('Чат удалён');
+function chFilter(k) { CH.filter = k; CH.sel.clear(); chRender(); }
+function chSearch(v) { CH.q = v; chRender(); }
+function chToggle(id) { CH.sel.has(id) ? CH.sel.delete(id) : CH.sel.add(id); chRender(); }
+function chSelAll(on) { allChats.forEach(c => on ? CH.sel.add(c.id) : CH.sel.delete(c.id)); chRender(); }
+function chMenu(e, id) {
+  uxOpenMenu(e, 'ch' + id, `
+    <button role="menuitem" onclick="uxCloseMenu(); chMembers(${id})">${RM_I.users}Участники</button>
+    <button role="menuitem" onclick="uxCloseMenu(); chClear(${id})">${RM_I.clear}Очистить историю</button>
+    <hr><button role="menuitem" class="danger" onclick="uxCloseMenu(); chDelete([${id}])">${UX_I.trash}Удалить чат</button>`);
+}
+
+function chDelete(ids) {
+  const list = allChats.filter(c => ids.includes(c.id));
+  if (!list.length) return;
+  confirm(list.length > 1 ? `Удалить чаты · ${list.length}` : 'Удалить чат?',
+    `${esc(list.map(chName).join(', '))} — переписка удалится у всех участников. Отменить нельзя.`,
+    async () => {
+      await Promise.all(list.map(c => api('DELETE', '/api/chats/admin/' + c.id)));
+      toast(list.length > 1 ? `Удалено чатов: ${list.length}` : 'Чат удалён', 'success');
+      if (list.some(c => c.id === CH.openId)) closeModal('modal-chat-members');
+      CH.sel.clear();
+      renderChats();
+      updateNavBadges();
+    });
+}
+function chClear(id) {
+  const c = allChats.find(x => x.id === id);
+  confirm('Очистить историю?', `Все сообщения чата «${esc(c ? chName(c) : '')}» будут удалены безвозвратно.`, async () => {
+    await api('DELETE', '/api/chats/admin/' + id + '/messages');
+    toast('История очищена', 'success');
     renderChats();
   });
 }
 
-/* ── MEMBER MANAGEMENT ── */
-function toggleAddMember(id) {
-  if (selectedAddMembers.has(id)) selectedAddMembers.delete(id);
-  else selectedAddMembers.add(id);
-  renderMembersLists(document.getElementById('members-search').value);
+// ── Окно участников ──
+async function chMembers(id) {
+  uxCloseMenu();
+  const c = allChats.find(x => x.id === id);
+  if (!c) return;
+  CH.openId = id;
+  CH.members = (await api('GET', `/api/admin/chats/${id}/members`)) || [];
+  chRenderMembers();
+  openModal('modal-chat-members');
 }
-
-async function removeMember(chatId, userId, btn) {
-  btn.disabled=true;
-  await api('DELETE',`/api/admin/chats/${chatId}/members/${userId}`);
-  const removed=_membersCur.find(m=>m.id===userId);
-  _membersCur=_membersCur.filter(m=>m.id!==userId);
-  if (removed) _membersAvail.push(removed);
-  renderMembersLists(document.getElementById('members-search').value);
-  toast('Участник удалён');
+function chRenderMembers() {
+  const c = allChats.find(x => x.id === CH.openId), el = document.getElementById('cm-form');
+  if (!c || !el) return;
+  const direct = c.type === 'direct';
+  el.innerHTML = `
+    <div class="ua-head">${chAv(c, 36)}<div><div class="ua-title">${esc(chName(c))}</div>
+      <div class="ua-sub">${direct ? 'Личный чат' : `Группа · ${CH.members.length} ${uxPlural(CH.members.length, 'участник', 'участника', 'участников')}`}</div></div>
+      <button type="button" class="modal-close" aria-label="Закрыть" onclick="closeModal('modal-chat-members')">✕</button></div>
+    <div class="ua-body">
+      <div class="rm-list rm-scroll" style="max-height:360px">${CH.members.map(m => `<div class="rm-li">${avHtml(m.display_name, 30, 8, m.id, false, true)}
+        <div style="flex:1;min-width:0"><div class="ux-name">${esc(m.display_name)}</div><div class="rm-sub">@${esc(m.username)}</div></div>
+        ${direct ? '' : `<button type="button" class="ux-ibtn" aria-label="Убрать из группы: ${esc(m.display_name)}" onclick="chKick(${m.id})">${RM_I.x}</button>`}</div>`).join('')
+        || '<div class="rm-li"><span class="rm-sub">Участников нет</span></div>'}</div>
+      ${direct ? '<p class="rm-hint">В личном чате участников не меняют. Если переписка больше не нужна — удалите чат.</p>' : ''}
+    </div>
+    <div class="ua-foot"><button type="button" class="btn btn-danger btn-sm" onclick="chDelete([${c.id}])">${UX_I.trash}Удалить чат</button><span class="ux-grow"></span>
+      <button type="button" class="btn btn-ghost" onclick="closeModal('modal-chat-members')">Готово</button></div>`;
+}
+async function chKick(userId) {
+  const m = CH.members.find(x => x.id === userId);
+  await api('DELETE', `/api/admin/chats/${CH.openId}/members/${userId}`);
+  CH.members = CH.members.filter(x => x.id !== userId);
+  chRenderMembers();
+  toast(`«${esc(m?.display_name || '')}» больше не в группе`, 'success');
+  renderChats();
 }
 
 /* ── CLIENTS ── */

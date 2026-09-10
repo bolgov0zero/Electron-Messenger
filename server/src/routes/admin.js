@@ -247,14 +247,30 @@ router.get('/users', (req, res) => {
 
 router.get('/chats', (req, res) => {
   const chats = db.prepare(`
-    SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.parent_id,
+    SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.parent_id, c.position,
       (SELECT COUNT(*) FROM messages WHERE chat_id = c.id AND deleted = 0) as message_count,
+      (SELECT MAX(sent_at) FROM messages WHERE chat_id = c.id AND deleted = 0) as last_at,
       (SELECT COUNT(*) FROM chat_members WHERE chat_id = c.id) as member_count,
       (SELECT GROUP_CONCAT(u.display_name, '|||') FROM users u
        JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = c.id ORDER BY cm.joined_at) as member_names
     FROM chats c ORDER BY c.created_at DESC
   `).all();
-  res.json(chats.map(c => ({ ...c, member_names: c.member_names ? c.member_names.split('|||') : [] })));
+  // Сообщения за последние 7 дней по дням — мини-график активности в «Комнатах»
+  const since = Math.floor(Date.now() / 1000) - 7 * 86400;
+  const week = new Map();
+  db.prepare('SELECT chat_id, CAST((sent_at - ?) / 86400 AS INTEGER) AS d, COUNT(*) AS n FROM messages WHERE deleted = 0 AND sent_at >= ? GROUP BY chat_id, d')
+    .all(since, since)
+    .forEach(r => {
+      if (r.d < 0 || r.d > 6) return;
+      if (!week.has(r.chat_id)) week.set(r.chat_id, [0, 0, 0, 0, 0, 0, 0]);
+      week.get(r.chat_id)[r.d] += r.n;
+    });
+  res.json(chats.map(c => ({
+    ...c,
+    member_names: c.member_names ? c.member_names.split('|||') : [],
+    week: week.get(c.id) || [0, 0, 0, 0, 0, 0, 0],
+    has_avatar: fs.existsSync(path.join(AVATAR_DIR, `chat_${c.id}.jpg`)),
+  })));
 });
 
 router.get('/chats/:id/members', (req, res) => {
