@@ -1983,6 +1983,10 @@ function filterEmoji(q, kind = 'ep') {
   });
   hits.sort((a, b) => b.score - a.score);
 
+  // В ленте теперь найденное, а не разделы. Снимаем отметку «частых»: по ней
+  // открытие панели решает, пересобирать ли ленту, и без этого после повторного
+  // открытия поле поиска было пустым, а результаты прошлого поиска оставались
+  delete scroll.dataset.freq;
   scroll.innerHTML = hits.length
     ? '<div class="ep-head" data-head="found">Найдено: ' + hits.length + '</div>' +
       '<div class="ep-row" data-row="found">' + hits.map(h =>
