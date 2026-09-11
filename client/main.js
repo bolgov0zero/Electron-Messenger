@@ -495,6 +495,9 @@ ipcMain.handle('get-os', () => {
 });
 
 // ── HA IPC ──
+// Тип диска отдаём отдельным полем — рендерер сам подбирает иконку и подпись
+// в кастомном селекторе, а не готовую строку под системный <select>.
+const HA_DRIVE_TYPES = { '2': ['removable', 'Съёмный'], '3': ['local', 'Локальный'], '4': ['network', 'Сетевой'], '5': ['optical', 'Оптический'] };
 ipcMain.handle('ha-list-drives', async () => {
   if (process.platform !== 'win32') return [];
   try {
@@ -507,8 +510,8 @@ ipcMain.handle('ha-list-drives', async () => {
       const driveType = parts[1]; // 2=removable,3=local,4=network,5=optical
       const volumeName = parts.slice(2).join(' ') || '';
       if (!/^[A-Z]:$/.test(caption)) return null;
-      const typeLabel = driveType === '3' ? 'Локальный' : driveType === '4' ? 'Сетевой' : driveType === '2' ? 'Съёмный' : 'Диск';
-      return { letter: caption[0], caption, label: volumeName ? `${caption} — ${volumeName} (${typeLabel})` : `${caption} (${typeLabel})` };
+      const [type, typeLabel] = HA_DRIVE_TYPES[driveType] || ['other', 'Диск'];
+      return { letter: caption[0], volumeName, type, typeLabel };
     }).filter(Boolean);
   } catch { return []; }
 });

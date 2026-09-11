@@ -4924,19 +4924,42 @@ function showActionToast(text) {
 }
 
 // ── HIGH AVAILABILITY ──
+// Кастомный выбор диска вместо системного <select>: список — position:fixed,
+// координаты считает JS (haPlaceDrivePop) — модалка обрезает содержимое
+// (overflow:hidden), а backdrop-filter на подложке становится точкой отсчёта
+// для fixed-потомков, так что обычным absolute список бы срезало по краю окна.
+const HA_I = {
+  net: csSvg('<path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>'),
+  local: csSvg('<line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/>'),
+  removable: csSvg('<circle cx="10" cy="7" r="1"/><circle cx="4" cy="20" r="2"/><path d="M10 7v11a2 2 0 0 1-2 2H6"/><path d="M4 15V9a2 2 0 0 1 2-2h10l4-4"/><path d="M17 5l2 2"/>'),
+  other: csSvg('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'),
+  check: csSvg('<polyline points="20 6 9 17 4 12"/>'),
+};
+const HA_DRIVE_ICON = { network: HA_I.net, local: HA_I.local, removable: HA_I.removable, optical: HA_I.other, other: HA_I.other };
+
+let _haDrives = [];
+let _haSelected = '';
+let _haOpen = false;
+
 async function openHAModal() {
-  const select = document.getElementById('ha-drive-select');
+  _haDrives = [];
+  _haSelected = '';
+  haCloseDrives();
+
   const activeInfo = document.getElementById('ha-active-info');
   const disableBtn = document.getElementById('ha-disable-btn');
-  const pathPreview = document.getElementById('ha-path-preview');
-
-  select.innerHTML = '<option value="">Загрузка…</option>';
+  document.getElementById('ha-pick-ic').innerHTML = HA_I.other;
+  document.getElementById('ha-pick-tx').innerHTML = '<b>Загрузка дисков…</b>';
+  document.getElementById('ha-pick-btn').classList.add('ph');
+  document.getElementById('ha-path-preview').textContent = '…\\Electron';
   openModal('modal-ha');
 
   const [drives, cfg] = await Promise.all([
     window.electron.listDrives(),
     window.electron.getHAConfig(),
   ]);
+  _haDrives = drives || [];
+  _haSelected = cfg?.drive || '';
 
   if (cfg?.drive) {
     activeInfo.style.display = 'block';
@@ -4947,21 +4970,91 @@ async function openHAModal() {
     disableBtn.style.display = 'none';
   }
 
-  select.innerHTML = '<option value="">— Выберите диск —</option>' +
-    drives.map(d => `<option value="${d.letter}" ${cfg?.drive === d.letter ? 'selected' : ''}>${d.label}</option>`).join('');
-
-  const updatePreview = () => {
-    const v = select.value;
-    pathPreview.textContent = v ? `${v}:\\Electron` : '…\\Electron';
-  };
-  select.onchange = updatePreview;
-  updatePreview();
+  haRenderPickButton();
 }
 
+function haRenderPickButton() {
+  const d = _haDrives.find(x => x.letter === _haSelected);
+  document.getElementById('ha-pick-btn').classList.toggle('ph', !d);
+  document.getElementById('ha-pick-ic').innerHTML = d ? (HA_DRIVE_ICON[d.type] || HA_I.other) : HA_I.other;
+  document.getElementById('ha-pick-tx').innerHTML = d
+    ? `<b>${esc(d.letter)}: — ${esc(d.volumeName || d.typeLabel)}</b><span>${esc(d.typeLabel)}</span>`
+    : `<b>${_haDrives.length ? 'Выберите диск' : 'Дисков не найдено'}</b>`;
+  document.getElementById('ha-path-preview').textContent = d ? `${d.letter}:\\Electron` : '…\\Electron';
+}
+
+function haToggleDrives(e) {
+  e.stopPropagation();
+  if (_haOpen) return haCloseDrives();
+  _haOpen = true;
+  const pick = document.getElementById('ha-pick');
+  pick.classList.add('open');
+  document.getElementById('ha-pick-btn').setAttribute('aria-expanded', 'true');
+
+  const pop = document.createElement('div');
+  pop.className = 'ha-pop';
+  pop.id = 'ha-pop';
+  pop.setAttribute('role', 'listbox');
+  pop.setAttribute('aria-label', 'Диск для хранения данных');
+  pop.innerHTML = _haDrives.length ? _haDrives.map(d => {
+    const sel = d.letter === _haSelected;
+    return `<button type="button" class="ha-opt${sel ? ' sel' : ''}" role="option" aria-selected="${sel}" onclick="haPickDrive('${d.letter}')">
+        <span class="ha-opt-ic">${HA_DRIVE_ICON[d.type] || HA_I.other}</span>
+        <span class="ha-opt-tx"><b>${esc(d.letter)}: — ${esc(d.volumeName || d.typeLabel)}</b><span>${esc(d.letter)}:\\Electron</span></span>
+        <span class="ha-opt-tag${d.type === 'network' ? ' net' : ''}">${esc(d.typeLabel)}</span>
+        ${sel ? `<span class="ha-opt-check">${HA_I.check}</span>` : ''}
+      </button>`;
+  }).join('') : '<div class="ha-pop-empty">Дисков не найдено</div>';
+  pick.appendChild(pop);
+  haPlaceDrivePop();
+}
+
+function haPickDrive(letter) {
+  _haSelected = letter;
+  haRenderPickButton();
+  haCloseDrives();
+}
+
+function haCloseDrives() {
+  _haOpen = false;
+  document.getElementById('ha-pick')?.classList.remove('open');
+  document.getElementById('ha-pick-btn')?.setAttribute('aria-expanded', 'false');
+  document.getElementById('ha-pop')?.remove();
+}
+
+// Список открывается в (0,0), затем координаты правятся по разнице между этой
+// точкой и настоящим положением кнопки — тот же приём, что и в пикере даты
+// админ-панели. Плюс поправка на масштаб интерфейса: getBoundingClientRect
+// отдаёт визуальные пиксели, а style.left/top задаются в CSS-пикселях zoom-контекста.
+function haPlaceDrivePop() {
+  const btn = document.getElementById('ha-pick-btn');
+  const pop = document.getElementById('ha-pop');
+  if (!btn || !pop) return;
+  pop.style.visibility = 'hidden';
+  const r = btn.getBoundingClientRect();
+  const z = btn.offsetWidth ? (r.width / btn.offsetWidth) : 1;
+  pop.style.width = (r.width / z) + 'px';
+  pop.style.left = '0px';
+  pop.style.top = '0px';
+  const zero = pop.getBoundingClientRect();
+  const modal = btn.closest('.ha-modal');
+  const mRect = modal?.getBoundingClientRect();
+  const limitBottom = Math.min(mRect ? mRect.bottom - 8 : Infinity, window.innerHeight - 8);
+  const limitTop = mRect ? mRect.top + 8 : 8;
+  const top = (r.bottom + 6 + zero.height <= limitBottom) ? r.bottom + 6 : Math.max(limitTop, r.top - zero.height - 6);
+  const left = Math.max(8, Math.min(r.left, window.innerWidth - zero.width - 8));
+  pop.style.left = ((left - zero.left) / z) + 'px';
+  pop.style.top = ((top - zero.top) / z) + 'px';
+  pop.style.visibility = '';
+}
+
+document.addEventListener('click', e => { if (_haOpen && !e.target.closest('.ha-pick')) haCloseDrives(); });
+document.addEventListener('scroll', () => { if (_haOpen) haCloseDrives(); }, true);
+window.addEventListener('resize', () => { if (_haOpen) haCloseDrives(); });
+
 async function saveHA() {
-  const drive = document.getElementById('ha-drive-select').value;
-  if (!drive) { return; }
-  await window.electron.setHAConfig(drive);
+  if (!_haSelected) return;
+  await window.electron.setHAConfig(_haSelected);
   // app will relaunch automatically
 }
 
