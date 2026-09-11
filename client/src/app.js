@@ -32,6 +32,9 @@ const S = {
 
 const SESSION_KEY = 'electron_v2';
 const CRED_KEY = 'electron_creds';
+// Признак включённой «Высокой доступности» — выставляется один раз при старте
+// (см. DOMContentLoaded ниже) и не меняется без перезапуска приложения.
+let _haActive = false;
 function saveCredentials(u, p) { try { localStorage.setItem(CRED_KEY, JSON.stringify({ u, p })); } catch {} }
 function clearCredentials() { try { localStorage.removeItem(CRED_KEY); } catch {} }
 function fillLoginFromCreds() {
@@ -297,6 +300,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         btn.style.display = 'flex';
         const cfg = await window.electron.getHAConfig();
         if (cfg?.drive) {
+          _haActive = true;
           btn.classList.add('ha-active');
           document.getElementById('ha-toggle-label').textContent = `Высокая доступность: ${cfg.drive}:\\`;
         }
@@ -407,7 +411,9 @@ function logout(intentional = false) {
     const serverInput = document.getElementById('l-server');
     if (serverInput) serverInput.value = S.server;
   }
-  if (intentional) clearCredentials();
+  // При включённой «Высокой доступности» логин/пароль оставляем: смысл HA —
+  // зайти с любого компьютера в один клик, без повторного ввода данных.
+  if (intentional && !_haActive) clearCredentials();
   Object.assign(S, { token:null, user:null, chats:[], activeChatId:null, ws:null, unread:{}, allUsers:[] });
   localStorage.removeItem(SESSION_KEY);
   document.getElementById('screen-main').classList.remove('active');

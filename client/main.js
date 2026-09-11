@@ -426,9 +426,14 @@ ipcMain.on('unread', (_, count) => {
 // средствами системы: прочитать сможет только тот же пользователь на той же машине.
 const SESSION_FILE = path.join(app.getPath('userData'), 'session.bin');
 
+// DPAPI-шифрование (safeStorage) привязано к паре пользователь+машина — файл,
+// зашифрованный так, не читается на другом компьютере. При включённой «Высокой
+// доступности» файл специально лежит на сетевом диске, чтобы читаться с любой
+// машины под этим пользователем, поэтому в этом режиме храним его как обычный JSON.
 ipcMain.handle('session-save', (_, json) => {
   try {
-    const data = safeStorage.isEncryptionAvailable()
+    const isHA = !!haConfig?.drive;
+    const data = (!isHA && safeStorage.isEncryptionAvailable())
       ? safeStorage.encryptString(json)
       : Buffer.from(json, 'utf8');
     fs.writeFileSync(SESSION_FILE, data);
@@ -440,9 +445,11 @@ ipcMain.handle('session-load', () => {
   try {
     if (!fs.existsSync(SESSION_FILE)) return null;
     const buf = fs.readFileSync(SESSION_FILE);
-    return safeStorage.isEncryptionAvailable()
-      ? safeStorage.decryptString(buf)
-      : buf.toString('utf8');
+    const isHA = !!haConfig?.drive;
+    if (!isHA && safeStorage.isEncryptionAvailable()) {
+      try { return safeStorage.decryptString(buf); } catch { return null; }
+    }
+    return buf.toString('utf8');
   } catch { return null; }
 });
 
