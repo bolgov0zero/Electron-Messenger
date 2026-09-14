@@ -1203,7 +1203,7 @@ function csPaneAppearance() {
     <div class="cs-g">
       <div class="cs-r"><div class="cs-l"><b>Тема</b></div>${seg([['light', CS_I.sun + 'Светлая'], ['dark', CS_I.moon + 'Тёмная']], s.theme, 'setTheme', 'Тема')}</div>
       <div class="cs-r"><div class="cs-l"><b>Цвет акцента</b><span>Кнопки, свои сообщения, выделение</span></div>
-        <div class="cs-ctl"><span class="cs-aname">${ACCENTS[currentAccent()].name}</span><div onclick="if(event.target.closest('.accent-dot'))csRefresh()">${accentDotsHtml()}</div></div></div>
+        <div class="cs-ctl"><span class="cs-aname">${ACCENTS[currentAccent()].name}</span><div id="accent-seg" class="accent-seg" onclick="if(event.target.closest('.accent-dot'))csRefresh()">${accentDotsHtml()}</div></div></div>
     </div>
     <div class="cs-gt">Фон переписки</div>
     <div onclick="if(event.target.closest('.bg-card'))csRefresh()">${chatBgCardsHtml()}</div>
@@ -2823,6 +2823,7 @@ function releaseAnchor() {
   window.visualViewport?.removeEventListener('resize', applyAnchor);
   const c = document.getElementById('messages');
   c?.removeEventListener('load', applyAnchor, true);
+  c?.removeEventListener('loadedmetadata', applyAnchor, true);
   c?.removeEventListener('error', applyAnchor, true);
   c?.removeEventListener('wheel', releaseAnchor);
   c?.removeEventListener('touchmove', releaseAnchor);
@@ -2854,8 +2855,11 @@ function setAnchor(anchor, ms = 2500) {
 
   // Картинки без известных размеров сдвигают ленту в момент загрузки. Слушаем на
   // перехвате: load не всплывает, зато так ловятся и те картинки, что появятся
-  // позже, — перебирать их по одной пришлось бы после каждой вставки
+  // позже, — перебирать их по одной пришлось бы после каждой вставки. У видео
+  // аналог load — loadedmetadata: до него бабл считает высоту по умолчанию 2:1,
+  // после — по реальным пропорциям ролика, и лента может сдвинуться так же
   c.addEventListener('load', applyAnchor, true);
+  c.addEventListener('loadedmetadata', applyAnchor, true);
   c.addEventListener('error', applyAnchor, true);
   document.fonts?.ready?.then(() => applyAnchor()).catch(() => {});
   window.visualViewport?.addEventListener('resize', applyAnchor);
@@ -3552,6 +3556,7 @@ function releaseStick() {
   _stickRO?.disconnect(); _stickRO = null;
   const c = document.getElementById('messages');
   c?.removeEventListener('load', _stickDown, true);
+  c?.removeEventListener('loadedmetadata', _stickDown, true);
   c?.removeEventListener('error', _stickDown, true);
   c?.removeEventListener('wheel', releaseStick);
   c?.removeEventListener('touchmove', releaseStick);
@@ -3586,8 +3591,10 @@ function stickToBottom(container, newEl, m, distBefore) {
   } catch {}
 
   // load не всплывает — слушаем на перехвате: так ловятся и вложенные картинки,
-  // и аватарки, и те, что появятся позже
+  // и аватарки, и те, что появятся позже. loadedmetadata — тот же случай для видео:
+  // до него высота бабла по умолчанию 2:1, после — по реальным пропорциям ролика
   container.addEventListener('load', _stickDown, true);
+  container.addEventListener('loadedmetadata', _stickDown, true);
   container.addEventListener('error', _stickDown, true);
 
   // Прокрутка руками отменяет удержание

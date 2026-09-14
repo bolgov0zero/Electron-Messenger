@@ -607,16 +607,21 @@ ipcMain.handle('lightbox-open', (_, payload) => {
   lightboxWin = new BrowserWindow({
     x: display.bounds.x, y: display.bounds.y,
     width: display.bounds.width, height: display.bounds.height,
-    frame: false, resizable: false, movable: false, fullscreenable: false,
+    frame: false, resizable: false, movable: false,
     skipTaskbar: true, transparent: true, hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
     show: false,
   });
   lightboxWin.setMenuBarVisibility(false);
-  // Уровень 'screen-saver' поднимает окно НАД строкой меню (macOS) и панелью задач —
-  // обычный alwaysOnTop:true встаёт только выше других окон приложений, но не выше них
+  // Уровень 'screen-saver' поднимает окно над другими окнами приложений (Windows/Linux
+  // panel), но на macOS этого не хватает — строка меню рисуется поверх независимо от
+  // уровня окна. Единственный надёжный способ закрыть и её — «простой» полноэкранный
+  // режим (без анимации/перехода в отдельный Space, в отличие от обычного setFullScreen)
   lightboxWin.setAlwaysOnTop(true, 'screen-saver');
-  lightboxWin.once('ready-to-show', () => lightboxWin?.show());
+  lightboxWin.once('ready-to-show', () => {
+    lightboxWin?.show();
+    if (process.platform === 'darwin') lightboxWin?.setSimpleFullScreen(true);
+  });
   lightboxWin.on('closed', () => { lightboxWin = null; });
   lightboxWin.loadURL(lightboxUrl(payload));
 });
