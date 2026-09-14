@@ -549,9 +549,17 @@ ipcMain.handle('lightbox-open', (_, payload) => {
 
   const parentBounds = mainWindow.getBounds();
   const display = screen.getDisplayMatching(parentBounds);
+  // На macOS обычное (не полноэкранное) окно не может визуально занимать место под
+  // строкой меню, даже если задать y:0 — система сама сдвигает содержимое вниз на
+  // её высоту. simple fullscreen это обходит, но переключает скрытие Dock/строки
+  // меню на уровне всего приложения — на практике режим не всегда снимался чисто
+  // при закрытии, и Dock/меню оставались скрытыми. Поэтому вместо fullscreen на Mac
+  // просто подстраиваем окно под workArea — площадь экрана без строки меню и Dock,
+  // ту же, что macOS выделил бы окну и так. На Windows/Linux — весь монитор
+  const area = process.platform === 'darwin' ? display.workArea : display.bounds;
   const win = new BrowserWindow({
-    x: display.bounds.x, y: display.bounds.y,
-    width: display.bounds.width, height: display.bounds.height,
+    x: area.x, y: area.y,
+    width: area.width, height: area.height,
     frame: false, resizable: false, movable: false,
     skipTaskbar: true, transparent: true, hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
@@ -560,23 +568,7 @@ ipcMain.handle('lightbox-open', (_, payload) => {
   lightboxWin = win;
   win.setMenuBarVisibility(false);
   win.setAlwaysOnTop(true, 'screen-saver');
-  // Обычное (не полноэкранное) окно macOS не может визуально занимать место под
-  // строкой меню, даже если задать y:0 — система сама сдвигает содержимое вниз на
-  // высоту строки меню. Единственный способ закрыть и её — simple fullscreen. Он
-  // переключает скрытие Dock/строки меню на уровне всего приложения, а не только
-  // этого окна, поэтому критично снять режим ДО закрытия окна, а не после
-  win.once('ready-to-show', () => {
-    win.show();
-    if (process.platform === 'darwin') win.setSimpleFullScreen(true);
-  });
-  let closing = false;
-  win.on('close', e => {
-    if (process.platform !== 'darwin' || closing) return;
-    e.preventDefault();
-    closing = true;
-    win.setSimpleFullScreen(false);
-    setTimeout(() => { if (!win.isDestroyed()) win.close(); }, 250);
-  });
+  win.once('ready-to-show', () => win.show());
   win.on('closed', () => { if (lightboxWin === win) lightboxWin = null; });
   win.loadURL(lightboxUrl(payload));
 });
