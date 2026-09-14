@@ -96,7 +96,8 @@ function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 // Подсвечивает @упоминания цветом того же пользователя, что и его аватар/реакции —
 // сопоставляем не по регэкспу вида «слово», а по реальным именам участников чата,
-// потому что insertMention вставляет отображаемое имя целиком, вплоть до пробелов
+// потому что insertMention вставляет отображаемое имя целиком, вплоть до пробелов.
+// Только участники текущего чата/группы/комнаты — не весь справочник людей
 function highlightMentions(escapedText) {
   const members = _mentionMembers(true);
   if (!members || !members.length) return escapedText;
@@ -112,7 +113,10 @@ function highlightMentions(escapedText) {
   const re = new RegExp('@(' + names.join('|') + ')(?![\\wа-яёА-ЯЁ])', 'g');
   return escapedText.replace(re, (match, name) => {
     const m = byName.get(name);
-    return `<span class="mention ${userAvatarColor(m.id, m.tag)}">@${name}</span>`;
+    // Не переиспользуем «av-*» классы аватарки как есть: у них уже есть свои
+    // правила фона (для кружков аватарок), и мент получал бы фон вдобавок к тексту
+    const cls = userAvatarColor(m.id, m.tag).replace(/^av-/, 'mtag-');
+    return `<span class="mention ${cls}">@${name}</span>`;
   });
 }
 
@@ -4345,10 +4349,11 @@ function openLightbox(url, filename, type = 'image') {
       lbApplyTransform();
     });
     document.addEventListener('mouseup', () => { _lbDrag = null; });
-    // Esc и системные выходы из fullscreen должны закрывать весь лайтбокс, а не
-    // просто вернуть окно к прежнему размеру с висящей тёмной подложкой
-    document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement && lb.classList.contains('lb-open')) closeLightbox();
+    // Пока идёт CSS-анимация появления (lbImgIn), она держит transform с более
+    // высоким приоритетом, чем inline-стиль — зум через JS до её конца не сработает.
+    // lb-opened гасит правило анимации в CSS сразу после её завершения
+    lb.addEventListener('animationend', e => {
+      if (e.animationName === 'lbImgIn') lb.classList.add('lb-opened');
     });
   }
   const img = document.getElementById('lightbox-img');
@@ -4366,11 +4371,8 @@ function openLightbox(url, filename, type = 'image') {
   }
   lb.dataset.url = url;
   lb.dataset.filename = filename || (type === 'video' ? 'video' : 'image');
-  lb.classList.remove('lb-closing');
+  lb.classList.remove('lb-closing', 'lb-opened');
   lb.classList.add('lb-open');
-  // Разворачиваем окно/вкладку на весь монитор (Fullscreen API), а не просто div
-  // в границах текущего окна — независимо от того, каким было окно приложения
-  lb.requestFullscreen?.().catch(() => {});
 }
 
 function lbApplyTransform() {
@@ -4393,7 +4395,6 @@ function closeLightbox() {
   if (!lb || lb.classList.contains('lb-closing')) return;
   lb.classList.remove('lb-open');
   lb.classList.add('lb-closing');
-  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
   document.getElementById('lightbox-video')?.pause();
   const onEnd = e => {
     if (e.target !== lb) return;

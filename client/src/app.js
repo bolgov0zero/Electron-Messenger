@@ -122,7 +122,8 @@ function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
 // Подсвечивает @упоминания цветом того же пользователя, что и его аватар/реакции —
 // сопоставляем не по регэкспу вида «слово», а по реальным именам участников чата,
-// потому что insertMention вставляет отображаемое имя целиком, вплоть до пробелов
+// потому что insertMention вставляет отображаемое имя целиком, вплоть до пробелов.
+// Только участники текущего чата/группы/комнаты — не весь справочник людей
 function highlightMentions(escapedText) {
   const members = _mentionMembers(true);
   if (!members || !members.length) return escapedText;
@@ -138,7 +139,10 @@ function highlightMentions(escapedText) {
   const re = new RegExp('@(' + names.join('|') + ')(?![\\wа-яёА-ЯЁ])', 'g');
   return escapedText.replace(re, (match, name) => {
     const m = byName.get(name);
-    return `<span class="mention ${userAvatarColor(m.id, m.tag)}">@${name}</span>`;
+    // Не переиспользуем «av-*» классы аватарки как есть: у них уже есть свои
+    // правила фона (для кружков аватарок), и мент получал бы фон вдобавок к тексту
+    const cls = userAvatarColor(m.id, m.tag).replace(/^av-/, 'mtag-');
+    return `<span class="mention ${cls}">@${name}</span>`;
   });
 }
 
@@ -3680,99 +3684,10 @@ async function loadBanners() {
 }
 
 // ── ЛАЙТБОКС (фото и видео) ──
-// Зум/перетаскивание — только у фото; масштаб сбрасывается при каждом открытии.
-// _lbDidDrag гасит клик-закрытие сразу после перетаскивания (mouseup всё равно
-// порождает click на том же элементе, где было mousedown).
-let _lbScale = 1, _lbTx = 0, _lbTy = 0, _lbDrag = null, _lbDidDrag = false;
-const LB_ZOOM_MIN = 1, LB_ZOOM_MAX = 4, LB_ZOOM_STEP = 0.5;
-
+// На весь монитор — как в Telegram, отдельным нативным окном без рамки поверх
+// главного окна (см. main.js), а не растяжением div внутри окна приложения.
 function openLightbox(url, filename, type = 'image') {
-  let lb = document.getElementById('lightbox');
-  if (!lb) {
-    lb = document.createElement('div');
-    lb.id = 'lightbox';
-    lb.onclick = e => { if (e.target === lb && !_lbDidDrag) closeLightbox(); _lbDidDrag = false; };
-    lb.innerHTML = `<img id="lightbox-img">
-      <video id="lightbox-video" controls playsinline></video>
-      <div class="lb-zoom">
-        <button type="button" title="Уменьшить" onclick="event.stopPropagation();lbZoom(-1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
-        <button type="button" title="Сбросить масштаб" onclick="event.stopPropagation();lbResetZoom()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
-        <button type="button" title="Увеличить" onclick="event.stopPropagation();lbZoom(1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
-      </div>
-      <button id="lightbox-download" title="Скачать" onclick="event.stopPropagation();downloadAttachment(document.getElementById('lightbox').dataset.url, document.getElementById('lightbox').dataset.filename)">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      </button>`;
-    document.body.appendChild(lb);
-    const lbImg = document.getElementById('lightbox-img');
-    lbImg.addEventListener('mousedown', e => {
-      if (_lbScale <= 1) return;
-      e.preventDefault();
-      _lbDrag = { x: e.clientX, y: e.clientY, tx: _lbTx, ty: _lbTy };
-    });
-    document.addEventListener('mousemove', e => {
-      if (!_lbDrag) return;
-      const dx = e.clientX - _lbDrag.x, dy = e.clientY - _lbDrag.y;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) _lbDidDrag = true;
-      _lbTx = _lbDrag.tx + dx; _lbTy = _lbDrag.ty + dy;
-      lbApplyTransform();
-    });
-    document.addEventListener('mouseup', () => { _lbDrag = null; });
-    // Esc и системные выходы из fullscreen должны закрывать весь лайтбокс, а не
-    // просто вернуть окно к прежнему размеру с висящей тёмной подложкой
-    document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement && lb.classList.contains('lb-open')) closeLightbox();
-    });
-  }
-  const img = document.getElementById('lightbox-img');
-  const video = document.getElementById('lightbox-video');
-  lb.classList.toggle('lb-video', type === 'video');
-  lbResetZoom();
-  if (type === 'video') {
-    img.removeAttribute('src');
-    video.src = url;
-    video.play().catch(() => {});
-  } else {
-    video.pause();
-    video.removeAttribute('src');
-    img.src = url;
-  }
-  lb.dataset.url = url;
-  lb.dataset.filename = filename || (type === 'video' ? 'video' : 'image');
-  lb.classList.remove('lb-closing');
-  lb.classList.add('lb-open');
-  // Разворачиваем само окно на весь монитор (Fullscreen API), а не просто div
-  // в границах окна приложения — независимо от того, каким было окно клиента
-  lb.requestFullscreen?.().catch(() => {});
-}
-
-function lbApplyTransform() {
-  const img = document.getElementById('lightbox-img');
-  if (img) img.style.transform = _lbScale === 1 ? '' : `translate(${_lbTx}px,${_lbTy}px) scale(${_lbScale})`;
-  document.getElementById('lightbox')?.classList.toggle('lb-zoomed', _lbScale > 1);
-}
-function lbZoom(dir) {
-  _lbScale = Math.min(LB_ZOOM_MAX, Math.max(LB_ZOOM_MIN, +(_lbScale + dir * LB_ZOOM_STEP).toFixed(2)));
-  if (_lbScale === LB_ZOOM_MIN) { _lbTx = 0; _lbTy = 0; }
-  lbApplyTransform();
-}
-function lbResetZoom() {
-  _lbScale = 1; _lbTx = 0; _lbTy = 0;
-  lbApplyTransform();
-}
-
-function closeLightbox() {
-  const lb = document.getElementById('lightbox');
-  if (!lb || lb.classList.contains('lb-closing')) return;
-  lb.classList.remove('lb-open');
-  lb.classList.add('lb-closing');
-  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-  document.getElementById('lightbox-video')?.pause();
-  const onEnd = e => {
-    if (e.target !== lb) return;
-    lb.classList.remove('lb-closing');
-    lb.removeEventListener('animationend', onEnd);
-  };
-  lb.addEventListener('animationend', onEnd);
+  window.electron.openLightboxWindow({ url, filename: filename || (type === 'video' ? 'video' : 'image'), type });
 }
 
 // ── DOWNLOADED FILES ──

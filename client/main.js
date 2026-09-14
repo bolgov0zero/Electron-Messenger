@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, Notification, ipcMain, net, safeStorage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, Notification, ipcMain, net, safeStorage, screen } = require('electron');
 
 if (process.platform === 'linux') {
   // Полностью отключаем все подсистемы sandbox: на некоторых конфигурациях
@@ -15,6 +15,7 @@ const path = require('path');
 const zlib = require('zlib');
 const fs = require('fs');
 const os = require('os');
+const { pathToFileURL } = require('url');
 
 // ── AUTO UPDATE ──
 const GITHUB_REPO = 'bolgov0zero/Electron-Messenger';
@@ -581,6 +582,40 @@ ipcMain.handle('resize-window', (_, delta) => {
   if (!mainWindow || mainWindow.isMaximized()) return;
   const [w, h] = mainWindow.getSize();
   mainWindow.setSize(Math.max(w + delta, 400), h);
+});
+
+// ── LIGHTBOX (просмотр фото/видео) ──
+// Отдельное окно без рамки поверх всего, размером точно с монитор — как в Telegram.
+// Не обычный <div> внутри окна приложения (тот физически ограничен его размером) и
+// не Fullscreen API (разворачивает само окно приложения, что не нужно)
+let lightboxWin = null;
+function lightboxUrl(payload) {
+  const u = pathToFileURL(path.join(__dirname, 'src', 'lightbox.html'));
+  u.searchParams.set('url', payload.url || '');
+  u.searchParams.set('filename', payload.filename || '');
+  u.searchParams.set('type', payload.type || 'image');
+  return u.toString();
+}
+ipcMain.handle('lightbox-open', (_, payload) => {
+  if (lightboxWin && !lightboxWin.isDestroyed()) {
+    lightboxWin.loadURL(lightboxUrl(payload));
+    lightboxWin.focus();
+    return;
+  }
+  const parentBounds = mainWindow.getBounds();
+  const display = screen.getDisplayMatching(parentBounds);
+  lightboxWin = new BrowserWindow({
+    x: display.bounds.x, y: display.bounds.y,
+    width: display.bounds.width, height: display.bounds.height,
+    frame: false, resizable: false, movable: false, fullscreenable: false,
+    alwaysOnTop: true, skipTaskbar: true, backgroundColor: '#000000',
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
+    show: false,
+  });
+  lightboxWin.setMenuBarVisibility(false);
+  lightboxWin.once('ready-to-show', () => lightboxWin?.show());
+  lightboxWin.on('closed', () => { lightboxWin = null; });
+  lightboxWin.loadURL(lightboxUrl(payload));
 });
 
 // Detect if launched at login (should start hidden in tray)

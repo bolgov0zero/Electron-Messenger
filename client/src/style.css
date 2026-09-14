@@ -1402,29 +1402,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .dt-check { stroke-dasharray:24; stroke-dashoffset:24; }
 #download-toast.dt-show .dt-check { animation: dtDraw .35s ease .1s forwards; }
 
-/* Lightbox */
-#lightbox { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.85); align-items: center; justify-content: center; cursor: zoom-out; }
-#lightbox:fullscreen { background: #000; }
-#lightbox.lb-open { display: flex; animation: lbBgIn 180ms ease-out forwards; }
-#lightbox.lb-open img, #lightbox.lb-open video { animation: lbImgIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-#lightbox.lb-closing { display: flex; animation: lbBgOut 150ms ease-in forwards; }
-#lightbox.lb-closing img, #lightbox.lb-closing video { animation: lbImgOut 150ms ease-in forwards; }
-@keyframes lbBgIn  { from { opacity: 0; }                                  to { opacity: 1; } }
-@keyframes lbBgOut { from { opacity: 1; }                                  to { opacity: 0; } }
-@keyframes lbImgIn  { from { opacity: 0; transform: scale(.88); }          to { opacity: 1; transform: scale(1); } }
-@keyframes lbImgOut { from { opacity: 1; transform: scale(1); }            to { opacity: 0; transform: scale(.88); } }
-#lightbox img, #lightbox video { max-width: 92vw; max-height: 92vh; border-radius: 9px; object-fit: contain; box-shadow: 0 8px 40px rgba(0,0,0,.6); transition: transform .15s ease; }
-#lightbox video { display: none; }
-#lightbox.lb-video #lightbox-img { display: none; }
-#lightbox.lb-video #lightbox-video { display: block; }
-#lightbox.lb-video .lb-zoom { display: none; }
-#lightbox.lb-zoomed #lightbox-img { cursor: grab; }
-#lightbox.lb-zoomed #lightbox-img:active { cursor: grabbing; }
-#lightbox-download { position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,.4); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
-#lightbox-download:hover { background: rgba(0,0,0,.7); }
-.lb-zoom { position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
-.lb-zoom button { width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,.4); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
-.lb-zoom button:hover { background: rgba(0,0,0,.7); }
+/* Лайтбокс теперь отдельное окно (см. lightbox.html) — здесь его стилей больше нет */
 
 /* Legacy msg-meta hidden (kept for appendMsg compat) */
 .msg-meta { display: none; }
@@ -2971,25 +2949,25 @@ select:focus-visible, .user-row:focus-visible, .chat-item:focus-visible {
 }
 
 /* Упоминание @username — цвет тот же, что у аватара упомянутого (userAvatarColor) */
-.mention { color: var(--accent); font-weight: 600; }
-.mention.av-blue   { color: #4f46e5; }
-.mention.av-green  { color: #059669; }
-.mention.av-purple { color: #7c3aed; }
-.mention.av-orange { color: #d97706; }
-.mention.av-tag-1 { color: rgb(var(--tag-1-av)); }
-.mention.av-tag-2 { color: rgb(var(--tag-2-av)); }
-.mention.av-tag-3 { color: rgb(var(--tag-3-av)); }
-.mention.av-tag-4 { color: rgb(var(--tag-4-av)); }
-.mention.av-tag-5 { color: rgb(var(--tag-5-av)); }
-.mention.av-tag-6 { color: rgb(var(--tag-6-av)); }
-.mention.av-tag-7 { color: rgb(var(--tag-7-av)); }
-.mention.av-tag-8 { color: rgb(var(--tag-8-av)); }
-.mention.av-tag-9 { color: rgb(var(--tag-9-av)); }
-.mention.av-tag-10 { color: rgb(var(--tag-10-av)); }
-.mention.av-tag-11 { color: rgb(var(--tag-11-av)); }
-.mention.av-tag-12 { color: rgb(var(--tag-12-av)); }
-.mention.av-tag-13 { color: rgb(var(--tag-13-av)); }
-.mention.av-tag-14 { color: rgb(var(--tag-14-av)); }
+.mention { color: var(--accent); font-weight: 700; }
+.mention.mtag-blue   { color: #4f46e5; }
+.mention.mtag-green  { color: #059669; }
+.mention.mtag-purple { color: #7c3aed; }
+.mention.mtag-orange { color: #d97706; }
+.mention.mtag-tag-1 { color: rgb(var(--tag-1-av)); }
+.mention.mtag-tag-2 { color: rgb(var(--tag-2-av)); }
+.mention.mtag-tag-3 { color: rgb(var(--tag-3-av)); }
+.mention.mtag-tag-4 { color: rgb(var(--tag-4-av)); }
+.mention.mtag-tag-5 { color: rgb(var(--tag-5-av)); }
+.mention.mtag-tag-6 { color: rgb(var(--tag-6-av)); }
+.mention.mtag-tag-7 { color: rgb(var(--tag-7-av)); }
+.mention.mtag-tag-8 { color: rgb(var(--tag-8-av)); }
+.mention.mtag-tag-9 { color: rgb(var(--tag-9-av)); }
+.mention.mtag-tag-10 { color: rgb(var(--tag-10-av)); }
+.mention.mtag-tag-11 { color: rgb(var(--tag-11-av)); }
+.mention.mtag-tag-12 { color: rgb(var(--tag-12-av)); }
+.mention.mtag-tag-13 { color: rgb(var(--tag-13-av)); }
+.mention.mtag-tag-14 { color: rgb(var(--tag-14-av)); }
 
 /* Markdown-lite: инлайновый код */
 .md-code {

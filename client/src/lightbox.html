@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Просмотр</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+  body {
+    display: flex; align-items: center; justify-content: center;
+    cursor: zoom-out; -webkit-user-select: none; user-select: none;
+    animation: bgIn 150ms ease-out;
+  }
+  body.closing { animation: bgOut 150ms ease-in forwards; }
+  @keyframes bgIn  { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes bgOut { from { opacity: 1; } to { opacity: 0; } }
+
+  img, video { max-width: 100vw; max-height: 100vh; object-fit: contain; }
+  /* :not(.opened) снимает анимацию сразу после её конца — иначе её «forwards»-значение
+     transform держится с более высоким приоритетом, чем inline-стиль, и зум не работает */
+  body:not(.opened) img, body:not(.opened) video { animation: mediaIn 220ms cubic-bezier(.34,1.56,.64,1) forwards; }
+  body.closing img, body.closing video { animation: mediaOut 150ms ease-in forwards; }
+  @keyframes mediaIn  { from { opacity: 0; transform: scale(.88); } to { opacity: 1; transform: scale(1); } }
+  @keyframes mediaOut { from { opacity: 1; transform: scale(1); }   to { opacity: 0; transform: scale(.88); } }
+
+  video { display: none; }
+  body.video img { display: none; }
+  body.video video { display: block; }
+  body.video .zoom { display: none; }
+  body.zoomed img { cursor: grab; }
+  body.zoomed img:active { cursor: grabbing; }
+
+  #dl {
+    position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(255,255,255,.12); color: #fff; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: background .15s;
+  }
+  #dl:hover { background: rgba(255,255,255,.22); }
+  .zoom { position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+  .zoom button {
+    width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.12);
+    color: #fff; border: none; cursor: pointer; display: flex; align-items: center;
+    justify-content: center; transition: background .15s;
+  }
+  .zoom button:hover { background: rgba(255,255,255,.22); }
+</style>
+</head>
+<body>
+  <img id="img">
+  <video id="vid" controls playsinline></video>
+  <div class="zoom">
+    <button type="button" title="Уменьшить" onclick="event.stopPropagation();zoomBy(-1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
+    <button type="button" title="Сбросить масштаб" onclick="event.stopPropagation();resetZoom()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+    <button type="button" title="Увеличить" onclick="event.stopPropagation();zoomBy(1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
+  </div>
+  <button id="dl" title="Скачать" onclick="event.stopPropagation();downloadCurrent()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+  </button>
+<script>
+  const params = new URLSearchParams(location.search);
+  const mediaUrl = params.get('url') || '';
+  const filename = params.get('filename') || 'file';
+  const type = params.get('type') || 'image';
+
+  const img = document.getElementById('img');
+  const vid = document.getElementById('vid');
+  if (type === 'video') {
+    document.body.classList.add('video');
+    vid.src = mediaUrl;
+    vid.play().catch(() => {});
+  } else {
+    img.src = mediaUrl;
+  }
+
+  document.body.addEventListener('animationend', e => {
+    if (e.animationName === 'mediaIn') document.body.classList.add('opened');
+  });
+
+  // Зум/перетаскивание — только у фото
+  let scale = 1, tx = 0, ty = 0, drag = null, didDrag = false;
+  const ZOOM_MIN = 1, ZOOM_MAX = 4, ZOOM_STEP = 0.5;
+  function applyTransform() {
+    img.style.transform = scale === 1 ? '' : `translate(${tx}px,${ty}px) scale(${scale})`;
+    document.body.classList.toggle('zoomed', scale > 1);
+  }
+  function zoomBy(dir) {
+    scale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, +(scale + dir * ZOOM_STEP).toFixed(2)));
+    if (scale === ZOOM_MIN) { tx = 0; ty = 0; }
+    applyTransform();
+  }
+  function resetZoom() { scale = 1; tx = 0; ty = 0; applyTransform(); }
+
+  img.addEventListener('mousedown', e => {
+    if (scale <= 1) return;
+    e.preventDefault();
+    drag = { x: e.clientX, y: e.clientY, tx, ty };
+  });
+  document.addEventListener('mousemove', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) didDrag = true;
+    tx = drag.tx + dx; ty = drag.ty + dy;
+    applyTransform();
+  });
+  document.addEventListener('mouseup', () => { drag = null; });
+
+  function closeLightbox() {
+    if (document.body.classList.contains('closing')) return;
+    document.body.classList.add('closing');
+    vid.pause();
+    setTimeout(() => window.close(), 150);
+  }
+  document.body.addEventListener('click', e => {
+    if (e.target === document.body && !didDrag) closeLightbox();
+    didDrag = false;
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+  function downloadCurrent() { window.electron?.downloadFile({ url: mediaUrl, filename }); }
+</script>
+</body>
+</html>
