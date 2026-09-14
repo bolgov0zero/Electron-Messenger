@@ -272,7 +272,22 @@ function updateTray() {
   ]));
   if (unreadCount > 0) startBlink();
   else stopBlink();
-  if (app.dock) app.dock.setBadge(unreadCount > 0 ? String(unreadCount) : '');
+  // Кроссплатформенный счётчик: сам делает то же, что app.dock.setBadge на macOS,
+  // и то же самое на Linux через Unity/DBus (Ubuntu и совместимые окружения —
+  // без такой интеграции в окружении бейдж просто не появится, это его ограничение,
+  // не наше). На Windows метод ничего не делает — там счётчик через оверлей ниже
+  app.setBadgeCount(unreadCount);
+  if (process.platform === 'win32' && mainWindow) {
+    mainWindow.setOverlayIcon(getOverlayImage(unreadCount), unreadCount > 0 ? `Непрочитанных: ${unreadCount}` : '');
+  }
+}
+
+// Оверлей поверх иконки в панели задач Windows — точное число нечитаемо на таком
+// маленьком значке, поэтому 10 и больше показываем одним «+» вместо цифр
+function getOverlayImage(count) {
+  if (count <= 0) return null;
+  const name = count > 9 ? 'overlay-more.png' : `overlay-${count}.png`;
+  return nativeImage.createFromPath(path.join(_ASSETS, name));
 }
 
 const _winBoundsFile = path.join(app.getPath('userData'), 'window-bounds.json');
