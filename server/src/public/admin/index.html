@@ -617,7 +617,17 @@ tr.ua-banned .ux-cell{opacity:.6}
 .an-left b{font-family:var(--f-mono)}
 .an-bar{height:4px;border-radius:2px;background:var(--c-surface2);overflow:hidden}
 .an-bar i{display:block;height:100%;background:var(--c-orange);transition:width 1s linear}
-.an-modal{width:620px}
+.an-modal{width:900px}
+/* Две колонки вместо одной длинной — слева тип/текст/время, справа превью и
+   получатели, каждая со своей прокруткой, чтобы модалка не растягивалась */
+.an-modal .ua-body{display:grid;grid-template-columns:1.15fr 1fr;gap:0;padding:0;min-height:0}
+.an-col-left,.an-col-right{display:flex;flex-direction:column;gap:20px;padding:16px 18px 18px;overflow-y:auto;min-height:0;min-width:0}
+.an-col-left{border-right:1px solid var(--c-border)}
+.an-divider{height:1px;background:var(--c-border)}
+@media (max-width:900px){
+  .an-modal .ua-body{grid-template-columns:1fr}
+  .an-col-left{border-right:0;border-bottom:1px solid var(--c-border)}
+}
 .an-kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .an-area{align-items:stretch;padding:0 11px;height:auto}
 .an-area textarea{border:0;outline:none;background:none;font:13px/1.45 var(--f-ui);color:var(--c-text);width:100%;resize:vertical;min-height:76px;padding:8px 0}
@@ -5066,45 +5076,50 @@ function anRenderForm(focusId) {
       <div class="ua-head"><div><div class="ua-title">Новое объявление</div><div class="ua-sub">Тип, текст, время и получатели</div></div>
         <button type="button" class="modal-close" aria-label="Закрыть" onclick="closeModal('modal-announcement')">✕</button></div>
       <div class="ua-body">
-        <div class="an-kinds ua-roles" role="radiogroup" aria-label="Тип объявления">${Object.entries(ANN_KINDS).map(([k, v]) =>
-          `<button type="button" class="ua-role-opt" role="radio" aria-checked="${f.kind === k}" onclick="anSet('kind', '${k}')"><b>${v.label}</b><span>${ANN_HINTS[k]}</span></button>`).join('')}</div>
-        <div class="ua-field"><label for="an-text">Текст</label>
-          <div class="ua-inp an-area"><textarea id="an-text" placeholder="Что сказать людям" oninput="AN.form.text = this.value; document.getElementById('an-pv').innerHTML = anPreview(AN.form.kind, this.value.trim())">${esc(f.text)}</textarea></div></div>
-        <div class="ua-field"><label>Так увидят</label><div id="an-pv">${anPreview(f.kind, f.text.trim())}</div></div>
-        <div class="ua-row2">
-          <div class="ua-field"><label>Когда</label>
-            <div class="dtp">
-              <button type="button" class="dtp-field" onclick="dtpToggle(event)">
-                <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/></svg>
-                <span class="dtp-val" id="dtp-val">${annStartAt ? esc(fmtDateTime(annStartAt)) : 'Сейчас'}</span>
-                <span class="dtp-reset" id="dtp-reset" style="${annStartAt ? '' : 'display:none'}" onclick="event.stopPropagation();dtpReset()">✕</span>
-              </button>
-              <div class="dtp-pop" id="dtp-pop" hidden>
-                <div class="dtp-head">
-                  <button type="button" class="dtp-nav" aria-label="Предыдущий месяц" onclick="dtpShiftMonth(-1)">‹</button>
-                  <div class="dtp-head-title" id="dtp-title"></div>
-                  <button type="button" class="dtp-nav" aria-label="Следующий месяц" onclick="dtpShiftMonth(1)">›</button>
-                </div>
-                <div class="dtp-grid" id="dtp-grid"></div>
-                <div class="dtp-foot">
-                  <div class="dtp-time">
-                    <input id="dtp-h" maxlength="2" inputmode="numeric" aria-label="Часы" oninput="dtpFixTime()">:<input id="dtp-m" maxlength="2" inputmode="numeric" aria-label="Минуты" oninput="dtpFixTime()">
+        <div class="an-col-left">
+          <div class="an-kinds ua-roles" role="radiogroup" aria-label="Тип объявления">${Object.entries(ANN_KINDS).map(([k, v]) =>
+            `<button type="button" class="ua-role-opt" role="radio" aria-checked="${f.kind === k}" onclick="anSet('kind', '${k}')"><b>${v.label}</b><span>${ANN_HINTS[k]}</span></button>`).join('')}</div>
+          <div class="ua-field"><label for="an-text">Текст</label>
+            <div class="ua-inp an-area"><textarea id="an-text" placeholder="Что сказать людям" oninput="AN.form.text = this.value; document.getElementById('an-pv').innerHTML = anPreview(AN.form.kind, this.value.trim())">${esc(f.text)}</textarea></div></div>
+          <div class="ua-row2">
+            <div class="ua-field"><label>Когда</label>
+              <div class="dtp">
+                <button type="button" class="dtp-field" onclick="dtpToggle(event)">
+                  <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/></svg>
+                  <span class="dtp-val" id="dtp-val">${annStartAt ? esc(fmtDateTime(annStartAt)) : 'Сейчас'}</span>
+                  <span class="dtp-reset" id="dtp-reset" style="${annStartAt ? '' : 'display:none'}" onclick="event.stopPropagation();dtpReset()">✕</span>
+                </button>
+                <div class="dtp-pop" id="dtp-pop" hidden>
+                  <div class="dtp-head">
+                    <button type="button" class="dtp-nav" aria-label="Предыдущий месяц" onclick="dtpShiftMonth(-1)">‹</button>
+                    <div class="dtp-head-title" id="dtp-title"></div>
+                    <button type="button" class="dtp-nav" aria-label="Следующий месяц" onclick="dtpShiftMonth(1)">›</button>
                   </div>
-                  <button type="button" class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="dtpReset()">Сейчас</button>
-                  <button type="button" class="btn btn-primary btn-sm" onclick="dtpApply()">Готово</button>
+                  <div class="dtp-grid" id="dtp-grid"></div>
+                  <div class="dtp-foot">
+                    <div class="dtp-time">
+                      <input id="dtp-h" maxlength="2" inputmode="numeric" aria-label="Часы" oninput="dtpFixTime()">:<input id="dtp-m" maxlength="2" inputmode="numeric" aria-label="Минуты" oninput="dtpFixTime()">
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="dtpReset()">Сейчас</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="dtpApply()">Готово</button>
+                  </div>
                 </div>
-              </div>
-            </div></div>
-          ${f.kind === 'banner' ? `<div class="ua-field"><label for="an-dur">Показывать, мин</label>
-            <div class="ua-inp"><input id="an-dur" type="number" min="1" max="10080" value="${f.duration}" oninput="AN.form.duration = this.value"></div>
-            <span class="ua-hint">Потом полоса исчезнет сама</span></div>` : '<div></div>'}
+              </div></div>
+            ${f.kind === 'banner' ? `<div class="ua-field"><label for="an-dur">Показывать, мин</label>
+              <div class="ua-inp"><input id="an-dur" type="number" min="1" max="10080" value="${f.duration}" oninput="AN.form.duration = this.value"></div>
+              <span class="ua-hint">Потом полоса исчезнет сама</span></div>` : '<div></div>'}
+          </div>
         </div>
-        <div class="ua-field"><label>${chat ? 'Куда' : 'Кому'}${f.pick ? ` <span class="opt">· выбрано ${f.who.size}</span>` : ''}</label>
-          <div class="an-seg"><button type="button" aria-pressed="${!f.pick}" onclick="anSet('pick', false)">${chat ? 'Во все группы и комнаты' : 'Всем'}</button>
-            <button type="button" aria-pressed="${f.pick}" onclick="anSet('pick', true)">${chat ? 'Выбрать чаты' : 'Выбрать людей'}</button></div>
-          ${f.pick ? `<div class="ux-search" style="margin-top:8px">${UX_I.search || ''}<input id="an-pq" value="${esc(f.q)}" placeholder="${chat ? 'Поиск чатов' : 'Поиск людей'}" oninput="AN.form.q = this.value; anList()"></div>
-            <div class="rm-list rm-scroll" id="an-list" style="max-height:220px;margin-top:6px">${anListHtml()}</div>` : ''}
-          ${f.kind === 'popup' ? '<span class="ua-hint">Всплывающее увидят только те, кто сейчас в сети</span>' : ''}</div>
+        <div class="an-col-right">
+          <div class="ua-field"><label>Так увидят</label><div id="an-pv">${anPreview(f.kind, f.text.trim())}</div></div>
+          <div class="an-divider"></div>
+          <div class="ua-field"><label>${chat ? 'Куда' : 'Кому'}${f.pick ? ` <span class="opt">· выбрано ${f.who.size}</span>` : ''}</label>
+            <div class="an-seg"><button type="button" aria-pressed="${!f.pick}" onclick="anSet('pick', false)">${chat ? 'Во все группы и комнаты' : 'Всем'}</button>
+              <button type="button" aria-pressed="${f.pick}" onclick="anSet('pick', true)">${chat ? 'Выбрать чаты' : 'Выбрать людей'}</button></div>
+            ${f.pick ? `<div class="ux-search" style="margin-top:8px">${UX_I.search || ''}<input id="an-pq" value="${esc(f.q)}" placeholder="${chat ? 'Поиск чатов' : 'Поиск людей'}" oninput="AN.form.q = this.value; anList()"></div>
+              <div class="rm-list rm-scroll" id="an-list" style="max-height:220px;margin-top:6px">${anListHtml()}</div>` : ''}
+            ${f.kind === 'popup' ? '<span class="ua-hint">Всплывающее увидят только те, кто сейчас в сети</span>' : ''}</div>
+        </div>
       </div>
       <div class="ua-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}<span class="ux-grow"></span>
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-announcement')">Отмена</button>

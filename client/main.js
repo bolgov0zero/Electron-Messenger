@@ -544,14 +544,14 @@ function lightboxUrl(payload) {
   return u.toString();
 }
 ipcMain.handle('lightbox-open', (_, payload) => {
-  if (lightboxWin && !lightboxWin.isDestroyed()) {
-    lightboxWin.loadURL(lightboxUrl(payload));
-    lightboxWin.focus();
-    return;
-  }
+  // Каждый раз новое окно, а не переиспользование прежнего (loadURL в то же окно):
+  // если окно закрывалось, пока ещё было в simple fullscreen, macOS иногда не
+  // восстанавливал Dock и строку меню — они оставались скрытыми и после закрытия
+  if (lightboxWin && !lightboxWin.isDestroyed()) lightboxWin.close();
+
   const parentBounds = mainWindow.getBounds();
   const display = screen.getDisplayMatching(parentBounds);
-  lightboxWin = new BrowserWindow({
+  const win = new BrowserWindow({
     x: display.bounds.x, y: display.bounds.y,
     width: display.bounds.width, height: display.bounds.height,
     frame: false, resizable: false, movable: false,
@@ -559,18 +559,30 @@ ipcMain.handle('lightbox-open', (_, payload) => {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
     show: false,
   });
-  lightboxWin.setMenuBarVisibility(false);
+  lightboxWin = win;
+  win.setMenuBarVisibility(false);
   // Уровень 'screen-saver' поднимает окно над другими окнами приложений (Windows/Linux
   // panel), но на macOS этого не хватает — строка меню рисуется поверх независимо от
   // уровня окна. Единственный надёжный способ закрыть и её — «простой» полноэкранный
   // режим (без анимации/перехода в отдельный Space, в отличие от обычного setFullScreen)
-  lightboxWin.setAlwaysOnTop(true, 'screen-saver');
-  lightboxWin.once('ready-to-show', () => {
-    lightboxWin?.show();
-    if (process.platform === 'darwin') lightboxWin?.setSimpleFullScreen(true);
+  win.setAlwaysOnTop(true, 'screen-saver');
+  // Выходим из simple fullscreen ДО закрытия окна: если закрыть его прямо в этом
+  // режиме, macOS может оставить Dock и строку меню скрытыми и после закрытия
+  let closing = false;
+  win.on('close', e => {
+    if (process.platform === 'darwin' && win.isSimpleFullScreen() && !closing) {
+      e.preventDefault();
+      closing = true;
+      win.setSimpleFullScreen(false);
+      setTimeout(() => win.close(), 100);
+    }
   });
-  lightboxWin.on('closed', () => { lightboxWin = null; });
-  lightboxWin.loadURL(lightboxUrl(payload));
+  win.once('ready-to-show', () => {
+    win.show();
+    if (process.platform === 'darwin') win.setSimpleFullScreen(true);
+  });
+  win.on('closed', () => { if (lightboxWin === win) lightboxWin = null; });
+  win.loadURL(lightboxUrl(payload));
 });
 
 // Detect if launched at login (should start hidden in tray)
