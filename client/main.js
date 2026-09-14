@@ -559,14 +559,24 @@ ipcMain.handle('lightbox-open', (_, payload) => {
   });
   lightboxWin = win;
   win.setMenuBarVisibility(false);
-  // 'screen-saver' поднимает окно над другими окнами приложений (Windows/Linux panel)
-  // и над Dock. Строку меню на macOS этот уровень не перекрывает — раньше это чинили
-  // через simple fullscreen, но он на macOS переключает Dock/меню на уровне всего
-  // приложения, а не только этого окна: если что-то в снятии режима срывалось, Dock и
-  // строка меню оставались скрытыми даже после закрытия окна и на главном окне тоже.
-  // Не перекрывать строку меню — предсказуемее и безопаснее, чем такой риск
   win.setAlwaysOnTop(true, 'screen-saver');
-  win.once('ready-to-show', () => win.show());
+  // Обычное (не полноэкранное) окно macOS не может визуально занимать место под
+  // строкой меню, даже если задать y:0 — система сама сдвигает содержимое вниз на
+  // высоту строки меню. Единственный способ закрыть и её — simple fullscreen. Он
+  // переключает скрытие Dock/строки меню на уровне всего приложения, а не только
+  // этого окна, поэтому критично снять режим ДО закрытия окна, а не после
+  win.once('ready-to-show', () => {
+    win.show();
+    if (process.platform === 'darwin') win.setSimpleFullScreen(true);
+  });
+  let closing = false;
+  win.on('close', e => {
+    if (process.platform !== 'darwin' || closing) return;
+    e.preventDefault();
+    closing = true;
+    win.setSimpleFullScreen(false);
+    setTimeout(() => { if (!win.isDestroyed()) win.close(); }, 250);
+  });
   win.on('closed', () => { if (lightboxWin === win) lightboxWin = null; });
   win.loadURL(lightboxUrl(payload));
 });
