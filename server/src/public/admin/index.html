@@ -239,13 +239,6 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .hm-upd-btn{min-width:196px;justify-content:center}
 .hm-upd-btn.hm-upd-ok{color:var(--c-green-text)}
 .hm-upd-btn.hm-upd-err{color:var(--c-red-text)}
-.hm-ctl{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.hm-live{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--c-text2);white-space:nowrap}
-.hm-live-dot{width:7px;height:7px;border-radius:50%;background:var(--c-green);animation:hmPulse 2s ease-out infinite}
-.hm-live.paused .hm-live-dot{background:var(--c-muted);animation:none}
-.hm-live.down{color:var(--c-orange-text);font-weight:600}
-.hm-live.down .hm-live-dot{background:var(--c-orange);animation:none}
-@keyframes hmPulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.5)}80%,100%{box-shadow:0 0 0 7px rgba(16,185,129,0)}}
 .hm-seg{display:flex;padding:2px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm)}
 .hm-seg button{height:24px;padding:0 10px;border:0;background:none;border-radius:6px;font:600 11px var(--f-ui);color:var(--c-text2);cursor:pointer}
 .hm-seg button:hover{color:var(--c-text)}
@@ -295,6 +288,13 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .hm-legend b{font-family:var(--f-mono);font-weight:600;color:var(--c-text);font-variant-numeric:tabular-nums}
 .hm-legend .at{margin-left:auto;font-family:var(--f-mono);color:var(--c-muted);font-size:10.5px}
 .hm-hint{font-size:11px;color:var(--c-muted)}
+/* Компактный режим — кнопка в топбаре: сворачивает графики и детали у всех
+   шести блоков, оставляя заголовок и главное значение */
+.hm.hm-compact .hm-chart,
+.hm.hm-compact .hm-legend,
+.hm.hm-compact .hm-tbl,
+.hm.hm-compact .hm-inner,
+.hm.hm-compact .hm-store-list{display:none}
 .hm-meter{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--c-surface2);margin-top:6px}
 .hm-meter span{height:100%}
 
@@ -365,10 +365,9 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
   .hm-chat-kpis .hm-kpi:nth-child(n+4){border-top:1px solid var(--c-border2)}
   .hm-chat-body{grid-template-columns:minmax(0,1fr)}
   .hm-chat-body>div+div{border-left:0;border-top:1px solid var(--c-border2)}
-  .hm-ctl{margin-left:0}
   .hm-steps{grid-template-columns:minmax(0,1fr)}
 }
-@media (prefers-reduced-motion:reduce){ .hm-live-dot,.hm-spin,.hm-steps li.active .ic{animation:none} .hm-bar span{transition:none} }
+@media (prefers-reduced-motion:reduce){ .hm-spin,.hm-steps li.active .ic{animation:none} .hm-bar span{transition:none} }
 
 /* ── СПИСКИ: ПОЛЬЗОВАТЕЛИ И КЛИЕНТЫ ── */
 /* Общие части — ux-, пользователи — ua-, клиенты — cl-: короткие имена в админке уже заняты */
@@ -1659,12 +1658,13 @@ const HM = {
   overview: null,
   samples: [], events: [], live: {}, ws: null, cores: 1, lastT: 0,
   range: '15m', paused: false, hover: null, barHover: null, down: false,
-  msgRange: '24h', activity: null,
+  msgRange: '24h', activity: null, compact: false,
   timer: null, ro: null,
   upd: { busy: false, target: null, check: null },
 };
 try { const r = localStorage.getItem('hm-range'); if (['5m', '15m', '1h'].includes(r)) HM.range = r; } catch {}
 try { const r = localStorage.getItem('hm-msg-range'); if (['24h', '7d', '30d', '1y'].includes(r)) HM.msgRange = r; } catch {}
+try { HM.compact = localStorage.getItem('hm-compact') === '1'; } catch {}
 const HM_MSG_RANGE = {
   '24h': { name: '24 часа', title: 'Сообщения за 24 часа' },
   '7d': { name: 'Неделя', title: 'Сообщения за неделю' },
@@ -1736,6 +1736,8 @@ const HM_ICON = {
   room: '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
   ann: '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/></svg>',
   restart: '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
+  compact: '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
+  expand: '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
 };
 
 function hmTileHtml(id, title, icon, lines, extra = '') {
@@ -1760,8 +1762,15 @@ async function renderDashboard() {
   hmStopMonitor();
   const I = HM_ICON;
   const RANGE_NAME = { '5m': '5 мин', '15m': '15 мин', '1h': '1 час' };
+  setTopbarActions(`
+    <button class="btn btn-ghost btn-sm" id="hm-pause" aria-pressed="false" onclick="hmTogglePause()"></button>
+    <div class="hm-seg" role="group" aria-label="Период графиков">
+      ${Object.keys(RANGE_NAME).map(r => `<button data-range="${r}" aria-pressed="${HM.range === r}" onclick="hmSetRange('${r}')">${RANGE_NAME[r]}</button>`).join('')}
+    </div>
+    <button class="btn btn-ghost btn-sm" id="hm-compact" aria-pressed="${HM.compact}" onclick="hmToggleCompact()"></button>
+  `);
   document.getElementById('page-body').innerHTML = `
-  <div class="hm" id="hm">
+  <div class="hm${HM.compact ? ' hm-compact' : ''}" id="hm">
     <section class="hm-panel hm-host" aria-label="Сервер">
       <div class="hm-host-id">
         <div class="hm-host-ic">${I.server}</div>
@@ -1777,13 +1786,6 @@ async function renderDashboard() {
       </dl>
       <div class="hm-upd" aria-live="polite">
         <button class="btn btn-ghost btn-sm hm-upd-btn" id="hm-upd-btn"></button>
-      </div>
-      <div class="hm-ctl">
-        <span class="hm-live" id="hm-live"><span class="hm-live-dot"></span><span id="hm-live-text">Обновление каждые 2 с</span></span>
-        <button class="btn btn-ghost btn-sm" id="hm-pause" aria-pressed="false" onclick="hmTogglePause()"></button>
-        <div class="hm-seg" role="group" aria-label="Период графиков">
-          ${Object.keys(RANGE_NAME).map(r => `<button data-range="${r}" aria-pressed="${HM.range === r}" onclick="hmSetRange('${r}')">${RANGE_NAME[r]}</button>`).join('')}
-        </div>
       </div>
       <div class="hm-upd-panel" id="hm-upd-panel" aria-live="polite" hidden></div>
     </section>
@@ -1854,6 +1856,7 @@ async function renderDashboard() {
 
   hmUpdIdle();
   hmSyncPause();
+  hmSyncCompact();
   hmBindCharts();
   hmBindBars();
   HM.ro?.disconnect();
@@ -1993,8 +1996,11 @@ function hmBindBars() {
   };
   el.addEventListener('pointermove', pick);
   el.addEventListener('pointerdown', pick);
-  // На касание подсказка остаётся до следующего касания; мышь — убираем при уходе
+  // На касание подсказка остаётся до следующего касания; мышь — убираем при уходе.
+  // mouseleave — подстраховка: pointerleave изредка не срабатывает при быстром
+  // уходе курсора, и подсказка зависает над графиком
   el.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { HM.barHover = null; hmRenderBars(); } });
+  el.addEventListener('mouseleave', () => { HM.barHover = null; hmRenderBars(); });
   el.addEventListener('keydown', e => {
     const n = HM.activity?.buckets.length || 0;
     if (!n || !['ArrowLeft', 'ArrowRight', 'Escape'].includes(e.key)) return;
@@ -2217,6 +2223,8 @@ function hmBindCharts() {
       hmRenderCharts();
     });
     el.addEventListener('pointerleave', () => { HM.hover = null; hmRenderCharts(); });
+    // Подстраховка на случай, если pointerleave не сработает при быстром уходе курсора
+    el.addEventListener('mouseleave', () => { HM.hover = null; hmRenderCharts(); });
     el.addEventListener('keydown', e => {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         e.preventDefault();
@@ -2302,7 +2310,6 @@ async function hmLoadMonitor(full) {
     HM.ws = m.ws;
     HM.lastT = HM.samples.length ? HM.samples[HM.samples.length - 1][0] : m.now;
   }
-  hmSyncLive();
   if (full || !HM.paused || HM.down !== wasDown) { hmRenderCharts(); hmRenderHeadlines(); }
 }
 
@@ -2316,26 +2323,31 @@ function hmStartMonitor() {
 }
 function hmStopMonitor() { clearInterval(HM.timer); HM.timer = null; }
 
-function hmSyncLive() {
-  const live = $hm('hm-live');
-  if (!live) return;
-  live.classList.toggle('down', HM.down);
-  live.classList.toggle('paused', HM.paused && !HM.down);
-  hmText('hm-live-text', HM.down ? (HM.upd.busy ? 'Сервер перезапускается…' : 'Нет связи с сервером')
-    : HM.paused ? 'На паузе' : 'Обновление каждые 2 с');
-}
 function hmSyncPause() {
   const b = $hm('hm-pause');
   if (!b) return;
   b.setAttribute('aria-pressed', String(HM.paused));
   b.innerHTML = HM.paused ? HM_ICON.play + 'Продолжить' : HM_ICON.pause + 'Пауза';
-  hmSyncLive();
 }
 // Пауза замораживает картинку, но данные продолжают приходить — после паузы пропусков нет
 function hmTogglePause() {
   HM.paused = !HM.paused;
   hmSyncPause();
   if (!HM.paused) { hmRenderCharts(); hmRenderHeadlines(); }
+}
+function hmSyncCompact() {
+  const b = $hm('hm-compact');
+  if (!b) return;
+  b.setAttribute('aria-pressed', String(HM.compact));
+  b.innerHTML = HM.compact ? HM_ICON.expand + 'Подробно' : HM_ICON.compact + 'Компактно';
+  $hm('hm')?.classList.toggle('hm-compact', HM.compact);
+}
+// Сворачивает графики и детали у всех блоков — заголовок и главное значение остаются
+function hmToggleCompact() {
+  HM.compact = !HM.compact;
+  try { localStorage.setItem('hm-compact', HM.compact ? '1' : '0'); } catch {}
+  hmSyncCompact();
+  if (!HM.compact) { hmRenderCharts(); hmRenderHeadlines(); }
 }
 function hmSetRange(r) {
   HM.range = r;
@@ -2449,7 +2461,6 @@ async function hmUpdPoll() {
 function hmUpdRenderSteps() {
   const u = HM.upd, p = $hm('hm-upd-panel');
   hmUpdButton(hmSpin(HM_ICON.refresh) + 'Устанавливаю…', 'btn-ghost', null, true, `${u.from || ''} → ${u.target}`);
-  hmSyncLive();
   if (!p) return;
   p.hidden = false;
   if (!$hm('hm-upd-steps')) p.innerHTML = `
@@ -2517,7 +2528,6 @@ function hmUpdFinish(ok, message) {
   if (bar) { bar.style.width = '100%'; bar.style.background = ok ? 'var(--c-green)' : 'var(--c-red)'; }
   if (ok) hmUpdLatest(u.checkedAt);
   else hmUpdButton(HM_ICON.refresh + 'Проверить обновления', 'btn-ghost', hmUpdCheck);
-  hmSyncLive();
   const p = $hm('hm-upd-panel');
   const row = html => {
     if (!p) return;
