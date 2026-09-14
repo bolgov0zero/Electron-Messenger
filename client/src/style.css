@@ -1376,6 +1376,12 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .bubble-image { margin: 4px 0; cursor: zoom-in; border-radius: 9px; overflow: hidden; max-width: 280px; min-height: 160px; background: var(--hover-row); }
 .bubble-image img { display: block; width: 100%; max-height: 300px; min-height: 160px; object-fit: cover; }
 
+/* Video attachment — тот же кадр, что и у картинки, плюс кнопка воспроизведения поверх */
+.bubble-video { position: relative; }
+.bubble-video video { display: block; width: 100%; max-height: 300px; min-height: 160px; object-fit: cover; pointer-events: none; }
+.bubble-video-play { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 52px; height: 52px; border-radius: 50%; background: rgba(0,0,0,.5); color: #fff; display: flex; align-items: center; justify-content: center; padding-left: 3px; box-shadow: 0 4px 16px rgba(0,0,0,.4); transition: background .15s, transform .15s; }
+.bubble-video:hover .bubble-video-play { background: rgba(0,0,0,.7); transform: translate(-50%,-50%) scale(1.06); }
+
 /* File attachment */
 .bubble-file { display: flex; align-items: center; gap: 10px; margin: 4px 0; padding: 10px 12px; border-radius: 9px; background: var(--hover-row); cursor: pointer; max-width: 320px; transition: background .15s; }
 .bubble-file:hover { background: var(--surface2); }
@@ -1398,17 +1404,27 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 
 /* Lightbox */
 #lightbox { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.85); align-items: center; justify-content: center; cursor: zoom-out; }
+#lightbox:fullscreen { background: #000; }
 #lightbox.lb-open { display: flex; animation: lbBgIn 180ms ease-out forwards; }
-#lightbox.lb-open img { animation: lbImgIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+#lightbox.lb-open img, #lightbox.lb-open video { animation: lbImgIn 220ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 #lightbox.lb-closing { display: flex; animation: lbBgOut 150ms ease-in forwards; }
-#lightbox.lb-closing img { animation: lbImgOut 150ms ease-in forwards; }
+#lightbox.lb-closing img, #lightbox.lb-closing video { animation: lbImgOut 150ms ease-in forwards; }
 @keyframes lbBgIn  { from { opacity: 0; }                                  to { opacity: 1; } }
 @keyframes lbBgOut { from { opacity: 1; }                                  to { opacity: 0; } }
 @keyframes lbImgIn  { from { opacity: 0; transform: scale(.88); }          to { opacity: 1; transform: scale(1); } }
 @keyframes lbImgOut { from { opacity: 1; transform: scale(1); }            to { opacity: 0; transform: scale(.88); } }
-#lightbox img { max-width: 92vw; max-height: 92vh; border-radius: 9px; object-fit: contain; box-shadow: 0 8px 40px rgba(0,0,0,.6); }
+#lightbox img, #lightbox video { max-width: 92vw; max-height: 92vh; border-radius: 9px; object-fit: contain; box-shadow: 0 8px 40px rgba(0,0,0,.6); transition: transform .15s ease; }
+#lightbox video { display: none; }
+#lightbox.lb-video #lightbox-img { display: none; }
+#lightbox.lb-video #lightbox-video { display: block; }
+#lightbox.lb-video .lb-zoom { display: none; }
+#lightbox.lb-zoomed #lightbox-img { cursor: grab; }
+#lightbox.lb-zoomed #lightbox-img:active { cursor: grabbing; }
 #lightbox-download { position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,.4); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
 #lightbox-download:hover { background: rgba(0,0,0,.7); }
+.lb-zoom { position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+.lb-zoom button { width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,.4); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+.lb-zoom button:hover { background: rgba(0,0,0,.7); }
 
 /* Legacy msg-meta hidden (kept for appendMsg compat) */
 .msg-meta { display: none; }
@@ -1488,7 +1504,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   display: flex; align-items: baseline;
   gap: 8px; margin-bottom: 3px;
 }
-.irc-name { font-size: 13px; font-weight: 700; color: var(--muted); }
+.irc-name { font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer; }
 .irc-name.mine { color: var(--accent); }
 .irc-meta { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .irc-time {
@@ -2954,8 +2970,26 @@ select:focus-visible, .user-row:focus-visible, .chat-item:focus-visible {
   font-weight: 600;
 }
 
-/* Упоминание @username */
+/* Упоминание @username — цвет тот же, что у аватара упомянутого (userAvatarColor) */
 .mention { color: var(--accent); font-weight: 600; }
+.mention.av-blue   { color: #4f46e5; }
+.mention.av-green  { color: #059669; }
+.mention.av-purple { color: #7c3aed; }
+.mention.av-orange { color: #d97706; }
+.mention.av-tag-1 { color: rgb(var(--tag-1-av)); }
+.mention.av-tag-2 { color: rgb(var(--tag-2-av)); }
+.mention.av-tag-3 { color: rgb(var(--tag-3-av)); }
+.mention.av-tag-4 { color: rgb(var(--tag-4-av)); }
+.mention.av-tag-5 { color: rgb(var(--tag-5-av)); }
+.mention.av-tag-6 { color: rgb(var(--tag-6-av)); }
+.mention.av-tag-7 { color: rgb(var(--tag-7-av)); }
+.mention.av-tag-8 { color: rgb(var(--tag-8-av)); }
+.mention.av-tag-9 { color: rgb(var(--tag-9-av)); }
+.mention.av-tag-10 { color: rgb(var(--tag-10-av)); }
+.mention.av-tag-11 { color: rgb(var(--tag-11-av)); }
+.mention.av-tag-12 { color: rgb(var(--tag-12-av)); }
+.mention.av-tag-13 { color: rgb(var(--tag-13-av)); }
+.mention.av-tag-14 { color: rgb(var(--tag-14-av)); }
 
 /* Markdown-lite: инлайновый код */
 .md-code {

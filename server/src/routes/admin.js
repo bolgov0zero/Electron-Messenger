@@ -353,11 +353,12 @@ router.get('/settings', (req, res) => {
 router.put('/settings', (req, res) => {
   const allowed = ['github_token', 'edit_time_limit',
     'upload_image_max_size', 'upload_image_extensions',
+    'upload_video_max_size', 'upload_video_extensions',
     'upload_file_max_size', 'upload_file_extensions', 'upload_file_lifetime',
     ];
   const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
   const del = db.prepare('DELETE FROM settings WHERE key = ?');
-  const keepEmpty = ['upload_image_extensions', 'upload_file_extensions', 'upload_file_lifetime'];
+  const keepEmpty = ['upload_image_extensions', 'upload_video_extensions', 'upload_file_extensions', 'upload_file_lifetime'];
   for (const key of allowed) {
     if (key in req.body) {
       const val = req.body[key]?.trim() ?? '';
@@ -739,7 +740,7 @@ function collectFiles() {
       if (fname.endsWith('_t.webp')) continue;
       if (!fileMap.has(fname)) {
         fileMap.set(fname, {
-          filename: fname, mime: att.mime || null,
+          filename: fname, name: att.name || null, mime: att.mime || null,
           message_id: msg.id, chat_id: msg.chat_id, sender_id: msg.sender_id,
           chat_name: msg.chat_name, chat_type: msg.chat_type,
           sender_name: msg.sender_name, sent_at: msg.sent_at,

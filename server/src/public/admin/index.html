@@ -4084,11 +4084,12 @@ const ST_I = {
 };
 const ST_EDIT = [[60, '1 мин'], [120, '2 мин'], [900, '15 мин'], [3600, '1 час'], [172800, '48 часов']];
 const ST_LIFE = [[0, 'Всегда'], [30, '30 дней'], [90, '90 дней'], [365, '1 год']];
-const ST_FORM = { messages: ['edit'], attachments: ['imgMax', 'imgExt', 'fileMax', 'fileExt', 'life'] };
+const ST_FORM = { messages: ['edit'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'] };
 const ST_IN = { messages: 'в «Сообщениях»', attachments: 'во «Вложениях»' };
-const ST_QUICK = { 'Документы': ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'], 'Архивы': ['zip', 'rar', '7z'], 'Видео': ['mp4', 'mov', 'webm'] };
+const ST_QUICK = { 'Документы': ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'], 'Архивы': ['zip', 'rar', '7z'] };
 const ST_KEYS = {
   edit: ['edit_time_limit', String], imgMax: ['upload_image_max_size', String], imgExt: ['upload_image_extensions', v => v.join(',')],
+  videoMax: ['upload_video_max_size', String], videoExt: ['upload_video_extensions', v => v.join(',')],
   fileMax: ['upload_file_max_size', String], fileExt: ['upload_file_extensions', v => v.join(',')], life: ['upload_file_lifetime', String],
 };
 const stPad = n => String(n).padStart(2, '0');
@@ -4112,6 +4113,8 @@ function stFromSettings(s) {
     edit: Number(s.edit_time_limit) || 120,
     imgMax: Number(s.upload_image_max_size) || 10,
     imgExt: s.upload_image_extensions ? list(s.upload_image_extensions) : ['jpeg', 'jpg', 'png', 'gif', 'webp'],
+    videoMax: Number(s.upload_video_max_size) || 50,
+    videoExt: s.upload_video_extensions ? list(s.upload_video_extensions) : ['mp4', 'mov', 'webm'],
     fileMax: Number(s.upload_file_max_size) || 50,
     fileExt: list(s.upload_file_extensions),
     life: Number(s.upload_file_lifetime) || 0,
@@ -4139,8 +4142,10 @@ function stErrors() {
   const d = ST.draft, e = {};
   if (!(d.edit >= 10)) e.edit = 'Срок правки — не меньше 10 секунд';
   if (!(Number.isInteger(d.imgMax) && d.imgMax >= 1 && d.imgMax <= 500)) e.imgMax = 'Размер картинок — от 1 до 500 МБ';
+  if (!(Number.isInteger(d.videoMax) && d.videoMax >= 1 && d.videoMax <= 500)) e.videoMax = 'Размер видео — от 1 до 500 МБ';
   if (!(Number.isInteger(d.fileMax) && d.fileMax >= 1 && d.fileMax <= 500)) e.fileMax = 'Размер файлов — от 1 до 500 МБ';
   if (!d.imgExt.length) e.imgExt = 'Нужен хотя бы один формат картинок, иначе их нельзя будет отправить';
+  if (!d.videoExt.length) e.videoExt = 'Нужен хотя бы один формат видео, иначе его нельзя будет отправить';
   if (!(Number.isInteger(d.life) && d.life >= 0 && d.life <= 3650)) e.life = 'Срок хранения — от 1 до 3650 дней';
   return e;
 }
@@ -4150,7 +4155,7 @@ const stVersion = () => ST.stats?.serverVersion || '—';
 
 const ST_SECTIONS = [
   { k: 'messages', label: 'Сообщения', icon: ST_I.msg, desc: 'Что можно делать с уже отправленными сообщениями', meta: () => `${stDur(ST.saved.edit)} на правку` },
-  { k: 'attachments', label: 'Вложения', icon: ST_I.clip, desc: 'Размер, форматы и срок хранения картинок и файлов', meta: () => `до ${ST.saved.imgMax} и ${ST.saved.fileMax} МБ${ST.saved.life ? ` · ${ST.saved.life} дн.` : ''}` },
+  { k: 'attachments', label: 'Вложения', icon: ST_I.clip, desc: 'Размер, форматы и срок хранения медиа и файлов', meta: () => `до ${ST.saved.imgMax} и ${ST.saved.fileMax} МБ${ST.saved.life ? ` · ${ST.saved.life} дн.` : ''}` },
   { k: 'backups', label: 'Резервные копии', icon: ST_I.db, desc: 'Снимки базы: сообщения, пользователи, чаты и настройки', meta: () => ST.backups.length ? `последняя ${uaSeen(stLastBackup().created_at)}` : 'копий нет', dot: () => stBackupOld() ? 'warn' : '' },
   { k: 'github', label: 'GitHub', icon: ST_I.gh, desc: 'Доступ к репозиторию для проверки обновлений', meta: () => ST.gh.set ? 'токен задан' : 'без токена', dot: () => ST.gh.set ? 'ok' : 'warn' },
   { k: 'update', label: 'Обновление', icon: ST_I.upd, title: 'Обновление сервера', desc: 'Версия сервера и установка новых релизов', meta: () => ST.upd.state === 'available' ? `есть версия ${ST.upd.v.latest}` : `версия ${stVersion()}`, dot: () => ST.upd.state === 'available' ? 'warn' : '' },
@@ -4208,10 +4213,12 @@ function stTokHtml(k, anyText) {
 }
 function stPaneAttachments() {
   const d = ST.draft, s = ST.stats, lifeCustom = ST.lifeCustom || !ST_LIFE.some(([v]) => v === d.life);
-  return `<div class="st-gt">${ST_I.img}Картинки</div>
+  return `<div class="st-gt">${ST_I.img}Медиа</div>
     <div class="st-g">
-      <div class="st-r"><div class="st-l"><b>Наибольший размер</b><span>Картинку тяжелее загрузить не получится</span></div>${stStepHtml('imgMax')}</div>
-      <div class="st-r stack"><div class="st-l"><b>Форматы</b><span>Только эти расширения отправляются как картинка с превью. Enter или запятая — добавить.</span></div>${stTokHtml('imgExt')}</div>
+      <div class="st-r"><div class="st-l"><b>Наибольший размер картинок</b><span>Картинку тяжелее загрузить не получится</span></div>${stStepHtml('imgMax')}</div>
+      <div class="st-r stack"><div class="st-l"><b>Форматы картинок</b><span>Только эти расширения отправляются как картинка с превью. Enter или запятая — добавить.</span></div>${stTokHtml('imgExt')}</div>
+      <div class="st-r"><div class="st-l"><b>Наибольший размер видео</b><span>Видео тяжелее загрузить не получится</span></div>${stStepHtml('videoMax')}</div>
+      <div class="st-r stack"><div class="st-l"><b>Форматы видео</b><span>Только эти расширения отправляются как видео с превью и проигрыванием. Enter или запятая — добавить.</span></div>${stTokHtml('videoExt')}</div>
     </div>
     <div class="st-gt">${ST_I.file}Файлы</div>
     <div class="st-g">
@@ -4575,6 +4582,9 @@ function flKind(f) {
 }
 const flUrl = name => '/files/' + encodeURIComponent(name);
 const flShort = name => name.length > 42 ? name.slice(0, 40) + '…' : name;
+// Имя на диске — служебное (метка времени + случайный суффикс), человеку показываем
+// то, что он реально загрузил; у файлов без сообщения оригинала не сохранилось
+const flName = f => f.name || f.filename;
 const flChatChip = type => type === 'direct' ? '<span class="rm-chip rm-direct">личный</span>'
   : type === 'group' ? '<span class="rm-chip rm-group">группа</span>' : type === 'room' ? '<span class="rm-chip rm-topics">комната</span>' : '';
 
@@ -4596,7 +4606,7 @@ function flRender() {
   const rows = FL.files
     .filter(f => FL.filter === 'all' || (FL.filter === 'big' ? f.size > FL_BIG : flKind(f) === FL.filter))
     .filter(f => (!FL.who || f.sender_name === FL.who) && (!FL.chat || f.chat_name === FL.chat))
-    .filter(f => !q || [f.filename, f.sender_name, f.chat_name].some(x => (x || '').toLowerCase().includes(q)));
+    .filter(f => !q || [flName(f), f.sender_name, f.chat_name].some(x => (x || '').toLowerCase().includes(q)));
   const total = FL.files.reduce((s, f) => s + (f.size || 0), 0);
   const bySender = {};
   FL.files.forEach(f => { if (f.sender_name) bySender[f.sender_name] = (bySender[f.sender_name] || 0) + (f.size || 0); });
@@ -4631,14 +4641,14 @@ function flRender() {
             const kind = flKind(f), name = jesc(f.filename);
             const thumb = `<span class="fl-thumb" style="background:${FL_KIND[kind][1]}">${esc((flExt(f) || '?').slice(0, 4).toUpperCase())}${kind === 'image' ? `<img src="${flUrl(f.filename)}" loading="lazy" alt="" onerror="this.remove()">` : ''}</span>`;
             return `<tr class="${FL.sel.has(f.filename) ? 'sel' : ''}">
-              <td><input type="checkbox" aria-label="Выбрать: ${esc(f.filename)}" ${FL.sel.has(f.filename) ? 'checked' : ''} onchange="flToggle('${name}')"></td>
-              <td><div class="ux-cell">${thumb}<div style="min-width:0"><div class="ux-name" title="${esc(f.filename)}">${esc(flShort(f.filename))}</div><div class="rm-sub">${FL_KIND[kind][0]}</div></div></div></td>
+              <td><input type="checkbox" aria-label="Выбрать: ${esc(flName(f))}" ${FL.sel.has(f.filename) ? 'checked' : ''} onchange="flToggle('${name}')"></td>
+              <td><div class="ux-cell">${thumb}<div style="min-width:0"><div class="ux-name" title="${esc(flName(f))}">${esc(flShort(flName(f)))}</div><div class="rm-sub">${FL_KIND[kind][0]}</div></div></div></td>
               <td class="rm-num"><span class="fl-size"><span class="fl-bar"><i style="width:${Math.max(4, (f.size || 0) / max * 100)}%"></i></span>${hmBytes(f.size || 0)}</span></td>
               <td>${f.sender_name ? `<div class="ux-cell" style="gap:8px">${avHtml(f.sender_name, 24, 7, f.sender_id, false, true)}<span style="white-space:nowrap">${esc(f.sender_name)}</span></div>` : '<span class="rm-sub">без сообщения</span>'}</td>
               <td>${f.chat_name ? `<span class="ux-name" style="font-weight:500;font-size:12px">${esc(f.chat_name)}${flChatChip(f.chat_type)}</span>` : '<span class="rm-sub">—</span>'}</td>
               <td class="rm-last">${esc(uaSeen(f.sent_at || Math.floor((f.mtime || 0) / 1000)))}</td>
               <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="flOpen('${name}')">${FL_I.eye}Открыть</button>
-                <button class="ux-ibtn" aria-label="Ещё действия: ${esc(f.filename)}" aria-haspopup="menu" aria-expanded="false" onclick="flMenu(event, '${name}')">${UX_I.more}</button></div></td>
+                <button class="ux-ibtn" aria-label="Ещё действия: ${esc(flName(f))}" aria-haspopup="menu" aria-expanded="false" onclick="flMenu(event, '${name}')">${UX_I.more}</button></div></td>
             </tr>`;
           }).join('') || `<tr><td colspan="7"><div class="ux-empty">${FL.files.length ? 'Ничего не нашли. Проверьте запрос или фильтры.' : 'Файлов пока нет'}</div></td></tr>`}</tbody>
         </table></div>
@@ -4660,9 +4670,10 @@ function flOpen(name) {
   else flDownload(name);
 }
 function flDownload(name) {
+  const f = FL.files.find(x => x.filename === name);
   const a = document.createElement('a');
   a.href = flUrl(name);
-  a.download = name;
+  a.download = f ? flName(f) : name;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -4739,9 +4750,10 @@ function chatKindBadge(type) {
 
 /* ── ПРОСМОТР КАРТИНКИ ── */
 function openFilePreview(name) {
+  const f = FL.files.find(x => x.filename === name);
   const box = document.getElementById('file-lightbox');
   document.getElementById('fl-img').src = '/files/' + encodeURIComponent(name);
-  document.getElementById('fl-cap').textContent = name;
+  document.getElementById('fl-cap').textContent = f ? flName(f) : name;
   box.classList.add('open');
 }
 function closeFilePreview() {

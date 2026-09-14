@@ -113,9 +113,33 @@ function mdLite(escaped) {
 function linkifyText(text) {
   const urlRe = /(https?:\/\/[^\s]+)/g;
   return text.split(urlRe).map((part, i) => {
-    if (i % 2 !== 1) return mdLite(esc(part).replace(/@([\w.-]+)/g, '<span class="mention">@$1</span>'));
+    if (i % 2 !== 1) return mdLite(highlightMentions(esc(part)));
     return `<a class="msg-link" href="#" onclick="openExternalLink(event,this)" data-url="${esc(part)}">${esc(part)}</a>`;
   }).join('');
+}
+
+function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+// Подсвечивает @упоминания цветом того же пользователя, что и его аватар/реакции —
+// сопоставляем не по регэкспу вида «слово», а по реальным именам участников чата,
+// потому что insertMention вставляет отображаемое имя целиком, вплоть до пробелов
+function highlightMentions(escapedText) {
+  const members = _mentionMembers(true);
+  if (!members || !members.length) return escapedText;
+  const byName = new Map();
+  for (const m of members) {
+    const dn = esc(m.display_name || '');
+    if (dn && !byName.has(dn)) byName.set(dn, m);
+    const un = esc(m.username || '');
+    if (un && !byName.has(un)) byName.set(un, m);
+  }
+  if (!byName.size) return escapedText;
+  const names = [...byName.keys()].sort((a, b) => b.length - a.length).map(escapeRegExp);
+  const re = new RegExp('@(' + names.join('|') + ')(?![\\wа-яёА-ЯЁ])', 'g');
+  return escapedText.replace(re, (match, name) => {
+    const m = byName.get(name);
+    return `<span class="mention ${userAvatarColor(m.id, m.tag)}">@${name}</span>`;
+  });
 }
 
 function openExternalLink(e, el) {
@@ -1445,7 +1469,7 @@ function renderChatRow(c) {
     ? (S.topics[c.id]||[]).reduce((sum,s)=>sum+(S.unreadMentions[s.id]||0),0)
     : S.unreadMentions[c.id]||0;
   const lm = c.last_message;
-  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : ((lm.text ? lm.text.replace(/<[^>]*>/g, '') : '') || (lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
+  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : ((lm.text ? lm.text.replace(/<[^>]*>/g, '') : '') || (lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
   if (preview.length>40) preview = preview.slice(0,40)+'…';
   // Черновик приоритетнее последнего сообщения (как в Telegram)
   const draft = (c.id !== S.activeChatId) ? S.drafts[c.id] : null;
@@ -1564,7 +1588,7 @@ function topicRow(s) {
     ? (lm.deleted ? 'Сообщение удалено'
       : ((lm.text ? lm.text.replace(/<[^>]*>/g, '') : '')
         || (lm.attachment
-          ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (lm.attachment.name || 'Файл'))
+          ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл'))
           : '')))
     : 'Нет сообщений';
   if (preview.length > 38) preview = preview.slice(0, 38) + '…';
@@ -2530,7 +2554,7 @@ let _pinIdx = 0;
 function pinPreviewText(p) {
   if (!p) return '';
   const t = p.text ? p.text.replace(/<[^>]*>/g, '')
-    : (p.attachment ? (p.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (p.attachment.name || 'Файл')) : '');
+    : (p.attachment ? (p.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : p.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (p.attachment.name || 'Файл')) : '');
   return t.length > 120 ? t.slice(0, 120) + '…' : t;
 }
 
@@ -2778,13 +2802,14 @@ function renderMsgIRC(m, isFirst = true, isTail = true) {
   const avImg = `<img src="${httpProto()}://${S.server}/api/users/${m.sender_id}/avatar" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display='none'">`;
   const rAtt = m.reply_attachment;
   const rIsImg = rAtt?.mime?.startsWith('image/');
-  const rThumbHtml = rAtt && !m.reply_deleted ? (rIsImg
+  const rIsVideo = rAtt?.mime?.startsWith('video/');
+  const rThumbHtml = rAtt && !m.reply_deleted ? ((rIsImg || (rIsVideo && rAtt.thumb))
     ? `<img src="${httpProto()}://${S.server}${rAtt.thumb || rAtt.url}" class="irc-reply-thumb" onerror="this.style.display='none'">`
     : `<div class="irc-reply-thumb irc-reply-file"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>`
   ) : '';
   const rTextRaw = m.reply_deleted
     ? 'Сообщение удалено'
-    : (m.reply_text || (rAtt ? (rIsImg ? '📷 Фото' : ('📎 ' + (rAtt.name || 'Файл'))) : ''));
+    : (m.reply_text || (rAtt ? (rIsImg ? '📷 Фото' : rIsVideo ? '🎬 Видео' : ('📎 ' + (rAtt.name || 'Файл'))) : ''));
   // цвет цитаты берём у автора цитируемого: своё — цветом своего пузыря,
   // чужое — цветом его тега. Стрелка не нужна: полоса слева и так читается.
   const _replyTagCls = senderNameClass(m.reply_sender_tag);
@@ -2803,10 +2828,11 @@ function renderMsgIRC(m, isFirst = true, isTail = true) {
   const fd = m.forward_data;
   const forwardHtml = (!isDeleted && fd) ? (() => {
     const fdIsImg = fd.attachment?.mime?.startsWith('image/');
-    const fdThumb = fd.attachment?.url ? (fdIsImg
+    const fdIsVideo = fd.attachment?.mime?.startsWith('video/');
+    const fdThumb = fd.attachment?.url ? ((fdIsImg || (fdIsVideo && fd.attachment.thumb))
       ? `<img src="${httpProto()}://${S.server}${fd.attachment.thumb || fd.attachment.url}" class="irc-reply-thumb" onerror="this.style.display='none'">`
       : `<div class="irc-reply-thumb irc-reply-file"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>`) : '';
-    const fdText = fd.text || (fd.attachment ? (fdIsImg ? '📷 Фото' : '📎 ' + (fd.attachment.name || 'Файл')) : '');
+    const fdText = fd.text || (fd.attachment ? (fdIsImg ? '📷 Фото' : fdIsVideo ? '🎬 Видео' : '📎 ' + (fd.attachment.name || 'Файл')) : '');
     return `<div class="irc-reply irc-forward-block">
       ${fdThumb}
       <div class="irc-reply-body">
@@ -2825,7 +2851,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true) {
   const senderCls = senderNameClass(m.sender_tag);
   // имя и тег стоят над пузырём; у своих и внутри серии их скрывает CSS
   const header = `<div class="irc-header">
-      <span class="irc-name msg-sender-name ${senderCls}${mine?' mine':''}">${senderName}</span>${ircTagHtml}
+      <span class="irc-name msg-sender-name ${senderCls}${mine?' mine':''}" onclick="event.stopPropagation();mentionUserInComposer(${m.sender_id})">${senderName}</span>${ircTagHtml}
     </div>`;
   const metaHtml = `<div class="irc-meta"><span class="status-wrap">${statusIcon}</span><span class="irc-time">${time}</span></div>`;
 
@@ -2839,6 +2865,13 @@ function renderMsgIRC(m, isFirst = true, isTail = true) {
     const attUrl = `${httpProto()}://${S.server}${att.url}`;
     if (att.mime?.startsWith('image/')) {
       attachHtml = `<div class="bubble-image" onclick="openLightbox('${attUrl}','${(att.name||'image').replace(/'/g,"\\'")}')"><img src="${httpProto()}://${S.server}${att.thumb || att.url}" loading="lazy"></div>`;
+    } else if (att.mime?.startsWith('video/')) {
+      const posterUrl = att.thumb ? `${httpProto()}://${S.server}${att.thumb}` : '';
+      const safeVName = (att.name||'video').replace(/'/g,"\\'");
+      attachHtml = `<div class="bubble-image bubble-video" onclick="openLightbox('${attUrl}','${safeVName}','video')">
+        ${posterUrl ? `<img src="${posterUrl}" loading="lazy">` : `<video src="${attUrl}" preload="metadata" muted></video>`}
+        <div class="bubble-video-play"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+      </div>`;
     } else {
       const sizeFmt = att.size ? (att.size > 1048576 ? (att.size/1048576).toFixed(1)+' МБ' : Math.round(att.size/1024)+' КБ') : '';
       const localPath = _downloadedFiles[attUrl];
@@ -2863,7 +2896,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true) {
   // пузырь, в котором нет ничего кроме картинки: кадр занимает его целиком, а время
   // и реакции ложатся поверх. С подписью, цитатой или пересылкой — обычное поведение
   const bareImage = !isDeleted && !m.text && !m.reply_to_id && !m.forward_data
-    && !!att?.url && !att.expired && !!att.mime?.startsWith('image/');
+    && !!att?.url && !att.expired && !!(att.mime?.startsWith('image/') || att.mime?.startsWith('video/'));
   // сообщение из одного смайлика показываем без пузыря — он проступает по наведению
   const emojiOnly = !isDeleted && !m.attachment && !m.reply_to_id && !m.forward_data && isEmojiOnly(m.text);
   const posCls = (isFirst ? ' irc-first' : '') + (isTail ? ' irc-tail' : '') + (emojiOnly ? ' emoji-msg' : '');
@@ -3041,10 +3074,11 @@ function _getMentionQuery(el) {
   const m = el.value.slice(0, el.selectionStart).match(/@(\S*)$/);
   return m ? m[1] : null;
 }
-function _mentionMembers() {
+function _mentionMembers(includeSelf = false) {
   const chat = S.chats.find(c => c.id === S.activeChatId);
   if (chat?.type !== 'group' && chat?.type !== 'room') return null;
-  return (chat.members || []).filter(m => m.id !== S.user.id);
+  const members = chat.members || [];
+  return includeSelf ? members : members.filter(m => m.id !== S.user.id);
 }
 function _updateMentionPopup(el) {
   const query = _getMentionQuery(el);
@@ -3087,6 +3121,26 @@ function _mentionMove(dir) {
   items[_mentionIdx].classList.add('mn-active');
   items[_mentionIdx].scrollIntoView({ block: 'nearest' });
 }
+// Клик по имени автора над сообщением — вставляет @Имя в поле ввода в текущей
+// позиции курсора, независимо от того, что там уже набрано (в отличие от
+// insertMention, которая довершает уже начатый ввод «@часть_имени» из поповера)
+function mentionUserInComposer(senderId) {
+  const el = document.getElementById('msg-input');
+  const u = senderId === S.user.id ? S.user : S.allUsers.find(u => u.id === senderId);
+  const name = u?.display_name || u?.username;
+  if (!el || !name) return;
+  const cursor = el.selectionStart ?? el.value.length;
+  const before = el.value.slice(0, cursor);
+  const after = el.value.slice(cursor);
+  const needsSpace = before && !/\s$/.test(before);
+  const insertion = (needsSpace ? ' ' : '') + '@' + name + ' ';
+  el.value = before + insertion + after;
+  const newPos = before.length + insertion.length;
+  el.selectionStart = el.selectionEnd = newPos;
+  el.focus();
+  autoResize(el);
+}
+
 function insertMention(name) {
   const el = document.getElementById('msg-input');
   if (!el) return;
@@ -3357,7 +3411,7 @@ function ctxReply() {
     mime: msgEl.dataset.msgAttMime || '',
     name: msgEl.dataset.msgAttName || '',
   } : null;
-  const displayText = text.trim() || (att ? (att.mime.startsWith('image/') ? '📷 Фото' : ('📎 ' + (att.name || 'Файл'))) : '');
+  const displayText = text.trim() || (att ? (att.mime.startsWith('image/') ? '📷 Фото' : att.mime.startsWith('video/') ? '🎬 Видео' : ('📎 ' + (att.name || 'Файл'))) : '');
   S.replyTo = { id: msgId, text: displayText.slice(0, 100), senderName, attachment: att };
   showReplyBar();
 }
@@ -3370,7 +3424,7 @@ function showReplyBar() {
   const thumb = document.getElementById('reply-bar-thumb');
   if (thumb) {
     const att = S.replyTo.attachment;
-    if (att?.url && att.mime?.startsWith('image/')) {
+    if (att?.url && (att.mime?.startsWith('image/') || (att.mime?.startsWith('video/') && att.thumb))) {
       thumb.src = `${httpProto()}://${S.server}${att.thumb || att.url}`;
       thumb.style.display = '';
     } else {
@@ -3395,6 +3449,7 @@ function hideReplyBar() {
 let _pendingAttachment = null;
 let _uploadSettings = {
   image: { maxSizeMb: 10, extensions: ['jpeg','jpg','png','gif','webp'] },
+  video: { maxSizeMb: 50, extensions: ['mp4','mov','webm'] },
   file:  { maxSizeMb: 50, extensions: [] },
 };
 
@@ -3432,7 +3487,8 @@ async function onFilePicked(input) {
 async function uploadFile(file) {
   if (!file) return;
   const isImage = file.type.startsWith('image/');
-  const cfg = isImage ? _uploadSettings.image : _uploadSettings.file;
+  const isVideo = file.type.startsWith('video/');
+  const cfg = isImage ? _uploadSettings.image : isVideo ? _uploadSettings.video : _uploadSettings.file;
   const ext = (file.name.split('.').pop() || '').toLowerCase();
 
   if (file.size > cfg.maxSizeMb * 1024 * 1024) {
@@ -3480,11 +3536,13 @@ function showAttachmentPreviewBar() {
   if (!att) { bar.style.display = 'none'; return; }
   bar.style.display = '';
   const isImage = att.mime?.startsWith('image/');
+  const isVideo = att.mime?.startsWith('video/');
+  const thumbUrl = isImage ? att.url : (isVideo && att.thumb) ? att.thumb : null;
   const thumb = bar.querySelector('.img-preview-thumb');
-  if (thumb) { thumb.src = isImage ? `${httpProto()}://${S.server}${att.url}` : ''; thumb.style.display = isImage ? '' : 'none'; }
+  if (thumb) { thumb.src = thumbUrl ? `${httpProto()}://${S.server}${thumbUrl}` : ''; thumb.style.display = thumbUrl ? '' : 'none'; }
   const icon = bar.querySelector('.attach-preview-icon');
-  if (icon) icon.style.display = isImage ? 'none' : '';
-  bar.querySelector('.img-preview-name').textContent = att.name || (isImage ? 'Изображение' : 'Файл');
+  if (icon) icon.style.display = thumbUrl ? 'none' : '';
+  bar.querySelector('.img-preview-name').textContent = att.name || (isImage ? 'Изображение' : isVideo ? 'Видео' : 'Файл');
   _stickyBottom();
 }
 
@@ -3621,29 +3679,94 @@ async function loadBanners() {
   list.forEach(showBanner);
 }
 
-function openLightbox(url, filename) {
+// ── ЛАЙТБОКС (фото и видео) ──
+// Зум/перетаскивание — только у фото; масштаб сбрасывается при каждом открытии.
+// _lbDidDrag гасит клик-закрытие сразу после перетаскивания (mouseup всё равно
+// порождает click на том же элементе, где было mousedown).
+let _lbScale = 1, _lbTx = 0, _lbTy = 0, _lbDrag = null, _lbDidDrag = false;
+const LB_ZOOM_MIN = 1, LB_ZOOM_MAX = 4, LB_ZOOM_STEP = 0.5;
+
+function openLightbox(url, filename, type = 'image') {
   let lb = document.getElementById('lightbox');
   if (!lb) {
     lb = document.createElement('div');
     lb.id = 'lightbox';
-    lb.onclick = () => closeLightbox();
+    lb.onclick = e => { if (e.target === lb && !_lbDidDrag) closeLightbox(); _lbDidDrag = false; };
     lb.innerHTML = `<img id="lightbox-img">
+      <video id="lightbox-video" controls playsinline></video>
+      <div class="lb-zoom">
+        <button type="button" title="Уменьшить" onclick="event.stopPropagation();lbZoom(-1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
+        <button type="button" title="Сбросить масштаб" onclick="event.stopPropagation();lbResetZoom()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+        <button type="button" title="Увеличить" onclick="event.stopPropagation();lbZoom(1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
+      </div>
       <button id="lightbox-download" title="Скачать" onclick="event.stopPropagation();downloadAttachment(document.getElementById('lightbox').dataset.url, document.getElementById('lightbox').dataset.filename)">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </button>`;
     document.body.appendChild(lb);
+    const lbImg = document.getElementById('lightbox-img');
+    lbImg.addEventListener('mousedown', e => {
+      if (_lbScale <= 1) return;
+      e.preventDefault();
+      _lbDrag = { x: e.clientX, y: e.clientY, tx: _lbTx, ty: _lbTy };
+    });
+    document.addEventListener('mousemove', e => {
+      if (!_lbDrag) return;
+      const dx = e.clientX - _lbDrag.x, dy = e.clientY - _lbDrag.y;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) _lbDidDrag = true;
+      _lbTx = _lbDrag.tx + dx; _lbTy = _lbDrag.ty + dy;
+      lbApplyTransform();
+    });
+    document.addEventListener('mouseup', () => { _lbDrag = null; });
+    // Esc и системные выходы из fullscreen должны закрывать весь лайтбокс, а не
+    // просто вернуть окно к прежнему размеру с висящей тёмной подложкой
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement && lb.classList.contains('lb-open')) closeLightbox();
+    });
   }
-  document.getElementById('lightbox-img').src = url;
+  const img = document.getElementById('lightbox-img');
+  const video = document.getElementById('lightbox-video');
+  lb.classList.toggle('lb-video', type === 'video');
+  lbResetZoom();
+  if (type === 'video') {
+    img.removeAttribute('src');
+    video.src = url;
+    video.play().catch(() => {});
+  } else {
+    video.pause();
+    video.removeAttribute('src');
+    img.src = url;
+  }
   lb.dataset.url = url;
-  lb.dataset.filename = filename || 'image';
+  lb.dataset.filename = filename || (type === 'video' ? 'video' : 'image');
   lb.classList.remove('lb-closing');
   lb.classList.add('lb-open');
+  // Разворачиваем само окно на весь монитор (Fullscreen API), а не просто div
+  // в границах окна приложения — независимо от того, каким было окно клиента
+  lb.requestFullscreen?.().catch(() => {});
 }
+
+function lbApplyTransform() {
+  const img = document.getElementById('lightbox-img');
+  if (img) img.style.transform = _lbScale === 1 ? '' : `translate(${_lbTx}px,${_lbTy}px) scale(${_lbScale})`;
+  document.getElementById('lightbox')?.classList.toggle('lb-zoomed', _lbScale > 1);
+}
+function lbZoom(dir) {
+  _lbScale = Math.min(LB_ZOOM_MAX, Math.max(LB_ZOOM_MIN, +(_lbScale + dir * LB_ZOOM_STEP).toFixed(2)));
+  if (_lbScale === LB_ZOOM_MIN) { _lbTx = 0; _lbTy = 0; }
+  lbApplyTransform();
+}
+function lbResetZoom() {
+  _lbScale = 1; _lbTx = 0; _lbTy = 0;
+  lbApplyTransform();
+}
+
 function closeLightbox() {
   const lb = document.getElementById('lightbox');
   if (!lb || lb.classList.contains('lb-closing')) return;
   lb.classList.remove('lb-open');
   lb.classList.add('lb-closing');
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  document.getElementById('lightbox-video')?.pause();
   const onEnd = e => {
     if (e.target !== lb) return;
     lb.classList.remove('lb-closing');
@@ -3984,7 +4107,7 @@ function connectWS() {
           if (!isChatMuted(chatId, parentId)) {
             const _srObj = parentId ? (S.topics[parentId]||[]).find(s=>s.id===chatId) : null;
             const title = _srObj?.name || chatName(chat) || message.sender_name || 'Electron';
-            const body = `${message.sender_name}: ${(message.text ? message.text.replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+            const body = `${message.sender_name}: ${(message.text ? message.text.replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
             window.electron?.notify(title, body, chatId);
             playNotificationSound();
           }
@@ -3999,7 +4122,7 @@ function connectWS() {
         if (!isChatMuted(chatId, parentId)) {
           const _srObj = parentId ? (S.topics[parentId]||[]).find(s=>s.id===chatId) : null;
           const title = _srObj?.name || chatName(chat) || message.sender_name || 'Electron';
-          const body = `${message.sender_name}: ${(message.text ? message.text.replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+          const body = `${message.sender_name}: ${(message.text ? message.text.replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
           window.electron?.notify(title, body, chatId);
           playNotificationSound();
         }
