@@ -12,7 +12,6 @@ if (process.platform === 'linux') {
   app.commandLine.appendSwitch('disable-namespace-sandbox');
 }
 const path = require('path');
-const zlib = require('zlib');
 const fs = require('fs');
 const os = require('os');
 const { pathToFileURL } = require('url');
@@ -202,82 +201,17 @@ let unreadCount = 0;
 let blinkInterval = null;
 let blinkState = false;
 
-// Generate PNG from pixel buffer using Node's built-in zlib
-function makePNGFromPixels(w, h, pixels) {
-  function crc32(buf) {
-    let c = 0xFFFFFFFF;
-    for (const byte of buf) { c ^= byte; for (let i = 0; i < 8; i++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); }
-    return (c ^ 0xFFFFFFFF) >>> 0;
-  }
-  function chunk(type, data) {
-    const t = Buffer.from(type);
-    const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
-    const crcBuf = Buffer.concat([t, data]);
-    const crcVal = Buffer.alloc(4); crcVal.writeUInt32BE(crc32(crcBuf));
-    return Buffer.concat([len, t, data, crcVal]);
-  }
-  const raw = Buffer.alloc(h * (1 + w * 4));
-  for (let y = 0; y < h; y++) {
-    raw[y * (1 + w * 4)] = 0;
-    pixels.copy(raw, y * (1 + w * 4) + 1, y * w * 4, (y + 1) * w * 4);
-  }
-  const sig = Buffer.from([137,80,78,71,13,10,26,10]);
-  const ihdr = chunk('IHDR', Buffer.from([0,0,0,w,0,0,0,h,8,6,0,0,0]));
-  const idat = chunk('IDAT', zlib.deflateSync(raw));
-  const iend = chunk('IEND', Buffer.alloc(0));
-  return Buffer.concat([sig, ihdr, idat, iend]);
-}
-
-// White rounded square with black symbol inside. Works on all platforms.
-function makeIconPNG(drawSymbol) {
-  const W = 32, H = 32, R = 5;
-  const px = Buffer.alloc(W * H * 4); // transparent
-
-  function set(x, y, r, g, b, a) {
-    x = Math.round(x); y = Math.round(y);
-    if (x < 0 || x >= W || y < 0 || y >= H) return;
-    const i = (y * W + x) * 4;
-    px[i] = r; px[i+1] = g; px[i+2] = b; px[i+3] = a;
-  }
-
-  // Fill white rounded rectangle
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const dx = Math.max(0, R - x, x - (W - 1 - R));
-      const dy = Math.max(0, R - y, y - (H - 1 - R));
-      if (dx * dx + dy * dy <= R * R) set(x, y, 255, 255, 255, 255);
-    }
-  }
-
-  // Draw symbol in black
-  const black = (x, y) => set(x, y, 0, 0, 0, 255);
-  drawSymbol(black, W, H);
-
-  return makePNGFromPixels(W, H, px);
-}
-
-function drawEnvelope(px, W, H) {
-  const x1 = 5, y1 = 9, x2 = 26, y2 = 22;
-  for (let t = 0; t < 2; t++) {
-    for (let x = x1 + t; x <= x2 - t; x++) { px(x, y1 + t); px(x, y2 - t); }
-    for (let y = y1 + t; y <= y2 - t; y++) { px(x1 + t, y); px(x2 - t, y); }
-  }
-  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2 - 1;
-  for (let t = 0; t < 2; t++) {
-    for (let i = 0; i <= mx - x1; i++) {
-      const fy = y1 + (i / (mx - x1)) * (my - y1);
-      px(x1 + i + t, fy); px(x2 - i - t, fy);
-    }
-  }
-}
-
-const BLINK_ICON_BUF = makeIconPNG(drawEnvelope);
-
-function makeIconImage(buf) {
-  return nativeImage.createFromBuffer(buf, { scaleFactor: process.platform === 'darwin' ? 2 : 1 });
-}
-
 const _ASSETS = path.join(__dirname, 'src', 'assets');
+
+// Белый квадрат-бейдж с конвертом внутри — рисуется поверх обычной иконки во
+// время мигания при новом сообщении. Один и тот же на всех платформах и темах:
+// он и так на короткое время нарушает обычный вид, чтобы привлечь внимание
+function getBlinkImage() {
+  const img = nativeImage.createEmpty();
+  img.addRepresentation({ scaleFactor: 1, buffer: fs.readFileSync(path.join(_ASSETS, 'tray-message.png')) });
+  img.addRepresentation({ scaleFactor: 2, buffer: fs.readFileSync(path.join(_ASSETS, 'tray-message-2x.png')) });
+  return img;
+}
 
 // Windows: nativeTheme.shouldUseDarkColors соответствует AppsUseLightTheme, а таскбар
 // управляется отдельным ключом SystemUsesLightTheme. При «App light + System dark»
@@ -311,8 +245,6 @@ function getNormalImage() {
   const name = dark ? 'tray-white-24.png' : 'tray-dark-24.png';
   return nativeImage.createFromPath(path.join(_ASSETS, name));
 }
-
-function getBlinkImage() { return makeIconImage(BLINK_ICON_BUF); }
 
 function startBlink() {
   if (blinkInterval) return;
