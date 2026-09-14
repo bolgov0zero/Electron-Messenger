@@ -355,6 +355,7 @@ router.put('/settings', (req, res) => {
     'upload_image_max_size', 'upload_image_extensions',
     'upload_video_max_size', 'upload_video_extensions',
     'upload_file_max_size', 'upload_file_extensions', 'upload_file_lifetime',
+    'backup_schedule_days', 'backup_schedule_time',
     ];
   const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
   const del = db.prepare('DELETE FROM settings WHERE key = ?');
@@ -896,14 +897,19 @@ function listBackups() {
   } catch { return []; }
 }
 
+async function createBackup() {
+  fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  const ts = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
+  const name = `chat-${ts}.db`;
+  await db.backup(path.join(BACKUP_DIR, name));
+  return name;
+}
+
 router.get('/backups', (req, res) => res.json(listBackups()));
 
 router.post('/backups', async (req, res) => {
   try {
-    fs.mkdirSync(BACKUP_DIR, { recursive: true });
-    const ts = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
-    const name = `chat-${ts}.db`;
-    await db.backup(path.join(BACKUP_DIR, name));
+    const name = await createBackup();
     console.log('[Backup] Создана копия:', name);
     res.json({ ok: true, name, backups: listBackups() });
   } catch (e) {
@@ -911,6 +917,30 @@ router.post('/backups', async (req, res) => {
     res.status(500).json({ error: 'Не удалось создать копию: ' + e.message });
   }
 });
+
+// Расписание: дни недели (0=вс..6=сб, как Date.getDay()) и время «ЧЧ:ММ» по времени
+// сервера. Пусто — автокопирования нет, только по кнопке. Проверка раз в минуту;
+// _lastAutoBackupKey не даёт запустить копию дважды в одну и ту же минуту
+let _lastAutoBackupKey = null;
+function startBackupSchedule() {
+  setInterval(async () => {
+    const daysRaw = db.prepare("SELECT value FROM settings WHERE key = 'backup_schedule_days'").get()?.value || '';
+    const days = daysRaw.split(',').map(s => s.trim()).filter(Boolean).map(Number);
+    if (!days.length) return;
+    const time = db.prepare("SELECT value FROM settings WHERE key = 'backup_schedule_time'").get()?.value || '';
+    const m = /^(\d{2}):(\d{2})$/.exec(time);
+    if (!m) return;
+    const now = new Date();
+    if (!days.includes(now.getDay()) || now.getHours() !== Number(m[1]) || now.getMinutes() !== Number(m[2])) return;
+    const key = now.toISOString().slice(0, 16);
+    if (_lastAutoBackupKey === key) return;
+    _lastAutoBackupKey = key;
+    try {
+      const name = await createBackup();
+      console.log('[Backup] Автоматическая копия создана:', name);
+    } catch (e) { console.error('[Backup] Ошибка автокопии:', e.message); }
+  }, 30_000);
+}
 
 router.get('/backups/:name/download', (req, res) => {
   // Имя сверяем с шаблоном, а не только с basename — иначе путь можно подобрать
@@ -922,3 +952,4 @@ router.get('/backups/:name/download', (req, res) => {
 });
 
 module.exports = router;
+module.exports.startBackupSchedule = startBackupSchedule;

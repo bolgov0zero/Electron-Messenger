@@ -4090,14 +4090,17 @@ const ST_I = {
 };
 const ST_EDIT = [[60, '1 мин'], [120, '2 мин'], [900, '15 мин'], [3600, '1 час'], [172800, '48 часов']];
 const ST_LIFE = [[0, 'Всегда'], [30, '30 дней'], [90, '90 дней'], [365, '1 год']];
-const ST_FORM = { messages: ['edit'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'] };
-const ST_IN = { messages: 'в «Сообщениях»', attachments: 'во «Вложениях»' };
+const ST_FORM = { messages: ['edit'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime'] };
+const ST_IN = { messages: 'в «Сообщениях»', attachments: 'во «Вложениях»', backups: 'в «Резервных копиях»' };
 const ST_QUICK = { 'Документы': ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'], 'Архивы': ['zip', 'rar', '7z'] };
 const ST_KEYS = {
   edit: ['edit_time_limit', String], imgMax: ['upload_image_max_size', String], imgExt: ['upload_image_extensions', v => v.join(',')],
   videoMax: ['upload_video_max_size', String], videoExt: ['upload_video_extensions', v => v.join(',')],
   fileMax: ['upload_file_max_size', String], fileExt: ['upload_file_extensions', v => v.join(',')], life: ['upload_file_lifetime', String],
+  backupDays: ['backup_schedule_days', v => v.join(',')], backupTime: ['backup_schedule_time', String],
 };
+// Порядок для интерфейса — с понедельника; значение — как у Date.getDay() (0=вс)
+const ST_DAYS = [[1, 'Пн'], [2, 'Вт'], [3, 'Ср'], [4, 'Чт'], [5, 'Пт'], [6, 'Сб'], [0, 'Вс']];
 const stPad = n => String(n).padStart(2, '0');
 const stClock = d => `${stPad(d.getHours())}:${stPad(d.getMinutes())}`;
 const stClone = o => JSON.parse(JSON.stringify(o));
@@ -4124,6 +4127,8 @@ function stFromSettings(s) {
     fileMax: Number(s.upload_file_max_size) || 50,
     fileExt: list(s.upload_file_extensions),
     life: Number(s.upload_file_lifetime) || 0,
+    backupDays: s.backup_schedule_days ? list(s.backup_schedule_days).map(Number) : [],
+    backupTime: s.backup_schedule_time || '03:00',
   };
   ST.draft = stClone(ST.saved);
   ST.gh.set = !!s.github_token_set;
@@ -4153,16 +4158,32 @@ function stErrors() {
   if (!d.imgExt.length) e.imgExt = 'Нужен хотя бы один формат картинок, иначе их нельзя будет отправить';
   if (!d.videoExt.length) e.videoExt = 'Нужен хотя бы один формат видео, иначе его нельзя будет отправить';
   if (!(Number.isInteger(d.life) && d.life >= 0 && d.life <= 3650)) e.life = 'Срок хранения — от 1 до 3650 дней';
+  if (d.backupDays.length && !/^([01]\d|2[0-3]):[0-5]\d$/.test(d.backupTime)) e.backupTime = 'Укажите время в формате ЧЧ:ММ';
   return e;
 }
 const stLastBackup = () => ST.backups[0];
 const stBackupOld = () => !ST.backups.length || Date.now() / 1000 - stLastBackup().created_at > 7 * 86400;
+function stNextBackupLabel() {
+  const days = ST.draft.backupDays, m = /^(\d{2}):(\d{2})$/.exec(ST.draft.backupTime);
+  if (!days.length || !m) return '';
+  const [h, mi] = [Number(m[1]), Number(m[2])];
+  const now = new Date();
+  for (let i = 0; i < 8; i++) {
+    const cand = new Date(now);
+    cand.setDate(now.getDate() + i);
+    cand.setHours(h, mi, 0, 0);
+    if (cand <= now || !days.includes(cand.getDay())) continue;
+    const dayLabel = i === 0 ? 'сегодня' : i === 1 ? 'завтра' : cand.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+    return `${dayLabel} в ${stPad(h)}:${stPad(mi)}`;
+  }
+  return '';
+}
 const stVersion = () => ST.stats?.serverVersion || '—';
 
 const ST_SECTIONS = [
   { k: 'messages', label: 'Сообщения', icon: ST_I.msg, desc: 'Что можно делать с уже отправленными сообщениями', meta: () => `${stDur(ST.saved.edit)} на правку` },
   { k: 'attachments', label: 'Вложения', icon: ST_I.clip, desc: 'Размер, форматы и срок хранения медиа и файлов', meta: () => `до ${ST.saved.imgMax} и ${ST.saved.fileMax} МБ${ST.saved.life ? ` · ${ST.saved.life} дн.` : ''}` },
-  { k: 'backups', label: 'Резервные копии', icon: ST_I.db, desc: 'Снимки базы: сообщения, пользователи, чаты и настройки', meta: () => ST.backups.length ? `последняя ${uaSeen(stLastBackup().created_at)}` : 'копий нет', dot: () => stBackupOld() ? 'warn' : '' },
+  { k: 'backups', label: 'Резервные копии', icon: ST_I.db, desc: 'Снимки базы: сообщения, пользователи, чаты и настройки', meta: () => (ST.saved.backupDays?.length ? 'по расписанию · ' : '') + (ST.backups.length ? `последняя ${uaSeen(stLastBackup().created_at)}` : 'копий нет'), dot: () => stBackupOld() ? 'warn' : '' },
   { k: 'github', label: 'GitHub', icon: ST_I.gh, desc: 'Доступ к репозиторию для проверки обновлений', meta: () => ST.gh.set ? 'токен задан' : 'без токена', dot: () => ST.gh.set ? 'ok' : 'warn' },
   { k: 'update', label: 'Обновление', icon: ST_I.upd, title: 'Обновление сервера', desc: 'Версия сервера и установка новых релизов', meta: () => ST.upd.state === 'available' ? `есть версия ${ST.upd.v.latest}` : `версия ${stVersion()}`, dot: () => ST.upd.state === 'available' ? 'warn' : '' },
 ];
@@ -4247,12 +4268,21 @@ function stPaneAttachments() {
 
 // ── Резервные копии ──
 function stPaneBackups() {
-  const last = stLastBackup(), old = stBackupOld();
+  const d = ST.draft, last = stLastBackup(), old = stBackupOld(), err = stErrors();
   return `<div class="st-stat ${old ? 'warn' : 'ok'}"><span class="st-ring">${old ? ST_I.warn : ST_I.db}</span>
       <div class="st-stat-t"><b>${last ? `Последняя копия — ${uaSeen(last.created_at)}` : 'Копий пока нет'}</b>
         <span>${old ? 'Больше недели без копии — сделайте свежую перед обновлением или крупными правками.' : `${hmBytes(last.size)} · всего копий: ${ST.backups.length}`}</span></div>
       <button type="button" class="btn ux-solid" ${ST.bkBusy ? 'disabled' : ''} onclick="stBackup()">${ST.bkBusy ? '<span class="st-spin light"></span>Создаю…' : `${ST_I.plus}Создать копию`}</button></div>
-    <p class="st-hint">Копия создаётся только по кнопке — расписания нет. Снимок делается на живой базе и не мешает людям работать. Файлы копий лежат на сервере в <code class="st-code">chat_db/backups</code>.</p>
+    <p class="st-hint">Снимок делается на живой базе и не мешает людям работать. Файлы копий лежат на сервере в <code class="st-code">chat_db/backups</code>.</p>
+    <div class="st-gt">${ST_I.clock}Расписание</div>
+    <div class="st-g"><div class="st-r stack">
+      <div class="st-l"><b>Дни недели</b><span>Автокопия по этим дням. Пусто — только по кнопке.</span></div>
+      <div class="st-seg" role="group" aria-label="Дни автокопирования">${ST_DAYS.map(([v, l]) => `<button type="button" aria-pressed="${d.backupDays.includes(v)}" onclick="stBackupDay(${v})">${l}</button>`).join('')}</div>
+    </div>
+    ${d.backupDays.length ? `<div class="st-r"><div class="st-l"><b>Время</b><span>По времени сервера</span></div>
+      <div class="st-inp st-num ${err.backupTime ? 'bad' : ''}" style="width:130px"><input type="time" value="${esc(d.backupTime)}" aria-label="Время автокопирования" oninput="stBackupTime(this.value)"></div></div>
+      ${err.backupTime ? `<div class="st-err">${esc(err.backupTime)}</div>` : `<p class="st-hint">Ближайшая копия — ${esc(stNextBackupLabel())}.</p>`}` : ''}
+    </div>
     ${ST.backups.length ? `<div class="st-gt">${ST_I.db}Копии · ${ST.backups.length}</div>
     <div class="st-g">${ST.backups.map((b, i) => `<div class="st-bk ${i === 0 && ST.bkNew ? 'new' : ''}">
         <div><b>${esc(uaSeen(b.created_at))} ${i === 0 && ST.bkNew ? '<span class="st-chip new">новая</span>' : ''}</b><small>${esc(new Date(b.created_at * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }))}</small></div>
@@ -4406,6 +4436,13 @@ function stTokAdd(k, raw) {
 function stTokDel(k, x) { ST.draft[k] = ST.draft[k].filter(y => y !== x); stRender('st-tok-' + k); }
 function stTokClear() { ST.draft.fileExt = []; stRender(); }
 function stQuick(name) { ST.draft.fileExt = [...new Set([...ST.draft.fileExt, ...ST_QUICK[name]])]; stRender(); }
+function stBackupDay(d) {
+  const set = new Set(ST.draft.backupDays);
+  set.has(d) ? set.delete(d) : set.add(d);
+  ST.draft.backupDays = [...set].sort();
+  stRender();
+}
+function stBackupTime(v) { ST.draft.backupTime = v; stChrome(); }
 function stToFiles() {
   if (stChanged().length) return stClose();
   closeModal('modal-settings');
@@ -4415,6 +4452,12 @@ function stToFiles() {
 async function stSave(andClose) {
   const ch = stChanged();
   if (!ch.length || Object.keys(stErrors()).length || ST.saving) return;
+  // Дни и время расписания копий сохраняются только вместе: иначе, включив дни
+  // впервые при времени по умолчанию (совпадает с ST.saved), время не попадёт
+  // в изменения и на сервере останется пустым — расписание не сработает
+  if (ch.some(c => c.k === 'backupDays' || c.k === 'backupTime')) {
+    for (const k of ['backupDays', 'backupTime']) if (!ch.some(c => c.k === k)) ch.push({ sec: 'backups', k });
+  }
   ST.saving = true;
   stFootRender();
   const body = Object.fromEntries(ch.map(({ k }) => [ST_KEYS[k][0], ST_KEYS[k][1](ST.draft[k])]));
