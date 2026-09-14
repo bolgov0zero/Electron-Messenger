@@ -3080,7 +3080,7 @@ function _getMentionQuery(el) {
 }
 function _mentionMembers(includeSelf = false) {
   const chat = S.chats.find(c => c.id === S.activeChatId);
-  if (chat?.type !== 'group' && chat?.type !== 'room') return null;
+  if (!['group', 'room', 'direct'].includes(chat?.type)) return null;
   const members = chat.members || [];
   return includeSelf ? members : members.filter(m => m.id !== S.user.id);
 }
@@ -4253,6 +4253,10 @@ function connectWS() {
       S.avatarTs = Date.now();
       _avatarCache.clear();
       renderChatList();
+    }
+
+    if (data.type==='user_created') {
+      loadUsers();
     }
 
     if (data.type === 'force_update') {

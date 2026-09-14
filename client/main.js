@@ -608,11 +608,14 @@ ipcMain.handle('lightbox-open', (_, payload) => {
     x: display.bounds.x, y: display.bounds.y,
     width: display.bounds.width, height: display.bounds.height,
     frame: false, resizable: false, movable: false, fullscreenable: false,
-    alwaysOnTop: true, skipTaskbar: true, backgroundColor: '#000000',
+    skipTaskbar: true, transparent: true, hasShadow: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
     show: false,
   });
   lightboxWin.setMenuBarVisibility(false);
+  // Уровень 'screen-saver' поднимает окно НАД строкой меню (macOS) и панелью задач —
+  // обычный alwaysOnTop:true встаёт только выше других окон приложений, но не выше них
+  lightboxWin.setAlwaysOnTop(true, 'screen-saver');
   lightboxWin.once('ready-to-show', () => lightboxWin?.show());
   lightboxWin.on('closed', () => { lightboxWin = null; });
   lightboxWin.loadURL(lightboxUrl(payload));

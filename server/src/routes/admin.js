@@ -542,7 +542,7 @@ router.get('/overview', async (req, res) => {
     byUser.set(c.userId, u);
   }
   const online = [...byUser.values()]
-    .sort((a, b) => a.since - b.since)
+    .sort((a, b) => b.since - a.since)
     .map(u => ({ ...u, has_avatar: fs.existsSync(path.join(avatarDir, `${u.id}.jpg`)) }));
 
   const storage = monitor.storageInfo();

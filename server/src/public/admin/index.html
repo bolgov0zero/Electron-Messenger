@@ -1918,7 +1918,7 @@ function hmRenderOverview() {
   const clientName = cl => cl.version === 'web' ? (cl.hostname === 'PWA' ? 'Веб-приложение' : 'Веб')
     : cl.version && cl.version !== '—' ? `Electron ${cl.version}` : 'Клиент';
   hmText('hm-online-cap', `${o.online.length} из ${c.users}`);
-  const SHOWN = 8;
+  const SHOWN = 5;
   hmHtml('hm-online', o.online.length
     ? o.online.slice(0, SHOWN).map(u => {
         const clients = [...new Set(u.clients.map(cl => [clientName(cl), OS[cl.platform]].filter(Boolean).join(' · ')))].join(', ');
@@ -3543,10 +3543,16 @@ function clSummary() {
   const people = new Set(all.map(c => c.userId)).size;
   const versions = Object.entries(electron.reduce((m, c) => (m[c.clientVersion] = (m[c.clientVersion] || 0) + 1, m), {}))
     .sort((a, b) => clGt(a[0], b[0]) ? -1 : 1);
-  const [lm, ln] = (CL.latest || '').split('.').map(Number);
-  // Отставание в патч-версии — оранжевым, в минорной и больше — красным
-  const color = v => !CL.latest ? 'var(--c-primary)' : v === CL.latest || clGt(v, CL.latest) ? 'var(--c-green)'
-    : (([m, n]) => m === lm && n === ln ? 'var(--c-orange)' : 'var(--c-red)')(v.split('.').map(Number));
+  // Актуальная версия — зелёная, у каждой отдельной устаревшей — свой цвет из
+  // небольшой палитры (хеш по строке версии), чтобы на глаз различать, сколько
+  // разных версий разбросано по компьютерам, а не просто «старая/совсем старая»
+  const CL_VER_COLORS = ['var(--c-blue)', 'var(--c-orange)', 'var(--c-purple)', 'var(--c-red)', 'var(--c-primary)'];
+  function clVerHash(v) {
+    let h = 0;
+    for (let i = 0; i < v.length; i++) h = (h * 31 + v.charCodeAt(i)) >>> 0;
+    return CL_VER_COLORS[h % CL_VER_COLORS.length];
+  }
+  const color = v => !CL.latest ? 'var(--c-primary)' : (v === CL.latest || clGt(v, CL.latest)) ? 'var(--c-green)' : clVerHash(v);
   const waiting = all.filter(c => clOutdated(c) && !clBusy(c));
   const restarting = CL.prog.filter(p => p.status === 'restarting' && !all.some(c => c.connId === p.connId));
   const others = all.length - electron.length;

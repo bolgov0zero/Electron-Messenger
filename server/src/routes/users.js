@@ -4,7 +4,7 @@ const path2 = require('path');
 const fs = require('fs');
 const db = require('../db');
 const { authMiddleware, adminMiddleware } = require('../auth');
-const { getStatus, sendTo } = require('../ws');
+const { getStatus, sendTo, broadcastAll } = require('../ws');
 
 const DB_DIR = path2.join(__dirname, '..', '..', '..', 'chat_db');
 const AVATAR_DIR = path2.join(DB_DIR, 'avatar');
@@ -82,6 +82,9 @@ router.post('/', authMiddleware, adminMiddleware, (req, res) => {
     const hash = bcrypt.hashSync(password, 10);
     const result = db.prepare('INSERT INTO users (username, password_hash, display_name, is_admin, tag) VALUES (?, ?, ?, ?, ?)')
       .run(username.trim(), hash, display_name.trim(), is_admin ? 1 : 0, tag?.trim() || null);
+    // Иначе новый человек не появляется в списках (упоминания, «написать») до
+    // перезапуска клиента — список людей грузится один раз при входе
+    broadcastAll({ type: 'user_created' });
     res.json({ id: result.lastInsertRowid, username, display_name, is_admin: !!is_admin, tag: tag?.trim() || null });
   } catch { res.status(409).json({ error: 'Username already exists' }); }
 });
