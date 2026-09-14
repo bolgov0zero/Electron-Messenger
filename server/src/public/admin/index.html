@@ -617,7 +617,9 @@ tr.ua-banned .ux-cell{opacity:.6}
 .an-left b{font-family:var(--f-mono)}
 .an-bar{height:4px;border-radius:2px;background:var(--c-surface2);overflow:hidden}
 .an-bar i{display:block;height:100%;background:var(--c-orange);transition:width 1s linear}
-.an-modal{width:900px}
+/* .modal{width:480px} объявлен ниже в файле и при равной специфичности победил бы
+   по порядку — .modal.an-modal сильнее того же класса-одиночки .modal */
+.modal.an-modal{width:900px}
 /* Две колонки вместо одной длинной — слева тип/текст/время, справа превью и
    получатели, каждая со своей прокруткой, чтобы модалка не растягивалась */
 .an-modal .ua-body{display:grid;grid-template-columns:1.15fr 1fr;gap:0;padding:0;min-height:0}
@@ -673,7 +675,7 @@ tr.ua-banned .ux-cell{opacity:.6}
 .an-red{background:var(--c-red-dim);color:var(--c-red-text)}
 .an-kinds .ua-role-opt{display:flex;flex-direction:column;gap:3px}
 .wh-select option,.wh-select optgroup{background:var(--c-surface);color:var(--c-text)}
-@media (max-width:900px){ .an-kinds{grid-template-columns:1fr} .an-modal{width:calc(100vw - 24px)} }
+@media (max-width:900px){ .an-kinds{grid-template-columns:1fr} .modal.an-modal{width:calc(100vw - 24px)} }
 
 /* ── ПЛАВНАЯ СМЕНА ТЕМЫ ── класс theme-anim держится доли секунды */
 html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after {
