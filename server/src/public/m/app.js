@@ -12,13 +12,19 @@ const S = {
   server: '', token: null, user: null,
   chats: [], activeChatId: null, ws: null,
   presence: {}, lastSeen: {}, msgStatus: {}, statusApplied: {},
-  avatarTs: 0, currentTab: 'chats', replyTo: null,
+  avatarTs: 0, currentTab: 'chats', replyTo: null, editingMessageId: null, editLimit: 120,
 };
 
 function haptic(ms = 10) { try { navigator.vibrate?.(ms); } catch {} }
 
 // ── МЕЛКИЕ ХЕЛПЕРЫ (те же, что в /chat/app.js) ──
 const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// Для строк, которые подставляются внутрь JS-строкового литерала в onclick="...('...')" —
+// иначе кавычка или бэкслэш в имени файла ломают атрибут (и потенциально исполняют JS).
+// \' — это JS-экранирование (не HTML-сущность): браузер сперва раскодирует HTML-атрибут,
+// и только потом то, что получилось, разбирает как код обработчика
+const jesc = s => esc(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 const initials = n => (n || '?').split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 const avatarColor = id => ['av-default', 'av-2', 'av-6', 'av-3'][id % 4];
 const TAG_COLORS = 14;
@@ -203,6 +209,7 @@ async function enterApp() {
   });
   await loadChats();
   loadContacts();
+  loadUploadSettings();
   connectWS();
   applyAvatars();
 }
@@ -244,19 +251,107 @@ function renderChats() {
     if (preview.length > 40) preview = preview.slice(0, 40) + '…';
     const time = lm ? fmtChatListTime(lm.sent_at) : '';
     const sq = (c.type === 'group' || c.type === 'room') ? ' sq' : '';
-    return `<div class="row" onclick="openChat(${c.id})">
-      <div class="av${sq} ${chatAvatarColorClass(c)}" data-av-chat="${c.id}">${esc(chatIcon(c))}</div>
-      <div class="row-body">
-        <div class="row-top"><div class="row-name">${esc(chatName(c))}</div><div class="row-time${unread ? ' unread' : ''}">${time}</div></div>
-        <div class="row-bottom">
-          <div class="row-msg">${esc(who)}${esc(preview)}</div>
-          ${mentions ? `<div class="badge at">@</div>` : unread ? `<div class="badge">${unread > 99 ? '99+' : unread}</div>` : ''}
+    return `<div class="row-swipe-wrap" data-chat-id="${c.id}">
+      <div class="row-actions">
+        <div class="row-action mute" onclick="toggleMuteChat(${c.id})">${c.muted
+          ? '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'
+          : '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'}
+        </div>
+        <div class="row-action delete" onclick="deleteChatConfirm(${c.id})">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </div>
+      </div>
+      <div class="row" onclick="rowTapOpen(${c.id}, this)">
+        <div class="av${sq} ${chatAvatarColorClass(c)}" data-av-chat="${c.id}">${esc(chatIcon(c))}</div>
+        <div class="row-body">
+          <div class="row-top"><div class="row-name">${esc(chatName(c))}</div><div class="row-time${unread ? ' unread' : ''}">${time}</div></div>
+          <div class="row-bottom">
+            <div class="row-msg">${esc(who)}${esc(preview)}</div>
+            ${mentions ? `<div class="badge at">@</div>` : unread ? `<div class="badge">${unread > 99 ? '99+' : unread}</div>` : ''}
+          </div>
         </div>
       </div>
     </div>`;
   }).join('');
   applyAvatars();
 }
+
+// ── СВАЙП-ДЕЙСТВИЯ НА СТРОКЕ ЧАТА ──
+const ROW_ACTIONS_W = 128;
+let _openRowWrap = null;
+function closeOpenRow() {
+  if (!_openRowWrap) return;
+  const row = _openRowWrap.querySelector('.row');
+  row.style.transition = 'transform .2s ease';
+  row.style.transform = '';
+  _openRowWrap = null;
+}
+function rowTapOpen(chatId, rowEl) {
+  const wrap = rowEl.closest('.row-swipe-wrap');
+  if (wrap === _openRowWrap) { closeOpenRow(); return; }
+  openChat(chatId);
+}
+async function toggleMuteChat(chatId) {
+  closeOpenRow();
+  const chat = S.chats.find(c => c.id === chatId);
+  if (!chat) return;
+  const res = await api(chat.muted ? 'DELETE' : 'POST', `/chats/${chatId}/mute`);
+  if (res?.ok) { chat.muted = !chat.muted; renderChats(); }
+}
+function deleteChatConfirm(chatId) {
+  closeOpenRow();
+  const chat = S.chats.find(c => c.id === chatId);
+  if (!chat) return;
+  if (chat.type === 'room') { toast('Комнатами управляют администраторы'); return; }
+  openSheet(`<div class="sheet-title">Удалить чат «${esc(chatName(chat))}»?</div>
+    <div class="msg-action-row danger" onclick="closeSheet();confirmDeleteChat(${chatId})">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Удалить
+    </div>
+    <div class="msg-action-row" onclick="closeSheet()">Отмена</div>`);
+}
+async function confirmDeleteChat(chatId) {
+  const res = await api('POST', `/chats/${chatId}/leave`);
+  if (res?.ok) { S.chats = S.chats.filter(c => c.id !== chatId); if (S.activeChatId === chatId) closeChat(); renderChats(); }
+}
+(function () {
+  document.addEventListener('DOMContentLoaded', () => {
+    const list = document.getElementById('chat-list');
+    let startX = 0, startY = 0, wrap = null, row = null, dirLocked = false, isSwipe = false, base = 0;
+    list.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) return;
+      wrap = e.target.closest('.row-swipe-wrap');
+      if (!wrap) return;
+      row = wrap.querySelector('.row');
+      startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+      dirLocked = false; isSwipe = false;
+      base = wrap === _openRowWrap ? -ROW_ACTIONS_W : 0;
+    }, { passive: true });
+    list.addEventListener('touchmove', e => {
+      if (!wrap) return;
+      const dx = e.touches[0].clientX - startX, dy = e.touches[0].clientY - startY;
+      if (!dirLocked) {
+        if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 8) return;
+        dirLocked = true; isSwipe = true;
+        if (_openRowWrap && _openRowWrap !== wrap) closeOpenRow();
+      }
+      if (!isSwipe) return;
+      e.preventDefault();
+      const shift = Math.max(-ROW_ACTIONS_W, Math.min(0, base + dx));
+      row.style.transition = 'none';
+      row.style.transform = `translateX(${shift}px)`;
+    }, { passive: false });
+    list.addEventListener('touchend', e => {
+      if (!wrap || !isSwipe) { wrap = null; return; }
+      const dx = e.changedTouches[0].clientX - startX;
+      const shift = Math.max(-ROW_ACTIONS_W, Math.min(0, base + dx));
+      const open = shift < -ROW_ACTIONS_W / 2;
+      row.style.transition = 'transform .2s ease';
+      row.style.transform = open ? `translateX(-${ROW_ACTIONS_W}px)` : '';
+      _openRowWrap = open ? wrap : null;
+      wrap = null;
+    }, { passive: true });
+  });
+})();
 
 // ── НАВИГАЦИЯ ПО ВКЛАДКАМ ──
 function setTab(name) {
@@ -302,18 +397,36 @@ async function openContactChat(userId) {
 
 // ── СОЗДАНИЕ ГРУППЫ ──
 let _groupSelected = new Set();
+let _groupAvatarBase64 = null;
 async function openCreateGroupSheet() {
   _groupSelected = new Set();
+  _groupAvatarBase64 = null;
   if (!_contactsAll.length) await loadContacts();
   openSheet(`
     <div class="sheet-title">Новая группа</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <div class="av av-default sq" id="group-av-preview" style="width:52px;height:52px;font-size:18px;cursor:pointer;flex-shrink:0" onclick="document.getElementById('group-avatar-input').click()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </div>
+      <div style="font-size:12.5px;color:var(--accent);cursor:pointer" onclick="document.getElementById('group-avatar-input').click()">Фото группы</div>
+      <input type="file" id="group-avatar-input" accept="image/*" style="display:none" onchange="onGroupAvatarPicked(this)">
+    </div>
     <input class="sheet-input" id="group-name" placeholder="Название группы" maxlength="60">
     <input class="sheet-input" id="group-search" placeholder="Поиск участников" oninput="renderGroupPickList(this.value)">
     <div class="pick-list" id="pick-list"></div>
     <button class="l-btn" style="width:100%;margin-top:6px" onclick="submitCreateGroup()">Создать</button>
   `);
   renderGroupPickList('');
-  document.getElementById('group-name').focus();
+}
+async function onGroupAvatarPicked(input) {
+  const file = input.files[0];
+  if (!file) return;
+  _groupAvatarBase64 = await resizeAvatarFile(file);
+  const prev = document.getElementById('group-av-preview');
+  prev.innerHTML = '';
+  prev.style.backgroundImage = `url(data:image/jpeg;base64,${_groupAvatarBase64})`;
+  prev.style.backgroundSize = 'cover';
+  prev.style.backgroundPosition = 'center';
 }
 function renderGroupPickList(q) {
   const filtered = _contactsAll.filter(u => u.display_name.toLowerCase().includes(q.trim().toLowerCase()));
@@ -335,6 +448,7 @@ async function submitCreateGroup() {
   if (_groupSelected.size === 0) { toast('Выберите хотя бы одного участника'); return; }
   const chat = await api('POST', '/chats/group', { name, member_ids: [..._groupSelected] });
   if (!chat || chat.error) { toast('Не удалось создать группу'); return; }
+  if (_groupAvatarBase64) await api('POST', `/chats/${chat.id}/avatar`, { data: _groupAvatarBase64 });
   S.chats.push(chat);
   closeSheet();
   setTab('chats');
@@ -429,18 +543,59 @@ function setTheme(theme) {
 // ── ПЕРЕПИСКА ──
 let _msgCache = []; // сообщения открытого чата, в порядке отображения
 
-function bubbleHtml(m) {
+function fmtSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024) return bytes + ' Б';
+  if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' КБ';
+  return (bytes / 1024 / 1024).toFixed(1) + ' МБ';
+}
+function attachmentHtml(att) {
+  if (!att) return '';
+  const url = `${httpProto()}://${S.server}${att.url}`;
+  if (att.expired) return `<div class="bubble-file"><div class="bubble-file-ico">✕</div><div><div class="bubble-file-name">Файл удалён</div></div></div>`;
+  if (att.mime?.startsWith('image/')) {
+    return `<img class="bubble-media" src="${url}" loading="lazy" onclick="event.stopPropagation();openLightbox('${esc(att.url)}','image')">`;
+  }
+  if (att.mime?.startsWith('video/')) {
+    const poster = att.thumb ? `${httpProto()}://${S.server}${att.thumb}` : '';
+    return `<div class="bubble-video-wrap" onclick="event.stopPropagation();openLightbox('${esc(att.url)}','video')">
+      ${poster ? `<img class="bubble-media" src="${poster}" loading="lazy">` : `<div class="bubble-media" style="width:180px;height:120px;background:var(--search-bg)"></div>`}
+      <div class="bubble-play"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
+    </div>`;
+  }
+  return `<div class="bubble-file" onclick="event.stopPropagation();downloadAttachment('${jesc(att.url)}','${jesc(att.name || 'file')}')">
+    <div class="bubble-file-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+    <div><div class="bubble-file-name">${esc(att.name || 'Файл')}</div><div class="bubble-file-size">${fmtSize(att.size)}</div></div>
+  </div>`;
+}
+function reactionsHtml(m) {
+  if (!m.reactions?.length) return '';
+  return `<div class="bubble-reactions">${m.reactions.map(r => {
+    const mine = String(r.user_ids || '').split(',').map(Number).includes(S.user.id);
+    return `<div class="reaction-pill${mine ? ' mine' : ''}" onclick="event.stopPropagation();sendReaction(${m.id},'${r.reaction}')">${r.reaction}<b>${r.count}</b></div>`;
+  }).join('')}</div>`;
+}
+function bubbleHtml(m, chat) {
   const mine = m.sender_id === S.user.id;
   if (m.deleted) return `<div class="bubble ${mine ? 'out' : 'in'}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}"><span class="bubble-deleted">Сообщение удалено</span></div>`;
-  const text = m.text ? esc(m.text) : (m.attachment ? '📎 ' + esc(m.attachment.name || 'Вложение') : '');
+  const isGroupish = chat && (chat.type === 'group' || chat.type === 'room');
+  const showSender = isGroupish && !mine;
+  const text = m.text ? highlightMentions(esc(m.text)) : '';
   const quote = m.reply_to_id ? `<div class="bubble-quote">
     <div class="bubble-quote-name">${esc(m.reply_sender_name || '')}</div>
     <div class="bubble-quote-text">${m.reply_deleted ? 'Сообщение удалено' : esc(m.reply_text || '')}</div>
   </div>` : '';
   const tappable = mine ? ' tappable' : '';
-  return `<div class="bubble ${mine ? 'out' + tappable : 'in'}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}">
-    ${quote}${text}
-    <div class="bubble-meta">${fmtTime(m.sent_at)}${mine ? renderTicks(m.status) : ''}</div>
+  const senderLine = showSender ? `<div class="bubble-sender ${userAvatarColor(m.sender_id, m.sender_tag).replace(/^av-/, 'mtag-')}" data-sender-id="${m.sender_id}" data-sender-name="${esc(m.sender_name || '')}" onclick="event.stopPropagation();mentionUserInComposer(Number(this.dataset.senderId),this.dataset.senderName)">${esc(m.sender_name || '')}</div>` : '';
+  const bubble = `<div class="bubble ${mine ? 'out' + tappable : 'in'}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}">
+    ${senderLine}${quote}${attachmentHtml(m.attachment)}${text}
+    <div class="bubble-meta">${m.edited_at ? 'изм. ' : ''}${fmtTime(m.sent_at)}${mine ? renderTicks(m.status) : ''}</div>
+    ${reactionsHtml(m)}
+  </div>`;
+  if (!showSender) return bubble;
+  return `<div class="msg-row">
+    <div class="av msg-av ${userAvatarColor(m.sender_id, m.sender_tag)}" data-av-user="${m.sender_id}" data-av-fallback="${esc(initials(m.sender_name || ''))}">${esc(initials(m.sender_name || ''))}</div>
+    ${bubble}
   </div>`;
 }
 function renderTicks(status) {
@@ -456,14 +611,16 @@ function renderTicks(status) {
 
 function renderMessages() {
   const container = document.getElementById('messages');
+  const chat = S.chats.find(c => c.id === S.activeChatId);
   let html = '', lastDay = '';
   for (const m of _msgCache) {
     const day = new Date(m.sent_at * 1000).toDateString();
     if (day !== lastDay) { html += `<div class="day-sep">${new Date(m.sent_at * 1000).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</div>`; lastDay = day; }
-    html += bubbleHtml(m);
+    html += bubbleHtml(m, chat);
   }
   container.innerHTML = html || '<div class="stub-note">Сообщений пока нет</div>';
   container.scrollTop = container.scrollHeight;
+  applyAvatars();
 }
 
 async function openChat(chatId) {
@@ -504,6 +661,47 @@ function closeChat() {
 // ── ОТВЕТ НА СООБЩЕНИЕ ──
 function findMsg(id) { return _msgCache.find(m => m.id === id); }
 
+// ── УПОМИНАНИЯ (@Имя) ──
+function _mentionMembers(includeSelf = false) {
+  const chat = S.chats.find(c => c.id === S.activeChatId);
+  if (!['group', 'room', 'direct'].includes(chat?.type)) return null;
+  const members = chat.members || [];
+  return includeSelf ? members : members.filter(m => m.id !== S.user.id);
+}
+function highlightMentions(escapedText) {
+  const members = _mentionMembers(true);
+  if (!members?.length) return escapedText;
+  const byName = new Map();
+  for (const m of members) {
+    const dn = esc(m.display_name || '');
+    if (dn && !byName.has(dn)) byName.set(dn, m);
+    const un = esc(m.username || '');
+    if (un && !byName.has(un)) byName.set(un, m);
+  }
+  if (!byName.size) return escapedText;
+  const names = [...byName.keys()].sort((a, b) => b.length - a.length).map(escapeRegExp);
+  const re = new RegExp('@(' + names.join('|') + ')(?![\\wа-яёА-ЯЁ])', 'g');
+  return escapedText.replace(re, (match, name) => {
+    const m = byName.get(name);
+    const cls = userAvatarColor(m.id, m.tag).replace(/^av-/, 'mtag-');
+    return `<span class="mention ${cls}">@${name}</span>`;
+  });
+}
+function mentionUserInComposer(senderId, senderName) {
+  const el = document.getElementById('msg-input');
+  const name = senderId === S.user.id ? S.user.display_name : senderName;
+  if (!el || !name) return;
+  const cursor = el.selectionStart ?? el.value.length;
+  const before = el.value.slice(0, cursor);
+  const after = el.value.slice(cursor);
+  const needsSpace = before && !/\s$/.test(before);
+  const insertion = (needsSpace ? ' ' : '') + '@' + name + ' ';
+  el.value = before + insertion + after;
+  const newPos = before.length + insertion.length;
+  el.selectionStart = el.selectionEnd = newPos;
+  el.focus();
+}
+
 function setReply(msgId) {
   const m = findMsg(msgId);
   if (!m || m.deleted) return;
@@ -525,16 +723,157 @@ function hideReplyBar() {
   if (bar) bar.style.display = 'none';
 }
 
+// ── ВЛОЖЕНИЯ ──
+let _pendingAttachment = null;
+let _uploadSettings = {
+  image: { maxSizeMb: 10, extensions: ['jpeg', 'jpg', 'png', 'gif', 'webp'] },
+  video: { maxSizeMb: 50, extensions: ['mp4', 'mov', 'webm'] },
+  file: { maxSizeMb: 50, extensions: [] },
+};
+async function loadUploadSettings() {
+  const res = await api('GET', '/upload/settings');
+  if (res && !res.error) _uploadSettings = res;
+}
+async function onFilePicked(input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  const isImage = file.type.startsWith('image/');
+  const isVideo = file.type.startsWith('video/');
+  const cfg = isImage ? _uploadSettings.image : isVideo ? _uploadSettings.video : _uploadSettings.file;
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  if (file.size > cfg.maxSizeMb * 1024 * 1024) { toast(`Файл слишком большой (макс. ${cfg.maxSizeMb} МБ)`); return; }
+  if (cfg.extensions.length > 0 && !cfg.extensions.includes(ext)) { toast(`Расширение .${ext} не разрешено`); return; }
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res = await fetch(`${httpProto()}://${S.server}/api/upload`, {
+      method: 'POST', headers: { Authorization: `Bearer ${S.token}` }, body: formData,
+    });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); toast(err.error || 'Ошибка загрузки'); return; }
+    _pendingAttachment = await res.json();
+    showAttachBar();
+  } catch { toast('Ошибка загрузки'); }
+}
+function showAttachBar() {
+  if (!_pendingAttachment) return;
+  const att = _pendingAttachment;
+  const bar = document.getElementById('attach-bar');
+  const thumb = document.getElementById('attach-thumb');
+  const fileIco = document.getElementById('attach-file-ico');
+  if (att.mime?.startsWith('image/')) {
+    thumb.src = `${httpProto()}://${S.server}${att.url}`; thumb.style.display = '';
+    fileIco.style.display = 'none';
+  } else if (att.mime?.startsWith('video/') && att.thumb) {
+    thumb.src = `${httpProto()}://${S.server}${att.thumb}`; thumb.style.display = '';
+    fileIco.style.display = 'none';
+  } else {
+    thumb.style.display = 'none'; fileIco.style.display = '';
+  }
+  document.getElementById('attach-name').textContent = att.name || 'Файл';
+  bar.style.display = '';
+}
+function clearAttachment() {
+  _pendingAttachment = null;
+  const bar = document.getElementById('attach-bar');
+  if (bar) bar.style.display = 'none';
+}
+function downloadAttachment(url, name) {
+  const a = document.createElement('a');
+  a.href = `${httpProto()}://${S.server}${url}`;
+  a.download = name;
+  a.target = '_blank';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+// ── ПРОСМОТР ФОТО/ВИДЕО ──
+function openLightbox(url, type) {
+  const box = document.getElementById('lightbox');
+  const img = document.getElementById('lightbox-img');
+  const vid = document.getElementById('lightbox-vid');
+  box.classList.toggle('video', type === 'video');
+  if (type === 'video') {
+    img.src = ''; vid.src = `${httpProto()}://${S.server}${url}`;
+    vid.play().catch(() => {});
+  } else {
+    vid.pause(); vid.src = '';
+    img.src = `${httpProto()}://${S.server}${url}`;
+  }
+  box.classList.add('open');
+}
+function closeLightbox() {
+  const box = document.getElementById('lightbox');
+  box.classList.remove('open', 'video');
+  document.getElementById('lightbox-vid').pause();
+  document.getElementById('lightbox-img').src = '';
+  document.getElementById('lightbox-vid').src = '';
+}
+
+// ── РЕАКЦИИ ──
+const REACTION_SET = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+function sendReaction(msgId, reaction) {
+  if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'react', message_id: msgId, reaction }));
+}
+function openReactionPicker(msgId) {
+  openSheet(`<div class="sheet-title">Реакция</div>
+    <div class="reaction-picker-row">${REACTION_SET.map(r => `<span onclick="closeSheet();sendReaction(${msgId},'${r}')">${r}</span>`).join('')}</div>`);
+}
+
+// ── РЕДАКТИРОВАНИЕ / УДАЛЕНИЕ ──
+function startEdit(msgId) {
+  const m = findMsg(msgId);
+  if (!m || m.deleted) return;
+  if (Date.now() / 1000 - m.sent_at > (S.editLimit || 120)) { toast('Время редактирования истекло'); return; }
+  S.editingMessageId = msgId;
+  const input = document.getElementById('msg-input');
+  input.value = m.text || '';
+  input.focus();
+  hideReplyBar();
+  clearAttachment();
+  document.getElementById('edit-bar').style.display = '';
+}
+function cancelEdit() {
+  S.editingMessageId = null;
+  document.getElementById('msg-input').value = '';
+  document.getElementById('edit-bar').style.display = 'none';
+}
+function submitEdit() {
+  const input = document.getElementById('msg-input');
+  const text = input.value.trim();
+  if (!text) { cancelEdit(); return; }
+  if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'edit_message', message_id: S.editingMessageId, text }));
+  cancelEdit();
+}
+function deleteMessageConfirm(msgId) {
+  openSheet(`<div class="sheet-title">Удалить сообщение?</div>
+    <div class="msg-action-row danger" onclick="closeSheet();confirmDeleteMessage(${msgId})">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Удалить
+    </div>
+    <div class="msg-action-row" onclick="closeSheet()">Отмена</div>`);
+}
+function confirmDeleteMessage(msgId) {
+  if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'delete_message', message_id: msgId }));
+}
+
 // ── МИНИ-МЕНЮ ДОЛГОГО НАЖАТИЯ ──
 function openMsgActions(msgId) {
   const m = findMsg(msgId);
   if (!m || m.deleted) return;
   const mine = m.sender_id === S.user.id;
+  const canEdit = mine && m.text && (Date.now() / 1000 - m.sent_at) < (S.editLimit || 120);
+  const rowReact = `<div class="msg-action-row" onclick="closeSheet();openReactionPicker(${msgId})">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>Реакция</div>`;
   const rowReply = `<div class="msg-action-row" onclick="closeSheet();setReply(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>Ответить</div>`;
+  const rowEdit = canEdit ? `<div class="msg-action-row" onclick="closeSheet();startEdit(${msgId})">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>Изменить</div>` : '';
   const rowInfo = mine ? `<div class="msg-action-row" onclick="closeSheet();openReadSheet(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>Информация</div>` : '';
-  openSheet(`<div class="sheet-title">Сообщение</div>${rowReply}${rowInfo}`);
+  const rowDelete = mine ? `<div class="msg-action-row danger" onclick="closeSheet();deleteMessageConfirm(${msgId})">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Удалить</div>` : '';
+  openSheet(`<div class="sheet-title">Сообщение</div>${rowReact}${rowReply}${rowEdit}${rowInfo}${rowDelete}`);
 }
 
 // ── ЖЕСТЫ: свайп-назад из чата, свайп-ответ, лонгпресс ──
@@ -542,12 +881,13 @@ const LONG_PRESS_MS = 500, LONG_PRESS_SLOP = 10;
 function addChatGestures() {
   const screenEl = document.getElementById('chat-screen');
   let startX = 0, startY = 0, dirLocked = false, mode = null, msgEl = null, replyArmed = false;
-  let lpTimer = null, lpFired = false;
+  let lpTimer = null, lpFired = false, tappedInteractive = false;
 
   screenEl.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) return;
     startX = e.touches[0].clientX; startY = e.touches[0].clientY;
     dirLocked = false; mode = null; replyArmed = false; lpFired = false;
+    tappedInteractive = !!e.target.closest('.bubble-media, .bubble-video-wrap, .bubble-file, .reaction-pill');
     msgEl = e.target.closest('[data-msg-id]');
     if (msgEl) {
       lpTimer = setTimeout(() => {
@@ -598,7 +938,7 @@ function addChatGestures() {
       msgEl.style.transition = 'transform .25s ease';
       msgEl.style.transform = '';
       if (dx < -50) setReply(parseInt(msgEl.dataset.msgId));
-    } else if (!mode && !lpFired && msgEl?.dataset.mine === '1') {
+    } else if (!mode && !lpFired && !tappedInteractive && msgEl?.dataset.mine === '1') {
       // Обычный тап по своему сообщению (без сдвига и без долгого нажатия) — «Прочитано»
       openReadSheet(parseInt(msgEl.dataset.msgId));
     }
@@ -617,9 +957,11 @@ function peerStatusText(userId) {
 }
 
 function sendMessage() {
+  if (S.editingMessageId) { submitEdit(); return; }
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
-  if (!text || !S.activeChatId) return;
+  if (!text && !_pendingAttachment) return;
+  if (!S.activeChatId) return;
   if (!S.ws || S.ws.readyState !== 1) { toast('Нет связи с сервером'); return; }
   const chatId = S.activeChatId;
   const payload = { type: 'message', chat_id: chatId, text };
@@ -633,11 +975,16 @@ function sendMessage() {
     temp.reply_sender_name = S.replyTo.senderName;
     temp.reply_text = S.replyTo.text;
   }
+  if (_pendingAttachment) {
+    payload.attachment = _pendingAttachment;
+    temp.attachment = _pendingAttachment;
+  }
   _msgCache.push(temp);
   renderMessages();
   S.ws.send(JSON.stringify(payload));
   input.value = '';
   hideReplyBar();
+  clearAttachment();
 }
 
 // ── WEBSOCKET ──
@@ -651,6 +998,15 @@ function connectWS() {
   ws.onmessage = e => {
     if (ws !== S.ws) return;
     let data; try { data = JSON.parse(e.data); } catch { return; }
+
+    if (data.type === 'connected') { S.editLimit = data.edit_time_limit || 120; return; }
+    if (data.type === 'edit_rejected') { toast('Время редактирования истекло'); return; }
+
+    if (data.type === 'reaction_update') {
+      const m = findMsg(data.message_id);
+      if (m) { m.reactions = data.counts; renderMessages(); }
+      return;
+    }
 
     if (data.type === 'message') {
       const m = data.message;
@@ -726,6 +1082,11 @@ function connectWS() {
     if (data.type === 'presence') { S.presence[data.user_id] = data.status; }
     if (data.type === 'reload_chats') loadChats();
     if (data.type === 'chat_read') { const c = S.chats.find(x => x.id === data.chat_id); if (c) { c.unread = 0; renderChats(); } }
+    if (data.type === 'chat_deleted') {
+      S.chats = S.chats.filter(c => c.id !== data.chat_id);
+      if (S.activeChatId === data.chat_id) closeChat();
+      renderChats();
+    }
     if (data.type === 'avatar_updated') { S.avatarTs = Date.now(); _avatarCache.clear(); renderChats(); if (S.currentTab === 'contacts') renderContacts(); }
     if (data.type === 'user_created') loadContacts();
   };

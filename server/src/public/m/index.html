@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=1">
+<link rel="stylesheet" href="/m/style.css?v=1">
 </head>
 <body>
 
@@ -152,12 +152,44 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </div>
     </div>
+    <div class="reply-bar" id="edit-bar" style="display:none">
+      <div class="reply-bar-body"><div class="reply-bar-name">Редактирование</div></div>
+      <div class="reply-bar-x" onclick="cancelEdit()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </div>
+    </div>
+    <div class="attach-bar" id="attach-bar" style="display:none">
+      <img id="attach-thumb" class="attach-thumb" style="display:none" alt="">
+      <div id="attach-file-ico" class="attach-thumb attach-file-ico" style="display:none">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <div class="reply-bar-body">
+        <div class="reply-bar-name">Вложение</div>
+        <div class="reply-bar-text" id="attach-name"></div>
+      </div>
+      <div class="reply-bar-x" onclick="clearAttachment()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </div>
+    </div>
     <div class="composer">
+      <div class="composer-icon-btn" onclick="document.getElementById('file-input').click()" title="Прикрепить">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      </div>
+      <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
       <input type="text" id="msg-input" placeholder="Сообщение" onkeydown="if(event.key==='Enter'){event.preventDefault();sendMessage();}">
       <div class="send-btn" onclick="sendMessage()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12L21 4L14 21L11 13L3 12Z"/></svg>
       </div>
     </div>
+  </div>
+
+  <!-- Просмотр фото/видео на весь экран -->
+  <div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
+    <div class="lightbox-close" onclick="closeLightbox()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </div>
+    <img id="lightbox-img" alt="">
+    <video id="lightbox-vid" controls playsinline></video>
   </div>
 
   <!-- Bottom sheet (шторка) -->
@@ -168,6 +200,6 @@
 
 <div id="toast" class="m-toast"></div>
 
-<script src="app.js?v=1"></script>
+<script src="/m/app.js?v=1"></script>
 </body>
 </html>
