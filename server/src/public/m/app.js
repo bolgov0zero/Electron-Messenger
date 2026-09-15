@@ -56,6 +56,14 @@ function fmtChatListTime(ts) {
   if (diffDays < 6) return d.toLocaleDateString('ru-RU', { weekday: 'short' });
   return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
 }
+// Разделитель дня в переписке — «Сегодня»/«Вчера», как в /chat и в клиенте
+function daySepLabel(ts) {
+  const d = new Date(ts * 1000), now = new Date();
+  if (d.toDateString() === now.toDateString()) return 'Сегодня';
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return 'Вчера';
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+}
 function toast(text) {
   const el = document.getElementById('toast');
   el.textContent = text;
@@ -938,7 +946,7 @@ function renderMessages(keepScroll) {
   let html = '', lastDay = '';
   for (const m of _msgCache) {
     const day = new Date(m.sent_at * 1000).toDateString();
-    if (day !== lastDay) { html += `<div class="day-sep">${new Date(m.sent_at * 1000).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</div>`; lastDay = day; }
+    if (day !== lastDay) { html += `<div class="day-sep">${daySepLabel(m.sent_at)}</div>`; lastDay = day; }
     html += bubbleHtml(m, chat);
   }
   // При подгрузке старых сообщений сохраняем то же место в ленте (иначе вставка
@@ -1023,8 +1031,7 @@ function closeChat() {
   _msgCache = [];
   S.hasMoreOlder = false;
   hideReplyBar();
-  const panel = document.getElementById('emoji-panel');
-  if (panel) panel.style.display = 'none';
+  document.getElementById('emoji-panel')?.classList.remove('open');
 }
 
 // ── ОТВЕТ НА СООБЩЕНИЕ ──
@@ -1294,7 +1301,7 @@ function insertEmoji(em) {
 function toggleEmojiPanel() {
   const panel = document.getElementById('emoji-panel');
   if (!panel) return;
-  if (panel.style.display !== 'none') { closeEmojiPanel(); return; }
+  if (panel.classList.contains('open')) { closeEmojiPanel(); return; }
   const tabs = document.getElementById('ep-tabs');
   const scroll = document.getElementById('ep-scroll');
   if (tabs && !tabs.firstChild) tabs.innerHTML = emojiTabsHtml('insertEmoji', 'ep-scroll');
@@ -1308,13 +1315,14 @@ function toggleEmojiPanel() {
   }
   const input = document.getElementById('ep-search-input');
   if (input) input.value = '';
-  panel.style.display = '';
-  stickMessagesToBottom();
+  // Оверлей над перепиской (position:absolute, bottom:100% композера) — открытие
+  // не двигает и не сжимает список сообщений, поэтому докручивать его не нужно
+  panel.classList.add('open');
 }
 function closeEmojiPanel() {
   if (_emojiInserting) return; // фокус вернули после вставки смайла — панель не закрываем
   const panel = document.getElementById('emoji-panel');
-  if (panel) panel.style.display = 'none';
+  if (panel) panel.classList.remove('open');
 }
 
 // ── РЕАКЦИИ ──
@@ -1673,22 +1681,29 @@ async function openReadSheet(msgId) {
 
 // ── BOTTOM SHEET ──
 function openSheet(html) {
-  document.getElementById('sheet').innerHTML = `<div class="sheet-handle"></div>` + html;
+  document.getElementById('sheet-scroll').innerHTML = html;
+  document.getElementById('sheet-scroll').scrollTop = 0;
   document.getElementById('sheet-bg').classList.add('open');
 }
 function closeSheet() { document.getElementById('sheet-bg').classList.remove('open'); }
+// Свайп-закрытие шторки: ручка (.sheet-handle) не скроллится и всегда доступна
+// для перетаскивания; с самого содержимого (.sheet-scroll) тянуть можно только
+// когда оно прокручено к самому верху — иначе жест перехватывал бы обычный
+// вертикальный скролл длинных шторок вместо самого скролла.
 (function () {
   document.addEventListener('DOMContentLoaded', () => {
     const sheet = document.getElementById('sheet');
+    const handle = document.getElementById('sheet-handle');
+    const scroll = document.getElementById('sheet-scroll');
     let startY = 0, dy = 0, dragging = false, canDrag = false;
-    sheet.addEventListener('pointerdown', e => {
-      // Тянуть шторку вниз разрешаем, только если её содержимое прокручено к
-      // самому верху — иначе перетаскивание перехватывало бы обычный вертикальный
-      // скролл длинных шторок (например, «Внешний вид» с кучей разделов), и
-      // шторка не закрывалась бы свайпом и мешала бы скроллу одновременно
-      canDrag = sheet.scrollTop <= 0;
-      startY = e.clientY; dy = 0; dragging = false;
-    });
+    function onDown(gatedByScroll) {
+      return e => {
+        canDrag = !gatedByScroll || scroll.scrollTop <= 0;
+        startY = e.clientY; dy = 0; dragging = false;
+      };
+    }
+    handle.addEventListener('pointerdown', onDown(false));
+    scroll.addEventListener('pointerdown', onDown(true));
     window.addEventListener('pointermove', e => {
       if (!canDrag) return;
       const delta = e.clientY - startY;
