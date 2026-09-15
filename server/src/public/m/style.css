@@ -250,7 +250,7 @@ html.m-desktop .screen { display: none !important; }
   opacity: var(--chat-pattern-alpha, 0);
 }
 .chat-screen.open { transform: translateX(0); }
-.chat-hdr { display: flex; align-items: center; gap: 10px; padding: calc(max(14px, env(safe-area-inset-top)) + 30px) 10px 12px; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+.chat-hdr { display: flex; align-items: center; gap: 10px; padding: calc(max(14px, env(safe-area-inset-top)) + 30px) 10px 12px; flex-shrink: 0; border-bottom: 1px solid var(--border); background: var(--modal-bg); opacity: .999; }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: var(--accent); cursor: pointer; flex-shrink: 0; }
 .chat-hdr .av { width: 36px; height: 36px; font-size: 13px; }
 .chat-hdr-name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
