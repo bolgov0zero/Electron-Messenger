@@ -282,11 +282,11 @@ function updateTray() {
   }
 }
 
-// Оверлей поверх иконки в панели задач Windows — точное число нечитаемо на таком
-// маленьком значке, поэтому 10 и больше показываем одним «+» вместо цифр
+// Оверлей поверх иконки в панели задач Windows — точные числа 1-99, дальше
+// «99+» (тройная цифра уже не влезает читаемо на таком маленьком значке)
 function getOverlayImage(count) {
   if (count <= 0) return null;
-  const name = count > 9 ? 'overlay-more.png' : `overlay-${count}.png`;
+  const name = count > 99 ? 'overlay-more.png' : `overlay-${count}.png`;
   return nativeImage.createFromPath(path.join(_ASSETS, name));
 }
 
