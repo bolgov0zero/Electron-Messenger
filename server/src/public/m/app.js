@@ -1794,41 +1794,9 @@ function closeSheet() { document.getElementById('sheet-bg').classList.remove('op
 })();
 
 // ── INIT ──
-// Смайлы вшитым шрифтом (как в /chat и в клиенте) — но не все движки рисуют
-// один и тот же формат цветного шрифта. Рисуем смайл на canvas и смотрим,
-// получилась ли цветная картинка; если нет — переключаемся на запасной набор,
-// а если и его нет — на системные смайлы (см. правила html.emoji-svg/
-// html.no-emoji-font в style.css).
-async function checkEmojiFont() {
-  const paints = async family => {
-    try {
-      await document.fonts.load('64px "' + family + '"', '\u{1F600}');
-      const cv = document.createElement('canvas');
-      cv.width = cv.height = 64;
-      const ctx = cv.getContext('2d', { willReadFrequently: true });
-      ctx.font = '48px "' + family + '"';
-      ctx.textBaseline = 'top';
-      ctx.fillText('\u{1F600}', 0, 0);
-      const d = ctx.getImageData(0, 0, 64, 64).data;
-      let colored = 0;
-      for (let i = 0; i < d.length; i += 4) {
-        if (d[i + 3] < 20) continue;
-        if (Math.abs(d[i] - d[i + 1]) > 25 || Math.abs(d[i + 1] - d[i + 2]) > 25) colored++;
-      }
-      return colored >= 40;
-    } catch { return false; }
-  };
-  if (await paints('Noto Color Emoji')) return;
-  document.documentElement.classList.add('emoji-svg');
-  if (await paints('Noto Emoji SVG')) return;
-  document.documentElement.classList.remove('emoji-svg');
-  document.documentElement.classList.add('no-emoji-font');
-}
-
 window.addEventListener('DOMContentLoaded', async () => {
   S.server = window.location.host;
   applyAppearance();
-  checkEmojiFont();
   const session = loadSession();
   if (session?.token) {
     Object.assign(S, { token: session.token, user: session.user });
