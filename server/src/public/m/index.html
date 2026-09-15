@@ -27,6 +27,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/m/style.css?v=1">
+<!-- Список смайлов по разделам — общий статический файл, тот же, что у /chat -->
+<script src="/chat/emoji-data.js?v=1"></script>
 </head>
 <body>
 
@@ -171,16 +173,41 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </div>
     </div>
+    <div class="emoji-panel" id="emoji-panel" style="display:none">
+      <div class="ep-search">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="ep-search-input" placeholder="Поиск смайла" oninput="filterEmoji(this.value,'ep-scroll','ep-tabs','insertEmoji')">
+      </div>
+      <div class="ep-tabs" id="ep-tabs"></div>
+      <div class="ep-scroll" id="ep-scroll" onscroll="syncEmojiTabs('ep-scroll','ep-tabs')"></div>
+    </div>
     <div class="composer">
+      <div class="composer-icon-btn" onclick="toggleEmojiPanel()" title="Эмодзи">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 3 4 3 4-3 4-3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
+      </div>
       <div class="composer-icon-btn" onclick="document.getElementById('file-input').click()" title="Прикрепить">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
       </div>
       <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
-      <input type="text" id="msg-input" placeholder="Сообщение" onkeydown="if(event.key==='Enter'){event.preventDefault();sendMessage();}">
+      <input type="text" id="msg-input" placeholder="Сообщение" onfocus="closeEmojiPanel()" onkeydown="if(event.key==='Enter'){event.preventDefault();sendMessage();}">
       <div class="send-btn" onclick="sendMessage()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12L21 4L14 21L11 13L3 12Z"/></svg>
       </div>
     </div>
+  </div>
+
+  <!-- Список тем комнаты (подкомнаты) -->
+  <div class="chat-screen" id="topics-screen" style="z-index:15">
+    <div class="chat-hdr">
+      <div class="back-btn" onclick="closeTopicsScreen()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </div>
+      <div style="min-width:0;flex:1">
+        <div class="chat-hdr-name" id="topics-name"></div>
+        <div class="chat-hdr-sub">Темы</div>
+      </div>
+    </div>
+    <div class="list" id="topics-list"></div>
   </div>
 
   <!-- Просмотр фото/видео на весь экран -->

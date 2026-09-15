@@ -174,7 +174,6 @@ html.m-desktop .screen { display: none !important; }
 .mention.mtag-7{color:rgb(var(--tag-7-av))} .mention.mtag-8{color:rgb(var(--tag-8-av))} .mention.mtag-9{color:rgb(var(--tag-9-av))}
 .mention.mtag-10{color:rgb(var(--tag-10-av))} .mention.mtag-11{color:rgb(var(--tag-11-av))} .mention.mtag-12{color:rgb(var(--tag-12-av))}
 .mention.mtag-13{color:rgb(var(--tag-13-av))} .mention.mtag-14{color:rgb(var(--tag-14-av))}
-.bubble.out.tappable { cursor: pointer; }
 .bubble-meta { display: flex; align-items: center; gap: 3px; justify-content: flex-end; margin-top: 3px; font-size: 10.5px; color: var(--muted); }
 .bubble-meta svg { flex-shrink: 0; }
 .bubble-deleted { opacity: .6; font-style: italic; }
@@ -197,8 +196,24 @@ html.m-desktop .screen { display: none !important; }
 .reaction-pill { display: flex; align-items: center; gap: 3px; background: var(--search-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1px 6px; font-size: 12px; cursor: pointer; }
 .reaction-pill.mine { border-color: var(--accent); background: rgba(var(--accent-rgb),.15); }
 .reaction-pill b { font-size: 11px; font-weight: 700; color: var(--text2, var(--muted)); }
-.reaction-picker-row { display: flex; justify-content: space-between; padding: 6px 2px 14px; }
-.reaction-picker-row span { font-size: 24px; cursor: pointer; padding: 4px; }
+/* ── Панель смайлов (общая для композера и выбора реакции) ── */
+.emoji-panel { border-top: 1px solid var(--border); background: var(--modal-bg); flex-shrink: 0; }
+.ep-search { display: flex; align-items: center; gap: 7px; margin: 8px 10px 6px; padding: 7px 10px; background: var(--search-bg); border: 1px solid var(--border); border-radius: 10px; }
+.ep-search svg { color: var(--muted); flex-shrink: 0; }
+.ep-search input { flex: 1; min-width: 0; border: none; background: none; outline: none; color: var(--text); font-size: 13px; }
+.ep-search input::placeholder { color: var(--muted); }
+.ep-tabs { display: flex; gap: 2px; padding: 0 6px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.ep-tab { flex: 1; height: 34px; min-width: 30px; border: none; background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 17px; border-radius: 8px 8px 0 0; position: relative; filter: grayscale(1) opacity(.5); }
+.ep-tab[aria-selected="true"] { filter: none; }
+.ep-tab[aria-selected="true"]::after { content: ""; position: absolute; left: 22%; right: 22%; bottom: -1px; height: 2px; background: var(--accent); border-radius: 2px 2px 0 0; }
+.ep-scroll { overflow-x: hidden; overflow-y: auto; padding: 0 8px 8px; }
+#ep-scroll { max-height: 230px; }
+#rp-scroll { max-height: 260px; }
+.ep-head { position: sticky; top: 0; z-index: 2; padding: 8px 4px 5px; font-size: 10.5px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); background: var(--modal-bg); }
+.ep-row { display: grid; grid-template-columns: repeat(7, 1fr); content-visibility: auto; }
+.emoji-item { aspect-ratio: 1; width: 100%; font-family: inherit; background: none; border: none; font-size: 23px; line-height: 1; cursor: pointer; border-radius: 9px; display: flex; align-items: center; justify-content: center; }
+.emoji-item:active { background: var(--search-bg); }
+.ep-miss { padding: 22px 10px; text-align: center; color: var(--muted); font-size: 12px; }
 
 /* ── Плашка ответа / вложения над полем ввода ── */
 .reply-bar, .attach-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--border); background: var(--search-bg); flex-shrink: 0; }

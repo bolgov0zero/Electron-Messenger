@@ -13,6 +13,7 @@ const S = {
   chats: [], activeChatId: null, ws: null,
   presence: {}, lastSeen: {}, msgStatus: {}, statusApplied: {},
   avatarTs: 0, currentTab: 'chats', replyTo: null, editingMessageId: null, editLimit: 120,
+  topics: {}, activeRoomId: null, // подкомнаты: roomId -> список тем; открытая комната с темами
 };
 
 function haptic(ms = 10) { try { navigator.vibrate?.(ms); } catch {} }
@@ -113,11 +114,15 @@ function loadSession() { try { return JSON.parse(localStorage.getItem(SESSION_KE
 // ── АВАТАРКИ (то же, что в /chat/app.js) ──
 const _avatarCache = new Map();
 function tryLoadAvatar(el, url, fallbackText) {
+  // Классы цвета аватарки (.av-N) красят фон через шорткод `background:`, а он
+  // сбрасывает background-size/position на auto/0 0 — картинка вставала в
+  // натуральную величину от левого верхнего угла вместо масштаба под рамку.
+  // Выставляем оба свойства инлайном (сильнее шорткода), как в /chat/app.js.
   const cached = _avatarCache.get(url);
-  if (cached === true) { el.style.backgroundImage = `url('${url}')`; el.textContent = ''; return; }
+  if (cached === true) { el.style.backgroundImage = `url('${url}')`; el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center'; el.textContent = ''; return; }
   if (cached === false) { el.style.backgroundImage = ''; el.textContent = fallbackText; return; }
   const img = new Image();
-  img.onload = () => { _avatarCache.set(url, true); el.style.backgroundImage = `url('${url}')`; el.textContent = ''; };
+  img.onload = () => { _avatarCache.set(url, true); el.style.backgroundImage = `url('${url}')`; el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center'; el.textContent = ''; };
   img.onerror = () => { _avatarCache.set(url, false); el.style.backgroundImage = ''; el.textContent = fallbackText; };
   img.src = url;
 }
@@ -185,11 +190,11 @@ async function doLogin() {
 function logout() {
   clearInterval(_refreshTimer);
   if (S.ws) S.ws.close();
-  Object.assign(S, { token: null, user: null, chats: [], activeChatId: null, ws: null });
+  Object.assign(S, { token: null, user: null, chats: [], activeChatId: null, ws: null, topics: {}, activeRoomId: null });
   localStorage.removeItem(SESSION_KEY);
   document.getElementById('screen-app').classList.remove('active');
   document.getElementById('screen-login').classList.add('active');
-  closeChat(); closeSheet();
+  closeChat(); closeSheet(); closeTopicsScreen();
 }
 
 async function enterApp() {
@@ -235,7 +240,7 @@ function renderChats() {
   const q = (document.getElementById('chat-search').value || '').trim().toLowerCase();
   const list = document.getElementById('chat-list');
   const filtered = S.chats
-    .filter(c => chatName(c).toLowerCase().includes(q))
+    .filter(c => !c.parent_id && chatName(c).toLowerCase().includes(q)) // темы комнат не входят в верхний список
     .sort((a, b) => (b.last_message?.sent_at || 0) - (a.last_message?.sent_at || 0));
   if (!filtered.length) {
     list.innerHTML = '<div class="stub-note">' + (S.chats.length ? 'Ничего не нашли' : 'Чатов пока нет') + '</div>';
@@ -261,13 +266,14 @@ function renderChats() {
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </div>
       </div>
-      <div class="row" onclick="rowTapOpen(${c.id}, this)">
+      <div class="row" onclick="rowTapOpen(${c.id}, this, ${c.has_topics ? 1 : 0})">
         <div class="av${sq} ${chatAvatarColorClass(c)}" data-av-chat="${c.id}">${esc(chatIcon(c))}</div>
         <div class="row-body">
           <div class="row-top"><div class="row-name">${esc(chatName(c))}</div><div class="row-time${unread ? ' unread' : ''}">${time}</div></div>
           <div class="row-bottom">
             <div class="row-msg">${esc(who)}${esc(preview)}</div>
             ${mentions ? `<div class="badge at">@</div>` : unread ? `<div class="badge">${unread > 99 ? '99+' : unread}</div>` : ''}
+            ${c.has_topics ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>` : ''}
           </div>
         </div>
       </div>
@@ -286,9 +292,10 @@ function closeOpenRow() {
   row.style.transform = '';
   _openRowWrap = null;
 }
-function rowTapOpen(chatId, rowEl) {
+function rowTapOpen(chatId, rowEl, hasTopics) {
   const wrap = rowEl.closest('.row-swipe-wrap');
   if (wrap === _openRowWrap) { closeOpenRow(); return; }
+  if (hasTopics) { openRoomTopics(chatId); return; }
   openChat(chatId);
 }
 async function toggleMuteChat(chatId) {
@@ -352,6 +359,108 @@ async function confirmDeleteChat(chatId) {
     }, { passive: true });
   });
 })();
+
+// ── ПОДКОМНАТЫ (темы внутри комнаты) ──
+// Тема — обычный чат (свой id, свои сообщения), просто со скрытым parent_id.
+// Список тем открывается вместо переписки при тапе по комнате с has_topics;
+// сами темы заводятся только из админ-панели, здесь только просмотр/навигация.
+// Найденные темы подмешиваются в S.chats той же формы, что и обычные чаты —
+// тогда openChat/bubbleHtml/упоминания работают для них без переделок.
+async function loadTopics(roomId) {
+  const subs = await api('GET', `/chats/${roomId}/topics`);
+  if (!subs) return;
+  S.topics[roomId] = subs;
+  const room = S.chats.find(c => c.id === roomId);
+  subs.forEach(t => {
+    const existing = S.chats.find(c => c.id === t.id);
+    if (existing) {
+      existing.name = t.name; existing.last_message = t.last_message;
+      existing.unread = t.unread; existing.unread_mentions = t.unread_mentions;
+    } else {
+      S.chats.push({
+        id: t.id, type: t.type || 'room', name: t.name, parent_id: roomId,
+        members: room?.members || [], last_message: t.last_message,
+        unread: t.unread, unread_mentions: t.unread_mentions, muted: false,
+      });
+    }
+  });
+}
+async function openRoomTopics(roomId) {
+  S.activeRoomId = roomId;
+  const room = S.chats.find(c => c.id === roomId);
+  document.getElementById('topics-name').textContent = chatName(room);
+  document.getElementById('topics-list').innerHTML = '<div class="stub-note">Загрузка…</div>';
+  document.getElementById('topics-screen').classList.add('open');
+  await loadTopics(roomId);
+  renderTopicsList();
+}
+function renderTopicsList() {
+  const roomId = S.activeRoomId;
+  const subs = S.topics[roomId] || [];
+  const list = document.getElementById('topics-list');
+  if (!subs.length) { list.innerHTML = '<div class="stub-note">Тем пока нет</div>'; return; }
+  list.innerHTML = subs.map(s => {
+    const lm = s.last_message;
+    const unread = s.unread || 0;
+    const mentions = s.unread_mentions || 0;
+    const mine = lm && !lm.deleted && lm.sender_id === S.user.id;
+    const who = mine ? 'Вы: ' : '';
+    let preview = lm
+      ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? lm.text.replace(/<[^>]*>/g, '') : (lm.attachment
+          ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл'))
+          : '')))
+      : 'Нет сообщений';
+    if (preview.length > 40) preview = preview.slice(0, 40) + '…';
+    const time = lm ? fmtChatListTime(lm.sent_at) : '';
+    return `<div class="row" onclick="openChat(${s.id})">
+      <div class="av sq av-3" data-av-chat="${s.id}">#</div>
+      <div class="row-body">
+        <div class="row-top"><div class="row-name">${esc(s.name)}</div><div class="row-time${unread ? ' unread' : ''}">${time}</div></div>
+        <div class="row-bottom">
+          <div class="row-msg">${esc(who)}${esc(preview)}</div>
+          ${mentions ? `<div class="badge at">@</div>` : unread ? `<div class="badge">${unread > 99 ? '99+' : unread}</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  applyAvatars();
+}
+function closeTopicsScreen() {
+  document.getElementById('topics-screen').classList.remove('open');
+  S.activeRoomId = null;
+}
+// Свайп-назад с экрана — упрощённая версия жеста из addChatGestures (только закрытие)
+function addBackSwipeGesture(el, closeFn) {
+  let startX = 0, startY = 0, dirLocked = false, active = false;
+  el.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    dirLocked = false; active = false;
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - startX, dy = e.touches[0].clientY - startY;
+    if (!dirLocked) {
+      if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 8) return;
+      dirLocked = true; active = dx > 0;
+    }
+    if (!active) return;
+    e.preventDefault();
+    el.style.transition = 'none';
+    el.style.transform = `translateX(${Math.min(dx, window.innerWidth)}px)`;
+  }, { passive: false });
+  el.addEventListener('touchend', e => {
+    if (!active) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    el.style.transition = 'transform .28s cubic-bezier(.32,.72,0,1)';
+    if (dx > window.innerWidth * 0.35) {
+      el.style.transform = `translateX(${window.innerWidth}px)`;
+      setTimeout(() => { closeFn(); el.style.transform = ''; el.style.transition = ''; }, 260);
+    } else {
+      el.style.transform = '';
+    }
+    active = false;
+  }, { passive: true });
+}
 
 // ── НАВИГАЦИЯ ПО ВКЛАДКАМ ──
 function setTab(name) {
@@ -585,9 +694,8 @@ function bubbleHtml(m, chat) {
     <div class="bubble-quote-name">${esc(m.reply_sender_name || '')}</div>
     <div class="bubble-quote-text">${m.reply_deleted ? 'Сообщение удалено' : esc(m.reply_text || '')}</div>
   </div>` : '';
-  const tappable = mine ? ' tappable' : '';
   const senderLine = showSender ? `<div class="bubble-sender ${userAvatarColor(m.sender_id, m.sender_tag).replace(/^av-/, 'mtag-')}" data-sender-id="${m.sender_id}" data-sender-name="${esc(m.sender_name || '')}" onclick="event.stopPropagation();mentionUserInComposer(Number(this.dataset.senderId),this.dataset.senderName)">${esc(m.sender_name || '')}</div>` : '';
-  const bubble = `<div class="bubble ${mine ? 'out' + tappable : 'in'}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}">
+  const bubble = `<div class="bubble ${mine ? 'out' : 'in'}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}">
     ${senderLine}${quote}${attachmentHtml(m.attachment)}${text}
     <div class="bubble-meta">${m.edited_at ? 'изм. ' : ''}${fmtTime(m.sent_at)}${mine ? renderTicks(m.status) : ''}</div>
     ${reactionsHtml(m)}
@@ -645,6 +753,12 @@ async function openChat(chatId) {
   renderMessages();
   applyAvatars();
   chat.unread = 0; chat.unread_mentions = 0;
+  if (chat.parent_id) {
+    // Тема живёт ещё и в S.topics[roomId] — отдельном массиве для списка тем
+    const topic = S.topics[chat.parent_id]?.find(t => t.id === chatId);
+    if (topic) { topic.unread = 0; topic.unread_mentions = 0; }
+    if (S.activeRoomId === chat.parent_id) renderTopicsList();
+  }
   renderChats();
   if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'read', chat_id: chatId }));
 }
@@ -656,6 +770,8 @@ function closeChat() {
   el.style.transform = ''; el.style.transition = ''; // сброс инлайна после свайпа-назад
   _msgCache = [];
   hideReplyBar();
+  const panel = document.getElementById('emoji-panel');
+  if (panel) panel.style.display = 'none';
 }
 
 // ── ОТВЕТ НА СООБЩЕНИЕ ──
@@ -811,14 +927,158 @@ function closeLightbox() {
   document.getElementById('lightbox-vid').src = '';
 }
 
+// ── ЭМОДЗИ (панель по разделам — общая для композера и выбора реакции) ──
+// EMOJI_GROUPS/EMOJI_KEYWORDS грузятся из общего статического /chat/emoji-data.js
+// (та же таблица, что у /chat, без дублирования ~190КБ данных).
+const EP_COLS = 7;
+const EMOJIS_DEFAULT_FREQ = ['👍', '❤️', '😂', '🔥', '😎', '🎉', '😭', '🤔'];
+function getEmojiFreq() { try { return JSON.parse(localStorage.getItem('emoji_freq') || '{}'); } catch { return {}; } }
+function trackEmojiUse(em) { const f = getEmojiFreq(); f[em] = (f[em] || 0) + 1; try { localStorage.setItem('emoji_freq', JSON.stringify(f)); } catch {} }
+function getFreqEmojis(n) {
+  const f = getEmojiFreq();
+  const sorted = Object.entries(f).sort((a, b) => b[1] - a[1]).map(e => e[0]);
+  for (const em of EMOJIS_DEFAULT_FREQ) { if (sorted.length >= n) break; if (!sorted.includes(em)) sorted.push(em); }
+  return sorted.slice(0, n);
+}
+function emojiSections() {
+  return [{ key: 'freq', icon: '🕘', name: 'Часто используемые', items: getFreqEmojis(21) }, ...EMOJI_GROUPS];
+}
+function emojiSectionHtml(g, pickFn) {
+  const h = Math.ceil(g.items.length / EP_COLS) * 42;
+  return `<div class="ep-head" data-head="${g.key}">${esc(g.name)}</div>
+    <div class="ep-row" data-row="${g.key}" style="contain-intrinsic-size:auto ${h}px">
+      ${g.items.map(em => `<button class="emoji-item" data-em="${em}" onclick="${pickFn}('${em}')">${em}</button>`).join('')}
+    </div>`;
+}
+let _epStatic = null;
+function emojiPickerCached(pickFn) {
+  if (_epStatic === null) _epStatic = EMOJI_GROUPS.map(g => emojiSectionHtml(g, pickFn)).join('');
+  return emojiSectionHtml(emojiSections()[0], pickFn) + _epStatic;
+}
+function emojiTabsHtml(pickFn, scrollId) {
+  return emojiSections().map((g, i) => `<button class="ep-tab" data-tab="${g.key}" title="${esc(g.name)}" aria-selected="${i === 0}" onclick="emojiTabTo('${g.key}','${scrollId}')">${g.icon}</button>`).join('');
+}
+function emojiTabTo(key, scrollId) {
+  const scroll = document.getElementById(scrollId);
+  const row = scroll?.querySelector(`[data-row="${key}"]`);
+  const head = scroll?.querySelector(`[data-head="${key}"]`);
+  if (!row) return;
+  const delta = row.getBoundingClientRect().top - scroll.getBoundingClientRect().top - (head?.offsetHeight || 0);
+  scroll.scrollTo({ top: scroll.scrollTop + delta, behavior: 'smooth' });
+}
+function syncEmojiTabs(scrollId, tabsId) {
+  const scroll = document.getElementById(scrollId);
+  if (!scroll) return;
+  const top = scroll.getBoundingClientRect().top;
+  let cur = null, first = null, last = null;
+  scroll.querySelectorAll('[data-row]').forEach(row => {
+    if (row.hidden) return;
+    if (!first) first = row.dataset.row;
+    last = row.dataset.row;
+    if (row.getBoundingClientRect().top - top <= 30) cur = row.dataset.row;
+  });
+  if (scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 4) cur = last;
+  cur = cur || first;
+  document.querySelectorAll('#' + tabsId + ' .ep-tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === cur)));
+}
+function filterEmoji(q, scrollId, tabsId, pickFn) {
+  const scroll = document.getElementById(scrollId);
+  if (!scroll) return;
+  const query = (q || '').trim().toLowerCase();
+  if (!query) {
+    scroll.innerHTML = emojiPickerCached(pickFn);
+    scroll.dataset.freq = emojiSections()[0].items.join('');
+    scroll.scrollTop = 0;
+    syncEmojiTabs(scrollId, tabsId);
+    return;
+  }
+  const seen = new Set(), hits = [];
+  EMOJI_GROUPS.forEach(g => {
+    const groupHit = g.name.toLowerCase().includes(query);
+    g.items.forEach(em => {
+      if (seen.has(em)) return;
+      const words = (EMOJI_KEYWORDS[em] || '').split(' ');
+      let score = 0;
+      if (words.includes(query)) score = 3;
+      else if (words.some(w => w.startsWith(query))) score = 2;
+      else if (groupHit) score = 1.5;
+      else if (words.some(w => w.includes(query))) score = 1;
+      if (score) { seen.add(em); hits.push({ em, score }); }
+    });
+  });
+  hits.sort((a, b) => b.score - a.score);
+  delete scroll.dataset.freq;
+  scroll.innerHTML = hits.length
+    ? `<div class="ep-head">Найдено: ${hits.length}</div><div class="ep-row">${hits.map(h => `<button class="emoji-item" data-em="${h.em}" onclick="${pickFn}('${h.em}')">${h.em}</button>`).join('')}</div>`
+    : `<div class="ep-miss">Ничего не нашлось</div>`;
+  scroll.scrollTop = 0;
+  document.querySelectorAll('#' + tabsId + ' .ep-tab').forEach(t => t.setAttribute('aria-selected', 'false'));
+}
+
+// Панель в композере — вставка смайла в поле ввода, без закрытия панели
+let _emojiInserting = false;
+function insertEmoji(em) {
+  trackEmojiUse(em);
+  const input = document.getElementById('msg-input');
+  if (!input) return;
+  const start = input.selectionStart ?? input.value.length, end = input.selectionEnd ?? input.value.length;
+  input.value = input.value.slice(0, start) + em + input.value.slice(end);
+  input.selectionStart = input.selectionEnd = start + em.length;
+  _emojiInserting = true;
+  input.focus();
+  _emojiInserting = false;
+}
+function toggleEmojiPanel() {
+  const panel = document.getElementById('emoji-panel');
+  if (!panel) return;
+  if (panel.style.display !== 'none') { closeEmojiPanel(); return; }
+  const tabs = document.getElementById('ep-tabs');
+  const scroll = document.getElementById('ep-scroll');
+  if (tabs && !tabs.firstChild) tabs.innerHTML = emojiTabsHtml('insertEmoji', 'ep-scroll');
+  if (scroll) {
+    const freq = emojiSections()[0].items.join('');
+    if (!scroll.firstChild || scroll.dataset.freq !== freq) {
+      scroll.innerHTML = emojiPickerCached('insertEmoji');
+      scroll.dataset.freq = freq;
+    }
+    scroll.scrollTop = 0;
+  }
+  const input = document.getElementById('ep-search-input');
+  if (input) input.value = '';
+  panel.style.display = '';
+  const messages = document.getElementById('messages');
+  messages.scrollTop = messages.scrollHeight;
+}
+function closeEmojiPanel() {
+  if (_emojiInserting) return; // фокус вернули после вставки смайла — панель не закрываем
+  const panel = document.getElementById('emoji-panel');
+  if (panel) panel.style.display = 'none';
+}
+
 // ── РЕАКЦИИ ──
-const REACTION_SET = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 function sendReaction(msgId, reaction) {
   if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'react', message_id: msgId, reaction }));
 }
+// Панель реакций — та же разметка/логика (табы, поиск), что у панели композера,
+// только выбор сразу отправляет реакцию и закрывает шторку
+let _reactMsgId = null;
+function pickerReact(em) {
+  if (_reactMsgId == null) return;
+  sendReaction(_reactMsgId, em);
+  closeSheet();
+}
 function openReactionPicker(msgId) {
+  _reactMsgId = msgId;
   openSheet(`<div class="sheet-title">Реакция</div>
-    <div class="reaction-picker-row">${REACTION_SET.map(r => `<span onclick="closeSheet();sendReaction(${msgId},'${r}')">${r}</span>`).join('')}</div>`);
+    <div class="ep-search">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input placeholder="Поиск смайла" oninput="filterEmoji(this.value,'rp-scroll','rp-tabs','pickerReact')">
+    </div>
+    <div class="ep-tabs" id="rp-tabs">${emojiTabsHtml('pickerReact', 'rp-scroll')}</div>
+    <div class="ep-scroll" id="rp-scroll" onscroll="syncEmojiTabs('rp-scroll','rp-tabs')"></div>`);
+  const scroll = document.getElementById('rp-scroll');
+  scroll.innerHTML = emojiPickerCached('pickerReact');
+  scroll.dataset.freq = emojiSections()[0].items.join('');
 }
 
 // ── РЕДАКТИРОВАНИЕ / УДАЛЕНИЕ ──
@@ -881,17 +1141,16 @@ const LONG_PRESS_MS = 500, LONG_PRESS_SLOP = 10;
 function addChatGestures() {
   const screenEl = document.getElementById('chat-screen');
   let startX = 0, startY = 0, dirLocked = false, mode = null, msgEl = null, replyArmed = false;
-  let lpTimer = null, lpFired = false, tappedInteractive = false;
+  let lpTimer = null;
 
   screenEl.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) return;
     startX = e.touches[0].clientX; startY = e.touches[0].clientY;
-    dirLocked = false; mode = null; replyArmed = false; lpFired = false;
-    tappedInteractive = !!e.target.closest('.bubble-media, .bubble-video-wrap, .bubble-file, .reaction-pill');
+    dirLocked = false; mode = null; replyArmed = false;
     msgEl = e.target.closest('[data-msg-id]');
     if (msgEl) {
       lpTimer = setTimeout(() => {
-        lpFired = true; haptic(12);
+        haptic(12);
         openMsgActions(parseInt(msgEl.dataset.msgId));
       }, LONG_PRESS_MS);
     }
@@ -938,10 +1197,9 @@ function addChatGestures() {
       msgEl.style.transition = 'transform .25s ease';
       msgEl.style.transform = '';
       if (dx < -50) setReply(parseInt(msgEl.dataset.msgId));
-    } else if (!mode && !lpFired && !tappedInteractive && msgEl?.dataset.mine === '1') {
-      // Обычный тап по своему сообщению (без сдвига и без долгого нажатия) — «Прочитано»
-      openReadSheet(parseInt(msgEl.dataset.msgId));
     }
+    // Короткий тап по сообщению теперь ничего не делает — «Прочитано» открывается
+    // только из меню долгого нажатия (пункт «Информация»)
     mode = null; msgEl = null;
   }, { passive: true });
 }
@@ -1025,7 +1283,13 @@ function connectWS() {
         if (m.mentions?.includes(S.user.id)) chat.unread_mentions = (chat.unread_mentions || 0) + 1;
         if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'delivered', message_id: m.id }));
       }
-      if (!chat) loadChats(); else renderChats();
+      if (chat?.parent_id) {
+        // Сообщение в теме комнаты: агрегат комнаты в верхнем списке сервер
+        // считает сам — перезапрашиваем список чатов; если открыт список тем
+        // этой комнаты, обновляем и его
+        loadChats();
+        if (S.activeRoomId === chat.parent_id) loadTopics(chat.parent_id).then(renderTopicsList);
+      } else if (!chat) loadChats(); else renderChats();
     }
 
     if (data.type === 'message_edited') {
@@ -1080,7 +1344,10 @@ function connectWS() {
     }
 
     if (data.type === 'presence') { S.presence[data.user_id] = data.status; }
-    if (data.type === 'reload_chats') loadChats();
+    if (data.type === 'reload_chats') {
+      loadChats();
+      if (S.activeRoomId) loadTopics(S.activeRoomId).then(renderTopicsList);
+    }
     if (data.type === 'chat_read') { const c = S.chats.find(x => x.id === data.chat_id); if (c) { c.unread = 0; renderChats(); } }
     if (data.type === 'chat_deleted') {
       S.chats = S.chats.filter(c => c.id !== data.chat_id);
@@ -1177,4 +1444,5 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!document.hidden && S.token && (!S.ws || S.ws.readyState >= 2)) connectWS();
   });
   addChatGestures();
+  addBackSwipeGesture(document.getElementById('topics-screen'), closeTopicsScreen);
 });
