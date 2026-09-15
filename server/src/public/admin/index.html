@@ -1677,6 +1677,14 @@ const HM = {
 try { const r = localStorage.getItem('hm-range'); if (['5m', '15m', '1h'].includes(r)) HM.range = r; } catch {}
 try { const r = localStorage.getItem('hm-msg-range'); if (['24h', '7d', '30d', '1y'].includes(r)) HM.msgRange = r; } catch {}
 try { HM.compact = localStorage.getItem('hm-compact') === '1'; } catch {}
+// Подстраховка от зависшей подсказки: pointerleave/mouseleave у контейнера графика
+// иногда не успевают сработать, если курсор резко покидает не сам график, а окно
+// браузера целиком (relatedTarget === null — верный признак ухода за пределы страницы)
+document.addEventListener('mouseout', e => {
+  if (e.relatedTarget) return;
+  if (HM.hover != null) { HM.hover = null; hmRenderCharts(); }
+  if (HM.barHover != null) { HM.barHover = null; hmRenderBars(); }
+});
 const HM_MSG_RANGE = {
   '24h': { name: '24 часа', title: 'Сообщения за 24 часа' },
   '7d': { name: 'Неделя', title: 'Сообщения за неделю' },
