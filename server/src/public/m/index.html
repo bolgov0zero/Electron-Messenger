@@ -6,6 +6,14 @@
 <script>
 // Тема — до первого layout, без вспышки светлого экрана (сессия общая с /chat)
 (function(){try{var s=JSON.parse(localStorage.getItem('electron_v2')||'{}');var t=(s.settings&&s.settings.theme)||'dark';document.documentElement.classList.toggle('dark', t==='dark');}catch(e){document.documentElement.classList.add('dark');}})();
+// /m — редизайн специально под телефон (жесты, размер тап-зон, нижний таб-бар).
+// На широком экране с мышью вместо всего этого показываем заглушку со ссылкой
+// на /chat — до первого layout, чтобы мобильный интерфейс не мелькал на десктопе
+(function(){
+  var mq = matchMedia('(min-width: 768px) and (pointer: fine)');
+  function sync(){ document.documentElement.classList.toggle('m-desktop', mq.matches); }
+  sync(); mq.addEventListener('change', sync);
+})();
 </script>
 <meta name="theme-color" content="#15181b">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -21,6 +29,17 @@
 <link rel="stylesheet" href="style.css?v=1">
 </head>
 <body>
+
+<!-- Заглушка для десктопа: /m рассчитан на телефон (жесты, размер тап-зон, таб-бар снизу) -->
+<div id="screen-desktop">
+  <div class="desktop-wrap">
+    <div class="login-logo"><img src="/chat/icons/icon-192.png" alt=""></div>
+    <div class="login-title">Electron</div>
+    <div class="desktop-text">Эта версия сделана для телефона — жесты, размер кнопок и навигация рассчитаны на маленький экран с сенсорным управлением.</div>
+    <div class="desktop-text">На компьютере пользуйтесь обычной веб-версией.</div>
+    <a class="l-btn" style="display:block;text-decoration:none;text-align:center;line-height:48px" href="/chat/">Открыть /chat</a>
+  </div>
+</div>
 
 <!-- ЭКРАН ВХОДА -->
 <div id="screen-login" class="screen active">
@@ -106,6 +125,15 @@
       </div>
     </div>
     <div class="chat-body" id="messages"></div>
+    <div class="reply-bar" id="reply-bar" style="display:none">
+      <div class="reply-bar-body">
+        <div class="reply-bar-name" id="reply-bar-name"></div>
+        <div class="reply-bar-text" id="reply-bar-text"></div>
+      </div>
+      <div class="reply-bar-x" onclick="hideReplyBar()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </div>
+    </div>
     <div class="composer">
       <input type="text" id="msg-input" placeholder="Сообщение" onkeydown="if(event.key==='Enter'){event.preventDefault();sendMessage();}">
       <div class="send-btn" onclick="sendMessage()">

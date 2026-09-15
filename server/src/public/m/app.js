@@ -12,8 +12,10 @@ const S = {
   server: '', token: null, user: null,
   chats: [], activeChatId: null, ws: null,
   presence: {}, lastSeen: {}, msgStatus: {}, statusApplied: {},
-  avatarTs: 0, currentTab: 'chats',
+  avatarTs: 0, currentTab: 'chats', replyTo: null,
 };
+
+function haptic(ms = 10) { try { navigator.vibrate?.(ms); } catch {} }
 
 // ── МЕЛКИЕ ХЕЛПЕРЫ (те же, что в /chat/app.js) ──
 const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -269,12 +271,15 @@ let _msgCache = []; // сообщения открытого чата, в пор
 
 function bubbleHtml(m) {
   const mine = m.sender_id === S.user.id;
-  if (m.deleted) return `<div class="bubble ${mine ? 'out' : 'in'}" data-msg-id="${m.id}"><span class="bubble-deleted">Сообщение удалено</span></div>`;
+  if (m.deleted) return `<div class="bubble ${mine ? 'out' : 'in'}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}"><span class="bubble-deleted">Сообщение удалено</span></div>`;
   const text = m.text ? esc(m.text) : (m.attachment ? '📎 ' + esc(m.attachment.name || 'Вложение') : '');
+  const quote = m.reply_to_id ? `<div class="bubble-quote">
+    <div class="bubble-quote-name">${esc(m.reply_sender_name || '')}</div>
+    <div class="bubble-quote-text">${m.reply_deleted ? 'Сообщение удалено' : esc(m.reply_text || '')}</div>
+  </div>` : '';
   const tappable = mine ? ' tappable' : '';
-  const onclick = mine ? ` onclick="openReadSheet(${m.id})"` : '';
-  return `<div class="bubble ${mine ? 'out' + tappable : 'in'}" data-msg-id="${m.id}"${onclick}>
-    ${text}
+  return `<div class="bubble ${mine ? 'out' + tappable : 'in'}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}">
+    ${quote}${text}
     <div class="bubble-meta">${fmtTime(m.sent_at)}${mine ? renderTicks(m.status) : ''}</div>
   </div>`;
 }
@@ -329,8 +334,116 @@ async function openChat(chatId) {
 
 function closeChat() {
   S.activeChatId = null;
-  document.getElementById('chat-screen').classList.remove('open');
+  const el = document.getElementById('chat-screen');
+  el.classList.remove('open');
+  el.style.transform = ''; el.style.transition = ''; // сброс инлайна после свайпа-назад
   _msgCache = [];
+  hideReplyBar();
+}
+
+// ── ОТВЕТ НА СООБЩЕНИЕ ──
+function findMsg(id) { return _msgCache.find(m => m.id === id); }
+
+function setReply(msgId) {
+  const m = findMsg(msgId);
+  if (!m || m.deleted) return;
+  const mine = m.sender_id === S.user.id;
+  const text = m.text || (m.attachment ? '📎 ' + (m.attachment.name || 'Вложение') : '');
+  S.replyTo = { id: msgId, text: text.slice(0, 100), senderName: mine ? S.user.display_name : (m.sender_name || '') };
+  showReplyBar();
+}
+function showReplyBar() {
+  if (!S.replyTo) return;
+  document.getElementById('reply-bar-name').textContent = S.replyTo.senderName;
+  document.getElementById('reply-bar-text').textContent = S.replyTo.text;
+  document.getElementById('reply-bar').style.display = '';
+  document.getElementById('msg-input').focus();
+}
+function hideReplyBar() {
+  S.replyTo = null;
+  const bar = document.getElementById('reply-bar');
+  if (bar) bar.style.display = 'none';
+}
+
+// ── МИНИ-МЕНЮ ДОЛГОГО НАЖАТИЯ ──
+function openMsgActions(msgId) {
+  const m = findMsg(msgId);
+  if (!m || m.deleted) return;
+  const mine = m.sender_id === S.user.id;
+  const rowReply = `<div class="msg-action-row" onclick="closeSheet();setReply(${msgId})">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>Ответить</div>`;
+  const rowInfo = mine ? `<div class="msg-action-row" onclick="closeSheet();openReadSheet(${msgId})">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>Информация</div>` : '';
+  openSheet(`<div class="sheet-title">Сообщение</div>${rowReply}${rowInfo}`);
+}
+
+// ── ЖЕСТЫ: свайп-назад из чата, свайп-ответ, лонгпресс ──
+const LONG_PRESS_MS = 500, LONG_PRESS_SLOP = 10;
+function addChatGestures() {
+  const screenEl = document.getElementById('chat-screen');
+  let startX = 0, startY = 0, dirLocked = false, mode = null, msgEl = null, replyArmed = false;
+  let lpTimer = null, lpFired = false;
+
+  screenEl.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    dirLocked = false; mode = null; replyArmed = false; lpFired = false;
+    msgEl = e.target.closest('[data-msg-id]');
+    if (msgEl) {
+      lpTimer = setTimeout(() => {
+        lpFired = true; haptic(12);
+        openMsgActions(parseInt(msgEl.dataset.msgId));
+      }, LONG_PRESS_MS);
+    }
+  }, { passive: true });
+
+  screenEl.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - startX, dy = e.touches[0].clientY - startY;
+    if (!dirLocked) {
+      if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 8) {
+        if (Math.abs(dx) > LONG_PRESS_SLOP || Math.abs(dy) > LONG_PRESS_SLOP) { clearTimeout(lpTimer); lpTimer = null; }
+        return;
+      }
+      dirLocked = true;
+      clearTimeout(lpTimer); lpTimer = null;
+      mode = dx > 0 ? 'back' : (msgEl ? 'reply' : null);
+    }
+    if (mode === 'back') {
+      e.preventDefault();
+      screenEl.style.transition = 'none';
+      screenEl.style.transform = `translateX(${Math.min(dx, window.innerWidth)}px)`;
+    } else if (mode === 'reply' && msgEl) {
+      if (dx >= 0) return;
+      e.preventDefault();
+      const shift = Math.max(dx * 0.45, -50);
+      msgEl.style.transition = 'none';
+      msgEl.style.transform = `translateX(${shift}px)`;
+      if (!replyArmed && dx < -50) { replyArmed = true; haptic(8); }
+      else if (replyArmed && dx >= -50) replyArmed = false;
+    }
+  }, { passive: false });
+
+  screenEl.addEventListener('touchend', e => {
+    clearTimeout(lpTimer); lpTimer = null;
+    const dx = e.changedTouches[0].clientX - startX;
+    if (mode === 'back') {
+      screenEl.style.transition = 'transform .28s cubic-bezier(.32,.72,0,1)';
+      if (dx > window.innerWidth * 0.35) {
+        screenEl.style.transform = `translateX(${window.innerWidth}px)`;
+        setTimeout(closeChat, 260);
+      } else {
+        screenEl.style.transform = '';
+      }
+    } else if (mode === 'reply' && msgEl) {
+      msgEl.style.transition = 'transform .25s ease';
+      msgEl.style.transform = '';
+      if (dx < -50) setReply(parseInt(msgEl.dataset.msgId));
+    } else if (!mode && !lpFired && msgEl?.dataset.mine === '1') {
+      // Обычный тап по своему сообщению (без сдвига и без долгого нажатия) — «Прочитано»
+      openReadSheet(parseInt(msgEl.dataset.msgId));
+    }
+    mode = null; msgEl = null;
+  }, { passive: true });
 }
 
 function peerStatusText(userId) {
@@ -349,14 +462,22 @@ function sendMessage() {
   if (!text || !S.activeChatId) return;
   if (!S.ws || S.ws.readyState !== 1) { toast('Нет связи с сервером'); return; }
   const chatId = S.activeChatId;
+  const payload = { type: 'message', chat_id: chatId, text };
   const temp = {
     id: -(Date.now()), chat_id: chatId, sender_id: S.user.id, text, sent_at: Math.floor(Date.now() / 1000),
     deleted: 0, status: { delivered: 0, read: 0, total: 1 }, _optimistic: true,
   };
+  if (S.replyTo) {
+    payload.reply_to_id = S.replyTo.id;
+    temp.reply_to_id = S.replyTo.id;
+    temp.reply_sender_name = S.replyTo.senderName;
+    temp.reply_text = S.replyTo.text;
+  }
   _msgCache.push(temp);
   renderMessages();
-  S.ws.send(JSON.stringify({ type: 'message', chat_id: chatId, text }));
+  S.ws.send(JSON.stringify(payload));
   input.value = '';
+  hideReplyBar();
 }
 
 // ── WEBSOCKET ──
@@ -532,4 +653,5 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && S.token && (!S.ws || S.ws.readyState >= 2)) connectWS();
   });
+  addChatGestures();
 });
