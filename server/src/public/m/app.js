@@ -629,24 +629,225 @@ async function onAvatarPicked(input) {
   } else toast('Не удалось загрузить фото');
 }
 const _checkIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-function openThemeSheet() {
-  const isDark = document.documentElement.classList.contains('dark');
-  openSheet(`
-    <div class="sheet-title">Внешний вид</div>
-    <div class="settings-row" onclick="setTheme('light')" style="cursor:pointer">
-      <div class="settings-label">Светлая</div>${!isDark ? _checkIcon : ''}
-    </div>
-    <div class="settings-row" onclick="setTheme('dark')" style="cursor:pointer">
-      <div class="settings-label">Тёмная</div>${isDark ? _checkIcon : ''}
-    </div>
-  `);
-}
-function setTheme(theme) {
-  document.documentElement.classList.toggle('dark', theme === 'dark');
+
+// Настройки внешнего вида, которые живут на устройстве (не в аккаунте):
+// тема и через общий ключ SESSION_KEY.settings — как раньше; акцент и узор/фон
+// переписки — через отдельные ключи localStorage, ТЕ ЖЕ, что у /chat, поэтому
+// выбор синхронен между /chat и /m на одном браузере.
+function saveLocalSetting(key, value) {
   let prev = {};
   try { prev = JSON.parse(localStorage.getItem(SESSION_KEY)) || {}; } catch {}
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ ...prev, settings: { ...(prev.settings || {}), theme } }));
-  closeSheet();
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ ...prev, settings: { ...(prev.settings || {}), [key]: value } }));
+}
+function loadLocalSettings() {
+  try { return JSON.parse(localStorage.getItem(SESSION_KEY))?.settings || {}; } catch { return {}; }
+}
+
+// ── ЦВЕТОВОЙ АКЦЕНТ (общий с /chat — ключ localStorage 'accent') ──
+const ACCENTS = {
+  teal:   { name: 'Бирюзовый', light: [29, 168, 140], dark: [41, 214, 184] },
+  blue:   { name: 'Синий',     light: [37, 118, 199], dark: [96, 170, 245] },
+  indigo: { name: 'Индиго',    light: [92, 96, 205],  dark: [143, 148, 245] },
+  plum:   { name: 'Сливовый',  light: [146, 84, 190], dark: [196, 146, 240] },
+  amber:  { name: 'Янтарный',  light: [186, 120, 38], dark: [236, 176, 92] },
+};
+function currentAccent() {
+  try { const v = localStorage.getItem('accent'); if (ACCENTS[v]) return v; } catch {}
+  return 'teal';
+}
+function accentRgb(a) { return document.documentElement.classList.contains('dark') ? a.dark : a.light; }
+function applyAccent() {
+  const c = accentRgb(ACCENTS[currentAccent()]);
+  const hex = arr => '#' + arr.map(v => v.toString(16).padStart(2, '0')).join('');
+  const s = document.documentElement.style;
+  s.setProperty('--accent', hex(c));
+  s.setProperty('--accent-rgb', c.join(','));
+  s.setProperty('--accent-soft', `rgba(${c.join(',')},0.10)`);
+}
+function setAccent(key) {
+  if (!ACCENTS[key]) return;
+  try { localStorage.setItem('accent', key); } catch {}
+  applyAccent();
+  document.querySelectorAll('.accent-dot').forEach(b => b.classList.toggle('active', b.dataset.accent === key));
+}
+function accentDotsHtml() {
+  const cur = currentAccent();
+  return Object.entries(ACCENTS).map(([k, a]) =>
+    `<button class="accent-dot${k === cur ? ' active' : ''}" data-accent="${k}" title="${esc(a.name)}" aria-label="${esc(a.name)}" style="--dot:rgb(${accentRgb(a).join(',')})" onclick="setAccent('${k}')"></button>`).join('');
+}
+
+// ── УЗОР ФОНА ПЕРЕПИСКИ (общий с /chat — те же файлы assets/patterns и ключи localStorage) ──
+const PATTERNS = [
+  { id: '',          name: 'Без узора' },
+  { id: 'pets',      name: 'Питомцы' },
+  { id: 'doodles',   name: 'Каракули' },
+  { id: 'summer',    name: 'Лето' },
+  { id: 'daily',     name: 'Будни' },
+  { id: 'steampunk', name: 'Стимпанк' },
+];
+const PATTERN_TILE = 680;
+const PATTERN_ALPHA = { light: [0.045, 0.07, 0.105], dark: [0.055, 0.085, 0.13] };
+function currentPattern() {
+  try { const v = localStorage.getItem('chatPattern'); if (PATTERNS.some(p => p.id === v && v)) return v; } catch {}
+  return '';
+}
+function currentPatternLevel() {
+  const n = Number(localStorage.getItem('chatPatternLevel'));
+  return n === 1 || n === 3 ? n : 2;
+}
+function patternUrl(id) { return id ? `url("/chat/assets/patterns/${id}.png")` : ''; }
+function applyChatPattern() {
+  const id = currentPattern();
+  const s = document.documentElement.style;
+  if (!id) {
+    s.removeProperty('--chat-pattern'); s.removeProperty('--chat-pattern-size');
+    s.removeProperty('--chat-pattern-ink'); s.removeProperty('--chat-pattern-alpha');
+    return;
+  }
+  const dark = document.documentElement.classList.contains('dark');
+  s.setProperty('--chat-pattern', patternUrl(id));
+  s.setProperty('--chat-pattern-size', PATTERN_TILE + 'px');
+  s.setProperty('--chat-pattern-ink', dark ? '#ffffff' : '#111318');
+  s.setProperty('--chat-pattern-alpha', String(PATTERN_ALPHA[dark ? 'dark' : 'light'][currentPatternLevel() - 1]));
+}
+function setChatPattern(id) {
+  try { localStorage.setItem('chatPattern', id || ''); } catch {}
+  applyChatPattern();
+  refreshAppearanceSheet();
+}
+function setPatternLevel(n) {
+  try { localStorage.setItem('chatPatternLevel', String(n)); } catch {}
+  applyChatPattern();
+  refreshAppearanceSheet();
+}
+function chatPatternCardsHtml() {
+  const cur = currentPattern();
+  return `<div class="pat-cards" id="pattern-cards">${PATTERNS.map(p =>
+    `<button class="pat-card${p.id === cur ? ' active' : ''}" data-pattern="${p.id}" onclick="setChatPattern('${p.id}')">
+      <span class="pat-swatch"></span><span class="pat-cap">${esc(p.name)}</span>
+    </button>`).join('')}</div>`;
+}
+function paintPatternSwatches() {
+  document.querySelectorAll('#pattern-cards .pat-card').forEach(card => {
+    const el = card.querySelector('.pat-swatch');
+    const url = patternUrl(card.dataset.pattern) || 'none';
+    el.style.webkitMaskImage = url; el.style.maskImage = url;
+  });
+}
+
+// ── ФОН ПЕРЕПИСКИ (общий с /chat — ключ localStorage 'chatBg') ──
+function currentChatBg() {
+  try { return localStorage.getItem('chatBg') === 'split' ? 'split' : 'plain'; } catch { return 'plain'; }
+}
+function setChatBg(mode) {
+  try { localStorage.setItem('chatBg', mode === 'split' ? 'split' : 'plain'); } catch {}
+  applyChatBg();
+  document.querySelectorAll('#chatbg-cards .bg-card').forEach(c => c.classList.toggle('active', c.dataset.bg === currentChatBg()));
+}
+function applyChatBg() {
+  const s = document.documentElement.style;
+  if (currentChatBg() === 'split') s.setProperty('--chat-bg', 'var(--chat-split)');
+  else s.removeProperty('--chat-bg');
+}
+function chatBgCardsHtml() {
+  const cur = currentChatBg();
+  const skel = split => `<span class="bg-skel${split ? ' split' : ''}"><i class="a"></i><i class="b"></i><i class="c"></i></span>`;
+  const card = (mode, title) => `<button class="bg-card${cur === mode ? ' active' : ''}" data-bg="${mode}" onclick="setChatBg('${mode}')">
+      ${skel(mode === 'split')}<span class="bg-cap">${title}</span>
+    </button>`;
+  return `<div class="bg-cards" id="chatbg-cards">${card('plain', 'Как обычно')}${card('split', 'С разделением')}</div>`;
+}
+
+// ── РАЗМЕР ТЕКСТА СООБЩЕНИЙ (общая сессия — SESSION_KEY.settings.fontSize) ──
+function applyFontSize() {
+  const f = loadLocalSettings().fontSize || 'medium';
+  document.documentElement.classList.remove('font-small', 'font-medium', 'font-large');
+  document.documentElement.classList.add('font-' + f);
+}
+function setFontSize(f) {
+  saveLocalSetting('fontSize', f);
+  applyFontSize();
+  refreshAppearanceSheet();
+}
+
+// ── МАСШТАБ ИНТЕРФЕЙСА (общая сессия — SESSION_KEY.settings.uiScale) ──
+function applyUiScale() {
+  const scale = loadLocalSettings().uiScale || 100;
+  const ratio = scale / 100;
+  const s = document.documentElement.style;
+  s.setProperty('--ui-scale', ratio);
+  s.setProperty('--vh100', ratio === 1 ? '100dvh' : `calc(100dvh / ${ratio})`);
+  s.setProperty('--vw100', ratio === 1 ? '100vw' : `calc(100vw / ${ratio})`);
+}
+function setUiScale(scale) {
+  saveLocalSetting('uiScale', scale);
+  applyUiScale();
+  refreshAppearanceSheet();
+}
+function applyAppearance() { applyAccent(); applyChatPattern(); applyChatBg(); applyFontSize(); applyUiScale(); }
+
+function setTheme(theme) {
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+  saveLocalSetting('theme', theme);
+  applyAppearance(); // акцент и узор зависят от темы (свои оттенки на тёмной/светлой)
+  applyThemeColorMeta();
+  refreshAppearanceSheet();
+}
+// Цвет системной навигационной панели/статус-бара — как у таб-бара и шторок
+// (--modal-bg), а не у фона экранов, иначе виден шов другого оттенка у края
+function applyThemeColorMeta() {
+  const meta = document.getElementById('theme-color-meta');
+  if (meta) meta.content = document.documentElement.classList.contains('dark') ? '#181c20' : '#ffffff';
+}
+
+function appearanceSheetHtml() {
+  const isDark = document.documentElement.classList.contains('dark');
+  const f = loadLocalSettings().fontSize || 'medium';
+  const scale = loadLocalSettings().uiScale || 100;
+  const fontSeg = [['small', 'A'], ['medium', 'A'], ['large', 'A']];
+  const scaleSeg = [80, 90, 100, 110];
+  return `
+    <div class="sheet-title">Внешний вид</div>
+    <div class="settings-row" onclick="setTheme('light')" style="cursor:pointer">
+      <div class="settings-label">Светлая тема</div>${!isDark ? _checkIcon : ''}
+    </div>
+    <div class="settings-row" onclick="setTheme('dark')" style="cursor:pointer">
+      <div class="settings-label">Тёмная тема</div>${isDark ? _checkIcon : ''}
+    </div>
+    <div class="set-block">
+      <div class="set-block-title">Цветовой акцент</div>
+      <div class="accent-row">${accentDotsHtml()}</div>
+    </div>
+    <div class="set-block">
+      <div class="set-block-title">Фон переписки</div>
+      ${chatBgCardsHtml()}
+    </div>
+    <div class="set-block">
+      <div class="set-block-title">Узор переписки</div>
+      ${chatPatternCardsHtml()}
+      ${currentPattern() ? `<div class="set-seg" style="margin-top:6px">${[[1, 'Слабая'], [2, 'Средняя'], [3, 'Сильная']].map(([n, label]) =>
+        `<button class="${currentPatternLevel() === n ? 'active' : ''}" onclick="setPatternLevel(${n})">${label}</button>`).join('')}</div>` : ''}
+    </div>
+    <div class="set-block">
+      <div class="set-block-title">Размер текста сообщений</div>
+      <div class="set-seg">${fontSeg.map(([v, label], i) =>
+        `<button class="${f === v ? 'active' : ''}" style="font-size:${13 + i * 3}px" onclick="setFontSize('${v}')">${label}</button>`).join('')}</div>
+    </div>
+    <div class="set-block">
+      <div class="set-block-title">Масштаб интерфейса</div>
+      <div class="set-seg">${scaleSeg.map(v =>
+        `<button class="${scale === v ? 'active' : ''}" onclick="setUiScale(${v})">${v}%</button>`).join('')}</div>
+    </div>
+  `;
+}
+function openAppearanceSheet() {
+  openSheet(appearanceSheetHtml());
+  paintPatternSwatches();
+}
+function refreshAppearanceSheet() {
+  if (!document.getElementById('sheet-bg').classList.contains('open')) return;
+  openSheet(appearanceSheetHtml());
+  paintPatternSwatches();
 }
 
 // ── ПЕРЕПИСКА ──
@@ -684,18 +885,26 @@ function reactionsHtml(m) {
     return `<div class="reaction-pill${mine ? ' mine' : ''}" onclick="event.stopPropagation();sendReaction(${m.id},'${r.reaction}')">${r.reaction}<b>${r.count}</b></div>`;
   }).join('')}</div>`;
 }
+// Сообщение из одних смайликов — крупнее и без пузыря, как в /chat и в клиенте
+const EMOJI_ONLY_RE = /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|️|‍|\s)+$/u;
+function isEmojiOnly(text) {
+  const t = (text || '').trim();
+  if (!t) return false;
+  try { return EMOJI_ONLY_RE.test(t) && /\p{Extended_Pictographic}/u.test(t); } catch { return false; }
+}
 function bubbleHtml(m, chat) {
   const mine = m.sender_id === S.user.id;
   if (m.deleted) return `<div class="bubble ${mine ? 'out' : 'in'}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}"><span class="bubble-deleted">Сообщение удалено</span></div>`;
   const isGroupish = chat && (chat.type === 'group' || chat.type === 'room');
   const showSender = isGroupish && !mine;
-  const text = m.text ? highlightMentions(esc(m.text)) : '';
+  const emojiOnly = !m.attachment && !m.reply_to_id && isEmojiOnly(m.text);
+  const text = m.text ? `<span class="bubble-text${emojiOnly ? ' emoji-only' : ''}">${highlightMentions(esc(m.text))}</span>` : '';
   const quote = m.reply_to_id ? `<div class="bubble-quote">
     <div class="bubble-quote-name">${esc(m.reply_sender_name || '')}</div>
     <div class="bubble-quote-text">${m.reply_deleted ? 'Сообщение удалено' : esc(m.reply_text || '')}</div>
   </div>` : '';
   const senderLine = showSender ? `<div class="bubble-sender ${userAvatarColor(m.sender_id, m.sender_tag).replace(/^av-/, 'mtag-')}" data-sender-id="${m.sender_id}" data-sender-name="${esc(m.sender_name || '')}" onclick="event.stopPropagation();mentionUserInComposer(Number(this.dataset.senderId),this.dataset.senderName)">${esc(m.sender_name || '')}</div>` : '';
-  const bubble = `<div class="bubble ${mine ? 'out' : 'in'}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}">
+  const bubble = `<div class="bubble ${mine ? 'out' : 'in'}${emojiOnly ? ' emoji-msg' : ''}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}">
     ${senderLine}${quote}${attachmentHtml(m.attachment)}${text}
     <div class="bubble-meta">${m.edited_at ? 'изм. ' : ''}${fmtTime(m.sent_at)}${mine ? renderTicks(m.status) : ''}</div>
     ${reactionsHtml(m)}
@@ -826,12 +1035,21 @@ function setReply(msgId) {
   S.replyTo = { id: msgId, text: text.slice(0, 100), senderName: mine ? S.user.display_name : (m.sender_name || '') };
   showReplyBar();
 }
+// Полоса ответа/вложения/редактирования растёт над композером и отъедает
+// высоту у списка сообщений (флекс-колонка) — без пересчёта scrollTop последнее
+// сообщение оказывалось за композером, будто исчезало (тот же баг чинили
+// в /chat и в клиенте: sticky scroll при появлении preview-bar вложения)
+function stickMessagesToBottom() {
+  const el = document.getElementById('messages');
+  if (el) el.scrollTop = el.scrollHeight;
+}
 function showReplyBar() {
   if (!S.replyTo) return;
   document.getElementById('reply-bar-name').textContent = S.replyTo.senderName;
   document.getElementById('reply-bar-text').textContent = S.replyTo.text;
   document.getElementById('reply-bar').style.display = '';
   document.getElementById('msg-input').focus();
+  stickMessagesToBottom();
 }
 function hideReplyBar() {
   S.replyTo = null;
@@ -888,6 +1106,7 @@ function showAttachBar() {
   }
   document.getElementById('attach-name').textContent = att.name || 'Файл';
   bar.style.display = '';
+  stickMessagesToBottom();
 }
 function clearAttachment() {
   _pendingAttachment = null;
@@ -1046,8 +1265,7 @@ function toggleEmojiPanel() {
   const input = document.getElementById('ep-search-input');
   if (input) input.value = '';
   panel.style.display = '';
-  const messages = document.getElementById('messages');
-  messages.scrollTop = messages.scrollHeight;
+  stickMessagesToBottom();
 }
 function closeEmojiPanel() {
   if (_emojiInserting) return; // фокус вернули после вставки смайла — панель не закрываем
@@ -1093,6 +1311,7 @@ function startEdit(msgId) {
   hideReplyBar();
   clearAttachment();
   document.getElementById('edit-bar').style.display = '';
+  stickMessagesToBottom();
 }
 function cancelEdit() {
   S.editingMessageId = null;
@@ -1432,6 +1651,7 @@ function closeSheet() { document.getElementById('sheet-bg').classList.remove('op
 // ── INIT ──
 window.addEventListener('DOMContentLoaded', async () => {
   S.server = window.location.host;
+  applyAppearance();
   const session = loadSession();
   if (session?.token) {
     Object.assign(S, { token: session.token, user: session.user });

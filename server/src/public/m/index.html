@@ -4,8 +4,44 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <script>
-// Тема — до первого layout, без вспышки светлого экрана (сессия общая с /chat)
-(function(){try{var s=JSON.parse(localStorage.getItem('electron_v2')||'{}');var t=(s.settings&&s.settings.theme)||'dark';document.documentElement.classList.toggle('dark', t==='dark');}catch(e){document.documentElement.classList.add('dark');}})();
+// Тема, размер текста, масштаб интерфейса и акцент — до первого layout, без вспышки
+// исходных значений. Сессия (тема/размер/масштаб) общая с /chat, акцент — отдельный
+// ключ localStorage, тоже общий с /chat (тот же 'accent').
+(function(){
+  var fs = 'medium', scale = 100;
+  try {
+    var s = JSON.parse(localStorage.getItem('electron_v2') || '{}');
+    var t = (s.settings && s.settings.theme) || 'dark';
+    document.documentElement.classList.toggle('dark', t === 'dark');
+    fs = (s.settings && s.settings.fontSize) || 'medium';
+    scale = (s.settings && s.settings.uiScale) || 100;
+  } catch (e) { document.documentElement.classList.add('dark'); }
+  document.documentElement.classList.add('font-' + fs);
+  var ratio = scale / 100;
+  var hs = document.documentElement.style;
+  hs.setProperty('--ui-scale', ratio);
+  if (ratio !== 1) {
+    hs.setProperty('--vh100', 'calc(100dvh / ' + ratio + ')');
+    hs.setProperty('--vw100', 'calc(100vw / ' + ratio + ')');
+  }
+  try {
+    var ACCENTS = {
+      teal:   [29, 168, 140],  blue:   [37, 118, 199], indigo: [92, 96, 205],
+      plum:   [146, 84, 190],  amber:  [186, 120, 38],
+    };
+    var ACCENTS_DARK = {
+      teal:   [41, 214, 184], blue:   [96, 170, 245], indigo: [143, 148, 245],
+      plum:   [196, 146, 240], amber: [236, 176, 92],
+    };
+    var key = localStorage.getItem('accent');
+    var dark = document.documentElement.classList.contains('dark');
+    var c = (dark ? ACCENTS_DARK : ACCENTS)[key] || (dark ? ACCENTS_DARK.teal : ACCENTS.teal);
+    var hex = '#' + c.map(function (v) { return v.toString(16).padStart(2, '0'); }).join('');
+    hs.setProperty('--accent', hex);
+    hs.setProperty('--accent-rgb', c.join(','));
+    hs.setProperty('--accent-soft', 'rgba(' + c.join(',') + ',0.10)');
+  } catch (e) {}
+})();
 // /m — редизайн специально под телефон (жесты, размер тап-зон, нижний таб-бар).
 // На широком экране с мышью вместо всего этого показываем заглушку со ссылкой
 // на /chat — до первого layout, чтобы мобильный интерфейс не мелькал на десктопе
@@ -15,7 +51,17 @@
   sync(); mq.addEventListener('change', sync);
 })();
 </script>
-<meta name="theme-color" content="#15181b">
+<meta name="theme-color" content="#15181b" id="theme-color-meta">
+<script>
+// Цвет системной навигационной панели/статус-бара должен совпадать с самым
+// нижним/верхним видимым слоем страницы (таб-бар/шторки красятся в --modal-bg),
+// а не с фоном экранов (--app-bg) — иначе на Android виден шов другого оттенка
+// у края экрана (то темнее, то светлее — в зависимости от темы)
+(function(){
+  var meta = document.getElementById('theme-color-meta');
+  if (meta) meta.content = document.documentElement.classList.contains('dark') ? '#181c20' : '#ffffff';
+})();
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Electron">
@@ -100,7 +146,7 @@
         </div>
         <svg class="settings-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
-      <div class="settings-row" onclick="openThemeSheet()" style="cursor:pointer">
+      <div class="settings-row" onclick="openAppearanceSheet()" style="cursor:pointer">
         <div class="settings-ico" style="background:#8e44ad">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1.1-.2-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-4.9-4.5-9-10-9z"/></svg>
         </div>
