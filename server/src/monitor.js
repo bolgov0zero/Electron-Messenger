@@ -285,7 +285,7 @@ function storageInfo() {
   const sizeOf = p => { try { return fs.statSync(p).size; } catch { return 0; } };
   let disk = null;
   try { const s = fs.statfsSync(DATA_DIR); disk = { total: s.blocks * s.bsize, free: s.bavail * s.bsize }; } catch {}
-  const files = dirStats(path.join(DATA_DIR, 'files'), n => n.endsWith('_t.webp'));
+  const files = dirStats(path.join(DATA_DIR, 'files'), n => /_t\.(webp|jpg)$/.test(n));
   storage = {
     disk,
     db: sizeOf(DB_PATH),

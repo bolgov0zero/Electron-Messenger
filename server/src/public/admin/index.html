@@ -999,14 +999,24 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .table-scroll{overflow:auto;max-height:calc(100vh - 240px)}
 .table-scroll thead th{position:sticky;top:0;z-index:2}
 
-/* ── ПРОСМОТР КАРТИНКИ ── */
-/* Только для изображений: у остальных файлов показывать нечего */
-#file-lightbox{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);padding:48px}
+/* ── ПРОСМОТР КАРТИНКИ И ВИДЕО ── */
+#file-lightbox{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);padding:48px;animation:flBgIn 150ms ease-out}
 #file-lightbox.open{display:flex}
-#file-lightbox img{max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 24px 60px rgba(0,0,0,.5);display:block}
+#file-lightbox.closing{animation:flBgOut 150ms ease-in forwards}
+#file-lightbox img,#file-lightbox video{max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 24px 60px rgba(0,0,0,.5);display:block;animation:flMediaIn 220ms cubic-bezier(.34,1.56,.64,1) forwards}
+#file-lightbox.closing img,#file-lightbox.closing video{animation:flMediaOut 150ms ease-in forwards}
+#file-lightbox video{display:none}
+#file-lightbox.video img{display:none}
+#file-lightbox.video video{display:block}
+@keyframes flBgIn{from{opacity:0}to{opacity:1}}
+@keyframes flBgOut{from{opacity:1}to{opacity:0}}
+@keyframes flMediaIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+@keyframes flMediaOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.88)}}
 .fl-cap{position:absolute;left:0;right:0;bottom:18px;text-align:center;font-size:12px;font-family:var(--f-mono);color:#e7eaed;text-shadow:0 1px 4px rgba(0,0,0,.65)}
 .fl-close{position:absolute;top:16px;right:18px;width:32px;height:32px;border:none;border-radius:9px;background:rgba(255,255,255,.12);color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background var(--t-fast)}
 .fl-close:hover{background:rgba(239,68,68,.4)}
+.fl-thumb .fl-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.28)}
+.fl-thumb .fl-play svg{width:13px;height:13px;fill:#fff}
 .file-thumb{cursor:zoom-in;transition:opacity var(--t-fast)}
 .file-thumb:hover{opacity:.75}
 
@@ -1285,10 +1295,11 @@ return 'OK';</pre>
   </div>
 </div>
 
-<!-- Просмотр картинки из списка файлов -->
+<!-- Просмотр картинки и видео из списка файлов -->
 <div id="file-lightbox" onclick="if(event.target===this)closeFilePreview()">
   <button class="fl-close" onclick="closeFilePreview()" title="Закрыть">✕</button>
   <img id="fl-img" alt="">
+  <video id="fl-vid" controls playsinline></video>
   <div class="fl-cap" id="fl-cap"></div>
 </div>
 <div id="toast-container"></div>
@@ -4644,6 +4655,7 @@ const FL_I = {
   eye: flSvg('<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>'),
   down: flSvg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'),
 };
+const FL_PLAY = '<span class="fl-play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>';
 const FL_EXT = {
   image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'heic', 'avif', 'bmp'],
   video: ['mp4', 'mov', 'webm', 'mkv', 'avi', 'm4v'],
@@ -4718,7 +4730,9 @@ function flRender() {
             <th>Файл</th><th class="rm-num">Размер</th><th>Отправил</th><th>Чат</th><th>Когда</th><th></th></tr></thead>
           <tbody>${rows.map(f => {
             const kind = flKind(f), name = jesc(f.filename);
-            const thumb = `<span class="fl-thumb" style="background:${FL_KIND[kind][1]}">${esc((flExt(f) || '?').slice(0, 4).toUpperCase())}${kind === 'image' ? `<img src="${flUrl(f.filename)}" loading="lazy" alt="" onerror="this.remove()">` : ''}</span>`;
+            const openable = kind === 'image' || kind === 'video';
+            const imgSrc = kind === 'image' ? flUrl(f.filename) : kind === 'video' ? f.thumb : null;
+            const thumb = `<span class="fl-thumb" style="background:${FL_KIND[kind][1]}">${esc((flExt(f) || '?').slice(0, 4).toUpperCase())}${imgSrc ? `<img src="${esc(imgSrc)}" loading="lazy" alt="" onerror="this.remove()">` : ''}${kind === 'video' ? FL_PLAY : ''}</span>`;
             return `<tr class="${FL.sel.has(f.filename) ? 'sel' : ''}">
               <td><input type="checkbox" aria-label="Выбрать: ${esc(flName(f))}" ${FL.sel.has(f.filename) ? 'checked' : ''} onchange="flToggle('${name}')"></td>
               <td><div class="ux-cell">${thumb}<div style="min-width:0"><div class="ux-name" title="${esc(flName(f))}">${esc(flShort(flName(f)))}</div><div class="rm-sub">${FL_KIND[kind][0]}</div></div></div></td>
@@ -4726,7 +4740,7 @@ function flRender() {
               <td>${f.sender_name ? `<div class="ux-cell" style="gap:8px">${avHtml(f.sender_name, 24, 7, f.sender_id, false, true)}<span style="white-space:nowrap">${esc(f.sender_name)}</span></div>` : '<span class="rm-sub">без сообщения</span>'}</td>
               <td>${f.chat_name ? `<span class="ux-name" style="font-weight:500;font-size:12px">${esc(f.chat_name)}${flChatChip(f.chat_type)}</span>` : '<span class="rm-sub">—</span>'}</td>
               <td class="rm-last">${esc(uaSeen(f.sent_at || Math.floor((f.mtime || 0) / 1000)))}</td>
-              <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="flOpen('${name}')">${FL_I.eye}Открыть</button>
+              <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="flOpen('${name}')">${openable ? FL_I.eye + 'Открыть' : FL_I.down + 'Скачать'}</button>
                 <button class="ux-ibtn" aria-label="Ещё действия: ${esc(flName(f))}" aria-haspopup="menu" aria-expanded="false" onclick="flMenu(event, '${name}')">${UX_I.more}</button></div></td>
             </tr>`;
           }).join('') || `<tr><td colspan="7"><div class="ux-empty">${FL.files.length ? 'Ничего не нашли. Проверьте запрос или фильтры.' : 'Файлов пока нет'}</div></td></tr>`}</tbody>
@@ -4745,7 +4759,8 @@ function flSettings() { openSettingsModal().then(() => showSettingsSection('atta
 
 function flOpen(name) {
   const f = FL.files.find(x => x.filename === name);
-  if (f && flKind(f) === 'image') openFilePreview(name);
+  const kind = f && flKind(f);
+  if (kind === 'image' || kind === 'video') openFilePreview(name);
   else flDownload(name);
 }
 function flDownload(name) {
@@ -4759,8 +4774,12 @@ function flDownload(name) {
 }
 function flMenu(e, name) {
   const n = jesc(name);
+  const f = FL.files.find(x => x.filename === name);
+  const kind = f && flKind(f);
+  const openItem = (kind === 'image' || kind === 'video')
+    ? `<button role="menuitem" onclick="uxCloseMenu(); flOpen('${n}')">${FL_I.eye}Открыть</button>` : '';
   uxOpenMenu(e, 'fl' + name, `
-    <button role="menuitem" onclick="uxCloseMenu(); flOpen('${n}')">${FL_I.eye}Открыть</button>
+    ${openItem}
     <button role="menuitem" onclick="uxCloseMenu(); flDownload('${n}')">${FL_I.down}Скачать</button>
     <hr><button role="menuitem" class="danger" onclick="uxCloseMenu(); flDelete(['${n}'])">${UX_I.trash}Удалить файл</button>`);
 }
@@ -4827,18 +4846,36 @@ function chatKindBadge(type) {
   return '';
 }
 
-/* ── ПРОСМОТР КАРТИНКИ ── */
+/* ── ПРОСМОТР КАРТИНКИ И ВИДЕО ── */
 function openFilePreview(name) {
   const f = FL.files.find(x => x.filename === name);
+  const kind = f ? flKind(f) : 'image';
   const box = document.getElementById('file-lightbox');
-  document.getElementById('fl-img').src = '/files/' + encodeURIComponent(name);
+  const img = document.getElementById('fl-img'), vid = document.getElementById('fl-vid');
+  box.classList.remove('closing');
+  box.classList.toggle('video', kind === 'video');
+  if (kind === 'video') {
+    img.src = '';
+    vid.src = flUrl(name);
+    vid.play().catch(() => {});
+  } else {
+    vid.pause(); vid.src = '';
+    img.src = flUrl(name);
+  }
   document.getElementById('fl-cap').textContent = f ? flName(f) : name;
   box.classList.add('open');
 }
 function closeFilePreview() {
-  document.getElementById('file-lightbox')?.classList.remove('open');
-  const img = document.getElementById('fl-img');
-  if (img) img.src = '';
+  const box = document.getElementById('file-lightbox');
+  if (!box || !box.classList.contains('open') || box.classList.contains('closing')) return;
+  box.classList.add('closing');
+  document.getElementById('fl-vid')?.pause();
+  setTimeout(() => {
+    box.classList.remove('open', 'closing', 'video');
+    document.getElementById('fl-img').src = '';
+    const vid = document.getElementById('fl-vid');
+    if (vid) vid.src = '';
+  }, 150);
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.getElementById('file-lightbox')?.classList.contains('open')) closeFilePreview();

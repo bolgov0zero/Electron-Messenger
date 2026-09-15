@@ -720,7 +720,8 @@ router.post('/topics/reorder', (req, res) => {
 // ── Файлы ──
 
 // Список файлов: вложения из живых сообщений плюс то, что лежит на диске без
-// привязки. Миниатюры (_t.webp) не считаются отдельными файлами. Одна функция на
+// привязки. Миниатюры (_t.webp у картинок, _t.jpg — кадр-превью у видео) не
+// считаются отдельными файлами. Одна функция на
 // дашборд и на вкладку — иначе счётчики расходятся, как было с миниатюрами.
 function collectFiles() {
   const msgs = db.prepare(`
@@ -738,10 +739,11 @@ function collectFiles() {
       const att = JSON.parse(msg.attachment);
       if (!att?.url) continue;
       const fname = path.basename(att.url);
-      if (fname.endsWith('_t.webp')) continue;
+      // Миниатюры (webp у картинок, кадр-превью jpg у видео) — не отдельные файлы
+      if (/_t\.(webp|jpg)$/.test(fname)) continue;
       if (!fileMap.has(fname)) {
         fileMap.set(fname, {
-          filename: fname, name: att.name || null, mime: att.mime || null,
+          filename: fname, name: att.name || null, mime: att.mime || null, thumb: att.thumb || null,
           message_id: msg.id, chat_id: msg.chat_id, sender_id: msg.sender_id,
           chat_name: msg.chat_name, chat_type: msg.chat_type,
           sender_name: msg.sender_name, sent_at: msg.sent_at,
@@ -770,7 +772,7 @@ function collectFiles() {
   // Вторичный источник: файлы на диске, не привязанные ни к одному сообщению
   try {
     for (const fname of fs.readdirSync(FILES_DIR)) {
-      if (fname.endsWith('_t.webp') || fileMap.has(fname)) continue;
+      if (/_t\.(webp|jpg)$/.test(fname) || fileMap.has(fname)) continue;
       fileMap.set(fname, { filename: fname });
     }
   } catch {}
@@ -799,9 +801,10 @@ router.delete('/files/:filename', (req, res) => {
   const withAtt = db.prepare('SELECT id, chat_id FROM messages WHERE deleted = 0 AND attachment LIKE ?').all(`%${filename}%`);
   const withFwd = db.prepare('SELECT id, chat_id, forward_data FROM messages WHERE deleted = 0 AND forward_data LIKE ?').all(`%${filename}%`);
 
-  // Удалить файл и миниатюру с диска
-  const thumbName = filename.replace(/\.[^.]+$/, '') + '_t.webp';
-  [path.join(FILES_DIR, filename), path.join(FILES_DIR, thumbName)].forEach(p => {
+  // Удалить файл и миниатюру с диска (webp у картинок, кадр-превью jpg у видео)
+  const base = filename.replace(/\.[^.]+$/, '');
+  [filename, base + '_t.webp', base + '_t.jpg'].forEach(n => {
+    const p = path.join(FILES_DIR, n);
     try { if (fs.existsSync(p)) fs.unlinkSync(p); } catch {}
   });
 
