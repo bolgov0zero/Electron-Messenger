@@ -1022,15 +1022,26 @@ function stickAfterMedia(container) {
   // Раньше при подгрузке старых сообщений уже загруженные картинки заново
   // получали <img> (весь innerHTML пересобирается) и, «догружаясь» из кэша
   // браузера, каждый раз дёргали ленту в самый низ — несколько раз подряд.
-  container.querySelectorAll('img, video').forEach(el => {
-    if (el.tagName === 'IMG' && el.complete) return;
-    const onLoad = () => {
-      const before = container.scrollHeight;
-      requestAnimationFrame(() => {
-        const delta = container.scrollHeight - before;
-        if (delta) container.scrollTop += delta;
-      });
-    };
+  //
+  // «before» берём ОДИН раз, до того как хоть одна картинка догрузится —
+  // если мерить его внутри самого обработчика load, браузер к этому моменту
+  // мог уже применить новый layout, и before/after совпадали бы, ничего не
+  // компенсируя (отсюда и баг: последнее сообщение-фото открывалось наполовину
+  // под композером). База обновляется после каждой картинки, чтобы при
+  // нескольких вложениях сразу их подряд загрузившиеся размеры не
+  // складывались друг на друга.
+  const pending = [...container.querySelectorAll('img, video')].filter(el => !(el.tagName === 'IMG' && el.complete));
+  if (!pending.length) return;
+  let lastHeight = container.scrollHeight;
+  const onLoad = () => {
+    requestAnimationFrame(() => {
+      const now = container.scrollHeight;
+      const delta = now - lastHeight;
+      if (delta) container.scrollTop += delta;
+      lastHeight = now;
+    });
+  };
+  pending.forEach(el => {
     el.addEventListener('load', onLoad, { once: true });
     el.addEventListener('loadedmetadata', onLoad, { once: true });
     el.addEventListener('error', onLoad, { once: true });
