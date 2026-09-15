@@ -14,6 +14,7 @@ const S = {
   presence: {}, lastSeen: {}, msgStatus: {}, statusApplied: {},
   avatarTs: 0, currentTab: 'chats', replyTo: null, editingMessageId: null, editLimit: 120,
   topics: {}, activeRoomId: null, // подкомнаты: roomId -> список тем; открытая комната с темами
+  hasMoreOlder: false, // есть ли более старые сообщения, чем в _msgCache, для подгрузки при скролле вверх
 };
 
 function haptic(ms = 10) { try { navigator.vibrate?.(ms); } catch {} }
@@ -778,6 +779,11 @@ function applyUiScale() {
   s.setProperty('--ui-scale', ratio);
   s.setProperty('--vh100', ratio === 1 ? '100dvh' : `calc(100dvh / ${ratio})`);
   s.setProperty('--vw100', ratio === 1 ? '100vw' : `calc(100vw / ${ratio})`);
+  // transform ставим инлайном и только когда масштаб реально не 100% — иначе на
+  // подавляющем большинстве телефонов (масштаб не трогали) body всегда сидел бы
+  // в лишнем composited-слое, слегка размывая текст (transform:scale(1) — не noop
+  // для рендерера, а полноценная GPU-прослойка)
+  document.body.style.transform = ratio === 1 ? '' : `scale(${ratio})`;
 }
 function setUiScale(scale) {
   saveLocalSetting('uiScale', scale);
@@ -926,7 +932,7 @@ function renderTicks(status) {
   </svg>`;
 }
 
-function renderMessages() {
+function renderMessages(keepScroll) {
   const container = document.getElementById('messages');
   const chat = S.chats.find(c => c.id === S.activeChatId);
   let html = '', lastDay = '';
@@ -935,9 +941,45 @@ function renderMessages() {
     if (day !== lastDay) { html += `<div class="day-sep">${new Date(m.sent_at * 1000).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}</div>`; lastDay = day; }
     html += bubbleHtml(m, chat);
   }
+  // При подгрузке старых сообщений сохраняем то же место в ленте (иначе вставка
+  // сверху выталкивает видимую часть вниз или наверх — контент под пальцем прыгает)
+  const prevHeight = keepScroll ? container.scrollHeight : 0;
+  const prevTop = keepScroll ? container.scrollTop : 0;
   container.innerHTML = html || '<div class="stub-note">Сообщений пока нет</div>';
-  container.scrollTop = container.scrollHeight;
+  container.scrollTop = keepScroll ? prevTop + (container.scrollHeight - prevHeight) : container.scrollHeight;
   applyAvatars();
+  stickAfterMedia(container);
+}
+// ── ПОДГРУЗКА СТАРЫХ СООБЩЕНИЙ ПРИ СКРОЛЛЕ ВВЕРХ ──
+let _loadingOlder = false;
+async function maybeLoadOlderMessages() {
+  const container = document.getElementById('messages');
+  if (!container || !S.activeChatId || !S.hasMoreOlder || _loadingOlder) return;
+  if (container.scrollTop > 60) return;
+  const chatId = S.activeChatId;
+  const oldest = _msgCache[0];
+  if (!oldest) return;
+  _loadingOlder = true;
+  const data = await api('GET', `/messages/chat/${chatId}?limit=50&before=${oldest.id}`);
+  _loadingOlder = false;
+  if (!data || S.activeChatId !== chatId) return;
+  S.hasMoreOlder = !!data.hasMore;
+  if (!data.messages?.length) return;
+  _msgCache = [...data.messages, ..._msgCache];
+  renderMessages(true);
+}
+// Картинка/видео в последнем сообщении получает реальную высоту уже ПОСЛЕ layout —
+// scrollTop=scrollHeight, выставленный до этого, не учитывает выросшую высоту, и
+// сообщение с вложением частично уезжает за композер. Докручиваем ещё раз, когда
+// вложение действительно загрузится (или откажет).
+function stickAfterMedia(container) {
+  const onLoad = () => { container.scrollTop = container.scrollHeight; };
+  container.querySelectorAll('img, video').forEach(el => {
+    if (el.tagName === 'IMG' && el.complete) return;
+    el.addEventListener('load', onLoad, { once: true });
+    el.addEventListener('loadedmetadata', onLoad, { once: true });
+    el.addEventListener('error', onLoad, { once: true });
+  });
 }
 
 async function openChat(chatId) {
@@ -959,6 +1001,7 @@ async function openChat(chatId) {
   const data = await api('GET', `/messages/chat/${chatId}?limit=50`);
   if (!data || S.activeChatId !== chatId) return;
   _msgCache = data.messages;
+  S.hasMoreOlder = !!data.hasMore;
   renderMessages();
   applyAvatars();
   chat.unread = 0; chat.unread_mentions = 0;
@@ -978,6 +1021,7 @@ function closeChat() {
   el.classList.remove('open');
   el.style.transform = ''; el.style.transition = ''; // сброс инлайна после свайпа-назад
   _msgCache = [];
+  S.hasMoreOlder = false;
   hideReplyBar();
   const panel = document.getElementById('emoji-panel');
   if (panel) panel.style.display = 'none';
@@ -1636,14 +1680,31 @@ function closeSheet() { document.getElementById('sheet-bg').classList.remove('op
 (function () {
   document.addEventListener('DOMContentLoaded', () => {
     const sheet = document.getElementById('sheet');
-    let startY = 0, dy = 0, dragging = false;
-    sheet.addEventListener('pointerdown', e => { dragging = true; startY = e.clientY; sheet.style.transition = 'none'; });
-    window.addEventListener('pointermove', e => { if (!dragging) return; dy = Math.max(0, e.clientY - startY); sheet.style.transform = `translateY(${dy}px)`; });
+    let startY = 0, dy = 0, dragging = false, canDrag = false;
+    sheet.addEventListener('pointerdown', e => {
+      // Тянуть шторку вниз разрешаем, только если её содержимое прокручено к
+      // самому верху — иначе перетаскивание перехватывало бы обычный вертикальный
+      // скролл длинных шторок (например, «Внешний вид» с кучей разделов), и
+      // шторка не закрывалась бы свайпом и мешала бы скроллу одновременно
+      canDrag = sheet.scrollTop <= 0;
+      startY = e.clientY; dy = 0; dragging = false;
+    });
+    window.addEventListener('pointermove', e => {
+      if (!canDrag) return;
+      const delta = e.clientY - startY;
+      if (!dragging && delta <= 0) return; // тянут вверх — это обычный скролл, не наше дело
+      dragging = true;
+      dy = Math.max(0, delta);
+      sheet.style.transition = 'none';
+      sheet.style.transform = `translateY(${dy}px)`;
+    });
     window.addEventListener('pointerup', () => {
-      if (!dragging) return;
-      dragging = false; sheet.style.transition = '';
-      if (dy > 90) closeSheet();
-      sheet.style.transform = ''; dy = 0;
+      if (dragging) {
+        sheet.style.transition = '';
+        if (dy > 90) closeSheet();
+        sheet.style.transform = '';
+      }
+      dragging = false; canDrag = false; dy = 0;
     });
   });
 })();
@@ -1665,4 +1726,5 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   addChatGestures();
   addBackSwipeGesture(document.getElementById('topics-screen'), closeTopicsScreen);
+  document.getElementById('messages').addEventListener('scroll', maybeLoadOlderMessages, { passive: true });
 });

@@ -62,13 +62,20 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 html {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
   font-size: var(--font-size); /* «Размер текста сообщений» — только .bubble-text читает 1rem */
+  /* Без своего фона на стыке округления dvh/safe-area проступал фон страницы
+     браузера (полоса другого цвета у нижнего края — «тень», которая не пропадала) */
+  background: var(--app-bg);
 }
 body {
   position: fixed; top: 0; left: 0; width: var(--vw100); height: var(--vh100);
   margin: 0; background: var(--app-bg); color: var(--text);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  transform: scale(var(--ui-scale, 1)); transform-origin: 0 0;
+  /* transform:scale ставим ТОЛЬКО когда масштаб не 100% (см. applyUiScale в app.js) —
+     transform-слой на весь экран даже с scale(1) переводит текст на GPU-композитинг
+     и слегка размывает субпиксельный антиалиасинг (особенно заметно на крупном
+     жирном заголовке «Чаты»), а масштаб 100% — это подавляющее большинство случаев */
+  transform-origin: 0 0;
 }
 input, button { font-family: inherit; }
 button { border: none; background: none; font: inherit; color: inherit; }
