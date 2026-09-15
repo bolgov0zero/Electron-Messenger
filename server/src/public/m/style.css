@@ -180,7 +180,7 @@ html.m-desktop .screen { display: none !important; }
    непрозрачный fixed/полноэкранный слой (opacity:1) даёт неверный расчёт
    вьюпорта и зазор/шов у края экрана, а нацело такой же слой с opacity:0.99
    (визуально неотличимо) считается иначе и покрывает экран как надо. */
-.tabbar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; border-top: 1px solid var(--border); background: var(--modal-bg); padding: 5px 0 max(5px, env(safe-area-inset-bottom)); opacity: .999; }
+.tabbar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; border-top: 1px solid var(--border); background: var(--modal-bg); padding: 11px 0 max(11px, env(safe-area-inset-bottom)); opacity: .999; }
 .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); cursor: pointer; }
 .tab svg { width: 21px; height: 21px; }
 .tab span { font-size: 10px; font-weight: 600; }
@@ -358,7 +358,7 @@ html.m-desktop .screen { display: none !important; }
 .msg-action-row.danger { color: var(--danger); }
 .msg-action-row.danger svg { color: var(--danger); }
 
-.composer { display: flex; align-items: center; gap: 8px; padding: 8px 12px max(8px, env(safe-area-inset-bottom)); background: var(--composer-bg); border-top: 1px solid var(--border); flex-shrink: 0; opacity: .999; }
+.composer { display: flex; align-items: center; gap: 8px; padding: 9px 12px max(9px, env(safe-area-inset-bottom)); background: var(--composer-bg); border-top: 1px solid var(--border); flex-shrink: 0; opacity: .999; }
 .composer input { flex: 1; background: var(--search-bg); border: 1px solid var(--border); border-radius: 20px; padding: 10px 14px; color: var(--text); font-size: 14.5px; }
 .composer input:focus { outline: none; }
 .composer-icon-btn { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--muted); flex-shrink: 0; cursor: pointer; }
