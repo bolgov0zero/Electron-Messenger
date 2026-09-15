@@ -49,6 +49,20 @@ app.get(['/chat', '/chat/', '/chat/index.html'], (req, res) => {
   }
 });
 app.use('/chat', express.static(path.join(__dirname, 'public/chat')));
+
+// /m — мобильный клиент нового поколения (Этап 1), отдельный от /chat, тот же принцип
+// подмены версии в index.html, чтобы не залипал в HTTP-кэше между релизами
+const M_INDEX = path.join(__dirname, 'public/m/index.html');
+app.get(['/m', '/m/', '/m/index.html'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  try {
+    const html = fs.readFileSync(M_INDEX, 'utf8').replace(/\?v=[\w.\-]+/g, '?v=' + serverVersion());
+    res.type('html').send(html);
+  } catch {
+    res.sendFile(M_INDEX);
+  }
+});
+app.use('/m', express.static(path.join(__dirname, 'public/m')));
 app.use('/files', express.static(FILES_DIR));
 
 app.use('/api/auth', require('./routes/auth'));
