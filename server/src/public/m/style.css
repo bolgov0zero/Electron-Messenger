@@ -293,7 +293,7 @@ html.m-desktop .screen { display: none !important; }
 .tabpage[hidden] { display: none; }
 /* Системная область статус-бара в PWA полупрозрачная и слегка размывает то,
    что рядом с ней, — держим контент чуть ниже неё, а не впритык */
-.top-hdr { padding: calc(max(14px, env(safe-area-inset-top)) + 8px) 16px 10px; flex-shrink: 0; }
+.top-hdr { padding: calc(max(14px, env(safe-area-inset-top)) + 18px) 16px 10px; flex-shrink: 0; }
 .top-title { font-size: 26px; font-weight: 800; letter-spacing: -.3px; }
 .top-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .icon-btn { width: 34px; height: 34px; border-radius: 10px; background: var(--search-bg); display: flex; align-items: center; justify-content: center; color: var(--accent); cursor: pointer; flex-shrink: 0; }
@@ -334,10 +334,10 @@ html.m-desktop .screen { display: none !important; }
 .row-action.delete { background: #c0392b; }
 
 /* ── Нижний таб-бар ── */
-.tabbar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; border-top: 1px solid var(--border); background: var(--modal-bg); padding: 7px 0 max(7px, env(safe-area-inset-bottom)); }
-.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--muted); cursor: pointer; }
-.tab svg { width: 23px; height: 23px; }
-.tab span { font-size: 10.5px; font-weight: 600; }
+.tabbar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; border-top: 1px solid var(--border); background: var(--modal-bg); padding: 5px 0 max(5px, env(safe-area-inset-bottom)); }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); cursor: pointer; }
+.tab svg { width: 21px; height: 21px; }
+.tab span { font-size: 10px; font-weight: 600; }
 .tab.on { color: var(--accent); }
 
 /* ── Настройки ── */
@@ -404,7 +404,7 @@ html.m-desktop .screen { display: none !important; }
   opacity: var(--chat-pattern-alpha, 0);
 }
 .chat-screen.open { transform: translateX(0); }
-.chat-hdr { display: flex; align-items: center; gap: 10px; padding: calc(max(14px, env(safe-area-inset-top)) + 8px) 10px 12px; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+.chat-hdr { display: flex; align-items: center; gap: 10px; padding: calc(max(14px, env(safe-area-inset-top)) + 18px) 10px 12px; flex-shrink: 0; border-bottom: 1px solid var(--border); }
 .back-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: var(--accent); cursor: pointer; flex-shrink: 0; }
 .chat-hdr .av { width: 36px; height: 36px; font-size: 13px; }
 .chat-hdr-name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -421,7 +421,9 @@ html.m-desktop .screen { display: none !important; }
 .bubble.out { align-self: flex-end; background: linear-gradient(rgba(var(--accent-rgb),.18), rgba(var(--accent-rgb),.18)) var(--chat-bg); border: 1px solid rgba(var(--accent-rgb),.28); border-bottom-right-radius: 4px; }
 /* Размер текста сообщений — настройка меняет только сам текст (не время, не
    цитату, не имя отправителя), как в /chat: там же только .irc-text — 1rem */
-.bubble-text { font-size: 1rem; }
+/* pre-wrap — иначе переносы строк в тексте (в т.ч. в HTML от ботов) схлопывались
+   в один пробел, как у любого инлайн-элемента по умолчанию (как в /chat) */
+.bubble-text { display: inline; font-size: 1rem; white-space: pre-wrap; }
 /* Сообщение из одних смайликов — крупнее и без пузыря, как в /chat и в клиенте */
 .bubble-text.emoji-only { display: block; font-size: 42px; line-height: 1.15; }
 .bubble.emoji-msg { background: none; border-color: transparent; padding: 2px 0; }

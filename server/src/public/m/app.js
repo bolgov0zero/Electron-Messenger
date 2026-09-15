@@ -972,15 +972,32 @@ function renderMessages(keepScroll) {
   const prevHeight = keepScroll ? container.scrollHeight : 0;
   const prevTop = keepScroll ? container.scrollTop : 0;
   container.innerHTML = html || '<div class="stub-note">Сообщений пока нет</div>';
-  container.scrollTop = keepScroll ? prevTop + (container.scrollHeight - prevHeight) : container.scrollHeight;
+  if (keepScroll) {
+    // На iOS инерционная прокрутка продолжает «тянуть» список к нулю уже
+    // ПОСЛЕ нашего скачка scrollTop (она рассчитана по исходному свайпу и не
+    // знает о перестановке) — из-за этого подгрузка срабатывала повторно
+    // почти сразу, по несколько раз подряд. Кратким отключением скролла
+    // сбрасываем инерцию перед тем, как переставить позицию.
+    container.style.overflowY = 'hidden';
+    container.scrollTop = prevTop + (container.scrollHeight - prevHeight);
+    void container.offsetHeight;
+    container.style.overflowY = '';
+  } else {
+    container.scrollTop = container.scrollHeight;
+  }
   applyAvatars();
   stickAfterMedia(container);
 }
 // ── ПОДГРУЗКА СТАРЫХ СООБЩЕНИЙ ПРИ СКРОЛЛЕ ВВЕРХ ──
 let _loadingOlder = false;
+let _lastOlderLoadAt = 0;
 async function maybeLoadOlderMessages() {
   const container = document.getElementById('messages');
   if (!container || !S.activeChatId || !S.hasMoreOlder || _loadingOlder) return;
+  // Пауза после предыдущей подгрузки: инерционный скролл ещё может «докатывать»
+  // список к верху сам по себе, и без задержки это читалось бы как повторная
+  // подгрузка сразу нескольких страниц подряд одним жестом
+  if (Date.now() - _lastOlderLoadAt < 600) return;
   if (container.scrollTop > 60) return;
   const chatId = S.activeChatId;
   const oldest = _msgCache[0];
@@ -988,6 +1005,7 @@ async function maybeLoadOlderMessages() {
   _loadingOlder = true;
   const data = await api('GET', `/messages/chat/${chatId}?limit=50&before=${oldest.id}`);
   _loadingOlder = false;
+  _lastOlderLoadAt = Date.now();
   if (!data || S.activeChatId !== chatId) return;
   S.hasMoreOlder = !!data.hasMore;
   if (!data.messages?.length) return;
