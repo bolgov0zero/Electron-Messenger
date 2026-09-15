@@ -69,22 +69,41 @@
     <div class="list" id="chat-list"></div>
   </div>
 
-  <!-- Вкладка «Контакты» (появится на следующем этапе) -->
+  <!-- Вкладка «Контакты» -->
   <div class="tabpage" id="tab-contacts" hidden>
-    <div class="top-hdr"><div class="top-title">Контакты</div></div>
-    <div class="stub-note">Этот раздел появится на следующем этапе мобильного редизайна.</div>
+    <div class="top-hdr">
+      <div class="top-title-row">
+        <div class="top-title">Контакты</div>
+        <div class="icon-btn" onclick="openCreateGroupSheet()" title="Создать группу">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+        </div>
+      </div>
+      <div class="top-search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="contact-search" placeholder="Поиск" oninput="renderContacts()">
+      </div>
+    </div>
+    <div class="list" id="contact-list"></div>
   </div>
 
-  <!-- Вкладка «Настройки» — минимально: профиль и выход -->
+  <!-- Вкладка «Настройки» -->
   <div class="tabpage" id="tab-settings" hidden>
     <div class="top-hdr"><div class="top-title">Настройки</div></div>
     <div class="list" style="padding:4px 18px">
-      <div class="settings-row">
+      <div class="settings-row" onclick="openProfileSheet()" style="cursor:pointer">
         <div class="av" id="me-av" style="width:44px;height:44px;font-size:16px"></div>
         <div style="flex:1;min-width:0">
           <div class="settings-name" id="me-name"></div>
           <div class="settings-sub" id="me-username"></div>
         </div>
+        <svg class="settings-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="settings-row" onclick="openThemeSheet()" style="cursor:pointer">
+        <div class="settings-ico" style="background:#8e44ad">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1.1-.2-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-4.9-4.5-9-10-9z"/></svg>
+        </div>
+        <div class="settings-label">Внешний вид</div>
+        <svg class="settings-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
       <div class="settings-row" onclick="logout()" style="cursor:pointer">
         <div class="settings-ico" style="background:#c0392b">
@@ -93,7 +112,6 @@
         <div class="settings-label" style="color:var(--danger)">Выйти</div>
       </div>
     </div>
-    <div class="stub-note">Остальные настройки появятся на следующем этапе мобильного редизайна.</div>
   </div>
 
   <!-- Нижний таб-бар -->

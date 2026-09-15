@@ -202,6 +202,7 @@ async function enterApp() {
     Object.entries(pres).forEach(([id, v]) => { S.presence[id] = v?.status; if (v?.last_seen) S.lastSeen[id] = v.last_seen; });
   });
   await loadChats();
+  loadContacts();
   connectWS();
   applyAvatars();
 }
@@ -264,6 +265,165 @@ function setTab(name) {
     document.getElementById('tab-' + t).hidden = t !== name;
     document.querySelector(`.tab[data-tab="${t}"]`).classList.toggle('on', t === name);
   });
+  if (name === 'contacts') { if (_contactsAll.length) renderContacts(); else loadContacts(); }
+}
+
+// ── КОНТАКТЫ ──
+let _contactsAll = [];
+async function loadContacts() {
+  const users = await api('GET', '/users');
+  if (!users) return;
+  _contactsAll = users;
+  if (S.currentTab === 'contacts') renderContacts();
+}
+function renderContacts() {
+  const q = (document.getElementById('contact-search').value || '').trim().toLowerCase();
+  const list = document.getElementById('contact-list');
+  const filtered = _contactsAll.filter(u => u.display_name.toLowerCase().includes(q));
+  if (!filtered.length) { list.innerHTML = `<div class="stub-note">${_contactsAll.length ? 'Никого не нашли' : 'В организации больше никого нет'}</div>`; return; }
+  list.innerHTML = filtered.map(u => `
+    <div class="row" onclick="openContactChat(${u.id})">
+      <div class="av ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}" data-av-fallback="${esc(initials(u.display_name))}">${esc(initials(u.display_name))}</div>
+      <div class="row-body">
+        <div class="row-top"><div class="row-name">${esc(u.display_name)}</div></div>
+        <div class="row-bottom"><div class="row-msg">@${esc(u.username)}</div></div>
+      </div>
+    </div>`).join('');
+  applyAvatars();
+}
+async function openContactChat(userId) {
+  const chat = await api('POST', '/chats/direct', { user_id: userId });
+  if (!chat || chat.error) { toast('Не удалось открыть чат'); return; }
+  if (!S.chats.find(c => c.id === chat.id)) S.chats.push(chat);
+  setTab('chats');
+  renderChats();
+  openChat(chat.id);
+}
+
+// ── СОЗДАНИЕ ГРУППЫ ──
+let _groupSelected = new Set();
+async function openCreateGroupSheet() {
+  _groupSelected = new Set();
+  if (!_contactsAll.length) await loadContacts();
+  openSheet(`
+    <div class="sheet-title">Новая группа</div>
+    <input class="sheet-input" id="group-name" placeholder="Название группы" maxlength="60">
+    <input class="sheet-input" id="group-search" placeholder="Поиск участников" oninput="renderGroupPickList(this.value)">
+    <div class="pick-list" id="pick-list"></div>
+    <button class="l-btn" style="width:100%;margin-top:6px" onclick="submitCreateGroup()">Создать</button>
+  `);
+  renderGroupPickList('');
+  document.getElementById('group-name').focus();
+}
+function renderGroupPickList(q) {
+  const filtered = _contactsAll.filter(u => u.display_name.toLowerCase().includes(q.trim().toLowerCase()));
+  document.getElementById('pick-list').innerHTML = filtered.map(u => `
+    <div class="pick-row" onclick="toggleGroupMember(${u.id})">
+      <div class="av ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}" data-av-fallback="${esc(initials(u.display_name))}">${esc(initials(u.display_name))}</div>
+      <div class="pick-name">${esc(u.display_name)}</div>
+      <div class="pick-check${_groupSelected.has(u.id) ? ' on' : ''}"></div>
+    </div>`).join('') || '<div class="stub-note">Никого не нашли</div>';
+  applyAvatars();
+}
+function toggleGroupMember(id) {
+  if (_groupSelected.has(id)) _groupSelected.delete(id); else _groupSelected.add(id);
+  renderGroupPickList(document.getElementById('group-search').value);
+}
+async function submitCreateGroup() {
+  const name = document.getElementById('group-name').value.trim();
+  if (!name) { toast('Введите название группы'); return; }
+  if (_groupSelected.size === 0) { toast('Выберите хотя бы одного участника'); return; }
+  const chat = await api('POST', '/chats/group', { name, member_ids: [..._groupSelected] });
+  if (!chat || chat.error) { toast('Не удалось создать группу'); return; }
+  S.chats.push(chat);
+  closeSheet();
+  setTab('chats');
+  renderChats();
+  openChat(chat.id);
+}
+
+// ── ПРОФИЛЬ / ВНЕШНИЙ ВИД ──
+function openProfileSheet() {
+  openSheet(`
+    <div class="sheet-title">Профиль</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:16px">
+      <div class="av" id="profile-av-big" style="width:84px;height:84px;font-size:28px;cursor:pointer" onclick="document.getElementById('avatar-file-input').click()"></div>
+      <div style="font-size:12.5px;color:var(--accent);cursor:pointer" onclick="document.getElementById('avatar-file-input').click()">Изменить фото</div>
+      <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="onAvatarPicked(this)">
+    </div>
+    <input class="sheet-input" id="profile-name-input" value="${esc(S.user.display_name)}" maxlength="40">
+    <button class="l-btn" style="width:100%;margin-top:6px" onclick="saveProfileName()">Сохранить</button>
+  `);
+  const bigAv = document.getElementById('profile-av-big');
+  bigAv.className = 'av ' + userAvatarColor(S.user.id, S.user.tag);
+  bigAv.dataset.avUser = S.user.id;
+  bigAv.dataset.avFallback = initials(S.user.display_name);
+  bigAv.textContent = initials(S.user.display_name);
+  applyAvatars();
+}
+async function saveProfileName() {
+  const name = document.getElementById('profile-name-input').value.trim();
+  if (!name) { toast('Введите имя'); return; }
+  if (name === S.user.display_name) { closeSheet(); return; }
+  const res = await api('PATCH', '/users/me', { display_name: name });
+  if (res?.ok) {
+    S.user.display_name = name;
+    saveSession();
+    document.getElementById('me-name').textContent = name;
+    closeSheet();
+    toast('Имя обновлено');
+  } else toast('Не удалось сохранить');
+}
+function resizeAvatarFile(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const s = Math.min(img.width, img.height);
+        ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', 0.88).split(',')[1]);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+async function onAvatarPicked(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const base64 = await resizeAvatarFile(file);
+  const res = await api('POST', '/users/me/avatar', { data: base64 });
+  if (res?.ok) {
+    S.avatarTs = Date.now();
+    _avatarCache.clear();
+    applyAvatars();
+    toast('Фото обновлено');
+  } else toast('Не удалось загрузить фото');
+}
+const _checkIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+function openThemeSheet() {
+  const isDark = document.documentElement.classList.contains('dark');
+  openSheet(`
+    <div class="sheet-title">Внешний вид</div>
+    <div class="settings-row" onclick="setTheme('light')" style="cursor:pointer">
+      <div class="settings-label">Светлая</div>${!isDark ? _checkIcon : ''}
+    </div>
+    <div class="settings-row" onclick="setTheme('dark')" style="cursor:pointer">
+      <div class="settings-label">Тёмная</div>${isDark ? _checkIcon : ''}
+    </div>
+  `);
+}
+function setTheme(theme) {
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+  let prev = {};
+  try { prev = JSON.parse(localStorage.getItem(SESSION_KEY)) || {}; } catch {}
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ ...prev, settings: { ...(prev.settings || {}), theme } }));
+  closeSheet();
 }
 
 // ── ПЕРЕПИСКА ──
@@ -566,6 +726,8 @@ function connectWS() {
     if (data.type === 'presence') { S.presence[data.user_id] = data.status; }
     if (data.type === 'reload_chats') loadChats();
     if (data.type === 'chat_read') { const c = S.chats.find(x => x.id === data.chat_id); if (c) { c.unread = 0; renderChats(); } }
+    if (data.type === 'avatar_updated') { S.avatarTs = Date.now(); _avatarCache.clear(); renderChats(); if (S.currentTab === 'contacts') renderContacts(); }
+    if (data.type === 'user_created') loadContacts();
   };
 
   ws.onclose = () => { if (S.ws === ws) setTimeout(() => { if (S.token) connectWS(); }, 2000); };
