@@ -210,6 +210,9 @@ async function enterApp() {
   startTokenRefresh();
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-app').classList.add('active');
+  // До входа #screen-app скрыт (display:none), и offsetHeight таб-бара — 0;
+  // измеряем заново теперь, когда он реально показан и имеет раскладку
+  syncTabbarHeight();
   document.getElementById('me-name').textContent = S.user.display_name;
   document.getElementById('me-username').textContent = '@' + S.user.username;
   const meAv = document.getElementById('me-av');
@@ -798,7 +801,11 @@ function setUiScale(scale) {
   applyUiScale();
   refreshAppearanceSheet();
 }
-function applyAppearance() { applyAccent(); applyChatPattern(); applyChatBg(); applyFontSize(); applyUiScale(); }
+function applyAppearance() {
+  applyAccent(); applyChatPattern(); applyChatBg(); applyFontSize(); applyUiScale();
+  // Размер текста/масштаб могут чуть изменить реальную высоту таб-бара
+  if (document.getElementById('tabbar')) syncTabbarHeight();
+}
 
 function setTheme(theme) {
   document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -912,7 +919,10 @@ function bubbleHtml(m, chat) {
   const isGroupish = chat && (chat.type === 'group' || chat.type === 'room');
   const showSender = isGroupish && !mine;
   const emojiOnly = !m.attachment && !m.reply_to_id && isEmojiOnly(m.text);
-  const text = m.text ? `<span class="bubble-text${emojiOnly ? ' emoji-only' : ''}">${highlightMentions(esc(m.text))}</span>` : '';
+  // Боты/системные аккаунты (sender_is_bot) присылают готовый HTML — вставляем
+  // как есть, как в /chat; обычный текст экранируем и прогоняем через
+  // лёгкую разметку/автоссылки
+  const text = m.text ? `<span class="bubble-text${emojiOnly ? ' emoji-only' : ''}">${m.sender_is_bot ? m.text : linkifyText(m.text)}</span>` : '';
   const quote = m.reply_to_id ? `<div class="bubble-quote">
     <div class="bubble-quote-name">${esc(m.reply_sender_name || '')}</div>
     <div class="bubble-quote-text">${m.reply_deleted ? 'Сообщение удалено' : esc(m.reply_text || '')}</div>
@@ -1081,6 +1091,22 @@ function highlightMentions(escapedText) {
     const cls = userAvatarColor(m.id, m.tag).replace(/^av-/, 'mtag-');
     return `<span class="mention ${cls}">@${name}</span>`;
   });
+}
+// Лёгкая разметка и ссылки в тексте сообщений — тот же приём, что в /chat:
+// `код` → <code>, **жирный** → <b>, __курсив__ → <i>; применяется уже к
+// экранированному тексту, поэтому сама разметка не может содержать HTML.
+function mdLite(escaped) {
+  return escaped
+    .replace(/`([^`\n]+)`/g, '<code class="md-code">$1</code>')
+    .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
+    .replace(/__([^_\n]+)__/g, '<i>$1</i>');
+}
+function linkifyText(text) {
+  const urlRe = /(https?:\/\/[^\s]+)/g;
+  return text.split(urlRe).map((part, i) => {
+    if (i % 2 !== 1) return mdLite(highlightMentions(esc(part)));
+    return `<a class="bubble-link" href="${esc(part)}" target="_blank" rel="noopener noreferrer">${esc(part)}</a>`;
+  }).join('');
 }
 function mentionUserInComposer(senderId, senderName) {
   const el = document.getElementById('msg-input');
@@ -1750,9 +1776,41 @@ function closeSheet() { document.getElementById('sheet-bg').classList.remove('op
 })();
 
 // ── INIT ──
+// Смайлы вшитым шрифтом (как в /chat и в клиенте) — но не все движки рисуют
+// один и тот же формат цветного шрифта. Рисуем смайл на canvas и смотрим,
+// получилась ли цветная картинка; если нет — переключаемся на запасной набор,
+// а если и его нет — на системные смайлы (см. правила html.emoji-svg/
+// html.no-emoji-font в style.css).
+async function checkEmojiFont() {
+  const paints = async family => {
+    try {
+      await document.fonts.load('64px "' + family + '"', '\u{1F600}');
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = 64;
+      const ctx = cv.getContext('2d', { willReadFrequently: true });
+      ctx.font = '48px "' + family + '"';
+      ctx.textBaseline = 'top';
+      ctx.fillText('\u{1F600}', 0, 0);
+      const d = ctx.getImageData(0, 0, 64, 64).data;
+      let colored = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] < 20) continue;
+        if (Math.abs(d[i] - d[i + 1]) > 25 || Math.abs(d[i + 1] - d[i + 2]) > 25) colored++;
+      }
+      return colored >= 40;
+    } catch { return false; }
+  };
+  if (await paints('Noto Color Emoji')) return;
+  document.documentElement.classList.add('emoji-svg');
+  if (await paints('Noto Emoji SVG')) return;
+  document.documentElement.classList.remove('emoji-svg');
+  document.documentElement.classList.add('no-emoji-font');
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   S.server = window.location.host;
   applyAppearance();
+  checkEmojiFont();
   const session = loadSession();
   if (session?.token) {
     Object.assign(S, { token: session.token, user: session.user });
@@ -1771,7 +1829,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   addBackSwipeGesture(document.getElementById('topics-screen'), closeTopicsScreen);
   document.getElementById('messages').addEventListener('scroll', maybeLoadOlderMessages, { passive: true });
   setTimeout(checkForUpdate, 3000);
+  window.addEventListener('resize', syncTabbarHeight);
 });
+
+// Реальная высота таб-бара зависит от safe-area (разная на разных устройствах) —
+// меряем и кладём в CSS-переменную, а не полагаемся на подобранную вручную
+// цифру: несовпадение оставляло зазор (проступал фон другого оттенка — «тень»)
+// или заставляло таб-бар перекрывать последнюю строку списка.
+function syncTabbarHeight() {
+  const tabbar = document.getElementById('tabbar');
+  if (!tabbar) return;
+  const h = tabbar.offsetHeight;
+  // До входа #screen-app скрыт (display:none) и offsetHeight — 0; не затираем
+  // им уже известное хорошее значение
+  if (h > 0) document.documentElement.style.setProperty('--tabbar-h', h + 'px');
+}
 
 // ── ПРОВЕРКА ВЕРСИИ (актуально для PWA: у установленного приложения нет
 // кнопки «обновить страницу», и без явной проверки старые css/js могли жить
