@@ -944,11 +944,19 @@ function renderMessages(keepScroll) {
   const container = document.getElementById('messages');
   const chat = S.chats.find(c => c.id === S.activeChatId);
   let html = '', lastDay = '';
+  // Каждый день — свой .day-group: он даёт бейджу отдельный containing block
+  // для position:sticky, иначе бейджи разных дней подменяли бы друг друга
+  // не там, где нужно, при прокрутке (как в /chat и в клиенте)
   for (const m of _msgCache) {
     const day = new Date(m.sent_at * 1000).toDateString();
-    if (day !== lastDay) { html += `<div class="day-sep">${daySepLabel(m.sent_at)}</div>`; lastDay = day; }
+    if (day !== lastDay) {
+      if (lastDay) html += '</div>';
+      html += `<div class="day-group"><div class="day-sep">${daySepLabel(m.sent_at)}</div>`;
+      lastDay = day;
+    }
     html += bubbleHtml(m, chat);
   }
+  if (lastDay) html += '</div>';
   // При подгрузке старых сообщений сохраняем то же место в ленте (иначе вставка
   // сверху выталкивает видимую часть вниз или наверх — контент под пальцем прыгает)
   const prevHeight = keepScroll ? container.scrollHeight : 0;
@@ -981,9 +989,20 @@ async function maybeLoadOlderMessages() {
 // сообщение с вложением частично уезжает за композер. Докручиваем ещё раз, когда
 // вложение действительно загрузится (или откажет).
 function stickAfterMedia(container) {
-  const onLoad = () => { container.scrollTop = container.scrollHeight; };
+  // Компенсируем именно сдвиг высоты (а не прыгаем в самый низ) — картинка
+  // может вырасти где угодно в истории, не только в последнем сообщении.
+  // Раньше при подгрузке старых сообщений уже загруженные картинки заново
+  // получали <img> (весь innerHTML пересобирается) и, «догружаясь» из кэша
+  // браузера, каждый раз дёргали ленту в самый низ — несколько раз подряд.
   container.querySelectorAll('img, video').forEach(el => {
     if (el.tagName === 'IMG' && el.complete) return;
+    const onLoad = () => {
+      const before = container.scrollHeight;
+      requestAnimationFrame(() => {
+        const delta = container.scrollHeight - before;
+        if (delta) container.scrollTop += delta;
+      });
+    };
     el.addEventListener('load', onLoad, { once: true });
     el.addEventListener('loadedmetadata', onLoad, { once: true });
     el.addEventListener('error', onLoad, { once: true });
@@ -1687,29 +1706,35 @@ function openSheet(html) {
 }
 function closeSheet() { document.getElementById('sheet-bg').classList.remove('open'); }
 // Свайп-закрытие шторки: ручка (.sheet-handle) не скроллится и всегда доступна
-// для перетаскивания; с самого содержимого (.sheet-scroll) тянуть можно только
-// когда оно прокручено к самому верху — иначе жест перехватывал бы обычный
-// вертикальный скролл длинных шторок вместо самого скролла.
+// для перетаскивания. С самого содержимого (.sheet-scroll) — тянуть можно,
+// только когда оно уже у самого верха; но проверяем это НЕПРЕРЫВНО, а не
+// только в момент касания — иначе один и тот же свайз вниз (сперва
+// докручивающий список к началу, потом закрывающий шторку) приходилось делать
+// двумя отдельными жестами: первый молча "съедала" прокрутка, и закрытие
+// срабатывало только со второй попытки.
 (function () {
   document.addEventListener('DOMContentLoaded', () => {
     const sheet = document.getElementById('sheet');
     const handle = document.getElementById('sheet-handle');
     const scroll = document.getElementById('sheet-scroll');
-    let startY = 0, dy = 0, dragging = false, canDrag = false;
-    function onDown(gatedByScroll) {
-      return e => {
-        canDrag = !gatedByScroll || scroll.scrollTop <= 0;
-        startY = e.clientY; dy = 0; dragging = false;
-      };
+    let baseY = 0, dy = 0, dragging = false, active = null; // active: 'handle' | 'scroll' | null
+    function onDown(source) {
+      return e => { active = source; baseY = e.clientY; dy = 0; dragging = false; };
     }
-    handle.addEventListener('pointerdown', onDown(false));
-    scroll.addEventListener('pointerdown', onDown(true));
+    handle.addEventListener('pointerdown', onDown('handle'));
+    scroll.addEventListener('pointerdown', onDown('scroll'));
     window.addEventListener('pointermove', e => {
-      if (!canDrag) return;
-      const delta = e.clientY - startY;
-      if (!dragging && delta <= 0) return; // тянут вверх — это обычный скролл, не наше дело
-      dragging = true;
-      dy = Math.max(0, delta);
+      if (!active) return;
+      if (!dragging) {
+        // Пока список не докручен до верха — это его обычная прокрутка, не
+        // наше дело; просто сдвигаем опорную точку, чтобы в момент, когда он
+        // всё-таки долистает до верха, drag стартовал с нуля, а не скачком
+        if (active === 'scroll' && scroll.scrollTop > 0) { baseY = e.clientY; return; }
+        const delta = e.clientY - baseY;
+        if (delta <= 0) { baseY = e.clientY; return; } // тянут вверх — тоже не наше дело
+        dragging = true;
+      }
+      dy = Math.max(0, e.clientY - baseY);
       sheet.style.transition = 'none';
       sheet.style.transform = `translateY(${dy}px)`;
     });
@@ -1719,7 +1744,7 @@ function closeSheet() { document.getElementById('sheet-bg').classList.remove('op
         if (dy > 90) closeSheet();
         sheet.style.transform = '';
       }
-      dragging = false; canDrag = false; dy = 0;
+      dragging = false; active = null; dy = 0;
     });
   });
 })();

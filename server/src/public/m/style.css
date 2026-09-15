@@ -26,6 +26,7 @@
   --chat-bg:     var(--app-bg);
   --chat-split:  #e6e9ec;
   --composer-bg: #ffffff;
+  --daypill:     rgba(238,240,244,0.92);
   --font-size:   14.5px;
 }
 html.dark {
@@ -44,6 +45,7 @@ html.dark {
   --chat-bg:     var(--app-bg);
   --chat-split:  #1b1f23;
   --composer-bg: #20252a;
+  --daypill:     rgba(38,42,48,0.92);
 }
 html.font-small  { --font-size: 13px; }
 html.font-medium { --font-size: 14.5px; }
@@ -229,7 +231,11 @@ html.m-desktop .screen { display: none !important; }
 .chat-hdr .av { width: 36px; height: 36px; font-size: 13px; }
 .chat-hdr-name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chat-hdr-sub { font-size: 11.5px; color: var(--muted); }
-.chat-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+.chat-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 12px; display: flex; flex-direction: column; gap: 10px; }
+/* Свой контейнер на каждый день — граница, за которую «прилипший» бейдж даты
+   выходит при прокрутке (иначе бейджи разных дней подменяли бы друг друга не
+   там, где нужно); как в /chat и в клиенте. */
+.day-group { display: flex; flex-direction: column; gap: 8px; }
 .bubble { max-width: 78%; padding: 8px 11px; border-radius: 16px; font-size: 14.5px; line-height: 1.4; word-wrap: break-word; }
 .bubble.in { align-self: flex-start; background: var(--card-bg); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
 /* Акцент полупрозрачный — подкладываем непрозрачный фон переписки под него,
@@ -257,7 +263,13 @@ html.m-desktop .screen { display: none !important; }
 .bubble-quote { border-left: 2px solid var(--accent); padding: 2px 0 4px 8px; margin-bottom: 4px; opacity: .8; }
 .bubble-quote-name { font-size: 12px; font-weight: 700; color: var(--accent); }
 .bubble-quote-text { font-size: 12.5px; color: var(--text2, var(--muted)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
-.day-sep { align-self: center; font-size: 11.5px; color: var(--muted); background: var(--search-bg); padding: 4px 12px; border-radius: 10px; margin: 6px 0; }
+.day-sep {
+  align-self: center; position: sticky; top: 4px; z-index: 2;
+  font-size: 11.5px; color: var(--muted); background: var(--daypill);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  padding: 4px 12px; border-radius: 10px; margin: 0 0 2px;
+  pointer-events: none;
+}
 
 /* ── Медиа/файл в пузыре ── */
 .bubble-media { display: block; max-width: 220px; max-height: 280px; border-radius: 12px; margin-bottom: 4px; cursor: pointer; object-fit: cover; }
