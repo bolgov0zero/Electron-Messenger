@@ -4485,6 +4485,10 @@ async function ctxInfo() {
 
   document.querySelector('#modal-msg-info .mi-title').textContent = data.chat_type === 'direct' ? 'Информация' : 'Прочитано';
 
+  const icoSingleTeal = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  const icoDblTeal    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>`;
+  const icoDblGray    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5b6169" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>`;
+
   let body;
 
   if (data.chat_type === 'direct') {
@@ -4492,10 +4496,6 @@ async function ctxInfo() {
     const sentDone  = !!data.sent_at;
     const delivDone = !!s?.delivered_at;
     const readDone  = !!s?.read_at;
-
-    const icoSingleTeal = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-    const icoDblTeal    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>`;
-    const icoDblGray    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5b6169" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>`;
 
     function tlStep(label, sub, done, ico, showConn) {
       const dc = done ? 'mi-done' : 'mi-pending';
@@ -4518,16 +4518,34 @@ async function ctxInfo() {
 
   } else {
     const total = data.statuses.length;
-    const readUsers = data.statuses.filter(s => s.read_at);
+    const readUsers = data.statuses.filter(s => s.read_at).sort((a, b) => b.read_at - a.read_at);
+    const circ = 100.5; // 2*π*16, радиус кольца из CSS (.mi-ring, r=16)
+    const frac = total ? readUsers.length / total : 0;
+    const ring = `<div class="mi-ring">
+        <svg viewBox="0 0 38 38">
+          <circle cx="19" cy="19" r="16" fill="none" stroke="var(--border)" stroke-width="3.5"/>
+          <circle cx="19" cy="19" r="16" fill="none" stroke="var(--accent)" stroke-width="3.5" stroke-linecap="round"
+            stroke-dasharray="${circ}" stroke-dashoffset="${(circ * (1 - frac)).toFixed(1)}"/>
+        </svg>
+        <b>${readUsers.length}/${total}</b>
+      </div>`;
+    body = `<div class="mi-progress">${ring}
+      <div><div class="mi-progress-label">${readUsers.length === total ? 'Прочитали все' : 'Прочитано'}</div>
+      <div class="mi-progress-sub">${readUsers.length} из ${nMembers(total)}</div></div></div>`;
     if (readUsers.length === 0) {
-      body = `<div class="mi-group-count">0 из ${nMembers(total)}</div><div class="mi-empty">Пока никто не прочитал</div>`;
+      body += `<div class="mi-empty">Пока никто не прочитал</div>`;
     } else {
-      body = `<div class="mi-group-count">${readUsers.length} из ${nMembers(total)}</div>`;
-      body += readUsers.map(s => `<div class="mi-user-row">
+      body += readUsers.map(s => {
+        const [date, time] = fmtDt(s.read_at).split(' ');
+        return `<div class="mi-row">
         <div class="av mi-av ${userAvatarColor(s.user_id)}" data-av-user="${s.user_id}">${initials(s.display_name)}</div>
-        <div class="mi-user-name">${esc(s.display_name)}</div>
-        <div class="mi-user-time">${fmtDt(s.read_at)}</div>
-      </div>`).join('');
+        <div class="mi-name">${esc(s.display_name)}</div>
+        <div class="mi-time-col">
+          <div class="mi-tick-row">${icoDblTeal}${time}</div>
+          <div class="mi-time-date">${date}</div>
+        </div>
+      </div>`;
+      }).join('');
     }
   }
 

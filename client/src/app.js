@@ -3913,16 +3913,34 @@ async function ctxInfo() {
     </div>`;
   } else {
     const total = data.statuses.length;
-    const readUsers = data.statuses.filter(s => s.read_at);
+    const readUsers = data.statuses.filter(s => s.read_at).sort((a, b) => b.read_at - a.read_at);
+    const circ = 100.5; // 2*π*16, радиус кольца из CSS (.mi-ring, r=16)
+    const frac = total ? readUsers.length / total : 0;
+    const ring = `<div class="mi-ring">
+        <svg viewBox="0 0 38 38">
+          <circle cx="19" cy="19" r="16" fill="none" stroke="var(--border)" stroke-width="3.5"/>
+          <circle cx="19" cy="19" r="16" fill="none" stroke="var(--accent)" stroke-width="3.5" stroke-linecap="round"
+            stroke-dasharray="${circ}" stroke-dashoffset="${(circ * (1 - frac)).toFixed(1)}"/>
+        </svg>
+        <b>${readUsers.length}/${total}</b>
+      </div>`;
+    body = `<div class="mi-progress">${ring}
+      <div><div class="mi-progress-label">${readUsers.length === total ? 'Прочитали все' : 'Прочитано'}</div>
+      <div class="mi-progress-sub">${readUsers.length} из ${nMembers(total)}</div></div></div>`;
     if (readUsers.length === 0) {
-      body = `<div class="mi-group-count">0 из ${nMembers(total)}</div><div class="mi-empty">Пока никто не прочитал</div>`;
+      body += `<div class="mi-empty">Пока никто не прочитал</div>`;
     } else {
-      body = `<div class="mi-group-count">${readUsers.length} из ${nMembers(total)}</div>`;
-      body += readUsers.map(s => `<div class="mi-user-row">
+      body += readUsers.map(s => {
+        const [date, time] = fmtDt(s.read_at).split(' ');
+        return `<div class="mi-row">
         <div class="av mi-av ${userAvatarColor(s.user_id)}" data-av-user="${s.user_id}">${initials(s.display_name)}</div>
-        <div class="mi-user-name">${esc(s.display_name)}</div>
-        <div class="mi-user-time">${fmtDt(s.read_at)}</div>
-      </div>`).join('');
+        <div class="mi-name">${esc(s.display_name)}</div>
+        <div class="mi-time-col">
+          <div class="mi-tick-row">${icoDblTeal}${time}</div>
+          <div class="mi-time-date">${date}</div>
+        </div>
+      </div>`;
+      }).join('');
     }
   }
   document.getElementById('msg-info-body').innerHTML = body;

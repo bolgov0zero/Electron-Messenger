@@ -2403,12 +2403,24 @@ html.dark .modal.cs-modal { --cs-ok: #3ecf8e; --cs-warn: #e3b35c; }
 .mi-step-sub.mi-pending { color: var(--muted); opacity: .6; }
 
 /* Group view */
-.mi-group-count { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
-.mi-user-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
 .mi-av { width: 34px; height: 34px; font-size: 13px; border-radius: 9px !important; }
-.mi-user-name { font-size: 13px; font-weight: 600; flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mi-user-time { font-size: 12px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .mi-empty { text-align: center; padding: 20px 0; color: var(--muted); font-size: 13px; }
+
+/* Прогресс прочтения группового сообщения: кольцо + подпись, затем список
+   читателей с разделителями (вариант «A», согласован с пользователем) */
+.mi-progress { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; padding: 10px 12px; background: var(--search-bg); border-radius: 10px; }
+.mi-ring { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: center; }
+.mi-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.mi-ring b { font-size: 11px; font-weight: 700; color: var(--text); }
+.mi-progress-label { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.mi-progress-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.mi-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+.mi-row + .mi-row { border-top: 1px solid var(--border); }
+.mi-name { font-size: 13px; font-weight: 600; flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mi-time-col { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+.mi-time-date { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mi-tick-row { display: flex; align-items: center; gap: 4px; color: var(--accent); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mi-tick-row svg { stroke: var(--accent); flex-shrink: 0; }
 
 /* ── LINK CONFIRM MODAL ── */
 .link-modal {
