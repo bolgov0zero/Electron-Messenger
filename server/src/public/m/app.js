@@ -1722,9 +1722,32 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('l-password').addEventListener('keydown', e => e.key === 'Enter' && doLogin());
   document.getElementById('l-username').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('l-password').focus());
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && S.token && (!S.ws || S.ws.readyState >= 2)) connectWS();
+    if (!document.hidden) {
+      if (S.token && (!S.ws || S.ws.readyState >= 2)) connectWS();
+      checkForUpdate();
+    }
   });
   addChatGestures();
   addBackSwipeGesture(document.getElementById('topics-screen'), closeTopicsScreen);
   document.getElementById('messages').addEventListener('scroll', maybeLoadOlderMessages, { passive: true });
+  setTimeout(checkForUpdate, 3000);
 });
+
+// ── ПРОВЕРКА ВЕРСИИ (актуально для PWA: у установленного приложения нет
+// кнопки «обновить страницу», и без явной проверки старые css/js могли жить
+// в нём сколько угодно после релиза, даже когда сам HTML не кэшируется) ──
+// Свежий HTML запрашиваем напрямую, в обход кэша, и сверяем ту же подстановку
+// ?v=, что уже стоит на style.css/app.js — если сервер обновился, перезагружаем
+// страницу: она заново запросит все ресурсы с новым ?v= и получит свежие файлы.
+let _checkingUpdate = false;
+async function checkForUpdate() {
+  if (_checkingUpdate) return;
+  _checkingUpdate = true;
+  try {
+    const res = await fetch('/m/?_=' + Date.now(), { cache: 'no-store' });
+    const html = await res.text();
+    const m = html.match(/\?v=([\w.\-]+)/);
+    const current = (window.APP_VERSION || '').replace('?v=', '');
+    if (m && m[1] && current && m[1] !== current) location.reload();
+  } catch {} finally { _checkingUpdate = false; }
+}
