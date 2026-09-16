@@ -11,6 +11,19 @@ if (process.platform === 'linux') {
   app.commandLine.appendSwitch('disable-setuid-sandbox');
   app.commandLine.appendSwitch('disable-namespace-sandbox');
 }
+if (process.platform === 'win32') {
+  // На части Windows-машин видео в лайтбоксе не показывает картинку — только
+  // нативные controls (звук и длительность при этом работают). Окно там уже
+  // не прозрачное (см. lightbox-open), но у некоторых пользователей это не
+  // помогло — конфликт аппаратного видео-декодера с оверлеями другого софта
+  // (Xbox Game Bar, оверлеи видеокарт/RGB-утилит/захвата экрана — они
+  // перехватывают вывод DirectX и по-разному ведут себя на разных машинах,
+  // от софта не зависим). Отключаем именно аппаратное декодирование видео —
+  // кадры считает CPU и компонуются как обычная картинка, минуя GPU-оверлей,
+  // с которым конфликтует сторонний софт. Остального (обычный UI, GPU-
+  // композитинг интерфейса) не касается — не глобальный disableHardwareAcceleration.
+  app.commandLine.appendSwitch('disable-accelerated-video-decode');
+}
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
