@@ -927,16 +927,19 @@ function bubbleHtml(m, chat) {
     <div class="bubble-quote-name">${esc(m.reply_sender_name || '')}</div>
     <div class="bubble-quote-text">${m.reply_deleted ? 'Сообщение удалено' : esc(m.reply_text || '')}</div>
   </div>` : '';
+  // Имя отправителя — НАД пузырём, а не внутри него (как в /chat): это
+  // отдельная строка на фоне переписки, а не первая строка внутри цветного
+  // прямоугольника сообщения.
   const senderLine = showSender ? `<div class="bubble-sender ${userAvatarColor(m.sender_id, m.sender_tag).replace(/^av-/, 'mtag-')}" data-sender-id="${m.sender_id}" data-sender-name="${esc(m.sender_name || '')}" onclick="event.stopPropagation();mentionUserInComposer(Number(this.dataset.senderId),this.dataset.senderName)">${esc(m.sender_name || '')}</div>` : '';
   const bubble = `<div class="bubble ${mine ? 'out' : 'in'}${emojiOnly ? ' emoji-msg' : ''}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}">
-    ${senderLine}${quote}${attachmentHtml(m.attachment)}${text}
+    ${quote}${attachmentHtml(m.attachment)}${text}
     <div class="bubble-meta">${m.edited_at ? 'изм. ' : ''}${fmtTime(m.sent_at)}${mine ? renderTicks(m.status) : ''}</div>
     ${reactionsHtml(m)}
   </div>`;
   if (!showSender) return bubble;
   return `<div class="msg-row">
     <div class="av msg-av ${userAvatarColor(m.sender_id, m.sender_tag)}" data-av-user="${m.sender_id}" data-av-fallback="${esc(initials(m.sender_name || ''))}">${esc(initials(m.sender_name || ''))}</div>
-    ${bubble}
+    <div class="msg-col">${senderLine}${bubble}</div>
   </div>`;
 }
 function renderTicks(status) {

@@ -260,7 +260,7 @@ html.m-desktop .screen { display: none !important; }
    выходит при прокрутке (иначе бейджи разных дней подменяли бы друг друга не
    там, где нужно); как в /chat и в клиенте. */
 .day-group { display: flex; flex-direction: column; gap: 8px; }
-.bubble { max-width: 78%; padding: 8px 11px; border-radius: 16px; font-size: 14.5px; line-height: 1.4; word-wrap: break-word; }
+.bubble { position: relative; max-width: 78%; padding: 8px 11px; border-radius: 16px; font-size: 14.5px; line-height: 1.4; word-wrap: break-word; }
 .bubble.in { align-self: flex-start; background: var(--card-bg); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
 /* Акцент полупрозрачный — подкладываем непрозрачный фон переписки под него,
    иначе сквозь свой пузырь просвечивал бы узор фона (как в /chat) */
@@ -272,11 +272,14 @@ html.m-desktop .screen { display: none !important; }
 .bubble-text { display: inline; font-size: 1rem; white-space: pre-wrap; }
 /* Сообщение из одних смайликов — крупнее и без пузыря, как в /chat и в клиенте */
 .bubble-text.emoji-only { display: block; font-size: 42px; line-height: 1.15; }
-.bubble.emoji-msg { background: none; border-color: transparent; padding: 2px 0; }
+/* Только фон/рамку снимаем — паддинг остаётся тем же, что у обычного пузыря,
+   иначе расчёт места под время (::after ниже) съехал бы (как в /chat) */
+.bubble.emoji-msg { background: none; border-color: transparent; }
 .msg-row { display: flex; align-items: flex-end; gap: 6px; align-self: flex-start; max-width: 86%; }
+.msg-col { display: flex; flex-direction: column; min-width: 0; max-width: 100%; }
 .msg-row .bubble { max-width: 100%; }
 .msg-av { width: 26px; height: 26px; font-size: 10px; border-radius: 9px; flex-shrink: 0; margin-bottom: 2px; }
-.bubble-sender { font-size: 12.5px; font-weight: 700; margin-bottom: 2px; cursor: pointer; }
+.bubble-sender { font-size: 12.5px; font-weight: 700; margin: 0 2px 3px; cursor: pointer; }
 .mention { color: var(--accent); font-weight: 700; }
 .bubble-link { color: var(--accent); text-decoration: underline; word-break: break-all; }
 .md-code { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: .88em; background: rgba(var(--accent-rgb),.12); border-radius: 6px; padding: 1px 5px; }
@@ -285,8 +288,19 @@ html.m-desktop .screen { display: none !important; }
 .mention.mtag-7{color:rgb(var(--tag-7-av))} .mention.mtag-8{color:rgb(var(--tag-8-av))} .mention.mtag-9{color:rgb(var(--tag-9-av))}
 .mention.mtag-10{color:rgb(var(--tag-10-av))} .mention.mtag-11{color:rgb(var(--tag-11-av))} .mention.mtag-12{color:rgb(var(--tag-12-av))}
 .mention.mtag-13{color:rgb(var(--tag-13-av))} .mention.mtag-14{color:rgb(var(--tag-14-av))}
-.bubble-meta { display: flex; align-items: center; gap: 3px; justify-content: flex-end; margin-top: 3px; font-size: 10.5px; color: var(--muted); }
+/* Время и галочки — в правом нижнем углу пузыря, на одной линии с последней
+   строкой сообщения (как в /chat): .bubble-text::after резервирует под них
+   место в конце текста, поэтому обтекание работает, хотя сам блок вне потока.
+   При реакциях резерв в тексте снимается — время ложится рядом с последней
+   реакцией (у .bubble-reactions свой правый паддинг под него). */
+.bubble-meta { position: absolute; right: 11px; bottom: 8px; display: flex; align-items: center; gap: 3px; font-size: 10.5px; color: var(--muted); }
 .bubble-meta svg { flex-shrink: 0; }
+.bubble-text::after { content: ''; display: inline-block; width: 42px; }
+.bubble.out .bubble-text::after { width: 52px; }
+.bubble:has(.bubble-reactions) .bubble-text::after { display: none; }
+/* Вложение без подписи и без реакций: время всё равно вне потока и легло бы
+   поверх картинки/файла впритык к низу пузыря — резервируем полосу снизу */
+.bubble:has(.bubble-media, .bubble-video-wrap, .bubble-file):not(:has(.bubble-text)):not(:has(.bubble-reactions)) { padding-bottom: 26px; }
 .bubble-deleted { opacity: .6; font-style: italic; }
 .bubble-quote { border-left: 2px solid var(--accent); padding: 2px 0 4px 8px; margin-bottom: 4px; opacity: .8; }
 .bubble-quote-name { font-size: 12px; font-weight: 700; color: var(--accent); }
@@ -309,7 +323,8 @@ html.m-desktop .screen { display: none !important; }
 .bubble-file-size { font-size: 11.5px; color: var(--muted); }
 
 /* ── Реакции ── */
-.bubble-reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.bubble-reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; padding-right: 42px; }
+.bubble.out .bubble-reactions { padding-right: 52px; }
 .reaction-pill { display: flex; align-items: center; gap: 3px; background: var(--search-bg); border: 1px solid var(--border); border-radius: 10px; padding: 1px 6px; font-size: 12px; cursor: pointer; }
 .reaction-pill.mine { border-color: var(--accent); background: rgba(var(--accent-rgb),.15); }
 .reaction-pill b { font-size: 11px; font-weight: 700; color: var(--text2, var(--muted)); }
@@ -386,8 +401,12 @@ html.m-desktop .screen { display: none !important; }
 .sheet-bg.open { background: rgba(0,0,0,.5); pointer-events: auto; }
 /* Ручка — отдельный нескроллящийся элемент (в отличие от контента внизу),
    всегда доступный для свайпа-закрытия, даже когда список прокручен */
-.sheet { width: 100%; background: var(--modal-bg); border-radius: 20px 20px 0 0; display: flex; flex-direction: column; transform: translateY(105%); transition: transform .32s cubic-bezier(.32,.72,0,1); box-shadow: 0 -20px 50px rgba(0,0,0,.35); max-height: 80vh; touch-action: none; }
-.sheet-bg.open .sheet { transform: translateY(0); }
+/* box-shadow не обрезается transform-смещением — даже у закрытой шторки
+   (translateY(105%), формально за нижним краем экрана) тень всё равно
+   рисуется относительно её текущего положения и «наползала» вверх на
+   таб-бар. Показываем тень только когда шторка действительно открыта. */
+.sheet { width: 100%; background: var(--modal-bg); border-radius: 20px 20px 0 0; display: flex; flex-direction: column; transform: translateY(105%); transition: transform .32s cubic-bezier(.32,.72,0,1); max-height: 80vh; touch-action: none; }
+.sheet-bg.open .sheet { transform: translateY(0); box-shadow: 0 -20px 50px rgba(0,0,0,.35); }
 .sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 12px auto; flex-shrink: 0; touch-action: none; }
 .sheet-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 18px calc(18px + env(safe-area-inset-bottom)); touch-action: pan-y; overscroll-behavior: contain; }
 .sheet-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
