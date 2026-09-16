@@ -13,26 +13,21 @@
 window.APP_VERSION = '?v=1';
 </script>
 <script>
-// Тема, размер текста, масштаб интерфейса и акцент — до первого layout, без вспышки
-// исходных значений. Сессия (тема/размер/масштаб) общая с /chat, акцент — отдельный
-// ключ localStorage, тоже общий с /chat (тот же 'accent').
+// Тема, размер текста и акцент — до первого layout, без вспышки исходных
+// значений. Сессия (тема/размер) общая с /chat, акцент — отдельный ключ
+// localStorage, тоже общий с /chat (тот же 'accent'). Масштаб интерфейса
+// в /m зафиксирован на 100% (в /chat он настраивается) — --ui-scale/
+// --vh100/--vw100 не трогаем, остаются дефолтными из :root.
 (function(){
-  var fs = 'medium', scale = 100;
+  var fs = 'medium';
+  var hs = document.documentElement.style;
   try {
     var s = JSON.parse(localStorage.getItem('electron_v2') || '{}');
     var t = (s.settings && s.settings.theme) || 'dark';
     document.documentElement.classList.toggle('dark', t === 'dark');
     fs = (s.settings && s.settings.fontSize) || 'medium';
-    scale = (s.settings && s.settings.uiScale) || 100;
   } catch (e) { document.documentElement.classList.add('dark'); }
   document.documentElement.classList.add('font-' + fs);
-  var ratio = scale / 100;
-  var hs = document.documentElement.style;
-  hs.setProperty('--ui-scale', ratio);
-  if (ratio !== 1) {
-    hs.setProperty('--vh100', 'calc(100dvh / ' + ratio + ')');
-    hs.setProperty('--vw100', 'calc(100vw / ' + ratio + ')');
-  }
   try {
     var ACCENTS = {
       teal:   [29, 168, 140],  blue:   [37, 118, 199], indigo: [92, 96, 205],
@@ -164,7 +159,7 @@ window.APP_VERSION = '?v=1';
     <div class="top-hdr"><div class="top-title">Настройки</div></div>
     <div class="list" style="padding-top:4px;padding-left:18px;padding-right:18px">
       <div class="settings-row" onclick="openProfileSheet()" style="cursor:pointer">
-        <div class="av" id="me-av" style="width:44px;height:44px;font-size:16px"></div>
+        <div class="av" id="me-av"></div>
         <div style="flex:1;min-width:0">
           <div class="settings-name" id="me-name"></div>
           <div class="settings-sub" id="me-username"></div>

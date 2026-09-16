@@ -1015,29 +1015,13 @@ function setFontSize(f) {
   refreshAppearanceSheet();
 }
 
-// ── МАСШТАБ ИНТЕРФЕЙСА (общая сессия — SESSION_KEY.settings.uiScale) ──
-function applyUiScale() {
-  const scale = loadLocalSettings().uiScale || 100;
-  const ratio = scale / 100;
-  const s = document.documentElement.style;
-  s.setProperty('--ui-scale', ratio);
-  s.setProperty('--vh100', ratio === 1 ? '100dvh' : `calc(100dvh / ${ratio})`);
-  s.setProperty('--vw100', ratio === 1 ? '100vw' : `calc(100vw / ${ratio})`);
-  // transform ставим инлайном и только когда масштаб реально не 100% — иначе на
-  // подавляющем большинстве телефонов (масштаб не трогали) body всегда сидел бы
-  // в лишнем composited-слое, слегка размывая текст (transform:scale(1) — не noop
-  // для рендерера, а полноценная GPU-прослойка)
-  document.body.style.transform = ratio === 1 ? '' : `scale(${ratio})`;
-}
-function setUiScale(scale) {
-  saveLocalSetting('uiScale', scale);
-  applyUiScale();
-  refreshAppearanceSheet();
-}
+// Масштаб интерфейса в /m зафиксирован на 100% (в отличие от /chat, где он
+// настраивается) — --ui-scale/--vh100/--vw100 остаются дефолтными из :root,
+// отдельно применять их не нужно.
 function applyAppearance() {
-  applyAccent(); applyChatPattern(); applyChatBg(); applyFontSize(); applyUiScale();
-  // Размер текста/масштаб могут чуть изменить реальную высоту таб-бара и
-  // ширину подписей вкладок (а значит и плашку под активной)
+  applyAccent(); applyChatPattern(); applyChatBg(); applyFontSize();
+  // Размер текста может чуть изменить реальную высоту таб-бара и ширину
+  // подписей вкладок (а значит и плашку под активной)
   if (document.getElementById('tabbar')) { syncTabbarHeight(); updateTabHighlight(false); }
 }
 
@@ -1067,9 +1051,7 @@ function applyThemeColorMeta() {
 function appearanceSheetHtml() {
   const isDark = document.documentElement.classList.contains('dark');
   const f = loadLocalSettings().fontSize || 'medium';
-  const scale = loadLocalSettings().uiScale || 100;
   const fontSeg = [['small', 'A'], ['medium', 'A'], ['large', 'A']];
-  const scaleSeg = [80, 90, 100, 110];
   return `
     <div class="sheet-title">Внешний вид</div>
     <div class="settings-row tight" onclick="setTheme('light')" style="cursor:pointer">
@@ -1099,11 +1081,6 @@ function appearanceSheetHtml() {
       <div class="set-block-title">Размер текста сообщений</div>
       <div class="set-seg">${fontSeg.map(([v, label], i) =>
         `<button class="${f === v ? 'active' : ''}" style="font-size:${13 + i * 3}px" onclick="setFontSize('${v}')">${label}</button>`).join('')}</div>
-    </div>
-    <div class="set-block">
-      <div class="set-block-title">Масштаб интерфейса</div>
-      <div class="set-seg">${scaleSeg.map(v =>
-        `<button class="${scale === v ? 'active' : ''}" onclick="setUiScale(${v})">${v}%</button>`).join('')}</div>
     </div>
   `;
 }

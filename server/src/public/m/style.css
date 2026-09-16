@@ -244,14 +244,15 @@ html.m-desktop .screen { display: none !important; }
 .tab.on { color: #06231e; }
 
 /* ── Настройки ── */
-.settings-row { display: flex; align-items: center; gap: 12px; padding: 11px 2px; }
+.settings-row { display: flex; align-items: center; gap: 12px; padding: 13px 2px; }
 .settings-row + .settings-row { border-top: 1px solid var(--border); }
 .settings-row.tight { padding: 7px 2px; }
-.settings-ico { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; }
-.settings-label { font-size: 14px; font-weight: 500; flex: 1; }
-.settings-name { font-size: 15px; font-weight: 700; }
-.settings-sub { font-size: 12.5px; color: var(--muted); margin-top: 1px; }
-.settings-chev { color: var(--muted); flex-shrink: 0; }
+.settings-ico { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; }
+.settings-ico svg { width: 18px; height: 18px; }
+.settings-label { font-size: 15.5px; font-weight: 500; flex: 1; }
+.settings-name { font-size: 16px; font-weight: 700; }
+.settings-sub { font-size: 13px; color: var(--muted); margin-top: 1px; }
+.settings-chev { width: 18px; height: 18px; color: var(--muted); flex-shrink: 0; }
 
 /* ── Внешний вид (шторка настроек): акцент, фон, узор, размер текста/интерфейса ── */
 .set-block { padding: 8px 0 0; border-top: 1px solid var(--border); margin-top: 2px; }
