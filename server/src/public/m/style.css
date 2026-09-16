@@ -25,7 +25,6 @@
   --vh100: 100dvh; --vw100: 100vw;
   --chat-bg:     var(--app-bg);
   --chat-split:  #e6e9ec;
-  --composer-bg: #ffffff;
   --daypill:     rgba(238,240,244,0.92);
   --font-size:   14.5px;
 }
@@ -44,7 +43,6 @@ html.dark {
   --danger:        #ef6f6f;
   --chat-bg:     var(--app-bg);
   --chat-split:  #1b1f23;
-  --composer-bg: #20252a;
   --daypill:     rgba(38,42,48,0.92);
 }
 html.font-small  { --font-size: 13px; }
@@ -139,7 +137,9 @@ html.m-desktop .screen { display: none !important; }
    это её собственный UI, страница его не видит и убрать не может. Хуже того,
    env(safe-area-inset-top) на этой версии не всегда учитывает высоту полосы,
    так что цифра ниже — не точный расчёт, а подобранный на глаз запас. */
-.top-hdr { padding: calc(max(14px, env(safe-area-inset-top)) + 30px) 16px 10px; flex-shrink: 0; }
+/* Тот же --modal-bg, что у таб-бара/композера внизу — верх и низ экрана одного
+   цвета и одинаково переключаются темой, без шва между зонами */
+.top-hdr { padding: calc(max(14px, env(safe-area-inset-top)) + 30px) 16px 10px; flex-shrink: 0; background: var(--modal-bg); }
 .top-title { font-size: 26px; font-weight: 800; letter-spacing: -.3px; }
 .top-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .icon-btn { width: 34px; height: 34px; border-radius: 10px; background: var(--search-bg); display: flex; align-items: center; justify-content: center; color: var(--accent); cursor: pointer; flex-shrink: 0; }
@@ -203,14 +203,18 @@ html.m-desktop .screen { display: none !important; }
 .row-action.delete { background: #c0392b; }
 
 /* ── Нижний таб-бар ── */
-/* Плавающая пилюля вместо сплошного бара во всю ширину: список чатов проходит
-   у неё под низом (см. .tabpage/.list выше), а сама пилюля лежит с отступами
-   от краёв. env(safe-area-inset-bottom) НЕ используем: на iPhone с Face ID
-   он даёт ~34px лишней высоты, из-за чего под пилюлей оставалась видимая
-   полоса фона — пилюля и так отступает от края сама, достаточно фиксированных
-   6px. */
-.tabbar { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 14px 6px; z-index: 10; pointer-events: auto; touch-action: manipulation; }
-.tabbar-inner { display: flex; background: var(--modal-bg); border-radius: 20px; padding: 10px 0; }
+/* Сплошная полоса во всю ширину, а не плавающая пилюля: список чатов проходит
+   у неё под низом (см. .tabpage/.list выше), сама полоса лежит вплотную к
+   краям и продолжается вниз своим же цветом (--modal-bg, тот же, что и у
+   .top-hdr) через env(safe-area-inset-bottom) — так зона домашнего
+   индикатора не выглядит отдельной полосой фона другого оттенка. */
+.tabbar {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 10;
+  pointer-events: auto; touch-action: manipulation;
+  background: var(--modal-bg); border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tabbar-inner { display: flex; padding: 9px 0 2px; }
 .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); cursor: pointer; }
 .tab svg { width: 21px; height: 21px; }
 .tab span { font-size: 10px; font-weight: 600; }
@@ -360,12 +364,16 @@ html.m-desktop .screen { display: none !important; }
    композер и сжимала список сообщений при открытии/закрытии */
 /* Композер плавает поверх ленты (.chat-body занимает экран целиком и сама
    отступает под него — см. --composer-h, watchComposerHeight в app.js),
-   как уже было сделано с полем ввода в /chat. env(safe-area-inset-bottom)
-   НЕ используем — та же история, что и с таб-баром: на iPhone с Face ID
-   он даёт лишний отступ, видимый как полоса под полем ввода; композер сам
-   уже отступает от края, фиксированных 6px достаточно. */
-.composer-wrap { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 10px 6px; z-index: 5; pointer-events: auto; touch-action: manipulation; }
-.composer-card { background: var(--composer-bg); border-radius: 20px; overflow: hidden; }
+   как уже было сделано с полем ввода в /chat. Сплошная полоса во всю ширину,
+   тем же приёмом и тем же цветом (--modal-bg), что и таб-бар — до самого
+   низа через env(safe-area-inset-bottom), без шва у домашнего индикатора. */
+.composer-wrap {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
+  pointer-events: auto; touch-action: manipulation;
+  background: var(--modal-bg); border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.composer-card { overflow: hidden; }
 .emoji-panel {
   position: absolute; left: 0; right: 0; bottom: 100%;
   border-top: 1px solid var(--border); background: var(--modal-bg);
