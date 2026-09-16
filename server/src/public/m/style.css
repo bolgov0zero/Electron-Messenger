@@ -219,6 +219,7 @@ html.m-desktop .screen { display: none !important; }
 /* ── Настройки ── */
 .settings-row { display: flex; align-items: center; gap: 12px; padding: 11px 2px; }
 .settings-row + .settings-row { border-top: 1px solid var(--border); }
+.settings-row.tight { padding: 7px 2px; }
 .settings-ico { width: 30px; height: 30px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; }
 .settings-label { font-size: 14px; font-weight: 500; flex: 1; }
 .settings-name { font-size: 15px; font-weight: 700; }
@@ -226,8 +227,8 @@ html.m-desktop .screen { display: none !important; }
 .settings-chev { color: var(--muted); flex-shrink: 0; }
 
 /* ── Внешний вид (шторка настроек): акцент, фон, узор, размер текста/интерфейса ── */
-.set-block { padding: 14px 0 2px; border-top: 1px solid var(--border); margin-top: 4px; }
-.set-block-title { font-size: 12px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 10px; }
+.set-block { padding: 8px 0 0; border-top: 1px solid var(--border); margin-top: 2px; }
+.set-block-title { font-size: 12px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 7px; }
 .set-seg { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--search-bg); }
 .set-seg button { flex: 1; height: 32px; border: 0; border-radius: 7px; background: none; color: var(--muted); font: 600 12.5px inherit; cursor: pointer; }
 .set-seg button.active { background: var(--accent); color: #06231e; }
@@ -235,6 +236,19 @@ html.m-desktop .screen { display: none !important; }
 .accent-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 2px; }
 .accent-dot { width: 28px; height: 28px; padding: 0; flex-shrink: 0; border: none; border-radius: 50%; cursor: pointer; background: var(--dot); }
 .accent-dot.active { box-shadow: 0 0 0 2px var(--modal-bg), 0 0 0 4px var(--dot); }
+
+/* Компактные образцы узора фона — маленький квадрат вместо карточки с подписью
+   (название смотрим через title, чтобы не тратить строку на текст) */
+.pat-dot-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 2px; }
+.pat-dot {
+  width: 30px; height: 30px; padding: 0; flex-shrink: 0; position: relative; overflow: hidden;
+  border: 1px solid var(--border); border-radius: 9px; cursor: pointer; background: var(--chat-bg);
+}
+.pat-dot.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.pat-dot-img {
+  position: absolute; inset: 0; background: var(--text2); opacity: .6;
+  -webkit-mask-size: 90px; mask-size: 90px; -webkit-mask-repeat: repeat; mask-repeat: repeat;
+}
 
 /* ── Поля ввода и списки выбора в шторках (создание группы, профиль) ── */
 .sheet-input { width: 100%; height: 44px; border-radius: 10px; border: 1px solid var(--border); background: var(--search-bg); color: var(--text); padding: 0 12px; font-size: 14.5px; margin-bottom: 10px; }

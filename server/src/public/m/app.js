@@ -873,6 +873,14 @@ function accentDotsHtml() {
   return Object.entries(ACCENTS).map(([k, a]) =>
     `<button class="accent-dot${k === cur ? ' active' : ''}" data-accent="${k}" title="${esc(a.name)}" aria-label="${esc(a.name)}" style="--dot:rgb(${accentRgb(a).join(',')})" onclick="setAccent('${k}')"></button>`).join('');
 }
+// Компактные образцы узора: маленький квадрат вместо больших карточек с подписью
+// (см. /chat: там то же самое в виде карточек 3×2 с текстом под каждой — здесь
+// на маленьком экране этого не помещается без прокрутки), название — в title
+function patternDotsHtml() {
+  const cur = currentPattern();
+  return PATTERNS.map(p =>
+    `<button class="pat-dot${p.id === cur ? ' active' : ''}" data-pattern="${p.id}" title="${esc(p.name)}" aria-label="${esc(p.name)}" onclick="setChatPattern('${p.id}')">${p.id ? '<span class="pat-dot-img"></span>' : ''}</button>`).join('');
+}
 
 // ── УЗОР ФОНА ПЕРЕПИСКИ (общий с /chat — те же файлы assets/patterns и ключи localStorage) ──
 const PATTERNS = [
@@ -908,12 +916,34 @@ function applyChatPattern() {
   s.setProperty('--chat-pattern-ink', dark ? '#ffffff' : '#111318');
   s.setProperty('--chat-pattern-alpha', String(PATTERN_ALPHA[dark ? 'dark' : 'light'][currentPatternLevel() - 1]));
 }
+function setChatPattern(id) {
+  try { localStorage.setItem('chatPattern', id || ''); } catch {}
+  applyChatPattern();
+  refreshAppearanceSheet();
+}
+function setPatternLevel(n) {
+  try { localStorage.setItem('chatPatternLevel', String(n)); } catch {}
+  applyChatPattern();
+  refreshAppearanceSheet();
+}
+// Маску образца ставим из кода: в url() есть кавычки, которые рвут inline-атрибут style
+function paintPatternDots() {
+  document.querySelectorAll('#pattern-dots .pat-dot').forEach(dot => {
+    const img = dot.querySelector('.pat-dot-img');
+    if (!img) return;
+    const url = patternUrl(dot.dataset.pattern) || 'none';
+    img.style.webkitMaskImage = url;
+    img.style.maskImage = url;
+  });
+}
 // ── ФОН ПЕРЕПИСКИ (общий с /chat — ключ localStorage 'chatBg') ──
-// Переключатели фона/узора убраны из настроек /m (управляются только в /chat),
-// но само значение общее (тот же ключ localStorage) — применяем его и здесь,
-// чтобы вид переписки не расходился между /chat и /m.
 function currentChatBg() {
   try { return localStorage.getItem('chatBg') === 'split' ? 'split' : 'plain'; } catch { return 'plain'; }
+}
+function setChatBg(mode) {
+  try { localStorage.setItem('chatBg', mode === 'split' ? 'split' : 'plain'); } catch {}
+  applyChatBg();
+  refreshAppearanceSheet();
 }
 function applyChatBg() {
   const s = document.documentElement.style;
@@ -980,15 +1010,28 @@ function appearanceSheetHtml() {
   const scaleSeg = [80, 90, 100, 110];
   return `
     <div class="sheet-title">Внешний вид</div>
-    <div class="settings-row" onclick="setTheme('light')" style="cursor:pointer">
+    <div class="settings-row tight" onclick="setTheme('light')" style="cursor:pointer">
       <div class="settings-label">Светлая тема</div>${!isDark ? _checkIcon : ''}
     </div>
-    <div class="settings-row" onclick="setTheme('dark')" style="cursor:pointer">
+    <div class="settings-row tight" onclick="setTheme('dark')" style="cursor:pointer">
       <div class="settings-label">Тёмная тема</div>${isDark ? _checkIcon : ''}
     </div>
     <div class="set-block">
       <div class="set-block-title">Цветовой акцент</div>
       <div class="accent-row">${accentDotsHtml()}</div>
+    </div>
+    <div class="set-block">
+      <div class="set-block-title">Фон переписки</div>
+      <div class="set-seg">
+        <button class="${currentChatBg() === 'plain' ? 'active' : ''}" onclick="setChatBg('plain')">Как обычно</button>
+        <button class="${currentChatBg() === 'split' ? 'active' : ''}" onclick="setChatBg('split')">С разделением</button>
+      </div>
+    </div>
+    <div class="set-block">
+      <div class="set-block-title">Узор фона</div>
+      <div class="pat-dot-row" id="pattern-dots">${patternDotsHtml()}</div>
+      ${currentPattern() ? `<div class="set-seg" id="pattern-level-seg" style="margin-top:8px">${[1, 2, 3].map(n =>
+        `<button class="${currentPatternLevel() === n ? 'active' : ''}" onclick="setPatternLevel(${n})">${['Слабо', 'Средне', 'Сильно'][n - 1]}</button>`).join('')}</div>` : ''}
     </div>
     <div class="set-block">
       <div class="set-block-title">Размер текста сообщений</div>
@@ -1004,10 +1047,12 @@ function appearanceSheetHtml() {
 }
 function openAppearanceSheet() {
   openSheet(appearanceSheetHtml());
+  paintPatternDots();
 }
 function refreshAppearanceSheet() {
   if (!document.getElementById('sheet-bg').classList.contains('open')) return;
   openSheet(appearanceSheetHtml());
+  paintPatternDots();
 }
 
 // ── ПЕРЕПИСКА ──
