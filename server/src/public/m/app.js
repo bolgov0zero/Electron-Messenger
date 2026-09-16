@@ -1240,9 +1240,22 @@ async function openChat(chatId, aroundId) {
     if (topic) { topic.unread = 0; topic.unread_mentions = 0; }
     if (S.activeRoomId === chat.parent_id) renderTopicsList();
     // Бейдж комнаты в списке чатов — агрегат по всем её темам, его считает
-    // сервер; локальное обнуление темы его не трогает, поэтому перезапрашиваем,
-    // иначе бейдж комнаты оставался прежним после прочтения темы
-    loadChats();
+    // сервер; локальное обнуление темы его не трогает, поэтому перезапрашиваем.
+    // ВАЖНО: не через loadChats() — он целиком заменяет S.chats списком с
+    // /chats, а туда темы не входят (их подмешивает только loadTopics()).
+    // Полная замена стирала уже подмешанные темы из S.chats, и повторный
+    // openChat(id темы) переставал находить чат и молча ничего не делал —
+    // «первый тап работает, второй уже нет». Поэтому только обновляем поля
+    // существующих чатов верхнего уровня, не трогая записи тем.
+    api('GET', '/chats').then(fresh => {
+      if (!fresh) return;
+      fresh.forEach(fc => {
+        const existing = S.chats.find(c => c.id === fc.id);
+        if (existing) Object.assign(existing, fc);
+        else S.chats.push(fc);
+      });
+      renderChats();
+    });
   } else {
     renderChats();
   }
