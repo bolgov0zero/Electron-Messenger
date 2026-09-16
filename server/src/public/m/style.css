@@ -64,13 +64,16 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 html {
   position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
   font-size: var(--font-size); /* «Размер текста сообщений» — только .bubble-text читает 1rem */
-  /* Без своего фона на стыке округления dvh/safe-area проступал фон страницы
-     браузера (полоса другого цвета у нижнего края — «тень», которая не пропадала) */
-  background: var(--app-bg);
+  /* На стыке округления dvh/safe-area низ .screen физически не дотягивает
+     до истинного края экрана — снизу проступает именно этот фон. Кладём сюда
+     --modal-bg (цвет таб-бара/композера), а не --app-bg: во всех экранах,
+     кроме входа, самый низ — это таб-бар или композер, и «протечка» должна
+     быть их цвета, а не цвета списка/переписки. */
+  background: var(--modal-bg);
 }
 body {
   position: fixed; top: 0; left: 0; width: var(--vw100); height: var(--vh100);
-  margin: 0; background: var(--app-bg); color: var(--text);
+  margin: 0; background: var(--modal-bg); color: var(--text);
   /* Вшитый эмодзи-шрифт пробовали дважды (см. историю) — на iOS 27 WebKit
      ловит битую композицию цветных битмап-шрифтов там, где на iOS 26 всё
      было нормально; похоже на регрессию текущего релиза iOS, а не на баг в
@@ -205,20 +208,16 @@ html.m-desktop .screen { display: none !important; }
 /* ── Нижний таб-бар ── */
 /* Сплошная полоса во всю ширину, а не плавающая пилюля: список чатов проходит
    у неё под низом (см. .tabpage/.list выше), сама полоса лежит вплотную к
-   краям и продолжается вниз своим же цветом (--modal-bg, тот же, что и у
-   .top-hdr) через env(safe-area-inset-bottom) — так зона домашнего
-   индикатора не выглядит отдельной полосой фона другого оттенка. */
+   краям. padding-bottom под env(safe-area-inset-bottom) НЕ ставим: низ
+   .screen физически не дотягивает до истинного края экрана (округление
+   dvh/safe-area — см. комментарий у html), и такой padding всё равно
+   обрезался бы этой же границей. Вместо попытки дотянуть саму полосу —
+   у html/body в этой зоне уже стоит --modal-bg, тот же цвет, так что
+   зазор снизу окрашен в него сам по себе. */
 .tabbar {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 10;
   pointer-events: auto; touch-action: manipulation;
   background: var(--modal-bg); border-top: 1px solid var(--border);
-  padding-bottom: env(safe-area-inset-bottom);
-  /* opacity:.999 — тот же обход бага Safari, что уже стоит на body/.screen
-     (см. их комментарии): полностью непрозрачный сплошной слой во всю
-     ширину получал заниженный расчёт высоты, и низ не дотягивал до
-     истинного края экрана — падding под safe-area-inset-bottom рендерился,
-     но обрезался, снизу проступал фон страницы. Раньше .tabbar был
-     плавающей пилюлей (не full-bleed), поэтому баг не проявлялся. */
   opacity: .999;
 }
 .tabbar-inner { display: flex; padding: 6px 0 0; }
@@ -372,14 +371,14 @@ html.m-desktop .screen { display: none !important; }
 /* Композер плавает поверх ленты (.chat-body занимает экран целиком и сама
    отступает под него — см. --composer-h, watchComposerHeight в app.js),
    как уже было сделано с полем ввода в /chat. Сплошная полоса во всю ширину,
-   тем же приёмом и тем же цветом (--modal-bg), что и таб-бар — до самого
-   низа через env(safe-area-inset-bottom), без шва у домашнего индикатора. */
+   тем же приёмом и тем же цветом (--modal-bg), что и таб-бар. padding-bottom
+   под safe-area НЕ ставим — см. комментарий у .tabbar, та же причина: низ
+   .screen не дотягивает до края экрана, а зазор уже закрашен через
+   html/body (--modal-bg). */
 .composer-wrap {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
   pointer-events: auto; touch-action: manipulation;
   background: var(--modal-bg); border-top: 1px solid var(--border);
-  padding-bottom: env(safe-area-inset-bottom);
-  /* opacity:.999 — тот же обход, что у .tabbar (см. её комментарий) */
   opacity: .999;
 }
 .composer-card { overflow: hidden; }
