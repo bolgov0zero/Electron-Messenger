@@ -312,6 +312,19 @@ async function loadChats() {
   S.chats = chats;
   renderChats();
 }
+// Как loadChats(), но не теряет уже открытые темы: /chats отдаёт только чаты
+// верхнего уровня (темы туда не входят, их подмешивает только открытие
+// списка тем), а полная замена S.chats стирала темы — повторный тап по теме
+// после этого не находил чат и молча ничего не делал. Использовать везде,
+// где обновление списка чатов может случиться при открытом списке тем
+// (в т.ч. по WS-событию reload_chats).
+async function refreshChats() {
+  const fresh = await api('GET', '/chats');
+  if (!fresh) return;
+  const topics = S.chats.filter(c => c.parent_id);
+  S.chats = [...fresh, ...topics];
+  renderChats();
+}
 
 function chatPreview(c) {
   const lm = c.last_message;
@@ -403,6 +416,8 @@ function chatRowHtml(c) {
   const time = lm ? fmtChatListTime(lm.sent_at) : '';
   const sq = (c.type === 'group' || c.type === 'room') ? ' sq' : '';
   const muteIcon = c.muted ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted);flex-shrink:0"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="1" y1="1" x2="23" y2="23"/></svg>` : '';
+  // Статус доставки/прочтения своего последнего сообщения — как в /chat
+  const myStatus = mine && lm.status ? renderTicks(lm.status) : '';
   return `<div class="row-swipe-wrap" data-chat-id="${c.id}">
       <div class="row-actions">
         <div class="row-action pin" onclick="toggleChatPin(${c.id})">${c.pinned
@@ -420,7 +435,7 @@ function chatRowHtml(c) {
       <div class="row" onclick="rowTapOpen(${c.id}, this, ${c.has_topics ? 1 : 0})">
         <div class="av${sq} ${chatAvatarColorClass(c)}" data-av-chat="${c.id}">${esc(chatIcon(c))}</div>
         <div class="row-body">
-          <div class="row-top"><div class="row-name">${esc(chatName(c))}</div>${muteIcon}<div class="row-time${unread ? ' unread' : ''}">${time}</div></div>
+          <div class="row-top"><div class="row-name">${esc(chatName(c))}</div><div class="row-top-right">${muteIcon}${myStatus}<div class="row-time${unread ? ' unread' : ''}">${time}</div></div></div>
           <div class="row-bottom">
             <div class="row-msg">${esc(who)}${esc(preview)}</div>
             ${mentions ? `<div class="badge at">@</div>` : unread ? `<div class="badge">${unread > 99 ? '99+' : unread}</div>` : ''}
@@ -1193,22 +1208,10 @@ async function openChat(chatId, aroundId) {
     if (topic) { topic.unread = 0; topic.unread_mentions = 0; }
     if (S.activeRoomId === chat.parent_id) renderTopicsList();
     // Бейдж комнаты в списке чатов — агрегат по всем её темам, его считает
-    // сервер; локальное обнуление темы его не трогает, поэтому перезапрашиваем.
-    // ВАЖНО: не через loadChats() — он целиком заменяет S.chats списком с
-    // /chats, а туда темы не входят (их подмешивает только loadTopics()).
-    // Полная замена стирала уже подмешанные темы из S.chats, и повторный
-    // openChat(id темы) переставал находить чат и молча ничего не делал —
-    // «первый тап работает, второй уже нет». Поэтому только обновляем поля
-    // существующих чатов верхнего уровня, не трогая записи тем.
-    api('GET', '/chats').then(fresh => {
-      if (!fresh) return;
-      fresh.forEach(fc => {
-        const existing = S.chats.find(c => c.id === fc.id);
-        if (existing) Object.assign(existing, fc);
-        else S.chats.push(fc);
-      });
-      renderChats();
-    });
+    // сервер; локальное обнуление темы его не трогает, поэтому перезапрашиваем
+    // через refreshChats() (не loadChats() — см. её комментарий: полная
+    // замена стирала уже подмешанные темы из S.chats)
+    refreshChats();
   } else {
     renderChats();
   }
@@ -1847,7 +1850,9 @@ function connectWS() {
 
     if (data.type === 'presence') { S.presence[data.user_id] = data.status; }
     if (data.type === 'reload_chats') {
-      loadChats();
+      // refreshChats(), не loadChats() — иначе при открытом списке тем гонка
+      // с loadTopics() ниже могла стереть их из S.chats (см. её комментарий)
+      refreshChats();
       if (S.activeRoomId) loadTopics(S.activeRoomId).then(renderTopicsList);
     }
     if (data.type === 'chat_read') { const c = S.chats.find(x => x.id === data.chat_id); if (c) { c.unread = 0; renderChats(); } }

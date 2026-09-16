@@ -254,12 +254,17 @@ router.post('/:id/mute', authMiddleware, (req, res) => {
   if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id))
     return res.status(403).json({ error: 'Forbidden' });
   db.prepare('INSERT OR IGNORE INTO muted_chats (user_id, chat_id) VALUES (?, ?)').run(req.user.id, chatId);
+  // Синхронизация на другие устройства пользователя (как у pin) — без этого
+  // статус мьюта на других открытых клиентах обновлялся только после
+  // перезапуска/ручного обновления списка чатов
+  sendTo(req.user.id, { type: 'reload_chats' });
   res.json({ ok: true });
 });
 
 router.delete('/:id/mute', authMiddleware, (req, res) => {
   const chatId = Number(req.params.id);
   db.prepare('DELETE FROM muted_chats WHERE user_id = ? AND chat_id = ?').run(req.user.id, chatId);
+  sendTo(req.user.id, { type: 'reload_chats' });
   res.json({ ok: true });
 });
 
