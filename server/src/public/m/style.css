@@ -214,7 +214,7 @@ html.m-desktop .screen { display: none !important; }
   background: var(--modal-bg); border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom);
 }
-.tabbar-inner { display: flex; padding: 9px 0 2px; }
+.tabbar-inner { display: flex; padding: 6px 0 0; }
 .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); cursor: pointer; }
 .tab svg { width: 21px; height: 21px; }
 .tab span { font-size: 10px; font-weight: 600; }
@@ -444,7 +444,7 @@ html.m-desktop .screen { display: none !important; }
 .msg-action-row.danger { color: var(--danger); }
 .msg-action-row.danger svg { color: var(--danger); }
 
-.composer { display: flex; align-items: center; gap: 8px; padding: 9px 12px; }
+.composer { display: flex; align-items: center; gap: 8px; padding: 6px 12px; }
 .composer input { flex: 1; background: var(--search-bg); border: 1px solid var(--border); border-radius: 20px; padding: 10px 14px; color: var(--text); font-size: 14.5px; }
 .composer input:focus { outline: none; }
 .composer-icon-btn { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--muted); flex-shrink: 0; cursor: pointer; }
