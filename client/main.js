@@ -557,11 +557,18 @@ ipcMain.handle('lightbox-open', (_, payload) => {
   // просто подстраиваем окно под workArea — площадь экрана без строки меню и Dock,
   // ту же, что macOS выделил бы окну и так. На Windows/Linux — весь монитор
   const area = process.platform === 'darwin' ? display.workArea : display.bounds;
+  // На Windows аппаратное декодирование видео не композитится через прозрачное
+  // (layered) окно — вместо картинки видно только нативные controls (звук и
+  // длительность при этом работают, декодер не падает, просто кадр не доходит
+  // до слоя окна). Для видео на Windows делаем окно непрозрачным — тот же тёмный
+  // фон рисует lightbox.html, только без эффекта «чуть видно то, что позади».
+  const opaqueForVideo = process.platform === 'win32' && payload.type === 'video';
   const win = new BrowserWindow({
     x: area.x, y: area.y,
     width: area.width, height: area.height,
     frame: false, resizable: false, movable: false,
-    skipTaskbar: true, transparent: true, hasShadow: false,
+    skipTaskbar: true, transparent: !opaqueForVideo, hasShadow: false,
+    ...(opaqueForVideo ? { backgroundColor: '#0a0a0c' } : {}),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
     show: false,
   });
