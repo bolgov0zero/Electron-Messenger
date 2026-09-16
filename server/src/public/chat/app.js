@@ -19,7 +19,7 @@ const S = {
   chats: [], activeChatId: null,
   ws: null, wsRetry: 0,
   unread: {}, unreadMentions: {}, allUsers: [], drafts: (()=>{ try { return JSON.parse(localStorage.getItem('chat_drafts'))||{}; } catch { return {}; } })(),
-  settings: { theme: 'dark', fontSize: 'medium', uiScale: window.matchMedia('(max-width: 767px),(pointer:coarse)').matches ? 110 : 100 },
+  settings: { theme: 'dark', fontSize: 'medium', uiScale: 100 },
   ctx: { messageId: null, canEdit: false, isMine: false, replyText: '', replySenderName: '' },
   editingMessageId: null,
   replyTo: null,
@@ -57,8 +57,6 @@ function fillLoginFromCreds() {
 }
 let _loadingMore = false;
 let _loadingChatId = null;
-let _mobilePanel = 1;
-let _mobileFromTopics = false;
 const _avatarCache = new Map();
 let _fetchController = new AbortController();
 
@@ -331,95 +329,6 @@ function maybeShowNotifBanner() {
   if (b) b.style.display = 'flex';
 }
 
-// ── MOBILE NAVIGATION ──
-const _CHAT_EASE = 'transform .32s cubic-bezier(.32,.72,0,1)';
-
-const _isMobile = () => window.matchMedia('(max-width: 767px), (pointer: coarse)').matches;
-
-function mobileSlideTo(panel, title = '', sub = '') {
-  _mobilePanel = panel;
-  const track = document.getElementById('mobile-track');
-  if (track) {
-    track.classList.remove('mp-2', 'mp-3');
-    if (panel === 2) track.classList.add('mp-2');
-    else if (panel === 3) track.classList.add('mp-3');
-  }
-  const backBtn = document.getElementById('mtb-back');
-  const account = document.getElementById('mtb-account');
-  const titleWrap = document.getElementById('mtb-title-wrap');
-  const titleEl = document.getElementById('mtb-title');
-  const subEl = document.getElementById('mtb-sub');
-  const actions = document.querySelector('.mtb-actions');
-  const chatActions = document.getElementById('mtb-chat-actions');
-  // Переход на другой экран — снимаем обработчик прошлого чата, иначе он
-  // останется висеть на шапке списка тем и откроет чужой состав
-  if (titleWrap) { titleWrap.onclick = null; titleWrap.style.cursor = ''; }
-  if (panel === 1) {
-    if (backBtn) backBtn.style.display = 'none';
-    if (account) account.style.display = '';
-    if (titleWrap) titleWrap.style.display = 'none';
-    if (actions) actions.style.display = '';
-    if (chatActions) chatActions.style.display = 'none';
-  } else {
-    if (backBtn) backBtn.style.display = 'flex';
-    if (account) account.style.display = 'none';
-    if (titleWrap) titleWrap.style.display = title ? 'flex' : 'none';
-    if (titleEl) titleEl.textContent = title;
-    if (subEl) subEl.textContent = sub;
-    if (actions) actions.style.display = 'none';
-    if (chatActions) chatActions.style.display = (panel === 3 && S.activeChatId) ? 'flex' : 'none';
-  }
-}
-
-function mobileSlideBack() {
-  if (_mobilePanel === 3) {
-    S.activeChatId = null;
-    S.activeTopicId = null;
-    if (_mobileFromTopics) {
-      const room = S.chats.find(c => c.id === S.activeRoomId);
-      mobileSlideTo(2, room ? chatName(room) : '', room ? nMembers(room.members?.length || 0) : '');
-    } else {
-      S.activeRoomId = null;
-      mobileSlideTo(1);
-    }
-  } else if (_mobilePanel === 2) {
-    S.activeRoomId = null;
-    S.activeTopicId = null;
-    mobileSlideTo(1);
-    const mp = document.getElementById('mobile-topics');
-    setTimeout(() => { if (mp) mp.innerHTML = ''; }, 340);
-  }
-}
-
-function mobileBack(animated) {
-  if (_isMobile()) { mobileSlideBack(); return; }
-  const cm = document.getElementById('chat-main');
-  const sb = document.querySelector('.sidebar');
-  S.activeChatId = null;
-  if (animated === false) {
-    cm?.classList.remove('mobile-open');
-    if (cm) { cm.style.transform = ''; cm.style.transition = ''; }
-    return;
-  }
-  if (cm) { cm.style.transition = _CHAT_EASE; cm.style.transform = 'translateX(100%)'; }
-  sb?.classList.remove('mobile-hidden');
-  const done = () => {
-    cm?.classList.remove('mobile-open');
-    if (cm) { cm.style.transform = ''; cm.style.transition = ''; }
-  };
-  if (cm) cm.addEventListener('transitionend', done, { once: true });
-  else done();
-}
-
-function openMobileChat() {
-  const cm = document.getElementById('chat-main');
-  const sb = document.querySelector('.sidebar');
-  if (!cm) return;
-  cm.classList.add('mobile-open');
-  if (!_isMobile()) { sb?.classList.add('mobile-hidden'); return; }
-  // На мобильном слайдер управляется через mobileSlideTo
-}
-
 // ── VIEWPORT / KEYBOARD (нативное поведение на мобильных) ──
 // Высота всего экрана = высоте visual viewport. Клавиатура уменьшает
 // viewport → CSS-флексбокс сам сжимает список сообщений, поле ввода
@@ -636,20 +545,6 @@ function logout(intentional = false) {
   localStorage.removeItem(SESSION_KEY);
   document.getElementById('screen-main').classList.remove('active');
   document.getElementById('screen-login').classList.add('active');
-  // Reset mobile state
-  _mobilePanel = 1;
-  _mobileFromTopics = false;
-  document.getElementById('mobile-track')?.classList.remove('mp-2', 'mp-3');
-  const mtbBack = document.getElementById('mtb-back');
-  const mtbAcc = document.getElementById('mtb-account');
-  const mtbAct = document.querySelector('.mtb-actions');
-  const mtbTitWrap = document.getElementById('mtb-title-wrap');
-  if (mtbBack) mtbBack.style.display = 'none';
-  if (mtbAcc) mtbAcc.style.display = '';
-  if (mtbAct) mtbAct.style.display = '';
-  if (mtbTitWrap) mtbTitWrap.style.display = 'none';
-  document.getElementById('chat-main')?.classList.remove('mobile-open');
-  document.querySelector('.sidebar')?.classList.remove('mobile-hidden');
   if (!intentional) fillLoginFromCreds();
 }
 
@@ -658,8 +553,6 @@ function enterApp() {
   startTokenRefresh();
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-main').classList.add('active');
-  initPullGestures();
-  initChatRowSwipe();
   loadChats().then(() => {
     if (S._pendingOpenChatId) {
       const c = S.chats.find(c => c.id === S._pendingOpenChatId);
@@ -688,30 +581,15 @@ function enterApp() {
     tryLoadAvatar(acAv, acUrl, initials(S.user.display_name));
   }
   if (acName && S.user) acName.textContent = S.user.display_name;
-  // Mobile topbar account
-  const mtbAv = document.getElementById('mtb-av');
-  const mtbName = document.getElementById('mtb-name');
-  if (mtbAv && S.user) {
-    mtbAv.className = `av mtb-av ${avatarColor(S.user.id)}`;
-    mtbAv.style.backgroundImage = '';
-    mtbAv.textContent = initials(S.user.display_name);
-    const mtbUrl = `${httpProto()}://${S.server}/api/users/${S.user.id}/avatar?t=${Date.now()}`;
-    tryLoadAvatar(mtbAv, mtbUrl, initials(S.user.display_name));
-  }
-  if (mtbName && S.user) mtbName.textContent = S.user.display_name;
 }
 
 
 function updateSidebarThemeIcon() {
   const isDark = S.settings.theme === 'dark';
-  ['sidebar-theme-sun', 'sb-theme-sun', 'mtb-theme-sun'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = isDark ? '' : 'none';
-  });
-  ['sidebar-theme-moon', 'sb-theme-moon', 'mtb-theme-moon'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = isDark ? 'none' : '';
-  });
+  const sun = document.getElementById('sidebar-theme-sun');
+  if (sun) sun.style.display = isDark ? '' : 'none';
+  const moon = document.getElementById('sidebar-theme-moon');
+  if (moon) moon.style.display = isDark ? 'none' : '';
 }
 
 
@@ -930,17 +808,7 @@ function applySettings() {
   document.documentElement.style.minHeight = '';
   document.body.style.height = '';
   const htmlStyle = document.documentElement.style;
-  // На iOS Safari CSS zoom ненадёжен для текста (часть элементов не масштабируется),
-  // на мобильных используем transform: scale на body (через CSS-переменную --ui-scale).
-  // На десктопе оставляем zoom — там он реализован корректно и лучше рендерит текст.
-  const isMobile = window.matchMedia('(max-width: 767px), (pointer: coarse)').matches;
-  if (isMobile) {
-    htmlStyle.zoom = '';
-    htmlStyle.setProperty('--ui-scale', _ratio);
-  } else {
-    htmlStyle.setProperty('--ui-scale', '1');
-    htmlStyle.zoom = _scale === 100 ? '' : (_scale + '%');
-  }
+  htmlStyle.zoom = _scale === 100 ? '' : (_scale + '%');
   if (_ratio === 1) {
     htmlStyle.setProperty('--vh100', '100dvh');
     htmlStyle.setProperty('--vw100', '100vw');
@@ -980,13 +848,11 @@ function setUiScale(v) { S.settings.uiScale = v; applySettings(); saveSession();
 // Код общий для приложения и веб-клиента: «Обновление», автозапуск и сайдбар есть только
 // в Electron, а на телефоне разделы открываются списком, как в системных настройках.
 const CS = {
-  sec: 'profile', mSec: null, nameDraft: '', nameBusy: false, nameMsg: '',
+  sec: 'profile', nameDraft: '', nameBusy: false, nameMsg: '',
   pwOpen: false, pw: { old: '', a: '', b: '' }, pwShow: false, pwErr: '', pwBusy: false, pwDone: false,
   autostart: null, version: null, avatar: undefined,
 };
 const csIsApp = () => typeof window.electron !== 'undefined';
-const CS_PHONE_MQ = '(max-width: 767px), (pointer: coarse)';
-const csIsPhone = () => !csIsApp() && window.matchMedia(CS_PHONE_MQ).matches;
 const csSvg = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const CS_I = {
   user: csSvg('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'),
@@ -1011,7 +877,7 @@ const CS_I = {
 
 async function openSettings(section = 'profile') {
   Object.assign(CS, {
-    sec: section, mSec: null, nameDraft: S.user?.display_name || '', nameBusy: false, nameMsg: '',
+    sec: section, nameDraft: S.user?.display_name || '', nameBusy: false, nameMsg: '',
     pwOpen: false, pw: { old: '', a: '', b: '' }, pwShow: false, pwErr: '', pwBusy: false, pwDone: false, avatar: undefined,
   });
   csRender();
@@ -1093,7 +959,7 @@ function csPwMsg() {
 function csPaneProfile() {
   const u = S.user, draft = CS.nameDraft, ok = draft.trim().length > 0, changed = draft.trim() !== u.display_name;
   const type = CS.pwShow ? 'text' : 'password';
-  const where = csIsApp() ? 'На этом компьютере' : csIsPhone() ? 'На этом телефоне' : 'В этом браузере';
+  const where = csIsApp() ? 'На этом компьютере' : 'В этом браузере';
   return `<div class="cs-hero">
       <button type="button" class="cs-av-edit" aria-label="Сменить фото" onclick="triggerAvatarUpload()">${csAv(72)}<span class="cs-badge">${CS_I.pen}</span></button>
       <div class="cs-hero-t"><b>${esc(u.display_name)}</b><span>@${esc(u.username)}</span>
@@ -1182,7 +1048,7 @@ function csPaneGeneral() {
     <div class="cs-g">
       <div class="cs-r"><div class="cs-l"><b>Автозапуск при старте</b><span>Приложение откроется само после входа в систему</span></div>${csTg(!!CS.autostart, 'csAutostart()', 'Автозапуск')}</div>
       <div class="cs-r"><div class="cs-l"><b>Скрыть сайдбар</b><span>Список чатов прячется и выезжает при наведении на левый край окна</span></div>${csTg(document.body.classList.contains('sidebar-hidden'), 'csHideSidebar()', 'Скрыть сайдбар')}</div>
-    </div>` : `<p class="cs-hint">Разрешение на уведомления меняется ${csIsPhone() ? 'в настройках телефона' : 'в настройках сайта в самом браузере'}.</p>`}`;
+    </div>` : `<p class="cs-hint">Разрешение на уведомления меняется в настройках сайта в самом браузере.</p>`}`;
 }
 function csSound() { S.settings.soundEnabled = S.settings.soundEnabled === false; saveSession(); csRefresh(); }
 async function csAutostart() { CS.autostart = !CS.autostart; csRefresh(); await setAutostart(CS.autostart); }
@@ -1238,9 +1104,9 @@ function csPaneUpdate() {
 }
 const CS_PANES = { profile: csPaneProfile, general: csPaneGeneral, appearance: csPaneAppearance, update: csPaneUpdate };
 
-function csNavHtml(list) {
-  return csSections().map(s => `<button type="button" class="cs-sn" ${list ? '' : `aria-current="${CS.sec === s.k ? 'page' : 'false'}"`} onclick="csGo('${s.k}')">
-    <span class="cs-sn-ic">${s.icon}</span><span class="cs-sn-tx"><b>${s.label}</b><small>${esc(s.meta())}</small></span>${s.dot?.() ? '<i class="cs-dot"></i>' : ''}${list ? `<span class="cs-chev">${CS_I.chev}</span>` : ''}</button>`).join('');
+function csNavHtml() {
+  return csSections().map(s => `<button type="button" class="cs-sn" aria-current="${CS.sec === s.k ? 'page' : 'false'}" onclick="csGo('${s.k}')">
+    <span class="cs-sn-ic">${s.icon}</span><span class="cs-sn-tx"><b>${s.label}</b><small>${esc(s.meta())}</small></span>${s.dot?.() ? '<i class="cs-dot"></i>' : ''}</button>`).join('');
 }
 function csRender(focusId) {
   const el = document.getElementById('cs-form');
@@ -1251,29 +1117,18 @@ function csRender(focusId) {
   const scroll = document.getElementById('cs-body')?.scrollTop || 0;
   const secs = csSections();
   if (!secs.some(s => s.k === CS.sec)) CS.sec = 'profile';
-  if (CS.mSec && !secs.some(s => s.k === CS.mSec)) CS.mSec = null;
   const close = `<button type="button" class="cs-x" aria-label="Закрыть настройки" onclick="closeSettings()">${CS_I.x}</button>`;
-  if (csIsPhone()) {
-    const s = CS.mSec && secs.find(x => x.k === CS.mSec);
-    el.className = 'modal cs-modal cs-phone';
-    el.innerHTML = `<div class="cs-mtop">${s ? `<button type="button" class="cs-back" onclick="csGo(null)">${CS_I.back}Назад</button>` : '<span></span>'}<h3>${s ? s.label : 'Настройки'}</h3>${close}</div>
-      <div class="cs-body" id="cs-body">${s ? CS_PANES[s.k]() : `
-        <button type="button" class="cs-hero cs-hero-btn" onclick="csGo('profile')">${csAv(60)}<span class="cs-hero-t"><b>${esc(S.user.display_name)}</b><span>@${esc(S.user.username)}</span></span><span class="cs-chev">${CS_I.chev}</span></button>
-        <div class="cs-g cs-list">${csNavHtml(true)}</div>
-        <p class="cs-hint" style="text-align:center">Веб-версия · 2026 © bolgov0zero</p>`}</div>`;
-  } else {
-    const s = secs.find(x => x.k === CS.sec);
-    el.className = 'modal cs-modal';
-    el.innerHTML = `<nav class="cs-nav" aria-label="Разделы настроек">
-        <button type="button" class="cs-me" aria-current="${CS.sec === 'profile' ? 'page' : 'false'}" onclick="csGo('profile')">${csAv(40)}<span class="cs-me-t"><b>${esc(S.user.display_name)}</b><small>@${esc(S.user.username)}</small></span></button>
-        <div class="cs-nav-list">${csNavHtml(false)}</div>
-        <div class="cs-nav-foot">${csIsApp() ? `Electron${CS.version ? ' ' + esc(CS.version) : ''}` : 'Веб-версия'}<br>2026 © bolgov0zero</div>
-      </nav>
-      <section class="cs-pane">
-        <header class="cs-head"><div><h3>${s.label}</h3><p>${s.desc}</p></div>${close}</header>
-        <div class="cs-body" id="cs-body">${CS_PANES[s.k]()}</div>
-      </section>`;
-  }
+  const s = secs.find(x => x.k === CS.sec);
+  el.className = 'modal cs-modal';
+  el.innerHTML = `<nav class="cs-nav" aria-label="Разделы настроек">
+      <button type="button" class="cs-me" aria-current="${CS.sec === 'profile' ? 'page' : 'false'}" onclick="csGo('profile')">${csAv(40)}<span class="cs-me-t"><b>${esc(S.user.display_name)}</b><small>@${esc(S.user.username)}</small></span></button>
+      <div class="cs-nav-list">${csNavHtml()}</div>
+      <div class="cs-nav-foot">${csIsApp() ? `Electron${CS.version ? ' ' + esc(CS.version) : ''}` : 'Веб-версия'}<br>2026 © bolgov0zero</div>
+    </nav>
+    <section class="cs-pane">
+      <header class="cs-head"><div><h3>${s.label}</h3><p>${s.desc}</p></div>${close}</header>
+      <div class="cs-body" id="cs-body">${CS_PANES[s.k]()}</div>
+    </section>`;
   if (CS.avatar === undefined) { CS.avatar = null; updateSettingsAvatar(); }
   csPaintAvatars();
   if (document.getElementById('pattern-cards')) paintPatternSwatches();
@@ -1288,12 +1143,11 @@ function csRefresh(focusId) {
   if (document.getElementById('modal-settings')?.classList.contains('open')) csRender(focusId);
 }
 function csGo(k) {
-  if (csIsPhone()) CS.mSec = k; else if (k) CS.sec = k;
+  if (k) CS.sec = k;
   csRender();
   const b = document.getElementById('cs-body');
   if (b) b.scrollTop = 0;
 }
-window.matchMedia(CS_PHONE_MQ).addEventListener?.('change', () => csRefresh());
 function openNameEdit() {
   const input = document.getElementById('settings-display-name');
   const btn = document.getElementById('settings-edit-btn');
@@ -1523,10 +1377,7 @@ function topicsPanelHtml(roomId) {
 
 function filterTopics(q) {
   _tpQuery = q;
-  // На телефоне список живёт в своём контейнере, колонки #topics-panel там нет
-  const list = _isMobile()
-    ? document.getElementById('mobile-topics')
-    : document.querySelector('#topics-panel .tp-list');
+  const list = document.querySelector('#topics-panel .tp-list');
   if (!list || !S.activeRoomId) return;
   // Перерисовываем только список: строку поиска трогать нельзя, слетит курсор
   const subs = S.topics[S.activeRoomId] || [];
@@ -1535,14 +1386,7 @@ function filterTopics(q) {
   const rows = '<div class="tp-sep"></div>' + (shown.length
     ? shown.map(topicRow).join('')
     : '<div class="tp-empty">Ничего не найдено</div>');
-  if (_isMobile()) {
-    // Строку поиска не трогаем вовсе: даже кратковременное изъятие из документа
-    // снимает с неё фокус, и набор текста прерывался бы на каждой букве
-    [...list.children].forEach(el => { if (!el.classList.contains('mt-search')) el.remove(); });
-    list.insertAdjacentHTML('beforeend', rows);
-  } else {
-    list.innerHTML = rows;
-  }
+  list.innerHTML = rows;
 }
 
 function openTopicSearch() {
@@ -1572,66 +1416,23 @@ function leaveRoom() {
 function renderTopicsPanel(roomId) {
   const subs = S.topics[roomId] || [];
   if (!subs.length) { closeTopicsPanel(); return; }
-  const roomName = S.chats.find(c=>c.id===roomId)?.name || 'Комната';
-
-  if (_isMobile()) {
-    // На мобильном — рендерим в панель 2 слайдера
-    const mp = document.getElementById('mobile-topics');
-    if (!mp) return;
-    // Строки те же, что в настольной колонке: одна функция на обе платформы — иначе
-    // списки расходятся, как разошлись раньше (на телефоне не было ни времени,
-    // ни отметки упоминания)
-    const q = _tpQuery.trim().toLowerCase();
-    const shown = q ? subs.filter(x => x.name.toLowerCase().includes(q)) : subs;
-    mp.innerHTML =
-      '<div class="mt-search">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
-        '<input id="mt-search-input" placeholder="Поиск темы" value="' + esc(_tpQuery) + '" oninput="filterTopics(this.value)">' +
-      '</div>' +
-      '<div class="tp-sep"></div>' +
-      (shown.length ? shown.map(topicRow).join('') : '<div class="tp-empty">Ничего не найдено</div>');
-    if (!mp._swipeInit) {
-      mp._swipeInit = true;
-      let _sx = 0, _sy = 0;
-      mp.addEventListener('touchstart', e => { _sx = e.touches[0].clientX; _sy = e.touches[0].clientY; }, { passive: true });
-      mp.addEventListener('touchend', e => {
-        const dx = e.changedTouches[0].clientX - _sx;
-        const dy = e.changedTouches[0].clientY - _sy;
-        if (dx > 60 && Math.abs(dy) < Math.abs(dx)) mobileSlideBack();
-      }, { passive: true });
-    }
-    // Название комнаты — в шапку: раньше она пустовала, а название дублировалось в теле
-    mobileSlideTo(2, roomName, nMembers((S.chats.find(c => c.id === roomId)?.members?.length) || 0));
-  } else {
-    // На десктопе — колонка между сайдбаром и перепиской; сайдбар при этом
-    // сжимается в полосу аватарок, чтобы список тем встал во всю ширину
-    const panel = document.getElementById('topics-panel');
-    // Анимация появления — только при входе в комнату. Панель перерисовывается
-    // и при выборе темы, и при новом сообщении; без этой проверки список
-    // дёргался каждый раз, будто открывается заново.
-    const wasOpen = panel.classList.contains('open');
-    panel.classList.add('open');
-    document.body.classList.add('rooms-strip');
-    panel.innerHTML = topicsPanelHtml(roomId);
-    if (!wasOpen) {
-      panel.classList.add('tp-enter');
-      setTimeout(() => panel.classList.remove('tp-enter'), 260);
-    }
+  // Колонка между сайдбаром и перепиской; сайдбар при этом сжимается в
+  // полосу аватарок, чтобы список тем встал во всю ширину
+  const panel = document.getElementById('topics-panel');
+  // Анимация появления — только при входе в комнату. Панель перерисовывается
+  // и при выборе темы, и при новом сообщении; без этой проверки список
+  // дёргался каждый раз, будто открывается заново.
+  const wasOpen = panel.classList.contains('open');
+  panel.classList.add('open');
+  document.body.classList.add('rooms-strip');
+  panel.innerHTML = topicsPanelHtml(roomId);
+  if (!wasOpen) {
+    panel.classList.add('tp-enter');
+    setTimeout(() => panel.classList.remove('tp-enter'), 260);
   }
 }
 
 function closeTopicsPanel(goBack) {
-  if (_isMobile()) {
-    const mp = document.getElementById('mobile-topics');
-    if (mp) mp.innerHTML = '';
-    if (goBack) {
-      S.activeRoomId = null;
-      S.activeTopicId = null;
-      _tpQuery = '';
-      mobileSlideTo(1);
-    }
-    return;
-  }
   const panel = document.getElementById('topics-panel');
   panel.classList.remove('open');
   panel.classList.remove('tp-enter');
@@ -1647,13 +1448,6 @@ function closeTopicsPanel(goBack) {
 
 async function openTopic(topicId) {
   S.activeTopicId = topicId;
-  // На телефоне openChat список не перерисовывает (он уезжает на другой слайд),
-  // поэтому отметку выбранной строки ставим сами — иначе, вернувшись назад,
-  // видно старую
-  if (_isMobile()) {
-    document.querySelectorAll('#mobile-topics .chat-item').forEach(el =>
-      el.classList.toggle('active', Number(el.dataset.topicId) === topicId));
-  }
   await openChat(topicId);
 }
 
@@ -2030,13 +1824,10 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     S.activeTopicId = null;
     renderChatList();
     await loadTopics(chatId, { render: true });
-    // На десктопе переписка остаётся от прошлого чата, если её не очистить:
-    // мобильная ветка уезжает на другой слайд, а тут никто не подменял содержимое
-    if (!_isMobile()) {
-      setChatMainContent('<div class="empty-state">' +
-        '<div class="empty-icon">📋</div><div class="empty-title">Выберите тему</div>' +
-        '<div class="empty-sub">Слева список тем этой комнаты</div></div>');
-    }
+    // Переписка остаётся от прошлого чата, если её не очистить
+    setChatMainContent('<div class="empty-state">' +
+      '<div class="empty-icon">📋</div><div class="empty-title">Выберите тему</div>' +
+      '<div class="empty-sub">Слева список тем этой комнаты</div></div>');
     return;
   }
   if (!chat?.parent_id && !Object.values(S.topics).some(arr=>arr.some(s=>s.id===chatId))) {
@@ -2059,7 +1850,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   S.unreadMentions[chatId] = 0;
   updateUnreadTotal();
   renderChatList();
-  if (chat?.parent_id && !_isMobile()) renderTopicsPanel(chat.parent_id);
+  if (chat?.parent_id) renderTopicsPanel(chat.parent_id);
   const name = chatName(chat);
   const isGroup = chat.type==='group';
   const isRoom = chat.type==='room';
@@ -2074,9 +1865,6 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   const main = document.getElementById('chat-main');
   setChatMainContent(`
     <div class="chat-header">
-      <button class="icon-btn mobile-back-btn" onclick="mobileBack()" title="Назад" style="flex-shrink:0">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
       <div class="av-wrap">
         <div class="av av-md ${chatAvatarClass(chat)}${chat.type==='direct'?' av-round':' av-sq'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
         ${peerDot}
@@ -2226,176 +2014,13 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   _loadingChatId = null;
   if (S.activeChatId !== chatId) return;
 
-  // Показываем панель чата
-  if (_isMobile()) {
-    let _slideTitle = '';
-    const _directChat = S.chats.find(c=>c.id===chatId);
-    if (_directChat) {
-      _slideTitle = chatName(_directChat);
-    } else {
-      for (const subs of Object.values(S.topics)) {
-        const s = subs.find(s=>s.id===chatId);
-        if (s) { _slideTitle = s.name || ''; break; }
-      }
-    }
-    _mobileFromTopics = _mobilePanel === 2;
-    const _slidePeerId = _directChat ? getPeerUserId(_directChat) : null;
-    // Подпись та же, что и на десктопе: раньше на мобильном её не было вовсе,
-    // и из открытой группы нельзя было узнать даже число участников
-    const _slideSub = _slidePeerId ? peerStatusText(_slidePeerId) : sub;
-    mobileSlideTo(3, _slideTitle, _slideSub);
-    // Шапка ведёт в состав группы/комнаты — как кликабельная шапка на десктопе
-    const _tw = document.getElementById('mtb-title-wrap');
-    if (_tw) {
-      const canOpenInfo = isGroup || (isRoom && !isTopic);
-      _tw.onclick = canOpenInfo ? () => openGroupInfo(chatId) : null;
-      _tw.style.cursor = canOpenInfo ? 'pointer' : '';
-    }
-  } else {
-    openMobileChat();
-  }
-
   const inputEl = document.getElementById('msg-input');
   if (inputEl) {
     inputEl.value = S.drafts[chatId] || '';
     autoResize(inputEl);
     onMsgInput(inputEl, true);
   }
-  if (!_isMobile()) inputEl?.focus();
-}
-
-// ── СВАЙП ПО СТРОКЕ ЧАТА (мобильный) ──
-// Влево — заглушить/включить звук, вправо — закрепить/открепить.
-// Раньше эти действия жили только за долгим нажатием, о котором не догадаться.
-function initChatRowSwipe() {
-  const list = document.getElementById('chats-list');
-  if (!list || list._rowSwipeInit) return;
-  list._rowSwipeInit = true;
-
-  const ACT_AT = 64;      // порог срабатывания
-  const MAX = 88;         // дальше строка не едет
-  let row = null, x0 = 0, y0 = 0, locked = false, armed = false, dir = 0;
-
-  const reset = (animate = true) => {
-    if (!row) return;
-    row.style.transition = animate ? 'transform .22s ease' : 'none';
-    row.style.transform = '';
-    const hint = row._hint;
-    if (hint) { hint.remove(); row._hint = null; }
-    row = null; locked = false; armed = false; dir = 0;
-  };
-
-  const showHint = (r, isMute) => {
-    if (r._hint) return;
-    const h = document.createElement('div');
-    h.className = 'row-swipe-hint ' + (isMute ? 'left' : 'right');
-    h.textContent = isMute
-      ? (S.mutedChats.has(parseInt(r.dataset.chatId)) ? '🔔' : '🔕')
-      : '📌';
-    r.appendChild(h);
-    r._hint = h;
-  };
-
-  list.addEventListener('touchstart', e => {
-    if (!_isMobile() || e.touches.length !== 1) return;
-    reset(false);
-    row = e.target.closest('[data-chat-id]');
-    if (!row) return;
-    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
-    locked = false; armed = false; dir = 0;
-  }, { passive: true });
-
-  list.addEventListener('touchmove', e => {
-    if (!row) return;
-    const dx = e.touches[0].clientX - x0;
-    const dy = e.touches[0].clientY - y0;
-    if (!locked) {
-      if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 10) {
-        if (Math.abs(dy) > 10) { reset(false); }   // это прокрутка — не мешаем
-        return;
-      }
-      locked = true;
-      dir = dx > 0 ? 1 : -1;
-      row.style.position = 'relative';
-      showHint(row, dir < 0);
-    }
-    const shift = Math.max(-MAX, Math.min(MAX, dx * 0.6));
-    row.style.transform = `translateX(${shift}px)`;
-    row.style.transition = 'none';
-    if (!armed && Math.abs(shift) >= ACT_AT * 0.6) { armed = true; haptic(8); row._hint?.classList.add('armed'); }
-    else if (armed && Math.abs(shift) < ACT_AT * 0.6) { armed = false; row._hint?.classList.remove('armed'); }
-  }, { passive: true });
-
-  list.addEventListener('touchend', () => {
-    if (!row || !locked) { reset(false); return; }
-    const fire = armed;
-    const chatId = parseInt(row.dataset.chatId);
-    const wasDir = dir;
-    reset(true);
-    if (!fire) return;
-    haptic(12);
-    S.ctxChatId = chatId;
-    if (wasDir < 0) sheetMuteChat(); else sheetPinChat();
-  }, { passive: true });
-}
-
-// ── ПОТЯНУТЬ ВНИЗ: показать поиск и обновить список (мобильный) ──
-// Поиск больше не занимает место постоянно, а список можно освежить жестом.
-function initPullGestures() {
-  const list = document.getElementById('chats-list');
-  const search = document.querySelector('.sidebar-search');
-  if (!list || !search || list._pullInit) return;
-  list._pullInit = true;
-
-  // Стартуем со свёрнутым поиском — на десктопе класс не действует (см. media)
-  if (_isMobile()) search.classList.add('search-collapsed');
-
-  const spinner = document.createElement('div');
-  spinner.className = 'ptr-spinner';
-  list.parentElement.style.position = list.parentElement.style.position || 'relative';
-  list.parentElement.appendChild(spinner);
-
-  const SEARCH_AT = 60;   // потянули на столько — раскрываем поиск
-  const REFRESH_AT = 110; // и ещё дальше — обновляем список
-  let y0 = 0, pulling = false, armedSearch = false, armedRefresh = false;
-
-  list.addEventListener('touchstart', e => {
-    if (!_isMobile() || e.touches.length !== 1) return;
-    pulling = list.scrollTop <= 0;   // тянуть можно только с самого верха
-    y0 = e.touches[0].clientY;
-    armedSearch = armedRefresh = false;
-  }, { passive: true });
-
-  list.addEventListener('touchmove', e => {
-    if (!pulling) return;
-    const dy = e.touches[0].clientY - y0;
-    if (dy <= 0) { pulling = false; spinner.classList.remove('visible'); return; }
-    if (dy > SEARCH_AT && !armedSearch) {
-      armedSearch = true; haptic(8);
-      search.classList.remove('search-collapsed');
-    }
-    if (dy > REFRESH_AT && !armedRefresh) { armedRefresh = true; haptic(8); spinner.classList.add('visible'); }
-    if (dy <= REFRESH_AT && armedRefresh) { armedRefresh = false; spinner.classList.remove('visible'); }
-  }, { passive: true });
-
-  list.addEventListener('touchend', async () => {
-    if (!pulling) return;
-    pulling = false;
-    if (armedRefresh) {
-      spinner.classList.add('spinning');
-      try { await loadChats(); } catch {}
-      spinner.classList.remove('spinning', 'visible');
-    }
-  }, { passive: true });
-
-  // Прокрутили список вниз — поиск снова прячется, если в нём ничего не набрано
-  list.addEventListener('scroll', () => {
-    if (!_isMobile()) return;
-    const inp = document.getElementById('search');
-    if (list.scrollTop > 40 && !inp?.value && document.activeElement !== inp) {
-      search.classList.add('search-collapsed');
-    }
-  }, { passive: true });
+  inputEl?.focus();
 }
 
 // ── ТАКТИЛЬНЫЙ ОТКЛИК ──
@@ -2404,65 +2029,25 @@ function haptic(ms = 10) {
   try { navigator.vibrate?.(ms); } catch {}
 }
 
-// ── SWIPE: назад (вправо) и ответ (влево) ──
-const EDGE_BACK_ZONE = 30; // px от левого края — зона жеста «назад» (десктоп)
-
+// ── SWIPE: ответ на сообщение (влево, тач) ──
 function addSwipeReply(container) {
-  let startX = 0, startY = 0, swipeEl = null, dirLocked = false, backMode = false;
-  let trackBase = 0, backLive = false, replyArmed = false;
-  const chatMain = () => document.getElementById('chat-main');
-  const track = () => document.getElementById('mobile-track');
+  let startX = 0, startY = 0, swipeEl = null, dirLocked = false, replyArmed = false;
 
   container.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) return;
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
-    // На мобильном направление решает всё: вправо — назад, влево — ответ.
-    // Раньше «назад» работал только из 30-пиксельной полоски у края.
-    backMode = _isMobile() ? false : startX < EDGE_BACK_ZONE;
-    swipeEl = backMode ? null : e.target.closest('[data-msg-id]');
-    dirLocked = false; backLive = false; replyArmed = false;
-    trackBase = -(Math.max(1, _mobilePanel) - 1) * window.innerWidth;
+    swipeEl = e.target.closest('[data-msg-id]');
+    dirLocked = false; replyArmed = false;
   }, { passive: true });
 
   container.addEventListener('touchmove', e => {
     const dx = e.touches[0].clientX - startX;
     const dy = e.touches[0].clientY - startY;
 
-    // Десктоп: прежнее поведение от края экрана
-    if (backMode) {
-      if (!dirLocked) {
-        if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 8) return;
-        dirLocked = true;
-      }
-      if (dx <= 0) return;
-      e.preventDefault();
-      const cm = chatMain();
-      const shift = `translateX(${Math.min(dx, window.innerWidth)}px)`;
-      if (cm) { cm.style.transform = shift; cm.style.transition = 'none'; }
-      return;
-    }
-
     if (!dirLocked) {
       if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 8) return;
       dirLocked = true;
-      // Вправо на мобильном — уходим назад, экран поедет за пальцем
-      if (_isMobile() && dx > 0 && _mobilePanel > 1) { backLive = true; swipeEl = null; }
-    }
-
-    if (backLive) {
-      e.preventDefault();
-      const t = track();
-      if (!t) return;
-      // Сопротивление за порогом, чтобы жест ощущался «упругим»
-      const w = window.innerWidth;
-      const raw = Math.max(0, dx);
-      const x = raw > w * 0.6 ? w * 0.6 + (raw - w * 0.6) * 0.25 : raw;
-      t.style.transition = 'none';
-      t.style.transform = `translateX(${trackBase + x}px)`;
-      if (!replyArmed && raw > w * 0.35) { replyArmed = true; haptic(8); } // порог пройден
-      else if (replyArmed && raw <= w * 0.35) replyArmed = false;
-      return;
     }
 
     if (!swipeEl) return;
@@ -2480,35 +2065,6 @@ function addSwipeReply(container) {
 
   container.addEventListener('touchend', e => {
     const dx = e.changedTouches[0].clientX - startX;
-
-    // Живой возврат на мобильном: доводим анимацию до конца или откатываем
-    if (backLive) {
-      const t = track();
-      backLive = false;
-      if (!t) return;
-      t.style.transition = '';   // вернуть переход из CSS
-      t.style.transform = '';    // снять инлайн — дальше работает класс панели
-      if (dx > window.innerWidth * 0.35) mobileSlideBack();
-      return;
-    }
-
-    if (backMode) {
-      const cm = chatMain();
-      if (cm) cm.style.transition = _CHAT_EASE;
-      if (dx > window.innerWidth * 0.35) {
-        if (cm) cm.style.transform = `translateX(${window.innerWidth}px)`;
-        document.querySelector('.sidebar')?.classList.remove('mobile-hidden');
-        setTimeout(() => mobileBack(false), 320);
-      } else {
-        if (cm) cm.style.transform = '';
-        cm?.addEventListener('transitionend', () => {
-          if (cm) { cm.style.transform = ''; cm.style.transition = ''; }
-        }, { once: true });
-      }
-      backMode = false;
-      return;
-    }
-
     if (!swipeEl) return;
     swipeEl.style.transform = '';
     swipeEl.style.transition = 'transform .25s ease';
@@ -2540,13 +2096,13 @@ document.addEventListener('touchstart', e => {
     }, LONG_PRESS_MS);
     return;
   }
-  // Long-press по элементу списка чатов — выезжающий снизу блок с удалением
+  // Long-press по элементу списка чатов — то же контекстное меню, что и по клику правой кнопкой
   const chatEl = e.target.closest('[data-chat-id]');
   if (chatEl) {
     _longPressTimer = setTimeout(() => {
       const chatId = parseInt(chatEl.dataset.chatId);
       haptic(12);
-      openChatSheet(chatId);
+      showChatCtx({ clientX: touch.clientX, clientY: touch.clientY, preventDefault: ()=>{}, stopPropagation: ()=>{} }, chatId);
     }, LONG_PRESS_MS);
   }
 }, { passive: true });
@@ -4637,8 +4193,6 @@ async function deleteChat(chatId) {
 function closeActiveChat() {
   S.activeChatId = null;
   setChatMainContent(`<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Electron</div><div class="empty-sub">Выберите чат или создайте новый</div></div>`);
-  if (_isMobile()) mobileSlideTo(1);
-  else { document.getElementById('chat-main').classList.remove('mobile-open'); document.querySelector('.sidebar')?.classList.remove('mobile-hidden'); }
   renderChatList();
 }
 
@@ -4647,8 +4201,6 @@ function removeChatLocally(chatId) {
   if (S.activeChatId === chatId) {
     S.activeChatId = null;
     setChatMainContent(`<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Electron</div><div class="empty-sub">Выберите чат или создайте новый</div></div>`);
-    if (_isMobile()) mobileSlideTo(1);
-    else { document.getElementById('chat-main').classList.remove('mobile-open'); document.querySelector('.sidebar')?.classList.remove('mobile-hidden'); }
   }
   renderChatList();
 }
@@ -4659,8 +4211,6 @@ async function leaveGroup(chatId) {
   await api('POST', `/chats/${chatId}/leave`);
   S.activeChatId = null;
   setChatMainContent(`<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Electron</div><div class="empty-sub">Выберите чат или создайте новый</div></div>`);
-  if (_isMobile()) mobileSlideTo(1);
-  else { document.getElementById('chat-main').classList.remove('mobile-open'); document.querySelector('.sidebar')?.classList.remove('mobile-hidden'); }
   loadChats();
 }
 
@@ -4845,8 +4395,6 @@ function connectWS() {
       if (activeChat?.type === 'direct' && getPeerUserId(activeChat) === data.user_id) {
         const subEl = document.querySelector('.ch-sub');
         if (subEl) subEl.textContent = peerStatusText(data.user_id);
-        const mtbSub = document.getElementById('mtb-sub');
-        if (mtbSub) mtbSub.textContent = peerStatusText(data.user_id);
       }
       const isOnline = data.status === 'online';
       document.querySelectorAll(`.presence-dot[data-user-id="${data.user_id}"]`).forEach(dot => {
@@ -5483,50 +5031,6 @@ async function ctxChatMute() {
   renderChatList();
 }
 
-// ── CHAT ACTION SHEET (mobile bottom sheet) ──
-function openChatSheet(chatId) {
-  S.ctxChatId = chatId;
-  const chat = S.chats.find(c => c.id === chatId);
-  document.getElementById('chat-sheet-title').textContent = chat ? chatName(chat) : '';
-  const isRoom = chat?.type === 'room';
-  const pinLabel = document.getElementById('sheet-pin-label');
-  if (pinLabel) pinLabel.textContent = chat?.pinned ? 'Открепить' : 'Закрепить';
-  const pinBtn = document.getElementById('sheet-pin-btn');
-  if (pinBtn) pinBtn.style.display = isRoom ? 'none' : '';
-  const muteLabel = document.getElementById('sheet-mute-label');
-  if (muteLabel) muteLabel.textContent = S.mutedChats.has(chatId) ? 'Включить уведомления' : 'Выключить уведомления';
-  document.getElementById('chat-sheet-backdrop').classList.add('open');
-  document.getElementById('chat-action-sheet').classList.add('open');
-}
-function closeChatSheet() {
-  document.getElementById('chat-sheet-backdrop').classList.remove('open');
-  document.getElementById('chat-action-sheet').classList.remove('open');
-}
-async function sheetPinChat() {
-  closeChatSheet();
-  if (!S.ctxChatId) return;
-  await api('POST', `/chats/${S.ctxChatId}/pin`);
-  await loadChats();
-}
-
-async function sheetDeleteChat() {
-  closeChatSheet();
-  if (!S.ctxChatId) return;
-  await deleteChat(S.ctxChatId);
-}
-
-async function sheetMuteChat() {
-  closeChatSheet();
-  if (!S.ctxChatId) return;
-  if (S.mutedChats.has(S.ctxChatId)) {
-    await api('DELETE', `/chats/${S.ctxChatId}/mute`);
-    S.mutedChats.delete(S.ctxChatId);
-  } else {
-    await api('POST', `/chats/${S.ctxChatId}/mute`);
-    S.mutedChats.add(S.ctxChatId);
-  }
-  renderChatList();
-}
 
 // ── FORWARD ──
 function ctxForward() {

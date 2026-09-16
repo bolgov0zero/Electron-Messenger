@@ -427,6 +427,10 @@ html.no-emoji-font .md-code {
 .screen { display: none; height: var(--vh100); }
 .screen.active { display: flex; }
 
+/* Заглушка для телефона — см. html.chat-phone в index.html */
+#screen-phone-guard { display: none; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center; background: var(--app-bg); padding: 24px; }
+html.chat-phone #screen-phone-guard { display: flex; }
+
 /* ── BLOBS (decorative, appended to #screen-login and #screen-main) ── */
 .blob {
   position: absolute;
@@ -821,20 +825,6 @@ html.no-emoji-font .md-code {
 .tp-list::-webkit-scrollbar { width: 4px; }
 .tp-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9px; }
 .tp-empty { padding: 18px 14px; text-align: center; color: var(--muted); font-size: 13px; }
-/* Поиск на слайде тем — вид как у поиска чатов, но живёт внутри самого списка:
-   верхняя шапка на телефоне общая для всех слайдов и занята названием комнаты */
-.mt-search {
-  display: flex; align-items: center; gap: 8px;
-  margin: 10px 12px; padding: 9px 12px;
-  background: var(--search-bg); border: 1px solid var(--border);
-  border-radius: 9px; color: var(--muted); flex-shrink: 0;
-}
-.mt-search input {
-  flex: 1; min-width: 0; background: none; border: none; outline: none;
-  font-family: inherit; font-size: 13px; color: var(--text);
-}
-.mt-search input::placeholder { color: var(--muted); }
-#mobile-topics .tp-sep { margin: 0 12px; }
 /* Разделитель в списке тем — на той же высоте, что первая черта в полосе:
    у него та же геометрия, что у подписи раздела, вместо которой он стоит */
 .tp-sep {
@@ -2147,7 +2137,6 @@ html.dark .modal.cs-modal { --cs-ok: #3ecf8e; --cs-warn: #e3b35c; }
 .cs-tg[aria-checked="true"]::after { transform: translateX(16px); }
 
 .cs-hero { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 14px; background: linear-gradient(135deg, var(--accent-soft), transparent 70%), var(--card-bg); border: 1px solid var(--border); color: var(--text); }
-.cs-hero-btn { width: 100%; text-align: left; cursor: pointer; font-family: inherit; }
 .cs-av-edit { position: relative; border: 0; background: none; padding: 0; cursor: pointer; border-radius: 50%; flex-shrink: 0; }
 .cs-badge { position: absolute; right: -3px; bottom: -3px; width: 26px; height: 26px; border-radius: 9px; background: var(--accent); border: 2px solid var(--modal-bg); display: grid; place-items: center; color: #fff; }
 .cs-badge svg { width: 12px; height: 12px; }
@@ -2200,28 +2189,10 @@ html.dark .modal.cs-modal { --cs-ok: #3ecf8e; --cs-warn: #e3b35c; }
 .cs-notes b { color: var(--text); }
 .cs-copy { text-align: center; font-size: 11px; color: var(--muted); margin-top: auto; padding-top: 6px; }
 
-/* Телефон: разделы списком, раздел — отдельным экраном с «Назад» */
-.modal.cs-modal.cs-phone { display: flex; flex-direction: column; }
-.cs-mtop { display: grid; grid-template-columns: 90px 1fr 90px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.cs-mtop h3 { margin: 0; text-align: center; font-size: 16px; font-weight: 700; color: var(--text); }
-.cs-mtop .cs-x { justify-self: end; margin: 0; }
-.cs-back { justify-self: start; border: 0; background: none; color: var(--accent); font: 500 15px inherit; font-family: inherit; display: flex; align-items: center; gap: 2px; cursor: pointer; padding: 4px; }
-.cs-back svg { width: 20px; height: 20px; }
-.cs-phone .cs-body { background: var(--card-bg); padding: 14px; gap: 14px; }
-.cs-list .cs-sn { padding: 11px 12px; border-radius: 0; }
-.cs-list .cs-sn + .cs-sn { border-top: 1px solid var(--border); }
-.cs-list .cs-sn-ic { background: var(--accent); border-color: var(--accent); color: #fff; }
-.cs-chev { display: grid; color: var(--muted); flex-shrink: 0; }
-.cs-chev svg { width: 16px; height: 16px; }
-.cs-phone .cs-hero-t b { font-size: 17px; }
-.cs-phone .pat-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.cs-phone .cs-pv { grid-template-columns: minmax(0, 1fr); }
-.cs-phone .cs-pv-side { display: none; }
-.cs-phone .cs-r { grid-template-columns: minmax(0, 1fr); }
-.cs-phone .cs-seg { max-width: 100%; }
+/* Узкое окно настроек: сайдбар сжимается до иконок */
 @media (max-width: 700px) {
-  .modal.cs-modal:not(.cs-phone) { grid-template-columns: 64px minmax(0, 1fr); }
-  .cs-modal:not(.cs-phone) .cs-me-t, .cs-modal:not(.cs-phone) .cs-sn-tx, .cs-modal:not(.cs-phone) .cs-nav-foot { display: none; }
+  .modal.cs-modal { grid-template-columns: 64px minmax(0, 1fr); }
+  .cs-modal .cs-me-t, .cs-modal .cs-sn-tx, .cs-modal .cs-nav-foot { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .cs-tg, .cs-tg::after { transition: none; } }
 
@@ -2934,385 +2905,6 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
   }
 }
 
-/* ══════════════════════════════════════════
-   Mobile layout (≤767px / touch) — нативное поведение
-   Весь экран = высоте visual viewport (--app-height, ставится из JS).
-   Клавиатура уменьшает viewport → флекс-вёрстка сама сжимает список,
-   поле ввода всегда над клавиатурой. Ручного позиционирования нет.
-   ══════════════════════════════════════════ */
-@media (max-width: 767px), (pointer: coarse) {
-  :root { --sidebar-w: var(--vw100); }
-
-  /* Декоративные блобы не нужны на мобильном — просвечивают сквозь шапку */
-  .blob { display: none; }
-
-  /* Страница целиком не скроллится — скроллится только список сообщений.
-     Мобильный масштаб реализован через transform: scale на body:
-     — html всегда 100vw × 100dvh (физический вьюпорт),
-     — body имеет размеры var(--vw100) × var(--vh100) (то есть 100vw/ratio в CSS px)
-       и масштабируется transform: scale(var(--ui-scale)), заполняя весь физ. вьюпорт.
-     Transform создаёт containing block для fixed-потомков — они привязываются к body,
-     то есть тоже масштабируются вместе с ним, включая текст. */
-  html {
-    position: fixed; top: 0; left: 0;
-    width: 100vw; height: 100dvh;
-    overflow: hidden;
-    overscroll-behavior: none;
-    background: var(--app-bg);
-  }
-  body {
-    position: fixed; top: 0; left: 0;
-    width: var(--vw100); height: var(--vh100);
-    overflow: hidden;
-    overscroll-behavior: none;
-    background: var(--app-bg);
-    transform: scale(var(--ui-scale, 1));
-    transform-origin: 0 0;
-  }
-
-  /* Экран — флекс-колонка до физического низа (bottom:0 убирает чёрную полосу).
-     Клавиатура компенсируется внутренним padding-bottom (контент поднимается над ней). */
-  #screen-main.active {
-    display: flex;
-    flex-direction: column;
-    position: fixed;
-    top: var(--app-top, 0px);
-    left: 0;
-    width: var(--vw100);
-    height: calc(var(--vh100) - var(--app-top, 0px));
-    padding-bottom: var(--kb-height, 0px);
-    box-sizing: border-box;
-    overflow: hidden;
-  }
-
-  /* Сайдбар — оверлей поверх всего, вне флекс-потока.
-     Непрозрачный фон = фону приложения, чтобы зона под home-индикатором
-     (где виден body) не контрастировала и не выглядела полосой. */
-  .sidebar {
-    position: fixed; top: 0; left: 0;
-    width: var(--vw100); height: var(--vh100);
-    z-index: 200;
-    transition: transform .32s cubic-bezier(.32,.72,0,1);
-    will-change: transform;
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    box-sizing: border-box;
-    background: var(--app-bg);
-    backdrop-filter: none; -webkit-backdrop-filter: none;
-  }
-  .sidebar.mobile-hidden {
-    transform: translateX(-100%);
-    pointer-events: none;
-  }
-
-  /* overflow:visible снимает глобальный overflow:hidden: iOS обрезает тап-зону у нижнего края flex с overflow:hidden */
-  .chat-main {
-    position: relative;
-    z-index: 1;
-    flex: 1 1 auto;
-    min-height: 0;
-    display: none;
-    flex-direction: column;
-    overflow: visible;
-  }
-  .chat-main.mobile-open { display: flex; }
-
-  /* Шапка — фиксированной высоты сверху, не двигается */
-  .chat-main .chat-header {
-    position: static;
-    flex: 0 0 auto;
-  }
-
-  /* Список сообщений — растягивается и прокручивается внутри себя */
-  .chat-main .messages {
-    flex: 1 1 auto;
-    min-height: 0;
-    margin-top: 0;
-    padding: 12px 12px 8px;
-    overflow-y: auto;
-  }
-
-  /* Индикатор печати — над полем ввода, не давит на список */
-  /* Узкий экран: подсказка и номер шага съедают место у кнопок — прячем их,
-     кнопки делим поровну */
-  .nc-hint, .nc-step { display: none; }
-  .nc-foot .modal-btn-ghost, .nc-foot .modal-btn-primary { flex: 1; text-align: center; }
-
-  /* На узком экране переключатель не помещается рядом с подписью — переносим его
-     на следующую строку, иначе у масштаба обрезается последняя кнопка */
-  .set-line { flex-wrap: wrap; }
-  .set-line .seg, .set-line .accent-seg { margin-left: auto; }
-
-  /* Полоса ввода здесь в потоке, поэтому и подсказка «печатает…» в потоке:
-     иначе она ложилась бы поверх последнего сообщения */
-  .typing-indicator { position: static; padding-bottom: 4px; }
-
-  /* Поле ввода — в обычном потоке, естественно внизу над клавиатурой */
-  #chat-input-bar {
-    position: relative;
-    z-index: 2;
-    flex: 0 0 auto;
-    padding-bottom: var(--input-safe-bottom, env(safe-area-inset-bottom, 0px));
-    box-sizing: border-box;
-  }
-
-  /* Chat header back button */
-  .mobile-back-btn {
-    display: flex;
-  }
-
-  .chat-input-wrap { padding: 4px 10px 2px; }
-
-  /* Prevent iOS zoom on input focus (font-size must be ≥16px) */
-  .composer-pill textarea,
-  .field input, .field textarea,
-  input[type="text"], input[type="password"], input[type="search"] {
-    font-size: 16px !important;
-  }
-
-
-  .modal {
-    width: calc(var(--vw100) - 24px) !important;
-    max-height: 90vh !important;
-    max-width: 480px;
-  }
-  .login-wrap { width: calc(var(--vw100) - 32px); padding: 28px 20px 24px; }
-
-  /* Топбар скрыт — навигация через хедер чата и сайдбар */
-  .topbar { display: none; }
-
-  /* Экран авторизации должен перекрывать всё, включая sidebar с position:fixed */
-  #screen-login.active {
-    position: fixed;
-    top: 0; left: 0;
-    width: var(--vw100); height: var(--vh100);
-    z-index: 500;
-  }
-
-
-  /* Настройки — полноэкранное окно */
-  #modal-settings .modal {
-    width: var(--vw100) !important;
-    height: var(--vh100) !important;
-    max-width: var(--vw100) !important;
-    max-height: var(--vh100) !important;
-    border-radius: 0 !important;
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    box-sizing: border-box;
-  }
-
-  .sidebar-account {
-    order: -1;
-    border-top: none;
-    border-bottom: 1px solid var(--border);
-    padding: 10px 14px;
-  }
-  .sa-gear { width: 36px; height: 36px; border-radius: 9px; }
-
-  /* ── Размеры элементов для мобильных экранов ──
-     Дублируем селекторы html.font-* чтобы перебить их специфичность (0,1,1). */
-  html, html.font-small, html.font-medium, html.font-large { --font-size: 16px; }
-  .chat-list-section-label { font-size: 12px; }
-
-  /* Строки чатов */
-  .chat-row { padding: 11px 14px; }
-  .chat-row-av { width: 46px; height: 46px; font-size: 16px; border-radius: 9px; }
-
-  /* Аватар и метаданные сообщений */
-  .irc-av { width: 34px; height: 34px; font-size: 13px; border-radius: 9px; }
-  .irc-name { font-size: 14px; }
-  .irc-time { font-size: 12px; }
-
-  /* Заголовок чата */
-  .chat-header { height: 56px; padding: 0 6px 0 0; }
-  .chat-header .icon-btn { width: 44px; height: 44px; }
-
-  /* Touch-таргеты в сайдбаре */
-  .sa-gear { width: 44px; height: 44px; border-radius: 9px; }
-  .icon-btn { width: 44px; height: 44px; }
-  .btn-new-chat { height: 44px; font-size: 14px; padding: 0 16px; }
-
-  /* Поиск */
-  .sidebar-search { padding: 10px 12px; }
-  .search-wrap input { height: 40px; }
-
-  /* Login */
-  .login-wrap { width: calc(var(--vw100) - 32px); max-width: 420px; padding: 32px 24px 28px; }
-  .btn-login { height: 48px; font-size: 15px; border-radius: 9px; }
-
-  /* Оверлеи-фоны (modal, drawer, action sheet, lightbox, drag) — тоже прижимаем к физическому вьюпорту */
-  .modal-bg, .drawer-bg, .sheet-backdrop, #lightbox, #drag-overlay {
-    right: auto; bottom: auto;
-    width: var(--vw100); height: var(--vh100);
-  }
-  /* Верхний баннер уведомлений — прижимаем ширину, не тянем через right:0 */
-  .notif-banner { right: auto; width: var(--vw100); }
-
-  /* Полоса объявления: вверху уже своя шапка с кнопками, поэтому опускаем полосу
-     к границе между шапкой и строкой поиска (шапка — 52px плюс вырез экрана) */
-  #ann-banners {
-    top: calc(env(safe-area-inset-top, 0px) + 48px);
-    width: min(560px, calc(var(--vw100) - 24px));
-  }
-  /* Плашка соединения занимает то же место, поэтому опускается вместе с полосой */
-  #server-toast, #action-toast {
-    top: calc(env(safe-area-inset-top, 0px) + 48px + var(--ann-h, 0px));
-  }
-
-  /* ── Mobile topbar ── */
-  #mobile-topbar {
-    display: flex;
-    align-items: center;
-    height: 52px;
-    min-height: 52px;
-    padding: 0 10px;
-    gap: 4px;
-    background: var(--sidebar-bg);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .mtb-back {
-    display: none;
-    width: 40px; height: 40px;
-    align-items: center; justify-content: center;
-    background: none; border: none;
-    color: var(--accent); cursor: pointer;
-    flex-shrink: 0; border-radius: 9px;
-  }
-  .mtb-back:active { background: var(--hover-row); }
-  .mtb-account {
-    display: flex; align-items: center; gap: 8px;
-    flex: 1; min-width: 0; overflow: hidden;
-  }
-  .mtb-av { width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; }
-  .mtb-name {
-    font-size: 13px; font-weight: 600; color: var(--text);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .mtb-title-wrap {
-    display: none; flex: 1; min-width: 0;
-    flex-direction: column; justify-content: center;
-  }
-  .mtb-title {
-    font-size: 15px; font-weight: 600; color: var(--text);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .mtb-sub {
-    font-size: 11px; color: var(--muted);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .mtb-actions { display: flex; gap: 2px; flex-shrink: 0; margin-left: auto; }
-
-  /* ── Mobile slider ── */
-  .app-body { overflow: hidden; }
-
-  #mobile-track {
-    display: flex;
-    flex-direction: row;
-    width: calc(3 * var(--vw100));
-    height: 100%;
-    transform: translateX(0);
-    transition: transform .32s cubic-bezier(.32,.72,0,1);
-    will-change: transform;
-  }
-  #mobile-track.mp-2 { transform: translateX(calc(-1 * var(--vw100))); }
-  #mobile-track.mp-3 { transform: translateX(calc(-2 * var(--vw100))); }
-
-  /* Panel 1: sidebar — перекрываем fixed-позиционирование */
-  .sidebar {
-    position: relative !important;
-    top: auto !important; left: auto !important;
-    z-index: auto !important;
-    width: var(--vw100) !important;
-    min-width: var(--vw100) !important;
-    height: 100%;
-    transform: none !important;
-    transition: none !important;
-    padding-top: 0 !important;
-    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
-    flex-shrink: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-  .sidebar.mobile-hidden { transform: none !important; }
-
-  /* Panel 2: mobile topics */
-  #mobile-topics {
-    display: flex;
-    flex-direction: column;
-    width: var(--vw100);
-    min-width: var(--vw100);
-    height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    background: var(--sidebar-bg);
-    flex-shrink: 0;
-  }
-
-  /* Panel 3: chat — всегда видим, размер фиксирован */
-  .chat-main {
-    display: flex !important;
-    width: var(--vw100) !important;
-    min-width: var(--vw100) !important;
-    flex: 0 0 var(--vw100) !important;
-  }
-
-  /* Скрываем элементы, замещённые топбаром/слайдером */
-  .sidebar-account { display: none !important; }
-  #topics-panel { display: none !important; }
-  .chat-main .chat-header { display: none !important; }
-}
-
-/* Desktop: hide mobile-only elements */
-@media (min-width: 768px) and (pointer: fine) {
-  #mobile-topbar { display: none !important; }
-  #mobile-track { display: contents; }
-  #mobile-topics { display: none !important; }
-  .mobile-back-btn { display: none !important; }
-  .sa-newchat { display: none !important; }
-  .sa-theme { display: none !important; }
-}
-
-/* ── Action sheet (bottom sheet, мобильный) ── */
-.sheet-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,.4);
-  z-index: 1000;
-  opacity: 0; pointer-events: none;
-  transition: opacity .2s ease;
-}
-.sheet-backdrop.open { opacity: 1; pointer-events: auto; }
-
-.action-sheet {
-  position: fixed;
-  left: 8px; right: 8px;
-  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-  z-index: 1001;
-  display: flex; flex-direction: column; gap: 8px;
-  transform: translateY(200%);
-  visibility: hidden;
-  transition: transform .25s cubic-bezier(.32,.72,0,1), visibility .25s;
-}
-.action-sheet.open { transform: translateY(0); visibility: visible; }
-
-.action-sheet-title {
-  text-align: center; font-size: 12px; color: var(--muted);
-  background: var(--menu-bg);
-  border-radius: 9px; padding: 12px;
-  margin-bottom: -4px;
-}
-.action-sheet-btn {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  border: none; cursor: pointer;
-  font-family: inherit; font-size: 17px; font-weight: 500;
-  padding: 16px; border-radius: 9px;
-  background: var(--menu-bg); color: var(--text);
-  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
-}
-.action-sheet-btn.danger { color: var(--danger); font-weight: 600; }
-.action-sheet-btn.cancel { font-weight: 700; }
-.action-sheet-btn:active { background: var(--hover-row); }
 
 /* Разделитель «Непрочитанные сообщения» */
 .unread-divider span {
@@ -3471,7 +3063,6 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 @media (hover: none) {
   .chat-item:active,
   .topic-item:active,
-  .action-sheet-btn:active,
   .ctx-item:active { background: var(--hover-row); }
   .icon-btn:active,
   .btn-new-chat:active,
@@ -3479,48 +3070,7 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 }
 
 /* Списки не тянут за собой всю страницу — иначе PWA «пружинит» как сайт */
-.messages, #chats-list, #mobile-topics, .users-list { overscroll-behavior: contain; }
-
-/* Действия открытого чата в мобильной шапке */
-.mtb-chat-actions { display: none; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
-
-/* ── Поиск, спрятанный над списком (мобильный) ──
-   Раньше поле занимало 12% высоты экрана постоянно. Теперь оно свёрнуто,
-   а появляется при потягивании списка вниз — как принято в мессенджерах. */
-@media (max-width: 767px), (pointer: coarse) {
-  .sidebar-search.search-collapsed {
-    height: 0; padding-top: 0; padding-bottom: 0;
-    overflow: hidden; opacity: 0;
-    transition: height .22s ease, opacity .18s ease, padding .22s ease;
-  }
-  .sidebar-search { transition: height .22s ease, opacity .18s ease, padding .22s ease; }
-}
-
-/* Индикатор «потяните для обновления» */
-.ptr-spinner {
-  position: absolute; left: 50%; top: 6px;
-  width: 24px; height: 24px; margin-left: -12px;
-  border-radius: 50%;
-  border: 2px solid var(--border); border-top-color: var(--accent);
-  opacity: 0; pointer-events: none; z-index: 5;
-  transition: opacity .15s ease;
-}
-.ptr-spinner.visible { opacity: 1; }
-.ptr-spinner.spinning { animation: ptrSpin .7s linear infinite; }
-@keyframes ptrSpin { to { transform: rotate(360deg); } }
-
-/* Подсказка при свайпе по строке чата */
-.row-swipe-hint {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  width: 34px; height: 34px; border-radius: 9px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 16px; background: var(--hover-row);
-  opacity: .5; transition: opacity .15s ease, background .15s ease;
-  pointer-events: none;
-}
-.row-swipe-hint.left  { right: -46px; }
-.row-swipe-hint.right { left: -46px; }
-.row-swipe-hint.armed { opacity: 1; background: var(--accent-soft); }
+.messages, #chats-list, .users-list { overscroll-behavior: contain; }
 
 /* Заголовок системного объявления.
    Отдельный, более тёмный красный для светлой темы: обычный --danger на
@@ -3864,9 +3414,6 @@ html.dark .announcement-title { color: var(--danger); }
 /* Полоса ввода лежит поверх ленты — резервируем под неё место, чтобы последнее
    сообщение не пряталось. В конце файла: базовое правило .messages идёт ниже
    объявления полосы и иначе перебивало бы отступ. */
-/* Резерв нужен только там, где полоса ввода лежит поверх ленты. На мобильном
-   она обычный блок в потоке (см. медиазапрос ниже), и этот отступ создавал
-   пустоту под последним сообщением. */
 @media (min-width: 768px) and (pointer: fine) {
   .chat-main .messages { padding-bottom: calc(10px + var(--composer-h, 70px)); }
 }
