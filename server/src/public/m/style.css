@@ -213,6 +213,13 @@ html.m-desktop .screen { display: none !important; }
   pointer-events: auto; touch-action: manipulation;
   background: var(--modal-bg); border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom);
+  /* opacity:.999 — тот же обход бага Safari, что уже стоит на body/.screen
+     (см. их комментарии): полностью непрозрачный сплошной слой во всю
+     ширину получал заниженный расчёт высоты, и низ не дотягивал до
+     истинного края экрана — падding под safe-area-inset-bottom рендерился,
+     но обрезался, снизу проступал фон страницы. Раньше .tabbar был
+     плавающей пилюлей (не full-bleed), поэтому баг не проявлялся. */
+  opacity: .999;
 }
 .tabbar-inner { display: flex; padding: 6px 0 0; }
 .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); cursor: pointer; }
@@ -372,6 +379,8 @@ html.m-desktop .screen { display: none !important; }
   pointer-events: auto; touch-action: manipulation;
   background: var(--modal-bg); border-top: 1px solid var(--border);
   padding-bottom: env(safe-area-inset-bottom);
+  /* opacity:.999 — тот же обход, что у .tabbar (см. её комментарий) */
+  opacity: .999;
 }
 .composer-card { overflow: hidden; }
 .emoji-panel {
