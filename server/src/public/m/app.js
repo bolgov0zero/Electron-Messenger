@@ -597,7 +597,7 @@ function addBackSwipeGesture(el, closeFn) {
     const dx = e.touches[0].clientX - startX, dy = e.touches[0].clientY - startY;
     if (!dirLocked) {
       if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 8) return;
-      dirLocked = true; active = dx > 0;
+      dirLocked = true; active = dx > 0 && startX <= BACK_EDGE_ZONE;
     }
     if (!active) return;
     e.preventDefault();
@@ -1651,6 +1651,12 @@ function openMsgActions(msgId) {
 
 // ── ЖЕСТЫ: свайп-назад из чата, свайп-ответ, лонгпресс ──
 const LONG_PRESS_MS = 500, LONG_PRESS_SLOP = 10;
+// Свайп назад срабатывает, только если палец лёг у левого края экрана (как
+// системный edge-swipe в iOS) — иначе обычный тап почти всегда чуть смещается
+// в сторону на живом сенсорном экране (в отличие от мыши), этого хватало,
+// чтобы жест перехватывал касание: экран дёргался и возвращался, а сам тап
+// по строке/сообщению не срабатывал («клики плохо отрабатываются»).
+const BACK_EDGE_ZONE = 24;
 function addChatGestures() {
   const screenEl = document.getElementById('chat-screen');
   let startX = 0, startY = 0, dirLocked = false, mode = null, msgEl = null, replyArmed = false;
@@ -1678,7 +1684,7 @@ function addChatGestures() {
       }
       dirLocked = true;
       clearTimeout(lpTimer); lpTimer = null;
-      mode = dx > 0 ? 'back' : (msgEl ? 'reply' : null);
+      mode = (dx > 0 && startX <= BACK_EDGE_ZONE) ? 'back' : (dx < 0 && msgEl ? 'reply' : null);
     }
     if (mode === 'back') {
       e.preventDefault();
