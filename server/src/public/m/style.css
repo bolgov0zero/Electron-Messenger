@@ -92,7 +92,11 @@ body {
 input, button { font-family: inherit; }
 button { border: none; background: none; font: inherit; color: inherit; }
 
-.screen { position: fixed; inset: 0; display: none; }
+/* opacity:.999 — тот же обход бага непрозрачного fixed-слоя на весь экран
+   (см. комментарий у body), но здесь для #screen-app: без него сам экран,
+   а не только body, мог получать заниженный расчёт высоты, и низ (там же,
+   где таб-бар) не дотягивал до истинного края экрана. */
+.screen { position: fixed; inset: 0; display: none; opacity: .999; }
 .screen.active { display: block; }
 
 /* ── Заглушка для десктопа ── */
