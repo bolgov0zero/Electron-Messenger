@@ -221,11 +221,22 @@ html.m-desktop .screen { display: none !important; }
   background: var(--modal-bg); border-top: 1px solid var(--border);
   opacity: .999;
 }
-.tabbar-inner { display: flex; padding: 6px 0 0; }
-.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); cursor: pointer; }
+.tabbar-inner { display: flex; padding: 6px 0 0; position: relative; }
+/* Плашка активной вкладки — один элемент, который JS (updateTabHighlight)
+   двигает и растягивает под нужную вкладку через transform/width, вместо
+   трёх статичных подсветок. cubic-bezier с забросом >1 — лёгкий отскок. */
+.tab-hl {
+  position: absolute; top: 3px; bottom: 3px; left: 0; width: 0;
+  background: var(--accent); border-radius: 14px;
+  transform: translateX(0);
+  transition: transform .45s cubic-bezier(.34,1.56,.64,1), width .3s cubic-bezier(.34,1.56,.64,1);
+  z-index: 0;
+  pointer-events: none;
+}
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); cursor: pointer; position: relative; z-index: 1; transition: color .2s ease .05s; }
 .tab svg { width: 21px; height: 21px; }
 .tab span { font-size: 10px; font-weight: 600; }
-.tab.on { color: var(--accent); }
+.tab.on { color: #06231e; }
 
 /* ── Настройки ── */
 .settings-row { display: flex; align-items: center; gap: 12px; padding: 11px 2px; }

@@ -234,6 +234,7 @@ async function enterApp() {
   // До входа #screen-app скрыт (display:none), и offsetHeight таб-бара — 0;
   // измеряем заново теперь, когда он реально показан и имеет раскладку
   syncTabbarHeight();
+  updateTabHighlight(false);
   document.getElementById('me-name').textContent = S.user.display_name;
   document.getElementById('me-username').textContent = '@' + S.user.username;
   const meAv = document.getElementById('me-av');
@@ -667,8 +668,40 @@ function setTab(name) {
     document.getElementById('tab-' + t).hidden = t !== name;
     document.querySelector(`.tab[data-tab="${t}"]`).classList.toggle('on', t === name);
   });
+  updateTabHighlight();
   if (name === 'contacts') { if (_contactsAll.length) renderContacts(); else loadContacts(); }
 }
+
+// Плашка активной вкладки — подгоняем под фактическую ширину иконки/подписи
+// (они у "Чаты"/"Контакты"/"Настройки" разные), а не под всю треть таб-бара.
+// Тот же элемент просто едет через transform — за анимацию (с отскоком)
+// целиком отвечает transition в CSS (.tab-hl).
+function updateTabHighlight(animate = true) {
+  const hl = document.getElementById('tab-hl');
+  const inner = document.getElementById('tabbar-inner');
+  const activeTab = inner?.querySelector('.tab.on');
+  if (!hl || !inner || !activeTab) return;
+  const label = activeTab.querySelector('span');
+  const icon = activeTab.querySelector('svg');
+  const contentW = Math.max(label?.getBoundingClientRect().width || 0, icon?.getBoundingClientRect().width || 0);
+  if (!contentW) return; // таб-бар ещё не отрисован (нулевые размеры) — нечего мерить
+  const pad = 16;
+  const pillW = contentW + pad * 2;
+  const innerRect = inner.getBoundingClientRect();
+  const tabRect = activeTab.getBoundingClientRect();
+  const centerX = tabRect.left - innerRect.left + tabRect.width / 2;
+  const left = centerX - pillW / 2;
+  if (!animate) hl.style.transition = 'none';
+  hl.style.width = pillW + 'px';
+  hl.style.transform = `translateX(${left}px)`;
+  if (!animate) {
+    // Форсируем применение стилей без анимации, затем возвращаем transition —
+    // иначе первая расстановка при загрузке уезжала бы «отскоком» от нуля
+    void hl.offsetWidth;
+    hl.style.transition = '';
+  }
+}
+window.addEventListener('resize', () => updateTabHighlight(false));
 
 // ── КОНТАКТЫ ──
 let _contactsAll = [];
@@ -984,8 +1017,9 @@ function setUiScale(scale) {
 }
 function applyAppearance() {
   applyAccent(); applyChatPattern(); applyChatBg(); applyFontSize(); applyUiScale();
-  // Размер текста/масштаб могут чуть изменить реальную высоту таб-бара
-  if (document.getElementById('tabbar')) syncTabbarHeight();
+  // Размер текста/масштаб могут чуть изменить реальную высоту таб-бара и
+  // ширину подписей вкладок (а значит и плашку под активной)
+  if (document.getElementById('tabbar')) { syncTabbarHeight(); updateTabHighlight(false); }
 }
 
 function setTheme(theme) {
