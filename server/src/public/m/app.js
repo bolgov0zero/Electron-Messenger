@@ -866,52 +866,17 @@ function applyChatPattern() {
   s.setProperty('--chat-pattern-ink', dark ? '#ffffff' : '#111318');
   s.setProperty('--chat-pattern-alpha', String(PATTERN_ALPHA[dark ? 'dark' : 'light'][currentPatternLevel() - 1]));
 }
-function setChatPattern(id) {
-  try { localStorage.setItem('chatPattern', id || ''); } catch {}
-  applyChatPattern();
-  refreshAppearanceSheet();
-}
-function setPatternLevel(n) {
-  try { localStorage.setItem('chatPatternLevel', String(n)); } catch {}
-  applyChatPattern();
-  refreshAppearanceSheet();
-}
-function chatPatternCardsHtml() {
-  const cur = currentPattern();
-  return `<div class="pat-cards" id="pattern-cards">${PATTERNS.map(p =>
-    `<button class="pat-card${p.id === cur ? ' active' : ''}" data-pattern="${p.id}" onclick="setChatPattern('${p.id}')">
-      <span class="pat-swatch"></span><span class="pat-cap">${esc(p.name)}</span>
-    </button>`).join('')}</div>`;
-}
-function paintPatternSwatches() {
-  document.querySelectorAll('#pattern-cards .pat-card').forEach(card => {
-    const el = card.querySelector('.pat-swatch');
-    const url = patternUrl(card.dataset.pattern) || 'none';
-    el.style.webkitMaskImage = url; el.style.maskImage = url;
-  });
-}
-
 // ── ФОН ПЕРЕПИСКИ (общий с /chat — ключ localStorage 'chatBg') ──
+// Переключатели фона/узора убраны из настроек /m (управляются только в /chat),
+// но само значение общее (тот же ключ localStorage) — применяем его и здесь,
+// чтобы вид переписки не расходился между /chat и /m.
 function currentChatBg() {
   try { return localStorage.getItem('chatBg') === 'split' ? 'split' : 'plain'; } catch { return 'plain'; }
-}
-function setChatBg(mode) {
-  try { localStorage.setItem('chatBg', mode === 'split' ? 'split' : 'plain'); } catch {}
-  applyChatBg();
-  document.querySelectorAll('#chatbg-cards .bg-card').forEach(c => c.classList.toggle('active', c.dataset.bg === currentChatBg()));
 }
 function applyChatBg() {
   const s = document.documentElement.style;
   if (currentChatBg() === 'split') s.setProperty('--chat-bg', 'var(--chat-split)');
   else s.removeProperty('--chat-bg');
-}
-function chatBgCardsHtml() {
-  const cur = currentChatBg();
-  const skel = split => `<span class="bg-skel${split ? ' split' : ''}"><i class="a"></i><i class="b"></i><i class="c"></i></span>`;
-  const card = (mode, title) => `<button class="bg-card${cur === mode ? ' active' : ''}" data-bg="${mode}" onclick="setChatBg('${mode}')">
-      ${skel(mode === 'split')}<span class="bg-cap">${title}</span>
-    </button>`;
-  return `<div class="bg-cards" id="chatbg-cards">${card('plain', 'Как обычно')}${card('split', 'С разделением')}</div>`;
 }
 
 // ── РАЗМЕР ТЕКСТА СООБЩЕНИЙ (общая сессия — SESSION_KEY.settings.fontSize) ──
@@ -984,16 +949,6 @@ function appearanceSheetHtml() {
       <div class="accent-row">${accentDotsHtml()}</div>
     </div>
     <div class="set-block">
-      <div class="set-block-title">Фон переписки</div>
-      ${chatBgCardsHtml()}
-    </div>
-    <div class="set-block">
-      <div class="set-block-title">Узор переписки</div>
-      ${chatPatternCardsHtml()}
-      ${currentPattern() ? `<div class="set-seg" style="margin-top:6px">${[[1, 'Слабая'], [2, 'Средняя'], [3, 'Сильная']].map(([n, label]) =>
-        `<button class="${currentPatternLevel() === n ? 'active' : ''}" onclick="setPatternLevel(${n})">${label}</button>`).join('')}</div>` : ''}
-    </div>
-    <div class="set-block">
       <div class="set-block-title">Размер текста сообщений</div>
       <div class="set-seg">${fontSeg.map(([v, label], i) =>
         `<button class="${f === v ? 'active' : ''}" style="font-size:${13 + i * 3}px" onclick="setFontSize('${v}')">${label}</button>`).join('')}</div>
@@ -1007,12 +962,10 @@ function appearanceSheetHtml() {
 }
 function openAppearanceSheet() {
   openSheet(appearanceSheetHtml());
-  paintPatternSwatches();
 }
 function refreshAppearanceSheet() {
   if (!document.getElementById('sheet-bg').classList.contains('open')) return;
   openSheet(appearanceSheetHtml());
-  paintPatternSwatches();
 }
 
 // ── ПЕРЕПИСКА ──
