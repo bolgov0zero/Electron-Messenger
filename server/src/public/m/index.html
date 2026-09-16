@@ -234,13 +234,14 @@ window.APP_VERSION = '?v=1';
           </div>
         </div>
         <div class="attach-bar" id="attach-bar" style="display:none">
-          <img id="attach-thumb" class="attach-thumb" style="display:none" alt="">
-          <div id="attach-file-ico" class="attach-thumb attach-file-ico" style="display:none">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div class="attach-thumb" id="attach-thumb-box">
+            <img id="attach-thumb" alt="" style="display:none">
+            <svg id="attach-generic-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           </div>
           <div class="reply-bar-body">
-            <div class="reply-bar-name">Вложение</div>
+            <div class="reply-bar-name" id="attach-title">Вложение</div>
             <div class="reply-bar-text" id="attach-name"></div>
+            <div class="attach-track" id="attach-track" style="display:none"><div class="attach-fill" id="attach-fill"></div></div>
           </div>
           <div class="reply-bar-x" onclick="clearAttachment()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>

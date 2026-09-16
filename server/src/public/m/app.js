@@ -1346,7 +1346,8 @@ async function loadUploadSettings() {
   const res = await api('GET', '/upload/settings');
   if (res && !res.error) _uploadSettings = res;
 }
-async function onFilePicked(input) {
+let _uploadXhr = null;
+function onFilePicked(input) {
   const file = input.files[0];
   input.value = '';
   if (!file) return;
@@ -1356,37 +1357,96 @@ async function onFilePicked(input) {
   const ext = (file.name.split('.').pop() || '').toLowerCase();
   if (file.size > cfg.maxSizeMb * 1024 * 1024) { toast(`Файл слишком большой (макс. ${cfg.maxSizeMb} МБ)`); return; }
   if (cfg.extensions.length > 0 && !cfg.extensions.includes(ext)) { toast(`Расширение .${ext} не разрешено`); return; }
+
+  if (_uploadXhr) _uploadXhr.abort();
+  _pendingAttachment = null;
+  showAttachUploading(isImage ? 'Фото' : isVideo ? 'Видео' : 'Файл');
+
   const formData = new FormData();
   formData.append('file', file);
-  try {
-    const res = await fetch(`${httpProto()}://${S.server}/api/upload`, {
-      method: 'POST', headers: { Authorization: `Bearer ${S.token}` }, body: formData,
-    });
-    if (!res.ok) { const err = await res.json().catch(() => ({})); toast(err.error || 'Ошибка загрузки'); return; }
-    _pendingAttachment = await res.json();
-    showAttachBar();
-  } catch { toast('Ошибка загрузки'); }
+  const xhr = new XMLHttpRequest();
+  _uploadXhr = xhr;
+  xhr.open('POST', `${httpProto()}://${S.server}/api/upload`);
+  xhr.setRequestHeader('Authorization', `Bearer ${S.token}`);
+  // Пока тело запроса ещё идёт — честный процент; как только отправка
+  // закончилась, а ответа сервера всё ещё нет (например, идёт транскод
+  // видео) — переключаемся на «Обработка…», иначе казалось бы, что всё
+  // зависло на 100%
+  xhr.upload.onprogress = e => { if (e.lengthComputable) setAttachProgress(Math.round(e.loaded / e.total * 100)); };
+  xhr.upload.onload = () => setAttachProcessing();
+  xhr.onload = () => {
+    _uploadXhr = null;
+    if (xhr.status < 200 || xhr.status >= 300) {
+      let err = {}; try { err = JSON.parse(xhr.responseText); } catch {}
+      toast(err.error || 'Ошибка загрузки');
+      clearAttachment();
+      return;
+    }
+    _pendingAttachment = JSON.parse(xhr.responseText);
+    showAttachDone();
+  };
+  xhr.onerror = () => { _uploadXhr = null; toast('Ошибка загрузки'); clearAttachment(); };
+  xhr.send(formData);
 }
-function showAttachBar() {
+function attachBarEls() {
+  return {
+    bar: document.getElementById('attach-bar'),
+    box: document.getElementById('attach-thumb-box'),
+    img: document.getElementById('attach-thumb'),
+    ico: document.getElementById('attach-generic-ico'),
+    title: document.getElementById('attach-title'),
+    name: document.getElementById('attach-name'),
+    track: document.getElementById('attach-track'),
+    fill: document.getElementById('attach-fill'),
+  };
+}
+function showAttachUploading(title) {
+  const el = attachBarEls();
+  el.box.className = 'attach-thumb uploading';
+  el.img.style.display = 'none';
+  el.ico.style.display = '';
+  el.title.textContent = title;
+  el.name.textContent = 'Загрузка… 0%';
+  el.track.style.display = '';
+  el.track.classList.remove('indeterminate');
+  el.fill.style.width = '0%';
+  el.bar.style.display = '';
+  stickMessagesToBottom();
+}
+function setAttachProgress(pct) {
+  const el = attachBarEls();
+  if (el.bar.style.display === 'none') return; // отменено, пока событие шло
+  el.fill.style.width = pct + '%';
+  el.name.textContent = `Загрузка… ${pct}%`;
+}
+function setAttachProcessing() {
+  const el = attachBarEls();
+  if (el.bar.style.display === 'none') return;
+  el.box.className = 'attach-thumb processing';
+  el.name.textContent = 'Обработка…';
+  el.track.classList.add('indeterminate');
+}
+function showAttachDone() {
   if (!_pendingAttachment) return;
   const att = _pendingAttachment;
-  const bar = document.getElementById('attach-bar');
-  const thumb = document.getElementById('attach-thumb');
-  const fileIco = document.getElementById('attach-file-ico');
+  const el = attachBarEls();
+  el.box.className = 'attach-thumb';
+  el.track.style.display = 'none';
+  el.track.classList.remove('indeterminate');
   if (att.mime?.startsWith('image/')) {
-    thumb.src = `${httpProto()}://${S.server}${att.url}`; thumb.style.display = '';
-    fileIco.style.display = 'none';
+    el.img.src = `${httpProto()}://${S.server}${att.url}`; el.img.style.display = ''; el.ico.style.display = 'none';
   } else if (att.mime?.startsWith('video/') && att.thumb) {
-    thumb.src = `${httpProto()}://${S.server}${att.thumb}`; thumb.style.display = '';
-    fileIco.style.display = 'none';
+    el.img.src = `${httpProto()}://${S.server}${att.thumb}`; el.img.style.display = ''; el.ico.style.display = 'none';
   } else {
-    thumb.style.display = 'none'; fileIco.style.display = '';
+    el.img.style.display = 'none'; el.ico.style.display = '';
   }
-  document.getElementById('attach-name').textContent = att.name || 'Файл';
-  bar.style.display = '';
+  el.title.textContent = 'Вложение';
+  el.name.textContent = att.name || 'Файл';
+  el.bar.style.display = '';
   stickMessagesToBottom();
 }
 function clearAttachment() {
+  if (_uploadXhr) { _uploadXhr.abort(); _uploadXhr = null; }
   _pendingAttachment = null;
   const bar = document.getElementById('attach-bar');
   if (bar) bar.style.display = 'none';

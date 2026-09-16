@@ -40,7 +40,13 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, FILES_DIR),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`);
+    const name = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`;
+    // Кладём путь в req ещё до того, как multer допишет файл — если клиент
+    // отменит загрузку (крестик) или порвётся соединение прямо во время
+    // передачи, req.file появиться не успеет, а req.on('close') ниже
+    // сможет подчистить файл только по этому пути.
+    req._uploadPath = path.join(FILES_DIR, name);
+    cb(null, name);
   },
 });
 
@@ -104,19 +110,26 @@ async function getVideoCodec(filePath) {
 // а картинки нет — ровно то, что видно у получателя. ffmpeg HEVC декодирует
 // нормально, поэтому перекодируем такое видео в H.264 один раз при загрузке —
 // дальше оно воспроизводится везде, у всех клиентов.
-async function transcodeToH264IfNeeded(filePath, filename) {
+// req — тот же объект запроса, что и в обработчике: используем его как общее
+// хранилище (req._ffmpegChild), чтобы req.on('close') ниже мог убить процесс,
+// если клиент отменил загрузку (крестик) прямо во время транскода.
+async function transcodeToH264IfNeeded(filePath, filename, req) {
   const codec = await getVideoCodec(filePath);
   if (!codec || codec === 'h264') return null; // уже совместимо (или не смогли определить — не рискуем портить файл)
   const outName = filename.replace(/\.[^.]*$/, '') + '_h264.mp4';
   const outPath = path.join(FILES_DIR, outName);
   try {
-    await execFileP('ffmpeg', [
-      '-i', filePath, '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
-      '-c:a', 'aac', '-movflags', '+faststart', '-y', outPath,
-    ]);
+    await new Promise((resolve, reject) => {
+      req._ffmpegChild = execFile('ffmpeg', [
+        '-i', filePath, '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
+        '-c:a', 'aac', '-movflags', '+faststart', '-y', outPath,
+      ], err => (err ? reject(err) : resolve()));
+    });
+    req._ffmpegChild = null;
     fs.unlink(filePath, () => {});
     return outName;
   } catch (e) {
+    req._ffmpegChild = null;
     console.warn('[Upload] video transcode failed:', e.message);
     try { fs.unlinkSync(outPath); } catch {}
     return null;
@@ -127,66 +140,103 @@ router.get('/settings', authMiddleware, (req, res) => {
   res.json(getUploadSettings());
 });
 
-router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Файл не принят' });
+router.post('/',
+  authMiddleware,
+  // Регистрируем ДО multer — иначе не поймать отмену клиента (крестик) во
+  // время самой загрузки файла, только во время последующей обработки.
+  // req._uploadPath (см. storage.filename выше) известен уже на этом этапе,
+  // req.file — только после того, как multer успешно всё дописал.
+  (req, res, next) => {
+    req._responded = false;
+    req._aborted = false;
+    // Обрыв на середине multer сам бросает 'error' на request-стриме ("Request
+    // aborted") — без слушателя это шумная трасса в логе на каждую отмену.
+    // Реальную очистку делает 'close' ниже, этот — просто заглушка.
+    req.on('error', () => {});
+    req.on('close', () => {
+      if (req._responded) return;
+      req._aborted = true;
+      if (req._ffmpegChild) { try { req._ffmpegChild.kill('SIGKILL'); } catch {} }
+      const p = req.file?.path || req._uploadPath;
+      if (p) fs.unlink(p, () => {});
+      for (const p2 of req._extraCleanupPaths || []) fs.unlink(p2, () => {});
+    });
+    next();
+  },
+  upload.single('file'),
+  async (req, res) => {
+    if (!req.file) { req._responded = true; return res.status(400).json({ error: 'Файл не принят' }); }
+    if (req._aborted) return; // отменили прямо на стыке загрузки/обработки — close уже подчистил файл
 
-  // multer/busboy декодируют имя файла из multipart-заголовка как latin1, а браузер
-  // шлёт его в UTF-8 — без обратного разворота кириллица превращается в кракозябры
-  req.file.originalname = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
+    // multer/busboy декодируют имя файла из multipart-заголовка как latin1, а браузер
+    // шлёт его в UTF-8 — без обратного разворота кириллица превращается в кракозябры
+    req.file.originalname = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
 
-  const settings = getUploadSettings();
-  const isImage = req.file.mimetype.startsWith('image/');
-  const isVideo = req.file.mimetype.startsWith('video/');
-  const cfg = isImage ? settings.image : isVideo ? settings.video : settings.file;
-  const ext = path.extname(req.file.originalname).replace('.', '').toLowerCase();
+    const settings = getUploadSettings();
+    const isImage = req.file.mimetype.startsWith('image/');
+    const isVideo = req.file.mimetype.startsWith('video/');
+    const cfg = isImage ? settings.image : isVideo ? settings.video : settings.file;
+    const ext = path.extname(req.file.originalname).replace('.', '').toLowerCase();
 
-  if (req.file.size > cfg.maxSizeMb * 1024 * 1024) {
-    fs.unlink(req.file.path, () => {});
-    return res.status(400).json({ error: `Файл превышает лимит ${cfg.maxSizeMb} МБ` });
-  }
-
-  if (cfg.extensions.length > 0 && !cfg.extensions.includes(ext)) {
-    fs.unlink(req.file.path, () => {});
-    return res.status(400).json({ error: `Расширение .${ext} не разрешено` });
-  }
-
-  if (isVideo && hasFfmpeg()) {
-    const newName = await transcodeToH264IfNeeded(req.file.path, req.file.filename);
-    if (newName) {
-      req.file.filename = newName;
-      req.file.path = path.join(FILES_DIR, newName);
-      req.file.mimetype = 'video/mp4';
-      try { req.file.size = fs.statSync(req.file.path).size; } catch {}
+    if (req.file.size > cfg.maxSizeMb * 1024 * 1024) {
+      fs.unlink(req.file.path, () => {});
+      req._responded = true;
+      return res.status(400).json({ error: `Файл превышает лимит ${cfg.maxSizeMb} МБ` });
     }
-  }
 
-  let thumb = null;
-  if (isImage && sharp && req.file.mimetype !== 'image/gif') {
-    try {
-      const thumbName = req.file.filename.replace(/\.[^.]*$/, '') + '_t.webp';
-      await sharp(req.file.path).rotate().resize({ width: 320, withoutEnlargement: true })
-        .webp({ quality: 78 }).toFile(path.join(FILES_DIR, thumbName));
-      thumb = `/files/${thumbName}`;
-    } catch (e) { console.warn('[Upload] thumbnail failed:', e.message); }
-  }
-  if (isVideo && hasFfmpeg()) {
-    try {
-      const duration = await getVideoDuration(req.file.path);
-      const at = duration && duration < 10 ? duration / 2 : 10;
-      const thumbName = req.file.filename.replace(/\.[^.]*$/, '') + '_t.jpg';
-      await execFileP('ffmpeg', ['-ss', String(at), '-i', req.file.path, '-frames:v', '1', '-vf', 'scale=320:-1', '-y', path.join(FILES_DIR, thumbName)]);
-      thumb = `/files/${thumbName}`;
-    } catch (e) { console.warn('[Upload] video thumbnail failed:', e.message); }
-  }
+    if (cfg.extensions.length > 0 && !cfg.extensions.includes(ext)) {
+      fs.unlink(req.file.path, () => {});
+      req._responded = true;
+      return res.status(400).json({ error: `Расширение .${ext} не разрешено` });
+    }
 
-  res.json({
-    url: `/files/${req.file.filename}`,
-    thumb,
-    name: req.file.originalname,
-    size: req.file.size,
-    mime: req.file.mimetype,
-  });
-});
+    req._extraCleanupPaths = [];
+
+    if (isVideo && hasFfmpeg()) {
+      const newName = await transcodeToH264IfNeeded(req.file.path, req.file.filename, req);
+      if (req._aborted) return; // close уже прибил ffmpeg и подчистил файлы
+      if (newName) {
+        req.file.filename = newName;
+        req.file.path = path.join(FILES_DIR, newName);
+        req.file.mimetype = 'video/mp4';
+        try { req.file.size = fs.statSync(req.file.path).size; } catch {}
+      }
+    }
+
+    let thumb = null;
+    if (isImage && sharp && req.file.mimetype !== 'image/gif') {
+      try {
+        const thumbName = req.file.filename.replace(/\.[^.]*$/, '') + '_t.webp';
+        const thumbPath = path.join(FILES_DIR, thumbName);
+        req._extraCleanupPaths.push(thumbPath);
+        await sharp(req.file.path).rotate().resize({ width: 320, withoutEnlargement: true })
+          .webp({ quality: 78 }).toFile(thumbPath);
+        thumb = `/files/${thumbName}`;
+      } catch (e) { console.warn('[Upload] thumbnail failed:', e.message); }
+    }
+    if (isVideo && hasFfmpeg()) {
+      try {
+        const duration = await getVideoDuration(req.file.path);
+        const at = duration && duration < 10 ? duration / 2 : 10;
+        const thumbName = req.file.filename.replace(/\.[^.]*$/, '') + '_t.jpg';
+        const thumbPath = path.join(FILES_DIR, thumbName);
+        req._extraCleanupPaths.push(thumbPath);
+        await execFileP('ffmpeg', ['-ss', String(at), '-i', req.file.path, '-frames:v', '1', '-vf', 'scale=320:-1', '-y', thumbPath]);
+        thumb = `/files/${thumbName}`;
+      } catch (e) { console.warn('[Upload] video thumbnail failed:', e.message); }
+    }
+    if (req._aborted) return;
+
+    req._responded = true;
+    res.json({
+      url: `/files/${req.file.filename}`,
+      thumb,
+      name: req.file.originalname,
+      size: req.file.size,
+      mime: req.file.mimetype,
+    });
+  }
+);
 
 module.exports = router;
 module.exports.startCleanupJob = startCleanupJob;

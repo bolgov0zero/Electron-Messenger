@@ -1565,6 +1565,22 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   flex-shrink: 0;
 }
 
+/* Вложение: превью с прогрессом загрузки/обработки */
+.attach-thumb { width: 40px; height: 40px; border-radius: 6px; flex-shrink: 0; background: var(--search-bg); color: var(--accent); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.attach-thumb img { width: 100%; height: 100%; object-fit: cover; }
+/* Загрузка/обработка — иконка спокойно «дышит» по яркости вместо кольца или
+   спиннера в квадрате: реальный прогресс несёт .attach-track ниже, тут только
+   лёгкий намёк, что процесс идёт, а не завис */
+.attach-thumb.uploading, .attach-thumb.processing { color: var(--muted); }
+.attach-thumb.uploading svg, .attach-thumb.processing svg { animation: attach-breathe 1.6s ease-in-out infinite; }
+@keyframes attach-breathe { 0%, 100% { opacity: .85; } 50% { opacity: .35; } }
+.attach-track { height: 3px; border-radius: 2px; background: var(--border); margin-top: 5px; overflow: hidden; }
+.attach-fill { height: 100%; border-radius: 2px; background: var(--accent); width: 0%; transition: width .12s linear; }
+.attach-track.indeterminate .attach-fill {
+  width: 36% !important; transition: none; animation: attach-indet 1.1s ease-in-out infinite;
+}
+@keyframes attach-indet { 0% { transform: translateX(-100%); } 100% { transform: translateX(280%); } }
+
 /* Цитируемое сообщение внутри bubble */
 .irc-reply {
   display: flex; align-items: center; gap: 8px;

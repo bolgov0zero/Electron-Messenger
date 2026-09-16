@@ -2117,13 +2117,14 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
           </div>
           <div class="composer-slot" id="composer-slot"><div class="composer-slot-inner">
           <div id="image-preview-bar" style="display:none" class="input-reply-bar">
-            <img class="img-preview-thumb" src="" style="width:40px;height:40px;object-fit:cover;border-radius:6px;flex-shrink:0">
-            <div class="attach-preview-icon" style="display:none;width:40px;height:40px;border-radius:6px;flex-shrink:0;background:var(--surface2);display:none;align-items:center;justify-content:center">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <div class="attach-thumb" id="attach-thumb-box">
+              <img class="img-preview-thumb" src="" style="display:none">
+              <svg class="attach-preview-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             </div>
             <div class="reply-bar-content">
-              <div class="reply-bar-name">Вложение</div>
+              <div class="reply-bar-name" id="attach-preview-title">Вложение</div>
               <div class="reply-bar-text img-preview-name"></div>
+              <div class="attach-track" id="attach-track" style="display:none"><div class="attach-fill" id="attach-fill"></div></div>
             </div>
             <button onclick="clearImagePreview()" class="icon-btn" style="width:24px;height:24px">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -4125,7 +4126,8 @@ async function onFilePicked(input) {
   await uploadFile(file);
 }
 
-async function uploadFile(file) {
+let _uploadXhr = null;
+function uploadFile(file) {
   if (!file) return;
   const isImage = file.type.startsWith('image/');
   const isVideo = file.type.startsWith('video/');
@@ -4141,55 +4143,101 @@ async function uploadFile(file) {
     return;
   }
 
-  const formData = new FormData();
-  formData.append('file', file);
+  if (_uploadXhr) _uploadXhr.abort();
+  _pendingAttachment = null;
   const sendBtn = document.getElementById('send-btn');
   if (sendBtn) { sendBtn.style.background='var(--accent)'; sendBtn.style.color='#fff'; sendBtn.style.boxShadow='0 6px 16px var(--accent-shadow)'; }
-  try {
-    const res = await fetch(`${httpProto()}://${S.server}/api/upload`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${S.token}` },
-      body: formData,
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+  showAttachUploading(isImage ? 'Изображение' : isVideo ? 'Видео' : 'Файл');
+
+  const formData = new FormData();
+  formData.append('file', file);
+  const xhr = new XMLHttpRequest();
+  _uploadXhr = xhr;
+  xhr.open('POST', `${httpProto()}://${S.server}/api/upload`);
+  xhr.setRequestHeader('Authorization', `Bearer ${S.token}`);
+  // Пока тело запроса ещё идёт — честный процент; как только отправка
+  // закончилась, а ответа сервера всё ещё нет (например, идёт транскод
+  // видео) — переключаемся на «Обработка…», иначе казалось бы, что всё
+  // зависло на 100%
+  xhr.upload.onprogress = e => { if (e.lengthComputable) setAttachProgress(Math.round(e.loaded / e.total * 100)); };
+  xhr.upload.onload = () => setAttachProcessing();
+  xhr.onload = () => {
+    _uploadXhr = null;
+    if (xhr.status < 200 || xhr.status >= 300) {
+      let err = {}; try { err = JSON.parse(xhr.responseText); } catch {}
       showActionToast(err.error || 'Ошибка загрузки');
-      if (sendBtn && !document.getElementById('msg-input')?.value.trim()) {
-        sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none';
-      }
+      clearImagePreview();
       return;
     }
-    _pendingAttachment = await res.json();
+    _pendingAttachment = JSON.parse(xhr.responseText);
     showAttachmentPreviewBar();
-  } catch {
-    if (sendBtn && !document.getElementById('msg-input')?.value.trim()) {
-      sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none';
-    }
-  }
+  };
+  xhr.onerror = () => { _uploadXhr = null; showActionToast('Ошибка загрузки'); clearImagePreview(); };
+  xhr.send(formData);
 }
 
 // Keep alias for backward-compat callers (drag-drop, paste)
-async function uploadImageFile(file) { return uploadFile(file); }
+function uploadImageFile(file) { return uploadFile(file); }
 
+function attachBarEls() {
+  return {
+    bar: document.getElementById('image-preview-bar'),
+    box: document.getElementById('attach-thumb-box'),
+    img: document.querySelector('#image-preview-bar .img-preview-thumb'),
+    ico: document.querySelector('#image-preview-bar .attach-preview-icon'),
+    title: document.getElementById('attach-preview-title'),
+    name: document.querySelector('#image-preview-bar .img-preview-name'),
+    track: document.getElementById('attach-track'),
+    fill: document.getElementById('attach-fill'),
+  };
+}
+function showAttachUploading(title) {
+  const el = attachBarEls();
+  el.box.className = 'attach-thumb uploading';
+  el.img.style.display = 'none';
+  el.ico.style.display = '';
+  el.title.textContent = title;
+  el.name.textContent = 'Загрузка… 0%';
+  el.track.style.display = '';
+  el.track.classList.remove('indeterminate');
+  el.fill.style.width = '0%';
+  el.bar.style.display = '';
+}
+function setAttachProgress(pct) {
+  const el = attachBarEls();
+  if (el.bar.style.display === 'none') return; // отменено, пока событие шло
+  el.fill.style.width = pct + '%';
+  el.name.textContent = `Загрузка… ${pct}%`;
+}
+function setAttachProcessing() {
+  const el = attachBarEls();
+  if (el.bar.style.display === 'none') return;
+  el.box.className = 'attach-thumb processing';
+  el.name.textContent = 'Обработка…';
+  el.track.classList.add('indeterminate');
+}
 function showAttachmentPreviewBar() {
-  const bar = document.getElementById('image-preview-bar');
-  if (!bar) return;
   const att = _pendingAttachment;
-  if (!att) { bar.style.display = 'none'; return; }
-  bar.style.display = '';
+  if (!att) { clearImagePreview(); return; }
+  const el = attachBarEls();
+  el.box.className = 'attach-thumb';
+  el.track.style.display = 'none';
+  el.track.classList.remove('indeterminate');
   const isImage = att.mime?.startsWith('image/');
   const isVideo = att.mime?.startsWith('video/');
   const thumbUrl = isImage ? att.url : (isVideo && att.thumb) ? att.thumb : null;
-  const thumb = bar.querySelector('.img-preview-thumb');
-  if (thumb) { thumb.src = thumbUrl ? `${httpProto()}://${S.server}${thumbUrl}` : ''; thumb.style.display = thumbUrl ? '' : 'none'; }
-  const icon = bar.querySelector('.attach-preview-icon');
-  if (icon) icon.style.display = thumbUrl ? 'none' : '';
-  bar.querySelector('.img-preview-name').textContent = att.name || (isImage ? 'Изображение' : isVideo ? 'Видео' : 'Файл');
+  el.img.src = thumbUrl ? `${httpProto()}://${S.server}${thumbUrl}` : '';
+  el.img.style.display = thumbUrl ? '' : 'none';
+  el.ico.style.display = thumbUrl ? 'none' : '';
+  el.title.textContent = 'Вложение';
+  el.name.textContent = att.name || (isImage ? 'Изображение' : isVideo ? 'Видео' : 'Файл');
+  el.bar.style.display = '';
 }
 
 function showImagePreviewBar() { showAttachmentPreviewBar(); }
 
 function clearImagePreview() {
+  if (_uploadXhr) { _uploadXhr.abort(); _uploadXhr = null; }
   _pendingAttachment = null;
   const bar = document.getElementById('image-preview-bar');
   if (bar) bar.style.display = 'none';
