@@ -373,7 +373,22 @@ function openSearchResult(chatId, msgId) {
   renderChats();
   openChat(chatId, msgId);
 }
+
+// Счётчик на иконке установленного PWA (Badging API — iOS 16.4+, Chrome, Edge).
+// Раньше бейдж обновлял только сервис-воркер при получении push в фоне —
+// если сообщение прочитано прямо в открытом приложении (без нового push),
+// иконка не узнавала об этом и продолжала показывать старое число даже
+// после сворачивания. Синхронизируем сами при каждой перерисовке списка —
+// как в /chat (updateUnreadTotal).
+function syncAppBadge() {
+  const total = S.chats.filter(c => !c.parent_id).reduce((sum, c) => sum + (c.unread || 0), 0);
+  try {
+    if (total > 0) navigator.setAppBadge?.(total);
+    else navigator.clearAppBadge?.();
+  } catch {}
+}
 function renderChats() {
+  syncAppBadge();
   const list = document.getElementById('chat-list');
   if (S.searchResults) {
     list.innerHTML = S.searchResults.length
@@ -1792,10 +1807,12 @@ function connectWS() {
       if (chat?.parent_id) {
         // Сообщение в теме комнаты: агрегат комнаты в верхнем списке сервер
         // считает сам — перезапрашиваем список чатов; если открыт список тем
-        // этой комнаты, обновляем и его
-        loadChats();
+        // этой комнаты, обновляем и его. refreshChats(), не loadChats() —
+        // при открытом списке тем гонка с loadTopics() ниже могла стереть
+        // темы из S.chats (см. комментарий у refreshChats)
+        refreshChats();
         if (S.activeRoomId === chat.parent_id) loadTopics(chat.parent_id).then(renderTopicsList);
-      } else if (!chat) loadChats(); else renderChats();
+      } else if (!chat) refreshChats(); else renderChats();
     }
 
     if (data.type === 'message_edited') {
