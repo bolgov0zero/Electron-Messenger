@@ -6,6 +6,20 @@
 // же REST/WS API — контакты, настройки, вложения, реакции и пр. — следующими этапами.
 // ══════════════════════════════════════════
 
+// ── SERVICE WORKER (push-уведомления) — тот же приём, что в /chat, свой sw.js
+// под своей областью видимости (/m/), т.к. SW у /chat покрывает только /chat/ ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/m/sw.js', { scope: '/m/' }).catch(() => {});
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data?.type === 'open-chat') {
+        const chat = S.chats.find(c => c.id === e.data.chatId);
+        if (chat) openChat(e.data.chatId);
+      }
+    });
+  });
+}
+
 const SESSION_KEY = 'electron_v2'; // тот же ключ, что у /chat — сессия общая
 
 const S = {
@@ -15,6 +29,7 @@ const S = {
   avatarTs: 0, currentTab: 'chats', replyTo: null, editingMessageId: null, editLimit: 120,
   topics: {}, activeRoomId: null, // подкомнаты: roomId -> список тем; открытая комната с темами
   hasMoreOlder: false, // есть ли более старые сообщения, чем в _msgCache, для подгрузки при скролле вверх
+  searchResults: null, // результаты глобального поиска по сообщениям (null — обычный список чатов)
 };
 
 function haptic(ms = 10) { try { navigator.vibrate?.(ms); } catch {} }
@@ -225,10 +240,69 @@ async function enterApp() {
     Object.entries(pres).forEach(([id, v]) => { S.presence[id] = v?.status; if (v?.last_seen) S.lastSeen[id] = v.last_seen; });
   });
   await loadChats();
+  if (S._pendingOpenChatId) {
+    const c = S.chats.find(c => c.id === S._pendingOpenChatId);
+    if (c) openChat(S._pendingOpenChatId);
+    S._pendingOpenChatId = null;
+  }
   loadContacts();
   loadUploadSettings();
   connectWS();
   applyAvatars();
+  // Показываем баннер «включить уведомления» либо тихо переподписываемся,
+  // если разрешение уже дано (как в /chat)
+  if (window.Notification && Notification.permission === 'granted') subscribePush();
+  else setTimeout(maybeShowNotifBanner, 800);
+}
+
+// ── PUSH-УВЕДОМЛЕНИЯ (тот же сервер, тот же /api/push — как в /chat) ──
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) return;
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') { dismissNotifBanner(); await subscribePush(); }
+  else if (perm === 'denied') dismissNotifBanner();
+}
+async function subscribePush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const data = await fetch(`${httpProto()}://${S.server}/api/push/vapid-public-key`).then(r => r.json());
+    if (!data?.key) return;
+    const appServerKey = urlBase64ToUint8Array(data.key);
+    let existing = await reg.pushManager.getSubscription();
+    if (existing) {
+      const existingKey = existing.options?.applicationServerKey;
+      const existingKeyB64 = existingKey ? btoa(String.fromCharCode(...new Uint8Array(existingKey))) : null;
+      const newKeyB64 = btoa(String.fromCharCode(...appServerKey));
+      if (existingKeyB64 !== newKeyB64) { await existing.unsubscribe(); existing = null; }
+    }
+    const sub = existing || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: appServerKey });
+    await api('POST', '/push/subscribe', {
+      endpoint: sub.endpoint,
+      keys: {
+        p256dh: btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')))),
+        auth: btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')))),
+      },
+    });
+  } catch (e) { console.warn('Push subscribe failed:', e); }
+}
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+function dismissNotifBanner() {
+  const b = document.getElementById('notif-banner');
+  if (b) b.style.display = 'none';
+  localStorage.setItem('notifBannerDismissed', '1');
+}
+function maybeShowNotifBanner() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted' || Notification.permission === 'denied') return;
+  if (localStorage.getItem('notifBannerDismissed')) return;
+  const b = document.getElementById('notif-banner');
+  if (b) b.style.display = 'flex';
 }
 
 // ── СПИСОК ЧАТОВ ──
@@ -248,17 +322,67 @@ function chatPreview(c) {
   return '';
 }
 
+// Поиск в шапке списка чатов ищет не только по названиям (локально), но и
+// внутри текста сообщений по всем чатам — как в /chat. Раньше он смотрел
+// только на название чата, и найти конкретное сообщение было нельзя.
+let _searchTimer = null;
+function onChatSearchInput() {
+  renderChats();
+  const q = (document.getElementById('chat-search').value || '').trim();
+  clearTimeout(_searchTimer);
+  if (q.length < 2) {
+    if (S.searchResults) { S.searchResults = null; renderChats(); }
+    return;
+  }
+  _searchTimer = setTimeout(async () => {
+    const data = await api('GET', `/messages/search?q=${encodeURIComponent(q)}`);
+    if ((document.getElementById('chat-search')?.value || '').trim() !== q) return; // запрос устарел
+    S.searchResults = data?.results || [];
+    renderChats();
+  }, 300);
+}
+function searchResultRow(r) {
+  const chat = S.chats.find(c => c.id === r.chat_id);
+  const title = chat ? chatName(chat) : (r.sender_name || '');
+  const snip = esc(r.snippet || '').replaceAll('', '<b>').replaceAll('', '</b>');
+  return `<div class="row" onclick="openSearchResult(${r.chat_id},${r.id})">
+    <div class="av ${userAvatarColor(r.sender_id || 0)}" data-av-user="${r.sender_id || 0}" data-av-fallback="${esc(initials(r.sender_name || '?'))}">${esc(initials(r.sender_name || '?'))}</div>
+    <div class="row-body">
+      <div class="row-top"><div class="row-name">${esc(title)}</div><div class="row-time">${fmtTime(r.sent_at)}</div></div>
+      <div class="row-bottom"><div class="row-msg">${esc(r.sender_name || '')}: ${snip}</div></div>
+    </div>
+  </div>`;
+}
+function openSearchResult(chatId, msgId) {
+  const input = document.getElementById('chat-search');
+  if (input) input.value = '';
+  S.searchResults = null;
+  renderChats();
+  openChat(chatId, msgId);
+}
 function renderChats() {
-  const q = (document.getElementById('chat-search').value || '').trim().toLowerCase();
   const list = document.getElementById('chat-list');
-  const filtered = S.chats
-    .filter(c => !c.parent_id && chatName(c).toLowerCase().includes(q)) // темы комнат не входят в верхний список
-    .sort((a, b) => (b.last_message?.sent_at || 0) - (a.last_message?.sent_at || 0));
+  if (S.searchResults) {
+    list.innerHTML = S.searchResults.length
+      ? S.searchResults.map(searchResultRow).join('')
+      : '<div class="stub-note">Ничего не нашли</div>';
+    applyAvatars();
+    return;
+  }
+  const q = (document.getElementById('chat-search').value || '').trim().toLowerCase();
+  const filtered = S.chats.filter(c => !c.parent_id && chatName(c).toLowerCase().includes(q)); // темы комнат не входят в верхний список
   if (!filtered.length) {
     list.innerHTML = '<div class="stub-note">' + (S.chats.length ? 'Ничего не нашли' : 'Чатов пока нет') + '</div>';
     return;
   }
-  list.innerHTML = filtered.map(c => {
+  // Комнаты — всегда первой группой, затем закреплённые, затем остальные;
+  // внутри каждой группы — по времени последнего сообщения (как в /chat)
+  const byTime = (a, b) => (b.last_message?.sent_at || 0) - (a.last_message?.sent_at || 0);
+  const rooms = filtered.filter(c => c.type === 'room').sort(byTime);
+  const pinned = filtered.filter(c => c.type !== 'room' && c.pinned).sort(byTime);
+  const rest = filtered.filter(c => c.type !== 'room' && !c.pinned).sort(byTime);
+  const sorted = [...rooms, ...pinned, ...rest];
+  list.innerHTML = sorted.map(c => {
     const lm = c.last_message;
     const unread = c.unread || 0;
     const mentions = c.unread_mentions || 0;
@@ -270,6 +394,10 @@ function renderChats() {
     const sq = (c.type === 'group' || c.type === 'room') ? ' sq' : '';
     return `<div class="row-swipe-wrap" data-chat-id="${c.id}">
       <div class="row-actions">
+        <div class="row-action pin" onclick="toggleChatPin(${c.id})">${c.pinned
+          ? '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/><line x1="2" y1="2" x2="22" y2="22"/></svg>'
+          : '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>'}
+        </div>
         <div class="row-action mute" onclick="toggleMuteChat(${c.id})">${c.muted
           ? '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>'
           : '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'}
@@ -295,7 +423,7 @@ function renderChats() {
 }
 
 // ── СВАЙП-ДЕЙСТВИЯ НА СТРОКЕ ЧАТА ──
-const ROW_ACTIONS_W = 128;
+const ROW_ACTIONS_W = 192;
 let _openRowWrap = null;
 function closeOpenRow() {
   if (!_openRowWrap) return;
@@ -309,6 +437,13 @@ function rowTapOpen(chatId, rowEl, hasTopics) {
   if (wrap === _openRowWrap) { closeOpenRow(); return; }
   if (hasTopics) { openRoomTopics(chatId); return; }
   openChat(chatId);
+}
+async function toggleChatPin(chatId) {
+  closeOpenRow();
+  const chat = S.chats.find(c => c.id === chatId);
+  if (!chat) return;
+  const res = await api('POST', `/chats/${chatId}/pin`);
+  if (res?.ok) { chat.pinned = res.pinned; renderChats(); }
 }
 async function toggleMuteChat(chatId) {
   closeOpenRow();
@@ -953,8 +1088,13 @@ function renderTicks(status) {
   </svg>`;
 }
 
-function renderMessages(keepScroll) {
+// mode: undefined/false — прокрутить в самый низ (обычное открытие чата);
+// true — сохранить относительную позицию (подгрузка старых сообщений);
+// 'none' — не трогать scrollTop вовсе, вызывающий сам прокрутит куда нужно
+// (переход к сообщению из поиска)
+function renderMessages(mode) {
   const container = document.getElementById('messages');
+  const keepScroll = mode === true;
   const chat = S.chats.find(c => c.id === S.activeChatId);
   let html = '', lastDay = '';
   // Каждый день — свой .day-group: он даёт бейджу отдельный containing block
@@ -985,7 +1125,7 @@ function renderMessages(keepScroll) {
     container.scrollTop = prevTop + (container.scrollHeight - prevHeight);
     void container.offsetHeight;
     container.style.overflowY = '';
-  } else {
+  } else if (mode !== 'none') {
     container.scrollTop = container.scrollHeight;
   }
   applyAvatars();
@@ -1051,7 +1191,7 @@ function stickAfterMedia(container) {
   });
 }
 
-async function openChat(chatId) {
+async function openChat(chatId, aroundId) {
   S.activeChatId = chatId;
   const chat = S.chats.find(c => c.id === chatId);
   if (!chat) return;
@@ -1067,12 +1207,23 @@ async function openChat(chatId) {
   document.getElementById('chat-screen').classList.add('open');
   document.getElementById('messages').innerHTML = '<div class="stub-note">Загрузка…</div>';
 
-  const data = await api('GET', `/messages/chat/${chatId}?limit=50`);
+  // Переход к сообщению из поиска — окно вокруг него, а не последние 50
+  const url = aroundId ? `/messages/chat/${chatId}?limit=50&around=${aroundId}` : `/messages/chat/${chatId}?limit=50`;
+  const data = await api('GET', url);
   if (!data || S.activeChatId !== chatId) return;
   _msgCache = data.messages;
   S.hasMoreOlder = !!data.hasMore;
-  renderMessages();
+  renderMessages(aroundId ? 'none' : undefined);
   applyAvatars();
+  if (aroundId) {
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`.bubble[data-msg-id="${aroundId}"]`);
+      if (!el) { document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight; return; }
+      el.scrollIntoView({ block: 'center' });
+      el.classList.add('bubble-flash');
+      setTimeout(() => el.classList.remove('bubble-flash'), 1200);
+    });
+  }
   chat.unread = 0; chat.unread_mentions = 0;
   if (chat.parent_id) {
     // Тема живёт ещё и в S.topics[roomId] — отдельном массиве для списка тем
@@ -1605,7 +1756,24 @@ function connectWS() {
     if (ws !== S.ws) return;
     let data; try { data = JSON.parse(e.data); } catch { return; }
 
-    if (data.type === 'connected') { S.editLimit = data.edit_time_limit || 120; return; }
+    if (data.type === 'connected') {
+      S.editLimit = data.edit_time_limit || 120;
+      // Без этого админка не видит клиента (пустая/неверная колонка «устройство») —
+      // как в /chat: отдельным WS-сообщением сообщаем, что это PWA или обычная вкладка
+      const isPwa = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+      ws.send(JSON.stringify({
+        type: 'client_info',
+        hostname: isPwa ? 'PWA' : 'Web',
+        clientVersion: 'web',
+        osPlatform: navigator.platform || 'web',
+        osRelease: navigator.userAgent.match(/iPhone|iPad|iPod/i) ? 'iOS'
+          : navigator.userAgent.match(/Android/i) ? 'Android'
+          : navigator.userAgent.match(/Mac/i) ? 'macOS'
+          : 'Web',
+        installScope: isPwa ? 'pwa' : 'web',
+      }));
+      return;
+    }
     if (data.type === 'edit_rejected') { toast('Время редактирования истекло'); return; }
 
     if (data.type === 'reaction_update') {
@@ -1812,6 +1980,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   S.server = window.location.host;
   applyAppearance();
   const session = loadSession();
+  // Открытие чата по клику на push-уведомление (см. sw.js/notificationclick)
+  const urlParams = new URLSearchParams(location.search);
+  const chatIdParam = urlParams.get('chatId');
+  if (chatIdParam && session?.token) {
+    S._pendingOpenChatId = parseInt(chatIdParam);
+    history.replaceState(null, '', location.pathname); // не открывать повторно при следующем запуске PWA
+  }
   if (session?.token) {
     Object.assign(S, { token: session.token, user: session.user });
     const ok = await Promise.race([api('GET', '/users/presence'), new Promise(r => setTimeout(() => r(null), 5000))]);

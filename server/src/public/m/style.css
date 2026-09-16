@@ -145,6 +145,12 @@ html.m-desktop .screen { display: none !important; }
 .list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 8px; }
 .stub-note { padding: 20px; color: var(--muted); font-size: 13px; text-align: center; line-height: 1.5; }
 
+/* ── Баннер «включить уведомления» (как в /chat) ── */
+.notif-banner { align-items: center; gap: 8px; margin: 10px 16px 0; padding: 10px 12px; background: var(--accent-soft); border: 1px solid rgba(var(--accent-rgb),.3); border-radius: 12px; color: var(--accent); font-size: 12.5px; }
+.notif-banner span { flex: 1; color: var(--text); line-height: 1.35; }
+.notif-banner button { background: var(--accent); color: #06231e; font-size: 12.5px; font-weight: 700; padding: 6px 12px; border-radius: 8px; flex-shrink: 0; cursor: pointer; }
+.notif-banner-close { color: var(--muted); font-size: 14px; cursor: pointer; padding: 2px; flex-shrink: 0; }
+
 /* ── Строка чата ── */
 .row { display: flex; align-items: center; gap: 12px; padding: 9px 16px; cursor: pointer; user-select: none; }
 .row:active { background: var(--search-bg); }
@@ -172,6 +178,7 @@ html.m-desktop .screen { display: none !important; }
 .row-swipe-wrap .row { position: relative; background: var(--app-bg); transition: transform .2s ease; touch-action: pan-y; }
 .row-actions { position: absolute; top: 0; right: 0; bottom: 0; display: flex; }
 .row-action { width: 64px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
+.row-action.pin { background: #2f7ac0; }
 .row-action.mute { background: #d68910; }
 .row-action.delete { background: #c0392b; }
 
@@ -275,6 +282,9 @@ html.m-desktop .screen { display: none !important; }
 /* Только фон/рамку снимаем — паддинг остаётся тем же, что у обычного пузыря,
    иначе расчёт места под время (::after ниже) съехал бы (как в /chat) */
 .bubble.emoji-msg { background: none; border-color: transparent; }
+/* Подсветка сообщения при переходе из поиска */
+@keyframes bubble-flash { 0%, 100% { box-shadow: none; } 30% { box-shadow: 0 0 0 3px var(--accent); } }
+.bubble-flash { animation: bubble-flash 1.2s ease; }
 .msg-row { display: flex; align-items: flex-end; gap: 6px; align-self: flex-start; max-width: 86%; }
 .msg-col { display: flex; flex-direction: column; min-width: 0; max-width: 100%; }
 .msg-row .bubble { max-width: 100%; }
