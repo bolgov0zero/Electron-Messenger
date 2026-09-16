@@ -221,7 +221,7 @@ html.m-desktop .screen { display: none !important; }
   background: var(--modal-bg); border-top: 1px solid var(--border);
   opacity: .999;
 }
-.tabbar-inner { display: flex; padding: 6px 0 6px; position: relative; }
+.tabbar-inner { display: flex; padding: 10px 0 6px; position: relative; }
 /* Плашка активной вкладки — один элемент, который JS (updateTabHighlight)
    двигает и растягивает под нужную вкладку через transform/width/height,
    вместо трёх статичных подсветок. Размер и положение — от фактического
