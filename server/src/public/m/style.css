@@ -198,7 +198,7 @@ html.m-desktop .screen { display: none !important; }
    полоса фона — пилюля и так отступает от края сама, достаточно фиксированных
    6px. */
 .tabbar { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 14px 6px; z-index: 10; pointer-events: auto; touch-action: manipulation; }
-.tabbar-inner { display: flex; background: var(--modal-bg); border-radius: 20px; padding: 10px 0; box-shadow: 0 10px 28px rgba(0,0,0,.22); }
+.tabbar-inner { display: flex; background: var(--modal-bg); border-radius: 20px; padding: 10px 0; }
 .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); cursor: pointer; }
 .tab svg { width: 21px; height: 21px; }
 .tab span { font-size: 10px; font-weight: 600; }
@@ -359,7 +359,7 @@ html.m-desktop .screen { display: none !important; }
    он даёт лишний отступ, видимый как полоса под полем ввода; композер сам
    уже отступает от края, фиксированных 6px достаточно. */
 .composer-wrap { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 10px 6px; z-index: 5; pointer-events: auto; touch-action: manipulation; }
-.composer-card { background: var(--composer-bg); border-radius: 20px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.22); }
+.composer-card { background: var(--composer-bg); border-radius: 20px; overflow: hidden; }
 .emoji-panel {
   position: absolute; left: 0; right: 0; bottom: 100%;
   border-top: 1px solid var(--border); background: var(--modal-bg);
