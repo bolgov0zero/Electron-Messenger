@@ -993,7 +993,16 @@ function setTheme(theme) {
   saveLocalSetting('theme', theme);
   applyAppearance(); // акцент и узор зависят от темы (свои оттенки на тёмной/светлой)
   applyThemeColorMeta();
+  applyManifestLink();
   refreshAppearanceSheet();
+}
+// Манифест выбирается ещё в index.html (см. инлайн-скрипт до первого layout) —
+// здесь только держим его в синхронизме при переключении темы внутри уже
+// открытого приложения, на случай если пользователь тут же добавит /m на
+// главный экран, не перезаходя
+function applyManifestLink() {
+  const link = document.getElementById('manifest-link');
+  if (link) link.href = document.documentElement.classList.contains('dark') ? '/m/manifest.json' : '/m/manifest-light.json';
 }
 // Цвет системной навигационной панели/статус-бара — как у таб-бара и шторок
 // (--modal-bg), а не у фона экранов, иначе виден шов другого оттенка у края

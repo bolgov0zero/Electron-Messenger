@@ -6,7 +6,7 @@
 const CACHE = 'm-v1';
 // index.html (/m/) намеренно не прекэшируем — он всегда из сети, иначе
 // закэшированная страница может рендериться без актуальной вёрстки.
-const STATIC = ['/m/manifest.json'];
+const STATIC = ['/m/manifest.json', '/m/manifest-light.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(

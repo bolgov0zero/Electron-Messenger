@@ -50,6 +50,17 @@ window.APP_VERSION = '?v=1';
     hs.setProperty('--accent-rgb', c.join(','));
     hs.setProperty('--accent-soft', 'rgba(' + c.join(',') + ',0.10)');
   } catch (e) {}
+  // Манифест — тоже per-theme (theme_color/background_color для установленного
+  // PWA), а не только меню-тег ниже: у standalone-приложения системную полосу
+  // красит именно манифест, а не динамический <meta name="theme-color">.
+  // Ставим тег сами (вместо статического <link> в разметке), чтобы браузер
+  // с самого начала запросил нужный файл, а не переключался на лету — манифест
+  // читается один раз при заходе, не отслеживает <meta> и не умеет медиазапросы.
+  var manifestLink = document.createElement('link');
+  manifestLink.rel = 'manifest';
+  manifestLink.id = 'manifest-link';
+  manifestLink.href = document.documentElement.classList.contains('dark') ? '/m/manifest.json' : '/m/manifest-light.json';
+  document.head.appendChild(manifestLink);
 })();
 // /m — редизайн специально под телефон (жесты, размер тап-зон, нижний таб-бар).
 // На широком экране с мышью вместо всего этого показываем заглушку со ссылкой
@@ -74,7 +85,6 @@ window.APP_VERSION = '?v=1';
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Electron">
-<link rel="manifest" href="/m/manifest.json">
 <link rel="icon" href="/chat/icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/chat/icons/apple-touch-icon.png">
 <title>Electron</title>
