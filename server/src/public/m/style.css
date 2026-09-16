@@ -221,15 +221,20 @@ html.m-desktop .screen { display: none !important; }
   background: var(--modal-bg); border-top: 1px solid var(--border);
   opacity: .999;
 }
-.tabbar-inner { display: flex; padding: 6px 0 0; position: relative; }
+.tabbar-inner { display: flex; padding: 6px 0 6px; position: relative; }
 /* Плашка активной вкладки — один элемент, который JS (updateTabHighlight)
-   двигает и растягивает под нужную вкладку через transform/width, вместо
-   трёх статичных подсветок. cubic-bezier с забросом >1 — лёгкий отскок. */
+   двигает и растягивает под нужную вкладку через transform/width/height,
+   вместо трёх статичных подсветок. Размер и положение — от фактического
+   прямоугольника иконки+подписи (getBoundingClientRect), не от догадки
+   в CSS, иначе на разной высоте контента подпись обрезалась о край.
+   cubic-bezier с забросом >1 — лёгкий отскок при переключении. */
 .tab-hl {
-  position: absolute; top: 3px; bottom: 3px; left: 0; width: 0;
+  position: absolute; top: 0; left: 0; width: 0; height: 0;
   background: var(--accent); border-radius: 14px;
-  transform: translateX(0);
-  transition: transform .45s cubic-bezier(.34,1.56,.64,1), width .3s cubic-bezier(.34,1.56,.64,1);
+  transform: translate(0, 0);
+  transition: transform .45s cubic-bezier(.34,1.56,.64,1),
+              width .3s cubic-bezier(.34,1.56,.64,1),
+              height .3s cubic-bezier(.34,1.56,.64,1);
   z-index: 0;
   pointer-events: none;
 }

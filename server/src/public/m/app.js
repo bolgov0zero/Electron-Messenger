@@ -681,19 +681,38 @@ function updateTabHighlight(animate = true) {
   const inner = document.getElementById('tabbar-inner');
   const activeTab = inner?.querySelector('.tab.on');
   if (!hl || !inner || !activeTab) return;
-  const label = activeTab.querySelector('span');
-  const icon = activeTab.querySelector('svg');
-  const contentW = Math.max(label?.getBoundingClientRect().width || 0, icon?.getBoundingClientRect().width || 0);
-  if (!contentW) return; // таб-бар ещё не отрисован (нулевые размеры) — нечего мерить
-  const pad = 16;
-  const pillW = contentW + pad * 2;
+  const tabs = [...inner.querySelectorAll('.tab')];
   const innerRect = inner.getBoundingClientRect();
+  // Один размер плашки на все вкладки — берём максимум по всем трём (обычно
+  // задаёт самая длинная подпись, «Настройки»/«Контакты»), а не по активной:
+  // иначе при переключении плашка ещё и меняла бы ширину/высоту, а нужно,
+  // чтобы ехала только позиция.
+  let contentW = 0, contentTop = Infinity, contentBottom = 0;
+  for (const t of tabs) {
+    const label = t.querySelector('span');
+    const icon = t.querySelector('svg');
+    if (!label || !icon) continue;
+    const iconRect = icon.getBoundingClientRect();
+    const labelRect = label.getBoundingClientRect();
+    if (!iconRect.width || !labelRect.width) return; // таб-бар ещё не отрисован — нечего мерить
+    contentW = Math.max(contentW, iconRect.width, labelRect.width);
+    contentTop = Math.min(contentTop, iconRect.top - innerRect.top);
+    contentBottom = Math.max(contentBottom, labelRect.bottom - innerRect.top);
+  }
   const tabRect = activeTab.getBoundingClientRect();
+  // Отступы плашки от реального содержимого (иконка+подпись), а не от
+  // раскладки .tab — раньше высота плашки бралась «на глаз» в CSS и на части
+  // вкладок подпись обрезалась о нижний край
+  const padX = 14, padY = 6;
+  const pillW = contentW + padX * 2;
+  const pillH = (contentBottom - contentTop) + padY * 2;
   const centerX = tabRect.left - innerRect.left + tabRect.width / 2;
   const left = centerX - pillW / 2;
+  const top = contentTop - padY;
   if (!animate) hl.style.transition = 'none';
   hl.style.width = pillW + 'px';
-  hl.style.transform = `translateX(${left}px)`;
+  hl.style.height = pillH + 'px';
+  hl.style.transform = `translate(${left}px, ${top}px)`;
   if (!animate) {
     // Форсируем применение стилей без анимации, затем возвращаем transition —
     // иначе первая расстановка при загрузке уезжала бы «отскоком» от нуля
