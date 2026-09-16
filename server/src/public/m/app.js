@@ -381,18 +381,29 @@ function renderChats() {
   const rooms = filtered.filter(c => c.type === 'room').sort(byTime);
   const pinned = filtered.filter(c => c.type !== 'room' && c.pinned).sort(byTime);
   const rest = filtered.filter(c => c.type !== 'room' && !c.pinned).sort(byTime);
-  const sorted = [...rooms, ...pinned, ...rest];
-  list.innerHTML = sorted.map(c => {
-    const lm = c.last_message;
-    const unread = c.unread || 0;
-    const mentions = c.unread_mentions || 0;
-    const mine = lm && !lm.deleted && lm.sender_id === S.user.id;
-    const who = mine ? 'Вы: ' : '';
-    let preview = chatPreview(c);
-    if (preview.length > 40) preview = preview.slice(0, 40) + '…';
-    const time = lm ? fmtChatListTime(lm.sent_at) : '';
-    const sq = (c.type === 'group' || c.type === 'room') ? ' sq' : '';
-    return `<div class="row-swipe-wrap" data-chat-id="${c.id}">
+  // Подписи секций — только когда список реально разбит на группы (как в /chat):
+  // «Все чаты» нужна, только если перед ней уже была своя группа
+  const otherGroups = rooms.length || pinned.length;
+  let html = '';
+  if (rooms.length) html += `<div class="chat-list-section-label">Комнаты</div>` + rooms.map(chatRowHtml).join('');
+  if (pinned.length) html += `<div class="chat-list-section-label">Закреплённые</div>` + pinned.map(chatRowHtml).join('');
+  if (rest.length) html += (otherGroups ? `<div class="chat-list-section-label">Все чаты</div>` : '') + rest.map(chatRowHtml).join('');
+  list.innerHTML = html;
+  applyAvatars();
+}
+
+function chatRowHtml(c) {
+  const lm = c.last_message;
+  const unread = c.unread || 0;
+  const mentions = c.unread_mentions || 0;
+  const mine = lm && !lm.deleted && lm.sender_id === S.user.id;
+  const who = mine ? 'Вы: ' : '';
+  let preview = chatPreview(c);
+  if (preview.length > 40) preview = preview.slice(0, 40) + '…';
+  const time = lm ? fmtChatListTime(lm.sent_at) : '';
+  const sq = (c.type === 'group' || c.type === 'room') ? ' sq' : '';
+  const muteIcon = c.muted ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted);flex-shrink:0"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="1" y1="1" x2="23" y2="23"/></svg>` : '';
+  return `<div class="row-swipe-wrap" data-chat-id="${c.id}">
       <div class="row-actions">
         <div class="row-action pin" onclick="toggleChatPin(${c.id})">${c.pinned
           ? '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/><line x1="2" y1="2" x2="22" y2="22"/></svg>'
@@ -409,7 +420,7 @@ function renderChats() {
       <div class="row" onclick="rowTapOpen(${c.id}, this, ${c.has_topics ? 1 : 0})">
         <div class="av${sq} ${chatAvatarColorClass(c)}" data-av-chat="${c.id}">${esc(chatIcon(c))}</div>
         <div class="row-body">
-          <div class="row-top"><div class="row-name">${esc(chatName(c))}</div><div class="row-time${unread ? ' unread' : ''}">${time}</div></div>
+          <div class="row-top"><div class="row-name">${esc(chatName(c))}</div>${muteIcon}<div class="row-time${unread ? ' unread' : ''}">${time}</div></div>
           <div class="row-bottom">
             <div class="row-msg">${esc(who)}${esc(preview)}</div>
             ${mentions ? `<div class="badge at">@</div>` : unread ? `<div class="badge">${unread > 99 ? '99+' : unread}</div>` : ''}
@@ -418,8 +429,6 @@ function renderChats() {
         </div>
       </div>
     </div>`;
-  }).join('');
-  applyAvatars();
 }
 
 // ── СВАЙП-ДЕЙСТВИЯ НА СТРОКЕ ЧАТА ──
@@ -1230,8 +1239,13 @@ async function openChat(chatId, aroundId) {
     const topic = S.topics[chat.parent_id]?.find(t => t.id === chatId);
     if (topic) { topic.unread = 0; topic.unread_mentions = 0; }
     if (S.activeRoomId === chat.parent_id) renderTopicsList();
+    // Бейдж комнаты в списке чатов — агрегат по всем её темам, его считает
+    // сервер; локальное обнуление темы его не трогает, поэтому перезапрашиваем,
+    // иначе бейдж комнаты оставался прежним после прочтения темы
+    loadChats();
+  } else {
+    renderChats();
   }
-  renderChats();
   if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'read', chat_id: chatId }));
 }
 
@@ -2005,12 +2019,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('messages').addEventListener('scroll', maybeLoadOlderMessages, { passive: true });
   setTimeout(checkForUpdate, 3000);
   window.addEventListener('resize', syncTabbarHeight);
+  watchComposerHeight();
 });
 
-// Реальная высота таб-бара зависит от safe-area (разная на разных устройствах) —
-// меряем и кладём в CSS-переменную, а не полагаемся на подобранную вручную
-// цифру: несовпадение оставляло зазор (проступал фон другого оттенка — «тень»)
-// или заставляло таб-бар перекрывать последнюю строку списка.
+// Таб-бар — плавающая пилюля (см. .tabbar/.tabbar-inner в style.css), список
+// проходит под ней на всю высоту экрана и сам берёт себе нижний отступ ровно
+// на её высоту (--tabbar-h) — меряем целиком #tabbar (внешний прозрачный
+// контейнер с safe-area-отступом), а не только видимую пилюлю внутри него.
 function syncTabbarHeight() {
   const tabbar = document.getElementById('tabbar');
   if (!tabbar) return;
@@ -2018,6 +2033,23 @@ function syncTabbarHeight() {
   // До входа #screen-app скрыт (display:none) и offsetHeight — 0; не затираем
   // им уже известное хорошее значение
   if (h > 0) document.documentElement.style.setProperty('--tabbar-h', h + 'px');
+}
+
+// Композер тоже плавает поверх ленты переписки (см. .composer-wrap в
+// style.css) — лента сама отступает от низа на его высоту (--composer-h).
+// Высота меняется от плашки ответа/вложения — следим ResizeObserver'ом, как
+// в /chat (watchComposerHeight).
+let _composerRO = null;
+function watchComposerHeight() {
+  const wrap = document.querySelector('.composer-wrap');
+  if (!wrap) return;
+  const apply = () => document.documentElement.style.setProperty('--composer-h', wrap.offsetHeight + 'px');
+  apply();
+  if (_composerRO) _composerRO.disconnect();
+  try {
+    _composerRO = new ResizeObserver(apply);
+    _composerRO.observe(wrap);
+  } catch { _composerRO = null; }
 }
 
 // ── ПРОВЕРКА ВЕРСИИ (актуально для PWA: у установленного приложения нет

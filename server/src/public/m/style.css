@@ -125,13 +125,13 @@ html.m-desktop .screen { display: none !important; }
 .l-btn:disabled { opacity: .6; }
 
 /* ── Вкладки верхнего уровня ── */
-/* Высота таб-бара (safe-area делает её разной на разных устройствах) меряется
-   в JS и кладётся в --tabbar-h (см. syncTabbarHeight в app.js) — раньше здесь
-   была фиксированная цифра 58px, и на устройствах, где реальная высота
-   таб-бара отличалась от неё, между списком и таб-баром либо оставался зазор
-   (виден фон позади — тонкая полоса другого оттенка, «тень»), либо таб-бар
-   перекрывал последнюю строку списка. */
-.tabpage { position: absolute; top: 0; left: 0; right: 0; bottom: var(--tabbar-h, 58px); display: flex; flex-direction: column; }
+/* Таб-бар плавает поверх списка (см. ниже), поэтому страница вкладки всегда
+   занимает экран целиком — список сам добавляет себе нижний отступ под
+   пилюлю (--tabbar-h, см. syncTabbarHeight в app.js), а не наоборот. Раньше
+   .tabpage подрезалась под сплошной бар фиксированной/расчётной высоты —
+   любая неточность safe-area-инсета оставляла зазор либо перекрывала
+   последнюю строку списка. */
+.tabpage { position: absolute; inset: 0; display: flex; flex-direction: column; }
 .tabpage[hidden] { display: none; }
 /* Системная область статус-бара в PWA полупрозрачная и слегка размывает то,
    что рядом с ней, — держим контент чуть ниже неё, а не впритык */
@@ -146,8 +146,12 @@ html.m-desktop .screen { display: none !important; }
 .top-search { margin-top: 10px; display: flex; align-items: center; gap: 8px; background: var(--search-bg); border: 1px solid var(--border); border-radius: 12px; padding: 9px 12px; color: var(--muted); font-size: 14px; }
 .top-search input { flex: 1; background: none; border: none; color: var(--text); font-size: 14px; }
 .top-search input:focus { outline: none; }
-.list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 8px; }
+.list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(10px + var(--tabbar-h, 96px)); }
 .stub-note { padding: 20px; color: var(--muted); font-size: 13px; text-align: center; line-height: 1.5; }
+
+/* ── Подписи секций списка чатов (комнаты/закреплённые/остальные) ── */
+.chat-list-section-label { padding: 12px 16px 6px; font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.chat-list-section-label:first-child { padding-top: 4px; }
 
 /* ── Баннер «включить уведомления» (как в /chat) ── */
 .notif-banner { align-items: center; gap: 8px; margin: 10px 16px 0; padding: 10px 12px; background: var(--accent-soft); border: 1px solid rgba(var(--accent-rgb),.3); border-radius: 12px; color: var(--accent); font-size: 12.5px; }
@@ -187,15 +191,15 @@ html.m-desktop .screen { display: none !important; }
 .row-action.delete { background: #c0392b; }
 
 /* ── Нижний таб-бар ── */
-/* opacity:0.99 — задокументированный обход бага Safari 26/27: полностью
-   непрозрачный fixed/полноэкранный слой (opacity:1) даёт неверный расчёт
-   вьюпорта и зазор/шов у края экрана, а нацело такой же слой с opacity:0.99
-   (визуально неотличимо) считается иначе и покрывает экран как надо. */
-/* На iOS 27 env(safe-area-inset-bottom) занижен (та же история, что и с
-   inset-top для полосы сверху) — таб-бар не дотягивал до настоящего края
-   экрана, и в зазоре просвечивал фон экрана позади (--app-bg). Добавляем
-   запас поверх системного значения, а не полагаемся на него одно. */
-.tabbar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; border-top: 1px solid var(--border); background: var(--modal-bg); padding: 11px 0 max(11px, calc(env(safe-area-inset-bottom) + 10px)); opacity: .999; }
+/* Плавающая пилюля вместо сплошного бара во всю ширину: список чатов проходит
+   у неё под низом (см. .tabpage/.list выше), а сама пилюля лежит с отступами
+   от краёв. Раньше бар был непрозрачным и стоял впритык к нижнему краю —
+   любая неточность env(safe-area-inset-bottom) на iOS (там она, похоже,
+   занижена) оставляла видимый шов цвета фона списка. Плавающей пилюле это
+   не мешает: снаружи от неё и так виден фон списка — это уже не баг, а
+   ожидаемый вид. */
+.tabbar { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 14px calc(14px + env(safe-area-inset-bottom)); z-index: 5; }
+.tabbar-inner { display: flex; background: var(--modal-bg); border-radius: 20px; padding: 10px 0; box-shadow: 0 10px 28px rgba(0,0,0,.22); }
 .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); cursor: pointer; }
 .tab svg { width: 21px; height: 21px; }
 .tab span { font-size: 10px; font-weight: 600; }
@@ -270,7 +274,7 @@ html.m-desktop .screen { display: none !important; }
 .chat-hdr .av { width: 36px; height: 36px; font-size: 13px; }
 .chat-hdr-name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chat-hdr-sub { font-size: 11.5px; color: var(--muted); }
-.chat-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 12px; display: flex; flex-direction: column; gap: 10px; }
+.chat-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 12px calc(10px + var(--composer-h, 76px)); display: flex; flex-direction: column; gap: 10px; }
 /* Свой контейнер на каждый день — граница, за которую «прилипший» бейдж даты
    выходит при прокрутке (иначе бейджи разных дней подменяли бы друг друга не
    там, где нужно); как в /chat и в клиенте. */
@@ -349,7 +353,13 @@ html.m-desktop .screen { display: none !important; }
 /* ── Панель смайлов (общая для композера и выбора реакции) ── */
 /* Оверлей поверх переписки, а не часть флекс-колонки: раньше панель раздвигала
    композер и сжимала список сообщений при открытии/закрытии */
-.composer-wrap { position: relative; flex-shrink: 0; }
+/* Композер плавает поверх ленты (.chat-body занимает экран целиком и сама
+   отступает под него — см. --composer-h, watchComposerHeight в app.js),
+   как уже было сделано с полем ввода в /chat. Раньше это был сплошной бар
+   впритык к нижнему краю — снятие с него safe-area-фикса больше не проблема:
+   плавающей карточке байт-в-байт совпадение с системным инсетом не нужно. */
+.composer-wrap { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 10px calc(10px + env(safe-area-inset-bottom)); z-index: 5; }
+.composer-card { background: var(--composer-bg); border-radius: 20px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.22); }
 .emoji-panel {
   position: absolute; left: 0; right: 0; bottom: 100%;
   border-top: 1px solid var(--border); background: var(--modal-bg);
@@ -391,7 +401,7 @@ html.m-desktop .screen { display: none !important; }
 .msg-action-row.danger { color: var(--danger); }
 .msg-action-row.danger svg { color: var(--danger); }
 
-.composer { display: flex; align-items: center; gap: 8px; padding: 9px 12px max(9px, calc(env(safe-area-inset-bottom) + 10px)); background: var(--composer-bg); border-top: 1px solid var(--border); flex-shrink: 0; opacity: .999; }
+.composer { display: flex; align-items: center; gap: 8px; padding: 9px 12px; }
 .composer input { flex: 1; background: var(--search-bg); border: 1px solid var(--border); border-radius: 20px; padding: 10px 14px; color: var(--text); font-size: 14.5px; }
 .composer input:focus { outline: none; }
 .composer-icon-btn { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--muted); flex-shrink: 0; cursor: pointer; }
