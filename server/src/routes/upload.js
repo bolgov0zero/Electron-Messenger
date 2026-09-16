@@ -91,6 +91,38 @@ async function getVideoDuration(filePath) {
   } catch { return null; }
 }
 
+async function getVideoCodec(filePath) {
+  try {
+    const { stdout } = await execFileP('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=codec_name', '-of', 'csv=p=0', filePath]);
+    return stdout.trim() || null;
+  } catch { return null; }
+}
+
+// iPhone (запись экрана и часть видео с камеры) по умолчанию пишет в HEVC/H.265 —
+// его не декодирует ни один Chromium/Electron ни на одной платформе (лицензионное
+// ограничение самого движка, не баг конкретной машины): контролы и звук работают,
+// а картинки нет — ровно то, что видно у получателя. ffmpeg HEVC декодирует
+// нормально, поэтому перекодируем такое видео в H.264 один раз при загрузке —
+// дальше оно воспроизводится везде, у всех клиентов.
+async function transcodeToH264IfNeeded(filePath, filename) {
+  const codec = await getVideoCodec(filePath);
+  if (!codec || codec === 'h264') return null; // уже совместимо (или не смогли определить — не рискуем портить файл)
+  const outName = filename.replace(/\.[^.]*$/, '') + '_h264.mp4';
+  const outPath = path.join(FILES_DIR, outName);
+  try {
+    await execFileP('ffmpeg', [
+      '-i', filePath, '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
+      '-c:a', 'aac', '-movflags', '+faststart', '-y', outPath,
+    ]);
+    fs.unlink(filePath, () => {});
+    return outName;
+  } catch (e) {
+    console.warn('[Upload] video transcode failed:', e.message);
+    try { fs.unlinkSync(outPath); } catch {}
+    return null;
+  }
+}
+
 router.get('/settings', authMiddleware, (req, res) => {
   res.json(getUploadSettings());
 });
@@ -116,6 +148,16 @@ router.post('/', authMiddleware, upload.single('file'), async (req, res) => {
   if (cfg.extensions.length > 0 && !cfg.extensions.includes(ext)) {
     fs.unlink(req.file.path, () => {});
     return res.status(400).json({ error: `Расширение .${ext} не разрешено` });
+  }
+
+  if (isVideo && hasFfmpeg()) {
+    const newName = await transcodeToH264IfNeeded(req.file.path, req.file.filename);
+    if (newName) {
+      req.file.filename = newName;
+      req.file.path = path.join(FILES_DIR, newName);
+      req.file.mimetype = 'video/mp4';
+      try { req.file.size = fs.statSync(req.file.path).size; } catch {}
+    }
   }
 
   let thumb = null;
