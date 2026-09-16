@@ -170,6 +170,14 @@ html.m-desktop .screen { display: none !important; }
 .av-10{background:rgb(var(--tag-10-av))} .av-11{background:rgb(var(--tag-11-av))} .av-12{background:rgb(var(--tag-12-av))}
 .av-13{background:rgb(var(--tag-13-av))} .av-14{background:rgb(var(--tag-14-av))}
 .av-default { background: #6b7280; }
+.av-wrap { position: relative; flex-shrink: 0; }
+.status-dot {
+  position: absolute; bottom: 0; right: 0;
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid var(--app-bg);
+  background: var(--accent);
+}
+.chat-hdr .status-dot { width: 10px; height: 10px; border-color: var(--modal-bg); }
 .row-body { flex: 1; min-width: 0; border-bottom: 1px solid var(--border); padding-bottom: 9px; }
 .row:last-child .row-body { border-bottom: none; }
 .row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
@@ -352,6 +360,23 @@ html.m-desktop .screen { display: none !important; }
   transition: max-height .25s ease, opacity .15s ease;
 }
 .emoji-panel.open { max-height: 320px; opacity: 1; pointer-events: auto; }
+/* Подсказка «печатает…» — над композером, вне потока (как в /chat): не должна
+   менять высоту .composer-wrap (за ней следит ResizeObserver → --composer-h),
+   иначе лента сообщений будет дёргаться при каждом её появлении/исчезновении. */
+.typing-indicator {
+  position: absolute; left: 10px; right: 10px; bottom: 100%;
+  display: flex; align-items: center; padding-bottom: 4px;
+  pointer-events: none;
+}
+.typing-pill { display: flex; align-items: center; gap: 6px; padding: 3px 10px 4px; border-radius: 9px; background: var(--chat-bg); }
+.typing-name { font-size: 12px; font-weight: 600; color: var(--muted); }
+.typing-label { font-size: 12px; color: var(--muted); }
+.typing-dots { display: flex; align-items: center; gap: 2px; }
+.typing-dots span { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); animation: typing-bounce 1.2s infinite ease-in-out; }
+.typing-dots span:nth-child(2) { animation-delay: .2s; }
+.typing-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes typing-bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-3px); } }
+.typing-preview { color: var(--muted) !important; font-style: italic; }
 .ep-search { display: flex; align-items: center; gap: 7px; margin: 8px 10px 6px; padding: 7px 10px; background: var(--search-bg); border: 1px solid var(--border); border-radius: 10px; }
 .ep-search svg { color: var(--muted); flex-shrink: 0; }
 .ep-search input { flex: 1; min-width: 0; border: none; background: none; outline: none; color: var(--text); font-size: 13px; }

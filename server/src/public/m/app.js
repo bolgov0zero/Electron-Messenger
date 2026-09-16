@@ -181,6 +181,12 @@ function getPeerUserId(chat) {
   if (chat.type !== 'direct') return null;
   return chat.members?.find(m => m.id !== S.user.id)?.id || null;
 }
+function presenceDot(userId) {
+  // Элемент рендерим всегда (скрытым если офлайн) — иначе WS-обработчику presence
+  // нечего показывать, когда пользователь появляется в сети (как в /chat)
+  const online = (S.presence[userId] || 'offline') === 'online';
+  return `<span class="status-dot" data-user-id="${userId}"${online ? '' : ' style="display:none"'}></span>`;
+}
 function chatAvatarColorClass(chat) {
   if (chat.type === 'room') return 'av-3';
   if (chat.type === 'group') return 'av-2';
@@ -434,6 +440,8 @@ function chatRowHtml(c) {
   const muteIcon = c.muted ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted);flex-shrink:0"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="1" y1="1" x2="23" y2="23"/></svg>` : '';
   // Статус доставки/прочтения своего последнего сообщения — как в /chat
   const myStatus = mine && lm.status ? renderTicks(lm.status) : '';
+  const peerId = getPeerUserId(c);
+  const dot = peerId ? presenceDot(peerId) : '';
   return `<div class="row-swipe-wrap" data-chat-id="${c.id}">
       <div class="row-actions">
         <div class="row-action pin" onclick="toggleChatPin(${c.id})">${c.pinned
@@ -449,7 +457,10 @@ function chatRowHtml(c) {
         </div>
       </div>
       <div class="row" onclick="rowTapOpen(${c.id}, this, ${c.has_topics ? 1 : 0})">
-        <div class="av${sq} ${chatAvatarColorClass(c)}" data-av-chat="${c.id}">${esc(chatIcon(c))}</div>
+        <div class="av-wrap">
+          <div class="av${sq} ${chatAvatarColorClass(c)}" data-av-chat="${c.id}">${esc(chatIcon(c))}</div>
+          ${dot}
+        </div>
         <div class="row-body">
           <div class="row-top"><div class="row-name">${esc(chatName(c))}</div><div class="row-top-right">${muteIcon}${myStatus}<div class="row-time${unread ? ' unread' : ''}">${time}</div></div></div>
           <div class="row-bottom">
@@ -1197,6 +1208,16 @@ async function openChat(chatId, aroundId) {
   document.getElementById('chat-sub').textContent = chat.type === 'room' ? 'Комната' : chat.type === 'group'
     ? `${chat.members?.length || 0} участников`
     : (peerId ? peerStatusText(peerId) : 'Личный чат');
+  const statusDot = document.getElementById('chat-status-dot');
+  if (statusDot) {
+    if (peerId) {
+      statusDot.dataset.userId = peerId;
+      statusDot.style.display = (S.presence[peerId] || 'offline') === 'online' ? '' : 'none';
+    } else {
+      delete statusDot.dataset.userId;
+      statusDot.style.display = 'none';
+    }
+  }
   document.getElementById('chat-screen').classList.add('open');
   document.getElementById('messages').innerHTML = '<div class="stub-note">Загрузка…</div>';
 
@@ -1778,6 +1799,41 @@ function peerStatusText(userId) {
   return 'был(а) недавно';
 }
 
+let typingSendTimer = null;
+function onMsgInput() {
+  if (!S.activeChatId || S.ws?.readyState !== 1) return;
+  if (!typingSendTimer) {
+    S.ws.send(JSON.stringify({ type: 'typing', chat_id: S.activeChatId }));
+  }
+  clearTimeout(typingSendTimer);
+  typingSendTimer = setTimeout(() => { typingSendTimer = null; }, 1000);
+}
+
+const typingTimers = {};
+function showTyping(chatId, senderName) {
+  if (typingTimers[chatId]) clearTimeout(typingTimers[chatId]);
+  if (chatId === S.activeChatId) {
+    const el = document.getElementById('typing-indicator');
+    if (el) { el.style.display = 'flex'; el.querySelector('.typing-name').textContent = senderName; }
+  }
+  const item = document.querySelector(`.row-swipe-wrap[data-chat-id="${chatId}"] .row-msg`);
+  if (item) { item.dataset.origText = item.dataset.origText || item.textContent; item.textContent = `${senderName} печатает…`; item.classList.add('typing-preview'); }
+  typingTimers[chatId] = setTimeout(() => { clearTyping(chatId); }, 5000);
+}
+function clearTyping(chatId) {
+  delete typingTimers[chatId];
+  if (chatId === S.activeChatId) {
+    const el = document.getElementById('typing-indicator');
+    if (el) el.style.display = 'none';
+  }
+  const item = document.querySelector(`.row-swipe-wrap[data-chat-id="${chatId}"] .row-msg`);
+  if (item && item.dataset.origText !== undefined) {
+    item.textContent = item.dataset.origText;
+    delete item.dataset.origText;
+    item.classList.remove('typing-preview');
+  }
+}
+
 function sendMessage() {
   if (S.editingMessageId) { submitEdit(); return; }
   const input = document.getElementById('msg-input');
@@ -1926,7 +1982,20 @@ function connectWS() {
       if (changed) renderMessages();
     }
 
-    if (data.type === 'presence') { S.presence[data.user_id] = data.status; }
+    if (data.type === 'presence') {
+      S.presence[data.user_id] = data.status;
+      if (data.last_seen) S.lastSeen[data.user_id] = data.last_seen;
+      const activeChat = S.chats.find(c => c.id === S.activeChatId);
+      if (activeChat && getPeerUserId(activeChat) === data.user_id) {
+        const subEl = document.getElementById('chat-sub');
+        if (subEl) subEl.textContent = peerStatusText(data.user_id);
+      }
+      const isOnline = data.status === 'online';
+      document.querySelectorAll(`.status-dot[data-user-id="${data.user_id}"]`).forEach(dot => {
+        dot.style.display = isOnline ? '' : 'none';
+      });
+    }
+    if (data.type === 'typing') { showTyping(data.chat_id, data.sender_name); }
     if (data.type === 'reload_chats') {
       // refreshChats(), не loadChats() — иначе при открытом списке тем гонка
       // с loadTopics() ниже могла стереть их из S.chats (см. её комментарий)

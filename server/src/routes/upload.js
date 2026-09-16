@@ -147,14 +147,19 @@ router.post('/',
   // req._uploadPath (см. storage.filename выше) известен уже на этом этапе,
   // req.file — только после того, как multer успешно всё дописал.
   (req, res, next) => {
-    req._responded = false;
     req._aborted = false;
     // Обрыв на середине multer сам бросает 'error' на request-стриме ("Request
     // aborted") — без слушателя это шумная трасса в логе на каждую отмену.
     // Реальную очистку делает 'close' ниже, этот — просто заглушка.
     req.on('error', () => {});
-    req.on('close', () => {
-      if (req._responded) return;
+    // ВАЖНО: слушать нужно 'close' у res, а не у req — 'close' на req срабатывает,
+    // как только тело запроса дочитано (т.е. сразу после того, как multer принял
+    // файл), даже если клиент никуда не отключался и просто ждёт ответа. 'close' на
+    // res, наоборот, срабатывает либо после нормального завершения ответа (тогда
+    // res.writableEnded уже true — это не отмена), либо при реальном обрыве
+    // соединения до того, как ответ был отправлен.
+    res.on('close', () => {
+      if (res.writableEnded) return;
       req._aborted = true;
       if (req._ffmpegChild) { try { req._ffmpegChild.kill('SIGKILL'); } catch {} }
       const p = req.file?.path || req._uploadPath;
@@ -165,7 +170,7 @@ router.post('/',
   },
   upload.single('file'),
   async (req, res) => {
-    if (!req.file) { req._responded = true; return res.status(400).json({ error: 'Файл не принят' }); }
+    if (!req.file) return res.status(400).json({ error: 'Файл не принят' });
     if (req._aborted) return; // отменили прямо на стыке загрузки/обработки — close уже подчистил файл
 
     // multer/busboy декодируют имя файла из multipart-заголовка как latin1, а браузер
@@ -180,13 +185,11 @@ router.post('/',
 
     if (req.file.size > cfg.maxSizeMb * 1024 * 1024) {
       fs.unlink(req.file.path, () => {});
-      req._responded = true;
       return res.status(400).json({ error: `Файл превышает лимит ${cfg.maxSizeMb} МБ` });
     }
 
     if (cfg.extensions.length > 0 && !cfg.extensions.includes(ext)) {
       fs.unlink(req.file.path, () => {});
-      req._responded = true;
       return res.status(400).json({ error: `Расширение .${ext} не разрешено` });
     }
 
@@ -227,7 +230,6 @@ router.post('/',
     }
     if (req._aborted) return;
 
-    req._responded = true;
     res.json({
       url: `/files/${req.file.filename}`,
       thumb,
