@@ -389,10 +389,10 @@ function renderChats() {
     return;
   }
   // Комнаты — всегда первой группой, затем закреплённые, затем остальные.
-  // Комнаты — в порядке создания (по id, не двигаются от новых сообщений),
-  // остальные группы — по времени последнего сообщения (как в /chat)
+  // Комнаты — по алфавиту имени (статичный порядок, не двигаются от новых
+  // сообщений), остальные группы — по времени последнего сообщения (как в /chat)
   const byTime = (a, b) => (b.last_message?.sent_at || 0) - (a.last_message?.sent_at || 0);
-  const rooms = filtered.filter(c => c.type === 'room').sort((a, b) => a.id - b.id);
+  const rooms = filtered.filter(c => c.type === 'room').sort((a, b) => chatName(a).localeCompare(chatName(b), 'ru'));
   const pinned = filtered.filter(c => c.type !== 'room' && c.pinned).sort(byTime);
   const rest = filtered.filter(c => c.type !== 'room' && !c.pinned).sort(byTime);
   // Подписи секций — только когда список реально разбит на группы (как в /chat):
