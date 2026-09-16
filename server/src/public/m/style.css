@@ -193,12 +193,11 @@ html.m-desktop .screen { display: none !important; }
 /* ── Нижний таб-бар ── */
 /* Плавающая пилюля вместо сплошного бара во всю ширину: список чатов проходит
    у неё под низом (см. .tabpage/.list выше), а сама пилюля лежит с отступами
-   от краёв. Раньше бар был непрозрачным и стоял впритык к нижнему краю —
-   любая неточность env(safe-area-inset-bottom) на iOS (там она, похоже,
-   занижена) оставляла видимый шов цвета фона списка. Плавающей пилюле это
-   не мешает: снаружи от неё и так виден фон списка — это уже не баг, а
-   ожидаемый вид. */
-.tabbar { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 14px calc(14px + env(safe-area-inset-bottom)); z-index: 5; }
+   от краёв. env(safe-area-inset-bottom) НЕ используем: на iPhone с Face ID
+   он даёт ~34px лишней высоты, из-за чего под пилюлей оставалась видимая
+   полоса фона — пилюля и так отступает от края сама, достаточно фиксированных
+   6px. */
+.tabbar { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 14px 6px; z-index: 10; pointer-events: auto; touch-action: manipulation; }
 .tabbar-inner { display: flex; background: var(--modal-bg); border-radius: 20px; padding: 10px 0; box-shadow: 0 10px 28px rgba(0,0,0,.22); }
 .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); cursor: pointer; }
 .tab svg { width: 21px; height: 21px; }
@@ -355,10 +354,11 @@ html.m-desktop .screen { display: none !important; }
    композер и сжимала список сообщений при открытии/закрытии */
 /* Композер плавает поверх ленты (.chat-body занимает экран целиком и сама
    отступает под него — см. --composer-h, watchComposerHeight в app.js),
-   как уже было сделано с полем ввода в /chat. Раньше это был сплошной бар
-   впритык к нижнему краю — снятие с него safe-area-фикса больше не проблема:
-   плавающей карточке байт-в-байт совпадение с системным инсетом не нужно. */
-.composer-wrap { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 10px calc(10px + env(safe-area-inset-bottom)); z-index: 5; }
+   как уже было сделано с полем ввода в /chat. env(safe-area-inset-bottom)
+   НЕ используем — та же история, что и с таб-баром: на iPhone с Face ID
+   он даёт лишний отступ, видимый как полоса под полем ввода; композер сам
+   уже отступает от края, фиксированных 6px достаточно. */
+.composer-wrap { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 10px 6px; z-index: 5; pointer-events: auto; touch-action: manipulation; }
 .composer-card { background: var(--composer-bg); border-radius: 20px; overflow: hidden; box-shadow: 0 10px 28px rgba(0,0,0,.22); }
 .emoji-panel {
   position: absolute; left: 0; right: 0; bottom: 100%;
