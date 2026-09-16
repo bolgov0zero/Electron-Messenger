@@ -140,6 +140,32 @@ router.get('/settings', authMiddleware, (req, res) => {
   res.json(getUploadSettings());
 });
 
+// Удаление уже загруженного, но ещё не отправленного вложения — крестик на
+// плашке над композером жмут и после того, как файл полностью обработался
+// (см. req.on('close')/res.on('close') выше — та отмена ловит только сам
+// процесс загрузки/обработки, а не «передумал» уже после его завершения).
+router.delete('/', authMiddleware, (req, res) => {
+  const resolveSafe = (url) => {
+    if (typeof url !== 'string' || !url) return null;
+    // path.basename режет любые «..» и разделители — путь гарантированно
+    // остаётся внутри FILES_DIR, куда бы ни указывал исходный url
+    const name = path.basename(url);
+    if (!name) return null;
+    return { name, filePath: path.join(FILES_DIR, name) };
+  };
+  const targets = [resolveSafe(req.body.url), resolveSafe(req.body.thumb)].filter(Boolean);
+  if (!targets.length) return res.status(400).json({ error: 'Некорректный путь' });
+  // Файл, уже прикреплённый к отправленному сообщению, не трогаем — иначе
+  // любой авторизованный пользователь мог бы стереть чужое вложение, просто
+  // угадав его URL
+  for (const t of targets) {
+    const used = db.prepare("SELECT 1 FROM messages WHERE attachment LIKE '%' || ? || '%' LIMIT 1").get(t.name);
+    if (used) return res.status(409).json({ error: 'Файл уже используется в сообщении' });
+  }
+  for (const t of targets) fs.unlink(t.filePath, () => {});
+  res.json({ ok: true });
+});
+
 router.post('/',
   authMiddleware,
   // Регистрируем ДО multer — иначе не поймать отмену клиента (крестик) во

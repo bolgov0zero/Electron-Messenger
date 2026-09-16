@@ -4238,6 +4238,11 @@ function showImagePreviewBar() { showAttachmentPreviewBar(); }
 
 function clearImagePreview() {
   if (_uploadXhr) { _uploadXhr.abort(); _uploadXhr = null; }
+  else if (_pendingAttachment) {
+    // Загрузка уже завершилась (файл лежит на сервере), просто ещё не
+    // отправлена — крестик должен убрать файл и с сервера, а не только из плашки
+    api('DELETE', '/upload', { url: _pendingAttachment.url, thumb: _pendingAttachment.thumb });
+  }
   _pendingAttachment = null;
   const bar = document.getElementById('image-preview-bar');
   if (bar) bar.style.display = 'none';
