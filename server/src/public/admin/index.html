@@ -239,10 +239,13 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .hm-upd-btn{min-width:196px;justify-content:center}
 .hm-upd-btn.hm-upd-ok{color:var(--c-green-text)}
 .hm-upd-btn.hm-upd-err{color:var(--c-red-text)}
-.hm-seg{display:flex;padding:2px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm)}
-.hm-seg button{height:24px;padding:0 10px;border:0;background:none;border-radius:6px;font:600 11px var(--f-ui);color:var(--c-text2);cursor:pointer}
+.hm-seg{display:flex;padding:2px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);position:relative}
+.hm-seg button{height:24px;padding:0 10px;border:0;background:none;border-radius:6px;font:600 11px var(--f-ui);color:var(--c-text2);cursor:pointer;position:relative;z-index:1;transition:color .2s ease .05s}
 .hm-seg button:hover{color:var(--c-text)}
-.hm-seg button[aria-pressed="true"]{background:var(--c-surface);color:var(--c-text);box-shadow:var(--shadow)}
+.hm-seg button[aria-pressed="true"]{color:var(--c-text)}
+/* Плашка активного значения — двигается transform'ом между кнопками (ширина и позиция
+   считаются в JS по факту рендера, см. hmSyncSegHl), а не переключается мгновенно */
+.hm-seg-hl{position:absolute;top:2px;bottom:2px;left:0;width:0;background:var(--c-surface);border-radius:6px;box-shadow:var(--shadow);z-index:0;pointer-events:none;transition:transform .4s cubic-bezier(.34,1.56,.64,1),width .3s cubic-bezier(.34,1.56,.64,1)}
 .hm-spin{animation:spin 1s linear infinite}
 
 /* Обновление сервера */
@@ -1795,7 +1798,8 @@ async function renderDashboard() {
   const RANGE_NAME = { '5m': '5 мин', '15m': '15 мин', '1h': '1 час' };
   setTopbarActions(`
     <button class="btn btn-ghost btn-sm" id="hm-pause" aria-pressed="false" onclick="hmTogglePause()"></button>
-    <div class="hm-seg" role="group" aria-label="Период графиков">
+    <div class="hm-seg" id="hm-range-seg" role="group" aria-label="Период графиков">
+      <span class="hm-seg-hl" id="hm-range-hl"></span>
       ${Object.keys(RANGE_NAME).map(r => `<button data-range="${r}" aria-pressed="${HM.range === r}" onclick="hmSetRange('${r}')">${RANGE_NAME[r]}</button>`).join('')}
     </div>
     <button class="btn btn-ghost btn-sm" id="hm-compact" aria-pressed="${HM.compact}" onclick="hmToggleCompact()"></button>
@@ -1836,7 +1840,8 @@ async function renderDashboard() {
           <div class="hm-mini hm-mini-bars">
             <span class="hm-mini-title" id="hm-bars-title">${HM_MSG_RANGE[HM.msgRange].title}</span>
             <span id="hm-bars-cap"></span>
-            <div class="hm-seg hm-seg-sm" role="group" aria-label="Период графика сообщений">
+            <div class="hm-seg hm-seg-sm" id="hm-msgrange-seg" role="group" aria-label="Период графика сообщений">
+              <span class="hm-seg-hl" id="hm-msgrange-hl"></span>
               ${Object.keys(HM_MSG_RANGE).map(r => `<button data-msg-range="${r}" aria-pressed="${HM.msgRange === r}" onclick="hmSetMsgRange('${r}')">${HM_MSG_RANGE[r].name}</button>`).join('')}
             </div>
           </div>
@@ -1888,10 +1893,12 @@ async function renderDashboard() {
   hmUpdIdle();
   hmSyncPause();
   hmSyncCompact();
+  hmSyncRangeHl(false);
+  hmSyncMsgRangeHl(false);
   hmBindCharts();
   hmBindBars();
   HM.ro?.disconnect();
-  HM.ro = new ResizeObserver(() => { hmRenderCharts(); hmRenderBars(); });
+  HM.ro = new ResizeObserver(() => { hmRenderCharts(); hmRenderBars(); hmSyncRangeHl(false); hmSyncMsgRangeHl(false); });
   HM.ro.observe($hm('hm'));
   updateNavBadges();
   await Promise.all([hmLoadOverview(), hmLoadMonitor(true), hmLoadActivity()]);
@@ -1921,6 +1928,7 @@ function hmSetMsgRange(r) {
   HM.barHover = null;
   try { localStorage.setItem('hm-msg-range', r); } catch {}
   document.querySelectorAll('#hm [data-msg-range]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.msgRange === r)));
+  hmSyncMsgRangeHl(true);
   hmText('hm-bars-title', HM_MSG_RANGE[r].title);
   hmLoadActivity();
 }
@@ -2380,10 +2388,29 @@ function hmToggleCompact() {
   hmSyncCompact();
   if (!HM.compact) { hmRenderCharts(); hmRenderHeadlines(); }
 }
+// Плашка активного пункта — двигаем transform'ом между реальными координатами кнопок
+// (а не CSS-переключением фона), с отскоком, как в таб-баре мобильного клиента.
+function hmSyncSegHl(seg, hl, animate = true) {
+  if (!seg || !hl) return;
+  const btn = seg.querySelector('button[aria-pressed="true"]');
+  if (!btn) return;
+  const segRect = seg.getBoundingClientRect();
+  const btnRect = btn.getBoundingClientRect();
+  if (!btnRect.width) return;
+  if (!animate) hl.style.transition = 'none';
+  hl.style.width = btnRect.width + 'px';
+  hl.style.transform = `translateX(${(btnRect.left - segRect.left).toFixed(2)}px)`;
+  if (!animate) { void hl.offsetWidth; hl.style.transition = ''; }
+}
+function hmSyncRangeHl(animate = true) { hmSyncSegHl($hm('hm-range-seg'), $hm('hm-range-hl'), animate); }
+function hmSyncMsgRangeHl(animate = true) { hmSyncSegHl($hm('hm-msgrange-seg'), $hm('hm-msgrange-hl'), animate); }
+// Селектор без #hm — этот переключатель рендерится в топбаре (setTopbarActions),
+// а не внутри #hm, куда выводится тело страницы дашборда.
 function hmSetRange(r) {
   HM.range = r;
   try { localStorage.setItem('hm-range', r); } catch {}
-  document.querySelectorAll('#hm .hm-seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.range === r)));
+  document.querySelectorAll('.hm-seg button[data-range]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.range === r)));
+  hmSyncRangeHl(true);
   hmRenderCharts();
   hmRenderHeadlines();
 }
