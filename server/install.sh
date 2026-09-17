@@ -154,6 +154,16 @@ elif [ "$PKG" = "pacman" ]; then
   pacman -Sy --noconfirm sqlite 2>/dev/null || true
 fi
 
+# Установка ffmpeg — нужен серверу для обработки голосовых/видео (upload.js)
+echo "→ Установка ffmpeg..."
+if [ "$PKG" = "apt" ]; then
+  apt-get install -y ffmpeg -q 2>/dev/null || true
+elif [ "$PKG" = "yum" ]; then
+  yum install -y ffmpeg 2>/dev/null || dnf install -y ffmpeg 2>/dev/null || true
+elif [ "$PKG" = "pacman" ]; then
+  pacman -Sy --noconfirm ffmpeg 2>/dev/null || true
+fi
+
 # ── Проверка ──
 echo ""
 echo "→ Ожидание запуска сервера..."
