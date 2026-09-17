@@ -1267,6 +1267,13 @@ return 'OK';</pre>
       </div>
 
       <div>
+        <div style="font-size:12px;font-weight:700;color:var(--c-text);margin-bottom:8px">n8n (нода HTTP Request)</div>
+        <div style="font-size:12px;color:var(--c-text2);margin-bottom:8px">Метод — POST. Текст нужно добавлять именно в разделе <b>Send Body</b>, а не Send Query Parameters — POST-запросы сервер читает только из тела, query-строку он смотрит лишь у GET. Body Content Type — JSON, Specify Body — «Using Fields Below» (не «Using JSON» текстом): поле Name <code>text</code>, Value — выражение с исходным полем.</div>
+        <div style="font-size:11px;color:var(--c-muted);margin-bottom:6px">Перед подстановкой замените переносы строк на &lt;br&gt; — обычный «\n» внутри HTML вебхук не превращает в перенос и слепит текст в одну строку:</div>
+        <pre style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 10px;font-size:11px;color:var(--c-text)">{{ $json.textHtml.replace(/\n/g, '&lt;br&gt;') }}</pre>
+      </div>
+
+      <div>
         <div style="font-size:12px;font-weight:700;color:var(--c-text);margin-bottom:8px">Ответ сервера</div>
         <pre style="background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 10px;font-size:11px;color:var(--c-text)">{"ok":true,"message_id":123}   // успех
 {"ok":false,"error":"..."}     // ошибка</pre>
