@@ -1048,7 +1048,7 @@ function applyThemeColorMeta() {
   const meta = document.getElementById('theme-color-meta');
   if (!meta) return;
   const cl = document.documentElement.classList;
-  meta.content = cl.contains('night') ? '#0d1117' : cl.contains('dark') ? '#181c20' : '#ffffff';
+  meta.content = cl.contains('night') ? '#0f172a' : cl.contains('dark') ? '#181c20' : '#ffffff';
 }
 
 function currentTheme() {

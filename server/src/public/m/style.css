@@ -45,18 +45,21 @@ html.dark {
   --chat-split:  #1b1f23;
   --daypill:     rgba(38,42,48,0.92);
 }
-/* Ночная — тот же тёмный набор переменных (акцент, текст и т.д. наследуются от
-   html.dark, который вешается вместе с .night), здесь переопределяем только
-   фон: глубокий тёмно-синий вместо нейтрально-серого */
+/* Ночная — палитра Tailwind slate (950/900/800), заметно синее и темнее
+   нейтрально-серой html.dark, а не тот же тон чуть потемнее. Акцент наследуется
+   от html.dark (который вешается вместе с .night) — переопределяем фон и текст. */
 html.night {
-  --app-bg:      #0a0e14;
-  --search-bg:   #12161d;
-  --modal-bg:    #0d1117;
-  --card-bg:     #10141a;
-  --border:      rgba(255,255,255,0.07);
+  --app-bg:      #020617; /* slate-950 */
+  --search-bg:   #0f172a; /* slate-900 */
+  --modal-bg:    #0f172a; /* slate-900 */
+  --card-bg:     #1e293b; /* slate-800 */
+  --border:      rgba(148,163,184,0.16); /* slate-400 */
+  --text:        #e2e8f0; /* slate-200 */
+  --text2:       #94a3b8; /* slate-400 */
+  --muted:       #64748b; /* slate-500 */
   --chat-bg:     var(--app-bg);
-  --chat-split:  #12161d;
-  --daypill:     rgba(16,20,26,0.92);
+  --chat-split:  #0f172a;
+  --daypill:     rgba(15,23,42,0.92);
 }
 html.font-small  { --font-size: 13px; }
 html.font-medium { --font-size: 14.5px; }
