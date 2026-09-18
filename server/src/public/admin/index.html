@@ -171,7 +171,6 @@ code,pre,.mono{font-family:var(--f-mono)}
 
 /* ── SIDEBAR ── */
 .sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--c-bg);border-right:1px solid var(--c-sb-border);display:flex;flex-direction:column;overflow:hidden;padding:10px 8px}
-.sb-av{width:26px;height:26px;border-radius:7px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
 .sb-user-name{font-size:12px;font-weight:600;color:var(--c-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sb-user-email{font-size:10px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 nav{flex:1;padding:4px 0;overflow-y:auto}
@@ -247,6 +246,7 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
    считаются в JS по факту рендера, см. hmSyncSegHl), а не переключается мгновенно */
 .hm-seg-hl{position:absolute;top:2px;bottom:2px;left:0;width:0;background:var(--c-surface);border-radius:6px;box-shadow:var(--shadow);z-index:0;pointer-events:none;transition:transform .4s cubic-bezier(.34,1.56,.64,1),width .3s cubic-bezier(.34,1.56,.64,1)}
 .hm-spin{animation:spin 1s linear infinite}
+#hm-msg-marks[aria-pressed="true"]{color:var(--c-primary);border-color:rgba(58,147,140,.35);background:var(--c-primary-dim)}
 
 /* Обновление сервера */
 .hm-upd-panel{flex-basis:100%;border-top:1px solid var(--c-border2);margin:2px -14px -9px;padding:10px 14px 11px;display:flex;flex-direction:column;gap:9px}
@@ -928,7 +928,7 @@ tr:hover .td-actions{opacity:1}
 .st-stat-t b{display:block;font-size:13px;font-weight:700}
 .st-stat-t span{display:block;font-size:11.5px;color:var(--c-text2)}
 .st-stat-t .st-ver{font:700 22px var(--f-mono);letter-spacing:-.5px}
-.st-stat .btn svg,.st-foot .btn svg,.st-r .btn svg{width:12px;height:12px}
+.st-stat .btn svg,.st-foot .btn svg,.st-r .btn svg,.st-bk .btn svg{width:12px;height:12px}
 .st-bk{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:10px 14px}
 .st-bk+.st-bk{border-top:1px solid var(--c-border2)}
 .st-bk b{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600}
@@ -1022,6 +1022,21 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .fl-thumb .fl-play svg{width:13px;height:13px;fill:#fff}
 .file-thumb{cursor:zoom-in;transition:opacity var(--t-fast)}
 .file-thumb:hover{opacity:.75}
+
+/* Узкое окно: таблице «Файлы» не хватает штатных 820px — сжимаем колонки под
+   fixed-раскладку (Файл получает всё, что осталось) вместо горизонтального скролла */
+@media (max-width:900px){
+  .ux-tbl table.fl-tbl{min-width:0;table-layout:fixed}
+  .fl-tbl th:nth-child(3),.fl-tbl td:nth-child(3){width:66px}
+  .fl-tbl th:nth-child(4),.fl-tbl td:nth-child(4){width:34px}
+  .fl-tbl th:nth-child(5),.fl-tbl td:nth-child(5){width:96px}
+  .fl-tbl th:nth-child(6),.fl-tbl td:nth-child(6){width:84px}
+  .fl-tbl th:nth-child(7),.fl-tbl td:nth-child(7){width:92px}
+  .fl-tbl .fl-bar,.fl-tbl .fl-sender-name,.fl-tbl .fl-th-sender{display:none}
+  .fl-tbl td.rm-num{padding-left:8px;padding-right:8px}
+  .fl-tbl .ux-name,.fl-tbl .rm-last{overflow:hidden;text-overflow:ellipsis}
+  .fl-tbl .ux-name{display:block}
+}
 
 /* ── DATE-TIME PICKER ── */
 /* Свой, а не <input type="datetime-local">: тот рисуется средствами системы и
@@ -1149,7 +1164,6 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
       </nav>
       <div class="sb-bottom">
         <div class="sb-profile">
-          <div class="sb-av" id="sb-av">A</div>
           <div class="sb-profile-info">
             <div class="sb-user-name" id="sb-name">Admin</div>
             <div class="sb-user-email" id="sb-email">admin</div>
@@ -1483,8 +1497,6 @@ document.getElementById('l-pass').addEventListener('keydown', e => e.key==='Ente
 function enterApp(user) {
   document.getElementById('sb-name').textContent = user.display_name;
   document.getElementById('sb-email').textContent = user.username ? '@'+user.username : '';
-  const av = document.getElementById('sb-av');
-  if (av) { av.textContent = initials(user.display_name); av.style.background = avColor(user.display_name); }
   document.getElementById('login').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   startBgClientsPolling();
@@ -1691,13 +1703,14 @@ const HM = {
   overview: null,
   samples: [], events: [], live: {}, ws: null, cores: 1, lastT: 0,
   range: '15m', paused: false, hover: null, barHover: null, down: false,
-  msgRange: '24h', activity: null, compact: false,
+  msgRange: '24h', activity: null, compact: false, showMsgMarks: false,
   timer: null, ro: null,
   upd: { busy: false, target: null, check: null },
 };
 try { const r = localStorage.getItem('hm-range'); if (['5m', '15m', '1h'].includes(r)) HM.range = r; } catch {}
 try { const r = localStorage.getItem('hm-msg-range'); if (['24h', '7d', '30d', '1y'].includes(r)) HM.msgRange = r; } catch {}
 try { HM.compact = localStorage.getItem('hm-compact') === '1'; } catch {}
+try { HM.showMsgMarks = localStorage.getItem('hm-msg-marks') === '1'; } catch {}
 // Подстраховка от зависшей подсказки: pointerleave/mouseleave у контейнера графика
 // иногда не успевают сработать, если курсор резко покидает не сам график, а окно
 // браузера целиком (relatedTarget === null — верный признак ухода за пределы страницы)
@@ -1779,6 +1792,7 @@ const HM_ICON = {
   restart: '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>',
   compact: '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
   expand: '<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
+  envelope: '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
 };
 
 function hmTileHtml(id, title, icon, lines, extra = '') {
@@ -1809,6 +1823,7 @@ async function renderDashboard() {
       <span class="hm-seg-hl" id="hm-range-hl"></span>
       ${Object.keys(RANGE_NAME).map(r => `<button data-range="${r}" aria-pressed="${HM.range === r}" onclick="hmSetRange('${r}')">${RANGE_NAME[r]}</button>`).join('')}
     </div>
+    <button class="btn btn-ghost btn-sm" id="hm-msg-marks" aria-pressed="${HM.showMsgMarks}" title="Отметки отправленных сообщений" onclick="hmToggleMsgMarks()">${I.envelope}</button>
     <button class="btn btn-ghost btn-sm" id="hm-compact" aria-pressed="${HM.compact}" onclick="hmToggleCompact()"></button>
   `);
   document.getElementById('page-body').innerHTML = `
@@ -2203,13 +2218,17 @@ function hmRenderChart(id) {
     const yy = y(t.v).toFixed(1);
     svg += `<line x1="${PL}" x2="${W - PR}" y1="${yy}" y2="${yy}" style="stroke:var(${t.c});stroke-dasharray:4 4;opacity:.75"/>`;
   }
-  // Полосы обновлений и перезапусков — видно, откуда взялся всплеск или разрыв
+  // Полосы обновлений и перезапусков — видно, откуда взялся всплеск или разрыв.
+  // Отметки сообщений — тем же способом, но без подписи и своим цветом, и только
+  // когда включены кнопкой-конвертом
   for (const e of HM.events) {
+    if (e.type === 'message' && !HM.showMsgMarks) continue;
     const t0 = Math.max(e.t0, tStart), t1 = Math.min(e.t1 || tEnd, tEnd);
     if (t1 <= tStart || t0 >= tEnd) continue;
     const x0 = PL + (t0 - tStart) / span * iw, x1 = PL + (t1 - tStart) / span * iw;
-    svg += `<rect x="${x0.toFixed(1)}" y="${PT}" width="${Math.max(2, x1 - x0).toFixed(1)}" height="${ih}" style="fill:var(--c-blue);fill-opacity:.1"/>`
-      + `<text x="${(x0 + 4).toFixed(1)}" y="${PT + 10}" style="fill:var(--c-blue-text)">${HM_EVENT[e.type] || e.type}</text>`;
+    const color = e.type === 'message' ? '--c-primary' : '--c-blue';
+    svg += `<rect x="${x0.toFixed(1)}" y="${PT}" width="${Math.max(2, x1 - x0).toFixed(1)}" height="${ih}" style="fill:var(${color});fill-opacity:.16"/>`;
+    if (HM_EVENT[e.type]) svg += `<text x="${(x0 + 4).toFixed(1)}" y="${PT + 10}" style="fill:var(--c-blue-text)">${HM_EVENT[e.type]}</text>`;
   }
   [0, .25, .5, .75, 1].forEach((f, n) => {
     svg += `<text x="${(PL + f * iw).toFixed(1)}" y="${H - 5}" text-anchor="${n === 0 ? 'start' : n === 4 ? 'end' : 'middle'}">${hmClock(tStart + f * span, HM.range === '5m')}</text>`;
@@ -2375,6 +2394,14 @@ function hmSyncPause() {
   b.setAttribute('aria-pressed', String(HM.paused));
   b.innerHTML = HM.paused ? HM_ICON.play + 'Продолжить' : HM_ICON.pause + 'Пауза';
 }
+// Отметки сообщений на графиках системных данных — без подписи, тем же способом,
+// что и полосы обновления/перезапуска (см. HM.events в hmRenderChart)
+function hmToggleMsgMarks() {
+  HM.showMsgMarks = !HM.showMsgMarks;
+  try { localStorage.setItem('hm-msg-marks', HM.showMsgMarks ? '1' : '0'); } catch {}
+  $hm('hm-msg-marks')?.setAttribute('aria-pressed', String(HM.showMsgMarks));
+  hmRenderCharts();
+}
 // Пауза замораживает картинку, но данные продолжают приходить — после паузы пропусков нет
 function hmTogglePause() {
   HM.paused = !HM.paused;
@@ -2388,12 +2415,42 @@ function hmSyncCompact() {
   b.innerHTML = HM.compact ? HM_ICON.expand + 'Подробно' : HM_ICON.compact + 'Компактно';
   $hm('hm')?.classList.toggle('hm-compact', HM.compact);
 }
-// Сворачивает графики и детали у всех блоков — заголовок и главное значение остаются
+// Сворачивает графики и детали у всех блоков — заголовок и главное значение остаются.
+// hm-compact прячет их через display:none мгновенно, поэтому саму смену класса
+// откладываем до конца анимации (при сворачивании) или делаем её до замера высоты
+// (при разворачивании) — приём тот же, что и в hmUpdCollapse для панели обновления.
 function hmToggleCompact() {
   HM.compact = !HM.compact;
   try { localStorage.setItem('hm-compact', HM.compact ? '1' : '0'); } catch {}
-  hmSyncCompact();
-  if (!HM.compact) { hmRenderCharts(); hmRenderHeadlines(); }
+  const targets = [...document.querySelectorAll('#hm .hm-chart, #hm .hm-legend, #hm .hm-tbl, #hm .hm-inner, #hm .hm-store-list')];
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced || !targets.length) {
+    hmSyncCompact();
+    if (!HM.compact) { hmRenderCharts(); hmRenderHeadlines(); }
+    return;
+  }
+  if (HM.compact) {
+    targets.forEach(el => { el.style.overflow = 'hidden'; el.style.height = el.offsetHeight + 'px'; });
+    void targets[0].offsetHeight;
+    // transition и целевое значение — обязательно в РАЗНЫХ reflow-тактах: если задать
+    // их одним махом, браузер схлопывает оба изменения в один пересчёт стиля и просто
+    // прыгает в конечное состояние, минуя анимацию (проверено эмпирически)
+    targets.forEach(el => { el.style.transition = 'height .35s ease, opacity .25s ease'; });
+    void targets[0].offsetHeight;
+    targets.forEach(el => { el.style.height = '0px'; el.style.opacity = '0'; });
+    setTimeout(() => { hmSyncCompact(); targets.forEach(el => { el.style.cssText = ''; }); }, 380);
+  } else {
+    hmSyncCompact();
+    hmRenderCharts();
+    hmRenderHeadlines();
+    const heights = targets.map(el => el.scrollHeight);
+    targets.forEach(el => { el.style.overflow = 'hidden'; el.style.height = '0px'; el.style.opacity = '0'; });
+    void targets[0].offsetHeight;
+    targets.forEach(el => { el.style.transition = 'height .35s ease, opacity .25s ease'; });
+    void targets[0].offsetHeight;
+    targets.forEach((el, i) => { el.style.height = heights[i] + 'px'; el.style.opacity = '1'; });
+    setTimeout(() => { targets.forEach(el => { el.style.cssText = ''; }); }, 380);
+  }
 }
 // Плашка активного пункта — двигаем transform'ом между реальными координатами кнопок
 // (а не CSS-переключением фона), с отскоком, как в таб-баре мобильного клиента.
@@ -4165,7 +4222,7 @@ const ST_I = {
 };
 const ST_EDIT = [[60, '1 мин'], [120, '2 мин'], [900, '15 мин'], [3600, '1 час'], [172800, '48 часов']];
 const ST_LIFE = [[0, 'Всегда'], [30, '30 дней'], [90, '90 дней'], [365, '1 год']];
-const ST_FORM = { messages: ['edit'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime'] };
+const ST_FORM = { messages: ['edit'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime', 'backupRetention'] };
 const ST_IN = { messages: 'в «Сообщениях»', attachments: 'во «Вложениях»', backups: 'в «Резервных копиях»' };
 const ST_QUICK = { 'Документы': ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'], 'Архивы': ['zip', 'rar', '7z'] };
 const ST_KEYS = {
@@ -4173,6 +4230,7 @@ const ST_KEYS = {
   videoMax: ['upload_video_max_size', String], videoExt: ['upload_video_extensions', v => v.join(',')],
   fileMax: ['upload_file_max_size', String], fileExt: ['upload_file_extensions', v => v.join(',')], life: ['upload_file_lifetime', String],
   backupDays: ['backup_schedule_days', v => v.join(',')], backupTime: ['backup_schedule_time', String],
+  backupRetention: ['backup_retention_days', v => (v == null || Number.isNaN(v)) ? '' : String(v)],
 };
 // Порядок для интерфейса — с понедельника; значение — как у Date.getDay() (0=вс)
 const ST_DAYS = [[1, 'Пн'], [2, 'Вт'], [3, 'Ср'], [4, 'Чт'], [5, 'Пт'], [6, 'Сб'], [0, 'Вс']];
@@ -4204,6 +4262,7 @@ function stFromSettings(s) {
     life: Number(s.upload_file_lifetime) || 0,
     backupDays: s.backup_schedule_days ? list(s.backup_schedule_days).map(Number) : [],
     backupTime: s.backup_schedule_time || '03:00',
+    backupRetention: s.backup_retention_days ? Number(s.backup_retention_days) : NaN,
   };
   ST.draft = stClone(ST.saved);
   ST.gh.set = !!s.github_token_set;
@@ -4234,6 +4293,10 @@ function stErrors() {
   if (!d.videoExt.length) e.videoExt = 'Нужен хотя бы один формат видео, иначе его нельзя будет отправить';
   if (!(Number.isInteger(d.life) && d.life >= 0 && d.life <= 3650)) e.life = 'Срок хранения — от 1 до 3650 дней';
   if (d.backupDays.length && !/^([01]\d|2[0-3]):[0-5]\d$/.test(d.backupTime)) e.backupTime = 'Укажите время в формате ЧЧ:ММ';
+  // Пусто (NaN/null — в т.ч. после JSON-клонирования драфта) — валидное значение:
+  // хранить копии всегда, без ограничения по сроку
+  if (!(d.backupRetention == null || Number.isNaN(d.backupRetention) || (Number.isInteger(d.backupRetention) && d.backupRetention >= 1 && d.backupRetention <= 3650)))
+    e.backupRetention = 'Срок хранения копий — от 1 до 3650 дней, либо оставьте пустым';
   return e;
 }
 const stLastBackup = () => ST.backups[0];
@@ -4356,13 +4419,22 @@ function stPaneBackups() {
     </div>
     ${d.backupDays.length ? `<div class="st-r"><div class="st-l"><b>Время</b><span>По времени сервера</span></div>
       <div class="st-inp st-num ${err.backupTime ? 'bad' : ''}" style="width:130px"><input type="time" value="${esc(d.backupTime)}" aria-label="Время автокопирования" oninput="stBackupTime(this.value)"></div></div>
-      ${err.backupTime ? `<div class="st-err">${esc(err.backupTime)}</div>` : `<p class="st-hint">Ближайшая копия — ${esc(stNextBackupLabel())}.</p>`}` : ''}
+      <div class="st-r stack">${err.backupTime ? `<div class="st-err">${esc(err.backupTime)}</div>` : `<p class="st-hint" style="margin:0">Ближайшая копия — ${esc(stNextBackupLabel())}.</p>`}</div>` : ''}
+    </div>
+    <div class="st-gt">Хранение</div>
+    <div class="st-g"><div class="st-r">
+      <div class="st-l"><b>Срок хранения</b><span>Копии старше срока удаляются автоматически. Пусто — хранить всегда.</span></div>
+      <div class="st-inp st-num ${err.backupRetention ? 'bad' : ''}" id="st-box-backupRetention" style="width:130px"><input type="number" min="1" max="3650" value="${d.backupRetention == null || Number.isNaN(d.backupRetention) ? '' : d.backupRetention}" aria-label="Срок хранения копий в днях" oninput="stNum('backupRetention', this.value)"><span class="st-u">дней</span></div></div>
+      ${err.backupRetention ? `<div class="st-r stack"><div class="st-err">${esc(err.backupRetention)}</div></div>` : ''}
     </div>
     ${ST.backups.length ? `<div class="st-gt">${ST_I.db}Копии · ${ST.backups.length}</div>
     <div class="st-g">${ST.backups.map((b, i) => `<div class="st-bk ${i === 0 && ST.bkNew ? 'new' : ''}">
         <div><b>${esc(uaSeen(b.created_at))} ${i === 0 && ST.bkNew ? '<span class="st-chip new">новая</span>' : ''}</b><small>${esc(new Date(b.created_at * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }))}</small></div>
         <span class="st-sz">${hmBytes(b.size)}</span>
-        <button type="button" class="btn btn-ghost btn-sm" onclick="stDownload('${jesc(b.name)}', this)">${ST_I.down}Скачать</button></div>`).join('')}</div>` : ''}`;
+        <div style="display:flex;gap:6px">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="stDownload('${jesc(b.name)}', this)">${ST_I.down}Скачать</button>
+          <button type="button" class="btn btn-ghost btn-sm" aria-label="Удалить копию ${esc(b.name)}" onclick="stDeleteBackup('${jesc(b.name)}')">${UX_I.trash}</button>
+        </div></div>`).join('')}</div>` : ''}`;
 }
 
 // ── GitHub ──
@@ -4447,7 +4519,7 @@ function stChrome() {
   if (nav) nav.innerHTML = stNavHtml();
   stFootRender();
   const e = stErrors();
-  ['imgMax', 'fileMax', 'life', 'edit'].forEach(k => document.getElementById('st-box-' + k)?.classList.toggle('bad', !!e[k]));
+  ['imgMax', 'fileMax', 'life', 'edit', 'backupRetention'].forEach(k => document.getElementById('st-box-' + k)?.classList.toggle('bad', !!e[k]));
   const ex = document.getElementById('st-edit-example');
   if (ex) ex.innerHTML = stEditExample();
 }
@@ -4585,6 +4657,15 @@ async function stDownload(name, btn) {
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   } catch { toast('Не удалось скачать копию', 'error'); }
   finally { if (btn) btn.disabled = false; }
+}
+function stDeleteBackup(name) {
+  confirm('Удалить копию?', `Файл ${name} будет удалён без возможности восстановления.`, async () => {
+    const r = await api('DELETE', `/api/admin/backups/${encodeURIComponent(name)}`);
+    if (!r?.ok) { toast(esc(r?.error || 'Не удалось удалить копию'), 'error'); return; }
+    ST.backups = r.backups || ST.backups.filter(b => b.name !== name);
+    toast('Копия удалена', 'success');
+    stRender();
+  });
 }
 
 function stGhShow() {
@@ -4759,9 +4840,9 @@ function flRender() {
           ${uxSearch('fl-q', FL.q, 'Имя файла', 'flSearch')}</div>
         ${FL.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${FL.sel.size}</b><button class="btn btn-ghost btn-sm" onclick="flDelete([...FL.sel])">${UX_I.trash}Удалить</button>
           <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="FL.sel.clear(); flRender()">Снять выделение</button></div>` : ''}
-        <div class="ux-tbl"><table>
+        <div class="ux-tbl"><table class="fl-tbl">
           <thead><tr><th style="width:40px"><input type="checkbox" aria-label="Выбрать все" ${allSel ? 'checked' : ''} onchange="flSelAll(this.checked)"></th>
-            <th>Файл</th><th class="rm-num">Размер</th><th>Отправил</th><th>Чат</th><th>Когда</th><th></th></tr></thead>
+            <th>Файл</th><th class="rm-num">Размер</th><th><span class="fl-th-sender">Отправил</span></th><th>Чат</th><th>Когда</th><th></th></tr></thead>
           <tbody>${rows.map(f => {
             const kind = flKind(f), name = jesc(f.filename);
             const openable = kind === 'image' || kind === 'video';
@@ -4771,7 +4852,7 @@ function flRender() {
               <td><input type="checkbox" aria-label="Выбрать: ${esc(flName(f))}" ${FL.sel.has(f.filename) ? 'checked' : ''} onchange="flToggle('${name}')"></td>
               <td><div class="ux-cell">${thumb}<div style="min-width:0"><div class="ux-name" title="${esc(flName(f))}">${esc(flShort(flName(f)))}</div><div class="rm-sub">${FL_KIND[kind][0]}</div></div></div></td>
               <td class="rm-num"><span class="fl-size"><span class="fl-bar"><i style="width:${Math.max(4, (f.size || 0) / max * 100)}%"></i></span>${hmBytes(f.size || 0)}</span></td>
-              <td>${f.sender_name ? `<div class="ux-cell" style="gap:8px">${avHtml(f.sender_name, 24, 7, f.sender_id, false, true)}<span style="white-space:nowrap">${esc(f.sender_name)}</span></div>` : '<span class="rm-sub">без сообщения</span>'}</td>
+              <td>${f.sender_name ? `<div class="ux-cell" style="gap:8px">${avHtml(f.sender_name, 24, 7, f.sender_id, false, true)}<span class="fl-sender-name" style="white-space:nowrap">${esc(f.sender_name)}</span></div>` : '<span class="rm-sub">без сообщения</span>'}</td>
               <td>${f.chat_name ? `<span class="ux-name" style="font-weight:500;font-size:12px">${esc(f.chat_name)}${flChatChip(f.chat_type)}</span>` : '<span class="rm-sub">—</span>'}</td>
               <td class="rm-last">${esc(uaSeen(f.sent_at || Math.floor((f.mtime || 0) / 1000)))}</td>
               <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="flOpen('${name}')">${openable ? FL_I.eye + 'Открыть' : FL_I.down + 'Скачать'}</button>
@@ -4898,6 +4979,11 @@ function openFilePreview(name) {
   }
   document.getElementById('fl-cap').textContent = f ? flName(f) : name;
   box.classList.add('open');
+  // CSS-анимация появления объявлена статично на #file-lightbox (не через класс),
+  // поэтому смена display:none→flex перезапускает её только один раз за всю жизнь
+  // страницы — при повторных открытиях декларация animation не меняется, и браузер
+  // её не перезапускает. Сбрасываем в none и форсим reflow, чтобы включалась каждый раз.
+  [box, img, vid].forEach(el => { el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; });
 }
 function closeFilePreview() {
   const box = document.getElementById('file-lightbox');

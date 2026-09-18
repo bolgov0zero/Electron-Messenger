@@ -355,11 +355,11 @@ router.put('/settings', (req, res) => {
     'upload_image_max_size', 'upload_image_extensions',
     'upload_video_max_size', 'upload_video_extensions',
     'upload_file_max_size', 'upload_file_extensions', 'upload_file_lifetime',
-    'backup_schedule_days', 'backup_schedule_time',
+    'backup_schedule_days', 'backup_schedule_time', 'backup_retention_days',
     ];
   const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
   const del = db.prepare('DELETE FROM settings WHERE key = ?');
-  const keepEmpty = ['upload_image_extensions', 'upload_video_extensions', 'upload_file_extensions', 'upload_file_lifetime'];
+  const keepEmpty = ['upload_image_extensions', 'upload_video_extensions', 'upload_file_extensions', 'upload_file_lifetime', 'backup_retention_days'];
   for (const key of allowed) {
     if (key in req.body) {
       const val = req.body[key]?.trim() ?? '';
@@ -908,16 +908,44 @@ async function createBackup() {
   return name;
 }
 
+// Срок хранения — вручную в днях, пусто/0 = хранить всегда (тот же принцип, что и у
+// upload_file_lifetime для файлов). Чистим после каждого создания копии и раз в 6 часов —
+// на случай, если новых копий долго не было, а старые всё равно должны истечь.
+function pruneBackups() {
+  const days = parseInt(db.prepare("SELECT value FROM settings WHERE key = 'backup_retention_days'").get()?.value || '0');
+  if (!days) return;
+  const cutoff = Date.now() - days * 86_400_000;
+  for (const b of listBackups()) {
+    if (b.created_at * 1000 < cutoff) {
+      try { fs.unlinkSync(path.join(BACKUP_DIR, b.name)); console.log('[Backup] Удалена устаревшая копия:', b.name); } catch {}
+    }
+  }
+}
+setInterval(pruneBackups, 6 * 3_600_000).unref();
+
 router.get('/backups', (req, res) => res.json(listBackups()));
 
 router.post('/backups', async (req, res) => {
   try {
     const name = await createBackup();
     console.log('[Backup] Создана копия:', name);
+    pruneBackups();
     res.json({ ok: true, name, backups: listBackups() });
   } catch (e) {
     console.error('[Backup] Ошибка:', e.message);
     res.status(500).json({ error: 'Не удалось создать копию: ' + e.message });
+  }
+});
+
+router.delete('/backups/:name', (req, res) => {
+  const name = req.params.name;
+  if (!BACKUP_RE.test(name)) return res.status(400).json({ error: 'Некорректное имя' });
+  try {
+    fs.unlinkSync(path.join(BACKUP_DIR, name));
+    console.log('[Backup] Копия удалена вручную:', name);
+    res.json({ ok: true, backups: listBackups() });
+  } catch (e) {
+    res.status(404).json({ error: 'Копия не найдена' });
   }
 });
 
@@ -941,6 +969,7 @@ function startBackupSchedule() {
     try {
       const name = await createBackup();
       console.log('[Backup] Автоматическая копия создана:', name);
+      pruneBackups();
     } catch (e) { console.error('[Backup] Ошибка автокопии:', e.message); }
   }, 30_000);
 }

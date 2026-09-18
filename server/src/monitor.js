@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFile } = require('child_process');
+const db = require('./db');
 
 const STEP_MS = 2000;
 const CAP = 1800;          // час по 2 секунды
@@ -222,13 +223,25 @@ function addEvent(type) {
   save();
 }
 
+// Отметки отправленных сообщений — точки, а не диапазоны (t0 === t1), считаются
+// с базы каждый раз заново по всему видимому часу, а не с since: HM.events на клиенте
+// не докапливается, а целиком перезаписывается на каждый опрос (см. events выше).
+const msgMarksStmt = db.prepare('SELECT sent_at FROM messages WHERE deleted = 0 AND sent_at > ? ORDER BY sent_at');
+function messageMarks(cutoff) {
+  return msgMarksStmt.all(Math.floor(cutoff / 1000)).map(r => ({ type: 'message', t0: r.sent_at * 1000, t1: r.sent_at * 1000 }));
+}
+
 // ── Данные для админки ──
 function snapshot(since) {
   const from = Number(since) || 0;
   let i = samples.length;
   while (i > 0 && samples[i - 1][0] > from) i--;
   const cutoff = Date.now() - CAP * STEP_MS;
-  return { now: Date.now(), step: STEP_MS, cores: CORES, samples: samples.slice(i), events: events.filter(e => (e.t1 || Date.now()) > cutoff), live };
+  return {
+    now: Date.now(), step: STEP_MS, cores: CORES, samples: samples.slice(i),
+    events: [...events.filter(e => (e.t1 || Date.now()) > cutoff), ...messageMarks(cutoff)],
+    live,
+  };
 }
 
 function hostInfo() {
