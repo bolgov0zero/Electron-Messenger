@@ -1023,19 +1023,27 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .file-thumb{cursor:zoom-in;transition:opacity var(--t-fast)}
 .file-thumb:hover{opacity:.75}
 
-/* Узкое окно: таблице «Файлы» не хватает штатных 820px — сжимаем колонки под
-   fixed-раскладку (Файл получает всё, что осталось) вместо горизонтального скролла */
-@media (max-width:900px){
-  .ux-tbl table.fl-tbl{min-width:0;table-layout:fixed}
-  .fl-tbl th:nth-child(3),.fl-tbl td:nth-child(3){width:66px}
-  .fl-tbl th:nth-child(4),.fl-tbl td:nth-child(4){width:34px}
-  .fl-tbl th:nth-child(5),.fl-tbl td:nth-child(5){width:96px}
-  .fl-tbl th:nth-child(6),.fl-tbl td:nth-child(6){width:84px}
-  .fl-tbl th:nth-child(7),.fl-tbl td:nth-child(7){width:92px}
+/* Таблица «Файлы»: имена файлов — случайные строки без пробелов, поэтому
+   auto-раскладка у неё может захотеть больше 900-1000px даже на не особо узком
+   окне (штатный min-width:820px тут не спасает — это just пол, не потолок).
+   Держим fixed-раскладку с процентными колонками ВСЕГДА, а не только при узком
+   окне: Файл получает весь остаток и всегда умещается, скролла не бывает ни при
+   какой ширине. Прятать полоску/имя отправителя — уже отдельная, чисто
+   косметическая узость под совсем маленькое окно. */
+.ux-tbl table.fl-tbl{min-width:0;table-layout:fixed}
+.fl-tbl th:nth-child(3),.fl-tbl td:nth-child(3){width:10%}
+.fl-tbl th:nth-child(4),.fl-tbl td:nth-child(4){width:16%}
+.fl-tbl th:nth-child(5),.fl-tbl td:nth-child(5){width:14%}
+.fl-tbl th:nth-child(6),.fl-tbl td:nth-child(6){width:11%}
+.fl-tbl th:nth-child(7),.fl-tbl td:nth-child(7){width:13%}
+.fl-tbl .ux-name,.fl-tbl .rm-last,.fl-tbl td .rm-sub{overflow:hidden;text-overflow:ellipsis}
+.fl-tbl .ux-name,.fl-tbl td .rm-sub{display:block}
+@media (max-width:700px){
+  /* 34px с обычным паддингом 14px с каждой стороны оставил бы контенту 6px —
+     под аватар нужно хотя бы 24px, поэтому здесь ещё и сжимаем паддинг */
+  .fl-tbl th:nth-child(4),.fl-tbl td:nth-child(4){width:40px;padding-left:8px;padding-right:8px}
   .fl-tbl .fl-bar,.fl-tbl .fl-sender-name,.fl-tbl .fl-th-sender{display:none}
   .fl-tbl td.rm-num{padding-left:8px;padding-right:8px}
-  .fl-tbl .ux-name,.fl-tbl .rm-last{overflow:hidden;text-overflow:ellipsis}
-  .fl-tbl .ux-name{display:block}
 }
 
 /* ── DATE-TIME PICKER ── */
