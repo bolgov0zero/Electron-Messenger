@@ -1273,8 +1273,10 @@ function renderMessages(mode) {
   } else if (smart) {
     // У низа — остаёмся у низа (список ниже вырос); не у низа — оставляем как
     // было, а не тянем следом дельтой: правка/реакция может изменить высоту
-    // где угодно в истории, а не только там, где сейчас читают
-    container.scrollTop = stickBottom ? container.scrollHeight : prevTop;
+    // где угодно в истории, а не только там, где сейчас читают.
+    // Пока в разгаре плавный скролл от кнопки «вниз» — вообще не трогаем
+    // scrollTop, даже выставление того же текущего значения обрывает анимацию.
+    if (!_jumpingToBottom) container.scrollTop = stickBottom ? container.scrollHeight : prevTop;
   } else if (mode !== 'none') {
     container.scrollTop = container.scrollHeight;
   }
@@ -1298,12 +1300,22 @@ function renderScrollBadge() {
   const badge = document.getElementById('scroll-down-badge');
   if (badge) badge.textContent = _awayNewCount > 0 ? (_awayNewCount > 99 ? '99+' : _awayNewCount) : '';
 }
+// Пока едем к низу — не даём сторожу старых сообщений сработать: смахивая
+// далеко наверх, путь плавного скролла вниз проходит через сторожевое
+// сообщение, оно засчитывалось как «долистали», запускало подгрузку страницы,
+// та перестраивала всю ленту и переставляла scrollTop — плавная анимация
+// обрывалась на середине, и казалось, что кнопка едет вниз рывками.
+let _jumpingToBottom = false;
 function scrollToBottom() {
   const container = document.getElementById('messages');
   if (!container) return;
+  _jumpingToBottom = true;
   container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
   _awayNewCount = 0;
   renderScrollBadge();
+  const done = () => { _jumpingToBottom = false; container.removeEventListener('scrollend', done); };
+  container.addEventListener('scrollend', done, { once: true });
+  setTimeout(done, 1000); // подстраховка — scrollend поддержан не везде
 }
 // ── ПОДГРУЗКА СТАРЫХ СООБЩЕНИЙ: сторож на N-м сообщении от текущего верха ──
 // Не пиксели скролла, а счётчик: следующая страница грузится, когда в поле
@@ -1323,7 +1335,7 @@ function setupOlderSentinel() {
   const el = container.querySelector(`[data-msg-id="${sentinelMsg.id}"]`);
   if (!el) return;
   _olderObserver = new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting) loadOlderMessages();
+    if (!_jumpingToBottom && entries[0].isIntersecting) loadOlderMessages();
   }, { root: container });
   _olderObserver.observe(el);
 }
