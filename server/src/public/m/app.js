@@ -878,8 +878,6 @@ async function onAvatarPicked(input) {
     toast('Фото обновлено');
   } else toast('Не удалось загрузить фото');
 }
-const _checkIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-
 // Настройки внешнего вида, которые живут на устройстве (не в аккаунте):
 // тема и через общий ключ SESSION_KEY.settings — как раньше; акцент и узор/фон
 // переписки — через отдельные ключи localStorage, ТЕ ЖЕ, что у /chat, поэтому
@@ -1026,7 +1024,8 @@ function applyAppearance() {
 }
 
 function setTheme(theme) {
-  document.documentElement.classList.toggle('dark', theme === 'dark');
+  document.documentElement.classList.toggle('dark', theme === 'dark' || theme === 'night');
+  document.documentElement.classList.toggle('night', theme === 'night');
   saveLocalSetting('theme', theme);
   applyAppearance(); // акцент и узор зависят от темы (свои оттенки на тёмной/светлой)
   applyThemeColorMeta();
@@ -1039,26 +1038,34 @@ function setTheme(theme) {
 // главный экран, не перезаходя
 function applyManifestLink() {
   const link = document.getElementById('manifest-link');
-  if (link) link.href = document.documentElement.classList.contains('dark') ? '/m/manifest.json' : '/m/manifest-light.json';
+  if (!link) return;
+  const cl = document.documentElement.classList;
+  link.href = cl.contains('night') ? '/m/manifest-night.json' : cl.contains('dark') ? '/m/manifest.json' : '/m/manifest-light.json';
 }
 // Цвет системной навигационной панели/статус-бара — как у таб-бара и шторок
 // (--modal-bg), а не у фона экранов, иначе виден шов другого оттенка у края
 function applyThemeColorMeta() {
   const meta = document.getElementById('theme-color-meta');
-  if (meta) meta.content = document.documentElement.classList.contains('dark') ? '#181c20' : '#ffffff';
+  if (!meta) return;
+  const cl = document.documentElement.classList;
+  meta.content = cl.contains('night') ? '#0d1117' : cl.contains('dark') ? '#181c20' : '#ffffff';
 }
 
+function currentTheme() {
+  const cl = document.documentElement.classList;
+  return cl.contains('night') ? 'night' : cl.contains('dark') ? 'dark' : 'light';
+}
 function appearanceSheetHtml() {
-  const isDark = document.documentElement.classList.contains('dark');
+  const theme = currentTheme();
+  const themeSeg = [['light', 'Светлая'], ['dark', 'Тёмная'], ['night', 'Ночная']];
   const f = loadLocalSettings().fontSize || 'medium';
   const fontSeg = [['small', 'A'], ['medium', 'A'], ['large', 'A']];
   return `
     <div class="sheet-title">Внешний вид</div>
-    <div class="settings-row tight" onclick="setTheme('light')" style="cursor:pointer">
-      <div class="settings-label">Светлая тема</div>${!isDark ? _checkIcon : ''}
-    </div>
-    <div class="settings-row tight" onclick="setTheme('dark')" style="cursor:pointer">
-      <div class="settings-label">Тёмная тема</div>${isDark ? _checkIcon : ''}
+    <div class="set-block" style="border-top:0;margin-top:0;padding-top:0">
+      <div class="set-block-title">Тема</div>
+      <div class="set-seg" data-seg="theme">${themeSeg.map(([v, label]) =>
+        `<button class="${theme === v ? 'active' : ''}" data-value="${v}" onclick="setTheme('${v}')">${label}</button>`).join('')}</div>
     </div>
     <div class="set-block">
       <div class="set-block-title">Цветовой акцент</div>
@@ -1066,32 +1073,71 @@ function appearanceSheetHtml() {
     </div>
     <div class="set-block">
       <div class="set-block-title">Фон переписки</div>
-      <div class="set-seg">
-        <button class="${currentChatBg() === 'plain' ? 'active' : ''}" onclick="setChatBg('plain')">Как обычно</button>
-        <button class="${currentChatBg() === 'split' ? 'active' : ''}" onclick="setChatBg('split')">С разделением</button>
+      <div class="set-seg" data-seg="chatbg">
+        <button class="${currentChatBg() === 'plain' ? 'active' : ''}" data-value="plain" onclick="setChatBg('plain')">Как обычно</button>
+        <button class="${currentChatBg() === 'split' ? 'active' : ''}" data-value="split" onclick="setChatBg('split')">С разделением</button>
       </div>
     </div>
     <div class="set-block">
       <div class="set-block-title">Узор фона</div>
       <div class="pat-dot-row" id="pattern-dots">${patternDotsHtml()}</div>
-      ${currentPattern() ? `<div class="set-seg" id="pattern-level-seg" style="margin-top:8px">${[1, 2, 3].map(n =>
-        `<button class="${currentPatternLevel() === n ? 'active' : ''}" onclick="setPatternLevel(${n})">${['Слабо', 'Средне', 'Сильно'][n - 1]}</button>`).join('')}</div>` : ''}
+      ${currentPattern() ? `<div class="set-seg" id="pattern-level-seg" data-seg="patternlevel" style="margin-top:8px">${[1, 2, 3].map(n =>
+        `<button class="${currentPatternLevel() === n ? 'active' : ''}" data-value="${n}" onclick="setPatternLevel(${n})">${['Слабо', 'Средне', 'Сильно'][n - 1]}</button>`).join('')}</div>` : ''}
     </div>
     <div class="set-block">
       <div class="set-block-title">Размер текста сообщений</div>
-      <div class="set-seg">${fontSeg.map(([v, label], i) =>
-        `<button class="${f === v ? 'active' : ''}" style="font-size:${13 + i * 3}px" onclick="setFontSize('${v}')">${label}</button>`).join('')}</div>
+      <div class="set-seg" data-seg="fontsize">${fontSeg.map(([v, label], i) =>
+        `<button class="${f === v ? 'active' : ''}" data-value="${v}" style="font-size:${13 + i * 3}px" onclick="setFontSize('${v}')">${label}</button>`).join('')}</div>
     </div>
   `;
 }
 function openAppearanceSheet() {
   openSheet(appearanceSheetHtml());
   paintPatternDots();
+  syncAllSegHl(false);
 }
 function refreshAppearanceSheet() {
   if (!document.getElementById('sheet-bg').classList.contains('open')) return;
   openSheet(appearanceSheetHtml());
   paintPatternDots();
+  syncAllSegHl(true);
+}
+// Плавающая плашка в переключателях шторки «Внешний вид» — тот же приём, что и
+// в таб-баре (.tab-hl), но с поправкой: там DOM не пересоздаётся, только
+// меняются классы, и плашка едет от своего текущего места. Здесь же весь HTML
+// шторки перерисовывается заново при каждом клике (openSheet), старого узла
+// плашки уже не существует — ехать в анимации не от чего. Поэтому запоминаем,
+// какое значение было активно до перерисовки, и на новой разметке сперва молча
+// ставим плашку туда, где было старое значение, затем одним кадром отпускаем
+// её в новое (FLIP) — animate=false при первом открытии шторки, где ехать
+// вообще не от чего.
+const _segPrevValue = {};
+function syncSegHl(seg, animate) {
+  if (!seg) return;
+  const key = seg.dataset.seg;
+  let hl = seg.querySelector('.set-seg-hl');
+  if (!hl) { hl = document.createElement('span'); hl.className = 'set-seg-hl'; seg.prepend(hl); }
+  const activeBtn = seg.querySelector('button.active');
+  if (!activeBtn) return;
+  const segRect = seg.getBoundingClientRect();
+  const place = btn => {
+    const r = btn.getBoundingClientRect();
+    hl.style.width = r.width + 'px';
+    hl.style.height = r.height + 'px';
+    hl.style.transform = `translate(${(r.left - segRect.left).toFixed(2)}px, ${(r.top - segRect.top).toFixed(2)}px)`;
+  };
+  const prevValue = _segPrevValue[key];
+  const fromBtn = animate && prevValue != null && prevValue !== activeBtn.dataset.value
+    ? [...seg.querySelectorAll('button')].find(b => b.dataset.value === prevValue) : null;
+  hl.style.transition = 'none';
+  place(fromBtn || activeBtn);
+  void hl.offsetWidth;
+  hl.style.transition = '';
+  if (fromBtn) place(activeBtn);
+  _segPrevValue[key] = activeBtn.dataset.value;
+}
+function syncAllSegHl(animate) {
+  document.querySelectorAll('#sheet-bg .set-seg[data-seg]').forEach(seg => syncSegHl(seg, animate));
 }
 
 // ── ПЕРЕПИСКА ──

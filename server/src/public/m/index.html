@@ -19,14 +19,17 @@ window.APP_VERSION = '?v=1';
 // в /m зафиксирован на 100% (в /chat он настраивается) — --ui-scale/
 // --vh100/--vw100 не трогаем, остаются дефолтными из :root.
 (function(){
-  var fs = 'medium';
+  var fs = 'medium', t = 'dark';
   var hs = document.documentElement.style;
   try {
     var s = JSON.parse(localStorage.getItem('electron_v2') || '{}');
-    var t = (s.settings && s.settings.theme) || 'dark';
-    document.documentElement.classList.toggle('dark', t === 'dark');
+    t = (s.settings && s.settings.theme) || 'dark';
     fs = (s.settings && s.settings.fontSize) || 'medium';
-  } catch (e) { document.documentElement.classList.add('dark'); }
+  } catch (e) { t = 'dark'; }
+  // .dark — общий флаг «тёмный UI» (акцент/статус-бар и т.п.), .night поверх
+  // него переопределяет только фон на глубокий тёмно-синий (см. html.night в style.css)
+  document.documentElement.classList.toggle('dark', t === 'dark' || t === 'night');
+  document.documentElement.classList.toggle('night', t === 'night');
   document.documentElement.classList.add('font-' + fs);
   try {
     var ACCENTS = {
@@ -54,7 +57,7 @@ window.APP_VERSION = '?v=1';
   var manifestLink = document.createElement('link');
   manifestLink.rel = 'manifest';
   manifestLink.id = 'manifest-link';
-  manifestLink.href = document.documentElement.classList.contains('dark') ? '/m/manifest.json' : '/m/manifest-light.json';
+  manifestLink.href = t === 'night' ? '/m/manifest-night.json' : t === 'dark' ? '/m/manifest.json' : '/m/manifest-light.json';
   document.head.appendChild(manifestLink);
 })();
 // /m — редизайн специально под телефон (жесты, размер тап-зон, нижний таб-бар).
@@ -275,7 +278,7 @@ window.APP_VERSION = '?v=1';
           </div>
           <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
           <input type="text" id="msg-input" placeholder="Сообщение" oninput="onMsgInput()" onfocus="closeEmojiPanel()" onkeydown="if(event.key==='Enter'){event.preventDefault();sendMessage();}">
-          <div class="send-btn" onclick="sendMessage()">
+          <div class="send-btn" onmousedown="event.preventDefault()" onclick="sendMessage()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12L21 4L14 21L11 13L3 12Z"/></svg>
           </div>
         </div>
