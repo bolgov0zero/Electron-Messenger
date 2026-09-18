@@ -1235,6 +1235,7 @@ function renderMessages(mode) {
   applyAvatars();
   stickAfterMedia(container);
   updateScrollDownBtn();
+  setupOlderSentinel();
   return stickBottom;
 }
 // ── КНОПКА «К ПОСЛЕДНИМ СООБЩЕНИЯМ» ──
@@ -1258,26 +1259,37 @@ function scrollToBottom() {
   _awayNewCount = 0;
   renderScrollBadge();
 }
-// ── ПОДГРУЗКА СТАРЫХ СООБЩЕНИЙ ПРИ СКРОЛЛЕ ВВЕРХ ──
+// ── ПОДГРУЗКА СТАРЫХ СООБЩЕНИЙ: сторож на N-м сообщении от текущего верха ──
+// Не пиксели скролла, а счётчик: следующая страница грузится, когда в поле
+// зрения попадает сообщение на полпути внутри уже загруженного окна. После
+// каждой подгрузки «верх» уезжает на страницу назад, и сторож пересчитывается
+// от него же — 50-е от текущего верха, а не от начала истории.
+const OLDER_PAGE_SIZE = 100;
+const OLDER_SENTINEL_INDEX = 50;
 let _loadingOlder = false;
-let _lastOlderLoadAt = 0;
-async function maybeLoadOlderMessages() {
+let _olderObserver = null;
+function setupOlderSentinel() {
+  const container = document.getElementById('messages');
+  _olderObserver?.disconnect();
+  if (!container || !S.hasMoreOlder) return;
+  const sentinelMsg = _msgCache[OLDER_SENTINEL_INDEX];
+  if (!sentinelMsg) return; // загружено меньше порога — рано (или это уже весь чат)
+  const el = container.querySelector(`[data-msg-id="${sentinelMsg.id}"]`);
+  if (!el) return;
+  _olderObserver = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) loadOlderMessages();
+  }, { root: container });
+  _olderObserver.observe(el);
+}
+async function loadOlderMessages() {
   const container = document.getElementById('messages');
   if (!container || !S.activeChatId || !S.hasMoreOlder || _loadingOlder) return;
-  // Пауза после предыдущей подгрузки: инерционный скролл ещё может «докатывать»
-  // список к верху сам по себе, и без задержки это читалось бы как повторная
-  // подгрузка сразу нескольких страниц подряд одним жестом
-  if (Date.now() - _lastOlderLoadAt < 600) return;
-  // Порог — полтора экрана до верха, а не пиксели впритык: подгрузка стартует
-  // заранее и к моменту реального упора в потолок сообщения уже на месте
-  if (container.scrollTop > container.clientHeight * 1.5) return;
   const chatId = S.activeChatId;
   const oldest = _msgCache[0];
   if (!oldest) return;
   _loadingOlder = true;
-  const data = await api('GET', `/messages/chat/${chatId}?limit=50&before=${oldest.id}`);
+  const data = await api('GET', `/messages/chat/${chatId}?limit=${OLDER_PAGE_SIZE}&before=${oldest.id}`);
   _loadingOlder = false;
-  _lastOlderLoadAt = Date.now();
   if (!data || S.activeChatId !== chatId) return;
   S.hasMoreOlder = !!data.hasMore;
   if (!data.messages?.length) return;
@@ -1349,7 +1361,7 @@ async function openChat(chatId, aroundId) {
   document.getElementById('messages').innerHTML = '<div class="stub-note">Загрузка…</div>';
 
   // Переход к сообщению из поиска — окно вокруг него, а не последние 50
-  const url = aroundId ? `/messages/chat/${chatId}?limit=50&around=${aroundId}` : `/messages/chat/${chatId}?limit=50`;
+  const url = aroundId ? `/messages/chat/${chatId}?limit=${OLDER_PAGE_SIZE}&around=${aroundId}` : `/messages/chat/${chatId}?limit=${OLDER_PAGE_SIZE}`;
   const data = await api('GET', url);
   if (!data || S.activeChatId !== chatId) return;
   _msgCache = data.messages;
@@ -2273,7 +2285,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   addChatGestures();
   addBackSwipeGesture(document.getElementById('topics-screen'), closeTopicsScreen);
-  document.getElementById('messages').addEventListener('scroll', () => { maybeLoadOlderMessages(); updateScrollDownBtn(); }, { passive: true });
+  document.getElementById('messages').addEventListener('scroll', updateScrollDownBtn, { passive: true });
   setTimeout(checkForUpdate, 3000);
   window.addEventListener('resize', syncTabbarHeight);
   watchComposerHeight();
