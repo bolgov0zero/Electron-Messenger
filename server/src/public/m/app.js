@@ -1229,7 +1229,9 @@ async function maybeLoadOlderMessages() {
   // список к верху сам по себе, и без задержки это читалось бы как повторная
   // подгрузка сразу нескольких страниц подряд одним жестом
   if (Date.now() - _lastOlderLoadAt < 600) return;
-  if (container.scrollTop > 60) return;
+  // Порог — полтора экрана до верха, а не пиксели впритык: подгрузка стартует
+  // заранее и к моменту реального упора в потолок сообщения уже на месте
+  if (container.scrollTop > container.clientHeight * 1.5) return;
   const chatId = S.activeChatId;
   const oldest = _msgCache[0];
   if (!oldest) return;

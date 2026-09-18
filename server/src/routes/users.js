@@ -68,9 +68,11 @@ router.post('/me/avatar', authMiddleware, (req, res) => {
 // Serve user avatar
 router.get('/:id/avatar', (req, res) => {
   const file = path2.join(AVATAR_DIR, `${req.params.id}.jpg`);
-  // Короткий кэш: при частых опросах (напр., таблица клиентов в админке /5c) браузер
-  // не бомбит сервер и не мигает картинками. При смене аватарки клиент вешает ?t=...
-  res.setHeader('Cache-Control', 'private, max-age=60');
+  // С ?t=... (клиенты /m и /chat сами версионируют URL при смене аватарки) файл под
+  // этим URL больше не изменится — кэшируем надолго. Без ?t= (напр., таблица клиентов
+  // в админке, она URL не версионирует) — короткий кэш, чтобы не мигало и не бомбило
+  // сервер при частых опросах, но обновление было видно быстро.
+  res.setHeader('Cache-Control', req.query.t ? 'private, max-age=31536000, immutable' : 'private, max-age=60');
   res.sendFile(file, err => { if (err) res.status(404).end(); });
 });
 

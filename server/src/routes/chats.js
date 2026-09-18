@@ -291,7 +291,9 @@ router.post('/:id/avatar', authMiddleware, (req, res) => {
 // Serve group avatar
 router.get('/:id/avatar', (req, res) => {
   const file = path2.join(AVATAR_DIR, `chat_${req.params.id}.jpg`);
-  res.setHeader('Cache-Control', 'private, max-age=60');
+  // См. пояснение в users.js: с ?t= (клиент версионирует URL при смене аватарки)
+  // кэшируем надолго, без него (напр. админка) — коротко
+  res.setHeader('Cache-Control', req.query.t ? 'private, max-age=31536000, immutable' : 'private, max-age=60');
   res.sendFile(file, err => { if (err) res.status(404).end(); });
 });
 

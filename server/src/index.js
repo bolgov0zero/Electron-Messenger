@@ -63,7 +63,9 @@ app.get(['/m', '/m/', '/m/index.html'], (req, res) => {
   }
 });
 app.use('/m', express.static(path.join(__dirname, 'public/m')));
-app.use('/files', express.static(FILES_DIR));
+// Имя файла — timestamp+случайная строка, при новой загрузке никогда не переиспользуется,
+// поэтому старое имя гарантированно не сменит содержимое: можно кэшировать надолго
+app.use('/files', express.static(FILES_DIR, { maxAge: '1y', immutable: true }));
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
