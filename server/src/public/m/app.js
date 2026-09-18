@@ -1557,6 +1557,11 @@ function onFilePicked(input) {
   const file = input.files[0];
   input.value = '';
   if (!file) return;
+  uploadPickedFile(file);
+}
+// Общий путь для выбора файла и вставки из буфера (см. paste-обработчик ниже) —
+// как в Electron-клиенте, тот же приём.
+function uploadPickedFile(file) {
   const isImage = file.type.startsWith('image/');
   const isVideo = file.type.startsWith('video/');
   const cfg = isImage ? _uploadSettings.image : isVideo ? _uploadSettings.video : _uploadSettings.file;
@@ -1896,13 +1901,23 @@ function openMsgActions(msgId) {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>Реакция</div>`;
   const rowReply = `<div class="msg-action-row" onclick="closeSheet();setReply(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>Ответить</div>`;
+  const rowCopy = m.text ? `<div class="msg-action-row" onclick="closeSheet();copyMsgText(${msgId})">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Копировать</div>` : '';
   const rowEdit = canEdit ? `<div class="msg-action-row" onclick="closeSheet();startEdit(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>Изменить</div>` : '';
   const rowInfo = mine ? `<div class="msg-action-row" onclick="closeSheet();openReadSheet(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>Информация</div>` : '';
   const rowDelete = mine ? `<div class="msg-action-row danger" onclick="closeSheet();deleteMessageConfirm(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Удалить</div>` : '';
-  openSheet(`<div class="sheet-title">Сообщение</div>${rowReact}${rowReply}${rowEdit}${rowInfo}${rowDelete}`);
+  openSheet(`<div class="sheet-title">Сообщение</div>${rowReact}${rowReply}${rowCopy}${rowEdit}${rowInfo}${rowDelete}`);
+}
+async function copyMsgText(msgId) {
+  const m = findMsg(msgId);
+  if (!m?.text) return;
+  try {
+    await navigator.clipboard.writeText(m.text.replace(/<[^>]*>/g, ''));
+    toast('Скопировано');
+  } catch { toast('Не удалось скопировать'); }
 }
 
 // ── ЖЕСТЫ: свайп-назад из чата, свайп-ответ, лонгпресс ──
@@ -2331,6 +2346,14 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   addChatGestures();
   addBackSwipeGesture(document.getElementById('topics-screen'), closeTopicsScreen);
+  // Вставка файла (скриншота и т.п.) из буфера обмена — тот же приём, что в
+  // Electron-клиенте: длинное нажатие на поле ввода → «Вставить» тоже
+  // порождает обычное DOM-событие paste, мобильные браузеры это поддерживают
+  document.addEventListener('paste', e => {
+    if (!S.activeChatId) return;
+    const file = Array.from(e.clipboardData?.items || []).find(i => i.kind === 'file')?.getAsFile();
+    if (file) { e.preventDefault(); uploadPickedFile(file); }
+  });
   document.getElementById('messages').addEventListener('scroll', updateScrollDownBtn, { passive: true });
   setTimeout(checkForUpdate, 3000);
   window.addEventListener('resize', syncTabbarHeight);
