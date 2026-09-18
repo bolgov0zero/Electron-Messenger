@@ -217,6 +217,10 @@ window.APP_VERSION = '?v=1';
       </div>
     </div>
     <div class="chat-body" id="messages"></div>
+    <button class="scroll-down-btn" id="scroll-down-btn" onclick="scrollToBottom()" aria-label="К последним сообщениям">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      <span class="scroll-down-badge" id="scroll-down-badge"></span>
+    </button>
     <div class="composer-wrap">
       <div class="emoji-panel" id="emoji-panel">
         <div class="ep-search">

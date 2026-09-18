@@ -1107,13 +1107,18 @@ function attachmentHtml(att) {
   if (!att) return '';
   const url = `${httpProto()}://${S.server}${att.url}`;
   if (att.expired) return `<div class="bubble-file"><div class="bubble-file-ico">✕</div><div><div class="bubble-file-name">Файл удалён</div></div></div>`;
+  // aspect-ratio по сохранённым при загрузке размерам резервирует место под картинку/видео
+  // ДО того, как она догрузится — без этого лента дёргалась каждый раз, когда вложение
+  // получало реальную высоту (см. stickAfterMedia — он остаётся подстраховкой для
+  // сообщений, отправленных до появления width/height, но для новых уже не нужен)
+  const ratioCss = att.width && att.height ? `aspect-ratio:${att.width}/${att.height};` : '';
   if (att.mime?.startsWith('image/')) {
-    return `<img class="bubble-media" src="${url}" loading="lazy" onclick="event.stopPropagation();openLightbox('${esc(att.url)}','image')">`;
+    return `<img class="bubble-media" src="${url}" style="${ratioCss}" loading="lazy" onclick="event.stopPropagation();openLightbox('${esc(att.url)}','image')">`;
   }
   if (att.mime?.startsWith('video/')) {
     const poster = att.thumb ? `${httpProto()}://${S.server}${att.thumb}` : '';
     return `<div class="bubble-video-wrap" onclick="event.stopPropagation();openLightbox('${esc(att.url)}','video')">
-      ${poster ? `<img class="bubble-media" src="${poster}" loading="lazy">` : `<div class="bubble-media" style="width:180px;height:120px;background:var(--search-bg)"></div>`}
+      ${poster ? `<img class="bubble-media" src="${poster}" style="${ratioCss}" loading="lazy">` : `<div class="bubble-media" style="width:180px;height:120px;background:var(--search-bg)"></div>`}
       <div class="bubble-play"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
     </div>`;
   }
@@ -1176,13 +1181,18 @@ function renderTicks(status) {
   </svg>`;
 }
 
-// mode: undefined/false — прокрутить в самый низ (обычное открытие чата);
+// mode: undefined/false — прокрутить в самый низ (обычное открытие чата, своя
+// отправка сообщения);
 // true — сохранить относительную позицию (подгрузка старых сообщений);
+// 'smart' — реакция/статус/правка/чужое сообщение: если и так были у низа —
+// остаться у низа, иначе не дёргать (было: всегда прыгало в самый низ, из-за
+// чего чтение истории сбивало любое фоновое событие вроде галочки прочтения);
 // 'none' — не трогать scrollTop вовсе, вызывающий сам прокрутит куда нужно
 // (переход к сообщению из поиска)
 function renderMessages(mode) {
   const container = document.getElementById('messages');
   const keepScroll = mode === true;
+  const smart = mode === 'smart';
   const chat = S.chats.find(c => c.id === S.activeChatId);
   let html = '', lastDay = '';
   // Каждый день — свой .day-group: он даёт бейджу отдельный containing block
@@ -1200,8 +1210,9 @@ function renderMessages(mode) {
   if (lastDay) html += '</div>';
   // При подгрузке старых сообщений сохраняем то же место в ленте (иначе вставка
   // сверху выталкивает видимую часть вниз или наверх — контент под пальцем прыгает)
-  const prevHeight = keepScroll ? container.scrollHeight : 0;
-  const prevTop = keepScroll ? container.scrollTop : 0;
+  const prevHeight = (keepScroll || smart) ? container.scrollHeight : 0;
+  const prevTop = (keepScroll || smart) ? container.scrollTop : 0;
+  const stickBottom = smart && (prevHeight - prevTop - container.clientHeight < 120);
   container.innerHTML = html || '<div class="stub-note">Сообщений пока нет</div>';
   if (keepScroll) {
     // На iOS инерционная прокрутка продолжает «тянуть» список к нулю уже
@@ -1213,11 +1224,39 @@ function renderMessages(mode) {
     container.scrollTop = prevTop + (container.scrollHeight - prevHeight);
     void container.offsetHeight;
     container.style.overflowY = '';
+  } else if (smart) {
+    // У низа — остаёмся у низа (список ниже вырос); не у низа — оставляем как
+    // было, а не тянем следом дельтой: правка/реакция может изменить высоту
+    // где угодно в истории, а не только там, где сейчас читают
+    container.scrollTop = stickBottom ? container.scrollHeight : prevTop;
   } else if (mode !== 'none') {
     container.scrollTop = container.scrollHeight;
   }
   applyAvatars();
   stickAfterMedia(container);
+  updateScrollDownBtn();
+  return stickBottom;
+}
+// ── КНОПКА «К ПОСЛЕДНИМ СООБЩЕНИЯМ» ──
+let _awayNewCount = 0;
+function updateScrollDownBtn() {
+  const container = document.getElementById('messages');
+  const btn = document.getElementById('scroll-down-btn');
+  if (!container || !btn) return;
+  const away = container.scrollHeight - container.scrollTop - container.clientHeight > 200;
+  btn.classList.toggle('show', away);
+  if (!away && _awayNewCount) { _awayNewCount = 0; renderScrollBadge(); }
+}
+function renderScrollBadge() {
+  const badge = document.getElementById('scroll-down-badge');
+  if (badge) badge.textContent = _awayNewCount > 0 ? (_awayNewCount > 99 ? '99+' : _awayNewCount) : '';
+}
+function scrollToBottom() {
+  const container = document.getElementById('messages');
+  if (!container) return;
+  container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  _awayNewCount = 0;
+  renderScrollBadge();
 }
 // ── ПОДГРУЗКА СТАРЫХ СООБЩЕНИЙ ПРИ СКРОЛЛЕ ВВЕРХ ──
 let _loadingOlder = false;
@@ -1285,6 +1324,8 @@ async function openChat(chatId, aroundId) {
   S.activeChatId = chatId;
   const chat = S.chats.find(c => c.id === chatId);
   if (!chat) return;
+  _awayNewCount = 0;
+  renderScrollBadge();
   document.getElementById('chat-name').textContent = chatName(chat);
   const av = document.getElementById('chat-av');
   av.className = 'av ' + chatAvatarColorClass(chat) + ((chat.type === 'group' || chat.type === 'room') ? ' sq' : '');
@@ -1990,7 +2031,7 @@ function connectWS() {
 
     if (data.type === 'reaction_update') {
       const m = findMsg(data.message_id);
-      if (m) { m.reactions = data.counts; renderMessages(); }
+      if (m) { m.reactions = data.counts; renderMessages('smart'); }
       return;
     }
 
@@ -2001,7 +2042,8 @@ function connectWS() {
       if (S.activeChatId === m.chat_id) {
         if (m.sender_id === S.user.id) _msgCache = _msgCache.filter(x => !x._optimistic);
         _msgCache.push(m);
-        renderMessages();
+        const stuck = renderMessages('smart');
+        if (!stuck && m.sender_id !== S.user.id) { _awayNewCount++; renderScrollBadge(); }
         if (S.ws?.readyState === 1) {
           S.ws.send(JSON.stringify({ type: 'read', chat_id: m.chat_id }));
           if (m.sender_id !== S.user.id) S.ws.send(JSON.stringify({ type: 'delivered', message_id: m.id }));
@@ -2027,7 +2069,7 @@ function connectWS() {
       const chat = S.chats.find(c => c.id === m.chat_id);
       if (chat?.last_message?.id === m.id) chat.last_message = m;
       const idx = _msgCache.findIndex(x => x.id === m.id);
-      if (idx >= 0) { _msgCache[idx] = m; if (S.activeChatId === m.chat_id) renderMessages(); }
+      if (idx >= 0) { _msgCache[idx] = m; if (S.activeChatId === m.chat_id) renderMessages('smart'); }
       renderChats();
     }
 
@@ -2036,7 +2078,7 @@ function connectWS() {
       const chat = S.chats.find(c => c.id === chat_id);
       if (chat?.last_message?.id === message_id) chat.last_message = { ...chat.last_message, deleted: 1, text: '', attachment: null };
       const idx = _msgCache.findIndex(x => x.id === message_id);
-      if (idx >= 0) { _msgCache[idx].deleted = 1; if (S.activeChatId === chat_id) renderMessages(); }
+      if (idx >= 0) { _msgCache[idx].deleted = 1; if (S.activeChatId === chat_id) renderMessages('smart'); }
       renderChats();
     }
 
@@ -2046,7 +2088,7 @@ function connectWS() {
       const chat = S.chats.find(c => c.id === m.chat_id);
       if (chat?.last_message?.id === m.id) { chat.last_message.status = { ...m.status }; renderChats(); }
       const idx = _msgCache.findIndex(x => x.id === m.id);
-      if (idx >= 0) { _msgCache[idx].status = { ...m.status }; if (S.activeChatId === m.chat_id) renderMessages(); }
+      if (idx >= 0) { _msgCache[idx].status = { ...m.status }; if (S.activeChatId === m.chat_id) renderMessages('smart'); }
     }
 
     if (data.type === 'status_range') {
@@ -2070,7 +2112,7 @@ function connectWS() {
         else m.status.delivered = Math.min(m.status.total, m.status.delivered + 1);
         changed = true;
       });
-      if (changed) renderMessages();
+      if (changed) renderMessages('smart');
     }
 
     if (data.type === 'presence') {
@@ -2231,7 +2273,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   addChatGestures();
   addBackSwipeGesture(document.getElementById('topics-screen'), closeTopicsScreen);
-  document.getElementById('messages').addEventListener('scroll', maybeLoadOlderMessages, { passive: true });
+  document.getElementById('messages').addEventListener('scroll', () => { maybeLoadOlderMessages(); updateScrollDownBtn(); }, { passive: true });
   setTimeout(checkForUpdate, 3000);
   window.addEventListener('resize', syncTabbarHeight);
   watchComposerHeight();

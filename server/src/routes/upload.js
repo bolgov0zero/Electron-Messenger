@@ -89,6 +89,16 @@ function hasFfmpeg() {
   return _ffmpegOk;
 }
 
+// Размеры кадра — чтобы клиент сразу зарезервировал место под картинку/видео
+// (aspect-ratio) и не дёргал ленту, когда вложение наконец догрузится
+async function getVideoSize(filePath) {
+  try {
+    const { stdout } = await execFileP('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=s=x:p=0', filePath]);
+    const [w, h] = stdout.trim().split('x').map(Number);
+    return w > 0 && h > 0 ? { width: w, height: h } : null;
+  } catch { return null; }
+}
+
 async function getVideoDuration(filePath) {
   try {
     const { stdout } = await execFileP('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrapper=1:nokey=1', filePath]);
@@ -233,6 +243,7 @@ router.post('/',
     }
 
     let thumb = null;
+    let width = null, height = null;
     if (isImage && sharp && req.file.mimetype !== 'image/gif') {
       try {
         const thumbName = req.file.filename.replace(/\.[^.]*$/, '') + '_t.webp';
@@ -242,6 +253,18 @@ router.post('/',
           .webp({ quality: 78 }).toFile(thumbPath);
         thumb = `/files/${thumbName}`;
       } catch (e) { console.warn('[Upload] thumbnail failed:', e.message); }
+    }
+    if (isImage && sharp) {
+      // EXIF-ориентация 5-8 — кадр повёрнут на 90°, ширина и высота меняются местами
+      // относительно того, что метаданные файла говорят «сырым» числом
+      try {
+        const meta = await sharp(req.file.path).metadata();
+        if (meta.width && meta.height) {
+          const swapped = meta.orientation >= 5 && meta.orientation <= 8;
+          width = swapped ? meta.height : meta.width;
+          height = swapped ? meta.width : meta.height;
+        }
+      } catch (e) { console.warn('[Upload] image size failed:', e.message); }
     }
     if (isVideo && hasFfmpeg()) {
       try {
@@ -253,6 +276,8 @@ router.post('/',
         await execFileP('ffmpeg', ['-ss', String(at), '-i', req.file.path, '-frames:v', '1', '-vf', 'scale=320:-1', '-y', thumbPath]);
         thumb = `/files/${thumbName}`;
       } catch (e) { console.warn('[Upload] video thumbnail failed:', e.message); }
+      const size = await getVideoSize(req.file.path);
+      if (size) ({ width, height } = size);
     }
     if (req._aborted) return;
 
@@ -262,6 +287,7 @@ router.post('/',
       name: req.file.originalname,
       size: req.file.size,
       mime: req.file.mimetype,
+      width, height,
     });
   }
 );
