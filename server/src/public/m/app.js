@@ -1379,8 +1379,11 @@ function stickAfterMedia(container) {
     requestAnimationFrame(() => {
       const now = container.scrollHeight;
       const delta = now - lastHeight;
-      if (delta) container.scrollTop += delta;
       lastHeight = now;
+      // Пока едем к низу по кнопке — не компенсируем: путь прокрутки проходит
+      // через кучу ленивых картинок по всей истории, каждая долетевшая до
+      // видимой области догружается и рвёт scrollTop += на середине анимации
+      if (delta && !_jumpingToBottom) container.scrollTop += delta;
     });
   };
   pending.forEach(el => {
