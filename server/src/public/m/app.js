@@ -1273,10 +1273,8 @@ function renderMessages(mode) {
   } else if (smart) {
     // У низа — остаёмся у низа (список ниже вырос); не у низа — оставляем как
     // было, а не тянем следом дельтой: правка/реакция может изменить высоту
-    // где угодно в истории, а не только там, где сейчас читают.
-    // Пока в разгаре плавный скролл от кнопки «вниз» — вообще не трогаем
-    // scrollTop, даже выставление того же текущего значения обрывает анимацию.
-    if (!_jumpingToBottom) container.scrollTop = stickBottom ? container.scrollHeight : prevTop;
+    // где угодно в истории, а не только там, где сейчас читают
+    container.scrollTop = stickBottom ? container.scrollHeight : prevTop;
   } else if (mode !== 'none') {
     container.scrollTop = container.scrollHeight;
   }
@@ -1300,22 +1298,39 @@ function renderScrollBadge() {
   const badge = document.getElementById('scroll-down-badge');
   if (badge) badge.textContent = _awayNewCount > 0 ? (_awayNewCount > 99 ? '99+' : _awayNewCount) : '';
 }
-// Пока едем к низу — не даём сторожу старых сообщений сработать: смахивая
-// далеко наверх, путь плавного скролла вниз проходит через сторожевое
-// сообщение, оно засчитывалось как «долистали», запускало подгрузку страницы,
-// та перестраивала всю ленту и переставляла scrollTop — плавная анимация
-// обрывалась на середине, и казалось, что кнопка едет вниз рывками.
+// Родной scrollTo({behavior:'smooth'}) считает конечную точку один раз и просто
+// едет к ней — любая посторонняя запись в scrollTop (догрузка картинки,
+// подгрузка старой истории, что угодно ещё) необратимо обрывает эту анимацию,
+// а источников таких записей на длинном пути по всей истории может быть
+// сколько угодно, точечно все не закрыть. Вместо этого — свой цикл на rAF: on
+// каждый кадр заново меряет расстояние до низа и довозит часть остатка. Если
+// что-то по пути поменяло высоту — следующий кадр просто подхватит новую
+// цель, а не сломается. Не важно, сколько и какого контента между текущей
+// позицией и последним сообщением.
 let _jumpingToBottom = false;
+let _jumpingRaf = null;
+function cancelJumpToBottom() {
+  if (_jumpingRaf) cancelAnimationFrame(_jumpingRaf);
+  _jumpingRaf = null;
+  _jumpingToBottom = false;
+}
 function scrollToBottom() {
   const container = document.getElementById('messages');
   if (!container) return;
-  _jumpingToBottom = true;
-  container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
   _awayNewCount = 0;
   renderScrollBadge();
-  const done = () => { _jumpingToBottom = false; container.removeEventListener('scrollend', done); };
-  container.addEventListener('scrollend', done, { once: true });
-  setTimeout(done, 1000); // подстраховка — scrollend поддержан не везде
+  const step = () => {
+    const target = container.scrollHeight - container.clientHeight;
+    const dist = target - container.scrollTop;
+    if (dist <= 1) { container.scrollTop = target; cancelJumpToBottom(); return; }
+    // Доля остатка за кадр — плавное торможение к концу; минимальный шаг —
+    // чтобы короткая дистанция долетала быстро, а не еле ползла
+    container.scrollTop += Math.max(dist * 0.22, 24);
+    _jumpingRaf = requestAnimationFrame(step);
+  };
+  cancelJumpToBottom();
+  _jumpingToBottom = true;
+  _jumpingRaf = requestAnimationFrame(step);
 }
 // ── ПОДГРУЗКА СТАРЫХ СООБЩЕНИЙ: сторож на N-м сообщении от текущего верха ──
 // Не пиксели скролла, а счётчик: следующая страница грузится, когда в поле
@@ -1335,6 +1350,8 @@ function setupOlderSentinel() {
   const el = container.querySelector(`[data-msg-id="${sentinelMsg.id}"]`);
   if (!el) return;
   _olderObserver = new IntersectionObserver(entries => {
+    // Пока едем к низу по кнопке — сторож по пути неизбежно промелькнёт мимо;
+    // догружать историю в этот момент незачем, это просто лишний запрос
     if (!_jumpingToBottom && entries[0].isIntersecting) loadOlderMessages();
   }, { root: container });
   _olderObserver.observe(el);
@@ -1379,11 +1396,8 @@ function stickAfterMedia(container) {
     requestAnimationFrame(() => {
       const now = container.scrollHeight;
       const delta = now - lastHeight;
+      if (delta) container.scrollTop += delta;
       lastHeight = now;
-      // Пока едем к низу по кнопке — не компенсируем: путь прокрутки проходит
-      // через кучу ленивых картинок по всей истории, каждая долетевшая до
-      // видимой области догружается и рвёт scrollTop += на середине анимации
-      if (delta && !_jumpingToBottom) container.scrollTop += delta;
     });
   };
   pending.forEach(el => {
@@ -2370,6 +2384,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (file) { e.preventDefault(); uploadPickedFile(file); }
   });
   document.getElementById('messages').addEventListener('scroll', updateScrollDownBtn, { passive: true });
+  // Реальный жест пользователя посреди автопрокрутки к низу — это «передумал»,
+  // отдаём управление обратно, а не тянем экран поверх его пальца
+  document.getElementById('messages').addEventListener('touchstart', cancelJumpToBottom, { passive: true });
+  document.getElementById('messages').addEventListener('wheel', cancelJumpToBottom, { passive: true });
   setTimeout(checkForUpdate, 3000);
   window.addEventListener('resize', syncTabbarHeight);
   watchComposerHeight();
