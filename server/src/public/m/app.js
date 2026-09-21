@@ -234,7 +234,6 @@ async function enterApp() {
   // До входа #screen-app скрыт (display:none), и offsetHeight таб-бара — 0;
   // измеряем заново теперь, когда он реально показан и имеет раскладку
   syncTabbarHeight();
-  updateTabHighlight(false);
   document.getElementById('me-name').textContent = S.user.display_name;
   document.getElementById('me-username').textContent = '@' + S.user.username;
   const meAv = document.getElementById('me-av');
@@ -662,65 +661,16 @@ function addBackSwipeGesture(el, closeFn) {
 }
 
 // ── НАВИГАЦИЯ ПО ВКЛАДКАМ ──
+// Активная вкладка обозначается только цветом иконки (см. .tab.on в style.css) —
+// без плавающей плашки и подписей, по аналогии с таб-баром сайдбара в /chat и клиенте.
 function setTab(name) {
   S.currentTab = name;
   ['chats', 'contacts', 'settings'].forEach(t => {
     document.getElementById('tab-' + t).hidden = t !== name;
     document.querySelector(`.tab[data-tab="${t}"]`).classList.toggle('on', t === name);
   });
-  updateTabHighlight();
   if (name === 'contacts') { if (_contactsAll.length) renderContacts(); else loadContacts(); }
 }
-
-// Плашка активной вкладки — подгоняем под фактическую ширину иконки/подписи
-// (они у "Чаты"/"Контакты"/"Настройки" разные), а не под всю треть таб-бара.
-// Тот же элемент просто едет через transform — за анимацию (с отскоком)
-// целиком отвечает transition в CSS (.tab-hl).
-function updateTabHighlight(animate = true) {
-  const hl = document.getElementById('tab-hl');
-  const inner = document.getElementById('tabbar-inner');
-  const activeTab = inner?.querySelector('.tab.on');
-  if (!hl || !inner || !activeTab) return;
-  const tabs = [...inner.querySelectorAll('.tab')];
-  const innerRect = inner.getBoundingClientRect();
-  // Один размер плашки на все вкладки — берём максимум по всем трём (обычно
-  // задаёт самая длинная подпись, «Настройки»/«Контакты»), а не по активной:
-  // иначе при переключении плашка ещё и меняла бы ширину/высоту, а нужно,
-  // чтобы ехала только позиция.
-  let contentW = 0, contentTop = Infinity, contentBottom = 0;
-  for (const t of tabs) {
-    const label = t.querySelector('span');
-    const icon = t.querySelector('svg');
-    if (!label || !icon) continue;
-    const iconRect = icon.getBoundingClientRect();
-    const labelRect = label.getBoundingClientRect();
-    if (!iconRect.width || !labelRect.width) return; // таб-бар ещё не отрисован — нечего мерить
-    contentW = Math.max(contentW, iconRect.width, labelRect.width);
-    contentTop = Math.min(contentTop, iconRect.top - innerRect.top);
-    contentBottom = Math.max(contentBottom, labelRect.bottom - innerRect.top);
-  }
-  const tabRect = activeTab.getBoundingClientRect();
-  // Отступы плашки от реального содержимого (иконка+подпись), а не от
-  // раскладки .tab — раньше высота плашки бралась «на глаз» в CSS и на части
-  // вкладок подпись обрезалась о нижний край
-  const padX = 14, padY = 6;
-  const pillW = contentW + padX * 2;
-  const pillH = (contentBottom - contentTop) + padY * 2;
-  const centerX = tabRect.left - innerRect.left + tabRect.width / 2;
-  const left = centerX - pillW / 2;
-  const top = contentTop - padY;
-  if (!animate) hl.style.transition = 'none';
-  hl.style.width = pillW + 'px';
-  hl.style.height = pillH + 'px';
-  hl.style.transform = `translate(${left}px, ${top}px)`;
-  if (!animate) {
-    // Форсируем применение стилей без анимации, затем возвращаем transition —
-    // иначе первая расстановка при загрузке уезжала бы «отскоком» от нуля
-    void hl.offsetWidth;
-    hl.style.transition = '';
-  }
-}
-window.addEventListener('resize', () => updateTabHighlight(false));
 
 // ── КОНТАКТЫ ──
 let _contactsAll = [];
@@ -1018,9 +968,8 @@ function setFontSize(f) {
 // отдельно применять их не нужно.
 function applyAppearance() {
   applyAccent(); applyChatPattern(); applyChatBg(); applyFontSize();
-  // Размер текста может чуть изменить реальную высоту таб-бара и ширину
-  // подписей вкладок (а значит и плашку под активной)
-  if (document.getElementById('tabbar')) { syncTabbarHeight(); updateTabHighlight(false); }
+  // Размер текста может чуть изменить реальную высоту таб-бара
+  if (document.getElementById('tabbar')) syncTabbarHeight();
 }
 
 function setTheme(theme) {

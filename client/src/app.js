@@ -461,17 +461,7 @@ function enterApp() {
   loadUploadSettings();
   connectWS();
   loadPresence();
-  // Sidebar account bar
-  const acAv = document.getElementById('sb-account-av');
-  const acName = document.getElementById('sb-account-name');
-  if (acAv) {
-    acAv.className = `av sa-av ${userAvatarColor(S.user.id, S.user.tag)}`;
-    acAv.style.backgroundImage = '';
-    acAv.textContent = initials(S.user.display_name);
-    const acUrl = `${httpProto()}://${S.server}/api/users/${S.user.id}/avatar?t=${Date.now()}`;
-    tryLoadAvatar(acAv, acUrl, initials(S.user.display_name));
-  }
-  if (acName) acName.textContent = S.user.display_name;
+  _sidebarTab = 'chats';
 }
 
 
@@ -759,13 +749,95 @@ function initSidebarPeek() {
   sidebar.addEventListener('mouseleave', _scheduleHideSidebar);
   sidebar.addEventListener('mouseenter', () => clearTimeout(_sidebarPeekTimer));
 }
+// ── ВКЛАДКИ САЙДБАРА (Чаты / Контакты / Настройки) ──
+// Раньше внизу сайдбара была карточка «я» с шестерёнкой в модалку настроек.
+// Теперь там три вкладки, как в мобильном клиенте (см. m/app.js: setTab/tab-hl) —
+// «Чаты» по умолчанию, «Контакты» — список всех пользователей, «Настройки» рисуются
+// прямо в сайдбаре и основной области (csRenderInline), без модалки.
+let _sidebarTab = 'chats';
+
+function setSidebarTab(tab) {
+  if (tab === _sidebarTab) return;
+  const prevTab = _sidebarTab;
+  // уходя со вкладки «Чаты» — выходим из открытой панели тем, чтобы не путать
+  // сжатый в полосу сайдбар с контактами/настройками
+  if (prevTab === 'chats' && S.activeRoomId) leaveRoom();
+  _sidebarTab = tab;
+  document.querySelectorAll('.sb-tab').forEach(el => el.classList.toggle('on', el.dataset.tab === tab));
+  document.getElementById('chats-search-wrap').style.display = tab === 'chats' ? '' : 'none';
+  document.getElementById('contacts-search-wrap').style.display = tab === 'contacts' ? '' : 'none';
+  document.getElementById('sidebar-search').style.display = tab === 'settings' ? 'none' : '';
+  const list = document.getElementById('chats-list');
+  if (tab === 'chats') {
+    list.className = 'chats-list';
+    renderChatList();
+    if (prevTab === 'settings') restoreChatMainArea();
+  } else if (tab === 'contacts') {
+    list.className = 'chats-list';
+    const input = document.getElementById('contacts-search'); if (input) input.value = '';
+    renderContactsList();
+    if (prevTab === 'settings') restoreChatMainArea();
+  } else if (tab === 'settings') {
+    openSettingsInline();
+  }
+}
+
+// Сброс формы настроек к разделу «Профиль» — то же самое, что раньше делал
+// openSettings() перед открытием модалки.
+function openSettingsInline(section) {
+  Object.assign(CS, {
+    sec: section || CS.sec || 'profile', nameDraft: S.user?.display_name || '', nameBusy: false, nameMsg: '',
+    pwOpen: false, pw: { old: '', a: '', b: '' }, pwShow: false, pwErr: '', pwBusy: false, pwDone: false, avatar: undefined,
+  });
+  csRenderInline();
+  if (csIsApp()) {
+    window.electron?.getAutostart?.().then(v => { CS.autostart = !!v; csRefresh(); });
+    window.electron?.getVersion?.().then(v => { CS.version = v || null; csRefresh(); });
+  }
+}
+
+// Возвращает основную область к чату, открытому до входа в настройки
+// (или к пустому состоянию, если чат не был открыт)
+function restoreChatMainArea() {
+  if (S.activeChatId) { openChat(S.activeChatId, null, true); return; }
+  document.getElementById('chat-main').innerHTML = `<div class="empty-state">
+    <div class="empty-icon"><svg width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+    <div class="empty-title">Electron</div>
+    <div class="empty-sub">Выберите чат или создайте новый</div>
+  </div>`;
+}
+
+// ── КОНТАКТЫ ──
+// Список всех пользователей компании — та же аватарка и подложка тега, что и при
+// выборе собеседника для нового чата (ppAvHtml), плюс индикатор «в сети».
+function contactRowHtml(u) {
+  return `<div class="pp-row" data-uid="${u.id}" onclick="openContactChat(${u.id})">
+    <div class="av-wrap">${ppAvHtml(u)}${presenceDot(u.id)}</div>
+    <span class="pp-name">${esc(u.display_name)}</span>
+    ${u.tag ? `<span class="pp-tag">${esc(u.tag)}</span>` : ''}
+  </div>`;
+}
+function renderContactsList(filter = '') {
+  const list = document.getElementById('chats-list');
+  if (!list) return;
+  const q = filter.trim().toLowerCase();
+  const users = S.allUsers.filter(u => u.id !== S.user.id &&
+    (!q || u.display_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)));
+  list.innerHTML = users.length ? users.map(contactRowHtml).join('') : '<div class="pp-empty">Никого не нашлось</div>';
+}
+function filterContacts(q) { renderContactsList(q); }
+async function openContactChat(userId) {
+  await startDirect(userId);
+  setSidebarTab('chats');
+}
+
 // ── НАСТРОЙКИ ──
-// Окно рисует скрипт: слева карточка профиля и разделы с их главным значением, справа строки
-// настроек группами. Всё, кроме имени и пароля, применяется сразу, как и раньше.
-// Код общий для приложения и веб-клиента: «Обновление», автозапуск и сайдбар есть только
-// в Electron, а на телефоне разделы открываются списком, как в системных настройках.
+// Рисуются на месте вкладки «Настройки» в сайдбаре: слева карточка профиля и разделы
+// с их главным значением (csRenderInline пишет это в #chats-list), справа — строки
+// настроек выбранного раздела (в #chat-main). Всё, кроме имени и пароля, применяется сразу.
+// «Обновление» и автозапуск — только в Electron (csIsApp).
 const CS = {
-  sec: 'profile', mSec: null, nameDraft: '', nameBusy: false, nameMsg: '',
+  sec: 'profile', nameDraft: '', nameBusy: false, nameMsg: '',
   pwOpen: false, pw: { old: '', a: '', b: '' }, pwShow: false, pwErr: '', pwBusy: false, pwDone: false,
   autostart: null, version: null, avatar: undefined,
 };
@@ -794,13 +866,15 @@ const CS_I = {
   lock: csSvg('<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
 };
 
+// Настройки живут во вкладке сайдбара (см. setSidebarTab), а не в модалке —
+// openSettings/closeSettings оставлены как обёртки над ней, чтобы не искать
+// все старые вызовы по коду.
 async function openSettings(section = 'profile') {
   Object.assign(CS, {
-    sec: section, mSec: null, nameDraft: S.user?.display_name || '', nameBusy: false, nameMsg: '',
+    sec: section, nameDraft: S.user?.display_name || '', nameBusy: false, nameMsg: '',
     pwOpen: false, pw: { old: '', a: '', b: '' }, pwShow: false, pwErr: '', pwBusy: false, pwDone: false, avatar: undefined,
   });
-  csRender();
-  openModal('modal-settings');
+  setSidebarTab('settings');
   if (csIsApp()) {
     window.electron?.getAutostart?.().then(v => { CS.autostart = !!v; csRefresh(); });
     window.electron?.getVersion?.().then(v => { CS.version = v || null; csRefresh(); });
@@ -808,7 +882,7 @@ async function openSettings(section = 'profile') {
 }
 // Прежнее имя: раздел открывали по вкладке
 function showSettingsTab(tab) { csGo(tab); }
-function closeSettings() { closeModal('modal-settings'); }
+function closeSettings() { if (_sidebarTab === 'settings') setSidebarTab('chats'); }
 function toggleSidebarPref(checked) {
   const isHidden = document.body.classList.contains('sidebar-hidden');
   if (checked !== isHidden) toggleSidebar();
@@ -1027,38 +1101,32 @@ function csNavHtml(list) {
   return csSections().map(s => `<button type="button" class="cs-sn" ${list ? '' : `aria-current="${CS.sec === s.k ? 'page' : 'false'}"`} onclick="csGo('${s.k}')">
     <span class="cs-sn-ic">${s.icon}</span><span class="cs-sn-tx"><b>${s.label}</b><small>${esc(s.meta())}</small></span>${s.dot?.() ? '<i class="cs-dot"></i>' : ''}${list ? `<span class="cs-chev">${CS_I.chev}</span>` : ''}</button>`).join('');
 }
-function csRender(focusId) {
-  const el = document.getElementById('cs-form');
-  if (!el || !S.user) return;
-  const a = document.activeElement, keep = focusId || (a?.id?.startsWith('cs-') && el.contains(a) ? a.id : null);
+// Настройки рисуются на месте — категории в сайдбаре (там, где обычно
+// список чатов), содержимое раздела в основной области (там, где обычно
+// переписка). Раньше то же самое делал csRender() внутри модалки; логика
+// разделов (csSections/CS_PANES) не изменилась, поменялось только КУДА
+// пишется разметка.
+function csRenderInline(focusId) {
+  if (_sidebarTab !== 'settings') return;
+  const nav = document.getElementById('chats-list');
+  const main = document.getElementById('chat-main');
+  if (!nav || !main || !S.user) return;
+  const a = document.activeElement, keep = focusId || (a?.id?.startsWith('cs-') && (nav.contains(a) || main.contains(a)) ? a.id : null);
   let caret = null;
   try { caret = a?.selectionStart; } catch {}
   const scroll = document.getElementById('cs-body')?.scrollTop || 0;
   const secs = csSections();
   if (!secs.some(s => s.k === CS.sec)) CS.sec = 'profile';
-  if (CS.mSec && !secs.some(s => s.k === CS.mSec)) CS.mSec = null;
-  const close = `<button type="button" class="cs-x" aria-label="Закрыть настройки" onclick="closeSettings()">${CS_I.x}</button>`;
-  if (csIsPhone()) {
-    const s = CS.mSec && secs.find(x => x.k === CS.mSec);
-    el.className = 'modal cs-modal cs-phone';
-    el.innerHTML = `<div class="cs-mtop">${s ? `<button type="button" class="cs-back" onclick="csGo(null)">${CS_I.back}Назад</button>` : '<span></span>'}<h3>${s ? s.label : 'Настройки'}</h3>${close}</div>
-      <div class="cs-body" id="cs-body">${s ? CS_PANES[s.k]() : `
-        <button type="button" class="cs-hero cs-hero-btn" onclick="csGo('profile')">${csAv(60)}<span class="cs-hero-t"><b>${esc(S.user.display_name)}</b><span>@${esc(S.user.username)}</span></span><span class="cs-chev">${CS_I.chev}</span></button>
-        <div class="cs-g cs-list">${csNavHtml(true)}</div>
-        <p class="cs-hint" style="text-align:center">Веб-версия · 2026 © bolgov0zero</p>`}</div>`;
-  } else {
-    const s = secs.find(x => x.k === CS.sec);
-    el.className = 'modal cs-modal';
-    el.innerHTML = `<nav class="cs-nav" aria-label="Разделы настроек">
-        <button type="button" class="cs-me" aria-current="${CS.sec === 'profile' ? 'page' : 'false'}" onclick="csGo('profile')">${csAv(40)}<span class="cs-me-t"><b>${esc(S.user.display_name)}</b><small>@${esc(S.user.username)}</small></span></button>
-        <div class="cs-nav-list">${csNavHtml(false)}</div>
-        <div class="cs-nav-foot">${csIsApp() ? `Electron${CS.version ? ' ' + esc(CS.version) : ''}` : 'Веб-версия'}<br>2026 © bolgov0zero</div>
-      </nav>
-      <section class="cs-pane">
-        <header class="cs-head"><div><h3>${s.label}</h3><p>${s.desc}</p></div>${close}</header>
-        <div class="cs-body" id="cs-body">${CS_PANES[s.k]()}</div>
-      </section>`;
-  }
+  const s = secs.find(x => x.k === CS.sec);
+  nav.className = 'cs-nav';
+  nav.innerHTML = `
+    <button type="button" class="cs-me" aria-current="${CS.sec === 'profile' ? 'page' : 'false'}" onclick="csGo('profile')">${csAv(40)}<span class="cs-me-t"><b>${esc(S.user.display_name)}</b><small>@${esc(S.user.username)}</small></span></button>
+    <div class="cs-nav-list">${csNavHtml(false)}</div>
+    <div class="cs-nav-foot">${csIsApp() ? `Electron${CS.version ? ' ' + esc(CS.version) : ''}` : 'Веб-версия'}<br>2026 © bolgov0zero</div>`;
+  main.innerHTML = `<section class="cs-pane">
+      <header class="cs-head"><div><h3>${s.label}</h3><p>${s.desc}</p></div></header>
+      <div class="cs-body" id="cs-body">${CS_PANES[s.k]()}</div>
+    </section>`;
   if (CS.avatar === undefined) { CS.avatar = null; updateSettingsAvatar(); }
   csPaintAvatars();
   if (document.getElementById('pattern-cards')) paintPatternSwatches();
@@ -1069,16 +1137,13 @@ function csRender(focusId) {
   const f = keep && document.getElementById(keep);
   if (f) { f.focus(); if (!focusId && caret != null) { try { f.setSelectionRange(caret, caret); } catch {} } }
 }
-function csRefresh(focusId) {
-  if (document.getElementById('modal-settings')?.classList.contains('open')) csRender(focusId);
-}
+function csRefresh(focusId) { csRenderInline(focusId); }
 function csGo(k) {
-  if (csIsPhone()) CS.mSec = k; else if (k) CS.sec = k;
-  csRender();
+  if (k) CS.sec = k;
+  csRenderInline();
   const b = document.getElementById('cs-body');
   if (b) b.scrollTop = 0;
 }
-window.matchMedia(CS_PHONE_MQ).addEventListener?.('change', () => csRefresh());
 function openNameEdit() {
   const input = document.getElementById('settings-display-name');
   const btn = document.getElementById('settings-edit-btn');

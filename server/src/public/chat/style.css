@@ -846,8 +846,6 @@ html.chat-phone #screen-phone-guard { display: flex; }
    вставала не по центру — слева 3px, справа 2 */
 body.rooms-strip .sidebar { width: 65px; min-width: 65px; }
 body.rooms-strip .sidebar .info,
-body.rooms-strip .sidebar .sa-name,
-body.rooms-strip .sidebar .sa-gear,
 body.rooms-strip .sidebar .search-wrap input,
 body.rooms-strip .sidebar .search-clear { display: none; }
 /* В полосе на месте поиска стоит «назад» — выход из комнаты. Поиск по чатам
@@ -892,7 +890,8 @@ body.rooms-strip .chats-list .chat-item {
   padding: 9px 0;
 }
 /* подпись раздела прячем, но место оставляем — иначе список уедет вверх */
-body.rooms-strip .sidebar-account { justify-content: center; padding: 20px 0; }
+/* три иконки в ряд не помещаются в 65px — в полосе таб-бар встаёт в столбик */
+body.rooms-strip .sidebar-tabbar { flex-direction: column; height: auto; padding: 8px 0; gap: 2px; }
 /* счётчик уезжает на угол аватарки; при упоминании показываем только его */
 body.rooms-strip .chats-list .chat-item .unread-badge {
   position: absolute; top: 3px; right: 5px;
@@ -957,17 +956,26 @@ body.sidebar-hidden.sidebar-peeking .sidebar {
    остаться того же размера — по нему выровнена шапка списка тем */
 .sidebar-search { height: 73px; padding: 12px 14px; flex-shrink: 0; }
 
-/* Sidebar account bar */
-.sidebar-account {
-  padding: 20px 14px;
+/* Таб-бар сайдбара: Чаты / Контакты / Настройки — без подписей (иконок
+   достаточно на 280px) и без плавающей плашки: активная вкладка обозначена
+   только цветом самой иконки (акцент), никаких фонов и контуров. */
+.sidebar-tabbar {
+  display: flex; align-items: center; justify-content: space-around;
+  padding: 10px 14px;
   border-top: 1px solid var(--border);
-  display: flex; align-items: center; gap: 10px;
   flex-shrink: 0;
 }
-.sidebar-account .sa-av { width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0; }
-.sidebar-account .sa-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sidebar-account .sa-gear { background: var(--search-bg); border: 1px solid var(--border); cursor: pointer; color: var(--muted); display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 9px; transition: background .15s, color .15s; }
-.sidebar-account .sa-gear:hover { background: var(--hover-row); color: var(--text); }
+.sb-tab {
+  width: 40px; height: 38px; padding: 0;
+  border: none; background: none; cursor: pointer;
+  color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 9px;
+  transition: color .15s ease;
+}
+.sb-tab svg { width: 25px; height: 25px; }
+.sb-tab:hover:not(.on) { color: var(--text); }
+.sb-tab.on { color: var(--accent); }
 
 /* Section labels */
 .chat-section-label { font-size: 11px; letter-spacing: 1.2px; color: var(--muted); text-transform: uppercase; font-weight: 700; padding: 10px 14px 5px; }
@@ -2061,7 +2069,10 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
   display: grid; grid-template-columns: 224px minmax(0, 1fr); border-radius: 16px; overflow: hidden;
 }
 html.dark .modal.cs-modal { --cs-ok: #3ecf8e; --cs-warn: #e3b35c; }
-.cs-nav { border-right: 1px solid var(--border); padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; min-height: 0; overflow-y: auto; background: var(--card-bg); }
+.cs-nav { border-right: 1px solid var(--border); padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; min-height: 0; overflow-y: auto; background: var(--card-bg); flex: 1; min-width: 0; }
+/* Настройки в сайдбаре: cs-nav занимает то же место, что обычно чаты — с этой
+   стороны своя рамка не нужна, справа уже есть край самого сайдбара */
+#chats-list.cs-nav { border-right: none; }
 .cs-me { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; border: 1px solid transparent; background: none; text-align: left; cursor: pointer; color: var(--text); margin-bottom: 8px; font-family: inherit; }
 .cs-me:hover { background: var(--hover-row); }
 .cs-me[aria-current="page"] { background: var(--modal-bg); border-color: var(--border); }
@@ -2080,7 +2091,7 @@ html.dark .modal.cs-modal { --cs-ok: #3ecf8e; --cs-warn: #e3b35c; }
 .cs-sn-tx small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cs-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); flex-shrink: 0; }
 .cs-nav-foot { margin-top: auto; padding: 10px 8px 2px; font-size: 11px; color: var(--muted); line-height: 1.5; }
-.cs-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.cs-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; flex: 1; }
 .cs-head { display: flex; align-items: flex-start; gap: 12px; padding: 16px 20px 13px; border-bottom: 1px solid var(--border); }
 .cs-head h3 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.2px; color: var(--text); }
 .cs-head p { margin: 0; font-size: 12px; color: var(--text2); }

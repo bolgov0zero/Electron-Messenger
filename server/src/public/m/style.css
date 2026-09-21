@@ -237,27 +237,12 @@ html.m-desktop .screen { display: none !important; }
   background: var(--modal-bg); border-top: 1px solid var(--border);
   opacity: .999;
 }
-.tabbar-inner { display: flex; padding: 10px 0 6px; position: relative; }
-/* Плашка активной вкладки — один элемент, который JS (updateTabHighlight)
-   двигает и растягивает под нужную вкладку через transform/width/height,
-   вместо трёх статичных подсветок. Размер и положение — от фактического
-   прямоугольника иконки+подписи (getBoundingClientRect), не от догадки
-   в CSS, иначе на разной высоте контента подпись обрезалась о край.
-   cubic-bezier с забросом >1 — лёгкий отскок при переключении. */
-.tab-hl {
-  position: absolute; top: 0; left: 0; width: 0; height: 0;
-  background: var(--accent); border-radius: 14px;
-  transform: translate(0, 0);
-  transition: transform .45s cubic-bezier(.34,1.56,.64,1),
-              width .3s cubic-bezier(.34,1.56,.64,1),
-              height .3s cubic-bezier(.34,1.56,.64,1);
-  z-index: 0;
-  pointer-events: none;
-}
-.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--muted); cursor: pointer; position: relative; z-index: 1; transition: color .2s ease .05s; }
-.tab svg { width: 21px; height: 21px; }
-.tab span { font-size: 10px; font-weight: 600; }
-.tab.on { color: #06231e; }
+.tabbar-inner { display: flex; padding: 12px 0; }
+/* Без подписей и без плавающей плашки — активная вкладка обозначена только
+   цветом самой иконки (акцент), по аналогии с таб-баром сайдбара в /chat и клиенте. */
+.tab { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); cursor: pointer; transition: color .15s ease; }
+.tab svg { width: 27px; height: 27px; }
+.tab.on { color: var(--accent); }
 
 /* ── Настройки ── */
 .settings-row { display: flex; align-items: center; gap: 12px; padding: 13px 2px; }

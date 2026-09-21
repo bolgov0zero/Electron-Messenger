@@ -189,23 +189,31 @@
   <div class="app-body">
     <!-- Sidebar -->
     <aside class="sidebar">
-      <div class="sidebar-search">
+      <div class="sidebar-search" id="sidebar-search">
         <button class="strip-back" onclick="leaveRoom()" title="К списку чатов"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-        <div class="search-wrap">
+        <div class="search-wrap" id="chats-search-wrap">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input id="search" placeholder="Поиск чатов..." oninput="filterChats()">
           <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display:none">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
+        <div class="search-wrap" id="contacts-search-wrap" style="display:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="contacts-search" placeholder="Поиск контактов..." oninput="filterContacts(this.value)">
+        </div>
       </div>
       <div class="chats-list" id="chats-list"></div>
-      <div class="sidebar-account" id="sidebar-account">
-        <div class="av sa-av" id="sb-account-av"></div>
-        <span class="sa-name" id="sb-account-name"></span>
-        <button class="sa-gear sa-settings" onclick="openSettings()" title="Настройки" style="position:relative">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          <span id="update-badge" style="display:none;position:absolute;top:2px;right:2px;width:7px;height:7px;border-radius:50%;background:#ef4444;pointer-events:none"></span>
+      <div class="sidebar-tabbar" id="sidebar-tabbar">
+        <button type="button" class="sb-tab on" data-tab="chats" onclick="setSidebarTab('chats')" title="Чаты">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v10l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg>
+        </button>
+        <button type="button" class="sb-tab" data-tab="contacts" onclick="setSidebarTab('contacts')" title="Контакты">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 19a6 6 0 0 1 11 0"/></svg>
+        </button>
+        <button type="button" class="sb-tab" data-tab="settings" onclick="setSidebarTab('settings')" title="Настройки" style="position:relative">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span id="update-badge" style="display:none;position:absolute;top:4px;right:9px;width:7px;height:7px;border-radius:50%;background:#ef4444;pointer-events:none"></span>
         </button>
       </div>
     </aside>
@@ -226,11 +234,9 @@
   </div>
 </div>
 
-<!-- Окно настроек: содержимое рисует скрипт (openSettings) -->
-<div class="modal-bg" id="modal-settings" onclick="if(event.target===this)closeSettings()">
-  <div class="modal cs-modal" id="cs-form" role="dialog" aria-modal="true" aria-label="Настройки"></div>
-  <input type="file" id="avatar-file-input" accept="image/*" hidden onchange="onAvatarFileChange(this)">
-</div>
+<!-- Настройки теперь рисуются во вкладке сайдбара (см. setSidebarTab/csRenderInline в app.js),
+     не в модалке — но поле выбора фото профиля общее, ему всё равно нужно жить где-то в DOM. -->
+<input type="file" id="avatar-file-input" accept="image/*" hidden onchange="onAvatarFileChange(this)">
 
 <!-- Chat list context menu -->
 <div class="ctx-menu" id="ctx-chat-menu">
