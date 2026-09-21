@@ -1644,6 +1644,12 @@ function syncChatListKeyed(list, items) {
 }
 
 function renderChatList() {
+  // Список чатов — общий контейнер с контактами и настройками (#chats-list).
+  // Фоновые обновления (переподключение WS, ресинк после возврата фокуса и т.п.)
+  // вызывают эту функцию когда угодно — если открыта другая вкладка, писать
+  // сюда нельзя: затрёт контакты/настройки, а подсветка таб-бара не совпадёт.
+  // S.chats к этому моменту уже обновлён — при возврате на «Чаты» отрисуется сам.
+  if (_sidebarTab !== 'chats') return;
   const q = document.getElementById('search').value.toLowerCase();
   const list = document.getElementById('chats-list');
   const filtered = S.chats

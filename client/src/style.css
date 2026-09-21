@@ -1216,6 +1216,9 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
           mask-repeat: repeat;
   opacity: var(--chat-pattern-alpha, 0);
 }
+/* Настройки рисуются в той же .chat-main, что и переписка — узору фона чата
+   там не место */
+.chat-main:has(> .cs-pane)::before { opacity: 0; }
 /* На узком экране плитка того же размера выглядит крупно — уменьшаем рисунок */
 @media (max-width: 640px) {
   .chat-main::before {
