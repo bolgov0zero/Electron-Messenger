@@ -1199,9 +1199,7 @@ function csRenderInline(focusId) {
   if (!secs.some(s => s.k === CS.sec)) CS.sec = 'profile';
   const s = secs.find(x => x.k === CS.sec);
   nav.className = 'cs-nav';
-  nav.innerHTML = `
-    <button type="button" class="cs-me" aria-current="${CS.sec === 'profile' ? 'page' : 'false'}" onclick="csGo('profile')">${csAv(40)}<span class="cs-me-t"><b>${esc(S.user.display_name)}</b><small>@${esc(S.user.username)}</small></span></button>
-    <div class="cs-nav-list">${csNavHtml()}</div>`;
+  nav.innerHTML = `<div class="cs-nav-list">${csNavHtml()}</div>`;
   main.innerHTML = `<section class="cs-pane">
       <header class="cs-head"><div><h3>${s.label}</h3><p>${s.desc}</p></div></header>
       <div class="cs-body" id="cs-body">${CS_PANES[s.k]()}</div>
