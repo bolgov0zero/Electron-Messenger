@@ -641,11 +641,16 @@ function applyAccent() {
   // с бирюзовым, менять не стали
   s.setProperty('--active-row', rgba(a.dark, .10));
   s.setProperty('--active-row-border', rgba(a.dark, .25));
-  const brightness = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
-  const onA = brightness > 160 ? '26,26,26' : '255,255,255';
+  const [lr, lg, lb] = c.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  const L = 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
+  const onA = L > 0.179 ? '26,26,26' : '255,255,255';
   s.setProperty('--on-accent', `rgb(${onA})`);
   s.setProperty('--on-accent-dim', `rgba(${onA},.65)`);
   s.setProperty('--on-accent-faint', `rgba(${onA},.45)`);
+  const bg = dark ? [27, 31, 35] : [248, 249, 251];
+  const am = dark ? 0.22 : 0.16;
+  const [mr, mg, mb] = c.map((v, i) => Math.round(v * am + bg[i] * (1 - am)));
+  s.setProperty('--chip-mine', `rgb(${mr},${mg},${mb})`);
 }
 
 function accentDotsHtml() {
@@ -2869,8 +2874,9 @@ function renderReactions(msgId) {
   if (!counts.length) return '';
   return `<div class="reactions">${counts.map(r => {
     const mine = String(r.user_ids || '').split(',').includes(String(S.user?.id));
+    const cnt = String(r.user_ids || '').split(',').filter(Boolean).length || 1;
     return `<button class="reaction-btn${mine ? ' mine' : ''}" data-msg-id="${msgId}" data-reaction="${esc(r.reaction)}" onclick="sendReaction(${msgId},'${r.reaction}')">` +
-      `<span class="ra-emoji">${r.reaction}</span>${reactionAvatars(r.user_ids)}</button>`;
+      `<span class="ra-emoji">${r.reaction}</span><span class="ra-count">${cnt}</span></button>`;
   }).join('')}</div>`;
 }
 
