@@ -1774,15 +1774,16 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 
 /* Send button */
 .send-btn {
-  width: 44px; height: 44px; border: none; border-radius: 50%; flex-shrink: 0;
+  width: 44px; height: 44px; border: 1px solid var(--border); border-radius: 50%; flex-shrink: 0;
   background: var(--composer-bg); color: var(--muted);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   box-shadow: 0 3px 10px rgba(0,0,0,.08);
-  transition: background .15s, color .15s, box-shadow .15s;
+  transition: background .15s, color .15s, box-shadow .15s, border-color .15s;
 }
 .send-btn.active {
   background: var(--accent); color: #fff;
+  border-color: var(--accent);
   box-shadow: 0 3px 10px var(--accent-shadow);
 }
 .send-btn:hover { opacity: .88; }
