@@ -3193,6 +3193,7 @@ html.dark .announcement-title { color: var(--danger); }
   border-radius: 14px;
   padding: 5px 11px;
   max-width: 100%;
+  min-width: 92px;
 }
 .irc-msg[data-mine] .msg-bubble {
   background: var(--accent);
