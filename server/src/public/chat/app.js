@@ -3140,8 +3140,8 @@ function renderMsgIRC(m, isFirst = true, isTail = true) {
         ${attachHtml}
         ${m.text || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}${emojiOnly?' emoji-only':''}">${bodyText}</div>` : ''}
         ${metaHtml}
-        ${reactionsHtml}
       </div>
+      ${reactionsHtml}
     </div>
     ${actionsHtml}
   </div>`;
@@ -4444,11 +4444,9 @@ function connectWS() {
           if (existing) {
             existing.outerHTML = reactionsHtml || '';
           } else if (reactionsHtml) {
-            // Внутрь пузыря, а не в .irc-content: при полной отрисовке реакции
-            // лежат в пузыре, и вставка рядом клала первую реакцию под него —
-            // до перезахода в чат она висела отдельной строкой
-            const target = msgEl.querySelector('.msg-bubble') || msgEl.querySelector('.irc-content');
-            if (target) target.insertAdjacentHTML('beforeend', reactionsHtml);
+            const bubble = msgEl.querySelector('.msg-bubble');
+            const target = bubble || msgEl.querySelector('.irc-content');
+            if (target) target.insertAdjacentHTML('afterend', reactionsHtml);
           }
           if (container) {
             const delta = container.scrollHeight - prevScrollHeight;

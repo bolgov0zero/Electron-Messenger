@@ -3195,11 +3195,18 @@ html.dark .announcement-title { color: var(--danger); }
   max-width: 100%;
 }
 .irc-msg[data-mine] .msg-bubble {
-  /* Акцент полупрозрачный, поэтому под него подкладываем цвет переписки —
-     иначе сквозь свой пузырь просвечивает узор фона */
-  background: linear-gradient(var(--accent-soft), var(--accent-soft)) var(--chat-bg);
-  border-color: var(--role-teal-border);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
+.irc-msg[data-mine] .msg-bubble .irc-time { color: rgba(255,255,255,.65); }
+.irc-msg[data-mine] .msg-bubble .status-sent { color: rgba(255,255,255,.45); }
+.irc-msg[data-mine] .msg-bubble .status-delivered { color: rgba(255,255,255,.75); }
+.irc-msg[data-mine] .msg-bubble .status-read { color: rgba(255,255,255,.9); }
+.irc-msg[data-mine] .msg-bubble .edited-tag { color: rgba(255,255,255,.6); }
+.irc-msg[data-mine] .irc-reply { border-left-color: rgba(255,255,255,.5); }
+.irc-msg[data-mine] .irc-reply-name { color: rgba(255,255,255,.9); }
+.irc-msg[data-mine] .irc-reply-text { color: rgba(255,255,255,.8); }
 /* срезанный угол — только у последнего пузыря серии, со стороны автора */
 .irc-msg.irc-tail .msg-bubble { border-radius: 14px 14px 14px 5px; }
 .irc-msg.irc-tail[data-mine] .msg-bubble { border-radius: 14px 14px 5px 14px; }
@@ -3214,13 +3221,9 @@ html.dark .announcement-title { color: var(--danger); }
    высота по содержимому. Теперь высота равна строке текста (line-height 21px),
    а при реакциях — высоте их ряда, поэтому центры совпадают в обоих случаях. */
 .msg-bubble > .irc-meta {
-  position: absolute; right: 10px; bottom: 5px; gap: 3px;
-  display: flex; align-items: center;
+  display: flex; align-items: center; justify-content: flex-end; gap: 3px;
+  margin-top: 2px;
 }
-.msg-bubble:not(.bubble-photo) > .irc-meta { height: 21px; }
-.msg-bubble:not(.bubble-photo):has(.reactions) > .irc-meta { height: 22px; }
-.irc-text::after { content: ''; display: inline-block; width: 50px; }
-.irc-msg[data-mine] .irc-text::after { width: 60px; }
 
 /* вложения — под края пузыря */
 /* Картинка выходит под края пузыря. Если под ней есть подпись — низ скруглён слабо,
@@ -3231,7 +3234,6 @@ html.dark .announcement-title { color: var(--danger); }
 .msg-bubble .bubble-file { margin: -1px -5px; }
 /* Сообщение, где нет ничего кроме файла: под время нет ни строки текста с распоркой,
    ни блока реакций, и оно ложится вплотную к иконке скачивания. Резервируем полосу. */
-.msg-bubble:has(> .bubble-file):not(:has(.irc-text)):not(:has(.reactions)) { padding-bottom: 23px; }
 
 /* сообщение из одного смайлика: крупнее и без пузыря — он проступает при наведении
    на сам смайлик, а не на всю строку. Время видно всегда и стоит там же, где было бы
@@ -3243,10 +3245,8 @@ html.dark .announcement-title { color: var(--danger); }
 }
 .irc-msg.emoji-msg .msg-bubble:hover { background: var(--card-bg); border-color: var(--border); }
 .irc-msg.emoji-msg[data-mine] .msg-bubble:hover {
-  /* Акцент полупрозрачный — подкладываем цвет переписки, иначе сквозь пузырь
-     просвечивает узор фона */
-  background: linear-gradient(var(--accent-soft), var(--accent-soft)) var(--chat-bg);
-  border-color: var(--role-teal-border);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 /* цвет цитаты — по автору цитируемого: своё цветом своего пузыря, чужое цветом тега */
@@ -3299,7 +3299,7 @@ html.dark .announcement-title { color: var(--danger); }
 }
 .msg-bubble.bubble-photo > .irc-meta,
 .irc-msg[data-mine] .msg-bubble.bubble-photo > .irc-meta {
-  bottom: 8px; right: 8px;
+  position: absolute; bottom: 8px; right: 8px; margin-top: 0;
   background: rgba(0,0,0,.5); border-radius: 9px; padding: 2px 7px;
 }
 .msg-bubble.bubble-photo > .irc-meta .irc-time,
@@ -3318,12 +3318,6 @@ html.dark .announcement-title { color: var(--danger); }
    одинаковый бокс 16×16 и выравниваются по центру чипа, поэтому их центры
    совпадают без ручных сдвигов. */
 .reactions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
-/* Время лежит в правом нижнем углу пузыря: пока реакций нет, место под него
-   резервирует ::after в тексте; появились — нижняя строка уже их, и резерв
-   переносится на блок реакций. */
-.msg-bubble .reactions { padding-right: 46px; }
-.irc-msg[data-mine] .msg-bubble .reactions { padding-right: 58px; }
-.msg-bubble:has(.reactions) .irc-text::after { display: none; }
 
 .reaction-btn {
   /* обводка кружков совпадает с подложкой чипа, иначе при нахлёсте они сливаются */
