@@ -1562,7 +1562,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   position: absolute; left: 0; right: 0; bottom: 0;
   z-index: 3;
 }
-.composer-inner { max-width: 760px; margin: 0 auto; background: var(--chat-bg); border-radius: 12px; position: relative; }
+.composer-inner { max-width: 760px; margin: 0 auto; position: relative; }
 
 /* New composer style */
 .composer { padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0; }
@@ -1644,30 +1644,24 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 
 /* Composer row (legacy) */
 .chat-input-area { flex: 1; display: flex; flex-direction: column; }
-.composer-row {
-  display: flex; align-items: flex-end; gap: 8px;
-  background: var(--composer-bg);
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 8px 8px 8px 14px;
-  transition: border-radius .15s;
-}
 
 /* Pill */
 .composer-pill {
-  display: flex; align-items: center; gap: 4px;
+  flex: 1; display: flex; align-items: center;
   background: var(--composer-bg);
   border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 8px 8px 8px 14px;
+  border-radius: 23px;
+  padding: 0 4px 0 18px;
   position: relative;
+  height: 46px;
+  box-shadow: 0 3px 10px rgba(0,0,0,.08);
 }
 
 /* Панель смайлов: поиск, вкладки-разделы и липкие заголовки — как в телеграме */
 .ep-grid {
   position: absolute;
   bottom: calc(100% + 10px);
-  left: 0; right: auto;
+  right: 0; left: auto;
   width: 340px;
   background: var(--composer-bg);
   border: 1px solid var(--border);
@@ -1756,17 +1750,18 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   resize: none; overflow: hidden; max-height: 120px; line-height: 1.4;
   padding: 0; margin: 0;
   height: 20px; /* одна строка */
+  align-self: center;
 }
 .composer-pill textarea::placeholder { color: var(--muted); }
 
-/* Send button inside pill */
-.composer-pill .send-btn {
-  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
-  border: none; outline: none; cursor: pointer;
+/* Emoji button inside pill */
+.composer-emoji-btn {
+  width: 38px; height: 38px; border-radius: 50%; border: none; background: none;
+  color: var(--muted); cursor: pointer; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  transition: background .15s, color .15s;
-  background: transparent; color: var(--muted); box-shadow: none;
+  transition: color .15s, background .15s;
 }
+.composer-emoji-btn:hover { color: var(--accent); background: var(--hover-row); }
 
 /* Emoji + attach buttons (legacy) */
 .emoji-btn {
@@ -1777,15 +1772,18 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 }
 .emoji-btn:hover { background: var(--hover-row); color: var(--text); }
 
-/* Send button (global, used outside pill) */
+/* Send button */
 .send-btn {
-  width: 38px; height: 38px; border: none; border-radius: 50%;
-  background: var(--accent); color: #fff;
+  width: 44px; height: 44px; border: none; border-radius: 50%; flex-shrink: 0;
+  background: var(--composer-bg); color: var(--muted);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer;
-  transition: opacity .15s;
-  flex-shrink: 0;
-  box-shadow: 0 6px 16px var(--accent-shadow);
+  box-shadow: 0 3px 10px rgba(0,0,0,.08);
+  transition: background .15s, color .15s, box-shadow .15s;
+}
+.send-btn.active {
+  background: var(--accent); color: #fff;
+  box-shadow: 0 3px 10px var(--accent-shadow);
 }
 .send-btn:hover { opacity: .88; }
 .send-btn:disabled { background: var(--border); box-shadow: none; cursor: not-allowed; }
@@ -3149,42 +3147,41 @@ html.dark .announcement-title { color: var(--danger); }
 .ci-name .status-delivered { color: var(--muted); }
 .ci-name .status-read      { color: var(--accent); }
 
-/* ── ЕДИНОЕ ПОЛЕ ВВОДА ──
-   Ответ, пересылка, вложение и правка раньше были соседями поля ввода: своя
-   рамка, свой фон, свои скругления, между ними видимый шов. Теперь они внутри
-   композера, а он растёт вверх, сохраняя одно скругление. */
-
-.composer-pill {
-  flex-direction: column;
-  align-items: stretch;
-  padding: 0;
-  gap: 0;
-}
-.composer-main {
-  /* center, как было у .composer-pill до выноса строки в отдельный блок:
-     при flex-end текст прижимался к низу и не совпадал с центром кнопок */
-  display: flex; align-items: center; gap: 4px;
-  padding: 8px 8px 8px 14px;
+/* Строка с тремя элементами: кнопка вложения + пилюля ввода + кнопка отправки */
+.composer-row {
+  display: flex; align-items: center; gap: 10px;
 }
 
-/* Выдвижная часть. overflow только здесь, а не на .composer-pill — иначе
-   обрезался бы пикер эмодзи, который всплывает над полем. Фон прозрачный,
-   поэтому за скругления композера ничего не выпирает. */
+/* Круглая кнопка вложений слева */
+.composer-fab {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  background: var(--composer-bg); border: 1px solid var(--border); cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0,0,0,.08);
+  color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  transition: color .15s;
+}
+.composer-fab:hover { color: var(--accent); }
+
+/* Слот ответа/пересылки/редактирования — карточка над строкой */
 .composer-slot {
   height: 0;
   overflow: hidden;
   transition: height .26s cubic-bezier(.32,.72,0,1);
 }
 .composer-slot-inner {
-  padding: 9px 10px 8px 12px;
-  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
+  background: var(--composer-bg);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.1);
   transform: translateY(-4px);
   opacity: 0;
   transition: transform .26s cubic-bezier(.32,.72,0,1), opacity .18s ease;
 }
+.composer-slot.open { margin-bottom: 8px; }
 .composer-slot.open .composer-slot-inner { transform: translateY(0); opacity: 1; }
 
-/* Плашки внутри: без собственного фона, рамок и скруглений — они часть поля */
+/* Плашки внутри карточки */
 .composer-slot .input-reply-bar,
 .composer-slot .input-edit-bar {
   background: none;
@@ -3196,7 +3193,6 @@ html.dark .announcement-title { color: var(--danger); }
 .composer-slot .input-reply-bar + .input-reply-bar,
 .composer-slot .input-reply-bar + .input-edit-bar { margin-top: 8px; }
 
-/* Тонкая полоса — только у цитаты и правки, не у всей плашки */
 .composer-slot #reply-bar,
 .composer-slot #forward-bar,
 .composer-slot .input-edit-bar {
