@@ -1973,16 +1973,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
             <span class="typing-name"></span><span class="typing-label"> печатает…</span>
           </span>
         </div>
-        <div class="composer-pill" id="composer-pill">
-          <div class="ep-grid" id="ep-grid">
-            <div class="ep-search">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input id="ep-search-input" placeholder="Поиск смайла" autocomplete="off" oninput="filterEmoji(this.value)">
-            </div>
-            <div class="ep-tabs" id="ep-tabs"></div>
-            <div class="ep-scroll" id="ep-scroll" onscroll="syncEmojiTabs()"></div>
-          </div>
-          <div class="composer-slot" id="composer-slot"><div class="composer-slot-inner">
+        <div class="composer-slot" id="composer-slot"><div class="composer-slot-inner">
           <div id="image-preview-bar" style="display:none" class="input-reply-bar">
             <div class="attach-thumb" id="attach-thumb-box">
               <img class="img-preview-thumb" src="" style="display:none">
@@ -2022,20 +2013,29 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
-          </div></div>
-          <div class="composer-main">
-            <button class="composer-icon-btn" title="Эмодзи" onclick="toggleEmojiPicker(event)">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 3 4 3 4-3 4-3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
-            </button>
-            <button class="composer-icon-btn" title="Прикрепить файл" onclick="pickFile()">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-            </button>
-            <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
-            <textarea id="msg-input" rows="1" placeholder="Сообщение…" onkeydown="handleKey(event)" oninput="onMsgInput(this)" onfocus="closeEmojiPicker()" onpointerdown="closeEmojiPicker()"></textarea>
-            <button class="send-btn" id="send-btn" onmousedown="event.preventDefault()" onclick="sendOrEdit()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </div></div>
+        <div class="composer-row">
+          <button class="composer-fab" title="Прикрепить файл" onclick="pickFile()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
+          <div class="composer-pill" id="composer-pill">
+            <div class="ep-grid" id="ep-grid">
+              <div class="ep-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="ep-search-input" placeholder="Поиск смайла" autocomplete="off" oninput="filterEmoji(this.value)">
+              </div>
+              <div class="ep-tabs" id="ep-tabs"></div>
+              <div class="ep-scroll" id="ep-scroll" onscroll="syncEmojiTabs()"></div>
+            </div>
+            <textarea id="msg-input" rows="1" placeholder="Написать сообщение…" onkeydown="handleKey(event)" oninput="onMsgInput(this)" onfocus="closeEmojiPicker()" onpointerdown="closeEmojiPicker()"></textarea>
+            <button class="composer-emoji-btn" title="Эмодзи" onclick="toggleEmojiPicker(event)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 3 4 3 4-3 4-3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
             </button>
           </div>
+          <button class="send-btn" id="send-btn" onmousedown="event.preventDefault()" onclick="sendOrEdit()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
         </div>
       </div>
     </div>`;
@@ -2044,7 +2044,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   initComposerSlot();
   applyAvatars();
   const sendBtn = document.getElementById('send-btn');
-  if (sendBtn) { sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
+  if (sendBtn) sendBtn.classList.remove('active');
   // Отметку о прочтении отправляем после загрузки: иначе сервер успевает снять
   // read_at раньше, чем посчитает первое непрочитанное, и разделитель пропадает
 
@@ -3465,10 +3465,7 @@ let typingSendTimer = null;
 function _updateSendBtn(el) {
   const sendBtn = document.getElementById('send-btn');
   if (!sendBtn) return;
-  const hasDraft = el.value.trim().length > 0;
-  sendBtn.style.background = hasDraft ? 'var(--accent)' : 'transparent';
-  sendBtn.style.color = hasDraft ? '#0c0e10' : 'var(--muted)';
-  sendBtn.style.boxShadow = 'none';
+  sendBtn.classList.toggle('active', el.value.trim().length > 0);
 }
 
 // silent=true — восстановление черновика при открытии чата: не шлём typing собеседнику
@@ -3590,7 +3587,7 @@ function sendOrEdit() {
   delete S.drafts[S.activeChatId]; saveDrafts(); // черновик отправлен — очищаем
   input.value=''; input.style.height='20px'; input.style.overflow='hidden';
   const sendBtn = document.getElementById('send-btn');
-  if (sendBtn) { sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
+  if (sendBtn) sendBtn.classList.remove('active');
 }
 
 function submitEdit() {
@@ -3781,7 +3778,7 @@ function uploadFile(file) {
   if (_uploadXhr) _uploadXhr.abort();
   _pendingAttachment = null;
   const sendBtn = document.getElementById('send-btn');
-  if (sendBtn) { sendBtn.style.background='var(--accent)'; sendBtn.style.color='#fff'; sendBtn.style.boxShadow='0 6px 16px var(--accent-shadow)'; }
+  if (sendBtn) sendBtn.classList.add('active');
   showAttachUploading(isImage ? 'Изображение' : isVideo ? 'Видео' : 'Файл');
 
   const formData = new FormData();
@@ -3882,9 +3879,7 @@ function clearImagePreview() {
   const bar = document.getElementById('image-preview-bar');
   if (bar) bar.style.display = 'none';
   const sendBtn = document.getElementById('send-btn');
-  if (sendBtn && !document.getElementById('msg-input')?.value.trim()) {
-    sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none';
-  }
+  if (sendBtn && !document.getElementById('msg-input')?.value.trim()) sendBtn.classList.remove('active');
 }
 
 function showSystemAnnouncement(text) {
