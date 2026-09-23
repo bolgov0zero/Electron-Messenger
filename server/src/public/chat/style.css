@@ -369,6 +369,10 @@ html.dark {
   --sidebar-active: var(--active-row);
   --sidebar-text:   var(--text);
   --sidebar-muted:  var(--muted);
+  /* В тёмной теме акцент светлый — на нём читается тёмный текст */
+  --on-accent:      #1a1a1a;
+  --on-accent-dim:  rgba(26,26,26,.65);
+  --on-accent-faint:rgba(26,26,26,.45);
 }
 
 /* ── RESET & BASE ── */
