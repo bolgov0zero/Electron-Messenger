@@ -3173,6 +3173,7 @@ html.dark .announcement-title { color: var(--danger); }
 .composer-slot-inner {
   padding: 8px 12px;
   background: var(--composer-bg);
+  border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: 0 4px 16px rgba(0,0,0,.1);
   transform: translateY(-4px);
