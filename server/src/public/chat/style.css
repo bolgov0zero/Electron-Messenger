@@ -3197,16 +3197,16 @@ html.dark .announcement-title { color: var(--danger); }
 .irc-msg[data-mine] .msg-bubble {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent, #fff);
 }
-.irc-msg[data-mine] .msg-bubble .irc-time { color: rgba(255,255,255,.65); }
-.irc-msg[data-mine] .msg-bubble .status-sent { color: rgba(255,255,255,.45); }
-.irc-msg[data-mine] .msg-bubble .status-delivered { color: rgba(255,255,255,.75); }
-.irc-msg[data-mine] .msg-bubble .status-read { color: rgba(255,255,255,.9); }
-.irc-msg[data-mine] .msg-bubble .edited-tag { color: rgba(255,255,255,.6); }
-.irc-msg[data-mine] .irc-reply { border-left-color: rgba(255,255,255,.5); }
-.irc-msg[data-mine] .irc-reply-name { color: rgba(255,255,255,.9); }
-.irc-msg[data-mine] .irc-reply-text { color: rgba(255,255,255,.8); }
+.irc-msg[data-mine] .msg-bubble .irc-time { color: var(--on-accent-dim, rgba(255,255,255,.65)); }
+.irc-msg[data-mine] .msg-bubble .status-sent { color: var(--on-accent-faint, rgba(255,255,255,.45)); }
+.irc-msg[data-mine] .msg-bubble .status-delivered { color: var(--on-accent-dim, rgba(255,255,255,.65)); }
+.irc-msg[data-mine] .msg-bubble .status-read { color: var(--on-accent, #fff); }
+.irc-msg[data-mine] .msg-bubble .edited-tag { color: var(--on-accent-dim, rgba(255,255,255,.65)); }
+.irc-msg[data-mine] .irc-reply { border-left-color: var(--on-accent-dim, rgba(255,255,255,.5)); }
+.irc-msg[data-mine] .irc-reply-name { color: var(--on-accent, #fff); }
+.irc-msg[data-mine] .irc-reply-text { color: var(--on-accent-dim, rgba(255,255,255,.65)); }
 /* срезанный угол — только у последнего пузыря серии, со стороны автора */
 .irc-msg.irc-tail .msg-bubble { border-radius: 14px 14px 14px 5px; }
 .irc-msg.irc-tail[data-mine] .msg-bubble { border-radius: 14px 14px 5px 14px; }
@@ -3326,7 +3326,7 @@ html.dark .announcement-title { color: var(--danger); }
   height: 22px; padding: 0 7px;
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 10px;
   cursor: pointer; font-family: inherit; line-height: 1;
   transition: background .12s, border-color .12s;
 }

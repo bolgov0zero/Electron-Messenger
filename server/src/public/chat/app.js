@@ -641,6 +641,11 @@ function applyAccent() {
   // с бирюзовым, менять не стали
   s.setProperty('--active-row', rgba(a.dark, .10));
   s.setProperty('--active-row-border', rgba(a.dark, .25));
+  const brightness = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+  const onA = brightness > 160 ? '26,26,26' : '255,255,255';
+  s.setProperty('--on-accent', `rgb(${onA})`);
+  s.setProperty('--on-accent-dim', `rgba(${onA},.65)`);
+  s.setProperty('--on-accent-faint', `rgba(${onA},.45)`);
 }
 
 function accentDotsHtml() {
