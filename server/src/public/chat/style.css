@@ -1624,9 +1624,9 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   background: var(--composer-bg);
   border: 1px solid var(--border);
   border-radius: 23px;
-  padding: 0 4px 0 18px;
+  padding: 4px 4px 4px 18px;
   position: relative;
-  height: 46px;
+  min-height: 46px;
   box-shadow: 0 3px 10px rgba(0,0,0,.08);
 }
 
