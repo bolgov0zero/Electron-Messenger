@@ -432,6 +432,7 @@ function setup(server) {
         if (!msg) return;
         if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(msg.chat_id, user.id)) return;
         const existing = db.prepare('SELECT 1 FROM reactions WHERE message_id = ? AND user_id = ? AND reaction = ?').get(message_id, user.id, reaction);
+        const isAdd = !existing;
         if (existing) {
           db.prepare('DELETE FROM reactions WHERE message_id = ? AND user_id = ? AND reaction = ?').run(message_id, user.id, reaction);
         } else {
@@ -439,6 +440,31 @@ function setup(server) {
         }
         const counts = db.prepare('SELECT reaction, COUNT(*) as count, group_concat(user_id) as user_ids FROM reactions WHERE message_id = ? GROUP BY reaction').all(message_id);
         broadcast(msg.chat_id, { type: 'reaction_update', message_id, counts });
+
+        // Уведомление автору сообщения о новой реакции — только при добавлении
+        // (не при снятии) и не самому себе. Только пуш/нативное уведомление,
+        // счётчики непрочитанного не трогаем.
+        if (isAdd && msg.sender_id !== user.id) {
+          const chatMeta = db.prepare('SELECT parent_id FROM chats WHERE id = ?').get(msg.chat_id);
+          const parentId = chatMeta?.parent_id || msg.chat_id;
+          const muted = db.prepare('SELECT 1 FROM muted_chats WHERE user_id = ? AND (chat_id = ? OR chat_id = ?)').get(msg.sender_id, msg.chat_id, parentId);
+          if (!muted) {
+            if (hasPushSubscription(msg.sender_id)) {
+              pushToUser(msg.sender_id, {
+                title: user.display_name,
+                body: `${reaction} на ваше сообщение`,
+                chatId: msg.chat_id,
+                unread: unreadCounts.total(msg.sender_id),
+              });
+            }
+            sendTo(msg.sender_id, {
+              type: 'reaction_notify',
+              chatId: msg.chat_id,
+              reactorName: user.display_name,
+              reaction,
+            });
+          }
+        }
       }
 
       // Закрепление доступно любому участнику чата — открепление тоже

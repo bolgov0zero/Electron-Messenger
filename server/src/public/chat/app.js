@@ -4464,6 +4464,15 @@ function connectWS() {
       }
     }
 
+    if (data.type==='reaction_notify') {
+      // Только нативное уведомление, без счётчиков непрочитанного —
+      // как и для сообщений, не беспокоим, если окно сейчас видно и в фокусе
+      if (!isViewing()) {
+        webNotify(data.reactorName, `${data.reaction} на ваше сообщение`, data.chatId);
+        playNotificationSound();
+      }
+    }
+
     if (data.type==='typing') { showTyping(data.chat_id, data.sender_name); }
 
     if (data.type==='presence') {
