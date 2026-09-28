@@ -1518,20 +1518,20 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
      тег оседает на 1.5px ниже имени */
   align-self: center;
 }
-.role-pill.tag-1 { background: rgba(var(--tag-1),.12); border: 1px solid rgba(var(--tag-1),.30); color: rgb(var(--tag-1)); }
-.role-pill.tag-2 { background: rgba(var(--tag-2),.12); border: 1px solid rgba(var(--tag-2),.30); color: rgb(var(--tag-2)); }
-.role-pill.tag-3 { background: rgba(var(--tag-3),.12); border: 1px solid rgba(var(--tag-3),.30); color: rgb(var(--tag-3)); }
-.role-pill.tag-4 { background: rgba(var(--tag-4),.12); border: 1px solid rgba(var(--tag-4),.30); color: rgb(var(--tag-4)); }
-.role-pill.tag-5 { background: rgba(var(--tag-5),.12); border: 1px solid rgba(var(--tag-5),.30); color: rgb(var(--tag-5)); }
-.role-pill.tag-6 { background: rgba(var(--tag-6),.12); border: 1px solid rgba(var(--tag-6),.30); color: rgb(var(--tag-6)); }
-.role-pill.tag-7 { background: rgba(var(--tag-7),.12); border: 1px solid rgba(var(--tag-7),.30); color: rgb(var(--tag-7)); }
-.role-pill.tag-8 { background: rgba(var(--tag-8),.12); border: 1px solid rgba(var(--tag-8),.30); color: rgb(var(--tag-8)); }
-.role-pill.tag-9 { background: rgba(var(--tag-9),.12); border: 1px solid rgba(var(--tag-9),.30); color: rgb(var(--tag-9)); }
-.role-pill.tag-10 { background: rgba(var(--tag-10),.12); border: 1px solid rgba(var(--tag-10),.30); color: rgb(var(--tag-10)); }
-.role-pill.tag-11 { background: rgba(var(--tag-11),.12); border: 1px solid rgba(var(--tag-11),.30); color: rgb(var(--tag-11)); }
-.role-pill.tag-12 { background: rgba(var(--tag-12),.12); border: 1px solid rgba(var(--tag-12),.30); color: rgb(var(--tag-12)); }
-.role-pill.tag-13 { background: rgba(var(--tag-13),.12); border: 1px solid rgba(var(--tag-13),.30); color: rgb(var(--tag-13)); }
-.role-pill.tag-14 { background: rgba(var(--tag-14),.12); border: 1px solid rgba(var(--tag-14),.30); color: rgb(var(--tag-14)); }
+.role-pill.tag-1 { background: color-mix(in srgb, rgb(var(--tag-1)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-1),.30); color: rgb(var(--tag-1)); }
+.role-pill.tag-2 { background: color-mix(in srgb, rgb(var(--tag-2)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-2),.30); color: rgb(var(--tag-2)); }
+.role-pill.tag-3 { background: color-mix(in srgb, rgb(var(--tag-3)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-3),.30); color: rgb(var(--tag-3)); }
+.role-pill.tag-4 { background: color-mix(in srgb, rgb(var(--tag-4)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-4),.30); color: rgb(var(--tag-4)); }
+.role-pill.tag-5 { background: color-mix(in srgb, rgb(var(--tag-5)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-5),.30); color: rgb(var(--tag-5)); }
+.role-pill.tag-6 { background: color-mix(in srgb, rgb(var(--tag-6)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-6),.30); color: rgb(var(--tag-6)); }
+.role-pill.tag-7 { background: color-mix(in srgb, rgb(var(--tag-7)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-7),.30); color: rgb(var(--tag-7)); }
+.role-pill.tag-8 { background: color-mix(in srgb, rgb(var(--tag-8)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-8),.30); color: rgb(var(--tag-8)); }
+.role-pill.tag-9 { background: color-mix(in srgb, rgb(var(--tag-9)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-9),.30); color: rgb(var(--tag-9)); }
+.role-pill.tag-10 { background: color-mix(in srgb, rgb(var(--tag-10)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-10),.30); color: rgb(var(--tag-10)); }
+.role-pill.tag-11 { background: color-mix(in srgb, rgb(var(--tag-11)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-11),.30); color: rgb(var(--tag-11)); }
+.role-pill.tag-12 { background: color-mix(in srgb, rgb(var(--tag-12)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-12),.30); color: rgb(var(--tag-12)); }
+.role-pill.tag-13 { background: color-mix(in srgb, rgb(var(--tag-13)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-13),.30); color: rgb(var(--tag-13)); }
+.role-pill.tag-14 { background: color-mix(in srgb, rgb(var(--tag-14)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-14),.30); color: rgb(var(--tag-14)); }
 .role-pill.default { background: var(--hover-row); border: 1px solid var(--border); color: var(--text2); }
 
 /* ── MSG SENDER ROW ── */
