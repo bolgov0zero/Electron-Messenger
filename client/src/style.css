@@ -3251,6 +3251,11 @@ html.dark .announcement-title { color: var(--danger); }
   /* ширину задаёт сама картинка: пузырь тут подстраивается под неё, а не наоборот */
   width: 280px; max-width: 100%;
 }
+/* Срезанный угол пузыря (см. .irc-tail .msg-bubble) должен повторяться и на
+   картинке внутри — инсет -1px на той же стороне, иначе у одиночных/последних
+   в серии фото-сообщений угол картинки не совпадает с углом пузыря под ней */
+.irc-msg.irc-tail .msg-bubble.bubble-photo .bubble-image { border-radius: 13px 13px 13px 4px; }
+.irc-msg.irc-tail[data-mine] .msg-bubble.bubble-photo .bubble-image { border-radius: 13px 13px 4px 13px; }
 .msg-bubble.bubble-photo > .irc-meta,
 .irc-msg[data-mine] .msg-bubble.bubble-photo > .irc-meta {
   bottom: 8px; right: 8px;
