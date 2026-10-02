@@ -364,9 +364,13 @@ html.m-desktop .screen { display: none !important; }
 .msg-av { width: 26px; height: 26px; font-size: 10px; border-radius: 9px; flex-shrink: 0; margin-bottom: 2px; }
 /* Личный чат и свои сообщения — без строки аватара; обёртка только держит
    реакции сиблингом под пузырём с тем же выравниванием, что и сам пузырь */
-.msg-wrap { display: flex; flex-direction: column; }
+/* max-width — здесь, а не на самом .bubble: проценты у .bubble считались бы от
+   .msg-wrap, а у него самого ширина по контенту — пузырь с длинным именем файла
+   ничем не ограничивался и уезжал за край экрана (как у .msg-row/.msg-row .bubble) */
+.msg-wrap { display: flex; flex-direction: column; max-width: 78%; }
 .msg-wrap.wrap-in { align-self: flex-start; align-items: flex-start; }
 .msg-wrap.wrap-out { align-self: flex-end; align-items: flex-end; }
+.msg-wrap .bubble { max-width: 100%; }
 .bubble-sender { font-size: 12.5px; font-weight: 700; margin: 0 2px 3px; cursor: pointer; }
 .mention { color: var(--accent); font-weight: 700; }
 .bubble-link { color: var(--accent); text-decoration: underline; word-break: break-all; }
