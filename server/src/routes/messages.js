@@ -45,6 +45,12 @@ router.get('/search', authMiddleware, (req, res) => {
       ORDER BY m.sent_at DESC LIMIT 30
     `).all(req.user.id, ftsQuery);
   } catch (e) { console.error('[FTS] search error:', e.message); }
+  // У сообщений ботов в тексте настоящий HTML (<b>, <i>...), который клиент не
+  // экранирует (как и в самом пузыре). snippet() режет текст по словам и может
+  // обрезать такой тег пополам — незакрытый тег в innerHTML «съедает» разметку
+  // соседних строк списка. Проще убрать теги форматирования из превью, чем
+  // балансировать обрезанный HTML.
+  rows.forEach(r => { if (r.sender_is_bot) r.snippet = r.snippet.replace(/<[^>]*>/g, ''); });
   res.json({ results: rows });
 });
 
