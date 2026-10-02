@@ -2878,11 +2878,13 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
   animation: msgIn 150ms ease-out;
 }
 
+/* box-shadow поверх собственного фона пузыря, а не замена background — иначе
+   на 0%/100% пузырь становится полупрозрачным и просвечивает фон чата */
 @keyframes msgHighlight {
-  0%   { background: transparent; }
-  15%  { background: var(--accent-soft); }
-  70%  { background: var(--accent-soft); }
-  100% { background: transparent; }
+  0%   { box-shadow: inset 0 0 0 999px transparent; }
+  15%  { box-shadow: inset 0 0 0 999px var(--accent-soft); }
+  70%  { box-shadow: inset 0 0 0 999px var(--accent-soft); }
+  100% { box-shadow: inset 0 0 0 999px transparent; }
 }
 /* красим сам пузырь: строка сообщения прозрачная и тянется во всю ширину ленты */
 .msg-highlight .msg-bubble { animation: msgHighlight 2s ease; }
