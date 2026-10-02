@@ -35,7 +35,7 @@ router.get('/search', authMiddleware, (req, res) => {
   try {
     rows = db.prepare(`
       SELECT m.id, m.chat_id, m.sent_at, u.id as sender_id,
-        COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name,
+        COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.is_bot as sender_is_bot,
         snippet(messages_fts, 0, char(1), char(2), '…', 10) as snippet
       FROM messages_fts
       JOIN messages m ON m.id = messages_fts.rowid

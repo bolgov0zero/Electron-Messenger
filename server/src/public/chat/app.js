@@ -1837,7 +1837,9 @@ function filterChats() {
 function renderSearchRow(r) {
   const chat = S.chats.find(c => c.id === r.chat_id);
   const title = chat ? chatName(chat) : (r.sender_name || '');
-  const snip = esc(r.snippet || '').replaceAll('\u0001', '<b>').replaceAll('\u0002', '</b>');
+  // Сообщения ботов хранят доверенный HTML (как и в самом пузыре, см. renderMsgIRC) —
+  // экранировать их нельзя, иначе теги вроде <b> показываются как текст
+  const snip = (r.sender_is_bot ? (r.snippet || '') : esc(r.snippet || '')).replaceAll('\u0001', '<b>').replaceAll('\u0002', '</b>');
   return `<div class="chat-item" onclick="openSearchResult(${r.chat_id},${r.id})">
     <div class="av av-md ${userAvatarColor(r.sender_id || 0)} av-round">${initials(r.sender_name || '?')}</div>
     <div class="info">
