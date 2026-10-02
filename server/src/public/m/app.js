@@ -26,7 +26,7 @@ const S = {
   server: '', token: null, user: null,
   chats: [], activeChatId: null, ws: null,
   presence: {}, lastSeen: {}, msgStatus: {}, statusApplied: {},
-  avatarTs: 0, currentTab: 'chats', replyTo: null, editingMessageId: null, editLimit: 120,
+  avatarTs: 0, currentTab: 'chats', replyTo: null, forwardMsg: null, editingMessageId: null, editLimit: 120,
   topics: {}, activeRoomId: null, // подкомнаты: roomId -> список тем; открытая комната с темами
   hasMoreOlder: false, // есть ли более старые сообщения, чем в _msgCache, для подгрузки при скролле вверх
   searchResults: null, // результаты глобального поиска по сообщениям (null — обычный список чатов)
@@ -685,9 +685,15 @@ function renderContacts() {
   const list = document.getElementById('contact-list');
   const filtered = _contactsAll.filter(u => u.display_name.toLowerCase().includes(q));
   if (!filtered.length) { list.innerHTML = `<div class="stub-note">${_contactsAll.length ? 'Никого не нашли' : 'В организации больше никого нет'}</div>`; return; }
+  // Статус онлайн известен только для тех, с кем уже есть личный чат (presence
+  // приходит по собеседникам direct-чатов — та же логика, что в /chat и в
+  // клиенте): для остальных контактов точка просто не показывается.
   list.innerHTML = filtered.map(u => `
     <div class="row" onclick="openContactChat(${u.id})">
-      <div class="av ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}" data-av-fallback="${esc(initials(u.display_name))}">${esc(initials(u.display_name))}</div>
+      <div class="av-wrap">
+        <div class="av ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}" data-av-fallback="${esc(initials(u.display_name))}">${esc(initials(u.display_name))}</div>
+        ${presenceDot(u.id)}
+      </div>
       <div class="row-body">
         <div class="row-top"><div class="row-name">${esc(u.display_name)}</div></div>
         <div class="row-bottom"><div class="row-msg">@${esc(u.username)}</div></div>
@@ -1184,6 +1190,13 @@ function bubbleHtml(m, chat, pos = {}) {
     <div class="bubble-quote-name">${esc(m.reply_sender_name || '')}</div>
     <div class="bubble-quote-text">${m.reply_deleted ? 'Сообщение удалено' : esc(m.reply_text || '')}</div>
   </div>` : '';
+  // Пересылка — тот же вид цитаты, что и у ответа, просто с именем исходного
+  // автора вместо того, на чьё сообщение отвечают (как в /chat и в клиенте)
+  const fd = m.forward_data;
+  const forwardHtml = fd ? `<div class="bubble-quote">
+    <div class="bubble-quote-name">Переслано от ${esc(fd.name || '')}</div>
+    <div class="bubble-quote-text">${fd.text ? esc(fd.text) : (fd.attachment ? (fd.attachment.mime?.startsWith('image/') ? '📷 Фото' : fd.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + esc(fd.attachment.name || 'Файл')) : '')}</div>
+  </div>` : '';
   // Имя отправителя — НАД пузырём, а не внутри него (как в /chat): это
   // отдельная строка на фоне переписки, а не первая строка внутри цветного
   // прямоугольника сообщения.
@@ -1196,7 +1209,7 @@ function bubbleHtml(m, chat, pos = {}) {
     && !!(att.mime?.startsWith('image/') || att.mime?.startsWith('video/'));
   const posCls = (isTail ? ' tail' : '') + (split ? ' split' : '') + (splitNext ? ' split-next' : '');
   const bubbleOnly = `<div class="bubble ${mine ? 'out' : 'in'}${posCls}${bareMedia ? ' bubble-photo' : ''}${emojiOnly ? ' emoji-msg' : ''}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}">
-    ${quote}${attachmentHtml(m.attachment)}${text}
+    ${quote}${forwardHtml}${attachmentHtml(m.attachment)}${text}
     <div class="bubble-meta">${m.edited_at ? 'изм. ' : ''}${fmtTime(m.sent_at)}${mine ? renderTicks(m.status) : ''}</div>
   </div>`;
   const reactions = reactionsHtml(m);
@@ -1577,6 +1590,84 @@ function hideReplyBar() {
   if (bar) bar.style.display = 'none';
 }
 
+// ── ПЕРЕСЫЛКА ──
+// Как ответ: выбранное сообщение ждёт в S.forwardMsg, полоса над композером
+// показывает превью, отправка идёт обычным sendMessage() с forward_data в
+// payload (как в /chat и в клиенте — сервер одинаково обрабатывает оба). Если
+// пересылаемое сообщение само уже переслано — сохраняем автора оригинала, а
+// не того, кто его переслал (та же логика, что в /chat и в клиенте).
+function ctxForward(msgId) {
+  const m = findMsg(msgId);
+  if (!m || m.deleted) return;
+  const mine = m.sender_id === S.user.id;
+  S.forwardMsg = m.forward_data
+    ? { ...m.forward_data }
+    : { user_id: m.sender_id, name: mine ? S.user.display_name : (m.sender_name || ''), text: (m.text || '').slice(0, 200), attachment: m.attachment || null, is_bot: !!m.sender_is_bot };
+  openForwardSheet();
+}
+function openForwardSheet() {
+  openSheet(`<div class="sheet-title">Переслать</div>
+    <input id="fwd-search" placeholder="Поиск" oninput="renderForwardList(this.value)"
+      style="width:100%;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--search-bg);color:var(--text);padding:0 12px;font-size:14px;box-sizing:border-box;margin-bottom:8px">
+    <div id="fwd-list"></div>`);
+  renderForwardList('');
+}
+async function renderForwardList(q) {
+  const list = document.getElementById('fwd-list');
+  if (!list) return;
+  const query = (q || '').trim().toLowerCase();
+  if (!_contactsAll.length) await loadContacts();
+  const chats = S.chats.filter(c => !c.parent_id && (!query || chatName(c).toLowerCase().includes(query)));
+  const directPeerIds = new Set(S.chats.filter(c => c.type === 'direct').map(getPeerUserId).filter(Boolean));
+  const users = _contactsAll.filter(u => !directPeerIds.has(u.id) && (!query || u.display_name.toLowerCase().includes(query) || u.username.toLowerCase().includes(query)));
+  let html = '';
+  if (chats.length) {
+    html += `<div class="chat-list-section-label">Чаты</div>` + chats.map(c => `
+      <div class="row" onclick="selectForwardChat(${c.id})">
+        <div class="av${(c.type === 'group' || c.type === 'room') ? ' sq' : ''} ${chatAvatarColorClass(c)}" data-av-chat="${c.id}">${esc(chatIcon(c))}</div>
+        <div class="row-body"><div class="row-top"><div class="row-name">${esc(chatName(c))}</div></div></div>
+      </div>`).join('');
+  }
+  if (users.length) {
+    html += `<div class="chat-list-section-label">Контакты</div>` + users.map(u => `
+      <div class="row" onclick="selectForwardUser(${u.id})">
+        <div class="av ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}" data-av-fallback="${esc(initials(u.display_name))}">${esc(initials(u.display_name))}</div>
+        <div class="row-body"><div class="row-top"><div class="row-name">${esc(u.display_name)}</div></div></div>
+      </div>`).join('');
+  }
+  list.innerHTML = html || '<div class="stub-note">Ничего не нашли</div>';
+  applyAvatars();
+}
+async function selectForwardChat(chatId) {
+  closeSheet();
+  setTab('chats');
+  await openChat(chatId);
+  showForwardBar();
+}
+async function selectForwardUser(userId) {
+  closeSheet();
+  const chat = await api('POST', '/chats/direct', { user_id: userId });
+  if (!chat || chat.error) { toast('Не удалось открыть чат'); return; }
+  if (!S.chats.find(c => c.id === chat.id)) S.chats.push(chat);
+  setTab('chats');
+  await openChat(chat.id);
+  showForwardBar();
+}
+function showForwardBar() {
+  if (!S.forwardMsg) return;
+  document.getElementById('forward-bar-name').textContent = 'Переслано от ' + (S.forwardMsg.name || '');
+  const previewText = S.forwardMsg.text || (S.forwardMsg.attachment ? '📎 Вложение' : '');
+  document.getElementById('forward-bar-text').textContent = previewText.slice(0, 80);
+  document.getElementById('forward-bar').style.display = '';
+  document.getElementById('msg-input')?.focus();
+  stickMessagesToBottom();
+}
+function hideForwardBar() {
+  S.forwardMsg = null;
+  const bar = document.getElementById('forward-bar');
+  if (bar) bar.style.display = 'none';
+}
+
 // ── ВЛОЖЕНИЯ ──
 let _pendingAttachment = null;
 let _uploadSettings = {
@@ -1937,6 +2028,8 @@ function openMsgActions(msgId) {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>Реакция</div>`;
   const rowReply = `<div class="msg-action-row" onclick="closeSheet();setReply(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>Ответить</div>`;
+  const rowForward = `<div class="msg-action-row" onclick="closeSheet();ctxForward(${msgId})">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>Переслать</div>`;
   const rowCopy = m.text ? `<div class="msg-action-row" onclick="closeSheet();copyMsgText(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Копировать</div>` : '';
   const rowEdit = canEdit ? `<div class="msg-action-row" onclick="closeSheet();startEdit(${msgId})">
@@ -1945,7 +2038,7 @@ function openMsgActions(msgId) {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>Информация</div>` : '';
   const rowDelete = mine ? `<div class="msg-action-row danger" onclick="closeSheet();deleteMessageConfirm(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Удалить</div>` : '';
-  openSheet(`<div class="sheet-title">Сообщение</div>${rowReact}${rowReply}${rowCopy}${rowEdit}${rowInfo}${rowDelete}`);
+  openSheet(`<div class="sheet-title">Сообщение</div>${rowReact}${rowReply}${rowForward}${rowCopy}${rowEdit}${rowInfo}${rowDelete}`);
 }
 async function copyMsgText(msgId) {
   const m = findMsg(msgId);
@@ -2079,7 +2172,7 @@ function sendMessage() {
   if (S.editingMessageId) { submitEdit(); return; }
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
-  if (!text && !_pendingAttachment) return;
+  if (!text && !_pendingAttachment && !S.forwardMsg) return;
   if (!S.activeChatId) return;
   if (!S.ws || S.ws.readyState !== 1) { toast('Нет связи с сервером'); return; }
   const chatId = S.activeChatId;
@@ -2098,11 +2191,16 @@ function sendMessage() {
     payload.attachment = _pendingAttachment;
     temp.attachment = _pendingAttachment;
   }
+  if (S.forwardMsg) {
+    payload.forward_data = S.forwardMsg;
+    temp.forward_data = S.forwardMsg;
+  }
   _msgCache.push(temp);
   renderMessages();
   S.ws.send(JSON.stringify(payload));
   input.value = '';
   hideReplyBar();
+  hideForwardBar();
   clearAttachment();
 }
 

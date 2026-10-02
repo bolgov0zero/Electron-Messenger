@@ -246,6 +246,15 @@ window.APP_VERSION = '?v=1';
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </div>
         </div>
+        <div class="reply-bar" id="forward-bar" style="display:none">
+          <div class="reply-bar-body">
+            <div class="reply-bar-name" id="forward-bar-name"></div>
+            <div class="reply-bar-text" id="forward-bar-text"></div>
+          </div>
+          <div class="reply-bar-x" onclick="hideForwardBar()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+        </div>
         <div class="reply-bar" id="edit-bar" style="display:none">
           <div class="reply-bar-body"><div class="reply-bar-name">Редактирование</div></div>
           <div class="reply-bar-x" onclick="cancelEdit()">
