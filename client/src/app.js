@@ -864,6 +864,7 @@ const CS_I = {
   down: csSvg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'),
   bolt: csSvg('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'),
   lock: csSvg('<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
+  copy: csSvg('<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
 };
 
 // Настройки живут во вкладке сайдбара (см. setSidebarTab), а не в модалке —
@@ -983,8 +984,22 @@ function csPaneProfile() {
           <button type="button" class="cs-btn solid" id="cs-pwsave" ${csPwReady() && !CS.pwBusy ? '' : 'disabled'} onclick="submitOwnPassword()">${CS.pwBusy ? 'Сохраняю…' : 'Сохранить пароль'}</button></div>
       </div>` : ''}
     </div>
+    <div class="cs-gt">Сервер</div>
+    <div class="cs-g"><div class="cs-r">
+      <div class="cs-l"><b>Адрес сервера</b><span>${esc(S.server)}</span></div>
+      <button type="button" class="cs-btn ghost" id="cs-server-copy" onclick="csCopyServer(this)">${CS_I.copy}Скопировать</button>
+    </div></div>
     <div class="cs-logout"><div class="cs-l"><b>Выйти из аккаунта</b><span>${where} понадобится снова ввести логин и пароль</span></div>
       <button type="button" class="cs-btn danger" onclick="logout(true)">${CS_I.out}Выйти</button></div>`;
+}
+function csCopyServer(btn) {
+  navigator.clipboard.writeText(S.server).then(() => {
+    if (!btn) return;
+    const original = btn.innerHTML;
+    btn.innerHTML = `${CS_I.check}Скопировано`;
+    btn.disabled = true;
+    setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 1500);
+  }).catch(() => {});
 }
 function csNameInput(v) {
   CS.nameDraft = v;
