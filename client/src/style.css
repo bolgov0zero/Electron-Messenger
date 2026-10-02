@@ -3162,6 +3162,15 @@ html.dark .announcement-title { color: var(--danger); }
 .irc-msg.irc-tail .msg-bubble { border-radius: 14px 14px 14px 5px; }
 .irc-msg.irc-tail[data-mine] .msg-bubble { border-radius: 14px 14px 5px 14px; }
 
+/* Реакция стоит не на последнем сообщении серии — между ним и следующим пузырём
+   появляется бейдж, и их больше не читать как сросшиеся. Срезаем тот же угол, что
+   и у хвоста серии (5px, радиус бейджа), сразу с двух сторон разрыва: снизу у
+   сообщения с реакцией и сверху у следующего за ним. */
+.irc-msg.irc-reaction-split .msg-bubble { border-bottom-left-radius: 5px; }
+.irc-msg.irc-reaction-split[data-mine] .msg-bubble { border-bottom-right-radius: 5px; }
+.irc-msg.irc-reaction-split-next .msg-bubble { border-top-left-radius: 5px; }
+.irc-msg.irc-reaction-split-next[data-mine] .msg-bubble { border-top-right-radius: 5px; }
+
 /* аватарка стоит у последнего сообщения серии; у своих её нет вовсе */
 .irc-msg:not(.irc-tail) .irc-av { visibility: hidden; }
 .irc-msg[data-mine] .irc-av { display: none; }
@@ -3179,11 +3188,14 @@ html.dark .announcement-title { color: var(--danger); }
 .irc-msg[data-mine] .irc-text::after { width: 60px; }
 
 /* вложения — под края пузыря */
-/* Картинка выходит под края пузыря. Если под ней есть подпись — низ скруглён слабо,
-   а между картинкой и текстом остаётся отступ. Если картинка одна, без подписи и
-   реакций, — она заполняет пузырь целиком, а время получает подложку, иначе
-   на светлом кадре его не видно. */
-.msg-bubble .bubble-image { margin: -5px -11px 5px; border-radius: 13px 13px 4px 4px; overflow: hidden; }
+/* Картинка выходит под края пузыря. Если под ней есть подпись — все углы картинки
+   скруглены одинаково (срезанный угол достаётся не ей, а тексту внизу, см. .irc-tail
+   .msg-bubble), между картинкой и текстом остаётся отступ. Если картинка одна, без
+   подписи и реакций, — она заполняет пузырь целиком, а время получает подложку,
+   иначе на светлом кадре его не видно. Ширина пузыря с подписью задаётся картинкой
+   (280px) — текст не должен быть шире неё, см. правило ниже. */
+.msg-bubble .bubble-image { margin: -5px -11px 5px; border-radius: 13px; overflow: hidden; }
+.msg-bubble:has(> .bubble-image):has(> .irc-text) { width: 280px; max-width: 100%; }
 .msg-bubble .bubble-file { margin: -1px -5px; }
 /* Сообщение, где нет ничего кроме файла: под время нет строки текста с распоркой,
    и оно ложится вплотную к иконке скачивания. Резервируем полосу. Реакции теперь
@@ -3256,6 +3268,11 @@ html.dark .announcement-title { color: var(--danger); }
    в серии фото-сообщений угол картинки не совпадает с углом пузыря под ней */
 .irc-msg.irc-tail .msg-bubble.bubble-photo .bubble-image { border-radius: 13px 13px 13px 4px; }
 .irc-msg.irc-tail[data-mine] .msg-bubble.bubble-photo .bubble-image { border-radius: 13px 13px 4px 13px; }
+/* то же самое — когда угол срезает не хвост серии, а разрыв вокруг реакции */
+.irc-msg.irc-reaction-split .msg-bubble.bubble-photo .bubble-image { border-bottom-left-radius: 4px; }
+.irc-msg.irc-reaction-split[data-mine] .msg-bubble.bubble-photo .bubble-image { border-bottom-right-radius: 4px; }
+.irc-msg.irc-reaction-split-next .msg-bubble.bubble-photo .bubble-image { border-top-left-radius: 4px; }
+.irc-msg.irc-reaction-split-next[data-mine] .msg-bubble.bubble-photo .bubble-image { border-top-right-radius: 4px; }
 .msg-bubble.bubble-photo > .irc-meta,
 .irc-msg[data-mine] .msg-bubble.bubble-photo > .irc-meta {
   bottom: 8px; right: 8px;

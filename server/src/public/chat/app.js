@@ -2902,6 +2902,14 @@ function reflowSeries() {
     el.classList.toggle('irc-first', !sameSeries(msgs[i - 1]));
     el.classList.toggle('irc-tail', !sameSeries(msgs[i + 1]));
   });
+  // Реакция на не-последнем сообщении серии разрывает срезанный угол: он уходит
+  // вниз у этого сообщения и повторяется сверху у следующего за ним.
+  msgs.forEach(el => {
+    el.classList.toggle('irc-reaction-split', !!el.querySelector('.reactions') && !el.classList.contains('irc-tail'));
+  });
+  msgs.forEach((el, i) => {
+    el.classList.toggle('irc-reaction-split-next', !!msgs[i - 1]?.classList.contains('irc-reaction-split'));
+  });
 }
 
 function rolePillHtml(tag) {
@@ -4373,6 +4381,9 @@ function connectWS() {
             const bubbleRow = msgEl.querySelector('.bubble-row');
             if (bubbleRow) bubbleRow.insertAdjacentHTML('afterend', reactionsHtml);
           }
+          // Появление/исчезновение реакции может разорвать срезанный угол серии
+          // (см. .irc-reaction-split в reflowSeries)
+          reflowSeries();
           if (container) {
             const delta = container.scrollHeight - prevScrollHeight;
             if (isAtBottom) container.scrollTop = container.scrollHeight;
