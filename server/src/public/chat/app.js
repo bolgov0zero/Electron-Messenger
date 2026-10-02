@@ -2882,7 +2882,7 @@ document.addEventListener('scroll', _rtHide, true);
 window.addEventListener('blur', _rtHide);
 
 function renderMsg(m, isChatGroup, hideTime = false, grouped = false, isLast = true) {
-  return renderMsgIRC(m, !grouped, isLast);
+  return renderMsgIRC(m, !grouped, isLast, isChatGroup);
 }
 
 // Пересчитывает границы серий по DOM: у первого сообщения серии выводится имя,
@@ -2939,7 +2939,7 @@ function senderNameClass(tag) {
   return 'tag-' + (h % TAG_COLORS + 1);
 }
 
-function renderMsgIRC(m, isFirst = true, isTail = true) {
+function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   if (m.status && m.id > 0) S.msgStatus[m.id] = { ...m.status };
   const isSystem = m.sender_username === '__system__';
   if (m.id > 0 && !isSystem) S.msgData.set(m.id, { forwardData: m.forward_data || null, senderId: m.sender_id, senderName: m.sender_name, senderIsBot: !!m.sender_is_bot, text: m.text, attachment: m.attachment });
@@ -3053,7 +3053,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true) {
   const emojiOnly = !isDeleted && !m.attachment && !m.reply_to_id && !m.forward_data && isEmojiOnly(m.text);
   const posCls = (isFirst ? ' irc-first' : '') + (isTail ? ' irc-tail' : '') + (emojiOnly ? ' emoji-msg' : '');
 
-  return `<div class="irc-msg${posCls}${m._optimistic?' msg-optimistic':''}"${mine?` data-mine="1"`:``} data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
+  return `<div class="irc-msg${posCls}${m._optimistic?' msg-optimistic':''}"${mine?` data-mine="1"`:``}${isChatGroup?'':' data-dm="1"'} data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
     oncontextmenu="${!isDeleted?`showCtxMenu(event,${m.id},${m.sent_at},${mine})`:'event.preventDefault()'}">
     <div class="irc-content" ondblclick="${!isDeleted?`dblReply(${m.id})`:''}">
       ${header}

@@ -3174,6 +3174,10 @@ html.dark .announcement-title { color: var(--danger); }
 /* аватарка стоит у последнего сообщения серии; у своих её нет вовсе */
 .irc-msg:not(.irc-tail) .irc-av { visibility: hidden; }
 .irc-msg[data-mine] .irc-av { display: none; }
+/* Личный чат (не группа/комната) — собеседник и так один, аватар и имя излишни */
+.irc-msg[data-dm] .irc-av { display: none; }
+.irc-msg[data-dm] .irc-header { display: none; }
+.irc-msg[data-dm]:not([data-mine]) .reactions { margin-left: 0; }
 
 /* время и галочки — в правом нижнем углу пузыря; место под них резервирует ::after */
 /* Время и галочки — на одной линии с последней строкой сообщения. Раньше блок
