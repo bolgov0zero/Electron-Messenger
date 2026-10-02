@@ -3117,12 +3117,13 @@ html.dark .announcement-title { color: var(--danger); }
 
 /* ══════════════════════════════════════════
    ПЕРЕПИСКА ПУЗЫРЯМИ
-   Имя и тег стоят НАД пузырём, содержимое (цитата, вложение, текст, время,
-   реакции) — внутри .msg-bubble. Позиция в серии задаётся классами
+   Имя и тег стоят НАД пузырём; цитата/вложение/текст/время — внутри
+   .msg-bubble. Реакции — отдельной строкой ПОД .bubble-row (аватар+пузырь),
+   поэтому их появление не сдвигает аватар. Позиция в серии задаётся классами
    .irc-first (первое) и .irc-tail (последнее): у первого выводится имя,
    у последнего — аватарка и срезанный угол со стороны автора.
    ══════════════════════════════════════════ */
-.irc-msg { padding: 1px 12px; background: none; align-items: flex-end; gap: 9px; }
+.irc-msg { padding: 1px 12px; background: none; align-items: flex-end; }
 .irc-msg:hover { background: none; }
 .irc-msg[data-mine] { flex-direction: row-reverse; }
 
@@ -3133,6 +3134,10 @@ html.dark .announcement-title { color: var(--danger); }
   display: flex; flex-direction: column; align-items: flex-start;
 }
 .irc-msg[data-mine] .irc-content { align-items: flex-end; }
+
+/* аватар + пузырь — отдельная строка, выровненная по нижнему краю. Реакции
+   идут ниже неё самостоятельным блоком и на положение аватара не влияют. */
+.bubble-row { display: flex; align-items: flex-end; gap: 9px; }
 
 /* имя и тег — над пузырём, вне его фона */
 .irc-header { align-items: center; margin: 0 0 3px; padding: 0 3px; }
@@ -3164,14 +3169,12 @@ html.dark .announcement-title { color: var(--danger); }
 /* время и галочки — в правом нижнем углу пузыря; место под них резервирует ::after */
 /* Время и галочки — на одной линии с последней строкой сообщения. Раньше блок
    просто прижимался к низу пузыря и оказывался на 3px ниже строки: у него своя
-   высота по содержимому. Теперь высота равна строке текста (line-height 21px),
-   а при реакциях — высоте их ряда, поэтому центры совпадают в обоих случаях. */
+   высота по содержимому. Теперь высота равна строке текста (line-height 21px). */
 .msg-bubble > .irc-meta {
   position: absolute; right: 10px; bottom: 5px; gap: 3px;
   display: flex; align-items: center;
 }
 .msg-bubble:not(.bubble-photo) > .irc-meta { height: 21px; }
-.msg-bubble:not(.bubble-photo):has(.reactions) > .irc-meta { height: 22px; }
 .irc-text::after { content: ''; display: inline-block; width: 50px; }
 .irc-msg[data-mine] .irc-text::after { width: 60px; }
 
@@ -3182,9 +3185,10 @@ html.dark .announcement-title { color: var(--danger); }
    на светлом кадре его не видно. */
 .msg-bubble .bubble-image { margin: -5px -11px 5px; border-radius: 13px 13px 4px 4px; overflow: hidden; }
 .msg-bubble .bubble-file { margin: -1px -5px; }
-/* Сообщение, где нет ничего кроме файла: под время нет ни строки текста с распоркой,
-   ни блока реакций, и оно ложится вплотную к иконке скачивания. Резервируем полосу. */
-.msg-bubble:has(> .bubble-file):not(:has(.irc-text)):not(:has(.reactions)) { padding-bottom: 23px; }
+/* Сообщение, где нет ничего кроме файла: под время нет строки текста с распоркой,
+   и оно ложится вплотную к иконке скачивания. Резервируем полосу. Реакции теперь
+   всегда вне пузыря, поэтому их присутствие тут больше не играет роли. */
+.msg-bubble:has(> .bubble-file):not(:has(.irc-text)) { padding-bottom: 23px; }
 
 /* сообщение из одного смайлика: крупнее и без пузыря — он проступает при наведении
    на сам смайлик, а не на всю строку. Время видно всегда и стоит там же, где было бы
@@ -3236,14 +3240,11 @@ html.dark .announcement-title { color: var(--danger); }
 .irc-reply.reply-tag-14 { border-left-color: rgb(var(--tag-14)); }
 .irc-reply.reply-tag-14 .irc-reply-name { color: rgb(var(--tag-14)); }
 
-/* обводка аватарок в реакциях — под фон пузыря */
-
 /* ── Сообщение, в котором нет ничего кроме картинки ──
    Класс .bubble-photo ставит рендер: только тогда кадр занимает пузырь целиком,
-   а время, галочки и реакции ложатся поверх него на затемнённой подложке.
-   Есть подпись, цитата или пересылка — всё идёт обычным порядком, снизу.
-   Правила стоят после отступов реакций: те задаются селектором выше по
-   специфичности и иначе перебивали бы сброс. */
+   а время и галочки ложатся поверх него на затемнённой подложке. Реакции
+   всегда идут отдельной строкой под .bubble-row, фото их не касается.
+   Есть подпись, цитата или пересылка — всё идёт обычным порядком, снизу. */
 .msg-bubble.bubble-photo { padding: 0; }
 .msg-bubble.bubble-photo .bubble-image {
   margin: 0; border-radius: 13px;
@@ -3266,29 +3267,32 @@ html.dark .announcement-title { color: var(--danger); }
 
 
 /* ── РЕАКЦИИ ──
-   Собрано одним блоком: раньше правила лежали в трёх местах и перебивали друг
-   друга. Чип — строка фиксированной высоты; смайлик и кружки аватарок имеют
-   одинаковый бокс 16×16 и выравниваются по центру чипа, поэтому их центры
-   совпадают без ручных сдвигов. */
+   Отдельная строка под .bubble-row (аватар+пузырь), а не внутри .msg-bubble —
+   поэтому появление/исчезновение реакций не двигает аватар. Выравнивание по
+   левому/правому краю берётся готовым у .irc-content (flex-start/flex-end);
+   отступ слева у чужих — ширина аватара (32px) + зазор (9px), чтобы бейдж
+   стоял строго под пузырём, а не под аватаром. */
 .reactions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
-/* Время лежит в правом нижнем углу пузыря: пока реакций нет, место под него
-   резервирует ::after в тексте; появились — нижняя строка уже их, и резерв
-   переносится на блок реакций. */
-.msg-bubble .reactions { padding-right: 46px; }
-.irc-msg[data-mine] .msg-bubble .reactions { padding-right: 58px; }
-.msg-bubble:has(.reactions) .irc-text::after { display: none; }
+.irc-msg:not([data-mine]) .reactions { margin-left: 41px; }
 
+/* Оформление бейджа — как у пузыря сообщения: скругление то же, что у его
+   срезанного угла (5px, см. .irc-tail .msg-bubble); чужая реакция (сам её
+   не ставил) выглядит как чужой пузырь, своя — как свой. */
 .reaction-btn {
   display: inline-flex; align-items: center; gap: 5px;
   height: 22px; padding: 0 7px;
-  background: var(--card-bg);
+  background: var(--bubble-bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 5px;
+  color: var(--text);
   cursor: pointer; font-family: inherit; line-height: 1;
   transition: background .12s, border-color .12s;
 }
 .reaction-btn:hover { border-color: var(--accent-border); }
-.reaction-btn.mine { background: var(--reaction-mine); }
+.reaction-btn.mine {
+  background: linear-gradient(var(--accent-soft), var(--accent-soft)) var(--chat-bg);
+  border-color: var(--role-teal-border);
+}
 
 .ra-emoji {
   width: 16px; height: 16px; flex-shrink: 0;
@@ -3299,21 +3303,7 @@ html.dark .announcement-title { color: var(--danger); }
   /* поправка на смещение рисунка внутри шрифта, меряется при запуске */
   transform: translateY(var(--emoji-ink, 0em));
 }
-/* inherit, а не var(--text) напрямую — на фото-подложке .reaction-btn
-   задаёт color:#fff, и число должно унаследовать его, а не всегда брать
-   обычный текстовый цвет темы */
 .ra-count { font-size: 11px; font-weight: 600; color: inherit; line-height: 1; }
-.reaction-btn.mine .ra-count { color: var(--accent); }
-
-/* Реакции поверх картинки: своя тёмная подложка */
-.msg-bubble.bubble-photo > .reactions,
-.irc-msg[data-mine] .msg-bubble.bubble-photo > .reactions {
-  position: absolute; left: 8px; bottom: 8px;
-  margin: 0; padding: 0; max-width: calc(100% - 84px);
-}
-.msg-bubble.bubble-photo .reaction-btn {
-  background: rgba(0,0,0,.5); border-color: transparent; color: #fff;
-}
 
 /* Подсказка: строки «аватарка + имя», смайлик не дублируем */
 .reaction-tip { padding: 8px 11px 8px 9px; }

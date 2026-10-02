@@ -2912,17 +2912,19 @@ function renderMsgIRC(m, isFirst = true, isTail = true) {
 
   return `<div class="irc-msg${posCls}${m._optimistic?' msg-optimistic':''}"${mine?` data-mine="1"`:``} data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
     oncontextmenu="${!isDeleted?`showCtxMenu(event,${m.id},${m.sent_at},${mine})`:'event.preventDefault()'}">
-    ${avCol}
     <div class="irc-content" ondblclick="${!isDeleted?`dblReply(${m.id})`:''}">
       ${header}
-      <div class="msg-bubble${bareImage ? ' bubble-photo' : ''}">
-        ${replyHtml}
-        ${forwardHtml}
-        ${attachHtml}
-        ${m.text || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}${emojiOnly?' emoji-only':''}">${bodyText}</div>` : ''}
-        ${metaHtml}
-        ${reactionsHtml}
+      <div class="bubble-row">
+        ${avCol}
+        <div class="msg-bubble${bareImage ? ' bubble-photo' : ''}">
+          ${replyHtml}
+          ${forwardHtml}
+          ${attachHtml}
+          ${m.text || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}${emojiOnly?' emoji-only':''}">${bodyText}</div>` : ''}
+          ${metaHtml}
+        </div>
       </div>
+      ${reactionsHtml}
     </div>
     ${actionsHtml}
   </div>`;
@@ -4221,11 +4223,11 @@ function connectWS() {
           if (existing) {
             existing.outerHTML = reactionsHtml || '';
           } else if (reactionsHtml) {
-            // Внутрь пузыря, а не в .irc-content: при полной отрисовке реакции
-            // лежат в пузыре, и вставка рядом клала первую реакцию под него —
-            // до перезахода в чат она висела отдельной строкой
-            const target = msgEl.querySelector('.msg-bubble') || msgEl.querySelector('.irc-content');
-            if (target) target.insertAdjacentHTML('beforeend', reactionsHtml);
+            // Сосед .bubble-row (аватар+пузырь) внутри .irc-content — как и при
+            // полной отрисовке в renderMsgIRC. Не .msg-bubble: он теперь вложен
+            // в .bubble-row, и вставка рядом с ним попала бы внутрь этой строки.
+            const bubbleRow = msgEl.querySelector('.bubble-row');
+            if (bubbleRow) bubbleRow.insertAdjacentHTML('afterend', reactionsHtml);
           }
 
           if (container) {
