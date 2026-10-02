@@ -3130,9 +3130,9 @@ html.dark .announcement-title { color: var(--danger); }
    появляется бейдж, и их больше не читать как сросшиеся. Срезаем тот же угол, что
    и у хвоста серии (5px, радиус бейджа), сразу с двух сторон разрыва: снизу у
    сообщения с реакцией и сверху у следующего за ним. */
-.irc-msg.irc-reaction-split .msg-bubble { border-bottom-left-radius: 5px; }
+.irc-msg.irc-reaction-split:not([data-mine]) .msg-bubble { border-bottom-left-radius: 5px; }
 .irc-msg.irc-reaction-split[data-mine] .msg-bubble { border-bottom-right-radius: 5px; }
-.irc-msg.irc-reaction-split-next .msg-bubble { border-top-left-radius: 5px; }
+.irc-msg.irc-reaction-split-next:not([data-mine]) .msg-bubble { border-top-left-radius: 5px; }
 .irc-msg.irc-reaction-split-next[data-mine] .msg-bubble { border-top-right-radius: 5px; }
 
 /* аватарка стоит у последнего сообщения серии; у своих её нет вовсе */
@@ -3233,9 +3233,9 @@ html.dark .announcement-title { color: var(--danger); }
 .irc-msg.irc-tail .msg-bubble.bubble-photo .bubble-image { border-radius: 13px 13px 13px 4px; }
 .irc-msg.irc-tail[data-mine] .msg-bubble.bubble-photo .bubble-image { border-radius: 13px 13px 4px 13px; }
 /* то же самое — когда угол срезает не хвост серии, а разрыв вокруг реакции */
-.irc-msg.irc-reaction-split .msg-bubble.bubble-photo .bubble-image { border-bottom-left-radius: 4px; }
+.irc-msg.irc-reaction-split:not([data-mine]) .msg-bubble.bubble-photo .bubble-image { border-bottom-left-radius: 4px; }
 .irc-msg.irc-reaction-split[data-mine] .msg-bubble.bubble-photo .bubble-image { border-bottom-right-radius: 4px; }
-.irc-msg.irc-reaction-split-next .msg-bubble.bubble-photo .bubble-image { border-top-left-radius: 4px; }
+.irc-msg.irc-reaction-split-next:not([data-mine]) .msg-bubble.bubble-photo .bubble-image { border-top-left-radius: 4px; }
 .irc-msg.irc-reaction-split-next[data-mine] .msg-bubble.bubble-photo .bubble-image { border-top-right-radius: 4px; }
 .msg-bubble.bubble-photo > .irc-meta,
 .irc-msg[data-mine] .msg-bubble.bubble-photo > .irc-meta {
