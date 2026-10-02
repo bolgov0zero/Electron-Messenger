@@ -3279,49 +3279,39 @@ html.dark .announcement-title { color: var(--danger); }
 .msg-bubble:has(.reactions) .irc-text::after { display: none; }
 
 .reaction-btn {
-  /* обводка кружков совпадает с подложкой чипа, иначе при нахлёсте они сливаются */
-  --ra-ring: var(--bubble-bg, var(--card-bg));
   display: inline-flex; align-items: center; gap: 5px;
   height: 22px; padding: 0 7px;
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 6px;
   cursor: pointer; font-family: inherit; line-height: 1;
   transition: background .12s, border-color .12s;
 }
 .reaction-btn:hover { border-color: var(--accent-border); }
 .reaction-btn.mine { background: var(--reaction-mine); }
 
-.ra-emoji, .ra {
+.ra-emoji {
   width: 16px; height: 16px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   line-height: 1;
-}
-.ra-emoji {
   font-size: 14px;
   font-family: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji Keys', sans-serif;
   /* поправка на смещение рисунка внутри шрифта, меряется при запуске */
   transform: translateY(var(--emoji-ink, 0em));
 }
-.ra-stack { display: flex; align-items: center; }
-.ra {
-  position: relative; overflow: hidden;
-  border-radius: 50%;
-  font-size: 8px; font-weight: 600; color: #fff;
-  box-shadow: 0 0 0 1.5px var(--ra-ring);
-}
-.ra + .ra { margin-left: -11px; }
-.ra img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.ra-more { font-size: 10px; font-weight: 600; color: var(--muted); line-height: 1; }
+/* inherit, а не var(--text) напрямую — на фото-подложке .reaction-btn
+   задаёт color:#fff, и число должно унаследовать его, а не всегда брать
+   обычный текстовый цвет темы */
+.ra-count { font-size: 11px; font-weight: 600; color: inherit; line-height: 1; }
+.reaction-btn.mine .ra-count { color: var(--accent); }
 
-/* Реакции поверх картинки: своя тёмная подложка, обводка кружков не нужна */
+/* Реакции поверх картинки: своя тёмная подложка */
 .msg-bubble.bubble-photo > .reactions,
 .irc-msg[data-mine] .msg-bubble.bubble-photo > .reactions {
   position: absolute; left: 8px; bottom: 8px;
   margin: 0; padding: 0; max-width: calc(100% - 84px);
 }
 .msg-bubble.bubble-photo .reaction-btn {
-  --ra-ring: transparent;
   background: rgba(0,0,0,.5); border-color: transparent; color: #fff;
 }
 

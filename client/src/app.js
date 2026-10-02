@@ -2480,13 +2480,6 @@ function prependMessages(msgs, chatId) {
   container.scrollTop = prevTop + (container.scrollHeight - prevHeight);
 }
 
-// Сколько аватарок помещается в чип реакции. Числа рядом нет, полный список
-// виден в подсказке при наведении.
-const REACTION_AVATARS_MAX = 3;
-
-// Аватарки поставивших складываются стопкой: первый сверху, каждый следующий
-// уходит под него и выступает на треть. Обводка цветом фона отделяет соседние
-// кружки — без неё при нахлёсте они сливаются.
 // Смайлик сидит в своём боксе не по центру: у эмодзи-шрифтов рисунок смещён
 // относительно середины строки, и величина смещения зависит от системы — на macOS
 // одна, на Windows другая. Меряем один раз на крупном кегле (на мелком метрики
@@ -2558,23 +2551,6 @@ try {
     .then(calcEmojiInkShift).catch(() => {});
 } catch {}
 
-function reactionAvatars(userIds) {
-  const ids = String(userIds || '').split(',').filter(Boolean).map(Number);
-  if (!ids.length) return '';
-  const shown = ids.slice(0, REACTION_AVATARS_MAX);
-  const rest = ids.length - shown.length;
-  const stack = shown.map((uid, k) => {
-    const u = S.allUsers.find(x => x.id === uid) || (uid === S.user?.id ? S.user : null);
-    const name = u?.display_name || '';
-    const url = `${httpProto()}://${S.server}/api/users/${uid}/avatar?t=${S.avatarTs || 0}`;
-    return `<span class="ra ${userAvatarColor(uid)}" style="z-index:${20 - k}" title="${esc(name)}">` +
-      `${esc(initials(name) || '?')}` +
-      `<img src="${url}" alt="" onerror="this.style.display='none'">` +
-      `</span>`;
-  }).join('');
-  // Больше трёх кружков не помещается без ущерба ширине — остальных сворачиваем
-  return `<span class="ra-stack">${stack}</span>${rest ? `<span class="ra-more">+${rest}</span>` : ''}`;
-}
 
 
 // ── ЗАКРЕПЛЁННЫЕ СООБЩЕНИЯ ──
@@ -2655,7 +2631,7 @@ function renderReactions(msgId) {
   return `<div class="reactions">${counts.map(r => {
     const mine = String(r.user_ids || '').split(',').includes(String(S.user?.id));
     return `<button class="reaction-btn${mine ? ' mine' : ''}" data-msg-id="${msgId}" data-reaction="${esc(r.reaction)}" onclick="sendReaction(${msgId},'${r.reaction}')">` +
-      `<span class="ra-emoji">${r.reaction}</span>${reactionAvatars(r.user_ids)}</button>`;
+      `<span class="ra-emoji">${r.reaction}</span><span class="ra-count">${r.count}</span></button>`;
   }).join('')}</div>`;
 }
 
