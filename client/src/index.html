@@ -191,6 +191,7 @@
     <aside class="sidebar">
       <div class="sidebar-search" id="sidebar-search">
         <button class="strip-back" onclick="leaveRoom()" title="К списку чатов"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <div class="room-title" id="room-title"></div>
         <div class="search-wrap" id="chats-search-wrap">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input id="search" placeholder="Поиск чатов..." oninput="filterChats()">
@@ -203,7 +204,11 @@
           <input id="contacts-search" placeholder="Поиск контактов..." oninput="filterContacts(this.value)">
         </div>
       </div>
-      <div class="chats-list" id="chats-list"></div>
+      <div class="sidebar-list-wrap">
+        <div class="chats-list" id="chats-list"></div>
+        <!-- Список тем — выезжает поверх списка чатов, когда открыта комната с темами -->
+        <nav class="topics-panel" id="topics-panel"></nav>
+      </div>
       <div class="sidebar-tabbar" id="sidebar-tabbar">
         <button type="button" class="sb-tab on" data-tab="chats" onclick="setSidebarTab('chats')" title="Чаты">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v10l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg>
@@ -217,9 +222,6 @@
         </button>
       </div>
     </aside>
-
-    <!-- Панель тем (видна, когда открыта комната с темами) -->
-    <nav class="topics-panel" id="topics-panel"></nav>
 
     <!-- Chat area -->
     <main class="chat-main" id="chat-main">

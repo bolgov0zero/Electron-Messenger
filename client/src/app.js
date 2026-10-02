@@ -1666,9 +1666,6 @@ async function loadTopics(roomId, { render = false } = {}) {
 // последнего сообщения и счётчики. Всё это сервер отдаёт вместе со списком —
 // раньше показывалось только название и общий счётчик, и понять, где что
 // происходит, можно было только зайдя внутрь.
-let _tpQuery = '';
-let _tpSearchOpen = false;
-
 function topicRow(s) {
   const unread = S.unread[s.id] || 0;
   const mentions = S.unreadMentions[s.id] || 0;
@@ -1712,57 +1709,7 @@ function topicRow(s) {
   '</div>';
 }
 
-function topicsPanelHtml(roomId) {
-  const room = S.chats.find(c => c.id === roomId);
-  const subs = S.topics[roomId] || [];
-  const q = _tpQuery.trim().toLowerCase();
-  const shown = q ? subs.filter(s => s.name.toLowerCase().includes(q)) : subs;
-  const n = room?.members?.length || 0;
-  const word = (n % 10 === 1 && n % 100 !== 11) ? 'участник'
-    : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? 'участника' : 'участников';
-  // Поиск живёт в той же строке, что название: лишний ряд сдвинул бы список
-  // относительно списка чатов, а они должны стоять строка в строку
-  const head = _tpSearchOpen
-    ? '<input class="tp-search" id="tp-search" placeholder="Поиск темы" value="' + esc(_tpQuery) + '"' +
-      ' oninput="filterTopics(this.value)" onkeydown="if(event.key===\'Escape\')closeTopicSearch()">' +
-      '<button class="tp-icon-btn on" onclick="closeTopicSearch()" title="Отменить поиск">' +
-      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
-    : '<span class="tp-title">' + esc(room?.name || 'Комната') + '</span>' +
-      '<button class="tp-icon-btn on" onclick="openTopicSearch()" title="Поиск темы"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button>';
-
-  return '<div class="tp-head">' + head + '</div>' +
-    '<div class="tp-list">' +
-      // Разделитель вместо подписи раздела — на той же высоте, что и первая
-      // черта в свёрнутом списке чатов
-      '<div class="tp-sep"></div>' +
-      (shown.length ? shown.map(topicRow).join('') : '<div class="tp-empty">Ничего не найдено</div>') +
-    '</div>';
-}
-
-function filterTopics(q) {
-  _tpQuery = q;
-  const list = document.querySelector('#topics-panel .tp-list');
-  if (!list || !S.activeRoomId) return;
-  // Перерисовываем только список: строку поиска трогать нельзя, слетит курсор
-  const subs = S.topics[S.activeRoomId] || [];
-  const t = q.trim().toLowerCase();
-  const shown = t ? subs.filter(s => s.name.toLowerCase().includes(t)) : subs;
-  list.innerHTML = '<div class="tp-sep"></div>' + (shown.length
-    ? shown.map(topicRow).join('')
-    : '<div class="tp-empty">Ничего не найдено</div>');
-}
-
-function openTopicSearch() {
-  _tpSearchOpen = true;
-  if (S.activeRoomId) renderTopicsPanel(S.activeRoomId);
-  document.getElementById('tp-search')?.focus();
-}
-function closeTopicSearch() {
-  _tpSearchOpen = false; _tpQuery = '';
-  if (S.activeRoomId) renderTopicsPanel(S.activeRoomId);
-}
-
-// Выход из комнаты: панель уезжает, сайдбар разворачивается обратно
+// Выход из комнаты: список тем уезжает вправо, возвращается строка поиска
 function leaveRoom() {
   closeTopicsPanel();
   S.activeRoomId = null;
@@ -1778,27 +1725,19 @@ function renderTopicsPanel(roomId) {
   const panel = document.getElementById('topics-panel');
   const subs = S.topics[roomId] || [];
   if (!subs.length) { closeTopicsPanel(); return; }
-  // Анимация появления — только при входе в комнату. Панель перерисовывается
-  // и при выборе темы, и при новом сообщении; без этой проверки список
-  // дёргался каждый раз, будто открывается заново.
-  const wasOpen = panel.classList.contains('open');
+  // Тот же класс и те же отступы, что у подписи «Комнаты» в списке чатов —
+  // поэтому верх первой темы совпадает с верхом первой комнаты и въезд
+  // списка тем выглядит бесшовным
+  panel.innerHTML = '<div class="chat-list-section-label">Темы</div>' + subs.map(topicRow).join('');
   panel.classList.add('open');
-  // Сайдбар сжимается в полосу аватарок: место уходит списку тем
-  document.body.classList.add('rooms-strip');
-  panel.innerHTML = topicsPanelHtml(roomId);
-  if (!wasOpen) {
-    panel.classList.add('tp-enter');
-    setTimeout(() => panel.classList.remove('tp-enter'), 260);
-  }
+  const room = S.chats.find(c => c.id === roomId);
+  document.getElementById('room-title').textContent = room?.name || 'Комната';
+  document.getElementById('sidebar-search').classList.add('room-mode');
 }
 
 function closeTopicsPanel() {
-  const panel = document.getElementById('topics-panel');
-  panel.classList.remove('open');
-  panel.classList.remove('tp-enter');
-  panel.innerHTML = '';
-  document.body.classList.remove('rooms-strip');
-  _tpSearchOpen = false; _tpQuery = '';
+  document.getElementById('topics-panel').classList.remove('open');
+  document.getElementById('sidebar-search').classList.remove('room-mode');
 }
 
 async function openTopic(topicId) {
