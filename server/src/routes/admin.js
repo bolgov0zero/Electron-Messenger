@@ -170,18 +170,32 @@ router.post('/rooms', (req, res) => {
   res.json({ id: chatId });
 });
 
+// Админ меняет состав не из самого чата — участники могут не знать, кто это
+// сделал, поэтому формулировка безличная, без указания автора. Только для
+// group/room (в личных сообщениях состава как такового нет) и только для
+// самого чата, без дублей в подкомнатах при каскаде.
+function memberEventLabel(chatType, action) {
+  const place = chatType === 'room' ? 'комнат' : 'групп';
+  return action === 'add' ? `в ${place}у` : `из ${place}ы`;
+}
+
 // Add member to any chat/room — notify via WS
 router.post('/chats/:id/members', (req, res) => {
   const { user_id } = req.body;
   if (!user_id) return res.status(400).json({ error: 'Missing user_id' });
   const chatId = Number(req.params.id);
   const userId = Number(user_id);
+  const chat = db.prepare('SELECT type FROM chats WHERE id = ?').get(chatId);
   const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
   ins.run(chatId, userId);
   db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId)
     .forEach(s => ins.run(s.id, userId));
   db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(chatId)
     .forEach(({ user_id: uid }) => sendTo(uid, { type: 'reload_chats' }));
+  if (chat && chat.type !== 'direct') {
+    const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
+    announcements.sendSystemMessage(chatId, `${name} добавлен(а) ${memberEventLabel(chat.type, 'add')}`);
+  }
   res.json({ ok: true });
 });
 
@@ -189,6 +203,7 @@ router.post('/chats/:id/members', (req, res) => {
 router.delete('/chats/:id/members/:userId', (req, res) => {
   const chatId = Number(req.params.id);
   const kickedId = Number(req.params.userId);
+  const chat = db.prepare('SELECT type FROM chats WHERE id = ?').get(chatId);
   const remaining = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chatId, kickedId);
   const del = db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?');
   del.run(chatId, kickedId);
@@ -196,6 +211,10 @@ router.delete('/chats/:id/members/:userId', (req, res) => {
     .forEach(s => { del.run(s.id, kickedId); sendTo(kickedId, { type: 'chat_deleted', chat_id: s.id }); });
   remaining.forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
   sendTo(kickedId, { type: 'chat_deleted', chat_id: chatId });
+  if (chat && chat.type !== 'direct') {
+    const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(kickedId)?.display_name || '—';
+    announcements.sendSystemMessage(chatId, `${name} удалён(а) ${memberEventLabel(chat.type, 'remove')}`);
+  }
   res.json({ ok: true });
 });
 

@@ -34,6 +34,17 @@ function systemUserId() {
   return r ? Number(r.value) : null;
 }
 
+// Системное сообщение вне объявлений — например, уведомление о составе группы/комнаты.
+// Та же механика, что у deliver() для kind:'chat': обычное сообщение от системного
+// пользователя, разослано как любое новое сообщение.
+function sendSystemMessage(chatId, text) {
+  const sysId = systemUserId();
+  if (!sysId) return;
+  const r = db.prepare('INSERT INTO messages (chat_id, sender_id, text) VALUES (?, ?, ?)').run(chatId, sysId, text);
+  const msg = getMessageWithStatus(r.lastInsertRowid, null);
+  if (msg) broadcast(chatId, { type: 'message', message: msg });
+}
+
 // Отправка наступившего объявления. Возвращает число адресатов — для ответа админке.
 function deliver(row) {
   const now = Math.floor(Date.now() / 1000);
@@ -164,4 +175,4 @@ function stop(id) {
   return true;
 }
 
-module.exports = { create, journal, remove, stop, activeBannersFor, dismiss, startScheduler };
+module.exports = { create, journal, remove, stop, activeBannersFor, dismiss, startScheduler, sendSystemMessage };
