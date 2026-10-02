@@ -2948,10 +2948,24 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const isDeleted = m.deleted;
 
   if (isSystem && !isDeleted) {
+    // Изменение состава группы/комнаты — не объявление (без колокольчика):
+    // своя пара иконка+цвет на добавление/удаление участника
+    const isMemberAdd = m.system_kind === 'member_add';
+    const isMemberRemove = m.system_kind === 'member_remove';
+    const pillStyle = isMemberAdd
+      ? 'background:linear-gradient(var(--accent-soft),var(--accent-soft)) var(--chat-bg);border:1px solid var(--role-teal-border);'
+      : isMemberRemove
+      ? 'background:var(--card-bg);border:1px solid var(--border);'
+      : 'background:linear-gradient(rgba(210,55,55,.08),rgba(210,55,55,.08)) var(--chat-bg);border:1px solid rgba(210,55,55,.2);';
+    const iconSvg = isMemberAdd
+      ? '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>'
+      : isMemberRemove
+      ? '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/>'
+      : '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>';
     return `<div class="irc-msg" data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}" oncontextmenu="event.preventDefault()" style="padding:2px 0">
       <div style="width:100%;display:flex;justify-content:center;padding:0 20px;box-sizing:border-box">
-        <div style="background:linear-gradient(rgba(210,55,55,.08),rgba(210,55,55,.08)) var(--chat-bg);border:1px solid rgba(210,55,55,.2);border-radius:14px;padding:5px 14px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;max-width:80%">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.55"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <div style="${pillStyle}border-radius:14px;padding:5px 14px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;max-width:80%">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.7">${iconSvg}</svg>
           <span style="word-break:break-word">${esc(m.text)}</span>
           <span style="font-size:10px;opacity:.4;flex-shrink:0;margin-left:2px">${time}</span>
         </div>

@@ -194,7 +194,7 @@ router.post('/chats/:id/members', (req, res) => {
     .forEach(({ user_id: uid }) => sendTo(uid, { type: 'reload_chats' }));
   if (chat && chat.type !== 'direct') {
     const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
-    announcements.sendSystemMessage(chatId, `${name} добавлен(а) ${memberEventLabel(chat.type, 'add')}`);
+    announcements.sendSystemMessage(chatId, `${name} добавлен(а) ${memberEventLabel(chat.type, 'add')}`, 'member_add');
   }
   res.json({ ok: true });
 });
@@ -213,7 +213,7 @@ router.delete('/chats/:id/members/:userId', (req, res) => {
   sendTo(kickedId, { type: 'chat_deleted', chat_id: chatId });
   if (chat && chat.type !== 'direct') {
     const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(kickedId)?.display_name || '—';
-    announcements.sendSystemMessage(chatId, `${name} удалён(а) ${memberEventLabel(chat.type, 'remove')}`);
+    announcements.sendSystemMessage(chatId, `${name} удалён(а) ${memberEventLabel(chat.type, 'remove')}`, 'member_remove');
   }
   res.json({ ok: true });
 });

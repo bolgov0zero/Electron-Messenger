@@ -204,7 +204,7 @@ router.post('/:id/members', authMiddleware, (req, res) => {
   // Notify all members (including newly added) to reload chats
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(req.params.id);
   members.forEach(({ user_id: uid }) => sendTo(uid, { type: 'reload_chats' }));
-  announcements.sendSystemMessage(Number(req.params.id), `${nameOf(req.user.id)} добавил(а) ${nameOf(user_id)}`);
+  announcements.sendSystemMessage(Number(req.params.id), `${nameOf(req.user.id)} добавил(а) ${nameOf(user_id)}`, 'member_add');
   res.json({ ok: true });
 });
 
@@ -227,7 +227,7 @@ router.delete('/:id/members/:userId', authMiddleware, (req, res) => {
   topics.forEach(s => sendTo(kickedId, { type: 'chat_deleted', chat_id: s.id }));
   members.forEach(({ user_id: uid }) => sendTo(uid, { type: 'reload_chats' }));
   sendTo(kickedId, { type: 'chat_deleted', chat_id: chatId });
-  if (req.user.id !== kickedId) announcements.sendSystemMessage(chatId, `${nameOf(req.user.id)} удалил(а) ${nameOf(kickedId)}`);
+  if (req.user.id !== kickedId) announcements.sendSystemMessage(chatId, `${nameOf(req.user.id)} удалил(а) ${nameOf(kickedId)}`, 'member_remove');
   res.json({ ok: true });
 });
 
@@ -241,7 +241,7 @@ router.post('/:id/leave', authMiddleware, (req, res) => {
   db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(req.params.id)
     .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
   sendTo(req.user.id, { type: 'chat_deleted', chat_id: Number(req.params.id) });
-  announcements.sendSystemMessage(Number(req.params.id), `${nameOf(req.user.id)} покинул(а) группу`);
+  announcements.sendSystemMessage(Number(req.params.id), `${nameOf(req.user.id)} покинул(а) группу`, 'member_remove');
   res.json({ ok: true });
 });
 

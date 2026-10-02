@@ -1113,7 +1113,7 @@ function attachmentHtml(att) {
   if (att.mime?.startsWith('video/')) {
     const poster = att.thumb ? `${httpProto()}://${S.server}${att.thumb}` : '';
     return `<div class="bubble-video-wrap" onclick="event.stopPropagation();openLightbox('${esc(att.url)}','video')">
-      ${poster ? `<img class="bubble-media" src="${poster}" style="${ratioCss}" loading="lazy">` : `<div class="bubble-media" style="width:180px;height:120px;background:var(--search-bg)"></div>`}
+      ${poster ? `<img class="bubble-media" src="${poster}" style="${ratioCss}" loading="lazy">` : `<div class="bubble-media" style="height:160px;background:var(--search-bg)"></div>`}
       <div class="bubble-play"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>
     </div>`;
   }
@@ -1136,15 +1136,30 @@ function isEmojiOnly(text) {
   if (!t) return false;
   try { return EMOJI_ONLY_RE.test(t) && /\p{Extended_Pictographic}/u.test(t); } catch { return false; }
 }
-function bubbleHtml(m, chat) {
+function bubbleHtml(m, chat, pos = {}) {
+  const { isFirst = true, isTail = true, split = false, splitNext = false } = pos;
   const mine = m.sender_id === S.user.id;
   // Системные уведомления (объявления, изменение состава группы/комнаты) — та же
   // пилюля по центру ленты, что и в /chat и в клиенте, а не обычный пузырь слева
   if (m.sender_username === '__system__' && !m.deleted) {
+    // Изменение состава группы/комнаты — не объявление (без колокольчика):
+    // своя пара иконка+цвет на добавление/удаление участника
+    const isMemberAdd = m.system_kind === 'member_add';
+    const isMemberRemove = m.system_kind === 'member_remove';
+    const pillStyle = isMemberAdd
+      ? 'background:linear-gradient(rgba(var(--accent-rgb),.10),rgba(var(--accent-rgb),.10)) var(--chat-bg);border:1px solid rgba(var(--accent-rgb),.28);'
+      : isMemberRemove
+      ? 'background:var(--card-bg);border:1px solid var(--border);'
+      : 'background:linear-gradient(rgba(210,55,55,.08),rgba(210,55,55,.08)) var(--chat-bg);border:1px solid rgba(210,55,55,.2);';
+    const iconSvg = isMemberAdd
+      ? '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>'
+      : isMemberRemove
+      ? '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/>'
+      : '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>';
     return `<div data-msg-id="${m.id}" data-sender-id="${m.sender_id}" style="padding:2px 0">
       <div style="width:100%;display:flex;justify-content:center;padding:0 10px;box-sizing:border-box">
-        <div style="background:linear-gradient(rgba(210,55,55,.08),rgba(210,55,55,.08)) var(--chat-bg);border:1px solid rgba(210,55,55,.2);border-radius:14px;padding:5px 14px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;max-width:86%">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.55"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <div style="${pillStyle}border-radius:14px;padding:5px 14px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;max-width:86%">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.7">${iconSvg}</svg>
           <span style="word-break:break-word">${esc(m.text)}</span>
           <span style="font-size:10px;opacity:.4;flex-shrink:0;margin-left:2px">${fmtTime(m.sent_at)}</span>
         </div>
@@ -1153,7 +1168,13 @@ function bubbleHtml(m, chat) {
   }
   if (m.deleted) return `<div class="bubble ${mine ? 'out' : 'in'}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}"><span class="bubble-deleted">Сообщение удалено</span></div>`;
   const isGroupish = chat && (chat.type === 'group' || chat.type === 'room');
-  const showSender = isGroupish && !mine;
+  // Аватар и имя — только у первого/последнего сообщения серии (как в /chat и
+  // в клиенте), а не у каждого сообщения. Строку всё равно оборачиваем в
+  // .msg-row на каждом сообщении серии — это держит отступ под аватар, даже
+  // когда сам он не нарисован.
+  const wrapRow = isGroupish && !mine;
+  const showSender = wrapRow && isFirst;
+  const showAvatar = wrapRow && isTail;
   const emojiOnly = !m.attachment && !m.reply_to_id && isEmojiOnly(m.text);
   // Боты/системные аккаунты (sender_is_bot) присылают готовый HTML — вставляем
   // как есть, как в /chat; обычный текст экранируем и прогоняем через
@@ -1167,16 +1188,25 @@ function bubbleHtml(m, chat) {
   // отдельная строка на фоне переписки, а не первая строка внутри цветного
   // прямоугольника сообщения.
   const senderLine = showSender ? `<div class="bubble-sender ${userAvatarColor(m.sender_id, m.sender_tag).replace(/^av-/, 'mtag-')}" data-sender-id="${m.sender_id}" data-sender-name="${esc(m.sender_name || '')}" onclick="event.stopPropagation();mentionUserInComposer(Number(this.dataset.senderId),this.dataset.senderName)">${esc(m.sender_name || '')}</div>` : '';
-  const bubble = `<div class="bubble ${mine ? 'out' : 'in'}${emojiOnly ? ' emoji-msg' : ''}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}">
+  // Голое фото/видео (без подписи/цитаты) — во всю ширину пузыря, время поверх
+  // кадра; срезанный угол синхронизирован с положением в серии/разрывом у
+  // реакции (как .bubble-photo в /chat и в клиенте)
+  const att = m.attachment;
+  const bareMedia = !m.text && !m.reply_to_id && !!att?.url && !att.expired
+    && !!(att.mime?.startsWith('image/') || att.mime?.startsWith('video/'));
+  const posCls = (isTail ? ' tail' : '') + (split ? ' split' : '') + (splitNext ? ' split-next' : '');
+  const bubbleOnly = `<div class="bubble ${mine ? 'out' : 'in'}${posCls}${bareMedia ? ' bubble-photo' : ''}${emojiOnly ? ' emoji-msg' : ''}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}">
     ${quote}${attachmentHtml(m.attachment)}${text}
     <div class="bubble-meta">${m.edited_at ? 'изм. ' : ''}${fmtTime(m.sent_at)}${mine ? renderTicks(m.status) : ''}</div>
-    ${reactionsHtml(m)}
   </div>`;
-  if (!showSender) return bubble;
-  return `<div class="msg-row">
-    <div class="av msg-av ${userAvatarColor(m.sender_id, m.sender_tag)}" data-av-user="${m.sender_id}" data-av-fallback="${esc(initials(m.sender_name || ''))}">${esc(initials(m.sender_name || ''))}</div>
-    <div class="msg-col">${senderLine}${bubble}</div>
-  </div>`;
+  const reactions = reactionsHtml(m);
+  if (wrapRow) {
+    return `<div class="msg-row">
+      <div class="av msg-av ${userAvatarColor(m.sender_id, m.sender_tag)}" style="${showAvatar ? '' : 'visibility:hidden'}" data-av-user="${m.sender_id}" data-av-fallback="${esc(initials(m.sender_name || ''))}">${esc(initials(m.sender_name || ''))}</div>
+      <div class="msg-col">${senderLine}${bubbleOnly}${reactions}</div>
+    </div>`;
+  }
+  return `<div class="msg-wrap ${mine ? 'wrap-out' : 'wrap-in'}">${bubbleOnly}${reactions}</div>`;
 }
 function renderTicks(status) {
   if (!status) return '';
@@ -1197,23 +1227,38 @@ function renderTicks(status) {
 // чего чтение истории сбивало любое фоновое событие вроде галочки прочтения);
 // 'none' — не трогать scrollTop вовсе, вызывающий сам прокрутит куда нужно
 // (переход к сообщению из поиска)
+// Окно группировки серии сообщений одного автора — как в /chat и в клиенте
+// (reflowSeries/GROUP_WINDOW_SEC): имя и аватар только у первого/последнего,
+// срезанный угол — только у последнего, если не разорван реакцией внутри серии.
+const GROUP_WINDOW_SEC = 60;
 function renderMessages(mode) {
   const container = document.getElementById('messages');
   const keepScroll = mode === true;
   const smart = mode === 'smart';
   const chat = S.chats.find(c => c.id === S.activeChatId);
   let html = '', lastDay = '';
+  let prevSplit = false;
   // Каждый день — свой .day-group: он даёт бейджу отдельный containing block
   // для position:sticky, иначе бейджи разных дней подменяли бы друг друга
   // не там, где нужно, при прокрутке (как в /chat и в клиенте)
-  for (const m of _msgCache) {
+  for (let i = 0; i < _msgCache.length; i++) {
+    const m = _msgCache[i];
     const day = new Date(m.sent_at * 1000).toDateString();
     if (day !== lastDay) {
       if (lastDay) html += '</div>';
       html += `<div class="day-group"><div class="day-sep">${daySepLabel(m.sent_at)}</div>`;
       lastDay = day;
+      prevSplit = false; // серия не перескакивает через смену дня
     }
-    html += bubbleHtml(m, chat);
+    const sameSeries = (other) => !!other && other.sender_id === m.sender_id
+      && Math.abs(other.sent_at - m.sent_at) < GROUP_WINDOW_SEC
+      && new Date(other.sent_at * 1000).toDateString() === day;
+    const isFirst = !sameSeries(_msgCache[i - 1]);
+    const isTail = !sameSeries(_msgCache[i + 1]);
+    const split = !!m.reactions?.length && !isTail;
+    const splitNext = prevSplit;
+    prevSplit = split;
+    html += bubbleHtml(m, chat, { isFirst, isTail, split, splitNext });
   }
   if (lastDay) html += '</div>';
   // При подгрузке старых сообщений сохраняем то же место в ленте (иначе вставка

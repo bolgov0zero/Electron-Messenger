@@ -180,6 +180,9 @@ tryAlter('ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0');
 // Нужна, чтобы дистанционный выход срабатывал и для выключенных клиентов —
 // сообщение по открытому соединению до них не доходит.
 tryAlter('ALTER TABLE users ADD COLUMN sessions_valid_from INTEGER');
+// Отличает системное сообщение о составе группы/комнаты от обычного объявления —
+// у них разное оформление в клиенте (см. sendSystemMessage в announcements.js)
+tryAlter('ALTER TABLE messages ADD COLUMN system_kind TEXT');
 
 // ── Полнотекстовый поиск (FTS5, external content) ──
 // Целостность обеспечивается JOIN с messages при выборке: осиротевшие FTS-записи

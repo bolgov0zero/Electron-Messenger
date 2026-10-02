@@ -36,11 +36,14 @@ function systemUserId() {
 
 // Системное сообщение вне объявлений — например, уведомление о составе группы/комнаты.
 // Та же механика, что у deliver() для kind:'chat': обычное сообщение от системного
-// пользователя, разослано как любое новое сообщение.
-function sendSystemMessage(chatId, text) {
+// пользователя, разослано как любое новое сообщение. `kind` (например
+// 'member_add'/'member_remove') отличает это от обычного объявления в
+// system_kind — клиент рисует их разным оформлением (не как объявление с
+// колокольчиком).
+function sendSystemMessage(chatId, text, kind = null) {
   const sysId = systemUserId();
   if (!sysId) return;
-  const r = db.prepare('INSERT INTO messages (chat_id, sender_id, text) VALUES (?, ?, ?)').run(chatId, sysId, text);
+  const r = db.prepare('INSERT INTO messages (chat_id, sender_id, text, system_kind) VALUES (?, ?, ?, ?)').run(chatId, sysId, text, kind);
   const msg = getMessageWithStatus(r.lastInsertRowid, null);
   if (msg) broadcast(chatId, { type: 'message', message: msg });
 }
