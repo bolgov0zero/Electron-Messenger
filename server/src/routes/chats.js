@@ -191,20 +191,27 @@ router.patch('/:id', authMiddleware, (req, res) => {
   res.json(enrichChat(db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id), req.user.id));
 });
 
-// Add member to group
+// Add member to group or room. В комнате это админское действие (как и сама
+// кнопка в клиенте видна только админам для комнат) — комната управляется
+// централизованно, а не её рядовыми участниками, в отличие от группы.
 router.post('/:id/members', authMiddleware, (req, res) => {
   const { user_id } = req.body;
-  const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id);
-  if (!chat || chat.type !== 'group') return res.status(404).json({ error: 'Not found' });
-  if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(req.params.id, req.user.id))
-    return res.status(403).json({ error: 'Not a member' });
-  try {
-    db.prepare('INSERT INTO chat_members (chat_id, user_id) VALUES (?, ?)').run(req.params.id, user_id);
-  } catch {}
+  const chatId = Number(req.params.id);
+  const userId = Number(user_id);
+  const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
+  if (!chat || (chat.type !== 'group' && chat.type !== 'room')) return res.status(404).json({ error: 'Not found' });
+  const isMember = db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id);
+  if (chat.type === 'room' ? !req.user.is_admin : !isMember) return res.status(403).json({ error: 'Forbidden' });
+  const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
+  ins.run(chatId, userId);
+  // Комната — добавление каскадом идёт и в её подкомнаты (как при добавлении из админки)
+  if (chat.type === 'room') {
+    db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId).forEach(s => ins.run(s.id, userId));
+  }
   // Notify all members (including newly added) to reload chats
-  const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(req.params.id);
+  const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(chatId);
   members.forEach(({ user_id: uid }) => sendTo(uid, { type: 'reload_chats' }));
-  announcements.sendSystemMessage(Number(req.params.id), `${nameOf(req.user.id)} добавил(а) ${nameOf(user_id)}`, 'member_add');
+  announcements.sendSystemMessage(chatId, `${nameOf(req.user.id)} добавил(а) ${nameOf(userId)}`, 'member_add');
   res.json({ ok: true });
 });
 
