@@ -65,6 +65,17 @@ app.get(['/m', '/m/', '/m/index.html'], (req, res) => {
 app.use('/m', express.static(path.join(__dirname, 'public/m')));
 // Имя файла — timestamp+случайная строка, при новой загрузке никогда не переиспользуется,
 // поэтому старое имя гарантированно не сменит содержимое: можно кэшировать надолго
+// Зашифрованные файлы секретных чатов — только для участников чата, без публичного доступа
+app.get('/files/enc_:name', require('./auth').authMiddleware, (req, res) => {
+  const url = `/files/enc_${req.params.name}`;
+  const row = require('./db').prepare(`
+    SELECT m.chat_id FROM messages m WHERE m.attachment LIKE ? LIMIT 1
+  `).get(`%"url":"${url}"%`);
+  if (!row || !require('./db').prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(row.chat_id, req.user.id))
+    return res.status(404).end();
+  res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+  res.sendFile(path.join(FILES_DIR, `enc_${req.params.name}`), err => { if (err) res.status(404).end(); });
+});
 app.use('/files', express.static(FILES_DIR, { maxAge: '1y', immutable: true }));
 
 app.use('/api/auth', require('./routes/auth'));

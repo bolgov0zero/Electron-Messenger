@@ -4955,10 +4955,11 @@ const FL_EXT = {
   video: ['mp4', 'mov', 'webm', 'mkv', 'avi', 'm4v'],
   doc: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'odt', 'ods', 'odp', 'csv', 'md'],
 };
-const FL_KIND = { image: ['Картинка', '#0d9488'], doc: ['Документ', '#4f46e5'], video: ['Видео', '#db2777'], other: ['Файл', '#d97706'] };
+const FL_KIND = { image: ['Картинка', '#0d9488'], doc: ['Документ', '#4f46e5'], video: ['Видео', '#db2777'], other: ['Файл', '#d97706'], encrypted: ['Зашифровано', '#64748b'] };
 const FL_BIG = 20 * 1048576;
 const flExt = f => (String(f.filename).includes('.') ? String(f.filename).split('.').pop() : '').toLowerCase();
 function flKind(f) {
+  if (f.encrypted) return 'encrypted';
   const mime = f.mime || '', ext = flExt(f);
   if (mime.startsWith('image/') || FL_EXT.image.includes(ext)) return 'image';
   if (mime.startsWith('video/') || FL_EXT.video.includes(ext)) return 'video';
@@ -4969,7 +4970,7 @@ const flUrl = name => '/files/' + encodeURIComponent(name);
 const flShort = name => name.length > 42 ? name.slice(0, 40) + '…' : name;
 // Имя на диске — служебное (метка времени + случайный суффикс), человеку показываем
 // то, что он реально загрузил; у файлов без сообщения оригинала не сохранилось
-const flName = f => f.name || f.filename;
+const flName = f => f.encrypted ? 'Зашифрованный файл' : (f.name || f.filename);
 const flChatChip = type => type === 'direct' ? '<span class="rm-chip rm-direct">личный</span>'
   : type === 'group' ? '<span class="rm-chip rm-group">группа</span>' : type === 'room' ? '<span class="rm-chip rm-topics">комната</span>' : '';
 
@@ -5109,7 +5110,7 @@ function flRender() {
               <td>${f.sender_name ? `<div class="ux-cell" style="gap:8px">${avHtml(f.sender_name, 24, 7, f.sender_id, false, true)}<span class="fl-sender-name" style="white-space:nowrap">${esc(f.sender_name)}</span></div>` : '<span class="rm-sub">без сообщения</span>'}</td>
               <td>${f.chat_name ? `<span class="ux-name" style="font-weight:500;font-size:12px">${esc(f.chat_name)}${flChatChip(f.chat_type)}</span>` : '<span class="rm-sub">—</span>'}</td>
               <td class="rm-last">${esc(uaSeen(f.sent_at || Math.floor((f.mtime || 0) / 1000)))}</td>
-              <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="flOpen('${name}')">${openable ? FL_I.eye + 'Открыть' : FL_I.down + 'Скачать'}</button>
+              <td><div class="ux-actions">${kind === 'encrypted' ? '<button class="btn btn-ghost btn-sm" disabled title="Вложение секретного чата — открыть нельзя">Зашифровано</button>' : `<button class="btn btn-ghost btn-sm" onclick="flOpen('${name}')">${openable ? FL_I.eye + 'Открыть' : FL_I.down + 'Скачать'}</button>`}
                 <button class="ux-ibtn" aria-label="Ещё действия: ${esc(flName(f))}" aria-haspopup="menu" aria-expanded="false" onclick="flMenu(event, '${name}')">${UX_I.more}</button></div></td>
             </tr>`;
           }).join('') || `<tr><td colspan="7"><div class="ux-empty">${FL.files.length ? 'Ничего не нашли. Проверьте запрос или фильтры.' : 'Файлов пока нет'}</div></td></tr>`}</tbody>
@@ -5129,11 +5130,13 @@ function flSettings() { openSettingsModal().then(() => showSettingsSection('atta
 function flOpen(name) {
   const f = FL.files.find(x => x.filename === name);
   const kind = f && flKind(f);
+  if (kind === 'encrypted') return;
   if (kind === 'image' || kind === 'video') openFilePreview(name);
   else flDownload(name);
 }
 function flDownload(name) {
   const f = FL.files.find(x => x.filename === name);
+  if (f?.encrypted) return;
   const a = document.createElement('a');
   a.href = flUrl(name);
   a.download = f ? flName(f) : name;
@@ -5147,9 +5150,10 @@ function flMenu(e, name) {
   const kind = f && flKind(f);
   const openItem = (kind === 'image' || kind === 'video')
     ? `<button role="menuitem" onclick="uxCloseMenu(); flOpen('${n}')">${FL_I.eye}Открыть</button>` : '';
+  const dlItem = kind === 'encrypted' ? '' : `<button role="menuitem" onclick="uxCloseMenu(); flDownload('${n}')">${FL_I.down}Скачать</button>`;
   uxOpenMenu(e, 'fl' + name, `
     ${openItem}
-    <button role="menuitem" onclick="uxCloseMenu(); flDownload('${n}')">${FL_I.down}Скачать</button>
+    ${dlItem}
     <hr><button role="menuitem" class="danger" onclick="uxCloseMenu(); flDelete(['${n}'])">${UX_I.trash}Удалить файл</button>`);
 }
 function flDelete(names) {

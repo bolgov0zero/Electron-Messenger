@@ -152,6 +152,13 @@ function getPins(chatId) {
     return r;
   });
 }
+function sanitizeEncAttachment(att) {
+  if (!att || att.enc !== 1 || typeof att.url !== 'string') return null;
+  if (!/^\/files\/enc_[\w.-]+$/.test(att.url)) return null;
+  if (typeof att.fiv !== 'string' || att.fiv.length > 64) return null;
+  return { url: att.url, enc: 1, fiv: att.fiv, size: Number(att.size) || 0 };
+}
+
 function getMessageWithStatus(msgId, viewerId) {
   const msg = db.prepare(`
     SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.system_kind,
@@ -235,7 +242,9 @@ function setup(server) {
         // В секретном чате attachment/forward_data пока не поддерживаются (не шифруются),
         // а text — это base64-шифротекст, который нельзя обрезать как обычный текст
         // (slice по символам испортил бы шифротекст) — лимит по длине выше и без .trim().
-        const attachment = isSecret ? null : data.attachment;
+        // В секретном чате вложение — только зашифрованный файл: имя и тип клиент
+        // прячет в шифротексте сообщения, сюда приходит лишь ссылка и вектор
+        const attachment = isSecret ? sanitizeEncAttachment(data.attachment) : data.attachment;
         const forward_data = isSecret ? null : data.forward_data;
         const text = isSecret
           ? (typeof data.text === 'string' ? data.text.slice(0, 8192) : '')
@@ -319,7 +328,7 @@ function setup(server) {
           // из одиннадцати человек это занимало 122 мс, и всё это время сервер
           // не обслуживал никого: обращения к базе синхронные.
           if (!hasPushSubscription(user_id)) return;
-          const chatTitle = chat?.type === 'direct' ? msg.sender_name : (chat?.name || 'Electron');
+          const chatTitle = chat?.is_secret ? 'Секретный чат' : chat?.type === 'direct' ? msg.sender_name : (chat?.name || 'Electron');
           const unread = unreadCounts.total(user_id);
           // Секретный чат: в пуше только факт наличия сообщения, без содержимого —
           // сервер и так не может расшифровать текст, а превью сознательно не

@@ -286,6 +286,33 @@ try {
   console.warn('[FTS] Полнотекстовый поиск недоступен:', e.message);
 }
 
+// Шифротексты секретных чатов в полнотекстовый индекс не попадают: поиск по ним
+// бессмыслен, а индекс сохранил бы их следы. Миграция одноразовая.
+try {
+  if (!db.prepare("SELECT 1 FROM settings WHERE key = 'fts_secret_v2'").get()) {
+    db.exec(`
+      DROP TRIGGER IF EXISTS messages_fts_ai;
+      DROP TRIGGER IF EXISTS messages_fts_ad;
+      DROP TRIGGER IF EXISTS messages_fts_au;
+      CREATE TRIGGER messages_fts_ai AFTER INSERT ON messages WHEN new.iv IS NULL BEGIN
+        INSERT INTO messages_fts(rowid, text) VALUES (new.id, new.text);
+      END;
+      CREATE TRIGGER messages_fts_ad AFTER DELETE ON messages WHEN old.iv IS NULL BEGIN
+        INSERT INTO messages_fts(messages_fts, rowid, text) VALUES ('delete', old.id, old.text);
+      END;
+      CREATE TRIGGER messages_fts_au_del AFTER UPDATE OF text ON messages WHEN old.iv IS NULL BEGIN
+        INSERT INTO messages_fts(messages_fts, rowid, text) VALUES ('delete', old.id, old.text);
+      END;
+      CREATE TRIGGER messages_fts_au_ins AFTER UPDATE OF text ON messages WHEN new.iv IS NULL BEGIN
+        INSERT INTO messages_fts(rowid, text) VALUES (new.id, new.text);
+      END;
+    `);
+    const del = db.prepare("INSERT INTO messages_fts(messages_fts, rowid, text) VALUES ('delete', ?, ?)");
+    db.prepare('SELECT id, text FROM messages WHERE iv IS NOT NULL').all().forEach(r => { try { del.run(r.id, r.text); } catch {} });
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('fts_secret_v2', '1')").run();
+  }
+} catch (e) { console.warn('[FTS] миграция секретных чатов не выполнена:', e.message); }
+
 // Разовое заполнение отметок «докуда прочитано» для уже работающих установок.
 // Берём id прямо перед первым непрочитанным — тогда счётчики после перехода
 // совпадают с прежними до единицы. Если непрочитанного нет, отметка встаёт на

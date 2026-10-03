@@ -213,6 +213,17 @@ router.post('/',
     // шлёт его в UTF-8 — без обратного разворота кириллица превращается в кракозябры
     req.file.originalname = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
 
+    // Зашифрованный файл секретного чата: сервер не знает ни содержимого, ни типа,
+    // поэтому ни расширение, ни миниатюры не проверяем. Имя с префиксом enc_ —
+    // такие файлы отдаются только участникам чата (см. index.js)
+    if (req.query.enc === '1') {
+      const encName = 'enc_' + req.file.filename;
+      try {
+        fs.renameSync(req.file.path, path.join(FILES_DIR, encName));
+      } catch { return res.status(500).json({ error: 'Не удалось сохранить файл' }); }
+      return res.json({ url: `/files/${encName}`, size: req.file.size, enc: 1 });
+    }
+
     const settings = getUploadSettings();
     const isImage = req.file.mimetype.startsWith('image/');
     const isVideo = req.file.mimetype.startsWith('video/');
