@@ -619,4 +619,5 @@ html.m-desktop .screen { display: none !important; }
 @keyframes sc-pulse { 0%, 100% { opacity: .25 } 50% { opacity: 1 } }
 
 /* Секретный чат: пунктирный контур 2px вместо заливки */
-.av.sc-av-sec { background: transparent !important; background-image: none !important; color: var(--accent) !important; border: 2px dashed var(--accent); }
+.av.sc-av-sec { color: var(--accent) !important; border: 2px dashed var(--accent); }
+.av.sc-av-sec:not([style*="background-image"]) { background: transparent !important; }

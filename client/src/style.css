@@ -3473,4 +3473,5 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 .msg-bubble:not(.bubble-photo):not(:has(.irc-text)) { padding-bottom: 26px; }
 
 /* Секретный чат: пунктирный контур 2px вместо заливки */
-.av.sc-av-sec { background: transparent !important; background-image: none !important; color: var(--accent) !important; border: 2px dashed var(--accent); }
+.av.sc-av-sec { color: var(--accent) !important; border: 2px dashed var(--accent); }
+.av.sc-av-sec:not([style*="background-image"]) { background: transparent !important; }
