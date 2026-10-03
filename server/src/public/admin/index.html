@@ -253,6 +253,16 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .hm-upd-panel.hm-upd-closing{overflow:hidden;opacity:0;padding-top:0;padding-bottom:0;transition:height .35s ease,opacity .25s ease,padding .35s ease}
 .hm-upd-row{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap}
 .hm-upd-title{font-size:12px;font-weight:600}
+.hm-upd-ver{display:flex;align-items:center;gap:8px;font-size:13px}
+.hm-arr{color:var(--c-muted)}
+.hm-new{color:var(--c-primary);font-weight:600}
+.hm-upd-btns{display:flex;gap:6px}
+.hm-upd-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.hm-inst{display:flex;flex-direction:column;gap:8px}
+.hm-inst-row{display:flex;align-items:center;gap:10px}
+.hm-inst-ico{width:18px;height:18px;display:grid;place-items:center;color:var(--c-primary);flex-shrink:0}
+.hm-inst-t{flex:1;min-width:0;font-size:12px;font-weight:600}
+.hm-inst-pct{font-size:12px;color:var(--c-text2)}
 .hm-note{font-size:11px;color:var(--c-text2);max-width:72ch}
 .hm-upd-panel details{font-size:11px;color:var(--c-text2)}
 .hm-upd-panel summary{cursor:pointer;color:var(--c-primary);font-weight:600;width:max-content}
@@ -2669,16 +2679,16 @@ function hmUpdOffer(v) {
   p.hidden = false;
   p.innerHTML = `
     <div class="hm-upd-row">
-      <div>
-        <div class="hm-upd-title">Доступно обновление <span class="hm-mono">${esc(v.current)} → ${esc(v.latest)}</span></div>
-        <div class="hm-note">Служба перезапустится — у пользователей пропадёт связь примерно на 10–20 секунд. Лучше ставить, когда в чате мало людей.</div>
-      </div>
-      <div style="display:flex;gap:6px">
+      <div class="hm-upd-ver"><span class="hm-mono">${esc(v.current)}</span><span class="hm-arr">→</span><span class="hm-mono hm-new">${esc(v.latest)}</span></div>
+      <div class="hm-upd-btns">
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('hm-upd-panel').hidden = true">Позже</button>
-        <button class="btn btn-primary btn-sm" id="hm-upd-go" onclick="hmUpdInstall()">${HM_ICON.up}Установить ${esc(v.latest)}</button>
+        <button class="btn btn-primary btn-sm" id="hm-upd-go" onclick="hmUpdInstall()">${HM_ICON.up}Установить</button>
       </div>
     </div>
-    ${v.notes ? `<details><summary>Что нового</summary><p>${esc(v.notes)}</p></details>` : ''}`;
+    <div class="hm-upd-foot">
+      <span class="hm-note">Связь пропадёт на 10–20 с. Лучше ставить, когда в чате мало людей.</span>
+      ${v.notes ? `<details><summary>Что нового</summary><p>${esc(v.notes)}</p></details>` : ''}
+    </div>`;
 }
 
 async function hmUpdInstall() {
@@ -2719,13 +2729,16 @@ function hmUpdRenderSteps() {
   hmUpdButton(hmSpin(HM_ICON.refresh) + 'Устанавливаю…', 'btn-ghost', null, true, `${u.from || ''} → ${u.target}`);
   if (!p) return;
   p.hidden = false;
-  if (!$hm('hm-upd-steps')) p.innerHTML = `
-    <div class="hm-upd-row">
-      <div class="hm-upd-title">Установка <span class="hm-mono">${esc(u.from || '')} → ${esc(u.target)}</span></div>
+  if (!$hm('hm-inst')) p.innerHTML = `
+    <div class="hm-inst" id="hm-inst">
+      <div class="hm-inst-row">
+        <span class="hm-inst-ico">${hmSpin(HM_ICON.refresh)}</span>
+        <div class="hm-inst-t"><span class="hm-mono">Установка ${esc(u.target)}</span> <span class="hm-note" id="hm-inst-step"></span></div>
+        <span class="hm-mono hm-inst-pct" id="hm-inst-pct"></span>
+      </div>
+      <div class="hm-bar"><span id="hm-upd-bar"></span></div>
       <div class="hm-note" id="hm-upd-note"></div>
-    </div>
-    <ol class="hm-steps" id="hm-upd-steps">${HM_STEPS.map(([k, name]) => `<li data-step="${k}"><span class="ic"></span><span>${name}</span></li>`).join('')}</ol>
-    <div class="hm-bar"><span id="hm-upd-bar"></span></div>`;
+    </div>`;
 
   const steps = { ...(u.status?.steps || {}) };
   const reported = !!u.status?.startedAt;
@@ -2738,19 +2751,20 @@ function hmUpdRenderSteps() {
     }
     steps.verify = { state: 'done' };
   } else if (steps.restart?.state === 'done' || (u.down && steps.fetch?.state === 'done')) steps.verify = { state: 'active' };
-  let finished = 0;
+
+  let finished = 0, cur = null;
   for (const [k, name] of HM_STEPS) {
-    const li = p.querySelector(`[data-step="${k}"]`);
-    if (!li) continue;
-    const state = steps[k]?.state || '';
-    li.className = state;
-    li.title = steps[k]?.msg || '';
-    li.querySelector('.ic').innerHTML = state === 'done' ? HM_ICON.tick : state === 'failed' ? HM_ICON.cross : '';
-    li.lastElementChild.textContent = name + (state === 'skipped' ? ' — не нужна' : '');
-    if (state === 'done' || state === 'skipped') finished++;
+    const st = steps[k]?.state || '';
+    if (st === 'done' || st === 'skipped') finished++;
+    else if (!cur && (st === 'active' || st === 'failed')) cur = [k, name];
   }
+  if (!cur) cur = HM_STEPS.find(([k]) => !['done', 'skipped'].includes(steps[k]?.state)) || HM_STEPS[HM_STEPS.length - 1];
+  const idx = HM_STEPS.findIndex(([k]) => k === cur[0]) + 1;
+  const pct = Math.round(finished / HM_STEPS.length * 100);
+  hmText('hm-inst-step', `· шаг ${idx} из ${HM_STEPS.length}: ${cur[1].toLowerCase()}`);
+  hmText('hm-inst-pct', pct + '%');
   const bar = $hm('hm-upd-bar');
-  if (bar) bar.style.width = Math.max(4, finished / HM_STEPS.length * 100) + '%';
+  if (bar) bar.style.width = Math.max(4, pct) + '%';
   hmText('hm-upd-note', u.down ? 'Сервер перезапускается — страница подключится сама'
     : !reported && Date.now() - u.startedAt > 6000 ? 'Сервер не сообщает шаги установки — ждём, когда он вернётся с новой версией'
     : 'Страницу можно не закрывать — после перезапуска она подключится сама');
