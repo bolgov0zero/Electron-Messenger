@@ -541,31 +541,41 @@ router.get('/server/update-status', (req, res) => {
   res.json({ version: getLocalVersion(), running: RUNNING_VERSION, startedAt, steps, result, error });
 });
 
-// История релизов — из коммитов вида «Версия cX.Y.Z/sA.B.C: описание» (формат,
-// которым помечается каждый релиз), отдельно по клиенту и по серверу. git log
-// уже отдаёт новые коммиты первыми, поэтому порядок не пересортировываем.
+// История релизов — читается из RELEASE_HISTORY.md (не из git log: коммиты
+// переписывать нельзя, а вид нужен причёсанный — см. ../../RELEASE_HISTORY.md
+// в корне репозитория). Формат одной записи:
+//   ## c2.15.54 / s1.2.383 — 2 октября 2026 г.
+//
+//   **Добавлено**
+//   - пункт
+//   **Исправлено**
+//   - пункт
+// Новые записи дописываются СВЕРХУ при каждом релизе, в том же формате.
 router.get('/release-notes', (req, res) => {
-  const { execFileSync } = require('child_process');
-  const repoRoot = path.join(__dirname, '..', '..', '..');
-  let out;
+  const filePath = path.join(__dirname, '..', '..', '..', 'RELEASE_HISTORY.md');
+  let content;
   try {
-    out = execFileSync('git', ['log', '--format=%aI%x1f%s', '-n', '1000'], { cwd: repoRoot, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+    content = fs.readFileSync(filePath, 'utf8');
   } catch (e) {
-    return res.status(500).json({ error: 'git log failed: ' + e.message });
+    return res.json({ server: [], client: [] });
   }
   const server = [], client = [];
-  for (const line of out.split('\n')) {
-    if (!line) continue;
-    const sep = line.indexOf('\x1f');
-    if (sep < 0) continue;
-    const date = line.slice(0, sep), subject = line.slice(sep + 1);
-    const m = /^Версия\s+([^:]+):\s*(.+)$/.exec(subject);
-    if (!m) continue;
-    const [, verPart, text] = m;
+  const blocks = content.split(/\n(?=## )/);
+  for (const block of blocks) {
+    const header = /^##\s+(.+?)\s+—\s+(.+)$/m.exec(block);
+    if (!header) continue;
+    const [, verPart, dateLabel] = header;
     const cMatch = /c([\d.]+)/.exec(verPart);
     const sMatch = /s([\d.]+)/.exec(verPart);
-    if (cMatch) client.push({ version: cMatch[1], date, text });
-    if (sMatch) server.push({ version: sMatch[1], date, text });
+    const sections = [];
+    const sectionRe = /\*\*(.+?)\*\*\n((?:- .+\n?)+)/g;
+    let m;
+    while ((m = sectionRe.exec(block))) {
+      sections.push({ label: m[1], items: m[2].split('\n').filter(Boolean).map(l => l.replace(/^- /, '')) });
+    }
+    const entry = { dateLabel, sections };
+    if (cMatch) client.push({ ...entry, version: cMatch[1] });
+    if (sMatch) server.push({ ...entry, version: sMatch[1] });
   }
   res.json({ server, client });
 });
