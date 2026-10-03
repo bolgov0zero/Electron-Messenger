@@ -5119,21 +5119,18 @@ function scRenderSyncModal(mode, extra = {}) {
   const body = document.getElementById('sc-sync-body');
   if (!body) return;
   const chatId = S.scSyncChatId;
+  // Подтверждать чужие устройства может только тот, у кого уже есть ключ, а запрашивать
+  // доступ нужно только тому, у кого ключа нет — поэтому показываем один из двух режимов
+  const hasKey = !!S.scKeys[chatId];
+  if (mode === 'approve' && !hasKey) mode = 'choose';
+  if ((mode === 'choose' || mode === 'waiting') && hasKey) mode = 'approve';
   if (mode === 'choose') {
     body.innerHTML = `
-      <div class="sc-sync-tabs">
-        <button class="sc-sync-tab on" onclick="scRenderSyncModal('choose')">Предоставить доступ</button>
-        <button class="sc-sync-tab" onclick="scRenderSyncModal('approve')">Подтвердить устройство</button>
-      </div>
       <p class="sc-sync-hint">Нажмите «Предоставить доступ» — появится код. Продиктуйте его собеседнику голосом, лично или в другом мессенджере. Сервер не может подтвердить это за него.</p>
       <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scRequestAccess(${chatId})">Предоставить доступ</button></div>`;
   } else if (mode === 'waiting') {
     const p = S.scPending[chatId];
     body.innerHTML = `
-      <div class="sc-sync-tabs">
-        <button class="sc-sync-tab on">Предоставить доступ</button>
-        <button class="sc-sync-tab" onclick="scRenderSyncModal('approve')">Подтвердить устройство</button>
-      </div>
       <p class="sc-sync-hint">Продиктуйте собеседнику этот код. Он действует 10 минут.</p>
       <div class="sc-sync-code">${esc(p.code)}</div>
       <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCopyCode('${esc(p.code)}')">Копировать код</button></div>
@@ -5141,10 +5138,6 @@ function scRenderSyncModal(mode, extra = {}) {
       <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCancelRequest(${chatId})">Отменить</button></div>`;
   } else if (mode === 'approve') {
     body.innerHTML = `
-      <div class="sc-sync-tabs">
-        <button class="sc-sync-tab" onclick="scRenderSyncModal('choose')">Предоставить доступ</button>
-        <button class="sc-sync-tab on">Подтвердить устройство</button>
-      </div>
       <p class="sc-sync-hint">Введите код, который назвал собеседник. Подтверждайте только если он сейчас сам просит о доступе.</p>
       <input id="sc-approve-code" class="sc-sync-input" placeholder="Код" autocomplete="off" maxlength="12">
       <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scLookupCode(${chatId})">Далее</button></div>`;
