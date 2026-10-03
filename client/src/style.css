@@ -3468,3 +3468,6 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 .sc-meta { color: var(--muted); font-size: 11.5px; margin: 0; }
 .sc-mfoot { display: flex; justify-content: flex-end; gap: 8px; padding: 0 16px 14px; }
 .sc-mfoot .sc-btn { height: 32px; }
+
+/* Без подписи у пересланного или цитаты место под время и галочки резервирует пустой блок */
+.msg-bubble:not(.bubble-photo):not(:has(.irc-text)) { padding-bottom: 26px; }

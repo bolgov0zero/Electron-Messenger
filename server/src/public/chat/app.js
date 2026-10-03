@@ -1710,7 +1710,7 @@ function renderChatRow(c) {
     ? (S.topics[c.id]||[]).reduce((sum,s)=>sum+(S.unreadMentions[s.id]||0),0)
     : S.unreadMentions[c.id]||0;
   const lm = c.last_message;
-  let preview = c.is_secret ? (lm ? 'Сообщение' : 'Нет сообщений') : lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? lm.text.replace(/<[^>]*>/g, '') : (lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
+  let preview = c.is_secret ? (lm ? 'Сообщение' : 'Нет сообщений') : lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? lm.text.replace(/<[^>]*>/g, '') : (lm.forward_data ? 'Пересланное сообщение' : lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
   if (preview.length>40) preview = preview.slice(0,40)+'…';
   // Черновик приоритетнее последнего сообщения (как в Telegram)
   const draft = (c.id !== S.activeChatId) ? S.drafts[c.id] : null;

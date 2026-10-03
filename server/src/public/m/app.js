@@ -559,6 +559,7 @@ function chatPreview(c) {
   if (!lm) return 'Нет сообщений';
   if (lm.deleted) return 'Сообщение удалено';
   if (lm.text) return lm.text.replace(/<[^>]*>/g, '');
+  if (lm.forward_data && !lm.text) return 'Пересланное сообщение';
   if (lm.attachment) return lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл');
   return '';
 }
