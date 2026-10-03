@@ -113,7 +113,7 @@
       if (p.expiresAt < Date.now()) { delete st.saved[id]; continue; }
       try {
         const privateKey = await crypto.subtle.importKey('pkcs8', unb64(p.pkcs8), ECDH, true, ['deriveKey']);
-        st.pending[id] = { requestId: p.requestId, code: p.code, privateKey, timer: null };
+        st.pending[id] = { requestId: p.requestId, privateKey, timer: null };
       } catch { delete st.saved[id]; }
     }
     await saveBlob();
@@ -206,20 +206,22 @@
     return b64(raw);
   }
 
-  async function requestAccess(chatId) {
+  // Собеседник ввёл код, который показало расшифрованное устройство: передаём свой ключ
+  // и ждём, пока владелец подтвердит запрос
+  async function redeemCode(chatId, code) {
     const eph = await genEphemeral();
-    const data = await C.api('POST', `/secret/${chatId}/requests`, {
-      device_id: deviceId(), device_label: C.label, platform: 'web', ephemeral_pubkey: eph.pubB64,
+    const data = await C.api('POST', `/secret/${chatId}/grants/redeem`, {
+      code: String(code).trim().toUpperCase(), device_id: deviceId(), device_label: C.label, platform: 'web', ephemeral_pubkey: eph.pubB64,
     });
-    if (!data?.request_id) return { error: data?.error || 'Не удалось создать запрос' };
-    st.pending[chatId] = { requestId: data.request_id, code: data.code, privateKey: eph.privateKey, timer: null };
+    if (!data?.request_id) return { error: data?.error || 'Не удалось расшифровать чат' };
+    st.pending[chatId] = { requestId: data.request_id, privateKey: eph.privateKey, timer: null };
     st.saved[chatId] = {
-      requestId: data.request_id, code: data.code,
+      requestId: data.request_id,
       pkcs8: b64(await crypto.subtle.exportKey('pkcs8', eph.privateKey)),
-      expiresAt: Date.now() + (data.expires_in || 600) * 1000,
+      expiresAt: Date.now() + 600 * 1000,
     };
     await saveBlob();
-    return { code: data.code };
+    return { ok: true };
   }
   function pendingOf(chatId) { return st.pending[chatId] || null; }
   function cancelPending(chatId) {
@@ -255,7 +257,7 @@
     init(cfg) { Object.assign(C, cfg); },
     load, deviceId, setKey, forget, hide, unhide, isHidden, hasKey, keyOf, rawKeyOf,
     createKey, encryptText, decryptText, parsePayload, encodePayload, encryptFile, fetchFile, skeletonHtml,
-    requestAccess, pendingOf, pendingIds, cancelPending, pollPending, devices,
+    redeemCode, pendingOf, pendingIds, cancelPending, pollPending, devices,
     isLoaded: () => st.loaded,
   };
 })(window);

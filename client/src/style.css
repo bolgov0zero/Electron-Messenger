@@ -3407,7 +3407,7 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
   padding: 12px 16px;
   margin: 8px 14px;
   border: 1px solid var(--accent-border, var(--border));
-  background: var(--accent-soft);
+  background: var(--card-bg);
   border-radius: 12px;
   font-size: 13px;
   color: var(--text);

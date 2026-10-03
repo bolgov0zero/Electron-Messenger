@@ -279,7 +279,7 @@ router.get('/users', (req, res) => {
 
 router.get('/chats', (req, res) => {
   const chats = db.prepare(`
-    SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.parent_id, c.position,
+    SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.parent_id, c.position, c.is_secret,
       (SELECT COUNT(*) FROM messages WHERE chat_id = c.id AND deleted = 0) as message_count,
       (SELECT MAX(sent_at) FROM messages WHERE chat_id = c.id AND deleted = 0) as last_at,
       (SELECT COUNT(*) FROM chat_members WHERE chat_id = c.id) as member_count,
@@ -646,7 +646,8 @@ router.get('/audit-log', (req, res) => {
     FROM admin_audit_log a LEFT JOIN users u ON u.id = a.actor_id
     ORDER BY a.id DESC LIMIT 1000
   `).all();
-  res.json(rows);
+  const avatarDir = path.join(__dirname, '..', '..', '..', 'chat_db', 'avatar');
+  res.json(rows.map(r => ({ ...r, actor_has_avatar: r.actor_id ? fs.existsSync(path.join(avatarDir, `${r.actor_id}.jpg`)) : false })));
 });
 
 // ── Главная: живые графики и сводка ──

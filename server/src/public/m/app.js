@@ -211,7 +211,7 @@ function scDisplay(m) {
   if (dec !== undefined) copy.text = dec;
   else copy._scSkel = SC.skeletonHtml(m.text);
   if (m.attachment?.url) {
-    copy.attachment = { url: m.attachment.url, enc: 1, expired: m.attachment.expired, mime: meta?.m, name: meta?.n, size: meta?.s, _msgId: m.id, _locked: !meta };
+    copy.attachment = { url: m.attachment.url, enc: 1, expired: m.attachment.expired, mime: meta?.m, name: meta?.n, size: meta?.s, _msgId: m.id, _chat: m.chat_id, _locked: !meta };
   }
   return copy;
 }
@@ -221,7 +221,7 @@ function scAttachHtmlM(att) {
   const id = att._msgId;
   if (att.mime?.startsWith('image/')) {
     const blob = S.scAttBlob.get(id);
-    if (blob) return `<img class="bubble-media" src="${esc(blob)}" loading="lazy" onclick="event.stopPropagation();openLightbox('${esc(blob)}','image')">`;
+    if (blob && SC.hasKey(att._chat)) return `<img class="bubble-media" src="${esc(blob)}" loading="lazy" onclick="event.stopPropagation();openLightbox('${esc(blob)}','image')">`;
     return `<div class="bubble-file"><div class="bubble-file-ico">🖼</div><div><div class="bubble-file-name">Изображение</div></div></div>`;
   }
   const sizeFmt = att.size ? (att.size > 1048576 ? (att.size / 1048576).toFixed(1) + ' МБ' : Math.round(att.size / 1024) + ' КБ') : '';
@@ -285,51 +285,35 @@ function scAfterRender() {
   if (locked) {
     const secure = window.isSecureContext && !!crypto.subtle;
     document.getElementById('chat-screen').insertAdjacentHTML('beforeend', `<div class="sc-banner">
-      <span>${secure ? 'Секретный чат не синхронизирован на этом устройстве' : 'Секретные чаты работают только по HTTPS'}</span>
-      ${secure ? `<button onclick="scOpenSyncSheet(${chatId})">Синхронизировать</button>` : ''}</div>`);
+      <span>${secure ? 'Секретный чат — на этом устройстве не расшифрован' : 'Секретные чаты работают только по HTTPS'}</span>
+      ${secure ? `<button onclick="scOpenSyncSheet(${chatId})">Расшифровать</button>` : ''}</div>`);
   }
   scDecryptMobile();
 }
 
-// ── Получение доступа ──
+// ── Расшифровка: собеседник вводит код, который показало расшифрованное устройство ──
 function scOpenSyncSheet(chatId) {
-  const p = SC.pendingOf(chatId);
-  if (p) { scShowCodeSheet(chatId); return; }
-  openSheet(`<div class="sheet-title">Секретный чат</div>
-    <div class="sc-m-hint">Нажмите «Предоставить доступ» — появится код. Продиктуйте его собеседнику голосом, лично или в другом мессенджере.</div>
-    <div class="msg-action-row" onclick="scRequestSheet(${chatId})">Предоставить доступ</div>
+  if (SC.pendingOf(chatId)) { scWaitSheet(chatId); return; }
+  openSheet(`<div class="sheet-title">Расшифровать секретный чат</div>
+    <div class="sc-m-hint">Введите код, который назвал собеседник. Код показывает расшифрованное устройство в меню чата: «Предоставить доступ».</div>
+    <input id="sc-m-code-input" class="sc-m-input" placeholder="Код" autocomplete="off" maxlength="12">
+    <div class="msg-action-row" onclick="scRedeemSheet(${chatId})">Расшифровать</div>
     <div class="msg-action-row" onclick="closeSheet()">Отмена</div>`);
 }
 
-async function scRequestSheet(chatId) {
-  const r = await SC.requestAccess(chatId);
+async function scRedeemSheet(chatId) {
+  const code = (document.getElementById('sc-m-code-input')?.value || '').trim();
+  if (!code) return;
+  const r = await SC.redeemCode(chatId, code);
   if (r.error) { toast(r.error); return; }
   SC.pendingOf(chatId).timer = setInterval(() => scTickM(chatId), 4000);
-  scShowCodeSheet(chatId);
+  scWaitSheet(chatId);
 }
 
-function scShowCodeSheet(chatId) {
-  const p = SC.pendingOf(chatId);
-  openSheet(`<div class="sheet-title">Код для собеседника</div>
-    <div class="sc-m-hint">Продиктуйте код собеседнику. Он действует 10 минут. Подтвердить его может только собеседник на своём компьютере.</div>
-    <div class="sc-m-code">${esc(p.code)}</div>
-    <div class="msg-action-row" onclick="scCopyCode('${esc(p.code)}')">Копировать код</div>
-    <div class="sc-m-hint">Ждём подтверждения…</div>
-    <div class="msg-action-row" onclick="closeSheet()">Свернуть</div>
-    <div class="msg-action-row danger" onclick="scCancelSyncM(${chatId})">Отменить запрос</div>`);
-}
-
-async function scCopyCode(code) {
-  try { await navigator.clipboard.writeText(code); }
-  catch {
-    const t = document.createElement('textarea');
-    t.value = code;
-    document.body.appendChild(t);
-    t.select();
-    document.execCommand('copy');
-    t.remove();
-  }
-  toast('Код скопирован');
+function scWaitSheet(chatId) {
+  openSheet(`<div class="sheet-title">Расшифровка</div>
+    <div class="sc-m-hint">Код принят. Ждём, пока собеседник подтвердит запрос на своём компьютере.</div>
+    <div class="msg-action-row" onclick="scCancelSyncM(${chatId})">Отменить</div>`);
 }
 
 function scCancelSyncM(chatId) { SC.cancelPending(chatId); closeSheet(); }
@@ -338,7 +322,7 @@ async function scTickM(chatId) {
   if (!SC.pendingOf(chatId)) return;
   if (!(await SC.pollPending(chatId))) return;
   closeSheet();
-  toast('Секретный чат синхронизирован на этом устройстве');
+  toast('Секретный чат расшифрован на этом устройстве');
   await refreshChats();
   if (S.activeChatId === chatId) { renderChats(); openChat(chatId); }
 }
@@ -356,11 +340,23 @@ async function scDevicesSheet(chatId) {
     <div class="msg-action-row" onclick="closeSheet()">Закрыть</div>`);
 }
 
+// Расшифрованные текст, вложения и картинки чата уходят из памяти вместе с ключом
+function scClearChatCache(chatId) {
+  _msgCache.forEach(m => {
+    if (m.chat_id !== chatId) return;
+    S.scDecrypted.delete(m.id);
+    S.scAtt.delete(m.id);
+    const url = S.scAttBlob.get(m.id);
+    if (url) { URL.revokeObjectURL(url); S.scAttBlob.delete(m.id); }
+  });
+}
+
 async function scDeleteSecretM(chatId) {
   const deviceId = SC.deviceId();
   await api('DELETE', `/chats/${chatId}?device_id=${encodeURIComponent(deviceId)}`);
   await SC.forget(chatId);
   await SC.hide(chatId);
+  scClearChatCache(chatId);
   S.secretChatIds.delete(chatId);
   S.chats = S.chats.filter(c => c.id !== chatId);
   if (S.activeChatId === chatId) closeChat();
@@ -369,7 +365,7 @@ async function scDeleteSecretM(chatId) {
 
 async function scSeal(chatId, payload, temp, text) {
   const key = SC.keyOf(chatId);
-  if (!key) { toast('Чат не синхронизирован на этом устройстве'); return false; }
+  if (!key) { toast('Чат не расшифрован на этом устройстве'); return false; }
   const att = payload.attachment || null;
   const enc = await SC.encryptText(key, SC.encodePayload(text || '', att ? { n: att.name, m: att.mime, s: att.size } : null));
   payload.text = enc.text;
@@ -1925,7 +1921,7 @@ async function uploadPickedFile(file) {
 
   const isSecret = S.secretChatIds.has(S.activeChatId);
   const secretKey = isSecret ? SC.keyOf(S.activeChatId) : null;
-  if (isSecret && !secretKey) { toast('Чат не синхронизирован на этом устройстве'); return; }
+  if (isSecret && !secretKey) { toast('Чат не расшифрован на этом устройстве'); return; }
   const tok = ++_scUpTok;
   let formData = new FormData();
   let endpoint = '/api/upload';

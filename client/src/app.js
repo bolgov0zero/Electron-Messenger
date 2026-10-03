@@ -42,6 +42,7 @@ const S = {
   scPending: {},             // chatId -> {requestId, code, privateKey, timer} — активный запрос доступа
   scPendingSaved: {},        // chatId -> {requestId, code, pkcs8, expiresAt} — тот же запрос в файле ключей
   scSyncChatId: null,        // чат, для которого открыта модалка синхронизации
+  scGrant: {},               // chatId -> {grantId, code} — код, который показано собеседнику
   scConfirm: null,           // данные запроса, ожидающего подтверждения этим устройством
   ctpUserId: null,           // контакт, для которого открыт выбор типа чата
 };
@@ -3364,7 +3365,7 @@ async function sendOrEdit() {
     // зашифрованным блоком, на сервер попадает только ссылка на файл и его вектор
     S.forwardMsg = null;
     const key = S.scKeys[S.activeChatId];
-    if (!key) { showActionToast('Чат еще не синхронизирован на этом устройстве'); return; }
+    if (!key) { showActionToast('Чат ещё не расшифрован на этом устройстве'); return; }
     secretAtt = _pendingAttachment;
     const plain = JSON.stringify({ v: 2, t: text || '', a: secretAtt ? { n: secretAtt.name, m: secretAtt.mime, s: secretAtt.size } : null });
     const enc = await scEncryptText(key, plain);
@@ -3601,7 +3602,7 @@ async function uploadFile(file) {
   if (!file) return;
   const isSecret = S.secretChatIds.has(S.activeChatId);
   const secretKey = isSecret ? S.scKeys[S.activeChatId] : null;
-  if (isSecret && !secretKey) { showActionToast('Чат не синхронизирован на этом устройстве'); return; }
+  if (isSecret && !secretKey) { showActionToast('Чат не расшифрован на этом устройстве'); return; }
   const isImage = file.type.startsWith('image/');
   const isVideo = file.type.startsWith('video/');
   const cfg = isSecret ? { maxSizeMb: SC_FILE_MAX_MB, extensions: [] }
@@ -4201,6 +4202,7 @@ function connectWS() {
     if (data.type==='connected') { S.editLimit = data.edit_time_limit || 120; return; }
 
     if (data.type==='secret_key_ready') { scPollPending(data.chat_id); return; }
+    if (data.type==='secret_grant_redeemed') { scOnGrantRedeemed(data); return; }
 
     if (data.type==='message') {
       const { message } = data;
@@ -4895,10 +4897,21 @@ async function scSetChatKey(chatId, b64) {
   await scPersistKeys();
 }
 
+// Расшифрованные текст, вложения и картинки чата уходят из памяти вместе с ключом
+function scClearChatCache(chatId) {
+  S.scMsgObjs.forEach((m, id) => {
+    if (m.chat_id !== chatId) return;
+    S.scDecrypted.delete(id);
+    S.scAtt.delete(id);
+    const url = S.scAttBlob.get(id);
+    if (url) { URL.revokeObjectURL(url); S.scAttBlob.delete(id); }
+  });
+}
+
 async function scForgetChatKey(chatId) {
   delete S.scRaw[chatId];
   delete S.scKeys[chatId];
-  S.scDecrypted.forEach((_, id) => { if (S.scMsgObjs.get(id)?.chat_id === chatId) S.scDecrypted.delete(id); });
+  scClearChatCache(chatId);
   await scPersistKeys();
 }
 
@@ -5050,7 +5063,7 @@ function scAttachHtml(m, att) {
   const sizeFmt = meta.s ? (meta.s > 1048576 ? (meta.s / 1048576).toFixed(1) + ' МБ' : Math.round(meta.s / 1024) + ' КБ') : '';
   if (meta.m?.startsWith('image/')) {
     const blob = S.scAttBlob.get(m.id);
-    if (blob) return `<div class="bubble-image" onclick="scOpenImage(${m.id})"><img src="${esc(blob)}" loading="lazy"></div>`;
+    if (blob && S.scKeys[m.chat_id]) return `<div class="bubble-image" onclick="scOpenImage(${m.id})"><img src="${esc(blob)}" loading="lazy"></div>`;
     return `<div class="bubble-file sc-att-locked"><div class="bubble-file-info"><div class="bubble-file-name">Изображение</div></div></div>`;
   }
   return `<div class="bubble-file" onclick="scSaveAttachment(${m.id})">
@@ -5069,8 +5082,8 @@ function scApplyComposerState(chatId) {
   if (!S.scKeys[chatId]) {
     pill.style.display = 'none';
     wrap.insertAdjacentHTML('afterbegin', `<div class="sc-locked-banner">
-      <span class="sc-locked-txt">Секретный чат — на этом устройстве не синхронизирован</span>
-      <button class="modal-btn-primary" onclick="scOpenSyncModal(${chatId})">Синхронизировать</button>
+      <span class="sc-locked-txt">Секретный чат — на этом устройстве не расшифрован</span>
+      <button class="modal-btn-primary" onclick="scOpenSyncModal(${chatId})">Расшифровать</button>
     </div>`);
   } else {
     pill.style.display = '';
@@ -5109,9 +5122,8 @@ function scDeviceLabel() {
 // ── Запрос доступа (новое или восстановленное устройство) ──
 function scOpenSyncModal(chatId) {
   S.scSyncChatId = chatId;
-  document.getElementById('sc-sync-title').textContent = 'Секретный чат — синхронизация';
-  const pending = S.scPending[chatId];
-  scRenderSyncModal(pending ? 'waiting' : 'choose');
+  document.getElementById('sc-sync-title').textContent = 'Расшифровать секретный чат';
+  scRenderSyncModal(S.scPending[chatId] ? 'waiting' : 'enter');
   openModal('modal-secret-sync');
 }
 
@@ -5119,59 +5131,104 @@ function scRenderSyncModal(mode, extra = {}) {
   const body = document.getElementById('sc-sync-body');
   if (!body) return;
   const chatId = S.scSyncChatId;
-  // Подтверждать чужие устройства может только тот, у кого уже есть ключ, а запрашивать
-  // доступ нужно только тому, у кого ключа нет — поэтому показываем один из двух режимов
-  const hasKey = !!S.scKeys[chatId];
-  if (mode === 'approve' && !hasKey) mode = 'choose';
-  if ((mode === 'choose' || mode === 'waiting') && hasKey) mode = 'approve';
-  if (mode === 'choose') {
+  if (mode === 'enter') {
     body.innerHTML = `
-      <p class="sc-sync-hint">Нажмите «Предоставить доступ» — появится код. Продиктуйте его собеседнику голосом, лично или в другом мессенджере. Сервер не может подтвердить это за него.</p>
-      <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scRequestAccess(${chatId})">Предоставить доступ</button></div>`;
+      <p class="sc-sync-hint">Введите код, который назвал собеседник. Код показывает расшифрованное устройство в меню чата: «Предоставить доступ».</p>
+      <input id="sc-enter-code" class="sc-sync-input" placeholder="Код" autocomplete="off" maxlength="12">
+      <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scRedeem(${chatId})">Расшифровать</button></div>`;
+    setTimeout(() => document.getElementById('sc-enter-code')?.focus(), 50);
   } else if (mode === 'waiting') {
-    const p = S.scPending[chatId];
+    body.innerHTML = `
+      <p class="sc-sync-hint">Код принят. Ждём, пока собеседник подтвердит запрос на своём компьютере.</p>
+      <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCancelRequest(${chatId})">Отменить</button></div>`;
+  } else if (mode === 'grant') {
+    const g = S.scGrant[chatId];
     body.innerHTML = `
       <p class="sc-sync-hint">Продиктуйте собеседнику этот код. Он действует 10 минут.</p>
-      <div class="sc-sync-code">${esc(p.code)}</div>
-      <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCopyCode('${esc(p.code)}')">Копировать код</button></div>
-      <p class="sc-sync-hint">Ждём подтверждения…</p>
-      <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCancelRequest(${chatId})">Отменить</button></div>`;
-  } else if (mode === 'approve') {
-    body.innerHTML = `
-      <p class="sc-sync-hint">Введите код, который назвал собеседник. Подтверждайте только если он сейчас сам просит о доступе.</p>
-      <input id="sc-approve-code" class="sc-sync-input" placeholder="Код" autocomplete="off" maxlength="12">
-      <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scLookupCode(${chatId})">Далее</button></div>`;
-    setTimeout(() => document.getElementById('sc-approve-code')?.focus(), 50);
+      <div class="sc-sync-code">${esc(g.code)}</div>
+      <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCopyCode('${esc(g.code)}')">Копировать код</button></div>
+      <p class="sc-sync-hint">Ждём, пока собеседник введёт код.</p>`;
   } else if (mode === 'confirm') {
     S.scConfirm = extra;
     body.innerHTML = `
-      <p class="sc-sync-hint">Собеседник просит открыть чат на устройстве:</p>
+      <p class="sc-sync-hint">Собеседник ввёл код и просит открыть чат на устройстве:</p>
       <div class="sc-sync-device">${esc(extra.label || 'Устройство')} · ${esc(extra.platform || '')}</div>
       <p class="sc-sync-hint">Подтвердите, только если вы сейчас в разговоре с собеседником и он назвал этот код.</p>
       <div class="sc-sync-foot">
-        <button class="modal-btn-ghost" onclick="scRenderSyncModal('approve')">Назад</button>
+        <button class="modal-btn-ghost" onclick="scRenderSyncModal('grant')">Назад</button>
         <button class="modal-btn-primary" onclick="scApproveRequest(${chatId})">Подтвердить</button>
       </div>`;
   }
 }
 
-async function scRequestAccess(chatId) {
+// Расшифрованное устройство создаёт код, собеседник вводит его на своём устройстве
+async function ctxChatGrant() {
+  const chatId = S.ctxChatId;
+  document.getElementById('ctx-chat-menu').style.display = 'none';
+  if (!chatId) return;
   const deviceId = await scEnsureDeviceId();
-  if (!deviceId) { showActionToast('Не удалось определить устройство'); return; }
-  const eph = await scGenEphemeral();
-  const data = await api('POST', `/secret/${chatId}/requests`, {
-    device_id: deviceId, device_label: scDeviceLabel(), platform: 'electron', ephemeral_pubkey: eph.pubB64,
+  const data = await api('POST', `/secret/${chatId}/grants`, { device_id: deviceId, platform: 'electron' });
+  if (!data?.code) { showActionToast(data?.error || 'Не удалось создать код'); return; }
+  S.scGrant[chatId] = { grantId: data.grant_id, code: data.code };
+  S.scSyncChatId = chatId;
+  document.getElementById('sc-sync-title').textContent = 'Предоставить доступ';
+  scRenderSyncModal('grant');
+  openModal('modal-secret-sync');
+}
+
+// Собеседник ввёл код — показываем устройство и ждём подтверждения
+function scOnGrantRedeemed(data) {
+  const grant = S.scGrant[data.chat_id];
+  if (!grant) { showActionToast('Собеседник ввёл код, но он создан в другом сеансе — создайте новый'); return; }
+  S.scSyncChatId = data.chat_id;
+  document.getElementById('sc-sync-title').textContent = 'Предоставить доступ';
+  scRenderSyncModal('confirm', {
+    requestId: data.request_id, label: data.device_label, platform: data.platform,
+    pubB64: data.ephemeral_pubkey, code: grant.code,
   });
-  if (!data?.request_id) { showActionToast(data?.error || 'Не удалось создать запрос'); return; }
-  const timer = setInterval(() => scPollPending(chatId), 4000);
-  S.scPending[chatId] = { requestId: data.request_id, code: data.code, privateKey: eph.privateKey, timer };
+  openModal('modal-secret-sync');
+}
+
+async function scRedeem(chatId) {
+  const code = (document.getElementById('sc-enter-code')?.value || '').trim().toUpperCase();
+  if (!code) return;
+  const eph = await scGenEphemeral();
+  const deviceId = await scEnsureDeviceId();
+  const data = await api('POST', `/secret/${chatId}/grants/redeem`, {
+    code, device_id: deviceId, device_label: scDeviceLabel(), platform: 'electron', ephemeral_pubkey: eph.pubB64,
+  });
+  if (!data?.request_id) { showActionToast(data?.error || 'Не удалось расшифровать чат'); return; }
+  S.scPending[chatId] = { requestId: data.request_id, privateKey: eph.privateKey, timer: setInterval(() => scPollPending(chatId), 4000) };
   S.scPendingSaved[chatId] = {
-    requestId: data.request_id, code: data.code,
+    requestId: data.request_id,
     pkcs8: scB64(await crypto.subtle.exportKey('pkcs8', eph.privateKey)),
-    expiresAt: Date.now() + (data.expires_in || 600) * 1000,
+    expiresAt: Date.now() + 600 * 1000,
   };
   await scPersistKeys();
   scRenderSyncModal('waiting');
+}
+
+function scCancelSyncModal() { closeModal('modal-secret-sync'); }
+
+async function scCopyCode(code) {
+  try { await navigator.clipboard.writeText(code); }
+  catch {
+    const t = document.createElement('textarea');
+    t.value = code;
+    document.body.appendChild(t);
+    t.select();
+    document.execCommand('copy');
+    t.remove();
+  }
+  showActionToast('Код скопирован');
+}
+
+async function scCancelRequest(chatId) {
+  const p = S.scPending[chatId];
+  if (p) clearInterval(p.timer);
+  delete S.scPending[chatId];
+  if (S.scPendingSaved[chatId]) { delete S.scPendingSaved[chatId]; await scPersistKeys(); }
+  closeModal('modal-secret-sync');
 }
 
 function ctxChatDevices() {
@@ -5196,39 +5253,6 @@ async function scOpenDevices(chatId) {
 
 // Закрытие окна не отменяет ожидание: если собеседник подтвердит позже, ключ
 // придёт сам (см. scPollPending), а пользователь увидит уведомление
-function scCancelSyncModal() { closeModal('modal-secret-sync'); }
-
-async function scCopyCode(code) {
-  try { await navigator.clipboard.writeText(code); }
-  catch {
-    const t = document.createElement('textarea');
-    t.value = code;
-    document.body.appendChild(t);
-    t.select();
-    document.execCommand('copy');
-    t.remove();
-  }
-  showActionToast('Код скопирован');
-}
-
-function ctxChatGrant() {
-  const chatId = S.ctxChatId;
-  document.getElementById('ctx-chat-menu').style.display = 'none';
-  if (!chatId) return;
-  S.scSyncChatId = chatId;
-  document.getElementById('sc-sync-title').textContent = 'Предоставить доступ';
-  scRenderSyncModal('approve');
-  openModal('modal-secret-sync');
-}
-
-async function scCancelRequest(chatId) {
-  const p = S.scPending[chatId];
-  if (p) clearInterval(p.timer);
-  delete S.scPending[chatId];
-  if (S.scPendingSaved[chatId]) { delete S.scPendingSaved[chatId]; await scPersistKeys(); }
-  closeModal('modal-secret-sync');
-}
-
 async function scPollPending(chatId) {
   const p = S.scPending[chatId];
   if (!p || p.busy) return;
@@ -5247,7 +5271,7 @@ async function scPollPending(chatId) {
     delete S.scPendingSaved[chatId];
     await scPersistKeys();
     closeModal('modal-secret-sync');
-    showActionToast('Секретный чат синхронизирован на этом устройстве');
+    showActionToast('Секретный чат расшифрован на этом устройстве');
     await loadChats();
     if (S.activeChatId === chatId) { scApplyComposerState(chatId); scDecryptVisible(); }
   } catch {
@@ -5259,22 +5283,11 @@ async function scPollPending(chatId) {
   }
 }
 
-// ── Одобрение нового устройства собеседника ──
-async function scLookupCode(chatId) {
-  const code = (document.getElementById('sc-approve-code')?.value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (!code) return;
-  const data = await api('GET', `/secret/${chatId}/requests/lookup?code=${encodeURIComponent(code)}`);
-  if (!data?.request_id) { showActionToast(data?.error || 'Код не найден или истёк'); return; }
-  scRenderSyncModal('confirm', {
-    requestId: data.request_id, label: data.requester_device_label, platform: data.requester_platform,
-    pubB64: data.ephemeral_pubkey, code,
-  });
-}
-
+// ── Подтверждение запроса собеседника ──
 async function scApproveRequest(chatId) {
   const c = S.scConfirm;
   const chatKeyB64 = S.scRaw[chatId];
-  if (!c || !chatKeyB64) { showActionToast('Чат не синхронизирован на этом устройстве'); return; }
+  if (!c || !chatKeyB64) { showActionToast('Чат не расшифрован на этом устройстве'); return; }
   const deviceId = await scEnsureDeviceId();
   const eph = await scGenEphemeral();
   const wrapKey = await scDeriveWrapKey(eph.privateKey, c.pubB64);
@@ -5283,6 +5296,7 @@ async function scApproveRequest(chatId) {
     code: c.code, approver_device_id: deviceId, approver_ephemeral_pubkey: eph.pubB64, wrapped_secret: wrapped, platform: 'electron',
   });
   S.scConfirm = null;
+  delete S.scGrant[chatId];
   if (!data?.ok) { showActionToast(data?.error || 'Не удалось подтвердить устройство'); return; }
   closeModal('modal-secret-sync');
   showActionToast('Устройство подтверждено');

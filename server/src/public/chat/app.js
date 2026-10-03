@@ -2992,7 +2992,7 @@ function scAttachHtml(m, att) {
   const sizeFmt = meta.s ? (meta.s > 1048576 ? (meta.s / 1048576).toFixed(1) + ' МБ' : Math.round(meta.s / 1024) + ' КБ') : '';
   if (meta.m?.startsWith('image/')) {
     const blob = S.scAttBlob.get(m.id);
-    if (blob) return `<div class="bubble-image" onclick="scOpenImage(${m.id})"><img src="${esc(blob)}" loading="lazy"></div>`;
+    if (blob && SC.hasKey(m.chat_id)) return `<div class="bubble-image" onclick="scOpenImage(${m.id})"><img src="${esc(blob)}" loading="lazy"></div>`;
     return `<div class="bubble-file sc-att-locked"><div class="bubble-file-info"><div class="bubble-file-name">Изображение</div></div></div>`;
   }
   return `<div class="bubble-file" onclick="scSaveAttachment(${m.id})">
@@ -3013,8 +3013,8 @@ function scApplyComposerState(chatId) {
     pill.style.display = 'none';
     const secure = window.isSecureContext && !!crypto.subtle;
     wrap.insertAdjacentHTML('afterbegin', `<div class="sc-locked-banner">
-      <span class="sc-locked-txt">${secure ? 'Секретный чат — на этом устройстве не синхронизирован' : 'Секретные чаты работают только по HTTPS'}</span>
-      ${secure ? `<button class="modal-btn-primary" onclick="scOpenSyncModal(${chatId})">Синхронизировать</button>` : ''}
+      <span class="sc-locked-txt">${secure ? 'Секретный чат — на этом устройстве не расшифрован' : 'Секретные чаты работают только по HTTPS'}</span>
+      ${secure ? `<button class="modal-btn-primary" onclick="scOpenSyncModal(${chatId})">Расшифровать</button>` : ''}
     </div>`);
   } else {
     pill.style.display = '';
@@ -3022,11 +3022,11 @@ function scApplyComposerState(chatId) {
   }
 }
 
-// ── Получение доступа: этот браузер запрашивает код, собеседник подтверждает его в Electron ──
+// ── Расшифровка: собеседник вводит код, который показало расшифрованное устройство ──
 function scOpenSyncModal(chatId) {
   S.scSyncChatId = chatId;
-  document.getElementById('sc-sync-title').textContent = 'Секретный чат — синхронизация';
-  scRenderSyncModal(SC.pendingOf(chatId) ? 'waiting' : 'choose');
+  document.getElementById('sc-sync-title').textContent = 'Расшифровать секретный чат';
+  scRenderSyncModal(SC.pendingOf(chatId) ? 'waiting' : 'enter');
   openModal('modal-secret-sync');
 }
 
@@ -3035,22 +3035,22 @@ function scRenderSyncModal(mode) {
   if (!body) return;
   const chatId = S.scSyncChatId;
   if (mode === 'waiting') {
-    const p = SC.pendingOf(chatId);
     body.innerHTML = `
-      <p class="sc-sync-hint">Продиктуйте собеседнику этот код. Он действует 10 минут. Подтвердить его может только собеседник на своём компьютере.</p>
-      <div class="sc-sync-code">${esc(p.code)}</div>
-      <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCopyCode('${esc(p.code)}')">Копировать код</button></div>
-      <p class="sc-sync-hint">Ждём подтверждения…</p>
+      <p class="sc-sync-hint">Код принят. Ждём, пока собеседник подтвердит запрос на своём компьютере.</p>
       <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCancelRequest(${chatId})">Отменить</button></div>`;
   } else {
     body.innerHTML = `
-      <p class="sc-sync-hint">Если вы открыли этот чат с нового устройства, нажмите «Предоставить доступ» — появится код. Продиктуйте его собеседнику голосом, лично или в другом мессенджере.</p>
-      <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scRequestAccess(${chatId})">Предоставить доступ</button></div>`;
+      <p class="sc-sync-hint">Введите код, который назвал собеседник. Код показывает расшифрованное устройство в меню чата: «Предоставить доступ».</p>
+      <input id="sc-enter-code" class="sc-sync-input" placeholder="Код" autocomplete="off" maxlength="12">
+      <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scRedeem(${chatId})">Расшифровать</button></div>`;
+    setTimeout(() => document.getElementById('sc-enter-code')?.focus(), 50);
   }
 }
 
-async function scRequestAccess(chatId) {
-  const r = await SC.requestAccess(chatId);
+async function scRedeem(chatId) {
+  const code = (document.getElementById('sc-enter-code')?.value || '').trim();
+  if (!code) return;
+  const r = await SC.redeemCode(chatId, code);
   if (r.error) { showActionToast(r.error); return; }
   SC.pendingOf(chatId).timer = setInterval(() => scTick(chatId), 4000);
   scRenderSyncModal('waiting');
@@ -3062,25 +3062,11 @@ function scCancelRequest(chatId) {
 }
 function scCancelSyncModal() { closeModal('modal-secret-sync'); }
 
-async function scCopyCode(code) {
-  try { await navigator.clipboard.writeText(code); }
-  catch {
-    const t = document.createElement('textarea');
-    t.value = code;
-    document.body.appendChild(t);
-    t.select();
-    document.execCommand('copy');
-    t.remove();
-  }
-  showActionToast('Код скопирован');
-}
-
-
 async function scTick(chatId) {
   if (!SC.pendingOf(chatId)) return;
   if (!(await SC.pollPending(chatId))) return;
   closeModal('modal-secret-sync');
-  showActionToast('Секретный чат синхронизирован на этом устройстве');
+  showActionToast('Секретный чат расшифрован на этом устройстве');
   await loadChats();
   if (S.activeChatId === chatId) { scApplyComposerState(chatId); scDecryptVisible(); }
 }
@@ -3107,12 +3093,24 @@ async function scOpenDevices(chatId) {
 }
 
 // ── Удалить: отключаем только это устройство ──
+// Расшифрованные текст, вложения и картинки чата уходят из памяти вместе с ключом
+function scClearChatCache(chatId) {
+  S.scMsgObjs.forEach((m, id) => {
+    if (m.chat_id !== chatId) return;
+    S.scDecrypted.delete(id);
+    S.scAtt.delete(id);
+    const url = S.scAttBlob.get(id);
+    if (url) { URL.revokeObjectURL(url); S.scAttBlob.delete(id); }
+  });
+}
+
 async function scDeleteSecret(chatId) {
   const ok = await showConfirm('Удалить секретный чат на этом устройстве? Ключ будет стёрт — чтобы вернуть доступ, понадобится подтверждение собеседника.');
   if (!ok) return;
   await api('DELETE', `/chats/${chatId}?device_id=${encodeURIComponent(SC.deviceId())}`);
   await SC.forget(chatId);
   await SC.hide(chatId);
+  scClearChatCache(chatId);
   S.secretChatIds.delete(chatId);
   removeChatLocally(chatId);
 }
@@ -3745,7 +3743,7 @@ async function sendOrEdit() {
   if (isSecret) {
     S.forwardMsg = null;
     const key = SC.keyOf(S.activeChatId);
-    if (!key) { showActionToast('Чат ещё не синхронизирован на этом устройстве'); return; }
+    if (!key) { showActionToast('Чат ещё не расшифрован на этом устройстве'); return; }
     secretAtt = _pendingAttachment;
     const enc = await SC.encryptText(key, SC.encodePayload(text || '', secretAtt ? { n: secretAtt.name, m: secretAtt.mime, s: secretAtt.size } : null));
     payload = { type:'message', chat_id:S.activeChatId, text: enc.text, iv: enc.iv };
@@ -3977,7 +3975,7 @@ async function uploadFile(file) {
   if (!file) return;
   const isSecret = S.secretChatIds.has(S.activeChatId);
   const secretKey = isSecret ? SC.keyOf(S.activeChatId) : null;
-  if (isSecret && !secretKey) { showActionToast('Чат ещё не синхронизирован на этом устройстве'); return; }
+  if (isSecret && !secretKey) { showActionToast('Чат ещё не расшифрован на этом устройстве'); return; }
   const isImage = file.type.startsWith('image/');
   const isVideo = file.type.startsWith('video/');
   const cfg = isSecret ? { maxSizeMb: 50, extensions: [] }

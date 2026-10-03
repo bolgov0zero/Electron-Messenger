@@ -254,6 +254,21 @@ db.exec(`
     created_at INTEGER DEFAULT (unixepoch())
   );
   CREATE INDEX IF NOT EXISTS idx_skr_chat ON secret_key_requests(chat_id, status);
+
+  -- Коды доступа, которые показывает расшифрованное устройство. Собеседник вводит
+  -- код на своём нерасшифрованном устройстве — тогда появляется запрос в secret_key_requests.
+  CREATE TABLE IF NOT EXISTS secret_grants (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    granter_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    granter_device_id TEXT NOT NULL,
+    code_hash TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','redeemed')),
+    request_id INTEGER,
+    expires_at INTEGER NOT NULL,
+    created_at INTEGER DEFAULT (unixepoch())
+  );
+  CREATE INDEX IF NOT EXISTS idx_sg_chat ON secret_grants(chat_id, status);
 `);
 
 // ── Полнотекстовый поиск (FTS5, external content) ──

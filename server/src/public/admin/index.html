@@ -3669,7 +3669,7 @@ function chRender() {
           <tbody>${rows.map(c => `<tr class="${CH.sel.has(c.id) ? 'sel' : ''}">
             <td><input type="checkbox" aria-label="Выбрать: ${esc(chName(c))}" ${CH.sel.has(c.id) ? 'checked' : ''} onchange="chToggle(${c.id})"></td>
             <td><div class="ux-cell">${chAv(c, 34)}<div style="min-width:0">
-              <div class="ux-name">${esc(chName(c))}<span class="rm-chip rm-${c.type === 'direct' ? 'direct' : 'group'}">${c.type === 'direct' ? 'личный' : 'группа'}</span>${c.message_count ? '' : '<span class="rm-chip rm-empty">пустой</span>'}</div>
+              <div class="ux-name">${esc(chName(c))}${c.is_secret ? '<span class="rm-chip" style="background:var(--c-primary-dim);color:var(--c-primary)">секретный</span>' : `<span class="rm-chip rm-${c.type === 'direct' ? 'direct' : 'group'}">${c.type === 'direct' ? 'личный' : 'группа'}</span>`}${c.message_count ? '' : '<span class="rm-chip rm-empty">пустой</span>'}</div>
               <div class="rm-sub">${c.type === 'direct' ? 'Переписка двоих' : `${c.member_count} ${uxPlural(c.member_count, 'участник', 'участника', 'участников')}`}</div></div></div></td>
             <td>${c.type === 'direct' ? '<span class="rm-sub">—</span>' : rmStack(c.members || [])}</td>
             <td class="rm-num cl-dur">${c.message_count ? rmFmt(c.message_count) : '<span class="rm-sub">0</span>'}</td>
@@ -5014,7 +5014,7 @@ function alRender() {
           <thead><tr><th style="width:110px">Когда</th><th style="width:160px">Кто</th><th style="width:190px">Действие</th><th>Над чем</th><th style="width:110px">Откуда</th></tr></thead>
           <tbody>${rows.map(r => `<tr>
               <td class="al-time">${alTimeLabel(r.created_at)}</td>
-              <td><div class="al-actor"><div class="al-av">${esc(initials(r.actor_name))}</div>${esc(r.actor_name)}</div></td>
+              <td><div class="al-actor">${avHtml(r.actor_name || '?', 22, 7, r.actor_id, false, r.actor_has_avatar)}${esc(r.actor_name)}</div></td>
               <td><span class="al-tag ${r.category || ''}"><i></i>${esc(r.action)}</span></td>
               <td class="al-detail">${esc(r.target || '—')}</td>
               <td class="al-ip">${esc(r.ip || '—')}</td>
