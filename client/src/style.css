@@ -1143,11 +1143,13 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 
 /* ── CHAT HEADER ── */
 .chat-header {
-  background: var(--chat-bg);
-  border-bottom: 1px solid var(--border);
-  padding: 0 20px;
-  height: 64px;
-  min-height: 64px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  margin: 8px 8px 0;
+  padding: 0 16px;
+  height: 52px;
+  min-height: 52px;
   display: flex; align-items: center; justify-content: space-between;
   flex-shrink: 0;
   z-index: 10;
@@ -3351,7 +3353,9 @@ html.dark .announcement-title { color: var(--danger); }
   display: flex; align-items: center; gap: 9px;
   padding: 7px 10px 7px 14px;
   background: var(--card-bg);
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin: 8px 8px 0;
   flex-shrink: 0;
 }
 /* Риски слева: сколько закреплений и какое сейчас */
