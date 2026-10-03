@@ -4234,7 +4234,7 @@ function connectWS() {
           if (!isChatMuted(chatId, parentId)) {
             const _srObj = parentId ? (S.topics[parentId]||[]).find(s=>s.id===chatId) : null;
             const title = _srObj?.name || chatName(chat) || message.sender_name || 'Electron';
-            const body = `${message.sender_name}: ${(message.text ? message.text.replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+            const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? message.text.replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
             window.electron?.notify(title, body, chatId);
             playNotificationSound();
           }
@@ -4249,7 +4249,7 @@ function connectWS() {
         if (!isChatMuted(chatId, parentId)) {
           const _srObj = parentId ? (S.topics[parentId]||[]).find(s=>s.id===chatId) : null;
           const title = _srObj?.name || chatName(chat) || message.sender_name || 'Electron';
-          const body = `${message.sender_name}: ${(message.text ? message.text.replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+          const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? message.text.replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
           window.electron?.notify(title, body, chatId);
           playNotificationSound();
         }

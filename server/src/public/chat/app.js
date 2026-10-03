@@ -4564,7 +4564,7 @@ function connectWS() {
           if (message.mentions?.includes(S.user.id)) S.unreadMentions[chatId] = (S.unreadMentions[chatId]||0)+1;
           if (!isChatMuted(chatId, parentId)) {
             const title = chatName(chat) || message.sender_name || 'Electron';
-            const body = `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+            const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
             webNotify(title, body, chatId);
             playNotificationSound();
           }
@@ -4582,7 +4582,7 @@ function connectWS() {
           // был chatName(undefined) → TypeError, и обработчик обрывался.
           const _srObj = parentId ? (S.topics[parentId]||[]).find(s=>s.id===chatId) : null;
           const title = _srObj?.name || chatName(chat) || message.sender_name || 'Electron';
-          const body = `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+          const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
           webNotify(title, body, chatId);
           playNotificationSound();
         }
