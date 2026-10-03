@@ -846,11 +846,11 @@ body.sidebar-hidden .sidebar {
    наведению всплывает поверх переписки и ничего не раздвигает. Класс
    ставит toggleSidebar по завершении перехода. */
 body.sidebar-overlay .sidebar {
-  position: absolute; left: 0; top: 0; bottom: 0; z-index: 20;
+  position: absolute; left: 8px; top: 8px; bottom: 8px; z-index: 20;
   width: var(--sidebar-w); min-width: var(--sidebar-w);
   border-width: 1px;
-  margin: 8px 0 8px 8px;
-  transform: translateX(-100%);
+  margin: 0;
+  transform: translateX(calc(-100% - 8px));
   transition: transform .22s cubic-bezier(.4, 0, .2, 1), box-shadow .22s;
 }
 body.sidebar-overlay.sidebar-peeking .sidebar {
