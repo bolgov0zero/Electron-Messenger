@@ -1888,6 +1888,12 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
             <div class="ep-tabs" id="ep-tabs"></div>
             <div class="ep-scroll" id="ep-scroll" onscroll="syncEmojiTabs()"></div>
           </div>
+          <div class="composer-main">
+            <button class="composer-icon-btn composer-attach" title="Прикрепить файл" onclick="pickFile()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
+            <div class="composer-field">
           <div class="composer-slot" id="composer-slot"><div class="composer-slot-inner">
           <div id="image-preview-bar" style="display:none" class="input-reply-bar">
             <div class="attach-thumb" id="attach-thumb-box">
@@ -1929,16 +1935,12 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
             </button>
           </div>
           </div></div>
-          <div class="composer-main">
-            <button class="composer-icon-btn composer-attach" title="Прикрепить файл" onclick="pickFile()">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-            </button>
-            <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
-            <div class="composer-field">
+              <div class="composer-field-row">
               <textarea id="msg-input" rows="1" placeholder="Сообщение…" onkeydown="handleKey(event)" oninput="onMsgInput(this)" onfocus="closeEmojiPicker()" onpointerdown="closeEmojiPicker()"></textarea>
               <button class="composer-icon-btn" title="Эмодзи" onclick="toggleEmojiPicker(event)">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 3 4 3 4-3 4-3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
               </button>
+              </div>
             </div>
             <button class="send-btn" id="send-btn" onclick="sendOrEdit()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -1952,7 +1954,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   initComposerSlot();
   scApplyComposerState(chatId);
   const sendBtn = document.getElementById('send-btn');
-  if (sendBtn) { sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
+  if (sendBtn) { sendBtn.style.background='var(--composer-bg)'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
   // Отметку о прочтении отправляем после загрузки: иначе сервер успевает снять
   // read_at раньше, чем посчитает первое непрочитанное, и разделитель пропадает
   // Показать скелетон пока грузятся сообщения
@@ -3262,7 +3264,7 @@ function _updateSendBtn(el) {
   const sendBtn = document.getElementById('send-btn');
   if (!sendBtn) return;
   const hasDraft = el.value.trim().length > 0;
-  sendBtn.style.background = hasDraft ? 'var(--accent)' : 'transparent';
+  sendBtn.style.background = hasDraft ? 'var(--accent)' : 'var(--composer-bg)';
   sendBtn.style.color = hasDraft ? '#0c0e10' : 'var(--muted)';
   sendBtn.style.boxShadow = 'none';
 }
@@ -3425,7 +3427,7 @@ async function sendOrEdit() {
   delete S.drafts[S.activeChatId]; saveDrafts(); // черновик отправлен — очищаем
   input.value=''; input.style.height='20px'; input.style.overflow='hidden';
   const sendBtn = document.getElementById('send-btn');
-  if (sendBtn) { sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
+  if (sendBtn) { sendBtn.style.background='var(--composer-bg)'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
 }
 
 function submitEdit() {
@@ -3470,21 +3472,22 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
     ctxReactEl.innerHTML = _freq.map(em=>`<button class="ctx-reaction-btn" onclick="ctxReact('${em}')">${em}</button>`).join('')+`<button class="ctx-reaction-btn ctx-reaction-more" onclick="showReactionPicker(event)">→</button>`;
   }
   // Сначала показываем чтобы получить реальные размеры
-  menu.style.top = '-9999px'; menu.style.left = '-9999px';
   menu.classList.add('open');
-  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  placeCtxMenu(menu, e.clientX, e.clientY);
+}
+
+function placeCtxMenu(menu, clientX, clientY) {
+  menu.style.left = '-9999px'; menu.style.top = '-9999px';
+  const rect = menu.getBoundingClientRect();
+  // zoom интерфейса: координаты clientX/Y — визуальные, style.left/top — в CSS-пикселях
+  const z = menu.offsetWidth ? rect.width / menu.offsetWidth : 1;
   const margin = 6;
-  const _z = (S.settings.uiScale || 100) / 100;
-  // Вьюпорт переводим в те же единицы, что и style.left/top: при масштабе интерфейса
-  // они не совпадают с window.innerWidth, и меню у края экрана уезжало за границу
-  const vw = window.innerWidth / _z, vh = window.innerHeight / _z;
-  let x = e.clientX / _z, y = e.clientY / _z;
-  if (x + mw + margin > vw) x = vw - mw - margin;
-  if (y + mh + margin > vh) y = e.clientY / _z - mh;
-  if (y < margin) y = margin;
-  if (x < margin) x = margin;
-  menu.style.left = x + 'px';
-  menu.style.top  = y + 'px';
+  let x = clientX, y = clientY;
+  if (x + rect.width + margin > window.innerWidth) x = window.innerWidth - rect.width - margin;
+  if (y + rect.height + margin > window.innerHeight) y = clientY - rect.height;
+  x = Math.max(margin, x); y = Math.max(margin, y);
+  menu.style.left = (x / z) + 'px';
+  menu.style.top = (y / z) + 'px';
 }
 
 function dblReply(msgId) {
@@ -3738,7 +3741,7 @@ function clearImagePreview() {
   if (bar) bar.style.display = 'none';
   const sendBtn = document.getElementById('send-btn');
   if (sendBtn && !document.getElementById('msg-input')?.value.trim()) {
-    sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none';
+    sendBtn.style.background='var(--composer-bg)'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none';
   }
 }
 
@@ -5516,21 +5519,8 @@ function showChatCtx(e, chatId) {
   if (grantBtn) grantBtn.style.display = (chat?.is_secret && S.scKeys[chatId]) ? '' : 'none';
   const muteLabel = document.getElementById('ctx-chat-mute-label');
   if (muteLabel) muteLabel.textContent = S.mutedChats.has(chatId) ? 'Включить уведомления' : 'Выключить уведомления';
-  menu.style.top = '-9999px'; menu.style.left = '-9999px';
   menu.style.display = 'block';
-  const mw = menu.offsetWidth, mh = menu.offsetHeight;
-  const margin = 6;
-  const _z = (S.settings.uiScale || 100) / 100;
-  // Вьюпорт переводим в те же единицы, что и style.left/top: при масштабе интерфейса
-  // они не совпадают с window.innerWidth, и меню у края экрана уезжало за границу
-  const vw = window.innerWidth / _z, vh = window.innerHeight / _z;
-  let x = e.clientX / _z, y = e.clientY / _z;
-  if (x + mw + margin > vw) x = vw - mw - margin;
-  if (y + mh + margin > vh) y = e.clientY / _z - mh;
-  if (y < margin) y = margin;
-  if (x < margin) x = margin;
-  menu.style.left = x + 'px';
-  menu.style.top = y + 'px';
+  placeCtxMenu(menu, e.clientX, e.clientY);
 }
 
 async function ctxChatLeave() {

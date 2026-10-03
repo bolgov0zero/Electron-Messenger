@@ -3092,12 +3092,17 @@ html.dark .announcement-title { color: var(--danger); }
 }
 .composer-main .send-btn { background: var(--composer-bg); }
 .composer-field {
-  flex: 1; min-width: 0; min-height: 40px; box-sizing: border-box;
-  display: flex; align-items: center; gap: 4px;
-  padding: 0 6px 0 16px;
-  background: color-mix(in srgb, var(--composer-bg) 88%, transparent);
+  flex: 1; min-width: 0; box-sizing: border-box;
+  display: flex; flex-direction: column;
+  background: var(--composer-bg);
   border: 1px solid var(--border);
   border-radius: 20px;
+  overflow: hidden;
+}
+.composer-field-row {
+  display: flex; align-items: center; gap: 4px;
+  min-height: 40px; box-sizing: border-box;
+  padding: 0 6px 0 16px;
 }
 
 /* Выдвижная часть. overflow только здесь, а не на .composer-pill — иначе
@@ -3109,11 +3114,9 @@ html.dark .announcement-title { color: var(--danger); }
   transition: height .26s cubic-bezier(.32,.72,0,1);
 }
 .composer-slot-inner {
-  padding: 9px 10px 8px 12px;
-  margin-bottom: 8px;
-  background: var(--composer-bg);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  padding: 8px 12px 6px 16px;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
   transform: translateY(-4px);
   opacity: 0;
   transition: transform .26s cubic-bezier(.32,.72,0,1), opacity .18s ease;
