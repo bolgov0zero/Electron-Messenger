@@ -814,7 +814,9 @@ html.no-emoji-font .md-code {
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
   background: var(--side-bg);
-  border-right: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  margin: 8px 0 8px 8px;
   display: flex; flex-direction: column;
   position: relative; z-index: 2;
   overflow: hidden;
@@ -837,7 +839,8 @@ body.sidebar-hidden .app-body { display: flex; }
    тем) плавно занимают место. */
 body.sidebar-hidden .sidebar {
   width: 0; min-width: 0;
-  border-right-width: 0;
+  border-width: 0;
+  margin: 0;
 }
 /* Когда схлопывание закончилось, сайдбар переводится в накладку: выезд по
    наведению всплывает поверх переписки и ничего не раздвигает. Класс
@@ -845,7 +848,8 @@ body.sidebar-hidden .sidebar {
 body.sidebar-overlay .sidebar {
   position: absolute; left: 0; top: 0; bottom: 0; z-index: 20;
   width: var(--sidebar-w); min-width: var(--sidebar-w);
-  border-right-width: 1px;
+  border-width: 1px;
+  margin: 8px 0 8px 8px;
   transform: translateX(-100%);
   transition: transform .22s cubic-bezier(.4, 0, .2, 1), box-shadow .22s;
 }
@@ -1100,6 +1104,8 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   flex: 1; min-width: 0;
   display: flex; flex-direction: column;
   background-color: var(--chat-bg);
+  border-radius: 16px;
+  margin: 8px 8px 8px 8px;
   overflow: hidden;
   position: relative;
   /* Свой контекст наложения: без него слой узора с z-index -1 ушёл бы не под
