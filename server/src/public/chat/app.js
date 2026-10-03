@@ -3039,12 +3039,13 @@ function scRenderSyncModal(mode) {
     body.innerHTML = `
       <p class="sc-sync-hint">Продиктуйте собеседнику этот код. Он действует 10 минут. Подтвердить его может только собеседник на своём компьютере.</p>
       <div class="sc-sync-code">${esc(p.code)}</div>
+      <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCopyCode('${esc(p.code)}')">Копировать код</button></div>
       <p class="sc-sync-hint">Ждём подтверждения…</p>
       <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCancelRequest(${chatId})">Отменить</button></div>`;
   } else {
     body.innerHTML = `
-      <p class="sc-sync-hint">Если вы открыли этот чат с нового устройства, нажмите «Получить доступ» — появится код. Продиктуйте его собеседнику голосом, лично или в другом мессенджере.</p>
-      <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scRequestAccess(${chatId})">Получить доступ</button></div>`;
+      <p class="sc-sync-hint">Если вы открыли этот чат с нового устройства, нажмите «Предоставить доступ» — появится код. Продиктуйте его собеседнику голосом, лично или в другом мессенджере.</p>
+      <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scRequestAccess(${chatId})">Предоставить доступ</button></div>`;
   }
 }
 
@@ -3060,6 +3061,20 @@ function scCancelRequest(chatId) {
   closeModal('modal-secret-sync');
 }
 function scCancelSyncModal() { closeModal('modal-secret-sync'); }
+
+async function scCopyCode(code) {
+  try { await navigator.clipboard.writeText(code); }
+  catch {
+    const t = document.createElement('textarea');
+    t.value = code;
+    document.body.appendChild(t);
+    t.select();
+    document.execCommand('copy');
+    t.remove();
+  }
+  showActionToast('Код скопирован');
+}
+
 
 async function scTick(chatId) {
   if (!SC.pendingOf(chatId)) return;
@@ -3200,7 +3215,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const scLocked = isSecretChat && scDecryptedText === undefined && !isDeleted && !isSystem;
   const effectiveText = scLocked ? null : (isSecretChat ? (scDecryptedText ?? '') : m.text);
   const bodyText = isDeleted ? '<em class="irc-deleted">Сообщение удалено</em>'
-    : scLocked ? `<span class="sc-pixel">${SC.pixelGlyphs(m.text)}</span>`
+    : scLocked ? SC.skeletonHtml(m.text)
     : m.sender_is_bot ? effectiveText + (m.edited_at ? ' <span class="edited-tag">изм.</span>' : '') : linkifyText(effectiveText) + (m.edited_at?` <span class="edited-tag">изм.</span>`:'');
   const statusIcon = mine && !isDeleted ? renderStatus(m.status) : '';
   const reactionsHtml = isDeleted ? '' : renderReactions(m.id);

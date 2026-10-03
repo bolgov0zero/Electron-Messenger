@@ -209,7 +209,7 @@ function scDisplay(m) {
   const meta = S.scAtt.get(m.id);
   const copy = { ...m };
   if (dec !== undefined) copy.text = dec;
-  else { copy.text = SC.pixelGlyphs(m.text); copy._scPixel = true; }
+  else copy._scSkel = SC.skeletonHtml(m.text);
   if (m.attachment?.url) {
     copy.attachment = { url: m.attachment.url, enc: 1, expired: m.attachment.expired, mime: meta?.m, name: meta?.n, size: meta?.s, _msgId: m.id, _locked: !meta };
   }
@@ -296,8 +296,8 @@ function scOpenSyncSheet(chatId) {
   const p = SC.pendingOf(chatId);
   if (p) { scShowCodeSheet(chatId); return; }
   openSheet(`<div class="sheet-title">Секретный чат</div>
-    <div class="sc-m-hint">Нажмите «Получить доступ» — появится код. Продиктуйте его собеседнику голосом, лично или в другом мессенджере.</div>
-    <div class="msg-action-row" onclick="scRequestSheet(${chatId})">Получить доступ</div>
+    <div class="sc-m-hint">Нажмите «Предоставить доступ» — появится код. Продиктуйте его собеседнику голосом, лично или в другом мессенджере.</div>
+    <div class="msg-action-row" onclick="scRequestSheet(${chatId})">Предоставить доступ</div>
     <div class="msg-action-row" onclick="closeSheet()">Отмена</div>`);
 }
 
@@ -313,9 +313,23 @@ function scShowCodeSheet(chatId) {
   openSheet(`<div class="sheet-title">Код для собеседника</div>
     <div class="sc-m-hint">Продиктуйте код собеседнику. Он действует 10 минут. Подтвердить его может только собеседник на своём компьютере.</div>
     <div class="sc-m-code">${esc(p.code)}</div>
+    <div class="msg-action-row" onclick="scCopyCode('${esc(p.code)}')">Копировать код</div>
     <div class="sc-m-hint">Ждём подтверждения…</div>
     <div class="msg-action-row" onclick="closeSheet()">Свернуть</div>
     <div class="msg-action-row danger" onclick="scCancelSyncM(${chatId})">Отменить запрос</div>`);
+}
+
+async function scCopyCode(code) {
+  try { await navigator.clipboard.writeText(code); }
+  catch {
+    const t = document.createElement('textarea');
+    t.value = code;
+    document.body.appendChild(t);
+    t.select();
+    document.execCommand('copy');
+    t.remove();
+  }
+  toast('Код скопирован');
 }
 
 function scCancelSyncM(chatId) { SC.cancelPending(chatId); closeSheet(); }
@@ -1393,7 +1407,7 @@ function bubbleHtml(m, chat, pos = {}) {
   // Боты/системные аккаунты (sender_is_bot) присылают готовый HTML — вставляем
   // как есть, как в /chat; обычный текст экранируем и прогоняем через
   // лёгкую разметку/автоссылки
-  const text = m._scPixel ? `<span class="bubble-text sc-pixel">${m.text}</span>` : m.text ? `<span class="bubble-text${emojiOnly ? ' emoji-only' : ''}">${m.sender_is_bot ? m.text : linkifyText(m.text)}</span>` : '';
+  const text = m._scSkel ? `<span class="bubble-text">${m._scSkel}</span>` : m.text ? `<span class="bubble-text${emojiOnly ? ' emoji-only' : ''}">${m.sender_is_bot ? m.text : linkifyText(m.text)}</span>` : '';
   const quote = m.reply_to_id ? `<div class="bubble-quote">
     <div class="bubble-quote-name">${esc(m.reply_sender_name || '')}</div>
     <div class="bubble-quote-text">${m.reply_deleted ? 'Сообщение удалено' : esc(m.reply_text || '')}</div>

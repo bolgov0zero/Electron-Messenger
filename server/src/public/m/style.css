@@ -598,7 +598,9 @@ html.m-desktop .screen { display: none !important; }
 .m-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ── Секретные чаты ── */
-.sc-pixel { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--text2); opacity: .6; filter: blur(.6px); letter-spacing: 1px; user-select: none; white-space: nowrap; }
+.sc-skel { display: block; height: 12px; min-width: 40px; border-radius: 6px; margin: 6px 0; background: linear-gradient(90deg, var(--hover-row, rgba(127,127,127,.12)) 25%, var(--border, rgba(127,127,127,.25)) 50%, var(--hover-row, rgba(127,127,127,.12)) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+.sc-skel:first-child { margin-top: 2px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .sc-banner { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--card-bg); border-top: 1px solid var(--border); font-size: 13px; color: var(--text); }
 .sc-banner span { flex: 1; }
 .sc-banner button { border: 0; border-radius: 10px; padding: 8px 12px; background: var(--accent); color: #fff; font-size: 13px; cursor: pointer; }

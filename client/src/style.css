@@ -3398,15 +3398,8 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 
 /* ── Секретные чаты ── */
 .irc-text.sc-locked { pointer-events: none; }
-.irc-text.sc-locked .sc-pixel {
-  font-family: ui-monospace, Menlo, Consolas, monospace;
-  color: var(--text2);
-  opacity: .6;
-  filter: blur(.6px);
-  letter-spacing: 1px;
-  user-select: none;
-  white-space: nowrap;
-}
+.sc-skel { display: block; height: 12px; min-width: 40px; border-radius: 6px; margin: 6px 0; background: linear-gradient(90deg, var(--hover-row, rgba(127,127,127,.12)) 25%, var(--border, rgba(127,127,127,.25)) 50%, var(--hover-row, rgba(127,127,127,.12)) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+.sc-skel:first-child { margin-top: 2px; }
 .sc-locked-banner {
   display: flex;
   align-items: center;

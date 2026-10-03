@@ -2861,7 +2861,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const scLocked = isSecretChat && scDecryptedText === undefined && !isDeleted && !isSystem;
   const effectiveText = scLocked ? null : (isSecretChat ? (scDecryptedText ?? '') : m.text);
   const bodyText = isDeleted ? '<em class="irc-deleted">Сообщение удалено</em>'
-    : scLocked ? `<span class="sc-pixel">${scPixelGlyphs(m.text)}</span>`
+    : scLocked ? scSkelHtml(m.text)
     : m.sender_is_bot ? effectiveText + (m.edited_at ? ' <span class="edited-tag">изм.</span>' : '') : linkifyText(effectiveText) + (m.edited_at?` <span class="edited-tag">изм.</span>`:'');
   const statusIcon = mine && !isDeleted ? renderStatus(m.status) : '';
   const reactionsHtml = isDeleted ? '' : renderReactions(m.id);
@@ -4942,20 +4942,12 @@ async function scUnwrapChatKey(wrapKey, packed) {
   return scB64(raw);
 }
 
-// Плейсхолдер вместо текста: длина зависит от длины шифротекста, символы только
-// блочные — никакого пользовательского ввода в HTML, экранировать не нужно
-function scPixelGlyphs(ct) {
-  const src = ct || '';
-  const n = Math.min(Math.max(Math.round(src.length * 0.6), 8), 160);
-  const blocks = ['▓', '▒', '░', '█'];
-  let out = '', run = 0;
-  for (let i = 0; i < n; i++) {
-    if (run >= 4 + (i % 5)) { out += ' '; run = 0; continue; }
-    const code = src.length ? src.charCodeAt(i % src.length) : 0;
-    out += blocks[(i * 7 + code) % blocks.length];
-    run++;
-  }
-  return out;
+// Заглушка вместо текста: серые полоски, длина зависит от шифротекста
+function scSkelHtml(ct) {
+  const n = (ct || '').length;
+  const w1 = Math.min(Math.max(Math.round(n * 0.5), 90), 220);
+  const w2 = Math.min(Math.max(Math.round(n * 0.3), 50), 140);
+  return `<span class="sc-skel" style="width:${w1}px"></span>` + (n > 120 ? `<span class="sc-skel" style="width:${w2}px"></span>` : '');
 }
 
 // Текст секретного сообщения — зашифрованный JSON {v:2, t, a}; старые сообщения
@@ -5130,26 +5122,27 @@ function scRenderSyncModal(mode, extra = {}) {
   if (mode === 'choose') {
     body.innerHTML = `
       <div class="sc-sync-tabs">
-        <button class="sc-sync-tab on" onclick="scRenderSyncModal('choose')">Получить доступ</button>
+        <button class="sc-sync-tab on" onclick="scRenderSyncModal('choose')">Предоставить доступ</button>
         <button class="sc-sync-tab" onclick="scRenderSyncModal('approve')">Подтвердить устройство</button>
       </div>
-      <p class="sc-sync-hint">Нажмите «Получить доступ» — появится код. Продиктуйте его собеседнику голосом, лично или в другом мессенджере. Сервер не может подтвердить это за него.</p>
-      <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scRequestAccess(${chatId})">Получить доступ</button></div>`;
+      <p class="sc-sync-hint">Нажмите «Предоставить доступ» — появится код. Продиктуйте его собеседнику голосом, лично или в другом мессенджере. Сервер не может подтвердить это за него.</p>
+      <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scRequestAccess(${chatId})">Предоставить доступ</button></div>`;
   } else if (mode === 'waiting') {
     const p = S.scPending[chatId];
     body.innerHTML = `
       <div class="sc-sync-tabs">
-        <button class="sc-sync-tab on">Получить доступ</button>
+        <button class="sc-sync-tab on">Предоставить доступ</button>
         <button class="sc-sync-tab" onclick="scRenderSyncModal('approve')">Подтвердить устройство</button>
       </div>
       <p class="sc-sync-hint">Продиктуйте собеседнику этот код. Он действует 10 минут.</p>
       <div class="sc-sync-code">${esc(p.code)}</div>
+      <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCopyCode('${esc(p.code)}')">Копировать код</button></div>
       <p class="sc-sync-hint">Ждём подтверждения…</p>
       <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCancelRequest(${chatId})">Отменить</button></div>`;
   } else if (mode === 'approve') {
     body.innerHTML = `
       <div class="sc-sync-tabs">
-        <button class="sc-sync-tab" onclick="scRenderSyncModal('choose')">Получить доступ</button>
+        <button class="sc-sync-tab" onclick="scRenderSyncModal('choose')">Предоставить доступ</button>
         <button class="sc-sync-tab on">Подтвердить устройство</button>
       </div>
       <p class="sc-sync-hint">Введите код, который назвал собеседник. Подтверждайте только если он сейчас сам просит о доступе.</p>
@@ -5211,6 +5204,29 @@ async function scOpenDevices(chatId) {
 // Закрытие окна не отменяет ожидание: если собеседник подтвердит позже, ключ
 // придёт сам (см. scPollPending), а пользователь увидит уведомление
 function scCancelSyncModal() { closeModal('modal-secret-sync'); }
+
+async function scCopyCode(code) {
+  try { await navigator.clipboard.writeText(code); }
+  catch {
+    const t = document.createElement('textarea');
+    t.value = code;
+    document.body.appendChild(t);
+    t.select();
+    document.execCommand('copy');
+    t.remove();
+  }
+  showActionToast('Код скопирован');
+}
+
+function ctxChatGrant() {
+  const chatId = S.ctxChatId;
+  document.getElementById('ctx-chat-menu').style.display = 'none';
+  if (!chatId) return;
+  S.scSyncChatId = chatId;
+  document.getElementById('sc-sync-title').textContent = 'Предоставить доступ';
+  scRenderSyncModal('approve');
+  openModal('modal-secret-sync');
+}
 
 async function scCancelRequest(chatId) {
   const p = S.scPending[chatId];
@@ -5480,6 +5496,8 @@ function showChatCtx(e, chatId) {
 
   const devicesBtn = document.getElementById('ctx-chat-devices');
   if (devicesBtn) devicesBtn.style.display = chat?.is_secret ? '' : 'none';
+  const grantBtn = document.getElementById('ctx-chat-grant');
+  if (grantBtn) grantBtn.style.display = (chat?.is_secret && S.scKeys[chatId]) ? '' : 'none';
   const muteLabel = document.getElementById('ctx-chat-mute-label');
   if (muteLabel) muteLabel.textContent = S.mutedChats.has(chatId) ? 'Включить уведомления' : 'Выключить уведомления';
   menu.style.top = '-9999px'; menu.style.left = '-9999px';

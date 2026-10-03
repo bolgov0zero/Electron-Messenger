@@ -178,19 +178,12 @@
       return await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(fiv) }, key, await res.arrayBuffer());
     } catch { return null; }
   }
-  // Плейсхолдер вместо текста: длина зависит от шифротекста, символы только блочные
-  function pixelGlyphs(ct) {
-    const src = ct || '';
-    const n = Math.min(Math.max(Math.round(src.length * 0.6), 8), 160);
-    const blocks = ['▓', '▒', '░', '█'];
-    let out = '', run = 0;
-    for (let i = 0; i < n; i++) {
-      if (run >= 4 + (i % 5)) { out += ' '; run = 0; continue; }
-      const code = src.length ? src.charCodeAt(i % src.length) : 0;
-      out += blocks[(i * 7 + code) % blocks.length];
-      run++;
-    }
-    return out;
+  // Заглушка вместо текста: серые полоски, длина зависит от шифротекста
+  function skeletonHtml(ct) {
+    const n = (ct || '').length;
+    const w1 = Math.min(Math.max(Math.round(n * 0.5), 90), 220);
+    const w2 = Math.min(Math.max(Math.round(n * 0.3), 50), 140);
+    return `<span class="sc-skel" style="width:${w1}px"></span>` + (n > 120 ? `<span class="sc-skel" style="width:${w2}px"></span>` : '');
   }
 
   // ── Обмен ключом (сторона, которой нужен доступ) ──
@@ -261,7 +254,7 @@
   global.SC = {
     init(cfg) { Object.assign(C, cfg); },
     load, deviceId, setKey, forget, hide, unhide, isHidden, hasKey, keyOf, rawKeyOf,
-    createKey, encryptText, decryptText, parsePayload, encodePayload, encryptFile, fetchFile, pixelGlyphs,
+    createKey, encryptText, decryptText, parsePayload, encodePayload, encryptFile, fetchFile, skeletonHtml,
     requestAccess, pendingOf, pendingIds, cancelPending, pollPending, devices,
     isLoaded: () => st.loaded,
   };
