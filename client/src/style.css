@@ -3449,11 +3449,12 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 .sc-b-s { color: var(--text2); font-size: 12px; display: flex; align-items: center; gap: 7px; }
 .sc-btn { height: 34px; padding: 0 14px; border-radius: 9px; border: 0; background: var(--accent); color: #fff; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap; }
 .sc-btn.ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
-.sc-b-inp { height: 34px; width: 130px; border: 1px solid var(--border); border-radius: 9px; background: var(--card-bg); color: var(--text); padding: 0 10px; font: 600 13px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; }
+.sc-b-inp { height: 34px; flex: 1 1 120px; min-width: 0; max-width: 150px; border: 1px solid var(--border); border-radius: 9px; background: var(--card-bg); color: var(--text); padding: 0 10px; font: 500 13px -apple-system, "Segoe UI", Roboto, sans-serif; text-transform: uppercase; }
+.sc-b-inp::placeholder { text-transform: none; color: var(--muted); }
 .sc-b-x { width: 26px; height: 26px; border-radius: 8px; border: 0; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1; }
 .sc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; animation: sc-pulse 1.2s infinite ease-in-out; }
 @keyframes sc-pulse { 0%, 100% { opacity: .25 } 50% { opacity: 1 } }
-.sc-sync-modal { width: 340px; max-width: calc(100vw - 32px); }
+.sc-sync-modal { width: 420px; max-width: calc(100vw - 32px); }
 .sc-m { padding: 4px 16px 12px; display: flex; flex-direction: column; gap: 10px; }
 .sc-m-hint { margin: 0; color: var(--text2); font-size: 12.5px; }
 .sc-codebox { display: flex; align-items: center; justify-content: space-between; gap: 8px; white-space: nowrap; background: var(--card-bg); border: 1px dashed var(--accent); border-radius: 12px; padding: 10px 12px; }
@@ -3463,7 +3464,7 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 .sc-dev { display: flex; align-items: center; gap: 10px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 9px 11px; }
 .sc-dev-ico { width: 30px; height: 30px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
 .sc-dev-n { font-weight: 600; }
-.sc-dev-s { color: var(--text2); font-size: 12px; }
+.sc-dev-s { color: var(--text2); font-size: 12px; white-space: nowrap; }
 .sc-meta { color: var(--muted); font-size: 11.5px; margin: 0; }
 .sc-mfoot { display: flex; justify-content: flex-end; gap: 8px; padding: 0 16px 14px; }
 .sc-mfoot .sc-btn { height: 32px; }
