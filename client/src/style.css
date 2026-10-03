@@ -816,7 +816,7 @@ html.no-emoji-font .md-code {
   background: var(--side-bg);
   border: 1px solid var(--border);
   border-radius: 16px;
-  margin: 8px 0 8px 8px;
+  margin: 16px 0 16px 16px;
   display: flex; flex-direction: column;
   position: relative; z-index: 2;
   overflow: hidden;
@@ -846,11 +846,11 @@ body.sidebar-hidden .sidebar {
    наведению всплывает поверх переписки и ничего не раздвигает. Класс
    ставит toggleSidebar по завершении перехода. */
 body.sidebar-overlay .sidebar {
-  position: absolute; left: 8px; top: 8px; bottom: 8px; z-index: 20;
+  position: absolute; left: 16px; top: 16px; bottom: 16px; z-index: 20;
   width: var(--sidebar-w); min-width: var(--sidebar-w);
   border-width: 1px;
   margin: 0;
-  transform: translateX(calc(-100% - 8px));
+  transform: translateX(calc(-100% - 16px));
   transition: transform .22s cubic-bezier(.4, 0, .2, 1), box-shadow .22s;
 }
 body.sidebar-overlay.sidebar-peeking .sidebar {
@@ -1103,7 +1103,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   display: flex; flex-direction: column;
   background-color: var(--chat-bg);
   border-radius: 16px;
-  margin: 8px 8px 8px 8px;
+  margin: 16px;
   overflow: hidden;
   position: relative;
   /* Свой контекст наложения: без него слой узора с z-index -1 ушёл бы не под
