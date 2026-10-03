@@ -682,10 +682,11 @@ function chatRowHtml(c) {
       <div class="row" onclick="rowTapOpen(${c.id}, this, ${c.has_topics ? 1 : 0})">
         <div class="av-wrap">
           <div class="av${sq} ${chatAvatarColorClass(c)}" data-av-chat="${c.id}">${esc(chatIcon(c))}</div>
+          ${c.is_secret ? '<span class="sc-av-mark"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>' : ''}
           ${dot}
         </div>
         <div class="row-body">
-          <div class="row-top"><div class="row-name">${esc(chatName(c))}</div><div class="row-top-right">${c.is_secret ? _scLock : ''}${muteIcon}${myStatus}<div class="row-time${unread ? ' unread' : ''}">${time}</div></div></div>
+          <div class="row-top"><div class="row-name">${esc(chatName(c))}</div><div class="row-top-right">${muteIcon}${myStatus}<div class="row-time${unread ? ' unread' : ''}">${time}</div></div></div>
           <div class="row-bottom">
             <div class="row-msg">${esc(who)}${esc(preview)}</div>
             ${mentions ? `<div class="badge at">@</div>` : unread ? `<div class="badge">${unread > 99 ? '99+' : unread}</div>` : ''}

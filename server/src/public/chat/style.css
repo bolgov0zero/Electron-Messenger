@@ -3432,3 +3432,6 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 
 /* Без подписи у пересланного или цитаты место под время и галочки резервирует пустой блок */
 .msg-bubble:not(.bubble-photo):not(:has(.irc-text)) { padding-bottom: 26px; }
+
+/* Метка секретного чата: замок в кружке на углу аватара */
+.sc-av-mark { position: absolute; right: -3px; bottom: -3px; width: 17px; height: 17px; border-radius: 50%; background: var(--side-bg, var(--card-bg)); border: 1.5px solid var(--accent); color: var(--accent); display: grid; place-items: center; z-index: 1; }
