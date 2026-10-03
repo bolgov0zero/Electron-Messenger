@@ -2589,22 +2589,22 @@ html.dark .modal.cs-modal { --cs-ok: #3ecf8e; --cs-warn: #e3b35c; }
   position: fixed;
   background: var(--menu-bg);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: 0 30px 60px rgba(0,0,0,.5);
   z-index: 300; overflow: hidden;
-  display: none; width: 260px;
-  padding: 8px;
+  display: none; width: 230px;
+  padding: 6px;
 }
 html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 .ctx-menu.open { display: block; }
 
 .ctx-menu button {
-  display: flex; align-items: center; gap: 12px;
-  width: 100%; padding: 10px 12px;
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 7px 10px;
   background: none; border: none;
-  font-size: 15px; font-weight: 500; cursor: pointer; color: var(--text);
+  font-size: 13.5px; font-weight: 500; cursor: pointer; color: var(--text);
   font-family: inherit;
-  border-radius: 12px;
+  border-radius: 9px;
   transition: background .12s;
 }
 .ctx-menu button { text-align: left; justify-content: flex-start; white-space: nowrap; }
@@ -2612,7 +2612,7 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 .ctx-menu button:hover { background: var(--hover-row); }
 .ctx-menu button.ctx-danger { color: var(--danger); }
 .ctx-menu button.ctx-danger:hover { background: var(--danger-bg); }
-.ctx-menu button svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--muted); }
+.ctx-menu button svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--muted); }
 .ctx-menu button.ctx-danger svg { color: var(--danger); }
 
 /* Reactions row in context menu */
