@@ -2607,6 +2607,8 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
   border-radius: 12px;
   transition: background .12s;
 }
+.ctx-menu button { text-align: left; justify-content: flex-start; white-space: nowrap; }
+.ctx-menu button > span { flex: 1; min-width: 0; text-align: left; }
 .ctx-menu button:hover { background: var(--hover-row); }
 .ctx-menu button.ctx-danger { color: var(--danger); }
 .ctx-menu button.ctx-danger:hover { background: var(--danger-bg); }
