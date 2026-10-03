@@ -1151,16 +1151,17 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 .chat-header {
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 22px;
+  border-radius: 16px;
   margin: 8px 8px 0;
-  padding: 0 16px;
-  height: 52px;
-  min-height: 52px;
+  padding: 0 14px;
+  height: 60px;
+  min-height: 60px;
   display: flex; align-items: center; justify-content: space-between;
   flex-shrink: 0;
   z-index: 10;
 }
 .chat-header-left { display: flex; align-items: center; gap: 12px; }
+.chat-header .av-md { width: 40px; height: 40px; font-size: 15px; }
 .chat-header-av { width: 40px; height: 40px; border-radius: 9px; flex-shrink: 0; }
 .chat-header-name { font-weight: 700; font-size: 14px; color: var(--text); }
 .chat-header-status { font-size: 11px; color: var(--muted); }
@@ -1475,7 +1476,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   position: absolute; left: 0; right: 0; bottom: 0;
   z-index: 3;
 }
-.composer-inner { max-width: 760px; margin: 0 auto; background: var(--chat-bg); border-radius: 12px; position: relative; }
+.composer-inner { max-width: 760px; margin: 0 auto; background: transparent; border-radius: 12px; position: relative; }
 
 /* New composer style */
 .composer { padding: 14px 20px; border-top: 1px solid var(--border); flex-shrink: 0; }
@@ -1580,7 +1581,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .ep-grid {
   position: absolute;
   bottom: calc(100% + 10px);
-  left: 0; right: auto;
+  left: auto; right: 70px;
   width: 340px;
   background: var(--composer-bg);
   border: 1px solid var(--border);
@@ -2590,27 +2591,29 @@ html.dark .modal.cs-modal { --cs-ok: #3ecf8e; --cs-warn: #e3b35c; }
   position: fixed;
   background: var(--menu-bg);
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 16px;
   box-shadow: 0 30px 60px rgba(0,0,0,.5);
   z-index: 300; overflow: hidden;
-  display: none; width: 250px;
-  padding: 6px;
+  display: none; width: 260px;
+  padding: 8px;
 }
 html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 .ctx-menu.open { display: block; }
 
 .ctx-menu button {
-  display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 8px 10px;
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 10px 12px;
   background: none; border: none;
-  font-size: 13px; cursor: pointer; color: var(--text);
+  font-size: 15px; font-weight: 500; cursor: pointer; color: var(--text);
   font-family: inherit;
-  border-radius: 9px;
+  border-radius: 12px;
   transition: background .12s;
 }
 .ctx-menu button:hover { background: var(--hover-row); }
 .ctx-menu button.ctx-danger { color: var(--danger); }
 .ctx-menu button.ctx-danger:hover { background: var(--danger-bg); }
+.ctx-menu button svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--muted); }
+.ctx-menu button.ctx-danger svg { color: var(--danger); }
 
 /* Reactions row in context menu */
 .ctx-reactions {
@@ -3094,7 +3097,7 @@ html.dark .announcement-title { color: var(--danger); }
   flex: 1; min-width: 0; min-height: 40px; box-sizing: border-box;
   display: flex; align-items: center; gap: 4px;
   padding: 0 6px 0 16px;
-  background: var(--composer-bg);
+  background: color-mix(in srgb, var(--composer-bg) 88%, transparent);
   border: 1px solid var(--border);
   border-radius: 20px;
 }
@@ -3380,7 +3383,7 @@ html.dark .announcement-title { color: var(--danger); }
   padding: 7px 10px 7px 14px;
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 16px;
   margin: 8px 8px 0;
   flex-shrink: 0;
 }
