@@ -482,6 +482,7 @@ tr.ua-banned .ux-cell{opacity:.6}
 .ua-title{font-size:14px;font-weight:700}
 .ua-sub{font-size:11.5px;color:var(--c-text2)}
 .ua-body{padding:16px 18px 18px;overflow-y:auto;display:flex;flex-direction:column;gap:20px;flex:1 1 auto;min-height:0}
+.ua-body>*{flex-shrink:0}
 .ua-sec{display:flex;flex-direction:column;gap:12px}
 .ua-sec-title{font-size:10.5px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.07em}
 .ua-field{display:flex;flex-direction:column;gap:5px;min-width:0}
@@ -524,6 +525,10 @@ tr.ua-banned .ux-cell{opacity:.6}
 .ua-pw-closed{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--c-border);border-radius:10px}
 .ua-pw-closed b{display:block;font-size:12.5px}
 .ua-pw-closed span{font-size:11px;color:var(--c-muted)}
+.ua-totp-box{display:flex;flex-direction:column;gap:10px;padding:10px 12px;border:1px solid var(--c-border);border-radius:10px}
+.ua-totp-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ua-totp-row b{display:block;font-size:12.5px}
+.ua-totp-row span{font-size:11px;color:var(--c-muted)}
 .ua-dz{border:1px solid rgba(239,68,68,.22);border-radius:11px;overflow:hidden}
 .ua-dz>summary{list-style:none;cursor:pointer;padding:10px 12px;font-size:12px;font-weight:600;color:var(--c-text2);display:flex;align-items:center;gap:8px}
 .ua-dz>summary::-webkit-details-marker{display:none}
@@ -3417,15 +3422,19 @@ function uaAccessSection(f, editing, u) {
 // следующем входе — здесь только требование и аварийный сброс.
 function uaTotpSection(f, editing, u) {
   const configured = !!u?.totp_configured;
-  return `<div class="ua-dz-row" style="margin-top:10px">
-    <div><b>Требовать 2FA</b><span>При входе в админ-панель запросит код из приложения-аутентификатора${configured ? '' : ' (настроит при первом входе)'}</span></div>
-    <label class="toggle-switch" style="gap:0">
-      <input type="checkbox" ${f.totpRequired ? 'checked' : ''} onchange="uaSet('totpRequired', this.checked)">
-      <div class="toggle-track"><div class="toggle-thumb"></div></div>
-    </label>
-  </div>
-  ${editing && configured ? `<div class="ua-dz-row"><div><b>Сбросить 2FA</b><span>Если потерян доступ к приложению-аутентификатору</span></div>
-    <button type="button" class="btn btn-ghost btn-sm" onclick="closeModal('modal-user'); uaResetTotp(${u.id})">${UX_I.key}Сбросить</button></div>` : ''}`;
+  return `<div class="ua-totp-box" style="margin-top:10px">
+    <div class="ua-totp-row">
+      <div><b>Требовать 2FA</b><span>При входе в админ-панель запросит код из приложения-аутентификатора${configured ? '' : ' (настроит при первом входе)'}</span></div>
+      <label class="toggle-switch" style="gap:0">
+        <input type="checkbox" ${f.totpRequired ? 'checked' : ''} onchange="uaSet('totpRequired', this.checked)">
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      </label>
+    </div>
+    ${editing && configured ? `<div class="ua-totp-row">
+      <div><b>Сбросить 2FA</b><span>Если потерян доступ к приложению-аутентификатору</span></div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="closeModal('modal-user'); uaResetTotp(${u.id})">${UX_I.key}Сбросить</button>
+    </div>` : ''}
+  </div>`;
 }
 function uaResetTotp(id) {
   const name = uaNames([id])[0] || '';
