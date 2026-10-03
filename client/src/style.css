@@ -1150,7 +1150,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 16px;
-  margin: 8px 8px 0;
+  margin: 0;
   padding: 0 14px;
   height: 60px;
   min-height: 60px;
@@ -1469,7 +1469,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
    полосы (--composer-h, её держит watchComposerHeight), чтобы последнее сообщение
    не пряталось под композером. */
 .chat-input-wrap {
-  padding: 0 8px 8px;
+  padding: 0;
   flex-shrink: 0;
   position: absolute; left: 0; right: 0; bottom: 0;
   z-index: 3;
@@ -3387,7 +3387,7 @@ html.dark .announcement-title { color: var(--danger); }
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 16px;
-  margin: 8px 8px 0;
+  margin: 8px 0 0;
   flex-shrink: 0;
 }
 /* Риски слева: сколько закреплений и какое сейчас */
