@@ -5153,7 +5153,7 @@ function scRenderSyncModal(mode, extra = {}) {
     body.innerHTML = `
       <p class="sc-sync-hint">Собеседник ввёл код и просит открыть чат на устройстве:</p>
       <div class="sc-sync-device">${esc(extra.label || 'Устройство')} · ${esc(extra.platform || '')}</div>
-      <p class="sc-sync-hint">Подтвердите, только если вы сейчас в разговоре с собеседником и он назвал этот код.</p>
+      <p class="sc-sync-hint">Подтвердите, только если собеседник ввёл код, который вы ему продиктовали, и вы сейчас в разговоре с ним.</p>
       <div class="sc-sync-foot">
         <button class="modal-btn-ghost" onclick="scRenderSyncModal('grant')">Назад</button>
         <button class="modal-btn-primary" onclick="scApproveRequest(${chatId})">Подтвердить</button>
