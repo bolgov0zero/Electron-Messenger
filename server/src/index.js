@@ -80,6 +80,7 @@ adminRouter.startBackupSchedule();
 app.use('/api/push',  require('./routes/push'));
 app.use('/api/webhooks', require('./routes/webhooks'));
 app.use('/api/announcements', require('./routes/announcements'));
+app.use('/api/secret', require('./routes/secret'));
 
 app.get('/api/release-notes', (req, res) => {
   const notesPath = path.join(__dirname, '../../RELEASE_NOTES.md');

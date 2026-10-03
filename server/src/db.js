@@ -192,6 +192,15 @@ tryAlter('ALTER TABLE users ADD COLUMN totp_secret TEXT');
 tryAlter('ALTER TABLE users ADD COLUMN totp_pending_secret TEXT');
 tryAlter('ALTER TABLE users ADD COLUMN totp_required INTEGER DEFAULT 0');
 
+// Секретные чаты (E2E-шифрование). is_secret — отдельная сущность от обычного
+// personal-чата с тем же собеседником: они могут существовать одновременно,
+// поэтому это флаг на чате, а не новое значение в CHECK(type) (constraint
+// пришлось бы пересобирать). iv — вектор инициализации AES-GCM; у обычных
+// (не зашифрованных) сообщений всегда NULL. Сервер шифротекст никогда не
+// расшифровывает — только хранит и пересылает как обычный text.
+tryAlter('ALTER TABLE chats ADD COLUMN is_secret INTEGER DEFAULT 0');
+tryAlter('ALTER TABLE messages ADD COLUMN iv TEXT');
+
 // Аудит действий в админ-панели — кто, когда, что сделал. category — одна из
 // moderation/rooms/server/security (см. вкладку «Аудит-лог»).
 db.exec(`
@@ -206,6 +215,45 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_audit_created ON admin_audit_log(created_at);
   CREATE INDEX IF NOT EXISTS idx_audit_actor ON admin_audit_log(actor_id);
+`);
+
+// Секретные чаты: устройства, которым реально выдан ключ (approved), и запросы
+// на выдачу ключа новому устройству. Код для подтверждения передаётся собеседнику
+// ВНЕ системы (голосом/лично/в другом мессенджере) — специально, чтобы даже
+// скомпрометированный сервер не мог сам подделать согласие на новое устройство.
+// Отключённые/неодобренные устройства здесь не учитываются вообще — когда
+// одобренных устройств не остаётся ни с одной стороны, чат удаляется безвозвратно
+// (см. DELETE /api/secret/:chatId/devices/me).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS secret_chat_devices (
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    device_id TEXT NOT NULL,
+    device_label TEXT,
+    platform TEXT NOT NULL DEFAULT 'electron',
+    approved_at INTEGER DEFAULT (unixepoch()),
+    PRIMARY KEY (chat_id, user_id, device_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_scd_chat ON secret_chat_devices(chat_id);
+  CREATE INDEX IF NOT EXISTS idx_scd_user ON secret_chat_devices(user_id);
+
+  CREATE TABLE IF NOT EXISTS secret_key_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    requester_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    requester_device_id TEXT NOT NULL,
+    requester_device_label TEXT,
+    requester_platform TEXT NOT NULL DEFAULT 'electron',
+    ephemeral_pubkey TEXT NOT NULL,
+    code_hash TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved')),
+    wrapped_secret TEXT,
+    approver_ephemeral_pubkey TEXT,
+    approver_user_id INTEGER REFERENCES users(id),
+    expires_at INTEGER NOT NULL,
+    created_at INTEGER DEFAULT (unixepoch())
+  );
+  CREATE INDEX IF NOT EXISTS idx_skr_chat ON secret_key_requests(chat_id, status);
 `);
 
 // ── Полнотекстовый поиск (FTS5, external content) ──

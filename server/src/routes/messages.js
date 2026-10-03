@@ -11,7 +11,7 @@ const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
 
 // Общий SELECT сообщения с данными отправителя и цитаты
 const MSG_SELECT = `
-  SELECT m.id, m.chat_id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.system_kind,
+  SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.system_kind,
     u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.tag as sender_tag, u.is_bot as sender_is_bot,
     m.reply_to_id,
     rm.text as reply_text, rm.deleted as reply_deleted, rm.attachment as reply_attachment,
@@ -40,6 +40,7 @@ router.get('/search', authMiddleware, (req, res) => {
       FROM messages_fts
       JOIN messages m ON m.id = messages_fts.rowid
       JOIN chat_members cm ON cm.chat_id = m.chat_id AND cm.user_id = ? AND cm.hidden_at IS NULL
+      JOIN chats c ON c.id = m.chat_id AND c.is_secret = 0
       LEFT JOIN users u ON u.id = m.sender_id
       WHERE messages_fts MATCH ? AND m.deleted = 0
       ORDER BY m.sent_at DESC LIMIT 30

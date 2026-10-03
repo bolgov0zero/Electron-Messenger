@@ -13,6 +13,7 @@ if (process.platform === 'linux') {
 }
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const os = require('os');
 const { pathToFileURL } = require('url');
 
@@ -188,6 +189,14 @@ function readHAConfig() {
   if (!HA_CONFIG_PATH) return null;
   try { return JSON.parse(fs.readFileSync(HA_CONFIG_PATH, 'utf8')); } catch { return null; }
 }
+
+// Ключи секретных чатов обязаны жить СТРОГО на этой физической машине — если
+// их хранить в userData, при включённой HA они разъедутся на сетевой диск и
+// станут доступны с любого компьютера под этим пользователем, а это буквально
+// ломает модель «новое устройство активируется только с одобрения собеседника»
+// (тихая репликация = второе устройство без одобрения). Поэтому путь фиксируем
+// ДО переопределения userData ниже и больше не трогаем.
+const LOCAL_MACHINE_DIR = app.getPath('userData');
 
 // Apply BEFORE app.ready so Electron uses the correct userData path
 const haConfig = readHAConfig();
@@ -404,6 +413,42 @@ ipcMain.handle('session-load', () => {
 ipcMain.handle('session-clear', () => {
   try { fs.unlinkSync(SESSION_FILE); } catch {}
   return true;
+});
+
+// ── Секретные чаты (E2E): локальный device_id и ключи чатов ──
+// Всегда LOCAL_MACHINE_DIR (не app.getPath('userData') — см. пояснение выше про
+// HA), всегда через safeStorage без HA-исключения: этот материал не предназначен
+// для переноса на другую машину ни в каком режиме.
+const SECRET_DEVICE_FILE = path.join(LOCAL_MACHINE_DIR, 'secret_device.bin');
+const SECRET_KEYS_FILE = path.join(LOCAL_MACHINE_DIR, 'secret_keys.bin');
+
+function secretFileWrite(file, str) {
+  const data = safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(str) : Buffer.from(str, 'utf8');
+  fs.writeFileSync(file, data);
+}
+function secretFileRead(file) {
+  if (!fs.existsSync(file)) return null;
+  const buf = fs.readFileSync(file);
+  if (safeStorage.isEncryptionAvailable()) { try { return safeStorage.decryptString(buf); } catch { return null; } }
+  return buf.toString('utf8');
+}
+
+// Стабильный идентификатор этого устройства — генерируется один раз. На нём
+// держится вся модель одобрения: сервер и собеседник ссылаются именно на него,
+// не на пользователя.
+ipcMain.handle('secret-device-id', () => {
+  try {
+    let id = secretFileRead(SECRET_DEVICE_FILE);
+    if (!id) { id = crypto.randomUUID(); secretFileWrite(SECRET_DEVICE_FILE, id); }
+    return id;
+  } catch { return null; }
+});
+
+ipcMain.handle('secret-keys-load', () => {
+  try { return secretFileRead(SECRET_KEYS_FILE); } catch { return null; }
+});
+ipcMain.handle('secret-keys-save', (_, json) => {
+  try { secretFileWrite(SECRET_KEYS_FILE, json); return true; } catch { return false; }
 });
 
 // ── Адрес сервера из имени установщика (только Windows) ──

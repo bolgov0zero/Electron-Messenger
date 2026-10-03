@@ -44,7 +44,7 @@ function enrichChat(chat, userId) {
     const ids = topics.map(s => s.id);
     const placeholders = ids.map(() => '?').join(',');
     last = db.prepare(`
-      SELECT m.id, m.chat_id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment,
+      SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment,
         COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
       WHERE m.chat_id IN (${placeholders}) ORDER BY m.sent_at DESC LIMIT 1
@@ -54,7 +54,7 @@ function enrichChat(chat, userId) {
     unreadMentions = unreadCounts.mentionsInChats(userId, ids);
   } else {
     last = db.prepare(`
-      SELECT m.id, m.chat_id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment,
+      SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment,
         COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
       WHERE m.chat_id = ? ORDER BY m.sent_at DESC LIMIT 1
@@ -63,6 +63,10 @@ function enrichChat(chat, userId) {
     unread = unreadCounts.inChat(userId, chat.id);
     unreadMentions = unreadCounts.mentionsInChat(userId, chat.id);
   }
+  // Секретный чат: превью в списке никогда не показывает содержимое, даже
+  // расшифрованное — защита от подглядывания через плечо. Факт «есть новое
+  // сообщение» клиент показывает сам, текст сюда не подставляем вовсе.
+  if (chat.is_secret && last) last = { ...last, text: '', iv: null, attachment: null };
 
   // Статус доставки последнего сообщения — только для своих: в списке чатов
   // рядом со временем показываются галочки. Чужие сообщения статуса не требуют,
@@ -84,9 +88,9 @@ function enrichChat(chat, userId) {
 // Get my chats
 router.get('/', authMiddleware, (req, res) => {
   const chats = db.prepare(`
-    SELECT c.id, c.type, c.name, c.created_at, c.created_by, cm.pinned_at as pinned
+    SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.is_secret, cm.pinned_at as pinned
     FROM chats c JOIN chat_members cm ON cm.chat_id = c.id
-    WHERE cm.user_id = ? AND cm.hidden_at IS NULL AND c.parent_id IS NULL
+    WHERE cm.user_id = ? AND (cm.hidden_at IS NULL OR c.is_secret = 1) AND c.parent_id IS NULL
     ORDER BY (SELECT COALESCE(MAX(sent_at), 0) FROM messages WHERE chat_id = c.id) DESC
   `).all(req.user.id);
   res.json(chats.map(c => enrichChat(c, req.user.id)));
@@ -155,6 +159,50 @@ router.post('/direct', authMiddleware, (req, res) => {
   })();
   const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
   res.json(enrichChat(chat, req.user.id));
+});
+
+// Создать секретный (E2E) чат. Отдельная сущность от обычного личного чата с тем
+// же собеседником — оба могут существовать одновременно, поэтому поиск уже
+// существующего матчит и по is_secret. Создавать может только Electron: у
+// веб/мобильного клиента нет надёжного постоянного хранилища для приватного
+// ключа (см. обсуждение дизайна секретных чатов).
+router.post('/secret', authMiddleware, (req, res) => {
+  const targetId = Number(req.body.user_id);
+  const { device_id, device_label, platform } = req.body;
+  if (platform !== 'electron') return res.status(403).json({ error: 'Secret chats can only be created from the desktop app' });
+  if (!targetId) return res.status(400).json({ error: 'Missing user_id' });
+  if (targetId === req.user.id) return res.status(400).json({ error: 'Cannot create chat with yourself' });
+  if (!device_id) return res.status(400).json({ error: 'Missing device_id' });
+  const targetUser = db.prepare('SELECT id, is_bot FROM users WHERE id = ?').get(targetId);
+  if (!targetUser) return res.status(404).json({ error: 'User not found' });
+  if (targetUser.is_bot) return res.status(400).json({ error: 'Cannot create a secret chat with a bot' });
+  const existing = db.prepare(`
+    SELECT c.id FROM chats c
+    JOIN chat_members cm1 ON cm1.chat_id = c.id AND cm1.user_id = ?
+    JOIN chat_members cm2 ON cm2.chat_id = c.id AND cm2.user_id = ?
+    WHERE c.type = 'direct' AND c.is_secret = 1 LIMIT 1
+  `).get(req.user.id, targetId);
+  if (existing) {
+    const existingChat = db.prepare('SELECT * FROM chats WHERE id = ?').get(existing.id);
+    return res.json({ ...enrichChat(existingChat, req.user.id), created: false });
+  }
+  // Приглашение видно у собеседника на всех его устройствах сразу (в отличие от
+  // обычного личного чата, который скрыт до первого сообщения) — секретный чат
+  // никогда не использует hidden_at.
+  const chatId = db.transaction(() => {
+    const result = db.prepare("INSERT INTO chats (type, created_by, is_secret) VALUES ('direct', ?, 1)").run(req.user.id);
+    const id = result.lastInsertRowid;
+    db.prepare('INSERT INTO chat_members (chat_id, user_id) VALUES (?, ?)').run(id, req.user.id);
+    db.prepare('INSERT INTO chat_members (chat_id, user_id) VALUES (?, ?)').run(id, targetId);
+    // Создатель — первое устройство, одобрять ключ некому: он просто становится
+    // держателем ключа по праву первого (axiomatically trusted).
+    db.prepare(`INSERT INTO secret_chat_devices (chat_id, user_id, device_id, device_label, platform)
+      VALUES (?, ?, ?, ?, 'electron')`).run(id, req.user.id, device_id, device_label || null);
+    return id;
+  })();
+  sendTo(targetId, { type: 'reload_chats' });
+  const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
+  res.json({ ...enrichChat(chat, req.user.id), created: true });
 });
 
 // Create group / room — Fix 2: notify all members except creator
@@ -320,6 +368,27 @@ router.delete('/:id', authMiddleware, (req, res) => {
   if (!chat) return res.status(404).json({ error: 'Not found' });
   if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(id, req.user.id))
     return res.status(403).json({ error: 'Not a member' });
+  if (chat.is_secret) {
+    // «Удалить» в секретном чате по смыслу — отключение ИМЕННО ЭТОГО устройства
+    // (не аккаунта целиком, см. device_id): другие устройства того же пользователя
+    // ключ не теряют. hidden_at здесь не используется вовсе — секретный чат виден
+    // в списке всегда, клиент сам решает, показывать пиксели или расшифрованное.
+    // Учитываются только ОДОБРЕННЫЕ устройства — неодобренное (видевшее только
+    // пиксели) ни на что не влияет и просто пропадёт вместе с чатом.
+    const deviceId = req.query.device_id;
+    if (!deviceId) return res.status(400).json({ error: 'Missing device_id' });
+    db.prepare('DELETE FROM secret_chat_devices WHERE chat_id = ? AND user_id = ? AND device_id = ?').run(id, req.user.id, deviceId);
+    const remaining = db.prepare('SELECT COUNT(*) as c FROM secret_chat_devices WHERE chat_id = ?').get(id).c;
+    if (remaining === 0) {
+      const allMembers = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(id);
+      db.prepare('DELETE FROM chats WHERE id = ?').run(id);
+      allMembers.forEach(({ user_id }) => sendTo(user_id, { type: 'chat_deleted', chat_id: id }));
+      logAudit(req, 'security', 'Секретный чат удалён безвозвратно', `оба участника отключили все устройства, чат #${id}`);
+    } else {
+      sendTo(req.user.id, { type: 'reload_chats' });
+    }
+    return res.json({ ok: true });
+  }
   if (chat.type === 'direct') {
     // Soft delete: hide only for this user, other side keeps the chat
     db.prepare('UPDATE chat_members SET hidden_at = unixepoch() WHERE chat_id = ? AND user_id = ?').run(id, req.user.id);
@@ -348,16 +417,19 @@ router.delete('/:id', authMiddleware, (req, res) => {
 // Admin: delete any chat — Fix 3: notify all members
 router.delete('/admin/:id', authMiddleware, adminMiddleware, (req, res) => {
   const id = Number(req.params.id);
-  const chat = db.prepare('SELECT name, type FROM chats WHERE id = ?').get(id);
+  const chat = db.prepare('SELECT name, type, is_secret FROM chats WHERE id = ?').get(id);
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(id);
   // Удаляем вебхуки комнаты и её тем (нет ON DELETE CASCADE на webhooks.chat_id)
   const subIds = db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(id).map(r => r.id);
   [id, ...subIds].forEach(cid => db.prepare('DELETE FROM webhooks WHERE chat_id = ?').run(cid));
   subIds.forEach(cid => deleteChatFiles(cid));
   deleteChatFiles(id);
+  // Безусловное немедленное удаление — не ждёт, пока отключатся все одобренные
+  // устройства (secret_chat_devices чистится каскадом вместе с chats)
   db.prepare('DELETE FROM chats WHERE id = ?').run(id);
   members.forEach(({ user_id }) => sendTo(user_id, { type: 'chat_deleted', chat_id: id }));
-  logAudit(req, 'rooms', chat?.type === 'room' ? 'Удаление комнаты' : 'Удаление чата',
+  logAudit(req, chat?.is_secret ? 'security' : 'rooms',
+    chat?.type === 'room' ? 'Удаление комнаты' : (chat?.is_secret ? 'Удаление секретного чата (админ)' : 'Удаление чата'),
     `«${chat?.name || '?'}»${subIds.length ? `, с ${subIds.length} подкомнатами` : ''}, участников: ${members.length}`);
   res.json({ ok: true });
 });

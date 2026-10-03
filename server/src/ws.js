@@ -154,7 +154,7 @@ function getPins(chatId) {
 }
 function getMessageWithStatus(msgId, viewerId) {
   const msg = db.prepare(`
-    SELECT m.id, m.chat_id, m.text, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.system_kind,
+    SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.system_kind,
       u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.tag as sender_tag, u.is_bot as sender_is_bot,
       m.reply_to_id,
       rm.text as reply_text, rm.attachment as reply_attachment, rm.deleted as reply_deleted,
@@ -229,10 +229,19 @@ function setup(server) {
         ws._msgTimes = ws._msgTimes.filter(t => nowMs - t < 10_000);
         if (ws._msgTimes.length >= 20) return;
         ws._msgTimes.push(nowMs);
-        const { chat_id, reply_to_id, attachment, forward_data } = data;
+        const { chat_id, reply_to_id, iv } = data;
+        const chatRow = db.prepare('SELECT is_secret FROM chats WHERE id = ?').get(chat_id);
+        const isSecret = !!chatRow?.is_secret;
+        // В секретном чате attachment/forward_data пока не поддерживаются (не шифруются),
+        // а text — это base64-шифротекст, который нельзя обрезать как обычный текст
+        // (slice по символам испортил бы шифротекст) — лимит по длине выше и без .trim().
+        const attachment = isSecret ? null : data.attachment;
+        const forward_data = isSecret ? null : data.forward_data;
+        const text = isSecret
+          ? (typeof data.text === 'string' ? data.text.slice(0, 8192) : '')
+          : (typeof data.text === 'string' ? data.text.trim().slice(0, 4096) : '');
         // Лимит как в Telegram (4096 символов) — иначе одно гигантское сообщение
         // разойдётся всем участникам и осядет в БД
-        const text = typeof data.text === 'string' ? data.text.trim().slice(0, 4096) : '';
         const hasForward = forward_data && typeof forward_data === 'object' && forward_data.user_id;
         if (!chat_id || (!text && !attachment && !hasForward)) return;
         if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chat_id, user.id)) return;
@@ -256,9 +265,10 @@ function setup(server) {
               is_bot: !!forward_data.is_bot })
           : null;
 
-        // Упоминания: @username участников чата (кроме себя)
+        // Упоминания: @username участников чата (кроме себя). В секретном чате text —
+        // шифротекст, разбирать его на упоминания бессмысленно и не нужно.
         let mentionsJson = null;
-        if (text.includes('@')) {
+        if (!isSecret && text.includes('@')) {
           const names = [...text.matchAll(/@([\w.-]+)/g)].map(m => m[1].toLowerCase());
           if (names.length) {
             const members = db.prepare('SELECT u.id, u.username FROM users u JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = ?').all(chat_id);
@@ -268,14 +278,14 @@ function setup(server) {
         }
 
         // Подготавливаем стейтменты вне транзакции — db.prepare нельзя вызывать внутри неё
-        const stmtInsertMsg = db.prepare('INSERT INTO messages (chat_id, sender_id, text, reply_to_id, attachment, mentions, forward_data) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        const stmtInsertMsg = db.prepare('INSERT INTO messages (chat_id, sender_id, text, iv, reply_to_id, attachment, mentions, forward_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
         const stmtGetMembers = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?');
         const stmtInsStatus = db.prepare('INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)');
         const stmtUpdDelivered = db.prepare('UPDATE message_status SET delivered_at = COALESCE(delivered_at, unixepoch()) WHERE message_id = ? AND user_id = ?');
 
         // Вставка сообщения и статусов доставки в одной транзакции
         const msgId = db.transaction(() => {
-          const result = stmtInsertMsg.run(chat_id, user.id, text, reply_to_id || null, attJson, mentionsJson, fdJson);
+          const result = stmtInsertMsg.run(chat_id, user.id, text, isSecret && typeof iv === 'string' ? iv.slice(0, 256) : null, reply_to_id || null, attJson, mentionsJson, fdJson);
           const newMsgId = result.lastInsertRowid;
           // Пометить как delivered тем участникам, которые сейчас онлайн (кроме отправителя)
           const members = stmtGetMembers.all(chat_id, user.id);
@@ -289,7 +299,7 @@ function setup(server) {
         })();
 
         const msg = getMessageWithStatus(msgId, user.id);
-        const chatMeta = db.prepare('SELECT type, name, parent_id FROM chats WHERE id = ?').get(chat_id);
+        const chatMeta = db.prepare('SELECT type, name, parent_id, is_secret FROM chats WHERE id = ?').get(chat_id);
         if (chatMeta?.parent_id) msg.parent_id = chatMeta.parent_id;
         broadcast(chat_id, { type: 'message', message: msg });
 
@@ -311,9 +321,12 @@ function setup(server) {
           if (!hasPushSubscription(user_id)) return;
           const chatTitle = chat?.type === 'direct' ? msg.sender_name : (chat?.name || 'Electron');
           const unread = unreadCounts.total(user_id);
+          // Секретный чат: в пуше только факт наличия сообщения, без содержимого —
+          // сервер и так не может расшифровать текст, а превью сознательно не
+          // показываем даже тем, у кого ключ есть (защита от подглядывания).
           pushToUser(user_id, {
             title: chatTitle,
-            body: msg.text || (msg.attachment ? '🖼 Изображение' : ''),
+            body: chat?.is_secret ? 'Новое сообщение' : (msg.text || (msg.attachment ? '🖼 Изображение' : '')),
             chatId: chat_id,
             unread,
           });
@@ -377,6 +390,8 @@ function setup(server) {
         if (!text) return;
         const msg = db.prepare('SELECT * FROM messages WHERE id = ? AND deleted = 0').get(message_id);
         if (!msg || msg.sender_id !== user.id) return;
+        // Редактирование в секретных чатах не поддерживается (не шифруется)
+        if (db.prepare('SELECT is_secret FROM chats WHERE id = ?').get(msg.chat_id)?.is_secret) return;
         if (Date.now() / 1000 - msg.sent_at > getEditTimeLimit()) {
           if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'edit_rejected', message_id, reason: 'time' }));
           return;

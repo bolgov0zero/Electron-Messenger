@@ -347,6 +347,30 @@
     <div id="nc-body"></div>
   </div>
 </div>
+
+<div class="modal-bg" id="modal-chattype" onclick="if(event.target===this)closeModal('modal-chattype')">
+  <div class="modal nc-modal">
+    <div class="modal-hdr">
+      <span style="flex:1">Тип чата</span>
+      <button class="icon-btn" onclick="closeModal('modal-chattype')" style="width:28px;height:28px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="ctp-body"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-secret-sync" onclick="if(event.target===this)scCancelSyncModal()">
+  <div class="modal nc-modal">
+    <div class="modal-hdr">
+      <span style="flex:1">Секретный чат — синхронизация</span>
+      <button class="icon-btn" onclick="scCancelSyncModal()" style="width:28px;height:28px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="sc-sync-body" class="sc-sync-body"></div>
+  </div>
+</div>
 <div class="modal-bg" id="modal-forward" onclick="if(event.target===this)closeForwardModal()">
   <div class="modal" style="width:380px;max-height:80vh;display:flex;flex-direction:column">
     <div class="modal-hdr">

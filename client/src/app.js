@@ -28,6 +28,18 @@ const S = {
   mutedChats: new Set(),  // set of muted chat IDs
   forwardMsg: null,       // {user_id, name, text, attachment} — сообщение для пересылки
   msgData: new Map(),     // msgId -> {forwardData, senderId, senderName, text, attachment}
+  // ── Секретные чаты (E2E) ──
+  secretChatIds: new Set(),  // id чатов с is_secret — быстрая проверка при рендере
+  scKeys: {},                // chatId -> CryptoKey (AES-GCM, расшифрован локально)
+  scDecrypted: new Map(),    // msgId -> расшифрованный текст (кэш, чтобы не дешифровать повторно)
+  scDeviceId: null,          // стабильный id этого устройства (из main-процесса)
+  scRaw: {},                 // chatId -> base64 сырого ключа (то, что сохраняется на диск)
+  scMsgObjs: new Map(),      // msgId -> объект сообщения секретного чата (для перерисовки после расшифровки)
+  scLoaded: false,           // ключи уже подняты из хранилища
+  scPending: {},             // chatId -> {requestId, code, privateKey, timer} — активный запрос доступа
+  scSyncChatId: null,        // чат, для которого открыта модалка синхронизации
+  scConfirm: null,           // данные запроса, ожидающего подтверждения этим устройством
+  ctpUserId: null,           // контакт, для которого открыт выбор типа чата
 };
 
 const SESSION_KEY = 'electron_v2';
@@ -827,8 +839,7 @@ function renderContactsList(filter = '') {
 }
 function filterContacts(q) { renderContactsList(q); }
 async function openContactChat(userId) {
-  await startDirect(userId);
-  setSidebarTab('chats');
+  openChatTypePicker(userId);
 }
 
 // ── НАСТРОЙКИ ──
@@ -1263,7 +1274,7 @@ function playNotificationSound() {
 async function dropEmptyDirect(chatId) {
   if (!chatId) return;
   const chat = S.chats.find(c => c.id === chatId);
-  if (!chat || chat.type !== 'direct') return;
+  if (!chat || chat.type !== 'direct' || chat.is_secret) return;
   if (chat.last_message) return;
   if ((S.drafts[chatId] || '').trim()) return;
   try { await api('DELETE', '/chats/' + chatId); } catch { return; }
@@ -1285,16 +1296,18 @@ function dropEmptyDirects() {
   _emptySwept = true;
   S.chats
     // Открытый сейчас чат не трогаем: он пуст ровно потому, что в нём и сидят
-    .filter(c => c.id !== S.activeChatId && c.type === 'direct'
+    .filter(c => c.id !== S.activeChatId && c.type === 'direct' && !c.is_secret
       && !c.last_message && !(S.drafts[c.id] || '').trim())
     .forEach(c => dropEmptyDirect(c.id));
 }
 
 async function loadChats() {
+  await scLoadKeys();
   const chats = await api('GET','/chats');
   if (!chats) return;
   S.chats = chats;
   S.mutedChats = new Set(chats.filter(c => c.muted).map(c => c.id));
+  S.secretChatIds = new Set(chats.filter(c => c.is_secret).map(c => c.id));
   chats.forEach(c => {
     S.unread[c.id] = (c.id === S.activeChatId) ? 0 : (c.unread || 0);
     S.unreadMentions[c.id] = (c.id === S.activeChatId) ? 0 : (c.unread_mentions || 0);
@@ -1556,7 +1569,12 @@ function renderChatRow(c) {
     ? (S.topics[c.id]||[]).reduce((sum,s)=>sum+(S.unreadMentions[s.id]||0),0)
     : S.unreadMentions[c.id]||0;
   const lm = c.last_message;
-  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : ((lm.text ? lm.text.replace(/<[^>]*>/g, '') : '') || (lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
+  // Секретный чат: превью никогда не показывает содержимое (сервер и не присылает
+  // текст для него) — только нейтральный факт «есть сообщение», даже если это
+  // устройство уже всё расшифровало. Сознательная защита от подглядывания.
+  let preview = c.is_secret
+    ? (lm ? 'Сообщение' : 'Нет сообщений')
+    : (lm ? (lm.deleted ? 'Сообщение удалено' : ((lm.text ? lm.text.replace(/<[^>]*>/g, '') : '') || (lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений');
   if (preview.length>40) preview = preview.slice(0,40)+'…';
   // Черновик приоритетнее последнего сообщения (как в Telegram)
   const draft = (c.id !== S.activeChatId) ? S.drafts[c.id] : null;
@@ -1571,6 +1589,7 @@ function renderChatRow(c) {
   const dot = peerId ? presenceDot(peerId) : '';
   const pinIcon = c.pinned ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);opacity:.7"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>` : '';
   const muteIcon = S.mutedChats.has(c.id) ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted);opacity:.7"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="1" y1="1" x2="23" y2="23"/></svg>` : '';
+  const secretIcon = c.is_secret ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);opacity:.85" title="Секретный чат"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>` : '';
   // Галочки доставки/прочтения — только если последнее сообщение моё
   const myStatus = (lm && lm.sender_id === S.user?.id && !lm.deleted && lm.status)
     ? renderStatus(lm.status) : '';
@@ -1583,7 +1602,7 @@ function renderChatRow(c) {
     <div class="info">
       <div class="ci-name" style="display:flex;align-items:center;gap:5px">
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</span>
-        ${pinIcon}${muteIcon}${myStatus}
+        ${secretIcon}${pinIcon}${muteIcon}${myStatus}
         <span class="ci-time">${time}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
@@ -1926,6 +1945,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
 
   applyAvatars();
   initComposerSlot();
+  scApplyComposerState(chatId);
   const sendBtn = document.getElementById('send-btn');
   if (sendBtn) { sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
   // Отметку о прочтении отправляем после загрузки: иначе сервер успевает снять
@@ -2348,6 +2368,7 @@ function renderMessages(msgs) {
   if (lastDate !== '') html += `</div>`;
   container.innerHTML = html;
   reflowSeries();
+  scDecryptVisible();
 }
 
 // ── PAGINATION: подгрузка старых сообщений ──
@@ -2439,6 +2460,7 @@ function appendMessagesAfter(msgs, chatId) {
   container.insertAdjacentHTML('beforeend', html);
   reflowSeries();
   mergeDayGroups(container);
+  scDecryptVisible();
 }
 
 function prependMessages(msgs, chatId) {
@@ -2478,6 +2500,7 @@ function prependMessages(msgs, chatId) {
   reflowSeries();
   mergeDayGroups(container);
   container.scrollTop = prevTop + (container.scrollHeight - prevHeight);
+  scDecryptVisible();
 }
 
 // Смайлик сидит в своём боксе не по центру: у эмодзи-шрифтов рисунок смещён
@@ -2793,6 +2816,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   if (m.status && m.id > 0) S.msgStatus[m.id] = { ...m.status };
   const isSystem = m.sender_username === '__system__';
   if (m.id > 0 && !isSystem) S.msgData.set(m.id, { forwardData: m.forward_data || null, senderId: m.sender_id, senderName: m.sender_name, senderIsBot: !!m.sender_is_bot, text: m.text, attachment: m.attachment });
+  if (m.id > 0 && S.secretChatIds?.has(m.chat_id)) S.scMsgObjs.set(m.id, m);
   const mine = m.sender_id===S.user.id;
   const time = fmtTime(m.sent_at);
   const isDeleted = m.deleted;
@@ -2823,7 +2847,17 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     </div>`;
   }
 
-  const bodyText = isDeleted ? '<em class="irc-deleted">Сообщение удалено</em>' : m.sender_is_bot ? m.text + (m.edited_at ? ' <span class="edited-tag">изм.</span>' : '') : linkifyText(m.text) + (m.edited_at?` <span class="edited-tag">изм.</span>`:'');
+  // Секретный чат: пока это устройство не расшифровало сообщение (нет ключа или
+  // расшифровка ещё не выполнена), показываем пикселизированную заглушку вместо
+  // текста — её размер зависит от длины реального шифротекста. Как только ключ
+  // появляется, scDecryptVisible() подменяет содержимое на лету без перерисовки.
+  const isSecretChat = S.secretChatIds?.has(m.chat_id);
+  const scDecryptedText = isSecretChat ? S.scDecrypted?.get(m.id) : undefined;
+  const scLocked = isSecretChat && scDecryptedText === undefined && !isDeleted && !isSystem;
+  const effectiveText = scLocked ? null : (isSecretChat ? (scDecryptedText ?? '') : m.text);
+  const bodyText = isDeleted ? '<em class="irc-deleted">Сообщение удалено</em>'
+    : scLocked ? `<span class="sc-pixel">${scPixelGlyphs(m.text)}</span>`
+    : m.sender_is_bot ? effectiveText + (m.edited_at ? ' <span class="edited-tag">изм.</span>' : '') : linkifyText(effectiveText) + (m.edited_at?` <span class="edited-tag">изм.</span>`:'');
   const statusIcon = mine && !isDeleted ? renderStatus(m.status) : '';
   const reactionsHtml = isDeleted ? '' : renderReactions(m.id);
   const senderName = esc(m.sender_name);
@@ -2840,6 +2874,8 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   ) : '';
   const rTextRaw = m.reply_deleted
     ? 'Сообщение удалено'
+    : isSecretChat
+    ? (S.scDecrypted?.get(m.reply_to_id) ?? 'Зашифровано')
     : (m.reply_text || (rAtt ? (rIsImg ? '📷 Фото' : rIsVideo ? '🎬 Видео' : ('📎 ' + (rAtt.name || 'Файл'))) : ''));
   // цвет цитаты берём у автора цитируемого: своё — цветом своего пузыря,
   // чужое — цветом его тега. Стрелка не нужна: полоса слева и так читается.
@@ -2942,7 +2978,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
           ${replyHtml}
           ${forwardHtml}
           ${attachHtml}
-          ${m.text || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}${emojiOnly?' emoji-only':''}">${bodyText}</div>` : ''}
+          ${m.text || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}${emojiOnly?' emoji-only':''}${scLocked?' sc-locked':''}">${bodyText}</div>` : ''}
           ${metaHtml}
         </div>
       </div>
@@ -3078,6 +3114,7 @@ function appendMsg(m) {
   if (newEl && !m._optimistic) newEl.classList.add('msg-new');
   reflowSeries();
   stickToBottom(container, newEl, m, distBefore);
+  scDecryptVisible();
 }
 
 function updateMsgInDOM(m) {
@@ -3299,10 +3336,11 @@ function autoResize(el) {
   if (atBottom && msgs) msgs.scrollTop = msgs.scrollHeight;
 }
 
-function sendOrEdit() {
+async function sendOrEdit() {
   if (S.editingMessageId) { submitEdit(); return; }
   const input = document.getElementById('msg-input');
   const text = input?.value.trim();
+  const isSecret = S.secretChatIds.has(S.activeChatId);
   if (!text && !_pendingAttachment && !S.forwardMsg) return;
   // Нет соединения — сообщаем и не теряем набранное молча
   if (!S.ws||S.ws.readyState!==1) {
@@ -3310,10 +3348,22 @@ function sendOrEdit() {
     if (S.ws && S.ws.readyState >= 2 && S.token) connectWS();
     return;
   }
-  const payload = { type:'message', chat_id:S.activeChatId, text: text || '' };
-  if (S.replyTo) payload.reply_to_id = S.replyTo.id;
-  if (_pendingAttachment) payload.attachment = _pendingAttachment;
-  if (S.forwardMsg) payload.forward_data = S.forwardMsg;
+  let payload;
+  if (isSecret) {
+    // Вложения и пересылка в секретных чатах не поддерживаются (не шифруются) —
+    // композер их и не показывает, это подстраховка на случай гонки состояний.
+    if (!text) return;
+    const key = S.scKeys[S.activeChatId];
+    if (!key) { showActionToast('Чат еще не синхронизирован на этом устройстве'); return; }
+    const enc = await scEncryptText(key, text);
+    payload = { type:'message', chat_id:S.activeChatId, text: enc.text, iv: enc.iv };
+    if (S.replyTo) payload.reply_to_id = S.replyTo.id;
+  } else {
+    payload = { type:'message', chat_id:S.activeChatId, text: text || '' };
+    if (S.replyTo) payload.reply_to_id = S.replyTo.id;
+    if (_pendingAttachment) payload.attachment = _pendingAttachment;
+    if (S.forwardMsg) payload.forward_data = S.forwardMsg;
+  }
 
   // Optimistic: показать сообщение сразу, не дожидаясь echo от сервера
   const tempMsg = {
@@ -3337,6 +3387,7 @@ function sendOrEdit() {
     reactions: [],
     _optimistic: true,
   };
+  if (isSecret) S.scDecrypted.set(tempMsg.id, text || '');
   if (!S.chatHasMoreAfter) appendMsg(tempMsg);
 
   S.ws.send(JSON.stringify(payload));
@@ -3358,6 +3409,7 @@ function submitEdit() {
   const input = document.getElementById('msg-input');
   const text = input?.value.trim();
   if (!text) { cancelEdit(); return; }
+  if (S.secretChatIds.has(S.activeChatId)) { cancelEdit(); return; } // редактирование в секретных чатах не поддерживается
   S.ws.send(JSON.stringify({type:'edit_message', message_id:S.editingMessageId, text}));
   closeEmojiPicker();
   cancelEdit();
@@ -4047,6 +4099,16 @@ function _confirmReject() {
 
 // ── DELETE CHAT / LEAVE GROUP ──
 async function deleteChat(chatId) {
+  if (S.secretChatIds.has(chatId)) {
+    const ok = await showConfirm('Удалить секретный чат на этом устройстве? Ключ будет стёрт — чтобы вернуть доступ, понадобится подтверждение собеседника.');
+    if (!ok) return;
+    const deviceId = await scEnsureDeviceId();
+    await api('DELETE', `/chats/${chatId}?device_id=${encodeURIComponent(deviceId || '')}`);
+    await scForgetChatKey(chatId);
+    S.secretChatIds.delete(chatId);
+    removeChatLocally(chatId);
+    return;
+  }
   const ok = await showConfirm('Удалить чат? Для вас он исчезнет из списка.');
   if (!ok) return;
   await api('DELETE', `/chats/${chatId}`);
@@ -4094,6 +4156,8 @@ function connectWS() {
     if (data.type==='pong') { ws._pongOk = true; return; }
 
     if (data.type==='connected') { S.editLimit = data.edit_time_limit || 120; return; }
+
+    if (data.type==='secret_key_ready') { scPollPending(data.chat_id); return; }
 
     if (data.type==='message') {
       const { message } = data;
@@ -4598,6 +4662,7 @@ const NC_ICON = {
   person: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   group:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
   search: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  secret: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
 };
 
 function openNewChat() {
@@ -4632,6 +4697,11 @@ function ncStep1() {
         <span class="nc-kind-txt"><b>Группа</b><span>Общая переписка с названием и участниками</span></span>
         <span class="nc-kind-go">›</span>
       </button>
+      <button class="nc-kind" onclick="ncPick('secret')">
+        <span class="nc-kind-ic">${NC_ICON.secret}</span>
+        <span class="nc-kind-txt"><b>Секретный чат</b><span>Сквозное шифрование, сообщения только на ваших устройствах</span></span>
+        <span class="nc-kind-go">›</span>
+      </button>
     </div>`;
 }
 
@@ -4639,7 +4709,7 @@ function ncPick(kind) {
   S.ncKind = kind;
   S.ncSelected = new Set();
   const group = kind === 'group';
-  ncHead(group ? 'Новая группа' : 'Личный чат', 'Шаг 2 из 2', true);
+  ncHead(group ? 'Новая группа' : kind === 'secret' ? 'Секретный чат' : 'Личный чат', 'Шаг 2 из 2', true);
   document.getElementById('nc-body').innerHTML = `
     ${group ? `<div class="nc-group-bar">
       <div class="av av-md av-sq av-green" id="new-group-av" style="cursor:pointer;flex-shrink:0" onclick="triggerGroupAvatarUpload()">Г</div>
@@ -4674,7 +4744,7 @@ function renderModalUsers(containerId, multi, filter='') {
   if (!container) return;
   const list = S.allUsers.filter(u=>!filter||u.display_name.toLowerCase().includes(filter)||u.username.toLowerCase().includes(filter));
   container.innerHTML = list.map(u=>`
-    <div class="pp-row${multi&&S.ncSelected?.has(u.id)?' on':''}" data-uid="${u.id}" onclick="${multi?`toggleModalUser(${u.id})`:`startDirect(${u.id})`}">
+    <div class="pp-row${multi&&S.ncSelected?.has(u.id)?' on':''}" data-uid="${u.id}" onclick="${multi?`toggleModalUser(${u.id})`:S.ncKind==='secret'?`startSecret(${u.id})`:`startDirect(${u.id})`}">
       ${ppAvHtml(u)}
       <span class="pp-name">${esc(u.display_name)}</span>
       ${u.tag?`<span class="pp-tag">${esc(u.tag)}</span>`:''}
@@ -4713,6 +4783,339 @@ async function createGroup() {
     closeNewChat();
     await loadChats(); openChat(data.id);
   }
+}
+
+// ── СЕКРЕТНЫЕ ЧАТЫ (E2E) ──
+// Крипто — только через Web Crypto: в рендерере contextIsolation и без Node crypto.
+// Ключ чата — AES-256-GCM. Одобрение нового устройства: новое устройство создаёт
+// эфемерную пару ECDH P-256 и показывает код → собеседник вводит код на своём
+// уже синхронизированном устройстве → оно шифрует ключ чата для эфемерного ключа
+// нового устройства → новое устройство расшифровывает и сохраняет. Сервер видит
+// только публичные ключи и уже зашифрованный blob.
+
+const SC_ECDH = { name: 'ECDH', namedCurve: 'P-256' };
+
+function scB64(buf) {
+  const bytes = new Uint8Array(buf);
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+function scUnB64(str) {
+  const bin = atob(str);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+async function scEnsureDeviceId() {
+  if (!S.scDeviceId) S.scDeviceId = await window.electron?.secretDeviceId() || null;
+  return S.scDeviceId;
+}
+
+async function scLoadKeys() {
+  if (S.scLoaded) return;
+  S.scLoaded = true;
+  let raw = {};
+  try { raw = JSON.parse((await window.electron?.secretKeysLoad()) || '{}'); } catch {}
+  S.scRaw = raw;
+  for (const [chatId, b64] of Object.entries(raw)) {
+    try { S.scKeys[chatId] = await scImportAesKey(b64); } catch {}
+  }
+}
+
+async function scPersistKeys() {
+  await window.electron?.secretKeysSave(JSON.stringify(S.scRaw));
+}
+
+function scImportAesKey(b64) {
+  return crypto.subtle.importKey('raw', scUnB64(b64), { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
+}
+
+async function scSetChatKey(chatId, b64) {
+  S.scRaw[chatId] = b64;
+  S.scKeys[chatId] = await scImportAesKey(b64);
+  await scPersistKeys();
+}
+
+async function scForgetChatKey(chatId) {
+  delete S.scRaw[chatId];
+  delete S.scKeys[chatId];
+  S.scDecrypted.forEach((_, id) => { if (S.scMsgObjs.get(id)?.chat_id === chatId) S.scDecrypted.delete(id); });
+  await scPersistKeys();
+}
+
+async function scGenerateChatKeyB64() {
+  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+  return scB64(await crypto.subtle.exportKey('raw', key));
+}
+
+async function scEncryptText(key, text) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(text));
+  return { text: scB64(ct), iv: scB64(iv) };
+}
+
+async function scDecryptText(key, ctB64, ivB64) {
+  try {
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: scUnB64(ivB64) }, key, scUnB64(ctB64));
+    return new TextDecoder().decode(pt);
+  } catch { return null; }
+}
+
+async function scGenEphemeral() {
+  const kp = await crypto.subtle.generateKey(SC_ECDH, true, ['deriveKey']);
+  return { privateKey: kp.privateKey, pubB64: scB64(await crypto.subtle.exportKey('spki', kp.publicKey)) };
+}
+
+async function scDeriveWrapKey(privateKey, peerPubB64) {
+  const peer = await crypto.subtle.importKey('spki', scUnB64(peerPubB64), SC_ECDH, true, []);
+  return crypto.subtle.deriveKey({ name: 'ECDH', public: peer }, privateKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+
+async function scWrapChatKey(wrapKey, chatKeyB64) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, wrapKey, scUnB64(chatKeyB64));
+  return `${scB64(iv)}.${scB64(ct)}`;
+}
+
+async function scUnwrapChatKey(wrapKey, packed) {
+  const [ivB64, ctB64] = String(packed).split('.');
+  const raw = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: scUnB64(ivB64) }, wrapKey, scUnB64(ctB64));
+  return scB64(raw);
+}
+
+// Плейсхолдер вместо текста: длина зависит от длины шифротекста, символы только
+// блочные — никакого пользовательского ввода в HTML, экранировать не нужно
+function scPixelGlyphs(ct) {
+  const src = ct || '';
+  const n = Math.min(Math.max(Math.round(src.length * 0.6), 8), 160);
+  const blocks = ['▓', '▒', '░', '█'];
+  let out = '', run = 0;
+  for (let i = 0; i < n; i++) {
+    if (run >= 4 + (i % 5)) { out += ' '; run = 0; continue; }
+    const code = src.length ? src.charCodeAt(i % src.length) : 0;
+    out += blocks[(i * 7 + code) % blocks.length];
+    run++;
+  }
+  return out;
+}
+
+// Расшифровывает всё, что сейчас видно на экране и заблокировано, и подменяет
+// пиксели текстом на месте — без перезагрузки чата
+async function scDecryptVisible() {
+  const chatId = S.activeChatId;
+  const key = chatId && S.scKeys[chatId];
+  if (!key || !S.secretChatIds.has(chatId)) return;
+  const ids = [...document.querySelectorAll('#messages .irc-msg[data-msg-id] .irc-text.sc-locked')]
+    .map(el => Number(el.closest('.irc-msg[data-msg-id]').dataset.msgId))
+    .filter(id => id > 0 && !S.scDecrypted.has(id));
+  for (const id of ids) {
+    const m = S.scMsgObjs.get(id);
+    if (!m?.iv || !m?.text) continue;
+    const plain = await scDecryptText(key, m.text, m.iv);
+    if (plain === null || S.activeChatId !== chatId) continue;
+    S.scDecrypted.set(id, plain);
+    updateMsgInDOM(m);
+  }
+}
+
+function scApplyComposerState(chatId) {
+  const pill = document.getElementById('composer-pill');
+  const wrap = document.getElementById('input-wrap');
+  if (!pill || !wrap) return;
+  wrap.querySelector('.sc-locked-banner')?.remove();
+  if (!S.secretChatIds.has(chatId)) { pill.style.display = ''; return; }
+  if (!S.scKeys[chatId]) {
+    pill.style.display = 'none';
+    wrap.insertAdjacentHTML('afterbegin', `<div class="sc-locked-banner">
+      <span class="sc-locked-txt">Секретный чат — на этом устройстве не синхронизирован</span>
+      <button class="modal-btn-primary" onclick="scOpenSyncModal(${chatId})">Синхронизировать</button>
+    </div>`);
+  } else {
+    pill.style.display = '';
+    pill.querySelector('[title="Прикрепить файл"]')?.style.setProperty('display', 'none');
+  }
+}
+
+// ── Создание ──
+async function startSecret(userId) {
+  const deviceId = await scEnsureDeviceId();
+  if (!deviceId) { showActionToast('Не удалось определить устройство'); return; }
+  await scLoadKeys();
+  const data = await api('POST', '/chats/secret', {
+    user_id: userId, device_id: deviceId, device_label: scDeviceLabel(), platform: 'electron',
+  });
+  if (!data?.id) { showActionToast('Не удалось создать секретный чат'); return; }
+  S.secretChatIds.add(data.id);
+  if (data.created) await scSetChatKey(data.id, await scGenerateChatKeyB64());
+  closeNewChat();
+  await loadChats();
+  openChat(data.id);
+}
+
+function scDeviceLabel() {
+  const p = navigator.platform || '';
+  return p.toLowerCase().includes('mac') ? 'Mac' : p.toLowerCase().includes('win') ? 'Windows' : (p || 'Компьютер');
+}
+
+// ── Запрос доступа (новое или восстановленное устройство) ──
+function scOpenSyncModal(chatId) {
+  S.scSyncChatId = chatId;
+  const pending = S.scPending[chatId];
+  scRenderSyncModal(pending ? 'waiting' : 'choose');
+  openModal('modal-secret-sync');
+}
+
+function scRenderSyncModal(mode, extra = {}) {
+  const body = document.getElementById('sc-sync-body');
+  if (!body) return;
+  const chatId = S.scSyncChatId;
+  if (mode === 'choose') {
+    body.innerHTML = `
+      <div class="sc-sync-tabs">
+        <button class="sc-sync-tab on" onclick="scRenderSyncModal('choose')">Получить доступ</button>
+        <button class="sc-sync-tab" onclick="scRenderSyncModal('approve')">Подтвердить устройство</button>
+      </div>
+      <p class="sc-sync-hint">Нажмите «Получить доступ» — появится код. Продиктуйте его собеседнику голосом, лично или в другом мессенджере. Сервер не может подтвердить это за него.</p>
+      <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scRequestAccess(${chatId})">Получить доступ</button></div>`;
+  } else if (mode === 'waiting') {
+    const p = S.scPending[chatId];
+    body.innerHTML = `
+      <div class="sc-sync-tabs">
+        <button class="sc-sync-tab on">Получить доступ</button>
+        <button class="sc-sync-tab" onclick="scRenderSyncModal('approve')">Подтвердить устройство</button>
+      </div>
+      <p class="sc-sync-hint">Продиктуйте собеседнику этот код. Он действует 10 минут.</p>
+      <div class="sc-sync-code">${esc(p.code)}</div>
+      <p class="sc-sync-hint">Ждём подтверждения…</p>
+      <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCancelRequest(${chatId})">Отменить</button></div>`;
+  } else if (mode === 'approve') {
+    body.innerHTML = `
+      <div class="sc-sync-tabs">
+        <button class="sc-sync-tab" onclick="scRenderSyncModal('choose')">Получить доступ</button>
+        <button class="sc-sync-tab on">Подтвердить устройство</button>
+      </div>
+      <p class="sc-sync-hint">Введите код, который назвал собеседник. Подтверждайте только если он сейчас сам просит о доступе.</p>
+      <input id="sc-approve-code" class="sc-sync-input" placeholder="Код" autocomplete="off" maxlength="12">
+      <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scLookupCode(${chatId})">Далее</button></div>`;
+    setTimeout(() => document.getElementById('sc-approve-code')?.focus(), 50);
+  } else if (mode === 'confirm') {
+    S.scConfirm = extra;
+    body.innerHTML = `
+      <p class="sc-sync-hint">Собеседник просит открыть чат на устройстве:</p>
+      <div class="sc-sync-device">${esc(extra.label || 'Устройство')} · ${esc(extra.platform || '')}</div>
+      <p class="sc-sync-hint">Подтвердите, только если вы сейчас в разговоре с собеседником и он назвал этот код.</p>
+      <div class="sc-sync-foot">
+        <button class="modal-btn-ghost" onclick="scRenderSyncModal('approve')">Назад</button>
+        <button class="modal-btn-primary" onclick="scApproveRequest(${chatId})">Подтвердить</button>
+      </div>`;
+  }
+}
+
+async function scRequestAccess(chatId) {
+  const deviceId = await scEnsureDeviceId();
+  if (!deviceId) { showActionToast('Не удалось определить устройство'); return; }
+  const eph = await scGenEphemeral();
+  const data = await api('POST', `/secret/${chatId}/requests`, {
+    device_id: deviceId, device_label: scDeviceLabel(), platform: 'electron', ephemeral_pubkey: eph.pubB64,
+  });
+  if (!data?.request_id) { showActionToast(data?.error || 'Не удалось создать запрос'); return; }
+  const timer = setInterval(() => scPollPending(chatId), 4000);
+  S.scPending[chatId] = { requestId: data.request_id, code: data.code, privateKey: eph.privateKey, timer };
+  scRenderSyncModal('waiting');
+}
+
+// Закрытие окна не отменяет ожидание: если собеседник подтвердит позже, ключ
+// придёт сам (см. scPollPending), а пользователь увидит уведомление
+function scCancelSyncModal() { closeModal('modal-secret-sync'); }
+
+function scCancelRequest(chatId) {
+  const p = S.scPending[chatId];
+  if (p) clearInterval(p.timer);
+  delete S.scPending[chatId];
+  closeModal('modal-secret-sync');
+}
+
+async function scPollPending(chatId) {
+  const p = S.scPending[chatId];
+  if (!p || p.busy) return;
+  p.busy = true;
+  const data = await api('GET', `/secret/${chatId}/requests/${p.requestId}`);
+  p.busy = false;
+  if (!data) return;
+  if (data.status !== 'approved') return;
+  clearInterval(p.timer);
+  try {
+    const wrapKey = await scDeriveWrapKey(p.privateKey, data.approver_ephemeral_pubkey);
+    const chatKeyB64 = await scUnwrapChatKey(wrapKey, data.wrapped_secret);
+    await scSetChatKey(chatId, chatKeyB64);
+    await api('POST', `/secret/${chatId}/requests/${p.requestId}/complete`);
+    delete S.scPending[chatId];
+    closeModal('modal-secret-sync');
+    showActionToast('Секретный чат синхронизирован на этом устройстве');
+    await loadChats();
+    if (S.activeChatId === chatId) { scApplyComposerState(chatId); scDecryptVisible(); }
+  } catch {
+    delete S.scPending[chatId];
+    showActionToast('Не удалось расшифровать ключ — запросите доступ заново');
+    closeModal('modal-secret-sync');
+  }
+}
+
+// ── Одобрение нового устройства собеседника ──
+async function scLookupCode(chatId) {
+  const code = (document.getElementById('sc-approve-code')?.value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!code) return;
+  const data = await api('GET', `/secret/${chatId}/requests/lookup?code=${encodeURIComponent(code)}`);
+  if (!data?.request_id) { showActionToast(data?.error || 'Код не найден или истёк'); return; }
+  scRenderSyncModal('confirm', {
+    requestId: data.request_id, label: data.requester_device_label, platform: data.requester_platform,
+    pubB64: data.ephemeral_pubkey, code,
+  });
+}
+
+async function scApproveRequest(chatId) {
+  const c = S.scConfirm;
+  const chatKeyB64 = S.scRaw[chatId];
+  if (!c || !chatKeyB64) { showActionToast('Чат не синхронизирован на этом устройстве'); return; }
+  const deviceId = await scEnsureDeviceId();
+  const eph = await scGenEphemeral();
+  const wrapKey = await scDeriveWrapKey(eph.privateKey, c.pubB64);
+  const wrapped = await scWrapChatKey(wrapKey, chatKeyB64);
+  const data = await api('POST', `/secret/${chatId}/requests/${c.requestId}/approve`, {
+    code: c.code, approver_device_id: deviceId, approver_ephemeral_pubkey: eph.pubB64, wrapped_secret: wrapped, platform: 'electron',
+  });
+  S.scConfirm = null;
+  if (!data?.ok) { showActionToast(data?.error || 'Не удалось подтвердить устройство'); return; }
+  closeModal('modal-secret-sync');
+  showActionToast('Устройство подтверждено');
+}
+
+// ── Выбор типа чата при клике на контакт ──
+function openChatTypePicker(userId) {
+  S.ctpUserId = userId;
+  document.getElementById('ctp-body').innerHTML = `
+    <div class="nc-kinds">
+      <button class="nc-kind" onclick="ctpPick('direct')">
+        <span class="nc-kind-ic">${NC_ICON.person}</span>
+        <span class="nc-kind-txt"><b>Личный чат</b><span>Обычная переписка</span></span>
+        <span class="nc-kind-go">›</span>
+      </button>
+      <button class="nc-kind" onclick="ctpPick('secret')">
+        <span class="nc-kind-ic">${NC_ICON.secret}</span>
+        <span class="nc-kind-txt"><b>Секретный чат</b><span>Сквозное шифрование, сообщения только на ваших устройствах</span></span>
+        <span class="nc-kind-go">›</span>
+      </button>
+    </div>`;
+  openModal('modal-chattype');
+}
+
+async function ctpPick(kind) {
+  closeModal('modal-chattype');
+  if (kind === 'secret') await startSecret(S.ctpUserId);
+  else await startDirect(S.ctpUserId);
+  setSidebarTab('chats');
 }
 
 
@@ -4942,6 +5345,7 @@ async function ctxChatDelete() {
 // ── FORWARD ──
 function ctxForward() {
   hideCtxMenu();
+  if (S.secretChatIds.has(S.activeChatId)) { showActionToast('Из секретного чата нельзя пересылать сообщения'); return; }
   const msgId = S.ctx.messageId;
   const d = S.msgData.get(msgId);
   if (!d) return;
