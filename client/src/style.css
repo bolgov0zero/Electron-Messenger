@@ -265,7 +265,7 @@
   --font-size: 14px;
 
   /* Sidebar width */
-  --sidebar-w: 280px;
+  --sidebar-w: 350px;
 
   /* Topbar height */
   --topbar-h: 58px;
@@ -1000,11 +1000,11 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 .chat-item {
   /* высота задана явно: в свёрнутом сайдбаре подписи скрыты, и строка,
      считающая высоту по содержимому, стала бы ниже — аватарки съехали бы */
-  height: 58px;
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 10px;
-  border-radius: 9px;
-  margin-bottom: 2px;
+  height: 70px;
+  display: flex; align-items: center; gap: 11px;
+  padding: 0 10px;
+  border-radius: 12px;
+  margin: 0 8px 0 8px;
   cursor: pointer;
   transition: background .12s;
   position: relative;
@@ -1055,7 +1055,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   position: relative;
 }
 .av-sm  { width: 32px; height: 32px; font-size: 13px; }
-.av-md  { width: 40px; height: 40px; font-size: 16px; }
+.av-md  { width: 50px; height: 50px; font-size: 18px; }
 .av-round { border-radius: 50% !important; }
 .av-sq    { border-radius: 9px !important; }
 .av-lg  { width: 44px; height: 44px; font-size: 17px; }
@@ -1072,26 +1072,26 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 .chat-header .presence-dot { border-color: var(--chat-bg); }
 
 /* Avatar color classes (legacy) */
-.av-blue   { background: #4f46e5; }
-.av-green  { background: #059669; }
-.av-purple { background: #7c3aed; }
-.av-orange { background: #d97706; }
+.av-blue { background-image: linear-gradient(135deg, #4f46e5, color-mix(in srgb, #4f46e5 65%, #000)); }
+.av-green { background-image: linear-gradient(135deg, #059669, color-mix(in srgb, #059669 65%, #000)); }
+.av-purple { background-image: linear-gradient(135deg, #7c3aed, color-mix(in srgb, #7c3aed 65%, #000)); }
+.av-orange { background-image: linear-gradient(135deg, #d97706, color-mix(in srgb, #d97706 65%, #000)); }
 
 /* Аватарка по тегу — тот же цвет, что у плашки и имени */
-.av-tag-1 { background: rgb(var(--tag-1-av)); }
-.av-tag-2 { background: rgb(var(--tag-2-av)); }
-.av-tag-3 { background: rgb(var(--tag-3-av)); }
-.av-tag-4 { background: rgb(var(--tag-4-av)); }
-.av-tag-5 { background: rgb(var(--tag-5-av)); }
-.av-tag-6 { background: rgb(var(--tag-6-av)); }
-.av-tag-7 { background: rgb(var(--tag-7-av)); }
-.av-tag-8 { background: rgb(var(--tag-8-av)); }
-.av-tag-9 { background: rgb(var(--tag-9-av)); }
-.av-tag-10 { background: rgb(var(--tag-10-av)); }
-.av-tag-11 { background: rgb(var(--tag-11-av)); }
-.av-tag-12 { background: rgb(var(--tag-12-av)); }
-.av-tag-13 { background: rgb(var(--tag-13-av)); }
-.av-tag-14 { background: rgb(var(--tag-14-av)); }
+.av-tag-1 { background-image: linear-gradient(135deg, rgb(var(--tag-1-av)), color-mix(in srgb, rgb(var(--tag-1-av)) 65%, #000)); }
+.av-tag-2 { background-image: linear-gradient(135deg, rgb(var(--tag-2-av)), color-mix(in srgb, rgb(var(--tag-2-av)) 65%, #000)); }
+.av-tag-3 { background-image: linear-gradient(135deg, rgb(var(--tag-3-av)), color-mix(in srgb, rgb(var(--tag-3-av)) 65%, #000)); }
+.av-tag-4 { background-image: linear-gradient(135deg, rgb(var(--tag-4-av)), color-mix(in srgb, rgb(var(--tag-4-av)) 65%, #000)); }
+.av-tag-5 { background-image: linear-gradient(135deg, rgb(var(--tag-5-av)), color-mix(in srgb, rgb(var(--tag-5-av)) 65%, #000)); }
+.av-tag-6 { background-image: linear-gradient(135deg, rgb(var(--tag-6-av)), color-mix(in srgb, rgb(var(--tag-6-av)) 65%, #000)); }
+.av-tag-7 { background-image: linear-gradient(135deg, rgb(var(--tag-7-av)), color-mix(in srgb, rgb(var(--tag-7-av)) 65%, #000)); }
+.av-tag-8 { background-image: linear-gradient(135deg, rgb(var(--tag-8-av)), color-mix(in srgb, rgb(var(--tag-8-av)) 65%, #000)); }
+.av-tag-9 { background-image: linear-gradient(135deg, rgb(var(--tag-9-av)), color-mix(in srgb, rgb(var(--tag-9-av)) 65%, #000)); }
+.av-tag-10 { background-image: linear-gradient(135deg, rgb(var(--tag-10-av)), color-mix(in srgb, rgb(var(--tag-10-av)) 65%, #000)); }
+.av-tag-11 { background-image: linear-gradient(135deg, rgb(var(--tag-11-av)), color-mix(in srgb, rgb(var(--tag-11-av)) 65%, #000)); }
+.av-tag-12 { background-image: linear-gradient(135deg, rgb(var(--tag-12-av)), color-mix(in srgb, rgb(var(--tag-12-av)) 65%, #000)); }
+.av-tag-13 { background-image: linear-gradient(135deg, rgb(var(--tag-13-av)), color-mix(in srgb, rgb(var(--tag-13-av)) 65%, #000)); }
+.av-tag-14 { background-image: linear-gradient(135deg, rgb(var(--tag-14-av)), color-mix(in srgb, rgb(var(--tag-14-av)) 65%, #000)); }
 
 /* ══════════════════════════════════════════
    CHAT MAIN AREA
