@@ -431,11 +431,6 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .al-chip{display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;border:1px solid var(--c-border);background:var(--c-surface2);color:var(--c-text2);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap}
 .al-chip b{font-family:var(--f-mono);font-weight:600;font-size:11px;opacity:.75}
 .al-chip.active{background:var(--c-primary-dim);color:var(--c-sb-act);border-color:rgba(58,147,140,.3)}
-.al-tbl{width:100%;border-collapse:collapse}
-.al-tbl th{text-align:left;font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.04em;padding:8px 14px;border-bottom:1px solid var(--c-border)}
-.al-tbl td{padding:10px 14px;border-bottom:1px solid var(--c-border);font-size:13px;vertical-align:top}
-.al-tbl tr:last-child td{border-bottom:none}
-.al-tbl tr:hover td{background:var(--bg-hover)}
 .al-time{font-family:var(--f-mono);font-size:12px;color:var(--c-muted);white-space:nowrap}
 .al-time small{display:block;color:var(--c-muted);opacity:.7;font-size:10.5px}
 .al-actor{display:flex;align-items:center;gap:8px;white-space:nowrap}
@@ -475,6 +470,10 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .ua-role{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--c-text2);white-space:nowrap}
 .ua-role svg{width:12px;height:12px}
 .ua-role.admin{color:var(--c-primary);font-weight:600}
+.ua-totp-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:6px;margin-left:6px;vertical-align:middle}
+.ua-totp-badge svg{width:11px;height:11px}
+.ua-totp-badge.on{background:var(--c-primary-dim);color:var(--c-primary)}
+.ua-totp-badge.pending{background:rgba(217,119,6,.14);color:#d97706}
 tr.ua-banned .ux-cell{opacity:.6}
 .ua-modal{width:520px}
 .ua-modal.ua-sm{width:420px}
@@ -3231,7 +3230,15 @@ function uaStatus(u) {
   if (uaOnline(u)) return `<span class="ux-st"><i style="background:var(--c-green)"></i>В сети <small>${esc(uaDevices(u))}</small></span>`;
   return `<span class="ux-st off"><i style="background:var(--c-muted)"></i>Не в сети <small>${esc(uaSeen(u.last_seen_at))}</small></span>`;
 }
-const uaRole = u => u.is_admin ? `<span class="ua-role admin">${UX_I.shield}Администратор</span>` : '<span class="ua-role">Пользователь</span>';
+// Значок 2FA рядом с ролью — только для админов: заполненный ключ, если уже
+// настроена, пунктирный — если включили требование, а сам ещё не настроил
+// при следующем входе в админ-панель
+const uaTotpBadge = u => !u.is_admin ? '' : u.totp_configured
+  ? `<span class="ua-totp-badge on" title="2FA настроена">${UX_I.key}</span>`
+  : u.totp_required
+  ? `<span class="ua-totp-badge pending" title="2FA включена, но ещё не настроена пользователем">${UX_I.key}</span>`
+  : '';
+const uaRole = u => u.is_admin ? `<span class="ua-role admin">${UX_I.shield}Администратор</span>${uaTotpBadge(u)}` : '<span class="ua-role">Пользователь</span>';
 
 function uaRows() {
   const q = UA.q.trim().toLowerCase();
