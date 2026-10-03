@@ -49,6 +49,7 @@ app.get(['/chat', '/chat/', '/chat/index.html'], (req, res) => {
   }
 });
 app.use('/chat', express.static(path.join(__dirname, 'public/chat')));
+app.use('/shared', express.static(path.join(__dirname, 'public/shared')));
 
 // /m — мобильный клиент нового поколения (Этап 1), отдельный от /chat, тот же принцип
 // подмены версии в index.html, чтобы не залипал в HTTP-кэше между релизами

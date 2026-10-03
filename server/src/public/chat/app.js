@@ -1348,8 +1348,11 @@ function dropEmptyDirects() {
 }
 
 async function loadChats() {
-  const chats = await api('GET','/chats');
-  if (!chats) return;
+  await scBoot();
+  const all = await api('GET','/chats');
+  if (!all) return;
+  S.secretChatIds = new Set(all.filter(c => c.is_secret).map(c => c.id));
+  const chats = all.filter(c => !(c.is_secret && SC.isHidden(c.id)));
   S.chats = chats;
   S.mutedChats = new Set(chats.filter(c => c.muted).map(c => c.id));
   chats.forEach(c => {
@@ -1707,7 +1710,7 @@ function renderChatRow(c) {
     ? (S.topics[c.id]||[]).reduce((sum,s)=>sum+(S.unreadMentions[s.id]||0),0)
     : S.unreadMentions[c.id]||0;
   const lm = c.last_message;
-  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? lm.text.replace(/<[^>]*>/g, '') : (lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
+  let preview = c.is_secret ? (lm ? 'Сообщение' : 'Нет сообщений') : lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? lm.text.replace(/<[^>]*>/g, '') : (lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
   if (preview.length>40) preview = preview.slice(0,40)+'…';
   // Черновик приоритетнее последнего сообщения (как в Telegram)
   const draft = (c.id !== S.activeChatId) ? S.drafts[c.id] : null;
@@ -1720,6 +1723,7 @@ function renderChatRow(c) {
   const time = lm ? fmtChatListTime(lm.sent_at) : '';
   const peerId = getPeerUserId(c);
   const dot = peerId ? presenceDot(peerId) : '';
+  const secretIcon = c.is_secret ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);opacity:.85" title="Секретный чат"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>` : '';
   const pinIcon = c.pinned ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted);opacity:.7"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>` : '';
   const muteIcon = S.mutedChats.has(c.id) ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted);opacity:.7"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="1" y1="1" x2="23" y2="23"/></svg>` : '';
   // Галочки доставки/прочтения — только если последнее сообщение моё
@@ -1734,7 +1738,7 @@ function renderChatRow(c) {
     <div class="info">
       <div class="ci-name" style="display:flex;align-items:center;gap:5px">
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</span>
-        ${pinIcon}${muteIcon}${myStatus}
+        ${secretIcon}${pinIcon}${muteIcon}${myStatus}
         <span class="ci-time">${time}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
@@ -1982,6 +1986,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
 
   requestAnimationFrame(syncInputBarHeight);
   initComposerSlot();
+  scApplyComposerState(chatId);
   applyAvatars();
   const sendBtn = document.getElementById('send-btn');
   if (sendBtn) { sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
@@ -2881,6 +2886,222 @@ document.addEventListener('mouseout', e => {
 document.addEventListener('scroll', _rtHide, true);
 window.addEventListener('blur', _rtHide);
 
+// ── СЕКРЕТНЫЕ ЧАТЫ (E2E) ── создать чат в вебе нельзя; здесь получают доступ по коду,
+// читают зашифрованные сообщения и отключают своё устройство. Криптография — shared/secret-core.js
+let _uploadToken = 0;
+let _scBooted = false;
+const _scInflight = new Set();
+Object.assign(S, { secretChatIds: new Set(), scDecrypted: new Map(), scAtt: new Map(), scAttBlob: new Map(), scMsgObjs: new Map() });
+
+function scDeviceLabel() {
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad/.test(ua)) return 'iPhone/iPad';
+  if (/Android/.test(ua)) return 'Android';
+  if (/Mac/.test(ua)) return 'Mac, браузер';
+  if (/Windows/.test(ua)) return 'Windows, браузер';
+  return 'Браузер';
+}
+
+async function scBoot() {
+  if (!_scBooted) {
+    _scBooted = true;
+    SC.init({ api: (m, p, b) => api(m, p, b), base: `${httpProto()}://${S.server}`, token: () => S.token, label: scDeviceLabel() });
+  }
+  await SC.load();
+  for (const id of SC.pendingIds()) if (!SC.pendingOf(id).timer) SC.pendingOf(id).timer = setInterval(() => scTick(id), 4000);
+}
+
+const scEncryptText = (k, p) => SC.encryptText(k, p);
+const scDecryptText = (k, c, i) => SC.decryptText(k, c, i);
+const scEncryptFileForUpload = (f, k) => SC.encryptFile(f, k);
+
+// Секретное сообщение, пока его не расшифровали, показываем пикселями; смотрим за
+// лентой и расшифровываем то, что на экране
+let _scT = null;
+function scWatchMessages() {
+  const el = document.getElementById('messages');
+  if (!el || el._scObs) return;
+  el._scObs = new MutationObserver(() => { clearTimeout(_scT); _scT = setTimeout(scDecryptVisible, 50); });
+  el._scObs.observe(el, { childList: true, subtree: true });
+}
+
+async function scDecryptVisible() {
+  const chatId = S.activeChatId;
+  const key = chatId && SC.keyOf(chatId);
+  if (!key || !S.secretChatIds.has(chatId)) return;
+  const ids = [...document.querySelectorAll('#messages .irc-msg[data-msg-id]')]
+    .map(el => Number(el.dataset.msgId)).filter(id => id > 0 && !_scInflight.has(id));
+  for (const id of ids) {
+    const m = S.scMsgObjs.get(id);
+    if (!m) continue;
+    const needText = !S.scDecrypted.has(id);
+    const meta = S.scAtt.get(id);
+    const needImg = !!m.attachment?.url && !m.attachment.expired && !S.scAttBlob.has(id)
+      && (meta ? meta.m?.startsWith('image/') : needText);
+    if (!needText && !needImg) continue;
+    _scInflight.add(id);
+    try {
+      let changed = false;
+      if (needText && m.iv && m.text) {
+        const plain = await SC.decryptText(key, m.text, m.iv);
+        if (plain !== null && S.activeChatId === chatId) {
+          const p = SC.parsePayload(plain);
+          S.scDecrypted.set(id, p.t);
+          if (p.a) S.scAtt.set(id, p.a);
+          changed = true;
+        }
+      }
+      const curMeta = S.scAtt.get(id);
+      if (curMeta?.m?.startsWith('image/') && m.attachment?.url && !S.scAttBlob.has(id) && S.activeChatId === chatId) {
+        const buf = await SC.fetchFile(m.attachment.url, m.attachment.fiv, key);
+        if (buf && S.activeChatId === chatId) {
+          S.scAttBlob.set(id, URL.createObjectURL(new Blob([buf], { type: curMeta.m })));
+          changed = true;
+        }
+      }
+      if (changed && S.activeChatId === chatId) updateMsgInDOM(m);
+    } finally { _scInflight.delete(id); }
+  }
+}
+
+function scOpenImage(msgId) {
+  const url = S.scAttBlob.get(msgId);
+  if (url) openLightbox(url, S.scAtt.get(msgId)?.n || 'image', 'image');
+}
+
+async function scSaveAttachment(msgId) {
+  const m = S.scMsgObjs.get(msgId);
+  const meta = S.scAtt.get(msgId);
+  const key = m && SC.keyOf(m.chat_id);
+  if (!m?.attachment?.url || !meta || !key) { showActionToast('Вложение пока не расшифровано'); return; }
+  const buf = await SC.fetchFile(m.attachment.url, m.attachment.fiv, key);
+  if (!buf) { showActionToast('Не удалось расшифровать файл'); return; }
+  const url = URL.createObjectURL(new Blob([buf], { type: meta.m || 'application/octet-stream' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = meta.n || 'file';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+function scAttachHtml(m, att) {
+  const meta = S.scAtt.get(m.id);
+  if (!meta) return `<div class="bubble-file sc-att-locked"><div class="bubble-file-info"><div class="bubble-file-name">Вложение</div></div></div>`;
+  const sizeFmt = meta.s ? (meta.s > 1048576 ? (meta.s / 1048576).toFixed(1) + ' МБ' : Math.round(meta.s / 1024) + ' КБ') : '';
+  if (meta.m?.startsWith('image/')) {
+    const blob = S.scAttBlob.get(m.id);
+    if (blob) return `<div class="bubble-image" onclick="scOpenImage(${m.id})"><img src="${esc(blob)}" loading="lazy"></div>`;
+    return `<div class="bubble-file sc-att-locked"><div class="bubble-file-info"><div class="bubble-file-name">Изображение</div></div></div>`;
+  }
+  return `<div class="bubble-file" onclick="scSaveAttachment(${m.id})">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    <div class="bubble-file-info"><div class="bubble-file-name">${esc(meta.n || 'Файл')}</div>${sizeFmt ? `<div class="bubble-file-size">${sizeFmt}</div>` : ''}</div>
+    <svg class="dl-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+  </div>`;
+}
+
+function scApplyComposerState(chatId) {
+  const pill = document.getElementById('composer-pill');
+  const wrap = document.getElementById('input-wrap');
+  scWatchMessages();
+  if (!pill || !wrap) return;
+  wrap.querySelector('.sc-locked-banner')?.remove();
+  if (!S.secretChatIds.has(chatId)) { pill.style.display = ''; return; }
+  if (!SC.hasKey(chatId)) {
+    pill.style.display = 'none';
+    const secure = window.isSecureContext && !!crypto.subtle;
+    wrap.insertAdjacentHTML('afterbegin', `<div class="sc-locked-banner">
+      <span class="sc-locked-txt">${secure ? 'Секретный чат — на этом устройстве не синхронизирован' : 'Секретные чаты работают только по HTTPS'}</span>
+      ${secure ? `<button class="modal-btn-primary" onclick="scOpenSyncModal(${chatId})">Синхронизировать</button>` : ''}
+    </div>`);
+  } else {
+    pill.style.display = '';
+    pill.querySelector('[title="Прикрепить файл"]')?.style.setProperty('display', 'none');
+  }
+}
+
+// ── Получение доступа: этот браузер запрашивает код, собеседник подтверждает его в Electron ──
+function scOpenSyncModal(chatId) {
+  S.scSyncChatId = chatId;
+  document.getElementById('sc-sync-title').textContent = 'Секретный чат — синхронизация';
+  scRenderSyncModal(SC.pendingOf(chatId) ? 'waiting' : 'choose');
+  openModal('modal-secret-sync');
+}
+
+function scRenderSyncModal(mode) {
+  const body = document.getElementById('sc-sync-body');
+  if (!body) return;
+  const chatId = S.scSyncChatId;
+  if (mode === 'waiting') {
+    const p = SC.pendingOf(chatId);
+    body.innerHTML = `
+      <p class="sc-sync-hint">Продиктуйте собеседнику этот код. Он действует 10 минут. Подтвердить его может только собеседник на своём компьютере.</p>
+      <div class="sc-sync-code">${esc(p.code)}</div>
+      <p class="sc-sync-hint">Ждём подтверждения…</p>
+      <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCancelRequest(${chatId})">Отменить</button></div>`;
+  } else {
+    body.innerHTML = `
+      <p class="sc-sync-hint">Если вы открыли этот чат с нового устройства, нажмите «Получить доступ» — появится код. Продиктуйте его собеседнику голосом, лично или в другом мессенджере.</p>
+      <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scRequestAccess(${chatId})">Получить доступ</button></div>`;
+  }
+}
+
+async function scRequestAccess(chatId) {
+  const r = await SC.requestAccess(chatId);
+  if (r.error) { showActionToast(r.error); return; }
+  SC.pendingOf(chatId).timer = setInterval(() => scTick(chatId), 4000);
+  scRenderSyncModal('waiting');
+}
+
+function scCancelRequest(chatId) {
+  SC.cancelPending(chatId);
+  closeModal('modal-secret-sync');
+}
+function scCancelSyncModal() { closeModal('modal-secret-sync'); }
+
+async function scTick(chatId) {
+  if (!SC.pendingOf(chatId)) return;
+  if (!(await SC.pollPending(chatId))) return;
+  closeModal('modal-secret-sync');
+  showActionToast('Секретный чат синхронизирован на этом устройстве');
+  await loadChats();
+  if (S.activeChatId === chatId) { scApplyComposerState(chatId); scDecryptVisible(); }
+}
+
+// ── Устройства чата ──
+function ctxChatDevices() {
+  const chatId = S.ctxChatId;
+  document.getElementById('ctx-chat-menu').style.display = 'none';
+  if (chatId) scOpenDevices(chatId);
+}
+
+async function scOpenDevices(chatId) {
+  const rows = await SC.devices(chatId);
+  if (!Array.isArray(rows)) { showActionToast(rows?.error || 'Не удалось загрузить устройства'); return; }
+  const mine = SC.deviceId();
+  const chat = S.chats.find(c => c.id === chatId);
+  const names = Object.fromEntries((chat?.members || []).map(u => [u.id, u.display_name]));
+  document.getElementById('sc-sync-title').textContent = 'Устройства секретного чата';
+  document.getElementById('sc-sync-body').innerHTML = `
+    <p class="sc-sync-hint">Здесь видно, на каких устройствах открыт доступ к чату. Ключ не переносится сам: новое устройство подключается только с подтверждения собеседника.</p>
+    ${rows.map(r => `<div class="sc-sync-device">${esc(r.device_label || 'Устройство')} · ${esc(names[r.user_id] || 'Пользователь')}${r.device_id === mine ? ' — это устройство' : ''}</div>`).join('')}
+    <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCancelSyncModal()">Закрыть</button></div>`;
+  openModal('modal-secret-sync');
+}
+
+// ── Удалить: отключаем только это устройство ──
+async function scDeleteSecret(chatId) {
+  const ok = await showConfirm('Удалить секретный чат на этом устройстве? Ключ будет стёрт — чтобы вернуть доступ, понадобится подтверждение собеседника.');
+  if (!ok) return;
+  await api('DELETE', `/chats/${chatId}?device_id=${encodeURIComponent(SC.deviceId())}`);
+  await SC.forget(chatId);
+  await SC.hide(chatId);
+  S.secretChatIds.delete(chatId);
+  removeChatLocally(chatId);
+}
+
 function renderMsg(m, isChatGroup, hideTime = false, grouped = false, isLast = true) {
   return renderMsgIRC(m, !grouped, isLast, isChatGroup);
 }
@@ -2943,6 +3164,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   if (m.status && m.id > 0) S.msgStatus[m.id] = { ...m.status };
   const isSystem = m.sender_username === '__system__';
   if (m.id > 0 && !isSystem) S.msgData.set(m.id, { forwardData: m.forward_data || null, senderId: m.sender_id, senderName: m.sender_name, senderIsBot: !!m.sender_is_bot, text: m.text, attachment: m.attachment });
+  if (m.id > 0 && S.secretChatIds.has(m.chat_id)) S.scMsgObjs.set(m.id, m);
   const mine = m.sender_id===S.user.id;
   const time = fmtTime(m.sent_at);
   const isDeleted = m.deleted;
@@ -2973,7 +3195,13 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     </div>`;
   }
 
-  const bodyText = isDeleted ? '<em class="irc-deleted">Сообщение удалено</em>' : m.sender_is_bot ? m.text + (m.edited_at ? ' <span class="edited-tag">изм.</span>' : '') : linkifyText(m.text) + (m.edited_at?` <span class="edited-tag">изм.</span>`:'');
+  const isSecretChat = S.secretChatIds?.has(m.chat_id);
+  const scDecryptedText = isSecretChat ? S.scDecrypted?.get(m.id) : undefined;
+  const scLocked = isSecretChat && scDecryptedText === undefined && !isDeleted && !isSystem;
+  const effectiveText = scLocked ? null : (isSecretChat ? (scDecryptedText ?? '') : m.text);
+  const bodyText = isDeleted ? '<em class="irc-deleted">Сообщение удалено</em>'
+    : scLocked ? `<span class="sc-pixel">${SC.pixelGlyphs(m.text)}</span>`
+    : m.sender_is_bot ? effectiveText + (m.edited_at ? ' <span class="edited-tag">изм.</span>' : '') : linkifyText(effectiveText) + (m.edited_at?` <span class="edited-tag">изм.</span>`:'');
   const statusIcon = mine && !isDeleted ? renderStatus(m.status) : '';
   const reactionsHtml = isDeleted ? '' : renderReactions(m.id);
   const senderName = esc(m.sender_name);
@@ -2990,6 +3218,8 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   ) : '';
   const rTextRaw = m.reply_deleted
     ? 'Сообщение удалено'
+    : isSecretChat
+    ? (S.scDecrypted.get(m.reply_to_id) ?? 'Зашифровано')
     : (m.reply_text || (rAtt ? (rIsImg ? '📷 Фото' : rIsVideo ? '🎬 Видео' : ('📎 ' + (rAtt.name || 'Файл'))) : ''));
   // цвет цитаты берём у автора цитируемого: своё — цветом своего пузыря,
   // чужое — цветом его тега. Стрелка не нужна: полоса слева и так читается.
@@ -3030,13 +3260,18 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     </div>`;
   const metaHtml = `<div class="irc-meta"><span class="status-wrap">${statusIcon}</span><span class="irc-time">${time}</span></div>`;
 
-  const att = m.attachment;
+  const scAttMeta = isSecretChat ? S.scAtt.get(m.id) : null;
+  const att = isSecretChat
+    ? (m.attachment ? { url: m.attachment.url, enc: 1, expired: m.attachment.expired, fiv: m.attachment.fiv, size: scAttMeta?.s, name: scAttMeta?.n, mime: scAttMeta?.m } : null)
+    : m.attachment;
   // Вложение, которого больше нет. Раньше на его месте оставалась подложка во всю
   // ширину пузыря, и время с галочками ложилось поверх неё. Теперь это обычная
   // строка — такая же, как «Сообщение удалено»: место под время она держит сама
   const attExpired = !isDeleted && !!att?.url && !!att.expired;
   let attachHtml = '';
-  if (!isDeleted && att?.url && !att.expired) {
+  if (!isDeleted && att?.enc && !att.expired) {
+    attachHtml = scAttachHtml(m, att);
+  } else if (!isDeleted && att?.url && !att.expired && !att.enc) {
     const attUrl = `${httpProto()}://${S.server}${att.url}`;
     if (att.mime?.startsWith('image/')) {
       attachHtml = `<div class="bubble-image" onclick="openLightbox('${attUrl}','${(att.name||'image').replace(/'/g,"\\'")}')"><img src="${httpProto()}://${S.server}${att.thumb || att.url}" loading="lazy"></div>`;
@@ -3058,7 +3293,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   }
   if (attExpired) attachHtml = `<div class="irc-text irc-deleted"><em>Файл удалён</em></div>`;
 
-  const attDataAttrs = att?.url ? ` data-msg-att-url="${esc(att.url)}" data-msg-att-thumb="${esc(att.thumb||'')}" data-msg-att-mime="${esc(att.mime||'')}" data-msg-att-name="${esc(att.name||'')}"` : '';
+  const attDataAttrs = (att?.url && !att.enc) ? ` data-msg-att-url="${esc(att.url)}" data-msg-att-thumb="${esc(att.thumb||'')}" data-msg-att-mime="${esc(att.mime||'')}" data-msg-att-name="${esc(att.name||'')}"` : '';
   // пузырь, в котором нет ничего кроме картинки: кадр занимает его целиком, а время
   // и реакции ложатся поверх. С подписью, цитатой или пересылкой — обычное поведение
   const bareImage = !isDeleted && !m.text && !m.reply_to_id && !m.forward_data
@@ -3077,7 +3312,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
           ${replyHtml}
           ${forwardHtml}
           ${attachHtml}
-          ${m.text || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}${emojiOnly?' emoji-only':''}">${bodyText}</div>` : ''}
+          ${(isSecretChat ? (scLocked || scDecryptedText) : m.text) || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}${emojiOnly?' emoji-only':''}${scLocked?' sc-locked':''}">${bodyText}</div>` : ''}
           ${metaHtml}
         </div>
       </div>
@@ -3479,10 +3714,11 @@ function autoResize(el) {
   if (sh > 120) el.style.overflow = 'auto';
 }
 
-function sendOrEdit() {
+async function sendOrEdit() {
   if (S.editingMessageId) { submitEdit(); return; }
   const input = document.getElementById('msg-input');
   const text = input?.value.trim();
+  const isSecret = S.secretChatIds.has(S.activeChatId);
   if (!text && !_pendingAttachment && !S.forwardMsg) return;
   // Нет соединения — сообщаем и не теряем набранное молча
   if (!S.ws||S.ws.readyState!==1) {
@@ -3490,10 +3726,23 @@ function sendOrEdit() {
     if (S.ws && S.ws.readyState >= 2 && S.token) connectWS();
     return;
   }
-  const payload = { type:'message', chat_id:S.activeChatId, text: text || '' };
-  if (S.replyTo) payload.reply_to_id = S.replyTo.id;
-  if (_pendingAttachment) payload.attachment = _pendingAttachment;
-  if (S.forwardMsg) payload.forward_data = S.forwardMsg;
+  let payload, secretAtt = null;
+  if (isSecret) {
+    S.forwardMsg = null;
+    const key = SC.keyOf(S.activeChatId);
+    if (!key) { showActionToast('Чат ещё не синхронизирован на этом устройстве'); return; }
+    secretAtt = _pendingAttachment;
+    const enc = await SC.encryptText(key, SC.encodePayload(text || '', secretAtt ? { n: secretAtt.name, m: secretAtt.mime, s: secretAtt.size } : null));
+    payload = { type:'message', chat_id:S.activeChatId, text: enc.text, iv: enc.iv };
+    if (secretAtt) payload.attachment = { url: secretAtt.url, enc: 1, fiv: secretAtt.fiv, size: secretAtt.size };
+    if (S.replyTo) payload.reply_to_id = S.replyTo.id;
+    _pendingAttachment = null;
+  } else {
+    payload = { type:'message', chat_id:S.activeChatId, text: text || '' };
+    if (S.replyTo) payload.reply_to_id = S.replyTo.id;
+    if (_pendingAttachment) payload.attachment = _pendingAttachment;
+    if (S.forwardMsg) payload.forward_data = S.forwardMsg;
+  }
 
   const tempMsg = {
     id: -(Date.now()),
@@ -3516,6 +3765,13 @@ function sendOrEdit() {
     reactions: [],
     _optimistic: true,
   };
+  if (isSecret) {
+    S.scDecrypted.set(tempMsg.id, text || '');
+    if (secretAtt) {
+      tempMsg.attachment = { url: secretAtt.url, enc: 1, fiv: secretAtt.fiv, size: secretAtt.size };
+      S.scAtt.set(tempMsg.id, { n: secretAtt.name, m: secretAtt.mime, s: secretAtt.size });
+    }
+  }
   if (!S.chatHasMoreAfter) appendMsg(tempMsg);
 
   S.ws.send(JSON.stringify(payload));
@@ -3536,7 +3792,7 @@ function sendOrEdit() {
 function submitEdit() {
   const input = document.getElementById('msg-input');
   const text = input?.value.trim();
-  if (!text) { cancelEdit(); return; }
+  if (!text || S.secretChatIds.has(S.activeChatId)) { cancelEdit(); return; }
   S.ws.send(JSON.stringify({type:'edit_message', message_id:S.editingMessageId, text}));
   closeEmojiPicker();
   cancelEdit();
@@ -3562,9 +3818,9 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
   S.ctx.isMine = isMine;
   const menu = document.getElementById('ctx-menu');
   document.getElementById('ctx-reply-btn').style.display = '';
-  document.getElementById('ctx-forward-btn').style.display = '';
+  document.getElementById('ctx-forward-btn').style.display = S.secretChatIds.has(S.activeChatId) ? 'none' : '';
   document.getElementById('ctx-copy-btn').style.display = '';
-  document.getElementById('ctx-edit-btn').style.display = (isMine && S.ctx.canEdit) ? '' : 'none';
+  document.getElementById('ctx-edit-btn').style.display = (isMine && S.ctx.canEdit && !S.secretChatIds.has(S.activeChatId)) ? '' : 'none';
   document.getElementById('ctx-delete-btn').style.display = isMine ? '' : 'none';
   document.getElementById('ctx-info-btn').style.display = isMine ? '' : 'none';
   const ctxReactEl = menu.querySelector('.ctx-reactions');
@@ -3702,11 +3958,15 @@ async function onFilePicked(input) {
 }
 
 let _uploadXhr = null;
-function uploadFile(file) {
+async function uploadFile(file) {
   if (!file) return;
+  const isSecret = S.secretChatIds.has(S.activeChatId);
+  const secretKey = isSecret ? SC.keyOf(S.activeChatId) : null;
+  if (isSecret && !secretKey) { showActionToast('Чат ещё не синхронизирован на этом устройстве'); return; }
   const isImage = file.type.startsWith('image/');
   const isVideo = file.type.startsWith('video/');
-  const cfg = isImage ? _uploadSettings.image : isVideo ? _uploadSettings.video : _uploadSettings.file;
+  const cfg = isSecret ? { maxSizeMb: 50, extensions: [] }
+    : isImage ? _uploadSettings.image : isVideo ? _uploadSettings.video : _uploadSettings.file;
   const ext = (file.name.split('.').pop() || '').toLowerCase();
 
   if (file.size > cfg.maxSizeMb * 1024 * 1024) {
@@ -3720,20 +3980,28 @@ function uploadFile(file) {
 
   if (_uploadXhr) _uploadXhr.abort();
   _pendingAttachment = null;
+  const token = ++_uploadToken;
   const sendBtn = document.getElementById('send-btn');
   if (sendBtn) { sendBtn.style.background='var(--accent)'; sendBtn.style.color='#fff'; sendBtn.style.boxShadow='0 6px 16px var(--accent-shadow)'; }
   showAttachUploading(isImage ? 'Изображение' : isVideo ? 'Видео' : 'Файл');
 
-  const formData = new FormData();
-  formData.append('file', file);
+  let formData, endpoint, secretMeta = null;
+  if (secretKey) {
+    const enc = await scEncryptFileForUpload(file, secretKey);
+    if (token !== _uploadToken) return;
+    formData = new FormData();
+    formData.append('file', enc.blob, 'enc.bin');
+    endpoint = '/api/upload?enc=1';
+    secretMeta = { fiv: enc.fiv, name: file.name, mime: file.type || 'application/octet-stream', size: file.size };
+  } else {
+    formData = new FormData();
+    formData.append('file', file);
+    endpoint = '/api/upload';
+  }
   const xhr = new XMLHttpRequest();
   _uploadXhr = xhr;
-  xhr.open('POST', `${httpProto()}://${S.server}/api/upload`);
+  xhr.open('POST', `${httpProto()}://${S.server}${endpoint}`);
   xhr.setRequestHeader('Authorization', `Bearer ${S.token}`);
-  // Пока тело запроса ещё идёт — честный процент; как только отправка
-  // закончилась, а ответа сервера всё ещё нет (например, идёт транскод
-  // видео) — переключаемся на «Обработка…», иначе казалось бы, что всё
-  // зависло на 100%
   xhr.upload.onprogress = e => { if (e.lengthComputable) setAttachProgress(Math.round(e.loaded / e.total * 100)); };
   xhr.upload.onload = () => setAttachProcessing();
   xhr.onload = () => {
@@ -3744,7 +4012,8 @@ function uploadFile(file) {
       clearImagePreview();
       return;
     }
-    _pendingAttachment = JSON.parse(xhr.responseText);
+    const resp = JSON.parse(xhr.responseText);
+    _pendingAttachment = secretMeta ? { ...resp, enc: 1, ...secretMeta } : resp;
     showAttachmentPreviewBar();
   };
   xhr.onerror = () => { _uploadXhr = null; showActionToast('Ошибка загрузки'); clearImagePreview(); };
@@ -3800,7 +4069,7 @@ function showAttachmentPreviewBar() {
   el.track.classList.remove('indeterminate');
   const isImage = att.mime?.startsWith('image/');
   const isVideo = att.mime?.startsWith('video/');
-  const thumbUrl = isImage ? att.url : (isVideo && att.thumb) ? att.thumb : null;
+  const thumbUrl = (isImage && !att.enc) ? att.url : (isVideo && att.thumb) ? att.thumb : null;
   el.img.src = thumbUrl ? `${httpProto()}://${S.server}${thumbUrl}` : '';
   el.img.style.display = thumbUrl ? '' : 'none';
   el.ico.style.display = thumbUrl ? 'none' : '';
@@ -3812,6 +4081,7 @@ function showAttachmentPreviewBar() {
 function showImagePreviewBar() { showAttachmentPreviewBar(); }
 
 function clearImagePreview() {
+  _uploadToken++;
   if (_uploadXhr) { _uploadXhr.abort(); _uploadXhr = null; }
   else if (_pendingAttachment) {
     // Загрузка уже завершилась (файл лежит на сервере), просто ещё не
@@ -4078,7 +4348,7 @@ function hideCtxMenu() {
 
 function ctxEdit() {
   hideCtxMenu();
-  if (!S.ctx.canEdit) return;
+  if (!S.ctx.canEdit || S.secretChatIds.has(S.activeChatId)) return;
   const el = document.querySelector(`[data-msg-id="${S.ctx.messageId}"] .irc-text`);
   const text = el?.textContent?.replace(' изм.','').trim()||'';
   S.editingMessageId = S.ctx.messageId;
@@ -4203,6 +4473,7 @@ function _confirmReject() {
 
 // ── DELETE CHAT ──
 async function deleteChat(chatId) {
+  if (S.secretChatIds.has(chatId)) return scDeleteSecret(chatId);
   const ok = await showConfirm('Удалить чат? Для вас он исчезнет из списка.');
   if (!ok) return;
   await api('DELETE', `/chats/${chatId}`);
@@ -4250,11 +4521,13 @@ function connectWS() {
     if (data.type==='pong') { ws._pongOk = true; return; }
 
     if (data.type==='connected') { S.editLimit = data.edit_time_limit || 120; return; }
+    if (data.type==='secret_key_ready') { scTick(data.chat_id); return; }
 
     if (data.type==='message') {
       const { message } = data;
       const chatId = message.chat_id;
       const parentId = message.parent_id || null;
+      if (SC.isHidden(chatId)) SC.unhide(chatId);
       if (parentId) {
         const parentChat = S.chats.find(c=>c.id===parentId);
         if (parentChat) parentChat.last_message = message;
@@ -5011,6 +5284,8 @@ function showChatCtx(e, chatId) {
   if (delBtn) delBtn.style.display = (isRoom || (!isRoom && !canDelete)) ? 'none' : '';
   if (leaveBtn) leaveBtn.style.display = (isGroup && !canDelete) ? '' : 'none';
 
+  const devicesBtn = document.getElementById('ctx-chat-devices');
+  if (devicesBtn) devicesBtn.style.display = chat?.is_secret ? '' : 'none';
   const muteLabel = document.getElementById('ctx-chat-mute-label');
   if (muteLabel) muteLabel.textContent = S.mutedChats.has(chatId) ? 'Включить уведомления' : 'Выключить уведомления';
   menu.style.top = '-9999px'; menu.style.left = '-9999px';

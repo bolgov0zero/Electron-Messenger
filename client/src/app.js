@@ -40,6 +40,7 @@ const S = {
   scMsgObjs: new Map(),      // msgId -> объект сообщения секретного чата (для перерисовки после расшифровки)
   scLoaded: false,           // ключи уже подняты из хранилища
   scPending: {},             // chatId -> {requestId, code, privateKey, timer} — активный запрос доступа
+  scPendingSaved: {},        // chatId -> {requestId, code, pkcs8, expiresAt} — тот же запрос в файле ключей
   scSyncChatId: null,        // чат, для которого открыта модалка синхронизации
   scConfirm: null,           // данные запроса, ожидающего подтверждения этим устройством
   ctpUserId: null,           // контакт, для которого открыт выбор типа чата
@@ -4863,16 +4864,25 @@ async function scLoadKeys() {
   let blob = {};
   try { blob = JSON.parse((await window.electron?.secretKeysLoad()) || '{}'); } catch {}
   // Старый формат — голая карта chatId→ключ, без полей keys/hidden
-  const legacy = !blob.keys && !blob.hidden;
+  const legacy = !blob.keys && !blob.hidden && !blob.pending;
   S.scRaw = legacy ? blob : (blob.keys || {});
   S.scHidden = new Set(legacy ? [] : (blob.hidden || []).map(Number));
   for (const [chatId, b64] of Object.entries(S.scRaw)) {
     try { S.scKeys[chatId] = await scImportAesKey(b64); } catch {}
   }
+  // Незавершённый запрос доступа переживает перезапуск приложения
+  S.scPendingSaved = legacy ? {} : (blob.pending || {});
+  for (const [chatId, p] of Object.entries(S.scPendingSaved)) {
+    if (p.expiresAt < Date.now()) { delete S.scPendingSaved[chatId]; continue; }
+    try {
+      const privateKey = await crypto.subtle.importKey('pkcs8', scUnB64(p.pkcs8), SC_ECDH, true, ['deriveKey']);
+      S.scPending[chatId] = { requestId: p.requestId, code: p.code, privateKey, timer: setInterval(() => scPollPending(Number(chatId)), 4000) };
+    } catch { delete S.scPendingSaved[chatId]; }
+  }
 }
 
 async function scPersistKeys() {
-  await window.electron?.secretKeysSave(JSON.stringify({ keys: S.scRaw, hidden: [...S.scHidden] }));
+  await window.electron?.secretKeysSave(JSON.stringify({ keys: S.scRaw, hidden: [...S.scHidden], pending: S.scPendingSaved }));
 }
 
 function scImportAesKey(b64) {
@@ -5015,6 +5025,16 @@ async function scFetchDecryptFile(m, key) {
   } catch { return null; }
 }
 
+// Картинка уходит в окно просмотра как data-URL: blob-ссылка другому окну недоступна
+async function scOpenImage(msgId) {
+  const url = S.scAttBlob.get(msgId);
+  if (!url) return;
+  const blob = await (await fetch(url)).blob();
+  const reader = new FileReader();
+  reader.onload = () => openLightbox(reader.result, S.scAtt.get(msgId)?.n || 'image', 'image');
+  reader.readAsDataURL(blob);
+}
+
 async function scSaveAttachment(msgId) {
   const m = S.scMsgObjs.get(msgId);
   const meta = S.scAtt.get(msgId);
@@ -5038,7 +5058,7 @@ function scAttachHtml(m, att) {
   const sizeFmt = meta.s ? (meta.s > 1048576 ? (meta.s / 1048576).toFixed(1) + ' МБ' : Math.round(meta.s / 1024) + ' КБ') : '';
   if (meta.m?.startsWith('image/')) {
     const blob = S.scAttBlob.get(m.id);
-    if (blob) return `<div class="bubble-image" onclick="scSaveAttachment(${m.id})"><img src="${esc(blob)}" loading="lazy"></div>`;
+    if (blob) return `<div class="bubble-image" onclick="scOpenImage(${m.id})"><img src="${esc(blob)}" loading="lazy"></div>`;
     return `<div class="bubble-file sc-att-locked"><div class="bubble-file-info"><div class="bubble-file-name">Изображение</div></div></div>`;
   }
   return `<div class="bubble-file" onclick="scSaveAttachment(${m.id})">
@@ -5159,6 +5179,12 @@ async function scRequestAccess(chatId) {
   if (!data?.request_id) { showActionToast(data?.error || 'Не удалось создать запрос'); return; }
   const timer = setInterval(() => scPollPending(chatId), 4000);
   S.scPending[chatId] = { requestId: data.request_id, code: data.code, privateKey: eph.privateKey, timer };
+  S.scPendingSaved[chatId] = {
+    requestId: data.request_id, code: data.code,
+    pkcs8: scB64(await crypto.subtle.exportKey('pkcs8', eph.privateKey)),
+    expiresAt: Date.now() + (data.expires_in || 600) * 1000,
+  };
+  await scPersistKeys();
   scRenderSyncModal('waiting');
 }
 
@@ -5186,10 +5212,11 @@ async function scOpenDevices(chatId) {
 // придёт сам (см. scPollPending), а пользователь увидит уведомление
 function scCancelSyncModal() { closeModal('modal-secret-sync'); }
 
-function scCancelRequest(chatId) {
+async function scCancelRequest(chatId) {
   const p = S.scPending[chatId];
   if (p) clearInterval(p.timer);
   delete S.scPending[chatId];
+  if (S.scPendingSaved[chatId]) { delete S.scPendingSaved[chatId]; await scPersistKeys(); }
   closeModal('modal-secret-sync');
 }
 
@@ -5208,12 +5235,16 @@ async function scPollPending(chatId) {
     await scSetChatKey(chatId, chatKeyB64);
     await api('POST', `/secret/${chatId}/requests/${p.requestId}/complete`);
     delete S.scPending[chatId];
+    delete S.scPendingSaved[chatId];
+    await scPersistKeys();
     closeModal('modal-secret-sync');
     showActionToast('Секретный чат синхронизирован на этом устройстве');
     await loadChats();
     if (S.activeChatId === chatId) { scApplyComposerState(chatId); scDecryptVisible(); }
   } catch {
     delete S.scPending[chatId];
+    delete S.scPendingSaved[chatId];
+    await scPersistKeys();
     showActionToast('Не удалось расшифровать ключ — запросите доступ заново');
     closeModal('modal-secret-sync');
   }

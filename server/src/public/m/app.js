@@ -170,6 +170,208 @@ function applyAvatars() {
 }
 
 // ── ЧАТЫ: имя/иконка/цвет ──
+// ── СЕКРЕТНЫЕ ЧАТЫ (E2E), мобильный веб ── создать чат нельзя; здесь получают доступ по коду,
+// читают зашифрованные сообщения и отключают своё устройство. Криптография — shared/secret-core.js
+let _scMBooted = false;
+let _scMBusy = false;
+let _scMAgain = false;
+let _scUpTok = 0;
+const _scLock = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+Object.assign(S, { secretChatIds: new Set(), scDecrypted: new Map(), scAtt: new Map(), scAttBlob: new Map() });
+
+function scDeviceLabel() {
+  const ua = navigator.userAgent || '';
+  if (/iPhone|iPad/.test(ua)) return 'iPhone/iPad';
+  if (/Android/.test(ua)) return 'Android';
+  return 'Браузер';
+}
+
+async function scBoot() {
+  if (!_scMBooted) {
+    _scMBooted = true;
+    SC.init({ api: (m, p, b) => api(m, p, b), base: `${httpProto()}://${S.server}`, token: () => S.token, label: scDeviceLabel() });
+  }
+  await SC.load();
+  for (const id of SC.pendingIds()) if (!SC.pendingOf(id).timer) SC.pendingOf(id).timer = setInterval(() => scTickM(id), 4000);
+}
+
+// Список чатов без скрытых на этом устройстве секретных; заодно помечаем, какие секретные
+function scVisibleChats(list) {
+  if (!list) return null;
+  S.secretChatIds = new Set(list.filter(c => c.is_secret).map(c => c.id));
+  return list.filter(c => !(c.is_secret && SC.isHidden(c.id)));
+}
+
+// Сообщение для показа: расшифрованное, либо пиксели, вложение — со своими метаданными
+function scDisplay(m) {
+  if (m.deleted || m.sender_username === '__system__') return m;
+  const dec = S.scDecrypted.get(m.id);
+  const meta = S.scAtt.get(m.id);
+  const copy = { ...m };
+  if (dec !== undefined) copy.text = dec;
+  else { copy.text = SC.pixelGlyphs(m.text); copy._scPixel = true; }
+  if (m.attachment?.url) {
+    copy.attachment = { url: m.attachment.url, enc: 1, expired: m.attachment.expired, mime: meta?.m, name: meta?.n, size: meta?.s, _msgId: m.id, _locked: !meta };
+  }
+  return copy;
+}
+
+function scAttachHtmlM(att) {
+  if (att._locked) return `<div class="bubble-file"><div class="bubble-file-ico">🔒</div><div><div class="bubble-file-name">Вложение</div></div></div>`;
+  const id = att._msgId;
+  if (att.mime?.startsWith('image/')) {
+    const blob = S.scAttBlob.get(id);
+    if (blob) return `<img class="bubble-media" src="${esc(blob)}" loading="lazy" onclick="event.stopPropagation();openLightbox('${esc(blob)}','image')">`;
+    return `<div class="bubble-file"><div class="bubble-file-ico">🖼</div><div><div class="bubble-file-name">Изображение</div></div></div>`;
+  }
+  const sizeFmt = att.size ? (att.size > 1048576 ? (att.size / 1048576).toFixed(1) + ' МБ' : Math.round(att.size / 1024) + ' КБ') : '';
+  return `<div class="bubble-file" onclick="event.stopPropagation();scSaveAtt(${id})">
+    <div class="bubble-file-ico">📎</div><div><div class="bubble-file-name">${esc(att.name || 'Файл')}</div>${sizeFmt ? `<div class="bubble-file-size">${sizeFmt}</div>` : ''}</div></div>`;
+}
+
+async function scSaveAtt(msgId) {
+  const m = _msgCache.find(x => x.id === msgId);
+  const meta = S.scAtt.get(msgId);
+  const key = m && SC.keyOf(m.chat_id);
+  if (!m?.attachment?.url || !meta || !key) { toast('Вложение пока не расшифровано'); return; }
+  const buf = await SC.fetchFile(m.attachment.url, m.attachment.fiv, key);
+  if (!buf) { toast('Не удалось расшифровать файл'); return; }
+  const url = URL.createObjectURL(new Blob([buf], { type: meta.m || 'application/octet-stream' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = meta.n || 'file';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+// Расшифровывает сообщения текущего чата и перерисовывает ленту без скачка
+async function scDecryptMobile() {
+  if (_scMBusy) { _scMAgain = true; return; }
+  _scMBusy = true;
+  try {
+    let changed = false;
+    for (const m of _msgCache) {
+      if (!S.secretChatIds.has(m.chat_id) || !(m.id > 0) || m.deleted) continue;
+      const key = SC.keyOf(m.chat_id);
+      if (!key) continue;
+      if (!S.scDecrypted.has(m.id) && m.iv && m.text) {
+        const plain = await SC.decryptText(key, m.text, m.iv);
+        if (plain !== null) {
+          const p = SC.parsePayload(plain);
+          S.scDecrypted.set(m.id, p.t);
+          if (p.a) S.scAtt.set(m.id, p.a);
+          changed = true;
+        }
+      }
+      const meta = S.scAtt.get(m.id);
+      if (meta?.m?.startsWith('image/') && m.attachment?.url && !S.scAttBlob.has(m.id)) {
+        const buf = await SC.fetchFile(m.attachment.url, m.attachment.fiv, key);
+        if (buf) { S.scAttBlob.set(m.id, URL.createObjectURL(new Blob([buf], { type: meta.m }))); changed = true; }
+      }
+    }
+    if (changed) renderMessages(true);
+  } finally {
+    _scMBusy = false;
+    if (_scMAgain) { _scMAgain = false; scDecryptMobile(); }
+  }
+}
+
+// После отрисовки открытого чата: баннер синхронизации или композер, и расшифровка
+function scAfterRender() {
+  const chatId = S.activeChatId;
+  const locked = S.secretChatIds.has(chatId) && !SC.hasKey(chatId);
+  document.querySelector('#chat-screen .sc-banner')?.remove();
+  const cw = document.querySelector('#chat-screen .composer-wrap');
+  if (cw) cw.style.display = locked ? 'none' : '';
+  if (locked) {
+    const secure = window.isSecureContext && !!crypto.subtle;
+    document.getElementById('chat-screen').insertAdjacentHTML('beforeend', `<div class="sc-banner">
+      <span>${secure ? 'Секретный чат не синхронизирован на этом устройстве' : 'Секретные чаты работают только по HTTPS'}</span>
+      ${secure ? `<button onclick="scOpenSyncSheet(${chatId})">Синхронизировать</button>` : ''}</div>`);
+  }
+  scDecryptMobile();
+}
+
+// ── Получение доступа ──
+function scOpenSyncSheet(chatId) {
+  const p = SC.pendingOf(chatId);
+  if (p) { scShowCodeSheet(chatId); return; }
+  openSheet(`<div class="sheet-title">Секретный чат</div>
+    <div class="sc-m-hint">Нажмите «Получить доступ» — появится код. Продиктуйте его собеседнику голосом, лично или в другом мессенджере.</div>
+    <div class="msg-action-row" onclick="scRequestSheet(${chatId})">Получить доступ</div>
+    <div class="msg-action-row" onclick="closeSheet()">Отмена</div>`);
+}
+
+async function scRequestSheet(chatId) {
+  const r = await SC.requestAccess(chatId);
+  if (r.error) { toast(r.error); return; }
+  SC.pendingOf(chatId).timer = setInterval(() => scTickM(chatId), 4000);
+  scShowCodeSheet(chatId);
+}
+
+function scShowCodeSheet(chatId) {
+  const p = SC.pendingOf(chatId);
+  openSheet(`<div class="sheet-title">Код для собеседника</div>
+    <div class="sc-m-hint">Продиктуйте код собеседнику. Он действует 10 минут. Подтвердить его может только собеседник на своём компьютере.</div>
+    <div class="sc-m-code">${esc(p.code)}</div>
+    <div class="sc-m-hint">Ждём подтверждения…</div>
+    <div class="msg-action-row" onclick="closeSheet()">Свернуть</div>
+    <div class="msg-action-row danger" onclick="scCancelSyncM(${chatId})">Отменить запрос</div>`);
+}
+
+function scCancelSyncM(chatId) { SC.cancelPending(chatId); closeSheet(); }
+
+async function scTickM(chatId) {
+  if (!SC.pendingOf(chatId)) return;
+  if (!(await SC.pollPending(chatId))) return;
+  closeSheet();
+  toast('Секретный чат синхронизирован на этом устройстве');
+  await refreshChats();
+  if (S.activeChatId === chatId) { renderChats(); openChat(chatId); }
+}
+
+// ── Устройства чата и удаление (отключение этого устройства) ──
+async function scDevicesSheet(chatId) {
+  const rows = await SC.devices(chatId);
+  if (!Array.isArray(rows)) { toast(rows?.error || 'Не удалось загрузить устройства'); return; }
+  const mine = SC.deviceId();
+  const chat = S.chats.find(c => c.id === chatId);
+  const names = Object.fromEntries((chat?.members || []).map(u => [u.id, u.display_name]));
+  openSheet(`<div class="sheet-title">Устройства чата</div>
+    ${rows.map(r => `<div class="sc-m-device">${esc(r.device_label || 'Устройство')} · ${esc(names[r.user_id] || 'Пользователь')}${r.device_id === mine ? ' — это устройство' : ''}</div>`).join('')}
+    <div class="sc-m-hint">Ключ не переносится сам: новое устройство подключается только с подтверждения собеседника.</div>
+    <div class="msg-action-row" onclick="closeSheet()">Закрыть</div>`);
+}
+
+async function scDeleteSecretM(chatId) {
+  const deviceId = SC.deviceId();
+  await api('DELETE', `/chats/${chatId}?device_id=${encodeURIComponent(deviceId)}`);
+  await SC.forget(chatId);
+  await SC.hide(chatId);
+  S.secretChatIds.delete(chatId);
+  S.chats = S.chats.filter(c => c.id !== chatId);
+  if (S.activeChatId === chatId) closeChat();
+  renderChats();
+}
+
+async function scSeal(chatId, payload, temp, text) {
+  const key = SC.keyOf(chatId);
+  if (!key) { toast('Чат не синхронизирован на этом устройстве'); return false; }
+  const att = payload.attachment || null;
+  const enc = await SC.encryptText(key, SC.encodePayload(text || '', att ? { n: att.name, m: att.mime, s: att.size } : null));
+  payload.text = enc.text;
+  payload.iv = enc.iv;
+  delete payload.forward_data;
+  temp.forward_data = null;
+  S.scDecrypted.set(temp.id, text || '');
+  if (att) {
+    payload.attachment = { url: att.url, enc: 1, fiv: att.fiv, size: att.size };
+    temp.attachment = { url: att.url, enc: 1, fiv: att.fiv, size: att.size };
+    S.scAtt.set(temp.id, { n: att.name, m: att.mime, s: att.size });
+  }
+  _pendingAttachment = null;
+  return true;
+}
+
 function chatName(chat) {
   if (!chat) return '';
   if (chat.type === 'group') return chat.name || 'Группа';
@@ -313,7 +515,8 @@ function maybeShowNotifBanner() {
 
 // ── СПИСОК ЧАТОВ ──
 async function loadChats() {
-  const chats = await api('GET', '/chats');
+  await scBoot();
+  const chats = scVisibleChats(await api('GET', '/chats'));
   if (!chats) return;
   S.chats = chats;
   renderChats();
@@ -325,7 +528,8 @@ async function loadChats() {
 // где обновление списка чатов может случиться при открытом списке тем
 // (в т.ч. по WS-событию reload_chats).
 async function refreshChats() {
-  const fresh = await api('GET', '/chats');
+  await scBoot();
+  const fresh = scVisibleChats(await api('GET', '/chats'));
   if (!fresh) return;
   const topics = S.chats.filter(c => c.parent_id);
   S.chats = [...fresh, ...topics];
@@ -433,7 +637,7 @@ function chatRowHtml(c) {
   const mentions = c.unread_mentions || 0;
   const mine = lm && !lm.deleted && lm.sender_id === S.user.id;
   const who = mine ? 'Вы: ' : '';
-  let preview = chatPreview(c);
+  let preview = c.is_secret ? (lm ? 'Сообщение' : 'Нет сообщений') : chatPreview(c);
   if (preview.length > 40) preview = preview.slice(0, 40) + '…';
   const time = lm ? fmtChatListTime(lm.sent_at) : '';
   const sq = (c.type === 'group' || c.type === 'room') ? ' sq' : '';
@@ -462,7 +666,7 @@ function chatRowHtml(c) {
           ${dot}
         </div>
         <div class="row-body">
-          <div class="row-top"><div class="row-name">${esc(chatName(c))}</div><div class="row-top-right">${muteIcon}${myStatus}<div class="row-time${unread ? ' unread' : ''}">${time}</div></div></div>
+          <div class="row-top"><div class="row-name">${esc(chatName(c))}</div><div class="row-top-right">${c.is_secret ? _scLock : ''}${muteIcon}${myStatus}<div class="row-time${unread ? ' unread' : ''}">${time}</div></div></div>
           <div class="row-bottom">
             <div class="row-msg">${esc(who)}${esc(preview)}</div>
             ${mentions ? `<div class="badge at">@</div>` : unread ? `<div class="badge">${unread > 99 ? '99+' : unread}</div>` : ''}
@@ -509,12 +713,14 @@ function deleteChatConfirm(chatId) {
   if (!chat) return;
   if (chat.type === 'room') { toast('Комнатами управляют администраторы'); return; }
   openSheet(`<div class="sheet-title">Удалить чат «${esc(chatName(chat))}»?</div>
+    ${S.secretChatIds.has(chatId) ? `<div class="msg-action-row" onclick="closeSheet();scDevicesSheet(${chatId})">Устройства чата</div>` : ''}
     <div class="msg-action-row danger" onclick="closeSheet();confirmDeleteChat(${chatId})">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Удалить
     </div>
     <div class="msg-action-row" onclick="closeSheet()">Отмена</div>`);
 }
 async function confirmDeleteChat(chatId) {
+  if (S.secretChatIds.has(chatId)) return scDeleteSecretM(chatId);
   const res = await api('POST', `/chats/${chatId}/leave`);
   if (res?.ok) { S.chats = S.chats.filter(c => c.id !== chatId); if (S.activeChatId === chatId) closeChat(); renderChats(); }
 }
@@ -1106,6 +1312,7 @@ function fmtSize(bytes) {
 }
 function attachmentHtml(att) {
   if (!att) return '';
+  if (att.enc) return scAttachHtmlM(att);
   const url = `${httpProto()}://${S.server}${att.url}`;
   if (att.expired) return `<div class="bubble-file"><div class="bubble-file-ico">✕</div><div><div class="bubble-file-name">Файл удалён</div></div></div>`;
   // aspect-ratio по сохранённым при загрузке размерам резервирует место под картинку/видео
@@ -1144,6 +1351,7 @@ function isEmojiOnly(text) {
 }
 function bubbleHtml(m, chat, pos = {}) {
   const { isFirst = true, isTail = true, split = false, splitNext = false } = pos;
+  if (S.secretChatIds.has(m.chat_id)) m = scDisplay(m);
   const mine = m.sender_id === S.user.id;
   // Системные уведомления (объявления, изменение состава группы/комнаты) — та же
   // пилюля по центру ленты, что и в /chat и в клиенте, а не обычный пузырь слева
@@ -1185,7 +1393,7 @@ function bubbleHtml(m, chat, pos = {}) {
   // Боты/системные аккаунты (sender_is_bot) присылают готовый HTML — вставляем
   // как есть, как в /chat; обычный текст экранируем и прогоняем через
   // лёгкую разметку/автоссылки
-  const text = m.text ? `<span class="bubble-text${emojiOnly ? ' emoji-only' : ''}">${m.sender_is_bot ? m.text : linkifyText(m.text)}</span>` : '';
+  const text = m._scPixel ? `<span class="bubble-text sc-pixel">${m.text}</span>` : m.text ? `<span class="bubble-text${emojiOnly ? ' emoji-only' : ''}">${m.sender_is_bot ? m.text : linkifyText(m.text)}</span>` : '';
   const quote = m.reply_to_id ? `<div class="bubble-quote">
     <div class="bubble-quote-name">${esc(m.reply_sender_name || '')}</div>
     <div class="bubble-quote-text">${m.reply_deleted ? 'Сообщение удалено' : esc(m.reply_text || '')}</div>
@@ -1462,6 +1670,7 @@ async function openChat(chatId, aroundId) {
   _msgCache = data.messages;
   S.hasMoreOlder = !!data.hasMore;
   renderMessages(aroundId ? 'none' : undefined);
+  scAfterRender();
   applyAvatars();
   if (aroundId) {
     requestAnimationFrame(() => {
@@ -1688,7 +1897,7 @@ function onFilePicked(input) {
 }
 // Общий путь для выбора файла и вставки из буфера (см. paste-обработчик ниже) —
 // как в Electron-клиенте, тот же приём.
-function uploadPickedFile(file) {
+async function uploadPickedFile(file) {
   const isImage = file.type.startsWith('image/');
   const isVideo = file.type.startsWith('video/');
   const cfg = isImage ? _uploadSettings.image : isVideo ? _uploadSettings.video : _uploadSettings.file;
@@ -1700,11 +1909,26 @@ function uploadPickedFile(file) {
   _pendingAttachment = null;
   showAttachUploading(isImage ? 'Фото' : isVideo ? 'Видео' : 'Файл');
 
-  const formData = new FormData();
-  formData.append('file', file);
+  const isSecret = S.secretChatIds.has(S.activeChatId);
+  const secretKey = isSecret ? SC.keyOf(S.activeChatId) : null;
+  if (isSecret && !secretKey) { toast('Чат не синхронизирован на этом устройстве'); return; }
+  const tok = ++_scUpTok;
+  let formData = new FormData();
+  let endpoint = '/api/upload';
+  let secretMeta = null;
+  if (secretKey) {
+    const enc = await SC.encryptFile(file, secretKey);
+    if (tok !== _scUpTok) return;
+    formData = new FormData();
+    formData.append('file', enc.blob, 'enc.bin');
+    endpoint = '/api/upload?enc=1';
+    secretMeta = { fiv: enc.fiv, name: file.name, mime: file.type || 'application/octet-stream', size: file.size };
+  } else {
+    formData.append('file', file);
+  }
   const xhr = new XMLHttpRequest();
   _uploadXhr = xhr;
-  xhr.open('POST', `${httpProto()}://${S.server}/api/upload`);
+  xhr.open('POST', `${httpProto()}://${S.server}${endpoint}`);
   xhr.setRequestHeader('Authorization', `Bearer ${S.token}`);
   // Пока тело запроса ещё идёт — честный процент; как только отправка
   // закончилась, а ответа сервера всё ещё нет (например, идёт транскод
@@ -1720,7 +1944,8 @@ function uploadPickedFile(file) {
       clearAttachment();
       return;
     }
-    _pendingAttachment = JSON.parse(xhr.responseText);
+    const resp = JSON.parse(xhr.responseText);
+    _pendingAttachment = secretMeta ? { ...resp, enc: 1, ...secretMeta } : resp;
     showAttachDone();
   };
   xhr.onerror = () => { _uploadXhr = null; toast('Ошибка загрузки'); clearAttachment(); };
@@ -1771,7 +1996,7 @@ function showAttachDone() {
   el.box.className = 'attach-thumb';
   el.track.style.display = 'none';
   el.track.classList.remove('indeterminate');
-  if (att.mime?.startsWith('image/')) {
+  if (att.mime?.startsWith('image/') && !att.enc) {
     el.img.src = `${httpProto()}://${S.server}${att.url}`; el.img.style.display = ''; el.ico.style.display = 'none';
   } else if (att.mime?.startsWith('video/') && att.thumb) {
     el.img.src = `${httpProto()}://${S.server}${att.thumb}`; el.img.style.display = ''; el.ico.style.display = 'none';
@@ -1784,6 +2009,7 @@ function showAttachDone() {
   stickMessagesToBottom();
 }
 function clearAttachment() {
+  _scUpTok++;
   if (_uploadXhr) { _uploadXhr.abort(); _uploadXhr = null; }
   else if (_pendingAttachment) {
     // Загрузка уже завершилась (файл лежит на сервере), просто ещё не
@@ -1815,7 +2041,7 @@ function openLightbox(url, type) {
     vid.play().catch(() => {});
   } else {
     vid.pause(); vid.src = '';
-    img.src = `${httpProto()}://${S.server}${url}`;
+    img.src = url.startsWith('blob:') ? url : `${httpProto()}://${S.server}${url}`;
   }
   box.classList.add('open');
 }
@@ -2023,12 +2249,12 @@ function openMsgActions(msgId) {
   const m = findMsg(msgId);
   if (!m || m.deleted) return;
   const mine = m.sender_id === S.user.id;
-  const canEdit = mine && m.text && (Date.now() / 1000 - m.sent_at) < (S.editLimit || 120);
+  const canEdit = !S.secretChatIds.has(m.chat_id) && mine && m.text && (Date.now() / 1000 - m.sent_at) < (S.editLimit || 120);
   const rowReact = `<div class="msg-action-row" onclick="closeSheet();openReactionPicker(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>Реакция</div>`;
   const rowReply = `<div class="msg-action-row" onclick="closeSheet();setReply(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>Ответить</div>`;
-  const rowForward = `<div class="msg-action-row" onclick="closeSheet();ctxForward(${msgId})">
+  const rowForward = S.secretChatIds.has(m.chat_id) ? '' : `<div class="msg-action-row" onclick="closeSheet();ctxForward(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>Переслать</div>`;
   const rowCopy = m.text ? `<div class="msg-action-row" onclick="closeSheet();copyMsgText(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Копировать</div>` : '';
@@ -2168,7 +2394,7 @@ function clearTyping(chatId) {
   }
 }
 
-function sendMessage() {
+async function sendMessage() {
   if (S.editingMessageId) { submitEdit(); return; }
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
@@ -2195,6 +2421,7 @@ function sendMessage() {
     payload.forward_data = S.forwardMsg;
     temp.forward_data = S.forwardMsg;
   }
+  if (S.secretChatIds.has(chatId) && !(await scSeal(chatId, payload, temp, text))) return;
   _msgCache.push(temp);
   renderMessages();
   S.ws.send(JSON.stringify(payload));
@@ -2242,14 +2469,17 @@ function connectWS() {
       return;
     }
 
+    if (data.type === 'secret_key_ready') { scTickM(data.chat_id); return; }
     if (data.type === 'message') {
       const m = data.message;
+      if (SC.isHidden(m.chat_id)) { SC.unhide(m.chat_id); refreshChats(); }
       const chat = S.chats.find(c => c.id === m.chat_id);
       if (chat) chat.last_message = m;
       if (S.activeChatId === m.chat_id) {
         if (m.sender_id === S.user.id) _msgCache = _msgCache.filter(x => !x._optimistic);
         _msgCache.push(m);
         const stuck = renderMessages('smart');
+        scDecryptMobile();
         if (!stuck && m.sender_id !== S.user.id) { _awayNewCount++; renderScrollBadge(); }
         if (S.ws?.readyState === 1) {
           S.ws.send(JSON.stringify({ type: 'read', chat_id: m.chat_id }));
