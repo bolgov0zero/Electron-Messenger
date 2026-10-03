@@ -4739,14 +4739,14 @@ function ncStep1() {
         <span class="nc-kind-txt"><b>Личный чат</b><span>Личная переписка с пользователем</span></span>
         <span class="nc-kind-go">›</span>
       </button>
-      <button class="nc-kind" onclick="ncPick('group')">
-        <span class="nc-kind-ic">${NC_ICON.group}</span>
-        <span class="nc-kind-txt"><b>Группа</b><span>Общая переписка с названием и участниками</span></span>
-        <span class="nc-kind-go">›</span>
-      </button>
       <button class="nc-kind" onclick="ncPick('secret')">
         <span class="nc-kind-ic">${NC_ICON.secret}</span>
         <span class="nc-kind-txt"><b>Секретный чат</b><span>Сквозное шифрование, сообщения только на ваших устройствах</span></span>
+        <span class="nc-kind-go">›</span>
+      </button>
+      <button class="nc-kind" onclick="ncPick('group')">
+        <span class="nc-kind-ic">${NC_ICON.group}</span>
+        <span class="nc-kind-txt"><b>Группа</b><span>Общая переписка с названием и участниками</span></span>
         <span class="nc-kind-go">›</span>
       </button>
     </div>`;
