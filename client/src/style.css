@@ -813,7 +813,7 @@ html.no-emoji-font .md-code {
 .sidebar {
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
-  background: var(--side-bg);
+  background: color-mix(in srgb, var(--side-bg) 72%, transparent);
   border: 1px solid var(--border);
   border-radius: 16px;
   margin: 16px 0 16px 16px;
@@ -1101,7 +1101,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 .chat-main {
   flex: 1; min-width: 0;
   display: flex; flex-direction: column;
-  background-color: var(--chat-bg);
+  background-color: color-mix(in srgb, var(--chat-bg) 72%, transparent);
   border-radius: 16px;
   margin: 16px;
   overflow: hidden;
@@ -1114,8 +1114,8 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
    прозрачность обводки: слой заливается цветом темы и обрезается ею как маской.
    Без выбранного узора переменные не заданы, прозрачность падает в 0 — иначе
    слой залил бы переписку сплошным цветом. */
-.chat-main::before {
-  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background: var(--chat-pattern-ink, transparent);
   -webkit-mask-image: var(--chat-pattern, none);
           mask-image: var(--chat-pattern, none);
@@ -1127,10 +1127,10 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 }
 /* Настройки рисуются в той же .chat-main, что и переписка — узору фона чата
    там не место */
-.chat-main:has(> .cs-pane)::before { opacity: 0; }
+body:has(.cs-pane)::before { opacity: 0; }
 /* На узком экране плитка того же размера выглядит крупно — уменьшаем рисунок */
 @media (max-width: 640px) {
-  .chat-main::before {
+  body::before {
     -webkit-mask-size: calc(var(--chat-pattern-size, 680px) * 0.72);
             mask-size: calc(var(--chat-pattern-size, 680px) * 0.72);
   }
@@ -1147,7 +1147,8 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 
 /* ── CHAT HEADER ── */
 .chat-header {
-  background: var(--card-bg);
+  position: absolute; top: 0; left: 0; right: 0; z-index: 4;
+  background: color-mix(in srgb, var(--card-bg) 72%, transparent);
   border: 1px solid var(--border);
   border-radius: 16px;
   margin: 0;
@@ -3096,7 +3097,7 @@ html.dark .announcement-title { color: var(--danger); }
 .composer-field {
   flex: 1; min-width: 0; box-sizing: border-box;
   display: flex; flex-direction: column;
-  background: var(--composer-bg);
+  background: color-mix(in srgb, var(--composer-bg) 75%, transparent);
   border: 1px solid var(--border);
   border-radius: 20px;
   overflow: hidden;
@@ -3382,12 +3383,13 @@ html.dark .announcement-title { color: var(--danger); }
 
 /* ── ЗАКРЕПЛЁННОЕ СООБЩЕНИЕ ── */
 .pin-bar {
+  position: absolute; top: 68px; left: 0; right: 0; z-index: 4;
   display: flex; align-items: center; gap: 9px;
   padding: 7px 10px 7px 14px;
-  background: var(--card-bg);
+  background: color-mix(in srgb, var(--card-bg) 72%, transparent);
   border: 1px solid var(--border);
   border-radius: 16px;
-  margin: 8px 0 0;
+  margin: 0;
   flex-shrink: 0;
 }
 /* Риски слева: сколько закреплений и какое сейчас */
@@ -3416,7 +3418,10 @@ html.dark .announcement-title { color: var(--danger); }
 /* Полоса ввода лежит поверх ленты — резервируем под неё место, чтобы последнее
    сообщение не пряталось. В конце файла: базовое правило .messages идёт ниже
    объявления полосы и иначе перебивало бы отступ. */
-.chat-main .messages { padding-bottom: calc(10px + var(--composer-h, 70px)); }
+.chat-main .messages {
+  padding-top: calc(var(--chat-top-h, 68px) + 8px);
+  padding-bottom: calc(10px + var(--composer-h, 70px));
+}
 
 /* ── ПЛАВНАЯ СМЕНА ТЕМЫ ──
    Переход вешаем на все элементы, но только на время переключения: класс

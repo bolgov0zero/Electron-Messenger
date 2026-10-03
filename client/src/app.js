@@ -1771,6 +1771,7 @@ async function openTopic(topicId) {
 // Полоса ввода лежит поверх ленты, поэтому её высота нужна ленте как нижний отступ.
 // Высота меняется от ответа, вложения и многострочного текста — следим наблюдателем.
 let _composerRO = null;
+let _topRO = null;
 function watchComposerHeight() {
   const bar = document.getElementById('chat-input-bar') || document.getElementById('input-wrap');
   const main = document.getElementById('chat-main');
@@ -1782,6 +1783,23 @@ function watchComposerHeight() {
     _composerRO = new ResizeObserver(apply);
     _composerRO.observe(bar);
   } catch { _composerRO = null; }
+}
+function watchTopHeight() {
+  const main = document.getElementById('chat-main');
+  const header = main?.querySelector('.chat-header');
+  const pin = document.getElementById('pin-bar');
+  if (!main || !header) return;
+  const apply = () => {
+    const pinH = pin && pin.style.display !== 'none' ? pin.offsetHeight + 8 : 0;
+    main.style.setProperty('--chat-top-h', (header.offsetHeight + pinH) + 'px');
+  };
+  apply();
+  if (_topRO) _topRO.disconnect();
+  try {
+    _topRO = new ResizeObserver(apply);
+    _topRO.observe(header);
+    if (pin) _topRO.observe(pin);
+  } catch { _topRO = null; }
 }
 // ── OPEN CHAT ──
 // forceBottom — открыть заведомо у последнего сообщения, минуя якорь на первом
@@ -1979,6 +1997,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     // Резерв под полосу ввода выставляем до постановки якоря, иначе он считается
     // по ещё не зарезервированной высоте
     watchComposerHeight();
+    watchTopHeight();
     if (aroundId) {
       requestAnimationFrame(() => scrollToMsg(aroundId, true));
     } else {
