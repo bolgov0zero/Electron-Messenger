@@ -65,18 +65,19 @@ router.post('/:chatId/grants/redeem', authMiddleware, requireSecretMember, (req,
     WHERE chat_id = ? AND code_hash = ? AND status = 'open' AND expires_at > unixepoch()`).get(chatId, hashCode(code));
   if (!grant) return res.status(404).json({ error: 'Код не найден или истёк' });
   if (grant.granter_user_id === req.user.id) return res.status(403).json({ error: 'Нельзя ввести собственный код' });
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || null;
   const requestId = db.transaction(() => {
     const r = db.prepare(`INSERT INTO secret_key_requests
-      (chat_id, requester_user_id, requester_device_id, requester_device_label, requester_platform, ephemeral_pubkey, code_hash, expires_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(chatId, req.user.id, device_id, device_label || null,
-      platform === 'electron' ? 'electron' : 'web', ephemeral_pubkey, grant.code_hash, grant.expires_at);
+      (chat_id, requester_user_id, requester_device_id, requester_device_label, requester_platform, ephemeral_pubkey, code_hash, expires_at, requester_ip)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(chatId, req.user.id, device_id, device_label || null,
+      platform === 'electron' ? 'electron' : 'web', ephemeral_pubkey, grant.code_hash, grant.expires_at, ip);
     db.prepare("UPDATE secret_grants SET status = 'redeemed', request_id = ? WHERE id = ?").run(r.lastInsertRowid, grant.id);
     return r.lastInsertRowid;
   })();
   sendTo(grant.granter_user_id, {
     type: 'secret_grant_redeemed', chat_id: chatId, request_id: requestId,
     device_label: device_label || null, platform: platform === 'electron' ? 'electron' : 'web',
-    ephemeral_pubkey,
+    ephemeral_pubkey, ip,
   });
   res.json({ request_id: requestId });
 });

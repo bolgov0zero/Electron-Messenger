@@ -279,49 +279,57 @@ async function scDecryptMobile() {
 function scAfterRender() {
   const chatId = S.activeChatId;
   const locked = S.secretChatIds.has(chatId) && !SC.hasKey(chatId);
-  document.querySelector('#chat-screen .sc-banner')?.remove();
   const cw = document.querySelector('#chat-screen .composer-wrap');
   if (cw) cw.style.display = locked ? 'none' : '';
-  if (locked) {
-    const secure = window.isSecureContext && !!crypto.subtle;
-    document.getElementById('chat-screen').insertAdjacentHTML('beforeend', `<div class="sc-banner">
-      <span>${secure ? 'Секретный чат — на этом устройстве не расшифрован' : 'Секретные чаты работают только по HTTPS'}</span>
-      ${secure ? `<button onclick="scOpenSyncSheet(${chatId})">Расшифровать</button>` : ''}</div>`);
-  }
+  scRenderBannerM();
   scDecryptMobile();
 }
 
-// ── Расшифровка: собеседник вводит код, который показало расшифрованное устройство ──
-function scOpenSyncSheet(chatId) {
-  if (SC.pendingOf(chatId)) { scWaitSheet(chatId); return; }
-  openSheet(`<div class="sheet-title">Расшифровать секретный чат</div>
-    <div class="sc-m-hint">Введите код, который назвал собеседник. Код показывает расшифрованное устройство в меню чата: «Предоставить доступ».</div>
-    <input id="sc-m-code-input" class="sc-m-input" placeholder="Код" autocomplete="off" maxlength="12">
-    <div class="msg-action-row" onclick="scRedeemSheet(${chatId})">Расшифровать</div>
-    <div class="msg-action-row" onclick="closeSheet()">Отмена</div>`);
+// Плашка внизу экрана: закрыта, раскрыта (поле кода) или ожидание ответа собеседника
+function scRenderBannerM() {
+  document.querySelector('#chat-screen .sc-banner')?.remove();
+  const chatId = S.activeChatId;
+  if (!chatId || !S.secretChatIds.has(chatId) || SC.hasKey(chatId)) return;
+  const secure = window.isSecureContext && !!crypto.subtle;
+  const mode = !secure ? 'https' : SC.pendingOf(chatId) ? 'waiting' : (_scBannerOpenM === chatId ? 'open' : 'closed');
+  let inner;
+  if (mode === 'https') {
+    inner = `<div class="sc-b-txt"><div class="sc-b-t">Секретные чаты работают только по HTTPS</div></div>`;
+  } else if (mode === 'closed') {
+    inner = `<div class="sc-b-txt"><div class="sc-b-t">Чат зашифрован</div><div class="sc-b-s">Сообщения видны после расшифровки</div></div>
+      <button class="sc-btn" onclick="scOpenBannerM(${chatId})">Расшифровать</button>`;
+  } else if (mode === 'open') {
+    inner = `<div class="sc-b-txt"><div class="sc-b-t">Введите код</div><div class="sc-b-s">Код назвал собеседник</div></div>
+      <input id="sc-enter-code" class="sc-b-inp" placeholder="КОД" maxlength="12" autocomplete="off" onkeydown="if(event.key==='Enter')scRedeemM(${chatId})">
+      <button class="sc-btn" onclick="scRedeemM(${chatId})">Подтвердить</button>
+      <button class="sc-b-x" aria-label="Свернуть" onclick="scCloseBannerM(${chatId})">×</button>`;
+  } else {
+    inner = `<div class="sc-b-txt"><div class="sc-b-t">Код принят</div><div class="sc-b-s"><span class="sc-dot"></span>Ждём подтверждения собеседника</div></div>
+      <button class="sc-btn ghost" onclick="scCancelSyncM(${chatId})">Отменить</button>`;
+  }
+  document.getElementById('chat-screen').insertAdjacentHTML('beforeend', `<div class="sc-banner"><div class="sc-lock">${_scLockIcoM}</div>${inner}</div>`);
+  if (mode === 'open') setTimeout(() => document.getElementById('sc-enter-code')?.focus(), 30);
 }
+let _scBannerOpenM = null;
+const _scLockIcoM = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+function scOpenBannerM(chatId) { _scBannerOpenM = chatId; scRenderBannerM(); }
+function scCloseBannerM(chatId) { _scBannerOpenM = null; scRenderBannerM(); }
 
-async function scRedeemSheet(chatId) {
-  const code = (document.getElementById('sc-m-code-input')?.value || '').trim();
+async function scRedeemM(chatId) {
+  const code = (document.getElementById('sc-enter-code')?.value || '').trim();
   if (!code) return;
   const r = await SC.redeemCode(chatId, code);
   if (r.error) { toast(r.error); return; }
+  _scBannerOpenM = null;
   SC.pendingOf(chatId).timer = setInterval(() => scTickM(chatId), 4000);
-  scWaitSheet(chatId);
+  scRenderBannerM();
 }
 
-function scWaitSheet(chatId) {
-  openSheet(`<div class="sheet-title">Расшифровка</div>
-    <div class="sc-m-hint">Код принят. Ждём, пока собеседник подтвердит запрос на своём компьютере.</div>
-    <div class="msg-action-row" onclick="scCancelSyncM(${chatId})">Отменить</div>`);
-}
-
-function scCancelSyncM(chatId) { SC.cancelPending(chatId); closeSheet(); }
+function scCancelSyncM(chatId) { SC.cancelPending(chatId); scRenderBannerM(); }
 
 async function scTickM(chatId) {
   if (!SC.pendingOf(chatId)) return;
   if (!(await SC.pollPending(chatId))) return;
-  closeSheet();
   toast('Секретный чат расшифрован на этом устройстве');
   await refreshChats();
   if (S.activeChatId === chatId) { renderChats(); openChat(chatId); }

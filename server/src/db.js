@@ -270,6 +270,7 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_sg_chat ON secret_grants(chat_id, status);
 `);
+tryAlter('ALTER TABLE secret_key_requests ADD COLUMN requester_ip TEXT');
 
 // ── Полнотекстовый поиск (FTS5, external content) ──
 // Целостность обеспечивается JOIN с messages при выборке: осиротевшие FTS-записи

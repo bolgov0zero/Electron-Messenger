@@ -3342,7 +3342,8 @@ function autoResize(el) {
   const atBottom = msgs && msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 30;
   el.style.overflow = 'hidden';
   el.style.height = '20px'; // min = одна строка
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  // У скрытого композера scrollHeight = 0: без минимума поле остаётся нулевой высоты после показа
+  el.style.height = Math.min(Math.max(el.scrollHeight, 20), 120) + 'px';
   if (el.scrollHeight > 120) el.style.overflow = 'auto';
   if (atBottom && msgs) msgs.scrollTop = msgs.scrollHeight;
 }
@@ -5073,23 +5074,48 @@ function scAttachHtml(m, att) {
   </div>`;
 }
 
+const SC_LOCK_ICO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+const SC_DEV_ICO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+const scFmtCode = c => c && c.length > 4 ? c.slice(0, 4) + ' ' + c.slice(4) : (c || '');
+
 function scApplyComposerState(chatId) {
   const pill = document.getElementById('composer-pill');
   const wrap = document.getElementById('input-wrap');
   if (!pill || !wrap) return;
   wrap.querySelector('.sc-locked-banner')?.remove();
   if (!S.secretChatIds.has(chatId)) { pill.style.display = ''; return; }
-  if (!S.scKeys[chatId]) {
-    pill.style.display = 'none';
-    wrap.insertAdjacentHTML('afterbegin', `<div class="sc-locked-banner">
-      <span class="sc-locked-txt">Секретный чат — на этом устройстве не расшифрован</span>
-      <button class="modal-btn-primary" onclick="scOpenSyncModal(${chatId})">Расшифровать</button>
-    </div>`);
-  } else {
-    pill.style.display = '';
-    pill.querySelector('[title="Прикрепить файл"]')?.style.setProperty('display', 'none');
-  }
+  if (!S.scKeys[chatId]) { scRenderBanner(chatId); return; }
+  pill.style.display = '';
+  pill.querySelector('[title="Прикрепить файл"]')?.style.setProperty('display', 'none');
 }
+
+// Плашка вместо композера: закрыта (кнопка), раскрыта (поле кода), ожидание ответа собеседника
+function scRenderBanner(chatId) {
+  const wrap = document.getElementById('input-wrap');
+  const pill = document.getElementById('composer-pill');
+  if (!wrap || !pill) return;
+  wrap.querySelector('.sc-locked-banner')?.remove();
+  if (!S.secretChatIds.has(chatId) || S.scKeys[chatId]) return;
+  pill.style.display = 'none';
+  const mode = S.scPending[chatId] ? 'waiting' : (S.scBannerOpen === chatId ? 'open' : 'closed');
+  let inner;
+  if (mode === 'closed') {
+    inner = `<div class="sc-b-txt"><div class="sc-b-t">Чат зашифрован</div><div class="sc-b-s">Сообщения видны после расшифровки</div></div>
+      <button class="sc-btn" onclick="scOpenBanner(${chatId})">Расшифровать</button>`;
+  } else if (mode === 'open') {
+    inner = `<div class="sc-b-txt"><div class="sc-b-t">Введите код</div><div class="sc-b-s">Код назвал собеседник</div></div>
+      <input id="sc-enter-code" class="sc-b-inp" placeholder="КОД" maxlength="12" autocomplete="off" onkeydown="if(event.key==='Enter')scRedeem(${chatId})">
+      <button class="sc-btn" onclick="scRedeem(${chatId})">Подтвердить</button>
+      <button class="sc-b-x" aria-label="Свернуть" onclick="scCloseBanner(${chatId})">×</button>`;
+  } else {
+    inner = `<div class="sc-b-txt"><div class="sc-b-t">Код принят</div><div class="sc-b-s"><span class="sc-dot"></span>Ждём подтверждения собеседника</div></div>
+      <button class="sc-btn ghost" onclick="scCancelRequest(${chatId})">Отменить</button>`;
+  }
+  wrap.insertAdjacentHTML('afterbegin', `<div class="sc-locked-banner"><div class="sc-lock">${SC_LOCK_ICO}</div>${inner}</div>`);
+  if (mode === 'open') setTimeout(() => document.getElementById('sc-enter-code')?.focus(), 30);
+}
+function scOpenBanner(chatId) { S.scBannerOpen = chatId; scRenderBanner(chatId); }
+function scCloseBanner(chatId) { S.scBannerOpen = null; scRenderBanner(chatId); }
 
 // ── Создание ──
 async function startSecret(userId) {
@@ -5120,44 +5146,27 @@ function scDeviceLabel() {
 }
 
 // ── Запрос доступа (новое или восстановленное устройство) ──
-function scOpenSyncModal(chatId) {
-  S.scSyncChatId = chatId;
-  document.getElementById('sc-sync-title').textContent = 'Расшифровать секретный чат';
-  scRenderSyncModal(S.scPending[chatId] ? 'waiting' : 'enter');
-  openModal('modal-secret-sync');
-}
 
 function scRenderSyncModal(mode, extra = {}) {
   const body = document.getElementById('sc-sync-body');
   if (!body) return;
   const chatId = S.scSyncChatId;
-  if (mode === 'enter') {
-    body.innerHTML = `
-      <p class="sc-sync-hint">Введите код, который назвал собеседник. Код показывает расшифрованное устройство в меню чата: «Предоставить доступ».</p>
-      <input id="sc-enter-code" class="sc-sync-input" placeholder="Код" autocomplete="off" maxlength="12">
-      <div class="sc-sync-foot"><button class="modal-btn-primary" onclick="scRedeem(${chatId})">Расшифровать</button></div>`;
-    setTimeout(() => document.getElementById('sc-enter-code')?.focus(), 50);
-  } else if (mode === 'waiting') {
-    body.innerHTML = `
-      <p class="sc-sync-hint">Код принят. Ждём, пока собеседник подтвердит запрос на своём компьютере.</p>
-      <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCancelRequest(${chatId})">Отменить</button></div>`;
-  } else if (mode === 'grant') {
+  if (mode === 'grant') {
     const g = S.scGrant[chatId];
-    body.innerHTML = `
-      <p class="sc-sync-hint">Продиктуйте собеседнику этот код. Он действует 10 минут.</p>
-      <div class="sc-sync-code">${esc(g.code)}</div>
-      <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCopyCode('${esc(g.code)}')">Копировать код</button></div>
-      <p class="sc-sync-hint">Ждём, пока собеседник введёт код.</p>`;
+    body.innerHTML = `<div class="sc-m">
+      <p class="sc-m-hint">Продиктуйте собеседнику код. Он действует 10 минут.</p>
+      <div class="sc-codebox"><span class="sc-code">${esc(scFmtCode(g.code))}</span><button class="sc-copy" onclick="scCopyCode('${esc(g.code)}')">Копировать</button></div>
+      <div class="sc-wait"><span class="sc-dot"></span>Ждём, пока собеседник введёт код</div></div>`;
   } else if (mode === 'confirm') {
     S.scConfirm = extra;
-    body.innerHTML = `
-      <p class="sc-sync-hint">Собеседник ввёл код и просит открыть чат на устройстве:</p>
-      <div class="sc-sync-device">${esc(extra.label || 'Устройство')} · ${esc(extra.platform || '')}</div>
-      <p class="sc-sync-hint">Подтвердите, только если собеседник ввёл код, который вы ему продиктовали, и вы сейчас в разговоре с ним.</p>
-      <div class="sc-sync-foot">
-        <button class="modal-btn-ghost" onclick="scRenderSyncModal('grant')">Назад</button>
-        <button class="modal-btn-primary" onclick="scApproveRequest(${chatId})">Подтвердить</button>
-      </div>`;
+    const dev = `${extra.label || 'Устройство'}, ${extra.platform === 'electron' ? 'приложение' : 'браузер'}`;
+    body.innerHTML = `<div class="sc-m">
+      <p class="sc-m-hint">Собеседник ввёл код и просит открыть чат:</p>
+      <div class="sc-dev"><div class="sc-dev-ico">${SC_DEV_ICO}</div><div>
+        <div class="sc-dev-n">${esc(dev)}</div>
+        <div class="sc-dev-s">${extra.ip ? 'IP ' + esc(extra.ip) + ' · ' : ''}запрос только что</div></div></div>
+      <p class="sc-meta">Подтверждайте, только если собеседник ввёл продиктованный вами код и сейчас с вами на связи.</p></div>
+      <div class="sc-mfoot"><button class="sc-btn ghost" onclick="scRenderSyncModal('grant')">Назад</button><button class="sc-btn" onclick="scApproveRequest(${chatId})">Подтвердить</button></div>`;
   }
 }
 
@@ -5181,10 +5190,10 @@ function scOnGrantRedeemed(data) {
   const grant = S.scGrant[data.chat_id];
   if (!grant) { showActionToast('Собеседник ввёл код, но он создан в другом сеансе — создайте новый'); return; }
   S.scSyncChatId = data.chat_id;
-  document.getElementById('sc-sync-title').textContent = 'Предоставить доступ';
+  document.getElementById('sc-sync-title').textContent = 'Подтвердить устройство';
   scRenderSyncModal('confirm', {
     requestId: data.request_id, label: data.device_label, platform: data.platform,
-    pubB64: data.ephemeral_pubkey, code: grant.code,
+    pubB64: data.ephemeral_pubkey, code: grant.code, ip: data.ip,
   });
   openModal('modal-secret-sync');
 }
@@ -5205,7 +5214,8 @@ async function scRedeem(chatId) {
     expiresAt: Date.now() + 600 * 1000,
   };
   await scPersistKeys();
-  scRenderSyncModal('waiting');
+  S.scBannerOpen = null;
+  scRenderBanner(chatId);
 }
 
 function scCancelSyncModal() { closeModal('modal-secret-sync'); }
@@ -5228,7 +5238,7 @@ async function scCancelRequest(chatId) {
   if (p) clearInterval(p.timer);
   delete S.scPending[chatId];
   if (S.scPendingSaved[chatId]) { delete S.scPendingSaved[chatId]; await scPersistKeys(); }
-  closeModal('modal-secret-sync');
+  scRenderBanner(chatId);
 }
 
 function ctxChatDevices() {
@@ -5278,8 +5288,8 @@ async function scPollPending(chatId) {
     delete S.scPending[chatId];
     delete S.scPendingSaved[chatId];
     await scPersistKeys();
-    showActionToast('Не удалось расшифровать ключ — запросите доступ заново');
-    closeModal('modal-secret-sync');
+    showActionToast('Не удалось расшифровать ключ — введите код заново');
+    if (S.activeChatId === chatId) scRenderBanner(chatId);
   }
 }
 
