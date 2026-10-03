@@ -26,14 +26,12 @@ router.get('/', authMiddleware, (req, res) => {
   res.json(users);
 });
 
-// Get presence statuses for direct chat peers
+// Статусы всех активных пользователей (контакты показывают точку присутствия у каждого)
 router.get('/presence', authMiddleware, (req, res) => {
   const peers = db.prepare(`
-    SELECT DISTINCT u.id, u.last_seen_at FROM users u
-    JOIN chat_members cm1 ON cm1.user_id = u.id
-    JOIN chat_members cm2 ON cm2.chat_id = cm1.chat_id AND cm2.user_id = ?
-    JOIN chats c ON c.id = cm1.chat_id WHERE u.id != ? AND c.type = 'direct'
-  `).all(req.user.id, req.user.id);
+    SELECT id, last_seen_at FROM users
+    WHERE id != ? AND COALESCE(banned, 0) = 0 AND COALESCE(is_bot, 0) = 0
+  `).all(req.user.id);
   const result = {};
   peers.forEach(({ id, last_seen_at }) => { result[id] = { status: getStatus(id), last_seen: last_seen_at }; });
   res.json(result);

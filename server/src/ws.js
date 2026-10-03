@@ -113,11 +113,9 @@ function broadcastStatus(userId) {
   const status = computeStatus(userId);
   if (userStatus.get(userId) === status) return; // не изменилось — не шумим
   userStatus.set(userId, status);
-  const peers = db.prepare(`
-    SELECT DISTINCT cm2.user_id FROM chat_members cm1
-    JOIN chat_members cm2 ON cm2.chat_id = cm1.chat_id AND cm2.user_id != cm1.user_id
-    JOIN chats c ON c.id = cm1.chat_id WHERE cm1.user_id = ? AND c.type = 'direct'
-  `).all(userId).map(r => r.user_id);
+  // Статус видят все контакты, а не только собеседники из личных чатов — в списке контактов
+  // точка присутствия есть у каждого, поэтому рассылаем всем подключённым
+  const peers = [...clients.keys()].filter(id => id !== userId);
   let last_seen;
   if (status === 'offline') {
     const row = db.prepare('SELECT last_seen_at FROM users WHERE id = ?').get(userId);
