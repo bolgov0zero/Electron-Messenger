@@ -1002,13 +1002,10 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 
 /* Legacy chat-item (kept for JS compat — also matches new rendering) */
 .chat-item {
-  /* высота задана явно: в свёрнутом сайдбаре подписи скрыты, и строка,
-     считающая высоту по содержимому, стала бы ниже — аватарки съехали бы */
-  height: 70px;
-  display: flex; align-items: center; gap: 11px;
-  padding: 0 10px;
-  border-radius: 12px;
-  margin: 0 8px 0 8px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  margin: 0 0 2px;
   cursor: pointer;
   transition: background .12s;
   position: relative;
@@ -1019,9 +1016,10 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 .chat-item.active .ci-name { color: var(--accent); }
 
 .chat-item .info { flex: 1; overflow: hidden; min-width: 0; }
+.chat-item .av-md { width: 36px; height: 36px; font-size: 13px; }
 .chat-item .ci-name {
   color: var(--text);
-  font-size: 1em; font-weight: 700;
+  font-size: 13.5px; font-weight: 500;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .chat-item .ci-preview {
