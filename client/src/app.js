@@ -2210,7 +2210,7 @@ function insertEmoji(em) {
   _emojiInserting = true;
   input.focus();
   _emojiInserting = false;
-  autoResize(input);
+  onMsgInput(input);
 }
 
 // ── RENDER MESSAGES ──
