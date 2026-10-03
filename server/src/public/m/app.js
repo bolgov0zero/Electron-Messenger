@@ -1788,11 +1788,17 @@ function mentionUserInComposer(senderId, senderName) {
   el.focus();
 }
 
+// Текст сообщения для ответа и копирования: в секретном чате — расшифрованный, а не шифротекст
+function scPlainText(m) {
+  if (S.secretChatIds.has(m.chat_id)) return S.scDecrypted.get(m.id) ?? '';
+  return m.text || '';
+}
+
 function setReply(msgId) {
   const m = findMsg(msgId);
   if (!m || m.deleted) return;
   const mine = m.sender_id === S.user.id;
-  const text = m.text || (m.attachment ? '📎 ' + (m.attachment.name || 'Вложение') : '');
+  const text = scPlainText(m) || (m.attachment ? '📎 ' + (m.attachment.name || 'Вложение') : '');
   S.replyTo = { id: msgId, text: text.slice(0, 100), senderName: mine ? S.user.display_name : (m.sender_name || '') };
   showReplyBar();
 }
@@ -2287,9 +2293,10 @@ function openMsgActions(msgId) {
 }
 async function copyMsgText(msgId) {
   const m = findMsg(msgId);
-  if (!m?.text) return;
+  const text = m && scPlainText(m);
+  if (!text) return;
   try {
-    await navigator.clipboard.writeText(m.text.replace(/<[^>]*>/g, ''));
+    await navigator.clipboard.writeText(text.replace(/<[^>]*>/g, ''));
     toast('Скопировано');
   } catch { toast('Не удалось скопировать'); }
 }
