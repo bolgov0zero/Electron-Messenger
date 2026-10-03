@@ -681,8 +681,7 @@ function chatRowHtml(c) {
       </div>
       <div class="row" onclick="rowTapOpen(${c.id}, this, ${c.has_topics ? 1 : 0})">
         <div class="av-wrap">
-          <div class="av${sq} ${chatAvatarColorClass(c)}" data-av-chat="${c.id}">${esc(chatIcon(c))}</div>
-          ${c.is_secret ? '<span class="sc-av-mark"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>' : ''}
+          <div class="av${sq} ${chatAvatarColorClass(c)}${c.is_secret ? ' sc-av-sec' : ''}" data-av-chat="${c.id}">${esc(chatIcon(c))}</div>
           ${dot}
         </div>
         <div class="row-body">
