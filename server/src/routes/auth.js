@@ -1,7 +1,9 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const db = require('../db');
-const { signToken, authMiddleware } = require('../auth');
+const { signToken, authMiddleware, signChallengeToken, verifyChallengeToken } = require('../auth');
+const totp = require('../totp');
+const { logAudit } = require('../audit');
 
 // In-memory rate limiter для /login: ip -> { count, resetAt }
 const loginAttempts = new Map();
@@ -60,6 +62,67 @@ router.post('/login', (req, res) => {
   // а дальше каждый запрос падал с 401 — человек видел сломанное приложение
   if (user.banned) return res.status(403).json({ error: 'Учётная запись заблокирована' });
 
+  // 2FA защищает только вход в админ-панель (req.body.context === 'admin'),
+  // обычный чат-клиент как был на логине/пароле, так и остаётся — см. [[feedback]]
+  // про осознанный выбор защищать именно админ-поверхность, а не аккаунт целиком.
+  if (req.body.context === 'admin' && user.is_admin && user.totp_required) {
+    if (!user.totp_secret) {
+      const challenge_token = signChallengeToken(user.id, 'totp_setup');
+      return res.json({ needs_totp_setup: true, challenge_token });
+    }
+    const challenge_token = signChallengeToken(user.id, 'totp_verify');
+    return res.json({ needs_totp: true, challenge_token });
+  }
+
+  const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin });
+  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password } });
+});
+
+// ── 2FA (только вход в админ-панель) ──
+
+// Шаг 1 настройки: выдаём ещё не подтверждённый секрет (повторный вызов с тем
+// же challenge_token отдаёт тот же секрет, а не новый — иначе открытые
+// одновременно вкладка с QR и форма ввода кода разъехались бы по разным ключам)
+router.post('/totp/setup', (req, res) => {
+  let payload;
+  try { payload = verifyChallengeToken(req.body.challenge_token, 'totp_setup'); }
+  catch { return res.status(401).json({ error: 'Истёк или недействителен, войдите заново' }); }
+  const user = db.prepare('SELECT id, username, totp_pending_secret FROM users WHERE id = ?').get(payload.id);
+  if (!user) return res.status(401).json({ error: 'Пользователь не найден' });
+  let secret = user.totp_pending_secret;
+  if (!secret) {
+    secret = totp.generateSecret();
+    db.prepare('UPDATE users SET totp_pending_secret = ? WHERE id = ?').run(secret, user.id);
+  }
+  res.json({ secret, otpauth_url: totp.otpauthUrl(secret, user.username) });
+});
+
+// Шаг 2 настройки: код подтверждён — секрет становится постоянным, сразу выдаём сессию
+router.post('/totp/confirm', (req, res) => {
+  if (!checkRateLimit(req)) return res.status(429).json({ error: 'Too many attempts, try again later' });
+  let payload;
+  try { payload = verifyChallengeToken(req.body.challenge_token, 'totp_setup'); }
+  catch { return res.status(401).json({ error: 'Истёк или недействителен, войдите заново' }); }
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(payload.id);
+  if (!user || !user.totp_pending_secret) return res.status(400).json({ error: 'Сначала запросите секрет' });
+  if (!totp.verifyTotp(user.totp_pending_secret, req.body.code))
+    return res.status(401).json({ error: 'Неверный код' });
+  db.prepare('UPDATE users SET totp_secret = ?, totp_pending_secret = NULL WHERE id = ?').run(user.totp_pending_secret, user.id);
+  logAudit({ user: { id: user.id }, ip: req.ip }, 'security', 'Настройка 2FA', user.display_name);
+  const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin });
+  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password } });
+});
+
+// Обычный вход при уже настроенной 2FA — просто проверка кода
+router.post('/totp/verify', (req, res) => {
+  if (!checkRateLimit(req)) return res.status(429).json({ error: 'Too many attempts, try again later' });
+  let payload;
+  try { payload = verifyChallengeToken(req.body.challenge_token, 'totp_verify'); }
+  catch { return res.status(401).json({ error: 'Истёк или недействителен, войдите заново' }); }
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(payload.id);
+  if (!user || !user.totp_secret) return res.status(400).json({ error: '2FA не настроена' });
+  if (!totp.verifyTotp(user.totp_secret, req.body.code))
+    return res.status(401).json({ error: 'Неверный код' });
   const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin });
   res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password } });
 });

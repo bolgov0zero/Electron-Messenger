@@ -256,20 +256,25 @@ router.get('/users', (req, res) => {
   const fs = require('fs');
   const path = require('path');
   const avatarDir = path.join(__dirname, '..', '..', '..', 'chat_db', 'avatar');
-  const users = db.prepare('SELECT id, username, display_name, is_admin, tag, banned, created_at, last_seen_at FROM users WHERE is_bot IS NULL OR is_bot = 0 ORDER BY created_at DESC').all();
+  const users = db.prepare('SELECT id, username, display_name, is_admin, tag, banned, created_at, last_seen_at, totp_required, totp_secret FROM users WHERE is_bot IS NULL OR is_bot = 0 ORDER BY created_at DESC').all();
   // Устройства, с которых человек сейчас в сети: в списке это «Electron 2.15.9 · macOS»
   const devices = new Map();
   for (const c of getClients()) {
     if (!devices.has(c.userId)) devices.set(c.userId, []);
     devices.get(c.userId).push({ version: c.clientVersion, platform: c.osPlatform, hostname: c.hostname, scope: c.installScope, since: c.connectedAt });
   }
-  res.json(users.map(u => ({
-    ...u,
-    banned: !!u.banned,
-    connected: isConnected(u.id),
-    clients: devices.get(u.id) || [],
-    has_avatar: fs.existsSync(path.join(avatarDir, `${u.id}.jpg`)),
-  })));
+  res.json(users.map(u => {
+    const { totp_secret, ...rest } = u;
+    return {
+      ...rest,
+      banned: !!u.banned,
+      connected: isConnected(u.id),
+      clients: devices.get(u.id) || [],
+      has_avatar: fs.existsSync(path.join(avatarDir, `${u.id}.jpg`)),
+      totp_required: !!u.totp_required,
+      totp_configured: !!totp_secret, // сам секрет наружу никогда не отдаём
+    };
+  }));
 });
 
 router.get('/chats', (req, res) => {
@@ -460,6 +465,31 @@ router.post('/users/:id/unban', (req, res) => {
   db.prepare('UPDATE users SET banned = 0 WHERE id = ?').run(userId);
   const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
   logAudit(req, 'moderation', 'Разблокировка пользователя', name);
+  res.json({ ok: true });
+});
+
+// Требовать 2FA для входа в админ-панель — имеет смысл только для админов;
+// сама настройка (секрет/QR) происходит у самого пользователя при следующем
+// входе в админку, не здесь.
+router.patch('/users/:id/totp', (req, res) => {
+  const userId = Number(req.params.id);
+  const user = db.prepare('SELECT display_name, is_admin FROM users WHERE id = ?').get(userId);
+  if (!user) return res.status(404).json({ error: 'Not found' });
+  const required = !!req.body.required;
+  db.prepare('UPDATE users SET totp_required = ? WHERE id = ?').run(required ? 1 : 0, userId);
+  logAudit(req, 'security', required ? 'Включено требование 2FA' : 'Отключено требование 2FA', user.display_name);
+  res.json({ ok: true });
+});
+
+// Сброс 2FA — на случай утерянного приложения-аутентификатора. При следующем
+// входе в админку пользователь настраивает её заново (требование остаётся,
+// если было включено).
+router.post('/users/:id/totp/reset', (req, res) => {
+  const userId = Number(req.params.id);
+  const user = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId);
+  if (!user) return res.status(404).json({ error: 'Not found' });
+  db.prepare('UPDATE users SET totp_secret = NULL, totp_pending_secret = NULL WHERE id = ?').run(userId);
+  logAudit(req, 'security', 'Сброс 2FA', user.display_name);
   res.json({ ok: true });
 });
 

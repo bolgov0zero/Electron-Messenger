@@ -1132,6 +1132,26 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
   </div>
 </div>
 
+<!-- ─── 2FA (вход в админ-панель) ─── -->
+<div id="login-totp" style="display:none">
+  <div class="login-logo-text">ELECTRON <span>Dashboard</span></div>
+  <div class="login-card">
+    <div id="totp-setup-block" style="display:none">
+      <p style="font-size:12.5px;color:var(--c-text2);line-height:1.5;margin:0 0 12px">
+        Откройте приложение-аутентификатор (Google Authenticator, Authy и т.п.) и добавьте ключ вручную:
+      </p>
+      <div style="display:flex;gap:6px;margin-bottom:16px">
+        <input id="totp-secret" readonly style="flex:1;font-family:var(--f-mono);font-size:13px;letter-spacing:.5px">
+        <button class="btn btn-ghost" onclick="copyTotpSecret()" id="totp-copy-btn" style="flex-shrink:0">Копировать</button>
+      </div>
+    </div>
+    <div class="fg"><label>Код из приложения</label><input id="totp-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" style="font-family:var(--f-mono);letter-spacing:2px;text-align:center" onkeydown="if(event.key==='Enter')submitTotp()"></div>
+    <button class="btn btn-primary btn-full" onclick="submitTotp()" id="totp-submit-btn">Подтвердить</button>
+    <div class="err" id="totp-err"></div>
+    <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="cancelTotp()">Назад</button>
+  </div>
+</div>
+
 <!-- ─── APP ─── -->
 <div id="app">
   <!-- TOPBAR -->
@@ -1585,20 +1605,79 @@ function startBgDashPolling() {
 
 let _rememberMe = localStorage.getItem('admin_remember') === '1';
 
+function finishLogin(data, username) {
+  if (!data.user.is_admin) { document.getElementById('l-err').textContent = 'Нет прав администратора'; return; }
+  token = data.token; currentUser = data.user;
+  localStorage.setItem('admin_last_user', username);
+  if (_rememberMe) {
+    localStorage.setItem('admin_token', token);
+    localStorage.setItem('admin_user', JSON.stringify(currentUser));
+  }
+  enterApp(currentUser);
+}
+
 async function doLogin() {
   document.getElementById('l-err').textContent = '';
   const username = document.getElementById('l-user').value;
-  const data = await api('POST','/api/auth/login',{ username, password: document.getElementById('l-pass').value });
+  // context:'admin' — только по этому признаку сервер вообще проверяет 2FA;
+  // обычный вход в чат-клиент (без него) её не требует, даже для того же аккаунта
+  const data = await api('POST','/api/auth/login',{ username, password: document.getElementById('l-pass').value, context: 'admin' });
   if (data.token) {
-    if (!data.user.is_admin) { document.getElementById('l-err').textContent='Нет прав администратора'; return; }
-    token=data.token; currentUser=data.user;
-    localStorage.setItem('admin_last_user', username);
-    if (_rememberMe) {
-      localStorage.setItem('admin_token', token);
-      localStorage.setItem('admin_user', JSON.stringify(currentUser));
-    }
-    enterApp(currentUser);
-  } else { document.getElementById('l-err').textContent=data.error||'Ошибка входа'; }
+    finishLogin(data, username);
+  } else if (data.needs_totp_setup || data.needs_totp) {
+    showTotpScreen(data, username);
+  } else {
+    document.getElementById('l-err').textContent = data.error || 'Ошибка входа';
+  }
+}
+
+/* ── 2FA при входе в админ-панель ── */
+let _totpChallenge = null, _totpUsername = null;
+function showTotpScreen(data, username) {
+  _totpChallenge = data.challenge_token;
+  _totpUsername = username;
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('login-totp').style.display = '';
+  document.getElementById('totp-err').textContent = '';
+  document.getElementById('totp-code').value = '';
+  const setupBlock = document.getElementById('totp-setup-block');
+  if (data.needs_totp_setup) {
+    setupBlock.style.display = '';
+    document.getElementById('totp-secret').value = 'Загрузка…';
+    api('POST', '/api/auth/totp/setup', { challenge_token: _totpChallenge }).then(res => {
+      if (res?.secret) document.getElementById('totp-secret').value = res.secret;
+    });
+  } else {
+    setupBlock.style.display = 'none';
+  }
+  setTimeout(() => document.getElementById('totp-code')?.focus(), 100);
+}
+function cancelTotp() {
+  _totpChallenge = null; _totpUsername = null;
+  document.getElementById('login-totp').style.display = 'none';
+  document.getElementById('login').style.display = '';
+  document.getElementById('l-pass').value = '';
+}
+function copyTotpSecret() {
+  const el = document.getElementById('totp-secret');
+  el.select();
+  const btn = document.getElementById('totp-copy-btn');
+  const done = () => { const old = btn.textContent; btn.textContent = 'Скопировано'; setTimeout(() => btn.textContent = old, 1500); };
+  navigator.clipboard?.writeText(el.value).then(done).catch(done);
+}
+async function submitTotp() {
+  const code = document.getElementById('totp-code').value.trim();
+  const errEl = document.getElementById('totp-err');
+  errEl.textContent = '';
+  if (!/^\d{6}$/.test(code)) { errEl.textContent = 'Введите 6-значный код'; return; }
+  const isSetup = document.getElementById('totp-setup-block').style.display !== 'none';
+  const data = await api('POST', isSetup ? '/api/auth/totp/confirm' : '/api/auth/totp/verify', { challenge_token: _totpChallenge, code });
+  if (data?.token) {
+    document.getElementById('login-totp').style.display = 'none';
+    finishLogin(data, _totpUsername);
+  } else {
+    errEl.textContent = data?.error || 'Ошибка проверки';
+  }
 }
 
 /* ── ОБЯЗАТЕЛЬНАЯ СМЕНА ПАРОЛЯ ── */
@@ -3271,6 +3350,7 @@ function uaDelete(id) {
 
 // ── Окно: добавление и изменение ──
 const uaBlank = u => ({ name: u?.display_name || '', login: u?.username || '', tag: u?.tag || '', admin: !!u?.is_admin,
+  totpRequired: !!u?.totp_required,
   password: '', show: false, pwOpen: false, generated: false, closeSessions: true, errors: {}, busy: false });
 const uaAv = (name, size) => `<span class="av" style="width:${size}px;height:${size}px;border-radius:${Math.round(size * .26)}px;font-size:${Math.round(size * .36)}px;background:${avColor(name || '?')}">${esc(initials(name))}</span>`;
 
@@ -3312,17 +3392,45 @@ function uaProfileSection(f) {
       <div><div class="ua-pv-name" id="ua-pv-name">${f.name ? esc(f.name) : '<span class="ph">Имя появится здесь</span>'}${uxTag(f.tag)}</div><div class="ua-pv-bubble">Так человека увидят в чате</div></div></div>
   </div>`;
 }
-function uaAccessSection(f, editing) {
+function uaAccessSection(f, editing, u) {
   return `<div class="ua-sec">
     <div class="ua-sec-title">Доступ</div>
     <div class="ua-roles" role="radiogroup" aria-label="Роль">
       <button type="button" role="radio" class="ua-role-opt" aria-checked="${!f.admin}" onclick="uaSet('admin', false, true)"><b>Пользователь</b><span>Чаты, комнаты и файлы</span></button>
       <button type="button" role="radio" class="ua-role-opt" aria-checked="${f.admin}" onclick="uaSet('admin', true, true)"><b>${UX_I.shield}Администратор</b><span>И управление в этой панели</span></button>
     </div>
+    ${f.admin ? uaTotpSection(f, editing, u) : ''}
     ${editing && !f.pwOpen
       ? `<div class="ua-pw-closed"><div><b>Пароль</b><span>Остаётся прежним</span></div><button type="button" class="btn btn-ghost btn-sm" onclick="uaSet('pwOpen', true, true, 'ua-pass')">${UX_I.key}Сменить пароль</button></div>`
       : uaPasswordField(f, editing)}
   </div>`;
+}
+// 2FA защищает только вход в САМУ админ-панель (не обычный чат-клиент — там
+// как был логин/пароль, так и остаётся). Настраивает её сам администратор при
+// следующем входе — здесь только требование и аварийный сброс.
+function uaTotpSection(f, editing, u) {
+  const configured = !!u?.totp_configured;
+  return `<div class="ua-dz-row" style="margin-top:10px">
+    <div><b>Требовать 2FA</b><span>При входе в админ-панель запросит код из приложения-аутентификатора${configured ? '' : ' (настроит при первом входе)'}</span></div>
+    <label class="toggle-switch" style="gap:0">
+      <input type="checkbox" ${f.totpRequired ? 'checked' : ''} onchange="uaSet('totpRequired', this.checked)">
+      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+    </label>
+  </div>
+  ${editing && configured ? `<div class="ua-dz-row"><div><b>Сбросить 2FA</b><span>Если потерян доступ к приложению-аутентификатору</span></div>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="closeModal('modal-user'); uaResetTotp(${u.id})">${UX_I.key}Сбросить</button></div>` : ''}`;
+}
+function uaResetTotp(id) {
+  const name = uaNames([id])[0] || '';
+  confirm('Сбросить 2FA?',
+    `«${esc(name)}» настроит её заново при следующем входе в админ-панель.`,
+    async () => {
+      const r = await api('POST', `/api/admin/users/${id}/totp/reset`);
+      if (r?.error) { toast(esc(r.error), 'error'); return; }
+      toast('2FA сброшена', 'success');
+      if (currentPage === 'users') renderUsers();
+      uaRerender();
+    });
 }
 function uaPasswordField(f, editing) {
   const s = uaStrength(f.password);
@@ -3371,7 +3479,7 @@ function uaRenderForm(focusId) {
         <div><div class="ua-title">${u ? esc(u.display_name) : 'Новый пользователь'}</div>
           <div class="ua-sub">${u ? `@${esc(u.username)} · создан ${fmtDate(u.created_at)}` : 'Логин и пароль передайте сотруднику'}</div></div>
         <button type="button" class="modal-close" aria-label="Закрыть" onclick="closeModal('modal-user')">✕</button></div>
-      <div class="ua-body">${uaProfileSection(f)}${uaAccessSection(f, !!u)}${u && u.id !== currentUser?.id ? uaDangerZone(u) : ''}</div>
+      <div class="ua-body">${uaProfileSection(f)}${uaAccessSection(f, !!u, u)}${u && u.id !== currentUser?.id ? uaDangerZone(u) : ''}</div>
       <div class="ua-foot">${f.errors.form ? `<span class="ua-err">${esc(f.errors.form)}</span>` : ''}<span class="ux-grow"></span>
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-user')">Отмена</button>
         <button class="btn ux-solid" ${f.busy ? 'disabled' : ''}>${f.busy ? 'Сохраняю…' : u ? 'Сохранить' : 'Создать'}</button></div>`;
@@ -3449,6 +3557,10 @@ async function uaSave() {
     }
   } else {
     r = await api('POST', '/api/users', { ...body, password: f.password });
+  }
+  if ((r?.ok || r?.id) && f.admin) {
+    const userId = u ? u.id : r.id;
+    await api('PATCH', `/api/admin/users/${userId}/totp`, { required: f.totpRequired });
   }
   f.busy = false;
   if (r?.ok || r?.id) {

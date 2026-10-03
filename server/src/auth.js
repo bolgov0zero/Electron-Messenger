@@ -25,6 +25,20 @@ function verifyToken(token) {
   return jwt.verify(token, SECRET);
 }
 
+// Короткоживущий токен для промежуточного шага 2FA при входе в админ-панель
+// (настройка/проверка кода) — НЕ полноценная сессия. purpose обязателен и
+// проверяется в resolveUser(), чтобы этот токен нельзя было подсунуть как
+// обычный Bearer-токен и обойти 2FA.
+function signChallengeToken(userId, purpose) {
+  return jwt.sign({ id: userId, purpose }, SECRET, { expiresIn: '10m' });
+}
+
+function verifyChallengeToken(token, expectedPurpose) {
+  const payload = jwt.verify(token, SECRET);
+  if (payload.purpose !== expectedPurpose) throw new Error('Wrong challenge purpose');
+  return payload;
+}
+
 // Сверяем пользователя с БД на каждый запрос: удалённый пользователь или
 // разжалованный админ теряет доступ сразу, а не когда истечёт 7-дневный токен.
 // Заодно display_name/is_admin всегда актуальны, а не заморожены в токене.
@@ -36,6 +50,9 @@ class AuthError extends Error {
 
 function resolveUser(token) {
   const payload = verifyToken(token);
+  // Токен-вызов 2FA (purpose: totp_setup/totp_verify) — не настоящая сессия,
+  // иначе его можно было бы подсунуть сюда как Bearer-токен и обойти 2FA целиком
+  if (payload.purpose) throw new AuthError('invalid');
   const user = db.prepare('SELECT id, username, display_name, is_admin, banned, must_change_password, sessions_valid_from FROM users WHERE id = ?').get(payload.id);
   if (!user) throw new AuthError('user_not_found');
   if (user.banned) throw new AuthError('banned');
@@ -71,4 +88,4 @@ function wsAuth(token) {
   return user;
 }
 
-module.exports = { signToken, verifyToken, authMiddleware, adminMiddleware, wsAuth, AuthError };
+module.exports = { signToken, verifyToken, signChallengeToken, verifyChallengeToken, authMiddleware, adminMiddleware, wsAuth, AuthError };
