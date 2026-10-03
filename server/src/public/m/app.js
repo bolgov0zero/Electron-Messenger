@@ -656,7 +656,7 @@ function chatRowHtml(c) {
   const mentions = c.unread_mentions || 0;
   const mine = lm && !lm.deleted && lm.sender_id === S.user.id;
   const who = mine ? 'Вы: ' : '';
-  let preview = c.is_secret ? (lm ? 'Сообщение' : 'Нет сообщений') : chatPreview(c);
+  let preview = chatPreview(c);
   if (preview.length > 40) preview = preview.slice(0, 40) + '…';
   const time = lm ? fmtChatListTime(lm.sent_at) : '';
   const sq = (c.type === 'group' || c.type === 'room') ? ' sq' : '';
@@ -681,13 +681,13 @@ function chatRowHtml(c) {
       </div>
       <div class="row" onclick="rowTapOpen(${c.id}, this, ${c.has_topics ? 1 : 0})">
         <div class="av-wrap">
-          <div class="av${sq} ${chatAvatarColorClass(c)}${c.is_secret ? ' sc-av-sec' : ''}" data-av-chat="${c.id}">${esc(chatIcon(c))}</div>
+          <div class="av${sq} ${chatAvatarColorClass(c)}" data-av-chat="${c.id}">${esc(chatIcon(c))}</div>
           ${dot}
         </div>
         <div class="row-body">
           <div class="row-top"><div class="row-name">${esc(chatName(c))}</div><div class="row-top-right">${muteIcon}${myStatus}<div class="row-time${unread ? ' unread' : ''}">${time}</div></div></div>
           <div class="row-bottom">
-            <div class="row-msg">${esc(who)}${esc(preview)}</div>
+            <div class="row-msg">${c.is_secret ? '<span class="sc-tag">Скрытый чат</span>' : esc(who) + esc(preview)}</div>
             ${mentions ? `<div class="badge at">@</div>` : unread ? `<div class="badge">${unread > 99 ? '99+' : unread}</div>` : ''}
             ${c.has_topics ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>` : ''}
           </div>

@@ -3472,7 +3472,5 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 /* Без подписи у пересланного или цитаты место под время и галочки резервирует пустой блок */
 .msg-bubble:not(.bubble-photo):not(:has(.irc-text)) { padding-bottom: 26px; }
 
-/* Секретный чат: пунктирный контур 2px вместо заливки */
-.av.sc-av-sec { position: relative; overflow: visible !important; border: none; color: var(--accent) !important; }
-.av.sc-av-sec:not([style*="background-image"]) { background: transparent !important; }
-.av.sc-av-sec::after { content: ''; position: absolute; inset: -5px; border: 2px dashed var(--accent); border-radius: 50%; pointer-events: none; }
+/* Секретный чат: метка вместо превью в списке чатов */
+.sc-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }

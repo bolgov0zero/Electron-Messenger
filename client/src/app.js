@@ -1575,19 +1575,17 @@ function renderChatRow(c) {
     ? (S.topics[c.id]||[]).reduce((sum,s)=>sum+(S.unreadMentions[s.id]||0),0)
     : S.unreadMentions[c.id]||0;
   const lm = c.last_message;
-  // Секретный чат: превью никогда не показывает содержимое (сервер и не присылает
-  // текст для него) — только нейтральный факт «есть сообщение», даже если это
-  // устройство уже всё расшифровало. Сознательная защита от подглядывания.
-  let preview = c.is_secret
-    ? (lm ? 'Сообщение' : 'Нет сообщений')
-    : (lm ? (lm.deleted ? 'Сообщение удалено' : ((lm.text ? lm.text.replace(/<[^>]*>/g, '') : '') || (lm.forward_data ? 'Пересланное сообщение' : lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений');
+  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : ((lm.text ? lm.text.replace(/<[^>]*>/g, '') : '') || (lm.forward_data ? 'Пересланное сообщение' : lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
   if (preview.length>40) preview = preview.slice(0,40)+'…';
   // Черновик приоритетнее последнего сообщения (как в Telegram)
   const draft = (c.id !== S.activeChatId) ? S.drafts[c.id] : null;
   // Своё последнее сообщение помечаем «Вы:» — у удалённого пометки нет,
   // там и так стоит «Сообщение удалено»
   const minePreview = lm && !lm.deleted && lm.sender_id === S.user?.id;
-  const previewHtml = draft
+  // Секретный чат: превью не показывается вовсе, чтобы не подсматривали
+  const previewHtml = c.is_secret
+    ? '<span class="sc-tag">Скрытый чат</span>'
+    : draft
     ? `<span style="color:var(--danger)">Черновик:</span> ${esc(draft.slice(0,34))}`
     : (minePreview ? `<span style="color:var(--text2)">Вы:</span> ${esc(preview)}` : esc(preview));
   const time = lm ? fmtChatListTime(lm.sent_at) : '';
@@ -1601,7 +1599,7 @@ function renderChatRow(c) {
   const isActive = c.id===S.activeChatId || c.id===S.activeRoomId;
   return `<div class="chat-item${isActive?' active':''}" data-chat-id="${c.id}" onclick="openChat(${c.id})" oncontextmenu="showChatCtx(event,${c.id})">
     <div class="av-wrap">
-      <div class="av av-md ${chatAvatarClass(c)}${c.type==='direct'?' av-round':' av-sq'}${c.is_secret?' sc-av-sec':''}" data-av-chat="${c.id}">${chatIcon(c)}</div>
+      <div class="av av-md ${chatAvatarClass(c)}${c.type==='direct'?' av-round':' av-sq'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
       ${dot}
     </div>
     <div class="info">
