@@ -414,6 +414,15 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .ux-solid:hover{background:var(--c-primary-h);color:#fff}
 .btn svg{flex-shrink:0}
 .ux-empty{padding:40px 16px;text-align:center;color:var(--c-muted);font-size:12px}
+.rel-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:900px){.rel-grid{grid-template-columns:1fr}}
+.rel-list{max-height:72vh;overflow-y:auto;padding:4px 14px 14px}
+.rel-item{padding:10px 0;border-top:1px solid var(--c-border)}
+.rel-item:first-child{border-top:none}
+.rel-item-head{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+.rel-ver{font-size:12px;font-weight:600;color:var(--c-primary)}
+.rel-date{font-size:11px;color:var(--c-muted)}
+.rel-text{font-size:13px;color:var(--c-text2);line-height:1.45}
 .ux-menu{position:fixed;z-index:190;min-width:220px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:11px;box-shadow:var(--shadow-md);padding:4px;animation:toastIn .12s ease}
 .ux-menu button{display:flex;width:100%;align-items:center;gap:9px;padding:7px 9px;border:0;background:none;border-radius:7px;font:500 12px var(--f-ui);color:var(--c-text2);text-align:left;cursor:pointer}
 .ux-menu button svg{width:13px;height:13px}
@@ -1169,6 +1178,10 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           Вебхуки
           <span class="nav-badge" id="nb-webhooks">—</span>
         </div>
+        <div class="nav-item" onclick="nav('releases')" data-page="releases">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg>
+          Релизы
+        </div>
       </nav>
       <div class="sb-bottom">
         <div class="sb-profile">
@@ -1623,8 +1636,8 @@ function logout() {
 })();
 
 /* ── NAV ── */
-const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',files:'Файлы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки',announcements:'Объявления'};
-const pageRenders = {dashboard:renderDashboard,users:renderUsers,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements};
+const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',files:'Файлы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки',announcements:'Объявления',releases:'Релизы'};
+const pageRenders = {dashboard:renderDashboard,users:renderUsers,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements,releases:renderReleases};
 
 function nav(page) {
   currentPage=page;
@@ -4801,6 +4814,29 @@ const flShort = name => name.length > 42 ? name.slice(0, 40) + '…' : name;
 const flName = f => f.name || f.filename;
 const flChatChip = type => type === 'direct' ? '<span class="rm-chip rm-direct">личный</span>'
   : type === 'group' ? '<span class="rm-chip rm-group">группа</span>' : type === 'room' ? '<span class="rm-chip rm-topics">комната</span>' : '';
+
+// ── РЕЛИЗЫ ──
+// История версий из git log (см. /api/admin/release-notes) — отдельно сервер
+// и клиент, новые сверху. Чисто просмотр, без кнопок рассылки уведомлений.
+async function renderReleases() {
+  setTopbarActions('');
+  document.getElementById('page-body').innerHTML = `<div class="ux-page"><div class="ux-empty">Загрузка…</div></div>`;
+  const data = await api('GET', '/api/admin/release-notes');
+  if (currentPage !== 'releases') return;
+  const server = Array.isArray(data?.server) ? data.server : [];
+  const client = Array.isArray(data?.client) ? data.client : [];
+  const relDate = iso => new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+  const relCol = (title, items) => `<section class="ux-panel rel-col">
+    <div class="ux-tb"><h3>${title}<span>${items.length}</span></h3></div>
+    <div class="rel-list">${items.map(r => `<div class="rel-item">
+        <div class="rel-item-head"><span class="rel-ver mono">${esc(r.version)}</span><span class="rel-date">${relDate(r.date)}</span></div>
+        <div class="rel-text">${esc(r.text)}</div>
+      </div>`).join('') || `<div class="ux-empty">Пока пусто</div>`}</div>
+  </section>`;
+  document.getElementById('page-body').innerHTML = `<div class="ux-page">
+    <div class="rel-grid">${relCol('Сервер', server)}${relCol('Клиент', client)}</div>
+  </div>`;
+}
 
 async function renderFiles() {
   setTopbarActions('');

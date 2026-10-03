@@ -541,6 +541,35 @@ router.get('/server/update-status', (req, res) => {
   res.json({ version: getLocalVersion(), running: RUNNING_VERSION, startedAt, steps, result, error });
 });
 
+// История релизов — из коммитов вида «Версия cX.Y.Z/sA.B.C: описание» (формат,
+// которым помечается каждый релиз), отдельно по клиенту и по серверу. git log
+// уже отдаёт новые коммиты первыми, поэтому порядок не пересортировываем.
+router.get('/release-notes', (req, res) => {
+  const { execFileSync } = require('child_process');
+  const repoRoot = path.join(__dirname, '..', '..', '..');
+  let out;
+  try {
+    out = execFileSync('git', ['log', '--format=%aI%x1f%s', '-n', '1000'], { cwd: repoRoot, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+  } catch (e) {
+    return res.status(500).json({ error: 'git log failed: ' + e.message });
+  }
+  const server = [], client = [];
+  for (const line of out.split('\n')) {
+    if (!line) continue;
+    const sep = line.indexOf('\x1f');
+    if (sep < 0) continue;
+    const date = line.slice(0, sep), subject = line.slice(sep + 1);
+    const m = /^Версия\s+([^:]+):\s*(.+)$/.exec(subject);
+    if (!m) continue;
+    const [, verPart, text] = m;
+    const cMatch = /c([\d.]+)/.exec(verPart);
+    const sMatch = /s([\d.]+)/.exec(verPart);
+    if (cMatch) client.push({ version: cMatch[1], date, text });
+    if (sMatch) server.push({ version: sMatch[1], date, text });
+  }
+  res.json({ server, client });
+});
+
 // ── Главная: живые графики и сводка ──
 
 // Точки графиков. Первый запрос — весь последний час, дальше только новые (since)
