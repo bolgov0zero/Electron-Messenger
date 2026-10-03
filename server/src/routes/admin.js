@@ -11,6 +11,7 @@ const monitor = require('../monitor');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
 const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
+const { logAudit } = require('../audit');
 
 function getDirSize(dir) {
   let total = 0;
@@ -167,6 +168,7 @@ router.post('/rooms', (req, res) => {
     const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
     member_ids.forEach(uid => { ins.run(chatId, uid); sendTo(uid, { type: 'reload_chats' }); });
   }
+  logAudit(req, 'rooms', 'Создание комнаты', `«${name.trim()}», участников: ${Array.isArray(member_ids) ? member_ids.length : 0}`);
   res.json({ id: chatId });
 });
 
@@ -195,6 +197,8 @@ router.post('/chats/:id/members', (req, res) => {
   if (chat && chat.type !== 'direct') {
     const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
     announcements.sendSystemMessage(chatId, `${name} добавлен(а) ${memberEventLabel(chat.type, 'add')}`, 'member_add');
+    const chatName = db.prepare('SELECT name FROM chats WHERE id = ?').get(chatId)?.name || `#${chatId}`;
+    logAudit(req, 'rooms', 'Добавление участника', `${name} → «${chatName}»`);
   }
   res.json({ ok: true });
 });
@@ -214,6 +218,8 @@ router.delete('/chats/:id/members/:userId', (req, res) => {
   if (chat && chat.type !== 'direct') {
     const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(kickedId)?.display_name || '—';
     announcements.sendSystemMessage(chatId, `${name} удалён(а) ${memberEventLabel(chat.type, 'remove')}`, 'member_remove');
+    const chatName = db.prepare('SELECT name FROM chats WHERE id = ?').get(chatId)?.name || `#${chatId}`;
+    logAudit(req, 'rooms', 'Удаление участника', `${name} из «${chatName}»`);
   }
   res.json({ ok: true });
 });
@@ -222,9 +228,11 @@ router.delete('/chats/:id/members/:userId', (req, res) => {
 router.patch('/rooms/:id', (req, res) => {
   const { name } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Missing name' });
+  const prevName = db.prepare("SELECT name FROM chats WHERE id = ? AND type = 'room'").get(req.params.id)?.name;
   db.prepare("UPDATE chats SET name = ? WHERE id = ? AND type = 'room'").run(name.trim(), req.params.id);
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(req.params.id);
   members.forEach(({ user_id }) => sendTo(user_id, { type: 'chat_updated', chat_id: Number(req.params.id), name: name.trim() }));
+  logAudit(req, 'rooms', 'Переименование комнаты', `«${prevName || '?'}» → «${name.trim()}»`);
   res.json({ ok: true });
 });
 
@@ -387,6 +395,7 @@ router.put('/settings', (req, res) => {
     }
   }
   _versionCache = { version: null, fetchedAt: 0 }; // сбросить кэш
+  logAudit(req, 'server', 'Изменение настроек', Object.keys(req.body).filter(k => allowed.includes(k)).join(', ') || '—');
   res.json({ ok: true });
 });
 
@@ -416,6 +425,7 @@ router.post('/clients/:connId/force-update', async (req, res) => {
   } catch {}
   initUpdateProgress(connId);
   sendToConn(connId, { type: 'force_update', downloadUrl });
+  logAudit(req, 'server', 'Принудительное обновление клиента', meta?.hostname || `conn #${connId}`);
   res.json({ ok: true, downloadUrl });
 });
 
@@ -427,32 +437,47 @@ router.get('/updates/progress', (req, res) => {
 // Отметка нужна для выключенных клиентов: сообщение по соединению до них
 // не дойдёт, а при следующем запуске старый токен уже не подойдёт.
 router.post('/users/:id/logout', (req, res) => {
-  db.prepare('UPDATE users SET sessions_valid_from = unixepoch() WHERE id = ?').run(Number(req.params.id));
-  sendTo(Number(req.params.id), { type: 'force_logout' });
+  const userId = Number(req.params.id);
+  db.prepare('UPDATE users SET sessions_valid_from = unixepoch() WHERE id = ?').run(userId);
+  sendTo(userId, { type: 'force_logout' });
+  const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
+  logAudit(req, 'security', 'Завершение всех сессий', name);
   res.json({ ok: true });
 });
 
 // Блокировка / разблокировка пользователя
 router.post('/users/:id/ban', (req, res) => {
-  db.prepare('UPDATE users SET banned = 1, sessions_valid_from = unixepoch() WHERE id = ?').run(Number(req.params.id));
-  sendTo(Number(req.params.id), { type: 'force_logout' });
+  const userId = Number(req.params.id);
+  db.prepare('UPDATE users SET banned = 1, sessions_valid_from = unixepoch() WHERE id = ?').run(userId);
+  sendTo(userId, { type: 'force_logout' });
+  const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
+  logAudit(req, 'moderation', 'Блокировка пользователя', name);
   res.json({ ok: true });
 });
 
 router.post('/users/:id/unban', (req, res) => {
-  db.prepare('UPDATE users SET banned = 0 WHERE id = ?').run(Number(req.params.id));
+  const userId = Number(req.params.id);
+  db.prepare('UPDATE users SET banned = 0 WHERE id = ?').run(userId);
+  const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
+  logAudit(req, 'moderation', 'Разблокировка пользователя', name);
   res.json({ ok: true });
 });
 
 // Принудительный выход
 router.post('/clients/:connId/force-logout', (req, res) => {
-  sendToConn(Number(req.params.connId), { type: 'force_logout' });
+  const connId = Number(req.params.connId);
+  const meta = getConnMeta(connId);
+  sendToConn(connId, { type: 'force_logout' });
+  logAudit(req, 'security', 'Принудительный выход клиента', meta?.hostname || `conn #${connId}`);
   res.json({ ok: true });
 });
 
 // Принудительный перезапуск клиента (только Electron: app.relaunch + exit)
 router.post('/clients/:connId/force-restart', (req, res) => {
-  sendToConn(Number(req.params.connId), { type: 'force_restart' });
+  const connId = Number(req.params.connId);
+  const meta = getConnMeta(connId);
+  sendToConn(connId, { type: 'force_restart' });
+  logAudit(req, 'server', 'Принудительный перезапуск клиента', meta?.hostname || `conn #${connId}`);
   res.json({ ok: true });
 });
 
@@ -465,6 +490,7 @@ router.post('/system/restart', (req, res) => {
       return res.status(400).json({ error: 'Служба electron не активна или не найдена. Перезапуск невозможен.' });
     }
     monitor.addEvent('restart');
+    logAudit(req, 'server', 'Перезапуск сервера', null);
     res.json({ ok: true });
     setTimeout(() => exec('systemctl restart electron'), 300);
   });
@@ -509,6 +535,7 @@ router.post('/server/update', (req, res) => {
     const cmd = `systemd-run --unit=electron-update --collect --description="Обновление Electron" --setenv=UPDATE_STATUS_FILE=${JSON.stringify(UPDATE_STATUS_FILE)} /bin/bash ${JSON.stringify(updateSh)}`;
     // Отметка на графиках: всплеск нагрузки и разрыв при перезапуске — это обновление
     monitor.addEvent('update');
+    logAudit(req, 'server', 'Обновление сервера', null);
     res.json({ ok: true });
     setTimeout(() => exec(cmd, (err, stdout, stderr) => {
       if (err) {
@@ -578,6 +605,18 @@ router.get('/release-notes', (req, res) => {
     if (sMatch) server.push({ ...entry, version: sMatch[1] });
   }
   res.json({ server, client });
+});
+
+// Аудит-лог: последние N действий, новые сверху. Фильтрация по категории и
+// поиск — на клиенте, как у страницы «Файлы» (один запрос, дальше всё в JS).
+router.get('/audit-log', (req, res) => {
+  const rows = db.prepare(`
+    SELECT a.id, a.category, a.action, a.target, a.ip, a.created_at,
+      COALESCE(u.display_name, 'Удалённый аккаунт') as actor_name, u.tag as actor_tag, a.actor_id
+    FROM admin_audit_log a LEFT JOIN users u ON u.id = a.actor_id
+    ORDER BY a.id DESC LIMIT 1000
+  `).all();
+  res.json(rows);
 });
 
 // ── Главная: живые графики и сводка ──
@@ -732,6 +771,8 @@ router.post('/topics', (req, res) => {
   const { sendTo } = require('../ws');
   db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(Number(room_id))
     .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
+  const roomName = db.prepare('SELECT name FROM chats WHERE id = ?').get(Number(room_id))?.name || `#${room_id}`;
+  logAudit(req, 'rooms', 'Создание темы', `«${name.trim()}» в «${roomName}»`);
   res.json({ id: Number(result) });
 });
 
@@ -747,12 +788,13 @@ router.patch('/topics/:id', (req, res) => {
 });
 
 router.delete('/topics/:id', (req, res) => {
-  const sub = db.prepare('SELECT id, parent_id FROM chats WHERE id = ? AND parent_id IS NOT NULL').get(Number(req.params.id));
+  const sub = db.prepare('SELECT id, parent_id, name FROM chats WHERE id = ? AND parent_id IS NOT NULL').get(Number(req.params.id));
   if (!sub) return res.status(404).json({ error: 'Not found' });
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(sub.id);
   deleteChatFiles(sub.id);
   db.prepare('DELETE FROM chats WHERE id = ?').run(sub.id);
   members.forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
+  logAudit(req, 'rooms', 'Удаление темы', `«${sub.name}»`);
   res.json({ ok: true });
 });
 

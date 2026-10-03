@@ -6,6 +6,7 @@ const { authMiddleware, adminMiddleware } = require('../auth');
 const { sendTo } = require('../ws');
 const unreadCounts = require('../unread');
 const announcements = require('../announcements');
+const { logAudit } = require('../audit');
 
 function nameOf(userId) {
   return db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
@@ -347,6 +348,7 @@ router.delete('/:id', authMiddleware, (req, res) => {
 // Admin: delete any chat — Fix 3: notify all members
 router.delete('/admin/:id', authMiddleware, adminMiddleware, (req, res) => {
   const id = Number(req.params.id);
+  const chat = db.prepare('SELECT name, type FROM chats WHERE id = ?').get(id);
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(id);
   // Удаляем вебхуки комнаты и её тем (нет ON DELETE CASCADE на webhooks.chat_id)
   const subIds = db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(id).map(r => r.id);
@@ -355,6 +357,8 @@ router.delete('/admin/:id', authMiddleware, adminMiddleware, (req, res) => {
   deleteChatFiles(id);
   db.prepare('DELETE FROM chats WHERE id = ?').run(id);
   members.forEach(({ user_id }) => sendTo(user_id, { type: 'chat_deleted', chat_id: id }));
+  logAudit(req, 'rooms', chat?.type === 'room' ? 'Удаление комнаты' : 'Удаление чата',
+    `«${chat?.name || '?'}»${subIds.length ? `, с ${subIds.length} подкомнатами` : ''}, участников: ${members.length}`);
   res.json({ ok: true });
 });
 

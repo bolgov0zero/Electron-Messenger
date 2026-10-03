@@ -184,6 +184,30 @@ tryAlter('ALTER TABLE users ADD COLUMN sessions_valid_from INTEGER');
 // у них разное оформление в клиенте (см. sendSystemMessage в announcements.js)
 tryAlter('ALTER TABLE messages ADD COLUMN system_kind TEXT');
 
+// 2FA для входа в админ-панель (не влияет на обычный логин в чат-клиентах —
+// там как был, так и остаётся только логин/пароль). totp_secret пустой, пока
+// пользователь не подтвердил код при первой настройке; totp_required включает
+// другой администратор в карточке пользователя.
+tryAlter('ALTER TABLE users ADD COLUMN totp_secret TEXT');
+tryAlter('ALTER TABLE users ADD COLUMN totp_pending_secret TEXT');
+tryAlter('ALTER TABLE users ADD COLUMN totp_required INTEGER DEFAULT 0');
+
+// Аудит действий в админ-панели — кто, когда, что сделал. category — одна из
+// moderation/rooms/server/security (см. вкладку «Аудит-лог»).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS admin_audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor_id INTEGER REFERENCES users(id),
+    category TEXT NOT NULL,
+    action TEXT NOT NULL,
+    target TEXT,
+    ip TEXT,
+    created_at INTEGER DEFAULT (unixepoch())
+  );
+  CREATE INDEX IF NOT EXISTS idx_audit_created ON admin_audit_log(created_at);
+  CREATE INDEX IF NOT EXISTS idx_audit_actor ON admin_audit_log(actor_id);
+`);
+
 // ── Полнотекстовый поиск (FTS5, external content) ──
 // Целостность обеспечивается JOIN с messages при выборке: осиротевшие FTS-записи
 // (например, после каскадного удаления чата) просто не дадут результатов.

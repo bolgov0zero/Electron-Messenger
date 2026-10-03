@@ -426,6 +426,29 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .rel-sec-label:first-of-type{margin-top:0}
 .rel-sec-list{margin:0 0 2px;padding-left:18px}
 .rel-sec-list li{font-size:13px;color:var(--c-text2);line-height:1.5}
+
+.al-chips{display:flex;gap:6px;flex-wrap:wrap}
+.al-chip{display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;border:1px solid var(--c-border);background:var(--c-surface2);color:var(--c-text2);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap}
+.al-chip b{font-family:var(--f-mono);font-weight:600;font-size:11px;opacity:.75}
+.al-chip.active{background:var(--c-primary-dim);color:var(--c-sb-act);border-color:rgba(58,147,140,.3)}
+.al-tbl{width:100%;border-collapse:collapse}
+.al-tbl th{text-align:left;font-size:11px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.04em;padding:8px 14px;border-bottom:1px solid var(--c-border)}
+.al-tbl td{padding:10px 14px;border-bottom:1px solid var(--c-border);font-size:13px;vertical-align:top}
+.al-tbl tr:last-child td{border-bottom:none}
+.al-tbl tr:hover td{background:var(--bg-hover)}
+.al-time{font-family:var(--f-mono);font-size:12px;color:var(--c-muted);white-space:nowrap}
+.al-time small{display:block;color:var(--c-muted);opacity:.7;font-size:10.5px}
+.al-actor{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.al-av{width:22px;height:22px;border-radius:7px;background:var(--c-primary-dim);color:var(--c-sb-act);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.al-tag{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:7px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.al-tag.moderation{background:rgba(217,119,6,.14);color:#d97706}
+.al-tag.rooms{background:rgba(220,38,38,.14);color:#dc2626}
+.al-tag.server{background:rgba(99,102,241,.14);color:#818cf8}
+.al-tag.security{background:rgba(58,147,140,.16);color:var(--c-primary)}
+.al-tag i{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.al-target{color:var(--c-text);font-weight:500}
+.al-detail{color:var(--c-text2);max-width:360px}
+.al-ip{font-family:var(--f-mono);font-size:11.5px;color:var(--c-muted);white-space:nowrap}
 .ux-menu{position:fixed;z-index:190;min-width:220px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:11px;box-shadow:var(--shadow-md);padding:4px;animation:toastIn .12s ease}
 .ux-menu button{display:flex;width:100%;align-items:center;gap:9px;padding:7px 9px;border:0;background:none;border-radius:7px;font:500 12px var(--f-ui);color:var(--c-text2);text-align:left;cursor:pointer}
 .ux-menu button svg{width:13px;height:13px}
@@ -1185,6 +1208,10 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg>
           Релизы
         </div>
+        <div class="nav-item" onclick="nav('audit')" data-page="audit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Аудит-лог
+        </div>
       </nav>
       <div class="sb-bottom">
         <div class="sb-profile">
@@ -1639,8 +1666,8 @@ function logout() {
 })();
 
 /* ── NAV ── */
-const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',files:'Файлы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки',announcements:'Объявления',releases:'Релизы'};
-const pageRenders = {dashboard:renderDashboard,users:renderUsers,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements,releases:renderReleases};
+const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',files:'Файлы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки',announcements:'Объявления',releases:'Релизы',audit:'Аудит-лог'};
+const pageRenders = {dashboard:renderDashboard,users:renderUsers,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements,releases:renderReleases,audit:renderAudit};
 
 function nav(page) {
   currentPage=page;
@@ -4817,6 +4844,57 @@ const flShort = name => name.length > 42 ? name.slice(0, 40) + '…' : name;
 const flName = f => f.name || f.filename;
 const flChatChip = type => type === 'direct' ? '<span class="rm-chip rm-direct">личный</span>'
   : type === 'group' ? '<span class="rm-chip rm-group">группа</span>' : type === 'room' ? '<span class="rm-chip rm-topics">комната</span>' : '';
+
+// ── АУДИТ-ЛОГ ──
+// Один запрос, дальше фильтр по категории и поиск — на клиенте (как у «Файлов»).
+const AL = { all: [], category: 'all', q: '' };
+function alFilter(cat) { AL.category = cat; alRender(); }
+function alSearch(q) { AL.q = q; alRender(); }
+function alTimeLabel(ts) {
+  const d = new Date(ts * 1000), now = new Date();
+  const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(now) - day(d)) / 86400000);
+  const label = diff === 0 ? 'сегодня' : diff === 1 ? 'вчера' : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  return `${time}<small>${label}</small>`;
+}
+async function renderAudit() {
+  setTopbarActions('');
+  document.getElementById('page-body').innerHTML = `<div class="ux-page"><div class="ux-empty">Загрузка…</div></div>`;
+  const data = await api('GET', '/api/admin/audit-log');
+  if (currentPage !== 'audit') return;
+  AL.all = Array.isArray(data) ? data : [];
+  alRender();
+}
+function alRender() {
+  if (currentPage !== 'audit') return;
+  const q = AL.q.trim().toLowerCase();
+  const rows = AL.all
+    .filter(r => AL.category === 'all' || r.category === AL.category)
+    .filter(r => !q || [r.actor_name, r.action, r.target].some(x => (x || '').toLowerCase().includes(q)));
+  const count = cat => AL.all.filter(r => cat === 'all' || r.category === cat).length;
+  const chip = (cat, label) => `<div class="al-chip${AL.category === cat ? ' active' : ''}" onclick="alFilter('${cat}')">${label} <b>${count(cat)}</b></div>`;
+  uxKeepFocus(() => {
+    document.getElementById('page-body').innerHTML = `<div class="ux-page">
+      <section class="ux-panel">
+        <div class="ux-tb">
+          <div class="al-chips">${chip('all', 'Все')}${chip('moderation', 'Модерация')}${chip('rooms', 'Комнаты и чаты')}${chip('server', 'Сервер')}${chip('security', 'Безопасность')}</div>
+          <span class="ux-grow"></span>${uxSearch('al-q', AL.q, 'Кто, что, кого…', 'alSearch')}
+        </div>
+        <div class="ux-tbl"><table class="al-tbl">
+          <thead><tr><th style="width:110px">Когда</th><th style="width:160px">Кто</th><th style="width:190px">Действие</th><th>Над чем</th><th style="width:110px">Откуда</th></tr></thead>
+          <tbody>${rows.map(r => `<tr>
+              <td class="al-time">${alTimeLabel(r.created_at)}</td>
+              <td><div class="al-actor"><div class="al-av">${esc(initials(r.actor_name))}</div>${esc(r.actor_name)}</div></td>
+              <td><span class="al-tag ${r.category || ''}"><i></i>${esc(r.action)}</span></td>
+              <td class="al-detail">${esc(r.target || '—')}</td>
+              <td class="al-ip">${esc(r.ip || '—')}</td>
+            </tr>`).join('') || `<tr><td colspan="5"><div class="ux-empty">${AL.all.length ? 'Ничего не нашли' : 'Пока пусто'}</div></td></tr>`}</tbody>
+        </table></div>
+      </section>
+    </div>`;
+  });
+}
 
 // ── РЕЛИЗЫ ──
 // История версий из RELEASE_HISTORY.md (см. /api/admin/release-notes) — отдельно
