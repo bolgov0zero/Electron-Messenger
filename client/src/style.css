@@ -1148,7 +1148,7 @@ body:has(.cs-pane)::before { opacity: 0; }
 /* ── CHAT HEADER ── */
 .chat-header {
   position: absolute; top: 0; left: 0; right: 0; z-index: 4;
-  background: color-mix(in srgb, var(--card-bg) 72%, transparent);
+  background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 16px;
   margin: 0;
@@ -3097,7 +3097,7 @@ html.dark .announcement-title { color: var(--danger); }
 .composer-field {
   flex: 1; min-width: 0; box-sizing: border-box;
   display: flex; flex-direction: column;
-  background: color-mix(in srgb, var(--composer-bg) 75%, transparent);
+  background: var(--composer-bg);
   border: 1px solid var(--border);
   border-radius: 20px;
   overflow: hidden;
@@ -3386,7 +3386,7 @@ html.dark .announcement-title { color: var(--danger); }
   position: absolute; top: 68px; left: 0; right: 0; z-index: 4;
   display: flex; align-items: center; gap: 9px;
   padding: 7px 10px 7px 14px;
-  background: color-mix(in srgb, var(--card-bg) 72%, transparent);
+  background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 16px;
   margin: 0;
