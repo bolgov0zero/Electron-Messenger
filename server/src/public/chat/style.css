@@ -1996,7 +1996,7 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 }
 html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 .ctx-menu.open { display: block; }
-.ctx-sep { position: relative; z-index: 1; height: 1px; background: var(--border); margin: 4px 0; }
+.ctx-sep { position: relative; z-index: 1; height: 0; border-top: 1px solid var(--border); margin: 4px 0; }
 
 .ctx-menu button {
   display: flex; align-items: center; gap: 10px;
