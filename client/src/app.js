@@ -727,25 +727,12 @@ function toggleTheme() { setTheme(S.settings.theme === 'dark' ? 'light' : 'dark'
 function setFontSize(f) { S.settings.fontSize=f; applySettings(); saveSession(); }
 function setUiScale(v) { S.settings.uiScale=v; applySettings(); saveSession(); }
 let _sidebarPeekTimer = null;
-let _sidebarOverlayTimer = null;
 function toggleSidebar() {
   const hidden = document.body.classList.toggle('sidebar-hidden');
   document.body.classList.remove('sidebar-peeking');
-  // Пока идёт схлопывание, сайдбар остаётся в потоке — иначе соседи прыгнут.
-  // Накладку включаем после перехода, показ — сразу, чтобы колонка вернулась.
-  clearTimeout(_sidebarOverlayTimer);
-  if (hidden) {
-    _sidebarOverlayTimer = setTimeout(() => {
-      // Переход глушим на один кадр: в накладке сайдбар снова полной ширины, и без
-      // этого браузер анимирует его сдвиг к краю — панель на миг вспыхивает поверх
-      // содержимого. Двойной кадр нужен, чтобы стиль успел примениться без перехода.
-      document.body.classList.add('sidebar-notransition', 'sidebar-overlay');
-      requestAnimationFrame(() => requestAnimationFrame(
-        () => document.body.classList.remove('sidebar-notransition')));
-    }, 240);
-  } else {
-    document.body.classList.remove('sidebar-overlay');
-  }
+  // Сайдбар сразу выходит из потока и уезжает сдвигом: он не превращается в плоскую
+  // панель у края. Показ — сразу, чтобы колонка вернулась.
+  document.body.classList.toggle('sidebar-overlay', hidden);
   localStorage.setItem('sidebarHidden', hidden ? '1' : '');
   window.electron?.resizeWindow(hidden ? -280 : 280);
 }

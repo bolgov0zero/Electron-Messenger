@@ -793,7 +793,6 @@ html.no-emoji-font .md-code {
 }
 
 /* Sidebar hidden / peek */
-body.sidebar-notransition .sidebar { transition: none !important; }
 body.sidebar-hidden .app-body { display: flex; }
 /* Скрытие идёт в потоке — схлопываем ширину, соседи (в том числе панель
    тем) плавно занимают место. */
