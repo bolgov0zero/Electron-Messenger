@@ -891,7 +891,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   -webkit-app-region: drag;
 }
 .sidebar-head .btn-new-chat {
-  width: 32px; height: 32px; padding: 0; border-radius: 50%;
+  width: 30px; height: 30px; padding: 0; border-radius: 9px;
   justify-content: center;
 }
 
