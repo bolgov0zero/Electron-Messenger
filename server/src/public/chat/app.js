@@ -3840,9 +3840,9 @@ function syncCtxSeparators(menu) {
   const shown = el => el && !el.classList.contains('ctx-sep') && el.style.display !== 'none';
   kids.forEach((el, i) => {
     if (!el.classList.contains('ctx-sep')) return;
-    const before = kids.slice(0, i).reverse().find(k => !k.classList.contains('ctx-sep'));
-    const after = kids.slice(i + 1).find(k => !k.classList.contains('ctx-sep'));
-    el.style.display = shown(before) && shown(after) ? '' : 'none';
+    const before = kids.slice(0, i).reverse().find(k => shown(k));
+    const after = kids.slice(i + 1).find(k => shown(k));
+    el.style.display = before && after ? '' : 'none';
   });
 }
 function placeCtxMenu(menu, clientX, clientY) {
