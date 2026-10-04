@@ -882,6 +882,18 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 .ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
 
 .sidebar-top { padding: 14px 14px 0; }
+/* Шапка сайдбара: название и кнопки приложения, вместо отдельного топбара */
+.sidebar-head {
+  height: var(--topbar-h); min-height: var(--topbar-h);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+.sidebar-head .btn-new-chat {
+  width: 32px; height: 32px; padding: 0; border-radius: 50%;
+  justify-content: center;
+}
 
 /* Sidebar search */
 /* высота закреплена: содержимое в свёрнутом сайдбаре другое, а блок должен
