@@ -306,15 +306,6 @@ async function restoreFromDisk() {
   } catch {}
 }
 
-// Полоса прокрутки списка и переписки видна только во время прокрутки
-const _scrollHideTimers = new WeakMap();
-document.addEventListener('scroll', e => {
-  const el = e.target;
-  if (!(el instanceof Element) || !el.matches('.messages, .chats-list')) return;
-  el.classList.add('scrolling');
-  clearTimeout(_scrollHideTimers.get(el));
-  _scrollHideTimers.set(el, setTimeout(() => el.classList.remove('scrolling'), 700));
-}, true);
 
 window.addEventListener('DOMContentLoaded', async () => {
   await restoreFromDisk();
