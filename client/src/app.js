@@ -1791,7 +1791,7 @@ function watchTopHeight() {
   if (!main || !header) return;
   const apply = () => {
     const pinH = pin && pin.style.display !== 'none' ? pin.offsetHeight + 8 : 0;
-    main.style.setProperty('--chat-top-h', (header.offsetHeight + pinH) + 'px');
+    main.style.setProperty('--chat-top-h', (16 + header.offsetHeight + pinH) + 'px');
   };
   apply();
   if (_topRO) _topRO.disconnect();

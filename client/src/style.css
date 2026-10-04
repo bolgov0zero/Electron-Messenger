@@ -1103,7 +1103,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   display: flex; flex-direction: column;
   background-color: transparent;
   border-radius: 16px;
-  margin: 16px;
+  margin: 0 16px;
   overflow: hidden;
   position: relative;
   /* Свой контекст наложения: без него слой узора с z-index -1 ушёл бы не под
@@ -1147,7 +1147,7 @@ body:has(.cs-pane)::before { opacity: 0; }
 
 /* ── CHAT HEADER ── */
 .chat-header {
-  position: absolute; top: 0; left: 0; right: 0; z-index: 4;
+  position: absolute; top: 16px; left: 0; right: 0; z-index: 4;
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -1470,7 +1470,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
    полосы (--composer-h, её держит watchComposerHeight), чтобы последнее сообщение
    не пряталось под композером. */
 .chat-input-wrap {
-  padding: 0;
+  padding: 0 0 16px;
   flex-shrink: 0;
   position: absolute; left: 0; right: 0; bottom: 0;
   z-index: 3;
@@ -3383,7 +3383,7 @@ html.dark .announcement-title { color: var(--danger); }
 
 /* ── ЗАКРЕПЛЁННОЕ СООБЩЕНИЕ ── */
 .pin-bar {
-  position: absolute; top: 68px; left: 0; right: 0; z-index: 4;
+  position: absolute; top: 84px; left: 0; right: 0; z-index: 4;
   display: flex; align-items: center; gap: 9px;
   padding: 7px 10px 7px 14px;
   background: var(--card-bg);
@@ -3419,7 +3419,7 @@ html.dark .announcement-title { color: var(--danger); }
    сообщение не пряталось. В конце файла: базовое правило .messages идёт ниже
    объявления полосы и иначе перебивало бы отступ. */
 .chat-main .messages {
-  padding-top: calc(var(--chat-top-h, 68px) + 8px);
+  padding-top: calc(var(--chat-top-h, 84px) + 8px);
   padding-bottom: calc(10px + var(--composer-h, 70px));
 }
 
