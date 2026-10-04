@@ -1088,17 +1088,17 @@ body:has(.cs-pane)::before { opacity: 0; }
   position: absolute; top: 16px; left: 0; right: 0; z-index: 4;
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 26px;
+  border-radius: 20px;
   margin: 0;
-  padding: 0 14px 0 6px;
-  height: 52px;
-  min-height: 52px;
+  padding: 0 12px 0 5px;
+  height: 40px;
+  min-height: 40px;
   display: flex; align-items: center; justify-content: space-between;
   flex-shrink: 0;
   z-index: 10;
 }
 
-.chat-header .av-md { width: 40px; height: 40px; font-size: 15px; }
+.chat-header .av-md { width: 30px; height: 30px; font-size: 12px; }
 
 .chat-header-info { flex: 1; overflow: hidden; margin-left: 12px; }
 .chat-header-info .ch-name {
@@ -2949,7 +2949,7 @@ html.dark .announcement-title { color: var(--danger); }
 
 /* ── ЗАКРЕПЛЁННОЕ СООБЩЕНИЕ ── */
 .pin-bar {
-  position: absolute; top: 76px; left: 0; right: 0; z-index: 4;
+  position: absolute; top: 64px; left: 0; right: 0; z-index: 4;
   display: flex; align-items: center; gap: 9px;
   height: 40px; box-sizing: border-box;
   padding: 0 12px 0 14px;
@@ -2987,7 +2987,7 @@ html.dark .announcement-title { color: var(--danger); }
    сообщение не пряталось. В конце файла: базовое правило .messages идёт ниже
    объявления полосы и иначе перебивало бы отступ. */
 .chat-main .messages {
-  padding-top: calc(var(--chat-top-h, 76px) + 8px);
+  padding-top: calc(var(--chat-top-h, 64px) + 8px);
   padding-bottom: calc(10px + var(--composer-h, 70px));
 }
 
