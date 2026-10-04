@@ -1599,7 +1599,7 @@ function renderChatRow(c) {
   const isActive = c.id===S.activeChatId || c.id===S.activeRoomId;
   return `<div class="chat-item${isActive?' active':''}" data-chat-id="${c.id}" onclick="openChat(${c.id})" oncontextmenu="showChatCtx(event,${c.id})">
     <div class="av-wrap">
-      <div class="av av-md ${chatAvatarClass(c)}${c.type==='room'?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
+      <div class="av av-md ${chatAvatarClass(c)}${c.type==='room' && c.has_topics?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
       ${dot}
     </div>
     <div class="info">
@@ -1869,7 +1869,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   main.innerHTML = `
     <div class="chat-header">
       <div class="av-wrap">
-        <div class="av av-md ${chatAvatarClass(chat)}${chat.type==='room'?' av-sq':' av-round'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
+        <div class="av av-md ${chatAvatarClass(chat)}${chat.type==='room' && chat.has_topics && !S.activeTopicId?' av-sq':' av-round'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
         ${peerDot}
       </div>
       <div class="chat-header-info" ${nameClickable}>
@@ -5616,7 +5616,7 @@ function renderForwardList(q = '') {
   if (chats.length) {
     html += `<div class="chat-list-section-label">Чаты</div>`;
     html += chats.map(c => `<div class="pp-row" onclick="selectForwardChat(${c.id})" style="cursor:pointer">
-      <div class="av av-sm ${chatAvatarClass(c)}${c.type==='room'?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
+      <div class="av av-sm ${chatAvatarClass(c)}${c.type==='room' && c.has_topics?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
       <span>${esc(chatName(c))}</span>
     </div>`).join('');
   }
