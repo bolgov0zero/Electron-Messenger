@@ -1884,6 +1884,11 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
         <div class="ch-name">${esc(name)}</div>
         <div class="ch-sub">${sub}</div>
       </div>
+      <div class="chat-header-actions">
+        ${isRoom ? '' : `<button class="icon-btn" title="Действия с чатом" onclick="showChatCtx(event, ${chatId})">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+        </button>`}
+      </div>
     </div>
     <div id="pin-bar" class="pin-bar" style="display:none"></div>
     <div class="messages-wrap">

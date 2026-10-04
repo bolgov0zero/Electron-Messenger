@@ -1072,6 +1072,7 @@ body:has(.cs-pane)::before { opacity: 0; }
   flex-shrink: 0;
 }
 .chat-header .av-md { width: 30px; height: 30px; font-size: 12px; }
+.chat-header-actions { display: flex; gap: 2px; margin-left: auto; }
 @supports not (backdrop-filter: blur(1px)) {
   .chat-header { background: var(--modal-bg); }
 }
