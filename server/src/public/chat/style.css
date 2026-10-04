@@ -168,13 +168,13 @@
 
 :root {
   /* Surface */
-  --app-bg:      #f0f2f4;
-  --side-bg:     #f0f2f4;
-  --header-bg:   #f0f2f4;
-  --search-bg:   #e8eaed;
+  --app-bg:      #eef1f4;
+  --side-bg:     #ffffff;
+  --header-bg:   #ffffff;
+  --search-bg:   #eef1f4;
   --composer-bg: #ffffff;
   --modal-bg:    #ffffff;
-  --card-bg:     #f8f9fb;
+  --card-bg:     #ffffff;
   --menu-bg:     #ffffff;
 
   /* Rows */
@@ -259,7 +259,7 @@
   --font-size: 14px;
 
   /* Sidebar width */
-  --sidebar-w: 280px;
+  --sidebar-w: 350px;
 
   /* Topbar height */
   --topbar-h: 58px;
@@ -292,13 +292,13 @@
 }
 
 html.dark {
-  --app-bg:      #15181b;
-  --side-bg:     #15181b;
-  --header-bg:   #15181b;
-  --search-bg:   #20252a;
-  --composer-bg: #20252a;
-  --modal-bg:    #181c20;
-  --card-bg:     #1b1f23;
+  --app-bg:      #12171d;
+  --side-bg:     #1e252d;
+  --header-bg:   #1e252d;
+  --search-bg:   #172029;
+  --composer-bg: #192028;
+  --modal-bg:    #1e252d;
+  --card-bg:     #1e252d;
   --menu-bg:     #181c20;
 
   --active-row:        rgba(41,214,184,0.10);
@@ -355,10 +355,10 @@ html.dark {
   --card:       var(--modal-bg);
   --input-bg:   var(--search-bg);
   --chat-bg:    var(--app-bg);
-  --bubble-bg:  var(--card-bg);
+  --bubble-bg:  #1b2733;
   /* В тёмной теме наоборот — переписка светлее сайдбара, пузыри ещё светлее */
-  --chat-split:   #1b1f23;
-  --bubble-split: #262b31;
+  --chat-split:   #12171d;
+  --bubble-split: #1b2733;
   --hover:      var(--hover-row);
   --sidebar-bg:    var(--side-bg);
   --sidebar-hover: var(--hover-row);
@@ -421,7 +421,6 @@ html.no-emoji-font .ra-emoji {
 html.no-emoji-font .md-code {
   font-family: ui-monospace, 'SF Mono', Consolas, monospace;
 }
-
 
 /* ── SCREENS ── */
 .screen { display: none; height: var(--vh100); }
@@ -770,7 +769,6 @@ html.chat-phone #screen-phone-guard { display: flex; }
   min-height: 0;
   overflow: hidden;
 }
-
 /* ══════════════════════════════════════════
    ПАНЕЛЬ ТЕМ
    ══════════════════════════════════════════
@@ -823,11 +821,13 @@ html.chat-phone #screen-phone-guard { display: flex; }
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
   background: var(--side-bg);
-  border-right: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  margin: 16px 0 16px 16px;
   display: flex; flex-direction: column;
   position: sticky;
   top: 0;
-  height: calc(var(--vh100) - var(--topbar-h));
+  align-self: stretch;
   z-index: 2;
   overflow: hidden;
   flex-shrink: 0;
@@ -837,9 +837,10 @@ html.chat-phone #screen-phone-guard { display: flex; }
 body.sidebar-hidden .app-body { display: flex; }
 body.sidebar-hidden .sidebar {
   position: absolute;
-  left: 0; top: 0; bottom: 0;
+  left: 16px; top: 16px; bottom: 16px;
   width: var(--sidebar-w);
-  transform: translateX(calc(-1 * var(--sidebar-w)));
+  margin: 0;
+  transform: translateX(calc(-1 * var(--sidebar-w) - 16px));
   z-index: 20;
   border-right: none;
   transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s;
@@ -849,7 +850,18 @@ body.sidebar-hidden.sidebar-peeking .sidebar {
   box-shadow: 4px 0 24px rgba(0,0,0,.2);
 }
 
-.sidebar-top { padding: 14px 14px 0; }
+/* Шапка сайдбара: название и кнопки приложения, вместо отдельного топбара */
+.sidebar-head {
+  height: var(--topbar-h); min-height: var(--topbar-h);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+.sidebar-head .btn-new-chat {
+  width: 30px; height: 30px; padding: 0; border-radius: 9px;
+  justify-content: center;
+}
 
 /* Sidebar search */
 /* высота закреплена: содержимое в свёрнутом сайдбаре другое, а блок должен
@@ -866,32 +878,21 @@ body.sidebar-hidden.sidebar-peeking .sidebar {
    только цветом самой иконки (акцент), никаких фонов и контуров. */
 .sidebar-tabbar {
   display: flex; align-items: center; justify-content: space-around;
-  padding: 10px 14px;
+  padding: 6px 14px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
 }
 .sb-tab {
-  width: 40px; height: 38px; padding: 0;
+  width: 34px; height: 32px; padding: 0;
   border: none; background: none; cursor: pointer;
   color: var(--muted);
   display: flex; align-items: center; justify-content: center;
   border-radius: 9px;
   transition: color .15s ease;
 }
-.sb-tab svg { width: 25px; height: 25px; }
+.sb-tab svg { width: 19px; height: 19px; }
 .sb-tab:hover:not(.on) { color: var(--text); }
 .sb-tab.on { color: var(--accent); }
-
-/* Section labels */
-.chat-section-label { font-size: 11px; letter-spacing: 1.2px; color: var(--muted); text-transform: uppercase; font-weight: 700; padding: 10px 14px 5px; }
-
-/* Toolbar row (hidden in new layout, kept for compatibility) */
-.sidebar-toolbar {
-  display: none;
-}
-.sidebar-toolbar-left {
-  display: none;
-}
 
 /* Icon buttons */
 .icon-btn {
@@ -971,11 +972,10 @@ body.sidebar-hidden.sidebar-peeking .sidebar {
 .chat-item {
   /* высота задана явно: в свёрнутом сайдбаре подписи скрыты, и строка,
      считающая высоту по содержимому, стала бы ниже — аватарки съехали бы */
-  height: 58px;
   display: flex; align-items: center; gap: 10px;
-  padding: 9px 10px;
+  padding: 7px 12px;
   border-radius: 9px;
-  margin-bottom: 2px;
+  margin: 0 0 2px;
   cursor: pointer;
   transition: background .12s;
   position: relative;
@@ -986,9 +986,10 @@ body.sidebar-hidden.sidebar-peeking .sidebar {
 .chat-item.active .ci-name { color: var(--accent); }
 
 .chat-item .info { flex: 1; overflow: hidden; min-width: 0; }
+.chat-item .av-md { width: 36px; height: 36px; font-size: 13px; }
 .chat-item .ci-name {
   color: var(--text);
-  font-size: 1em; font-weight: 700;
+  font-size: 13.5px; font-weight: 500;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .chat-item .ci-preview {
@@ -1026,7 +1027,7 @@ body.sidebar-hidden.sidebar-peeking .sidebar {
   position: relative;
 }
 .av-sm  { width: 32px; height: 32px; font-size: 13px; }
-.av-md  { width: 40px; height: 40px; font-size: 16px; }
+.av-md  { width: 50px; height: 50px; font-size: 18px; }
 .av-round { border-radius: 50% !important; }
 .av-sq    { border-radius: 9px !important; }
 .av-lg  { width: 44px; height: 44px; font-size: 17px; }
@@ -1043,26 +1044,26 @@ body.sidebar-hidden.sidebar-peeking .sidebar {
 .chat-header .presence-dot { border-color: var(--chat-bg); }
 
 /* Avatar color classes (legacy) */
-.av-blue   { background: #4f46e5; }
-.av-green  { background: #059669; }
-.av-purple { background: #7c3aed; }
-.av-orange { background: #d97706; }
+.av-blue { background-image: linear-gradient(135deg, #4f46e5, color-mix(in srgb, #4f46e5 65%, #000)); }
+.av-green { background-image: linear-gradient(135deg, #059669, color-mix(in srgb, #059669 65%, #000)); }
+.av-purple { background-image: linear-gradient(135deg, #7c3aed, color-mix(in srgb, #7c3aed 65%, #000)); }
+.av-orange { background-image: linear-gradient(135deg, #d97706, color-mix(in srgb, #d97706 65%, #000)); }
 
 /* Аватарка по тегу — тот же цвет, что у плашки и имени */
-.av-tag-1 { background: rgb(var(--tag-1-av)); }
-.av-tag-2 { background: rgb(var(--tag-2-av)); }
-.av-tag-3 { background: rgb(var(--tag-3-av)); }
-.av-tag-4 { background: rgb(var(--tag-4-av)); }
-.av-tag-5 { background: rgb(var(--tag-5-av)); }
-.av-tag-6 { background: rgb(var(--tag-6-av)); }
-.av-tag-7 { background: rgb(var(--tag-7-av)); }
-.av-tag-8 { background: rgb(var(--tag-8-av)); }
-.av-tag-9 { background: rgb(var(--tag-9-av)); }
-.av-tag-10 { background: rgb(var(--tag-10-av)); }
-.av-tag-11 { background: rgb(var(--tag-11-av)); }
-.av-tag-12 { background: rgb(var(--tag-12-av)); }
-.av-tag-13 { background: rgb(var(--tag-13-av)); }
-.av-tag-14 { background: rgb(var(--tag-14-av)); }
+.av-tag-1 { background-image: linear-gradient(135deg, rgb(var(--tag-1-av)), color-mix(in srgb, rgb(var(--tag-1-av)) 65%, #000)); }
+.av-tag-2 { background-image: linear-gradient(135deg, rgb(var(--tag-2-av)), color-mix(in srgb, rgb(var(--tag-2-av)) 65%, #000)); }
+.av-tag-3 { background-image: linear-gradient(135deg, rgb(var(--tag-3-av)), color-mix(in srgb, rgb(var(--tag-3-av)) 65%, #000)); }
+.av-tag-4 { background-image: linear-gradient(135deg, rgb(var(--tag-4-av)), color-mix(in srgb, rgb(var(--tag-4-av)) 65%, #000)); }
+.av-tag-5 { background-image: linear-gradient(135deg, rgb(var(--tag-5-av)), color-mix(in srgb, rgb(var(--tag-5-av)) 65%, #000)); }
+.av-tag-6 { background-image: linear-gradient(135deg, rgb(var(--tag-6-av)), color-mix(in srgb, rgb(var(--tag-6-av)) 65%, #000)); }
+.av-tag-7 { background-image: linear-gradient(135deg, rgb(var(--tag-7-av)), color-mix(in srgb, rgb(var(--tag-7-av)) 65%, #000)); }
+.av-tag-8 { background-image: linear-gradient(135deg, rgb(var(--tag-8-av)), color-mix(in srgb, rgb(var(--tag-8-av)) 65%, #000)); }
+.av-tag-9 { background-image: linear-gradient(135deg, rgb(var(--tag-9-av)), color-mix(in srgb, rgb(var(--tag-9-av)) 65%, #000)); }
+.av-tag-10 { background-image: linear-gradient(135deg, rgb(var(--tag-10-av)), color-mix(in srgb, rgb(var(--tag-10-av)) 65%, #000)); }
+.av-tag-11 { background-image: linear-gradient(135deg, rgb(var(--tag-11-av)), color-mix(in srgb, rgb(var(--tag-11-av)) 65%, #000)); }
+.av-tag-12 { background-image: linear-gradient(135deg, rgb(var(--tag-12-av)), color-mix(in srgb, rgb(var(--tag-12-av)) 65%, #000)); }
+.av-tag-13 { background-image: linear-gradient(135deg, rgb(var(--tag-13-av)), color-mix(in srgb, rgb(var(--tag-13-av)) 65%, #000)); }
+.av-tag-14 { background-image: linear-gradient(135deg, rgb(var(--tag-14-av)), color-mix(in srgb, rgb(var(--tag-14-av)) 65%, #000)); }
 
 /* ══════════════════════════════════════════
    CHAT MAIN AREA
@@ -1124,16 +1125,16 @@ body.sidebar-hidden.sidebar-peeking .sidebar {
 
 /* ── CHAT HEADER ── */
 .chat-header {
-  background: var(--chat-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border);
-  padding: 0 20px;
-  height: 64px;
+  position: absolute; top: 16px; left: 0; right: 0; z-index: 4;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  padding: 0 14px 0 6px;
+  height: 52px;
   display: flex; align-items: center; gap: 12px;
   flex-shrink: 0;
-  z-index: 10;
 }
+.chat-header .av-md { width: 40px; height: 40px; font-size: 15px; }
 @supports not (backdrop-filter: blur(1px)) {
   .chat-header { background: var(--modal-bg); }
 }
@@ -1447,10 +1448,12 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 
 /* ── COMPOSER ── */
 .chat-input-wrap {
-  padding: 14px 20px;
+  padding: 0 0 16px;
   flex-shrink: 0;
+  position: absolute; left: 0; right: 0; bottom: 0;
+  z-index: 3;
 }
-.composer-inner { max-width: 760px; margin: 0 auto; background: var(--chat-bg); border-radius: 12px; position: relative; }
+.composer-inner { max-width: 760px; margin: 0 auto; background: transparent; border-radius: 12px; position: relative; }
 
 /* Reply preview above composer */
 .input-reply-bar {
@@ -1547,7 +1550,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .ep-grid {
   position: absolute;
   bottom: calc(100% + 10px);
-  left: 0; right: auto;
+  left: auto; right: 70px;
   width: 340px;
   background: var(--composer-bg);
   border: 1px solid var(--border);
@@ -2518,10 +2521,10 @@ html.dark .modal.cs-modal { --cs-ok: #3ecf8e; --cs-warn: #e3b35c; }
   position: fixed;
   background: var(--menu-bg);
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 12px;
   box-shadow: 0 30px 60px rgba(0,0,0,.5);
   z-index: 300; overflow: hidden;
-  display: none; width: 250px;
+  display: none; width: 230px;
   padding: 6px;
 }
 html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
@@ -2529,16 +2532,20 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 
 .ctx-menu button {
   display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 8px 10px;
+  width: 100%; padding: 7px 10px;
   background: none; border: none;
-  font-size: 13px; cursor: pointer; color: var(--text);
+  font-size: 13.5px; font-weight: 500; cursor: pointer; color: var(--text);
   font-family: inherit;
   border-radius: 9px;
   transition: background .12s;
 }
+.ctx-menu button { text-align: left; justify-content: flex-start; white-space: nowrap; }
+.ctx-menu button > span { flex: 1; min-width: 0; text-align: left; }
 .ctx-menu button:hover { background: var(--hover-row); }
 .ctx-menu button.ctx-danger { color: var(--danger); }
 .ctx-menu button.ctx-danger:hover { background: var(--danger-bg); }
+.ctx-menu button svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--muted); }
+.ctx-menu button.ctx-danger svg { color: var(--danger); }
 
 /* Reactions row in context menu */
 .ctx-reactions {
@@ -2706,7 +2713,7 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
   contain: layout style;
   transition: background-color 100ms ease;
 }
-.msg-group, .irc-msg {
+.irc-msg {
   contain: layout style;
 }
 
@@ -2723,7 +2730,6 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 .msg-optimistic {
   opacity: 0.6;
 }
-
 
 /* ── Skeleton loader ── */
 @keyframes shimmer {
@@ -3020,12 +3026,35 @@ html.dark .announcement-title { color: var(--danger); }
   align-items: stretch;
   padding: 0;
   gap: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
+/* Строка композера: скрепка, поле ввода с эмодзи и отправка — отдельные элементы */
 .composer-main {
-  /* center, как было у .composer-pill до выноса строки в отдельный блок:
-     при flex-end текст прижимался к низу и не совпадал с центром кнопок */
+  display: flex; align-items: flex-end; gap: 10px;
+  padding: 0;
+}
+.composer-main .composer-attach,
+.composer-main .send-btn {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--composer-bg); border: 1px solid var(--border);
+  box-shadow: none;
+}
+.composer-main .send-btn { background: var(--composer-bg); }
+.composer-main .send-btn svg { position: relative; top: 1px; }
+.composer-field {
+  flex: 1; min-width: 0; box-sizing: border-box;
+  display: flex; flex-direction: column;
+  background: var(--composer-bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+}
+.composer-field-row {
   display: flex; align-items: center; gap: 4px;
-  padding: 8px 8px 8px 14px;
+  min-height: 40px; box-sizing: border-box;
+  padding: 0 6px 0 16px;
 }
 
 /* Выдвижная часть. overflow только здесь, а не на .composer-pill — иначе
@@ -3037,7 +3066,8 @@ html.dark .announcement-title { color: var(--danger); }
   transition: height .26s cubic-bezier(.32,.72,0,1);
 }
 .composer-slot-inner {
-  padding: 9px 10px 8px 12px;
+  padding: 8px 12px 6px 16px;
+  background: transparent;
   border-bottom: 1px solid var(--border);
   transform: translateY(-4px);
   opacity: 0;
@@ -3254,8 +3284,6 @@ html.dark .announcement-title { color: var(--danger); }
 
 @media (prefers-reduced-motion: reduce) { .irc-msg.emoji-msg .msg-bubble { transition: none; } }
 
-
-
 /* ── РЕАКЦИИ ──
    Отдельная строка под .bubble-row (аватар+пузырь), а не внутри .msg-bubble —
    поэтому появление/исчезновение реакций не двигает аватар. Выравнивание по
@@ -3316,6 +3344,7 @@ html.dark .announcement-title { color: var(--danger); }
   padding: 7px 10px 7px 14px;
   background: var(--card-bg);
   border-bottom: 1px solid var(--border);
+  margin: 0;
   flex-shrink: 0;
 }
 /* Риски слева: сколько закреплений и какое сейчас */
@@ -3329,7 +3358,8 @@ html.dark .announcement-title { color: var(--danger); }
 
 .pin-body { flex: 1; min-width: 0; height: 32px; overflow: hidden; position: relative; cursor: pointer; }
 .pin-slide {
-  display: block; position: absolute; inset: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  position: absolute; inset: 0;
   transition: transform .24s cubic-bezier(.32,.72,0,1), opacity .2s ease;
 }
 .pin-slide.out { transform: translateY(-100%); opacity: 0; }
@@ -3350,7 +3380,10 @@ html.dark .announcement-title { color: var(--danger); }
    сообщение не пряталось. В конце файла: базовое правило .messages идёт ниже
    объявления полосы и иначе перебивало бы отступ. */
 @media (min-width: 768px) and (pointer: fine) {
-  .chat-main .messages { padding-bottom: calc(10px + var(--composer-h, 70px)); }
+  .chat-main .messages {
+    padding-top: calc(var(--chat-top-h, 84px) + 8px);
+    padding-bottom: calc(10px + var(--composer-h, 70px));
+  }
 }
 
 /* ── ПЛАВНАЯ СМЕНА ТЕМЫ ──

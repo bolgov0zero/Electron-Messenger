@@ -99,31 +99,28 @@
     <button class="notif-banner-close" onclick="dismissNotifBanner()">✕</button>
   </div>
 
-  <!-- Topbar -->
-  <header class="topbar">
-    <div class="topbar-logo">
-      <div class="topbar-wordmark">
-        <span class="tw-main">ELECTRON</span>
-        <span class="tw-accent">MESSENGER</span>
-      </div>
-    </div>
-    <div class="topbar-actions">
-      <button class="icon-btn" title="Сменить тему" onclick="toggleTheme()">
-        <svg id="sidebar-theme-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-        <svg id="sidebar-theme-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      </button>
-      <button class="btn-new-chat" onclick="openNewChat()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Новый чат
-      </button>
-    </div>
-  </header>
-
   <!-- App body: sidebar + chat -->
   <div class="app-body">
 
     <!-- Sidebar -->
     <aside class="sidebar">
+      <header class="sidebar-head">
+        <div class="topbar-logo">
+          <div class="topbar-wordmark">
+            <span class="tw-main">ELECTRON</span>
+            <span class="tw-accent">MESSENGER</span>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-btn" title="Сменить тему" onclick="toggleTheme()">
+            <svg id="sidebar-theme-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            <svg id="sidebar-theme-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+          <button class="btn-new-chat" title="Новый чат" onclick="openNewChat()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+      </header>
       <div class="sidebar-search" id="sidebar-search">
         <button class="strip-back" onclick="leaveRoom()" title="К списку чатов"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
         <div class="room-title" id="room-title"></div>
@@ -182,11 +179,12 @@
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>
     <span id="ctx-chat-pin-label">Закрепить</span>
   </button>
-  <button id="ctx-chat-mute" onclick="ctxChatMute()">
+  <button onclick="ctxChatMute()">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
     <span id="ctx-chat-mute-label">Выключить уведомления</span>
   </button>
   <button id="ctx-chat-devices" onclick="ctxChatDevices()" style="display:none">Устройства чата</button>
+  <div class="ctx-sep"></div>
   <button id="ctx-chat-delete" onclick="ctxChatDelete()">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
     Удалить чат
@@ -221,7 +219,8 @@
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
     Скопировать
   </button>
-  <button id="ctx-pin-btn" onclick="ctxTogglePin()">
+  <div class="ctx-sep"></div>
+  <button onclick="ctxTogglePin()">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>
     <span id="ctx-pin-label">Закрепить</span>
   </button>
@@ -233,6 +232,7 @@
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     Информация
   </button>
+  <div class="ctx-sep"></div>
   <button id="ctx-delete-btn" class="ctx-danger" onclick="ctxDelete()">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
     Удалить
@@ -255,7 +255,7 @@
 <!-- Confirm modal -->
 <div class="modal-bg" id="modal-confirm" onclick="if(event.target===this)_confirmReject()">
   <div class="modal" style="width:300px">
-    <div class="modal-hdr"><span id="confirm-title">Подтверждение</span></div>
+    <div class="modal-hdr"><span>Подтверждение</span></div>
     <div id="confirm-body" style="padding:12px 18px 4px;font-size:14px;color:var(--text)"></div>
     <div class="modal-footer" style="padding:12px 14px">
       <button class="modal-btn-ghost" onclick="_confirmReject()">Отмена</button>

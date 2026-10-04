@@ -1411,7 +1411,7 @@ function topicRow(s) {
     : '';
   return '<div class="chat-item' + (S.activeTopicId === s.id ? ' active' : '') + '"' +
     ' data-topic-id="' + s.id + '" onclick="openTopic(' + s.id + ')">' +
-    '<div class="av-wrap"><div class="av av-md av-sq ' + avCls + '"' + avStyle + '>' +
+    '<div class="av-wrap"><div class="av av-md av-round ' + avCls + '"' + avStyle + '>' +
       (s.has_avatar ? '' : '#') + '</div></div>' +
     '<div class="info">' +
       '<div class="ci-name" style="display:flex;align-items:center;gap:5px">' +
@@ -1734,7 +1734,7 @@ function renderChatRow(c) {
   const isActive = c.id===S.activeChatId || c.id===S.activeRoomId;
   return `<div class="chat-item${isActive?' active':''}" data-chat-id="${c.id}" onclick="openChat(${c.id})" oncontextmenu="showChatCtx(event,${c.id})">
     <div class="av-wrap">
-      <div class="av av-md ${chatAvatarClass(c)}${c.type==='direct'?' av-round':' av-sq'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
+      <div class="av av-md ${chatAvatarClass(c)}${c.type==='room' && c.has_topics?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
       ${dot}
     </div>
     <div class="info">
@@ -1817,6 +1817,7 @@ function setChatMainContent(html) {
 // Полоса ввода лежит поверх ленты, поэтому её высота нужна ленте как нижний отступ.
 // Высота меняется от ответа, вложения и многострочного текста — следим наблюдателем.
 let _composerRO = null;
+let _topRO = null;
 function watchComposerHeight() {
   const bar = document.getElementById('chat-input-bar') || document.getElementById('input-wrap');
   const main = document.getElementById('chat-main');
@@ -1828,6 +1829,23 @@ function watchComposerHeight() {
     _composerRO = new ResizeObserver(apply);
     _composerRO.observe(bar);
   } catch { _composerRO = null; }
+}
+function watchTopHeight() {
+  const main = document.getElementById('chat-main');
+  const header = main?.querySelector('.chat-header');
+  const pin = document.getElementById('pin-bar');
+  if (!main || !header) return;
+  const apply = () => {
+    const pinH = pin && pin.style.display !== 'none' ? pin.offsetHeight + 8 : 0;
+    main.style.setProperty('--chat-top-h', (16 + header.offsetHeight + pinH) + 'px');
+  };
+  apply();
+  if (_topRO) _topRO.disconnect();
+  try {
+    _topRO = new ResizeObserver(apply);
+    _topRO.observe(header);
+    if (pin) _topRO.observe(pin);
+  } catch { _topRO = null; }
 }
 // ── OPEN CHAT ──
 // forceBottom — открыть заведомо у последнего сообщения, минуя якорь на первом
@@ -1891,7 +1909,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   setChatMainContent(`
     <div class="chat-header">
       <div class="av-wrap">
-        <div class="av av-md ${chatAvatarClass(chat)}${chat.type==='direct'?' av-round':' av-sq'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
+        <div class="av av-md ${chatAvatarClass(chat)}${chat.type==='room' && chat.has_topics && !S.activeTopicId?' av-sq':' av-round'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
         ${peerDot}
       </div>
       <div class="chat-header-info" ${nameClickable}>
@@ -1928,6 +1946,12 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
             <div class="ep-tabs" id="ep-tabs"></div>
             <div class="ep-scroll" id="ep-scroll" onscroll="syncEmojiTabs()"></div>
           </div>
+          <div class="composer-main">
+            <button class="composer-icon-btn composer-attach" title="Прикрепить файл" onclick="pickFile()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
+            <div class="composer-field">
           <div class="composer-slot" id="composer-slot"><div class="composer-slot-inner">
           <div id="image-preview-bar" style="display:none" class="input-reply-bar">
             <div class="attach-thumb" id="attach-thumb-box">
@@ -1969,15 +1993,13 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
             </button>
           </div>
           </div></div>
-          <div class="composer-main">
-            <button class="composer-icon-btn" title="Эмодзи" onclick="toggleEmojiPicker(event)">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 3 4 3 4-3 4-3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
-            </button>
-            <button class="composer-icon-btn" title="Прикрепить файл" onclick="pickFile()">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-            </button>
-            <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
-            <textarea id="msg-input" rows="1" placeholder="Сообщение…" onkeydown="handleKey(event)" oninput="onMsgInput(this)" onfocus="closeEmojiPicker()" onpointerdown="closeEmojiPicker()"></textarea>
+              <div class="composer-field-row">
+              <textarea id="msg-input" rows="1" placeholder="Сообщение…" onkeydown="handleKey(event)" oninput="onMsgInput(this)" onfocus="closeEmojiPicker()" onpointerdown="closeEmojiPicker()"></textarea>
+              <button class="composer-icon-btn" title="Эмодзи" onclick="toggleEmojiPicker(event)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 3 4 3 4-3 4-3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
+              </button>
+              </div>
+            </div>
             <button class="send-btn" id="send-btn" onmousedown="event.preventDefault()" onclick="sendOrEdit()">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>
@@ -1991,7 +2013,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   scApplyComposerState(chatId);
   applyAvatars();
   const sendBtn = document.getElementById('send-btn');
-  if (sendBtn) { sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
+  if (sendBtn) { sendBtn.style.background='var(--composer-bg)'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
   // Отметку о прочтении отправляем после загрузки: иначе сервер успевает снять
   // read_at раньше, чем посчитает первое непрочитанное, и разделитель пропадает
 
@@ -2015,6 +2037,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     // Резерв под полосу ввода выставляем до постановки якоря, иначе он считается
     // по ещё не зарезервированной высоте
     watchComposerHeight();
+    watchTopHeight();
     if (aroundId) {
       requestAnimationFrame(() => scrollToMsg(aroundId, true));
     } else {
@@ -2340,7 +2363,7 @@ function insertEmoji(em) {
   _emojiInserting = true;
   input.focus();
   _emojiInserting = false;
-  autoResize(input);
+  onMsgInput(input);
 }
 
 // ── RENDER MESSAGES ──
@@ -3657,7 +3680,7 @@ function _updateSendBtn(el) {
   const sendBtn = document.getElementById('send-btn');
   if (!sendBtn) return;
   const hasDraft = el.value.trim().length > 0;
-  sendBtn.style.background = hasDraft ? 'var(--accent)' : 'transparent';
+  sendBtn.style.background = hasDraft ? 'var(--accent)' : 'var(--composer-bg)';
   sendBtn.style.color = hasDraft ? '#0c0e10' : 'var(--muted)';
   sendBtn.style.boxShadow = 'none';
 }
@@ -3802,7 +3825,7 @@ async function sendOrEdit() {
   delete S.drafts[S.activeChatId]; saveDrafts(); // черновик отправлен — очищаем
   input.value=''; input.style.height='20px'; input.style.overflow='hidden';
   const sendBtn = document.getElementById('send-btn');
-  if (sendBtn) { sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
+  if (sendBtn) { sendBtn.style.background='var(--composer-bg)'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
 }
 
 function submitEdit() {
@@ -3844,25 +3867,22 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
     const _freq = getFreqEmojis(7);
     ctxReactEl.innerHTML = _freq.map(em=>`<button class="ctx-reaction-btn" onclick="ctxReact('${em}')">${em}</button>`).join('')+`<button class="ctx-reaction-btn ctx-reaction-more" onclick="showReactionPicker(event)">→</button>`;
   }
-  menu.style.top = '-9999px'; menu.style.left = '-9999px';
   menu.classList.add('open');
-  const mw = menu.offsetWidth, mh = menu.offsetHeight;
-  const margin = 8;
-  const _z = (S.settings.uiScale || 100) / 100;
-  const cx = e.clientX / _z, cy = e.clientY / _z;
-  // По центру над точкой тапа
-  let x = cx - mw / 2;
-  let y = cy - mh - margin;
-  // Вьюпорт переводим в те же единицы, что и style.left/top: при масштабе интерфейса
-  // они не совпадают с window.innerWidth, и меню у края экрана уезжало за границу
-  const vw = window.innerWidth / _z, vh = window.innerHeight / _z;
-  if (x + mw + margin > vw) x = vw - mw - margin;
-  if (x < margin) x = margin;
-  // Если над пальцем не влезает — показываем под ним
-  if (y < margin) y = cy + margin;
-  if (y + mh + margin > vh) y = vh - mh - margin;
-  menu.style.left = x + 'px';
-  menu.style.top  = y + 'px';
+  placeCtxMenu(menu, e.clientX, e.clientY);
+}
+
+function placeCtxMenu(menu, clientX, clientY) {
+  menu.style.left = '-9999px'; menu.style.top = '-9999px';
+  const rect = menu.getBoundingClientRect();
+  // zoom интерфейса: координаты clientX/Y — визуальные, style.left/top — в CSS-пикселях
+  const z = menu.offsetWidth ? rect.width / menu.offsetWidth : 1;
+  const margin = 6;
+  let x = clientX, y = clientY;
+  if (x + rect.width + margin > window.innerWidth) x = window.innerWidth - rect.width - margin;
+  if (y + rect.height + margin > window.innerHeight) y = clientY - rect.height;
+  x = Math.max(margin, x); y = Math.max(margin, y);
+  menu.style.left = (x / z) + 'px';
+  menu.style.top = (y / z) + 'px';
 }
 
 function dblReply(msgId) {
@@ -4109,7 +4129,7 @@ function clearImagePreview() {
   if (bar) bar.style.display = 'none';
   const sendBtn = document.getElementById('send-btn');
   if (sendBtn && !document.getElementById('msg-input')?.value.trim()) {
-    sendBtn.style.background='transparent'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none';
+    sendBtn.style.background='var(--composer-bg)'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none';
   }
 }
 
@@ -5043,7 +5063,7 @@ function ncPick(kind) {
   ncHead(group ? 'Новая группа' : 'Личный чат', 'Шаг 2 из 2', true);
   document.getElementById('nc-body').innerHTML = `
     ${group ? `<div class="nc-group-bar">
-      <div class="av av-md av-sq av-green" id="new-group-av" style="cursor:pointer;flex-shrink:0" onclick="triggerGroupAvatarUpload()">Г</div>
+      <div class="av av-md av-round av-green" id="new-group-av" style="cursor:pointer;flex-shrink:0" onclick="triggerGroupAvatarUpload()">Г</div>
       <input id="group-name" class="nc-name-input" placeholder="Название группы" autocomplete="off">
       <input type="file" id="group-avatar-input" accept="image/*" style="display:none" onchange="onGroupAvatarChange(this)">
     </div>` : ''}
@@ -5140,7 +5160,7 @@ async function openGroupInfo(chatId) {
       </div>
       <div class="gi-body">
         <div class="gi-avatar-wrap">
-          <div class="av av-sq ${avatarColor(chatId)}" id="gi-av" style="width:80px;height:80px;font-size:24px;font-weight:700;${canEdit?'cursor:pointer':''}" ${canEdit?'onclick="triggerGiAvatarUpload()"':''}>${initials(chat?.name||'G')}</div>
+          <div class="av av-round ${avatarColor(chatId)}" id="gi-av" style="width:80px;height:80px;font-size:24px;font-weight:700;${canEdit?'cursor:pointer':''}" ${canEdit?'onclick="triggerGiAvatarUpload()"':''}>${initials(chat?.name||'G')}</div>
           ${canEdit?`<div class="gi-avatar-badge" onclick="triggerGiAvatarUpload()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>`:''}
         </div>
         <input type="file" id="gi-avatar-input" accept="image/*" style="display:none" onchange="onGiAvatarChange(this)">
@@ -5304,21 +5324,8 @@ function showChatCtx(e, chatId) {
   if (devicesBtn) devicesBtn.style.display = chat?.is_secret ? '' : 'none';
   const muteLabel = document.getElementById('ctx-chat-mute-label');
   if (muteLabel) muteLabel.textContent = S.mutedChats.has(chatId) ? 'Включить уведомления' : 'Выключить уведомления';
-  menu.style.top = '-9999px'; menu.style.left = '-9999px';
   menu.style.display = 'block';
-  const mw = menu.offsetWidth, mh = menu.offsetHeight;
-  const margin = 6;
-  const _z = (S.settings.uiScale || 100) / 100;
-  // Вьюпорт переводим в те же единицы, что и style.left/top: при масштабе интерфейса
-  // они не совпадают с window.innerWidth, и меню у края экрана уезжало за границу
-  const vw = window.innerWidth / _z, vh = window.innerHeight / _z;
-  let x = e.clientX / _z, y = e.clientY / _z;
-  if (x + mw + margin > vw) x = vw - mw - margin;
-  if (y + mh + margin > vh) y = e.clientY / _z - mh;
-  if (y < margin) y = margin;
-  if (x < margin) x = margin;
-  menu.style.left = x + 'px';
-  menu.style.top = y + 'px';
+  placeCtxMenu(menu, e.clientX, e.clientY);
 }
 
 async function ctxChatLeave() {
@@ -5395,7 +5402,7 @@ function renderForwardList(q = '') {
   if (chats.length) {
     html += `<div class="chat-list-section-label">Чаты</div>`;
     html += chats.map(c => `<div class="pp-row" onclick="selectForwardChat(${c.id})" style="cursor:pointer">
-      <div class="av av-sm ${chatAvatarClass(c)}${c.type==='direct'?' av-round':' av-sq'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
+      <div class="av av-sm ${chatAvatarClass(c)}${c.type==='room' && c.has_topics?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
       <span>${esc(chatName(c))}</span>
     </div>`).join('');
   }
