@@ -897,13 +897,8 @@ async function openSettings(section = 'profile') {
     window.electron?.getVersion?.().then(v => { CS.version = v || null; csRefresh(); });
   }
 }
-// Прежнее имя: раздел открывали по вкладке
-function showSettingsTab(tab) { csGo(tab); }
+
 function closeSettings() { if (_sidebarTab === 'settings') setSidebarTab('chats'); }
-function toggleSidebarPref(checked) {
-  const isHidden = document.body.classList.contains('sidebar-hidden');
-  if (checked !== isHidden) toggleSidebar();
-}
 
 function csSections() {
   const s = S.settings;
@@ -1172,49 +1167,11 @@ function csGo(k) {
   const b = document.getElementById('cs-body');
   if (b) b.scrollTop = 0;
 }
-function openNameEdit() {
-  const input = document.getElementById('settings-display-name');
-  const btn = document.getElementById('settings-edit-btn');
-  if (!input) return;
-  if (input.readOnly) {
-    input.readOnly = false;
-    input.classList.add('editing');
-    input.focus();
-    input.select();
-    if (btn) btn.textContent = 'Сохранить';
-  } else {
-    saveDisplayName();
-  }
-}
-async function saveDisplayName() {
-  const input = document.getElementById('settings-display-name');
-  const btn = document.getElementById('settings-edit-btn');
-  const name = input?.value?.trim();
-  if (name) {
-    const res = await api('PATCH', '/users/me', { display_name: name });
-    if (res?.ok) {
-      S.user.display_name = name;
-      saveSession();
-    }
-  }
-  if (input) { input.readOnly = true; input.classList.remove('editing'); }
-  if (btn) btn.textContent = 'Изменить';
-}
+
+
 async function setAutostart(enabled) { await window.electron?.setAutostart(enabled); }
 
 
-async function saveProfile() {
-  const name = document.getElementById('profile-name-input').value.trim();
-  if (!name) return;
-  const res = await api('PATCH', '/users/me', { display_name: name });
-  if (res?.ok) {
-    S.user.display_name = name;
-    const dn = document.getElementById('settings-display-name');
-    if (dn) dn.textContent = name;
-    saveSession();
-    document.getElementById('profile-name-input').value = name;
-  }
-}
 
 function triggerAvatarUpload() {
   document.getElementById('avatar-file-input').click();
@@ -2082,9 +2039,6 @@ function emojiSectionHtml(g, kind) {
     '</div>';
 }
 
-function emojiPickerHtml(sections, kind) {
-  return sections.map(g => emojiSectionHtml(g, kind)).join('');
-}
 
 // Готовая разметка панели: постоянная часть из кэша, «часто используемые» заново
 function emojiPickerCached(kind) {
@@ -3595,20 +3549,11 @@ async function loadUploadSettings() {
   } catch {}
 }
 
-function pickImage() {
-  document.getElementById('img-file-input')?.click();
-}
 
 function pickFile() {
   document.getElementById('file-input')?.click();
 }
 
-async function onImagePicked(input) {
-  const file = input.files?.[0];
-  if (!file) return;
-  input.value = '';
-  await uploadFile(file);
-}
 
 async function onFilePicked(input) {
   const file = input.files?.[0];
@@ -3686,7 +3631,6 @@ async function uploadFile(file) {
   xhr.send(formData);
 }
 
-function uploadImageFile(file) { return uploadFile(file); }
 
 function attachBarEls() {
   return {
@@ -3745,7 +3689,6 @@ function showAttachmentPreviewBar() {
   _stickyBottom();
 }
 
-function showImagePreviewBar() { showAttachmentPreviewBar(); }
 
 function clearImagePreview() {
   _uploadToken++;

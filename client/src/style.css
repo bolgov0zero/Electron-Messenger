@@ -529,8 +529,6 @@ html.no-emoji-font .md-code {
 #login-version { font-weight: 600; margin-left: 5px; color: var(--accent); opacity: .8; }
 .login-copy span { margin-left: 6px; }
 
-/* Вкладка «Внешний вид»: секции с подписями и карточки выбора фона переписки */
-
 /* Выбор узора: образцом служит сам узор */
 .pat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
 .pat-card {
@@ -693,8 +691,6 @@ html.no-emoji-font .md-code {
   position: relative;
   overflow: hidden;
 }
-
-/* Topbar */
 
 .topbar-logo { display: flex; align-items: center; gap: 10px; -webkit-app-region: no-drag; }
 
@@ -889,10 +885,6 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 .sb-tab:hover:not(.on) { color: var(--text); }
 .sb-tab.on { color: var(--accent); }
 
-/* Section labels */
-
-/* Toolbar row (hidden in new layout, kept for compatibility) */
-
 /* Icon buttons */
 .icon-btn {
   width: 30px; height: 30px; padding: 0;
@@ -949,8 +941,6 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   text-transform: uppercase; letter-spacing: 1.2px;
   padding: 10px 14px 5px;
 }
-
-/* New chat-row style */
 
 /* Legacy chat-item (kept for JS compat — also matches new rendering) */
 .chat-item {
@@ -1120,8 +1110,6 @@ body:has(.cs-pane)::before { opacity: 0; }
 .chat-header-info .ch-sub { font-size: 11px; color: var(--muted); }
 .chat-header-actions { display: flex; gap: 2px; }
 
-/* BOT badge */
-
 /* Разрешить выделение только там где нужно */
 .irc-text,
 .reply-quote-text,
@@ -1175,8 +1163,6 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 }
 .messages::-webkit-scrollbar { width: 4px; }
 .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9px; }
-
-/* Messages inner centering (not used in JS, but kept for future) */
 
 /* Каждый день сообщений оборачивается в .day-group — это создаёт отдельный
    containing block для sticky-разделителя, чтобы бейджи разных дней не
@@ -1243,10 +1229,6 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .dt-check { stroke-dasharray:24; stroke-dashoffset:24; }
 #download-toast.dt-show .dt-check { animation: dtDraw .35s ease .1s forwards; }
 
-/* Лайтбокс теперь отдельное окно (см. lightbox.html) — здесь его стилей больше нет */
-
-/* Legacy msg-meta hidden (kept for appendMsg compat) */
-
 /* ── STATUS CHECKMARKS ── */
 .msg-status {
   display: inline-flex; align-items: center;
@@ -1272,8 +1254,6 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   position: relative;
 }
 .irc-msg:hover { background: var(--hover-row); }
-
-/* IRC hover action panel */
 
 .irc-av {
   width: 32px; height: 32px;
@@ -1361,8 +1341,6 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 }
 .composer-inner { max-width: 760px; margin: 0 auto; background: transparent; border-radius: 12px; position: relative; }
 
-/* New composer style */
-
 /* Reply preview above composer */
 .input-reply-bar {
 
@@ -1429,8 +1407,6 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   font-size: 12px; color: var(--accent);
   display: flex; align-items: center; justify-content: space-between;
 }
-
-/* Composer row (legacy) */
 
 /* Pill */
 .composer-pill {
@@ -1547,8 +1523,6 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   background: transparent; color: var(--muted); box-shadow: none;
 }
 
-/* Emoji + attach buttons (legacy) */
-
 /* Send button (global, used outside pill) */
 .send-btn {
   width: 38px; height: 38px; border: none; border-radius: 50%;
@@ -1599,14 +1573,6 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .msg-link { color: var(--accent); text-decoration: underline; cursor: pointer; word-break: break-all; }
 .msg-link:hover { opacity: .8; }
 
-/* ══════════════════════════════════════════
-   SETTINGS DRAWER
-   ══════════════════════════════════════════ */
-
-/* Profile card */
-
-/* Settings groups */
-
 /* Toggle */
 .toggle { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
 .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
@@ -1625,10 +1591,6 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 }
 .seg button.active { background: var(--accent); color: #fff; }
 
-/* Logout button */
-
-/* Profile edit */
-
 .profile-name-input {
   padding: 7px 10px;
   border: 1px solid var(--border); border-radius: 9px;
@@ -1639,10 +1601,6 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   flex: 1;
 }
 .profile-name-input:focus { border-color: var(--accent); }
-
-/* Settings inline name edit input */
-
-/* Update badge on settings icon */
 
 .update-badge {
   position: absolute; bottom: 1px; right: 1px;
@@ -1700,10 +1658,6 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 }
 .modal-hdr .icon-btn { background: var(--search-bg); color: var(--text); }
 .modal-hdr .icon-btn:hover { background: var(--hover-row); }
-
-/* ── SETTINGS MODAL ── */
-/* Окно настроек: разделы слева с главным значением, строки настроек группами справа.
-   Префикс cs-, чтобы не задеть общие .seg/.toggle и старые классы. */
 
 .cs-nav { border-right: 1px solid var(--border); padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; min-height: 0; overflow-y: auto; background: var(--card-bg); flex: 1; min-width: 0; }
 /* Настройки в сайдбаре: cs-nav занимает то же место, что обычно чаты — с этой
@@ -1828,8 +1782,6 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 .cs-notes b { color: var(--text); }
 .cs-copy { text-align: center; font-size: 11px; color: var(--muted); margin-top: auto; padding-top: 6px; }
 
-/* Телефон: разделы списком, раздел — отдельным экраном с «Назад» */
-
 .cs-chev { display: grid; color: var(--muted); flex-shrink: 0; }
 .cs-chev svg { width: 16px; height: 16px; }
 
@@ -1837,8 +1789,6 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 
 }
 @media (prefers-reduced-motion: reduce) { .cs-tg, .cs-tg::after { transition: none; } }
-
-/* Tabs */
 
 .tab {
   flex: 1; padding: 7px;
@@ -1848,8 +1798,6 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
   transition: all .15s;
 }
 .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-
-/* Modal search */
 
 /* User list */
 .users-list {
@@ -1881,8 +1829,6 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 .pp-row.on .pp-check { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 .pp-empty { padding: 16px; text-align: center; color: var(--muted); font-size: 13px; }
-
-/* Buttons */
 
 .modal-footer {
   padding: 10px 12px; border-top: 1px solid var(--border);
@@ -1923,8 +1869,6 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
   border-radius: 9px;
 }
 .rm-btn:hover { background: var(--danger-bg); }
-
-/* ── NEW CHAT MODAL ── */
 
 .nc-name-input {
   flex: 1; padding: 8px 12px;
@@ -2646,8 +2590,6 @@ select:focus-visible, .user-row:focus-visible, .chat-item:focus-visible {
 .gi-footer .modal-btn-ghost, .gi-footer .modal-btn-primary { flex: 1; text-align: center; }
 
 .gi-add-list { display: flex; flex-direction: column; gap: 4px; }
-
-/* ── NEW CHAT PANEL ── */
 
 /* Тултип реакции: кто поставил. Появляется по наведению с задержкой 1 сек */
 .reaction-tip {
