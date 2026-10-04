@@ -815,7 +815,7 @@ html.no-emoji-font .md-code {
   min-width: var(--sidebar-w);
   background: var(--side-bg);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 20px;
   margin: 16px 0 16px 16px;
   display: flex; flex-direction: column;
   position: relative; z-index: 2;
@@ -947,7 +947,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   flex: 1; min-width: 0;
   background: var(--search-bg);
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 20px;
   padding: 9px 12px;
   display: flex; align-items: center; gap: 8px;
 }
@@ -1150,7 +1150,7 @@ body:has(.cs-pane)::before { opacity: 0; }
   position: absolute; top: 16px; left: 0; right: 0; z-index: 4;
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 20px;
   margin: 0;
   padding: 0 14px;
   height: 60px;
@@ -3388,7 +3388,7 @@ html.dark .announcement-title { color: var(--danger); }
   padding: 7px 10px 7px 14px;
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 20px;
   margin: 0;
   flex-shrink: 0;
 }
