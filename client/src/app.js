@@ -1599,7 +1599,7 @@ function renderChatRow(c) {
   const isActive = c.id===S.activeChatId || c.id===S.activeRoomId;
   return `<div class="chat-item${isActive?' active':''}" data-chat-id="${c.id}" onclick="openChat(${c.id})" oncontextmenu="showChatCtx(event,${c.id})">
     <div class="av-wrap">
-      <div class="av av-md ${chatAvatarClass(c)}${c.type==='direct'?' av-round':' av-sq'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
+      <div class="av av-md ${chatAvatarClass(c)}${c.type==='room'?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
       ${dot}
     </div>
     <div class="info">
@@ -1869,7 +1869,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   main.innerHTML = `
     <div class="chat-header">
       <div class="av-wrap">
-        <div class="av av-md ${chatAvatarClass(chat)}${chat.type==='direct'?' av-round':' av-sq'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
+        <div class="av av-md ${chatAvatarClass(chat)}${chat.type==='room'?' av-sq':' av-round'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
         ${peerDot}
       </div>
       <div class="chat-header-info" ${nameClickable}>
@@ -4781,7 +4781,7 @@ function ncPick(kind) {
   ncHead(group ? 'Новая группа' : kind === 'secret' ? 'Секретный чат' : 'Личный чат', 'Шаг 2 из 2', true);
   document.getElementById('nc-body').innerHTML = `
     ${group ? `<div class="nc-group-bar">
-      <div class="av av-md av-sq av-green" id="new-group-av" style="cursor:pointer;flex-shrink:0" onclick="triggerGroupAvatarUpload()">Г</div>
+      <div class="av av-md av-round av-green" id="new-group-av" style="cursor:pointer;flex-shrink:0" onclick="triggerGroupAvatarUpload()">Г</div>
       <input id="group-name" class="nc-name-input" placeholder="Название группы" autocomplete="off">
       <input type="file" id="group-avatar-input" accept="image/*" style="display:none" onchange="onGroupAvatarChange(this)">
     </div>` : ''}
@@ -5383,7 +5383,7 @@ async function openGroupInfo(chatId) {
       </div>
       <div class="gi-body">
         <div class="gi-avatar-wrap">
-          <div class="av av-sq ${avatarColor(chatId)}" id="gi-av" style="width:80px;height:80px;font-size:24px;font-weight:700;${canEdit?'cursor:pointer':''}" ${canEdit?'onclick="triggerGiAvatarUpload()"':''}>${initials(chat?.name||'G')}</div>
+          <div class="av av-round ${avatarColor(chatId)}" id="gi-av" style="width:80px;height:80px;font-size:24px;font-weight:700;${canEdit?'cursor:pointer':''}" ${canEdit?'onclick="triggerGiAvatarUpload()"':''}>${initials(chat?.name||'G')}</div>
           ${canEdit?`<div class="gi-avatar-badge" onclick="triggerGiAvatarUpload()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>`:''}
         </div>
         <input type="file" id="gi-avatar-input" accept="image/*" style="display:none" onchange="onGiAvatarChange(this)">
@@ -5616,7 +5616,7 @@ function renderForwardList(q = '') {
   if (chats.length) {
     html += `<div class="chat-list-section-label">Чаты</div>`;
     html += chats.map(c => `<div class="pp-row" onclick="selectForwardChat(${c.id})" style="cursor:pointer">
-      <div class="av av-sm ${chatAvatarClass(c)}${c.type==='direct'?' av-round':' av-sq'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
+      <div class="av av-sm ${chatAvatarClass(c)}${c.type==='room'?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
       <span>${esc(chatName(c))}</span>
     </div>`).join('');
   }
