@@ -939,11 +939,11 @@ function openSettingsInline(section) {
 // (или к пустому состоянию, если чат не был открыт)
 function restoreChatMainArea() {
   if (S.activeChatId) { openChat(S.activeChatId, null, true); return; }
-  document.getElementById('chat-main').innerHTML = `<div class="empty-state">
+  setChatMainContent(`<div class="empty-state">
     <div class="empty-icon">💬</div>
     <div class="empty-title">Electron</div>
     <div class="empty-sub">Выберите чат или создайте новый</div>
-  </div>`;
+  </div>`);
 }
 
 // ── КОНТАКТЫ ──
@@ -1201,10 +1201,10 @@ function csRenderInline(focusId) {
   const s = secs.find(x => x.k === CS.sec);
   nav.className = 'cs-nav';
   nav.innerHTML = `<div class="cs-nav-list">${csNavHtml()}</div>`;
-  main.innerHTML = `<section class="cs-pane">
+  setChatMainContent(`<section class="cs-pane">
       <header class="cs-head"><div><h3>${s.label}</h3><p>${s.desc}</p></div></header>
       <div class="cs-body" id="cs-body">${CS_PANES[s.k]()}</div>
-    </section>`;
+    </section>`);
   if (CS.avatar === undefined) { CS.avatar = null; updateSettingsAvatar(); }
   csPaintAvatars();
   if (document.getElementById('pattern-cards')) paintPatternSwatches();
