@@ -1715,7 +1715,7 @@ function topicRow(s) {
     : '';
   return '<div class="chat-item' + (S.activeTopicId === s.id ? ' active' : '') + '"' +
     ' data-topic-id="' + s.id + '" onclick="openTopic(' + s.id + ')">' +
-    '<div class="av-wrap"><div class="av av-md av-sq ' + avCls + '"' + avStyle + '>' +
+    '<div class="av-wrap"><div class="av av-md av-round ' + avCls + '"' + avStyle + '>' +
       (s.has_avatar ? '' : '#') + '</div></div>' +
     '<div class="info">' +
       '<div class="ci-name" style="display:flex;align-items:center;gap:5px">' +
