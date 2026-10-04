@@ -2662,6 +2662,7 @@ html.dark .announcement-title { color: var(--danger); }
   box-shadow: none;
 }
 .composer-main .send-btn { background: var(--composer-bg); }
+.composer-main .send-btn svg { position: relative; top: 1px; }
 .composer-field {
   flex: 1; min-width: 0; box-sizing: border-box;
   display: flex; flex-direction: column;
