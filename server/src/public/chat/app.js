@@ -885,8 +885,7 @@ async function openSettings(section = 'profile') {
     window.electron?.getVersion?.().then(v => { CS.version = v || null; csRefresh(); });
   }
 }
-// Прежнее имя: раздел открывали по вкладке
-function showSettingsTab(tab) { csGo(tab); }
+
 function closeSettings() { if (_sidebarTab === 'settings') setSidebarTab('chats'); }
 
 // ── ВКЛАДКИ САЙДБАРА (Чаты / Контакты / Настройки) ──
@@ -969,10 +968,6 @@ function filterContacts(q) { renderContactsList(q); }
 async function openContactChat(userId) {
   await startDirect(userId);
   setSidebarTab('chats');
-}
-function toggleSidebarPref(checked) {
-  const isHidden = document.body.classList.contains('sidebar-hidden');
-  if (checked !== isHidden) toggleSidebar();
 }
 
 function csSections() {
@@ -1226,34 +1221,6 @@ function csGo(k) {
   csRenderInline();
   const b = document.getElementById('cs-body');
   if (b) b.scrollTop = 0;
-}
-function openNameEdit() {
-  const input = document.getElementById('settings-display-name');
-  const btn = document.getElementById('settings-edit-btn');
-  if (!input) return;
-  if (input.readOnly) {
-    input.readOnly = false;
-    input.classList.add('editing');
-    input.focus();
-    input.select();
-    if (btn) btn.textContent = 'Сохранить';
-  } else {
-    saveDisplayName();
-  }
-}
-async function saveDisplayName() {
-  const input = document.getElementById('settings-display-name');
-  const btn = document.getElementById('settings-edit-btn');
-  const name = input?.value?.trim();
-  if (name) {
-    const res = await api('PATCH', '/users/me', { display_name: name });
-    if (res?.ok) {
-      S.user.display_name = name;
-      saveSession();
-    }
-  }
-  if (input) { input.readOnly = true; input.classList.remove('editing'); }
-  if (btn) btn.textContent = 'Изменить';
 }
 
 
@@ -2216,9 +2183,6 @@ function emojiSectionHtml(g, kind) {
     '</div>';
 }
 
-function emojiPickerHtml(sections, kind) {
-  return sections.map(g => emojiSectionHtml(g, kind)).join('');
-}
 
 // Готовая разметка панели: постоянная часть из кэша, «часто используемые» заново
 function emojiPickerCached(kind) {
@@ -2936,8 +2900,7 @@ async function scBoot() {
   for (const id of SC.pendingIds()) if (!SC.pendingOf(id).timer) SC.pendingOf(id).timer = setInterval(() => scTick(id), 4000);
 }
 
-const scEncryptText = (k, p) => SC.encryptText(k, p);
-const scDecryptText = (k, c, i) => SC.decryptText(k, c, i);
+
 const scEncryptFileForUpload = (f, k) => SC.encryptFile(f, k);
 
 // Секретное сообщение, пока его не расшифровали, показываем пикселями; смотрим за
@@ -3971,20 +3934,11 @@ async function loadUploadSettings() {
   } catch {}
 }
 
-function pickImage() {
-  document.getElementById('img-file-input')?.click();
-}
 
 function pickFile() {
   document.getElementById('file-input')?.click();
 }
 
-async function onImagePicked(input) {
-  const file = input.files?.[0];
-  if (!file) return;
-  input.value = '';
-  await uploadFile(file);
-}
 
 async function onFilePicked(input) {
   const file = input.files?.[0];
@@ -4056,8 +4010,6 @@ async function uploadFile(file) {
   xhr.send(formData);
 }
 
-// Keep alias for backward-compat callers (drag-drop, paste)
-function uploadImageFile(file) { return uploadFile(file); }
 
 function attachBarEls() {
   return {
@@ -4114,7 +4066,6 @@ function showAttachmentPreviewBar() {
   el.bar.style.display = '';
 }
 
-function showImagePreviewBar() { showAttachmentPreviewBar(); }
 
 function clearImagePreview() {
   _uploadToken++;
