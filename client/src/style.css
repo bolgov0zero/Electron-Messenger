@@ -838,7 +838,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 }
 #sidebar-peek-zone:hover::after { opacity: 1; }
 #sidebar-menu.open { transform-origin: top right; }
-.ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+.ctx-sep { position: relative; z-index: 1; height: 1px; background: var(--border); margin: 4px 0; }
 
 /* Шапка сайдбара: название и кнопки приложения, вместо отдельного топбара */
 .sidebar-head {
