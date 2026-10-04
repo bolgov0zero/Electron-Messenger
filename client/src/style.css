@@ -931,7 +931,8 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
    ══════════════════════════════════════════ */
 .chats-list { flex: 1; overflow-y: auto; padding: 0 8px 12px; }
 .chats-list::-webkit-scrollbar { width: 4px; }
-.chats-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9px; }
+.chats-list::-webkit-scrollbar-thumb { background: transparent; border-radius: 9px; }
+.chats-list.scrolling::-webkit-scrollbar-thumb { background: var(--border); }
 
 /* Legacy label class */
 .chat-list-section-label {
@@ -1161,7 +1162,8 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   color: var(--accent);
 }
 .messages::-webkit-scrollbar { width: 4px; }
-.messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9px; }
+.messages::-webkit-scrollbar-thumb { background: transparent; border-radius: 9px; }
+.messages.scrolling::-webkit-scrollbar-thumb { background: var(--border); }
 
 /* Каждый день сообщений оборачивается в .day-group — это создаёт отдельный
    containing block для sticky-разделителя, чтобы бейджи разных дней не
