@@ -264,7 +264,9 @@ html.m-desktop .screen { display: none !important; }
 .settings-ico { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; }
 .settings-ico svg { width: 18px; height: 18px; }
 .settings-label { font-size: 15.5px; font-weight: 500; flex: 1; }
-.settings-name { font-size: 16px; font-weight: 700; }
+.settings-name { font-size: 15.5px; font-weight: 500; }
+/* Аватар профиля — того же размера, что иконки пунктов настроек, и текст в том же стиле */
+.settings-btn > .av { width: 34px; height: 34px; font-size: 13px; }
 .settings-sub { font-size: 13px; color: var(--muted); margin-top: 1px; }
 .settings-chev { width: 18px; height: 18px; color: var(--muted); flex-shrink: 0; }
 
