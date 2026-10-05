@@ -161,27 +161,25 @@ window.APP_VERSION = '?v=1';
   <div class="tabpage" id="tab-settings" hidden>
     <div class="top-hdr"><div class="top-title">Настройки</div></div>
     <div class="list" style="padding-top:4px;padding-left:18px;padding-right:18px">
-      <div class="settings-row" onclick="openProfileSheet()" style="cursor:pointer">
+      <button class="settings-btn" type="button" onclick="openProfileSheet()">
         <div class="av" id="me-av"></div>
         <div style="flex:1;min-width:0">
           <div class="settings-name" id="me-name"></div>
           <div class="settings-sub" id="me-username"></div>
         </div>
-        <svg class="settings-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-      <div class="settings-row" onclick="openAppearanceSheet()" style="cursor:pointer">
+      </button>
+      <button class="settings-btn" type="button" onclick="openAppearanceSheet()">
         <div class="settings-ico" style="background:#8e44ad">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1.1-.2-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-4.9-4.5-9-10-9z"/></svg>
         </div>
         <div class="settings-label">Внешний вид</div>
-        <svg class="settings-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-      <div class="settings-row" onclick="logout()" style="cursor:pointer">
+      </button>
+      <button class="settings-btn" type="button" onclick="logout()">
         <div class="settings-ico" style="background:#c0392b">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </div>
         <div class="settings-label" style="color:var(--danger)">Выйти</div>
-      </div>
+      </button>
     </div>
   </div>
 

@@ -204,6 +204,8 @@ html.m-desktop .screen { display: none !important; }
 .chat-hdr .status-dot { width: 10px; height: 10px; border-color: var(--modal-bg); }
 .row-body { flex: 1; min-width: 0; border-bottom: 1px solid var(--border); padding-bottom: 9px; }
 .row:last-child .row-body { border-bottom: none; }
+/* В списке контактов разделителей между строками нет */
+#contact-list .row-body { border-bottom: none; }
 .row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 /* Мьют и статус своего сообщения — вплотную к времени (не растянуты
    justify-content:space-between между именем и временем, как было бы с
@@ -249,9 +251,16 @@ html.m-desktop .screen { display: none !important; }
 .tab.on { color: var(--accent); }
 
 /* ── Настройки ── */
-.settings-row { display: flex; align-items: center; gap: 12px; padding: 13px 2px; }
-.settings-row + .settings-row { border-top: 1px solid var(--border); }
-.settings-row.tight { padding: 7px 2px; }
+/* Пункты настроек — кнопки на всю ширину, с отступами и скруглением, как карточки */
+.settings-btn {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; margin-bottom: 10px; padding: 12px 14px;
+  background: var(--modal-bg); border: 1px solid var(--border); border-radius: 14px;
+  color: var(--text); font: inherit; text-align: left; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s, transform .12s;
+}
+.settings-btn:active { transform: scale(.985); background: var(--card-bg); }
 .settings-ico { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; }
 .settings-ico svg { width: 18px; height: 18px; }
 .settings-label { font-size: 15.5px; font-weight: 500; flex: 1; }
