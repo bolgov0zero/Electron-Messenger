@@ -31,8 +31,7 @@ function sanitizeHtml(input) {
   const kept = [];
   let openLinks = 0;
   // \x00 — служебный маркер, во входных данных его быть не должно
-  // Пробельные символы схлопываются, как в HTML: переносы строк задаются только <br>
-  const marked = String(input || '').slice(0, 4096).replace(/\x00/g, '').replace(/[ \t\r\n\f]+/g, ' ')
+  const marked = String(input || '').slice(0, 4096).replace(/\x00/g, '')
     .replace(/<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>/g, (_, slash, tag, attrs) => {
       const t = tag.toLowerCase();
       if (t === 'a') {
@@ -61,7 +60,10 @@ function sanitizeHtml(input) {
     .replace(/>/g, '&gt;')
     .replace(/\x00(\d+)\x00/g, (_, i) => kept[Number(i)] ?? '')
     // Пробелы у переноса и блочных тегов не выводятся, как в HTML
-    .replace(/ ?(<br>|<\/?blockquote>) ?/g, '$1')
+    .replace(/ ?(<br>) ?/g, '$1')
+    // Одна перенос строки у границы цитаты уходит в блочную границу, как в Telegram
+    .replace(/\n(<blockquote>)/g, '$1')
+    .replace(/(<\/blockquote>)\n/g, '$1')
     .trim();
   // Незакрытая ссылка не должна растягиваться на весь остаток сообщения
   return out + '</a>'.repeat(openLinks);
