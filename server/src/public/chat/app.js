@@ -1827,6 +1827,8 @@ function watchTopHeight() {
 async function openChat(chatId, aroundId = null, forceBottom = false) {
   // Уходим из пустого личного чата — он больше не нужен ни здесь, ни на сервере
   if (S.activeChatId && S.activeChatId !== chatId) dropEmptyDirect(S.activeChatId);
+  // Поиск относится к одному чату: в другом он не открывается
+  if (S.chatSearch && S.chatSearch.chatId !== chatId) S.chatSearch = null;
   S.msgData.clear();
   let chat = S.chats.find(c=>c.id===chatId);
   if (!chat) {
@@ -1882,21 +1884,27 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   const main = document.getElementById('chat-main');
   setChatMainContent(`
     <div class="chat-header">
-      <div class="av-wrap">
-        <div class="av av-md ${chatAvatarClass(chat)}${chat.type==='room' && chat.has_topics && !S.activeTopicId?' av-sq':' av-round'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
-        ${peerDot}
-      </div>
-      <div class="chat-header-info" ${nameClickable}>
-        <div class="ch-name">${esc(name)}</div>
-        <div class="ch-sub">${sub}</div>
+      <div class="chat-header-main">
+        <div class="av-wrap">
+          <div class="av av-md ${chatAvatarClass(chat)}${chat.type==='room' && chat.has_topics && !S.activeTopicId?' av-sq':' av-round'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
+          ${peerDot}
+        </div>
+        <div class="chat-header-info" ${nameClickable}>
+          <div class="ch-name">${esc(name)}</div>
+          <div class="ch-sub">${sub}</div>
+        </div>
       </div>
       <div class="chat-header-actions">
+        ${chat.is_secret ? '' : `<button class="icon-btn${S.chatSearch?.open ? ' active' : ''}" title="Поиск в чате" onclick="toggleChatSearch()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>`}
         ${isRoom ? '' : `<button class="icon-btn" title="Действия с чатом" onclick="showChatCtx(event, ${chatId})">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
         </button>`}
       </div>
     </div>
     <div id="pin-bar" class="pin-bar" style="display:none"></div>
+    ${chatSearchBarHtml(chatId, chat.is_secret)}
     <div class="messages-wrap">
       <div class="messages" id="messages"></div>
       <button id="scroll-bottom-btn" class="scroll-bottom-btn" onclick="scrollMessagesToBottom()" aria-label="К последним сообщениям">
@@ -2721,6 +2729,190 @@ function pinPreviewText(p) {
   const t = p.text ? p.text.replace(/<[^>]*>/g, '')
     : (p.attachment ? (p.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : p.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (p.attachment.name || 'Файл')) : '');
   return t.length > 120 ? t.slice(0, 120) + '…' : t;
+}
+
+// ── ПОИСК В ЧАТЕ ──
+// Строка под закреплённым (поверх него). Совпадения — с сервера по всей истории чата
+// (FTS); переход к найденному — через scrollToMsg, который подгружает окно вокруг
+// сообщения. Подсветка — в DOM: наблюдатель на #chat-main переставляет её после
+// каждой перерисовки ленты (openChat, новые сообщения, подгрузка истории).
+const CHAT_SEARCH_DELAY = 250;
+let _csTimer = null, _hlObs = null, _hlRaf = 0;
+const HL_OBS_OPTS = { childList: true, subtree: true, characterData: true };
+
+function chatSearchBarHtml(chatId, isSecret) {
+  // В секретных чатах поиска на сервере нет: текст там не индексируется
+  if (isSecret) return '';
+  const st = S.chatSearch;
+  const open = !!(st && st.open && st.chatId === chatId);
+  return `<div id="chat-search" class="chat-search${open ? ' open' : ''}">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="cs-input" type="text" placeholder="Поиск в чате" autocomplete="off" value="${esc(open ? st.q : '')}" oninput="onChatSearchInput(this.value)" onkeydown="onChatSearchKey(event)">
+    <span class="cs-count" id="cs-count">${open ? csCountText() : ''}</span>
+    <button class="icon-btn" id="cs-up" title="Предыдущее" onclick="chatSearchStep(-1)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+    </button>
+    <button class="icon-btn" id="cs-down" title="Следующее" onclick="chatSearchStep(1)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <button class="icon-btn" title="Закрыть поиск" onclick="closeChatSearch()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>`;
+}
+
+function csCountText() {
+  const st = S.chatSearch;
+  if (!st || st.q.trim().length < 2) return '';
+  if (st.loading) return '…';
+  if (!st.ids.length) return 'Нет совпадений';
+  return `${st.idx + 1} из ${st.ids.length}`;
+}
+
+// Счётчик и доступность стрелок; вызывается после каждого изменения состояния
+function csRefresh() {
+  const st = S.chatSearch;
+  const count = document.getElementById('cs-count');
+  if (count) count.textContent = st ? csCountText() : '';
+  const up = document.getElementById('cs-up');
+  const down = document.getElementById('cs-down');
+  // «Вверх» — к более старому совпадению, «вниз» — к более новому
+  if (up) up.disabled = !st || st.idx <= 0;
+  if (down) down.disabled = !st || st.idx >= st.ids.length - 1;
+}
+
+function toggleChatSearch() {
+  if (S.chatSearch?.open) closeChatSearch(); else openChatSearch();
+}
+
+function openChatSearch() {
+  const bar = document.getElementById('chat-search');
+  if (!S.activeChatId || !bar) return;
+  S.chatSearch = { open: true, chatId: S.activeChatId, q: '', ids: [], idx: -1, loading: false };
+  bar.classList.add('open');
+  const input = bar.querySelector('input');
+  input.value = '';
+  // Фокус сразу, без второго клика: можно печатать запрос
+  input.focus();
+  document.querySelector('.chat-header-actions .icon-btn[title="Поиск в чате"]')?.classList.add('active');
+  watchChatSearchHl();
+  csRefresh();
+}
+
+function closeChatSearch() {
+  clearTimeout(_csTimer);
+  S.chatSearch = null;
+  if (_hlObs) _hlObs.disconnect();
+  document.getElementById('chat-search')?.classList.remove('open');
+  const input = document.getElementById('cs-input');
+  if (input) input.value = '';
+  document.querySelector('.chat-header-actions .icon-btn[title="Поиск в чате"]')?.classList.remove('active');
+  applyChatSearchHl();
+}
+
+function onChatSearchInput(v) {
+  const st = S.chatSearch;
+  if (!st) return;
+  st.q = v;
+  clearTimeout(_csTimer);
+  _csTimer = setTimeout(() => runChatSearch(st), CHAT_SEARCH_DELAY);
+}
+
+async function runChatSearch(st) {
+  const term = st.q.trim();
+  if (term.length < 2) {
+    st.ids = []; st.idx = -1; st.loading = false;
+    csRefresh(); applyChatSearchHl();
+    return;
+  }
+  st.loading = true; csRefresh();
+  let data = null;
+  try { data = await api('GET', `/messages/search?chat_id=${st.chatId}&q=${encodeURIComponent(term)}`); } catch {}
+  // Пока ждали ответ, пользователь мог изменить запрос или закрыть поиск
+  if (S.chatSearch !== st || st.q.trim() !== term) return;
+  st.ids = (data?.results || []).map(r => r.id).sort((a, b) => a - b);
+  st.loading = false;
+  st.idx = st.ids.length - 1; // начинаем с самого нового совпадения
+  if (st.ids.length) chatSearchGoto(st.idx);
+  else { csRefresh(); applyChatSearchHl(); }
+}
+
+function chatSearchStep(d) {
+  const st = S.chatSearch;
+  if (!st) return;
+  const n = st.idx + d;
+  if (n < 0 || n >= st.ids.length) return;
+  chatSearchGoto(n);
+}
+
+function chatSearchGoto(i) {
+  const st = S.chatSearch;
+  st.idx = i;
+  csRefresh();
+  scrollToMsg(st.ids[i], true);
+  applyChatSearchHl();
+}
+
+function onChatSearchKey(e) {
+  if (e.key === 'Escape') { e.preventDefault(); closeChatSearch(); return; }
+  // Enter — к более старому, Shift+Enter — к более новому
+  if (e.key === 'Enter') { e.preventDefault(); chatSearchStep(e.shiftKey ? 1 : -1); }
+}
+
+function watchChatSearchHl() {
+  const main = document.getElementById('chat-main');
+  if (!main) return;
+  if (!_hlObs) {
+    _hlObs = new MutationObserver(() => {
+      if (_hlRaf) return;
+      _hlRaf = requestAnimationFrame(() => { _hlRaf = 0; applyChatSearchHl(); });
+    });
+  }
+  _hlObs.disconnect();
+  _hlObs.observe(main, HL_OBS_OPTS);
+}
+
+// Снимает прежнюю подсветку и ставит новую по текущему запросу. Наблюдатель
+// на время правок отключён, иначе собственные правки DOM запускали бы его снова
+function applyChatSearchHl() {
+  const main = document.getElementById('chat-main');
+  if (!main) return;
+  const st = S.chatSearch;
+  if (_hlObs) _hlObs.disconnect();
+  const old = main.querySelectorAll('mark.msg-search-hl');
+  old.forEach(m => m.replaceWith(document.createTextNode(m.textContent)));
+  if (old.length) main.querySelectorAll('.irc-text').forEach(t => t.normalize());
+  const terms = st && st.open && st.q.trim().length >= 2
+    ? st.q.trim().toLowerCase().split(/\s+/).filter(t => t.length >= 2) : [];
+  if (terms.length) {
+    const cur = st.idx >= 0 ? String(st.ids[st.idx]) : null;
+    main.querySelectorAll('.irc-text').forEach(t => hlBubble(t, terms, t.closest('.irc-msg')?.dataset.msgId === cur));
+  }
+  if (_hlObs && st?.open) _hlObs.observe(main, HL_OBS_OPTS);
+}
+
+function hlBubble(text, terms, isCur) {
+  const re = new RegExp(terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gi');
+  const walker = document.createTreeWalker(text, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(node => {
+    const text = node.nodeValue;
+    re.lastIndex = 0;
+    const frag = document.createDocumentFragment();
+    let last = 0, m;
+    while ((m = re.exec(text))) {
+      if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+      const mk = document.createElement('mark');
+      mk.className = 'msg-search-hl' + (isCur ? ' cur' : '');
+      mk.textContent = m[0];
+      frag.appendChild(mk);
+      last = m.index + m[0].length;
+    }
+    if (!last) return;
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+    node.replaceWith(frag);
+  });
 }
 
 function renderPinBar() {

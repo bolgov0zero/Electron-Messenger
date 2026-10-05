@@ -31,6 +31,9 @@ router.get('/search', authMiddleware, (req, res) => {
     .map(t => '"' + t.replace(/["]/g, '') + '"*')
     .filter(t => t !== '""*').join(' ');
   if (!ftsQuery) return res.json({ results: [] });
+  // chat_id — поиск внутри одного чата (строка поиска в чате): вся история, без
+  // ограничения по числу чатов; членство проверяется тем же join, что и в общем поиске
+  const chatId = Number.isInteger(Number(req.query.chat_id)) && Number(req.query.chat_id) > 0 ? Number(req.query.chat_id) : null;
   let rows = [];
   try {
     rows = db.prepare(`
@@ -42,9 +45,9 @@ router.get('/search', authMiddleware, (req, res) => {
       JOIN chat_members cm ON cm.chat_id = m.chat_id AND cm.user_id = ? AND cm.hidden_at IS NULL
       JOIN chats c ON c.id = m.chat_id AND c.is_secret = 0
       LEFT JOIN users u ON u.id = m.sender_id
-      WHERE messages_fts MATCH ? AND m.deleted = 0
-      ORDER BY m.sent_at DESC LIMIT 30
-    `).all(req.user.id, ftsQuery);
+      WHERE messages_fts MATCH ? AND m.deleted = 0 ${chatId ? 'AND m.chat_id = ?' : ''}
+      ORDER BY m.sent_at DESC LIMIT ${chatId ? 1000 : 30}
+    `).all(...(chatId ? [req.user.id, ftsQuery, chatId] : [req.user.id, ftsQuery]));
   } catch (e) { console.error('[FTS] search error:', e.message); }
   // У сообщений ботов в тексте настоящий HTML (<b>, <i>...), который клиент не
   // экранирует (как и в самом пузыре). snippet() режет текст по токенам, и

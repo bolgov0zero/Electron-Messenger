@@ -920,6 +920,9 @@ function renderContacts() {
   const q = (document.getElementById('contact-search').value || '').trim().toLowerCase();
   const list = document.getElementById('contact-list');
   const filtered = _contactsAll.filter(u => u.display_name.toLowerCase().includes(q));
+  // Сначала те, кто в сети; внутри каждой группы — по имени
+  const isOn = u => (S.presence[u.id] || 'offline') === 'online' ? 0 : 1;
+  filtered.sort((a, b) => isOn(a) - isOn(b) || a.display_name.localeCompare(b.display_name, 'ru'));
   if (!filtered.length) { list.innerHTML = `<div class="stub-note">${_contactsAll.length ? 'Никого не нашли' : 'В организации больше никого нет'}</div>`; return; }
   // Статус онлайн известен только для тех, с кем уже есть личный чат (presence
   // приходит по собеседникам direct-чатов — та же логика, что в /chat и в
@@ -2593,6 +2596,8 @@ function connectWS() {
     if (data.type === 'presence') {
       S.presence[data.user_id] = data.status;
       if (data.last_seen) S.lastSeen[data.user_id] = data.last_seen;
+      // Контакты отсортированы по статусу — при смене статуса перестраиваем список
+      if (S.currentTab === 'contacts') renderContacts();
       const activeChat = S.chats.find(c => c.id === S.activeChatId);
       if (activeChat && getPeerUserId(activeChat) === data.user_id) {
         const subEl = document.getElementById('chat-sub');

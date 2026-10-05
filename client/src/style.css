@@ -1085,17 +1085,19 @@ body:has(.cs-pane)::before { opacity: 0; }
 
 /* ── CHAT HEADER ── */
 .chat-header {
-  position: absolute; top: 16px; left: 0; right: 0; z-index: 4;
+  position: absolute; top: 16px; left: 0; right: 0; z-index: 10;
+  height: 40px; min-height: 40px; margin: 0; padding: 0;
+  display: flex; align-items: center; gap: 16px;
+  flex-shrink: 0;
+}
+/* Два отдельных блока делят ширину; зазор между ними равен отступу до краёв */
+.chat-header-main {
+  flex: 1; min-width: 0; height: 40px;
+  display: flex; align-items: center;
+  padding: 0 12px 0 5px;
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 20px;
-  margin: 0;
-  padding: 0 12px 0 5px;
-  height: 40px;
-  min-height: 40px;
-  display: flex; align-items: center; justify-content: space-between;
-  flex-shrink: 0;
-  z-index: 10;
 }
 
 .chat-header .av-md { width: 30px; height: 30px; font-size: 12px; }
@@ -1107,7 +1109,15 @@ body:has(.cs-pane)::before { opacity: 0; }
   color: var(--text);
 }
 .chat-header-info .ch-sub { font-size: 11px; color: var(--muted); }
-.chat-header-actions { display: flex; gap: 2px; }
+.chat-header-actions {
+  flex-shrink: 0; height: 40px;
+  display: flex; align-items: center; gap: 2px;
+  padding: 0 4px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+.chat-header-actions .icon-btn.active { color: var(--accent); }
 
 /* Разрешить выделение только там где нужно */
 .irc-text,
@@ -3045,3 +3055,30 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 
 /* Секретный чат: метка вместо превью в списке чатов */
 .sc-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+
+/* ── ПОИСК В ЧАТЕ ── строка той же высоты и скругления, что шапка; без рамки.
+   Ложится поверх закреплённого сообщения (top совпадает с .pin-bar) */
+.chat-search {
+  position: absolute; top: 64px; left: 0; right: 0; z-index: 5;
+  height: 40px; box-sizing: border-box;
+  display: none; align-items: center; gap: 4px;
+  padding: 0 6px 0 14px;
+  background: var(--card-bg);
+  border-radius: 20px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.16);
+}
+.chat-search.open { display: flex; }
+.chat-search > svg { color: var(--muted); flex-shrink: 0; }
+.chat-search input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+  color: var(--text); font: inherit; font-size: 13.5px;
+}
+.chat-search input::placeholder { color: var(--muted); }
+.cs-count { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chat-search .icon-btn:disabled { opacity: .35; cursor: default; }
+
+.msg-search-hl {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: inherit; border-radius: 3px; padding: 0 1px;
+}
+.msg-search-hl.cur { background: color-mix(in srgb, var(--accent) 65%, transparent); }
