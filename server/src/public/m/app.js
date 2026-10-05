@@ -554,6 +554,17 @@ async function refreshChats() {
   renderChats();
 }
 
+// Бейдж комнаты — сумма непрочитанного её тем. Считаем локально, сразу после
+// изменения темы: серверный агрегат сразу после «прочитано» ещё старый, отметка
+// на сервере применяется уже после ответа на GET /chats
+function syncRoomUnread(roomId) {
+  const room = S.chats.find(c => c.id === roomId);
+  if (!room) return;
+  const topics = S.chats.filter(c => c.parent_id === roomId);
+  room.unread = topics.reduce((sum, t) => sum + (t.unread || 0), 0);
+  room.unread_mentions = topics.reduce((sum, t) => sum + (t.unread_mentions || 0), 0);
+}
+
 function chatPreview(c) {
   const lm = c.last_message;
   if (!lm) return 'Нет сообщений';
@@ -1706,15 +1717,15 @@ async function openChat(chatId, aroundId) {
     const topic = S.topics[chat.parent_id]?.find(t => t.id === chatId);
     if (topic) { topic.unread = 0; topic.unread_mentions = 0; }
     if (S.activeRoomId === chat.parent_id) renderTopicsList();
-    // Бейдж комнаты в списке чатов — агрегат по всем её темам, его считает
-    // сервер; локальное обнуление темы его не трогает, поэтому перезапрашиваем
-    // через refreshChats() (не loadChats() — см. её комментарий: полная
-    // замена стирала уже подмешанные темы из S.chats)
-    refreshChats();
+    syncRoomUnread(chat.parent_id);
+    renderChats();
   } else {
     renderChats();
   }
   if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'read', chat_id: chatId }));
+  // Отметка применяется на сервере после отправки по WS — подтверждаем агрегат
+  // запросом списка чатов уже после неё (refreshChats, а не loadChats: см. её комментарий)
+  if (chat.parent_id) setTimeout(refreshChats, 400);
 }
 
 function closeChat() {
@@ -2511,6 +2522,7 @@ function connectWS() {
           S.ws.send(JSON.stringify({ type: 'read', chat_id: m.chat_id }));
           if (m.sender_id !== S.user.id) S.ws.send(JSON.stringify({ type: 'delivered', message_id: m.id }));
         }
+        if (chat?.parent_id) setTimeout(refreshChats, 400);
       } else if (m.sender_id !== S.user.id && chat) {
         chat.unread = (chat.unread || 0) + 1;
         if (m.mentions?.includes(S.user.id)) chat.unread_mentions = (chat.unread_mentions || 0) + 1;
@@ -2598,7 +2610,10 @@ function connectWS() {
       refreshChats();
       if (S.activeRoomId) loadTopics(S.activeRoomId).then(renderTopicsList);
     }
-    if (data.type === 'chat_read') { const c = S.chats.find(x => x.id === data.chat_id); if (c) { c.unread = 0; renderChats(); } }
+    if (data.type === 'chat_read') {
+      const c = S.chats.find(x => x.id === data.chat_id);
+      if (c) { c.unread = 0; if (c.parent_id) syncRoomUnread(c.parent_id); renderChats(); }
+    }
     if (data.type === 'chat_deleted') {
       S.chats = S.chats.filter(c => c.id !== data.chat_id);
       if (S.activeChatId === data.chat_id) closeChat();
