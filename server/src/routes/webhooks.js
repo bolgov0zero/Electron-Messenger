@@ -14,29 +14,53 @@ function checkRateLimit(token) {
   return true;
 }
 
-// Whitelist sanitizer: allows only b, i, u, blockquote, br
+// Whitelist sanitizer: b, i, u, blockquote, br, code (без атрибутов) и a (только href http/https)
 //
 // Разрешённые теги прячем за маркер, ВСЁ остальное экранируем целиком.
 // Раньше вырезались только полные теги, а незакрытый (`<img src=x onerror=...`
 // без `>`) проходил насквозь: браузер достраивал его закрывающей разметкой
 // страницы, обработчик попадал в атрибуты и срабатывал. Сообщения ботов
 // вставляются в DOM без экранирования, поэтому это давало исполнение кода.
+const SAFE_HREF = /^https?:\/\//i;
+function escapeAttr(v) {
+  return v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 function sanitizeHtml(input) {
-  const allowed = new Set(['b', 'i', 'u', 'blockquote', 'br']);
+  const allowed = new Set(['b', 'i', 'u', 'blockquote', 'br', 'code']);
   const kept = [];
+  let openLinks = 0;
   // \x00 — служебный маркер, во входных данных его быть не должно
   const marked = String(input || '').slice(0, 4096).replace(/\x00/g, '')
-    .replace(/<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b[^>]*\/?>/g, (_, slash, tag) => {
+    .replace(/<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>/g, (_, slash, tag, attrs) => {
       const t = tag.toLowerCase();
+      if (t === 'a') {
+        if (slash) {
+          if (!openLinks) return '';
+          openLinks--;
+          kept.push('</a>');
+          return `\x00${kept.length - 1}\x00`;
+        }
+        const m = attrs.match(/\shref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i);
+        const href = m ? (m[1] ?? m[2] ?? m[3] ?? '').trim() : '';
+        // вложенные ссылки не открываем: закроется первая, и её </a> окажется парным
+        if (openLinks || !SAFE_HREF.test(href)) return '';
+        openLinks++;
+        kept.push(`<a href="${escapeAttr(href)}" target="_blank" rel="noopener noreferrer">`);
+        return `\x00${kept.length - 1}\x00`;
+      }
       if (!allowed.has(t)) return '';
-      kept.push(t === 'br' ? '<br>' : (slash ? `</${t}>` : `<${t}>`));
+      const s = slash ? `</${t}>` : (t === 'br' ? '<br>' : `<${t}>`);
+      kept.push(s);
       return `\x00${kept.length - 1}\x00`;
     });
   // Уцелевшие «<» и «>» — это обрывки тегов, они должны стать текстом
-  return marked
+  const out = marked
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/\x00(\d+)\x00/g, (_, i) => kept[Number(i)] ?? '');
+  // Незакрытая ссылка не должна растягиваться на весь остаток сообщения
+  return out + '</a>'.repeat(openLinks);
 }
 
 async function handleWebhook(req, res) {
