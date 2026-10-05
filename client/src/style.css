@@ -2820,8 +2820,9 @@ html.dark .announcement-title { color: var(--danger); }
 .msg-bubble:not(.bubble-photo) > .irc-meta .status-wrap { margin-bottom: 1.5px; display: flex; }
 .irc-text::after { content: ''; display: inline-block; width: 50px; }
 /* Текст центрирован по маленьким буквам: в строке высотой 21px их середина на ~1.4px ниже
-   середины строки (Inter 14px), поэтому поднимаем текст. Только обычные пузыри, без фото */
-.msg-bubble:not(.bubble-photo) > .irc-text { position: relative; top: -1.5px; }
+   середины строки (Inter 14px), поэтому поднимаем текст. Сдвиг в em, чтобы масштабировался
+   вместе с текстом при масштабе интерфейса. Только обычные пузыри, без фото */
+.msg-bubble:not(.bubble-photo) > .irc-text { position: relative; top: -0.107em; }
 .irc-msg[data-mine] .irc-text::after { width: 60px; }
 
 /* вложения — под края пузыря */
