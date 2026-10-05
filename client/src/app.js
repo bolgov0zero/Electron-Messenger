@@ -2635,7 +2635,7 @@ function renderReactions(msgId) {
 // ── ТУЛТИП РЕАКЦИИ: кто поставил ──
 // Имена тянем по наведению (в сообщениях их нет — раздували бы каждый ответ),
 // секундной задержки хватает, чтобы запрос успел вернуться к показу.
-const _REACTION_TIP_DELAY = 1000;
+const _REACTION_TIP_DELAY = 700;
 let _rtTimer = null, _rtEl = null, _rtBtn = null;
 const _rtCache = new Map(); // msgId -> { reaction: [{user_id, display_name}] }
 
@@ -2673,33 +2673,34 @@ function _rtRender(btn, reaction, users) {
   const shown = users.slice(0, MAX);
   const rest = users.length - shown.length;
   el.innerHTML =
-    shown.map(u => {
+    shown.map((u, i) => {
       const url = `${httpProto()}://${S.server}/api/users/${u.user_id}/avatar?t=${S.avatarTs || 0}`;
-      return `<span class="rt-row">` +
+      return `<span class="rt-row" style="--i:${i}">` +
         `<span class="rt-av ${userAvatarColor(u.user_id)}">${esc(initials(u.display_name) || '?')}` +
         `<img src="${url}" alt="" onerror="this.style.display='none'"></span>` +
         `<span class="rt-name">${esc(u.display_name)}</span></span>`;
     }).join('') +
     (rest > 0 ? `<span class="rt-row rt-more">и ещё ${rest}</span>` : '');
 
-  // Интерфейс масштабируется через CSS zoom на <html> (настройка размера). Координаты
-  // getBoundingClientRect — визуальные пиксели, а style.left/top — пиксели до zoom.
-  // Масштаб берём из настройки: измерение offsetWidth/rect в разных версиях Chromium
-  // даёт разный результат, из-за чего подсказка уезжала при масштабе не 100%.
+  // Масштаб интерфейса (CSS zoom на <html>): rect — визуальные пиксели, style.left/top — до zoom.
+  // Коэффициент берём из настройки, а не из замеров: замеры в разных Chromium расходятся.
   const Z = ((S.settings && S.settings.uiScale) || 100) / 100;
+  // Меряем без анимации масштаба: в скрытом состоянии элемент уменьшен scale(.94)
+  el.style.transition = 'none'; el.style.transform = 'none';
   el.style.left = '0px'; el.style.top = '0px';
   const er = el.getBoundingClientRect();
   const tw = er.width, th = er.height;
+  el.style.transition = ''; el.style.transform = '';
   const r = btn.getBoundingClientRect();
-  // Выравниваем по стороне кнопки: у своих сообщений (справа) подсказка уходит влево
-  // от правого края чипа, у чужих — вправо от левого. Центр по чипу при упоре в край
-  // окна сдвигался к середине экрана и отрывался от кнопки.
+  // Сторона бейджа: у своих сообщений (справа) панель уходит влево от правого края
   const onRight = r.left + r.width / 2 > window.innerWidth / 2;
   let left = onRight ? r.right - tw : r.left;
   left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
-  // Показываем над бейджем; если сверху не помещается — под ним
-  let top = r.top - th - 8;
-  if (top < 8) top = r.bottom + 8;
+  // Раскрываемся вверх, если над бейджем есть место; иначе вниз
+  const above = r.top - th - 8 >= 8;
+  const top = above ? r.top - th - 8 : r.bottom + 8;
+  el.classList.toggle('above', above);
+  el.classList.toggle('from-right', onRight);
   el.style.left = Math.round(left / Z) + 'px';
   el.style.top = Math.round(top / Z) + 'px';
   el.classList.add('visible');

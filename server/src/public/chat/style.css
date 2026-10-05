@@ -2415,30 +2415,40 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 
 .gi-add-list { display: flex; flex-direction: column; gap: 4px; }
 
-/* Тултип реакции: кто поставил. Появляется по наведению с задержкой 1 сек */
+/* Тултип реакции: кто поставил. Раскрывается из бейджа по наведению (задержка 700 мс).
+   Сторона раскрытия (вверх/вниз, от левого/правого края бейджа) — по месту на экране.
+   Строки появляются каскадом. */
 .reaction-tip {
-  position: fixed;
-  z-index: 400;
-  max-width: 260px;
-  padding: 7px 10px;
-  border-radius: 9px;
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  box-shadow: 0 6px 20px rgba(0,0,0,.28);
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--text);
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(4px);
-  transition: opacity .18s ease, transform .18s ease;
+  position: fixed; z-index: 400; min-width: 190px; max-width: 260px;
+  padding: 6px; border-radius: 12px;
+  background: var(--card-bg); border: 1px solid var(--border);
+  box-shadow: 0 10px 28px rgba(0,0,0,.28);
+  font-size: 12px; line-height: 1.4; color: var(--text);
+  pointer-events: none; opacity: 0; transform: scale(.94);
+  transform-origin: left top;
+  transition: opacity .18s ease, transform .24s cubic-bezier(.2,.9,.3,1.15);
 }
-.reaction-tip.visible { opacity: 1; transform: translateY(0); }
-
-.reaction-tip .rt-name { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.reaction-tip .rt-more { color: var(--muted); }
+.reaction-tip.above { transform-origin: left bottom; }
+.reaction-tip.from-right { transform-origin: right top; }
+.reaction-tip.above.from-right { transform-origin: right bottom; }
+.reaction-tip.visible { opacity: 1; transform: none; }
+.rt-row {
+  display: flex; align-items: center; gap: 9px; padding: 4px 6px; border-radius: 8px; white-space: nowrap;
+  opacity: 0; transform: translateY(-3px);
+  transition: opacity .2s ease, transform .22s ease;
+  transition-delay: calc(var(--i, 0) * 28ms + 60ms);
+}
+.reaction-tip.visible .rt-row { opacity: 1; transform: none; }
+.rt-av {
+  position: relative; width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0; overflow: hidden;
+}
+.rt-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.rt-name { overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: var(--text); }
+.rt-more { color: var(--muted); font-size: 12px; padding: 4px 6px 2px; }
 @media (prefers-reduced-motion: reduce) {
-  .reaction-tip { transition: opacity .01s; transform: none; }
+  .reaction-tip, .rt-row { transition: none; }
 }
 
 /* ── МОБИЛЬНЫЕ ДОРАБОТКИ ── */
@@ -2782,20 +2792,6 @@ html.dark .announcement-title { color: var(--danger); }
 }
 .ra-count { font-size: 11px; font-weight: 600; color: inherit; line-height: 1; }
 
-/* Подсказка: строки «аватарка + имя», смайлик не дублируем */
-.reaction-tip { padding: 8px 11px 8px 9px; }
-.rt-row { display: flex; align-items: center; gap: 7px; }
-.rt-row + .rt-row { margin-top: 7px; }
-.rt-av {
-  position: relative;
-  width: 20px; height: 20px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 600; color: #fff;
-  flex-shrink: 0; overflow: hidden;
-}
-.rt-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.reaction-tip .rt-name { font-size: 12px; color: var(--text); }
-.reaction-tip .rt-more { color: var(--muted); font-size: 12px; padding-left: 27px; }
 
 /* ── ЗАКРЕПЛЁННОЕ СООБЩЕНИЕ ── */
 .pin-bar {
