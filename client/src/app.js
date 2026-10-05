@@ -828,6 +828,9 @@ function renderContactsList(filter = '') {
   const q = filter.trim().toLowerCase();
   const users = S.allUsers.filter(u => u.id !== S.user.id &&
     (!q || u.display_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)));
+  // Сначала те, кто в сети; внутри каждой группы — по имени
+  const isOn = u => (S.presence[u.id] || 'offline') === 'online' ? 0 : 1;
+  users.sort((a, b) => isOn(a) - isOn(b) || a.display_name.localeCompare(b.display_name, 'ru'));
   list.innerHTML = users.length ? users.map(contactRowHtml).join('') : '<div class="pp-empty">Никого не нашлось</div>';
 }
 function filterContacts(q) { renderContactsList(q); }
@@ -1698,7 +1701,10 @@ function renderTopicsPanel(roomId) {
   panel.innerHTML = '<div class="chat-list-section-label">Темы</div>' + subs.map(topicRow).join('');
   panel.classList.add('open');
   const room = S.chats.find(c => c.id === roomId);
-  document.getElementById('room-title').textContent = room?.name || 'Комната';
+  const n = subs.length;
+  const word = n % 10 === 1 && n % 100 !== 11 ? 'тема' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? 'темы' : 'тем';
+  document.getElementById('room-title').innerHTML =
+    `<span class="room-title-name">${esc(room?.name || 'Комната')}</span><span class="room-title-sub">${n} ${word}</span>`;
   document.getElementById('sidebar-search').classList.add('room-mode');
 }
 
@@ -2684,7 +2690,11 @@ function _rtRender(btn, reaction, users) {
   const z = el.offsetWidth ? (el.getBoundingClientRect().width / el.offsetWidth) : 1;
   const tw = el.offsetWidth * z, th = el.offsetHeight * z;
   const r = btn.getBoundingClientRect();
-  let left = r.left + r.width / 2 - tw / 2;
+  // Выравниваем по стороне кнопки: у своих сообщений (справа) подсказка уходит влево
+  // от правого края чипа, у чужих — вправо от левого. Центр по чипу при упоре в край
+  // окна сдвигался к середине экрана и отрывался от кнопки.
+  const onRight = r.left + r.width / 2 > window.innerWidth / 2;
+  let left = onRight ? r.right - tw : r.left;
   left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
   // Показываем над бейджем; если сверху не помещается — под ним
   let top = r.top - th - 8;
@@ -4372,6 +4382,8 @@ function connectWS() {
       document.querySelectorAll(`.presence-dot[data-user-id="${data.user_id}"]`).forEach(dot => {
         dot.style.display = online ? '' : 'none';
       });
+      // Контакты отсортированы по статусу — при смене статуса перестраиваем список
+      if (document.querySelector('#chats-list .pp-row')) renderContactsList(document.getElementById('search')?.value || '');
     }
 
     if (data.type==='status_update') {

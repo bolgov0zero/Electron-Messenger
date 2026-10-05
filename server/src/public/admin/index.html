@@ -118,11 +118,13 @@
   --accent-glow:rgba(58,147,140,0.22);
 }
 
-/* ── SCROLLBARS ── */
+/* ── SCROLLBARS ── тонкие, прозрачные в покое, проявляются при наведении на область */
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:4px}
-::-webkit-scrollbar-thumb:hover{background:var(--c-primary)}
+::-webkit-scrollbar-corner{background:transparent}
+::-webkit-scrollbar-thumb{background:transparent;border-radius:9px}
+*:hover::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--c-muted) 30%,transparent)}
+::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--c-muted) 55%,transparent)}
 
 /* ── BASE ── */
 html,body{height:100%;overflow:hidden}
@@ -626,7 +628,7 @@ tr.ua-banned .ux-cell{opacity:.6}
 .rm-spark{display:flex;align-items:flex-end;gap:2px;height:16px}
 .rm-spark i{width:4px;border-radius:1px;background:var(--c-primary);opacity:.55}
 .rm-last{font-size:11.5px;color:var(--c-text2);white-space:nowrap}
-.rm-modal{width:600px}
+.rm-modal{width:760px}
 .rm-tabs{display:flex;gap:4px;padding:0 18px;border-bottom:1px solid var(--c-border)}
 .rm-tabs button{border:0;background:none;padding:10px 6px 9px;font:600 12px var(--f-ui);color:var(--c-text2);border-bottom:2px solid transparent;cursor:pointer;display:flex;gap:6px;align-items:center}
 .rm-tabs button small{font:600 10px var(--f-mono);background:var(--c-surface2);color:var(--c-muted);border-radius:6px;padding:0 5px}
@@ -643,7 +645,10 @@ tr.ua-banned .ux-cell{opacity:.6}
 .rm-handle{color:var(--c-muted);cursor:grab;font-size:13px;letter-spacing:-2px;width:12px;flex-shrink:0}
 .rm-rename{border:1px solid var(--border-focus);border-radius:6px;padding:3px 7px;font:12.5px var(--f-ui);background:var(--bg-input);color:var(--c-text);width:100%;outline:none}
 .rm-add{display:flex;gap:8px}
-.rm-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rm-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.rm-cols>div{min-width:0}
+.rm-li{min-width:0}
+.rm-scroll{overflow-x:hidden}
 .rm-col-t{font-size:10.5px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;display:flex;justify-content:space-between}
 .rm-scroll{max-height:290px;overflow-y:auto}
 .rm-pick{width:100%;border:0;cursor:pointer;font:inherit;color:inherit;text-align:left}
@@ -801,8 +806,6 @@ tbody tr:hover td{background:var(--c-surface2)}
 .pp-search input{width:100%;padding:8px 12px 8px 33px;border:1.5px solid var(--c-border);border-radius:9px;font-size:12.5px;font-family:var(--f-ui);outline:none;background:var(--c-surface);color:var(--c-text);transition:border-color .15s,box-shadow .15s}
 .pp-search input:focus{border-color:var(--c-primary);box-shadow:0 0 0 3px var(--c-primary-dim)}
 .pp-list{display:flex;flex-direction:column;max-height:264px;overflow-y:auto;border:1px solid var(--c-border);border-radius:10px;background:var(--c-surface)}
-.pp-list::-webkit-scrollbar{width:4px}
-.pp-list::-webkit-scrollbar-thumb{background:var(--c-border);border-radius:4px}
 .pp-row{display:flex;align-items:center;gap:9px;padding:6px 12px;cursor:pointer;transition:background .1s;border-bottom:1px solid var(--c-border)}
 .pp-row:last-child{border-bottom:none}
 .pp-row:hover{background:var(--c-surface2)}

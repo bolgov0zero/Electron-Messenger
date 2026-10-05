@@ -315,7 +315,8 @@ function createWindow() {
     x: bounds?.x, y: bounds?.y,
     minWidth: 500, minHeight: 540,
     title: 'Electron',
-    icon: path.join(_ASSETS, 'icon-512.png'),
+    // Linux: без скруглённой тёмной подложки — только стрелка, как у значка в трее
+    icon: path.join(_ASSETS, process.platform === 'linux' ? 'icon-arrow-512.png' : 'icon-512.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
     show: false,
   });
