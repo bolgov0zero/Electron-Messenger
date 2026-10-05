@@ -150,12 +150,22 @@ ipcMain.handle('install-update', async (_, downloadUrl) => {
       // Ставим deb через apt (сам разрешит зависимости и заменит файлы в /opt).
       // pkexec покажет системный диалог PolicyKit с запросом пароля.
       const { spawn } = require('child_process');
-      const proc = spawn('pkexec', ['apt-get', 'install', '-y', tmpFile], { stdio: 'ignore' });
+      // Абсолютные пути: pkexec ищет apt-get в PATH вызывающего процесса, а после
+      // перезапуска этот PATH может быть урезан — отсюда код 127 («команда не найдена»)
+      const pkexecBin = fs.existsSync('/usr/bin/pkexec') ? '/usr/bin/pkexec' : 'pkexec';
+      const aptBin = fs.existsSync('/usr/bin/apt-get') ? '/usr/bin/apt-get' : 'apt-get';
+      const env = { ...process.env, PATH: `/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${process.env.PATH || ''}` };
+      const proc = spawn(pkexecBin, [aptBin, 'install', '-y', tmpFile], { stdio: ['ignore', 'ignore', 'pipe'], env });
+      let stderr = '';
+      proc.stderr.on('data', d => { stderr += d; });
       const code = await new Promise((resolve, reject) => {
         proc.on('close', resolve);
         proc.on('error', reject);
       });
-      if (code !== 0) throw new Error(`Установка отменена или не удалась (код ${code})`);
+      if (code !== 0) {
+        console.error(`[Update] pkexec/apt-get завершились с кодом ${code}:`, stderr.trim());
+        throw new Error(`Установка отменена или не удалась (код ${code})`);
+      }
       app.relaunch(); app.isQuiting = true; app.quit();
     } else if (process.platform === 'darwin') {
       const { execSync } = require('child_process');
