@@ -98,14 +98,18 @@ function isConnected(userId) {
   return false;
 }
 
-// Агрегированный статус: online если хоть одно устройство активно, иначе offline.
+// Агрегированный статус: online, если хоть одно устройство в фокусе; away («отошёл»),
+// если есть подключённые устройства, но все без фокуса; иначе offline
 function computeStatus(userId) {
   const conns = clients.get(userId);
   if (!conns || !conns.size) return 'offline';
+  let away = false;
   for (const ws of conns) {
-    if (ws.readyState === 1 && ws._status === 'online') return 'online';
+    if (ws.readyState !== 1) continue;
+    if (ws._status === 'online') return 'online';
+    if (ws._status === 'away') away = true;
   }
-  return 'offline';
+  return away ? 'away' : 'offline';
 }
 
 // Пересчитать агрегат и разослать собеседникам ТОЛЬКО при реальном изменении статуса.
@@ -436,7 +440,7 @@ function setup(server) {
 
       if (data.type === 'set_status') {
         const s = data.status;
-        if (s === 'online' || s === 'offline') {
+        if (s === 'online' || s === 'away' || s === 'offline') {
           if (s === 'offline') {
             try { db.prepare('UPDATE users SET last_seen_at = unixepoch() WHERE id = ?').run(user.id); } catch {}
           }

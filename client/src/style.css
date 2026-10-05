@@ -167,6 +167,9 @@
    ══════════════════════════════════════════ */
 
 :root {
+  /* Статус присутствия: фиксированные цвета, не зависят от акцента и темы */
+  --presence-online: #34c759;
+  --presence-away: #ff9f0a;
   /* Surface */
   --app-bg:      #eef1f4;
   --side-bg:     #ffffff;
@@ -1007,8 +1010,9 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   position: absolute; bottom: -1px; right: -1px;
   width: 10px; height: 10px; border-radius: 50%;
   border: 2px solid var(--side-bg);
-  background: var(--accent);
+  background: var(--presence-online);
 }
+.presence-dot.away { background: var(--presence-away); }
 .chat-header .presence-dot { border-color: var(--chat-bg); }
 
 /* Avatar color classes (legacy) */

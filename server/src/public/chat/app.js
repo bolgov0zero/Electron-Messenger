@@ -397,7 +397,24 @@ function refreshActivity() {
       renderChatList();
     }
   }
-  if (S.ws?.readyState===1) S.ws.send(JSON.stringify({type:'set_status', status: viewing ? 'online' : 'offline'}));
+  sendPresence(viewing);
+}
+
+// Статус присутствия: в фокусе — «онлайн» сразу, без фокуса — «отошёл» через 30 секунд.
+// Таймер не перезапускается при повторных сменах фокуса: отсчёт идёт от первой потери.
+const AWAY_DELAY = 30000;
+let _awayTimer = null;
+function sendPresenceStatus(status) {
+  if (S.ws?.readyState===1) S.ws.send(JSON.stringify({type:'set_status', status}));
+}
+function sendPresence(viewing) {
+  if (viewing) {
+    clearTimeout(_awayTimer); _awayTimer = null;
+    sendPresenceStatus('online');
+    return;
+  }
+  if (_awayTimer) return;
+  _awayTimer = setTimeout(() => { _awayTimer = null; sendPresenceStatus('away'); }, AWAY_DELAY);
 }
 
 if (window.visualViewport) {
@@ -964,8 +981,8 @@ function renderContactsList(filter = '') {
   const users = S.allUsers.filter(u => u.id !== S.user.id &&
     (!q || u.display_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)));
   // Сначала те, кто в сети; внутри каждой группы — по имени
-  const isOn = u => (S.presence[u.id] || 'offline') === 'online' ? 0 : 1;
-  users.sort((a, b) => isOn(a) - isOn(b) || a.display_name.localeCompare(b.display_name, 'ru'));
+  const rank = u => ({ online: 0, away: 1 })[S.presence[u.id]] ?? 2;
+  users.sort((a, b) => rank(a) - rank(b) || a.display_name.localeCompare(b.display_name, 'ru'));
   list.innerHTML = users.length ? users.map(contactRowHtml).join('') : '<div class="pp-empty">Никого не нашлось</div>';
 }
 function filterContacts(q) { renderContactsList(q); }
@@ -4912,9 +4929,10 @@ function connectWS() {
         const subEl = document.querySelector('.ch-sub');
         if (subEl) subEl.textContent = peerStatusText(data.user_id);
       }
-      const isOnline = data.status === 'online';
+      // Зелёный — онлайн, оранжевый — отошёл, точка скрыта — офлайн
       document.querySelectorAll(`.presence-dot[data-user-id="${data.user_id}"]`).forEach(dot => {
-        dot.style.display = isOnline ? '' : 'none';
+        dot.classList.toggle('away', data.status === 'away');
+        dot.style.display = data.status === 'offline' ? 'none' : '';
       });
       // Контакты отсортированы по статусу — при смене статуса перестраиваем список
       if (document.querySelector('#chats-list .pp-row')) renderContactsList(document.getElementById('search')?.value || '');
@@ -5067,7 +5085,7 @@ function connectWS() {
       try { ws.send(JSON.stringify({ type: 'ping' })); } catch {}
     }, 20000);
     setTimeout(() => {
-      const initStatus = document.hidden ? 'offline' : 'online';
+      const initStatus = isViewing() ? 'online' : 'away';
       if (ws.readyState === 1) {
         ws.send(JSON.stringify({ type: 'set_status', status: initStatus }));
         const isPwa = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -5118,31 +5136,32 @@ async function loadPresence() {
 }
 
 function formatLastSeen(ts) {
-  if (!ts) return 'не в сети';
+  if (!ts) return 'Был в сети';
   const d = new Date(ts * 1000);
   const diffSec = Math.floor((Date.now() - ts * 1000) / 1000);
-  if (diffSec < 60) return 'только что';
+  if (diffSec < 60) return 'Был в сети только что';
   const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `был(а) в сети ${diffMin} мин. назад`;
+  if (diffMin < 60) return `Был в сети ${diffMin} мин. назад`;
   const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `был(а) в сети ${diffH} ч. назад`;
+  if (diffH < 24) return `Был в сети ${diffH} ч. назад`;
   const time = d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
   const today = new Date(); today.setHours(0,0,0,0);
   const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
   const msgDay = new Date(d); msgDay.setHours(0,0,0,0);
-  if (msgDay.getTime() === today.getTime()) return `был(а) в сети сегодня в ${time}`;
-  if (msgDay.getTime() === yesterday.getTime()) return `был(а) в сети вчера в ${time}`;
+  if (msgDay.getTime() === today.getTime()) return `Был в сети сегодня в ${time}`;
+  if (msgDay.getTime() === yesterday.getTime()) return `Был в сети вчера в ${time}`;
   const diffDays = Math.floor((today - msgDay) / 86400000);
   if (diffDays < 7) {
     const days = ['воскресенье','понедельник','вторник','среду','четверг','пятницу','субботу'];
-    return `был(а) в сети в ${days[d.getDay()]} в ${time}`;
+    return `Был в сети в ${days[d.getDay()]} в ${time}`;
   }
-  return `был(а) в сети ${d.toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  return `Был в сети ${d.toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 }
 
 function peerStatusText(userId) {
   const st = S.presence[userId] || 'offline';
-  if (st === 'online') return 'в сети';
+  if (st === 'online') return 'Онлайн';
+  if (st === 'away') return 'Отошёл';
   return formatLastSeen(S.lastSeen[userId]);
 }
 
@@ -5161,8 +5180,8 @@ setInterval(() => {
 function presenceDot(userId) {
   // Элемент рендерим всегда (скрытым если офлайн) — иначе WS-хендлеру presence
   // нечего показывать, когда пользователь появляется в сети.
-  const online = (S.presence[userId] || 'offline') === 'online';
-  return `<span class="presence-dot" data-user-id="${userId}"${online ? '' : ' style="display:none"'}></span>`;
+  const st = S.presence[userId] || 'offline';
+  return `<span class="presence-dot${st === 'away' ? ' away' : ''}" data-user-id="${userId}"${st === 'offline' ? ' style="display:none"' : ''}></span>`;
 }
 
 function getPeerUserId(chat) {

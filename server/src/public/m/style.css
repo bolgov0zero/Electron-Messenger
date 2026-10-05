@@ -6,6 +6,9 @@
    ══════════════════════════════════════════ */
 
 :root {
+  /* Статус присутствия: фиксированные цвета, не зависят от акцента и темы */
+  --presence-online: #34c759;
+  --presence-away: #ff9f0a;
   --app-bg:      #f0f2f4;
   --search-bg:   #e8eaed;
   --modal-bg:    #ffffff;
@@ -195,8 +198,9 @@ html.m-desktop .screen { display: none !important; }
   position: absolute; bottom: 0; right: 0;
   width: 13px; height: 13px; border-radius: 50%;
   border: 2px solid var(--app-bg);
-  background: var(--accent);
+  background: var(--presence-online);
 }
+.status-dot.away { background: var(--presence-away); }
 .chat-hdr .status-dot { width: 10px; height: 10px; border-color: var(--modal-bg); }
 .row-body { flex: 1; min-width: 0; border-bottom: 1px solid var(--border); padding-bottom: 9px; }
 .row:last-child .row-body { border-bottom: none; }

@@ -404,8 +404,25 @@ function getPeerUserId(chat) {
 function presenceDot(userId) {
   // Элемент рендерим всегда (скрытым если офлайн) — иначе WS-обработчику presence
   // нечего показывать, когда пользователь появляется в сети (как в /chat)
-  const online = (S.presence[userId] || 'offline') === 'online';
-  return `<span class="status-dot" data-user-id="${userId}"${online ? '' : ' style="display:none"'}></span>`;
+  const st = S.presence[userId] || 'offline';
+  return `<span class="status-dot${st === 'away' ? ' away' : ''}" data-user-id="${userId}"${st === 'offline' ? ' style="display:none"' : ''}></span>`;
+}
+
+// Статус присутствия: вкладка на переднем плане — «онлайн» сразу, в фоне — «отошёл» через 30 секунд.
+// Таймер не перезапускается при повторных сменах видимости
+const AWAY_DELAY = 30000;
+let _awayTimer = null;
+function sendPresenceStatus(status) {
+  if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'set_status', status }));
+}
+function sendPresence(viewing) {
+  if (viewing) {
+    clearTimeout(_awayTimer); _awayTimer = null;
+    sendPresenceStatus('online');
+    return;
+  }
+  if (_awayTimer) return;
+  _awayTimer = setTimeout(() => { _awayTimer = null; sendPresenceStatus('away'); }, AWAY_DELAY);
 }
 function chatAvatarColorClass(chat) {
   if (chat.type === 'room') return 'av-3';
@@ -921,8 +938,8 @@ function renderContacts() {
   const list = document.getElementById('contact-list');
   const filtered = _contactsAll.filter(u => u.display_name.toLowerCase().includes(q));
   // Сначала те, кто в сети; внутри каждой группы — по имени
-  const isOn = u => (S.presence[u.id] || 'offline') === 'online' ? 0 : 1;
-  filtered.sort((a, b) => isOn(a) - isOn(b) || a.display_name.localeCompare(b.display_name, 'ru'));
+  const rank = u => ({ online: 0, away: 1 })[S.presence[u.id]] ?? 2;
+  filtered.sort((a, b) => rank(a) - rank(b) || a.display_name.localeCompare(b.display_name, 'ru'));
   if (!filtered.length) { list.innerHTML = `<div class="stub-note">${_contactsAll.length ? 'Никого не нашли' : 'В организации больше никого нет'}</div>`; return; }
   // Статус онлайн известен только для тех, с кем уже есть личный чат (presence
   // приходит по собеседникам direct-чатов — та же логика, что в /chat и в
@@ -1687,7 +1704,9 @@ async function openChat(chatId, aroundId) {
   if (statusDot) {
     if (peerId) {
       statusDot.dataset.userId = peerId;
-      statusDot.style.display = (S.presence[peerId] || 'offline') === 'online' ? '' : 'none';
+      const pst = S.presence[peerId] || 'offline';
+      statusDot.classList.toggle('away', pst === 'away');
+      statusDot.style.display = pst === 'offline' ? 'none' : '';
     } else {
       delete statusDot.dataset.userId;
       statusDot.style.display = 'none';
@@ -2391,12 +2410,13 @@ function addChatGestures() {
 
 function peerStatusText(userId) {
   const st = S.presence[userId] || 'offline';
-  if (st === 'online') return 'в сети';
+  if (st === 'online') return 'Онлайн';
+  if (st === 'away') return 'Отошёл';
   const ts = S.lastSeen[userId];
-  if (!ts) return 'не в сети';
+  if (!ts) return 'Был в сети';
   const d = new Date(ts * 1000), now = new Date();
-  if (d.toDateString() === now.toDateString()) return 'был(а) в ' + fmtTime(ts);
-  return 'был(а) недавно';
+  if (d.toDateString() === now.toDateString()) return 'Был в сети в ' + fmtTime(ts);
+  return 'Был в сети недавно';
 }
 
 let typingSendTimer = null;
@@ -2603,9 +2623,9 @@ function connectWS() {
         const subEl = document.getElementById('chat-sub');
         if (subEl) subEl.textContent = peerStatusText(data.user_id);
       }
-      const isOnline = data.status === 'online';
       document.querySelectorAll(`.status-dot[data-user-id="${data.user_id}"]`).forEach(dot => {
-        dot.style.display = isOnline ? '' : 'none';
+        dot.classList.toggle('away', data.status === 'away');
+        dot.style.display = data.status === 'offline' ? 'none' : '';
       });
     }
     if (data.type === 'typing') { showTyping(data.chat_id, data.sender_name); }
@@ -2749,6 +2769,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('l-password').addEventListener('keydown', e => e.key === 'Enter' && doLogin());
   document.getElementById('l-username').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('l-password').focus());
   document.addEventListener('visibilitychange', () => {
+    // Скрытая вкладка — «отошёл» через 30 секунд; соединение браузер в фоне может
+    // оборвать раньше, тогда статус станет «был в сети» по обычному пути
+    sendPresence(!document.hidden);
     if (!document.hidden) {
       if (S.token && (!S.ws || S.ws.readyState >= 2)) connectWS();
       checkForUpdate();
