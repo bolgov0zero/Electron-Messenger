@@ -56,10 +56,13 @@ function sanitizeHtml(input) {
       return `\x00${kept.length - 1}\x00`;
     });
   // Уцелевшие «<» и «>» — это обрывки тегов, они должны стать текстом
-  const out = marked.trim()
+  const out = marked
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/\x00(\d+)\x00/g, (_, i) => kept[Number(i)] ?? '');
+    .replace(/\x00(\d+)\x00/g, (_, i) => kept[Number(i)] ?? '')
+    // Пробелы у переноса и блочных тегов не выводятся, как в HTML
+    .replace(/ ?(<br>|<\/?blockquote>) ?/g, '$1')
+    .trim();
   // Незакрытая ссылка не должна растягиваться на весь остаток сообщения
   return out + '</a>'.repeat(openLinks);
 }
