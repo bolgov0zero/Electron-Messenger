@@ -31,7 +31,8 @@ function sanitizeHtml(input) {
   const kept = [];
   let openLinks = 0;
   // \x00 — служебный маркер, во входных данных его быть не должно
-  const marked = String(input || '').slice(0, 4096).replace(/\x00/g, '')
+  // Пробельные символы схлопываются, как в HTML: переносы строк задаются только <br>
+  const marked = String(input || '').slice(0, 4096).replace(/\x00/g, '').replace(/[ \t\r\n\f]+/g, ' ')
     .replace(/<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>/g, (_, slash, tag, attrs) => {
       const t = tag.toLowerCase();
       if (t === 'a') {
@@ -55,7 +56,7 @@ function sanitizeHtml(input) {
       return `\x00${kept.length - 1}\x00`;
     });
   // Уцелевшие «<» и «>» — это обрывки тегов, они должны стать текстом
-  const out = marked
+  const out = marked.trim()
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/\x00(\d+)\x00/g, (_, i) => kept[Number(i)] ?? '');
