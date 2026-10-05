@@ -1116,7 +1116,7 @@ body:has(.cs-pane)::before { opacity: 0; }
 .chat-header-actions {
   flex-shrink: 0; height: 40px;
   display: flex; align-items: center; gap: 2px;
-  padding: 0 4px;
+  padding: 0;
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -2810,7 +2810,14 @@ html.dark .announcement-title { color: var(--danger); }
   position: absolute; right: 10px; bottom: 5px; gap: 3px;
   display: flex; align-items: center;
 }
-.msg-bubble:not(.bubble-photo) > .irc-meta { height: 21px; }
+/* Время и галочки стоят на базовой линии последней строки текста (низ маленьких букв):
+   у текста центр по x-height. Метрики Inter 14px / lh 21px: базовая линия в 10.4px от
+   низа пузыря; время (11px, lh 1) даёт 1.5px ниже своей базовой линии, отсюда bottom 9px */
+.msg-bubble:not(.bubble-photo) > .irc-meta {
+  bottom: 9px; align-items: flex-end;
+}
+.msg-bubble:not(.bubble-photo) > .irc-meta .irc-time { line-height: 1; }
+.msg-bubble:not(.bubble-photo) > .irc-meta .status-wrap { margin-bottom: 1.5px; display: flex; }
 .irc-text::after { content: ''; display: inline-block; width: 50px; }
 .irc-msg[data-mine] .irc-text::after { width: 60px; }
 
@@ -3066,10 +3073,10 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
   position: absolute; top: 64px; left: 0; right: 0; z-index: 5;
   height: 40px; box-sizing: border-box;
   display: none; align-items: center; gap: 4px;
-  padding: 0 6px 0 14px;
+  padding: 0; padding-left: 14px;
   background: var(--card-bg);
+  border: 1px solid var(--border);
   border-radius: 20px;
-  box-shadow: 0 4px 14px rgba(0,0,0,.16);
 }
 .chat-search.open { display: flex; }
 .chat-search > svg { color: var(--muted); flex-shrink: 0; }
@@ -3086,3 +3093,11 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
   color: inherit; border-radius: 3px; padding: 0 1px;
 }
 .msg-search-hl.cur { background: color-mix(in srgb, var(--accent) 65%, transparent); }
+
+/* Кнопка у края панели: подсветка повторяет скругление панели, центр кнопки — центр полукруга */
+.chat-header-actions > .icon-btn:last-child,
+.chat-search > .icon-btn:last-child,
+.pin-bar > .pin-unpin:last-child {
+  width: 38px; height: 38px; border-radius: 0 19px 19px 0;
+}
+.pin-bar { padding-right: 0; }

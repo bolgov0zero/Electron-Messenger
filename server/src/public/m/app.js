@@ -408,9 +408,9 @@ function presenceDot(userId) {
   return `<span class="status-dot${st === 'away' ? ' away' : ''}" data-user-id="${userId}"${st === 'offline' ? ' style="display:none"' : ''}></span>`;
 }
 
-// Статус присутствия: вкладка на переднем плане — «онлайн» сразу, в фоне — «отошёл» через 30 секунд.
+// Статус присутствия: вкладка на переднем плане — «онлайн» сразу, в фоне — «отошёл» через 5 секунд.
 // Таймер не перезапускается при повторных сменах видимости
-const AWAY_DELAY = 30000;
+const AWAY_DELAY = 5000;
 let _awayTimer = null;
 function sendPresenceStatus(status) {
   if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'set_status', status }));
@@ -933,6 +933,8 @@ async function loadContacts() {
   _contactsAll = users;
   if (S.currentTab === 'contacts') renderContacts();
 }
+// Группы контактов: онлайн, отошёл, не в сети — подписи как в списке чатов
+const CONTACT_GROUPS = [[0, 'Онлайн'], [1, 'Отошёл'], [2, 'Не в сети']];
 function renderContacts() {
   const q = (document.getElementById('contact-search').value || '').trim().toLowerCase();
   const list = document.getElementById('contact-list');
@@ -944,7 +946,7 @@ function renderContacts() {
   // Статус онлайн известен только для тех, с кем уже есть личный чат (presence
   // приходит по собеседникам direct-чатов — та же логика, что в /chat и в
   // клиенте): для остальных контактов точка просто не показывается.
-  list.innerHTML = filtered.map(u => `
+  const rowHtml = u => `
     <div class="row" onclick="openContactChat(${u.id})">
       <div class="av-wrap">
         <div class="av ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}" data-av-fallback="${esc(initials(u.display_name))}">${esc(initials(u.display_name))}</div>
@@ -954,7 +956,11 @@ function renderContacts() {
         <div class="row-top"><div class="row-name">${esc(u.display_name)}</div></div>
         <div class="row-bottom"><div class="row-msg">@${esc(u.username)}</div></div>
       </div>
-    </div>`).join('');
+    </div>`;
+  list.innerHTML = CONTACT_GROUPS.map(([r, label]) => {
+    const items = filtered.filter(u => rank(u) === r);
+    return items.length ? `<div class="chat-list-section-label">${label}</div>` + items.map(rowHtml).join('') : '';
+  }).join('');
   applyAvatars();
 }
 async function openContactChat(userId) {
@@ -2769,7 +2775,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('l-password').addEventListener('keydown', e => e.key === 'Enter' && doLogin());
   document.getElementById('l-username').addEventListener('keydown', e => e.key === 'Enter' && document.getElementById('l-password').focus());
   document.addEventListener('visibilitychange', () => {
-    // Скрытая вкладка — «отошёл» через 30 секунд; соединение браузер в фоне может
+    // Скрытая вкладка — «отошёл» через 5 секунд; соединение браузер в фоне может
     // оборвать раньше, тогда статус станет «был в сети» по обычному пути
     sendPresence(!document.hidden);
     if (!document.hidden) {

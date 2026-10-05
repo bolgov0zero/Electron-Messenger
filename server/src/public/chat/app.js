@@ -400,9 +400,9 @@ function refreshActivity() {
   sendPresence(viewing);
 }
 
-// Статус присутствия: в фокусе — «онлайн» сразу, без фокуса — «отошёл» через 30 секунд.
+// Статус присутствия: в фокусе — «онлайн» сразу, без фокуса — «отошёл» через 5 секунд.
 // Таймер не перезапускается при повторных сменах фокуса: отсчёт идёт от первой потери.
-const AWAY_DELAY = 30000;
+const AWAY_DELAY = 5000;
 let _awayTimer = null;
 function sendPresenceStatus(status) {
   if (S.ws?.readyState===1) S.ws.send(JSON.stringify({type:'set_status', status}));
@@ -974,6 +974,19 @@ function contactRowHtml(u) {
     ${u.tag ? `<span class="pp-tag">${esc(u.tag)}</span>` : ''}
   </div>`;
 }
+// Группы контактов: онлайн, отошёл, не в сети — подписи как в списке чатов
+const CONTACT_GROUPS = [[0, 'Онлайн'], [1, 'Отошёл'], [2, 'Не в сети']];
+function contactGroupsHtml(users, rank, rowHtml) {
+  let html = '', first = true;
+  CONTACT_GROUPS.forEach(([r, label]) => {
+    const items = users.filter(u => rank(u) === r);
+    if (!items.length) return;
+    html += `<div class="chat-list-section-label"${first ? '' : ' style="padding-top:12px"'}>${label}</div>` + items.map(rowHtml).join('');
+    first = false;
+  });
+  return html;
+}
+
 function renderContactsList(filter = '') {
   const list = document.getElementById('chats-list');
   if (!list) return;
@@ -983,7 +996,7 @@ function renderContactsList(filter = '') {
   // Сначала те, кто в сети; внутри каждой группы — по имени
   const rank = u => ({ online: 0, away: 1 })[S.presence[u.id]] ?? 2;
   users.sort((a, b) => rank(a) - rank(b) || a.display_name.localeCompare(b.display_name, 'ru'));
-  list.innerHTML = users.length ? users.map(contactRowHtml).join('') : '<div class="pp-empty">Никого не нашлось</div>';
+  list.innerHTML = users.length ? contactGroupsHtml(users, rank, contactRowHtml) : '<div class="pp-empty">Никого не нашлось</div>';
 }
 function filterContacts(q) { renderContactsList(q); }
 async function openContactChat(userId) {
