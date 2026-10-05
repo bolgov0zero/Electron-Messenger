@@ -2682,13 +2682,14 @@ function _rtRender(btn, reaction, users) {
     }).join('') +
     (rest > 0 ? `<span class="rt-row rt-more">и ещё ${rest}</span>` : '');
 
-  // Интерфейс масштабируется через zoom (настройка размера), поэтому
-  // getBoundingClientRect отдаёт визуальные пиксели, а style.left/top задаются в
-  // CSS-пикселях. Коэффициент берём из самого элемента — не важно, где задан zoom.
-  // offsetWidth/offsetHeight вдобавок не зависят от анимации transform.
+  // Интерфейс масштабируется через CSS zoom на <html> (настройка размера). Координаты
+  // getBoundingClientRect — визуальные пиксели, а style.left/top — пиксели до zoom.
+  // Масштаб берём из настройки: измерение offsetWidth/rect в разных версиях Chromium
+  // даёт разный результат, из-за чего подсказка уезжала при масштабе не 100%.
+  const Z = ((S.settings && S.settings.uiScale) || 100) / 100;
   el.style.left = '0px'; el.style.top = '0px';
-  const z = el.offsetWidth ? (el.getBoundingClientRect().width / el.offsetWidth) : 1;
-  const tw = el.offsetWidth * z, th = el.offsetHeight * z;
+  const er = el.getBoundingClientRect();
+  const tw = er.width, th = er.height;
   const r = btn.getBoundingClientRect();
   // Выравниваем по стороне кнопки: у своих сообщений (справа) подсказка уходит влево
   // от правого края чипа, у чужих — вправо от левого. Центр по чипу при упоре в край
@@ -2699,8 +2700,8 @@ function _rtRender(btn, reaction, users) {
   // Показываем над бейджем; если сверху не помещается — под ним
   let top = r.top - th - 8;
   if (top < 8) top = r.bottom + 8;
-  el.style.left = Math.round(left / z) + 'px';
-  el.style.top = Math.round(top / z) + 'px';
+  el.style.left = Math.round(left / Z) + 'px';
+  el.style.top = Math.round(top / Z) + 'px';
   el.classList.add('visible');
 }
 
