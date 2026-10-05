@@ -268,7 +268,7 @@
   --sidebar-w: 350px;
 
   /* Topbar height */
-  --topbar-h: 58px;
+  --topbar-h: 48px;
 
   /* Viewport height — переопределяется JS при масштабировании */
   --vh100: 100vh;
@@ -859,7 +859,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 /* высота закреплена: содержимое в свёрнутом сайдбаре другое, а блок должен
    остаться того же размера — по нему выровнена шапка списка тем */
 .sidebar-search {
-  height: 57px; padding: 0 14px; flex-shrink: 0;
+  height: 42px; padding: 0 14px; flex-shrink: 0;
   /* flex — чтобы «назад» и название комнаты в режиме room-mode стояли в ряд,
      а не друг под другом (обычно виден только один блочный search-wrap) */
   display: flex; align-items: center; gap: 10px;
