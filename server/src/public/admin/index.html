@@ -1406,6 +1406,11 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .sp-lg span{display:inline-flex;align-items:center;gap:5px}.sp-lg i{width:8px;height:8px;border-radius:3px}.sp-lg b{color:var(--c-text)}
 .sp-tf{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;color:var(--c-muted)}
 .sp-tf b{color:var(--c-text);font-family:var(--f-mono);font-size:12px}
+.sp-tiles .ub-tile{display:block;width:100%}
+.sp-tiles .ub-sub{margin-top:6px}
+.sp-sk{display:flex;align-items:flex-end;gap:4px;height:22px;margin-top:8px}
+.sp-sk i{flex:1;max-width:22px;background:var(--c-primary);border-radius:2px;opacity:.85}
+@container (max-width:760px){.sp-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .sp-lim{display:flex;flex-direction:column;gap:8px}
 .sp-lim div{display:grid;grid-template-columns:74px minmax(0,1fr) 40px;align-items:center;gap:8px;font-size:12px;color:var(--c-muted)}
 .sp-lim i{display:block;height:8px;border-radius:4px}
@@ -5391,6 +5396,7 @@ async function stGhSave() {
   g.set = !!s.github_token_set; g.show = false;
   stRender();
   toast('Токен сохранён', 'success');
+  spLoadRate();
 }
 function stGhDel() {
   confirm('Удалить токен GitHub?', 'Проверки обновлений пойдут анонимно — не больше 60 запросов в час.', async () => {
@@ -5398,7 +5404,7 @@ function stGhDel() {
     stRender();
     const r = await api('PUT', '/api/admin/settings', { github_token: '' });
     ST.gh.busy = false;
-    if (r?.ok) { ST.gh.set = false; ST.gh.err = ''; toast('Токен удалён', 'success'); }
+    if (r?.ok) { ST.gh.set = false; ST.gh.err = ''; toast('Токен удалён', 'success'); spLoadRate(); }
     else toast('Не удалось удалить токен', 'error');
     stRender();
   });
@@ -5463,7 +5469,7 @@ function restartService() {
 // копий и токена — та же, что у прежнего окна (ST, stBackup, stGhSave). Обновление сервера
 // здесь не настраивается: статус и кнопка «↑ версия» живут в сайдбаре, установка — на главной.
 
-const SP = { open: new Set(['attachments']), q: '', files: [], audit: [], online: 0, pend: null, loaded: false, editCustom: false, editUnit: 60, lifeCustom: false, showBk: false, showLog: false };
+const SP = { open: new Set(), rate: null, disk: null, q: '', files: [], audit: [], online: 0, pend: null, loaded: false, editCustom: false, editUnit: 60, lifeCustom: false, showBk: false, showLog: false };
 const SP_KEYS = { messages: ['edit'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime', 'backupRetention'] };
 const SP_DEF = { edit: 120, imgMax: 10, imgExt: ['jpeg', 'jpg', 'png', 'gif', 'webp'], videoMax: 50, videoExt: ['mp4', 'mov', 'webm'], fileMax: 50, fileExt: [], life: 0, backupDays: [], backupTime: '03:00', backupRetention: NaN };
 const SP_AUDIT_KEY = { messages: 'edit_time_limit', attachments: 'upload_', backups: 'backup_', github: 'github_token' };
@@ -5492,9 +5498,10 @@ function spToast(html, undo) {
 async function renderSettings() {
   setTopbarActions('');
   document.getElementById('page-body').innerHTML = '<div class="ux-page"><div class="ux-empty">Загрузка…</div></div>';
-  const [settings, stats, backups, files, users, audit] = await Promise.all([
+  const [settings, stats, backups, files, users, audit, overview] = await Promise.all([
     api('GET', '/api/admin/settings'), api('GET', '/api/admin/stats'), api('GET', '/api/admin/backups'),
     api('GET', '/api/admin/files'), api('GET', '/api/admin/users'), api('GET', '/api/admin/audit-log?limit=200'),
+    hmGet('/api/admin/overview'),
   ]);
   if (currentPage !== 'settings') return;
   if (!settings || settings.error) { document.getElementById('page-body').innerHTML = '<div class="ux-page"><div class="ux-empty">Не удалось загрузить настройки</div></div>'; return; }
@@ -5502,9 +5509,13 @@ async function renderSettings() {
   Object.assign(ST, { stats, backups: Array.isArray(backups) ? backups : [], bkNew: false });
   ST.gh.show = false; ST.gh.err = '';
   SP.files = Array.isArray(files) ? files : [];
+  SP.disk = overview?.storage?.disk || null;
   if (Array.isArray(users)) { allUsersCache = users; SP.online = users.filter(u => u.status === 'online' && !u.banned).length; }
   SP.audit = Array.isArray(audit) ? audit.filter(a => a.category === 'server') : [];
   SP.loaded = true; SP.pend = null;
+  spLoadRate();
+  clearInterval(SP.rateTimer);
+  SP.rateTimer = setInterval(() => { if (currentPage === 'settings') spLoadRate(); else clearInterval(SP.rateTimer); }, 60000);
   if (ST.goSec) { SP.open.add(ST.goSec); }
   spRender();
   if (ST.goSec) { const k = ST.goSec; ST.goSec = null; spScroll(k); }
@@ -5596,6 +5607,49 @@ function spExpand(all) { if (all) SP_ORDER.forEach(k => SP.open.add(k)); else SP
 function spSearch(v) { SP.q = v; spRender('sp-q'); }
 
 // ── Разметка ──
+// ── Верхние плитки ──
+// Остаток лимита GitHub спрашиваем у самого GitHub (сервер вызывает /rate_limit, он в лимит не
+// засчитывается), поэтому «потрачено» точное, включая запросы не только этой админки
+async function spLoadRate() {
+  let r;
+  try {
+    const res = await fetch('/api/admin/github/rate?_t=' + Date.now(), { headers: { Authorization: 'Bearer ' + token, 'Cache-Control': 'no-cache' } });
+    const j = await res.json().catch(() => ({}));
+    r = res.ok && j.limit != null ? j : { error: j.error || 'Не удалось узнать остаток' };
+  } catch { r = { error: 'Нет связи с сервером' }; }
+  SP.rate = r;
+  if (currentPage !== 'settings' || !SP.loaded) return;
+  const t = document.getElementById('sp-t-gh');
+  if (t) t.innerHTML = spGhTile(); else spRender();
+}
+function spGhTile() {
+  const r = SP.rate, lb = '<div class="ub-lbl">Лимит GitHub</div>';
+  if (!r) return `${lb}<div class="ub-big">…</div><div class="ub-sub">Узнаю остаток у GitHub</div>`;
+  if (r.error) return `${lb}<div class="ub-big">—</div><div class="ub-sub">${esc(r.error)}. Нажмите, чтобы повторить</div>`;
+  const pct = r.limit ? Math.round(r.used / r.limit * 100) : 0, col = pct >= 90 ? 'var(--c-red)' : pct >= 70 ? 'var(--c-orange)' : 'var(--c-green)';
+  const mins = Math.max(1, Math.ceil((r.reset * 1000 - Date.now()) / 60000));
+  return `${lb}<div class="ub-big">${rmFmt(r.used)}<small>из ${rmFmt(r.limit)} потрачено</small></div><div class="ub-meter"><i style="width:${Math.max(pct, r.used ? 2 : 0)}%;background:${col}"></i></div>
+    <div class="ub-sub">Осталось ${rmFmt(r.remaining)} · сброс через ${mins} мин, в ${hmClock(r.reset * 1000)}</div><div class="ub-sub">${r.authenticated ? 'Запросы идут с токеном' : '<span style="color:var(--c-orange)">Токен не задан</span>: лимит всего 60 в час'}</div>`;
+}
+function spChanges() { const from = Date.now() / 1000 - 7 * 86400; return SP.audit.filter(a => /настрой|копи|обнов|перезапуск/i.test(a.action) && a.created_at >= from); }
+function spOpen(k) { SP.q = ''; SP.open.add(k); spRender(); spScroll(k); }
+function spTiles() {
+  const k = spKindSizes(), total = Object.values(k).reduce((a, b) => a + b, 0), nf = SP.files.length, free = SP.disk ? SP.disk.free : null;
+  const last = ST.backups.length ? ST.backups.reduce((a, b) => b.created_at > a.created_at ? b : a) : null, old = stBackupOld();
+  const days = Array.from({ length: 14 }, (_, i) => 13 - i);
+  const dots = days.map(i => { const d = new Date(); d.setDate(d.getDate() - i); return `<i class="${ST.backups.some(b => new Date(b.created_at * 1000).toDateString() === d.toDateString()) ? 'have' : ''}"></i>`; }).join('');
+  const ch = spChanges(), now = Date.now() / 1000;
+  const per = Array.from({ length: 7 }, (_, i) => ch.filter(a => Math.floor((now - a.created_at) / 86400) === 6 - i).length), mx = Math.max(1, ...per);
+  const lc = ch[0];
+  const small = 'font-size:18px;line-height:1.3;margin-top:8px;font-family:var(--f-ui)';
+  return `<div class="ub-tiles sp-tiles">
+    <button type="button" class="ub-tile" onclick="spOpen('attachments')"><div class="ub-lbl">Вложения</div><div class="ub-big">${hmBytes(total)}</div><span class="sp-ms big">${Object.keys(k).map(x => `<i style="flex:${Math.max(k[x], 1)};background:${SP_KC[x]}"></i>`).join('')}</span><div class="ub-sub">${rmFmt(nf)} ${uxPlural(nf, 'файл', 'файла', 'файлов')}${free != null ? ` · на диске свободно ${hmBytes(free)}` : ''}</div></button>
+    <button type="button" class="ub-tile" onclick="spOpen('backups')"><div class="ub-lbl">Резервные копии</div><div class="ub-big" style="${small}${old ? ';color:var(--c-orange)' : ''}">${last ? esc(uaSeen(last.created_at)) : 'копий нет'}</div><span class="sp-md" style="margin-top:8px">${dots}</span><div class="ub-sub">Всего ${ST.backups.length} · следующая: ${esc(stNextBackupLabel() || 'только вручную')}</div></button>
+    <button type="button" class="ub-tile" id="sp-t-gh" onclick="${SP.rate?.error ? 'spLoadRate()' : "spOpen('github')"}">${spGhTile()}</button>
+    <button type="button" class="ub-tile" onclick="spOpen('history')"><div class="ub-lbl">Изменения за 7 дней</div><div class="ub-big">${ch.length}</div><div class="sp-sk">${per.map(n => `<i style="height:${Math.max(2, Math.round(n / mx * 22))}px"></i>`).join('')}</div><div class="ub-sub">${lc ? `Последнее: ${esc(uaSeen(lc.created_at))}${lc.actor_name ? ', ' + esc(lc.actor_name) : ''}` : 'За неделю изменений не было'}</div></button>
+  </div>`;
+}
+
 const SP_ORDER = ['messages', 'attachments', 'backups', 'github', 'history'];
 const spAttn = k => k === 'github' ? !ST.gh.set : k === 'backups' ? stBackupOld() : false;
 const spRow = (title, desc, ctl, extra = '', cls = '', kw = '') => spHit(title, desc, kw) ? `<div class="sp-r ${cls}"><div class="sp-l"><b>${title}</b>${desc ? `<span>${desc}</span>` : ''}${extra}</div><div class="sp-c">${ctl}</div></div>` : '';
@@ -5669,7 +5723,7 @@ const SP_SIDE = {
       <p class="sp-sd">✓ копия есть, ! по расписанию нужна, но её нет. Ближайшая: <b>${esc(stNextBackupLabel() || 'только вручную')}</b>.</p>
       ${!spSv('backupDays').length ? spSug2('Автокопий нет: при сбое можно потерять день работы', 'Включить по будням в 03:00', "spSug('days')") : ''}`;
   },
-  github: () => `<h5>Лимит запросов в час</h5><div class="sp-lim"><div><span>без токена</span><i style="width:${ST.gh.set ? 2 : 100}%;background:${ST.gh.set ? 'var(--c-muted)' : 'var(--c-orange)'}"></i><b>60</b></div><div><span>с токеном</span><i style="width:100%;background:${ST.gh.set ? 'var(--c-green)' : 'var(--c-muted)'}"></i><b>5000</b></div></div><p class="sp-sd">Сейчас: <b>${ST.gh.set ? 'с токеном' : 'без токена'}</b>. Проверка обновлений делает несколько запросов.</p>${ST.gh.set ? '' : spSug2('Задайте токен: лимит вырастет в 80 раз', 'К полю токена', "spSug('gh')")}`,
+  github: () => `<h5>Лимит запросов в час</h5><div class="sp-lim"><div><span>без токена</span><i style="width:${ST.gh.set ? 2 : 100}%;background:${ST.gh.set ? 'var(--c-muted)' : 'var(--c-orange)'}"></i><b>60</b></div><div><span>с токеном</span><i style="width:100%;background:${ST.gh.set ? 'var(--c-green)' : 'var(--c-muted)'}"></i><b>5000</b></div></div><p class="sp-sd">Сейчас: <b>${ST.gh.set ? 'с токеном' : 'без токена'}</b>.${SP.rate && !SP.rate.error ? ` Потрачено <b>${SP.rate.used} из ${SP.rate.limit}</b>, остаток обнулится в ${hmClock(SP.rate.reset * 1000)}.` : ''} Проверка обновлений делает несколько запросов.</p>${ST.gh.set ? '' : spSug2('Задайте токен: лимит вырастет в 80 раз', 'К полю токена', "spSug('gh')")}`,
   history: () => '',
 };
 function spQuickBtn(k) {
@@ -5713,7 +5767,7 @@ function spRender(focusId) {
   const allOpen = list.length && list.every(k => SP.open.has(k));
   uxKeepFocus(() => {
     page.innerHTML = `<div class="sp"><div class="sp-tb">${uxSearch('sp-q', SP.q, 'Найти настройку: копия, размер, токен…', 'spSearch')}<button type="button" class="btn btn-ghost btn-sm" onclick="spExpand(${allOpen ? 'false' : 'true'})">${allOpen ? 'Свернуть всё' : 'Развернуть всё'}</button></div>
-      <div class="sp-scroll">${need.length ? `<div class="sp-gl"><i class="sp-wd"></i>Требует внимания · ${need.length}</div>${need.map(one).join('')}${rest.length ? '<div class="sp-gl">Остальное</div>' : ''}` : ''}${rest.map(one).join('')}${!list.length ? '<div class="ub-empty">Ничего не нашли. Попробуйте «копия», «токен» или «размер».</div>' : ''}</div></div>`;
+      <div class="sp-scroll">${q ? '' : spTiles()}${need.length ? `<div class="sp-gl"><i class="sp-wd"></i>Требует внимания · ${need.length}</div>${need.map(one).join('')}${rest.length ? '<div class="sp-gl">Остальное</div>' : ''}` : ''}${rest.map(one).join('')}${!list.length ? '<div class="ub-empty">Ничего не нашли. Попробуйте «копия», «токен» или «размер».</div>' : ''}</div></div>`;
   });
   const sc = page.querySelector('.sp-scroll'); if (sc) sc.scrollTop = scroll;
   const f = keep && document.getElementById(keep);

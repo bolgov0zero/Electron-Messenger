@@ -542,6 +542,30 @@ function semverGt(a, b) {
   return am !== bm ? am > bm : an !== bn ? an > bn : ap > bp;
 }
 
+// Остаток лимита запросов к GitHub — то, что GitHub сам насчитал для этого токена (или для адреса
+// сервера, если токена нет). Запрос /rate_limit в лимит не засчитывается, поэтому опрос ничего не тратит
+router.get('/github/rate', (req, res) => {
+  const token = db.prepare("SELECT value FROM settings WHERE key = 'github_token'").get()?.value;
+  const headers = { 'User-Agent': 'Electron-Admin', 'Accept': 'application/vnd.github.v3+json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  let done = false;
+  const finish = (code, body) => { if (done) return; done = true; clearTimeout(timer); res.status(code).json(body); };
+  const req2 = https.request({ hostname: 'api.github.com', path: '/rate_limit', headers }, r => {
+    let body = '';
+    r.on('data', c => body += c);
+    r.on('end', () => {
+      if (r.statusCode === 401) return finish(502, { error: 'GitHub не принял токен' });
+      try {
+        const c = JSON.parse(body).resources.core;
+        finish(200, { limit: c.limit, remaining: c.remaining, used: c.used, reset: c.reset, authenticated: !!token });
+      } catch { finish(502, { error: 'GitHub вернул неожиданный ответ' }); }
+    });
+  });
+  const timer = setTimeout(() => { req2.destroy(); finish(504, { error: 'GitHub не ответил' }); }, 8000);
+  req2.on('error', () => finish(502, { error: 'Нет связи с GitHub' }));
+  req2.end();
+});
+
 router.get('/server/version', async (req, res) => {
   const local = getLocalVersion();
   const remote = await fetchRemoteVersion();
