@@ -1109,6 +1109,56 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 @container (max-width:860px){.ub-row{grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) auto}.ub-row .ub-role{display:none}}
 @container (max-width:620px){.ub-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.ub-row{grid-template-columns:22px minmax(0,1fr) auto}.ub-row .ub-st{display:none}}
 @container (max-width:380px){.ub-tiles{grid-template-columns:minmax(0,1fr)}}
+/* Комнаты: те же плитки и раскладка, что у «Пользователей»; запись раскрывается по клику */
+.rb-row{flex-shrink:0;display:flex;flex-direction:column;background:var(--c-surface);border:1px solid var(--c-border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.rb-row:hover{border-color:color-mix(in srgb,var(--c-primary) 35%,var(--c-border))}
+.rb-top{display:grid;grid-template-columns:22px minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) 150px;align-items:center;gap:14px;padding:10px 14px;cursor:pointer}
+.rb-cv{border:0;background:none;color:var(--c-muted);cursor:pointer;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;transition:transform .2s}
+.rb-cv:hover{color:var(--c-text);background:var(--c-surface2)}
+.rb-cv[aria-expanded="true"]{transform:rotate(90deg);color:var(--c-primary)}
+.rb-cv svg{width:12px;height:12px}
+.rb-name{display:flex;align-items:center;gap:11px;min-width:0}
+.rb-nl{display:flex;align-items:center;gap:7px;min-width:0}
+.rb-nl b{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.rb-chip{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;white-space:nowrap;flex-shrink:0;background:color-mix(in srgb,var(--dv-c2) 16%,transparent);color:var(--dv-c2)}
+.rb-chip.q{background:color-mix(in srgb,var(--dv-c4) 18%,transparent);color:var(--c-muted)}
+.rb-chip.ro{background:color-mix(in srgb,var(--dv-c3) 16%,transparent);color:var(--dv-c3)}
+.rb-meta{font-size:11.5px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rb-pres{display:flex;flex-direction:column;gap:6px;min-width:0}
+.rb-pb{display:flex;gap:2px;height:6px;border-radius:3px;overflow:hidden;max-width:150px;background:var(--c-surface2)}
+.rb-pb i{display:block;height:100%;min-width:3px}
+.rb-pt{font-size:12px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rb-pt b{color:var(--c-text);font:700 12.5px var(--f-mono)}
+.rb-pt .bl{color:var(--c-red-text);font-weight:600}
+.rb-act{display:flex;align-items:center;gap:10px;min-width:0}
+.rb-act .t{font-size:12.5px;line-height:1.25;min-width:0}
+.rb-act .t b{font:700 13px var(--f-mono)}
+.rb-act .t small{display:block;font-size:11px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rb-wk{display:inline-flex;align-items:flex-end;gap:2px;height:22px;flex-shrink:0}
+.rb-wk i{width:5px;border-radius:1.5px;background:var(--c-primary);opacity:.85;min-height:2px}
+.rb-wk i.z{opacity:.25}
+.rb-exp{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);gap:18px;padding:14px 16px 16px 50px;border-top:1px solid var(--c-border);background:var(--c-surface2)}
+.rb-exp.fresh{animation:rbPop .22s ease}
+@keyframes rbPop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.rb-exp h4{margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted);display:flex;align-items:center;gap:8px}
+.rb-pl{display:flex;flex-direction:column;gap:6px}
+.rb-p{display:flex;align-items:center;gap:8px;font-size:12.5px;min-width:0}
+.rb-p .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rb-p .s{margin-left:auto;font:500 11px var(--f-mono);color:var(--c-muted);white-space:nowrap}
+.rb-p .s.on{color:var(--c-green-text)}.rb-p .s.aw{color:var(--c-orange-text)}.rb-p .s.bn{color:var(--c-red-text)}
+.rb-p .adm{font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;background:var(--c-primary-dim);color:var(--c-primary)}
+.rb-tp{display:flex;align-items:center;gap:10px;font-size:12.5px;margin-bottom:6px}
+.rb-tp .nm{min-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rb-tp .meter{flex:1;height:5px;border-radius:3px;background:var(--c-surface);overflow:hidden}
+.rb-tp .meter i{display:block;height:100%;background:var(--c-primary);border-radius:3px}
+.rb-tp .num{font:600 12px var(--f-mono)}
+.rb-kv{display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+.rb-kv div{display:flex;justify-content:space-between;gap:10px}
+.rb-kv span{color:var(--c-muted)}
+.rb-kv b{font-weight:600;text-align:right}
+@container (max-width:1000px){.rb-top{grid-template-columns:22px minmax(0,1.5fr) minmax(0,1fr) 150px}.rb-top .rb-act{display:none}.rb-exp{grid-template-columns:minmax(0,1fr);padding-left:16px}}
+@container (max-width:700px){.rb-top{grid-template-columns:22px minmax(0,1fr) auto}.rb-top .rb-pres{display:none}}
+@media (prefers-reduced-motion:reduce){.rb-cv,.rb-exp.fresh{transition:none;animation:none}}
 /* Клиенты: та же раскладка, что у «Пользователей» (.ub), строки-карточки с колонками */
 .ub-tile.static{cursor:default}
 .ub-tile.static:hover{border-color:var(--c-border)}
@@ -1121,6 +1171,11 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .ub-leg b{color:var(--c-text);font-family:var(--f-mono);font-weight:600;font-size:11.5px}
 .ub-sort button .n{font:500 11px var(--f-mono);opacity:.75;margin-left:5px}
 .ub-sort button.warn .n{color:var(--c-orange-text);opacity:1}
+.rb-bars{display:flex;align-items:flex-end;gap:5px;height:40px;margin-top:8px}
+.rb-bars div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:3px;min-width:0}
+.rb-bars i{display:block;width:100%;border-radius:3px;background:var(--c-primary);min-height:2px;opacity:.8}
+.rb-bars i.cur{opacity:1}
+.rb-bars span{font-size:9.5px;color:var(--c-muted);line-height:1}
 .cb-row{display:grid;grid-template-columns:22px minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.1fr) minmax(0,.8fr) 150px;align-items:center;gap:14px;padding:10px 14px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:14px;box-shadow:var(--shadow)}
 .cb-row:hover{border-color:color-mix(in srgb,var(--c-primary) 35%,var(--c-border))}
 .cb-row.sel{background:var(--c-primary-dim)}
@@ -1623,6 +1678,7 @@ function startBgListsPolling() {
     if (!token || document.querySelector('.modal-bg.open')) return;
     if (currentPage === 'users') renderUsers().catch(() => {});
     else if (currentPage === 'chats') renderChats().catch(() => {});
+    else if (currentPage === 'rooms') renderRooms().catch(() => {});
   }, 5000);
 }
 
@@ -2604,7 +2660,7 @@ function hmUpdFinish(ok, message) {
 // Раздел «Комнаты»: сводка, фильтры, таблица. Окно комнаты — вкладки «Основное · Темы ·
 // Участники»; всё применяется по «Сохранить», чтобы можно было передумать до записи.
 
-const RM = { filter: 'all', q: '', sel: new Set(), form: null, dragFrom: null };
+const RM = { filter: 'all', q: '', sort: 'name', open: new Set(), fresh: null, sel: new Set(), form: null, dragFrom: null };
 const rmSvg = p => `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const RM_I = {
   plus: rmSvg('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'),
@@ -2641,54 +2697,90 @@ async function renderRooms() {
   rmRender();
 }
 
+// Присутствие участников комнаты: по статусам пользователей (в сети, отошёл, не в сети) и блокировкам
+const rbShort = n => String(n || '').replace(/^Кабинет №\d+ /, '');
+const rbDays = () => ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+function rbPresence(r, U) {
+  const names = [], away = [], banned = [];
+  (r.members || []).forEach(m => {
+    const u = U.get(m.id);
+    if (!u) return;
+    if (u.banned) banned.push(m.name);
+    else if (u.status === 'online') names.push(m.name);
+    else if (u.status === 'away') away.push(m.name);
+  });
+  const n = (r.members || []).length, off = n - names.length - away.length - banned.length;
+  return { on: names, away, banned, off, n };
+}
+function rbPresHtml(p) {
+  const shown = p.on.slice(0, 2).map(rbShort), more = p.on.length - shown.length;
+  const tip = [p.on.length ? `В сети: ${p.on.join(', ')}` : '', p.away.length ? `Отошли: ${p.away.join(', ')}` : '', p.banned.length ? `Заблокированы: ${p.banned.join(', ')}` : ''].filter(Boolean).join('\n') || 'Никого в сети';
+  const text = p.on.length ? `<b>${p.on.length}</b> из ${p.n} · ${shown.map(esc).join(', ')}${more > 0 ? ` +${more}` : ''}` : `<span>${p.away.length ? '' : 'никого в сети'}</span>`;
+  return `<div class="rb-pres" title="${esc(tip)}"><div class="rb-pb">${p.on.length ? `<i style="flex:${p.on.length};background:var(--c-green)"></i>` : ''}${p.away.length ? `<i style="flex:${p.away.length};background:var(--c-orange)"></i>` : ''}${p.off ? `<i style="flex:${p.off};background:var(--c-muted);opacity:.45"></i>` : ''}${p.banned.length ? `<i style="flex:${p.banned.length};background:var(--c-red)"></i>` : ''}</div>
+    <div class="rb-pt">${text}${p.away.length ? ` <span style="color:var(--c-orange-text)">· ${p.away.length} отошёл</span>` : ''}${p.banned.length ? ` <span class="bl">· ${p.banned.length} заблок.</span>` : ''}</div></div>`;
+}
+const rbWk = w => { const mx = Math.max(1, ...w); return `<span class="rb-wk" title="Сообщения по дням за неделю: ${w.join(', ')}">${w.map(n => `<i class="${n ? '' : 'z'}" style="height:${Math.max(2, Math.round(n / mx * 22))}px"></i>`).join('')}</span>`; };
+
 function rmRender() {
   if (currentPage !== 'rooms') return;
+  const page = document.getElementById('page-body');
+  const U = new Map((allUsersCache || []).map(u => [u.id, u]));
   const q = RM.q.trim().toLowerCase();
   const quiet = r => rmWeek(r) === 0;
   const rows = allRooms
     .filter(r => RM.filter === 'all' || (RM.filter === 'topics' && r.topics.length) || (RM.filter === 'plain' && !r.topics.length) || (RM.filter === 'quiet' && quiet(r)))
     .filter(r => !q || (r.name || '').toLowerCase().includes(q) || r.topics.some(t => (t.name || '').toLowerCase().includes(q)))
     // По имени, с учётом чисел: «Кабинет 2» раньше «Кабинет 21»
-    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru', { numeric: true }));
+    .sort((a, b) => (RM.sort === 'act' ? rmWeek(b) - rmWeek(a) : 0) || (a.name || '').localeCompare(b.name || '', 'ru', { numeric: true }));
+  const n = { all: allRooms.length, topics: allRooms.filter(r => r.topics.length).length, plain: allRooms.filter(r => !r.topics.length).length, quiet: allRooms.filter(quiet).length };
   const topicsTotal = allRooms.reduce((s, r) => s + r.topics.length, 0);
-  const people = new Set(allRooms.flatMap(r => r.member_names)).size;
-  const busiest = allRooms.filter(rmWeek).sort((a, b) => rmWeek(b) - rmWeek(a))[0];
-  const silent = allRooms.filter(quiet);
-  const allSel = rows.length > 0 && rows.every(r => RM.sel.has(r.id));
+  const people = new Set(allRooms.flatMap(r => (r.members || []).map(m => m.id)));
+  const online = [...people].filter(id => U.get(id)?.status === 'online' && !U.get(id)?.banned).length;
+  const wt = [0, 1, 2, 3, 4, 5, 6].map(i => allRooms.reduce((s, r) => s + (r.week[i] || 0), 0)), wmax = Math.max(1, ...wt), wsum = wt.reduce((a, b) => a + b, 0);
+  const today = new Date().getDay(), dn = rbDays();
+  const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
+  const flt = ([k, label, count]) => `<button type="button" aria-pressed="${RM.filter === k}" onclick="rmFilter('${k}')">${label}<span class="n">${count}</span></button>`;
+  const sortBtn = (k, label) => `<button type="button" aria-pressed="${RM.sort === k}" onclick="rmSort('${k}')">${label}</button>`;
   uxKeepFocus(() => {
-    document.getElementById('page-body').innerHTML = `<div class="ux-page">
-      <section class="ux-panel rm-sum">
-        <div><div class="cl-k">Комнат</div><div class="cl-v">${allRooms.length}</div></div>
-        <div><div class="cl-k">Тем</div><div class="cl-v">${topicsTotal}</div></div>
-        <div><div class="cl-k">Участников</div><div class="cl-v">${people}<small>в комнатах</small></div></div>
-        <div class="rm-note">${busiest ? `Активнее всего за неделю — <b>${esc(busiest.name)}</b>, ${rmMsgs(rmWeek(busiest))}.` : 'За неделю в комнатах не писали.'}
-          ${busiest && silent.length ? ` Без сообщений неделю: <b>${esc(silent.map(r => r.name).join(', '))}</b>.` : ''}</div>
-      </section>
-      <section class="ux-panel">
-        <div class="ux-tb"><h3>Комнаты <span>${allRooms.length}</span></h3>
-          ${uxChips([['all', 'Все', allRooms.length], ['topics', 'С темами', allRooms.filter(r => r.topics.length).length], ['plain', 'Без тем', allRooms.filter(r => !r.topics.length).length], ['quiet', 'Тихие', silent.length]], RM.filter, 'rmFilter')}
-          <span class="ux-grow"></span>${uxSearch('rm-q', RM.q, 'Комната или тема', 'rmSearch')}</div>
-        ${RM.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${RM.sel.size}</b><button class="btn btn-ghost btn-sm" onclick="rmDelete([...RM.sel])">${UX_I.trash}Удалить</button>
-          <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="RM.sel.clear(); rmRender()">Снять выделение</button></div>` : ''}
-        <div class="ux-tbl"><table>
-          <thead><tr><th style="width:40px"><input type="checkbox" aria-label="Выбрать все" ${allSel ? 'checked' : ''} onchange="rmSelAll(this.checked)"></th>
-            <th>Комната</th><th>Участники</th><th class="rm-num">Сообщений</th><th>Последнее</th><th>Создана</th><th></th></tr></thead>
-          <tbody>${rows.map(r => `<tr class="${RM.sel.has(r.id) ? 'sel' : ''}">
-            <td><input type="checkbox" aria-label="Выбрать: ${esc(r.name)}" ${RM.sel.has(r.id) ? 'checked' : ''} onchange="rmToggle(${r.id})"></td>
-            <td><div class="ux-cell">${avHtml(r.name || '?', 34, 9, null, false, r.has_avatar, r.id)}<div style="min-width:0">
-              <div class="ux-name">${esc(r.name || '—')}${r.topics.length ? `<span class="rm-chip rm-topics">${r.topics.length} ${uxPlural(r.topics.length, 'тема', 'темы', 'тем')}</span>` : ''}${quiet(r) ? '<span class="rm-chip rm-quiet">тихая</span>' : ''}</div>
-              <div class="rm-sub">${r.topics.length ? esc(r.topics.map(t => t.name).join(' · ')) : 'Без тем'}</div></div></div></td>
-            <td>${rmStack(r.members || [])}</td>
-            <td class="rm-num"><span class="rm-msgs">${rmSpark(r.week)}${rmFmt(r.msgs)}</span></td>
-            <td class="rm-last">${esc(rmLast(r.last))}</td>
-            <td class="cl-dur">${fmtDate(r.created_at)}</td>
-            <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="rmOpen(${r.id})">${UX_I.edit}Изменить</button>
-              <button class="ux-ibtn" aria-label="Ещё действия: ${esc(r.name)}" aria-haspopup="menu" aria-expanded="false" onclick="rmMenu(event, ${r.id})">${UX_I.more}</button></div></td>
-          </tr>`).join('') || `<tr><td colspan="7"><div class="ux-empty">${allRooms.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Комнат пока нет — создайте первую'}</div></td></tr>`}</tbody>
-        </table></div>
-      </section></div>`;
+    page.innerHTML = `<div class="ub" id="rm-page">
+      <div class="ub-tiles">
+        <div class="ub-tile static"><div class="ub-lbl">Комнат</div><div class="ub-big">${n.all}<small>${n.topics ? `${n.topics} с темами` : 'без тем'}</small></div><div class="ub-sub">${n.plain} без тем · ${n.quiet} тихих</div></div>
+        <div class="ub-tile static"><div class="ub-lbl">Сейчас в сети</div><div class="ub-big">${online}<small>из ${people.size}</small></div><div class="ub-sub">участников комнат</div></div>
+        <div class="ub-tile static"><div class="ub-lbl">Тем</div><div class="ub-big">${topicsTotal}<small>в ${n.topics} ${uxPlural(n.topics, 'комнате', 'комнатах', 'комнатах')}</small></div><div class="ub-sub">${topicsTotal ? 'разговоры внутри комнат' : 'тем пока нет'}</div></div>
+        <div class="ub-tile static"><div class="ub-lbl">Сообщений за неделю</div><div class="ub-big">${rmFmt(wsum)}<small>в комнатах</small></div>
+          <div class="rb-bars">${wt.map((v, i) => `<div title="${dn[(today - 6 + i + 14) % 7]}: ${v}"><i class="${i === 6 ? 'cur' : ''}" style="height:${Math.max(2, Math.round(v / wmax * 26))}px"></i><span>${dn[(today - 6 + i + 14) % 7]}</span></div>`).join('')}</div></div>
+      </div>
+      <div class="ub-head"><h3>Комнаты <span>${rows.length}</span></h3>
+        <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все', n.all], ['topics', 'С темами', n.topics], ['plain', 'Без тем', n.plain], ['quiet', 'Тихие', n.quiet]].map(flt).join('')}</div>
+        <div class="ub-sort" role="group" aria-label="Сортировка">${sortBtn('name', 'По имени')}${sortBtn('act', 'По активности')}</div>
+        ${uxSearch('rm-q', RM.q, 'Комната или тема', 'rmSearch')}</div>
+      <div class="ub-rows">${rows.map(r => {
+        const open = RM.open.has(r.id), p = rbPresence(r, U), mx = Math.max(1, ...r.topics.map(t => t.message_count || 0));
+        return `<div class="rb-row"><div class="rb-top" onclick="rmTog(event, ${r.id})">
+          <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть: ${esc(r.name)}">${UX_I.chev || '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>'}</button>
+          <div class="rb-name">${avHtml(r.name || '?', 38, 11, null, p.on.length ? true : false, r.has_avatar, r.id)}<div style="min-width:0"><div class="rb-nl"><b>${esc(r.name || '—')}</b>${r.topics.length ? `<span class="rb-chip">${r.topics.length} ${uxPlural(r.topics.length, 'тема', 'темы', 'тем')}</span>` : ''}${quiet(r) ? '<span class="rb-chip q">тихая</span>' : ''}${r.read_only ? '<span class="rb-chip ro">только чтение</span>' : ''}</div>
+            <div class="rb-meta">${r.topics.length ? esc(r.topics.map(t => t.name).join(' · ')) : 'Без тем'}</div></div></div>
+          ${rbPresHtml(p)}
+          <div class="rb-act">${rbWk(r.week)}<div class="t"><b>${rmWeek(r)}</b> за неделю<small>${r.last ? 'последнее ' + esc(rmLast(r.last)) : 'сообщений нет'}</small></div></div>
+          <div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); rmOpen(${r.id})">${UX_I.edit}Изменить</button>
+            <button class="ux-ibtn" aria-label="Ещё действия: ${esc(r.name)}" aria-haspopup="menu" aria-expanded="false" onclick="event.stopPropagation(); rmMenu(event, ${r.id})">${UX_I.more}</button></div></div>
+        ${open ? `<div class="rb-exp${RM.fresh === r.id ? ' fresh' : ''}">
+          <div><h4>Участники <span>${(r.members || []).length}</span></h4><div class="rb-pl">${(r.members || []).map(m => { const u = U.get(m.id), st = u?.banned ? ['заблокирован', 'bn'] : u?.status === 'online' ? ['в сети', 'on'] : u?.status === 'away' ? ['отошёл', 'aw'] : ['не в сети', ''];
+            return `<div class="rb-p">${avHtml(m.name, 24, 7, m.id, false, m.has_avatar)}<span class="nm">${esc(m.name)}</span>${u?.is_admin ? '<span class="adm">админ</span>' : ''}<span class="s ${st[1]}">${st[0]}</span></div>`; }).join('') || '<span class="rm-sub">никого</span>'}</div></div>
+          <div><h4>Темы <span>${r.topics.length}</span></h4>${r.topics.map(t => `<div class="rb-tp"><span class="nm">${esc(t.name)}</span><div class="meter"><i style="width:${Math.round((t.message_count || 0) / mx * 100)}%"></i></div><span class="num">${rmFmt(t.message_count || 0)}</span></div>`).join('') || '<div class="rm-sub">Тем нет: комната работает как один общий чат</div>'}</div>
+          <div><h4>Сводка</h4><div class="rb-kv"><div><span>Создана</span><b>${fmtDate(r.created_at)}</b></div><div><span>Сообщений всего</span><b>${rmFmt(r.msgs)}</b></div><div><span>Последнее</span><b>${esc(rmLast(r.last))}</b></div><div><span>Режим</span><b>${r.read_only ? 'только чтение' : 'можно писать всем'}</b></div></div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px"><button class="btn btn-ghost btn-sm" onclick="rmOpen(${r.id}, 'members')">${RM_I.users}Участники</button><button class="btn btn-ghost btn-sm" onclick="rmOpen(${r.id}, 'topics')">${RM_I.topics}Темы</button><button class="btn btn-danger btn-sm" onclick="rmClear(${r.id})">${RM_I.clear}Очистить</button></div></div></div>` : ''}</div>`; }).join('') || `<div class="ub-empty">${allRooms.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Комнат пока нет, создайте первую'}</div>`}</div></div>`;
   });
+  RM.fresh = null;
+  const list = page.querySelector('.ub-rows');
+  if (list && keepTop) list.scrollTop = keepTop;
 }
+function rmTog(e, id) {
+  if (e.target.closest('.ux-actions')) return;
+  RM.open.has(id) ? RM.open.delete(id) : (RM.open.add(id), RM.fresh = id);
+  rmRender();
+}
+function rmSort(k) { RM.sort = k; rmRender(); }
 
 function rmFilter(k) { RM.filter = k; RM.sel.clear(); rmRender(); }
 function rmSearch(v) { RM.q = v; rmRender(); }
