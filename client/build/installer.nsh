@@ -34,5 +34,9 @@
   FileClose $R7
   skip_server_cfg:
 
-  ExecShell "" "$INSTDIR\Electron.exe"
+  ; Запускаем приложение от имени обычного пользователя, а не от установщика. ExecShell наследовал
+  ; права установщика: после установки или обновления «для всех» (UAC) приложение оказывалось
+  ; запущенным от администратора, и Windows (UIPI) не пропускала в него файлы, перетащенные
+  ; из обычного Проводника. Так же запускает приложение сам electron-builder (macro StartApp).
+  ${StdUtils.ExecShellAsUser} $0 "$INSTDIR\Electron.exe" "open" ""
 !macroend
