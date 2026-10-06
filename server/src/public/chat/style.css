@@ -2979,3 +2979,9 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
   width: 38px; height: 38px; border-radius: 0 19px 19px 0;
 }
 .pin-bar { padding-right: 0; }
+
+/* Блок кнопок шапки: левая кнопка — левая половина с скруглением панели, правая — правая половина,
+   вместе они заполняют блок до середины; единственная кнопка (комната) — весь блок */
+.chat-header-actions { gap: 0; }
+.chat-header-actions > .icon-btn:first-child { width: 38px; height: 38px; border-radius: 19px 0 0 19px; }
+.chat-header-actions > .icon-btn:only-child { border-radius: 19px; }
