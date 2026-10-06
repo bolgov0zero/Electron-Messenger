@@ -301,11 +301,12 @@ function createAccountView(acc) {
   return view;
 }
 
-function fitActiveView() {
-  const view = accountViews.get(activeAccountId);
-  if (!view || !mainWindow) return;
+// Все экземпляры прикреплены к окну и одного размера: переключение лишь выводит нужный наверх.
+// Снятый с окна BrowserView перестаёт отрисовываться, и после возврата вместо кадра оставался чёрный экран
+function fitViews() {
+  if (!mainWindow) return;
   const [width, height] = mainWindow.getContentSize();
-  view.setBounds({ x: 0, y: 0, width, height });
+  for (const view of accountViews.values()) view.setBounds({ x: 0, y: 0, width, height });
 }
 
 function showAccount(id) {
@@ -314,9 +315,10 @@ function showAccount(id) {
   const view = accountViews.get(id) || createAccountView(acc);
   if (activeAccountId !== id && !accounts.find(a => a.id === activeAccountId)?.pending) prevActiveAccountId = activeAccountId;
   activeAccountId = id;
-  mainWindow.setBrowserView(view);
+  if (!mainWindow.getBrowserViews().includes(view)) mainWindow.addBrowserView(view);
   view.setAutoResize({ width: true, height: true });
-  fitActiveView();
+  mainWindow.setTopBrowserView(view);
+  fitViews();
   saveAccounts();
   broadcastAccounts();
   view.webContents.focus();
@@ -326,7 +328,7 @@ function destroyAccount(id) {
   const acc = accounts.find(a => a.id === id);
   const view = accountViews.get(id);
   if (view) {
-    try { if (mainWindow?.getBrowserView() === view) mainWindow.removeBrowserView(view); } catch {}
+    try { mainWindow?.removeBrowserView(view); } catch {}
     wcAccount.delete(view.webContents.id);
     accountViews.delete(id);
     try { view.webContents.close({ waitForBeforeUnload: false }); } catch {}
@@ -511,7 +513,7 @@ function createWindow() {
   loadAccounts();
   showAccount(activeAccountId);
   mainWindow.once('ready-to-show', () => mainWindow.show());
-  mainWindow.on('resize', () => { _saveWinBounds(); fitActiveView(); });
+  mainWindow.on('resize', () => { _saveWinBounds(); fitViews(); });
   mainWindow.on('move', _saveWinBounds);
   mainWindow.on('close', e => {
     _saveWinBounds();
