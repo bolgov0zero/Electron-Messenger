@@ -701,7 +701,8 @@ html.no-emoji-font .md-code {
 .topbar-wordmark .tw-main { font-weight: 800; font-size: 14px; letter-spacing: 0.5px; color: var(--text); }
 .topbar-wordmark .tw-accent { font-weight: 700; font-size: 14px; letter-spacing: 0.5px; color: var(--accent); }
 .topbar-actions { display: flex; align-items: center; gap: 8px; -webkit-app-region: no-drag; }
-.topbar-actions .icon-btn { background: var(--search-bg); border: 1px solid var(--border); color: var(--muted); }
+/* Кнопки шапки — как вкладки внизу: просто значок, без рамки и фона, подсветка по наведению */
+.topbar-actions .icon-btn { width: 28px; height: 28px; background: none; border: 0; color: var(--muted); }
 .topbar-actions .icon-btn:hover { background: var(--hover-row); color: var(--text); }
 .btn-new-chat {
   padding: 7px 12px; border-radius: 9px;
@@ -851,10 +852,10 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   -webkit-app-region: drag;
 }
 .sidebar-head .btn-new-chat {
-  width: 30px; height: 30px; padding: 0; border-radius: 9px;
+  width: 28px; height: 28px; padding: 0; border-radius: 9px;
   justify-content: center;
   /* как соседние кнопки шапки (.icon-btn), без акцентной заливки */
-  background: var(--search-bg); border: 1px solid var(--border); color: var(--muted);
+  background: none; border: 0; color: var(--muted);
 }
 .sidebar-head .btn-new-chat:hover { background: var(--hover-row); color: var(--text); filter: none; }
 
@@ -3241,6 +3242,10 @@ body.sb-dragging .sidebar, body.sb-dragging .acc-rail { transition: none !import
 @container sb (max-width: 170px) {
   .chat-item, .pp-row { justify-content: center; gap: 0; padding-left: 0; padding-right: 0; }
   .chat-item .info, .pp-row .pp-name, .pp-row .pp-tag { display: none; }
+  /* Значки — того же размера, что аватарки в баре учётных записей */
+  .chat-item .av-md, .pp-row .pp-av { width: 44px; height: 44px; font-size: 15px; }
+  .cs-sn-ic { width: 44px; height: 44px; border-radius: 12px; }
+  .cs-sn-ic svg { width: 20px; height: 20px; }
   .chat-item .avb { display: block; }
   .cs-sn { position: relative; justify-content: center; gap: 0; padding: 7px 0; }
   .cs-sn-tx, .cs-sn .cs-chev { display: none; }
@@ -3262,8 +3267,15 @@ body.sb-dragging .sidebar, body.sb-dragging .acc-rail { transition: none !import
   .chat-list-section-label.sec-st1::after { background: var(--presence-away); }
   .chat-list-section-label.sec-st2::after { background: var(--muted); }
   .sidebar-tabbar { flex-direction: column; gap: 2px; padding: 6px 0; }
-  /* Всё в одну колонку по ширине аватарки: кнопки шапки, вкладки и значки разделов — 36px */
-  .topbar-actions .icon-btn, .sidebar-head .btn-new-chat { width: 36px; height: 36px; }
   .sb-tab { width: 36px; height: 36px; }
-  .cs-sn-ic { width: 36px; height: 36px; }
 }
+
+/* Подсказка с названием у значка, пока подписи скрыты: то же оформление, что у подсказок бара учётных записей.
+   Одна на всё приложение, position: fixed — внутри сайдбара её срезала бы его граница (overflow: hidden) */
+.sb-tip {
+  position: fixed; z-index: 400; padding: 7px 11px; border-radius: 10px; white-space: nowrap;
+  background: var(--card-bg); border: 1px solid var(--border); box-shadow: 0 8px 22px rgba(0,0,0,.25);
+  font-size: 12.5px; font-weight: 600; color: var(--text); pointer-events: none;
+  opacity: 0; transition: opacity .15s ease; max-width: 320px; overflow: hidden; text-overflow: ellipsis;
+}
+.sb-tip.visible { opacity: 1; }

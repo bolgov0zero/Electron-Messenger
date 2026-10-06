@@ -881,7 +881,8 @@ function setUiScale(v) { S.settings.uiScale=v; applySettings(); saveSession(); p
 // ── Ширина сайдбара ──
 // Хранится на устройстве и общая для всех учётных записей (уходит в общие настройки приложения).
 // Минимум — аватарка с отступами, максимум ограничен шириной окна, чтобы переписке осталось место.
-const SB_MIN = 82, SB_MAX = 460, SB_DEF = 350;
+// Минимум — как ширина бара учётных записей (66px: аватарка 44px и отступы)
+const SB_MIN = 66, SB_MAX = 460, SB_DEF = 350;
 let _sbHideDelta = null;
 function currentSidebarW() {
   try { const n = Number(localStorage.getItem('sidebarW')); if (n >= SB_MIN && n <= SB_MAX) return Math.round(n); } catch {}
@@ -896,7 +897,43 @@ function setSidebarW(w, persist) {
   applySidebarW();
   if (persist) pushAppSettings();
 }
+// Подсказки у значков в узком сайдбаре: когда подписи скрыты, название показывается справа от значка
+function sidebarNarrow() { return currentSidebarW() <= 172 && !document.body.classList.contains('sidebar-hidden'); }
+function initSidebarTips() {
+  const tip = document.createElement('div');
+  tip.className = 'sb-tip';
+  document.body.appendChild(tip);
+  const hide = () => tip.classList.remove('visible');
+  const nameOf = el => {
+    const t = el.matches('.chat-item') ? el.querySelector('.ci-name > span')
+      : el.matches('.pp-row') ? el.querySelector('.pp-name')
+      : el.querySelector('.cs-sn-tx b');
+    return (t?.textContent || '').trim();
+  };
+  const host = document.querySelector('.sidebar');
+  host?.addEventListener('mouseover', e => {
+    const el = e.target.closest?.('.chat-item, .pp-row, .cs-sn');
+    if (!el || !host.contains(el)) return;
+    if (!sidebarNarrow()) { hide(); return; }
+    const name = nameOf(el);
+    const icon = el.querySelector('.av-wrap, .pp-av, .cs-sn-ic');
+    if (!name || !icon) { hide(); return; }
+    tip.textContent = name;
+    // Координаты: rect и style.left — в одних пикселях, окно меряем пробой (см. zoomMetrics)
+    const m = zoomMetrics();
+    tip.style.left = '0px'; tip.style.top = '0px';
+    const r = icon.getBoundingClientRect(), th = tip.getBoundingClientRect().height;
+    tip.style.left = Math.round((r.right + 14) / m.k) + 'px';
+    tip.style.top = Math.round(Math.max(6, Math.min(m.vh - th - 6, r.top + r.height / 2 - th / 2)) / m.k) + 'px';
+    tip.classList.add('visible');
+  });
+  host?.addEventListener('mouseleave', hide);
+  host?.addEventListener('click', hide);
+  host?.addEventListener('scroll', hide, true);
+}
+
 function initSidebarResize() {
+  initSidebarTips();
   const grip = document.getElementById('sb-grip');
   if (!grip) return;
   let startX = 0, startW = 0, m = null;
