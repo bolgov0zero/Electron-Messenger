@@ -590,6 +590,8 @@ function setup(server) {
   });
 }
 
+// Сколько разных людей сейчас в сети (у одного может быть несколько устройств)
+function onlineUserCount() { return new Set(getClients().map(c => c.userId)).size; }
 function getClients() {
   return Array.from(connMeta.values()).map(m => ({
     connId: m.ws._connId,
@@ -622,4 +624,4 @@ function broadcastAll(payload) {
   }
 }
 
-module.exports = { setup, getPins, broadcast, broadcastAll, sendTo, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };
+module.exports = { setup, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };

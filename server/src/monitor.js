@@ -140,6 +140,11 @@ function startLag() {
 }
 
 // ── Замер ──
+// Сколько человек сейчас в сети — для мини-графика на главной админки. Источник подставляет
+// index.js (monitor не знает про WebSocket, чтобы не тянуть его сюда)
+let onlineFn = null;
+function setOnlineProvider(fn) { onlineFn = fn; }
+
 let prev = null;
 function sample() {
   const t = Date.now();
@@ -166,7 +171,7 @@ function sample() {
     const bps = k => disk && prev.disk ? Math.max(0, Math.round((disk[k] - prev.disk[k]) * 512 / dt)) : null;
 
     samples.push([t, round(Math.min(100, Math.max(0, cpuPct))), round(Math.max(0, svcPct), 2),
-      mem.total - mem.available, svcMem, bps('rd'), bps('wr'), round(Math.max(0, lag))]);
+      mem.total - mem.available, svcMem, bps('rd'), bps('wr'), round(Math.max(0, lag)), onlineFn ? onlineFn() : null]);
     if (samples.length > CAP) samples.splice(0, samples.length - CAP);
 
     const sysUptime = Number((readText('/proc/uptime') || '0').split(' ')[0]);
@@ -323,4 +328,4 @@ function start() {
   process.once('SIGINT', stop);
 }
 
-module.exports = { start, snapshot, addEvent, hostInfo, serviceInfo, storageInfo, UPDATE_UNIT };
+module.exports = { start, setOnlineProvider, snapshot, addEvent, hostInfo, serviceInfo, storageInfo, UPDATE_UNIT };
