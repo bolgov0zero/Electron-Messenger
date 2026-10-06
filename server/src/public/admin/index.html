@@ -274,19 +274,9 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .hm-bar span{display:block;height:100%;width:0;background:var(--c-primary);border-radius:2px;transition:width .5s ease}
 
 /* Живые графики */
-.hm-hint{font-size:11px;color:var(--c-muted)}
 .hm-bars text{font-family:var(--f-mono);font-size:10px;fill:var(--c-muted)}
 
 /* Служба и хранилище */
-.hm-tbl{overflow-x:auto}
-.hm-tbl table{min-width:520px}
-.hm-tbl th{padding:5px 14px}
-.hm-tbl td{padding:6px 14px;font-size:12px;font-variant-numeric:tabular-nums}
-.hm-tbl .num{text-align:right}
-.hm-proc{display:flex;align-items:center;gap:8px;min-width:0}
-.hm-proc-dot{width:6px;height:6px;border-radius:50%;background:var(--c-green);flex-shrink:0}
-.hm-inner{display:flex;flex-wrap:wrap;gap:6px 18px;padding:7px 14px 9px;font-size:11px;color:var(--c-text2)}
-.hm-inner b{font-family:var(--f-mono);font-weight:600;color:var(--c-text)}
 
 /* Чат */
 .hm-seg-sm button{height:22px;padding:0 8px;font-size:10.5px}
@@ -1053,66 +1043,104 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .dtp-time input:focus{border-color:var(--c-primary)}
 
 
-/* ── НОВАЯ ГЛАВНАЯ ── оформление по утверждённому макету: крупные скруглённые карточки, плитки с мини-графиками */
-.dv{gap:14px}
-.dv .hm-panel{border-radius:16px;box-shadow:var(--shadow)}
-.dv .hm-host{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px 18px;padding:16px 18px}
-.dv .hm-pill{height:26px;padding:0 12px;font-size:12px;font-weight:700}
-.dv-host-title{font-size:16px;font-weight:700;line-height:1.3}
-.dv-host-title span{font-size:12.5px;font-weight:500;color:var(--c-text2);margin-left:6px}
-.dv-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.dv-chip{font-size:12px;padding:5px 10px;border-radius:9px;background:var(--c-surface2);color:var(--c-text2)}
-.dv-chip b{color:var(--c-text);font-weight:700;margin-left:6px;font-variant-numeric:tabular-nums}
-.dv-chip b small{font-size:10.5px;font-weight:600;color:var(--c-text2);margin-left:2px}
+/* ── НОВАЯ ГЛАВНАЯ ── точный перенос утверждённого макета: палитра, шрифты, размеры, отступы.
+   Палитра макета подключается только внутри .dv и к фону страницы, остальная админка не меняется */
+:root{
+  --dv-bg:#eef2f6;--dv-surface:#ffffff;--dv-surface2:#f3f6f9;--dv-border:#dde4ec;--dv-text:#121a24;--dv-muted:#66758a;
+  --dv-accent:#0f9e8e;--dv-accent-soft:rgba(15,158,142,.12);--dv-ok:#12a672;--dv-warn:#d98a0b;--dv-bad:#d64545;
+  --dv-c1:#0f9e8e;--dv-c2:#5b6cf0;--dv-c3:#d98a0b;--dv-c4:#8a97a8;--dv-c5:#c2478a;
+  --dv-shadow:0 1px 2px rgba(18,26,36,.05),0 8px 24px rgba(18,26,36,.06);
+}
+[data-theme="dark"]{
+  --dv-bg:#0a0f15;--dv-surface:#121a23;--dv-surface2:#17212c;--dv-border:#243040;--dv-text:#e7edf4;--dv-muted:#8796a8;
+  --dv-accent:#2fd0b9;--dv-accent-soft:rgba(47,208,185,.14);--dv-ok:#3ddc97;--dv-warn:#f2b13d;--dv-bad:#ff6b6b;
+  --dv-c1:#2fd0b9;--dv-c2:#7c8cff;--dv-c3:#f2b13d;--dv-c4:#6f7f93;--dv-c5:#f06aa8;
+  --dv-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.28);
+}
+.page-body:has(.dv){background:var(--dv-bg)}
+.dv{
+  --c-surface:var(--dv-surface);--c-surface2:var(--dv-surface2);--c-border:var(--dv-border);--c-border2:var(--dv-border);
+  --c-text:var(--dv-text);--c-text2:var(--dv-muted);--c-muted:var(--dv-muted);
+  --c-primary:var(--dv-accent);--c-primary-dim:var(--dv-accent-soft);
+  --c-green:var(--dv-ok);--c-green-text:var(--dv-ok);--c-green-dim:color-mix(in srgb,var(--dv-ok) 16%,transparent);
+  --c-orange:var(--dv-warn);--c-orange-text:var(--dv-warn);--c-orange-dim:color-mix(in srgb,var(--dv-warn) 18%,transparent);
+  --c-red:var(--dv-bad);--c-red-text:var(--dv-bad);--c-red-dim:color-mix(in srgb,var(--dv-bad) 16%,transparent);
+  --shadow:var(--dv-shadow);--hm-sys:var(--dv-c4);
+  max-width:1240px;gap:14px;font:14px/1.45 var(--f-ui);color:var(--dv-text)
+}
+.dv .hm-panel{background:var(--dv-surface);border:1px solid var(--dv-border);border-radius:16px;padding:16px;box-shadow:var(--dv-shadow)}
+.dv .hm-pill{height:auto;display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:700}
+.dv .hm-pill::before{width:8px;height:8px}
+@keyframes dvPulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent)}50%{box-shadow:0 0 0 5px transparent}}
+.dv #hm-overall.ok{animation:dvPulse 2s ease-in-out infinite}
+.dv .btn{height:auto;padding:6px 11px;border:1px solid var(--dv-border);border-radius:9px;background:var(--dv-surface2);color:var(--dv-text);font:600 12px var(--f-ui);gap:6px}
+.dv .btn-danger{color:var(--dv-bad)}
+.dv .btn-primary{background:var(--dv-accent);color:#04211c;border-color:transparent}
+.dv .btn:disabled{opacity:.5;cursor:default}
+.dv .hm-upd-btn{min-width:0}
+.dv .hm-upd-btn.hm-upd-ok{color:var(--dv-ok)}
+.dv .hm-upd-btn.hm-upd-err{color:var(--dv-bad)}
+
+/* Строка сервера */
+.dv .hm-host{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:0 18px}
 .dv .hm-upd{justify-self:end}
-.dv .hm-upd-panel{grid-column:1/-1;margin:6px -18px -16px;padding:12px 18px 14px}
+.dv .hm-upd-panel{grid-column:1/-1;margin:14px 0 0;padding:14px 0 0;border-top:1px solid var(--dv-border)}
+.dv-host-title{font-size:16px;font-weight:700;line-height:1.45}
+.dv-host-title .dv-sub{font-weight:500}
+.dv-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.dv-chip{font-size:12px;padding:5px 10px;border-radius:9px;background:var(--dv-surface2);color:var(--dv-muted)}
+.dv-chip b{color:var(--dv-text);font-weight:600;margin-left:4px}
+
+/* Плитки */
 .dv-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-.dv-kpi{padding:16px;min-width:0}
-.dv-lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted)}
-.dv-big{font-family:var(--f-mono);font-weight:700;font-size:28px;line-height:1.1;letter-spacing:-.02em;margin:6px 0 2px;font-variant-numeric:tabular-nums}
-.dv-big small{font-family:var(--f-ui);font-size:13px;font-weight:500;color:var(--c-text2);margin-left:4px;letter-spacing:0}
-.dv-sub{font-size:12px;color:var(--c-text2)}
-.dv-sub b{font-family:var(--f-mono);font-weight:600;color:var(--c-text)}
+.dv-lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dv-muted)}
+.dv-big{font:700 28px/1.1 var(--f-mono);letter-spacing:-.02em;margin:6px 0 2px}
+.dv-big small{font:500 13px var(--f-ui);color:var(--dv-muted);letter-spacing:0;margin-left:4px}
+.dv-sub{font-size:12px;color:var(--dv-muted)}
+.dv-sub b{font:inherit;color:inherit}
 .dv-spark{height:46px;margin-top:8px}
 .dv-spark svg{display:block;width:100%;height:100%}
+
+/* Активность и хроника */
 .dv-main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:14px}
-.dv-card{padding:16px;min-width:0}
-.dv-card h3{font-size:13px;font-weight:700;margin:0 0 2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.dv-ch-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.dv-card .hm-bars{min-height:250px;margin-top:10px}
-.dv-bottom{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.dv-res-row{margin-top:14px}
-.dv-res-row:first-of-type{margin-top:10px}
-.dv-res-top{display:flex;align-items:baseline;gap:10px;font-size:13px}
-.dv-res-top b{font-weight:600}
-.dv-res-top span{margin-left:auto;font-size:12px;color:var(--c-text2)}
-.dv-meter{height:7px;border-radius:4px;background:var(--c-surface2);overflow:hidden;margin-top:6px}
-.dv-meter i{display:block;height:100%;border-radius:4px;background:var(--c-primary);transition:width .5s ease}
-.dv-meter i.warn{background:var(--c-orange)}.dv-meter i.crit{background:var(--c-red)}
+.dv-card h3{margin:0 0 2px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.dv-ch-head{display:flex;align-items:center;gap:10px}
+.dv-ch-head>div:first-child{flex:1;min-width:0}
+.dv .hm-seg{padding:3px;gap:2px;background:var(--dv-surface);border:1px solid var(--dv-border);border-radius:11px}
+.dv .hm-seg button,.dv .hm-seg-sm button{height:auto;padding:7px 13px;border-radius:8px;font:600 12.5px var(--f-ui);color:var(--dv-muted)}
+.dv .hm-seg button:hover{color:var(--dv-muted)}
+.dv .hm-seg button[aria-pressed="true"]{color:var(--dv-accent)}
+.dv .hm-seg-hl{top:3px;bottom:3px;left:-1px;border-radius:8px;background:var(--dv-accent-soft);box-shadow:none}
+.dv-card .hm-bars{flex:none;height:250px;min-height:250px;margin-top:10px;border-radius:0}
+.dv .hm-bars text{font-family:var(--f-ui);font-size:10px;fill:var(--dv-muted)}
 .dv-chron{margin-top:6px}
-.dv-ev{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--c-border2);font-size:12.5px}
+.dv-ev{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--dv-border);font-size:12.5px}
 .dv-ev:first-child{border-top:0}
-.dv-ev-t{font-family:var(--f-mono);font-size:11px;color:var(--c-muted);width:40px;flex-shrink:0;padding-top:2px}
-.dv-ev-i{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex-shrink:0;font-size:11px;font-weight:700;background:var(--c-green-dim);color:var(--c-green-text)}
-.dv-ev-i.warn{background:var(--c-orange-dim);color:var(--c-orange-text)}
-.dv-ev-i.info{background:var(--c-primary-dim);color:var(--c-primary)}
+.dv-ev-t{font:500 11px var(--f-mono);color:var(--dv-muted);width:40px;flex-shrink:0;padding-top:2px}
+.dv-ev-i{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex-shrink:0;font-size:11px;font-weight:700;background:color-mix(in srgb,var(--dv-ok) 18%,transparent);color:var(--dv-ok)}
+.dv-ev-i.warn{background:color-mix(in srgb,var(--dv-warn) 18%,transparent);color:var(--dv-warn)}
+.dv-ev-i.info{background:color-mix(in srgb,var(--dv-c2) 18%,transparent);color:var(--dv-c2)}
 .dv-ev-x{min-width:0;flex:1}
-.dv-ev-x small{display:block;color:var(--c-muted);font-size:11px;margin-top:1px}
-.dv-empty{color:var(--c-muted);font-size:12px;padding:12px 0}
-.dv-svc-since{margin-top:2px}
-.dv-det{margin-top:12px;border-top:1px solid var(--c-border2);padding-top:8px}
-.dv-det summary{cursor:pointer;color:var(--c-primary);font-size:12px;font-weight:600;width:max-content}
-.dv-det .hm-tbl{margin:8px -16px 0}
-.dv-det .hm-inner{padding:8px 0 0}
-.dv-store-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px;background:var(--c-surface2);margin-top:12px}
-.dv-store-bar span{height:100%;min-width:3px}
+.dv-ev-x small{display:block;color:var(--dv-muted);font-size:11px;margin-top:1px}
+.dv-empty{color:var(--dv-muted);font-size:12px;padding:12px 0}
+
+/* Ресурсы, служба, хранилище */
+.dv-bottom{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.dv-res-row{margin-top:12px}
+.dv-res-top{display:flex;align-items:center;gap:10px}
+.dv-res-top b{font-size:13px;font-weight:600}
+.dv-res-top span{flex:1;min-width:0;text-align:right;font-size:12px;color:var(--dv-muted)}
+.dv-meter{height:7px;border-radius:4px;background:var(--dv-surface2);overflow:hidden;margin-top:6px}
+.dv-meter i{display:block;height:100%;border-radius:4px;background:var(--dv-accent);transition:width .6s ease}
+.dv-meter i.warn{background:var(--dv-warn)}.dv-meter i.crit{background:var(--dv-bad)}
+.dv-store-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px;background:var(--dv-surface2)}
+.dv-store-bar span{display:block;height:100%;min-width:3px}
 .dv-leg{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:5px 0}
 .dv-leg i{width:9px;height:9px;border-radius:3px;flex-shrink:0}
-.dv-leg .v{margin-left:auto;font-family:var(--f-mono);font-size:12px;font-weight:600}
-@media (max-width:1180px){.dv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dv-main,.dv-bottom{grid-template-columns:minmax(0,1fr)}}
-@media (max-width:760px){.dv .hm-host{grid-template-columns:minmax(0,1fr)}.dv .hm-upd{justify-self:start}}
+.dv-leg .v{margin-left:auto;font:600 12px var(--f-mono)}
+@media (max-width:960px){.dv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dv-main,.dv-bottom{grid-template-columns:minmax(0,1fr)}.dv .hm-host{grid-template-columns:minmax(0,1fr);gap:10px}.dv .hm-upd{justify-self:start}}
 @media (max-width:560px){.dv-kpis{grid-template-columns:minmax(0,1fr)}}
-@media (prefers-reduced-motion:reduce){.dv-meter i{transition:none}}
+@media (prefers-reduced-motion:reduce){.dv-meter i{transition:none}.dv #hm-overall.ok{animation:none}}
 </style>
 </head>
 <body>
@@ -1958,7 +1986,7 @@ async function renderDashboard() {
     <section class="hm-panel hm-host" aria-label="Сервер">
       <span class="hm-pill muted" id="hm-overall">Загрузка…</span>
       <div>
-        <div class="dv-host-title"><span style="margin:0;font-size:16px;font-weight:700;color:var(--c-text)" id="hm-hostname">—</span><span id="hm-spec">&nbsp;</span></div>
+        <div class="dv-host-title"><span id="hm-hostname">—</span> <span class="dv-sub" id="hm-spec">&nbsp;</span></div>
         <div class="dv-chips">
           <span class="dv-chip">Работает<b id="hm-uptime">—</b></span>
           <span class="dv-chip">Версия<b id="hm-version">—</b></span>
@@ -2005,26 +2033,18 @@ async function renderDashboard() {
         <div id="dv-res"></div>
       </section>
       <section class="hm-panel dv-card" aria-labelledby="hm-h-svc">
-        <h3 id="hm-h-svc">Служба <span class="hm-mono" id="hm-unit">electron.service</span><span class="hm-pill muted" id="hm-svc-state">—</span></h3>
-        <div class="dv-chips" style="margin:12px 0 10px">
+        <h3 id="hm-h-svc"><span>Служба <span id="hm-unit">electron.service</span></span><span class="hm-pill muted" id="hm-svc-state">—</span></h3>
+        <div class="dv-chips" style="margin:10px 0">
           <span class="dv-chip">Процессор<b id="hm-k-cpu">—</b></span>
           <span class="dv-chip">Память<b id="hm-k-mem">—</b></span>
           <span class="dv-chip">Задач<b id="hm-k-tasks">—</b></span>
         </div>
         <div class="dv-sub dv-svc-since" id="hm-svc-since">&nbsp;</div>
-        <div style="margin-top:12px"><button class="btn btn-danger btn-sm" onclick="restartService()">${I.restart}Перезапустить</button></div>
-        <details class="dv-det">
-          <summary>Процессы</summary>
-          <div class="hm-tbl"><table>
-            <thead><tr><th>PID</th><th>Процесс</th><th class="num">ЦП</th><th class="num">Память</th><th class="num">Потоки</th><th class="num">Работает</th></tr></thead>
-            <tbody id="hm-procs"></tbody>
-          </table></div>
-          <div class="hm-inner" id="hm-inner"></div>
-        </details>
+        <div style="margin-top:12px"><button class="btn btn-danger btn-sm" onclick="restartService()">Перезапустить</button></div>
       </section>
       <section class="hm-panel dv-card" aria-labelledby="hm-h-store">
         <h3 id="hm-h-store">Хранилище <span class="dv-sub" style="margin-left:auto;font-weight:500" id="hm-store-total"></span></h3>
-        <div class="dv-sub" id="hm-store-sub">&nbsp;</div>
+        <div class="dv-sub" id="hm-store-sub" style="margin:2px 0 10px">&nbsp;</div>
         <div id="hm-store"></div>
         <div id="hm-store-list" style="margin-top:8px"></div>
       </section>
@@ -2070,7 +2090,7 @@ function hmRenderOnlineTile() {
     const d = cur - pts[0][8], ago = spanMin >= 55 ? 'час' : `${Math.round(spanMin)} мин`;
     hmHtml('dv-s-online', d === 0 ? `как и ${ago} назад` : `на <b>${Math.abs(d)}</b> ${d > 0 ? 'больше' : 'меньше'}, чем ${ago} назад`);
   } else hmHtml('dv-s-online', `подключений: <b>${hmFmt(HM.ws ?? 0)}</b>`);
-  hmHtml('dv-g-online', hmSpark(pts.map(r => r[8]), 'var(--c-primary)'));
+  hmHtml('dv-g-online', hmSpark(pts.map(r => r[8]), 'var(--dv-c1)'));
 }
 function hmRenderMsgTile() {
   const a = HM.act24;
@@ -2079,18 +2099,18 @@ function hmRenderMsgTile() {
   let peak = b[0]; b.forEach(x => { if (x.n > peak.n) peak = x; });
   hmHtml('dv-v-msgs', hmFmt(total));
   hmHtml('dv-s-msgs', total ? `пик в <b>${hmPad(new Date(peak.t).getHours())}:00</b> — ${hmFmt(peak.n)} ${hmPlural(peak.n, 'сообщение', 'сообщения', 'сообщений')} в час` : 'за сутки сообщений нет');
-  hmHtml('dv-g-msgs', hmSpark(b.map(x => x.n), 'var(--c-blue)'));
+  hmHtml('dv-g-msgs', hmSpark(b.map(x => x.n), 'var(--dv-c2)'));
 }
 
 // Мини-график: линия с заливкой по последним значениям; растягивается на всю плитку
 function hmSpark(vals, color) {
   const v = vals.filter(x => x != null).slice(-90);
   if (v.length < 2) return '';
-  const w = 200, h = 44, mx = Math.max(...v, 1e-9), mn = Math.min(...v, 0), n = v.length;
+  const w = 200, h = 46, mx = Math.max(...v, 1e-9), mn = Math.min(...v, 0), n = v.length;
   const x = i => (i / (n - 1)) * w, y = x2 => h - 3 - ((x2 - mn) / (mx - mn || 1)) * (h - 6);
   const d = v.map((q, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(q).toFixed(1)).join(' ');
   const id = 'sp' + Math.random().toString(36).slice(2, 7);
-  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".3"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><path d="${d} L${w} ${h} L0 ${h} Z" fill="url(#${id})"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><path d="${d} L${w} ${h} L0 ${h} Z" fill="url(#${id})"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/><circle cx="${x(n - 1)}" cy="${y(v[n - 1])}" r="3" fill="${color}"/></svg>`;
 }
 
 // Хроника: действия администраторов, запуск и перезапуски службы, обновления, резервные копии
@@ -2151,7 +2171,7 @@ function hmRenderOverview() {
 
   // Сервер
   hmText('hm-hostname', o.host.hostname);
-  hmText('hm-spec', [o.host.os, `${o.host.cores} ${hmPlural(o.host.cores, 'ядро', 'ядра', 'ядер')}`,
+  hmText('hm-spec', '· ' + [o.host.os, `${o.host.cores} ${hmPlural(o.host.cores, 'ядро', 'ядра', 'ядер')}`,
     `${hmBytes(o.host.memTotal, 0)} ОЗУ`, disk ? `диск ${hmBytes(disk.total, 0)}` : null].filter(Boolean).join(' · '));
   hmText('hm-uptime', hmDuration(o.uptime));
   if (!HM.upd.busy) hmText('hm-version', o.version);
@@ -2166,9 +2186,6 @@ function hmRenderOverview() {
   hmText('hm-svc-since', svc?.since
     ? `Запущена ${new Date(svc.since).toLocaleDateString('ru-RU')} в ${hmClock(svc.since)}${svc.restarts != null ? ` · перезапусков после сбоя: ${svc.restarts}` : ''}`
     : `Процесс запущен ${hmDuration(o.uptime)} назад`);
-  hmHtml('hm-inner', `<span>Куча JS <b id="hm-heap">—</b></span><span>WebSocket <b id="hm-ws2">—</b></span>`
-    + `<span>Кэш SQLite <b>до ${hmBytes(o.sqliteCacheBytes, 0)}</b></span>`
-    + `<span class="hm-hint">Обновление идёт отдельной службой electron-update — она переживает перезапуск</span>`);
 
   // Хранилище: как в макете — полоса и список «цвет, название, размер»; пояснения — в подсказке
   const sizeOf = v => hmBytes(v);
@@ -2179,11 +2196,11 @@ function hmRenderOverview() {
     hmText('hm-store-total', hmBytes(disk.total, 0));
     hmHtml('hm-store-sub', `Занято <b>${hmBytes(used)}</b> · свободно <b>${hmBytes(disk.free)}</b>`);
     hmHtml('hm-store', `<div class="dv-store-bar" role="img" aria-label="Занято ${hmBytes(used)} из ${hmBytes(disk.total)}">
-        <span style="width:${pct(S.db + S.wal)};background:var(--c-blue)" title="База данных — ${hmBytes(S.db + S.wal)}"></span>
-        <span style="width:${pct(S.files.size + S.avatars.size)};background:var(--c-primary)" title="Файлы и аватары — ${hmBytes(S.files.size + S.avatars.size)}"></span>
-        <span style="width:${pct(S.backups.size)};background:var(--c-purple)" title="Резервные копии — ${hmBytes(S.backups.size)}"></span>
-        <span style="flex:1;background:var(--hm-sys);opacity:.55" title="Система и прочее — ${hmBytes(sys)}"></span>
-        <span style="width:${pct(disk.free)};background:var(--c-surface2);box-shadow:inset 0 0 0 1px var(--c-border)" title="Свободно — ${hmBytes(disk.free)}"></span>
+        <span style="width:${pct(S.db + S.wal)};background:var(--dv-c1)" title="База данных — ${hmBytes(S.db + S.wal)}"></span>
+        <span style="width:${pct(S.files.size + S.avatars.size)};background:var(--dv-c2)" title="Файлы и аватары — ${hmBytes(S.files.size + S.avatars.size)}"></span>
+        <span style="width:${pct(S.backups.size)};background:var(--dv-c3)" title="Резервные копии — ${hmBytes(S.backups.size)}"></span>
+        <span style="flex:1;background:var(--dv-c4);opacity:.55" title="Система и прочее — ${hmBytes(sys)}"></span>
+        <span style="width:${pct(disk.free)};background:var(--dv-surface2);box-shadow:inset 0 0 0 1px var(--dv-border)" title="Свободно — ${hmBytes(disk.free)}"></span>
       </div>`);
   }
   const days = S.backups.latest ? Math.floor((Date.now() - S.backups.latest) / 86400000) : null;
@@ -2193,17 +2210,17 @@ function hmRenderOverview() {
         + (days === 0 ? 'сегодня' : days === 1 ? 'вчера' : `${days} ${hmPlural(days, 'день', 'дня', 'дней')} назад`);
   const leg = (color, name, note, value) => `<div class="dv-leg" title="${esc(note)}"><i style="background:${color}"></i>${name}<span class="v">${value}</span></div>`;
   hmHtml('hm-store-list',
-    leg('var(--c-blue)', 'База данных', `chat.db ${hmBytes(S.db)} + журнал WAL ${hmBytes(S.wal)}`, sizeOf(S.db + S.wal))
-    + leg('var(--c-primary)', 'Файлы чата', `${hmFmt(S.files.count)} ${hmPlural(S.files.count, 'файл', 'файла', 'файлов')} · аватары ${hmBytes(S.avatars.size)}`, sizeOf(S.files.size + S.avatars.size))
-    + leg('var(--c-purple)', 'Резервные копии', backup, sizeOf(S.backups.size))
-    + (disk ? leg('var(--hm-sys)', 'Система и прочее', 'Debian, Node.js, журналы', sizeOf(Math.max(0, disk.total - disk.free - chatData))) : ''));
+    leg('var(--dv-c1)', 'База данных', `chat.db ${hmBytes(S.db)} + журнал WAL ${hmBytes(S.wal)}`, sizeOf(S.db + S.wal))
+    + leg('var(--dv-c2)', 'Файлы чата', `${hmFmt(S.files.count)} ${hmPlural(S.files.count, 'файл', 'файла', 'файлов')} · аватары ${hmBytes(S.avatars.size)}`, sizeOf(S.files.size + S.avatars.size))
+    + leg('var(--dv-c3)', 'Резервные копии', backup, sizeOf(S.backups.size))
+    + (disk ? leg('var(--dv-c4)', 'Система и прочее', 'Debian, Node.js, журналы', sizeOf(Math.max(0, disk.total - disk.free - chatData))) : ''));
 
   hmRenderChron();
   hmRenderHeadlines();
 }
 
 // ── Сообщения за период: подсказка при наведении, касании и стрелками ──
-const HM_BARS_PL = 6;
+const HM_BARS_PL = 0;
 
 function hmBindBars() {
   const el = $hm('hm-bars');
@@ -2258,25 +2275,21 @@ function hmRenderBars() {
   const { unit, buckets } = a;
   const n = buckets.length;
   const total = buckets.reduce((s, b) => s + b.n, 0);
-  const pl = HM_BARS_PL, pt = 24, pb = 16, iw = W - pl, ih = H - pt - pb;
-  // Верх шкалы — круглое чётное число, чтобы и средняя отметка была целой: 0 · 15 · 30
-  const raw = Math.max(1, ...buckets.map(b => b.n)) * 1.1;
-  const step = Math.pow(10, Math.floor(Math.log10(raw)));
-  let top = Math.ceil(raw / step) * step;
-  if (top % 2) top += step;
-  const bw = iw / n, barW = Math.min(bw * .64, 28);
+  // Геометрия как в макете: без шкалы слева, три пунктирные линии сетки, столбики на всю ширину ячейки
+  const mxN = Math.max(1, ...buckets.map(b => b.n));
+  const bw = W / n;
   const hv = HM.barHover != null && HM.barHover < n ? HM.barHover : null;
   let svg = '';
-  [0, top / 2, top].forEach(v => {
-    const y = (pt + ih - v / top * ih).toFixed(1);
-    svg += `<line x1="${pl}" x2="${W}" y1="${y}" y2="${y}" style="stroke:var(--c-border2)" stroke-dasharray="3 5"/>`;
+  [.25, .5, .75].forEach(f => {
+    const y = (H - f * (H - 18)).toFixed(1);
+    svg += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--c-border)" stroke-dasharray="3 5"/>`;
   });
   buckets.forEach((b, i) => {
-    const h = b.n / top * ih;
-    const mxN = Math.max(1, ...buckets.map(x => x.n)), opacity = hv == null ? (b.n === mxN ? 1 : .5 + .4 * b.n / mxN) : (i === hv ? 1 : .3);
-    svg += `<rect x="${(pl + i * bw + (bw - barW) / 2).toFixed(1)}" y="${(pt + ih - h).toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(h, b.n ? 1.5 : 0).toFixed(1)}" rx="3" style="fill:var(--c-primary);fill-opacity:${opacity}"/>`;
+    const bh = Math.max(2, b.n / mxN * (H - 22));
+    const opacity = hv == null ? (b.n === mxN ? 1 : .55 + .4 * b.n / mxN) : (i === hv ? 1 : .3);
+    svg += `<rect x="${(i * bw + 2).toFixed(1)}" y="${(H - 14 - bh).toFixed(1)}" width="${Math.max(1, bw - 4).toFixed(1)}" height="${bh.toFixed(1)}" rx="3" fill="var(--c-primary)" opacity="${opacity.toFixed(2)}"/>`;
     const label = hmBucketAxis(unit, b.t, n, i);
-    if (label) svg += `<text x="${(pl + i * bw + bw / 2).toFixed(1)}" y="${H - 3}" text-anchor="middle">${label}</text>`;
+    if (label) svg += `<text x="${(i * bw + bw / 2).toFixed(1)}" y="${H - 1}" text-anchor="middle">${label}</text>`;
   });
   let spoken = '';
   if (hv != null) {
@@ -2284,8 +2297,9 @@ function hmRenderBars() {
     spoken = `${hmBucketName(unit, buckets[hv].t)} · ${hmFmt(c)} ${hmPlural(c, 'сообщение', 'сообщения', 'сообщений')}`;
     // Подпись над столбиком; у краёв сдвигаем внутрь, чтобы не обрезалась
     const tw = spoken.length * 6.3 + 16;
-    const cx = Math.min(W - tw / 2 - 1, Math.max(pl + tw / 2, pl + hv * bw + bw / 2));
-    const ty = Math.max(1, pt + ih - c / top * ih - 24);
+    const cx = Math.min(W - tw / 2 - 1, Math.max(tw / 2, hv * bw + bw / 2));
+    const barTop = H - 14 - Math.max(2, c / mxN * (H - 22));
+    const ty = Math.max(1, barTop - 24);
     svg += `<rect class="tip-bg" x="${(cx - tw / 2).toFixed(1)}" y="${ty.toFixed(1)}" width="${tw.toFixed(1)}" height="19" rx="5"/>`
       + `<text class="tip" x="${cx.toFixed(1)}" y="${(ty + 13).toFixed(1)}" text-anchor="middle">${esc(spoken)}</text>`;
   }
@@ -2308,7 +2322,7 @@ function hmRenderHeadlines() {
   // Плитки «Процессор» и «Отклик» с мини-графиком по накопленным точкам
   hmHtml('dv-v-cpu', `${hmFmt(s[1], 1)}<small>%</small>`);
   hmHtml('dv-s-cpu', live.load ? `Load average <b>${live.load.map(v => hmFmt(v, 2)).join(' · ')}</b> на ${HM.cores} ${hmPlural(HM.cores, 'ядро', 'ядра', 'ядер')}` : '&nbsp;');
-  hmHtml('dv-g-cpu', hmSpark(HM.samples.map(r => r[1]), 'var(--c-primary)'));
+  hmHtml('dv-g-cpu', hmSpark(HM.samples.map(r => r[1]), 'var(--dv-c3)'));
   hmHtml('dv-v-lag', `${hmFmt(s[7])}<small>мс</small>`);
   const tStart = (HM.lastT || Date.now()) - 15 * 60e3;
   let peak = null;
@@ -2316,7 +2330,7 @@ function hmRenderHeadlines() {
     if (HM.samples[i][7] != null && (!peak || HM.samples[i][7] > peak[7])) peak = HM.samples[i];
   }
   hmHtml('dv-s-lag', peak ? `максимум за 15 минут <b>${hmFmt(peak[7])} мс</b> в ${hmClock(peak[0], true)}` : '&nbsp;');
-  hmHtml('dv-g-lag', hmSpark(HM.samples.map(r => r[7]), 'var(--c-orange)'));
+  hmHtml('dv-g-lag', hmSpark(HM.samples.map(r => r[7]), 'var(--dv-c5)'));
 
   hmRenderOnlineTile();
 
@@ -2329,10 +2343,9 @@ function hmRenderHeadlines() {
     const lv = pct == null ? 'ok' : pct >= crit ? 'crit' : pct >= warn ? 'warn' : '';
     return `<div class="dv-res-row"><div class="dv-res-top"><b>${name}</b><span>${note}</span></div><div class="dv-meter"><i class="${lv}" style="width:${Math.min(100, pct || 0).toFixed(1)}%"></i></div></div>`;
   };
-  hmHtml('dv-res', res('Память', `${hmBytes(available)} доступно из ${hmBytes(memTotal, 0)}`, memPct, 80, 90)
+  hmHtml('dv-res', res('Память', `${hmBytes(available)} свободно из ${hmBytes(memTotal, 0)}`, memPct, 80, 90)
     + (disk ? res('Диск', `${hmBytes(disk.free)} свободно из ${hmBytes(disk.total, 0)}`, diskPct, 80, 90) : '')
-    + (swapT ? res('Подкачка', `${hmBytes(swapT - live.mem.swapFree)} из ${hmBytes(swapT)}`, swapPct, 50, 80) : '')
-    + (live.mem?.cached != null ? `<div class="dv-sub" style="margin-top:12px">Кэш <b>${hmBytes(live.mem.cached)}</b></div>` : ''));
+    + (swapT ? res('Подкачка', `${hmBytes(swapT - live.mem.swapFree)} из ${hmBytes(swapT)}`, swapPct, 50, 80) : ''));
 
   // Общий статус сервера — по худшему из показателей
   const levels = [hmLevel(s[1], 70, 90), hmLevel(memPct, 80, 90), hmLevel(s[7], 50, 200),
@@ -2342,26 +2355,10 @@ function hmRenderHeadlines() {
   else hmSetPill('hm-overall', worst, { ok: 'Всё в норме', warn: 'Есть предупреждения', crit: 'Нужно внимание' }[worst]);
 
   // Служба и её процессы
-  hmHtml('hm-k-cpu', s[2] == null ? '—' : `${hmFmt(s[2], 1)}<small>%</small>`);
-  hmHtml('hm-k-mem', s[4] == null ? '—' : hmBytes(s[4]).replace(/ (\S+)$/, '<small>$1</small>'));
+  hmText('hm-k-cpu', s[2] == null ? '—' : `${hmFmt(s[2], 1)}%`);
+  hmText('hm-k-mem', s[4] == null ? '—' : hmBytes(s[4]));
   hmText('hm-k-tasks', live.tasks == null ? '—' : hmFmt(live.tasks));
   hmText('hm-ws', hmFmt(HM.ws));
-  hmText('hm-ws2', hmFmt(HM.ws));
-  hmText('hm-heap', live.heapUsed ? `${hmBytes(live.heapUsed)} из ${hmBytes(live.heapTotal)}` : '—');
-  const mainUnit = o?.service?.unit;
-  hmHtml('hm-procs', (live.procs || []).map(p => {
-    const other = p.unit && mainUnit && p.unit !== mainUnit;
-    return `<tr>
-      <td class="hm-mono">${p.pid}</td>
-      <td><span class="hm-proc"><span class="hm-proc-dot"${other ? ' style="background:var(--c-orange)"' : ''}></span>`
-      + `<span class="hm-mono" style="font-size:11.5px">${esc(p.name)}</span>`
-      + `${other ? `<span class="hm-pill warn" style="height:18px">${esc(p.unit.replace(/\.service$/, ''))}</span>` : ''}</span></td>
-      <td class="num hm-mono">${p.cpu == null ? '—' : hmFmt(p.cpu, 1) + '%'}</td>
-      <td class="num hm-mono">${hmBytes(p.rss)}</td>
-      <td class="num hm-mono">${p.threads == null ? '—' : p.threads}</td>
-      <td class="num hm-mono">${hmDuration(p.uptime)}</td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="6" class="hm-empty">Нет данных о процессах</td></tr>');
 }
 
 // ── Опрос графиков ──
