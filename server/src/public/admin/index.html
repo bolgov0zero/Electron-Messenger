@@ -5629,7 +5629,7 @@ function spGhTile() {
   const pct = r.limit ? Math.round(r.used / r.limit * 100) : 0, col = pct >= 90 ? 'var(--c-red)' : pct >= 70 ? 'var(--c-orange)' : 'var(--c-green)';
   const mins = Math.max(1, Math.ceil((r.reset * 1000 - Date.now()) / 60000));
   return `${lb}<div class="ub-big">${rmFmt(r.used)}<small>из ${rmFmt(r.limit)} потрачено</small></div><div class="ub-meter"><i style="width:${Math.max(pct, r.used ? 2 : 0)}%;background:${col}"></i></div>
-    <div class="ub-sub">Осталось ${rmFmt(r.remaining)} · сброс через ${mins} мин, в ${hmClock(r.reset * 1000)}</div><div class="ub-sub">${r.authenticated ? 'Запросы идут с токеном' : '<span style="color:var(--c-orange)">Токен не задан</span>: лимит всего 60 в час'}</div>`;
+    <div class="ub-sub">Осталось ${rmFmt(r.remaining)} · сброс через ${mins} мин, в ${hmClock(r.reset * 1000)}</div><div class="ub-sub">Сервер сделал за последний час: <b style="color:var(--c-text)">${rmFmt(r.own || 0)}</b></div><div class="ub-sub">${r.authenticated ? 'Запросы идут с токеном' : '<span style="color:var(--c-orange)">Токен не задан</span>: лимит всего 60 в час'}</div>`;
 }
 function spChanges() { const from = Date.now() / 1000 - 7 * 86400; return SP.audit.filter(a => /настрой|копи|обнов|перезапуск/i.test(a.action) && a.created_at >= from); }
 function spOpen(k) { SP.q = ''; SP.open.add(k); spRender(); spScroll(k); }

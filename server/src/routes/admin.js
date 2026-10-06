@@ -48,6 +48,18 @@ function getLocalVersion() {
 // его ещё до перезапуска — по файлу старый процесс рапортовал бы уже новую версию
 const RUNNING_VERSION = getLocalVersion();
 
+// Учёт обращений к GitHub: сколько ответов получено за последний час и что GitHub сообщил
+// об остатке лимита в заголовках самих ответов (так цифра свежее, чем у отдельного запроса)
+const _ghCalls = [];
+let _ghSeen = null;
+function ghNote(res) {
+  const now = Date.now();
+  _ghCalls.push(now);
+  while (_ghCalls.length && now - _ghCalls[0] > 3600_000) _ghCalls.shift();
+  const h = res.headers || {}, n = k => Number(h['x-ratelimit-' + k]);
+  if (Number.isFinite(n('remaining')) && Number.isFinite(n('reset'))) _ghSeen = { limit: n('limit'), remaining: n('remaining'), reset: n('reset') };
+}
+
 // Файл из репозитория на GitHub: версия сервера и описание релиза
 function fetchRepoFile(repoPath) {
   return new Promise((resolve) => {
@@ -61,6 +73,7 @@ function fetchRepoFile(repoPath) {
         path: '/repos/bolgov0zero/Electron-Messenger/contents/' + repoPath,
         headers,
       }, res => {
+        ghNote(res);
         let data = '';
         res.on('data', c => data += c);
         res.on('end', () => {
@@ -356,6 +369,7 @@ async function fetchLatestVersion(force = false) {
         path: '/repos/bolgov0zero/Electron-Messenger/releases/latest',
         headers,
       }, res => {
+        ghNote(res);
         let body = '';
         res.on('data', c => body += c);
         res.on('end', () => { try { resolve(JSON.parse(body)); } catch { reject(new Error('parse')); } });
@@ -424,6 +438,7 @@ router.post('/clients/:connId/force-update', async (req, res) => {
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const data = await new Promise((resolve, reject) => {
       const req2 = https.request({ hostname: 'api.github.com', path: '/repos/bolgov0zero/Electron-Messenger/releases/latest', headers }, r => {
+        ghNote(r);
         let body = ''; r.on('data', c => body += c); r.on('end', () => { try { resolve(JSON.parse(body)); } catch { reject(); } });
       });
       req2.on('error', reject);
@@ -557,7 +572,11 @@ router.get('/github/rate', (req, res) => {
       if (r.statusCode === 401) return finish(502, { error: 'GitHub не принял токен' });
       try {
         const c = JSON.parse(body).resources.core;
-        finish(200, { limit: c.limit, remaining: c.remaining, used: c.used, reset: c.reset, authenticated: !!token });
+        let remaining = c.remaining;
+        // Если в заголовках настоящего ответа остаток меньше (в том же часовом окне), верим ему
+        if (_ghSeen && _ghSeen.reset === c.reset && _ghSeen.remaining < remaining) remaining = _ghSeen.remaining;
+        const cut = Date.now() - 3600_000;
+        finish(200, { limit: c.limit, remaining, used: c.limit - remaining, reset: c.reset, authenticated: !!token, own: _ghCalls.filter(t => t > cut).length });
       } catch { finish(502, { error: 'GitHub вернул неожиданный ответ' }); }
     });
   });
