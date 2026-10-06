@@ -2687,9 +2687,10 @@ html.dark .announcement-title { color: var(--danger); }
 .msg-bubble:not(.bubble-photo) > .irc-meta .status-wrap { margin-bottom: 1.5px; display: flex; }
 .irc-text::after { content: ''; display: inline-block; width: 50px; }
 /* Текст центрирован по маленьким буквам: в строке высотой 21px их середина на ~1.4px ниже
-   середины строки (Inter 14px), поэтому поднимаем текст. Сдвиг в em, чтобы масштабировался
-   вместе с текстом при масштабе интерфейса. Только обычные пузыри, без фото */
-.msg-bubble:not(.bubble-photo) > .irc-text { position: relative; top: -0.107em; }
+   середины строки (Inter 14px), поэтому поднимаем текст. Величину (em) выставляет applySettings
+   в --bubble-text-shift по масштабу интерфейса: ниже 100% сдвиг не нужен (замерено в Electron).
+   transform, а не top: сдвиг не округляется до целого пикселя. Только обычные пузыри, без фото */
+.msg-bubble:not(.bubble-photo) > .irc-text { transform: translateY(var(--bubble-text-shift, -0.107em)); }
 .irc-msg[data-mine] .irc-text::after { width: 60px; }
 
 /* вложения — под края пузыря */
@@ -2912,16 +2913,27 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
   border-radius: 10px;
 }
 .sc-sync-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
-.sc-locked-banner { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin: 8px 14px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; font-size: 13px; color: var(--text); }
-.sc-lock { width: 34px; height: 34px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
-.sc-b-txt { flex: 1; min-width: 0; }
-.sc-b-t { font-weight: 600; }
-.sc-b-s { color: var(--text2); font-size: 12px; display: flex; align-items: center; gap: 7px; }
-.sc-btn { height: 34px; padding: 0 14px; border-radius: 9px; border: 0; background: var(--accent); color: #fff; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap; }
-.sc-btn.ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
-.sc-b-inp { height: 34px; flex: 1 1 120px; min-width: 0; max-width: 150px; border: 1px solid var(--border); border-radius: 9px; background: var(--card-bg); color: var(--text); padding: 0 10px; font: 500 13px -apple-system, "Segoe UI", Roboto, sans-serif; text-transform: uppercase; }
-.sc-b-inp::placeholder { text-transform: none; color: var(--muted); }
-.sc-b-x { width: 26px; height: 26px; border-radius: 8px; border: 0; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1; }
+/* Плашка вместо композера в секретном чате: пилюля 40px, как шапка чата и плашка «только чтение» */
+.sc-locked-banner {
+  display: flex; align-items: center; gap: 10px;
+  max-width: 760px; height: 40px; box-sizing: border-box; margin: 0 auto; padding: 0 5px;
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px;
+  font-size: 13px; color: var(--text);
+}
+.sc-lock { width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex-shrink: 0; }
+.sc-lock svg { width: 15px; height: 15px; }
+.sc-b-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.sc-b-t { font-weight: 600; font-size: 13px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-b-s { color: var(--muted); font-size: 11.5px; line-height: 1.25; display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Поле кода занимает место подписи: во втором ряду текста нет */
+.sc-locked-banner.sc-open .sc-b-s { display: none; }
+.sc-btn { height: 30px; padding: 0 14px; border-radius: 15px; border: 0; background: var(--accent); color: #fff; font-weight: 600; font-size: 12.5px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.sc-btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.sc-btn.ghost:hover { background: var(--hover-row); color: var(--text); }
+.sc-b-inp { height: 30px; flex: 1 1 120px; min-width: 0; max-width: 150px; border: 1px solid var(--border); border-radius: 15px; background: var(--search-bg); color: var(--text); padding: 0 12px; font: 500 13px -apple-system, "Segoe UI", Roboto, sans-serif; text-transform: uppercase; letter-spacing: .08em; outline: none; }
+.sc-b-inp::placeholder { text-transform: none; letter-spacing: 0; color: var(--muted); }
+.sc-b-x { width: 30px; height: 30px; border-radius: 50%; border: 0; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1; flex-shrink: 0; }
+.sc-b-x:hover { background: var(--hover-row); color: var(--text); }
 .sc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; animation: sc-pulse 1.2s infinite ease-in-out; }
 @keyframes sc-pulse { 0%, 100% { opacity: .25 } 50% { opacity: 1 } }
 

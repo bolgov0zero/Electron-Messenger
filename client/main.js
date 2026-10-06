@@ -331,6 +331,20 @@ function createWindow() {
     show: false,
   });
   mainWindow.setMenuBarVisibility(false);
+  // Стандартное меню «Вырезать / Копировать / Вставить» для полей ввода. Electron сам его
+  // не показывает, если приложение не создало. Только для редактируемых полей: сообщения
+  // и списки чатов открывают свои меню в рендерере
+  mainWindow.webContents.on('context-menu', (_, params) => {
+    if (!params.isEditable) return;
+    const flags = params.editFlags;
+    Menu.buildFromTemplate([
+      { role: 'cut', enabled: flags.canCut },
+      { role: 'copy', enabled: flags.canCopy },
+      { role: 'paste', enabled: flags.canPaste },
+      { type: 'separator' },
+      { role: 'selectAll', enabled: flags.canSelectAll },
+    ]).popup({ window: mainWindow, x: params.x, y: params.y });
+  });
   mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.on('resize', _saveWinBounds);

@@ -819,6 +819,9 @@ function applySettings() {
   document.querySelectorAll('#font-seg button').forEach(b => b.classList.toggle('active', b.textContent.trim()===S.settings.fontSize[0].toUpperCase()));
   const _scale = S.settings.uiScale || 100;
   const _ratio = _scale / 100;
+  // Сдвиг текста в пузыре (центровка по x-высоте): при масштабе меньше 100% размеры строки
+  // округляются так, что текст и без сдвига стоит по центру; от 100% нужен сдвиг вверх
+  document.documentElement.style.setProperty('--bubble-text-shift', _scale < 100 ? '0em' : '-0.107em');
   document.documentElement.style.minHeight = '';
   document.body.style.height = '';
   const htmlStyle = document.documentElement.style;
@@ -3089,27 +3092,26 @@ function _rtRender(btn, reaction, users) {
   // getBoundingClientRect отдаёт визуальные пиксели, а style.left/top задаются в
   // CSS-пикселях. Коэффициент берём из самого элемента — не важно, где задан zoom.
   // offsetWidth/offsetHeight вдобавок не зависят от анимации transform.
-  // Масштаб интерфейса (CSS zoom на <html>): rect — визуальные пиксели, style.left/top — до zoom.
-  // Коэффициент берём из настройки, а не из замеров: замеры в разных Chromium расходятся.
-  const Z = ((S.settings && S.settings.uiScale) || 100) / 100;
+  // Масштаб интерфейса: см. zoomMetrics — rect и style.left в одних пикселях, окно меряем пробой
+  const zm = zoomMetrics();
+  el.style.left = '0px'; el.style.top = '0px';
   // Меряем без анимации масштаба: в скрытом состоянии элемент уменьшен scale(.94)
   el.style.transition = 'none'; el.style.transform = 'none';
-  el.style.left = '0px'; el.style.top = '0px';
   const er = el.getBoundingClientRect();
   const tw = er.width, th = er.height;
   el.style.transition = ''; el.style.transform = '';
   const r = btn.getBoundingClientRect();
   // Сторона бейджа: у своих сообщений (справа) панель уходит влево от правого края
-  const onRight = r.left + r.width / 2 > window.innerWidth / 2;
+  const onRight = r.left + r.width / 2 > zm.vw / 2;
   let left = onRight ? r.right - tw : r.left;
-  left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+  left = Math.max(8, Math.min(left, zm.vw - tw - 8));
   // Раскрываемся вверх, если над бейджем есть место; иначе вниз
   const above = r.top - th - 8 >= 8;
   const top = above ? r.top - th - 8 : r.bottom + 8;
   el.classList.toggle('above', above);
   el.classList.toggle('from-right', onRight);
-  el.style.left = Math.round(left / Z) + 'px';
-  el.style.top = Math.round(top / Z) + 'px';
+  el.style.left = Math.round(left / zm.k) + 'px';
+  el.style.top = Math.round(top / zm.k) + 'px';
   el.classList.add('visible');
 }
 
@@ -3295,7 +3297,7 @@ function scRenderBanner(chatId) {
     inner = `<div class="sc-b-txt"><div class="sc-b-t">Код принят</div><div class="sc-b-s"><span class="sc-dot"></span>Ждём подтверждения собеседника</div></div>
       <button class="sc-btn ghost" onclick="scCancelRequest(${chatId})">Отменить</button>`;
   }
-  wrap.insertAdjacentHTML('afterbegin', `<div class="sc-locked-banner"><div class="sc-lock">${SC_LOCK_ICO}</div>${inner}</div>`);
+  wrap.insertAdjacentHTML('afterbegin', `<div class="sc-locked-banner sc-${mode}"><div class="sc-lock">${SC_LOCK_ICO}</div>${inner}</div>`);
   if (mode === 'open') setTimeout(() => document.getElementById('sc-enter-code')?.focus(), 30);
 }
 function scOpenBanner(chatId) { S.scBannerOpen = chatId; scRenderBanner(chatId); }
@@ -4111,19 +4113,49 @@ function syncCtxSeparators(menu) {
     el.style.display = before && after ? '' : 'none';
   });
 }
-function placeCtxMenu(menu, clientX, clientY) {
+// Масштаб интерфейса (CSS zoom на <html>) по-разному отражается в координатах: rect и style.left
+// живут в одних пикселях, а clientX/clientY и innerWidth — в других. Соотношение зависит от
+// версии движка, поэтому не предполагаем его, а меряем пробным fixed-элементом:
+//   k — во сколько раз rect больше style (left:100px даёт rect.left = 100k);
+//   vw, vh — размер окна в пикселях rect (правый и нижний край пробы при right:0, bottom:0);
+//   f — переход из пикселей события (clientX, innerWidth) в пиксели rect.
+function zoomMetrics() {
+  const p = document.createElement('div');
+  p.style.cssText = 'position:fixed;left:100px;top:100px;right:0;bottom:0;visibility:hidden;pointer-events:none';
+  document.body.appendChild(p);
+  const r = p.getBoundingClientRect();
+  p.remove();
+  return { k: r.left / 100 || 1, vw: r.right, vh: r.bottom, f: r.right / window.innerWidth || 1 };
+}
+
+function placeCtxMenu(menu, clientX, clientY, anchor) {
   syncCtxSeparators(menu);
   menu.style.left = '-9999px'; menu.style.top = '-9999px';
-  const rect = menu.getBoundingClientRect();
-  // zoom интерфейса: координаты clientX/Y — визуальные, style.left/top — в CSS-пикселях
-  const z = menu.offsetWidth ? rect.width / menu.offsetWidth : 1;
+  // На время замера гасим анимацию появления: во время неё rect уменьшен (scale .96)
+  menu.style.animation = 'none';
+  const m = zoomMetrics();
+  const mr = menu.getBoundingClientRect();
+  const w = mr.width, h = mr.height;
   const margin = 6;
-  let x = clientX, y = clientY;
-  if (x + rect.width + margin > window.innerWidth) x = window.innerWidth - rect.width - margin;
-  if (y + rect.height + margin > window.innerHeight) y = clientY - rect.height;
-  x = Math.max(margin, x); y = Math.max(margin, y);
-  menu.style.left = (x / z) + 'px';
-  menu.style.top = (y / z) + 'px';
+  let x, y, fromRight = false, above = false;
+  if (anchor) {
+    // Меню рядом с кнопкой: правый край по правому краю кнопки, под ней; нет места — над ней
+    x = anchor.right - w; fromRight = true;
+    y = anchor.bottom + margin;
+    if (y + h + margin > m.vh && anchor.top - h - margin >= margin) { y = anchor.top - h - margin; above = true; }
+  } else {
+    const cx = clientX * m.f, cy = clientY * m.f;
+    x = cx; y = cy;
+    if (x + w + margin > m.vw) { x = cx - w; fromRight = true; }
+    if (y + h + margin > m.vh) { y = cy - h; above = true; }
+  }
+  // Не выходим за окно ни с одной стороны
+  x = Math.max(margin, Math.min(x, m.vw - w - margin));
+  y = Math.max(margin, Math.min(y, m.vh - h - margin));
+  menu.style.transformOrigin = `${above ? 'bottom' : 'top'} ${fromRight ? 'right' : 'left'}`;
+  menu.style.left = (x / m.k) + 'px';
+  menu.style.top = (y / m.k) + 'px';
+  menu.style.animation = '';
 }
 
 function dblReply(msgId) {
@@ -5589,7 +5621,9 @@ function showChatCtx(e, chatId) {
   const muteLabel = document.getElementById('ctx-chat-mute-label');
   if (muteLabel) muteLabel.textContent = S.mutedChats.has(chatId) ? 'Включить уведомления' : 'Выключить уведомления';
   menu.style.display = 'block';
-  placeCtxMenu(menu, e.clientX, e.clientY);
+  // Клик по кнопке «⋯» в шапке — привязываемся к кнопке; правый клик по чату в списке — к курсору
+  const btn = e.type === 'click' ? e.currentTarget : null;
+  placeCtxMenu(menu, e.clientX, e.clientY, btn ? btn.getBoundingClientRect() : null);
 }
 
 async function ctxChatLeave() {
