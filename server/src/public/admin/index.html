@@ -1167,6 +1167,46 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .rb-chip.sec{background:var(--c-primary-dim);color:var(--c-primary)}
 .rb-chip.grp{background:color-mix(in srgb,var(--dv-c5) 16%,transparent);color:var(--dv-c5)}
 .rb-p .adm.start{background:color-mix(in srgb,var(--dv-c2) 16%,transparent);color:var(--dv-c2)}
+/* Файлы и объявления: запись как у комнат, раскрывается по клику */
+.fb-top,.an-top{display:grid;align-items:center;gap:14px;padding:10px 14px;cursor:pointer}
+.fb-top{grid-template-columns:22px minmax(0,1.6fr) minmax(0,.9fr) minmax(0,1.2fr) minmax(0,1fr) 150px}
+.an-top{grid-template-columns:22px minmax(0,2fr) minmax(0,1fr) minmax(0,1.1fr) minmax(0,.8fr) 150px}
+.fb-top:hover,.an-top:hover{background:color-mix(in srgb,var(--c-primary) 5%,transparent)}
+.fb-top .fl-thumb{width:38px;height:38px;border-radius:10px}
+.fb-name{display:flex;align-items:center;gap:11px;min-width:0}
+.fb-name b{display:block;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fb-sz{font:600 12.5px var(--f-mono)}
+.fb-sz .meter{height:4px;margin-top:5px;max-width:110px;border-radius:2px;background:var(--c-surface2);overflow:hidden}
+.fb-sz .meter i{display:block;height:100%;border-radius:2px}
+.fb-sd{display:flex;align-items:center;gap:8px;min-width:0}
+.fb-sd .l1{font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fb-sd .l2{font-size:11px;color:var(--c-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fb-when{font-size:12.5px}
+.fb-when small{display:block;font-size:11px;color:var(--c-muted)}
+.fb-when small.w{color:var(--c-orange-text);font-weight:600}
+.fb-exp{display:grid;grid-template-columns:220px minmax(0,1fr) minmax(0,1fr);gap:18px;padding:14px 16px 16px 50px;border-top:1px solid var(--c-border);background:var(--c-surface2)}
+.fb-exp.fresh,.an-exp.fresh{animation:rbPop .22s ease}
+.fb-exp h4,.an-exp h4{margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted)}
+.fb-big{width:100%;height:150px;border-radius:12px;overflow:hidden;display:grid;place-items:center;color:#fff;font:700 18px var(--f-mono);position:relative}
+.fb-big img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.an-top .kt{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;flex-shrink:0}
+.kt.banner{background:color-mix(in srgb,var(--c-orange) 18%,transparent);color:var(--c-orange-text)}
+.kt.popup{background:color-mix(in srgb,var(--dv-c2) 18%,transparent);color:var(--dv-c2)}
+.kt.chat{background:color-mix(in srgb,var(--dv-c1) 18%,transparent);color:var(--dv-c1)}
+.an-snip2{font-size:13px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.35}
+.an-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.an-pill::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor}
+.an-pill.live{background:var(--c-green-dim);color:var(--c-green-text)}
+.an-pill.plan{background:var(--c-orange-dim);color:var(--c-orange-text)}
+.an-pill.done{background:color-mix(in srgb,var(--c-muted) 18%,transparent);color:var(--c-text2)}
+.an-st{display:flex;flex-direction:column;gap:5px;min-width:0}
+.an-st .an-left{min-width:0}
+.an-st .an-bar{max-width:120px}
+.an-exp{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr);gap:18px;padding:14px 16px 16px 50px;border-top:1px solid var(--c-border);background:var(--c-surface2)}
+.ub-tile .an-left{margin-top:10px}
+@container (max-width:1000px){.fb-top{grid-template-columns:22px minmax(0,1.6fr) minmax(0,.9fr) minmax(0,1.2fr) 150px}.fb-top .fb-when{display:none}.fb-exp,.an-exp{grid-template-columns:minmax(0,1fr);padding-left:16px}.an-top{grid-template-columns:22px minmax(0,2fr) minmax(0,1.1fr) 150px}.an-top .an-to,.an-top .an-by{display:none}}
+@container (max-width:700px){.fb-top{grid-template-columns:22px minmax(0,1fr) auto}.fb-top .fb-sz,.fb-top .fb-sd{display:none}.an-top{grid-template-columns:22px minmax(0,1fr) auto}.an-top .an-st{display:none}}
+@media (prefers-reduced-motion:reduce){.fb-exp.fresh,.an-exp.fresh{animation:none}}
 @container (max-width:1000px){.rb-top{grid-template-columns:22px minmax(0,1.5fr) minmax(0,1fr) 150px}.rb-top .rb-act{display:none}.rb-exp{grid-template-columns:minmax(0,1fr);padding-left:16px}}
 @container (max-width:700px){.rb-top{grid-template-columns:22px minmax(0,1fr) auto}.rb-top .rb-pres{display:none}}
 @media (prefers-reduced-motion:reduce){.rb-cv,.rb-exp.fresh{transition:none;animation:none}}
@@ -4908,7 +4948,7 @@ function setTopbarActions(html) {
 // Раздел «Файлы»: сводка по месту и сроку хранения, фильтры по типу; отправитель и чат —
 // выпадающими списками. Картинку можно открыть прямо здесь, удалить — по одному или разом.
 
-const FL = { filter: 'all', q: '', who: '', chat: '', sel: new Set(), files: [], lifetime: 0 };
+const FL = { filter: 'all', q: '', who: '', chat: '', sort: 'date', open: new Set(), fresh: null, sel: new Set(), files: [], lifetime: 0 };
 const flSvg = p => `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const FL_I = {
   eye: flSvg('<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>'),
@@ -5026,13 +5066,25 @@ async function renderFiles() {
   flRender();
 }
 
+const flTs = f => f.sent_at || Math.floor((f.mtime || 0) / 1000);
+// Сколько дней осталось до автоудаления; null — автоудаление выключено
+const flLeftDays = f => FL.lifetime ? Math.max(0, Math.ceil((flTs(f) + FL.lifetime * 86400 - Date.now() / 1000) / 86400)) : null;
+const FL_KIND_COLOR = { image: 'var(--dv-c1)', doc: 'var(--dv-c2)', video: 'var(--dv-c5)', other: 'var(--dv-c3)', encrypted: 'var(--dv-c4)' };
+
+function flThumbHtml(f, kind) {
+  const imgSrc = kind === 'image' ? flUrl(f.filename) : kind === 'video' ? f.thumb : null;
+  return `<span class="fl-thumb" style="background:${FL_KIND[kind][1]}">${esc((flExt(f) || '?').slice(0, 4).toUpperCase())}${imgSrc ? `<img src="${esc(imgSrc)}" loading="lazy" alt="" onerror="this.remove()">` : ''}${kind === 'video' ? FL_PLAY : ''}</span>`;
+}
+
 function flRender() {
   if (currentPage !== 'files') return;
+  const page = document.getElementById('page-body');
   const q = FL.q.trim().toLowerCase();
   const rows = FL.files
     .filter(f => FL.filter === 'all' || (FL.filter === 'big' ? f.size > FL_BIG : flKind(f) === FL.filter))
     .filter(f => (!FL.who || f.sender_name === FL.who) && (!FL.chat || f.chat_name === FL.chat))
-    .filter(f => !q || [flName(f), f.sender_name, f.chat_name].some(x => (x || '').toLowerCase().includes(q)));
+    .filter(f => !q || [flName(f), f.sender_name, f.chat_name].some(x => (x || '').toLowerCase().includes(q)))
+    .sort((a, b) => FL.sort === 'size' ? (b.size || 0) - (a.size || 0) : FL.sort === 'name' ? flName(a).localeCompare(flName(b), 'ru', { numeric: true }) : flTs(b) - flTs(a));
   const total = FL.files.reduce((s, f) => s + (f.size || 0), 0);
   const bySender = {};
   FL.files.forEach(f => { if (f.sender_name) bySender[f.sender_name] = (bySender[f.sender_name] || 0) + (f.size || 0); });
@@ -5040,49 +5092,58 @@ function flRender() {
   const max = Math.max(1, ...FL.files.map(f => f.size || 0));
   const uniq = key => [...new Set(FL.files.map(f => f[key]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru', { numeric: true }));
   const count = k => FL.files.filter(f => k === 'big' ? f.size > FL_BIG : flKind(f) === k).length;
-  const allSel = rows.length > 0 && rows.every(f => FL.sel.has(f.filename));
-  const days = FL.lifetime ? `${FL.lifetime} ${uxPlural(FL.lifetime, 'день', 'дня', 'дней')}` : '';
+  const kinds = ['image', 'doc', 'video', 'other', 'encrypted'].map(k => [k, FL.files.filter(f => flKind(f) === k).length]).filter(x => x[1]);
+  const biggest = FL.files.slice().sort((a, b) => (b.size || 0) - (a.size || 0))[0];
+  const soon = FL.lifetime ? FL.files.filter(f => flLeftDays(f) <= 3) : [], soonSize = soon.reduce((s, f) => s + (f.size || 0), 0);
+  const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
+  const flt = ([k, label]) => `<button type="button" aria-pressed="${FL.filter === k}" onclick="flFilter('${k}')">${label}<span class="n">${count2(k)}</span></button>`;
+  const count2 = k => k === 'all' ? FL.files.length : count(k);
+  const sortBtn = (k, label) => `<button type="button" aria-pressed="${FL.sort === k}" onclick="flSort('${k}')">${label}</button>`;
   uxKeepFocus(() => {
-    document.getElementById('page-body').innerHTML = `<div class="ux-page">
-      <section class="ux-panel rm-sum">
-        <div><div class="cl-k">Файлов</div><div class="cl-v">${rmFmt(FL.files.length)}</div></div>
-        <div><div class="cl-k">Занимают</div><div class="cl-v">${hmBytes(total)}</div></div>
-        <div><div class="cl-k">Хранятся</div><div class="cl-v">${FL.lifetime ? `${FL.lifetime}<small>${uxPlural(FL.lifetime, 'день', 'дня', 'дней')}</small>` : 'всегда'}</div></div>
-        <div class="rm-note">${top ? `Больше всего места у <b>${esc(top[0])}</b> — ${hmBytes(top[1])}. ` : ''}${FL.lifetime ? `Файлы старше ${days} удаляются сами.` : 'Автоудаление выключено — файлы хранятся, пока их не удалят.'}</div>
-        <div><button class="btn btn-ghost" onclick="flSettings()">Настройки хранения</button></div>
-      </section>
-      <section class="ux-panel">
-        <div class="ux-tb"><h3>Файлы <span>${FL.files.length}</span></h3>
-          ${uxChips([['all', 'Все', FL.files.length], ['image', 'Картинки', count('image')], ['doc', 'Документы', count('doc')], ['video', 'Видео', count('video')], ['big', 'Больше 20 МБ', count('big')]], FL.filter, 'flFilter')}
-          <span class="ux-grow"></span>
-          ${fselHtml('fl-who', 'Все отправители', uniq('sender_name'), FL.who, 'flWho')}
-          ${fselHtml('fl-chat', 'Все чаты', uniq('chat_name'), FL.chat, 'flChat')}
-          ${uxSearch('fl-q', FL.q, 'Имя файла', 'flSearch')}</div>
-        ${FL.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${FL.sel.size}</b><button class="btn btn-ghost btn-sm" onclick="flDelete([...FL.sel])">${UX_I.trash}Удалить</button>
-          <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="FL.sel.clear(); flRender()">Снять выделение</button></div>` : ''}
-        <div class="ux-tbl"><table class="fl-tbl">
-          <thead><tr><th style="width:40px"><input type="checkbox" aria-label="Выбрать все" ${allSel ? 'checked' : ''} onchange="flSelAll(this.checked)"></th>
-            <th>Файл</th><th class="rm-num">Размер</th><th><span class="fl-th-sender">Отправил</span></th><th>Чат</th><th>Когда</th><th></th></tr></thead>
-          <tbody>${rows.map(f => {
-            const kind = flKind(f), name = jesc(f.filename);
-            const openable = kind === 'image' || kind === 'video';
-            const imgSrc = kind === 'image' ? flUrl(f.filename) : kind === 'video' ? f.thumb : null;
-            const thumb = `<span class="fl-thumb" style="background:${FL_KIND[kind][1]}">${esc((flExt(f) || '?').slice(0, 4).toUpperCase())}${imgSrc ? `<img src="${esc(imgSrc)}" loading="lazy" alt="" onerror="this.remove()">` : ''}${kind === 'video' ? FL_PLAY : ''}</span>`;
-            return `<tr class="${FL.sel.has(f.filename) ? 'sel' : ''}">
-              <td><input type="checkbox" aria-label="Выбрать: ${esc(flName(f))}" ${FL.sel.has(f.filename) ? 'checked' : ''} onchange="flToggle('${name}')"></td>
-              <td><div class="ux-cell">${thumb}<div style="min-width:0"><div class="ux-name" title="${esc(flName(f))}">${esc(flShort(flName(f)))}</div><div class="rm-sub">${FL_KIND[kind][0]}</div></div></div></td>
-              <td class="rm-num"><span class="fl-size"><span class="fl-bar"><i style="width:${Math.max(4, (f.size || 0) / max * 100)}%"></i></span>${hmBytes(f.size || 0)}</span></td>
-              <td>${f.sender_name ? `<div class="ux-cell" style="gap:8px">${avHtml(f.sender_name, 24, 7, f.sender_id, false, true)}<span class="fl-sender-name" style="white-space:nowrap">${esc(f.sender_name)}</span></div>` : '<span class="rm-sub">без сообщения</span>'}</td>
-              <td>${f.chat_name ? `<span class="ux-name" style="font-weight:500;font-size:12px">${esc(f.chat_name)}${flChatChip(f.chat_type)}</span>` : '<span class="rm-sub">—</span>'}</td>
-              <td class="rm-last">${esc(uaSeen(f.sent_at || Math.floor((f.mtime || 0) / 1000)))}</td>
-              <td><div class="ux-actions">${kind === 'encrypted' ? '<button class="btn btn-ghost btn-sm" disabled title="Вложение секретного чата — открыть нельзя">Зашифровано</button>' : `<button class="btn btn-ghost btn-sm" onclick="flOpen('${name}')">${openable ? FL_I.eye + 'Открыть' : FL_I.down + 'Скачать'}</button>`}
-                <button class="ux-ibtn" aria-label="Ещё действия: ${esc(flName(f))}" aria-haspopup="menu" aria-expanded="false" onclick="flMenu(event, '${name}')">${UX_I.more}</button></div></td>
-            </tr>`;
-          }).join('') || `<tr><td colspan="7"><div class="ux-empty">${FL.files.length ? 'Ничего не нашли. Проверьте запрос или фильтры.' : 'Файлов пока нет'}</div></td></tr>`}</tbody>
-        </table></div>
-      </section></div>`;
+    page.innerHTML = `<div class="ub" id="fl-page">
+      <div class="ub-tiles">
+        <div class="ub-tile static"><div class="ub-lbl">Файлов</div><div class="ub-big">${rmFmt(FL.files.length)}<small>во всех чатах</small></div>
+          ${kinds.length ? `<div class="ub-stack">${kinds.map(k => `<i style="flex:${k[1]};background:${FL_KIND_COLOR[k[0]]}"></i>`).join('')}</div><div class="ub-leg">${kinds.map(k => `<span><i style="background:${FL_KIND_COLOR[k[0]]}"></i>${FL_KIND[k[0]][0]} <b>${k[1]}</b></span>`).join('')}</div>` : '<div class="ub-sub" style="margin-top:6px">файлов пока нет</div>'}</div>
+        <div class="ub-tile static"><div class="ub-lbl">Занимают</div><div class="ub-big">${hmBytes(total)}</div><div class="ub-sub">${biggest ? `самый большой: ${esc(flShort(flName(biggest)))}, ${hmBytes(biggest.size || 0)}` : '—'}</div></div>
+        <div class="ub-tile static"><div class="ub-lbl">Хранятся</div><div class="ub-big">${FL.lifetime ? `${FL.lifetime}<small>${uxPlural(FL.lifetime, 'день', 'дня', 'дней')}</small>` : 'всегда'}</div>
+          <div class="ub-sub">${FL.lifetime ? (soon.length ? `скоро удалятся: ${soon.length} ${uxPlural(soon.length, 'файл', 'файла', 'файлов')}, ${hmBytes(soonSize)}` : 'в ближайшие 3 дня ничего не удалится') : 'автоудаление выключено'}</div>
+          <div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="flSettings()">Настройки хранения</button></div></div>
+        ${top ? `<button type="button" class="ub-tile" onclick="flWho(${JSON.stringify(top[0]).replace(/"/g, '&quot;')})" title="Показать его файлы"><div class="ub-lbl">Больше всего места</div><div class="ub-big" style="font-size:17px;line-height:1.3;margin-top:8px;font-family:var(--f-ui)">${esc(top[0])}</div><div class="ub-sub">${hmBytes(top[1])} · ${total ? Math.round(top[1] / total * 100) : 0}% всех файлов</div><div class="ub-meter"><i style="width:${total ? Math.round(top[1] / total * 100) : 0}%;background:var(--dv-c5)"></i></div></button>`
+          : '<div class="ub-tile static"><div class="ub-lbl">Больше всего места</div><div class="ub-sub" style="margin-top:8px">пока нет</div></div>'}
+      </div>
+      <div class="ub-head"><h3>Файлы <span>${rows.length}</span></h3>
+        <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все'], ['image', 'Картинки'], ['doc', 'Документы'], ['video', 'Видео'], ['big', 'Больше 20 МБ']].map(flt).join('')}</div>
+        <div class="ub-sort" role="group" aria-label="Сортировка">${sortBtn('date', 'По дате')}${sortBtn('size', 'По размеру')}${sortBtn('name', 'По имени')}</div>
+        ${fselHtml('fl-who', 'Все отправители', uniq('sender_name'), FL.who, 'flWho')}
+        ${fselHtml('fl-chat', 'Все чаты', uniq('chat_name'), FL.chat, 'flChat')}
+        ${uxSearch('fl-q', FL.q, 'Имя файла', 'flSearch')}</div>
+      <div class="ub-rows">${rows.map(f => {
+        const kind = flKind(f), name = jesc(f.filename), open = FL.open.has(f.filename), openable = kind === 'image' || kind === 'video', ld = flLeftDays(f);
+        const act = kind === 'encrypted' ? '<button class="btn btn-ghost btn-sm" disabled title="Вложение секретного чата — открыть нельзя">Зашифровано</button>'
+          : `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); flOpen('${name}')">${openable ? FL_I.eye + 'Открыть' : FL_I.down + 'Скачать'}</button>`;
+        return `<div class="rb-row"><div class="fb-top" onclick="flTog(event, '${name}')">
+          <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть: ${esc(flName(f))}">${UX_I.chev}</button>
+          <div class="fb-name">${flThumbHtml(f, kind)}<div style="min-width:0"><b title="${esc(flName(f))}">${esc(flShort(flName(f)))}</b><span class="rb-meta">${FL_KIND[kind][0]}</span></div></div>
+          <div class="fb-sz">${hmBytes(f.size || 0)}<div class="meter"><i style="width:${Math.max(4, (f.size || 0) / max * 100)}%;background:${FL_KIND_COLOR[kind]}"></i></div></div>
+          <div class="fb-sd">${f.sender_name ? `${avHtml(f.sender_name, 26, 8, f.sender_id, false, true)}<div style="min-width:0"><div class="l1">${esc(f.sender_name)}</div><div class="l2">${esc(f.chat_name || '—')}</div></div>` : `<div><div class="l1" style="font-weight:500;color:var(--c-muted)">без сообщения</div><div class="l2">${esc(f.chat_name || '—')}</div></div>`}</div>
+          <div class="fb-when">${esc(uaSeen(flTs(f)))}${ld != null ? `<small class="${ld <= 3 ? 'w' : ''}">удалится через ${ld} ${uxPlural(ld, 'день', 'дня', 'дней')}</small>` : ''}</div>
+          <div class="ux-actions">${act}<button class="ux-ibtn" aria-label="Ещё действия: ${esc(flName(f))}" aria-haspopup="menu" aria-expanded="false" onclick="event.stopPropagation(); flMenu(event, '${name}')">${UX_I.more}</button></div></div>
+        ${open ? `<div class="fb-exp${FL.fresh === f.filename ? ' fresh' : ''}"><div><div class="fb-big" style="background:${FL_KIND[kind][1]}">${esc((flExt(f) || '?').toUpperCase())}${kind === 'image' ? `<img src="${esc(flUrl(f.filename))}" alt="" onerror="this.remove()">` : kind === 'video' && f.thumb ? `<img src="${esc(f.thumb)}" alt="" onerror="this.remove()">` : ''}</div></div>
+          <div><h4>О файле</h4><div class="rb-kv"><div><span>Тип</span><b>${FL_KIND[kind][0]}${flExt(f) ? ', .' + esc(flExt(f)) : ''}</b></div><div><span>Размер</span><b>${hmBytes(f.size || 0)}</b></div><div><span>Отправил</span><b>${esc(f.sender_name || '—')}</b></div><div><span>Чат</span><b>${esc(f.chat_name || '—')}${flChatChip(f.chat_type)}</b></div><div><span>Когда</span><b>${esc(uaSeen(flTs(f)))}</b></div><div><span>Удалится</span><b>${ld != null ? `через ${ld} ${uxPlural(ld, 'день', 'дня', 'дней')}` : 'не удаляется'}</b></div></div></div>
+          <div><h4>Действия</h4><div style="display:flex;flex-wrap:wrap;gap:8px">${kind === 'encrypted' ? '' : `${openable ? `<button class="btn btn-ghost btn-sm" onclick="flOpen('${name}')">${FL_I.eye}Открыть</button>` : ''}<button class="btn btn-ghost btn-sm" onclick="flDownload('${name}')">${FL_I.down}Скачать</button>`}${f.sender_name ? `<button class="btn btn-ghost btn-sm" onclick="flWho(${JSON.stringify(f.sender_name).replace(/"/g, '&quot;')})">Все файлы ${esc(f.sender_name.split(' ')[0])}</button>` : ''}<button class="btn btn-danger btn-sm" onclick="flDelete(['${name}'])">${UX_I.trash}Удалить</button></div>
+            <div class="rm-sub" style="margin-top:10px">После удаления в чате на месте файла останется «Файл удалён».</div></div></div>` : ''}</div>`;
+      }).join('') || `<div class="ub-empty">${FL.files.length ? 'Ничего не нашли. Проверьте запрос или фильтры.' : 'Файлов пока нет'}</div>`}</div></div>`;
   });
+  FL.fresh = null;
+  const list = page.querySelector('.ub-rows');
+  if (list && keepTop) list.scrollTop = keepTop;
 }
+function flTog(e, name) {
+  if (e.target.closest('.ux-actions')) return;
+  FL.open.has(name) ? FL.open.delete(name) : (FL.open.add(name), FL.fresh = name);
+  flRender();
+}
+function flSort(k) { FL.sort = k; flRender(); }
 
 function flFilter(k) { FL.filter = k; FL.sel.clear(); flRender(); }
 function flSearch(v) { FL.q = v; flRender(); }
@@ -5238,7 +5299,7 @@ const ANN_HINTS = {
   popup:  'Карточка поверх окна у тех, кто в сети в момент отправки',
   banner: 'Тонкая полоса сверху, держится заданное время и догоняет тех, кого не было в сети',
 };
-const AN = { filter: 'all', q: '', sel: new Set(), list: [], form: null, chats: [] };
+const AN = { filter: 'all', q: '', open: new Set(), fresh: null, sel: new Set(), list: [], form: null, chats: [] };
 let annStartAt = null;   // unix-секунды или null = «сейчас»; его же меняет календарь
 let _annTick = null;
 const anSvg = p => `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
@@ -5290,56 +5351,82 @@ async function renderAnnouncements() {
   anRender();
 }
 
+const AN_KI = {
+  banner: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+  popup: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="3"/><path d="M8 10h8M8 14h5"/></svg>',
+  chat: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
+};
+const AN_KCOLOR = { banner: 'var(--c-orange)', popup: 'var(--dv-c2)', chat: 'var(--dv-c1)' };
+function anStatusHtml(a, now) {
+  const st = anState(a);
+  if (st === 'active') return `<div class="an-st"><span class="an-pill live">показывается</span>${anLeftHtml(a, now)}</div>`;
+  if (st === 'scheduled') return `<div class="an-st"><span class="an-pill plan">запланировано</span><span class="rb-meta">${esc(fmtDateTime(a.start_at))} · ${anIn(a.start_at - now)}</span></div>`;
+  return `<div class="an-st"><span class="an-pill done">отправлено</span><span class="rb-meta">${esc(fmtDateTime(a.sent_at))}</span></div>`;
+}
+
 function anRender() {
   if (currentPage !== 'announcements') return;
+  const page = document.getElementById('page-body');
   const now = anNow(), q = AN.q.trim().toLowerCase();
   const by = s => AN.list.filter(a => anState(a) === s);
   const active = by('active'), sched = by('scheduled').sort((a, b) => a.start_at - b.start_at);
-  const month = by('past').filter(a => a.sent_at >= now - 30 * 86400).length;
+  const monthList = by('past').filter(a => a.sent_at >= now - 30 * 86400);
+  const kinds = list => Object.keys(ANN_KINDS).map(k => [k, list.filter(a => a.kind === k).length]).filter(x => x[1]);
   const rows = AN.list.filter(a => AN.filter === 'all' || anState(a) === AN.filter)
     .filter(a => !q || (a.text || '').toLowerCase().includes(q) || (a.author_name || '').toLowerCase().includes(q));
-  const allSel = rows.length > 0 && rows.every(a => AN.sel.has(a.id));
   const first = active[0];
+  const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
+  const flt = ([k, label, n]) => `<button type="button" aria-pressed="${AN.filter === k}" onclick="anFilter('${k}')">${label}<span class="n">${n}</span></button>`;
+  const stackOf = list => { const k = kinds(list); return k.length ? `<div class="ub-stack">${k.map(x => `<i style="flex:${x[1]};background:${AN_KCOLOR[x[0]]}"></i>`).join('')}</div><div class="ub-leg">${k.map(x => `<span><i style="background:${AN_KCOLOR[x[0]]}"></i>${ANN_KINDS[x[0]].label} <b>${x[1]}</b></span>`).join('')}</div>` : ''; };
   uxKeepFocus(() => {
-    document.getElementById('page-body').innerHTML = `<div class="ux-page">
-      <section class="ux-panel rm-sum">
-        <div><div class="cl-k">Активно сейчас</div><div class="cl-v">${active.length}</div></div>
-        <div><div class="cl-k">Запланировано</div><div class="cl-v">${sched.length}</div></div>
-        <div><div class="cl-k">Отправлено</div><div class="cl-v">${month}<small>за месяц</small></div></div>
-        <div class="rm-note">${first ? `Сейчас показывается полоса — ещё <b class="an-sum-left" data-until="${first.expires_at}">${fmtLeft(first.expires_at - now)}</b>.` : 'Сейчас ничего не показывается.'}
-          ${sched.length ? ` Следующее — <b>${esc(fmtDateTime(sched[0].start_at))}</b>, ${anIn(sched[0].start_at - now)}.` : ''}</div>
-        <div>${first ? `<button class="btn btn-ghost" onclick="anStop(${first.id})">${AN_I.stop}Снять полосу</button>` : ''}</div>
-      </section>
-      <section class="ux-panel">
-        <div class="ux-tb"><h3>Объявления <span>${AN.list.length}</span></h3>
-          ${uxChips([['all', 'Все', AN.list.length], ['active', 'Активные', active.length], ['scheduled', 'Запланированные', sched.length], ['past', 'Прошедшие', by('past').length]], AN.filter, 'anFilter')}
-          <span class="ux-grow"></span>${uxSearch('an-q', AN.q, 'Текст или автор', 'anSearch')}</div>
-        ${AN.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${AN.sel.size}</b><button class="btn btn-ghost btn-sm" onclick="anDelete([...AN.sel])">${UX_I.trash}Удалить</button>
-          <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="AN.sel.clear(); anRender()">Снять выделение</button></div>` : ''}
-        <div class="ux-tbl"><table>
-          <thead><tr><th style="width:40px"><input type="checkbox" aria-label="Выбрать все" ${allSel ? 'checked' : ''} onchange="anSelAll(this.checked)"></th>
-            <th>Объявление</th><th>Кому</th><th>Когда</th><th>Показ</th><th>Автор</th><th></th></tr></thead>
-          <tbody>${rows.map(a => {
-            const st = anState(a), k = ANN_KINDS[a.kind] || { label: a.kind, chip: 'rm-empty' };
-            const start = a.sent_at || a.start_at;
-            const show = a.kind !== 'banner' ? '<span class="rm-sub">—</span>'
-              : st === 'active' ? anLeftHtml(a, now) : `<span class="rm-last">${a.duration_min || 0} мин</span>`;
-            return `<tr class="${AN.sel.has(a.id) ? 'sel' : ''}">
-              <td><input type="checkbox" aria-label="Выбрать объявление" ${AN.sel.has(a.id) ? 'checked' : ''} onchange="anToggle(${a.id})"></td>
-              <td><div class="an-cell"><div class="an-chips"><span class="rm-chip ${k.chip}">${k.label}</span>${st === 'active' ? '<span class="rm-chip rm-topics">показывается</span>' : st === 'scheduled' ? '<span class="rm-chip rm-empty">запланировано</span>' : ''}</div>
-                <div class="an-snip">${esc(a.text || '')}</div></div></td>
-              <td style="max-width:220px"><div class="rm-sub" style="color:var(--c-text2);white-space:normal" title="${esc((a.target_names || []).join(', '))}">${esc(anTargets(a))}</div></td>
-              <td class="rm-last">${esc(fmtDateTime(start))}${st === 'scheduled' ? `<div class="rm-sub">${anIn(a.start_at - now)}</div>` : ''}</td>
-              <td>${show}</td>
-              <td>${a.author_name ? `<div class="ux-cell" style="gap:8px">${avHtml(a.author_name, 22, 6, a.author_id, false, true)}<span style="white-space:nowrap">${esc(a.author_name)}</span></div>` : '<span class="rm-sub">—</span>'}</td>
-              <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="anView(${a.id})">${AN_I.eye}Открыть</button>
-                <button class="ux-ibtn" aria-label="Ещё действия" aria-haspopup="menu" aria-expanded="false" onclick="anMenu(event, ${a.id})">${UX_I.more}</button></div></td>
-            </tr>`;
-          }).join('') || `<tr><td colspan="7"><div class="ux-empty">${AN.list.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Объявлений пока не было'}</div></td></tr>`}</tbody>
-        </table></div>
-      </section></div>`;
+    page.innerHTML = `<div class="ub" id="an-page">
+      <div class="ub-tiles">
+        <div class="ub-tile static"><div class="ub-lbl">Активно сейчас</div><div class="ub-big">${active.length}<small>${active.length ? uxPlural(active.length, 'полоса', 'полосы', 'полос') : ''}</small></div>
+          ${first ? `${anLeftHtml(first, now)}<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="anStop(${first.id})">${AN_I.stop}Снять полосу</button></div>` : '<div class="ub-sub">сейчас ничего не показывается</div>'}</div>
+        <div class="ub-tile static"><div class="ub-lbl">Запланировано</div><div class="ub-big">${sched.length}</div><div class="ub-sub">${sched[0] ? `ближайшее ${esc(fmtDateTime(sched[0].start_at))}, ${anIn(sched[0].start_at - now)}` : 'ничего не запланировано'}</div>${stackOf(sched)}</div>
+        <div class="ub-tile static"><div class="ub-lbl">Отправлено за месяц</div><div class="ub-big">${monthList.length}<small>${uxPlural(monthList.length, 'объявление', 'объявления', 'объявлений')}</small></div>${stackOf(monthList) || '<div class="ub-sub">пока ничего</div>'}</div>
+        <div class="ub-tile static" style="display:flex;flex-direction:column;justify-content:space-between"><div><div class="ub-lbl">Новое объявление</div><div class="ub-sub" style="margin-top:6px">Полоса сверху, карточка по центру или строка в чате. Можно запланировать на время.</div></div>
+          <button class="btn ux-solid btn-sm" style="align-self:flex-start;margin-top:10px" onclick="openAnnouncementModal()">${RM_I.plus}Создать</button></div>
+      </div>
+      <div class="ub-head"><h3>Объявления <span>${rows.length}</span></h3>
+        <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все', AN.list.length], ['active', 'Активные', active.length], ['scheduled', 'Запланированные', sched.length], ['past', 'Прошедшие', by('past').length]].map(flt).join('')}</div>
+        ${uxSearch('an-q', AN.q, 'Текст или автор', 'anSearch')}</div>
+      <div class="ub-rows">${rows.map(a => {
+        const st = anState(a), k = ANN_KINDS[a.kind] || { label: a.kind }, open = AN.open.has(a.id);
+        const meta = [[a.kind === 'chat' ? 'Куда' : 'Кому', anTargets(a)], [a.sent_at ? 'Отправлено' : 'Запланировано', fmtDateTime(a.sent_at || a.start_at)], ['Автор', a.author_name || '—']];
+        if (a.kind === 'banner') { meta.push(['Показ', `${a.duration_min || 0} мин${st === 'active' ? `, осталось ${fmtLeft(a.expires_at - now)}` : st === 'past' ? ', завершён' : ''}`]); meta.push(['Закрыли', String(a.dismissed_count || 0)]); }
+        return `<div class="rb-row"><div class="an-top" onclick="anTog(event, ${a.id})">
+          <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть">${UX_I.chev}</button>
+          <div class="fb-name"><div class="kt ${a.kind}">${AN_KI[a.kind] || ''}</div><div style="min-width:0"><div class="an-snip2">${esc(a.text || '')}</div><span class="rb-meta">${k.label}</span></div></div>
+          <div class="an-to rb-meta" style="color:var(--c-text);font-size:12.5px" title="${esc((a.target_names || []).join(', '))}">${esc(anTargets(a))}</div>
+          <div>${anStatusHtml(a, now)}</div>
+          <div class="an-by fb-sd">${a.author_name ? `${avHtml(a.author_name, 24, 7, a.author_id, false, true)}<div class="l1">${esc(a.author_name.split(' ')[0])}</div>` : '<span class="rm-sub">—</span>'}</div>
+          <div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); anView(${a.id})">${AN_I.eye}Открыть</button>
+            <button class="ux-ibtn" aria-label="Ещё действия" aria-haspopup="menu" aria-expanded="false" onclick="event.stopPropagation(); anMenu(event, ${a.id})">${UX_I.more}</button></div></div>
+        ${open ? `<div class="an-exp${AN.fresh === a.id ? ' fresh' : ''}"><div><h4>Как это выглядит</h4>${anPreview(a.kind, a.text || '')}</div>
+          <div><h4>Подробности</h4><div class="rb-kv">${meta.map(([n, v]) => `<div><span>${n}</span><b>${esc(v)}</b></div>`).join('')}</div></div>
+          <div><h4>Действия</h4><div style="display:flex;flex-wrap:wrap;gap:8px">${st === 'active' ? `<button class="btn btn-ghost btn-sm" onclick="anStop(${a.id})">${AN_I.stop}Снять полосу</button>` : ''}${st === 'scheduled' ? `<button class="btn btn-ghost btn-sm" onclick="anDelete([${a.id}])">${AN_I.x}Отменить отправку</button>` : ''}<button class="btn btn-ghost btn-sm" onclick="anResend(${a.id})">${UX_I.refresh}Отправить снова</button><button class="btn btn-danger btn-sm" onclick="anDelete([${a.id}])">${UX_I.trash}Удалить</button></div>
+            <div class="rm-sub" style="margin-top:10px">«Отправить снова» открывает новое объявление с тем же текстом${a.target === 'select' ? '; получателей нужно выбрать заново' : ''}.</div></div></div>` : ''}</div>`;
+      }).join('') || `<div class="ub-empty">${AN.list.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Объявлений пока не было'}</div>`}</div></div>`;
   });
+  AN.fresh = null;
+  const list = page.querySelector('.ub-rows');
+  if (list && keepTop) list.scrollTop = keepTop;
   startAnnCountdown();
+}
+function anTog(e, id) {
+  if (e.target.closest('.ux-actions')) return;
+  AN.open.has(id) ? AN.open.delete(id) : (AN.open.add(id), AN.fresh = id);
+  anRender();
+}
+// Новое объявление с теми же типом, текстом и длительностью; получателей из выборочного списка выбирают заново
+async function anResend(id) {
+  const a = AN.list.find(x => x.id === id);
+  if (!a) return;
+  await openAnnouncementModal();
+  if (!AN.form) return;
+  Object.assign(AN.form, { kind: a.kind, text: a.text || '', duration: a.duration_min || 60, pick: a.target === 'select' });
+  anRenderForm('an-text');
 }
 
 function anLeftHtml(a, now) {
