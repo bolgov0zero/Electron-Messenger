@@ -51,9 +51,9 @@
   --c-blue:var(--dv-c2);
   --c-blue-dim:color-mix(in srgb,var(--dv-c2) 14%,transparent);
   --c-blue-text:var(--dv-c2);
-  --c-purple:#8b5cf6;
-  --c-purple-dim:rgba(139,92,246,.12);
-  --c-purple-text:#7c3aed;
+  --c-purple:var(--dv-c5);
+  --c-purple-dim:color-mix(in srgb,var(--dv-c5) 14%,transparent);
+  --c-purple-text:var(--dv-c5);
 
   --radius:12px;
   --radius-sm:8px;
@@ -74,9 +74,6 @@
 }
 [data-theme="dark"]{
   --c-on-primary:#04211c;
-  --c-purple:#a78bfa;
-  --c-purple-dim:rgba(167,139,250,.12);
-  --c-purple-text:#a78bfa;
   --shadow-md:0 4px 20px rgba(0,0,0,.55),0 1px 4px rgba(0,0,0,.3);
   --shadow-xl:0 24px 80px rgba(0,0,0,.80),0 0 0 1px rgba(255,255,255,.05);
   --bg-input:var(--dv-surface2);
@@ -311,10 +308,10 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .ux-st.off{color:var(--c-text2)}
 .ux-st.banned{color:var(--c-red-text)}
 .ux-tag{display:inline-block;font-size:9.5px;font-weight:700;padding:0 6px;border-radius:9px;line-height:17px;white-space:nowrap}
-.ux-t0{background:var(--c-blue-dim);color:var(--c-blue-text)}
-.ux-t1{background:var(--c-green-dim);color:var(--c-green-text)}
-.ux-t2{background:var(--c-purple-dim);color:var(--c-purple-text)}
-.ux-t3{background:var(--c-orange-dim);color:var(--c-orange-text)}
+.ux-t0{background:color-mix(in srgb,var(--dv-c2) 16%,transparent);color:var(--dv-c2)}
+.ux-t1{background:color-mix(in srgb,var(--dv-c1) 16%,transparent);color:var(--dv-c1)}
+.ux-t2{background:color-mix(in srgb,var(--dv-c5) 16%,transparent);color:var(--dv-c5)}
+.ux-t3{background:color-mix(in srgb,var(--dv-c3) 16%,transparent);color:var(--dv-c3)}
 .ux-spin{animation:spin 1s linear infinite}
 
 /* Пользователи */
@@ -1073,6 +1070,46 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 @media (max-width:960px){.dv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dv-main,.dv-bottom{grid-template-columns:minmax(0,1fr)}.dv .hm-host{grid-template-columns:minmax(0,1fr);gap:10px}.dv .hm-upd{justify-self:start}}
 @media (max-width:560px){.dv-kpis{grid-template-columns:minmax(0,1fr)}}
 @media (prefers-reduced-motion:reduce){.dv-meter i{transition:none}.dv #hm-overall.ok{animation:none}}
+/* ── ПОЛЬЗОВАТЕЛИ ── плитки-фильтры сверху, строки-карточки; плитки и поиск закреплены, прокручивается только список */
+.page-body:has(.ub){overflow:hidden;display:flex;flex-direction:column}
+.ub{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;width:100%;max-width:1360px;margin:0 auto;container-type:inline-size}
+.ub>*{flex-shrink:0}
+.ub-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.ub-tile{text-align:left;cursor:pointer;padding:14px 16px;color:inherit;font:inherit;background:var(--c-surface);border:1px solid var(--c-border);border-radius:16px;box-shadow:var(--shadow);min-width:0}
+.ub-tile:hover{border-color:color-mix(in srgb,var(--c-primary) 35%,var(--c-border))}
+.ub-tile[aria-pressed="true"]{border-color:var(--c-primary);box-shadow:0 0 0 1px var(--c-primary),var(--shadow)}
+.ub-lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted)}
+.ub-big{font:700 26px/1.1 var(--f-mono);letter-spacing:-.02em;margin:6px 0 2px}
+.ub-big small{font:500 12.5px var(--f-ui);color:var(--c-muted);margin-left:4px;letter-spacing:0}
+.ub-meter{height:5px;border-radius:3px;background:var(--c-surface2);overflow:hidden;margin-top:8px}
+.ub-meter i{display:block;height:100%;border-radius:3px;transition:width .5s ease}
+.ub-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ub-head h3{font-size:13px;font-weight:700;display:flex;gap:6px;align-items:baseline;margin-right:auto}
+.ub-head h3 span{font-family:var(--f-mono);font-size:11.5px;color:var(--c-muted);font-weight:500}
+.ub-sort{display:inline-flex;gap:2px;padding:3px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:11px}
+.ub-sort button{border:0;background:none;color:var(--c-muted);font:600 12px var(--f-ui);padding:5px 10px;border-radius:8px;cursor:pointer}
+.ub-sort button:hover{color:var(--c-text)}
+.ub-sort button[aria-pressed="true"]{background:var(--c-primary-dim);color:var(--c-primary)}
+.ub .ux-bulk{border:1px solid color-mix(in srgb,var(--c-primary) 35%,transparent);border-radius:12px}
+.ub-rows{flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px 4px 2px 2px;margin:-2px -4px -2px -2px}
+.ub-row{display:grid;grid-template-columns:22px minmax(0,1.6fr) minmax(0,1fr) minmax(0,1.2fr) auto;align-items:center;gap:14px;padding:10px 14px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:14px;box-shadow:var(--shadow)}
+.ub-row:hover{border-color:color-mix(in srgb,var(--c-primary) 35%,var(--c-border))}
+.ub-row.sel{background:var(--c-primary-dim)}
+.ub-row.ua-banned .ux-cell{opacity:.6}
+.ub-row input[type=checkbox]{accent-color:var(--c-primary);width:15px;height:15px;cursor:pointer}
+.ub-role small{display:block;font:500 11px var(--f-mono);color:var(--c-muted);margin-top:3px}
+.ub-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--c-muted) 18%,transparent);color:var(--c-text2);white-space:nowrap}
+.ub-pill::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0}
+.ub-pill.online{background:var(--c-green-dim);color:var(--c-green-text)}
+.ub-pill.away{background:var(--c-orange-dim);color:var(--c-orange-text)}
+.ub-pill.banned{background:var(--c-red-dim);color:var(--c-red-text)}
+.ub-st small{display:block;font:500 11px var(--f-mono);color:var(--c-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ub-empty{background:var(--c-surface);border:1px solid var(--c-border);border-radius:14px;padding:40px 16px;text-align:center;color:var(--c-muted);font-size:12px}
+/* Ширина считается по самой странице (без бокового меню): сначала уходит колонка роли, потом статуса */
+@container (max-width:860px){.ub-row{grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) auto}.ub-row .ub-role{display:none}}
+@container (max-width:620px){.ub-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.ub-row{grid-template-columns:22px minmax(0,1fr) auto}.ub-row .ub-st{display:none}}
+@container (max-width:380px){.ub-tiles{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){.ub-meter i{transition:none}}
 </style>
 </head>
 <body>
@@ -1451,7 +1488,8 @@ const api = async (method, path, body) => {
 };
 
 /* ── HELPERS ── */
-const AVcolors = ['#4f46e5','#7c3aed','#db2777','#0d9488','#d97706','#dc2626','#059669','#2563eb'];
+// Цвета аватарок — из палитры макета главной
+const AVcolors = ['#d8456c','#2b8be8','#6a5be0','#e0a02b','#2fa36b','#0f9e8e','#c2478a','#e0562b'];
 function avColor(name) { let h=0; for(let c of (name||'')) h=(h*31+c.charCodeAt(0))&0xffff; return AVcolors[h%AVcolors.length]; }
 function initials(name) { return (name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?'; }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -2981,12 +3019,6 @@ function uaSeen(ts) {
   if (diff === 1) return `вчера в ${time}`;
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) }) + ` в ${time}`;
 }
-function uaStatus(u) {
-  if (u.banned) return '<span class="ux-st banned"><i style="background:var(--c-red)"></i>Заблокирован</span>';
-  if (uaOnline(u)) return `<span class="ux-st"><i style="background:var(--c-green)"></i>Онлайн <small>${esc(uaDevices(u))}</small></span>`;
-  if (uaAway(u)) return `<span class="ux-st"><i style="background:var(--c-orange)"></i>Отошёл <small>${esc(uaDevices(u))}</small></span>`;
-  return `<span class="ux-st off"><i style="background:var(--c-muted)"></i>Был в сети <small>${esc(uaSeen(u.last_seen_at))}</small></span>`;
-}
 // Значок 2FA рядом с ролью — только для админов: заполненный ключ, если уже
 // настроена, пунктирный — если включили требование, а сам ещё не настроил
 // при следующем входе в админ-панель
@@ -3014,39 +3046,48 @@ function uaRender() {
   if (currentPage !== 'users') return;
   const rows = uaRows();
   const n = { all: allUsers.length, online: allUsers.filter(uaOnline).length, away: allUsers.filter(uaAway).length, admins: allUsers.filter(u => u.is_admin).length, banned: allUsers.filter(u => u.banned).length };
-  const allSel = rows.length > 0 && rows.every(u => UA.sel.has(u.id));
-  const th = (key, label) => `<th><button class="ux-sort${UA.sort.key === key ? ' on' : ''}" onclick="uaSortBy('${key}')">${label}${UA.sort.key === key ? (UA.sort.dir > 0 ? ' ↑' : ' ↓') : ''}</button></th>`;
+  const title = { all: 'Все', online: 'В сети', away: 'Отошли', admins: 'Администраторы', banned: 'Заблокированы' }[UA.filter];
+  const tile = (key, label, num, unit, color) => `<button type="button" class="ub-tile" aria-pressed="${UA.filter === key}" onclick="uaFilter('${key}')">
+    <div class="ub-lbl">${label}</div><div class="ub-big">${num}<small>${unit}</small></div>
+    <div class="ub-meter"><i style="width:${n.all ? Math.round(num / n.all * 100) : 0}%;background:${color}"></i></div></button>`;
+  const sortBtn = (key, label) => `<button type="button" aria-pressed="${UA.sort.key === key}" onclick="uaSortBy('${key}')">${label}${UA.sort.key === key ? (UA.sort.dir > 0 ? ' ↑' : ' ↓') : ''}</button>`;
+  // Прокрутка списка не должна сбрасываться при обновлении данных раз в несколько секунд
+  const keepTop = document.querySelector('.ub-rows')?.scrollTop || 0;
   uxKeepFocus(() => {
-    document.getElementById('page-body').innerHTML = `<div class="ux-page"><section class="ux-panel">
-      <div class="ux-tb">
-        <h3>Пользователи <span>${n.all}</span></h3>
-        ${uxChips([['all', 'Все', n.all], ['online', 'В сети', n.online], ['away', 'Отошёл', n.away], ['admins', 'Администраторы', n.admins], ['banned', 'Заблокированы', n.banned]], UA.filter, 'uaFilter')}
-        <span class="ux-grow"></span>${uxSearch('ua-q', UA.q, 'Имя, логин или тег', 'uaSearch')}
+    document.getElementById('page-body').innerHTML = `<div class="ub">
+      <div class="ub-tiles">
+        ${tile('all', 'Всего', n.all, 'человек', 'var(--dv-c2)')}${tile('online', 'В сети', n.online, 'сейчас', 'var(--c-green)')}
+        ${tile('away', 'Отошли', n.away, 'из них', 'var(--c-orange)')}${tile('admins', 'Администраторы', n.admins, 'чел.', 'var(--c-primary)')}
       </div>
+      <div class="ub-head"><h3>${title} <span>${rows.length}</span></h3>
+        ${n.banned || UA.filter === 'banned' ? uxChips([['banned', 'Заблокированы', n.banned, true]], UA.filter, 'uaFilter') : ''}
+        <div class="ub-sort" role="group" aria-label="Сортировка">${sortBtn('name', 'По имени')}${sortBtn('status', 'По статусу')}${sortBtn('created', 'По дате')}</div>
+        ${uxSearch('ua-q', UA.q, 'Имя, логин или тег', 'uaSearch')}</div>
       ${UA.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${UA.sel.size}</b>
         <button class="btn btn-ghost btn-sm" onclick="uaLogout([...UA.sel])">${UX_I.logout}Завершить сеансы</button>
         <button class="btn btn-ghost btn-sm" onclick="uaBan([...UA.sel])">${UX_I.ban}Заблокировать</button>
         <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="UA.sel.clear(); uaRender()">Снять выделение</button></div>` : ''}
-      <div class="ux-tbl"><table>
-        <thead><tr>
-          <th style="width:40px"><input type="checkbox" aria-label="Выбрать всех" ${allSel ? 'checked' : ''} onchange="uaSelAll(this.checked)"></th>
-          ${th('name', 'Пользователь')}<th>Роль</th>${th('status', 'Статус')}${th('created', 'Создан')}<th></th>
-        </tr></thead>
-        <tbody>${rows.map(u => `<tr class="${UA.sel.has(u.id) ? 'sel' : ''}${u.banned ? ' ua-banned' : ''}">
-          <td><input type="checkbox" aria-label="Выбрать: ${esc(u.display_name)}" ${UA.sel.has(u.id) ? 'checked' : ''} onchange="uaToggle(${u.id})"></td>
-          <td><div class="ux-cell">${avHtml(u.display_name, 34, 9, u.id, uaDot(u), u.has_avatar)}
-            <div style="min-width:0"><div class="ux-name">${esc(u.display_name)}${uxTag(u.tag)}</div><div class="ux-login">@${esc(u.username)}</div></div></div></td>
-          <td>${uaRole(u)}</td>
-          <td style="max-width:320px">${uaStatus(u)}</td>
-          <td class="cl-dur">${fmtDate(u.created_at)}</td>
-          <td><div class="ux-actions">
-            <button class="btn btn-ghost btn-sm" onclick="openEditUser(${u.id})">${UX_I.edit}Изменить</button>
-            <button class="ux-ibtn" aria-label="Ещё действия: ${esc(u.display_name)}" aria-haspopup="menu" aria-expanded="false" onclick="uaMenu(event, ${u.id})">${UX_I.more}</button>
-          </div></td>
-        </tr>`).join('') || '<tr><td colspan="6"><div class="ux-empty">Никого не нашли. Проверьте запрос или фильтр.</div></td></tr>'}</tbody>
-      </table></div>
-    </section></div>`;
+      <div class="ub-rows">${rows.map(u => `<div class="ub-row${UA.sel.has(u.id) ? ' sel' : ''}${u.banned ? ' ua-banned' : ''}">
+        <input type="checkbox" aria-label="Выбрать: ${esc(u.display_name)}" ${UA.sel.has(u.id) ? 'checked' : ''} onchange="uaToggle(${u.id})">
+        <div class="ux-cell">${avHtml(u.display_name, 38, 11, u.id, uaDot(u), u.has_avatar)}
+          <div style="min-width:0"><div class="ux-name">${esc(u.display_name)}${uxTag(u.tag)}</div><div class="ux-login">@${esc(u.username)}</div></div></div>
+        <div class="ub-role">${uaRole(u)}<small>создан ${fmtDate(u.created_at)}</small></div>
+        <div class="ub-st">${uaStatusPill(u)}</div>
+        <div class="ux-actions">
+          <button class="btn btn-ghost btn-sm" onclick="openEditUser(${u.id})">${UX_I.edit}Изменить</button>
+          <button class="ux-ibtn" aria-label="Ещё действия: ${esc(u.display_name)}" aria-haspopup="menu" aria-expanded="false" onclick="uaMenu(event, ${u.id})">${UX_I.more}</button>
+        </div></div>`).join('') || '<div class="ub-empty">Никого не нашли. Проверьте запрос или фильтр.</div>'}</div>
+    </div>`;
   });
+  const list = document.querySelector('.ub-rows');
+  if (list && keepTop) list.scrollTop = keepTop;
+}
+// Плашка статуса и под ней устройство или время последнего входа
+function uaStatusPill(u) {
+  if (u.banned) return '<span class="ub-pill banned">Заблокирован</span>';
+  if (uaOnline(u)) return `<span class="ub-pill online">Онлайн</span><small>${esc(uaDevices(u))}</small>`;
+  if (uaAway(u)) return `<span class="ub-pill away">Отошёл</span><small>${esc(uaDevices(u))}</small>`;
+  return `<span class="ub-pill">Не в сети</span><small>был ${esc(uaSeen(u.last_seen_at))}</small>`;
 }
 
 function uaFilter(k) { UA.filter = k; UA.sel.clear(); uaRender(); }
@@ -4710,7 +4751,7 @@ const FL_EXT = {
   video: ['mp4', 'mov', 'webm', 'mkv', 'avi', 'm4v'],
   doc: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'odt', 'ods', 'odp', 'csv', 'md'],
 };
-const FL_KIND = { image: ['Картинка', '#0d9488'], doc: ['Документ', '#4f46e5'], video: ['Видео', '#db2777'], other: ['Файл', '#d97706'], encrypted: ['Зашифровано', '#64748b'] };
+const FL_KIND = { image: ['Картинка', '#0f9e8e'], doc: ['Документ', '#5b6cf0'], video: ['Видео', '#c2478a'], other: ['Файл', '#d98a0b'], encrypted: ['Зашифровано', '#8a97a8'] };
 const FL_BIG = 20 * 1048576;
 const flExt = f => (String(f.filename).includes('.') ? String(f.filename).split('.').pop() : '').toLowerCase();
 function flKind(f) {
