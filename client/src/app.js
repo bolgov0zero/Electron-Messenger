@@ -861,7 +861,9 @@ function toggleSidebar() {
   // панель у края. Показ — сразу, чтобы колонка вернулась.
   document.body.classList.toggle('sidebar-overlay', hidden);
   localStorage.setItem('sidebarHidden', hidden ? '1' : '');
-  window.electron?.resizeWindow(hidden ? -280 : 280);
+  // Ширину окна подстраиваем под убранные колонки: сайдбар, а при двух записях и бар записей (66px + отступ 16px)
+  const railW = document.body.classList.contains('has-rail') ? 82 : 0;
+  window.electron?.resizeWindow(hidden ? -(280 + railW) : 280 + railW);
 }
 function _scheduleHideSidebar() {
   if (!document.body.classList.contains('sidebar-hidden')) return;
@@ -877,8 +879,12 @@ function initSidebarPeek() {
     clearTimeout(_sidebarPeekTimer);
     document.body.classList.add('sidebar-peeking');
   });
-  sidebar.addEventListener('mouseleave', _scheduleHideSidebar);
-  sidebar.addEventListener('mouseenter', () => clearTimeout(_sidebarPeekTimer));
+  // Бар записей выезжает вместе с сайдбаром, поэтому наведение на него тоже держит панель открытой
+  for (const el of [sidebar, document.getElementById('acc-rail')]) {
+    if (!el) continue;
+    el.addEventListener('mouseleave', _scheduleHideSidebar);
+    el.addEventListener('mouseenter', () => clearTimeout(_sidebarPeekTimer));
+  }
 }
 // ── ВКЛАДКИ САЙДБАРА (Чаты / Контакты / Настройки) ──
 // Раньше внизу сайдбара была карточка «я» с шестерёнкой в модалку настроек.
