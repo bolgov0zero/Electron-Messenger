@@ -227,9 +227,6 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .hm-host{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;padding:9px 14px}
 .hm-upd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 /* Результат проверки — в самой кнопке, ширина постоянная: строка сервера не перестраивается */
-.hm-upd-btn{min-width:196px;justify-content:center}
-.hm-upd-btn.hm-upd-ok{color:var(--c-green-text)}
-.hm-upd-btn.hm-upd-err{color:var(--c-red-text)}
 .hm-seg{display:flex;padding:2px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);position:relative}
 .hm-seg button{height:24px;padding:0 10px;border:0;background:none;border-radius:6px;font:600 11px var(--f-ui);color:var(--c-text2);cursor:pointer;position:relative;z-index:1;transition:color .2s ease .05s}
 .hm-seg button:hover{color:var(--c-text)}
@@ -243,35 +240,6 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 /* Обновление сервера */
 .hm-upd-panel{flex-basis:100%;border-top:1px solid var(--c-border2);margin:2px -14px -9px;padding:10px 14px 11px;display:flex;flex-direction:column;gap:9px}
 .hm-upd-panel.hm-upd-closing{overflow:hidden;opacity:0;padding-top:0;padding-bottom:0;transition:height .35s ease,opacity .25s ease,padding .35s ease}
-.hm-upd-row{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap}
-.hm-upd-title{font-size:12px;font-weight:600}
-.hm-upd-ver{display:flex;align-items:center;gap:8px;font-size:13px}
-.hm-arr{color:var(--c-muted)}
-.hm-new{color:var(--c-primary);font-weight:600}
-.hm-upd-btns{display:flex;gap:6px}
-.hm-upd-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.hm-inst{display:flex;flex-direction:column;gap:8px}
-.hm-inst-row{display:flex;align-items:center;gap:10px}
-.hm-inst-ico{width:18px;height:18px;display:grid;place-items:center;color:var(--c-primary);flex-shrink:0}
-.hm-inst-t{flex:1;min-width:0;font-size:12px;font-weight:600}
-.hm-inst-pct{font-size:12px;color:var(--c-text2)}
-.hm-note{font-size:11px;color:var(--c-text2);max-width:72ch}
-.hm-upd-panel details{font-size:11px;color:var(--c-text2)}
-.hm-upd-panel summary{cursor:pointer;color:var(--c-primary);font-weight:600;width:max-content}
-.hm-upd-panel details p{margin-top:5px;max-width:80ch;white-space:pre-line}
-.hm-steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-.hm-steps li{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--c-muted);min-width:0}
-.hm-steps li span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-steps .ic{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--c-border);display:grid;place-items:center;flex-shrink:0;color:#fff}
-.hm-steps li.active{color:var(--c-text);font-weight:600}
-.hm-steps li.active .ic{border-color:var(--c-primary);border-top-color:transparent;animation:spin .9s linear infinite}
-.hm-steps li.done{color:var(--c-text2)}
-.hm-steps li.done .ic{background:var(--c-green);border-color:var(--c-green)}
-.hm-steps li.skipped .ic{border-style:dashed}
-.hm-steps li.failed{color:var(--c-red-text)}
-.hm-steps li.failed .ic{background:var(--c-red);border-color:var(--c-red)}
-.hm-bar{height:4px;border-radius:2px;background:var(--c-surface2);overflow:hidden}
-.hm-bar span{display:block;height:100%;width:0;background:var(--c-primary);border-radius:2px;transition:width .5s ease}
 
 /* Живые графики */
 .hm-bars text{font-family:var(--f-mono);font-size:10px;fill:var(--c-muted)}
@@ -288,10 +256,7 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .hm-bars .tip-bg{fill:var(--c-surface);stroke:var(--c-border)}
 .hm-empty{font-size:12px;color:var(--c-muted);padding:6px 0}
 
-@media (max-width:900px){
-  .hm-steps{grid-template-columns:minmax(0,1fr)}
-}
-@media (prefers-reduced-motion:reduce){ .hm-spin,.hm-steps li.active .ic{animation:none} .hm-bar span{transition:none} }
+@media (prefers-reduced-motion:reduce){ .hm-spin{animation:none} }
 
 /* ── СПИСКИ: ПОЛЬЗОВАТЕЛИ И КЛИЕНТЫ ── */
 /* Общие части — ux-, пользователи — ua-, клиенты — cl-: короткие имена в админке уже заняты */
@@ -1077,14 +1042,18 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .dv .btn-danger{color:var(--dv-bad)}
 .dv .btn-primary{background:var(--dv-accent);color:#04211c;border-color:transparent}
 .dv .btn:disabled{opacity:.5;cursor:default}
-.dv .hm-upd-btn{min-width:0}
-.dv .hm-upd-btn.hm-upd-ok{color:var(--dv-ok)}
-.dv .hm-upd-btn.hm-upd-err{color:var(--dv-bad)}
 
 /* Строка сервера */
 .dv .hm-host{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:0 18px}
 .dv .hm-upd{justify-self:end}
-.dv .hm-upd-panel{grid-column:1/-1;margin:14px 0 0;padding:14px 0 0;border-top:1px solid var(--dv-border)}
+.dv .hm-upd-panel{display:block;grid-column:1/-1;margin:14px 0 0;padding:14px 0 0;border-top:1px solid var(--dv-border);animation:dvFade .25s ease}
+@keyframes dvFade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.dv .hm-upd-panel.hm-upd-closing{overflow:hidden;opacity:0;padding-top:0;padding-bottom:0;transition:height .35s ease,opacity .25s ease,padding .35s ease}
+.dv .hm-pill.nodot::before{display:none}
+.dv-upd-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.dv-upd-sub{flex:1;min-width:0}
+.dv-steps{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--dv-muted)}
+.dv-steps .on{color:var(--dv-warn);font-weight:600}.dv-steps .ok{color:var(--dv-ok)}.dv-steps .bad{color:var(--dv-bad);font-weight:600}
 .dv-host-title{font-size:16px;font-weight:700;line-height:1.45}
 .dv-host-title .dv-sub{font-weight:500}
 .dv-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
@@ -2118,6 +2087,7 @@ function hmRenderChron() {
   const el = $hm('dv-chron');
   if (!el) return;
   const o = HM.overview, items = [];
+  const day = ts => new Date(ts).toDateString();
   const mon = (HM.events || []).filter(e => e.type === 'update' || e.type === 'restart');
   // Обновление и перезапуск записываются и в аудит, и в историю монитора — одну пару не показываем дважды
   const dup = a => /обновлен|перезапуск/i.test(a.action) && mon.some(e => Math.abs(e.t0 - a.created_at * 1000) < 5 * 60e3);
@@ -2130,11 +2100,11 @@ function hmRenderChron() {
   if (startedAt) items.push({ t: startedAt, kind: '', ic: '▲', text: o?.service ? `Служба ${esc(o.service.unit || 'electron.service')} запущена` : 'Сервер запущен', sub: '' });
   const bk = o?.storage?.backups;
   if (bk?.latest) items.push({ t: bk.latest, kind: 'info', ic: '◼', text: 'Резервная копия создана', sub: `${hmBytes(bk.size)} · копий: ${bk.count}` });
+  (HM.localEv || []).filter(e => day(e.t) === new Date().toDateString()).forEach(e => items.push({ t: e.t, kind: e.kind === 'warn' ? 'warn' : 'info', ic: e.kind === 'warn' ? '!' : '↻', text: esc(e.text), sub: '' }));
   items.sort((a, b) => b.t - a.t);
   // одно и то же событие мониторинга и запись о запуске службы не дублируем
   const seen = [], out = [];
   for (const it of items) { if (seen.some(t => Math.abs(t - it.t) < 90e3 && it.ic === '▲')) continue; if (it.ic === '▲') seen.push(it.t); out.push(it); }
-  const day = ts => new Date(ts).toDateString();
   const label = ts => day(ts) === new Date().toDateString() ? hmClock(ts) : hmPad(new Date(ts).getDate()) + '.' + hmPad(new Date(ts).getMonth() + 1);
   el.innerHTML = out.slice(0, 7).map(it => `<div class="dv-ev"><span class="dv-ev-t">${label(it.t)}</span><span class="dv-ev-i ${it.kind}">${it.ic}</span><span class="dv-ev-x">${it.text}${it.sub ? `<small>${it.sub}</small>` : ''}</span></div>`).join('')
     || '<div class="dv-empty">Событий пока нет</div>';
@@ -2416,73 +2386,76 @@ function hmSyncMsgRangeHl(animate = true) { hmSyncSegHl($hm('hm-msgrange-seg'), 
 // службой, тот пишет шаги в файл, мы читаем их через /server/update-status. Успех —
 // когда сервер вернулся и сам сообщает, что работает новая версия.
 const HM_STEPS = [['fetch', 'Загрузка с GitHub'], ['deps', 'Установка зависимостей'], ['build', 'Сборка'], ['restart', 'Перезапуск службы'], ['verify', 'Проверка версии']];
-const hmSpin = svg => svg.replace('<svg', '<svg class="hm-spin"');
-const HM_HIDE_PANEL = `<button class="btn btn-ghost btn-sm" onclick="document.getElementById('hm-upd-panel').hidden = true">Скрыть</button>`;
+const HM_SPIN = '<svg class="hm-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M21 12a9 9 0 1 1-6.2-8.6" stroke-linecap="round"/></svg>';
 
-// Результат проверки показываем в самой кнопке. Отдельная надпись рядом меняла ширину
-// строки сервера, и блок с паузой и периодом перескакивал на следующую строку.
-function hmUpdButton(html, cls, onclick, disabled = false, title = '') {
+// Кнопка в шапке: пока идёт проверка, предложение или установка — недоступна
+function hmUpdBtn(label, disabled) {
   const b = $hm('hm-upd-btn');
   if (!b) return;
-  b.innerHTML = html;
-  b.className = 'btn btn-sm hm-upd-btn ' + cls;
+  b.textContent = label;
   b.disabled = disabled;
-  b.onclick = onclick;
-  b.title = title;
+  b.onclick = hmUpdCheck;
 }
-const hmUpdLatest = at => hmUpdButton(HM_ICON.tick + 'Последняя версия', 'btn-ghost hm-upd-ok', hmUpdCheck, false,
-  `Проверено в ${hmClock(at)}. Нажмите, чтобы проверить ещё раз`);
+// Панель под шапкой, как в макете: плашка состояния, пояснение и кнопки в одну строку
+function hmUpdShow(html) {
+  const p = $hm('hm-upd-panel');
+  if (!p) return;
+  p.classList.remove('hm-upd-closing');
+  p.style.height = '';
+  p.hidden = false;
+  if (p._h !== html) { p._h = html; p.innerHTML = html; }
+}
+function hmUpdDismiss() {
+  if (HM.upd.busy) return;
+  HM.upd.check = null;
+  hmUpdBtn('Проверить обновления', false);
+  hmUpdCollapse();
+}
+// События «найдено» и «начато» сразу попадают в хронику; завершение в ней и так есть (запуск службы)
+function hmLocalEv(text, kind) {
+  (HM.localEv ||= []).unshift({ t: Date.now(), text, kind });
+  HM.localEv.length = Math.min(HM.localEv.length, 5);
+  hmRenderChron();
+}
 
 function hmUpdIdle() {
   if (HM.upd.busy) return hmUpdRenderSteps();   // вернулись на главную посреди установки
-  hmUpdButton(HM_ICON.refresh + 'Проверить обновления', 'btn-ghost', hmUpdCheck);
+  hmUpdBtn(HM.upd.done ? 'Проверить ещё раз' : 'Проверить обновления', false);
   if (HM.upd.check?.hasUpdate) hmUpdOffer(HM.upd.check);
-  else if (HM.upd.check?.latest) hmUpdLatest(HM.upd.checkedAt);
 }
 
 async function hmUpdCheck() {
-  hmUpdButton(hmSpin(HM_ICON.refresh) + 'Проверяю…', 'btn-ghost', null, true);
+  HM.upd.done = false;
+  hmUpdBtn('Проверить обновления', true);
+  hmUpdShow(`<div class="dv-upd-row"><span class="hm-pill muted nodot">${HM_SPIN} Проверяю наличие обновлений…</span></div>`);
   const v = await hmGet('/api/admin/server/version');
   if (!$hm('hm') || HM.upd.busy) return;
   HM.upd.check = v;
   HM.upd.checkedAt = Date.now();
   if (!v?.latest) {
-    hmUpdButton(HM_ICON.refresh + 'Не удалось проверить', 'btn-ghost hm-upd-err', hmUpdCheck, false, 'GitHub не ответил. Нажмите, чтобы повторить');
-    return;
+    hmUpdBtn('Проверить обновления', false);
+    return hmUpdShow(`<div class="dv-upd-row"><span class="hm-pill warn">Не удалось проверить</span><span class="dv-sub dv-upd-sub">GitHub не ответил, попробуйте ещё раз</span><button class="btn" onclick="hmUpdDismiss()">Закрыть</button></div>`);
   }
   if (!v.hasUpdate) {
-    const p = $hm('hm-upd-panel');
-    if (p) p.hidden = true;
-    hmUpdLatest(HM.upd.checkedAt);
-    return;
+    hmUpdBtn('Проверить обновления', false);
+    return hmUpdShow(`<div class="dv-upd-row"><span class="hm-pill ok">Установлена последняя версия</span><span class="dv-sub dv-upd-sub">Версия ${esc(v.current)}, проверено в ${hmClock(HM.upd.checkedAt)}</span><button class="btn" onclick="hmUpdDismiss()">Закрыть</button></div>`);
   }
+  hmLocalEv('Найдено обновление сервера ' + v.latest, 'warn');
   hmUpdOffer(v);
 }
 
 function hmUpdOffer(v) {
-  hmUpdButton(HM_ICON.up + 'Доступна ' + esc(v.latest), 'btn-primary', () => { const p = $hm('hm-upd-panel'); if (p) p.hidden = false; $hm('hm-upd-go')?.focus(); },
-    false, 'Показать подробности и установить');
-  const p = $hm('hm-upd-panel');
-  if (!p) return;
-  p.hidden = false;
-  p.innerHTML = `
-    <div class="hm-upd-row">
-      <div class="hm-upd-ver"><span class="hm-mono">${esc(v.current)}</span><span class="hm-arr">→</span><span class="hm-mono hm-new">${esc(v.latest)}</span></div>
-      <div class="hm-upd-btns">
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('hm-upd-panel').hidden = true">Позже</button>
-        <button class="btn btn-primary btn-sm" id="hm-upd-go" onclick="hmUpdInstall()">${HM_ICON.up}Установить</button>
-      </div>
-    </div>
-    <div class="hm-upd-foot">
-      <span class="hm-note">Связь пропадёт на 10–20 с. Лучше ставить, когда в чате мало людей.</span>
-      ${v.notes ? `<details><summary>Что нового</summary><p>${esc(v.notes)}</p></details>` : ''}
-    </div>`;
+  hmUpdBtn('Проверить обновления', true);
+  hmUpdShow(`<div class="dv-upd-row"><span class="hm-pill warn">Доступно обновление ${esc(v.latest)}</span>
+    <span class="dv-sub dv-upd-sub"${v.notes ? ` title="${esc(v.notes)}"` : ''}>Исправления и улучшения · установлена ${esc(v.current)} · связь пропадёт на 10–20 с</span>
+    <button class="btn" onclick="hmUpdDismiss()">Закрыть</button><button class="btn btn-primary" id="hm-upd-go" onclick="hmUpdInstall()">Обновить сервер</button></div>`);
 }
 
 async function hmUpdInstall() {
   const target = HM.upd.check?.latest;
   if (HM.upd.busy || !target) return;
   Object.assign(HM.upd, { busy: true, target, from: HM.overview?.version || HM.upd.check.current, startedAt: Date.now(), status: null, down: false });
+  hmLocalEv('Начато обновление сервера до ' + target, '');
   hmUpdRenderSteps();
   let r = null;
   try {
@@ -2513,21 +2486,8 @@ async function hmUpdPoll() {
 }
 
 function hmUpdRenderSteps() {
-  const u = HM.upd, p = $hm('hm-upd-panel');
-  hmUpdButton(hmSpin(HM_ICON.refresh) + 'Устанавливаю…', 'btn-ghost', null, true, `${u.from || ''} → ${u.target}`);
-  if (!p) return;
-  p.hidden = false;
-  if (!$hm('hm-inst')) p.innerHTML = `
-    <div class="hm-inst" id="hm-inst">
-      <div class="hm-inst-row">
-        <span class="hm-inst-ico">${hmSpin(HM_ICON.refresh)}</span>
-        <div class="hm-inst-t"><span class="hm-mono">Установка ${esc(u.target)}</span> <span class="hm-note" id="hm-inst-step"></span></div>
-        <span class="hm-mono hm-inst-pct" id="hm-inst-pct"></span>
-      </div>
-      <div class="hm-bar"><span id="hm-upd-bar"></span></div>
-      <div class="hm-note" id="hm-upd-note"></div>
-    </div>`;
-
+  const u = HM.upd;
+  hmUpdBtn('Проверить обновления', true);
   const steps = { ...(u.status?.steps || {}) };
   const reported = !!u.status?.startedAt;
   if (u.status?.running === u.target) {
@@ -2544,18 +2504,18 @@ function hmUpdRenderSteps() {
   for (const [k, name] of HM_STEPS) {
     const st = steps[k]?.state || '';
     if (st === 'done' || st === 'skipped') finished++;
-    else if (!cur && (st === 'active' || st === 'failed')) cur = [k, name];
+    else if (!cur && (st === 'active' || st === 'failed')) cur = k;
   }
-  if (!cur) cur = HM_STEPS.find(([k]) => !['done', 'skipped'].includes(steps[k]?.state)) || HM_STEPS[HM_STEPS.length - 1];
-  const idx = HM_STEPS.findIndex(([k]) => k === cur[0]) + 1;
+  if (!cur) cur = (HM_STEPS.find(([k]) => !['done', 'skipped'].includes(steps[k]?.state)) || HM_STEPS[HM_STEPS.length - 1])[0];
   const pct = Math.round(finished / HM_STEPS.length * 100);
-  hmText('hm-inst-step', `· шаг ${idx} из ${HM_STEPS.length}: ${cur[1].toLowerCase()}`);
-  hmText('hm-inst-pct', pct + '%');
-  const bar = $hm('hm-upd-bar');
-  if (bar) bar.style.width = Math.max(4, pct) + '%';
-  hmText('hm-upd-note', u.down ? 'Сервер перезапускается — страница подключится сама'
-    : !reported && Date.now() - u.startedAt > 6000 ? 'Сервер не сообщает шаги установки — ждём, когда он вернётся с новой версией'
-    : 'Страницу можно не закрывать — после перезапуска она подключится сама');
+  const note = u.down ? 'Сервер перезапускается, страница подключится сама'
+    : !reported && Date.now() - u.startedAt > 6000 ? 'Сервер не сообщает шаги установки, ждём его возвращения с новой версией' : '';
+  hmUpdShow(`<div class="dv-upd-row"><span class="hm-pill warn nodot">${HM_SPIN} Идёт обновление до ${esc(u.target)}</span><span class="hm-mono dv-sub dv-upd-sub" style="text-align:right">${pct}%</span></div>
+    <div class="dv-meter" style="margin:10px 0"><i style="width:${pct}%;background:var(--dv-warn);transition:none"></i></div>
+    <div class="dv-steps">${HM_STEPS.map(([k, name]) => {
+      const st = steps[k]?.state || '', done = st === 'done' || st === 'skipped', on = k === cur;
+      return `<span class="${done ? 'ok' : st === 'failed' ? 'bad' : on ? 'on' : ''}">${done ? '✓' : on ? '●' : '○'} ${name}</span>`;
+    }).join('')}</div>${note ? `<div class="dv-sub" style="margin-top:8px">${note}</div>` : ''}`);
 }
 
 // Сворачивает панель обновления плавно: фиксируем текущую высоту и уводим её в ноль
@@ -2570,37 +2530,19 @@ function hmUpdCollapse() {
   p.style.height = '0px';
   setTimeout(finish, 380);
 }
-// После успешного обновления результат уже виден в кнопке — панель прячется сама, с паузой.
-// Не прячем, если за это время снова пошла установка или нашлось новое обновление.
-function hmUpdAutoHide(delay = 3000) {
-  clearTimeout(HM.upd.hideTimer);
-  HM.upd.hideTimer = setTimeout(() => { if (!HM.upd.busy && !HM.upd.check?.hasUpdate) hmUpdCollapse(); }, delay);
-}
-
 function hmUpdFinish(ok, message) {
   const u = HM.upd;
   u.busy = false;
+  u.done = ok;
   u.check = ok ? { current: u.target, latest: u.target, hasUpdate: false } : null;
   u.checkedAt = Date.now();
-  const bar = $hm('hm-upd-bar');
-  if (bar) { bar.style.width = '100%'; bar.style.background = ok ? 'var(--c-green)' : 'var(--c-red)'; }
-  if (ok) hmUpdLatest(u.checkedAt);
-  else hmUpdButton(HM_ICON.refresh + 'Проверить обновления', 'btn-ghost', hmUpdCheck);
-  const p = $hm('hm-upd-panel');
-  const row = html => {
-    if (!p) return;
-    p.hidden = false;
-    const r = p.querySelector('.hm-upd-row');
-    if (r) r.innerHTML = html; else p.innerHTML = `<div class="hm-upd-row">${html}</div>`;
-  };
+  hmUpdBtn(ok ? 'Проверить ещё раз' : 'Проверить обновления', false);
   if (ok) {
-    const text = message || `Сервер обновлён до ${u.target} в ${hmClock(Date.now())}`;
-    row(`<div class="hm-upd-title" style="color:var(--c-green-text)">${esc(text)}</div>${HM_HIDE_PANEL}`);
+    hmUpdShow(`<div class="dv-upd-row"><span class="hm-pill ok">Обновление завершено</span><span class="dv-sub dv-upd-sub">${esc(message || `Сервер работает на версии ${u.target}, служба перезапущена`)}</span><button class="btn" onclick="hmUpdDismiss()">Закрыть</button></div>`);
     toast(esc(message || 'Сервер обновлён и перезапущен'), 'success');
     hmLoadOverview();
-    hmUpdAutoHide();
   } else {
-    row(`<div><div class="hm-upd-title" style="color:var(--c-red-text)">Обновление не удалось</div><div class="hm-note">${esc(message)}</div></div>${HM_HIDE_PANEL}`);
+    hmUpdShow(`<div class="dv-upd-row"><span class="hm-pill crit">Обновление не удалось</span><span class="dv-sub dv-upd-sub">${esc(message)}</span><button class="btn" onclick="hmUpdDismiss()">Закрыть</button></div>`);
     toast(esc(message), 'error');
   }
 }
