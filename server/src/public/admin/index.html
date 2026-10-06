@@ -284,37 +284,10 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .hm-bar span{display:block;height:100%;width:0;background:var(--c-primary);border-radius:2px;transition:width .5s ease}
 
 /* Живые графики */
-.hm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.hm-tile{padding:11px 14px 9px;display:flex;flex-direction:column;gap:6px}
-.hm-tile-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.hm-tile-title{font-size:12px;font-weight:600;color:var(--c-text2);display:flex;align-items:center;gap:7px}
-.hm-tile-title svg{width:14px;height:14px;color:var(--c-muted)}
-.hm-val{font-size:21px;font-weight:800;letter-spacing:-.4px;line-height:1.15;font-variant-numeric:tabular-nums;margin-top:1px}
-.hm-val small{font-size:12px;font-weight:600;color:var(--c-text2);letter-spacing:0;margin-left:4px}
-.hm-tile-sub{font-size:11px;color:var(--c-text2);font-variant-numeric:tabular-nums;min-height:17px}
-.hm-tile-sub b{font-family:var(--f-mono);font-weight:600;color:var(--c-text)}
-.hm-chart{position:relative;height:112px;border-radius:6px;cursor:crosshair;touch-action:pan-y}
-.hm-chart:focus-visible{outline:2px solid var(--border-focus);outline-offset:3px}
-.hm-chart svg{display:block;width:100%;height:100%}
-.hm-chart text,.hm-bars text{font-family:var(--f-mono);font-size:10px;fill:var(--c-muted)}
-.hm-legend{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;font-size:11px;color:var(--c-text2)}
-.hm-legend span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-.hm-legend i{width:12px;height:3px;border-radius:2px;display:inline-block}
-.hm-legend b{font-family:var(--f-mono);font-weight:600;color:var(--c-text);font-variant-numeric:tabular-nums}
-.hm-legend .at{margin-left:auto;font-family:var(--f-mono);color:var(--c-muted);font-size:10.5px}
 .hm-hint{font-size:11px;color:var(--c-muted)}
-/* Компактный режим — кнопка в топбаре: сворачивает графики и детали у всех
-   шести блоков, оставляя заголовок и главное значение */
-.hm.hm-compact .hm-chart,
-.hm.hm-compact .hm-legend,
-.hm.hm-compact .hm-tbl,
-.hm.hm-compact .hm-inner,
-.hm.hm-compact .hm-store-list{display:none}
-.hm-meter{display:flex;height:6px;border-radius:3px;overflow:hidden;background:var(--c-surface2);margin-top:6px}
-.hm-meter span{height:100%}
+.hm-bars text{font-family:var(--f-mono);font-size:10px;fill:var(--c-muted)}
 
 /* Служба и хранилище */
-.hm-duo{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:10px}
 .hm-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-bottom:1px solid var(--c-border2);margin:0}
 .hm-kpi{padding:7px 14px;min-width:0}
 .hm-kpi+.hm-kpi{border-left:1px solid var(--c-border2)}
@@ -347,10 +320,6 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .hm-store-val{font-family:var(--f-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
 
 /* Чат */
-.hm-chat-kpis{grid-template-columns:repeat(6,minmax(0,1fr))}
-.hm-chat-body{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
-.hm-chat-body>div{padding:10px 14px;min-width:0;display:flex;flex-direction:column}
-.hm-chat-body>div+div{border-left:1px solid var(--c-border2)}
 .hm-mini{font-size:12px;font-weight:600;color:var(--c-text2);display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
 .hm-mini span{font-family:var(--f-mono);font-weight:500;color:var(--c-muted);font-size:11px;font-variant-numeric:tabular-nums}
 .hm-mini span.on{color:var(--c-text);font-weight:600}
@@ -364,22 +333,9 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 .hm-bars svg{position:absolute;inset:0;display:block;width:100%;height:100%}
 .hm-bars .tip{font-family:var(--f-ui);font-size:11px;font-weight:600;fill:var(--c-text)}
 .hm-bars .tip-bg{fill:var(--c-surface);stroke:var(--c-border)}
-.hm-online{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
-.hm-online li{display:flex;align-items:center;gap:10px;padding:4px 0;min-width:0}
-.hm-online li+li{border-top:1px solid var(--c-border2)}
-.hm-online .who{min-width:0}
-.hm-online .nm{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-online .cl{font-size:10.5px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.hm-online .since{margin-left:auto;font-family:var(--f-mono);font-size:10.5px;color:var(--c-muted);flex-shrink:0}
 .hm-empty{font-size:12px;color:var(--c-muted);padding:6px 0}
 
-@media (max-width:1180px){ .hm-grid,.hm-duo{grid-template-columns:minmax(0,1fr)} }
 @media (max-width:900px){
-  .hm-chat-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .hm-chat-kpis .hm-kpi:nth-child(4){border-left:0}
-  .hm-chat-kpis .hm-kpi:nth-child(n+4){border-top:1px solid var(--c-border2)}
-  .hm-chat-body{grid-template-columns:minmax(0,1fr)}
-  .hm-chat-body>div+div{border-left:0;border-top:1px solid var(--c-border2)}
   .hm-steps{grid-template-columns:minmax(0,1fr)}
 }
 @media (prefers-reduced-motion:reduce){ .hm-spin,.hm-steps li.active .ic{animation:none} .hm-bar span{transition:none} }
@@ -1133,6 +1089,56 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .dtp-time input{width:34px;padding:4px 0;text-align:center;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:5px;color:var(--c-text);font-size:12px;font-family:var(--f-mono);outline:none}
 .dtp-time input:focus{border-color:var(--c-primary)}
 
+
+/* ── НОВАЯ ГЛАВНАЯ ── сводка, четыре живых показателя, активность с хроникой, ресурсы */
+.dv{gap:14px}
+.dv .hm-host{padding:14px 18px;gap:10px 22px}
+.dv-counts{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px;padding-top:2px}
+.dv-chip{font-size:12px;padding:5px 10px;border-radius:9px;background:var(--c-surface2);color:var(--c-text2);cursor:default}
+.dv-chip.link{cursor:pointer}.dv-chip.link:hover{background:var(--bg-hover);color:var(--c-text)}
+.dv-chip b{color:var(--c-text);font-weight:700;margin-left:4px;font-variant-numeric:tabular-nums}
+.dv-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.dv-kpi{padding:14px 16px;min-width:0}
+.dv-lbl{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--c-muted)}
+.dv-big{font-family:var(--f-mono);font-weight:700;font-size:26px;line-height:1.1;letter-spacing:-.02em;margin:7px 0 2px;font-variant-numeric:tabular-nums}
+.dv-big small{font-family:var(--f-ui);font-size:12px;font-weight:500;color:var(--c-text2);margin-left:4px;letter-spacing:0}
+.dv-sub{font-size:11.5px;color:var(--c-text2)}
+.dv-sub b{font-family:var(--f-mono);font-weight:600;color:var(--c-text)}
+.dv-spark{height:44px;margin-top:10px}
+.dv-spark svg{display:block;width:100%;height:100%}
+.dv-avs{display:flex;align-items:center;min-height:44px;margin-top:10px}
+.dv-avs .av-wrap,.dv-avs>*{flex-shrink:0}
+.dv-avs>*+*{margin-left:-8px}
+.dv-avs>*{border:2px solid var(--c-surface);border-radius:50%}
+.dv-avs .dv-more{margin-left:8px;border:0;font-size:11.5px;color:var(--c-text2)}
+.dv-main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:14px}
+.dv-card{padding:14px 16px;min-width:0}
+.dv-card h3{font-size:13px;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.dv-card .hm-bars{min-height:230px}
+.dv-card .hm-mini{margin-bottom:8px}
+.dv-bottom{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.dv-bottom .hm-panel{overflow:hidden}
+.dv-res-row{margin-top:14px}
+.dv-res-row:first-child{margin-top:8px}
+.dv-res-top{display:flex;align-items:baseline;gap:10px;font-size:13px}
+.dv-res-top b{font-weight:600}
+.dv-res-top span{margin-left:auto;font-size:11.5px;color:var(--c-text2)}
+.dv-meter{height:7px;border-radius:4px;background:var(--c-surface2);overflow:hidden;margin-top:6px}
+.dv-meter i{display:block;height:100%;border-radius:4px;background:var(--c-primary);transition:width .5s ease}
+.dv-meter i.warn{background:var(--c-orange)}.dv-meter i.crit{background:var(--c-red)}
+.dv-chron{margin-top:4px}
+.dv-ev{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--c-border2);font-size:12.5px}
+.dv-ev:first-child{border-top:0}
+.dv-ev-t{font-family:var(--f-mono);font-size:11px;color:var(--c-muted);width:44px;flex-shrink:0;padding-top:2px}
+.dv-ev-i{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex-shrink:0;font-size:11px;font-weight:700;background:var(--c-primary-dim);color:var(--c-primary)}
+.dv-ev-i.warn{background:var(--c-orange-dim);color:var(--c-orange-text)}
+.dv-ev-i.info{background:var(--c-surface2);color:var(--c-text2)}
+.dv-ev-x{min-width:0;flex:1}
+.dv-ev-x small{display:block;color:var(--c-muted);font-size:11px;margin-top:1px}
+.dv-empty{color:var(--c-muted);font-size:12px;padding:12px 0}
+@media (max-width:1180px){.dv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dv-main,.dv-bottom{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:560px){.dv-kpis{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){.dv-meter i{transition:none}}
 </style>
 </head>
 <body>
@@ -1866,21 +1872,17 @@ async function updateNavBadges() {
 const HM = {
   overview: null,
   samples: [], events: [], live: {}, ws: null, cores: 1, lastT: 0,
-  range: '15m', paused: false, hover: null, barHover: null, down: false,
-  msgRange: '24h', activity: null, compact: false, showMsgMarks: false,
+  barHover: null, down: false,
+  msgRange: '24h', activity: null, act24: null, audit: [], disk: null,
   timer: null, ro: null,
   upd: { busy: false, target: null, check: null },
 };
-try { const r = localStorage.getItem('hm-range'); if (['5m', '15m', '1h'].includes(r)) HM.range = r; } catch {}
 try { const r = localStorage.getItem('hm-msg-range'); if (['24h', '7d', '30d', '1y'].includes(r)) HM.msgRange = r; } catch {}
-try { HM.compact = localStorage.getItem('hm-compact') === '1'; } catch {}
-try { HM.showMsgMarks = localStorage.getItem('hm-msg-marks') === '1'; } catch {}
 // Подстраховка от зависшей подсказки: pointerleave/mouseleave у контейнера графика
 // иногда не успевают сработать, если курсор резко покидает не сам график, а окно
 // браузера целиком (relatedTarget === null — верный признак ухода за пределы страницы)
 document.addEventListener('mouseout', e => {
   if (e.relatedTarget) return;
-  if (HM.hover != null) { HM.hover = null; hmRenderCharts(); }
   if (HM.barHover != null) { HM.barHover = null; hmRenderBars(); }
 });
 const HM_MSG_RANGE = {
@@ -1959,39 +1961,26 @@ const HM_ICON = {
   envelope: '<svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
 };
 
-function hmTileHtml(id, title, icon, lines, extra = '') {
-  return `<section class="hm-panel hm-tile" aria-labelledby="hm-t-${id}">
-    <div class="hm-tile-head">
-      <div>
-        <div class="hm-tile-title" id="hm-t-${id}">${icon}${title}</div>
-        <div class="hm-val" id="hm-v-${id}">—</div>
-      </div>
-      <span class="hm-pill muted" id="hm-p-${id}">—</span>
-    </div>
-    <div class="hm-tile-sub" id="hm-s-${id}">&nbsp;</div>
-    <div class="hm-chart" id="hm-ch-${id}" tabindex="0"></div>
-    <div class="hm-legend">
-      ${lines.map(([k, color, name]) => `<span><i style="background:var(${color})"></i>${name} <b data-hm-read="${k}">—</b></span>`).join('')}
-      ${extra}<span class="at" id="hm-at-${id}">сейчас</span>
-    </div>
+// Плитка показателя: подпись, крупное значение, пояснение и мини-график (или аватарки)
+function dvTile(id, label) {
+  return `<section class="hm-panel dv-kpi" aria-labelledby="dv-l-${id}">
+    <div class="dv-lbl" id="dv-l-${id}">${label}</div>
+    <div class="dv-big" id="dv-v-${id}">—</div>
+    <div class="dv-sub" id="dv-s-${id}">&nbsp;</div>
+    <div class="dv-spark" id="dv-g-${id}"></div>
   </section>`;
 }
 
 async function renderDashboard() {
   hmStopMonitor();
   const I = HM_ICON;
-  const RANGE_NAME = { '5m': '5 мин', '15m': '15 мин', '1h': '1 час' };
   setTopbarActions(`
-    <button class="btn btn-ghost btn-sm" id="hm-pause" aria-pressed="false" onclick="hmTogglePause()"></button>
-    <div class="hm-seg" id="hm-range-seg" role="group" aria-label="Период графиков">
-      <span class="hm-seg-hl" id="hm-range-hl"></span>
-      ${Object.keys(RANGE_NAME).map(r => `<button data-range="${r}" aria-pressed="${HM.range === r}" onclick="hmSetRange('${r}')">${RANGE_NAME[r]}</button>`).join('')}
-    </div>
-    <button class="btn btn-ghost btn-sm" id="hm-msg-marks" aria-pressed="${HM.showMsgMarks}" title="Отметки отправленных сообщений" onclick="hmToggleMsgMarks()">${I.envelope}</button>
-    <button class="btn btn-ghost btn-sm" id="hm-compact" aria-pressed="${HM.compact}" onclick="hmToggleCompact()"></button>
+    <button class="btn btn-ghost btn-sm" onclick="openCreateUser()">${I.user}Создать пользователя</button>
+    <button class="btn btn-ghost btn-sm" onclick="openCreateRoom()">${I.room}Создать комнату</button>
+    <button class="btn btn-ghost btn-sm" onclick="openAnnouncementModal()">${I.ann}Объявление</button>
   `);
   document.getElementById('page-body').innerHTML = `
-  <div class="hm${HM.compact ? ' hm-compact' : ''}" id="hm">
+  <div class="hm dv" id="hm">
     <section class="hm-panel hm-host" aria-label="Сервер">
       <div class="hm-host-id">
         <div class="hm-host-ic">${I.server}</div>
@@ -2008,47 +1997,41 @@ async function renderDashboard() {
       <div class="hm-upd" aria-live="polite">
         <button class="btn btn-ghost btn-sm hm-upd-btn" id="hm-upd-btn"></button>
       </div>
+      <div class="dv-counts" id="hm-chat-kpis"></div>
       <div class="hm-upd-panel" id="hm-upd-panel" aria-live="polite" hidden></div>
     </section>
 
-    <section class="hm-panel" aria-labelledby="hm-h-chat">
-      <div class="hm-head">
-        <h3 id="hm-h-chat">Чат</h3>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="openCreateUser()">${I.user}Создать пользователя</button>
-          <button class="btn btn-ghost btn-sm" onclick="openCreateRoom()">${I.room}Создать комнату</button>
-          <button class="btn btn-ghost btn-sm" onclick="openAnnouncementModal()">${I.ann}Объявление</button>
-        </div>
-      </div>
-      <dl class="hm-kpis hm-chat-kpis" id="hm-chat-kpis"></dl>
-      <div class="hm-chat-body">
-        <div>
-          <div class="hm-mini hm-mini-bars">
-            <span class="hm-mini-title" id="hm-bars-title">${HM_MSG_RANGE[HM.msgRange].title}</span>
-            <span id="hm-bars-cap"></span>
-            <div class="hm-seg hm-seg-sm" id="hm-msgrange-seg" role="group" aria-label="Период графика сообщений">
-              <span class="hm-seg-hl" id="hm-msgrange-hl"></span>
-              ${Object.keys(HM_MSG_RANGE).map(r => `<button data-msg-range="${r}" aria-pressed="${HM.msgRange === r}" onclick="hmSetMsgRange('${r}')">${HM_MSG_RANGE[r].name}</button>`).join('')}
-            </div>
-          </div>
-          <span class="hm-sr" id="hm-bars-live" aria-live="polite"></span>
-          <div class="hm-bars" id="hm-bars" tabindex="0" aria-label="График сообщений. Стрелками влево и вправо можно выбрать столбик"></div>
-        </div>
-        <div>
-          <div class="hm-mini">Сейчас в сети <span id="hm-online-cap"></span></div>
-          <ul class="hm-online" id="hm-online"></ul>
-        </div>
-      </div>
-    </section>
-
-    <div class="hm-grid">
-      ${hmTileHtml('cpu', 'Процессор', I.cpu, [['cpu', '--c-primary', 'Весь сервер'], ['svc', '--c-blue', 'Служба electron']])}
-      ${hmTileHtml('mem', 'Память', I.mem, [['mem', '--c-primary', 'Занято всего'], ['msvc', '--c-blue', 'Служба electron']])}
-      ${hmTileHtml('disk', 'Диск', I.disk, [['rd', '--c-primary', 'Чтение'], ['wr', '--c-purple', 'Запись']])}
-      ${hmTileHtml('lag', 'Отклик сервера', I.lag, [['lag', '--c-primary', 'Задержка']], '<span class="hm-hint">до 50 мс незаметно · выше — подтормаживает у всех</span>')}
+    <div class="dv-kpis">
+      ${dvTile('online', 'Сейчас в сети')}
+      ${dvTile('msgs', 'Сообщений за 24 часа')}
+      ${dvTile('cpu', 'Процессор')}
+      ${dvTile('lag', 'Отклик сервера')}
     </div>
 
-    <div class="hm-duo">
+    <div class="dv-main">
+      <section class="hm-panel dv-card" aria-labelledby="hm-bars-title">
+        <div class="hm-mini hm-mini-bars">
+          <span class="hm-mini-title" id="hm-bars-title">${HM_MSG_RANGE[HM.msgRange].title}</span>
+          <span id="hm-bars-cap"></span>
+          <div class="hm-seg hm-seg-sm" id="hm-msgrange-seg" role="group" aria-label="Период графика сообщений">
+            <span class="hm-seg-hl" id="hm-msgrange-hl"></span>
+            ${Object.keys(HM_MSG_RANGE).map(r => `<button data-msg-range="${r}" aria-pressed="${HM.msgRange === r}" onclick="hmSetMsgRange('${r}')">${HM_MSG_RANGE[r].name}</button>`).join('')}
+          </div>
+        </div>
+        <span class="hm-sr" id="hm-bars-live" aria-live="polite"></span>
+        <div class="hm-bars" id="hm-bars" tabindex="0" aria-label="График сообщений. Стрелками влево и вправо можно выбрать столбик"></div>
+      </section>
+      <section class="hm-panel dv-card" aria-labelledby="dv-h-chron">
+        <h3 id="dv-h-chron">Хроника</h3>
+        <div class="dv-chron" id="dv-chron"><div class="dv-empty">Загрузка…</div></div>
+      </section>
+    </div>
+
+    <div class="dv-bottom">
+      <section class="hm-panel dv-card" aria-labelledby="dv-h-res">
+        <h3 id="dv-h-res">Ресурсы</h3>
+        <div id="dv-res"></div>
+      </section>
       <section class="hm-panel" aria-labelledby="hm-h-svc">
         <div class="hm-head">
           <div>
@@ -2077,14 +2060,10 @@ async function renderDashboard() {
   </div>`;
 
   hmUpdIdle();
-  hmSyncPause();
-  hmSyncCompact();
-  hmSyncRangeHl(false);
   hmSyncMsgRangeHl(false);
-  hmBindCharts();
   hmBindBars();
   HM.ro?.disconnect();
-  HM.ro = new ResizeObserver(() => { hmRenderCharts(); hmRenderBars(); hmSyncRangeHl(false); hmSyncMsgRangeHl(false); });
+  HM.ro = new ResizeObserver(() => { hmRenderBars(); hmSyncMsgRangeHl(false); });
   HM.ro.observe($hm('hm'));
   updateNavBadges();
   await Promise.all([hmLoadOverview(), hmLoadMonitor(true), hmLoadActivity()]);
@@ -2092,10 +2071,64 @@ async function renderDashboard() {
 }
 
 async function hmLoadOverview() {
-  const o = await hmGet('/api/admin/overview');
+  // Сводка и последние действия (для хроники) — вместе; число сообщений за сутки — отдельным запросом
+  const [o, au] = await Promise.all([hmGet('/api/admin/overview'), hmGet('/api/admin/audit-log?limit=12')]);
   if (!o || currentPage !== 'dashboard' || !$hm('hm')) return;
   HM.overview = o;
+  HM.audit = Array.isArray(au) ? au : HM.audit;
   hmRenderOverview();
+  hmLoadAct24();
+}
+
+async function hmLoadAct24() {
+  const a = await hmGet(`/api/admin/activity?range=24h&tz=${-new Date().getTimezoneOffset()}`);
+  if (!a || currentPage !== 'dashboard' || !$hm('hm')) return;
+  HM.act24 = a;
+  hmRenderMsgTile();
+}
+function hmRenderMsgTile() {
+  const a = HM.act24;
+  if (!a || !$hm('dv-v-msgs')) return;
+  const b = a.buckets, total = b.reduce((s, x) => s + x.n, 0);
+  let peak = b[0]; b.forEach(x => { if (x.n > peak.n) peak = x; });
+  hmHtml('dv-v-msgs', hmFmt(total));
+  hmHtml('dv-s-msgs', total ? `пик в <b>${hmPad(new Date(peak.t).getHours())}:00</b> — ${hmFmt(peak.n)} ${hmPlural(peak.n, 'сообщение', 'сообщения', 'сообщений')} в час` : 'за сутки сообщений нет');
+  hmHtml('dv-g-msgs', hmSpark(b.map(x => x.n), 'var(--c-blue)'));
+}
+
+// Мини-график: линия с заливкой по последним значениям; растягивается на всю плитку
+function hmSpark(vals, color) {
+  const v = vals.filter(x => x != null).slice(-90);
+  if (v.length < 2) return '';
+  const w = 200, h = 44, mx = Math.max(...v, 1e-9), mn = Math.min(...v, 0), n = v.length;
+  const x = i => (i / (n - 1)) * w, y = x2 => h - 3 - ((x2 - mn) / (mx - mn || 1)) * (h - 6);
+  const d = v.map((q, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(q).toFixed(1)).join(' ');
+  const id = 'sp' + Math.random().toString(36).slice(2, 7);
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".3"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><path d="${d} L${w} ${h} L0 ${h} Z" fill="url(#${id})"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+// Хроника: действия администраторов, запуск и перезапуски службы, обновления, резервные копии
+function hmRenderChron() {
+  const el = $hm('dv-chron');
+  if (!el) return;
+  const o = HM.overview, items = [];
+  (HM.audit || []).forEach(a => items.push({ t: a.created_at * 1000, kind: a.category === 'security' ? 'warn' : 'info', ic: a.category === 'security' ? '!' : '●',
+    text: esc(a.action), sub: esc([a.actor_name, a.target].filter(Boolean).join(' · ')) }));
+  (HM.events || []).filter(e => e.type === 'update' || e.type === 'restart').forEach(e => items.push({
+    t: e.t0, kind: '', ic: e.type === 'update' ? '↻' : '▲', text: e.type === 'update' ? 'Обновление сервера' : 'Перезапуск службы', sub: '' }));
+  // Без systemd времени запуска службы нет — берём время работы процесса
+  const startedAt = o?.service?.since || (o?.uptime != null ? Date.now() - o.uptime * 1000 : null);
+  if (startedAt) items.push({ t: startedAt, kind: '', ic: '▲', text: o?.service ? `Служба ${esc(o.service.unit || 'electron.service')} запущена` : 'Сервер запущен', sub: '' });
+  const bk = o?.storage?.backups;
+  if (bk?.latest) items.push({ t: bk.latest, kind: 'info', ic: '◼', text: 'Резервная копия создана', sub: `${hmBytes(bk.size)} · копий: ${bk.count}` });
+  items.sort((a, b) => b.t - a.t);
+  // одно и то же событие мониторинга и запись о запуске службы не дублируем
+  const seen = [], out = [];
+  for (const it of items) { if (seen.some(t => Math.abs(t - it.t) < 90e3 && it.ic === '▲')) continue; if (it.ic === '▲') seen.push(it.t); out.push(it); }
+  const day = ts => new Date(ts).toDateString();
+  const label = ts => day(ts) === new Date().toDateString() ? hmClock(ts) : hmPad(new Date(ts).getDate()) + '.' + hmPad(new Date(ts).getMonth() + 1);
+  el.innerHTML = out.slice(0, 7).map(it => `<div class="dv-ev"><span class="dv-ev-t">${label(it.t)}</span><span class="dv-ev-i ${it.kind}">${it.ic}</span><span class="dv-ev-x">${it.text}${it.sub ? `<small>${it.sub}</small>` : ''}</span></div>`).join('')
+    || '<div class="dv-empty">Событий пока нет</div>';
 }
 
 // Сообщения за выбранный период. Подсчёт кэширует сервер, поэтому опрашивать вместе
@@ -2125,6 +2158,7 @@ function hmRenderOverview() {
   const disk = o.storage.disk;
   const S = o.storage;
   const chatData = S.db + S.wal + S.files.size + S.backups.size + S.avatars.size;
+  HM.disk = disk;
 
   // Сервер
   hmText('hm-hostname', o.host.hostname);
@@ -2133,28 +2167,22 @@ function hmRenderOverview() {
   hmText('hm-uptime', hmDuration(o.uptime));
   if (!HM.upd.busy) hmText('hm-version', o.version);
 
-  // Чат: счётчики ведут в свои разделы
+  // Чат: счётчики-ссылки в своих разделах
   const c = o.chat;
-  const kpi = (label, value, page) => page
-    ? `<div class="hm-kpi link" role="link" tabindex="0" onclick="nav('${page}')" onkeydown="if(event.key==='Enter')nav('${page}')"><dt>${label}</dt><dd>${hmFmt(value)}</dd></div>`
-    : `<div class="hm-kpi"><dt>${label}</dt><dd>${hmFmt(value)}</dd></div>`;
-  hmHtml('hm-chat-kpis', kpi('Пользователей', c.users, 'users') + kpi('Комнат', c.rooms, 'rooms') + kpi('Групп', c.groups, 'chats')
-    + kpi('Личных чатов', c.chats, 'chats') + kpi('Сообщений', c.messages) + kpi('Файлов', c.files, 'files'));
+  const chip = (label, value, page) => page
+    ? `<span class="dv-chip link" role="link" tabindex="0" onclick="nav('${page}')" onkeydown="if(event.key==='Enter')nav('${page}')">${label}<b>${hmFmt(value)}</b></span>`
+    : `<span class="dv-chip">${label}<b>${hmFmt(value)}</b></span>`;
+  hmHtml('hm-chat-kpis', chip('Пользователей', c.users, 'users') + chip('Комнат', c.rooms, 'rooms') + chip('Групп', c.groups, 'chats')
+    + chip('Личных чатов', c.chats, 'chats') + chip('Сообщений', c.messages) + chip('Файлов', c.files, 'files'));
 
-  // Кто в сети
-  const OS = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' };
-  const clientName = cl => cl.version === 'web' ? (cl.hostname === 'PWA' ? 'Веб-приложение' : 'Веб')
-    : cl.version && cl.version !== '—' ? `Electron ${cl.version}` : 'Клиент';
-  hmText('hm-online-cap', `${o.online.length} из ${c.users}`);
-  const SHOWN = 5;
-  hmHtml('hm-online', o.online.length
-    ? o.online.slice(0, SHOWN).map(u => {
-        const clients = [...new Set(u.clients.map(cl => [clientName(cl), OS[cl.platform]].filter(Boolean).join(' · ')))].join(', ');
-        return `<li>${avHtml(u.name, 24, 6, u.id, false, u.has_avatar)}
-          <div class="who"><div class="nm">${esc(u.name)}</div><div class="cl">${esc(clients)}</div></div>
-          <span class="since" title="В сети с ${hmClock(u.since)}">${hmClock(u.since)}</span></li>`;
-      }).join('') + (o.online.length > SHOWN ? `<li class="hm-empty">и ещё ${o.online.length - SHOWN}</li>` : '')
-    : '<li class="hm-empty">Сейчас никого нет в сети</li>');
+  // Плитка «Сейчас в сети»: число и стопка аватарок вместо списка
+  hmHtml('dv-v-online', `${o.online.length}<small>из ${hmFmt(c.users)}</small>`);
+  hmHtml('dv-s-online', `подключений: <b>${hmFmt(HM.ws ?? 0)}</b>`);
+  const SHOWN = 6;
+  hmHtml('dv-g-online', o.online.length
+    ? `<div class="dv-avs">${o.online.slice(0, SHOWN).map(u => `<span title="${esc(u.name)}">${avHtml(u.name, 32, 16, u.id, false, u.has_avatar)}</span>`).join('')}`
+      + (o.online.length > SHOWN ? `<span class="dv-more">и ещё ${o.online.length - SHOWN}</span>` : '') + '</div>'
+    : '<div class="dv-empty">Никого нет в сети</div>');
 
   // Служба
   const svc = o.service;
@@ -2181,13 +2209,6 @@ function hmRenderOverview() {
         <span style="width:${pct(S.db + S.wal)};background:var(--c-blue)" title="База данных — ${hmBytes(S.db + S.wal)}"></span>
       </div>
       <div class="hm-store-cap"><span>Занято <b>${hmBytes(used)}</b></span><span>Свободно <b>${hmBytes(disk.free)}</b></span></div>`);
-
-    // Плитка «Диск»: место меняется медленно, поэтому живёт здесь, а не в опросе графиков
-    const freePct = disk.free / disk.total * 100;
-    hmHtml('hm-v-disk', `${hmBytes(disk.free)}<small>свободно из ${hmBytes(disk.total, 0)}</small>`);
-    hmSetPill('hm-p-disk', freePct < 10 ? 'crit' : freePct < 20 ? 'warn' : 'ok');
-    hmHtml('hm-s-disk', `<div class="hm-meter" role="img" aria-label="Занято ${hmFmt(used / disk.total * 100, 1)}% диска">`
-      + `<span style="width:${pct(sys)};background:var(--hm-sys)"></span><span style="width:${pct(chatData)};background:var(--c-primary)"></span></div>`);
   }
   const days = S.backups.latest ? Math.floor((Date.now() - S.backups.latest) / 86400000) : null;
   const backup = !S.backups.count
@@ -2202,6 +2223,7 @@ function hmRenderOverview() {
     + row('var(--c-purple)', 'Резервные копии', backup[1], hmBytes(S.backups.size), backup[0])
     + (disk ? row('var(--hm-sys)', 'Система и прочее', 'Debian, Node.js, журналы', hmBytes(Math.max(0, disk.total - disk.free - chatData))) : ''));
 
+  hmRenderChron();
   hmRenderHeadlines();
 }
 
@@ -2300,197 +2322,44 @@ function hmRenderBars() {
 }
 
 // ── Живые графики ──
-const HM_WINDOW = { '5m': 5 * 60e3, '15m': 15 * 60e3, '1h': 60 * 60e3 };
-const HM_COL = { cpu: 1, svc: 2, mem: 3, msvc: 4, rd: 5, wr: 6, lag: 7 };
 const HM_GIB = 1073741824, HM_MIB = 1048576;
-const hmBps = v => v == null ? '—' : v < HM_MIB ? hmFmt(v / 1024) + ' КБ/с' : hmFmt(v / HM_MIB, 1) + ' МБ/с';
-const hmNice = v => { const e = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 2, 2.5, 5, 10]) if (m * e >= v) return m * e; return 10 * e; };
-const hmMaxOf = arr => arr.reduce((m, v) => v != null && v > m ? v : m, 0);
 const hmMemTotal = () => HM.live.mem?.total || HM.overview?.host.memTotal || HM_GIB;
-
-// Шкалы — четыре круглых шага: 2 · 4 · 6 · 8, а не 1,9 · 3,9
-const HM_CHARTS = {
-  cpu: {
-    agg: 'avg', max: () => 100, tick: (v, top) => hmFmt(v) + (top ? '%' : ''),
-    lines: [{ k: 'cpu', c: '--c-primary', area: .14, f: v => hmFmt(v, 1) + '%' },
-            { k: 'svc', c: '--c-blue', area: .2, f: v => hmFmt(v, 1) + '%' }],
-    th: () => [{ v: 70, c: '--c-orange' }, { v: 90, c: '--c-red' }],
-  },
-  mem: {
-    agg: 'avg', max: () => hmNice(hmMemTotal() / HM_GIB / 4) * 4 * HM_GIB,
-    tick: (v, top) => hmFmt(v / HM_GIB, Number.isInteger(v / HM_GIB) ? 0 : 1) + (top ? ' ГБ' : ''),
-    lines: [{ k: 'mem', c: '--c-primary', area: .14, f: v => hmBytes(v) },
-            { k: 'msvc', c: '--c-blue', area: .35, f: v => hmBytes(v) }],
-    th: () => [{ v: hmMemTotal() * .8, c: '--c-orange' }, { v: hmMemTotal() * .9, c: '--c-red' }],
-  },
-  disk: {
-    agg: 'max', max: d => hmNice(Math.max(1, Math.max(hmMaxOf(d.rd), hmMaxOf(d.wr)) / HM_MIB * 1.1) / 4) * 4 * HM_MIB,
-    tick: (v, top) => v === 0 ? '0' : hmFmt(v / HM_MIB, Number.isInteger(v / HM_MIB) ? 0 : 1) + (top ? ' МБ/с' : ''),
-    lines: [{ k: 'rd', c: '--c-primary', area: .1, f: hmBps },
-            { k: 'wr', c: '--c-purple', area: .1, f: hmBps }],
-    th: () => [],
-  },
-  lag: {
-    // Всплески не усредняем: 180 мс, размазанные по минуте, превратились бы в 6
-    agg: 'max', max: d => hmNice(Math.max(100, hmMaxOf(d.lag) * 1.1) / 4) * 4, tick: (v, top) => hmFmt(v) + (top ? ' мс' : ''),
-    lines: [{ k: 'lag', c: '--c-primary', area: .12, f: v => hmFmt(v) + ' мс' }],
-    th: () => [{ v: 50, c: '--c-orange' }, { v: 200, c: '--c-red' }],
-    dot: v => v >= 200 ? '--c-red' : v >= 50 ? '--c-orange' : null,
-  },
-};
-const HM_EVENT = { update: 'обновление', restart: 'перезапуск' };
-
-function hmRenderChart(id) {
-  const cfg = HM_CHARTS[id], el = $hm('hm-ch-' + id);
-  if (!el) return;
-  const W = el.clientWidth, H = el.clientHeight;
-  if (!W || !H) return;
-  const PL = 44, PR = 10, PT = 8, PB = 20, iw = W - PL - PR, ih = H - PT - PB;
-  const span = HM_WINDOW[HM.range], tEnd = HM.lastT || Date.now(), tStart = tEnd - span;
-
-  // Время по оси — настоящее, а не номер точки: пока сервер перезапускался, точек нет,
-  // и на графике остаётся разрыв, а не склейка «до» и «после»
-  const B = Math.max(2, Math.min(Math.round(span / 2000), Math.floor(iw / 2)));
-  const bw = span / B;
-  const data = {}, cnt = {};
-  for (const l of cfg.lines) { data[l.k] = new Array(B).fill(null); cnt[l.k] = new Array(B).fill(0); }
-  let i = HM.samples.length;
-  while (i > 0 && HM.samples[i - 1][0] > tStart) i--;
-  for (; i < HM.samples.length; i++) {
-    const s = HM.samples[i];
-    const b = Math.min(B - 1, Math.floor((s[0] - tStart) / bw));
-    for (const l of cfg.lines) {
-      const v = s[HM_COL[l.k]];
-      if (v == null) continue;
-      const cur = data[l.k][b];
-      data[l.k][b] = cfg.agg === 'max' ? (cur == null ? v : Math.max(cur, v)) : (cur || 0) + v;
-      cnt[l.k][b]++;
-    }
-  }
-  if (cfg.agg === 'avg') for (const l of cfg.lines) data[l.k] = data[l.k].map((v, b) => v == null ? null : v / cnt[l.k][b]);
-
-  const ymax = cfg.max(data);
-  const x = b => PL + (b + .5) / B * iw;
-  const y = v => PT + ih - Math.min(v, ymax) / ymax * ih;
-  let svg = '';
-  [0, .25, .5, .75, 1].forEach((f, n) => {
-    const yy = y(f * ymax).toFixed(1);
-    svg += `<line x1="${PL}" x2="${W - PR}" y1="${yy}" y2="${yy}" style="stroke:var(--c-border2)"/>`
-      + `<text x="${PL - 7}" y="${+yy + 3.5}" text-anchor="end">${cfg.tick(f * ymax, n === 4)}</text>`;
-  });
-  for (const t of cfg.th()) if (t.v <= ymax) {
-    const yy = y(t.v).toFixed(1);
-    svg += `<line x1="${PL}" x2="${W - PR}" y1="${yy}" y2="${yy}" style="stroke:var(${t.c});stroke-dasharray:4 4;opacity:.75"/>`;
-  }
-  // Полосы обновлений и перезапусков — видно, откуда взялся всплеск или разрыв.
-  // Отметки сообщений — тем же способом, но без подписи и своим цветом, и только
-  // когда включены кнопкой-конвертом
-  for (const e of HM.events) {
-    if (e.type === 'message' && !HM.showMsgMarks) continue;
-    const t0 = Math.max(e.t0, tStart), t1 = Math.min(e.t1 || tEnd, tEnd);
-    if (t1 <= tStart || t0 >= tEnd) continue;
-    const x0 = PL + (t0 - tStart) / span * iw, x1 = PL + (t1 - tStart) / span * iw;
-    const color = e.type === 'message' ? '--c-primary' : '--c-blue';
-    svg += `<rect x="${x0.toFixed(1)}" y="${PT}" width="${Math.max(2, x1 - x0).toFixed(1)}" height="${ih}" style="fill:var(${color});fill-opacity:.16"/>`;
-    if (HM_EVENT[e.type]) svg += `<text x="${(x0 + 4).toFixed(1)}" y="${PT + 10}" style="fill:var(--c-blue-text)">${HM_EVENT[e.type]}</text>`;
-  }
-  [0, .25, .5, .75, 1].forEach((f, n) => {
-    svg += `<text x="${(PL + f * iw).toFixed(1)}" y="${H - 5}" text-anchor="${n === 0 ? 'start' : n === 4 ? 'end' : 'middle'}">${hmClock(tStart + f * span, HM.range === '5m')}</text>`;
-  });
-  // Линии; пропуск дольше 6 секунд — разрыв
-  const gap = Math.max(2, Math.ceil(6000 / bw));
-  for (const l of cfg.lines) {
-    const d = data[l.k], segs = [];
-    let seg = [], last = -Infinity;
-    d.forEach((v, b) => {
-      if (v == null) return;
-      if (b - last > gap && seg.length) { segs.push(seg); seg = []; }
-      seg.push(b);
-      last = b;
-    });
-    if (seg.length) segs.push(seg);
-    for (const sg of segs) {
-      const p = sg.map((b, n) => (n ? 'L' : 'M') + x(b).toFixed(1) + ',' + y(d[b]).toFixed(1)).join('');
-      if (sg.length > 1) svg += `<path d="${p}L${x(sg[sg.length - 1]).toFixed(1)},${PT + ih}L${x(sg[0]).toFixed(1)},${PT + ih}Z" style="fill:var(${l.c});fill-opacity:${l.area}"/>`;
-      svg += `<path d="${p}" style="fill:none;stroke:var(${l.c});stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round"/>`;
-    }
-  }
-  if (cfg.dot) data[cfg.lines[0].k].forEach((v, b) => {
-    const c = v != null && cfg.dot(v);
-    if (c) svg += `<circle cx="${x(b).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.6" style="fill:var(${c})"/>`;
-  });
-
-  let lastB = -1;
-  for (let b = B - 1; b >= 0 && lastB < 0; b--) if (cfg.lines.some(l => data[l.k][b] != null)) lastB = b;
-  const hb = HM.hover == null ? lastB : Math.min(B - 1, Math.max(0, Math.floor(HM.hover * B)));
-  if (HM.hover != null) svg += `<line x1="${x(hb).toFixed(1)}" x2="${x(hb).toFixed(1)}" y1="${PT}" y2="${PT + ih}" style="stroke:var(--c-text2);opacity:.55"/>`;
-  if (hb >= 0) for (const l of cfg.lines) {
-    const v = data[l.k][hb];
-    if (v != null) svg += `<circle cx="${x(hb).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.6" style="fill:var(--c-surface);stroke:var(${l.c});stroke-width:2"/>`;
-  }
-  const title = $hm('hm-t-' + id)?.textContent || '';
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${title}: ${cfg.lines.map(l => l.f(lastB >= 0 ? data[l.k][lastB] : null)).join(', ')}">${svg}</svg>`;
-  for (const l of cfg.lines) {
-    const v = hb >= 0 ? data[l.k][hb] : null;
-    document.querySelectorAll(`#hm [data-hm-read="${l.k}"]`).forEach(r => { r.textContent = v == null ? '—' : l.f(v); });
-  }
-  hmText('hm-at-' + id, HM.hover == null ? 'сейчас' : hmClock(tStart + (hb + .5) * bw, true));
-}
-
-let hmRaf = 0;
-function hmRenderCharts() {
-  cancelAnimationFrame(hmRaf);
-  hmRaf = requestAnimationFrame(() => { if ($hm('hm')) for (const id in HM_CHARTS) hmRenderChart(id); });
-}
-
-// Общий курсор: наведение на любой график показывает тот же момент на всех четырёх
-function hmBindCharts() {
-  document.querySelectorAll('#hm .hm-chart').forEach(el => {
-    el.addEventListener('pointermove', e => {
-      const r = el.getBoundingClientRect();
-      HM.hover = Math.min(.9999, Math.max(0, (e.clientX - r.left - 44) / (r.width - 54)));
-      hmRenderCharts();
-    });
-    el.addEventListener('pointerleave', () => { HM.hover = null; hmRenderCharts(); });
-    // Подстраховка на случай, если pointerleave не сработает при быстром уходе курсора
-    el.addEventListener('mouseleave', () => { HM.hover = null; hmRenderCharts(); });
-    el.addEventListener('keydown', e => {
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        e.preventDefault();
-        HM.hover = Math.min(.9999, Math.max(0, (HM.hover ?? .9999) + (e.key === 'ArrowLeft' ? -1 : 1) / 60));
-        hmRenderCharts();
-      } else if (e.key === 'Escape') { HM.hover = null; hmRenderCharts(); }
-    });
-    el.addEventListener('blur', () => { HM.hover = null; hmRenderCharts(); });
-  });
-}
 
 function hmRenderHeadlines() {
   const s = HM.samples[HM.samples.length - 1], live = HM.live || {}, o = HM.overview;
   if (!$hm('hm') || !s) return;
   const memTotal = hmMemTotal();
-  hmHtml('hm-v-cpu', `${hmFmt(s[1], 1)}<small>%</small>`);
-  hmHtml('hm-s-cpu', live.load ? `Load average <b>${live.load.map(v => hmFmt(v, 2)).join(' · ')}</b> на ${HM.cores} ${hmPlural(HM.cores, 'ядро', 'ядра', 'ядер')}` : '&nbsp;');
-  const available = live.mem?.available ?? memTotal - s[3];
-  hmHtml('hm-v-mem', `${hmBytes(available)}<small>доступно из ${hmBytes(memTotal, 0)}</small>`);
-  hmHtml('hm-s-mem', live.mem?.cached != null
-    ? `Кэш <b>${hmBytes(live.mem.cached)}</b> · подкачка <b>${hmBytes(live.mem.swapTotal - live.mem.swapFree)}</b> из ${hmBytes(live.mem.swapTotal)}`
-    : '&nbsp;');
-  hmHtml('hm-v-lag', `${hmFmt(s[7])}<small>мс</small>`);
-  const tStart = (HM.lastT || Date.now()) - HM_WINDOW[HM.range];
+
+  // Плитки «Процессор» и «Отклик» с мини-графиком по накопленным точкам
+  hmHtml('dv-v-cpu', `${hmFmt(s[1], 1)}<small>%</small>`);
+  hmHtml('dv-s-cpu', live.load ? `Load average <b>${live.load.map(v => hmFmt(v, 2)).join(' · ')}</b> на ${HM.cores} ${hmPlural(HM.cores, 'ядро', 'ядра', 'ядер')}` : '&nbsp;');
+  hmHtml('dv-g-cpu', hmSpark(HM.samples.map(r => r[1]), 'var(--c-primary)'));
+  hmHtml('dv-v-lag', `${hmFmt(s[7])}<small>мс</small>`);
+  const tStart = (HM.lastT || Date.now()) - 15 * 60e3;
   let peak = null;
   for (let i = HM.samples.length - 1; i >= 0 && HM.samples[i][0] > tStart; i--) {
     if (HM.samples[i][7] != null && (!peak || HM.samples[i][7] > peak[7])) peak = HM.samples[i];
   }
-  hmHtml('hm-s-lag', peak ? `Максимум за период <b>${hmFmt(peak[7])} мс</b> в ${hmClock(peak[0], true)}` : '&nbsp;');
+  hmHtml('dv-s-lag', peak ? `максимум за 15 минут <b>${hmFmt(peak[7])} мс</b> в ${hmClock(peak[0], true)}` : '&nbsp;');
+  hmHtml('dv-g-lag', hmSpark(HM.samples.map(r => r[7]), 'var(--c-orange)'));
 
-  const diskPill = $hm('hm-p-disk')?.className || '';
-  const levels = [
-    hmSetPill('hm-p-cpu', hmLevel(s[1], 70, 90)),
-    hmSetPill('hm-p-mem', hmLevel(s[3] / memTotal * 100, 80, 90)),
-    hmSetPill('hm-p-lag', hmLevel(s[7], 50, 200)),
-    diskPill.includes('crit') ? 'crit' : diskPill.includes('warn') ? 'warn' : 'ok',
-  ];
+  // Ресурсы: память, диск, подкачка полосами с порогами
+  const available = live.mem?.available ?? memTotal - s[3];
+  const memPct = s[3] / memTotal * 100;
+  const disk = HM.disk, diskPct = disk ? (disk.total - disk.free) / disk.total * 100 : null;
+  const swapT = live.mem?.swapTotal, swapPct = swapT ? (swapT - live.mem.swapFree) / swapT * 100 : null;
+  const res = (name, note, pct, warn, crit) => {
+    const lv = pct == null ? 'ok' : pct >= crit ? 'crit' : pct >= warn ? 'warn' : '';
+    return `<div class="dv-res-row"><div class="dv-res-top"><b>${name}</b><span>${note}</span></div><div class="dv-meter"><i class="${lv}" style="width:${Math.min(100, pct || 0).toFixed(1)}%"></i></div></div>`;
+  };
+  hmHtml('dv-res', res('Память', `${hmBytes(available)} доступно из ${hmBytes(memTotal, 0)}`, memPct, 80, 90)
+    + (disk ? res('Диск', `${hmBytes(disk.free)} свободно из ${hmBytes(disk.total, 0)}`, diskPct, 80, 90) : '')
+    + (swapT ? res('Подкачка', `${hmBytes(swapT - live.mem.swapFree)} из ${hmBytes(swapT)}`, swapPct, 50, 80) : '')
+    + (live.mem?.cached != null ? `<div class="dv-sub" style="margin-top:12px">Кэш <b>${hmBytes(live.mem.cached)}</b></div>` : ''));
+
+  // Общий статус сервера — по худшему из показателей
+  const levels = [hmLevel(s[1], 70, 90), hmLevel(memPct, 80, 90), hmLevel(s[7], 50, 200),
+    diskPct == null ? 'ok' : hmLevel(diskPct, 80, 90)];
   const worst = levels.includes('crit') ? 'crit' : levels.includes('warn') ? 'warn' : 'ok';
   if (HM.down) hmSetPill('hm-overall', 'warn', 'Нет связи с сервером');
   else hmSetPill('hm-overall', worst, { ok: 'Всё в норме', warn: 'Есть предупреждения', crit: 'Нужно внимание' }[worst]);
@@ -2539,7 +2408,8 @@ async function hmLoadMonitor(full) {
     HM.ws = m.ws;
     HM.lastT = HM.samples.length ? HM.samples[HM.samples.length - 1][0] : m.now;
   }
-  if (full || !HM.paused || HM.down !== wasDown) { hmRenderCharts(); hmRenderHeadlines(); }
+  hmRenderHeadlines();
+  if (full) hmRenderChron();
 }
 
 function hmStartMonitor() {
@@ -2552,70 +2422,6 @@ function hmStartMonitor() {
 }
 function hmStopMonitor() { clearInterval(HM.timer); HM.timer = null; }
 
-function hmSyncPause() {
-  const b = $hm('hm-pause');
-  if (!b) return;
-  b.setAttribute('aria-pressed', String(HM.paused));
-  b.innerHTML = HM.paused ? HM_ICON.play + 'Продолжить' : HM_ICON.pause + 'Пауза';
-}
-// Отметки сообщений на графиках системных данных — без подписи, тем же способом,
-// что и полосы обновления/перезапуска (см. HM.events в hmRenderChart)
-function hmToggleMsgMarks() {
-  HM.showMsgMarks = !HM.showMsgMarks;
-  try { localStorage.setItem('hm-msg-marks', HM.showMsgMarks ? '1' : '0'); } catch {}
-  $hm('hm-msg-marks')?.setAttribute('aria-pressed', String(HM.showMsgMarks));
-  hmRenderCharts();
-}
-// Пауза замораживает картинку, но данные продолжают приходить — после паузы пропусков нет
-function hmTogglePause() {
-  HM.paused = !HM.paused;
-  hmSyncPause();
-  if (!HM.paused) { hmRenderCharts(); hmRenderHeadlines(); }
-}
-function hmSyncCompact() {
-  const b = $hm('hm-compact');
-  if (!b) return;
-  b.setAttribute('aria-pressed', String(HM.compact));
-  b.innerHTML = HM.compact ? HM_ICON.expand + 'Подробно' : HM_ICON.compact + 'Компактно';
-  $hm('hm')?.classList.toggle('hm-compact', HM.compact);
-}
-// Сворачивает графики и детали у всех блоков — заголовок и главное значение остаются.
-// hm-compact прячет их через display:none мгновенно, поэтому саму смену класса
-// откладываем до конца анимации (при сворачивании) или делаем её до замера высоты
-// (при разворачивании) — приём тот же, что и в hmUpdCollapse для панели обновления.
-function hmToggleCompact() {
-  HM.compact = !HM.compact;
-  try { localStorage.setItem('hm-compact', HM.compact ? '1' : '0'); } catch {}
-  const targets = [...document.querySelectorAll('#hm .hm-chart, #hm .hm-legend, #hm .hm-tbl, #hm .hm-inner, #hm .hm-store-list')];
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduced || !targets.length) {
-    hmSyncCompact();
-    if (!HM.compact) { hmRenderCharts(); hmRenderHeadlines(); }
-    return;
-  }
-  if (HM.compact) {
-    targets.forEach(el => { el.style.overflow = 'hidden'; el.style.height = el.offsetHeight + 'px'; });
-    void targets[0].offsetHeight;
-    // transition и целевое значение — обязательно в РАЗНЫХ reflow-тактах: если задать
-    // их одним махом, браузер схлопывает оба изменения в один пересчёт стиля и просто
-    // прыгает в конечное состояние, минуя анимацию (проверено эмпирически)
-    targets.forEach(el => { el.style.transition = 'height .35s ease, opacity .25s ease'; });
-    void targets[0].offsetHeight;
-    targets.forEach(el => { el.style.height = '0px'; el.style.opacity = '0'; });
-    setTimeout(() => { hmSyncCompact(); targets.forEach(el => { el.style.cssText = ''; }); }, 380);
-  } else {
-    hmSyncCompact();
-    hmRenderCharts();
-    hmRenderHeadlines();
-    const heights = targets.map(el => el.scrollHeight);
-    targets.forEach(el => { el.style.overflow = 'hidden'; el.style.height = '0px'; el.style.opacity = '0'; });
-    void targets[0].offsetHeight;
-    targets.forEach(el => { el.style.transition = 'height .35s ease, opacity .25s ease'; });
-    void targets[0].offsetHeight;
-    targets.forEach((el, i) => { el.style.height = heights[i] + 'px'; el.style.opacity = '1'; });
-    setTimeout(() => { targets.forEach(el => { el.style.cssText = ''; }); }, 380);
-  }
-}
 // Плашка активного пункта — двигаем transform'ом между реальными координатами кнопок
 // (а не CSS-переключением фона), с отскоком, как в таб-баре мобильного клиента.
 function hmSyncSegHl(seg, hl, animate = true) {
@@ -2630,19 +2436,7 @@ function hmSyncSegHl(seg, hl, animate = true) {
   hl.style.transform = `translateX(${(btnRect.left - segRect.left).toFixed(2)}px)`;
   if (!animate) { void hl.offsetWidth; hl.style.transition = ''; }
 }
-function hmSyncRangeHl(animate = true) { hmSyncSegHl($hm('hm-range-seg'), $hm('hm-range-hl'), animate); }
 function hmSyncMsgRangeHl(animate = true) { hmSyncSegHl($hm('hm-msgrange-seg'), $hm('hm-msgrange-hl'), animate); }
-// Селектор без #hm — этот переключатель рендерится в топбаре (setTopbarActions),
-// а не внутри #hm, куда выводится тело страницы дашборда.
-function hmSetRange(r) {
-  HM.range = r;
-  try { localStorage.setItem('hm-range', r); } catch {}
-  document.querySelectorAll('.hm-seg button[data-range]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.range === r)));
-  hmSyncRangeHl(true);
-  hmRenderCharts();
-  hmRenderHeadlines();
-}
-
 // ── Обновление сервера ──
 // Проверка: /server/version. Установка: /server/update запускает update.sh отдельной
 // службой, тот пишет шаги в файл, мы читаем их через /server/update-status. Успех —

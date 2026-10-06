@@ -652,8 +652,8 @@ router.get('/audit-log', (req, res) => {
     SELECT a.id, a.category, a.action, a.target, a.ip, a.created_at,
       COALESCE(u.display_name, 'Удалённый аккаунт') as actor_name, u.tag as actor_tag, a.actor_id
     FROM admin_audit_log a LEFT JOIN users u ON u.id = a.actor_id
-    ORDER BY a.id DESC LIMIT 1000
-  `).all();
+    ORDER BY a.id DESC LIMIT ?
+  `).all(Math.max(1, Math.min(1000, Number(req.query.limit) || 1000)));
   const avatarDir = path.join(__dirname, '..', '..', '..', 'chat_db', 'avatar');
   res.json(rows.map(r => ({ ...r, actor_has_avatar: r.actor_id ? fs.existsSync(path.join(avatarDir, `${r.actor_id}.jpg`)) : false })));
 });
