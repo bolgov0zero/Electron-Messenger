@@ -405,7 +405,7 @@ tr.ua-banned .ux-cell{opacity:.6}
 .cl-latest{font-size:11px;color:var(--c-text2);display:flex;gap:6px;align-items:center;white-space:nowrap}
 .cl-latest b{font-family:var(--f-mono);color:var(--c-text)}
 .cl-restarting{font-size:11px;color:var(--c-purple-text)}
-.cl-host{font-family:var(--f-mono);font-size:11.5px;color:var(--c-text)}
+.cl-host{font-family:var(--f-mono);font-size:12.5px;font-weight:600;color:var(--c-text)}
 .cl-ip{font-family:var(--f-mono);font-size:10.5px;color:var(--c-muted)}
 .cl-plat{display:flex;align-items:center;gap:7px;font-size:12px;white-space:nowrap}
 .cl-plat svg{width:14px;height:14px;flex-shrink:0;color:var(--c-text2)}
@@ -415,7 +415,7 @@ tr.ua-banned .ux-cell{opacity:.6}
 .cl-sc-profile{background:var(--c-orange-dim);color:var(--c-orange-text)}
 .cl-sc-pwa{background:var(--c-blue-dim);color:var(--c-blue-text)}
 .cl-sc-web{background:var(--c-surface2);color:var(--c-muted)}
-.cl-ver{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:11.5px;font-weight:600;white-space:nowrap}
+.cl-ver{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:12.5px;font-weight:600;white-space:nowrap}
 .cl-ver svg{width:12px;height:12px}
 .cl-ver.ok{color:var(--c-green-text)}
 .cl-ver.old{color:var(--c-orange-text)}
@@ -1109,6 +1109,26 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 @container (max-width:860px){.ub-row{grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) auto}.ub-row .ub-role{display:none}}
 @container (max-width:620px){.ub-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.ub-row{grid-template-columns:22px minmax(0,1fr) auto}.ub-row .ub-st{display:none}}
 @container (max-width:380px){.ub-tiles{grid-template-columns:minmax(0,1fr)}}
+/* Клиенты: та же раскладка, что у «Пользователей» (.ub), строки-карточки с колонками */
+.ub-tile.static{cursor:default}
+.ub-tile.static:hover{border-color:var(--c-border)}
+.ub-sub{font-size:12px;color:var(--c-muted)}
+.ub-stack{display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px;background:var(--c-surface2);margin-top:12px}
+.ub-stack i{display:block;height:100%;min-width:3px}
+.ub-leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--c-muted);margin-top:8px}
+.ub-leg span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.ub-leg i{width:8px;height:8px;border-radius:3px}
+.ub-leg b{color:var(--c-text);font-family:var(--f-mono);font-weight:600;font-size:11.5px}
+.ub-sort button .n{font:500 11px var(--f-mono);opacity:.75;margin-left:5px}
+.ub-sort button.warn .n{color:var(--c-orange-text);opacity:1}
+.cb-row{display:grid;grid-template-columns:22px minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.1fr) minmax(0,.8fr) 150px;align-items:center;gap:14px;padding:10px 14px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:14px;box-shadow:var(--shadow)}
+.cb-row:hover{border-color:color-mix(in srgb,var(--c-primary) 35%,var(--c-border))}
+.cb-row.sel{background:var(--c-primary-dim)}
+.cb-row input[type=checkbox]{accent-color:var(--c-primary);width:15px;height:15px;cursor:pointer}
+.cb-dur{font:500 11.5px var(--f-mono);color:var(--c-text);white-space:nowrap}
+.cb-dur i{display:block;height:4px;border-radius:2px;background:var(--dv-c1);margin-top:5px;max-width:90px;min-width:3px}
+@container (max-width:1000px){.cb-row{grid-template-columns:22px minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.1fr) 150px}.cb-row .cb-pl,.cb-row .cb-du{display:none}}
+@container (max-width:720px){.ub-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.cb-row{grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) auto}.cb-row .cb-dev{display:none}}
 @media (prefers-reduced-motion:reduce){.ub-meter i{transition:none}}
 </style>
 </head>
@@ -3644,45 +3664,54 @@ function clActions(c) {
   return `<div class="ux-actions">${update}<button class="ux-ibtn" aria-label="Действия: ${esc(clHost(c))}" aria-haspopup="menu" aria-expanded="false" onclick="clMenu(event, ${c.connId})">${UX_I.more}</button></div>`;
 }
 
-function clSummary() {
+// Адрес из локальной сети: частные диапазоны. Остальные считаем удалёнными
+const clIsLocal = ip => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.|::1$|fe80:|f[cd])/i.test(String(ip || '').replace(/^::ffff:/i, ''));
+const clPlatName = c => clIsWeb(c) ? 'Браузер' : (uxOsName(c.osPlatform) || 'Другое');
+const CL_PLAT_COLOR = { Windows: 'var(--dv-c2)', macOS: 'var(--dv-c4)', Linux: 'var(--dv-c3)', 'Браузер': 'var(--dv-c1)' };
+
+// Четыре плитки: подключено, версии Electron, платформы, обновление. Версии по порядку:
+// актуальная зелёная, ближайшая устаревшая жёлтая, дальше остальные цвета палитры
+function clTiles() {
   const all = CL.clients;
   const electron = all.filter(c => !clIsWeb(c) && clVerOk(c.clientVersion));
   const people = new Set(all.map(c => c.userId)).size;
   const versions = Object.entries(electron.reduce((m, c) => (m[c.clientVersion] = (m[c.clientVersion] || 0) + 1, m), {}))
     .sort((a, b) => clGt(a[0], b[0]) ? -1 : 1);
-  // Актуальная версия — зелёная, у каждой отдельной устаревшей — свой цвет из
-  // небольшой палитры (хеш по строке версии), чтобы на глаз различать, сколько
-  // разных версий разбросано по компьютерам, а не просто «старая/совсем старая»
-  const CL_VER_COLORS = ['var(--c-blue)', 'var(--c-orange)', 'var(--c-purple)', 'var(--c-red)', 'var(--c-primary)'];
-  function clVerHash(v) {
-    let h = 0;
-    for (let i = 0; i < v.length; i++) h = (h * 31 + v.charCodeAt(i)) >>> 0;
-    return CL_VER_COLORS[h % CL_VER_COLORS.length];
-  }
-  const color = v => !CL.latest ? 'var(--c-primary)' : (v === CL.latest || clGt(v, CL.latest)) ? 'var(--c-green)' : clVerHash(v);
+  const palette = ['var(--c-orange)', 'var(--dv-c2)', 'var(--dv-c5)', 'var(--dv-c4)'];
+  let oldIdx = 0;
+  const color = v => !CL.latest ? 'var(--c-primary)' : (v === CL.latest || clGt(v, CL.latest)) ? 'var(--c-green)' : palette[oldIdx++ % palette.length];
+  const vcol = versions.map(([v]) => color(v));
   const waiting = all.filter(c => clOutdated(c) && !clBusy(c));
+  const busy = all.filter(c => clBusy(c)).length;
   const restarting = CL.prog.filter(p => p.status === 'restarting' && !all.some(c => c.connId === p.connId));
-  const others = all.length - electron.length;
+  const withIp = all.filter(c => c.clientIp && c.clientIp !== '—');
+  const local = withIp.filter(c => clIsLocal(c.clientIp)).length, remote = withIp.length - local;
+  const plats = Object.entries(all.reduce((m, c) => (m[clPlatName(c)] = (m[clPlatName(c)] || 0) + 1, m), {})).sort((a, b) => b[1] - a[1]);
+  const curN = electron.filter(c => !clOutdated(c)).length;
   const check = CL.checking
-    ? `<button class="btn btn-ghost btn-sm" disabled>${UX_I.refresh.replace('<svg', '<svg class="ux-spin"')}Проверяю…</button>`
-    : `<button class="btn btn-ghost btn-sm" onclick="clCheck()"${CL.checkedAt ? ` title="Проверено в ${uxClock(CL.checkedAt)}"` : ''}>${UX_I.refresh}Проверить</button>`;
+    ? `<button class="btn btn-ghost btn-sm" disabled aria-label="Проверяю">${UX_I.refresh.replace('<svg', '<svg class="ux-spin"')}</button>`
+    : `<button class="btn btn-ghost btn-sm" onclick="clCheck()" title="Проверить обновления${CL.checkedAt ? ` · проверено в ${uxClock(CL.checkedAt)}` : ''}" aria-label="Проверить обновления">${UX_I.refresh}</button>`;
+  const devUnit = people === all.length ? uxPlural(people, 'человек', 'человека', 'человек')
+    : `${uxPlural(all.length, 'устройство', 'устройства', 'устройств')} у ${people} ${uxPlural(people, 'человека', 'человек', 'человек')}`;
   return `
-    <div><div class="cl-k">Подключено</div><div class="cl-v">${all.length}<small>${people === all.length
-      // У каждого по одному устройству — второе число повторяло бы первое
-      ? uxPlural(people, 'человек', 'человека', 'человек')
-      : `${uxPlural(all.length, 'устройство', 'устройства', 'устройств')} у ${people} ${uxPlural(people, 'человека', 'человек', 'человек')}`}</small></div></div>
-    <div>
-      <div class="cl-k">Версии Electron · ${electron.length} ${uxPlural(electron.length, 'компьютер', 'компьютера', 'компьютеров')}${others ? `, ещё ${others} в браузере` : ''}</div>
-      ${electron.length ? `<div class="cl-vbar" role="img" aria-label="Распределение версий Electron">${versions.map(([v, n]) => `<span style="flex:${n};background:${color(v)}" title="${esc(v)}: ${n}"></span>`).join('')}</div>
-        <div class="cl-legend">${versions.map(([v, n]) => `<span><i style="background:${color(v)}"></i><b>${esc(v)}</b>${v === CL.latest ? 'актуальная' : ''} · ${n}</span>`).join('')}</div>`
-        : '<div class="cl-k" style="margin-top:6px">Сейчас нет подключённых компьютеров с Electron</div>'}
-      ${restarting.length ? `<div class="cl-restarting">Перезапускаются после обновления: ${esc(restarting.map(p => p.displayName || p.username).join(', '))}</div>` : ''}
-    </div>
-    <div class="cl-act">
-      <span class="cl-latest">Последняя <b>${CL.latest ? esc(CL.latest) : 'неизвестна'}</b> · ${check}</span>
-      ${waiting.length ? `<button class="btn ux-solid btn-sm" onclick="clUpdate(${JSON.stringify(waiting.map(c => c.connId))})">${UX_I.up}Обновить устаревшие · ${waiting.length}</button>`
-        : electron.length && CL.latest ? `<span class="cl-ver ok">${UX_I.check}Все на последней версии</span>` : ''}
-    </div>`;
+    <div class="ub-tile static"><div class="ub-lbl">Подключено</div><div class="ub-big">${all.length}<small>${devUnit}</small></div>
+      <div class="ub-sub">${withIp.length ? `${local} в локальной сети · ${remote} удалённо` : 'адреса не определены'}</div>
+      ${withIp.length ? `<div class="ub-stack"><i style="flex:${local};background:var(--c-green)"></i><i style="flex:${remote};background:var(--dv-c4)"></i></div>` : ''}</div>
+    <button type="button" class="ub-tile" onclick="clFilter('old')" title="Показать тех, кому нужно обновление"><div class="ub-lbl">Версии Electron</div>
+      <div class="ub-big">${CL.latest ? esc(CL.latest) : '—'}<small>${electron.length ? `актуальная у ${curN}` : 'нет компьютеров'}</small></div>
+      ${electron.length ? `<div class="ub-stack">${versions.map(([v, n], i) => `<i style="flex:${n};background:${vcol[i]}" title="${esc(v)}: ${n}"></i>`).join('')}</div>
+        <div class="ub-leg">${versions.map(([v, n], i) => `<span><i style="background:${vcol[i]}"></i>${esc(v)} <b>${n}</b></span>`).join('')}</div>` : '<div class="ub-sub" style="margin-top:6px">Сейчас нет подключённых компьютеров с Electron</div>'}
+      ${restarting.length ? `<div class="ub-sub" style="color:var(--c-purple-text);margin-top:6px">Перезапускаются: ${esc(restarting.map(p => p.displayName || p.username).join(', '))}</div>` : ''}</button>
+    <div class="ub-tile static"><div class="ub-lbl">Платформы</div>
+      <div class="ub-big">${plats[0] ? plats[0][1] : 0}<small>${plats[0] ? esc(plats[0][0]) : ''}</small></div>
+      <div class="ub-sub">${plats.length > 1 ? plats.slice(1).map(([n, k]) => `${k} ${esc(n)}`).join(' · ') : plats.length ? 'других платформ нет' : '—'}</div>
+      ${plats.length ? `<div class="ub-stack">${plats.map(([n, k]) => `<i style="flex:${k};background:${CL_PLAT_COLOR[n] || 'var(--dv-c5)'}" title="${esc(n)}: ${k}"></i>`).join('')}</div>` : ''}</div>
+    <div class="ub-tile static"><div class="ub-lbl">Обновление</div>
+      <div class="ub-big">${busy || waiting.length}<small>${busy ? 'в процессе' : 'устарели'}</small></div>
+      <div class="ub-sub">Последняя ${CL.latest ? esc(CL.latest) : 'неизвестна'}${CL.checkedAt ? ` · проверено в ${uxClock(CL.checkedAt)}` : ''}</div>
+      <div class="row" style="margin-top:10px;gap:8px;display:flex;align-items:center">
+        ${waiting.length ? `<button class="btn ux-solid btn-sm" onclick="clUpdate(${JSON.stringify(waiting.map(c => c.connId))})">${UX_I.up}Обновить устаревшие · ${waiting.length}</button>`
+          : electron.length && CL.latest && !busy ? `<span class="cl-ver ok">${UX_I.check}Все на последней версии</span>` : ''}${check}</div></div>`;
 }
 
 function clRows() {
@@ -3692,55 +3721,58 @@ function clRows() {
     .filter(c => !q || [clName(c), c.username, c.hostname, c.clientIp].some(x => String(x || '').toLowerCase().includes(q)));
 }
 
+// Время в сети: число и полоска относительно самого долгого подключения
+function clDurHtml(c) {
+  const now = Date.now(), max = Math.max(60000, ...CL.clients.map(x => now - x.connectedAt));
+  return `${clDuration(now - c.connectedAt)}<i style="width:${Math.max(4, Math.round((now - c.connectedAt) / max * 100))}%"></i>`;
+}
+
 function clRender() {
   const page = document.getElementById('cl-page');
   if (!page) return;
   const rows = clRows();
-  // Фоновый опрос раз в 5 секунд и ход обновления не пересобирают таблицу: иначе
-  // аватарки перерисовывались бы и мигали. Меняются только сводка, версия, кнопки и время.
+  // Фоновый опрос раз в 5 секунд и ход обновления не пересобирают список: иначе
+  // аватарки перерисовывались бы и мигали. Меняются только плитки, версия, кнопки и время.
   const key = JSON.stringify([CL.filter, CL.q, [...CL.sel], CL.latest, rows.map(c => [c.connId, c.clientVersion, c.hostname, c.osPlatform, c.osRelease, c.installScope, c.clientIp, c.displayName])]);
-  if (key === CL.key && page.querySelector('tbody')) return clPatch();
+  if (key === CL.key && page.querySelector('.ub-rows')) return clPatch();
   CL.key = key;
   const n = { all: CL.clients.length, old: CL.clients.filter(clOutdated).length, electron: CL.clients.filter(c => !clIsWeb(c)).length, web: CL.clients.filter(clIsWeb).length };
-  const allSel = rows.length > 0 && rows.every(c => CL.sel.has(c.connId));
   const sel = CL.clients.filter(c => CL.sel.has(c.connId));
   const selOld = sel.filter(c => clOutdated(c) && !clBusy(c)), selElectron = sel.filter(c => !clIsWeb(c));
+  const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
+  const flt = ([k, label, count, warn]) => `<button type="button" class="${warn && count ? 'warn' : ''}" aria-pressed="${CL.filter === k}" onclick="clFilter('${k}')">${label}<span class="n">${count}</span></button>`;
+  page.className = 'ub';
   uxKeepFocus(() => {
     page.innerHTML = `
-      <section class="ux-panel cl-sum" id="cl-sum">${clSummary()}</section>
-      <section class="ux-panel">
-        <div class="ux-tb"><h3>Клиенты <span>${n.all}</span></h3>
-          ${uxChips([['all', 'Все', n.all], ['old', 'Нужно обновить', n.old, true], ['electron', 'Electron', n.electron], ['web', 'Веб и PWA', n.web]], CL.filter, 'clFilter')}
-          <span class="ux-grow"></span>${uxSearch('cl-q', CL.q, 'Человек, компьютер или IP', 'clSearch')}</div>
-        ${CL.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${CL.sel.size}</b>
-          <button class="btn btn-ghost btn-sm" ${selOld.length ? '' : 'disabled'} onclick="clUpdate(${JSON.stringify(selOld.map(c => c.connId))})">${UX_I.up}Обновить · ${selOld.length}</button>
-          <button class="btn btn-ghost btn-sm" ${selElectron.length ? '' : 'disabled'} onclick="clRestart(${JSON.stringify(selElectron.map(c => c.connId))})">${UX_I.restart}Перезапустить</button>
-          <button class="btn btn-ghost btn-sm" onclick="clLogout([...CL.sel])">${UX_I.logout}Завершить сеансы</button>
-          <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="CL.sel.clear(); clRender()">Снять выделение</button></div>` : ''}
-        <div class="ux-tbl"><table style="min-width:900px">
-          <thead><tr><th style="width:40px"><input type="checkbox" aria-label="Выбрать все" ${allSel ? 'checked' : ''} onchange="clSelAll(this.checked)"></th>
-            <th>Пользователь</th><th>Устройство</th><th>Платформа</th><th>Версия</th><th>В сети</th><th></th></tr></thead>
-          <tbody>${rows.map(c => `<tr class="${CL.sel.has(c.connId) ? 'sel' : ''}">
-            <td><input type="checkbox" aria-label="Выбрать: ${esc(clHost(c))}" ${CL.sel.has(c.connId) ? 'checked' : ''} onchange="clToggle(${c.connId})"></td>
-            <td><div class="ux-cell">${avHtml(clName(c), 32, 8, c.userId, null, false)}<div style="min-width:0"><div class="ux-name">${esc(clName(c))}</div><div class="ux-login">@${esc(c.username)}</div></div></div></td>
-            <td><div class="cl-host">${esc(clHost(c))}</div>${c.clientIp && c.clientIp !== '—' ? `<div class="cl-ip">${esc(c.clientIp)}</div>` : ''}</td>
-            <td>${clPlatform(c)}</td>
-            <td data-cl-ver="${c.connId}">${clVersion(c)}</td>
-            <td class="cl-dur" data-cl-dur="${c.connId}">${clDuration(Date.now() - c.connectedAt)}</td>
-            <td data-cl-act="${c.connId}">${clActions(c)}</td>
-          </tr>`).join('') || `<tr><td colspan="7"><div class="ux-empty">${CL.clients.length ? 'Никого не нашли. Проверьте запрос или фильтр.' : 'Сейчас никто не подключён'}</div></td></tr>`}</tbody>
-        </table></div>
-      </section>`;
+      <div class="ub-tiles" id="cl-tiles">${clTiles()}</div>
+      <div class="ub-head"><h3>Клиенты <span>${rows.length}</span></h3>
+        <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все', n.all], ['old', 'Нужно обновить', n.old, true], ['electron', 'Electron', n.electron], ['web', 'Веб и PWA', n.web]].map(flt).join('')}</div>
+        ${uxSearch('cl-q', CL.q, 'Человек, компьютер или IP', 'clSearch')}</div>
+      ${CL.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${CL.sel.size}</b>
+        <button class="btn btn-ghost btn-sm" ${selOld.length ? '' : 'disabled'} onclick="clUpdate(${JSON.stringify(selOld.map(c => c.connId))})">${UX_I.up}Обновить · ${selOld.length}</button>
+        <button class="btn btn-ghost btn-sm" ${selElectron.length ? '' : 'disabled'} onclick="clRestart(${JSON.stringify(selElectron.map(c => c.connId))})">${UX_I.restart}Перезапустить</button>
+        <button class="btn btn-ghost btn-sm" onclick="clLogout([...CL.sel])">${UX_I.logout}Завершить сеансы</button>
+        <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="CL.sel.clear(); clRender()">Снять выделение</button></div>` : ''}
+      <div class="ub-rows">${rows.map(c => `<div class="cb-row${CL.sel.has(c.connId) ? ' sel' : ''}">
+        <input type="checkbox" aria-label="Выбрать: ${esc(clHost(c))}" ${CL.sel.has(c.connId) ? 'checked' : ''} onchange="clToggle(${c.connId})">
+        <div class="ux-cell">${avHtml(clName(c), 36, 10, c.userId, null, false)}<div style="min-width:0"><div class="ux-name">${esc(clName(c))}</div><div class="ux-login">@${esc(c.username)}</div></div></div>
+        <div class="cb-dev"><div class="cl-host">${esc(clHost(c))}</div>${c.clientIp && c.clientIp !== '—' ? `<div class="cl-ip">${esc(c.clientIp)}</div>` : ''}</div>
+        <div class="cb-pl">${clPlatform(c)}</div>
+        <div data-cl-ver="${c.connId}">${clVersion(c)}</div>
+        <div class="cb-du cb-dur" data-cl-dur="${c.connId}">${clDurHtml(c)}</div>
+        <div data-cl-act="${c.connId}">${clActions(c)}</div>
+      </div>`).join('') || `<div class="ub-empty">${CL.clients.length ? 'Никого не нашли. Проверьте запрос или фильтр.' : 'Сейчас никто не подключён'}</div>`}</div>`;
   });
+  const list = page.querySelector('.ub-rows');
+  if (list && keepTop) list.scrollTop = keepTop;
 }
 function clPatch() {
   const set = (el, html) => { if (el && el._h !== html) { el._h = html; el.innerHTML = html; } };
-  set(document.getElementById('cl-sum'), clSummary());
+  set(document.getElementById('cl-tiles'), clTiles());
   CL.clients.forEach(c => {
     set(document.querySelector(`[data-cl-ver="${c.connId}"]`), clVersion(c));
     set(document.querySelector(`[data-cl-act="${c.connId}"]`), clActions(c));
-    const d = document.querySelector(`[data-cl-dur="${c.connId}"]`);
-    if (d) d.textContent = clDuration(Date.now() - c.connectedAt);
+    set(document.querySelector(`[data-cl-dur="${c.connId}"]`), clDurHtml(c));
   });
 }
 
