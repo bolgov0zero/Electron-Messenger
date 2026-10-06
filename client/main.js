@@ -166,7 +166,7 @@ ipcMain.handle('install-update', async (e, downloadUrl) => {
         console.error(`[Update] pkexec/apt-get завершились с кодом ${code}:`, stderr.trim());
         throw new Error(`Установка отменена или не удалась (код ${code})`);
       }
-      app.relaunch(); app.isQuiting = true; app.quit();
+      app.relaunch({ args: [...process.argv.slice(1), '--after-update'] }); app.isQuiting = true; app.quit();
     } else if (process.platform === 'darwin') {
       const { execSync } = require('child_process');
       const out = execSync(`hdiutil attach "${tmpFile}" -nobrowse`, { encoding: 'utf8' });
@@ -180,7 +180,7 @@ ipcMain.handle('install-update', async (e, downloadUrl) => {
       execSync(`xattr -dr com.apple.quarantine "/Applications/${appFile}"`, { stdio: 'ignore' });
       try { execSync(`hdiutil detach "${mountPoint}" -quiet`); } catch {}
       const execPath = `/Applications/${appFile}/Contents/MacOS/${appFile.replace('.app', '')}`;
-      app.relaunch({ execPath }); app.isQuiting = true; app.quit();
+      app.relaunch({ execPath, args: [...process.argv.slice(1), '--after-update'] }); app.isQuiting = true; app.quit();
     }
     _activeUpdateReq = null;
     return { ok: true };
@@ -227,6 +227,17 @@ let activeAccountId = 'main';
 let prevActiveAccountId = 'main';  // куда вернуться, если добавление новой записи отменят
 const accountViews = new Map();    // id -> BrowserView
 const wcAccount = new Map();       // webContents.id -> id записи
+
+// Журнал событий записей (userData/diag.log): помогает понять, почему скрытая запись не в сети.
+// Короткий, при превышении лимита начинается заново
+const DIAG_FILE = path.join(app.getPath('userData'), 'diag.log');
+function diag(msg) {
+  try {
+    if (fs.existsSync(DIAG_FILE) && fs.statSync(DIAG_FILE).size > 200 * 1024) fs.writeFileSync(DIAG_FILE, '');
+    fs.appendFileSync(DIAG_FILE, `${new Date().toISOString()} ${msg}\n`);
+  } catch {}
+}
+ipcMain.on('diag', (e, msg) => diag(`[${accountIdOf(e)}] ${String(msg).slice(0, 300)}`));
 
 function loadAccounts() {
   try {
@@ -297,6 +308,10 @@ function createAccountView(acc) {
   accountViews.set(acc.id, view);
   wcAccount.set(view.webContents.id, acc.id);
   attachInputMenu(view.webContents);
+  diag(`view создан [${acc.id}] partition=${acc.partition || 'default'}`);
+  view.webContents.on('did-finish-load', () => diag(`[${acc.id}] страница загружена`));
+  view.webContents.on('did-fail-load', (_, code, desc) => diag(`[${acc.id}] ошибка загрузки ${code} ${desc}`));
+  view.webContents.on('render-process-gone', (_, d) => diag(`[${acc.id}] процесс окна завершился: ${d.reason}`));
   view.webContents.loadFile(path.join(__dirname, 'src', 'index.html'));
   return view;
 }
@@ -318,6 +333,7 @@ function scheduleAway(id) {
   awayTimers.set(id, setTimeout(() => {
     awayTimers.delete(id);
     const view = accountViews.get(id);
+    diag(`таймер «отошёл» [${id}] сработал, активна ${activeAccountId}`);
     if (id !== activeAccountId && view && !view.webContents.isDestroyed()) view.webContents.send('presence-away');
   }, AWAY_DELAY_MS));
 }
@@ -326,6 +342,7 @@ function showAccount(id) {
   const acc = accounts.find(a => a.id === id);
   if (!acc || !mainWindow) return;
   const leaving = activeAccountId;
+  diag(`переключение ${leaving} -> ${id}`);
   clearTimeout(awayTimers.get(id)); awayTimers.delete(id);
   const view = accountViews.get(id) || createAccountView(acc);
   if (activeAccountId !== id && !accounts.find(a => a.id === activeAccountId)?.pending) prevActiveAccountId = activeAccountId;
@@ -863,6 +880,8 @@ ipcMain.handle('lightbox-open', (_, payload) => {
 
 // Detect if launched at login (should start hidden in tray)
 function shouldStartHidden() {
+  // После обновления приложение запускает само себя: окно должно быть видно, а не свёрнуто в трей
+  if (process.argv.includes('--after-update')) return false;
   if (process.platform === 'darwin') {
     return app.getLoginItemSettings().wasOpenedAsHidden;
   }

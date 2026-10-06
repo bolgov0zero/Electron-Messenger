@@ -104,6 +104,7 @@ function refreshActivity() {
 const AWAY_DELAY = 5000;
 let _awayTimer = null;
 function sendPresenceStatus(status) {
+  window.electron?.diag?.(`статус ${status} ws=${S.ws?.readyState} active=${_accountActive}`);
   if (S.ws?.readyState===1) S.ws.send(JSON.stringify({type:'set_status', status}));
 }
 function sendPresence(viewing) {
@@ -553,6 +554,7 @@ function applyAccounts(d) {
   S.acc = { list: d.accounts || [], activeId: d.activeId, selfId: d.selfId, pending: S.acc.pending || !!d.pending };
   if (d.pending === false) S.acc.pending = false;
   _accountActive = d.active !== false;
+  window.electron?.diag?.(`accounts-changed active=${_accountActive} записей=${S.acc.list.length}`);
   const close = document.getElementById('login-close');
   if (close) close.hidden = !S.acc.pending;
   renderAccountRail();
@@ -587,6 +589,7 @@ function renderAccountRail() {
 
 // ── ENTER APP ──
 function enterApp() {
+  window.electron?.diag?.(`enterApp server=${S.server}`);
   reportAccount();
   // Общего файла ещё нет (первый запуск после обновления) — настройки этой записи становятся общими
   if (!_sharedLoaded) { _sharedLoaded = true; pushAppSettings(); }
@@ -4940,6 +4943,7 @@ function connectWS() {
   };
 
   ws.onclose = (event) => {
+    window.electron?.diag?.(`WS закрыт code=${event.code} текущий=${ws === S.ws}`);
     clearInterval(ws._hb);
     // Нас уже заменил более новый сокет — не реконнектим повторно
     if (ws !== S.ws) return;
@@ -4952,6 +4956,7 @@ function connectWS() {
     }
   };
   ws.onopen = async () => {
+    window.electron?.diag?.(`WS открыт server=${S.server} user=${S.user?.id} active=${_accountActive}`);
     S.wsRetry = 0;
     hideServerToast();
     loadChats();
