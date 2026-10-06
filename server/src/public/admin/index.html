@@ -679,7 +679,10 @@ tr.ua-banned .ux-cell{opacity:.6}
 .modal.an-modal{width:900px}
 /* Две колонки вместо одной длинной — слева тип/текст/время, справа превью и
    получатели, каждая со своей прокруткой, чтобы модалка не растягивалась */
-.an-modal .ua-body{display:grid;grid-template-columns:1.15fr 1fr;gap:0;padding:0;min-height:0}
+.an-modal .ua-body{display:grid;grid-template-columns:1.15fr 1fr;gap:0;padding:0;min-height:0;flex:1}
+.an-col-aud{overflow:hidden}
+.an-col-aud > .ua-field{display:flex;flex-direction:column;flex:1;min-height:0}
+.an-col-aud #an-list{flex:1;min-height:0;max-height:none}
 .an-col-left,.an-col-right{display:flex;flex-direction:column;gap:20px;padding:16px 18px 18px;overflow-y:auto;min-height:0;min-width:0}
 .an-col-left{border-right:1px solid var(--c-border)}
 .an-divider{height:1px;background:var(--c-border)}
@@ -2879,7 +2882,9 @@ function rmRender() {
   const quiet = r => rmWeek(r) === 0;
   const rows = allRooms
     .filter(r => RM.filter === 'all' || (RM.filter === 'topics' && r.topics.length) || (RM.filter === 'plain' && !r.topics.length) || (RM.filter === 'quiet' && quiet(r)))
-    .filter(r => !q || (r.name || '').toLowerCase().includes(q) || r.topics.some(t => (t.name || '').toLowerCase().includes(q)));
+    .filter(r => !q || (r.name || '').toLowerCase().includes(q) || r.topics.some(t => (t.name || '').toLowerCase().includes(q)))
+    // По имени, с учётом чисел: «Кабинет 2» раньше «Кабинет 21»
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ru', { numeric: true }));
   const topicsTotal = allRooms.reduce((s, r) => s + r.topics.length, 0);
   const people = new Set(allRooms.flatMap(r => r.member_names)).size;
   const busiest = allRooms.filter(rmWeek).sort((a, b) => rmWeek(b) - rmWeek(a))[0];
@@ -3684,7 +3689,9 @@ function chRender() {
   const q = CH.q.trim().toLowerCase();
   const rows = allChats
     .filter(c => CH.filter === 'all' || (CH.filter === 'group' && c.type === 'group') || (CH.filter === 'direct' && c.type === 'direct') || (CH.filter === 'empty' && !c.message_count))
-    .filter(c => !q || chName(c).toLowerCase().includes(q) || (c.member_names || []).some(n => n.toLowerCase().includes(q)));
+    .filter(c => !q || chName(c).toLowerCase().includes(q) || (c.member_names || []).some(n => n.toLowerCase().includes(q)))
+    // Сначала те, где писали недавно; чаты без сообщений — в конце
+    .sort((a, b) => (b.last_at || 0) - (a.last_at || 0));
   const groups = allChats.filter(c => c.type === 'group').length;
   const empty = allChats.filter(c => !c.message_count);
   const allSel = rows.length > 0 && rows.every(c => CH.sel.has(c.id));
@@ -5543,6 +5550,8 @@ function anRenderForm(focusId) {
         <button type="button" class="modal-close" aria-label="Закрыть" onclick="closeModal('modal-announcement')">✕</button></div>
       <div class="ua-body">
         <div class="an-col-left">
+          <div class="ua-field"><label>Так увидят</label><div id="an-pv">${anPreview(f.kind, f.text.trim())}</div></div>
+          <div class="an-divider"></div>
           <div class="an-kinds ua-roles" role="radiogroup" aria-label="Тип объявления">${Object.entries(ANN_KINDS).map(([k, v]) =>
             `<button type="button" class="ua-role-opt" role="radio" aria-checked="${f.kind === k}" onclick="anSet('kind', '${k}')"><b>${v.label}</b><span>${ANN_HINTS[k]}</span></button>`).join('')}</div>
           <div class="ua-field"><label for="an-text">Текст</label>
@@ -5576,14 +5585,12 @@ function anRenderForm(focusId) {
               <span class="ua-hint">Потом полоса исчезнет сама</span></div>` : '<div></div>'}
           </div>
         </div>
-        <div class="an-col-right">
-          <div class="ua-field"><label>Так увидят</label><div id="an-pv">${anPreview(f.kind, f.text.trim())}</div></div>
-          <div class="an-divider"></div>
+        <div class="an-col-right an-col-aud">
           <div class="ua-field"><label>${chat ? 'Куда' : 'Кому'}${f.pick ? ` <span class="opt">· выбрано ${f.who.size}</span>` : ''}</label>
             <div class="an-seg"><button type="button" aria-pressed="${!f.pick}" onclick="anSet('pick', false)">${chat ? 'Во все группы и комнаты' : 'Всем'}</button>
               <button type="button" aria-pressed="${f.pick}" onclick="anSet('pick', true)">${chat ? 'Выбрать чаты' : 'Выбрать людей'}</button></div>
             ${f.pick ? `<div class="ux-search" style="margin-top:8px">${UX_I.search || ''}<input id="an-pq" value="${esc(f.q)}" placeholder="${chat ? 'Поиск чатов' : 'Поиск людей'}" oninput="AN.form.q = this.value; anList()"></div>
-              <div class="rm-list rm-scroll" id="an-list" style="max-height:220px;margin-top:6px">${anListHtml()}</div>` : ''}
+              <div class="rm-list rm-scroll" id="an-list" style="margin-top:6px">${anListHtml()}</div>` : ''}
             ${f.kind === 'popup' ? '<span class="ua-hint">Всплывающее увидят только те, кто сейчас в сети</span>' : ''}</div>
         </div>
       </div>
