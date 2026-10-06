@@ -338,11 +338,13 @@ function createWindow() {
     if (!params.isEditable) return;
     const flags = params.editFlags;
     Menu.buildFromTemplate([
-      { role: 'cut', enabled: flags.canCut },
-      { role: 'copy', enabled: flags.canCopy },
-      { role: 'paste', enabled: flags.canPaste },
+      // Подписи заданы явно: роли без label берут язык из локали Electron, а она на Windows и
+      // macOS оказывается английской даже при русской системе. Действия остаются от ролей
+      { role: 'cut', label: 'Вырезать', enabled: flags.canCut },
+      { role: 'copy', label: 'Копировать', enabled: flags.canCopy },
+      { role: 'paste', label: 'Вставить', enabled: flags.canPaste },
       { type: 'separator' },
-      { role: 'selectAll', enabled: flags.canSelectAll },
+      { role: 'selectAll', label: 'Выделить всё', enabled: flags.canSelectAll },
     ]).popup({ window: mainWindow, x: params.x, y: params.y });
   });
   mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
