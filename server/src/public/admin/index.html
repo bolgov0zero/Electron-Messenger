@@ -3806,7 +3806,8 @@ async function loadClients(force = false) {
   try { r = await api('GET', `/api/admin/clients${force ? '?force=true' : ''}`); } catch { return; }
   if (!r) return;
   const name = c => c.displayName || c.username || '';
-  CL.clients = (r.clients || []).slice().sort((a, b) => name(a).localeCompare(name(b), 'ru') || a.connectedAt - b.connectedAt);
+  // numeric: числа внутри имени сравниваются как числа (2 раньше 21)
+  CL.clients = (r.clients || []).slice().sort((a, b) => name(a).localeCompare(name(b), 'ru', { numeric: true }) || a.connectedAt - b.connectedAt);
   CL.latest = r.latestVersion || null;
   if (force || !CL.checkedAt) CL.checkedAt = Date.now();
   const nb = document.getElementById('nb-clients');
