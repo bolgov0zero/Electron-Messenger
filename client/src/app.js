@@ -544,6 +544,8 @@ function initAccounts() {
   if (!window.electron?.accountsGet) return;
   window.electron.accountsGet().then(applyAccounts).catch(() => {});
   window.electron.onAccountsChanged(applyAccounts);
+  // Главный процесс отсчитал 5 секунд после переключения на другую запись — этой записи пора «отойти»
+  window.electron.onPresenceAway?.(() => { if (!_accountActive) sendPresenceStatus('away'); });
 }
 function applyAccounts(d) {
   if (!d) return;

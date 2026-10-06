@@ -309,9 +309,24 @@ function fitViews() {
   for (const view of accountViews.values()) view.setBounds({ x: 0, y: 0, width, height });
 }
 
+// «Отошёл» у записи, с которой ушли переключением, через 5 секунд. Таймер здесь, а не в окне скрытой
+// записи: Chromium сильно замедляет таймеры страниц, закрытых другими, и статус сменялся с большой задержкой
+const AWAY_DELAY_MS = 5000;
+const awayTimers = new Map();
+function scheduleAway(id) {
+  clearTimeout(awayTimers.get(id));
+  awayTimers.set(id, setTimeout(() => {
+    awayTimers.delete(id);
+    const view = accountViews.get(id);
+    if (id !== activeAccountId && view && !view.webContents.isDestroyed()) view.webContents.send('presence-away');
+  }, AWAY_DELAY_MS));
+}
+
 function showAccount(id) {
   const acc = accounts.find(a => a.id === id);
   if (!acc || !mainWindow) return;
+  const leaving = activeAccountId;
+  clearTimeout(awayTimers.get(id)); awayTimers.delete(id);
   const view = accountViews.get(id) || createAccountView(acc);
   if (activeAccountId !== id && !accounts.find(a => a.id === activeAccountId)?.pending) prevActiveAccountId = activeAccountId;
   activeAccountId = id;
@@ -321,6 +336,7 @@ function showAccount(id) {
   fitViews();
   saveAccounts();
   broadcastAccounts();
+  if (leaving !== id && accounts.some(a => a.id === leaving && !a.pending)) scheduleAway(leaving);
   view.webContents.focus();
 }
 
@@ -511,6 +527,13 @@ function createWindow() {
   });
   mainWindow.setMenuBarVisibility(false);
   loadAccounts();
+  // Экземпляры всех записей поднимаются сразу: у каждой своё соединение с сервером, иначе невыбранная
+  // запись остаётся не в сети, пока на неё не нажмут
+  for (const acc of accounts) {
+    const view = accountViews.get(acc.id) || createAccountView(acc);
+    mainWindow.addBrowserView(view);
+    view.setAutoResize({ width: true, height: true });
+  }
   showAccount(activeAccountId);
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.on('resize', () => { _saveWinBounds(); fitViews(); });

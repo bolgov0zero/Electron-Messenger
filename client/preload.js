@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('electron', {
   appSettingsGet: () => ipcRenderer.invoke('app-settings-get'),
   appSettingsSet: (patch) => ipcRenderer.send('app-settings-set', patch),
   onAppSettingsChanged: (cb) => ipcRenderer.on('app-settings-changed', (_, d) => cb(d)),
+  onPresenceAway: (cb) => ipcRenderer.on('presence-away', () => cb()),
   accountsGet: () => ipcRenderer.invoke('accounts-get'),
   onAccountsChanged: (cb) => ipcRenderer.on('accounts-changed', (_, d) => cb(d)),
   accountSwitch: (id) => ipcRenderer.send('account-switch', id),
