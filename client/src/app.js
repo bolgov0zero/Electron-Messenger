@@ -545,6 +545,8 @@ function initAccounts() {
   if (!window.electron?.accountsGet) return;
   window.electron.accountsGet().then(applyAccounts).catch(() => {});
   window.electron.onAccountsChanged(applyAccounts);
+  // Обновление пришло к другой записи — показываем окно прогресса и здесь
+  window.electron.onUpdateUi?.(() => showForceUpdateOverlay());
   // Главный процесс отсчитал 5 секунд после переключения на другую запись — этой записи пора «отойти»
   window.electron.onPresenceAway?.(() => { if (!_accountActive) sendPresenceStatus('away'); });
 }
@@ -6366,8 +6368,29 @@ function _wsSendUpdateProgress(pct, status, error) {
   } catch {}
 }
 
-async function forceInstallUpdate() {
-  if (!_updateDownloadUrl) return;
+// Окно дистанционного обновления. Обновление приходит к одной записи, а открыта может быть другая:
+// главный процесс сообщает всем экземплярам, и каждый показывает окно у себя; прогресс тоже получают все.
+// Статус в WebSocket шлёт только тот экземпляр, к которому обновление пришло (_forceUpdateInit)
+let _forceUpdateInit = false, _forceUpdateUiBound = false;
+function bindForceUpdateUi() {
+  // Каждый раз заново: onUpdateProgress заменяет прежнего слушателя (им же пользуется проверка обновления в настройках)
+  window.electron.onUpdateProgress(p => {
+    document.getElementById('force-update-fill').style.width = p + '%';
+    document.getElementById('force-update-pct').textContent = p + '%';
+    if (p >= 100) {
+      document.getElementById('force-update-sub').textContent = 'Установка…';
+      if (_forceUpdateInit) _wsSendUpdateProgress(100, 'installing');
+    } else if (_forceUpdateInit) {
+      _wsSendUpdateProgress(p, 'downloading');
+    }
+  });
+  window.electron.onUpdateRestarting(() => {
+    document.getElementById('force-update-sub').textContent = 'Перезапуск…';
+    if (_forceUpdateInit) _wsSendUpdateProgress(100, 'restarting');
+  });
+  if (!_forceUpdateUiBound) { _forceUpdateUiBound = true; window.electron.onUpdateUiHide?.(() => closeModal('modal-force-update')); }
+}
+function showForceUpdateOverlay() {
   closeModal('modal-update');
   // Сбрасываем прогресс-бар при повторном запуске
   const fill = document.getElementById('force-update-fill');
@@ -6375,24 +6398,14 @@ async function forceInstallUpdate() {
   document.getElementById('force-update-pct').textContent = '0%';
   document.getElementById('force-update-sub').textContent = 'Загрузка обновления…';
   openModal('modal-force-update');
-
+  bindForceUpdateUi();
+}
+async function forceInstallUpdate() {
+  if (!_updateDownloadUrl) return;
+  _forceUpdateInit = true;
+  showForceUpdateOverlay();
+  window.electron.updateUiShow?.();   // остальным записям — показать то же окно
   _wsSendUpdateProgress(0, 'downloading');
-
-  window.electron.onUpdateProgress(p => {
-    document.getElementById('force-update-fill').style.width = p + '%';
-    document.getElementById('force-update-pct').textContent = p + '%';
-    if (p >= 100) {
-      document.getElementById('force-update-sub').textContent = 'Установка…';
-      _wsSendUpdateProgress(100, 'installing');
-    } else {
-      _wsSendUpdateProgress(p, 'downloading');
-    }
-  });
-
-  window.electron.onUpdateRestarting(() => {
-    document.getElementById('force-update-sub').textContent = 'Перезапуск…';
-    _wsSendUpdateProgress(100, 'restarting');
-  });
 
   const result = await window.electron.installUpdate(_updateDownloadUrl);
   if (result?.error) {

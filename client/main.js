@@ -130,9 +130,9 @@ ipcMain.handle('install-update', async (e, downloadUrl) => {
   const ext = process.platform === 'win32' ? '.exe' : process.platform === 'darwin' ? '.dmg' : '.deb';
   const tmpFile = path.join(os.tmpdir(), `electron-update${ext}`);
   try {
-    await downloadFile(downloadUrl, tmpFile, p => e.sender.send('update-progress', p));
+    await downloadFile(downloadUrl, tmpFile, p => broadcastToViews('update-progress', p));
 
-    e.sender.send('update-restarting');
+    broadcastToViews('update-restarting');
     // Небольшая пауза чтобы рендерер успел отправить WS-сообщение 'restarting' серверу
     await new Promise(r => setTimeout(r, 300));
 
@@ -184,7 +184,7 @@ ipcMain.handle('install-update', async (e, downloadUrl) => {
     }
     _activeUpdateReq = null;
     return { ok: true };
-  } catch(e) { _activeUpdateReq = null; return { error: e.message }; }
+  } catch(e) { _activeUpdateReq = null; broadcastToViews('update-ui-hide'); return { error: e.message }; }
 });
 
 // ── HIGH AVAILABILITY ──
@@ -552,7 +552,14 @@ function createWindow() {
     view.setAutoResize({ width: true, height: true });
   }
   showAccount(activeAccountId);
-  mainWindow.once('ready-to-show', () => mainWindow.show());
+  // Страницы живут в отдельных экземплярах, у самого окна загрузки нет и 'ready-to-show' не приходит —
+  // окно показываем, когда загрузилась выбранная запись (запасной срок — 3 секунды). При запуске
+  // «скрытым» (автозапуск) окно не показываем
+  const startHidden = shouldStartHidden();
+  let revealed = false;
+  const reveal = () => { if (revealed) return; revealed = true; if (!startHidden) mainWindow.show(); };
+  accountViews.get(activeAccountId)?.webContents.once('did-finish-load', reveal);
+  setTimeout(reveal, 3000);
   mainWindow.on('resize', () => { _saveWinBounds(); fitViews(); });
   mainWindow.on('move', _saveWinBounds);
   mainWindow.on('close', e => {
@@ -697,6 +704,13 @@ ipcMain.handle('accounts-get', (e) => {
   return { ...accountsPayload(), selfId: id, active: id === activeAccountId, pending: !!accounts.find(a => a.id === id)?.pending };
 });
 ipcMain.on('account-switch', (_, id) => showAccount(id));
+// Дистанционное обновление пришло к одной записи, а открыта может быть другая: окно с прогрессом
+// показывают все экземпляры, без переключения между записями
+ipcMain.on('update-ui-show', (e) => {
+  for (const view of accountViews.values()) {
+    if (!view.webContents.isDestroyed() && view.webContents.id !== e.sender.id) view.webContents.send('update-ui');
+  }
+});
 ipcMain.on('account-add', () => addAccount());
 ipcMain.on('account-cancel-add', (e) => cancelAddAccount(accountIdOf(e)));
 // Клиент вошёл: запись перестаёт быть «ожидающей», в бар попадают имя и адрес сервера для аватарки
@@ -883,7 +897,11 @@ function shouldStartHidden() {
   // После обновления приложение запускает само себя: окно должно быть видно, а не свёрнуто в трей
   if (process.argv.includes('--after-update')) return false;
   if (process.platform === 'darwin') {
-    return app.getLoginItemSettings().wasOpenedAsHidden;
+    // Скрытый старт только если приложение действительно открыто системой при входе: после самообновления
+    // wasOpenedAsHidden бывает истинным без этого, и окно не показывалось. Прежние версии при
+    // обновлении флаг --after-update не передают, поэтому опираемся ещё и на wasOpenedAtLogin
+    const s = app.getLoginItemSettings();
+    return !!(s.wasOpenedAtLogin && s.wasOpenedAsHidden);
   }
   return process.argv.includes('--hidden');
 }
