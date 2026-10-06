@@ -55,9 +55,11 @@ function deliver(row) {
   if (row.kind === 'chat') {
     const sysId = systemUserId();
     if (!sysId) return 0;
+    // «Всем» — только группы и комнаты. Выбранные вручную могут быть и личными чатами (системное
+    // сообщение видят оба участника); секретные чаты исключены: их тексты зашифрованы
     const chatIds = row.target === 'all'
       ? db.prepare("SELECT id FROM chats WHERE type IN ('group', 'room')").all().map(r => r.id)
-      : parseTargets(row);
+      : parseTargets(row).filter(id => db.prepare('SELECT 1 FROM chats WHERE id = ? AND COALESCE(is_secret, 0) = 0').get(id));
     const insertMsg = db.prepare('INSERT INTO messages (chat_id, sender_id, text) VALUES (?, ?, ?)');
     for (const chatId of chatIds) {
       const r = insertMsg.run(chatId, sysId, row.text);
@@ -144,11 +146,15 @@ function journal() {
 
   const userName = db.prepare('SELECT display_name FROM users WHERE id = ?');
   const chatName = db.prepare('SELECT name FROM chats WHERE id = ?');
+  const chatPair = db.prepare(`SELECT GROUP_CONCAT(u.display_name, ' → ') AS name FROM chat_members cm
+    JOIN users u ON u.id = cm.user_id WHERE cm.chat_id = ?`);
 
   return rows.map(r => {
     const ids = parseTargets(r);
     const names = r.target === 'all' ? [] : ids.map(id => {
       const row = r.kind === 'chat' ? chatName.get(id) : userName.get(id);
+      // у личного чата названия нет — берём имена участников
+      if (r.kind === 'chat' && row && !row.name) return chatPair.get(id)?.name || '—';
       return row ? (row.display_name || row.name) : '—';
     });
     return { ...r, targets: ids, target_names: names };

@@ -5534,7 +5534,8 @@ function anDelete(ids) {
 async function openAnnouncementModal() {
   uxCloseMenu();
   const [chats, users] = await Promise.all([api('GET', '/api/admin/chats'), allUsersCache.length ? allUsersCache : api('GET', '/api/admin/users')]);
-  AN.chats = (Array.isArray(chats) ? chats : []).filter(c => c.type !== 'direct' && !c.parent_id);
+  // Группы, комнаты и личные чаты; без тем и без секретных (их тексты зашифрованы)
+  AN.chats = (Array.isArray(chats) ? chats : []).filter(c => !c.parent_id && !c.is_secret);
   if (Array.isArray(users)) allUsersCache = users;
   annStartAt = null;
   AN.form = { kind: 'chat', text: '', pick: false, who: new Set(), q: '', duration: 60, err: '', busy: false };
@@ -5613,8 +5614,10 @@ function anSet(key, value) {
 function anListHtml() {
   const f = AN.form, lq = f.q.trim().toLowerCase();
   const items = f.kind === 'chat'
-    ? AN.chats.filter(c => !lq || (c.name || '').toLowerCase().includes(lq))
-        .map(c => ({ id: c.id, name: c.name || 'Чат', sub: c.type === 'room' ? 'комната' : 'группа', av: avHtml(c.name || '?', 24, 7, null, false, c.has_avatar, c.id) }))
+    ? AN.chats.filter(c => !lq || chName(c).toLowerCase().includes(lq) || (c.member_names || []).some(n => n.toLowerCase().includes(lq)))
+        // По имени, с учётом чисел: «Кабинет 2» раньше «Кабинет 21»
+        .sort((a, b) => chName(a).localeCompare(chName(b), 'ru', { numeric: true }))
+        .map(c => ({ id: c.id, name: chName(c), sub: c.type === 'room' ? 'комната' : c.type === 'direct' ? 'личный чат' : 'группа', av: chAv(c, 24) }))
     : allUsersCache.filter(u => !u.banned && (!lq || (u.display_name || '').toLowerCase().includes(lq) || (u.username || '').toLowerCase().includes(lq)))
         .map(u => ({ id: u.id, name: u.display_name || u.username, sub: '@' + u.username, av: avHtml(u.display_name || u.username, 24, 7, u.id, false, true) }));
   return items.map(i => `<button type="button" class="rm-li rm-pick" aria-pressed="${f.who.has(i.id)}" onclick="anPick(${i.id})">${i.av}
