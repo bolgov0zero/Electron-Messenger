@@ -239,7 +239,6 @@ nav{flex:1;padding:4px 0;overflow-y:auto}
 
 /* Обновление сервера */
 .hm-upd-panel{flex-basis:100%;border-top:1px solid var(--c-border2);margin:2px -14px -9px;padding:10px 14px 11px;display:flex;flex-direction:column;gap:9px}
-.hm-upd-panel.hm-upd-closing{overflow:hidden;opacity:0;padding-top:0;padding-bottom:0;transition:height .35s ease,opacity .25s ease,padding .35s ease}
 
 /* Живые графики */
 .hm-bars text{font-family:var(--f-mono);font-size:10px;fill:var(--c-muted)}
@@ -1046,9 +1045,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 /* Строка сервера */
 .dv .hm-host{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:0 18px}
 .dv .hm-upd{justify-self:end}
-.dv .hm-upd-panel{display:block;grid-column:1/-1;margin:14px 0 0;padding:14px 0 0;border-top:1px solid var(--dv-border);animation:dvFade .25s ease}
-@keyframes dvFade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-.dv .hm-upd-panel.hm-upd-closing{overflow:hidden;opacity:0;padding-top:0;padding-bottom:0;transition:height .35s ease,opacity .25s ease,padding .35s ease}
+.dv .hm-upd-panel{display:block;grid-column:1/-1;margin:14px 0 0;padding:14px 0 0;border-top:1px solid var(--dv-border)}
 .dv .hm-pill.nodot::before{display:none}
 .dv-upd-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .dv-upd-sub{flex:1;min-width:0}
@@ -2397,13 +2394,34 @@ function hmUpdBtn(label, disabled) {
   b.onclick = hmUpdCheck;
 }
 // Панель под шапкой, как в макете: плашка состояния, пояснение и кнопки в одну строку
+// Высота панели меняется плавно: при появлении, при смене состояния (проверка → найдено → установка)
+// и при закрытии. Раньше блоки ниже прыгали мгновенно, а сама панель только проявлялась.
+function hmUpdAnim(p, from, to, done) {
+  p._a?.cancel();
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return done?.();
+  p.style.overflow = 'hidden';
+  // fill: forwards — иначе между концом анимации и обработчиком блок на кадр возвращается к прежней высоте
+  const a = p._a = p.animate([from, to], { duration: 320, easing: 'cubic-bezier(.25,.8,.3,1)', fill: 'forwards' });
+  const end = () => { if (p._a === a) { p.style.overflow = ''; p._a = null; done?.(); a.cancel(); } };
+  a.onfinish = end;
+  a.oncancel = () => { if (p._a === a) { p.style.overflow = ''; p._a = null; } };
+}
 function hmUpdShow(html) {
   const p = $hm('hm-upd-panel');
   if (!p) return;
-  p.classList.remove('hm-upd-closing');
-  p.style.height = '';
+  const wasHidden = p.hidden;
+  if (!wasHidden && p._h === html) return;
+  const fromH = wasHidden ? 0 : p.getBoundingClientRect().height;
+  p._a?.cancel();
   p.hidden = false;
   if (p._h !== html) { p._h = html; p.innerHTML = html; }
+  const toH = p.getBoundingClientRect().height;
+  if (wasHidden) {
+    hmUpdAnim(p, { height: '0px', marginTop: '0px', paddingTop: '0px', paddingBottom: '0px', opacity: 0 },
+      { height: toH + 'px', marginTop: '14px', paddingTop: '14px', paddingBottom: '0px', opacity: 1 });
+  } else if (Math.abs(toH - fromH) > 1) {
+    hmUpdAnim(p, { height: fromH + 'px' }, { height: toH + 'px' });
+  }
 }
 function hmUpdDismiss() {
   if (HM.upd.busy) return;
@@ -2510,25 +2528,36 @@ function hmUpdRenderSteps() {
   const pct = Math.round(finished / HM_STEPS.length * 100);
   const note = u.down ? 'Сервер перезапускается, страница подключится сама'
     : !reported && Date.now() - u.startedAt > 6000 ? 'Сервер не сообщает шаги установки, ждём его возвращения с новой версией' : '';
-  hmUpdShow(`<div class="dv-upd-row"><span class="hm-pill warn nodot">${HM_SPIN} Идёт обновление до ${esc(u.target)}</span><span class="hm-mono dv-sub dv-upd-sub" style="text-align:right">${pct}%</span></div>
-    <div class="dv-meter" style="margin:10px 0"><i style="width:${pct}%;background:var(--dv-warn);transition:none"></i></div>
-    <div class="dv-steps">${HM_STEPS.map(([k, name]) => {
-      const st = steps[k]?.state || '', done = st === 'done' || st === 'skipped', on = k === cur;
-      return `<span class="${done ? 'ok' : st === 'failed' ? 'bad' : on ? 'on' : ''}">${done ? '✓' : on ? '●' : '○'} ${name}</span>`;
-    }).join('')}</div>${note ? `<div class="dv-sub" style="margin-top:8px">${note}</div>` : ''}`);
+  // Разметку строим один раз, дальше меняем только значения: так индикатор не перезапускается
+  // при каждом опросе, а полоса едет плавно
+  const stepsHtml = HM_STEPS.map(([k, name]) => {
+    const st = steps[k]?.state || '', done = st === 'done' || st === 'skipped', on = k === cur;
+    return `<span class="${done ? 'ok' : st === 'failed' ? 'bad' : on ? 'on' : ''}">${done ? '✓' : on ? '●' : '○'} ${name}</span>`;
+  }).join('');
+  const p = $hm('hm-upd-panel');
+  if (!p || p.hidden || !$hm('hm-inst-pct') || p._h !== 'inst:' + u.target) {
+    hmUpdShow(`<div class="dv-upd-row"><span class="hm-pill warn nodot">${HM_SPIN} Идёт обновление до ${esc(u.target)}</span><span class="hm-mono dv-sub dv-upd-sub" id="hm-inst-pct" style="text-align:right">${pct}%</span></div>
+      <div class="dv-meter" style="margin:10px 0"><i id="hm-inst-bar" style="width:${pct}%;background:var(--dv-warn)"></i></div>
+      <div class="dv-steps" id="hm-inst-steps">${stepsHtml}</div><div class="dv-sub" id="hm-inst-note" style="margin-top:8px"${note ? '' : ' hidden'}>${note}</div>`);
+    p._h = 'inst:' + u.target;
+  }
+  hmText('hm-inst-pct', pct + '%');
+  const bar = $hm('hm-inst-bar');
+  if (bar) bar.style.width = pct + '%';
+  hmHtml('hm-inst-steps', stepsHtml);
+  const nt = $hm('hm-inst-note');
+  if (nt) { nt.hidden = !note; hmText('hm-inst-note', note); }
 }
 
-// Сворачивает панель обновления плавно: фиксируем текущую высоту и уводим её в ноль
+// Сворачивает панель: высота и отступы уходят в ноль
 function hmUpdCollapse() {
   const p = $hm('hm-upd-panel');
   if (!p || p.hidden) return;
-  const finish = () => { p.hidden = true; p.classList.remove('hm-upd-closing'); p.style.height = ''; };
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return finish();
-  p.style.height = p.offsetHeight + 'px';
-  p.classList.add('hm-upd-closing');
-  void p.offsetHeight;
-  p.style.height = '0px';
-  setTimeout(finish, 380);
+  p._h = null;
+  const h = p.getBoundingClientRect().height;
+  hmUpdAnim(p, { height: h + 'px', marginTop: '14px', paddingTop: '14px', opacity: 1 },
+    { height: '0px', marginTop: '0px', paddingTop: '0px', opacity: 0 }, () => { p.hidden = true; });
+  if (!p._a) p.hidden = true;
 }
 function hmUpdFinish(ok, message) {
   const u = HM.upd;
