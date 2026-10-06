@@ -239,7 +239,12 @@ function setup(server) {
         if (ws._msgTimes.length >= 20) return;
         ws._msgTimes.push(nowMs);
         const { chat_id, reply_to_id, iv } = data;
-        const chatRow = db.prepare('SELECT is_secret FROM chats WHERE id = ?').get(chat_id);
+        const chatRow = db.prepare('SELECT c.is_secret, c.read_only, (SELECT p.read_only FROM chats p WHERE p.id = c.parent_id) AS parent_read_only FROM chats c WHERE c.id = ?').get(chat_id);
+        // Комната «только для чтения» (и её темы) — писать может только вебхук; реакции остаются
+        if (chatRow?.read_only || chatRow?.parent_read_only) {
+          ws.send(JSON.stringify({ type: 'send_rejected', chat_id, reason: 'read_only' }));
+          return;
+        }
         const isSecret = !!chatRow?.is_secret;
         // В секретном чате attachment/forward_data пока не поддерживаются (не шифруются),
         // а text — это base64-шифротекст, который нельзя обрезать как обычный текст

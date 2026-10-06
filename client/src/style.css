@@ -1352,6 +1352,15 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   z-index: 3;
 }
 .composer-inner { max-width: 760px; margin: 0 auto; background: transparent; border-radius: 12px; position: relative; }
+.composer-inner[hidden], .ro-banner[hidden] { display: none; }
+/* Комната только для чтения: плашка того же вида, что и шапка чата */
+.ro-banner {
+  max-width: 760px; height: 40px; box-sizing: border-box; margin: 0 auto;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px;
+  color: var(--muted); font-size: 13px; font-weight: 500; user-select: none;
+}
+.ro-banner svg { flex-shrink: 0; }
 
 /* Reply preview above composer */
 .input-reply-bar {

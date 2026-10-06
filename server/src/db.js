@@ -199,6 +199,8 @@ tryAlter('ALTER TABLE users ADD COLUMN totp_required INTEGER DEFAULT 0');
 // (не зашифрованных) сообщений всегда NULL. Сервер шифротекст никогда не
 // расшифровывает — только хранит и пересылает как обычный text.
 tryAlter('ALTER TABLE chats ADD COLUMN is_secret INTEGER DEFAULT 0');
+// Комната «только для чтения»: писать может только вебхук; распространяется на темы
+tryAlter('ALTER TABLE chats ADD COLUMN read_only INTEGER DEFAULT 0');
 tryAlter('ALTER TABLE messages ADD COLUMN iv TEXT');
 
 // Аудит действий в админ-панели — кто, когда, что сделал. category — одна из

@@ -2951,7 +2951,7 @@ async function rmOpen(id, tab = 'main') {
   const r = id ? allRooms.find(x => x.id === id) : null;
   const members = r ? (await api('GET', `/api/admin/chats/${r.id}/members`)) || [] : [];
   RM.form = {
-    id: r?.id || null, tab, name: r?.name || '', avatar: null, hasAvatar: !!r?.has_avatar,
+    id: r?.id || null, tab, name: r?.name || '', avatar: null, hasAvatar: !!r?.has_avatar, readOnly: !!r?.read_only,
     topics: (r?.topics || []).map(t => ({ id: t.id, name: t.name, msgs: t.message_count, avatar: null, hasAvatar: !!t.has_avatar, removed: false })),
     initialTopics: new Map((r?.topics || []).map(t => [t.id, t.name])),
     members: new Set(members.map(m => m.id)), initialMembers: new Set(members.map(m => m.id)),
@@ -3013,6 +3013,12 @@ function rmRenderForm(focusId) {
       <div class="rm-avpick"><span id="rm-av-big">${rmAv(f.name, 56, f.avatar, f.id, f.hasAvatar)}</span>
         <div><label class="btn btn-ghost btn-sm" style="cursor:pointer">${RM_I.img}${f.avatar || f.hasAvatar ? 'Заменить аватар' : 'Загрузить аватар'}<input type="file" accept="image/*" hidden onchange="rmPickAvatar(this)"></label>
           <div class="ua-hint" style="margin-top:5px">Квадратная картинка, лучше от 256 px. Без аватара — буквы названия.</div></div></div>
+      <label class="toggle-switch rm-ro" style="gap:10px;margin:2px 0 12px">
+        <input type="checkbox" ${f.readOnly ? 'checked' : ''} onchange="RM.form.readOnly = this.checked">
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        <div><div style="font-size:12.5px;font-weight:600;color:var(--c-text)">Только чтение</div>
+          <div class="ua-hint">Писать в комнату и её темы сможет только вебхук. Реакции остаются доступны</div></div>
+      </label>
       ${r ? `<div class="rm-dz"><div><b>Удалить комнату</b><span>Вместе со всеми темами и перепиской</span></div>
         <button type="button" class="btn btn-danger btn-sm" onclick="closeModal('modal-room'); rmDelete([${r.id}])">${UX_I.trash}Удалить</button></div>` : ''}`;
   }
@@ -3094,12 +3100,13 @@ async function rmSave() {
   try {
     let id = f.id;
     if (!id) {
-      const r = await api('POST', '/api/admin/rooms', { name, member_ids: [...f.members] });
+      const r = await api('POST', '/api/admin/rooms', { name, member_ids: [...f.members], read_only: f.readOnly });
       if (!r?.id) throw new Error(r?.error || 'Не удалось создать комнату');
       id = r.id;
     } else {
-      if (name !== allRooms.find(x => x.id === id)?.name) {
-        const r = await api('PATCH', `/api/admin/rooms/${id}`, { name });
+      const cur = allRooms.find(x => x.id === id);
+      if (name !== cur?.name || !!f.readOnly !== !!cur?.read_only) {
+        const r = await api('PATCH', `/api/admin/rooms/${id}`, { name, read_only: !!f.readOnly });
         if (!r?.ok) throw new Error(r?.error || 'Не удалось переименовать');
       }
       const add = [...f.members].filter(u => !f.initialMembers.has(u));

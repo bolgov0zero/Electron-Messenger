@@ -1879,7 +1879,8 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
       </button>
     </div>
     <div class="chat-input-wrap" id="input-wrap">
-      <div class="composer-inner">
+      ${readOnlyBannerHtml(isReadOnlyChat(chat))}
+      <div class="composer-inner"${isReadOnlyChat(chat) ? ' hidden' : ''}>
         <div id="typing-indicator" class="typing-indicator" style="display:none">
           <span class="typing-pill">
             <span class="typing-dots"><span></span><span></span><span></span></span>
@@ -2600,6 +2601,27 @@ function pinPreviewText(p) {
   const t = p.text ? p.text.replace(/<[^>]*>/g, '')
     : (p.attachment ? (p.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : p.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (p.attachment.name || 'Файл')) : '');
   return t.length > 120 ? t.slice(0, 120) + '…' : t;
+}
+
+// ── ТОЛЬКО ЧТЕНИЕ ──
+// Комната «только для чтения»: писать может только вебхук. Флаг распространяется на темы.
+// Реакции остаются доступны — баннер заменяет только поле ввода.
+function isReadOnlyChat(chat) {
+  if (!chat) return false;
+  if (chat.read_only) return true;
+  if (chat.parent_id) return !!S.chats.find(c => c.id === chat.parent_id)?.read_only;
+  return false;
+}
+function readOnlyBannerHtml(ro) {
+  return `<div class="ro-banner" id="ro-banner"${ro ? '' : ' hidden'}>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    <span>Доступно только для чтения</span>
+  </div>`;
+}
+function syncReadOnlyUi() {
+  const ro = isReadOnlyChat(S.chats.find(c => c.id === S.activeChatId));
+  document.getElementById('ro-banner')?.toggleAttribute('hidden', !ro);
+  document.querySelector('#input-wrap .composer-inner')?.toggleAttribute('hidden', ro);
 }
 
 // ── ПОИСК В ЧАТЕ ──
@@ -3546,6 +3568,7 @@ function autoResize(el) {
 
 async function sendOrEdit() {
   if (S.editingMessageId) { submitEdit(); return; }
+  if (isReadOnlyChat(S.chats.find(c => c.id === S.activeChatId))) return;
   const input = document.getElementById('msg-input');
   const text = input?.value.trim();
   const isSecret = S.secretChatIds.has(S.activeChatId);
@@ -4657,13 +4680,25 @@ function connectWS() {
     }
 
     if (data.type==='chat_updated') {
-      // Точечное обновление чата без refetch всего списка
-      const idx = S.chats.findIndex(c => c.id === data.chat.id);
-      if (idx >= 0) S.chats[idx] = data.chat; else S.chats.push(data.chat);
+      // Точечное обновление чата без refetch всего списка: полный объект (закрепление)
+      // или только изменённые поля (переименование и режим «только чтение» из админки)
+      const chatId = data.chat ? data.chat.id : data.chat_id;
+      if (data.chat) {
+        const idx = S.chats.findIndex(c => c.id === data.chat.id);
+        if (idx >= 0) S.chats[idx] = data.chat; else S.chats.push(data.chat);
+      } else {
+        const c = S.chats.find(x => x.id === chatId);
+        if (c) {
+          if (data.name !== undefined) c.name = data.name;
+          if (data.read_only !== undefined) c.read_only = data.read_only ? 1 : 0;
+        }
+      }
       renderChatList();
-      if (S.activeChatId === data.chat.id) {
+      if (S.activeChatId === chatId) {
         const nameEl = document.querySelector('.ch-name');
-        if (nameEl) nameEl.textContent = chatName(data.chat);
+        const c = S.chats.find(x => x.id === chatId);
+        if (nameEl && c) nameEl.textContent = chatName(c);
+        syncReadOnlyUi();
       }
     }
 

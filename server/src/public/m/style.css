@@ -470,6 +470,13 @@ html.m-desktop .screen { display: none !important; }
   opacity: .999;
 }
 .composer-card { overflow: hidden; }
+.composer-card[hidden], .ro-note[hidden] { display: none; }
+/* Комната только для чтения: вместо поля ввода — строка текста, без кнопок */
+.ro-note {
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  text-align: center; font-size: 13px; font-weight: 500; color: var(--muted);
+  background: var(--modal-bg); border-top: 1px solid var(--border);
+}
 .emoji-panel {
   position: absolute; left: 0; right: 0; bottom: 100%;
   border-top: 1px solid var(--border); background: var(--modal-bg);

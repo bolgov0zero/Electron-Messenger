@@ -160,9 +160,9 @@ router.get('/activity', (req, res) => {
 
 // Create room (admin only) — notifies members via WS
 router.post('/rooms', (req, res) => {
-  const { name, member_ids } = req.body;
+  const { name, member_ids, read_only } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Missing name' });
-  const result = db.prepare("INSERT INTO chats (type, name, created_by) VALUES ('room', ?, ?)").run(name.trim(), req.user.id);
+  const result = db.prepare("INSERT INTO chats (type, name, created_by, read_only) VALUES ('room', ?, ?, ?)").run(name.trim(), req.user.id, read_only ? 1 : 0);
   const chatId = result.lastInsertRowid;
   if (Array.isArray(member_ids) && member_ids.length) {
     const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
@@ -226,13 +226,20 @@ router.delete('/chats/:id/members/:userId', (req, res) => {
 
 // Rename room
 router.patch('/rooms/:id', (req, res) => {
-  const { name } = req.body;
-  if (!name?.trim()) return res.status(400).json({ error: 'Missing name' });
-  const prevName = db.prepare("SELECT name FROM chats WHERE id = ? AND type = 'room'").get(req.params.id)?.name;
-  db.prepare("UPDATE chats SET name = ? WHERE id = ? AND type = 'room'").run(name.trim(), req.params.id);
+  const { name, read_only } = req.body;
+  const hasName = name !== undefined;
+  const hasReadOnly = read_only !== undefined;
+  if (hasName && !String(name).trim()) return res.status(400).json({ error: 'Missing name' });
+  if (!hasName && !hasReadOnly) return res.status(400).json({ error: 'Nothing to update' });
+  const prev = db.prepare("SELECT name, read_only FROM chats WHERE id = ? AND type = 'room'").get(req.params.id);
+  if (hasName) db.prepare("UPDATE chats SET name = ? WHERE id = ? AND type = 'room'").run(String(name).trim(), req.params.id);
+  if (hasReadOnly) db.prepare("UPDATE chats SET read_only = ? WHERE id = ? AND type = 'room'").run(read_only ? 1 : 0, req.params.id);
+  const newName = hasName ? String(name).trim() : prev?.name;
+  const isReadOnly = hasReadOnly ? !!read_only : !!prev?.read_only;
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(req.params.id);
-  members.forEach(({ user_id }) => sendTo(user_id, { type: 'chat_updated', chat_id: Number(req.params.id), name: name.trim() }));
-  logAudit(req, 'rooms', 'Переименование комнаты', `«${prevName || '?'}» → «${name.trim()}»`);
+  members.forEach(({ user_id }) => sendTo(user_id, { type: 'chat_updated', chat_id: Number(req.params.id), name: newName, read_only: isReadOnly }));
+  if (hasName) logAudit(req, 'rooms', 'Переименование комнаты', `«${prev?.name || '?'}» → «${newName}»`);
+  if (hasReadOnly && !!prev?.read_only !== !!read_only) logAudit(req, 'rooms', 'Режим «только чтение»', `«${newName}»: ${read_only ? 'включён' : 'выключен'}`);
   res.json({ ok: true });
 });
 
@@ -279,7 +286,7 @@ router.get('/users', (req, res) => {
 
 router.get('/chats', (req, res) => {
   const chats = db.prepare(`
-    SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.parent_id, c.position, c.is_secret,
+    SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.parent_id, c.position, c.is_secret, c.read_only,
       (SELECT COUNT(*) FROM messages WHERE chat_id = c.id AND deleted = 0) as message_count,
       (SELECT MAX(sent_at) FROM messages WHERE chat_id = c.id AND deleted = 0) as last_at,
       (SELECT COUNT(*) FROM chat_members WHERE chat_id = c.id) as member_count,

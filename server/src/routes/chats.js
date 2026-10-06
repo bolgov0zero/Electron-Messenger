@@ -88,7 +88,7 @@ function enrichChat(chat, userId) {
 // Get my chats
 router.get('/', authMiddleware, (req, res) => {
   const chats = db.prepare(`
-    SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.is_secret, cm.pinned_at as pinned
+    SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.is_secret, c.read_only, cm.pinned_at as pinned
     FROM chats c JOIN chat_members cm ON cm.chat_id = c.id
     WHERE cm.user_id = ? AND (cm.hidden_at IS NULL OR c.is_secret = 1) AND c.parent_id IS NULL
     ORDER BY (SELECT COALESCE(MAX(sent_at), 0) FROM messages WHERE chat_id = c.id) DESC

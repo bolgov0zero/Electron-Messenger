@@ -1693,6 +1693,7 @@ function stickAfterMedia(container) {
 
 async function openChat(chatId, aroundId) {
   S.activeChatId = chatId;
+  syncReadOnlyUi();
   const chat = S.chats.find(c => c.id === chatId);
   if (!chat) return;
   _awayNewCount = 0;
@@ -2460,8 +2461,22 @@ function clearTyping(chatId) {
   }
 }
 
+// Комната «только для чтения» (флаг распространяется на темы): вместо поля ввода — текст
+function isReadOnlyChat(chat) {
+  if (!chat) return false;
+  if (chat.read_only) return true;
+  if (chat.parent_id) return !!S.chats.find(c => c.id === chat.parent_id)?.read_only;
+  return false;
+}
+function syncReadOnlyUi() {
+  const ro = isReadOnlyChat(S.chats.find(c => c.id === S.activeChatId));
+  document.getElementById('ro-note')?.toggleAttribute('hidden', !ro);
+  document.getElementById('composer-card')?.toggleAttribute('hidden', ro);
+}
+
 async function sendMessage() {
   if (S.editingMessageId) { submitEdit(); return; }
+  if (isReadOnlyChat(S.chats.find(c => c.id === S.activeChatId))) return;
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
   if (!text && !_pendingAttachment && !S.forwardMsg) return;
@@ -2640,6 +2655,22 @@ function connectWS() {
       // с loadTopics() ниже могла стереть их из S.chats (см. её комментарий)
       refreshChats();
       if (S.activeRoomId) loadTopics(S.activeRoomId).then(renderTopicsList);
+    }
+    if (data.type === 'chat_updated') {
+      // Полный объект (закрепление) или только изменённые поля (переименование и режим «только чтение»)
+      const chatId = data.chat ? data.chat.id : data.chat_id;
+      if (data.chat) {
+        const idx = S.chats.findIndex(c => c.id === data.chat.id);
+        if (idx >= 0) S.chats[idx] = data.chat; else S.chats.push(data.chat);
+      } else {
+        const c = S.chats.find(x => x.id === chatId);
+        if (c) {
+          if (data.name !== undefined) c.name = data.name;
+          if (data.read_only !== undefined) c.read_only = data.read_only ? 1 : 0;
+        }
+      }
+      renderChats();
+      if (S.activeChatId === chatId) syncReadOnlyUi();
     }
     if (data.type === 'chat_read') {
       const c = S.chats.find(x => x.id === data.chat_id);
