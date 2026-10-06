@@ -16,7 +16,7 @@
 :root{
   --f-ui:'Inter',system-ui,sans-serif;
   --f-mono:'JetBrains Mono','Courier New',monospace;
-  --sidebar-w:215px;
+  --sidebar-w:232px;
 
   --c-bg:var(--dv-bg);
   --c-surface:var(--dv-surface);
@@ -72,6 +72,7 @@
   --t-slow:0.26s cubic-bezier(0.4,0,0.2,1);
   --topbar-h:48px;
 }
+html.sb-rail{--sidebar-w:68px}
 [data-theme="dark"]{
   --c-on-primary:#04211c;
   --shadow-md:0 4px 20px rgba(0,0,0,.55),0 1px 4px rgba(0,0,0,.3);
@@ -123,39 +124,122 @@ code,pre,.mono{font-family:var(--f-mono)}
 .btn-icon{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;color:var(--c-text2);background:var(--c-surface2);border:1px solid var(--c-border);border-radius:var(--radius-sm);cursor:pointer;transition:background var(--t-fast),color var(--t-fast)}.btn-icon:hover{background:var(--bg-hover);color:var(--c-text)}
 
 /* ── APP LAYOUT ── */
+/* Сайдбар во всю высоту слева; верхняя панель и страница сдвигаются на его ширину.
+   Ширина меняется классом sb-rail на <html> (свёрнутый вид). */
 #app{display:none;width:100%;height:100vh;overflow:hidden}
-.app-layout{position:fixed;top:var(--topbar-h);left:0;right:0;bottom:0;display:flex;overflow:hidden}
+.app-layout{position:fixed;top:var(--topbar-h);left:var(--sidebar-w);right:0;bottom:0;display:flex;overflow:hidden;transition:left .2s ease}
 
 /* ── TOPBAR ── */
-.topbar{position:fixed;top:0;left:0;right:0;height:var(--topbar-h);background:var(--c-bg);border-bottom:1px solid var(--c-border2);display:flex;align-items:center;justify-content:space-between;padding:0 14px;z-index:50;flex-shrink:0}
-.topbar-left,.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.topbar-logo{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--c-text)}
-.topbar-logo span{color:var(--c-primary)}
+.topbar{position:fixed;top:0;left:var(--sidebar-w);right:0;height:var(--topbar-h);background:var(--c-surface);border-bottom:1px solid var(--c-border2);display:flex;align-items:center;justify-content:flex-end;padding:0 14px;z-index:50;flex-shrink:0;transition:left .2s ease}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .topbar-center{position:absolute;left:50%;transform:translateX(-50%);pointer-events:none}
 .topbar-center span{font-size:12px;font-weight:700;color:var(--c-text);letter-spacing:.08em;text-transform:uppercase}
 
 /* ── SIDEBAR ── */
-.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--c-bg);border-right:1px solid var(--c-sb-border);display:flex;flex-direction:column;overflow:hidden;padding:10px 8px}
-.sb-user-name{font-size:12px;font-weight:600;color:var(--c-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sb-user-email{font-size:10px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-nav{flex:1;padding:4px 0;overflow-y:auto}
-.nav-section{font-size:10px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.07em;padding:0 8px;margin-bottom:4px;margin-top:8px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;color:var(--c-sb-item);font-size:12px;font-weight:500;border-radius:10px;border:1px solid transparent;margin-bottom:2px;transition:background var(--t-fast),color var(--t-fast),border-color var(--t-fast)}
-.nav-item:hover{background:var(--bg-hover);color:var(--c-text2)}
-.nav-item.active{background:var(--c-sb-act-bg);color:var(--c-sb-act);border-color:color-mix(in srgb,var(--c-primary) 25%,transparent)}
-.nav-item svg{flex-shrink:0;width:14px;height:14px;opacity:.75}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--c-surface);border-right:1px solid var(--c-sb-border);display:flex;flex-direction:column;z-index:51;transition:width .2s ease}
+.sb-top{display:flex;align-items:center;gap:8px;height:var(--topbar-h);padding:0 14px;flex-shrink:0}
+.sb-logo{flex:1;overflow:hidden;white-space:nowrap;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--c-text)}
+.sb-logo b{color:var(--c-primary);font-weight:800}
+.sb-col{width:28px;height:28px;border-radius:8px;border:1px solid var(--c-border);background:var(--c-surface2);color:var(--c-text2);cursor:pointer;display:grid;place-items:center;flex-shrink:0;transition:color var(--t-fast)}
+.sb-col:hover{color:var(--c-text)}
+.sb-col svg{width:14px;height:14px}
+.sb-jump{margin:0 12px 6px;display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border-radius:10px;border:1px solid var(--c-border);background:var(--c-surface2);color:var(--c-text2);font:500 12.5px var(--f-ui);cursor:pointer;text-align:left;flex-shrink:0;transition:border-color var(--t-fast),color var(--t-fast)}
+.sb-jump:hover{border-color:color-mix(in srgb,var(--c-primary) 45%,var(--c-border));color:var(--c-text)}
+.sb-jump svg{flex-shrink:0}
+.sb-jump span{flex:1;white-space:nowrap}
+.sb-jump kbd{font:600 10.5px var(--f-mono);border:1px solid var(--c-border);border-radius:5px;padding:0 5px}
+.sidebar nav{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px 10px 8px}
+.nav-section{font-size:10px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.08em;padding:0 8px;margin:12px 0 4px;white-space:nowrap}
+.sidebar nav .nav-section:first-child{margin-top:4px}
+.nav-item{position:relative;display:flex;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;color:var(--c-sb-item);font-size:12.5px;font-weight:500;border-radius:10px;border:1px solid transparent;margin-bottom:2px;white-space:nowrap;transition:background var(--t-fast),color var(--t-fast),border-color var(--t-fast)}
+.nav-item:hover{background:color-mix(in srgb,var(--c-primary) 7%,transparent);color:var(--c-text)}
+.nav-item.active{background:var(--c-sb-act-bg);color:var(--c-sb-act);border-color:color-mix(in srgb,var(--c-primary) 25%,transparent);font-weight:600}
+.nav-item svg{flex-shrink:0;width:16px;height:16px;opacity:.8}
 .nav-item.active svg{opacity:1}
-.nav-badge{margin-left:auto;font-size:10px;font-weight:700;background:var(--c-surface2);color:var(--c-muted);padding:1px 5px;border-radius:var(--radius-sm);min-width:18px;text-align:center;font-family:var(--f-mono)}
+.nav-badge{margin-left:auto;font-size:10px;font-weight:700;background:var(--c-surface2);color:var(--c-muted);padding:1px 6px;border-radius:6px;min-width:18px;text-align:center;font-family:var(--f-mono)}
 .nav-item.active .nav-badge{background:var(--c-primary-dim);color:var(--c-sb-act)}
+/* свёрнутый вид: только значки, счётчики превращаются в точки */
+html.sb-rail .sb-top{justify-content:center;padding:0}
+html.sb-rail .sb-logo{display:none}
+html.sb-rail .sb-jump{margin-inline:12px;padding:0;justify-content:center}
+html.sb-rail .sb-jump span,html.sb-rail .sb-jump kbd{display:none}
+html.sb-rail .nav-section{height:1px;background:var(--c-border);margin:8px 10px;padding:0;font-size:0}
+html.sb-rail .nav-item{justify-content:center;padding:10px 0}
+html.sb-rail .nav-item .lb{display:none}
+html.sb-rail .nav-badge{position:absolute;top:3px;right:9px;margin:0;font-size:0;width:8px;height:8px;min-width:0;padding:0;border-radius:50%;background:var(--dv-c4)}
+html.sb-rail .nav-badge.warn{background:var(--c-orange)}
 
 /* ── SIDEBAR BOTTOM ── */
-.sb-bottom{margin:0 -8px;padding:8px;border-top:1px solid var(--c-sb-border);display:flex;align-items:center;gap:6px}
-.sb-profile{flex:1;display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden}
-.sb-profile-info{flex:1;min-width:0}
-.sb-actions{display:flex;align-items:center;gap:2px;flex-shrink:0}
-.sb-action-btn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:var(--radius-sm);background:var(--c-surface2);border:1px solid var(--c-border);color:var(--c-text2);cursor:pointer;transition:background var(--t-fast),color var(--t-fast),border-color var(--t-fast);flex-shrink:0}
-.sb-action-btn:hover{background:var(--bg-hover);color:var(--c-text)}
-.sb-action-btn--danger:hover{background:var(--c-red-dim);color:var(--c-red-text);border-color:rgba(239,68,68,.30)}
+.sb-bottom{border-top:1px solid var(--c-sb-border);padding:10px;display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.sb-merow{display:flex;align-items:center;gap:6px}
+.sb-me{display:flex;align-items:center;gap:10px;flex:1;min-width:0;padding:6px 8px;border-radius:12px;border:1px solid transparent;background:none;color:var(--c-text);cursor:pointer;text-align:left;font-family:inherit}
+.sb-me:hover,.sb-me[aria-expanded="true"]{background:var(--c-surface2);border-color:var(--c-border)}
+.sb-av{position:relative;width:32px;height:32px;flex-shrink:0}
+.sb-av>div:first-child,.sb-av>.av{border-radius:10px}
+.sb-av i{position:absolute;right:-3px;bottom:-3px;width:10px;height:10px;border-radius:50%;background:var(--c-green);border:2px solid var(--c-surface)}
+.sb-tx{min-width:0;flex:1;display:flex;flex-direction:column;line-height:1.3}
+.sb-tx b{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-tx small{font-size:11px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-out{width:30px;height:30px;border-radius:9px;border:1px solid var(--c-border);background:var(--c-surface2);color:var(--c-text2);cursor:pointer;display:grid;place-items:center;flex-shrink:0;transition:color var(--t-fast),border-color var(--t-fast)}
+.sb-out:hover{color:var(--c-red-text);border-color:color-mix(in srgb,var(--c-red) 40%,var(--c-border))}
+html.sb-rail .sb-bottom{padding-inline:12px}
+html.sb-rail .sb-me{justify-content:center;padding:6px 0}
+html.sb-rail .sb-tx,html.sb-rail .sb-out{display:none}
+/* блок состояния сервера */
+.sb-srv{display:flex;flex-direction:column;gap:7px;padding:10px 11px;border-radius:12px;background:var(--c-surface2);border:1px solid var(--c-border);cursor:pointer;transition:border-color var(--t-fast)}
+.sb-srv:hover{border-color:color-mix(in srgb,var(--c-primary) 40%,var(--c-border))}
+.sb-srv.bad{border-color:color-mix(in srgb,var(--c-red) 45%,var(--c-border));background:color-mix(in srgb,var(--c-red) 8%,var(--c-surface2))}
+.sb-l1{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--c-text);white-space:nowrap}
+.sb-l1 .r{margin-left:auto;color:var(--c-muted);font-weight:500;font-size:11px}
+.sb-sd{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--c-green);box-shadow:0 0 0 3px color-mix(in srgb,var(--c-green) 22%,transparent)}
+.sb-sd.warn{background:var(--c-orange);box-shadow:0 0 0 3px color-mix(in srgb,var(--c-orange) 22%,transparent)}
+.sb-sd.bad{background:var(--c-red);box-shadow:0 0 0 3px color-mix(in srgb,var(--c-red) 22%,transparent)}
+.sb-l2{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--c-muted)}
+.sb-l2 .end{margin-left:auto}
+.sb-pill{font:700 10.5px var(--f-mono);padding:2px 7px;border-radius:6px;background:var(--c-surface);border:1px solid var(--c-border);color:var(--c-text)}
+.sb-pill.ok{color:var(--c-green);border-color:color-mix(in srgb,var(--c-green) 35%,var(--c-border));background:color-mix(in srgb,var(--c-green) 12%,var(--c-surface))}
+button.sb-pill.up{background:color-mix(in srgb,var(--c-orange) 18%,transparent);border-color:color-mix(in srgb,var(--c-orange) 40%,transparent);color:var(--c-orange);cursor:pointer}
+button.sb-pill.up:hover{background:color-mix(in srgb,var(--c-orange) 28%,transparent)}
+.sb-bar2{flex:1;height:5px;border-radius:3px;background:var(--c-surface);overflow:hidden}
+.sb-bar2 i{display:block;height:100%;background:var(--c-orange);transition:width .3s}
+.sb-bad{color:var(--c-red-text);font-weight:600}
+.sb-spn{display:inline-block;flex-shrink:0;width:10px;height:10px;border:2px solid color-mix(in srgb,var(--c-orange) 35%,transparent);border-top-color:var(--c-orange);border-radius:50%;animation:sbspin .8s linear infinite}
+@keyframes sbspin{to{transform:rotate(360deg)}}
+.sb-srvb{display:none}
+html.sb-rail .sb-srv{display:none}
+html.sb-rail .sb-srvb{display:grid;place-items:center;width:40px;height:34px;margin:0 auto;border-radius:10px;border:1px solid var(--c-border);background:var(--c-surface2);cursor:pointer;position:relative}
+.sb-srvb:hover{border-color:color-mix(in srgb,var(--c-primary) 45%,var(--c-border))}
+.sb-srvb .ar{position:absolute;top:-5px;right:-4px;width:15px;height:15px;border-radius:50%;background:var(--c-orange);color:#1a1100;font-size:10px;font-weight:800;display:grid;place-items:center;line-height:1}
+/* меню профиля: поверх всего, поэтому fixed — иначе его обрежет сайдбар */
+.sb-menu{position:fixed;width:224px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:14px;box-shadow:0 16px 44px rgba(0,0,0,.35);padding:8px;z-index:60;animation:sbup .14s ease}
+.sb-menu[hidden]{display:none}
+@keyframes sbup{from{transform:translateY(6px);opacity:0}to{transform:none;opacity:1}}
+.sb-who{display:flex;align-items:center;gap:10px;padding:6px 8px 10px;border-bottom:1px solid var(--c-border);margin-bottom:6px}
+.sb-who b{display:block;font-size:13px}
+.sb-who small{color:var(--c-muted);font-size:11.5px}
+.sb-th{display:flex;gap:2px;padding:3px;background:var(--c-surface2);border:1px solid var(--c-border);border-radius:10px;margin:2px 2px 6px}
+.sb-th button{flex:1;border:0;background:none;color:var(--c-text2);font:600 12px var(--f-ui);padding:6px;border-radius:7px;cursor:pointer}
+.sb-th button[aria-pressed="true"]{background:var(--c-primary-dim);color:var(--c-primary)}
+.sb-mi{display:flex;align-items:center;gap:10px;width:100%;white-space:nowrap;padding:8px 9px;border:0;background:none;color:var(--c-text);font:600 12.5px var(--f-ui);border-radius:9px;cursor:pointer;text-align:left}
+.sb-mi:hover{background:var(--c-surface2)}
+.sb-mi svg{width:15px;height:15px;color:var(--c-text2);flex-shrink:0}
+.sb-mi.bad,.sb-mi.bad svg{color:var(--c-red-text)}
+.sb-mi small{margin-left:auto;font:500 11px var(--f-mono);color:var(--c-muted)}
+/* подсказка свёрнутой панели */
+.sb-tip{position:fixed;z-index:70;transform:translateY(-50%);background:var(--c-text);color:var(--c-bg);font-size:12px;font-weight:600;padding:5px 9px;border-radius:8px;white-space:nowrap;pointer-events:none;box-shadow:var(--shadow-md)}
+/* быстрый переход */
+.sb-pal-bg{position:fixed;inset:0;background:rgba(5,10,16,.55);backdrop-filter:blur(2px);z-index:300;display:grid;place-items:start center;padding-top:14vh}
+.sb-pal{width:min(520px,92vw);background:var(--c-surface);border:1px solid var(--c-border);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.5);overflow:hidden;animation:sbup .14s ease;user-select:text}
+.sb-pal input{width:100%;height:50px;border:0;border-bottom:1px solid var(--c-border);background:none;color:var(--c-text);font:15px var(--f-ui);padding:0 18px;outline:0;border-radius:0}
+.sb-pal input:focus{box-shadow:none;border-color:var(--c-border)}
+.sb-pl{max-height:380px;overflow-y:auto;padding:6px}
+.sb-pg{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c-muted);padding:10px 10px 4px}
+.sb-pi{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:0;background:none;color:var(--c-text);font:600 13px var(--f-ui);border-radius:9px;cursor:pointer;text-align:left}
+.sb-pi[aria-selected="true"]{background:var(--c-primary-dim)}
+.sb-pi svg{width:15px;height:15px;color:var(--c-primary);flex-shrink:0}
+.sb-pi small{margin-left:auto;color:var(--c-muted);font-weight:500;font-size:11.5px}
+.sb-pe{padding:24px;text-align:center;color:var(--c-muted)}
+@media (prefers-reduced-motion:reduce){.sidebar,.topbar,.app-layout{transition:none}}
 
 /* ── PAGE BODY ── */
 .page-body{flex:1;overflow-y:auto;padding:20px 24px 24px}
@@ -1422,16 +1506,10 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 <div id="app">
   <!-- TOPBAR -->
   <div class="topbar">
-    <div class="topbar-left">
-      <div class="topbar-logo">ELECTRON <span>Dashboard</span></div>
-    </div>
     <div class="topbar-center">
       <span id="page-title">Главная</span>
     </div>
     <div class="topbar-right" id="topbar-actions">
-      <button class="btn-icon" id="theme-btn" onclick="toggleTheme()" title="Сменить тему">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" id="theme-icon"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-      </button>
       <div id="topbar-extra" style="display:none;align-items:center;gap:8px"></div>
       <button class="btn btn-primary btn-sm hidden" id="topbar-add-btn" onclick="">
         <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1440,89 +1518,95 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
     </div>
   </div>
 
-  <!-- APP LAYOUT -->
-  <div class="app-layout">
-    <aside class="sidebar">
-      <nav>
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-top">
+      <div class="sb-logo">ELECTRON <b>DASHBOARD</b></div>
+      <button type="button" class="sb-col" id="sb-col" onclick="sbToggleRail()"></button>
+    </div>
+    <button type="button" class="sb-jump" onclick="sbPalOpen()" data-tip="Быстрый переход · Ctrl K">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <span>Перейти…</span><kbd>Ctrl K</kbd>
+    </button>
+    <nav>
         <div class="nav-section">Обзор</div>
         <div class="nav-item active" onclick="nav('dashboard')" data-page="dashboard">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-          Главная
+          <span class="lb">Главная</span>
         </div>
         <div class="nav-section">Управление</div>
         <div class="nav-item" onclick="nav('users')" data-page="users">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.85"/></svg>
-          Пользователи
+          <span class="lb">Пользователи</span>
           <span class="nav-badge" id="nb-users">—</span>
         </div>
         <div class="nav-item" onclick="nav('clients')" data-page="clients">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          Клиенты
+          <span class="lb">Клиенты</span>
           <span class="nav-badge" id="nb-clients">—</span>
         </div>
         <div class="nav-item" onclick="nav('rooms')" data-page="rooms">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          Комнаты
+          <span class="lb">Комнаты</span>
           <span class="nav-badge" id="nb-rooms">—</span>
         </div>
         <div class="nav-item" onclick="nav('chats')" data-page="chats">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          Чаты и группы
+          <span class="lb">Чаты и группы</span>
           <span class="nav-badge" id="nb-chats">—</span>
         </div>
         <div class="nav-item" onclick="nav('files')" data-page="files">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-          Файлы
+          <span class="lb">Файлы</span>
           <span class="nav-badge" id="nb-files">—</span>
         </div>
         <div class="nav-item" onclick="nav('announcements')" data-page="announcements">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M17 8a5 5 0 0 1 0 8"/></svg>
-          Объявления
+          <span class="lb">Объявления</span>
           <span class="nav-badge" id="nb-announcements">—</span>
         </div>
         <div class="nav-item" onclick="nav('push')" data-page="push">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          Уведомления
+          <span class="lb">Уведомления</span>
           <span class="nav-badge" id="nb-push">—</span>
         </div>
         <div class="nav-item" onclick="nav('webhooks')" data-page="webhooks">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          Вебхуки
+          <span class="lb">Вебхуки</span>
           <span class="nav-badge" id="nb-webhooks">—</span>
         </div>
         <div class="nav-item" onclick="nav('releases')" data-page="releases">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg>
-          Релизы
+          <span class="lb">Релизы</span>
         </div>
         <div class="nav-item" onclick="nav('audit')" data-page="audit">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          Аудит-лог
+          <span class="lb">Аудит-лог</span>
         </div>
         <div class="nav-section">Система</div>
         <div class="nav-item" onclick="nav('settings')" data-page="settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          Настройки
+          <span class="lb">Настройки</span>
           <span class="nav-badge warn" id="nb-settings" style="display:none"></span>
         </div>
-      </nav>
-      <div class="sb-bottom">
-        <div class="sb-profile">
-          <div class="sb-profile-info">
-            <div class="sb-user-name" id="sb-name">Admin</div>
-            <div class="sb-user-email" id="sb-email">admin</div>
-          </div>
-        </div>
-        <div class="sb-actions">
-          <button class="sb-action-btn" onclick="nav('settings')" title="Настройки">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          </button>
-          <button class="sb-action-btn sb-action-btn--danger" onclick="logout()" title="Выйти">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          </button>
-        </div>
+    </nav>
+    <div class="sb-bottom">
+      <div id="sb-srv-wrap"></div>
+      <div class="sb-merow">
+        <button type="button" class="sb-me" id="sb-me" onclick="sbMenuToggle(event)" aria-haspopup="menu" aria-expanded="false">
+          <span class="sb-av" id="sb-av"></span>
+          <span class="sb-tx"><b id="sb-name">Admin</b><small id="sb-email">admin</small></span>
+        </button>
+        <button type="button" class="sb-out" onclick="logout()" title="Выйти" aria-label="Выйти">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
       </div>
-    </aside>
+    </div>
+    <div class="sb-menu" id="sb-menu" role="menu" hidden></div>
+  </aside>
 
+  <!-- APP LAYOUT -->
+  <div class="app-layout">
     <div class="page-body" id="page-body"></div>
   </div>
 </div>
@@ -1840,10 +1924,9 @@ function toast(msg, type='') {
 document.getElementById('l-pass').addEventListener('keydown', e => e.key==='Enter' && doLogin());
 
 function enterApp(user) {
-  document.getElementById('sb-name').textContent = user.display_name;
-  document.getElementById('sb-email').textContent = user.username ? '@'+user.username : '';
   document.getElementById('login').style.display = 'none';
   document.getElementById('app').style.display = 'block';
+  sbInit(user);
   startBgClientsPolling();
   startBgDashPolling();
   startBgListsPolling();
@@ -2030,6 +2113,257 @@ function logout() {
     token=null;
   }
 })();
+
+/* ── САЙДБАР ── */
+// Свёрнутый вид (rail), блок состояния сервера над профилем, меню профиля (тема, 2FA, выход)
+// и быстрый переход по Ctrl K. Данные те же, что у главной: сводка /api/admin/overview и
+// проверка версии /api/admin/server/version. Состояние: идёт обновление, проблема
+// (диск от 90% или служба не активна), доступна новая версия, всё в порядке.
+const SB = { rail: false, menu: false, upd: null, totp: null, attn: 0, timers: [], pal: { q: '', sel: 0, items: [] } };
+try { SB.rail = localStorage.getItem('admin-sb-rail') === '1'; } catch {}
+document.documentElement.classList.toggle('sb-rail', SB.rail);
+const sbSvg = (p, n = 15) => `<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const SB_I = {
+  collapse: sbSvg('<path d="M15 6l-6 6 6 6"/>', 14), expand: sbSvg('<path d="M9 6l6 6-6 6"/>', 14),
+  out: sbSvg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>'),
+  key: sbSvg('<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/>'),
+  go: sbSvg('<path d="M9 6l6 6-6 6"/>'), plus: sbSvg('<path d="M12 5v14M5 12h14"/>'),
+};
+const sbUptime = sec => { const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60); return d ? `${d} дн` : h ? `${h} ч` : `${Math.max(m, 1)} мин`; };
+
+function sbInit(u) {
+  document.getElementById('sb-name').textContent = u.display_name;
+  document.getElementById('sb-email').textContent = u.username ? '@' + u.username : '';
+  document.getElementById('sb-av').innerHTML = avHtml(u.display_name, 32, 10, u.id, false, true) + '<i></i>';
+  document.getElementById('sb-me').dataset.tip = u.display_name;
+  const mac = /Mac|iPhone|iPad/.test(navigator.platform), kbd = document.querySelector('.sb-jump kbd');
+  if (kbd) kbd.textContent = mac ? '⌘ K' : 'Ctrl K';
+  document.querySelector('.sb-jump').dataset.tip = 'Быстрый переход · ' + (mac ? '⌘ K' : 'Ctrl K');
+  sbRailBtn();
+  sbRender();
+  SB.timers.forEach(clearInterval);
+  SB.timers = [
+    setInterval(() => { if (token && currentPage !== 'dashboard') sbLoad(); }, 15000),   // на главной сводку обновляет она сама
+    setInterval(() => { if (token) sbAttn(); }, 60000),
+    setInterval(() => { if (token) sbCheckUpdate(); }, 30 * 60000),
+  ];
+  sbLoad(); sbAttn();
+  setTimeout(sbCheckUpdate, 2500);
+}
+
+function sbRailBtn() {
+  const b = document.getElementById('sb-col');
+  if (!b) return;
+  const t = SB.rail ? 'Развернуть панель' : 'Свернуть панель';
+  b.innerHTML = SB.rail ? SB_I.expand : SB_I.collapse;
+  b.title = t; b.setAttribute('aria-label', t);
+}
+function sbToggleRail() {
+  SB.rail = !SB.rail;
+  try { localStorage.setItem('admin-sb-rail', SB.rail ? '1' : '0'); } catch {}
+  document.documentElement.classList.toggle('sb-rail', SB.rail);
+  sbMenuClose(); sbTipHide(); sbRailBtn(); sbRender();
+}
+
+async function sbLoad() {
+  if (!token || HM.upd.busy) return;
+  const o = await hmGet('/api/admin/overview');
+  if (o) HM.overview = o;
+  sbRender();
+}
+async function sbCheckUpdate() {
+  if (!token || HM.upd.busy) return;
+  const v = await hmGet('/api/admin/server/version');
+  if (v?.latest) { SB.upd = v; sbRender(); }
+}
+// Счётчик у «Настроек»: что требует внимания (токен GitHub, давние копии)
+async function sbAttn() {
+  const [s, b] = await Promise.all([hmGet('/api/admin/settings'), hmGet('/api/admin/backups')]);
+  if (!s || s.error) return;
+  const last = Array.isArray(b) && b.length ? Math.max(...b.map(x => x.created_at)) : 0;
+  SB.attn = (s.github_token_set ? 0 : 1) + (!last || Date.now() / 1000 - last > 7 * 86400 ? 1 : 0);
+  sbBadges();
+}
+function sbBadges() {
+  const nb = document.getElementById('nb-settings');
+  if (!nb) return;
+  nb.textContent = SB.attn;
+  nb.style.display = SB.attn ? '' : 'none';
+}
+
+// Что показать в блоке: идёт обновление › проблема › есть новая версия › всё хорошо
+function sbSrvInfo() {
+  const o = HM.overview, u = HM.upd, up = SB.upd, svc = o?.service, disk = o?.storage?.disk;
+  const ver = o?.version || up?.current || '';
+  const dp = disk ? Math.round((disk.total - disk.free) / disk.total * 100) : 0;
+  const online = o?.online ? o.online.length : null;
+  const onl = online == null ? '' : `<span class="end">${online} в сети</span>`;
+  const run = o ? sbUptime(o.uptime) : '';
+  if (u.busy) {
+    const pct = u.pct || 0;
+    return { st: 'installing', cls: '', dot: 'warn', t: `<span class="sb-spn"></span>Обновляется до ${esc(u.target || '')}…`, r: pct + '%', l2: `<div class="sb-bar2"><i style="width:${pct}%"></i></div>`, tip: `Идёт обновление до ${u.target || ''}: ${pct}%` };
+  }
+  const bad = svc && svc.state && svc.state !== 'active' ? `Служба: ${esc(svc.state)}` : dp >= 90 ? `Диск занят на ${dp}%` : '';
+  if (bad) return { st: 'problem', cls: 'bad', dot: 'bad', t: 'Нужно внимание', r: '', l2: `<span class="sb-pill">${esc(ver)}</span><span class="sb-bad">${bad}</span>`, tip: 'Нужно внимание: ' + bad.replace(/&[a-z]+;/g, '') };
+  const name = 'Сервер работает';
+  if (up?.hasUpdate) return { st: 'available', cls: '', dot: '', t: name, r: run, l2: `<span class="sb-pill">${esc(ver)}</span><button type="button" class="sb-pill up" onclick="sbUpdClick(event)" title="Показать обновление на главной">↑ ${esc(up.latest)}</button>${onl}`, tip: `Сервер работает${run ? ' ' + run : ''} · ${ver} · доступна ${up.latest}${online != null ? ` · ${online} в сети` : ''}`, ar: true };
+  const fresh = up && up.hasUpdate === false;
+  return { st: 'latest', cls: '', dot: '', t: name, r: run, l2: `<span class="sb-pill ${fresh ? 'ok' : ''}" ${fresh ? 'title="Установлена последняя версия"' : ''}>${esc(ver)}${fresh ? ' ✓' : ''}</span>${onl}`, tip: `Сервер работает${run ? ' ' + run : ''} · ${ver}${fresh ? ' (последняя)' : ''}${online != null ? ` · ${online} в сети` : ''}` };
+}
+function sbRender() {
+  const w = document.getElementById('sb-srv-wrap');
+  if (!w) return;
+  const i = sbSrvInfo(), act = i.st === 'available' ? 'sbUpdClick(event)' : 'sbGoHome()';
+  const html = `<div class="sb-srv ${i.cls}" onclick="sbGoHome()"><div class="sb-l1">${i.st === 'installing' ? '' : `<i class="sb-sd ${i.dot}"></i>`}${i.t}<span class="r">${i.r}</span></div><div class="sb-l2">${i.l2}</div></div>`
+    + `<button type="button" class="sb-srvb" onclick="${act}" data-tip="${esc(i.tip)}" aria-label="${esc(i.tip)}">${i.st === 'installing' ? '<span class="sb-spn"></span>' : `<i class="sb-sd ${i.dot}"></i>`}${i.ar ? '<span class="ar">↑</span>' : ''}</button>`;
+  if (w._h !== html) { w._h = html; w.innerHTML = html; }
+  sbBadges();
+}
+function sbGoHome() { if (currentPage !== 'dashboard') nav('dashboard'); }
+// «↑ версия»: открываем главную сразу с предложением обновиться (там шаги и установка)
+function sbUpdClick(e) {
+  e?.stopPropagation();
+  if (!SB.upd?.hasUpdate || HM.upd.busy) return sbGoHome();
+  HM.upd.check = SB.upd;
+  HM.upd.checkedAt = HM.upd.checkedAt || Date.now();
+  if (currentPage === 'dashboard') hmUpdIdle(); else nav('dashboard');
+}
+
+/* меню профиля */
+function sbMenuToggle(e) { e?.stopPropagation(); SB.menu ? sbMenuClose() : sbMenuOpen(); }
+function sbMenuOpen() {
+  SB.menu = true; sbTipHide();
+  document.getElementById('sb-me').setAttribute('aria-expanded', 'true');
+  const m = document.getElementById('sb-menu');
+  m.hidden = false;
+  sbMenuRender(); sbMenuPos();
+  hmGet('/api/admin/users').then(us => {
+    const me = Array.isArray(us) && us.find(x => x.id === currentUser?.id);
+    if (me) { SB.totp = me; if (SB.menu) sbMenuRender(); }
+  });
+}
+function sbMenuClose() {
+  if (!SB.menu) return;
+  SB.menu = false;
+  document.getElementById('sb-menu').hidden = true;
+  document.getElementById('sb-me').setAttribute('aria-expanded', 'false');
+}
+function sbMenuPos() {
+  const m = document.getElementById('sb-menu'), r = document.querySelector('.sb-bottom').getBoundingClientRect();
+  m.style.width = '244px';
+  if (SB.rail) { m.style.left = (r.right + 6) + 'px'; m.style.bottom = (innerHeight - r.bottom + 8) + 'px'; }
+  else { m.style.left = (r.left + 10) + 'px'; m.style.bottom = (innerHeight - r.top - 6) + 'px'; }
+}
+function sbMenuRender() {
+  const u = currentUser || {}, dark = document.documentElement.dataset.theme !== 'light', t = SB.totp;
+  const st = !t ? '' : t.totp_required ? (t.totp_configured ? 'вкл' : 'ждёт настройки') : 'выкл';
+  document.getElementById('sb-menu').innerHTML = `<div class="sb-who"><span class="sb-av">${avHtml(u.display_name || '?', 32, 10, u.id, false, true)}<i></i></span><div><b>${esc(u.display_name || '')}</b><small>${u.username ? '@' + esc(u.username) + ' · ' : ''}в сети</small></div></div>
+    <div class="sb-th" role="group" aria-label="Тема"><button type="button" onclick="sbTheme('dark')" aria-pressed="${dark}">Тёмная</button><button type="button" onclick="sbTheme('light')" aria-pressed="${!dark}">Светлая</button></div>
+    <button type="button" class="sb-mi" role="menuitem" onclick="sb2fa()">${SB_I.key}Двухфакторная защита<small>${st}</small></button>
+    <button type="button" class="sb-mi bad" role="menuitem" onclick="logout()">${SB_I.out}Выйти</button>`;
+}
+function sbTheme(t) {
+  try { localStorage.setItem(THEME_KEY, t); } catch {}
+  animateThemeSwitch();
+  applyTheme(t);
+  sbMenuRender();
+}
+// 2FA настраивается в окне пользователя (переключатель «требовать») — открываем своё
+async function sb2fa() {
+  sbMenuClose();
+  const us = await api('GET', '/api/admin/users');
+  if (Array.isArray(us)) allUsers = us;
+  if (currentUser?.id) openEditUser(currentUser.id);
+}
+
+/* подсказки свёрнутой панели: fixed, иначе их обрежет сайдбар */
+function sbTipHide() { document.getElementById('sb-tip')?.remove(); }
+function sbTipShow(el, text) {
+  if (!text) return sbTipHide();
+  let t = document.getElementById('sb-tip');
+  if (!t) { t = document.createElement('div'); t.id = 'sb-tip'; t.className = 'sb-tip'; document.body.appendChild(t); }
+  t.textContent = text;
+  const r = el.getBoundingClientRect();
+  t.style.left = (r.right + 8) + 'px'; t.style.top = (r.top + r.height / 2) + 'px';
+}
+document.addEventListener('mouseover', e => {
+  if (!SB.rail || SB.menu) return sbTipHide();
+  const el = e.target.closest?.('.sidebar .nav-item, .sidebar [data-tip]');
+  if (!el) return sbTipHide();
+  let text = el.dataset.tip || '';
+  if (el.classList.contains('nav-item')) {
+    const b = el.querySelector('.nav-badge'), n = b && b.style.display !== 'none' ? b.textContent.trim() : '';
+    text = el.querySelector('.lb').textContent + (n && n !== '—' ? ' · ' + n : '');
+  }
+  sbTipShow(el, text);
+});
+document.addEventListener('mouseout', e => { if (!e.relatedTarget?.closest?.('.sidebar')) sbTipHide(); });
+document.addEventListener('click', e => { if (SB.menu && !e.target.closest('#sb-menu, #sb-me')) sbMenuClose(); });
+
+/* быстрый переход */
+const SB_SETS = [['messages', 'Сообщения'], ['attachments', 'Вложения'], ['backups', 'Резервные копии'], ['github', 'GitHub'], ['history', 'История']];
+async function sbCheckFromPal() {
+  sbGoHome();
+  for (let i = 0; i < 50 && !document.getElementById('hm-upd-panel'); i++) await new Promise(r => setTimeout(r, 100));
+  hmUpdCheck();
+}
+function sbPalGroups() {
+  const q = SB.pal.q.trim().toLowerCase(), stem = q.slice(0, Math.max(3, q.length - 1));
+  const to = k => () => nav(k), act = (k, fn) => () => { nav(k); fn(); };
+  return [
+    ['Страницы', Object.keys(pageTitles).map(k => ({ t: pageTitles[k], go: to(k) }))],
+    ['Разделы настроек', SB_SETS.map(([k, n]) => ({ t: 'Настройки → ' + n, go: () => openSettingsModal(k) }))],
+    ['Действия', [
+      { t: 'Создать пользователя', h: 'Пользователи', go: act('users', openCreateUser) },
+      { t: 'Создать комнату', h: 'Комнаты', go: act('rooms', openCreateRoom) },
+      { t: 'Новое объявление', h: 'Объявления', go: act('announcements', openAnnouncementModal) },
+      { t: 'Создать вебхук', h: 'Вебхуки', go: act('webhooks', whOpen) },
+      { t: 'Создать резервную копию', h: 'Настройки', go: () => openSettingsModal('backups') },
+      { t: 'Проверить обновления', h: 'Главная', go: sbCheckFromPal },
+    ]],
+  ].map(([g, l]) => [g, l.filter(x => !q || x.t.toLowerCase().includes(stem))]).filter(x => x[1].length);
+}
+function sbPalList() {
+  const groups = sbPalGroups();
+  SB.pal.items = groups.flatMap(g => g[1]);
+  SB.pal.sel = Math.min(SB.pal.sel, Math.max(0, SB.pal.items.length - 1));
+  let i = 0;
+  document.getElementById('sb-pl').innerHTML = groups.map(([g, l]) => `<div class="sb-pg">${g}</div>${l.map(x => { const n = i++; return `<button type="button" class="sb-pi" aria-selected="${n === SB.pal.sel}" onmousemove="sbPalSel(${n})" onclick="sbPalPick(${n})">${g === 'Действия' ? SB_I.plus : SB_I.go}${esc(x.t)}${x.h ? `<small>${esc(x.h)}</small>` : ''}</button>`; }).join('')}`).join('') || '<div class="sb-pe">Ничего не нашли</div>';
+}
+function sbPalOpen() {
+  if (document.getElementById('sb-pal')) return;
+  sbMenuClose(); sbTipHide();
+  SB.pal = { q: '', sel: 0, items: [] };
+  const d = document.createElement('div');
+  d.id = 'sb-pal'; d.className = 'sb-pal-bg';
+  d.innerHTML = `<div class="sb-pal" role="dialog" aria-label="Быстрый переход"><input id="sb-pq" placeholder="Куда перейти или что сделать?" autocomplete="off" spellcheck="false"><div class="sb-pl" id="sb-pl"></div></div>`;
+  d.addEventListener('mousedown', e => { if (e.target === d) sbPalClose(); });
+  document.body.appendChild(d);
+  const inp = document.getElementById('sb-pq');
+  inp.addEventListener('input', () => { SB.pal.q = inp.value; SB.pal.sel = 0; sbPalList(); });
+  inp.addEventListener('keydown', e => {
+    const n = SB.pal.items.length;
+    if (e.key === 'Escape') { e.preventDefault(); sbPalClose(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); sbPalSel(Math.min(n - 1, SB.pal.sel + 1), true); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); sbPalSel(Math.max(0, SB.pal.sel - 1), true); }
+    else if (e.key === 'Enter') { e.preventDefault(); sbPalPick(SB.pal.sel); }
+  });
+  sbPalList();
+  inp.focus();
+}
+function sbPalSel(n, scroll) {
+  SB.pal.sel = n;
+  document.querySelectorAll('#sb-pl .sb-pi').forEach((b, i) => { b.setAttribute('aria-selected', String(i === n)); if (scroll && i === n) b.scrollIntoView({ block: 'nearest' }); });
+}
+function sbPalClose() { document.getElementById('sb-pal')?.remove(); }
+function sbPalPick(n) { const it = SB.pal.items[n]; sbPalClose(); if (it) it.go(); }
+document.addEventListener('keydown', e => {
+  if (document.getElementById('app')?.style.display !== 'block') return;
+  if (e.code === 'KeyK' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) { e.preventDefault(); sbPalOpen(); return; }
+  if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && !e.target.isContentEditable && !document.querySelector('.modal-bg.open')) { e.preventDefault(); sbPalOpen(); return; }
+  if (e.key === 'Escape' && SB.menu) sbMenuClose();
+});
+window.addEventListener('resize', () => { if (SB.menu) sbMenuPos(); });
 
 /* ── NAV ── */
 const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',files:'Файлы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки',announcements:'Объявления',releases:'Релизы',audit:'Аудит-лог',settings:'Настройки'};
@@ -2463,6 +2797,7 @@ function hmRenderOverview() {
 
   hmRenderChron();
   hmRenderHeadlines();
+  sbRender();
 }
 
 // ── Сообщения за период: подсказка при наведении, касании и стрелками ──
@@ -2729,6 +3064,7 @@ async function hmUpdCheck() {
   if (!$hm('hm') || HM.upd.busy) return;
   HM.upd.check = v;
   HM.upd.checkedAt = Date.now();
+  if (v?.latest) { SB.upd = v; sbRender(); }
   if (!v?.latest) {
     hmUpdBtn('Проверить обновления', false);
     return hmUpdShow(`<div class="dv-upd-row"><span class="hm-pill warn">Не удалось проверить</span><span class="dv-sub dv-upd-sub">GitHub не ответил, попробуйте ещё раз</span><button class="btn" onclick="hmUpdDismiss()">Закрыть</button></div>`);
@@ -2820,6 +3156,8 @@ function hmUpdRenderSteps() {
       <div class="dv-steps" id="hm-inst-steps">${stepsHtml}</div><div class="dv-sub" id="hm-inst-note" style="margin-top:8px"${note ? '' : ' hidden'}>${note}</div>`);
     p._h = 'inst:' + u.target;
   }
+  u.pct = pct;
+  sbRender();
   hmText('hm-inst-pct', pct + '%');
   const bar = $hm('hm-inst-bar');
   if (bar) bar.style.width = pct + '%';
@@ -2844,6 +3182,8 @@ function hmUpdFinish(ok, message) {
   u.done = ok;
   u.check = ok ? { current: u.target, latest: u.target, hasUpdate: false } : null;
   u.checkedAt = Date.now();
+  if (ok) SB.upd = u.check;
+  sbLoad();
   hmUpdBtn(ok ? 'Проверить ещё раз' : 'Проверить обновления', false);
   if (ok) {
     hmUpdShow(`<div class="dv-upd-row"><span class="hm-pill ok">Обновление завершено</span><span class="dv-sub dv-upd-sub">${esc(message || `Сервер работает на версии ${u.target}, служба перезапущена`)}</span><button class="btn" onclick="hmUpdDismiss()">Закрыть</button></div>`);
@@ -5120,7 +5460,8 @@ function restartService() {
 /* ── НАСТРОЙКИ: страница ── */
 // Раздел «Настройки»: разделы раскрываются по клику, правка применяется сразу и отменяется кнопкой
 // в уведомлении. Опасное (удаление файлов и копий) просит подтверждения в самой строке. Логика
-// копий, токена и обновления — та же, что у прежнего окна (ST, stBackup, stGhSave, stCheck, stInstall).
+// копий и токена — та же, что у прежнего окна (ST, stBackup, stGhSave). Обновление сервера
+// здесь не настраивается: статус и кнопка «↑ версия» живут в сайдбаре, установка — на главной.
 
 const SP = { open: new Set(['attachments']), q: '', files: [], audit: [], online: 0, pend: null, loaded: false, editCustom: false, editUnit: 60, lifeCustom: false, showBk: false, showLog: false };
 const SP_KEYS = { messages: ['edit'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime', 'backupRetention'] };
@@ -5163,8 +5504,6 @@ async function renderSettings() {
   SP.files = Array.isArray(files) ? files : [];
   if (Array.isArray(users)) { allUsersCache = users; SP.online = users.filter(u => u.status === 'online' && !u.banned).length; }
   SP.audit = Array.isArray(audit) ? audit.filter(a => a.category === 'server') : [];
-  if (typeof HM !== 'undefined' && HM.upd?.check?.latest) ST.upd = { state: HM.upd.check.hasUpdate ? 'available' : 'latest', v: HM.upd.check };
-  else if (ST.upd.state !== 'checking') setTimeout(() => { if (currentPage === 'settings') stCheck(); }, 0);
   SP.loaded = true; SP.pend = null;
   if (ST.goSec) { SP.open.add(ST.goSec); }
   spRender();
@@ -5257,8 +5596,8 @@ function spExpand(all) { if (all) SP_ORDER.forEach(k => SP.open.add(k)); else SP
 function spSearch(v) { SP.q = v; spRender('sp-q'); }
 
 // ── Разметка ──
-const SP_ORDER = ['messages', 'attachments', 'backups', 'github', 'update', 'history'];
-const spAttn = k => k === 'github' ? !ST.gh.set : k === 'update' ? ST.upd.state === 'available' : k === 'backups' ? stBackupOld() : false;
+const SP_ORDER = ['messages', 'attachments', 'backups', 'github', 'history'];
+const spAttn = k => k === 'github' ? !ST.gh.set : k === 'backups' ? stBackupOld() : false;
 const spRow = (title, desc, ctl, extra = '', cls = '', kw = '') => spHit(title, desc, kw) ? `<div class="sp-r ${cls}"><div class="sp-l"><b>${title}</b>${desc ? `<span>${desc}</span>` : ''}${extra}</div><div class="sp-c">${ctl}</div></div>` : '';
 const spStepH = k => `<div class="sp-step"><button type="button" aria-label="Меньше" onclick="spStep('${k}', -1)">−</button><input id="sp-n-${k}" type="number" min="1" max="500" value="${spSv(k)}" aria-label="Размер в мегабайтах" oninput="spNum('${k}', this.value)"><button type="button" aria-label="Больше" onclick="spStep('${k}', 1)">+</button><span class="u">МБ</span></div>`;
 const spTokH = (k, any) => `<div class="sp-tok">${spSv(k).map(x => `<span class="sp-tk">${esc(x)}<button type="button" aria-label="Убрать ${esc(x)}" onclick="spTokDel('${k}', '${esc(x)}')">×</button></span>`).join('')}${!spSv(k).length && any ? `<span class="any">${any}</span>` : ''}<input id="sp-tok-${k}" placeholder="${spSv(k).length ? 'ещё…' : 'например, pdf'}" aria-label="Добавить формат" autocomplete="off" spellcheck="false" onkeydown="spTokKey(event, '${k}')" oninput="if(/[,;\\s]/.test(this.value))spTokAdd('${k}', this.value)"></div>`;
@@ -5308,24 +5647,12 @@ function spGithub() {
     `<span class="sp-stat ${g.set ? 'ok' : 'warn'}">${g.set ? 'задан' : 'не задан'}</span><div class="sp-inp ${g.err ? 'bad' : ''}" style="${g.err ? 'border-color:var(--c-red)' : ''}"><input id="st-gh" type="${g.show ? 'text' : 'password'}" placeholder="${g.set ? '•••••••• (задан)' : 'ghp_…'}" style="width:170px;font-weight:500" autocomplete="off" onkeydown="if(event.key==='Enter')stGhSave()"><button type="button" class="btn btn-ghost btn-sm" style="border:0;background:none;padding:4px 6px" aria-label="${g.show ? 'Скрыть токен' : 'Показать токен'}" onclick="stGhShow()">${g.show ? ST_I.eyeOff : ST_I.eye}</button></div><button type="button" class="btn ux-solid" ${g.busy ? 'disabled' : ''} onclick="stGhSave()">Сохранить</button>${g.set ? `<button type="button" class="btn btn-danger" ${g.busy ? 'disabled' : ''} onclick="stGhDel()">Удалить</button>` : ''}`,
     g.err ? `<em class="w">${esc(g.err)}</em>` : '<span style="margin-top:1px">Достаточно прав public_repo. Токен хранится только на сервере и в браузер не возвращается</span>', 'wide', 'github токен лимит');
 }
-function spUpdateCtl() {
-  const u = ST.upd, busy = typeof HM !== 'undefined' && HM.upd?.busy;
-  if (busy) return `<span class="sp-stat warn">идёт установка</span><button type="button" class="btn btn-ghost" onclick="nav('dashboard')">Открыть главную</button>`;
-  if (u.state === 'checking') return '<span class="rb-meta"><span class="st-spin"></span> Проверяю…</span>';
-  if (u.state === 'available') return `<span class="sp-stat warn">доступна ${esc(u.v.latest)}</span><button type="button" class="btn ux-solid" onclick="stInstall()">${ST_I.down}Обновить</button><button type="button" class="btn btn-ghost" onclick="stCheck()">Проверить ещё раз</button>`;
-  if (u.state === 'error') return `<span class="sp-stat warn">не удалось проверить</span><button type="button" class="btn btn-ghost" onclick="stCheck()">Повторить</button>`;
-  return `<span class="sp-stat ok">последняя версия</span><button type="button" class="btn btn-ghost" onclick="stCheck()">${ST_I.upd}Проверить</button>`;
-}
-function spUpdate() {
-  const up = ST.stats?.uptimeSeconds;
-  return spHit('Версия сервера', 'обновление установить') ? `<div class="sp-r"><div class="sp-l"><b>Версия сервера ${esc(stVersion())}</b><span>${up ? `Работает ${esc(stUptime(up))}. ` : ''}${ST.upd.state === 'available' ? 'При обновлении связь пропадёт на 10–20 секунд, лучше ставить, когда в чате мало людей' : 'Проверка обращается к GitHub'}</span></div><div class="sp-c">${spUpdateCtl()}</div></div>` : '';
-}
 function spHistory() {
   const rows = SP.audit.filter(a => /настрой|копи|обнов|перезапуск/i.test(a.action)), list = SP.showLog ? rows : rows.slice(0, 5);
   if (!rows.length) return spHit('история изменений журнал') ? '<div class="rb-meta" style="padding:14px 4px">Изменений пока не было</div>' : '';
   return `${list.map(a => `<div class="sp-log"><span class="tm">${esc(uaSeen(a.created_at))}</span><span>${esc(a.action)}${a.target ? `: <span class="rb-meta">${esc(a.target)}</span>` : ''}</span><span class="rb-meta">${esc(a.actor_name || '')}</span></div>`).join('')}${rows.length > 5 ? `<div style="padding:10px 4px"><button type="button" class="sp-link" onclick="SP.showLog=!SP.showLog;spRender()">${SP.showLog ? 'Свернуть' : 'Показать всё · ' + rows.length}</button></div>` : ''}`;
 }
-const SP_BODY = { messages: spMessages, attachments: spAttachments, backups: spBackups, github: spGithub, update: spUpdate, history: spHistory };
+const SP_BODY = { messages: spMessages, attachments: spAttachments, backups: spBackups, github: spGithub, history: spHistory };
 function spSug2(text, btn, onclick) { return `<div class="sp-sg"><span>${text}</span><button type="button" class="btn btn-ghost btn-sm" onclick="${onclick}" style="color:var(--c-primary)">${btn}</button></div>`; }
 const SP_SIDE = {
   messages: () => `<h5>Как это работает</h5><div class="st-ex" style="margin:0">${stEditExample()}</div><div class="st-cmp" style="margin-top:12px"><span>Для сравнения:</span><span>WhatsApp: <b>15 минут</b></span><span>Telegram: <b>48 часов</b></span></div>`,
@@ -5343,13 +5670,11 @@ const SP_SIDE = {
       ${!spSv('backupDays').length ? spSug2('Автокопий нет: при сбое можно потерять день работы', 'Включить по будням в 03:00', "spSug('days')") : ''}`;
   },
   github: () => `<h5>Лимит запросов в час</h5><div class="sp-lim"><div><span>без токена</span><i style="width:${ST.gh.set ? 2 : 100}%;background:${ST.gh.set ? 'var(--c-muted)' : 'var(--c-orange)'}"></i><b>60</b></div><div><span>с токеном</span><i style="width:100%;background:${ST.gh.set ? 'var(--c-green)' : 'var(--c-muted)'}"></i><b>5000</b></div></div><p class="sp-sd">Сейчас: <b>${ST.gh.set ? 'с токеном' : 'без токена'}</b>. Проверка обновлений делает несколько запросов.</p>${ST.gh.set ? '' : spSug2('Задайте токен: лимит вырастет в 80 раз', 'К полю токена', "spSug('gh')")}`,
-  update: () => `<h5>Когда лучше обновлять</h5><p class="sp-sd">Связь пропадёт на <b>10–20 секунд</b>. Сейчас в сети <b>${SP.online} ${uxPlural(SP.online, 'человек', 'человека', 'человек')}</b>${SP.online > 10 ? ': лучше вечером или ночью.' : ': можно сейчас.'}</p>${ST.upd.state === 'available' && ST.upd.v?.notes ? `<p class="sp-sd rb-meta">${esc(ST.upd.v.notes)}</p>` : ''}`,
   history: () => '',
 };
 function spQuickBtn(k) {
   if (k === 'backups') return `<button type="button" class="btn btn-ghost btn-sm" ${ST.bkBusy ? 'disabled' : ''} onclick="stBackup()">${ST.bkBusy ? '<span class="st-spin"></span>' : ST_I.plus}Создать копию</button>`;
   if (k === 'github') return ST.gh.set ? '' : `<button type="button" class="btn btn-ghost btn-sm" style="color:var(--c-primary)" onclick="spSug('gh')">Задать токен</button>`;
-  if (k === 'update') return ST.upd.state === 'available' ? `<button type="button" class="btn ux-solid btn-sm" onclick="stInstall()">${ST_I.down}Обновить</button>` : (typeof HM !== 'undefined' && HM.upd?.busy) ? '<span class="sp-stat warn">идёт установка</span>' : ST.upd.state === 'checking' ? '' : `<button type="button" class="btn btn-ghost btn-sm" onclick="stCheck()">${ST_I.upd}Проверить</button>`;
   return '';
 }
 function spSummary(k) {
@@ -5358,7 +5683,6 @@ function spSummary(k) {
   if (k === 'attachments') return `картинки до ${spSv('imgMax')} МБ · видео до ${spSv('videoMax')} МБ · файлы до ${spSv('fileMax')} МБ · хранение ${spSv('life') ? spSv('life') + ' дн' : 'всегда'}`;
   if (k === 'backups') return `${spSv('backupDays').length ? ST_DAYS.filter(d => spSv('backupDays').includes(d[0])).map(d => d[1]).join(', ') + ' в ' + spSv('backupTime') : 'только вручную'} · последняя ${last ? uaSeen(last.created_at) : 'нет'}`;
   if (k === 'github') return ST.gh.set ? 'токен задан · 5000 запросов в час' : 'токен не задан · 60 запросов в час';
-  if (k === 'update') return ST.upd.state === 'available' ? `версия ${stVersion()} → доступна ${ST.upd.v.latest}` : `версия ${stVersion()}${ST.upd.state === 'latest' ? ' · последняя' : ''}`;
   return `${SP.audit.filter(a => /настрой|копи|обнов|перезапуск/i.test(a.action)).length} записей`;
 }
 function spMini(k) {
@@ -5366,7 +5690,7 @@ function spMini(k) {
   if (k === 'backups') return `<span class="sp-md" title="Копии за 14 дней">${Array.from({ length: 14 }, (_, i) => 13 - i).map(i => { const d = new Date(); d.setDate(d.getDate() - i); return `<i class="${ST.backups.some(b => new Date(b.created_at * 1000).toDateString() === d.toDateString()) ? 'have' : ''}"></i>`; }).join('')}</span>`;
   return '';
 }
-const SP_META = { messages: ['Сообщения', ST_I.msg], attachments: ['Вложения', ST_I.clip], backups: ['Резервные копии', ST_I.db], github: ['GitHub', ST_I.gh], update: ['Обновление', ST_I.upd], history: ['История', ST_I.clock] };
+const SP_META = { messages: ['Сообщения', ST_I.msg], attachments: ['Вложения', ST_I.clip], backups: ['Резервные копии', ST_I.db], github: ['GitHub', ST_I.gh], history: ['История', ST_I.clock] };
 function spLastChange(k) {
   const key = SP_AUDIT_KEY[k]; if (!key) return null;
   return SP.audit.find(a => a.action === 'Изменение настроек' && String(a.target || '').includes(key));
@@ -5394,8 +5718,8 @@ function spRender(focusId) {
   const sc = page.querySelector('.sp-scroll'); if (sc) sc.scrollTop = scroll;
   const f = keep && document.getElementById(keep);
   if (f && f !== document.activeElement) { f.focus(); try { if (caret != null) f.setSelectionRange(caret, caret); } catch {} }
-  const nb = document.getElementById('nb-settings'), n = SP_ORDER.filter(spAttn).length;
-  if (nb) { nb.textContent = n; nb.style.display = n ? '' : 'none'; }
+  SB.attn = SP_ORDER.filter(spAttn).length;
+  sbBadges();
 }
 
 /* ── TOPBAR HELPER ── */
