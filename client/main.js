@@ -413,6 +413,7 @@ function cleanAppSettings(d) {
   if (typeof d.chatPattern === 'string' && /^[\w-]{0,40}$/.test(d.chatPattern)) out.chatPattern = d.chatPattern;
   if ([1, 2, 3].includes(Number(d.chatPatternLevel))) out.chatPatternLevel = Number(d.chatPatternLevel);
   if (d.chatBg === 'plain' || d.chatBg === 'split') out.chatBg = d.chatBg;
+  const sw = Number(d.sidebarW); if (Number.isFinite(sw) && sw >= 82 && sw <= 460) out.sidebarW = Math.round(sw);
   return out;
 }
 ipcMain.handle('app-settings-get', () => appSettings);

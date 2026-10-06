@@ -400,6 +400,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.body.classList.add('sidebar-hidden', 'sidebar-overlay');
   }
   initSidebarPeek();
+  applySidebarW();
+  initSidebarResize();
 
   document.addEventListener('click', e => {
     hideCtxMenu();
@@ -521,7 +523,8 @@ function showLoginScreen(intentional) {
 let _sharedLoaded = false, _applyingShared = false;
 function collectAppSettings() {
   return { theme: S.settings.theme, fontSize: S.settings.fontSize, uiScale: S.settings.uiScale || 100,
-    accent: currentAccent(), chatPattern: currentPattern(), chatPatternLevel: currentPatternLevel(), chatBg: currentChatBg() };
+    accent: currentAccent(), chatPattern: currentPattern(), chatPatternLevel: currentPatternLevel(), chatBg: currentChatBg(),
+    sidebarW: currentSidebarW() };
 }
 function pushAppSettings() {
   if (_applyingShared || !window.electron?.appSettingsSet) return;
@@ -539,6 +542,7 @@ function applyAppSettings(d) {
     if (d.chatPattern !== undefined) setChatPattern(d.chatPattern);
     if (d.chatPatternLevel) setPatternLevel(d.chatPatternLevel);
     if (d.chatBg) setChatBg(d.chatBg);
+    if (d.sidebarW) { try { localStorage.setItem('sidebarW', String(d.sidebarW)); } catch {} applySidebarW(); }
     updateSidebarThemeIcon();
     if (S.token) saveSession();
   } finally { _applyingShared = false; }
@@ -856,6 +860,7 @@ function applySettings() {
   applyAccent();
   applyChatBg();
   applyChatPattern();
+  applySidebarW();
   document.querySelectorAll('#pattern-seg button').forEach((b, i) =>
     b.classList.toggle('active', i + 1 === currentPatternLevel()));
   updateSidebarThemeIcon();
@@ -873,6 +878,48 @@ function setTheme(t) { animateThemeSwitch(); S.settings.theme=t; applySettings()
 function toggleTheme() { setTheme(S.settings.theme === 'dark' ? 'light' : 'dark'); }
 function setFontSize(f) { S.settings.fontSize=f; applySettings(); saveSession(); pushAppSettings(); }
 function setUiScale(v) { S.settings.uiScale=v; applySettings(); saveSession(); pushAppSettings(); }
+// ── Ширина сайдбара ──
+// Хранится на устройстве и общая для всех учётных записей (уходит в общие настройки приложения).
+// Минимум — аватарка с отступами, максимум ограничен шириной окна, чтобы переписке осталось место.
+const SB_MIN = 82, SB_MAX = 460, SB_DEF = 350;
+let _sbHideDelta = null;
+function currentSidebarW() {
+  try { const n = Number(localStorage.getItem('sidebarW')); if (n >= SB_MIN && n <= SB_MAX) return Math.round(n); } catch {}
+  return SB_DEF;
+}
+function applySidebarW() { document.documentElement.style.setProperty('--sidebar-w', currentSidebarW() + 'px'); }
+function setSidebarW(w, persist) {
+  const m = zoomMetrics();
+  const max = Math.max(SB_MIN, Math.min(SB_MAX, Math.round(m.vw - 340 - (document.body.classList.contains('has-rail') ? 82 : 0))));
+  const v = Math.max(SB_MIN, Math.min(max, Math.round(w)));
+  try { localStorage.setItem('sidebarW', String(v)); } catch {}
+  applySidebarW();
+  if (persist) pushAppSettings();
+}
+function initSidebarResize() {
+  const grip = document.getElementById('sb-grip');
+  if (!grip) return;
+  let startX = 0, startW = 0, m = null;
+  const dragging = () => document.body.classList.contains('sb-dragging');
+  grip.addEventListener('pointerdown', e => {
+    grip.setPointerCapture(e.pointerId);
+    startX = e.clientX; startW = currentSidebarW(); m = zoomMetrics();
+    document.body.classList.add('sb-dragging');
+    e.preventDefault();
+  });
+  // Сдвиг мыши приходит в пикселях события, ширина задаётся в пикселях раскладки — переводим (см. zoomMetrics)
+  grip.addEventListener('pointermove', e => { if (dragging()) setSidebarW(startW + (e.clientX - startX) * m.f / m.k, false); });
+  const end = () => { if (!dragging()) return; document.body.classList.remove('sb-dragging'); setSidebarW(currentSidebarW(), true); };
+  grip.addEventListener('pointerup', end);
+  grip.addEventListener('pointercancel', end);
+  grip.addEventListener('dblclick', () => setSidebarW(SB_DEF, true));
+  grip.addEventListener('keydown', e => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    setSidebarW(currentSidebarW() + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 30 : 10), true);
+  });
+}
+
 let _sidebarPeekTimer = null;
 function toggleSidebar() {
   const hidden = document.body.classList.toggle('sidebar-hidden');
@@ -882,8 +929,12 @@ function toggleSidebar() {
   document.body.classList.toggle('sidebar-overlay', hidden);
   localStorage.setItem('sidebarHidden', hidden ? '1' : '');
   // Ширину окна подстраиваем под убранные колонки: сайдбар, а при двух записях и бар записей (66px + отступ 16px)
+  // Окно меняется на ту же величину, что и при скрытии (ширина сайдбара может быть любой), поэтому её запоминаем
   const railW = document.body.classList.contains('has-rail') ? 82 : 0;
-  window.electron?.resizeWindow(hidden ? -(280 + railW) : 280 + railW);
+  if (hidden) _sbHideDelta = currentSidebarW() - 70 + railW;
+  const delta = _sbHideDelta ?? (currentSidebarW() - 70 + railW);
+  window.electron?.resizeWindow(hidden ? -delta : delta);
+  if (!hidden) _sbHideDelta = null;
 }
 function _scheduleHideSidebar() {
   if (!document.body.classList.contains('sidebar-hidden')) return;
@@ -981,7 +1032,7 @@ function contactGroupsHtml(users, rank, rowHtml) {
   CONTACT_GROUPS.forEach(([r, label]) => {
     const items = users.filter(u => rank(u) === r);
     if (!items.length) return;
-    html += `<div class="chat-list-section-label"${first ? '' : ' style="padding-top:12px"'}>${label}</div>` + items.map(rowHtml).join('');
+    html += `<div class="chat-list-section-label sec-st sec-st${r}"${first ? '' : ' style="padding-top:12px"'}>${label}</div>` + items.map(rowHtml).join('');
     first = false;
   });
   return html;
@@ -1749,6 +1800,7 @@ function renderChatRow(c) {
     <div class="av-wrap">
       <div class="av av-md ${chatAvatarClass(c)}${c.type==='room' && c.has_topics?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
       ${dot}
+      ${(m>0||u>0) ? `<span class="avb">${m>0 ? '@' : (u>99 ? '99+' : u)}</span>` : ''}
     </div>
     <div class="info">
       <div class="ci-name" style="display:flex;align-items:center;gap:5px">
@@ -1864,7 +1916,8 @@ function topicRow(s) {
   return '<div class="chat-item' + (S.activeTopicId === s.id ? ' active' : '') + '"' +
     ' data-topic-id="' + s.id + '" onclick="openTopic(' + s.id + ')">' +
     '<div class="av-wrap"><div class="av av-md av-round ' + avCls + '"' + avStyle + '>' +
-      (s.has_avatar ? '' : '#') + '</div></div>' +
+      (s.has_avatar ? '' : '#') + '</div>' +
+      ((mentions > 0 || unread > 0) ? '<span class="avb">' + (mentions > 0 ? '@' : (unread > 99 ? '99+' : unread)) + '</span>' : '') + '</div>' +
     '<div class="info">' +
       '<div class="ci-name" style="display:flex;align-items:center;gap:5px">' +
         '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(s.name) + '</span>' +

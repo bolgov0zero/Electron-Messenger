@@ -3198,3 +3198,72 @@ body.has-rail.sidebar-overlay.sidebar-peeking .sidebar { transform: translateX(0
 }
 .diag-foot { display: flex; align-items: center; gap: 8px; padding: 12px 16px 14px; flex-wrap: wrap; }
 .diag-hint { font-size: 12px; color: var(--muted); }
+
+/* ── ИЗМЕНЯЕМАЯ ШИРИНА САЙДБАРА ──
+   Внутренний блок держит ширину сайдбара сам (а не схлопывающуюся оболочку), поэтому раскладка
+   меняется только от ручки, а не пока сайдбар прячется. Ступени сужения (по ширине внутреннего блока):
+   292 — нет названия приложения; 236 — нет времени и подписи; 170 — остались аватарки;
+   146 — кнопки столбцом, поиск пропадает, подписи групп — разделители */
+.sb-inner {
+  flex: 1; min-height: 0; flex-shrink: 0; align-self: flex-start;
+  width: calc(var(--sidebar-w) - 2px);
+  display: flex; flex-direction: column;
+  container: sb / inline-size;
+}
+.sb-grip {
+  position: absolute; top: 0; bottom: 0; right: 0; width: 8px; z-index: 6;
+  cursor: col-resize; touch-action: none; -webkit-app-region: no-drag;
+}
+.sb-grip::after {
+  content: ""; position: absolute; top: 50%; right: 2px; width: 3px; height: 38px; margin-top: -19px;
+  border-radius: 2px; background: var(--muted); opacity: 0; transition: opacity .15s;
+}
+.sb-grip:hover::after, .sb-grip:focus-visible::after, body.sb-dragging .sb-grip::after { opacity: .55; }
+.sb-grip:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
+/* Пока тянем, ничего не анимируется и текст не выделяется */
+body.sb-dragging, body.sb-dragging * { cursor: col-resize !important; user-select: none !important; }
+body.sb-dragging .sidebar, body.sb-dragging .acc-rail { transition: none !important; }
+
+.avb { display: none; position: absolute; top: -4px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px;
+  border-radius: 9px; background: var(--accent); color: #0c0e10; font-size: 10.5px; font-weight: 700; line-height: 18px;
+  text-align: center; border: 2px solid var(--side-bg); box-sizing: content-box; pointer-events: none; }
+
+@container sb (max-width: 292px) {
+  .topbar-logo { display: none; }
+  .sidebar-head { justify-content: flex-end; }
+}
+@container sb (max-width: 236px) {
+  .chat-item .ci-time, .chat-item .ci-preview { display: none; }
+  .chat-item .info { position: relative; }
+  .chat-item .info > div:nth-child(2) { position: absolute; right: 0; top: 50%; margin: 0; transform: translateY(-50%); }
+  .chat-item .info:has(.unread-badge) .ci-name { padding-right: 30px; }
+}
+@container sb (max-width: 170px) {
+  .chat-item, .pp-row { justify-content: center; gap: 0; padding-left: 0; padding-right: 0; }
+  .chat-item .info, .pp-row .pp-name, .pp-row .pp-tag { display: none; }
+  .chat-item .avb { display: block; }
+  .cs-sn { position: relative; justify-content: center; gap: 0; padding: 7px 0; }
+  .cs-sn-tx, .cs-sn .cs-chev { display: none; }
+  .cs-sn .cs-dot { position: absolute; top: 5px; left: calc(50% + 8px); }
+  .room-title { display: none !important; }
+  .sidebar-search { padding: 0 10px; }
+  .search-wrap { padding: 0; justify-content: center; gap: 0; }
+  .search-wrap input, .search-wrap .search-clear { display: none; }
+}
+@container sb (max-width: 146px) {
+  .sidebar-head { height: auto; min-height: 0; flex-direction: column; justify-content: flex-start; align-items: center; gap: 8px; padding: 12px 0 8px; }
+  .topbar-actions { flex-direction: column; }
+  .sidebar-search:not(.room-mode) { display: none; }
+  .sidebar-search.room-mode { padding: 0; justify-content: center; }
+  .chat-list-section-label { font-size: 0; letter-spacing: 0; padding: 10px 14px 6px !important; display: flex; justify-content: center; align-items: center; }
+  .chat-list-section-label::after { content: ""; display: block; width: 100%; border-top: 1px solid var(--border); }
+  .chat-list-section-label.sec-st::after { width: 9px; height: 9px; border: 0; border-radius: 50%; }
+  .chat-list-section-label.sec-st0::after { background: var(--presence-online); }
+  .chat-list-section-label.sec-st1::after { background: var(--presence-away); }
+  .chat-list-section-label.sec-st2::after { background: var(--muted); }
+  .sidebar-tabbar { flex-direction: column; gap: 2px; padding: 6px 0; }
+  /* Всё в одну колонку по ширине аватарки: кнопки шапки, вкладки и значки разделов — 36px */
+  .topbar-actions .icon-btn, .sidebar-head .btn-new-chat { width: 36px; height: 36px; }
+  .sb-tab { width: 36px; height: 36px; }
+  .cs-sn-ic { width: 36px; height: 36px; }
+}
