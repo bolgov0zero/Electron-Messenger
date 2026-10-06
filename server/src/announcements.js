@@ -184,4 +184,18 @@ function stop(id) {
   return true;
 }
 
-module.exports = { create, journal, remove, stop, activeBannersFor, dismiss, startScheduler, sendSystemMessage };
+// Разбор и проверка запроса на отправку: один на админку и на клиент, чтобы правила не разошлись.
+// Возвращает { error } или параметры для create().
+function parseRequest(body, authorId) {
+  const { kind, text, target, targets, start_at, duration_min } = body || {};
+  if (!String(text || '').trim()) return { error: 'Нет текста' };
+  if (!['popup', 'banner', 'chat'].includes(kind)) return { error: 'Неизвестный тип' };
+  const list = (targets || []).map(Number).filter(Boolean);
+  const tgt = target === 'select' ? 'select' : 'all';
+  if (tgt === 'select' && list.length === 0) return { error: kind === 'chat' ? 'Выберите чаты' : 'Выберите получателей' };
+  if (kind === 'banner' && !(duration_min > 0)) return { error: 'Укажите время отображения' };
+  if (kind === 'chat' && !systemUserId()) return { error: 'Системный пользователь не найден', status: 500 };
+  return { kind, text: String(text).trim(), author_id: authorId, start_at: Number(start_at) || 0, duration_min: Number(duration_min) || 0, target: tgt, targets: list };
+}
+
+module.exports = { parseRequest, create, journal, remove, stop, activeBannersFor, dismiss, startScheduler, sendSystemMessage };

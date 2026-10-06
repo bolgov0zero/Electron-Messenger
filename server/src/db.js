@@ -191,6 +191,8 @@ tryAlter('ALTER TABLE messages ADD COLUMN system_kind TEXT');
 tryAlter('ALTER TABLE users ADD COLUMN totp_secret TEXT');
 tryAlter('ALTER TABLE users ADD COLUMN totp_pending_secret TEXT');
 tryAlter('ALTER TABLE users ADD COLUMN totp_required INTEGER DEFAULT 0');
+// Право отправлять объявления из клиента (включает админ в карточке пользователя)
+tryAlter('ALTER TABLE users ADD COLUMN can_announce INTEGER DEFAULT 0');
 
 // Секретные чаты (E2E-шифрование). is_secret — отдельная сущность от обычного
 // personal-чата с тем же собеседником: они могут существовать одновременно,

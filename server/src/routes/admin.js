@@ -276,7 +276,7 @@ router.get('/users', (req, res) => {
   const fs = require('fs');
   const path = require('path');
   const avatarDir = path.join(__dirname, '..', '..', '..', 'chat_db', 'avatar');
-  const users = db.prepare('SELECT id, username, display_name, is_admin, tag, banned, created_at, last_seen_at, totp_required, totp_secret FROM users WHERE is_bot IS NULL OR is_bot = 0 ORDER BY created_at DESC').all();
+  const users = db.prepare('SELECT id, username, display_name, is_admin, tag, banned, created_at, last_seen_at, totp_required, totp_secret, can_announce FROM users WHERE is_bot IS NULL OR is_bot = 0 ORDER BY created_at DESC').all();
   // Устройства, с которых человек сейчас в сети: в списке это «Electron 2.15.9 · macOS»
   const devices = new Map();
   for (const c of getClients()) {
@@ -292,6 +292,7 @@ router.get('/users', (req, res) => {
       status: getStatus(u.id), // online / away / offline — с учётом фокуса окон
       clients: devices.get(u.id) || [],
       has_avatar: fs.existsSync(path.join(avatarDir, `${u.id}.jpg`)),
+      can_announce: !!u.can_announce,
       totp_required: !!u.totp_required,
       totp_configured: !!totp_secret, // сам секрет наружу никогда не отдаём
     };
@@ -501,6 +502,18 @@ router.patch('/users/:id/totp', (req, res) => {
   const required = !!req.body.required;
   db.prepare('UPDATE users SET totp_required = ? WHERE id = ?').run(required ? 1 : 0, userId);
   logAudit(req, 'security', required ? 'Включено требование 2FA' : 'Отключено требование 2FA', user.display_name);
+  res.json({ ok: true });
+});
+
+// Право отправлять объявления из клиента. Клиент узнаёт о смене сразу, если человек в сети
+router.patch('/users/:id/announce', (req, res) => {
+  const userId = Number(req.params.id);
+  const user = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId);
+  if (!user) return res.status(404).json({ error: 'Not found' });
+  const allowed = !!req.body.allowed;
+  db.prepare('UPDATE users SET can_announce = ? WHERE id = ?').run(allowed ? 1 : 0, userId);
+  logAudit(req, 'security', allowed ? 'Включено право отправлять объявления' : 'Отключено право отправлять объявления', user.display_name);
+  sendTo(userId, { type: 'perms', can_announce: allowed });
   res.json({ ok: true });
 });
 
@@ -1027,32 +1040,9 @@ router.delete('/files/:filename', (req, res) => {
 // Отправка и планирование живут в announcements.js — сюда приходит уже разобранный
 // запрос. kind: popup | banner | chat, target: all | select.
 router.post('/announcement', (req, res) => {
-  const { kind, text, target, targets, start_at, duration_min } = req.body;
-  if (!text?.trim()) return res.status(400).json({ error: 'Нет текста' });
-  if (!['popup', 'banner', 'chat'].includes(kind)) return res.status(400).json({ error: 'Неизвестный тип' });
-
-  const list = (targets || []).map(Number).filter(Boolean);
-  const tgt = target === 'select' ? 'select' : 'all';
-  if (tgt === 'select' && list.length === 0) {
-    return res.status(400).json({ error: kind === 'chat' ? 'Выберите чаты' : 'Выберите получателей' });
-  }
-  if (kind === 'banner' && !(duration_min > 0)) {
-    return res.status(400).json({ error: 'Укажите время отображения' });
-  }
-  if (kind === 'chat' && !db.prepare("SELECT value FROM settings WHERE key = 'system_user_id'").get()) {
-    return res.status(500).json({ error: 'Системный пользователь не найден' });
-  }
-
-  const result = announcements.create({
-    kind,
-    text: text.trim(),
-    author_id: req.user.id,
-    start_at: Number(start_at) || 0,
-    duration_min: Number(duration_min) || 0,
-    target: tgt,
-    targets: list,
-  });
-  res.json({ ok: true, ...result });
+  const p = announcements.parseRequest(req.body, req.user.id);
+  if (p.error) return res.status(p.status || 400).json({ error: p.error });
+  res.json({ ok: true, ...announcements.create(p) });
 });
 
 // Журнал: все объявления всех типов, свежие сверху

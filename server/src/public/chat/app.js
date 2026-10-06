@@ -585,6 +585,7 @@ function enterApp() {
     }
   });
   loadUsers();
+  annSync();
   loadUploadSettings();
   connectWS();
   loadPresence();
@@ -5111,6 +5112,7 @@ function connectWS() {
       loadUsers();
     }
     if (data.type==='user_updated') applyUserUpdate(data);
+    if (data.type==='perms') annSetAllowed(data.can_announce);
 
     if (data.type === 'force_logout') { logout(true); }
     if (data.type === 'announcement') {

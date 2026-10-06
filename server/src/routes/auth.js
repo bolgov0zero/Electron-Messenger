@@ -75,7 +75,7 @@ router.post('/login', (req, res) => {
   }
 
   const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin });
-  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password } });
+  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce } });
 });
 
 // ── 2FA (только вход в админ-панель) ──
@@ -110,7 +110,7 @@ router.post('/totp/confirm', (req, res) => {
   db.prepare('UPDATE users SET totp_secret = ?, totp_pending_secret = NULL WHERE id = ?').run(user.totp_pending_secret, user.id);
   logAudit({ user: { id: user.id }, ip: req.ip }, 'security', 'Настройка 2FA', user.display_name);
   const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin });
-  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password } });
+  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce } });
 });
 
 // Обычный вход при уже настроенной 2FA — просто проверка кода
@@ -124,7 +124,7 @@ router.post('/totp/verify', (req, res) => {
   if (!totp.verifyTotp(user.totp_secret, req.body.code))
     return res.status(401).json({ error: 'Неверный код' });
   const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin });
-  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password } });
+  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce } });
 });
 
 router.get('/refresh', authMiddleware, (req, res) => {
@@ -138,9 +138,9 @@ router.get('/me', (req, res) => {
   try {
     const { verifyToken } = require('../auth');
     const payload = verifyToken(auth);
-    const user = db.prepare('SELECT id, username, display_name, is_admin, tag, must_change_password FROM users WHERE id = ?').get(payload.id);
+    const user = db.prepare('SELECT id, username, display_name, is_admin, tag, must_change_password, can_announce FROM users WHERE id = ?').get(payload.id);
     if (!user) return res.status(401).json({ error: 'User not found' });
-    res.json({ ...user, is_admin: !!user.is_admin, must_change_password: !!user.must_change_password });
+    res.json({ ...user, is_admin: !!user.is_admin, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce });
   } catch { res.status(401).json({ error: 'Invalid token' }); }
 });
 
