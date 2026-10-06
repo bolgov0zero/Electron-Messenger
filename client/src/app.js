@@ -104,8 +104,13 @@ function refreshActivity() {
 const AWAY_DELAY = 5000;
 let _awayTimer = null;
 function sendPresenceStatus(status) {
-  window.electron?.diag?.(`статус ${status} ws=${S.ws?.readyState} active=${_accountActive}`);
-  if (S.ws?.readyState===1) S.ws.send(JSON.stringify({type:'set_status', status}));
+  const name = { online: 'Онлайн', away: 'Отошёл', offline: 'Не в сети' }[status] || status;
+  if (S.ws?.readyState===1) {
+    S.ws.send(JSON.stringify({type:'set_status', status}));
+    window.electron?.diag?.(`статус «${name}» отправлен на сервер`);
+  } else {
+    window.electron?.diag?.(`ОШИБКА: статус «${name}» не отправлен — соединение с сервером не открыто`);
+  }
 }
 function sendPresence(viewing) {
   if (viewing) {
@@ -269,8 +274,17 @@ async function api(method, path, body) {
     return res.json();
   } catch(e) {
     if (e?.name === 'AbortError') return null;
+    diagOnce(`api:${method} ${path}`, `ОШИБКА: сервер не ответил на запрос ${method} ${path} (${e?.message || 'нет связи'})`);
     return null;
   }
+}
+// Одинаковую ошибку в журнал не чаще раза в полминуты, чтобы он не забивался повторами
+const _diagSeen = new Map();
+function diagOnce(key, text) {
+  const now = Date.now();
+  if (now - (_diagSeen.get(key) || 0) < 30000) return;
+  _diagSeen.set(key, now);
+  window.electron?.diag?.(text);
 }
 
 // Продление токена: срок 60 дней, но продлеваем раз в сутки при работающем
@@ -556,7 +570,6 @@ function applyAccounts(d) {
   S.acc = { list: d.accounts || [], activeId: d.activeId, selfId: d.selfId, pending: S.acc.pending || !!d.pending };
   if (d.pending === false) S.acc.pending = false;
   _accountActive = d.active !== false;
-  window.electron?.diag?.(`accounts-changed active=${_accountActive} записей=${S.acc.list.length}`);
   const close = document.getElementById('login-close');
   if (close) close.hidden = !S.acc.pending;
   renderAccountRail();
@@ -591,7 +604,7 @@ function renderAccountRail() {
 
 // ── ENTER APP ──
 function enterApp() {
-  window.electron?.diag?.(`enterApp server=${S.server}`);
+  window.electron?.diag?.(`выполнен вход на сервере ${S.server}`);
   reportAccount();
   // Общего файла ещё нет (первый запуск после обновления) — настройки этой записи становятся общими
   if (!_sharedLoaded) { _sharedLoaded = true; pushAppSettings(); }
@@ -1215,8 +1228,38 @@ function csPaneGeneral() {
     <div class="cs-g">
       <div class="cs-r"><div class="cs-l"><b>Автозапуск при старте</b><span>Приложение откроется само после входа в систему</span></div>${csTg(!!CS.autostart, 'csAutostart()', 'Автозапуск')}</div>
       <div class="cs-r"><div class="cs-l"><b>Скрыть сайдбар</b><span>Список чатов прячется и выезжает при наведении на левый край окна</span></div>${csTg(document.body.classList.contains('sidebar-hidden'), 'csHideSidebar()', 'Скрыть сайдбар')}</div>
-    </div>` : `<p class="cs-hint">Разрешение на уведомления меняется ${csIsPhone() ? 'в настройках телефона' : 'в настройках сайта в самом браузере'}.</p>`}`;
+    </div>
+    <div class="cs-gt">Журнал работы</div>
+    <div class="cs-g"><div class="cs-r">
+      <div class="cs-l"><b>Журнал событий</b><span>Учётные записи, соединения с сервером и обновления — пригодится, если что-то работает не так</span></div>
+      <button type="button" class="cs-btn ghost" onclick="openDiagLog()">Открыть журнал</button>
+    </div></div>` : `<p class="cs-hint">Разрешение на уведомления меняется ${csIsPhone() ? 'в настройках телефона' : 'в настройках сайта в самом браузере'}.</p>`}`;
 }
+// ── Журнал работы ──
+async function openDiagLog() {
+  openModal('modal-diag');
+  await loadDiagLog();
+}
+async function loadDiagLog() {
+  const el = document.getElementById('diag-text');
+  if (!el || !window.electron?.diagRead) return;
+  const text = (await window.electron.diagRead()) || '';
+  el.value = text.trim() ? text : 'Журнал пока пуст';
+  el.scrollTop = el.scrollHeight;   // новые записи внизу
+  updateDiagSel();
+}
+function updateDiagSel() {
+  const el = document.getElementById('diag-text'), btn = document.getElementById('diag-copy-sel');
+  if (el && btn) btn.disabled = el.selectionStart === el.selectionEnd;
+}
+function diagCopy(all) {
+  const el = document.getElementById('diag-text');
+  if (!el) return;
+  const text = all ? el.value : el.value.slice(el.selectionStart, el.selectionEnd);
+  if (!text) { showActionToast('Сначала выделите нужные строки'); return; }
+  navigator.clipboard.writeText(text).then(() => showActionToast(all ? 'Журнал скопирован' : 'Выделенное скопировано')).catch(() => {});
+}
+
 function csSound() { S.settings.soundEnabled = S.settings.soundEnabled === false; saveSession(); csRefresh(); }
 async function csAutostart() { CS.autostart = !CS.autostart; csRefresh(); await setAutostart(CS.autostart); }
 function csHideSidebar() { toggleSidebar(); csRefresh(); }
@@ -4896,6 +4939,7 @@ function connectWS() {
     if (data.type==='user_updated') applyUserUpdate(data);
 
     if (data.type === 'force_update') {
+      window.electron?.diag?.('сервер запросил обновление приложения');
       // Сервер присылает готовый downloadUrl для нашей платформы.
       // Если по какой-то причине не прислал — ищем сами через GitHub API.
       if (data.downloadUrl) {
@@ -4945,10 +4989,12 @@ function connectWS() {
   };
 
   ws.onclose = (event) => {
-    window.electron?.diag?.(`WS закрыт code=${event.code} текущий=${ws === S.ws}`);
     clearInterval(ws._hb);
     // Нас уже заменил более новый сокет — не реконнектим повторно
     if (ws !== S.ws) return;
+    window.electron?.diag?.(event.code === 1008
+      ? 'ОШИБКА: сервер закрыл соединение — сессия недействительна, выполняется выход'
+      : `ОШИБКА: соединение с сервером разорвано (код ${event.code}), буду подключаться заново`);
     if (event.code === 1008) { logout(); return; }
     S.wsRetry++;
     const delay = Math.min(1000*S.wsRetry, 10000);
@@ -4958,7 +5004,7 @@ function connectWS() {
     }
   };
   ws.onopen = async () => {
-    window.electron?.diag?.(`WS открыт server=${S.server} user=${S.user?.id} active=${_accountActive}`);
+    window.electron?.diag?.(`соединение с сервером ${S.server} установлено`);
     S.wsRetry = 0;
     hideServerToast();
     loadChats();

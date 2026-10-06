@@ -109,15 +109,17 @@ function getAssetPattern() {
 
 ipcMain.handle('check-update', async () => {
   try {
+    diag('Обновление: проверяю наличие новой версии');
     const data = JSON.parse(await httpsGet(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`));
     if (data.status === '404' || data.message === 'Not Found') return { upToDate: true };
     if (data.message) return { error: data.message };
     const latest = data.tag_name.replace(/^[a-zA-Z]+/, '');
     const current = app.getVersion();
-    if (!semverGt(latest, current)) return { upToDate: true, version: current };
+    if (!semverGt(latest, current)) { diag(`Обновление: установлена актуальная версия ${current}`); return { upToDate: true, version: current }; }
     const asset = data.assets?.find(a => getAssetPattern().test(a.name));
+    diag(`Обновление: доступна версия ${latest} (установлена ${current})`);
     return { upToDate: false, version: latest, notes: data.body || '', publishedAt: data.published_at || null, downloadUrl: asset?.browser_download_url || null };
-  } catch(e) { return { error: e.message }; }
+  } catch(e) { diag(`ОШИБКА: проверка обновления не удалась (${e.message})`); return { error: e.message }; }
 });
 
 ipcMain.handle('install-update', async (e, downloadUrl) => {
@@ -130,7 +132,9 @@ ipcMain.handle('install-update', async (e, downloadUrl) => {
   const ext = process.platform === 'win32' ? '.exe' : process.platform === 'darwin' ? '.dmg' : '.deb';
   const tmpFile = path.join(os.tmpdir(), `electron-update${ext}`);
   try {
+    diag('Обновление: начата загрузка установочного файла');
     await downloadFile(downloadUrl, tmpFile, p => broadcastToViews('update-progress', p));
+    diag('Обновление: файл загружен, запускаю установку, приложение перезапустится');
 
     broadcastToViews('update-restarting');
     // Небольшая пауза чтобы рендерер успел отправить WS-сообщение 'restarting' серверу
@@ -184,7 +188,7 @@ ipcMain.handle('install-update', async (e, downloadUrl) => {
     }
     _activeUpdateReq = null;
     return { ok: true };
-  } catch(e) { _activeUpdateReq = null; broadcastToViews('update-ui-hide'); return { error: e.message }; }
+  } catch(e) { _activeUpdateReq = null; broadcastToViews('update-ui-hide'); diag(`ОШИБКА: обновление не установлено (${e.message})`); return { error: e.message }; }
 });
 
 // ── HIGH AVAILABILITY ──
@@ -228,16 +232,38 @@ let prevActiveAccountId = 'main';  // куда вернуться, если до
 const accountViews = new Map();    // id -> BrowserView
 const wcAccount = new Map();       // webContents.id -> id записи
 
-// Журнал событий записей (userData/diag.log): помогает понять, почему скрытая запись не в сети.
-// Короткий, при превышении лимита начинается заново
+// Журнал работы (userData/diag.log): понятные строки о записях, соединениях и обновлениях.
+// Размер ограничен: когда файл дорастает до лимита, самые старые строки отбрасываются, новые остаются.
+// Пароли, токены и тексты сообщений сюда не попадают — только события, имена записей и адреса серверов
 const DIAG_FILE = path.join(app.getPath('userData'), 'diag.log');
+const DIAG_MAX = 200 * 1024, DIAG_KEEP = 150 * 1024;
+let diagSize = -1;
 function diag(msg) {
   try {
-    if (fs.existsSync(DIAG_FILE) && fs.statSync(DIAG_FILE).size > 200 * 1024) fs.writeFileSync(DIAG_FILE, '');
-    fs.appendFileSync(DIAG_FILE, `${new Date().toISOString()} ${msg}\n`);
+    if (diagSize < 0) diagSize = fs.existsSync(DIAG_FILE) ? fs.statSync(DIAG_FILE).size : 0;
+    const t = new Date().toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const line = `${t}  ${msg}\n`;
+    if (diagSize + line.length > DIAG_MAX) {
+      // Оставляем свежие строки (начало усечённого куска сдвигаем к началу целой строки)
+      const buf = fs.readFileSync(DIAG_FILE);
+      let tail = buf.subarray(Math.max(0, buf.length - DIAG_KEEP));
+      const nl = tail.indexOf(10);
+      if (nl >= 0) tail = tail.subarray(nl + 1);
+      fs.writeFileSync(DIAG_FILE, tail);
+      diagSize = tail.length;
+    }
+    fs.appendFileSync(DIAG_FILE, line);
+    diagSize += Buffer.byteLength(line);
   } catch {}
 }
-ipcMain.on('diag', (e, msg) => diag(`[${accountIdOf(e)}] ${String(msg).slice(0, 300)}`));
+// Как записать в журнале учётную запись: «Имя (сервер)»
+function accLabel(id) {
+  const a = accounts.find(x => x.id === id);
+  if (a?.meta?.name) return `«${a.meta.name}» (${a.meta.server})`;
+  return id === 'main' ? 'первая запись' : `запись ${id}`;
+}
+ipcMain.on('diag', (e, msg) => diag(`Запись ${accLabel(accountIdOf(e))}: ${String(msg).slice(0, 300)}`));
+ipcMain.handle('diag-read', () => { try { return fs.readFileSync(DIAG_FILE, 'utf8'); } catch { return ''; } });
 
 function loadAccounts() {
   try {
@@ -308,10 +334,9 @@ function createAccountView(acc) {
   accountViews.set(acc.id, view);
   wcAccount.set(view.webContents.id, acc.id);
   attachInputMenu(view.webContents);
-  diag(`view создан [${acc.id}] partition=${acc.partition || 'default'}`);
-  view.webContents.on('did-finish-load', () => diag(`[${acc.id}] страница загружена`));
-  view.webContents.on('did-fail-load', (_, code, desc) => diag(`[${acc.id}] ошибка загрузки ${code} ${desc}`));
-  view.webContents.on('render-process-gone', (_, d) => diag(`[${acc.id}] процесс окна завершился: ${d.reason}`));
+  diag(`Запись ${accLabel(acc.id)}: окно записи создано`);
+  view.webContents.on('did-fail-load', (_, code, desc) => diag(`ОШИБКА: у записи ${accLabel(acc.id)} не загрузилась страница (${desc}, код ${code})`));
+  view.webContents.on('render-process-gone', (_, d) => diag(`ОШИБКА: окно записи ${accLabel(acc.id)} аварийно завершилось (причина: ${d.reason})`));
   view.webContents.loadFile(path.join(__dirname, 'src', 'index.html'));
   return view;
 }
@@ -333,7 +358,6 @@ function scheduleAway(id) {
   awayTimers.set(id, setTimeout(() => {
     awayTimers.delete(id);
     const view = accountViews.get(id);
-    diag(`таймер «отошёл» [${id}] сработал, активна ${activeAccountId}`);
     if (id !== activeAccountId && view && !view.webContents.isDestroyed()) view.webContents.send('presence-away');
   }, AWAY_DELAY_MS));
 }
@@ -342,7 +366,7 @@ function showAccount(id) {
   const acc = accounts.find(a => a.id === id);
   if (!acc || !mainWindow) return;
   const leaving = activeAccountId;
-  diag(`переключение ${leaving} -> ${id}`);
+  if (leaving !== id) diag(`Открыта запись ${accLabel(id)}; запись ${accLabel(leaving)} уйдёт в «Отошёл» через ${AWAY_DELAY_MS / 1000} с`);
   clearTimeout(awayTimers.get(id)); awayTimers.delete(id);
   const view = accountViews.get(id) || createAccountView(acc);
   if (activeAccountId !== id && !accounts.find(a => a.id === activeAccountId)?.pending) prevActiveAccountId = activeAccountId;
@@ -923,6 +947,7 @@ if (!app.requestSingleInstanceLock()) {
 
 app.whenReady().then(() => {
   createWindow();
+  diag(`Приложение запущено, версия ${app.getVersion()}, учётных записей: ${accounts.length}`);
   createTray();
   if (shouldStartHidden()) {
     // Windows: сворачиваем в taskbar (иконка остаётся), macOS/Linux: скрываем в трей

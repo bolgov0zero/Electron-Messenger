@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('electron', {
   onAppSettingsChanged: (cb) => ipcRenderer.on('app-settings-changed', (_, d) => cb(d)),
   onPresenceAway: (cb) => ipcRenderer.on('presence-away', () => cb()),
   diag: (msg) => ipcRenderer.send('diag', msg),
+  diagRead: () => ipcRenderer.invoke('diag-read'),
   updateUiShow: () => ipcRenderer.send('update-ui-show'),
   onUpdateUi: (cb) => ipcRenderer.on('update-ui', () => cb()),
   onUpdateUiHide: (cb) => ipcRenderer.on('update-ui-hide', () => cb()),

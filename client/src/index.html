@@ -71,6 +71,23 @@
   </div>
 </div>
 
+<!-- Журнал работы -->
+<div class="modal-bg" id="modal-diag">
+  <div class="modal diag-modal" role="dialog" aria-modal="true" aria-labelledby="diag-title">
+    <div class="diag-head"><b id="diag-title">Журнал работы</b>
+      <button type="button" class="icon-btn" aria-label="Закрыть" onclick="closeModal('modal-diag')">✕</button></div>
+    <textarea id="diag-text" class="diag-text" readonly spellcheck="false" aria-label="Журнал работы"
+      onselect="updateDiagSel()" onmouseup="updateDiagSel()" onkeyup="updateDiagSel()"></textarea>
+    <div class="diag-foot">
+      <span class="diag-hint">Выделите строки и нажмите «Копировать выделенное»</span>
+      <span style="flex:1"></span>
+      <button type="button" class="cs-btn ghost" onclick="loadDiagLog()">Обновить</button>
+      <button type="button" class="cs-btn ghost" id="diag-copy-sel" onclick="diagCopy(false)" disabled>Копировать выделенное</button>
+      <button type="button" class="cs-btn solid" onclick="diagCopy(true)">Копировать всё</button>
+    </div>
+  </div>
+</div>
+
 <!-- Remote update modal -->
 <div class="modal-bg" id="modal-force-update">
   <div class="modal force-update-modal">
