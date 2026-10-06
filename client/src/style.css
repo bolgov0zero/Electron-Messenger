@@ -703,7 +703,8 @@ html.no-emoji-font .md-code {
 .topbar-actions { display: flex; align-items: center; gap: 8px; -webkit-app-region: no-drag; }
 /* Кнопки шапки — как вкладки внизу: просто значок, без рамки и фона, подсветка по наведению */
 .topbar-actions .icon-btn { width: 28px; height: 28px; background: none; border: 0; color: var(--muted); }
-.topbar-actions .icon-btn:hover { background: var(--hover-row); color: var(--text); }
+.topbar-actions .icon-btn { transition: color .15s ease; }
+.topbar-actions .icon-btn:hover { background: none; color: var(--text); }
 .btn-new-chat {
   padding: 7px 12px; border-radius: 9px;
   background: var(--accent-soft); color: var(--accent);
@@ -857,7 +858,8 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   /* как соседние кнопки шапки (.icon-btn), без акцентной заливки */
   background: none; border: 0; color: var(--muted);
 }
-.sidebar-head .btn-new-chat:hover { background: var(--hover-row); color: var(--text); filter: none; }
+.sidebar-head .btn-new-chat { transition: color .15s ease; }
+.sidebar-head .btn-new-chat:hover { background: none; color: var(--text); filter: none; }
 
 /* Sidebar search */
 /* высота закреплена: содержимое в свёрнутом сайдбаре другое, а блок должен
@@ -3244,6 +3246,19 @@ body.sb-dragging .sidebar, body.sb-dragging .acc-rail { transition: none !import
   .chat-item .info, .pp-row .pp-name, .pp-row .pp-tag { display: none; }
   /* Значки — того же размера, что аватарки в баре учётных записей */
   .chat-item .av-md, .pp-row .pp-av { width: 44px; height: 44px; font-size: 15px; }
+  /* Выбранное обозначается кольцом вокруг значка (как у бара учётных записей), а не фоном строки */
+  .chat-item, .chat-item.active, .chat-item:hover, .pp-row:hover, .cs-sn:hover,
+  .cs-sn[aria-current="page"], .cs-sn[aria-current="true"] { background: none; border-color: transparent; }
+  .chat-item.active .ci-name { color: inherit; }
+  .chat-item .av-wrap, .pp-row .pp-av, .cs-sn-ic { transition: transform .16s ease; }
+  .chat-item:hover .av-wrap, .pp-row:hover .pp-av, .cs-sn:hover .cs-sn-ic { transform: scale(1.06); }
+  .chat-item.active .av-wrap::before, .cs-sn[aria-current="page"] .cs-sn-ic::before {
+    content: ""; position: absolute; inset: -4px; border: 2px solid var(--accent); border-radius: 50%; pointer-events: none; z-index: 1;
+  }
+  .chat-item.active .av-wrap:has(.av-sq)::before { border-radius: 16px; }
+  .cs-sn-ic { position: relative; }
+  .cs-sn[aria-current="page"] .cs-sn-ic { background: var(--modal-bg); border-color: var(--border); color: var(--muted); }
+  .cs-sn[aria-current="page"] .cs-sn-ic::before { border-radius: 16px; }
   .cs-sn-ic { width: 44px; height: 44px; border-radius: 12px; }
   .cs-sn-ic svg { width: 20px; height: 20px; }
   .chat-item .avb { display: block; }
