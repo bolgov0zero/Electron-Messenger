@@ -572,11 +572,14 @@ router.get('/github/rate', (req, res) => {
       if (r.statusCode === 401) return finish(502, { error: 'GitHub не принял токен' });
       try {
         const c = JSON.parse(body).resources.core;
-        let remaining = c.remaining;
-        // Если в заголовках настоящего ответа остаток меньше (в том же часовом окне), верим ему
-        if (_ghSeen && _ghSeen.reset === c.reset && _ghSeen.remaining < remaining) remaining = _ghSeen.remaining;
+        let limit = c.limit, remaining = c.remaining, reset = c.reset;
+        // Заголовки настоящих ответов точнее отдельного /rate_limit: у него бывает «чистое» окно с расходом 0
+        // и сбросом через час, хотя запросы уже идут. Пока окно из заголовков не закончилось, берём меньший остаток
+        if (_ghSeen && _ghSeen.reset * 1000 > Date.now() && _ghSeen.remaining < remaining) {
+          limit = _ghSeen.limit || limit; remaining = _ghSeen.remaining; reset = _ghSeen.reset;
+        }
         const cut = Date.now() - 3600_000;
-        finish(200, { limit: c.limit, remaining, used: c.limit - remaining, reset: c.reset, authenticated: !!token, own: _ghCalls.filter(t => t > cut).length });
+        finish(200, { limit, remaining, used: limit - remaining, reset, authenticated: !!token, own: _ghCalls.filter(t => t > cut).length });
       } catch { finish(502, { error: 'GitHub вернул неожиданный ответ' }); }
     });
   });
