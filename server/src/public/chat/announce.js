@@ -1,5 +1,5 @@
 // ── ОБЪЯВЛЕНИЯ ИЗ КЛИЕНТА ──
-// Кнопка с колокольчиком в шапке сайдбара видна тем, кому админ включил право «Отправлять объявления».
+// Кнопка с колокольчиком в шапке сайдбара видна администраторам и тем, кому админ включил право «Отправлять объявления».
 // Окно устроено как в админке: тип, текст, время, получатели. Объявление уходит от имени системы,
 // получатели автора не видят. Подключается после app.js и пользуется его S, api, esc, openModal/closeModal.
 // Тот же файл лежит в веб-клиенте (server/src/public/chat/announce.js): правьте оба вместе.
@@ -13,22 +13,27 @@ const AN_KINDS = {
 };
 const AN_BELL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>';
 
-// Право включает и отзывает админ: узнаём при входе и сразу по сообщению сервера
+// Администраторам кнопка доступна всегда; остальным её включает админ в карточке пользователя.
+// Право узнаём при входе и сразу по сообщению сервера
+const annCan = () => !!(S.user?.is_admin || S.user?.can_announce);
 function annSetAllowed(v) {
   v = !!v;
-  if (S.user && S.user.can_announce !== v) { S.user.can_announce = v; try { saveSession(); } catch {} }
+  if (S.user && !!S.user.can_announce !== v) { S.user.can_announce = v; try { saveSession(); } catch {} }
   const b = document.getElementById('btn-announce');
-  if (b) b.style.display = v ? '' : 'none';
-  if (!v) closeModal('modal-announce');
+  if (b) b.style.display = annCan() ? '' : 'none';
+  if (!annCan()) closeModal('modal-announce');
 }
 async function annSync() {
   annSetAllowed(!!S.user?.can_announce);
   const me = await api('GET', '/auth/me');
-  if (me?.id) annSetAllowed(!!me.can_announce);
+  if (me?.id) {
+    if (S.user && !!S.user.is_admin !== !!me.is_admin) { S.user.is_admin = !!me.is_admin; try { saveSession(); } catch {} }
+    annSetAllowed(!!me.can_announce);
+  }
 }
 
 async function openAnnounce() {
-  if (!S.user?.can_announce) return;
+  if (!annCan()) return;
   let box = document.getElementById('modal-announce');
   if (!box) {
     box = document.createElement('div');
