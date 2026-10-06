@@ -1594,7 +1594,7 @@ function enterApp(user) {
   document.getElementById('app').style.display = 'block';
   startBgClientsPolling();
   startBgDashPolling();
-  startBgUsersPolling();
+  startBgListsPolling();
   // Бейджи сайдбара (пользователи/комнаты/чаты) обновляем сразу, независимо от того
   // на какой вкладке восстановились — раньше их считал только renderDashboard.
   updateNavBadges();
@@ -1617,12 +1617,14 @@ async function refreshDashboardData() {
   try { await Promise.all([hmLoadOverview(), hmLoadActivity()]); } catch {}
 }
 
-// Статусы пользователей меняются без действий админа: пока открыт раздел «Пользователи»,
-// список обновляем раз в 5 секунд. Пока открыто окно — не трогаем (фон и фокус не сбиваем)
-function startBgUsersPolling() {
-  if (window._bgUsersInterval) clearInterval(window._bgUsersInterval);
-  window._bgUsersInterval = setInterval(() => {
-    if (token && currentPage === 'users' && !document.querySelector('.modal-bg.open')) renderUsers().catch(() => {});
+// Статусы, сообщения и состав меняются без действий админа: пока открыт раздел «Пользователи»
+// или «Чаты и группы», его список обновляем раз в 5 секунд. Пока открыто окно — не трогаем
+function startBgListsPolling() {
+  if (window._bgListsInterval) clearInterval(window._bgListsInterval);
+  window._bgListsInterval = setInterval(() => {
+    if (!token || document.querySelector('.modal-bg.open')) return;
+    if (currentPage === 'users') renderUsers().catch(() => {});
+    else if (currentPage === 'chats') renderChats().catch(() => {});
   }, 5000);
 }
 
