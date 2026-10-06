@@ -473,7 +473,8 @@ html.m-desktop .screen { display: none !important; }
 .composer-card[hidden], .ro-note[hidden] { display: none; }
 /* Комната только для чтения: вместо поля ввода — строка текста, без кнопок */
 .ro-note {
-  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  /* Та же высота и та же линия, что у поля ввода: отступ снизу не добавляем, как и у композера */
+  padding: 17px 16px;
   text-align: center; font-size: 13px; font-weight: 500; color: var(--muted);
   background: var(--modal-bg); border-top: 1px solid var(--border);
 }
