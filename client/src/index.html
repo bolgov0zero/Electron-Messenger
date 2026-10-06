@@ -19,6 +19,7 @@
 
 <!-- Login -->
 <div id="screen-login" class="screen active">
+  <button class="login-close" id="login-close" type="button" aria-label="Закрыть и вернуться к прежней записи" title="Закрыть" hidden onclick="window.electron.accountCancelAdd()">✕</button>
   <button id="ha-toggle-btn" style="display:none" onclick="openHAModal()" title="Высокая доступность">
     <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
     <span id="ha-toggle-label">Высокая доступность</span>
@@ -165,6 +166,8 @@
 <!-- Main -->
 <div id="screen-main" class="screen">
   <div class="app-body">
+    <!-- Бар учётных записей: виден, когда добавлена вторая запись -->
+    <nav class="acc-rail" id="acc-rail" aria-label="Учётные записи" hidden></nav>
     <!-- Sidebar -->
     <aside class="sidebar">
   <header class="sidebar-head">

@@ -73,7 +73,10 @@ function isChatMuted(chatId, parentId) {
 // Окно может быть видимым, но не в фокусе (за другим окном) — тогда сообщения
 // не должны помечаться прочитанными, а статус должен быть «отошёл».
 let _winFocused = true;
-function isViewing() { return !document.hidden && _winFocused; }
+// «Смотрю» = окно в фокусе и открыта именно эта учётная запись: у остальных записей статус
+// «отошёл», прочитанными сообщения не помечаются, уведомления приходят
+let _accountActive = true;
+function isViewing() { return !document.hidden && _winFocused && _accountActive; }
 
 // Единая реакция на смену видимости/фокуса: прочтение активного чата + статус.
 function refreshActivity() {
@@ -337,9 +340,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  initAccounts();
+  await initSharedSettings();
   const session = loadSession();
   if (session?.token) {
-    Object.assign(S, { server:session.server, token:session.token, user:session.user, settings:session.settings||S.settings });
+    // Общие настройки (если они уже есть) главнее сохранённых в сессии этой записи
+    Object.assign(S, { server:session.server, token:session.token, user:session.user, settings:_sharedLoaded ? S.settings : (session.settings||S.settings) });
     applySettings();
     const ok = await Promise.race([
       api('GET', '/users/presence'),
@@ -479,13 +485,109 @@ function logout(intentional = false) {
   if (intentional && !_haActive) clearCredentials();
   Object.assign(S, { token:null, user:null, chats:[], activeChatId:null, ws:null, unread:{}, allUsers:[] });
   localStorage.removeItem(SESSION_KEY);
+  updateUnreadTotal();
+  // Есть другая учётная запись: эта удаляется из бара, сразу открывается оставшаяся — без окна входа
+  if (intentional && window.electron?.accountLogout && S.acc.list.length > 1) {
+    window.electron.accountLogout().then(switched => { if (!switched) showLoginScreen(intentional); });
+    return;
+  }
+  showLoginScreen(intentional);
+}
+function showLoginScreen(intentional) {
   document.getElementById('screen-main').classList.remove('active');
   document.getElementById('screen-login').classList.add('active');
   if (!intentional) fillLoginFromCreds();
 }
 
+// ── ОБЩИЕ НАСТРОЙКИ ПРИЛОЖЕНИЯ (Electron) ──
+// Тема, размер текста, масштаб, акцент, узор и фон переписки одни на все учётные записи: хранит их
+// главный процесс. Здесь — чтение при запуске, отправка при изменении и применение пришедшего
+// из другой записи. _applyingShared гасит обратную отправку, пока применяем чужое.
+let _sharedLoaded = false, _applyingShared = false;
+function collectAppSettings() {
+  return { theme: S.settings.theme, fontSize: S.settings.fontSize, uiScale: S.settings.uiScale || 100,
+    accent: currentAccent(), chatPattern: currentPattern(), chatPatternLevel: currentPatternLevel(), chatBg: currentChatBg() };
+}
+function pushAppSettings() {
+  if (_applyingShared || !window.electron?.appSettingsSet) return;
+  window.electron.appSettingsSet(collectAppSettings());
+}
+function applyAppSettings(d) {
+  if (!d) return;
+  _applyingShared = true;
+  try {
+    if (d.theme) S.settings.theme = d.theme;
+    if (d.fontSize) S.settings.fontSize = d.fontSize;
+    if (d.uiScale) S.settings.uiScale = d.uiScale;
+    applySettings();
+    if (d.accent && ACCENTS[d.accent]) setAccent(d.accent);
+    if (d.chatPattern !== undefined) setChatPattern(d.chatPattern);
+    if (d.chatPatternLevel) setPatternLevel(d.chatPatternLevel);
+    if (d.chatBg) setChatBg(d.chatBg);
+    updateSidebarThemeIcon();
+    if (S.token) saveSession();
+  } finally { _applyingShared = false; }
+}
+async function initSharedSettings() {
+  if (!window.electron?.appSettingsGet) return;
+  let shared = null;
+  try { shared = await window.electron.appSettingsGet(); } catch {}
+  window.electron.onAppSettingsChanged(applyAppSettings);
+  if (shared && Object.keys(shared).length) { _sharedLoaded = true; applyAppSettings(shared); }
+}
+
+// ── УЧЁТНЫЕ ЗАПИСИ (Electron) ──
+// Состояние приходит из главного процесса: список записей, какая открыта, число непрочитанных у каждой.
+S.acc = { list: [], activeId: null, selfId: null, pending: false };
+function accHttp(server) { return /:\d+$/.test(server) ? 'http' : 'https'; }
+function initAccounts() {
+  if (!window.electron?.accountsGet) return;
+  window.electron.accountsGet().then(applyAccounts).catch(() => {});
+  window.electron.onAccountsChanged(applyAccounts);
+}
+function applyAccounts(d) {
+  if (!d) return;
+  const wasActive = _accountActive;
+  S.acc = { list: d.accounts || [], activeId: d.activeId, selfId: d.selfId, pending: S.acc.pending || !!d.pending };
+  if (d.pending === false) S.acc.pending = false;
+  _accountActive = d.active !== false;
+  const close = document.getElementById('login-close');
+  if (close) close.hidden = !S.acc.pending;
+  renderAccountRail();
+  // Переключили запись — статус и прочитанность пересчитываются сразу
+  if (wasActive !== _accountActive) refreshActivity();
+}
+// Что показать в баре об этой записи: имя, сервер и пользователь для аватарки
+function reportAccount() {
+  if (!window.electron?.accountLoggedIn || !S.user) return;
+  S.acc.pending = false;
+  window.electron.accountLoggedIn({ server: S.server, userId: S.user.id, name: S.user.display_name, tag: S.user.tag ?? null });
+}
+function renderAccountRail() {
+  const rail = document.getElementById('acc-rail');
+  if (!rail) return;
+  const show = S.acc.list.length > 1;
+  rail.hidden = !show;
+  document.body.classList.toggle('has-rail', show);
+  if (!show) { rail.innerHTML = ''; return; }
+  rail.innerHTML = S.acc.list.map(a => {
+    const m = a.meta;
+    const cls = m ? userAvatarColor(m.userId, m.tag) : 'av-default';
+    const img = m ? `<img src="${accHttp(m.server)}://${esc(m.server)}/api/users/${m.userId}/avatar" alt="" onerror="this.style.display='none'">` : '';
+    const isActive = a.id === S.acc.activeId;
+    const badge = !isActive && a.unread > 0 ? `<span class="acc-badge">${a.unread > 99 ? '99+' : a.unread}</span>` : '';
+    const name = m ? esc(m.name) : 'Вход не выполнен', srv = m ? esc(m.server) : '';
+    return `<button type="button" class="acc-btn${isActive ? ' active' : ''}" onclick="window.electron.accountSwitch('${esc(a.id)}')" aria-label="${name}${srv ? ', ' + srv : ''}">
+      <span class="av av-round ${cls}">${esc(m ? initials(m.name) : '?')}${img}</span>${badge}
+      <span class="acc-tip"><b>${name}</b><span>${srv}</span></span></button>`;
+  }).join('');
+}
+
 // ── ENTER APP ──
 function enterApp() {
+  reportAccount();
+  // Общего файла ещё нет (первый запуск после обновления) — настройки этой записи становятся общими
+  if (!_sharedLoaded) { _sharedLoaded = true; pushAppSettings(); }
   startTokenRefresh();
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-main').classList.add('active');
@@ -530,6 +632,7 @@ function setAccent(key) {
   if (!ACCENTS[key]) return;
   try { localStorage.setItem('accent', key); } catch {}
   applyAccent();
+  pushAppSettings();
   document.querySelectorAll('#accent-seg .accent-dot').forEach(b => {
     b.classList.toggle('active', b.dataset.accent === key);
     const a = ACCENTS[b.dataset.accent];
@@ -610,6 +713,7 @@ function currentPatternLevel() {
 function setChatPattern(id) {
   try { localStorage.setItem('chatPattern', id || ''); } catch {}
   applyChatPattern();
+  pushAppSettings();
   document.querySelectorAll('#pattern-cards .pat-card').forEach(c =>
     c.classList.toggle('active', c.dataset.pattern === currentPattern()));
   const line = document.getElementById('pattern-level-line');
@@ -619,6 +723,7 @@ function setChatPattern(id) {
 function setPatternLevel(n) {
   try { localStorage.setItem('chatPatternLevel', String(n)); } catch {}
   applyChatPattern();
+  pushAppSettings();
   document.querySelectorAll('#pattern-seg button').forEach((b, i) =>
     b.classList.toggle('active', i + 1 === currentPatternLevel()));
 }
@@ -679,6 +784,7 @@ function currentChatBg() {
 function setChatBg(mode) {
   try { localStorage.setItem('chatBg', mode === 'split' ? 'split' : 'plain'); } catch {}
   applyChatBg();
+  pushAppSettings();
   document.querySelectorAll('#chatbg-cards .bg-card').forEach(c =>
     c.classList.toggle('active', c.dataset.bg === currentChatBg()));
 }
@@ -743,10 +849,10 @@ function animateThemeSwitch() {
   clearTimeout(_themeAnimTimer);
   _themeAnimTimer = setTimeout(() => html.classList.remove('theme-anim'), 260);
 }
-function setTheme(t) { animateThemeSwitch(); S.settings.theme=t; applySettings(); saveSession(); }
+function setTheme(t) { animateThemeSwitch(); S.settings.theme=t; applySettings(); saveSession(); pushAppSettings(); }
 function toggleTheme() { setTheme(S.settings.theme === 'dark' ? 'light' : 'dark'); }
-function setFontSize(f) { S.settings.fontSize=f; applySettings(); saveSession(); }
-function setUiScale(v) { S.settings.uiScale=v; applySettings(); saveSession(); }
+function setFontSize(f) { S.settings.fontSize=f; applySettings(); saveSession(); pushAppSettings(); }
+function setUiScale(v) { S.settings.uiScale=v; applySettings(); saveSession(); pushAppSettings(); }
 let _sidebarPeekTimer = null;
 function toggleSidebar() {
   const hidden = document.body.classList.toggle('sidebar-hidden');
@@ -1024,6 +1130,11 @@ function csPaneProfile() {
       <div class="cs-l"><b>Адрес сервера</b><span>${esc(S.server)}</span></div>
       <button type="button" class="cs-btn ghost" id="cs-server-copy" onclick="csCopyServer(this)">${CS_I.copy}Скопировать</button>
     </div></div>
+    ${csIsApp() ? `<div class="cs-gt">Учётные записи</div>
+    <div class="cs-g"><div class="cs-r">
+      <div class="cs-l"><b>Добавить учётную запись</b><span>Вторая запись на этом или другом сервере — обе работают одновременно</span></div>
+      <button type="button" class="cs-btn ghost" onclick="window.electron.accountAdd()">Добавить</button>
+    </div></div>` : ''}
     <div class="cs-logout"><div class="cs-l"><b>Выйти из аккаунта</b><span>${where} понадобится снова ввести логин и пароль</span></div>
       <button type="button" class="cs-btn danger" onclick="logout(true)">${CS_I.out}Выйти</button></div>`;
 }
@@ -4447,7 +4558,7 @@ function applyUserUpdate(u) {
   };
   (S.allUsers || []).forEach(fix);
   S.chats.forEach(c => (c.members || []).forEach(fix));
-  if (S.user && S.user.id === u.user_id) fix(S.user);
+  if (S.user && S.user.id === u.user_id) { fix(S.user); reportAccount(); }
   renderChatList();
   if (document.querySelector('#chats-list .pp-row')) renderContactsList(document.getElementById('search')?.value || '');
   const active = S.chats.find(c => c.id === S.activeChatId);

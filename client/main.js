@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, Notification, ipcMain, net, safeStorage, screen } = require('electron');
+const { app, BrowserWindow, BrowserView, Tray, Menu, nativeImage, nativeTheme, Notification, ipcMain, net, safeStorage, screen, session } = require('electron');
 
 if (process.platform === 'linux') {
   // Полностью отключаем все подсистемы sandbox: на некоторых конфигурациях
@@ -120,7 +120,7 @@ ipcMain.handle('check-update', async () => {
   } catch(e) { return { error: e.message }; }
 });
 
-ipcMain.handle('install-update', async (_, downloadUrl) => {
+ipcMain.handle('install-update', async (e, downloadUrl) => {
   if (!isTrustedUpdateUrl(downloadUrl)) {
     console.error('[Update] Отклонён недоверенный адрес:', downloadUrl);
     return { error: 'Недоверенный адрес обновления' };
@@ -130,9 +130,9 @@ ipcMain.handle('install-update', async (_, downloadUrl) => {
   const ext = process.platform === 'win32' ? '.exe' : process.platform === 'darwin' ? '.dmg' : '.deb';
   const tmpFile = path.join(os.tmpdir(), `electron-update${ext}`);
   try {
-    await downloadFile(downloadUrl, tmpFile, p => mainWindow?.webContents.send('update-progress', p));
+    await downloadFile(downloadUrl, tmpFile, p => e.sender.send('update-progress', p));
 
-    mainWindow?.webContents.send('update-restarting');
+    e.sender.send('update-restarting');
     // Небольшая пауза чтобы рендерер успел отправить WS-сообщение 'restarting' серверу
     await new Promise(r => setTimeout(r, 300));
 
@@ -215,6 +215,182 @@ if (haConfig?.drive) {
 }
 
 let mainWindow = null;
+
+// ── УЧЁТНЫЕ ЗАПИСИ ──
+// Каждая запись — отдельный экземпляр клиента (BrowserView) со своим хранилищем. Все работают
+// одновременно: у скрытых живёт своё WebSocket-соединение, поэтому приходят и уведомления, и счётчики.
+// Первая запись ('main') живёт в обычном хранилище приложения — действующие входы не теряются;
+// добавленные получают собственный раздел persist:acc-<id>.
+const ACCOUNTS_FILE = path.join(app.getPath('userData'), 'accounts.json');
+let accounts = [];                 // [{ id, partition, meta, unread, pending }]
+let activeAccountId = 'main';
+let prevActiveAccountId = 'main';  // куда вернуться, если добавление новой записи отменят
+const accountViews = new Map();    // id -> BrowserView
+const wcAccount = new Map();       // webContents.id -> id записи
+
+function loadAccounts() {
+  try {
+    const d = JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8'));
+    accounts = (d.accounts || []).filter(a => a && a.id)
+      .map(a => ({ id: a.id, partition: a.partition || null, meta: a.meta || null, unread: 0 }));
+    activeAccountId = accounts.some(a => a.id === d.active) ? d.active : accounts[0]?.id;
+  } catch {}
+  if (!accounts.length) { accounts = [{ id: 'main', partition: null, meta: null, unread: 0 }]; activeAccountId = 'main'; }
+  prevActiveAccountId = activeAccountId;
+}
+function saveAccounts() {
+  try {
+    const keep = accounts.filter(a => !a.pending);
+    const active = accounts.find(a => a.id === activeAccountId && !a.pending) ? activeAccountId : prevActiveAccountId;
+    fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify({ accounts: keep.map(({ id, partition, meta }) => ({ id, partition, meta })), active }));
+  } catch {}
+}
+const accountIdOf = e => wcAccount.get(e.sender.id) || 'main';
+// Файлы входа и ключей секретных чатов — свои у каждой записи (id чатов на разных серверах совпадают)
+const accFile = (file, id) => id === 'main' ? file : file.replace(/\.bin$/, `.${id}.bin`);
+const totalUnread = () => accounts.reduce((sum, a) => sum + (a.unread || 0), 0);
+
+function accountsPayload() {
+  return { activeId: activeAccountId,
+    accounts: accounts.filter(a => !a.pending).map(a => ({ id: a.id, meta: a.meta, unread: a.unread || 0 })) };
+}
+function broadcastAccounts() {
+  const base = accountsPayload();
+  for (const [id, view] of accountViews) {
+    if (view.webContents.isDestroyed()) continue;
+    view.webContents.send('accounts-changed', { ...base, selfId: id, active: id === activeAccountId });
+  }
+}
+function broadcastToViews(channel, ...args) {
+  for (const view of accountViews.values()) {
+    if (!view.webContents.isDestroyed()) view.webContents.send(channel, ...args);
+  }
+}
+
+function attachInputMenu(wc) {
+  // Стандартное меню «Вырезать / Копировать / Вставить» для полей ввода. Electron сам его
+  // не показывает, если приложение не создало. Только для редактируемых полей: сообщения
+  // и списки чатов открывают свои меню в рендерере
+  wc.on('context-menu', (_, params) => {
+    if (!params.isEditable) return;
+    const flags = params.editFlags;
+    Menu.buildFromTemplate([
+      // Подписи заданы явно: роли без label берут язык из локали Electron, а она на Windows и
+      // macOS оказывается английской даже при русской системе. Действия остаются от ролей
+      { role: 'cut', label: 'Вырезать', enabled: flags.canCut },
+      { role: 'copy', label: 'Копировать', enabled: flags.canCopy },
+      { role: 'paste', label: 'Вставить', enabled: flags.canPaste },
+      { type: 'separator' },
+      { role: 'selectAll', label: 'Выделить всё', enabled: flags.canSelectAll },
+    ]).popup({ window: mainWindow, x: params.x, y: params.y });
+  });
+}
+
+function createAccountView(acc) {
+  const view = new BrowserView({ webPreferences: {
+    preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false,
+    partition: acc.partition || undefined,
+    // Скрытые экземпляры должны жить как обычные: соединение и таймеры не засыпают
+    backgroundThrottling: false,
+    additionalArguments: [`--account-id=${acc.id}`],
+  } });
+  accountViews.set(acc.id, view);
+  wcAccount.set(view.webContents.id, acc.id);
+  attachInputMenu(view.webContents);
+  view.webContents.loadFile(path.join(__dirname, 'src', 'index.html'));
+  return view;
+}
+
+function fitActiveView() {
+  const view = accountViews.get(activeAccountId);
+  if (!view || !mainWindow) return;
+  const [width, height] = mainWindow.getContentSize();
+  view.setBounds({ x: 0, y: 0, width, height });
+}
+
+function showAccount(id) {
+  const acc = accounts.find(a => a.id === id);
+  if (!acc || !mainWindow) return;
+  const view = accountViews.get(id) || createAccountView(acc);
+  if (activeAccountId !== id && !accounts.find(a => a.id === activeAccountId)?.pending) prevActiveAccountId = activeAccountId;
+  activeAccountId = id;
+  mainWindow.setBrowserView(view);
+  view.setAutoResize({ width: true, height: true });
+  fitActiveView();
+  saveAccounts();
+  broadcastAccounts();
+  view.webContents.focus();
+}
+
+function destroyAccount(id) {
+  const acc = accounts.find(a => a.id === id);
+  const view = accountViews.get(id);
+  if (view) {
+    try { if (mainWindow?.getBrowserView() === view) mainWindow.removeBrowserView(view); } catch {}
+    wcAccount.delete(view.webContents.id);
+    accountViews.delete(id);
+    try { view.webContents.close({ waitForBeforeUnload: false }); } catch {}
+  }
+  accounts = accounts.filter(a => a.id !== id);
+  for (const f of [SESSION_FILE, SECRET_KEYS_FILE]) { if (id !== 'main') { try { fs.unlinkSync(accFile(f, id)); } catch {} } }
+  if (acc?.partition) { try { session.fromPartition(acc.partition).clearStorageData(); } catch {} }
+  unreadCount = totalUnread();
+  updateTray();
+}
+
+// ── Общие настройки приложения ──
+// Тема, размер текста, масштаб, акцент, узор и фон переписки — одни на все записи. Хранятся здесь,
+// а не в хранилище записи: у каждой записи оно своё. Изменение в одной записи сразу уходит в остальные.
+const APP_SETTINGS_FILE = path.join(app.getPath('userData'), 'app-settings.json');
+let appSettings = null;
+try { appSettings = JSON.parse(fs.readFileSync(APP_SETTINGS_FILE, 'utf8')); } catch {}
+function cleanAppSettings(d) {
+  const out = {};
+  if (!d || typeof d !== 'object') return out;
+  if (d.theme === 'dark' || d.theme === 'light') out.theme = d.theme;
+  if (['small', 'medium', 'large'].includes(d.fontSize)) out.fontSize = d.fontSize;
+  const z = Number(d.uiScale); if (Number.isFinite(z) && z >= 50 && z <= 200) out.uiScale = z;
+  if (typeof d.accent === 'string' && /^[\w-]{1,24}$/.test(d.accent)) out.accent = d.accent;
+  if (typeof d.chatPattern === 'string' && /^[\w-]{0,40}$/.test(d.chatPattern)) out.chatPattern = d.chatPattern;
+  if ([1, 2, 3].includes(Number(d.chatPatternLevel))) out.chatPatternLevel = Number(d.chatPatternLevel);
+  if (d.chatBg === 'plain' || d.chatBg === 'split') out.chatBg = d.chatBg;
+  return out;
+}
+ipcMain.handle('app-settings-get', () => appSettings);
+ipcMain.on('app-settings-set', (e, patch) => {
+  const clean = cleanAppSettings(patch);
+  if (!Object.keys(clean).length) return;
+  appSettings = { ...(appSettings || {}), ...clean };
+  try { fs.writeFileSync(APP_SETTINGS_FILE, JSON.stringify(appSettings)); } catch {}
+  // Остальным записям — сразу; отправившая уже применила у себя
+  for (const [, view] of accountViews) {
+    if (view.webContents.isDestroyed() || view.webContents.id === e.sender.id) continue;
+    view.webContents.send('app-settings-changed', appSettings);
+  }
+});
+
+// Новая запись: окно входа в отдельном экземпляре; закрыть его можно — вернёмся к прежней записи
+function addAccount() {
+  if (accounts.some(a => a.pending)) { showAccount(accounts.find(a => a.pending).id); return; }
+  const id = 'a' + Date.now().toString(36);
+  accounts.push({ id, partition: `persist:acc-${id}`, meta: null, unread: 0, pending: true });
+  showAccount(id);
+}
+function cancelAddAccount(id) {
+  const acc = accounts.find(a => a.id === id);
+  if (!acc || !acc.pending) return;
+  destroyAccount(id);
+  const back = accounts.find(a => a.id === prevActiveAccountId) || accounts.find(a => !a.pending);
+  if (back) showAccount(back.id);
+}
+// Выход из записи, когда есть другая: запись исчезает из бара, сразу открывается оставшаяся
+function removeAccount(id) {
+  const rest = accounts.filter(a => !a.pending && a.id !== id);
+  if (!rest.length) return false;
+  destroyAccount(id);
+  showAccount((rest.find(a => a.id === prevActiveAccountId) || rest[0]).id);
+  return true;
+}
 let tray = null;
 let unreadCount = 0;
 let blinkInterval = null;
@@ -327,29 +503,15 @@ function createWindow() {
     title: 'Electron',
     // Linux: без скруглённой тёмной подложки — только стрелка, как у значка в трее
     icon: path.join(_ASSETS, process.platform === 'linux' ? 'icon-arrow-512.png' : 'icon-512.png'),
+    backgroundColor: '#12171d',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
     show: false,
   });
   mainWindow.setMenuBarVisibility(false);
-  // Стандартное меню «Вырезать / Копировать / Вставить» для полей ввода. Electron сам его
-  // не показывает, если приложение не создало. Только для редактируемых полей: сообщения
-  // и списки чатов открывают свои меню в рендерере
-  mainWindow.webContents.on('context-menu', (_, params) => {
-    if (!params.isEditable) return;
-    const flags = params.editFlags;
-    Menu.buildFromTemplate([
-      // Подписи заданы явно: роли без label берут язык из локали Electron, а она на Windows и
-      // macOS оказывается английской даже при русской системе. Действия остаются от ролей
-      { role: 'cut', label: 'Вырезать', enabled: flags.canCut },
-      { role: 'copy', label: 'Копировать', enabled: flags.canCopy },
-      { role: 'paste', label: 'Вставить', enabled: flags.canPaste },
-      { type: 'separator' },
-      { role: 'selectAll', label: 'Выделить всё', enabled: flags.canSelectAll },
-    ]).popup({ window: mainWindow, x: params.x, y: params.y });
-  });
-  mainWindow.loadFile(path.join(__dirname, 'src', 'index.html'));
+  loadAccounts();
+  showAccount(activeAccountId);
   mainWindow.once('ready-to-show', () => mainWindow.show());
-  mainWindow.on('resize', _saveWinBounds);
+  mainWindow.on('resize', () => { _saveWinBounds(); fitActiveView(); });
   mainWindow.on('move', _saveWinBounds);
   mainWindow.on('close', e => {
     _saveWinBounds();
@@ -362,10 +524,10 @@ function createWindow() {
   mainWindow.on('focus', () => {
     if (unreadCount === 0) stopBlink();
     if (process.platform === 'win32') mainWindow.flashFrame(false);
-    mainWindow.webContents.send('window-focus', true);
+    broadcastToViews('window-focus', true);
   });
   mainWindow.on('blur', () => {
-    mainWindow.webContents.send('window-focus', false);
+    broadcastToViews('window-focus', false);
   });
 }
 
@@ -383,21 +545,28 @@ function createTray() {
 }
 
 // IPC
-ipcMain.on('notify', (_, { title, body, chatId }) => {
+ipcMain.on('notify', (e, { title, body, chatId }) => {
   if (!Notification.isSupported()) return;
+  const accId = accountIdOf(e);
   const n = new Notification({ title, body });
   n.on('click', () => {
     mainWindow?.show();
     mainWindow?.focus();
-    if (chatId) mainWindow?.webContents.send('open-chat', chatId);
+    // Уведомление может прийти от записи, которая сейчас не открыта — переключаемся на неё
+    if (accounts.some(a => a.id === accId)) showAccount(accId);
+    const view = accountViews.get(accId);
+    if (chatId && view && !view.webContents.isDestroyed()) view.webContents.send('open-chat', chatId);
   });
   n.show();
 });
 
-ipcMain.on('unread', (_, count) => {
+ipcMain.on('unread', (e, count) => {
+  const acc = accounts.find(a => a.id === accountIdOf(e));
+  if (acc) acc.unread = count;
   const prev = unreadCount;
-  unreadCount = count;
+  unreadCount = totalUnread();   // трей и бейдж иконки — сумма по всем записям
   updateTray();
+  broadcastAccounts();
   if (process.platform === 'win32' && count > prev && mainWindow && !mainWindow.isFocused()) {
     mainWindow.flashFrame(true);
   }
@@ -414,21 +583,23 @@ const SESSION_FILE = path.join(app.getPath('userData'), 'session.bin');
 // зашифрованный так, не читается на другом компьютере. При включённой «Высокой
 // доступности» файл специально лежит на сетевом диске, чтобы читаться с любой
 // машины под этим пользователем, поэтому в этом режиме храним его как обычный JSON.
-ipcMain.handle('session-save', (_, json) => {
+ipcMain.handle('session-save', (e, json) => {
+  const SESSION_FILE_ = accFile(SESSION_FILE, accountIdOf(e));
   try {
     const isHA = !!haConfig?.drive;
     const data = (!isHA && safeStorage.isEncryptionAvailable())
       ? safeStorage.encryptString(json)
       : Buffer.from(json, 'utf8');
-    fs.writeFileSync(SESSION_FILE, data);
+    fs.writeFileSync(SESSION_FILE_, data);
     return true;
   } catch { return false; }
 });
 
-ipcMain.handle('session-load', () => {
+ipcMain.handle('session-load', (e) => {
   try {
-    if (!fs.existsSync(SESSION_FILE)) return null;
-    const buf = fs.readFileSync(SESSION_FILE);
+    const file = accFile(SESSION_FILE, accountIdOf(e));
+    if (!fs.existsSync(file)) return null;
+    const buf = fs.readFileSync(file);
     const isHA = !!haConfig?.drive;
     if (!isHA && safeStorage.isEncryptionAvailable()) {
       try { return safeStorage.decryptString(buf); } catch { return null; }
@@ -437,8 +608,8 @@ ipcMain.handle('session-load', () => {
   } catch { return null; }
 });
 
-ipcMain.handle('session-clear', () => {
-  try { fs.unlinkSync(SESSION_FILE); } catch {}
+ipcMain.handle('session-clear', (e) => {
+  try { fs.unlinkSync(accFile(SESSION_FILE, accountIdOf(e))); } catch {}
   return true;
 });
 
@@ -471,12 +642,32 @@ ipcMain.handle('secret-device-id', () => {
   } catch { return null; }
 });
 
-ipcMain.handle('secret-keys-load', () => {
-  try { return secretFileRead(SECRET_KEYS_FILE); } catch { return null; }
+ipcMain.handle('secret-keys-load', (e) => {
+  try { return secretFileRead(accFile(SECRET_KEYS_FILE, accountIdOf(e))); } catch { return null; }
 });
-ipcMain.handle('secret-keys-save', (_, json) => {
-  try { secretFileWrite(SECRET_KEYS_FILE, json); return true; } catch { return false; }
+ipcMain.handle('secret-keys-save', (e, json) => {
+  try { secretFileWrite(accFile(SECRET_KEYS_FILE, accountIdOf(e)), json); return true; } catch { return false; }
 });
+
+// ── Учётные записи: общение с клиентом ──
+ipcMain.handle('accounts-get', (e) => {
+  const id = accountIdOf(e);
+  return { ...accountsPayload(), selfId: id, active: id === activeAccountId, pending: !!accounts.find(a => a.id === id)?.pending };
+});
+ipcMain.on('account-switch', (_, id) => showAccount(id));
+ipcMain.on('account-add', () => addAccount());
+ipcMain.on('account-cancel-add', (e) => cancelAddAccount(accountIdOf(e)));
+// Клиент вошёл: запись перестаёт быть «ожидающей», в бар попадают имя и адрес сервера для аватарки
+ipcMain.on('account-logged-in', (e, meta) => {
+  const acc = accounts.find(a => a.id === accountIdOf(e));
+  if (!acc) return;
+  acc.pending = false;
+  if (meta && typeof meta === 'object') acc.meta = { server: String(meta.server || ''), userId: meta.userId, name: String(meta.name || ''), tag: meta.tag ?? null };
+  saveAccounts();
+  broadcastAccounts();
+});
+// Возвращает true, если запись удалена и открыта другая (тогда окно входа показывать не надо)
+ipcMain.handle('account-logout', (e) => removeAccount(accountIdOf(e)));
 
 // ── Адрес сервера из имени установщика (только Windows) ──
 // Установщик Electron_s192.168.1.2-3000.exe кладёт рядом с приложением файл
@@ -571,17 +762,17 @@ ipcMain.handle('set-autostart', (_, enabled) => {
   }
 });
 
-ipcMain.handle('download-file', (_, { url, filename }) => {
+ipcMain.handle('download-file', (e, { url, filename }) => {
   const dest = path.join(app.getPath('downloads'), filename || 'file');
   return new Promise((resolve, reject) => {
-    mainWindow.webContents.session.once('will-download', (event, item) => {
+    e.sender.session.once('will-download', (event, item) => {
       item.setSavePath(dest);
       item.once('done', (__, state) => {
         if (state === 'completed') resolve(dest);
         else reject(new Error('Download failed: ' + state));
       });
     });
-    mainWindow.webContents.downloadURL(url);
+    e.sender.downloadURL(url);
   });
 });
 
