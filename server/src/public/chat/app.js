@@ -995,7 +995,7 @@ function renderContactsList(filter = '') {
     (!q || u.display_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)));
   // Сначала те, кто в сети; внутри каждой группы — по имени
   const rank = u => ({ online: 0, away: 1 })[S.presence[u.id]] ?? 2;
-  users.sort((a, b) => rank(a) - rank(b) || a.display_name.localeCompare(b.display_name, 'ru'));
+  users.sort((a, b) => rank(a) - rank(b) || a.display_name.localeCompare(b.display_name, 'ru', { numeric: true }));
   list.innerHTML = users.length ? contactGroupsHtml(users, rank, contactRowHtml) : '<div class="pp-empty">Никого не нашлось</div>';
 }
 function filterContacts(q) { renderContactsList(q); }
@@ -1600,7 +1600,7 @@ function renderChatList() {
       if (a.type==='room' && b.type!=='room') return -1;
       if (a.type!=='room' && b.type==='room') return 1;
       // Комнаты — статичный порядок по имени, не двигаются от новых сообщений
-      if (a.type==='room' && b.type==='room') return chatName(a).localeCompare(chatName(b), 'ru');
+      if (a.type==='room' && b.type==='room') return chatName(a).localeCompare(chatName(b), 'ru', { numeric: true });
       const ta = a.last_message?.sent_at||0, tb = b.last_message?.sent_at||0;
       return tb-ta;
     });

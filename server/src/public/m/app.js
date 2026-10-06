@@ -664,7 +664,7 @@ function renderChats() {
   // Комнаты — по алфавиту имени (статичный порядок, не двигаются от новых
   // сообщений), остальные группы — по времени последнего сообщения (как в /chat)
   const byTime = (a, b) => (b.last_message?.sent_at || 0) - (a.last_message?.sent_at || 0);
-  const rooms = filtered.filter(c => c.type === 'room').sort((a, b) => chatName(a).localeCompare(chatName(b), 'ru'));
+  const rooms = filtered.filter(c => c.type === 'room').sort((a, b) => chatName(a).localeCompare(chatName(b), 'ru', { numeric: true }));
   const pinned = filtered.filter(c => c.type !== 'room' && c.pinned).sort(byTime);
   const rest = filtered.filter(c => c.type !== 'room' && !c.pinned).sort(byTime);
   // Подписи секций — только когда список реально разбит на группы (как в /chat):
@@ -941,7 +941,7 @@ function renderContacts() {
   const filtered = _contactsAll.filter(u => u.display_name.toLowerCase().includes(q));
   // Сначала те, кто в сети; внутри каждой группы — по имени
   const rank = u => ({ online: 0, away: 1 })[S.presence[u.id]] ?? 2;
-  filtered.sort((a, b) => rank(a) - rank(b) || a.display_name.localeCompare(b.display_name, 'ru'));
+  filtered.sort((a, b) => rank(a) - rank(b) || a.display_name.localeCompare(b.display_name, 'ru', { numeric: true }));
   if (!filtered.length) { list.innerHTML = `<div class="stub-note">${_contactsAll.length ? 'Никого не нашли' : 'В организации больше никого нет'}</div>`; return; }
   // Статус онлайн известен только для тех, с кем уже есть личный чат (presence
   // приходит по собеседникам direct-чатов — та же логика, что в /chat и в

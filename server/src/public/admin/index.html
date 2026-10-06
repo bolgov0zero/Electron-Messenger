@@ -3272,7 +3272,7 @@ const uaRole = u => u.is_admin ? `<span class="ua-role admin">${UX_I.shield}Ад
 function uaRows() {
   const q = UA.q.trim().toLowerCase();
   const rank = u => u.banned ? 2 : uaOnline(u) ? 0 : 1;
-  const byName = (a, b) => a.display_name.localeCompare(b.display_name, 'ru');
+  const byName = (a, b) => a.display_name.localeCompare(b.display_name, 'ru', { numeric: true });
   return allUsers
     .filter(u => UA.filter === 'all' || (UA.filter === 'online' && uaOnline(u)) || (UA.filter === 'admins' && u.is_admin) || (UA.filter === 'banned' && u.banned))
     .filter(u => !q || [u.display_name, u.username, u.tag || ''].some(x => x.toLowerCase().includes(q)))
@@ -5098,7 +5098,7 @@ function flRender() {
   FL.files.forEach(f => { if (f.sender_name) bySender[f.sender_name] = (bySender[f.sender_name] || 0) + (f.size || 0); });
   const top = Object.entries(bySender).sort((a, b) => b[1] - a[1])[0];
   const max = Math.max(1, ...FL.files.map(f => f.size || 0));
-  const uniq = key => [...new Set(FL.files.map(f => f[key]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru'));
+  const uniq = key => [...new Set(FL.files.map(f => f[key]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru', { numeric: true }));
   const count = k => FL.files.filter(f => k === 'big' ? f.size > FL_BIG : flKind(f) === k).length;
   const allSel = rows.length > 0 && rows.every(f => FL.sel.has(f.filename));
   const days = FL.lifetime ? `${FL.lifetime} ${uxPlural(FL.lifetime, 'день', 'дня', 'дней')}` : '';
