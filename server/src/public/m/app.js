@@ -644,6 +644,23 @@ function syncAppBadge() {
     else navigator.clearAppBadge?.();
   } catch {}
 }
+// Имя или тег пользователя изменены на сервере: обновляем кэш контактов, участников чатов
+// и подписи на месте — без перезапуска приложения
+function applyUserUpdate(u) {
+  const fix = o => {
+    if (!o || o.id !== u.user_id) return;
+    if (u.display_name) o.display_name = u.display_name;
+    if (u.tag !== undefined) o.tag = u.tag;
+  };
+  _contactsAll.forEach(fix);
+  S.chats.forEach(c => (c.members || []).forEach(fix));
+  if (S.user && S.user.id === u.user_id) fix(S.user);
+  renderChats();
+  if (S.currentTab === 'contacts') renderContacts();
+  const active = S.chats.find(c => c.id === S.activeChatId);
+  if (active) document.getElementById('chat-name').textContent = chatName(active);
+}
+
 function renderChats() {
   syncAppBadge();
   const list = document.getElementById('chat-list');
@@ -2656,6 +2673,7 @@ function connectWS() {
       refreshChats();
       if (S.activeRoomId) loadTopics(S.activeRoomId).then(renderTopicsList);
     }
+    if (data.type === 'user_updated') applyUserUpdate(data);
     if (data.type === 'chat_updated') {
       // Полный объект (закрепление) или только изменённые поля (переименование и режим «только чтение»)
       const chatId = data.chat ? data.chat.id : data.chat_id;

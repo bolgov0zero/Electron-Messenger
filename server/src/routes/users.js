@@ -42,6 +42,7 @@ router.patch('/me', authMiddleware, (req, res) => {
   const { display_name } = req.body;
   if (!display_name?.trim()) return res.status(400).json({ error: 'Missing display_name' });
   db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(display_name.trim(), req.user.id);
+  broadcastAll({ type: 'user_updated', user_id: req.user.id, display_name: display_name.trim() });
   res.json({ ok: true });
 });
 
@@ -97,6 +98,9 @@ router.patch('/:id', authMiddleware, adminMiddleware, (req, res) => {
   try {
     db.prepare('UPDATE users SET username = ?, display_name = ?, is_admin = ?, tag = ? WHERE id = ?')
       .run(username?.trim() || user.username, display_name?.trim() || user.display_name, is_admin !== undefined ? (is_admin ? 1 : 0) : user.is_admin, tag !== undefined ? (tag?.trim() || null) : user.tag, req.params.id);
+    // Клиенты обновляют имя и тег без перезапуска (отправляем и тогда, когда поменялся только тег)
+    const updated = db.prepare('SELECT id, display_name, tag FROM users WHERE id = ?').get(req.params.id);
+    broadcastAll({ type: 'user_updated', user_id: updated.id, display_name: updated.display_name, tag: updated.tag });
     res.json({ ok: true });
   } catch { res.status(409).json({ error: 'Username already exists' }); }
 });

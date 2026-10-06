@@ -276,6 +276,7 @@ router.get('/users', (req, res) => {
       ...rest,
       banned: !!u.banned,
       connected: isConnected(u.id),
+      status: getStatus(u.id), // online / away / offline — с учётом фокуса окон
       clients: devices.get(u.id) || [],
       has_avatar: fs.existsSync(path.join(avatarDir, `${u.id}.jpg`)),
       totp_required: !!u.totp_required,

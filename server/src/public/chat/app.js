@@ -4770,6 +4770,24 @@ async function leaveGroup(chatId) {
 }
 
 // ── WEBSOCKET ──
+// Имя или тег пользователя изменены на сервере: обновляем кэш, участников чатов и подписи
+// на месте — без перезапуска. Сообщения в ленте подставят новое имя при следующем открытии
+function applyUserUpdate(u) {
+  const fix = o => {
+    if (!o || o.id !== u.user_id) return;
+    if (u.display_name) o.display_name = u.display_name;
+    if (u.tag !== undefined) o.tag = u.tag;
+  };
+  (S.allUsers || []).forEach(fix);
+  S.chats.forEach(c => (c.members || []).forEach(fix));
+  if (S.user && S.user.id === u.user_id) fix(S.user);
+  renderChatList();
+  if (document.querySelector('#chats-list .pp-row')) renderContactsList(document.getElementById('search')?.value || '');
+  const active = S.chats.find(c => c.id === S.activeChatId);
+  const nameEl = document.querySelector('.ch-name');
+  if (nameEl && active) nameEl.textContent = chatName(active);
+}
+
 function connectWS() {
   // Реконнект по фокусу мог разойтись с отложенным реконнектом из onclose —
   // гасим прежний живой сокет, иначе он останется сиротой: сервер будет считать
@@ -5060,6 +5078,7 @@ function connectWS() {
     if (data.type==='user_created') {
       loadUsers();
     }
+    if (data.type==='user_updated') applyUserUpdate(data);
 
     if (data.type === 'force_logout') { logout(true); }
     if (data.type === 'announcement') {
