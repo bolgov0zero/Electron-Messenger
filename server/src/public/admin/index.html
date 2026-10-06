@@ -1207,6 +1207,45 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 @container (max-width:1000px){.fb-top{grid-template-columns:22px minmax(0,1.6fr) minmax(0,.9fr) minmax(0,1.2fr) 150px}.fb-top .fb-when{display:none}.fb-exp,.an-exp{grid-template-columns:minmax(0,1fr);padding-left:16px}.an-top{grid-template-columns:22px minmax(0,2fr) minmax(0,1.1fr) 150px}.an-top .an-to,.an-top .an-by{display:none}}
 @container (max-width:700px){.fb-top{grid-template-columns:22px minmax(0,1fr) auto}.fb-top .fb-sz,.fb-top .fb-sd{display:none}.an-top{grid-template-columns:22px minmax(0,1fr) auto}.an-top .an-st{display:none}}
 @media (prefers-reduced-motion:reduce){.fb-exp.fresh,.an-exp.fresh{animation:none}}
+/* Уведомления, вебхуки, релизы, аудит-лог: запись как у остальных страниц */
+.pg-top{display:grid;align-items:center;gap:14px;padding:10px 14px;cursor:pointer}
+.pg-top:hover{background:color-mix(in srgb,var(--c-primary) 5%,transparent)}
+.pg-exp{display:grid;gap:18px;padding:14px 16px 16px 50px;border-top:1px solid var(--c-border);background:var(--c-surface2)}
+.pg-exp.fresh{animation:rbPop .22s ease}
+.pg-exp h4{margin:0 0 8px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted)}
+.pg-mini{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;white-space:nowrap}
+.pg-dev{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:10px;font-size:12.5px;min-width:0}
+.pg-dev .h{font:500 11px var(--f-mono);color:var(--c-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.pg-dev .ux-actions{margin-left:auto}
+.pg-code{font:500 11.5px/1.6 var(--f-mono);background:var(--c-surface);border:1px solid var(--c-border);border-radius:10px;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--c-muted);user-select:text}
+.pg-code b{color:var(--c-text);font-weight:600}
+.pg-url{display:flex;align-items:center;gap:8px;font:500 11.5px var(--f-mono);color:var(--c-muted);min-width:0}
+.pg-url code{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-kv{display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+.pg-kv div{display:flex;justify-content:space-between;gap:10px}
+.pg-kv span{color:var(--c-muted)}.pg-kv b{font-weight:600;text-align:right;overflow-wrap:anywhere}
+.pg-act{display:flex;align-items:center;gap:10px;min-width:0}
+.pg-act .t{font-size:12.5px;line-height:1.25}.pg-act .t b{font:700 13px var(--f-mono)}.pg-act .t small{display:block;font-size:11px;color:var(--c-muted)}
+.rl{padding:14px 16px;display:flex;flex-direction:column;gap:10px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:14px;box-shadow:var(--shadow);flex-shrink:0}
+.rl-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer}
+.rl-v{font:700 12.5px var(--f-mono);padding:3px 9px;border-radius:8px}
+.rl-v.server{background:color-mix(in srgb,var(--dv-c2) 16%,transparent);color:var(--dv-c2)}
+.rl-v.client{background:color-mix(in srgb,var(--dv-c1) 16%,transparent);color:var(--dv-c1)}
+.rl ul{margin:6px 0 0;padding-left:18px;font-size:12.5px;display:flex;flex-direction:column;gap:5px;user-select:text}
+.rl-sl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-top:8px}
+.rl-sl.add{color:var(--c-green-text)}.rl-sl.fix{color:var(--c-orange-text)}.rl-sl.chg{color:var(--dv-c2)}
+.rl-pre{padding-left:32px;font-size:12.5px;color:var(--c-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.al-day2{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted);padding:6px 4px 0;flex-shrink:0}
+.al-t2{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.al-t2::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}
+.al-t2.moderation{background:color-mix(in srgb,var(--dv-c3) 16%,transparent);color:var(--dv-c3)}
+.al-t2.rooms{background:color-mix(in srgb,var(--dv-c2) 16%,transparent);color:var(--dv-c2)}
+.al-t2.server{background:color-mix(in srgb,var(--dv-c1) 16%,transparent);color:var(--dv-c1)}
+.al-t2.security{background:color-mix(in srgb,var(--c-red) 16%,transparent);color:var(--c-red-text)}
+.al-tm2{font:600 12.5px var(--f-mono)}
+@container (max-width:1000px){.pg-h1{display:none!important}.pg-exp{grid-template-columns:minmax(0,1fr)!important;padding-left:16px}}
+@container (max-width:700px){.pg-h2{display:none!important}}
+@media (prefers-reduced-motion:reduce){.pg-exp.fresh{animation:none}}
 @container (max-width:1000px){.rb-top{grid-template-columns:22px minmax(0,1.5fr) minmax(0,1fr) 150px}.rb-top .rb-act{display:none}.rb-exp{grid-template-columns:minmax(0,1fr);padding-left:16px}}
 @container (max-width:700px){.rb-top{grid-template-columns:22px minmax(0,1fr) auto}.rb-top .rb-pres{display:none}}
 @media (prefers-reduced-motion:reduce){.rb-cv,.rb-exp.fresh{transition:none;animation:none}}
@@ -4039,7 +4078,7 @@ async function clPollProgress(started) {
 // Раздел «Уведомления»: push-подписки. Видно, у кого уведомления не включены вовсе.
 // «Проверить» шлёт тестовое уведомление на все устройства человека — одному или выбранным разом.
 
-const PS = { filter: 'all', q: '', sel: new Set(), subs: [] };
+const PS = { filter: 'all', q: '', open: new Set(), fresh: null, sel: new Set(), subs: [] };
 const PS_SVC = { google: ['Google', 'rm-direct'], apple: ['Apple', 'rm-empty'], mozilla: ['Mozilla', 'rm-quiet'], microsoft: ['Microsoft', 'rm-group'], other: ['Другой', 'rm-empty'] };
 const PS_BELL = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`;
 function psService(endpoint) {
@@ -4062,51 +4101,72 @@ async function renderPush() {
   psRender();
 }
 
+const PS_SC = { google: 'var(--dv-c2)', apple: 'var(--dv-c4)', mozilla: 'var(--dv-c3)', microsoft: 'var(--dv-c1)', other: 'var(--dv-c5)' };
+const psChip = k => `<span class="pg-mini" style="background:color-mix(in srgb,${PS_SC[k]} 16%,transparent);color:${PS_SC[k]}">${PS_SVC[k][0]}</span>`;
+// Одна запись на человека: у него может быть несколько устройств
+function psPeople() {
+  const m = new Map();
+  PS.subs.forEach(s => {
+    const e = m.get(s.user_id) || { user_id: s.user_id, name: s.display_name || s.username || '?', username: s.username || '', subs: [] };
+    e.subs.push(s); m.set(s.user_id, e);
+  });
+  return [...m.values()].sort((a, b) => a.name.localeCompare(b.name, 'ru', { numeric: true }));
+}
 function psRender() {
   if (currentPage !== 'push') return;
+  const page = document.getElementById('page-body');
   const q = PS.q.trim().toLowerCase();
-  const rows = PS.subs.filter(s => PS.filter === 'all' || s.svc === PS.filter)
-    .filter(s => !q || [s.display_name, s.username, s.host].some(x => (x || '').toLowerCase().includes(q)));
+  const ppl = psPeople();
+  const rows = ppl.filter(p => PS.filter === 'all' || p.subs.some(s => s.svc === PS.filter))
+    .filter(p => !q || [p.name, p.username, ...p.subs.map(s => s.host)].some(x => (x || '').toLowerCase().includes(q)));
   const people = allUsersCache.filter(u => !u.banned);
   const withPush = new Set(PS.subs.map(s => s.user_id));
   const without = people.filter(u => !withPush.has(u.id));
   const services = Object.keys(PS_SVC).filter(k => PS.subs.some(s => s.svc === k));
-  const allSel = rows.length > 0 && rows.every(s => PS.sel.has(s.id));
-  const shownWithout = without.slice(0, 4).map(u => u.display_name).join(', ') + (without.length > 4 ? ` и ещё ${without.length - 4}` : '');
+  const cover = people.length ? Math.round(people.filter(u => withPush.has(u.id)).length / people.length * 100) : 0;
+  const shown = without.slice(0, 3).map(u => u.display_name).join(', ') + (without.length > 3 ? ` и ещё ${without.length - 3}` : '');
+  const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
+  const flt = ([k, label, n]) => `<button type="button" aria-pressed="${PS.filter === k}" onclick="psFilter('${k}')">${label}<span class="n">${n}</span></button>`;
   uxKeepFocus(() => {
-    document.getElementById('page-body').innerHTML = `<div class="ux-page">
-      <section class="ux-panel rm-sum">
-        <div><div class="cl-k">Подписок</div><div class="cl-v">${PS.subs.length}</div></div>
-        <div><div class="cl-k">С уведомлениями</div><div class="cl-v">${withPush.size}<small>из ${people.length} ${uxPlural(people.length, 'человека', 'человек', 'человек')}</small></div></div>
-        <div><div class="cl-k">Устройств на человека</div><div class="cl-v">${withPush.size ? (PS.subs.length / withPush.size).toLocaleString('ru-RU', { maximumFractionDigits: 1 }) : '—'}</div></div>
-        <div class="rm-note">${without.length ? `Уведомления не включены: <b>${esc(shownWithout)}</b>. Они узнают о сообщениях, только открыв чат.` : 'Уведомления включены у всех.'}</div>
-        <div></div>
-      </section>
-      <section class="ux-panel">
-        <div class="ux-tb"><h3>Подписки <span>${PS.subs.length}</span></h3>
-          ${uxChips([['all', 'Все', PS.subs.length], ...services.map(k => [k, PS_SVC[k][0], PS.subs.filter(s => s.svc === k).length])], PS.filter, 'psFilter')}
-          <span class="ux-grow"></span>${uxSearch('ps-q', PS.q, 'Человек или сервис', 'psSearch')}</div>
-        ${PS.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${PS.sel.size}</b>
-          <button class="btn btn-ghost btn-sm" onclick="psTest([...PS.sel])">${PS_BELL}Проверить</button>
-          <button class="btn btn-ghost btn-sm" onclick="psDelete([...PS.sel])">${UX_I.trash}Удалить</button>
-          <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="PS.sel.clear(); psRender()">Снять выделение</button></div>` : ''}
-        <div class="ux-tbl"><table>
-          <thead><tr><th style="width:40px"><input type="checkbox" aria-label="Выбрать все" ${allSel ? 'checked' : ''} onchange="psSelAll(this.checked)"></th>
-            <th>Пользователь</th><th>Сервис</th><th>Подписан</th><th></th></tr></thead>
-          <tbody>${rows.map(s => {
-            const name = s.display_name || s.username || '?';
-            return `<tr class="${PS.sel.has(s.id) ? 'sel' : ''}">
-              <td><input type="checkbox" aria-label="Выбрать: ${esc(name)}" ${PS.sel.has(s.id) ? 'checked' : ''} onchange="psToggle(${s.id})"></td>
-              <td><div class="ux-cell">${avHtml(name, 32, 8, s.user_id, false, true)}<div style="min-width:0"><div class="ux-name">${esc(name)}</div><div class="ux-login">@${esc(s.username || '')}</div></div></div></td>
-              <td><span class="rm-chip ${PS_SVC[s.svc][1]}">${PS_SVC[s.svc][0]}</span><div class="rm-sub" style="font-family:var(--f-mono)">${esc(s.host || '—')}</div></td>
-              <td class="rm-last">${esc(uaSeen(s.created_at))}</td>
-              <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" title="Тестовое уведомление на все устройства человека" onclick="psTest([${s.id}])">${PS_BELL}Проверить</button>
-                <button class="ux-ibtn" aria-label="Ещё действия: ${esc(name)}" aria-haspopup="menu" aria-expanded="false" onclick="psMenu(event, ${s.id})">${UX_I.more}</button></div></td>
-            </tr>`;
-          }).join('') || `<tr><td colspan="5"><div class="ux-empty">${PS.subs.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Подписок пока нет'}</div></td></tr>`}</tbody>
-        </table></div>
-      </section></div>`;
+    page.innerHTML = `<div class="ub" id="ps-page">
+      <div class="ub-tiles">
+        <div class="ub-tile static"><div class="ub-lbl">Подписок</div><div class="ub-big">${PS.subs.length}<small>${uxPlural(PS.subs.length, 'устройство', 'устройства', 'устройств')}</small></div>
+          ${services.length ? `<div class="ub-stack">${services.map(k => `<i style="flex:${PS.subs.filter(s => s.svc === k).length};background:${PS_SC[k]}"></i>`).join('')}</div><div class="ub-leg">${services.map(k => `<span><i style="background:${PS_SC[k]}"></i>${PS_SVC[k][0]} <b>${PS.subs.filter(s => s.svc === k).length}</b></span>`).join('')}</div>` : '<div class="ub-sub" style="margin-top:6px">подписок пока нет</div>'}</div>
+        <div class="ub-tile static"><div class="ub-lbl">Уведомления включены</div><div class="ub-big">${withPush.size}<small>из ${people.length}</small></div><div class="ub-sub">охват ${cover}%</div><div class="ub-meter"><i style="width:${cover}%;background:var(--c-primary)"></i></div></div>
+        <div class="ub-tile static"><div class="ub-lbl">Не включили</div><div class="ub-big">${without.length}<small>${uxPlural(without.length, 'человек', 'человека', 'человек')}</small></div><div class="ub-sub" style="white-space:normal">${without.length ? `${esc(shown)}. Они узнают о сообщениях, только открыв чат.` : 'Уведомления включили все'}</div></div>
+        <div class="ub-tile static" style="display:flex;flex-direction:column;justify-content:space-between"><div><div class="ub-lbl">Проверка доставки</div><div class="ub-sub" style="margin-top:6px">Тестовое уведомление уйдёт на все устройства. Видно, куда дошло, а куда нет.</div></div>
+          <button class="btn ux-solid btn-sm" style="align-self:flex-start;margin-top:10px" ${PS.subs.length ? '' : 'disabled'} onclick="psTest(${JSON.stringify(PS.subs.map(s => s.id))})">${PS_BELL}Проверить всех</button></div>
+      </div>
+      <div class="ub-head"><h3>Подписки <span>${rows.length}</span></h3>
+        <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все', ppl.length], ...services.map(k => [k, PS_SVC[k][0], ppl.filter(p => p.subs.some(s => s.svc === k)).length])].map(flt).join('')}</div>
+        ${uxSearch('ps-q', PS.q, 'Человек или сервис', 'psSearch')}</div>
+      <div class="ub-rows">${rows.map(p => {
+        const open = PS.open.has(p.user_id), svcs = [...new Set(p.subs.map(s => s.svc))], since = Math.min(...p.subs.map(s => s.created_at || 0)), ids = p.subs.map(s => s.id);
+        return `<div class="rb-row"><div class="pg-top" style="grid-template-columns:22px minmax(0,1.5fr) minmax(0,1.3fr) minmax(0,.8fr) 150px" onclick="psTog(event, ${p.user_id})">
+          <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть: ${esc(p.name)}">${UX_I.chev}</button>
+          <div class="rb-name">${avHtml(p.name, 36, 10, p.user_id, false, true)}<div style="min-width:0"><div class="rb-nl"><b>${esc(p.name)}</b></div><div class="ux-login">@${esc(p.username)}</div></div></div>
+          <div class="pg-h2" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="rb-meta" style="margin-right:2px">${p.subs.length} ${uxPlural(p.subs.length, 'устройство', 'устройства', 'устройств')}</span>${svcs.map(psChip).join('')}</div>
+          <div class="pg-h1 rb-meta">с ${esc(uaSeen(since))}</div>
+          <div class="ux-actions"><button class="btn btn-ghost btn-sm" title="Тестовое уведомление на все устройства человека" onclick="event.stopPropagation(); psTest(${JSON.stringify(ids)})">${PS_BELL}Проверить</button>
+            <button class="ux-ibtn" aria-label="Ещё действия: ${esc(p.name)}" aria-haspopup="menu" aria-expanded="false" onclick="event.stopPropagation(); psPMenu(event, ${p.user_id})">${UX_I.more}</button></div></div>
+        ${open ? `<div class="pg-exp${PS.fresh === p.user_id ? ' fresh' : ''}" style="grid-template-columns:minmax(0,1fr)"><div><h4>Устройства</h4><div style="display:flex;flex-direction:column;gap:8px">${p.subs.map(s => `<div class="pg-dev">${psChip(s.svc)}<span class="h">${esc(s.host || '—')}</span><span class="rb-meta">подписан ${esc(uaSeen(s.created_at))}</span>
+          <div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="psTest([${s.id}])">${PS_BELL}Проверить</button><button class="ux-ibtn" aria-label="Удалить подписку" title="Удалить подписку" onclick="psDelete([${s.id}])">${UX_I.trash}</button></div></div>`).join('')}</div></div></div>` : ''}</div>`;
+      }).join('') || `<div class="ub-empty">${PS.subs.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Подписок пока нет'}</div>`}</div></div>`;
   });
+  PS.fresh = null;
+  const list = page.querySelector('.ub-rows');
+  if (list && keepTop) list.scrollTop = keepTop;
+}
+function psTog(e, uid) {
+  if (e.target.closest('.ux-actions')) return;
+  PS.open.has(uid) ? PS.open.delete(uid) : (PS.open.add(uid), PS.fresh = uid);
+  psRender();
+}
+function psPMenu(e, uid) {
+  const ids = PS.subs.filter(s => s.user_id === uid).map(s => s.id);
+  uxOpenMenu(e, 'psp' + uid, `
+    <button role="menuitem" onclick="uxCloseMenu(); psTest(${JSON.stringify(ids)})">${PS_BELL}Проверить все устройства</button>
+    <hr><button role="menuitem" class="danger" onclick="uxCloseMenu(); psDelete(${JSON.stringify(ids)})">${UX_I.trash}Удалить подписки</button>`);
 }
 
 function psFilter(k) { PS.filter = k; PS.sel.clear(); psRender(); }
@@ -4152,7 +4212,7 @@ function psDelete(ids) {
 // Раздел «Вебхуки»: боты, которые пишут в чат по запросу извне. По активности за неделю
 // видно, какой бот замолчал — обычно это значит, что у внешней системы сменился адрес.
 
-const WH = { filter: 'all', q: '', sel: new Set(), hooks: [], form: null, opts: [] };
+const WH = { filter: 'all', q: '', open: new Set(), fresh: null, sel: new Set(), hooks: [], form: null, opts: [] };
 const whSvg = p => `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const WH_I = {
   copy: whSvg('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
@@ -4175,50 +4235,68 @@ async function renderWebhooks() {
   whRender();
 }
 
+const WH_DAYS = () => { const d = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'], t = new Date().getDay(); return [0, 1, 2, 3, 4, 5, 6].map(i => d[(t - 6 + i + 14) % 7]); };
+const whWk = w => { const m = Math.max(1, ...w); return `<span class="rb-wk" title="Сообщения по дням за неделю: ${w.join(', ')}">${w.map(n => `<i class="${n ? '' : 'z'}" style="height:${Math.max(2, Math.round(n / m * 22))}px"></i>`).join('')}</span>`; };
+const whCurl = h => `curl -X POST ${whUrl(h.token)} \\\n  -H "Content-Type: application/json" \\\n  -d '{"text": "Сервер перезагружен"}'`;
+function whCopyExample(id) { const h = WH.hooks.find(x => x.id === id); if (h) navigator.clipboard.writeText(whCurl(h).replace(/\\\n/g, '\n')).then(() => toast('Пример скопирован', 'success')).catch(() => toast('Не удалось скопировать', 'error')); }
+async function whTest(id) {
+  const h = WH.hooks.find(x => x.id === id);
+  if (!h) return;
+  try {
+    const r = await fetch(whUrl(h.token), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'Тестовое сообщение из админки' }) });
+    toast(r.ok ? `Тест отправлен в «${esc(h.chat_name || '')}»` : 'Не удалось отправить тест', r.ok ? 'success' : 'error');
+    if (r.ok) renderWebhooks();
+  } catch { toast('Не удалось отправить тест', 'error'); }
+}
+
 function whRender() {
   if (currentPage !== 'webhooks') return;
+  const page = document.getElementById('page-body');
   const q = WH.q.trim().toLowerCase();
   const silent = WH.hooks.filter(h => !whActive(h));
   const rows = WH.hooks.filter(h => WH.filter === 'all' || (WH.filter === 'active' ? whActive(h) : !whActive(h)))
     .filter(h => !q || [h.name, h.tag, h.chat_name].some(x => (x || '').toLowerCase().includes(q)));
-  const allSel = rows.length > 0 && rows.every(h => WH.sel.has(h.id));
-  const week = WH.hooks.reduce((s, h) => s + whWeek(h), 0);
-  const silentNames = silent.slice(0, 4).map(h => h.name).join(', ') + (silent.length > 4 ? ` и ещё ${silent.length - 4}` : '');
+  const wt = [0, 1, 2, 3, 4, 5, 6].map(i => WH.hooks.reduce((s, h) => s + ((h.week || [])[i] || 0), 0)), wmax = Math.max(1, ...wt), dn = WH_DAYS();
+  const silentNames = silent.slice(0, 3).map(h => h.name).join(', ') + (silent.length > 3 ? ` и ещё ${silent.length - 3}` : '');
+  const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
+  const flt = ([k, label, n]) => `<button type="button" aria-pressed="${WH.filter === k}" onclick="whFilter('${k}')">${label}<span class="n">${n}</span></button>`;
   uxKeepFocus(() => {
-    document.getElementById('page-body').innerHTML = `<div class="ux-page">
-      <section class="ux-panel rm-sum">
-        <div><div class="cl-k">Вебхуков</div><div class="cl-v">${WH.hooks.length}</div></div>
-        <div><div class="cl-k">Сообщений</div><div class="cl-v">${rmFmt(week)}<small>за неделю</small></div></div>
-        <div><div class="cl-k">Молчат</div><div class="cl-v">${silent.length}</div></div>
-        <div class="rm-note">${!WH.hooks.length ? 'Вебхуков пока нет — создайте первый, чтобы внешняя система могла писать в чат.'
-          : silent.length ? `Неделю не писали: <b>${esc(silentNames)}</b> — проверьте, не сменился ли адрес у внешней системы.` : 'Все боты писали за последнюю неделю.'}</div>
-        <div><button class="btn btn-ghost" onclick="openModal('modal-webhook-help')">${WH_I.book}Инструкция</button></div>
-      </section>
-      <section class="ux-panel">
-        <div class="ux-tb"><h3>Вебхуки <span>${WH.hooks.length}</span></h3>
-          ${uxChips([['all', 'Все', WH.hooks.length], ['active', 'Пишут', WH.hooks.length - silent.length], ['silent', 'Молчат', silent.length]], WH.filter, 'whFilter')}
-          <span class="ux-grow"></span>${uxSearch('wh-q', WH.q, 'Бот или чат', 'whSearch')}</div>
-        ${WH.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${WH.sel.size}</b><button class="btn btn-ghost btn-sm" onclick="whDelete([...WH.sel])">${UX_I.trash}Удалить</button>
-          <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="WH.sel.clear(); whRender()">Снять выделение</button></div>` : ''}
-        <div class="ux-tbl"><table>
-          <thead><tr><th style="width:40px"><input type="checkbox" aria-label="Выбрать все" ${allSel ? 'checked' : ''} onchange="whSelAll(this.checked)"></th>
-            <th>Бот</th><th>Пишет в</th><th>Адрес</th><th class="rm-num">Сообщений</th><th>Создан</th><th></th></tr></thead>
-          <tbody>${rows.map(h => `<tr class="${WH.sel.has(h.id) ? 'sel' : ''}">
-              <td><input type="checkbox" aria-label="Выбрать: ${esc(h.name)}" ${WH.sel.has(h.id) ? 'checked' : ''} onchange="whToggle(${h.id})"></td>
-              <td><div class="ux-cell">${avHtml(h.name, 34, 9, h.user_id, false, h.has_avatar)}<div style="min-width:0">
-                <div class="ux-name">${esc(h.name)}${h.tag ? `<span class="rm-chip rm-direct">${esc(h.tag)}</span>` : ''}${whActive(h) ? '' : '<span class="rm-chip rm-quiet">молчит</span>'}</div>
-                <div class="rm-sub">бот · вебхук</div></div></div></td>
-              <td><span class="ux-name" style="font-weight:500;font-size:12px">${esc(h.chat_name || '—')}<span class="rm-chip ${h.chat_type === 'group' ? 'rm-group' : 'rm-topics'}">${h.chat_type === 'group' ? 'группа' : 'комната'}</span></span></td>
-              <td><div class="wh-url"><code>…/webhooks/${esc(String(h.token).slice(0, 3))}•••••</code>
-                <button class="ux-ibtn" title="Скопировать адрес" aria-label="Скопировать адрес: ${esc(h.name)}" onclick="whCopy(${h.id})">${WH_I.copy}</button></div></td>
-              <td class="rm-num"><span class="rm-msgs" title="За неделю: ${whWeek(h)}">${rmSpark(h.week || [])}${rmFmt(h.message_count)}</span></td>
-              <td class="rm-last">${esc(fmtDate(h.created_at))}</td>
-              <td><div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="whCopy(${h.id})">${WH_I.copy}Скопировать</button>
-                <button class="ux-ibtn" aria-label="Ещё действия: ${esc(h.name)}" aria-haspopup="menu" aria-expanded="false" onclick="whMenu(event, ${h.id})">${UX_I.more}</button></div></td>
-            </tr>`).join('') || `<tr><td colspan="7"><div class="ux-empty">${WH.hooks.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Вебхуков пока нет'}</div></td></tr>`}</tbody>
-        </table></div>
-      </section></div>`;
+    page.innerHTML = `<div class="ub" id="wh-page">
+      <div class="ub-tiles">
+        <div class="ub-tile static"><div class="ub-lbl">Вебхуков</div><div class="ub-big">${WH.hooks.length}<small>${uxPlural(WH.hooks.length, 'бот', 'бота', 'ботов')}</small></div><div class="ub-sub">${WH.hooks.length - silent.length} пишут · ${silent.length} молчит</div></div>
+        <div class="ub-tile static"><div class="ub-lbl">Сообщений за неделю</div><div class="ub-big">${rmFmt(wt.reduce((a, b) => a + b, 0))}<small>от ботов</small></div>
+          <div class="rb-bars">${wt.map((v, i) => `<div title="${dn[i]}: ${v}"><i class="${i === 6 ? 'cur' : ''}" style="height:${Math.max(2, Math.round(v / wmax * 26))}px"></i><span>${dn[i]}</span></div>`).join('')}</div></div>
+        <div class="ub-tile static"><div class="ub-lbl">Молчат</div><div class="ub-big" style="color:${silent.length ? 'var(--c-orange-text)' : 'var(--c-green-text)'}">${silent.length}</div><div class="ub-sub" style="white-space:normal">${!WH.hooks.length ? 'Вебхуков пока нет' : silent.length ? `Неделю не писали: ${esc(silentNames)}. Проверьте адрес у внешней системы.` : 'Все боты писали за последнюю неделю'}</div></div>
+        <div class="ub-tile static" style="display:flex;flex-direction:column;justify-content:space-between"><div><div class="ub-lbl">Новый вебхук</div><div class="ub-sub" style="margin-top:6px">Адрес для внешней системы: она пишет в выбранный чат от имени бота.</div></div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn ux-solid btn-sm" onclick="whOpen()">${RM_I.plus}Создать</button><button class="btn btn-ghost btn-sm" onclick="openModal('modal-webhook-help')">${WH_I.book}Инструкция</button></div></div>
+      </div>
+      <div class="ub-head"><h3>Вебхуки <span>${rows.length}</span></h3>
+        <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все', WH.hooks.length], ['active', 'Пишут', WH.hooks.length - silent.length], ['silent', 'Молчат', silent.length]].map(flt).join('')}</div>
+        ${uxSearch('wh-q', WH.q, 'Бот или чат', 'whSearch')}</div>
+      <div class="ub-rows">${rows.map(h => {
+        const open = WH.open.has(h.id), on = whWeek(h);
+        return `<div class="rb-row"><div class="pg-top" style="grid-template-columns:22px minmax(0,1.4fr) minmax(0,1.1fr) minmax(0,1.1fr) minmax(0,.9fr) 150px" onclick="whTog(event, ${h.id})">
+          <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть: ${esc(h.name)}">${UX_I.chev}</button>
+          <div class="rb-name">${avHtml(h.name, 38, 11, h.user_id, false, h.has_avatar)}<div style="min-width:0"><div class="rb-nl"><b>${esc(h.name)}</b>${h.tag ? `<span class="rb-chip dir">${esc(h.tag)}</span>` : ''}${whActive(h) ? '' : '<span class="rb-chip q">молчит</span>'}</div><div class="rb-meta">бот · вебхук</div></div></div>
+          <div class="pg-h2" style="min-width:0"><div style="font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.chat_name || '—')}</div><span class="rb-meta">${h.chat_type === 'group' ? 'группа' : 'комната'}</span></div>
+          <div class="pg-h1 pg-act">${whWk(h.week || [0, 0, 0, 0, 0, 0, 0])}<div class="t"><b>${on}</b> за неделю<small>${rmFmt(h.message_count)} всего</small></div></div>
+          <div class="pg-h1 pg-url"><code>…/webhooks/${esc(String(h.token).slice(0, 3))}•••••</code></div>
+          <div class="ux-actions"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation(); whCopy(${h.id})">${WH_I.copy}Скопировать</button>
+            <button class="ux-ibtn" aria-label="Ещё действия: ${esc(h.name)}" aria-haspopup="menu" aria-expanded="false" onclick="event.stopPropagation(); whMenu(event, ${h.id})">${UX_I.more}</button></div></div>
+        ${open ? `<div class="pg-exp${WH.fresh === h.id ? ' fresh' : ''}" style="grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)"><div><h4>Как отправить сообщение</h4><div class="pg-code">${esc(whCurl(h))}</div>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="whCopyExample(${h.id})">${WH_I.copy}Скопировать пример</button><button class="btn btn-ghost btn-sm" onclick="whTest(${h.id})">Отправить тест</button></div></div>
+          <div><h4>Детали</h4><div class="pg-kv"><div><span>Пишет в</span><b>${esc(h.chat_name || '—')}</b></div><div><span>Создан</span><b>${esc(fmtDate(h.created_at))}</b></div><div><span>Сообщений всего</span><b>${rmFmt(h.message_count)}</b></div><div><span>За неделю</span><b>${on}</b></div></div>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="whAvatar(${h.id})">${WH_I.img}Аватар</button><button class="btn btn-ghost btn-sm" onclick="whRegen(${h.id})">${WH_I.key}Новый адрес</button><button class="btn btn-danger btn-sm" onclick="whDelete([${h.id}])">${UX_I.trash}Удалить</button></div></div></div>` : ''}</div>`;
+      }).join('') || `<div class="ub-empty">${WH.hooks.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Вебхуков пока нет'}</div>`}</div></div>`;
   });
+  WH.fresh = null;
+  const list = page.querySelector('.ub-rows');
+  if (list && keepTop) list.scrollTop = keepTop;
+}
+function whTog(e, id) {
+  if (e.target.closest('.ux-actions')) return;
+  WH.open.has(id) ? WH.open.delete(id) : (WH.open.add(id), WH.fresh = id);
+  whRender();
 }
 
 function whFilter(k) { WH.filter = k; WH.sel.clear(); whRender(); }
@@ -4981,7 +5059,8 @@ const flChatChip = type => type === 'direct' ? '<span class="rm-chip rm-direct">
 
 // ── АУДИТ-ЛОГ ──
 // Один запрос, дальше фильтр по категории и поиск — на клиенте (как у «Файлов»).
-const AL = { all: [], category: 'all', q: '' };
+const AL = { all: [], category: 'all', q: '', open: new Set(), fresh: null };
+const RE = { f: 'all', q: '', open: new Set(), fresh: null, list: [], first: true };
 function alFilter(cat) { AL.category = cat; alRender(); }
 function alSearch(q) { AL.q = q; alRender(); }
 function alTimeLabel(ts) {
@@ -5000,59 +5079,118 @@ async function renderAudit() {
   AL.all = Array.isArray(data) ? data : [];
   alRender();
 }
+const AL_CAT = { moderation: 'Модерация', rooms: 'Комнаты и чаты', server: 'Сервер', security: 'Безопасность' };
+const alClock = ts => new Date(ts * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+function alDayLabel(ts) {
+  const d = new Date(ts * 1000), now = new Date();
+  const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(now) - day(d)) / 86400000);
+  return diff === 0 ? 'Сегодня' : diff === 1 ? 'Вчера' : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+}
 function alRender() {
   if (currentPage !== 'audit') return;
+  const page = document.getElementById('page-body');
   const q = AL.q.trim().toLowerCase();
   const rows = AL.all
     .filter(r => AL.category === 'all' || r.category === AL.category)
     .filter(r => !q || [r.actor_name, r.action, r.target].some(x => (x || '').toLowerCase().includes(q)));
   const count = cat => AL.all.filter(r => cat === 'all' || r.category === cat).length;
-  const chip = (cat, label) => `<div class="al-chip${AL.category === cat ? ' active' : ''}" onclick="alFilter('${cat}')">${label} <b>${count(cat)}</b></div>`;
+  const nowS = Math.floor(Date.now() / 1000), day = AL.all.filter(r => r.created_at >= nowS - 86400);
+  const sec = day.filter(r => r.category === 'security');
+  const per = {}; day.forEach(r => { if (r.actor_name) per[r.actor_name] = (per[r.actor_name] || 0) + 1; });
+  const top = Object.entries(per).sort((a, b) => b[1] - a[1])[0];
+  const hrs = Array.from({ length: 12 }, (_, i) => day.filter(r => Math.floor((nowS - r.created_at) / 7200) === 11 - i).length), hmax = Math.max(1, ...hrs);
+  const last = AL.all[0];
+  const cats = ['all', ...Object.keys(AL_CAT)];
+  const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
+  const flt = k => `<button type="button" aria-pressed="${AL.category === k}" onclick="alFilter('${k}')">${k === 'all' ? 'Все' : AL_CAT[k]}<span class="n">${count(k)}</span></button>`;
+  let prev = '';
   uxKeepFocus(() => {
-    document.getElementById('page-body').innerHTML = `<div class="ux-page">
-      <section class="ux-panel">
-        <div class="ux-tb">
-          <div class="al-chips">${chip('all', 'Все')}${chip('moderation', 'Модерация')}${chip('rooms', 'Комнаты и чаты')}${chip('server', 'Сервер')}${chip('security', 'Безопасность')}</div>
-          <span class="ux-grow"></span>${uxSearch('al-q', AL.q, 'Кто, что, кого…', 'alSearch')}
-        </div>
-        <div class="ux-tbl"><table class="al-tbl">
-          <thead><tr><th style="width:110px">Когда</th><th style="width:160px">Кто</th><th style="width:190px">Действие</th><th>Над чем</th><th style="width:110px">Откуда</th></tr></thead>
-          <tbody>${rows.map(r => `<tr>
-              <td class="al-time">${alTimeLabel(r.created_at)}</td>
-              <td><div class="al-actor">${avHtml(r.actor_name || '?', 22, 7, r.actor_id, false, r.actor_has_avatar)}${esc(r.actor_name)}</div></td>
-              <td><span class="al-tag ${r.category || ''}"><i></i>${esc(r.action)}</span></td>
-              <td class="al-detail">${esc(r.target || '—')}</td>
-              <td class="al-ip">${esc(r.ip || '—')}</td>
-            </tr>`).join('') || `<tr><td colspan="5"><div class="ux-empty">${AL.all.length ? 'Ничего не нашли' : 'Пока пусто'}</div></td></tr>`}</tbody>
-        </table></div>
-      </section>
-    </div>`;
+    page.innerHTML = `<div class="ub" id="al-page">
+      <div class="ub-tiles">
+        <div class="ub-tile static"><div class="ub-lbl">Событий за сутки</div><div class="ub-big">${day.length}</div>
+          <div class="rb-bars">${hrs.map((v, i) => `<div title="${v}"><i class="${i === 11 ? 'cur' : ''}" style="height:${Math.max(2, Math.round(v / hmax * 26))}px"></i><span>${i % 3 === 0 ? (12 - i) * 2 + 'ч' : ''}</span></div>`).join('')}</div></div>
+        <button type="button" class="ub-tile" onclick="alFilter('security')" title="Показать события безопасности"><div class="ub-lbl">Безопасность</div><div class="ub-big" style="color:${sec.length ? 'var(--c-red-text)' : 'var(--c-green-text)'}">${sec.length}</div><div class="ub-sub">за сутки: входы, неудачные попытки, завершение сеансов</div></button>
+        <div class="ub-tile static"><div class="ub-lbl">Самый активный</div>${top ? `<div class="ub-big" style="font-size:17px;line-height:1.3;margin-top:8px;font-family:var(--f-ui)">${esc(top[0])}</div><div class="ub-sub">${top[1]} ${uxPlural(top[1], 'действие', 'действия', 'действий')} за сутки</div>` : '<div class="ub-sub" style="margin-top:8px">за сутки действий не было</div>'}</div>
+        <div class="ub-tile static"><div class="ub-lbl">Последнее</div>${last ? `<div class="ub-big" style="font-size:15px;line-height:1.3;margin-top:8px;font-family:var(--f-ui)">${esc(last.action)}</div><div class="ub-sub">${alClock(last.created_at)} · ${esc(last.actor_name || '—')}</div>` : '<div class="ub-sub" style="margin-top:8px">пока пусто</div>'}</div>
+      </div>
+      <div class="ub-head"><h3>Журнал <span>${rows.length}</span></h3>
+        <div class="ub-sort" role="group" aria-label="Категория">${cats.map(flt).join('')}</div>
+        ${uxSearch('al-q', AL.q, 'Кто, что, кого…', 'alSearch')}</div>
+      <div class="ub-rows">${rows.map(r => {
+        const open = AL.open.has(r.id ?? r.created_at + r.action), key = r.id ?? (r.created_at + r.action), d = alDayLabel(r.created_at), sep = d !== prev ? `<div class="al-day2">${esc(d)}</div>` : ''; prev = d;
+        const cat = r.category || '';
+        return `${sep}<div class="rb-row"><div class="pg-top" style="grid-template-columns:22px 60px minmax(0,1.2fr) minmax(0,1.5fr) minmax(0,1.2fr) minmax(0,.8fr)" onclick="alTog('${esc(String(key))}')">
+          <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть">${UX_I.chev}</button>
+          <div class="al-tm2">${alClock(r.created_at)}</div>
+          <div style="display:flex;align-items:center;gap:9px;min-width:0">${avHtml(r.actor_name || '?', 26, 8, r.actor_id, false, r.actor_has_avatar)}<span style="font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.actor_name || '—')}</span></div>
+          <div style="min-width:0"><span class="al-t2 ${cat}">${esc(r.action)}</span></div>
+          <div class="pg-h2 rb-meta" style="color:var(--c-text);font-size:12.5px">${esc(r.target || '—')}</div>
+          <div class="pg-h1 rb-meta" style="font-family:var(--f-mono)">${esc(r.ip || '—')}</div></div>
+        ${open ? `<div class="pg-exp" style="grid-template-columns:repeat(4,minmax(0,1fr))"><div><h4>Кто</h4><b>${esc(r.actor_name || '—')}</b></div><div><h4>Над чем</h4><b>${esc(r.target || '—')}</b></div><div><h4>Откуда</h4><span style="font-family:var(--f-mono)">${esc(r.ip || '—')}</span> <span class="rb-meta">${/^(::ffff:)?(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.)/.test(r.ip || '') ? 'локальная сеть' : r.ip ? 'внешний адрес' : ''}</span></div><div><h4>Категория</h4><span class="al-t2 ${cat}">${esc(AL_CAT[cat] || cat || '—')}</span></div></div>` : ''}</div>`;
+      }).join('') || `<div class="ub-empty">${AL.all.length ? 'Ничего не нашли' : 'Пока пусто'}</div>`}</div></div>`;
   });
+  const list = page.querySelector('.ub-rows');
+  if (list && keepTop) list.scrollTop = keepTop;
+}
+function alTog(key) {
+  const rec = AL.all.find(r => String(r.id ?? (r.created_at + r.action)) === key);
+  const k = rec ? (rec.id ?? (rec.created_at + rec.action)) : key;
+  AL.open.has(k) ? AL.open.delete(k) : AL.open.add(k);
+  alRender();
 }
 
 // ── РЕЛИЗЫ ──
-// История версий из RELEASE_HISTORY.md (см. /api/admin/release-notes) — отдельно
-// сервер и клиент, новые сверху, по разделам Добавлено/Исправлено/Изменено.
-// Чисто просмотр, без кнопок рассылки уведомлений.
+// История версий из RELEASE_HISTORY.md (см. /api/admin/release-notes): сервер и клиент одним потоком,
+// новые сверху, у каждой версии счётчики «Добавлено / Исправлено / Изменено». Только просмотр.
+const RE_SEC = { 'Добавлено': ['add', 'var(--c-green)'], 'Исправлено': ['fix', 'var(--c-orange)'], 'Изменено': ['chg', 'var(--dv-c2)'] };
 async function renderReleases() {
   setTopbarActions('');
   document.getElementById('page-body').innerHTML = `<div class="ux-page"><div class="ux-empty">Загрузка…</div></div>`;
   const data = await api('GET', '/api/admin/release-notes');
   if (currentPage !== 'releases') return;
-  const server = Array.isArray(data?.server) ? data.server : [];
-  const client = Array.isArray(data?.client) ? data.client : [];
-  const relEntry = r => `<div class="rel-item">
-      <div class="rel-item-head"><span class="rel-ver mono">${esc(r.version)}</span><span class="rel-date">${esc(r.dateLabel)}</span></div>
-      ${(r.sections || []).map(s => `<div class="rel-sec-label">${esc(s.label)}</div><ul class="rel-sec-list">${s.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`).join('')}
-    </div>`;
-  const relCol = (title, items) => `<section class="ux-panel rel-col">
-    <div class="ux-tb"><h3>${title}<span>${items.length}</span></h3></div>
-    <div class="rel-list">${items.map(relEntry).join('') || `<div class="ux-empty">Пока пусто</div>`}</div>
-  </section>`;
-  document.getElementById('page-body').innerHTML = `<div class="ux-page">
-    <div class="rel-grid">${relCol('Сервер', server)}${relCol('Клиент', client)}</div>
-  </div>`;
+  const mk = (list, k) => (Array.isArray(list) ? list : []).map(r => ({ ...r, k }));
+  RE.list = [...mk(data?.server, 'server'), ...mk(data?.client, 'client')];
+  if (RE.first) { RE.first = false; const f = RE.list[0]; if (f) RE.open.add(f.k + f.version); }
+  reRender();
 }
+function reRender() {
+  if (currentPage !== 'releases') return;
+  const page = document.getElementById('page-body');
+  const q = RE.q.trim().toLowerCase();
+  const cnt = k => RE.list.filter(r => r.k === k).length;
+  const rows = RE.list.filter(r => RE.f === 'all' || r.k === RE.f)
+    .filter(r => !q || (r.version + ' ' + (r.sections || []).map(s => (s.items || []).join(' ')).join(' ')).toLowerCase().includes(q));
+  const srv = RE.list.find(r => r.k === 'server'), cli = RE.list.find(r => r.k === 'client');
+  const n = lab => RE.list.reduce((a, r) => a + (r.sections || []).filter(s => s.label === lab).reduce((x, s) => x + s.items.length, 0), 0);
+  const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
+  const flt = ([k, label, c]) => `<button type="button" aria-pressed="${RE.f === k}" onclick="reFilter('${k}')">${label}<span class="n">${c}</span></button>`;
+  uxKeepFocus(() => {
+    page.innerHTML = `<div class="ub" id="re-page">
+      <div class="ub-tiles">
+        <div class="ub-tile static"><div class="ub-lbl">Сервер</div><div class="ub-big">${srv ? esc(String(srv.version).replace(/^s/, '')) : '—'}</div><div class="ub-sub">${srv ? esc(srv.dateLabel) : 'релизов нет'}</div></div>
+        <div class="ub-tile static"><div class="ub-lbl">Клиент (Electron)</div><div class="ub-big">${cli ? esc(String(cli.version).replace(/^c/, '')) : '—'}</div><div class="ub-sub">${cli ? esc(cli.dateLabel) : 'релизов нет'}</div></div>
+        <div class="ub-tile static"><div class="ub-lbl">Релизов в истории</div><div class="ub-big">${RE.list.length}<small>${cnt('server')} сервера · ${cnt('client')} клиента</small></div>
+          <div class="ub-stack">${Object.entries(RE_SEC).map(([l, c]) => `<i style="flex:${Math.max(1, n(l))};background:${c[1]}"></i>`).join('')}</div></div>
+        <div class="ub-tile static"><div class="ub-lbl">Что менялось</div><div class="ub-leg" style="flex-direction:column;gap:6px;margin-top:10px">${Object.entries(RE_SEC).map(([l, c]) => `<span><i style="background:${c[1]}"></i>${l} <b style="margin-left:auto">${n(l)}</b></span>`).join('')}</div></div>
+      </div>
+      <div class="ub-head"><h3>История <span>${rows.length}</span></h3>
+        <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все', RE.list.length], ['server', 'Сервер', cnt('server')], ['client', 'Клиент', cnt('client')]].map(flt).join('')}</div>
+        ${uxSearch('re-q', RE.q, 'Версия или текст', 'reSearch')}</div>
+      <div class="ub-rows">${rows.map(r => {
+        const key = r.k + r.version, open = RE.open.has(key), secs = r.sections || [];
+        return `<div class="rl"><div class="rl-h" onclick="reTog('${esc(key)}')"><button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть">${UX_I.chev}</button>
+          <span class="rl-v ${r.k}">${esc(r.version)}</span><span class="rb-meta">${esc(r.dateLabel)}</span><span style="flex:1"></span>
+          ${secs.map(s => { const c = (RE_SEC[s.label] || ['', 'var(--c-muted)'])[1]; return `<span class="pg-mini" style="background:color-mix(in srgb,${c} 16%,transparent);color:${c}">${esc(s.label)} ${s.items.length}</span>`; }).join('')}</div>
+          ${open ? secs.map(s => `<div><div class="rl-sl ${(RE_SEC[s.label] || [''])[0]}">${esc(s.label)}</div><ul>${s.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('') : `<div class="rl-pre">${esc(secs[0]?.items[0] || '')}</div>`}</div>`;
+      }).join('') || `<div class="ub-empty">${RE.list.length ? 'Ничего не нашли.' : 'Пока пусто'}</div>`}</div></div>`;
+  });
+  const list = page.querySelector('.ub-rows');
+  if (list && keepTop) list.scrollTop = keepTop;
+}
+function reTog(key) { RE.open.has(key) ? RE.open.delete(key) : RE.open.add(key); reRender(); }
+function reFilter(k) { RE.f = k; reRender(); }
+function reSearch(v) { RE.q = v; reRender(); }
 
 async function renderFiles() {
   setTopbarActions('');
