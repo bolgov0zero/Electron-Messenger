@@ -1591,6 +1591,7 @@ function enterApp(user) {
   document.getElementById('app').style.display = 'block';
   startBgClientsPolling();
   startBgDashPolling();
+  startBgUsersPolling();
   // Бейджи сайдбара (пользователи/комнаты/чаты) обновляем сразу, независимо от того
   // на какой вкладке восстановились — раньше их считал только renderDashboard.
   updateNavBadges();
@@ -1611,6 +1612,15 @@ function startBgClientsPolling() {
 async function refreshDashboardData() {
   if (!token || currentPage !== 'dashboard') return;
   try { await Promise.all([hmLoadOverview(), hmLoadActivity()]); } catch {}
+}
+
+// Статусы пользователей меняются без действий админа: пока открыт раздел «Пользователи»,
+// список обновляем раз в 5 секунд. Пока открыто окно — не трогаем (фон и фокус не сбиваем)
+function startBgUsersPolling() {
+  if (window._bgUsersInterval) clearInterval(window._bgUsersInterval);
+  window._bgUsersInterval = setInterval(() => {
+    if (token && currentPage === 'users' && !document.querySelector('.modal-bg.open')) renderUsers().catch(() => {});
+  }, 5000);
 }
 
 function startBgDashPolling() {
