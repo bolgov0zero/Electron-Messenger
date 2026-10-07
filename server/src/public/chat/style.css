@@ -1662,7 +1662,7 @@ input:not([type]) {
 .modal {
   background: var(--modal-bg);
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 20px;
   width: 400px;
   max-height: 85vh;
   display: flex; flex-direction: column;
@@ -1916,7 +1916,7 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 }
 .mi-modal {
   background: var(--modal-bg);
-  border-radius: 9px;
+  border-radius: 20px;
   padding: 12px 16px;
   width: 300px; max-width: calc(100vw - 32px);
   box-shadow: 0 30px 60px rgba(0,0,0,0.5);
@@ -2987,7 +2987,7 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 .chat-header-actions > .icon-btn:only-child { border-radius: 19px; }
 
 /* ── Объявления из клиента (announce.js): окно из двух половин ── */
-.anx-modal { position: relative; width: min(900px, 94vw); height: min(640px, 90vh); max-height: none; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); }
+.anx-modal { border-radius: 20px; position: relative; width: min(900px, 94vw); height: min(640px, 90vh); max-height: none; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); }
 .anx-modal.anx-tabs { width: min(560px, 96vw); height: min(640px, 94vh); display: flex; flex-direction: column; }
 .anx-half { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .anx-half.l { border-right: 1px solid var(--border); }
