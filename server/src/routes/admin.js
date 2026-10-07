@@ -128,6 +128,7 @@ router.get('/stats', (req, res) => {
 // Подсчёт кэшируем: за год это перебор большой части истории, а главная опрашивает
 // каждые 10 секунд — без кэша это было бы видно на графике отклика сервера.
 const ACTIVITY = {
+  '1h': { unit: 'min5', count: 12, ttl: 5e3 },        // для плитки «События за час»: по пять минут
   '24h': { unit: 'hour', count: 24, ttl: 10e3 },
   '7d': { unit: 'day', count: 7, ttl: 60e3 },
   '30d': { unit: 'day', count: 30, ttl: 5 * 60e3 },
@@ -145,6 +146,15 @@ router.get('/activity', (req, res) => {
 
   // Считаем в сдвинутом времени: к UTC прибавляем смещение, и UTC-методы Date дают
   // местные часы и даты. Date.UTC сам переносит отрицательные часы, дни и месяцы.
+  if (unit === 'min5') {
+    // пятиминутки не зависят от часового пояса: границы одни и те же по всему миру
+    const endB = Math.floor(Date.now() / 300000) * 300000, startMs = endB - (count - 1) * 300000;
+    const rows5 = db.prepare('SELECT (sent_at / 300) AS k, COUNT(*) AS n FROM messages WHERE deleted = 0 AND sent_at >= ? GROUP BY k').all(Math.floor(startMs / 1000));
+    const by5 = new Map(rows5.map(r => [r.k, r.n]));
+    const data5 = { range, unit, buckets: Array.from({ length: count }, (_, i) => { const t = startMs + i * 300000; return { t, n: by5.get(Math.floor(t / 300000)) || 0 }; }) };
+    activityCache.set(cacheKey, { at: Date.now(), data: data5 });
+    return res.json(data5);
+  }
   const off = tz * 60;
   const local = new Date(Date.now() + off * 1000);
   const [Y, M, D, h] = [local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), local.getUTCHours()];
@@ -632,7 +642,9 @@ router.post('/server/update', (req, res) => {
     const cmd = `systemd-run --unit=electron-update --collect --description="Обновление Electron" --setenv=UPDATE_STATUS_FILE=${JSON.stringify(UPDATE_STATUS_FILE)} /bin/bash ${JSON.stringify(updateSh)}`;
     // Отметка на графиках: всплеск нагрузки и разрыв при перезапуске — это обновление
     monitor.addEvent('update');
-    logAudit(req, 'server', 'Обновление сервера', null);
+    // Какую версию ставили — для подписи события на таймлайне главной
+    const toVer = typeof req.body?.target === 'string' ? req.body.target.replace(/[^\w.\-]/g, '').slice(0, 20) : '';
+    logAudit(req, 'server', 'Обновление сервера', toVer ? `до версии ${toVer}` : null);
     res.json({ ok: true });
     setTimeout(() => exec(cmd, (err, stdout, stderr) => {
       if (err) {
@@ -722,6 +734,69 @@ router.get('/audit-log', (req, res) => {
 // Точки графиков. Первый запрос — весь последний час, дальше только новые (since)
 router.get('/monitor', (req, res) => {
   res.json({ ...monitor.snapshot(req.query.since), ws: getConnCount() });
+});
+
+// Раскрытые графики процессора, отклика и числа людей в сети: сутки, неделя, месяц, год.
+// Считается по пятиминуткам из базы; длинные периоды кэшируем, чтобы опрос не нагружал сервер
+const METRICS_TTL = { '24h': 5e3, '7d': 30e3, '30d': 60e3, '1y': 5 * 60e3 };
+const metricsCache = new Map();
+router.get('/metrics', (req, res) => {
+  const range = METRICS_TTL[req.query.range] ? req.query.range : '24h';
+  const hit = metricsCache.get(range);
+  if (hit && Date.now() - hit.at < METRICS_TTL[range]) return res.json(hit.data);
+  const data = monitor.history(range);
+  metricsCache.set(range, { at: Date.now(), data });
+  res.json(data);
+});
+
+// События для таймлайна на главной: обновления и перезапуски сервера (из аудита) и системные
+// объявления (из журнала объявлений). from и to — миллисекунды
+router.get('/timeline', (req, res) => {
+  const to = Number(req.query.to) || Date.now();
+  const from = Math.max(Number(req.query.from) || to - 86400000, to - 400 * 86400000);
+  const f = Math.floor(from / 1000), t = Math.floor(to / 1000);
+  const out = [];
+  const audit = db.prepare(`
+    SELECT a.action, a.target, a.created_at, u.display_name AS actor
+    FROM admin_audit_log a LEFT JOIN users u ON u.id = a.actor_id
+    WHERE a.action IN ('Обновление сервера', 'Перезапуск сервера') AND a.created_at BETWEEN ? AND ?
+    ORDER BY a.created_at`).all(f, t);
+  for (const a of audit) {
+    const upd = a.action === 'Обновление сервера';
+    out.push({ t: a.created_at * 1000, type: 'upd', title: upd ? 'Обновление сервера' : 'Перезапуск службы',
+      text: upd && a.target ? a.target : '', meta: a.actor ? `выполнил ${a.actor}` : '' });
+  }
+  const KIND = { popup: 'всплывающее', banner: 'полоса', chat: 'в чаты' };
+  const anns = db.prepare('SELECT kind, text, target, targets, sent_at FROM announcements WHERE sent_at IS NOT NULL AND sent_at BETWEEN ? AND ? ORDER BY sent_at').all(f, t);
+  const plural = (n, a, b, c) => { const x = n % 100, y = x % 10; return x > 10 && x < 20 ? c : y === 1 ? a : y >= 2 && y <= 4 ? b : c; };
+  for (const a of anns) {
+    let ids = []; try { ids = JSON.parse(a.targets || '[]'); } catch {}
+    const who = a.target === 'all' ? (a.kind === 'chat' ? 'во все группы и комнаты' : 'всем')
+      : a.kind === 'chat' ? `${ids.length} ${plural(ids.length, 'чат', 'чата', 'чатов')}` : `${ids.length} ${plural(ids.length, 'получатель', 'получателя', 'получателей')}`;
+    out.push({ t: a.sent_at * 1000, type: 'sys', title: 'Системное сообщение', text: `«${String(a.text).replace(/\s+/g, ' ').slice(0, 140)}»`, meta: `${KIND[a.kind] || a.kind} · ${who}` });
+  }
+  out.sort((x, y) => x.t - y.t);
+  res.json(out.slice(-3000));
+});
+
+// Тепловая карта: сколько сообщений в среднем приходится на каждый час каждого дня недели за 30 дней
+const heatCache = new Map();
+router.get('/heatmap', (req, res) => {
+  const tz = Math.max(-840, Math.min(840, Math.round(Number(req.query.tz) || 0)));
+  const hit = heatCache.get(tz);
+  if (hit && Date.now() - hit.at < 5 * 60e3) return res.json(hit.data);
+  const off = tz * 60, days = 30, since = Math.floor(Date.now() / 1000) - days * 86400;
+  const rows = db.prepare(`
+    SELECT CAST(strftime('%w', sent_at + ?, 'unixepoch') AS INTEGER) AS d, CAST(strftime('%H', sent_at + ?, 'unixepoch') AS INTEGER) AS h, COUNT(*) AS n
+    FROM messages WHERE deleted = 0 AND sent_at >= ? GROUP BY d, h`).all(off, off, since);
+  // сколько раз каждый день недели встретился в окне — чтобы получить среднее, а не сумму
+  const seen = Array(7).fill(0);
+  for (let i = 0; i < days; i++) seen[new Date(Date.now() + off * 1000 - i * 86400000).getUTCDay()]++;
+  const matrix = Array.from({ length: 7 }, () => Array(24).fill(0));      // строки: пн … вс
+  for (const r of rows) matrix[(r.d + 6) % 7][r.h] = Math.round(r.n / (seen[r.d] || 1) * 10) / 10;
+  const data = { days, matrix, max: Math.max(1, ...matrix.flat()) };
+  heatCache.set(tz, { at: Date.now(), data });
+  res.json(data);
 });
 
 // Сводка: сервер, служба, хранилище и чат. Опрашивается реже графиков

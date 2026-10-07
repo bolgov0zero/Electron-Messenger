@@ -31,6 +31,69 @@ const samples = [];
 const events = [];
 let live = {};
 
+// ── Долгая история ──
+// Живые графики держат только последний час, а раскрытая плитка на главной показывает сутки, неделю,
+// месяц и год. Поэтому раз в пять минут пишем в базу среднюю загрузку процессора, наибольшую задержку
+// и среднее число людей в сети. За год это около ста тысяч строк.
+db.exec(`CREATE TABLE IF NOT EXISTS metrics_5m (
+  t        INTEGER PRIMARY KEY,   -- начало пятиминутки, секунды
+  n        INTEGER NOT NULL,      -- сколько замеров вошло
+  cpu_sum  REAL NOT NULL,
+  lag_max  REAL NOT NULL,
+  on_sum   REAL NOT NULL,
+  on_n     INTEGER NOT NULL
+)`);
+const METRICS_KEEP_DAYS = 400;
+const upsertMetric = db.prepare(`INSERT INTO metrics_5m (t, n, cpu_sum, lag_max, on_sum, on_n) VALUES (?, ?, ?, ?, ?, ?)
+  ON CONFLICT(t) DO UPDATE SET n = n + excluded.n, cpu_sum = cpu_sum + excluded.cpu_sum,
+    lag_max = MAX(lag_max, excluded.lag_max), on_sum = on_sum + excluded.on_sum, on_n = on_n + excluded.on_n`);
+let macc = null;
+// Накопленное пишем частями (раз в минуту и при остановке): после перезапуска внутри той же пятиминутки
+// новые замеры просто добавляются к уже записанным
+function flushMetrics() {
+  if (!macc || !macc.n) { macc = null; return; }
+  try { upsertMetric.run(macc.b, macc.n, macc.cpu, macc.lag, macc.on, macc.onN); }
+  catch (e) { console.error('[Monitor] не удалось записать историю:', e.message); }
+  macc = null;
+}
+function addMetric(t, cpu, lag, online) {
+  const b = Math.floor(t / 300000) * 300;
+  if (macc && macc.b !== b) flushMetrics();
+  if (!macc) macc = { b, n: 0, cpu: 0, lag: 0, on: 0, onN: 0 };
+  macc.n++; macc.cpu += cpu; macc.lag = Math.max(macc.lag, lag || 0);
+  if (online != null) { macc.on += online; macc.onN++; }
+}
+function pruneMetrics() {
+  try { db.prepare('DELETE FROM metrics_5m WHERE t < ?').run(Math.floor(Date.now() / 1000) - METRICS_KEEP_DAYS * 86400); } catch {}
+}
+
+// Ряды для раскрытых графиков: n точек на период, шаг зависит от периода
+const HISTORY_RANGES = {
+  '24h': { n: 96, step: 15 * 60000 },
+  '7d': { n: 84, step: 2 * 3600000 },
+  '30d': { n: 120, step: 6 * 3600000 },
+  '1y': { n: 52, step: 7 * 86400000 },
+};
+function history(range) {
+  const cfg = HISTORY_RANGES[range] || HISTORY_RANGES['24h'];
+  flushMetrics();   // чтобы свежие минуты уже были на графике
+  const end = Date.now(), start = end - cfg.n * cfg.step;
+  const rows = db.prepare('SELECT t, n, cpu_sum, lag_max, on_sum, on_n FROM metrics_5m WHERE t >= ? ORDER BY t').all(Math.floor(start / 1000));
+  const acc = Array.from({ length: cfg.n }, () => ({ n: 0, cpu: 0, lag: null, on: 0, onN: 0 }));
+  for (const r of rows) {
+    const i = Math.floor((r.t * 1000 - start) / cfg.step);
+    if (i < 0 || i >= cfg.n) continue;
+    const a = acc[i];
+    a.n += r.n; a.cpu += r.cpu_sum; a.lag = a.lag == null ? r.lag_max : Math.max(a.lag, r.lag_max); a.on += r.on_sum; a.onN += r.on_n;
+  }
+  return {
+    range: HISTORY_RANGES[range] ? range : '24h', start, end, step: cfg.step, n: cfg.n,
+    cpu: acc.map(a => a.n ? round(a.cpu / a.n, 2) : null),
+    lag: acc.map(a => a.lag == null ? null : round(a.lag)),
+    online: acc.map(a => a.onN ? round(a.on / a.onN, 1) : null),
+  };
+}
+
 const readText = p => { try { return fs.readFileSync(p, 'utf8'); } catch { return null; } };
 const round = (v, d = 1) => v == null || !isFinite(v) ? null : Math.round(v * 10 ** d) / 10 ** d;
 
@@ -173,6 +236,8 @@ function sample() {
     samples.push([t, round(Math.min(100, Math.max(0, cpuPct))), round(Math.max(0, svcPct), 2),
       mem.total - mem.available, svcMem, bps('rd'), bps('wr'), round(Math.max(0, lag)), onlineFn ? onlineFn() : null]);
     if (samples.length > CAP) samples.splice(0, samples.length - CAP);
+    const last = samples[samples.length - 1];
+    addMetric(t, last[1], last[7], last[8]);
 
     const sysUptime = Number((readText('/proc/uptime') || '0').split(' ')[0]);
     const prevTicks = new Map(prev.procs.map(p => [p.pid, p.ticks]));
@@ -322,10 +387,13 @@ function start() {
   sample();
   setInterval(sample, STEP_MS).unref();
   setInterval(save, 5 * 60000).unref();
+  setInterval(flushMetrics, 60000).unref();
+  pruneMetrics();
+  setInterval(pruneMetrics, 24 * 3600000).unref();
   // Сохраняем историю при остановке службы: systemd шлёт SIGTERM
-  const stop = () => { save(); process.exit(0); };
+  const stop = () => { save(); flushMetrics(); process.exit(0); };
   process.once('SIGTERM', stop);
   process.once('SIGINT', stop);
 }
 
-module.exports = { start, setOnlineProvider, snapshot, addEvent, hostInfo, serviceInfo, storageInfo, UPDATE_UNIT };
+module.exports = { start, setOnlineProvider, snapshot, history, addEvent, hostInfo, serviceInfo, storageInfo, UPDATE_UNIT };
