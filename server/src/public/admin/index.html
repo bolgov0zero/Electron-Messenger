@@ -241,6 +241,63 @@ html.sb-rail .sb-srvb{display:grid;place-items:center;width:40px;height:34px;mar
 .sb-pe{padding:24px;text-align:center;color:var(--c-muted)}
 @media (prefers-reduced-motion:reduce){.sidebar,.topbar,.app-layout{transition:none}}
 
+/* ── Быстрые окна создания и правки: пользователь, комната, объявление, вебхук ── */
+.modal.fm{width:480px;position:relative}
+.fm .ua-body{gap:16px}
+.fm-note{font-size:11.5px;color:var(--c-muted);margin-right:auto;min-width:0}
+.fm-note b{color:var(--c-orange-text);font-weight:600}
+.fm-note.ok b{color:var(--c-green-text)}
+.fm-more{border:1px dashed var(--c-border);border-radius:10px;flex-shrink:0}
+.fm-more>button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;color:var(--c-text);padding:10px 12px;cursor:pointer;text-align:left;font:600 12.5px var(--f-ui)}
+.fm-more>button .ua-hint{font-weight:500}
+.fm-more>button .ch{margin-left:auto;color:var(--c-muted);transition:transform .15s}
+.fm-more.open>button .ch{transform:rotate(90deg)}
+.fm-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 11px}
+.fm-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:8px;border:1px solid var(--c-border);background:var(--c-surface2);font:500 11.5px var(--f-ui);color:var(--c-muted);cursor:pointer;max-width:100%}
+.fm-chip b{color:var(--c-text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fm-chip:hover{border-color:var(--c-primary)}
+.fm-chip.static{cursor:default;padding-right:4px}
+.fm-chip.static:hover{border-color:var(--c-border)}
+.fm-chip.static button{border:0;background:none;color:var(--c-muted);cursor:pointer;padding:0 4px;font-size:14px;line-height:1}
+.fm-chip.static button:hover{color:var(--c-red-text)}
+.fm-chip.cnt{color:var(--c-primary);background:var(--c-primary-dim);border-color:transparent}
+.fm-mb{display:flex;flex-direction:column;gap:18px;padding:14px 12px;border-top:1px solid var(--c-border)}
+.fm-pw{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c-text2);padding:8px 10px 8px 12px;border:1px solid var(--c-border);border-radius:10px;background:var(--c-surface2)}
+.fm-pw svg{width:14px;height:14px;flex-shrink:0}
+.fm-pw code{font:600 12px var(--f-mono);color:var(--c-text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fm-pick{display:flex;flex-direction:column;gap:9px}
+.fm-pickhead{display:flex;align-items:center;gap:8px}
+.fm-pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:7px;background:var(--c-surface2);border:1px solid var(--c-border);color:var(--c-muted)}
+.fm-pill.on{color:var(--c-primary);background:var(--c-primary-dim);border-color:transparent}
+.fm-chips2{display:flex;flex-wrap:wrap;gap:6px}
+.fm-pickacts{display:flex;gap:6px;flex-wrap:wrap}
+.fm-pv{display:flex;flex-direction:column;gap:6px}
+/* лист выбора людей и чатов поверх окна */
+.fm-sheet{position:absolute;inset:0;z-index:6;background:var(--c-surface);display:flex;flex-direction:column;min-height:0;animation:fmUp .18s ease}
+@keyframes fmUp{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}
+.fm-sh{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--c-border);flex-shrink:0}
+.fm-sh .t{font-size:14px;font-weight:700}
+.fm-sh .s{font-size:11.5px;color:var(--c-muted)}
+.fm-tools{padding:12px 16px 8px;display:flex;flex-direction:column;gap:9px;flex-shrink:0}
+.fm-grp{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.fm-grp button{flex-shrink:0;border:1px solid var(--c-border);background:var(--c-surface2);color:var(--c-muted);font:600 12px var(--f-ui);padding:4px 10px;border-radius:9px;cursor:pointer}
+.fm-grp button small{opacity:.75;margin-left:4px;font-weight:500}
+.fm-grp button[aria-pressed="true"]{color:var(--c-primary);background:var(--c-primary-dim);border-color:transparent}
+.fm-acts{display:flex;gap:6px;align-items:center}
+.fm-acts .btn{white-space:nowrap}
+.fm-acts select{height:28px;border:1px solid var(--c-border);background:var(--c-surface2);color:var(--c-text);border-radius:8px;font:600 11.5px var(--f-ui);padding:0 6px;max-width:130px}
+.fm-list{flex:1;min-height:0;overflow-y:auto;padding:4px 16px 10px;display:flex;flex-direction:column;gap:4px}
+.fm-li{display:flex;align-items:center;gap:10px;width:100%;padding:6px 9px;border:1px solid var(--c-border);border-radius:10px;background:var(--c-surface2);cursor:pointer;text-align:left;color:inherit;font:inherit;flex-shrink:0}
+.fm-li[aria-pressed="true"]{border-color:var(--c-primary);background:var(--c-primary-dim)}
+.fm-li .n{flex:1;min-width:0;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fm-li .n small{display:block;font-weight:500;font-size:11px;color:var(--c-muted)}
+.fm-li .tg2{font-size:10.5px;font-weight:600;color:var(--c-muted);border:1px solid var(--c-border);border-radius:7px;padding:1px 7px;white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis}
+.fm-li .ck{width:16px;color:var(--c-primary);font-weight:700;text-align:center}
+.fm-sf{display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid var(--c-border);flex-shrink:0}
+.fm-sf .fm-note b{color:var(--c-text)}
+.fm-empty{padding:18px;text-align:center;color:var(--c-muted);font-size:12px}
+@media (prefers-reduced-motion:reduce){.fm-sheet{animation:none}}
+
 /* ── PAGE BODY ── */
 .page-body{flex:1;overflow-y:auto;padding:20px 24px 24px}
 
@@ -1650,13 +1707,13 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 </div>
 
 <!-- Окна раздела «Пользователи»: содержимое рисует скрипт -->
-<div class="modal-bg" id="modal-user"><form class="modal ua-modal" id="ua-form" novalidate onsubmit="event.preventDefault(); uaSave()"></form></div>
+<div class="modal-bg" id="modal-user"><form class="modal ua-modal fm" id="ua-form" novalidate onsubmit="event.preventDefault(); uaSave()"></form></div>
 <div class="modal-bg" id="modal-user-pass"><form class="modal ua-modal ua-sm" id="ua-pass-form" novalidate onsubmit="event.preventDefault(); uaSavePassword()"></form></div>
 
 <!-- Окна разделов «Объявления» и «Вебхуки»: содержимое рисует скрипт. Инструкция идёт ниже, чтобы открываться поверх окна создания -->
-<div class="modal-bg" id="modal-announcement"><div class="modal ua-modal an-modal" id="an-form" role="dialog" aria-modal="true"></div></div>
+<div class="modal-bg" id="modal-announcement"><div class="modal ua-modal fm" id="an-form" role="dialog" aria-modal="true"></div></div>
 <div class="modal-bg" id="modal-ann-view"><div class="modal ua-modal an-modal" id="an-view-form" role="dialog" aria-modal="true"></div></div>
-<div class="modal-bg" id="modal-webhook"><div class="modal ua-modal" id="wh-form" role="dialog" aria-modal="true"></div></div>
+<div class="modal-bg" id="modal-webhook"><div class="modal ua-modal fm" id="wh-form" role="dialog" aria-modal="true"></div></div>
 
 <!-- Webhook help modal -->
 <div class="modal-bg" id="modal-webhook-help">
@@ -1731,7 +1788,7 @@ return 'OK';</pre>
 </div>
 
 <!-- Окна разделов «Комнаты» и «Чаты и группы»: содержимое рисует скрипт -->
-<div class="modal-bg" id="modal-room"><div class="modal ua-modal rm-modal" id="rm-form" role="dialog" aria-modal="true"></div></div>
+<div class="modal-bg" id="modal-room"><div class="modal ua-modal fm" id="rm-form" role="dialog" aria-modal="true"></div></div>
 <div class="modal-bg" id="modal-chat-members"><div class="modal ua-modal ua-sm" id="cm-form" role="dialog" aria-modal="true"></div></div>
 
 <!-- Confirm modal -->
@@ -3373,10 +3430,12 @@ async function rmOpen(id, tab = 'main') {
     topics: (r?.topics || []).map(t => ({ id: t.id, name: t.name, msgs: t.message_count, avatar: null, hasAvatar: !!t.has_avatar, removed: false })),
     initialTopics: new Map((r?.topics || []).map(t => [t.id, t.name])),
     members: new Set(members.map(m => m.id)), initialMembers: new Set(members.map(m => m.id)),
-    mq: '', renaming: null, busy: false, err: '',
+    mq: '', renaming: null, busy: false, err: '', more: tab !== 'main',
   };
-  rmRenderForm(tab === 'members' ? 'rm-mq' : tab === 'topics' ? 'rm-nt' : 'rm-name');
+  PK.ctx = null;
+  rmRenderForm(tab === 'topics' ? 'rm-nt' : tab === 'members' ? null : 'rm-name');
   openModal('modal-room');
+  if (tab === 'members') pkOpen('room');
 }
 
 function rmAv(name, size, base64, chatId, hasAvatar) {
@@ -3386,15 +3445,8 @@ function rmAv(name, size, base64, chatId, hasAvatar) {
   return uaAv(name, size);
 }
 
-function rmRenderForm(focusId) {
-  const f = RM.form, el = document.getElementById('rm-form');
-  if (!f || !el) return;
-  const r = f.id ? allRooms.find(x => x.id === f.id) : null;
-  const live = f.topics.filter(t => !t.removed).length;
-  const tab = (k, label, n) => `<button type="button" role="tab" aria-selected="${f.tab === k}" onclick="rmTab('${k}')">${label}${n != null ? `<small>${n}</small>` : ''}</button>`;
-  let body;
-  if (f.tab === 'topics') {
-    body = `<p class="rm-hint">Темы делят комнату на отдельные ленты. Порядок — как в списке тем у людей: перетащите строку за ⋮⋮.</p>
+function rmTopicsHtml(f) {
+  return `<p class="rm-hint">Темы делят комнату на отдельные ленты. Порядок — как в списке тем у людей: перетащите строку за ⋮⋮.</p>
       <div class="rm-list">${f.topics.map((t, i) => t.removed
         ? `<div class="rm-li rm-removed"><span class="rm-handle"></span>${rmAv(t.name, 28, t.avatar, t.id, t.hasAvatar)}<div style="flex:1;min-width:0"><div class="ux-name">${esc(t.name)}</div>
             <div class="rm-sub">Удалится при сохранении${t.msgs ? ` вместе с ${rmFmt(t.msgs)} ${uxPlural(t.msgs, 'сообщением', 'сообщениями', 'сообщениями')}` : ''}</div></div>
@@ -3410,50 +3462,50 @@ function rmRenderForm(focusId) {
         || '<div class="rm-li"><span class="rm-sub">Тем пока нет — вся переписка идёт в одной ленте</span></div>'}</div>
       <div class="rm-add"><div class="ua-inp" style="flex:1"><input id="rm-nt" placeholder="Новая тема" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); rmTopic('add')}"></div>
         <button type="button" class="btn btn-primary" onclick="rmTopic('add')">${RM_I.plus}Добавить</button></div>`;
-  } else if (f.tab === 'members') {
-    const q = f.mq.trim().toLowerCase();
-    const match = u => !q || u.display_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q);
-    const inside = allUsersCache.filter(u => f.members.has(u.id) && match(u));
-    const outside = allUsersCache.filter(u => !f.members.has(u.id) && match(u));
-    const person = u => `${avHtml(u.display_name, 28, 8, u.id, false, u.has_avatar)}<div style="flex:1;min-width:0"><div class="ux-name">${esc(u.display_name)}</div>`;
-    body = `<label class="ux-search" style="min-width:0">${UX_I.search}<input id="rm-mq" value="${esc(f.mq)}" placeholder="Найти человека" autocomplete="off" oninput="RM.form.mq = this.value; rmRenderForm()"></label>
-      <div class="rm-cols">
-        <div><div class="rm-col-t"><span>В комнате</span><span>${f.members.size}</span></div><div class="rm-list rm-scroll">${inside.map(u => `<div class="rm-li">${person(u)}
-          <div class="rm-sub">@${esc(u.username)}${f.initialMembers.has(u.id) ? '' : ' · добавится'}</div></div>
-          <button type="button" class="ux-ibtn" aria-label="Убрать: ${esc(u.display_name)}" onclick="rmMember(${u.id})">${RM_I.x}</button></div>`).join('') || '<div class="rm-li"><span class="rm-sub">Никого</span></div>'}</div></div>
-        <div><div class="rm-col-t"><span>Добавить</span><span>${outside.length}</span></div><div class="rm-list rm-scroll">${outside.map(u => `<button type="button" class="rm-li rm-pick" onclick="rmMember(${u.id})">${person(u)}
-          <div class="rm-sub">@${esc(u.username)}${f.initialMembers.has(u.id) ? ' · уберётся' : ''}</div></div><span class="rm-plus">+</span></button>`).join('') || '<div class="rm-li"><span class="rm-sub">Все уже в комнате</span></div>'}</div></div>
-      </div>
-      <p class="rm-hint">Новые участники сразу видят все темы комнаты.</p>`;
-  } else {
-    body = `<div class="ua-field"><label for="rm-name">Название</label>
-        <div class="ua-inp"><input id="rm-name" value="${esc(f.name)}" placeholder="Например, Общая" autocomplete="off" oninput="RM.form.name = this.value; rmLiveAv()" onkeydown="if(event.key==='Enter'){event.preventDefault(); rmSave()}"></div></div>
+}
+const rmMore = id => { RM.form.more = id ? true : !RM.form.more; rmRenderForm(); if (id) fmScroll('rm-sec-' + id); };
+function rmFootSync() {
+  const f = RM.form; if (!f) return;
+  const miss = f.name.trim() ? [] : ['название'], n = document.getElementById('rm-note'), b = document.getElementById('rm-go');
+  if (n) { n.innerHTML = fmNote(miss); n.classList.toggle('ok', !miss.length); }
+  if (b) b.disabled = !!f.busy || !!miss.length;
+}
+function rmRenderForm(focusId) {
+  const f = RM.form, el = document.getElementById('rm-form');
+  if (!f || !el) return;
+  const r = f.id ? allRooms.find(x => x.id === f.id) : null;
+  const live = f.topics.filter(t => !t.removed).length, miss = f.name.trim() ? [] : ['название'];
+  const main = `<div class="ua-sec"><div class="ua-field"><label for="rm-name">Название</label>
+        <div class="ua-inp"><input id="rm-name" value="${esc(f.name)}" placeholder="Например, Общая" autocomplete="off" oninput="RM.form.name = this.value; rmLiveAv(); rmFootSync()" onkeydown="if(event.key==='Enter'){event.preventDefault(); rmSave()}"></div></div>
       <div class="rm-avpick"><span id="rm-av-big">${rmAv(f.name, 56, f.avatar, f.id, f.hasAvatar)}</span>
         <div><label class="btn btn-ghost btn-sm" style="cursor:pointer">${RM_I.img}${f.avatar || f.hasAvatar ? 'Заменить аватар' : 'Загрузить аватар'}<input type="file" accept="image/*" hidden onchange="rmPickAvatar(this)"></label>
           <div class="ua-hint" style="margin-top:5px">Квадратная картинка, лучше от 256 px. Без аватара — буквы названия.</div></div></div>
-      <label class="toggle-switch rm-ro" style="gap:10px;margin:2px 0 12px">
+      <label class="toggle-switch rm-ro" style="gap:10px">
         <input type="checkbox" ${f.readOnly ? 'checked' : ''} onchange="RM.form.readOnly = this.checked">
         <div class="toggle-track"><div class="toggle-thumb"></div></div>
         <div><div style="font-size:12.5px;font-weight:600;color:var(--c-text)">Только чтение</div>
           <div class="ua-hint">Писать в комнату и её темы сможет только вебхук. Реакции остаются доступны</div></div>
-      </label>
-      ${r ? `<div class="rm-dz"><div><b>Удалить комнату</b><span>Вместе со всеми темами и перепиской</span></div>
-        <button type="button" class="btn btn-danger btn-sm" onclick="closeModal('modal-room'); rmDelete([${r.id}])">${UX_I.trash}Удалить</button></div>` : ''}`;
-  }
+      </label></div>`;
+  const topicNames = f.topics.filter(t => !t.removed).slice(0, 3).map(t => t.name).join(', ');
+  const secs = [
+    { id: 't', t: 'Темы', su: live ? `${live} ${uxPlural(live, 'тема', 'темы', 'тем')}: ${topicNames}` : 'Одна общая лента', body: rmTopicsHtml(f) },
+    { id: 'm', t: 'Участники', su: f.members.size ? `${f.members.size} ${uxPlural(f.members.size, 'участник', 'участника', 'участников')}` : 'Пока никого',
+      body: pkSummary('room', 'Выбрать участников…') + '<p class="rm-hint">Новые участники сразу видят все темы комнаты.</p>' },
+    ...(r ? [{ id: 'z', t: 'Удаление', su: 'Комната и вся переписка', body: `<div class="rm-dz"><div><b>Удалить комнату</b><span>Вместе со всеми темами и перепиской</span></div>
+        <button type="button" class="btn btn-danger btn-sm" onclick="closeModal('modal-room'); rmDelete([${r.id}])">${UX_I.trash}Удалить</button></div>` }] : []),
+  ];
   uaRestoreFocus(() => {
     el.innerHTML = `
       <div class="ua-head"><span id="rm-head-av">${rmAv(f.name, 38, f.avatar, f.id, f.hasAvatar)}</span>
-        <div><div class="ua-title">${r ? esc(r.name) : 'Новая комната'}</div><div class="ua-sub">${r ? `Создана ${fmtDate(r.created_at)} · ${rmMsgs(r.msgs)}` : 'Название, темы и участники'}</div></div>
+        <div><div class="ua-title">${r ? esc(r.name) : 'Новая комната'}</div><div class="ua-sub">${r ? `Создана ${fmtDate(r.created_at)} · ${rmMsgs(r.msgs)}` : 'Название, остальное можно позже'}</div></div>
         <button type="button" class="modal-close" aria-label="Закрыть" onclick="closeModal('modal-room')">✕</button></div>
-      <div class="rm-tabs" role="tablist">${tab('main', 'Основное')}${tab('topics', 'Темы', live)}${tab('members', 'Участники', f.members.size)}</div>
-      <div class="ua-body rm-body">${body}</div>
-      <div class="ua-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}<span class="ux-grow"></span>
+      <div class="ua-body rm-body">${main}${fmMoreHtml('rm', f.more, 'rmMore', secs)}</div>
+      <div class="ua-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}<span class="fm-note ${miss.length ? '' : 'ok'}" id="rm-note">${fmNote(miss)}</span>
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-room')">Отмена</button>
-        <button type="button" class="btn ux-solid" ${f.busy ? 'disabled' : ''} onclick="rmSave()">${f.busy ? 'Сохраняю…' : r ? 'Сохранить' : 'Создать'}</button></div>`;
+        <button type="button" class="btn ux-solid" id="rm-go" ${f.busy || miss.length ? 'disabled' : ''} onclick="rmSave()">${f.busy ? 'Сохраняю…' : r ? 'Сохранить' : 'Создать'}</button></div>${pkSheet()}`;
   }, focusId);
 }
 
-function rmTab(k) { RM.form.tab = k; RM.form.renaming = null; rmRenderForm(k === 'members' ? 'rm-mq' : k === 'topics' ? 'rm-nt' : 'rm-name'); }
 function rmLiveAv() {
   const f = RM.form;
   if (f.avatar || (f.id && f.hasAvatar)) return;
@@ -3501,17 +3553,12 @@ function rmDrop(e, i) {
   arr.splice(i, 0, moved);
   rmRenderForm();
 }
-function rmMember(id) {
-  const m = RM.form.members;
-  m.has(id) ? m.delete(id) : m.add(id);
-  rmRenderForm();
-}
 
 async function rmSave() {
   const f = RM.form;
   if (!f || f.busy) return;
   const name = f.name.trim();
-  if (!name) { f.tab = 'main'; f.err = 'Укажите название комнаты'; return rmRenderForm('rm-name'); }
+  if (!name) { f.err = 'Укажите название комнаты'; return rmRenderForm('rm-name'); }
   f.busy = true;
   f.err = '';
   rmRenderForm();
@@ -3809,15 +3856,102 @@ function uaDelete(id) {
     });
 }
 
+/* ── Быстрые окна: общие части ── */
+// В окне только главное, остальное под «Дополнительно»: краткий перечень, по клику раскрывается.
+// Выбор людей и чатов в больших списках — отдельным листом поверх окна: поиск, фильтры, группы, массовые действия.
+const fmNote = miss => miss.length ? `Осталось: <b>${miss.join(', ')}</b>` : '<b>Всё готово</b>';
+function fmMoreHtml(prefix, open, toggleFn, secs) {
+  if (!secs.length) return '';
+  const n = secs.length;
+  return `<div class="fm-more ${open ? 'open' : ''}"><button type="button" onclick="${toggleFn}()" aria-expanded="${open}"><span>Дополнительно</span><span class="ua-hint">${n} ${uxPlural(n, 'раздел', 'раздела', 'разделов')}</span><span class="ch">›</span></button>
+    ${open ? `<div class="fm-mb">${secs.map(s => `<section class="ua-sec" id="${prefix}-sec-${s.id}"><div class="ua-sec-title">${s.t}</div>${s.body}</section>`).join('')}</div>`
+      : `<div class="fm-chips">${secs.map(s => `<button type="button" class="fm-chip" onclick="${toggleFn}('${s.id}')">${s.t}: <b>${esc(s.su)}</b></button>`).join('')}</div>`}</div>`;
+}
+const fmScroll = id => setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 40);
+
+const PK = { ctx: null, host: null, q: '', f: 'all', g: '', limit: 40, groups: [] };
+const pkUsers = () => allUsersCache.filter(u => !u.banned).map(u => ({ id: u.id, name: u.display_name || u.username, sub: '@' + u.username, tag: u.tag || '',
+  av: avHtml(u.display_name || u.username, 26, 8, u.id, false, u.has_avatar) }));
+const pkChats = () => AN.chats.map(c => ({ id: c.id, name: chName(c), sub: c.type === 'room' ? 'комната' : c.type === 'direct' ? 'личный чат' : 'группа',
+  tag: c.type === 'room' ? 'комната' : c.type === 'direct' ? 'личный чат' : 'группа', av: chAv(c, 26) }));
+function pkCfg(ctx) {
+  if (ctx === 'room') return { title: 'Участники комнаты', people: true, items: pkUsers, sel: () => RM.form.members, rerender: f => rmRenderForm(f) };
+  const chat = AN.form?.kind === 'chat';
+  return { title: chat ? 'Куда отправить' : 'Кому отправить', people: !chat, items: chat ? pkChats : pkUsers, sel: () => AN.form.who, rerender: f => anRenderForm(f) };
+}
+const pkNoun = (c, n) => c.people ? uxPlural(n, 'человек', 'человека', 'человек') : uxPlural(n, 'чат', 'чата', 'чатов');
+function pkFound() {
+  const c = pkCfg(PK.ctx), sel = c.sel(), q = PK.q.trim().toLowerCase();
+  return c.items().filter(p => (!q || p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q) || p.tag.toLowerCase().includes(q))
+    && (!PK.g || (p.tag || 'Без тега') === PK.g) && (PK.f === 'all' || (PK.f === 'sel') === sel.has(p.id)));
+}
+function pkSummary(ctx, label) {
+  const c = pkCfg(ctx), items = c.items(), sel = c.sel(), chosen = items.filter(p => sel.has(p.id));
+  const short = n => n.length > 22 ? n.slice(0, 21) + '…' : n;
+  const chips = chosen.slice(0, 5).map(p => `<span class="fm-chip static">${esc(short(p.name))}<button type="button" aria-label="Убрать" onclick="pkRm('${ctx}', ${p.id})">×</button></span>`).join('')
+    + (chosen.length > 5 ? `<button type="button" class="fm-chip cnt" onclick="pkOpen('${ctx}')">+${chosen.length - 5}</button>` : '');
+  return `<div class="fm-pick"><div class="fm-pickhead"><span class="fm-pill ${chosen.length ? 'on' : ''}">${chosen.length ? `${chosen.length} ${pkNoun(c, chosen.length)}` : 'никого'}</span><span class="ua-hint">из ${items.length}</span></div>
+    ${chips ? `<div class="fm-chips2">${chips}</div>` : ''}
+    <div class="fm-pickacts"><button type="button" class="btn ux-solid btn-sm" onclick="pkOpen('${ctx}')">${label}</button><button type="button" class="btn btn-ghost btn-sm" onclick="pkAll('${ctx}')">Добавить всех (${items.length})</button>${chosen.length ? `<button type="button" class="btn btn-ghost btn-sm" onclick="pkClear('${ctx}')">Очистить</button>` : ''}</div></div>`;
+}
+function pkSheet() {
+  if (!PK.ctx) return '';
+  const c = pkCfg(PK.ctx), items = c.items(), sel = c.sel();
+  const gm = new Map(); items.forEach(p => { const g = p.tag || 'Без тега'; gm.set(g, (gm.get(g) || 0) + 1); });
+  const groups = [...gm.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  PK.groups = groups.map(g => g[0]);
+  if (PK.g && !PK.groups.includes(PK.g)) PK.g = '';
+  const found = pkFound(), shown = found.slice(0, PK.limit), allSel = found.length > 0 && found.every(p => sel.has(p.id));
+  const roomsCopy = PK.ctx === 'room' ? allRooms.filter(r => !RM.form.id || r.id !== RM.form.id) : [];
+  return `<div class="fm-sheet"><div class="fm-sh"><button type="button" class="modal-close" onclick="pkClose()" aria-label="Назад">‹</button>
+    <div><div class="t">${c.title}</div><div class="s">${items.length} ${c.people ? 'людей' : 'чатов'}: найдите, отметьте, нажмите «Готово»</div></div><span class="fm-pill on" style="margin-left:auto">${sel.size}</span></div>
+    <div class="fm-tools"><label class="ux-search" style="min-width:0">${UX_I.search}<input id="pk-q" value="${esc(PK.q)}" placeholder="Имя, логин или тег" autocomplete="off" oninput="pkSearch(this.value)"></label>
+      <div class="fm-grp" role="group" aria-label="Показать">${[['all', 'Все', items.length], ['sel', 'Выбранные', sel.size], ['unsel', 'Не выбранные', items.length - sel.size]].map(([v, l, n]) => `<button type="button" onclick="pkFilter('${v}')" aria-pressed="${PK.f === v}">${l}<small>${n}</small></button>`).join('')}</div>
+      ${groups.length > 1 ? `<div class="fm-grp" role="group" aria-label="Группа"><button type="button" onclick="pkGroup(-1)" aria-pressed="${!PK.g}">Все группы</button>${groups.map((g, i) => `<button type="button" onclick="pkGroup(${i})" aria-pressed="${PK.g === g[0]}">${esc(g[0])}<small>${g[1]}</small></button>`).join('')}</div>` : ''}
+      <div class="fm-acts"><button type="button" class="btn btn-ghost btn-sm" onclick="pkSelFound()" ${found.length && !allSel ? '' : 'disabled'}>Выбрать найденных (${found.length})</button><button type="button" class="btn btn-ghost btn-sm" onclick="pkUnselFound()" ${found.some(p => sel.has(p.id)) ? '' : 'disabled'}>Снять</button>
+        ${roomsCopy.length ? `<select aria-label="Добавить участников другой комнаты" title="Добавить участников другой комнаты" onchange="pkCopy(this)"><option value="">Из комнаты…</option>${roomsCopy.map(r => `<option value="${r.id}">${esc(r.name)}</option>`).join('')}</select>` : ''}</div></div>
+    <div class="fm-list">${shown.map(p => `<button type="button" class="fm-li" aria-pressed="${sel.has(p.id)}" onclick="pkToggle(${p.id})">${p.av}<span class="n">${esc(p.name)}<small>${esc(p.sub)}</small></span>${p.tag ? `<span class="tg2">${esc(p.tag)}</span>` : ''}<span class="ck">${sel.has(p.id) ? '✓' : ''}</span></button>`).join('') || '<div class="fm-empty">Ничего не найдено. Измените запрос или фильтр</div>'}
+      ${found.length > shown.length ? `<button type="button" class="btn btn-ghost btn-sm" style="align-self:center;margin:4px 0" onclick="pkMore()">Показать ещё ${Math.min(40, found.length - shown.length)} из ${found.length - shown.length}</button>` : ''}</div>
+    <div class="fm-sf"><span class="fm-note">Выбрано <b>${sel.size}</b> из ${items.length}</span><button type="button" class="btn ux-solid" onclick="pkClose()">Готово</button></div></div>`;
+}
+function pkRender(focusId, keep) {
+  const sc = keep ? document.querySelector('.fm-sheet .fm-list')?.scrollTop : 0;
+  pkCfg(PK.host).rerender(focusId);
+  if (keep && sc) { const l = document.querySelector('.fm-sheet .fm-list'); if (l) l.scrollTop = sc; }
+}
+function pkOpen(ctx) { Object.assign(PK, { ctx, host: ctx, q: '', f: 'all', g: '', limit: 40 }); pkRender('pk-q'); }
+function pkClose() { PK.ctx = null; pkRender(); }
+function pkSearch(v) { PK.q = v; PK.limit = 40; pkRender('pk-q'); }
+function pkFilter(v) { PK.f = v; PK.limit = 40; pkRender(); }
+function pkGroup(i) { PK.g = i < 0 ? '' : PK.groups[i]; PK.limit = 40; pkRender(); }
+function pkToggle(id) { const sel = pkCfg(PK.ctx).sel(); sel.has(id) ? sel.delete(id) : sel.add(id); pkRender(null, true); }
+function pkSelFound() { const sel = pkCfg(PK.ctx).sel(); pkFound().forEach(p => sel.add(p.id)); pkRender(null, true); }
+function pkUnselFound() { const sel = pkCfg(PK.ctx).sel(); pkFound().forEach(p => sel.delete(p.id)); pkRender(null, true); }
+function pkMore() { PK.limit += 40; pkRender(null, true); }
+function pkAll(ctx) { const c = pkCfg(ctx), sel = c.sel(); c.items().forEach(p => sel.add(p.id)); PK.host = ctx; c.rerender(); }
+function pkClear(ctx) { const c = pkCfg(ctx); c.sel().clear(); PK.host = ctx; c.rerender(); }
+function pkRm(ctx, id) { const c = pkCfg(ctx); c.sel().delete(id); PK.host = ctx; c.rerender(); }
+async function pkCopy(el) {
+  const id = Number(el.value); el.value = '';
+  if (!id) return;
+  const members = (await api('GET', `/api/admin/chats/${id}/members`)) || [], sel = pkCfg(PK.ctx).sel();
+  members.forEach(m => sel.add(m.id));
+  toast(`Добавлены участники комнаты «${esc(allRooms.find(r => r.id === id)?.name || '')}»`, 'success');
+  pkRender(null, true);
+}
+// Escape закрывает лист выбора, а не всё окно
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && PK.ctx) { e.preventDefault(); e.stopImmediatePropagation(); pkClose(); } }, true);
+
 // ── Окно: добавление и изменение ──
 const uaBlank = u => ({ name: u?.display_name || '', login: u?.username || '', tag: u?.tag || '', admin: !!u?.is_admin,
   totpRequired: !!u?.totp_required, canAnnounce: !!u?.can_announce,
-  password: '', show: false, pwOpen: false, generated: false, closeSessions: true, errors: {}, busy: false });
+  password: '', show: false, pwOpen: false, generated: false, closeSessions: true, errors: {}, busy: false, more: false });
 const uaAv = (name, size) => `<span class="av" style="width:${size}px;height:${size}px;border-radius:${Math.round(size * .26)}px;font-size:${Math.round(size * .36)}px;background:${avColor(name || '?')}">${esc(initials(name))}</span>`;
 
 function openCreateUser() {
   UA.editId = null;
   UA.form = uaBlank();
+  uaMakePw(UA.form);   // пароль придумывается сам: его видно в окне, при желании меняется в «Дополнительно»
   document.getElementById('ua-pass-form').innerHTML = '';
   uaRenderForm();
   openModal('modal-user');
@@ -3947,21 +4081,78 @@ function uaRestoreFocus(fn, focusId) {
   const el = id && document.getElementById(id);
   if (el) { el.focus(); if (caret != null) try { el.setSelectionRange(caret, caret); } catch {} }
 }
+const uaMissing = (f, editing) => {
+  const m = [];
+  if (!f.name.trim()) m.push('имя');
+  if (!f.login.trim()) m.push('логин');
+  if ((!editing || f.pwOpen) && f.password.length < 6) m.push('пароль');
+  return m;
+};
+function uaMakePw(f) {
+  const abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  f.password = [...crypto.getRandomValues(new Uint32Array(12))].map(n => abc[n % abc.length]).join('').replace(/^(.{4})(.{4})/, '$1-$2-');
+  f.show = true; f.generated = true;
+}
+const uaMore = id => { UA.form.more = id ? true : !UA.form.more; uaRenderForm(); if (id) fmScroll('ua-sec-' + id); };
+function uaFootSync() {
+  const f = UA.form; if (!f) return;
+  const miss = uaMissing(f, !!UA.editId), n = document.getElementById('ua-note'), b = document.getElementById('ua-go'), ap = document.getElementById('ua-auto-pw');
+  if (n) { n.innerHTML = fmNote(miss); n.classList.toggle('ok', !miss.length); }
+  if (b) b.disabled = !!f.busy || !!miss.length;
+  if (ap) ap.textContent = f.password;
+}
 function uaRenderForm(focusId) {
   const f = UA.form, u = UA.editId ? allUsers.find(x => x.id === UA.editId) : null;
   const form = document.getElementById('ua-form');
   if (!form || !f) return;
+  const editing = !!u, miss = uaMissing(f, editing);
+  const err = k => f.errors[k] ? `<span class="ua-err">${f.errors[k]}</span>` : '';
+  const quick = `<div class="ua-sec">
+      <div class="ua-field"><label for="ua-name">Имя и фамилия</label>
+        <div class="ua-inp${f.errors.name ? ' bad' : ''}"><input id="ua-name" value="${esc(f.name)}" placeholder="Анна Смирнова" autocomplete="off" aria-invalid="${!!f.errors.name}" oninput="uaSet('name', this.value)"></div>${err('name')}</div>
+      <div class="ua-row2">
+        <div class="ua-field"><label for="ua-login">Логин</label>
+          <div class="ua-inp${f.errors.login ? ' bad' : ''}"><span class="pre">@</span><input id="ua-login" value="${esc(f.login)}" placeholder="a.smirnova" autocomplete="off" spellcheck="false" aria-invalid="${!!f.errors.login}"
+            oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''); uaSet('login', this.value)"></div>
+          ${err('login') || '<span class="ua-hint">Латиница, цифры, точка</span>'}</div>
+        <div class="ua-field"><label for="ua-tag">Тег <span class="opt">· необязательно</span></label>
+          <div class="ua-inp"><input id="ua-tag" value="${esc(f.tag)}" maxlength="20" placeholder="HR, Dev, Склад" autocomplete="off" oninput="uaSet('tag', this.value)"></div>
+          <span class="ua-hint">Виден рядом с именем в чате</span></div>
+      </div></div>
+    ${!editing ? `<div class="fm-pw">${UX_I.key}<span>${f.generated ? 'Пароль придуман:' : 'Пароль:'}</span><code id="ua-auto-pw">${esc(f.password)}</code>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="uaCopy()" title="Скопировать логин и пароль" aria-label="Скопировать логин и пароль">${UX_I.copy}</button><button type="button" class="btn btn-ghost btn-sm" onclick="uaGenerate()">Другой</button></div>${err('password')}` : ''}`;
+  const accessSu = f.admin ? 'Администратор' + (f.totpRequired ? ' · 2FA' : '') : 'Пользователь' + (f.canAnnounce ? ' · объявления' : '');
+  const pwSu = editing ? (f.pwOpen ? 'Будет изменён' : 'Остаётся прежним') : (f.generated ? 'Придуман автоматически' : f.password ? 'Задан вручную' : 'Не задан');
+  const secs = [
+    { id: 'a', t: 'Доступ', su: accessSu, body: `<div class="ua-roles" role="radiogroup" aria-label="Роль">
+        <button type="button" role="radio" class="ua-role-opt" aria-checked="${!f.admin}" onclick="uaSet('admin', false, true)"><b>Пользователь</b><span>Чаты, комнаты и файлы</span></button>
+        <button type="button" role="radio" class="ua-role-opt" aria-checked="${f.admin}" onclick="uaSet('admin', true, true)"><b>${UX_I.shield}Администратор</b><span>И управление в этой панели</span></button></div>
+      ${f.admin ? uaTotpSection(f, editing, u) : uaAnnSection(f)}` },
+    { id: 'w', t: 'Пароль', su: pwSu, body: editing && !f.pwOpen
+        ? `<div class="ua-pw-closed"><div><b>Пароль</b><span>Остаётся прежним</span></div><button type="button" class="btn btn-ghost btn-sm" onclick="uaSet('pwOpen', true, true, 'ua-pass')">${UX_I.key}Сменить пароль</button></div>`
+        : uaPasswordField(f, editing) },
+    ...(u && u.id !== currentUser?.id ? [{ id: 'z', t: 'Действия с учётной записью', su: 'Сеансы, блокировка, удаление', body: uaDangerRows(u) }] : []),
+  ];
   uaRestoreFocus(() => {
     form.innerHTML = `
       <div class="ua-head"><span id="ua-head-av">${uaAv(f.name, 38)}</span>
         <div><div class="ua-title">${u ? esc(u.display_name) : 'Новый пользователь'}</div>
-          <div class="ua-sub">${u ? `@${esc(u.username)} · создан ${fmtDate(u.created_at)}` : 'Логин и пароль передайте сотруднику'}</div></div>
+          <div class="ua-sub">${u ? `@${esc(u.username)} · создан ${fmtDate(u.created_at)}` : 'Имя и логин, остальное можно позже'}</div></div>
         <button type="button" class="modal-close" aria-label="Закрыть" onclick="closeModal('modal-user')">✕</button></div>
-      <div class="ua-body">${uaProfileSection(f)}${uaAccessSection(f, !!u, u)}${u && u.id !== currentUser?.id ? uaDangerZone(u) : ''}</div>
-      <div class="ua-foot">${f.errors.form ? `<span class="ua-err">${esc(f.errors.form)}</span>` : ''}<span class="ux-grow"></span>
+      <div class="ua-body">${quick}${fmMoreHtml('ua', f.more, 'uaMore', secs)}</div>
+      <div class="ua-foot">${f.errors.form ? `<span class="ua-err">${esc(f.errors.form)}</span>` : ''}<span class="fm-note ${miss.length ? '' : 'ok'}" id="ua-note">${fmNote(miss)}</span>
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-user')">Отмена</button>
-        <button class="btn ux-solid" ${f.busy ? 'disabled' : ''}>${f.busy ? 'Сохраняю…' : u ? 'Сохранить' : 'Создать'}</button></div>`;
+        <button class="btn ux-solid" id="ua-go" ${f.busy || miss.length ? 'disabled' : ''}>${f.busy ? 'Сохраняю…' : u ? 'Сохранить' : 'Создать'}</button></div>`;
   }, focusId);
+}
+function uaDangerRows(u) {
+  const devices = (u.clients || []).length;
+  return `<div class="ua-dz-row"><div><b>Завершить все сеансы</b><span>Выход на всех устройствах; войти снова можно</span></div>
+      <button type="button" class="btn btn-ghost btn-sm" ${devices ? '' : 'disabled'} onclick="closeModal('modal-user'); uaLogout([${u.id}])">${UX_I.logout}Завершить</button></div>
+    <div class="ua-dz-row"><div><b>${u.banned ? 'Разблокировать' : 'Заблокировать'}</b><span>${u.banned ? 'Снова сможет входить' : 'Не сможет войти, пока не разблокируете'}</span></div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="closeModal('modal-user'); ${u.banned ? `uaUnban(${u.id})` : `uaBan([${u.id}])`}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button></div>
+    <div class="ua-dz-row"><div><b>Удалить пользователя</b><span>Навсегда; сообщения в чатах останутся</span></div>
+      <button type="button" class="btn btn-danger btn-sm" onclick="closeModal('modal-user'); uaDelete(${u.id})">${UX_I.trash}Удалить</button></div>`;
 }
 function uaRenderPassword(focusId) {
   const f = UA.form, u = allUsers.find(x => x.id === UA.passId);
@@ -3999,13 +4190,14 @@ function uaSet(key, value, rerender, focusId) {
     if (el) { el.className = 'ua-strength' + (s.good ? ' good' : ''); el.innerHTML = s.html; }
   }
   if (key === 'login' || key === 'password') { const c = document.getElementById('ua-creds'); if (c) c.innerHTML = uaCreds(f); }
+  if (key === 'name' || key === 'login' || key === 'password') uaFootSync();
 }
 function uaGenerate() {
   const abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const p = [...crypto.getRandomValues(new Uint32Array(12))].map(n => abc[n % abc.length]).join('').replace(/^(.{4})(.{4})/, '$1-$2-');
   Object.assign(UA.form, { password: p, show: true, generated: true });
   delete UA.form.errors.password;
-  uaRerender('ua-pass');
+  uaRerender(UA.form.more || UA.passId ? 'ua-pass' : null);
 }
 async function uaCopy() {
   const f = UA.form;
@@ -4021,6 +4213,7 @@ async function uaSave() {
   if (!f.login.trim()) e.login = 'Укажите логин';
   if ((!u || f.pwOpen) && f.password.length < 6) e.password = u ? 'Не короче 6 символов — или обновите окно, чтобы оставить прежний' : 'Не короче 6 символов';
   f.errors = e;
+  if (e.password && !(e.name || e.login)) f.more = true;
   if (Object.keys(e).length) return uaRenderForm(e.name ? 'ua-name' : e.login ? 'ua-login' : 'ua-pass');
 
   f.busy = true;
@@ -4845,6 +5038,13 @@ async function whOpen() {
   openModal('modal-webhook');
 }
 
+const whMissing = f => { const m = []; if (!f.name.trim()) m.push('имя бота'); if (!f.chat_id) m.push('куда писать'); return m; };
+function whFootSync() {
+  const f = WH.form; if (!f) return;
+  const miss = whMissing(f), n = document.getElementById('wh-note'), b = document.getElementById('wh-go');
+  if (n) { n.innerHTML = fmNote(miss); n.classList.toggle('ok', !miss.length); }
+  if (b) b.disabled = !!f.busy || !!miss.length;
+}
 function whHeadAv() {
   const f = WH.form;
   return f.avatar ? `<span class="av" style="width:38px;height:38px;border-radius:10px;background:url('data:image/jpeg;base64,${f.avatar}') center/cover"></span>` : uaAv(f.name || '?', 38);
@@ -4874,12 +5074,12 @@ function whRenderForm(focusId) {
       <div class="ua-body">
         <div class="ua-row2">
           <div class="ua-field"><label for="wh-name">Имя бота</label>
-            <div class="ua-inp"><input id="wh-name" value="${esc(f.name)}" placeholder="Например, Мониторинг" maxlength="40" oninput="WH.form.name = this.value; document.getElementById('wh-head-av').innerHTML = whHeadAv()"></div></div>
+            <div class="ua-inp"><input id="wh-name" value="${esc(f.name)}" placeholder="Например, Мониторинг" maxlength="40" oninput="WH.form.name = this.value; document.getElementById('wh-head-av').innerHTML = whHeadAv(); whFootSync()"></div></div>
           <div class="ua-field"><label for="wh-tag">Тег <span class="opt">· необязательно</span></label>
             <div class="ua-inp"><input id="wh-tag" value="${esc(f.tag)}" placeholder="бот, CRM" maxlength="20" oninput="WH.form.tag = this.value"></div></div>
         </div>
         <div class="ua-field"><label for="wh-chat">Куда писать</label>
-          <div class="ua-inp"><select id="wh-chat" class="wh-select" onchange="WH.form.chat_id = this.value">
+          <div class="ua-inp"><select id="wh-chat" class="wh-select" onchange="WH.form.chat_id = this.value; whFootSync()">
             <option value="" ${f.chat_id ? '' : 'selected'} disabled>Выберите группу, комнату или тему</option>
             ${WH.opts.map(o => o.group ? `<optgroup label="${esc(o.group)}">${o.items.map(opt).join('')}</optgroup>` : opt(o)).join('')}
           </select></div>
@@ -4889,9 +5089,10 @@ function whRenderForm(focusId) {
             ${f.avatar ? '<button type="button" class="btn btn-ghost btn-sm" onclick="WH.form.avatar = null; whRenderForm()">Убрать</button>' : ''}</div></div>
       </div>
       <div class="ua-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}
-        <button type="button" class="btn btn-ghost" onclick="openModal('modal-webhook-help')">${WH_I.book}Инструкция</button><span class="ux-grow"></span>
+        <button type="button" class="btn btn-ghost" onclick="openModal('modal-webhook-help')">${WH_I.book}Инструкция</button>
+        <span class="fm-note ${whMissing(f).length ? '' : 'ok'}" id="wh-note" style="margin-left:auto">${fmNote(whMissing(f))}</span>
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-webhook')">Отмена</button>
-        <button type="button" class="btn ux-solid" ${f.busy ? 'disabled' : ''} onclick="saveWebhook()">${f.busy ? 'Создаю…' : 'Создать'}</button></div>`;
+        <button type="button" class="btn ux-solid" id="wh-go" ${f.busy || whMissing(f).length ? 'disabled' : ''} onclick="saveWebhook()">${f.busy ? 'Создаю…' : 'Создать'}</button></div>`;
   }, focusId);
 }
 
@@ -6454,68 +6655,81 @@ async function openAnnouncementModal() {
   AN.chats = (Array.isArray(chats) ? chats : []).filter(c => !c.parent_id && !c.is_secret);
   if (Array.isArray(users)) allUsersCache = users;
   annStartAt = null;
-  AN.form = { kind: 'chat', text: '', pick: false, who: new Set(), q: '', duration: 60, err: '', busy: false };
+  AN.form = { kind: 'chat', text: '', pick: false, who: new Set(), q: '', duration: 60, err: '', busy: false, more: false };
+  PK.ctx = null;
   anRenderForm('an-text');
   openModal('modal-announcement');
 }
 
+const anMissing = f => {
+  const m = [];
+  if (!f.text.trim()) m.push('текст');
+  if (f.pick && !f.who.size) m.push(f.kind === 'chat' ? 'чаты' : 'получателей');
+  if (f.kind === 'banner' && !(Number(f.duration) > 0)) m.push('время показа');
+  return m;
+};
+const anVerb = () => annStartAt ? 'Запланировать' : 'Отправить';
+const anMore = id => { AN.form.more = id ? true : !AN.form.more; anRenderForm(); if (id) fmScroll('an-sec-' + id); };
+// Подвал и превью обновляются на лету, без перерисовки формы: иначе пропадёт курсор в тексте
+function anFootSync() {
+  const f = AN.form; if (!f) return;
+  const miss = anMissing(f), n = document.getElementById('an-note'), b = document.getElementById('an-go');
+  if (n) { n.innerHTML = fmNote(miss); n.classList.toggle('ok', !miss.length); }
+  if (b) { b.disabled = !!f.busy || !!miss.length; b.textContent = f.busy ? 'Отправляю…' : anVerb(); }
+}
 function anRenderForm(focusId) {
   const f = AN.form, el = document.getElementById('an-form');
   if (!f || !el) return;
-  const chat = f.kind === 'chat';
+  const chat = f.kind === 'chat', miss = anMissing(f);
+  const quick = `<div class="ua-sec">
+      <div class="an-kinds ua-roles" role="radiogroup" aria-label="Тип объявления">${Object.entries(ANN_KINDS).map(([k, v]) =>
+        `<button type="button" class="ua-role-opt" role="radio" aria-checked="${f.kind === k}" onclick="anSet('kind', '${k}')"><b>${v.label}</b><span>${ANN_HINTS[k]}</span></button>`).join('')}</div>
+      <div class="ua-field"><label for="an-text">Текст</label>
+        <div class="ua-inp an-area"><textarea id="an-text" placeholder="Что сказать людям" oninput="AN.form.text = this.value; document.getElementById('an-pv').innerHTML = anPreview(AN.form.kind, this.value.trim()); anFootSync()">${esc(f.text)}</textarea></div></div>
+      <div class="ua-field fm-pv"><label>Так увидят</label><div id="an-pv">${anPreview(f.kind, f.text.trim())}</div></div></div>`;
+  const whenSu = (annStartAt ? fmtDateTime(annStartAt) : 'Сейчас') + (f.kind === 'banner' ? ` · показывать ${f.duration} мин` : '');
+  const audSu = !f.pick ? (chat ? 'Во все группы и комнаты' : 'Всем') : f.who.size ? `Выбрано: ${f.who.size}` : (chat ? 'Выберите чаты' : 'Выберите получателей');
+  const secs = [
+    { id: 'w', t: 'Когда', su: whenSu, body: `<div class="ua-row2">
+        <div class="ua-field"><label>Когда</label>
+          <div class="dtp">
+            <button type="button" class="dtp-field" onclick="dtpToggle(event)">
+              <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/></svg>
+              <span class="dtp-val" id="dtp-val">${annStartAt ? esc(fmtDateTime(annStartAt)) : 'Сейчас'}</span>
+              <span class="dtp-reset" id="dtp-reset" style="${annStartAt ? '' : 'display:none'}" onclick="event.stopPropagation();dtpReset()">✕</span>
+            </button>
+            <div class="dtp-pop" id="dtp-pop" hidden>
+              <div class="dtp-head">
+                <button type="button" class="dtp-nav" aria-label="Предыдущий месяц" onclick="dtpShiftMonth(-1)">‹</button>
+                <div class="dtp-head-title" id="dtp-title"></div>
+                <button type="button" class="dtp-nav" aria-label="Следующий месяц" onclick="dtpShiftMonth(1)">›</button>
+              </div>
+              <div class="dtp-grid" id="dtp-grid"></div>
+              <div class="dtp-foot">
+                <div class="dtp-time">
+                  <input id="dtp-h" maxlength="2" inputmode="numeric" aria-label="Часы" oninput="dtpFixTime()">:<input id="dtp-m" maxlength="2" inputmode="numeric" aria-label="Минуты" oninput="dtpFixTime()">
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="dtpReset()">Сейчас</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="dtpApply()">Готово</button>
+              </div>
+            </div>
+          </div></div>
+        ${f.kind === 'banner' ? `<div class="ua-field"><label for="an-dur">Показывать, мин</label>
+          <div class="ua-inp"><input id="an-dur" type="number" min="1" max="10080" value="${f.duration}" oninput="AN.form.duration = this.value; anFootSync()"></div>
+          <span class="ua-hint">Потом полоса исчезнет сама</span></div>` : '<div></div>'}</div>` },
+    { id: 'a', t: chat ? 'Куда' : 'Кому', su: audSu, body: `<div class="an-seg"><button type="button" aria-pressed="${!f.pick}" onclick="anSet('pick', false)">${chat ? 'Во все группы и комнаты' : 'Всем'}</button>
+        <button type="button" aria-pressed="${f.pick}" onclick="anSet('pick', true)">${chat ? 'Выбрать чаты' : 'Выбрать людей'}</button></div>
+      ${f.pick ? pkSummary('ann', chat ? 'Выбрать чаты…' : 'Выбрать людей…') : ''}
+      ${f.kind === 'popup' ? '<span class="ua-hint">Всплывающее увидят только те, кто сейчас в сети</span>' : ''}` },
+  ];
   uaRestoreFocus(() => {
     el.innerHTML = `
-      <div class="ua-head"><div><div class="ua-title">Новое объявление</div><div class="ua-sub">Тип, текст, время и получатели</div></div>
+      <div class="ua-head"><div><div class="ua-title">Новое объявление</div><div class="ua-sub">Тип, текст и куда отправить</div></div>
         <button type="button" class="modal-close" aria-label="Закрыть" onclick="closeModal('modal-announcement')">✕</button></div>
-      <div class="ua-body">
-        <div class="an-col-left">
-          <div class="ua-field"><label>Так увидят</label><div id="an-pv">${anPreview(f.kind, f.text.trim())}</div></div>
-          <div class="an-divider"></div>
-          <div class="an-kinds ua-roles" role="radiogroup" aria-label="Тип объявления">${Object.entries(ANN_KINDS).map(([k, v]) =>
-            `<button type="button" class="ua-role-opt" role="radio" aria-checked="${f.kind === k}" onclick="anSet('kind', '${k}')"><b>${v.label}</b><span>${ANN_HINTS[k]}</span></button>`).join('')}</div>
-          <div class="ua-field"><label for="an-text">Текст</label>
-            <div class="ua-inp an-area"><textarea id="an-text" placeholder="Что сказать людям" oninput="AN.form.text = this.value; document.getElementById('an-pv').innerHTML = anPreview(AN.form.kind, this.value.trim())">${esc(f.text)}</textarea></div></div>
-          <div class="ua-row2">
-            <div class="ua-field"><label>Когда</label>
-              <div class="dtp">
-                <button type="button" class="dtp-field" onclick="dtpToggle(event)">
-                  <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6.5"/><line x1="16" y1="2.5" x2="16" y2="6.5"/></svg>
-                  <span class="dtp-val" id="dtp-val">${annStartAt ? esc(fmtDateTime(annStartAt)) : 'Сейчас'}</span>
-                  <span class="dtp-reset" id="dtp-reset" style="${annStartAt ? '' : 'display:none'}" onclick="event.stopPropagation();dtpReset()">✕</span>
-                </button>
-                <div class="dtp-pop" id="dtp-pop" hidden>
-                  <div class="dtp-head">
-                    <button type="button" class="dtp-nav" aria-label="Предыдущий месяц" onclick="dtpShiftMonth(-1)">‹</button>
-                    <div class="dtp-head-title" id="dtp-title"></div>
-                    <button type="button" class="dtp-nav" aria-label="Следующий месяц" onclick="dtpShiftMonth(1)">›</button>
-                  </div>
-                  <div class="dtp-grid" id="dtp-grid"></div>
-                  <div class="dtp-foot">
-                    <div class="dtp-time">
-                      <input id="dtp-h" maxlength="2" inputmode="numeric" aria-label="Часы" oninput="dtpFixTime()">:<input id="dtp-m" maxlength="2" inputmode="numeric" aria-label="Минуты" oninput="dtpFixTime()">
-                    </div>
-                    <button type="button" class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="dtpReset()">Сейчас</button>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="dtpApply()">Готово</button>
-                  </div>
-                </div>
-              </div></div>
-            ${f.kind === 'banner' ? `<div class="ua-field"><label for="an-dur">Показывать, мин</label>
-              <div class="ua-inp"><input id="an-dur" type="number" min="1" max="10080" value="${f.duration}" oninput="AN.form.duration = this.value"></div>
-              <span class="ua-hint">Потом полоса исчезнет сама</span></div>` : '<div></div>'}
-          </div>
-        </div>
-        <div class="an-col-right an-col-aud">
-          <div class="ua-field"><label>${chat ? 'Куда' : 'Кому'}${f.pick ? ` <span class="opt">· выбрано ${f.who.size}</span>` : ''}</label>
-            <div class="an-seg"><button type="button" aria-pressed="${!f.pick}" onclick="anSet('pick', false)">${chat ? 'Во все группы и комнаты' : 'Всем'}</button>
-              <button type="button" aria-pressed="${f.pick}" onclick="anSet('pick', true)">${chat ? 'Выбрать чаты' : 'Выбрать людей'}</button></div>
-            ${f.pick ? `<div class="ux-search" style="margin-top:8px">${UX_I.search || ''}<input id="an-pq" value="${esc(f.q)}" placeholder="${chat ? 'Поиск чатов' : 'Поиск людей'}" oninput="AN.form.q = this.value; anList()"></div>
-              <div class="rm-list rm-scroll" id="an-list" style="margin-top:6px">${anListHtml()}</div>` : ''}
-            ${f.kind === 'popup' ? '<span class="ua-hint">Всплывающее увидят только те, кто сейчас в сети</span>' : ''}</div>
-        </div>
-      </div>
-      <div class="ua-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}<span class="ux-grow"></span>
+      <div class="ua-body">${quick}${fmMoreHtml('an', f.more, 'anMore', secs)}</div>
+      <div class="ua-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}<span class="fm-note ${miss.length ? '' : 'ok'}" id="an-note">${fmNote(miss)}</span>
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-announcement')">Отмена</button>
-        <button type="button" class="btn ux-solid" ${f.busy ? 'disabled' : ''} onclick="sendAnnouncement()">${f.busy ? 'Отправляю…' : annStartAt ? 'Запланировать' : 'Отправить'}</button></div>`;
+        <button type="button" class="btn ux-solid" id="an-go" ${f.busy || miss.length ? 'disabled' : ''} onclick="sendAnnouncement()">${f.busy ? 'Отправляю…' : anVerb()}</button></div>${pkSheet()}`;
   }, focusId);
 }
 
@@ -6523,33 +6737,11 @@ function anSet(key, value) {
   const f = AN.form;
   f[key] = value;
   if (key === 'kind') { f.who = new Set(); f.q = ''; }
+  if (key === 'pick' && value) f.more = true;
   f.err = '';
-  anRenderForm(key === 'pick' && value ? 'an-pq' : null);
+  anRenderForm();
 }
 
-function anListHtml() {
-  const f = AN.form, lq = f.q.trim().toLowerCase();
-  const items = f.kind === 'chat'
-    ? AN.chats.filter(c => !lq || chName(c).toLowerCase().includes(lq) || (c.member_names || []).some(n => n.toLowerCase().includes(lq)))
-        // По имени, с учётом чисел: «Кабинет 2» раньше «Кабинет 21»
-        .sort((a, b) => chName(a).localeCompare(chName(b), 'ru', { numeric: true }))
-        .map(c => ({ id: c.id, name: chName(c), sub: c.type === 'room' ? 'комната' : c.type === 'direct' ? 'личный чат' : 'группа', av: chAv(c, 24) }))
-    : allUsersCache.filter(u => !u.banned && (!lq || (u.display_name || '').toLowerCase().includes(lq) || (u.username || '').toLowerCase().includes(lq)))
-        .map(u => ({ id: u.id, name: u.display_name || u.username, sub: '@' + u.username, av: avHtml(u.display_name || u.username, 24, 7, u.id, false, true) }));
-  return items.map(i => `<button type="button" class="rm-li rm-pick" aria-pressed="${f.who.has(i.id)}" onclick="anPick(${i.id})">${i.av}
-      <div style="flex:1;min-width:0"><div class="ux-name">${esc(i.name)}</div><div class="rm-sub">${esc(i.sub)}</div></div>
-      <span class="an-check" aria-hidden="true">${f.who.has(i.id) ? '✓' : ''}</span></button>`).join('')
-    || '<div class="ux-empty" style="padding:16px">Ничего не найдено</div>';
-}
-function anList() { const el = document.getElementById('an-list'); if (el) el.innerHTML = anListHtml(); }
-function anPick(id) {
-  const f = AN.form;
-  f.who.has(id) ? f.who.delete(id) : f.who.add(id);
-  const scroll = document.getElementById('an-list')?.scrollTop || 0;
-  anRenderForm();
-  const el = document.getElementById('an-list');
-  if (el) el.scrollTop = scroll;
-}
 
 async function sendAnnouncement() {
   const f = AN.form;
@@ -6681,6 +6873,7 @@ function dtpApply() {
   document.getElementById('dtp-val').textContent = fmtDateTime(annStartAt);
   document.getElementById('dtp-reset').style.display = '';
   document.getElementById('dtp-pop').hidden = true;
+  if (typeof anFootSync === 'function') anFootSync();
 }
 
 function dtpReset() {
@@ -6692,6 +6885,7 @@ function dtpReset() {
   if (reset) reset.style.display = 'none';
   const pop = document.getElementById('dtp-pop');
   if (pop) pop.hidden = true;
+  if (typeof anFootSync === 'function') anFootSync();
 }
 
 // Клик мимо пикера закрывает его. Перехват (capture), а не всплытие: выбор дня

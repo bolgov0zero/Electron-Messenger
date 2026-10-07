@@ -35,7 +35,7 @@ router.get('/targets', authMiddleware, needRight, (req, res) => {
        WHERE cm.chat_id = c.id) AS member_list
     FROM chats c WHERE c.parent_id IS NULL AND COALESCE(c.is_secret, 0) = 0
   `).all().map(c => ({ id: c.id, type: c.type, name: c.name, member_names: c.member_list ? c.member_list.split('\x1e') : [] }));
-  const users = db.prepare(`SELECT id, username, display_name FROM users
+  const users = db.prepare(`SELECT id, username, display_name, tag FROM users
     WHERE COALESCE(banned, 0) = 0 AND COALESCE(is_bot, 0) = 0 ORDER BY display_name`).all();
   res.json({ chats, users });
 });
