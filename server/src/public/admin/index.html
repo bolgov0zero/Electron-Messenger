@@ -1238,10 +1238,9 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 @keyframes xhDraw{to{stroke-dashoffset:0}}
 
 /* Плитки: нажатие раскрывает плитку на всю ширину */
-.xk{position:relative;cursor:pointer;animation:xkIn .3s ease;transition:border-color .15s,transform .15s}
+.xk{position:relative;cursor:pointer;transition:border-color .15s,transform .15s}
 .xk:hover{border-color:color-mix(in srgb,var(--dv-accent) 55%,var(--dv-border));transform:translateY(-1px)}
 .xk:focus-visible{outline:2px solid var(--dv-accent);outline-offset:2px}
-@keyframes xkIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
 .xk-ex{position:absolute;right:12px;top:12px;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;color:var(--dv-muted);opacity:0;transition:opacity .15s;background:var(--dv-surface2)}
 .xk:hover .xk-ex,.xk:focus-visible .xk-ex{opacity:1}
 .xk-tlw{position:relative;height:46px}
@@ -1254,10 +1253,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .dv-kpi .dv-spark:has(.xk-tlw){height:46px}
 
 /* Раскрытая панель */
-.xp{padding:14px 16px 16px;transform-origin:var(--ox,50%) 0;animation:xpIn .26s cubic-bezier(.2,.8,.2,1)}
-@keyframes xpIn{from{opacity:0;transform:scale(.94,.82)}to{opacity:1;transform:none}}
-.xp.out{animation:xpOut .3s cubic-bezier(.4,0,.6,1) forwards;pointer-events:none}
-@keyframes xpOut{from{opacity:1;transform:none}to{opacity:0;transform:scale(.94,.72)}}
+.xp{padding:14px 16px 16px}
 .xp-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .xp-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-right:auto}
 .xp-tab{display:inline-flex;align-items:baseline;gap:7px;border:1px solid var(--dv-border);background:var(--dv-surface2);color:var(--dv-muted);border-radius:10px;padding:6px 11px;font:600 12.5px var(--f-ui);cursor:pointer}
@@ -1342,7 +1338,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .xs-sq{display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:6px}
 .xs-heat{display:grid;grid-template-columns:26px repeat(24,1fr);grid-template-rows:auto repeat(7,minmax(0,1fr));gap:3px;align-items:center;font-size:10px;color:var(--dv-muted);flex:1;min-height:0;margin-top:12px}
 .xs-heat i{height:100%;border-radius:4px;background:var(--dv-accent)}
-@media (prefers-reduced-motion:reduce){.xh-lay.in,.xh-lay.out,.xh-spin,.xh-tk,.xk,.xp,.xh-bar.ind i{animation:none!important}.xh-tk{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){.xh-lay.in,.xh-lay.out,.xh-spin,.xh-tk,.xh-bar.ind i{animation:none!important}.xh-tk{stroke-dashoffset:0}}
 @media (max-width:900px){.xh-stat{padding:0 12px}.xh-pw{display:none}.xp-grid{grid-template-columns:1fr}}
 @media (max-width:960px){.dv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dv-main,.dv-bottom{grid-template-columns:minmax(0,1fr)}.dv .hm-host{grid-template-columns:minmax(0,1fr);gap:10px}.dv .hm-upd{justify-self:start}}
 @media (max-width:560px){.dv-kpis{grid-template-columns:minmax(0,1fr)}}
@@ -3091,20 +3087,53 @@ function dvMount() {
   kz.innerHTML = XP.open ? xpPanelHtml() : dvTilesHtml();
   if (XP.open) xpLoad(); else { hmRenderOnlineTile(); hmRenderHeadlines(); hmRenderEvTile(); }
 }
-function xpOpen(tab, el) {
-  const kz = $hm('dv-kz')?.getBoundingClientRect(), r = el?.getBoundingClientRect();
-  XP.ox = kz && r ? r.left + r.width / 2 - kz.left : (kz?.width || 0) / 2;
-  Object.assign(XP, { open: true, tab, hover: null, all: false, g: null, events: [] });
-  dvMount();
+// Раскрытие и сворачивание — одна и та же анимация в обе стороны: старое содержимое гаснет, высота блока плавно
+// переходит к новой (всё, что ниже, сдвигается вместе с ней), новое содержимое проявляется
+const kzReduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+let kzBusy = false;
+function kzTo(open, tab) {
+  const kz = $hm('dv-kz');
+  const apply = () => { Object.assign(XP, { open, hover: null, all: false, g: null, events: [] }); if (tab) XP.tab = tab; dvMount(); };
+  if (!kz || !kz.firstElementChild || kzReduced()) return apply();
+  if (kzBusy) return;
+  kzBusy = true;
+  const h0 = kz.getBoundingClientRect().height;
+  kz._a?.cancel();
+  kz.style.overflow = 'clip'; kz.style.overflowClipMargin = '16px';
+  XP.req++;                                   // ответы для старого содержимого больше не нужны
+  const out = kz.firstElementChild.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: 150, easing: 'ease-in', fill: 'forwards' });
+  // Подстраховка по таймеру: в фоновой вкладке анимации стоят, и без неё блок навсегда остался бы «занят»
+  let fired = false;
+  const next = () => {
+    if (fired) return; fired = true;
+    apply();
+    const h1 = kz.getBoundingClientRect().height, ease = 'cubic-bezier(.2,.8,.2,1)';
+    kz.firstElementChild?.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 280, delay: 60, easing: ease, fill: 'backwards' });
+    const a = kz._a = kz.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], { duration: 340, easing: ease });
+    const end = () => { kzBusy = false; if (kz._a === a) { kz._a = null; kz.style.overflow = ''; kz.style.overflowClipMargin = ''; } };
+    a.onfinish = end; a.oncancel = end;
+    setTimeout(() => { kzBusy = false; if (kz._a === a) { a.cancel(); } }, 700);
+  };
+  out.onfinish = next;
+  setTimeout(next, 260);
 }
-function xpClose() {
-  const p = document.querySelector('.xp');
-  if (!XP.open || !p) return;
-  XP.open = false; XP.hover = null; XP.req++;
-  p.classList.add('out');
-  let done = false; const fin = () => { if (done) return; done = true; if (!XP.open) dvMount(); };
-  p.addEventListener('animationend', fin, { once: true }); setTimeout(fin, 420);
+// Любое изменение высоты содержимого (пришли данные, переключили период, раскрыли список) — тоже плавно
+function kzMorph(change) {
+  const kz = $hm('dv-kz');
+  if (!kz) return change();
+  const h0 = kz.getBoundingClientRect().height;
+  kz._a?.cancel();
+  change();
+  const h1 = kz.getBoundingClientRect().height;
+  if (kzReduced() || Math.abs(h1 - h0) < 2) return;
+  kz.style.overflow = 'clip'; kz.style.overflowClipMargin = '16px';
+  const a = kz._a = kz.animate([{ height: h0 + 'px' }, { height: h1 + 'px' }], { duration: 300, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  const end = () => { if (kz._a === a) { kz._a = null; kz.style.overflow = ''; kz.style.overflowClipMargin = ''; } };
+  a.onfinish = end; a.oncancel = end;
+  setTimeout(() => { if (kz._a === a) a.cancel(); }, 600);
 }
+const xpOpen = tab => { if (!XP.open) kzTo(true, tab); };
+const xpClose = () => { if (XP.open) kzTo(false); };
 function xpTabValue(k) {
   const live = HM.samples[HM.samples.length - 1], o = HM.overview;
   if (k === 'online') return o ? hmFmt(o.online.length) : '—';
@@ -3146,7 +3175,7 @@ async function xpLoad(keep) {
     XP.g = { line: true, n: d.n, start: d.start, end: d.end, step: d.step, vals: d[k].map(v => v == null ? null : v) };
   }
   if (!keep) XP.hover = null;
-  xpRender();
+  kzMorph(xpRender);
 }
 const xpRefresh = () => { if (XP.open) xpLoad(true); };
 function xpRender() { xpSum(); xpDraw(); xpList(); }
@@ -3313,12 +3342,12 @@ document.addEventListener('click', e => {
   const t = e.target.closest?.('[data-xk],[data-xtab],[data-xrange],[data-xclose],[data-xtype],[data-xall]');
   if (!t) return;
   const d = t.dataset;
-  if (d.xk) return xpOpen(d.xk, t);
+  if (d.xk) return xpOpen(d.xk);
   if (d.xtab) { XP.tab = d.xtab; XP.hover = null; XP.g = null; document.querySelectorAll('.xp-tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.xtab === XP.tab))); xpClear(); return xpLoad(); }
   if (d.xrange) { XP.range = d.xrange; XP.hover = null; XP.g = null; XP.all = false; try { localStorage.setItem('hm-msg-range', XP.range); } catch {} document.querySelectorAll('[data-xrange]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.xrange === XP.range))); xpClear(); return xpLoad(); }
   if ('xclose' in d) return xpClose();
   if (d.xtype) { XP.types[d.xtype] = !XP.types[d.xtype]; XP.hover = null; return xpRender(); }
-  if ('xall' in d) { XP.all = !XP.all; return xpList(); }
+  if ('xall' in d) { XP.all = !XP.all; return kzMorph(xpList); }
 });
 // пока грузится другой период, старый график не показываем
 function xpClear() { const tp = $hm('xp-tip'); if (tp) tp.hidden = true; const s = $hm('xp-svg'); if (s) s.style.opacity = '.35'; setTimeout(() => { const s2 = $hm('xp-svg'); if (s2) s2.style.opacity = ''; }, 260); }
