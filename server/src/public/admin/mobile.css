@@ -10,6 +10,8 @@
   --msafe: env(safe-area-inset-bottom, 0px);
 }
 html, body { overscroll-behavior: none; }
+/* без приближения: ни двойным касанием, ни щипком (прокрутка пальцем работает как обычно) */
+html, body { touch-action: pan-x pan-y; }
 body { font-size: 14px; }
 
 /* ── Каркас ── */

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Electron Dashboard</title>
 <link rel="icon" href="/chat/icons/icon-192.png" type="image/png">
 <!-- Значок ярлыка при добавлении на экран «Домой» в iOS (без манифеста: это обычный ярлык, не PWA) -->
@@ -2580,6 +2580,9 @@ window.addEventListener('resize', () => { if (SB.menu) sbMenuPos(); });
 const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',files:'Файлы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки',announcements:'Объявления',releases:'Релизы',audit:'Аудит-лог',settings:'Настройки',more:'Ещё'};
 const pageRenders = {dashboard:renderDashboard,users:renderUsers,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements,releases:renderReleases,audit:renderAudit,settings:renderSettings,more:renderMore};
 
+// Телефонный вид без масштабирования: страница уже собрана под экран, а случайный щипок сдвигал раскладку.
+// В iOS Safari атрибуты viewport игнорируются, поэтому щипок гасим отменой жестов; на компьютере эти события не приходят
+['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => { if (matchMedia('(max-width: 820px)').matches) e.preventDefault(); }, { passive: false }));
 // Разделы, вынесенные на нижнюю панель телефонного вида; всё остальное открывается из «Ещё»
 const MTABS = ['dashboard', 'users', 'chats', 'announcements', 'more'];
 function nav(page) {
