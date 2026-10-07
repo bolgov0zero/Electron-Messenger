@@ -386,7 +386,10 @@ function refreshActivity() {
     // Соединение в фоне могло «умереть»: мёртвое — реконнект (onopen подтянет loadChats),
     // живое — досинхронизируем список на случай пропущенных сообщений.
     if (S.token) {
-      if (!S.ws || S.ws.readyState >= 2) connectWS();
+      // На экране входа с сохранённой сессией (проверка на старте не успела) подключаемся не втихую,
+      // а заново проверяем сессию и входим: иначе клиент в сети, а человек видит форму входа
+      if (onLoginScreen()) { if (!_bootActive && !_bootManual) bootSession(); }
+      else if (!S.ws || S.ws.readyState >= 2) connectWS();
       else loadChats();
     }
     if (S.activeChatId && S.ws?.readyState===1) {
@@ -441,6 +444,136 @@ document.addEventListener('focusin', e => {
 });
 document.addEventListener('focusout', () => setTimeout(updateAppHeight, 100));
 
+// ── МЕНЮ ШАПКИ САЙДБАРА ──
+// В шапке остаётся «+», остальные кнопки (скрыть панель, тема, объявление) лежат в узком меню под стрелкой.
+// Меню всегда открывается вниз от стрелки, по центру. Рисуется поверх всего (fixed) и при первом открытии
+// переезжает в body: у сайдбара есть граница, которая его бы срезала. Подписи к иконкам видны при наведении.
+// Масштаб интерфейса (zoom у html) учитываем так же, как у остальных всплывающих меню: считаем в пикселях
+// rect, а в style пишем с поправкой на коэффициент zoomMetrics().k.
+let _hmOpen = false;
+function headMenuPlace() {
+  const m = document.getElementById('head-menu'), b = document.getElementById('head-more');
+  if (!m || !b) return;
+  const k = zoomMetrics(), sb = document.querySelector('.sidebar');
+  // В узком сайдбаре (шапка в столбец) подсказки идут вправо, на область чата, иначе влево
+  m.classList.toggle('side', !!sb && sb.getBoundingClientRect().width / k.k <= 148);
+  m.style.left = '0px'; m.style.top = '0px';
+  const mr = m.getBoundingClientRect(), r = b.getBoundingClientRect();
+  const left = Math.max(8, Math.min(r.left + r.width / 2 - mr.width / 2, k.vw - mr.width - 8));
+  const top = Math.max(8, Math.min(r.bottom + 6 * k.k, k.vh - mr.height - 8));
+  m.style.left = Math.round(left / k.k) + 'px'; m.style.top = Math.round(top / k.k) + 'px';
+}
+function headMenuOpen() {
+  const m = document.getElementById('head-menu');
+  if (!m) return;
+  if (m.parentElement !== document.body) document.body.appendChild(m);
+  _hmOpen = true; m.hidden = false;
+  document.getElementById('head-more')?.setAttribute('aria-expanded', 'true');
+  headMenuPlace();
+}
+function headMenuClose(refocus) {
+  if (!_hmOpen) return;
+  _hmOpen = false;
+  const m = document.getElementById('head-menu'); if (m) m.hidden = true;
+  const b = document.getElementById('head-more');
+  b?.setAttribute('aria-expanded', 'false');
+  if (refocus) b?.focus();
+}
+function headMenuToggle(e) { e?.stopPropagation(); _hmOpen ? headMenuClose() : headMenuOpen(); }
+document.addEventListener('click', e => { if (_hmOpen && !e.target.closest('#head-menu, #head-more')) headMenuClose(); });
+// В фазе перехвата: Escape закрывает только меню и не доходит до общего обработчика (он закрыл бы чат)
+document.addEventListener('keydown', e => {
+  if (!_hmOpen) return;
+  if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); headMenuClose(true); return; }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    const items = [...document.querySelectorAll('#head-menu .hm-i')].filter(x => x.offsetParent !== null);
+    if (!items.length) return;
+    e.preventDefault();
+    const i = items.indexOf(document.activeElement), d = e.key === 'ArrowDown' ? 1 : -1;
+    items[(i + d + items.length) % items.length].focus();
+  }
+}, true);
+window.addEventListener('resize', () => headMenuClose());
+
+// ── ПРОВЕРКА СОХРАНЁННОЙ СЕССИИ ПРИ ЗАПУСКЕ ──
+// Первый запрос окна к серверу сразу после запуска (особенно после обновления: установка, антивирус,
+// определение прокси, сеть ещё поднимается) бывает медленным. Раньше ждали ответ 5 секунд и при
+// неудаче показывали форму входа, хотя сессия была в порядке: помогал только перезапуск.
+// Теперь проверяем сохранённый токен с повторами, а форму показываем лишь когда сервер сессию
+// отклонил или не отвечает дольше BOOT_TOTAL_MS. Пароль в этих запросах не участвует.
+const BOOT_TRY_MS = 15000, BOOT_TOTAL_MS = 120000;
+let _bootRun = 0;          // номер текущей проверки: новая отменяет прежнюю
+let _bootActive = false;   // проверка идёт
+let _bootManual = false;   // человек выбрал «Войти вручную»: сами не возвращаем его к проверке
+let _bootUiTimer = null;
+const bootLog = t => window.electron?.diag?.(t);
+function onLoginScreen() { return !!document.getElementById('screen-login')?.classList.contains('active'); }
+function bootUi(on, text) {
+  const el = document.getElementById('boot-overlay');
+  if (!el) return;
+  clearTimeout(_bootUiTimer);
+  if (!on) { el.hidden = true; return; }
+  const t = document.getElementById('boot-text');
+  if (text && t) t.textContent = text;
+  // Без мигания: если ответ приходит быстро, надпись так и не появится
+  if (el.hidden) _bootUiTimer = setTimeout(() => { el.hidden = false; }, 400);
+}
+// Одна попытка: 'ok' — сервер принял токен, 'revoked' — сессию отозвали или пользователя заблокировали,
+// 'invalid' — токен не принят, 'retry' — ответа нет или сервер ещё поднимается
+async function bootProbe() {
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), BOOT_TRY_MS);
+  try {
+    const res = await fetch(`${httpProto()}://${S.server}/api/users/presence`, { headers: { Authorization: 'Bearer ' + S.token }, signal: ctl.signal });
+    if (res.ok) return 'ok';
+    if (res.status === 401) {
+      const info = await res.json().catch(() => ({}));
+      if (['revoked', 'banned', 'user_not_found'].includes(info.code)) return 'revoked';
+      if (info.code === 'expired') return (await refreshToken()) ? 'ok' : 'revoked';
+      return 'invalid';
+    }
+    return 'retry';
+  } catch { return 'retry'; }
+  finally { clearTimeout(timer); }
+}
+async function bootSession() {
+  if (!S.token || !S.server) { fillLoginFromCreds(); return; }
+  const run = ++_bootRun, t0 = Date.now();
+  let n = 0;
+  _bootActive = true; _bootManual = false;
+  bootUi(true, 'Подключаюсь к серверу…');
+  while (run === _bootRun) {
+    n++;
+    const t1 = Date.now(), r = await bootProbe();
+    if (run !== _bootRun) return;
+    if (r === 'ok') {
+      _bootActive = false; bootUi(false);
+      bootLog(`проверка сессии: подтверждена за ${Date.now() - t1} мс (попытка ${n}, с запуска ${Math.round((Date.now() - t0) / 1000)} с)`);
+      enterApp();
+      return;
+    }
+    if (r === 'revoked') {
+      _bootActive = false; bootUi(false);
+      bootLog('проверка сессии: сервер отклонил сессию, выполняется выход');
+      logout();
+      return;
+    }
+    if (r === 'invalid') { bootLog('проверка сессии: сервер не принял токен, показан экран входа'); break; }
+    const spent = Math.round((Date.now() - t0) / 1000);
+    bootLog(`проверка сессии: нет ответа от сервера (попытка ${n}, ${spent} с), пробую ещё раз`);
+    if (Date.now() - t0 > BOOT_TOTAL_MS) { bootLog(`проверка сессии: сервер не ответил за ${spent} с, показан экран входа`); break; }
+    bootUi(true, 'Сервер отвечает медленно, пробую ещё раз…');
+    await new Promise(r => setTimeout(r, Math.min(2000 + n * 1000, 5000)));
+  }
+  if (run !== _bootRun) return;
+  _bootActive = false; bootUi(false);
+  fillLoginFromCreds();
+}
+function bootCancel() {
+  _bootRun++; _bootActive = false; _bootManual = true;
+  bootUi(false);
+  fillLoginFromCreds();
+}
+
 // ── INIT ──
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -449,12 +582,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (session?.token) {
     Object.assign(S, { server: S.server, token:session.token, user:session.user, settings:session.settings||S.settings });
     applySettings();
-    const ok = await Promise.race([
-      api('GET', '/users/presence'),
-      new Promise(r => setTimeout(() => r(null), 5000)),
-    ]);
-    if (S.token && ok !== null) enterApp();
-    else fillLoginFromCreds();
+    // Не ждём: форма входа остаётся доступной, а проверка идёт с повторами (см. bootSession)
+    bootSession();
   } else {
     applySettings();
     fillLoginFromCreds();
@@ -812,6 +941,7 @@ function chatBgCardsHtml() {
 }
 
 function applySettings() {
+  headMenuClose();
   const isDark = S.settings.theme === 'dark';
   document.documentElement.classList.toggle('dark', isDark);
   document.documentElement.className = document.documentElement.className.replace(/font-\w+/,'');

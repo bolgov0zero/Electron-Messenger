@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=1.2.166">
+<link rel="stylesheet" href="style.css?v=1.2.168">
 </head>
 <body>
 
@@ -54,6 +54,13 @@
 
 <!-- Login -->
 <div id="screen-login" class="screen active">
+  <div class="boot-overlay" id="boot-overlay" hidden>
+    <div class="boot-box">
+      <div class="boot-spin"></div>
+      <div class="boot-text" id="boot-text">Подключаюсь к серверу…</div>
+      <button class="boot-manual" type="button" onclick="bootCancel()">Войти вручную</button>
+    </div>
+  </div>
   <div class="login-wrap">
     <div class="login-icon">
       <div class="login-logo">
@@ -112,16 +119,18 @@
           </div>
         </div>
         <div class="topbar-actions">
-          <button class="icon-btn" title="Сменить тему" onclick="toggleTheme()">
-            <svg id="sidebar-theme-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-            <svg id="sidebar-theme-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-          </button>
-          <button class="icon-btn" id="btn-announce" title="Отправить объявление" onclick="openAnnounce()" style="display:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+          <button class="icon-btn head-more" id="head-more" type="button" title="Ещё" aria-label="Ещё" aria-haspopup="menu" aria-expanded="false" onclick="headMenuToggle(event)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
           <button class="btn-new-chat" title="Новый чат" onclick="openNewChat()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
         </div>
-      </header>
+  </header>
+<!-- Меню шапки: рисуется поверх всего (при первом открытии переезжает в body: граница сайдбара его бы срезала) -->
+<div class="head-menu" id="head-menu" role="menu" hidden>
+  <button type="button" class="hm-i" role="menuitem" data-tip="Сменить тему" aria-label="Сменить тему" onclick="headMenuClose();toggleTheme()"><svg id="sidebar-theme-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg id="sidebar-theme-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
+  <button type="button" class="hm-i" role="menuitem" id="btn-announce" data-tip="Отправить объявление" aria-label="Отправить объявление" onclick="headMenuClose();openAnnounce()" style="display:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+</div>
+
       <div class="sidebar-search" id="sidebar-search">
         <button class="strip-back" onclick="leaveRoom()" title="К списку чатов"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
         <div class="room-title" id="room-title"></div>
@@ -317,7 +326,7 @@
 <div id="reaction-picker"></div>
 <script src="emoji-data.js?v=1.2.165"></script>
 <script src="/shared/secret-core.js?v=1"></script>
-<script src="app.js?v=1.2.166"></script>
+<script src="app.js?v=1.2.168"></script>
 <script src="announce.js?v=2"></script>
 </body>
 </html>

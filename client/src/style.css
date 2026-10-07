@@ -3272,7 +3272,7 @@ body.sb-dragging .sidebar, body.sb-dragging .acc-rail { transition: none !import
 }
 @container sb (max-width: 146px) {
   .sidebar-head { height: auto; min-height: 0; flex-direction: column; justify-content: flex-start; align-items: center; gap: 8px; padding: 12px 0 8px; }
-  .topbar-actions { flex-direction: column; }
+  .topbar-actions { flex-direction: column-reverse; }
   .sidebar-search:not(.room-mode) { display: none; }
   .sidebar-search.room-mode { padding: 0; justify-content: center; }
   .chat-list-section-label { font-size: 0; letter-spacing: 0; padding: 10px 14px 6px !important; display: flex; justify-content: center; align-items: center; }
@@ -3381,3 +3381,30 @@ html.dark .anx-solid { color: #04211c; }
 .anx-time { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; }
 .anx-time input { width: 34px; text-align: center; border: 1px solid var(--border); background: var(--search-bg); color: var(--text); border-radius: 7px; padding: 5px 0; font: inherit; font-size: 13px; outline: none; }
 @media (max-width: 760px) { .anx-body { grid-template-columns: 1fr; } .anx-left { border-right: 0; border-bottom: 1px solid var(--border); } .anx-kinds { grid-template-columns: 1fr; } }
+
+/* ── Проверка сохранённой сессии при запуске (bootSession) ── */
+.boot-overlay { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--app-bg) 90%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.boot-overlay[hidden] { display: none; }
+.boot-box { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; padding: 0 24px; }
+.boot-spin { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--accent-soft); border-top-color: var(--accent); animation: bootSpin .8s linear infinite; }
+@keyframes bootSpin { to { transform: rotate(360deg); } }
+.boot-text { font-size: 14px; color: var(--text); }
+.boot-manual { border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.boot-manual:hover { color: var(--text); }
+@media (prefers-reduced-motion: reduce) { .boot-spin { animation-duration: 2.4s; } }
+
+/* ── Меню шапки сайдбара: «+» на виду, остальные кнопки под стрелкой ── */
+.topbar-actions .head-more svg { width: 15px; height: 15px; transition: transform .18s ease; }
+.topbar-actions .head-more[aria-expanded="true"] { color: var(--text); background: var(--hover-row); border-radius: 8px; }
+.topbar-actions .head-more[aria-expanded="true"] svg { transform: rotate(180deg); }
+/* Меню узкое, из одних иконок; подпись показывается подсказкой сбоку. Оно вне сайдбара и fixed: граница сайдбара его не режет */
+.head-menu { position: fixed; z-index: 260; display: flex; flex-direction: column; gap: 2px; padding: 4px; background: var(--menu-bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 34px rgba(0,0,0,.28); animation: hmIn .13s ease; }
+.head-menu[hidden] { display: none; }
+@keyframes hmIn { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
+.hm-i { position: relative; width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; font: inherit; transition: color .12s, background .12s; -webkit-app-region: no-drag; }
+.hm-i:hover, .hm-i:focus-visible { background: var(--hover-row); color: var(--text); outline: 0; }
+.hm-i svg { width: 16px; height: 16px; display: block; }
+.hm-i::after { content: attr(data-tip); position: absolute; top: 50%; right: calc(100% + 10px); transform: translateY(-50%); background: var(--text); color: var(--app-bg); font-size: 12px; font-weight: 600; padding: 5px 9px; border-radius: 8px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .12s; }
+.head-menu.side .hm-i::after { right: auto; left: calc(100% + 10px); }
+.hm-i:hover::after, .hm-i:focus-visible::after { opacity: 1; transition-delay: .25s; }
+@media (prefers-reduced-motion: reduce) { .head-menu { animation: none; } .topbar-actions .head-more svg { transition: none; } }
