@@ -1,4 +1,4 @@
-const { app, BrowserWindow, BrowserView, Tray, Menu, nativeImage, nativeTheme, Notification, ipcMain, net, safeStorage, screen, session } = require('electron');
+const { app, BrowserWindow, BrowserView, Tray, Menu, nativeImage, nativeTheme, Notification, ipcMain, net, safeStorage, screen, session, shell } = require('electron');
 
 if (process.platform === 'linux') {
   // Полностью отключаем все подсистемы sandbox: на некоторых конфигурациях
@@ -16,6 +16,27 @@ const fs = require('fs');
 const crypto = require('crypto');
 const os = require('os');
 const { pathToFileURL } = require('url');
+
+// ── ВНЕШНИЕ ССЫЛКИ ──
+// Ссылки из сообщений открываем в системном браузере. Раньше Electron по умолчанию создавал для них
+// маленькое окно приложения: без адресной строки и без запроса о сертификате, поэтому страница с
+// самоподписанным сертификатом (внутренние сервисы) оставалась пустым белым окном. Окна самого
+// приложения (запись, просмотр вложений) грузят только файлы приложения: на внешний адрес они не уходят.
+// Открываем только http и https: другие схемы запускают чужие программы, их не пропускаем.
+// Метка: EXTERNAL-LINKS-BEGIN
+const isWebUrl = u => { try { const p = new URL(u).protocol; return p === 'http:' || p === 'https:'; } catch { return false; } };
+app.on('web-contents-created', (_, wc) => {
+  wc.setWindowOpenHandler(({ url }) => {
+    if (isWebUrl(url)) shell.openExternal(url).catch(() => {});
+    return { action: 'deny' };
+  });
+  wc.on('will-navigate', (e, url) => {
+    if (!isWebUrl(url)) return;
+    e.preventDefault();
+    shell.openExternal(url).catch(() => {});
+  });
+});
+// Метка: EXTERNAL-LINKS-END
 
 // ── AUTO UPDATE ──
 const GITHUB_REPO = 'bolgov0zero/Electron-Messenger';
