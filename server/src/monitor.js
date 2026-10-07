@@ -69,7 +69,7 @@ function pruneMetrics() {
 
 // Ряды для раскрытых графиков: n точек на период, шаг зависит от периода
 const HISTORY_RANGES = {
-  '24h': { n: 96, step: 15 * 60000 },
+  '24h': { n: 288, step: 5 * 60000 },
   '7d': { n: 84, step: 2 * 3600000 },
   '30d': { n: 120, step: 6 * 3600000 },
   '1y': { n: 52, step: 7 * 86400000 },
@@ -85,6 +85,17 @@ function history(range) {
     if (i < 0 || i >= cfg.n) continue;
     const a = acc[i];
     a.n += r.n; a.cpu += r.cpu_sum; a.lag = a.lag == null ? r.lag_max : Math.max(a.lag, r.lag_max); a.on += r.on_sum; a.onN += r.on_n;
+  }
+  // Пока в базе нет истории (сразу после обновления сервера) или она неполная, берём замеры последнего часа из памяти:
+  // они переживают перезапуск. Пятиминутки, которые уже есть в базе, повторно не считаем
+  const have = new Set(rows.map(r => r.t));
+  for (const sm of samples) {
+    if (sm[0] < start || have.has(Math.floor(sm[0] / 300000) * 300)) continue;
+    const i = Math.floor((sm[0] - start) / cfg.step);
+    if (i < 0 || i >= cfg.n) continue;
+    const a = acc[i];
+    a.n++; a.cpu += sm[1]; a.lag = a.lag == null ? (sm[7] || 0) : Math.max(a.lag, sm[7] || 0);
+    if (sm[8] != null) { a.on += sm[8]; a.onN++; }
   }
   return {
     range: HISTORY_RANGES[range] ? range : '24h', start, end, step: cfg.step, n: cfg.n,

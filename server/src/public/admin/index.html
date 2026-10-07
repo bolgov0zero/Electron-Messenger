@@ -1282,6 +1282,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .xp-chart text{font-family:var(--f-ui);font-size:10.5px;fill:var(--dv-muted)}
 .xp-chart text.lim{fill:var(--dv-bad);font-weight:600}
 .xp-chart text.cnt{font-size:10px;font-weight:700}
+.xp-chart text.nodata{font-size:12px;fill:var(--dv-muted)}
 .xp-tip{position:absolute;z-index:5;top:38px;min-width:190px;max-width:290px;padding:9px 11px;border-radius:12px;background:var(--dv-surface);border:1px solid var(--dv-border);box-shadow:0 10px 30px rgba(0,0,0,.28);font-size:12px;pointer-events:none;color:var(--dv-text)}
 .xp-tip.fixed{position:fixed;z-index:400;top:0;display:none}
 .xp-th{font-weight:700;margin-bottom:4px}
@@ -3170,6 +3171,8 @@ function xpSum() {
   else {
     const mn = Math.min(...live), mx = Math.max(...live), av = live.reduce((s, x) => s + x, 0) / live.length, d = XP.tab === 'cpu' ? 1 : 0;
     head = `<div><div class="dv-lbl">${T.n} сейчас</div><div class="dv-big">${T.fmt(live[live.length - 1])}</div></div><div class="dv-sub">за период: мин <b class="hm-mono">${hmFmt(mn, d)}</b> · среднее <b class="hm-mono">${hmFmt(av, d)}</b> · макс <b class="hm-mono">${hmFmt(mx, d)}</b></div>`;
+    const first = g.vals.findIndex(v => v != null);
+    if (first > g.n * .04) head += `<span class="dv-sub">история копится с ${xWhen(g.start + first * g.step, true)}</span>`;
     if (T.lim) {
       const runs = hmOverRuns(g.vals, T.lim), tot = runs.reduce((s, [a, b]) => s + (b - a + 1) * g.step, 0);
       head += runs.length
@@ -3199,6 +3202,11 @@ function xpSvg(w) {
   const unit = pw / g.n, hv = XP.hover, step4 = mx / 4;
   let s = `<svg width="${w}" height="${XH}" viewBox="0 0 ${w} ${XH}" role="img" aria-label="${esc(T.n)}">`;
   for (let i = 0; i <= 4; i++) { const v = step4 * i, y = Y(v); s += `<line x1="${XPL}" x2="${w - XPR}" y1="${y}" y2="${y}" stroke="var(--dv-border)" ${i ? 'stroke-dasharray="3 5"' : ''}/><text x="${XPL - 8}" y="${y + 3.5}" text-anchor="end">${hmFmt(v, step4 % 1 ? 1 : 0)}</text>`; }
+  // Пока история не накопилась, левая часть периода пустая: закрашиваем её и подписываем, а не оставляем «голую» сетку
+  if (line) {
+    const first = vals.findIndex(v => v != null), fw = (first < 0 ? g.n : first) / g.n * pw;
+    if (fw > 4) s += `<rect x="${XPL}" y="${XPT}" width="${fw}" height="${ph}" fill="var(--dv-surface2)" opacity=".55"/>${fw > 150 ? `<text class="nodata" x="${XPL + fw / 2}" y="${XPT + ph / 2}" text-anchor="middle">${first < 0 ? 'данных за этот период пока нет' : 'история копится, раньше данных нет'}</text>` : ''}`;
+  }
   if (line) xTicks(g).forEach(([t, l]) => { const x = X(t); s += `<line x1="${x}" x2="${x}" y1="${XPT + ph}" y2="${XPT + ph + 4}" stroke="var(--dv-border)"/><text x="${x}" y="${XH - 6}" text-anchor="middle">${l}</text>`; });
   else {
     const stride = XP.range === '24h' ? 3 : XP.range === '30d' ? 5 : 1;
@@ -3217,6 +3225,7 @@ function xpSvg(w) {
     });
   } else {
     const pts = vals.map((v, k) => v == null ? null : [XPL + k / g.n * pw, Y(v)]).filter(Boolean);
+    if (pts.length === 1) s += `<circle cx="${pts[0][0]}" cy="${pts[0][1]}" r="4" fill="${T.c}"/>`;
     if (pts.length > 1) {
       const id = 'xa' + XP.tab, d = hmPathD(pts, T.smooth), area = `${d} L${pts[pts.length - 1][0]} ${XPT + ph} L${pts[0][0]} ${XPT + ph} Z`;
       s += `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${T.c}" stop-opacity=".32"/><stop offset="1" stop-color="${T.c}" stop-opacity="0"/></linearGradient></defs><path d="${area}" fill="url(#${id})"/><path d="${d}" fill="none" stroke="${T.c}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
