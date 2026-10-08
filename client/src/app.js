@@ -3612,17 +3612,17 @@ function renderStatus(status) {
   const { delivered, read, total } = status;
   if (total === 0) return '';
   let cls, title;
-  // «Прочитано» (синие галочки) — только когда прочитали ВСЕ получатели.
-  // В группе при частичном прочтении показываем «Прочитано N из total».
+  // Обе галочки цветные — только когда прочитали ВСЕ получатели; если прочитал хотя бы один —
+  // цветная одна (status-part, первая галочка); только доставлено — обе серые.
   if (read >= total)      { cls = 'status-read';       title = 'Прочитано'; }
-  else if (read > 0)      { cls = 'status-delivered';  title = `Прочитано ${read} из ${total}`; }
+  else if (read > 0)      { cls = 'status-part';       title = `Прочитано ${read} из ${total}`; }
   else if (delivered > 0) { cls = 'status-delivered';  title = 'Доставлено'; }
   else                    { cls = 'status-sent';        title = 'Отправлено'; }
   const double = delivered > 0 || read > 0;
   return `<span class="msg-status ${cls}" title="${title}">
     <svg width="13" height="9" viewBox="0 0 18 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       ${double
-        ? '<polyline points="1,5.5 3.5,8 9,1"/><polyline points="7,5.5 9.5,8 15,1"/>'
+        ? '<polyline class="tk1" points="1,5.5 3.5,8 9,1"/><polyline points="7,5.5 9.5,8 15,1"/>'
         : '<polyline points="7,5.5 9.5,8 15,1"/>'}
     </svg>
   </span>`;
@@ -4073,15 +4073,16 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
   document.getElementById('ctx-copy-btn').style.display = '';
   document.getElementById('ctx-edit-btn').style.display = (isMine && S.ctx.canEdit && !S.secretChatIds.has(S.activeChatId)) ? '' : 'none';
   document.getElementById('ctx-delete-btn').style.display = isMine ? '' : 'none';
-  document.getElementById('ctx-info-btn').style.display = isMine ? '' : 'none';
   const ctxReactEl = menu.querySelector('.ctx-reactions');
   if (ctxReactEl) {
     const _freq = getFreqEmojis(7);
     ctxReactEl.innerHTML = _freq.map(em=>`<button class="ctx-reaction-btn" onclick="ctxReact('${em}')">${em}</button>`).join('')+`<button class="ctx-reaction-btn ctx-reaction-more" onclick="showReactionPicker(event)">→</button>`;
   }
   // Сначала показываем чтобы получить реальные размеры
+  ctxReadSetup(msgId, isMine);
   menu.classList.add('open');
   placeCtxMenu(menu, e.clientX, e.clientY);
+  S.ctx.readTop = null;
 }
 
 function syncCtxSeparators(menu) {
@@ -4682,84 +4683,86 @@ async function ctxDelete() {
   S.ws.send(JSON.stringify({type:'delete_message', message_id:id}));
 }
 
-async function ctxInfo() {
-  hideCtxMenu();
-  const msgId = S.ctx.messageId;
-  if (!msgId) return;
-  const data = await api('GET', `/messages/${msgId}/info`);
-  if (!data || data.error) return;
-
-  function fmtDt(ts) {
-    if (!ts) return null;
-    const d = new Date(ts * 1000);
-    return d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+// ── «ПРОЧИТАНО» В КОНТЕКСТНОМ МЕНЮ ──
+// Подпись и счётчик берутся из status сообщения (читали / доставлено), список читавших — из
+// /messages/:id/info, он подгружается при открытии меню. Раскрывается наведением или нажатием.
+function ctxReadTime(ts) {
+  const d = new Date(ts * 1000), now = new Date();
+  const hm = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  return d.toDateString() === now.toDateString() ? hm : d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) + ' ' + hm;
+}
+function ctxReadLabel(direct, read, delivered, readAt) {
+  const wrap = document.getElementById('ctx-read'), label = document.getElementById('ctx-read-label');
+  if (!wrap || !label) return;
+  delivered = Math.max(delivered, read);
+  wrap.classList.toggle('flat', delivered === 0);
+  if (delivered === 0) { label.textContent = 'Не доставлено'; return; }
+  if (direct) { label.innerHTML = read ? 'Прочитано' + (readAt ? ` <span class="cnt"><b>${ctxReadTime(readAt)}</b></span>` : '') : 'Не прочитано'; return; }
+  label.innerHTML = `${read === delivered && read > 0 ? 'Прочитали все' : 'Прочитано'} <span class="cnt"><b>${read}</b>/${delivered}</span>`;
+}
+function ctxReadSetup(msgId, isMine) {
+  const wrap = document.getElementById('ctx-read');
+  if (!wrap) return;
+  S.ctxReadReq = (S.ctxReadReq || 0) + 1;
+  const req = S.ctxReadReq;
+  wrap.style.display = isMine ? '' : 'none';
+  wrap.classList.remove('open', 'flat');
+  document.getElementById('ctx-info-btn').setAttribute('aria-expanded', 'false');
+  document.getElementById('ctx-read-list').innerHTML = '<div class="ctx-read-empty">Загрузка…</div>';
+  if (!isMine) return;
+  const chat = S.chats.find(c => c.id === S.activeChatId);
+  const direct = chat?.type === 'direct';
+  const st = S.msgStatus[msgId] || {};
+  ctxReadLabel(direct, st.read || 0, st.delivered || 0, null);
+  api('GET', `/messages/${msgId}/info`).then(data => {
+    if (req !== S.ctxReadReq || !data || data.error) return;
+    const list = document.getElementById('ctx-read-list');
+    if (!list) return;
+    const rd = data.statuses.filter(s => s.read_at);
+    const dlv = data.statuses.filter(s => s.delivered_at || s.read_at).length;
+    ctxReadLabel(data.chat_type === 'direct', rd.length, dlv, rd[0]?.read_at);
+    const direct2 = data.chat_type === 'direct';
+    list.innerHTML = rd.length
+      ? rd.map(s => `<div class="ctx-read-row" title="Прочитано ${new Date(s.read_at * 1000).toLocaleString('ru-RU')}">
+          <div class="av av-round ${userAvatarColor(s.user_id)}" data-av-user="${s.user_id}">${esc(initials(s.display_name))}</div>
+          <span class="ctx-read-name">${esc(s.display_name)}</span><span class="ctx-read-time">${ctxReadTime(s.read_at)}</span></div>`).join('')
+      : `<div class="ctx-read-empty">${direct2 ? 'Собеседник ещё не открыл сообщение.' : dlv ? `Пока никто не прочитал. Сообщение получили ${dlv}.` : 'Сообщение пока никому не доставлено.'}</div>`;
+    applyAvatars();
+    if (wrap.classList.contains('open')) ctxReadFit(true);
+  });
+}
+// Не хватает места снизу — меню плавно сдвигается вверх на недостающую высоту; при сворачивании возвращается
+function ctxReadFit(on) {
+  const menu = document.getElementById('ctx-menu'), wrap = document.getElementById('ctx-read');
+  if (!menu || !wrap) return;
+  if (S.ctx.readTop == null) S.ctx.readTop = parseFloat(menu.style.top) || 0;
+  let top = S.ctx.readTop;
+  if (on) {
+    const m = zoomMetrics();
+    const extra = Math.min(wrap.querySelector('.ctx-read-list').scrollHeight, 176) + 10;
+    const need = Math.max(0, S.ctx.readTop + menu.offsetHeight + extra + 6 - m.vh / m.k);
+    top = Math.max(6 / m.k, S.ctx.readTop - need);
   }
-
-  const icoSingleTeal = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-  const icoDblTeal    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>`;
-  const icoDblGray    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5b6169" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>`;
-
-  function tlStep(label, sub, done, ico, showConn) {
-    const dc = done ? 'mi-done' : 'mi-pending';
-    const pc = done ? '' : ' mi-pending';
-    const conn = showConn ? `<div class="mi-connector ${dc}"></div>` : '';
-    return `<div class="mi-step">
-      <div class="mi-step-left"><div class="mi-icon ${dc}">${ico}</div>${conn}</div>
-      <div class="mi-step-right">
-        <div class="mi-step-name${pc}">${label}</div>
-        <div class="mi-step-sub${pc}">${sub}</div>
-      </div>
-    </div>`;
-  }
-
-  document.querySelector('#modal-msg-info .mi-title').textContent = data.chat_type === 'direct' ? 'Информация' : 'Прочитано';
-
-  let body;
-  if (data.chat_type === 'direct') {
-    const s = data.statuses[0];
-    const sentDone  = !!data.sent_at;
-    const delivDone = !!s?.delivered_at;
-    const readDone  = !!s?.read_at;
-    body = `<div class="mi-timeline">
-      ${tlStep('Отправлено', fmtDt(data.sent_at) || '—', sentDone, icoSingleTeal, true)}
-      ${tlStep('Доставлено', delivDone ? fmtDt(s?.delivered_at) : 'пока не доставлено', delivDone, delivDone ? icoDblTeal : icoDblGray, true)}
-      ${tlStep('Прочитано', readDone ? fmtDt(s?.read_at) : 'пока не прочитано', readDone, readDone ? icoDblTeal : icoDblGray, false)}
-    </div>`;
-  } else {
-    const total = data.statuses.length;
-    const readUsers = data.statuses.filter(s => s.read_at).sort((a, b) => b.read_at - a.read_at);
-    const circ = 100.5; // 2*π*16, радиус кольца из CSS (.mi-ring, r=16)
-    const frac = total ? readUsers.length / total : 0;
-    const ring = `<div class="mi-ring">
-        <svg viewBox="0 0 38 38">
-          <circle cx="19" cy="19" r="16" fill="none" stroke="var(--border)" stroke-width="3.5"/>
-          <circle cx="19" cy="19" r="16" fill="none" stroke="var(--accent)" stroke-width="3.5" stroke-linecap="round"
-            stroke-dasharray="${circ}" stroke-dashoffset="${(circ * (1 - frac)).toFixed(1)}"/>
-        </svg>
-        <b>${readUsers.length}/${total}</b>
-      </div>`;
-    body = `<div class="mi-progress">${ring}
-      <div><div class="mi-progress-label">${readUsers.length === total ? 'Прочитали все' : 'Прочитано'}</div>
-      <div class="mi-progress-sub">${readUsers.length} из ${nMembers(total)}</div></div></div>`;
-    if (readUsers.length === 0) {
-      body += `<div class="mi-empty">Пока никто не прочитал</div>`;
-    } else {
-      body += readUsers.map(s => {
-        const [date, time] = fmtDt(s.read_at).split(' ');
-        return `<div class="mi-row">
-        <div class="av mi-av ${userAvatarColor(s.user_id)}" data-av-user="${s.user_id}">${initials(s.display_name)}</div>
-        <div class="mi-name">${esc(s.display_name)}</div>
-        <div class="mi-time-col">
-          <div class="mi-tick-row">${icoDblTeal}${time}</div>
-          <div class="mi-time-date">${date}</div>
-        </div>
-      </div>`;
-      }).join('');
-    }
-  }
-  document.getElementById('msg-info-body').innerHTML = body;
-  if (data.chat_type !== 'direct') applyAvatars();
-  openModal('modal-msg-info');
+  menu.style.transition = 'top .22s cubic-bezier(.4,0,.2,1)';
+  menu.style.top = top + 'px';
+  clearTimeout(S.ctx.readT2);
+  S.ctx.readT2 = setTimeout(() => { menu.style.transition = ''; }, 260);
+}
+function ctxReadSet(on) {
+  const wrap = document.getElementById('ctx-read');
+  if (!wrap || wrap.classList.contains('flat') || wrap.classList.contains('open') === on) return;
+  wrap.classList.toggle('open', on);
+  document.getElementById('ctx-info-btn').setAttribute('aria-expanded', on);
+  ctxReadFit(on);
+}
+function ctxReadHover(on) {
+  clearTimeout(S.ctx.readT);
+  if (on) ctxReadSet(true);
+  else S.ctx.readT = setTimeout(() => ctxReadSet(false), 140);
+}
+function ctxReadToggle() {
+  const wrap = document.getElementById('ctx-read');
+  ctxReadSet(!wrap.classList.contains('open'));
 }
 
 // ── CUSTOM CONFIRM (replaces native confirm to avoid Electron focus bug on Windows) ──

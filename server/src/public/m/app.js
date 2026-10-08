@@ -1507,9 +1507,11 @@ function renderTicks(status) {
   const { delivered, read, total } = status;
   if (total === 0) return '';
   const double = delivered > 0 || read > 0;
-  const color = read >= total ? 'var(--accent)' : 'var(--muted)';
-  return `<svg width="13" height="9" viewBox="0 0 18 9" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    ${double ? '<polyline points="1,5.5 3.5,8 9,1"/><polyline points="7,5.5 9.5,8 15,1"/>' : '<polyline points="7,5.5 9.5,8 15,1"/>'}
+  // Обе галочки цветные — прочитали все; одна (первая) — прочитал хотя бы один; обе серые — только доставлено
+  const all = read >= total, part = read > 0 && !all;
+  const c1 = all || part ? 'var(--accent)' : 'var(--muted)', c2 = all ? 'var(--accent)' : 'var(--muted)';
+  return `<svg width="13" height="9" viewBox="0 0 18 9" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    ${double ? `<polyline stroke="${c1}" points="1,5.5 3.5,8 9,1"/><polyline stroke="${c2}" points="7,5.5 9.5,8 15,1"/>` : `<polyline stroke="${c2}" points="7,5.5 9.5,8 15,1"/>`}
   </svg>`;
 }
 
@@ -2342,11 +2344,11 @@ function openMsgActions(msgId) {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Копировать</div>` : '';
   const rowEdit = canEdit ? `<div class="msg-action-row" onclick="closeSheet();startEdit(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>Изменить</div>` : '';
-  const rowInfo = mine ? `<div class="msg-action-row" onclick="closeSheet();openReadSheet(${msgId})">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>Информация</div>` : '';
+  const rowInfo = mine ? readItemHtml(m) : '';
   const rowDelete = mine ? `<div class="msg-action-row danger" onclick="closeSheet();deleteMessageConfirm(${msgId})">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Удалить</div>` : '';
   openSheet(`<div class="sheet-title">Сообщение</div>${rowReact}${rowReply}${rowForward}${rowCopy}${rowEdit}${rowInfo}${rowDelete}`);
+  if (mine) loadReadList(m);
 }
 async function copyMsgText(msgId) {
   const m = findMsg(msgId);
@@ -2708,50 +2710,54 @@ function connectWS() {
   ws.onclose = () => { if (S.ws === ws) setTimeout(() => { if (S.token) connectWS(); }, 2000); };
 }
 
-// ── ШТОРКА «ПРОЧИТАНО» (тот же ring-дизайн, что в /chat, но как bottom sheet) ──
-async function openReadSheet(msgId) {
-  const data = await api('GET', `/messages/${msgId}/info`);
-  if (!data || data.error) return;
-  const icoDblTeal = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>`;
-  const icoDblGray = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5b6169" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>`;
-  const icoSingleTeal = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-  function tlStep(label, sub, done, ico, showConn) {
-    const dc = done ? 'mi-done' : 'mi-pending';
-    const pc = done ? '' : ' mi-pending';
-    const conn = showConn ? `<div class="mi-connector ${dc}"></div>` : '';
-    return `<div class="mi-step"><div class="mi-step-left"><div class="mi-icon ${dc}">${ico}</div>${conn}</div>
-      <div class="mi-step-right"><div class="mi-step-name${pc}">${label}</div><div class="mi-step-sub${pc}">${sub}</div></div></div>`;
-  }
-  let title, body;
-  if (data.chat_type === 'direct') {
-    title = 'Информация';
-    const s = data.statuses[0];
-    const sentDone = !!data.sent_at, delivDone = !!s?.delivered_at, readDone = !!s?.read_at;
-    body = `<div class="mi-timeline">
-      ${tlStep('Отправлено', fmtDateTime(data.sent_at) || '—', sentDone, icoSingleTeal, true)}
-      ${tlStep('Доставлено', delivDone ? fmtDateTime(s?.delivered_at) : 'пока не доставлено', delivDone, delivDone ? icoDblTeal : icoDblGray, true)}
-      ${tlStep('Прочитано', readDone ? fmtDateTime(s?.read_at) : 'пока не прочитано', readDone, readDone ? icoDblTeal : icoDblGray, false)}
-    </div>`;
-  } else {
-    title = 'Прочитано';
-    const total = data.statuses.length;
-    const readUsers = data.statuses.filter(s => s.read_at).sort((a, b) => b.read_at - a.read_at);
-    const circ = 100.5, frac = total ? readUsers.length / total : 0;
-    body = `<div class="mi-progress">
-      <div class="mi-ring"><svg viewBox="0 0 38 38">
-        <circle cx="19" cy="19" r="16" fill="none" stroke="var(--border)" stroke-width="3.5"/>
-        <circle cx="19" cy="19" r="16" fill="none" stroke="var(--accent)" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${(circ * (1 - frac)).toFixed(1)}"/>
-      </svg><b>${readUsers.length}/${total}</b></div>
-      <div><div class="mi-progress-label">${readUsers.length === total ? 'Прочитали все' : 'Прочитано'}</div>
-      <div class="mi-progress-sub">${readUsers.length} из ${total} участников</div></div></div>`;
-    body += readUsers.length === 0 ? `<div class="mi-empty">Пока никто не прочитал</div>` : readUsers.map(s => {
-      const [date, time] = fmtDateTime(s.read_at).split(' ');
-      return `<div class="mi-row"><div class="av ${userAvatarColor(s.user_id)}" data-av-user="${s.user_id}" data-av-fallback="${esc(initials(s.display_name))}">${esc(initials(s.display_name))}</div>
-        <div class="mi-name">${esc(s.display_name)}</div>
-        <div class="mi-time-col"><div class="mi-tick-row">${icoDblTeal}${time}</div><div class="mi-time-date">${date}</div></div></div>`;
-    }).join('');
-  }
-  openSheet(`<div class="sheet-title">${title}</div>${body}`);
+// ── «ПРОЧИТАНО» В ШТОРКЕ СООБЩЕНИЯ ──
+// Подпись и счётчик — из status сообщения (читали / доставлено), список читавших подгружается из
+// /messages/:id/info. Пункт раскрывается нажатием и показывает только тех, кто прочитал.
+function rdTime(ts) {
+  const d = new Date(ts * 1000), now = new Date();
+  const hm = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  return d.toDateString() === now.toDateString() ? hm : d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) + ' ' + hm;
+}
+function rdLabel(direct, read, delivered, readAt) {
+  delivered = Math.max(delivered, read);
+  if (delivered === 0) return 'Не доставлено';
+  if (direct) return read ? 'Прочитано' + (readAt ? ` <span class="rd-cnt"><b>${rdTime(readAt)}</b></span>` : '') : 'Не прочитано';
+  return `${read === delivered && read > 0 ? 'Прочитали все' : 'Прочитано'} <span class="rd-cnt"><b>${read}</b>/${delivered}</span>`;
+}
+function readItemHtml(m) {
+  const chat = S.chats.find(c => c.id === m.chat_id);
+  const st = m.status || {};
+  const flat = Math.max(st.delivered || 0, st.read || 0) === 0;
+  return `<div class="rd-item${flat ? ' flat' : ''}" id="rd-item" data-msg="${m.id}">
+    <div class="msg-action-row" onclick="toggleReadItem()">
+      <svg class="tk" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>
+      <span id="rd-label">${rdLabel(chat?.type === 'direct', st.read || 0, st.delivered || 0, null)}</span>
+      <svg class="rd-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="rd-body"><div class="rd-in"><div class="rd-list" id="rd-list"><div class="rd-empty">Загрузка…</div></div></div></div>
+  </div>`;
+}
+function toggleReadItem() {
+  const it = document.getElementById('rd-item');
+  if (!it || it.classList.contains('flat')) return;
+  const on = !it.classList.contains('open');
+  it.classList.toggle('open', on);
+  // шторка выросла вверх — прокручиваем так, чтобы список читавших был виден целиком
+  if (on) setTimeout(() => it.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 240);
+}
+async function loadReadList(m) {
+  const data = await api('GET', `/messages/${m.id}/info`);
+  const it = document.getElementById('rd-item');
+  if (!it || +it.dataset.msg !== m.id || !data || data.error) return;
+  const rd = data.statuses.filter(s => s.read_at);
+  const dlv = data.statuses.filter(s => s.delivered_at || s.read_at).length;
+  const direct = data.chat_type === 'direct';
+  it.classList.toggle('flat', dlv === 0);
+  document.getElementById('rd-label').innerHTML = rdLabel(direct, rd.length, dlv, rd[0]?.read_at);
+  document.getElementById('rd-list').innerHTML = rd.length
+    ? rd.map(s => `<div class="rd-row"><div class="av ${userAvatarColor(s.user_id)}" data-av-user="${s.user_id}" data-av-fallback="${esc(initials(s.display_name))}">${esc(initials(s.display_name))}</div>
+        <span class="rd-name">${esc(s.display_name)}</span><span class="rd-time">${rdTime(s.read_at)}</span></div>`).join('')
+    : `<div class="rd-empty">${direct ? 'Собеседник ещё не открыл сообщение.' : dlv ? `Пока никто не прочитал. Сообщение получили ${dlv}.` : 'Сообщение пока никому не доставлено.'}</div>`;
   applyAvatars();
 }
 

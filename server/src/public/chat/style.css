@@ -1259,6 +1259,8 @@ input:not([type]) {
 .irc-meta .status-sent      { color: var(--muted); opacity: .45; }
 .irc-meta .status-delivered { color: var(--muted); }
 .irc-meta .status-read      { color: var(--accent); }
+.irc-meta .status-part      { color: var(--muted); }
+.status-part .tk1 { stroke: var(--accent); }
 
 /* ── IRC VIEW ── */
 .irc-msg {
@@ -1928,75 +1930,31 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 }
 .nc-list { max-height: 320px; padding: 6px 10px; }
 
-/* ── MESSAGE INFO MODAL ── */
-#modal-msg-info.modal-bg {
-}
-.mi-modal {
-  background: var(--modal-bg);
-  border-radius: 20px;
-  padding: 12px 16px;
-  width: 300px; max-width: calc(100vw - 32px);
-  box-shadow: 0 30px 60px rgba(0,0,0,0.5);
-  display: flex; flex-direction: column;
-  max-height: 85vh;
-}
-.modal-bg.open .mi-modal   { animation: modalIn  220ms cubic-bezier(0.34,1.56,0.64,1) forwards; }
-.modal-bg.closing .mi-modal { animation: modalOut 150ms ease-in forwards; }
-.mi-hdr {
-  display: flex; align-items: center; justify-content: space-between;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 12px; flex-shrink: 0;
-}
-.mi-title { font-size: 14px; font-weight: 700; color: var(--text); }
-.mi-close {
-  width: 26px; height: 26px;
-  background: var(--search-bg); border: 1px solid var(--border); border-radius: 9px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; color: var(--muted); transition: color .15s; flex-shrink: 0;
-}
-.mi-close:not(.icon-btn-danger):hover { color: var(--text); }
-#msg-info-body { overflow-y: auto; }
-
-/* Timeline */
-.mi-timeline { display: flex; flex-direction: column; }
-.mi-step { display: flex; gap: 12px; }
-.mi-step-left { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
-.mi-icon {
-  width: 26px; height: 26px; border-radius: 9px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-}
-.mi-icon.mi-done    { background: rgba(var(--accent-rgb,41,214,184),0.15); border: 1px solid rgba(var(--accent-rgb,41,214,184),0.35); }
-.mi-icon.mi-pending { background: var(--search-bg);      border: 1px solid var(--border); }
-.mi-connector { width: 2px; flex: 1; min-height: 8px; border-radius: 9px; margin: 3px 0; }
-.mi-connector.mi-done    { background: rgba(var(--accent-rgb,41,214,184),0.35); }
-.mi-connector.mi-pending { background: var(--border); }
-.mi-step-right { flex: 1; padding-bottom: 12px; }
-.mi-step:last-child .mi-step-right { padding-bottom: 0; }
-.mi-step-name { font-size: 13px; font-weight: 600; color: var(--text); }
-.mi-step-name.mi-pending { color: var(--muted); }
-.mi-step-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-.mi-step-sub.mi-pending { color: var(--muted); opacity: .6; }
-
-/* Group view */
-.mi-av { width: 34px; height: 34px; font-size: 13px; border-radius: 9px !important; }
-.mi-empty { text-align: center; padding: 20px 0; color: var(--muted); font-size: 13px; }
-
-/* Прогресс прочтения группового сообщения: кольцо + подпись, затем список
-   читателей с разделителями (вариант «A», согласован с пользователем) */
-.mi-progress { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; padding: 10px 12px; background: var(--search-bg); border-radius: 10px; }
-.mi-ring { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; position: relative; display: flex; align-items: center; justify-content: center; }
-.mi-ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
-.mi-ring b { font-size: 11px; font-weight: 700; color: var(--text); }
-.mi-progress-label { font-size: 12.5px; font-weight: 600; color: var(--text); }
-.mi-progress-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
-.mi-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
-.mi-row + .mi-row { border-top: 1px solid var(--border); }
-.mi-name { font-size: 13px; font-weight: 600; flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mi-time-col { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
-.mi-time-date { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.mi-tick-row { display: flex; align-items: center; gap: 4px; color: var(--accent); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.mi-tick-row svg { stroke: var(--accent); flex-shrink: 0; }
+/* ── «ПРОЧИТАНО» В МЕНЮ СООБЩЕНИЯ ── */
+/* Пункт показывает «Прочитано 1/3» (3 — кому доставлено); по наведению раскрывается вниз списком тех, кто прочитал */
+.ctx-read { border-radius: 9px; }
+.ctx-read.open > button { background: var(--hover-row); }
+.ctx-menu .ctx-read > button svg:first-child { color: var(--accent); }
+.ctx-menu .ctx-read.flat > button svg:first-child { color: var(--muted); }
+.ctx-menu .ctx-read > button > span { display: flex; align-items: baseline; gap: 6px; }
+.ctx-read .cnt { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.ctx-read .cnt b { color: var(--accent); font-weight: 700; }
+.ctx-menu .ctx-read .ctx-read-chev { margin-left: auto; width: 14px; height: 14px; transition: transform .22s cubic-bezier(.4,0,.2,1); }
+.ctx-read.open .ctx-read-chev { transform: rotate(180deg); }
+.ctx-read.flat > button { cursor: default; }
+.ctx-read.flat > button:hover { background: none; }
+.ctx-read.flat .ctx-read-chev { display: none; }
+.ctx-read-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .22s cubic-bezier(.4,0,.2,1); }
+.ctx-read.open .ctx-read-body { grid-template-rows: 1fr; }
+.ctx-read-in { overflow: hidden; min-height: 0; }
+.ctx-read-list { max-height: 176px; overflow-y: auto; padding: 4px 4px 6px 10px; scrollbar-width: thin; }
+.ctx-read-row { display: flex; align-items: center; gap: 9px; padding: 4px 6px; border-radius: 8px; }
+.ctx-read-row:hover { background: var(--hover-row); }
+.ctx-read-row .av { width: 26px; height: 26px; font-size: 10px; flex-shrink: 0; }
+.ctx-read-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-read-time { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.ctx-read-empty { padding: 6px 8px 8px 10px; font-size: 12px; color: var(--muted); white-space: normal; line-height: 1.4; }
+@media (prefers-reduced-motion: reduce) { .ctx-read-body, .ctx-read .ctx-read-chev { transition: none; } }
 
 /* ── LINK CONFIRM MODAL ── */
 .link-modal {
@@ -2528,6 +2486,7 @@ html.dark .announcement-title { color: var(--danger); }
 .ci-name .status-sent      { color: var(--muted); opacity: .45; }
 .ci-name .status-delivered { color: var(--muted); }
 .ci-name .status-read      { color: var(--accent); }
+.ci-name .status-part      { color: var(--muted); }
 
 /* ── ЕДИНОЕ ПОЛЕ ВВОДА ──
    Ответ, пересылка, вложение и правка раньше были соседями поля ввода: своя
