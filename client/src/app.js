@@ -4082,7 +4082,6 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
   ctxReadSetup(msgId, isMine);
   menu.classList.add('open');
   placeCtxMenu(menu, e.clientX, e.clientY);
-  S.ctx.readTop = null;
 }
 
 function syncCtxSeparators(menu) {
@@ -4685,7 +4684,7 @@ async function ctxDelete() {
 
 // ── «ПРОЧИТАНО» В КОНТЕКСТНОМ МЕНЮ ──
 // Подпись и счётчик берутся из status сообщения (читали / доставлено), список читавших — из
-// /messages/:id/info, он подгружается при открытии меню. Раскрывается наведением или нажатием.
+// /messages/:id/info, он подгружается при открытии меню. Карточка со списком открывается наведением или нажатием.
 function ctxReadTime(ts) {
   const d = new Date(ts * 1000), now = new Date();
   const hm = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -4696,6 +4695,8 @@ function ctxReadLabel(direct, read, delivered, readAt, total) {
   if (!wrap || !label) return;
   delivered = Math.max(delivered, read);
   total = Math.max(total || 0, delivered);
+  const hd = document.getElementById('ctx-read-h');
+  if (hd) hd.textContent = direct ? 'Прочитал(а)' : `Прочитали ${read} из ${delivered}`;
   // Значок — те же галочки, что у сообщения: обе серые (только доставлено), одна цветная (прочитал хотя бы один),
   // обе цветные (прочитали все); не доставлено — одна серая
   const all = read > 0 && read >= total;
@@ -4734,37 +4735,38 @@ function ctxReadSetup(msgId, isMine) {
           <span class="ctx-read-name">${esc(s.display_name)}</span><span class="ctx-read-time">${ctxReadTime(s.read_at)}</span></div>`).join('')
       : `<div class="ctx-read-empty">${direct2 ? 'Собеседник ещё не открыл сообщение.' : dlv ? `Пока никто не прочитал. Сообщение получили ${dlv}.` : 'Сообщение пока никому не доставлено.'}</div>`;
     applyAvatars();
-    if (wrap.classList.contains('open')) ctxReadFit(true);
+    if (wrap.classList.contains('open')) ctxReadPlace();
   });
 }
-// Не хватает места снизу — меню плавно сдвигается вверх на недостающую высоту; при сворачивании возвращается
-function ctxReadFit(on) {
-  const menu = document.getElementById('ctx-menu'), wrap = document.getElementById('ctx-read');
-  if (!menu || !wrap) return;
-  if (S.ctx.readTop == null) S.ctx.readTop = parseFloat(menu.style.top) || 0;
-  let top = S.ctx.readTop;
-  if (on) {
-    const m = zoomMetrics();
-    const extra = Math.min(wrap.querySelector('.ctx-read-list').scrollHeight, 176) + 10;
-    const need = Math.max(0, S.ctx.readTop + menu.offsetHeight + extra + 6 - m.vh / m.k);
-    top = Math.max(6 / m.k, S.ctx.readTop - need);
-  }
-  menu.style.transition = 'top .22s cubic-bezier(.4,0,.2,1)';
-  menu.style.top = top + 'px';
-  clearTimeout(S.ctx.readT2);
-  S.ctx.readT2 = setTimeout(() => { menu.style.transition = ''; }, 260);
+// Карточка со списком: вправо от меню, а если до края окна не хватает места — влево. По высоте выровнена по
+// пункту и не выходит за окно. Размеры берём в пикселях rect (с учётом масштаба интерфейса, см. zoomMetrics)
+function ctxReadPlace() {
+  const menu = document.getElementById('ctx-menu'), wrap = document.getElementById('ctx-read'), fly = document.getElementById('ctx-read-fly');
+  if (!menu || !wrap || !fly) return;
+  const m = zoomMetrics();
+  const cr = menu.getBoundingClientRect(), rr = wrap.getBoundingClientRect();
+  const fw = fly.offsetWidth * m.k, fh = fly.offsetHeight * m.k, margin = 6;
+  const toRight = m.vw - cr.right >= fw + margin + 4 || cr.left < fw + margin + 4;
+  fly.classList.toggle('l', !toRight);
+  fly.style.left = toRight ? 'calc(100% - 2px)' : 'auto';
+  fly.style.right = toRight ? 'auto' : 'calc(100% - 2px)';
+  let top = rr.top - cr.top - 7 * m.k;
+  const over = cr.top + top + fh - (m.vh - margin);
+  if (over > 0) top -= over;
+  if (cr.top + top < margin) top = margin - cr.top;
+  fly.style.top = (top / m.k) + 'px';
 }
 function ctxReadSet(on) {
   const wrap = document.getElementById('ctx-read');
   if (!wrap || wrap.classList.contains('flat') || wrap.classList.contains('open') === on) return;
+  if (on) ctxReadPlace();
   wrap.classList.toggle('open', on);
   document.getElementById('ctx-info-btn').setAttribute('aria-expanded', on);
-  ctxReadFit(on);
 }
 function ctxReadHover(on) {
   clearTimeout(S.ctx.readT);
   if (on) ctxReadSet(true);
-  else S.ctx.readT = setTimeout(() => ctxReadSet(false), 140);
+  else S.ctx.readT = setTimeout(() => ctxReadSet(false), 170);
 }
 function ctxReadToggle() {
   const wrap = document.getElementById('ctx-read');
