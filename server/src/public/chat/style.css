@@ -3156,3 +3156,4 @@ html.dark .anx-solid { color: #0c0e10; }
 .am-btn.pri { background: var(--accent); color: #0c0e10; }
 .am-btn:disabled { opacity: .45; cursor: default; }
 @media (prefers-reduced-motion: reduce) { .am-prog i { transition: none; } }
+.cs-l .cs-mod-st { color: var(--text2); margin-top: 3px; }

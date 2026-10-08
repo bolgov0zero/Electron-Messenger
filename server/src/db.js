@@ -411,6 +411,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_module_events_created ON module_events(module, created_at);
 `);
 
+// Версия набора модуля, скачанная на устройство (для статистики «на старой версии»)
+tryAlter('ALTER TABLE module_devices ADD COLUMN pack_version TEXT');
+
 // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)
 const sysExists = db.prepare("SELECT id FROM users WHERE username = '__system__'").get();
 if (!sysExists) {

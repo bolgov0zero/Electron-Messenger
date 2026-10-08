@@ -1148,7 +1148,7 @@ function csSections() {
       meta: () => `${s.theme === 'dark' ? 'Тёмная' : 'Светлая'} · ${ACCENTS[currentAccent()].name.toLowerCase()}` },
   ];
   list.push({ k: 'modules', label: 'Модули', icon: CS_I.puzzle, desc: 'Дополнительные возможности клиента',
-    meta: () => { const st = window.Animoji ? Animoji.state() : null; return !st || !st.available ? 'нет доступных' : st.on ? 'включён 1 модуль' : '1 модуль доступен'; } });
+    meta: () => { const l = window.Modules ? Modules.list() : []; if (!l.length) return 'нет доступных'; const n = l.filter(m => m.on).length; return n ? `включено: ${n}` : `${l.length} ${plural(l.length, 'модуль', 'модуля', 'модулей')} доступно`; } });
   if (csIsApp()) list.push({ k: 'update', label: 'Обновление', icon: CS_I.upd, desc: 'Версия приложения и новые релизы',
     meta: () => _updateDownloadUrl && _updateVersion ? `есть версия ${_updateVersion}` : CS.version ? `версия ${CS.version}` : 'проверка обновлений',
     dot: () => !!_updateDownloadUrl });
@@ -1346,80 +1346,96 @@ function csPaneUpdate() {
       : `${ver}<p class="cs-hint">Приложение само проверяет обновления после запуска и дальше каждые два часа.</p>`}
     <div class="cs-copy">2026 © bolgov0zero</div>`;
 }
-// ── МОДУЛЬ «АНИМИРОВАННЫЕ СМАЙЛЫ» ──
-// Состояние и правила проигрывания живут в animoji.js (общий для всех клиентов). Здесь только оболочка:
-// настройка «Модули», переключатель внизу панели смайлов и окно загрузки в Electron.
-// Модуль есть у пользователя, только пока его включил администратор; «включено у меня» хранится на устройстве.
+// ── МОДУЛИ ──
+// Состояние, версии и загрузка файлов — в modules.js (общий менеджер для всех клиентов), модуль «Анимированные
+// смайлы» — обработчик animoji.js. Здесь оболочка: настройка «Модули», переключатель внизу панели смайлов и окно
+// загрузки в Electron. Модуль есть у пользователя, только пока его включил администратор; «включено у меня»
+// хранится на устройстве. Электрон качает файлы заранее и сам обновляет их при выходе новой версии.
 CS_I.puzzle = csSvg('<path d="M10 4a2 2 0 1 1 4 0v1h3a1 1 0 0 1 1 1v3h-1a2 2 0 1 0 0 4h1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 1 0-4 0v1H7a1 1 0 0 1-1-1v-3h1a2 2 0 1 0 0-4H6V6a1 1 0 0 1 1-1h3z"/>');
 let _amVer = null;   // версия приложения (Electron) для журнала модуля
-function animojiInit() {
-  if (!window.Animoji || animojiInit.done) return;
-  animojiInit.done = true;
+function modulesInit() {
+  if (!window.Modules || modulesInit.done) return;
+  modulesInit.done = true;
   if (csIsApp()) window.electron?.getVersion?.().then(v => { _amVer = v || null; }).catch(() => {});
-  Animoji.init({
+  Modules.init({
     client: csIsApp() ? 'electron' : 'web',
     version: () => _amVer || CS.version || (csIsApp() ? 'electron' : 'web'),
     base: () => `${httpProto()}://${S.server}`,
     token: () => S.token,
-    lottieSrc: csIsApp() ? 'lottie.min.js' : '/shared/lottie.min.js',
   });
-  Animoji.subscribe(() => { animojiUi(); if (_sidebarTab === 'settings') csRefresh(); });
+  Animoji.init({ lottieSrc: csIsApp() ? 'lottie.min.js' : '/shared/lottie.min.js' });
+  Modules.subscribe(() => { animojiUi(); if (_sidebarTab === 'settings' && CS.sec === 'modules') csRefresh(); });
 }
-// Полоса внизу панели смайлов: та же настройка, что в «Настройки → Модули»
+// Полоса внизу панели смайлов: быстрый способ включить анимацию. Когда она уже включена, полоса не нужна
+// (выключается в «Настройки → Модули»)
 function animojiUi() {
   const el = document.getElementById('ep-anim');
   if (!el || !window.Animoji) return;
   const st = Animoji.state();
-  // Полоса нужна, чтобы включить анимацию; когда она уже включена, показывать её незачем (выключается в «Настройки → Модули»)
   const show = st.available && !st.on;
   el.hidden = !show;
   el.innerHTML = show
     ? `<div class="ep-anim-l"><b>Анимация</b><span>в сообщениях и реакциях, в панели смайлы неподвижны</span></div>${csTg(st.on, 'csAnimoji()', 'Анимация смайлов')}`
     : '';
 }
-function csAnimoji() {
-  const st = Animoji.state();
-  if (st.on) { Animoji.setOn(false); return; }
-  if (csIsApp()) animojiDownload(); else Animoji.setOn(true);
+function csAnimoji() { csModuleToggle('animoji'); }
+function csModuleToggle(key) {
+  const m = Modules.get(key); if (!m) return;
+  if (m.on) { Modules.setOn(key, false); return; }
+  if (csIsApp() && m.needsDownload) modDownload(key, 'download'); else Modules.setOn(key, true);
+}
+function csModuleRedo(key) {
+  const m = Modules.get(key); if (!m || m.busy) return;
+  if (csIsApp() && m.needsDownload) modDownload(key, 'redownload');
+  else Modules.reinstall(key).then(() => showActionToast('Кэш модуля очищен, файлы загрузятся заново'));
+}
+function csModStatus(m) {
+  if (m.busy && m.task) return `${m.task.kind === 'download' ? 'Загружаем' : 'Обновляем'} набор: ${m.task.done} из ${m.task.total}`;
+  if (m.error) return `<span class="cs-err">Не удалось обновить набор (${esc(m.error)}). Попробуем ещё раз при следующем подключении.</span>`;
+  if (csIsApp() && m.needsDownload && m.on) return m.outdated ? 'Доступна новая версия набора, обновляется…' : `Набор версии ${m.version} загружен`;
+  return '';
 }
 function csPaneModules() {
-  const st = window.Animoji ? Animoji.state() : { available: false };
-  if (!st.available) {
+  const list = window.Modules ? Modules.list() : [];
+  if (!list.length) {
     return `<div class="cs-stub"><div class="cs-stub-i">${CS_I.puzzle}</div><b>Нет доступных модулей</b>
       <span>Администратор пока не включил дополнительные возможности. Когда они появятся, их можно будет включить здесь.</span></div>`;
   }
-  const mb = st.info?.bytes ? Math.round(st.info.bytes / 1048576) : 0;
-  return `<div class="cs-gt">Доступные модули</div>
-    <div class="cs-g"><div class="cs-r"><div class="cs-l"><b>${esc(st.info?.title || 'Анимированные смайлы')}</b>
-      <span>Смайлы и жесты оживают в сообщениях и реакциях. Нажмите на смайл в сообщении, чтобы увидеть анимацию ещё раз.${csIsApp() && mb ? ` При включении загружается около ${mb} МБ.` : ''}</span></div>
-      ${csTg(st.on, 'csAnimoji()', 'Анимированные смайлы')}</div></div>
-    ${st.on && !csIsApp() ? '<p class="cs-hint">Смайлы оживают только в переписке: в сообщениях и реакциях. В панели смайлов они остаются неподвижными. Анимации подгружаются по мере показа.</p>' : ''}`;
+  return `<div class="cs-gt">Доступные модули</div><div class="cs-g">${list.map(m => {
+    const mb = m.bytes ? Math.round(m.bytes / 1048576) : 0, st = csModStatus(m);
+    return `<div class="cs-r"><div class="cs-l"><b>${esc(m.title)}</b>
+      <span>${esc(m.description)}${csIsApp() && m.needsDownload && !m.on && mb ? ` При включении загружается около ${mb} МБ.` : ''}</span>
+      ${st ? `<span class="cs-mod-st">${st}</span>` : ''}</div>
+      <div class="cs-ctl">${m.on ? `<button type="button" class="cs-btn ghost" ${m.busy ? 'disabled' : ''} onclick="csModuleRedo('${m.key}')">Перекачать</button>` : ''}${csTg(m.on, `csModuleToggle('${m.key}')`, esc(m.title))}</div></div>`;
+  }).join('')}</div>
+    ${!csIsApp() ? list.filter(m => m.on && m.note).map(m => `<p class="cs-hint">${esc(m.note)} Анимации подгружаются по мере показа.</p>`).join('') : ''}`;
 }
-// Окно загрузки (только Electron): прогресс, пояснение, после загрузки кнопка ОК
-function animojiDownload() {
-  const info = Animoji.state().info || {};
-  const total = info.count || 0, mbTotal = info.bytes ? (info.bytes / 1048576).toFixed(1).replace('.', ',') : '—';
+// Окно загрузки набора (только Electron): прогресс, пояснение, после загрузки кнопка ОК.
+// kind: 'download' — первое включение, 'redownload' — «Перекачать»
+function modDownload(key, kind) {
+  const m = Modules.get(key); if (!m) return;
+  const total = m.count || 0, mbTotal = m.bytes ? (m.bytes / 1048576).toFixed(1).replace('.', ',') : '—';
   const ov = document.createElement('div'); ov.className = 'am-dlg-bg';
-  const note = '<p>Смайлы оживают <b>только в переписке</b>: в сообщениях и реакциях. В панели смайлов они остаются неподвижными. Нажмите на смайл в сообщении, чтобы увидеть анимацию ещё раз.</p>';
-  const paint = (html) => { ov.innerHTML = `<div class="am-dlg" role="dialog" aria-label="Анимированные смайлы"><div class="am-dlg-ic">😀</div><h4>Анимированные смайлы</h4>${html}</div>`; };
+  const note = m.note ? `<p>${esc(m.note)}</p>` : '';
+  const paint = (html) => { ov.innerHTML = `<div class="am-dlg" role="dialog" aria-label="${esc(m.title)}"><div class="am-dlg-ic">${esc(m.icon || '🧩')}</div><h4>${esc(m.title)}</h4>${html}</div>`; };
   const close = () => ov.remove();
   const run = async () => {
-    paint(`<div class="am-dlg-st">Загружаем анимации: 0 из ${total}</div><div class="am-prog"><i style="width:0%"></i></div><div class="am-pmeta"><span>0 из ${mbTotal} МБ</span><span>0%</span></div>${note}<div class="am-btns"><button class="am-btn" id="am-cancel">Отмена</button><button class="am-btn pri" disabled>ОК</button></div>`);
-    ov.querySelector('#am-cancel').onclick = () => { Animoji.cancelDownload(); };
-    const r = await Animoji.download(p => {
+    paint(`<div class="am-dlg-st">Загружаем: 0 из ${total}</div><div class="am-prog"><i style="width:0%"></i></div><div class="am-pmeta"><span>0 из ${mbTotal} МБ</span><span>0%</span></div>${note}<div class="am-btns"><button class="am-btn" id="am-cancel">Отмена</button><button class="am-btn pri" disabled>ОК</button></div>`);
+    ov.querySelector('#am-cancel').onclick = () => { Modules.cancel(key); };
+    const r = await Modules.download(key, { kind, onProgress: p => {
       const pct = total ? Math.round(p.done / total * 100) : 0;
       const st = ov.querySelector('.am-dlg-st'); if (!st) return;
-      st.textContent = `Загружаем анимации: ${p.done} из ${p.total}`;
+      st.textContent = `Загружаем: ${p.done} из ${p.total}`;
       ov.querySelector('.am-prog i').style.width = pct + '%';
       const meta = ov.querySelectorAll('.am-pmeta span'); meta[0].textContent = `${(p.bytes / 1048576).toFixed(1).replace('.', ',')} из ${mbTotal} МБ`; meta[1].textContent = pct + '%';
-    }).catch(e => ({ ok: false, failed: total, total, err: e.message }));
+    } }).catch(e => ({ ok: false, failed: total, total, err: e.message }));
     if (r.cancelled) { close(); return; }
     if (r.ok) {
-      paint(`<div class="am-ok">${CS_I.check || '✓'} Готово. Анимации загружены и работают без сети</div><div class="am-prog"><i style="width:100%"></i></div>${note}<div class="am-btns"><button class="am-btn pri" id="am-ok">ОК</button></div>`);
-      ov.querySelector('#am-ok').onclick = () => { Animoji.setOn(true); close(); };
+      paint(`<div class="am-ok">${CS_I.check || '✓'} Готово. Файлы загружены и работают без сети</div><div class="am-prog"><i style="width:100%"></i></div>${note}<div class="am-btns"><button class="am-btn pri" id="am-ok">ОК</button></div>`);
+      ov.querySelector('#am-ok').onclick = () => { if (kind === 'download') Modules.setOn(key, true); close(); };
     } else {
-      paint(`<div class="am-err">Не удалось загрузить анимации: нет соединения с сервером. Уже загруженное сохранено, остальное подгрузится по мере показа.</div><div class="am-btns"><button class="am-btn" id="am-close">Закрыть</button><button class="am-btn pri" id="am-retry">Повторить</button></div>`);
-      ov.querySelector('#am-close').onclick = () => { Animoji.setOn(true); close(); };
+      paint(`<div class="am-err">Не удалось загрузить файлы: нет соединения с сервером. Уже загруженное сохранено, остальное подгрузится по мере показа.</div><div class="am-btns"><button class="am-btn" id="am-close">Закрыть</button><button class="am-btn pri" id="am-retry">Повторить</button></div>`);
+      ov.querySelector('#am-close').onclick = () => { if (kind === 'download') Modules.setOn(key, true); close(); };
       ov.querySelector('#am-retry').onclick = run;
     }
   };
@@ -3744,7 +3760,8 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const bareImage = !isDeleted && !m.text && !m.reply_to_id && !m.forward_data
     && !!att?.url && !att.expired && !!(att.mime?.startsWith('image/') || att.mime?.startsWith('video/'));
   // сообщение из одного смайлика показываем без пузыря — он проступает по наведению
-  const emojiOnly = !isDeleted && !m.attachment && !m.reply_to_id && !m.forward_data && isEmojiOnly(m.text);
+  // В секретном чате m.text — шифротекст, смотреть нужно на расшифрованное
+  const emojiOnly = !isDeleted && !m.attachment && !m.reply_to_id && !m.forward_data && isEmojiOnly(isSecretChat ? scDecryptedText : m.text);
   const posCls = (isFirst ? ' irc-first' : '') + (isTail ? ' irc-tail' : '') + (emojiOnly ? ' emoji-msg' : '');
 
   return `<div class="irc-msg${posCls}${m._optimistic?' msg-optimistic':''}"${mine?` data-mine="1"`:``}${isChatGroup?'':' data-dm="1"'} data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
@@ -5032,7 +5049,7 @@ function connectWS() {
     if (data.type==='pong') { ws._pongOk = true; return; }
 
     if (data.type==='connected') { S.editLimit = data.edit_time_limit || 120; return; }
-    if (data.type==='modules_changed') { window.Animoji?.refresh(); return; }
+    if (data.type==='modules_changed') { window.Modules?.refresh(); return; }
     if (data.type==='secret_key_ready') { scTick(data.chat_id); return; }
 
     if (data.type==='message') {
@@ -5352,7 +5369,7 @@ function connectWS() {
     }
   };
   ws.onopen = () => {
-    animojiInit(); window.Animoji?.refresh();
+    modulesInit(); window.Modules?.refresh();
     S.wsRetry = 0;
     hideServerToast();
     loadChats();

@@ -696,3 +696,4 @@ html.m-desktop .screen { display: none !important; }
 .m-stub b { color: var(--text); font-size: 14px; }
 .m-stub span { font-size: 12.5px; line-height: 1.5; }
 @media (prefers-reduced-motion: reduce) { .m-tg, .m-tg::after { transition: none; } }
+.m-redo { margin-top: 10px; height: 34px; padding: 0 16px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); font: 600 13px inherit; font-family: inherit; cursor: pointer; }

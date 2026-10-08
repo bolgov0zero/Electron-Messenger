@@ -12,6 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..');
 const EMOJI_DATA = path.join(ROOT, 'client', 'src', 'emoji-data.js');
@@ -37,10 +38,13 @@ async function get(url) {
   const api = (await (await get(API)).json()).icons;
   const byKey = new Map(api.map(i => [i.codepoint.split('_').filter(x => x !== 'fe0f').join('_'), i.codepoint]));
 
+  // Предыдущий манифест: по нему решаем, поднимать ли версию набора
+  let prev = null;
+  try { prev = JSON.parse(fs.readFileSync(path.join(OUT, 'manifest.json'), 'utf8')); } catch {}
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(path.join(OUT, 'lottie'), { recursive: true });
 
-  const items = {};
+  const items = {}, files = {};
   let bytes = 0;
   const todo = ours.map(e => ({ e, k: keyOf(e), file: byKey.get(keyOf(e)) })).filter(x => x.file);
   // Скачиваем пачками, чтобы не душить сервер Google
@@ -52,12 +56,18 @@ async function get(url) {
       fs.writeFileSync(path.join(OUT, 'lottie', k + '.json'), json);
       bytes += Buffer.byteLength(json);
       items[k] = { r: rest ? rest.tm : 0, s: Buffer.byteLength(json) };
+      // Контрольная сумма нужна клиенту, чтобы при обновлении докачивать только изменившиеся файлы
+      files[`lottie/${k}.json`] = { s: Buffer.byteLength(json), h: crypto.createHash('sha1').update(json).digest('hex').slice(0, 10) };
     }));
     process.stdout.write(`\r${Math.min(i + 12, todo.length)} / ${todo.length}`);
   }
   process.stdout.write('\n');
 
-  const manifest = { version: 1, count: Object.keys(items).length, bytes, license: 'Noto Emoji Animation, Google, CC BY 4.0', items };
+  // Версия набора: растёт, когда изменился состав или содержимое файлов
+  const sig = h => crypto.createHash('sha1').update(JSON.stringify(Object.keys(h).sort().map(k => [k, h[k].h]))).digest('hex');
+  const same = prev && prev.files && sig(prev.files) === sig(files);
+  const version = same ? prev.version : (prev ? prev.version + 1 : 1);
+  const manifest = { version, count: Object.keys(items).length, bytes, license: 'Noto Emoji Animation, Google, CC BY 4.0', items, files };
   fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify(manifest));
   console.log(`Готово: ${manifest.count} анимаций, ${(bytes / 1048576).toFixed(1)} МБ → ${OUT}`);
 })().catch(e => { console.error(e); process.exit(1); });

@@ -1288,40 +1288,44 @@ function currentTheme() {
   const cl = document.documentElement.classList;
   return cl.contains('night') ? 'night' : cl.contains('dark') ? 'dark' : 'light';
 }
-// ── МОДУЛЬ «АНИМИРОВАННЫЕ СМАЙЛЫ» ──
-// Правила проигрывания и состояние в /shared/animoji.js (общий для всех клиентов). Здесь оболочка: шторка «Модули»
-// и переключатель внизу панели смайлов. Модуль есть у пользователя, только пока его включил администратор;
-// «включено у меня» хранится на устройстве. Анимации подгружаются по мере показа.
-function animojiInitM() {
-  if (!window.Animoji || animojiInitM.done) return;
-  animojiInitM.done = true;
-  Animoji.init({ client: 'mobile', version: () => 'mobile', base: () => `${httpProto()}://${S.server}`, token: () => S.token, lottieSrc: '/shared/lottie.min.js' });
-  Animoji.subscribe(() => { animojiUiM(); if (document.getElementById('sheet-bg').classList.contains('open') && document.getElementById('modules-sheet')) openSheet(modulesSheetHtml()); });
+// ── МОДУЛИ ──
+// Состояние, версии и файлы — в /shared/modules.js (общий менеджер для всех клиентов), модуль «Анимированные смайлы» —
+// обработчик /shared/animoji.js. Здесь оболочка: шторка «Модули» и переключатель внизу панели смайлов. Модуль есть
+// у пользователя, только пока его включил администратор; «включено у меня» хранится на устройстве. Файлы
+// подгружаются по мере показа, при выходе новой версии набора всё подхватывается само.
+function modulesInitM() {
+  if (!window.Modules || modulesInitM.done) return;
+  modulesInitM.done = true;
+  Modules.init({ client: 'mobile', version: () => 'mobile', base: () => `${httpProto()}://${S.server}`, token: () => S.token });
+  Animoji.init({ lottieSrc: '/shared/lottie.min.js' });
+  Modules.subscribe(() => { animojiUiM(); if (document.getElementById('sheet-bg').classList.contains('open') && document.getElementById('modules-sheet')) openSheet(modulesSheetHtml()); });
 }
 const mTg = (on, fn, label) => `<button type="button" class="m-tg" role="switch" aria-checked="${on}" aria-label="${label}" onclick="${fn}"></button>`;
+// Полоса внизу панели смайлов нужна, чтобы включить анимацию; когда она включена, полоса скрыта (выключается в «Модули»)
 function animojiUiM() {
   const el = document.getElementById('ep-anim');
   if (!el || !window.Animoji) return;
   const st = Animoji.state();
-  const show = st.available && !st.on;   // полоса нужна, чтобы включить; выключается в «Настройки → Модули»
+  const show = st.available && !st.on;
   el.hidden = !show;
   el.innerHTML = show
-    ? `<div class="ep-anim-l"><b>Анимация</b><span>в сообщениях и реакциях, в панели смайлы неподвижны</span></div>${mTg(st.on, 'mAnimoji()', 'Анимация смайлов')}`
+    ? `<div class="ep-anim-l"><b>Анимация</b><span>в сообщениях и реакциях, в панели смайлы неподвижны</span></div>${mTg(st.on, "mModuleToggle('animoji')", 'Анимация смайлов')}`
     : '';
 }
-function mAnimoji() { Animoji.setOn(!Animoji.state().on); }
+function mModuleToggle(key) { const m = Modules.get(key); if (m) Modules.setOn(key, !m.on); }
+function mModuleRedo(key) { Modules.reinstall(key).then(() => toast('Кэш модуля очищен, файлы загрузятся заново')); }
 function modulesSheetHtml() {
-  const st = window.Animoji ? Animoji.state() : { available: false };
-  if (!st.available) {
+  const list = window.Modules ? Modules.list() : [];
+  if (!list.length) {
     return `<div id="modules-sheet"><div class="sheet-title">Модули</div><div class="m-stub"><b>Нет доступных модулей</b>
       <span>Администратор пока не включил дополнительные возможности. Когда они появятся, их можно будет включить здесь.</span></div></div>`;
   }
-  return `<div id="modules-sheet"><div class="sheet-title">Модули</div>
-    <div class="set-block" style="border-top:0;margin-top:0;padding-top:0">
-      <div class="m-mod"><div class="m-mod-l"><b>${esc(st.info?.title || 'Анимированные смайлы')}</b>
-        <span>Смайлы и жесты оживают в сообщениях и реакциях. Нажмите на смайл в сообщении, чтобы увидеть анимацию ещё раз.</span></div>${mTg(st.on, 'mAnimoji()', 'Анимированные смайлы')}</div>
-      ${st.on ? '<div class="m-hint">Смайлы оживают только в переписке: в сообщениях и реакциях. В панели смайлов они остаются неподвижными. Анимации подгружаются по мере показа.</div>' : ''}
-    </div></div>`;
+  return `<div id="modules-sheet"><div class="sheet-title">Модули</div>${list.map((m, i) => `
+    <div class="set-block"${i ? '' : ' style="border-top:0;margin-top:0;padding-top:0"'}>
+      <div class="m-mod"><div class="m-mod-l"><b>${esc(m.title)}</b><span>${esc(m.description)}</span></div>${mTg(m.on, `mModuleToggle('${m.key}')`, esc(m.title))}</div>
+      ${m.on && m.note ? `<div class="m-hint">${esc(m.note)} Анимации подгружаются по мере показа.</div>` : ''}
+      ${m.on ? `<button type="button" class="m-redo" onclick="mModuleRedo('${m.key}')">Перекачать</button>` : ''}
+    </div>`).join('')}</div>`;
 }
 function openModulesSheet() { openSheet(modulesSheetHtml()); }
 
@@ -2575,14 +2579,14 @@ function connectWS() {
   if (prev && prev.readyState <= 1) { try { prev.close(); } catch {} }
   const ws = new WebSocket(`${wsProto()}://${S.server}/ws?token=${S.token}`);
   S.ws = ws;
-  animojiInitM(); window.Animoji?.refresh();
+  modulesInitM(); window.Modules?.refresh();
 
   ws.onmessage = e => {
     if (ws !== S.ws) return;
     let data; try { data = JSON.parse(e.data); } catch { return; }
     // Администратор восстановил чаты из копии: данные на экране устарели, берём заново
     if (data.type === 'data_restored') { location.reload(); return; }
-    if (data.type === 'modules_changed') { window.Animoji?.refresh(); return; }
+    if (data.type === 'modules_changed') { window.Modules?.refresh(); return; }
 
     if (data.type === 'connected') {
       S.editLimit = data.edit_time_limit || 120;

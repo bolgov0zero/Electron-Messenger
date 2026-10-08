@@ -2026,7 +2026,7 @@ return 'OK';</pre>
       <button class="modal-close" onclick="closeModal('modal-modlog')">✕</button>
     </div>
     <div class="mdl-filters">
-      <select id="ml-event" onchange="mlSet('event', this.value)" aria-label="Событие"><option value="all">Все события</option><option value="on">Включение</option><option value="off">Выключение</option><option value="dl">Загрузка начата</option><option value="err">Ошибки</option></select>
+      <select id="ml-event" onchange="mlSet('event', this.value)" aria-label="Событие"><option value="all">Все события</option><option value="on">Включение</option><option value="off">Выключение</option><option value="dl">Загрузка и обновление</option><option value="err">Ошибки</option></select>
       <select id="ml-client" onchange="mlSet('client', this.value)" aria-label="Клиент"><option value="all">Все клиенты</option><option value="electron">Electron</option><option value="web">Веб</option><option value="mobile">Мобильный</option><option value="admin">Админка</option></select>
       <select id="ml-days" onchange="mlSet('days', this.value)" aria-label="Период"><option value="30">30 дней</option><option value="90">90 дней</option><option value="365">Год</option></select>
       <label class="ux-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="ml-q" placeholder="Имя или клиент" autocomplete="off" oninput="mlSearch(this.value)"></label>
@@ -6832,7 +6832,6 @@ function setTopbarActions(html) {
 // клиента (у кого выключен — модуля нет вовсе), остальное решает сам пользователь на каждом устройстве.
 // Журнал: кто и когда включил, выключил, начал загрузку или получил ошибку; хранится год.
 const MOD = { list: [] };
-const MOD_ICON = { animoji: '😀' };
 const mdNum = n => Number(n || 0).toLocaleString('ru-RU');
 const mdBytes = b => b >= 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' МБ' : Math.round(b / 1024) + ' КБ';
 async function renderModules() {
@@ -6848,14 +6847,14 @@ function mdRender() {
   document.getElementById('page-body').innerHTML = `<div class="ux-page">
     <div><div style="font-size:17px;font-weight:700">Модули</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Дополнительные возможности. Включённый модуль становится доступен пользователям в настройках клиента, и каждый включает его у себя сам.</div></div>
     ${MOD.list.map(m => { const st = m.stats || {}, bc = st.byClient || {};
-      return `<div class="card"><div class="mdl-card"><div class="mdl-ico">${MOD_ICON[m.key] || '🧩'}</div>
+      return `<div class="card"><div class="mdl-card"><div class="mdl-ico">${esc(m.icon || '🧩')}</div>
         <div class="mdl-tx"><b>${esc(m.title)}</b><span>${esc(m.description)}${m.needsDownload ? ` Набор: ${mdNum(m.count)} анимаций, около ${mdBytes(m.bytes)}, лежит на сервере.` : ''}</span></div>
         <span class="badge ${m.enabled ? 'badge-green' : 'badge-gray'}">${m.enabled ? 'Включён' : 'Выключен'}</span>
         <button class="btn btn-ghost btn-sm" onclick="mlOpen('${m.key}')">Журнал</button>
         <label class="toggle-switch" title="Модуль на сервере"><input type="checkbox" ${m.enabled ? 'checked' : ''} onchange="mdToggle('${m.key}', this.checked)" aria-label="Модуль включён на сервере"><span class="toggle-track"><span class="toggle-thumb"></span></span></label></div>
         <div class="mdl-stats"><div><b>${mdNum(st.users)} из ${mdNum(st.total)}</b><span>пользователей включили у себя</span></div>
           <div><b>${mdNum(bc.electron)} · ${mdNum(bc.web)} · ${mdNum(bc.mobile)}</b><span>Electron · веб · мобильный</span></div>
-          <div><b>${mdNum(m.version)}</b><span>версия набора</span></div>
+          <div><b>${mdNum(m.version)}</b><span>версия набора, устройств на старой: ${mdNum(st.outdated)}</span></div>
           <div><b>${mdNum(st.errors30d)}</b><span>ошибок загрузки за 30 дней</span></div></div></div>`; }).join('')}
     <div class="card"><div class="mdl-empty">Других модулей пока нет</div></div></div>`;
 }
@@ -6867,7 +6866,7 @@ async function mdToggle(key, on) {
   renderModules();
 }
 const ML = { key: null, event: 'all', client: 'all', days: '30', q: '', rows: [], total: 0, timer: null };
-const ML_EV = { admin_on: ['Модуль включён', 'badge-blue'], admin_off: ['Модуль выключен', 'badge-gray'], user_on: ['Включил у себя', 'badge-green'], user_off: ['Выключил у себя', 'badge-gray'], download_start: ['Загрузка начата', 'badge-orange'], download_error: ['Ошибка загрузки', 'badge-red'] };
+const ML_EV = { admin_on: ['Модуль включён', 'badge-blue'], admin_off: ['Модуль выключен', 'badge-gray'], user_on: ['Включил у себя', 'badge-green'], user_off: ['Выключил у себя', 'badge-gray'], download_start: ['Загрузка начата', 'badge-orange'], download_error: ['Ошибка загрузки', 'badge-red'], update_start: ['Обновление начато', 'badge-orange'], update_error: ['Ошибка обновления', 'badge-red'] };
 const ML_CL = { electron: 'Electron', web: 'Веб', mobile: 'Мобильный', admin: 'Админка' };
 function mlOpen(key) {
   ML.key = key; ML.event = 'all'; ML.client = 'all'; ML.days = '30'; ML.q = '';
