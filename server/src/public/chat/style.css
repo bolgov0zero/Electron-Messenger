@@ -964,12 +964,14 @@ body.sidebar-hidden .sidebar {
    Каждая секция (закреплённые, комнаты, все чаты, контакты по статусам, темы) лежит в своей карточке.
    Карточка собирается из соседних строк: у каждой есть полоса фона (::before) и подсветка (::after)
    на 4px уже; первая и последняя строка группы получают скругление и отступ карточки.
-   Классы cg-first / cg-last расставляет markChatGroups() в app.js. Разделителей между строками нет. */
+   Классы cg-first / cg-last расставляет markChatGroups() в app.js. Разделителей между строками нет.
+   Полоса фона заходит на 1px под следующую строку: высота строк дробная, и без нахлёста на стыках
+   проглядывал фон сайдбара тонкими линиями. */
 .chats-list .chat-item, .topics-panel .chat-item, .chats-list .pp-row {
   position: relative; isolation: isolate; border: 0; border-radius: 0; margin: 0; padding: 8px 12px; background: none;
 }
 .chats-list .chat-item::before, .topics-panel .chat-item::before, .chats-list .pp-row::before {
-  content: ""; position: absolute; inset: 0; background: var(--cg); z-index: -1;
+  content: ""; position: absolute; inset: 0 0 -1px; background: var(--cg); z-index: -1;
 }
 .chats-list .chat-item::after, .topics-panel .chat-item::after, .chats-list .pp-row::after {
   content: ""; position: absolute; inset: 0 4px; border-radius: 12px; z-index: -1; transition: background .12s;
@@ -981,7 +983,7 @@ body.sidebar-hidden .sidebar {
 .chats-list .chat-item.cg-first, .topics-panel .chat-item.cg-first, .chats-list .pp-row.cg-first { padding-top: 12px; }
 .chats-list .chat-item.cg-last, .topics-panel .chat-item.cg-last, .chats-list .pp-row.cg-last { padding-bottom: 12px; }
 .chats-list .cg-first::before, .topics-panel .cg-first::before { border-radius: 16px 16px 0 0; }
-.chats-list .cg-last::before, .topics-panel .cg-last::before { border-radius: 0 0 16px 16px; }
+.chats-list .cg-last::before, .topics-panel .cg-last::before { bottom: 0; border-radius: 0 0 16px 16px; }
 .chats-list .cg-first.cg-last::before, .topics-panel .cg-first.cg-last::before { border-radius: 16px; }
 .chats-list .cg-first::after, .topics-panel .cg-first::after { top: 4px; }
 .chats-list .cg-last::after, .topics-panel .cg-last::after { bottom: 4px; }
@@ -2042,6 +2044,11 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
    Смайлы центруются в круге только при чётном размере шрифта; у 20 px глиф сидит на пиксель
    выше, его опускает padding-top.
    ══════════════════════════════════════════ */
+/* Контекстные меню и всплывающие панели на 20% меньше: масштаб (scale) умножается на масштаб интерфейса,
+   поэтому с настройкой масштаба они меняются вместе со всем остальным. Опорная точка — левый верхний угол:
+   положение меню считается по нему (placeCtxMenu, ctxReadPlace) */
+:root { --ctx-scale: .8; }
+.ctx-menu, #reaction-picker, .head-menu { scale: var(--ctx-scale); transform-origin: top left; }
 .ctx-menu {
   position: fixed;
   background: var(--modal-bg);

@@ -3907,7 +3907,9 @@ function showReactionPicker(e) {
   // Выбранная вкладка считается по размерам прокрутки, поэтому только когда панель уже показана
   // (скрытая, она даёт нулевую высоту, и подсвечивался последний раздел)
   syncEmojiTabs('rp');
-  const pw = picker.offsetWidth, ph = picker.offsetHeight;
+  // Размер панели — видимый (она уменьшена на --ctx-scale), в тех же единицах, что style.left/top
+  const _pr = picker.getBoundingClientRect(), _mk = zoomMetrics().k;
+  const pw = _pr.width / _mk, ph = _pr.height / _mk;
   const margin = 6;
   const _z = (S.settings.uiScale || 100) / 100;
   // Вьюпорт переводим в те же единицы, что и style.left/top: при масштабе интерфейса
@@ -4294,7 +4296,7 @@ function placeCtxMenu(menu, clientX, clientY, anchor) {
   // Не выходим за окно ни с одной стороны
   x = Math.max(margin, Math.min(x, m.vw - w - margin));
   y = Math.max(margin, Math.min(y, m.vh - h - margin));
-  menu.style.transformOrigin = `${above ? 'bottom' : 'top'} ${fromRight ? 'right' : 'left'}`;
+  menu.style.transformOrigin = 'top left'; // положение считано по левому верхнему углу уменьшенного меню
   menu.style.left = (x / m.k) + 'px';
   menu.style.top = (y / m.k) + 'px';
   menu.style.animation = '';
@@ -4869,17 +4871,18 @@ function ctxReadPlace() {
   const menu = document.getElementById('ctx-menu'), wrap = document.getElementById('ctx-read'), fly = document.getElementById('ctx-read-fly');
   if (!menu || !wrap || !fly) return;
   const m = zoomMetrics();
+  const sc = parseFloat(getComputedStyle(menu).scale) || 1; // меню уменьшено, карточка внутри него — тоже
   const cr = menu.getBoundingClientRect(), rr = wrap.getBoundingClientRect();
-  const fw = fly.offsetWidth * m.k, fh = fly.offsetHeight * m.k, margin = 6;
+  const fw = fly.offsetWidth * m.k * sc, fh = fly.offsetHeight * m.k * sc, margin = 6;
   const toRight = m.vw - cr.right >= fw + margin + 4 || cr.left < fw + margin + 4;
   fly.classList.toggle('l', !toRight);
   fly.style.left = toRight ? 'calc(100% - 2px)' : 'auto';
   fly.style.right = toRight ? 'auto' : 'calc(100% - 2px)';
-  let top = rr.top - cr.top - 7 * m.k;
+  let top = rr.top - cr.top - 7 * m.k * sc;
   const over = cr.top + top + fh - (m.vh - margin);
   if (over > 0) top -= over;
   if (cr.top + top < margin) top = margin - cr.top;
-  fly.style.top = (top / m.k) + 'px';
+  fly.style.top = (top / (m.k * sc)) + 'px';
 }
 function ctxReadSet(on) {
   const wrap = document.getElementById('ctx-read');
