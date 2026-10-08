@@ -1520,15 +1520,14 @@ function csPaneAppearance() {
 function csPaneUpdate() {
   const has = !!_updateDownloadUrl;
   const date = _updatePublishedAt ? new Date(_updatePublishedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '';
-  return `<div class="cs-ver"><span class="cs-logo">${CS_I.bolt}</span>
-      <div class="cs-ver-t"><span>Установлена версия</span><b>${esc(CS.version || '—')}</b><span>Приложение для компьютера</span></div>
-      ${has ? `<span class="cs-state warn">${CS_I.bolt}Доступна ${esc(_updateVersion || '')}</span>`
-        : `<span class="cs-state" id="update-status-text"></span><button type="button" class="cs-btn ghost" id="update-check-btn" onclick="checkUpdate()">Проверить</button>`}</div>
-    ${has ? `<div class="cs-g">
-      <div class="cs-r"><div class="cs-l"><b>Версия ${esc(_updateVersion || '')}${date ? ' · ' + date : ''}</b><span>Загрузка и установка идут в отдельном окне с прогрессом</span></div>
-        <button type="button" class="cs-btn solid" onclick="closeSettings(); openModal('modal-update')">${CS_I.down}Установить</button></div>
-      ${_updateNotes ? `<div class="cs-notes"><b>Что нового.</b> ${esc(_updateNotes)}</div>` : ''}
-    </div>` : '<p class="cs-hint">Приложение само проверяет обновления после запуска и дальше каждые два часа.</p>'}
+  const ver = `<div class="cs-ver"><span class="cs-logo">${CS_I.bolt}</span>
+      ${has ? `<div class="cs-ver-t"><span>Доступна новая версия${date ? ' · ' + date : ''}</span><b>${esc(_updateVersion || '—')}</b><span>Сейчас стоит ${esc(CS.version || '—')}</span></div>
+        <button type="button" class="cs-btn solid" onclick="closeSettings(); openModal('modal-update')">${CS_I.down}Установить</button>`
+      : `<div class="cs-ver-t"><span>Установлена версия</span><b>${esc(CS.version || '—')}</b><span>Приложение для компьютера</span></div>
+        <span class="cs-state" id="update-status-text"></span><button type="button" class="cs-btn ghost" id="update-check-btn" onclick="checkUpdate()">Проверить</button>`}</div>`;
+  return `${has ? `<div class="cs-g">${ver}${_updateNotes ? `<div class="cs-notes"><b>Что нового.</b> ${esc(_updateNotes)}</div>` : ''}</div>
+      <p class="cs-hint">Загрузка и установка идут в отдельном окне с прогрессом.</p>`
+      : `${ver}<p class="cs-hint">Приложение само проверяет обновления после запуска и дальше каждые два часа.</p>`}
     <div class="cs-copy">2026 © bolgov0zero</div>`;
 }
 const CS_PANES = { profile: csPaneProfile, general: csPaneGeneral, appearance: csPaneAppearance, update: csPaneUpdate };
@@ -3054,7 +3053,7 @@ function csCountText() {
 }
 
 // Счётчик и доступность стрелок; вызывается после каждого изменения состояния
-function csRefresh() {
+function chatSearchRefresh() {
   const st = S.chatSearch;
   const count = document.getElementById('cs-count');
   if (count) count.textContent = st ? csCountText() : '';
@@ -3080,7 +3079,7 @@ function openChatSearch() {
   input.focus();
   document.querySelector('.chat-header-actions .icon-btn[title="Поиск в чате"]')?.classList.add('active');
   watchChatSearchHl();
-  csRefresh();
+  chatSearchRefresh();
 }
 
 function closeChatSearch() {
@@ -3106,10 +3105,10 @@ async function runChatSearch(st) {
   const term = st.q.trim();
   if (term.length < 2) {
     st.ids = []; st.idx = -1; st.loading = false;
-    csRefresh(); applyChatSearchHl();
+    chatSearchRefresh(); applyChatSearchHl();
     return;
   }
-  st.loading = true; csRefresh();
+  st.loading = true; chatSearchRefresh();
   let data = null;
   try { data = await api('GET', `/messages/search?chat_id=${st.chatId}&q=${encodeURIComponent(term)}`); } catch {}
   // Пока ждали ответ, пользователь мог изменить запрос или закрыть поиск
@@ -3118,7 +3117,7 @@ async function runChatSearch(st) {
   st.loading = false;
   st.idx = st.ids.length - 1; // начинаем с самого нового совпадения
   if (st.ids.length) chatSearchGoto(st.idx);
-  else { csRefresh(); applyChatSearchHl(); }
+  else { chatSearchRefresh(); applyChatSearchHl(); }
 }
 
 function chatSearchStep(d) {
@@ -3132,7 +3131,7 @@ function chatSearchStep(d) {
 function chatSearchGoto(i) {
   const st = S.chatSearch;
   st.idx = i;
-  csRefresh();
+  chatSearchRefresh();
   scrollToMsg(st.ids[i], true);
   applyChatSearchHl();
 }

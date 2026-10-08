@@ -3225,3 +3225,72 @@ html.dark .anx-solid { color: #0c0e10; }
 .anx-rlist { gap: 4px; }
 .anx-li { border-radius: 14px; }
 .anx-li[aria-pressed="true"] { box-shadow: none; }
+
+/* ══════════════════════════════════════════
+   НАСТРОЙКИ — мягкий вид (вариант A)
+   Каждая строка отдельная карточка, у группы скруглены верх и низ, между строками 2 px.
+   Кнопки, поля и переключатели — капсулы, линий нет.
+   ══════════════════════════════════════════ */
+.cs-nav { border-right: 0; }
+.cs-sn-ic { border: 0; background: color-mix(in srgb, var(--text) 6%, var(--side-bg)); }
+.cs-nav { background: none; padding: 4px 8px; }
+.cs-sn { gap: 11px; padding: 7px 9px; border-radius: 16px; }
+.cs-sn[aria-current="page"] { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.cs-sn-ic { width: 32px; height: 32px; border-radius: 11px; }
+.cs-sn[aria-current="page"] .cs-sn-ic { background: var(--accent); color: #0c0e10; }
+.cs-head { border-bottom: 0; padding: 18px 24px 8px; }
+.cs-head h3 { font-size: 19px; letter-spacing: -.02em; }
+.cs-head p { font-size: 12.5px; }
+.cs-body { padding: 8px 20px 22px; gap: 18px; }
+.cs-gt { margin: 0 0 -11px 6px; }
+.cs-g { border: 0; border-radius: 0; background: none; display: flex; flex-direction: column; gap: 2px; }
+.cs-g > .cs-r, .cs-g > .cs-notes { background: var(--card-bg); border-radius: 8px; padding: 13px 16px; }
+.cs-g > .cs-r + .cs-r { border-top: 0; }
+.cs-g > .cs-r:first-child { border-top-left-radius: 20px; border-top-right-radius: 20px; }
+.cs-g > .cs-r:last-child { border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
+.cs-g > .cs-notes { border-top: 0; border-radius: 8px 8px 24px 24px; }
+.cs-btn { height: 32px; padding: 0 15px; border: 0; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.cs-btn:hover:not([disabled]) { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.cs-btn.solid { background: var(--accent); color: #0c0e10; }
+.cs-btn.solid:hover:not([disabled]) { background: var(--accent); }
+.cs-btn.ghost { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
+.cs-btn.ghost:hover:not([disabled]) { background: color-mix(in srgb, var(--text) 14%, transparent); }
+.cs-btn.danger { background: var(--danger-bg); color: var(--danger); }
+.cs-btn.danger:hover { background: color-mix(in srgb, var(--danger) 22%, transparent); }
+.cs-inp { border-radius: 999px; padding: 0 6px 0 14px; }
+.cs-eye { border-radius: 50%; }
+.cs-seg { border-radius: 999px; }
+.cs-seg button { border-radius: 999px; padding: 0 13px; min-width: 42px; }
+.cs-seg button[aria-pressed="true"] { background: var(--accent); color: #0c0e10; }
+.cs-tg { width: 40px; height: 24px; background: color-mix(in srgb, var(--text) 12%, transparent); box-shadow: none; }
+.cs-tg::after { width: 18px; height: 18px; }
+.cs-tg[aria-checked="true"] { background: var(--accent); }
+.cs-tg[aria-checked="true"]::after { transform: translateX(16px); }
+.cs-hero { padding: 18px; border: 0; border-radius: 24px; background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%), var(--card-bg); }
+.cs-badge { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--card-bg); color: #0c0e10; }
+.cs-chip { border-radius: 999px; padding: 2px 9px; }
+.cs-logout { padding: 13px 16px; border: 0; border-radius: 20px; }
+.cs-pv { grid-template-columns: 96px minmax(0, 1fr); border: 0; border-radius: 22px; box-shadow: inset 0 0 0 1px var(--border); }
+.cs-pv-cap { display: none; }
+.cs-pv-side { border-right: 0; }
+.cs-pv-side i { border-radius: 9px; }
+.cs-pv-side i.on { background: var(--accent-soft); }
+.cs-pv-msg { border-radius: 16px; }
+.cs-pv-msg.in { border-bottom-left-radius: 5px; }
+.cs-pv-msg.out { background: color-mix(in srgb, var(--accent) 22%, var(--card-bg)); color: var(--text); border-bottom-right-radius: 5px; }
+.bg-card, .pat-card { border: 0; box-shadow: none; }
+.bg-card { border-radius: 20px; background: var(--card-bg); }
+.pat-card { border-radius: 16px; background: var(--search-bg); }
+.bg-card:hover, .pat-card:hover { border: 0; }
+.bg-card.active, .pat-card.active { border: 0; box-shadow: 0 0 0 2px var(--accent); }
+.bg-cap { border-top: 0; padding: 9px 13px 11px; }
+.pat-cap { border-top: 0; }
+.bs-side { border-right: 0; }
+.accent-dot { width: 24px; height: 24px; }
+.accent-dot.active { box-shadow: 0 0 0 3px var(--card-bg), 0 0 0 5px var(--dot); }
+.cs-ver { padding: 18px; border: 0; border-radius: 24px; background: var(--card-bg); }
+.cs-g > .cs-ver:first-child { border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+.cs-g > .cs-ver:only-child { border-radius: 24px; }
+.cs-logo { width: 50px; height: 50px; border-radius: 16px; color: #0c0e10; }
+.cs-logo svg { width: 23px; height: 23px; }
+.cs-ver-t b { font-size: 22px; letter-spacing: -.03em; }
