@@ -970,7 +970,7 @@ function renderContacts() {
         ${presenceDot(u.id)}
       </div>
       <div class="row-body">
-        <div class="row-top"><div class="row-name">${esc(u.display_name)}</div></div>
+        <div class="row-top"><div class="row-name">${esc(u.display_name)}</div>${u.tag ? `<span class="ct-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div>
         <div class="row-bottom"><div class="row-msg">@${esc(u.username)}</div></div>
       </div>
     </div>`;

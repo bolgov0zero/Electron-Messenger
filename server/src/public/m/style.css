@@ -30,8 +30,36 @@
   --chat-split:  #e6e9ec;
   --daypill:     rgba(238,240,244,0.92);
   --font-size:   14.5px;
+  --tag-1: 41,50,96; /* синий */
+  --tag-2: 37,131,37; /* травяной */
+  --tag-3: 131,78,37; /* оранжевый */
+  --tag-4: 34,119,114; /* бирюзовый */
+  --tag-5: 131,37,78; /* малиновый */
+  --tag-6: 106,37,131; /* фиолетовый */
+  --tag-7: 78,96,41; /* оливковый */
+  --tag-8: 34,91,119; /* морской */
+  --tag-9: 131,37,37; /* красный */
+  --tag-10: 44,125,79; /* изумрудный */
+  --tag-11: 30,30,107; /* ультрамарин */
+  --tag-12: 131,112,37; /* охра */
+  --tag-13: 96,41,95; /* сливовый */
+  --tag-14: 96,49,41; /* кирпичный */
 }
 html.dark {
+  --tag-1: 125,136,191; /* синий */
+  --tag-2: 98,218,98; /* травяной */
+  --tag-3: 218,150,98; /* оранжевый */
+  --tag-4: 98,218,210; /* бирюзовый */
+  --tag-5: 218,98,150; /* малиновый */
+  --tag-6: 186,98,218; /* фиолетовый */
+  --tag-7: 200,223,154; /* оливковый */
+  --tag-8: 166,196,211; /* морской */
+  --tag-9: 214,164,164; /* красный */
+  --tag-10: 108,218,156; /* изумрудный */
+  --tag-11: 123,123,224; /* ультрамарин */
+  --tag-12: 218,194,98; /* охра */
+  --tag-13: 221,157,218; /* сливовый */
+  --tag-14: 218,114,98; /* кирпичный */
   --app-bg:      #15181b;
   --search-bg:   #20252a;
   --modal-bg:    #181c20;
@@ -206,6 +234,23 @@ html.m-desktop .screen { display: none !important; }
 .row:last-child .row-body { border-bottom: none; }
 /* В списке контактов разделителей между строками нет */
 #contact-list .row-body { border-bottom: none; }
+#contact-list .row-top { align-items: center; }
+/* Тег пользователя в контактах: цвет считается из текста тега, как у плашки роли в сообщениях */
+.ct-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 8px; border-radius: 7px; border: 1px solid var(--border); background: var(--card-bg); color: var(--muted); font-size: 11px; font-weight: 500; line-height: 1; white-space: nowrap; flex-shrink: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; }
+.ct-tag.tag-1 { background: color-mix(in srgb, rgb(var(--tag-1)) 15%, var(--card-bg)); border-color: rgba(var(--tag-1),.30); color: rgb(var(--tag-1)); }
+.ct-tag.tag-2 { background: color-mix(in srgb, rgb(var(--tag-2)) 15%, var(--card-bg)); border-color: rgba(var(--tag-2),.30); color: rgb(var(--tag-2)); }
+.ct-tag.tag-3 { background: color-mix(in srgb, rgb(var(--tag-3)) 15%, var(--card-bg)); border-color: rgba(var(--tag-3),.30); color: rgb(var(--tag-3)); }
+.ct-tag.tag-4 { background: color-mix(in srgb, rgb(var(--tag-4)) 15%, var(--card-bg)); border-color: rgba(var(--tag-4),.30); color: rgb(var(--tag-4)); }
+.ct-tag.tag-5 { background: color-mix(in srgb, rgb(var(--tag-5)) 15%, var(--card-bg)); border-color: rgba(var(--tag-5),.30); color: rgb(var(--tag-5)); }
+.ct-tag.tag-6 { background: color-mix(in srgb, rgb(var(--tag-6)) 15%, var(--card-bg)); border-color: rgba(var(--tag-6),.30); color: rgb(var(--tag-6)); }
+.ct-tag.tag-7 { background: color-mix(in srgb, rgb(var(--tag-7)) 15%, var(--card-bg)); border-color: rgba(var(--tag-7),.30); color: rgb(var(--tag-7)); }
+.ct-tag.tag-8 { background: color-mix(in srgb, rgb(var(--tag-8)) 15%, var(--card-bg)); border-color: rgba(var(--tag-8),.30); color: rgb(var(--tag-8)); }
+.ct-tag.tag-9 { background: color-mix(in srgb, rgb(var(--tag-9)) 15%, var(--card-bg)); border-color: rgba(var(--tag-9),.30); color: rgb(var(--tag-9)); }
+.ct-tag.tag-10 { background: color-mix(in srgb, rgb(var(--tag-10)) 15%, var(--card-bg)); border-color: rgba(var(--tag-10),.30); color: rgb(var(--tag-10)); }
+.ct-tag.tag-11 { background: color-mix(in srgb, rgb(var(--tag-11)) 15%, var(--card-bg)); border-color: rgba(var(--tag-11),.30); color: rgb(var(--tag-11)); }
+.ct-tag.tag-12 { background: color-mix(in srgb, rgb(var(--tag-12)) 15%, var(--card-bg)); border-color: rgba(var(--tag-12),.30); color: rgb(var(--tag-12)); }
+.ct-tag.tag-13 { background: color-mix(in srgb, rgb(var(--tag-13)) 15%, var(--card-bg)); border-color: rgba(var(--tag-13),.30); color: rgb(var(--tag-13)); }
+.ct-tag.tag-14 { background: color-mix(in srgb, rgb(var(--tag-14)) 15%, var(--card-bg)); border-color: rgba(var(--tag-14),.30); color: rgb(var(--tag-14)); }
 .row-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 /* Мьют и статус своего сообщения — вплотную к времени (не растянуты
    justify-content:space-between между именем и временем, как было бы с
