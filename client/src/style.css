@@ -988,7 +988,8 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 /* ── СПИСОК ЧАТОВ: секции — скруглённые карточки ──
    Каждая секция (закреплённые, комнаты, все чаты, контакты по статусам, темы) лежит в своей карточке.
    Карточка собирается из соседних строк: у каждой есть полоса фона (::before) и подсветка (::after)
-   на 4px уже; первая и последняя строка группы получают скругление и отступ карточки.
+   на 4px уже и на 1px короче сверху и снизу (между подсвеченными соседями остаётся зазор 2px);
+   первая и последняя строка группы получают скругление и отступ карточки.
    Классы cg-first / cg-last расставляет markChatGroups() в app.js. Разделителей между строками нет.
    Полоса фона заходит на 1px под следующую строку: высота строк дробная, и без нахлёста на стыках
    проглядывал фон сайдбара тонкими линиями. */
@@ -999,7 +1000,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   content: ""; position: absolute; inset: 0 0 -1px; background: var(--cg); z-index: -1;
 }
 .chats-list .chat-item::after, .topics-panel .chat-item::after, .chats-list .pp-row::after {
-  content: ""; position: absolute; inset: 0 4px; border-radius: 12px; z-index: -1; transition: background .12s;
+  content: ""; position: absolute; inset: 1px 4px; border-radius: 12px; z-index: -1; transition: background .12s;
 }
 .chats-list .chat-item:hover, .topics-panel .chat-item:hover, .chats-list .pp-row:hover { background: none; }
 .chats-list .chat-item:hover::after, .topics-panel .chat-item:hover::after, .chats-list .pp-row:hover::after { background: color-mix(in srgb, var(--text) 7%, transparent); }
@@ -2233,10 +2234,10 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
    Смайлы центруются в круге только при чётном размере шрифта; у 20 px глиф сидит на пиксель
    выше, его опускает padding-top.
    ══════════════════════════════════════════ */
-/* Контекстные меню и всплывающие панели на 20% меньше: масштаб (scale) умножается на масштаб интерфейса,
+/* Контекстные меню и всплывающие панели на 10% меньше: масштаб (scale) умножается на масштаб интерфейса,
    поэтому с настройкой масштаба они меняются вместе со всем остальным. Опорная точка — левый верхний угол:
    положение меню считается по нему (placeCtxMenu, ctxReadPlace) */
-:root { --ctx-scale: .8; }
+:root { --ctx-scale: .9; }
 .ctx-menu, #reaction-picker, .head-menu { scale: var(--ctx-scale); transform-origin: top left; }
 .ctx-menu {
   position: fixed;
@@ -2738,7 +2739,7 @@ html.dark .announcement-title { color: var(--danger); }
 .composer-main .composer-attach,
 .composer-main .send-btn {
   width: 40px; height: 40px; border-radius: 50%;
-  background: var(--modal-bg); border: 0;
+  background: var(--modal-bg); border: 1px solid var(--border);
   box-shadow: var(--shadow-pop);
 }
 .composer-main .composer-attach:hover { background: var(--modal-bg); color: var(--text); }
@@ -2746,21 +2747,21 @@ html.dark .announcement-title { color: var(--danger); }
   background: var(--search-bg); color: var(--muted);
   transition: background .15s, color .15s, box-shadow .15s, transform .12s;
 }
-.composer-main .send-btn.ready { background: var(--accent); color: #0c0e10; box-shadow: 0 8px 20px var(--accent-shadow); }
+.composer-main .send-btn.ready { background: var(--accent); border-color: transparent; color: #0c0e10; box-shadow: 0 8px 20px var(--accent-shadow); }
 .composer-main .send-btn:active { transform: scale(.94); }
 .composer-main .send-btn svg { position: relative; top: 1px; }
 .composer-field {
   flex: 1; min-width: 0; box-sizing: border-box;
   display: flex; flex-direction: column;
   background: var(--modal-bg);
-  border: 0;
+  border: 1px solid var(--border);
   border-radius: 22px;
   box-shadow: var(--shadow-pop);
   overflow: hidden;
 }
 .composer-field-row {
   display: flex; align-items: center; gap: 4px;
-  min-height: 40px; box-sizing: border-box;
+  min-height: 38px; box-sizing: border-box;
   padding: 0 6px 0 18px;
 }
 
@@ -3452,3 +3453,131 @@ html.dark .anx-solid { color: #04211c; }
 .head-menu.side .hm-i::after { right: auto; left: calc(100% + 10px); }
 .hm-i:hover::after, .hm-i:focus-visible::after { opacity: 1; transition-delay: .25s; }
 @media (prefers-reduced-motion: reduce) { .head-menu { animation: none; } .topbar-actions .head-more svg { transition: none; } }
+
+/* ══════════════════════════════════════════════════════════════
+   МОДАЛЬНЫЕ ОКНА — мягкий вид (в стиле меню, композера и сайдбара)
+   Без линий между шапкой, телом и подвалом: их разделяет воздух. Строки, поля и
+   плашки — мягкие карточки без рамок, кнопки — капсулы. Основное действие в акценте,
+   опасное красное с белым текстом, остальное нейтральное.
+   Стоит в конце файла и перекрывает прежние правила окон.
+   ══════════════════════════════════════════════════════════════ */
+.modal { --md-card: color-mix(in srgb, var(--text) 5%, var(--modal-bg)); --md-hover: color-mix(in srgb, var(--text) 9%, var(--modal-bg)); border-radius: 24px; box-shadow: 0 28px 70px rgba(0,0,0,.45); }
+html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.16); }
+.modal-hdr { padding: 18px 18px 8px 22px; border-bottom: 0; font-size: 15px; gap: 10px; }
+.modal-hdr .icon-btn, .ha-close, .diag-head .icon-btn { width: 30px; height: 30px; border-radius: 50%; background: var(--hover-row); color: var(--muted); }
+.modal-hdr .icon-btn:hover, .ha-close:hover, .diag-head .icon-btn:hover { background: var(--md-hover); color: var(--text); }
+.modal-footer, .nc-foot, .ha-footer, .update-modal-footer { padding: 6px 18px 18px; border-top: 0; gap: 8px; }
+
+/* кнопки: капсулы 34px */
+.modal-btn-ghost, .ha-btn-cancel, .anx-btn {
+  height: 34px; padding: 0 18px; border: 0; border-radius: 999px;
+  background: var(--hover-row); color: var(--text); font-size: 13px; font-weight: 600;
+}
+.modal-btn-ghost:hover, .ha-btn-cancel:hover, .anx-btn:hover:not(:disabled) { background: var(--md-hover); border: 0; }
+.modal-btn-primary, .ha-btn-apply, .anx-solid {
+  height: 34px; padding: 0 18px; border: 0; border-radius: 999px;
+  background: var(--accent); color: #0c0e10; font-size: 13px; font-weight: 600;
+}
+.modal-btn-primary:hover, .ha-btn-apply:hover, .anx-solid:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); border: 0; }
+.modal-btn-danger, .ha-btn-danger {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  height: 34px; padding: 0 18px; border: 0; border-radius: 999px; cursor: pointer; font-family: inherit;
+  background: var(--danger); color: #fff; font-size: 13px; font-weight: 600;
+}
+.modal-btn-danger:hover, .ha-btn-danger:hover { background: var(--danger); filter: brightness(1.08); }
+html.dark .anx-solid { color: #0c0e10; }
+.anx-btn.sm { height: 28px; padding: 0 12px; }
+.diag-foot .cs-btn { height: 34px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--hover-row); color: var(--text); font-weight: 600; }
+.diag-foot .cs-btn:hover:not([disabled]) { background: var(--md-hover); }
+.diag-foot .cs-btn.solid { background: var(--accent); color: #0c0e10; }
+.diag-foot { padding: 6px 18px 18px; }
+
+/* Подтверждение */
+#modal-confirm .modal { width: 360px !important; }
+#confirm-body { padding: 4px 22px 14px !important; line-height: 1.5; }
+#modal-confirm .modal-footer { padding: 6px 18px 18px !important; }
+
+/* Новый чат, тип чата, пересылка */
+.nc-kinds { padding: 6px 18px 18px; gap: 8px; }
+.nc-kind { padding: 12px 14px; border: 0; border-radius: 16px; background: var(--md-card); }
+.nc-kind:hover { border: 0; background: var(--md-hover); }
+.nc-kind-ic { width: 40px; height: 40px; border-radius: 50%; }
+.nc-group-bar { padding: 6px 18px 4px; border-bottom: 0; background: none; }
+.nc-name-input { height: 40px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--md-card); }
+.nc-name-input:focus { border: 0; box-shadow: 0 0 0 1.5px var(--accent); }
+.nc-search { margin: 8px 18px; height: 36px; padding: 0 14px; border-bottom: 0; border-radius: 999px; background: var(--md-card); }
+#modal-forward .nc-search { margin: 0; }
+#nc-list, .nc-list { padding: 4px 10px; }
+.modal .pp-row { border-radius: 14px; }
+/* Между строками выбора зазор: выбранная и подсвеченная рядом не сливаются */
+.modal .pp-row + .pp-row, #forward-list .pp-row + .pp-row { margin-top: 3px; }
+.modal .pp-row.on { background: var(--accent-soft); }
+.modal .pp-check { width: 18px; height: 18px; border-radius: 50%; }
+
+/* Внешняя ссылка */
+.link-modal { padding: 28px 24px 22px; }
+.link-modal-icon { border-radius: 50%; }
+.link-modal-url { border: 0; border-radius: 14px; background: var(--md-card); }
+
+/* Высокая доступность */
+.ha-header, .update-modal-header { padding: 18px 18px 8px 22px; border-bottom: 0; }
+.ha-header-icon, .update-modal-icon { border-radius: 50%; background: var(--accent-soft); color: var(--accent); box-shadow: none; }
+.ha-body { padding: 8px 22px 14px; }
+.ha-status-active { border: 0; border-radius: 12px; background: var(--accent-soft); }
+.ha-pick-btn { border: 0; border-radius: 14px; background: var(--md-card); }
+.ha-pick-btn:hover { border: 0; background: var(--md-hover); }
+.ha-pick.open .ha-pick-btn { border: 0; box-shadow: 0 0 0 1.5px var(--accent); }
+.ha-pick-ic { border: 0; border-radius: 50%; background: var(--modal-bg); }
+.ha-pop { border-radius: 16px; box-shadow: var(--shadow-pop, 0 14px 40px rgba(0,0,0,.18)); padding: 6px; }
+.ha-opt { border-radius: 10px; }
+.ha-path-row { border-radius: 12px; background: var(--md-card); }
+.ha-footer { padding: 6px 22px 18px; }
+
+/* Обновление */
+.update-notes-wrap { padding: 8px 22px 12px; }
+.update-notes { border: 0; border-radius: 14px; background: var(--md-card); }
+.update-progress-wrap { padding: 0 22px 16px; }
+.update-progress-bar, .force-update-bar { height: 6px; border-radius: 3px; background: var(--hover-row); }
+.update-progress-fill, .force-update-fill { border-radius: 3px; }
+.force-update-modal { background: var(--modal-bg); padding: 28px 24px 24px; }
+.force-update-icon { border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
+
+/* Журнал работы */
+.diag-head { padding: 18px 18px 8px 22px; }
+.diag-text { border: 0; border-radius: 14px; background: var(--md-card); margin: 0 18px; }
+
+/* Секретные чаты: доступ и устройства */
+.sc-sync-body, .sc-m { padding: 4px 22px 18px; }
+.sc-sync-device { border: 0; border-radius: 14px; background: var(--md-card); padding: 12px 14px; }
+.sc-codebox { border: 1px dashed var(--accent-border); border-radius: 16px; background: var(--md-card); }
+
+/* Информация о группе и комнате */
+.gi-top-bar { border-bottom: 0; }
+.gi-name-input { border: 0; border-radius: 999px; background: var(--md-card, color-mix(in srgb, var(--text) 5%, var(--modal-bg))); padding: 8px 16px; }
+.gi-name-input:focus { box-shadow: 0 0 0 1.5px var(--accent); border: 0; }
+.gi-name-input[readonly] { background: none; }
+.gi-btn { border: 0; border-radius: 999px; padding: 0 16px; height: 34px; background: var(--hover-row); color: var(--text); }
+.gi-btn:hover { background: color-mix(in srgb, var(--text) 10%, transparent); }
+.gi-btn-add { background: var(--accent-soft); color: var(--accent); }
+.gi-btn-leave { background: var(--hover-row); color: var(--text); }
+.gi-btn-delete { background: var(--danger-bg); color: var(--danger); }
+.gi-footer { border-top: 0; padding: 6px 18px 18px; }
+
+/* Объявление: окно из двух половин */
+.anx-modal { border-radius: 24px; }
+.anx-half.l { border-right: 0; }
+.anx-half:not(.l) { background: color-mix(in srgb, var(--text) 3%, var(--modal-bg)); }
+.anx-types button, .anx-ch, .anx-sg, .anx-search, .anx-ta, .anx-app, .anx-pill { border: 0; background: color-mix(in srgb, var(--text) 5%, var(--modal-bg)); }
+.anx-types button { border-radius: 999px; }
+.anx-ch { border-radius: 999px; }
+.anx-sg { border-radius: 999px; }
+.anx-search { border-radius: 999px; }
+.anx-ta { border-radius: 16px; }
+.anx-app { border-radius: 16px; }
+.anx-types button:hover, .anx-ch:hover { border: 0; background: color-mix(in srgb, var(--text) 9%, var(--modal-bg)); }
+.anx-types button[aria-checked="true"], .anx-ch[aria-pressed="true"], .anx-sg button[aria-pressed="true"] { background: var(--accent-soft); border: 0; color: var(--accent); }
+.anx-ta:focus, .anx-search:focus-within { border: 0; box-shadow: 0 0 0 1.5px var(--accent); }
+.anx-foot, .anx-rfoot, .anx-rbar, .anx-tabsbar { border-top: 0; border-bottom: 0; }
+.anx-rlist { gap: 4px; }
+.anx-li { border-radius: 14px; }
+.anx-li[aria-pressed="true"] { box-shadow: none; }
