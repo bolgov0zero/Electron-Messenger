@@ -122,12 +122,11 @@ html {
 body {
   position: fixed; top: 0; left: 0; width: var(--vw100); height: var(--vh100);
   margin: 0; background: var(--modal-bg); color: var(--text);
-  /* Вшитый эмодзи-шрифт пробовали дважды (см. историю) — на iOS 27 WebKit
-     ловит битую композицию цветных битмап-шрифтов там, где на iOS 26 всё
-     было нормально; похоже на регрессию текущего релиза iOS, а не на баг в
-     разметке. Пока не починят у Apple — системные смайлики телефона, они
-     надёжны везде. */
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  /* Смайлы рисует вшитый Noto: COLRv1 там, где браузер его понимает, а в Safari и на iPhone sbix
+     (см. /chat/emoji-font.css; набор выбирает /chat/emoji-font.js, а если шрифт не нарисовался,
+     возвращаются системные смайлы телефона). Раньше мобильный клиент ходил на системных: SVG-шрифт
+     на iPhone не рисуется, COLRv1 в Safari даёт блоки. sbix — родной формат Apple, его iPhone рисует. */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, 'Noto Color Emoji', 'Noto Color Emoji Keys', sans-serif;
   -webkit-font-smoothing: antialiased;
   /* transform:scale ставим ТОЛЬКО когда масштаб не 100% (см. applyUiScale в app.js) —
      transform-слой на весь экран даже с scale(1) переводит текст на GPU-композитинг
@@ -432,7 +431,7 @@ html.m-desktop .screen { display: none !important; }
 .bubble-sender { font-size: 12.5px; font-weight: 700; margin: 0 2px 3px; cursor: pointer; }
 .mention { color: var(--accent); font-weight: 700; }
 .bubble-link { color: var(--accent); text-decoration: underline; word-break: break-all; }
-.md-code { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: .88em; background: rgba(var(--accent-rgb),.12); border-radius: 6px; padding: 1px 5px; }
+.md-code { font-family: 'Noto Color Emoji', ui-monospace, 'SF Mono', Consolas, monospace; font-size: .88em; background: rgba(var(--accent-rgb),.12); border-radius: 6px; padding: 1px 5px; }
 .mention.mtag-1{color:rgb(var(--tag-1-av))} .mention.mtag-2{color:rgb(var(--tag-2-av))} .mention.mtag-3{color:rgb(var(--tag-3-av))}
 .mention.mtag-4{color:rgb(var(--tag-4-av))} .mention.mtag-5{color:rgb(var(--tag-5-av))} .mention.mtag-6{color:rgb(var(--tag-6-av))}
 .mention.mtag-7{color:rgb(var(--tag-7-av))} .mention.mtag-8{color:rgb(var(--tag-8-av))} .mention.mtag-9{color:rgb(var(--tag-9-av))}
