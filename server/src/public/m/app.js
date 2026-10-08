@@ -1025,10 +1025,9 @@ async function onGroupAvatarPicked(input) {
 function renderGroupPickList(q) {
   const filtered = _contactsAll.filter(u => u.display_name.toLowerCase().includes(q.trim().toLowerCase()));
   document.getElementById('pick-list').innerHTML = filtered.map(u => `
-    <div class="pick-row" onclick="toggleGroupMember(${u.id})">
+    <div class="pick-row${_groupSelected.has(u.id) ? ' on' : ''}" onclick="toggleGroupMember(${u.id})">
       <div class="av ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}" data-av-fallback="${esc(initials(u.display_name))}">${esc(initials(u.display_name))}</div>
       <div class="pick-name">${esc(u.display_name)}</div>
-      <div class="pick-check${_groupSelected.has(u.id) ? ' on' : ''}"></div>
     </div>`).join('') || '<div class="stub-note">Никого не нашли</div>';
   applyAvatars();
 }

@@ -2449,7 +2449,7 @@ function emojiSections() {
 // без разделов и поиска, и полторы тысячи смайлов приходилось листать наугад.
 const EP_KIND = {
   ep: { cols: 8, cell: 36, pick: 'insertEmoji' },   // композер
-  rp: { cols: 7, cell: 34, pick: 'pickerReact' },   // реакции
+  rp: { cols: 7, cell: 30, pick: 'pickerReact' },   // реакции
 };
 const _epStatic = { ep: null, rp: null };
 
@@ -4646,7 +4646,7 @@ function showReactionPicker(e) {
   // Выбранная вкладка считается по размерам прокрутки, поэтому только когда панель уже показана
   // (скрытая, она даёт нулевую высоту, и подсвечивался последний раздел)
   syncEmojiTabs('rp');
-  // Размер панели — видимый (она уменьшена на --ctx-scale), в тех же единицах, что style.left/top
+  // Размер панели переводим в те же единицы, что style.left/top
   const _pr = picker.getBoundingClientRect(), _mk = zoomMetrics().k;
   const pw = _pr.width / _mk, ph = _pr.height / _mk;
   const margin = 6;
@@ -5406,7 +5406,6 @@ async function onGroupAvatarChange(input) {
 function ppAvHtml(u) {
   return `<div class="pp-av ${userAvatarColor(u.id, u.tag)}"><span>${initials(u.display_name)}</span><img src="${httpProto()}://${S.server}/api/users/${u.id}/avatar" loading="lazy" onerror="this.style.display='none'"></div>`;
 }
-const PP_CHECK = `<span class="pp-check"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="3.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span>`;
 
 // ── НОВЫЙ ЧАТ ──
 // Два шага: сначала выбор вида (личный или группа), потом список людей. Раньше
@@ -5502,7 +5501,6 @@ function renderModalUsers(containerId, multi, filter='') {
       ${ppAvHtml(u)}
       <span class="pp-name">${esc(u.display_name)}</span>
       ${u.tag?`<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>`:''}
-      ${multi?PP_CHECK:''}
     </div>`).join('') || '<div class="pp-empty">Нет пользователей</div>';
 }
 

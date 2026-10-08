@@ -845,7 +845,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 }
 #sidebar-peek-zone:hover::after { opacity: 1; }
 #sidebar-menu.open { transform-origin: top right; }
-.ctx-sep { position: relative; z-index: 1; height: 0; border-top: 1px solid var(--border); margin: 6px 10px; }
+.ctx-sep { position: relative; z-index: 1; height: 0; border-top: 1px solid var(--border); margin: 5px 9px; }
 
 /* Шапка сайдбара: название и кнопки приложения, вместо отдельного топбара */
 .sidebar-head {
@@ -1905,9 +1905,7 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 .pp-tag.tag-12 { background: color-mix(in srgb, rgb(var(--tag-12)) 15%, var(--card-bg)); border-color: rgba(var(--tag-12),.30); color: rgb(var(--tag-12)); }
 .pp-tag.tag-13 { background: color-mix(in srgb, rgb(var(--tag-13)) 15%, var(--card-bg)); border-color: rgba(var(--tag-13),.30); color: rgb(var(--tag-13)); }
 .pp-tag.tag-14 { background: color-mix(in srgb, rgb(var(--tag-14)) 15%, var(--card-bg)); border-color: rgba(var(--tag-14),.30); color: rgb(var(--tag-14)); }
-.pp-check { width: 17px; height: 17px; border-radius: 9px; border: 1.5px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .12s; color: transparent; }
-.pp-row.on .pp-check { background: var(--accent); border-color: var(--accent); color: #fff; }
-
+.pp-row.on 
 .pp-empty { padding: 16px; text-align: center; color: var(--muted); font-size: 13px; }
 
 .modal-footer {
@@ -1972,30 +1970,30 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 /* Пункт показывает «Прочитано 1/3» (3 — кому доставлено); по наведению рядом открывается карточка со списком тех, кто прочитал.
    Меню при этом не меняется, поэтому пункты ниже («Удалить») остаются на месте. Карточка встаёт вправо, а если места нет — влево */
 #ctx-menu { overflow: visible; }
-.ctx-read { border-radius: 9px; }
+.ctx-read { border-radius: 8px; }
 .ctx-read.open > button { background: var(--hover-row); }
 .ctx-menu .ctx-read.rd-part > button svg:first-child .tk1 { stroke: var(--accent); }
 .ctx-menu .ctx-read.rd-all > button svg:first-child { color: var(--accent); }
 .ctx-menu .ctx-read.flat > button svg:first-child .tk1 { display: none; }
-.ctx-menu .ctx-read > button > span { display: flex; align-items: baseline; gap: 6px; }
+.ctx-menu .ctx-read > button > span { display: flex; align-items: baseline; gap: 5px; }
 .ctx-read .cnt { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
 .ctx-read .cnt b { color: var(--accent); font-weight: 700; }
-.ctx-menu .ctx-read .ctx-read-chev { margin-left: auto; width: 14px; height: 14px; }
+.ctx-menu .ctx-read .ctx-read-chev { margin-left: auto; width: 13px; height: 13px; }
 .ctx-read.flat > button { cursor: default; }
 .ctx-read.flat > button:hover { background: none; }
 .ctx-read.flat .ctx-read-chev { display: none; }
-.ctx-read-fly { position: absolute; width: 224px; background: var(--modal-bg); border: 1px solid var(--border); border-radius: 16px; padding: 6px;
-  box-shadow: var(--shadow-pop); opacity: 0; pointer-events: none; transform: translateX(-5px); transition: opacity .12s, transform .16s; z-index: 2; }
-.ctx-read-fly.l { transform: translateX(5px); }
+.ctx-read-fly { position: absolute; width: 202px; background: var(--modal-bg); border: 1px solid var(--border); border-radius: 14px; padding: 5px;
+  box-shadow: var(--shadow-pop); opacity: 0; pointer-events: none; transform: translateX(-4px); transition: opacity .12s, transform .16s; z-index: 2; }
+.ctx-read-fly.l { transform: translateX(4px); }
 .ctx-read.open .ctx-read-fly { opacity: 1; pointer-events: auto; transform: none; }
-.ctx-read-h { font-size: 11.5px; color: var(--muted); padding: 5px 8px 6px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
-.ctx-read-list { max-height: 200px; overflow-y: auto; scrollbar-width: thin; }
-.ctx-read-row { display: flex; align-items: center; gap: 9px; padding: 5px 6px; border-radius: 10px; }
+.ctx-read-h { font-size: 10.4px; color: var(--muted); padding: 4px 7px 5px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.ctx-read-list { max-height: 180px; overflow-y: auto; scrollbar-width: thin; }
+.ctx-read-row { display: flex; align-items: center; gap: 8px; padding: 4px 5px; border-radius: 9px; }
 .ctx-read-row:hover { background: var(--hover-row); }
-.ctx-read-row .av { width: 26px; height: 26px; font-size: 10px; flex-shrink: 0; }
-.ctx-read-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ctx-read-time { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.ctx-read-empty { padding: 6px 8px 8px; font-size: 12px; color: var(--muted); white-space: normal; line-height: 1.4; }
+.ctx-read-row .av { width: 23px; height: 23px; font-size: 9px; flex-shrink: 0; }
+.ctx-read-name { flex: 1; min-width: 0; font-size: 11.3px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-read-time { font-size: 10.4px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.ctx-read-empty { padding: 5px 7px 7px; font-size: 10.8px; color: var(--muted); white-space: normal; line-height: 1.4; }
 @media (prefers-reduced-motion: reduce) { .ctx-read-fly { transition: none; } }
 
 /* ── LINK CONFIRM MODAL ── */
@@ -2234,30 +2232,28 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
    Смайлы центруются в круге только при чётном размере шрифта; у 20 px глиф сидит на пиксель
    выше, его опускает padding-top.
    ══════════════════════════════════════════ */
-/* Контекстные меню и всплывающие панели на 10% меньше: масштаб (scale) умножается на масштаб интерфейса,
-   поэтому с настройкой масштаба они меняются вместе со всем остальным. Опорная точка — левый верхний угол:
-   положение меню считается по нему (placeCtxMenu, ctxReadPlace) */
-:root { --ctx-scale: .9; }
-.ctx-menu, #reaction-picker, .head-menu { scale: var(--ctx-scale); transform-origin: top left; }
+/* Контекстные меню и всплывающие панели на 10% меньше обычного: размеры записаны прямо, без transform/zoom —
+   смайлы растровые, при масштабировании они размывались. С настройкой масштаба интерфейса меню меняются
+   вместе со всем остальным. Шрифт смайлов — только чётный (в круге по центру) */
 .ctx-menu {
   position: fixed;
   background: var(--modal-bg);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 14px;
   box-shadow: var(--shadow-pop);
   z-index: 300; overflow: hidden;
-  display: none; width: 238px;
-  padding: 6px;
+  display: none; width: 214px;
+  padding: 5px;
 }
 .ctx-menu.open { display: block; }
 
 .ctx-menu button {
-  display: flex; align-items: center; gap: 12px;
-  width: 100%; height: 36px; padding: 0 10px;
+  display: flex; align-items: center; gap: 11px;
+  width: 100%; height: 32px; padding: 0 9px;
   background: none; border: none;
-  font-size: 13.5px; font-weight: 500; cursor: pointer; color: var(--text);
+  font-size: 12.2px; font-weight: 500; cursor: pointer; color: var(--text);
   font-family: inherit;
-  border-radius: 10px;
+  border-radius: 9px;
   transition: background .12s;
 }
 .ctx-menu button { text-align: left; justify-content: flex-start; white-space: nowrap; }
@@ -2265,45 +2261,51 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 .ctx-menu button:hover { background: var(--hover-row); }
 .ctx-menu button.ctx-danger { color: var(--danger); }
 .ctx-menu button.ctx-danger:hover { background: var(--danger-bg); }
-.ctx-menu button svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--muted); stroke-width: 1.8; }
+.ctx-menu button svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--muted); stroke-width: 1.8; }
 .ctx-menu button.ctx-danger svg { color: var(--danger); }
 .ctx-menu button:hover svg { color: var(--text2); }
 .ctx-menu button.ctx-danger:hover svg { color: var(--danger); }
 /* Дата и время отправки — последняя строка меню сообщения */
-.ctx-cap { position: relative; margin-top: 6px; padding: 9px 10px 3px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; cursor: default; }
-.ctx-cap::before { content: ""; position: absolute; top: 0; left: 10px; right: 10px; border-top: 1px solid var(--border); }
+.ctx-cap { position: relative; margin-top: 5px; padding: 8px 9px 3px; font-size: 10.4px; color: var(--muted); font-variant-numeric: tabular-nums; cursor: default; }
+.ctx-cap::before { content: ""; position: absolute; top: 0; left: 9px; right: 9px; border-top: 1px solid var(--border); }
 
 /* Строка реакций: капсула с круглыми зонами нажатия; уже поставленная вами реакция подсвечена */
 .ctx-reactions {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 3px; margin-bottom: 6px;
+  padding: 3px; margin-bottom: 5px;
   background: var(--search-bg); border-radius: 999px;
 }
 /* Перебиваем width:100% и высоту из «.ctx-menu button» — иначе каждый эмодзи занимает всю строку */
 .ctx-menu .ctx-reactions button {
-  width: 26px; height: 26px; flex: none; padding: 0; gap: 0;
+  width: 24px; height: 24px; flex: none; padding: 0; gap: 0;
   justify-content: center; border-radius: 50%;
-  font-size: 16px; transition: background .12s, transform .12s;
+  font-size: 14px; transition: background .12s, transform .12s;
 }
 .ctx-menu .ctx-reactions button:hover { background: var(--hover-row); transform: scale(1.14); }
 .ctx-menu .ctx-reactions button.mine { background: var(--accent-soft); }
-.ctx-menu .ctx-reactions .ctx-reaction-more { font-size: 14px; color: var(--text2); font-weight: 600; }
+.ctx-menu .ctx-reactions .ctx-reaction-more { font-size: 12.5px; color: var(--text2); font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .ctx-menu .ctx-reactions button:hover { transform: none; } }
 /* Панель реакций — та же, что в композере, только уже и ниже. Классы общие,
    поэтому отличаются здесь только размеры. */
 #reaction-picker {
   position: fixed; z-index: 9999;
   background: var(--modal-bg); border: 1px solid var(--border);
-  border-radius: 16px; padding: 6px;
+  border-radius: 14px; padding: 5px;
   box-shadow: var(--shadow-pop);
-  display: none; width: 278px;
+  display: none; width: 250px;
   overflow: hidden;
 }
 #reaction-picker.open { display: flex; flex-direction: column; }
-#reaction-picker .ep-tab { font-size: 14px; padding-top: 1px; }
-#reaction-picker .ep-scroll { max-height: 204px; }
+#reaction-picker .ep-search { height: 29px; padding: 0 11px; gap: 6px; }
+#reaction-picker .ep-search svg { width: 12px; height: 12px; }
+#reaction-picker .ep-search input { font-size: 11.2px; }
+#reaction-picker .ep-tabs { padding: 7px 2px 4px; }
+#reaction-picker .ep-tab { font-size: 12px; padding-top: 1px; max-width: 27px; }
+#reaction-picker .ep-scroll { max-height: 184px; }
+#reaction-picker .ep-head { padding: 7px 5px 3px; font-size: 9.4px; }
+#reaction-picker .ep-miss { font-size: 11px; }
 #reaction-picker .ep-row { grid-template-columns: repeat(7, 1fr); }
-#reaction-picker .emoji-item { width: 34px; height: 34px; }
+#reaction-picker .emoji-item { width: 30px; height: 30px; font-size: 18px; }
 
 /* ── NEW CHAT TABS ── */
 
@@ -3443,12 +3445,12 @@ html.dark .anx-solid { color: #04211c; }
 .topbar-actions .head-more[aria-expanded="true"] { color: var(--text); background: var(--hover-row); border-radius: 8px; }
 .topbar-actions .head-more[aria-expanded="true"] svg { transform: rotate(180deg); }
 /* Меню узкое, из одних иконок; подпись показывается подсказкой сбоку. Оно вне сайдбара и fixed: граница сайдбара его не режет */
-.head-menu { position: fixed; z-index: 260; display: flex; flex-direction: column; gap: 2px; padding: 5px; background: var(--modal-bg); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-pop); animation: hmIn .13s ease; }
+.head-menu { position: fixed; z-index: 260; display: flex; flex-direction: column; gap: 2px; padding: 4px; background: var(--modal-bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-pop); animation: hmIn .13s ease; }
 .head-menu[hidden] { display: none; }
 @keyframes hmIn { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
-.hm-i { position: relative; width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 10px; background: none; color: var(--muted); cursor: pointer; font: inherit; transition: color .12s, background .12s; -webkit-app-region: no-drag; }
+.hm-i { position: relative; width: 29px; height: 29px; display: grid; place-items: center; border: 0; border-radius: 9px; background: none; color: var(--muted); cursor: pointer; font: inherit; transition: color .12s, background .12s; -webkit-app-region: no-drag; }
 .hm-i:hover, .hm-i:focus-visible { background: var(--hover-row); color: var(--text); outline: 0; }
-.hm-i svg { width: 16px; height: 16px; display: block; }
+.hm-i svg { width: 14px; height: 14px; display: block; }
 .hm-i::after { content: attr(data-tip); position: absolute; top: 50%; right: calc(100% + 10px); transform: translateY(-50%); background: var(--text); color: var(--app-bg); font-size: 12px; font-weight: 600; padding: 5px 9px; border-radius: 8px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .12s; }
 .head-menu.side .hm-i::after { right: auto; left: calc(100% + 10px); }
 .hm-i:hover::after, .hm-i:focus-visible::after { opacity: 1; transition-delay: .25s; }
@@ -3512,8 +3514,7 @@ html.dark .anx-solid { color: #0c0e10; }
 /* Между строками выбора зазор: выбранная и подсвеченная рядом не сливаются */
 .modal .pp-row + .pp-row, #forward-list .pp-row + .pp-row { margin-top: 3px; }
 .modal .pp-row.on { background: var(--accent-soft); }
-.modal .pp-check { width: 18px; height: 18px; border-radius: 50%; }
-
+.modal 
 /* Внешняя ссылка */
 .link-modal { padding: 28px 24px 22px; }
 .link-modal-icon { border-radius: 50%; }
