@@ -741,7 +741,7 @@ html.no-emoji-font .md-code {
   position: absolute; inset: 0;
   overflow-y: auto;
   background: var(--side-bg);
-  padding: 0 8px 12px;
+  padding: 0 10px 12px;
   transform: translateX(100%);
   transition: transform .3s cubic-bezier(.22, 1, .36, 1);
 }
@@ -777,6 +777,7 @@ html.no-emoji-font .md-code {
    SIDEBAR
    ══════════════════════════════════════════ */
 .sidebar {
+  --cg: color-mix(in srgb, var(--text) 4%, var(--side-bg));
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
   background: var(--side-bg);
@@ -878,19 +879,19 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
    только цветом самой иконки (акцент), никаких фонов и контуров. */
 .sidebar-tabbar {
   display: flex; align-items: center; justify-content: space-around;
-  padding: 6px 14px;
-  border-top: 1px solid var(--border);
+  padding: 6px 10px 10px;
   flex-shrink: 0;
 }
 .sb-tab {
-  width: 34px; height: 32px; padding: 0;
+  flex: 1; height: 38px; padding: 0;
   border: none; background: none; cursor: pointer;
   color: var(--muted);
   display: flex; align-items: center; justify-content: center;
-  border-radius: 9px;
+  border-radius: 12px;
   transition: color .15s ease;
 }
 .sb-tab svg { width: 19px; height: 19px; }
+.sb-tab #update-badge { top: 6px !important; right: auto !important; left: calc(50% + 6px); }
 .sb-tab:hover:not(.on) { color: var(--text); }
 .sb-tab.on { color: var(--accent); }
 
@@ -912,14 +913,15 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 
 /* Search */
 .search-wrap {
-  height: 37px;
+  height: 34px;
   flex: 1; min-width: 0;
-  background: var(--search-bg);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 9px 12px;
+  background: var(--cg);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0 12px;
   display: flex; align-items: center; gap: 8px;
 }
+.search-wrap:focus-within { border-color: var(--accent); }
 
 .search-clear {
   background: none; border: none; padding: 0; margin: 0;
@@ -939,14 +941,14 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 /* ══════════════════════════════════════════
    CHAT LIST
    ══════════════════════════════════════════ */
-.chats-list { flex: 1; overflow-y: auto; padding: 0 8px 12px; }
+.chats-list { flex: 1; overflow-y: auto; padding: 0 10px 12px; }
 
 /* Legacy label class */
 .chat-list-section-label {
-  font-size: 11px; font-weight: 700;
+  font-size: 11.5px; font-weight: 600;
   color: var(--muted);
-  text-transform: uppercase; letter-spacing: 1.2px;
-  padding: 10px 14px 5px;
+  padding: 12px 10px 5px;
+  display: flex; justify-content: space-between;
 }
 
 /* Legacy chat-item (kept for JS compat — also matches new rendering) */
@@ -961,11 +963,9 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   border: 1px solid transparent;
 }
 .chat-item:hover { background: var(--hover-row); }
-.chat-item.active { background: var(--active-row); border-color: var(--active-row-border); }
-.chat-item.active .ci-name { color: var(--accent); }
 
 .chat-item .info { flex: 1; overflow: hidden; min-width: 0; }
-.chat-item .av-md { width: 36px; height: 36px; font-size: 13px; }
+.chat-item .av-md { width: 40px; height: 40px; font-size: 14px; }
 .chat-item .ci-name {
   color: var(--text);
   font-size: 13.5px; font-weight: 500;
@@ -984,6 +984,33 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 }
 /* Есть непрочитанные — время последнего сообщения в акценте, как и сам бейдж */
 .chat-item:has(.unread-badge) .ci-time { color: var(--accent); }
+
+/* ── СПИСОК ЧАТОВ: секции — скруглённые карточки ──
+   Каждая секция (закреплённые, комнаты, все чаты, контакты по статусам, темы) лежит в своей карточке.
+   Карточка собирается из соседних строк: у каждой есть полоса фона (::before) и подсветка (::after)
+   на 4px уже; первая и последняя строка группы получают скругление и отступ карточки.
+   Классы cg-first / cg-last расставляет markChatGroups() в app.js. Разделителей между строками нет. */
+.chats-list .chat-item, .topics-panel .chat-item, .chats-list .pp-row {
+  position: relative; isolation: isolate; border: 0; border-radius: 0; margin: 0; padding: 8px 12px; background: none;
+}
+.chats-list .chat-item::before, .topics-panel .chat-item::before, .chats-list .pp-row::before {
+  content: ""; position: absolute; inset: 0; background: var(--cg); z-index: -1;
+}
+.chats-list .chat-item::after, .topics-panel .chat-item::after, .chats-list .pp-row::after {
+  content: ""; position: absolute; inset: 0 4px; border-radius: 12px; z-index: -1; transition: background .12s;
+}
+.chats-list .chat-item:hover, .topics-panel .chat-item:hover, .chats-list .pp-row:hover { background: none; }
+.chats-list .chat-item:hover::after, .topics-panel .chat-item:hover::after, .chats-list .pp-row:hover::after { background: color-mix(in srgb, var(--text) 7%, transparent); }
+.chats-list .chat-item.active, .topics-panel .chat-item.active { background: none; }
+.chats-list .chat-item.active::after, .topics-panel .chat-item.active::after { background: var(--accent-soft); }
+.chats-list .chat-item.cg-first, .topics-panel .chat-item.cg-first, .chats-list .pp-row.cg-first { padding-top: 12px; }
+.chats-list .chat-item.cg-last, .topics-panel .chat-item.cg-last, .chats-list .pp-row.cg-last { padding-bottom: 12px; }
+.chats-list .cg-first::before, .topics-panel .cg-first::before { border-radius: 16px 16px 0 0; }
+.chats-list .cg-last::before, .topics-panel .cg-last::before { border-radius: 0 0 16px 16px; }
+.chats-list .cg-first.cg-last::before, .topics-panel .cg-first.cg-last::before { border-radius: 16px; }
+.chats-list .cg-first::after, .topics-panel .cg-first::after { top: 4px; }
+.chats-list .cg-last::after, .topics-panel .cg-last::after { bottom: 4px; }
+.chat-list-section-label[data-n]::after { content: attr(data-n); font-weight: 500; opacity: .8; font-variant-numeric: tabular-nums; }
 .unread-badge {
   background: var(--accent); color: #0c0e10;
   border-radius: 9px;
@@ -1390,7 +1417,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 }
 
 /* Вложение: превью с прогрессом загрузки/обработки */
-.attach-thumb { width: 40px; height: 40px; border-radius: 6px; flex-shrink: 0; background: var(--search-bg); color: var(--accent); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.attach-thumb { width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0; background: var(--search-bg); color: var(--accent); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .attach-thumb img { width: 100%; height: 100%; object-fit: cover; }
 /* Загрузка/обработка — иконка спокойно «дышит» по яркости вместо кольца или
    спиннера в квадрате: реальный прогресс несёт .attach-track ниже, тут только
@@ -2330,20 +2357,20 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 #mention-popup {
   position: fixed;
   display: none;
-  background: var(--menu-bg);
+  background: var(--modal-bg);
   border: 1px solid var(--border);
-  border-radius: 9px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  border-radius: 16px;
+  box-shadow: var(--shadow-pop);
   z-index: 400;
   overflow-y: auto;
   max-height: 224px;
-  padding: 4px;
+  padding: 6px;
   min-width: 200px;
 }
 .mention-item {
   display: flex; align-items: center; gap: 10px;
   padding: 7px 10px;
-  border-radius: 9px;
+  border-radius: 10px;
   cursor: pointer;
   transition: background .12s;
 }
@@ -2692,26 +2719,35 @@ html.dark .announcement-title { color: var(--danger); }
   display: flex; align-items: flex-end; gap: 10px;
   padding: 0;
 }
+/* Композер: карточки цвета окон с мягкой тенью, без рамок. Отправка серая, пока нечего отправлять,
+   и закрашивается акцентом (класс ready), когда в поле есть текст или вложение */
 .composer-main .composer-attach,
 .composer-main .send-btn {
   width: 40px; height: 40px; border-radius: 50%;
-  background: var(--composer-bg); border: 1px solid var(--border);
-  box-shadow: none;
+  background: var(--modal-bg); border: 0;
+  box-shadow: var(--shadow-pop);
 }
-.composer-main .send-btn { background: var(--composer-bg); }
+.composer-main .composer-attach:hover { background: var(--modal-bg); color: var(--text); }
+.composer-main .send-btn {
+  background: var(--search-bg); color: var(--muted);
+  transition: background .15s, color .15s, box-shadow .15s, transform .12s;
+}
+.composer-main .send-btn.ready { background: var(--accent); color: #0c0e10; box-shadow: 0 8px 20px var(--accent-shadow); }
+.composer-main .send-btn:active { transform: scale(.94); }
 .composer-main .send-btn svg { position: relative; top: 1px; }
 .composer-field {
   flex: 1; min-width: 0; box-sizing: border-box;
   display: flex; flex-direction: column;
-  background: var(--composer-bg);
-  border: 1px solid var(--border);
-  border-radius: 20px;
+  background: var(--modal-bg);
+  border: 0;
+  border-radius: 22px;
+  box-shadow: var(--shadow-pop);
   overflow: hidden;
 }
 .composer-field-row {
   display: flex; align-items: center; gap: 4px;
   min-height: 40px; box-sizing: border-box;
-  padding: 0 6px 0 16px;
+  padding: 0 6px 0 18px;
 }
 
 /* Выдвижная часть. overflow только здесь, а не на .composer-pill — иначе
@@ -2723,9 +2759,8 @@ html.dark .announcement-title { color: var(--danger); }
   transition: height .26s cubic-bezier(.32,.72,0,1);
 }
 .composer-slot-inner {
-  padding: 8px 12px 6px 16px;
+  padding: 8px 8px 0;
   background: transparent;
-  border-bottom: 1px solid var(--border);
   transform: translateY(-4px);
   opacity: 0;
   transition: transform .26s cubic-bezier(.32,.72,0,1), opacity .18s ease;
@@ -2735,22 +2770,19 @@ html.dark .announcement-title { color: var(--danger); }
 /* Плашки внутри: без собственного фона, рамок и скруглений — они часть поля */
 .composer-slot .input-reply-bar,
 .composer-slot .input-edit-bar {
-  background: none;
+  position: relative;
+  background: var(--accent-soft);
   border: none;
-  border-radius: 0;
+  border-radius: 14px;
   margin: 0;
-  padding: 0;
+  padding: 6px 8px 6px 18px;
+}
+.composer-slot .input-reply-bar::before,
+.composer-slot .input-edit-bar::before {
+  content: ""; position: absolute; left: 7px; top: 7px; bottom: 7px; width: 3px; border-radius: 2px; background: var(--accent);
 }
 .composer-slot .input-reply-bar + .input-reply-bar,
 .composer-slot .input-reply-bar + .input-edit-bar { margin-top: 8px; }
-
-/* Тонкая полоса — только у цитаты и правки, не у всей плашки */
-.composer-slot #reply-bar,
-.composer-slot #forward-bar,
-.composer-slot .input-edit-bar {
-  border-left: 2px solid var(--accent);
-  padding-left: 9px;
-}
 
 @media (prefers-reduced-motion: reduce) {
   .composer-slot, .composer-slot-inner { transition: none; }
@@ -2788,29 +2820,21 @@ html.dark .announcement-title { color: var(--danger); }
 .msg-bubble {
   position: relative;
   background: var(--bubble-bg);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 5px 11px;
+  border-radius: 16px;
+  padding: 6px 12px;
   max-width: 100%;
 }
 .irc-msg[data-mine] .msg-bubble {
-  /* Акцент полупрозрачный, поэтому под него подкладываем цвет переписки —
-     иначе сквозь свой пузырь просвечивает узор фона */
-  background: linear-gradient(var(--accent-soft), var(--accent-soft)) var(--chat-bg);
-  border-color: var(--role-teal-border);
+  /* Цвет переписки под акцентом сплошной, поэтому сквозь свой пузырь не просвечивает узор фона */
+  background: color-mix(in srgb, var(--accent) 15%, var(--chat-bg));
 }
-/* срезанный угол — только у последнего пузыря серии, со стороны автора */
-.irc-msg.irc-tail .msg-bubble { border-radius: 14px 14px 14px 5px; }
-.irc-msg.irc-tail[data-mine] .msg-bubble { border-radius: 14px 14px 5px 14px; }
-
-/* Реакция стоит не на последнем сообщении серии — между ним и следующим пузырём
-   появляется бейдж, и их больше не читать как сросшиеся. Срезаем тот же угол, что
-   и у хвоста серии (5px, радиус бейджа), сразу с двух сторон разрыва: снизу у
-   сообщения с реакцией и сверху у следующего за ним. */
-.irc-msg.irc-reaction-split:not([data-mine]) .msg-bubble { border-bottom-left-radius: 5px; }
-.irc-msg.irc-reaction-split[data-mine] .msg-bubble { border-bottom-right-radius: 5px; }
-.irc-msg.irc-reaction-split-next:not([data-mine]) .msg-bubble { border-top-left-radius: 5px; }
-.irc-msg.irc-reaction-split-next[data-mine] .msg-bubble { border-top-right-radius: 5px; }
+/* Серия: углы, которыми соседние пузыри стыкуются, уменьшены до 5px со стороны автора.
+   У последнего пузыря серии среза нет, а реакция между сообщениями отдельного среза угла
+   не требует: стык уже скруглён одинаково */
+.irc-msg:not([data-mine]):not(.irc-tail) .msg-bubble { border-bottom-left-radius: 5px; }
+.irc-msg:not([data-mine]):not(.irc-first) .msg-bubble { border-top-left-radius: 5px; }
+.irc-msg[data-mine]:not(.irc-tail) .msg-bubble { border-bottom-right-radius: 5px; }
+.irc-msg[data-mine]:not(.irc-first) .msg-bubble { border-top-right-radius: 5px; }
 
 /* аватарка стоит у последнего сообщения серии; у своих её нет вовсе */
 .irc-msg:not(.irc-tail) .irc-av { visibility: hidden; }
@@ -2825,14 +2849,14 @@ html.dark .announcement-title { color: var(--danger); }
    просто прижимался к низу пузыря и оказывался на 3px ниже строки: у него своя
    высота по содержимому. Теперь высота равна строке текста (line-height 21px). */
 .msg-bubble > .irc-meta {
-  position: absolute; right: 10px; bottom: 5px; gap: 3px;
+  position: absolute; right: 12px; bottom: 6px; gap: 3px;
   display: flex; align-items: center;
 }
 /* Время и галочки стоят на базовой линии последней строки текста (низ маленьких букв):
    у текста центр по x-height. Метрики Inter 14px / lh 21px: базовая линия в 10.4px от
    низа пузыря; время (11px, lh 1) даёт 1.5px ниже своей базовой линии, отсюда bottom 9px */
 .msg-bubble:not(.bubble-photo) > .irc-meta {
-  bottom: 9px; align-items: flex-end;
+  bottom: 10px; align-items: flex-end;
 }
 .msg-bubble:not(.bubble-photo) > .irc-meta .irc-time { line-height: 1; }
 .msg-bubble:not(.bubble-photo) > .irc-meta .status-wrap { margin-bottom: 1.5px; display: flex; }
@@ -2851,7 +2875,7 @@ html.dark .announcement-title { color: var(--danger); }
    подписи и реакций, — она заполняет пузырь целиком, а время получает подложку,
    иначе на светлом кадре его не видно. Ширина пузыря с подписью задаётся картинкой
    (280px) — текст не должен быть шире неё, см. правило ниже. */
-.msg-bubble .bubble-image { margin: -5px -11px 5px; border-radius: 13px; overflow: hidden; }
+.msg-bubble .bubble-image { margin: -6px -12px 6px; border-radius: 10px; border-top-left-radius: inherit; border-top-right-radius: inherit; overflow: hidden; }
 .msg-bubble:has(> .bubble-image):has(> .irc-text) { width: 280px; max-width: 100%; }
 .msg-bubble .bubble-file { margin: -1px -5px; }
 /* Сообщение, где нет ничего кроме файла: под время нет строки текста с распоркой,
@@ -2864,16 +2888,11 @@ html.dark .announcement-title { color: var(--danger); }
    внутри пузыря, поэтому место под него зарезервировано и ничего не сдвигается. */
 .irc-text.emoji-only { font-size: 4em; line-height: 1.15; }
 .irc-msg.emoji-msg .msg-bubble {
-  background: none; border-color: transparent;
-  transition: background .13s ease, border-color .13s ease;
+  background: none;
+  transition: background .13s ease;
 }
-.irc-msg.emoji-msg .msg-bubble:hover { background: var(--card-bg); border-color: var(--border); }
-.irc-msg.emoji-msg[data-mine] .msg-bubble:hover {
-  /* Акцент полупрозрачный — подкладываем цвет переписки, иначе сквозь пузырь
-     просвечивает узор фона */
-  background: linear-gradient(var(--accent-soft), var(--accent-soft)) var(--chat-bg);
-  border-color: var(--role-teal-border);
-}
+.irc-msg.emoji-msg .msg-bubble:hover { background: var(--card-bg); }
+.irc-msg.emoji-msg[data-mine] .msg-bubble:hover { background: color-mix(in srgb, var(--accent) 15%, var(--chat-bg)); }
 
 /* цвет цитаты — по автору цитируемого: своё цветом своего пузыря, чужое цветом тега */
 .irc-reply.reply-mine { border-left-color: var(--accent); }
@@ -2916,23 +2935,13 @@ html.dark .announcement-title { color: var(--danger); }
    Есть подпись, цитата или пересылка — всё идёт обычным порядком, снизу. */
 .msg-bubble.bubble-photo { padding: 0; }
 .msg-bubble.bubble-photo .bubble-image {
-  margin: 0; border-radius: 13px;
+  margin: 0; border-radius: inherit;
   /* ширину задаёт сама картинка: пузырь тут подстраивается под неё, а не наоборот */
   width: 280px; max-width: 100%;
 }
-/* Срезанный угол пузыря (см. .irc-tail .msg-bubble) должен повторяться и на
-   картинке внутри — инсет -1px на той же стороне, иначе у одиночных/последних
-   в серии фото-сообщений угол картинки не совпадает с углом пузыря под ней */
-.irc-msg.irc-tail .msg-bubble.bubble-photo .bubble-image { border-radius: 13px 13px 13px 4px; }
-.irc-msg.irc-tail[data-mine] .msg-bubble.bubble-photo .bubble-image { border-radius: 13px 13px 4px 13px; }
-/* то же самое — когда угол срезает не хвост серии, а разрыв вокруг реакции */
-.irc-msg.irc-reaction-split:not([data-mine]) .msg-bubble.bubble-photo .bubble-image { border-bottom-left-radius: 4px; }
-.irc-msg.irc-reaction-split[data-mine] .msg-bubble.bubble-photo .bubble-image { border-bottom-right-radius: 4px; }
-.irc-msg.irc-reaction-split-next:not([data-mine]) .msg-bubble.bubble-photo .bubble-image { border-top-left-radius: 4px; }
-.irc-msg.irc-reaction-split-next[data-mine] .msg-bubble.bubble-photo .bubble-image { border-top-right-radius: 4px; }
 .msg-bubble.bubble-photo > .irc-meta,
 .irc-msg[data-mine] .msg-bubble.bubble-photo > .irc-meta {
-  bottom: 8px; right: 8px;
+  bottom: 9px; right: 9px;
   background: rgba(0,0,0,.5); border-radius: 9px; padding: 2px 7px;
 }
 .msg-bubble.bubble-photo > .irc-meta .irc-time,
@@ -2952,22 +2961,20 @@ html.dark .announcement-title { color: var(--danger); }
 .reactions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
 .irc-msg:not([data-mine]) .reactions { margin-left: 41px; }
 
-/* Оформление бейджа — как у пузыря сообщения: скругление то же, что у его
-   срезанного угла (5px, см. .irc-tail .msg-bubble); чужая реакция (сам её
-   не ставил) выглядит как чужой пузырь, своя — как свой. */
+/* Реакция — капсула 24px: чужая на фоне поля поиска, своя с акцентной подсветкой */
 .reaction-btn {
   display: inline-flex; align-items: center; gap: 5px;
-  height: 22px; padding: 0 7px;
-  background: var(--bubble-bg);
+  height: 24px; padding: 0 8px;
+  background: var(--search-bg);
   border: 1px solid var(--border);
-  border-radius: 5px;
+  border-radius: 999px;
   color: var(--text);
   cursor: pointer; font-family: inherit; line-height: 1;
   transition: background .12s, border-color .12s;
 }
 .reaction-btn:hover { border-color: var(--accent-border); }
 .reaction-btn.mine {
-  background: linear-gradient(var(--accent-soft), var(--accent-soft)) var(--chat-bg);
+  background: var(--accent-soft);
   border-color: var(--role-teal-border);
 }
 
@@ -3249,6 +3256,12 @@ body.sb-dragging .sidebar, body.sb-dragging .acc-rail { transition: none !import
 }
 @container sb (max-width: 170px) {
   .chat-item, .pp-row { justify-content: center; gap: 0; padding-left: 0; padding-right: 0; }
+  /* Карточек в узком режиме нет: значки стоят столбцом, выбранный обозначен кольцом */
+  .chats-list .chat-item::before, .chats-list .chat-item::after, .chats-list .pp-row::before, .chats-list .pp-row::after,
+  .topics-panel .chat-item::before, .topics-panel .chat-item::after { display: none; }
+  .chats-list .chat-item, .chats-list .pp-row, .topics-panel .chat-item { padding: 7px 0; }
+  .chats-list .chat-item.cg-first, .chats-list .chat-item.cg-last, .chats-list .pp-row.cg-first, .chats-list .pp-row.cg-last,
+  .topics-panel .chat-item.cg-first, .topics-panel .chat-item.cg-last { padding-top: 7px; padding-bottom: 7px; }
   .chat-item .info, .pp-row .pp-name, .pp-row .pp-tag { display: none; }
   /* Значки — того же размера, что аватарки в баре учётных записей */
   .chat-item .av-md, .pp-row .pp-av { width: 44px; height: 44px; font-size: 15px; }
@@ -3288,7 +3301,7 @@ body.sb-dragging .sidebar, body.sb-dragging .acc-rail { transition: none !import
   .chat-list-section-label.sec-st1::after { background: var(--presence-away); }
   .chat-list-section-label.sec-st2::after { background: var(--muted); }
   .sidebar-tabbar { flex-direction: column; gap: 2px; padding: 6px 0; }
-  .sb-tab { width: 36px; height: 36px; }
+  .sb-tab { flex: none; width: 36px; height: 36px; }
 }
 
 /* Подсказка с названием у значка, пока подписи скрыты: то же оформление, что у подсказок бара учётных записей.

@@ -2353,7 +2353,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   initComposerSlot();
   scApplyComposerState(chatId);
   const sendBtn = document.getElementById('send-btn');
-  if (sendBtn) { sendBtn.style.background='var(--composer-bg)'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
+  if (sendBtn) sendBtn.classList.remove('ready');
   // Отметку о прочтении отправляем после загрузки: иначе сервер успевает снять
   // read_at раньше, чем посчитает первое непрочитанное, и разделитель пропадает
   // Показать скелетон пока грузятся сообщения
@@ -3871,9 +3871,7 @@ function _updateSendBtn(el) {
   const sendBtn = document.getElementById('send-btn');
   if (!sendBtn) return;
   const hasDraft = el.value.trim().length > 0;
-  sendBtn.style.background = hasDraft ? 'var(--accent)' : 'var(--composer-bg)';
-  sendBtn.style.color = hasDraft ? '#0c0e10' : 'var(--muted)';
-  sendBtn.style.boxShadow = 'none';
+  sendBtn.classList.toggle('ready', hasDraft);
 }
 
 // silent=true — восстановление черновика при открытии чата: не шлём typing собеседнику
@@ -4035,7 +4033,7 @@ async function sendOrEdit() {
   delete S.drafts[S.activeChatId]; saveDrafts(); // черновик отправлен — очищаем
   input.value=''; input.style.height='20px'; input.style.overflow='hidden';
   const sendBtn = document.getElementById('send-btn');
-  if (sendBtn) { sendBtn.style.background='var(--composer-bg)'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none'; }
+  if (sendBtn) sendBtn.classList.remove('ready');
 }
 
 function submitEdit() {
@@ -4276,7 +4274,7 @@ async function uploadFile(file) {
   _pendingAttachment = null;
   const token = ++_uploadToken;
   const sendBtn = document.getElementById('send-btn');
-  if (sendBtn) { sendBtn.style.background='var(--accent)'; sendBtn.style.color='#fff'; sendBtn.style.boxShadow='0 6px 16px var(--accent-shadow)'; }
+  if (sendBtn) sendBtn.classList.add('ready');
   showAttachUploading(isImage ? 'Изображение' : isVideo ? 'Видео' : 'Файл');
 
   let formData, endpoint, secretMeta = null;
@@ -4390,7 +4388,7 @@ function clearImagePreview() {
   if (bar) bar.style.display = 'none';
   const sendBtn = document.getElementById('send-btn');
   if (sendBtn && !document.getElementById('msg-input')?.value.trim()) {
-    sendBtn.style.background='var(--composer-bg)'; sendBtn.style.color='var(--muted)'; sendBtn.style.boxShadow='none';
+    sendBtn.classList.remove('ready');
   }
 }
 
@@ -6705,3 +6703,27 @@ async function forceInstallUpdate() {
     _wsSendUpdateProgress(0, 'error', result.error);
   }
 }
+
+// ── Секции списка чатов — карточки ──
+// У первой и последней строки группы свой угол и отступ (cg-first / cg-last), у подписи секции —
+// число строк (data-n). Расставляется при любом изменении списка, чтобы не зависеть от того, кто его строит.
+function markChatGroups(list) {
+  if (!list) return;
+  let grp = [], lbl = null;
+  const flush = () => {
+    grp.forEach((r, i) => { r.classList.toggle('cg-first', i === 0); r.classList.toggle('cg-last', i === grp.length - 1); });
+    if (lbl && grp.length) lbl.dataset.n = grp.length;
+    grp = []; lbl = null;
+  };
+  [...list.children].forEach(el => {
+    if (el.classList.contains('chat-list-section-label')) { flush(); lbl = el; }
+    else if (el.matches('.chat-item, .pp-row')) grp.push(el);
+  });
+  flush();
+}
+(function initChatGroups() {
+  const run = () => { markChatGroups(document.getElementById('chats-list')); markChatGroups(document.getElementById('topics-panel')); };
+  const obs = new MutationObserver(run);
+  const start = () => { ['chats-list', 'topics-panel'].forEach(id => { const el = document.getElementById(id); if (el) obs.observe(el, { childList: true }); }); run(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();

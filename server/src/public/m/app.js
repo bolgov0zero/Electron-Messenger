@@ -1488,7 +1488,7 @@ function bubbleHtml(m, chat, pos = {}) {
   const att = m.attachment;
   const bareMedia = !m.text && !m.reply_to_id && !!att?.url && !att.expired
     && !!(att.mime?.startsWith('image/') || att.mime?.startsWith('video/'));
-  const posCls = (isTail ? ' tail' : '') + (split ? ' split' : '') + (splitNext ? ' split-next' : '');
+  const posCls = (isFirst ? ' first' : '') + (isTail ? ' tail' : '') + (split ? ' split' : '') + (splitNext ? ' split-next' : '');
   const bubbleOnly = `<div class="bubble ${mine ? 'out' : 'in'}${posCls}${bareMedia ? ' bubble-photo' : ''}${emojiOnly ? ' emoji-msg' : ''}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}">
     ${quote}${forwardHtml}${attachmentHtml(m.attachment)}${text}
     <div class="bubble-meta">${m.edited_at ? 'изм. ' : ''}${mine ? renderTicks(m.status) : ''}${fmtTime(m.sent_at)}</div>

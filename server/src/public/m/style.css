@@ -390,21 +390,20 @@ html.m-desktop .screen { display: none !important; }
 /* Свой контейнер на каждый день — граница, за которую «прилипший» бейдж даты
    выходит при прокрутке (иначе бейджи разных дней подменяли бы друг друга не
    там, где нужно); как в /chat и в клиенте. */
-.day-group { display: flex; flex-direction: column; gap: 8px; }
-.bubble { position: relative; max-width: 78%; padding: 8px 11px; border-radius: 16px; font-size: 14.5px; line-height: 1.4; word-wrap: break-word; }
-.bubble.in { align-self: flex-start; background: var(--card-bg); border: 1px solid var(--border); }
-/* Акцент полупрозрачный — подкладываем непрозрачный фон переписки под него,
-   иначе сквозь свой пузырь просвечивал бы узор фона (как в /chat) */
-.bubble.out { align-self: flex-end; background: linear-gradient(rgba(var(--accent-rgb),.18), rgba(var(--accent-rgb),.18)) var(--chat-bg); border: 1px solid rgba(var(--accent-rgb),.28); }
-/* Срезанный угол — только у последнего пузыря серии (как в /chat и в клиенте),
-   а не у каждого сообщения. Если на НЕ последнее сообщение серии поставили
-   реакцию — между ним и следующим пузырём встаёт бейдж, и угол того же радиуса
-   срезается с обеих сторон разрыва: снизу у сообщения с реакцией, сверху — у
-   следующего за ним. */
-.bubble.in.tail, .bubble.in.split { border-bottom-left-radius: 4px; }
-.bubble.out.tail, .bubble.out.split { border-bottom-right-radius: 4px; }
-.bubble.in.split-next { border-top-left-radius: 4px; }
-.bubble.out.split-next { border-top-right-radius: 4px; }
+.day-group { display: flex; flex-direction: column; gap: 2px; }
+/* между сериями отступ прежний (2 + 6 = 8px), внутри серии пузыри стоят вплотную */
+.day-group > .bubble.first, .day-group > :has(> .bubble.first), .day-group > :has(> .msg-col > .bubble.first) { margin-top: 6px; }
+.bubble { position: relative; max-width: 78%; padding: 9px 12px; border-radius: 16px; font-size: 14.5px; line-height: 1.4; word-wrap: break-word; }
+.bubble.in { align-self: flex-start; background: var(--card-bg); }
+/* Цвет переписки под акцентом сплошной, поэтому сквозь свой пузырь не просвечивает узор фона */
+.bubble.out { align-self: flex-end; background: color-mix(in srgb, var(--accent) 15%, var(--chat-bg)); }
+/* Серия: углы, которыми соседние пузыри стыкуются, уменьшены до 5px со стороны автора
+   (как в /chat и в клиенте). У последнего пузыря серии среза нет, а реакция между сообщениями
+   отдельного среза угла не требует */
+.bubble.in:not(.tail) { border-bottom-left-radius: 5px; }
+.bubble.in:not(.first) { border-top-left-radius: 5px; }
+.bubble.out:not(.tail) { border-bottom-right-radius: 5px; }
+.bubble.out:not(.first) { border-top-right-radius: 5px; }
 /* Размер текста сообщений — настройка меняет только сам текст (не время, не
    цитату, не имя отправителя), как в /chat: там же только .irc-text — 1rem */
 /* pre-wrap — иначе переносы строк в тексте (в т.ч. в HTML от ботов) схлопывались
@@ -414,14 +413,14 @@ html.m-desktop .screen { display: none !important; }
 .bubble-text.emoji-only { display: block; font-size: 42px; line-height: 1.15; }
 /* Только фон/рамку снимаем — паддинг остаётся тем же, что у обычного пузыря,
    иначе расчёт места под время (::after ниже) съехал бы (как в /chat) */
-.bubble.emoji-msg { background: none; border-color: transparent; }
+.bubble.emoji-msg { background: none; }
 /* Подсветка сообщения при переходе из поиска */
 @keyframes bubble-flash { 0%, 100% { box-shadow: none; } 30% { box-shadow: 0 0 0 3px var(--accent); } }
 .bubble-flash { animation: bubble-flash 1.2s ease; }
 .msg-row { display: flex; align-items: flex-end; gap: 6px; align-self: flex-start; max-width: 86%; }
 .msg-col { display: flex; flex-direction: column; min-width: 0; max-width: 100%; align-items: flex-start; }
 .msg-row .bubble { max-width: 100%; }
-.msg-av { width: 26px; height: 26px; font-size: 10px; border-radius: 9px; flex-shrink: 0; margin-bottom: 2px; }
+.msg-av { width: 28px; height: 28px; font-size: 10.5px; border-radius: 50%; flex-shrink: 0; }
 /* Личный чат и свои сообщения — без строки аватара; обёртка только держит
    реакции сиблингом под пузырём с тем же выравниванием, что и сам пузырь */
 /* max-width — здесь, а не на самом .bubble: проценты у .bubble считались бы от
@@ -445,7 +444,7 @@ html.m-desktop .screen { display: none !important; }
    место в конце текста, поэтому обтекание работает, хотя сам блок вне потока.
    Реакции теперь всегда отдельной строкой под пузырём (как в /chat и в
    клиенте), а не внутри него — на этот резерв они больше не влияют. */
-.bubble-meta { position: absolute; right: 11px; bottom: 8px; display: flex; align-items: center; gap: 3px; font-size: 10.5px; color: var(--muted); }
+.bubble-meta { position: absolute; right: 12px; bottom: 9px; display: flex; align-items: center; gap: 3px; font-size: 10.5px; color: var(--muted); }
 .bubble-meta svg { flex-shrink: 0; }
 .bubble-text::after { content: ''; display: inline-block; width: 42px; }
 .bubble.out .bubble-text::after { width: 52px; }
@@ -476,14 +475,8 @@ html.m-desktop .screen { display: none !important; }
 .bubble-video-wrap { position: relative; cursor: pointer; }
 .bubble-play { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 44px; height: 44px; border-radius: 50%; background: rgba(0,0,0,.5); color: #fff; display: flex; align-items: center; justify-content: center; padding-left: 3px; }
 .bubble.bubble-photo { padding: 0; width: 280px; max-width: 100%; }
-.bubble.bubble-photo .bubble-media { margin-bottom: 0; border-radius: 13px; }
-.bubble.in.bubble-photo.tail .bubble-media { border-radius: 13px 13px 13px 4px; }
-.bubble.out.bubble-photo.tail .bubble-media { border-radius: 13px 13px 4px 13px; }
-.bubble.in.bubble-photo.split .bubble-media { border-bottom-left-radius: 4px; }
-.bubble.out.bubble-photo.split .bubble-media { border-bottom-right-radius: 4px; }
-.bubble.in.bubble-photo.split-next .bubble-media { border-top-left-radius: 4px; }
-.bubble.out.bubble-photo.split-next .bubble-media { border-top-right-radius: 4px; }
-.bubble.bubble-photo > .bubble-meta { background: rgba(0,0,0,.5); border-radius: 8px; padding: 2px 7px; color: #fff; }
+.bubble.bubble-photo .bubble-media { margin-bottom: 0; border-radius: inherit; }
+.bubble.bubble-photo > .bubble-meta { right: 9px; bottom: 9px; background: rgba(0,0,0,.5); border-radius: 8px; padding: 2px 7px; color: #fff; }
 .bubble-file { display: flex; align-items: center; gap: 10px; padding: 4px 2px; cursor: pointer; min-width: 160px; }
 .bubble-file-ico { width: 38px; height: 38px; border-radius: 10px; background: var(--search-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--accent); }
 .bubble-file-name { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
@@ -495,8 +488,8 @@ html.m-desktop .screen { display: none !important; }
    уже стоит с нужным отступом от аватара; в .msg-wrap выравнивание берётся
    готовым у обёртки (wrap-in/wrap-out). */
 .bubble-reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-.reaction-pill { display: flex; align-items: center; gap: 3px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; height: 21px; padding: 0 6px; font-size: 12px; cursor: pointer; }
-.reaction-pill.mine { border-color: rgba(var(--accent-rgb),.4); background: linear-gradient(rgba(var(--accent-rgb),.15), rgba(var(--accent-rgb),.15)) var(--chat-bg); }
+.reaction-pill { display: flex; align-items: center; gap: 4px; background: var(--search-bg); border: 1px solid var(--border); border-radius: 999px; height: 24px; padding: 0 8px; font-size: 12px; cursor: pointer; }
+.reaction-pill.mine { border-color: rgba(var(--accent-rgb),.4); background: rgba(var(--accent-rgb),.15); }
 .reaction-pill b { font-size: 11px; font-weight: 700; color: var(--text2, var(--muted)); }
 /* ── Панель смайлов (общая для композера и выбора реакции) ── */
 /* Оверлей поверх переписки, а не часть флекс-колонки: раньше панель раздвигала
