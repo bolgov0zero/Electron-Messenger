@@ -64,12 +64,8 @@ app.get(['/m', '/m/', '/m/index.html'], (req, res) => {
   }
 });
 app.use('/m', express.static(path.join(__dirname, 'public/m')));
-// /smile — тестовая страница анимированных смайлов (Lottie): без входа, ничего не пишет на сервер
-app.get(['/smile', '/smile/', '/smile/index.html'], (req, res) => {
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-  res.sendFile(path.join(__dirname, 'public/smile/index.html'));
-});
-app.use('/smile', express.static(path.join(__dirname, 'public/smile')));
+// Файлы модулей (набор анимаций и т.п.). Клиенты добавляют ?v=<версия набора>, поэтому кэшировать можно надолго
+app.use('/modules', express.static(path.join(__dirname, 'public/modules'), { maxAge: '30d' }));
 // Имя файла — timestamp+случайная строка, при новой загрузке никогда не переиспользуется,
 // поэтому старое имя гарантированно не сменит содержимое: можно кэшировать надолго
 // Зашифрованные файлы секретных чатов — только для участников чата, без публичного доступа
@@ -95,6 +91,9 @@ uploadRouter.startCleanupJob();
 const adminRouter = require('./routes/admin');
 app.use('/api/admin', adminRouter);
 adminRouter.startBackupSchedule();
+const modulesRouter = require('./routes/modules');
+app.use('/api/modules', modulesRouter.user);
+app.use('/api/admin/modules', modulesRouter.admin);
 app.use('/api/push',  require('./routes/push'));
 app.use('/api/webhooks', require('./routes/webhooks'));
 app.use('/api/announcements', require('./routes/announcements'));

@@ -1147,6 +1147,8 @@ function csSections() {
     { k: 'appearance', label: 'Внешний вид', icon: CS_I.palette, desc: 'Тема, цвет, фон переписки и размер текста',
       meta: () => `${s.theme === 'dark' ? 'Тёмная' : 'Светлая'} · ${ACCENTS[currentAccent()].name.toLowerCase()}` },
   ];
+  list.push({ k: 'modules', label: 'Модули', icon: CS_I.puzzle, desc: 'Дополнительные возможности клиента',
+    meta: () => { const st = window.Animoji ? Animoji.state() : null; return !st || !st.available ? 'нет доступных' : st.on ? 'включён 1 модуль' : '1 модуль доступен'; } });
   if (csIsApp()) list.push({ k: 'update', label: 'Обновление', icon: CS_I.upd, desc: 'Версия приложения и новые релизы',
     meta: () => _updateDownloadUrl && _updateVersion ? `есть версия ${_updateVersion}` : CS.version ? `версия ${CS.version}` : 'проверка обновлений',
     dot: () => !!_updateDownloadUrl });
@@ -1344,7 +1346,85 @@ function csPaneUpdate() {
       : `${ver}<p class="cs-hint">Приложение само проверяет обновления после запуска и дальше каждые два часа.</p>`}
     <div class="cs-copy">2026 © bolgov0zero</div>`;
 }
-const CS_PANES = { profile: csPaneProfile, general: csPaneGeneral, appearance: csPaneAppearance, update: csPaneUpdate };
+// ── МОДУЛЬ «АНИМИРОВАННЫЕ СМАЙЛЫ» ──
+// Состояние и правила проигрывания живут в animoji.js (общий для всех клиентов). Здесь только оболочка:
+// настройка «Модули», переключатель внизу панели смайлов и окно загрузки в Electron.
+// Модуль есть у пользователя, только пока его включил администратор; «включено у меня» хранится на устройстве.
+CS_I.puzzle = csSvg('<path d="M10 4a2 2 0 1 1 4 0v1h3a1 1 0 0 1 1 1v3h-1a2 2 0 1 0 0 4h1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 1 0-4 0v1H7a1 1 0 0 1-1-1v-3h1a2 2 0 1 0 0-4H6V6a1 1 0 0 1 1-1h3z"/>');
+let _amVer = null;   // версия приложения (Electron) для журнала модуля
+function animojiInit() {
+  if (!window.Animoji || animojiInit.done) return;
+  animojiInit.done = true;
+  if (csIsApp()) window.electron?.getVersion?.().then(v => { _amVer = v || null; }).catch(() => {});
+  Animoji.init({
+    client: csIsApp() ? 'electron' : 'web',
+    version: () => _amVer || CS.version || (csIsApp() ? 'electron' : 'web'),
+    base: () => `${httpProto()}://${S.server}`,
+    token: () => S.token,
+    lottieSrc: csIsApp() ? 'lottie.min.js' : '/shared/lottie.min.js',
+  });
+  Animoji.subscribe(() => { animojiUi(); if (_sidebarTab === 'settings') csRefresh(); });
+}
+// Полоса внизу панели смайлов: та же настройка, что в «Настройки → Модули»
+function animojiUi() {
+  const el = document.getElementById('ep-anim');
+  if (!el || !window.Animoji) return;
+  const st = Animoji.state();
+  el.hidden = !st.available;
+  el.innerHTML = st.available
+    ? `<div class="ep-anim-l"><b>Анимация</b><span>в сообщениях и реакциях, в панели смайлы неподвижны</span></div>${csTg(st.on, 'csAnimoji()', 'Анимация смайлов')}`
+    : '';
+}
+function csAnimoji() {
+  const st = Animoji.state();
+  if (st.on) { Animoji.setOn(false); return; }
+  if (csIsApp()) animojiDownload(); else Animoji.setOn(true);
+}
+function csPaneModules() {
+  const st = window.Animoji ? Animoji.state() : { available: false };
+  if (!st.available) {
+    return `<div class="cs-stub"><div class="cs-stub-i">${CS_I.puzzle}</div><b>Нет доступных модулей</b>
+      <span>Администратор пока не включил дополнительные возможности. Когда они появятся, их можно будет включить здесь.</span></div>`;
+  }
+  const mb = st.info?.bytes ? Math.round(st.info.bytes / 1048576) : 0;
+  return `<div class="cs-gt">Доступные модули</div>
+    <div class="cs-g"><div class="cs-r"><div class="cs-l"><b>${esc(st.info?.title || 'Анимированные смайлы')}</b>
+      <span>Смайлы и жесты оживают в сообщениях и реакциях. Нажмите на смайл в сообщении, чтобы увидеть анимацию ещё раз.${csIsApp() && mb ? ` При включении загружается около ${mb} МБ.` : ''}</span></div>
+      ${csTg(st.on, 'csAnimoji()', 'Анимированные смайлы')}</div></div>
+    ${st.on && !csIsApp() ? '<p class="cs-hint">Смайлы оживают только в переписке: в сообщениях и реакциях. В панели смайлов они остаются неподвижными. Анимации подгружаются по мере показа.</p>' : ''}`;
+}
+// Окно загрузки (только Electron): прогресс, пояснение, после загрузки кнопка ОК
+function animojiDownload() {
+  const info = Animoji.state().info || {};
+  const total = info.count || 0, mbTotal = info.bytes ? (info.bytes / 1048576).toFixed(1).replace('.', ',') : '—';
+  const ov = document.createElement('div'); ov.className = 'am-dlg-bg';
+  const note = '<p>Смайлы оживают <b>только в переписке</b>: в сообщениях и реакциях. В панели смайлов они остаются неподвижными. Нажмите на смайл в сообщении, чтобы увидеть анимацию ещё раз.</p>';
+  const paint = (html) => { ov.innerHTML = `<div class="am-dlg" role="dialog" aria-label="Анимированные смайлы"><div class="am-dlg-ic">😀</div><h4>Анимированные смайлы</h4>${html}</div>`; };
+  const close = () => ov.remove();
+  const run = async () => {
+    paint(`<div class="am-dlg-st">Загружаем анимации: 0 из ${total}</div><div class="am-prog"><i style="width:0%"></i></div><div class="am-pmeta"><span>0 из ${mbTotal} МБ</span><span>0%</span></div>${note}<div class="am-btns"><button class="am-btn" id="am-cancel">Отмена</button><button class="am-btn pri" disabled>ОК</button></div>`);
+    ov.querySelector('#am-cancel').onclick = () => { Animoji.cancelDownload(); };
+    const r = await Animoji.download(p => {
+      const pct = total ? Math.round(p.done / total * 100) : 0;
+      const st = ov.querySelector('.am-dlg-st'); if (!st) return;
+      st.textContent = `Загружаем анимации: ${p.done} из ${p.total}`;
+      ov.querySelector('.am-prog i').style.width = pct + '%';
+      const meta = ov.querySelectorAll('.am-pmeta span'); meta[0].textContent = `${(p.bytes / 1048576).toFixed(1).replace('.', ',')} из ${mbTotal} МБ`; meta[1].textContent = pct + '%';
+    }).catch(e => ({ ok: false, failed: total, total, err: e.message }));
+    if (r.cancelled) { close(); return; }
+    if (r.ok) {
+      paint(`<div class="am-ok">${CS_I.check || '✓'} Готово. Анимации загружены и работают без сети</div><div class="am-prog"><i style="width:100%"></i></div>${note}<div class="am-btns"><button class="am-btn pri" id="am-ok">ОК</button></div>`);
+      ov.querySelector('#am-ok').onclick = () => { Animoji.setOn(true); close(); };
+    } else {
+      paint(`<div class="am-err">Не удалось загрузить анимации: нет соединения с сервером. Уже загруженное сохранено, остальное подгрузится по мере показа.</div><div class="am-btns"><button class="am-btn" id="am-close">Закрыть</button><button class="am-btn pri" id="am-retry">Повторить</button></div>`);
+      ov.querySelector('#am-close').onclick = () => { Animoji.setOn(true); close(); };
+      ov.querySelector('#am-retry').onclick = run;
+    }
+  };
+  document.body.appendChild(ov);
+  run();
+}
+const CS_PANES = { profile: csPaneProfile, general: csPaneGeneral, appearance: csPaneAppearance, modules: csPaneModules, update: csPaneUpdate };
 
 function csNavHtml() {
   return csSections().map(s => `<button type="button" class="cs-sn" aria-current="${CS.sec === s.k ? 'page' : 'false'}" onclick="csGo('${s.k}')">
@@ -2096,6 +2176,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
             </div>
             <div class="ep-tabs" id="ep-tabs"></div>
             <div class="ep-scroll" id="ep-scroll" onscroll="syncEmojiTabs()"></div>
+            <div class="ep-anim" id="ep-anim" hidden></div>
           </div>
           <div class="composer-main">
             <button class="composer-icon-btn composer-attach" title="Прикрепить файл" onclick="pickFile()">
@@ -2648,6 +2729,8 @@ function mergeDayGroups(container) {
 function renderMessages(msgs) {
   const container = document.getElementById('messages');
   if (!container) return;
+  window.Animoji?.attach(container);
+  if (window.Animoji) animojiUi();
   const chat = S.chats.find(c=>c.id===S.activeChatId);
   const isChatGroup = chat?.type==='group' || chat?.type==='room';
   msgs.forEach(m => { if (m.reactions?.length) S.reactions[m.id] = m.reactions; });
@@ -2830,47 +2913,7 @@ function calcEmojiInkShift() {
 document.fonts?.ready?.then(calcEmojiInkShift).catch(() => {});
 calcEmojiInkShift();
 
-// Проверка, что вшитый шрифт смайлов вообще рисуется.
-//
-// Он в формате COLRv1, и не всякий браузер умеет его показывать (Safari — только
-// с 16.4). Беда в том, что при неумении не происходит подмены на системный
-// шрифт: браузер видит, что шрифт подошёл по коду символа, берёт его — и не
-// рисует ничего. Вместо смайлов пустые места. Поэтому проверяем не по наличию
-// шрифта, а по факту: рисуем смайл только этим шрифтом и смотрим, появились ли
-// на холсте цветные точки. Не появились — снимаем шрифт со стека, и возвращаются
-// системные смайлы. Они разные на разных системах, но это несравнимо лучше пустоты.
-async function checkEmojiFont() {
-  // Рисует ли браузер этот набор — проверяем на деле: кладём смайл на холст
-  // только этим семейством и считаем цветные точки. У рабочего набора их около
-  // 1800, у нерабочего ноль, так что порог можно ставить с большим запасом.
-  const paints = async (family) => {
-    try {
-      await document.fonts.load('64px "' + family + '"', '\u{1F600}');
-      const cv = document.createElement('canvas');
-      cv.width = cv.height = 64;
-      const ctx = cv.getContext('2d', { willReadFrequently: true });
-      ctx.font = '48px "' + family + '"';
-      ctx.textBaseline = 'top';
-      ctx.fillText('\u{1F600}', 0, 0);
-      const d = ctx.getImageData(0, 0, 64, 64).data;
-      let colored = 0;
-      for (let i = 0; i < d.length; i += 4) {
-        if (d[i + 3] < 20) continue;
-        if (Math.abs(d[i] - d[i + 1]) > 25 || Math.abs(d[i + 1] - d[i + 2]) > 25) colored++;
-      }
-      return colored >= 40;
-    } catch { return false; }
-  };
-  // Основной набор — COLRv1, его понимает Chromium, а значит и наш Electron
-  if (await paints('Noto Color Emoji')) return;
-  // Не понял — пробуем OpenType-SVG, его понимает Safari
-  document.documentElement.classList.add('emoji-svg');
-  if (await paints('Noto Emoji SVG')) return;
-  // Ни тот, ни другой — возвращаем системные смайлы
-  document.documentElement.classList.remove('emoji-svg');
-  document.documentElement.classList.add('no-emoji-font');
-}
-checkEmojiFont();
+// Проверка шрифта смайлов и выбор набора (COLRv1, sbix или системный) — в emoji-font.js
 // Шрифт смайлов вшит и подгружается асинхронно: первый замер уходит по системному,
 // поэтому повторяем его, когда шрифт готов, — иначе смайлик в плашке реакции
 // встанет по чужим метрикам
@@ -4987,6 +5030,7 @@ function connectWS() {
     if (data.type==='pong') { ws._pongOk = true; return; }
 
     if (data.type==='connected') { S.editLimit = data.edit_time_limit || 120; return; }
+    if (data.type==='modules_changed') { window.Animoji?.refresh(); return; }
     if (data.type==='secret_key_ready') { scTick(data.chat_id); return; }
 
     if (data.type==='message') {
@@ -5306,6 +5350,7 @@ function connectWS() {
     }
   };
   ws.onopen = () => {
+    animojiInit(); window.Animoji?.refresh();
     S.wsRetry = 0;
     hideServerToast();
     loadChats();

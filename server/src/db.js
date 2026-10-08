@@ -375,6 +375,42 @@ try {
   }
 } catch {}
 
+// Модули — необязательные возможности (первый: «Анимированные смайлы»). modules хранит только
+// переключатель на сервере: пока админ его не включил, у пользователей модуля нет вовсе.
+// module_devices — «включено у меня» по каждому устройству (клиент сам хранит свой выбор,
+// сюда он только сообщает, нужно для статистики). module_events — журнал: кто и когда включил,
+// выключил, начал загрузку или получил ошибку; хранится год (см. routes/modules.js).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS modules (
+    key TEXT PRIMARY KEY,
+    enabled INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER,
+    updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+  );
+  CREATE TABLE IF NOT EXISTS module_devices (
+    module TEXT NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    device_id TEXT NOT NULL,
+    client TEXT,
+    version TEXT,
+    enabled INTEGER NOT NULL DEFAULT 0,
+    updated_at INTEGER DEFAULT (unixepoch()),
+    PRIMARY KEY (module, user_id, device_id)
+  );
+  CREATE TABLE IF NOT EXISTS module_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    module TEXT NOT NULL,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    device_id TEXT,
+    client TEXT,
+    version TEXT,
+    event TEXT NOT NULL,
+    detail TEXT,
+    created_at INTEGER DEFAULT (unixepoch())
+  );
+  CREATE INDEX IF NOT EXISTS idx_module_events_created ON module_events(module, created_at);
+`);
+
 // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)
 const sysExists = db.prepare("SELECT id FROM users WHERE username = '__system__'").get();
 if (!sysExists) {

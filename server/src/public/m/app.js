@@ -1288,6 +1288,42 @@ function currentTheme() {
   const cl = document.documentElement.classList;
   return cl.contains('night') ? 'night' : cl.contains('dark') ? 'dark' : 'light';
 }
+// ── МОДУЛЬ «АНИМИРОВАННЫЕ СМАЙЛЫ» ──
+// Правила проигрывания и состояние в /shared/animoji.js (общий для всех клиентов). Здесь оболочка: шторка «Модули»
+// и переключатель внизу панели смайлов. Модуль есть у пользователя, только пока его включил администратор;
+// «включено у меня» хранится на устройстве. Анимации подгружаются по мере показа.
+function animojiInitM() {
+  if (!window.Animoji || animojiInitM.done) return;
+  animojiInitM.done = true;
+  Animoji.init({ client: 'mobile', version: () => 'mobile', base: () => `${httpProto()}://${S.server}`, token: () => S.token, lottieSrc: '/shared/lottie.min.js' });
+  Animoji.subscribe(() => { animojiUiM(); if (document.getElementById('sheet-bg').classList.contains('open') && document.getElementById('modules-sheet')) openSheet(modulesSheetHtml()); });
+}
+const mTg = (on, fn, label) => `<button type="button" class="m-tg" role="switch" aria-checked="${on}" aria-label="${label}" onclick="${fn}"></button>`;
+function animojiUiM() {
+  const el = document.getElementById('ep-anim');
+  if (!el || !window.Animoji) return;
+  const st = Animoji.state();
+  el.hidden = !st.available;
+  el.innerHTML = st.available
+    ? `<div class="ep-anim-l"><b>Анимация</b><span>в сообщениях и реакциях, в панели смайлы неподвижны</span></div>${mTg(st.on, 'mAnimoji()', 'Анимация смайлов')}`
+    : '';
+}
+function mAnimoji() { Animoji.setOn(!Animoji.state().on); }
+function modulesSheetHtml() {
+  const st = window.Animoji ? Animoji.state() : { available: false };
+  if (!st.available) {
+    return `<div id="modules-sheet"><div class="sheet-title">Модули</div><div class="m-stub"><b>Нет доступных модулей</b>
+      <span>Администратор пока не включил дополнительные возможности. Когда они появятся, их можно будет включить здесь.</span></div></div>`;
+  }
+  return `<div id="modules-sheet"><div class="sheet-title">Модули</div>
+    <div class="set-block" style="border-top:0;margin-top:0;padding-top:0">
+      <div class="m-mod"><div class="m-mod-l"><b>${esc(st.info?.title || 'Анимированные смайлы')}</b>
+        <span>Смайлы и жесты оживают в сообщениях и реакциях. Нажмите на смайл в сообщении, чтобы увидеть анимацию ещё раз.</span></div>${mTg(st.on, 'mAnimoji()', 'Анимированные смайлы')}</div>
+      ${st.on ? '<div class="m-hint">Смайлы оживают только в переписке: в сообщениях и реакциях. В панели смайлов они остаются неподвижными. Анимации подгружаются по мере показа.</div>' : ''}
+    </div></div>`;
+}
+function openModulesSheet() { openSheet(modulesSheetHtml()); }
+
 function appearanceSheetHtml() {
   const theme = currentTheme();
   const themeSeg = [['light', 'Светлая'], ['dark', 'Тёмная'], ['night', 'Ночная']];
@@ -1452,7 +1488,7 @@ function bubbleHtml(m, chat, pos = {}) {
       </div>
     </div>`;
   }
-  if (m.deleted) return `<div class="bubble ${mine ? 'out' : 'in'}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}"><span class="bubble-deleted">Сообщение удалено</span></div>`;
+  if (m.deleted) return `<div class="bubble ${mine ? 'out' : 'in'}" data-msg-id="${m.id}" data-sent-at="${m.sent_at}" data-mine="${mine ? 1 : 0}"><span class="bubble-deleted">Сообщение удалено</span></div>`;
   const isGroupish = chat && (chat.type === 'group' || chat.type === 'room');
   // Аватар и имя — только у первого/последнего сообщения серии (как в /chat и
   // в клиенте), а не у каждого сообщения. Строку всё равно оборачиваем в
@@ -1488,7 +1524,7 @@ function bubbleHtml(m, chat, pos = {}) {
   const bareMedia = !m.text && !m.reply_to_id && !!att?.url && !att.expired
     && !!(att.mime?.startsWith('image/') || att.mime?.startsWith('video/'));
   const posCls = (isFirst ? ' first' : '') + (isTail ? ' tail' : '') + (split ? ' split' : '') + (splitNext ? ' split-next' : '');
-  const bubbleOnly = `<div class="bubble ${mine ? 'out' : 'in'}${posCls}${bareMedia ? ' bubble-photo' : ''}${emojiOnly ? ' emoji-msg' : ''}" data-msg-id="${m.id}" data-mine="${mine ? 1 : 0}">
+  const bubbleOnly = `<div class="bubble ${mine ? 'out' : 'in'}${posCls}${bareMedia ? ' bubble-photo' : ''}${emojiOnly ? ' emoji-msg' : ''}" data-msg-id="${m.id}" data-sent-at="${m.sent_at}" data-mine="${mine ? 1 : 0}">
     ${quote}${forwardHtml}${attachmentHtml(m.attachment)}${text}
     <div class="bubble-meta">${m.edited_at ? 'изм. ' : ''}${mine ? renderTicks(m.status) : ''}${fmtTime(m.sent_at)}</div>
   </div>`;
@@ -1528,6 +1564,7 @@ function renderTicks(status) {
 const GROUP_WINDOW_SEC = 60;
 function renderMessages(mode) {
   const container = document.getElementById('messages');
+  window.Animoji?.attach(container);
   const keepScroll = mode === true;
   const smart = mode === 'smart';
   const chat = S.chats.find(c => c.id === S.activeChatId);
@@ -2537,12 +2574,14 @@ function connectWS() {
   if (prev && prev.readyState <= 1) { try { prev.close(); } catch {} }
   const ws = new WebSocket(`${wsProto()}://${S.server}/ws?token=${S.token}`);
   S.ws = ws;
+  animojiInitM(); window.Animoji?.refresh();
 
   ws.onmessage = e => {
     if (ws !== S.ws) return;
     let data; try { data = JSON.parse(e.data); } catch { return; }
     // Администратор восстановил чаты из копии: данные на экране устарели, берём заново
     if (data.type === 'data_restored') { location.reload(); return; }
+    if (data.type === 'modules_changed') { window.Animoji?.refresh(); return; }
 
     if (data.type === 'connected') {
       S.editLimit = data.edit_time_limit || 120;

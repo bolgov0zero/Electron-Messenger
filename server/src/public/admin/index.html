@@ -765,6 +765,24 @@ tbody tr:hover td{background:var(--c-surface2)}
 .empty-state p{font-size:13px;font-weight:500;color:var(--c-text2)}
 .empty-state small{font-size:11px;margin-top:4px;display:block}
 
+/* ── МОДУЛИ ── */
+.mdl-card{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:16px 18px}
+.mdl-ico{width:42px;height:42px;border-radius:12px;background:var(--c-primary-dim);color:var(--c-primary);display:grid;place-items:center;font-size:22px;flex-shrink:0}
+.mdl-tx{flex:1;min-width:220px}.mdl-tx b{display:block;font-size:14px}.mdl-tx span{display:block;font-size:12px;color:var(--c-text2);margin-top:1px;max-width:64ch;line-height:1.45}
+.mdl-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border-top:1px solid var(--c-border)}
+.mdl-stats>div{padding:12px 18px;border-right:1px solid var(--c-border)}.mdl-stats>div:last-child{border-right:0}
+.mdl-stats b{display:block;font-size:19px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.mdl-stats span{font-size:11.5px;color:var(--c-muted)}
+.mdl-empty{padding:22px;text-align:center;color:var(--c-muted);font-size:12.5px}
+.modal.mdl-log{width:min(780px,calc(100vw - 24px))}
+.mdl-filters{display:flex;flex-wrap:wrap;gap:8px;padding:10px 20px;border-bottom:1px solid var(--c-border)}
+.mdl-filters select{height:30px;font-size:12px;min-width:0;background-color:var(--c-surface2);color:var(--c-text);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:0 26px 0 10px;font-family:var(--f-ui)}
+.mdl-filters .ux-search{flex:1;min-width:170px}
+.mdl-tw{padding:0;overflow:auto}
+.mdl-tw table{width:100%;border-collapse:collapse;min-width:560px}
+.mdl-tw th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted);padding:9px 20px;background:var(--c-surface2);position:sticky;top:0}
+.mdl-tw td{padding:9px 20px;border-top:1px solid var(--c-border);font-size:12.5px;white-space:nowrap}
+.mdl-tw td.tm{color:var(--c-muted);font-variant-numeric:tabular-nums}
+.mdl-foot{align-items:center;font-size:11.5px;color:var(--c-muted)}
 /* ── MODAL ── */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .modal{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);width:480px;max-height:88vh;display:flex;flex-direction:column;box-shadow:var(--shadow-xl);overflow:hidden}
@@ -1834,6 +1852,10 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg>
           <span class="lb">Релизы</span>
         </div>
+        <div class="nav-item" onclick="nav('modules')" data-page="modules">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4a2 2 0 1 1 4 0v1h3a1 1 0 0 1 1 1v3h-1a2 2 0 1 0 0 4h1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 1 0-4 0v1H7a1 1 0 0 1-1-1v-3h1a2 2 0 1 0 0-4H6V6a1 1 0 0 1 1-1h3z"/></svg>
+          <span class="lb">Модули</span>
+        </div>
         <div class="nav-item" onclick="nav('audit')" data-page="audit">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span class="lb">Аудит-лог</span>
@@ -1995,6 +2017,24 @@ return 'OK';</pre>
 <!-- Окна разделов «Комнаты» и «Чаты и группы»: содержимое рисует скрипт -->
 <div class="modal-bg" id="modal-room"><div class="modal ua-modal fm" id="rm-form" role="dialog" aria-modal="true"></div></div>
 <div class="modal-bg" id="modal-chat-members"><div class="modal ua-modal ua-sm" id="cm-form" role="dialog" aria-modal="true"></div></div>
+
+<!-- Журнал модуля -->
+<div class="modal-bg" id="modal-modlog">
+  <div class="modal mdl-log">
+    <div class="modal-head">
+      <h3 id="modlog-title">Журнал модуля</h3>
+      <button class="modal-close" onclick="closeModal('modal-modlog')">✕</button>
+    </div>
+    <div class="mdl-filters">
+      <select id="ml-event" onchange="mlSet('event', this.value)" aria-label="Событие"><option value="all">Все события</option><option value="on">Включение</option><option value="off">Выключение</option><option value="dl">Загрузка начата</option><option value="err">Ошибки</option></select>
+      <select id="ml-client" onchange="mlSet('client', this.value)" aria-label="Клиент"><option value="all">Все клиенты</option><option value="electron">Electron</option><option value="web">Веб</option><option value="mobile">Мобильный</option><option value="admin">Админка</option></select>
+      <select id="ml-days" onchange="mlSet('days', this.value)" aria-label="Период"><option value="30">30 дней</option><option value="90">90 дней</option><option value="365">Год</option></select>
+      <label class="ux-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="ml-q" placeholder="Имя или клиент" autocomplete="off" oninput="mlSearch(this.value)"></label>
+    </div>
+    <div class="modal-body mdl-tw" id="modlog-body"></div>
+    <div class="modal-foot mdl-foot"><span id="modlog-count">—</span><span style="flex:1"></span><button class="btn btn-ghost btn-sm" id="modlog-more" onclick="mlMore()" style="display:none">Показать ещё</button></div>
+  </div>
+</div>
 
 <!-- Confirm modal -->
 <div class="modal-bg" id="modal-confirm">
@@ -2633,8 +2673,8 @@ document.addEventListener('keydown', e => {
 window.addEventListener('resize', () => { if (SB.menu) sbMenuPos(); });
 
 /* ── NAV ── */
-const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',files:'Файлы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки',announcements:'Объявления',releases:'Релизы',audit:'Аудит-лог',settings:'Настройки',more:'Ещё'};
-const pageRenders = {dashboard:renderDashboard,users:renderUsers,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements,releases:renderReleases,audit:renderAudit,settings:renderSettings,more:renderMore};
+const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',files:'Файлы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки',announcements:'Объявления',releases:'Релизы',modules:'Модули',audit:'Аудит-лог',settings:'Настройки',more:'Ещё'};
+const pageRenders = {dashboard:renderDashboard,users:renderUsers,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements,releases:renderReleases,modules:renderModules,audit:renderAudit,settings:renderSettings,more:renderMore};
 
 // Телефонный вид без масштабирования: страница уже собрана под экран, а случайный щипок сдвигал раскладку.
 // В iOS Safari атрибуты viewport игнорируются, поэтому щипок гасим отменой жестов; на компьютере эти события не приходят
@@ -2708,7 +2748,7 @@ function confirm(title, text, onOk) {
 // Разделы, которых нет на нижней панели, тема и выход. Значки берём из боковой панели: там они уже нарисованы
 function renderMore() {
   setTopbarActions('');
-  const rows = [['clients', 'Клиенты'], ['rooms', 'Комнаты'], ['files', 'Файлы'], ['push', 'Уведомления'], ['webhooks', 'Вебхуки'], ['releases', 'Релизы'], ['audit', 'Аудит-лог'], ['settings', 'Настройки']];
+  const rows = [['clients', 'Клиенты'], ['rooms', 'Комнаты'], ['files', 'Файлы'], ['push', 'Уведомления'], ['webhooks', 'Вебхуки'], ['releases', 'Релизы'], ['modules', 'Модули'], ['audit', 'Аудит-лог'], ['settings', 'Настройки']];
   const me = currentUser?.display_name || currentUser?.username || '';
   document.getElementById('page-body').innerHTML = `<div class="mm">
     <div class="mm-list">${rows.map(([k, n]) => {
@@ -6786,6 +6826,73 @@ function setTopbarActions(html) {
   const extra = document.getElementById('topbar-extra');
   if (extra) { extra.innerHTML = html || ''; extra.style.display = html ? 'flex' : 'none'; }
 }
+
+/* ── МОДУЛИ ── */
+// Необязательные возможности клиента. Включённый здесь модуль становится доступен пользователям в настройках
+// клиента (у кого выключен — модуля нет вовсе), остальное решает сам пользователь на каждом устройстве.
+// Журнал: кто и когда включил, выключил, начал загрузку или получил ошибку; хранится год.
+const MOD = { list: [] };
+const MOD_ICON = { animoji: '😀' };
+const mdNum = n => Number(n || 0).toLocaleString('ru-RU');
+const mdBytes = b => b >= 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' МБ' : Math.round(b / 1024) + ' КБ';
+async function renderModules() {
+  setTopbarActions('');
+  document.getElementById('page-body').innerHTML = `<div class="ux-page"><div class="ux-empty">Загрузка…</div></div>`;
+  const data = await api('GET', '/api/admin/modules');
+  if (currentPage !== 'modules') return;
+  MOD.list = Array.isArray(data) ? data : [];
+  mdRender();
+}
+function mdRender() {
+  if (currentPage !== 'modules') return;
+  document.getElementById('page-body').innerHTML = `<div class="ux-page">
+    <div><div style="font-size:17px;font-weight:700">Модули</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Дополнительные возможности. Включённый модуль становится доступен пользователям в настройках клиента, и каждый включает его у себя сам.</div></div>
+    ${MOD.list.map(m => { const st = m.stats || {}, bc = st.byClient || {};
+      return `<div class="card"><div class="mdl-card"><div class="mdl-ico">${MOD_ICON[m.key] || '🧩'}</div>
+        <div class="mdl-tx"><b>${esc(m.title)}</b><span>${esc(m.description)}${m.needsDownload ? ` Набор: ${mdNum(m.count)} анимаций, около ${mdBytes(m.bytes)}, лежит на сервере.` : ''}</span></div>
+        <span class="badge ${m.enabled ? 'badge-green' : 'badge-gray'}">${m.enabled ? 'Включён' : 'Выключен'}</span>
+        <button class="btn btn-ghost btn-sm" onclick="mlOpen('${m.key}')">Журнал</button>
+        <label class="toggle-switch" title="Модуль на сервере"><input type="checkbox" ${m.enabled ? 'checked' : ''} onchange="mdToggle('${m.key}', this.checked)" aria-label="Модуль включён на сервере"><span class="toggle-track"><span class="toggle-thumb"></span></span></label></div>
+        <div class="mdl-stats"><div><b>${mdNum(st.users)} из ${mdNum(st.total)}</b><span>пользователей включили у себя</span></div>
+          <div><b>${mdNum(bc.electron)} · ${mdNum(bc.web)} · ${mdNum(bc.mobile)}</b><span>Electron · веб · мобильный</span></div>
+          <div><b>${mdNum(m.version)}</b><span>версия набора</span></div>
+          <div><b>${mdNum(st.errors30d)}</b><span>ошибок загрузки за 30 дней</span></div></div></div>`; }).join('')}
+    <div class="card"><div class="mdl-empty">Других модулей пока нет</div></div></div>`;
+}
+async function mdToggle(key, on) {
+  try {
+    const r = await api('PUT', '/api/admin/modules/' + key, { enabled: on });
+    if (r && r.error) toast(r.error, 'error'); else toast(on ? 'Модуль включён' : 'Модуль выключен', 'success');
+  } catch { toast('Не удалось изменить модуль', 'error'); }
+  renderModules();
+}
+const ML = { key: null, event: 'all', client: 'all', days: '30', q: '', rows: [], total: 0, timer: null };
+const ML_EV = { admin_on: ['Модуль включён', 'badge-blue'], admin_off: ['Модуль выключен', 'badge-gray'], user_on: ['Включил у себя', 'badge-green'], user_off: ['Выключил у себя', 'badge-gray'], download_start: ['Загрузка начата', 'badge-orange'], download_error: ['Ошибка загрузки', 'badge-red'] };
+const ML_CL = { electron: 'Electron', web: 'Веб', mobile: 'Мобильный', admin: 'Админка' };
+function mlOpen(key) {
+  ML.key = key; ML.event = 'all'; ML.client = 'all'; ML.days = '30'; ML.q = '';
+  document.getElementById('ml-event').value = 'all'; document.getElementById('ml-client').value = 'all'; document.getElementById('ml-days').value = '30'; document.getElementById('ml-q').value = '';
+  document.getElementById('modlog-title').textContent = 'Журнал: ' + (MOD.list.find(m => m.key === key)?.title || key);
+  openModal('modal-modlog'); mlLoad(true);
+}
+function mlSet(k, v) { ML[k] = v; mlLoad(true); }
+function mlSearch(v) { ML.q = v; clearTimeout(ML.timer); ML.timer = setTimeout(() => mlLoad(true), 250); }
+function mlMore() { mlLoad(false); }
+async function mlLoad(reset) {
+  if (reset) { ML.rows = []; ML.total = 0; }
+  const qs = new URLSearchParams({ event: ML.event, client: ML.client, days: ML.days, q: ML.q, offset: ML.rows.length, limit: 50 });
+  let r; try { r = await api('GET', `/api/admin/modules/${ML.key}/log?${qs}`); } catch { r = null; }
+  if (!r || r.error) { document.getElementById('modlog-body').innerHTML = '<div class="mdl-empty">Не удалось загрузить журнал</div>'; return; }
+  ML.rows = ML.rows.concat(r.rows || []); ML.total = r.total || 0;
+  const fmt = ts => new Date(ts * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  document.getElementById('modlog-body').innerHTML = ML.rows.length
+    ? `<table><thead><tr><th>Время</th><th>Пользователь</th><th>Клиент</th><th>Событие</th></tr></thead><tbody>${ML.rows.map(x => { const ev = ML_EV[x.event] || [x.event, 'badge-gray'];
+        return `<tr><td class="tm">${fmt(x.created_at)}</td><td>${esc(x.display_name || x.username || '—')}</td><td>${esc((ML_CL[x.client] || x.client || '—') + (x.version ? ' ' + x.version : ''))}</td><td><span class="badge ${ev[1]}">${esc(ev[0])}</span>${x.detail ? ` <span style="color:var(--c-muted);font-size:11.5px">${esc(x.detail)}</span>` : ''}</td></tr>`; }).join('')}</tbody></table>`
+    : '<div class="mdl-empty">Нет записей по фильтру</div>';
+  document.getElementById('modlog-count').textContent = `${ML.rows.length} из ${ML.total} записей, журнал хранится ${(MOD.list.find(m => m.key === ML.key)?.keepDays || 365) >= 365 ? '12 месяцев' : ''}`;
+  document.getElementById('modlog-more').style.display = ML.rows.length < ML.total ? '' : 'none';
+}
+
 
 /* ── FILES ── */
 // Раздел «Файлы»: сводка по месту и сроку хранения, фильтры по типу; отправитель и чат —
