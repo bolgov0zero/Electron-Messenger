@@ -4805,14 +4805,20 @@ function ctxReadTime(ts) {
   const hm = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   return d.toDateString() === now.toDateString() ? hm : d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) + ' ' + hm;
 }
-function ctxReadLabel(direct, read, delivered, readAt) {
+function ctxReadLabel(direct, read, delivered, readAt, total) {
   const wrap = document.getElementById('ctx-read'), label = document.getElementById('ctx-read-label');
   if (!wrap || !label) return;
   delivered = Math.max(delivered, read);
+  total = Math.max(total || 0, delivered);
+  // Значок — те же галочки, что у сообщения: обе серые (только доставлено), одна цветная (прочитал хотя бы один),
+  // обе цветные (прочитали все); не доставлено — одна серая
+  const all = read > 0 && read >= total;
   wrap.classList.toggle('flat', delivered === 0);
+  wrap.classList.toggle('rd-all', all);
+  wrap.classList.toggle('rd-part', read > 0 && !all);
   if (delivered === 0) { label.textContent = 'Не доставлено'; return; }
   if (direct) { label.innerHTML = read ? 'Прочитано' + (readAt ? ` <span class="cnt"><b>${ctxReadTime(readAt)}</b></span>` : '') : 'Не прочитано'; return; }
-  label.innerHTML = `${read === delivered && read > 0 ? 'Прочитали все' : 'Прочитано'} <span class="cnt"><b>${read}</b>/${delivered}</span>`;
+  label.innerHTML = `${all ? 'Прочитали все' : 'Прочитано'} <span class="cnt"><b>${read}</b>/${delivered}</span>`;
 }
 function ctxReadSetup(msgId, isMine) {
   const wrap = document.getElementById('ctx-read');
@@ -4820,21 +4826,21 @@ function ctxReadSetup(msgId, isMine) {
   S.ctxReadReq = (S.ctxReadReq || 0) + 1;
   const req = S.ctxReadReq;
   wrap.style.display = isMine ? '' : 'none';
-  wrap.classList.remove('open', 'flat');
+  wrap.classList.remove('open', 'flat', 'rd-all', 'rd-part');
   document.getElementById('ctx-info-btn').setAttribute('aria-expanded', 'false');
   document.getElementById('ctx-read-list').innerHTML = '<div class="ctx-read-empty">Загрузка…</div>';
   if (!isMine) return;
   const chat = S.chats.find(c => c.id === S.activeChatId);
   const direct = chat?.type === 'direct';
   const st = S.msgStatus[msgId] || {};
-  ctxReadLabel(direct, st.read || 0, st.delivered || 0, null);
+  ctxReadLabel(direct, st.read || 0, st.delivered || 0, null, st.total);
   api('GET', `/messages/${msgId}/info`).then(data => {
     if (req !== S.ctxReadReq || !data || data.error) return;
     const list = document.getElementById('ctx-read-list');
     if (!list) return;
     const rd = data.statuses.filter(s => s.read_at);
     const dlv = data.statuses.filter(s => s.delivered_at || s.read_at).length;
-    ctxReadLabel(data.chat_type === 'direct', rd.length, dlv, rd[0]?.read_at);
+    ctxReadLabel(data.chat_type === 'direct', rd.length, dlv, rd[0]?.read_at, st.total || data.statuses.length);
     const direct2 = data.chat_type === 'direct';
     list.innerHTML = rd.length
       ? rd.map(s => `<div class="ctx-read-row" title="Прочитано ${new Date(s.read_at * 1000).toLocaleString('ru-RU')}">

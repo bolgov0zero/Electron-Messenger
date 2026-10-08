@@ -632,8 +632,9 @@ html.m-desktop .screen { display: none !important; }
 .sheet-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
 
 /* Пункт «Прочитано 1/3» в шторке сообщения: по нажатию раскрывается список тех, кто прочитал (3 — кому доставлено) */
-.rd-item .msg-action-row svg.tk { color: var(--accent); }
-.rd-item.flat .msg-action-row svg.tk { color: var(--muted); }
+.rd-item.rd-part .msg-action-row svg.tk .tk1 { stroke: var(--accent); }
+.rd-item.rd-all .msg-action-row svg.tk { color: var(--accent); }
+.rd-item.flat .msg-action-row svg.tk .tk1 { display: none; }
 .rd-item .msg-action-row .rd-chev { margin-left: auto; width: 16px; height: 16px; transition: transform .22s cubic-bezier(.4,0,.2,1); }
 .rd-item.open .rd-chev { transform: rotate(180deg); }
 .rd-item.flat .rd-chev { display: none; }

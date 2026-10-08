@@ -2718,20 +2718,27 @@ function rdTime(ts) {
   const hm = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   return d.toDateString() === now.toDateString() ? hm : d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) + ' ' + hm;
 }
-function rdLabel(direct, read, delivered, readAt) {
+function rdLabel(direct, read, delivered, readAt, total) {
   delivered = Math.max(delivered, read);
+  total = Math.max(total || 0, delivered);
+  const all = read > 0 && read >= total;
   if (delivered === 0) return 'Не доставлено';
   if (direct) return read ? 'Прочитано' + (readAt ? ` <span class="rd-cnt"><b>${rdTime(readAt)}</b></span>` : '') : 'Не прочитано';
-  return `${read === delivered && read > 0 ? 'Прочитали все' : 'Прочитано'} <span class="rd-cnt"><b>${read}</b>/${delivered}</span>`;
+  return `${all ? 'Прочитали все' : 'Прочитано'} <span class="rd-cnt"><b>${read}</b>/${delivered}</span>`;
+}
+// Класс значка: те же галочки, что у сообщения — серые (доставлено), одна цветная (читал хотя бы один), обе (все)
+function rdTicksClass(read, delivered, total) {
+  delivered = Math.max(delivered, read);
+  total = Math.max(total || 0, delivered);
+  return (delivered === 0 ? ' flat' : '') + (read > 0 && read >= total ? ' rd-all' : read > 0 ? ' rd-part' : '');
 }
 function readItemHtml(m) {
   const chat = S.chats.find(c => c.id === m.chat_id);
   const st = m.status || {};
-  const flat = Math.max(st.delivered || 0, st.read || 0) === 0;
-  return `<div class="rd-item${flat ? ' flat' : ''}" id="rd-item" data-msg="${m.id}">
+  return `<div class="rd-item${rdTicksClass(st.read || 0, st.delivered || 0, st.total)}" id="rd-item" data-msg="${m.id}">
     <div class="msg-action-row" onclick="toggleReadItem()">
-      <svg class="tk" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>
-      <span id="rd-label">${rdLabel(chat?.type === 'direct', st.read || 0, st.delivered || 0, null)}</span>
+      <svg class="tk" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline class="tk1" points="16 5 7 16 2 11"/><polyline points="22 5 13 16 8 11"/></svg>
+      <span id="rd-label">${rdLabel(chat?.type === 'direct', st.read || 0, st.delivered || 0, null, st.total)}</span>
       <svg class="rd-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <div class="rd-body"><div class="rd-in"><div class="rd-list" id="rd-list"><div class="rd-empty">Загрузка…</div></div></div></div>
@@ -2752,8 +2759,9 @@ async function loadReadList(m) {
   const rd = data.statuses.filter(s => s.read_at);
   const dlv = data.statuses.filter(s => s.delivered_at || s.read_at).length;
   const direct = data.chat_type === 'direct';
-  it.classList.toggle('flat', dlv === 0);
-  document.getElementById('rd-label').innerHTML = rdLabel(direct, rd.length, dlv, rd[0]?.read_at);
+  it.classList.remove('flat', 'rd-all', 'rd-part');
+  rdTicksClass(rd.length, dlv, m.status?.total || data.statuses.length).split(' ').filter(Boolean).forEach(c => it.classList.add(c));
+  document.getElementById('rd-label').innerHTML = rdLabel(direct, rd.length, dlv, rd[0]?.read_at, m.status?.total || data.statuses.length);
   document.getElementById('rd-list').innerHTML = rd.length
     ? rd.map(s => `<div class="rd-row"><div class="av ${userAvatarColor(s.user_id)}" data-av-user="${s.user_id}" data-av-fallback="${esc(initials(s.display_name))}">${esc(initials(s.display_name))}</div>
         <span class="rd-name">${esc(s.display_name)}</span><span class="rd-time">${rdTime(s.read_at)}</span></div>`).join('')
