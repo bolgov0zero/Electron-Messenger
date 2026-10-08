@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Тест анимированных смайлов</title>
+<style>
+/* Шрифт Noto Color Emoji — тот же, что уже стоит в чате (/chat/assets/fonts) */
+@font-face {
+  font-family: 'Noto Color Emoji';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/chat/assets/fonts/noto-emoji-0.woff2') format('woff2');
+  unicode-range: U+1f1e6-1f1ff;
+}
+@font-face {
+  font-family: 'Noto Color Emoji';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/chat/assets/fonts/noto-emoji-1.woff2') format('woff2');
+  unicode-range: U+200d, U+2620, U+26a7, U+fe0f, U+1f308, U+1f38c, U+1f3c1, U+1f3f3-1f3f4, U+1f6a9, U+e0062-e0063, U+e0065, U+e0067, U+e006c, U+e006e, U+e0073-e0074, U+e0077, U+e007f;
+}
+@font-face {
+  font-family: 'Noto Color Emoji';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/chat/assets/fonts/noto-emoji-2.woff2') format('woff2');
+  unicode-range: U+200d, U+203c, U+2049, U+20e3, U+2122, U+2139, U+2194-2199, U+21a9-21aa, U+23cf, U+23e9-23ef, U+23f8-23fa, U+24c2, U+25aa-25ab, U+25b6, U+25c0, U+25fb-25fe, U+2611, U+2622-2623, U+2626, U+262a, U+262e-262f, U+2638, U+2640, U+2642, U+2648-2653, U+2660, U+2663, U+2665-2666, U+2668, U+267b, U+267e-267f, U+2695, U+269b-269c, U+26a0, U+26a7, U+26aa-26ab, U+26ce, U+26d4, U+2705, U+2714, U+2716, U+271d, U+2721, U+2733-2734, U+2747, U+274c, U+274e, U+2753-2755, U+2757, U+2764, U+2795-2797, U+27a1, U+27b0, U+27bf, U+2934-2935, U+2b05-2b07, U+2b1b-2b1c, U+2b55, U+3030, U+303d, U+3297, U+3299, U+fe0f, U+1f170-1f171, U+1f17e-1f17f, U+1f18e, U+1f191-1f19a, U+1f201-1f202, U+1f21a, U+1f22f, U+1f232-1f23a, U+1f250-1f251, U+1f310, U+1f3a6, U+1f3b5-1f3b6, U+1f3bc, U+1f3e7, U+1f441, U+1f499-1f49c, U+1f49f-1f4a0, U+1f4ac-1f4ad, U+1f4b1-1f4b2, U+1f4b9, U+1f4db, U+1f4f2-1f4f6, U+1f500-1f507, U+1f515, U+1f518-1f524, U+1f52f-1f53d, U+1f549, U+1f54e, U+1f5a4, U+1f5e8, U+1f5ef, U+1f6ab, U+1f6ad-1f6b1, U+1f6b3, U+1f6b7-1f6bc, U+1f6be, U+1f6c2-1f6c5, U+1f6d0-1f6d1, U+1f6d7, U+1f6dc, U+1f7e0-1f7eb, U+1f7f0, U+1f90d-1f90e, U+1f9d1-1f9d2, U+1f9e1, U+1fa75-1fa77, U+1faaf;
+}
+@font-face {
+  font-family: 'Noto Color Emoji';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/chat/assets/fonts/noto-emoji-3.woff2') format('woff2');
+  unicode-range: U+200d, U+231a-231b, U+2328, U+23f0-23f3, U+2602, U+260e, U+2692, U+2694, U+2696-2697, U+2699, U+26b0-26b1, U+26cf, U+26d1, U+26d3, U+2702, U+2709, U+270f, U+2712, U+fe0f, U+1f302, U+1f321, U+1f392-1f393, U+1f3a9, U+1f3bd, U+1f3ee, U+1f3f7, U+1f3fa, U+1f451-1f462, U+1f484, U+1f489-1f48a, U+1f48c-1f48e, U+1f4a1, U+1f4a3, U+1f4a5, U+1f4b0, U+1f4b3-1f4b8, U+1f4bb-1f4da, U+1f4dc-1f4f1, U+1f4ff, U+1f508-1f514, U+1f516-1f517, U+1f526-1f529, U+1f52c-1f52e, U+1f550-1f567, U+1f56f-1f570, U+1f576, U+1f587, U+1f58a-1f58d, U+1f5a5, U+1f5a8, U+1f5b1-1f5b2, U+1f5c2-1f5c4, U+1f5d1-1f5d3, U+1f5dc-1f5de, U+1f5e1, U+1f5f3, U+1f6aa, U+1f6ac, U+1f6bd, U+1f6bf, U+1f6c1, U+1f6cb, U+1f6cd-1f6cf, U+1f6d2, U+1f6e0-1f6e1, U+1f6f0, U+1f97b-1f97f, U+1f9af, U+1f9ba, U+1f9e2-1f9e6, U+1f9ea-1f9ec, U+1f9ee-1f9f4, U+1f9f7-1f9ff, U+1fa71-1fa74, U+1fa79-1fa7b, U+1fa86, U+1fa8e-1fa8f, U+1fa91-1fa93, U+1fa96, U+1fa99-1faa0, U+1faa2-1faa7, U+1faaa-1faae;
+}
+@font-face {
+  font-family: 'Noto Color Emoji';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/chat/assets/fonts/noto-emoji-4.woff2') format('woff2');
+  unicode-range: U+265f, U+26bd-26be, U+26f3, U+26f8, U+fe0f, U+1f004, U+1f0cf, U+1f380-1f384, U+1f386-1f38b, U+1f38d-1f391, U+1f396-1f397, U+1f399-1f39b, U+1f39e-1f39f, U+1f3a3-1f3a5, U+1f3a7-1f3a9, U+1f3ab-1f3b4, U+1f3b7-1f3bb, U+1f3bd-1f3c0, U+1f3c5-1f3c6, U+1f3c8-1f3c9, U+1f3cf-1f3d3, U+1f3f8-1f3f9, U+1f47e, U+1f4e2, U+1f4f7-1f4fd, U+1f52b, U+1f579, U+1f58c-1f58d, U+1f5bc, U+1f6f7, U+1f6f9, U+1f6fc, U+1f93f, U+1f941, U+1f945, U+1f947-1f94f, U+1f9e7-1f9e9, U+1f9f5-1f9f6, U+1fa70-1fa71, U+1fa80-1fa81, U+1fa83-1fa85, U+1fa87-1fa8a, U+1fa94-1fa95, U+1fa97-1fa98, U+1faa1, U+1faa9, U+1fadf;
+}
+@font-face {
+  font-family: 'Noto Color Emoji';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/chat/assets/fonts/noto-emoji-5.woff2') format('woff2');
+  unicode-range: U+2693, U+26e9-26ea, U+26f1-26f2, U+26f4-26f5, U+26fa, U+26fd, U+2708, U+fe0f, U+1f301, U+1f303, U+1f306-1f307, U+1f309, U+1f310, U+1f3a0-1f3a2, U+1f3aa, U+1f3cd-1f3ce, U+1f3d5, U+1f3d7-1f3db, U+1f3df-1f3e6, U+1f3e8-1f3ed, U+1f3ef-1f3f0, U+1f488, U+1f492, U+1f4ba, U+1f54b-1f54d, U+1f5fa-1f5ff, U+1f680-1f6a2, U+1f6a4-1f6a8, U+1f6b2, U+1f6d1, U+1f6d5-1f6d6, U+1f6dd-1f6df, U+1f6e2-1f6e5, U+1f6e9, U+1f6eb-1f6ec, U+1f6f3-1f6f6, U+1f6f8, U+1f6fa-1f6fb, U+1f9bc-1f9bd, U+1f9ed, U+1f9f3, U+1fa7c;
+}
+@font-face {
+  font-family: 'Noto Color Emoji';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/chat/assets/fonts/noto-emoji-6.woff2') format('woff2');
+  unicode-range: U+200d, U+2615, U+fe0f, U+1f32d-1f330, U+1f336, U+1f33d, U+1f344-1f37f, U+1f382, U+1f52a, U+1f7e9, U+1f7eb, U+1f942-1f944, U+1f950-1f96f, U+1f99e, U+1f9aa, U+1f9c0-1f9cb, U+1fad0-1fadc;
+}
+@font-face {
+  font-family: 'Noto Color Emoji';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/chat/assets/fonts/noto-emoji-7.woff2') format('woff2');
+  unicode-range: U+200d, U+2600-2601, U+2603-2604, U+2614, U+2618, U+26a1, U+26c4-26c5, U+26c8, U+26f0, U+2728, U+2744, U+2b1b, U+2b50, U+fe0f, U+1f300, U+1f304-1f305, U+1f308, U+1f30a-1f30f, U+1f311-1f321, U+1f324-1f32c, U+1f331-1f335, U+1f337-1f33c, U+1f33e-1f344, U+1f3d4, U+1f3d6, U+1f3dc-1f3de, U+1f3f5, U+1f400-1f43f, U+1f490, U+1f4a7, U+1f4ae, U+1f525, U+1f54a, U+1f573, U+1f577-1f578, U+1f648-1f64a, U+1f6d8, U+1f940, U+1f980-1f9ae, U+1f9ba, U+1fa90, U+1faa8, U+1fab0-1fabf, U+1facd-1facf, U+1fae7;
+}
+@font-face {
+  font-family: 'Noto Color Emoji';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/chat/assets/fonts/noto-emoji-8.woff2') format('woff2');
+  unicode-range: U+200d, U+2640, U+2642, U+2695-2696, U+26f7, U+26f9, U+2708, U+2764, U+27a1, U+fe0f, U+1f33e, U+1f373, U+1f37c, U+1f384-1f385, U+1f393, U+1f3a4, U+1f3a8, U+1f3c2-1f3c4, U+1f3c7, U+1f3ca-1f3cc, U+1f3eb, U+1f3ed, U+1f3fb-1f3ff, U+1f430, U+1f466-1f469, U+1f46b-1f478, U+1f47c, U+1f481-1f483, U+1f486-1f487, U+1f48b, U+1f48f, U+1f491, U+1f4bb-1f4bc, U+1f527, U+1f52c, U+1f574-1f575, U+1f57a, U+1f645-1f647, U+1f64b, U+1f64d-1f64e, U+1f680, U+1f692, U+1f6a3, U+1f6b4-1f6b6, U+1f6c0, U+1f6cc, U+1f91d, U+1f926, U+1f930-1f931, U+1f934-1f93a, U+1f93c-1f93e, U+1f977, U+1f9af-1f9b3, U+1f9b8-1f9b9, U+1f9bc-1f9bd, U+1f9cc-1f9cf, U+1f9d1-1f9df, U+1fa70, U+1fa82, U+1fac3-1fac5, U+1fac8, U+1faef;
+}
+@font-face {
+  font-family: 'Noto Color Emoji';
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/chat/assets/fonts/noto-emoji-9.woff2') format('woff2');
+  unicode-range: U+200d, U+2194-2195, U+2603, U+261d, U+2620, U+2639-263a, U+2665, U+26a1, U+26c4, U+270a-270d, U+2728, U+2763-2764, U+2b50, U+fe0f, U+1f31a-1f31f, U+1f32b, U+1f389-1f38a, U+1f3fb-1f3ff, U+1f440-1f450, U+1f463-1f465, U+1f479-1f47b, U+1f47d-1f480, U+1f485, U+1f48b-1f48c, U+1f493-1f49f, U+1f4a2, U+1f4a4-1f4a6, U+1f4a8-1f4ab, U+1f4af, U+1f525, U+1f573, U+1f590, U+1f595-1f596, U+1f5a4, U+1f5e3, U+1f600-1f644, U+1f648-1f64a, U+1f64c, U+1f64f, U+1f90c-1f925, U+1f927-1f92f, U+1f932-1f933, U+1f970-1f976, U+1f978-1f97a, U+1f9a0, U+1f9b4-1f9b7, U+1f9bb, U+1f9be-1f9bf, U+1f9d0, U+1f9e0-1f9e1, U+1fa75-1fa79, U+1fac0-1fac2, U+1fac6, U+1fae0-1fae6, U+1fae8-1faea, U+1faef-1faf8;
+}
+:root { --bg:#eef1f4; --card:#ffffff; --text:#111318; --text2:#5a6070; --muted:#8890a0; --line:rgba(0,0,0,.09); --accent:#1fa88c; --on-accent:#fff; --ok:#2e9e5b; --bad:#d94f4f; --soft:rgba(0,0,0,.05); }
+@media (prefers-color-scheme: dark) { :root { --bg:#12171d; --card:#1e252d; --text:#e7eaed; --text2:#8890a0; --muted:#5b6169; --line:rgba(255,255,255,.08); --accent:#29d6b8; --on-accent:#06231e; --ok:#4cc784; --bad:#ef6f6f; --soft:rgba(255,255,255,.06); color-scheme:dark; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif; padding:20px 16px 48px; }
+.wrap { max-width:860px; margin:0 auto; display:flex; flex-direction:column; gap:14px; }
+h1 { margin:0; font-size:19px; letter-spacing:-.02em; }
+.lead { margin:3px 0 0; color:var(--text2); font-size:13px; max-width:70ch; }
+.card { background:var(--card); border-radius:20px; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.card h2 { margin:0; font-size:13px; font-weight:700; }
+.card .sub { margin:-8px 0 0; font-size:12px; color:var(--text2); }
+.row { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:8px; }
+@media (min-width:640px) { .row { grid-template-columns:repeat(10, minmax(0,1fr)); } }
+.cell { display:flex; flex-direction:column; align-items:center; gap:4px; min-width:0; }
+.box { width:100%; max-width:72px; aspect-ratio:1; display:grid; place-items:center; border-radius:16px; background:var(--soft); }
+.txt { font-size:44px; line-height:1; }
+.sys { font-family:-apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+.noto { font-family:'Noto Color Emoji', sans-serif; }
+.lot { cursor:pointer; padding:0; border:0; font:inherit; color:inherit; position:relative; -webkit-tap-highlight-color:transparent; }
+.lot > div { width:84%; height:84%; }
+.lot:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.cap { font-size:10.5px; color:var(--muted); text-align:center; min-height:14px; }
+.cap.ok { color:var(--ok); } .cap.bad { color:var(--bad); }
+.ctl { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; }
+.btn { height:34px; padding:0 16px; border:0; border-radius:999px; background:var(--accent); color:var(--on-accent); font:600 13px inherit; font-family:inherit; cursor:pointer; }
+.btn.ghost { background:var(--soft); color:var(--text); }
+label { display:inline-flex; align-items:center; gap:7px; color:var(--text2); font-size:13px; cursor:pointer; }
+dl { margin:0; display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:12.5px; }
+dt { color:var(--muted); } dd { margin:0; min-width:0; overflow-wrap:anywhere; }
+.verdict { font-weight:600; } .verdict.ok { color:var(--ok); } .verdict.bad { color:var(--bad); }
+.foot { font-size:11.5px; color:var(--muted); line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>Тест анимированных смайлов</h1>
+    <p class="lead">Одни и те же 10 смайлов тремя способами. Если первый и второй ряд выглядят одинаково, шрифт Noto на этом устройстве не применяется, и показываются системные смайлы. В третьем ряду анимации Lottie: коснитесь смайла, чтобы проиграть.</p>
+  </div>
+
+  <div class="card">
+    <h2>1. Системные смайлы устройства</h2>
+    <p class="sub">Как они выглядели бы без шрифта Noto (Apple на iPhone и Mac, Segoe на Windows)</p>
+    <div class="row" id="r-sys"></div>
+  </div>
+
+  <div class="card">
+    <h2>2. Шрифт Noto Color Emoji, как сейчас в чате</h2>
+    <p class="sub">Статичные смайлы из шрифта, который чат подключает сам</p>
+    <div class="row" id="r-noto"></div>
+  </div>
+
+  <div class="card">
+    <h2>3. Анимированные Noto (Lottie)</h2>
+    <p class="sub">Показан кадр покоя. Касание или клик проигрывает анимацию один раз</p>
+    <div class="row" id="r-lot"></div>
+    <div class="ctl">
+      <button class="btn" id="b-all" type="button">Проиграть все</button>
+      <button class="btn ghost" id="b-seq" type="button">По очереди</button>
+      <label><input type="checkbox" id="c-loop"> Зациклить</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Что определилось на этом устройстве</h2>
+    <dl>
+      <dt>Браузер</dt><dd id="d-ua">…</dd>
+      <dt>Экран</dt><dd id="d-scr">…</dd>
+      <dt>Шрифт Noto</dt><dd id="d-font"><span class="verdict">проверяю…</span></dd>
+      <dt>Формат шрифта COLRv1</dt><dd id="d-colr">…</dd>
+      <dt>Lottie</dt><dd id="d-lot">…</dd>
+      <dt>Загружено</dt><dd id="d-load">…</dd>
+    </dl>
+  </div>
+
+  <p class="foot">Анимации: Noto Emoji Animation (Google), лицензия CC BY 4.0. Проигрыватель: lottie-web (Airbnb), лицензия MIT. Шрифт: Noto Color Emoji, лицензия SIL OFL 1.1. Страница ничего не отправляет и не сохраняет.</p>
+</div>
+
+<script src="/smile/lottie.min.js"></script>
+<script>
+(function () {
+  const SET = [
+    ['1f600', '😀', 'улыбка'], ['1f602', '😂', 'смех до слёз'], ['1f60d', '😍', 'глаза-сердечки'], ['1f60e', '😎', 'очки'],
+    ['1f62d', '😭', 'плач'], ['1f914', '🤔', 'думаю'], ['1f44d', '👍', 'класс'], ['1f525', '🔥', 'огонь'],
+    ['1f389', '🎉', 'праздник'], ['2764_fe0f', '❤️', 'сердце']
+  ];
+  const $ = id => document.getElementById(id);
+  const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+
+  // Ряды 1 и 2: статичные символы
+  for (const [id, cls] of [['r-sys', 'sys'], ['r-noto', 'noto']]) {
+    for (const [, ch, name] of SET) {
+      const cell = mk('div', 'cell'), box = mk('div', 'box'), t = mk('span', 'txt ' + cls, ch);
+      box.appendChild(t); cell.appendChild(box); cell.appendChild(mk('div', 'cap', name)); $(id).appendChild(cell);
+    }
+  }
+
+  // Ряд 3: Lottie. Кадр покоя берём из метки rest в самом файле
+  const items = [];
+  let loadedKb = 0, loaded = 0, failed = 0;
+  const upd = () => { $('d-load').textContent = loaded + ' из ' + SET.length + ', ' + Math.round(loadedKb) + ' КБ' + (failed ? ', ошибок: ' + failed : ''); };
+  $('d-lot').textContent = typeof lottie !== 'undefined' ? 'библиотека загружена (версия ' + (lottie.version || '?') + ')' : 'библиотека не загрузилась';
+  for (const [cp, ch, name] of SET) {
+    const cell = mk('div', 'cell'), btn = mk('button', 'box lot'), holder = mk('div'), cap = mk('div', 'cap', 'загрузка…');
+    btn.type = 'button'; btn.setAttribute('aria-label', 'Проиграть: ' + name);
+    btn.appendChild(holder); cell.appendChild(btn); cell.appendChild(cap); $('r-lot').appendChild(cell);
+    const it = { cp, btn, cap, anim: null, rest: 0, ready: false };
+    items.push(it);
+    fetch('/smile/lottie/' + cp + '.json').then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); }).then(txt => {
+      const data = JSON.parse(txt);
+      loadedKb += txt.length / 1024; loaded++; upd();
+      const m = (data.markers || []).find(x => x.cm === 'rest');
+      it.rest = m ? m.tm : 0;
+      it.anim = lottie.loadAnimation({ container: holder, renderer: 'svg', loop: false, autoplay: false, animationData: data });
+      it.anim.addEventListener('complete', () => { if ($('c-loop').checked) { it.anim.goToAndPlay(0, true); } else { it.anim.goToAndStop(it.rest, true); } });
+      it.anim.goToAndStop(it.rest, true);
+      it.ready = true; cap.textContent = Math.round(txt.length / 1024) + ' КБ'; cap.classList.add('ok');
+    }).catch(e => { failed++; upd(); cap.textContent = 'ошибка'; cap.classList.add('bad'); cap.title = String(e); });
+    btn.addEventListener('click', () => play(it));
+  }
+  function play(it) { if (!it.ready) return; it.anim.loop = $('c-loop').checked; it.anim.goToAndPlay(0, true); }
+  $('b-all').addEventListener('click', () => items.forEach(play));
+  $('b-seq').addEventListener('click', () => items.forEach((it, i) => setTimeout(() => play(it), i * 700)));
+  $('c-loop').addEventListener('change', () => { const on = $('c-loop').checked; items.forEach(it => { if (!it.ready) return; it.anim.loop = on; if (!on) it.anim.goToAndStop(it.rest, true); else it.anim.goToAndPlay(0, true); }); });
+
+  // Диагностика
+  $('d-ua').textContent = navigator.userAgent;
+  $('d-scr').textContent = screen.width + '×' + screen.height + ', окно ' + innerWidth + '×' + innerHeight + ', плотность ' + devicePixelRatio;
+  let colr = 'не определить';
+  try { colr = CSS.supports('font-tech(color-COLRv1)') ? 'поддерживается' : 'не поддерживается'; } catch (e) {}
+  $('d-colr').textContent = colr;
+  // Шрифт Noto считаем применённым, если смайл с ним рисуется иначе, чем без него
+  (async function () {
+    const out = $('d-font'); const v = out.querySelector('.verdict');
+    try {
+      await document.fonts.load('48px "Noto Color Emoji"', '😀😂');
+      const draw = fam => {
+        const c = document.createElement('canvas'); c.width = 160; c.height = 80; const x = c.getContext('2d');
+        x.font = '48px ' + fam; x.textBaseline = 'top'; x.fillText('😀😂', 4, 4);
+        return x.getImageData(0, 0, 160, 80).data;
+      };
+      const a = draw('"Noto Color Emoji", sans-serif'), b = draw('sans-serif');
+      let diff = 0; for (let i = 0; i < a.length; i += 4) { if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2] || a[i + 3] !== b[i + 3]) diff++; }
+      if (diff > 200) { v.textContent = 'применяется (смайлы рисуются Noto)'; v.className = 'verdict ok'; }
+      else { v.textContent = 'не применяется (показываются системные смайлы)'; v.className = 'verdict bad'; }
+    } catch (e) { v.textContent = 'не удалось проверить'; }
+  })();
+})();
+</script>
+</body>
+</html>

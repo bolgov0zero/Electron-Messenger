@@ -64,6 +64,12 @@ app.get(['/m', '/m/', '/m/index.html'], (req, res) => {
   }
 });
 app.use('/m', express.static(path.join(__dirname, 'public/m')));
+// /smile — тестовая страница анимированных смайлов (Lottie): без входа, ничего не пишет на сервер
+app.get(['/smile', '/smile/', '/smile/index.html'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public/smile/index.html'));
+});
+app.use('/smile', express.static(path.join(__dirname, 'public/smile')));
 // Имя файла — timestamp+случайная строка, при новой загрузке никогда не переиспользуется,
 // поэтому старое имя гарантированно не сменит содержимое: можно кэшировать надолго
 // Зашифрованные файлы секретных чатов — только для участников чата, без публичного доступа
