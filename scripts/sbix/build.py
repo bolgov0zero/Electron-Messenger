@@ -6,6 +6,7 @@ import json, os, re
 from fontTools.ttLib import TTFont, newTable
 from fontTools.ttLib.tables.sbixStrike import Strike
 from fontTools.ttLib.tables.sbixGlyph import Glyph as SG
+from fontTools.ttLib.scaleUpem import scale_upem
 
 WORK, OUT = os.environ['WORK'], os.environ['OUT']
 PPEM, BELOW = 128, -31         # картинки нарисованы при кегле 128 px, низ на 31 px ниже базовой линии
@@ -28,6 +29,9 @@ for idx in sorted(ranges):
             n += 1
     sbix.strikes[PPEM] = strike
     del f['SVG ']
+    # У частей Google 1024 единицы на em, а Apple (CoreText) масштабирует картинки sbix с учётом этой величины:
+    # при 1024 смайлы выходят вдвое мельче. Приводим к 2048, как у самого Noto.
+    if f['head'].unitsPerEm != 2048: scale_upem(f, 2048)
     f['sbix'] = sbix
     f.flavor = 'woff2'
     path = f'{OUT}/noto-sbix-{idx}.woff2'

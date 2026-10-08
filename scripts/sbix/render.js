@@ -1,5 +1,6 @@
 // Шаг 2. Рисует каждый глиф из work/tasks.json в PNG 160×150 при кегле 128 px
-// (2048 единиц на em, база на 119 px от верха, спуск 31 px, ширина 2560 единиц).
+// У частей Google 1024 единицы на em: ширина кадра 1275 единиц (1,245 em), подъём 950, спуск 250 —
+// это те же 160×150 px, база на 119 px от верха, спуск 31 px.
 // Документы у Google большие (в одном до двух тысяч глифов), поэтому для каждого глифа
 // собираем маленький SVG: его блок и только те определения (градиенты, контуры), на которые он ссылается.
 // Запуск: Electron из client/node_modules (см. build.sh).
@@ -27,7 +28,7 @@ window.one = async (id) => {
     defs.push(e); const more = new Set(); refs(e, more); more.forEach(x => queue.push(x));
   }
   const body = defs.map(e => window.__ser.serializeToString(e)).join('') ;
-  const s = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="160" height="150" viewBox="0 -1904 2560 2400"><defs>' + body + '</defs>' + window.__ser.serializeToString(g) + '</svg>';
+  const s = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="160" height="150" viewBox="0 -950 1275 1200"><defs>' + body + '</defs>' + window.__ser.serializeToString(g) + '</svg>';
   const img = new Image();
   await new Promise((ok, no) => { img.onload = ok; img.onerror = () => no(new Error('svg ' + id)); img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s); });
   const c = document.createElement('canvas'); c.width = 160; c.height = 150;
