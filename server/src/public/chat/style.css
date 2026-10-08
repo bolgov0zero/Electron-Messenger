@@ -1359,7 +1359,7 @@ input:not([type]) {
 .ep-scroll {
   overflow-x: hidden; overflow-y: auto;
   padding: 0 2px; max-height: 236px;
-  overscroll-behavior: contain; scrollbar-width: thin;
+  overscroll-behavior: contain;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 14px), transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 14px), transparent 100%);
 }
@@ -1807,7 +1807,7 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 .ctx-read-fly.l { transform: translateX(4px); }
 .ctx-read.open .ctx-read-fly { opacity: 1; pointer-events: auto; transform: none; }
 .ctx-read-h { font-size: 10.4px; color: var(--muted); padding: 4px 7px 5px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
-.ctx-read-list { max-height: 180px; overflow-y: auto; scrollbar-width: thin; }
+.ctx-read-list { max-height: 180px; overflow-y: auto; }
 .ctx-read-row { display: flex; align-items: center; gap: 8px; padding: 4px 5px; border-radius: 9px; }
 .ctx-read-row:hover { background: var(--hover-row); }
 .ctx-read-row .av { width: 23px; height: 23px; font-size: 9px; flex-shrink: 0; }
