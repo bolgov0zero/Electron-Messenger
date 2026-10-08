@@ -197,3 +197,12 @@ input, textarea, select { font-size: 16px; }
 
 /* вход */
 .login-card { width: calc(100vw - 32px); max-width: 360px; }
+
+/* восстановление из копии */
+.rs-f { flex-wrap: wrap; }
+.rs-note { flex-basis: 100%; margin-bottom: 4px; }
+.rs-f .btn { flex: 1; justify-content: center; padding: 11px 8px; }
+.rs-cmp small { display: none; }
+.rs-cmp td, .rs-cmp th { padding-inline: 4px; }
+.st-stat-acts { width: 100%; margin-left: 0; }
+.st-stat-acts .btn { flex: 1; justify-content: center; }

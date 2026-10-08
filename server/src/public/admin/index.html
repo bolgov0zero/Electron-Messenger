@@ -1343,6 +1343,55 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .xs-heat i{height:100%;border-radius:4px;background:var(--dv-accent)}
 @media (prefers-reduced-motion:reduce){.xh-lay.in,.xh-lay.out,.xh-spin,.xh-tk,.xh-bar.ind i{animation:none!important}.xh-tk{stroke-dashoffset:0}}
 @media (max-width:900px){.xh-stat{padding:0 12px}.xh-pw{display:none}.xp-grid{grid-template-columns:1fr}}
+
+/* ── Восстановление из копии ── */
+.modal.rs-modal{width:640px;max-height:92vh;padding:0}
+.rs-h{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--c-border);flex-shrink:0}
+.rs-ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex-shrink:0;background:var(--c-orange-dim);color:var(--c-orange-text)}
+.rs-t{flex:1;min-width:0}.rs-t h3{margin:0;font-size:15px;font-weight:800;color:var(--c-text)}
+.rs-sub{color:var(--c-muted);font-size:12px}
+.rs-b{overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:14px;min-height:0}.rs-b>*{flex-shrink:0}
+.rs-f{display:flex;align-items:center;gap:8px;padding:12px 18px;border-top:1px solid var(--c-border);flex-shrink:0}
+.rs-note{margin-right:auto;font-size:11.5px;color:var(--c-muted);min-width:0}.rs-note b{color:var(--c-orange-text);font-weight:600}.rs-note.ok b{color:var(--c-primary)}
+.rs-lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted);display:block;margin-bottom:6px}
+.rs-sw{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;padding:12px 14px;border:1px solid var(--c-border);border-radius:14px;background:var(--c-surface2);transition:border-color .2s,background .2s}
+.rs-sw.on{border-color:color-mix(in srgb,var(--c-primary) 45%,var(--c-border));background:color-mix(in srgb,var(--c-primary) 6%,var(--c-surface2))}
+.rs-sw b{font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:7px;color:var(--c-text)}.rs-d{color:var(--c-muted);font-size:12px}
+.rs-eff{grid-column:2;font-size:12px;margin-top:2px;display:flex;flex-wrap:wrap;gap:4px 12px}
+.rs-eff .g{color:var(--c-green-text);font-weight:600}.rs-eff .w{color:var(--c-red-text);font-weight:600}.rs-eff .m{color:var(--c-muted)}.rs-eff b{color:var(--c-text);font-weight:600}
+.rs-tg{width:44px;height:26px;border-radius:99px;background:var(--c-border);border:0;position:relative;cursor:pointer;flex-shrink:0;padding:0;transition:background .2s;align-self:start;margin-top:1px}
+.rs-tg::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.rs-tg[aria-checked="true"]{background:var(--c-primary)}.rs-tg[aria-checked="true"]::after{transform:translateX(18px)}
+.rs-tg:disabled{cursor:not-allowed;opacity:.75}
+.rs-cmp{width:100%;border-collapse:collapse;font-size:12.5px}
+.rs-cmp th{text-align:right;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted);font-weight:600;padding:0 8px 6px;background:none;border:0}
+.rs-cmp th:first-child{text-align:left;padding-left:0}
+.rs-cmp td{padding:7px 8px;border-top:1px solid var(--c-border);border-bottom:0;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--c-text)}
+.rs-cmp td:first-child{text-align:left;font-family:var(--f-ui);font-weight:500;padding-left:0}
+.rs-cmp td.now{color:var(--c-muted)}.rs-cmp td.up{color:var(--c-green-text);font-weight:700}.rs-cmp td.dn{color:var(--c-red-text);font-weight:700}.rs-cmp td.eq{font-weight:600}
+.rs-cmp td.t{font-family:var(--f-ui)}.rs-cmp small{font-family:var(--f-ui);font-size:10.5px;color:var(--c-muted);margin-left:4px}
+.rs-adm{display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border-radius:14px;background:color-mix(in srgb,var(--c-blue) 9%,transparent);border:1px solid color-mix(in srgb,var(--c-blue) 24%,transparent);font-size:12.5px;color:var(--c-text)}
+.rs-adm svg{color:var(--c-blue);flex-shrink:0;margin-top:1px}
+.rs-pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--c-blue) 16%,transparent);color:var(--c-blue)}
+.rs-warns{display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+.rs-warns div{display:flex;gap:8px;align-items:flex-start;color:var(--c-muted)}.rs-warns svg{color:var(--c-orange-text);flex-shrink:0;margin-top:2px}.rs-warns .ok svg{color:var(--c-green-text)}.rs-warns .ok{color:var(--c-green-text)}.rs-warns b{color:var(--c-text);font-weight:600}
+.rs-word input{width:100%;border:1px solid var(--c-border);background:var(--c-surface2);border-radius:12px;padding:11px 13px;font:700 15px var(--f-mono);letter-spacing:.12em;color:var(--c-text);outline:0;text-transform:uppercase}
+.rs-word input:focus{border-color:var(--c-red)}.rs-word input.ok{border-color:var(--c-green)}
+.rs-err{padding:10px 12px;border-radius:12px;background:var(--c-red-dim);color:var(--c-red-text);font-size:12.5px;border:1px solid color-mix(in srgb,var(--c-red) 30%,transparent)}
+.rs-drop{border:2px dashed var(--c-border);border-radius:16px;padding:34px 16px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;background:var(--c-surface2);transition:border-color .15s,background .15s;color:var(--c-text)}
+.rs-drop.over{border-color:var(--c-primary);background:var(--c-primary-dim)}
+.rs-ic2{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:var(--c-primary-dim);color:var(--c-primary)}
+.rs-upl{display:flex;align-items:center;gap:12px}.rs-bar{flex:1;height:8px;border-radius:4px;background:var(--c-surface2);overflow:hidden}.rs-bar i{display:block;height:100%;background:var(--c-primary);border-radius:4px;transition:width .15s linear}
+.rs-steps{display:flex;flex-direction:column;gap:2px}
+.rs-st{display:flex;align-items:center;gap:12px;padding:9px 4px;font-size:13px;color:var(--c-muted)}
+.rs-dot{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--c-border);flex-shrink:0}
+.rs-st.on{color:var(--c-text);font-weight:600}.rs-st.on .rs-dot{border-color:var(--c-primary);border-top-color:transparent;animation:spin .8s linear infinite}
+.rs-st.done{color:var(--c-text)}.rs-st.done .rs-dot{background:var(--c-green);border-color:var(--c-green);color:#fff}
+.rs-st.skip{opacity:.45;text-decoration:line-through}
+.rs-ok{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;padding:8px 0 2px}
+.rs-ck{width:64px;height:64px;border-radius:50%;background:var(--c-green-dim);color:var(--c-green-text);display:grid;place-items:center;animation:rsPop .4s cubic-bezier(.3,1.5,.5,1)}
+@keyframes rsPop{from{transform:scale(.5);opacity:0}}
+.st-stat-acts{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
 /* Элементы телефонного вида (оформление — в mobile.css) на компьютере не показываем */
 .mnav,.mback{display:none}
 @media (max-width:960px){.dv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dv-main,.dv-bottom{grid-template-columns:minmax(0,1fr)}.dv .hm-host{grid-template-columns:minmax(0,1fr);gap:10px}.dv .hm-upd{justify-self:start}}
@@ -1826,6 +1875,9 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 
 <!-- Окно настроек: содержимое рисует скрипт -->
 <div class="modal-bg" id="modal-settings"><div class="modal st-modal" id="st-form" role="dialog" aria-modal="true" aria-labelledby="st-title"></div></div>
+<!-- Восстановление из копии: содержимое рисует скрипт (RS) -->
+<div class="modal-bg" id="modal-restore" onclick="if(event.target===this)rsClose()"><div class="modal rs-modal" id="rs-box" role="dialog" aria-modal="true"></div></div>
+<input type="file" id="rs-file" accept=".db,.sqlite,.sqlite3" hidden onchange="rsUpload(this.files[0]); this.value = ''">
 
 <!-- User modal -->
 <!-- Обязательная смена пароля: закрыть нельзя, поэтому без крестика и кнопки отмены -->
@@ -5901,7 +5953,8 @@ function stPaneBackups() {
   return `<div class="st-stat ${old ? 'warn' : 'ok'}"><span class="st-ring">${old ? ST_I.warn : ST_I.db}</span>
       <div class="st-stat-t"><b>${last ? `Последняя копия — ${uaSeen(last.created_at)}` : 'Копий пока нет'}</b>
         <span>${old ? 'Больше недели без копии — сделайте свежую перед обновлением или крупными правками.' : `${hmBytes(last.size)} · всего копий: ${ST.backups.length}`}</span></div>
-      <button type="button" class="btn ux-solid" ${ST.bkBusy ? 'disabled' : ''} onclick="stBackup()">${ST.bkBusy ? '<span class="st-spin light"></span>Создаю…' : `${ST_I.plus}Создать копию`}</button></div>
+      <div class="st-stat-acts"><button type="button" class="btn btn-ghost" onclick="rsPick()">${RS_I ? rsIc('upload', 14) : ''}Восстановить из файла…</button>
+      <button type="button" class="btn ux-solid" ${ST.bkBusy ? 'disabled' : ''} onclick="stBackup()">${ST.bkBusy ? '<span class="st-spin light"></span>Создаю…' : `${ST_I.plus}Создать копию`}</button></div></div>
     <p class="st-hint">Снимок делается на живой базе и не мешает людям работать. Файлы копий лежат на сервере в <code class="st-code">chat_db/backups</code>.</p>
     <div class="st-gt">${ST_I.clock}Расписание</div>
     <div class="st-g"><div class="st-r stack">
@@ -5920,9 +5973,10 @@ function stPaneBackups() {
     </div>
     ${ST.backups.length ? `<div class="st-gt">${ST_I.db}Копии · ${ST.backups.length}</div>
     <div class="st-g">${ST.backups.map((b, i) => `<div class="st-bk ${i === 0 && ST.bkNew ? 'new' : ''}">
-        <div><b>${esc(uaSeen(b.created_at))} ${i === 0 && ST.bkNew ? '<span class="st-chip new">новая</span>' : ''}</b><small>${esc(new Date(b.created_at * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }))}</small></div>
+        <div><b>${esc(uaSeen(b.created_at))} ${i === 0 && ST.bkNew ? '<span class="st-chip new">новая</span>' : ''}${b.kind === 'pre' ? '<span class="st-chip warn">До восстановления</span>' : b.kind === 'man' ? '<span class="st-chip">Вручную</span>' : b.kind === 'auto' ? '<span class="st-chip">Авто</span>' : ''}</b><small>${esc(new Date(b.created_at * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }))}</small></div>
         <span class="st-sz">${hmBytes(b.size)}</span>
         <div style="display:flex;gap:6px">
+          <button type="button" class="btn btn-primary btn-sm" onclick="rsFromBackup('${jesc(b.name)}')">${rsIc('restore', 13)}Восстановить</button>
           <button type="button" class="btn btn-ghost btn-sm" onclick="stDownload('${jesc(b.name)}', this)">${ST_I.down}Скачать</button>
           <button type="button" class="btn btn-ghost btn-sm" aria-label="Удалить копию ${esc(b.name)}" onclick="stDeleteBackup('${jesc(b.name)}')">${UX_I.trash}</button>
         </div></div>`).join('')}</div>` : ''}`;
@@ -6122,6 +6176,167 @@ function stClose() {
     return;
   }
   closeModal('modal-settings');
+}
+
+/* ── ВОССТАНОВЛЕНИЕ ИЗ РЕЗЕРВНОЙ КОПИИ ── */
+// Окно открывается из списка копий («Восстановить») или кнопкой «Восстановить из файла…». Три переключателя:
+// пользователи, чаты, настройки. Администраторы сохраняются всегда. Сервер сравнивает базу с копией
+// (/backups/restore/inspect), перед началом делает копию «до восстановления» (/safety), потом применяет (/apply).
+const RS = { step: 'closed', src: null, info: null, sw: { users: true, chats: true, settings: false }, word: '', k: 0, err: '', up: 0, name: '', result: null };
+const RS_I = {
+  restore: '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  warn: '<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+  shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  chk: '<polyline points="20 6 9 17 4 12"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>',
+  file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+};
+const rsIc = (k, s = 16, sw = 2) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${RS_I[k]}</svg>`;
+const rsN = n => Number(n || 0).toLocaleString('ru-RU');
+const rsWhen = t => t ? new Date(t * 1000).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+
+function rsOpen() { openModal('modal-restore'); rsRender(); }
+function rsClose() {
+  if (RS.step === 'run' || RS.step === 'upload') return;
+  RS.step = 'closed'; closeModal('modal-restore');
+}
+// из списка копий
+async function rsFromBackup(name) {
+  RS.src = { name }; RS.name = name; RS.info = null; RS.err = ''; RS.word = '';
+  RS.sw = { users: true, chats: true, settings: false };
+  RS.step = 'loading'; rsOpen();
+  await rsInspect();
+}
+async function rsInspect() {
+  const r = await api('POST', '/api/admin/backups/restore/inspect', RS.src);
+  if (!r?.ok) { RS.err = r?.error || 'Не удалось проверить копию'; RS.step = 'error'; return rsRender(); }
+  RS.info = r; RS.step = 'confirm'; rsRender();
+}
+// из файла
+function rsPick() {
+  Object.assign(RS, { step: 'pick', src: null, info: null, err: '', up: 0, word: '', sw: { users: true, chats: false, settings: false } });
+  rsOpen();
+}
+function rsChoose() { document.getElementById('rs-file')?.click(); }
+function rsUpload(file) {
+  if (!file) return;
+  if (!/\.(db|sqlite|sqlite3)$/i.test(file.name)) { RS.err = 'Нужен файл копии с расширением .db'; RS.step = 'pick'; return rsRender(); }
+  RS.name = file.name; RS.up = 0; RS.err = ''; RS.step = 'upload'; rsRender();
+  const x = new XMLHttpRequest();
+  x.open('POST', '/api/admin/backups/restore/upload');
+  x.setRequestHeader('Authorization', 'Bearer ' + token);
+  x.setRequestHeader('Content-Type', 'application/octet-stream');
+  x.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
+  x.upload.onprogress = e => { if (e.lengthComputable) { RS.up = Math.round(e.loaded / e.total * 100); const b = document.getElementById('rs-upbar'); if (b) b.style.width = RS.up + '%'; const t = document.getElementById('rs-uppct'); if (t) t.textContent = RS.up + '%'; } };
+  x.onerror = () => { RS.err = 'Не удалось загрузить файл'; RS.step = 'pick'; rsRender(); };
+  x.onload = async () => {
+    let r = null; try { r = JSON.parse(x.responseText); } catch {}
+    if (!r?.ok) { RS.err = r?.error || 'Не удалось загрузить файл'; RS.step = 'pick'; return rsRender(); }
+    RS.src = { upload_id: r.id, file_name: r.name }; RS.step = 'check'; rsRender();
+    await rsInspect();
+  };
+  x.send(file);
+}
+function rsSw(k) {
+  const sw = RS.sw; sw[k] = !sw[k];
+  if (k === 'chats' && sw.chats) sw.users = true;
+  rsRender(true);
+}
+function rsWordInput(v) {
+  RS.word = v;
+  const ok = rsReady(), b = document.getElementById('rs-go'), n = document.getElementById('rs-note'), inp = document.getElementById('rs-word');
+  if (b) b.disabled = !ok; if (inp) inp.classList.toggle('ok', ok);
+  if (n) { n.className = 'rs-note' + (ok ? ' ok' : ''); n.innerHTML = rsNote(); }
+}
+const rsAny = () => RS.sw.users || RS.sw.chats || RS.sw.settings;
+const rsReady = () => RS.word.trim().toLowerCase() === 'восстановить' && rsAny();
+const rsNote = () => rsReady() ? '<b>Всё готово</b>' : `Осталось: <b>${rsAny() ? 'ввести слово' : 'выбрать, что восстановить'}</b>`;
+
+async function rsGo() {
+  if (!rsReady() || RS.step !== 'confirm') return;
+  RS.step = 'run'; RS.k = 0; RS.err = ''; rsRender();
+  const s = await api('POST', '/api/admin/backups/restore/safety');
+  if (!s?.ok) { RS.err = s?.error || 'Не удалось создать копию перед восстановлением'; RS.step = 'confirm'; rsRender(); return toast(esc(RS.err), 'error'); }
+  RS.k = 1; rsRender();
+  const r = await api('POST', '/api/admin/backups/restore/apply', { ...RS.src, safety: s.name, ...RS.sw });
+  if (!r?.ok) { RS.err = r?.error || 'Восстановление не удалось'; RS.step = 'confirm'; rsRender(); return toast(esc(RS.err), 'error'); }
+  RS.k = 5; RS.result = r.result; RS.step = 'done'; rsRender();
+  if (r.backups && typeof ST !== 'undefined') { ST.backups = r.backups; ST.bkNew = true; }
+  rsRefreshLists();
+  // чаты заменены — сводка на главной и счётчики в меню устарели
+  try { updateNavBadges(); } catch {}
+}
+function rsRefreshLists() {
+  try { if (document.getElementById('modal-settings')?.classList.contains('open')) stRender(); else if (currentPage === 'settings') spRender(); } catch {}
+}
+
+function rsEff() {
+  const i = RS.info, sw = RS.sw, n = i.now, c = i.copy, E = {};
+  E.users = sw.users ? n.users + i.uNew : n.users;
+  const ch = k => sw.chats ? c[k] : n[k];
+  E.rooms = ch('rooms'); E.groups = ch('groups'); E.direct = ch('direct'); E.msgs = ch('msgs'); E.last = sw.chats ? c.last : n.last;
+  return E;
+}
+function rsRender(keepScroll) {
+  const box = document.getElementById('rs-box'); if (!box) return;
+  const sc = keepScroll ? box.querySelector('.rs-b')?.scrollTop : 0;
+  const head = (title, sub, close = true) => `<div class="rs-h"><span class="rs-ic">${rsIc('restore', 20)}</span><div class="rs-t"><h3>${title}</h3><div class="rs-sub">${sub}</div></div>${close ? `<button type="button" class="ux-ibtn" aria-label="Закрыть" onclick="rsClose()">${rsIc('x', 14)}</button>` : ''}</div>`;
+  const stepsHtml = (list) => `<div class="rs-steps">${list.map(([t, st]) => `<div class="rs-st ${st}"><span class="rs-dot">${st === 'done' ? rsIc('chk', 12, 3) : ''}</span>${t}</div>`).join('')}</div>`;
+  let html = '';
+  if (RS.step === 'loading' || RS.step === 'check') {
+    html = head('Восстановление', RS.step === 'check' ? esc(RS.name) : 'Проверяю копию…') + `<div class="rs-b">${stepsHtml(RS.step === 'check' ? [['Файл загружен', 'done'], ['Проверяю: база SQLite, целостность, схема', 'on']] : [['Проверяю копию: целостность, схема, содержимое', 'on']])}</div>`;
+  } else if (RS.step === 'pick') {
+    html = head('Восстановить из файла', 'Выберите файл резервной копии (.db)') + `<div class="rs-b"><div class="rs-drop" id="rs-drop"><span class="rs-ic2">${rsIc('upload', 24)}</span><b>Перетащите файл сюда</b><span class="rs-sub">или выберите на компьютере. Подойдёт копия, скачанная из этого или другого сервера</span><button type="button" class="btn btn-primary" onclick="rsChoose()">Выбрать файл…</button></div>${RS.err ? `<div class="rs-err">${esc(RS.err)}</div>` : ''}</div>`;
+  } else if (RS.step === 'upload') {
+    html = head('Загрузка файла', esc(RS.name), false) + `<div class="rs-b"><div class="rs-upl"><div class="rs-bar"><i id="rs-upbar" style="width:${RS.up}%"></i></div><span class="hm-mono" id="rs-uppct">${RS.up}%</span></div><div class="rs-sub">Не закрывайте страницу. Большой файл может грузиться несколько минут</div></div>`;
+  } else if (RS.step === 'error') {
+    html = head('Восстановление', 'Не удалось проверить копию') + `<div class="rs-b"><div class="rs-err">${esc(RS.err)}</div></div><div class="rs-f"><span class="rs-note"></span><button type="button" class="btn btn-ghost" onclick="rsClose()">Закрыть</button></div>`;
+  } else if (RS.step === 'run' || RS.step === 'done') {
+    const sw = RS.sw, r = RS.result, done = RS.step === 'done';
+    const st = (i, on) => !on ? 'skip' : RS.k > i ? 'done' : RS.k === i ? 'on' : '';
+    html = head(done ? 'Восстановление завершено' : 'Идёт восстановление', esc(RS.src?.name || RS.name) + (done ? '' : ' · не закрывайте страницу'), false) + `<div class="rs-b">
+      ${done ? `<div class="rs-ok"><span class="rs-ck">${rsIc('chk', 30, 3)}</span><b>Готово</b><span class="rs-sub">${[r.users ? `людей добавлено ${rsN(r.users.added)}, обновлено ${rsN(r.users.updated)}` : '', r.chats ? `чатов: ${rsN(r.chats.rooms + r.chats.groups + r.chats.direct)}, сообщений: ${rsN(r.chats.msgs)}` : '', sw.settings ? 'настройки из копии' : ''].filter(Boolean).join(' · ')}</span></div>` : ''}
+      ${stepsHtml([['Копия «до восстановления»', st(0, true)], ['Пользователи', st(1, sw.users)], ['Чаты, переписки, вебхуки', st(1, sw.chats)], ['Настройки', st(1, sw.settings)]].map(([t, s], i) => [t, done && s !== 'skip' ? 'done' : s]))}
+      ${done ? `<div class="rs-adm">${rsIc('shield', 18)}<div>Администраторы сохранены: <b>${(RS.info.admins || []).map(esc).join(', ')}</b>. Копия «До восстановления» лежит в списке: если что-то пошло не так, из неё можно вернуться.${r.chats ? ' Клиенты перезапускаются сами.' : ''}</div></div>` : ''}</div>${done ? `<div class="rs-f"><span class="rs-note">Копия «До восстановления» создана</span><button type="button" class="btn btn-primary" onclick="rsClose()">Закрыть</button></div>` : ''}`;
+  } else if (RS.step === 'confirm') {
+    const i = RS.info, sw = RS.sw, E = rsEff(), n = i.now, c = i.copy, name = RS.src?.upload_id ? esc(RS.src.file_name) : esc(rsWhen(i.source.created_at)) + ' · ' + esc(i.source.name);
+    const cell = (cur, nw) => `<td class="${nw > cur ? 'up' : nw < cur ? 'dn' : 'eq'}">${rsN(nw)}${nw !== cur ? `<small>${nw > cur ? '+' : '−'}${rsN(Math.abs(nw - cur))}</small>` : ''}</td>`;
+    const swRow = (k, title, desc, eff, lock) => `<div class="rs-sw ${sw[k] ? 'on' : ''}"><button type="button" class="rs-tg" role="switch" aria-checked="${sw[k]}" onclick="rsSw('${k}')" ${lock ? 'disabled title="Включено, потому что чаты ссылаются на людей"' : ''}></button><div><b>${title}${lock ? ' ' + rsIc('lock', 13) : ''}</b><div class="rs-d">${desc}</div></div>${sw[k] && eff ? `<div class="rs-eff">${eff}</div>` : ''}</div>`;
+    const warns = [];
+    if (!rsAny()) warns.push(['warn', '<b>Ничего не выбрано.</b> Включите хотя бы один переключатель']);
+    if (sw.chats) warns.push(['warn', '<b>Клиенты перезапустятся сами</b>: у людей в сети это 1–2 секунды']);
+    if (sw.users && i.pw) warns.push(['warn', `<b>${rsN(i.pw)} ${hmPlural(i.pw, 'человек войдёт', 'человека войдут', 'человек войдут')} заново</b>: у них поменяется пароль`]);
+    if (sw.chats) warns.push(['warn', '<b>Вложения не восстанавливаются</b>: в копии только база, файлы лежат отдельно']);
+    warns.push(['ok', 'Перед началом сервер сделает копию «До восстановления», при ошибке всё откатится']);
+    const parts = [sw.users ? 'пользователи' : '', sw.chats ? 'чаты' : '', sw.settings ? 'настройки' : ''].filter(Boolean);
+    html = head('Восстановление из копии', `${name} · ${hmBytes(i.source.size)}${RS.src?.upload_id ? ' · из файла' : ''}`) + `<div class="rs-b">
+      ${swRow('users', 'Восстановить пользователей', (sw.chats ? 'Включено: чаты ссылаются на людей. ' : '') + 'Добавит недостающих, обновит данные существующих. Никого не удаляет', `<span class="g">+${rsN(i.uNew)} новых</span><span class="m">обновится ${rsN(i.uUpd)}</span>${i.pw ? `<span class="m">${rsN(i.pw)} войдут заново</span>` : ''}`, sw.chats)}
+      ${swRow('chats', 'Восстановить чаты', 'Комнаты, группы и личные переписки заменятся теми, что в копии', i.lost > 0 ? `<span class="w">пропадёт ${rsN(i.lost)} ${hmPlural(i.lost, 'сообщение', 'сообщения', 'сообщений')} после ${esc(rsWhen(c.last))}</span>` : `<span class="g">${c.msgs > n.msgs ? `вернётся ${rsN(c.msgs - n.msgs)} сообщений` : 'новых сообщений после копии нет'}</span>`)}
+      ${swRow('settings', 'Восстановить настройки', 'Токен GitHub, расписание копий, лимиты файлов. Технические ключи входа и уведомлений не трогаются', (i.settings || []).length ? i.settings.map(r => `<span class="m">${esc(r[0])}: ${esc(r[1])} → <b>${esc(r[2])}</b></span>`).join('') : '<span class="m">настройки в копии совпадают с текущими</span>')}
+      <div><div class="rs-lbl">Что станет</div><table class="rs-cmp"><thead><tr><th></th><th>Сейчас</th><th>В копии</th><th>Станет</th></tr></thead><tbody>
+        <tr><td>Пользователей</td><td class="now">${rsN(n.users)}</td><td class="now">${rsN(c.users)}</td>${cell(n.users, E.users)}</tr>
+        <tr><td>Комнат</td><td class="now">${rsN(n.rooms)}</td><td class="now">${rsN(c.rooms)}</td>${cell(n.rooms, E.rooms)}</tr>
+        <tr><td>Групп</td><td class="now">${rsN(n.groups)}</td><td class="now">${rsN(c.groups)}</td>${cell(n.groups, E.groups)}</tr>
+        <tr><td>Личных переписок</td><td class="now">${rsN(n.direct)}</td><td class="now">${rsN(c.direct)}</td>${cell(n.direct, E.direct)}</tr>
+        <tr><td>Сообщений</td><td class="now">${rsN(n.msgs)}</td><td class="now">${rsN(c.msgs)}</td>${cell(n.msgs, E.msgs)}</tr>
+        <tr><td>Последнее сообщение</td><td class="now t">${esc(rsWhen(n.last))}</td><td class="now t">${esc(rsWhen(c.last))}</td><td class="eq t">${esc(rsWhen(E.last))}</td></tr></tbody></table></div>
+      <div class="rs-adm">${rsIc('shield', 18)}<div><b>Администраторы сохранятся всегда:</b> ${(i.admins || []).map(a => `<span class="rs-pill">${esc(a)}</span>`).join(' ')}<div class="rs-sub" style="margin-top:3px">Останутся с текущими паролем, правами и 2FA, ваша сессия не прервётся</div></div></div>
+      <div class="rs-warns">${warns.map(([k, t]) => `<div class="${k}">${rsIc(k === 'ok' ? 'shield' : 'warn', 14)}<span>${t}</span></div>`).join('')}</div>
+      ${RS.err ? `<div class="rs-err">${esc(RS.err)}</div>` : ''}
+      <div class="rs-word"><label class="rs-lbl" for="rs-word">Введите слово ВОССТАНОВИТЬ, чтобы продолжить</label><input id="rs-word" autocomplete="off" spellcheck="false" placeholder="ВОССТАНОВИТЬ" value="${esc(RS.word)}" class="${rsReady() ? 'ok' : ''}" oninput="rsWordInput(this.value)" onkeydown="if(event.key==='Enter')rsGo()"></div></div>
+    <div class="rs-f"><span class="rs-note ${rsReady() ? 'ok' : ''}" id="rs-note">${rsNote()}</span><button type="button" class="btn btn-ghost" onclick="rsClose()">Отмена</button><button type="button" class="btn btn-danger" id="rs-go" onclick="rsGo()" ${rsReady() ? '' : 'disabled'}>Восстановить${parts.length ? ': ' + parts.join(', ') : ''}</button></div>`;
+  }
+  box.innerHTML = html;
+  const b = box.querySelector('.rs-b'); if (b && sc) b.scrollTop = sc;
+  const dz = document.getElementById('rs-drop');
+  if (dz) {
+    dz.ondragover = e => { e.preventDefault(); dz.classList.add('over'); };
+    dz.ondragleave = () => dz.classList.remove('over');
+    dz.ondrop = e => { e.preventDefault(); dz.classList.remove('over'); rsUpload(e.dataTransfer.files?.[0]); };
+  }
+  if (keepScroll) { const w = document.getElementById('rs-word'); if (w && RS.word) { w.focus(); w.setSelectionRange(w.value.length, w.value.length); } }
 }
 
 async function stBackup() {
@@ -6474,11 +6689,11 @@ const spQ2 = () => spSet({ fileExt: [] });
 function spBackups() {
   const last = ST.backups[0], pend = SP.pend?.key === 'backupRetention' ? SP.pend : null, ret = pend ? pend.val : spSv('backupRetention'), retVal = Number.isFinite(ret) && ret > 0 ? ret : '';
   const oldN = retVal ? ST.backups.filter(b => spBkAgeDays(b) > retVal).length : 0;
-  return spRow('Создать копию сейчас', last ? `Последняя: ${esc(uaSeen(last.created_at))}, ${hmBytes(last.size)}. Следующая: ${esc(stNextBackupLabel() || 'только вручную')}` : 'Копий пока нет', `<button type="button" class="btn ux-solid" ${ST.bkBusy ? 'disabled' : ''} onclick="stBackup()">${ST.bkBusy ? '<span class="st-spin light"></span>Создаю…' : ST_I.plus + 'Создать копию'}</button>`, '', '', 'резервные бэкап')
+  return spRow('Создать копию сейчас', last ? `Последняя: ${esc(uaSeen(last.created_at))}, ${hmBytes(last.size)}. Следующая: ${esc(stNextBackupLabel() || 'только вручную')}` : 'Копий пока нет', `<button type="button" class="btn btn-ghost" onclick="rsPick()">${rsIc('upload', 14)}Восстановить из файла…</button><button type="button" class="btn ux-solid" ${ST.bkBusy ? 'disabled' : ''} onclick="stBackup()">${ST.bkBusy ? '<span class="st-spin light"></span>Создаю…' : ST_I.plus + 'Создать копию'}</button>`, '', '', 'резервные бэкап восстановить')
     + spRow('Дни автокопий', 'Пусто: копии только по кнопке', `<div class="sp-seg">${ST_DAYS.map(([v, l]) => `<button type="button" aria-pressed="${spSv('backupDays').includes(v)}" onclick="spDay(${v})">${l}</button>`).join('')}</div>`, '', 'wide', 'расписание')
     + (spSv('backupDays').length ? spRow('Время копии', 'По времени сервера', `<div class="sp-inp"><input type="time" value="${esc(spSv('backupTime'))}" aria-label="Время автокопирования" style="width:96px" oninput="spTime(this.value)"></div>`, '', '', 'расписание') : '')
     + (spHit('Срок хранения копий', 'удаляются') ? `<div class="sp-r"><div class="sp-l"><b>Срок хранения копий</b><span>Копии старше срока удаляются автоматически. Пусто: хранить всегда</span></div><div class="sp-c"><div class="sp-inp"><input type="number" min="1" max="3650" value="${retVal}" placeholder="всегда" aria-label="Дней" oninput="spRet(this.value)"><span class="u">дней</span></div></div>${pend ? `<div class="sp-conf">${ST_I.warn}<span>При сроке <b>${pend.val} дн</b> удалится <b>${oldN} ${uxPlural(oldN, 'копия', 'копии', 'копий')}</b>. Отменить это нельзя.</span><button type="button" class="btn ux-solid btn-sm" onclick="spPendOk()">Применить</button><button type="button" class="btn btn-ghost btn-sm" onclick="spPendNo()">Не менять</button></div>` : ''}</div>` : '')
-    + (spHit('Копии', 'список скачать') ? `<div class="sp-r wide"><div class="sp-l"><b>Копии · ${ST.backups.length}</b><span><button type="button" class="sp-link" onclick="SP.showBk=!SP.showBk;spRender()">${SP.showBk ? 'Скрыть список' : 'Показать список'}</button></span></div>${SP.showBk ? `<div style="grid-column:1/-1">${ST.backups.map(b => `<div class="sp-bk"><span class="n">${esc(uaSeen(b.created_at))}</span><span class="z">${hmBytes(b.size)}</span><button type="button" class="btn btn-ghost btn-sm" onclick="stDownload('${jesc(b.name)}', this)">${ST_I.down}Скачать</button><button type="button" class="btn btn-ghost btn-sm" aria-label="Удалить копию" onclick="stDeleteBackup('${jesc(b.name)}')">${UX_I.trash}</button></div>`).join('')}</div>` : ''}</div>` : '');
+    + (spHit('Копии', 'список скачать восстановить') ? `<div class="sp-r wide"><div class="sp-l"><b>Копии · ${ST.backups.length}</b><span><button type="button" class="sp-link" onclick="SP.showBk=!SP.showBk;spRender()">${SP.showBk ? 'Скрыть список' : 'Показать список'}</button></span></div>${SP.showBk ? `<div style="grid-column:1/-1">${ST.backups.map(b => `<div class="sp-bk"><span class="n">${esc(uaSeen(b.created_at))}${b.kind === 'pre' ? ' <span class="st-chip warn">До восстановления</span>' : b.kind === 'man' ? ' <span class="st-chip">Вручную</span>' : b.kind === 'auto' ? ' <span class="st-chip">Авто</span>' : ''}</span><span class="z">${hmBytes(b.size)}</span><button type="button" class="btn btn-primary btn-sm" onclick="rsFromBackup('${jesc(b.name)}')">${rsIc('restore', 13)}Восстановить</button><button type="button" class="btn btn-ghost btn-sm" onclick="stDownload('${jesc(b.name)}', this)">${ST_I.down}Скачать</button><button type="button" class="btn btn-ghost btn-sm" aria-label="Удалить копию" onclick="stDeleteBackup('${jesc(b.name)}')">${UX_I.trash}</button></div>`).join('')}</div>` : ''}</div>` : '');
 }
 function spGithub() {
   const g = ST.gh;

@@ -5245,6 +5245,8 @@ function connectWS() {
     if (data.type==='perms') annSetAllowed(data.can_announce);
 
     if (data.type === 'force_logout') { logout(true); }
+    // Администратор восстановил чаты из копии: данные на экране устарели, берём заново
+    if (data.type === 'data_restored') { location.reload(); return; }
     if (data.type === 'announcement') {
       showSystemAnnouncement(data.text);
       // Окно свёрнуто или не в фокусе — модалку человек не увидит, поэтому

@@ -8,6 +8,7 @@ const { authMiddleware, adminMiddleware } = require('../auth');
 const announcements = require('../announcements');
 const { sendTo, broadcast, broadcastAll, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, getMessageWithStatus } = require('../ws');
 const monitor = require('../monitor');
+const restore = require('../restore');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
 const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
@@ -1148,17 +1149,20 @@ function listBackups() {
       .filter(n => BACKUP_RE.test(n))
       .map(name => {
         const st = fs.statSync(path.join(BACKUP_DIR, name));
-        return { name, size: st.size, created_at: Math.floor(st.mtimeMs / 1000) };
+        // Вид копии (auto | man | pre) записан рядом в файле .kind; у старых копий его нет
+        let kind = null; try { kind = fs.readFileSync(path.join(BACKUP_DIR, name + '.kind'), 'utf8').trim() || null; } catch {}
+        return { name, size: st.size, created_at: Math.floor(st.mtimeMs / 1000), kind };
       })
       .sort((a, b) => b.created_at - a.created_at);
   } catch { return []; }
 }
 
-async function createBackup() {
+async function createBackup(kind = 'man') {
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
   const ts = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
   const name = `chat-${ts}.db`;
   await db.backup(path.join(BACKUP_DIR, name));
+  try { fs.writeFileSync(path.join(BACKUP_DIR, name + '.kind'), kind); } catch {}
   return name;
 }
 
@@ -1171,7 +1175,7 @@ function pruneBackups() {
   const cutoff = Date.now() - days * 86_400_000;
   for (const b of listBackups()) {
     if (b.created_at * 1000 < cutoff) {
-      try { fs.unlinkSync(path.join(BACKUP_DIR, b.name)); console.log('[Backup] Удалена устаревшая копия:', b.name); } catch {}
+      try { fs.unlinkSync(path.join(BACKUP_DIR, b.name)); try { fs.unlinkSync(path.join(BACKUP_DIR, b.name + '.kind')); } catch {} console.log('[Backup] Удалена устаревшая копия:', b.name); } catch {}
     }
   }
 }
@@ -1196,10 +1200,90 @@ router.delete('/backups/:name', (req, res) => {
   if (!BACKUP_RE.test(name)) return res.status(400).json({ error: 'Некорректное имя' });
   try {
     fs.unlinkSync(path.join(BACKUP_DIR, name));
+    try { fs.unlinkSync(path.join(BACKUP_DIR, name + '.kind')); } catch {}
     console.log('[Backup] Копия удалена вручную:', name);
     res.json({ ok: true, backups: listBackups() });
   } catch (e) {
     res.status(404).json({ error: 'Копия не найдена' });
+  }
+});
+
+// ── ВОССТАНОВЛЕНИЕ ИЗ КОПИИ ──
+// Выборочное слияние в работающей базе (см. ../restore.js): люди, чаты, настройки по отдельности.
+// Файл берётся из списка копий или загружается сюда же; загруженный лежит во временной папке не дольше часа.
+const RESTORE_TMP = path.join(BACKUP_DIR, '.restore');
+const UPLOAD_MAX = 4 * 1024 ** 3;
+function cleanRestoreTmp() {
+  try { for (const n of fs.readdirSync(RESTORE_TMP)) { const p = path.join(RESTORE_TMP, n); if (Date.now() - fs.statSync(p).mtimeMs > 3600e3) fs.unlinkSync(p); } } catch {}
+}
+function restoreSource(b) {
+  if (b?.name) {
+    if (!BACKUP_RE.test(b.name)) throw new Error('Некорректное имя копии');
+    const p = path.join(BACKUP_DIR, b.name);
+    if (!fs.existsSync(p)) throw new Error('Копия не найдена');
+    return { path: p, info: { type: 'backup', name: b.name, size: fs.statSync(p).size, created_at: Math.floor(fs.statSync(p).mtimeMs / 1000) }, tmp: false };
+  }
+  if (/^[0-9a-f]{16}$/.test(b?.upload_id || '')) {
+    const p = path.join(RESTORE_TMP, `up-${b.upload_id}.db`);
+    if (!fs.existsSync(p)) throw new Error('Загруженный файл не найден: загрузите его заново');
+    return { path: p, info: { type: 'file', name: String(b.file_name || 'копия.db').slice(0, 120), size: fs.statSync(p).size }, tmp: true };
+  }
+  throw new Error('Не указана копия');
+}
+
+router.post('/backups/restore/upload', (req, res) => {
+  fs.mkdirSync(RESTORE_TMP, { recursive: true });
+  cleanRestoreTmp();
+  const id = crypto.randomBytes(8).toString('hex'), file = path.join(RESTORE_TMP, `up-${id}.db`);
+  let name = 'копия.db'; try { name = decodeURIComponent(String(req.headers['x-file-name'] || '')).slice(0, 120) || name; } catch {}
+  let size = 0, dead = false;
+  const out = fs.createWriteStream(file);
+  const drop = () => { dead = true; try { out.destroy(); } catch {} try { fs.unlinkSync(file); } catch {} };
+  req.on('data', c => { size += c.length; if (size > UPLOAD_MAX && !dead) { req.unpipe(out); drop(); res.status(413).json({ error: 'Файл больше 4 ГБ' }); } });
+  req.on('aborted', drop);
+  out.on('error', () => { if (!dead) { drop(); res.status(500).json({ error: 'Не удалось сохранить файл' }); } });
+  out.on('finish', () => { if (!dead) res.json({ ok: true, id, name, size }); });
+  req.pipe(out);
+});
+
+// Сравнение «сейчас → в копии» для окна подтверждения: ничего не меняет
+router.post('/backups/restore/inspect', (req, res) => {
+  try {
+    const src = restoreSource(req.body);
+    res.json({ ok: true, source: src.info, ...restore.inspect(src.path) });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// Первый шаг восстановления: копия текущей базы «до восстановления», чтобы можно было вернуться
+router.post('/backups/restore/safety', async (req, res) => {
+  try {
+    const name = await createBackup('pre');
+    console.log('[Restore] Копия перед восстановлением:', name);
+    res.json({ ok: true, name, backups: listBackups() });
+  } catch (e) { res.status(500).json({ error: 'Не удалось создать копию перед восстановлением: ' + e.message }); }
+});
+
+router.post('/backups/restore/apply', (req, res) => {
+  let src;
+  try {
+    src = restoreSource(req.body);
+    // без свежей копии «до восстановления» не начинаем
+    const sf = String(req.body.safety || '');
+    if (!BACKUP_RE.test(sf) || !fs.existsSync(path.join(BACKUP_DIR, sf)) || Date.now() - fs.statSync(path.join(BACKUP_DIR, sf)).mtimeMs > 20 * 60e3)
+      return res.status(400).json({ error: 'Сначала нужна свежая копия «до восстановления»' });
+    const r = restore.apply(src.path, { users: !!req.body.users, chats: !!req.body.chats, settings: !!req.body.settings });
+    const parts = [r.users ? 'пользователи' : '', r.chats ? 'чаты' : '', req.body.settings ? 'настройки' : ''].filter(Boolean).join(', ');
+    logAudit(req, 'server', 'Восстановление из копии', `${src.info.name}: ${parts}`);
+    console.log('[Restore] Восстановлено из', src.info.name, '—', parts);
+    if (req.body.settings) _versionCache = { version: null, fetchedAt: 0 };
+    r.logout.forEach(uid => sendTo(uid, { type: 'force_logout' }));
+    // Электрон перезапускается командой force_restart, веб и мобильный клиенты перезагружают страницу по data_restored
+    if (r.chats) { broadcastAll({ type: 'force_restart' }); broadcastAll({ type: 'data_restored' }); }
+    if (src.tmp) { try { fs.unlinkSync(src.path); } catch {} }
+    res.json({ ok: true, result: { users: r.users, chats: r.chats, settings: r.settings }, backups: listBackups() });
+  } catch (e) {
+    console.error('[Restore] Ошибка:', e.message);
+    res.status(400).json({ error: e.message });
   }
 });
 
@@ -1221,7 +1305,7 @@ function startBackupSchedule() {
     if (_lastAutoBackupKey === key) return;
     _lastAutoBackupKey = key;
     try {
-      const name = await createBackup();
+      const name = await createBackup('auto');
       console.log('[Backup] Автоматическая копия создана:', name);
       pruneBackups();
     } catch (e) { console.error('[Backup] Ошибка автокопии:', e.message); }

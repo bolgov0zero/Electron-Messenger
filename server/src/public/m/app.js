@@ -2540,6 +2540,8 @@ function connectWS() {
   ws.onmessage = e => {
     if (ws !== S.ws) return;
     let data; try { data = JSON.parse(e.data); } catch { return; }
+    // Администратор восстановил чаты из копии: данные на экране устарели, берём заново
+    if (data.type === 'data_restored') { location.reload(); return; }
 
     if (data.type === 'connected') {
       S.editLimit = data.edit_time_limit || 120;
