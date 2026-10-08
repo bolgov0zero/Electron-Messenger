@@ -2448,7 +2448,7 @@ function emojiSections() {
 // липкие заголовки, поиск — общее. Раньше у реакций была своя плоская сетка
 // без разделов и поиска, и полторы тысячи смайлов приходилось листать наугад.
 const EP_KIND = {
-  ep: { cols: 8, cell: 40, pick: 'insertEmoji' },   // композер
+  ep: { cols: 8, cell: 36, pick: 'insertEmoji' },   // композер
   rp: { cols: 7, cell: 34, pick: 'pickerReact' },   // реакции
 };
 const _epStatic = { ep: null, rp: null };
@@ -4076,7 +4076,17 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
   const ctxReactEl = menu.querySelector('.ctx-reactions');
   if (ctxReactEl) {
     const _freq = getFreqEmojis(7);
-    ctxReactEl.innerHTML = _freq.map(em=>`<button class="ctx-reaction-btn" onclick="ctxReact('${em}')">${em}</button>`).join('')+`<button class="ctx-reaction-btn ctx-reaction-more" onclick="showReactionPicker(event)">→</button>`;
+    // Уже поставленная вами реакция подсвечена
+    const _mine = new Set([...document.querySelectorAll(`.reaction-btn.mine[data-msg-id="${msgId}"]`)].map(b => b.dataset.reaction));
+    ctxReactEl.innerHTML = _freq.map(em=>`<button class="ctx-reaction-btn${_mine.has(em) ? ' mine' : ''}" onclick="ctxReact('${em}')">${em}</button>`).join('')+`<button class="ctx-reaction-btn ctx-reaction-more" onclick="showReactionPicker(event)">→</button>`;
+  }
+  const _cap = document.getElementById('ctx-cap');
+  if (_cap) {
+    const _d = new Date(sentAt * 1000), _n = new Date(), _y = new Date(_n.getTime() - 86400000);
+    const _day = _d.toDateString() === _n.toDateString() ? 'Сегодня' : _d.toDateString() === _y.toDateString() ? 'Вчера'
+      : _d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(_d.getFullYear() !== _n.getFullYear() ? { year: 'numeric' } : {}) });
+    const _edited = !!document.querySelector(`[data-msg-id="${msgId}"] .edited-tag`);
+    _cap.textContent = `${_day}, ${_d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${_edited ? ' · изменено' : ''}`;
   }
   // Сначала показываем чтобы получить реальные размеры
   ctxReadSetup(msgId, isMine);
@@ -4086,7 +4096,8 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
 
 function syncCtxSeparators(menu) {
   const kids = [...menu.children];
-  const shown = el => el && !el.classList.contains('ctx-sep') && el.style.display !== 'none';
+  // Строка со временем отправки разделителем не считается: у неё своя линия сверху
+  const shown = el => el && !el.classList.contains('ctx-sep') && !el.classList.contains('ctx-cap') && el.style.display !== 'none';
   kids.forEach((el, i) => {
     if (!el.classList.contains('ctx-sep')) return;
     const before = kids.slice(0, i).reverse().find(k => shown(k));
@@ -4632,9 +4643,11 @@ function showReactionPicker(e) {
   const search = document.getElementById('rp-search-input');
   if (search) search.value = '';
   scroll.scrollTop = 0;
-  syncEmojiTabs('rp');
   picker.style.left = '-9999px'; picker.style.top = '-9999px';
   picker.classList.add('open');
+  // Выбранная вкладка считается по размерам прокрутки, поэтому только когда панель уже показана
+  // (скрытая, она даёт нулевую высоту, и подсвечивался последний раздел)
+  syncEmojiTabs('rp');
   const pw = picker.offsetWidth, ph = picker.offsetHeight;
   const margin = 6;
   const _z = (S.settings.uiScale || 100) / 100;

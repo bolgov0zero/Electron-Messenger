@@ -179,6 +179,7 @@
   --modal-bg:    #ffffff;
   --card-bg:     #ffffff;
   --menu-bg:     #ffffff;
+  --shadow-pop:  0 14px 36px rgba(15,23,42,.16), 0 2px 8px rgba(15,23,42,.08);
 
   /* Rows */
   --active-row:        rgba(41,214,184,0.10);
@@ -302,6 +303,7 @@ html.dark {
   --modal-bg:    #1e252d;
   --card-bg:     #1e252d;
   --menu-bg:     #181c20;
+  --shadow-pop:  0 14px 36px rgba(0,0,0,.42), 0 2px 8px rgba(0,0,0,.25);
 
   --active-row:        rgba(41,214,184,0.10);
   --active-row-border: rgba(41,214,184,0.25);
@@ -842,7 +844,7 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
 }
 #sidebar-peek-zone:hover::after { opacity: 1; }
 #sidebar-menu.open { transform-origin: top right; }
-.ctx-sep { position: relative; z-index: 1; height: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+.ctx-sep { position: relative; z-index: 1; height: 0; border-top: 1px solid var(--border); margin: 6px 10px; }
 
 /* Шапка сайдбара: название и кнопки приложения, вместо отдельного топбара */
 .sidebar-head {
@@ -1452,10 +1454,11 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   bottom: calc(100% + 10px);
   left: auto; right: 70px;
   width: 340px;
-  background: var(--composer-bg);
+  background: var(--modal-bg);
   border: 1px solid var(--border);
-  border-radius: 11px;
-  box-shadow: 0 10px 34px rgba(0,0,0,.22);
+  border-radius: 16px;
+  padding: 6px;
+  box-shadow: var(--shadow-pop);
   overflow: hidden;
   max-height: 0;
   opacity: 0;
@@ -1464,16 +1467,16 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   z-index: 10;
 }
 .ep-grid.open {
-  max-height: 340px;
+  max-height: 360px;
   opacity: 1;
   pointer-events: auto;
 }
 .ep-search {
   display: flex; align-items: center; gap: 7px; flex-shrink: 0;
-  margin: 8px 8px 6px; padding: 6px 10px;
+  height: 32px; margin: 0; padding: 0 12px;
   background: var(--search-bg);
-  border: 1px solid var(--border);
-  border-radius: 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
 }
 .ep-search svg { width: 13px; height: 13px; color: var(--muted); flex-shrink: 0; }
 .ep-search input {
@@ -1486,33 +1489,30 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .ep-search input:focus-visible { outline: none; }
 .ep-search:focus-within { border-color: var(--accent); }
 .ep-tabs {
-  display: flex; gap: 2px; padding: 0 6px; flex-shrink: 0;
-  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; gap: 0; padding: 8px 2px 4px; flex-shrink: 0;
 }
 .ep-tab {
-  flex: 1; height: 32px; border: none; background: none; cursor: pointer;
+  flex: 1; max-width: 30px; aspect-ratio: 1; padding: 0; border: none; background: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px; border-radius: 8px 8px 0 0; position: relative;
+  font-size: 16px; border-radius: 50%;
   filter: grayscale(1) opacity(.5);
   transition: filter .15s, background .15s;
 }
 .ep-tab:hover { background: var(--hover-row); filter: grayscale(.4) opacity(.85); }
-.ep-tab[aria-selected="true"] { filter: none; }
-.ep-tab[aria-selected="true"]::after {
-  content: ""; position: absolute; left: 22%; right: 22%; bottom: -1px; height: 2px;
-  background: var(--accent); border-radius: 2px 2px 0 0;
-}
+.ep-tab[aria-selected="true"] { filter: none; background: var(--accent-soft); }
 .ep-scroll {
   overflow-x: hidden; overflow-y: auto;
-  padding: 0 6px 8px; max-height: 236px;
-  overscroll-behavior: contain;
+  padding: 0 2px; max-height: 236px;
+  overscroll-behavior: contain; scrollbar-width: thin;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 14px), transparent 100%);
 }
 .ep-head {
   position: sticky; top: 0; z-index: 2;
-  padding: 9px 4px 5px;
+  padding: 8px 6px 3px;
   font-size: 10.5px; font-weight: 650; letter-spacing: .05em;
   text-transform: uppercase; color: var(--muted);
-  background: var(--composer-bg);
+  background: var(--modal-bg);
 }
 /* Разделы вне видимой части не размечаются и не рисуются: без этого открытие
    панели требовало разложить почти две тысячи кнопок разом. Ожидаемую высоту
@@ -1947,14 +1947,13 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 .ctx-read.flat > button { cursor: default; }
 .ctx-read.flat > button:hover { background: none; }
 .ctx-read.flat .ctx-read-chev { display: none; }
-.ctx-read-fly { position: absolute; width: 224px; background: var(--menu-bg); border: 1px solid var(--border); border-radius: 12px; padding: 6px;
-  box-shadow: 0 30px 60px rgba(0,0,0,.5); opacity: 0; pointer-events: none; transform: translateX(-5px); transition: opacity .12s, transform .16s; z-index: 2; }
-html:not(.dark) .ctx-read-fly { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
+.ctx-read-fly { position: absolute; width: 224px; background: var(--modal-bg); border: 1px solid var(--border); border-radius: 16px; padding: 6px;
+  box-shadow: var(--shadow-pop); opacity: 0; pointer-events: none; transform: translateX(-5px); transition: opacity .12s, transform .16s; z-index: 2; }
 .ctx-read-fly.l { transform: translateX(5px); }
 .ctx-read.open .ctx-read-fly { opacity: 1; pointer-events: auto; transform: none; }
 .ctx-read-h { font-size: 11.5px; color: var(--muted); padding: 5px 8px 6px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
 .ctx-read-list { max-height: 200px; overflow-y: auto; scrollbar-width: thin; }
-.ctx-read-row { display: flex; align-items: center; gap: 9px; padding: 5px 6px; border-radius: 8px; }
+.ctx-read-row { display: flex; align-items: center; gap: 9px; padding: 5px 6px; border-radius: 10px; }
 .ctx-read-row:hover { background: var(--hover-row); }
 .ctx-read-row .av { width: 26px; height: 26px; font-size: 10px; flex-shrink: 0; }
 .ctx-read-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2192,26 +2191,31 @@ html:not(.dark) .ctx-read-fly { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 /* ══════════════════════════════════════════
    CONTEXT MENUS
    ══════════════════════════════════════════ */
+/* ══════════════════════════════════════════
+   ВСПЛЫВАЮЩИЕ МЕНЮ И ПАНЕЛИ — единый вид с окнами клиента
+   Меню 16 px, пункты 10 px (вписаны в угол: 16 минус отступ 6), фон окон, мягкая тень.
+   Смайлы центруются в круге только при чётном размере шрифта; у 20 px глиф сидит на пиксель
+   выше, его опускает padding-top.
+   ══════════════════════════════════════════ */
 .ctx-menu {
   position: fixed;
-  background: var(--menu-bg);
+  background: var(--modal-bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 30px 60px rgba(0,0,0,.5);
+  border-radius: 16px;
+  box-shadow: var(--shadow-pop);
   z-index: 300; overflow: hidden;
-  display: none; width: 230px;
+  display: none; width: 238px;
   padding: 6px;
 }
-html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 .ctx-menu.open { display: block; }
 
 .ctx-menu button {
-  display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 7px 10px;
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; height: 36px; padding: 0 10px;
   background: none; border: none;
   font-size: 13.5px; font-weight: 500; cursor: pointer; color: var(--text);
   font-family: inherit;
-  border-radius: 9px;
+  border-radius: 10px;
   transition: background .12s;
 }
 .ctx-menu button { text-align: left; justify-content: flex-start; white-space: nowrap; }
@@ -2219,51 +2223,45 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 .ctx-menu button:hover { background: var(--hover-row); }
 .ctx-menu button.ctx-danger { color: var(--danger); }
 .ctx-menu button.ctx-danger:hover { background: var(--danger-bg); }
-.ctx-menu button svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--muted); }
+.ctx-menu button svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--muted); stroke-width: 1.8; }
 .ctx-menu button.ctx-danger svg { color: var(--danger); }
+.ctx-menu button:hover svg { color: var(--text2); }
+.ctx-menu button.ctx-danger:hover svg { color: var(--danger); }
+/* Дата и время отправки — последняя строка меню сообщения */
+.ctx-cap { position: relative; margin-top: 6px; padding: 9px 10px 3px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; cursor: default; }
+.ctx-cap::before { content: ""; position: absolute; top: 0; left: 10px; right: 10px; border-top: 1px solid var(--border); }
 
-/* Reactions row in context menu */
+/* Строка реакций: капсула с круглыми зонами нажатия; уже поставленная вами реакция подсвечена */
 .ctx-reactions {
-  display: grid; grid-template-columns: repeat(8,1fr); gap: 2px;
-  padding: 6px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 6px;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 3px; margin-bottom: 6px;
+  background: var(--search-bg); border-radius: 999px;
 }
-/* Перебиваем width:100% из «.ctx-menu button» — иначе каждый эмодзи занимает всю строку */
+/* Перебиваем width:100% и высоту из «.ctx-menu button» — иначе каждый эмодзи занимает всю строку */
 .ctx-menu .ctx-reactions button {
-  width: auto; flex: none;
-  padding: 4px 0; justify-content: center;
+  width: 26px; height: 26px; flex: none; padding: 0; gap: 0;
+  justify-content: center; border-radius: 50%;
+  font-size: 16px; transition: background .12s, transform .12s;
 }
-.ctx-reaction-btn {
-  text-align: center; font-size: 15px; padding: 4px 0;
-  border-radius: 9px; cursor: pointer;
-  background: none; border: none; transition: background .1s;
-  width: 100%;
-}
-.ctx-reaction-btn:hover {
-  background: var(--hover-row);
-}
-.ctx-reaction-more {
-  font-size: 13px; color: var(--text2); font-weight: 600;
-}
+.ctx-menu .ctx-reactions button:hover { background: var(--hover-row); transform: scale(1.14); }
+.ctx-menu .ctx-reactions button.mine { background: var(--accent-soft); }
+.ctx-menu .ctx-reactions .ctx-reaction-more { font-size: 14px; color: var(--text2); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .ctx-menu .ctx-reactions button:hover { transform: none; } }
 /* Панель реакций — та же, что в композере, только уже и ниже. Классы общие,
    поэтому отличаются здесь только размеры. */
 #reaction-picker {
   position: fixed; z-index: 9999;
-  background: var(--menu-bg); border: 1px solid var(--border);
-  border-radius: 12px; padding: 0;
-  box-shadow: 0 30px 60px rgba(0,0,0,.5);
-  display: none; width: 274px;
+  background: var(--modal-bg); border: 1px solid var(--border);
+  border-radius: 16px; padding: 6px;
+  box-shadow: var(--shadow-pop);
+  display: none; width: 278px;
   overflow: hidden;
 }
 #reaction-picker.open { display: flex; flex-direction: column; }
-#reaction-picker .ep-search { margin: 7px 7px 5px; padding: 5px 9px; }
-#reaction-picker .ep-tabs { padding: 0 5px; }
-#reaction-picker .ep-tab { height: 28px; font-size: 15px; }
-#reaction-picker .ep-scroll { max-height: 186px; padding: 0 5px 6px; }
+#reaction-picker .ep-tab { font-size: 14px; padding-top: 1px; }
+#reaction-picker .ep-scroll { max-height: 204px; }
 #reaction-picker .ep-row { grid-template-columns: repeat(7, 1fr); }
-#reaction-picker .emoji-item { font-size: 20px; }
-#reaction-picker .ep-head { padding: 7px 4px 4px; }
+#reaction-picker .emoji-item { width: 34px; height: 34px; }
 
 /* ── NEW CHAT TABS ── */
 
@@ -2354,11 +2352,11 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 .mention-item .mn-login { font-size: 11px; color: var(--muted); }
 
 .emoji-item {
-  aspect-ratio: 1; width: 100%;
+  width: 36px; height: 36px; justify-self: center; padding: 1px 0 0;
   font-family: inherit;
   background: none; border: none;
-  font-size: 23px; line-height: 1; cursor: pointer;
-  border-radius: 9px;
+  font-size: 20px; line-height: 1; cursor: pointer;
+  border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   transition: background .12s, transform .12s;
 }
@@ -2459,11 +2457,11 @@ html:not(.dark) .ctx-menu { box-shadow: 0 16px 40px rgba(15,23,42,.18); }
 
 /* Контекстные меню появляются с лёгкой анимацией (как модалки), а не рывком */
 @keyframes ctxIn {
-  from { opacity: 0; transform: scale(.96) translateY(-4px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+  from { opacity: 0; transform: scale(.96); }
+  to   { opacity: 1; transform: none; }
 }
-.ctx-menu.open { animation: ctxIn 140ms cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: top left; }
-#ctx-chat-menu[style*="block"] { animation: ctxIn 140ms cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: top left; }
+.ctx-menu.open { animation: ctxIn 120ms ease-out; transform-origin: top left; }
+#ctx-chat-menu[style*="block"] { animation: ctxIn 120ms ease-out; transform-origin: top left; }
 
 /* Тактильный отклик: нажатие «продавливает» кнопки */
 button { transition: background .15s, color .15s, transform .08s ease, box-shadow .15s; }
@@ -3433,10 +3431,10 @@ html.dark .anx-solid { color: #04211c; }
 .topbar-actions .head-more[aria-expanded="true"] { color: var(--text); background: var(--hover-row); border-radius: 8px; }
 .topbar-actions .head-more[aria-expanded="true"] svg { transform: rotate(180deg); }
 /* Меню узкое, из одних иконок; подпись показывается подсказкой сбоку. Оно вне сайдбара и fixed: граница сайдбара его не режет */
-.head-menu { position: fixed; z-index: 260; display: flex; flex-direction: column; gap: 2px; padding: 4px; background: var(--menu-bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 34px rgba(0,0,0,.28); animation: hmIn .13s ease; }
+.head-menu { position: fixed; z-index: 260; display: flex; flex-direction: column; gap: 2px; padding: 5px; background: var(--modal-bg); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-pop); animation: hmIn .13s ease; }
 .head-menu[hidden] { display: none; }
 @keyframes hmIn { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
-.hm-i { position: relative; width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; font: inherit; transition: color .12s, background .12s; -webkit-app-region: no-drag; }
+.hm-i { position: relative; width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 10px; background: none; color: var(--muted); cursor: pointer; font: inherit; transition: color .12s, background .12s; -webkit-app-region: no-drag; }
 .hm-i:hover, .hm-i:focus-visible { background: var(--hover-row); color: var(--text); outline: 0; }
 .hm-i svg { width: 16px; height: 16px; display: block; }
 .hm-i::after { content: attr(data-tip); position: absolute; top: 50%; right: calc(100% + 10px); transform: translateY(-50%); background: var(--text); color: var(--app-bg); font-size: 12px; font-weight: 600; padding: 5px 9px; border-radius: 8px; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .12s; }
