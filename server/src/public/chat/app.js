@@ -1370,8 +1370,10 @@ function animojiUi() {
   const el = document.getElementById('ep-anim');
   if (!el || !window.Animoji) return;
   const st = Animoji.state();
-  el.hidden = !st.available;
-  el.innerHTML = st.available
+  // Полоса нужна, чтобы включить анимацию; когда она уже включена, показывать её незачем (выключается в «Настройки → Модули»)
+  const show = st.available && !st.on;
+  el.hidden = !show;
+  el.innerHTML = show
     ? `<div class="ep-anim-l"><b>Анимация</b><span>в сообщениях и реакциях, в панели смайлы неподвижны</span></div>${csTg(st.on, 'csAnimoji()', 'Анимация смайлов')}`
     : '';
 }
@@ -3586,7 +3588,7 @@ const EMOJI_ONLY_RE = /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|\uFE0F|
 function isEmojiOnly(text) {
   const t = (text || '').trim();
   if (!t || t.length > 12) return false;
-  try { return EMOJI_ONLY_RE.test(t) && /\p{Extended_Pictographic}/u.test(t); } catch { return false; }
+  try { return EMOJI_ONLY_RE.test(t) && /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20E3/u.test(t); } catch { return false; }
 }
 
 // Цвет тега считается из его текста: одна и та же надпись всегда даёт один цвет,

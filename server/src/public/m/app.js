@@ -1303,8 +1303,9 @@ function animojiUiM() {
   const el = document.getElementById('ep-anim');
   if (!el || !window.Animoji) return;
   const st = Animoji.state();
-  el.hidden = !st.available;
-  el.innerHTML = st.available
+  const show = st.available && !st.on;   // полоса нужна, чтобы включить; выключается в «Настройки → Модули»
+  el.hidden = !show;
+  el.innerHTML = show
     ? `<div class="ep-anim-l"><b>Анимация</b><span>в сообщениях и реакциях, в панели смайлы неподвижны</span></div>${mTg(st.on, 'mAnimoji()', 'Анимация смайлов')}`
     : '';
 }
@@ -1455,7 +1456,7 @@ const EMOJI_ONLY_RE = /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|️|‍
 function isEmojiOnly(text) {
   const t = (text || '').trim();
   if (!t) return false;
-  try { return EMOJI_ONLY_RE.test(t) && /\p{Extended_Pictographic}/u.test(t); } catch { return false; }
+  try { return EMOJI_ONLY_RE.test(t) && /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20E3/u.test(t); } catch { return false; }
 }
 function bubbleHtml(m, chat, pos = {}) {
   const { isFirst = true, isTail = true, split = false, splitNext = false } = pos;
