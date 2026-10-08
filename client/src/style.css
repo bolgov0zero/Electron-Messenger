@@ -980,11 +980,13 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   color: var(--muted); font-size: 0.8em;
   font-variant-numeric: tabular-nums;
 }
+/* Есть непрочитанные — время последнего сообщения в акценте, как и сам бейдж */
+.chat-item:has(.unread-badge) .ci-time { color: var(--accent); }
 .unread-badge {
   background: var(--accent); color: #0c0e10;
   border-radius: 9px;
   font-size: 11px; font-weight: 700;
-  padding: 0 6px; min-width: 18px; height: 18px;
+  padding: 0 5px; min-width: 18px; height: 18px; box-sizing: border-box;
   display: flex; align-items: center; justify-content: center;
 }
 
@@ -1849,6 +1851,21 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 .pp-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .pp-name { font-size: 13.5px; font-weight: 500; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pp-tag { display: inline-flex; align-items: center; height: 16px; line-height: 1; font-size: 10px; color: var(--muted); background: var(--card-bg); border: 1px solid var(--border); border-radius: 9px; padding: 0 6px; flex-shrink: 0; }
+/* Цвет тега — тот же, что у плашки роли в сообщениях: считается из текста тега */
+.pp-tag.tag-1 { background: color-mix(in srgb, rgb(var(--tag-1)) 15%, var(--card-bg)); border-color: rgba(var(--tag-1),.30); color: rgb(var(--tag-1)); }
+.pp-tag.tag-2 { background: color-mix(in srgb, rgb(var(--tag-2)) 15%, var(--card-bg)); border-color: rgba(var(--tag-2),.30); color: rgb(var(--tag-2)); }
+.pp-tag.tag-3 { background: color-mix(in srgb, rgb(var(--tag-3)) 15%, var(--card-bg)); border-color: rgba(var(--tag-3),.30); color: rgb(var(--tag-3)); }
+.pp-tag.tag-4 { background: color-mix(in srgb, rgb(var(--tag-4)) 15%, var(--card-bg)); border-color: rgba(var(--tag-4),.30); color: rgb(var(--tag-4)); }
+.pp-tag.tag-5 { background: color-mix(in srgb, rgb(var(--tag-5)) 15%, var(--card-bg)); border-color: rgba(var(--tag-5),.30); color: rgb(var(--tag-5)); }
+.pp-tag.tag-6 { background: color-mix(in srgb, rgb(var(--tag-6)) 15%, var(--card-bg)); border-color: rgba(var(--tag-6),.30); color: rgb(var(--tag-6)); }
+.pp-tag.tag-7 { background: color-mix(in srgb, rgb(var(--tag-7)) 15%, var(--card-bg)); border-color: rgba(var(--tag-7),.30); color: rgb(var(--tag-7)); }
+.pp-tag.tag-8 { background: color-mix(in srgb, rgb(var(--tag-8)) 15%, var(--card-bg)); border-color: rgba(var(--tag-8),.30); color: rgb(var(--tag-8)); }
+.pp-tag.tag-9 { background: color-mix(in srgb, rgb(var(--tag-9)) 15%, var(--card-bg)); border-color: rgba(var(--tag-9),.30); color: rgb(var(--tag-9)); }
+.pp-tag.tag-10 { background: color-mix(in srgb, rgb(var(--tag-10)) 15%, var(--card-bg)); border-color: rgba(var(--tag-10),.30); color: rgb(var(--tag-10)); }
+.pp-tag.tag-11 { background: color-mix(in srgb, rgb(var(--tag-11)) 15%, var(--card-bg)); border-color: rgba(var(--tag-11),.30); color: rgb(var(--tag-11)); }
+.pp-tag.tag-12 { background: color-mix(in srgb, rgb(var(--tag-12)) 15%, var(--card-bg)); border-color: rgba(var(--tag-12),.30); color: rgb(var(--tag-12)); }
+.pp-tag.tag-13 { background: color-mix(in srgb, rgb(var(--tag-13)) 15%, var(--card-bg)); border-color: rgba(var(--tag-13),.30); color: rgb(var(--tag-13)); }
+.pp-tag.tag-14 { background: color-mix(in srgb, rgb(var(--tag-14)) 15%, var(--card-bg)); border-color: rgba(var(--tag-14),.30); color: rgb(var(--tag-14)); }
 .pp-check { width: 17px; height: 17px; border-radius: 9px; border: 1.5px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .12s; color: transparent; }
 .pp-row.on .pp-check { background: var(--accent); border-color: var(--accent); color: #fff; }
 
@@ -3148,10 +3165,10 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 .acc-btn:hover .av { transform: scale(1.06); }
 .acc-btn.active::before { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--accent); pointer-events: none; }
 .acc-badge {
-  position: absolute; top: -4px; right: -6px; min-width: 20px; height: 20px; padding: 0 5px;
-  border-radius: 10px; background: var(--accent); color: #0c0e10;
+  position: absolute; top: -4px; right: -6px; min-width: 24px; height: 24px; padding: 0 5px;
+  border-radius: 12px; background: var(--accent); color: #0c0e10;
   font-size: 11px; font-weight: 700; line-height: 20px; text-align: center;
-  border: 2px solid var(--side-bg); box-sizing: content-box;
+  border: 2px solid var(--side-bg); box-sizing: border-box;
 }
 .acc-tip {
   position: absolute; left: calc(100% + 14px); top: 50%; transform: translateY(-50%);
@@ -3227,9 +3244,9 @@ body.has-rail.sidebar-overlay.sidebar-peeking .sidebar { transform: translateX(0
 body.sb-dragging, body.sb-dragging * { cursor: col-resize !important; user-select: none !important; }
 body.sb-dragging .sidebar, body.sb-dragging .acc-rail { transition: none !important; }
 
-.avb { display: none; position: absolute; top: -4px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px;
-  border-radius: 9px; background: var(--accent); color: #0c0e10; font-size: 10.5px; font-weight: 700; line-height: 18px;
-  text-align: center; border: 2px solid var(--side-bg); box-sizing: content-box; pointer-events: none; }
+.avb { display: none; position: absolute; top: -4px; right: -6px; min-width: 22px; height: 22px; padding: 0 4px;
+  border-radius: 11px; background: var(--accent); color: #0c0e10; font-size: 10.5px; font-weight: 700; line-height: 18px;
+  text-align: center; border: 2px solid var(--side-bg); box-sizing: border-box; pointer-events: none; }
 
 @container sb (max-width: 292px) {
   .topbar-logo { display: none; }

@@ -1190,7 +1190,7 @@ function contactRowHtml(u) {
   return `<div class="pp-row" data-uid="${u.id}" onclick="openContactChat(${u.id})">
     <div class="av-wrap">${ppAvHtml(u)}${presenceDot(u.id)}</div>
     <span class="pp-name">${esc(u.display_name)}</span>
-    ${u.tag ? `<span class="pp-tag">${esc(u.tag)}</span>` : ''}
+    ${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}
   </div>`;
 }
 // Группы контактов: онлайн, отошёл, не в сети — подписи как в списке чатов
@@ -5476,7 +5476,7 @@ function renderModalUsers(containerId, multi, filter='') {
     <div class="pp-row${multi&&S.ncSelected?.has(u.id)?' on':''}" data-uid="${u.id}" onclick="${multi?`toggleModalUser(${u.id})`:S.ncKind==='secret'?`startSecret(${u.id})`:`startDirect(${u.id})`}">
       ${ppAvHtml(u)}
       <span class="pp-name">${esc(u.display_name)}</span>
-      ${u.tag?`<span class="pp-tag">${esc(u.tag)}</span>`:''}
+      ${u.tag?`<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>`:''}
       ${multi?PP_CHECK:''}
     </div>`).join('') || '<div class="pp-empty">Нет пользователей</div>';
 }
