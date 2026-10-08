@@ -453,9 +453,9 @@ html.m-desktop .screen { display: none !important; }
    (.bubble-photo) сюда не попадает — у него своя обработка ниже. */
 .bubble:has(.bubble-media, .bubble-video-wrap, .bubble-file):not(:has(.bubble-text)):not(.bubble-photo) { padding-bottom: 26px; }
 .bubble-deleted { opacity: .6; font-style: italic; }
-.bubble-quote { border-left: 2px solid var(--accent); padding: 2px 0 4px 8px; margin-bottom: 4px; opacity: .8; }
-.bubble-quote-name { font-size: 12px; font-weight: 700; color: var(--accent); }
-.bubble-quote-text { font-size: 12.5px; color: var(--text2, var(--muted)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.bubble-quote { border-left: 3px solid var(--accent); background: rgba(var(--accent-rgb),.12); border-radius: 8px 12px 12px 8px; padding: 4px 10px 4px 9px; margin-bottom: 5px; }
+.bubble-quote-name { font-size: 12.5px; font-weight: 600; color: var(--accent); line-height: 17px; }
+.bubble-quote-text { font-size: 12.5px; line-height: 17px; color: var(--text2, var(--muted)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
 .day-sep {
   align-self: center; position: sticky; top: 4px; z-index: 2;
   font-size: 11.5px; color: var(--muted); background: var(--daypill);

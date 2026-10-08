@@ -1434,16 +1434,20 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 
 /* Цитируемое сообщение внутри bubble */
 .irc-reply {
+  /* Цвет цитаты (--rc) задаёт автор цитируемого сообщения, см. .reply-* ниже: от него полоса, имя и заливка */
+  --rc: var(--accent);
   display: flex; align-items: center; gap: 8px;
-  border-left: 2px solid var(--accent);
-  padding: 2px 0 2px 10px;
-  margin-bottom: 4px;
-  color: var(--muted); font-size: 13px;
+  border-left: 3px solid var(--rc);
+  background: color-mix(in srgb, var(--rc) 12%, transparent);
+  border-radius: 8px 12px 12px 8px;
+  padding: 4px 10px 4px 9px;
+  margin: 0 0 5px;
+  color: var(--text2); font-size: 12.5px; line-height: 17px;
   cursor: pointer;
 }
 .irc-reply-thumb {
   width: 32px; height: 32px;
-  border-radius: 9px;
+  border-radius: 8px;
   object-fit: cover;
   flex-shrink: 0;
 }
@@ -1453,8 +1457,8 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
   color: var(--muted);
 }
 .irc-reply-body { flex: 1; min-width: 0; overflow: hidden; }
-.irc-reply-name { color: var(--accent); font-weight: 600; }
-.irc-reply-text { opacity: .8; white-space: pre-wrap; word-break: break-word; }
+.irc-reply-name { color: var(--rc); font-weight: 600; }
+.irc-reply-text { color: var(--text2); word-break: break-word; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 
 /* Edit bar */
 .input-edit-bar {
@@ -2895,38 +2899,22 @@ html.dark .announcement-title { color: var(--danger); }
 .irc-msg.emoji-msg[data-mine] .msg-bubble:hover { background: color-mix(in srgb, var(--accent) 15%, var(--chat-bg)); }
 
 /* цвет цитаты — по автору цитируемого: своё цветом своего пузыря, чужое цветом тега */
-.irc-reply.reply-mine { border-left-color: var(--accent); }
-.irc-reply.reply-mine .irc-reply-name { color: var(--accent); }
-.irc-reply.reply-plain { border-left-color: var(--text2); }
-.irc-reply.reply-plain .irc-reply-name { color: var(--text2); }
-.irc-reply.reply-tag-1 { border-left-color: rgb(var(--tag-1)); }
-.irc-reply.reply-tag-1 .irc-reply-name { color: rgb(var(--tag-1)); }
-.irc-reply.reply-tag-2 { border-left-color: rgb(var(--tag-2)); }
-.irc-reply.reply-tag-2 .irc-reply-name { color: rgb(var(--tag-2)); }
-.irc-reply.reply-tag-3 { border-left-color: rgb(var(--tag-3)); }
-.irc-reply.reply-tag-3 .irc-reply-name { color: rgb(var(--tag-3)); }
-.irc-reply.reply-tag-4 { border-left-color: rgb(var(--tag-4)); }
-.irc-reply.reply-tag-4 .irc-reply-name { color: rgb(var(--tag-4)); }
-.irc-reply.reply-tag-5 { border-left-color: rgb(var(--tag-5)); }
-.irc-reply.reply-tag-5 .irc-reply-name { color: rgb(var(--tag-5)); }
-.irc-reply.reply-tag-6 { border-left-color: rgb(var(--tag-6)); }
-.irc-reply.reply-tag-6 .irc-reply-name { color: rgb(var(--tag-6)); }
-.irc-reply.reply-tag-7 { border-left-color: rgb(var(--tag-7)); }
-.irc-reply.reply-tag-7 .irc-reply-name { color: rgb(var(--tag-7)); }
-.irc-reply.reply-tag-8 { border-left-color: rgb(var(--tag-8)); }
-.irc-reply.reply-tag-8 .irc-reply-name { color: rgb(var(--tag-8)); }
-.irc-reply.reply-tag-9 { border-left-color: rgb(var(--tag-9)); }
-.irc-reply.reply-tag-9 .irc-reply-name { color: rgb(var(--tag-9)); }
-.irc-reply.reply-tag-10 { border-left-color: rgb(var(--tag-10)); }
-.irc-reply.reply-tag-10 .irc-reply-name { color: rgb(var(--tag-10)); }
-.irc-reply.reply-tag-11 { border-left-color: rgb(var(--tag-11)); }
-.irc-reply.reply-tag-11 .irc-reply-name { color: rgb(var(--tag-11)); }
-.irc-reply.reply-tag-12 { border-left-color: rgb(var(--tag-12)); }
-.irc-reply.reply-tag-12 .irc-reply-name { color: rgb(var(--tag-12)); }
-.irc-reply.reply-tag-13 { border-left-color: rgb(var(--tag-13)); }
-.irc-reply.reply-tag-13 .irc-reply-name { color: rgb(var(--tag-13)); }
-.irc-reply.reply-tag-14 { border-left-color: rgb(var(--tag-14)); }
-.irc-reply.reply-tag-14 .irc-reply-name { color: rgb(var(--tag-14)); }
+.irc-reply.reply-mine { --rc: var(--accent); }
+.irc-reply.reply-plain { --rc: var(--text2); }
+.irc-reply.reply-tag-1 { --rc: rgb(var(--tag-1)); }
+.irc-reply.reply-tag-2 { --rc: rgb(var(--tag-2)); }
+.irc-reply.reply-tag-3 { --rc: rgb(var(--tag-3)); }
+.irc-reply.reply-tag-4 { --rc: rgb(var(--tag-4)); }
+.irc-reply.reply-tag-5 { --rc: rgb(var(--tag-5)); }
+.irc-reply.reply-tag-6 { --rc: rgb(var(--tag-6)); }
+.irc-reply.reply-tag-7 { --rc: rgb(var(--tag-7)); }
+.irc-reply.reply-tag-8 { --rc: rgb(var(--tag-8)); }
+.irc-reply.reply-tag-9 { --rc: rgb(var(--tag-9)); }
+.irc-reply.reply-tag-10 { --rc: rgb(var(--tag-10)); }
+.irc-reply.reply-tag-11 { --rc: rgb(var(--tag-11)); }
+.irc-reply.reply-tag-12 { --rc: rgb(var(--tag-12)); }
+.irc-reply.reply-tag-13 { --rc: rgb(var(--tag-13)); }
+.irc-reply.reply-tag-14 { --rc: rgb(var(--tag-14)); }
 
 /* ── Сообщение, в котором нет ничего кроме картинки ──
    Класс .bubble-photo ставит рендер: только тогда кадр занимает пузырь целиком,
