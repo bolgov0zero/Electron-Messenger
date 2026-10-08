@@ -1436,15 +1436,18 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .irc-reply {
   /* Цвет цитаты (--rc) задаёт автор цитируемого сообщения, см. .reply-* ниже: от него полоса, имя и заливка */
   --rc: var(--accent);
+  position: relative; overflow: hidden;
   display: flex; align-items: center; gap: 8px;
-  border-left: 3px solid var(--rc);
   background: color-mix(in srgb, var(--rc) 12%, transparent);
   border-radius: 8px 12px 12px 8px;
-  padding: 4px 10px 4px 9px;
+  padding: 4px 10px 4px 12px;
   margin: 0 0 5px;
   color: var(--text2); font-size: 12.5px; line-height: 17px;
   cursor: pointer;
 }
+/* Полоса слева — отдельным слоем, а не border-left: рамка другого цвета рядом с заливкой и скруглением
+   даёт по краям просвечивающую каёмку цвета заливки */
+.irc-reply::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--rc); }
 .irc-reply-thumb {
   width: 32px; height: 32px;
   border-radius: 8px;

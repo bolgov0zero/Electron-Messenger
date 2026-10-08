@@ -453,7 +453,8 @@ html.m-desktop .screen { display: none !important; }
    (.bubble-photo) сюда не попадает — у него своя обработка ниже. */
 .bubble:has(.bubble-media, .bubble-video-wrap, .bubble-file):not(:has(.bubble-text)):not(.bubble-photo) { padding-bottom: 26px; }
 .bubble-deleted { opacity: .6; font-style: italic; }
-.bubble-quote { border-left: 3px solid var(--accent); background: rgba(var(--accent-rgb),.12); border-radius: 8px 12px 12px 8px; padding: 4px 10px 4px 9px; margin-bottom: 5px; }
+.bubble-quote { position: relative; overflow: hidden; background: rgba(var(--accent-rgb),.12); border-radius: 8px 12px 12px 8px; padding: 4px 10px 4px 12px; margin-bottom: 5px; }
+.bubble-quote::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
 .bubble-quote-name { font-size: 12.5px; font-weight: 600; color: var(--accent); line-height: 17px; }
 .bubble-quote-text { font-size: 12.5px; line-height: 17px; color: var(--text2, var(--muted)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
 .day-sep {
