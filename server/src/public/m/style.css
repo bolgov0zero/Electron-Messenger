@@ -675,8 +675,9 @@ html.m-desktop .screen { display: none !important; }
 /* ══ Модуль «Анимированные смайлы» (/shared/animoji.js) ══ */
 .am { position: relative; display: inline-block; }
 .am.playing .am-ch { opacity: 0; }
-.am-box { position: absolute; left: 50%; top: 50%; width: 1.18em; height: 1.18em; transform: translate(-50%, -50%); font-style: normal; pointer-events: none; }
-.am-box svg { display: block; }
+.am-box { position: absolute; left: 0; top: 0; width: 1.18em; height: 1.18em; font-style: normal; pointer-events: none; }
+/* Lottie сам ставит svg translate3d(0,0,0): картинка уходит в отдельный слой и растеризуется мягче. Слой не нужен */
+.am-box svg { display: block; transform: none !important; }
 .ep-anim { display: flex; align-items: center; gap: 10px; margin: 6px 10px 8px; padding: 8px 12px; border-radius: 16px; background: var(--search-bg); flex-shrink: 0; }
 .ep-anim[hidden] { display: none; }
 .ep-anim-l { flex: 1; min-width: 0; }

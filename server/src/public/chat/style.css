@@ -3123,8 +3123,9 @@ html.dark .anx-solid { color: #0c0e10; }
 /* Смайл из набора: обычный глиф Noto, поверх него на время игры рисуется анимация */
 .am { position: relative; display: inline-block; }
 .am.playing .am-ch { opacity: 0; }
-.am-box { position: absolute; left: 50%; top: 50%; width: 1.18em; height: 1.18em; transform: translate(-50%, -50%); font-style: normal; pointer-events: none; }
-.am-box svg { display: block; }
+.am-box { position: absolute; left: 0; top: 0; width: 1.18em; height: 1.18em; font-style: normal; pointer-events: none; }
+/* Lottie сам ставит svg translate3d(0,0,0): картинка уходит в отдельный слой и растеризуется мягче. Слой не нужен */
+.am-box svg { display: block; transform: none !important; }
 /* Полоса внизу панели смайлов */
 .ep-grid.open { max-height: 440px; }
 .ep-anim { display: flex; align-items: center; gap: 10px; margin-top: 6px; padding: 8px 10px; border-radius: 16px; background: var(--search-bg); }

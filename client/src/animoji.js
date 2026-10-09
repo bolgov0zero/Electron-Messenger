@@ -128,6 +128,16 @@
   function next() {
     while (S.queue.length) { const nx = S.queue.shift(); nx.classList.remove('queued'); if (nx.isConnected) { start(nx); return; } }
   }
+  // Размер и положение анимации — целые пиксели. Через translate(-50%) выходили дробные смещения,
+  // и векторная картинка ложилась между пикселями экрана: анимация была заметно мягче статичного смайла
+  function fitBox(sp, box) {
+    const fs = parseFloat(getComputedStyle(sp).fontSize) || 16;
+    const size = Math.max(8, Math.round(fs * 1.18));
+    const w = sp.offsetWidth, h = sp.offsetHeight;
+    box.style.width = box.style.height = size + 'px';
+    box.style.left = Math.round((w - size) / 2) + 'px';
+    box.style.top = Math.round((h - size) / 2) + 'px';
+  }
   async function start(sp) {
     S.playing++;
     sp.classList.remove('queued'); sp.classList.add('playing');
@@ -144,6 +154,7 @@
       const [lottie, data] = await Promise.all([loadLottie(), Modules.fetchJson(KEY, `lottie/${sp.dataset.k}.json`)]);
       if (!sp.isConnected) return finish();
       box = document.createElement('i'); box.className = 'am-box'; sp.appendChild(box);
+      fitBox(sp, box);
       anim = lottie.loadAnimation({ container: box, renderer: 'svg', loop: false, autoplay: true, animationData: JSON.parse(JSON.stringify(data)) });
       anim.addEventListener('complete', finish);
       anim.addEventListener('data_failed', finish);
