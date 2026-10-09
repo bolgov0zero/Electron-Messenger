@@ -126,7 +126,7 @@ body {
      (см. /chat/emoji-font.css; набор выбирает /chat/emoji-font.js, а если шрифт не нарисовался,
      возвращаются системные смайлы телефона). Раньше мобильный клиент ходил на системных: SVG-шрифт
      на iPhone не рисуется, COLRv1 в Safari даёт блоки. sbix — родной формат Apple, его iPhone рисует. */
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, 'Noto Color Emoji', 'Noto Color Emoji Keys', sans-serif;
+  font-family: 'Inter', 'Noto Color Emoji', -apple-system, BlinkMacSystemFont, system-ui, 'Noto Color Emoji Keys', sans-serif;
   -webkit-font-smoothing: antialiased;
   /* transform:scale ставим ТОЛЬКО когда масштаб не 100% (см. applyUiScale в app.js) —
      transform-слой на весь экран даже с scale(1) переводит текст на GPU-композитинг

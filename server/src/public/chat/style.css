@@ -236,9 +236,11 @@ html.font-large  { --font-size: 16px; }
 button, input, textarea, select { font-family: inherit; }
 
 body {
-  /* Вшитый шрифт смайлов стоит после текстовых: буквы находятся раньше, до него
-     доходит только то, чего в текстовых шрифтах нет, — сами смайлы */
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, 'Noto Color Emoji', 'Noto Color Emoji Keys', sans-serif;
+  /* Вшитый шрифт смайлов стоит сразу после Inter, но ДО системных шрифтов. Inter остаётся первым, поэтому
+     выравнивание текста в пузыре на macOS и Linux не страдает (так было, когда смайлы стояли впереди всех).
+     А ⚠ ✈ ✂ ☎ и ещё около двух сотен знаков, которые есть и в системных шрифтах, достаются цветному Noto:
+     иначе системный шрифт находил их раньше и рисовал чёрный контур вместо смайла */
+  font-family: 'Inter', 'Noto Color Emoji', -apple-system, BlinkMacSystemFont, system-ui, 'Noto Color Emoji Keys', sans-serif;
   background: var(--chat-bg);
   color: var(--text);
   height: var(--vh100);
