@@ -1533,9 +1533,8 @@ function csPaneUpdate() {
     <div class="cs-copy">2026 © bolgov0zero</div>`;
 }
 // ── МОДУЛИ ──
-// Состояние, версии и загрузка файлов — в modules.js (общий менеджер для всех клиентов), модуль «Анимированные
-// смайлы» — обработчик animoji.js. Здесь оболочка: настройка «Модули», переключатель внизу панели смайлов и окно
-// загрузки в Electron. Модуль есть у пользователя, только пока его включил администратор; «включено у меня»
+// Состояние, версии и загрузка файлов — в modules.js (общий менеджер для всех клиентов); сами модули подключаются
+// к нему обработчиками (Modules.register). Здесь оболочка: настройка «Модули» и окно загрузки в Electron. Модуль есть у пользователя, только пока его включил администратор; «включено у меня»
 // хранится на устройстве. Электрон качает файлы заранее и сам обновляет их при выходе новой версии.
 CS_I.puzzle = csSvg('<path d="M10 4a2 2 0 1 1 4 0v1h3a1 1 0 0 1 1 1v3h-1a2 2 0 1 0 0 4h1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 1 0-4 0v1H7a1 1 0 0 1-1-1v-3h1a2 2 0 1 0 0-4H6V6a1 1 0 0 1 1-1h3z"/>');
 let _amVer = null;   // версия приложения (Electron) для журнала модуля
@@ -1549,22 +1548,8 @@ function modulesInit() {
     base: () => `${httpProto()}://${S.server}`,
     token: () => S.token,
   });
-  Animoji.init({ lottieSrc: csIsApp() ? 'lottie.min.js' : '/shared/lottie.min.js' });
-  Modules.subscribe(() => { animojiUi(); if (_sidebarTab === 'settings' && CS.sec === 'modules') csRefresh(); });
+  Modules.subscribe(() => { if (_sidebarTab === 'settings' && CS.sec === 'modules') csRefresh(); });
 }
-// Полоса внизу панели смайлов: быстрый способ включить анимацию. Когда она уже включена, полоса не нужна
-// (выключается в «Настройки → Модули»)
-function animojiUi() {
-  const el = document.getElementById('ep-anim');
-  if (!el || !window.Animoji) return;
-  const st = Animoji.state();
-  const show = st.available && !st.on;
-  el.hidden = !show;
-  el.innerHTML = show
-    ? `<div class="ep-anim-l"><b>Анимация</b><span>в сообщениях и реакциях, в панели смайлы неподвижны</span></div>${csTg(st.on, 'csAnimoji()', 'Анимация смайлов')}`
-    : '';
-}
-function csAnimoji() { csModuleToggle('animoji'); }
 function csModuleToggle(key) {
   const m = Modules.get(key); if (!m) return;
   if (m.on) { Modules.setOn(key, false); return; }
@@ -1594,7 +1579,7 @@ function csPaneModules() {
       ${st ? `<span class="cs-mod-st">${st}</span>` : ''}</div>
       <div class="cs-ctl">${m.on ? `<button type="button" class="cs-btn ghost" ${m.busy ? 'disabled' : ''} onclick="csModuleRedo('${m.key}')">Перекачать</button>` : ''}${csTg(m.on, `csModuleToggle('${m.key}')`, esc(m.title))}</div></div>`;
   }).join('')}</div>
-    ${!csIsApp() ? list.filter(m => m.on && m.note).map(m => `<p class="cs-hint">${esc(m.note)} Анимации подгружаются по мере показа.</p>`).join('') : ''}`;
+    ${!csIsApp() ? list.filter(m => m.on && m.note).map(m => `<p class="cs-hint">${esc(m.note)}</p>`).join('') : ''}`;
 }
 // Окно загрузки набора (только Electron): прогресс, пояснение, после загрузки кнопка ОК.
 // kind: 'download' — первое включение, 'redownload' — «Перекачать»
@@ -2383,7 +2368,6 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
             </div>
             <div class="ep-tabs" id="ep-tabs"></div>
             <div class="ep-scroll" id="ep-scroll" onscroll="syncEmojiTabs()"></div>
-            <div class="ep-anim" id="ep-anim" hidden></div>
           </div>
           <div class="composer-main">
             <button class="composer-icon-btn composer-attach" title="Прикрепить файл" onclick="pickFile()">
@@ -2841,8 +2825,6 @@ function mergeDayGroups(container) {
 function renderMessages(msgs) {
   const container = document.getElementById('messages');
   if (!container) return;
-  window.Animoji?.attach(container);
-  if (window.Animoji) animojiUi();
   const chat = S.chats.find(c=>c.id===S.activeChatId);
   const isChatGroup = chat?.type==='group' || chat?.type==='room';
   msgs.forEach(m => { if (m.reactions?.length) S.reactions[m.id] = m.reactions; });

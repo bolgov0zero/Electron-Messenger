@@ -21,11 +21,13 @@
   const emit = () => S.listeners.forEach(f => { try { f(); } catch {} });
   const isElectron = () => S.cfg && S.cfg.client === 'electron';
 
-  // Прежние ключи (до появления менеджера) переносим, чтобы выбор пользователя не потерялся
+  // Модули, которых больше нет: убираем с устройства их кэш и выбор пользователя, чтобы не занимали место
+  const RETIRED = ['animoji'];
   function migrate() {
-    if (lsGet('animoji_on') !== null && lsGet('mod_animoji_on') === null) lsSet('mod_animoji_on', lsGet('animoji_on'));
-    if (lsGet('animoji_device') && !lsGet('mod_device')) lsSet('mod_device', lsGet('animoji_device'));
-    try { caches.keys().then(ks => ks.filter(k => /^animoji-v/.test(k)).forEach(k => caches.delete(k))); } catch {}
+    for (const k of RETIRED) {
+      ['mod_' + k + '_on', 'mod_' + k + '_ver', k + '_on', k + '_device'].forEach(n => { try { localStorage.removeItem(n); } catch {} });
+      try { caches.keys().then(ks => ks.filter(c => c === 'mod-' + k || c.startsWith(k + '-v')).forEach(c => caches.delete(c))); } catch {}
+    }
   }
   function deviceId() {
     let id = lsGet('mod_device');

@@ -6850,7 +6850,7 @@ function mdRender() {
     <div><div style="font-size:17px;font-weight:700">Модули</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Дополнительные возможности. Включённый модуль становится доступен пользователям в настройках клиента, и каждый включает его у себя сам.</div></div>
     ${MOD.list.map(m => { const st = m.stats || {}, bc = st.byClient || {};
       return `<div class="card"><div class="mdl-card"><div class="mdl-ico">${esc(m.icon || '🧩')}</div>
-        <div class="mdl-tx"><b>${esc(m.title)}</b><span>${esc(m.description)}${m.needsDownload ? ` Набор: ${mdNum(m.count)} анимаций, около ${mdBytes(m.bytes)}, лежит на сервере.` : ''}</span></div>
+        <div class="mdl-tx"><b>${esc(m.title)}</b><span>${esc(m.description)}${m.needsDownload ? ` Набор: ${mdNum(m.count)} файлов, около ${mdBytes(m.bytes)}, лежит на сервере.` : ''}</span></div>
         <span class="badge ${m.enabled ? 'badge-green' : 'badge-gray'}">${m.enabled ? 'Включён' : 'Выключен'}</span>
         <button class="btn btn-ghost btn-sm" onclick="mlOpen('${m.key}')">Журнал</button>
         <label class="toggle-switch" title="Модуль на сервере"><input type="checkbox" ${m.enabled ? 'checked' : ''} onchange="mdToggle('${m.key}', this.checked)" aria-label="Модуль включён на сервере"><span class="toggle-track"><span class="toggle-thumb"></span></span></label></div>
@@ -6858,7 +6858,7 @@ function mdRender() {
           <div><b>${mdNum(bc.electron)} · ${mdNum(bc.web)} · ${mdNum(bc.mobile)}</b><span>Electron · веб · мобильный</span></div>
           <div><b>${mdNum(m.version)}</b><span>версия набора, устройств на старой: ${mdNum(st.outdated)}</span></div>
           <div><b>${mdNum(st.errors30d)}</b><span>ошибок загрузки за 30 дней</span></div></div></div>`; }).join('')}
-    <div class="card"><div class="mdl-empty">Других модулей пока нет</div></div></div>`;
+    <div class="card"><div class="mdl-empty">${MOD.list.length ? 'Других модулей пока нет' : 'Модулей пока нет'}</div></div></div>`;
 }
 async function mdToggle(key, on) {
   try {

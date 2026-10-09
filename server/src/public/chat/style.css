@@ -3118,21 +3118,8 @@ html.dark .anx-solid { color: #0c0e10; }
 .cs-ver-t b { font-size: 22px; letter-spacing: -.03em; }
 
 /* ══════════════════════════════════════════
-   Модуль «Анимированные смайлы» (animoji.js)
+   Раздел «Модули»
    ══════════════════════════════════════════ */
-/* Смайл из набора: обычный глиф Noto, поверх него на время игры рисуется анимация */
-.am { position: relative; display: inline-block; }
-.am.playing .am-ch { opacity: 0; }
-.am-box { position: absolute; left: 0; top: 0; width: 1.18em; height: 1.18em; font-style: normal; pointer-events: none; }
-/* Lottie сам ставит svg translate3d(0,0,0): картинка уходит в отдельный слой и растеризуется мягче. Слой не нужен */
-.am-box svg { display: block; transform: none !important; }
-/* Полоса внизу панели смайлов */
-.ep-grid.open { max-height: 440px; }
-.ep-anim { display: flex; align-items: center; gap: 10px; margin-top: 6px; padding: 8px 10px; border-radius: 16px; background: var(--search-bg); }
-.ep-anim[hidden] { display: none; }
-.ep-anim-l { flex: 1; min-width: 0; }
-.ep-anim-l b { display: block; font-size: 12.5px; font-weight: 600; color: var(--text); }
-.ep-anim-l span { display: block; font-size: 11px; color: var(--text2); line-height: 1.3; }
 /* Заглушка раздела «Модули» */
 .cs-stub { margin: auto; text-align: center; max-width: 300px; padding: 40px 10px; color: var(--text2); display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .cs-stub b { color: var(--text); font-size: 14px; }

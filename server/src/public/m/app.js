@@ -1289,29 +1289,17 @@ function currentTheme() {
   return cl.contains('night') ? 'night' : cl.contains('dark') ? 'dark' : 'light';
 }
 // ── МОДУЛИ ──
-// Состояние, версии и файлы — в /shared/modules.js (общий менеджер для всех клиентов), модуль «Анимированные смайлы» —
-// обработчик /shared/animoji.js. Здесь оболочка: шторка «Модули» и переключатель внизу панели смайлов. Модуль есть
+// Состояние, версии и файлы — в /shared/modules.js (общий менеджер для всех клиентов); сами модули подключаются
+// к нему обработчиками (Modules.register). Здесь оболочка: шторка «Модули». Модуль есть
 // у пользователя, только пока его включил администратор; «включено у меня» хранится на устройстве. Файлы
 // подгружаются по мере показа, при выходе новой версии набора всё подхватывается само.
 function modulesInitM() {
   if (!window.Modules || modulesInitM.done) return;
   modulesInitM.done = true;
   Modules.init({ client: 'mobile', version: () => 'mobile', base: () => `${httpProto()}://${S.server}`, token: () => S.token });
-  Animoji.init({ lottieSrc: '/shared/lottie.min.js' });
-  Modules.subscribe(() => { animojiUiM(); if (document.getElementById('sheet-bg').classList.contains('open') && document.getElementById('modules-sheet')) openSheet(modulesSheetHtml()); });
+  Modules.subscribe(() => { if (document.getElementById('sheet-bg').classList.contains('open') && document.getElementById('modules-sheet')) openSheet(modulesSheetHtml()); });
 }
 const mTg = (on, fn, label) => `<button type="button" class="m-tg" role="switch" aria-checked="${on}" aria-label="${label}" onclick="${fn}"></button>`;
-// Полоса внизу панели смайлов нужна, чтобы включить анимацию; когда она включена, полоса скрыта (выключается в «Модули»)
-function animojiUiM() {
-  const el = document.getElementById('ep-anim');
-  if (!el || !window.Animoji) return;
-  const st = Animoji.state();
-  const show = st.available && !st.on;
-  el.hidden = !show;
-  el.innerHTML = show
-    ? `<div class="ep-anim-l"><b>Анимация</b><span>в сообщениях и реакциях, в панели смайлы неподвижны</span></div>${mTg(st.on, "mModuleToggle('animoji')", 'Анимация смайлов')}`
-    : '';
-}
 function mModuleToggle(key) { const m = Modules.get(key); if (m) Modules.setOn(key, !m.on); }
 function mModuleRedo(key) { Modules.reinstall(key).then(() => toast('Кэш модуля очищен, файлы загрузятся заново')); }
 function modulesSheetHtml() {
@@ -1323,7 +1311,7 @@ function modulesSheetHtml() {
   return `<div id="modules-sheet"><div class="sheet-title">Модули</div>${list.map((m, i) => `
     <div class="set-block"${i ? '' : ' style="border-top:0;margin-top:0;padding-top:0"'}>
       <div class="m-mod"><div class="m-mod-l"><b>${esc(m.title)}</b><span>${esc(m.description)}</span></div>${mTg(m.on, `mModuleToggle('${m.key}')`, esc(m.title))}</div>
-      ${m.on && m.note ? `<div class="m-hint">${esc(m.note)} Анимации подгружаются по мере показа.</div>` : ''}
+      ${m.on && m.note ? `<div class="m-hint">${esc(m.note)}</div>` : ''}
       ${m.on ? `<button type="button" class="m-redo" onclick="mModuleRedo('${m.key}')">Перекачать</button>` : ''}
     </div>`).join('')}</div>`;
 }
@@ -1569,7 +1557,6 @@ function renderTicks(status) {
 const GROUP_WINDOW_SEC = 60;
 function renderMessages(mode) {
   const container = document.getElementById('messages');
-  window.Animoji?.attach(container);
   const keepScroll = mode === true;
   const smart = mode === 'smart';
   const chat = S.chats.find(c => c.id === S.activeChatId);
