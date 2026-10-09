@@ -3208,7 +3208,7 @@ function hmRenderEvTile() {
   const nu = evs.filter(e => e.type === 'upd').length, ns = evs.filter(e => e.type === 'sys').length;
   // Справа от числа за час — сколько сообщений всего (без удалённых), из той же сводки, что и остальные плитки
   const all = HM.overview?.chat?.messages;
-  hmHtml('dv-v-ev', `${hmFmt(total)}<small>${hmPlural(total, 'сообщение', 'сообщения', 'сообщений')}</small>${all == null ? '' : `<small style="margin-left:6px">(${hmFmt(all)} всего)</small>`}`);
+  hmHtml('dv-v-ev', `${hmFmt(total)}<small>${hmPlural(total, 'сообщение', 'сообщения', 'сообщений')}</small>${all == null ? '' : `<small style="margin-left:6px">(<b style="color:var(--dv-text);font-weight:700">${hmFmt(all)}</b> всего)</small>`}`);
   hmHtml('dv-s-ev', [nu ? `${nu} ${hmPlural(nu, 'обновление', 'обновления', 'обновлений')}` : '', ns ? `${ns} ${hmPlural(ns, 'системное сообщение', 'системных сообщения', 'системных сообщений')}` : ''].filter(Boolean).join(' · ') || 'событий не было');
   hmHtml('dv-g-ev', `<div class="xk-tlw"><div class="xk-tlb">${cnt.map(c => `<i style="height:${Math.max(8, c / mx * 100)}%"></i>`).join('')}</div>${
     evs.map(e => `<span class="xk-tlm" data-xev="${esc(JSON.stringify([e.type, e.title, e.text, e.meta, e.t]))}" style="left:${((e.t - t0) / 3600e3 * 100).toFixed(2)}%;background:${XT[e.type].c};color:${XT[e.type].c}">${xi(e.type, 11)}</span>`).join('')
