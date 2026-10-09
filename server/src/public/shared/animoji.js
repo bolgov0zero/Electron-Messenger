@@ -128,15 +128,22 @@
   function next() {
     while (S.queue.length) { const nx = S.queue.shift(); nx.classList.remove('queued'); if (nx.isConnected) { start(nx); return; } }
   }
-  // Размер и положение анимации — целые пиксели. Через translate(-50%) выходили дробные смещения,
-  // и векторная картинка ложилась между пикселями экрана: анимация была заметно мягче статичного смайла
+  // Размер и положение анимации — целые пиксели и от базовой линии, а не от середины строки.
+  // Через translate(-50%) выходили дробные смещения, и картинка ложилась между пикселями (мягче статичного смайла).
+  // А от середины строки анимация съезжала по вертикали: строка у Safari, Chrome и Electron устроена по-разному,
+  // базовая же линия у глифа смайла одна. Постоянные получены замером на десятках смайлов: верх рисунка анимации
+  // на 0,929 em выше базовой линии (разброс ±0,03 em), левый край правее на 0,034 em.
   function fitBox(sp, box) {
     const fs = parseFloat(getComputedStyle(sp).fontSize) || 16;
     const size = Math.max(8, Math.round(fs * 1.18));
-    const w = sp.offsetWidth, h = sp.offsetHeight;
+    const probe = document.createElement('i');
+    probe.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline';
+    sp.appendChild(probe);
+    const base = probe.offsetTop;               // расстояние от верха .am до базовой линии
+    probe.remove();
     box.style.width = box.style.height = size + 'px';
-    box.style.left = Math.round((w - size) / 2) + 'px';
-    box.style.top = Math.round((h - size) / 2) + 'px';
+    box.style.left = Math.round(0.034 * fs) + 'px';
+    box.style.top = Math.round(base - 0.929 * fs) + 'px';
   }
   async function start(sp) {
     S.playing++;
