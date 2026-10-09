@@ -4401,11 +4401,14 @@ function uaRows() {
   const q = UA.q.trim().toLowerCase();
   const rank = u => u.banned ? 3 : uaOnline(u) ? 0 : uaAway(u) ? 1 : 2;
   const byName = (a, b) => a.display_name.localeCompare(b.display_name, 'ru', { numeric: true });
+  // Дата статуса — то, что написано в колонке статуса: у тех, кто в сети или отошёл, это «сейчас», у остальных «был …»
+  const nowS = Date.now() / 1000;
+  const seen = u => (uaOnline(u) || uaAway(u)) ? nowS : (u.last_seen_at || 0);
   return allUsers
     .filter(u => UA.filter === 'all' || (UA.filter === 'online' && uaOnline(u)) || (UA.filter === 'away' && uaAway(u)) || (UA.filter === 'admins' && u.is_admin) || (UA.filter === 'banned' && u.banned))
     .filter(u => !q || [u.display_name, u.username, u.tag || ''].some(x => x.toLowerCase().includes(q)))
     .sort((a, b) => {
-      const d = UA.sort.key === 'status' ? rank(a) - rank(b) : UA.sort.key === 'created' ? a.created_at - b.created_at : byName(a, b);
+      const d = UA.sort.key === 'status' ? rank(a) - rank(b) : UA.sort.key === 'seen' ? seen(a) - seen(b) : byName(a, b);
       return (d || byName(a, b)) * UA.sort.dir;
     });
 }
@@ -4429,7 +4432,7 @@ function uaRender() {
       </div>
       <div class="ub-head"><h3>${title} <span>${rows.length}</span></h3>
         ${n.banned || UA.filter === 'banned' ? uxChips([['banned', 'Заблокированы', n.banned, true]], UA.filter, 'uaFilter') : ''}
-        <div class="ub-sort" role="group" aria-label="Сортировка">${sortBtn('name', 'По имени')}${sortBtn('status', 'По статусу')}${sortBtn('created', 'По дате')}</div>
+        <div class="ub-sort" role="group" aria-label="Сортировка">${sortBtn('name', 'По имени')}${sortBtn('status', 'По статусу')}${sortBtn('seen', 'По дате')}</div>
         ${uxSearch('ua-q', UA.q, 'Имя, логин или тег', 'uaSearch')}</div>
       ${UA.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${UA.sel.size}</b>
         <button class="btn btn-ghost btn-sm" onclick="uaLogout([...UA.sel])">${UX_I.logout}Завершить сеансы</button>
@@ -4460,7 +4463,8 @@ function uaStatusPill(u) {
 
 function uaFilter(k) { UA.filter = k; UA.sel.clear(); uaRender(); }
 function uaSearch(v) { UA.q = v; uaRender(); }
-function uaSortBy(key) { UA.sort = UA.sort.key === key ? { key, dir: -UA.sort.dir } : { key, dir: 1 }; uaRender(); }
+// По дате сначала самые свежие: первое нажатие даёт убывание
+function uaSortBy(key) { UA.sort = UA.sort.key === key ? { key, dir: -UA.sort.dir } : { key, dir: key === 'seen' ? -1 : 1 }; uaRender(); }
 function uaToggle(id) { UA.sel.has(id) ? UA.sel.delete(id) : UA.sel.add(id); uaRender(); }
 function uaSelAll(on) { uaRows().forEach(u => on ? UA.sel.add(u.id) : UA.sel.delete(u.id)); uaRender(); }
 
