@@ -2925,6 +2925,7 @@ function hmRenderChron() {
 function hmRenderOverview() {
   const o = HM.overview;
   if (!o) return;
+  hmRenderEvTile();
   const disk = o.storage.disk;
   const S = o.storage;
   const chatData = S.db + S.wal + S.files.size + S.backups.size + S.avatars.size;
@@ -3207,7 +3208,10 @@ function hmRenderEvTile() {
   const t1 = h.at, t0 = t1 - 3600e3, evs = h.events.filter(e => e.t > t0 && e.t <= t1);
   const nu = evs.filter(e => e.type === 'upd').length, ns = evs.filter(e => e.type === 'sys').length;
   hmHtml('dv-v-ev', `${hmFmt(total)}<small>${hmPlural(total, 'сообщение', 'сообщения', 'сообщений')}</small>`);
-  hmHtml('dv-s-ev', [nu ? `${nu} ${hmPlural(nu, 'обновление', 'обновления', 'обновлений')}` : '', ns ? `${ns} ${hmPlural(ns, 'системное сообщение', 'системных сообщения', 'системных сообщений')}` : ''].filter(Boolean).join(' · ') || 'событий не было');
+  // Под событиями: сколько всего сообщений за всё время (без удалённых), из той же сводки, что и остальные плитки
+  const all = HM.overview?.chat?.messages;
+  hmHtml('dv-s-ev', ([nu ? `${nu} ${hmPlural(nu, 'обновление', 'обновления', 'обновлений')}` : '', ns ? `${ns} ${hmPlural(ns, 'системное сообщение', 'системных сообщения', 'системных сообщений')}` : ''].filter(Boolean).join(' · ') || 'событий не было')
+    + (all == null ? '' : `<br>всего за всё время: <b style="color:var(--dv-text);font-weight:600">${hmFmt(all)}</b> ${hmPlural(all, 'сообщение', 'сообщения', 'сообщений')}`));
   hmHtml('dv-g-ev', `<div class="xk-tlw"><div class="xk-tlb">${cnt.map(c => `<i style="height:${Math.max(8, c / mx * 100)}%"></i>`).join('')}</div>${
     evs.map(e => `<span class="xk-tlm" data-xev="${esc(JSON.stringify([e.type, e.title, e.text, e.meta, e.t]))}" style="left:${((e.t - t0) / 3600e3 * 100).toFixed(2)}%;background:${XT[e.type].c};color:${XT[e.type].c}">${xi(e.type, 11)}</span>`).join('')
   }<div class="xk-tlax"><span>−60 мин</span><span>−30</span><span>сейчас</span></div></div>`);
