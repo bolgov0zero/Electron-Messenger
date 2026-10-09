@@ -64,6 +64,11 @@ app.get(['/m', '/m/', '/m/index.html'], (req, res) => {
   }
 });
 app.use('/m', express.static(path.join(__dirname, 'public/m')));
+// /smile — тестовая страница анимации смайлов: без входа, ничего не пишет на сервер
+app.get(['/smile', '/smile/', '/smile/index.html'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.sendFile(path.join(__dirname, 'public/smile/index.html'));
+});
 // Файлы модулей (набор анимаций и т.п.). Клиенты добавляют ?v=<версия набора>, поэтому кэшировать можно надолго
 app.use('/modules', express.static(path.join(__dirname, 'public/modules'), { maxAge: '30d' }));
 // Имя файла — timestamp+случайная строка, при новой загрузке никогда не переиспользуется,
