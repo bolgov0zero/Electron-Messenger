@@ -1265,9 +1265,8 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .xk-ex{position:absolute;right:12px;top:12px;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;color:var(--dv-muted);opacity:0;transition:opacity .15s;background:var(--dv-surface2)}
 .xk:hover .xk-ex,.xk:focus-visible .xk-ex{opacity:1}
 .xk-tlw{position:relative;height:46px}
-.xk-tlb{position:absolute;left:0;right:0;bottom:14px;height:22px;display:flex;align-items:flex-end;gap:2px}
+.xk-tlb{position:absolute;left:0;right:0;bottom:0;height:30px;display:flex;align-items:flex-end;gap:2px}
 .xk-tlb i{flex:1;border-radius:2px 2px 0 0;background:var(--dv-c2);opacity:.7;min-height:2px}
-.xk-tlax{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;font-size:10px;color:var(--dv-muted)}
 .xk-tlm{position:absolute;top:0;width:18px;height:18px;margin-left:-9px;border-radius:50%;display:grid;place-items:center;box-shadow:0 0 0 2px var(--dv-surface)}
 .xk-tlm::after{content:"";position:absolute;top:18px;left:50%;width:0;height:12px;border-left:1px dashed currentColor;opacity:.35}
 .xk-tlm svg{width:11px;height:11px}
@@ -3207,14 +3206,13 @@ function hmRenderEvTile() {
   const cnt = h.buckets.map(b => b.n), total = cnt.reduce((s, x) => s + x, 0), mx = Math.max(...cnt, 1);
   const t1 = h.at, t0 = t1 - 3600e3, evs = h.events.filter(e => e.t > t0 && e.t <= t1);
   const nu = evs.filter(e => e.type === 'upd').length, ns = evs.filter(e => e.type === 'sys').length;
-  hmHtml('dv-v-ev', `${hmFmt(total)}<small>${hmPlural(total, 'сообщение', 'сообщения', 'сообщений')}</small>`);
-  // Под событиями: сколько всего сообщений за всё время (без удалённых), из той же сводки, что и остальные плитки
+  // Справа от числа за час — сколько сообщений всего (без удалённых), из той же сводки, что и остальные плитки
   const all = HM.overview?.chat?.messages;
-  hmHtml('dv-s-ev', ([nu ? `${nu} ${hmPlural(nu, 'обновление', 'обновления', 'обновлений')}` : '', ns ? `${ns} ${hmPlural(ns, 'системное сообщение', 'системных сообщения', 'системных сообщений')}` : ''].filter(Boolean).join(' · ') || 'событий не было')
-    + (all == null ? '' : `<br>всего за всё время: <b style="color:var(--dv-text);font-weight:600">${hmFmt(all)}</b> ${hmPlural(all, 'сообщение', 'сообщения', 'сообщений')}`));
+  hmHtml('dv-v-ev', `${hmFmt(total)}<small>${hmPlural(total, 'сообщение', 'сообщения', 'сообщений')}</small>${all == null ? '' : `<small style="margin-left:6px">(${hmFmt(all)} всего)</small>`}`);
+  hmHtml('dv-s-ev', [nu ? `${nu} ${hmPlural(nu, 'обновление', 'обновления', 'обновлений')}` : '', ns ? `${ns} ${hmPlural(ns, 'системное сообщение', 'системных сообщения', 'системных сообщений')}` : ''].filter(Boolean).join(' · ') || 'событий не было');
   hmHtml('dv-g-ev', `<div class="xk-tlw"><div class="xk-tlb">${cnt.map(c => `<i style="height:${Math.max(8, c / mx * 100)}%"></i>`).join('')}</div>${
     evs.map(e => `<span class="xk-tlm" data-xev="${esc(JSON.stringify([e.type, e.title, e.text, e.meta, e.t]))}" style="left:${((e.t - t0) / 3600e3 * 100).toFixed(2)}%;background:${XT[e.type].c};color:${XT[e.type].c}">${xi(e.type, 11)}</span>`).join('')
-  }<div class="xk-tlax"><span>−60 мин</span><span>−30</span><span>сейчас</span></div></div>`);
+  }</div>`);
 }
 // Подсказка над значком события на плитке
 function xEvTip(list) {
