@@ -1820,21 +1820,16 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
           <span class="lb">Главная</span>
         </div>
-        <div class="nav-section">Управление</div>
-        <div class="nav-item" onclick="nav('users')" data-page="users">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.85"/></svg>
-          <span class="lb">Пользователи</span>
-          <span class="nav-badge" id="nb-users">—</span>
-        </div>
+                <div class="nav-section">Управление</div>
         <div class="nav-item" onclick="nav('workspaces')" data-page="workspaces">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
           <span class="lb">Пространства</span>
           <span class="nav-badge" id="nb-workspaces">—</span>
         </div>
-        <div class="nav-item" onclick="nav('clients')" data-page="clients">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          <span class="lb">Клиенты</span>
-          <span class="nav-badge" id="nb-clients">—</span>
+        <div class="nav-item" onclick="nav('users')" data-page="users">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.85"/></svg>
+          <span class="lb">Пользователи</span>
+          <span class="nav-badge" id="nb-users">—</span>
         </div>
         <div class="nav-item" onclick="nav('rooms')" data-page="rooms">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -1846,6 +1841,16 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <span class="lb">Чаты и группы</span>
           <span class="nav-badge" id="nb-chats">—</span>
         </div>
+        <div class="nav-item" onclick="nav('clients')" data-page="clients">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <span class="lb">Клиенты</span>
+          <span class="nav-badge" id="nb-clients">—</span>
+        </div>
+        <div class="nav-item" onclick="nav('push')" data-page="push">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="lb">Уведомления</span>
+          <span class="nav-badge" id="nb-push">—</span>
+        </div>
         <div class="nav-item" onclick="nav('files')" data-page="files">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
           <span class="lb">Файлы</span>
@@ -1856,33 +1861,28 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <span class="lb">Объявления</span>
           <span class="nav-badge" id="nb-announcements">—</span>
         </div>
-        <div class="nav-item" onclick="nav('push')" data-page="push">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span class="lb">Уведомления</span>
-          <span class="nav-badge" id="nb-push">—</span>
-        </div>
         <div class="nav-item" onclick="nav('webhooks')" data-page="webhooks">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
           <span class="lb">Вебхуки</span>
           <span class="nav-badge" id="nb-webhooks">—</span>
         </div>
-        <div class="nav-item" onclick="nav('releases')" data-page="releases">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg>
-          <span class="lb">Релизы</span>
-        </div>
         <div class="nav-item" onclick="nav('modules')" data-page="modules">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4a2 2 0 1 1 4 0v1h3a1 1 0 0 1 1 1v3h-1a2 2 0 1 0 0 4h1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 1 0-4 0v1H7a1 1 0 0 1-1-1v-3h1a2 2 0 1 0 0-4H6V6a1 1 0 0 1 1-1h3z"/></svg>
           <span class="lb">Модули</span>
-        </div>
-        <div class="nav-item" onclick="nav('audit')" data-page="audit">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span class="lb">Аудит-лог</span>
         </div>
         <div class="nav-section">Система</div>
         <div class="nav-item" onclick="nav('settings')" data-page="settings">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           <span class="lb">Настройки</span>
           <span class="nav-badge warn" id="nb-settings" style="display:none"></span>
+        </div>
+        <div class="nav-item" onclick="nav('audit')" data-page="audit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span class="lb">Аудит-лог</span>
+        </div>
+        <div class="nav-item" onclick="nav('releases')" data-page="releases">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg>
+          <span class="lb">Релизы</span>
         </div>
     </nav>
     <div class="sb-bottom">
@@ -2709,7 +2709,7 @@ document.addEventListener('keydown', e => {
 window.addEventListener('resize', () => { if (SB.menu) sbMenuPos(); });
 
 /* ── NAV ── */
-const pageTitles = {dashboard:'Главная',users:'Пользователи',workspaces:'Пространства',rooms:'Комнаты',chats:'Чаты и группы',files:'Файлы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки',announcements:'Объявления',releases:'Релизы',modules:'Модули',audit:'Аудит-лог',settings:'Настройки',more:'Ещё'};
+const pageTitles = {dashboard:'Главная',workspaces:'Пространства',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',clients:'Клиенты',push:'Уведомления',files:'Файлы',announcements:'Объявления',webhooks:'Вебхуки',modules:'Модули',settings:'Настройки',audit:'Аудит-лог',releases:'Релизы',more:'Ещё'};
 const pageRenders = {dashboard:renderDashboard,users:renderUsers,workspaces:renderWorkspaces,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements,releases:renderReleases,modules:renderModules,audit:renderAudit,settings:renderSettings,more:renderMore};
 
 // Телефонный вид без масштабирования: страница уже собрана под экран, а случайный щипок сдвигал раскладку.
@@ -2785,7 +2785,7 @@ function confirm(title, text, onOk) {
 // Разделы, которых нет на нижней панели, тема и выход. Значки берём из боковой панели: там они уже нарисованы
 function renderMore() {
   setTopbarActions('');
-  const rows = [['workspaces', 'Пространства'], ['clients', 'Клиенты'], ['rooms', 'Комнаты'], ['files', 'Файлы'], ['push', 'Уведомления'], ['webhooks', 'Вебхуки'], ['releases', 'Релизы'], ['modules', 'Модули'], ['audit', 'Аудит-лог'], ['settings', 'Настройки']];
+  const rows = [['workspaces', 'Пространства'], ['rooms', 'Комнаты'], ['clients', 'Клиенты'], ['push', 'Уведомления'], ['files', 'Файлы'], ['webhooks', 'Вебхуки'], ['modules', 'Модули'], ['settings', 'Настройки'], ['audit', 'Аудит-лог'], ['releases', 'Релизы']];
   const me = currentUser?.display_name || currentUser?.username || '';
   document.getElementById('page-body').innerHTML = `<div class="mm">
     <div class="mm-list">${rows.map(([k, n]) => {
