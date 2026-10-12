@@ -1827,8 +1827,9 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <span class="nav-badge" id="nb-users">—</span>
         </div>
         <div class="nav-item" onclick="nav('workspaces')" data-page="workspaces">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
           <span class="lb">Пространства</span>
+          <span class="nav-badge" id="nb-workspaces">—</span>
         </div>
         <div class="nav-item" onclick="nav('clients')" data-page="clients">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
@@ -2809,6 +2810,7 @@ async function updateNavBadges() {
     setB('nb-files', s.filesCount||0);
     try { const whs=await api('GET','/api/admin/webhooks'); setB('nb-webhooks',whs.length||0); } catch {}
     try { const anns=await api('GET','/api/admin/announcements'); setB('nb-announcements',anns.length||0); } catch {}
+    try { const wss=await wsLoad(); setB('nb-workspaces',wss.length||0); } catch {}
   } catch {}
 }
 
@@ -6886,6 +6888,8 @@ const WS = { list: [], editId: null };
 async function wsLoad() {
   const r = await api('GET', '/api/admin/workspaces');
   if (Array.isArray(r)) WS.list = r;
+  const nb = document.getElementById('nb-workspaces');
+  if (nb && Array.isArray(r)) nb.textContent = r.length;
   return WS.list;
 }
 async function renderWorkspaces() {
