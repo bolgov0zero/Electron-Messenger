@@ -218,3 +218,37 @@ input, textarea, select { font-size: 16px; }
 .rs-cmp td, .rs-cmp th { padding-inline: 4px; }
 .st-stat-acts { width: 100%; margin-left: 0; }
 .st-stat-acts .btn { flex: 1; justify-content: center; }
+
+/* ── Сводный блок вместо ленты плиток (собирается скриптом, см. cxWrap в index.html) ── */
+.cx { display: block; position: relative; flex-shrink: 0; padding-bottom: 13px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 16px; overflow: hidden; }
+.cx-h { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; width: 100%; padding: 10px 12px 0; border: 0; background: none; color: var(--c-text); font: 13px var(--f-ui); text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.cx[data-open="true"] .cx-h { padding-bottom: 16px; }
+.cx-h .p { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; }
+.cx-h .p b { font: 600 14px var(--f-mono); letter-spacing: -.02em; }
+.cx-h .p span { color: var(--c-muted); font-size: 12px; }
+.cx-h .p.ok b { color: var(--c-green); }
+.cx-h .p.warn b { color: var(--c-orange); }
+.cx-h .p.bad b { color: var(--c-red); }
+.cx-h svg { display: block; position: absolute; left: 50%; bottom: 1px; width: 9px; height: 9px; padding: 3px 22px; box-sizing: content-box; stroke: var(--c-muted); fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; transform: translateX(-50%); transition: transform .2s; }
+.cx[data-open="true"] .cx-h svg { transform: translateX(-50%) rotate(180deg); }
+.cx-b { display: none; border-top: 1px solid var(--c-border); padding: 10px 12px 12px; }
+.cx[data-open="true"] .cx-b { display: block; }
+.cx-b .ub-tiles { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; scroll-snap-type: none; gap: 8px; margin: 0; padding: 0; }
+.cx-b .ub-tiles > * { flex: none; min-width: 0; padding: 9px 10px !important; border-radius: 11px; background: var(--c-surface2); border: 0; box-shadow: none; }
+.cx-b .ub-tiles > .ub-tile[aria-pressed="true"] { background: var(--c-primary-dim); box-shadow: inset 0 0 0 1.5px var(--c-primary); }
+.cx-b .ub-tiles > :has(.rb-bars), .cx-b .ub-tiles > :has(.ub-leg), .cx-b .ub-tiles > :has(.ub-stack), .cx-b .ub-tiles > :has(button), .cx-b .ub-tiles > :has(.ub-sub[style*="white-space"]) { grid-column: 1 / -1; }
+
+/* «Обновление» на вкладке «Клиенты»: отдельный блок над сводкой */
+.ub > .ub-upd { display: flex !important; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; flex: none; width: 100%; padding: 12px !important; border-radius: 16px; background: var(--c-surface); border: 1px solid color-mix(in srgb, var(--c-orange) 45%, var(--c-border)); }
+.ub > .ub-upd .ub-lbl { display: none; }
+.ub > .ub-upd .ub-big { font: 700 15px var(--f-ui); letter-spacing: 0; color: var(--c-text); }
+.ub > .ub-upd .ub-big small { font-size: 13px; font-weight: 600; margin-left: 5px; color: var(--c-orange-text, var(--c-orange)); }
+.ub > .ub-upd .ub-sub { flex-basis: 100%; margin: 0; }
+.ub > .ub-upd .ub-acts { flex-basis: 100%; margin-top: 8px !important; }
+.ub > .ub-upd .ub-acts .ux-solid { flex: 1; justify-content: center; }
+.ub > .ub-upd:has(.cl-ver.ok) { align-items: center; border-color: color-mix(in srgb, var(--c-green) 40%, var(--c-border)); }
+.ub > .ub-upd:has(.cl-ver.ok) .ub-big { display: none; }
+.ub > .ub-upd:has(.cl-ver.ok) .ub-acts { order: 1; flex: 1; margin-top: 0 !important; justify-content: space-between; }
+.ub > .ub-upd:has(.cl-ver.ok) .ub-sub { order: 2; }
+.cx-b .ub-tiles > * { min-height: 0 !important; height: auto; }
+.cx-b .ub-tiles .ub-stack, .cx-b .ub-tiles .ub-meter { margin-top: 8px; }

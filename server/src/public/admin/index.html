@@ -1426,6 +1426,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .ub{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;width:100%;max-width:1360px;margin:0 auto;container-type:inline-size}
 .ub>*{flex-shrink:0}
 .ub-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.cx,.cx-b{display:contents}.cx-h{display:none}
 .ub-tile{text-align:left;cursor:pointer;padding:14px 16px;color:inherit;font:inherit;background:var(--c-surface);border:1px solid var(--c-border);border-radius:16px;box-shadow:var(--shadow);min-width:0}
 .ub-tile:hover{border-color:color-mix(in srgb,var(--c-primary) 35%,var(--c-border))}
 .ub-tile[aria-pressed="true"]{border-color:var(--c-primary);box-shadow:0 0 0 1px var(--c-primary),var(--shadow)}
@@ -2707,6 +2708,66 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && SB.menu) sbMenuClose();
 });
 window.addEventListener('resize', () => { if (SB.menu) sbMenuPos(); });
+
+/* ── СВОДНЫЕ БЛОКИ В ТЕЛЕФОННОМ ВИДЕ ── */
+// Четыре плитки сверху разделов на телефоне собираются в один сворачиваемый блок: в свёрнутом виде одна-две строки
+// с главными числами, в раскрытом все плитки сеткой (без горизонтальной прокрутки). Плитка «Обновление» на «Клиентах»
+// выносится из блока и стоит над ним отдельным заметным блоком. Страницы по-прежнему рисуют плитки как раньше:
+// блок собирается поверх них, а при перерисовке плиток (клиенты обновляются на лету) пересобирается сам.
+const CX = { open: {}, mq: matchMedia('(max-width: 820px)'), pend: false };
+const CX_LBL = { 'Всего': 'всего', 'В сети': 'в сети', 'Сейчас в сети': 'в сети', 'Отошли': 'отошли', 'Администраторы': ['админ', 'админа', 'админов'],
+  'Комнат': ['комната', 'комнаты', 'комнат'], 'Тем': ['тема', 'темы', 'тем'], 'Сообщений за неделю': 'за неделю', 'Личных чатов': 'личных',
+  'Групп': ['группа', 'группы', 'групп'], 'Подписок': ['подписка', 'подписки', 'подписок'], 'Уведомления включены': 'включены', 'Не включили': 'не включили',
+  'Вебхуков': ['вебхук', 'вебхука', 'вебхуков'], 'Молчат': 'молчат', 'Событий за сутки': 'за сутки', 'Безопасность': 'безопасность',
+  'Подключено': 'подключено', 'Версии Electron': 'последняя' };
+const CX_NUM = /^[\d\s .,]+(\s?(Б|КБ|МБ|ГБ|ТБ|%))?$|^\d+(\.\d+){1,3}$/;
+function cxPills(t) {
+  const out = [];
+  for (const tile of t.children) {
+    // плитки с кнопками действий и «Обновление» в сводку не идут: они только в раскрытом виде
+    if (tile.classList.contains('ub-upd') || tile.querySelector('button')) continue;
+    const big = tile.querySelector('.ub-big'); if (!big) continue;
+    const first = big.firstChild, val = (first && first.nodeType === 3 ? first.textContent : big.textContent).trim();
+    if (!CX_NUM.test(val)) continue;
+    const lbl = (tile.querySelector('.ub-lbl')?.textContent || '').trim(), n = parseInt(val.replace(/\D/g, ''), 10) || 0;
+    if (lbl === 'Платформы') continue;   // там число — самой частой платформы, в одну строку оно не складывается
+    const m = CX_LBL[lbl], word = Array.isArray(m) ? uxPlural(n, ...m) : (m || lbl.toLowerCase());
+    const tone = /^(В сети|Сейчас в сети|Уведомления включены)$/.test(lbl) ? 'ok' : /^(Отошли|Не включили|Молчат)$/.test(lbl) ? (n ? 'warn' : '') : lbl === 'Безопасность' ? (n ? 'bad' : '') : '';
+    out.push(`<span class="p ${tone}"><b>${esc(val)}</b><span>${esc(word)}</span></span>`);
+    if (out.length === 4) break;
+  }
+  return out.join('');
+}
+function cxSync(t) {
+  const cx = t.closest('.cx'); if (!cx) return;
+  // «Обновление» — отдельным блоком над сводкой; прежний (если был) заменяется
+  const u = t.querySelector(':scope > .ub-upd');
+  if (u) { const old = cx.previousElementSibling; if (old && old.classList.contains('ub-upd')) old.remove(); cx.before(u); }
+  const h = cx.querySelector('.cx-h');
+  h.innerHTML = (cxPills(t) || '<span class="p"><span>Сводка</span></span>') + '<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>';
+}
+function cxWrap(t) {
+  t.dataset.cx = '1';
+  const cx = document.createElement('div');
+  cx.className = 'cx'; cx.dataset.key = currentPage; cx.dataset.open = CX.open[currentPage] ? 'true' : 'false';
+  cx.innerHTML = '<button type="button" class="cx-h" aria-expanded="' + !!CX.open[currentPage] + '" title="Показать подробности"></button><div class="cx-b"></div>';
+  t.before(cx); cx.querySelector('.cx-b').appendChild(t);
+  cx.querySelector('.cx-h').onclick = e => {
+    const o = cx.dataset.open !== 'true';
+    cx.dataset.open = String(o); CX.open[cx.dataset.key] = o; e.currentTarget.setAttribute('aria-expanded', String(o));
+  };
+  cxSync(t);
+  let tm = 0;
+  new MutationObserver(() => { clearTimeout(tm); tm = setTimeout(() => cxSync(t), 0); }).observe(t, { childList: true, subtree: true, characterData: true });
+}
+function cxScan() {
+  CX.pend = false;
+  if (!CX.mq.matches) return;
+  document.querySelectorAll('#page-body .ub-tiles:not([data-cx]):not(.sp-tiles)').forEach(cxWrap);
+}
+new MutationObserver(() => { if (!CX.pend) { CX.pend = true; setTimeout(cxScan, 0); } }).observe(document.getElementById('page-body'), { childList: true, subtree: true });
+// Поворот телефона или изменение ширины окна: страница перерисовывается заново в нужном виде
+CX.mq.addEventListener('change', () => { if (typeof currentPage === 'string' && document.querySelector('#page-body .ub-tiles')) nav(currentPage); });
 
 /* ── NAV ── */
 const pageTitles = {dashboard:'Главная',workspaces:'Пространства',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',clients:'Клиенты',push:'Уведомления',files:'Файлы',announcements:'Объявления',webhooks:'Вебхуки',modules:'Модули',settings:'Настройки',audit:'Аудит-лог',releases:'Релизы',more:'Ещё'};
