@@ -183,10 +183,10 @@ input, textarea, select { font-size: 16px; }
 .pg-top:has(.al-tm2) > :nth-child(5) { grid-column: 3; grid-row: 3; display: block !important; }
 .pg-top:has(.al-tm2) > :nth-child(6) { display: none !important; }
 
-/* плитки в разделе «Настройки» — такой же лентой, как в остальных разделах */
-.sp-tiles { display: flex !important; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; margin: 0 -12px; padding: 2px 12px; scroll-padding-left: 12px; scrollbar-width: none; flex-shrink: 0; }
-.sp-tiles::-webkit-scrollbar { display: none; }
-.sp-tiles > * { flex: 0 0 170px; scroll-snap-align: start; min-height: 0; }
+/* плитки в разделе «Настройки» — сеткой в две колонки, без горизонтальной прокрутки */
+.sp-tiles { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; scroll-snap-type: none; gap: 10px; margin: 0; padding: 0; flex-shrink: 0; }
+.sp-tiles > * { flex: none; min-width: 0; min-height: 0; padding: 11px 12px !important; border-radius: 14px; }
+.sp-scroll { overflow-x: hidden; }
 
 /* клиенты: имя и компьютер, под ними версия (или ход обновления), справа действия */
 .cb-row { grid-template-columns: 22px minmax(0, 1fr) auto !important; row-gap: 6px; align-items: center; }
