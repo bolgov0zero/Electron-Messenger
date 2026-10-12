@@ -2767,7 +2767,62 @@ function cxScan() {
 }
 new MutationObserver(() => { if (!CX.pend) { CX.pend = true; setTimeout(cxScan, 0); } }).observe(document.getElementById('page-body'), { childList: true, subtree: true });
 // Поворот телефона или изменение ширины окна: страница перерисовывается заново в нужном виде
-CX.mq.addEventListener('change', () => { if (typeof currentPage === 'string' && document.querySelector('#page-body .ub-tiles')) nav(currentPage); });
+CX.mq.addEventListener('change', () => { if (typeof currentPage === 'string' && document.querySelector('#page-body .ub-tiles, #page-body .ub-sort, #page-body .ux-chips')) nav(currentPage); });
+
+/* ── ФИЛЬТРЫ ОДНИМ БЛОКОМ (телефонный вид) ── */
+// Ряды кнопок-фильтров на телефоне не помещались и переносили подписи. Теперь на странице один блок «Фильтры»:
+// в нём виден текущий выбор (по умолчанию первый фильтр, например «Все»), по нажатию открывается панель со всеми
+// группами (пространство, фильтр, сортировка), у каждой свой список. Настоящие кнопки остаются на странице
+// скрытыми: выбор в панели нажимает нужную из них, поэтому обработчики и перерисовка страниц прежние.
+const FS = { pend: false, el: null, host: null };
+function fsClose() {
+  if (FS.el) { FS.el.remove(); FS.el = null; }
+  if (FS.host) { FS.host.setAttribute('aria-expanded', 'false'); FS.host = null; }
+}
+const fsCur = btns => btns.findIndex(b => b.getAttribute('aria-pressed') === 'true');
+function fsOpen(btn, groups) {
+  const same = FS.host === btn; fsClose(); if (same) return;
+  const pop = document.createElement('div');
+  pop.className = 'fsm-p'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Фильтры');
+  pop.innerHTML = groups.map((g, gi) => {
+    const cur = fsCur(g.btns);
+    return `<div class="fsm-g">${esc(g.label)}</div>` + g.btns.map((b, i) => `<button type="button" aria-pressed="${i === cur}" class="fsm-o${i === cur ? ' on' : ''}" data-g="${gi}" data-i="${i}">${b.innerHTML}</button>`).join('');
+  }).join('');
+  pop.onclick = e => { const o = e.target.closest('.fsm-o'); if (!o) return; const b = groups[Number(o.dataset.g)].btns[Number(o.dataset.i)]; fsClose(); b.click(); };
+  document.body.appendChild(pop);
+  const r = btn.getBoundingClientRect(), h = pop.offsetHeight, below = innerHeight - r.bottom - 8;
+  pop.style.left = r.left + 'px'; pop.style.width = r.width + 'px';
+  pop.style.top = (below >= Math.min(h, 240) ? r.bottom + 4 : Math.max(8, r.top - h - 4)) + 'px';
+  btn.setAttribute('aria-expanded', 'true');
+  FS.el = pop; FS.host = btn;
+}
+function fsScan() {
+  FS.pend = false;
+  fsClose();
+  if (!CX.mq.matches) return;
+  const pb = document.getElementById('page-body');
+  const all = [...pb.querySelectorAll('.ub-sort, .ux-chips')];
+  if (!all.length || all.every(g => g.dataset.fs)) return;
+  pb.querySelectorAll('.fsm').forEach(e => e.remove());
+  const groups = all.map(g => ({ g, label: g.getAttribute('aria-label') || 'Фильтр', btns: [...g.querySelectorAll(':scope > button')] })).filter(x => x.btns.length);
+  groups.forEach(x => { x.g.dataset.fs = '1'; });
+  if (!groups.length) return;
+  // Что показываем в закрытом виде: первый фильтр (текущий) и всё, что отличается от выбора по умолчанию
+  const parts = groups.map((x, i) => ({ i, cur: fsCur(x.btns) })).filter(x => x.i === 0 || x.cur > 0)
+    .map(x => (groups[x.i].btns[Math.max(0, x.cur)]).innerHTML);
+  const el = document.createElement('div');
+  el.className = 'fsm';
+  el.innerHTML = `<button type="button" class="fsm-b" aria-haspopup="dialog" aria-expanded="false"><span class="k">Фильтры</span><span class="v">${parts.join('<i>·</i>')}</span><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button>`;
+  const head = pb.querySelector('.ub-head');
+  if (head) head.appendChild(el); else groups[0].g.before(el);
+  const b = el.querySelector('.fsm-b');
+  b.onclick = e => { e.stopPropagation(); fsOpen(b, groups); };
+}
+document.addEventListener('click', e => { if (FS.el && !e.target.closest('.fsm-p')) fsClose(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fsClose(); });
+addEventListener('scroll', fsClose, true);
+addEventListener('resize', fsClose);
+new MutationObserver(() => { if (!FS.pend) { FS.pend = true; setTimeout(fsScan, 0); } }).observe(document.getElementById('page-body'), { childList: true, subtree: true });
 
 /* ── NAV ── */
 const pageTitles = {dashboard:'Главная',workspaces:'Пространства',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',clients:'Клиенты',push:'Уведомления',files:'Файлы',announcements:'Объявления',webhooks:'Вебхуки',modules:'Модули',settings:'Настройки',audit:'Аудит-лог',releases:'Релизы',more:'Ещё'};
@@ -4403,8 +4458,8 @@ const uxHash = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.char
 const uxTag = t => t ? `<span class="ux-tag ux-t${uxHash(t) % 4}">${esc(t)}</span>` : '';
 const uxClock = ms => new Date(ms).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-function uxChips(items, current, handler) {
-  return `<div class="ux-chips" role="group" aria-label="Фильтр">${items.map(([key, label, count, warn]) =>
+function uxChips(items, current, handler, label = 'Фильтр') {
+  return `<div class="ux-chips" role="group" aria-label="${label}">${items.map(([key, label, count, warn]) =>
     `<button class="ux-chip${warn && count ? ' warn' : ''}" aria-pressed="${current === key}" onclick="${handler}('${key}')">${label}<b>${count}</b></button>`).join('')}</div>`;
 }
 const uxSearch = (id, value, placeholder, handler) =>
@@ -4532,7 +4587,7 @@ function uaRender() {
         ${tile('all', 'Всего', n.all, 'человек', 'var(--dv-c2)')}${tile('online', 'В сети', n.online, 'сейчас', 'var(--c-green)')}
         ${tile('away', 'Отошли', n.away, 'из них', 'var(--c-orange)')}${tile('admins', 'Администраторы', n.admins, 'чел.', 'var(--c-primary)')}
       </div>
-      ${WS.list.length > 1 ? uxChips([['all', 'Все пространства', allUsers.length], ...WS.list.map(w => ['w' + w.id, w.name, allUsers.filter(u => u.workspace_id === w.id).length])], UA.ws == null ? 'all' : 'w' + UA.ws, 'uaWsFilter') : ''}
+      ${WS.list.length > 1 ? uxChips([['all', 'Все пространства', allUsers.length], ...WS.list.map(w => ['w' + w.id, w.name, allUsers.filter(u => u.workspace_id === w.id).length])], UA.ws == null ? 'all' : 'w' + UA.ws, 'uaWsFilter', 'Пространство') : ''}
       <div class="ub-head"><h3>${title} <span>${rows.length}</span></h3>
         ${n.banned || UA.filter === 'banned' ? uxChips([['banned', 'Заблокированы', n.banned, true]], UA.filter, 'uaFilter') : ''}
         <div class="ub-sort" role="group" aria-label="Сортировка">${sortBtn('name', 'По имени')}${sortBtn('status', 'По статусу')}${sortBtn('seen', 'По дате')}</div>

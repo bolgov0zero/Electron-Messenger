@@ -252,3 +252,24 @@ input, textarea, select { font-size: 16px; }
 .ub > .ub-upd:has(.cl-ver.ok) .ub-sub { order: 2; }
 .cx-b .ub-tiles > * { min-height: 0 !important; height: auto; }
 .cx-b .ub-tiles .ub-stack, .cx-b .ub-tiles .ub-meter { margin-top: 8px; }
+
+/* ── Фильтры: один блок «Фильтры» вместо рядов кнопок (собирается скриптом, см. fsScan) ── */
+.ub-sort[data-fs], .ux-chips[data-fs] { display: none !important; }
+.fsm { flex: none; min-width: 0; }
+.ub-head > .fsm { order: 1; flex: 1 1 100%; }
+.fsm-b { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "k c" "v c"; align-items: center; column-gap: 8px; width: 100%; min-height: 46px; padding: 6px 12px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 12px; color: var(--c-text); text-align: left; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.fsm-b[aria-expanded="true"] { border-color: var(--c-primary); }
+.fsm-b .k { grid-area: k; font-size: 9.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--c-muted); }
+.fsm-b .v { grid-area: v; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fsm-b .v i { font-style: normal; color: var(--c-muted); margin: 0 6px; font-weight: 400; }
+.fsm-b .v b, .fsm-b .v .n, .fsm-o b, .fsm-o .n { margin-left: 6px; font: 600 11px var(--f-mono); color: var(--c-muted); }
+.fsm-b svg { grid-area: c; width: 14px; height: 14px; stroke: var(--c-muted); fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s; }
+.fsm-b[aria-expanded="true"] svg { transform: rotate(180deg); }
+.fsm-p { position: fixed; z-index: 400; max-height: min(66vh, 420px); overflow-y: auto; padding: 4px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 14px; box-shadow: 0 12px 36px rgba(0, 0, 0, .34); }
+.fsm-g { padding: 10px 12px 4px; font-size: 9.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--c-muted); }
+.fsm-g:first-child { padding-top: 6px; }
+.fsm-o { display: flex; align-items: center; gap: 8px; width: 100%; padding: 11px 12px; border: 0; background: none; border-radius: 10px; color: var(--c-text); font: 500 14px var(--f-ui); text-align: left; cursor: pointer; }
+.fsm-o b, .fsm-o .n { margin-left: auto; }
+.fsm-o.on { background: var(--c-primary-dim); color: var(--c-primary); }
+.fsm-o.on b, .fsm-o.on .n { color: var(--c-primary); }
+.fsm-o.warn b, .fsm-o.warn .n { color: var(--c-orange-text, var(--c-orange)); }
