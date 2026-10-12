@@ -2774,14 +2774,22 @@ CX.mq.addEventListener('change', () => { if (typeof currentPage === 'string' && 
 // в нём виден текущий выбор (по умолчанию первый фильтр, например «Все»), по нажатию открывается панель со всеми
 // группами (пространство, фильтр, сортировка), у каждой свой список. Настоящие кнопки остаются на странице
 // скрытыми: выбор в панели нажимает нужную из них, поэтому обработчики и перерисовка страниц прежние.
-const FS = { pend: false, el: null, host: null };
+const FS = { pend: false, el: null, host: null, page: null };
 function fsClose() {
   if (FS.el) { FS.el.remove(); FS.el = null; }
   if (FS.host) { FS.host.setAttribute('aria-expanded', 'false'); FS.host = null; }
 }
 const fsCur = btns => btns.findIndex(b => b.getAttribute('aria-pressed') === 'true');
-function fsOpen(btn, groups) {
-  const same = FS.host === btn; fsClose(); if (same) return;
+// Панель стоит под кнопкой «Фильтры» (или над ней, если снизу мало места) и следует за ней при прокрутке страницы
+function fsPlace() {
+  if (!FS.el) return;
+  if (!FS.host || !FS.host.isConnected) { fsClose(); return; }
+  const r = FS.host.getBoundingClientRect(), h = FS.el.offsetHeight, below = innerHeight - r.bottom - 8;
+  FS.el.style.left = r.left + 'px'; FS.el.style.width = r.width + 'px';
+  FS.el.style.top = (below >= Math.min(h, 240) ? r.bottom + 4 : Math.max(8, r.top - h - 4)) + 'px';
+}
+function fsShow(btn, groups, top) {
+  fsClose();
   const pop = document.createElement('div');
   pop.className = 'fsm-p'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Фильтры');
   pop.innerHTML = groups.map((g, gi) => {
@@ -2790,19 +2798,22 @@ function fsOpen(btn, groups) {
   }).join('');
   pop.onclick = e => { const o = e.target.closest('.fsm-o'); if (!o) return; const b = groups[Number(o.dataset.g)].btns[Number(o.dataset.i)]; fsClose(); b.click(); };
   document.body.appendChild(pop);
-  const r = btn.getBoundingClientRect(), h = pop.offsetHeight, below = innerHeight - r.bottom - 8;
-  pop.style.left = r.left + 'px'; pop.style.width = r.width + 'px';
-  pop.style.top = (below >= Math.min(h, 240) ? r.bottom + 4 : Math.max(8, r.top - h - 4)) + 'px';
   btn.setAttribute('aria-expanded', 'true');
-  FS.el = pop; FS.host = btn;
+  FS.el = pop; FS.host = btn; FS.page = currentPage;
+  fsPlace();
+  if (top) pop.scrollTop = top;
 }
 function fsScan() {
   FS.pend = false;
-  fsClose();
-  if (!CX.mq.matches) return;
+  if (!CX.mq.matches) { fsClose(); return; }
   const pb = document.getElementById('page-body');
   const all = [...pb.querySelectorAll('.ub-sort, .ux-chips')];
-  if (!all.length || all.every(g => g.dataset.fs)) return;
+  if (!all.length) { fsClose(); return; }
+  if (all.every(g => g.dataset.fs)) return;
+  // Страница перерисовалась. Если панель была открыта на этой же странице (данные обновились в фоне),
+  // остаётся открытой: пересобираем её под новые кнопки на том же месте, с той же прокруткой
+  const reopen = !!FS.el && FS.page === currentPage, top = FS.el ? FS.el.scrollTop : 0;
+  if (!reopen) fsClose();
   pb.querySelectorAll('.fsm').forEach(e => e.remove());
   const groups = all.map(g => ({ g, label: g.getAttribute('aria-label') || 'Фильтр', btns: [...g.querySelectorAll(':scope > button')] })).filter(x => x.btns.length);
   groups.forEach(x => { x.g.dataset.fs = '1'; });
@@ -2816,12 +2827,14 @@ function fsScan() {
   const head = pb.querySelector('.ub-head');
   if (head) head.appendChild(el); else groups[0].g.before(el);
   const b = el.querySelector('.fsm-b');
-  b.onclick = e => { e.stopPropagation(); fsOpen(b, groups); };
+  b.onclick = e => { e.stopPropagation(); if (FS.host === b) fsClose(); else fsShow(b, groups); };
+  if (reopen) fsShow(b, groups, top);
 }
 document.addEventListener('click', e => { if (FS.el && !e.target.closest('.fsm-p')) fsClose(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') fsClose(); });
-addEventListener('scroll', fsClose, true);
-addEventListener('resize', fsClose);
+// Прокрутка страницы двигает панель вместе с кнопкой, а не закрывает её; прокрутка самой панели её не трогает
+addEventListener('scroll', e => { if (FS.el && !FS.el.contains(e.target)) fsPlace(); }, true);
+addEventListener('resize', fsPlace);
 new MutationObserver(() => { if (!FS.pend) { FS.pend = true; setTimeout(fsScan, 0); } }).observe(document.getElementById('page-body'), { childList: true, subtree: true });
 
 /* ── NAV ── */
