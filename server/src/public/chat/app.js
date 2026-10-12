@@ -1022,6 +1022,7 @@ const CS_I = {
   chev: csSvg('<polyline points="9 18 15 12 9 6"/>'),
   down: csSvg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'),
   bolt: csSvg('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'),
+  search: csSvg('<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'),
   ban: csSvg('<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>'),
   lock: csSvg('<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
 };
@@ -1144,7 +1145,11 @@ function renderContactsList(filter = '') {
   const other = users.filter(u => u.rel === 'other').sort(byName);
   let html = own.length ? contactGroupsHtml(own, rank, contactRowHtml) : '';
   if (other.length) html += `<div class="chat-list-section-label"${own.length ? ' style="padding-top:14px"' : ''}>Из других пространств</div>` + other.map(contactRowHtml).join('');
-  list.innerHTML = html || '<div class="pp-empty">Никого не нашлось</div>';
+  list.innerHTML = html || (q
+    ? `<div class="cs-stub"><div class="cs-stub-i">${CS_I.search || CS_I.user}</div><b>Никого не нашлось</b><span>Проверьте написание имени или логина.</span></div>`
+    : `<div class="cs-stub"><div class="cs-stub-i">${CS_I.user}</div><b>Контактов пока нет</b>
+        <span>В вашем пространстве больше никого нет. Человека из другого пространства можно добавить по логину.</span>
+        <button type="button" class="modal-btn-primary" style="margin-top:12px" onclick="openAddContact()">Добавить контакт</button></div>`);
 }
 function filterContacts(q) { renderContactsList(q); }
 async function openContactChat(userId) {

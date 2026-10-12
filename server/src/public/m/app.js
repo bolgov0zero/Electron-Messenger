@@ -976,7 +976,12 @@ function renderContacts() {
   const byName = (a, b) => a.display_name.localeCompare(b.display_name, 'ru', { numeric: true });
   const own = filtered.filter(u => u.rel !== 'other').sort((a, b) => rank(a) - rank(b) || byName(a, b));
   const other = filtered.filter(u => u.rel === 'other').sort(byName);
-  if (!filtered.length) { list.innerHTML = `<div class="stub-note">${_contactsAll.length ? 'Никого не нашли' : 'В организации больше никого нет'}</div>`; return; }
+  if (!filtered.length) {
+    list.innerHTML = _contactsAll.length
+      ? `<div class="m-stub"><b>Никого не нашли</b><span>Проверьте написание имени.</span></div>`
+      : `<div class="m-stub"><b>Контактов пока нет</b><span>В вашем пространстве больше никого нет. Человека из другого пространства можно добавить по логину.</span><button type="button" class="m-redo" style="align-self:center" onclick="openAddContactSheet()">Добавить контакт</button></div>`;
+    return;
+  }
   // Статус онлайн известен только для тех, кого человек видит (своё пространство и контакты)
   const rowHtml = u => `
     <div class="row" onclick="openContactChat(${u.id})">
