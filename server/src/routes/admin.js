@@ -287,7 +287,7 @@ router.get('/users', (req, res) => {
   const fs = require('fs');
   const path = require('path');
   const avatarDir = path.join(__dirname, '..', '..', '..', 'chat_db', 'avatar');
-  const users = db.prepare('SELECT id, username, display_name, is_admin, tag, banned, created_at, last_seen_at, totp_required, totp_secret, can_announce FROM users WHERE is_bot IS NULL OR is_bot = 0 ORDER BY created_at DESC').all();
+  const users = db.prepare('SELECT u.id, u.username, u.display_name, u.is_admin, u.tag, u.banned, u.created_at, u.last_seen_at, u.totp_required, u.totp_secret, u.can_announce, u.workspace_id, w.name AS workspace_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE u.is_bot IS NULL OR u.is_bot = 0 ORDER BY u.created_at DESC').all();
   // Устройства, с которых человек сейчас в сети: в списке это «Electron 2.15.9 · macOS»
   const devices = new Map();
   for (const c of getClients()) {

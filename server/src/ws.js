@@ -1,5 +1,6 @@
 const { WebSocketServer } = require('ws');
 const db = require('./db');
+const spaces = require('./spaces');
 const unreadCounts = require('./unread');
 // Требуем лениво, как и sendPushToUser ниже: push.js при загрузке генерирует
 // ключи, и раньше времени его дёргать не нужно
@@ -117,9 +118,10 @@ function broadcastStatus(userId) {
   const status = computeStatus(userId);
   if (userStatus.get(userId) === status) return; // не изменилось — не шумим
   userStatus.set(userId, status);
-  // Статус видят все контакты, а не только собеседники из личных чатов — в списке контактов
-  // точка присутствия есть у каждого, поэтому рассылаем всем подключённым
-  const peers = [...clients.keys()].filter(id => id !== userId);
+  // Статус видят те, для кого человек виден: его пространство, добавившие его в контакты и администраторы.
+  // Из других пространств присутствие не отслеживается
+  const online = new Set(clients.keys());
+  const peers = spaces.viewersOf(userId).filter(id => online.has(id));
   let last_seen;
   if (status === 'offline') {
     const row = db.prepare('SELECT last_seen_at FROM users WHERE id = ?').get(userId);
@@ -246,6 +248,12 @@ function setup(server) {
           return;
         }
         const isSecret = !!chatRow?.is_secret;
+        // Личный чат: если один из двоих заблокировал другого, сообщение не доставляется
+        const dm = db.prepare("SELECT cm.user_id FROM chats c JOIN chat_members cm ON cm.chat_id = c.id WHERE c.id = ? AND c.type = 'direct' AND cm.user_id != ?").get(chat_id, user.id);
+        if (dm) {
+          if (spaces.isBlocked(dm.user_id, user.id)) { ws.send(JSON.stringify({ type: 'send_rejected', chat_id, reason: 'blocked' })); return; }
+          if (spaces.isBlocked(user.id, dm.user_id)) { ws.send(JSON.stringify({ type: 'send_rejected', chat_id, reason: 'you_blocked' })); return; }
+        }
         // В секретном чате attachment/forward_data пока не поддерживаются (не шифруются),
         // а text — это base64-шифротекст, который нельзя обрезать как обычный текст
         // (slice по символам испортил бы шифротекст) — лимит по длине выше и без .trim().

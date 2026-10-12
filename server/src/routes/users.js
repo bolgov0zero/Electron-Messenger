@@ -5,6 +5,8 @@ const fs = require('fs');
 const db = require('../db');
 const { authMiddleware, adminMiddleware } = require('../auth');
 const { getStatus, sendTo, broadcastAll } = require('../ws');
+const spaces = require('../spaces');
+const { logAudit } = require('../audit');
 
 const DB_DIR = path2.join(__dirname, '..', '..', '..', 'chat_db');
 const AVATAR_DIR = path2.join(DB_DIR, 'avatar');
@@ -20,18 +22,21 @@ function isImageBuffer(buf) {
   return false;
 }
 
-// List all users (for starting chats)
+// Люди, которых видит этот пользователь (свои из пространства, добавленные контакты, администратору все)
+// и те, кого он знает по общим чатам. rel: ws — то же пространство, other — из другого, chat — только по
+// общему чату (в списки выбора не попадает, нужен для имён и аватарок в переписке).
 router.get('/', authMiddleware, (req, res) => {
-  const users = db.prepare('SELECT id, username, display_name, tag FROM users WHERE id != ? AND (is_bot IS NULL OR is_bot = 0) ORDER BY display_name').all(req.user.id);
-  res.json(users);
+  res.json(spaces.listFor(req.user.id));
 });
 
 // Статусы всех активных пользователей (контакты показывают точку присутствия у каждого)
 router.get('/presence', authMiddleware, (req, res) => {
+  // Присутствие — только у тех, кого человек видит: чужое пространство по статусу не отслеживается
+  const visible = new Set(spaces.visibleIds(req.user.id));
   const peers = db.prepare(`
     SELECT id, last_seen_at FROM users
     WHERE id != ? AND COALESCE(banned, 0) = 0 AND COALESCE(is_bot, 0) = 0
-  `).all(req.user.id);
+  `).all(req.user.id).filter(p => visible.has(p.id));
   const result = {};
   peers.forEach(({ id, last_seen_at }) => { result[id] = { status: getStatus(id), last_seen: last_seen_at }; });
   res.json(result);
@@ -42,7 +47,8 @@ router.patch('/me', authMiddleware, (req, res) => {
   const { display_name } = req.body;
   if (!display_name?.trim()) return res.status(400).json({ error: 'Missing display_name' });
   db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(display_name.trim(), req.user.id);
-  broadcastAll({ type: 'user_updated', user_id: req.user.id, display_name: display_name.trim() });
+  spaces.knownByOf(req.user.id).forEach(id => sendTo(id, { type: 'user_updated', user_id: req.user.id, display_name: display_name.trim() }));
+  sendTo(req.user.id, { type: 'user_updated', user_id: req.user.id, display_name: display_name.trim() });
   res.json({ ok: true });
 });
 
@@ -79,10 +85,12 @@ router.get('/:id/avatar', (req, res) => {
 router.post('/', authMiddleware, adminMiddleware, (req, res) => {
   const { username, password, display_name, is_admin, tag } = req.body;
   if (!username?.trim() || !password || !display_name?.trim()) return res.status(400).json({ error: 'Missing fields' });
+  const wsId = req.body.workspace_id === undefined ? spaces.DEFAULT_WS : Number(req.body.workspace_id);
+  if (!db.prepare('SELECT 1 FROM workspaces WHERE id = ?').get(wsId)) return res.status(400).json({ error: 'Пространство не найдено' });
   try {
     const hash = bcrypt.hashSync(password, 10);
-    const result = db.prepare('INSERT INTO users (username, password_hash, display_name, is_admin, tag) VALUES (?, ?, ?, ?, ?)')
-      .run(username.trim(), hash, display_name.trim(), is_admin ? 1 : 0, tag?.trim() || null);
+    const result = db.prepare('INSERT INTO users (username, password_hash, display_name, is_admin, tag, workspace_id) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(username.trim(), hash, display_name.trim(), is_admin ? 1 : 0, tag?.trim() || null, wsId);
     // Иначе новый человек не появляется в списках (упоминания, «написать») до
     // перезапуска клиента — список людей грузится один раз при входе
     broadcastAll({ type: 'user_created' });
@@ -95,12 +103,24 @@ router.patch('/:id', authMiddleware, adminMiddleware, (req, res) => {
   const { username, display_name, is_admin, tag } = req.body;
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'Not found' });
+  if (req.body.workspace_id !== undefined && !db.prepare('SELECT 1 FROM workspaces WHERE id = ?').get(Number(req.body.workspace_id)))
+    return res.status(400).json({ error: 'Пространство не найдено' });
   try {
     db.prepare('UPDATE users SET username = ?, display_name = ?, is_admin = ?, tag = ? WHERE id = ?')
       .run(username?.trim() || user.username, display_name?.trim() || user.display_name, is_admin !== undefined ? (is_admin ? 1 : 0) : user.is_admin, tag !== undefined ? (tag?.trim() || null) : user.tag, req.params.id);
     // Клиенты обновляют имя и тег без перезапуска (отправляем и тогда, когда поменялся только тег)
     const updated = db.prepare('SELECT id, display_name, tag FROM users WHERE id = ?').get(req.params.id);
-    broadcastAll({ type: 'user_updated', user_id: updated.id, display_name: updated.display_name, tag: updated.tag });
+    const evt = { type: 'user_updated', user_id: updated.id, display_name: updated.display_name, tag: updated.tag };
+    [updated.id, ...spaces.knownByOf(updated.id)].forEach(id => sendTo(id, evt));
+    // Смена пространства: ручные контакты, ставшие «своими», убираем; все обновляют списки людей
+    if (req.body.workspace_id !== undefined && Number(req.body.workspace_id) !== user.workspace_id) {
+      const ws = db.prepare('SELECT id, name FROM workspaces WHERE id = ?').get(Number(req.body.workspace_id));
+      const was = db.prepare('SELECT name FROM workspaces WHERE id = ?').get(user.workspace_id)?.name || '—';
+      db.prepare('UPDATE users SET workspace_id = ? WHERE id = ?').run(ws.id, user.id);
+      spaces.afterMove(user.id, ws.id);
+      logAudit(req, 'moderation', 'Пользователь переведён в другое пространство', `${user.display_name}: «${was}» → «${ws.name}»`);
+      broadcastAll({ type: 'directory_changed' });
+    }
     res.json({ ok: true });
   } catch { res.status(409).json({ error: 'Username already exists' }); }
 });
@@ -155,6 +175,7 @@ router.delete('/:id', authMiddleware, adminMiddleware, (req, res) => {
   sendTo(userId, { type: 'force_logout' });
   try { fs.unlinkSync(path2.join(AVATAR_DIR, `${userId}.jpg`)); } catch {}
   peers.forEach(uid => sendTo(uid, { type: 'reload_chats' }));
+  broadcastAll({ type: 'directory_changed' });
   res.json({ ok: true });
 });
 

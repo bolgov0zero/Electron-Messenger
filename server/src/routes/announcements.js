@@ -29,15 +29,22 @@ router.post('/:id/dismiss', authMiddleware, (req, res) => {
 
 // Кому и куда можно отправить: те же списки, что видит админ в окне объявления
 router.get('/targets', authMiddleware, needRight, (req, res) => {
+  const me = db.prepare('SELECT is_admin, workspace_id FROM users WHERE id = ?').get(req.user.id);
+  const admin = !!me?.is_admin;
+  // Пользователь с правом видит только своё пространство и чаты, где все свои
+  const allowedChats = admin ? null : new Set(announcements.chatsOfSpaces([me.workspace_id], true));
   const chats = db.prepare(`
     SELECT c.id, c.type, c.name,
       (SELECT GROUP_CONCAT(u.display_name, char(30)) FROM users u JOIN chat_members cm ON cm.user_id = u.id
        WHERE cm.chat_id = c.id) AS member_list
     FROM chats c WHERE c.parent_id IS NULL AND COALESCE(c.is_secret, 0) = 0
-  `).all().map(c => ({ id: c.id, type: c.type, name: c.name, member_names: c.member_list ? c.member_list.split('\x1e') : [] }));
-  const users = db.prepare(`SELECT id, username, display_name, tag FROM users
-    WHERE COALESCE(banned, 0) = 0 AND COALESCE(is_bot, 0) = 0 ORDER BY display_name`).all();
-  res.json({ chats, users });
+  `).all().filter(c => !allowedChats || allowedChats.has(c.id))
+    .map(c => ({ id: c.id, type: c.type, name: c.name, member_names: c.member_list ? c.member_list.split('\x1e') : [] }));
+  const users = db.prepare(`SELECT id, username, display_name, tag, workspace_id FROM users
+    WHERE COALESCE(banned, 0) = 0 AND COALESCE(is_bot, 0) = 0 ${admin ? '' : 'AND workspace_id = ' + Number(me.workspace_id)} ORDER BY display_name`).all();
+  const wsList = db.prepare(`SELECT w.id, w.name, (SELECT COUNT(*) FROM users u WHERE u.workspace_id = w.id AND COALESCE(u.is_bot, 0) = 0) AS users
+    FROM workspaces w ${admin ? '' : 'WHERE w.id = ' + Number(me.workspace_id)} ORDER BY w.id`).all();
+  res.json({ chats, users, spaces: wsList, scoped: !admin });
 });
 
 // Отправка. Объявление уходит от имени системы, получатели автора не видят;

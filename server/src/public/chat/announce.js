@@ -6,7 +6,7 @@
 // S, api, esc, openModal/closeModal. Тот же файл лежит в веб-клиенте (server/src/public/chat/announce.js): правьте оба вместе.
 
 const AN = { kind: 'chat', text: '', pick: false, who: new Set(), duration: 60, wk: 'now', when: 0, err: '', busy: false,
-  chats: [], users: [], picker: false, vm: new Date(), day: null, hh: '', mm: '', q: '', only: false, lim: 60, tab: 'msg', narrow: false };
+  chats: [], users: [], spaces: [], sp: false, spSel: new Set(), scoped: false, picker: false, vm: new Date(), day: null, hh: '', mm: '', q: '', only: false, lim: 60, tab: 'msg', narrow: false };
 const AN_KINDS = {
   chat:   ['В чаты',      'Строка от системы в группах и комнатах, остаётся в переписке'],
   popup:  ['Всплывающее', 'Карточка у тех, кто в сети в момент отправки'],
@@ -47,12 +47,17 @@ async function openAnnounce() {
     box.innerHTML = '<div class="modal anx-modal" id="ann-box" role="dialog" aria-modal="true"></div>';
     document.body.appendChild(box);
   }
-  Object.assign(AN, { kind: 'chat', text: '', pick: false, who: new Set(), duration: 60, wk: 'now', when: 0, err: '', busy: false,
+  Object.assign(AN, { kind: 'chat', text: '', pick: false, sp: false, spSel: new Set(), who: new Set(), duration: 60, wk: 'now', when: 0, err: '', busy: false,
     picker: false, day: null, q: '', only: false, lim: 60, tab: 'msg', _items: null });
   annRender('ann-text', true);
   openModal('modal-announce');
   const t = await api('GET', '/announcements/targets');
-  if (t?.chats) { AN.chats = t.chats; AN.users = t.users || []; AN._items = null; annRender(); }
+  if (t?.chats) {
+    AN.chats = t.chats; AN.users = t.users || []; AN.spaces = t.spaces || []; AN.scoped = !!t.scoped; AN._items = null;
+    // Пользователь с правом объявлений пишет только в своё пространство: оно выбрано и не меняется
+    if (AN.scoped) { AN.sp = true; AN.spSel = new Set(AN.spaces.map(s => s.id)); }
+    annRender();
+  }
   else if (t?.error) { AN.err = t.error; annRender(); }
 }
 
@@ -114,8 +119,9 @@ function annItems() {
 }
 // «Всем» для чатов — только группы и комнаты, личные переписки без выбора не затрагиваются
 const annAllCount = () => AN.kind === 'chat' ? annItems().filter(p => p.type !== 'direct').length : annItems().length;
-const annCount = () => AN.pick ? AN.who.size : annAllCount();
-const annNoun = n => AN.kind === 'chat' ? annPlural(n, 'чат', 'чата', 'чатов') : annPlural(n, 'человек', 'человека', 'человек');
+const annSpPeople = () => AN.spaces.filter(s => AN.spSel.has(s.id)).reduce((n, s) => n + s.users, 0);
+const annCount = () => AN.pick ? AN.who.size : AN.sp ? (AN.kind === 'chat' ? 0 : annSpPeople()) : annAllCount();
+const annNoun = n => AN.sp && AN.kind === 'chat' ? '' : AN.kind === 'chat' ? annPlural(n, 'чат', 'чата', 'чатов') : annPlural(n, 'человек', 'человека', 'человек');
 const annMatch = p => { const q = AN.q.trim().toLowerCase(); return !q || p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q) || (p.tag || '').toLowerCase().includes(q); };
 
 function annAv(p) {
@@ -150,25 +156,43 @@ function annLeft(head) {
       <button type="button" class="anx-btn" onclick="closeModal('modal-announce')">Отмена</button>
       <button type="button" class="anx-btn anx-solid" id="ann-go" ${AN.busy || miss.length ? 'disabled' : ''} onclick="annSend()">${annGoText()}</button></div>` : ''}</div>`;
 }
+// Список пространств: администратор отмечает любые, пользователь с правом объявлений видит одно своё
+function annSpaces() {
+  const chat = AN.kind === 'chat';
+  const note = AN.scoped
+    ? `Объявление уйдёт только в ваше пространство${chat ? ': в группы и комнаты, где все из него' : ''}.`
+    : chat ? 'Строка появится в группах и комнатах, где есть люди из отмеченных пространств.' : 'Объявление получат люди из отмеченных пространств.';
+  return `<div class="anx-spl">${AN.spaces.map(s => `<button type="button" class="anx-li" aria-pressed="${AN.spSel.has(s.id)}" ${AN.scoped ? 'disabled' : ''} onclick="annSp(${s.id})"><span class="anx-lt"><b>${esc(s.name)}</b><span>${s.users} ${annPlural(s.users, 'человек', 'человека', 'человек')}</span></span></button>`).join('')}</div>
+    <div class="anx-lock" style="margin-top:10px">${note}</div>`;
+}
 function annRight(head) {
-  const chat = AN.kind === 'chat', items = annItems(), all = !AN.pick;
+  const chat = AN.kind === 'chat', items = annItems(), sp = AN.sp, pk = AN.pick, all = !pk && !sp;
   const fq = items.filter(annMatch), q = AN.q.trim();
   const allPicked = fq.length > 0 && fq.every(p => AN.who.has(p.id));
   const bulk = `<div class="anx-bulk"><button type="button" class="anx-btn sm" onclick="annSelFound()" ${fq.length && !allPicked ? '' : 'disabled'}>${q ? 'Выбрать найденных' : 'Выбрать всех'} (${fq.length})</button><button type="button" class="anx-btn sm" onclick="annUnsel()" ${AN.who.size ? '' : 'disabled'}>Снять</button>
       <label class="anx-only"><input type="checkbox" ${AN.only ? 'checked' : ''} onchange="annOnly(this.checked)">Только выбранные</label></div>`;
+  // Режимы: всем / по пространствам / выбранным. Пространства предлагаем, когда их больше одного (или всегда у пользователя с правом)
+  const modes = [];
+  if (!AN.scoped) modes.push(['all', chat ? 'Все чаты' : 'Всем', all]);
+  if (AN.scoped) modes.push(['spaces', 'Моё пространство', sp]);
+  else if (AN.spaces.length > 1) modes.push(['spaces', 'Пространства', sp]);
+  modes.push(['pick', chat ? 'Выбранные' : 'Выбранным', pk]);
+  const sg = modes.map(([m, l, on]) => `<button type="button" aria-pressed="${on}" onclick="annMode('${m}')">${l}</button>`).join('');
+  const lockWord = chat ? 'Выбранные' : 'Выбранным';
   return `<div class="anx-half r">${head ? `<div class="modal-hdr anx-hdr"><div class="anx-title">${chat ? 'Куда отправить' : 'Кому отправить'}</div>
       <button class="icon-btn" aria-label="Закрыть" onclick="closeModal('modal-announce')" style="width:28px;height:28px">${AN_X}</button></div>` : ''}
-    <div class="anx-rbar"><div class="anx-rhead"><span class="anx-t2">${all ? (chat ? 'Во все чаты' : 'Получат все') : 'Получатели'}</span>
-        <div class="anx-sg"><button type="button" aria-pressed="${all}" onclick="annSet('pick',false)">${chat ? 'Все чаты' : 'Всем'}</button><button type="button" aria-pressed="${!all}" onclick="annSet('pick',true)">${chat ? 'Выбранные' : 'Выбранным'}</button></div></div>
-      <label class="anx-search">${AN_SEARCH}<input id="ann-pq" value="${esc(AN.q)}" placeholder="${chat ? 'Название чата' : 'Имя, логин или тег'}" autocomplete="off" ${all ? 'disabled' : ''} oninput="annSearch(this.value)"></label>${all ? '' : bulk}</div>
-    <div class="anx-rlist">${all ? `<div class="anx-lock"><b>${chat ? 'Во все группы и комнаты' : `Получат все ${annAllCount()}`}</b>${chat ? `Строка появится в ${annAllCount()} ${annPlural(annAllCount(), 'чате', 'чатах', 'чатах')}.` : 'Объявление уйдёт каждому.'} Нажмите «${chat ? 'Выбранные' : 'Выбранным'}», чтобы отметить ${chat ? 'чаты' : 'людей'}.</div>` : ''}${annList()}</div>
-    <div class="anx-rfoot"><span>Выбрано <b>${all ? annAllCount() : AN.who.size}</b> из ${all && chat ? annAllCount() : items.length}</span>${!all && AN.who.size ? `<button type="button" class="anx-btn sm" style="margin-left:auto" onclick="annClear()">Очистить</button>` : ''}</div></div>`;
+    <div class="anx-rbar"><div class="anx-rhead"><span class="anx-t2">${all ? (chat ? 'Во все чаты' : 'Получат все') : sp ? 'Пространства' : 'Получатели'}</span>
+        <div class="anx-sg">${sg}</div></div>
+      <label class="anx-search">${AN_SEARCH}<input id="ann-pq" value="${esc(AN.q)}" placeholder="${chat ? 'Название чата' : 'Имя, логин или тег'}" autocomplete="off" ${pk ? '' : 'disabled'} oninput="annSearch(this.value)"></label>${pk ? bulk : ''}</div>
+    <div class="anx-rlist">${all ? `<div class="anx-lock"><b>${chat ? 'Во все группы и комнаты' : `Получат все ${annAllCount()}`}</b>${chat ? `Строка появится в ${annAllCount()} ${annPlural(annAllCount(), 'чате', 'чатах', 'чатах')}.` : 'Объявление уйдёт каждому.'} Нажмите «${lockWord}», чтобы отметить ${chat ? 'чаты' : 'людей'}.</div>` : ''}${sp ? annSpaces() : pk ? annList() : ''}</div>
+    <div class="anx-rfoot"><span>${sp ? `Выбрано <b>${AN.spSel.size}</b> из ${AN.spaces.length}` : `Выбрано <b>${all ? annAllCount() : AN.who.size}</b> из ${all && chat ? annAllCount() : items.length}`}</span>${pk && AN.who.size ? `<button type="button" class="anx-btn sm" style="margin-left:auto" onclick="annClear()">Очистить</button>` : ''}</div></div>`;
 }
 
 function annMissing() {
   const m = [];
   if (!AN.text.trim()) m.push('текст');
   if (AN.pick && !AN.who.size) m.push(AN.kind === 'chat' ? 'чаты' : 'получателей');
+  if (AN.sp && !AN.spSel.size) m.push('пространства');
   if (AN.kind === 'banner' && !(Number(AN.duration) > 0)) m.push('время показа');
   return m;
 }
@@ -196,7 +220,7 @@ function annRender(focusId, resetList) {
   el.classList.toggle('anx-tabs', AN.narrow);
   const miss = annMissing();
   if (AN.narrow) {
-    const pill = AN.pick ? AN.who.size : 'все';
+    const pill = AN.pick ? AN.who.size : AN.sp ? AN.spSel.size : 'все';
     el.innerHTML = `<div class="modal-hdr anx-hdr"><div class="anx-title">Новое объявление</div>
         <button class="icon-btn" aria-label="Закрыть" onclick="closeModal('modal-announce')" style="width:28px;height:28px">${AN_X}</button></div>
       <div class="anx-tabsbar" role="tablist"><button type="button" role="tab" aria-selected="${AN.tab === 'msg'}" onclick="annTab('msg')">Сообщение</button>
@@ -224,6 +248,8 @@ function annSet(key, value) {
   AN.err = '';
   annRender(null, key === 'kind');
 }
+function annMode(m) { AN.pick = m === 'pick'; AN.sp = m === 'spaces'; AN.err = ''; annRender(null, true); }
+function annSp(id) { if (AN.scoped) return; AN.spSel.has(id) ? AN.spSel.delete(id) : AN.spSel.add(id); AN.err = ''; annRender(); }
 function annTab(t) { AN.tab = t; annRender(null, true); }
 function annSearch(v) { AN.q = v; AN.lim = 60; annRender('ann-pq', true); }
 function annOnly(v) { AN.only = v; AN.lim = 60; annRender(null, true); }
@@ -286,12 +312,13 @@ async function annSend() {
   const text = AN.text.trim(), dur = Number(AN.duration), ts = annTs();
   AN.err = !text ? 'Напишите текст объявления'
     : AN.pick && !AN.who.size ? (AN.kind === 'chat' ? 'Выберите хотя бы один чат' : 'Выберите получателей')
+    : AN.sp && !AN.spSel.size ? 'Выберите пространства'
     : AN.kind === 'banner' && !(dur > 0) ? 'Укажите, сколько показывать полосу'
     : AN.wk !== 'now' && ts <= Date.now() / 1000 ? 'Выбранное время уже прошло' : '';
   if (AN.err) { if (AN.narrow) AN.tab = text && AN.pick && !AN.who.size ? 'who' : 'msg'; return annRender(!text ? 'ann-text' : null); }
   AN.busy = true; annRender();
   const r = await api('POST', '/announcements', {
-    kind: AN.kind, text, target: AN.pick ? 'select' : 'all', targets: [...AN.who],
+    kind: AN.kind, text, target: AN.sp ? 'spaces' : AN.pick ? 'select' : 'all', targets: AN.sp ? [...AN.spSel] : [...AN.who],
     start_at: ts, duration_min: AN.kind === 'banner' ? dur : 0,
   });
   AN.busy = false;

@@ -10,6 +10,7 @@
 
 const db = require('./db');
 const { broadcast, broadcastAll, sendTo, getMessageWithStatus } = require('./ws');
+const spaces = require('./spaces');
 
 const TICK_MS = 10000;
 
@@ -17,11 +18,33 @@ function parseTargets(row) {
   try { return JSON.parse(row.targets || '[]'); } catch { return []; }
 }
 
+// Люди выбранных пространств (без служебных и заблокированных)
+function usersOfSpaces(wsIds) {
+  if (!wsIds.length) return [];
+  return db.prepare(`SELECT id FROM users WHERE (is_bot IS NULL OR is_bot = 0) AND COALESCE(banned, 0) = 0
+    AND workspace_id IN (${wsIds.map(() => '?').join(',')})`).all(...wsIds).map(r => r.id);
+}
+
+// Группы и комнаты выбранных пространств. Администратор: где есть хоть один участник из них.
+// Пользователь с правом объявлений (strict): только те, где все люди из выбранных пространств,
+// чтобы ему не открывались чужие чаты.
+function chatsOfSpaces(wsIds, strict) {
+  if (!wsIds.length) return [];
+  const inList = wsIds.map(() => '?').join(',');
+  const rows = db.prepare(`SELECT c.id,
+      SUM(CASE WHEN u.workspace_id IN (${inList}) THEN 1 ELSE 0 END) AS inside, COUNT(*) AS total
+    FROM chats c JOIN chat_members cm ON cm.chat_id = c.id JOIN users u ON u.id = cm.user_id
+    WHERE c.type IN ('group', 'room') AND COALESCE(c.is_secret, 0) = 0 AND COALESCE(u.is_bot, 0) = 0
+    GROUP BY c.id`).all(...wsIds);
+  return rows.filter(r => strict ? r.inside === r.total : r.inside > 0).map(r => r.id);
+}
+
 // Кому адресовано объявление: пустой список = всем.
 function recipientIds(row) {
   if (row.target === 'all') {
     return db.prepare("SELECT id FROM users WHERE (is_bot IS NULL OR is_bot = 0) AND banned = 0").all().map(r => r.id);
   }
+  if (row.target === 'spaces') return usersOfSpaces(parseTargets(row));
   return parseTargets(row);
 }
 
@@ -57,8 +80,10 @@ function deliver(row) {
     if (!sysId) return 0;
     // «Всем» — только группы и комнаты. Выбранные вручную могут быть и личными чатами (системное
     // сообщение видят оба участника); секретные чаты исключены: их тексты зашифрованы
+    const authorAdmin = row.author_id ? spaces.isAdminUser(row.author_id) : true;
     const chatIds = row.target === 'all'
       ? db.prepare("SELECT id FROM chats WHERE type IN ('group', 'room')").all().map(r => r.id)
+      : row.target === 'spaces' ? chatsOfSpaces(parseTargets(row), !authorAdmin)
       : parseTargets(row).filter(id => db.prepare('SELECT 1 FROM chats WHERE id = ? AND COALESCE(is_secret, 0) = 0').get(id));
     const insertMsg = db.prepare('INSERT INTO messages (chat_id, sender_id, text) VALUES (?, ?, ?)');
     for (const chatId of chatIds) {
@@ -82,7 +107,7 @@ function deliver(row) {
     broadcastAll(payload);
     return 0; // «всем» — точное число адресатов не считаем
   }
-  const ids = parseTargets(row);
+  const ids = recipientIds(row);
   ids.forEach(uid => sendTo(uid, payload));
   return ids.length;
 }
@@ -127,7 +152,7 @@ function activeBannersFor(userId) {
       AND NOT EXISTS (SELECT 1 FROM announcement_dismissed d WHERE d.announcement_id = a.id AND d.user_id = ?)
     ORDER BY a.sent_at`).all(now, userId);
   return rows
-    .filter(r => r.target === 'all' || parseTargets(r).includes(userId))
+    .filter(r => r.target === 'all' || (r.target === 'spaces' ? parseTargets(r).includes(spaces.wsOf(userId)) : parseTargets(r).includes(userId)))
     .map(bannerPayload);
 }
 
@@ -146,12 +171,13 @@ function journal() {
 
   const userName = db.prepare('SELECT display_name FROM users WHERE id = ?');
   const chatName = db.prepare('SELECT name FROM chats WHERE id = ?');
+  const wsName = db.prepare('SELECT name FROM workspaces WHERE id = ?');
   const chatPair = db.prepare(`SELECT GROUP_CONCAT(u.display_name, ' → ') AS name FROM chat_members cm
     JOIN users u ON u.id = cm.user_id WHERE cm.chat_id = ?`);
 
   return rows.map(r => {
     const ids = parseTargets(r);
-    const names = r.target === 'all' ? [] : ids.map(id => {
+    const names = r.target === 'all' ? [] : r.target === 'spaces' ? ids.map(id => wsName.get(id)?.name || '—') : ids.map(id => {
       const row = r.kind === 'chat' ? chatName.get(id) : userName.get(id);
       // у личного чата названия нет — берём имена участников
       if (r.kind === 'chat' && row && !row.name) return chatPair.get(id)?.name || '—';
@@ -190,12 +216,25 @@ function parseRequest(body, authorId) {
   const { kind, text, target, targets, start_at, duration_min } = body || {};
   if (!String(text || '').trim()) return { error: 'Нет текста' };
   if (!['popup', 'banner', 'chat'].includes(kind)) return { error: 'Неизвестный тип' };
-  const list = (targets || []).map(Number).filter(Boolean);
-  const tgt = target === 'select' ? 'select' : 'all';
+  let list = (targets || []).map(Number).filter(Boolean);
+  let tgt = target === 'select' ? 'select' : target === 'spaces' ? 'spaces' : 'all';
+  // Пользователь с правом объявлений работает только внутри своего пространства; администратор — где угодно
+  const author = authorId ? db.prepare('SELECT is_admin, workspace_id FROM users WHERE id = ?').get(authorId) : null;
+  if (author && !author.is_admin) {
+    const own = author.workspace_id;
+    if (tgt === 'all' || tgt === 'spaces') { tgt = 'spaces'; list = [own]; }
+    else if (kind === 'chat') {
+      const okChats = new Set(chatsOfSpaces([own], true));
+      list = list.filter(id => okChats.has(id));
+    } else list = list.filter(id => spaces.wsOf(id) === own);
+  } else if (tgt === 'spaces') {
+    list = list.filter(id => db.prepare('SELECT 1 FROM workspaces WHERE id = ?').get(id));
+    if (!list.length) return { error: 'Выберите пространства' };
+  }
   if (tgt === 'select' && list.length === 0) return { error: kind === 'chat' ? 'Выберите чаты' : 'Выберите получателей' };
   if (kind === 'banner' && !(duration_min > 0)) return { error: 'Укажите время отображения' };
   if (kind === 'chat' && !systemUserId()) return { error: 'Системный пользователь не найден', status: 500 };
   return { kind, text: String(text).trim(), author_id: authorId, start_at: Number(start_at) || 0, duration_min: Number(duration_min) || 0, target: tgt, targets: list };
 }
 
-module.exports = { parseRequest, create, journal, remove, stop, activeBannersFor, dismiss, startScheduler, sendSystemMessage };
+module.exports = { chatsOfSpaces, usersOfSpaces, parseRequest, create, journal, remove, stop, activeBannersFor, dismiss, startScheduler, sendSystemMessage };

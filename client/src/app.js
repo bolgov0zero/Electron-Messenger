@@ -535,6 +535,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('click', e => {
     hideCtxMenu();
     document.getElementById('ctx-chat-menu').style.display = 'none';
+    const _cm = document.getElementById('ctx-contact-menu'); if (_cm) _cm.style.display = 'none';
     if (!e.target.closest('#mention-popup')) hideMentionPopup();
     if (!e.target.closest('.composer-pill')) closeEmojiPicker();
     if (!e.target.closest('#reaction-picker')) hideReactionPicker();
@@ -748,6 +749,7 @@ function enterApp() {
   verifyDownloadedFiles();
   loadChats();
   loadUsers();
+  loadBlocks();
   annSync();
   loadUploadSettings();
   connectWS();
@@ -1139,6 +1141,13 @@ function setSidebarTab(tab) {
   // сжатый в полосу сайдбар с контактами/настройками
   if (prevTab === 'chats' && S.activeRoomId) leaveRoom();
   _sidebarTab = tab;
+  const _nb = document.querySelector('.btn-new-chat');
+  if (_nb) {
+    const c = tab === 'contacts';
+    _nb.title = c ? 'Добавить контакт' : 'Новый чат';
+    _nb.setAttribute('onclick', c ? 'openAddContact()' : 'openNewChat()');
+    _nb.innerHTML = c ? NB_ICON_CONTACT : NB_ICON_CHAT;
+  }
   document.querySelectorAll('.sb-tab').forEach(el => el.classList.toggle('on', el.dataset.tab === tab));
   document.getElementById('chats-search-wrap').style.display = tab === 'chats' ? '' : 'none';
   document.getElementById('contacts-search-wrap').style.display = tab === 'contacts' ? '' : 'none';
@@ -1187,10 +1196,10 @@ function restoreChatMainArea() {
 // Список всех пользователей компании — та же аватарка и подложка тега, что и при
 // выборе собеседника для нового чата (ppAvHtml), плюс индикатор «в сети».
 function contactRowHtml(u) {
-  return `<div class="pp-row" data-uid="${u.id}" onclick="openContactChat(${u.id})">
+  return `<div class="pp-row" data-uid="${u.id}" onclick="openContactChat(${u.id})"${u.contact ? ` oncontextmenu="contactMenu(event,${u.id})"` : ''}>
     <div class="av-wrap">${ppAvHtml(u)}${presenceDot(u.id)}</div>
     <span class="pp-name">${esc(u.display_name)}</span>
-    ${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}
+    ${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}${wsTag(u)}
   </div>`;
 }
 // Группы контактов: онлайн, отошёл, не в сети — подписи как в списке чатов
@@ -1210,12 +1219,17 @@ function renderContactsList(filter = '') {
   const list = document.getElementById('chats-list');
   if (!list) return;
   const q = filter.trim().toLowerCase();
-  const users = S.allUsers.filter(u => u.id !== S.user.id &&
+  const users = S.allUsers.filter(u => u.id !== S.user.id && isPickable(u) &&
     (!q || u.display_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)));
   // Сначала те, кто в сети; внутри каждой группы — по имени
   const rank = u => ({ online: 0, away: 1 })[S.presence[u.id]] ?? 2;
-  users.sort((a, b) => rank(a) - rank(b) || a.display_name.localeCompare(b.display_name, 'ru', { numeric: true }));
-  list.innerHTML = users.length ? contactGroupsHtml(users, rank, contactRowHtml) : '<div class="pp-empty">Никого не нашлось</div>';
+  const byName = (a, b) => a.display_name.localeCompare(b.display_name, 'ru', { numeric: true });
+  // Люди из других пространств (добавленные в контакты) — отдельным блоком ниже, без группировки по статусу
+  const own = users.filter(u => u.rel !== 'other').sort((a, b) => rank(a) - rank(b) || byName(a, b));
+  const other = users.filter(u => u.rel === 'other').sort(byName);
+  let html = own.length ? contactGroupsHtml(own, rank, contactRowHtml) : '';
+  if (other.length) html += `<div class="chat-list-section-label"${own.length ? ' style="padding-top:14px"' : ''}>Из других пространств</div>` + other.map(contactRowHtml).join('');
+  list.innerHTML = html || '<div class="pp-empty">Никого не нашлось</div>';
 }
 function filterContacts(q) { renderContactsList(q); }
 async function openContactChat(userId) {
@@ -1255,6 +1269,7 @@ const CS_I = {
   down: csSvg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>'),
   bolt: csSvg('<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'),
   lock: csSvg('<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
+  ban: csSvg('<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>'),
   copy: csSvg('<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
 };
 
@@ -1284,6 +1299,8 @@ function csSections() {
     { k: 'appearance', label: 'Внешний вид', icon: CS_I.palette, desc: 'Тема, цвет, фон переписки и размер текста',
       meta: () => `${s.theme === 'dark' ? 'Тёмная' : 'Светлая'} · ${ACCENTS[currentAccent()].name.toLowerCase()}` },
   ];
+  list.push({ k: 'blocks', label: 'Блокировки', icon: CS_I.ban, desc: 'Люди, которые не могут вам писать',
+    meta: () => (S.blocked || []).length ? `заблокировано: ${S.blocked.length}` : 'никого нет' });
   list.push({ k: 'modules', label: 'Модули', icon: CS_I.puzzle, desc: 'Дополнительные возможности клиента',
     meta: () => { const l = window.Modules ? Modules.list() : []; if (!l.length) return 'нет доступных'; const n = l.filter(m => m.on).length; return n ? `включено: ${n}` : `${l.length} ${plural(l.length, 'модуль', 'модуля', 'модулей')} доступно`; } });
   if (csIsApp()) list.push({ k: 'update', label: 'Обновление', icon: CS_I.upd, desc: 'Версия приложения и новые релизы',
@@ -1613,7 +1630,7 @@ function modDownload(key, kind) {
   document.body.appendChild(ov);
   run();
 }
-const CS_PANES = { profile: csPaneProfile, general: csPaneGeneral, appearance: csPaneAppearance, modules: csPaneModules, update: csPaneUpdate };
+const CS_PANES = { profile: csPaneProfile, general: csPaneGeneral, appearance: csPaneAppearance, blocks: csPaneBlocks, modules: csPaneModules, update: csPaneUpdate };
 
 function csNavHtml(list) {
   return csSections().map(s => `<button type="button" class="cs-sn" ${list ? '' : `aria-current="${CS.sec === s.k ? 'page' : 'false'}"`} onclick="csGo('${s.k}')">
@@ -1763,6 +1780,8 @@ async function loadChats() {
   const chats = all.filter(c => !(c.is_secret && S.scHidden.has(c.id)));
   S.chats = chats;
   S.mutedChats = new Set(chats.filter(c => c.muted).map(c => c.id));
+  // В чат попал человек, которого ещё нет в списке людей (добавили в группу): подтянуть список
+  if (chats.some(c => (c.members || []).some(m => m.id !== S.user.id && !S.allUsers.some(u => u.id === m.id)))) loadUsers();
   chats.forEach(c => {
     S.unread[c.id] = (c.id === S.activeChatId) ? 0 : (c.unread || 0);
     S.unreadMentions[c.id] = (c.id === S.activeChatId) ? 0 : (c.unread_mentions || 0);
@@ -2255,6 +2274,8 @@ function watchTopHeight() {
     if (pin) _topRO.observe(pin);
   } catch { _topRO = null; }
 }
+const NB_ICON_CHAT = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+const NB_ICON_CONTACT = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3 20a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg>';
 // ── OPEN CHAT ──
 // forceBottom — открыть заведомо у последнего сообщения, минуя якорь на первом
 // непрочитанном: так возвращаются из глубины истории и после отправки сообщения
@@ -2315,7 +2336,8 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   const peerId = getPeerUserId(chat);
   const peerDot = peerId ? presenceDot(peerId) : '';
   const isTopic = !!chat?.parent_id;
-  const sub = isTopic ? `# тема` : isRoom ? `🏠 Комната · ${nMembers(memberCount)}` : isGroup ? `${nMembers(memberCount)}` : (peerId ? peerStatusText(peerId) : 'Личный чат');
+  const addContactBtn = peerId && needsContact(peerId) ? `<button class="addc-btn" id="ch-add-contact" onclick="addContactFromChat(${peerId})"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3 20a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg><span>Добавить контакт</span></button>` : '';
+  const sub = isTopic ? `# тема` : isRoom ? `🏠 Комната · ${nMembers(memberCount)}` : isGroup ? `${nMembers(memberCount)}` : (peerId ? peerSubText(peerId) : 'Личный чат');
   const nameClickable = (isGroup || (isRoom && !isTopic)) ? `style="cursor:pointer" onclick="openGroupInfo(${chatId})"` : '';
 
   // Delete button: visible for direct chats and for group creator / admins
@@ -2335,6 +2357,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
         </div>
       </div>
       <div class="chat-header-actions">
+        ${addContactBtn}
         ${chat.is_secret ? '' : `<button class="icon-btn${S.chatSearch?.open ? ' active' : ''}" title="Поиск в чате" onclick="toggleChatSearch()">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </button>`}
@@ -5266,6 +5289,9 @@ function connectWS() {
     if (data.type==='user_created') {
       loadUsers();
     }
+    if (data.type==='contacts_changed' || data.type==='directory_changed') refreshDirectory();
+    if (data.type==='blocks_changed') loadBlocks();
+    if (data.type==='send_rejected') showActionToast(data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' ? 'Сообщение не доставлено' : 'Писать сюда нельзя');
     if (data.type==='user_updated') applyUserUpdate(data);
     if (data.type==='perms') annSetAllowed(data.can_announce);
 
@@ -5394,6 +5420,125 @@ function updateUnreadTotal() {
 async function loadUsers() {
   const users = await api('GET','/users');
   if (users) S.allUsers = users;
+}
+
+// ── ПРОСТРАНСТВА, КОНТАКТЫ, БЛОКИРОВКИ ──
+// Сервер отдаёт людей с пометкой rel: ws — из моего пространства, other — из другого (добавлен в контакты),
+// chat — знаем только по общему чату: в списки выбора такие не попадают, но имя и аватарка в переписке нужны.
+// contact — добавлен вручную. У сервера без пространств пометок нет, тогда все считаются «своими».
+const isPickable = u => u.rel !== 'chat';
+const wsTag = u => (u.rel === 'other' || u.rel === 'chat') && u.workspace_name ? `<span class="ws-chip">${esc(u.workspace_name)}</span>` : '';
+// Кнопка «Добавить контакт» нужна, когда человек известен только по общему чату
+const needsContact = id => { const u = (S.allUsers || []).find(x => x.id === id); return !!u && u.rel === 'chat'; };
+const peerSubText = id => { const u = (S.allUsers || []).find(x => x.id === id); return u && u.rel === 'chat' ? `${u.workspace_name ? u.workspace_name + ' · ' : ''}не в ваших контактах` : peerStatusText(id); };
+S.blocked = S.blocked || [];
+const isBlockedId = id => (S.blocked || []).some(b => b.id === id);
+async function loadBlocks() {
+  const r = await api('GET', '/blocks');
+  if (Array.isArray(r)) { S.blocked = r; if (_sidebarTab === 'settings' && CS.sec === 'blocks') csRefresh(); }
+}
+// Перечитать людей и присутствие после изменения контактов или пространства
+async function refreshDirectory() {
+  await loadUsers();
+  await loadPresence();
+  if (_sidebarTab === 'contacts') renderContactsList(document.getElementById('contacts-search')?.value || '');
+  const chat = S.chats.find(c => c.id === S.activeChatId);
+  if (chat?.type === 'direct') {
+    const pid = getPeerUserId(chat), sub = document.querySelector('.ch-sub');
+    if (pid && sub) sub.textContent = peerSubText(pid);
+    const btn = document.getElementById('ch-add-contact');
+    if (btn && !needsContact(pid)) btn.remove();
+  }
+}
+
+// Окно «Добавить контакт»: только логин и кнопка, без поиска и подсказок
+function openAddContact() {
+  document.getElementById('ac-body').innerHTML = `
+    <p class="ac-lead">Введите логин человека точно. Он не узнает, что вы его добавили.</p>
+    <div class="ac-fld" id="ac-fld"><span>@</span><input id="ac-input" placeholder="логин" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="acClear()" onkeydown="if(event.key==='Enter')submitAddContact()"></div>
+    <div class="ac-hint" id="ac-hint">Логин можно узнать у самого человека.</div>
+    <div class="ac-foot"><button class="modal-btn-ghost" onclick="closeModal('modal-addcontact')">Отмена</button><button class="modal-btn-primary" id="ac-go" onclick="submitAddContact()">Добавить</button></div>`;
+  openModal('modal-addcontact');
+  setTimeout(() => document.getElementById('ac-input')?.focus(), 80);
+}
+function acClear() {
+  document.getElementById('ac-fld')?.classList.remove('err');
+  const h = document.getElementById('ac-hint');
+  if (h && h.dataset.state) { h.textContent = 'Логин можно узнать у самого человека.'; h.className = 'ac-hint'; delete h.dataset.state; }
+}
+async function submitAddContact() {
+  const inp = document.getElementById('ac-input'), go = document.getElementById('ac-go'), hint = document.getElementById('ac-hint');
+  if (!inp || go.disabled) return;
+  const login = inp.value.trim().replace(/^@/, '');
+  if (!login) { inp.focus(); return; }
+  go.disabled = true;
+  const r = await api('POST', '/contacts', { username: login });
+  go.disabled = false;
+  if (r?.ok) {
+    closeModal('modal-addcontact');
+    showActionToast(`${r.user?.display_name || login} добавлен в контакты`);
+    await refreshDirectory();
+    return;
+  }
+  document.getElementById('ac-fld').classList.add('err');
+  hint.textContent = r?.error || 'Не удалось добавить. Проверьте соединение.';
+  hint.className = 'ac-hint err'; hint.dataset.state = 'err';
+}
+// Из шапки чата или списка участников группы
+async function addContactFromChat(userId) {
+  const u = S.allUsers.find(x => x.id === userId) || S.chats.flatMap(c => c.members || []).find(m => m.id === userId);
+  if (!u?.username) return;
+  const r = await api('POST', '/contacts', { username: u.username });
+  if (r?.ok || r?.code === 'already') { showActionToast(`${u.display_name || u.username} добавлен в контакты`); await refreshDirectory(); document.querySelectorAll(`[data-addc="${userId}"]`).forEach(b => b.remove()); }
+  else showActionToast(r?.error || 'Не удалось добавить контакт');
+}
+// Контекстное меню контакта из другого пространства: удалить из контактов
+function contactMenu(e, userId) {
+  const u = S.allUsers.find(x => x.id === userId);
+  if (!u?.contact) return;
+  e.preventDefault(); e.stopPropagation();
+  S.ctxContactId = userId;
+  const menu = document.getElementById('ctx-contact-menu');
+  menu.style.display = 'block';
+  placeCtxMenu(menu, e.clientX, e.clientY, null);
+}
+async function ctxContactRemove() {
+  document.getElementById('ctx-contact-menu').style.display = 'none';
+  const id = S.ctxContactId; if (!id) return;
+  const u = S.allUsers.find(x => x.id === id);
+  await api('DELETE', `/contacts/${id}`);
+  showActionToast(`${u?.display_name || 'Контакт'} удалён из контактов`);
+  await refreshDirectory();
+}
+// Заблокировать собеседника в личном чате (и снять блокировку)
+async function ctxChatBlock() {
+  document.getElementById('ctx-chat-menu').style.display = 'none';
+  const chat = S.chats.find(c => c.id === S.ctxChatId);
+  const pid = chat && getPeerUserId(chat); if (!pid) return;
+  const name = chat.members?.find(m => m.id === pid)?.display_name || 'собеседника';
+  if (isBlockedId(pid)) {
+    await api('DELETE', `/blocks/${pid}`); await loadBlocks(); showActionToast(`${name} разблокирован`);
+    return;
+  }
+  const ok = await showConfirm(`Заблокировать ${name}? Он не сможет писать вам в личные сообщения. Общие группы и комнаты останутся. Разблокировать можно в настройках, в разделе «Блокировки».`, 'Заблокировать');
+  if (!ok) return;
+  const r = await api('POST', '/blocks', { user_id: pid });
+  if (r?.ok) { await loadBlocks(); showActionToast(`${name} заблокирован`); } else showActionToast(r?.error || 'Не удалось заблокировать');
+}
+async function unblockUser(id) {
+  await api('DELETE', `/blocks/${id}`);
+  await loadBlocks();
+}
+function csPaneBlocks() {
+  const list = S.blocked || [];
+  if (!list.length) {
+    return `<div class="cs-stub"><div class="cs-stub-i">${CS_I.ban}</div><b>Заблокированных нет</b>
+      <span>Если кто-то пишет вам лишнее, заблокируйте его в меню «⋯» в чате с ним.</span></div>`;
+  }
+  return `<div class="cs-gt">Заблокированные</div><div class="cs-g">${list.map(b => `<div class="cs-r"><div class="cs-l"><b>${esc(b.display_name)}</b>
+      <span>@${esc(b.username)}${b.workspace_name ? ' · ' + esc(b.workspace_name) : ''}</span></div>
+      <div class="cs-ctl"><button type="button" class="cs-btn ghost" onclick="unblockUser(${b.id})">Разблокировать</button></div></div>`).join('')}</div>
+    <p class="cs-hint">Заблокированный не может писать вам в личные сообщения. Общие группы и комнаты остаются.</p>`;
 }
 
 // ── PRESENCE ──
@@ -5580,12 +5725,12 @@ function ncUpdateHint() {
 function renderModalUsers(containerId, multi, filter='') {
   const container = document.getElementById(containerId);
   if (!container) return;
-  const list = S.allUsers.filter(u=>!filter||u.display_name.toLowerCase().includes(filter)||u.username.toLowerCase().includes(filter));
+  const list = S.allUsers.filter(u=>isPickable(u)&&(!filter||u.display_name.toLowerCase().includes(filter)||u.username.toLowerCase().includes(filter)));
   container.innerHTML = list.map(u=>`
     <div class="pp-row${multi&&S.ncSelected?.has(u.id)?' on':''}" data-uid="${u.id}" onclick="${multi?`toggleModalUser(${u.id})`:S.ncKind==='secret'?`startSecret(${u.id})`:`startDirect(${u.id})`}">
       ${ppAvHtml(u)}
       <span class="pp-name">${esc(u.display_name)}</span>
-      ${u.tag?`<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>`:''}
+      ${u.tag?`<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>`:''}${wsTag(u)}
     </div>`).join('') || '<div class="pp-empty">Нет пользователей</div>';
 }
 
@@ -6191,6 +6336,7 @@ function giRenderMembers(members, canEdit = false) {
       <div class="member-remove-row" id="gim-${m.id}">
         <div class="av av-sm av-round ${userAvatarColor(m.id, m.tag)}" data-av-user="${m.id}">${initials(m.display_name)}</div>
         <div class="info"><div class="rname">${esc(m.display_name)}</div><div class="rlogin">@${esc(m.username)}</div></div>
+        ${m.id !== S.user.id && needsContact(m.id) ? `<button class="gi-addc" data-addc="${m.id}" title="Добавить контакт" onclick="addContactFromChat(${m.id})">В контакты</button>` : ''}
         ${canEdit?`<button class="rm-btn" onclick="giRemoveMember(${m.id})">✕</button>`:''}
       </div>`).join('') || '<div style="font-size:13px;color:var(--muted)">Только вы</div>';
   applyAvatars();
@@ -6242,7 +6388,7 @@ function giRenderAddList(existingMembers) {
   const existingIds = new Set(existingMembers.map(m => m.id));
   const container = document.getElementById('gi-add-list');
   if (!container) return;
-  const available = S.allUsers.filter(u => !existingIds.has(u.id) || S.giRemovedIds.has(u.id));
+  const available = S.allUsers.filter(u => isPickable(u) && (!existingIds.has(u.id) || S.giRemovedIds.has(u.id)));
   container.innerHTML = available.map(u => `
     <div class="user-row${S.giAddIds.has(u.id) ? ' selected' : ''}" data-uid="${u.id}" onclick="giToggleAdd(this,${u.id})">
       <div class="av av-sm av-round ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}">${initials(u.display_name)}</div>
@@ -6300,6 +6446,12 @@ function showChatCtx(e, chatId) {
   if (delBtn) delBtn.style.display = (isRoom || (!isRoom && !canDelete)) ? 'none' : '';
   if (leaveBtn) leaveBtn.style.display = (isGroup && !canDelete) ? '' : 'none';
 
+  const blockBtn = document.getElementById('ctx-chat-block');
+  if (blockBtn) {
+    const pid = chat?.type === 'direct' ? getPeerUserId(chat) : null;
+    blockBtn.style.display = pid ? '' : 'none';
+    const bl = document.getElementById('ctx-chat-block-label'); if (bl && pid) bl.textContent = isBlockedId(pid) ? 'Разблокировать' : 'Заблокировать';
+  }
   const devicesBtn = document.getElementById('ctx-chat-devices');
   if (devicesBtn) devicesBtn.style.display = chat?.is_secret ? '' : 'none';
   const grantBtn = document.getElementById('ctx-chat-grant');
@@ -6379,7 +6531,7 @@ function renderForwardList(q = '') {
       .filter(Boolean)
   );
   const users = S.allUsers.filter(u =>
-    u.id !== S.user.id && !directUserIds.has(u.id) &&
+    u.id !== S.user.id && isPickable(u) && !directUserIds.has(u.id) &&
     (!q || u.display_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q))
   );
   let html = '';

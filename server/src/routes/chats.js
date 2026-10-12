@@ -7,6 +7,7 @@ const { sendTo } = require('../ws');
 const unreadCounts = require('../unread');
 const announcements = require('../announcements');
 const { logAudit } = require('../audit');
+const spaces = require('../spaces');
 
 function nameOf(userId) {
   return db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
@@ -146,6 +147,8 @@ router.post('/direct', authMiddleware, (req, res) => {
     const existingChat = db.prepare('SELECT * FROM chats WHERE id = ?').get(existing.id);
     return res.json(enrichChat(existingChat, req.user.id));
   }
+  // Новый личный чат можно начать только с тем, кого видишь (своё пространство, контакты)
+  if (!spaces.canSee(req.user.id, targetId)) return res.status(403).json({ error: 'Этот человек вам недоступен' });
   // Чат и участники — в одной транзакции, чтобы при сбое не оставался чат без участников.
   // Собеседник добавляется скрытым: до первого сообщения у него в списке висела бы
   // пустая переписка, которую он не заводил. Скрытие снимет отправка первого
@@ -186,6 +189,7 @@ router.post('/secret', authMiddleware, (req, res) => {
     const existingChat = db.prepare('SELECT * FROM chats WHERE id = ?').get(existing.id);
     return res.json({ ...enrichChat(existingChat, req.user.id), created: false });
   }
+  if (!spaces.canSee(req.user.id, targetId)) return res.status(403).json({ error: 'Этот человек вам недоступен' });
   // Приглашение видно у собеседника на всех его устройствах сразу (в отличие от
   // обычного личного чата, который скрыт до первого сообщения) — секретный чат
   // никогда не использует hidden_at.
@@ -210,6 +214,7 @@ router.post('/group', authMiddleware, (req, res) => {
   const { name, member_ids } = req.body;
   if (!name?.trim() || !Array.isArray(member_ids)) return res.status(400).json({ error: 'Missing fields' });
   const allMembers = [...new Set([req.user.id, ...member_ids.map(Number)])];
+  if (allMembers.some(uid => !spaces.canSee(req.user.id, uid))) return res.status(403).json({ error: 'Среди участников есть недоступные вам люди' });
   // Чат и участники — в одной транзакции (несуществующий user_id откатит всё, а не оставит пустой чат)
   const chatId = db.transaction(() => {
     const result = db.prepare("INSERT INTO chats (type, name, created_by) VALUES ('group', ?, ?)").run(name.trim(), req.user.id);
@@ -251,6 +256,8 @@ router.post('/:id/members', authMiddleware, (req, res) => {
   if (!chat || (chat.type !== 'group' && chat.type !== 'room')) return res.status(404).json({ error: 'Not found' });
   const isMember = db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id);
   if (chat.type === 'room' ? !req.user.is_admin : !isMember) return res.status(403).json({ error: 'Forbidden' });
+  // В группу добавляют только тех, кого видишь; в комнату любого добавляет администратор
+  if (!spaces.canSee(req.user.id, userId)) return res.status(403).json({ error: 'Этот человек вам недоступен' });
   const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
   ins.run(chatId, userId);
   // Комната — добавление каскадом идёт и в её подкомнаты (как при добавлении из админки)

@@ -414,6 +414,36 @@ db.exec(`
 // Версия набора модуля, скачанная на устройство (для статистики «на старой версии»)
 tryAlter('ALTER TABLE module_devices ADD COLUMN pack_version TEXT');
 
+// Рабочие пространства. Пространство только объединяет людей (комнаты к нему не привязаны):
+// внутри пространства люди друг друга видят, в разных не видят. «Основное» (id 1) есть всегда,
+// в него попадают все существующие пользователи и новые, если не выбрано другое.
+// contacts — контакты, добавленные вручную: односторонние (видит только тот, кто добавил),
+// без подтверждения. user_blocks — блокировки: заблокированный не пишет в личные сообщения.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS workspaces (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    created_at INTEGER DEFAULT (unixepoch())
+  );
+  CREATE TABLE IF NOT EXISTS contacts (
+    owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    contact_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at INTEGER DEFAULT (unixepoch()),
+    PRIMARY KEY (owner_id, contact_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_contacts_contact ON contacts(contact_id);
+  CREATE TABLE IF NOT EXISTS user_blocks (
+    blocker_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    blocked_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at INTEGER DEFAULT (unixepoch()),
+    PRIMARY KEY (blocker_id, blocked_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked_id);
+`);
+db.prepare("INSERT OR IGNORE INTO workspaces (id, name) VALUES (1, 'Основное')").run();
+tryAlter('ALTER TABLE users ADD COLUMN workspace_id INTEGER NOT NULL DEFAULT 1');
+tryAlter('CREATE INDEX IF NOT EXISTS idx_users_workspace ON users(workspace_id)');
+
 // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)
 const sysExists = db.prepare("SELECT id FROM users WHERE username = '__system__'").get();
 if (!sysExists) {

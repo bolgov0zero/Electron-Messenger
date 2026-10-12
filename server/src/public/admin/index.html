@@ -1442,6 +1442,14 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .ub-row.ua-banned .ux-cell{opacity:.6}
 .ub-row input[type=checkbox]{accent-color:var(--c-primary);width:15px;height:15px;cursor:pointer}
 .ub-role small{display:block;font:500 11px var(--f-mono);color:var(--c-muted);margin-top:3px}
+.ws-pill{display:inline-flex;align-items:center;gap:5px;font:600 11px var(--f-ui);padding:1px 8px 1px 6px;border-radius:99px;background:var(--c-primary-dim);color:var(--c-primary);white-space:nowrap;vertical-align:middle}
+.ws-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.ua-inp select{border:0;outline:none;background:none;font:13px var(--f-ui);color:var(--c-text);width:100%;height:100%;min-width:0;cursor:pointer}
+.ws-warn{display:flex;gap:9px;padding:9px 11px;border-radius:9px;background:color-mix(in srgb,var(--c-orange) 13%,transparent);font-size:12px;line-height:1.45;margin-top:6px}
+.ws-warn b{color:var(--c-orange)}
+.ws-checks{display:flex;flex-direction:column;gap:2px;margin-top:8px}
+.ws-checks .ua-check{padding:6px 2px}
+.ws-checks .ua-check span{margin-left:auto;color:var(--c-muted);font-size:12px}
 .ub-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--c-muted) 18%,transparent);color:var(--c-text2);white-space:nowrap}
 .ub-pill::before{content:'';width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0}
 .ub-pill.online{background:var(--c-green-dim);color:var(--c-green-text)}
@@ -1812,6 +1820,10 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <span class="lb">Пользователи</span>
           <span class="nav-badge" id="nb-users">—</span>
         </div>
+        <div class="nav-item" onclick="nav('workspaces')" data-page="workspaces">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+          <span class="lb">Пространства</span>
+        </div>
         <div class="nav-item" onclick="nav('clients')" data-page="clients">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           <span class="lb">Клиенты</span>
@@ -2036,6 +2048,24 @@ return 'OK';</pre>
 </div>
 
 <!-- Confirm modal -->
+<div class="modal-bg" id="modal-ws">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <h3 id="ws-title">Новое пространство</h3>
+      <button class="modal-close" onclick="closeModal('modal-ws')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="ua-field"><label for="ws-name">Название</label>
+        <div class="ua-inp"><input id="ws-name" maxlength="60" placeholder="Например, Склад" autocomplete="off" onkeydown="if(event.key==='Enter')wsSave()" oninput="document.getElementById('ws-err').textContent=''"></div>
+        <span class="ua-err" id="ws-err"></span></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('modal-ws')">Отмена</button>
+      <button class="btn ux-solid" id="ws-go" onclick="wsSave()">Создать</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-confirm">
   <div class="modal modal-sm">
     <div class="modal-head">
@@ -2672,8 +2702,8 @@ document.addEventListener('keydown', e => {
 window.addEventListener('resize', () => { if (SB.menu) sbMenuPos(); });
 
 /* ── NAV ── */
-const pageTitles = {dashboard:'Главная',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',files:'Файлы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки',announcements:'Объявления',releases:'Релизы',modules:'Модули',audit:'Аудит-лог',settings:'Настройки',more:'Ещё'};
-const pageRenders = {dashboard:renderDashboard,users:renderUsers,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements,releases:renderReleases,modules:renderModules,audit:renderAudit,settings:renderSettings,more:renderMore};
+const pageTitles = {dashboard:'Главная',users:'Пользователи',workspaces:'Пространства',rooms:'Комнаты',chats:'Чаты и группы',files:'Файлы',clients:'Клиенты',push:'Уведомления',webhooks:'Вебхуки',announcements:'Объявления',releases:'Релизы',modules:'Модули',audit:'Аудит-лог',settings:'Настройки',more:'Ещё'};
+const pageRenders = {dashboard:renderDashboard,users:renderUsers,workspaces:renderWorkspaces,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements,releases:renderReleases,modules:renderModules,audit:renderAudit,settings:renderSettings,more:renderMore};
 
 // Телефонный вид без масштабирования: страница уже собрана под экран, а случайный щипок сдвигал раскладку.
 // В iOS Safari атрибуты viewport игнорируются, поэтому щипок гасим отменой жестов; на компьютере эти события не приходят
@@ -2698,6 +2728,7 @@ function nav(page) {
   if (addBtn) {
     const addMap = {
       users: {label:'Создать пользователя', fn: () => openCreateUser()},
+      workspaces: {label:'Создать пространство', fn: () => wsOpen()},
       rooms: {label:'Создать комнату', fn: () => openCreateRoom()},
       announcements: {label:'Создать объявление', fn: () => openAnnouncementModal()},
       webhooks: {label:'Создать вебхук', fn: () => whOpen()}
@@ -2747,7 +2778,7 @@ function confirm(title, text, onOk) {
 // Разделы, которых нет на нижней панели, тема и выход. Значки берём из боковой панели: там они уже нарисованы
 function renderMore() {
   setTopbarActions('');
-  const rows = [['clients', 'Клиенты'], ['rooms', 'Комнаты'], ['files', 'Файлы'], ['push', 'Уведомления'], ['webhooks', 'Вебхуки'], ['releases', 'Релизы'], ['modules', 'Модули'], ['audit', 'Аудит-лог'], ['settings', 'Настройки']];
+  const rows = [['workspaces', 'Пространства'], ['clients', 'Клиенты'], ['rooms', 'Комнаты'], ['files', 'Файлы'], ['push', 'Уведомления'], ['webhooks', 'Вебхуки'], ['releases', 'Релизы'], ['modules', 'Модули'], ['audit', 'Аудит-лог'], ['settings', 'Настройки']];
   const me = currentUser?.display_name || currentUser?.username || '';
   document.getElementById('page-body').innerHTML = `<div class="mm">
     <div class="mm-list">${rows.map(([k, n]) => {
@@ -3947,7 +3978,7 @@ const rmSpark = w => `<span class="rm-spark" title="Сообщения по дн
 const rmWeek = r => r.week.reduce((a, b) => a + b, 0);
 
 async function renderRooms() {
-  const [chats, users] = await Promise.all([api('GET', '/api/admin/chats'), api('GET', '/api/admin/users')]);
+  const [chats, users] = await Promise.all([api('GET', '/api/admin/chats'), api('GET', '/api/admin/users'), wsLoad()]);
   allUsersCache = users;
   // У комнаты считаем и её темы: сообщения, последнее сообщение, активность за неделю
   const topics = chats.filter(c => c.type === 'room' && c.parent_id);
@@ -4359,10 +4390,11 @@ function uxOsName(platform) {
 }
 
 // ── Пользователи ──
-const UA = { filter: 'all', q: '', sort: { key: 'name', dir: 1 }, sel: new Set(), form: null, editId: null, passId: null };
+const UA = { ws: null, filter: 'all', q: '', sort: { key: 'name', dir: 1 }, sel: new Set(), form: null, editId: null, passId: null };
 
 async function renderUsers() {
-  allUsers = await api('GET', '/api/admin/users');
+  const [users] = await Promise.all([api('GET', '/api/admin/users'), wsLoad()]);
+  allUsers = users;
   const ids = new Set(allUsers.map(u => u.id));
   UA.sel.forEach(id => { if (!ids.has(id)) UA.sel.delete(id); });
   uaRender();
@@ -4406,6 +4438,7 @@ function uaRows() {
   const seen = u => (uaOnline(u) || uaAway(u)) ? nowS : (u.last_seen_at || 0);
   return allUsers
     .filter(u => UA.filter === 'all' || (UA.filter === 'online' && uaOnline(u)) || (UA.filter === 'away' && uaAway(u)) || (UA.filter === 'admins' && u.is_admin) || (UA.filter === 'banned' && u.banned))
+    .filter(u => UA.ws == null || u.workspace_id === UA.ws)
     .filter(u => !q || [u.display_name, u.username, u.tag || ''].some(x => x.toLowerCase().includes(q)))
     .sort((a, b) => {
       const d = UA.sort.key === 'status' ? rank(a) - rank(b) : UA.sort.key === 'seen' ? seen(a) - seen(b) : byName(a, b);
@@ -4430,6 +4463,7 @@ function uaRender() {
         ${tile('all', 'Всего', n.all, 'человек', 'var(--dv-c2)')}${tile('online', 'В сети', n.online, 'сейчас', 'var(--c-green)')}
         ${tile('away', 'Отошли', n.away, 'из них', 'var(--c-orange)')}${tile('admins', 'Администраторы', n.admins, 'чел.', 'var(--c-primary)')}
       </div>
+      ${WS.list.length > 1 ? uxChips([['all', 'Все пространства', allUsers.length], ...WS.list.map(w => ['w' + w.id, w.name, allUsers.filter(u => u.workspace_id === w.id).length])], UA.ws == null ? 'all' : 'w' + UA.ws, 'uaWsFilter') : ''}
       <div class="ub-head"><h3>${title} <span>${rows.length}</span></h3>
         ${n.banned || UA.filter === 'banned' ? uxChips([['banned', 'Заблокированы', n.banned, true]], UA.filter, 'uaFilter') : ''}
         <div class="ub-sort" role="group" aria-label="Сортировка">${sortBtn('name', 'По имени')}${sortBtn('status', 'По статусу')}${sortBtn('seen', 'По дате')}</div>
@@ -4441,7 +4475,7 @@ function uaRender() {
       <div class="ub-rows">${rows.map(u => `<div class="ub-row${UA.sel.has(u.id) ? ' sel' : ''}${u.banned ? ' ua-banned' : ''}">
         <input type="checkbox" aria-label="Выбрать: ${esc(u.display_name)}" ${UA.sel.has(u.id) ? 'checked' : ''} onchange="uaToggle(${u.id})">
         <div class="ux-cell">${avHtml(u.display_name, 38, 11, u.id, uaDot(u), u.has_avatar)}
-          <div style="min-width:0"><div class="ux-name">${esc(u.display_name)}${uxTag(u.tag)}</div><div class="ux-login">@${esc(u.username)}</div></div></div>
+          <div style="min-width:0"><div class="ux-name">${esc(u.display_name)}${uxTag(u.tag)}</div><div class="ux-login">@${esc(u.username)}${WS.list.length > 1 ? ` <span class="ws-pill">${esc(u.workspace_name)}</span>` : ''}</div></div></div>
         <div class="ub-role">${uaRole(u)}<small>создан ${fmtDate(u.created_at)}</small></div>
         <div class="ub-st">${uaStatusPill(u)}</div>
         <div class="ux-actions">
@@ -4461,6 +4495,7 @@ function uaStatusPill(u) {
   return `<span class="ub-pill">Не в сети</span><small>был ${esc(uaSeen(u.last_seen_at))}</small>`;
 }
 
+function uaWsFilter(k) { UA.ws = k === 'all' ? null : Number(k.slice(1)); UA.sel.clear(); uaRender(); }
 function uaFilter(k) { UA.filter = k; UA.sel.clear(); uaRender(); }
 function uaSearch(v) { UA.q = v; uaRender(); }
 // По дате сначала самые свежие: первое нажатие даёт убывание
@@ -4539,7 +4574,7 @@ function fmMoreHtml(prefix, open, toggleFn, secs) {
 const fmScroll = id => setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 40);
 
 const PK = { ctx: null, host: null, q: '', f: 'all', g: '', limit: 40, groups: [] };
-const pkUsers = () => allUsersCache.filter(u => !u.banned).map(u => ({ id: u.id, name: u.display_name || u.username, sub: '@' + u.username, tag: u.tag || '',
+const pkUsers = () => allUsersCache.filter(u => !u.banned).map(u => ({ id: u.id, name: u.display_name || u.username, sub: '@' + u.username + (WS.list.length > 1 && u.workspace_name ? ' · ' + u.workspace_name : ''), tag: u.tag || '',
   av: avHtml(u.display_name || u.username, 26, 8, u.id, false, u.has_avatar) }));
 const pkChats = () => AN.chats.map(c => ({ id: c.id, name: chName(c), sub: c.type === 'room' ? 'комната' : c.type === 'direct' ? 'личный чат' : 'группа',
   tag: c.type === 'room' ? 'комната' : c.type === 'direct' ? 'личный чат' : 'группа', av: chAv(c, 26) }));
@@ -4613,7 +4648,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && PK.ctx) { 
 
 // ── Окно: добавление и изменение ──
 const uaBlank = u => ({ name: u?.display_name || '', login: u?.username || '', tag: u?.tag || '', admin: !!u?.is_admin,
-  totpRequired: !!u?.totp_required, canAnnounce: !!u?.can_announce,
+  totpRequired: !!u?.totp_required, canAnnounce: !!u?.can_announce, ws: u?.workspace_id || 1,
   password: '', show: false, pwOpen: false, generated: false, closeSessions: true, errors: {}, busy: false, more: false });
 const uaAv = (name, size) => `<span class="av" style="width:${size}px;height:${size}px;border-radius:${Math.round(size * .26)}px;font-size:${Math.round(size * .36)}px;background:${avColor(name || '?')}">${esc(initials(name))}</span>`;
 
@@ -4776,6 +4811,9 @@ function uaRenderForm(focusId) {
   if (!form || !f) return;
   const editing = !!u, miss = uaMissing(f, editing);
   const err = k => f.errors[k] ? `<span class="ua-err">${f.errors[k]}</span>` : '';
+  const wsPick = WS.list.length > 1 || (u && u.workspace_id !== 1) ? `<div class="ua-field"><label for="ua-ws">Пространство</label>
+        <div class="ua-inp"><select id="ua-ws" onchange="uaSet('ws', Number(this.value), true)">${WS.list.map(w => `<option value="${w.id}" ${w.id === f.ws ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
+        ${u && f.ws !== u.workspace_id ? `<div class="ws-warn"><b>!</b><div>Чаты, группы и комнаты сохранятся. Контакты прежнего пространства заменятся контактами нового. Добавленные вручную останутся, а оказавшиеся в новом пространстве убираются из этого списка.</div></div>` : '<span class="ua-hint">Люди из разных пространств друг друга не видят</span>'}</div>` : '';
   const quick = `<div class="ua-sec">
       <div class="ua-field"><label for="ua-name">Имя и фамилия</label>
         <div class="ua-inp${f.errors.name ? ' bad' : ''}"><input id="ua-name" value="${esc(f.name)}" placeholder="Анна Смирнова" autocomplete="off" aria-invalid="${!!f.errors.name}" oninput="uaSet('name', this.value)"></div>${err('name')}</div>
@@ -4788,6 +4826,7 @@ function uaRenderForm(focusId) {
           <div class="ua-inp"><input id="ua-tag" value="${esc(f.tag)}" maxlength="20" placeholder="HR, Dev, Склад" autocomplete="off" oninput="uaSet('tag', this.value)"></div>
           <span class="ua-hint">Виден рядом с именем в чате</span></div>
       </div></div>
+    ${wsPick}
     ${!editing ? `<div class="fm-pw">${UX_I.key}<span>${f.generated ? 'Пароль придуман:' : 'Пароль:'}</span><code id="ua-auto-pw">${esc(f.password)}</code>
         <button type="button" class="btn btn-ghost btn-sm" onclick="uaCopy()" title="Скопировать логин и пароль" aria-label="Скопировать логин и пароль">${UX_I.copy}</button><button type="button" class="btn btn-ghost btn-sm" onclick="uaGenerate()">Другой</button></div>${err('password')}` : ''}`;
   const accessSu = f.admin ? 'Администратор' + (f.totpRequired ? ' · 2FA' : '') : 'Пользователь' + (f.canAnnounce ? ' · объявления' : '');
@@ -4887,7 +4926,7 @@ async function uaSave() {
 
   f.busy = true;
   uaRenderForm();
-  const body = { username: f.login.trim(), display_name: f.name.trim(), is_admin: f.admin, tag: f.tag.trim() || null };
+  const body = { username: f.login.trim(), display_name: f.name.trim(), is_admin: f.admin, tag: f.tag.trim() || null, workspace_id: f.ws };
   let r;
   if (u) {
     r = await api('PATCH', '/api/users/' + u.id, body);
@@ -6833,6 +6872,64 @@ function setTopbarActions(html) {
   if (extra) { extra.innerHTML = html || ''; extra.style.display = html ? 'flex' : 'none'; }
 }
 
+/* ── ПРОСТРАНСТВА ── */
+// Пространство только объединяет людей: внутри люди друг друга видят, между пространствами не видят
+// (связать их можно контактами, группами и комнатами). Комнаты к пространству не привязаны.
+const WS = { list: [], editId: null };
+async function wsLoad() {
+  const r = await api('GET', '/api/admin/workspaces');
+  if (Array.isArray(r)) WS.list = r;
+  return WS.list;
+}
+async function renderWorkspaces() {
+  setTopbarActions('');
+  document.getElementById('page-body').innerHTML = `<div class="ux-page"><div class="ux-empty">Загрузка…</div></div>`;
+  await wsLoad();
+  if (currentPage !== 'workspaces') return;
+  wsRender();
+}
+function wsRender() {
+  if (currentPage !== 'workspaces') return;
+  document.getElementById('page-body').innerHTML = `<div class="ux-page">
+    <div><div style="font-size:17px;font-weight:700">Пространства</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Люди из разных пространств друг друга не видят. Связать их можно через контакты, группы и комнаты. Перенос человека делается в его профиле.</div></div>
+    ${WS.list.map(w => `<div class="card"><div class="mdl-card"><div class="mdl-ico" style="font-size:15px;font-weight:700">${esc(initials(w.name))}</div>
+      <div class="mdl-tx"><b>${esc(w.name)}</b><span>${w.users} ${uxPlural(w.users, 'человек', 'человека', 'человек')} · создано ${fmtDate(w.created_at)}</span></div>
+      ${w.is_default ? '<span class="badge badge-green">по умолчанию</span>' : w.users ? '' : '<span class="badge badge-gray">пустое</span>'}
+      <button class="btn btn-ghost btn-sm" onclick="wsOpen(${w.id})">Изменить</button>
+      <button class="btn btn-ghost btn-sm" ${w.is_default || w.users ? 'disabled' : ''} title="${w.is_default ? 'Основное пространство удалить нельзя' : w.users ? 'Сначала переведите людей в другое пространство' : ''}" onclick="wsDelete(${w.id})">Удалить</button></div></div>`).join('')}
+  </div>`;
+}
+function wsOpen(id) {
+  WS.editId = id || null;
+  const w = id ? WS.list.find(x => x.id === id) : null;
+  document.getElementById('ws-title').textContent = w ? 'Переименовать пространство' : 'Новое пространство';
+  document.getElementById('ws-go').textContent = w ? 'Сохранить' : 'Создать';
+  document.getElementById('ws-name').value = w ? w.name : '';
+  document.getElementById('ws-err').textContent = '';
+  openModal('modal-ws');
+  setTimeout(() => document.getElementById('ws-name')?.focus(), 60);
+}
+async function wsSave() {
+  const name = document.getElementById('ws-name').value.trim(), err = document.getElementById('ws-err');
+  if (!name) { err.textContent = 'Введите название'; return; }
+  const r = WS.editId ? await api('PATCH', '/api/admin/workspaces/' + WS.editId, { name }) : await api('POST', '/api/admin/workspaces', { name });
+  if (r?.error || !r) { err.textContent = r?.error || 'Не удалось сохранить'; return; }
+  closeModal('modal-ws');
+  toast(WS.editId ? 'Сохранено' : 'Пространство создано', 'success');
+  await wsLoad();
+  if (currentPage === 'workspaces') wsRender();
+}
+function wsDelete(id) {
+  const w = WS.list.find(x => x.id === id); if (!w) return;
+  confirm('Удалить пространство?', `Пространство «${esc(w.name)}» пустое, оно будет удалено.`, async () => {
+    const r = await api('DELETE', '/api/admin/workspaces/' + id);
+    if (r?.error) { toast(esc(r.error), 'error'); return; }
+    toast('Пространство удалено', 'success');
+    await wsLoad();
+    if (currentPage === 'workspaces') wsRender();
+  });
+}
+
 /* ── МОДУЛИ ── */
 // Необязательные возможности клиента. Включённый здесь модуль становится доступен пользователям в настройках
 // клиента (у кого выключен — модуля нет вовсе), остальное решает сам пользователь на каждом устройстве.
@@ -7352,6 +7449,7 @@ function anIn(sec) {
 function anTargets(a) {
   if (a.target === 'all') return a.kind === 'chat' ? 'Все группы и комнаты' : 'Все';
   const names = a.target_names || [];
+  if (a.target === 'spaces') return 'Пространства: ' + names.join(', ');
   return names.slice(0, 3).join(', ') + (names.length > 3 ? ` и ещё ${names.length - 3}` : '') || '—';
 }
 
@@ -7550,12 +7648,12 @@ function anDelete(ids) {
 /* ── Создание ── */
 async function openAnnouncementModal() {
   uxCloseMenu();
-  const [chats, users] = await Promise.all([api('GET', '/api/admin/chats'), allUsersCache.length ? allUsersCache : api('GET', '/api/admin/users')]);
+  const [chats, users] = await Promise.all([api('GET', '/api/admin/chats'), allUsersCache.length ? allUsersCache : api('GET', '/api/admin/users'), wsLoad()]);
   // Группы, комнаты и личные чаты; без тем и без секретных (их тексты зашифрованы)
   AN.chats = (Array.isArray(chats) ? chats : []).filter(c => !c.parent_id && !c.is_secret);
   if (Array.isArray(users)) allUsersCache = users;
   annStartAt = null;
-  AN.form = { kind: 'chat', text: '', pick: false, who: new Set(), q: '', duration: 60, err: '', busy: false, more: false };
+  AN.form = { kind: 'chat', text: '', pick: false, sp: false, spSel: new Set(), who: new Set(), q: '', duration: 60, err: '', busy: false, more: false };
   PK.ctx = null;
   anRenderForm('an-text');
   openModal('modal-announcement');
@@ -7565,6 +7663,7 @@ const anMissing = f => {
   const m = [];
   if (!f.text.trim()) m.push('текст');
   if (f.pick && !f.who.size) m.push(f.kind === 'chat' ? 'чаты' : 'получателей');
+  if (f.sp && !f.spSel.size) m.push('пространства');
   if (f.kind === 'banner' && !(Number(f.duration) > 0)) m.push('время показа');
   return m;
 };
@@ -7588,7 +7687,7 @@ function anRenderForm(focusId) {
         <div class="ua-inp an-area"><textarea id="an-text" placeholder="Что сказать людям" oninput="AN.form.text = this.value; document.getElementById('an-pv').innerHTML = anPreview(AN.form.kind, this.value.trim()); anFootSync()">${esc(f.text)}</textarea></div></div>
       <div class="ua-field fm-pv"><label>Так увидят</label><div id="an-pv">${anPreview(f.kind, f.text.trim())}</div></div></div>`;
   const whenSu = (annStartAt ? fmtDateTime(annStartAt) : 'Сейчас') + (f.kind === 'banner' ? ` · показывать ${f.duration} мин` : '');
-  const audSu = !f.pick ? (chat ? 'Во все группы и комнаты' : 'Всем') : f.who.size ? `Выбрано: ${f.who.size}` : (chat ? 'Выберите чаты' : 'Выберите получателей');
+  const audSu = f.sp ? (f.spSel.size ? `Пространства: ${f.spSel.size}` : 'Выберите пространства') : !f.pick ? (chat ? 'Во все группы и комнаты' : 'Всем') : f.who.size ? `Выбрано: ${f.who.size}` : (chat ? 'Выберите чаты' : 'Выберите получателей');
   const secs = [
     { id: 'w', t: 'Когда', su: whenSu, body: `<div class="ua-row2">
         <div class="ua-field"><label>Когда</label>
@@ -7617,8 +7716,11 @@ function anRenderForm(focusId) {
         ${f.kind === 'banner' ? `<div class="ua-field"><label for="an-dur">Показывать, мин</label>
           <div class="ua-inp"><input id="an-dur" type="number" min="1" max="10080" value="${f.duration}" oninput="AN.form.duration = this.value; anFootSync()"></div>
           <span class="ua-hint">Потом полоса исчезнет сама</span></div>` : '<div></div>'}</div>` },
-    { id: 'a', t: chat ? 'Куда' : 'Кому', su: audSu, body: `<div class="an-seg"><button type="button" aria-pressed="${!f.pick}" onclick="anSet('pick', false)">${chat ? 'Во все группы и комнаты' : 'Всем'}</button>
-        <button type="button" aria-pressed="${f.pick}" onclick="anSet('pick', true)">${chat ? 'Выбрать чаты' : 'Выбрать людей'}</button></div>
+    { id: 'a', t: chat ? 'Куда' : 'Кому', su: audSu, body: `<div class="an-seg"><button type="button" aria-pressed="${!f.pick && !f.sp}" onclick="anMode('all')">${chat ? 'Во все группы и комнаты' : 'Всем'}</button>
+        ${WS.list.length > 1 ? `<button type="button" aria-pressed="${f.sp}" onclick="anMode('spaces')">По пространствам</button>` : ''}
+        <button type="button" aria-pressed="${f.pick}" onclick="anMode('pick')">${chat ? 'Выбрать чаты' : 'Выбрать людей'}</button></div>
+      ${f.sp ? `<div class="ws-checks">${WS.list.map(w => `<label class="ua-check"><input type="checkbox" ${f.spSel.has(w.id) ? 'checked' : ''} onchange="anSp(${w.id}, this.checked)">${esc(w.name)}<span>${w.users} ${uxPlural(w.users, 'человек', 'человека', 'человек')}</span></label>`).join('')}</div>
+        <span class="ua-hint">${chat ? 'Строка появится в группах и комнатах, где есть люди из отмеченных пространств' : 'Объявление получат люди из отмеченных пространств'}</span>` : ''}
       ${f.pick ? pkSummary('ann', chat ? 'Выбрать чаты…' : 'Выбрать людей…') : ''}
       ${f.kind === 'popup' ? '<span class="ua-hint">Всплывающее увидят только те, кто сейчас в сети</span>' : ''}` },
   ];
@@ -7633,6 +7735,8 @@ function anRenderForm(focusId) {
   }, focusId);
 }
 
+function anMode(m) { const f = AN.form; f.pick = m === 'pick'; f.sp = m === 'spaces'; if (f.pick || f.sp) f.more = true; f.err = ''; anRenderForm(); }
+function anSp(id, on) { const f = AN.form; on ? f.spSel.add(id) : f.spSel.delete(id); f.err = ''; anRenderForm(); }
 function anSet(key, value) {
   const f = AN.form;
   f[key] = value;
@@ -7649,12 +7753,13 @@ async function sendAnnouncement() {
   const text = f.text.trim(), duration = Number(f.duration);
   f.err = !text ? 'Напишите текст объявления'
     : f.pick && !f.who.size ? (f.kind === 'chat' ? 'Выберите хотя бы один чат' : 'Выберите получателей')
+    : f.sp && !f.spSel.size ? 'Выберите пространства'
     : f.kind === 'banner' && !(duration > 0) ? 'Укажите, сколько минут показывать полосу' : '';
   if (f.err) return anRenderForm(!text ? 'an-text' : null);
   f.busy = true;
   anRenderForm();
   const data = await api('POST', '/api/admin/announcement', {
-    kind: f.kind, text, target: f.pick ? 'select' : 'all', targets: [...f.who],
+    kind: f.kind, text, target: f.sp ? 'spaces' : f.pick ? 'select' : 'all', targets: f.sp ? [...f.spSel] : [...f.who],
     start_at: annStartAt || 0, duration_min: f.kind === 'banner' ? duration : 0,
   });
   f.busy = false;

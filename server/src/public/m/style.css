@@ -687,3 +687,10 @@ html.m-desktop .screen { display: none !important; }
 .m-stub span { font-size: 12.5px; line-height: 1.5; }
 @media (prefers-reduced-motion: reduce) { .m-tg, .m-tg::after { transition: none; } }
 .m-redo { margin-top: 10px; height: 34px; padding: 0 16px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); font: 600 13px inherit; font-family: inherit; cursor: pointer; }
+
+/* ══ Рабочие пространства: контакты и блокировки ══ */
+.ws-chip { flex-shrink: 0; max-width: 44%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 600; line-height: 1; padding: 4px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+.row-more { width: 34px; height: 34px; margin-right: -6px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--muted); flex-shrink: 0; cursor: pointer; }
+.chat-hdr-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.ac-hint { font-size: 12.5px; color: var(--muted); min-height: 18px; line-height: 1.4; margin-bottom: 12px; }
+.ac-hint.err { color: var(--danger); }

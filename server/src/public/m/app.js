@@ -489,6 +489,7 @@ async function enterApp() {
     S._pendingOpenChatId = null;
   }
   loadContacts();
+  loadBlocks();
   loadUploadSettings();
   connectWS();
   applyAvatars();
@@ -943,12 +944,26 @@ function setTab(name) {
 }
 
 // ── КОНТАКТЫ ──
-let _contactsAll = [];
+let _contactsAll = [];   // люди для выбора: из моего пространства и из других (добавленные в контакты)
+let _usersAll = [];      // все известные, включая знакомых только по общему чату (для подписи «не в ваших контактах»)
+S.blocked = [];
+const mPick = u => u.rel !== 'chat';
+const mWsTag = u => (u.rel === 'other' || u.rel === 'chat') && u.workspace_name ? `<span class="ws-chip">${esc(u.workspace_name)}</span>` : '';
+const mNeedsContact = id => { const u = _usersAll.find(x => x.id === id); return !!u && u.rel === 'chat'; };
+const mPeerSub = id => { const u = _usersAll.find(x => x.id === id); return u && u.rel === 'chat' ? `${u.workspace_name ? u.workspace_name + ' · ' : ''}не в ваших контактах` : peerStatusText(id); };
+const mIsBlocked = id => S.blocked.some(b => b.id === id);
 async function loadContacts() {
   const users = await api('GET', '/users');
-  if (!users) return;
-  _contactsAll = users;
+  if (!users || users.error) return;
+  _usersAll = users;
+  _contactsAll = users.filter(mPick);
   if (S.currentTab === 'contacts') renderContacts();
+  const chat = S.chats.find(c => c.id === S.activeChatId);
+  if (chat) syncChatHdrActions(chat);
+}
+async function loadBlocks() {
+  const r = await api('GET', '/blocks');
+  if (Array.isArray(r)) { S.blocked = r; if (document.getElementById('blocks-sheet')) openSheet(blocksSheetHtml()); }
 }
 // Группы контактов: онлайн, отошёл, не в сети — подписи как в списке чатов
 const CONTACT_GROUPS = [[0, 'Онлайн'], [1, 'Отошёл'], [2, 'Не в сети']];
@@ -958,11 +973,11 @@ function renderContacts() {
   const filtered = _contactsAll.filter(u => u.display_name.toLowerCase().includes(q));
   // Сначала те, кто в сети; внутри каждой группы — по имени
   const rank = u => ({ online: 0, away: 1 })[S.presence[u.id]] ?? 2;
-  filtered.sort((a, b) => rank(a) - rank(b) || a.display_name.localeCompare(b.display_name, 'ru', { numeric: true }));
+  const byName = (a, b) => a.display_name.localeCompare(b.display_name, 'ru', { numeric: true });
+  const own = filtered.filter(u => u.rel !== 'other').sort((a, b) => rank(a) - rank(b) || byName(a, b));
+  const other = filtered.filter(u => u.rel === 'other').sort(byName);
   if (!filtered.length) { list.innerHTML = `<div class="stub-note">${_contactsAll.length ? 'Никого не нашли' : 'В организации больше никого нет'}</div>`; return; }
-  // Статус онлайн известен только для тех, с кем уже есть личный чат (presence
-  // приходит по собеседникам direct-чатов — та же логика, что в /chat и в
-  // клиенте): для остальных контактов точка просто не показывается.
+  // Статус онлайн известен только для тех, кого человек видит (своё пространство и контакты)
   const rowHtml = u => `
     <div class="row" onclick="openContactChat(${u.id})">
       <div class="av-wrap">
@@ -970,15 +985,120 @@ function renderContacts() {
         ${presenceDot(u.id)}
       </div>
       <div class="row-body">
-        <div class="row-top"><div class="row-name">${esc(u.display_name)}</div>${u.tag ? `<span class="ct-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div>
+        <div class="row-top"><div class="row-name">${esc(u.display_name)}</div>${u.tag ? `<span class="ct-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}${mWsTag(u)}</div>
         <div class="row-bottom"><div class="row-msg">@${esc(u.username)}</div></div>
       </div>
+      ${u.contact ? `<div class="row-more" aria-label="Действия" onclick="event.stopPropagation();openContactSheet(${u.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></div>` : ''}
     </div>`;
-  list.innerHTML = CONTACT_GROUPS.map(([r, label]) => {
-    const items = filtered.filter(u => rank(u) === r);
+  let html = CONTACT_GROUPS.map(([r, label]) => {
+    const items = own.filter(u => rank(u) === r);
     return items.length ? `<div class="chat-list-section-label">${label}</div>` + items.map(rowHtml).join('') : '';
   }).join('');
+  if (other.length) html += `<div class="chat-list-section-label">Из других пространств</div>` + other.map(rowHtml).join('');
+  list.innerHTML = html;
   applyAvatars();
+}
+// Добавить контакт: только логин и кнопка
+function openAddContactSheet() {
+  openSheet(`<div class="sheet-title">Добавить контакт</div>
+    <div class="m-hint" style="margin:-6px 0 12px">Введите логин человека точно. Он не узнает, что вы его добавили.</div>
+    <input class="sheet-input" id="ac-login" placeholder="Логин" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="acClear()" onkeydown="if(event.key==='Enter')submitAddContact()">
+    <div class="ac-hint" id="ac-hint">Логин можно узнать у самого человека.</div>
+    <button class="l-btn" id="ac-go" type="button" onclick="submitAddContact()">Добавить</button>`);
+  setTimeout(() => document.getElementById('ac-login')?.focus(), 250);
+}
+function acClear() {
+  const h = document.getElementById('ac-hint');
+  if (h && h.dataset.state) { h.textContent = 'Логин можно узнать у самого человека.'; h.className = 'ac-hint'; delete h.dataset.state; }
+}
+async function submitAddContact() {
+  const inp = document.getElementById('ac-login'), go = document.getElementById('ac-go'), hint = document.getElementById('ac-hint');
+  if (!inp || go.disabled) return;
+  const login = inp.value.trim().replace(/^@/, '');
+  if (!login) { inp.focus(); return; }
+  go.disabled = true;
+  const r = await api('POST', '/contacts', { username: login });
+  go.disabled = false;
+  if (r?.ok) { closeSheet(); toast(`${r.user?.display_name || login} добавлен в контакты`); loadContacts(); return; }
+  hint.textContent = r?.error || 'Не удалось добавить. Проверьте соединение.';
+  hint.className = 'ac-hint err'; hint.dataset.state = 'err';
+}
+// Меню контакта из другого пространства
+function openContactSheet(userId) {
+  const u = _usersAll.find(x => x.id === userId); if (!u) return;
+  openSheet(`<div class="sheet-title">${esc(u.display_name)}</div>
+    <div class="msg-action-row danger" onclick="removeContact(${userId})">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      Удалить из контактов
+    </div>
+    <div class="msg-action-row" onclick="closeSheet()">Отмена</div>`);
+}
+async function removeContact(userId) {
+  closeSheet();
+  await api('DELETE', `/contacts/${userId}`);
+  toast('Удалён из контактов');
+  loadContacts();
+}
+async function mAddContactFrom(userId) {
+  const u = _usersAll.find(x => x.id === userId); if (!u?.username) return;
+  const r = await api('POST', '/contacts', { username: u.username });
+  if (r?.ok || r?.code === 'already') { toast(`${u.display_name} добавлен в контакты`); loadContacts(); } else toast(r?.error || 'Не удалось добавить контакт');
+}
+// Новый чат: личный (выбор из контактов) или группа
+function openNewChatSheet() {
+  openSheet(`<div class="sheet-title">Новый чат</div>
+    <div class="msg-action-row" onclick="closeSheet();setTab('contacts')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Личный чат
+    </div>
+    <div class="msg-action-row" onclick="closeSheet();openCreateGroupSheet()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Группа
+    </div>`);
+}
+// Блокировки
+function blocksSheetHtml() {
+  const list = S.blocked;
+  if (!list.length) return `<div id="blocks-sheet"><div class="sheet-title">Блокировки</div><div class="m-stub"><b>Заблокированных нет</b><span>Если кто-то пишет вам лишнее, заблокируйте его в меню «⋯» в чате с ним.</span></div></div>`;
+  return `<div id="blocks-sheet"><div class="sheet-title">Блокировки</div>${list.map(b => `
+    <div class="m-mod" style="padding:8px 0"><div class="m-mod-l"><b>${esc(b.display_name)}</b><span>@${esc(b.username)}${b.workspace_name ? ' · ' + esc(b.workspace_name) : ''}</span></div>
+      <button type="button" class="m-redo" style="margin:0" onclick="mUnblock(${b.id})">Разблокировать</button></div>`).join('')}
+    <div class="m-hint">Заблокированный не может писать вам в личные сообщения. Общие группы и комнаты остаются.</div></div>`;
+}
+function openBlocksSheet() { openSheet(blocksSheetHtml()); }
+async function mUnblock(id) { await api('DELETE', `/blocks/${id}`); loadBlocks(); }
+function openChatMoreSheet(chatId) {
+  const chat = S.chats.find(c => c.id === chatId), pid = chat && getPeerUserId(chat); if (!pid) return;
+  const blocked = mIsBlocked(pid);
+  openSheet(`<div class="sheet-title">${esc(chatName(chat))}</div>
+    <div class="msg-action-row${blocked ? '' : ' danger'}" onclick="closeSheet();mToggleBlock(${chatId})">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>
+      ${blocked ? 'Разблокировать' : 'Заблокировать'}
+    </div>
+    <div class="msg-action-row" onclick="closeSheet()">Отмена</div>`);
+}
+function mToggleBlock(chatId) {
+  const chat = S.chats.find(c => c.id === chatId), pid = chat && getPeerUserId(chat); if (!pid) return;
+  if (mIsBlocked(pid)) { api('DELETE', `/blocks/${pid}`).then(() => { loadBlocks(); toast('Разблокирован'); }); return; }
+  openSheet(`<div class="sheet-title">Заблокировать «${esc(chatName(chat))}»?</div>
+    <div class="m-hint" style="margin:-6px 0 8px">Он не сможет писать вам в личные сообщения. Общие группы и комнаты останутся. Разблокировать можно в настройках.</div>
+    <div class="msg-action-row danger" onclick="closeSheet();mDoBlock(${pid})">Заблокировать</div>
+    <div class="msg-action-row" onclick="closeSheet()">Отмена</div>`);
+}
+async function mDoBlock(pid) {
+  const r = await api('POST', '/blocks', { user_id: pid });
+  if (r?.ok) { loadBlocks(); toast('Заблокирован'); } else toast(r?.error || 'Не удалось заблокировать');
+}
+// Кнопки в шапке переписки: «Добавить контакт» (если человек не в контактах) и меню «⋯»
+function syncChatHdrActions(chat) {
+  const box = document.getElementById('chat-actions'); if (!box) return;
+  const peerId = chat.type === 'direct' ? getPeerUserId(chat) : null;
+  syncChatHdrActions._tried = syncChatHdrActions._tried || new Set();
+  if (peerId && !_usersAll.some(u => u.id === peerId) && !syncChatHdrActions._tried.has(peerId)) { syncChatHdrActions._tried.add(peerId); loadContacts(); }
+  box.innerHTML = (peerId && mNeedsContact(peerId) ? `<div class="icon-btn" role="button" aria-label="Добавить контакт" onclick="mAddContactFrom(${peerId})"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3 20a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg></div>` : '')
+    + (peerId ? `<div class="icon-btn" role="button" aria-label="Действия" onclick="openChatMoreSheet(${chat.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></div>` : '');
+  const sub = document.getElementById('chat-sub');
+  if (sub && peerId) sub.textContent = mPeerSub(peerId);
 }
 async function openContactChat(userId) {
   const chat = await api('POST', '/chats/direct', { user_id: userId });
@@ -1753,7 +1873,7 @@ async function openChat(chatId, aroundId) {
   const peerId = getPeerUserId(chat);
   document.getElementById('chat-sub').textContent = chat.type === 'room' ? 'Комната' : chat.type === 'group'
     ? `${chat.members?.length || 0} участников`
-    : (peerId ? peerStatusText(peerId) : 'Личный чат');
+    : (peerId ? mPeerSub(peerId) : 'Личный чат');
   const statusDot = document.getElementById('chat-status-dot');
   if (statusDot) {
     if (peerId) {
@@ -1766,6 +1886,7 @@ async function openChat(chatId, aroundId) {
       statusDot.style.display = 'none';
     }
   }
+  syncChatHdrActions(chat);
   document.getElementById('chat-screen').classList.add('open');
   document.getElementById('messages').innerHTML = '<div class="stub-note">Загрузка…</div>';
 
@@ -2693,7 +2814,7 @@ function connectWS() {
       const activeChat = S.chats.find(c => c.id === S.activeChatId);
       if (activeChat && getPeerUserId(activeChat) === data.user_id) {
         const subEl = document.getElementById('chat-sub');
-        if (subEl) subEl.textContent = peerStatusText(data.user_id);
+        if (subEl) subEl.textContent = mPeerSub(data.user_id);
       }
       document.querySelectorAll(`.status-dot[data-user-id="${data.user_id}"]`).forEach(dot => {
         dot.classList.toggle('away', data.status === 'away');
@@ -2735,6 +2856,9 @@ function connectWS() {
     }
     if (data.type === 'avatar_updated') { S.avatarTs = Date.now(); _avatarCache.clear(); renderChats(); if (S.currentTab === 'contacts') renderContacts(); }
     if (data.type === 'user_created') loadContacts();
+    if (data.type === 'contacts_changed' || data.type === 'directory_changed') { loadContacts(); api('GET', '/users/presence').then(pres => { if (pres) { Object.entries(pres).forEach(([id, v]) => { S.presence[id] = v?.status; if (v?.last_seen) S.lastSeen[id] = v.last_seen; }); if (S.currentTab === 'contacts') renderContacts(); } }); }
+    if (data.type === 'blocks_changed') loadBlocks();
+    if (data.type === 'send_rejected') toast(data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' ? 'Сообщение не доставлено' : 'Писать сюда нельзя');
   };
 
   ws.onclose = () => { if (S.ws === ws) setTimeout(() => { if (S.token) connectWS(); }, 2000); };

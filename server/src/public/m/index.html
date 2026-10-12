@@ -127,7 +127,12 @@ window.APP_VERSION = '?v=1';
   <!-- Вкладка «Чаты» -->
   <div class="tabpage" id="tab-chats">
     <div class="top-hdr">
-      <div class="top-title">Чаты</div>
+      <div class="top-title-row">
+        <div class="top-title">Чаты</div>
+        <div class="icon-btn" role="button" onclick="openNewChatSheet()" title="Новый чат" aria-label="Новый чат">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
+      </div>
       <div class="top-search">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input id="chat-search" placeholder="Поиск" oninput="onChatSearchInput()">
@@ -147,8 +152,8 @@ window.APP_VERSION = '?v=1';
     <div class="top-hdr">
       <div class="top-title-row">
         <div class="top-title">Контакты</div>
-        <div class="icon-btn" onclick="openCreateGroupSheet()" title="Создать группу">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+        <div class="icon-btn" role="button" onclick="openAddContactSheet()" title="Добавить контакт" aria-label="Добавить контакт">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3 20a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg>
         </div>
       </div>
       <div class="top-search">
@@ -175,6 +180,12 @@ window.APP_VERSION = '?v=1';
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1.1-.2-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-4.9-4.5-9-10-9z"/></svg>
         </div>
         <div class="settings-label">Внешний вид</div>
+      </button>
+      <button class="settings-btn" type="button" onclick="openBlocksSheet()">
+        <div class="settings-ico" style="background:#7f8c8d">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>
+        </div>
+        <div class="settings-label">Блокировки</div>
       </button>
       <button class="settings-btn" type="button" onclick="openModulesSheet()">
         <div class="settings-ico" style="background:#16a085">
@@ -221,6 +232,7 @@ window.APP_VERSION = '?v=1';
         <div class="chat-hdr-name" id="chat-name"></div>
         <div class="chat-hdr-sub" id="chat-sub"></div>
       </div>
+      <div class="chat-hdr-actions" id="chat-actions"></div>
     </div>
     <div class="chat-body" id="messages"></div>
     <button class="scroll-down-btn" id="scroll-down-btn" onclick="scrollToBottom()" aria-label="К последним сообщениям">

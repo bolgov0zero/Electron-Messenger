@@ -184,6 +184,14 @@
      не в модалке — но поле выбора фото профиля общее, ему всё равно нужно жить где-то в DOM. -->
 <input type="file" id="avatar-file-input" accept="image/*" hidden onchange="onAvatarFileChange(this)">
 
+<!-- Контекстное меню контакта из другого пространства -->
+<div class="ctx-menu" id="ctx-contact-menu">
+  <button onclick="ctxContactRemove()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    Удалить из контактов
+  </button>
+</div>
+
 <!-- Chat list context menu -->
 <div class="ctx-menu" id="ctx-chat-menu">
   <button id="ctx-chat-pin" onclick="ctxChatPin()">
@@ -197,6 +205,10 @@
   <button id="ctx-chat-devices" onclick="ctxChatDevices()" style="display:none">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
     Устройства чата
+  </button>
+  <button id="ctx-chat-block" onclick="ctxChatBlock()" style="display:none">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>
+    <span id="ctx-chat-block-label">Заблокировать</span>
   </button>
   <div class="ctx-sep"></div>
   <button id="ctx-chat-delete" onclick="ctxChatDelete()">
@@ -282,6 +294,19 @@
     <div id="sc-sync-body" class="sc-sync-body"></div>
   </div>
 </div>
+<!-- Добавить контакт -->
+<div class="modal-bg" id="modal-addcontact" onclick="if(event.target===this)closeModal('modal-addcontact')">
+  <div class="modal nc-modal">
+    <div class="modal-hdr">
+      <span style="flex:1">Добавить контакт</span>
+      <button class="icon-btn" onclick="closeModal('modal-addcontact')" style="width:28px;height:28px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="ac-body" class="ac-body"></div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-newchat" onclick="if(event.target===this)closeNewChat()">
   <div class="modal nc-modal">
     <div class="modal-hdr">
