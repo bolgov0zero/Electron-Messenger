@@ -139,7 +139,7 @@ router.post('/direct', authMiddleware, (req, res) => {
     SELECT c.id FROM chats c
     JOIN chat_members cm1 ON cm1.chat_id = c.id AND cm1.user_id = ?
     JOIN chat_members cm2 ON cm2.chat_id = c.id AND cm2.user_id = ?
-    WHERE c.type = 'direct' LIMIT 1
+    WHERE c.type = 'direct' AND COALESCE(c.is_secret, 0) = 0 LIMIT 1
   `).get(req.user.id, targetId);
   if (existing) {
     // Unhide for requester if it was hidden

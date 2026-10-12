@@ -5747,7 +5747,11 @@ function toggleModalUser(id) {
 
 async function startDirect(userId) {
   const data = await api('POST','/chats/direct',{user_id:userId});
-  if (data?.id) { closeNewChat(); await loadChats(); openChat(data.id); }
+  if (data?.id) {
+    closeNewChat(); await loadChats();
+    if (!S.chats.some(c => c.id === data.id)) { showActionToast('Не удалось открыть чат'); return; }
+    openChat(data.id);
+  } else showActionToast(data?.error || 'Не удалось открыть чат');
 }
 
 async function createGroup() {
