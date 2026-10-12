@@ -1039,6 +1039,13 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .fsel-opt{display:flex;align-items:center;gap:6px;width:100%;padding:6px 8px;border:none;background:none;border-radius:var(--radius-xs);color:var(--c-text2);font-size:11.5px;font-family:var(--f-ui);text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background var(--t-fast),color var(--t-fast)}
 .fsel-opt:hover{background:var(--bg-hover);color:var(--c-text)}
 .fsel-opt.active{background:var(--c-primary-dim);color:var(--c-primary);font-weight:600}
+.fsel-f .fsel-btn{width:100%;max-width:none;height:36px;padding:0 11px;gap:8px;background:var(--bg-input);border-color:var(--border-input);border-radius:9px;color:var(--c-text);font-size:13px}
+.fsel-f .fsel-btn:hover{border-color:var(--border-focus)}
+.fsel-f .fsel-btn[aria-expanded="true"]{border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow)}
+.fsel-f .fsel-btn svg{width:13px;height:13px}
+.fsel-f .fsel-pop{left:0;right:auto;width:100%;max-width:none;z-index:60}
+.fsel-f .fsel-opt{padding:8px 10px;font-size:13px;color:var(--c-text);white-space:normal}
+.fsel-f .fsel-opt svg{width:13px;height:13px;margin-left:auto;stroke:currentColor;fill:none;stroke-width:2.4}
 .filters-reset{display:flex;align-items:center;gap:5px;height:28px;padding:0 9px;background:none;border:1px solid transparent;border-radius:var(--radius-xs);color:var(--c-muted);font-size:11px;font-family:var(--f-ui);cursor:pointer;transition:background var(--t-fast),color var(--t-fast)}
 .filters-reset:hover{background:var(--c-red-dim);color:var(--c-red-text)}
 .filters-reset[hidden]{display:none}
@@ -1444,7 +1451,6 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .ub-role small{display:block;font:500 11px var(--f-mono);color:var(--c-muted);margin-top:3px}
 .ws-pill{display:inline-flex;align-items:center;gap:5px;font:600 11px var(--f-ui);padding:1px 8px 1px 6px;border-radius:99px;background:var(--c-primary-dim);color:var(--c-primary);white-space:nowrap;vertical-align:middle}
 .ws-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
-.ua-inp select{border:0;outline:none;background:none;font:13px var(--f-ui);color:var(--c-text);width:100%;height:100%;min-width:0;cursor:pointer}
 .ws-warn{display:flex;gap:9px;padding:9px 11px;border-radius:9px;background:color-mix(in srgb,var(--c-orange) 13%,transparent);font-size:12px;line-height:1.45;margin-top:6px}
 .ws-warn b{color:var(--c-orange)}
 .ws-checks{display:flex;flex-direction:column;gap:2px;margin-top:8px}
@@ -4811,8 +4817,9 @@ function uaRenderForm(focusId) {
   if (!form || !f) return;
   const editing = !!u, miss = uaMissing(f, editing);
   const err = k => f.errors[k] ? `<span class="ua-err">${f.errors[k]}</span>` : '';
-  const wsPick = WS.list.length > 1 || (u && u.workspace_id !== 1) ? `<div class="ua-field"><label for="ua-ws">Пространство</label>
-        <div class="ua-inp"><select id="ua-ws" onchange="uaSet('ws', Number(this.value), true)">${WS.list.map(w => `<option value="${w.id}" ${w.id === f.ws ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select></div>
+  const wsPick = WS.list.length > 1 || (u && u.workspace_id !== 1) ? `<div class="ua-field"><label>Пространство</label>
+        <div class="fsel fsel-f" id="ua-ws"><button type="button" class="fsel-btn on" aria-haspopup="listbox" onclick="fselToggle(event,'ua-ws'); this.setAttribute('aria-expanded', String(!document.querySelector('#ua-ws .fsel-pop').hidden))"><span>${esc(WS.list.find(w => w.id === f.ws)?.name || '—')}</span><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+          <div class="fsel-pop" role="listbox" hidden>${WS.list.map(w => `<button type="button" role="option" aria-selected="${w.id === f.ws}" class="fsel-opt${w.id === f.ws ? ' active' : ''}" onclick="uaSet('ws', ${w.id}, true)">${esc(w.name)}${w.id === f.ws ? '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</button>`).join('')}</div></div>
         ${u && f.ws !== u.workspace_id ? `<div class="ws-warn"><b>!</b><div>Чаты, группы и комнаты сохранятся. Контакты прежнего пространства заменятся контактами нового. Добавленные вручную останутся, а оказавшиеся в новом пространстве убираются из этого списка.</div></div>` : '<span class="ua-hint">Люди из разных пространств друг друга не видят</span>'}</div>` : '';
   const quick = `<div class="ua-sec">
       <div class="ua-field"><label for="ua-name">Имя и фамилия</label>
