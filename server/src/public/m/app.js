@@ -985,8 +985,8 @@ function renderContacts() {
         ${presenceDot(u.id)}
       </div>
       <div class="row-body">
-        <div class="row-top"><div class="row-name">${esc(u.display_name)}</div>${u.tag ? `<span class="ct-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}${mWsTag(u)}</div>
-        <div class="row-bottom"><div class="row-msg">@${esc(u.username)}</div></div>
+        <div class="row-top"><div class="row-name">${esc(u.display_name)}</div>${u.tag ? `<span class="ct-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div>
+        <div class="row-bottom" style="justify-content:flex-start"><div class="row-msg" style="flex-shrink:1">@${esc(u.username)}</div>${mWsTag(u)}</div>
       </div>
       ${u.contact ? `<div class="row-more" aria-label="Действия" onclick="event.stopPropagation();openContactSheet(${u.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></div>` : ''}
     </div>`;

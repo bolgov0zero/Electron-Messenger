@@ -1114,8 +1114,7 @@ function restoreChatMainArea() {
 function contactRowHtml(u) {
   return `<div class="pp-row" data-uid="${u.id}" onclick="openContactChat(${u.id})"${u.contact ? ` oncontextmenu="contactMenu(event,${u.id})"` : ''}>
     <div class="av-wrap">${ppAvHtml(u)}${presenceDot(u.id)}</div>
-    <span class="pp-name">${esc(u.display_name)}</span>
-    ${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}${wsTag(u)}
+    <div class="pp-col"><div class="pp-line"><span class="pp-name">${esc(u.display_name)}</span>${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div>${wsTag(u)}</div>
   </div>`;
 }
 // Группы контактов: онлайн, отошёл, не в сети — подписи как в списке чатов
@@ -2141,10 +2140,10 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   const isGroup = chat.type==='group';
   const isRoom = chat.type==='room';
   const isTopic = !!chat?.parent_id;
-  const addContactBtn = peerId && needsContact(peerId) ? `<button class="addc-btn" id="ch-add-contact" onclick="addContactFromChat(${peerId})"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3 20a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg><span>Добавить контакт</span></button>` : '';
   const isCreator = chat.created_by === S.user.id;
   const memberCount = chat.members?.length||0;
   const peerId = getPeerUserId(chat);
+  const addContactBtn = peerId && needsContact(peerId) ? `<button class="addc-btn" id="ch-add-contact" onclick="addContactFromChat(${peerId})"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3 20a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg><span>Добавить контакт</span></button>` : '';
   const peerDot = peerId ? presenceDot(peerId) : '';
   const sub = isTopic ? `# тема` : isRoom ? `🏠 Комната · ${nMembers(memberCount)}` : isGroup ? `${nMembers(memberCount)}` : (peerId ? peerSubText(peerId) : 'Личный чат');
   const nameClickable = (isGroup || (isRoom && !isTopic)) ? `style="cursor:pointer" onclick="openGroupInfo(${chatId})"` : '';
@@ -5737,8 +5736,7 @@ function renderModalUsers(containerId, multi, filter='') {
   container.innerHTML = list.map(u=>`
     <div class="pp-row${multi&&S.ncSelected?.has(u.id)?' on':''}" data-uid="${u.id}" onclick="${multi?`toggleModalUser(${u.id})`:`startDirect(${u.id})`}">
       ${ppAvHtml(u)}
-      <span class="pp-name">${esc(u.display_name)}</span>
-      ${u.tag?`<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>`:''}${wsTag(u)}
+      <div class="pp-col"><div class="pp-line"><span class="pp-name">${esc(u.display_name)}</span>${u.tag?`<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>`:''}</div>${wsTag(u)}</div>
     </div>`).join('') || '<div class="pp-empty">Нет пользователей</div>';
 }
 

@@ -1198,8 +1198,7 @@ function restoreChatMainArea() {
 function contactRowHtml(u) {
   return `<div class="pp-row" data-uid="${u.id}" onclick="openContactChat(${u.id})"${u.contact ? ` oncontextmenu="contactMenu(event,${u.id})"` : ''}>
     <div class="av-wrap">${ppAvHtml(u)}${presenceDot(u.id)}</div>
-    <span class="pp-name">${esc(u.display_name)}</span>
-    ${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}${wsTag(u)}
+    <div class="pp-col"><div class="pp-line"><span class="pp-name">${esc(u.display_name)}</span>${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div>${wsTag(u)}</div>
   </div>`;
 }
 // Группы контактов: онлайн, отошёл, не в сети — подписи как в списке чатов
@@ -5729,8 +5728,7 @@ function renderModalUsers(containerId, multi, filter='') {
   container.innerHTML = list.map(u=>`
     <div class="pp-row${multi&&S.ncSelected?.has(u.id)?' on':''}" data-uid="${u.id}" onclick="${multi?`toggleModalUser(${u.id})`:S.ncKind==='secret'?`startSecret(${u.id})`:`startDirect(${u.id})`}">
       ${ppAvHtml(u)}
-      <span class="pp-name">${esc(u.display_name)}</span>
-      ${u.tag?`<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>`:''}${wsTag(u)}
+      <div class="pp-col"><div class="pp-line"><span class="pp-name">${esc(u.display_name)}</span>${u.tag?`<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>`:''}</div>${wsTag(u)}</div>
     </div>`).join('') || '<div class="pp-empty">Нет пользователей</div>';
 }
 

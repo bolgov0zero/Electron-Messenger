@@ -3152,7 +3152,9 @@ html.dark .anx-solid { color: #0c0e10; }
    Рабочие пространства: контакты и блокировки
    ══════════════════════════════════════════ */
 .ws-chip { margin-left: auto; flex-shrink: 0; max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 600; line-height: 1; padding: 4px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
-.pp-tag + .ws-chip { margin-left: auto; }
+.pp-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.pp-line { display: flex; align-items: center; gap: 8px; min-width: 0; width: 100%; }
+.pp-col .ws-chip { margin-left: 0; max-width: 100%; }
 .addc-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 10px; border: 0; border-radius: 99px; background: var(--accent-soft); color: var(--accent); font-size: 12.5px; font-weight: 600; font-family: inherit; cursor: pointer; white-space: nowrap; margin-right: 4px; -webkit-app-region: no-drag; }
 .addc-btn:hover { background: var(--accent-border); }
 .gi-addc { border: 0; background: var(--accent-soft); color: var(--accent); border-radius: 99px; font-size: 11.5px; font-weight: 600; font-family: inherit; padding: 5px 10px; cursor: pointer; margin-left: auto; flex-shrink: 0; }
