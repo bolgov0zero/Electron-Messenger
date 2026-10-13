@@ -4,7 +4,9 @@ const db = require('../db');
 // Пространство человека: клиент сравнивает его с пространством остальных, чтобы делить список на «своих» и «из других»
 // Имя системы (задаётся в админке, раздел «Федерации») клиент показывает в подсказке бара учётных записей
 const serverName = () => db.prepare("SELECT value FROM settings WHERE key = 'fed_name'").get()?.value || '';
-const wsInfo = id => ({ ...(db.prepare('SELECT u.workspace_id, w.name AS workspace_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE u.id = ?').get(id) || {}), server_name: serverName() });
+// Идентификатор сервера (если настроена федерация): из него клиент собирает внешнюю ссылку на профиль «@сервер:логин»
+const serverId = () => db.prepare("SELECT value FROM settings WHERE key = 'fed_id'").get()?.value || '';
+const wsInfo = id => ({ ...(db.prepare('SELECT u.workspace_id, w.name AS workspace_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE u.id = ?').get(id) || {}), server_name: serverName(), server_id: serverId() });
 const { signToken, authMiddleware, signChallengeToken, verifyChallengeToken } = require('../auth');
 const totp = require('../totp');
 const { logAudit } = require('../audit');

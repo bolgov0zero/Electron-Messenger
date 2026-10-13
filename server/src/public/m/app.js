@@ -466,6 +466,7 @@ function logout() {
 
 async function enterApp() {
   startTokenRefresh();
+  mRefreshServerInfo();
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-app').classList.add('active');
   // До входа #screen-app скрыт (display:none), и offsetHeight таб-бара — 0;
@@ -1013,6 +1014,8 @@ function openAddContactSheet() {
   setTimeout(() => document.getElementById('ac-login')?.focus(), 250);
 }
 function acClear() {
+  // «@» вставленную со ссылкой убираем: в поле её набирать не нужно
+  const ai = document.getElementById('ac-login'); if (ai && /^\s*@/.test(ai.value)) ai.value = ai.value.replace(/^\s*@+/, '');
   const h = document.getElementById('ac-hint');
   if (h && h.dataset.state) { h.textContent = 'Логин можно узнать у самого человека.'; h.className = 'ac-hint'; delete h.dataset.state; }
 }
@@ -1253,6 +1256,36 @@ async function submitCreateGroup() {
 }
 
 // ── ПРОФИЛЬ / ВНЕШНИЙ ВИД ──
+// ── Ссылка на профиль ──
+// Внутренняя (@логин) для людей этого сервера, внешняя (@сервер:логин) для людей с других; внешняя есть, только если на сервере настроена федерация
+function mProfileLinks() {
+  const u = S.user, l = [['in', 'Внутренняя', '@' + u.username]];
+  if (u.server_id) l.push(['ext', 'Внешняя', '@' + u.server_id + ':' + u.username]);
+  return l;
+}
+const MPL_COPY = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></svg>';
+const MPL_OK = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+function mProfileLinksHtml() {
+  return `<div class="mpl"><div class="mpl-t">Ссылка на профиль</div>${mProfileLinks().map(([k, lab, v]) => `<button type="button" class="mpl-f" data-pl="${k}" aria-label="Скопировать: ${esc(v)}" onclick="mCopyProfileLink('${k}')"><span class="mpl-k">${lab}</span><span class="mpl-v">${esc(v)}</span><span class="mpl-i">${MPL_COPY}</span></button>`).join('')}
+    <div class="mpl-n">${S.user.server_id ? 'Внутреннюю называйте коллегам на вашем сервере, внешнюю людям с других серверов.' : 'Внешняя ссылка появится, когда администратор настроит федерацию сервера.'}</div></div>`;
+}
+async function mCopyProfileLink(kind) {
+  const l = mProfileLinks().find(x => x[0] === kind); if (!l) return;
+  try { await navigator.clipboard.writeText(l[2]); } catch { toast('Не удалось скопировать'); return; }
+  toast('Скопировано: ' + l[2]);
+  const b = document.querySelector(`.mpl-f[data-pl="${kind}"]`); if (!b) return;
+  const ic = b.querySelector('.mpl-i');
+  b.classList.add('done'); ic.innerHTML = MPL_OK;
+  setTimeout(() => { b.classList.remove('done'); ic.innerHTML = MPL_COPY; }, 1600);
+}
+// Идентификатор сервера и его имя могли задать после входа: подтягиваем актуальные
+async function mRefreshServerInfo() {
+  const r = await api('GET', '/auth/me');
+  if (!r || !S.user || r.id !== S.user.id) return;
+  if ((r.server_name || '') === (S.user.server_name || '') && (r.server_id || '') === (S.user.server_id || '')) return;
+  S.user.server_name = r.server_name || ''; S.user.server_id = r.server_id || '';
+  saveSession();
+}
 function openProfileSheet() {
   openSheet(`
     <div class="sheet-title">Профиль</div>
@@ -1261,6 +1294,7 @@ function openProfileSheet() {
       <div style="font-size:12.5px;color:var(--accent);cursor:pointer" onclick="document.getElementById('avatar-file-input').click()">Изменить фото</div>
       <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="onAvatarPicked(this)">
     </div>
+    ${mProfileLinksHtml()}
     <input class="sheet-input" id="profile-name-input" value="${esc(S.user.display_name)}" maxlength="40">
     <button class="l-btn" style="width:100%;margin-top:6px" onclick="saveProfileName()">Сохранить</button>
   `);

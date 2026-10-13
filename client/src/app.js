@@ -739,9 +739,11 @@ function renderAccountRail() {
 // Имя сервера могли задать или поменять уже после входа: подтягиваем актуальное и обновляем подсказку бара
 async function refreshServerName() {
   const r = await api('GET', '/auth/me');
-  if (!r || !S.user || r.id !== S.user.id || (r.server_name || '') === (S.user.server_name || '')) return;
-  S.user.server_name = r.server_name || '';
+  if (!r || !S.user || r.id !== S.user.id) return;
+  if ((r.server_name || '') === (S.user.server_name || '') && (r.server_id || '') === (S.user.server_id || '')) return;
+  S.user.server_name = r.server_name || ''; S.user.server_id = r.server_id || '';
   saveSession(); reportAccount();
+  if (typeof _sidebarTab !== 'undefined' && _sidebarTab === 'settings' && CS.sec === 'profile') csRefresh();
 }
 
 // ── ENTER APP ──
@@ -1375,6 +1377,7 @@ function csPaneProfile() {
       <div class="cs-hero-t"><b>${esc(u.display_name)}</b><span>@${esc(u.username)}</span>
         ${u.tag ? `<div class="cs-chips"><span class="cs-chip">${esc(u.tag)}</span></div>` : ''}</div>
     </div>
+    ${profileLinksHtml()}
     <div class="cs-gt">Имя</div>
     <div class="cs-g"><div class="cs-r stack">
       <div class="cs-l"><b>Как вас видят в чатах</b><span>Логин @${esc(u.username)} не меняется — его задаёт администратор.</span></div>
@@ -1412,6 +1415,28 @@ function csPaneProfile() {
     </div></div>` : ''}
     <div class="cs-logout"><div class="cs-l"><b>Выйти из аккаунта</b><span>${where} понадобится снова ввести логин и пароль</span></div>
       <button type="button" class="cs-btn danger" onclick="logout(true)">${CS_I.out}Выйти</button></div>`;
+}
+// ── Ссылка на профиль ──
+// Внутренняя (@логин) для людей этого сервера, внешняя (@сервер:логин) для людей с других; внешняя есть, только если на сервере настроена федерация
+function profileLinks() {
+  const u = S.user, l = [['in', 'Внутренняя', '@' + u.username]];
+  if (u.server_id) l.push(['ext', 'Внешняя', '@' + u.server_id + ':' + u.username]);
+  return l;
+}
+function profileLinksHtml() {
+  const u = S.user;
+  return `<div class="cs-gt">Ссылка на профиль</div>
+    <div class="cs-g"><div class="pl-b">${profileLinks().map(([k, lab, v]) => `<button type="button" class="pl-f" data-pl="${k}" aria-label="Скопировать: ${esc(v)}" onclick="copyProfileLink('${k}')"><span class="pl-k">${lab}</span><span class="pl-v">${esc(v)}</span><span class="pl-i">${CS_I.copy}</span></button>`).join('')}</div>
+    <p class="pl-n">${u.server_id ? 'Внутреннюю называйте коллегам на вашем сервере, внешнюю людям с других серверов.' : 'Внешняя ссылка появится, когда администратор настроит федерацию сервера.'}</p></div>`;
+}
+async function copyProfileLink(kind) {
+  const l = profileLinks().find(x => x[0] === kind); if (!l) return;
+  try { await navigator.clipboard.writeText(l[2]); } catch { showActionToast('Не удалось скопировать'); return; }
+  showActionToast('Скопировано: ' + l[2]);
+  const b = document.querySelector(`.pl-f[data-pl="${kind}"]`); if (!b) return;
+  const ic = b.querySelector('.pl-i'), orig = ic.innerHTML;
+  b.classList.add('done'); ic.innerHTML = CS_I.check;
+  setTimeout(() => { b.classList.remove('done'); ic.innerHTML = orig; }, 1600);
 }
 function csCopyServer(btn) {
   navigator.clipboard.writeText(S.server).then(() => {
@@ -5520,6 +5545,8 @@ function openAddContact() {
   setTimeout(() => document.getElementById('ac-input')?.focus(), 80);
 }
 function acClear() {
+  // «@» нарисована перед полем: вставленную со ссылкой убираем, чтобы не двоилась
+  const ai = document.getElementById('ac-input'); if (ai && /^\s*@/.test(ai.value)) ai.value = ai.value.replace(/^\s*@+/, '');
   document.getElementById('ac-fld')?.classList.remove('err');
   const h = document.getElementById('ac-hint');
   if (h && h.dataset.state) { h.textContent = 'Логин можно узнать у самого человека.'; h.className = 'ac-hint'; delete h.dataset.state; }

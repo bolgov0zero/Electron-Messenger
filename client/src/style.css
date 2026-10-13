@@ -3737,6 +3737,17 @@ html.dark .anx-solid { color: #0c0e10; }
 .pf-sp { flex: 1; }
 .pf-foot button { white-space: nowrap; padding-inline: 12px; gap: 6px; }
 .pf-fb { width: 148px; } .pf-fc { width: 132px; } .pf-fw { width: 104px; }
+/* Ссылка на профиль (настройки, раздел «Профиль») */
+.pl-b { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.pl-f { display: flex; align-items: center; gap: 10px; height: 44px; border-radius: 999px; background: var(--search-bg); padding: 0 8px 0 16px; border: 1px solid transparent; cursor: pointer; text-align: left; width: 100%; font-family: inherit; color: var(--text); }
+.pl-f:hover { border-color: var(--accent-border); }
+.pl-k { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); width: 82px; flex-shrink: 0; }
+.pl-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 600; }
+.pl-i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--text2); flex-shrink: 0; }
+.pl-i svg { width: 15px; height: 15px; }
+.pl-f.done { border-color: var(--accent-border); background: var(--accent-soft); }
+.pl-f.done .pl-i { color: var(--accent); }
+.pl-n { margin: -4px 0 0; padding: 0 18px 14px; font-size: 12px; color: var(--text2); }
 .pf-danger { height: 34px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--danger-bg); color: var(--danger); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background .15s; }
 .pf-danger:hover { background: color-mix(in srgb, var(--danger) 18%, transparent); }
 .chat-header-info[onclick*="openProfile"]:hover .ch-name { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }

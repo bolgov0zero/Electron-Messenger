@@ -703,8 +703,18 @@ function logout(intentional = false) {
 }
 
 // ── ENTER APP ──
+// Идентификатор сервера и его имя могли задать после входа: подтягиваем актуальные (нужны для внешней ссылки на профиль)
+async function refreshServerInfo() {
+  const r = await api('GET', '/auth/me');
+  if (!r || !S.user || r.id !== S.user.id) return;
+  if ((r.server_name || '') === (S.user.server_name || '') && (r.server_id || '') === (S.user.server_id || '')) return;
+  S.user.server_name = r.server_name || ''; S.user.server_id = r.server_id || '';
+  saveSession();
+  if (typeof _sidebarTab !== 'undefined' && _sidebarTab === 'settings' && CS.sec === 'profile') csRefresh();
+}
 function enterApp() {
   startTokenRefresh();
+  refreshServerInfo();
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-main').classList.add('active');
   loadChats().then(() => {
@@ -1014,6 +1024,7 @@ const CS_I = {
   eye: csSvg('<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>'),
   eyeOff: csSvg('<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>'),
   out: csSvg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'),
+  copy: csSvg('<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
   check: csSvg('<polyline points="20 6 9 17 4 12"/>'),
   sun: csSvg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>'),
   moon: csSvg('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'),
@@ -1229,6 +1240,7 @@ function csPaneProfile() {
       <div class="cs-hero-t"><b>${esc(u.display_name)}</b><span>@${esc(u.username)}</span>
         ${u.tag ? `<div class="cs-chips"><span class="cs-chip">${esc(u.tag)}</span></div>` : ''}</div>
     </div>
+    ${profileLinksHtml()}
     <div class="cs-gt">Имя</div>
     <div class="cs-g"><div class="cs-r stack">
       <div class="cs-l"><b>Как вас видят в чатах</b><span>Логин @${esc(u.username)} не меняется — его задаёт администратор.</span></div>
@@ -1256,6 +1268,28 @@ function csPaneProfile() {
     </div>
     <div class="cs-logout"><div class="cs-l"><b>Выйти из аккаунта</b><span>${where} понадобится снова ввести логин и пароль</span></div>
       <button type="button" class="cs-btn danger" onclick="logout(true)">${CS_I.out}Выйти</button></div>`;
+}
+// ── Ссылка на профиль ──
+// Внутренняя (@логин) для людей этого сервера, внешняя (@сервер:логин) для людей с других; внешняя есть, только если на сервере настроена федерация
+function profileLinks() {
+  const u = S.user, l = [['in', 'Внутренняя', '@' + u.username]];
+  if (u.server_id) l.push(['ext', 'Внешняя', '@' + u.server_id + ':' + u.username]);
+  return l;
+}
+function profileLinksHtml() {
+  const u = S.user;
+  return `<div class="cs-gt">Ссылка на профиль</div>
+    <div class="cs-g"><div class="pl-b">${profileLinks().map(([k, lab, v]) => `<button type="button" class="pl-f" data-pl="${k}" aria-label="Скопировать: ${esc(v)}" onclick="copyProfileLink('${k}')"><span class="pl-k">${lab}</span><span class="pl-v">${esc(v)}</span><span class="pl-i">${CS_I.copy}</span></button>`).join('')}</div>
+    <p class="pl-n">${u.server_id ? 'Внутреннюю называйте коллегам на вашем сервере, внешнюю людям с других серверов.' : 'Внешняя ссылка появится, когда администратор настроит федерацию сервера.'}</p></div>`;
+}
+async function copyProfileLink(kind) {
+  const l = profileLinks().find(x => x[0] === kind); if (!l) return;
+  try { await navigator.clipboard.writeText(l[2]); } catch { showActionToast('Не удалось скопировать'); return; }
+  showActionToast('Скопировано: ' + l[2]);
+  const b = document.querySelector(`.pl-f[data-pl="${kind}"]`); if (!b) return;
+  const ic = b.querySelector('.pl-i'), orig = ic.innerHTML;
+  b.classList.add('done'); ic.innerHTML = CS_I.check;
+  setTimeout(() => { b.classList.remove('done'); ic.innerHTML = orig; }, 1600);
 }
 function csNameInput(v) {
   CS.nameDraft = v;
@@ -5536,6 +5570,8 @@ function openAddContact() {
   setTimeout(() => document.getElementById('ac-input')?.focus(), 80);
 }
 function acClear() {
+  // «@» нарисована перед полем: вставленную со ссылкой убираем, чтобы не двоилась
+  const ai = document.getElementById('ac-input'); if (ai && /^\s*@/.test(ai.value)) ai.value = ai.value.replace(/^\s*@+/, '');
   document.getElementById('ac-fld')?.classList.remove('err');
   const h = document.getElementById('ac-hint');
   if (h && h.dataset.state) { h.textContent = 'Логин можно узнать у самого человека.'; h.className = 'ac-hint'; delete h.dataset.state; }
