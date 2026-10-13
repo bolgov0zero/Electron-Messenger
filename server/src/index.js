@@ -102,6 +102,9 @@ app.use('/api/push',  require('./routes/push'));
 app.use('/api/webhooks', require('./routes/webhooks'));
 app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/secret', require('./routes/secret'));
+const federationRouter = require('./routes/federation');
+app.use('/api/admin/federation', federationRouter.admin);
+app.use('/fed/v1', federationRouter.pub);
 
 app.get('/api/release-notes', (req, res) => {
   const notesPath = path.join(__dirname, '../../RELEASE_NOTES.md');
@@ -110,6 +113,8 @@ app.get('/api/release-notes', (req, res) => {
 });
 
 require('./ws').setup(server);
+// Межсерверные соединения (федерация) приходят на /fed того же порта
+require('./federation').mount(server);
 // Отложенные объявления живут в базе; планировщик поднимает наступившие,
 // в том числе те, чьё время пришло, пока сервер был выключен.
 require('./announcements').startScheduler();

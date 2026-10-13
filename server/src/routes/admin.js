@@ -190,7 +190,8 @@ router.post('/rooms', (req, res) => {
   const chatId = result.lastInsertRowid;
   if (Array.isArray(member_ids) && member_ids.length) {
     const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
-    member_ids.forEach(uid => { ins.run(chatId, uid); sendTo(uid, { type: 'reload_chats' }); });
+    // Людей с других серверов (федерация) в комнаты не добавляем
+    member_ids.filter(uid => !require('../spaces').isFed(Number(uid))).forEach(uid => { ins.run(chatId, uid); sendTo(uid, { type: 'reload_chats' }); });
   }
   logAudit(req, 'rooms', 'Создание комнаты', `«${name.trim()}», участников: ${Array.isArray(member_ids) ? member_ids.length : 0}`);
   res.json({ id: chatId });
@@ -212,6 +213,7 @@ router.post('/chats/:id/members', (req, res) => {
   const chatId = Number(req.params.id);
   const userId = Number(user_id);
   const chat = db.prepare('SELECT type FROM chats WHERE id = ?').get(chatId);
+  if (require('../spaces').isFed(userId)) return res.status(400).json({ error: 'Людей с других серверов в группы и комнаты добавить нельзя' });
   const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
   ins.run(chatId, userId);
   db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId)
@@ -413,6 +415,7 @@ router.get('/settings', (req, res) => {
   // Секреты не должны уходить в браузер даже админу
   delete settings.jwt_secret;
   delete settings.vapid_private;
+  delete settings.fed_priv;
   res.json(settings);
 });
 
@@ -722,7 +725,7 @@ router.get('/release-notes', (req, res) => {
 router.get('/audit-log', (req, res) => {
   const rows = db.prepare(`
     SELECT a.id, a.category, a.action, a.target, a.ip, a.created_at,
-      COALESCE(u.display_name, 'Удалённый аккаунт') as actor_name, u.tag as actor_tag, a.actor_id
+      CASE WHEN a.actor_id IS NULL THEN 'Система' ELSE COALESCE(u.display_name, 'Удалённый аккаунт') END as actor_name, u.tag as actor_tag, a.actor_id
     FROM admin_audit_log a LEFT JOIN users u ON u.id = a.actor_id
     ORDER BY a.id DESC LIMIT ?
   `).all(Math.max(1, Math.min(1000, Number(req.query.limit) || 1000)));

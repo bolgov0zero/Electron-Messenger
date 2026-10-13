@@ -12,10 +12,10 @@ const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
 // Общий SELECT сообщения с данными отправителя и цитаты
 const MSG_SELECT = `
   SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.system_kind,
-    u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.tag as sender_tag, u.is_bot as sender_is_bot,
+    u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.tag as sender_tag, (u.is_bot = 1) as sender_is_bot,
     m.reply_to_id,
     rm.text as reply_text, rm.deleted as reply_deleted, rm.attachment as reply_attachment,
-    COALESCE(ru.display_name, 'Удалённый аккаунт') as reply_sender_name, ru.is_bot as reply_sender_is_bot,
+    COALESCE(ru.display_name, 'Удалённый аккаунт') as reply_sender_name, (ru.is_bot = 1) as reply_sender_is_bot,
       ru.id as reply_sender_id, ru.tag as reply_sender_tag
   FROM messages m LEFT JOIN users u ON u.id = m.sender_id
   LEFT JOIN messages rm ON rm.id = m.reply_to_id
@@ -38,7 +38,7 @@ router.get('/search', authMiddleware, (req, res) => {
   try {
     rows = db.prepare(`
       SELECT m.id, m.chat_id, m.sent_at, u.id as sender_id,
-        COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.is_bot as sender_is_bot,
+        COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, (u.is_bot = 1) as sender_is_bot,
         snippet(messages_fts, 0, char(1), char(2), '…', 10) as snippet
       FROM messages_fts
       JOIN messages m ON m.id = messages_fts.rowid

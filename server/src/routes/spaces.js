@@ -6,6 +6,7 @@ const { authMiddleware, adminMiddleware } = require('../auth');
 const { sendTo, broadcastAll } = require('../ws');
 const { logAudit } = require('../audit');
 const spaces = require('../spaces');
+const fed = require('../federation');
 
 // ── Контакты ──
 const contacts = express.Router();
@@ -23,10 +24,13 @@ const publicUser = (viewerId, id) => spaces.listFor(viewerId).find(u => u.id ===
 
 // Добавить в контакты по точному логину. Второму человеку ничего не отправляется.
 // Ответ «не найден» одинаков для несуществующего, заблокированного и служебного логина.
-contacts.post('/', (req, res) => {
+contacts.post('/', async (req, res) => {
   if (tooMany(req.user.id)) return res.status(429).json({ error: 'Слишком много попыток. Подождите минуту.' });
   const login = String(req.body?.username || '').trim().replace(/^@/, '');
   if (!login) return res.status(400).json({ error: 'Введите логин' });
+  // Адрес вида «сервер@логин» с подключённого сервера: человек из другой организации
+  const addr = fed.parseAddr(login);
+  if (addr && fed.peerByInstance(addr.instance)) return addFederated(req, res, login);
   const target = db.prepare('SELECT id, workspace_id FROM users WHERE username = ? AND COALESCE(is_bot, 0) = 0 AND COALESCE(banned, 0) = 0').get(login)
     || db.prepare('SELECT id, workspace_id FROM users WHERE LOWER(username) = LOWER(?) AND COALESCE(is_bot, 0) = 0 AND COALESCE(banned, 0) = 0').get(login);
   if (!target || target.id === req.user.id) return res.status(404).json({ error: 'Пользователь с таким логином не найден', code: 'not_found' });
@@ -41,13 +45,27 @@ contacts.post('/', (req, res) => {
   res.json({ ok: true, user: publicUser(req.user.id, target.id) });
 });
 
+async function addFederated(req, res, address) {
+  const r = await fed.lookupRemote(address);
+  if (r.error) return res.status(r.code === 'offline' ? 503 : 404).json({ error: r.error, code: r.code });
+  const target = r.shadow;
+  if (db.prepare('SELECT 1 FROM contacts WHERE owner_id = ? AND contact_id = ?').get(req.user.id, target.id))
+    return res.status(409).json({ error: 'Этот человек уже у вас в контактах', code: 'already' });
+  db.prepare('INSERT INTO contacts (owner_id, contact_id) VALUES (?, ?)').run(req.user.id, target.id);
+  sendTo(req.user.id, { type: 'contacts_changed' });
+  fed.onContactAdded(req.user.id, target.id);
+  if (spaces.mutualContact(req.user.id, target.id)) sendTo(req.user.id, { type: 'presence_refresh' });
+  res.json({ ok: true, user: publicUser(req.user.id, target.id) });
+}
+
 // Контакт добавлен или удалён: у отправителя меняется ограничение «сообщений без ответа», сообщаем его клиентам
 function notifyLimit(senderId, recipientId) {
   spaces.directChatIds(senderId, recipientId).forEach(chatId => sendTo(senderId, { type: 'chat_limit', chat_id: chatId, dm_limit: spaces.limitFor(senderId, recipientId) }));
 }
 contacts.delete('/:id', (req, res) => {
   const wasMutual = spaces.mutualContact(req.user.id, Number(req.params.id));
-  db.prepare('DELETE FROM contacts WHERE owner_id = ? AND contact_id = ?').run(req.user.id, Number(req.params.id));
+  const removed = db.prepare('DELETE FROM contacts WHERE owner_id = ? AND contact_id = ?').run(req.user.id, Number(req.params.id)).changes;
+  if (removed && spaces.isFed(Number(req.params.id))) fed.onContactRemoved(req.user.id, Number(req.params.id));
   if (wasMutual) sendTo(Number(req.params.id), { type: 'presence_refresh' });
   sendTo(req.user.id, { type: 'contacts_changed' });
   notifyLimit(Number(req.params.id), req.user.id);
@@ -59,15 +77,15 @@ const blocks = express.Router();
 blocks.use(authMiddleware);
 
 blocks.get('/', (req, res) => {
-  res.json(db.prepare(`SELECT u.id, u.username, u.display_name, u.tag, u.workspace_id, w.name AS workspace_name, b.created_at
-    FROM user_blocks b JOIN users u ON u.id = b.blocked_id JOIN workspaces w ON w.id = u.workspace_id
-    WHERE b.blocker_id = ? ORDER BY b.created_at DESC`).all(req.user.id));
+  res.json(db.prepare(`SELECT u.id, u.username, u.display_name, u.tag, u.workspace_id, w.name AS workspace_name, b.created_at, (u.is_bot = 2) AS federated
+    FROM user_blocks b JOIN users u ON u.id = b.blocked_id LEFT JOIN workspaces w ON w.id = u.workspace_id
+    WHERE b.blocker_id = ? ORDER BY b.created_at DESC`).all(req.user.id).map(r => ({ ...r, federated: !!r.federated })));
 });
 
 blocks.post('/', (req, res) => {
   const id = Number(req.body?.user_id);
   const target = id && db.prepare('SELECT id, is_admin, is_bot FROM users WHERE id = ?').get(id);
-  if (!target || target.is_bot || id === req.user.id) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (!target || (target.is_bot && target.is_bot !== spaces.FED) || id === req.user.id) return res.status(404).json({ error: 'Пользователь не найден' });
   if (target.is_admin) return res.status(400).json({ error: 'Администратора заблокировать нельзя' });
   db.prepare('INSERT OR IGNORE INTO user_blocks (blocker_id, blocked_id) VALUES (?, ?)').run(req.user.id, id);
   sendTo(req.user.id, { type: 'blocks_changed' });

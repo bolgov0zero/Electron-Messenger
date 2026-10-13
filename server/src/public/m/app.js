@@ -945,7 +945,9 @@ let _contactsAll = [];   // люди для выбора: из моего про
 let _usersAll = [];      // все известные, включая знакомых только по общему чату (для подписи «не в ваших контактах»)
 S.blocked = [];
 const mPick = u => u.rel !== 'chat';
-const mWsTag = u => (u.rel === 'other' || u.rel === 'chat') && u.workspace_name ? `<span class="ws-chip">${esc(u.workspace_name)}</span>` : '';
+// Человек с другого сервера: вместо названия пространства значок земного шара (название сервера не показываем)
+const FED_GLOBE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c2.6 2.8 4 6 4 9.5s-1.4 6.7-4 9.5c-2.6-2.8-4-6-4-9.5s1.4-6.7 4-9.5z"/></svg>';
+const mWsTag = u => u.federated ? `<span class="ws-chip ws-fed" title="С другого сервера">${FED_GLOBE}</span>` : (u.rel === 'other' || u.rel === 'chat') && u.workspace_name ? `<span class="ws-chip">${esc(u.workspace_name)}</span>` : '';
 const mNeedsContact = id => { const u = _usersAll.find(x => x.id === id); return !!u && u.rel === 'chat'; };
 const mPeerSub = id => { const u = _usersAll.find(x => x.id === id); return u && u.rel === 'chat' ? `${u.workspace_name ? u.workspace_name + ' · ' : ''}не в ваших контактах` : peerStatusText(id); };
 const mIsBlocked = id => S.blocked.some(b => b.id === id);
@@ -988,7 +990,7 @@ function renderContacts() {
       </div>
       <div class="row-body">
         <div class="row-top"><div class="row-name">${esc(u.display_name)}</div>${u.tag ? `<span class="ct-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div>
-        <div class="row-bottom" style="justify-content:flex-start"><div class="row-msg" style="flex-shrink:1">@${esc(u.username)}</div>${mWsTag(u)}</div>
+        <div class="row-bottom" style="justify-content:flex-start"><div class="row-msg" style="flex-shrink:1">@${esc(u.federated ? u.username.replace(/^[^@]*@/, '') : u.username)}</div>${mWsTag(u)}</div>
       </div>
       ${u.contact ? `<div class="row-more" aria-label="Действия" onclick="event.stopPropagation();openContactSheet(${u.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></div>` : ''}
     </div>`;
@@ -1003,8 +1005,8 @@ function renderContacts() {
 // Добавить контакт: только логин и кнопка
 function openAddContactSheet() {
   openSheet(`<div class="sheet-title">Добавить контакт</div>
-    <div class="m-hint" style="margin:-6px 0 12px">Введите логин человека точно. Он не узнает, что вы его добавили.</div>
-    <input class="sheet-input" id="ac-login" placeholder="Логин" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="acClear()" onkeydown="if(event.key==='Enter')submitAddContact()">
+    <div class="m-hint" style="margin:-6px 0 12px">Введите логин человека точно. Если он на другом сервере, укажите адрес: сервер@логин. Он не узнает, что вы его добавили.</div>
+    <input class="sheet-input" id="ac-login" placeholder="Логин или сервер@логин" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="acClear()" onkeydown="if(event.key==='Enter')submitAddContact()">
     <div class="ac-hint" id="ac-hint">Логин можно узнать у самого человека.</div>
     <button class="l-btn" id="ac-go" type="button" onclick="submitAddContact()">Добавить</button>`);
   setTimeout(() => document.getElementById('ac-login')?.focus(), 250);
@@ -1063,7 +1065,7 @@ function blocksSheetHtml() {
   const list = S.blocked;
   if (!list.length) return `<div id="blocks-sheet"><div class="sheet-title">Блокировки</div><div class="m-stub"><b>Заблокированных нет</b><span>Если кто-то пишет вам лишнее, заблокируйте его в меню «⋯» в чате с ним.</span></div></div>`;
   return `<div id="blocks-sheet"><div class="sheet-title">Блокировки</div>${list.map(b => `
-    <div class="m-mod" style="padding:8px 0"><div class="m-mod-l"><b>${esc(b.display_name)}</b><span>@${esc(b.username)}${b.workspace_name ? ' · ' + esc(b.workspace_name) : ''}</span></div>
+    <div class="m-mod" style="padding:8px 0"><div class="m-mod-l"><b>${esc(b.display_name)}</b><span>${b.federated ? '@' + esc(b.username.replace(/^[^@]*@/, '')) + ' · другой сервер' : '@' + esc(b.username) + (b.workspace_name ? ' · ' + esc(b.workspace_name) : '')}</span></div>
       <button type="button" class="m-redo" style="margin:0" onclick="mUnblock(${b.id})">Разблокировать</button></div>`).join('')}
     <div class="m-hint">Заблокированный не может писать вам в личные сообщения. Общие группы и комнаты остаются.</div></div>`;
 }
@@ -1536,6 +1538,8 @@ function fmtSize(bytes) {
 function attachmentHtml(att) {
   if (!att) return '';
   if (att.enc) return scAttachHtmlM(att);
+  // Вложение с другого сервера, которое у нас не приняли (размер или формат по настройкам этого сервера) или не удалось получить
+  if (att.unavailable) return `<div class="bubble-file"><div class="bubble-file-ico">✕</div><div><div class="bubble-file-name">${att.unavailable === 'policy' ? 'Вложение недоступно: не соответствует настройкам сервера' : 'Вложение не удалось получить'}</div></div></div>`;
   const url = `${httpProto()}://${S.server}${att.url}`;
   if (att.expired) return `<div class="bubble-file"><div class="bubble-file-ico">✕</div><div><div class="bubble-file-name">Файл удалён</div></div></div>`;
   // aspect-ratio по сохранённым при загрузке размерам резервирует место под картинку/видео
@@ -2905,7 +2909,7 @@ function connectWS() {
       const c = S.chats.find(x => x.id === data.chat_id);
       if (c) { c.dm_limit = data.dm_limit || c.dm_limit; if (data.chat_id === S.activeChatId) syncReadOnlyUi(); }
     }
-    if (data.type === 'send_rejected') toast(data.reason === 'limit' ? 'Больше писать нельзя, пока собеседник не ответит или не добавит вас в контакты' : data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' ? 'Сообщение не доставлено' : 'Писать сюда нельзя');
+    if (data.type === 'send_rejected') toast(data.reason === 'limit' ? 'Больше писать нельзя, пока собеседник не ответит или не добавит вас в контакты' : data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' || data.reason === 'rate' ? 'Сообщение не доставлено' : data.reason === 'federation_off' ? 'Нет связи с сервером этого человека' : 'Писать сюда нельзя');
   };
 
   ws.onclose = () => { if (S.ws === ws) setTimeout(() => { if (S.token) connectWS(); }, 2000); };

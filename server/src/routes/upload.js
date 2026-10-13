@@ -305,3 +305,4 @@ router.post('/',
 
 module.exports = router;
 module.exports.startCleanupJob = startCleanupJob;
+module.exports.getUploadSettings = getUploadSettings;

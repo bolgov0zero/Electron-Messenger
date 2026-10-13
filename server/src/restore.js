@@ -18,7 +18,7 @@ const fs = require('fs');
 const Database = require('better-sqlite3');
 const db = require('./db');
 
-const PROTECTED_SETTINGS = ['jwt_secret', 'vapid_public', 'vapid_private', 'vapid_public_key', 'vapid_private_key', 'system_user_id', 'fts_secret_v2'];
+const PROTECTED_SETTINGS = ['jwt_secret', 'vapid_public', 'vapid_private', 'vapid_public_key', 'vapid_private_key', 'system_user_id', 'fts_secret_v2', 'fed_id', 'fed_pub', 'fed_priv'];
 const REQUIRED_TABLES = ['users', 'chats', 'messages', 'settings'];
 let busy = false;
 

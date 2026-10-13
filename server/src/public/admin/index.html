@@ -773,6 +773,44 @@ tbody tr:hover td{background:var(--c-surface2)}
 .mdl-stats>div{padding:12px 18px;border-right:1px solid var(--c-border)}.mdl-stats>div:last-child{border-right:0}
 .mdl-stats b{display:block;font-size:19px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.mdl-stats span{font-size:11.5px;color:var(--c-muted)}
 .mdl-empty{padding:22px;text-align:center;color:var(--c-muted);font-size:12.5px}
+
+/* ── Федерации ── */
+.fd-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,380px);gap:14px;align-items:center;padding:13px 16px;border-bottom:1px solid var(--c-border)}
+.fd-row:last-child{border-bottom:0}
+.fd-row b{display:block;font-size:13px}.fd-row .d{display:block;color:var(--c-text2);font-size:12px;margin-top:2px;line-height:1.45}
+.fd-inl{display:flex;gap:8px;align-items:center}.fd-inl .ua-inp{flex:1;min-width:0}
+.fd-mono{font-family:var(--f-mono);font-size:12px}
+.fd-head{display:flex;align-items:center;gap:10px;padding:13px 16px;font-weight:700;font-size:14px;border-bottom:1px solid var(--c-border)}
+.fd-head{white-space:nowrap;flex-wrap:wrap;row-gap:2px}
+.fd-head small{font-weight:500;color:var(--c-text2);font-size:12px;white-space:normal;flex:1 1 180px}
+.fd-two{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr);gap:14px;align-items:start}
+.fd-peer{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--c-border)}
+.fd-peer:last-child{border-bottom:0}
+.fd-ic{width:42px;height:42px;border-radius:12px;background:var(--c-primary-dim);color:var(--c-primary);display:grid;place-items:center;font-weight:700;font-size:13px}
+.fd-ti{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fd-ti code{font:600 11.5px var(--f-mono);color:var(--c-text2);background:var(--c-surface2);padding:1px 7px;border-radius:6px}
+.fd-su{color:var(--c-text2);font-size:12px;margin-top:3px;display:flex;gap:4px 14px;flex-wrap:wrap}
+.fd-ac{position:relative}
+.fd-menu{position:absolute;right:0;top:36px;min-width:210px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:12px;box-shadow:var(--shadow-md);padding:5px;z-index:20}
+.fd-menu button{display:block;width:100%;text-align:left;border:0;background:none;color:var(--c-text);font:500 13px var(--f-ui);padding:8px 10px;border-radius:8px;cursor:pointer}
+.fd-menu button:hover{background:var(--c-surface2)}.fd-menu button.dg{color:var(--c-red-text)}
+.fd-note{display:flex;gap:10px;padding:11px 13px;border-radius:11px;background:var(--c-primary-dim);font-size:12.5px;line-height:1.5}
+.fd-empty{padding:34px 16px;text-align:center;color:var(--c-text2)}.fd-empty b{display:block;color:var(--c-text);margin-bottom:4px}
+.fd-stp{display:inline-flex;align-items:center;border:1px solid var(--c-border);border-radius:9px;overflow:hidden}
+.fd-stp button{width:30px;height:32px;border:0;background:var(--c-surface2);color:var(--c-text);font-size:16px;cursor:pointer}
+.fd-stp span{min-width:38px;text-align:center;font:600 13px var(--f-mono)}
+.fd-opt{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--c-border);border-radius:12px;background:var(--c-surface);cursor:pointer;text-align:left;width:100%;color:var(--c-text);font:inherit}
+.fd-opt:hover{border-color:var(--c-primary)}
+.fd-opt b{display:block;font-size:13.5px}.fd-opt span{color:var(--c-text2);font-size:12px;display:block;margin-top:2px}
+.fd-key{font:600 12px/1.55 var(--f-mono);word-break:break-all;background:var(--c-surface2);border:1px dashed var(--c-border);border-radius:10px;padding:12px;max-height:140px;overflow:auto;user-select:all}
+.fd-fp{font:600 15px var(--f-mono);letter-spacing:.06em;text-align:center;padding:12px;border-radius:10px;background:var(--c-surface2)}
+.fd-kv{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;font-size:12.5px}.fd-kv span{color:var(--c-text2)}.fd-kv b{word-break:break-all}
+.fd-chk{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.45}.fd-chk input{margin-top:2px;accent-color:var(--c-primary)}
+.fd-hint{font-size:12px;color:var(--c-text2);line-height:1.45}
+#fd-body{display:flex;flex-direction:column;gap:12px}
+.fd-ta{width:100%;min-height:96px;border:1px solid var(--border-input);border-radius:9px;background:var(--bg-input);color:var(--c-text);padding:9px 11px;font:12px var(--f-mono);resize:vertical}
+@media (max-width:860px){.fd-two{grid-template-columns:1fr}.fd-row{grid-template-columns:1fr}.fd-peer{grid-template-columns:42px minmax(0,1fr)}.fd-peer .fd-ac{grid-column:1 / -1;justify-self:end}}
+
 .modal.mdl-log{width:min(780px,calc(100vw - 24px))}
 .mdl-filters{display:flex;flex-wrap:wrap;gap:8px;padding:10px 20px;border-bottom:1px solid var(--c-border)}
 .mdl-filters select{height:30px;font-size:12px;min-width:0;background-color:var(--c-surface2);color:var(--c-text);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:0 26px 0 10px;font-family:var(--f-ui)}
@@ -1827,6 +1865,11 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <span class="lb">Пространства</span>
           <span class="nav-badge" id="nb-workspaces">—</span>
         </div>
+        <div class="nav-item" onclick="nav('federation')" data-page="federation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span class="lb">Федерации</span>
+          <span class="nav-badge" id="nb-federation">—</span>
+        </div>
         <div class="nav-item" onclick="nav('users')" data-page="users">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.85"/></svg>
           <span class="lb">Пользователи</span>
@@ -2071,6 +2114,17 @@ return 'OK';</pre>
       <button class="btn btn-ghost" onclick="closeModal('modal-ws')">Отмена</button>
       <button class="btn ux-solid" id="ws-go" onclick="wsSave()">Создать</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-fed">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <h3 id="fd-title">Федерации</h3>
+      <button class="modal-close" onclick="closeModal('modal-fed')">✕</button>
+    </div>
+    <div class="modal-body" id="fd-body"></div>
+    <div class="modal-foot" id="fd-foot"></div>
   </div>
 </div>
 
@@ -2838,8 +2892,8 @@ addEventListener('resize', fsPlace);
 new MutationObserver(() => { if (!FS.pend) { FS.pend = true; setTimeout(fsScan, 0); } }).observe(document.getElementById('page-body'), { childList: true, subtree: true });
 
 /* ── NAV ── */
-const pageTitles = {dashboard:'Главная',workspaces:'Пространства',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',clients:'Клиенты',push:'Уведомления',files:'Файлы',announcements:'Объявления',webhooks:'Вебхуки',modules:'Модули',settings:'Настройки',audit:'Аудит-лог',releases:'Релизы',more:'Ещё'};
-const pageRenders = {dashboard:renderDashboard,users:renderUsers,workspaces:renderWorkspaces,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements,releases:renderReleases,modules:renderModules,audit:renderAudit,settings:renderSettings,more:renderMore};
+const pageTitles = {dashboard:'Главная',workspaces:'Пространства',federation:'Федерации',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',clients:'Клиенты',push:'Уведомления',files:'Файлы',announcements:'Объявления',webhooks:'Вебхуки',modules:'Модули',settings:'Настройки',audit:'Аудит-лог',releases:'Релизы',more:'Ещё'};
+const pageRenders = {dashboard:renderDashboard,users:renderUsers,workspaces:renderWorkspaces,federation:renderFederation,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements,releases:renderReleases,modules:renderModules,audit:renderAudit,settings:renderSettings,more:renderMore};
 
 // Телефонный вид без масштабирования: страница уже собрана под экран, а случайный щипок сдвигал раскладку.
 // В iOS Safari атрибуты viewport игнорируются, поэтому щипок гасим отменой жестов; на компьютере эти события не приходят
@@ -2865,6 +2919,7 @@ function nav(page) {
     const addMap = {
       users: {label:'Создать пользователя', fn: () => openCreateUser()},
       workspaces: {label:'Создать пространство', fn: () => wsOpen()},
+      federation: {label:'Подключить сервер', fn: () => fdChoose()},
       rooms: {label:'Создать комнату', fn: () => openCreateRoom()},
       announcements: {label:'Создать объявление', fn: () => openAnnouncementModal()},
       webhooks: {label:'Создать вебхук', fn: () => whOpen()}
@@ -2914,7 +2969,7 @@ function confirm(title, text, onOk) {
 // Разделы, которых нет на нижней панели, тема и выход. Значки берём из боковой панели: там они уже нарисованы
 function renderMore() {
   setTopbarActions('');
-  const rows = [['workspaces', 'Пространства'], ['rooms', 'Комнаты'], ['chats', 'Чаты и группы'], ['push', 'Уведомления'], ['files', 'Файлы'], ['announcements', 'Объявления'], ['webhooks', 'Вебхуки'], ['modules', 'Модули'], ['audit', 'Аудит-лог'], ['releases', 'Релизы']];
+  const rows = [['workspaces', 'Пространства'], ['federation', 'Федерации'], ['rooms', 'Комнаты'], ['chats', 'Чаты и группы'], ['push', 'Уведомления'], ['files', 'Файлы'], ['announcements', 'Объявления'], ['webhooks', 'Вебхуки'], ['modules', 'Модули'], ['audit', 'Аудит-лог'], ['releases', 'Релизы']];
   const me = currentUser?.display_name || currentUser?.username || '';
   document.getElementById('page-body').innerHTML = `<div class="mm">
     <div class="mm-list">${rows.map(([k, n]) => {
@@ -2940,6 +2995,7 @@ async function updateNavBadges() {
     try { const whs=await api('GET','/api/admin/webhooks'); setB('nb-webhooks',whs.length||0); } catch {}
     try { const anns=await api('GET','/api/admin/announcements'); setB('nb-announcements',anns.length||0); } catch {}
     try { const wss=await wsLoad(); setB('nb-workspaces',wss.length||0); } catch {}
+    try { const fd=await api('GET','/api/admin/federation'); setB('nb-federation',(fd.peers||[]).length); } catch {}
   } catch {}
 }
 
@@ -7067,6 +7123,157 @@ function wsDelete(id) {
     toast('Пространство удалено', 'success');
     await wsLoad();
     if (currentPage === 'workspaces') wsRender();
+  });
+}
+
+/* ── ФЕДЕРАЦИИ ── */
+// Соединения с другими серверами: люди оттуда появляются в «Контактах» и пишут в личные чаты. Через соединение
+// нельзя управлять чужим сервером: ни пользователями, ни настройками, ни обновлениями.
+const FD = { me: null, peers: [], rules: { new_per_hour: 20 }, menu: null, timer: null };
+const fdPlural = (n) => uxPlural(n, 'человек', 'человека', 'человек');
+async function fdLoad() {
+  const r = await api('GET', '/api/admin/federation');
+  if (r && !r.error && r.me) { FD.me = r.me; FD.peers = r.peers || []; FD.rules = r.rules || FD.rules; }
+  const nb = document.getElementById('nb-federation');
+  if (nb) nb.textContent = FD.peers.length;
+  return r;
+}
+async function renderFederation() {
+  setTopbarActions('');
+  document.getElementById('page-body').innerHTML = `<div class="ux-page"><div class="ux-empty">Загрузка…</div></div>`;
+  await fdLoad();
+  if (currentPage !== 'federation') return;
+  fdRender();
+  clearInterval(FD.timer);
+  FD.timer = setInterval(async () => {
+    if (currentPage !== 'federation') { clearInterval(FD.timer); return; }
+    const busy = document.querySelector('#modal-fed.open') || FD.menu !== null || document.activeElement?.closest?.('#page-body input');
+    if (busy) return;
+    await fdLoad(); if (currentPage === 'federation') fdRender();
+  }, 10000);
+}
+function fdState(p) {
+  if (p.status === 'paused') return '<span class="badge badge-gray">Приостановлено</span>';
+  if (!p.online) return '<span class="badge badge-orange">Нет связи</span>';
+  return p.role === 'in' ? '<span class="badge badge-blue">Активно · они подключены к нам</span>' : '<span class="badge badge-green">Активно</span>';
+}
+function fdRender() {
+  if (currentPage !== 'federation') return;
+  const me = FD.me || {}, ok = me.configured;
+  const idRow = ok
+    ? `<div class="fd-inl"><div class="ua-inp"><input class="fd-mono" value="${esc(me.id)}" readonly aria-label="Идентификатор"></div><button class="btn btn-ghost btn-sm" onclick="fdCopy('${esc(me.id)}','Идентификатор скопирован')">Копировать</button></div>`
+    : `<div class="fd-inl"><div class="ua-inp"><input class="fd-mono" id="fd-id" maxlength="32" placeholder="например, logist" autocomplete="off" aria-label="Идентификатор" onkeydown="if(event.key==='Enter')fdSaveId()"></div><button class="btn ux-solid btn-sm" onclick="fdSaveId()">Задать</button></div>`;
+  document.getElementById('page-body').innerHTML = `<div class="ux-page">
+    <div><div style="font-size:17px;font-weight:700">Федерации</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Соединения с другими серверами. Люди оттуда добавляются в контакты по адресу «сервер@логин» и пишут в личные чаты.</div></div>
+    <div class="card">
+      <div class="fd-head">Этот сервер <small>как он называется для администраторов партнёров и в адресах ваших людей</small></div>
+      <div class="fd-row"><div><b>Имя системы</b><span class="d">Видят администраторы подключённых серверов в списке соединений. Обычным людям название не показывается.</span></div>
+        <div class="fd-inl"><div class="ua-inp"><input id="fd-name" maxlength="60" value="${esc(me.name || '')}" placeholder="Например, Склад-Логистика" autocomplete="off" aria-label="Имя системы" onkeydown="if(event.key==='Enter')fdSaveName()"></div><button class="btn btn-ghost btn-sm" onclick="fdSaveName()">Сохранить</button></div></div>
+      <div class="fd-row"><div><b>Уникальный идентификатор</b><span class="d">${ok ? `Не меняется. Входит в адрес ваших людей для партнёров: <code>${esc(me.id)}@логин</code>.` : 'Задаётся один раз и потом не меняется. Латиница, цифры, точка, дефис, подчёркивание; 2–32 символа. Выберите коротко и понятно.'}</span></div>${idRow}</div>
+      <div class="fd-row"><div><b>Адрес для соединений</b><span class="d">По нему партнёры подключаются к вам. Если у сервера нет белого IP или не проброшены порты, оставьте пустым: тогда подключаться будете вы, введя ключ партнёра.</span></div>
+        <div class="fd-inl"><div class="ua-inp"><input class="fd-mono" id="fd-url" value="${esc(me.url || '')}" placeholder="https://chat.example.ru (необязательно)" autocomplete="off" aria-label="Адрес для соединений" onkeydown="if(event.key==='Enter')fdSaveUrl()"></div><button class="btn btn-ghost btn-sm" onclick="fdSaveUrl()">Сохранить</button></div></div>
+      ${ok ? `<div class="fd-row"><div><b>Отпечаток вашего ключа</b><span class="d">Администратор партнёра сверяет его с вашим по телефону или лично при подключении.</span></div><div class="fd-fp" style="font-size:13px;padding:8px">${esc(me.fp)}</div></div>` : ''}
+    </div>
+    <div class="fd-note"><span><b>i</b></span><div>Соединение даёт только обмен сообщениями между людьми. Управлять другим сервером через него нельзя: ни пользователями, ни настройками, ни обновлениями.</div></div>
+    <div class="fd-two">
+      <div class="card"><div class="fd-head">Соединения <small>${FD.peers.length}</small></div>${fdPeers()}</div>
+      <div class="card"><div class="fd-head">Правила обмена</div>
+        <div class="fd-row" style="grid-template-columns:1fr"><div><b>Новых переписок в час</b><span class="d">С одного чужого сервера. Защита от массовой рассылки: сверх лимита сообщения от незнакомых отклоняются.</span></div>
+          <div class="fd-stp"><button type="button" onclick="fdRule(-5)" aria-label="Меньше">−</button><span>${FD.rules.new_per_hour}</span><button type="button" onclick="fdRule(5)" aria-label="Больше">+</button></div></div>
+      </div></div></div>`;
+}
+function fdPeers() {
+  if (!FD.peers.length) return `<div class="fd-empty"><b>Соединений пока нет</b>Нажмите «Подключить сервер», чтобы создать ключ активации или ввести полученный ключ.</div>`;
+  return FD.peers.map((p, i) => `<div class="fd-peer"><div class="fd-ic">${esc(initials(p.name))}</div><div><div class="fd-ti">${esc(p.name)} <code>${esc(p.instance_id)}</code> ${fdState(p)}</div>
+    <div class="fd-su"><span>${p.role === 'in' ? 'Они подключаются к нам сами' : 'Мы подключаемся к ним'}</span><span>${p.last_contact_at ? 'последний обмен ' + esc(uaSeen(p.last_contact_at)) : 'обмена ещё не было'}</span><span>очередь: ${p.queue}</span><span>${p.people} ${fdPlural(p.people)} в контактах</span></div></div>
+    <div class="fd-ac"><button class="btn btn-ghost btn-sm" aria-label="Действия" onclick="event.stopPropagation();fdMenu(${i})">⋯</button>${FD.menu === i ? `<div class="fd-menu"><button type="button" onclick="fdFp(${i})">Показать отпечаток</button><button type="button" onclick="fdPause(${i})">${p.status === 'paused' ? 'Возобновить' : 'Приостановить'}</button><button type="button" class="dg" onclick="fdDelete(${i})">Удалить соединение</button></div>` : ''}</div></div>`).join('');
+}
+function fdMenu(i) { FD.menu = FD.menu === i ? null : i; fdRender(); }
+document.addEventListener('click', e => { if (FD.menu !== null && !e.target.closest('.fd-ac')) { FD.menu = null; if (currentPage === 'federation') fdRender(); } });
+async function fdCopy(text, msg) { try { await navigator.clipboard.writeText(text); toast(msg || 'Скопировано', 'success'); } catch { toast('Не удалось скопировать: выделите и скопируйте вручную', 'error'); } }
+async function fdPut(body, okMsg) {
+  const r = await api('PUT', '/api/admin/federation/identity', body);
+  if (!r || r.error) { toast(esc(r?.error || 'Не удалось сохранить'), 'error'); return false; }
+  FD.me = r.me; FD.peers = r.peers || FD.peers; toast(okMsg, 'success'); fdRender(); return true;
+}
+function fdSaveName() { fdPut({ name: document.getElementById('fd-name').value }, 'Имя системы сохранено'); }
+function fdSaveUrl() { fdPut({ url: document.getElementById('fd-url').value }, 'Адрес сохранён'); }
+function fdSaveId() {
+  const v = document.getElementById('fd-id').value.trim().toLowerCase();
+  if (!v) { toast('Введите идентификатор', 'error'); return; }
+  confirm('Задать идентификатор?', `Идентификатор «${esc(v)}» после сохранения изменить нельзя: он входит в адреса ваших людей у партнёров.`, () => fdPut({ id: v }, 'Идентификатор задан'));
+}
+async function fdRule(d) {
+  const r = await api('PUT', '/api/admin/federation/rules', { new_per_hour: Math.max(1, Math.min(500, FD.rules.new_per_hour + d)) });
+  if (r && !r.error && r.rules) { FD.rules = r.rules; fdRender(); }
+}
+// Окно: заголовок, тело, кнопки в подвале
+function fdModal(title, body, foot) {
+  document.getElementById('fd-title').textContent = title;
+  document.getElementById('fd-body').innerHTML = body;
+  document.getElementById('fd-foot').innerHTML = foot;
+  openModal('modal-fed');
+}
+const fdCancel = '<button class="btn btn-ghost" onclick="closeModal(\'modal-fed\')">Отмена</button>';
+function fdChoose() {
+  if (!FD.me?.configured) { toast('Сначала задайте идентификатор сервера', 'error'); return; }
+  fdModal('Подключить сервер', `<button class="fd-opt" type="button" onclick="fdMake()"><div style="font-size:20px">🔑</div><div><b>Создать ключ активации</b><span>Вы передаёте ключ администратору другого сервера. Подходит, если ваш сервер доступен снаружи.</span></div></button>
+    <button class="fd-opt" type="button" onclick="fdEnter()"><div style="font-size:20px">📥</div><div><b>У меня есть ключ</b><span>Вставьте ключ, полученный от партнёра. Подключаться будете вы, поэтому открытый адрес у вас не нужен.</span></div></button>`, fdCancel);
+}
+async function fdMake() {
+  const r = await api('POST', '/api/admin/federation/invites');
+  if (!r || r.error) { toast(esc(r?.error || 'Не удалось создать ключ'), 'error'); return; }
+  FD.key = r.key;
+  const until = new Date(r.expires_at * 1000).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  fdModal('Ключ активации', `<div class="fd-hint">Передайте ключ администратору второго сервера любым защищённым способом. Ключ одноразовый и действует 24 часа.</div>
+    <div class="fd-key" id="fd-keybox">${esc(r.key)}</div>
+    <div class="fd-kv"><span>Действует до</span><b>${esc(until)}</b><span>Адрес</span><b>${esc(r.url)}</b><span>Ваш отпечаток</span><b>${esc(FD.me.fp)}</b></div>
+    <div class="fd-note"><span><b>!</b></span><div>Сообщите партнёру ваш отпечаток по телефону или лично: он сверит его при подключении.</div></div>`,
+    `<button class="btn btn-ghost" onclick="fdCopy(FD.key,'Ключ скопирован')">Копировать ключ</button><button class="btn ux-solid" onclick="closeModal('modal-fed');fdLoad().then(fdRender)">Готово</button>`);
+}
+function fdEnter(err) {
+  fdModal('Ввести ключ', `<textarea class="fd-ta" id="fd-key" placeholder="FED-…" aria-label="Ключ активации" spellcheck="false"></textarea><div class="ua-err" id="fd-err">${esc(err || '')}</div>`,
+    `${fdCancel}<button class="btn ux-solid" onclick="fdPreview()">Проверить ключ</button>`);
+  setTimeout(() => document.getElementById('fd-key')?.focus(), 60);
+}
+async function fdPreview() {
+  const key = document.getElementById('fd-key').value.trim();
+  if (!key) { document.getElementById('fd-err').textContent = 'Вставьте ключ'; return; }
+  const r = await api('POST', '/api/admin/federation/key/preview', { key });
+  if (!r || r.error) { document.getElementById('fd-err').textContent = r?.error || 'Не удалось проверить ключ'; return; }
+  FD.key = key;
+  fdModal('Проверьте партнёра', `<div class="fd-kv"><span>Имя системы</span><b>${esc(r.name)}</b><span>Идентификатор</span><b class="fd-mono">${esc(r.id)}</b><span>Адрес</span><b class="fd-mono">${esc(r.url)}</b></div>
+    <div class="fd-hint">Отпечаток ключа. Сверьте его с тем, что видит администратор партнёра, по телефону или лично.</div><div class="fd-fp">${esc(r.fp)}</div>
+    <label class="fd-chk"><input type="checkbox" id="fd-sure" onchange="document.getElementById('fd-go').disabled=!this.checked"> Отпечаток совпал, и я знаю этого партнёра</label>
+    <div class="ua-err" id="fd-err"></div>`,
+    `${fdCancel}<button class="btn ux-solid" id="fd-go" disabled onclick="fdConnect()">Подключить</button>`);
+}
+async function fdConnect() {
+  const go = document.getElementById('fd-go'); go.disabled = true; go.textContent = 'Подключаем…';
+  const r = await api('POST', '/api/admin/federation/connect', { key: FD.key });
+  if (!r || r.error) { go.disabled = false; go.textContent = 'Подключить'; document.getElementById('fd-err').textContent = r?.error || 'Не удалось подключиться'; return; }
+  FD.me = r.me; FD.peers = r.peers || []; FD.key = '';
+  closeModal('modal-fed'); toast('Соединение установлено', 'success'); fdRender();
+  const nb = document.getElementById('nb-federation'); if (nb) nb.textContent = FD.peers.length;
+}
+function fdFp(i) {
+  const p = FD.peers[i]; FD.menu = null; fdRender(); if (!p) return;
+  fdModal('Отпечаток ключа', `<div class="fd-kv"><span>Партнёр</span><b>${esc(p.name)}</b></div><div class="fd-fp">${esc(p.fp)}</div><div class="fd-hint">Сверяйте при подключении и после смены ключа. Если отпечаток изменился без вашего ведома, приостановите соединение.</div>`,
+    `<button class="btn ux-solid" onclick="closeModal('modal-fed')">Закрыть</button>`);
+}
+async function fdPause(i) {
+  const p = FD.peers[i]; FD.menu = null; if (!p) return;
+  const r = await api('POST', `/api/admin/federation/peers/${p.id}/${p.status === 'paused' ? 'resume' : 'pause'}`);
+  if (r && !r.error) { FD.peers = r.peers || FD.peers; toast(p.status === 'paused' ? 'Соединение возобновлено' : 'Соединение приостановлено: сообщения копятся в очереди', 'success'); }
+  fdRender();
+}
+function fdDelete(i) {
+  const p = FD.peers[i]; FD.menu = null; fdRender(); if (!p) return;
+  confirm('Удалить соединение?', `Переписки с людьми из «${esc(p.name)}» останутся в чатах, но писать им будет нельзя, пока соединение не будет создано заново. Очередь недоставленных сообщений (${p.queue}) будет очищена.`, async () => {
+    const r = await api('DELETE', `/api/admin/federation/peers/${p.id}`);
+    if (r && !r.error) { FD.peers = r.peers || []; toast('Соединение удалено', 'success'); }
+    fdRender();
+    const nb = document.getElementById('nb-federation'); if (nb) nb.textContent = FD.peers.length;
   });
 }
 

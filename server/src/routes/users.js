@@ -35,7 +35,7 @@ router.get('/presence', authMiddleware, (req, res) => {
   const visible = new Set(spaces.presenceIds(req.user.id));
   const peers = db.prepare(`
     SELECT id, last_seen_at FROM users
-    WHERE id != ? AND COALESCE(banned, 0) = 0 AND COALESCE(is_bot, 0) = 0
+    WHERE id != ? AND COALESCE(banned, 0) = 0 AND COALESCE(is_bot, 0) IN (0, 2)
   `).all(req.user.id).filter(p => visible.has(p.id));
   const result = {};
   peers.forEach(({ id, last_seen_at }) => { result[id] = { status: getStatus(id), last_seen: last_seen_at }; });
@@ -49,6 +49,7 @@ router.patch('/me', authMiddleware, (req, res) => {
   db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(display_name.trim(), req.user.id);
   spaces.knownByOf(req.user.id).forEach(id => sendTo(id, { type: 'user_updated', user_id: req.user.id, display_name: display_name.trim() }));
   sendTo(req.user.id, { type: 'user_updated', user_id: req.user.id, display_name: display_name.trim() });
+  require('../federation').onProfile(req.user.id);
   res.json({ ok: true });
 });
 
@@ -63,6 +64,7 @@ router.post('/me/avatar', authMiddleware, (req, res) => {
     const peers = db.prepare(`SELECT DISTINCT cm2.user_id FROM chat_members cm1 JOIN chat_members cm2 ON cm2.chat_id = cm1.chat_id AND cm2.user_id != cm1.user_id JOIN chats c ON c.id = cm1.chat_id WHERE cm1.user_id = ?`).all(req.user.id).map(r=>r.user_id);
     peers.forEach(uid => sendTo(uid, { type: 'avatar_updated', user_id: req.user.id }));
     sendTo(req.user.id, { type: 'avatar_updated', user_id: req.user.id });
+    require('../federation').onProfile(req.user.id);
     res.json({ ok: true, url: `/api/users/${req.user.id}/avatar` });
   } catch (e) {
     console.error('avatar upload error:', e.stack || e);

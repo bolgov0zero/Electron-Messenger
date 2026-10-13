@@ -139,7 +139,7 @@ router.post('/direct', authMiddleware, (req, res) => {
   if (targetId === req.user.id) return res.status(400).json({ error: 'Cannot create chat with yourself' });
   const targetUser = db.prepare('SELECT id, is_bot FROM users WHERE id = ?').get(targetId);
   if (!targetUser) return res.status(404).json({ error: 'User not found' });
-  if (targetUser.is_bot) return res.status(400).json({ error: 'Cannot create direct chat with a bot' });
+  if (targetUser.is_bot && targetUser.is_bot !== spaces.FED) return res.status(400).json({ error: 'Cannot create direct chat with a bot' });
   // Check existing (including hidden)
   const existing = db.prepare(`
     SELECT c.id FROM chats c
@@ -184,7 +184,7 @@ router.post('/secret', authMiddleware, (req, res) => {
   if (!device_id) return res.status(400).json({ error: 'Missing device_id' });
   const targetUser = db.prepare('SELECT id, is_bot FROM users WHERE id = ?').get(targetId);
   if (!targetUser) return res.status(404).json({ error: 'User not found' });
-  if (targetUser.is_bot) return res.status(400).json({ error: 'Cannot create a secret chat with a bot' });
+  if (targetUser.is_bot) return res.status(400).json({ error: targetUser.is_bot === spaces.FED ? 'Секретные чаты с людьми с других серверов недоступны' : 'Cannot create a secret chat with a bot' });
   const existing = db.prepare(`
     SELECT c.id FROM chats c
     JOIN chat_members cm1 ON cm1.chat_id = c.id AND cm1.user_id = ?
@@ -221,6 +221,7 @@ router.post('/group', authMiddleware, (req, res) => {
   if (!name?.trim() || !Array.isArray(member_ids)) return res.status(400).json({ error: 'Missing fields' });
   const allMembers = [...new Set([req.user.id, ...member_ids.map(Number)])];
   if (allMembers.some(uid => !spaces.canSee(req.user.id, uid))) return res.status(403).json({ error: 'Среди участников есть недоступные вам люди' });
+  if (allMembers.some(uid => spaces.isFed(uid))) return res.status(400).json({ error: 'Людей с других серверов в группу добавить нельзя: с ними только личная переписка' });
   // Чат и участники — в одной транзакции (несуществующий user_id откатит всё, а не оставит пустой чат)
   const chatId = db.transaction(() => {
     const result = db.prepare("INSERT INTO chats (type, name, created_by) VALUES ('group', ?, ?)").run(name.trim(), req.user.id);
@@ -264,6 +265,7 @@ router.post('/:id/members', authMiddleware, (req, res) => {
   if (chat.type === 'room' ? !req.user.is_admin : !isMember) return res.status(403).json({ error: 'Forbidden' });
   // В группу добавляют только тех, кого видишь; в комнату любого добавляет администратор
   if (!spaces.canSee(req.user.id, userId)) return res.status(403).json({ error: 'Этот человек вам недоступен' });
+  if (spaces.isFed(userId)) return res.status(400).json({ error: 'Людей с других серверов в группы и комнаты добавить нельзя' });
   const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
   ins.run(chatId, userId);
   // Комната — добавление каскадом идёт и в её подкомнаты (как при добавлении из админки)

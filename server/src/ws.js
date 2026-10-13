@@ -9,6 +9,8 @@ function hasPushSubscription(userId) {
   catch { return false; }
 }
 const { wsAuth } = require('./auth');
+// Федерация подключается лениво: federation.js сам требует ws.js
+const fed = () => require('./federation');
 
 // Ленивая загрузка чтобы избежать циклических зависимостей
 function pushToUser(userId, payload) {
@@ -131,6 +133,8 @@ function broadcastStatus(userId) {
   peers.forEach(peerId => {
     getConn(peerId).forEach(ws => { if (ws.readyState === 1) ws.send(payload); });
   });
+  // Люди с других серверов, которые видят нас взаимно, узнают статус по федерации
+  fed().onPresence(userId, status, last_seen);
 }
 
 // Лимит редактирования сообщений (сек), настраивается в админке. По умолчанию 2 минуты.
@@ -166,10 +170,10 @@ function sanitizeEncAttachment(att) {
 function getMessageWithStatus(msgId, viewerId) {
   const msg = db.prepare(`
     SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.system_kind,
-      u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.tag as sender_tag, u.is_bot as sender_is_bot,
+      u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.tag as sender_tag, (u.is_bot = 1) as sender_is_bot,
       m.reply_to_id,
       rm.text as reply_text, rm.attachment as reply_attachment, rm.deleted as reply_deleted,
-      COALESCE(ru.display_name, 'Удалённый аккаунт') as reply_sender_name, ru.is_bot as reply_sender_is_bot,
+      COALESCE(ru.display_name, 'Удалённый аккаунт') as reply_sender_name, (ru.is_bot = 1) as reply_sender_is_bot,
       ru.id as reply_sender_id, ru.tag as reply_sender_tag
     FROM messages m LEFT JOIN users u ON u.id = m.sender_id
     LEFT JOIN messages rm ON rm.id = m.reply_to_id
@@ -196,10 +200,63 @@ function getMessageWithStatus(msgId, viewerId) {
   return { ...msg, reactions, status: { delivered, read, total: memberCount } };
 }
 
+// Всё, что происходит после того, как сообщение записано в базу: рассылка участникам чата и push.
+// Общая для сообщений своих пользователей и пришедших с другого сервера.
+function finishMessage(msgId, chat_id, senderId) {
+  const msg = getMessageWithStatus(msgId, senderId);
+  const chatMeta = db.prepare('SELECT type, name, parent_id, is_secret FROM chats WHERE id = ?').get(chat_id);
+  if (chatMeta?.parent_id) msg.parent_id = chatMeta.parent_id;
+  broadcast(chat_id, { type: 'message', message: msg });
+
+  // Push-уведомления всем участникам (кроме отправителя).
+  const chat = chatMeta;
+  const allMembers = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chat_id, senderId);
+  const stmtMuted = db.prepare(
+    'SELECT 1 FROM muted_chats WHERE user_id = ? AND (chat_id = ? OR chat_id = ?)'
+  );
+  allMembers.forEach(({ user_id }) => {
+    const parentId = chatMeta?.parent_id || chat_id;
+    if (stmtMuted.get(user_id, chat_id, parentId)) return;
+    // Сначала проверяем подписку, потом считаем. Раньше порядок был обратный,
+    // и счётчик непрочитанного (перебор всей переписки человека) считался
+    // каждому получателю на каждое сообщение — включая тех, у кого никакой
+    // подписки нет, то есть всех, кто сидит в настольном клиенте. На группе
+    // из одиннадцати человек это занимало 122 мс, и всё это время сервер
+    // не обслуживал никого: обращения к базе синхронные.
+    if (!hasPushSubscription(user_id)) return;
+    const chatTitle = chat?.is_secret ? 'Секретный чат' : chat?.type === 'direct' ? msg.sender_name : (chat?.name || 'Electron');
+    const unread = unreadCounts.total(user_id);
+    // Секретный чат: в пуше только факт наличия сообщения, без содержимого —
+    // сервер и так не может расшифровать текст, а превью сознательно не
+    // показываем даже тем, у кого ключ есть (защита от подглядывания).
+    pushToUser(user_id, {
+      title: chatTitle,
+      body: chat?.is_secret ? 'Новое сообщение' : (msg.text || (msg.attachment ? '🖼 Изображение' : '')),
+      chatId: chat_id,
+      unread,
+    });
+  });
+  return msg;
+}
+
+// Статус человека с другого сервера приходит по федерации; рассылаем его тем, кто видит присутствие
+function setRemoteStatus(userId, status, lastSeen) {
+  if (lastSeen) { try { db.prepare('UPDATE users SET last_seen_at = ? WHERE id = ?').run(lastSeen, userId); } catch {} }
+  if (userStatus.get(userId) === status && !lastSeen) return;
+  userStatus.set(userId, status);
+  const payload = JSON.stringify({ type: 'presence', user_id: userId, status, last_seen: status === 'offline' ? (lastSeen || Math.floor(Date.now() / 1000)) : undefined });
+  spaces.presenceViewers(userId).forEach(id => getConn(id).forEach(w => { if (w.readyState === 1) w.send(payload); }));
+}
+
 function setup(server) {
   // maxPayload: вложения ходят через /api/upload, по WS — только текст и метаданные.
   // Без лимита один клиент может прислать фрейм на сотни МБ (дефолт ws — 100 MiB).
-  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 256 * 1024 });
+  // noServer: на одном порту живут два сокета, клиентский /ws и межсерверный /fed (см. federation.js), разводим их вручную
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 256 * 1024 });
+  server.on('upgrade', (req, socket, head) => {
+    let p = ''; try { p = new URL(req.url, 'http://localhost').pathname; } catch {}
+    if (p === '/ws') wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
+  });
 
   // Серверный heartbeat: отлавливаем «зомби»-сокеты (клиент пропал без TCP-close).
   // Без него пользователь остаётся «онлайн», а push ему не уходит.
@@ -256,6 +313,8 @@ function setup(server) {
           // Люди из разных пространств: без ответа и без добавления в контакты — не больше DM_LIMIT сообщений подряд
           const lim = spaces.limitFor(user.id, dm.user_id);
           if (lim && lim.used >= lim.max) { ws.send(JSON.stringify({ type: 'send_rejected', chat_id, reason: 'limit', dm_limit: lim })); return; }
+          // Собеседник с другого сервера: соединение должно существовать (не удалено), а секретных чатов с ним нет
+          if (spaces.isFed(dm.user_id) && (isSecret || !fed().peerOfUser(dm.user_id))) { ws.send(JSON.stringify({ type: 'send_rejected', chat_id, reason: 'federation_off' })); return; }
         }
         // В секретном чате attachment/forward_data пока не поддерживаются (не шифруются),
         // а text — это base64-шифротекст, который нельзя обрезать как обычный текст
@@ -333,39 +392,9 @@ function setup(server) {
             sendTo(dm.user_id, { type: 'chat_limit', chat_id, dm_limit: spaces.limitFor(dm.user_id, user.id) });
           }
         }
-        const msg = getMessageWithStatus(msgId, user.id);
-        const chatMeta = db.prepare('SELECT type, name, parent_id, is_secret FROM chats WHERE id = ?').get(chat_id);
-        if (chatMeta?.parent_id) msg.parent_id = chatMeta.parent_id;
-        broadcast(chat_id, { type: 'message', message: msg });
-
-        // Push-уведомления всем участникам (кроме отправителя).
-        const chat = chatMeta;
-        const allMembers = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chat_id, user.id);
-        const stmtMuted = db.prepare(
-          'SELECT 1 FROM muted_chats WHERE user_id = ? AND (chat_id = ? OR chat_id = ?)'
-        );
-        allMembers.forEach(({ user_id }) => {
-          const parentId = chatMeta?.parent_id || chat_id;
-          if (stmtMuted.get(user_id, chat_id, parentId)) return;
-          // Сначала проверяем подписку, потом считаем. Раньше порядок был обратный,
-          // и счётчик непрочитанного (перебор всей переписки человека) считался
-          // каждому получателю на каждое сообщение — включая тех, у кого никакой
-          // подписки нет, то есть всех, кто сидит в настольном клиенте. На группе
-          // из одиннадцати человек это занимало 122 мс, и всё это время сервер
-          // не обслуживал никого: обращения к базе синхронные.
-          if (!hasPushSubscription(user_id)) return;
-          const chatTitle = chat?.is_secret ? 'Секретный чат' : chat?.type === 'direct' ? msg.sender_name : (chat?.name || 'Electron');
-          const unread = unreadCounts.total(user_id);
-          // Секретный чат: в пуше только факт наличия сообщения, без содержимого —
-          // сервер и так не может расшифровать текст, а превью сознательно не
-          // показываем даже тем, у кого ключ есть (защита от подглядывания).
-          pushToUser(user_id, {
-            title: chatTitle,
-            body: chat?.is_secret ? 'Новое сообщение' : (msg.text || (msg.attachment ? '🖼 Изображение' : '')),
-            chatId: chat_id,
-            unread,
-          });
-        });
+        finishMessage(msgId, chat_id, user.id);
+        // Собеседник с другого сервера: сообщение уходит в очередь отправки
+        if (dm && spaces.isFed(dm.user_id)) fed().onLocalMessage(msgId);
       }
 
       if (data.type === 'delivered') {
@@ -379,6 +408,7 @@ function setup(server) {
         db.prepare('UPDATE message_status SET delivered_at = unixepoch() WHERE message_id = ? AND user_id = ? AND delivered_at IS NULL').run(message_id, user.id);
         const updated = getMessageWithStatus(message_id, msg.sender_id);
         sendTo(msg.sender_id, { type: 'status_update', message: updated });
+        if (spaces.isFed(msg.sender_id)) fed().onStatus('dlv', msg.sender_id, user.id, message_id);
       }
 
       if (data.type === 'read') {
@@ -414,6 +444,8 @@ function setup(server) {
         });
         bySender.forEach((r, senderId) => {
           sendTo(senderId, { type: 'status_range', chat_id, kind: 'read', min_id: r.min, max_id: r.max, reader_id: user.id });
+          // Отправитель с другого сервера узнаёт о прочтении по федерации
+          if (spaces.isFed(senderId)) fed().onStatus('read', senderId, user.id, r.max);
         });
         // Синхронизация прочтения между устройствами самого пользователя
         getConn(user.id).forEach(w => { if (w !== ws && w.readyState === 1) w.send(JSON.stringify({ type: 'chat_read', chat_id })); });
@@ -437,6 +469,7 @@ function setup(server) {
         // Если сообщение закреплено — обновим текст в плашке, иначе там останется старый
         const isPinned = db.prepare('SELECT 1 FROM pinned_messages WHERE message_id = ?').get(message_id);
         if (isPinned) broadcast(msg.chat_id, { type: 'pins_updated', chat_id: msg.chat_id, pins: getPins(msg.chat_id) });
+        if (msg.fed_uid) fed().onEdit(message_id);
       }
 
       if (data.type === 'delete_message') {
@@ -456,6 +489,7 @@ function setup(server) {
         }
         db.prepare("UPDATE messages SET deleted = 1, text = '', attachment = NULL WHERE id = ?").run(message_id);
         broadcast(msg.chat_id, { type: 'message_deleted', message_id, chat_id: msg.chat_id });
+        if (msg.fed_uid) fed().onDelete(msg);
         // Удаление мягкое (deleted = 1), поэтому ON DELETE CASCADE не сработает —
         // снимаем закрепление руками и сообщаем клиентам
         const wasPinned = db.prepare('DELETE FROM pinned_messages WHERE message_id = ?').run(message_id).changes;
@@ -490,6 +524,7 @@ function setup(server) {
         }
         const counts = db.prepare('SELECT reaction, COUNT(*) as count, group_concat(user_id) as user_ids FROM reactions WHERE message_id = ? GROUP BY reaction').all(message_id);
         broadcast(msg.chat_id, { type: 'reaction_update', message_id, counts });
+        if (msg.fed_uid) fed().onReact(msg, user.id, reaction, isAdd);
 
         // Уведомление автору сообщения о новой реакции — только при добавлении
         // (не при снятии) и не самому себе. Только пуш/нативное уведомление,
@@ -544,6 +579,7 @@ function setup(server) {
         db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chat_id, user.id)
           .filter(m => spaces.canSeePresence(m.user_id, user.id))
           .forEach(m => sendTo(m.user_id, { type: 'typing', chat_id, user_id: user.id, sender_name: user.display_name }));
+        fed().onTyping(chat_id, user.id);
       }
 
       if (data.type === 'client_info') {
@@ -606,6 +642,7 @@ function setup(server) {
         });
         byKey.forEach(r => {
           sendTo(r.sender_id, { type: 'status_range', chat_id: r.chat_id, kind: 'delivered', min_id: r.min, max_id: r.max, reader_id: user.id });
+          if (spaces.isFed(r.sender_id)) fed().onStatus('dlv', r.sender_id, user.id, r.max);
         });
       } catch (e) { console.error('auto-deliver error:', e); }
     });
@@ -646,4 +683,4 @@ function broadcastAll(payload) {
   }
 }
 
-module.exports = { setup, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };
+module.exports = { setup, finishMessage, setRemoteStatus, hasOpenConnection, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };

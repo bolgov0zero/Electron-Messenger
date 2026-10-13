@@ -4,16 +4,22 @@
 // Правило: человек B виден человеку A, если они в одном пространстве или B добавлен в контакты A
 // (контакты односторонние: A видит B, а B не видит A). Администратор видит всех. Совместные чаты
 // и группы видимость не меняют: участники друг друга там видят, но в списках и поиске чужих нет.
+//
+// Человек с другого сервера (федерация) хранится как «теневой» пользователь, is_bot = 2. Он виден только тому,
+// кто добавил его в контакты (администратор тоже), а в пространстве его нет.
 const db = require('./db');
 
 const DEFAULT_WS = 1;
 
 const q = {
-  user: db.prepare('SELECT id, workspace_id, is_admin FROM users WHERE id = ?'),
+  user: db.prepare('SELECT id, workspace_id, is_admin, is_bot FROM users WHERE id = ?'),
   contact: db.prepare('SELECT 1 FROM contacts WHERE owner_id = ? AND contact_id = ?'),
 };
 
 function wsOf(userId) { return q.user.get(userId)?.workspace_id || DEFAULT_WS; }
+// Человек с другого сервера
+const FED = 2;
+function isFed(userId) { return q.user.get(userId)?.is_bot === FED; }
 function isAdminUser(userId) { return !!q.user.get(userId)?.is_admin; }
 
 // Видит ли viewer человека target в списках и поиске
@@ -21,6 +27,7 @@ function canSee(viewerId, targetId) {
   if (viewerId === targetId) return true;
   const v = q.user.get(viewerId), t = q.user.get(targetId);
   if (!v || !t) return false;
+  if (t.is_bot === FED || v.is_bot === FED) return !!q.contact.get(viewerId, targetId);
   if (v.is_admin) return true;
   if (v.workspace_id === t.workspace_id) return true;
   return !!q.contact.get(viewerId, targetId);
@@ -59,21 +66,24 @@ function isBlocked(blockerId, blockedId) {
 function listFor(viewerId) {
   const me = q.user.get(viewerId);
   if (!me) return [];
-  const rows = db.prepare(`SELECT u.id, u.username, u.display_name, u.tag, u.workspace_id, w.name AS workspace_name
-    FROM users u JOIN workspaces w ON w.id = u.workspace_id
-    WHERE u.id != ? AND COALESCE(u.is_bot, 0) = 0 ORDER BY u.display_name`).all(viewerId);
+  const rows = db.prepare(`SELECT u.id, u.username, u.display_name, u.tag, u.workspace_id, w.name AS workspace_name, u.is_bot
+    FROM users u LEFT JOIN workspaces w ON w.id = u.workspace_id
+    WHERE u.id != ? AND COALESCE(u.is_bot, 0) IN (0, ${FED}) ORDER BY u.display_name`).all(viewerId);
   const contacts = new Set(db.prepare('SELECT contact_id FROM contacts WHERE owner_id = ?').all(viewerId).map(r => r.contact_id));
   const co = new Set(db.prepare(`SELECT DISTINCT cm2.user_id AS id FROM chat_members cm1
     JOIN chat_members cm2 ON cm2.chat_id = cm1.chat_id WHERE cm1.user_id = ?`).all(viewerId).map(r => r.id));
   const out = [];
   for (const u of rows) {
-    const same = u.workspace_id === me.workspace_id, isContact = contacts.has(u.id);
+    const fed = u.is_bot === FED, isContact = contacts.has(u.id);
+    const same = !fed && u.workspace_id === me.workspace_id;
     let rel = null;
     if (same) rel = 'ws';
-    else if (me.is_admin || isContact) rel = 'other';
+    else if ((!fed && me.is_admin) || isContact) rel = 'other';
     else if (co.has(u.id)) rel = 'chat';
     if (!rel) continue;
-    out.push({ ...u, rel, contact: isContact });
+    const { is_bot, ...rest } = u;
+    // У человека с другого сервера нет пространства: клиент показывает вместо него значок «другой сервер»
+    out.push(fed ? { ...rest, workspace_id: 0, workspace_name: null, rel, contact: isContact, federated: true } : { ...rest, rel, contact: isContact });
   }
   return out;
 }
@@ -92,6 +102,7 @@ function canSeePresence(viewerId, targetId) {
   if (viewerId === targetId) return true;
   const v = q.user.get(viewerId), t = q.user.get(targetId);
   if (!v || !t) return false;
+  if (v.is_bot === FED || t.is_bot === FED) return mutualContact(viewerId, targetId);
   return !!v.is_admin || v.workspace_id === t.workspace_id || mutualContact(viewerId, targetId);
 }
 // Кому разослать присутствие человека target
@@ -99,7 +110,8 @@ function presenceViewers(targetId) {
   const t = q.user.get(targetId);
   if (!t) return [];
   const ids = new Set();
-  db.prepare('SELECT id FROM users WHERE workspace_id = ? OR is_admin = 1').all(t.workspace_id).forEach(r => ids.add(r.id));
+  // Человек с другого сервера: статус видят только те, кто с ним в контактах друг у друга
+  if (t.is_bot !== FED) db.prepare('SELECT id FROM users WHERE workspace_id = ? OR is_admin = 1').all(t.workspace_id).forEach(r => ids.add(r.id));
   db.prepare('SELECT c1.owner_id AS id FROM contacts c1 JOIN contacts c2 ON c2.owner_id = c1.contact_id AND c2.contact_id = c1.owner_id WHERE c1.contact_id = ?')
     .all(targetId).forEach(r => ids.add(r.id));
   ids.delete(targetId);
@@ -109,8 +121,9 @@ function presenceViewers(targetId) {
 function presenceIds(viewerId) {
   const v = q.user.get(viewerId);
   if (!v) return [];
-  if (v.is_admin) return db.prepare('SELECT id FROM users WHERE id != ?').all(viewerId).map(r => r.id);
-  const ids = new Set(db.prepare('SELECT id FROM users WHERE workspace_id = ? AND id != ?').all(v.workspace_id, viewerId).map(r => r.id));
+  const ids = new Set(v.is_admin
+    ? db.prepare(`SELECT id FROM users WHERE id != ? AND COALESCE(is_bot, 0) != ${FED}`).all(viewerId).map(r => r.id)
+    : db.prepare('SELECT id FROM users WHERE workspace_id = ? AND id != ? AND COALESCE(is_bot, 0) != ?').all(v.workspace_id, viewerId, FED).map(r => r.id));
   db.prepare('SELECT c1.contact_id AS id FROM contacts c1 JOIN contacts c2 ON c2.owner_id = c1.contact_id AND c2.contact_id = c1.owner_id WHERE c1.owner_id = ?')
     .all(viewerId).forEach(r => ids.add(r.id));
   return [...ids];
@@ -131,7 +144,8 @@ function afterMove(userId, newWs) {
 const DM_LIMIT = 2;
 function limitApplies(senderId, recipientId) {
   const s = q.user.get(senderId), r = q.user.get(recipientId);
-  if (!s || !r || s.is_admin) return false;
+  // Администратор не ограничен у себя на сервере, но для человека с другого сервера он обычный собеседник
+  if (!s || !r || (s.is_admin && r.is_bot !== FED)) return false;
   if (s.workspace_id === r.workspace_id) return false;
   return !q.contact.get(recipientId, senderId);
 }
@@ -152,4 +166,4 @@ const directChatIds = (a, b) => db.prepare(`SELECT c.id FROM chats c
   JOIN chat_members m2 ON m2.chat_id = c.id AND m2.user_id = ?
   WHERE c.type = 'direct'`).all(a, b).map(r => r.id);
 
-module.exports = { mutualContact, canSeePresence, presenceViewers, presenceIds, DM_LIMIT, limitApplies, limitUsed, limitFor, limitBump, limitReset, directChatIds, DEFAULT_WS, wsOf, isAdminUser, canSee, viewersOf, knownByOf, isBlocked, listFor, visibleIds, afterMove };
+module.exports = { FED, isFed, mutualContact, canSeePresence, presenceViewers, presenceIds, DM_LIMIT, limitApplies, limitUsed, limitFor, limitBump, limitReset, directChatIds, DEFAULT_WS, wsOf, isAdminUser, canSee, viewersOf, knownByOf, isBlocked, listFor, visibleIds, afterMove };

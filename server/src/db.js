@@ -455,6 +455,45 @@ db.prepare("INSERT OR IGNORE INTO workspaces (id, name) VALUES (1, 'Основн
 tryAlter('ALTER TABLE users ADD COLUMN workspace_id INTEGER NOT NULL DEFAULT 1');
 tryAlter('CREATE INDEX IF NOT EXISTS idx_users_workspace ON users(workspace_id)');
 
+// Федерация инстансов (см. federation.js). fed_peers — подключённые серверы; fed_invites — одноразовые ключи
+// активации (token_hash — открытый номер ключа, secret — секрет, по сети не передаётся); fed_outbox — очередь событий, которые ещё не подтверждены получателем.
+// Человек с другого сервера хранится как «теневой» пользователь (users.is_bot = 2, workspace_id = 0,
+// fed_instance/fed_login — его адрес): без пароля и входа, участвует только в личных чатах и контактах.
+// messages.fed_uid — сквозной идентификатор сообщения «сервер:id», по нему правятся и удаляются копии.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS fed_peers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    instance_id TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    url TEXT,
+    pub TEXT NOT NULL,
+    role TEXT NOT NULL CHECK(role IN ('in','out')),
+    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','paused')),
+    last_in_seq INTEGER NOT NULL DEFAULT 0,
+    last_contact_at INTEGER,
+    created_at INTEGER DEFAULT (unixepoch())
+  );
+  CREATE TABLE IF NOT EXISTS fed_invites (
+    token_hash TEXT PRIMARY KEY,
+    expires_at INTEGER NOT NULL,
+    used_at INTEGER,
+    created_at INTEGER DEFAULT (unixepoch())
+  );
+  CREATE TABLE IF NOT EXISTS fed_outbox (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    peer_id INTEGER NOT NULL REFERENCES fed_peers(id) ON DELETE CASCADE,
+    ev TEXT NOT NULL,
+    created_at INTEGER DEFAULT (unixepoch())
+  );
+  CREATE INDEX IF NOT EXISTS idx_fed_outbox_peer ON fed_outbox(peer_id, id);
+`);
+tryAlter('ALTER TABLE fed_invites ADD COLUMN secret TEXT');
+tryAlter('ALTER TABLE users ADD COLUMN fed_instance TEXT');
+tryAlter('ALTER TABLE users ADD COLUMN fed_login TEXT');
+tryAlter('ALTER TABLE users ADD COLUMN fed_avatar_v TEXT');
+tryAlter('ALTER TABLE messages ADD COLUMN fed_uid TEXT');
+tryAlter('CREATE INDEX IF NOT EXISTS idx_messages_fed_uid ON messages(fed_uid)');
+
 // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)
 const sysExists = db.prepare("SELECT id FROM users WHERE username = '__system__'").get();
 if (!sysExists) {

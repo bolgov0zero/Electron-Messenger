@@ -3699,6 +3699,8 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     }
   }
   if (attExpired) attachHtml = `<div class="irc-text irc-deleted"><em>Файл удалён</em></div>`;
+  // Вложение с другого сервера, которое у нас не приняли (размер или формат по настройкам этого сервера) или не удалось получить
+  if (!isDeleted && att?.unavailable) attachHtml = `<div class="irc-text irc-deleted"><em>${att.unavailable === 'policy' ? 'Вложение недоступно: не соответствует настройкам сервера' : 'Вложение не удалось получить'}</em></div>`;
 
   const attDataAttrs = (att?.url && !att.enc) ? ` data-msg-att-url="${esc(att.url)}" data-msg-att-thumb="${esc(att.thumb||'')}" data-msg-att-mime="${esc(att.mime||'')}" data-msg-att-name="${esc(att.name||'')}"` : '';
   // пузырь, в котором нет ничего кроме картинки: кадр занимает его целиком, а время
@@ -5333,7 +5335,7 @@ function connectWS() {
       const c = S.chats.find(x => x.id === data.chat_id);
       if (c) { c.dm_limit = data.dm_limit || c.dm_limit; if (data.chat_id === S.activeChatId) syncReadOnlyUi(); }
     }
-    if (data.type==='send_rejected') showActionToast(data.reason === 'limit' ? 'Больше писать нельзя, пока собеседник не ответит или не добавит вас в контакты' : data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' ? 'Сообщение не доставлено' : 'Писать сюда нельзя');
+    if (data.type==='send_rejected') showActionToast(data.reason === 'limit' ? 'Больше писать нельзя, пока собеседник не ответит или не добавит вас в контакты' : data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' || data.reason === 'rate' ? 'Сообщение не доставлено' : data.reason === 'federation_off' ? 'Нет связи с сервером этого человека' : 'Писать сюда нельзя');
     if (data.type==='user_updated') applyUserUpdate(data);
     if (data.type==='perms') annSetAllowed(data.can_announce);
 
@@ -5470,7 +5472,9 @@ async function loadUsers() {
 // chat — знаем только по общему чату: в списки выбора такие не попадают, но имя и аватарка в переписке нужны.
 // contact — добавлен вручную. У сервера без пространств пометок нет, тогда все считаются «своими».
 const isPickable = u => u.rel !== 'chat';
-const wsTag = u => (u.rel === 'other' || u.rel === 'chat') && u.workspace_name ? `<span class="ws-chip">${esc(u.workspace_name)}</span>` : '';
+// Человек с другого сервера: вместо названия пространства значок земного шара (название сервера не показываем)
+const FED_GLOBE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c2.6 2.8 4 6 4 9.5s-1.4 6.7-4 9.5c-2.6-2.8-4-6-4-9.5s1.4-6.7 4-9.5z"/></svg>';
+const wsTag = u => u.federated ? `<span class="ws-chip ws-fed" title="С другого сервера">${FED_GLOBE}</span>` : (u.rel === 'other' || u.rel === 'chat') && u.workspace_name ? `<span class="ws-chip">${esc(u.workspace_name)}</span>` : '';
 // Кнопка «Добавить контакт» нужна, когда человек известен только по общему чату
 const needsContact = id => { const u = (S.allUsers || []).find(x => x.id === id); return !!u && u.rel === 'chat'; };
 const peerSubText = id => { const u = (S.allUsers || []).find(x => x.id === id); return u && u.rel === 'chat' ? `${u.workspace_name ? u.workspace_name + ' · ' : ''}не в ваших контактах` : peerStatusText(id); };
@@ -5497,8 +5501,8 @@ async function refreshDirectory() {
 // Окно «Добавить контакт»: только логин и кнопка, без поиска и подсказок
 function openAddContact() {
   document.getElementById('ac-body').innerHTML = `
-    <p class="ac-lead">Введите логин человека точно. Он не узнает, что вы его добавили.</p>
-    <div class="ac-fld" id="ac-fld"><span>@</span><input id="ac-input" placeholder="логин" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="acClear()" onkeydown="if(event.key==='Enter')submitAddContact()"></div>
+    <p class="ac-lead">Введите логин человека точно. Если он на другом сервере, укажите адрес: сервер@логин. Он не узнает, что вы его добавили.</p>
+    <div class="ac-fld" id="ac-fld"><span>@</span><input id="ac-input" placeholder="логин или сервер@логин" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="acClear()" onkeydown="if(event.key==='Enter')submitAddContact()"></div>
     <div class="ac-hint" id="ac-hint">Логин можно узнать у самого человека.</div>
     <div class="ac-foot"><button class="modal-btn-ghost" onclick="closeModal('modal-addcontact')">Отмена</button><button class="modal-btn-primary" id="ac-go" onclick="submitAddContact()">Добавить</button></div>`;
   openModal('modal-addcontact');
@@ -5579,7 +5583,7 @@ function csPaneBlocks() {
       <span>Если кто-то пишет вам лишнее, заблокируйте его в меню «⋯» в чате с ним.</span></div>`;
   }
   return `<div class="cs-gt">Заблокированные</div><div class="cs-g">${list.map(b => `<div class="cs-r"><div class="cs-l"><b>${esc(b.display_name)}</b>
-      <span>@${esc(b.username)}${b.workspace_name ? ' · ' + esc(b.workspace_name) : ''}</span></div>
+      <span>${b.federated ? '@' + esc(b.username.replace(/^[^@]*@/, '')) + ' · другой сервер' : '@' + esc(b.username) + (b.workspace_name ? ' · ' + esc(b.workspace_name) : '')}</span></div>
       <div class="cs-ctl"><button type="button" class="cs-btn ghost" onclick="unblockUser(${b.id})">Разблокировать</button></div></div>`).join('')}</div>
     <p class="cs-hint">Заблокированный не может писать вам в личные сообщения. Общие группы и комнаты остаются.</p>`;
 }
@@ -5771,7 +5775,8 @@ function ncUpdateHint() {
 function renderModalUsers(containerId, multi, filter='') {
   const container = document.getElementById(containerId);
   if (!container) return;
-  const list = S.allUsers.filter(u=>isPickable(u)&&(!filter||u.display_name.toLowerCase().includes(filter)||u.username.toLowerCase().includes(filter)));
+  // Людей с других серверов нельзя добавить в группу и позвать в секретный чат: с ними только обычная личная переписка
+  const list = S.allUsers.filter(u=>isPickable(u)&&!(u.federated&&(multi||S.ncKind==='secret'))&&(!filter||u.display_name.toLowerCase().includes(filter)||u.username.toLowerCase().includes(filter)));
   container.innerHTML = list.map(u=>`
     <div class="pp-row${multi&&S.ncSelected?.has(u.id)?' on':''}" data-uid="${u.id}" onclick="${multi?`toggleModalUser(${u.id})`:S.ncKind==='secret'?`startSecret(${u.id})`:`startDirect(${u.id})`}">
       ${ppAvHtml(u)}
@@ -6437,7 +6442,7 @@ function giRenderAddList(existingMembers) {
   const existingIds = new Set(existingMembers.map(m => m.id));
   const container = document.getElementById('gi-add-list');
   if (!container) return;
-  const available = S.allUsers.filter(u => isPickable(u) && (!existingIds.has(u.id) || S.giRemovedIds.has(u.id)));
+  const available = S.allUsers.filter(u => isPickable(u) && !u.federated && (!existingIds.has(u.id) || S.giRemovedIds.has(u.id)));
   container.innerHTML = available.map(u => `
     <div class="user-row${S.giAddIds.has(u.id) ? ' selected' : ''}" data-uid="${u.id}" onclick="giToggleAdd(this,${u.id})">
       <div class="av av-sm av-round ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}">${initials(u.display_name)}</div>
