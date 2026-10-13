@@ -440,6 +440,17 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked_id);
 `);
+// Счётчик «сообщений без ответа» между людьми из разных пространств: сколько подряд сообщений
+// sender отправил recipient, пока тот не ответил (см. spaces.js, DM_LIMIT). Хранится отдельно от чата,
+// чтобы удаление переписки его не обнуляло.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS dm_limits (
+    sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    n INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (sender_id, recipient_id)
+  );
+`);
 db.prepare("INSERT OR IGNORE INTO workspaces (id, name) VALUES (1, 'Основное')").run();
 tryAlter('ALTER TABLE users ADD COLUMN workspace_id INTEGER NOT NULL DEFAULT 1');
 tryAlter('CREATE INDEX IF NOT EXISTS idx_users_workspace ON users(workspace_id)');

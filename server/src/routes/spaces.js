@@ -35,12 +35,18 @@ contacts.post('/', (req, res) => {
     return res.status(409).json({ error: 'Этот человек уже у вас в контактах', code: 'already' });
   db.prepare('INSERT INTO contacts (owner_id, contact_id) VALUES (?, ?)').run(req.user.id, target.id);
   sendTo(req.user.id, { type: 'contacts_changed' });   // остальные устройства обновят список
+  notifyLimit(target.id, req.user.id);
   res.json({ ok: true, user: publicUser(req.user.id, target.id) });
 });
 
+// Контакт добавлен или удалён: у отправителя меняется ограничение «сообщений без ответа», сообщаем его клиентам
+function notifyLimit(senderId, recipientId) {
+  spaces.directChatIds(senderId, recipientId).forEach(chatId => sendTo(senderId, { type: 'chat_limit', chat_id: chatId, dm_limit: spaces.limitFor(senderId, recipientId) }));
+}
 contacts.delete('/:id', (req, res) => {
   db.prepare('DELETE FROM contacts WHERE owner_id = ? AND contact_id = ?').run(req.user.id, Number(req.params.id));
   sendTo(req.user.id, { type: 'contacts_changed' });
+  notifyLimit(Number(req.params.id), req.user.id);
   res.json({ ok: true });
 });
 

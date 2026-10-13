@@ -2190,8 +2190,8 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   inputBar.style.display = '';
   inputBar.innerHTML = `
     <div class="chat-input-wrap" id="input-wrap">
-      ${readOnlyBannerHtml(isReadOnlyChat(chat))}
-      <div class="composer-inner"${isReadOnlyChat(chat) ? ' hidden' : ''}>
+      ${readOnlyBannerHtml(chat)}
+      <div class="composer-inner"${composerLocked(chat) ? ' hidden' : ''}>
         <div id="typing-indicator" class="typing-indicator" style="display:none">
           <span class="typing-pill">
             <span class="typing-dots"><span></span><span></span><span></span></span>
@@ -2974,16 +2974,29 @@ function isReadOnlyChat(chat) {
   if (chat.parent_id) return !!S.chats.find(c => c.id === chat.parent_id)?.read_only;
   return false;
 }
-function readOnlyBannerHtml(ro) {
-  return `<div class="ro-banner" id="ro-banner"${ro ? '' : ' hidden'}>
+// Ограничение «сообщений без ответа» (люди из разных пространств): сервер отдаёт dm_limit = { used, max }
+const dmLocked = chat => !!chat?.dm_limit && chat.dm_limit.used >= chat.dm_limit.max;
+const composerLocked = chat => isReadOnlyChat(chat) || dmLocked(chat);
+// Что написать над полем ввода: «только чтение», «писать нельзя» или мягкая подсказка о счётчике
+function composerNote(chat) {
+  if (isReadOnlyChat(chat)) return { text: 'Доступно только для чтения', soft: false };
+  if (dmLocked(chat)) return { text: 'Больше писать нельзя: собеседник не ответил и не добавил вас в контакты', soft: false };
+  const l = chat?.dm_limit;
+  if (l && l.used > 0) return { text: `Без ответа: ${l.used} из ${l.max}. Дальше нужно дождаться ответа или добавления в контакты`, soft: true };
+  return null;
+}
+function readOnlyBannerHtml(chat) {
+  const n = composerNote(chat);
+  return `<div class="ro-banner${n?.soft ? ' soft' : ''}" id="ro-banner"${n ? '' : ' hidden'}>
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-    <span>Доступно только для чтения</span>
+    <span id="ro-text">${n ? esc(n.text) : ''}</span>
   </div>`;
 }
 function syncReadOnlyUi() {
-  const ro = isReadOnlyChat(S.chats.find(c => c.id === S.activeChatId));
-  document.getElementById('ro-banner')?.toggleAttribute('hidden', !ro);
-  document.querySelector('#input-wrap .composer-inner')?.toggleAttribute('hidden', ro);
+  const chat = S.chats.find(c => c.id === S.activeChatId), n = composerNote(chat);
+  const bn = document.getElementById('ro-banner');
+  if (bn) { bn.toggleAttribute('hidden', !n); bn.classList.toggle('soft', !!n?.soft); const t = document.getElementById('ro-text'); if (t && n) t.textContent = n.text; }
+  document.querySelector('#input-wrap .composer-inner')?.toggleAttribute('hidden', composerLocked(chat));
 }
 
 // ── ПОИСК В ЧАТЕ ──
@@ -4189,7 +4202,7 @@ function autoResize(el) {
 
 async function sendOrEdit() {
   if (S.editingMessageId) { submitEdit(); return; }
-  if (isReadOnlyChat(S.chats.find(c => c.id === S.activeChatId))) return;
+  if (composerLocked(S.chats.find(c => c.id === S.activeChatId))) return;
   const input = document.getElementById('msg-input');
   const text = input?.value.trim();
   const isSecret = S.secretChatIds.has(S.activeChatId);
@@ -5042,6 +5055,35 @@ function applyUserUpdate(u) {
   if (nameEl && active) nameEl.textContent = chatName(active);
 }
 
+// Сообщение удалено: на месте остаётся пометка «Сообщение удалено»
+function markMessageDeleted(chatId, messageId) {
+  const el = document.querySelector(`[data-msg-id="${messageId}"]`);
+  if (!el) return;
+  const chat = S.chats.find(c => c.id === chatId);
+  const isChatGroup = chat?.type === 'group' || chat?.type === 'room';
+  const grouped = !el.classList.contains('irc-first');
+  const fakeMsg = { id: messageId, deleted: 1, text: '', attachment: null,
+    sender_id: Number(el.dataset.senderId), sender_name: '', sent_at: Number(el.dataset.sentAt),
+    reply_to_id: null, edited_at: null, status: { delivered: 0, read: 0, total: 0 }, reactions: [] };
+  const isLastDeleted = el.classList.contains('irc-tail');
+  el.outerHTML = renderMsg(fakeMsg, isChatGroup, false, grouped, isLastDeleted);
+  reflowSeries();
+}
+// После переподключения сверяем открытый чат с сервером: пока связи не было, сообщения могли удалить или
+// исправить, а события об этом устройство пропустило (догрузка идёт только по новым сообщениям)
+async function resyncOpenChat() {
+  const id = S.activeChatId;
+  if (!id) return;
+  const data = await api('GET', `/messages/chat/${id}?limit=200`);
+  if (!data?.messages || S.activeChatId !== id) return;
+  for (const m of data.messages) {
+    const el = document.querySelector(`#messages [data-msg-id="${m.id}"]`);
+    if (!el) continue;
+    if (m.deleted) { if (!el.querySelector('.irc-deleted')) markMessageDeleted(id, m.id); }
+    else if (m.edited_at && !el.querySelector('.edited-tag')) updateMsgInDOM(m);
+  }
+}
+
 function connectWS() {
   // Реконнект по фокусу мог разойтись с отложенным реконнектом из onclose —
   // гасим прежний живой сокет, иначе он останется сиротой: сервер будет считать
@@ -5129,19 +5171,7 @@ function connectWS() {
       const { message_id, chat_id } = data;
       const chat = S.chats.find(c=>c.id===chat_id);
       if (chat?.last_message?.id===message_id) chat.last_message = {...chat.last_message, deleted:1, text:'', attachment:null};
-      if (S.activeChatId===chat_id) {
-        const el = document.querySelector(`[data-msg-id="${message_id}"]`);
-        if (el) {
-          const isChatGroup = chat?.type==='group' || chat?.type==='room';
-          const grouped = !el.classList.contains('irc-first');
-          const fakeMsg = { id:message_id, deleted:1, text:'', attachment:null,
-            sender_id:Number(el.dataset.senderId), sender_name:'', sent_at:Number(el.dataset.sentAt),
-            reply_to_id:null, edited_at:null, status:{delivered:0,read:0,total:0}, reactions:[] };
-          const isLastDeleted = el.classList.contains('irc-tail');
-          el.outerHTML = renderMsg(fakeMsg, isChatGroup, false, grouped, isLastDeleted);
-          reflowSeries();
-        }
-      }
+      if (S.activeChatId===chat_id) markMessageDeleted(chat_id, message_id);
       renderChatList();
     }
 
@@ -5335,7 +5365,15 @@ function connectWS() {
     }
     if (data.type==='contacts_changed' || data.type==='directory_changed') refreshDirectory();
     if (data.type==='blocks_changed') loadBlocks();
-    if (data.type==='send_rejected') showActionToast(data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' ? 'Сообщение не доставлено' : 'Писать сюда нельзя');
+    if (data.type==='chat_limit') {
+      const c = S.chats.find(x => x.id === data.chat_id);
+      if (c) { c.dm_limit = data.dm_limit; if (data.chat_id === S.activeChatId) syncReadOnlyUi(); }
+    }
+    if (data.type==='send_rejected' && data.reason === 'limit') {
+      const c = S.chats.find(x => x.id === data.chat_id);
+      if (c) { c.dm_limit = data.dm_limit || c.dm_limit; if (data.chat_id === S.activeChatId) syncReadOnlyUi(); }
+    }
+    if (data.type==='send_rejected') showActionToast(data.reason === 'limit' ? 'Больше писать нельзя, пока собеседник не ответит или не добавит вас в контакты' : data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' ? 'Сообщение не доставлено' : 'Писать сюда нельзя');
     if (data.type==='user_updated') applyUserUpdate(data);
     if (data.type==='perms') annSetAllowed(data.can_announce);
 
@@ -5387,6 +5425,7 @@ function connectWS() {
     loadChats();
     loadBanners();
     api('GET', '/auth/refresh').then(d => { if (d?.token) { S.token = d.token; saveSession(); } });
+    resyncOpenChat();
     // Догружаем сообщения, пришедшие в открытый чат во время разрыва соединения
     const _ccId = S.activeChatId, _ccNewest = S.chatNewestId;
     if (_ccId && _ccNewest && !S.chatHasMoreAfter) {

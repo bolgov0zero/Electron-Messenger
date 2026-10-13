@@ -253,6 +253,9 @@ function setup(server) {
         if (dm) {
           if (spaces.isBlocked(dm.user_id, user.id)) { ws.send(JSON.stringify({ type: 'send_rejected', chat_id, reason: 'blocked' })); return; }
           if (spaces.isBlocked(user.id, dm.user_id)) { ws.send(JSON.stringify({ type: 'send_rejected', chat_id, reason: 'you_blocked' })); return; }
+          // Люди из разных пространств: без ответа и без добавления в контакты — не больше DM_LIMIT сообщений подряд
+          const lim = spaces.limitFor(user.id, dm.user_id);
+          if (lim && lim.used >= lim.max) { ws.send(JSON.stringify({ type: 'send_rejected', chat_id, reason: 'limit', dm_limit: lim })); return; }
         }
         // В секретном чате attachment/forward_data пока не поддерживаются (не шифруются),
         // а text — это base64-шифротекст, который нельзя обрезать как обычный текст
@@ -322,6 +325,14 @@ function setup(server) {
           return newMsgId;
         })();
 
+        // Счётчик «без ответа»: своё сообщение увеличивает его у меня, а у собеседника (если он мне писал) сбрасывает
+        if (dm) {
+          if (spaces.limitApplies(user.id, dm.user_id)) { spaces.limitBump(user.id, dm.user_id); ws.send(JSON.stringify({ type: 'chat_limit', chat_id, dm_limit: spaces.limitFor(user.id, dm.user_id) })); }
+          if (spaces.limitUsed(dm.user_id, user.id) > 0) {
+            spaces.limitReset(dm.user_id, user.id);
+            sendTo(dm.user_id, { type: 'chat_limit', chat_id, dm_limit: spaces.limitFor(dm.user_id, user.id) });
+          }
+        }
         const msg = getMessageWithStatus(msgId, user.id);
         const chatMeta = db.prepare('SELECT type, name, parent_id, is_secret FROM chats WHERE id = ?').get(chat_id);
         if (chatMeta?.parent_id) msg.parent_id = chatMeta.parent_id;

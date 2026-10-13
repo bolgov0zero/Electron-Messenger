@@ -3710,3 +3710,7 @@ html.dark .anx-solid { color: #0c0e10; }
 .anx-spl { display: flex; flex-direction: column; gap: 2px; }
 .anx-li[disabled] { cursor: default; opacity: .85; }
 .chats-list .cs-stub-i { background: var(--search-bg); }
+
+/* мягкая подсказка о счётчике «сообщений без ответа»: поле ввода остаётся доступным */
+.ro-banner.soft { opacity: .85; }
+.ro-banner { height: auto; min-height: 40px; padding: 8px 16px; line-height: 1.35; text-align: center; }

@@ -90,4 +90,33 @@ function afterMove(userId, newWs) {
   db.prepare('DELETE FROM contacts WHERE contact_id = ? AND owner_id IN (SELECT id FROM users WHERE workspace_id = ?)').run(userId, newWs);
 }
 
-module.exports = { DEFAULT_WS, wsOf, isAdminUser, canSee, viewersOf, knownByOf, isBlocked, listFor, visibleIds, afterMove };
+// ── Новые переписки между пространствами ──
+// Фундаментальное ограничение, не настройка: если люди из разных пространств, а получатель не добавил отправителя
+// в контакты, отправитель может написать только DM_LIMIT сообщений подряд без ответа. Ответ получателя (любое его
+// сообщение в личном чате) или добавление в контакты снимает ограничение. Администратор как отправитель
+// ограничению не подчиняется. Считает сервер получателя; клиент лишь показывает остаток.
+const DM_LIMIT = 2;
+function limitApplies(senderId, recipientId) {
+  const s = q.user.get(senderId), r = q.user.get(recipientId);
+  if (!s || !r || s.is_admin) return false;
+  if (s.workspace_id === r.workspace_id) return false;
+  return !q.contact.get(recipientId, senderId);
+}
+const limitUsed = (senderId, recipientId) => db.prepare('SELECT n FROM dm_limits WHERE sender_id = ? AND recipient_id = ?').get(senderId, recipientId)?.n || 0;
+// Состояние для клиента отправителя: null — ограничения нет, иначе { used, max }
+function limitFor(senderId, recipientId) {
+  return limitApplies(senderId, recipientId) ? { used: limitUsed(senderId, recipientId), max: DM_LIMIT } : null;
+}
+function limitBump(senderId, recipientId) {
+  db.prepare('INSERT INTO dm_limits (sender_id, recipient_id, n) VALUES (?, ?, 1) ON CONFLICT(sender_id, recipient_id) DO UPDATE SET n = n + 1').run(senderId, recipientId);
+}
+function limitReset(senderId, recipientId) {
+  db.prepare('DELETE FROM dm_limits WHERE sender_id = ? AND recipient_id = ?').run(senderId, recipientId);
+}
+// Личные чаты (обычные и секретные) двух людей
+const directChatIds = (a, b) => db.prepare(`SELECT c.id FROM chats c
+  JOIN chat_members m1 ON m1.chat_id = c.id AND m1.user_id = ?
+  JOIN chat_members m2 ON m2.chat_id = c.id AND m2.user_id = ?
+  WHERE c.type = 'direct'`).all(a, b).map(r => r.id);
+
+module.exports = { DM_LIMIT, limitApplies, limitUsed, limitFor, limitBump, limitReset, directChatIds, DEFAULT_WS, wsOf, isAdminUser, canSee, viewersOf, knownByOf, isBlocked, listFor, visibleIds, afterMove };

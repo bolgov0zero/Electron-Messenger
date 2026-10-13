@@ -2641,15 +2641,26 @@ function isReadOnlyChat(chat) {
   if (chat.parent_id) return !!S.chats.find(c => c.id === chat.parent_id)?.read_only;
   return false;
 }
+// Ограничение «сообщений без ответа» (люди из разных пространств): сервер отдаёт dm_limit = { used, max }
+const dmLocked = chat => !!chat?.dm_limit && chat.dm_limit.used >= chat.dm_limit.max;
+const composerLocked = chat => isReadOnlyChat(chat) || dmLocked(chat);
+function composerNote(chat) {
+  if (isReadOnlyChat(chat)) return { text: 'Доступно только для чтения', soft: false };
+  if (dmLocked(chat)) return { text: 'Больше писать нельзя: собеседник не ответил и не добавил вас в контакты', soft: false };
+  const l = chat?.dm_limit;
+  if (l && l.used > 0) return { text: `Без ответа: ${l.used} из ${l.max}. Дальше нужно дождаться ответа или добавления в контакты`, soft: true };
+  return null;
+}
 function syncReadOnlyUi() {
-  const ro = isReadOnlyChat(S.chats.find(c => c.id === S.activeChatId));
-  document.getElementById('ro-note')?.toggleAttribute('hidden', !ro);
-  document.getElementById('composer-card')?.toggleAttribute('hidden', ro);
+  const chat = S.chats.find(c => c.id === S.activeChatId), n = composerNote(chat);
+  const note = document.getElementById('ro-note');
+  if (note) { note.toggleAttribute('hidden', !n); note.classList.toggle('soft', !!n?.soft); if (n) note.textContent = n.text; }
+  document.getElementById('composer-card')?.toggleAttribute('hidden', composerLocked(chat));
 }
 
 async function sendMessage() {
   if (S.editingMessageId) { submitEdit(); return; }
-  if (isReadOnlyChat(S.chats.find(c => c.id === S.activeChatId))) return;
+  if (composerLocked(S.chats.find(c => c.id === S.activeChatId))) return;
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
   if (!text && !_pendingAttachment && !S.forwardMsg) return;
@@ -2686,6 +2697,22 @@ async function sendMessage() {
 }
 
 // ── WEBSOCKET ──
+// После переподключения сверяем открытый чат с сервером: пока связи не было, сообщения могли удалить или
+// исправить, а события об этом телефон пропустил
+async function resyncOpenChat() {
+  const id = S.activeChatId;
+  if (!id || !_msgCache.length) return;
+  const data = await api('GET', `/messages/chat/${id}?limit=200`);
+  if (!data?.messages || S.activeChatId !== id) return;
+  let changed = false;
+  for (const fm of data.messages) {
+    const m = _msgCache.find(x => x.id === fm.id);
+    if (!m) continue;
+    if (fm.deleted && !m.deleted) { m.deleted = 1; m.text = ''; m.attachment = null; changed = true; }
+    else if (fm.edited_at && fm.edited_at !== m.edited_at) { m.text = fm.text; m.edited_at = fm.edited_at; changed = true; }
+  }
+  if (changed) renderMessages('smart');
+}
 function connectWS() {
   if (!S.token) return;
   const prev = S.ws;
@@ -2703,6 +2730,7 @@ function connectWS() {
 
     if (data.type === 'connected') {
       S.editLimit = data.edit_time_limit || 120;
+      resyncOpenChat();
       // Без этого админка не видит клиента (пустая/неверная колонка «устройство») —
       // как в /chat: отдельным WS-сообщением сообщаем, что это PWA или обычная вкладка
       const isPwa = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -2863,7 +2891,15 @@ function connectWS() {
     if (data.type === 'user_created') loadContacts();
     if (data.type === 'contacts_changed' || data.type === 'directory_changed') { loadContacts(); api('GET', '/users/presence').then(pres => { if (pres) { Object.entries(pres).forEach(([id, v]) => { S.presence[id] = v?.status; if (v?.last_seen) S.lastSeen[id] = v.last_seen; }); if (S.currentTab === 'contacts') renderContacts(); } }); }
     if (data.type === 'blocks_changed') loadBlocks();
-    if (data.type === 'send_rejected') toast(data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' ? 'Сообщение не доставлено' : 'Писать сюда нельзя');
+    if (data.type === 'chat_limit') {
+      const c = S.chats.find(x => x.id === data.chat_id);
+      if (c) { c.dm_limit = data.dm_limit; if (data.chat_id === S.activeChatId) syncReadOnlyUi(); }
+    }
+    if (data.type === 'send_rejected' && data.reason === 'limit') {
+      const c = S.chats.find(x => x.id === data.chat_id);
+      if (c) { c.dm_limit = data.dm_limit || c.dm_limit; if (data.chat_id === S.activeChatId) syncReadOnlyUi(); }
+    }
+    if (data.type === 'send_rejected') toast(data.reason === 'limit' ? 'Больше писать нельзя, пока собеседник не ответит или не добавит вас в контакты' : data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' ? 'Сообщение не доставлено' : 'Писать сюда нельзя');
   };
 
   ws.onclose = () => { if (S.ws === ws) setTimeout(() => { if (S.token) connectWS(); }, 2000); };

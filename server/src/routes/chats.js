@@ -83,7 +83,13 @@ function enrichChat(chat, userId) {
   }
 
   const muted = !!db.prepare('SELECT 1 FROM muted_chats WHERE user_id = ? AND chat_id = ?').get(userId, chat.id);
-  return { ...chat, members, last_message: last || null, unread, unread_mentions: unreadMentions, has_topics: hasTopics, muted };
+  // Личный чат с человеком из другого пространства: сколько сообщений без ответа ещё можно отправить
+  let dm_limit = null;
+  if (chat.type === 'direct') {
+    const peer = members.find(m => m.id !== userId);
+    if (peer) dm_limit = spaces.limitFor(userId, peer.id);
+  }
+  return { ...chat, members, last_message: last || null, unread, unread_mentions: unreadMentions, has_topics: hasTopics, muted, dm_limit };
 }
 
 // Get my chats
