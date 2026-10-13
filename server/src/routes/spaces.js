@@ -36,6 +36,8 @@ contacts.post('/', (req, res) => {
   db.prepare('INSERT INTO contacts (owner_id, contact_id) VALUES (?, ?)').run(req.user.id, target.id);
   sendTo(req.user.id, { type: 'contacts_changed' });   // остальные устройства обновят список
   notifyLimit(target.id, req.user.id);
+  // Если второй человек уже добавил вас, присутствие теперь видно с обеих сторон: его клиенты обновляют статусы (события «кто добавил» нет)
+  if (spaces.mutualContact(req.user.id, target.id)) sendTo(target.id, { type: 'presence_refresh' });
   res.json({ ok: true, user: publicUser(req.user.id, target.id) });
 });
 
@@ -44,7 +46,9 @@ function notifyLimit(senderId, recipientId) {
   spaces.directChatIds(senderId, recipientId).forEach(chatId => sendTo(senderId, { type: 'chat_limit', chat_id: chatId, dm_limit: spaces.limitFor(senderId, recipientId) }));
 }
 contacts.delete('/:id', (req, res) => {
+  const wasMutual = spaces.mutualContact(req.user.id, Number(req.params.id));
   db.prepare('DELETE FROM contacts WHERE owner_id = ? AND contact_id = ?').run(req.user.id, Number(req.params.id));
+  if (wasMutual) sendTo(Number(req.params.id), { type: 'presence_refresh' });
   sendTo(req.user.id, { type: 'contacts_changed' });
   notifyLimit(Number(req.params.id), req.user.id);
   res.json({ ok: true });

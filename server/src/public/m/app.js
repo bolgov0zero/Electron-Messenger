@@ -478,10 +478,7 @@ async function enterApp() {
   meAv.dataset.avUser = S.user.id;
   meAv.dataset.avFallback = initials(S.user.display_name);
   meAv.textContent = initials(S.user.display_name);
-  api('GET', '/users/presence').then(pres => {
-    if (!pres) return;
-    Object.entries(pres).forEach(([id, v]) => { S.presence[id] = v?.status; if (v?.last_seen) S.lastSeen[id] = v.last_seen; });
-  });
+  api('GET', '/users/presence').then(pres => { if (pres) setPresenceMap(pres); });
   await loadChats();
   if (S._pendingOpenChatId) {
     const c = S.chats.find(c => c.id === S._pendingOpenChatId);
@@ -2588,7 +2585,13 @@ function addChatGestures() {
   }, { passive: true });
 }
 
+// Присутствие видно только своим из пространства и тем, с кем контакты добавлены с обеих сторон; у остальных заглушка
+function setPresenceMap(pres) {
+  S.presenceReady = true; S.presence = {}; S.lastSeen = {};
+  Object.entries(pres).forEach(([id, v]) => { S.presence[id] = v?.status; if (v?.last_seen) S.lastSeen[id] = v.last_seen; });
+}
 function peerStatusText(userId) {
+  if (S.presenceReady && S.presence[userId] === undefined) return 'Был давно';
   const st = S.presence[userId] || 'offline';
   if (st === 'online') return 'Онлайн';
   if (st === 'away') return 'Отошёл';
@@ -2889,7 +2892,10 @@ function connectWS() {
     }
     if (data.type === 'avatar_updated') { S.avatarTs = Date.now(); _avatarCache.clear(); renderChats(); if (S.currentTab === 'contacts') renderContacts(); }
     if (data.type === 'user_created') loadContacts();
-    if (data.type === 'contacts_changed' || data.type === 'directory_changed') { loadContacts(); api('GET', '/users/presence').then(pres => { if (pres) { Object.entries(pres).forEach(([id, v]) => { S.presence[id] = v?.status; if (v?.last_seen) S.lastSeen[id] = v.last_seen; }); if (S.currentTab === 'contacts') renderContacts(); } }); }
+    if (data.type === 'contacts_changed' || data.type === 'directory_changed' || data.type === 'presence_refresh') {
+      if (data.type !== 'presence_refresh') loadContacts();
+      api('GET', '/users/presence').then(pres => { if (pres) { setPresenceMap(pres); if (S.currentTab === 'contacts') renderContacts(); const ac = S.chats.find(c => c.id === S.activeChatId); if (ac) syncChatHdrActions(ac); } });
+    }
     if (data.type === 'blocks_changed') loadBlocks();
     if (data.type === 'chat_limit') {
       const c = S.chats.find(x => x.id === data.chat_id);

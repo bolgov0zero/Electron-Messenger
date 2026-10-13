@@ -83,6 +83,39 @@ function visibleIds(viewerId) {
   return listFor(viewerId).filter(u => u.rel !== 'chat').map(u => u.id);
 }
 
+// ── Присутствие («в сети», «печатает…») ──
+// Строже, чем видимость в списках: своё пространство видит всех, администратор видит всех на своём сервере,
+// а человека из другого пространства — только если контакты добавлены с обеих сторон. Односторонне
+// добавленный присутствия не видит: вместо него клиент показывает заглушку «был давно».
+function mutualContact(a, b) { return !!(q.contact.get(a, b) && q.contact.get(b, a)); }
+function canSeePresence(viewerId, targetId) {
+  if (viewerId === targetId) return true;
+  const v = q.user.get(viewerId), t = q.user.get(targetId);
+  if (!v || !t) return false;
+  return !!v.is_admin || v.workspace_id === t.workspace_id || mutualContact(viewerId, targetId);
+}
+// Кому разослать присутствие человека target
+function presenceViewers(targetId) {
+  const t = q.user.get(targetId);
+  if (!t) return [];
+  const ids = new Set();
+  db.prepare('SELECT id FROM users WHERE workspace_id = ? OR is_admin = 1').all(t.workspace_id).forEach(r => ids.add(r.id));
+  db.prepare('SELECT c1.owner_id AS id FROM contacts c1 JOIN contacts c2 ON c2.owner_id = c1.contact_id AND c2.contact_id = c1.owner_id WHERE c1.contact_id = ?')
+    .all(targetId).forEach(r => ids.add(r.id));
+  ids.delete(targetId);
+  return [...ids];
+}
+// Чьё присутствие видит viewer
+function presenceIds(viewerId) {
+  const v = q.user.get(viewerId);
+  if (!v) return [];
+  if (v.is_admin) return db.prepare('SELECT id FROM users WHERE id != ?').all(viewerId).map(r => r.id);
+  const ids = new Set(db.prepare('SELECT id FROM users WHERE workspace_id = ? AND id != ?').all(v.workspace_id, viewerId).map(r => r.id));
+  db.prepare('SELECT c1.contact_id AS id FROM contacts c1 JOIN contacts c2 ON c2.owner_id = c1.contact_id AND c2.contact_id = c1.owner_id WHERE c1.owner_id = ?')
+    .all(viewerId).forEach(r => ids.add(r.id));
+  return [...ids];
+}
+
 // Смена пространства: ручные контакты, которые теперь в одном пространстве с владельцем, удаляются
 // (и у самого человека, и у тех, кто добавил его, а он теперь «свой»).
 function afterMove(userId, newWs) {
@@ -119,4 +152,4 @@ const directChatIds = (a, b) => db.prepare(`SELECT c.id FROM chats c
   JOIN chat_members m2 ON m2.chat_id = c.id AND m2.user_id = ?
   WHERE c.type = 'direct'`).all(a, b).map(r => r.id);
 
-module.exports = { DM_LIMIT, limitApplies, limitUsed, limitFor, limitBump, limitReset, directChatIds, DEFAULT_WS, wsOf, isAdminUser, canSee, viewersOf, knownByOf, isBlocked, listFor, visibleIds, afterMove };
+module.exports = { mutualContact, canSeePresence, presenceViewers, presenceIds, DM_LIMIT, limitApplies, limitUsed, limitFor, limitBump, limitReset, directChatIds, DEFAULT_WS, wsOf, isAdminUser, canSee, viewersOf, knownByOf, isBlocked, listFor, visibleIds, afterMove };

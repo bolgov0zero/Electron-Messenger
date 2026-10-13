@@ -32,7 +32,7 @@ router.get('/', authMiddleware, (req, res) => {
 // Статусы всех активных пользователей (контакты показывают точку присутствия у каждого)
 router.get('/presence', authMiddleware, (req, res) => {
   // Присутствие — только у тех, кого человек видит: чужое пространство по статусу не отслеживается
-  const visible = new Set(spaces.visibleIds(req.user.id));
+  const visible = new Set(spaces.presenceIds(req.user.id));
   const peers = db.prepare(`
     SELECT id, last_seen_at FROM users
     WHERE id != ? AND COALESCE(banned, 0) = 0 AND COALESCE(is_bot, 0) = 0

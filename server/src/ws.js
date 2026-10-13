@@ -121,7 +121,7 @@ function broadcastStatus(userId) {
   // Статус видят те, для кого человек виден: его пространство, добавившие его в контакты и администраторы.
   // Из других пространств присутствие не отслеживается
   const online = new Set(clients.keys());
-  const peers = spaces.viewersOf(userId).filter(id => online.has(id));
+  const peers = spaces.presenceViewers(userId).filter(id => online.has(id));
   let last_seen;
   if (status === 'offline') {
     const row = db.prepare('SELECT last_seen_at FROM users WHERE id = ?').get(userId);
@@ -540,7 +540,10 @@ function setup(server) {
         if (now - (ws._typingAt.get(chat_id) || 0) < 2000) return;
         ws._typingAt.set(chat_id, now);
         if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chat_id, user.id)) return;
-        broadcast(chat_id, { type: 'typing', chat_id, user_id: user.id, sender_name: user.display_name }, user.id);
+        // «Печатает…» видят те же, кто видит присутствие: иначе по нему можно узнать, что человек в сети
+        db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chat_id, user.id)
+          .filter(m => spaces.canSeePresence(m.user_id, user.id))
+          .forEach(m => sendTo(m.user_id, { type: 'typing', chat_id, user_id: user.id, sender_name: user.display_name }));
       }
 
       if (data.type === 'client_info') {

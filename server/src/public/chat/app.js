@@ -5363,7 +5363,7 @@ function connectWS() {
     if (data.type==='user_created') {
       loadUsers();
     }
-    if (data.type==='contacts_changed' || data.type==='directory_changed') refreshDirectory();
+    if (data.type==='contacts_changed' || data.type==='directory_changed' || data.type==='presence_refresh') refreshDirectory();
     if (data.type==='blocks_changed') loadBlocks();
     if (data.type==='chat_limit') {
       const c = S.chats.find(x => x.id === data.chat_id);
@@ -5613,6 +5613,7 @@ function csPaneBlocks() {
 async function loadPresence() {
   const data = await api('GET', '/users/presence');
   if (data) {
+    S.presenceReady = true;
     S.presence = {}; S.lastSeen = {};
     for (const [id, v] of Object.entries(data)) {
       if (v && typeof v === 'object') { S.presence[id] = v.status; if (v.last_seen) S.lastSeen[id] = v.last_seen; }
@@ -5646,6 +5647,8 @@ function formatLastSeen(ts) {
 }
 
 function peerStatusText(userId) {
+  // Присутствие видно только своим из пространства и тем, с кем контакты добавлены с обеих сторон; у остальных заглушка
+  if (S.presenceReady && S.presence[userId] === undefined) return 'Был давно';
   const st = S.presence[userId] || 'offline';
   if (st === 'online') return 'Онлайн';
   if (st === 'away') return 'Отошёл';
