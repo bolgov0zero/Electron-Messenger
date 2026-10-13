@@ -82,7 +82,7 @@ const blocks = express.Router();
 blocks.use(authMiddleware);
 
 blocks.get('/', (req, res) => {
-  res.json(db.prepare(`SELECT u.id, u.username, u.display_name, u.tag, u.workspace_id, w.name AS workspace_name, b.created_at, (u.is_bot = 2) AS federated
+  res.json(db.prepare(`SELECT u.id, u.username, u.display_name, u.tag, u.workspace_id, w.name AS workspace_name, b.created_at, (u.is_bot = 2) AS federated, u.fed_login AS login, u.fed_instance AS server_id
     FROM user_blocks b JOIN users u ON u.id = b.blocked_id LEFT JOIN workspaces w ON w.id = u.workspace_id
     WHERE b.blocker_id = ? ORDER BY b.created_at DESC`).all(req.user.id).map(r => ({ ...r, federated: !!r.federated })));
 });

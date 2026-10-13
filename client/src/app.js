@@ -5505,6 +5505,12 @@ async function loadUsers() {
 // contact — добавлен вручную. У сервера без пространств пометок нет, тогда все считаются «своими».
 const isPickable = u => u.rel !== 'chat';
 // Человек с другого сервера: вместо названия пространства значок земного шара (название сервера не показываем)
+// Адрес человека с другого сервера «@сервер:логин». Берём из полей сервера; у старого сервера разбираем служебное имя (раньше «сервер@логин»)
+function fedAddr(u) {
+  let s = u.server_id, l = u.login;
+  if (!s || !l) { const m = /^([^:@]+)[:@](.*)$/.exec(u.username || ''); if (m) { s = s || m[1]; l = l || m[2]; } }
+  return '@' + (s ? s + ':' : '') + (l || u.username);
+}
 const FED_GLOBE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c2.6 2.8 4 6 4 9.5s-1.4 6.7-4 9.5c-2.6-2.8-4-6-4-9.5s1.4-6.7 4-9.5z"/></svg>';
 const wsTag = u => u.federated ? `<span class="ws-chip ws-fed" title="С другого сервера">${FED_GLOBE}</span>` : (u.rel === 'other' || u.rel === 'chat') && u.workspace_name ? `<span class="ws-chip">${esc(u.workspace_name)}</span>` : '';
 // Кнопка «Добавить контакт» нужна, когда человек известен только по общему чату
@@ -5627,7 +5633,7 @@ function csPaneBlocks() {
       <span>Если кто-то пишет вам лишнее, заблокируйте его в меню «⋯» в чате с ним.</span></div>`;
   }
   return `<div class="cs-gt">Заблокированные</div><div class="cs-g">${list.map(b => `<div class="cs-r"><div class="cs-l"><b>${esc(b.display_name)}</b>
-      <span>${b.federated ? '@' + esc(b.username.replace(/^[^:]*:/, '')) + ' · другой сервер' : '@' + esc(b.username) + (b.workspace_name ? ' · ' + esc(b.workspace_name) : '')}</span></div>
+      <span>${b.federated ? esc(fedAddr(b)) + ' · другой сервер' : '@' + esc(b.username) + (b.workspace_name ? ' · ' + esc(b.workspace_name) : '')}</span></div>
       <div class="cs-ctl"><button type="button" class="cs-btn ghost" onclick="unblockUser(${b.id})">Разблокировать</button></div></div>`).join('')}</div>
     <p class="cs-hint">Заблокированный не может писать вам в личные сообщения. Общие группы и комнаты остаются.</p>`;
 }
@@ -5670,8 +5676,7 @@ function renderProfile() {
   const canContact = fed || otherSpace;          // у людей своего пространства контакты не нужны
   const blocked = isBlockedId(id);
   const st = peerStatusText(id), on = S.presence[id] === 'online';
-  const login = fed ? u.username.replace(/^[^:]*:/, '') : u.username;
-  const rows = [`<div class="pf-r"><b>Логин</b><span>@${esc(login)}</span></div>`];
+  const rows = [fed ? `<div class="pf-r"><b>Адрес</b><span>${esc(fedAddr(u))}</span></div>` : `<div class="pf-r"><b>Логин</b><span>@${esc(u.username)}</span></div>`];
   if (fed) rows.push(`<div class="pf-r"><b>Сервер</b><span class="pf-srv">${FED_GLOBE}Другой сервер</span></div>`);
   else if (otherSpace) rows.push(`<div class="pf-r"><b>Пространство</b><span>${esc(u.workspace_name)}</span></div>`);
   if (canContact) rows.push(`<div class="pf-r"><b>В ваших контактах</b><span>${u.contact ? 'Да' : 'Нет'}</span></div>`);

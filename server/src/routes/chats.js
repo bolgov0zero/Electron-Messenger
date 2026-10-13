@@ -33,9 +33,9 @@ function deleteChatFiles(chatId) {
 
 function enrichChat(chat, userId) {
   const members = db.prepare(`
-    SELECT u.id, u.username, u.display_name, u.tag FROM users u
+    SELECT u.id, u.username, u.display_name, u.tag, u.is_bot, u.fed_login, u.fed_instance FROM users u
     JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = ?
-  `).all(chat.id);
+  `).all(chat.id).map(({ is_bot, fed_login, fed_instance, ...m }) => is_bot === spaces.FED ? { ...m, federated: true, login: fed_login, server_id: fed_instance } : m);
 
   const topics = db.prepare('SELECT id FROM chats WHERE parent_id = ? ORDER BY position, id').all(chat.id);
   const hasTopics = topics.length > 0;

@@ -947,6 +947,12 @@ let _usersAll = [];      // все известные, включая знако
 S.blocked = [];
 const mPick = u => u.rel !== 'chat';
 // Человек с другого сервера: вместо названия пространства значок земного шара (название сервера не показываем)
+// Адрес человека с другого сервера «@сервер:логин». Берём из полей сервера; у старого сервера разбираем служебное имя (раньше «сервер@логин»)
+function fedAddr(u) {
+  let s = u.server_id, l = u.login;
+  if (!s || !l) { const m = /^([^:@]+)[:@](.*)$/.exec(u.username || ''); if (m) { s = s || m[1]; l = l || m[2]; } }
+  return '@' + (s ? s + ':' : '') + (l || u.username);
+}
 const FED_GLOBE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c2.6 2.8 4 6 4 9.5s-1.4 6.7-4 9.5c-2.6-2.8-4-6-4-9.5s1.4-6.7 4-9.5z"/></svg>';
 const mWsTag = u => u.federated ? `<span class="ws-chip ws-fed" title="С другого сервера">${FED_GLOBE}</span>` : (u.rel === 'other' || u.rel === 'chat') && u.workspace_name ? `<span class="ws-chip">${esc(u.workspace_name)}</span>` : '';
 const mNeedsContact = id => { const u = _usersAll.find(x => x.id === id); return !!u && u.rel === 'chat'; };
@@ -993,7 +999,7 @@ function renderContacts() {
       </div>
       <div class="row-body">
         <div class="row-top"><div class="row-name">${esc(u.display_name)}</div>${u.tag ? `<span class="ct-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div>
-        <div class="row-bottom" style="justify-content:flex-start"><div class="row-msg" style="flex-shrink:1">@${esc(u.federated ? u.username.replace(/^[^:]*:/, '') : u.username)}</div>${mWsTag(u)}</div>
+        <div class="row-bottom" style="justify-content:flex-start"><div class="row-msg" style="flex-shrink:1">${u.federated ? esc(fedAddr(u)) : '@' + esc(u.username)}</div>${mWsTag(u)}</div>
       </div>
       ${true ? `<div class="row-more" aria-label="Действия" onclick="event.stopPropagation();openContactSheet(${u.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></div>` : ''}
     </div>`;
@@ -1076,8 +1082,7 @@ function openUserProfile(userId) {
   const u = mpfUser(userId); if (!u) return;
   const fed = !!u.federated, otherSpace = !fed && u.rel !== 'ws' && !!u.workspace_name, canContact = fed || otherSpace;
   const blocked = mIsBlocked(userId), st = peerStatusText(userId), on = S.presence[userId] === 'online';
-  const login = fed ? u.username.replace(/^[^:]*:/, '') : u.username;
-  const rows = [`<div class="mp-r"><b>Логин</b><span>@${esc(login)}</span></div>`];
+  const rows = [fed ? `<div class="mp-r"><b>Адрес</b><span>${esc(fedAddr(u))}</span></div>` : `<div class="mp-r"><b>Логин</b><span>@${esc(u.username)}</span></div>`];
   if (fed) rows.push(`<div class="mp-r"><b>Сервер</b><span class="mp-srv">${FED_GLOBE}Другой сервер</span></div>`);
   else if (otherSpace) rows.push(`<div class="mp-r"><b>Пространство</b><span>${esc(u.workspace_name)}</span></div>`);
   if (canContact) rows.push(`<div class="mp-r"><b>В ваших контактах</b><span>${u.contact ? 'Да' : 'Нет'}</span></div>`);
@@ -1145,7 +1150,7 @@ function blocksSheetHtml() {
   const list = S.blocked;
   if (!list.length) return `<div id="blocks-sheet"><div class="sheet-title">Блокировки</div><div class="m-stub"><b>Заблокированных нет</b><span>Если кто-то пишет вам лишнее, заблокируйте его в меню «⋯» в чате с ним.</span></div></div>`;
   return `<div id="blocks-sheet"><div class="sheet-title">Блокировки</div>${list.map(b => `
-    <div class="m-mod" style="padding:8px 0"><div class="m-mod-l"><b>${esc(b.display_name)}</b><span>${b.federated ? '@' + esc(b.username.replace(/^[^:]*:/, '')) + ' · другой сервер' : '@' + esc(b.username) + (b.workspace_name ? ' · ' + esc(b.workspace_name) : '')}</span></div>
+    <div class="m-mod" style="padding:8px 0"><div class="m-mod-l"><b>${esc(b.display_name)}</b><span>${b.federated ? esc(fedAddr(b)) + ' · другой сервер' : '@' + esc(b.username) + (b.workspace_name ? ' · ' + esc(b.workspace_name) : '')}</span></div>
       <button type="button" class="m-redo" style="margin:0" onclick="mUnblock(${b.id})">Разблокировать</button></div>`).join('')}
     <div class="m-hint">Заблокированный не может писать вам в личные сообщения. Общие группы и комнаты остаются.</div></div>`;
 }

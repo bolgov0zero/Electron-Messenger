@@ -66,7 +66,7 @@ function isBlocked(blockerId, blockedId) {
 function listFor(viewerId) {
   const me = q.user.get(viewerId);
   if (!me) return [];
-  const rows = db.prepare(`SELECT u.id, u.username, u.display_name, u.tag, u.workspace_id, w.name AS workspace_name, u.is_bot
+  const rows = db.prepare(`SELECT u.id, u.username, u.display_name, u.tag, u.workspace_id, w.name AS workspace_name, u.is_bot, u.fed_login, u.fed_instance
     FROM users u LEFT JOIN workspaces w ON w.id = u.workspace_id
     WHERE u.id != ? AND COALESCE(u.is_bot, 0) IN (0, ${FED}) ORDER BY u.display_name`).all(viewerId);
   const contacts = new Set(db.prepare('SELECT contact_id FROM contacts WHERE owner_id = ?').all(viewerId).map(r => r.contact_id));
@@ -81,9 +81,10 @@ function listFor(viewerId) {
     else if ((!fed && me.is_admin) || isContact) rel = 'other';
     else if (co.has(u.id)) rel = 'chat';
     if (!rel) continue;
-    const { is_bot, ...rest } = u;
-    // У человека с другого сервера нет пространства: клиент показывает вместо него значок «другой сервер»
-    out.push(fed ? { ...rest, workspace_id: 0, workspace_name: null, rel, contact: isContact, federated: true } : { ...rest, rel, contact: isContact });
+    const { is_bot, fed_login, fed_instance, ...rest } = u;
+    // У человека с другого сервера нет пространства: клиент показывает вместо него значок «другой сервер».
+    // login и server_id отдаём отдельно, чтобы клиент не разбирал служебное имя (оно менялось: «сервер@логин» → «сервер:логин»)
+    out.push(fed ? { ...rest, workspace_id: 0, workspace_name: null, rel, contact: isContact, federated: true, login: fed_login, server_id: fed_instance } : { ...rest, rel, contact: isContact });
   }
   return out;
 }
