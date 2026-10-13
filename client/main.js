@@ -764,7 +764,7 @@ ipcMain.on('account-logged-in', (e, meta) => {
   const acc = accounts.find(a => a.id === accountIdOf(e));
   if (!acc) return;
   acc.pending = false;
-  if (meta && typeof meta === 'object') acc.meta = { server: String(meta.server || ''), userId: meta.userId, name: String(meta.name || ''), tag: meta.tag ?? null };
+  if (meta && typeof meta === 'object') acc.meta = { server: String(meta.server || ''), userId: meta.userId, name: String(meta.name || ''), tag: meta.tag ?? null, serverName: String(meta.serverName || '').slice(0, 60) };
   saveAccounts();
   broadcastAccounts();
 });

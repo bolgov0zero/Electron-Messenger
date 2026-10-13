@@ -714,7 +714,7 @@ function applyAccounts(d) {
 function reportAccount() {
   if (!window.electron?.accountLoggedIn || !S.user) return;
   S.acc.pending = false;
-  window.electron.accountLoggedIn({ server: S.server, userId: S.user.id, name: S.user.display_name, tag: S.user.tag ?? null });
+  window.electron.accountLoggedIn({ server: S.server, userId: S.user.id, name: S.user.display_name, tag: S.user.tag ?? null, serverName: S.user.server_name || '' });
 }
 function renderAccountRail() {
   const rail = document.getElementById('acc-rail');
@@ -729,17 +729,26 @@ function renderAccountRail() {
     const img = m ? `<img src="${accHttp(m.server)}://${esc(m.server)}/api/users/${m.userId}/avatar" alt="" onerror="this.style.display='none'">` : '';
     const isActive = a.id === S.acc.activeId;
     const badge = !isActive && a.unread > 0 ? `<span class="acc-badge">${a.unread > 99 ? '99+' : a.unread}</span>` : '';
-    const name = m ? esc(m.name) : 'Вход не выполнен', srv = m ? esc(m.server) : '';
-    return `<button type="button" class="acc-btn${isActive ? ' active' : ''}" onclick="window.electron.accountSwitch('${esc(a.id)}')" aria-label="${name}${srv ? ', ' + srv : ''}">
+    const name = m ? esc(m.name) : 'Вход не выполнен', srv = m ? esc(m.server) : '', sys = m && m.serverName ? esc(m.serverName) : '';
+    return `<button type="button" class="acc-btn${isActive ? ' active' : ''}" onclick="window.electron.accountSwitch('${esc(a.id)}')" aria-label="${sys ? sys + ', ' : ''}${name}${srv ? ', ' + srv : ''}">
       <span class="av av-round ${cls}">${esc(m ? initials(m.name) : '?')}${img}</span>${badge}
-      <span class="acc-tip"><b>${name}</b><span>${srv}</span></span></button>`;
+      <span class="acc-tip">${sys ? `<span class="acc-sys">${sys}</span>` : ''}<b>${name}</b><span>${srv}</span></span></button>`;
   }).join('');
+}
+
+// Имя сервера могли задать или поменять уже после входа: подтягиваем актуальное и обновляем подсказку бара
+async function refreshServerName() {
+  const r = await api('GET', '/auth/me');
+  if (!r || !S.user || r.id !== S.user.id || (r.server_name || '') === (S.user.server_name || '')) return;
+  S.user.server_name = r.server_name || '';
+  saveSession(); reportAccount();
 }
 
 // ── ENTER APP ──
 function enterApp() {
   window.electron?.diag?.(`выполнен вход на сервере ${S.server}`);
   reportAccount();
+  refreshServerName();
   // Общего файла ещё нет (первый запуск после обновления) — настройки этой записи становятся общими
   if (!_sharedLoaded) { _sharedLoaded = true; pushAppSettings(); }
   startTokenRefresh();

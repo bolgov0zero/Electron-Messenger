@@ -3177,6 +3177,8 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 }
 .acc-tip b { display: block; font-size: 12.5px; font-weight: 600; color: var(--text); }
 .acc-tip span { color: var(--muted); font-size: 11.5px; }
+/* Имя сервера над именем пользователя */
+.acc-tip .acc-sys { display: block; margin-bottom: 2px; color: var(--accent); font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
 .acc-btn:hover .acc-tip { opacity: 1; }
 /* Бар записей скрывается и выезжает вместе с сайдбаром теми же состояниями body.
    Схлопывание в потоке — как у сайдбара; в режиме накладки бар уезжает за левый край на
