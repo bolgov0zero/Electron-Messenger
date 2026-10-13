@@ -984,7 +984,7 @@ function renderContacts() {
   // Статус онлайн известен только для тех, кого человек видит (своё пространство и контакты)
   const rowHtml = u => `
     <div class="row" onclick="openContactChat(${u.id})">
-      <div class="av-wrap">
+      <div class="av-wrap" onclick="event.stopPropagation();openUserProfile(${u.id})">
         <div class="av ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}" data-av-fallback="${esc(initials(u.display_name))}">${esc(initials(u.display_name))}</div>
         ${presenceDot(u.id)}
       </div>
@@ -992,7 +992,7 @@ function renderContacts() {
         <div class="row-top"><div class="row-name">${esc(u.display_name)}</div>${u.tag ? `<span class="ct-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div>
         <div class="row-bottom" style="justify-content:flex-start"><div class="row-msg" style="flex-shrink:1">@${esc(u.federated ? u.username.replace(/^[^@]*@/, '') : u.username)}</div>${mWsTag(u)}</div>
       </div>
-      ${u.contact ? `<div class="row-more" aria-label="Действия" onclick="event.stopPropagation();openContactSheet(${u.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></div>` : ''}
+      ${true ? `<div class="row-more" aria-label="Действия" onclick="event.stopPropagation();openContactSheet(${u.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></div>` : ''}
     </div>`;
   let html = CONTACT_GROUPS.map(([r, label]) => {
     const items = own.filter(u => rank(u) === r);
@@ -1030,10 +1030,11 @@ async function submitAddContact() {
 function openContactSheet(userId) {
   const u = _usersAll.find(x => x.id === userId); if (!u) return;
   openSheet(`<div class="sheet-title">${esc(u.display_name)}</div>
-    <div class="msg-action-row danger" onclick="removeContact(${userId})">
+    <div class="msg-action-row" onclick="openUserProfile(${userId})">${MPF_I.user}Профиль</div>
+    ${u.contact ? `<div class="msg-action-row danger" onclick="removeContact(${userId})">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
       Удалить из контактов
-    </div>
+    </div>` : ''}
     <div class="msg-action-row" onclick="closeSheet()">Отмена</div>`);
 }
 async function removeContact(userId) {
@@ -1046,6 +1047,81 @@ async function mAddContactFrom(userId) {
   const u = _usersAll.find(x => x.id === userId); if (!u?.username) return;
   const r = await api('POST', '/contacts', { username: u.username });
   if (r?.ok || r?.code === 'already') { toast(`${u.display_name} добавлен в контакты`); loadContacts(); } else toast(r?.error || 'Не удалось добавить контакт');
+}
+
+// ── ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ ──
+// Листок открывается нажатием на аватарку или имя в шапке личного чата, на аватарку в контактах и пунктом «Профиль»
+// в меню контакта. Показывает только то, что клиент знает сам: логин, принадлежность и общие группы.
+const MPF_I = {
+  msg: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  add: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3 20a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg>',
+  rem: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3 20a7 7 0 0 1 14 0M16 11h6"/></svg>',
+  ban: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
+  unban: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/></svg>',
+  user: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+};
+function mpfUser(id) {
+  const u = _usersAll.find(x => x.id === id);
+  if (u) return u;
+  const m = S.chats.flatMap(c => c.members || []).find(x => x.id === id);
+  return m ? { ...m, rel: 'chat' } : null;
+}
+function openUserProfile(userId) {
+  if (!userId || userId === S.user?.id) return;
+  const u = mpfUser(userId); if (!u) return;
+  const fed = !!u.federated, otherSpace = !fed && u.rel !== 'ws' && !!u.workspace_name, canContact = fed || otherSpace;
+  const blocked = mIsBlocked(userId), st = peerStatusText(userId), on = S.presence[userId] === 'online';
+  const login = fed ? u.username.replace(/^[^@]*@/, '') : u.username;
+  const rows = [`<div class="mp-r"><b>Логин</b><span>@${esc(login)}</span></div>`];
+  if (fed) rows.push(`<div class="mp-r"><b>Сервер</b><span class="mp-srv">${FED_GLOBE}Другой сервер</span></div>`);
+  else if (otherSpace) rows.push(`<div class="mp-r"><b>Пространство</b><span>${esc(u.workspace_name)}</span></div>`);
+  if (canContact) rows.push(`<div class="mp-r"><b>В ваших контактах</b><span>${u.contact ? 'Да' : 'Нет'}</span></div>`);
+  const groups = S.chats.filter(c => (c.type === 'group' || c.type === 'room') && !c.parent_id && !c.is_secret && c.members?.some(m => m.id === userId));
+  const groupsHtml = groups.length
+    ? `<div class="mp-g mp-gl">${groups.map(c => `<div class="mp-gr" onclick="mpfOpenChat(${c.id})"><div class="av ${chatAvatarColorClass(c)}${c.type === 'room' || c.type === 'group' ? ' sq' : ''}" style="width:34px;height:34px;font-size:12px">${esc(chatIcon(c))}</div>
+        <div class="mp-gi"><b>${esc(chatName(c))}</b><span>${c.type === 'room' ? 'Комната' : 'Группа'} · ${c.members.length} участн.</span></div></div>`).join('')}</div>`
+    : `<div class="mp-g"><div class="mp-empty">Общих групп и комнат нет</div></div>`;
+  openSheet(`<div class="mp">
+    <div class="mp-who"><div class="av-wrap"><div class="av ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}" data-av-fallback="${esc(initials(u.display_name))}" style="width:76px;height:76px;font-size:26px">${esc(initials(u.display_name))}</div>${presenceDot(userId)}</div>
+      <div class="mp-name">${esc(u.display_name)}</div>
+      ${u.tag ? `<div class="mp-chips"><span class="ct-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span></div>` : ''}
+      <div class="mp-st${on ? ' on' : ''}">${esc(st)}</div></div>
+    <div class="mp-acts">
+      <button type="button" class="mp-w" onclick="mpfWrite(${userId})">${MPF_I.msg}Написать</button>
+      ${canContact ? `<button type="button" class="mp-c${u.contact ? ' on' : ''}" onclick="mpfContact(${userId})">${u.contact ? MPF_I.rem + 'Из контактов' : MPF_I.add + 'В контакты'}</button>` : ''}
+      <button type="button" class="mp-k${blocked ? ' on' : ''}" aria-label="${blocked ? 'Разблокировать' : 'Заблокировать'}" onclick="mpfBlock(${userId})">${blocked ? MPF_I.unban : MPF_I.ban}</button>
+    </div>
+    ${blocked ? `<div class="mp-note">Вы заблокировали этого человека: он не может писать вам в личные сообщения. Общие группы и комнаты остаются.</div>` : ''}
+    <div class="mp-g">${rows.join('')}</div>
+    <div class="mp-gt">Общие группы · ${groups.length}</div>
+    ${groupsHtml}</div>`);
+  applyAvatars();
+}
+function mpfWrite(id) { closeSheet(); openContactChat(id); }
+function mpfOpenChat(chatId) { closeSheet(); openChat(chatId); }
+async function mpfContact(id) {
+  const u = mpfUser(id); if (!u) return;
+  if (u.contact) { await api('DELETE', `/contacts/${id}`); toast('Удалён из контактов'); }
+  else {
+    const r = await api('POST', '/contacts', { username: u.username });
+    if (!(r?.ok || r?.code === 'already')) { toast(r?.error || 'Не удалось добавить контакт'); return; }
+    toast(`${u.display_name} добавлен в контакты`);
+  }
+  await loadContacts();
+  openUserProfile(id);
+}
+async function mpfBlock(id) {
+  const u = mpfUser(id); if (!u) return;
+  if (mIsBlocked(id)) { await api('DELETE', `/blocks/${id}`); await loadBlocks(); toast('Разблокирован'); openUserProfile(id); return; }
+  openSheet(`<div class="sheet-title">Заблокировать «${esc(u.display_name)}»?</div>
+    <div class="m-hint" style="margin:-6px 0 8px">Он не сможет писать вам в личные сообщения. Общие группы и комнаты останутся. Разблокировать можно в настройках.</div>
+    <div class="msg-action-row danger" onclick="mpfDoBlock(${id})">Заблокировать</div>
+    <div class="msg-action-row" onclick="openUserProfile(${id})">Отмена</div>`);
+}
+async function mpfDoBlock(id) {
+  const r = await api('POST', '/blocks', { user_id: id });
+  if (!r?.ok) toast(r?.error || 'Не удалось заблокировать'); else { await loadBlocks(); toast('Заблокирован'); }
+  openUserProfile(id);
 }
 // Новый чат: личный (выбор из контактов) или группа
 function openNewChatSheet() {
@@ -1102,6 +1178,8 @@ function syncChatHdrActions(chat) {
     + (peerId ? `<div class="icon-btn" role="button" aria-label="Действия" onclick="openChatMoreSheet(${chat.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></div>` : '');
   const sub = document.getElementById('chat-sub');
   if (sub && peerId) sub.textContent = mPeerSub(peerId);
+  // Нажатие на аватарку или имя в личном чате открывает профиль
+  ['chat-hdr-av', 'chat-hdr-info'].forEach(id => { const el = document.getElementById(id); if (el) { el.onclick = peerId ? () => openUserProfile(peerId) : null; el.style.cursor = peerId ? 'pointer' : ''; } });
 }
 async function openContactChat(userId) {
   const chat = await api('POST', '/chats/direct', { user_id: userId });

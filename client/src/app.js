@@ -1205,8 +1205,8 @@ function restoreChatMainArea() {
 // Список всех пользователей компании — та же аватарка и подложка тега, что и при
 // выборе собеседника для нового чата (ppAvHtml), плюс индикатор «в сети».
 function contactRowHtml(u) {
-  return `<div class="pp-row" data-uid="${u.id}" onclick="openContactChat(${u.id})"${u.contact ? ` oncontextmenu="contactMenu(event,${u.id})"` : ''}>
-    <div class="av-wrap">${ppAvHtml(u)}${presenceDot(u.id)}</div>
+  return `<div class="pp-row" data-uid="${u.id}" onclick="openContactChat(${u.id})" oncontextmenu="contactMenu(event,${u.id})">
+    <div class="av-wrap" title="Профиль" onclick="event.stopPropagation();openProfile(${u.id})">${ppAvHtml(u)}${presenceDot(u.id)}</div>
     <div class="pp-col"><div class="pp-line"><span class="pp-name">${esc(u.display_name)}</span>${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div>${wsTag(u)}</div>
   </div>`;
 }
@@ -2349,7 +2349,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   const isTopic = !!chat?.parent_id;
   const addContactBtn = peerId && needsContact(peerId) ? `<button class="addc-btn" id="ch-add-contact" onclick="addContactFromChat(${peerId})"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3 20a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg><span>Добавить контакт</span></button>` : '';
   const sub = isTopic ? `# тема` : isRoom ? `🏠 Комната · ${nMembers(memberCount)}` : isGroup ? `${nMembers(memberCount)}` : (peerId ? peerSubText(peerId) : 'Личный чат');
-  const nameClickable = (isGroup || (isRoom && !isTopic)) ? `style="cursor:pointer" onclick="openGroupInfo(${chatId})"` : '';
+  const nameClickable = (isGroup || (isRoom && !isTopic)) ? `style="cursor:pointer" onclick="openGroupInfo(${chatId})"` : (peerId ? `style="cursor:pointer" onclick="openProfile(${peerId})"` : '');
 
   // Delete button: visible for direct chats and for group creator / admins
   const canDelete = chat.type === 'direct' || S.user.is_admin || isCreator;
@@ -2358,7 +2358,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   main.innerHTML = `
     <div class="chat-header">
       <div class="chat-header-main">
-        <div class="av-wrap">
+        <div class="av-wrap"${peerId ? ` style="cursor:pointer" onclick="openProfile(${peerId})"` : ''}>
           <div class="av av-md ${chatAvatarClass(chat)}${chat.type==='room' && chat.has_topics && !S.activeTopicId?' av-sq':' av-round'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
           ${peerDot}
         </div>
@@ -5495,6 +5495,7 @@ async function loadBlocks() {
 async function refreshDirectory() {
   await loadUsers();
   await loadPresence();
+  if (pfIsOpen()) renderProfile();
   if (_sidebarTab === 'contacts') renderContactsList(document.getElementById('contacts-search')?.value || '');
   const chat = S.chats.find(c => c.id === S.activeChatId);
   if (chat?.type === 'direct') {
@@ -5549,12 +5550,18 @@ async function addContactFromChat(userId) {
 // Контекстное меню контакта из другого пространства: удалить из контактов
 function contactMenu(e, userId) {
   const u = S.allUsers.find(x => x.id === userId);
-  if (!u?.contact) return;
+  if (!u) return;
   e.preventDefault(); e.stopPropagation();
   S.ctxContactId = userId;
   const menu = document.getElementById('ctx-contact-menu');
+  // «Удалить из контактов» только у тех, кого добавили вручную
+  const rm = document.getElementById('ctx-contact-remove'); if (rm) rm.style.display = u.contact ? '' : 'none';
   menu.style.display = 'block';
   placeCtxMenu(menu, e.clientX, e.clientY, null);
+}
+function ctxContactProfile() {
+  document.getElementById('ctx-contact-menu').style.display = 'none';
+  openProfile(S.ctxContactId);
 }
 async function ctxContactRemove() {
   document.getElementById('ctx-contact-menu').style.display = 'none';
@@ -5593,6 +5600,104 @@ function csPaneBlocks() {
       <span>${b.federated ? '@' + esc(b.username.replace(/^[^@]*@/, '')) + ' · другой сервер' : '@' + esc(b.username) + (b.workspace_name ? ' · ' + esc(b.workspace_name) : '')}</span></div>
       <div class="cs-ctl"><button type="button" class="cs-btn ghost" onclick="unblockUser(${b.id})">Разблокировать</button></div></div>`).join('')}</div>
     <p class="cs-hint">Заблокированный не может писать вам в личные сообщения. Общие группы и комнаты остаются.</p>`;
+}
+
+// ── ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ ──
+// Окно открывается по клику на имя или аватарку в шапке личного чата и пунктом «Профиль» в меню контакта.
+// Показывает только то, что клиент знает сам: логин, принадлежность (пространство или другой сервер) и общие группы.
+const PF_I = {
+  msg: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  add: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3 20a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg>',
+  rem: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3 20a7 7 0 0 1 14 0M16 11h6"/></svg>',
+  ban: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
+  unban: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16 9.8"/></svg>',
+  close: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+};
+// Цвет обложки — цвет тега, как у аватарки
+function pfCoverColor(cls) {
+  const m = /^av-tag-(\d+)$/.exec(cls);
+  if (m) return `rgb(${getComputedStyle(document.documentElement).getPropertyValue('--tag-' + m[1] + '-av').trim()})`;
+  return { 'av-blue': '#4f46e5', 'av-green': '#059669', 'av-purple': '#7c3aed', 'av-orange': '#d97706' }[cls] || 'var(--accent)';
+}
+function pfUser(id) {
+  const u = (S.allUsers || []).find(x => x.id === id);
+  if (u) return u;
+  const m = (S.chats || []).flatMap(c => c.members || []).find(x => x.id === id);
+  return m ? { ...m, rel: 'chat' } : null;
+}
+function openProfile(userId) {
+  if (!userId || userId === S.user?.id || !pfUser(userId)) return;
+  S.profileId = userId;
+  renderProfile();
+  openModal('modal-profile');
+}
+function pfIsOpen() { return !!S.profileId && !!document.getElementById('modal-profile')?.classList.contains('open'); }
+function renderProfile() {
+  const id = S.profileId, u = pfUser(id), box = document.getElementById('pf-modal');
+  if (!u || !box) return;
+  const cls = userAvatarColor(u.id, u.tag), fed = !!u.federated;
+  const otherSpace = !fed && u.rel !== 'ws' && !!u.workspace_name;
+  const canContact = fed || otherSpace;          // у людей своего пространства контакты не нужны
+  const blocked = isBlockedId(id);
+  const st = peerStatusText(id), on = S.presence[id] === 'online';
+  const login = fed ? u.username.replace(/^[^@]*@/, '') : u.username;
+  const rows = [`<div class="pf-r"><b>Логин</b><span>@${esc(login)}</span></div>`];
+  if (fed) rows.push(`<div class="pf-r"><b>Сервер</b><span class="pf-srv">${FED_GLOBE}Другой сервер</span></div>`);
+  else if (otherSpace) rows.push(`<div class="pf-r"><b>Пространство</b><span>${esc(u.workspace_name)}</span></div>`);
+  if (canContact) rows.push(`<div class="pf-r"><b>В ваших контактах</b><span>${u.contact ? 'Да' : 'Нет'}</span></div>`);
+  const groups = (S.chats || []).filter(c => (c.type === 'group' || c.type === 'room') && !c.parent_id && !c.is_secret && c.members?.some(m => m.id === id));
+  const groupsHtml = groups.length
+    ? `<div class="pf-g pf-gl">${groups.map(c => `<div class="pf-gr" onclick="pfOpenChat(${c.id})">
+        <div class="av av-sm ${chatAvatarClass(c)}${c.type === 'room' && c.has_topics ? ' av-sq' : ' av-round'}">${chatIcon(c)}</div>
+        <div class="pf-gi"><b>${esc(chatName(c))}</b><span>${c.type === 'room' ? 'Комната' : 'Группа'} · ${nMembers(c.members.length)}</span></div></div>`).join('')}</div>`
+    : `<div class="pf-g"><div class="pf-empty">Общих групп и комнат нет</div></div>`;
+  box.innerHTML = `
+    <div class="pf-scroll">
+      <div class="pf-cover" style="--cv:${pfCoverColor(cls)}"><button class="pf-x" type="button" aria-label="Закрыть" onclick="closeModal('modal-profile')">${PF_I.close}</button></div>
+      <div class="pf-head">
+        <div class="pf-av ${cls}"><span>${esc(initials(u.display_name))}</span><img src="${httpProto()}://${S.server}/api/users/${u.id}/avatar" onerror="this.style.display='none'">${presenceDot(id)}</div>
+        <div class="pf-tx"><div class="pf-name">${esc(u.display_name)}${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div><div class="pf-st${on ? ' on' : ''}">${esc(st)}</div></div>
+      </div>
+      <div class="pf-body">
+        ${blocked ? `<div class="pf-note">Вы заблокировали этого человека: он не может писать вам в личные сообщения. Общие группы и комнаты остаются.</div>` : ''}
+        <div class="pf-g">${rows.join('')}</div>
+        <div class="pf-gt">Общие группы · ${groups.length}</div>
+        ${groupsHtml}
+      </div>
+    </div>
+    <div class="pf-foot">
+      <button type="button" class="pf-fb ${blocked ? 'modal-btn-ghost' : 'pf-danger'}" onclick="pfBlock()">${blocked ? PF_I.unban + 'Разблокировать' : PF_I.ban + 'Заблокировать'}</button>
+      <span class="pf-sp"></span>
+      ${canContact ? `<button type="button" class="modal-btn-ghost pf-fc" onclick="pfContact()">${u.contact ? PF_I.rem + 'Из контактов' : PF_I.add + 'В контакты'}</button>` : ''}
+      <button type="button" class="modal-btn-primary pf-fw" onclick="pfWrite()">${PF_I.msg}Написать</button>
+    </div>`;
+}
+function pfWrite() { const id = S.profileId; closeModal('modal-profile'); if (id) startDirect(id); }
+function pfOpenChat(chatId) { closeModal('modal-profile'); openChat(chatId); }
+async function pfContact() {
+  const u = pfUser(S.profileId); if (!u) return;
+  if (u.contact) {
+    await api('DELETE', `/contacts/${u.id}`);
+    showActionToast(`${u.display_name} удалён из контактов`);
+  } else {
+    const r = await api('POST', '/contacts', { username: u.username });
+    if (!(r?.ok || r?.code === 'already')) { showActionToast(r?.error || 'Не удалось добавить контакт'); return; }
+    showActionToast(`${u.display_name} добавлен в контакты`);
+  }
+  await refreshDirectory();
+}
+async function pfBlock() {
+  const u = pfUser(S.profileId); if (!u) return;
+  if (isBlockedId(u.id)) {
+    await api('DELETE', `/blocks/${u.id}`); await loadBlocks(); showActionToast(`${u.display_name} разблокирован`);
+  } else {
+    const ok = await showConfirm(`Заблокировать ${u.display_name}? Он не сможет писать вам в личные сообщения. Общие группы и комнаты останутся. Разблокировать можно в настройках, в разделе «Блокировки».`, 'Заблокировать');
+    if (!ok) return;
+    const r = await api('POST', '/blocks', { user_id: u.id });
+    if (!r?.ok) { showActionToast(r?.error || 'Не удалось заблокировать'); return; }
+    await loadBlocks(); showActionToast(`${u.display_name} заблокирован`);
+  }
+  if (pfIsOpen()) renderProfile();
 }
 
 // ── PRESENCE ──
