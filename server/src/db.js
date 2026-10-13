@@ -508,6 +508,8 @@ tryAlter('ALTER TABLE users ADD COLUMN fed_instance TEXT');
 tryAlter('ALTER TABLE users ADD COLUMN fed_login TEXT');
 tryAlter('ALTER TABLE users ADD COLUMN fed_avatar_v TEXT');
 tryAlter('ALTER TABLE messages ADD COLUMN fed_uid TEXT');
+// Адрес человека с другого сервера теперь «сервер:логин» (раньше «сервер@логин»): переименовываем уже созданных теневых пользователей
+try { db.prepare("UPDATE users SET username = fed_instance || ':' || fed_login WHERE is_bot = 2 AND username != fed_instance || ':' || fed_login").run(); } catch (e) { console.warn('[Fed] не удалось переименовать теневых пользователей:', e.message); }
 tryAlter('CREATE INDEX IF NOT EXISTS idx_messages_fed_uid ON messages(fed_uid)');
 
 // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)

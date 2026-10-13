@@ -5528,8 +5528,8 @@ async function refreshDirectory() {
 // Окно «Добавить контакт»: только логин и кнопка, без поиска и подсказок
 function openAddContact() {
   document.getElementById('ac-body').innerHTML = `
-    <p class="ac-lead">Введите логин человека точно. Если он на другом сервере, укажите адрес: сервер@логин. Он не узнает, что вы его добавили.</p>
-    <div class="ac-fld" id="ac-fld"><span>@</span><input id="ac-input" placeholder="логин или сервер@логин" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="acClear()" onkeydown="if(event.key==='Enter')submitAddContact()"></div>
+    <p class="ac-lead">Введите логин человека точно. Если он на другом сервере, укажите адрес: @сервер:логин. Он не узнает, что вы его добавили.</p>
+    <div class="ac-fld" id="ac-fld"><span>@</span><input id="ac-input" placeholder="логин или сервер:логин" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="acClear()" onkeydown="if(event.key==='Enter')submitAddContact()"></div>
     <div class="ac-hint" id="ac-hint">Логин можно узнать у самого человека.</div>
     <div class="ac-foot"><button class="modal-btn-ghost" onclick="closeModal('modal-addcontact')">Отмена</button><button class="modal-btn-primary" id="ac-go" onclick="submitAddContact()">Добавить</button></div>`;
   openModal('modal-addcontact');
@@ -5616,7 +5616,7 @@ function csPaneBlocks() {
       <span>Если кто-то пишет вам лишнее, заблокируйте его в меню «⋯» в чате с ним.</span></div>`;
   }
   return `<div class="cs-gt">Заблокированные</div><div class="cs-g">${list.map(b => `<div class="cs-r"><div class="cs-l"><b>${esc(b.display_name)}</b>
-      <span>${b.federated ? '@' + esc(b.username.replace(/^[^@]*@/, '')) + ' · другой сервер' : '@' + esc(b.username) + (b.workspace_name ? ' · ' + esc(b.workspace_name) : '')}</span></div>
+      <span>${b.federated ? '@' + esc(b.username.replace(/^[^:]*:/, '')) + ' · другой сервер' : '@' + esc(b.username) + (b.workspace_name ? ' · ' + esc(b.workspace_name) : '')}</span></div>
       <div class="cs-ctl"><button type="button" class="cs-btn ghost" onclick="unblockUser(${b.id})">Разблокировать</button></div></div>`).join('')}</div>
     <p class="cs-hint">Заблокированный не может писать вам в личные сообщения. Общие группы и комнаты остаются.</p>`;
 }
@@ -5659,7 +5659,7 @@ function renderProfile() {
   const canContact = fed || otherSpace;          // у людей своего пространства контакты не нужны
   const blocked = isBlockedId(id);
   const st = peerStatusText(id), on = S.presence[id] === 'online';
-  const login = fed ? u.username.replace(/^[^@]*@/, '') : u.username;
+  const login = fed ? u.username.replace(/^[^:]*:/, '') : u.username;
   const rows = [`<div class="pf-r"><b>Логин</b><span>@${esc(login)}</span></div>`];
   if (fed) rows.push(`<div class="pf-r"><b>Сервер</b><span class="pf-srv">${FED_GLOBE}Другой сервер</span></div>`);
   else if (otherSpace) rows.push(`<div class="pf-r"><b>Пространство</b><span>${esc(u.workspace_name)}</span></div>`);

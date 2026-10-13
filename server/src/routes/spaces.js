@@ -28,12 +28,17 @@ contacts.post('/', async (req, res) => {
   if (tooMany(req.user.id)) return res.status(429).json({ error: 'Слишком много попыток. Подождите минуту.' });
   const login = String(req.body?.username || '').trim().replace(/^@/, '');
   if (!login) return res.status(400).json({ error: 'Введите логин' });
-  // Адрес вида «сервер@логин» с подключённого сервера: человек из другой организации
+  // Адрес вида «@сервер:логин» с подключённого сервера: человек из другой организации
   const addr = fed.parseAddr(login);
   if (addr && fed.peerByInstance(addr.instance)) return addFederated(req, res, login);
   const target = db.prepare('SELECT id, workspace_id FROM users WHERE username = ? AND COALESCE(is_bot, 0) = 0 AND COALESCE(banned, 0) = 0').get(login)
     || db.prepare('SELECT id, workspace_id FROM users WHERE LOWER(username) = LOWER(?) AND COALESCE(is_bot, 0) = 0 AND COALESCE(banned, 0) = 0').get(login);
-  if (!target || target.id === req.user.id) return res.status(404).json({ error: 'Пользователь с таким логином не найден', code: 'not_found' });
+  if (!target || target.id === req.user.id) {
+    // Старый вид адреса «сервер@логин» больше не принимается: подсказываем новый
+    const old = /^([a-z0-9][a-z0-9._-]{1,31})@.+$/i.exec(login);
+    if (old && fed.peerByInstance(old[1].toLowerCase())) return res.status(400).json({ error: 'Введите адрес вида @сервер:логин', code: 'bad_address' });
+    return res.status(404).json({ error: 'Пользователь с таким логином не найден', code: 'not_found' });
+  }
   if (target.workspace_id === spaces.wsOf(req.user.id)) return res.status(409).json({ error: 'Этот человек уже в вашем пространстве, добавлять не нужно', code: 'same_space' });
   if (db.prepare('SELECT 1 FROM contacts WHERE owner_id = ? AND contact_id = ?').get(req.user.id, target.id))
     return res.status(409).json({ error: 'Этот человек уже у вас в контактах', code: 'already' });

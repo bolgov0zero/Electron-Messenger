@@ -89,6 +89,7 @@ router.get('/:id/avatar', (req, res) => {
 router.post('/', authMiddleware, adminMiddleware, (req, res) => {
   const { username, password, display_name, is_admin, tag } = req.body;
   if (!username?.trim() || !password || !display_name?.trim()) return res.status(400).json({ error: 'Missing fields' });
+  if (String(username).includes(':')) return res.status(400).json({ error: 'В логине нельзя использовать двоеточие' });
   const wsId = req.body.workspace_id === undefined ? spaces.DEFAULT_WS : Number(req.body.workspace_id);
   if (!db.prepare('SELECT 1 FROM workspaces WHERE id = ?').get(wsId)) return res.status(400).json({ error: 'Пространство не найдено' });
   try {
@@ -107,6 +108,7 @@ router.patch('/:id', authMiddleware, adminMiddleware, (req, res) => {
   const { username, display_name, is_admin, tag } = req.body;
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'Not found' });
+  if (username !== undefined && String(username).includes(':') && String(username) !== user.username) return res.status(400).json({ error: 'В логине нельзя использовать двоеточие' });
   if (req.body.workspace_id !== undefined && !db.prepare('SELECT 1 FROM workspaces WHERE id = ?').get(Number(req.body.workspace_id)))
     return res.status(400).json({ error: 'Пространство не найдено' });
   try {

@@ -992,7 +992,7 @@ function renderContacts() {
       </div>
       <div class="row-body">
         <div class="row-top"><div class="row-name">${esc(u.display_name)}</div>${u.tag ? `<span class="ct-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div>
-        <div class="row-bottom" style="justify-content:flex-start"><div class="row-msg" style="flex-shrink:1">@${esc(u.federated ? u.username.replace(/^[^@]*@/, '') : u.username)}</div>${mWsTag(u)}</div>
+        <div class="row-bottom" style="justify-content:flex-start"><div class="row-msg" style="flex-shrink:1">@${esc(u.federated ? u.username.replace(/^[^:]*:/, '') : u.username)}</div>${mWsTag(u)}</div>
       </div>
       ${true ? `<div class="row-more" aria-label="Действия" onclick="event.stopPropagation();openContactSheet(${u.id})"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></div>` : ''}
     </div>`;
@@ -1006,8 +1006,8 @@ function renderContacts() {
 // Добавить контакт: только логин и кнопка
 function openAddContactSheet() {
   openSheet(`<div class="sheet-title">Добавить контакт</div>
-    <div class="m-hint" style="margin:-6px 0 12px">Введите логин человека точно. Если он на другом сервере, укажите адрес: сервер@логин. Он не узнает, что вы его добавили.</div>
-    <input class="sheet-input" id="ac-login" placeholder="Логин или сервер@логин" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="acClear()" onkeydown="if(event.key==='Enter')submitAddContact()">
+    <div class="m-hint" style="margin:-6px 0 12px">Введите логин человека точно. Если он на другом сервере, укажите адрес: @сервер:логин. Он не узнает, что вы его добавили.</div>
+    <input class="sheet-input" id="ac-login" placeholder="Логин или сервер:логин" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="acClear()" onkeydown="if(event.key==='Enter')submitAddContact()">
     <div class="ac-hint" id="ac-hint">Логин можно узнать у самого человека.</div>
     <button class="l-btn" id="ac-go" type="button" onclick="submitAddContact()">Добавить</button>`);
   setTimeout(() => document.getElementById('ac-login')?.focus(), 250);
@@ -1073,7 +1073,7 @@ function openUserProfile(userId) {
   const u = mpfUser(userId); if (!u) return;
   const fed = !!u.federated, otherSpace = !fed && u.rel !== 'ws' && !!u.workspace_name, canContact = fed || otherSpace;
   const blocked = mIsBlocked(userId), st = peerStatusText(userId), on = S.presence[userId] === 'online';
-  const login = fed ? u.username.replace(/^[^@]*@/, '') : u.username;
+  const login = fed ? u.username.replace(/^[^:]*:/, '') : u.username;
   const rows = [`<div class="mp-r"><b>Логин</b><span>@${esc(login)}</span></div>`];
   if (fed) rows.push(`<div class="mp-r"><b>Сервер</b><span class="mp-srv">${FED_GLOBE}Другой сервер</span></div>`);
   else if (otherSpace) rows.push(`<div class="mp-r"><b>Пространство</b><span>${esc(u.workspace_name)}</span></div>`);
@@ -1142,7 +1142,7 @@ function blocksSheetHtml() {
   const list = S.blocked;
   if (!list.length) return `<div id="blocks-sheet"><div class="sheet-title">Блокировки</div><div class="m-stub"><b>Заблокированных нет</b><span>Если кто-то пишет вам лишнее, заблокируйте его в меню «⋯» в чате с ним.</span></div></div>`;
   return `<div id="blocks-sheet"><div class="sheet-title">Блокировки</div>${list.map(b => `
-    <div class="m-mod" style="padding:8px 0"><div class="m-mod-l"><b>${esc(b.display_name)}</b><span>${b.federated ? '@' + esc(b.username.replace(/^[^@]*@/, '')) + ' · другой сервер' : '@' + esc(b.username) + (b.workspace_name ? ' · ' + esc(b.workspace_name) : '')}</span></div>
+    <div class="m-mod" style="padding:8px 0"><div class="m-mod-l"><b>${esc(b.display_name)}</b><span>${b.federated ? '@' + esc(b.username.replace(/^[^:]*:/, '')) + ' · другой сервер' : '@' + esc(b.username) + (b.workspace_name ? ' · ' + esc(b.workspace_name) : '')}</span></div>
       <button type="button" class="m-redo" style="margin:0" onclick="mUnblock(${b.id})">Разблокировать</button></div>`).join('')}
     <div class="m-hint">Заблокированный не может писать вам в личные сообщения. Общие группы и комнаты остаются.</div></div>`;
 }

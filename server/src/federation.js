@@ -471,7 +471,7 @@ function relatedPeers(localId) {
 
 // Создать или обновить «теневого» пользователя. Имя и аватарка берутся из последнего, что прислал его сервер
 function ensureShadow(peer, login, name, av) {
-  const username = `${peer.instance_id}@${login}`;
+  const username = `${peer.instance_id}:${login}`;
   let u = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
   if (!u) {
     const r = db.prepare(`INSERT INTO users (username, password_hash, display_name, is_bot, workspace_id, fed_instance, fed_login, fed_avatar_v)
@@ -529,13 +529,13 @@ function newChatAllowed(peerId) {
 
 // ─────────────────────────── контакты ───────────────────────────
 function parseAddr(s) {
-  const m = /^@?([a-z0-9][a-z0-9._-]{1,31})@(.+)$/i.exec(String(s || '').trim());
+  const m = /^@?([a-z0-9][a-z0-9._-]{1,31}):(.+)$/i.exec(String(s || '').trim());
   return m ? { instance: m[1].toLowerCase(), login: m[2].trim() } : null;
 }
 // Найти человека на другом сервере и завести его у нас (без добавления в контакты)
 async function lookupRemote(address) {
   const a = parseAddr(address);
-  if (!a) return { error: 'Адрес: сервер@логин', code: 'bad_address' };
+  if (!a) return { error: 'Введите адрес вида @сервер:логин', code: 'bad_address' };
   const peer = peerByInstance(a.instance);
   if (!peer || peer.status !== 'active') return { error: 'Такого сервера нет среди подключённых', code: 'no_peer' };
   let r;
