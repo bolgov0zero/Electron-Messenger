@@ -15,6 +15,8 @@ const view = () => ({
   rules: { new_per_hour: Math.max(1, Number(fed.getS('fed_new_per_hour', '20')) || 20) },
 });
 admin.get('/', (req, res) => res.json(view()));
+// Сводка для блока на главной: период day | week | month
+admin.get('/stats', (req, res) => res.json(fed.statsView(String(req.query.period || 'day'))));
 
 // Имя, адрес и (один раз) идентификатор этого сервера
 admin.put('/identity', (req, res) => {

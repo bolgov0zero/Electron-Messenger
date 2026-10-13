@@ -109,6 +109,26 @@ function setIdentity({ id, name, url }) {
   return { ok: true };
 }
 
+// ─────────────────────────── счётчики ───────────────────────────
+// Копим в памяти и раз в 15 секунд сбрасываем в fed_stats по часам: на каждый кадр писать в базу незачем
+const statAcc = new Map();
+function stat(peerId, field, n = 1) {
+  const b = Math.floor(Date.now() / 3600000) * 3600, k = b + ':' + peerId;
+  let o = statAcc.get(k);
+  if (!o) { o = { b, peerId }; statAcc.set(k, o); }
+  o[field] = (o[field] || 0) + n;
+}
+const STAT_FIELDS = ['bytes_out', 'bytes_in', 'rej_limit', 'rej_rate', 'rej_blocked', 'rej_other', 'reconnects'];
+function flushStats() {
+  if (!statAcc.size) return;
+  const rows = [...statAcc.values()]; statAcc.clear();
+  const cols = STAT_FIELDS.join(', '), ph = STAT_FIELDS.map(() => '?').join(', ');
+  const upd = STAT_FIELDS.map(f => `${f} = ${f} + excluded.${f}`).join(', ');
+  const st = db.prepare(`INSERT INTO fed_stats (bucket, peer_id, ${cols}) VALUES (?, ?, ${ph}) ON CONFLICT(bucket, peer_id) DO UPDATE SET ${upd}`);
+  db.transaction(() => rows.forEach(o => { if (db.prepare('SELECT 1 FROM fed_peers WHERE id = ?').get(o.peerId)) st.run(o.b, o.peerId, ...STAT_FIELDS.map(f => o[f] || 0)); }))();
+}
+setInterval(() => { try { flushStats(); } catch (e) { console.warn('[Fed] счётчики:', e.message); } }, 15000).unref();
+
 // ─────────────────────────── соединения ───────────────────────────
 const peerRow = id => db.prepare('SELECT * FROM fed_peers WHERE id = ?').get(id);
 const peerByInstance = inst => db.prepare('SELECT * FROM fed_peers WHERE instance_id = ?').get(String(inst));
@@ -153,7 +173,7 @@ function wire(sess, obj) {
 }
 function sendFrame(sess, obj) {
   if (!sess || sess.ws.readyState !== 1) return false;
-  try { sess.ws.send(wire(sess, obj), { binary: true }); return true; } catch { return false; }
+  try { const w = wire(sess, obj); sess.ws.send(w, { binary: true }); stat(sess.peerId, 'bytes_out', w.length); return true; } catch { return false; }
 }
 // null — кадр поддельный, повторный, переставленный или не расшифровался: соединение надо закрыть
 function readFrame(sess, raw, isBinary) {
@@ -249,6 +269,7 @@ function attach(peer, { ws, nonce, sendKey, recvKey }) {
   if (old && old.ws !== ws) { try { old.ws.close(4000, 'replaced'); } catch {} }
   const sess = { ws, nonce, sendKey, recvKey, sendCtr: 0, recvCtr: 0, peerId: peer.id, sentMax: 0, chain: Promise.resolve(), alive: true };
   sessions.set(peer.id, sess);
+  stat(peer.id, 'reconnects');
   db.prepare('UPDATE fed_peers SET last_contact_at = unixepoch() WHERE id = ?').run(peer.id);
   ws.on('pong', () => { sess.alive = true; });
   sess.ping = setInterval(() => {
@@ -277,6 +298,7 @@ function onOffline(peerId) {
 function onFrame(sess, raw, isBinary) {
   const peer = peerRow(sess.peerId);
   if (!peer || peer.status !== 'active') { try { sess.ws.close(4003, 'denied'); } catch {} return; }
+  if (raw?.length) stat(peer.id, 'bytes_in', raw.length);
   const f = readFrame(sess, raw, isBinary);
   if (!f) { try { sess.ws.close(4004, 'bad frame'); } catch {} return; }
   switch (f.t) {
@@ -643,7 +665,10 @@ async function handleEvent(peer, ev) {
 }
 const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
 
-function reject(peer, ev, reason) { enqueue(peer.id, { k: 'rej', uid: ev.uid, reason }); }
+function reject(peer, ev, reason) {
+  stat(peer.id, reason === 'limit' ? 'rej_limit' : reason === 'rate' ? 'rej_rate' : reason === 'blocked' ? 'rej_blocked' : 'rej_other');
+  enqueue(peer.id, { k: 'rej', uid: ev.uid, reason });
+}
 
 async function recvMessage(peer, ev) {
   const login = str(ev.from, 64), uid = str(ev.uid, 80);
@@ -968,6 +993,55 @@ async function connectWithKey(key) {
   return { ok: true, peer };
 }
 
+
+// ─────────────────────────── сводка для главной админки ───────────────────────────
+// period: day (24 часа по часам), week (7 дней), month (30 дней). Сообщения и файлы берём из messages, объём и отклонённое из fed_stats.
+function statsView(period) {
+  flushStats();
+  const peers = db.prepare('SELECT * FROM fed_peers ORDER BY created_at, id').all();
+  if (!peers.length) return { peers: [] };
+  period = ['day', 'week', 'month'].includes(period) ? period : 'day';
+  const now = Math.floor(Date.now() / 1000), hourNow = Math.floor(now / 3600) * 3600;
+  const dayStart = ts => { const d = new Date(ts * 1000); d.setHours(0, 0, 0, 0); return Math.floor(d.getTime() / 1000); };
+  // сетки корзин: для суток 24 часа, для недели и месяца календарные дни по местному времени
+  let bucketsT = [];
+  if (period === 'day') for (let i = 23; i >= 0; i--) bucketsT.push(hourNow - i * 3600);
+  else { const n = period === 'week' ? 7 : 30; const today = dayStart(now); for (let i = n - 1; i >= 0; i--) { const d = new Date(today * 1000); d.setDate(d.getDate() - i); bucketsT.push(Math.floor(d.getTime() / 1000)); } }
+  const since = bucketsT[0];
+  const keyOf = ts => period === 'day' ? Math.floor(ts / 3600) * 3600 : dayStart(ts);
+  const idx = new Map(bucketsT.map((t, i) => [t, i]));
+  const series = bucketsT.map(t => ({ t, msgOut: 0, msgIn: 0, fOut: 0, fIn: 0, bOut: 0, bIn: 0 }));
+  const by = new Map(peers.map(p => [p.instance_id, { id: p.id, instance_id: p.instance_id, name: p.name, status: p.status, online: isOnline(p.id), role: p.role, last_contact_at: p.last_contact_at, queue: queueSize(p.id), msgOut: 0, msgIn: 0, fOut: 0, fIn: 0, bytes: 0 }]));
+  const byId = new Map([...by.values()].map(p => [p.id, p]));
+  const day24 = hourNow - 23 * 3600;
+  const tot = { msgOut: 0, msgIn: 0, fOut: 0, fIn: 0, bOut: 0, bIn: 0 };
+  const rej = { limit: 0, rate: 0, blocked: 0, file: 0 };
+  const rows = db.prepare(`SELECT s.fed_instance AS inst, (m.sender_id = s.id) AS inb, (m.sent_at / 3600) * 3600 AS h, COUNT(*) AS n,
+      SUM(CASE WHEN m.attachment LIKE '%"url"%' THEN 1 ELSE 0 END) AS f, SUM(CASE WHEN m.attachment LIKE '%"unavailable"%' THEN 1 ELSE 0 END) AS fu
+    FROM messages m JOIN chat_members cm ON cm.chat_id = m.chat_id JOIN users s ON s.id = cm.user_id AND s.is_bot = 2
+    WHERE m.fed_uid IS NOT NULL AND m.sent_at >= ? GROUP BY inst, inb, h`).all(Math.min(since, day24));
+  for (const r of rows) {
+    const p = by.get(r.inst); if (!p) continue;
+    const i = idx.get(keyOf(r.h));
+    if (i !== undefined) { const b = series[i]; if (r.inb) { b.msgIn += r.n; b.fIn += r.f; } else { b.msgOut += r.n; b.fOut += r.f; } if (r.h >= since) { if (r.inb) { p.msgIn += r.n; p.fIn += r.f; } else { p.msgOut += r.n; p.fOut += r.f; } } }
+    if (r.h >= day24) { if (r.inb) { tot.msgIn += r.n; tot.fIn += r.f; rej.file += r.fu; } else { tot.msgOut += r.n; tot.fOut += r.f; } }
+  }
+  const srows = db.prepare('SELECT * FROM fed_stats WHERE bucket >= ?').all(Math.min(since, day24));
+  for (const r of srows) {
+    const i = idx.get(keyOf(r.bucket)), p = byId.get(r.peer_id);
+    if (i !== undefined) { series[i].bOut += r.bytes_out; series[i].bIn += r.bytes_in; if (p && r.bucket >= since) p.bytes += r.bytes_out + r.bytes_in; }
+    if (r.bucket >= day24) { tot.bOut += r.bytes_out; tot.bIn += r.bytes_in; rej.limit += r.rej_limit; rej.rate += r.rej_rate; rej.blocked += r.rej_blocked; rej.file += r.rej_other; }
+  }
+  const list = [...by.values()];
+  const active = list.filter(p => p.status === 'active' && p.online).length;
+  return {
+    period, series,
+    peers: list,
+    totals: { ...tot, queue: list.reduce((a, p) => a + p.queue, 0), active, all: list.length, rej: { ...rej, total: rej.limit + rej.rate + rej.blocked + rej.file } },
+    newest_peer_at: Math.max(...peers.map(p => p.created_at || 0)),
+  };
+}
+
 // Сведения для админки
 function peersInfo() {
   return db.prepare('SELECT * FROM fed_peers ORDER BY created_at, id').all().map(p => ({
@@ -1014,7 +1088,7 @@ function mount(server) {
 }
 
 module.exports = {
-  mount, start, identity, setIdentity, fingerprint, parseAddr, getS, setS,
+  mount, start, statsView, identity, setIdentity, fingerprint, parseAddr, getS, setS,
   createInvite, previewKey, connectBegin, acceptConnect, connectWithKey, peersInfo, pausePeer, resumePeer, deletePeer,
   lookupRemote, peerOfUser, peerByInstance, isOnline,
   onLocalMessage, onEdit, onDelete, onReact, onStatus, onTyping, onPresence, onProfile, onContactAdded, onContactRemoved, afterContactChange,

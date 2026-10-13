@@ -488,6 +488,22 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_fed_outbox_peer ON fed_outbox(peer_id, id);
 `);
 tryAlter('ALTER TABLE fed_invites ADD COLUMN secret TEXT');
+// Счётчики федерации по часам и соединениям: объём прошедшего по соединению и то, что мы отклонили.
+// Число сообщений и файлов берётся прямо из messages (fed_uid), поэтому история для графика есть сразу.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS fed_stats (
+    bucket INTEGER NOT NULL,
+    peer_id INTEGER NOT NULL,
+    bytes_out INTEGER NOT NULL DEFAULT 0,
+    bytes_in INTEGER NOT NULL DEFAULT 0,
+    rej_limit INTEGER NOT NULL DEFAULT 0,
+    rej_rate INTEGER NOT NULL DEFAULT 0,
+    rej_blocked INTEGER NOT NULL DEFAULT 0,
+    rej_other INTEGER NOT NULL DEFAULT 0,
+    reconnects INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (bucket, peer_id)
+  );
+`);
 tryAlter('ALTER TABLE users ADD COLUMN fed_instance TEXT');
 tryAlter('ALTER TABLE users ADD COLUMN fed_login TEXT');
 tryAlter('ALTER TABLE users ADD COLUMN fed_avatar_v TEXT');
