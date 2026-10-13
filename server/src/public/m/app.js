@@ -973,8 +973,8 @@ function renderContacts() {
   // Сначала те, кто в сети; внутри каждой группы — по имени
   const rank = u => ({ online: 0, away: 1 })[S.presence[u.id]] ?? 2;
   const byName = (a, b) => a.display_name.localeCompare(b.display_name, 'ru', { numeric: true });
-  const own = filtered.filter(u => u.rel !== 'other').sort((a, b) => rank(a) - rank(b) || byName(a, b));
-  const other = filtered.filter(u => u.rel === 'other').sort(byName);
+  // Один общий список: «чужих» (другое пространство, другой сервер) отличает значок под именем
+  const own = filtered.sort((a, b) => rank(a) - rank(b) || byName(a, b));
   if (!filtered.length) {
     list.innerHTML = _contactsAll.length
       ? `<div class="m-stub"><b>Никого не нашли</b><span>Проверьте написание имени.</span></div>`
@@ -998,7 +998,6 @@ function renderContacts() {
     const items = own.filter(u => rank(u) === r);
     return items.length ? `<div class="chat-list-section-label">${label}</div>` + items.map(rowHtml).join('') : '';
   }).join('');
-  if (other.length) html += `<div class="chat-list-section-label">Из других пространств</div>` + other.map(rowHtml).join('');
   list.innerHTML = html;
   applyAvatars();
 }

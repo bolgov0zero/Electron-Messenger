@@ -1232,11 +1232,9 @@ function renderContactsList(filter = '') {
   // Сначала те, кто в сети; внутри каждой группы — по имени
   const rank = u => ({ online: 0, away: 1 })[S.presence[u.id]] ?? 2;
   const byName = (a, b) => a.display_name.localeCompare(b.display_name, 'ru', { numeric: true });
-  // Люди из других пространств (добавленные в контакты) — отдельным блоком ниже, без группировки по статусу
-  const own = users.filter(u => u.rel !== 'other').sort((a, b) => rank(a) - rank(b) || byName(a, b));
-  const other = users.filter(u => u.rel === 'other').sort(byName);
-  let html = own.length ? contactGroupsHtml(own, rank, contactRowHtml) : '';
-  if (other.length) html += `<div class="chat-list-section-label"${own.length ? ' style="padding-top:14px"' : ''}>Из других пространств</div>` + other.map(contactRowHtml).join('');
+  // Один общий список: свои, из других пространств и с других серверов вместе; «чужих» отличает значок под именем
+  users.sort((a, b) => rank(a) - rank(b) || byName(a, b));
+  const html = users.length ? contactGroupsHtml(users, rank, contactRowHtml) : '';
   list.innerHTML = html || (q
     ? `<div class="cs-stub"><div class="cs-stub-i">${CS_I.search || CS_I.user}</div><b>Никого не нашлось</b><span>Проверьте написание имени или логина.</span></div>`
     : `<div class="cs-stub"><div class="cs-stub-i">${CS_I.user}</div><b>Контактов пока нет</b>
