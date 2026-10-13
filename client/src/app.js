@@ -1426,8 +1426,8 @@ function profileLinks() {
 function profileLinksHtml() {
   const u = S.user;
   return `<div class="cs-gt">Ссылка на профиль</div>
-    <div class="cs-g"><div class="pl-b">${profileLinks().map(([k, lab, v]) => `<button type="button" class="pl-f" data-pl="${k}" aria-label="Скопировать: ${esc(v)}" onclick="copyProfileLink('${k}')"><span class="pl-k">${lab}</span><span class="pl-v">${esc(v)}</span><span class="pl-i">${CS_I.copy}</span></button>`).join('')}</div>
-    <p class="pl-n">${u.server_id ? 'Внутреннюю называйте коллегам на вашем сервере, внешнюю людям с других серверов.' : 'Внешняя ссылка появится, когда администратор настроит федерацию сервера.'}</p></div>`;
+    <div class="cs-g"><div class="cs-r stack"><div class="pl-b">${profileLinks().map(([k, lab, v]) => `<button type="button" class="pl-f" data-pl="${k}" aria-label="Скопировать: ${esc(v)}" onclick="copyProfileLink('${k}')"><span class="pl-k">${lab}</span><span class="pl-v">${esc(v)}</span><span class="pl-i">${CS_I.copy}</span></button>`).join('')}</div>
+    <p class="pl-n">${u.server_id ? 'Внутреннюю называйте коллегам на вашем сервере, внешнюю людям с других серверов.' : 'Внешняя ссылка появится, когда администратор настроит федерацию сервера.'}</p></div></div>`;
 }
 async function copyProfileLink(kind) {
   const l = profileLinks().find(x => x[0] === kind); if (!l) return;
