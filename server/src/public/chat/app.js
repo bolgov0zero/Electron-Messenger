@@ -1767,10 +1767,10 @@ function applyAvatars() {
     if (chat.type === 'direct') {
       const peerId = getPeerUserId(chat);
       if (!peerId) return;
-      const url = `${httpProto()}://${S.server}/api/users/${peerId}/avatar?t=${S.avatarTs||0}`;
+      const url = `${httpProto()}://${S.server}/api/users/${peerId}/avatar?t=${S.avatarTs||1}`;
       tryLoadAvatar(el, url, initials(chatName(chat)));
     } else {
-      const url = `${httpProto()}://${S.server}/api/chats/${chatId}/avatar?t=${S.avatarTs||0}`;
+      const url = `${httpProto()}://${S.server}/api/chats/${chatId}/avatar?t=${S.avatarTs||1}`;
       tryLoadAvatar(el, url, chatIcon(chat));
     }
   });
@@ -1778,7 +1778,7 @@ function applyAvatars() {
     const uid = parseInt(el.dataset.avUser);
     const user = S.allUsers.find(u => u.id === uid) || (uid === S.user.id ? S.user : null);
     if (!user) return;
-    const url = `${httpProto()}://${S.server}/api/users/${uid}/avatar?t=${S.avatarTs||0}`;
+    const url = `${httpProto()}://${S.server}/api/users/${uid}/avatar?t=${S.avatarTs||1}`;
     tryLoadAvatar(el, url, initials(user.display_name));
   });
 }
@@ -3291,7 +3291,7 @@ function _rtRender(btn, reaction, users) {
   const rest = users.length - shown.length;
   el.innerHTML =
     shown.map((u, i) => {
-      const url = `${httpProto()}://${S.server}/api/users/${u.user_id}/avatar?t=${S.avatarTs || 0}`;
+      const url = `${httpProto()}://${S.server}/api/users/${u.user_id}/avatar?t=${S.avatarTs || 1}`;
       return `<span class="rt-row" style="--i:${i}">` +
         `<span class="rt-av ${userAvatarColor(u.user_id)}">${esc(initials(u.display_name) || '?')}` +
         `<img src="${url}" alt="" onerror="this.style.display='none'"></span>` +
@@ -5511,6 +5511,9 @@ async function loadBlocks() {
 async function refreshDirectory() {
   await loadUsers();
   await loadPresence();
+  // Аватарка человека с другого сервера может приехать позже первого показа: неудачи не помним, пробуем снова
+  for (const [u, ok] of [..._avatarCache]) if (ok === false) _avatarCache.delete(u);
+  applyAvatars();
   if (pfIsOpen()) renderProfile();
   if (_sidebarTab === 'contacts') renderContactsList(document.getElementById('contacts-search')?.value || '');
   const chat = S.chats.find(c => c.id === S.activeChatId);

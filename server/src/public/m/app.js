@@ -26,7 +26,7 @@ const S = {
   server: '', token: null, user: null,
   chats: [], activeChatId: null, ws: null,
   presence: {}, lastSeen: {}, msgStatus: {}, statusApplied: {},
-  avatarTs: 0, currentTab: 'chats', replyTo: null, forwardMsg: null, editingMessageId: null, editLimit: 120,
+  avatarTs: 1, currentTab: 'chats', replyTo: null, forwardMsg: null, editingMessageId: null, editLimit: 120,
   topics: {}, activeRoomId: null, // подкомнаты: roomId -> список тем; открытая комната с темами
   hasMoreOlder: false, // есть ли более старые сообщения, чем в _msgCache, для подгрузки при скролле вверх
   searchResults: null, // результаты глобального поиска по сообщениям (null — обычный список чатов)
@@ -956,6 +956,8 @@ async function loadContacts() {
   if (!users || users.error) return;
   _usersAll = users;
   _contactsAll = users.filter(mPick);
+  // Аватарка человека с другого сервера может приехать позже первого показа: неудачи не помним, пробуем снова
+  for (const [u, ok] of [..._avatarCache]) if (ok === false) _avatarCache.delete(u);
   if (S.currentTab === 'contacts') renderContacts();
   const chat = S.chats.find(c => c.id === S.activeChatId);
   if (chat) syncChatHdrActions(chat);

@@ -373,7 +373,7 @@ router.get('/:id/avatar', (req, res) => {
   // См. пояснение в users.js: с ?t= (клиент версионирует URL при смене аватарки)
   // кэшируем надолго, без него (напр. админка) — коротко
   res.setHeader('Cache-Control', req.query.t ? 'private, max-age=31536000, immutable' : 'private, max-age=60');
-  res.sendFile(file, err => { if (err) res.status(404).end(); });
+  res.sendFile(file, err => { if (err) { res.setHeader('Cache-Control', 'no-store'); res.status(404).end(); } });
 });
 
 // Delete own chat

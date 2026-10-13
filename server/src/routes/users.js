@@ -80,7 +80,9 @@ router.get('/:id/avatar', (req, res) => {
   // в админке, она URL не версионирует) — короткий кэш, чтобы не мигало и не бомбило
   // сервер при частых опросах, но обновление было видно быстро.
   res.setHeader('Cache-Control', req.query.t ? 'private, max-age=31536000, immutable' : 'private, max-age=60');
-  res.sendFile(file, err => { if (err) res.status(404).end(); });
+  // Нет файла: ответ «не найдено» нельзя кэшировать. Иначе браузер на год запоминает отсутствие аватарки по адресу с ?t=
+  // и не показывает её, даже когда файл появился (например, скачался с другого сервера позже первого запроса)
+  res.sendFile(file, err => { if (err) { res.setHeader('Cache-Control', 'no-store'); res.status(404).end(); } });
 });
 
 // Admin: create user
