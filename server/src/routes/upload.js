@@ -101,7 +101,7 @@ async function getVideoSize(filePath) {
 
 async function getVideoDuration(filePath) {
   try {
-    const { stdout } = await execFileP('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrapper=1:nokey=1', filePath]);
+    const { stdout } = await execFileP('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', filePath]);
     const n = parseFloat(stdout);
     return Number.isFinite(n) ? n : null;
   } catch { return null; }
@@ -114,35 +114,67 @@ async function getVideoCodec(filePath) {
   } catch { return null; }
 }
 
+// Перекодирование тяжёлое, поэтому идёт строго по очереди: по умолчанию один ролик
+// за раз (TRANSCODE_PARALLEL), с низким приоритетом (nice 19) и на двух потоках —
+// чтобы чат, WebSocket и админка не задыхались, когда несколько человек разом
+// шлют видео. Остальные запросы просто ждут своей очереди.
+const TRANSCODE_PARALLEL = Math.max(1, parseInt(process.env.TRANSCODE_PARALLEL || '1') || 1);
+const TRANSCODE_TIMEOUT_MS = 15 * 60 * 1000;
+const TRANSCODE_MAX_SIDE = 1920; // длинная сторона кадра: 4K-ролик ужимаем до 1080p
+let _transcodeRunning = 0;
+const _transcodeWaiting = [];
+function acquireTranscodeSlot() {
+  return new Promise(resolve => {
+    const go = () => { _transcodeRunning++; resolve(); };
+    if (_transcodeRunning < TRANSCODE_PARALLEL) go(); else _transcodeWaiting.push(go);
+  });
+}
+function releaseTranscodeSlot() {
+  _transcodeRunning--;
+  const next = _transcodeWaiting.shift();
+  if (next) next();
+}
+
 // iPhone (запись экрана и часть видео с камеры) по умолчанию пишет в HEVC/H.265 —
 // его не декодирует ни один Chromium/Electron ни на одной платформе (лицензионное
 // ограничение самого движка, не баг конкретной машины): контролы и звук работают,
 // а картинки нет — ровно то, что видно у получателя. ffmpeg HEVC декодирует
 // нормально, поэтому перекодируем такое видео в H.264 один раз при загрузке —
 // дальше оно воспроизводится везде, у всех клиентов.
+// Обычно клиент перекодирует видео сам до загрузки (shared/video-prep.js, аппаратным
+// кодером), и сюда доходит только то, что у него не вышло.
 // req — тот же объект запроса, что и в обработчике: используем его как общее
 // хранилище (req._ffmpegChild), чтобы req.on('close') ниже мог убить процесс,
 // если клиент отменил загрузку (крестик) прямо во время транскода.
 async function transcodeToH264IfNeeded(filePath, filename, req) {
   const codec = await getVideoCodec(filePath);
   if (!codec || codec === 'h264') return null; // уже совместимо (или не смогли определить — не рискуем портить файл)
+  await acquireTranscodeSlot();
+  if (req._aborted) { releaseTranscodeSlot(); return null; } // отменили, пока ждали очереди
   const outName = filename.replace(/\.[^.]*$/, '') + '_h264.mp4';
   const outPath = path.join(FILES_DIR, outName);
+  const side = TRANSCODE_MAX_SIDE;
+  const scale = `scale='if(gt(iw,ih),min(${side},iw),-2)':'if(gt(iw,ih),-2,min(${side},ih))'`;
   try {
     await new Promise((resolve, reject) => {
-      req._ffmpegChild = execFile('ffmpeg', [
-        '-i', filePath, '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
-        '-c:a', 'aac', '-movflags', '+faststart', '-y', outPath,
-      ], err => (err ? reject(err) : resolve()));
+      // yuv420p обязателен: iPhone пишет HDR в 10 бит, а 10-битный H.264 браузеры не играют
+      req._ffmpegChild = execFile('nice', ['-n', '19', 'ffmpeg',
+        '-nostdin', '-threads', '2', '-i', filePath, '-map', '0:v:0', '-map', '0:a:0?', '-sn',
+        '-vf', scale, '-pix_fmt', 'yuv420p',
+        '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '24',
+        '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', '-y', outPath,
+      ], { timeout: TRANSCODE_TIMEOUT_MS, killSignal: 'SIGKILL' }, err => (err ? reject(err) : resolve()));
     });
     req._ffmpegChild = null;
     fs.unlink(filePath, () => {});
     return outName;
   } catch (e) {
     req._ffmpegChild = null;
-    console.warn('[Upload] video transcode failed:', e.message);
+    console.warn('[Upload] video transcode failed:', e.killed ? 'таймаут' : e.message);
     try { fs.unlinkSync(outPath); } catch {}
     return null;
+  } finally {
+    releaseTranscodeSlot();
   }
 }
 
@@ -250,6 +282,10 @@ router.post('/',
         req.file.path = path.join(FILES_DIR, newName);
         req.file.mimetype = 'video/mp4';
         try { req.file.size = fs.statSync(req.file.path).size; } catch {}
+        if (req.file.size > cfg.maxSizeMb * 1024 * 1024) {
+          fs.unlink(req.file.path, () => {});
+          return res.status(400).json({ error: `Файл превышает лимит ${cfg.maxSizeMb} МБ` });
+        }
       }
     }
 
@@ -284,7 +320,7 @@ router.post('/',
         const thumbName = req.file.filename.replace(/\.[^.]*$/, '') + '_t.jpg';
         const thumbPath = path.join(FILES_DIR, thumbName);
         req._extraCleanupPaths.push(thumbPath);
-        await execFileP('ffmpeg', ['-ss', String(at), '-i', req.file.path, '-frames:v', '1', '-vf', 'scale=320:-1', '-y', thumbPath]);
+        await execFileP('ffmpeg', ['-ss', String(at), '-i', req.file.path, '-frames:v', '1', '-vf', 'scale=320:-1,format=yuvj420p', '-y', thumbPath]);
         thumb = `/files/${thumbName}`;
       } catch (e) { console.warn('[Upload] video thumbnail failed:', e.message); }
       const size = await getVideoSize(req.file.path);

@@ -2254,17 +2254,49 @@ function onFilePicked(input) {
 }
 // Общий путь для выбора файла и вставки из буфера (см. paste-обработчик ниже) —
 // как в Electron-клиенте, тот же приём.
+// Подготовка видео на устройстве (HEVC → H.264, shared/video-prep.js): грузим модуль лениво,
+// только когда выбрали видео, — это почти 400 КБ, на каждый запуск они ни к чему
+let _prepAbort = null;
+let _videoPrepLoad = null;
+function loadVideoPrep() {
+  if (window.VideoPrep) return Promise.resolve(window.VideoPrep);
+  if (!_videoPrepLoad) _videoPrepLoad = new Promise(res => {
+    const s = document.createElement('script');
+    s.src = '/shared/video-prep.js?v=1';
+    s.onload = () => res(window.VideoPrep || null);
+    s.onerror = () => { _videoPrepLoad = null; res(null); };
+    document.head.appendChild(s);
+  });
+  return _videoPrepLoad;
+}
 async function uploadPickedFile(file) {
   const isImage = file.type.startsWith('image/');
   const isVideo = file.type.startsWith('video/');
   const cfg = isImage ? _uploadSettings.image : isVideo ? _uploadSettings.video : _uploadSettings.file;
   const ext = (file.name.split('.').pop() || '').toLowerCase();
-  if (file.size > cfg.maxSizeMb * 1024 * 1024) { toast(`Файл слишком большой (макс. ${cfg.maxSizeMb} МБ)`); return; }
+  if (!isVideo && file.size > cfg.maxSizeMb * 1024 * 1024) { toast(`Файл слишком большой (макс. ${cfg.maxSizeMb} МБ)`); return; }
   if (cfg.extensions.length > 0 && !cfg.extensions.includes(ext)) { toast(`Расширение .${ext} не разрешено`); return; }
 
   if (_uploadXhr) _uploadXhr.abort();
   _pendingAttachment = null;
   showAttachUploading(isImage ? 'Фото' : isVideo ? 'Видео' : 'Файл');
+
+  const prepTok = ++_scUpTok;
+  if (isVideo && /\.(mov|mp4|m4v)$/i.test(file.name)) {
+    const VP = await loadVideoPrep();
+    if (prepTok !== _scUpTok) return;
+    if (VP && VP.supported()) {
+      const ac = _prepAbort = new AbortController();
+      file = await VP.prepare(file, { signal: ac.signal, onProgress: setAttachPreparing });
+      if (_prepAbort === ac) _prepAbort = null;
+      if (prepTok !== _scUpTok) return;
+    }
+  }
+  if (file.size > cfg.maxSizeMb * 1024 * 1024) {
+    toast(`Файл слишком большой (макс. ${cfg.maxSizeMb} МБ)`);
+    clearAttachment();
+    return;
+  }
 
   const isSecret = S.secretChatIds.has(S.activeChatId);
   const secretKey = isSecret ? SC.keyOf(S.activeChatId) : null;
@@ -2339,6 +2371,12 @@ function setAttachProgress(pct) {
   el.fill.style.width = pct + '%';
   el.name.textContent = `Загрузка… ${pct}%`;
 }
+function setAttachPreparing(pct) {
+  const el = attachBarEls();
+  if (el.bar.style.display === 'none') return; // отменено, пока событие шло
+  el.fill.style.width = pct + '%';
+  el.name.textContent = `Подготовка видео… ${pct}%`;
+}
 function setAttachProcessing() {
   const el = attachBarEls();
   if (el.bar.style.display === 'none') return;
@@ -2367,6 +2405,7 @@ function showAttachDone() {
 }
 function clearAttachment() {
   _scUpTok++;
+  if (_prepAbort) { _prepAbort.abort(); _prepAbort = null; }
   if (_uploadXhr) { _uploadXhr.abort(); _uploadXhr = null; }
   else if (_pendingAttachment) {
     // Загрузка уже завершилась (файл лежит на сервере), просто ещё не

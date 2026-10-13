@@ -1,0 +1,6 @@
+{
+  "name": "video-prep-build",
+  "private": true,
+  "description": "Сборка shared/video-prep.js (подготовка видео на устройстве отправителя)",
+  "devDependencies": { "esbuild": "^0.28.2", "mediabunny": "^1.61.4" }
+}
