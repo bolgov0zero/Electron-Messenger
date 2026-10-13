@@ -475,6 +475,8 @@ html.m-desktop .screen { display: none !important; }
 .bubble-play { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 44px; height: 44px; border-radius: 50%; background: rgba(0,0,0,.5); color: #fff; display: flex; align-items: center; justify-content: center; padding-left: 3px; }
 .bubble.bubble-photo { padding: 0; width: 280px; max-width: 100%; }
 .bubble.bubble-photo .bubble-media { margin-bottom: 0; border-radius: inherit; }
+/* У видео кадр лежит в обёртке: скругление должно идти и через неё, иначе пузырь с видео выглядит прямоугольником */
+.bubble.bubble-photo .bubble-video-wrap { border-radius: inherit; overflow: hidden; }
 .bubble.bubble-photo > .bubble-meta { right: 9px; bottom: 9px; background: rgba(0,0,0,.5); border-radius: 8px; padding: 2px 7px; color: #fff; }
 .bubble-file { display: flex; align-items: center; gap: 10px; padding: 4px 2px; cursor: pointer; min-width: 160px; }
 .bubble-file-ico { width: 38px; height: 38px; border-radius: 10px; background: var(--search-bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--accent); }
