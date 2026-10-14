@@ -59,10 +59,16 @@ B.ui.msgmenu = (function () {
     mn.style.left = mnL + 'px'; mn.style.top = (top + chH + gap) + 'px'; mn.style.transformOrigin = (mine ? 'right' : 'left') + ' top';
     clone.style.maxHeight = '320px'; clone.style.overflow = 'hidden';
     void clone.offsetWidth;
+    cur.clone = clone; cur.rx = rx; cur.mn = mn; cur.y = r.y;      // нужны при закрытии: меню уходит так же плавно, как появилось
     clone.style.transition = 'top .38s var(--ease)'; clone.style.top = top + 'px'; rx.classList.add('in'); mn.classList.add('in');
     try { navigator.vibrate && navigator.vibrate(10); } catch (e) {}
   }
-  function close() { if (!layer) return; layer.classList.remove('on'); cur = null; setTimeout(function () { if (!layer.classList.contains('on')) layer.innerHTML = ''; }, 320); }
+  function close() {
+    if (!layer) return; var c = cur; layer.classList.remove('on'); cur = null;
+    // Реакции и меню сжимаются обратно и гаснут, пузырь возвращается на своё место, фон светлеет
+    if (c && c.rx) { c.rx.classList.remove('in'); c.mn.classList.remove('in'); c.clone.style.top = c.y + 'px'; }
+    setTimeout(function () { if (!layer.classList.contains('on')) layer.innerHTML = ''; }, 420);
+  }
   function isOpen() { return !!(layer && layer.classList.contains('on')); }
   function copy(text) {
     var ok = function () { B.toast.show('Скопировано'); };
