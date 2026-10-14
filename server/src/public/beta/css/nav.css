@@ -48,12 +48,12 @@
 
 /* уведомления: короткая подсказка и баннер нового сообщения */
 .toast {
-  position: absolute; left: 50%; top: calc(var(--sat) + 8px); transform: translate(-50%, -160%); padding: 11px 18px; border-radius: 22px;
+  position: absolute; left: 50%; top: calc(var(--sat) + 8px); transform: translate(-50%, -160%); opacity: 0; visibility: hidden; pointer-events: none; padding: 11px 18px; border-radius: 22px;
   background: var(--bar2); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: 0 6px 24px rgba(0, 0, 0, .2);
-  font-size: 14.5px; font-weight: 500; z-index: 60; transition: transform .45s var(--ease); max-width: 92%; display: flex; gap: 10px; align-items: center; color: var(--fg); text-align: center;
+  font-size: 14.5px; font-weight: 500; z-index: 60; transition: transform .45s var(--ease), opacity .25s, visibility 0s .45s; max-width: 92%; display: flex; gap: 10px; align-items: center; color: var(--fg); text-align: center;
 }
-.toast.on { transform: translate(-50%, 0); }
+.toast.on { transform: translate(-50%, 0); opacity: 1; visibility: visible; transition: transform .45s var(--ease), opacity .2s; }
 .toast.pn { left: 12px; right: 12px; max-width: none; transform: translateY(-160%); padding: 10px 14px; text-align: left; }
-.toast.pn.on { transform: none; }
+.toast.pn.on { transform: none; opacity: 1; pointer-events: auto; }
 .toast .tt { min-width: 0; } .toast .tt b { display: block; font-size: 14px; } .toast .tt span { display: block; font-size: 13.5px; color: var(--fg2); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (prefers-reduced-motion: reduce) { #stack, #stack > .page, .sh, .as, .toast { transition-duration: .01s !important; } }
