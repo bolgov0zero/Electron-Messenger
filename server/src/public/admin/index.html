@@ -774,6 +774,16 @@ tbody tr:hover td{background:var(--c-surface2)}
 .mdl-stats b{display:block;font-size:19px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.mdl-stats span{font-size:11.5px;color:var(--c-muted)}
 .mdl-ico.t{font-size:11px;font-weight:800;letter-spacing:.02em}
 .mdk{border-top:1px solid var(--c-border);padding:16px 18px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:8px 22px}
+.mdk-i{display:inline-grid;place-items:center;width:17px;height:17px;margin-left:4px;padding:0;border-radius:50%;border:1px solid var(--c-border);background:var(--c-surface2);color:var(--c-text2);font:700 10.5px/1 var(--f-ui);font-style:italic;vertical-align:1px;cursor:pointer}
+.mdk-i:hover{border-color:var(--c-primary);color:var(--c-primary)}
+.modal.mdk-help{width:min(500px,calc(100vw - 24px))}
+.mdk-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px;counter-reset:st}
+.mdk-steps li{position:relative;padding-left:34px;counter-increment:st}
+.mdk-steps li::before{content:counter(st);position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;background:var(--c-primary-dim);color:var(--c-primary);display:grid;place-items:center;font-size:12px;font-weight:700}
+.mdk-steps b{display:block;font-size:13px}
+.mdk-steps span{display:block;margin-top:2px;font-size:12.5px;color:var(--c-text2);line-height:1.5}
+.mdk-help-n{margin-top:16px;padding:10px 12px;border-radius:10px;background:var(--c-surface2);border:1px solid var(--c-border);font-size:12px;color:var(--c-text2);line-height:1.5}
+.mdk-help-f{display:flex;justify-content:flex-end;gap:8px}.mdk-help-f a{text-decoration:none}
 .mdk-h b{display:block;font-size:13px}.mdk-h span{display:block;font-size:11.5px;color:var(--c-muted);margin-top:3px;line-height:1.45}
 .mdk-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .mdk-inp{flex:1;min-width:200px;height:36px;border:1px solid var(--border-input);border-radius:9px;background:var(--bg-input);display:flex;align-items:center;padding:0 4px 0 12px;gap:6px}
@@ -2191,6 +2201,26 @@ return 'OK';</pre>
 <!-- Окна разделов «Комнаты» и «Чаты и группы»: содержимое рисует скрипт -->
 <div class="modal-bg" id="modal-room"><div class="modal ua-modal fm" id="rm-form" role="dialog" aria-modal="true"></div></div>
 <div class="modal-bg" id="modal-chat-members"><div class="modal ua-modal ua-sm" id="cm-form" role="dialog" aria-modal="true"></div></div>
+
+<!-- Как получить ключ Klipy -->
+<div class="modal-bg" id="modal-klipy">
+  <div class="modal mdk-help">
+    <div class="modal-head">
+      <h3>Как получить ключ Klipy</h3>
+      <button class="modal-close" onclick="closeModal('modal-klipy')" aria-label="Закрыть">✕</button>
+    </div>
+    <div class="modal-body">
+      <ol class="mdk-steps">
+        <li><b>Откройте кабинет партнёра</b><span>Войдите или зарегистрируйтесь на <a class="mdk-lnk" href="https://partner.klipy.com/" target="_blank" rel="noopener">partner.klipy.com</a>.</span></li>
+        <li><b>Создайте ключ</b><span>В разделе «API Keys» создайте платформу (название любое, например «Корпоративный чат»). Появится ключ в статусе Testing.</span></li>
+        <li><b>Скопируйте и сохраните</b><span>Нажмите «Show key», скопируйте ключ, вставьте его на странице модуля и нажмите «Сохранить». Затем «Проверить ключ» и включите модуль.</span></li>
+        <li><b>Запросите рабочий доступ</b><span>Тестовый ключ даёт 100 запросов в час на всех пользователей. Для команды в том же кабинете запросите Production.</span></li>
+      </ol>
+      <div class="mdk-help-n">Фильтр запрещённых слов и тем настраивается там же, в кабинете Klipy.</div>
+    </div>
+    <div class="modal-foot mdk-help-f"><button class="btn btn-ghost btn-sm" onclick="closeModal('modal-klipy')">Закрыть</button><a class="btn btn-primary btn-sm" href="https://partner.klipy.com/" target="_blank" rel="noopener">Открыть кабинет Klipy</a></div>
+  </div>
+</div>
 
 <!-- Журнал модуля -->
 <div class="modal-bg" id="modal-modlog">
@@ -7557,7 +7587,7 @@ function mdKeyBlock(m) {
         <button type="button" class="mdk-eye" aria-label="${MOD.show ? 'Скрыть' : 'Показать'}" onclick="mdKeyEye()">${MOD.show ? MD_EYE_OFF : MD_EYE}</button></div>
         <button type="button" class="btn btn-primary btn-sm" id="md-key-save" ${MOD.draft.trim().length < 8 || MOD.busy ? 'disabled' : ''} onclick="mdKeySave()">Сохранить</button>${c.hasKey ? '<button type="button" class="btn btn-ghost btn-sm" onclick="mdKeyCancel()">Отмена</button>' : ''}</div>
         <div class="mdk-kv"><span>Ключ создаётся в разделе API Keys кабинета ${name}. <a class="mdk-lnk" href="https://partner.klipy.com/" target="_blank" rel="noopener">Открыть кабинет</a></span></div>`;
-  return `<div class="mdk"><div class="mdk-h"><b>API-ключ ${name}</b><span>Сервер хранит ключ и выдаёт его клиентам при включении модуля.</span></div>
+  return `<div class="mdk"><div class="mdk-h"><b>API-ключ ${name} <button type="button" class="mdk-i" onclick="openModal('modal-klipy')" aria-label="Как получить ключ" title="Как получить ключ">i</button></b><span>Сервер хранит ключ и выдаёт его клиентам при включении модуля.</span></div>
       <div>${body}
         <div class="mdk-note"><b>!</b><div>Тестовый ключ ограничен <strong>100 запросами в час</strong> на всех пользователей сразу. Для команды запросите Production в кабинете ${name}: раздел API Keys, затем «Request production».</div></div></div></div>
     <div class="mdk"><div class="mdk-h"><b>Условия ${name}</b><span>Действуют независимо от настроек чата.</span></div>
