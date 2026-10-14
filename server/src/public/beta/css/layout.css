@@ -4,10 +4,12 @@
 :root {
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif, "Noto Color Emoji";
   --navh: 44px;
-  --tabh: 44px;   /* высота нижней панели под элементы: одинакова на всех экранах (вкладки и поле ввода) */
+  --bandh: 36px;   /* рабочая полоса нижней панели = самый высокий элемент (поле ввода и вкладки); более низкие центруются в ней */
+  --bpadt: 8px;    /* отступ над самым высоким элементом */
+  --tabh: calc(var(--bandh) + var(--bpadt));   /* единая высота нижней панели без безопасной зоны */
   /* Запасы подбираются на реальном iPhone (экран «Настройки → Диагностика»), значения живут в localStorage */
   --sat-extra: 24px;   /* системное размытие у верха PWA глубже, чем safe-area: опускаем панель */
-  --sab-extra: -12px;  /* нижние панели и поле ввода ближе к безопасной зоне */
+  --sab-extra: 0px;   /* элементы нижней панели прилегают к безопасной зоне */
   --sat: max(0px, calc(env(safe-area-inset-top, 0px) + var(--sat-extra)));
   --sab: max(0px, calc(env(safe-area-inset-bottom, 0px) + var(--sab-extra)));
   --top: calc(var(--sat) + var(--navh));
@@ -63,9 +65,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
   background: var(--bar-solid);   /* нижняя панель сплошная: без прозрачности и размытия */
 }
 .bottom::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: .5px; background: var(--sep); }
-.tabbar { display: flex; align-items: flex-start; padding: 0 8px var(--sab); height: var(--bot); }
-.tb { flex: 1; height: var(--tabh); border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; color: var(--fg2); font-size: 10px; font-weight: 500; position: relative; }
-.tb .ic { width: 25px; height: 25px; }
+.tabbar { display: flex; align-items: flex-start; padding: var(--bpadt) 8px var(--sab); height: var(--bot); }
+.tb { flex: 1; height: var(--bandh); border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; color: var(--fg2); font-size: 10px; font-weight: 500; position: relative; }
+.tb .ic { width: 24px; height: 24px; }
+.tb span { line-height: 12px; }
 .tb.on { color: var(--accent); }
 
 /* клавиатура: пока она открыта, kbd.js задаёт #app высоту и сдвиг видимой области (visualViewport) */
