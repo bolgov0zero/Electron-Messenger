@@ -587,7 +587,7 @@ function chatPreview(c) {
   if (lm.deleted) return 'Сообщение удалено';
   if (lm.text) return lm.text.replace(/<[^>]*>/g, '');
   if (lm.forward_data && !lm.text) return 'Пересланное сообщение';
-  if (lm.attachment) return lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл');
+  if (lm.attachment) return lm.attachment.gif ? '🖼 GIF' : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл');
   return '';
 }
 
@@ -874,7 +874,7 @@ function renderTopicsList() {
     const who = mine ? 'Вы: ' : '';
     let preview = lm
       ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? lm.text.replace(/<[^>]*>/g, '') : (lm.attachment
-          ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл'))
+          ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл'))
           : '')))
       : 'Нет сообщений';
     if (preview.length > 40) preview = preview.slice(0, 40) + '…';
@@ -1566,9 +1566,9 @@ function modulesSheetHtml() {
   }
   return `<div id="modules-sheet"><div class="sheet-title">Модули</div>${list.map((m, i) => `
     <div class="set-block"${i ? '' : ' style="border-top:0;margin-top:0;padding-top:0"'}>
-      <div class="m-mod"><div class="m-mod-l"><b>${esc(m.title)}</b><span>${esc(m.description)}</span></div>${mTg(m.on, `mModuleToggle('${m.key}')`, esc(m.title))}</div>
-      ${m.on && m.note ? `<div class="m-hint">${esc(m.note)}</div>` : ''}
-      ${m.on ? `<button type="button" class="m-redo" onclick="mModuleRedo('${m.key}')">Перекачать</button>` : ''}
+      <div class="m-mod"><div class="m-mod-l"><b>${esc(m.title)}${m.provider ? ` <span class="cs-pill">${esc(m.provider)}</span>` : ''}</b><span>${esc(m.description)}</span></div>${mTg(m.on, `mModuleToggle('${m.key}')`, esc(m.title))}</div>
+      ${m.note && (m.on || m.provider) ? `<div class="m-hint">${esc(m.note)}</div>` : ''}
+      ${m.on && m.needsDownload ? `<button type="button" class="m-redo" onclick="mModuleRedo('${m.key}')">Перекачать</button>` : ''}
     </div>`).join('')}</div>`;
 }
 function openModulesSheet() { openSheet(modulesSheetHtml()); }
@@ -1672,6 +1672,8 @@ function attachmentHtml(att) {
   if (att.enc) return scAttachHtmlM(att);
   // Вложение с другого сервера, которое у нас не приняли (размер или формат по настройкам этого сервера) или не удалось получить
   if (att.unavailable) return `<div class="bubble-file"><div class="bubble-file-ico">✕</div><div><div class="bubble-file-name">${att.unavailable === 'policy' ? 'Вложение недоступно: не соответствует настройкам сервера' : 'Вложение не удалось получить'}</div></div></div>`;
+  // GIF из Klipy: ссылки на ролик, файла у нас нет
+  if (att.gif) return GifKlipy.messageHtml(att);
   const url = `${httpProto()}://${S.server}${att.url}`;
   if (att.expired) return `<div class="bubble-file"><div class="bubble-file-ico">✕</div><div><div class="bubble-file-name">Файл удалён</div></div></div>`;
   // aspect-ratio по сохранённым при загрузке размерам резервирует место под картинку/видео
@@ -1772,8 +1774,8 @@ function bubbleHtml(m, chat, pos = {}) {
   // кадра; срезанный угол синхронизирован с положением в серии/разрывом у
   // реакции (как .bubble-photo в /chat и в клиенте)
   const att = m.attachment;
-  const bareMedia = !m.text && !m.reply_to_id && !!att?.url && !att.expired
-    && !!(att.mime?.startsWith('image/') || att.mime?.startsWith('video/'));
+  const bareMedia = !m.text && !m.reply_to_id && ((!!att?.url && !att.expired
+    && !!(att.mime?.startsWith('image/') || att.mime?.startsWith('video/'))) || !!att?.gif);
   const posCls = (isFirst ? ' first' : '') + (isTail ? ' tail' : '') + (split ? ' split' : '') + (splitNext ? ' split-next' : '');
   const bubbleOnly = `<div class="bubble ${mine ? 'out' : 'in'}${posCls}${bareMedia ? ' bubble-photo' : ''}${emojiOnly ? ' emoji-msg' : ''}" data-msg-id="${m.id}" data-sent-at="${m.sent_at}" data-mine="${mine ? 1 : 0}">
     ${quote}${forwardHtml}${attachmentHtml(m.attachment)}${text}
@@ -2436,7 +2438,7 @@ function clearAttachment() {
   _scUpTok++;
   if (_prepAbort) { _prepAbort.abort(); _prepAbort = null; }
   if (_uploadXhr) { _uploadXhr.abort(); _uploadXhr = null; }
-  else if (_pendingAttachment) {
+  else if (_pendingAttachment && _pendingAttachment.url) {
     // Загрузка уже завершилась (файл лежит на сервере), просто ещё не
     // отправлена — крестик должен убрать файл и с сервера, а не только из плашки
     api('DELETE', '/upload', { url: _pendingAttachment.url, thumb: _pendingAttachment.thumb });
@@ -2579,6 +2581,41 @@ function insertEmoji(em) {
   input.focus();
   _emojiInserting = false;
 }
+// ── GIF из Klipy в панели смайлов (модуль «GIF», см. shared/gif-klipy.js) ──
+// Переключатель «Смайлы / GIF» внизу панели есть, если модуль включён у этого человека и чат не секретный
+let _epMode = 'emoji', _gifMounted = false;
+function epDockSync() {
+  const dock = document.getElementById('ep-dock'); if (!dock) return;
+  const can = !!(window.GifKlipy && GifKlipy.on()) && !S.secretChatIds.has(S.activeChatId) && !S.editingMessageId;
+  dock.hidden = !can;
+  if (!can && _epMode === 'gif') epMode('emoji');
+}
+function epMode(mode) {
+  const panel = document.getElementById('emoji-panel'); if (!panel) return;
+  if (mode === 'gif' && !(window.GifKlipy && GifKlipy.on())) mode = 'emoji';
+  _epMode = mode;
+  const gif = mode === 'gif';
+  panel.classList.toggle('gif-mode', gif);
+  panel.querySelector('.ep-search').hidden = gif;
+  document.getElementById('ep-tabs').hidden = gif;
+  document.getElementById('ep-scroll').hidden = gif;
+  const host = document.getElementById('ep-gif'); host.hidden = !gif;
+  document.getElementById('ep-pw').hidden = !gif;
+  document.getElementById('ep-sw-emoji').setAttribute('aria-pressed', String(!gif));
+  document.getElementById('ep-sw-gif').setAttribute('aria-pressed', String(gif));
+  if (gif && !_gifMounted) {
+    _gifMounted = true;
+    GifKlipy.setUser(`${S.server}:${S.user?.id || 0}`, 'ru');
+    GifKlipy.mount(host, { onPick: pickGif });
+  }
+}
+// Выбранная GIF уходит сразу: если в поле есть текст, он станет подписью
+function pickGif(att) {
+  if (!att || !att.gif || S.editingMessageId) return;
+  _pendingAttachment = att;
+  sendMessage();
+}
+
 function toggleEmojiPanel() {
   const panel = document.getElementById('emoji-panel');
   if (!panel) return;
@@ -2599,6 +2636,7 @@ function toggleEmojiPanel() {
   // Оверлей над перепиской (position:absolute, bottom:100% композера) — открытие
   // не двигает и не сжимает список сообщений, поэтому докручивать его не нужно
   panel.classList.add('open');
+  epDockSync();
 }
 function closeEmojiPanel() {
   if (_emojiInserting) return; // фокус вернули после вставки смайла — панель не закрываем
@@ -3095,7 +3133,7 @@ function connectWS() {
       const c = S.chats.find(x => x.id === data.chat_id);
       if (c) { c.dm_limit = data.dm_limit || c.dm_limit; if (data.chat_id === S.activeChatId) syncReadOnlyUi(); }
     }
-    if (data.type === 'send_rejected') toast(data.reason === 'limit' ? 'Больше писать нельзя, пока собеседник не ответит или не добавит вас в контакты' : data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' || data.reason === 'rate' ? 'Сообщение не доставлено' : data.reason === 'federation_off' ? 'Нет связи с сервером этого человека' : 'Писать сюда нельзя');
+    if (data.type === 'send_rejected') toast(data.reason === 'limit' ? 'Больше писать нельзя, пока собеседник не ответит или не добавит вас в контакты' : data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' || data.reason === 'rate' ? 'Сообщение не доставлено' : data.reason === 'federation_off' ? 'Нет связи с сервером этого человека' : data.reason === 'gif_off' ? 'GIF сейчас недоступны' : 'Писать сюда нельзя');
   };
 
   ws.onclose = () => { if (S.ws === ws) setTimeout(() => { if (S.token) connectWS(); }, 2000); };

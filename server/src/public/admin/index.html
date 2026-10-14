@@ -772,6 +772,26 @@ tbody tr:hover td{background:var(--c-surface2)}
 .mdl-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border-top:1px solid var(--c-border)}
 .mdl-stats>div{padding:12px 18px;border-right:1px solid var(--c-border)}.mdl-stats>div:last-child{border-right:0}
 .mdl-stats b{display:block;font-size:19px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}.mdl-stats span{font-size:11.5px;color:var(--c-muted)}
+.mdl-ico.t{font-size:11px;font-weight:800;letter-spacing:.02em}
+.mdk{border-top:1px solid var(--c-border);padding:16px 18px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:8px 22px}
+.mdk-h b{display:block;font-size:13px}.mdk-h span{display:block;font-size:11.5px;color:var(--c-muted);margin-top:3px;line-height:1.45}
+.mdk-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mdk-inp{flex:1;min-width:200px;height:36px;border:1px solid var(--border-input);border-radius:9px;background:var(--bg-input);display:flex;align-items:center;padding:0 4px 0 12px;gap:6px}
+.mdk-inp:focus-within{border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow)}
+.mdk-inp input{flex:1;min-width:0;border:0;background:none;color:var(--c-text);font:500 13px var(--f-mono);outline:none}
+.mdk-inp input::placeholder{color:var(--c-muted);font-family:var(--f-ui);font-weight:400}
+.mdk-eye{width:28px;height:28px;border:0;border-radius:7px;background:none;color:var(--c-muted);cursor:pointer;display:grid;place-items:center}
+.mdk-eye:hover{background:var(--c-surface2);color:var(--c-text)}.mdk-eye svg{width:15px;height:15px}
+.mdk-kv{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px;font-size:12px;color:var(--c-muted)}
+.mdk-kv code{font:500 12px var(--f-mono);color:var(--c-text);background:var(--c-surface2);border:1px solid var(--c-border);padding:3px 8px;border-radius:7px}
+.mdk-ok{color:var(--c-green-text);font-weight:600}.mdk-bad{color:var(--c-red-text);font-weight:600}
+.mdk-lnk{color:var(--c-primary);text-decoration:none;font-weight:600}.mdk-lnk:hover{text-decoration:underline}
+.mdk-note{display:flex;gap:10px;margin-top:10px;padding:10px 12px;border-radius:10px;font-size:12px;line-height:1.5;background:color-mix(in srgb,var(--c-orange) 11%,transparent);border:1px solid color-mix(in srgb,var(--c-orange) 35%,var(--c-border))}
+.mdk-note>b{width:18px;height:18px;border-radius:50%;background:var(--c-orange);color:#231600;display:grid;place-items:center;font-size:12px;flex-shrink:0}
+.mdk-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px 20px}
+.mdk-facts>div{font-size:12px;color:var(--c-muted);line-height:1.5;padding-left:14px;position:relative}
+.mdk-facts>div::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;background:var(--c-primary)}
+@media (max-width:720px){.mdk{grid-template-columns:minmax(0,1fr)}}
 .mdl-empty{padding:22px;text-align:center;color:var(--c-muted);font-size:12.5px}
 
 /* ── Федерации ── */
@@ -7494,7 +7514,7 @@ function fdDelete(i) {
 // Необязательные возможности клиента. Включённый здесь модуль становится доступен пользователям в настройках
 // клиента (у кого выключен — модуля нет вовсе), остальное решает сам пользователь на каждом устройстве.
 // Журнал: кто и когда включил, выключил, начал загрузку или получил ошибку; хранится год.
-const MOD = { list: [] };
+const MOD = { list: [], draft: '', show: false, editing: false, checking: false, check: null, busy: false };
 const mdNum = n => Number(n || 0).toLocaleString('ru-RU');
 const mdBytes = b => b >= 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' МБ' : Math.round(b / 1024) + ' КБ';
 async function renderModules() {
@@ -7510,16 +7530,73 @@ function mdRender() {
   document.getElementById('page-body').innerHTML = `<div class="ux-page">
     <div><div style="font-size:17px;font-weight:700">Модули</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Дополнительные возможности. Включённый модуль становится доступен пользователям в настройках клиента, и каждый включает его у себя сам.</div></div>
     ${MOD.list.map(m => { const st = m.stats || {}, bc = st.byClient || {};
-      return `<div class="card"><div class="mdl-card"><div class="mdl-ico">${esc(m.icon || '🧩')}</div>
+      return `<div class="card"><div class="mdl-card"><div class="mdl-ico${/^[A-Za-z]/.test(m.icon || '') ? ' t' : ''}">${esc(m.icon || '🧩')}</div>
         <div class="mdl-tx"><b>${esc(m.title)}</b><span>${esc(m.description)}${m.needsDownload ? ` Набор: ${mdNum(m.count)} файлов, около ${mdBytes(m.bytes)}, лежит на сервере.` : ''}</span></div>
         <span class="badge ${m.enabled ? 'badge-green' : 'badge-gray'}">${m.enabled ? 'Включён' : 'Выключен'}</span>
         <button class="btn btn-ghost btn-sm" onclick="mlOpen('${m.key}')">Журнал</button>
-        <label class="toggle-switch" title="Модуль на сервере"><input type="checkbox" ${m.enabled ? 'checked' : ''} onchange="mdToggle('${m.key}', this.checked)" aria-label="Модуль включён на сервере"><span class="toggle-track"><span class="toggle-thumb"></span></span></label></div>
+        <label class="toggle-switch" title="${m.config && !m.config.hasKey ? 'Сначала сохраните API-ключ' : 'Модуль на сервере'}"><input type="checkbox" ${m.enabled ? 'checked' : ''} ${m.config && !m.config.hasKey ? 'disabled' : ''} onchange="mdToggle('${m.key}', this.checked)" aria-label="Модуль включён на сервере"><span class="toggle-track"><span class="toggle-thumb"></span></span></label></div>
+        ${m.config ? mdKeyBlock(m) : ''}
         <div class="mdl-stats"><div><b>${mdNum(st.users)} из ${mdNum(st.total)}</b><span>пользователей включили у себя</span></div>
           <div><b>${mdNum(bc.electron)} · ${mdNum(bc.web)} · ${mdNum(bc.mobile)}</b><span>Electron · веб · мобильный</span></div>
-          <div><b>${mdNum(m.version)}</b><span>версия набора, устройств на старой: ${mdNum(st.outdated)}</span></div>
-          <div><b>${mdNum(st.errors30d)}</b><span>ошибок загрузки за 30 дней</span></div></div></div>`; }).join('')}
+          ${m.needsDownload ? `<div><b>${mdNum(m.version)}</b><span>версия набора, устройств на старой: ${mdNum(st.outdated)}</span></div>
+          <div><b>${mdNum(st.errors30d)}</b><span>ошибок загрузки за 30 дней</span></div>` : ''}</div></div>`; }).join('')}
     <div class="card"><div class="mdl-empty">${MOD.list.length ? 'Других модулей пока нет' : 'Модулей пока нет'}</div></div></div>`;
+}
+// ── Ключ API сервиса (модуль «GIF» от Klipy) ──
+const MD_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const MD_EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.9 10.9 0 0 1 12 20C5 20 1 12 1 12a18.5 18.5 0 0 1 5.1-5.9M9.9 4.2A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.2 3.2M1 1l22 22"/></svg>';
+function mdKeyBlock(m) {
+  const c = m.config, name = esc(m.provider || 'сервиса');
+  const body = c.hasKey && !MOD.editing
+    ? `<div class="mdk-row"><div class="mdk-inp" style="max-width:340px"><input value="••••••••••••••••${esc(c.tail)}" readonly aria-label="Сохранённый ключ"></div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="mdKeyReplace()">Заменить</button>
+        <button type="button" class="btn btn-ghost btn-sm" ${MOD.checking ? 'disabled' : ''} onclick="mdKeyCheck()">${MOD.checking ? 'Проверяем…' : 'Проверить ключ'}</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="mdKeyDelete()">Удалить</button></div>
+        <div class="mdk-kv"><span>Сохранён, виден только конец: <code>…${esc(c.tail)}</code></span>${MOD.check === 'ok' ? '<span class="mdk-ok">Ключ работает</span>' : MOD.check === 'limit' ? '<span class="mdk-ok">Ключ верный, но лимит запросов исчерпан</span>' : MOD.check === 'bad' ? `<span class="mdk-bad">${name} не принял ключ</span>` : MOD.check === 'net' ? '<span class="mdk-bad">Нет связи с сервисом</span>' : ''}</div>`
+    : `<div class="mdk-row"><div class="mdk-inp"><input id="md-key" type="${MOD.show ? 'text' : 'password'}" value="${esc(MOD.draft)}" placeholder="Вставьте ключ из кабинета ${name}" autocomplete="off" spellcheck="false" aria-label="API-ключ ${name}" oninput="mdKeyInput(this.value)" onkeydown="if(event.key==='Enter')mdKeySave()">
+        <button type="button" class="mdk-eye" aria-label="${MOD.show ? 'Скрыть' : 'Показать'}" onclick="mdKeyEye()">${MOD.show ? MD_EYE_OFF : MD_EYE}</button></div>
+        <button type="button" class="btn btn-primary btn-sm" id="md-key-save" ${MOD.draft.trim().length < 8 || MOD.busy ? 'disabled' : ''} onclick="mdKeySave()">Сохранить</button>${c.hasKey ? '<button type="button" class="btn btn-ghost btn-sm" onclick="mdKeyCancel()">Отмена</button>' : ''}</div>
+        <div class="mdk-kv"><span>Ключ создаётся в разделе API Keys кабинета ${name}. <a class="mdk-lnk" href="https://partner.klipy.com/" target="_blank" rel="noopener">Открыть кабинет</a></span></div>`;
+  return `<div class="mdk"><div class="mdk-h"><b>API-ключ ${name}</b><span>Сервер хранит ключ и выдаёт его клиентам при включении модуля.</span></div>
+      <div>${body}
+        <div class="mdk-note"><b>!</b><div>Тестовый ключ ограничен <strong>100 запросами в час</strong> на всех пользователей сразу. Для команды запросите Production в кабинете ${name}: раздел API Keys, затем «Request production».</div></div></div></div>
+    <div class="mdk"><div class="mdk-h"><b>Условия ${name}</b><span>Действуют независимо от настроек чата.</span></div>
+      <div class="mdk-facts"><div>Поиск и картинки идут напрямую между устройством и ${name}, через сервер чата не проходят</div>
+        <div>Присланные GIF видны всем, а искать и отправлять могут те, кто включил модуль у себя</div>
+        <div>Фильтр запрещённых слов и тем настраивается в кабинете ${name}, не здесь</div>
+        <div>В секретных чатах модуль не работает</div></div></div>`;
+}
+function mdKeyInput(v) { MOD.draft = v; const b = document.getElementById('md-key-save'); if (b) b.disabled = v.trim().length < 8 || MOD.busy; }
+function mdKeyEye() { MOD.show = !MOD.show; mdRender(); document.getElementById('md-key')?.focus(); }
+function mdKeyReplace() { MOD.editing = true; MOD.draft = ''; MOD.show = false; mdRender(); document.getElementById('md-key')?.focus(); }
+function mdKeyCancel() { MOD.editing = false; MOD.draft = ''; mdRender(); }
+async function mdKeySave() {
+  const v = MOD.draft.trim();
+  if (v.length < 8 || MOD.busy) return;
+  MOD.busy = true;
+  let r; try { r = await api('PUT', '/api/admin/modules/gif/key', { key: v }); } catch { r = null; }
+  MOD.busy = false;
+  if (!r || r.error) { toast(esc(r?.error || 'Не удалось сохранить ключ'), 'error'); mdRender(); return; }
+  MOD.draft = ''; MOD.show = false; MOD.editing = false; MOD.check = null;
+  toast('Ключ сохранён', 'success'); renderModules();
+}
+function mdKeyDelete() {
+  confirm('Удалить ключ?', 'Модуль будет выключен: без ключа искать и отправлять GIF нельзя. Присланные GIF останутся видны.', async () => {
+    const r = await api('DELETE', '/api/admin/modules/gif/key');
+    if (r?.error) { toast(esc(r.error), 'error'); return; }
+    MOD.check = null; toast('Ключ удалён, модуль выключен', 'success'); renderModules();
+  });
+}
+// Проверка с устройства администратора: по условиям Klipy запросы идут не через наш сервер
+async function mdKeyCheck() {
+  if (MOD.checking) return;
+  MOD.checking = true; MOD.check = null; mdRender();
+  try {
+    const k = await api('GET', '/api/admin/modules/gif/key');
+    const r = await fetch(`https://api.klipy.com/api/v1/${encodeURIComponent(k.key || '')}/gifs/trending?per_page=8&customer_id=admin-check`);
+    MOD.check = r.ok ? 'ok' : r.status === 429 ? 'limit' : 'bad';
+  } catch { MOD.check = 'net'; }
+  MOD.checking = false; mdRender();
 }
 async function mdToggle(key, on) {
   try {

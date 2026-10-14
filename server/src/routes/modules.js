@@ -1,4 +1,4 @@
-// Модули — необязательные возможности клиента (сейчас список пуст, см. REGISTRY).
+// Модули — необязательные возможности клиента (сейчас один: GIF от Klipy, см. REGISTRY).
 //
 // Два уровня. Админ включает модуль на сервере (таблица modules): пока он выключен, у
 // пользователей его нет вообще, ни в настройках, ни в панели смайлов. Включённый модуль
@@ -20,7 +20,14 @@ const CLIENTS = ['electron', 'web', 'mobile'];
 // Реестр модулей. Новый модуль — новая запись здесь и своя папка в public/modules/<ключ> с manifest.json.
 // Поля: title, description, icon, note (пояснение под переключателем), needsDownload (нужен ли набор файлов).
 // Сейчас модулей нет: «Анимированные смайлы» сняты в s2.1.61, раздел оставлен как задел на будущее.
-const REGISTRY = {};
+const REGISTRY = {
+  gif: {
+    title: 'GIF', provider: 'Klipy', icon: 'GIF', needsDownload: false,
+    description: 'Поиск и отправка GIF из библиотеки Klipy. Вкладка «GIF» появится в панели смайлов.',
+    note: 'Поиск и картинки загружаются напрямую с серверов Klipy, поэтому сервис видит ваш IP-адрес и поисковые запросы. Файлы на сервер чата не копируются. Включённый модуль нужен, чтобы искать и отправлять GIF: присланные вам GIF видны и без него. В секретных чатах GIF недоступны.',
+  },
+};
+const gifLib = require('../gif');
 
 function pack(key) {
   try {
@@ -29,7 +36,7 @@ function pack(key) {
   } catch { return { version: 0, count: 0, bytes: 0 }; }
 }
 
-const isOn = key => !!db.prepare('SELECT enabled FROM modules WHERE key = ?').get(key)?.enabled;
+const isOn = key => !!db.prepare('SELECT enabled FROM modules WHERE key = ?').get(key)?.enabled && (key !== 'gif' || !!gifLib.getKey());
 
 function logEvent(key, req, ev) {
   db.prepare('INSERT INTO module_events (module, user_id, device_id, client, version, event, detail) VALUES (?, ?, ?, ?, ?, ?, ?)')
@@ -51,8 +58,10 @@ const user = require('express').Router();
 // Что доступно этому пользователю: только включённые админом модули
 user.get('/', authMiddleware, (req, res) => {
   res.json(Object.entries(REGISTRY).filter(([k]) => isOn(k)).map(([k, m]) => ({
-    key: k, title: m.title, description: m.description, icon: m.icon, note: m.note, needsDownload: m.needsDownload,
+    key: k, title: m.title, description: m.description, icon: m.icon, note: m.note, needsDownload: m.needsDownload, provider: m.provider || null,
     base: `/modules/${k}`, ...pack(k),
+    // Ключ Klipy нужен клиенту: по условиям сервиса запросы идут с устройства пользователя
+    ...(k === 'gif' ? { config: { provider: 'klipy', key: gifLib.getKey() } } : {}),
   })));
 });
 
@@ -101,7 +110,8 @@ function stats(key) {
 admin.get('/', (req, res) => {
   res.json(Object.entries(REGISTRY).map(([k, m]) => ({
     key: k, title: m.title, description: m.description, needsDownload: m.needsDownload,
-    enabled: isOn(k), ...pack(k), stats: stats(k), keepDays: KEEP_DAYS,
+    enabled: isOn(k), ...pack(k), stats: stats(k), keepDays: KEEP_DAYS, icon: REGISTRY[k].icon, provider: REGISTRY[k].provider || null,
+    ...(k === 'gif' ? { config: { hasKey: !!gifLib.getKey(), tail: gifLib.getKey().slice(-4) } } : {}),
   })));
 });
 
@@ -109,6 +119,7 @@ admin.put('/:key', (req, res) => {
   const key = req.params.key;
   if (!REGISTRY[key]) return res.status(404).json({ error: 'Нет такого модуля' });
   const enabled = req.body?.enabled ? 1 : 0;
+  if (key === 'gif' && enabled && !gifLib.getKey()) return res.status(400).json({ error: 'Сначала сохраните API-ключ Klipy' });
   const was = isOn(key);
   db.prepare(`INSERT INTO modules (key, enabled, updated_at, updated_by) VALUES (?, ?, unixepoch(), ?)
     ON CONFLICT(key) DO UPDATE SET enabled = excluded.enabled, updated_at = unixepoch(), updated_by = excluded.updated_by`)
@@ -120,6 +131,29 @@ admin.put('/:key', (req, res) => {
     try { require('../ws').broadcastAll({ type: 'modules_changed' }); } catch (e) { console.warn('[Modules] не удалось разослать:', e.message); }
   }
   res.json({ ok: true, enabled: !!enabled });
+});
+
+// Ключ целиком получает только администратор: для проверки с его устройства (клиентам он и так выдаётся при включении модуля)
+admin.get('/gif/key', (req, res) => res.json({ key: gifLib.getKey() }));
+
+// API-ключ Klipy: сохранить, заменить или удалить (без ключа модуль выключается)
+admin.put('/gif/key', (req, res) => {
+  const key = typeof req.body?.key === 'string' ? req.body.key.trim() : '';
+  if (key.length < 8 || key.length > 200 || !/^[\w.~-]+$/.test(key)) return res.status(400).json({ error: 'Ключ выглядит неверно: латиница, цифры и - _ . ~, не короче 8 символов' });
+  const had = !!gifLib.getKey();
+  gifLib.setKey(key);
+  logAudit(req, 'server', 'Модуль «GIF»', had ? 'API-ключ Klipy заменён' : 'API-ключ Klipy сохранён');
+  try { require('../ws').broadcastAll({ type: 'modules_changed' }); } catch {}
+  res.json({ ok: true, hasKey: true, tail: key.slice(-4) });
+});
+admin.delete('/gif/key', (req, res) => {
+  if (!gifLib.getKey()) return res.json({ ok: true });
+  gifLib.setKey('');
+  db.prepare("UPDATE modules SET enabled = 0, updated_at = unixepoch(), updated_by = ? WHERE key = 'gif'").run(req.user.id);
+  logEvent('gif', req, { client: 'admin', event: 'admin_off' });
+  logAudit(req, 'server', 'Модуль «GIF»', 'API-ключ Klipy удалён, модуль выключен');
+  try { require('../ws').broadcastAll({ type: 'modules_changed' }); } catch {}
+  res.json({ ok: true });
 });
 
 const EVENT_GROUPS = { on: ['admin_on', 'user_on'], off: ['admin_off', 'user_off'], dl: ['download_start', 'update_start'], err: ['download_error', 'update_error'] };

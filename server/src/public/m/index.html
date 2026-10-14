@@ -247,6 +247,14 @@ window.APP_VERSION = '?v=1';
         </div>
         <div class="ep-tabs" id="ep-tabs"></div>
         <div class="ep-scroll" id="ep-scroll" onscroll="syncEmojiTabs('ep-scroll','ep-tabs')"></div>
+        <div class="ep-gif" id="ep-gif" hidden></div>
+        <div class="ep-dock" id="ep-dock" hidden>
+          <div class="ep-sw" role="group" aria-label="Смайлы или GIF">
+            <button type="button" id="ep-sw-emoji" aria-pressed="true" onclick="epMode('emoji')">Смайлы</button>
+            <button type="button" id="ep-sw-gif" aria-pressed="false" onclick="epMode('gif')">GIF</button>
+          </div>
+          <span class="ep-pw" id="ep-pw" hidden>Powered by <span class="gp-kl"><i></i>KLIPY</span></span>
+        </div>
       </div>
       <div id="typing-indicator" class="typing-indicator" style="display:none">
         <span class="typing-pill">
@@ -347,6 +355,7 @@ window.APP_VERSION = '?v=1';
 
 <script src="/shared/secret-core.js?v=1"></script>
 <script src="/shared/modules.js?v=1"></script>
+<script src="/shared/gif-klipy.js?v=1"></script>
 <script src="/m/app.js?v=1"></script>
 </body>
 </html>

@@ -23,6 +23,7 @@ const path = require('path');
 const { WebSocketServer, WebSocket } = require('ws');
 const db = require('./db');
 const spaces = require('./spaces');
+const gifLib = require('./gif');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', 'chat_db', 'chat.db');
 const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
@@ -580,6 +581,7 @@ function onLocalMessage(msgId) {
   try {
     const a = m.attachment ? JSON.parse(m.attachment) : null;
     if (a?.url) att = { name: a.name, size: a.size, mime: a.mime, w: a.width || null, h: a.height || null, thumb: !!a.thumb };
+    else if (a?.gif) att = { gif: a.gif };   // GIF из Klipy: только ссылки, файл с сервера на сервер не передаётся
   } catch {}
   let fwd = null;
   try { const f = m.forward_data ? JSON.parse(m.forward_data) : null; if (f) fwd = { name: f.name, text: f.text }; } catch {}
@@ -686,7 +688,7 @@ async function recvMessage(peer, ev) {
   const text = str(ev.text, 4096);
   // Вложение: скачиваем у себя, проверяя размер и формат по НАШИМ настройкам
   let attachment = null;
-  if (ev.att && typeof ev.att === 'object') attachment = await receiveAttachment(peer, uid, ev.att);
+  if (ev.att && typeof ev.att === 'object') attachment = ev.att.gif ? gifLib.sanitize(ev.att) : await receiveAttachment(peer, uid, ev.att);
   let fwdJson = null;
   if (ev.fwd && typeof ev.fwd === 'object') fwdJson = JSON.stringify({ user_id: shadow.id, name: str(ev.fwd.name, 80), text: str(ev.fwd.text, 4096), attachment: null, is_bot: false });
   if (!text && !attachment && !fwdJson) return;

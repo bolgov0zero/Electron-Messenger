@@ -1629,12 +1629,12 @@ function csPaneModules() {
   }
   return `<div class="cs-gt">Доступные модули</div><div class="cs-g">${list.map(m => {
     const mb = m.bytes ? Math.round(m.bytes / 1048576) : 0, st = csModStatus(m);
-    return `<div class="cs-r"><div class="cs-l"><b>${esc(m.title)}</b>
+    return `<div class="cs-r"><div class="cs-l"><b>${esc(m.title)}${m.provider ? ` <span class="cs-pill">${esc(m.provider)}</span>` : ''}</b>
       <span>${esc(m.description)}${csIsApp() && m.needsDownload && !m.on && mb ? ` При включении загружается около ${mb} МБ.` : ''}</span>
       ${st ? `<span class="cs-mod-st">${st}</span>` : ''}</div>
       <div class="cs-ctl">${m.on ? `<button type="button" class="cs-btn ghost" ${m.busy ? 'disabled' : ''} onclick="csModuleRedo('${m.key}')">Перекачать</button>` : ''}${csTg(m.on, `csModuleToggle('${m.key}')`, esc(m.title))}</div></div>`;
   }).join('')}</div>
-    ${!csIsApp() ? list.filter(m => m.on && m.note).map(m => `<p class="cs-hint">${esc(m.note)}</p>`).join('') : ''}`;
+    ${list.filter(m => m.note && (m.provider || (!csIsApp() && m.on))).map(m => `<p class="cs-hint">${esc(m.note)}</p>`).join('')}`;
 }
 // Окно загрузки набора (только Electron): прогресс, пояснение, после загрузки кнопка ОК.
 // kind: 'download' — первое включение, 'redownload' — «Перекачать»
@@ -2081,7 +2081,7 @@ function renderChatRow(c) {
     ? (S.topics[c.id]||[]).reduce((sum,s)=>sum+(S.unreadMentions[s.id]||0),0)
     : S.unreadMentions[c.id]||0;
   const lm = c.last_message;
-  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : ((lm.text ? lm.text.replace(/<[^>]*>/g, '') : '') || (lm.forward_data ? 'Пересланное сообщение' : lm.attachment ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
+  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : ((lm.text ? lm.text.replace(/<[^>]*>/g, '') : '') || (lm.forward_data ? 'Пересланное сообщение' : lm.attachment ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
   if (preview.length>40) preview = preview.slice(0,40)+'…';
   // Черновик приоритетнее последнего сообщения (как в Telegram)
   const draft = (c.id !== S.activeChatId) ? S.drafts[c.id] : null;
@@ -2203,7 +2203,7 @@ function topicRow(s) {
     ? (lm.deleted ? 'Сообщение удалено'
       : ((lm.text ? lm.text.replace(/<[^>]*>/g, '') : '')
         || (lm.attachment
-          ? (lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл'))
+          ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл'))
           : '')))
     : 'Нет сообщений';
   if (preview.length > 38) preview = preview.slice(0, 38) + '…';
@@ -2429,6 +2429,14 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
             </div>
             <div class="ep-tabs" id="ep-tabs"></div>
             <div class="ep-scroll" id="ep-scroll" onscroll="syncEmojiTabs()"></div>
+            <div class="ep-gif" id="ep-gif" hidden></div>
+            <div class="ep-dock" id="ep-dock" hidden>
+              <div class="ep-sw" role="group" aria-label="Смайлы или GIF">
+                <button type="button" id="ep-sw-emoji" aria-pressed="true" onclick="epMode('emoji')">Смайлы</button>
+                <button type="button" id="ep-sw-gif" aria-pressed="false" onclick="epMode('gif')">GIF</button>
+              </div>
+              <span class="ep-pw" id="ep-pw" hidden>Powered by <span class="gp-kl"><i></i>KLIPY</span></span>
+            </div>
           </div>
           <div class="composer-main">
             <button class="composer-icon-btn composer-attach" title="Прикрепить файл" onclick="pickFile()">
@@ -2618,6 +2626,41 @@ function closeEmojiPicker() {
   document.getElementById('ep-grid')?.classList.remove('open');
 }
 
+// ── GIF из Klipy в панели смайлов (модуль «GIF», см. shared/gif-klipy.js) ──
+// Переключатель «Смайлы / GIF» стоит внизу панели и есть, только если модуль включён у этого человека и чат не секретный
+let _epMode = 'emoji', _gifMounted = false;
+function epDockSync() {
+  const dock = document.getElementById('ep-dock'); if (!dock) return;
+  const can = !!(window.GifKlipy && GifKlipy.on()) && !S.secretChatIds.has(S.activeChatId) && !S.editingMessageId;
+  dock.hidden = !can;
+  if (!can && _epMode === 'gif') epMode('emoji');
+}
+function epMode(mode) {
+  const panel = document.getElementById('ep-grid'); if (!panel) return;
+  if (mode === 'gif' && !(window.GifKlipy && GifKlipy.on())) mode = 'emoji';
+  _epMode = mode;
+  const gif = mode === 'gif';
+  panel.classList.toggle('gif-mode', gif);
+  panel.querySelector('.ep-search').hidden = gif;
+  document.getElementById('ep-tabs').hidden = gif;
+  document.getElementById('ep-scroll').hidden = gif;
+  const host = document.getElementById('ep-gif'); host.hidden = !gif;
+  document.getElementById('ep-pw').hidden = !gif;
+  document.getElementById('ep-sw-emoji').setAttribute('aria-pressed', String(!gif));
+  document.getElementById('ep-sw-gif').setAttribute('aria-pressed', String(gif));
+  if (gif && !_gifMounted) {
+    _gifMounted = true;
+    GifKlipy.setUser(`${S.server}:${S.user?.id || 0}`, 'ru');
+    GifKlipy.mount(host, { onPick: pickGif });
+  }
+}
+// Выбранная GIF уходит сразу: если в поле есть текст, он станет подписью
+function pickGif(att) {
+  if (!att || !att.gif || S.editingMessageId) return;
+  _pendingAttachment = att;
+  sendOrEdit();
+}
+
 function toggleEmojiPicker(e) {
   e.stopPropagation();
   const panel = document.getElementById('ep-grid');
@@ -2643,6 +2686,7 @@ function toggleEmojiPicker(e) {
   const input = document.getElementById('ep-search-input');
   if (input) input.value = '';
   panel.classList.add('open');
+  epDockSync();
   // На телефоне фокус в поиске поднимает клавиатуру, и она закрывает саму панель
   if (!window.matchMedia('(max-width: 767px), (pointer: coarse)').matches) input?.focus();
 }
@@ -3133,7 +3177,7 @@ let _pinIdx = 0;
 function pinPreviewText(p) {
   if (!p) return '';
   const t = p.text ? p.text.replace(/<[^>]*>/g, '')
-    : (p.attachment ? (p.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : p.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (p.attachment.name || 'Файл')) : '');
+    : (p.attachment ? (p.attachment.gif ? '🖼 GIF' : p.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : p.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (p.attachment.name || 'Файл')) : '');
   return t.length > 120 ? t.slice(0, 120) + '…' : t;
 }
 
@@ -3732,6 +3776,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       </div>`;
     }
   }
+  if (!isDeleted && att?.gif) attachHtml = GifKlipy.messageHtml(att);   // GIF из Klipy: ссылки на ролик, файла у нас нет
   if (attExpired) attachHtml = `<div class="irc-text irc-deleted"><em>Файл удалён</em></div>`;
   // Вложение с другого сервера, которое у нас не приняли (размер или формат по настройкам этого сервера) или не удалось получить
   if (!isDeleted && att?.unavailable) attachHtml = `<div class="irc-text irc-deleted"><em>${att.unavailable === 'policy' ? 'Вложение недоступно: не соответствует настройкам сервера' : 'Вложение не удалось получить'}</em></div>`;
@@ -3740,7 +3785,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   // пузырь, в котором нет ничего кроме картинки: кадр занимает его целиком, а время
   // и реакции ложатся поверх. С подписью, цитатой или пересылкой — обычное поведение
   const bareImage = !isDeleted && !m.text && !m.reply_to_id && !m.forward_data
-    && !!att?.url && !att.expired && !!(att.mime?.startsWith('image/') || att.mime?.startsWith('video/'));
+    && ((!!att?.url && !att.expired && !!(att.mime?.startsWith('image/') || att.mime?.startsWith('video/'))) || !!att?.gif);
   // сообщение из одного смайлика показываем без пузыря — он проступает по наведению
   // В секретном чате m.text — шифротекст, смотреть нужно на расшифрованное
   const emojiOnly = !isDeleted && !m.attachment && !m.reply_to_id && !m.forward_data && isEmojiOnly(isSecretChat ? scDecryptedText : m.text);
@@ -4575,7 +4620,7 @@ function clearImagePreview() {
   _uploadToken++;
   if (_prepAbort) { _prepAbort.abort(); _prepAbort = null; }
   if (_uploadXhr) { _uploadXhr.abort(); _uploadXhr = null; }
-  else if (_pendingAttachment) {
+  else if (_pendingAttachment && _pendingAttachment.url) {
     // Загрузка уже завершилась (файл лежит на сервере), просто ещё не
     // отправлена — крестик должен убрать файл и с сервера, а не только из плашки
     api('DELETE', '/upload', { url: _pendingAttachment.url, thumb: _pendingAttachment.thumb });
@@ -5147,7 +5192,7 @@ function connectWS() {
           if (!isChatMuted(chatId, parentId)) {
             const _srObj = parentId ? (S.topics[parentId]||[]).find(s=>s.id===chatId) : null;
             const title = _srObj?.name || chatName(chat) || message.sender_name || 'Electron';
-            const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? message.text.replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+            const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? message.text.replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
             window.electron?.notify(title, body, chatId);
             playNotificationSound();
           }
@@ -5162,7 +5207,7 @@ function connectWS() {
         if (!isChatMuted(chatId, parentId)) {
           const _srObj = parentId ? (S.topics[parentId]||[]).find(s=>s.id===chatId) : null;
           const title = _srObj?.name || chatName(chat) || message.sender_name || 'Electron';
-          const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? message.text.replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+          const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? message.text.replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
           window.electron?.notify(title, body, chatId);
           playNotificationSound();
         }
@@ -5407,7 +5452,7 @@ function connectWS() {
       const c = S.chats.find(x => x.id === data.chat_id);
       if (c) { c.dm_limit = data.dm_limit || c.dm_limit; if (data.chat_id === S.activeChatId) syncReadOnlyUi(); }
     }
-    if (data.type==='send_rejected') showActionToast(data.reason === 'limit' ? 'Больше писать нельзя, пока собеседник не ответит или не добавит вас в контакты' : data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' || data.reason === 'rate' ? 'Сообщение не доставлено' : data.reason === 'federation_off' ? 'Нет связи с сервером этого человека' : 'Писать сюда нельзя');
+    if (data.type==='send_rejected') showActionToast(data.reason === 'limit' ? 'Больше писать нельзя, пока собеседник не ответит или не добавит вас в контакты' : data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' || data.reason === 'rate' ? 'Сообщение не доставлено' : data.reason === 'federation_off' ? 'Нет связи с сервером этого человека' : data.reason === 'gif_off' ? 'GIF сейчас недоступны' : 'Писать сюда нельзя');
     if (data.type==='user_updated') applyUserUpdate(data);
     if (data.type==='perms') annSetAllowed(data.can_announce);
 

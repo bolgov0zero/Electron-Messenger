@@ -2,6 +2,7 @@ const { WebSocketServer } = require('ws');
 const db = require('./db');
 const spaces = require('./spaces');
 const unreadCounts = require('./unread');
+const gifLib = require('./gif');
 // Требуем лениво, как и sendPushToUser ниже: push.js при загрузке генерирует
 // ключи, и раньше времени его дёргать не нужно
 function hasPushSubscription(userId) {
@@ -231,7 +232,7 @@ function finishMessage(msgId, chat_id, senderId) {
     // показываем даже тем, у кого ключ есть (защита от подглядывания).
     pushToUser(user_id, {
       title: chatTitle,
-      body: chat?.is_secret ? 'Новое сообщение' : (msg.text || (msg.attachment ? '🖼 Изображение' : '')),
+      body: chat?.is_secret ? 'Новое сообщение' : (msg.text || (msg.attachment ? (msg.attachment.gif ? 'GIF' : '🖼 Изображение') : '')),
       chatId: chat_id,
       unread,
     });
@@ -321,7 +322,12 @@ function setup(server) {
         // (slice по символам испортил бы шифротекст) — лимит по длине выше и без .trim().
         // В секретном чате вложение — только зашифрованный файл: имя и тип клиент
         // прячет в шифротексте сообщения, сюда приходит лишь ссылка и вектор
-        const attachment = isSecret ? sanitizeEncAttachment(data.attachment) : data.attachment;
+        let attachment = isSecret ? sanitizeEncAttachment(data.attachment) : data.attachment;
+        // GIF из Klipy: файла у нас нет, вложение — только проверенные ссылки Klipy; нужен включённый модуль
+        if (!isSecret && attachment && typeof attachment === 'object' && attachment.gif !== undefined) {
+          attachment = gifLib.sanitize(attachment);
+          if (!attachment || !gifLib.isOn()) { ws.send(JSON.stringify({ type: 'send_rejected', chat_id, reason: 'gif_off' })); return; }
+        }
         const forward_data = isSecret ? null : data.forward_data;
         const text = isSecret
           ? (typeof data.text === 'string' ? data.text.slice(0, 8192) : '')
@@ -347,7 +353,7 @@ function setup(server) {
         const fdJson = (forward_data && typeof forward_data === 'object' && forward_data.user_id)
           ? JSON.stringify({ user_id: forward_data.user_id, name: forward_data.name || '',
               text: (forward_data.text || '').slice(0, 4096),
-              attachment: forward_data.attachment || null,
+              attachment: (forward_data.attachment && forward_data.attachment.gif !== undefined) ? gifLib.sanitize(forward_data.attachment) : (forward_data.attachment || null),
               is_bot: !!forward_data.is_bot })
           : null;
 

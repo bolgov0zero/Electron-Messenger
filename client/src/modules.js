@@ -61,7 +61,8 @@
     for (const req of await cache.keys()) if (!keep.has(req.url)) await cache.delete(req);
   }
 
-  function activeNow(m) { return !!(m && m.info && m.on && m.manifest); }
+  // Модуль без набора файлов (needsDownload = false, например GIF от Klipy) активен без манифеста
+  function activeNow(m) { return !!(m && m.info && m.on && (m.manifest || !m.info.needsDownload)); }
   function notifyHandler(key, was) {
     const m = entry(key), h = S.handlers.get(key); if (!h) return;
     const now = activeNow(m);
@@ -89,7 +90,7 @@
   const view = m => ({
     key: m.info.key, title: m.info.title, description: m.info.description, note: m.info.note, icon: m.info.icon,
     needsDownload: !!m.info.needsDownload, version: m.info.version, count: m.info.count, bytes: m.info.bytes,
-    on: m.on, installed: m.installed, ready: !!m.manifest,
+    on: m.on, installed: m.installed, ready: !!m.manifest || !m.info.needsDownload, config: m.info.config || null, provider: m.info.provider || null,
     outdated: isElectron() && !!m.info.needsDownload && m.on && m.installed !== m.info.version,
     busy: !!m.task, task: m.task ? { ...m.task } : null, error: m.error || '',
   });
@@ -124,7 +125,7 @@
           if (!m) { m = { info, manifest: null, on: lsGet('mod_' + info.key + '_on') === '1', installed: parseInt(lsGet('mod_' + info.key + '_ver') || '0', 10) || 0, task: null, error: '' }; S.mods.set(info.key, m); }
           const verChanged = m.info && m.info.version !== info.version;
           m.info = info;
-          if (!m.manifest || verChanged) {
+          if (info.needsDownload && (!m.manifest || verChanged)) {
             try { m.manifest = await (await fetch(`${S.cfg.base()}${info.base}/manifest.json?v=${info.version}`)).json(); } catch { m.manifest = null; }
           }
           if (m.manifest) pruneCache(m);
