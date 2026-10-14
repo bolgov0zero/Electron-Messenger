@@ -4,7 +4,7 @@
 :root {
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif, "Noto Color Emoji";
   --navh: 44px;
-  --tabh: 49px;
+  --tabh: 44px;   /* высота нижней панели под элементы: одинакова на всех экранах (вкладки и поле ввода) */
   /* Запасы подбираются на реальном iPhone (экран «Настройки → Диагностика»), значения живут в localStorage */
   --sat-extra: 24px;   /* системное размытие у верха PWA глубже, чем safe-area: опускаем панель */
   --sab-extra: -12px;  /* нижние панели и поле ввода ближе к безопасной зоне */
@@ -60,12 +60,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* нижняя панель */
 .bottom {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 6;
-  background: var(--bar); -webkit-backdrop-filter: saturate(1.8) blur(22px); backdrop-filter: saturate(1.8) blur(22px);
+  background: var(--bar-solid);   /* нижняя панель сплошная: без прозрачности и размытия */
 }
 .bottom::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: .5px; background: var(--sep); }
 .tabbar { display: flex; align-items: flex-start; padding: 0 8px var(--sab); height: var(--bot); }
-.tb { flex: 1; height: var(--tabh); border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; color: var(--fg2); font-size: 10px; font-weight: 500; position: relative; }
-.tb .ic { width: 27px; height: 27px; }
+.tb { flex: 1; height: var(--tabh); border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; color: var(--fg2); font-size: 10px; font-weight: 500; position: relative; }
+.tb .ic { width: 25px; height: 25px; }
 .tb.on { color: var(--accent); }
 
 /* клавиатура: пока она открыта, kbd.js задаёт #app высоту и сдвиг видимой области (visualViewport) */

@@ -15,7 +15,7 @@
       '<div class="tabview" data-tab="contacts">' + nav('Контакты', '<button class="nb" data-act="addContact" aria-label="Добавить контакт">' + ic('userplus', 24, 1.8) + '</button>') + '<div class="scroll" id="contacts-scroll"></div></div>' +
       '<div class="tabview" data-tab="settings">' + nav('Настройки') + '<div class="scroll" style="background:var(--bg2)" id="settings-scroll"></div></div>' +
       '<div class="bottom tabbar" id="tabbar">' + tabs.map(function (t, i) {
-        return '<button class="tb' + (i === 0 ? ' on' : '') + '" data-tab="' + t[0] + '">' + ic(t[2], 27, 1.7) + '<span>' + t[1] + '</span>' + (t[0] === 'chats' ? '<b class="bd" hidden></b>' : '') + '</button>';
+        return '<button class="tb' + (i === 0 ? ' on' : '') + '" data-tab="' + t[0] + '">' + ic(t[2], 25, 1.7) + '<span>' + t[1] + '</span>' + (t[0] === 'chats' ? '<b class="bd" hidden></b>' : '') + '</button>';
       }).join('') + '</div>';
     B.nav.setRoot(shell);
     B.ui.chatlist.mount(document.getElementById('chats-scroll'));
