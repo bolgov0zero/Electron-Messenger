@@ -6,7 +6,12 @@ const db = require('../db');
 const serverName = () => db.prepare("SELECT value FROM settings WHERE key = 'fed_name'").get()?.value || '';
 // Идентификатор сервера (если настроена федерация): из него клиент собирает внешнюю ссылку на профиль «@сервер:логин»
 const serverId = () => db.prepare("SELECT value FROM settings WHERE key = 'fed_id'").get()?.value || '';
-const wsInfo = id => ({ ...(db.prepare('SELECT u.workspace_id, w.name AS workspace_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE u.id = ?').get(id) || {}), server_name: serverName(), server_id: serverId() });
+// workspace_id / workspace_name — основное пространство (их читают старые клиенты); workspaces — все пространства человека
+const wsInfo = id => ({
+  ...(db.prepare('SELECT u.workspace_id, w.name AS workspace_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE u.id = ?').get(id) || {}),
+  workspaces: db.prepare('SELECT w.id, w.name FROM user_workspaces m JOIN workspaces w ON w.id = m.workspace_id WHERE m.user_id = ? ORDER BY w.id').all(id),
+  server_name: serverName(), server_id: serverId(),
+});
 const { signToken, authMiddleware, signChallengeToken, verifyChallengeToken } = require('../auth');
 const totp = require('../totp');
 const { logAudit } = require('../audit');

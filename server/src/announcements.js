@@ -22,7 +22,7 @@ function parseTargets(row) {
 function usersOfSpaces(wsIds) {
   if (!wsIds.length) return [];
   return db.prepare(`SELECT id FROM users WHERE (is_bot IS NULL OR is_bot = 0) AND COALESCE(banned, 0) = 0
-    AND workspace_id IN (${wsIds.map(() => '?').join(',')})`).all(...wsIds).map(r => r.id);
+    AND id IN (SELECT user_id FROM user_workspaces WHERE workspace_id IN (${wsIds.map(() => '?').join(',')}))`).all(...wsIds).map(r => r.id);
 }
 
 // Группы и комнаты выбранных пространств. Администратор: где есть хоть один участник из них.
@@ -32,7 +32,7 @@ function chatsOfSpaces(wsIds, strict) {
   if (!wsIds.length) return [];
   const inList = wsIds.map(() => '?').join(',');
   const rows = db.prepare(`SELECT c.id,
-      SUM(CASE WHEN u.workspace_id IN (${inList}) THEN 1 ELSE 0 END) AS inside, COUNT(*) AS total
+      SUM(CASE WHEN u.id IN (SELECT user_id FROM user_workspaces WHERE workspace_id IN (${inList})) THEN 1 ELSE 0 END) AS inside, COUNT(*) AS total
     FROM chats c JOIN chat_members cm ON cm.chat_id = c.id JOIN users u ON u.id = cm.user_id
     WHERE c.type IN ('group', 'room') AND COALESCE(c.is_secret, 0) = 0 AND COALESCE(u.is_bot, 0) = 0
     GROUP BY c.id`).all(...wsIds);
@@ -152,7 +152,7 @@ function activeBannersFor(userId) {
       AND NOT EXISTS (SELECT 1 FROM announcement_dismissed d WHERE d.announcement_id = a.id AND d.user_id = ?)
     ORDER BY a.sent_at`).all(now, userId);
   return rows
-    .filter(r => r.target === 'all' || (r.target === 'spaces' ? parseTargets(r).includes(spaces.wsOf(userId)) : parseTargets(r).includes(userId)))
+    .filter(r => r.target === 'all' || (r.target === 'spaces' ? spaces.wsIdsOf(userId).some(id => parseTargets(r).includes(id)) : parseTargets(r).includes(userId)))
     .map(bannerPayload);
 }
 
@@ -221,12 +221,13 @@ function parseRequest(body, authorId) {
   // Пользователь с правом объявлений работает только внутри своего пространства; администратор — где угодно
   const author = authorId ? db.prepare('SELECT is_admin, workspace_id FROM users WHERE id = ?').get(authorId) : null;
   if (author && !author.is_admin) {
-    const own = author.workspace_id;
-    if (tgt === 'all' || tgt === 'spaces') { tgt = 'spaces'; list = [own]; }
+    // Все пространства автора: человек может состоять в нескольких
+    const own = spaces.wsIdsOf(authorId);
+    if (tgt === 'all' || tgt === 'spaces') { tgt = 'spaces'; list = own; }
     else if (kind === 'chat') {
-      const okChats = new Set(chatsOfSpaces([own], true));
+      const okChats = new Set(chatsOfSpaces(own, true));
       list = list.filter(id => okChats.has(id));
-    } else list = list.filter(id => spaces.wsOf(id) === own);
+    } else list = list.filter(id => spaces.wsIdsOf(id).some(w => own.includes(w)));
   } else if (tgt === 'spaces') {
     list = list.filter(id => db.prepare('SELECT 1 FROM workspaces WHERE id = ?').get(id));
     if (!list.length) return { error: 'Выберите пространства' };

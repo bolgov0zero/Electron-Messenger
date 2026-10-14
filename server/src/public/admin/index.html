@@ -1563,6 +1563,25 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .ub-role small{display:block;font:500 11px var(--f-mono);color:var(--c-muted);margin-top:3px}
 .ws-pill{display:inline-flex;align-items:center;gap:5px;font:600 11px var(--f-ui);padding:1px 8px 1px 6px;border-radius:99px;background:var(--c-primary-dim);color:var(--c-primary);white-space:nowrap;vertical-align:middle}
 .ws-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.ws-pill.more{background:var(--c-surface2);color:var(--c-text2);border:1px solid var(--c-border);padding:0 7px}
+.ws-pill.more::before{display:none}
+.uaws{position:relative}
+.uaws-btn{width:100%;min-height:38px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 34px 5px 8px;background:var(--bg-input);border:1px solid var(--border-input);border-radius:9px;cursor:pointer;text-align:left;position:relative;color:var(--c-text);font:inherit}
+.uaws-btn:hover{border-color:var(--border-focus)}
+.uaws-btn[aria-expanded="true"]{border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow)}
+.uaws-btn .chev{position:absolute;right:11px;top:50%;width:14px;height:14px;margin-top:-7px;color:var(--c-muted);transition:transform .2s}
+.uaws-btn[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.uaws-pop{position:absolute;z-index:60;left:0;right:0;top:calc(100% + 6px);background:var(--c-surface);border:1px solid var(--c-border);border-radius:12px;box-shadow:var(--shadow-lg,0 14px 40px rgba(0,0,0,.35));padding:5px;display:flex;flex-direction:column;gap:1px;max-height:260px;overflow-y:auto}
+.uaws-pop[hidden]{display:none}
+.uaws-opt{display:flex;align-items:center;gap:10px;width:100%;padding:8px 9px;border:0;border-radius:8px;background:none;cursor:pointer;text-align:left;font:inherit;font-size:13px;color:var(--c-text)}
+.uaws-opt:hover{background:var(--bg-hover)}
+.uaws-ck{width:17px;height:17px;border-radius:5px;border:1.5px solid var(--c-muted);display:grid;place-items:center;flex-shrink:0;color:transparent;transition:background .12s,border-color .12s}
+.uaws-ck svg{width:11px;height:11px}
+.uaws-opt[aria-checked="true"] .uaws-ck{background:var(--c-primary);border-color:var(--c-primary);color:var(--c-on-primary)}
+.uaws-opt .n{flex:1;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uaws-opt .m{font-size:11px;color:var(--c-muted)}
+.uaws-foot{font-size:11px;color:var(--c-muted);padding:6px 9px 4px;border-top:1px solid var(--c-border);margin-top:3px}
+@media (prefers-reduced-motion:reduce){.uaws-btn .chev,.uaws-ck{transition:none}}
 .ws-warn{display:flex;gap:9px;padding:9px 11px;border-radius:9px;background:color-mix(in srgb,var(--c-orange) 13%,transparent);font-size:12px;line-height:1.45;margin-top:6px}
 .ws-warn b{color:var(--c-orange)}
 .ws-checks{display:flex;flex-direction:column;gap:2px;margin-top:8px}
@@ -4707,7 +4726,7 @@ function uaRows() {
   const seen = u => (uaOnline(u) || uaAway(u)) ? nowS : (u.last_seen_at || 0);
   return allUsers
     .filter(u => UA.filter === 'all' || (UA.filter === 'online' && uaOnline(u)) || (UA.filter === 'away' && uaAway(u)) || (UA.filter === 'admins' && u.is_admin) || (UA.filter === 'banned' && u.banned))
-    .filter(u => UA.ws == null || u.workspace_id === UA.ws)
+    .filter(u => UA.ws == null || uaInWs(u, UA.ws))
     .filter(u => !q || [u.display_name, u.username, u.tag || ''].some(x => x.toLowerCase().includes(q)))
     .sort((a, b) => {
       const d = UA.sort.key === 'status' ? rank(a) - rank(b) : UA.sort.key === 'seen' ? seen(a) - seen(b) : byName(a, b);
@@ -4732,7 +4751,7 @@ function uaRender() {
         ${tile('all', 'Всего', n.all, 'человек', 'var(--dv-c2)')}${tile('online', 'В сети', n.online, 'сейчас', 'var(--c-green)')}
         ${tile('away', 'Отошли', n.away, 'из них', 'var(--c-orange)')}${tile('admins', 'Администраторы', n.admins, 'чел.', 'var(--c-primary)')}
       </div>
-      ${WS.list.length > 1 ? uxChips([['all', 'Все пространства', allUsers.length], ...WS.list.map(w => ['w' + w.id, w.name, allUsers.filter(u => u.workspace_id === w.id).length])], UA.ws == null ? 'all' : 'w' + UA.ws, 'uaWsFilter', 'Пространство') : ''}
+      ${WS.list.length > 1 ? uxChips([['all', 'Все пространства', allUsers.length], ...WS.list.map(w => ['w' + w.id, w.name, allUsers.filter(u => uaInWs(u, w.id)).length])], UA.ws == null ? 'all' : 'w' + UA.ws, 'uaWsFilter', 'Пространство') : ''}
       <div class="ub-head"><h3>${title} <span>${rows.length}</span></h3>
         ${n.banned || UA.filter === 'banned' ? uxChips([['banned', 'Заблокированы', n.banned, true]], UA.filter, 'uaFilter') : ''}
         <div class="ub-sort" role="group" aria-label="Сортировка">${sortBtn('name', 'По имени')}${sortBtn('status', 'По статусу')}${sortBtn('seen', 'По дате')}</div>
@@ -4744,7 +4763,7 @@ function uaRender() {
       <div class="ub-rows">${rows.map(u => `<div class="ub-row${UA.sel.has(u.id) ? ' sel' : ''}${u.banned ? ' ua-banned' : ''}">
         <input type="checkbox" aria-label="Выбрать: ${esc(u.display_name)}" ${UA.sel.has(u.id) ? 'checked' : ''} onchange="uaToggle(${u.id})">
         <div class="ux-cell">${avHtml(u.display_name, 38, 11, u.id, uaDot(u), u.has_avatar)}
-          <div style="min-width:0"><div class="ux-name">${esc(u.display_name)}${uxTag(u.tag)}</div><div class="ux-login">@${esc(u.username)}${WS.list.length > 1 ? ` <span class="ws-pill">${esc(u.workspace_name)}</span>` : ''}</div></div></div>
+          <div style="min-width:0"><div class="ux-name">${esc(u.display_name)}${uxTag(u.tag)}</div><div class="ux-login">@${esc(u.username)}${WS.list.length > 1 ? ' ' + uaWsPills(u) : ''}</div></div></div>
         <div class="ub-role">${uaRole(u)}<small>создан ${fmtDate(u.created_at)}</small></div>
         <div class="ub-st">${uaStatusPill(u)}</div>
         <div class="ux-actions">
@@ -4843,7 +4862,7 @@ function fmMoreHtml(prefix, open, toggleFn, secs) {
 const fmScroll = id => setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 40);
 
 const PK = { ctx: null, host: null, q: '', f: 'all', g: '', limit: 40, groups: [] };
-const pkUsers = () => allUsersCache.filter(u => !u.banned).map(u => ({ id: u.id, name: u.display_name || u.username, sub: '@' + u.username + (WS.list.length > 1 && u.workspace_name ? ' · ' + u.workspace_name : ''), tag: u.tag || '',
+const pkUsers = () => allUsersCache.filter(u => !u.banned).map(u => ({ id: u.id, name: u.display_name || u.username, sub: '@' + u.username + (WS.list.length > 1 && u.workspace_name ? ' · ' + (u.workspaces || [{ name: u.workspace_name }]).map(w => w.name).join(', ') : ''), tag: u.tag || '',
   av: avHtml(u.display_name || u.username, 26, 8, u.id, false, u.has_avatar) }));
 const pkChats = () => AN.chats.map(c => ({ id: c.id, name: chName(c), sub: c.type === 'room' ? 'комната' : c.type === 'direct' ? 'личный чат' : 'группа',
   tag: c.type === 'room' ? 'комната' : c.type === 'direct' ? 'личный чат' : 'группа', av: chAv(c, 26) }));
@@ -4916,8 +4935,17 @@ async function pkCopy(el) {
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && PK.ctx) { e.preventDefault(); e.stopImmediatePropagation(); pkClose(); } }, true);
 
 // ── Окно: добавление и изменение ──
+// Пространства человека (номера): у нового основное, у существующего его членства
+const uaUserWs = u => u ? ((u.workspaces || []).map(w => w.id).length ? u.workspaces.map(w => w.id) : [u.workspace_id || 1]) : [1];
+// Состоит ли человек в пространстве; чипы его пространств (два и «+N»)
+const uaInWs = (u, id) => (u.workspaces || [{ id: u.workspace_id }]).some(w => w.id === id);
+function uaWsPills(u) {
+  const list = u.workspaces?.length ? u.workspaces : [{ name: u.workspace_name }];
+  const shown = list.slice(0, 2), rest = list.length - shown.length;
+  return shown.map(w => `<span class="ws-pill">${esc(w.name)}</span>`).join(' ') + (rest > 0 ? ` <span class="ws-pill more" title="${esc(list.slice(2).map(w => w.name).join(', '))}">+${rest}</span>` : '');
+}
 const uaBlank = u => ({ name: u?.display_name || '', login: u?.username || '', tag: u?.tag || '', admin: !!u?.is_admin,
-  totpRequired: !!u?.totp_required, canAnnounce: !!u?.can_announce, ws: u?.workspace_id || 1,
+  totpRequired: !!u?.totp_required, canAnnounce: !!u?.can_announce, wss: uaUserWs(u), wsOpen: false, wsErr: false,
   password: '', show: false, pwOpen: false, generated: false, closeSessions: true, errors: {}, busy: false, more: false });
 const uaAv = (name, size) => `<span class="av" style="width:${size}px;height:${size}px;border-radius:${Math.round(size * .26)}px;font-size:${Math.round(size * .36)}px;background:${avColor(name || '?')}">${esc(initials(name))}</span>`;
 
@@ -5074,16 +5102,39 @@ function uaFootSync() {
   if (b) b.disabled = !!f.busy || !!miss.length;
   if (ap) ap.textContent = f.password;
 }
+// Выбор пространств: выпадающий список с галочками. Выбранные — чипами в поле, оставить нужно хотя бы одно
+const UA_CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+const UA_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+function uaWsField(f, u) {
+  const sel = f.wss, name = id => WS.list.find(w => w.id === id)?.name || '—';
+  const removed = u ? uaUserWs(u).filter(id => !sel.includes(id)) : [];
+  const warn = removed.length ? `<div class="ws-warn"><b>!</b><div>Человек перестанет видеть людей из ${removed.length > 1 ? 'пространств' : 'пространства'} «${removed.map(id => esc(name(id))).join('», «')}» и пропадёт у них в списках. Чаты, группы и комнаты сохранятся.</div></div>` : '';
+  return `<div class="ua-field"><label id="ua-ws-l">Пространства</label>
+    <div class="uaws" id="ua-ws"><button type="button" class="uaws-btn" aria-haspopup="listbox" aria-labelledby="ua-ws-l" aria-expanded="${f.wsOpen}" onclick="uaWsOpen(event)">
+      ${sel.map(id => `<span class="ws-pill">${esc(name(id))}</span>`).join('')}${UA_CHEV}</button>
+      <div class="uaws-pop" role="listbox" aria-multiselectable="true" ${f.wsOpen ? '' : 'hidden'}>
+        ${WS.list.map(w => `<button type="button" role="option" class="uaws-opt" aria-checked="${sel.includes(w.id)}" onclick="uaWsToggle(${w.id})"><span class="uaws-ck">${UA_TICK}</span><span class="n">${esc(w.name)}</span>${w.id === 1 ? '<span class="m">по умолчанию</span>' : ''}</button>`).join('')}
+        <div class="uaws-foot">Выберите одно или несколько</div></div></div>
+    <span class="${f.wsErr ? 'ua-err' : 'ua-hint'}">${f.wsErr ? 'Нужно оставить хотя бы одно пространство' : 'Человек виден в выбранных пространствах и видит людей из них'}</span>${warn}</div>`;
+}
+function uaWsOpen(e) { e.stopPropagation(); const f = UA.form; if (!f) return; f.wsOpen = !f.wsOpen; uaRerender(); }
+function uaWsToggle(id) {
+  const f = UA.form; if (!f) return;
+  if (f.wss.includes(id)) {
+    if (f.wss.length === 1) { f.wsErr = true; return uaRerender(); }
+    f.wss = f.wss.filter(x => x !== id);
+  } else f.wss = [...f.wss, id].sort((a, b) => a - b);
+  f.wsErr = false; uaRerender();
+}
+// Список закрывается по нажатию вне него
+document.addEventListener('click', e => { const f = UA.form; if (f && f.wsOpen && !e.target.closest('#ua-ws')) { f.wsOpen = false; uaRerender(); } });
 function uaRenderForm(focusId) {
   const f = UA.form, u = UA.editId ? allUsers.find(x => x.id === UA.editId) : null;
   const form = document.getElementById('ua-form');
   if (!form || !f) return;
   const editing = !!u, miss = uaMissing(f, editing);
   const err = k => f.errors[k] ? `<span class="ua-err">${f.errors[k]}</span>` : '';
-  const wsPick = WS.list.length > 1 || (u && u.workspace_id !== 1) ? `<div class="ua-field"><label>Пространство</label>
-        <div class="fsel fsel-f" id="ua-ws"><button type="button" class="fsel-btn on" aria-haspopup="listbox" onclick="fselToggle(event,'ua-ws'); this.setAttribute('aria-expanded', String(!document.querySelector('#ua-ws .fsel-pop').hidden))"><span>${esc(WS.list.find(w => w.id === f.ws)?.name || '—')}</span><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
-          <div class="fsel-pop" role="listbox" hidden>${WS.list.map(w => `<button type="button" role="option" aria-selected="${w.id === f.ws}" class="fsel-opt${w.id === f.ws ? ' active' : ''}" onclick="uaSet('ws', ${w.id}, true)">${esc(w.name)}${w.id === f.ws ? '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</button>`).join('')}</div></div>
-        ${u && f.ws !== u.workspace_id ? `<div class="ws-warn"><b>!</b><div>Чаты, группы и комнаты сохранятся. Контакты прежнего пространства заменятся контактами нового. Добавленные вручную останутся, а оказавшиеся в новом пространстве убираются из этого списка.</div></div>` : '<span class="ua-hint">Люди из разных пространств друг друга не видят</span>'}</div>` : '';
+  const wsPick = WS.list.length > 1 || (u && !(uaUserWs(u).length === 1 && uaUserWs(u)[0] === 1)) ? uaWsField(f, u) : '';
   const quick = `<div class="ua-sec">
       <div class="ua-field"><label for="ua-name">Имя и фамилия</label>
         <div class="ua-inp${f.errors.name ? ' bad' : ''}"><input id="ua-name" value="${esc(f.name)}" placeholder="Анна Смирнова" autocomplete="off" aria-invalid="${!!f.errors.name}" oninput="uaSet('name', this.value)"></div>${err('name')}</div>
@@ -5196,7 +5247,7 @@ async function uaSave() {
 
   f.busy = true;
   uaRenderForm();
-  const body = { username: f.login.trim(), display_name: f.name.trim(), is_admin: f.admin, tag: f.tag.trim() || null, workspace_id: f.ws };
+  const body = { username: f.login.trim(), display_name: f.name.trim(), is_admin: f.admin, tag: f.tag.trim() || null, workspace_ids: f.wss };
   let r;
   if (u) {
     r = await api('PATCH', '/api/users/' + u.id, body);
@@ -7143,8 +7194,8 @@ function setTopbarActions(html) {
 }
 
 /* ── ПРОСТРАНСТВА ── */
-// Пространство только объединяет людей: внутри люди друг друга видят, между пространствами не видят
-// (связать их можно контактами, группами и комнатами). Комнаты к пространству не привязаны.
+// Пространство только объединяет людей: люди с общим пространством друг друга видят (человек может состоять в нескольких),
+// без общего не видят (связать их можно контактами, группами и комнатами). Комнаты к пространству не привязаны.
 const WS = { list: [], editId: null };
 async function wsLoad() {
   const r = await api('GET', '/api/admin/workspaces');
@@ -7163,7 +7214,7 @@ async function renderWorkspaces() {
 function wsRender() {
   if (currentPage !== 'workspaces') return;
   document.getElementById('page-body').innerHTML = `<div class="ux-page">
-    <div><div style="font-size:17px;font-weight:700">Пространства</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Люди из разных пространств друг друга не видят. Связать их можно через контакты, группы и комнаты. Перенос человека делается в его профиле.</div></div>
+    <div><div style="font-size:17px;font-weight:700">Пространства</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Люди видят друг друга, если у них есть общее пространство. Человек может состоять в нескольких. Если общего нет, связать их можно через контакты, группы и комнаты. Пространства человека выбираются в его профиле.</div></div>
     ${WS.list.map(w => `<div class="card"><div class="mdl-card"><div class="mdl-ico" style="font-size:15px;font-weight:700">${esc(initials(w.name))}</div>
       <div class="mdl-tx"><b>${esc(w.name)}</b><span>${w.users} ${uxPlural(w.users, 'человек', 'человека', 'человек')} · создано ${fmtDate(w.created_at)}</span></div>
       ${w.is_default ? '<span class="badge badge-green">по умолчанию</span>' : w.users ? '' : '<span class="badge badge-gray">пустое</span>'}

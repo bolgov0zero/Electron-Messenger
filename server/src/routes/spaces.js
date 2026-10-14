@@ -39,7 +39,7 @@ contacts.post('/', async (req, res) => {
     if (old && fed.peerByInstance(old[1].toLowerCase())) return res.status(400).json({ error: 'Введите адрес вида @сервер:логин', code: 'bad_address' });
     return res.status(404).json({ error: 'Пользователь с таким логином не найден', code: 'not_found' });
   }
-  if (target.workspace_id === spaces.wsOf(req.user.id)) return res.status(409).json({ error: 'Этот человек уже в вашем пространстве, добавлять не нужно', code: 'same_space' });
+  if (spaces.shares(req.user.id, target.id)) return res.status(409).json({ error: 'Этот человек уже в вашем пространстве, добавлять не нужно', code: 'same_space' });
   if (db.prepare('SELECT 1 FROM contacts WHERE owner_id = ? AND contact_id = ?').get(req.user.id, target.id))
     return res.status(409).json({ error: 'Этот человек уже у вас в контактах', code: 'already' });
   db.prepare('INSERT INTO contacts (owner_id, contact_id) VALUES (?, ?)').run(req.user.id, target.id);
@@ -111,7 +111,7 @@ const nameOk = n => { const s = String(n || '').trim().replace(/\s+/g, ' '); ret
 
 admin.get('/', (req, res) => {
   res.json(db.prepare(`SELECT w.id, w.name, w.created_at, (w.id = ?) AS is_default,
-      (SELECT COUNT(*) FROM users u WHERE u.workspace_id = w.id AND COALESCE(u.is_bot, 0) = 0) AS users
+      (SELECT COUNT(*) FROM user_workspaces m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = w.id AND COALESCE(u.is_bot, 0) = 0) AS users
     FROM workspaces w ORDER BY w.id`).all(spaces.DEFAULT_WS).map(w => ({ ...w, is_default: !!w.is_default })));
 });
 
@@ -143,7 +143,7 @@ admin.delete('/:id', (req, res) => {
   const w = db.prepare('SELECT name FROM workspaces WHERE id = ?').get(id);
   if (!w) return res.status(404).json({ error: 'Пространство не найдено' });
   if (id === spaces.DEFAULT_WS) return res.status(400).json({ error: 'Основное пространство удалить нельзя' });
-  if (db.prepare('SELECT 1 FROM users WHERE workspace_id = ? LIMIT 1').get(id)) return res.status(400).json({ error: 'В пространстве есть люди. Сначала переведите их в другое.' });
+  if (db.prepare('SELECT 1 FROM user_workspaces WHERE workspace_id = ? LIMIT 1').get(id)) return res.status(400).json({ error: 'В пространстве есть люди. Сначала уберите их из него или переведите в другое.' });
   db.prepare('DELETE FROM workspaces WHERE id = ?').run(id);
   logAudit(req, 'server', 'Пространство удалено', w.name);
   res.json({ ok: true });

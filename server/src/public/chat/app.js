@@ -707,8 +707,10 @@ function logout(intentional = false) {
 async function refreshServerInfo() {
   const r = await api('GET', '/auth/me');
   if (!r || !S.user || r.id !== S.user.id) return;
-  if ((r.server_name || '') === (S.user.server_name || '') && (r.server_id || '') === (S.user.server_id || '')) return;
+  const wsSame = JSON.stringify(r.workspaces || []) === JSON.stringify(S.user.workspaces || []);
+  if ((r.server_name || '') === (S.user.server_name || '') && (r.server_id || '') === (S.user.server_id || '') && wsSame) return;
   S.user.server_name = r.server_name || ''; S.user.server_id = r.server_id || '';
+  S.user.workspaces = r.workspaces || []; S.user.workspace_id = r.workspace_id; S.user.workspace_name = r.workspace_name;
   saveSession();
   if (typeof _sidebarTab !== 'undefined' && _sidebarTab === 'settings' && CS.sec === 'profile') csRefresh();
 }
@@ -5575,7 +5577,18 @@ function fedAddr(u) {
   return '@' + (s ? s + ':' : '') + (l || u.username);
 }
 const FED_GLOBE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c2.6 2.8 4 6 4 9.5s-1.4 6.7-4 9.5c-2.6-2.8-4-6-4-9.5s1.4-6.7 4-9.5z"/></svg>';
-const wsTag = u => u.federated ? `<span class="ws-chip ws-fed" title="С другого сервера">${FED_GLOBE}</span>` : (u.rel === 'other' || u.rel === 'chat') && u.workspace_name ? `<span class="ws-chip">${esc(u.workspace_name)}</span>` : '';
+// Значок пространства у человека. Вы в одном пространстве: значок только у людей из чужих (контакты, общие чаты).
+// Вы в нескольких: у людей из общих пространств показываем общие (shared_workspaces), чтобы различать, кто откуда.
+// Общих несколько: «Склад · Офис», а если не помещается — «Склад +1» с полным списком в подсказке.
+const myWsCount = () => S.user?.workspaces?.length || 1;
+function wsChips(names) {
+  if (names.length === 1) return `<span class="ws-chip">${esc(names[0])}</span>`;
+  const full = names.join(' · ');
+  return `<span class="ws-chip" title="${esc(names.join(', '))}">${full.length <= 22 ? esc(full) : esc(names[0]) + ' +' + (names.length - 1)}</span>`;
+}
+const wsTag = u => u.federated ? `<span class="ws-chip ws-fed" title="С другого сервера">${FED_GLOBE}</span>`
+  : u.rel === 'ws' ? (myWsCount() > 1 && u.shared_workspaces?.length ? wsChips(u.shared_workspaces) : '')
+  : (u.rel === 'other' || u.rel === 'chat') && u.workspace_name ? `<span class="ws-chip">${esc(u.workspace_name)}</span>` : '';
 // Кнопка «Добавить контакт» нужна, когда человек известен только по общему чату
 const needsContact = id => { const u = (S.allUsers || []).find(x => x.id === id); return !!u && u.rel === 'chat'; };
 const peerSubText = id => { const u = (S.allUsers || []).find(x => x.id === id); return u && u.rel === 'chat' ? `${u.workspace_name ? u.workspace_name + ' · ' : ''}не в ваших контактах` : peerStatusText(id); };
@@ -5587,6 +5600,7 @@ async function loadBlocks() {
 }
 // Перечитать людей и присутствие после изменения контактов или пространства
 async function refreshDirectory() {
+  await refreshServerInfo();   // состав ваших пространств мог измениться: от него зависят значки
   await loadUsers();
   await loadPresence();
   // Аватарка человека с другого сервера может приехать позже первого показа: неудачи не помним, пробуем снова
@@ -5742,6 +5756,7 @@ function renderProfile() {
   const rows = [fed ? `<div class="pf-r"><b>Адрес</b><span>${esc(fedAddr(u))}</span></div>` : `<div class="pf-r"><b>Логин</b><span>@${esc(u.username)}</span></div>`];
   if (fed) rows.push(`<div class="pf-r"><b>Сервер</b><span class="pf-srv">${FED_GLOBE}Другой сервер</span></div>`);
   else if (otherSpace) rows.push(`<div class="pf-r"><b>Пространство</b><span>${esc(u.workspace_name)}</span></div>`);
+  else if (!fed && u.rel === 'ws' && myWsCount() > 1 && u.shared_workspaces?.length) rows.push(`<div class="pf-r"><b>${u.shared_workspaces.length > 1 ? 'Пространства' : 'Пространство'}</b><span>${esc(u.shared_workspaces.join(' · '))}</span></div>`);
   if (canContact) rows.push(`<div class="pf-r"><b>В ваших контактах</b><span>${u.contact ? 'Да' : 'Нет'}</span></div>`);
   const groups = (S.chats || []).filter(c => (c.type === 'group' || c.type === 'room') && !c.parent_id && !c.is_secret && c.members?.some(m => m.id === id));
   const groupsHtml = groups.length

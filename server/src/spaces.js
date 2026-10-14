@@ -1,8 +1,8 @@
 // Рабочие пространства: кто кого видит. Единое место для правила видимости — им пользуются
 // списки людей, присутствие, создание чатов и групп, объявления и рассылка событий.
 //
-// Правило: человек B виден человеку A, если они в одном пространстве или B добавлен в контакты A
-// (контакты односторонние: A видит B, а B не видит A). Администратор видит всех. Совместные чаты
+// Правило: человек B виден человеку A, если у них есть общее пространство (человек может состоять в нескольких)
+// или B добавлен в контакты A (контакты односторонние: A видит B, а B не видит A). Администратор видит всех. Совместные чаты
 // и группы видимость не меняют: участники друг друга там видят, но в списках и поиске чужих нет.
 //
 // Человек с другого сервера (федерация) хранится как «теневой» пользователь, is_bot = 2. Он виден только тому,
@@ -16,7 +16,31 @@ const q = {
   contact: db.prepare('SELECT 1 FROM contacts WHERE owner_id = ? AND contact_id = ?'),
 };
 
+// Основное пространство человека (users.workspace_id): его читают старые клиенты и места, где нужно одно значение
 function wsOf(userId) { return q.user.get(userId)?.workspace_id || DEFAULT_WS; }
+// Все пространства человека. Нет строк (служебный пользователь, старая запись) — берём основное
+const qWs = db.prepare('SELECT workspace_id FROM user_workspaces WHERE user_id = ? ORDER BY workspace_id');
+function wsIdsOf(userId) {
+  const ids = qWs.all(userId).map(r => r.workspace_id);
+  return ids.length ? ids : [wsOf(userId)];
+}
+// Общие пространства двух людей (номера)
+function sharedIds(a, b) {
+  const bs = new Set(wsIdsOf(b));
+  return wsIdsOf(a).filter(id => bs.has(id));
+}
+const shares = (a, b) => sharedIds(a, b).length > 0;
+// Задать пространства человеку (список номеров, хотя бы одно). Основным становится наименьший номер.
+function setWorkspaces(userId, ids) {
+  const list = [...new Set(ids.map(Number))].filter(Boolean).sort((x, y) => x - y);
+  db.transaction(() => {
+    db.prepare('DELETE FROM user_workspaces WHERE user_id = ?').run(userId);
+    const ins = db.prepare('INSERT INTO user_workspaces (user_id, workspace_id) VALUES (?, ?)');
+    list.forEach(id => ins.run(userId, id));
+    db.prepare('UPDATE users SET workspace_id = ? WHERE id = ?').run(list[0], userId);
+  })();
+  return list;
+}
 // Человек с другого сервера
 const FED = 2;
 function isFed(userId) { return q.user.get(userId)?.is_bot === FED; }
@@ -29,8 +53,14 @@ function canSee(viewerId, targetId) {
   if (!v || !t) return false;
   if (t.is_bot === FED || v.is_bot === FED) return !!q.contact.get(viewerId, targetId);
   if (v.is_admin) return true;
-  if (v.workspace_id === t.workspace_id) return true;
+  if (shares(viewerId, targetId)) return true;
   return !!q.contact.get(viewerId, targetId);
+}
+
+// Люди (номера) любого из перечисленных пространств
+function usersInSpaces(wsIds) {
+  if (!wsIds.length) return [];
+  return db.prepare(`SELECT DISTINCT user_id AS id FROM user_workspaces WHERE workspace_id IN (${wsIds.map(() => '?').join(',')})`).all(...wsIds).map(r => r.id);
 }
 
 // Кто видит человека target (кроме него самого): одно пространство, добавившие в контакты, администраторы.
@@ -39,7 +69,8 @@ function viewersOf(targetId) {
   const t = q.user.get(targetId);
   if (!t) return [];
   const ids = new Set();
-  db.prepare('SELECT id FROM users WHERE workspace_id = ? OR is_admin = 1').all(t.workspace_id).forEach(r => ids.add(r.id));
+  usersInSpaces(wsIdsOf(targetId)).forEach(id => ids.add(id));
+  db.prepare('SELECT id FROM users WHERE is_admin = 1').all().forEach(r => ids.add(r.id));
   db.prepare('SELECT owner_id FROM contacts WHERE contact_id = ?').all(targetId).forEach(r => ids.add(r.owner_id));
   ids.delete(targetId);
   return [...ids];
@@ -72,10 +103,19 @@ function listFor(viewerId) {
   const contacts = new Set(db.prepare('SELECT contact_id FROM contacts WHERE owner_id = ?').all(viewerId).map(r => r.contact_id));
   const co = new Set(db.prepare(`SELECT DISTINCT cm2.user_id AS id FROM chat_members cm1
     JOIN chat_members cm2 ON cm2.chat_id = cm1.chat_id WHERE cm1.user_id = ?`).all(viewerId).map(r => r.id));
+  // Членства всех людей и названия пространств одним проходом
+  const wsName = new Map(db.prepare('SELECT id, name FROM workspaces').all().map(w => [w.id, w.name]));
+  const memb = new Map();
+  db.prepare('SELECT user_id, workspace_id FROM user_workspaces ORDER BY workspace_id').all().forEach(r => {
+    if (!memb.has(r.user_id)) memb.set(r.user_id, []);
+    memb.get(r.user_id).push(r.workspace_id);
+  });
+  const mine = new Set(memb.get(viewerId) || [me.workspace_id]);
   const out = [];
   for (const u of rows) {
     const fed = u.is_bot === FED, isContact = contacts.has(u.id);
-    const same = !fed && u.workspace_id === me.workspace_id;
+    const common = fed ? [] : (memb.get(u.id) || [u.workspace_id]).filter(id => mine.has(id));
+    const same = common.length > 0;
     let rel = null;
     if (same) rel = 'ws';
     else if ((!fed && me.is_admin) || isContact) rel = 'other';
@@ -84,7 +124,9 @@ function listFor(viewerId) {
     const { is_bot, fed_login, fed_instance, ...rest } = u;
     // У человека с другого сервера нет пространства: клиент показывает вместо него значок «другой сервер».
     // login и server_id отдаём отдельно, чтобы клиент не разбирал служебное имя (оно менялось: «сервер@логин» → «сервер:логин»)
-    out.push(fed ? { ...rest, workspace_id: 0, workspace_name: null, rel, contact: isContact, federated: true, login: fed_login, server_id: fed_instance } : { ...rest, rel, contact: isContact });
+    // shared_workspaces — только общие с вами пространства (названия): чужие членства человека не раскрываются
+    out.push(fed ? { ...rest, workspace_id: 0, workspace_name: null, rel, contact: isContact, federated: true, login: fed_login, server_id: fed_instance }
+      : { ...rest, rel, contact: isContact, shared_workspaces: common.map(id => wsName.get(id)).filter(Boolean) });
   }
   return out;
 }
@@ -104,7 +146,7 @@ function canSeePresence(viewerId, targetId) {
   const v = q.user.get(viewerId), t = q.user.get(targetId);
   if (!v || !t) return false;
   if (v.is_bot === FED || t.is_bot === FED) return mutualContact(viewerId, targetId);
-  return !!v.is_admin || v.workspace_id === t.workspace_id || mutualContact(viewerId, targetId);
+  return !!v.is_admin || shares(viewerId, targetId) || mutualContact(viewerId, targetId);
 }
 // Кому разослать присутствие человека target
 function presenceViewers(targetId) {
@@ -112,7 +154,10 @@ function presenceViewers(targetId) {
   if (!t) return [];
   const ids = new Set();
   // Человек с другого сервера: статус видят только те, кто с ним в контактах друг у друга
-  if (t.is_bot !== FED) db.prepare('SELECT id FROM users WHERE workspace_id = ? OR is_admin = 1').all(t.workspace_id).forEach(r => ids.add(r.id));
+  if (t.is_bot !== FED) {
+    usersInSpaces(wsIdsOf(targetId)).forEach(id => ids.add(id));
+    db.prepare('SELECT id FROM users WHERE is_admin = 1').all().forEach(r => ids.add(r.id));
+  }
   db.prepare('SELECT c1.owner_id AS id FROM contacts c1 JOIN contacts c2 ON c2.owner_id = c1.contact_id AND c2.contact_id = c1.owner_id WHERE c1.contact_id = ?')
     .all(targetId).forEach(r => ids.add(r.id));
   ids.delete(targetId);
@@ -124,17 +169,18 @@ function presenceIds(viewerId) {
   if (!v) return [];
   const ids = new Set(v.is_admin
     ? db.prepare(`SELECT id FROM users WHERE id != ? AND COALESCE(is_bot, 0) != ${FED}`).all(viewerId).map(r => r.id)
-    : db.prepare('SELECT id FROM users WHERE workspace_id = ? AND id != ? AND COALESCE(is_bot, 0) != ?').all(v.workspace_id, viewerId, FED).map(r => r.id));
+    : usersInSpaces(wsIdsOf(viewerId)).filter(id => id !== viewerId && !isFed(id)));
   db.prepare('SELECT c1.contact_id AS id FROM contacts c1 JOIN contacts c2 ON c2.owner_id = c1.contact_id AND c2.contact_id = c1.owner_id WHERE c1.owner_id = ?')
     .all(viewerId).forEach(r => ids.add(r.id));
   return [...ids];
 }
 
-// Смена пространства: ручные контакты, которые теперь в одном пространстве с владельцем, удаляются
+// Смена пространств человека: ручные контакты, которые теперь в одном пространстве с владельцем, удаляются
 // (и у самого человека, и у тех, кто добавил его, а он теперь «свой»).
-function afterMove(userId, newWs) {
-  db.prepare('DELETE FROM contacts WHERE owner_id = ? AND contact_id IN (SELECT id FROM users WHERE workspace_id = ?)').run(userId, newWs);
-  db.prepare('DELETE FROM contacts WHERE contact_id = ? AND owner_id IN (SELECT id FROM users WHERE workspace_id = ?)').run(userId, newWs);
+function afterMove(userId) {
+  const sameSpace = `SELECT user_id FROM user_workspaces WHERE workspace_id IN (SELECT workspace_id FROM user_workspaces WHERE user_id = ?)`;
+  db.prepare(`DELETE FROM contacts WHERE owner_id = ? AND contact_id IN (${sameSpace})`).run(userId, userId);
+  db.prepare(`DELETE FROM contacts WHERE contact_id = ? AND owner_id IN (${sameSpace})`).run(userId, userId);
 }
 
 // ── Новые переписки между пространствами ──
@@ -147,7 +193,7 @@ function limitApplies(senderId, recipientId) {
   const s = q.user.get(senderId), r = q.user.get(recipientId);
   // Администратор не ограничен у себя на сервере, но для человека с другого сервера он обычный собеседник
   if (!s || !r || (s.is_admin && r.is_bot !== FED)) return false;
-  if (s.workspace_id === r.workspace_id) return false;
+  if (shares(senderId, recipientId)) return false;
   return !q.contact.get(recipientId, senderId);
 }
 const limitUsed = (senderId, recipientId) => db.prepare('SELECT n FROM dm_limits WHERE sender_id = ? AND recipient_id = ?').get(senderId, recipientId)?.n || 0;
@@ -167,4 +213,4 @@ const directChatIds = (a, b) => db.prepare(`SELECT c.id FROM chats c
   JOIN chat_members m2 ON m2.chat_id = c.id AND m2.user_id = ?
   WHERE c.type = 'direct'`).all(a, b).map(r => r.id);
 
-module.exports = { FED, isFed, mutualContact, canSeePresence, presenceViewers, presenceIds, DM_LIMIT, limitApplies, limitUsed, limitFor, limitBump, limitReset, directChatIds, DEFAULT_WS, wsOf, isAdminUser, canSee, viewersOf, knownByOf, isBlocked, listFor, visibleIds, afterMove };
+module.exports = { FED, isFed, mutualContact, canSeePresence, presenceViewers, presenceIds, DM_LIMIT, limitApplies, limitUsed, limitFor, limitBump, limitReset, directChatIds, DEFAULT_WS, wsOf, wsIdsOf, sharedIds, shares, setWorkspaces, usersInSpaces, isAdminUser, canSee, viewersOf, knownByOf, isBlocked, listFor, visibleIds, afterMove };

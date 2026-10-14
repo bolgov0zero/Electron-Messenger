@@ -296,8 +296,12 @@ router.get('/users', (req, res) => {
     if (!devices.has(c.userId)) devices.set(c.userId, []);
     devices.get(c.userId).push({ version: c.clientVersion, platform: c.osPlatform, hostname: c.hostname, scope: c.installScope, since: c.connectedAt });
   }
+  const memb = new Map();
+  db.prepare('SELECT m.user_id, w.id, w.name FROM user_workspaces m JOIN workspaces w ON w.id = m.workspace_id ORDER BY w.id').all()
+    .forEach(r => { if (!memb.has(r.user_id)) memb.set(r.user_id, []); memb.get(r.user_id).push({ id: r.id, name: r.name }); });
   res.json(users.map(u => {
     const { totp_secret, ...rest } = u;
+    rest.workspaces = memb.get(u.id) || [{ id: u.workspace_id, name: u.workspace_name }];
     return {
       ...rest,
       banned: !!u.banned,

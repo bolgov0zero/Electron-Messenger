@@ -85,17 +85,33 @@ router.get('/:id/avatar', (req, res) => {
   res.sendFile(file, err => { if (err) { res.setHeader('Cache-Control', 'no-store'); res.status(404).end(); } });
 });
 
+// Список пространств из тела запроса: workspace_ids (массив) или старый workspace_id. Нет полей — fallback.
+// null — есть несуществующее пространство или список пуст.
+function parseWsIds(body, fallback) {
+  let raw = body.workspace_ids !== undefined ? body.workspace_ids : body.workspace_id !== undefined ? [body.workspace_id] : fallback;
+  if (!Array.isArray(raw)) raw = [raw];
+  const ids = [...new Set(raw.map(Number))].filter(Number.isFinite).sort((x, y) => x - y);
+  if (!ids.length) return null;
+  const have = new Set(db.prepare('SELECT id FROM workspaces').all().map(r => r.id));
+  return ids.every(id => have.has(id)) ? ids : null;
+}
+
 // Admin: create user
 router.post('/', authMiddleware, adminMiddleware, (req, res) => {
   const { username, password, display_name, is_admin, tag } = req.body;
   if (!username?.trim() || !password || !display_name?.trim()) return res.status(400).json({ error: 'Missing fields' });
   if (String(username).includes(':')) return res.status(400).json({ error: 'В логине нельзя использовать двоеточие' });
-  const wsId = req.body.workspace_id === undefined ? spaces.DEFAULT_WS : Number(req.body.workspace_id);
-  if (!db.prepare('SELECT 1 FROM workspaces WHERE id = ?').get(wsId)) return res.status(400).json({ error: 'Пространство не найдено' });
+  // Пространства: список workspace_ids (старый одиночный workspace_id тоже принимается); по умолчанию — основное
+  const wsIds = parseWsIds(req.body, [spaces.DEFAULT_WS]);
+  if (!wsIds) return res.status(400).json({ error: 'Пространство не найдено' });
   try {
     const hash = bcrypt.hashSync(password, 10);
-    const result = db.prepare('INSERT INTO users (username, password_hash, display_name, is_admin, tag, workspace_id) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(username.trim(), hash, display_name.trim(), is_admin ? 1 : 0, tag?.trim() || null, wsId);
+    const result = db.transaction(() => {
+      const r = db.prepare('INSERT INTO users (username, password_hash, display_name, is_admin, tag, workspace_id) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(username.trim(), hash, display_name.trim(), is_admin ? 1 : 0, tag?.trim() || null, wsIds[0]);
+      spaces.setWorkspaces(r.lastInsertRowid, wsIds);
+      return r;
+    })();
     // Иначе новый человек не появляется в списках (упоминания, «написать») до
     // перезапуска клиента — список людей грузится один раз при входе
     broadcastAll({ type: 'user_created' });
@@ -109,8 +125,8 @@ router.patch('/:id', authMiddleware, adminMiddleware, (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'Not found' });
   if (username !== undefined && String(username).includes(':') && String(username) !== user.username) return res.status(400).json({ error: 'В логине нельзя использовать двоеточие' });
-  if (req.body.workspace_id !== undefined && !db.prepare('SELECT 1 FROM workspaces WHERE id = ?').get(Number(req.body.workspace_id)))
-    return res.status(400).json({ error: 'Пространство не найдено' });
+  const newWs = (req.body.workspace_ids !== undefined || req.body.workspace_id !== undefined) ? parseWsIds(req.body, null) : undefined;
+  if (newWs === null) return res.status(400).json({ error: 'Пространство не найдено' });
   try {
     db.prepare('UPDATE users SET username = ?, display_name = ?, is_admin = ?, tag = ? WHERE id = ?')
       .run(username?.trim() || user.username, display_name?.trim() || user.display_name, is_admin !== undefined ? (is_admin ? 1 : 0) : user.is_admin, tag !== undefined ? (tag?.trim() || null) : user.tag, req.params.id);
@@ -118,14 +134,16 @@ router.patch('/:id', authMiddleware, adminMiddleware, (req, res) => {
     const updated = db.prepare('SELECT id, display_name, tag FROM users WHERE id = ?').get(req.params.id);
     const evt = { type: 'user_updated', user_id: updated.id, display_name: updated.display_name, tag: updated.tag };
     [updated.id, ...spaces.knownByOf(updated.id)].forEach(id => sendTo(id, evt));
-    // Смена пространства: ручные контакты, ставшие «своими», убираем; все обновляют списки людей
-    if (req.body.workspace_id !== undefined && Number(req.body.workspace_id) !== user.workspace_id) {
-      const ws = db.prepare('SELECT id, name FROM workspaces WHERE id = ?').get(Number(req.body.workspace_id));
-      const was = db.prepare('SELECT name FROM workspaces WHERE id = ?').get(user.workspace_id)?.name || '—';
-      db.prepare('UPDATE users SET workspace_id = ? WHERE id = ?').run(ws.id, user.id);
-      spaces.afterMove(user.id, ws.id);
-      logAudit(req, 'moderation', 'Пользователь переведён в другое пространство', `${user.display_name}: «${was}» → «${ws.name}»`);
-      broadcastAll({ type: 'directory_changed' });
+    // Смена пространств: ручные контакты, ставшие «своими», убираем; все обновляют списки людей
+    if (newWs) {
+      const before = spaces.wsIdsOf(user.id);
+      if (before.join() !== newWs.join()) {
+        const names = ids => ids.map(id => db.prepare('SELECT name FROM workspaces WHERE id = ?').get(id)?.name || '—').map(n => `«${n}»`).join(', ');
+        spaces.setWorkspaces(user.id, newWs);
+        spaces.afterMove(user.id);
+        logAudit(req, 'moderation', 'Изменены пространства пользователя', `${user.display_name}: ${names(before)} → ${names(newWs)}`);
+        broadcastAll({ type: 'directory_changed' });
+      }
     }
     res.json({ ok: true });
   } catch { res.status(409).json({ error: 'Username already exists' }); }

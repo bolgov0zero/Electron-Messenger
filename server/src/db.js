@@ -454,6 +454,22 @@ db.exec(`
 db.prepare("INSERT OR IGNORE INTO workspaces (id, name) VALUES (1, 'Основное')").run();
 tryAlter('ALTER TABLE users ADD COLUMN workspace_id INTEGER NOT NULL DEFAULT 1');
 tryAlter('CREATE INDEX IF NOT EXISTS idx_users_workspace ON users(workspace_id)');
+// Человек может состоять в нескольких пространствах: user_workspaces — его членства. users.workspace_id остаётся
+// «основным» (наименьший номер из членств): его читают старые клиенты и код, которому достаточно одного пространства.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_workspaces (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, workspace_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_user_workspaces_ws ON user_workspaces(workspace_id);
+`);
+// Перенос: пока таблица пуста (первый запуск после обновления или восстановление старой копии), каждому
+// человеку кладём его прежнее единственное пространство
+if (!db.prepare('SELECT 1 FROM user_workspaces LIMIT 1').get()) {
+  db.prepare(`INSERT OR IGNORE INTO user_workspaces (user_id, workspace_id)
+    SELECT id, workspace_id FROM users WHERE COALESCE(is_bot, 0) != 2 AND workspace_id IN (SELECT id FROM workspaces)`).run();
+}
 
 // Федерация инстансов (см. federation.js). fed_peers — подключённые серверы; fed_invites — одноразовые ключи
 // активации (token_hash — открытый номер ключа, secret — секрет, по сети не передаётся); fed_outbox — очередь событий, которые ещё не подтверждены получателем.
