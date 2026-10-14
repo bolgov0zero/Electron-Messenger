@@ -1283,9 +1283,14 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .fdv-up{color:var(--c-primary)!important}.fdv-dn{color:var(--dv-c2,#7c8cff)!important}
 .fdv-chip{display:inline-flex;align-items:center;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--c-orange-dim);color:var(--c-orange-text);white-space:nowrap}
 .fdv-chips{display:contents}
-.fdv-tg{grid-area:tg;width:30px;height:30px;border-radius:9px;border:1px solid var(--c-border);background:var(--c-surface);display:grid;place-items:center;color:var(--c-text2);cursor:pointer;transition:transform .15s}
+.fdv-tg{grid-area:tg;width:30px;height:30px;border-radius:9px;border:1px solid var(--c-border);background:var(--c-surface);display:grid;place-items:center;color:var(--c-text2);cursor:pointer;transition:transform .3s cubic-bezier(.4,0,.2,1)}
 .fdv-tg:hover{background:var(--c-surface2);color:var(--c-text)}
 .fdv-tg[aria-expanded=true]{transform:rotate(180deg)}
+.fdv-w{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.4,0,.2,1)}
+.fdv-w.open{grid-template-rows:1fr}
+.fdv-in{overflow:hidden;min-height:0;opacity:0;transition:opacity .22s ease,visibility 0s .3s;visibility:hidden}
+.fdv-w.open>.fdv-in{opacity:1;visibility:visible;transition:opacity .26s ease .06s,visibility 0s}
+@media (prefers-reduced-motion:reduce){.fdv-w,.fdv-in,.fdv-tg{transition:none!important}}
 .fdv-b{border-top:1px solid var(--c-border);padding:14px 16px 16px;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(240px,1fr);gap:20px}
 .fdv-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
 .fdv-lab{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--c-text2)}
@@ -7248,22 +7253,33 @@ function fdvRender() {
   let h = `<div class="fdv-h"><div class="fdv-ttl"><span class="fdv-dot ${bad ? 'warn' : ''}"></span><b>Федерация</b><span class="dv-sub">${t.active} из ${t.all} активно</span></div>
     <div class="fdv-stats">${stat('сообщения', t.msgOut, t.msgIn)}${stat('файлы', t.fOut, t.fIn)}${stat('объём', fdvBytes(t.bOut), fdvBytes(t.bIn))}${(t.queue || t.rej.total) ? `<span class="fdv-chips">${t.queue ? `<span class="fdv-chip">очередь ${t.queue}</span>` : ''}${t.rej.total ? `<span class="fdv-chip">отклонено ${t.rej.total}</span>` : ''}</span>` : ''}</div>
     <button type="button" class="fdv-tg" aria-expanded="${FDV.open}" aria-label="${FDV.open ? 'Свернуть' : 'Развернуть'}" onclick="fdvToggle()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button></div>`;
-  if (FDV.open) {
+  {
     const m = FDV.metric, S = d.series;
     const cfg = { msg: ['Сообщения', S.map(x => x.msgOut), S.map(x => x.msgIn), v => v], file: ['Файлы', S.map(x => x.fOut), S.map(x => x.fIn), v => v], vol: ['Объём', S.map(x => x.bOut), S.map(x => x.bIn), fdvBytes] }[m];
     const young = Date.now() / 1000 - d.newest_peer_at < 86400;
     const tabs = (attr, items, cur, fn) => `<div class="fdv-tabs">${items.map(x => `<button type="button" aria-pressed="${cur === x[0]}" onclick="${fn}('${x[0]}')">${x[1]}</button>`).join('')}</div>`;
-    h += `<div class="fdv-b"><div><div class="fdv-top"><span class="fdv-lab">${cfg[0]}</span>${tabs('m', [['msg', 'Сообщения'], ['file', 'Файлы'], ['vol', 'Объём']], m, 'fdvMetric')}${tabs('p', [['day', 'Сутки'], ['week', 'Неделя'], ['month', 'Месяц']], sp, 'fdvPeriod')}</div>
+    h += `<div class="fdv-w${FDV.open ? ' open' : ''}"${FDV.open ? '' : ' inert'}><div class="fdv-in"><div class="fdv-b"><div><div class="fdv-top"><span class="fdv-lab">${cfg[0]}</span>${tabs('m', [['msg', 'Сообщения'], ['file', 'Файлы'], ['vol', 'Объём']], m, 'fdvMetric')}${tabs('p', [['day', 'Сутки'], ['week', 'Неделя'], ['month', 'Месяц']], sp, 'fdvPeriod')}</div>
       ${young ? '<div class="fdv-note">Соединение подключено недавно. График наполнится по мере обмена, объём считается с момента подключения.</div>' : ''}
       ${fdvChart(cfg[1], cfg[2], S.map(x => x.t), cfg[3])}
       <div class="fdv-leg"><span><i style="background:var(--c-primary)"></i>отправлено</span><span><i style="background:var(--dv-c2,#7c8cff)"></i>получено</span></div></div>
       <div><div class="fdv-lab" style="margin-bottom:6px">Серверы · ${periodLabel}</div><div class="fdv-sl">${d.peers.map(p => `<div class="fdv-sr"><span class="fdv-dot ${p.status === 'paused' ? 'off' : p.online ? '' : 'warn'}"></span><div><b>${esc(p.name)}</b><div class="cap">${p.status === 'paused' ? '<span class="w">приостановлено</span> · ' : !p.online ? '<span class="w">нет связи</span> · ' : ''}${p.last_contact_at ? 'обмен ' + esc(uaSeen(p.last_contact_at)) : 'обмена не было'}${p.queue ? ` · <span class="w">очередь ${p.queue}</span>` : ''}</div></div>
         <div class="m"><span class="fdv-up">↑ ${p.msgOut}</span><span class="fdv-dn">↓ ${p.msgIn}</span><span>${fdvBytes(p.bytes)}</span></div></div>`).join('')}</div>
-      <div class="fdv-rej">${rejLine}</div></div></div>`;
+      <div class="fdv-rej">${rejLine}</div></div></div></div></div>`;
   }
   box.innerHTML = h; box.hidden = false;
 }
-function fdvToggle() { FDV.open = !FDV.open; try { localStorage.setItem('fdv-open', FDV.open ? '1' : '0'); } catch {} fdvRender(); }
+// Раскрытие без перерисовки блока: переключаем класс у уже стоящего тела, и оно плавно
+// раскрывается через высоту строки сетки. Перерисовка (innerHTML) убивала и анимацию, и поворот стрелки
+function fdvToggle() {
+  FDV.open = !FDV.open;
+  try { localStorage.setItem('fdv-open', FDV.open ? '1' : '0'); } catch {}
+  const box = document.getElementById('dv-fed'), w = box?.querySelector('.fdv-w'), tg = box?.querySelector('.fdv-tg');
+  if (!w || !tg) { fdvRender(); return; }
+  w.classList.toggle('open', FDV.open);
+  w.inert = !FDV.open;
+  tg.setAttribute('aria-expanded', String(FDV.open));
+  tg.setAttribute('aria-label', FDV.open ? 'Свернуть' : 'Развернуть');
+}
 function fdvMetric(m) { FDV.metric = m; fdvRender(); }
 function fdvPeriod(p) { FDV.period = p; try { localStorage.setItem('fdv-period', p); } catch {} fdvLoad(); }
 
