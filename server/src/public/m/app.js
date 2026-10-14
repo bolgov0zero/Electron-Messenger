@@ -1739,7 +1739,7 @@ function bubbleHtml(m, chat, pos = {}) {
   // как есть, как в /chat; обычный текст экранируем и прогоняем через
   // лёгкую разметку/автоссылки
   const text = m._scSkel ? `<span class="bubble-text">${m._scSkel}</span>` : m.text ? `<span class="bubble-text${emojiOnly ? ' emoji-only' : ''}">${m.sender_is_bot ? m.text : linkifyText(m.text)}</span>` : '';
-  const quote = m.reply_to_id ? `<div class="bubble-quote">
+  const quote = m.reply_to_id ? `<div class="bubble-quote${m.reply_deleted ? '' : ' jump'}"${m.reply_deleted ? '' : ` onclick="event.stopPropagation();scrollToMsg(${m.reply_to_id})"`}>
     <div class="bubble-quote-name">${esc(m.reply_sender_name || '')}</div>
     <div class="bubble-quote-text">${m.reply_deleted ? 'Сообщение удалено' : esc(m.reply_text || '')}</div>
   </div>` : '';
@@ -1982,6 +1982,22 @@ function stickAfterMedia(container) {
   });
 }
 
+// Подсветка сообщения после перехода к нему (цитата, поиск): акцентный контур с мягкой волной
+function flashBubble(el) {
+  el.classList.remove('bubble-flash');
+  void el.offsetWidth;
+  el.classList.add('bubble-flash');
+  clearTimeout(el._flashT);
+  el._flashT = setTimeout(() => el.classList.remove('bubble-flash'), 1900);
+}
+// Переход к сообщению из цитаты ответа. Нет в загруженном окне (глубоко в истории) —
+// открываем чат заново с окном вокруг него
+function scrollToMsg(msgId) {
+  const el = document.querySelector(`.bubble[data-msg-id="${msgId}"]`);
+  if (!el) { if (S.activeChatId) openChat(S.activeChatId, msgId); return; }
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  flashBubble(el);
+}
 async function openChat(chatId, aroundId) {
   S.activeChatId = chatId;
   syncReadOnlyUi();
@@ -2028,8 +2044,7 @@ async function openChat(chatId, aroundId) {
       const el = document.querySelector(`.bubble[data-msg-id="${aroundId}"]`);
       if (!el) { document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight; return; }
       el.scrollIntoView({ block: 'center' });
-      el.classList.add('bubble-flash');
-      setTimeout(() => el.classList.remove('bubble-flash'), 1900);
+      flashBubble(el);
     });
   }
   chat.unread = 0; chat.unread_mentions = 0;
