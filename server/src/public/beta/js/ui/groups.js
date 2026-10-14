@@ -4,12 +4,45 @@ B.ui.groups = (function () {
   var esc = B.esc, ic = B.ic;
   var grp = { name: '', sel: [], avatar: null, q: '' };
 
-  // ── новый чат: личный или группа ──
+  // ── новый чат: шторка со списком контактов и строкой «Новая группа» ──
+  var step = 'list';
+  function ncList(q) {
+    q = (q || '').trim().toLowerCase();
+    var list = B.S.contacts.filter(function (u) { return !q || u.display_name.toLowerCase().indexOf(q) >= 0 || (u.username || '').toLowerCase().indexOf(q) >= 0; });
+    return list.map(function (u) {
+      return '<button class="crow2" data-g="peer" data-id="' + u.id + '">' + B.avatar.user(u.id, u.display_name, 40) + '<div class="t"><b>' + esc(u.display_name) + '</b><span>' + esc(B.presence.statusText(u.id)) + '</span></div></button>';
+    }).join('') || '<div class="cell"><span class="cl" style="color:var(--fg2)">Никого не нашли</span></div>';
+  }
+  function listStep() {
+    step = 'list';
+    B.sheet.set({ title: 'Новый чат', left: '<button class="nb" data-sheet="close">Отмена</button>', right: '',
+      body: '<div class="srch"><div class="sfield">' + ic('search', 16, 2.2) + '<input id="nc-q" placeholder="Кому" autocomplete="off" autocapitalize="none"></div></div>' +
+        '<div class="grp" style="margin-top:4px"><button class="cell tap hasi" data-g="group"><span class="ci" style="background:var(--accent)">' + ic('users', 17, 2) + '</span><span class="cl">Новая группа</span><span class="chev">' + ic('chev', 16, 2.4) + '</span></button></div>' +
+        '<div class="hdr-s" style="padding-top:0">Контакты</div><div class="grp plist" id="nc-list">' + ncList('') + '</div>' });
+    var b = B.sheet.body(), list = b.querySelector('#nc-list');
+    B.avatar.apply(list);
+    b.querySelector('#nc-q').addEventListener('input', function (e) { list.innerHTML = ncList(e.target.value); B.avatar.apply(list); });
+  }
   function newChat() {
-    B.actions.show({ title: 'Новый чат', items: [
-      { l: 'Личный чат', f: function () { B.setTab && B.setTab('contacts'); } },
-      { l: 'Группа', f: createGroup }
-    ] });
+    if (!B.S.contacts.length) B.contacts.load();
+    B.sheet.open({ size: 'large', title: 'Новый чат', body: '' });
+    document.querySelector('.sh').addEventListener('click', onSheetClick);
+    listStep();
+  }
+  async function onSheetClick(e) {
+    var t = e.target.closest('[data-g]'); if (!t) return; var a = t.dataset.g;
+    if (a === 'group') groupStep();
+    else if (a === 'back') listStep();
+    else if (a === 'peer') {
+      var chat = await B.contacts.openDirect(+t.dataset.id); B.sheet.close();
+      if (chat) setTimeout(function () { B.openChat(chat.id); }, 260); else B.toast.show('Не удалось открыть чат');
+    }
+    else if (a === 'create') submitGroup();
+    else if (a === 'avatar') { var f = B.sheet.body().querySelector('#g-file'); if (f) f.click(); }
+    else if (a === 'toggle') {
+      var id = +t.dataset.id, i = grp.sel.indexOf(id); if (i >= 0) grp.sel.splice(i, 1); else grp.sel.push(id);
+      var list = B.sheet.body().querySelector('#g-list'); list.innerHTML = pickHtml(); B.avatar.apply(list);
+    }
   }
 
   // ── группа ──
@@ -36,10 +69,9 @@ B.ui.groups = (function () {
       return '<button class="crow2" data-g="toggle" data-id="' + u.id + '">' + B.avatar.user(u.id, u.display_name, 40, true) + '<div class="t"><b>' + esc(u.display_name) + '</b></div><span class="pick' + (on ? ' on' : '') + '">' + (on ? ic('check', 15, 3) : '') + '</span></button>';
     }).join('') || '<div class="cell"><span class="cl" style="color:var(--fg2)">Никого не нашли</span></div>';
   }
-  function createGroup() {
-    grp = { name: '', sel: [], avatar: null, q: '' };
-    if (!B.S.contacts.length) B.contacts.load();
-    B.sheet.open({ size: 'large', title: 'Новая группа', left: '<button class="nb" data-sheet="close">Отмена</button>', right: '<button class="nb" data-g="create" style="font-weight:600">Создать</button>',
+  function groupStep() {
+    step = 'group'; grp = { name: '', sel: [], avatar: null, q: '' };
+    B.sheet.set({ title: 'Новая группа', left: '<button class="nb" data-g="back">Назад</button>', right: '<button class="nb" data-g="create" style="font-weight:600">Создать</button>',
       body: '<button class="gav" data-g="avatar" id="g-av" aria-label="Фото группы">' + ic('cam', 30, 1.6) + '</button><input type="file" accept="image/*" hidden id="g-file">' +
         '<div class="grp" style="margin-top:16px"><div class="cell"><input class="fld" id="g-name" placeholder="Название группы" maxlength="60" autocomplete="off"></div></div>' +
         '<div class="srch" style="padding-top:0"><div class="sfield">' + ic('search', 16, 2.2) + '<input id="g-q" placeholder="Поиск участников" autocomplete="off"></div></div>' +
@@ -52,13 +84,8 @@ B.ui.groups = (function () {
       var f = file.files[0]; file.value = ''; if (!f) return;
       grp.avatar = await resizeAvatar(f); av.innerHTML = ''; av.style.backgroundImage = 'url(data:image/jpeg;base64,' + grp.avatar + ')'; av.style.backgroundSize = 'cover'; av.style.backgroundPosition = 'center';
     });
-    b.addEventListener('click', function (e) {
-      var t = e.target.closest('[data-g]'); if (!t) return;
-      if (t.dataset.g === 'avatar') file.click();
-      else if (t.dataset.g === 'toggle') { var id = +t.dataset.id, i = grp.sel.indexOf(id); if (i >= 0) grp.sel.splice(i, 1); else grp.sel.push(id); list.innerHTML = pickHtml(); B.avatar.apply(list); }
-    });
-    document.querySelector('.sh [data-g="create"]').addEventListener('click', submitGroup);
   }
+  function createGroup() { newChat(); groupStep(); }
   async function submitGroup() {
     var name = grp.name.trim();
     if (!name) { B.toast.show('Введите название группы'); return; }
