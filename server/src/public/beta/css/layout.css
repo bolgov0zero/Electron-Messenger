@@ -1,6 +1,6 @@
 /* /beta — каркас экрана: одинаковые верхняя и нижняя панели на всех страницах.
    Верх = область под системной полосой (--sat) + панель навигации (--navh).
-   Низ  = таб-бар/композер (--tabh) + область под индикатор «домой» (--sab). */
+   Низ  = таб-бар/композер (--tabh) + отступ --sab (по умолчанию 0: см. комментарий у --sab-extra). */
 :root {
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif, "Noto Color Emoji";
   --navh: 44px;
@@ -9,9 +9,9 @@
   --tabh: calc(var(--bandh) + var(--bpadt));   /* единая высота нижней панели без безопасной зоны */
   /* Запасы подбираются на реальном iPhone (экран «Настройки → Диагностика»), значения живут в localStorage */
   --sat-extra: 24px;   /* системное размытие у верха PWA глубже, чем safe-area: опускаем панель */
-  --sab-extra: 0px;   /* элементы нижней панели прилегают к безопасной зоне */
+  --sab-extra: 0px;   /* отступ под нижней панелью. Как в /m: 0, потому что окно iOS и так заканчивается над индикатором «домой», а остаток экрана закрашен цветом панели (фон html) */
   --sat: max(0px, calc(env(safe-area-inset-top, 0px) + var(--sat-extra)));
-  --sab: max(0px, calc(env(safe-area-inset-bottom, 0px) + var(--sab-extra)));
+  --sab: max(0px, var(--sab-extra));
   --top: calc(var(--sat) + var(--navh));
   --bot: calc(var(--tabh) + var(--sab));
   --ease: cubic-bezier(.32, .72, 0, 1);
