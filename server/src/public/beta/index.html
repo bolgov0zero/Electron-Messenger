@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<script>
+// Версия приложения подставляется сервером в ?v=… (см. server/src/index.js). Она нужна, чтобы
+// проверять, не вышел ли новый релиз, пока установленная PWA была свёрнута (у неё нет кнопки «обновить»).
+window.APP_VERSION = '?v=1';
+</script>
+<script>
+// Тема — до первой отрисовки, без вспышки. Настройка общая с /chat и /m (electron_v2 → settings.theme):
+// «light» — светлая, любое другое значение (dark, night) — тёмно-синяя.
+(function () {
+  var t = 'dark';
+  try {
+    var s = JSON.parse(localStorage.getItem('electron_v2') || '{}');
+    t = (s.settings && s.settings.theme) || 'dark';
+  } catch (e) {}
+  var dark = t !== 'light';
+  document.documentElement.classList.toggle('dark', dark);
+  // Отступы-запасы, подобранные на телефоне (экран диагностики)
+  try {
+    var hs = document.documentElement.style;
+    var a = localStorage.getItem('beta_sat_extra'), b = localStorage.getItem('beta_sab_extra');
+    if (a !== null) hs.setProperty('--sat-extra', parseInt(a, 10) + 'px');
+    if (b !== null) hs.setProperty('--sab-extra', parseInt(b, 10) + 'px');
+  } catch (e) {}
+  // У standalone-PWA системную полосу красит именно манифест, а не <meta theme-color>, а читается он один раз
+  // при запуске — поэтому <link rel="manifest"> ставим сами, сразу под нужную тему
+  var link = document.createElement('link');
+  link.rel = 'manifest'; link.id = 'manifest-link';
+  link.href = dark ? '/beta/manifest.json' : '/beta/manifest-light.json';
+  document.head.appendChild(link);
+  var meta = document.createElement('meta');
+  meta.name = 'theme-color'; meta.id = 'theme-color-meta'; meta.content = dark ? '#1c2835' : '#f6f6f7';
+  document.head.appendChild(meta);
+})();
+</script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Electron β">
+<meta name="format-detection" content="telephone=no">
+<link rel="icon" href="/chat/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/chat/icons/apple-touch-icon.png">
+<title>Electron β</title>
+<link rel="stylesheet" href="/beta/css/tokens.css?v=1">
+<link rel="stylesheet" href="/beta/css/layout.css?v=1">
+<link rel="stylesheet" href="/beta/css/components.css?v=1">
+<link rel="stylesheet" href="/beta/css/nav.css?v=1">
+<link rel="stylesheet" href="/beta/css/chatlist.css?v=1">
+<link rel="stylesheet" href="/beta/css/chat.css?v=1">
+<link rel="stylesheet" href="/beta/css/composer.css?v=1">
+<link rel="stylesheet" href="/beta/css/people.css?v=1">
+<link rel="stylesheet" href="/beta/css/settings.css?v=1">
+<link rel="stylesheet" href="/chat/emoji-font.css?v=1">
+</head>
+<body>
+<div id="app"><div id="stack"></div></div>
+<script src="/chat/emoji-font.js?v=1"></script>
+<script src="/chat/emoji-data.js?v=1"></script>
+<script src="/shared/secret-core.js?v=1"></script>
+<script src="/shared/modules.js?v=1"></script>
+<script src="/shared/gif-klipy.js?v=1"></script>
+<script src="/beta/js/icons.js?v=1"></script>
+<script src="/beta/js/theme.js?v=1"></script>
+<script src="/beta/js/pwa.js?v=1"></script>
+<script src="/beta/js/core/state.js?v=1"></script>
+<script src="/beta/js/core/api.js?v=1"></script>
+<script src="/beta/js/core/appearance.js?v=1"></script>
+<script src="/beta/js/core/chats.js?v=1"></script>
+<script src="/beta/js/core/presence.js?v=1"></script>
+<script src="/beta/js/core/ws.js?v=1"></script>
+<script src="/beta/js/core/push.js?v=1"></script>
+<script src="/beta/js/core/messages.js?v=1"></script>
+<script src="/beta/js/core/upload.js?v=1"></script>
+<script src="/beta/js/core/contacts.js?v=1"></script>
+<script src="/beta/js/core/secret.js?v=1"></script>
+<script src="/beta/js/core/app.js?v=1"></script>
+<script src="/beta/js/ui/nav.js?v=1"></script>
+<script src="/beta/js/ui/sheet.js?v=1"></script>
+<script src="/beta/js/ui/avatar.js?v=1"></script>
+<script src="/beta/js/ui/chatlist.js?v=1"></script>
+<script src="/beta/js/ui/kbd.js?v=1"></script>
+<script src="/beta/js/ui/composer.js?v=1"></script>
+<script src="/beta/js/ui/chat.js?v=1"></script>
+<script src="/beta/js/ui/msgmenu.js?v=1"></script>
+<script src="/beta/js/ui/contacts.js?v=1"></script>
+<script src="/beta/js/ui/profile.js?v=1"></script>
+<script src="/beta/js/ui/groups.js?v=1"></script>
+<script src="/beta/js/ui/settings.js?v=1"></script>
+<script src="/beta/js/ui/diag.js?v=1"></script>
+<script src="/beta/js/ui/login.js?v=1"></script>
+<script src="/beta/js/main.js?v=1"></script>
+</body>
+</html>

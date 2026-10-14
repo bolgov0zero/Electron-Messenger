@@ -64,6 +64,19 @@ app.get(['/m', '/m/', '/m/index.html'], (req, res) => {
   }
 });
 app.use('/m', express.static(path.join(__dirname, 'public/m')));
+
+// /beta — новый мобильный клиент (дизайн по макету), отдельный от /m, свой PWA-манифест и свой SW
+const BETA_INDEX = path.join(__dirname, 'public/beta/index.html');
+app.get(['/beta', '/beta/', '/beta/index.html'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  try {
+    const html = fs.readFileSync(BETA_INDEX, 'utf8').replace(/\?v=[\w.\-]+/g, '?v=' + serverVersion());
+    res.type('html').send(html);
+  } catch {
+    res.sendFile(BETA_INDEX);
+  }
+});
+app.use('/beta', express.static(path.join(__dirname, 'public/beta')));
 // Файлы модулей (наборы, которые клиенты скачивают). Клиенты добавляют ?v=<версия набора>, поэтому кэшировать можно надолго
 app.use('/modules', express.static(path.join(__dirname, 'public/modules'), { maxAge: '30d' }));
 // Имя файла — timestamp+случайная строка, при новой загрузке никогда не переиспользуется,
