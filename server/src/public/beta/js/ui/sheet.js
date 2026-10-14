@@ -58,11 +58,19 @@ B.actions = {
   show: function (o) {
     this.cur = o; B.kbd && B.kbd.hide && B.kbd.hide();
     var esc = B.esc;
-    this.el.innerHTML = '<div class="asb" data-as="cancel"></div><div class="as"><div class="asg">' +
-      (o.title || o.msg ? '<div class="ash">' + esc(o.title || '') + (o.msg ? '<br><span>' + esc(o.msg) + '</span>' : '') + '</div>' : '') +
-      o.items.map(function (it, i) { return '<button class="' + (it.d ? 'd' : '') + '" data-as="' + i + '">' + esc(it.l) + '</button>'; }).join('') +
-      '</div><div class="asg solid"><button class="b" data-as="cancel">Отмена</button></div></div>';
-    void this.el.offsetWidth; this.el.classList.add('on');
+    this.el.innerHTML = '<div class="asb" data-as="cancel"></div><div class="as"><div class="asgrab"></div>' +
+      (o.title || o.msg ? '<div class="ash">' + (o.title ? '<b>' + esc(o.title) + '</b>' : '') + (o.msg ? '<span>' + esc(o.msg) + '</span>' : '') + '</div>' : '') +
+      '<div class="asg">' + o.items.map(function (it, i) { return '<button class="' + (it.d ? 'd' : '') + '" data-as="' + i + '">' + esc(it.l) + '</button>'; }).join('') + '</div>' +
+      '<div class="asg"><button class="b" data-as="cancel">Отмена</button></div></div>';
+    void this.el.offsetWidth; this.el.classList.add('on'); this._drag(this.el.querySelector('.as'));
+  },
+  // Свайп вниз за ручку закрывает панель, как и у шторок
+  _drag: function (panel) {
+    var h = panel.querySelector('.asgrab'), y0 = null, dy = 0;
+    h.addEventListener('pointerdown', function (e) { y0 = e.clientY; dy = 0; panel.style.transition = 'none'; try { h.setPointerCapture(e.pointerId); } catch (_) {} });
+    h.addEventListener('pointermove', function (e) { if (y0 == null) return; dy = Math.max(0, e.clientY - y0); panel.style.transform = 'translateY(' + dy + 'px)'; });
+    var end = function () { if (y0 == null) return; y0 = null; panel.style.transition = ''; if (dy > 70) { panel.style.transform = 'translateY(105%)'; B.actions.close(); } else panel.style.transform = ''; };
+    h.addEventListener('pointerup', end); h.addEventListener('pointercancel', end);
   },
   // Подтверждение опасного действия
   confirm: function (title, msg, label, fn) { this.show({ title: title, msg: msg, items: [{ l: label, d: 1, f: fn }] }); },
