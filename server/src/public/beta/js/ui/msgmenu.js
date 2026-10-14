@@ -59,6 +59,8 @@ B.ui.msgmenu = (function () {
     mn.style.left = mnL + 'px'; mn.style.top = (top + chH + gap) + 'px'; mn.style.transformOrigin = (mine ? 'right' : 'left') + ' top';
     clone.style.maxHeight = '320px'; clone.style.overflow = 'hidden';
     void clone.offsetWidth;
+    // Само сообщение в ленте прячем на время меню: на экране двигается именно оно, а не его копия рядом с оригиналом
+    cur.hidden = [bub].concat(Array.prototype.slice.call(row.querySelectorAll('.rx'))); cur.hidden.forEach(function (e) { e.style.visibility = 'hidden'; });
     cur.clone = clone; cur.rx = rx; cur.mn = mn; cur.y = r.y;      // нужны при закрытии: меню уходит так же плавно, как появилось
     clone.style.transition = 'top .38s var(--ease)'; clone.style.top = top + 'px'; rx.classList.add('in'); mn.classList.add('in');
     try { navigator.vibrate && navigator.vibrate(10); } catch (e) {}
@@ -67,7 +69,9 @@ B.ui.msgmenu = (function () {
     if (!layer) return; var c = cur; layer.classList.remove('on'); cur = null;
     // Реакции и меню сжимаются обратно и гаснут, пузырь возвращается на своё место, фон светлеет
     if (c && c.rx) { c.rx.classList.remove('in'); c.mn.classList.remove('in'); c.clone.style.top = c.y + 'px'; }
-    setTimeout(function () { if (!layer.classList.contains('on')) layer.innerHTML = ''; }, 420);
+    // Когда пузырь вернулся на место (переход .38 с), настоящее сообщение снова показываем и убираем копию
+    setTimeout(function () { if (c && c.hidden) c.hidden.forEach(function (e) { e.style.visibility = ''; }); }, 380);
+    setTimeout(function () { if (!layer.classList.contains('on')) layer.innerHTML = ''; }, 400);
   }
   function isOpen() { return !!(layer && layer.classList.contains('on')); }
   function copy(text) {
