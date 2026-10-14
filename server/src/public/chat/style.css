@@ -2077,6 +2077,17 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
   animation: msgIn 150ms ease-out;
 }
 
+/* Переход к сообщению (цитата, закреп, поиск): акцентный контур и одна мягкая волна, цвет самого
+   пузыря не меняется */
+@keyframes msgHighlight {
+  0%   { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0), 0 0 0 0 rgba(var(--accent-rgb), .38); }
+  12%  { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 1), 0 0 0 0 rgba(var(--accent-rgb), .38); }
+  50%  { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 1), 0 0 0 12px rgba(var(--accent-rgb), 0); }
+  78%  { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), .9), 0 0 0 12px rgba(var(--accent-rgb), 0); }
+  100% { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0), 0 0 0 12px rgba(var(--accent-rgb), 0); }
+}
+.msg-highlight .msg-bubble { animation: msgHighlight 1.9s cubic-bezier(.3,.6,.3,1); }
+
 /* ── Optimistic message ── */
 .msg-optimistic {
   opacity: 0.6;

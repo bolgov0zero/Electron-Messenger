@@ -2029,7 +2029,7 @@ async function openChat(chatId, aroundId) {
       if (!el) { document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight; return; }
       el.scrollIntoView({ block: 'center' });
       el.classList.add('bubble-flash');
-      setTimeout(() => el.classList.remove('bubble-flash'), 1200);
+      setTimeout(() => el.classList.remove('bubble-flash'), 1900);
     });
   }
   chat.unread = 0; chat.unread_mentions = 0;

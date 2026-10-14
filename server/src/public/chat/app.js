@@ -4936,7 +4936,7 @@ function scrollToMsg(msgId, force = false) {
     else msgs.scrollBy({ top: offset, behavior: 'smooth' });
   }
   el.classList.add('msg-highlight');
-  setTimeout(() => el.classList.remove('msg-highlight'), 1500);
+  setTimeout(() => el.classList.remove('msg-highlight'), 1900);
 }
 function hideCtxMenu() {
   document.getElementById('ctx-menu').classList.remove('open');

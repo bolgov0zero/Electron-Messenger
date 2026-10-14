@@ -413,8 +413,15 @@ html.m-desktop .screen { display: none !important; }
    иначе расчёт места под время (::after ниже) съехал бы (как в /chat) */
 .bubble.emoji-msg { background: none; }
 /* Подсветка сообщения при переходе из поиска */
-@keyframes bubble-flash { 0%, 100% { box-shadow: none; } 30% { box-shadow: 0 0 0 3px var(--accent); } }
-.bubble-flash { animation: bubble-flash 1.2s ease; }
+/* Переход к сообщению: акцентный контур и одна мягкая волна, цвет самого пузыря не меняется */
+@keyframes bubble-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0), 0 0 0 0 rgba(var(--accent-rgb), .38); }
+  12%  { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 1), 0 0 0 0 rgba(var(--accent-rgb), .38); }
+  50%  { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 1), 0 0 0 12px rgba(var(--accent-rgb), 0); }
+  78%  { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), .9), 0 0 0 12px rgba(var(--accent-rgb), 0); }
+  100% { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0), 0 0 0 12px rgba(var(--accent-rgb), 0); }
+}
+.bubble-flash { animation: bubble-flash 1.9s cubic-bezier(.3,.6,.3,1); }
 .msg-row { display: flex; align-items: flex-end; gap: 6px; align-self: flex-start; max-width: 86%; }
 .msg-col { display: flex; flex-direction: column; min-width: 0; max-width: 100%; align-items: flex-start; }
 .msg-row .bubble { max-width: 100%; }
