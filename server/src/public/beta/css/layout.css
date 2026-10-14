@@ -6,10 +6,10 @@
   --navh: 44px;
   --tabh: 49px;
   /* Запасы подбираются на реальном iPhone (экран «Настройки → Диагностика»), значения живут в localStorage */
-  --sat-extra: 0px;
-  --sab-extra: 0px;
-  --sat: calc(env(safe-area-inset-top, 0px) + var(--sat-extra));
-  --sab: calc(env(safe-area-inset-bottom, 0px) + var(--sab-extra));
+  --sat-extra: 24px;   /* системное размытие у верха PWA глубже, чем safe-area: опускаем панель */
+  --sab-extra: -12px;  /* нижние панели и поле ввода ближе к безопасной зоне */
+  --sat: max(0px, calc(env(safe-area-inset-top, 0px) + var(--sat-extra)));
+  --sab: max(0px, calc(env(safe-area-inset-bottom, 0px) + var(--sab-extra)));
   --top: calc(var(--sat) + var(--navh));
   --bot: calc(var(--tabh) + var(--sab));
   --ease: cubic-bezier(.32, .72, 0, 1);
@@ -68,5 +68,4 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tb .ic { width: 27px; height: 27px; }
 .tb.on { color: var(--accent); }
 
-/* клавиатура: приложение следует за видимой областью, нижняя панель поднимается на высоту клавиатуры */
-#app { transform: translateY(var(--vvt, 0px)); }
+/* клавиатура: пока она открыта, kbd.js задаёт #app высоту и сдвиг видимой области (visualViewport) */

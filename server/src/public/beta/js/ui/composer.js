@@ -18,7 +18,7 @@ B.ui.composer = (function () {
       '<div class="ctx"></div><div class="scb" hidden></div><div class="ronote" hidden></div>' +
       '<div class="crow"><button class="cbtn att" data-k="attach" aria-label="Прикрепить">' + ic('clip', 24, 1.8) + '</button>' +
         '<input type="file" hidden>' +
-        '<div class="cfield"><textarea rows="1" placeholder="Сообщение" enterkeyhint="return" autocapitalize="sentences"></textarea>' +
+        '<div class="cfield"><span class="ph">Сообщение</span><textarea rows="1" aria-label="Сообщение" enterkeyhint="return" autocapitalize="sentences"></textarea>' +
         '<button class="cbtn cem" data-k="emo" aria-label="Смайлы">' + ic('smile', 24, 1.7) + '</button></div>' +
         '<button class="csend" data-k="send" aria-label="Отправить">' + ic('up', 20, 2.8) + '</button></div>' +
       '<div class="epanel"></div><div class="hb"></div>';
@@ -33,7 +33,10 @@ B.ui.composer = (function () {
     renderCtx(el); sync(el);
   }
 
-  function autosize(t) { t.style.height = '36px'; t.style.height = Math.min(122, t.scrollHeight) + 'px'; }
+  function autosize(t) {
+    t.style.height = '36px'; if (t.value) t.style.height = Math.min(122, Math.max(36, t.scrollHeight)) + 'px';
+    var f = t.parentNode; if (f) f.classList.toggle('filled', !!t.value);
+  }
   function syncHas(el) {
     var s = cs(el), t = ta(el); if (!t) return;
     comp(el).classList.toggle('has', !!(t.value.trim() || (s.att && s.att.done) || s.fwd));
@@ -77,6 +80,7 @@ B.ui.composer = (function () {
         (a.done ? '' : '<div class="trk' + (a.proc ? ' ind' : '') + '"><i style="width:' + a.pct + '%"></i></div>') + '</div><button class="xb" data-k="clr" data-w="att" aria-label="Убрать вложение">' + ic('x', 13, 2.6) + '</button></div>';
     }
     box.innerHTML = h; syncHas(el);
+    var ph = comp(el).querySelector('.ph'); if (ph) ph.textContent = s.edit ? 'Изменить сообщение' : (B.S.secretChatIds.has(+el.dataset.cid) ? 'Скрытое сообщение' : 'Сообщение');
   }
   function clear(el, what) {
     var s = cs(el), t = ta(el);

@@ -1,7 +1,8 @@
 /* /beta — поле ввода: строка 49 px + отступ под «домой» (как у таб-бара), полосы ответа и вложения, панель смайлов и GIF */
-.comp { bottom: var(--kb, 0px); transition: bottom .25s var(--ease); display: flex; flex-direction: column; }
-.page.chat .sdbtn { bottom: calc(var(--compH, var(--bot)) + var(--kb, 0px) + 12px); }
-.page.chat .scroll { padding-bottom: calc(var(--compH, var(--bot)) + var(--kb, 0px) + 8px); }
+.comp { display: flex; flex-direction: column; }
+.bottom.comp { background: var(--bar-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.page.chat .sdbtn { bottom: calc(var(--compH, var(--bot)) + 12px); }
+.page.chat .scroll { padding-bottom: calc(var(--compH, var(--bot)) + 8px); }
 .ctx { display: flex; flex-direction: column; }
 .cbar { display: flex; align-items: center; gap: 10px; padding: 8px 14px 2px; }
 .cbar .ci2 { color: var(--accent); flex: none; display: flex; }
@@ -22,9 +23,10 @@
 .cbtn { width: 36px; height: 36px; flex: none; border: 0; background: none; color: var(--fg2); display: flex; align-items: center; justify-content: center; border-radius: 50%; padding: 0; }
 .cbtn:active { opacity: .5; }
 .cbtn.on { color: var(--accent); }
-.cfield { flex: 1; min-width: 0; display: flex; align-items: flex-end; min-height: 36px; border-radius: 18px; background: var(--card); box-shadow: 0 0 0 .5px var(--sep); }
-.cfield textarea { flex: 1; min-width: 0; border: 0; background: none; resize: none; outline: 0; font: inherit; font-size: 17px; line-height: 22px; padding: 7px 4px 7px 14px; height: 36px; max-height: 122px; color: var(--fg); overflow-y: auto; scrollbar-width: none; border-radius: 0; }
-.cfield textarea::placeholder { color: var(--fg2); }
+.cfield { flex: 1; min-width: 0; display: flex; align-items: flex-end; min-height: 36px; border-radius: 18px; background: var(--card); box-shadow: 0 0 0 .5px var(--sep); position: relative; }
+.cfield .ph { position: absolute; left: 14px; top: 7px; line-height: 22px; font-size: 17px; color: var(--fg2); pointer-events: none; white-space: nowrap; max-width: calc(100% - 56px); overflow: hidden; text-overflow: ellipsis; }
+.cfield.filled .ph { display: none; }
+.cfield textarea { flex: 1; min-width: 0; display: block; margin: 0; border: 0; background: none; resize: none; outline: 0; -webkit-appearance: none; appearance: none; font: inherit; font-size: 17px; line-height: 22px; padding: 7px 4px 7px 14px; height: 36px; max-height: 122px; color: var(--fg); overflow-y: auto; scrollbar-width: none; border-radius: 0; box-sizing: border-box; }
 .csend { width: 36px; height: 36px; flex: none; border: 0; border-radius: 50%; background: var(--accent); color: #fff; display: none; align-items: center; justify-content: center; padding: 0; }
 .comp.has .csend { display: flex; animation: pop .25s var(--ease); }
 @keyframes pop { from { transform: scale(.4); opacity: 0; } }
