@@ -88,7 +88,11 @@ B.ui.chat = (function () {
     var meta = '<span class="meta">' + (m.edited_at ? 'изм. ' : '') + B.fmt.time(m.sent_at) + (mine ? B.ticks(m.status) : '') + '</span>';
     h += '<div class="bub' + (eo ? ' eo' : '') + (bare ? ' media' : '') + '" data-mid="' + m.id + '">';
     if (wrapAv && pos.first) h += '<div class="who" style="color:' + nameColor(m.sender_id, m.sender_tag) + '" data-c="who" data-id="' + m.sender_id + '" data-name="' + esc(m.sender_name || '') + '">' + esc(m.sender_name || '') + '</div>';
-    if (m.reply_to_id) h += '<div class="quote"' + (m.reply_deleted ? '' : ' data-c="jump" data-id="' + m.reply_to_id + '"') + '><b>' + esc(m.reply_sender_name || '') + '</b><span>' + (m.reply_deleted ? 'Сообщение удалено' : esc(m.reply_text || '')) + '</span></div>';
+    if (m.reply_to_id) {
+      // Цвет цитаты — по автору цитируемого сообщения (как в вебе и клиентах): своё — акцент, чужое — цвет этого человека
+      var qc = m.reply_sender_id === B.S.user.id ? 'var(--accent)' : nameColor(m.reply_sender_id || 0, m.reply_sender_tag);
+      h += '<div class="quote" style="--rc:' + qc + '"' + (m.reply_deleted ? '' : ' data-c="jump" data-id="' + m.reply_to_id + '"') + '><b>' + esc(m.reply_sender_name || '') + '</b><span>' + (m.reply_deleted ? 'Сообщение удалено' : esc(m.reply_text || '')) + '</span></div>';
+    }
     var fd = m.forward_data;
     if (fd) {
       var fa = fd.attachment, ftxt = fd.text ? esc(fd.text) : fa ? ((fa.mime || '').indexOf('image/') === 0 ? '📷 Фото' : (fa.mime || '').indexOf('video/') === 0 ? '🎬 Видео' : '📎 ' + esc(fa.name || 'Файл')) : '';

@@ -89,7 +89,7 @@ B.msgs = {
     if (!B.ws.isOpen()) { B.toast.show('Нет связи с сервером'); return false; }
     var payload = { type: 'message', chat_id: chat.id, text: text };
     var temp = { id: -Date.now(), chat_id: chat.id, sender_id: S.user.id, text: text, sent_at: Math.floor(Date.now() / 1000), deleted: 0, status: { delivered: 0, read: 0, total: 1 }, _optimistic: true };
-    if (o.reply) { payload.reply_to_id = temp.reply_to_id = o.reply.id; temp.reply_sender_name = o.reply.senderName; temp.reply_text = o.reply.text; }
+    if (o.reply) { payload.reply_to_id = temp.reply_to_id = o.reply.id; temp.reply_sender_name = o.reply.senderName; temp.reply_text = o.reply.text; temp.reply_sender_id = o.reply.senderId; temp.reply_sender_tag = o.reply.senderTag; }
     if (o.attachment) { payload.attachment = temp.attachment = o.attachment; }
     if (o.forward) { payload.forward_data = temp.forward_data = o.forward; }
     if (S.secretChatIds.has(chat.id) && !(await B.secret.seal(chat.id, payload, temp, text))) return false;

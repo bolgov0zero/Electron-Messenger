@@ -107,7 +107,7 @@ B.ui.composer = (function () {
   function reply(el, m) {
     if (!m || m.deleted) return; var s = cs(el), mine = m.sender_id === B.S.user.id;
     s.edit = null;
-    s.reply = { id: m.id, senderName: mine ? B.S.user.display_name : (m.sender_name || ''), text: (m.text || (m.attachment ? '📎 ' + (m.attachment.name || 'Вложение') : '')).slice(0, 100) };
+    s.reply = { id: m.id, senderId: m.sender_id, senderTag: m.sender_tag, senderName: mine ? B.S.user.display_name : (m.sender_name || ''), text: (m.text || (m.attachment ? '📎 ' + (m.attachment.name || 'Вложение') : '')).slice(0, 100) };
     renderCtx(el); ta(el).focus();
   }
   function forward(el, fwd) { var s = cs(el); s.fwd = fwd; renderCtx(el); ta(el).focus(); }
