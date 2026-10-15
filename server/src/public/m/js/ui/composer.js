@@ -16,16 +16,18 @@ B.ui.composer = (function () {
     c.innerHTML =
       '<div class="ctx"></div><div class="scb" hidden></div><div class="ronote" hidden></div>' +
       '<div class="crow"><div class="cbtn att" role="button" data-k="attach" aria-label="Прикрепить">' + ic('clip', 24, 1.8) + '</div>' +
+        '<input type="file" style="display:none">' +
         '<div class="cfield"><span class="ph">Сообщение</span><textarea rows="1" aria-label="Сообщение" enterkeyhint="return" autocapitalize="sentences"></textarea>' +
         '<button class="cbtn cem" data-k="emo" aria-label="Смайлы">' + ic('smile', 24, 1.7) + '</button></div>' +
         '<button class="csend" data-k="send" aria-label="Отправить">' + ic('up', 20, 2.8) + '</button></div>' +
       '<div class="epanel"></div><div class="hb"></div>';
-    var t = ta(el);
+    var t = ta(el), file = c.querySelector('input[type=file]');
     t.value = B.drafts[chat.id] || ''; autosize(t); syncHas(el);
+    file.addEventListener('change', function () { var f = file.files[0]; file.value = ''; if (f) attach(el, f); });
     t.addEventListener('input', function () { B.drafts[chat.id] = t.value; autosize(t); syncHas(el); if (!cs(el).edit) B.msgs.typing(); });
     t.addEventListener('focus', function () { closePanel(el); });
     t.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && matchMedia('(pointer:fine)').matches) { e.preventDefault(); send(el); } });
-    c.addEventListener('mousedown', function (e) { if (e.target.closest('input')) return; if (e.target.closest('.epanel,.cbtn,.csend')) e.preventDefault(); });   // нажатие на кнопки не должно убирать клавиатуру
+    c.addEventListener('mousedown', function (e) { if (e.target.closest('input')) return; if (e.target.closest('.epanel,.cbtn:not(.att),.csend')) e.preventDefault(); });   // нажатие на кнопки не должно убирать клавиатуру
     c.addEventListener('click', function (e) { onClick(el, e); });
     renderCtx(el); sync(el);
   }
@@ -193,14 +195,9 @@ B.ui.composer = (function () {
     t.selectionStart = t.selectionEnd = a; B.drafts[+el.dataset.cid] = t.value; autosize(t); syncHas(el);
   }
 
-  // Выбор файла: поле создаётся на лету и в страницу не добавляется, а сама кнопка — div, а не button: когда окно выбора
-  // открывается от нажатой кнопки или лежащего в странице поля, iOS на миг рисует их белым прямоугольником
-  function pickFile(el) {
-    var f = document.createElement('input'); f.type = 'file';
-    cs(el).fi = f;                                    // ссылка нужна, иначе поле, не лежащее в странице, может собраться сборщиком до выбора
-    f.addEventListener('change', function () { var file = f.files[0]; cs(el).fi = null; if (file) attach(el, file); });
-    f.click();
-  }
+  // Выбор файла как в прежней версии /m: скрепка — обычный div (не button), поле скрыто через display:none, а нажатие на
+  // скрепку не гасится в mousedown: от нажатой button или погашенного mousedown iOS на миг рисует белый квадрат
+  function pickFile(el) { comp(el).querySelector('input[type=file]').click(); }
 
   function onClick(el, e) {
     var b = e.target.closest('[data-k]'); if (!b) return; var k = b.dataset.k, s = cs(el);
