@@ -2799,7 +2799,7 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 .sc-m-hint { margin: 0; color: var(--text2); font-size: 12.5px; }
 
 /* Без подписи у пересланного или цитаты место под время и галочки резервирует пустой блок */
-.msg-bubble:not(.bubble-photo):not(:has(.irc-text)) { padding-bottom: 26px; }
+.msg-bubble:not(.bubble-photo):not(.bubble-comp):not(:has(.irc-text)) { padding-bottom: 26px; }
 
 /* Секретный чат: метка вместо превью в списке чатов */
 .sc-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
@@ -3532,3 +3532,8 @@ html.dark .anx-solid { color: #0c0e10; }
 
 .ctx-menu button > .fld-mini { flex: none; }
 .ctx-menu button .fld-mini { width: 22px; height: 22px; }
+
+/* Пузырь с блоком кода или превью не уже 260 px: иначе шапка блока («Код», «Копировать») сжимается */
+.msg-bubble.bubble-comp { min-width: 260px; }
+.cblk .cbh { gap: 12px; white-space: nowrap; }
+.cblk .cblk-cp { white-space: nowrap; flex: none; }

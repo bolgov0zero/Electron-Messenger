@@ -5,12 +5,12 @@ const { fetchPreview } = require('../linkprev');
 
 router.use(authMiddleware);
 
-// Не больше 20 запросов в минуту на человека
+// Не больше 40 запросов в минуту на человека
 const tries = new Map();
 function tooMany(id) {
   const now = Date.now(), list = (tries.get(id) || []).filter(t => now - t < 60000);
   list.push(now); tries.set(id, list);
-  return list.length > 20;
+  return list.length > 40;
 }
 
 router.get('/', async (req, res) => {

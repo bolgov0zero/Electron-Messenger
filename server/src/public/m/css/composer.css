@@ -189,3 +189,8 @@
 .txt code { background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .mrow.out .txt code, .fpb .txt code { background: color-mix(in srgb, var(--accent) 55%, #000); color: #fff; }
 .fcell .cl { font-weight: 600; }
+
+/* пузырь с блоком кода или превью не уже 240 px: иначе шапка блока сжимается */
+.bub.bcomp { min-width: 240px; }
+.cblk .cbh { gap: 12px; white-space: nowrap; }
+.cblk .cblk-cp { white-space: nowrap; flex: none; }

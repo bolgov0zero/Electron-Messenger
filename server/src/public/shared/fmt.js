@@ -94,13 +94,24 @@
 
   // HTML поля ввода → разметка сообщения
   function serialize(ce) {
+    // Строки поля — то голый текст, то блоки div: блок всегда начинается с новой строки, иначе «а» + Enter + «б» слиплись бы в «аб»
+    const join = nodes => {
+      let acc = '';
+      for (const c of nodes) {
+        const block = c.nodeType === 1 && (c.nodeName === 'DIV' || c.nodeName === 'P');
+        const piece = walk(c);
+        if (block && acc && !acc.endsWith('\n')) acc += '\n';
+        acc += piece;
+      }
+      return acc;
+    };
     const walk = n => {
-      if (n.nodeType === 3) return n.textContent.replace(/​/g, '');
+      if (n.nodeType === 3) return n.textContent.replace(/\u200b/g, '');
       if (n.nodeType !== 1) return '';
       const tag = n.nodeName;
       if (tag === 'BR') return '\n';
       if (tag === 'PRE') return '\n```\n' + preText(n).replace(/\n$/, '') + '\n```\n';
-      const inner = [...n.childNodes].map(walk).join('');
+      const inner = join(n.childNodes);
       const st = n.style || {};
       const bold = tag === 'B' || tag === 'STRONG' || st.fontWeight === 'bold' || +st.fontWeight >= 600;
       const ital = tag === 'I' || tag === 'EM' || st.fontStyle === 'italic';
@@ -111,7 +122,7 @@
       if (tag === 'DIV' || tag === 'P') return r + '\n';
       return r;
     };
-    return [...ce.childNodes].map(walk).join('').replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '');
+    return join(ce.childNodes).replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '');
   }
 
   const sel = () => (g.getSelection ? g.getSelection() : null);
@@ -320,17 +331,21 @@
     let last = null, dismissed = '', cur = null, timer = null, seq = 0;
     const api = {
       check() {
-        const url = firstUrl(o.getText());
+        const text = o.getText(), url = firstUrl(text);
         if (url === last) return;
         last = url; seq++; clearTimeout(timer);
         if (cur) { cur = null; o.onChange(null); }
         if (!url || url === dismissed) return;
+        // Адрес ещё набирается: «https://git», «https://github.c» не спрашиваем. Нужен домен с зоной, а если после адреса нет пробела —
+        // ещё и пауза подольше (набор по буквам слал бы по запросу на каждую букву и упирался в лимит)
+        if (!/^https?:\/\/[^\s\/?#]+\.[^\s\/?#.]{2,}/.test(url)) return;
+        const at = text.indexOf(url) + url.length, closed = at >= text.length ? false : /\s/.test(text[at]);
         const my = seq;
         timer = setTimeout(async () => {
           let p = null; try { p = await o.fetchPreview(url); } catch {}
           if (my !== seq || !p) return;
           cur = p; o.onChange(p);
-        }, 450);
+        }, closed ? 350 : 800);
       },
       dismiss() { dismissed = last || ''; seq++; clearTimeout(timer); if (cur) { cur = null; o.onChange(null); } },
       // Редактирование: у сообщения уже есть превью — показываем его, не спрашивая заново

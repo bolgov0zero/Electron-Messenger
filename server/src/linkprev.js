@@ -44,7 +44,7 @@ function safeLookup(hostname, opts, cb) {
 }
 
 // Загрузка с ограничениями: время, размер, число редиректов. Возвращает { buf, type, url } или null
-function get(url, { max, accept, depth = 0 }) {
+function get(url, { max, accept, partial, depth = 0 }) {
   return new Promise(resolve => {
     let u;
     try { u = new URL(url); } catch { return resolve(null); }
@@ -64,15 +64,16 @@ function get(url, { max, accept, depth = 0 }) {
         res.resume();
         if (depth >= 3) return finish(null);
         let next; try { next = new URL(res.headers.location, u).toString(); } catch { return finish(null); }
-        return get(next, { max, accept, depth: depth + 1 }).then(finish);
+        return get(next, { max, accept, partial, depth: depth + 1 }).then(finish);
       }
       if (code !== 200) { res.resume(); return finish(null); }
       const type = String(res.headers['content-type'] || '').toLowerCase();
       const chunks = []; let size = 0;
       res.on('data', c => {
         size += c.length;
-        if (size > max) { res.destroy(); return finish(null); }
         chunks.push(c);
+        // Страница большая: теги лежат в начале, поэтому берём начало (картинки целиком нужны, их обрываем отказом)
+        if (size > max) { res.destroy(); return finish(partial ? { buf: Buffer.concat(chunks).subarray(0, max), type: String(res.headers['content-type'] || '').toLowerCase(), url: u.toString() } : null); }
       });
       res.on('end', () => finish({ buf: Buffer.concat(chunks), type, url: u.toString() }));
       res.on('error', () => finish(null));
@@ -113,7 +114,7 @@ const TTL = 3600e3;
 async function fetchPreview(url) {
   const hit = cache.get(url);
   if (hit && Date.now() - hit.at < TTL) return hit.data;
-  const page = await get(url, { max: 768 * 1024, accept: 'text/html,application/xhtml+xml;q=0.9' });
+  const page = await get(url, { max: 768 * 1024, partial: true, accept: 'text/html,application/xhtml+xml;q=0.9' });
   let data = null;
   if (page && /html|xml/.test(page.type)) {
     let html = page.buf.toString('utf8');
