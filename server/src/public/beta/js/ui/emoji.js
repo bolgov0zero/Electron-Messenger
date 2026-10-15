@@ -22,6 +22,25 @@ B.emoji = {
   tabsHtml: function (secs) {
     return secs.map(function (g, i) { return '<button class="ep-tab" data-key="' + g.key + '" title="' + B.esc(g.name) + '" aria-selected="' + (i === 0) + '">' + g.icon + '</button>'; }).join('');
   },
+  // Поиск по названию и словам (CLDR): точное слово выше, начало слова ниже, затем название группы и вхождения
+  search: function (q) {
+    q = (q || '').trim().toLowerCase(); var kw = B.emoji.keywords(), seen = {}, hits = [];
+    B.emoji.groups().forEach(function (g) {
+      var gh = g.name.toLowerCase().indexOf(q) >= 0;
+      g.items.forEach(function (em) {
+        if (seen[em]) return;
+        var words = (kw[em] || '').split(' '), score = 0;
+        if (words.indexOf(q) >= 0) score = 3; else if (words.some(function (w) { return w.indexOf(q) === 0; })) score = 2; else if (gh) score = 1.5; else if (words.some(function (w) { return w.indexOf(q) >= 0; })) score = 1;
+        if (score) { seen[em] = 1; hits.push({ em: em, score: score }); }
+      });
+    });
+    hits.sort(function (a, b) { return b.score - a.score; });
+    return hits.map(function (h) { return h.em; });
+  },
+  resultsHtml: function (q, attr) {
+    var r = B.emoji.search(q);
+    return r.length ? '<div class="ep-head">Найдено: ' + r.length + '</div><div class="ep-row">' + r.map(function (e) { return '<button ' + attr + ' data-e="' + B.esc(e) + '">' + e + '</button>'; }).join('') + '</div>' : '<div class="stub-note">Ничего не нашлось</div>';
+  },
   // Связывает вкладки с прокруткой: нажатие на вкладку прокручивает к группе, прокрутка подсвечивает вкладку текущей группы.
   // offset — высота закреплённой шапки внутри области прокрутки (она закрывает верх списка).
   bindTabs: function (scroll, tabs, offset) {

@@ -35,8 +35,11 @@
 
 /* панель смайлов и GIF — на месте клавиатуры, той же высоты */
 .epanel { height: 0; overflow: hidden; display: flex; flex-direction: column; transition: height .3s var(--ease); background: var(--bar-solid); }
-.comp.pnl .epanel { height: calc(var(--pnl, 300px) + var(--sab)); border-top: .5px solid var(--sep); }
-.comp.pnl.gif .epanel { height: calc(var(--pnl, 300px) + var(--sab) + 40px); }
+.comp.pnl .epanel { height: calc(var(--pnl, 300px) + var(--sab) + 40px); border-top: .5px solid var(--sep); }
+.comp.pnl.gif .epanel { height: calc(var(--pnl, 300px) + var(--sab) + 80px); }
+/* идёт поиск смайлов и открыта клавиатура: панель ужимается до строки поиска и сетки */
+.comp.pnl.esearch .epanel { height: 250px; }
+.comp.esearch .ep-dock { display: none; }
 .epanel .ep-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .eg { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0 8px; scrollbar-width: none; }
 .eg::-webkit-scrollbar { display: none; }
@@ -44,7 +47,10 @@
 .ep-row { display: grid; grid-template-columns: repeat(8, 1fr); content-visibility: auto; contain-intrinsic-size: auto 200px; }
 .ep-row button { border: 0; background: none; font-size: 28px; height: 42px; padding: 0; line-height: 1; }
 .ep-row button:active { transform: scale(1.35); }
-.ep-dock { height: 44px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 6px; margin-bottom: var(--sab); border-top: .5px solid var(--sep); }
+.ep-dock { height: 44px; flex: none; display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 6px; margin-bottom: var(--sab); border-top: .5px solid var(--sep); }
+.ep-top { flex: none; }
+.ep-top .ep-tabs { padding: 0 8px 6px; }
+.ep-top .ep-tabs[hidden] { display: none; }
 .ep-tabs { flex: 1; min-width: 0; display: flex; overflow-x: auto; scrollbar-width: none; }
 .ep-tabs::-webkit-scrollbar { display: none; }
 .ep-tab { flex: none; width: 36px; height: 36px; border: 0; background: none; font-size: 20px; border-radius: 10px; padding: 0; opacity: .55; }
@@ -96,7 +102,7 @@
 .scb button.gh2 { background: var(--fill); color: var(--fg); }
 
 /* шторка «Реакция»: шапка с поиском и вкладками групп закреплена сверху, смайлы прокручиваются под ней */
-.rp-hd { position: sticky; top: 0; z-index: 3; background: var(--sheet); }
+.rp-hd { position: sticky; top: -2px; padding-top: 2px; z-index: 3; background: var(--sheet); box-shadow: 0 -6px 0 var(--sheet); }   /* запас сверху и тень вверх закрывают зазор в доли пикселя, через который при прокрутке просвечивали смайлы */
 .rp-hd .ep-tabs { padding: 0 8px 6px; }
 .rp-hd .ep-tabs[hidden] { display: none; }
 .rp-body { padding: 0 8px 8px; }

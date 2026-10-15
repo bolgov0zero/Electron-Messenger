@@ -27,7 +27,7 @@ B.ui.composer = (function () {
     t.addEventListener('focus', function () { closePanel(el); });
     t.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && matchMedia('(pointer:fine)').matches) { e.preventDefault(); send(el); } });
     file.addEventListener('change', function () { var f = file.files[0]; file.value = ''; if (f) attach(el, f); });
-    c.addEventListener('mousedown', function (e) { if (e.target.closest('.epanel,.cbtn,.csend')) e.preventDefault(); });   // нажатие на кнопки не должно убирать клавиатуру
+    c.addEventListener('mousedown', function (e) { if (e.target.closest('input')) return; if (e.target.closest('.epanel,.cbtn,.csend')) e.preventDefault(); });   // нажатие на кнопки не должно убирать клавиатуру
     c.addEventListener('click', function (e) { onClick(el, e); });
     renderCtx(el); sync(el);
   }
@@ -151,13 +151,27 @@ B.ui.composer = (function () {
     var s = cs(el), p = comp(el).querySelector('.epanel'), gif = s.mode === 'gif' && gifOn(el);
     comp(el).classList.toggle('gif', gif);
     var secs = B.emoji.sections();
+    var top = gif ? '' : '<div class="ep-top"><div class="srch"><div class="sfield">' + ic('search', 16, 2.2) + '<input id="ep-q" type="search" placeholder="Поиск смайла" autocomplete="off" autocapitalize="none"></div></div><div class="ep-tabs">' + B.emoji.tabsHtml(secs) + '</div></div>';
     var body = gif ? '<div class="ep-gif"></div>' : '<div class="eg">' + B.emoji.gridHtml(secs, 'data-k="em"') + '</div>';
-    p.innerHTML = '<div class="ep-body">' + body + '</div><div class="ep-dock">' +
-      (gif ? '<span class="ep-pw">Powered by ' + GifKlipy.mark + '</span>' : '<div class="ep-tabs">' + B.emoji.tabsHtml(secs) + '</div>') +
-      (gifOn(el) ? '<div class="ep-sw"><button data-k="mode" data-m="emoji" aria-pressed="' + !gif + '">Смайлы</button><button data-k="mode" data-m="gif" aria-pressed="' + gif + '">GIF</button></div>' : '') +
+    p.innerHTML = top + '<div class="ep-body">' + body + '</div><div class="ep-dock">' +
+      (gif ? '<span class="ep-pw">Powered by ' + GifKlipy.mark + '</span>' : '') +
+      (gifOn(el) ? '<div class="ep-sw"><button data-k="mode" data-m="emoji" aria-pressed="' + !gif + '">Смайлы</button><button data-k="mode" data-m="gif" aria-pressed="' + gif + '">GIF</button></div>' : '<span></span>') +
       '<button class="ep-del" data-k="del" aria-label="Удалить символ">' + ic('bk', 24, 1.8) + '</button></div>';
-    if (!gif) B.emoji.bindTabs(p.querySelector('.eg'), p.querySelector('.ep-tabs'));
+    if (!gif) bindSearch(el, p);
     if (gif) { GifKlipy.setUser(B.S.server + ':' + B.S.user.id, 'ru'); GifKlipy.mount(p.querySelector('.ep-gif'), { onPick: function (att) { sendGif(el, att); } }); }
+  }
+  // Поиск смайлов сверху панели: пока идёт поиск, вкладки скрыты, а при открытой клавиатуре панель ужимается (класс esearch)
+  function bindSearch(el, p) {
+    var q = p.querySelector('#ep-q'), eg = p.querySelector('.eg'), tabs = p.querySelector('.ep-tabs'), c = comp(el), all = eg.innerHTML;
+    B.emoji.bindTabs(eg, tabs, 0);
+    q.addEventListener('focus', function () { c.classList.add('esearch'); });
+    q.addEventListener('blur', function () { setTimeout(function () { c.classList.remove('esearch'); }, 120); });
+    q.addEventListener('keydown', function (e) { if (e.key === 'Enter') q.blur(); });
+    q.addEventListener('input', function () {
+      var v = q.value.trim(); tabs.hidden = !!v;
+      if (!v) { eg.innerHTML = all; eg.scrollTop = 0; eg.dispatchEvent(new Event('scroll')); return; }
+      eg.innerHTML = B.emoji.resultsHtml(v, 'data-k="em"'); eg.scrollTop = 0;
+    });
   }
   function openPanel(el) {
     var c = comp(el), s = cs(el); if (c.classList.contains('pnl')) return;
@@ -166,7 +180,7 @@ B.ui.composer = (function () {
   }
   function closePanel(el) {
     var c = comp(el), s = cs(el); if (!c || !c.classList.contains('pnl')) return;
-    s.panel = false; c.classList.remove('pnl', 'gif'); c.querySelector('[data-k="emo"]').classList.remove('on');
+    s.panel = false; c.classList.remove('pnl', 'gif', 'esearch'); c.querySelector('[data-k="emo"]').classList.remove('on');
     setTimeout(function () { if (!s.panel) c.querySelector('.epanel').innerHTML = ''; }, 320);
   }
   function insert(el, em) {

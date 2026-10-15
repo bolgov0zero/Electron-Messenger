@@ -86,8 +86,7 @@ B.ui.msgmenu = (function () {
 
   // ── шторка «Реакция»: все смайлы, группы вкладками и поиск ──
   function reactionSheet(m) {
-    var secs = B.emoji.sections(), groups = B.emoji.groups(), kw = B.emoji.keywords();
-    var grid = function (items) { return '<div class="ep-row">' + items.map(function (e) { return '<button data-r="1" data-e="' + esc(e) + '">' + e + '</button>'; }).join('') + '</div>'; };
+    var secs = B.emoji.sections();
     var all = B.emoji.gridHtml(secs, 'data-r="1"');
     B.sheet.open({ size: 'med', title: 'Реакция', right: '<button class="nb" data-sheet="close">Готово</button>',
       body: '<div class="rp-hd"><div class="srch"><div class="sfield">' + ic('search', 16, 2.2) + '<input id="rp-q" placeholder="Поиск смайла" autocomplete="off"></div></div><div class="ep-tabs rp-tabs">' + B.emoji.tabsHtml(secs) + '</div></div><div class="rp-body">' + all + '</div>' });
@@ -95,22 +94,10 @@ B.ui.msgmenu = (function () {
     B.emoji.bindTabs(body, tabs, hd.offsetHeight);
     body.addEventListener('click', function (e) { var b = e.target.closest('button[data-r]'); if (b) { B.emoji.track(b.dataset.e); B.sheet.close(); B.msgs.react(m.id, b.dataset.e); } });
     body.querySelector('#rp-q').addEventListener('input', function (e) {
-      var q = e.target.value.trim().toLowerCase();
+      var q = e.target.value.trim();
       tabs.hidden = !!q;
       if (!q) { box.innerHTML = all; body.scrollTop = 0; body.dispatchEvent(new Event('scroll')); return; }
-      var seen = {}, hits = [];
-      groups.forEach(function (g) {
-        var gh = g.name.toLowerCase().indexOf(q) >= 0;
-        g.items.forEach(function (em) {
-          if (seen[em]) return;
-          var words = (kw[em] || '').split(' '), score = 0;
-          if (words.indexOf(q) >= 0) score = 3; else if (words.some(function (w) { return w.indexOf(q) === 0; })) score = 2; else if (gh) score = 1.5; else if (words.some(function (w) { return w.indexOf(q) >= 0; })) score = 1;
-          if (score) { seen[em] = 1; hits.push({ em: em, score: score }); }
-        });
-      });
-      hits.sort(function (a, b) { return b.score - a.score; });
-      box.innerHTML = hits.length ? '<div class="ep-head">Найдено: ' + hits.length + '</div>' + grid(hits.map(function (h) { return h.em; })) : '<div class="stub-note">Ничего не нашлось</div>';
-      body.scrollTop = 0;
+      box.innerHTML = B.emoji.resultsHtml(q, 'data-r="1"'); body.scrollTop = 0;
     });
   }
 
