@@ -6476,6 +6476,7 @@ function showChatCtx(e, chatId) {
   const chat = S.chats.find(c => c.id === chatId);
   S.ctxChatId = chatId;
   S.ctxChatPos = { x: e.clientX, y: e.clientY };
+  document.getElementById('ctx-chat-folder')?.classList.remove('open');
   const menu = document.getElementById('ctx-chat-menu');
   const isRoom = chat?.type === 'room';
   const isGroup = chat?.type === 'group';

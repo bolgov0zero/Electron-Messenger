@@ -3537,3 +3537,11 @@ html.dark .anx-solid { color: #0c0e10; }
 .msg-bubble.bubble-comp { min-width: 260px; }
 .cblk .cbh { gap: 12px; white-space: nowrap; }
 .cblk .cblk-cp { white-space: nowrap; flex: none; }
+
+/* стрелка у пункта с подменю */
+.ctx-menu button .ctx-sub-chev { margin-left: auto; width: 13px; height: 13px; flex-shrink: 0; opacity: .7; }
+
+/* «В папку» — подменю меню чата, ведёт себя как «Прочитано» у сообщения */
+#ctx-chat-menu { overflow: visible; }
+.ctx-sub-fly { width: 214px; }
+.ctx-sub-fly button { width: 100%; }

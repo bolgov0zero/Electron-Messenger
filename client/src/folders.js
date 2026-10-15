@@ -178,40 +178,63 @@ function folderItemMenu(e, id) {
   ]);
 }
 
-// «В папку» в меню чата: галочки по папкам, нажатие переключает и меню остаётся открытым
-function chatFolderMenu(e, chatId, at) {
-  const toggle = async (f, paint) => {
-    const has = f.chat_ids.includes(chatId);
-    f.chat_ids = has ? f.chat_ids.filter(i => i !== chatId) : [...f.chat_ids, chatId];
-    paint(); foldersChanged();
-    const ids = S.folders.filter(x => x.chat_ids.includes(chatId)).map(x => x.id);
-    await folderApi('PUT', '/folders/chat/' + chatId, { folder_ids: ids });
-  };
-  const items = S.folders.map(f => ({
-    label: f.name, html: `<span class="fld-mini" style="--fc:${f.color}">${folderSvg(f.icon, 13)}</span>`,
-    get check() { return f.chat_ids.includes(chatId); }, keep: true, fn: (it, paint) => toggle(f, paint),
-  }));
-  if (S.folders.length) items.push({ sep: true });
-  items.push({ label: 'Новая папка…', icon: FI_PLUS, fn: () => openFolderEditor(null, false, id => { if (id) folderApi('PUT', '/folders/chat/' + chatId, { folder_ids: [...S.folders.filter(x => x.chat_ids.includes(chatId)).map(x => x.id), id] }); }) });
-  folderMenu(e, items, at);
+// «В папку» в меню чата — подменю в самом меню, как «Прочитано» у сообщения: по наведению (или нажатию) рядом раскрывается карточка
+// со списком папок. Нажатие на папку ставит или снимает галочку, меню остаётся открытым
+function ctxSubFill() {
+  const fly = document.getElementById('ctx-sub-fly'); if (!fly) return;
+  const id = S.ctxChatId;
+  fly.innerHTML = S.folders.map(f => `<button type="button" data-sf="${f.id}"><span class="fld-mini" style="--fc:${f.color}">${folderSvg(f.icon, 13)}</span><span>${esc(f.name)}</span>${f.chat_ids.includes(id) ? `<i class="fld-ck">${fsvg(FI_CHECK, 15)}</i>` : ''}</button>`).join('')
+    + (S.folders.length ? '<div class="ctx-sep"></div>' : '')
+    + `<button type="button" data-sf="new">${fsvg(FI_PLUS, 16)}<span>Новая папка…</span></button>`;
 }
-// «В папку» — подменю контекстного меню чата: раскрывается сбоку от пункта, пока открыто само меню
-function ctxChatFolder(e) {
+// Карточка: вправо от меню, а если до края окна не хватает места — влево; по высоте выровнена по пункту (как ctxReadPlace)
+function ctxSubPlace() {
+  const menu = document.getElementById('ctx-chat-menu'), wrap = document.getElementById('ctx-chat-folder'), fly = document.getElementById('ctx-sub-fly');
+  if (!menu || !wrap || !fly) return;
+  const m = zoomMetrics();
+  const sc = parseFloat(getComputedStyle(menu).scale) || 1;
+  const cr = menu.getBoundingClientRect(), rr = wrap.getBoundingClientRect();
+  const fw = fly.offsetWidth * m.k * sc, fh = fly.offsetHeight * m.k * sc, margin = 6;
+  const toRight = m.vw - cr.right >= fw + margin + 4 || cr.left < fw + margin + 4;
+  fly.classList.toggle('l', !toRight);
+  fly.style.left = toRight ? 'calc(100% - 2px)' : 'auto';
+  fly.style.right = toRight ? 'auto' : 'calc(100% - 2px)';
+  let top = rr.top - cr.top - 7 * m.k * sc;
+  const over = cr.top + top + fh - (m.vh - margin);
+  if (over > 0) top -= over;
+  if (cr.top + top < margin) top = margin - cr.top;
+  fly.style.top = (top / (m.k * sc)) + 'px';
+}
+function ctxSubSet(on) {
+  const wrap = document.getElementById('ctx-chat-folder');
+  if (!wrap || wrap.classList.contains('open') === on) return;
+  if (on) { ctxSubFill(); ctxSubPlace(); }
+  wrap.classList.toggle('open', on);
+  wrap.querySelector('button')?.setAttribute('aria-expanded', on);
+}
+function ctxSubHover(on) {
+  clearTimeout(S.ctxSubT);
+  if (on) ctxSubSet(true); else S.ctxSubT = setTimeout(() => ctxSubSet(false), 170);
+}
+function ctxSubToggle(e) {
+  e && e.stopPropagation();
+  ctxSubSet(!document.getElementById('ctx-chat-folder').classList.contains('open'));
+}
+// Нажатие внутри карточки: меню чата не закрывается
+async function ctxSubClick(e) {
   e.stopPropagation();
-  const btn = document.getElementById('ctx-chat-folder'); if (!btn) return;
-  const r = btn.getBoundingClientRect(), W = 224 + 12;
-  // Справа от пункта; нет места — слева (placeCtxMenu сам отложит меню влево от точки)
-  const x = r.right + 6 + W > window.innerWidth ? r.left - 6 : r.right + 6;
-  chatFolderMenu({ preventDefault() {}, stopPropagation() {}, type: 'sub', currentTarget: null }, S.ctxChatId, { x, y: r.top - 6 });
+  const b = e.target.closest('button[data-sf]'); if (!b) return;
+  const id = S.ctxChatId;
+  if (b.dataset.sf === 'new') {
+    const cm = document.getElementById('ctx-chat-menu'); if (cm) cm.style.display = 'none';
+    openFolderEditor(null, false, fid => { if (fid) folderApi('PUT', '/folders/chat/' + id, { folder_ids: [...S.folders.filter(x => x.chat_ids.includes(id)).map(x => x.id), fid] }); });
+    return;
+  }
+  const f = folderById(+b.dataset.sf); if (!f) return;
+  f.chat_ids = f.chat_ids.includes(id) ? f.chat_ids.filter(i => i !== id) : [...f.chat_ids, id];
+  ctxSubFill(); foldersChanged();
+  await folderApi('PUT', '/folders/chat/' + id, { folder_ids: S.folders.filter(x => x.chat_ids.includes(id)).map(x => x.id) });
 }
-// Наведение на «В папку» раскрывает подменю, на другой пункт — убирает
-document.addEventListener('mouseover', e => {
-  const b = e.target.closest && e.target.closest('#ctx-chat-menu button');
-  if (!b) return;
-  const sub = document.getElementById('fld-menu');
-  if (b.id === 'ctx-chat-folder') { if (!sub || sub.style.display !== 'block' || sub.dataset.chat !== String(S.ctxChatId)) { ctxChatFolder(e); const m = document.getElementById('fld-menu'); if (m) m.dataset.chat = String(S.ctxChatId); } }
-  else if (sub && sub.style.display === 'block') folderMenuClose();
-});
 
 // ── Создание и правка папки ──
 let _fe = null;   // { f, st, nameOnly, done }
