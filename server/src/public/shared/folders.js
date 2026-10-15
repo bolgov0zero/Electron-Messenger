@@ -144,7 +144,7 @@ function foldersRailFit() {
 
 // ── Небольшое меню у курсора (папка в баре, «В папку» у чата) ──
 // items: { label, icon (путь svg) | html, danger, check, keep, fn } или { sep: true }
-function folderMenu(e, items) {
+function folderMenu(e, items, at) {
   e.preventDefault(); e.stopPropagation();
   let m = document.getElementById('fld-menu');
   if (!m) { m = document.createElement('div'); m.className = 'ctx-menu fld-menu'; m.id = 'fld-menu'; document.body.appendChild(m); }
@@ -157,11 +157,11 @@ function folderMenu(e, items) {
     const b = ev.target.closest('button[data-i]'); if (!b) return;
     ev.stopPropagation();
     const it = items[+b.dataset.i];
-    if (!it.keep) m.style.display = 'none';
+    if (!it.keep) { m.style.display = 'none'; const cm = document.getElementById('ctx-chat-menu'); if (cm) cm.style.display = 'none'; }
     it.fn(it, paint);
   };
   m.style.display = 'block';
-  placeCtxMenu(m, e.clientX, e.clientY, e.currentTarget && e.type === 'click' ? e.currentTarget.getBoundingClientRect() : null);
+  placeCtxMenu(m, at ? at.x : e.clientX, at ? at.y : e.clientY, !at && e.currentTarget && e.type === 'click' ? e.currentTarget.getBoundingClientRect() : null);
   m.classList.add('open');
 }
 function folderMenuClose() { const m = document.getElementById('fld-menu'); if (m) { m.style.display = 'none'; m.classList.remove('open'); } }
@@ -179,7 +179,7 @@ function folderItemMenu(e, id) {
 }
 
 // «В папку» в меню чата: галочки по папкам, нажатие переключает и меню остаётся открытым
-function chatFolderMenu(e, chatId) {
+function chatFolderMenu(e, chatId, at) {
   const toggle = async (f, paint) => {
     const has = f.chat_ids.includes(chatId);
     f.chat_ids = has ? f.chat_ids.filter(i => i !== chatId) : [...f.chat_ids, chatId];
@@ -193,14 +193,25 @@ function chatFolderMenu(e, chatId) {
   }));
   if (S.folders.length) items.push({ sep: true });
   items.push({ label: 'Новая папка…', icon: FI_PLUS, fn: () => openFolderEditor(null, false, id => { if (id) folderApi('PUT', '/folders/chat/' + chatId, { folder_ids: [...S.folders.filter(x => x.chat_ids.includes(chatId)).map(x => x.id), id] }); }) });
-  folderMenu(e, items);
+  folderMenu(e, items, at);
 }
+// «В папку» — подменю контекстного меню чата: раскрывается сбоку от пункта, пока открыто само меню
 function ctxChatFolder(e) {
   e.stopPropagation();
-  const menu = document.getElementById('ctx-chat-menu'); if (menu) menu.style.display = 'none';
-  const p = S.ctxChatPos || { x: e.clientX, y: e.clientY };
-  chatFolderMenu({ preventDefault() {}, stopPropagation() {}, clientX: p.x, clientY: p.y, type: 'ctx', currentTarget: null }, S.ctxChatId);
+  const btn = document.getElementById('ctx-chat-folder'); if (!btn) return;
+  const r = btn.getBoundingClientRect(), W = 224 + 12;
+  // Справа от пункта; нет места — слева (placeCtxMenu сам отложит меню влево от точки)
+  const x = r.right + 6 + W > window.innerWidth ? r.left - 6 : r.right + 6;
+  chatFolderMenu({ preventDefault() {}, stopPropagation() {}, type: 'sub', currentTarget: null }, S.ctxChatId, { x, y: r.top - 6 });
 }
+// Наведение на «В папку» раскрывает подменю, на другой пункт — убирает
+document.addEventListener('mouseover', e => {
+  const b = e.target.closest && e.target.closest('#ctx-chat-menu button');
+  if (!b) return;
+  const sub = document.getElementById('fld-menu');
+  if (b.id === 'ctx-chat-folder') { if (!sub || sub.style.display !== 'block' || sub.dataset.chat !== String(S.ctxChatId)) { ctxChatFolder(e); const m = document.getElementById('fld-menu'); if (m) m.dataset.chat = String(S.ctxChatId); } }
+  else if (sub && sub.style.display === 'block') folderMenuClose();
+});
 
 // ── Создание и правка папки ──
 let _fe = null;   // { f, st, nameOnly, done }

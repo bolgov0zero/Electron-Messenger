@@ -3379,7 +3379,7 @@ html.dark .anx-solid { color: #0c0e10; }
 .fmt-ce code { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: .88em; background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 6px; padding: 1px 4px; }
 .fmt-ce pre.cb {
   margin: 4px 0; padding: 8px 10px; border-radius: 10px; white-space: pre-wrap; word-break: break-word;
-  font: 12.5px/1.5 ui-monospace, 'SF Mono', Consolas, monospace; background: color-mix(in srgb, var(--text) 8%, transparent);
+  font: 12.5px/1.5 ui-monospace, 'SF Mono', Consolas, monospace; background: #0b0e13; color: #d6e2ee;
 }
 
 /* Меню «Прикрепить файл / Форматирование» над кнопкой со стрелкой */
@@ -3436,21 +3436,21 @@ html.dark .anx-solid { color: #0c0e10; }
 .msg-bubble.bubble-comp.ends-code > .irc-meta { bottom: 4px; }
 .msg-bubble.bubble-comp.ends-code:not(.bubble-photo) > .irc-meta { bottom: 4px; }
 
-.cblk { background: color-mix(in srgb, var(--text) 7%, transparent); }
-.cblk + .cblk { border-top: 1px solid var(--border); }
+.cblk { background: #0b0e13; color: #d6e2ee; }
+.cblk + .cblk { border-top: 1px solid rgba(255,255,255,.08); }
 .cblk .cbh {
   display: flex; justify-content: space-between; align-items: center; padding: 4px 10px 4px 12px;
-  font-size: 11px; color: var(--muted); background: color-mix(in srgb, var(--text) 6%, transparent);
+  font-size: 11px; color: #8b9aaa; background: #151a21;
 }
 .cblk .cblk-cp {
   display: flex; align-items: center; gap: 5px; border: none; background: none; cursor: pointer;
-  color: inherit; font: inherit; padding: 2px 5px; margin: -2px -5px; border-radius: 6px; opacity: .7; transition: opacity .15s, background .15s;
+  color: inherit; font: inherit; padding: 2px 5px; margin: -2px -5px; border-radius: 6px; opacity: .8; transition: opacity .15s, background .15s;
 }
-.cblk .cblk-cp:hover { opacity: 1; background: var(--hover-row); color: var(--text); }
+.cblk .cblk-cp:hover { opacity: 1; background: rgba(255,255,255,.1); color: #fff; }
 .cblk .cblk-cp i { font-style: normal; }
-.cblk.done .cblk-cp { color: var(--accent); opacity: 1; }
+.cblk.done .cblk-cp { color: #4ade80; opacity: 1; }
 .cblk pre {
-  margin: 0; padding: 8px 12px; white-space: pre-wrap; word-break: break-word; color: var(--text);
+  margin: 0; padding: 8px 12px; white-space: pre-wrap; word-break: break-word; color: #d6e2ee;
   font: 12.5px/1.5 'Noto Color Emoji', ui-monospace, 'SF Mono', Consolas, monospace; user-select: text; -webkit-user-select: text; cursor: text;
 }
 .cblk .cbf { height: 22px; }
@@ -3525,3 +3525,10 @@ html.dark .anx-solid { color: #0c0e10; }
 .fp-new { margin-top: 12px; display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font: 600 13px inherit; font-family: inherit; cursor: pointer; }
 .fp-new:hover:not(:disabled) { filter: brightness(1.1); }
 .fp-new:disabled { opacity: .5; cursor: default; }
+
+.msg-bubble.bubble-comp.ends-code > .irc-meta .irc-time { color: #8b9aaa; }
+/* код в строке в своём пузыре: заметнее, чтобы читался на фоне акцента */
+.irc-msg[data-mine] .md-code { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+
+.ctx-menu button > .fld-mini { flex: none; }
+.ctx-menu button .fld-mini { width: 22px; height: 22px; }

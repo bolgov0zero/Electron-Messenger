@@ -16,10 +16,11 @@ B.ui.composer = (function () {
     c.innerHTML =
       '<div class="ctx"></div><div class="scb" hidden></div><div class="ronote" hidden></div>' +
       '<div class="tpr"><span class="dots"><i></i><i></i><i></i></span><span class="tpt"></span></div>' +
+      '<div class="fxs"><div class="lpv" hidden></div><div class="fpv" hidden><div class="fpl">Превью — так увидят получатели</div><div class="fpb"></div></div><div class="fbar" hidden>' + Fmt.barHtml() + '</div></div>' +
       '<div class="crow"><div class="cbtn att" role="button" data-k="up" aria-label="Прикрепить, форматирование" aria-haspopup="menu">' + ic('chevup', 26, 2.2) + '</div>' +
         '<div class="upmenu" role="menu"><div class="umi" role="menuitem" data-k="attach">' + ic('clip', 22, 1.8) + '<span>Прикрепить файл</span></div><div class="umi" role="menuitem" data-k="fmt">' + ic('pencil', 22, 1.8) + '<span>Форматирование</span></div></div>' +
         '<input type="file" style="display:none">' +
-        '<div class="cfield"><div class="fxs"><div class="lpv" hidden></div><div class="fpv" hidden><div class="fpl">Превью — так увидят получатели</div><div class="fpb"></div></div><div class="fbar" hidden>' + Fmt.barHtml() + '</div></div>' +
+        '<div class="cfield">' +
           '<div class="frow"><span class="ph">Сообщение</span><div class="ce fmt-ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Сообщение" enterkeyhint="return" autocapitalize="sentences" spellcheck="true"></div>' +
           '<button class="cbtn cem" data-k="emo" aria-label="Смайлы">' + ic('smile', 24, 1.7) + '</button></div></div>' +
         '<button class="csend" data-k="send" aria-label="Отправить">' + ic('up', 20, 2.8) + '</button></div>' +
@@ -41,7 +42,7 @@ B.ui.composer = (function () {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || (!e.shiftKey && matchMedia('(pointer:fine)').matches))) { e.preventDefault(); send(el); }
     });
     document.addEventListener('selectionchange', function () { if (!t.isConnected) return; if (cs(el).fmt && document.activeElement === t) fmtState(el); });
-    c.addEventListener('mousedown', function (e) { if (e.target.closest('input')) return; if (e.target.closest('.epanel,.cbtn:not(.att),.csend,.fbar,.lpv')) e.preventDefault(); });   // нажатие на кнопки не должно убирать клавиатуру
+    c.addEventListener('mousedown', function (e) { if (e.target.closest('input')) return; if (e.target.closest('.epanel,.cbtn,.csend,.fbar,.lpv,.umi[data-k="fmt"]')) e.preventDefault(); });   // нажатие на кнопки не должно убирать клавиатуру
     document.addEventListener('click', function (e) { if (!c.isConnected) return; if (!e.target.closest('.upmenu,.cbtn.att')) closeUp(el); });
     c.addEventListener('click', function (e) { onClick(el, e); });
     renderCtx(el); sync(el);
@@ -58,7 +59,6 @@ B.ui.composer = (function () {
     var s = cs(el), box = comp(el).querySelector('.lpv'), p = s.lw && s.lw.current();
     box.hidden = !p;
     if (p) box.innerHTML = '<span class="lth">' + (p.image ? '<img src="' + esc(B.http() + '://' + B.S.server + p.image) + '" alt="">' : ic('link', 18, 2)) + '</span><div class="lpt"><b>' + esc(p.title || p.site || p.url) + '</b><span>' + esc(p.site || '') + '</span></div><div class="lpx" role="button" data-k="lpx" aria-label="Не показывать превью">' + ic('x', 14, 2.6) + '</div>';
-    comp(el).querySelector('.cfield').classList.toggle('ext', !!p || !!s.fmt);
   }
   function paintPrev(el) {
     var s = cs(el), box = comp(el).querySelector('.fpv'), t = ta(el);
@@ -77,10 +77,11 @@ B.ui.composer = (function () {
     c.querySelector('.fbar').hidden = !s.fmt;
     c.querySelector('.umi[data-k="fmt"]').classList.toggle('on', s.fmt);
     c.querySelector('.fbar [data-f="prev"]').classList.toggle('on', s.prev);
-    c.querySelector('.cfield').classList.toggle('ext', s.fmt || !!(s.lw && s.lw.current()));
     if (s.fmt) fmtState(el);
     paintPrev(el);
   }
+  // После отправки панель форматирования и её превью закрываются
+  function closeFmt(el) { var s = cs(el); if (!s.fmt && !s.prev) return; s.fmt = false; s.prev = false; syncFmt(el); }
   function fmtClick(el, k) {
     var s = cs(el), t = ta(el);
     if (k === 'close') { s.fmt = false; syncFmt(el); return; }
@@ -178,12 +179,12 @@ B.ui.composer = (function () {
     var s = cs(el), t = ta(el), chat = chatOf(el), text = t.value.trim();
     if (s.edit) {
       if (text) B.msgs.edit(s.edit, text, s.lw.current());
-      s.edit = null; t.value = ''; B.drafts[chat.id] = ''; autosize(t); renderCtx(el); s.lw.reset(); return;
+      s.edit = null; t.value = ''; B.drafts[chat.id] = ''; autosize(t); renderCtx(el); s.lw.reset(); closeFmt(el); return;
     }
     if (s.att && !s.att.done) { B.toast.show('Дождитесь окончания загрузки'); return; }
     B.msgs.send({ text: text, reply: s.reply, attachment: s.att ? s.att.data : null, forward: s.fwd, linkPreview: s.lw.current() }).then(function (ok) {
       if (!ok) return;
-      s.reply = s.fwd = s.att = null; t.value = ''; B.drafts[chat.id] = ''; autosize(t); renderCtx(el); closePanel(el); s.lw.reset();
+      s.reply = s.fwd = s.att = null; t.value = ''; B.drafts[chat.id] = ''; autosize(t); renderCtx(el); closePanel(el); s.lw.reset(); closeFmt(el);
     });
   }
   function sendGif(el, att) {
