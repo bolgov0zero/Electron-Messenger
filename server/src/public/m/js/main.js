@@ -3,7 +3,7 @@
   var ic = B.ic, app = document.getElementById('app'), shell = null;
   B.nav.init(document.getElementById('stack'));
   B.kbd.init();
-  var tabs = [['chats', 'Чаты', 'chats'], ['contacts', 'Контакты', 'person'], ['settings', 'Настройки', 'gear']];
+  var tabs = [['chats', 'Чаты', 'tabchats'], ['contacts', 'Контакты', 'person'], ['settings', 'Настройки', 'gear']];
 
   function nav(title, right) { return '<div class="nav fix"><div class="nav-in"><div class="nl"></div><div class="nt">' + title + '</div><div class="nr">' + (right || '') + '</div></div></div>'; }
   function mountShell() {
