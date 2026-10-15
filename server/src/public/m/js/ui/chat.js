@@ -71,6 +71,28 @@ B.ui.chat = (function () {
     }).join('') + '</div>';
   }
 
+  // ── сообщение из частей: превью ссылки, текст и блоки кода ──
+  // Блок кода и карточка превью занимают пузырь во всю ширину; время и галочки стоят в конце последней части
+  function compParts(ps, chat, meta) {
+    if (!ps.length) return '<div class="txt ct">' + (meta || '') + '</div>';
+    return ps.map(function (p, i) {
+      var last = i === ps.length - 1;
+      return p.k === 'c' ? Fmt.codeBlock(p.v, last ? (meta || true) : false) : '<div class="txt ct">' + formatText(p.v, chat || {}) + (last ? (meta || '') : '') + '</div>';
+    }).join('');
+  }
+  function compOf(m) {
+    var secret = B.S.secretChatIds.has(m.chat_id);
+    var lp = (!secret && !m.sender_is_bot) ? (m.link_preview || null) : null;
+    var ps = (!secret && !m._skel && !m.sender_is_bot && m.text) ? Fmt.parts(m.text) : [];
+    var code = ps.some(function (p) { return p.k === 'c'; });
+    return (lp || code) ? { lp: lp, ps: ps, code: code } : null;
+  }
+  // Для превью набранного в поле ввода: тот же пузырь без времени
+  function previewBody(text, lp, chat) {
+    var ps = Fmt.parts(text || '');
+    return { cls: ' bcomp' + (ps.length === 1 && ps[0].k === 'c' && !lp ? ' conly' : ''), html: (lp ? Fmt.previewCard(lp, B.http() + '://' + B.S.server) : '') + compParts(ps, chat, '') };
+  }
+
   // ── сообщение ──
   function bubble(m, chat, pos) {
     if (B.S.secretChatIds.has(m.chat_id)) m = B.secret.display(m);
@@ -86,20 +108,24 @@ B.ui.chat = (function () {
     var att = m.attachment, eo = !att && !m.reply_to_id && emojiOnly(m.text);
     var bare = !m.text && !m.reply_to_id && !m.forward_data && att && (att.gif || (att.url && !att.expired && /^(image|video)\//.test(att.mime || '')));
     var meta = '<span class="meta">' + (m.edited_at ? 'изм. ' : '') + B.fmt.time(m.sent_at) + (mine ? B.ticks(m.status) : '') + '</span>';
-    h += '<div class="bub' + (eo ? ' eo' : '') + (bare ? ' media' : '') + (bare && att.gif ? ' gifm' : '') + '" data-mid="' + m.id + '">';
+    var comp = compOf(m);
+    h += '<div class="bub' + (eo ? ' eo' : '') + (bare ? ' media' : '') + (bare && att.gif ? ' gifm' : '') + (comp ? ' bcomp' + (!comp.lp && comp.ps.length === 1 ? ' conly' : '') : '') + '" data-mid="' + m.id + '">';
     if (wrapAv && pos.first) h += '<div class="who" style="color:' + nameColor(m.sender_id, m.sender_tag) + '" data-c="who" data-id="' + m.sender_id + '" data-name="' + esc(m.sender_name || '') + '">' + esc(m.sender_name || '') + '</div>';
+    var qStart = h.length;
     if (m.reply_to_id) {
       // Цвет цитаты — по автору цитируемого сообщения (как в вебе и клиентах): своё — акцент, чужое — цвет этого человека
       var qc = m.reply_sender_id === B.S.user.id ? 'var(--accent)' : nameColor(m.reply_sender_id || 0, m.reply_sender_tag);
-      h += '<div class="quote" style="--rc:' + qc + '"' + (m.reply_deleted ? '' : ' data-c="jump" data-id="' + m.reply_to_id + '"') + '><b>' + esc(m.reply_sender_name || '') + '</b><span>' + (m.reply_deleted ? 'Сообщение удалено' : esc(m.reply_text || '')) + '</span></div>';
+      h += '<div class="quote" style="--rc:' + qc + '"' + (m.reply_deleted ? '' : ' data-c="jump" data-id="' + m.reply_to_id + '"') + '><b>' + esc(m.reply_sender_name || '') + '</b><span>' + (m.reply_deleted ? 'Сообщение удалено' : esc(Fmt.noCode(m.reply_text || ''))) + '</span></div>';
     }
     var fd = m.forward_data;
     if (fd) {
       var fa = fd.attachment, ftxt = fd.text ? esc(fd.text) : fa ? ((fa.mime || '').indexOf('image/') === 0 ? '📷 Фото' : (fa.mime || '').indexOf('video/') === 0 ? '🎬 Видео' : '📎 ' + esc(fa.name || 'Файл')) : '';
       h += '<div class="quote"><b>Переслано от ' + esc(fd.name || '') + '</b><span>' + ftxt + '</span></div>';
     }
+    if (comp) { var qs = h.slice(qStart); h = h.slice(0, qStart) + (comp.lp ? Fmt.previewCard(comp.lp, B.http() + '://' + B.S.server) : '') + (qs ? '<div class="cpad">' + qs + '</div>' : ''); }
     h += attachment(att);
-    if (m._skel) h += '<div class="txt">' + m._skel + meta + '</div>';
+    if (comp) h += compParts(comp.ps, chat, meta);
+    else if (m._skel) h += '<div class="txt">' + m._skel + meta + '</div>';
     else if (m.text) h += '<div class="txt">' + (m.sender_is_bot ? m.text : formatText(m.text, chat || {})) + (bare ? '' : meta) + '</div>';
     else if (!bare) h += '<div class="txt" style="min-height:4px">' + meta + '</div>';
     if (bare) h += meta;
@@ -234,7 +260,7 @@ B.ui.chat = (function () {
     var box = el.querySelector('.msgs'), G = null;
     box.addEventListener('pointerdown', function (e) {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
-      var row = e.target.closest('.mrow'); if (!row || e.target.closest('input,textarea')) return;
+      var row = e.target.closest('.mrow'); if (!row || e.target.closest('input,textarea,[contenteditable]')) return;
       if (e.clientX - el.getBoundingClientRect().left < 24) return;          // у левого края — свайп «назад»
       var bub = e.target.closest('.bub');
       G = { id: e.pointerId, x: e.clientX, y: e.clientY, row: row, mode: null, tx: 0 };
@@ -266,6 +292,9 @@ B.ui.chat = (function () {
 
   // ── события ──
   function onClick(el, e) {
+    if (Fmt.copyClick(e)) return;                               // «Копировать» в шапке блока кода
+    var lc = e.target.closest('.lcard[data-fmt-url]');
+    if (lc) { window.open(lc.dataset.fmtUrl, '_blank', 'noopener,noreferrer'); return; }
     var t = e.target.closest('[data-c]'); if (!t) return;
     var c = t.dataset.c;
     if (c === 'lb') B.lightbox.open(t.dataset.url, t.dataset.type);
@@ -333,7 +362,7 @@ B.ui.chat = (function () {
   B.bus.on('ws:message', function (d) {
     var m = d.message, chat = B.find(m.chat_id);
     if (!chat || m.sender_id === B.S.user.id || chat.muted || m.chat_id === B.S.activeChatId || document.hidden || chat.parent_id) return;
-    var txt = m.text ? m.text.replace(/<[^>]*>/g, '') : m.attachment ? '📎 Вложение' : '';
+    var txt = m.text ? Fmt.noCode(m.text).replace(/<[^>]*>/g, '') : m.attachment ? '📎 Вложение' : '';
     B.toast.banner(B.avatar.chat(chat, 36) + '<div class="tt"><b>' + esc(B.chatName(chat)) + '</b><span>' + esc(txt.slice(0, 80)) + '</span></div>', function () { B.openChat(chat.id); });
   });
 
@@ -344,7 +373,7 @@ B.ui.chat = (function () {
     around = aroundId || null;
     B.nav.push(build(chatId), B.chatName(chat));
   }
-  return { open: open, render: render, activePage: activePage, pageFor: pageFor, nameColor: nameColor, toBottom: toBottom };
+  return { open: open, render: render, activePage: activePage, pageFor: pageFor, nameColor: nameColor, toBottom: toBottom, previewBody: previewBody };
 })();
 
 // Открытие чата из списка, баннера и поиска: комнаты с темами — отдельный список (этап 8)

@@ -58,3 +58,41 @@
 .hdr-s.cnt span { font-weight: 500; opacity: .8; font-variant-numeric: tabular-nums; }
 .tb .bd { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--red); color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
 .tb .bd[hidden] { display: none; }
+
+/* ── папки: полоса вкладок под поиском (остаётся при прокрутке), значок на аватарке ── */
+.mtabs { position: sticky; top: 0; z-index: 6; background: var(--bg); border-bottom: .5px solid var(--sep); }
+.mtabs-in { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 0 12px; }
+.mtabs-in::-webkit-scrollbar { display: none; }
+.mtab { flex: none; display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 10px; border: 0; background: none; color: var(--fg2); font-size: 15px; font-weight: 600; position: relative; white-space: nowrap; }
+.mtab b { min-width: 19px; height: 19px; padding: 0 5px; border-radius: 10px; background: var(--fg3); color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.mtab.on { color: var(--accent); }
+.mtab.on b { background: var(--accent); }
+.mtab.on::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--accent); }
+.fbd { position: absolute; left: -3px; top: -3px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; background: var(--fc); border: 2.5px solid var(--bg); box-sizing: content-box; z-index: 1; }
+.swrow.pinned .fbd { border-color: var(--pin); }
+.fbd .ic { display: block; }
+/* правка папки и строки в настройках */
+.fe { padding: 6px 16px 24px; }
+.fe-top { display: flex; align-items: center; gap: 14px; }
+.fe-big { width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; flex: none; color: var(--fc); background: color-mix(in srgb, var(--fc) 18%, transparent); }
+.fe-in { flex: 1; min-width: 0; height: 44px; border-radius: 12px; background: var(--card); display: flex; align-items: center; padding: 0 14px; }
+.fe-in input { flex: 1; min-width: 0; border: 0; background: none; outline: 0; font: inherit; font-size: 17px; color: var(--fg); }
+.fe .gh { margin: 14px 4px 8px; }
+.fe-cols { display: flex; gap: 9px; flex-wrap: wrap; padding: 4px; }
+.fe-cols button { width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--fc); padding: 0; position: relative; }
+.fe-cols button.on::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 2.5px solid var(--fc); }
+.fe-icons { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.fe-icons button { height: 46px; border-radius: 13px; border: 0; background: var(--card); color: var(--fg2); display: flex; align-items: center; justify-content: center; padding: 0; }
+.fe-icons button.on { background: color-mix(in srgb, var(--fc) 22%, transparent); color: var(--fc); box-shadow: inset 0 0 0 2px var(--fc); }
+.fcell-ic { width: 34px; height: 34px; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex: none; color: var(--fc); background: color-mix(in srgb, var(--fc) 18%, transparent); }
+.fcell-ic.plus { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.fcell { min-height: 54px; }
+.fcell .fck { color: var(--accent); display: flex; }
+.fprow { min-height: 64px; }
+.fprow .cl { min-width: 0; }
+.fprow .cl b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fpa { display: flex; flex: none; margin-right: -8px; }
+.fpa button { width: 34px; height: 40px; border: 0; background: none; color: var(--fg2); display: flex; align-items: center; justify-content: center; padding: 0; }
+.fpa button.d { color: var(--red); }
+.fpa button:disabled { opacity: .25; }
+.fpa button:active:not(:disabled) { color: var(--accent); }

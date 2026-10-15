@@ -1428,14 +1428,14 @@ input:not([type]) {
 }
 .composer-icon-btn:hover { background: var(--hover-row); color: var(--text); }
 
-.composer-pill textarea {
-  flex: 1; border: none; outline: none; background: transparent;
+.composer-pill .fmt-ce {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
   font-size: 14px; font-family: inherit; color: var(--text);
-  resize: none; overflow: hidden; max-height: 120px; line-height: 1.4;
+  overflow-y: auto; max-height: 120px; line-height: 20px; min-height: 20px;
   padding: 0; margin: 0;
-  height: 20px; /* одна строка */
+  white-space: pre-wrap; word-break: break-word;
 }
-.composer-pill textarea::placeholder { color: var(--muted); }
+.composer-pill .fmt-ce:empty::before { content: attr(data-ph); color: var(--muted); pointer-events: none; }
 
 /* Send button inside pill */
 .composer-pill .send-btn {
@@ -2476,6 +2476,7 @@ html.dark .announcement-title { color: var(--danger); }
   transition: height .26s cubic-bezier(.32,.72,0,1);
 }
 .composer-slot-inner {
+  display: flex; flex-direction: column; gap: 8px;
   padding: 8px 8px 0;
   background: transparent;
   transform: translateY(-4px);
@@ -2498,8 +2499,7 @@ html.dark .announcement-title { color: var(--danger); }
 .composer-slot .input-edit-bar::before {
   content: ""; position: absolute; left: 7px; top: 7px; bottom: 7px; width: 3px; border-radius: 2px; background: var(--accent);
 }
-.composer-slot .input-reply-bar + .input-reply-bar,
-.composer-slot .input-reply-bar + .input-edit-bar { margin-top: 8px; }
+/* Плашки стоят друг над другом через gap у .composer-slot-inner */
 
 @media (prefers-reduced-motion: reduce) {
   .composer-slot, .composer-slot-inner { transition: none; }
@@ -3334,3 +3334,194 @@ html.dark .anx-solid { color: #0c0e10; }
 .cs-l b .cs-pill, .m-mod-l b .cs-pill { display: inline-block; width: auto; max-width: none; margin: 0 0 0 8px; padding: 2px 8px; font-size: 10.5px; font-weight: 700; line-height: 1.3; letter-spacing: 0; vertical-align: middle; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
 .cs-pill { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); margin-left: 6px; vertical-align: middle; }
 @media (prefers-reduced-motion: reduce) { .ep-sw button { transition: none; } }
+
+/* ── БАР УЧЁТНЫХ ЗАПИСЕЙ ── слева от сайдбара: на всю высоту, скругление и отступы как у сайдбара */
+.acc-rail {
+  flex: 0 0 66px; margin: 16px 0 16px 16px; padding: 12px 0;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  background: var(--side-bg); border: 1px solid var(--border); border-radius: 20px;
+  position: relative; z-index: 3;
+}
+.acc-rail[hidden] { display: none; }
+.acc-btn { position: relative; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; flex-shrink: 0; }
+.acc-btn .av {
+  position: relative; overflow: hidden; width: 44px; height: 44px;
+  display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 15px;
+  transition: transform .16s ease;
+}
+.acc-btn .av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.acc-btn:hover .av { transform: scale(1.06); }
+.acc-btn.active::before { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--accent); pointer-events: none; }
+.acc-badge {
+  position: absolute; top: -4px; right: -6px; min-width: 24px; height: 24px; padding: 0 5px;
+  border-radius: 12px; background: var(--accent); color: #0c0e10;
+  font-size: 11px; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--side-bg); box-sizing: border-box;
+}
+.acc-tip {
+  position: absolute; left: calc(100% + 14px); top: 50%; transform: translateY(-50%);
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 7px 11px;
+  white-space: nowrap; font-size: 12px; text-align: left; opacity: 0; pointer-events: none;
+  transition: opacity .15s ease; z-index: 30; box-shadow: 0 8px 22px rgba(0,0,0,.25);
+}
+.acc-tip b { display: block; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.acc-tip span { color: var(--muted); font-size: 11.5px; }
+/* Имя сервера над именем пользователя */
+.acc-tip .acc-sys { display: block; margin-bottom: 2px; color: var(--accent); font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.acc-btn:hover .acc-tip { opacity: 1; }
+
+
+/* ══════════════════════════════════════════
+   ФОРМАТИРОВАНИЕ, БЛОКИ КОДА, ПРЕВЬЮ ССЫЛОК
+   ══════════════════════════════════════════ */
+/* Поле ввода: оформление видно прямо в нём */
+.fmt-ce b { font-weight: 700; }
+.fmt-ce code { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: .88em; background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 6px; padding: 1px 4px; }
+.fmt-ce pre.cb {
+  margin: 4px 0; padding: 8px 10px; border-radius: 10px; white-space: pre-wrap; word-break: break-word;
+  font: 12.5px/1.5 ui-monospace, 'SF Mono', Consolas, monospace; background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+/* Меню «Прикрепить файл / Форматирование» над кнопкой со стрелкой */
+.composer-main { position: relative; }
+.up-menu {
+  position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 40; width: 214px; padding: 5px;
+  background: var(--modal-bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-pop);
+}
+.up-menu[hidden] { display: none; }
+.up-menu button {
+  display: flex; align-items: center; gap: 11px; width: 100%; height: 34px; padding: 0 9px;
+  background: none; border: none; border-radius: 9px; cursor: pointer; color: var(--text);
+  font: 500 12.2px inherit; font-family: inherit; text-align: left; transition: background .12s;
+}
+.up-menu button:hover { background: var(--hover-row); }
+.up-menu button svg { flex-shrink: 0; color: var(--muted); }
+.up-menu button.on, .up-menu button.on svg { color: var(--accent); }
+.composer-attach[aria-expanded="true"] { color: var(--text); }
+
+/* Выдвижные части: превью ссылки, превью набранного и панель форматирования */
+.composer-slot .lprev-bar {
+  display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 8px; border-radius: 14px; background: var(--accent-soft);
+}
+.lprev-thumb { width: 36px; height: 36px; border-radius: 9px; overflow: hidden; flex-shrink: 0; background: var(--hover-row); }
+.lprev-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lprev-title { font-weight: 600; font-size: 12.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.composer-slot .fmt-prev { padding: 8px 10px 10px; border-radius: 14px; background: var(--hover-row); }
+.fmt-prev-l { font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.fmt-prev-b { max-height: 180px; overflow-y: auto; }
+.fmt-prev-empty { color: var(--muted); font-size: 13px; }
+.fmt-prev-bubble { display: block; width: fit-content; max-width: 100%; background: var(--bubble-bg); }
+.composer-slot .fmt-bar { display: flex; align-items: center; gap: 2px; padding: 3px 4px; border-radius: 14px; background: var(--hover-row); }
+.fmt-bar button {
+  width: 34px; height: 30px; border: none; border-radius: 9px; background: none; cursor: pointer;
+  display: grid; place-items: center; color: var(--text2); font: 700 14px inherit; font-family: inherit;
+  transition: background .12s, color .12s;
+}
+.fmt-bar button:hover { background: var(--search-bg); color: var(--text); }
+.fmt-bar button.on { background: var(--accent-soft); color: var(--accent); }
+.fmt-bar .fmt-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
+.fmt-bar .fmt-grow { flex: 1; }
+.fmt-bar button[data-f=close] { color: var(--muted); }
+
+/* Пузырь из частей: превью ссылки и/или блок кода занимают его во всю ширину, текст держит прежние отступы */
+.msg-bubble.bubble-comp { padding: 0; overflow: hidden; }
+.msg-bubble.bubble-comp > .ct-pad { padding: 6px 12px 0; }
+.msg-bubble.bubble-comp > .irc-text.ct { padding: 6px 12px; }
+.msg-bubble.bubble-comp > .irc-text.ct:not(.ct-last)::after { display: none; }
+.msg-bubble.bubble-comp .bubble-image { margin: 0 0 4px; border-radius: 0; }
+.msg-bubble.bubble-comp .bubble-file { margin: 4px 7px; }
+.msg-bubble.bubble-comp.has-lcard { width: 300px; max-width: 100%; }
+.msg-bubble.bubble-comp.fmt-prev-bubble.has-lcard { width: 300px; }
+/* время и галочки в блоке кода, замыкающем пузырь: стоят в его нижней полосе */
+.msg-bubble.bubble-comp.ends-code > .irc-meta { bottom: 4px; }
+.msg-bubble.bubble-comp.ends-code:not(.bubble-photo) > .irc-meta { bottom: 4px; }
+
+.cblk { background: color-mix(in srgb, var(--text) 7%, transparent); }
+.cblk + .cblk { border-top: 1px solid var(--border); }
+.cblk .cbh {
+  display: flex; justify-content: space-between; align-items: center; padding: 4px 10px 4px 12px;
+  font-size: 11px; color: var(--muted); background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.cblk .cblk-cp {
+  display: flex; align-items: center; gap: 5px; border: none; background: none; cursor: pointer;
+  color: inherit; font: inherit; padding: 2px 5px; margin: -2px -5px; border-radius: 6px; opacity: .7; transition: opacity .15s, background .15s;
+}
+.cblk .cblk-cp:hover { opacity: 1; background: var(--hover-row); color: var(--text); }
+.cblk .cblk-cp i { font-style: normal; }
+.cblk.done .cblk-cp { color: var(--accent); opacity: 1; }
+.cblk pre {
+  margin: 0; padding: 8px 12px; white-space: pre-wrap; word-break: break-word; color: var(--text);
+  font: 12.5px/1.5 'Noto Color Emoji', ui-monospace, 'SF Mono', Consolas, monospace; user-select: text; -webkit-user-select: text; cursor: text;
+}
+.cblk .cbf { height: 22px; }
+
+/* Карточка превью ссылки в сообщении */
+.lcard { cursor: pointer; background: color-mix(in srgb, var(--text) 5%, transparent); }
+.lcard .lc-im { aspect-ratio: 16 / 9; overflow: hidden; background: var(--hover-row); }
+.lcard .lc-im img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lcard .lc-b { padding: 7px 12px 8px; min-width: 0; }
+.lcard .lc-t { font-weight: 600; font-size: 13px; line-height: 1.3; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lcard .lc-d { font-size: 11.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lcard:hover .lc-t { color: var(--accent); }
+
+/* ══════════════════════════════════════════
+   ПАПКИ ЧАТОВ
+   ══════════════════════════════════════════ */
+/* Бар: разделитель между учётными записями и папками, кнопки папок */
+.rail-sep { width: 28px; height: 1px; background: var(--border); flex-shrink: 0; margin: -2px 0; }
+.rail-folders { display: flex; flex-direction: column; align-items: center; gap: 12px; min-height: 0; }
+.rail-folders.scroll { overflow-y: auto; scrollbar-width: none; flex: 1; width: 100%; padding: 2px 0; }
+.rail-folders.scroll::-webkit-scrollbar { display: none; }
+.fld-btn .fld-ic {
+  width: 44px; height: 44px; border-radius: 15px; display: grid; place-items: center;
+  color: var(--fc); background: color-mix(in srgb, var(--fc) 16%, transparent); transition: transform .16s ease, background .16s ease;
+}
+.fld-btn:hover .fld-ic { transform: scale(1.06); background: color-mix(in srgb, var(--fc) 24%, transparent); }
+.fld-btn.active::before { border-radius: 18px; }
+.fld-btn:focus-visible { outline: none; }
+.fld-btn:focus-visible::before { content: ""; position: absolute; inset: -4px; border-radius: 18px; border: 2px solid var(--accent); }
+/* Значок папки на аватарке чата: в левом верхнем углу, по диагонали от точки «в сети» */
+.fbd {
+  position: absolute; left: -4px; top: -4px; width: 19px; height: 19px; border-radius: 50%;
+  display: grid; place-items: center; color: #fff; background: var(--fc); border: 2px solid var(--side-bg); box-sizing: border-box; z-index: 1;
+}
+.fbd svg { stroke-width: 2.4; }
+.chat-item.active .fbd { border-color: var(--side-bg); }
+.fld-mini { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; flex-shrink: 0; color: var(--fc); background: color-mix(in srgb, var(--fc) 18%, transparent); }
+.ctx-menu .fld-ck { margin-left: auto; display: grid; color: var(--accent); }
+.ctx-menu button .fld-mini svg { width: 13px; height: 13px; color: var(--fc); }
+.fld-menu { width: 224px; }
+
+/* Окно папки */
+.fe-top { display: flex; align-items: center; gap: 12px; }
+.fe-top .ac-fld { flex: 1; min-width: 0; }
+.fe-big { width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; flex-shrink: 0; color: var(--fc); background: color-mix(in srgb, var(--fc) 18%, transparent); }
+.fe-l { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: -4px; }
+.fe-cols { display: flex; gap: 10px; flex-wrap: wrap; }
+.fe-cols button { width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--fc); cursor: pointer; padding: 0; position: relative; }
+.fe-cols button.on::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--text); opacity: .85; }
+.fe-icons { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.fe-icons button { height: 38px; border-radius: 11px; border: 0; background: var(--search-bg); color: var(--text2); display: grid; place-items: center; cursor: pointer; transition: background .12s, color .12s; }
+.fe-icons button:hover { background: var(--hover-row); color: var(--text); }
+.fe-icons button.on { background: color-mix(in srgb, var(--fc) 22%, transparent); color: var(--fc); box-shadow: inset 0 0 0 1.5px var(--fc); }
+
+/* Настройки → Папки */
+.fp-lead { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 14px; }
+.fp-list { display: flex; flex-direction: column; gap: 6px; }
+.fp-row { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 6px; border-radius: 14px; background: var(--card-bg); border: 1px solid var(--border); }
+.fp-row.drag { opacity: .45; }
+.fp-row.over { box-shadow: 0 -2px 0 var(--accent); }
+.fp-grip { color: var(--muted); cursor: grab; display: grid; place-items: center; width: 20px; flex-shrink: 0; }
+.fp-ic { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; color: var(--fc); background: color-mix(in srgb, var(--fc) 16%, transparent); }
+.fp-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fp-tx b { font-size: 13.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-tx small { font-size: 11.5px; color: var(--muted); }
+.fp-acts { display: flex; gap: 2px; flex-shrink: 0; }
+.fp-acts button { width: 30px; height: 30px; border: 0; border-radius: 9px; background: none; color: var(--text2); cursor: pointer; display: grid; place-items: center; transition: background .12s, color .12s; }
+.fp-acts button:hover:not(:disabled) { background: var(--hover-row); color: var(--text); }
+.fp-acts button:disabled { opacity: .3; cursor: default; }
+.fp-acts button.danger:hover { background: var(--danger-bg); color: var(--danger); }
+.fp-empty { padding: 22px; text-align: center; color: var(--muted); font-size: 13px; border: 1px dashed var(--border); border-radius: 14px; }
+.fp-new { margin-top: 12px; display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font: 600 13px inherit; font-family: inherit; cursor: pointer; }
+.fp-new:hover:not(:disabled) { filter: brightness(1.1); }
+.fp-new:disabled { opacity: .5; cursor: default; }

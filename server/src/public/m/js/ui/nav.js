@@ -49,7 +49,7 @@ B.nav = {
     var G = null, N = this;
     host.addEventListener('pointerdown', function (e) {
       if (N.stack.length < 2 || (e.pointerType === 'mouse' && e.button !== 0)) return;
-      if (e.target.closest('input,textarea')) return;
+      if (e.target.closest('input,textarea,[contenteditable]')) return;
       var r = host.getBoundingClientRect();
       if (e.clientX - r.left > 22) return;
       G = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), mode: null, w: r.width };

@@ -19,7 +19,8 @@ B.ui.settings = (function () {
         '<div style="flex:1;min-width:0"><div class="nm">' + esc(u.display_name || '') + '</div><div class="sb">@' + esc(u.username || '') + '</div></div><span class="chev" style="color:var(--fg3);display:flex">' + ic('chev', 16, 2.4) + '</span></button></div>' +
       '<div class="grp">' + cell({ act: 'appearance', ic: 'palette', bg: '#af52de', label: 'Внешний вид' }) +
         cell({ act: 'notif', ic: 'bell', bg: '#ff3b30', label: 'Уведомления', val: notifText(), chev: false }) +
-        cell({ act: 'modules', ic: 'puzzle', bg: '#34c759', label: 'Модули', val: mods ? String(mods) : '' }) + '</div>' +
+        cell({ act: 'modules', ic: 'puzzle', bg: '#34c759', label: 'Модули', val: mods ? String(mods) : '' }) +
+        cell({ act: 'folders', ic: 'folder', bg: '#ff9500', label: 'Папки', val: B.folders.list.length ? String(B.folders.list.length) : '' }) + '</div>' +
       '<div class="grp">' + cell({ act: 'blocks', ic: 'block', bg: '#8e8e93', label: 'Блокировки', val: S.blocked.length ? String(S.blocked.length) : '' }) +
         cell({ act: 'diag', ic: 'gear', bg: '#5e6ad2', label: 'Диагностика' }) + '</div>' +
       '<div class="grp">' + cell({ act: 'logout', ic: 'out', bg: '#ff3b30', label: 'Выйти', red: 1, chev: false }) + '</div>' +
@@ -30,7 +31,7 @@ B.ui.settings = (function () {
     box = el; render();
     el.addEventListener('click', function (e) {
       var b = e.target.closest('[data-s]'); if (!b) return; var a = b.dataset.s;
-      if (a === 'me') openMe(); else if (a === 'appearance') openAppearance(); else if (a === 'modules') openModules();
+      if (a === 'me') openMe(); else if (a === 'appearance') openAppearance(); else if (a === 'modules') openModules(); else if (a === 'folders') B.ui.folders.openPage();
       else if (a === 'blocks') openBlocks(); else if (a === 'diag') B.ui.diag.open();
       else if (a === 'logout') B.actions.confirm('Выйти из аккаунта?', '', 'Выйти', function () { B.auth.logout(); });
       else if (a === 'notif') {
@@ -150,5 +151,6 @@ B.ui.settings = (function () {
   });
   B.bus.on('app:ready', render); B.bus.on('chats:changed', function () {});
   B.bus.on('avatar:updated', render);
+  B.bus.on('folders:changed', render);
   return { mount: mount, render: render };
 })();

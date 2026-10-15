@@ -75,7 +75,7 @@ B.msgs = {
     data.messages.forEach(function (fm) {
       var m = M.find(fm.id); if (!m) return;
       if (fm.deleted && !m.deleted) { m.deleted = 1; m.text = ''; m.attachment = null; changed = true; }
-      else if (fm.edited_at && fm.edited_at !== m.edited_at) { m.text = fm.text; m.edited_at = fm.edited_at; changed = true; }
+      else if (fm.edited_at && fm.edited_at !== m.edited_at) { m.text = fm.text; m.edited_at = fm.edited_at; m.link_preview = fm.link_preview || null; changed = true; }
     });
     if (changed) B.bus.emit('msgs:changed', { mode: 'smart' });
   },
@@ -111,13 +111,14 @@ B.msgs = {
     if (o.reply) { payload.reply_to_id = temp.reply_to_id = o.reply.id; temp.reply_sender_name = o.reply.senderName; temp.reply_text = o.reply.text; temp.reply_sender_id = o.reply.senderId; temp.reply_sender_tag = o.reply.senderTag; }
     if (o.attachment) { payload.attachment = temp.attachment = o.attachment; }
     if (o.forward) { payload.forward_data = temp.forward_data = o.forward; }
+    if (o.linkPreview && !S.secretChatIds.has(chat.id)) { payload.link_preview = temp.link_preview = o.linkPreview; }
     if (S.secretChatIds.has(chat.id) && !(await B.secret.seal(chat.id, payload, temp, text))) return false;
     M.cache.push(temp);
     B.bus.emit('msgs:changed', { mode: 'bottom' });
     B.ws.send(payload);
     return true;
   },
-  edit: function (id, text) { B.ws.send({ type: 'edit_message', message_id: id, text: text }); },
+  edit: function (id, text, lp) { B.ws.send({ type: 'edit_message', message_id: id, text: text, link_preview: lp || null }); },
   remove: function (id) { B.ws.send({ type: 'delete_message', message_id: id }); },
   react: function (id, reaction) { B.ws.send({ type: 'react', message_id: id, reaction: reaction }); },
   typing: function () { B.presence.sendTyping(B.msgs.chatId); }

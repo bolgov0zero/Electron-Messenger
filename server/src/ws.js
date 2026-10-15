@@ -3,6 +3,7 @@ const db = require('./db');
 const spaces = require('./spaces');
 const unreadCounts = require('./unread');
 const gifLib = require('./gif');
+const linkPrev = require('./linkprev');
 // Требуем лениво, как и sendPushToUser ниже: push.js при загрузке генерирует
 // ключи, и раньше времени его дёргать не нужно
 function hasPushSubscription(userId) {
@@ -170,7 +171,7 @@ function sanitizeEncAttachment(att) {
 
 function getMessageWithStatus(msgId, viewerId) {
   const msg = db.prepare(`
-    SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.system_kind,
+    SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.link_preview, m.system_kind,
       u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.tag as sender_tag, (u.is_bot = 1) as sender_is_bot,
       m.reply_to_id,
       rm.text as reply_text, rm.attachment as reply_attachment, rm.deleted as reply_deleted,
@@ -190,6 +191,7 @@ function getMessageWithStatus(msgId, viewerId) {
   if (msg.mentions) try { msg.mentions = JSON.parse(msg.mentions); } catch { msg.mentions = null; }
   if (msg.reply_attachment) try { msg.reply_attachment = JSON.parse(msg.reply_attachment); } catch { msg.reply_attachment = null; }
   if (msg.forward_data) try { msg.forward_data = JSON.parse(msg.forward_data); } catch { msg.forward_data = null; }
+  if (msg.link_preview) try { msg.link_preview = JSON.parse(msg.link_preview); } catch { msg.link_preview = null; }
 
   // IS NOT вместо != — sender_id может быть NULL (удалённый аккаунт)
   const memberCount = db.prepare('SELECT COUNT(*) as c FROM chat_members WHERE chat_id = ? AND user_id IS NOT ?').get(msg.chat_id, msg.sender_id).c;
@@ -357,6 +359,10 @@ function setup(server) {
               is_bot: !!forward_data.is_bot })
           : null;
 
+        // Превью ссылки: только проверенное (картинка — наша), в секретных чатах не бывает
+        const lpObj = isSecret ? null : linkPrev.sanitize(data.link_preview);
+        const lpJson = lpObj ? JSON.stringify(lpObj) : null;
+
         // Упоминания: @username участников чата (кроме себя). В секретном чате text —
         // шифротекст, разбирать его на упоминания бессмысленно и не нужно.
         let mentionsJson = null;
@@ -370,14 +376,14 @@ function setup(server) {
         }
 
         // Подготавливаем стейтменты вне транзакции — db.prepare нельзя вызывать внутри неё
-        const stmtInsertMsg = db.prepare('INSERT INTO messages (chat_id, sender_id, text, iv, reply_to_id, attachment, mentions, forward_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        const stmtInsertMsg = db.prepare('INSERT INTO messages (chat_id, sender_id, text, iv, reply_to_id, attachment, mentions, forward_data, link_preview) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
         const stmtGetMembers = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?');
         const stmtInsStatus = db.prepare('INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)');
         const stmtUpdDelivered = db.prepare('UPDATE message_status SET delivered_at = COALESCE(delivered_at, unixepoch()) WHERE message_id = ? AND user_id = ?');
 
         // Вставка сообщения и статусов доставки в одной транзакции
         const msgId = db.transaction(() => {
-          const result = stmtInsertMsg.run(chat_id, user.id, text, isSecret && typeof iv === 'string' ? iv.slice(0, 256) : null, reply_to_id || null, attJson, mentionsJson, fdJson);
+          const result = stmtInsertMsg.run(chat_id, user.id, text, isSecret && typeof iv === 'string' ? iv.slice(0, 256) : null, reply_to_id || null, attJson, mentionsJson, fdJson, lpJson);
           const newMsgId = result.lastInsertRowid;
           // Пометить как delivered тем участникам, которые сейчас онлайн (кроме отправителя)
           const members = stmtGetMembers.all(chat_id, user.id);
@@ -468,6 +474,11 @@ function setup(server) {
         if (Date.now() / 1000 - msg.sent_at > getEditTimeLimit()) {
           if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'edit_rejected', message_id, reason: 'time' }));
           return;
+        }
+        // link_preview в запросе: объект — заменить превью, null — убрать, поля нет — оставить как было
+        if (data.link_preview !== undefined) {
+          const lp = linkPrev.sanitize(data.link_preview);
+          db.prepare('UPDATE messages SET link_preview = ? WHERE id = ?').run(lp ? JSON.stringify(lp) : null, message_id);
         }
         db.prepare('UPDATE messages SET text = ?, edited_at = unixepoch() WHERE id = ?').run(text.trim(), message_id);
         const updated = getMessageWithStatus(message_id, user.id);

@@ -110,6 +110,9 @@
   <!-- App body: sidebar + chat -->
   <div class="app-body">
 
+    <!-- Папки: бар слева от списка, виден, когда папки есть -->
+    <nav class="acc-rail" id="acc-rail" aria-label="Папки" hidden></nav>
+
     <!-- Sidebar -->
     <aside class="sidebar">
       <header class="sidebar-head">
@@ -201,6 +204,10 @@
   <button id="ctx-chat-pin" onclick="ctxChatPin()">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>
     <span id="ctx-chat-pin-label">Закрепить</span>
+  </button>
+  <button id="ctx-chat-folder" onclick="ctxChatFolder(event)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    <span>В папку</span>
   </button>
   <button onclick="ctxChatMute()">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
@@ -299,6 +306,19 @@
   </div>
 </div>
 <!-- Добавить контакт -->
+<!-- Папка: создание и правка -->
+<div class="modal-bg" id="modal-folder" onclick="if(event.target===this)closeModal('modal-folder')">
+  <div class="modal nc-modal">
+    <div class="modal-hdr">
+      <span style="flex:1" id="fe-title">Новая папка</span>
+      <button class="icon-btn" onclick="closeModal('modal-folder')" style="width:28px;height:28px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="fe-body" class="ac-body"></div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-addcontact" onclick="if(event.target===this)closeModal('modal-addcontact')">
   <div class="modal nc-modal">
     <div class="modal-hdr">
@@ -356,7 +376,9 @@
 <script src="/shared/secret-core.js?v=1"></script>
 <script src="/shared/modules.js?v=1"></script>
 <script src="/shared/gif-klipy.js?v=1"></script>
+<script src="/shared/fmt.js?v=1"></script>
 <script src="app.js?v=1.2.169"></script>
+<script src="/shared/folders.js?v=1"></script>
 <script src="announce.js?v=3"></script>
 </body>
 </html>

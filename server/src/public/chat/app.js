@@ -719,6 +719,7 @@ function enterApp() {
   refreshServerInfo();
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-main').classList.add('active');
+  loadFolders();
   loadChats().then(() => {
     if (S._pendingOpenChatId) {
       const c = S.chats.find(c => c.id === S._pendingOpenChatId);
@@ -1029,6 +1030,7 @@ const CS_I = {
   eyeOff: csSvg('<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>'),
   out: csSvg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'),
   copy: csSvg('<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
+  folder: csSvg('<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
   check: csSvg('<polyline points="20 6 9 17 4 12"/>'),
   sun: csSvg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>'),
   moon: csSvg('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'),
@@ -1184,6 +1186,8 @@ function csSections() {
     meta: () => (S.blocked || []).length ? `заблокировано: ${S.blocked.length}` : 'никого нет' });
   list.push({ k: 'modules', label: 'Модули', icon: CS_I.puzzle, desc: 'Дополнительные возможности клиента',
     meta: () => { const l = window.Modules ? Modules.list() : []; if (!l.length) return 'нет доступных'; const n = l.filter(m => m.on).length; return n ? `включено: ${n}` : `${l.length} ${plural(l.length, 'модуль', 'модуля', 'модулей')} доступно`; } });
+  list.push({ k: 'folders', label: 'Папки', icon: CS_I.folder, desc: 'Порядок, название, цвет и значок',
+    meta: () => (S.folders || []).length ? `${S.folders.length} ${plural(S.folders.length, 'папка', 'папки', 'папок')}` : 'папок нет' });
   if (csIsApp()) list.push({ k: 'update', label: 'Обновление', icon: CS_I.upd, desc: 'Версия приложения и новые релизы',
     meta: () => _updateDownloadUrl && _updateVersion ? `есть версия ${_updateVersion}` : CS.version ? `версия ${CS.version}` : 'проверка обновлений',
     dot: () => !!_updateDownloadUrl });
@@ -1485,7 +1489,7 @@ function modDownload(key, kind) {
   document.body.appendChild(ov);
   run();
 }
-const CS_PANES = { profile: csPaneProfile, general: csPaneGeneral, appearance: csPaneAppearance, blocks: csPaneBlocks, modules: csPaneModules, update: csPaneUpdate };
+const CS_PANES = { profile: csPaneProfile, general: csPaneGeneral, appearance: csPaneAppearance, blocks: csPaneBlocks, modules: csPaneModules, folders: () => csPaneFolders(), update: csPaneUpdate };
 
 function csNavHtml() {
   return csSections().map(s => `<button type="button" class="cs-sn" aria-current="${CS.sec === s.k ? 'page' : 'false'}" onclick="csGo('${s.k}')">
@@ -1879,8 +1883,10 @@ function renderChatList() {
   if (_sidebarTab !== 'chats') return;
   const q = document.getElementById('search').value.toLowerCase();
   const list = document.getElementById('chats-list');
+  const byFolder = !q && !S.searchResults;   // поиск идёт по всем чатам, а не только по выбранной папке
   const filtered = S.chats
     .filter(c=>chatName(c).toLowerCase().includes(q))
+    .filter(c => !byFolder || typeof folderPass !== 'function' || folderPass(c))
     .sort((a,b) => {
       if (a.type==='room' && b.type!=='room') return -1;
       if (a.type!=='room' && b.type==='room') return 1;
@@ -1938,7 +1944,8 @@ function renderChatList() {
       items.push({ key: 'label-pinned', html: `<div class="chat-list-section-label" style="${rooms.length?'padding-top:12px':''}">Закреплённые</div>` });
       pinned.forEach(c => items.push({ key: 'chat-' + c.id, html: renderChatRow(c) }));
     }
-    items.push({ key: 'label-all', html: `<div class="chat-list-section-label" style="${(rooms.length||pinned.length)?'padding-top:12px':''}">Все чаты</div>` });
+    const allLabel = byFolder && S.folderFilter !== 'all' ? esc(folderById(S.folderFilter)?.name || 'Все чаты') : 'Все чаты';
+    items.push({ key: 'label-all', html: `<div class="chat-list-section-label" style="${(rooms.length||pinned.length)?'padding-top:12px':''}">${allLabel}</div>` });
     rest.forEach(c => items.push({ key: 'chat-' + c.id, html: renderChatRow(c) }));
   }
   syncChatListKeyed(list, items);
@@ -1999,7 +2006,7 @@ function renderChatRow(c) {
     ? (S.topics[c.id]||[]).reduce((sum,s)=>sum+(S.unreadMentions[s.id]||0),0)
     : S.unreadMentions[c.id]||0;
   const lm = c.last_message;
-  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? lm.text.replace(/<[^>]*>/g, '') : (lm.forward_data ? 'Пересланное сообщение' : lm.attachment ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
+  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? Fmt.plain(lm.text).replace(/<[^>]*>/g, '') : (lm.forward_data ? 'Пересланное сообщение' : lm.attachment ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
   if (preview.length>40) preview = preview.slice(0,40)+'…';
   // Черновик приоритетнее последнего сообщения (как в Telegram)
   const draft = (c.id !== S.activeChatId) ? S.drafts[c.id] : null;
@@ -2024,7 +2031,7 @@ function renderChatRow(c) {
   return `<div class="chat-item${isActive?' active':''}" data-chat-id="${c.id}" onclick="openChat(${c.id})" oncontextmenu="showChatCtx(event,${c.id})">
     <div class="av-wrap">
       <div class="av av-md ${chatAvatarClass(c)}${c.type==='room' && c.has_topics?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
-      ${dot}
+      ${typeof folderBadgeHtml === 'function' ? folderBadgeHtml(c) : ''}${dot}
     </div>
     <div class="info">
       <div class="ci-name" style="display:flex;align-items:center;gap:5px">
@@ -2267,9 +2274,19 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
             </div>
           </div>
           <div class="composer-main">
-            <button class="composer-icon-btn composer-attach" title="Прикрепить файл" onclick="pickFile()">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            <button class="composer-icon-btn composer-attach" id="up-btn" title="Прикрепить, форматирование" aria-haspopup="menu" aria-expanded="false" onclick="toggleUpMenu(event)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>
             </button>
+            <div class="up-menu" id="up-menu" role="menu" hidden>
+              <button type="button" role="menuitem" onclick="upPickFile()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                <span>Прикрепить файл</span>
+              </button>
+              <button type="button" role="menuitem" id="up-fmt" onclick="upToggleFmt()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/></svg>
+                <span>Форматирование</span>
+              </button>
+            </div>
             <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
             <div class="composer-field">
           <div class="composer-slot" id="composer-slot"><div class="composer-slot-inner">
@@ -2312,9 +2329,24 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
+          <div id="lprev-bar" style="display:none" class="lprev-bar">
+            <div class="lprev-thumb" id="lprev-thumb"></div>
+            <div class="reply-bar-content">
+              <div class="lprev-title" id="lprev-title"></div>
+              <div class="reply-bar-text" id="lprev-site"></div>
+            </div>
+            <button onclick="dismissLinkPreview()" class="icon-btn" title="Не показывать превью" aria-label="Не показывать превью" style="width:24px;height:24px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div id="fmt-prev" style="display:none" class="fmt-prev">
+            <div class="fmt-prev-l">Превью — так увидят получатели</div>
+            <div class="fmt-prev-b" id="fmt-prev-b"></div>
+          </div>
+          <div id="fmt-bar" style="display:none" class="fmt-bar" onmousedown="event.preventDefault()" onclick="fmtBarClick(event)">${Fmt.barHtml()}</div>
           </div></div>
               <div class="composer-field-row">
-              <textarea id="msg-input" rows="1" placeholder="Сообщение…" onkeydown="handleKey(event)" oninput="onMsgInput(this)" onfocus="closeEmojiPicker()" onpointerdown="closeEmojiPicker()"></textarea>
+              <div id="msg-input" class="fmt-ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Сообщение" data-ph="Сообщение…" spellcheck="true" onkeydown="handleKey(event)" oninput="onMsgInput(this)" onfocus="closeEmojiPicker()" onpointerdown="closeEmojiPicker()"></div>
               <button class="composer-icon-btn" title="Эмодзи" onclick="toggleEmojiPicker(event)">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 3 4 3 4-3 4-3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
               </button>
@@ -2330,6 +2362,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
 
   requestAnimationFrame(syncInputBarHeight);
   initComposerSlot();
+  initComposerFmt();
   scApplyComposerState(chatId);
   applyAvatars();
   const sendBtn = document.getElementById('send-btn');
@@ -2710,15 +2743,11 @@ function insertEmoji(em) {
   trackEmojiUse(em);
   const input = document.getElementById('msg-input');
   if (!input) return;
-  const start = input.selectionStart, end = input.selectionEnd;
-  input.value = input.value.slice(0, start) + em + input.value.slice(end);
-  input.selectionStart = input.selectionEnd = start + em.length;
   // Возвращаем курсор в поле, но это не то же самое, что поставить его туда
   // руками: там закрытие панели как раз нужно, поэтому помечаем свой вызов
   _emojiInserting = true;
-  input.focus();
+  Fmt.insertText(input, em);   // фокус возвращается в поле, событие input обновит остальное
   _emojiInserting = false;
-  onMsgInput(input);
 }
 
 // ── RENDER MESSAGES ──
@@ -3743,7 +3772,7 @@ function senderNameClass(tag) {
 function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   if (m.status && m.id > 0) S.msgStatus[m.id] = { ...m.status };
   const isSystem = m.sender_username === '__system__';
-  if (m.id > 0 && !isSystem) S.msgData.set(m.id, { forwardData: m.forward_data || null, senderId: m.sender_id, senderName: m.sender_name, senderIsBot: !!m.sender_is_bot, text: m.text, attachment: m.attachment });
+  if (m.id > 0 && !isSystem) S.msgData.set(m.id, { forwardData: m.forward_data || null, senderId: m.sender_id, senderName: m.sender_name, senderIsBot: !!m.sender_is_bot, text: m.text, attachment: m.attachment, linkPreview: m.link_preview || null });
   if (m.id > 0 && S.secretChatIds.has(m.chat_id)) S.scMsgObjs.set(m.id, m);
   const mine = m.sender_id===S.user.id;
   const time = fmtTime(m.sent_at);
@@ -3779,6 +3808,10 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const scDecryptedText = isSecretChat ? S.scDecrypted?.get(m.id) : undefined;
   const scLocked = isSecretChat && scDecryptedText === undefined && !isDeleted && !isSystem;
   const effectiveText = scLocked ? null : (isSecretChat ? (scDecryptedText ?? '') : m.text);
+  // Блок кода или превью ссылки: пузырь собирается из частей (см. bubbleBody). Секретные чаты и боты — как обычно
+  const lp = (!isDeleted && !isSecretChat && !m.sender_is_bot) ? (m.link_preview || null) : null;
+  const comp = (!isDeleted && !isSecretChat && !m.sender_is_bot && typeof m.text === 'string' && (lp || Fmt.hasCode(m.text)))
+    ? bubbleBody(m.text, lp, m.edited_at) : null;
   const bodyText = isDeleted ? '<em class="irc-deleted">Сообщение удалено</em>'
     : scLocked ? SC.skeletonHtml(m.text)
     : m.sender_is_bot ? effectiveText + (m.edited_at ? ' <span class="edited-tag">изм.</span>' : '') : linkifyText(effectiveText) + (m.edited_at?` <span class="edited-tag">изм.</span>`:'');
@@ -3892,11 +3925,11 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       ${header}
       <div class="bubble-row">
         ${avCol}
-        <div class="msg-bubble${bareImage ? ' bubble-photo' : ''}">
-          ${replyHtml}
+        <div class="msg-bubble${bareImage ? ' bubble-photo' : ''}${comp ? comp.cls : ''}">
+          ${comp ? `${comp.lpHtml}${(m.reply_to_id || fd) ? `<div class="ct-pad">${replyHtml}${forwardHtml}</div>` : ''}${attachHtml}${comp.html}` : `${replyHtml}
           ${forwardHtml}
           ${attachHtml}
-          ${(isSecretChat ? (scLocked || scDecryptedText) : m.text) || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}${emojiOnly?' emoji-only':''}${scLocked?' sc-locked':''}">${bodyText}</div>` : ''}
+          ${(isSecretChat ? (scLocked || scDecryptedText) : m.text) || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}${emojiOnly?' emoji-only':''}${scLocked?' sc-locked':''}">${bodyText}</div>` : ''}`}
           ${metaHtml}
         </div>
       </div>
@@ -4122,7 +4155,7 @@ function hideReactionPicker() {
 let _mentionIdx = -1;
 
 function _getMentionQuery(el) {
-  const m = el.value.slice(0, el.selectionStart).match(/@(\S*)$/);
+  const m = Fmt.textBeforeCaret(el).match(/@(\S*)$/);
   return m ? m[1] : null;
 }
 function _mentionMembers(includeSelf = false) {
@@ -4180,30 +4213,17 @@ function mentionUserInComposer(senderId) {
   const u = senderId === S.user.id ? S.user : S.allUsers.find(u => u.id === senderId);
   const name = u?.display_name || u?.username;
   if (!el || !name) return;
-  const cursor = el.selectionStart ?? el.value.length;
-  const before = el.value.slice(0, cursor);
-  const after = el.value.slice(cursor);
+  const before = Fmt.textBeforeCaret(el);
   const needsSpace = before && !/\s$/.test(before);
-  const insertion = (needsSpace ? ' ' : '') + '@' + name + ' ';
-  el.value = before + insertion + after;
-  const newPos = before.length + insertion.length;
-  el.selectionStart = el.selectionEnd = newPos;
-  el.focus();
-  autoResize(el);
+  Fmt.insertText(el, (needsSpace ? ' ' : '') + '@' + name + ' ');
 }
 
 function insertMention(name) {
   const el = document.getElementById('msg-input');
   if (!el) return;
-  const cursor = el.selectionStart;
-  const before = el.value.slice(0, cursor);
-  const m = before.match(/@(\S*)$/);
+  const m = Fmt.textBeforeCaret(el).match(/@(\S*)$/);
   if (!m) return;
-  const newBefore = before.slice(0, before.length - m[0].length) + '@' + name + ' ';
-  el.value = newBefore + el.value.slice(cursor);
-  el.selectionStart = el.selectionEnd = newBefore.length;
-  el.focus();
-  autoResize(el);
+  Fmt.replaceBefore(el, m[0].length, '@' + name + ' ');
   hideMentionPopup();
 }
 
@@ -4219,8 +4239,142 @@ function handleKey(e) {
       return;
     }
   }
-  if (e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendOrEdit(); }
+  // Блок кода и сочетания Ctrl/Cmd+B, I, E обрабатывает поле само
+  if (Fmt.keydown(e, e.currentTarget || document.getElementById('msg-input'))) return;
+  if (e.key==='Enter'&&(!e.shiftKey || e.ctrlKey || e.metaKey)){ e.preventDefault(); sendOrEdit(); }
 }
+
+// Бар папок (в веб-клиенте нет учётных записей, только папки)
+function renderRail() {
+  const rail = document.getElementById('acc-rail');
+  if (!rail) return;
+  const show = (S.folders || []).length > 0;
+  rail.hidden = !show;
+  rail.innerHTML = show ? foldersRailHtml(false) : '';
+  if (show) foldersRailFit();
+}
+
+// ── ФОРМАТИРОВАНИЕ И ПРЕВЬЮ ССЫЛКИ В ПОЛЕ ВВОДА ──
+// Панель форматирования, превью набранного и превью ссылки — выдвижная часть поля (composer-slot).
+// Стоят над самим полем, как ответ и вложение; открывать и закрывать их можно независимо
+const CMP = { fmt: false, prev: false, lw: null };
+
+function initComposerFmt() {
+  const el = document.getElementById('msg-input');
+  if (!el) return;
+  Fmt.init(el);
+  CMP.lw = Fmt.linkWatch({
+    getText: () => el.value,
+    fetchPreview: async url => S.secretChatIds.has(S.activeChatId) ? null : ((await api('GET', '/preview?url=' + encodeURIComponent(url)))?.preview || null),
+    onChange: p => paintLinkPreview(p),
+  });
+  syncFmt();
+  document.addEventListener('selectionchange', fmtSelChange);
+}
+function fmtSelChange() {
+  const el = document.getElementById('msg-input');
+  if (!el) { document.removeEventListener('selectionchange', fmtSelChange); return; }
+  if (CMP.fmt && document.activeElement === el) syncFmtState();
+}
+// Вызывается из onMsgInput: текст изменился
+function cmpInput() {
+  CMP.lw?.check();
+  if (CMP.fmt) { syncFmtState(); paintFmtPreview(); }
+}
+function toggleUpMenu(e) {
+  e?.stopPropagation();
+  const m = document.getElementById('up-menu');
+  if (!m) return;
+  m.hidden = !m.hidden;
+  document.getElementById('up-btn')?.setAttribute('aria-expanded', String(!m.hidden));
+  document.getElementById('up-fmt')?.classList.toggle('on', CMP.fmt);
+}
+function closeUpMenu() {
+  const m = document.getElementById('up-menu');
+  if (m && !m.hidden) { m.hidden = true; document.getElementById('up-btn')?.setAttribute('aria-expanded', 'false'); }
+}
+document.addEventListener('click', e => { if (!e.target.closest('#up-menu, #up-btn')) closeUpMenu(); });
+function upPickFile() { closeUpMenu(); pickFile(); }
+function upToggleFmt() {
+  closeUpMenu();
+  CMP.fmt = !CMP.fmt;
+  syncFmt();
+  if (CMP.fmt) document.getElementById('msg-input')?.focus();
+}
+function syncFmt() {
+  const bar = document.getElementById('fmt-bar'), prev = document.getElementById('fmt-prev');
+  if (bar) bar.style.display = CMP.fmt ? '' : 'none';
+  if (prev) prev.style.display = (CMP.fmt && CMP.prev) ? '' : 'none';
+  bar?.querySelector('[data-f=prev]')?.classList.toggle('on', CMP.prev);
+  if (CMP.fmt) { syncFmtState(); paintFmtPreview(); }
+  document.getElementById('up-fmt')?.classList.toggle('on', CMP.fmt);
+}
+function syncFmtState() {
+  const el = document.getElementById('msg-input'), bar = document.getElementById('fmt-bar');
+  if (!el || !bar) return;
+  const st = Fmt.state(el);
+  for (const k of ['b', 'i', 'c', 'blk']) bar.querySelector(`[data-f=${k}]`)?.classList.toggle('on', !!st[k]);
+}
+function fmtBarClick(e) {
+  const b = e.target.closest('[data-f]'); if (!b) return;
+  const el = document.getElementById('msg-input'), k = b.dataset.f;
+  if (k === 'close') { CMP.fmt = false; syncFmt(); el?.focus(); return; }
+  if (k === 'prev') { CMP.prev = !CMP.prev; syncFmt(); return; }
+  Fmt.cmd(el, k);
+  onMsgInput(el);
+}
+// Превью набранного сообщения: так его увидят получатели
+function paintFmtPreview() {
+  const box = document.getElementById('fmt-prev-b');
+  if (!box || !CMP.prev) return;
+  const el = document.getElementById('msg-input');
+  const text = el ? el.value : '';
+  if (!text.trim()) { box.innerHTML = '<span class="fmt-prev-empty">Набранный текст появится здесь</span>'; return; }
+  const b = bubbleBody(text, CMP.lw?.current() || null, null);
+  box.innerHTML = `<div class="msg-bubble fmt-prev-bubble${b.cls}">${b.lpHtml}${b.html}</div>`;
+}
+function paintLinkPreview(p) {
+  const bar = document.getElementById('lprev-bar');
+  if (!bar) return;
+  if (p) {
+    document.getElementById('lprev-title').textContent = p.title || p.site || p.url;
+    document.getElementById('lprev-site').textContent = p.site || '';
+    const th = document.getElementById('lprev-thumb');
+    th.innerHTML = p.image ? `<img src="${httpProto()}://${S.server}${esc(p.image)}" alt="" onerror="this.remove()">` : '';
+    th.style.display = p.image ? '' : 'none';
+  }
+  bar.style.display = p ? '' : 'none';
+  paintFmtPreview();
+}
+function dismissLinkPreview() { CMP.lw?.dismiss(); document.getElementById('msg-input')?.focus(); }
+
+// Тело пузыря из частей: превью ссылки, текст и блоки кода. cls — доп. классы пузыря
+// Блок кода и превью занимают пузырь во всю ширину, поэтому такой пузырь собирается без внутренних отступов.
+// Последним может быть и блок: тогда время и галочки встают в его нижней полосе
+function bubbleBody(text, lp, edited) {
+  const ps = Fmt.parts(text);
+  const base = `${httpProto()}://${S.server}`;
+  const out = [];
+  const lpHtml = lp ? Fmt.previewCard(lp, base) : '';
+  ps.forEach((p, i) => {
+    const last = i === ps.length - 1;
+    out.push(p.k === 'c' ? Fmt.codeBlock(p.v, last)
+      : `<div class="irc-text ct${last ? ' ct-last' : ''}">${linkifyText(p.v)}${last && edited ? ' <span class="edited-tag">изм.</span>' : ''}</div>`);
+  });
+  const endsCode = ps.length && ps[ps.length - 1].k === 'c';
+  return { lpHtml, html: out.join(''), cls: ' bubble-comp' + (lp ? ' has-lcard' : '') + (endsCode ? ' ends-code' : '') + (!lp && ps.length === 1 && ps[0].k === 'c' ? ' code-only' : ''), endsCode };
+}
+function openLinkUrl(url) {
+  document.getElementById('modal-link').dataset.url = url;
+  document.getElementById('link-modal-url').textContent = url;
+  openModal('modal-link');
+}
+// Копирование кода и переход по карточке превью — по нажатию в любом месте окна
+document.addEventListener('click', e => {
+  if (Fmt.copyClick(e)) return;
+  const c = e.target.closest('.lcard[data-fmt-url]');
+  if (c) openLinkUrl(c.dataset.fmtUrl);
+});
 
 let typingSendTimer = null;
 
@@ -4233,8 +4387,8 @@ function _updateSendBtn(el) {
 
 // silent=true — восстановление черновика при открытии чата: не шлём typing собеседнику
 function onMsgInput(el, silent = false) {
-  autoResize(el);
   _updateMentionPopup(el);
+  cmpInput();
   // Сохраняем черновик для текущего чата, чтобы он не терялся при переключении
   if (S.activeChatId && !S.editingMessageId) {
     if (el.value) S.drafts[S.activeChatId] = el.value;
@@ -4334,13 +4488,8 @@ function clearTyping(chatId, senderName) {
   renderTypingPreview(chatId);
 }
 
-function autoResize(el) {
-  el.style.overflow = 'hidden';
-  el.style.height = '20px';
-  const sh = el.scrollHeight;
-  el.style.height = Math.max(20, Math.min(sh, 120)) + 'px';
-  if (sh > 120) el.style.overflow = 'auto';
-}
+// Поле ввода растёт само (contenteditable)
+function autoResize() {}
 
 async function sendOrEdit() {
   if (S.editingMessageId) { submitEdit(); return; }
@@ -4356,6 +4505,7 @@ async function sendOrEdit() {
     return;
   }
   let payload, secretAtt = null;
+  const sendLp = isSecret ? null : (CMP.lw?.current() || null);
   if (isSecret) {
     S.forwardMsg = null;
     const key = SC.keyOf(S.activeChatId);
@@ -4371,6 +4521,7 @@ async function sendOrEdit() {
     if (S.replyTo) payload.reply_to_id = S.replyTo.id;
     if (_pendingAttachment) payload.attachment = _pendingAttachment;
     if (S.forwardMsg) payload.forward_data = S.forwardMsg;
+    if (sendLp) payload.link_preview = sendLp;
   }
 
   const tempMsg = {
@@ -4389,6 +4540,7 @@ async function sendOrEdit() {
     reply_attachment: S.replyTo?.attachment || null,
     reply_deleted: false,
     forward_data: S.forwardMsg || null,
+    link_preview: sendLp,
     attachment: _pendingAttachment || null,
     status: { delivered: 0, read: 0, total: 1 },
     reactions: [],
@@ -4413,7 +4565,9 @@ async function sendOrEdit() {
   // должна остаться открытой.
   closeEmojiPicker();
   delete S.drafts[S.activeChatId]; saveDrafts(); // черновик отправлен — очищаем
-  input.value=''; input.style.height='20px'; input.style.overflow='hidden';
+  input.value='';
+  CMP.lw?.reset();
+  syncFmt();
   const sendBtn = document.getElementById('send-btn');
   if (sendBtn) sendBtn.classList.remove('ready');
 }
@@ -4422,7 +4576,7 @@ function submitEdit() {
   const input = document.getElementById('msg-input');
   const text = input?.value.trim();
   if (!text || S.secretChatIds.has(S.activeChatId)) { cancelEdit(); return; }
-  S.ws.send(JSON.stringify({type:'edit_message', message_id:S.editingMessageId, text}));
+  S.ws.send(JSON.stringify({type:'edit_message', message_id:S.editingMessageId, text, link_preview: CMP.lw?.current() || null}));
   closeEmojiPicker();
   cancelEdit();
 }
@@ -4433,7 +4587,9 @@ function cancelEdit() {
   if (bar) bar.style.display='none';
   hideReplyBar();
   const input = document.getElementById('msg-input');
-  if (input) { input.value=''; input.style.height='auto'; }
+  if (input) input.value = '';
+  CMP.lw?.reset();
+  syncFmt();
 }
 
 // ── CONTEXT MENU ──
@@ -4537,6 +4693,9 @@ function ctxCopy() {
   const msgId = S.ctx.messageId;
   if (!msgId) return;
   const el = document.querySelector(`[data-msg-id="${msgId}"] .irc-text`);
+  const md = S.msgData.get(msgId);
+  // Сообщение с блоком кода копируем исходной разметкой: ограждения ``` сохраняют границы блока
+  if (md && !md.senderIsBot && !S.secretChatIds.has(S.activeChatId) && Fmt.hasCode(md.text)) { navigator.clipboard.writeText(md.text).catch(() => {}); return; }
   if (!el) return;
   navigator.clipboard.writeText(el.innerText).catch(() => {});
 }
@@ -4546,7 +4705,8 @@ function ctxReply() {
   const msgId = S.ctx.messageId;
   if (!msgId) return;
   const textEl = document.querySelector(`[data-msg-id="${msgId}"] .irc-text`);
-  const text = textEl?.innerText || '';
+  const md = S.msgData.get(msgId);
+  const text = (md && !md.senderIsBot && !S.secretChatIds.has(S.activeChatId) && Fmt.hasCode(md.text)) ? Fmt.noCode(md.text) : (textEl?.innerText || '');
   const msgEl = document.querySelector(`[data-msg-id="${msgId}"]`);
   const senderIdAttr = parseInt(msgEl?.dataset.senderId || '0');
   let senderName;
@@ -5053,13 +5213,18 @@ function hideCtxMenu() {
 function ctxEdit() {
   hideCtxMenu();
   if (!S.ctx.canEdit || S.secretChatIds.has(S.activeChatId)) return;
-  const el = document.querySelector(`[data-msg-id="${S.ctx.messageId}"] .irc-text`);
-  const text = el?.textContent?.replace(' изм.','').trim()||'';
+  const d = S.msgData.get(S.ctx.messageId);
+  let text;
+  if (d && !d.senderIsBot) text = d.text || '';    // исходная разметка: с ней в поле вернутся жирный, код и блоки
+  else {
+    const el = document.querySelector(`[data-msg-id="${S.ctx.messageId}"] .irc-text`);
+    text = el?.textContent?.replace(' изм.','').trim()||'';
+  }
   S.editingMessageId = S.ctx.messageId;
   const bar = document.getElementById('edit-bar');
   if (bar) bar.style.display='flex';
   const input = document.getElementById('msg-input');
-  if (input) { input.value=text; input.focus(); autoResize(input); }
+  if (input) { input.value = text; Fmt.focusEnd(input); CMP.lw?.load(d?.linkPreview || null, text); onMsgInput(input, true); }
 }
 
 async function ctxDelete() {
@@ -5358,6 +5523,7 @@ function connectWS() {
     }
 
     if (data.type==='reload_chats') { loadChats(); }
+    if (data.type==='folders_changed') scheduleFoldersReload();
     if (data.type==='chat_deleted') { removeChatLocally(data.chat_id); }
 
     if (data.type==='chat_read') {
@@ -5659,6 +5825,7 @@ function connectWS() {
 
 function updateUnreadTotal() {
   const total = Object.values(S.unread).reduce((a,b)=>a+b,0);
+  if (typeof updateFolderBadges === 'function' && S.folders?.length) updateFolderBadges();
   document.title = total > 0 ? `(${total}) Electron` : 'Electron';
   // Счётчик на иконке установленного PWA (iOS 16.4+, Chrome, Edge)
   try {
@@ -6308,6 +6475,7 @@ function showChatCtx(e, chatId) {
   e.stopPropagation();
   const chat = S.chats.find(c => c.id === chatId);
   S.ctxChatId = chatId;
+  S.ctxChatPos = { x: e.clientX, y: e.clientY };
   const menu = document.getElementById('ctx-chat-menu');
   const isRoom = chat?.type === 'room';
   const isGroup = chat?.type === 'group';

@@ -7,35 +7,85 @@ B.ui.composer = (function () {
   var COLS = 8;
 
   function cs(el) { return el._cs; }
-  function ta(el) { return el.querySelector('.comp textarea'); }
+  function ta(el) { return el.querySelector('.comp .ce'); }
   function comp(el) { return el.querySelector('.comp'); }
   function chatOf(el) { return B.find(+el.dataset.cid); }
 
   function mount(el, chat) {
-    var c = comp(el); el._cs = { reply: null, fwd: null, edit: null, att: null, panel: null, mode: 'emoji', tab: 0 };
+    var c = comp(el); el._cs = { reply: null, fwd: null, edit: null, att: null, panel: null, mode: 'emoji', tab: 0, fmt: false, prev: false, lw: null };
     c.innerHTML =
       '<div class="ctx"></div><div class="scb" hidden></div><div class="ronote" hidden></div>' +
       '<div class="tpr"><span class="dots"><i></i><i></i><i></i></span><span class="tpt"></span></div>' +
-      '<div class="crow"><div class="cbtn att" role="button" data-k="attach" aria-label="Прикрепить">' + ic('clip', 24, 1.8) + '</div>' +
+      '<div class="crow"><div class="cbtn att" role="button" data-k="up" aria-label="Прикрепить, форматирование" aria-haspopup="menu">' + ic('chevup', 26, 2.2) + '</div>' +
+        '<div class="upmenu" role="menu"><div class="umi" role="menuitem" data-k="attach">' + ic('clip', 22, 1.8) + '<span>Прикрепить файл</span></div><div class="umi" role="menuitem" data-k="fmt">' + ic('pencil', 22, 1.8) + '<span>Форматирование</span></div></div>' +
         '<input type="file" style="display:none">' +
-        '<div class="cfield"><span class="ph">Сообщение</span><textarea rows="1" aria-label="Сообщение" enterkeyhint="return" autocapitalize="sentences"></textarea>' +
-        '<button class="cbtn cem" data-k="emo" aria-label="Смайлы">' + ic('smile', 24, 1.7) + '</button></div>' +
+        '<div class="cfield"><div class="fxs"><div class="lpv" hidden></div><div class="fpv" hidden><div class="fpl">Превью — так увидят получатели</div><div class="fpb"></div></div><div class="fbar" hidden>' + Fmt.barHtml() + '</div></div>' +
+          '<div class="frow"><span class="ph">Сообщение</span><div class="ce fmt-ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Сообщение" enterkeyhint="return" autocapitalize="sentences" spellcheck="true"></div>' +
+          '<button class="cbtn cem" data-k="emo" aria-label="Смайлы">' + ic('smile', 24, 1.7) + '</button></div></div>' +
         '<button class="csend" data-k="send" aria-label="Отправить">' + ic('up', 20, 2.8) + '</button></div>' +
       '<div class="epanel"></div><div class="hb"></div>';
-    var t = ta(el), file = c.querySelector('input[type=file]');
-    t.value = B.drafts[chat.id] || ''; autosize(t); syncHas(el);
+    var t = ta(el), file = c.querySelector('input[type=file]'), cst = cs(el);
+    Fmt.init(t);
+    cst.lw = Fmt.linkWatch({
+      getText: function () { return t.value; },
+      fetchPreview: async function (u) { if (B.S.secretChatIds.has(+el.dataset.cid)) return null; var r = await B.api('GET', '/preview?url=' + encodeURIComponent(u)); return r && r.preview || null; },
+      onChange: function () { paintFmt(el); }
+    });
+    t.value = B.drafts[chat.id] || ''; autosize(t); syncHas(el); cst.lw.check();
     file.addEventListener('change', function () { var f = file.files[0]; file.value = ''; if (f) attach(el, f); });
-    t.addEventListener('input', function () { B.drafts[chat.id] = t.value; autosize(t); syncHas(el); if (!cs(el).edit) B.msgs.typing(); });
-    t.addEventListener('focus', function () { closePanel(el); });
-    t.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && matchMedia('(pointer:fine)').matches) { e.preventDefault(); send(el); } });
-    c.addEventListener('mousedown', function (e) { if (e.target.closest('input')) return; if (e.target.closest('.epanel,.cbtn:not(.att),.csend')) e.preventDefault(); });   // нажатие на кнопки не должно убирать клавиатуру
+    t.addEventListener('input', function () { B.drafts[chat.id] = t.value; autosize(t); syncHas(el); cs(el).lw.check(); if (cs(el).fmt) { fmtState(el); paintPrev(el); } if (!cs(el).edit) B.msgs.typing(); });
+    t.addEventListener('focus', function () { closePanel(el); closeUp(el); });
+    t.addEventListener('keydown', function (e) {
+      if (e.isComposing) return;
+      if (Fmt.keydown(e, t)) return;     // блок кода, Ctrl/Cmd+B, I, E
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || (!e.shiftKey && matchMedia('(pointer:fine)').matches))) { e.preventDefault(); send(el); }
+    });
+    document.addEventListener('selectionchange', function () { if (!t.isConnected) return; if (cs(el).fmt && document.activeElement === t) fmtState(el); });
+    c.addEventListener('mousedown', function (e) { if (e.target.closest('input')) return; if (e.target.closest('.epanel,.cbtn:not(.att),.csend,.fbar,.lpv')) e.preventDefault(); });   // нажатие на кнопки не должно убирать клавиатуру
+    document.addEventListener('click', function (e) { if (!c.isConnected) return; if (!e.target.closest('.upmenu,.cbtn.att')) closeUp(el); });
     c.addEventListener('click', function (e) { onClick(el, e); });
     renderCtx(el); sync(el);
   }
 
+  // Поле растёт само (contenteditable); здесь только скрываем подсказку «Сообщение», когда в поле что-то есть
   function autosize(t) {
-    t.style.height = '36px'; if (t.value) t.style.height = Math.min(122, Math.max(36, t.scrollHeight)) + 'px';
-    var f = t.parentNode; if (f) f.classList.toggle('filled', !!t.value);
+    var f = t.closest('.cfield'); if (f) f.classList.toggle('filled', !!(t.textContent || t.querySelector('pre')));
+  }
+  // ── меню «↑», панель форматирования и превью ──
+  function closeUp(el) { var c = comp(el); if (c) c.querySelector('.crow').classList.remove('up'); }
+  function paintFmt(el) { paintLp(el); paintPrev(el); }
+  function paintLp(el) {
+    var s = cs(el), box = comp(el).querySelector('.lpv'), p = s.lw && s.lw.current();
+    box.hidden = !p;
+    if (p) box.innerHTML = '<span class="lth">' + (p.image ? '<img src="' + esc(B.http() + '://' + B.S.server + p.image) + '" alt="">' : ic('link', 18, 2)) + '</span><div class="lpt"><b>' + esc(p.title || p.site || p.url) + '</b><span>' + esc(p.site || '') + '</span></div><div class="lpx" role="button" data-k="lpx" aria-label="Не показывать превью">' + ic('x', 14, 2.6) + '</div>';
+    comp(el).querySelector('.cfield').classList.toggle('ext', !!p || !!s.fmt);
+  }
+  function paintPrev(el) {
+    var s = cs(el), box = comp(el).querySelector('.fpv'), t = ta(el);
+    box.hidden = !(s.fmt && s.prev); if (box.hidden) return;
+    var text = t.value, b = box.querySelector('.fpb');
+    if (!text.trim()) { b.innerHTML = '<span class="fpe">Набранный текст появится здесь</span>'; return; }
+    var pb = B.ui.chat.previewBody(text, s.lw && s.lw.current(), chatOf(el));
+    b.innerHTML = '<div class="bub' + pb.cls + '">' + pb.html + '</div>';
+  }
+  function fmtState(el) {
+    var bar = comp(el).querySelector('.fbar'), st = Fmt.state(ta(el));
+    ['b', 'i', 'c', 'blk'].forEach(function (k) { var b = bar.querySelector('[data-f="' + k + '"]'); if (b) b.classList.toggle('on', !!st[k]); });
+  }
+  function syncFmt(el) {
+    var s = cs(el), c = comp(el);
+    c.querySelector('.fbar').hidden = !s.fmt;
+    c.querySelector('.umi[data-k="fmt"]').classList.toggle('on', s.fmt);
+    c.querySelector('.fbar [data-f="prev"]').classList.toggle('on', s.prev);
+    c.querySelector('.cfield').classList.toggle('ext', s.fmt || !!(s.lw && s.lw.current()));
+    if (s.fmt) fmtState(el);
+    paintPrev(el);
+  }
+  function fmtClick(el, k) {
+    var s = cs(el), t = ta(el);
+    if (k === 'close') { s.fmt = false; syncFmt(el); return; }
+    if (k === 'prev') { s.prev = !s.prev; syncFmt(el); return; }
+    Fmt.cmd(t, k); t.dispatchEvent(new Event('input', { bubbles: true }));
   }
   function syncHas(el) {
     var s = cs(el), t = ta(el); if (!t) return;
@@ -85,7 +135,7 @@ B.ui.composer = (function () {
   function clear(el, what) {
     var s = cs(el), t = ta(el);
     if (what === 'att') { B.upload.cancel(s.att && s.att.done ? s.att.data : null); s.att = null; }
-    else if (what === 'edit') { s.edit = null; t.value = ''; B.drafts[+el.dataset.cid] = ''; autosize(t); }
+    else if (what === 'edit') { s.edit = null; t.value = ''; B.drafts[+el.dataset.cid] = ''; autosize(t); s.lw.reset(); }
     else s[what] = null;
     renderCtx(el);
   }
@@ -108,7 +158,7 @@ B.ui.composer = (function () {
   function reply(el, m) {
     if (!m || m.deleted) return; var s = cs(el), mine = m.sender_id === B.S.user.id;
     s.edit = null;
-    s.reply = { id: m.id, senderId: m.sender_id, senderTag: m.sender_tag, senderName: mine ? B.S.user.display_name : (m.sender_name || ''), text: (m.text || (m.attachment ? '📎 ' + (m.attachment.name || 'Вложение') : '')).slice(0, 100) };
+    s.reply = { id: m.id, senderId: m.sender_id, senderTag: m.sender_tag, senderName: mine ? B.S.user.display_name : (m.sender_name || ''), text: (Fmt.noCode(m.text || '') || (m.attachment ? '📎 ' + (m.attachment.name || 'Вложение') : '')).slice(0, 100) };
     renderCtx(el); ta(el).focus();
   }
   function forward(el, fwd) { var s = cs(el); s.fwd = fwd; renderCtx(el); ta(el).focus(); }
@@ -116,26 +166,24 @@ B.ui.composer = (function () {
     if (!m || m.deleted) return;
     if (Date.now() / 1000 - m.sent_at > (B.S.editLimit || 120)) { B.toast.show('Время редактирования истекло'); return; }
     var s = cs(el), t = ta(el); s.edit = m.id; s.reply = null; if (s.att) clear(el, 'att');
-    t.value = m.text || ''; autosize(t); renderCtx(el); t.focus();
+    t.value = m.text || ''; autosize(t); renderCtx(el); Fmt.focusEnd(t); s.lw.load(m.link_preview || null, m.text || '');
   }
   function mention(el, id, name) {
     var t = ta(el); if (!t || !name || comp(el).querySelector('.crow.off')) return;
     if (id === B.S.user.id) name = B.S.user.display_name;
-    var pos = t.selectionStart == null ? t.value.length : t.selectionStart, before = t.value.slice(0, pos), after = t.value.slice(pos);
-    var ins = (before && !/\s$/.test(before) ? ' ' : '') + '@' + name + ' ';
-    t.value = before + ins + after; t.selectionStart = t.selectionEnd = before.length + ins.length;
-    B.drafts[+el.dataset.cid] = t.value; autosize(t); syncHas(el); t.focus();
+    var before = Fmt.textBeforeCaret(t);
+    Fmt.insertText(t, (before && !/\s$/.test(before) ? ' ' : '') + '@' + name + ' ');
   }
   function send(el) {
     var s = cs(el), t = ta(el), chat = chatOf(el), text = t.value.trim();
     if (s.edit) {
-      if (text) B.msgs.edit(s.edit, text);
-      s.edit = null; t.value = ''; B.drafts[chat.id] = ''; autosize(t); renderCtx(el); return;
+      if (text) B.msgs.edit(s.edit, text, s.lw.current());
+      s.edit = null; t.value = ''; B.drafts[chat.id] = ''; autosize(t); renderCtx(el); s.lw.reset(); return;
     }
     if (s.att && !s.att.done) { B.toast.show('Дождитесь окончания загрузки'); return; }
-    B.msgs.send({ text: text, reply: s.reply, attachment: s.att ? s.att.data : null, forward: s.fwd }).then(function (ok) {
+    B.msgs.send({ text: text, reply: s.reply, attachment: s.att ? s.att.data : null, forward: s.fwd, linkPreview: s.lw.current() }).then(function (ok) {
       if (!ok) return;
-      s.reply = s.fwd = s.att = null; t.value = ''; B.drafts[chat.id] = ''; autosize(t); renderCtx(el); closePanel(el);
+      s.reply = s.fwd = s.att = null; t.value = ''; B.drafts[chat.id] = ''; autosize(t); renderCtx(el); closePanel(el); s.lw.reset();
     });
   }
   function sendGif(el, att) {
@@ -185,29 +233,25 @@ B.ui.composer = (function () {
     s.panel = false; c.classList.remove('pnl', 'gif', 'esearch'); c.querySelector('[data-k="emo"]').classList.remove('on');
     setTimeout(function () { if (!s.panel) c.querySelector('.epanel').innerHTML = ''; }, 320);
   }
-  function insert(el, em) {
-    var t = ta(el), a = t.selectionStart == null ? t.value.length : t.selectionStart, b = t.selectionEnd == null ? a : t.selectionEnd;
-    t.value = t.value.slice(0, a) + em + t.value.slice(b); t.selectionStart = t.selectionEnd = a + em.length;
-    B.drafts[+el.dataset.cid] = t.value; autosize(t); syncHas(el);
-  }
-  function del(el) {
-    var t = ta(el), a = t.selectionStart == null ? t.value.length : t.selectionStart, b = t.selectionEnd == null ? a : t.selectionEnd;
-    if (a !== b) t.value = t.value.slice(0, a) + t.value.slice(b);
-    else if (a > 0) { var chars = Array.from(t.value.slice(0, a)); chars.pop(); var head = chars.join(''); t.value = head + t.value.slice(a); a = head.length; }
-    t.selectionStart = t.selectionEnd = a; B.drafts[+el.dataset.cid] = t.value; autosize(t); syncHas(el);
-  }
+  // Смайл и удаление символа — по сохранённому выделению, без фокуса в поле: иначе над панелью всплыла бы клавиатура
+  function insert(el, em) { Fmt.insertQuiet(ta(el), em); }
+  function del(el) { Fmt.backspaceQuiet(ta(el)); }
 
   // Выбор файла как в прежней версии /m: скрепка — обычный div (не button), поле скрыто через display:none, а нажатие на
   // скрепку не гасится в mousedown: от нажатой button или погашенного mousedown iOS на миг рисует белый квадрат
   function pickFile(el) { comp(el).querySelector('input[type=file]').click(); }
 
   function onClick(el, e) {
+    var fb = e.target.closest('.fbar [data-f]'); if (fb) { fmtClick(el, fb.dataset.f); return; }
     var b = e.target.closest('[data-k]'); if (!b) return; var k = b.dataset.k, s = cs(el);
     if (k === 'send') send(el);
     else if (k === 'scopen') { B.secret.bannerOpen = +el.dataset.cid; sync(el); var ci = comp(el).querySelector('#sc-code'); if (ci) ci.focus(); }
     else if (k === 'scredeem') { var code = (comp(el).querySelector('#sc-code').value || '').trim(); if (code) B.secret.redeem(+el.dataset.cid, code).then(function () { sync(el); }); }
     else if (k === 'sccancel') { B.secret.cancelSync(+el.dataset.cid); sync(el); }
-    else if (k === 'attach') { if (!B.msgs.locked(chatOf(el))) pickFile(el); }
+    else if (k === 'up') { if (!B.msgs.locked(chatOf(el))) { var r = comp(el).querySelector('.crow'); r.classList.toggle('up'); } }
+    else if (k === 'attach') { closeUp(el); if (!B.msgs.locked(chatOf(el))) pickFile(el); }
+    else if (k === 'fmt') { closeUp(el); s.fmt = !s.fmt; syncFmt(el); if (s.fmt) ta(el).focus(); }
+    else if (k === 'lpx') { s.lw.dismiss(); }
     else if (k === 'emo') { if (comp(el).classList.contains('pnl')) { ta(el).focus(); } else openPanel(el); }
     else if (k === 'clr') clear(el, b.dataset.w);
     else if (k === 'em') { B.emoji.track(b.dataset.e); insert(el, b.dataset.e); }

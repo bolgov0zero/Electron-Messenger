@@ -8,12 +8,13 @@ B.avatar = {
     if (o.chat) attr = ' data-av-chat="' + o.chat + '"'; else if (o.user) attr = ' data-av-user="' + o.user + '" data-av-fb="' + B.esc(o.text || '') + '"';
     var st = o.dot ? (B.S.presence[o.dot] || 'offline') : 'offline';
     return '<div class="avw" style="--s:' + size + 'px"><div class="av"' + attr + ' style="--c1:' + c[0] + ';--c2:' + c[1] + '">' + B.esc(o.text || '') + '</div>' +
-      (o.dot && st !== 'offline' ? '<i class="pr' + (st === 'away' ? ' away' : '') + '"></i>' : '') + '</div>';
+      (o.fb || '') + (o.dot && st !== 'offline' ? '<i class="pr' + (st === 'away' ? ' away' : '') + '"></i>' : '') + '</div>';
   },
-  chat: function (c, size) {
-    var peer = B.peerId(c);
-    if (c.type === 'direct') return B.avatar.html({ id: peer || c.id, chat: c.id, text: B.fmt.initials(B.chatName(c)), dot: peer }, size);
-    return B.avatar.html({ id: c.id, chat: c.id, text: c.type === 'room' ? '#' : B.fmt.initials(B.chatName(c)) }, size);
+  // badge — значок папки в левом верхнем углу (в списке чатов)
+  chat: function (c, size, badge) {
+    var peer = B.peerId(c), fb = badge && B.folders ? B.folders.badge(c, size) : '';
+    if (c.type === 'direct') return B.avatar.html({ id: peer || c.id, chat: c.id, text: B.fmt.initials(B.chatName(c)), dot: peer, fb: fb }, size);
+    return B.avatar.html({ id: c.id, chat: c.id, text: c.type === 'room' ? '#' : B.fmt.initials(B.chatName(c)), fb: fb }, size);
   },
   user: function (id, name, size, nodot) { return B.avatar.html({ id: id, user: id, text: B.fmt.initials(name), dot: nodot ? 0 : id }, size); },
   _load: function (el, url, fb) {

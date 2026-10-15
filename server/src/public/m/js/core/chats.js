@@ -103,6 +103,7 @@ B.chats.groups = function (q) {
   q = (q || '').trim().toLowerCase();
   var list = B.S.chats.filter(function (c) { return !c.parent_id && (!q || B.chatName(c).toLowerCase().indexOf(q) >= 0); });
   var byTime = function (a, b) { return ((b.last_message && b.last_message.sent_at) || 0) - ((a.last_message && a.last_message.sent_at) || 0); };
+  if (!q && B.folders && B.folders.filter !== 'all') list = list.filter(B.folders.pass);   // выбрана папка (поиск идёт по всем чатам)
   return {
     rooms: list.filter(function (c) { return c.type === 'room'; }).sort(function (a, b) { return B.chatName(a).localeCompare(B.chatName(b), 'ru', { numeric: true }); }),
     pinned: list.filter(function (c) { return c.type !== 'room' && c.pinned; }).sort(byTime),
@@ -114,7 +115,7 @@ B.chats.preview = function (c) {
   var lm = c.last_message;
   if (!lm) return 'Нет сообщений';
   if (lm.deleted) return 'Сообщение удалено';
-  if (lm.text) return lm.text.replace(/<[^>]*>/g, '');
+  if (lm.text) return (window.Fmt ? Fmt.plain(lm.text) : lm.text).replace(/<[^>]*>/g, '');
   if (lm.forward_data && !lm.text) return 'Пересланное сообщение';
   if (lm.attachment) {
     var a = lm.attachment, mime = a.mime || '';

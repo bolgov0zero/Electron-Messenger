@@ -80,6 +80,7 @@ app.get('/files/enc_:name', require('./auth').authMiddleware, (req, res) => {
   res.sendFile(path.join(FILES_DIR, `enc_${req.params.name}`), err => { if (err) res.status(404).end(); });
 });
 app.use('/files', express.static(FILES_DIR, { maxAge: '1y', immutable: true }));
+app.use('/lp', express.static(require('./linkprev').DIR, { maxAge: '1y', immutable: true }));
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
@@ -98,6 +99,8 @@ const spacesRouter = require('./routes/spaces');
 app.use('/api/contacts', spacesRouter.contacts);
 app.use('/api/blocks', spacesRouter.blocks);
 app.use('/api/admin/workspaces', spacesRouter.admin);
+app.use('/api/folders', require('./routes/folders'));
+app.use('/api/preview', require('./routes/preview'));
 app.use('/api/push',  require('./routes/push'));
 app.use('/api/webhooks', require('./routes/webhooks'));
 app.use('/api/announcements', require('./routes/announcements'));

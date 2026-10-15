@@ -17,7 +17,7 @@ B.ui.chatlist = (function () {
       '<div class="swa lead"><button class="pin" data-sw="pin">' + ic(c.pinned ? 'unpin' : 'pin', 22, 2) + (c.pinned ? 'Открепить' : 'Закрепить') + '</button></div>' +
       '<div class="swa trail"><button class="mute" data-sw="mute">' + ic(c.muted ? 'bell' : 'bellOff', 22, 2) + (c.muted ? 'Звук' : 'Без звука') + '</button>' +
         (canDel ? '<button class="del" data-sw="del">' + ic('trash', 22, 2) + 'Удалить</button>' : '') + '</div>' +
-      '<div class="swf" data-open="' + c.id + '"><div class="row">' + B.avatar.chat(c, 54) +
+      '<div class="swf" data-open="' + c.id + '"><div class="row">' + B.avatar.chat(c, 54, true) +
         '<div class="rb"><div class="r1"><span class="rn">' + (c.is_secret ? '<span class="lk">' + ic('lock', 14, 2.2) + '</span>' : '') + '<span class="nm">' + esc(B.chatName(c)) + '</span>' + (c.muted ? '<span class="mu">' + ic('bellOff', 13, 2) + '</span>' : '') + '</span>' +
           '<span class="rt">' + (mine && lm.status ? B.ticks(lm.status) : '') + (lm ? B.fmt.chatListTime(lm.sent_at) : '') + (c.has_topics ? '<span class="chv">' + ic('chev', 14, 2.4) + '</span>' : '') + '</span></div>' +
         '<div class="r2"><div class="rm">' + pv + '</div>' + badge + '</div></div></div></div></div>';
@@ -31,8 +31,9 @@ B.ui.chatlist = (function () {
   }
   // Разделы как в клиенте: «Комнаты», «Закреплённые», «Все чаты» (последний показываем всегда), справа число чатов в разделе
   function sections(g) {
+    var all = B.folders.label();
     var sec = function (name, list) { return '<div class="hdr-s cnt">' + name + '<span>' + list.length + '</span></div>' + list.map(rowHtml).join(''); };
-    return (g.rooms.length ? sec('Комнаты', g.rooms) : '') + (g.pinned.length ? sec('Закреплённые', g.pinned) : '') + sec('Все чаты', g.rest);
+    return (g.rooms.length ? sec('Комнаты', g.rooms) : '') + (g.pinned.length ? sec('Закреплённые', g.pinned) : '') + sec(searching ? 'Все чаты' : all, g.rest);
   }
   function html() {
     var ql = q.trim().toLowerCase(), g;
@@ -44,6 +45,7 @@ B.ui.chatlist = (function () {
     }
     var h = '';
     if (!searching && B.push.shouldAsk()) h += '<div class="nbanner">' + ic('bell', 20, 2) + '<span>Разрешите уведомления, чтобы получать сообщения в фоне. <b data-cl="allow">Разрешить</b></span><button class="xx" data-cl="hide" aria-label="Закрыть">' + ic('x', 16, 2.4) + '</button></div>';
+    h += B.ui.folders.tabsHtml();
     g = B.chats.groups('');
     if (!g.total) return h + '<div class="empty"><b>' + (B.S.chats.length ? 'Ничего не найдено' : 'Чатов пока нет') + '</b>' + (B.S.chats.length ? '' : 'Начните разговор кнопкой в углу экрана.') + '</div>';
     return h + sections(g);
@@ -51,7 +53,10 @@ B.ui.chatlist = (function () {
   function render() {
     if (!dyn) return;
     if (busy) { dirty = true; return; }
-    dirty = false; dyn.innerHTML = html(); B.avatar.apply(dyn); updateBadge();
+    dirty = false;
+    var tin = dyn.querySelector('.mtabs-in'), tl = tin ? tin.scrollLeft : 0;   // вкладки папок не должны прыгать при перерисовке
+    dyn.innerHTML = html(); B.avatar.apply(dyn); updateBadge();
+    tin = dyn.querySelector('.mtabs-in'); if (tin) { tin.scrollLeft = tl; var on = tin.querySelector('.mtab.on'); if (on && !(tl)) { var l = on.offsetLeft - 16; if (l > 0) tin.scrollLeft = l; } }
   }
   function schedule() { if (renderTimer) return; renderTimer = setTimeout(function () { renderTimer = null; render(); }, 30); }
   function updateBadge() {
@@ -95,12 +100,15 @@ B.ui.chatlist = (function () {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     var f = e.target.closest('.swf'); if (!f || !f.parentElement.querySelector(':scope > .swa')) { G = null; return; }
     G = { id: e.pointerId, x: e.clientX, y: e.clientY, f: f, base: f._tx || 0, mode: null, tx: f._tx || 0 };
+    // Долгое нажатие — меню чата («В папку» и другое)
+    var gid = G.id; G.lp = setTimeout(function () { if (G && G.id === gid && !G.mode) { G.mode = 'lp'; suppressUntil = Infinity; try { navigator.vibrate && navigator.vibrate(10); } catch (_) {} B.ui.folders.chatMenu(+f.closest('.swrow').dataset.id); } }, 480);
   }
   function onMove(e) {
     if (!G || e.pointerId !== G.id) return;
     var dx = e.clientX - G.x, dy = e.clientY - G.y;
     if (!G.mode) {
       if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      clearTimeout(G.lp);
       if (Math.abs(dx) <= Math.abs(dy)) { G = null; return; }
       G.mode = 'row'; busy = true; closeRows(G.f); G.f.classList.add('drag');
       try { dyn.setPointerCapture(e.pointerId); } catch (_) {}
@@ -110,7 +118,9 @@ B.ui.chatlist = (function () {
   }
   function onUp(e, cancelled) {
     if (!G || e.pointerId !== G.id) return;
-    var g = G; G = null; if (g.mode !== 'row') return;
+    var g = G; G = null; clearTimeout(g.lp);
+    if (g.mode === 'lp') { suppressUntil = performance.now() + 350; return; }
+    if (g.mode !== 'row') return;
     suppressUntil = performance.now() + 350; busy = false;
     var f = g.f, tx = g.tx, row = f.closest('.swrow'), id = +row.dataset.id, w = row.querySelector('.swa.trail').offsetWidth, to = 0, c = B.find(id);
     f.classList.remove('drag');
@@ -134,6 +144,8 @@ B.ui.chatlist = (function () {
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter') input.blur(); });
     scrollEl.addEventListener('click', function (e) {
       var cl = e.target.closest('[data-cl]');
+      var ft = e.target.closest('[data-ft]');
+      if (ft) { B.folders.select(ft.dataset.ft === 'all' ? 'all' : +ft.dataset.ft); return; }
       if (cl) {
         var a = cl.dataset.cl;
         if (a === 'cancel') cancel();
@@ -155,6 +167,7 @@ B.ui.chatlist = (function () {
   }
 
   B.bus.on('chats:changed', schedule);
+  B.bus.on('folders:changed', schedule);
   B.bus.on('presence:changed', schedule);
   B.bus.on('avatar:updated', function () { B.avatar.clearCache(); schedule(); });
   B.bus.on('app:ready', function () { if (dyn) render(); });

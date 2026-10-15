@@ -29,5 +29,5 @@ B.kbd = {
     update();
   },
   // Убрать клавиатуру: снять фокус с поля ввода
-  hide: function () { var a = document.activeElement; if (a && a !== document.body && a.matches && a.matches('input,textarea')) a.blur(); }
+  hide: function () { var a = document.activeElement; if (a && a !== document.body && a.matches && a.matches('input,textarea,[contenteditable]')) a.blur(); }
 };

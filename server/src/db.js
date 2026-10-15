@@ -179,6 +179,25 @@ if (!db.prepare('PRAGMA table_info(chats)').all().some(c => c.name === 'topics_m
   db.exec("UPDATE chats SET topics_manual = 1 WHERE type = 'room' AND parent_id IS NULL");
 }
 tryAlter('ALTER TABLE messages ADD COLUMN forward_data TEXT');
+// Превью ссылки в сообщении: JSON {url, title, site, image}; картинка лежит у нас в chat_db/linkprev
+tryAlter('ALTER TABLE messages ADD COLUMN link_preview TEXT');
+// Папки чатов — личные: у каждого пользователя свои, общие для всех его клиентов
+db.exec(`
+  CREATE TABLE IF NOT EXISTS chat_folders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL DEFAULT '#4ea4ff',
+    icon TEXT NOT NULL DEFAULT 'folder',
+    position INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_chat_folders_user ON chat_folders(user_id);
+  CREATE TABLE IF NOT EXISTS chat_folder_items (
+    folder_id INTEGER NOT NULL REFERENCES chat_folders(id) ON DELETE CASCADE,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    PRIMARY KEY (folder_id, chat_id)
+  );
+`);
 tryAlter('ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0');
 // Пароль задан администратором (или это дефолтный admin) — при входе потребуем сменить
 tryAlter('ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0');
