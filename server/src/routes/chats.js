@@ -113,6 +113,7 @@ router.get('/:id/topics', authMiddleware, (req, res) => {
   const topics = db.prepare(`
     SELECT id, name, position, parent_id, type FROM chats WHERE parent_id = ? ORDER BY position, id
   `).all(chatId);
+  const manual = !!db.prepare('SELECT topics_manual FROM chats WHERE id = ?').get(chatId)?.topics_manual;
   const userId = req.user.id;
   const result = topics.map(s => {
     const unread = unreadCounts.inChat(userId, s.id);
@@ -129,6 +130,8 @@ router.get('/:id/topics', authMiddleware, (req, res) => {
     if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
     return { ...s, unread, unread_mentions: unreadMentions, has_avatar, last_message: last || null };
   });
+  // Автоматическая сортировка: тема с самым свежим сообщением выше, без сообщений — внизу в порядке администратора
+  if (!manual) result.sort((a, b) => ((b.last_message?.sent_at || 0) - (a.last_message?.sent_at || 0)));
   res.json(result);
 });
 

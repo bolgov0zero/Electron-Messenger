@@ -50,6 +50,8 @@ B.ws = {
       case 'message': {
         var m = data.message; chat = B.find(m.chat_id);
         if (chat) chat.last_message = m;
+        var tpar = m.parent_id || (chat && chat.parent_id);
+        if (tpar) { var tp = (S.topics[tpar] || []).find(function (t) { return t.id === m.chat_id; }); if (tp) tp.last_message = m; }   // строка в списке тем: по ней идёт сортировка
         if (S.activeChatId === m.chat_id) {
           // Открытый чат: «прочитано» и «доставлено» отправит экран переписки
           if (chat && chat.parent_id) setTimeout(B.chats.refresh, 400);
@@ -112,6 +114,7 @@ B.ws = {
           if (c) {
             if (data.name !== undefined) c.name = data.name;
             if (data.read_only !== undefined) c.read_only = data.read_only ? 1 : 0;
+            if (data.topics_manual !== undefined) { c.topics_manual = data.topics_manual ? 1 : 0; B.bus.emit('topics:reload'); }
           }
         }
         B.chats.onChanged(); B.bus.emit('chat:updated', { chatId: chatId });

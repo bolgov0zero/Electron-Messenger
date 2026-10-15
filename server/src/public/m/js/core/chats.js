@@ -39,6 +39,15 @@ B.chats = {
     B.S.chats = fresh.concat(topics);
     B.chats.onChanged();
   },
+  // Порядок тем: ручной (как задал администратор, так приходит с сервера) или по последнему сообщению (topics_manual у комнаты).
+  // Без сообщений тема остаётся внизу в порядке администратора
+  topicsOf: function (roomId) {
+    var subs = B.S.topics[roomId] || [], room = B.find(roomId);
+    if (!room || room.topics_manual) return subs;
+    return subs.map(function (t, i) { return [t, i]; }).sort(function (a, b) {
+      return (((b[0].last_message && b[0].last_message.sent_at) || 0) - ((a[0].last_message && a[0].last_message.sent_at) || 0)) || a[1] - b[1];
+    }).map(function (x) { return x[0]; });
+  },
   loadTopics: async function (roomId) {
     var subs = await B.api('GET', '/chats/' + roomId + '/topics');
     if (!subs) return;

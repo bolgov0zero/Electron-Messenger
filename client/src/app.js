@@ -2254,9 +2254,18 @@ function leaveRoom() {
     '<div class="empty-icon" style="font-size:36px">💬</div><p>Выберите чат</p></div>';
 }
 
+// Порядок тем в списке: ручной (задаёт администратор, так приходит с сервера) или по последнему сообщению.
+// Режим лежит в объекте комнаты (topics_manual); без сообщений тема остаётся внизу в порядке администратора
+function orderedTopics(roomId) {
+  const subs = S.topics[roomId] || [];
+  const room = S.chats.find(c => c.id === roomId);
+  if (!room || room.topics_manual) return subs;
+  return subs.map((t, i) => [t, i]).sort((a, b) => ((b[0].last_message?.sent_at || 0) - (a[0].last_message?.sent_at || 0)) || a[1] - b[1]).map(x => x[0]);
+}
+
 function renderTopicsPanel(roomId) {
   const panel = document.getElementById('topics-panel');
-  const subs = S.topics[roomId] || [];
+  const subs = orderedTopics(roomId);
   if (!subs.length) { closeTopicsPanel(); return; }
   // Тот же класс и те же отступы, что у подписи «Комнаты» в списке чатов —
   // поэтому верх первой темы совпадает с верхом первой комнаты и въезд
@@ -5218,6 +5227,8 @@ function connectWS() {
       if (parentId) {
         const parentChat = S.chats.find(c=>c.id===parentId);
         if (parentChat) parentChat.last_message = message;
+        const _tp = (S.topics[parentId] || []).find(s => s.id === chatId);   // строка темы в списке тем (по ней идёт сортировка)
+        if (_tp) _tp.last_message = message;
       }
       const chat = S.chats.find(c=>c.id===chatId) || (parentId ? S.chats.find(c=>c.id===parentId) : null);
       if (!parentId && chat) chat.last_message = message;
@@ -5462,6 +5473,7 @@ function connectWS() {
         if (c) {
           if (data.name !== undefined) c.name = data.name;
           if (data.read_only !== undefined) c.read_only = data.read_only ? 1 : 0;
+          if (data.topics_manual !== undefined) { c.topics_manual = data.topics_manual ? 1 : 0; if (S.activeRoomId === chatId) loadTopics(chatId, { render: true }); }
         }
       }
       renderChatList();

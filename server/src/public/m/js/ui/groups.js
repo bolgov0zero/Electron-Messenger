@@ -150,7 +150,7 @@ B.ui.groups = (function () {
   }
   function renderTopics() {
     var pg = B.nav.stack.map(function (s) { return s.el; }).find(function (e) { return e.dataset.room; }); if (!pg) return;
-    var subs = B.S.topics[+pg.dataset.room] || [], box = pg.querySelector('.scroll');
+    var subs = B.chats.topicsOf(+pg.dataset.room), box = pg.querySelector('.scroll');
     box.innerHTML = subs.length ? subs.map(topicRow).join('') : '<div class="empty"><b>Тем пока нет</b></div>';
     B.avatar.apply(box);
   }

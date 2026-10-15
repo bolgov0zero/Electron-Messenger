@@ -172,6 +172,12 @@ tryAlter('ALTER TABLE messages ADD COLUMN mentions TEXT'); // JSON-массив 
 tryAlter('ALTER TABLE users ADD COLUMN is_bot INTEGER DEFAULT 0');
 tryAlter('ALTER TABLE chats ADD COLUMN parent_id INTEGER REFERENCES chats(id) ON DELETE CASCADE');
 tryAlter('ALTER TABLE chats ADD COLUMN position INTEGER DEFAULT 0');
+// Сортировка тем комнаты: 1 — ручная (порядок задаёт администратор), 0 — по последнему сообщению. У уже существующих комнат
+// остаётся ручная, чтобы порядок не поменялся сам; у новых по умолчанию автоматическая
+if (!db.prepare('PRAGMA table_info(chats)').all().some(c => c.name === 'topics_manual')) {
+  tryAlter('ALTER TABLE chats ADD COLUMN topics_manual INTEGER DEFAULT 0');
+  db.exec("UPDATE chats SET topics_manual = 1 WHERE type = 'room' AND parent_id IS NULL");
+}
 tryAlter('ALTER TABLE messages ADD COLUMN forward_data TEXT');
 tryAlter('ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0');
 // Пароль задан администратором (или это дефолтный admin) — при входе потребуем сменить

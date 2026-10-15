@@ -4461,6 +4461,7 @@ async function rmOpen(id, tab = 'main') {
   const members = r ? (await api('GET', `/api/admin/chats/${r.id}/members`)) || [] : [];
   RM.form = {
     id: r?.id || null, tab, name: r?.name || '', avatar: null, hasAvatar: !!r?.has_avatar, readOnly: !!r?.read_only,
+    manual: !!r?.topics_manual, initialManual: !!r?.topics_manual,   // у новой комнаты — по последнему сообщению
     topics: (r?.topics || []).map(t => ({ id: t.id, name: t.name, msgs: t.message_count, avatar: null, hasAvatar: !!t.has_avatar, removed: false })),
     initialTopics: new Map((r?.topics || []).map(t => [t.id, t.name])),
     members: new Set(members.map(m => m.id)), initialMembers: new Set(members.map(m => m.id)),
@@ -4480,13 +4481,19 @@ function rmAv(name, size, base64, chatId, hasAvatar) {
 }
 
 function rmTopicsHtml(f) {
-  return `<p class="rm-hint">Темы делят комнату на отдельные ленты. Порядок — как в списке тем у людей: перетащите строку за ⋮⋮.</p>
+  return `<p class="rm-hint">Темы делят комнату на отдельные ленты. ${f.manual ? 'Порядок — как в списке тем у людей: перетащите строку за ⋮⋮.' : 'Сейчас темы идут по последнему сообщению: где писали недавно, та выше.'}</p>
+      <label class="toggle-switch rm-ro" style="gap:10px;margin-bottom:10px">
+        <input type="checkbox" ${f.manual ? 'checked' : ''} onchange="RM.form.manual = this.checked; rmRenderForm()">
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+        <div><div style="font-size:12.5px;font-weight:600;color:var(--c-text)">Ручная сортировка</div>
+          <div class="ua-hint">Включена: порядок задаёте вы, новые сообщения его не меняют. Выключена: темы сами встают по последнему сообщению</div></div>
+      </label>
       <div class="rm-list">${f.topics.map((t, i) => t.removed
         ? `<div class="rm-li rm-removed"><span class="rm-handle"></span>${rmAv(t.name, 28, t.avatar, t.id, t.hasAvatar)}<div style="flex:1;min-width:0"><div class="ux-name">${esc(t.name)}</div>
             <div class="rm-sub">Удалится при сохранении${t.msgs ? ` вместе с ${rmFmt(t.msgs)} ${uxPlural(t.msgs, 'сообщением', 'сообщениями', 'сообщениями')}` : ''}</div></div>
             <button type="button" class="btn btn-ghost btn-sm" onclick="rmTopic('restore', ${i})">Вернуть</button></div>`
-        : `<div class="rm-li" draggable="true" ondragstart="rmDrag(event, ${i})" ondragover="event.preventDefault(); this.classList.add('drop')" ondragleave="this.classList.remove('drop')" ondrop="rmDrop(event, ${i})">
-            <span class="rm-handle" title="Перетащите, чтобы поменять порядок">⋮⋮</span>${rmAv(t.name, 28, t.avatar, t.id, t.hasAvatar)}
+        : `<div class="rm-li"${f.manual ? ` draggable="true" ondragstart="rmDrag(event, ${i})" ondragover="event.preventDefault(); this.classList.add('drop')" ondragleave="this.classList.remove('drop')" ondrop="rmDrop(event, ${i})"` : ''}>
+            ${f.manual ? '<span class="rm-handle" title="Перетащите, чтобы поменять порядок">⋮⋮</span>' : '<span class="rm-handle"></span>'}${rmAv(t.name, 28, t.avatar, t.id, t.hasAvatar)}
             <div style="flex:1;min-width:0">${f.renaming === i
               ? `<input class="rm-rename" id="rm-rn" value="${esc(t.name)}" onkeydown="if(event.key==='Enter'){event.preventDefault(); rmTopic('rename', ${i}, this.value)} if(event.key==='Escape'){event.preventDefault(); rmTopic('rename', ${i})}" onblur="rmTopic('rename', ${i}, this.value)">`
               : `<div class="ux-name">${esc(t.name)}</div><div class="rm-sub">${t.id ? (t.msgs ? rmMsgs(t.msgs) : 'сообщений пока нет') : 'новая — появится после сохранения'}</div>`}</div>
@@ -4602,10 +4609,11 @@ async function rmSave() {
       const r = await api('POST', '/api/admin/rooms', { name, member_ids: [...f.members], read_only: f.readOnly });
       if (!r?.id) throw new Error(r?.error || 'Не удалось создать комнату');
       id = r.id;
+      if (f.manual) await api('PATCH', `/api/admin/rooms/${id}`, { topics_manual: true });   // у новой комнаты по умолчанию автоматическая
     } else {
       const cur = allRooms.find(x => x.id === id);
-      if (name !== cur?.name || !!f.readOnly !== !!cur?.read_only) {
-        const r = await api('PATCH', `/api/admin/rooms/${id}`, { name, read_only: !!f.readOnly });
+      if (name !== cur?.name || !!f.readOnly !== !!cur?.read_only || f.manual !== f.initialManual) {
+        const r = await api('PATCH', `/api/admin/rooms/${id}`, { name, read_only: !!f.readOnly, topics_manual: f.manual });
         if (!r?.ok) throw new Error(r?.error || 'Не удалось переименовать');
       }
       const add = [...f.members].filter(u => !f.initialMembers.has(u));
@@ -4622,7 +4630,7 @@ async function rmSave() {
       if (t.avatar && t.id) await api('POST', `/api/admin/topics/${t.id}/avatar`, { data: t.avatar });
     }
     const order = f.topics.filter(t => !t.removed && t.id).map(t => t.id);
-    if (order.length > 1) await api('POST', '/api/admin/topics/reorder', { ids: order });
+    if (order.length > 1 && f.manual) await api('POST', '/api/admin/topics/reorder', { ids: order });
     f.busy = false;
     closeModal('modal-room');
     toast(f.id ? 'Комната сохранена' : 'Комната создана', 'success');
