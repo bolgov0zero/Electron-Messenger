@@ -47,7 +47,9 @@
 .meta { float: right; margin: 6px 0 -4px 10px; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; line-height: 1; opacity: .75; position: relative; top: 3px; font-variant-numeric: tabular-nums; }
 .mrow.out .meta { color: #fff; }
 .mrow.out .meta .tk polyline { stroke: #fff !important; }
-.quote { border-left: 3px solid var(--rc, var(--accent)); padding: 2px 8px; margin: 1px 0 5px; border-radius: 3px; background: rgba(127, 127, 127, .14); font-size: calc(var(--mfs, 16px) - 2.5px); line-height: 1.25; cursor: pointer; }
+.quote { position: relative; overflow: hidden; padding: 2px 8px 2px 11px; margin: 1px 0 5px; border-radius: 8px; background: rgba(127, 127, 127, .14); font-size: calc(var(--mfs, 16px) - 2.5px); line-height: 1.25; cursor: pointer; }
+/* Полоса слева — отдельным слоем под скруглением, чтобы углы плашки были ровными */
+.quote::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--rc, var(--accent)); }
 /* В своём пузыре (фон акцента) цитата — светлая плашка: так цвета акцента и чужих авторов остаются читаемыми */
 .mrow.out .quote { background: rgba(255, 255, 255, .92); }
 .quote b { display: block; font-weight: 600; color: var(--rc, var(--accent)); }
