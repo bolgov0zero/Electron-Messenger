@@ -2444,10 +2444,12 @@ html.dark .announcement-title { color: var(--danger); }
 }
 .composer-main .composer-attach:hover { background: var(--modal-bg); color: var(--text); }
 .composer-main .send-btn {
-  background: var(--search-bg); color: var(--muted);
+  /* Фон непрозрачный: --search-bg бывает полупрозрачным (тёмно-синяя тема), и тогда сквозь кнопку видна лента */
+  background: linear-gradient(var(--search-bg), var(--search-bg)), var(--modal-bg); color: var(--muted);
   transition: background .15s, color .15s, box-shadow .15s, transform .12s;
 }
-.composer-main .send-btn.ready { background: var(--accent); border-color: transparent; color: #0c0e10; box-shadow: 0 8px 20px var(--accent-shadow); }
+/* Свечение держим внутри отступа под полосой ввода (16 px): иначе оно заходит на границу окна в нижнем углу */
+.composer-main .send-btn.ready { background: var(--accent); border-color: transparent; color: #0c0e10; box-shadow: 0 3px 10px -2px var(--accent-shadow); }
 .composer-main .send-btn:active { transform: scale(.94); }
 .composer-main .send-btn svg { position: relative; top: 1px; }
 .composer-field {
