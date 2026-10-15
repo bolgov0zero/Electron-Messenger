@@ -1,25 +1,21 @@
 'use strict';
 
-// Service worker /m — тот же механизм push-уведомлений, что у /chat/sw.js,
-// но со своим именем кэша и путями (у SW своя область видимости — /chat/sw.js
-// не покрывает /m/, поэтому нужен отдельный файл, а не общий).
-const CACHE = 'm-v1';
-// index.html (/m/) намеренно не прекэшируем — он всегда из сети, иначе
-// закэшированная страница может рендериться без актуальной вёрстки.
-const STATIC = ['/m/manifest.json', '/m/manifest-light.json', '/m/manifest-night.json'];
+// Service worker /m — тот же механизм push-уведомлений, что у /m/sw.js, но со своим
+// именем кэша и областью видимости (/m/): SW соседних клиентов её не покрывают.
+const CACHE = 'm-v2';
+// index.html (/m/) намеренно не прекэшируем — он всегда из сети, иначе закэшированная
+// страница может рендериться без актуальной вёрстки.
+const STATIC = ['/m/manifest.json', '/m/manifest-light.json'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(STATIC).catch(() => {}))
-  );
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC).catch(() => {})));
   self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => clients.claim())
+    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => clients.claim())
   );
 });
 

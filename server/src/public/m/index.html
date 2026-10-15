@@ -1,361 +1,98 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <script>
-// Версия сервера на момент отдачи этой страницы — та же подстановка ?v=,
-// что уже стоит на style.css/app.js ниже. По ней проверяем, не вышел ли
-// новый релиз, пока PWA была свёрнута (см. checkForUpdate в app.js) —
-// в отличие от обычной вкладки, у установленного PWA нет кнопки «обновить
-// страницу», и без явной проверки старые css/js могли жить в нём сколько
-// угодно, даже когда HTML-ответ сам по себе не кэшируется.
+// Версия приложения подставляется сервером в ?v=… (см. server/src/index.js). Она нужна, чтобы
+// проверять, не вышел ли новый релиз, пока установленная PWA была свёрнута (у неё нет кнопки «обновить»).
 window.APP_VERSION = '?v=1';
 </script>
 <script>
-// Тема, размер текста и акцент — до первого layout, без вспышки исходных
-// значений. Сессия (тема/размер) общая с /chat, акцент — отдельный ключ
-// localStorage, тоже общий с /chat (тот же 'accent'). Масштаб интерфейса
-// в /m зафиксирован на 100% (в /chat он настраивается) — --ui-scale/
-// --vh100/--vw100 не трогаем, остаются дефолтными из :root.
-(function(){
-  var fs = 'medium', t = 'dark';
-  var hs = document.documentElement.style;
+// Тема — до первой отрисовки, без вспышки. Настройка общая с /chat и /m (electron_v2 → settings.theme):
+// «light» — светлая, любое другое значение (dark, night) — тёмно-синяя.
+(function () {
+  var t = 'dark';
   try {
     var s = JSON.parse(localStorage.getItem('electron_v2') || '{}');
     t = (s.settings && s.settings.theme) || 'dark';
-    fs = (s.settings && s.settings.fontSize) || 'medium';
-  } catch (e) { t = 'dark'; }
-  // .dark — общий флаг «тёмный UI» (акцент/статус-бар и т.п.), .night поверх
-  // него переопределяет только фон на глубокий тёмно-синий (см. html.night в style.css)
-  document.documentElement.classList.toggle('dark', t === 'dark' || t === 'night');
-  document.documentElement.classList.toggle('night', t === 'night');
-  document.documentElement.classList.add('font-' + fs);
-  try {
-    var ACCENTS = {
-      teal:   [29, 168, 140],  blue:   [37, 118, 199], indigo: [92, 96, 205],
-      plum:   [146, 84, 190],  amber:  [186, 120, 38],
-    };
-    var ACCENTS_DARK = {
-      teal:   [41, 214, 184], blue:   [96, 170, 245], indigo: [143, 148, 245],
-      plum:   [196, 146, 240], amber: [236, 176, 92],
-    };
-    var key = localStorage.getItem('accent');
-    var dark = document.documentElement.classList.contains('dark');
-    var c = (dark ? ACCENTS_DARK : ACCENTS)[key] || (dark ? ACCENTS_DARK.teal : ACCENTS.teal);
-    var hex = '#' + c.map(function (v) { return v.toString(16).padStart(2, '0'); }).join('');
-    hs.setProperty('--accent', hex);
-    hs.setProperty('--accent-rgb', c.join(','));
-    hs.setProperty('--accent-soft', 'rgba(' + c.join(',') + ',0.10)');
   } catch (e) {}
-  // Манифест — тоже per-theme (theme_color/background_color для установленного
-  // PWA), а не только меню-тег ниже: у standalone-приложения системную полосу
-  // красит именно манифест, а не динамический <meta name="theme-color">.
-  // Ставим тег сами (вместо статического <link> в разметке), чтобы браузер
-  // с самого начала запросил нужный файл, а не переключался на лету — манифест
-  // читается один раз при заходе, не отслеживает <meta> и не умеет медиазапросы.
-  var manifestLink = document.createElement('link');
-  manifestLink.rel = 'manifest';
-  manifestLink.id = 'manifest-link';
-  manifestLink.href = t === 'night' ? '/m/manifest-night.json' : t === 'dark' ? '/m/manifest.json' : '/m/manifest-light.json';
-  document.head.appendChild(manifestLink);
-})();
-// /m — редизайн специально под телефон (жесты, размер тап-зон, нижний таб-бар).
-// На широком экране с мышью вместо всего этого показываем заглушку со ссылкой
-// на /chat — до первого layout, чтобы мобильный интерфейс не мелькал на десктопе
-(function(){
-  var mq = matchMedia('(min-width: 768px) and (pointer: fine)');
-  function sync(){ document.documentElement.classList.toggle('m-desktop', mq.matches); }
-  sync(); mq.addEventListener('change', sync);
-})();
-</script>
-<meta name="theme-color" content="#15181b" id="theme-color-meta">
-<script>
-// Цвет системной навигационной панели/статус-бара должен совпадать с самым
-// нижним/верхним видимым слоем страницы (таб-бар/шторки красятся в --modal-bg),
-// а не с фоном экранов (--app-bg) — иначе на Android виден шов другого оттенка
-// у края экрана (то темнее, то светлее — в зависимости от темы)
-(function(){
-  var meta = document.getElementById('theme-color-meta');
-  if (meta) meta.content = document.documentElement.classList.contains('dark') ? '#181c20' : '#ffffff';
+  var dark = t !== 'light';
+  document.documentElement.classList.toggle('dark', dark);
+  // Отступы-запасы, подобранные на телефоне (экран диагностики)
+  try {
+    var hs = document.documentElement.style;
+    var a = localStorage.getItem('beta_sat_extra'), b = localStorage.getItem('beta_sab_extra');
+    if (a !== null) hs.setProperty('--sat-extra', parseInt(a, 10) + 'px');
+    if (b !== null) hs.setProperty('--sab-extra', parseInt(b, 10) + 'px');
+  } catch (e) {}
+  // У standalone-PWA системную полосу красит именно манифест, а не <meta theme-color>, а читается он один раз
+  // при запуске — поэтому <link rel="manifest"> ставим сами, сразу под нужную тему
+  var link = document.createElement('link');
+  link.rel = 'manifest'; link.id = 'manifest-link';
+  link.href = dark ? '/m/manifest.json' : '/m/manifest-light.json';
+  document.head.appendChild(link);
+  var meta = document.createElement('meta');
+  meta.name = 'theme-color'; meta.id = 'theme-color-meta'; meta.content = dark ? '#1c2835' : '#f6f6f7';
+  document.head.appendChild(meta);
 })();
 </script>
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Electron">
+<meta name="format-detection" content="telephone=no">
 <link rel="icon" href="/chat/icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="/chat/icons/apple-touch-icon.png">
 <title>Electron</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/m/css/tokens.css?v=1">
+<link rel="stylesheet" href="/m/css/layout.css?v=1">
+<link rel="stylesheet" href="/m/css/components.css?v=1">
+<link rel="stylesheet" href="/m/css/nav.css?v=1">
+<link rel="stylesheet" href="/m/css/chatlist.css?v=1">
+<link rel="stylesheet" href="/m/css/chat.css?v=1">
+<link rel="stylesheet" href="/m/css/composer.css?v=1">
+<link rel="stylesheet" href="/m/css/people.css?v=1">
+<link rel="stylesheet" href="/m/css/settings.css?v=1">
 <link rel="stylesheet" href="/chat/emoji-font.css?v=1">
-<link rel="stylesheet" href="/m/style.css?v=1">
-<!-- Список смайлов по разделам — общий статический файл, тот же, что у /chat -->
-<script src="/chat/emoji-font.js?v=1"></script>
-<script src="/chat/emoji-data.js?v=1"></script>
 </head>
 <body>
-
-<!-- Заглушка для десктопа: /m рассчитан на телефон (жесты, размер тап-зон, таб-бар снизу) -->
-<div id="screen-desktop">
-  <div class="desktop-wrap">
-    <div class="login-logo"><img src="/chat/icons/icon-192.png" alt=""></div>
-    <div class="login-title">Electron</div>
-    <div class="desktop-text">Эта версия сделана для телефона — жесты, размер кнопок и навигация рассчитаны на маленький экран с сенсорным управлением.</div>
-    <div class="desktop-text">На компьютере пользуйтесь обычной веб-версией.</div>
-    <a class="l-btn" style="display:block;text-decoration:none;text-align:center;line-height:48px" href="/chat/">Открыть /chat</a>
-  </div>
-</div>
-
-<!-- ЭКРАН ВХОДА -->
-<div id="screen-login" class="screen active">
-  <div class="login-wrap">
-    <div class="login-logo"><img src="/chat/icons/icon-192.png" alt=""></div>
-    <div class="login-title">Electron</div>
-    <div class="login-sub">Мобильная версия</div>
-    <div class="l-field"><label>Логин</label><input id="l-username" type="text" autocomplete="username"></div>
-    <div class="l-field"><label>Пароль</label><input id="l-password" type="password" autocomplete="current-password"></div>
-    <div class="l-err" id="l-err"></div>
-    <button class="l-btn" id="l-btn" onclick="doLogin()">Войти</button>
-  </div>
-</div>
-
-<!-- ОСНОВНОЙ ЭКРАН -->
-<div id="screen-app" class="screen">
-
-  <!-- Вкладка «Чаты» -->
-  <div class="tabpage" id="tab-chats">
-    <div class="top-hdr">
-      <div class="top-title-row">
-        <div class="top-title">Чаты</div>
-        <div class="icon-btn" role="button" onclick="openNewChatSheet()" title="Новый чат" aria-label="Новый чат">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </div>
-      </div>
-      <div class="top-search">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="chat-search" placeholder="Поиск" oninput="onChatSearchInput()">
-      </div>
-    </div>
-    <div id="notif-banner" class="notif-banner" style="display:none">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-      <span>Разрешите уведомления, чтобы получать сообщения в фоне</span>
-      <button onclick="requestNotificationPermission()">Разрешить</button>
-      <div class="notif-banner-close" onclick="dismissNotifBanner()">✕</div>
-    </div>
-    <div class="list" id="chat-list"></div>
-  </div>
-
-  <!-- Вкладка «Контакты» -->
-  <div class="tabpage" id="tab-contacts" hidden>
-    <div class="top-hdr">
-      <div class="top-title-row">
-        <div class="top-title">Контакты</div>
-        <div class="icon-btn" role="button" onclick="openAddContactSheet()" title="Добавить контакт" aria-label="Добавить контакт">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3 20a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg>
-        </div>
-      </div>
-      <div class="top-search">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="contact-search" placeholder="Поиск" oninput="renderContacts()">
-      </div>
-    </div>
-    <div class="list" id="contact-list"></div>
-  </div>
-
-  <!-- Вкладка «Настройки» -->
-  <div class="tabpage" id="tab-settings" hidden>
-    <div class="top-hdr"><div class="top-title">Настройки</div></div>
-    <div class="list" style="padding-top:4px;padding-left:18px;padding-right:18px">
-      <button class="settings-btn" type="button" onclick="openProfileSheet()">
-        <div class="av" id="me-av"></div>
-        <div style="flex:1;min-width:0">
-          <div class="settings-name" id="me-name"></div>
-          <div class="settings-sub" id="me-username"></div>
-        </div>
-      </button>
-      <button class="settings-btn" type="button" onclick="openAppearanceSheet()">
-        <div class="settings-ico" style="background:#8e44ad">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1.1-.2-.3-.4-.6-.4-1 0-.8.7-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-4.9-4.5-9-10-9z"/></svg>
-        </div>
-        <div class="settings-label">Внешний вид</div>
-      </button>
-      <button class="settings-btn" type="button" onclick="openBlocksSheet()">
-        <div class="settings-ico" style="background:#7f8c8d">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></svg>
-        </div>
-        <div class="settings-label">Блокировки</div>
-      </button>
-      <button class="settings-btn" type="button" onclick="openModulesSheet()">
-        <div class="settings-ico" style="background:#16a085">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4a2 2 0 1 1 4 0v1h3a1 1 0 0 1 1 1v3h-1a2 2 0 1 0 0 4h1v3a1 1 0 0 1-1 1h-3v-1a2 2 0 1 0-4 0v1H7a1 1 0 0 1-1-1v-3h1a2 2 0 1 0 0-4H6V6a1 1 0 0 1 1-1h3z"/></svg>
-        </div>
-        <div class="settings-label">Модули</div>
-      </button>
-      <button class="settings-btn" type="button" onclick="logout()">
-        <div class="settings-ico" style="background:#c0392b">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        </div>
-        <div class="settings-label" style="color:var(--danger)">Выйти</div>
-      </button>
-    </div>
-  </div>
-
-  <!-- Нижний таб-бар: без плашки и подписей — активная вкладка обозначена
-       только цветом иконки (по аналогии с таб-баром сайдбара в /chat и клиенте) -->
-  <div class="tabbar" id="tabbar">
-    <div class="tabbar-inner" id="tabbar-inner">
-      <div class="tab on" data-tab="chats" onclick="setTab('chats')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v10l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg>
-      </div>
-      <div class="tab" data-tab="contacts" onclick="setTab('contacts')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 19a6 6 0 0 1 11 0"/></svg>
-      </div>
-      <div class="tab" data-tab="settings" onclick="setTab('settings')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </div>
-    </div>
-  </div>
-
-  <!-- Экран переписки (пуш поверх списка) -->
-  <div class="chat-screen" id="chat-screen">
-    <div class="chat-hdr">
-      <div class="back-btn" onclick="closeChat()">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      </div>
-      <div class="av-wrap" id="chat-hdr-av">
-        <div class="av" id="chat-av" data-av-chat=""></div>
-        <span class="status-dot" id="chat-status-dot" style="display:none"></span>
-      </div>
-      <div style="min-width:0;flex:1" id="chat-hdr-info">
-        <div class="chat-hdr-name" id="chat-name"></div>
-        <div class="chat-hdr-sub" id="chat-sub"></div>
-      </div>
-      <div class="chat-hdr-actions" id="chat-actions"></div>
-    </div>
-    <div class="chat-body" id="messages"></div>
-    <button class="scroll-down-btn" id="scroll-down-btn" onclick="scrollToBottom()" aria-label="К последним сообщениям">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-      <span class="scroll-down-badge" id="scroll-down-badge"></span>
-    </button>
-    <div class="composer-wrap">
-      <div class="emoji-panel" id="emoji-panel">
-        <div class="ep-search">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="ep-search-input" placeholder="Поиск смайла" oninput="filterEmoji(this.value,'ep-scroll','ep-tabs','insertEmoji')">
-        </div>
-        <div class="ep-tabs" id="ep-tabs"></div>
-        <div class="ep-scroll" id="ep-scroll" onscroll="syncEmojiTabs('ep-scroll','ep-tabs')"></div>
-        <div class="ep-gif" id="ep-gif" hidden></div>
-        <div class="ep-dock" id="ep-dock" hidden>
-          <div class="ep-sw" role="group" aria-label="Смайлы или GIF">
-            <button type="button" id="ep-sw-emoji" aria-pressed="true" onclick="epMode('emoji')">Смайлы</button>
-            <button type="button" id="ep-sw-gif" aria-pressed="false" onclick="epMode('gif')">GIF</button>
-          </div>
-          <span class="ep-pw" id="ep-pw" hidden>Powered by <span class="gp-kl"><i></i>KLIPY</span></span>
-        </div>
-      </div>
-      <div id="typing-indicator" class="typing-indicator" style="display:none">
-        <span class="typing-pill">
-          <span class="typing-dots"><span></span><span></span><span></span></span>
-          <span class="typing-name"></span><span class="typing-label"> печатает…</span>
-        </span>
-      </div>
-      <div class="ro-note" id="ro-note" hidden>Доступно только для чтения</div>
-      <div class="composer-card" id="composer-card">
-        <div class="reply-bar" id="reply-bar" style="display:none">
-          <div class="reply-bar-body">
-            <div class="reply-bar-name" id="reply-bar-name"></div>
-            <div class="reply-bar-text" id="reply-bar-text"></div>
-          </div>
-          <div class="reply-bar-x" onclick="hideReplyBar()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </div>
-        </div>
-        <div class="reply-bar" id="forward-bar" style="display:none">
-          <div class="reply-bar-body">
-            <div class="reply-bar-name" id="forward-bar-name"></div>
-            <div class="reply-bar-text" id="forward-bar-text"></div>
-          </div>
-          <div class="reply-bar-x" onclick="hideForwardBar()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </div>
-        </div>
-        <div class="reply-bar" id="edit-bar" style="display:none">
-          <div class="reply-bar-body"><div class="reply-bar-name">Редактирование</div></div>
-          <div class="reply-bar-x" onclick="cancelEdit()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </div>
-        </div>
-        <div class="attach-bar" id="attach-bar" style="display:none">
-          <div class="attach-thumb" id="attach-thumb-box">
-            <img id="attach-thumb" alt="" style="display:none">
-            <svg id="attach-generic-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          </div>
-          <div class="reply-bar-body">
-            <div class="reply-bar-name" id="attach-title">Вложение</div>
-            <div class="reply-bar-text" id="attach-name"></div>
-            <div class="attach-track" id="attach-track" style="display:none"><div class="attach-fill" id="attach-fill"></div></div>
-          </div>
-          <div class="reply-bar-x" onclick="clearAttachment()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </div>
-        </div>
-        <div class="composer">
-          <div class="composer-icon-btn" onclick="toggleEmojiPanel()" title="Эмодзи">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 3 4 3 4-3 4-3"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
-          </div>
-          <div class="composer-icon-btn" onclick="document.getElementById('file-input').click()" title="Прикрепить">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-          </div>
-          <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
-          <input type="text" id="msg-input" placeholder="Сообщение" oninput="onMsgInput()" onfocus="closeEmojiPanel()" onkeydown="if(event.key==='Enter'){event.preventDefault();sendMessage();}">
-          <div class="send-btn" onmousedown="event.preventDefault()" onclick="sendMessage()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12L21 4L14 21L11 13L3 12Z"/></svg>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Список тем комнаты (подкомнаты) -->
-  <div class="chat-screen" id="topics-screen" style="z-index:15">
-    <div class="chat-hdr">
-      <div class="back-btn" onclick="closeTopicsScreen()">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      </div>
-      <div style="min-width:0;flex:1">
-        <div class="chat-hdr-name" id="topics-name"></div>
-        <div class="chat-hdr-sub">Темы</div>
-      </div>
-    </div>
-    <div class="list" id="topics-list"></div>
-  </div>
-
-  <!-- Просмотр фото/видео на весь экран -->
-  <div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
-    <div class="lightbox-close" onclick="closeLightbox()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </div>
-    <img id="lightbox-img" alt="">
-    <video id="lightbox-vid" controls playsinline></video>
-  </div>
-
-  <!-- Bottom sheet (шторка) -->
-  <div class="sheet-bg" id="sheet-bg" onclick="if(event.target===this)closeSheet()">
-    <div class="sheet" id="sheet">
-      <div class="sheet-handle" id="sheet-handle"></div>
-      <div class="sheet-scroll" id="sheet-scroll"></div>
-    </div>
-  </div>
-</div>
-
-<div id="toast" class="m-toast"></div>
-
+<div id="app"><div id="stack"></div></div>
+<script src="/chat/emoji-font.js?v=1"></script>
+<script src="/chat/emoji-data.js?v=1"></script>
 <script src="/shared/secret-core.js?v=1"></script>
 <script src="/shared/modules.js?v=1"></script>
 <script src="/shared/gif-klipy.js?v=1"></script>
-<script src="/m/app.js?v=1"></script>
+<script src="/m/js/icons.js?v=1"></script>
+<script src="/m/js/theme.js?v=1"></script>
+<script src="/m/js/pwa.js?v=1"></script>
+<script src="/m/js/core/state.js?v=1"></script>
+<script src="/m/js/core/api.js?v=1"></script>
+<script src="/m/js/core/appearance.js?v=1"></script>
+<script src="/m/js/core/chats.js?v=1"></script>
+<script src="/m/js/core/presence.js?v=1"></script>
+<script src="/m/js/core/ws.js?v=1"></script>
+<script src="/m/js/core/push.js?v=1"></script>
+<script src="/m/js/core/messages.js?v=1"></script>
+<script src="/m/js/core/upload.js?v=1"></script>
+<script src="/m/js/core/contacts.js?v=1"></script>
+<script src="/m/js/core/secret.js?v=1"></script>
+<script src="/m/js/core/app.js?v=1"></script>
+<script src="/m/js/ui/nav.js?v=1"></script>
+<script src="/m/js/ui/sheet.js?v=1"></script>
+<script src="/m/js/ui/avatar.js?v=1"></script>
+<script src="/m/js/ui/chatlist.js?v=1"></script>
+<script src="/m/js/ui/kbd.js?v=1"></script>
+<script src="/m/js/ui/emoji.js?v=1"></script>
+<script src="/m/js/ui/composer.js?v=1"></script>
+<script src="/m/js/ui/chat.js?v=1"></script>
+<script src="/m/js/ui/msgmenu.js?v=1"></script>
+<script src="/m/js/ui/contacts.js?v=1"></script>
+<script src="/m/js/ui/profile.js?v=1"></script>
+<script src="/m/js/ui/groups.js?v=1"></script>
+<script src="/m/js/ui/settings.js?v=1"></script>
+<script src="/m/js/ui/diag.js?v=1"></script>
+<script src="/m/js/ui/login.js?v=1"></script>
+<script src="/m/js/main.js?v=1"></script>
 </body>
 </html>
