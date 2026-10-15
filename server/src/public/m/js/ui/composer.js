@@ -15,17 +15,16 @@ B.ui.composer = (function () {
     var c = comp(el); el._cs = { reply: null, fwd: null, edit: null, att: null, panel: null, mode: 'emoji', tab: 0 };
     c.innerHTML =
       '<div class="ctx"></div><div class="scb" hidden></div><div class="ronote" hidden></div>' +
-      '<div class="crow"><label class="cbtn att" data-k="attach" aria-label="Прикрепить">' + ic('clip', 24, 1.8) + '<input type="file"></label>' +
+      '<div class="crow"><button class="cbtn att" data-k="attach" aria-label="Прикрепить">' + ic('clip', 24, 1.8) + '</button>' +
         '<div class="cfield"><span class="ph">Сообщение</span><textarea rows="1" aria-label="Сообщение" enterkeyhint="return" autocapitalize="sentences"></textarea>' +
         '<button class="cbtn cem" data-k="emo" aria-label="Смайлы">' + ic('smile', 24, 1.7) + '</button></div>' +
         '<button class="csend" data-k="send" aria-label="Отправить">' + ic('up', 20, 2.8) + '</button></div>' +
       '<div class="epanel"></div><div class="hb"></div>';
-    var t = ta(el), file = c.querySelector('input[type=file]');
+    var t = ta(el);
     t.value = B.drafts[chat.id] || ''; autosize(t); syncHas(el);
     t.addEventListener('input', function () { B.drafts[chat.id] = t.value; autosize(t); syncHas(el); if (!cs(el).edit) B.msgs.typing(); });
     t.addEventListener('focus', function () { closePanel(el); });
     t.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && matchMedia('(pointer:fine)').matches) { e.preventDefault(); send(el); } });
-    file.addEventListener('change', function () { var f = file.files[0]; file.value = ''; if (f) attach(el, f); });
     c.addEventListener('mousedown', function (e) { if (e.target.closest('input')) return; if (e.target.closest('.epanel,.cbtn,.csend')) e.preventDefault(); });   // нажатие на кнопки не должно убирать клавиатуру
     c.addEventListener('click', function (e) { onClick(el, e); });
     renderCtx(el); sync(el);
@@ -194,13 +193,22 @@ B.ui.composer = (function () {
     t.selectionStart = t.selectionEnd = a; B.drafts[+el.dataset.cid] = t.value; autosize(t); syncHas(el);
   }
 
+  // Выбор файла: поле создаётся на лету и в страницу не добавляется. Если держать в разметке даже скрытое поле,
+  // iOS на миг рисует его белым прямоугольником, когда открывает системное окно выбора
+  function pickFile(el) {
+    var f = document.createElement('input'); f.type = 'file';
+    cs(el).fi = f;                                    // ссылка нужна, иначе поле, не лежащее в странице, может собраться сборщиком до выбора
+    f.addEventListener('change', function () { var file = f.files[0]; cs(el).fi = null; if (file) attach(el, file); });
+    f.click();
+  }
+
   function onClick(el, e) {
     var b = e.target.closest('[data-k]'); if (!b) return; var k = b.dataset.k, s = cs(el);
     if (k === 'send') send(el);
     else if (k === 'scopen') { B.secret.bannerOpen = +el.dataset.cid; sync(el); var ci = comp(el).querySelector('#sc-code'); if (ci) ci.focus(); }
     else if (k === 'scredeem') { var code = (comp(el).querySelector('#sc-code').value || '').trim(); if (code) B.secret.redeem(+el.dataset.cid, code).then(function () { sync(el); }); }
     else if (k === 'sccancel') { B.secret.cancelSync(+el.dataset.cid); sync(el); }
-    else if (k === 'attach') { if (B.msgs.locked(chatOf(el))) e.preventDefault(); }   // выбор файла открывает сам input под кнопкой: программный click() в iOS даёт вспышку белого квадрата
+    else if (k === 'attach') { if (!B.msgs.locked(chatOf(el))) pickFile(el); }
     else if (k === 'emo') { if (comp(el).classList.contains('pnl')) { ta(el).focus(); } else openPanel(el); }
     else if (k === 'clr') clear(el, b.dataset.w);
     else if (k === 'em') { B.emoji.track(b.dataset.e); insert(el, b.dataset.e); }
