@@ -15,8 +15,7 @@ B.ui.composer = (function () {
     var c = comp(el); el._cs = { reply: null, fwd: null, edit: null, att: null, panel: null, mode: 'emoji', tab: 0 };
     c.innerHTML =
       '<div class="ctx"></div><div class="scb" hidden></div><div class="ronote" hidden></div>' +
-      '<div class="crow"><button class="cbtn att" data-k="attach" aria-label="Прикрепить">' + ic('clip', 24, 1.8) + '</button>' +
-        '<input type="file" hidden>' +
+      '<div class="crow"><label class="cbtn att" data-k="attach" aria-label="Прикрепить">' + ic('clip', 24, 1.8) + '<input type="file"></label>' +
         '<div class="cfield"><span class="ph">Сообщение</span><textarea rows="1" aria-label="Сообщение" enterkeyhint="return" autocapitalize="sentences"></textarea>' +
         '<button class="cbtn cem" data-k="emo" aria-label="Смайлы">' + ic('smile', 24, 1.7) + '</button></div>' +
         '<button class="csend" data-k="send" aria-label="Отправить">' + ic('up', 20, 2.8) + '</button></div>' +
@@ -201,7 +200,7 @@ B.ui.composer = (function () {
     else if (k === 'scopen') { B.secret.bannerOpen = +el.dataset.cid; sync(el); var ci = comp(el).querySelector('#sc-code'); if (ci) ci.focus(); }
     else if (k === 'scredeem') { var code = (comp(el).querySelector('#sc-code').value || '').trim(); if (code) B.secret.redeem(+el.dataset.cid, code).then(function () { sync(el); }); }
     else if (k === 'sccancel') { B.secret.cancelSync(+el.dataset.cid); sync(el); }
-    else if (k === 'attach') { var chat = chatOf(el); if (!B.msgs.locked(chat)) comp(el).querySelector('input[type=file]').click(); }
+    else if (k === 'attach') { if (B.msgs.locked(chatOf(el))) e.preventDefault(); }   // выбор файла открывает сам input под кнопкой: программный click() в iOS даёт вспышку белого квадрата
     else if (k === 'emo') { if (comp(el).classList.contains('pnl')) { ta(el).focus(); } else openPanel(el); }
     else if (k === 'clr') clear(el, b.dataset.w);
     else if (k === 'em') { B.emoji.track(b.dataset.e); insert(el, b.dataset.e); }
