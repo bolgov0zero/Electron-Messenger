@@ -2542,7 +2542,7 @@ function closeEmojiPicker() {
 
 // ── GIF из Klipy в панели смайлов (модуль «GIF», см. shared/gif-klipy.js) ──
 // Переключатель «Смайлы / GIF» стоит внизу панели и есть, только если модуль включён у этого человека и чат не секретный
-let _epMode = 'emoji', _gifMounted = false;
+let _epMode = 'emoji';
 function epDockSync() {
   const dock = document.getElementById('ep-dock'); if (!dock) return;
   const can = !!(window.GifKlipy && GifKlipy.on()) && !S.secretChatIds.has(S.activeChatId) && !S.editingMessageId;
@@ -2562,8 +2562,9 @@ function epMode(mode) {
   document.getElementById('ep-pw').hidden = !gif;
   document.getElementById('ep-sw-emoji').setAttribute('aria-pressed', String(!gif));
   document.getElementById('ep-sw-gif').setAttribute('aria-pressed', String(gif));
-  if (gif && !_gifMounted) {
-    _gifMounted = true;
+  // Признак на самом контейнере, а не общий флаг: панель создаётся заново при каждой смене чата, и в новую её нужно смонтировать снова
+  if (gif && !host.dataset.mounted) {
+    host.dataset.mounted = '1';
     GifKlipy.setUser(`${S.server}:${S.user?.id || 0}`, 'ru');
     GifKlipy.mount(host, { onPick: pickGif });
   }
