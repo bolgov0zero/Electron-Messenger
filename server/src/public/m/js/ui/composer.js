@@ -15,7 +15,7 @@ B.ui.composer = (function () {
     var c = comp(el); el._cs = { reply: null, fwd: null, edit: null, att: null, panel: null, mode: 'emoji', tab: 0 };
     c.innerHTML =
       '<div class="ctx"></div><div class="scb" hidden></div><div class="ronote" hidden></div>' +
-      '<div class="crow"><button class="cbtn att" data-k="attach" aria-label="Прикрепить">' + ic('clip', 24, 1.8) + '</button>' +
+      '<div class="crow"><div class="cbtn att" role="button" data-k="attach" aria-label="Прикрепить">' + ic('clip', 24, 1.8) + '</div>' +
         '<div class="cfield"><span class="ph">Сообщение</span><textarea rows="1" aria-label="Сообщение" enterkeyhint="return" autocapitalize="sentences"></textarea>' +
         '<button class="cbtn cem" data-k="emo" aria-label="Смайлы">' + ic('smile', 24, 1.7) + '</button></div>' +
         '<button class="csend" data-k="send" aria-label="Отправить">' + ic('up', 20, 2.8) + '</button></div>' +
@@ -193,8 +193,8 @@ B.ui.composer = (function () {
     t.selectionStart = t.selectionEnd = a; B.drafts[+el.dataset.cid] = t.value; autosize(t); syncHas(el);
   }
 
-  // Выбор файла: поле создаётся на лету и в страницу не добавляется. Если держать в разметке даже скрытое поле,
-  // iOS на миг рисует его белым прямоугольником, когда открывает системное окно выбора
+  // Выбор файла: поле создаётся на лету и в страницу не добавляется, а сама кнопка — div, а не button: когда окно выбора
+  // открывается от нажатой кнопки или лежащего в странице поля, iOS на миг рисует их белым прямоугольником
   function pickFile(el) {
     var f = document.createElement('input'); f.type = 'file';
     cs(el).fi = f;                                    // ссылка нужна, иначе поле, не лежащее в странице, может собраться сборщиком до выбора
