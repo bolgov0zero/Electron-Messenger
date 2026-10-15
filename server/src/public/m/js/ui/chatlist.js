@@ -29,12 +29,16 @@ B.ui.chatlist = (function () {
       '<div class="rb"><div class="r1"><span class="rn"><span class="nm">' + esc(title) + '</span></span><span class="rt">' + B.fmt.chatListTime(r.sent_at) + '</span></div>' +
       '<div class="r2"><div class="rm"><b>' + esc(r.sender_name || '') + ':</b> ' + snip + '</div></div></div></div></div></div>';
   }
+  // Разделы как в клиенте: «Комнаты», «Закреплённые», «Все чаты» (последний показываем всегда), справа число чатов в разделе
+  function sections(g) {
+    var sec = function (name, list) { return '<div class="hdr-s cnt">' + name + '<span>' + list.length + '</span></div>' + list.map(rowHtml).join(''); };
+    return (g.rooms.length ? sec('Комнаты', g.rooms) : '') + (g.pinned.length ? sec('Закреплённые', g.pinned) : '') + sec('Все чаты', g.rest);
+  }
   function html() {
     var ql = q.trim().toLowerCase(), g;
     if (searching && ql) {
       g = B.chats.groups(ql);
-      var chats = g.rooms.concat(g.pinned, g.rest), out = '';
-      if (chats.length) out += '<div class="hdr-s">Чаты</div>' + chats.map(rowHtml).join('');
+      var out = g.total ? sections(g) : '';
       if (results && results.length) out += '<div class="hdr-s">Сообщения</div>' + results.map(messageRow).join('');
       return out || '<div class="empty"><b>Ничего не найдено</b>Попробуйте другое слово.</div>';
     }
@@ -42,7 +46,7 @@ B.ui.chatlist = (function () {
     if (!searching && B.push.shouldAsk()) h += '<div class="nbanner">' + ic('bell', 20, 2) + '<span>Разрешите уведомления, чтобы получать сообщения в фоне. <b data-cl="allow">Разрешить</b></span><button class="xx" data-cl="hide" aria-label="Закрыть">' + ic('x', 16, 2.4) + '</button></div>';
     g = B.chats.groups('');
     if (!g.total) return h + '<div class="empty"><b>' + (B.S.chats.length ? 'Ничего не найдено' : 'Чатов пока нет') + '</b>' + (B.S.chats.length ? '' : 'Начните разговор кнопкой в углу экрана.') + '</div>';
-    return h + g.rooms.concat(g.pinned, g.rest).map(rowHtml).join('');
+    return h + sections(g);
   }
   function render() {
     if (!dyn) return;

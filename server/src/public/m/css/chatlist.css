@@ -54,5 +54,7 @@
 .rbd.m { background: var(--fg3); }
 .rpin { flex: none; color: var(--fg3); margin-top: 2px; display: flex; }
 .hdr-s { padding: 16px 16px 6px; font-size: 13px; font-weight: 600; color: var(--fg2); text-transform: uppercase; letter-spacing: .02em; }
+.hdr-s.cnt { display: flex; justify-content: space-between; align-items: baseline; }
+.hdr-s.cnt span { font-weight: 500; opacity: .8; font-variant-numeric: tabular-nums; }
 .tb .bd { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--red); color: #fff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
 .tb .bd[hidden] { display: none; }
