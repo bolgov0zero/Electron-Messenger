@@ -154,8 +154,8 @@ B.ui.composer = (function () {
     var secs = B.emoji.sections();
     var top = gif ? '' : '<div class="ep-top"><div class="srch"><div class="sfield">' + ic('search', 16, 2.2) + '<input id="ep-q" type="search" placeholder="Поиск смайла" autocomplete="off" autocapitalize="none"></div></div><div class="ep-tabs">' + B.emoji.tabsHtml(secs) + '</div></div>';
     var body = gif ? '<div class="ep-gif"></div>' : '<div class="eg">' + B.emoji.gridHtml(secs, 'data-k="em"') + '</div>';
-    // Переключатель всегда в середине, подпись «Powered by» справа от него: так он не сдвигается при смене режима
-    p.innerHTML = top + '<div class="ep-body">' + body + '</div><div class="ep-dock"><span></span>' +
+    // Переключатель всегда у левого края, подпись «Powered by» справа от него: так он не сдвигается при смене режима
+    p.innerHTML = top + '<div class="ep-body">' + body + '</div><div class="ep-dock">' +
       (gifOn(el) ? '<div class="ep-sw"><button data-k="mode" data-m="emoji" aria-pressed="' + !gif + '">Смайлы</button><button data-k="mode" data-m="gif" aria-pressed="' + gif + '">GIF</button></div>' : '<span></span>') +
       '<div class="ep-r">' + (gif ? '<span class="ep-pw"><span>Powered by</span>' + GifKlipy.mark + '</span>' : '') +
       '<button class="ep-del" data-k="del" aria-label="Удалить символ">' + ic('bk', 24, 1.8) + '</button></div></div>';
