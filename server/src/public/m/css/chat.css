@@ -60,7 +60,11 @@
 .bub.eo .meta { display: none; }
 .bub.dl { font-style: italic; opacity: .65; }
 .bub.media { padding: 3px; }
-.bub.media .meta { position: absolute; right: 9px; bottom: 8px; margin: 0; top: 0; background: rgba(0, 0, 0, .45); color: #fff; border-radius: 9px; padding: 3px 6px; height: 19px; }
+.bub.media .meta { position: absolute; right: 9px; bottom: 8px; margin: 0; top: auto; background: rgba(0, 0, 0, .45); color: #fff; border-radius: 9px; padding: 3px 6px; height: 19px; }
+/* GIF без видимого пузыря: ролик сам заполняет пузырь и повторяет его скругления (в том числе острый угол у последнего сообщения группы) */
+.bub.gifm { padding: 0; background: none !important; }
+.bub.gifm .gif-msg { border-radius: inherit; }
+.bub.gifm .who { padding: 0 2px 3px; }   /* имя отправителя над роликом, а не поверх него */
 .att-img { display: block; width: 100%; max-width: 280px; min-width: 160px; border-radius: 14px; background: var(--fill); cursor: zoom-in; object-fit: cover; }
 .bub:not(.media) .att-img { margin: 2px 0 5px; border-radius: 11px; }
 .vwrap { position: relative; cursor: pointer; }

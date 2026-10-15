@@ -86,7 +86,7 @@ B.ui.chat = (function () {
     var att = m.attachment, eo = !att && !m.reply_to_id && emojiOnly(m.text);
     var bare = !m.text && !m.reply_to_id && !m.forward_data && att && (att.gif || (att.url && !att.expired && /^(image|video)\//.test(att.mime || '')));
     var meta = '<span class="meta">' + (m.edited_at ? 'изм. ' : '') + B.fmt.time(m.sent_at) + (mine ? B.ticks(m.status) : '') + '</span>';
-    h += '<div class="bub' + (eo ? ' eo' : '') + (bare ? ' media' : '') + '" data-mid="' + m.id + '">';
+    h += '<div class="bub' + (eo ? ' eo' : '') + (bare ? ' media' : '') + (bare && att.gif ? ' gifm' : '') + '" data-mid="' + m.id + '">';
     if (wrapAv && pos.first) h += '<div class="who" style="color:' + nameColor(m.sender_id, m.sender_tag) + '" data-c="who" data-id="' + m.sender_id + '" data-name="' + esc(m.sender_name || '') + '">' + esc(m.sender_name || '') + '</div>';
     if (m.reply_to_id) {
       // Цвет цитаты — по автору цитируемого сообщения (как в вебе и клиентах): своё — акцент, чужое — цвет этого человека

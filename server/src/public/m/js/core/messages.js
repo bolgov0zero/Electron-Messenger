@@ -47,6 +47,25 @@ B.msgs = {
     B.bus.emit('msgs:older');
   },
 
+  // Новые сообщения открытого чата, пришедшие, пока приложение было свёрнуто или без связи (события по WebSocket пропущены)
+  catchUp: async function () {
+    var M = B.msgs, id = M.chatId; if (!id || !M.cache.length) return;
+    var real = M.cache.filter(function (x) { return x.id > 0; }), last = real[real.length - 1]; if (!last) return;
+    var data = await B.api('GET', '/messages/chat/' + id + '?after=' + last.id + '&limit=50');
+    if (!data || !data.messages || M.chatId !== id) return;
+    var fresh = data.messages.filter(function (m) { return !M.find(m.id); }).sort(function (a, b) { return a.id - b.id; });
+    if (!fresh.length) return;
+    fresh.forEach(function (m) {
+      var mine = m.sender_id === B.S.user.id;
+      if (mine) M.cache = M.cache.filter(function (x) { return !x._optimistic; });
+      M.cache.push(m);
+      B.bus.emit('msgs:new', { message: m, mine: mine });
+      if (!mine) B.ws.send({ type: 'delivered', message_id: m.id });
+    });
+    B.bus.emit('msgs:changed', { mode: 'smart' });
+    B.ws.send({ type: 'read', chat_id: id });
+  },
+
   // Пока связи не было, сообщения могли удалить или исправить, а события телефон пропустил
   resync: async function () {
     var M = B.msgs, id = M.chatId; if (!id || !M.cache.length) return;
@@ -107,7 +126,7 @@ B.msgs = {
 // ── обновления по WebSocket для открытого чата ──
 (function () {
   var M = B.msgs, bus = B.bus;
-  bus.on('ws:connected', function () { M.resync(); });
+  bus.on('ws:connected', function () { M.resync(); M.catchUp(); });
   bus.on('ws:message', function (d) {
     var m = d.message; if (m.chat_id !== M.chatId) return;
     var mine = m.sender_id === B.S.user.id;
