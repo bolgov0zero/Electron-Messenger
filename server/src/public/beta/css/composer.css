@@ -101,8 +101,9 @@
 .scb button { height: 36px; padding: 0 14px; border: 0; border-radius: 18px; background: var(--accent); color: #fff; font-weight: 600; font-size: 14px; flex: none; }
 .scb button.gh2 { background: var(--fill); color: var(--fg); }
 
-/* шторка «Реакция»: шапка с поиском и вкладками групп закреплена сверху, смайлы прокручиваются под ней */
-.rp-hd { position: sticky; top: -2px; padding-top: 2px; z-index: 3; background: var(--sheet); box-shadow: 0 -6px 0 var(--sheet); }   /* запас сверху и тень вверх закрывают зазор в доли пикселя, через который при прокрутке просвечивали смайлы */
+/* шторка «Реакция»: шапка с поиском и вкладками групп неподвижна, смайлы прокручиваются под ней */
+.rp-hd { flex: none; background: var(--sheet); }
 .rp-hd .ep-tabs { padding: 0 8px 6px; }
 .rp-hd .ep-tabs[hidden] { display: none; }
-.rp-body { padding: 0 8px 8px; }
+.rp-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 8px 8px; scrollbar-width: none; }
+.rp-body::-webkit-scrollbar { display: none; }

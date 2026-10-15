@@ -90,14 +90,17 @@ B.ui.msgmenu = (function () {
     var all = B.emoji.gridHtml(secs, 'data-r="1"');
     B.sheet.open({ size: 'med', title: 'Реакция', right: '<button class="nb" data-sheet="close">Готово</button>',
       body: '<div class="rp-hd"><div class="srch"><div class="sfield">' + ic('search', 16, 2.2) + '<input id="rp-q" placeholder="Поиск смайла" autocomplete="off"></div></div><div class="ep-tabs rp-tabs">' + B.emoji.tabsHtml(secs) + '</div></div><div class="rp-body">' + all + '</div>' });
-    var body = B.sheet.body(), hd = body.querySelector('.rp-hd'), tabs = body.querySelector('.rp-tabs'), box = body.querySelector('.rp-body');
-    B.emoji.bindTabs(body, tabs, hd.offsetHeight);
+    // Шапка (поиск и вкладки) стоит неподвижно над прокручиваемым списком, как в панели смайлов в поле ввода:
+    // без sticky внутри области прокрутки, поэтому между заголовком окна и поиском ничего не просвечивает
+    var body = B.sheet.body(), tabs = body.querySelector('.rp-tabs'), box = body.querySelector('.rp-body');
+    body.style.display = 'flex'; body.style.flexDirection = 'column'; body.style.overflow = 'hidden';
+    B.emoji.bindTabs(box, tabs, 0);
     body.addEventListener('click', function (e) { var b = e.target.closest('button[data-r]'); if (b) { B.emoji.track(b.dataset.e); B.sheet.close(); B.msgs.react(m.id, b.dataset.e); } });
     body.querySelector('#rp-q').addEventListener('input', function (e) {
       var q = e.target.value.trim();
       tabs.hidden = !!q;
-      if (!q) { box.innerHTML = all; body.scrollTop = 0; body.dispatchEvent(new Event('scroll')); return; }
-      box.innerHTML = B.emoji.resultsHtml(q, 'data-r="1"'); body.scrollTop = 0;
+      if (!q) { box.innerHTML = all; box.scrollTop = 0; box.dispatchEvent(new Event('scroll')); return; }
+      box.innerHTML = B.emoji.resultsHtml(q, 'data-r="1"'); box.scrollTop = 0;
     });
   }
 
