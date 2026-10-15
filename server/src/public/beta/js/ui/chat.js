@@ -213,7 +213,11 @@ B.ui.chat = (function () {
     };
     jumping = requestAnimationFrame(step);
   }
-  function flash(row) { row.classList.remove('fl'); void row.offsetWidth; row.classList.add('fl'); setTimeout(function () { row.classList.remove('fl'); }, 1500); }
+  function flash(row) {
+    var b = row && row.querySelector('.bub'); if (!b) return;
+    b.classList.remove('bubble-flash'); void b.offsetWidth; b.classList.add('bubble-flash');
+    clearTimeout(b._flashT); b._flashT = setTimeout(function () { b.classList.remove('bubble-flash'); }, 1900);
+  }
   function jump(el, id) {
     var row = el.querySelector('.mrow[data-mid="' + id + '"]');
     if (!row) { B.msgs.open(+el.dataset.cid, id); return; }   // сообщение глубоко в истории: открываем окно вокруг него
@@ -286,7 +290,7 @@ B.ui.chat = (function () {
     var sc = el.querySelector('.scroll');
     if (d.aroundId) {
       var row = el.querySelector('.mrow[data-mid="' + d.aroundId + '"]');
-      if (row) { row.scrollIntoView({ block: 'center' }); flash(row); } else sc.scrollTop = sc.scrollHeight;
+      if (row) { row.scrollIntoView({ block: 'center' }); setTimeout(function () { flash(row); }, 320); } else sc.scrollTop = sc.scrollHeight;
     } else {
       var u = el.querySelector('#unrd');
       if (u) sc.scrollTop = Math.max(0, u.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - el.querySelector('.nav').offsetHeight - 8);

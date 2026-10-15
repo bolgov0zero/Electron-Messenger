@@ -21,8 +21,15 @@
 .mrow.dg { transition: none; }
 .mrow.first { margin-top: 9px; }
 .mrow.out { justify-content: flex-end; }
-.mrow.fl .bub { animation: flash 1.4s ease; }
-@keyframes flash { 0%, 55% { filter: brightness(.8); } 100% { filter: none; } }
+/* Переход к сообщению (цитата, поиск): акцентный контур и одна мягкая волна, цвет самого пузыря не меняется. Те же кадры, что в /m и в клиентах */
+@keyframes bubble-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0), 0 0 0 0 rgba(var(--accent-rgb), .38); }
+  12%  { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 1), 0 0 0 0 rgba(var(--accent-rgb), .38); }
+  50%  { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 1), 0 0 0 12px rgba(var(--accent-rgb), 0); }
+  78%  { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), .9), 0 0 0 12px rgba(var(--accent-rgb), 0); }
+  100% { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0), 0 0 0 12px rgba(var(--accent-rgb), 0); }
+}
+.bub.bubble-flash { animation: bubble-flash 1.9s cubic-bezier(.3, .6, .3, 1); }
 .mav { width: 30px; flex: none; }
 .mcol { max-width: 80%; display: flex; flex-direction: column; position: relative; min-width: 0; }
 .mrow.out .mcol { align-items: flex-end; }
