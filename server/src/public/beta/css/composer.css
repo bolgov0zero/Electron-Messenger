@@ -94,3 +94,9 @@
 .scb input { width: 96px; height: 36px; border: 0; border-radius: 10px; background: var(--fill); color: var(--fg); font: 600 15px var(--font); letter-spacing: .08em; text-align: center; outline: 0; text-transform: uppercase; }
 .scb button { height: 36px; padding: 0 14px; border: 0; border-radius: 18px; background: var(--accent); color: #fff; font-weight: 600; font-size: 14px; flex: none; }
 .scb button.gh2 { background: var(--fill); color: var(--fg); }
+
+/* шторка «Реакция»: шапка с поиском и вкладками групп закреплена сверху, смайлы прокручиваются под ней */
+.rp-hd { position: sticky; top: 0; z-index: 3; background: var(--sheet); }
+.rp-hd .ep-tabs { padding: 0 8px 6px; }
+.rp-hd .ep-tabs[hidden] { display: none; }
+.rp-body { padding: 0 8px 8px; }

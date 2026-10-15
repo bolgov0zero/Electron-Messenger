@@ -84,18 +84,20 @@ B.ui.msgmenu = (function () {
     try { document.execCommand('copy'); } catch (e) {} t.remove();
   }
 
-  // ── шторка «Реакция»: все смайлы с поиском ──
+  // ── шторка «Реакция»: все смайлы, группы вкладками и поиск ──
   function reactionSheet(m) {
-    var groups = typeof EMOJI_GROUPS !== 'undefined' ? EMOJI_GROUPS : [], kw = typeof EMOJI_KEYWORDS !== 'undefined' ? EMOJI_KEYWORDS : {};
-    var grid = function (items) { return '<div class="ep-row">' + items.map(function (e) { return '<button data-e="' + esc(e) + '">' + e + '</button>'; }).join('') + '</div>'; };
-    var all = groups.map(function (g) { return '<div class="ep-head">' + esc(g.name) + '</div>' + grid(g.items); }).join('');
+    var secs = B.emoji.sections(), groups = B.emoji.groups(), kw = B.emoji.keywords();
+    var grid = function (items) { return '<div class="ep-row">' + items.map(function (e) { return '<button data-r="1" data-e="' + esc(e) + '">' + e + '</button>'; }).join('') + '</div>'; };
+    var all = B.emoji.gridHtml(secs, 'data-r="1"');
     B.sheet.open({ size: 'med', title: 'Реакция', right: '<button class="nb" data-sheet="close">Готово</button>',
-      body: '<div class="srch"><div class="sfield">' + ic('search', 16, 2.2) + '<input id="rp-q" placeholder="Поиск смайла" autocomplete="off"></div></div><div class="rp-body" style="padding:0 8px 8px">' + all + '</div>' });
-    var body = B.sheet.body();
-    body.addEventListener('click', function (e) { var b = e.target.closest('button[data-e]'); if (b) { B.sheet.close(); B.msgs.react(m.id, b.dataset.e); } });
+      body: '<div class="rp-hd"><div class="srch"><div class="sfield">' + ic('search', 16, 2.2) + '<input id="rp-q" placeholder="Поиск смайла" autocomplete="off"></div></div><div class="ep-tabs rp-tabs">' + B.emoji.tabsHtml(secs) + '</div></div><div class="rp-body">' + all + '</div>' });
+    var body = B.sheet.body(), hd = body.querySelector('.rp-hd'), tabs = body.querySelector('.rp-tabs'), box = body.querySelector('.rp-body');
+    B.emoji.bindTabs(body, tabs, hd.offsetHeight);
+    body.addEventListener('click', function (e) { var b = e.target.closest('button[data-r]'); if (b) { B.emoji.track(b.dataset.e); B.sheet.close(); B.msgs.react(m.id, b.dataset.e); } });
     body.querySelector('#rp-q').addEventListener('input', function (e) {
-      var q = e.target.value.trim().toLowerCase(), box = body.querySelector('.rp-body');
-      if (!q) { box.innerHTML = all; return; }
+      var q = e.target.value.trim().toLowerCase();
+      tabs.hidden = !!q;
+      if (!q) { box.innerHTML = all; body.scrollTop = 0; body.dispatchEvent(new Event('scroll')); return; }
       var seen = {}, hits = [];
       groups.forEach(function (g) {
         var gh = g.name.toLowerCase().indexOf(q) >= 0;
@@ -108,6 +110,7 @@ B.ui.msgmenu = (function () {
       });
       hits.sort(function (a, b) { return b.score - a.score; });
       box.innerHTML = hits.length ? '<div class="ep-head">Найдено: ' + hits.length + '</div>' + grid(hits.map(function (h) { return h.em; })) : '<div class="stub-note">Ничего не нашлось</div>';
+      body.scrollTop = 0;
     });
   }
 

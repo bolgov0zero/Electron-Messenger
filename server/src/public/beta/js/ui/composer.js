@@ -4,7 +4,6 @@ B.ui = B.ui || {};
 B.drafts = B.drafts || {};
 B.ui.composer = (function () {
   var esc = B.esc, ic = B.ic;
-  var DEFAULT_FREQ = ['👍', '❤️', '😂', '🔥', '🙏', '😊', '🎉', '👏', '😮', '😢', '🤔', '👌', '😍', '😎', '✅', '💯', '🙌', '😁', '🤝', '😅', '👀'];
   var COLS = 8;
 
   function cs(el) { return el._cs; }
@@ -146,26 +145,18 @@ B.ui.composer = (function () {
     });
   }
 
-  // ── смайлы и GIF ──
-  function freq() { try { return JSON.parse(localStorage.getItem('emoji_freq') || '{}'); } catch (e) { return {}; } }
-  function track(em) { var f = freq(); f[em] = (f[em] || 0) + 1; try { localStorage.setItem('emoji_freq', JSON.stringify(f)); } catch (e) {} }
-  function freqList(n) {
-    var f = freq(), sorted = Object.keys(f).sort(function (a, b) { return f[b] - f[a]; });
-    DEFAULT_FREQ.forEach(function (e) { if (sorted.length < n && sorted.indexOf(e) < 0) sorted.push(e); });
-    return sorted.slice(0, n);
-  }
-  function sections() { return [{ key: 'freq', icon: '🕘', name: 'Часто используемые', items: freqList(21) }].concat(typeof EMOJI_GROUPS !== 'undefined' ? EMOJI_GROUPS : []); }
+  // ── смайлы и GIF (разделы, вкладки и частые смайлы — в ui/emoji.js) ──
   function gifOn(el) { return !!(window.GifKlipy && GifKlipy.on()) && !cs(el).edit && !B.S.secretChatIds.has(+el.dataset.cid); }
   function renderPanel(el) {
     var s = cs(el), p = comp(el).querySelector('.epanel'), gif = s.mode === 'gif' && gifOn(el);
     comp(el).classList.toggle('gif', gif);
-    var secs = sections();
-    var body = gif ? '<div class="ep-gif"></div>' :
-      '<div class="eg">' + secs.map(function (g) { return '<div class="ep-head" data-head="' + g.key + '">' + esc(g.name) + '</div><div class="ep-row" data-row="' + g.key + '">' + g.items.map(function (e) { return '<button data-k="em" data-e="' + esc(e) + '">' + e + '</button>'; }).join('') + '</div>'; }).join('') + '</div>';
+    var secs = B.emoji.sections();
+    var body = gif ? '<div class="ep-gif"></div>' : '<div class="eg">' + B.emoji.gridHtml(secs, 'data-k="em"') + '</div>';
     p.innerHTML = '<div class="ep-body">' + body + '</div><div class="ep-dock">' +
-      (gif ? '<span class="ep-pw">Powered by ' + GifKlipy.mark + '</span>' : '<div class="ep-tabs">' + secs.map(function (g, i) { return '<button class="ep-tab" data-k="tab" data-key="' + g.key + '" aria-selected="' + (i === s.tab) + '">' + g.icon + '</button>'; }).join('') + '</div>') +
+      (gif ? '<span class="ep-pw">Powered by ' + GifKlipy.mark + '</span>' : '<div class="ep-tabs">' + B.emoji.tabsHtml(secs) + '</div>') +
       (gifOn(el) ? '<div class="ep-sw"><button data-k="mode" data-m="emoji" aria-pressed="' + !gif + '">Смайлы</button><button data-k="mode" data-m="gif" aria-pressed="' + gif + '">GIF</button></div>' : '') +
       '<button class="ep-del" data-k="del" aria-label="Удалить символ">' + ic('bk', 24, 1.8) + '</button></div>';
+    if (!gif) B.emoji.bindTabs(p.querySelector('.eg'), p.querySelector('.ep-tabs'));
     if (gif) { GifKlipy.setUser(B.S.server + ':' + B.S.user.id, 'ru'); GifKlipy.mount(p.querySelector('.ep-gif'), { onPick: function (att) { sendGif(el, att); } }); }
   }
   function openPanel(el) {
@@ -199,14 +190,9 @@ B.ui.composer = (function () {
     else if (k === 'attach') { var chat = chatOf(el); if (!B.msgs.locked(chat)) comp(el).querySelector('input[type=file]').click(); }
     else if (k === 'emo') { if (comp(el).classList.contains('pnl')) { ta(el).focus(); } else openPanel(el); }
     else if (k === 'clr') clear(el, b.dataset.w);
-    else if (k === 'em') { track(b.dataset.e); insert(el, b.dataset.e); }
+    else if (k === 'em') { B.emoji.track(b.dataset.e); insert(el, b.dataset.e); }
     else if (k === 'del') del(el);
     else if (k === 'mode') { s.mode = b.dataset.m; renderPanel(el); }
-    else if (k === 'tab') {
-      var sc = comp(el).querySelector('.eg'), row = sc && sc.querySelector('[data-row="' + b.dataset.key + '"]'), head = sc && sc.querySelector('[data-head="' + b.dataset.key + '"]');
-      if (row) sc.scrollTo({ top: sc.scrollTop + row.getBoundingClientRect().top - sc.getBoundingClientRect().top - (head ? head.offsetHeight : 0), behavior: 'smooth' });
-      comp(el).querySelectorAll('.ep-tab').forEach(function (t) { t.setAttribute('aria-selected', String(t === b)); });
-    }
   }
 
   // Вставка файла (скриншот и т.п.) из буфера обмена
