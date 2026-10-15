@@ -2290,7 +2290,12 @@ function watchComposerHeight() {
   const bar = document.getElementById('chat-input-bar') || document.getElementById('input-wrap');
   const main = document.getElementById('chat-main');
   if (!bar || !main) return;
-  const apply = () => main.style.setProperty('--composer-h', bar.offsetHeight + 'px');
+  // Если стояли у дна, при смене высоты полосы (строка «печатает», ответ, многострочный текст) остаёмся у дна
+  const apply = () => {
+    const stick = atMessagesBottom();
+    main.style.setProperty('--composer-h', bar.offsetHeight + 'px');
+    if (stick) pinMessagesBottom();
+  };
   apply();
   if (_composerRO) _composerRO.disconnect();
   try {
@@ -2394,7 +2399,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
         </div>
         <div class="chat-header-info" ${nameClickable}>
           <div class="ch-name">${esc(name)}</div>
-          <div class="ch-sub">${sub}</div>
+          <div class="ch-subwrap"><div class="ch-sub">${sub}</div><div class="ch-typing"><span class="typing-dots"><span></span><span></span><span></span></span><span class="ch-typing-text"></span></div></div>
         </div>
       </div>
       <div class="chat-header-actions">
@@ -2418,10 +2423,10 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     <div class="chat-input-wrap" id="input-wrap">
       ${readOnlyBannerHtml(chat)}
       <div class="composer-inner"${composerLocked(chat) ? ' hidden' : ''}>
-        <div id="typing-indicator" class="typing-indicator" style="display:none">
+        <div id="typing-indicator" class="typing-indicator">
           <span class="typing-pill">
             <span class="typing-dots"><span></span><span></span><span></span></span>
-            <span class="typing-name"></span><span class="typing-label"> печатает…</span>
+            <span class="typing-text"></span>
           </span>
         </div>
         <div class="composer-pill" id="composer-pill">
@@ -2533,6 +2538,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     // по ещё не зарезервированной высоте
     watchComposerHeight();
     watchTopHeight();
+    renderTyping(chatId);
     if (aroundId) {
       requestAnimationFrame(() => scrollToMsg(aroundId, true));
     } else {
@@ -4071,7 +4077,6 @@ function handleKey(e) {
 }
 
 // ── TYPING ──
-const typingTimers = {}; // chatId -> clearTimeout handle
 let typingSendTimer = null;
 
 function _updateSendBtn(el) {
@@ -4110,39 +4115,78 @@ function pinMessagesBottom() {
   if (m) m.scrollTop = m.scrollHeight;
 }
 
-function showTyping(chatId, senderName) {
-  if (typingTimers[chatId]) clearTimeout(typingTimers[chatId]);
-  if (chatId === S.activeChatId) {
-    const el = document.getElementById('typing-indicator');
-    // На телефоне подсказка в потоке и уменьшает ленту — если стояли у дна,
-    // возвращаемся туда же, иначе последнее сообщение уезжает под полосу ввода
-    const stick = atMessagesBottom();
-    if (el) { el.style.display = 'flex'; el.querySelector('.typing-name').textContent = senderName; }
-    if (stick) pinMessagesBottom();
-  }
-  // Show in chat list
-  const item = document.querySelector(`.chat-item[data-chat-id="${chatId}"] .ci-last`);
-  if (item) { item.dataset.origText = item.dataset.origText || item.textContent; item.textContent = `${senderName} печатает…`; item.classList.add('typing-preview'); }
+const typingNames = {}; // chatId -> Map(имя -> таймер сброса): в группе могут печатать несколько человек сразу
 
-  typingTimers[chatId] = setTimeout(() => {
-    clearTyping(chatId);
-  }, 5000);
+// «Имя печатает…», «Имя и Имя печатают…», «Имя и ещё N печатают…». withName=false — для шапки личного чата, там имя и так видно
+function typingLabel(names, withName) {
+  const n = names.length;
+  if (n === 1) return withName ? `${names[0]} печатает…` : 'печатает…';
+  if (n === 2) return `${names[0]} и ${names[1]} печатают…`;
+  return `${names[0]} и ещё ${n - 1} печатают…`;
+}
+function typingList(chatId) { return [...(typingNames[chatId]?.keys() || [])]; }
+
+// Пока полоса ввода растёт, держим ленту у дна (высота анимируется, лента следует за ней через --composer-h)
+function pinMessagesBottomFor(ms) {
+  const t0 = performance.now();
+  (function step() { pinMessagesBottom(); if (performance.now() - t0 < ms) requestAnimationFrame(step); })();
 }
 
-function clearTyping(chatId) {
-  delete typingTimers[chatId];
-  if (chatId === S.activeChatId) {
-    const el = document.getElementById('typing-indicator');
-    const stick = atMessagesBottom();
-    if (el) el.style.display = 'none';
-    if (stick) pinMessagesBottom();
+// Подсказка живёт в двух местах: подпись в шапке (вместо «в сети» / «N участников») и строка над полем ввода.
+// Лента её не перекрывает: строка входит в высоту полосы ввода, а лента отступает на эту высоту
+function renderTyping(chatId) {
+  if (chatId !== S.activeChatId) return;
+  const names = typingList(chatId), on = names.length > 0;
+  const chat = S.chats.find(c => c.id === chatId);
+  const stick = atMessagesBottom();
+  const head = document.querySelector('.chat-header-info');
+  if (head) {
+    head.classList.toggle('typing', on);
+    const t = head.querySelector('.ch-typing-text');
+    if (t && on) t.textContent = typingLabel(names, chat?.type !== 'direct');
   }
+  const row = document.getElementById('typing-indicator');
+  if (row) {
+    row.classList.toggle('show', on);
+    const t = row.querySelector('.typing-text');
+    if (t && on) t.textContent = typingLabel(names, true);
+  }
+  if (stick) pinMessagesBottomFor(300);
+}
+
+// В списке чатов под названием вместо последнего сообщения
+function renderTypingPreview(chatId) {
   const item = document.querySelector(`.chat-item[data-chat-id="${chatId}"] .ci-last`);
-  if (item && item.dataset.origText !== undefined) {
+  if (!item) return;
+  const names = typingList(chatId);
+  if (names.length) {
+    if (item.dataset.origText === undefined) item.dataset.origText = item.textContent;
+    item.textContent = typingLabel(names, true);
+    item.classList.add('typing-preview');
+  } else if (item.dataset.origText !== undefined) {
     item.textContent = item.dataset.origText;
     delete item.dataset.origText;
     item.classList.remove('typing-preview');
   }
+}
+
+function showTyping(chatId, senderName) {
+  const m = typingNames[chatId] || (typingNames[chatId] = new Map());
+  clearTimeout(m.get(senderName));
+  m.set(senderName, setTimeout(() => clearTyping(chatId, senderName), 5000));
+  renderTyping(chatId);
+  renderTypingPreview(chatId);
+}
+
+// Без имени — сбросить всех (например, при выходе из чата)
+function clearTyping(chatId, senderName) {
+  const m = typingNames[chatId];
+  if (m) {
+    for (const [n, t] of [...m]) if (senderName === undefined || n === senderName) { clearTimeout(t); m.delete(n); }
+    if (!m.size) delete typingNames[chatId];
+  }
+  renderTyping(chatId);
+  renderTypingPreview(chatId);
 }
 function _stickyBottom() {
   const msgs = document.getElementById('messages');

@@ -1464,23 +1464,24 @@ input:not([type]) {
 .icon-btn-danger:hover { color: #ef4444 !important; background: var(--danger-bg) !important; }
 
 /* Typing indicator */
-/* Подсказка «печатает…» висит над композером и вне потока: в потоке она
-   оказывалась под полосой ввода (та лежит поверх ленты), а её появление меняло бы
-   высоту полосы и дёргало ленту. Привязана к .composer-inner, поэтому левый край
-   совпадает с полем ввода на любой ширине. Фон свой — под ней видны сообщения. */
+/* «Печатает» показано в двух местах: в шапке вместо подписи и строкой над полем ввода.
+   Строка входит в высоту полосы ввода (она растёт на 24 px), а лента отступает на эту высоту
+   (--composer-h), поэтому подсказка не закрывает сообщения. Фон у плашки свой: при чтении
+   истории под ней видна лента. */
 .typing-indicator {
-  position: absolute; bottom: calc(100% + 2px); left: 0;
   display: flex; align-items: center;
+  height: 0; overflow: hidden; opacity: 0; padding-left: 4px;
   pointer-events: none;
+  transition: height .22s var(--ease, ease), opacity .22s;
 }
+.typing-indicator.show { height: 24px; opacity: 1; }
 .typing-pill {
   display: flex; align-items: center; gap: 6px;
-  padding: 3px 10px 4px;
+  padding: 2px 10px 3px;
   border-radius: 9px;
   background: var(--chat-bg);
 }
-.typing-name { font-size: 12px; font-weight: 600; color: var(--muted); }
-.typing-label { font-size: 12px; color: var(--muted); }
+.typing-text { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .typing-dots { display: flex; align-items: center; gap: 2px; }
 .typing-dots span {
   width: 3px; height: 3px; border-radius: 50%;
@@ -1491,6 +1492,14 @@ input:not([type]) {
 .typing-dots span:nth-child(3) { animation-delay: .4s; }
 @keyframes typing-bounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-3px); } }
 .typing-preview { color: var(--muted) !important; font-style: italic; }
+
+/* Подпись шапки: «печатает…» выезжает снизу на место обычной подписи */
+.ch-subwrap { position: relative; height: 15px; overflow: hidden; }
+.ch-subwrap .ch-sub, .ch-subwrap .ch-typing { position: absolute; left: 0; right: 0; top: 0; line-height: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: transform .25s, opacity .25s; }
+.ch-subwrap .ch-typing { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--accent); transform: translateY(100%); opacity: 0; }
+.ch-typing .typing-dots span { background: var(--accent); }
+.chat-header-info.typing .ch-sub { transform: translateY(-100%); opacity: 0; }
+.chat-header-info.typing .ch-typing { transform: none; opacity: 1; }
 
 /* Link */
 .msg-link { color: var(--accent); text-decoration: underline; cursor: pointer; word-break: break-all; }

@@ -5,7 +5,7 @@ B.ui.chat = (function () {
   var esc = B.esc, ic = B.ic, S = B.S;
   var NC = ['#e17076', '#e8923c', '#8a6fe0', '#4fae3a', '#2fa8ab', '#3d8fd1', '#d9588f'];
   var GROUP_WINDOW = 60, SENTINEL_INDEX = 50;
-  var typing = {}, away = {}, around = null, jumping = null, observer = null;
+  var away = {}, around = null, jumping = null, observer = null;
 
   // ── вспомогательное ──
   function nameColor(id, tag) {
@@ -118,8 +118,6 @@ B.ui.chat = (function () {
       h += bubble(m, chat, { first: first, last: last });
     });
     if (lastDay) h += '</div>';
-    var ty = typing[chat.id];
-    if (ty) h += '<div class="tpill"><span class="dots"><i></i><i></i><i></i></span>' + esc(ty) + ' печатает…</div>';
     return h;
   }
 
@@ -130,13 +128,13 @@ B.ui.chat = (function () {
     return B.S.chats.filter(function (c) { return !c.parent_id && !c.muted && c.id !== cid; }).reduce(function (s, c) { return s + (c.unread || 0); }, 0);
   }
   function statusOf(chat) {
-    var ty = typing[chat.id];
+    var ty = B.typing.names(chat.id);
     if (chat.type === 'direct') {
-      if (ty) return { t: 'печатает…', live: 1 };
+      if (ty.length) return { t: B.typing.label(ty, false), live: 1 };
       var p = B.peerId(chat), st = B.S.presence[p];
       return { t: p ? B.contacts.peerSub(p) : 'Личный чат', live: st === 'online' };
     }
-    if (ty) return { t: ty + ' печатает…', live: 1 };
+    if (ty.length) return { t: B.typing.label(ty, true), live: 1 };
     return { t: chat.type === 'room' && !chat.parent_id ? 'Комната' : (chat.members ? chat.members.length : 0) + ' участников' };
   }
   function build(cid) {
@@ -165,6 +163,8 @@ B.ui.chat = (function () {
     var chat = B.find(+el.dataset.cid); if (!chat) return;
     var st = statusOf(chat), s = el.querySelector('.st');
     if (s) { s.textContent = st.t; s.classList.toggle('live', !!st.live); }
+    var tr = el.querySelector('.tpr'), names = B.typing.names(chat.id);
+    if (tr) { tr.classList.toggle('show', names.length > 0); if (names.length) tr.querySelector('.tpt').textContent = B.typing.label(names, true); }
     var b = el.querySelector('.cn-b b'); if (b) b.textContent = B.chatName(chat);
     var n = othersUnread(chat.id), c = el.querySelector('.back .cnt'); if (c) c.textContent = n ? (n > 99 ? '99+' : n) : '';
     var ab = el.querySelector('.addc'), pid = chat.type === 'direct' ? B.peerId(chat) : null; if (ab) ab.hidden = !(pid && B.contacts.needsContact(pid));
@@ -310,16 +310,11 @@ B.ui.chat = (function () {
     var sc = el.querySelector('.scroll');
     if (sc.scrollHeight - sc.scrollTop - sc.clientHeight > 200) { var cid = +el.dataset.cid; away[cid] = (away[cid] || 0) + 1; badge(el); }
   });
-  B.bus.on('typing', function (d) {
-    clearTimeout(typing[d.chatId + 't']);
-    typing[d.chatId] = d.senderName || 'Кто-то';
-    typing[d.chatId + 't'] = setTimeout(function () { delete typing[d.chatId]; delete typing[d.chatId + 't']; refreshTyping(d.chatId); }, 5000);
-    refreshTyping(d.chatId);
-  });
+  // «Печатает»: подпись в шапке и строка над полем ввода. Строка входит в высоту полосы ввода, лента отступает на неё и сообщения не закрыты
+  B.bus.on('typing:changed', function (d) { refreshTyping(d.chatId); });
   function refreshTyping(cid) {
     var el = pageFor(cid); if (!el) return;
     updateHeader(el);
-    if (+el.dataset.cid === B.msgs.chatId) render(el, 'smart');
   }
   // Клавиатура или панель смайлов сдвинули поле ввода: держим ленту у низа, если она там и была
   B.bus.on('kbd:changed', function () { var el = activePage(); if (!el) return; var sc = el.querySelector('.scroll'); if (sc && sc.scrollHeight - sc.scrollTop - sc.clientHeight < 400) setTimeout(function () { sc.scrollTop = sc.scrollHeight; }, 60); });

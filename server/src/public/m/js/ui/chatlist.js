@@ -5,12 +5,12 @@ B.ui.chatlist = (function () {
   var esc = B.esc, ic = B.ic;
   var tabview, dyn, input, xbtn, scroller;
   var q = '', searching = false, results = null, searchTimer = null, renderTimer = null;
-  var typing = {}, busy = false, dirty = false, G = null, suppressUntil = 0;
+  var busy = false, dirty = false, G = null, suppressUntil = 0;
 
   // ── разметка ──
   function rowHtml(c) {
-    var lm = c.last_message, S = B.S, mine = lm && lm.sender_id === S.user.id, u = c.unread || 0, men = c.unread_mentions || 0, ty = typing[c.id];
-    var pv = ty ? '<span class="typ">' + esc(ty) + ' печатает…</span>' : c.is_secret ? '<span class="sct">Скрытый чат</span>' : esc(((mine ? 'Вы: ' : '') + B.chats.preview(c)).slice(0, 220));
+    var lm = c.last_message, S = B.S, mine = lm && lm.sender_id === S.user.id, u = c.unread || 0, men = c.unread_mentions || 0, ty = B.typing.names(c.id);
+    var pv = ty.length ? '<span class="typ">' + esc(B.typing.label(ty, true)) + '</span>' : c.is_secret ? '<span class="sct">Скрытый чат</span>' : esc(((mine ? 'Вы: ' : '') + B.chats.preview(c)).slice(0, 220));
     var badge = men ? '<div class="rbd">@</div>' : u ? '<div class="rbd' + (c.muted ? ' m' : '') + '">' + (u > 99 ? '99+' : u) + '</div>' : c.pinned ? '<span class="rpin">' + ic('pin', 16, 2) + '</span>' : '';
     var canDel = c.type !== 'room';
     return '<div class="swrow' + (c.pinned ? ' pinned' : '') + '" data-id="' + c.id + '">' +
@@ -154,12 +154,7 @@ B.ui.chatlist = (function () {
   B.bus.on('presence:changed', schedule);
   B.bus.on('avatar:updated', function () { B.avatar.clearCache(); schedule(); });
   B.bus.on('app:ready', function () { if (dyn) render(); });
-  B.bus.on('auth:logout', function () { typing = {}; if (dyn) { if (searching) cancel(); dyn.innerHTML = ''; } });
-  B.bus.on('typing', function (d) {
-    clearTimeout((typing[d.chatId + 't']) || 0);
-    typing[d.chatId] = d.senderName || 'Кто-то';
-    typing[d.chatId + 't'] = setTimeout(function () { delete typing[d.chatId]; delete typing[d.chatId + 't']; schedule(); }, 5000);
-    schedule();
-  });
+  B.bus.on('auth:logout', function () { if (dyn) { if (searching) cancel(); dyn.innerHTML = ''; } });
+  B.bus.on('typing:changed', schedule);
   return { mount: mount, render: render, cancel: cancel };
 })();

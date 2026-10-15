@@ -5,7 +5,7 @@
 .page.chat .scroll { z-index: 1; padding-bottom: calc(var(--compH, var(--bot)) + 8px); }
 .cn-b { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
 .cn-b b { font-size: 16.5px; font-weight: 600; max-width: 200px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.cn-b .st { font-size: 12.5px; color: var(--fg2); max-width: 200px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cn-b .st { font-size: 12.5px; color: var(--fg2); max-width: 250px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .cn-b .st.live { color: var(--accent); }
 .cn-av { padding: 0 6px; cursor: pointer; }
 
@@ -76,9 +76,8 @@
 .rx button { border: 0; display: inline-flex; gap: 3px; align-items: center; height: 26px; padding: 0 9px; border-radius: 13px; background: var(--card); color: var(--fg); font: 500 13px var(--font); box-shadow: 0 0 0 .5px var(--sep); }
 .rx button.mine { background: color-mix(in srgb, var(--accent) 22%, var(--bg)); color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .rx button b { font-weight: 600; font-size: 12.5px; }
-.tpill { align-self: flex-start; margin-top: 8px; display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 17px; background: var(--bubble-in); color: var(--fg2); font-size: 13px; }
 .dots { display: inline-flex; gap: 3px; }
-.dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--fg2); animation: bl 1.2s infinite; }
+.dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--fg2); animation: bl 1.2s infinite; }
 .dots i:nth-child(2) { animation-delay: .18s; } .dots i:nth-child(3) { animation-delay: .36s; }
 @keyframes bl { 0%, 60%, 100% { opacity: .3; transform: none; } 30% { opacity: 1; transform: translateY(-2px); } }
 .stub-note { padding: 40px 20px; text-align: center; color: var(--fg2); font-size: 14px; }

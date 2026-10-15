@@ -15,6 +15,7 @@ B.ui.composer = (function () {
     var c = comp(el); el._cs = { reply: null, fwd: null, edit: null, att: null, panel: null, mode: 'emoji', tab: 0 };
     c.innerHTML =
       '<div class="ctx"></div><div class="scb" hidden></div><div class="ronote" hidden></div>' +
+      '<div class="tpr"><span class="dots"><i></i><i></i><i></i></span><span class="tpt"></span></div>' +
       '<div class="crow"><div class="cbtn att" role="button" data-k="attach" aria-label="Прикрепить">' + ic('clip', 24, 1.8) + '</div>' +
         '<input type="file" style="display:none">' +
         '<div class="cfield"><span class="ph">Сообщение</span><textarea rows="1" aria-label="Сообщение" enterkeyhint="return" autocapitalize="sentences"></textarea>' +
