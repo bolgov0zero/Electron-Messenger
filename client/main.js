@@ -427,7 +427,7 @@ try { appSettings = JSON.parse(fs.readFileSync(APP_SETTINGS_FILE, 'utf8')); } ca
 function cleanAppSettings(d) {
   const out = {};
   if (!d || typeof d !== 'object') return out;
-  if (d.theme === 'dark' || d.theme === 'light') out.theme = d.theme;
+  if (d.theme === 'dark' || d.theme === 'navy' || d.theme === 'light') out.theme = d.theme;
   if (['small', 'medium', 'large'].includes(d.fontSize)) out.fontSize = d.fontSize;
   const z = Number(d.uiScale); if (Number.isFinite(z) && z >= 50 && z <= 200) out.uiScale = z;
   if (typeof d.accent === 'string' && /^[\w-]{1,24}$/.test(d.accent)) out.accent = d.accent;

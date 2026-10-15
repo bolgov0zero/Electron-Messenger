@@ -371,6 +371,43 @@ html.dark {
   --sidebar-muted:  var(--muted);
 }
 
+/* Тёмно-синяя тема (как в мобильной версии): .navy стоит вместе с .dark, поэтому все правила
+   html.dark действуют и здесь, а ниже меняются только цвета-токены */
+html.dark.navy {
+  --app-bg:      #111a24;
+  --side-bg:     #182430;
+  --header-bg:   #1c2835;
+  --search-bg:   rgba(120,140,165,.18);
+  --composer-bg: #1c2835;
+  --modal-bg:    #1b2836;
+  --card-bg:     #213040;
+  --menu-bg:     #263444;
+  --shadow-pop:  0 14px 36px rgba(4,10,18,.55), 0 2px 8px rgba(4,10,18,.35);
+
+  --active-row:        rgba(var(--accent-rgb,51,144,236),.16);
+  --active-row-border: rgba(var(--accent-rgb,51,144,236),.28);
+  --hover-row:         rgba(150,170,195,.08);
+
+  --border:   rgba(120,140,162,.22);
+  --daypill:  rgba(20,28,40,.62);
+  --reply-bg: rgba(var(--accent-rgb,51,144,236),.10);
+
+  --text:  #eef2f6;
+  --text2: #a3b3c4;
+  --muted: #6f8196;
+
+  --danger:        #ff453a;
+  --danger-bg:     rgba(255,69,58,.12);
+  --danger-border: rgba(255,69,58,.32);
+  --presence-online: #30d158;
+  --presence-away:   #ff9f0a;
+
+  --bubble-bg:    #213040;
+  --chat-bg:      #0f1b27;
+  --chat-split:   #0f1b27;
+  --bubble-split: #213040;
+}
+
 /* ── RESET & BASE ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

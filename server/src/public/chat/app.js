@@ -743,7 +743,7 @@ function enterApp() {
 
 
 function updateSidebarThemeIcon() {
-  const isDark = S.settings.theme === 'dark';
+  const isDark = S.settings.theme !== 'light';
   const sun = document.getElementById('sidebar-theme-sun');
   if (sun) sun.style.display = isDark ? '' : 'none';
   const moon = document.getElementById('sidebar-theme-moon');
@@ -956,8 +956,9 @@ function chatBgCardsHtml() {
 
 function applySettings() {
   headMenuClose();
-  const isDark = S.settings.theme === 'dark';
+  const isDark = S.settings.theme === 'dark' || S.settings.theme === 'navy';
   document.documentElement.classList.toggle('dark', isDark);
+  document.documentElement.classList.toggle('navy', S.settings.theme === 'navy');
   document.documentElement.className = document.documentElement.className.replace(/font-\w+/,'');
   document.documentElement.classList.add('font-'+S.settings.fontSize);
   document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('active', b.textContent.trim()===(S.settings.theme==='light'?'Светлая':'Тёмная')));
@@ -984,7 +985,7 @@ function applySettings() {
   // Цвет системного UI (статус-бар, клавиатура) следует теме
   document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-  if (themeColorMeta) themeColorMeta.content = isDark ? '#0b0d14' : '#f7f7fb';
+  if (themeColorMeta) themeColorMeta.content = S.settings.theme === 'navy' ? '#1c2835' : isDark ? '#0b0d14' : '#f7f7fb';
   applyAccent();
   applyChatBg();
   applyChatPattern();
@@ -1001,7 +1002,8 @@ function animateThemeSwitch() {
   _themeAnimTimer = setTimeout(() => html.classList.remove('theme-anim'), 260);
 }
 function setTheme(t) { animateThemeSwitch(); S.settings.theme=t; applySettings(); saveSession(); }
-function toggleTheme() { setTheme(S.settings.theme === 'dark' ? 'light' : 'dark'); }
+// Кнопка в меню шапки листает темы по кругу: светлая, тёмная, тёмно-синяя
+function toggleTheme() { setTheme({ light: 'dark', dark: 'navy', navy: 'light' }[S.settings.theme] || 'dark'); }
 function setFontSize(f) { S.settings.fontSize=f; applySettings(); saveSession(); }
 function setUiScale(v) { S.settings.uiScale = v; applySettings(); saveSession(); }
 // ── НАСТРОЙКИ ──
@@ -1030,6 +1032,7 @@ const CS_I = {
   check: csSvg('<polyline points="20 6 9 17 4 12"/>'),
   sun: csSvg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>'),
   moon: csSvg('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'),
+  navy: csSvg('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor"/>'),
   play: csSvg('<polygon points="6 4 20 12 6 20 6 4"/>'),
   back: csSvg('<polyline points="15 18 9 12 15 6"/>'),
   chev: csSvg('<polyline points="9 18 15 12 9 6"/>'),
@@ -1175,7 +1178,7 @@ function csSections() {
     { k: 'general', label: 'Основные', icon: CS_I.gear, desc: csIsApp() ? 'Звук и поведение приложения' : 'Звук сообщений',
       meta: () => [s.soundEnabled !== false ? 'звук включён' : 'без звука', csIsApp() && CS.autostart ? 'автозапуск' : ''].filter(Boolean).join(' · ') },
     { k: 'appearance', label: 'Внешний вид', icon: CS_I.palette, desc: 'Тема, цвет, фон переписки и размер текста',
-      meta: () => `${s.theme === 'dark' ? 'Тёмная' : 'Светлая'} · ${ACCENTS[currentAccent()].name.toLowerCase()}` },
+      meta: () => `${s.theme === 'dark' ? 'Тёмная' : s.theme === 'navy' ? 'Тёмно-синяя' : 'Светлая'} · ${ACCENTS[currentAccent()].name.toLowerCase()}` },
   ];
   list.push({ k: 'blocks', label: 'Блокировки', icon: CS_I.ban, desc: 'Люди, которые не могут вам писать',
     meta: () => (S.blocked || []).length ? `заблокировано: ${S.blocked.length}` : 'никого нет' });
@@ -1367,7 +1370,7 @@ function csPaneAppearance() {
     </div>
     <div class="cs-gt">Тема и цвет</div>
     <div class="cs-g">
-      <div class="cs-r"><div class="cs-l"><b>Тема</b></div>${seg([['light', CS_I.sun + 'Светлая'], ['dark', CS_I.moon + 'Тёмная']], s.theme, 'setTheme', 'Тема')}</div>
+      <div class="cs-r"><div class="cs-l"><b>Тема</b></div>${seg([['light', CS_I.sun + 'Светлая'], ['dark', CS_I.moon + 'Тёмная'], ['navy', CS_I.navy + 'Тёмно-синяя']], s.theme, 'setTheme', 'Тема')}</div>
       <div class="cs-r"><div class="cs-l"><b>Цвет акцента</b><span>Кнопки, свои сообщения, выделение</span></div>
         <div class="cs-ctl"><span class="cs-aname">${ACCENTS[currentAccent()].name}</span><div id="accent-seg" class="accent-seg" onclick="if(event.target.closest('.accent-dot'))csRefresh()">${accentDotsHtml()}</div></div></div>
     </div>
