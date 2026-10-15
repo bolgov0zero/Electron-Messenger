@@ -97,7 +97,8 @@
 .swi { position: absolute; right: -40px; top: 50%; margin-top: -16px; width: 32px; height: 32px; border-radius: 50%; background: var(--fill); color: var(--accent); display: flex; align-items: center; justify-content: center; opacity: 0; transition: background .15s, color .15s; }
 
 /* меню сообщения (долгое нажатие) */
-.cml { position: absolute; inset: 0; z-index: 35; pointer-events: none; }
+/* Ниже шторок (.shl 30, .asl 40): пока копия сообщения доезжает на место, поверх неё уже открываются окна реакций и информации */
+.cml { position: absolute; inset: 0; z-index: 28; pointer-events: none; }
 .cml.on { pointer-events: auto; }
 .cmb { position: absolute; inset: 0; background: rgba(0, 0, 0, .22); -webkit-backdrop-filter: blur(22px) saturate(1.4); backdrop-filter: blur(22px) saturate(1.4); opacity: 0; transition: opacity .3s; }
 .on > .cmb { opacity: 1; }
