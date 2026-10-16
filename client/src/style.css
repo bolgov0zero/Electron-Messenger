@@ -3874,7 +3874,7 @@ html.dark .anx-solid { color: #0c0e10; }
 .fmt-ce b { font-weight: 700; }
 .fmt-ce code { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: .88em; background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 6px; padding: 1px 4px; }
 .fmt-ce pre.cb {
-  margin: 4px 0; padding: 8px 10px; border-radius: 10px; white-space: pre-wrap; word-break: break-word;
+  margin: 2px 0; padding: 8px 10px; border-radius: 10px; white-space: pre-wrap; word-break: break-word;
   font: 12.5px/1.5 ui-monospace, 'SF Mono', Consolas, monospace; background: #0b0e13; color: #d6e2ee;
 }
 

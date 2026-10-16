@@ -98,7 +98,7 @@
     const join = nodes => {
       let acc = '';
       for (const c of nodes) {
-        const block = c.nodeType === 1 && (c.nodeName === 'DIV' || c.nodeName === 'P');
+        const block = c.nodeType === 1 && (c.nodeName === 'DIV' || c.nodeName === 'P' || c.nodeName === 'PRE');
         const piece = walk(c);
         if (block && acc && !acc.endsWith('\n')) acc += '\n';
         acc += piece;
@@ -110,7 +110,7 @@
       if (n.nodeType !== 1) return '';
       const tag = n.nodeName;
       if (tag === 'BR') return '\n';
-      if (tag === 'PRE') return '\n```\n' + preText(n).replace(/\n$/, '') + '\n```\n';
+      if (tag === 'PRE') return '```\n' + preText(n).replace(/\n$/, '') + '\n```\n';
       const inner = join(n.childNodes);
       const st = n.style || {};
       const bold = tag === 'B' || tag === 'STRONG' || st.fontWeight === 'bold' || +st.fontWeight >= 600;
@@ -171,25 +171,99 @@
     return ce;
   }
 
-  // Блок кода: строка, на которой стоит курсор (или выделение), становится блоком
+  // ── Блок кода в поле ввода ──
+  // Строки поля — блоки div (первая может быть «голым» текстом): сначала приводим всё к div, потом работаем со строками.
+  function normalizeLines(ce) {
+    const isBlock = n => n.nodeType === 1 && (n.nodeName === 'DIV' || n.nodeName === 'P' || n.nodeName === 'PRE');
+    let run = null;
+    for (const n of [...ce.childNodes]) {
+      if (isBlock(n)) { run = null; continue; }
+      if (!run) { run = document.createElement('div'); ce.insertBefore(run, n); }
+      run.appendChild(n);
+    }
+  }
+  const lineDiv = frag => { const d = document.createElement('div'); d.appendChild(frag); if (!d.firstChild) d.innerHTML = '<br>'; return d; };
+  const emptyDiv = () => { const d = document.createElement('div'); d.innerHTML = '<br>'; return d; };
+  const hasText = f => f.textContent.replace(/[​\s]/g, '').length > 0;
+  function plainOf(frag) {
+    let t = '';
+    const walk = x => {
+      if (x.nodeType === 3) { t += x.textContent.replace(/​/g, ''); return; }
+      if (x.nodeName === 'BR') { if (!x.classList.contains('ph')) t += '\n'; return; }
+      if ((x.nodeName === 'DIV' || x.nodeName === 'P' || x.nodeName === 'PRE') && t && !t.endsWith('\n')) t += '\n';
+      [...x.childNodes].forEach(walk);
+    };
+    [...frag.childNodes].forEach(walk);
+    return t.replace(/\n+$/, '');
+  }
+  function mkPre(txt) {
+    const pre = document.createElement('pre'); pre.className = 'cb';
+    if (txt) pre.textContent = txt; else pre.innerHTML = '<br class="ph">';
+    return pre;
+  }
+  function caretEnd(node) {
+    const s = sel(), r = document.createRange();
+    r.selectNodeContents(node); r.collapse(false); s.removeAllRanges(); s.addRange(r);
+  }
+  function lineOf(ce, node, offset) {
+    if (node === ce) return ce.childNodes[Math.min(offset, ce.childNodes.length - 1)] || null;
+    while (node && node.parentNode !== ce) node = node.parentNode;
+    return node;
+  }
+  // Блок кода по выделенному (или по курсору): текст до выделения остаётся строкой выше, выделенное становится блоком,
+  // текст после — строкой ниже. «а [б] в» даёт три строки: а / блок б / в; пустых строк вокруг блока не появляется
   function insertBlock(ce) {
     ce.focus();
     const s = sel(); if (!s || !s.rangeCount) return;
-    const r = s.getRangeAt(0), txt = r.toString();
-    if (up(ce, 'PRE')) return;
-    r.deleteContents();
-    let line = r.startContainer;
-    while (line && line.parentNode !== ce && line !== ce) line = line.parentNode;
-    const pre = document.createElement('pre'); pre.className = 'cb';
-    if (txt) pre.textContent = txt; else pre.innerHTML = '<br class="ph">';
-    if (!line || line === ce) ce.appendChild(pre);
-    else if (line.nodeName === 'PRE') line.after(pre);
-    else if (!line.textContent.replace(/​/g, '').trim() && line.nodeName !== 'CODE') line.replaceWith(pre);
-    else line.after(pre);
-    if (!pre.nextSibling) { const d = document.createElement('div'); d.innerHTML = '<br>'; pre.after(d); }
-    const nr = document.createRange();
-    if (txt) { nr.selectNodeContents(pre); nr.collapse(false); } else { nr.setStart(pre, 0); nr.collapse(true); }
-    s.removeAllRanges(); s.addRange(nr);
+    const ex = up(ce, 'PRE');
+    if (ex) {   // уже блок: возвращаем его строками
+      const lines = preText(ex).split('\n'), frag = document.createDocumentFragment();
+      lines.forEach(l => { const d = document.createElement('div'); if (l) d.textContent = l; else d.innerHTML = '<br>'; frag.appendChild(d); });
+      const last = frag.lastChild; ex.replaceWith(frag); caretEnd(last);
+      return;
+    }
+    if (!inCe(ce, s.anchorNode)) caretEnd(ce);
+    // Приведение строк к div переносит узлы и сбивает выделение: запоминаем его границы и восстанавливаем
+    const r0 = s.getRangeAt(0), sv = { sc: r0.startContainer, so: r0.startOffset, ec: r0.endContainer, eo: r0.endOffset };
+    normalizeLines(ce);
+    if (sv.sc !== ce && sv.ec !== ce) { const rr = document.createRange(); rr.setStart(sv.sc, sv.so); rr.setEnd(sv.ec, sv.eo); s.removeAllRanges(); s.addRange(rr); }
+    else if (sv.sc === ce) caretEnd(ce);
+    if (!ce.firstChild) { const pre = mkPre(''); ce.append(pre, emptyDiv()); const r = document.createRange(); r.setStart(pre, 0); r.collapse(true); s.removeAllRanges(); s.addRange(r); return; }
+    let r = s.getRangeAt(0);
+    // Курсор без выделения: блоком становится вся строка
+    if (r.collapsed) {
+      const ln = lineOf(ce, r.startContainer, r.startOffset); if (!ln) return;
+      const tail = document.createRange(); tail.setStart(r.startContainer, r.startOffset); tail.setEnd(ln, ln.childNodes.length);
+      if (hasText(ln) && !hasText(tail.cloneContents())) {
+        // Курсор в конце строки с текстом: пустой блок появляется под ней
+        const pre = mkPre(''); ln.after(pre);
+        if (!pre.nextSibling) ce.appendChild(emptyDiv());
+        const nr = document.createRange(); nr.setStart(pre, 0); nr.collapse(true); s.removeAllRanges(); s.addRange(nr);
+        return;
+      }
+      r = document.createRange(); r.selectNodeContents(ln);
+    }
+    const a = lineOf(ce, r.startContainer, r.startOffset), b = lineOf(ce, r.endContainer, r.endOffset);
+    if (!a || !b) return;
+    const rb = document.createRange(); rb.setStart(a, 0); rb.setEnd(r.startContainer, r.startOffset);
+    const ra = document.createRange(); ra.setStart(r.endContainer, r.endOffset); ra.setEnd(b, b.childNodes.length);
+    const fb = rb.cloneContents(), fa = ra.cloneContents();
+    // пробел на стыке с блоком не нужен
+    const lastT = fb.lastChild; if (lastT && lastT.nodeType === 3) lastT.textContent = lastT.textContent.replace(/\s+$/, '');
+    const firstT = fa.firstChild; if (firstT && firstT.nodeType === 3) firstT.textContent = firstT.textContent.replace(/^\s+/, '');
+    const pre = mkPre(plainOf(r.cloneContents()));
+    const out = [];
+    if (hasText(fb)) out.push(lineDiv(fb));
+    out.push(pre);
+    if (hasText(fa)) out.push(lineDiv(fa));
+    // заменяем строки от a до b
+    const doomed = []; for (let n = a; n; n = n.nextSibling) { doomed.push(n); if (n === b) break; }
+    for (const n of out) ce.insertBefore(n, a);
+    doomed.forEach(n => n.remove());
+    // под блоком, если он последний, остаётся строка, куда можно встать
+    if (!pre.nextSibling) ce.appendChild(emptyDiv());
+    if (pre.querySelector('br.ph')) { const nr = document.createRange(); nr.setStart(pre, 0); nr.collapse(true); s.removeAllRanges(); s.addRange(nr); }
+    else caretEnd(pre);
   }
 
   function toggleCode(ce) {
