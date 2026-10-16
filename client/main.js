@@ -481,11 +481,29 @@ function cleanAppSettings(d) {
   const sw = Number(d.sidebarW); if (Number.isFinite(sw) && sw >= 66 && sw <= 460) out.sidebarW = Math.round(sw);
   return out;
 }
+// Windows и Linux: системная шапка окна следует теме клиента (светлая или тёмная; тёмно-синяя — тёмная).
+// themeSource меняет и значение nativeTheme.shouldUseDarkColors, а значок в трее на Linux должен следовать системной панели,
+// поэтому системную тему читаем отдельно (см. systemDark)
+let _sysDark = null, _themeSetAt = 0;
+function applyTitleTheme() {
+  if (process.platform !== 'win32' && process.platform !== 'linux') return;
+  const t = appSettings && appSettings.theme;
+  if (!t) return;
+  if (_sysDark === null) _sysDark = nativeTheme.shouldUseDarkColors;    // до первого переопределения это ещё системное значение
+  const want = t === 'light' ? 'light' : 'dark';
+  if (nativeTheme.themeSource !== want) { _themeSetAt = Date.now(); nativeTheme.themeSource = want; }
+}
+function systemDark() {
+  if (process.platform === 'darwin' || _sysDark === null) return nativeTheme.shouldUseDarkColors;
+  return _sysDark;
+}
+applyTitleTheme();
 ipcMain.handle('app-settings-get', () => appSettings);
 ipcMain.on('app-settings-set', (e, patch) => {
   const clean = cleanAppSettings(patch);
   if (!Object.keys(clean).length) return;
   appSettings = { ...(appSettings || {}), ...clean };
+  if (clean.theme) applyTitleTheme();
   try { fs.writeFileSync(APP_SETTINGS_FILE, JSON.stringify(appSettings)); } catch {}
   // Остальным записям — сразу; отправившая уже применила у себя
   for (const [, view] of accountViews) {
@@ -561,7 +579,7 @@ function getNormalImage() {
     img.setTemplateImage(true);
     return img;
   }
-  const dark = process.platform === 'win32' ? isWindowsTaskbarDark() : nativeTheme.shouldUseDarkColors;
+  const dark = process.platform === 'win32' ? isWindowsTaskbarDark() : systemDark();
   const name = dark ? 'tray-white-24.png' : 'tray-dark-24.png';
   return nativeImage.createFromPath(path.join(_ASSETS, name));
 }
@@ -682,6 +700,11 @@ function createTray() {
   // Смена системной темы → обновляем иконку под новый цвет таскбара
   nativeTheme.on('updated', () => {
     _winTaskbarDark = null;
+    // Системная тема на Linux поменялась сама (не из-за нашего themeSource): запоминаем новое значение
+    if (process.platform === 'linux' && _sysDark !== null && Date.now() - _themeSetAt > 1500) {
+      const cur = nativeTheme.themeSource; _themeSetAt = Date.now();
+      nativeTheme.themeSource = 'system'; _sysDark = nativeTheme.shouldUseDarkColors; nativeTheme.themeSource = cur;
+    }
     try { tray?.setImage(blinkState ? getBlinkImage() : getNormalImage()); } catch {}
   });
 }
