@@ -2815,7 +2815,7 @@ html.dark .announcement-title { color: var(--danger); }
 .composer-field-row {
   display: flex; align-items: center; gap: 4px;
   min-height: 38px; box-sizing: border-box;
-  padding: 0 6px 0 18px;
+  padding: 9px 6px 9px 18px;
 }
 
 /* Выдвижная часть. overflow только здесь, а не на .composer-pill — иначе

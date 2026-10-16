@@ -210,6 +210,18 @@
     while (node && node.parentNode !== ce) node = node.parentNode;
     return node;
   }
+  // Мышью выделяют строку целиком, и граница захватывает перенос: конец выделения встаёт в начало следующей строки,
+  // начало — в конец предыдущей. Такие «хвосты» отбрасываем, иначе под блоком появляется лишняя пустая строка
+  function trimRange(ce, r) {
+    if (r.collapsed) return;
+    const lines = [...ce.childNodes];
+    const emptyBetween = (c1, o1, c2, o2) => { const t = document.createRange(); t.setStart(c1, o1); t.setEnd(c2, o2); return !t.cloneContents().textContent.replace(/\u200b/g, '') && !t.cloneContents().querySelector('br'); };
+    const ln = lineOf(ce, r.endContainer, r.endOffset), lb = lineOf(ce, r.startContainer, r.startOffset);
+    if (ln && ln.previousSibling && lb !== ln && emptyBetween(ln, 0, r.endContainer, r.endOffset)) r.setEnd(ln.previousSibling, ln.previousSibling.childNodes.length);
+    const l2 = lineOf(ce, r.startContainer, r.startOffset);
+    if (l2 && l2.nextSibling && l2 !== lineOf(ce, r.endContainer, r.endOffset) && emptyBetween(r.startContainer, r.startOffset, l2, l2.childNodes.length)) r.setStart(l2.nextSibling, 0);
+    void lines;
+  }
   // Блок кода по выделенному (или по курсору): текст до выделения остаётся строкой выше, выделенное становится блоком,
   // текст после — строкой ниже. «а [б] в» даёт три строки: а / блок б / в; пустых строк вокруг блока не появляется
   function insertBlock(ce) {
@@ -230,6 +242,7 @@
     else if (sv.sc === ce) caretEnd(ce);
     if (!ce.firstChild) { const pre = mkPre(''); ce.append(pre, emptyDiv()); const r = document.createRange(); r.setStart(pre, 0); r.collapse(true); s.removeAllRanges(); s.addRange(r); return; }
     let r = s.getRangeAt(0);
+    trimRange(ce, r);
     // Курсор без выделения: блоком становится вся строка
     if (r.collapsed) {
       const ln = lineOf(ce, r.startContainer, r.startOffset); if (!ln) return;
@@ -260,6 +273,9 @@
     const doomed = []; for (let n = a; n; n = n.nextSibling) { doomed.push(n); if (n === b) break; }
     for (const n of out) ce.insertBefore(n, a);
     doomed.forEach(n => n.remove());
+    // пустая строка сразу под блоком, за которой есть текст, не нужна
+    const nx = pre.nextSibling;
+    if (nx && nx.nodeName === 'DIV' && !nx.textContent.replace(/\u200b/g, '') && nx.nextSibling) nx.remove();
     // под блоком, если он последний, остаётся строка, куда можно встать
     if (!pre.nextSibling) ce.appendChild(emptyDiv());
     if (pre.querySelector('br.ph')) { const nr = document.createRange(); nr.setStart(pre, 0); nr.collapse(true); s.removeAllRanges(); s.addRange(nr); }
