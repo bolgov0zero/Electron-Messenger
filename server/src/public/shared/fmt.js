@@ -418,6 +418,8 @@
     place();
     if (o.key && opened.has(o.key)) { sp.classList.add('open'); cv.style.opacity = '0'; }
     sp.addEventListener('click', () => {
+      const sl = window.getSelection && window.getSelection();
+      if (sl && !sl.isCollapsed && sl.toString()) return;      // текст выделяют, чтобы скопировать: облако при этом не трогаем
       const on = sp.classList.toggle('open'); cv.style.opacity = on ? '0' : '';
       if (o.key) { if (on) opened.add(o.key); else opened.delete(o.key); }
     });
