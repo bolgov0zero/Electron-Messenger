@@ -2668,16 +2668,19 @@ html.dark .announcement-title { color: var(--danger); }
 .reaction-btn {
   display: inline-flex; align-items: center; gap: 5px;
   height: 24px; padding: 0 8px;
-  background: var(--search-bg);
+  /* как плашка даты: непрозрачная подложка с размытием, у своей реакции подмешан акцент */
+  background: var(--daypill);
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--text);
   cursor: pointer; font-family: inherit; line-height: 1;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   transition: background .12s, border-color .12s;
 }
 .reaction-btn:hover { border-color: var(--accent-border); }
 .reaction-btn.mine {
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 22%, var(--daypill));
   border-color: var(--role-teal-border);
 }
 
