@@ -22,7 +22,7 @@
   }
   const hasCode = text => /```[\s\S]*?```/.test(String(text || ''));
   // Для коротких подписей (список чатов, цитата): блок кода заменяется словом, секрет — точками
-  const noCode = text => String(text || '').replace(/```[\s\S]*?```/g, '[код]').replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, '•••');
+  const noCode = text => String(text || '').replace(/```[\s\S]*?```/g, '[код]').replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, '∗∗∗');
 
   // Для списка чатов: без блоков кода и без знаков разметки
   const plain = text => noCode(text).replace(/\*\*([^*\n]+)\*\*/g, '$1').replace(/__([^_\n]+)__/g, '$1').replace(/`([^`\n]+)`/g, '$1');

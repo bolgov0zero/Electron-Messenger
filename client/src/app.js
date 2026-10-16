@@ -3226,7 +3226,7 @@ let _pinIdx = 0;
 
 function pinPreviewText(p) {
   if (!p) return '';
-  const t = p.text ? p.text.replace(/<[^>]*>/g, '')
+  const t = p.text ? Fmt.plain(p.text).replace(/<[^>]*>/g, '')
     : (p.attachment ? (p.attachment.gif ? '🖼 GIF' : p.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : p.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (p.attachment.name || 'Файл')) : '');
   return t.length > 120 ? t.slice(0, 120) + '…' : t;
 }
@@ -4584,7 +4584,7 @@ function ctxReply() {
   if (!msgId) return;
   const textEl = document.querySelector(`[data-msg-id="${msgId}"] .irc-text`);
   const md = S.msgData.get(msgId);
-  const text = (md && !md.senderIsBot && !S.secretChatIds.has(S.activeChatId) && Fmt.hasCode(md.text)) ? Fmt.noCode(md.text) : (textEl?.innerText || '');
+  const text = (md && !md.senderIsBot && !S.secretChatIds.has(S.activeChatId)) ? Fmt.plain(md.text) : (textEl?.innerText || '');
   const msgEl = document.querySelector(`[data-msg-id="${msgId}"]`);
   const senderIdAttr = parseInt(msgEl?.dataset.senderId || '0');
   let senderName;
@@ -7094,7 +7094,7 @@ function showForwardBar() {
   const bar = document.getElementById('forward-bar');
   if (!bar || !S.forwardMsg) return;
   document.getElementById('forward-bar-name').textContent = 'Переслано от ' + (S.forwardMsg.name || '');
-  const previewText = S.forwardMsg.text || (S.forwardMsg.attachment ? '📎 Вложение' : '');
+  const previewText = Fmt.plain(S.forwardMsg.text || '') || (S.forwardMsg.attachment ? '📎 Вложение' : '');
   document.getElementById('forward-bar-text').textContent = previewText.slice(0, 80);
   bar.style.display = '';
   document.getElementById('composer-pill')?.classList.add('has-reply');

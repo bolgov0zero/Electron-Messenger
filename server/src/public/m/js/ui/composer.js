@@ -122,7 +122,7 @@ B.ui.composer = (function () {
       return '<div class="cbar"><span class="ci2">' + ic(icon, 20, 2) + '</span><div class="cb"><b>' + esc(title) + '</b><span>' + esc(text) + '</span></div><button class="xb" data-k="clr" data-w="' + k + '" aria-label="Убрать">' + ic('x', 13, 2.6) + '</button></div>';
     };
     if (s.reply) h += bar('reply', 'Ответ: ' + s.reply.senderName, s.reply.text, 'reply');
-    if (s.fwd) h += bar('fwd', 'Переслано от ' + (s.fwd.name || ''), s.fwd.text || (s.fwd.attachment ? '📎 Вложение' : ''), 'fwd');
+    if (s.fwd) h += bar('fwd', 'Переслано от ' + (s.fwd.name || ''), Fmt.plain(s.fwd.text || '') || (s.fwd.attachment ? '📎 Вложение' : ''), 'fwd');
     if (s.edit) h += '<div class="cbar"><span class="ci2">' + ic('pencil', 20, 2) + '</span><div class="cb"><b>Редактирование</b></div><button class="xb" data-k="clr" data-w="edit" aria-label="Отменить">' + ic('x', 13, 2.6) + '</button></div>';
     if (s.att) {
       var a = s.att, d = a.data, thumb = ic(a.kind === 'Фото' ? 'photo' : 'doc', 20, 2);
