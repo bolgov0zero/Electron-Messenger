@@ -2496,6 +2496,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
             <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
             <div class="composer-field">
           <div class="composer-slot" id="composer-slot"><div class="composer-slot-inner">
+          <div id="dm-bar" class="dm-bar" style="display:${composerNote(chat)?.soft ? '' : 'none'}"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span id="dm-text">${composerNote(chat)?.soft ? esc(composerNote(chat).text) : ''}</span></div>
           <div id="image-preview-bar" style="display:none" class="input-reply-bar">
             <div class="attach-thumb" id="attach-thumb-box">
               <img class="img-preview-thumb" src="" style="display:none">
@@ -3268,15 +3269,19 @@ function composerNote(chat) {
 }
 function readOnlyBannerHtml(chat) {
   const n = composerNote(chat);
-  return `<div class="ro-banner${n?.soft ? ' soft' : ''}" id="ro-banner"${n ? '' : ' hidden'}>
+  const hard = n && !n.soft;     // мягкая подсказка о счётчике живёт в выдвижной части поля (см. dm-bar), отдельной плашки у неё нет
+  return `<div class="ro-banner" id="ro-banner"${hard ? '' : ' hidden'}>
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-    <span id="ro-text">${n ? esc(n.text) : ''}</span>
+    <span id="ro-text">${hard ? esc(n.text) : ''}</span>
   </div>`;
 }
 function syncReadOnlyUi() {
   const chat = S.chats.find(c => c.id === S.activeChatId), n = composerNote(chat);
-  const bn = document.getElementById('ro-banner');
-  if (bn) { bn.toggleAttribute('hidden', !n); bn.classList.toggle('soft', !!n?.soft); const t = document.getElementById('ro-text'); if (t && n) t.textContent = n.text; }
+  const bn = document.getElementById('ro-banner'), hard = n && !n.soft;
+  if (bn) { bn.toggleAttribute('hidden', !hard); const t = document.getElementById('ro-text'); if (t && hard) t.textContent = n.text; }
+  // Счётчик «без ответа» — плашка внутри поля ввода, как панель форматирования
+  const dm = document.getElementById('dm-bar');
+  if (dm) { dm.style.display = n?.soft ? '' : 'none'; const t = document.getElementById('dm-text'); if (t && n?.soft) t.textContent = n.text; }
   document.querySelector('#input-wrap .composer-inner')?.toggleAttribute('hidden', composerLocked(chat));
 }
 

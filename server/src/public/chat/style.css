@@ -3558,3 +3558,7 @@ html.dark .anx-solid { color: #0c0e10; }
 .spl-host { position: relative; }
 .spl-cv { position: absolute; left: 0; top: 0; pointer-events: none; transition: opacity .45s ease; }
 .spl-e { background: rgba(142, 108, 240, .22); border-bottom: 1.5px dotted #b79bff; border-radius: 3px; }
+
+/* Счётчик «сообщений без ответа»: плашка в выдвижной части поля ввода, как панель форматирования */
+.composer-slot .dm-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 14px; background: var(--hover-row); color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+.composer-slot .dm-bar svg { flex-shrink: 0; }

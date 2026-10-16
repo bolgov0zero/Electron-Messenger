@@ -6653,3 +6653,7 @@ html.dark .anx-solid { color: #0c0e10; }
 html.tb-open #tb-strip { transform: none; pointer-events: auto; }
 #tb-grab { position: fixed; top: 0; left: 0; right: 0; height: 6px; z-index: 99998; -webkit-app-region: drag; }
 @media (prefers-reduced-motion: reduce) { #tb-strip { transition: none; } }
+
+/* Счётчик «сообщений без ответа»: плашка в выдвижной части поля ввода, как панель форматирования */
+.composer-slot .dm-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 14px; background: var(--hover-row); color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+.composer-slot .dm-bar svg { flex-shrink: 0; }
