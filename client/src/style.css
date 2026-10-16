@@ -3881,7 +3881,7 @@ html.dark .anx-solid { color: #0c0e10; }
 /* Меню «Прикрепить файл / Форматирование» над кнопкой со стрелкой */
 .composer-main { position: relative; }
 .up-menu {
-  position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 40; width: 214px; padding: 5px;
+  position: absolute; left: 0; bottom: 48px; z-index: 40; width: 214px; padding: 5px;
   background: var(--modal-bg); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-pop);
 }
 .up-menu[hidden] { display: none; }

@@ -264,6 +264,13 @@
     // пробел на стыке с блоком не нужен
     const lastT = fb.lastChild; if (lastT && lastT.nodeType === 3) lastT.textContent = lastT.textContent.replace(/\s+$/, '');
     const firstT = fa.firstChild; if (firstT && firstT.nodeType === 3) firstT.textContent = firstT.textContent.replace(/^\s+/, '');
+    // Строки, разделённые Shift+Enter, лежат в одном div через <br>: перенос на стыке с блоком уже сам разделитель строк
+    const edgeBr = (f, first) => {
+      let n = first ? f.firstChild : f.lastChild;
+      while (n && n.nodeType === 3 && !n.textContent.replace(/\u200b/g, '')) { const nx = first ? n.nextSibling : n.previousSibling; n.remove(); n = nx; }   // пустые узлы от границы выделения
+      if (n && n.nodeName === 'BR') n.remove();
+    };
+    edgeBr(fb, false); edgeBr(fa, true);
     const pre = mkPre(plainOf(r.cloneContents()));
     const out = [];
     if (hasText(fb)) out.push(lineDiv(fb));
