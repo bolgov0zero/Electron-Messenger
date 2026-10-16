@@ -2464,8 +2464,10 @@ html.dark .announcement-title { color: var(--danger); }
 .composer-field-row {
   display: flex; align-items: center; gap: 4px;
   min-height: 38px; box-sizing: border-box;
-  padding: 9px 6px 9px 18px;
+  padding: 0 6px 0 18px;
 }
+/* от двух строк текста в поле ввода — отступы сверху и снизу чуть больше */
+.composer-field-row.multi { padding-top: 9px; padding-bottom: 9px; }
 
 /* Выдвижная часть. overflow только здесь, а не на .composer-pill — иначе
    обрезался бы пикер эмодзи, который всплывает над полем. Фон прозрачный,

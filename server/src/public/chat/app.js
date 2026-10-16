@@ -4277,7 +4277,13 @@ function fmtSelChange() {
   if (CMP.fmt && document.activeElement === el) syncFmtState();
 }
 // Вызывается из onMsgInput: текст изменился
+// Отступы поля ввода сверху и снизу — только когда в нём две строки и больше
+function cmpMulti() {
+  const el = document.getElementById('msg-input');
+  el?.closest('.composer-field-row')?.classList.toggle('multi', !!el && el.offsetHeight > 24);
+}
 function cmpInput() {
+  cmpMulti();
   CMP.lw?.check();
   if (CMP.fmt) { syncFmtState(); paintFmtPreview(); }
 }
@@ -4302,6 +4308,7 @@ function upToggleFmt() {
   if (CMP.fmt) document.getElementById('msg-input')?.focus();
 }
 function syncFmt() {
+  cmpMulti();
   const bar = document.getElementById('fmt-bar'), prev = document.getElementById('fmt-prev');
   if (bar) bar.style.display = CMP.fmt ? '' : 'none';
   if (prev) prev.style.display = (CMP.fmt && CMP.prev) ? '' : 'none';
