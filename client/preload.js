@@ -4,6 +4,10 @@ contextBridge.exposeInMainWorld('electron', {
   notify: (title, body, chatId) => ipcRenderer.send('notify', { title, body, chatId }),
   setUnread: (count) => ipcRenderer.send('unread', count),
   getPlatform: () => ipcRenderer.invoke('get-platform'),
+  // macOS: выезжающая полоса шапки (см. initMacTitlebar в app.js)
+  onTitlebar: cb => ipcRenderer.on('titlebar-open', (_, on) => cb(on)),
+  tbDrag: on => ipcRenderer.send('tb-drag', !!on),
+  tbZoom: () => ipcRenderer.send('tb-zoom'),
   sessionSave: (json) => ipcRenderer.invoke('session-save', json),
   sessionLoad: () => ipcRenderer.invoke('session-load'),
   sessionClear: () => ipcRenderer.invoke('session-clear'),

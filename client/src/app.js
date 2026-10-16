@@ -475,6 +475,20 @@ async function restoreFromDisk() {
 }
 
 
+// ── macOS: выезжающая полоса шапки ──
+// Системной шапки нет (см. setupMacTitlebar в main.js). Полоса в цвете темы выезжает сверху, когда курсор у верхнего края,
+// интерфейс при этом не сдвигается. Окно за неё тянется по положению курсора (главный процесс), двойной клик разворачивает.
+function initMacTitlebar() {
+  if (document.getElementById('tb-strip')) return;
+  const strip = document.createElement('div'); strip.id = 'tb-strip';
+  const grab = document.createElement('div'); grab.id = 'tb-grab';   // тонкая невидимая ручка у самого края
+  document.body.append(strip, grab);
+  strip.addEventListener('mousedown', e => { if (e.button === 0) window.electron.tbDrag(true); });
+  strip.addEventListener('dblclick', () => window.electron.tbZoom());
+  window.addEventListener('mouseup', () => window.electron.tbDrag(false));
+  window.electron.onTitlebar(on => document.documentElement.classList.toggle('tb-open', !!on));
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   await restoreFromDisk();
   // Версия — всегда, независимо от сессии
@@ -507,6 +521,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Show HA button on Windows only
   if (window.electron) {
     const platform = await window.electron.getPlatform();
+    if (platform === 'darwin') initMacTitlebar();
     if (platform === 'win32') {
       const btn = document.getElementById('ha-toggle-btn');
       if (btn) {

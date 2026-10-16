@@ -6643,3 +6643,13 @@ html.dark .anx-solid { color: #0c0e10; }
 .spl-host { position: relative; }
 .spl-cv { position: absolute; left: 0; top: 0; pointer-events: none; transition: opacity .45s ease; }
 .spl-e { background: rgba(142, 108, 240, .22); border-bottom: 1.5px dotted #b79bff; border-radius: 3px; }
+
+/* macOS: выезжающая полоса шапки окна (элементы создаёт initMacTitlebar, на других системах их нет) */
+#tb-strip {
+  position: fixed; top: 0; left: 0; right: 0; height: 28px; z-index: 99999; pointer-events: none;
+  background: var(--app-bg); border-bottom: 1px solid var(--border);
+  transform: translateY(-100%); transition: transform .22s cubic-bezier(.32, .72, 0, 1);
+}
+html.tb-open #tb-strip { transform: none; pointer-events: auto; }
+#tb-grab { position: fixed; top: 0; left: 0; right: 0; height: 6px; z-index: 99998; -webkit-app-region: drag; }
+@media (prefers-reduced-motion: reduce) { #tb-strip { transition: none; } }

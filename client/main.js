@@ -344,6 +344,50 @@ function attachInputMenu(wc) {
   });
 }
 
+// ── macOS: скрытая шапка окна ──
+// Шапки не видно, интерфейс занимает всё окно. Когда курсор подходит к верхнему краю, сверху выезжает полоса в цвете темы
+// (рисует страница, см. initMacTitlebar в app.js) и показывается светофор; когда курсор уходит, через паузу они прячутся.
+// Курсор отслеживаем здесь, а не в странице: страница не получает событий мыши, пока окно неактивно.
+// Перетаскивание за полосу тоже ведём по положению курсора: области -webkit-app-region перекрываются другими элементами
+const TB_NEAR_CLOSED = 12, TB_NEAR_OPEN = 44, TB_HIDE_DELAY = 450;
+function setupMacTitlebar(win) {
+  let open = false, hideT = null;
+  const setOpen = on => {
+    if (on === open) return;
+    open = on;
+    try { win.setWindowButtonVisibility(on); } catch {}
+    for (const v of accountViews.values()) { try { v.webContents.send('titlebar-open', on); } catch {} }
+  };
+  win.setWindowButtonVisibility(false);
+  const timer = setInterval(() => {
+    if (win.isDestroyed()) { clearInterval(timer); return; }
+    if (!win.isVisible() || win.isFullScreen()) return;
+    const p = screen.getCursorScreenPoint(), b = win.getBounds();
+    const near = p.x >= b.x && p.x <= b.x + b.width && p.y - b.y >= 0 && p.y - b.y <= (open ? TB_NEAR_OPEN : TB_NEAR_CLOSED);
+    if (near) { clearTimeout(hideT); hideT = null; setOpen(true); }
+    else if (open && !hideT) hideT = setTimeout(() => { hideT = null; setOpen(false); }, TB_HIDE_DELAY);
+  }, 80);
+  // Полный экран: macOS сама показывает кнопки у верхнего края, наша полоса не нужна; на выходе снова прячем
+  win.on('enter-full-screen', () => { clearTimeout(hideT); hideT = null; open = false; for (const v of accountViews.values()) { try { v.webContents.send('titlebar-open', false); } catch {} } });
+  win.on('leave-full-screen', () => { open = false; try { win.setWindowButtonVisibility(false); } catch {} });
+  win.on('closed', () => clearInterval(timer));
+}
+let tbDragT = null;
+ipcMain.on('tb-drag', (e, on) => {
+  clearInterval(tbDragT); tbDragT = null;
+  if (!on || process.platform !== 'darwin' || !mainWindow || mainWindow.isDestroyed()) return;
+  const p0 = screen.getCursorScreenPoint(), b0 = mainWindow.getBounds();
+  tbDragT = setInterval(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) { clearInterval(tbDragT); tbDragT = null; return; }
+    const p = screen.getCursorScreenPoint();
+    mainWindow.setPosition(b0.x + p.x - p0.x, b0.y + p.y - p0.y);
+  }, 8);
+});
+ipcMain.on('tb-zoom', () => {
+  if (process.platform !== 'darwin' || !mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize();
+});
+
 function createAccountView(acc) {
   const view = new BrowserView({ webPreferences: {
     preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false,
@@ -585,10 +629,13 @@ function createWindow() {
     // Linux: без скруглённой тёмной подложки — только стрелка, как у значка в трее
     icon: path.join(_ASSETS, process.platform === 'linux' ? 'icon-arrow-512.png' : 'icon-512.png'),
     backgroundColor: '#12171d',
+    // macOS: системной шапки не видно, светофор и полоса шапки выезжают у верхнего края (см. setupMacTitlebar)
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 14, y: 7 } } : {}),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
     show: false,
   });
   mainWindow.setMenuBarVisibility(false);
+  if (process.platform === 'darwin') setupMacTitlebar(mainWindow);
   loadAccounts();
   // Экземпляры всех записей поднимаются сразу: у каждой своё соединение с сервером, иначе невыбранная
   // запись остаётся не в сети, пока на неё не нажмут
