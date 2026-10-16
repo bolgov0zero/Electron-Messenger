@@ -39,8 +39,8 @@ const FOLDER_ICONS = {
 const FOLDER_ICON_KEYS = Object.keys(FOLDER_ICONS);
 const folderSvg = (name, size) => `<svg class="fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" width="${size || 20}" height="${size || 20}">${FOLDER_ICONS[name] || FOLDER_ICONS.folder}</svg>`;
 const fsvg = (p, size) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" width="${size || 16}" height="${size || 16}">${p}</svg>`;
-const FI_X = '<path d="M6 6l12 12M18 6L6 18"/>', FI_EDIT = '<path d="M4 20l1-4L16 5l3 3L8 19z"/>', FI_TRASH = '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>';
-const FI_UP = '<path d="M6 15l6-6 6 6"/>', FI_DOWN = '<path d="M6 9l6 6 6-6"/>', FI_PLUS = '<path d="M12 5v14M5 12h14"/>', FI_CHECK = '<path d="M5 12.5l4.5 4.5L19 7"/>';
+const FI_X = '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>', FI_EDIT = '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>', FI_TRASH = '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>';
+const FI_UP = '<path d="m18 15-6-6-6 6"/>', FI_DOWN = '<path d="m6 9 6 6 6-6"/>', FI_PLUS = '<path d="M5 12h14"/><path d="M12 5v14"/>', FI_CHECK = '<path d="M20 6 9 17l-5-5"/>';
 
 S.folders = [];
 S.folderFilter = 'all';
@@ -297,7 +297,7 @@ async function moveFolder(id, dir) {
 function csPaneFolders() {
   const n = S.folders.length;
   const rows = S.folders.map((f, i) => `<div class="fp-row" draggable="true" data-fid="${f.id}">
-      <span class="fp-grip" title="Перетащите, чтобы изменить порядок">${fsvg('<path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01" stroke-width="3"/>', 16)}</span>
+      <span class="fp-grip" title="Перетащите, чтобы изменить порядок">${fsvg('<circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/>', 16)}</span>
       <span class="fp-ic" style="--fc:${f.color}">${folderSvg(f.icon, 20)}</span>
       <span class="fp-tx"><b>${esc(f.name)}</b><small>${f.chat_ids.length} ${folderPlural(f.chat_ids.length)}</small></span>
       <span class="fp-acts">

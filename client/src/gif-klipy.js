@@ -100,7 +100,7 @@
   function mount(host, opts) {
     const o = Object.assign({ onPick() {} }, opts);
     host.innerHTML = `<div class="gp">
-      <label class="gp-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <label class="gp-search"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         <input class="gp-q" placeholder="Search KLIPY" autocomplete="off" aria-label="Search KLIPY"></label>
       <div class="gp-chips" role="group" aria-label="Темы"></div>
       <div class="gp-scroll"><div class="gp-cols"><div></div><div></div></div><div class="gp-state"></div></div></div>`;

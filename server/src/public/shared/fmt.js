@@ -34,7 +34,7 @@
   }
 
   // Блок кода в сообщении: шапка с кнопкой «Копировать» и сам код. Копирует только кнопка, клик по коду ничего не делает
-  const COPY_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
+  const COPY_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
   // foot — нижняя полоса блока: когда он замыкает пузырь, в ней стоят время и галочки (true — пустая, строка — её содержимое)
   function codeBlock(code, foot) {
     return `<div class="cblk" data-code="${esc(code)}"><div class="cbh"><span>Код</span><button type="button" class="cblk-cp" data-fmt-copy>${COPY_SVG}<i>Копировать</i></button></div><pre>${esc(code)}</pre>${foot ? '<div class="cbf">' + (foot === true ? '' : foot) + '</div>' : ''}</div>`;
@@ -442,13 +442,13 @@
   function barHtml() {
     return '<button type="button" data-f="b" title="Жирный (Ctrl+B)" aria-label="Жирный"><b>B</b></button>' +
       '<button type="button" data-f="i" title="Курсив (Ctrl+I)" aria-label="Курсив"><i style="font-family:Georgia,serif">I</i></button>' +
-      '<button type="button" data-f="c" title="Код в строке (Ctrl+E)" aria-label="Код в строке"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg></button>' +
+      '<button type="button" data-f="c" title="Код в строке (Ctrl+E)" aria-label="Код в строке"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></button>' +
       '<button type="button" data-f="blk" title="Блок кода" aria-label="Блок кода"><span style="font:700 12px ui-monospace,monospace">{ }</span></button>' +
-      '<button type="button" data-f="s" title="Секрет (Ctrl+Shift+S)" aria-label="Секрет"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12.5L20 4M17 7l3 3M14 10l2 2"/></svg></button>' +
+      '<button type="button" data-f="s" title="Секрет (Ctrl+Shift+S)" aria-label="Секрет"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg></button>' +
       '<span class="fmt-sep"></span>' +
-      '<button type="button" data-f="prev" title="Показать превью" aria-label="Превью"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>' +
+      '<button type="button" data-f="prev" title="Показать превью" aria-label="Превью"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg></button>' +
       '<span class="fmt-grow"></span>' +
-      '<button type="button" data-f="close" title="Закрыть панель форматирования" aria-label="Закрыть"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
+      '<button type="button" data-f="close" title="Закрыть панель форматирования" aria-label="Закрыть"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>';
   }
 
   // ── Превью ссылки в поле ввода ──
