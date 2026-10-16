@@ -377,22 +377,32 @@
   }
 
   // ── Курсор и вставка (для смайлов и упоминаний) ──
-  function insertText(ce, text) {
-    ce.focus();
+  // Где был курсор: текущее выделение, если оно в поле, иначе последнее запомненное (при открытой панели смайлов
+  // выделение уходит в её строку поиска). Читать нужно до focus(): он ставит курсор в начало поля
+  function caretRange(ce) {
     const s = sel();
-    if (!s || !s.rangeCount || !inCe(ce, s.anchorNode)) focusEnd(ce);
+    if (s && s.rangeCount && inCe(ce, s.anchorNode)) return s.getRangeAt(0).cloneRange();
+    return ce._rng && ce.contains(ce._rng.startContainer) && ce.contains(ce._rng.endContainer) ? ce._rng.cloneRange() : null;
+  }
+  function focusAt(ce, saved) {
+    ce.focus();
+    const s = sel(); if (!s) return;
+    if (saved) { s.removeAllRanges(); s.addRange(saved); } else focusEnd(ce);
+  }
+  function insertText(ce, text) {
+    focusAt(ce, caretRange(ce));
     document.execCommand('insertText', false, text);
   }
   // Текст перед курсором (без оформления): для разбора «@имя»
   function textBeforeCaret(ce) {
-    const s = sel(); if (!s || !s.rangeCount || !inCe(ce, s.anchorNode)) return ce.textContent.replace(/​/g, '');
-    const r = s.getRangeAt(0).cloneRange(); r.collapse(true);
+    const r0 = caretRange(ce); if (!r0) return ce.textContent.replace(/​/g, '');
+    const r = r0; r.collapse(true);
     const pre = document.createRange(); pre.selectNodeContents(ce); pre.setEnd(r.endContainer, r.endOffset);
     return pre.toString().replace(/​/g, '');
   }
   // Заменить n символов перед курсором текстом
   function replaceBefore(ce, n, text) {
-    ce.focus();
+    focusAt(ce, caretRange(ce));
     const s = sel(); if (!s || !s.rangeCount) return;
     for (let i = 0; i < n; i++) s.modify('extend', 'backward', 'character');
     document.execCommand('insertText', false, text);
