@@ -73,3 +73,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tb.on { color: var(--accent); }
 
 /* клавиатура: пока она открыта, kbd.js задаёт #app высоту и сдвиг видимой области (visualViewport) */
+
+/* Заглушка для компьютера (см. html.m-desktop в index.html): мобильный интерфейс прячется, вместо него ссылка на /chat */
+#screen-desktop { display: none; position: fixed; inset: 0; z-index: 9999; align-items: center; justify-content: center; background: var(--bg2); padding: 24px; overflow-y: auto; }
+html.m-desktop #screen-desktop { display: flex; }
+html.m-desktop #app { display: none; }
+.dk-wrap { width: 100%; max-width: 380px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; }
+.dk-logo { border-radius: 18px; margin-bottom: 6px; }
+.dk-title { font-size: 28px; font-weight: 700; letter-spacing: .3px; }
+.dk-text { margin: 0; color: var(--fg2); font-size: 15px; line-height: 1.45; }
+.dk-btn { margin-top: 14px; display: block; width: 100%; height: 50px; line-height: 50px; border-radius: 14px; background: var(--accent); color: #fff; text-decoration: none; font-size: 17px; font-weight: 600; text-align: center; }
