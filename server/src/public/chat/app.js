@@ -85,7 +85,7 @@ function mdLite(escaped) {
 function linkifyText(text) {
   const urlRe = /(https?:\/\/[^\s]+)/g;
   return text.split(urlRe).map((part, i) => {
-    if (i % 2 !== 1) return mdLite(highlightMentions(esc(part)));
+    if (i % 2 !== 1) return Fmt.spl(mdLite(highlightMentions(esc(part))));
     return `<a class="msg-link" href="#" onclick="openExternalLink(event,this)" data-url="${esc(part)}">${esc(part)}</a>`;
   }).join('');
 }
@@ -3845,7 +3845,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       ${rThumbHtml}
       <div class="irc-reply-body">
         <div class="irc-reply-name">${esc(m.reply_sender_name || '')}</div>
-        <div class="irc-reply-text">${m.reply_sender_is_bot ? (rTextRaw || '') : mdLite(esc(rTextRaw || ''))}</div>
+        <div class="irc-reply-text">${m.reply_sender_is_bot ? (rTextRaw || '') : mdLite(esc(Fmt.noCode(rTextRaw || '')))}</div>
       </div>
     </div>` : '';
 
@@ -3857,7 +3857,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       ? `<img src="${httpProto()}://${S.server}${fd.attachment.thumb || fd.attachment.url}" class="irc-reply-thumb" onerror="this.style.display='none'">`
       : `<div class="irc-reply-thumb irc-reply-file"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>`) : '';
     const fdText = fd.text || (fd.attachment ? (fdIsImg ? '📷 Фото' : fdIsVideo ? '🎬 Видео' : '📎 ' + (fd.attachment.name || 'Файл')) : '');
-    return `<div class="irc-reply irc-forward-block">${fdThumb}<div class="irc-reply-body"><div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div><div class="irc-reply-text">${fd.is_bot ? fdText : mdLite(esc(fdText))}</div></div></div>`;
+    return `<div class="irc-reply irc-forward-block">${fdThumb}<div class="irc-reply-body"><div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div><div class="irc-reply-text">${fd.is_bot ? fdText : mdLite(esc(Fmt.noCode(fdText)))}</div></div></div>`;
   })() : '';
 
   const actionsHtml = '';
@@ -4313,7 +4313,7 @@ function syncFmtState() {
   const el = document.getElementById('msg-input'), bar = document.getElementById('fmt-bar');
   if (!el || !bar) return;
   const st = Fmt.state(el);
-  for (const k of ['b', 'i', 'c', 'blk']) bar.querySelector(`[data-f=${k}]`)?.classList.toggle('on', !!st[k]);
+  for (const k of ['b', 'i', 'c', 'blk', 's']) bar.querySelector(`[data-f=${k}]`)?.classList.toggle('on', !!st[k]);
 }
 function fmtBarClick(e) {
   const b = e.target.closest('[data-f]'); if (!b) return;
@@ -5476,7 +5476,7 @@ function connectWS() {
           if (message.mentions?.includes(S.user.id)) S.unreadMentions[chatId] = (S.unreadMentions[chatId]||0)+1;
           if (!isChatMuted(chatId, parentId)) {
             const title = chatName(chat) || message.sender_name || 'Electron';
-            const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+            const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? Fmt.plain(message.text) : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
             webNotify(title, body, chatId);
             playNotificationSound();
           }
@@ -5494,7 +5494,7 @@ function connectWS() {
           // был chatName(undefined) → TypeError, и обработчик обрывался.
           const _srObj = parentId ? (S.topics[parentId]||[]).find(s=>s.id===chatId) : null;
           const title = _srObj?.name || chatName(chat) || message.sender_name || 'Electron';
-          const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${message.text || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+          const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? Fmt.plain(message.text) : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
           webNotify(title, body, chatId);
           playNotificationSound();
         }

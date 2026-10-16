@@ -21,8 +21,8 @@
     return out.filter(p => p.k === 'c' || p.v.trim()).map(p => p.k === 'c' ? p : { k: 't', v: p.v.replace(/^\n+|\n+$/g, '') });
   }
   const hasCode = text => /```[\s\S]*?```/.test(String(text || ''));
-  // Для коротких подписей (список чатов, цитата): блок кода заменяется словом
-  const noCode = text => String(text || '').replace(/```[\s\S]*?```/g, '[код]');
+  // Для коротких подписей (список чатов, цитата): блок кода заменяется словом, секрет — точками
+  const noCode = text => String(text || '').replace(/```[\s\S]*?```/g, '[код]').replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, '•••');
 
   // Для списка чатов: без блоков кода и без знаков разметки
   const plain = text => noCode(text).replace(/\*\*([^*\n]+)\*\*/g, '$1').replace(/__([^_\n]+)__/g, '$1').replace(/`([^`\n]+)`/g, '$1');
@@ -67,7 +67,7 @@
   }
 
   // ── Поле ввода ──
-  const inline = s => esc(s).replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>').replace(/__([^_\n]+)__/g, '<i>$1</i>').replace(/\n/g, '<br>');
+  const inline = s => esc(s).replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>').replace(/__([^_\n]+)__/g, '<i>$1</i>').replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, '<span class="spl-e">$1</span>').replace(/\n/g, '<br>');
 
   // Разметка сообщения → HTML поля ввода
   function toEditor(text) {
@@ -117,6 +117,7 @@
       const ital = tag === 'I' || tag === 'EM' || st.fontStyle === 'italic';
       let r = inner;
       if (tag === 'CODE') return inner.trim() ? '`' + inner + '`' : inner;
+      if (tag === 'SPAN' && n.classList.contains('spl-e')) return inner.trim() ? '||' + inner + '||' : inner;
       if (bold && r.trim()) r = '**' + r + '**';
       if (ital && r.trim()) r = '__' + r + '__';
       if (tag === 'DIV' || tag === 'P') return r + '\n';
@@ -204,26 +205,54 @@
     document.execCommand('insertHTML', false, '<code>' + (txt ? esc(txt) : ZW) + '</code>');
   }
 
-  // Команда панели: 'b' | 'i' | 'c' | 'blk'
+  function upCls(ce, cls) {
+    const s = sel(); if (!s || !s.rangeCount || !inCe(ce, s.anchorNode)) return null;
+    let n = s.anchorNode;
+    while (n && n !== ce) { if (n.nodeType === 1 && n.classList.contains(cls)) return n; n = n.parentNode; }
+    return null;
+  }
+  // Секрет: выделенное прячется за облачком
+  function toggleSecret(ce) {
+    ce.focus();
+    const s = sel(); if (!s || !s.rangeCount) return;
+    const ex = upCls(ce, 'spl-e');
+    if (ex) {
+      if (s.getRangeAt(0).collapsed && ex.textContent.replace(/\u200b/g, '')) {
+        // Курсор внутри секрета без выделения: выходим из него, дальше набирается обычный текст
+        const z = document.createTextNode(ZW); ex.after(z);
+        const r = document.createRange(); r.setStart(z, 1); r.collapse(true); s.removeAllRanges(); s.addRange(r);
+        return;
+      }
+      const t = document.createTextNode(ex.textContent); ex.replaceWith(t);
+      const r = document.createRange(); r.selectNodeContents(t); s.removeAllRanges(); s.addRange(r);
+      return;
+    }
+    const txt = s.getRangeAt(0).toString();
+    document.execCommand('insertHTML', false, '<span class="spl-e">' + (txt ? esc(txt) : ZW) + '</span>');
+  }
+
+  // Команда панели: 'b' | 'i' | 'c' | 'blk' | 's'
   function cmd(ce, k) {
     ce.focus();
     if (k === 'b') document.execCommand('bold');
     else if (k === 'i') document.execCommand('italic');
     else if (k === 'c') toggleCode(ce);
     else if (k === 'blk') insertBlock(ce);
+    else if (k === 's') toggleSecret(ce);
   }
   // Что включено под курсором — для подсветки кнопок панели
   function state(ce) {
     const s = sel(), inside = !!s && s.rangeCount && inCe(ce, s.anchorNode);
     let b = false, i = false;
     if (inside) { try { b = document.queryCommandState('bold'); i = document.queryCommandState('italic'); } catch {} }
-    return { b, i, c: !!up(ce, 'CODE'), blk: !!up(ce, 'PRE') };
+    return { b, i, c: !!up(ce, 'CODE'), blk: !!up(ce, 'PRE'), s: !!upCls(ce, 'spl-e') };
   }
 
   // Нажатие клавиши в поле. true — обработано здесь, дальше ничего делать не нужно:
   // Enter в блоке кода — перенос строки (на пустой последней строке — выход из блока), Ctrl/Cmd+B/I/E — оформление
   function keydown(e, ce) {
     const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.shiftKey && !e.altKey && e.key.toLowerCase() === 's') { e.preventDefault(); cmd(ce, 's'); ce.dispatchEvent(new Event('input', { bubbles: true })); return true; }
     if (mod && !e.altKey && ['b', 'i', 'e'].includes(e.key.toLowerCase())) {
       e.preventDefault(); cmd(ce, { b: 'b', i: 'i', e: 'c' }[e.key.toLowerCase()]); ce.dispatchEvent(new Event('input', { bubbles: true })); return true;
     }
@@ -318,6 +347,7 @@
       '<button type="button" data-f="i" title="Курсив (Ctrl+I)" aria-label="Курсив"><i style="font-family:Georgia,serif">I</i></button>' +
       '<button type="button" data-f="c" title="Код в строке (Ctrl+E)" aria-label="Код в строке"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg></button>' +
       '<button type="button" data-f="blk" title="Блок кода" aria-label="Блок кода"><span style="font:700 12px ui-monospace,monospace">{ }</span></button>' +
+      '<button type="button" data-f="s" title="Секрет (Ctrl+Shift+S)" aria-label="Секрет"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12.5L20 4M17 7l3 3M14 10l2 2"/></svg></button>' +
       '<span class="fmt-sep"></span>' +
       '<button type="button" data-f="prev" title="Показать превью" aria-label="Превью"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>' +
       '<span class="fmt-grow"></span>' +
@@ -356,6 +386,77 @@
     return api;
   }
 
-  g.Fmt = { esc, parts, hasCode, noCode, plain, firstUrl, codeBlock, copyClick, previewCard, toEditor, serialize, setValue, init, cmd, state, keydown,
+  // ── Секрет в сообщении: текст закрыт облачком из частиц, нажатие открывает и закрывает ──
+  // Разметка в сообщении: ||текст||. Клиенты превращают её в <span class="spl">; частицы рисует один общий цикл
+  const spl = e => e.replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, '<span class="spl">$1</span>');
+  const SP = new Set(), opened = new Set();
+  let spRaf = 0, spLast = 0;
+  function spKey(sp) {
+    const m = sp.closest('[data-msg-id],[data-mid]'); if (!m) return null;
+    const id = m.getAttribute('data-msg-id') || m.getAttribute('data-mid');
+    return id + ':' + [...m.querySelectorAll('.spl')].indexOf(sp);
+  }
+  function spInit(sp) {
+    sp.setAttribute('data-sp', '1');
+    const host = sp.closest('.irc-text,.txt,.fpb') || sp.parentElement; if (!host) return;
+    host.classList.add('spl-host');
+    const cv = document.createElement('canvas'); cv.className = 'spl-cv'; host.appendChild(cv);
+    const o = { sp, host, cv, g: cv.getContext('2d'), boxes: [], W: 0, H: 0, k: 1, col: '#fff', n: 0, key: spKey(sp) };
+    const place = () => {
+      const hr = host.getBoundingClientRect(), k = host.offsetWidth ? hr.width / host.offsetWidth : 1;   // учёт масштаба интерфейса (zoom)
+      o.k = k || 1; o.W = host.offsetWidth; o.H = host.offsetHeight;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      cv.width = o.W * dpr; cv.height = o.H * dpr; cv.style.width = o.W + 'px'; cv.style.height = o.H + 'px'; o.dpr = dpr;
+      o.boxes = [...sp.getClientRects()].filter(r => r.width > 2).map(r => {
+        const b = { x: (r.left - hr.left) / o.k, y: (r.top - hr.top) / o.k, w: r.width / o.k, h: r.height / o.k };
+        b.p = Array.from({ length: Math.round(b.w * b.h / 6.5) }, () => { const p = {}; spawn(b, p, true); return p; });
+        return b;
+      });
+    };
+    o.place = place;
+    try { new ResizeObserver(place).observe(host); } catch {}
+    place();
+    if (o.key && opened.has(o.key)) { sp.classList.add('open'); cv.style.opacity = '0'; }
+    sp.addEventListener('click', () => {
+      const on = sp.classList.toggle('open'); cv.style.opacity = on ? '0' : '';
+      if (o.key) { if (on) opened.add(o.key); else opened.delete(o.key); }
+    });
+    SP.add(o);
+    if (!spRaf) spRaf = requestAnimationFrame(spLoop);
+  }
+  function spawn(b, p, fresh) {
+    p.x = Math.random() * b.w; p.y = Math.random() * b.h; p.a = Math.random() * 6.28; p.s = .1 + Math.random() * .32;
+    p.life = fresh ? Math.random() : 0; p.span = .5 + Math.random(); p.r = .45 + Math.random() * .9;
+  }
+  function spLoop(t) {
+    const dt = Math.min(50, t - spLast || 16); spLast = t;
+    for (const o of SP) {
+      if (!o.sp.isConnected) { SP.delete(o); continue; }
+      if (o.sp.classList.contains('open') || document.hidden) continue;
+      if (!(++o.n % 90)) o.col = getComputedStyle(o.host).color;    // цвет текста мог смениться вместе с темой
+      const g = o.g; g.setTransform(o.dpr, 0, 0, o.dpr, 0, 0); g.clearRect(0, 0, o.W, o.H); g.fillStyle = o.col;
+      for (const b of o.boxes) {
+        const cx = b.w / 2 || 1, cy = b.h / 2 || 1;
+        for (const p of b.p) {
+          p.life += dt / 1000 / p.span; if (p.life >= 1) { spawn(b, p, false); continue; }
+          // частицы медленно разлетаются от центра строки и бледнеют: у облака нет чёткой границы
+          const dx = p.x - cx, dy = p.y - cy, d = Math.hypot(dx, dy) || 1;
+          p.a += (Math.random() - .5) * .6;
+          p.x += Math.cos(p.a) * p.s + dx / d * .06 * dt / 16 * Math.min(1, Math.abs(dx) / cx + .2); p.y += Math.sin(p.a) * p.s + dy / d * .03 * dt / 16;
+          g.globalAlpha = Math.sin(Math.PI * p.life) * .9; g.beginPath(); g.arc(b.x + p.x, b.y + p.y, p.r, 0, 6.28); g.fill();
+        }
+      }
+    }
+    spRaf = SP.size ? requestAnimationFrame(spLoop) : 0;
+  }
+  // Новые секреты в разметке подхватываются сами, откуда бы сообщение ни появилось
+  let spScan = 0;
+  function spScanNow() { spScan = 0; document.querySelectorAll('.spl:not([data-sp])').forEach(spInit); }
+  if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined') {
+    const start = () => new MutationObserver(() => { if (!spScan) spScan = requestAnimationFrame(spScanNow); }).observe(document.body, { childList: true, subtree: true });
+    if (document.body) start(); else document.addEventListener('DOMContentLoaded', start);
+  }
+
+  g.Fmt = { spl, esc, parts, hasCode, noCode, plain, firstUrl, codeBlock, copyClick, previewCard, toEditor, serialize, setValue, init, cmd, state, keydown,
     insertText, insertQuiet, backspaceQuiet, textBeforeCaret, replaceBefore, focusEnd, barHtml, linkWatch, inline };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -70,7 +70,7 @@ B.ui.composer = (function () {
   }
   function fmtState(el) {
     var bar = comp(el).querySelector('.fbar'), st = Fmt.state(ta(el));
-    ['b', 'i', 'c', 'blk'].forEach(function (k) { var b = bar.querySelector('[data-f="' + k + '"]'); if (b) b.classList.toggle('on', !!st[k]); });
+    ['b', 'i', 'c', 'blk', 's'].forEach(function (k) { var b = bar.querySelector('[data-f="' + k + '"]'); if (b) b.classList.toggle('on', !!st[k]); });
   }
   function syncFmt(el) {
     var s = cs(el), c = comp(el);

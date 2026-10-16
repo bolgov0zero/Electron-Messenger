@@ -4041,3 +4041,10 @@ html.dark .anx-solid { color: #0c0e10; }
 #ctx-chat-menu { overflow: visible; }
 .ctx-sub-fly { width: 214px; }
 .ctx-sub-fly button { width: 100%; }
+
+/* ── секрет: текст закрыт облачком из частиц (рисует Fmt), нажатие открывает ── */
+.spl { color: transparent; cursor: pointer; -webkit-user-select: none; user-select: none; transition: color .45s ease; }
+.spl.open { color: inherit; }
+.spl-host { position: relative; }
+.spl-cv { position: absolute; left: 0; top: 0; pointer-events: none; transition: opacity .45s ease; }
+.spl-e { background: rgba(142, 108, 240, .22); border-bottom: 1.5px dotted #b79bff; border-radius: 3px; }

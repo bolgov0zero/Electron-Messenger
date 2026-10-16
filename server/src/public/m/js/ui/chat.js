@@ -30,7 +30,7 @@ B.ui.chat = (function () {
   }
   function formatText(text, chat) {
     return text.split(/(https?:\/\/[^\s]+)/g).map(function (p, i) {
-      return i % 2 === 1 ? '<a href="' + esc(p) + '" target="_blank" rel="noopener noreferrer">' + esc(p) + '</a>' : md(mentions(esc(p), chat));
+      return i % 2 === 1 ? '<a href="' + esc(p) + '" target="_blank" rel="noopener noreferrer">' + esc(p) + '</a>' : Fmt.spl(md(mentions(esc(p), chat)));
     }).join('');
   }
   B.fmt.msgText = formatText;
@@ -362,7 +362,7 @@ B.ui.chat = (function () {
   B.bus.on('ws:message', function (d) {
     var m = d.message, chat = B.find(m.chat_id);
     if (!chat || m.sender_id === B.S.user.id || chat.muted || m.chat_id === B.S.activeChatId || document.hidden || chat.parent_id) return;
-    var txt = m.text ? Fmt.noCode(m.text).replace(/<[^>]*>/g, '') : m.attachment ? '📎 Вложение' : '';
+    var txt = m.text ? Fmt.plain(m.text).replace(/<[^>]*>/g, '') : m.attachment ? '📎 Вложение' : '';
     B.toast.banner(B.avatar.chat(chat, 36) + '<div class="tt"><b>' + esc(B.chatName(chat)) + '</b><span>' + esc(txt.slice(0, 80)) + '</span></div>', function () { B.openChat(chat.id); });
   });
 

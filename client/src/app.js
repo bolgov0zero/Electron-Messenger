@@ -159,7 +159,7 @@ function mdLite(escaped) {
 function linkifyText(text) {
   const urlRe = /(https?:\/\/[^\s]+)/g;
   return text.split(urlRe).map((part, i) => {
-    if (i % 2 !== 1) return mdLite(highlightMentions(esc(part)));
+    if (i % 2 !== 1) return Fmt.spl(mdLite(highlightMentions(esc(part))));
     return `<a class="msg-link" href="#" onclick="openExternalLink(event,this)" data-url="${esc(part)}">${esc(part)}</a>`;
   }).join('');
 }
@@ -3756,7 +3756,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       ${rThumbHtml}
       <div class="irc-reply-body">
         <div class="irc-reply-name">${esc(m.reply_sender_name || '')}</div>
-        <div class="irc-reply-text">${m.reply_sender_is_bot ? (rTextRaw || '') : mdLite(esc(rTextRaw || ''))}</div>
+        <div class="irc-reply-text">${m.reply_sender_is_bot ? (rTextRaw || '') : mdLite(esc(Fmt.noCode(rTextRaw || '')))}</div>
       </div>
     </div>` : '';
 
@@ -3772,7 +3772,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       ${fdThumb}
       <div class="irc-reply-body">
         <div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div>
-        <div class="irc-reply-text">${fd.is_bot ? fdText : mdLite(esc(fdText))}</div>
+        <div class="irc-reply-text">${fd.is_bot ? fdText : mdLite(esc(Fmt.noCode(fdText)))}</div>
       </div>
     </div>`;
   })() : '';
@@ -4169,7 +4169,7 @@ function syncFmtState() {
   const el = document.getElementById('msg-input'), bar = document.getElementById('fmt-bar');
   if (!el || !bar) return;
   const st = Fmt.state(el);
-  for (const k of ['b', 'i', 'c', 'blk']) bar.querySelector(`[data-f=${k}]`)?.classList.toggle('on', !!st[k]);
+  for (const k of ['b', 'i', 'c', 'blk', 's']) bar.querySelector(`[data-f=${k}]`)?.classList.toggle('on', !!st[k]);
 }
 function fmtBarClick(e) {
   const b = e.target.closest('[data-f]'); if (!b) return;
@@ -5405,7 +5405,7 @@ function connectWS() {
           if (!isChatMuted(chatId, parentId)) {
             const _srObj = parentId ? (S.topics[parentId]||[]).find(s=>s.id===chatId) : null;
             const title = _srObj?.name || chatName(chat) || message.sender_name || 'Electron';
-            const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? message.text.replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+            const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? Fmt.plain(message.text).replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
             window.electron?.notify(title, body, chatId);
             playNotificationSound();
           }
@@ -5420,7 +5420,7 @@ function connectWS() {
         if (!isChatMuted(chatId, parentId)) {
           const _srObj = parentId ? (S.topics[parentId]||[]).find(s=>s.id===chatId) : null;
           const title = _srObj?.name || chatName(chat) || message.sender_name || 'Electron';
-          const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? message.text.replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+          const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? Fmt.plain(message.text).replace(/<[^>]*>/g, '') : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
           window.electron?.notify(title, body, chatId);
           playNotificationSound();
         }

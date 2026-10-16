@@ -234,7 +234,7 @@ function finishMessage(msgId, chat_id, senderId) {
     // показываем даже тем, у кого ключ есть (защита от подглядывания).
     pushToUser(user_id, {
       title: chatTitle,
-      body: chat?.is_secret ? 'Новое сообщение' : (msg.text || (msg.attachment ? (msg.attachment.gif ? 'GIF' : '🖼 Изображение') : '')),
+      body: chat?.is_secret ? 'Новое сообщение' : (String(msg.text || '').replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, '•••') || (msg.attachment ? (msg.attachment.gif ? 'GIF' : '🖼 Изображение') : '')),
       chatId: chat_id,
       unread,
     });
