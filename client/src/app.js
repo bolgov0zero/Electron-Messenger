@@ -4118,6 +4118,7 @@ const CMP = { fmt: false, prev: false, lw: null };
 function initComposerFmt() {
   const el = document.getElementById('msg-input');
   if (!el) return;
+  CMP.fmt = false; CMP.prev = false;      // панель форматирования не переходит из чата в чат
   Fmt.init(el);
   CMP.lw = Fmt.linkWatch({
     getText: () => el.value,
