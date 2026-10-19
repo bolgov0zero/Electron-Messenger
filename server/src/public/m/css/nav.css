@@ -7,6 +7,7 @@
 #stack > .page.enter { transform: translateX(100%); }
 #stack > .page.under { transform: translateX(-30%); }
 #stack > .page.under::after { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, .1); z-index: 20; pointer-events: none; }
+#stack > .page.under > .tabbar { z-index: 21; }   /* затемнение при свайпе назад не должно ложиться на нижнюю панель вкладок */
 .nobot .scroll { padding-bottom: calc(var(--sab) + 24px); }
 .nb.back { padding-left: 0; margin-left: -2px; }
 .nb.back .cnt { font-size: 17px; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

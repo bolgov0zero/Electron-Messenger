@@ -3,7 +3,7 @@
 B.ui = B.ui || {};
 B.ui.msgmenu = (function () {
   var esc = B.esc, ic = B.ic, layer = null, cur = null, openedAt = 0;
-  var QUICK = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+  var QUICK = ['👍', '❤️', '😂', '😮', '😢', '🙏'], EASE = 'cubic-bezier(.32,.72,0,1)';
 
   function init(root) {
     layer = document.createElement('div'); layer.className = 'cml'; root.appendChild(layer);
@@ -62,13 +62,26 @@ B.ui.msgmenu = (function () {
     // Само сообщение в ленте прячем на время меню: на экране двигается именно оно, а не его копия рядом с оригиналом
     cur.hidden = [bub].concat(Array.prototype.slice.call(row.querySelectorAll('.rx'))); cur.hidden.forEach(function (e) { e.style.visibility = 'hidden'; });
     cur.clone = clone; cur.rx = rx; cur.mn = mn; cur.y = r.y;      // нужны при закрытии: меню уходит так же плавно, как появилось
-    clone.style.transition = 'top .38s var(--ease)'; clone.style.top = top + 'px'; rx.classList.add('in'); mn.classList.add('in');
+    // Пузырь переезжает не анимацией top (она пересчитывает раскладку на каждом кадре и дёргается на телефоне),
+    // а сдвигом transform: сразу ставим его на итоговое место и возвращаем в начало смещением
+    clone.style.top = top + 'px'; cur.top = top;
+    var dy = r.y - top;
+    if (dy && clone.animate) clone.animate([{ transform: 'translateY(' + dy + 'px)' }, { transform: 'translateY(0)' }], { duration: 380, easing: EASE, fill: 'none' });
+    rx.classList.add('in'); mn.classList.add('in');
     try { navigator.vibrate && navigator.vibrate(10); } catch (e) {}
   }
   function close() {
     if (!layer) return; var c = cur; layer.classList.remove('on'); cur = null;
     // Реакции и меню сжимаются обратно и гаснут, пузырь возвращается на своё место, фон светлеет
-    if (c && c.rx) { c.rx.classList.remove('in'); c.mn.classList.remove('in'); c.clone.style.top = c.y + 'px'; }
+    if (c && c.rx) {
+      c.rx.classList.remove('in'); c.mn.classList.remove('in');
+      // Пузырь едет обратно тем же сдвигом, от текущего места (если закрыли посреди открытия)
+      var now = 0; try { now = new DOMMatrix(getComputedStyle(c.clone).transform).m42 || 0; } catch (e) {}
+      c.clone.getAnimations().forEach(function (a) { a.cancel(); });
+      var back = c.y - c.top;
+      if (c.clone.animate) c.clone.animate([{ transform: 'translateY(' + now + 'px)' }, { transform: 'translateY(' + back + 'px)' }], { duration: 380, easing: EASE, fill: 'forwards' });
+      else c.clone.style.top = c.y + 'px';
+    }
     // Когда пузырь вернулся на место (переход .38 с), настоящее сообщение снова показываем и убираем копию
     setTimeout(function () { if (c && c.hidden) c.hidden.forEach(function (e) { e.style.visibility = ''; }); }, 380);
     setTimeout(function () { if (!layer.classList.contains('on')) layer.innerHTML = ''; }, 400);

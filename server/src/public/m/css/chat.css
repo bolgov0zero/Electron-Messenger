@@ -103,16 +103,16 @@
 /* Ниже шторок (.shl 30, .asl 40): пока копия сообщения доезжает на место, поверх неё уже открываются окна реакций и информации */
 .cml { position: absolute; inset: 0; z-index: 28; pointer-events: none; }
 .cml.on { pointer-events: auto; }
-.cmb { position: absolute; inset: 0; background: rgba(0, 0, 0, .22); -webkit-backdrop-filter: blur(22px) saturate(1.4); backdrop-filter: blur(22px) saturate(1.4); opacity: 0; transition: opacity .3s; }
+.cmb { position: absolute; inset: 0; background: rgba(0, 0, 0, .22); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); opacity: 0; transition: opacity .3s; will-change: opacity; }
 .on > .cmb { opacity: 1; }
-.cmc { position: absolute; margin: 0; transform: none !important; }
+.cmc { position: absolute; margin: 0; transform: none; will-change: transform; }
 .cmc .mcol { max-width: 100%; }
-.cmr { position: absolute; display: flex; gap: 2px; padding: 5px 6px; border-radius: 24px; background: var(--bar2); -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px); box-shadow: 0 6px 24px rgba(0, 0, 0, .2); transform: scale(.5); opacity: 0; transition: transform .4s var(--ease), opacity .2s; }
+.cmr { position: absolute; display: flex; gap: 2px; padding: 5px 6px; border-radius: 24px; background: var(--bar2); box-shadow: 0 6px 24px rgba(0, 0, 0, .2); transform: scale(.5); opacity: 0; transition: transform .4s var(--ease), opacity .2s; will-change: transform, opacity; }
 .cmr.in { transform: none; opacity: 1; }
 .cmr button { border: 0; background: none; font-size: 27px; width: 40px; height: 40px; border-radius: 50%; padding: 0; line-height: 1; display: flex; align-items: center; justify-content: center; }
 .cmr button.more { background: var(--fill); color: var(--fg2); }
 .cmr button:active { background: var(--fill); }
-.cmm { position: absolute; width: 244px; border-radius: 14px; background: var(--bar2); -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8); box-shadow: 0 8px 30px rgba(0, 0, 0, .22); overflow: hidden; transform: scale(.6); opacity: 0; transition: transform .4s var(--ease), opacity .2s; }
+.cmm { position: absolute; width: 244px; border-radius: 14px; background: var(--bar2); box-shadow: 0 8px 30px rgba(0, 0, 0, .22); overflow: hidden; transform: scale(.6); opacity: 0; transition: transform .4s var(--ease), opacity .2s; will-change: transform, opacity; }
 .cmm.in { transform: none; opacity: 1; }
 .cmm button { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 44px; padding: 0 16px; border: 0; border-top: .5px solid var(--sep); background: none; color: var(--fg); font-size: 17px; text-align: left; }
 .cmm button:first-child { border-top: 0; }
