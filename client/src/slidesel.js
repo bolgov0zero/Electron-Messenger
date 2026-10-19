@@ -35,13 +35,17 @@
     { b: '.ub-sort', i: 'button', o: A },
     { b: '.xp-tabs', i: '.xp-tab', o: '[aria-selected="true"]' },
     { b: '.ux-chips', i: '.ux-chip', o: A },
+    { b: '.fdv-tabs', i: 'button', o: A },
+    { b: '.ua-roles', i: '.ua-role-opt', o: '[aria-checked="true"]', above: true },
+    { b: '.ub-tiles', i: '.ub-tile', o: A, above: true },
     { b: 'nav', i: '.nav-item', o: '.active' }
   ];
   var ALL = G.map(function (g) { return g.b; }).join(',');
   G.forEach(function (g) { g.q = g.o.split(',').map(function (s) { return g.i + s.trim(); }).join(','); });
 
-  var EASE = 'cubic-bezier(.3,1.25,.5,1)', DUR = 300;
-  var state = {}, lastInt = 0;
+  // Без «пружины»: с перелётом плашка в узкой колонке (папки слева) выскакивала за крайний пункт
+  var EASE = 'cubic-bezier(.32,.72,0,1)', DUR = 300;
+  var state = {}, lastInt = 0, lastTarget = null, sw = null;
   var reduce = matchMedia('(prefers-reduced-motion: reduce)');
 
   var css = document.createElement('style');
@@ -51,8 +55,38 @@
     '.ss-ghost{position:absolute;left:0;top:0;margin:0;padding:0;pointer-events:none}';
   (document.head || document.documentElement).appendChild(css);
 
-  ['pointerdown', 'keydown', 'click'].forEach(function (ev) { addEventListener(ev, function () { lastInt = Date.now(); }, true); });
+  // Перед нажатием фиксируем нынешнее положение выделения: так плавно уже с первого раза, даже если группа
+  // была скрыта (свёрнутый блок, окно) или сдвинулась после загрузки шрифтов
+  ['pointerdown', 'touchstart', 'keydown', 'click'].forEach(function (ev) {
+    addEventListener(ev, function (e) {
+      lastInt = Date.now(); lastTarget = e.target;
+      var b = e.type !== 'click' && e.target.closest ? e.target.closest(ALL) : null;
+      if (b) update(b);
+      var t = e.target.closest && e.target.closest('[role="switch"]');
+      if (t && e.type !== 'click') sw = { el: t, k: swKey(t), on: t.getAttribute('aria-checked'), t: Date.now() };
+    }, true);
+  });
 
+  // Тумблеры (role=switch): ползунок едет сам, пока элемент тот же. Но страницы настроек после нажатия
+  // перерисовываются заново, и новый тумблер сразу рождается во включённом виде. Возвращаем ему прежнее
+  // состояние и в следующем кадре ставим новое, тогда переход проигрывается
+  function swKey(el) { return Array.prototype.indexOf.call(document.querySelectorAll('[role="switch"]'), el) + '|' + (el.getAttribute('aria-label') || ''); }
+  function swFix() {
+    if (!sw || Date.now() - sw.t > 800) { sw = null; return; }
+    if (sw.el.isConnected) return;   // тот же элемент: он анимируется сам
+    var all = document.querySelectorAll('[role="switch"]');
+    for (var i = 0; i < all.length; i++) {
+      var el = all[i], now = el.getAttribute('aria-checked');
+      if (el._ssSw || swKey(el) !== sw.k || now === sw.on) continue;
+      el._ssSw = 1; sw = null;
+      if (reduce.matches || document.hidden) return;
+      el.setAttribute('aria-checked', sw0(el, now));
+      void el.offsetWidth;
+      setTimeout(function () { el.setAttribute('aria-checked', now); }, 16);   // не rAF: в свёрнутом окне он не вызывается, и тумблер остался бы в старом виде
+      return;
+    }
+  }
+  function sw0(el, now) { return now === 'true' ? 'false' : 'true'; }
   function groupOf(box) { for (var k = 0; k < G.length; k++) if (box.matches(G[k].b)) return k; return -1; }
   // Подпись набора пунктов: по ней отличаем ту же группу после перерисовки от такой же на другой странице
   function sig(box, g) {
@@ -65,9 +99,12 @@
     }
     return { x: cur.offsetLeft, y: cur.offsetTop, w: cur.offsetWidth, h: cur.offsetHeight };
   }
-  function ghostGeom(box, gh) {
-    var gr = gh.getBoundingClientRect(), br = box.getBoundingClientRect();
-    return { x: gr.left - br.left + box.scrollLeft - box.clientLeft, y: gr.top - br.top + box.scrollTop - box.clientTop, w: gr.width, h: gr.height };
+  // Где плашка сейчас, если выбор сменили на лету: по прогрессу её анимации, так считается и после перерисовки страницы
+  function flightGeom(box) {
+    var f = box._ss, p = 1;
+    try { var pr = f.anim.effect.getComputedTiming().progress; if (pr != null) p = pr; } catch (e) {}
+    var lerp = function (a, b) { return a + (b - a) * p; };
+    return { x: lerp(f.from.x, f.to.x), y: lerp(f.from.y, f.to.y), w: lerp(f.from.w, f.to.w), h: lerp(f.from.h, f.to.h) };
   }
   function tr(p) { return 'translate(' + p.x + 'px,' + p.y + 'px)'; }
 
@@ -99,7 +136,6 @@
     gh.style.width = from.w + 'px'; gh.style.height = from.h + 'px';
     gh.style.transform = tr(from);
     gh.style.zIndex = g.above || g.p ? '1' : '-1';
-    if (getComputedStyle(box).position === 'static') box.style.position = 'relative';
     if (!g.above && !g.p) box.style.isolation = 'isolate';
     box.appendChild(gh);
     cur.classList.add(g.p === '::after' ? 'ss-mute-a' : g.p === '::before' ? 'ss-mute-b' : 'ss-mute');
@@ -107,7 +143,7 @@
       [{ transform: tr(from), width: from.w + 'px', height: from.h + 'px' }, { transform: tr(now), width: now.w + 'px', height: now.h + 'px' }],
       { duration: DUR, easing: EASE, fill: 'forwards' }
     );
-    var s = box._ss = { gh: gh, cur: cur, anim: anim };
+    var s = box._ss = { gh: gh, cur: cur, anim: anim, from: from, to: now };
     anim.onfinish = function () { finish(box); };
     // Страховка: в фоновой вкладке кадры не рисуются и onfinish может не прийти, а пункт остался бы без фона
     setTimeout(function () { if (box._ss === s) finish(box); }, DUR + 250);
@@ -117,16 +153,20 @@
     var gi = groupOf(box);
     if (gi < 0 || !box.isConnected) return;
     var g = G[gi], sel = box.querySelectorAll(g.q);
+    // Координаты пунктов считаем от самой группы, поэтому она должна быть «опорной» до первого замера;
+    // иначе offsetLeft отсчитывается от дальнего предка и плашка улетает в сторону
+    if (!box._ssPos) { box._ssPos = 1; if (getComputedStyle(box).position === 'static') box.style.position = 'relative'; }
     var key = gi + ':' + Array.prototype.indexOf.call(document.querySelectorAll(g.b), box);
     if (sel.length !== 1 || !sel[0].offsetWidth) { delete state[key]; return; }   // выбор не один: это не переключатель
     var cur = sel[0], now = geom(cur, g), s = sig(box, g), prev = state[key];
     state[key] = { box: box, el: cur, geom: now, sig: s };
     if (!prev || prev.el === cur || prev.sig !== s) return;
-    // Страницу перерисовали целиком: анимируем только сразу после нажатия, а не от старых данных
-    if (prev.box !== box && Date.now() - lastInt > 500) return;
+    // Страницу перерисовали целиком: анимируем только если сразу перед этим нажали пункт именно этой группы.
+    // Иначе при переходе на другую страницу плашка «летела» бы от места такой же группы на прошлой
+    if (prev.box !== box && (Date.now() - lastInt > 500 || !lastTarget || !prev.box.contains(lastTarget))) return;
     if (reduce.matches || document.hidden) return;
-    var from = prev.geom;
-    if (box._ss) { from = ghostGeom(box, box._ss.gh); finish(box); }
+    var from = prev.geom, fb = prev.box._ss ? prev.box : box._ss ? box : null;
+    if (fb) { from = flightGeom(fb); finish(fb); }
     if (from.x === now.x && from.y === now.y && from.w === now.w && from.h === now.h) return;
     start(box, g, cur, from, now);
   }
@@ -145,6 +185,7 @@
       });
     });
     boxes.forEach(update);
+    swFix();
   });
   function init() {
     document.querySelectorAll(ALL).forEach(update);

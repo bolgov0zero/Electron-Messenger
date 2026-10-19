@@ -1945,7 +1945,13 @@ function rowAnim(el, show, done) {
   const full = { height: cs.height, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, marginBottom: cs.marginBottom, opacity: 1, overflow: 'hidden' };
   const zero = { height: '0px', paddingTop: '0px', paddingBottom: '0px', marginBottom: '0px', opacity: 0, overflow: 'hidden' };
   const a = el.animate(show ? [zero, full] : [full, zero], { duration: 280, easing: _ROW_EASE, fill: show ? 'none' : 'forwards' });
-  if (done) a.onfinish = done;
+  if (done) {
+    // Страховка: в свёрнутом окне кадры не рисуются и onfinish может не прийти, а ушедшая строка осталась бы
+    let ok = false;
+    const fin = () => { if (!ok) { ok = true; done(); } };
+    a.onfinish = fin;
+    setTimeout(fin, 500);
+  }
 }
 function syncChatListKeyed(list, items) {
   // Анимируем только изменения внутри того же вида списка: при смене папки, выходе из поиска

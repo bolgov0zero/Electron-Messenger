@@ -57,7 +57,11 @@ B.ui.chatlist = (function () {
     var full = { height: cs.height, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, marginBottom: cs.marginBottom, opacity: 1, overflow: 'hidden' };
     var zero = { height: '0px', paddingTop: '0px', paddingBottom: '0px', marginBottom: '0px', opacity: 0, overflow: 'hidden' };
     var a = el.animate(show ? [zero, full] : [full, zero], { duration: 280, easing: EASE, fill: show ? 'none' : 'forwards' });
-    if (done) a.onfinish = done;
+    if (done) {
+      // Страховка: в свёрнутом окне кадры не рисуются и onfinish может не прийти
+      var ok = false, fin = function () { if (!ok) { ok = true; done(); } };
+      a.onfinish = fin; setTimeout(fin, 500);
+    }
   }
   function flip(oldRows, oldTops, oldBadge) {
     var rows = {};
