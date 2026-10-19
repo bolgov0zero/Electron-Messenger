@@ -33,12 +33,28 @@ if (savedContact !== VAPID_CONTACT) {
 
 webpush.setVapidDetails(VAPID_CONTACT, vapidKeys.publicKey, vapidKeys.privateKey);
 
+// Декларативный Web Push (Safari 18.4+): адрес для открытия указан прямо в уведомлении (navigate), и нажатие на него
+// не зависит от service worker, который на iOS событие нажатия не всегда получает. Старое содержимое (title, body, chatId,
+// unread) остаётся на верхнем уровне: браузеры без декларативных пушей отдают его service worker'у, как раньше.
+function buildPayload(appUrl, payload) {
+  if (!appUrl) return payload;
+  let navigate;
+  try {
+    const u = new URL(appUrl);
+    if (payload.chatId) u.searchParams.set('chatId', String(payload.chatId));
+    navigate = u.toString();
+  } catch { return payload; }
+  const n = { title: payload.title || 'Новое сообщение', body: payload.body || '', navigate, silent: false };
+  if (typeof payload.unread === 'number') n.app_badge = String(payload.unread);
+  return Object.assign({ web_push: 8030, notification: n }, payload);
+}
+
 // Экспортируем для использования в ws.js
 function sendPushToUser(userId, payload) {
-  const subs = db.prepare('SELECT endpoint, keys FROM push_subscriptions WHERE user_id = ?').all(userId);
+  const subs = db.prepare('SELECT endpoint, keys, app_url FROM push_subscriptions WHERE user_id = ?').all(userId);
   subs.forEach(row => {
     const sub = { endpoint: row.endpoint, keys: JSON.parse(row.keys) };
-    webpush.sendNotification(sub, JSON.stringify(payload)).catch(err => {
+    webpush.sendNotification(sub, JSON.stringify(buildPayload(row.app_url, payload))).catch(err => {
       if (err.statusCode === 410 || err.statusCode === 404) {
         // Подписка истекла на стороне браузера — удаляем
         db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').run(row.endpoint);
@@ -64,11 +80,17 @@ router.post('/subscribe', (req, res) => {
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
     return res.status(400).json({ error: 'Invalid subscription' });
   }
+  // Адрес приложения (мобильная версия /m/): по нему строится адрес для открытия чата в декларативном пуше
+  let appUrl = null;
+  try {
+    const u = new URL(String(req.body.app_url || ''));
+    if ((u.protocol === 'https:' || u.protocol === 'http:') && u.pathname === '/m/' && !u.search && !u.hash) appUrl = u.toString();
+  } catch {}
   db.prepare(`
-    INSERT INTO push_subscriptions (user_id, endpoint, keys)
-    VALUES (?, ?, ?)
-    ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, keys = excluded.keys
-  `).run(req.user.id, endpoint, JSON.stringify(keys));
+    INSERT INTO push_subscriptions (user_id, endpoint, keys, app_url)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, keys = excluded.keys, app_url = excluded.app_url
+  `).run(req.user.id, endpoint, JSON.stringify(keys), appUrl);
   res.json({ ok: true });
 });
 
@@ -105,18 +127,18 @@ router.delete('/subscriptions/:id', (req, res) => {
 router.post('/test/:userId', async (req, res) => {
   if (!req.user.is_admin) return res.status(403).json({ error: 'Forbidden' });
   const targetId = Number(req.params.userId);
-  const subs = db.prepare('SELECT endpoint, keys FROM push_subscriptions WHERE user_id = ?').all(targetId);
+  const subs = db.prepare('SELECT endpoint, keys, app_url FROM push_subscriptions WHERE user_id = ?').all(targetId);
   if (!subs.length) return res.status(404).json({ error: 'Нет подписок для этого пользователя' });
 
   const results = await Promise.all(subs.map(async row => {
     const sub = { endpoint: row.endpoint, keys: JSON.parse(row.keys) };
     const service = (() => { try { return new URL(row.endpoint).hostname; } catch { return row.endpoint.slice(0,40); } })();
     try {
-      await webpush.sendNotification(sub, JSON.stringify({
+      await webpush.sendNotification(sub, JSON.stringify(buildPayload(row.app_url, {
         title: 'Тест уведомлений',
         body: 'Push-уведомления работают корректно.',
         chatId: null,
-      }));
+      })));
       return { service, ok: true };
     } catch (err) {
       const code = err.statusCode || err.code || '?';
@@ -144,4 +166,5 @@ function hasPushSubscription(userId) {
 
 module.exports = router;
 module.exports.sendPushToUser = sendPushToUser;
+module.exports.buildPayload = buildPayload;
 module.exports.hasPushSubscription = hasPushSubscription;

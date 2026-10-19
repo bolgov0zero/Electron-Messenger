@@ -160,6 +160,7 @@ fs.mkdirSync(path.join(path.dirname(DB_PATH), 'files'), { recursive: true });
 
 // Add columns if upgrading from old schema
 const tryAlter = (sql) => { try { db.exec(sql); } catch {} };
+tryAlter('ALTER TABLE push_subscriptions ADD COLUMN app_url TEXT');   // адрес приложения (/m/) для декларативных пушей
 tryAlter('ALTER TABLE messages ADD COLUMN edited_at INTEGER');
 tryAlter('ALTER TABLE messages ADD COLUMN deleted INTEGER DEFAULT 0');
 tryAlter('ALTER TABLE chat_members ADD COLUMN hidden_at INTEGER');

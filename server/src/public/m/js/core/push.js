@@ -31,7 +31,7 @@ B.push = {
         if (!ek || B.push._b64(ek) !== B.push._b64(appKey)) { await existing.unsubscribe(); existing = null; }
       }
       var sub = existing || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: appKey });
-      await B.api('POST', '/push/subscribe', { endpoint: sub.endpoint, keys: { p256dh: B.push._b64(sub.getKey('p256dh')), auth: B.push._b64(sub.getKey('auth')) } });
+      await B.api('POST', '/push/subscribe', { app_url: location.origin + '/m/', endpoint: sub.endpoint, keys: { p256dh: B.push._b64(sub.getKey('p256dh')), auth: B.push._b64(sub.getKey('auth')) } });
     } catch (e) { console.warn('Push subscribe failed:', e); }
   }
 };
