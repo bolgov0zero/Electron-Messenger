@@ -45,7 +45,7 @@
 
   // Без «пружины»: с перелётом плашка в узкой колонке (папки слева) выскакивала за крайний пункт
   var EASE = 'cubic-bezier(.32,.72,0,1)', DUR = 300;
-  var state = {}, lastInt = 0, lastTarget = null, sw = null;
+  var state = {}, lastInt = 0, lastTarget = null, sw = null, pend = null;
   var reduce = matchMedia('(prefers-reduced-motion: reduce)');
 
   var css = document.createElement('style');
@@ -61,7 +61,7 @@
     addEventListener(ev, function (e) {
       lastInt = Date.now(); lastTarget = e.target;
       var b = e.type !== 'click' && e.target.closest ? e.target.closest(ALL) : null;
-      if (b) update(b);
+      if (b) { update(b); pend = snap(b, e.target); }
       var t = e.target.closest && e.target.closest('[role="switch"]');
       if (t && e.type !== 'click') sw = { el: t, k: swKey(t), on: t.getAttribute('aria-checked'), t: Date.now() };
     }, true);
@@ -87,6 +87,20 @@
     }
   }
   function sw0(el, now) { return now === 'true' ? 'false' : 'true'; }
+  // Цвета текста нажатого и прежнего выбранного пунктов до нажатия: на время полёта плашки текст держим прежним,
+  // иначе пункт сразу «одевается» в цвет выбранного (например, белый на светлом фоне), а плашка ещё в пути
+  function snap(box, target) {
+    var gi = groupOf(box); if (gi < 0) return null;
+    var g = G[gi], items = box.querySelectorAll(g.i), it = target.closest(g.i), sel = box.querySelector(g.q);
+    if (!it || !box.contains(it)) return null;
+    var at = Array.prototype.indexOf;
+    return { gi: gi, t: Date.now(), ti: at.call(items, it), tc: getComputedStyle(it).color, si: sel ? at.call(items, sel) : -1, sc: sel ? getComputedStyle(sel).color : null };
+  }
+  function hold(box, el, c, ms) {
+    el.style.color = c;
+    (box._ssHold = box._ssHold || []).push(el);
+    setTimeout(function () { if (el.style.color === c) el.style.color = ''; }, ms);
+  }
   function groupOf(box) { for (var k = 0; k < G.length; k++) if (box.matches(G[k].b)) return k; return -1; }
   // Подпись набора пунктов: по ней отличаем ту же группу после перерисовки от такой же на другой странице
   function sig(box, g) {
@@ -106,25 +120,44 @@
     var lerp = function (a, b) { return a + (b - a) * p; };
     return { x: lerp(f.from.x, f.to.x), y: lerp(f.from.y, f.to.y), w: lerp(f.from.w, f.to.w), h: lerp(f.from.h, f.to.h) };
   }
+  // У невыбранных пунктов свой непрозрачный фон (вкладки, карточки)? Тогда плашка снизу была бы не видна под ними
+  function opaqueItems(box, g, cur) {
+    var its = box.querySelectorAll(g.i), res = false;
+    for (var k = 0; k < its.length && !res; k++) {
+      if (its[k] === cur) continue;
+      // Переходы на время чтения выключаем: у только что снятого пункта фон ещё «от выбранного»
+      var t0 = ntOn(its[k]);
+      var m = getComputedStyle(its[k]).backgroundColor.match(/rgba?\(([^)]+)\)/);
+      ntOff(its[k], t0);
+      if (!m) continue;
+      var p = m[1].split(/[ ,\/]+/).filter(Boolean);
+      res = (p.length > 3 ? +p[3] : 1) > 0.05;
+    }
+    return res;
+  }
+  // Переходы на время замера выключаем с !important: иначе их перебьёт правило плавной смены темы (theme-anim)
+  function ntOn(el) { var o = [el.style.getPropertyValue('transition'), el.style.getPropertyPriority('transition')]; el.style.setProperty('transition', 'none', 'important'); return o; }
+  function ntOff(el, o) { if (o[0]) el.style.setProperty('transition', o[0], o[1]); else el.style.removeProperty('transition'); }
   function tr(p) { return 'translate(' + p.x + 'px,' + p.y + 'px)'; }
 
   function finish(box) {
     var s = box._ss; if (!s) return;
     box._ss = null;
     s.anim.onfinish = null;
-    s.cur.style.transition = 'none';
+    var t1 = ntOn(s.cur);
     s.cur.classList.remove('ss-mute', 'ss-mute-a', 'ss-mute-b');
     s.gh.remove();
-    requestAnimationFrame(function () { s.cur.style.transition = ''; });
+    (box._ssHold || []).forEach(function (h) { h.style.color = ''; });
+    box._ssHold = [];
+    setTimeout(function () { ntOff(s.cur, t1); }, 60);   // не rAF: в свёрнутом окне он не вызывается
   }
 
-  function start(box, g, cur, from, now) {
+  function start(box, g, cur, from, now, gi) {
     var gh = document.createElement('i');
     gh.className = 'ss-ghost';
     // Внешний вид читаем до того, как приглушим сам пункт. Переходы выключаем на время чтения:
     // иначе у только что выбранного пункта фон ещё «прозрачный», как в начале перехода
-    var tr0 = cur.style.transition;
-    cur.style.transition = 'none';
+    var tr0 = ntOn(cur);
     var el = g.p ? getComputedStyle(cur, g.p) : getComputedStyle(cur);
     gh.style.backgroundColor = el.backgroundColor;
     gh.style.backgroundImage = el.backgroundImage;
@@ -132,13 +165,27 @@
     gh.style.borderRadius = el.borderRadius;
     gh.style.border = el.borderTopWidth + ' ' + el.borderTopStyle + ' ' + el.borderTopColor;
     gh.style.boxSizing = g.p ? el.boxSizing : 'border-box';
-    cur.style.transition = tr0;
     gh.style.width = from.w + 'px'; gh.style.height = from.h + 'px';
     gh.style.transform = tr(from);
-    gh.style.zIndex = g.above || g.p ? '1' : '-1';
-    if (!g.above && !g.p) box.style.isolation = 'isolate';
+    var above = g.above || g.p || opaqueItems(box, g, cur);
+    gh.style.zIndex = above ? '1' : '-1';
+    if (!above) box.style.isolation = 'isolate';
     box.appendChild(gh);
     cur.classList.add(g.p === '::after' ? 'ss-mute-a' : g.p === '::before' ? 'ss-mute-b' : 'ss-mute');
+    // Приглушаем фон мгновенно: пока переходы выключены, считаем стиль уже с приглушением, и только потом возвращаем их.
+    // Иначе выбранный пункт успевал бы показать своё оформление и плавно гаснуть, а плашка ещё догоняла бы его
+    var held = [];
+    if (pend && pend.gi === gi && Date.now() - pend.t < 800) {
+      var items = box.querySelectorAll(g.i), at = Array.prototype.indexOf;
+      if (at.call(items, cur) === pend.ti) held.push([cur, pend.tc, DUR * 0.5]);
+      var old = pend.si >= 0 ? items[pend.si] : null;
+      if (old && old !== cur && pend.sc) held.push([old, pend.sc, DUR * 0.3]);
+    }
+    // Цвет подставляем при выключенных переходах, чтобы он не «перетекал» от нового к прежнему
+    held.forEach(function (h) { h.push(ntOn(h[0])); hold(box, h[0], h[1], h[2]); });
+    void (g.p ? getComputedStyle(cur, g.p) : getComputedStyle(cur)).opacity;
+    held.forEach(function (h) { void getComputedStyle(h[0]).color; ntOff(h[0], h[3]); });
+    ntOff(cur, tr0);
     var anim = gh.animate(
       [{ transform: tr(from), width: from.w + 'px', height: from.h + 'px' }, { transform: tr(now), width: now.w + 'px', height: now.h + 'px' }],
       { duration: DUR, easing: EASE, fill: 'forwards' }
@@ -168,7 +215,7 @@
     var from = prev.geom, fb = prev.box._ss ? prev.box : box._ss ? box : null;
     if (fb) { from = flightGeom(fb); finish(fb); }
     if (from.x === now.x && from.y === now.y && from.w === now.w && from.h === now.h) return;
-    start(box, g, cur, from, now);
+    start(box, g, cur, from, now, gi);
   }
 
   var mo = new MutationObserver(function (recs) {
