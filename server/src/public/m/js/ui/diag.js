@@ -25,7 +25,9 @@ B.ui.diag = (function () {
       '<div class="gh">Нажатие на уведомление</div><div class="grp">' + (function () {
         var l = B.native && B.native.last;
         return cell('Переход в приложение', B.native && B.native.enabled() ? 'включён, схема ' + B.native.scheme() : 'выключен') +
-          cell('Последнее нажатие', l ? new Date(l.t).toLocaleTimeString() + ', чат ' + l.id : 'не было') + (l ? cell('Пришло через', l.via) + cell('Что сделано', l.step) : '');
+          cell('Последнее нажатие', l ? new Date(l.t).toLocaleTimeString() + ', чат ' + l.id : 'не было') + (l ? cell('Пришло через', l.via) + cell('Что сделано', l.step) : '') +
+          '<div class="cell"><span class="cl">Service worker</span><span class="cv" id="dg-sw">проверяю…</span></div>' +
+          '<div class="cell"><span class="cl">Нажатие дошло до service worker</span><span class="cv" id="dg-swc">проверяю…</span></div>';
       })() + '</div>' +
       '<div class="gh">Запас отступов, px</div><div class="grp">' + stepper('Сверху', 'sat_extra') + stepper('Снизу', 'sab_extra') + '</div>' +
       '<div class="gf">Если верх или низ панелей не совпадают с системными областями iPhone, подберите запас. Значения сохраняются на этом телефоне.</div>';
@@ -39,9 +41,18 @@ B.ui.diag = (function () {
       try { localStorage.setItem('beta_' + b.dataset.k, String(v)); } catch (err) {}
       refresh();
     });
-    B.nav.push(el, 'Диагностика');
+    B.nav.push(el, 'Диагностика'); fillSw();
   }
-  function refresh() { if (el && el.isConnected) { var sc = el.querySelector('.scroll'), y = sc.scrollTop; sc.innerHTML = html(); sc.scrollTop = y; } }
+  // Версия работающего service worker и последнее нажатие на уведомление, которое он получил
+  function fillSw() {
+    if (!(B.native && B.native.swInfo)) return;
+    B.native.swInfo().then(function (i) {
+      var a = document.getElementById('dg-sw'), b = document.getElementById('dg-swc');
+      if (a) a.textContent = i.sw ? 'версия ' + i.sw : 'не управляет страницей';
+      if (b) b.textContent = i.click ? new Date(i.click.t).toLocaleTimeString() + ', чат ' + (i.click.chatId || '—') : 'не было';
+    });
+  }
+  function refresh() { if (el && el.isConnected) { var sc = el.querySelector('.scroll'), y = sc.scrollTop; sc.innerHTML = html(); sc.scrollTop = y; fillSw(); } }
   B.bus.on('ws:state', refresh); window.addEventListener('resize', refresh); B.onPwaChange = refresh;
   return { open: open };
 })();

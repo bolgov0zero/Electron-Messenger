@@ -51,5 +51,19 @@ B.native = {
       if (n === 0 && B.chats && B.chats.refresh) { try { B.chats.refresh(); } catch (e) {} }
       if (++n < 8) setTimeout(go, 500); else if (B.native.last) B.native.last.step += ' → чат не найден';
     })();
+  },
+  // Что сейчас знает service worker: его версия и последнее нажатие на уведомление (для «Диагностики»)
+  swInfo: function () {
+    return new Promise(function (resolve) {
+      var out = { sw: null, click: null }, n = 0, fin = function () { if (++n === 2) resolve(out); };
+      fetch('/m/__last', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) { if (d && d.t) out.click = d; }).catch(function () {}).then(fin);
+      var done = false, off = function (v) { if (done) return; done = true; out.sw = v; fin(); };
+      try {
+        var ctl = navigator.serviceWorker && navigator.serviceWorker.controller;
+        if (!ctl) { off(null); return; }
+        navigator.serviceWorker.addEventListener('message', function h(e) { if (e.data && e.data.type === 'sw-info') { navigator.serviceWorker.removeEventListener('message', h); off(e.data.cache); } });
+        ctl.postMessage('sw-info'); setTimeout(function () { off('нет ответа (старая версия)'); }, 1500);
+      } catch (e) { off(null); }
+    });
   }
 };

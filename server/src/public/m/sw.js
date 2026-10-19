@@ -5,6 +5,7 @@
 const CACHE = 'm-v3';
 // Нажатие на уведомление запоминаем здесь: iOS при открытии PWA может не передать ни адрес, ни сообщение, а страница заберёт запись сама
 const PENDING = '/m/__open';
+const LAST = '/m/__last';   // последнее нажатие на уведомление: не стирается, нужно «Диагностике»
 // index.html (/m/) намеренно не прекэшируем — он всегда из сети, иначе закэшированная
 // страница может рендериться без актуальной вёрстки.
 const STATIC = ['/m/manifest.json', '/m/manifest-light.json'];
@@ -25,6 +26,10 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws')) return;
   if (url.origin !== self.location.origin) return;
+  if (url.pathname === LAST) {
+    e.respondWith(caches.open(CACHE).then(async c => (await c.match(LAST)) || new Response('{}', { headers: { 'content-type': 'application/json' } })));
+    return;
+  }
   if (url.pathname === PENDING) {
     e.respondWith(caches.open(CACHE).then(async c => {
       const r = await c.match(PENDING);
@@ -84,7 +89,10 @@ self.addEventListener('notificationclick', e => {
   e.notification.close();
   const chatId = e.notification.data?.chatId;
   e.waitUntil(
-    (chatId ? caches.open(CACHE).then(c => c.put(PENDING, new Response(JSON.stringify({ chatId, t: Date.now() }), { headers: { 'content-type': 'application/json' } }))).catch(() => {}) : Promise.resolve())
+    caches.open(CACHE).then(c => {
+      const rec = () => new Response(JSON.stringify({ chatId: chatId || null, t: Date.now() }), { headers: { 'content-type': 'application/json' } });
+      return Promise.all([c.put(LAST, rec()), chatId ? c.put(PENDING, rec()) : null]);
+    }).catch(() => {})
     .then(() => clients.matchAll({ type: 'window', includeUncontrolled: true })).then(list => {
       const existing = list.find(c => c.visibilityState === 'visible') || list[0];
       if (existing) {
@@ -95,4 +103,9 @@ self.addEventListener('notificationclick', e => {
       }
     })
   );
+});
+
+// Страница спрашивает, какая версия service worker сейчас работает
+self.addEventListener('message', e => {
+  if (e.data === 'sw-info') e.source?.postMessage({ type: 'sw-info', cache: CACHE });
 });
