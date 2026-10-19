@@ -22,6 +22,11 @@ B.ui.diag = (function () {
         cell('Окно', innerWidth + ' × ' + innerHeight) + cell('Видимая область', vv ? Math.round(vv.width) + ' × ' + Math.round(vv.height) : '—') + cell('Экран', screen.width + ' × ' + screen.height + ' @' + devicePixelRatio) +
         cell('Низ окна от верха экрана', Math.round(document.documentElement.getBoundingClientRect().bottom) + ' из ' + screen.height) +
         cell('safe-area сверху / снизу', inset('top') + ' / ' + inset('bottom')) + cell('Верхняя панель', nv ? Math.round(nv.getBoundingClientRect().height) : '—') + cell('Нижняя панель', tb ? Math.round(tb.getBoundingClientRect().height) : '—') + '</div>' +
+      '<div class="gh">Нажатие на уведомление</div><div class="grp">' + (function () {
+        var l = B.native && B.native.last;
+        return cell('Переход в приложение', B.native && B.native.enabled() ? 'включён, схема ' + B.native.scheme() : 'выключен') +
+          cell('Последнее нажатие', l ? new Date(l.t).toLocaleTimeString() + ', чат ' + l.id : 'не было') + (l ? cell('Пришло через', l.via) + cell('Что сделано', l.step) : '');
+      })() + '</div>' +
       '<div class="gh">Запас отступов, px</div><div class="grp">' + stepper('Сверху', 'sat_extra') + stepper('Снизу', 'sab_extra') + '</div>' +
       '<div class="gf">Если верх или низ панелей не совпадают с системными областями iPhone, подберите запас. Значения сохраняются на этом телефоне.</div>';
   }

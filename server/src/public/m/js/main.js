@@ -59,8 +59,13 @@
   B.bus.on('app:ready', showShell);
   // Нажатие на push-уведомление открывает нужный чат
   // Нажатие на уведомление: если включён переход в нативное приложение, сначала пробуем открыть чат там
-  var openHere = function (id) { if (B.find(id)) B.openChat(id); };
-  B.onOpenChat = function (id) { B.native.openFromPush(id, function () { openHere(id); }); };
-  B.bus.on('app:ready', function () { if (B.S.pendingOpenChatId) { var id = B.S.pendingOpenChatId; B.S.pendingOpenChatId = null; B.native.openFromPush(id, function () { openHere(id); }); } });
+  B.onOpenChat = function (id) { B.native.fromNotification(id, 'сообщение'); };
+  B.native.onOpen = function (id) { B.native.openFromPush(id, function () { B.native.openHere(id); }); };
+  B.bus.on('app:ready', function () {
+    if (B.S.pendingOpenChatId) { var id = B.S.pendingOpenChatId; B.S.pendingOpenChatId = null; B.native.fromNotification(id, 'адрес'); }
+    setTimeout(B.native.checkPending, 400);
+  });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(B.native.checkPending, 300); });
+  window.addEventListener('pageshow', function () { setTimeout(B.native.checkPending, 300); });
   B.app.start();
 })();

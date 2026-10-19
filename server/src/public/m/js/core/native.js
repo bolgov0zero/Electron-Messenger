@@ -24,5 +24,32 @@ B.native = {
     document.addEventListener('visibilitychange', left); window.addEventListener('pagehide', gone);
     timer = setTimeout(function () { finish(false); }, 2400);
     try { location.href = B.native.url(chatId); } catch (e) { finish(false); }
+  },
+  last: null,   // последнее нажатие на уведомление: откуда пришло, чат, что сделали (для «Диагностики»)
+  // Единая точка входа: нажатие на уведомление пришло сообщением от service worker, адресом или записью в кэше.
+  // Один и тот же чат за короткое время открываем один раз
+  fromNotification: function (id, via) {
+    id = +id; if (!id) return;
+    var now = Date.now(), p = B.native._p;
+    if (p && p.id === id && now - p.t < 4000) return;
+    B.native._p = { id: id, t: now };
+    B.native.last = { via: via, id: id, t: now, step: B.native.enabled() ? 'переход в приложение' : 'открытие в PWA' };
+    B.native.onOpen(id);
+  },
+  // Запись о нажатии, оставленная service worker'ом (iOS не всегда отдаёт PWA адрес или сообщение)
+  checkPending: function () {
+    if (!B.S.token) return;
+    fetch('/m/__open', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && d.chatId && Date.now() - d.t < 120000) B.native.fromNotification(d.chatId, 'запись service worker');
+    }).catch(function () {});
+  },
+  // Открыть чат внутри PWA; если чаты ещё не подгрузились, подождать
+  openHere: function (id) {
+    var n = 0;
+    (function go() {
+      if (B.find(id)) { B.openChat(id); if (B.native.last && B.native.last.id === id) B.native.last.step += ' → чат открыт'; return; }
+      if (n === 0 && B.chats && B.chats.refresh) { try { B.chats.refresh(); } catch (e) {} }
+      if (++n < 8) setTimeout(go, 500); else if (B.native.last) B.native.last.step += ' → чат не найден';
+    })();
   }
 };

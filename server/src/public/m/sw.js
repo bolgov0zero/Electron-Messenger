@@ -2,7 +2,9 @@
 
 // Service worker /m — тот же механизм push-уведомлений, что у /m/sw.js, но со своим
 // именем кэша и областью видимости (/m/): SW соседних клиентов её не покрывают.
-const CACHE = 'm-v2';
+const CACHE = 'm-v3';
+// Нажатие на уведомление запоминаем здесь: iOS при открытии PWA может не передать ни адрес, ни сообщение, а страница заберёт запись сама
+const PENDING = '/m/__open';
 // index.html (/m/) намеренно не прекэшируем — он всегда из сети, иначе закэшированная
 // страница может рендериться без актуальной вёрстки.
 const STATIC = ['/m/manifest.json', '/m/manifest-light.json'];
@@ -23,6 +25,14 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws')) return;
   if (url.origin !== self.location.origin) return;
+  if (url.pathname === PENDING) {
+    e.respondWith(caches.open(CACHE).then(async c => {
+      const r = await c.match(PENDING);
+      if (r) await c.delete(PENDING);
+      return r || new Response('{}', { headers: { 'content-type': 'application/json' } });
+    }));
+    return;
+  }
 
   if (e.request.mode === 'navigate') {
     e.respondWith(fetch(e.request));
@@ -74,7 +84,8 @@ self.addEventListener('notificationclick', e => {
   e.notification.close();
   const chatId = e.notification.data?.chatId;
   e.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    (chatId ? caches.open(CACHE).then(c => c.put(PENDING, new Response(JSON.stringify({ chatId, t: Date.now() }), { headers: { 'content-type': 'application/json' } }))).catch(() => {}) : Promise.resolve())
+    .then(() => clients.matchAll({ type: 'window', includeUncontrolled: true })).then(list => {
       const existing = list.find(c => c.visibilityState === 'visible') || list[0];
       if (existing) {
         existing.focus();
