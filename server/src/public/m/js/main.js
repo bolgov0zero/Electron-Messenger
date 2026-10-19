@@ -58,7 +58,9 @@
   B.bus.on('auth:logout', showLogin);
   B.bus.on('app:ready', showShell);
   // Нажатие на push-уведомление открывает нужный чат
-  B.onOpenChat = function (id) { if (B.find(id)) B.openChat(id); };
-  B.bus.on('app:ready', function () { if (B.S.pendingOpenChatId) { var id = B.S.pendingOpenChatId; B.S.pendingOpenChatId = null; if (B.find(id)) B.openChat(id); } });
+  // Нажатие на уведомление: если включён переход в нативное приложение, сначала пробуем открыть чат там
+  var openHere = function (id) { if (B.find(id)) B.openChat(id); };
+  B.onOpenChat = function (id) { B.native.openFromPush(id, function () { openHere(id); }); };
+  B.bus.on('app:ready', function () { if (B.S.pendingOpenChatId) { var id = B.S.pendingOpenChatId; B.S.pendingOpenChatId = null; B.native.openFromPush(id, function () { openHere(id); }); } });
   B.app.start();
 })();
