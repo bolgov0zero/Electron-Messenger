@@ -31,6 +31,7 @@ B.nav = {
     el.classList.add('enter'); this.el.appendChild(el);
     this.stack.push({ el: el, title: title !== undefined ? title : el._title || '' });
     void el.offsetWidth;                       // принудительный пересчёт: следующая смена класса запустит переход
+    el._t0 = performance.now();                // когда началось выезжание: тяжёлую отрисовку содержимого откладываем до его конца
     el.classList.remove('enter'); prev.el.classList.add('under');
     B.bus.emit('nav:changed');
   },

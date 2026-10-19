@@ -317,8 +317,7 @@ B.ui.chat = (function () {
     else if (B.openMembers) B.openMembers(cid);
   }
 
-  B.bus.on('msgs:opened', function (d) {
-    var el = pageFor(d.chatId); if (!el) return;
+  function opened(el, d) {
     render(el, 'none');
     var sc = el.querySelector('.scroll');
     if (d.aroundId) {
@@ -331,6 +330,15 @@ B.ui.chat = (function () {
     }
     updateHeader(el); onScroll(el);
     if (B.ui.composer && B.ui.composer.sync) B.ui.composer.sync(el);
+    if (el._t0) el.querySelector('.msgs').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' });   // сообщения проявляются, а не выпрыгивают
+  }
+  B.bus.on('msgs:opened', function (d) {
+    var el = pageFor(d.chatId); if (!el) return;
+    // Страница ещё выезжает справа: сотни пузырей, отрисованные посреди выезда, рвут анимацию на телефоне.
+    // Ждём конца выезда (около 0,4 с), пока на странице «Загрузка…»
+    var wait = el._t0 ? 400 - (performance.now() - el._t0) : 0;
+    if (wait > 40) { setTimeout(function () { if (el.isConnected) opened(el, d); }, wait); return; }
+    opened(el, d);
   });
   B.bus.on('msgs:older', function () { var el = activePage(); if (el) render(el, 'keep'); });
   B.bus.on('msgs:changed', function (d) { var el = activePage(); if (el && +el.dataset.cid === B.msgs.chatId) render(el, d && d.mode === 'bottom' ? undefined : (d && d.mode) || 'smart'); });

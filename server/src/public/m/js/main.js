@@ -28,9 +28,25 @@
       if (a.dataset.act === 'newChat') B.ui.groups.newChat(); else if (a.dataset.act === 'addContact') B.ui.groups.addContact();
     });
   }
+  // Вкладки снизу: новая вкладка въезжает со стороны своего места в панели и проявляется, прежняя уезжает в обратную
+  var TABS = ['chats', 'contacts', 'settings'], curTab = 'chats', tabAnims = [];
   function setTab(name) {
+    var prev = curTab;
+    tabAnims.forEach(function (a) { try { a.cancel(); } catch (e) {} }); tabAnims = [];
+    shell.querySelectorAll('.tabview').forEach(function (v) { v.style.visibility = ''; v.style.zIndex = ''; });
     shell.querySelectorAll('.tabview').forEach(function (v) { v.classList.toggle('on', v.dataset.tab === name); });
     shell.querySelectorAll('.tb').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === name); });
+    curTab = name;
+    var from = shell.querySelector('.tabview[data-tab="' + prev + '"]'), to = shell.querySelector('.tabview[data-tab="' + name + '"]');
+    if (prev === name || !from || !to || !from.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var dir = TABS.indexOf(name) > TABS.indexOf(prev) ? 1 : -1, d = 32, ease = 'cubic-bezier(.32,.72,0,1)';
+    from.style.visibility = 'visible'; from.style.zIndex = '1'; to.style.zIndex = '2';
+    var a1 = from.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(' + (-dir * d * 0.6) + 'px)' }], { duration: 240, easing: ease, fill: 'forwards' });
+    var a2 = to.animate([{ opacity: 0, transform: 'translateX(' + (dir * d) + 'px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: ease });
+    tabAnims = [a1, a2];
+    var done = function () { from.style.visibility = ''; from.style.zIndex = ''; to.style.zIndex = ''; try { a1.cancel(); } catch (e) {} };
+    a1.onfinish = done;
+    setTimeout(function () { if (tabAnims[0] === a1) done(); }, 450);   // страховка: в свёрнутом окне кадры не рисуются
   }
   B.setTab = function (name) { if (shell) setTab(name); };
   function showShell() { mountShell(); B.ui.login.hide(); shell.hidden = false; B.ui.chatlist.render(); B.ui.settings.render(); }

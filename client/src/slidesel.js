@@ -20,8 +20,10 @@
     { b: '.anx-sg', i: 'button', o: A },
     { b: '.anx-types', i: 'button', o: '[aria-checked="true"]', above: true },
     { b: '.gp-chips', i: '.gp-chip', o: A },
+    { b: '.ep-tabs', i: '.ep-tab', o: '[aria-selected="true"]' },   // группы смайлов
     { b: '.cs-nav-list', i: '.cs-sn', o: '[aria-current="page"],[aria-current="true"]' },
     { b: '.rail-folders', i: '.fld-btn', o: '.active', p: '::before' },
+    { b: '.acc-rail', i: '.acc-btn:not(.fld-btn)', o: '.active', p: '::before' },   // записи (аккаунты) в левой панели клиента
     // мобильная версия
     { b: '.seg2', i: 'button', o: '.on' },
     { b: '.mtabs-in', i: '.mtab', o: '.on', p: '::after' },
@@ -45,7 +47,7 @@
 
   // Без «пружины»: с перелётом плашка в узкой колонке (папки слева) выскакивала за крайний пункт
   var EASE = 'cubic-bezier(.32,.72,0,1)', DUR = 300;
-  var state = {}, lastInt = 0, lastTarget = null, sw = null, pend = null;
+  var state = {}, lastInt = 0, lastTarget = null, sw = null, pend = null, forceUntil = 0;
   var reduce = matchMedia('(prefers-reduced-motion: reduce)');
 
   var css = document.createElement('style');
@@ -210,8 +212,9 @@
     if (!prev || prev.el === cur || prev.sig !== s) return;
     // Страницу перерисовали целиком: анимируем только если сразу перед этим нажали пункт именно этой группы.
     // Иначе при переходе на другую страницу плашка «летела» бы от места такой же группы на прошлой
-    if (prev.box !== box && (Date.now() - lastInt > 500 || !lastTarget || !prev.box.contains(lastTarget))) return;
-    if (reduce.matches || document.hidden) return;
+    var forced = Date.now() < forceUntil;   // выбор сменили не здесь (переключение записи в другом окне клиента), нажатия в этом окне не было
+    if (prev.box !== box && !forced && (Date.now() - lastInt > 500 || !lastTarget || !prev.box.contains(lastTarget))) return;
+    if (reduce.matches || (document.hidden && !forced)) return;
     var from = prev.geom, fb = prev.box._ss ? prev.box : box._ss ? box : null;
     if (fb) { from = flightGeom(fb); finish(fb); }
     if (from.x === now.x && from.y === now.y && from.w === now.w && from.h === now.h) return;
@@ -244,6 +247,8 @@
   // Вызываются из мест, где знают, что именно изменилось (списки чатов, значки вкладок)
   var ok = function (el) { return el && el.animate && !reduce.matches; };
   window.SlideSel = {
+    // Ближайшую смену выбора анимировать, даже если нажатия в этом окне не было
+    allowNext: function (ms) { forceUntil = Date.now() + (ms || 400); },
     pop: function (el) { if (ok(el)) el.animate([{ transform: 'scale(.4)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 280, easing: 'cubic-bezier(.34,1.56,.64,1)' }); },
     bump: function (el) { if (ok(el)) el.animate([{ transform: 'none' }, { transform: 'scale(1.28)', offset: .4 }, { transform: 'none' }], { duration: 300, easing: 'ease' }); },
     out: function (el, done) {

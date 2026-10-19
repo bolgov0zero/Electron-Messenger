@@ -731,6 +731,7 @@ function reportAccount() {
   S.acc.pending = false;
   window.electron.accountLoggedIn({ server: S.server, userId: S.user.id, name: S.user.display_name, tag: S.user.tag ?? null, serverName: S.user.server_name || '' });
 }
+let _railActive = null;
 function renderAccountRail() {
   const rail = document.getElementById('acc-rail');
   if (!rail) return;
@@ -739,6 +740,10 @@ function renderAccountRail() {
   rail.hidden = !show;
   document.body.classList.toggle('has-rail', show);
   if (!show) { rail.innerHTML = ''; return; }
+  // Записи — отдельные окна клиента: при переключении плашка выбора должна проехать от прежней записи к новой
+  // и в только что открытом окне, где нажатия не было
+  if (window.SlideSel && S.acc.activeId !== _railActive) SlideSel.allowNext(500);
+  _railActive = S.acc.activeId;
   rail.innerHTML = (showAcc ? S.acc.list.map(a => {
     const m = a.meta;
     const cls = m ? userAvatarColor(m.userId, m.tag) : 'av-default';
@@ -2844,12 +2849,20 @@ function emojiTabTo(key, kind = 'ep') {
   if (!row) return;
   const delta = row.getBoundingClientRect().top - scroll.getBoundingClientRect().top - (head?.offsetHeight || 0);
   scroll.scrollTo({ top: scroll.scrollTop + delta, behavior: 'smooth' });
+  // Выбранную вкладку ставим сразу и держим, пока человек сам не прокрутит: иначе подсветка бежала бы по группам
+  // по пути, а у групп, которые не могут подняться к верху списка (самые последние), останавливалась на соседней
+  scroll._tabLock = key;
+  document.querySelectorAll('#' + kind + '-tabs .ep-tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === key)));
+  if (!scroll._lockBound) {
+    scroll._lockBound = true;
+    ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach(ev => scroll.addEventListener(ev, () => { scroll._tabLock = null; }, { passive: true }));
+  }
 }
 
 // Активная вкладка следует за прокруткой — как в телеграме
 function syncEmojiTabs(kind = 'ep') {
   const scroll = document.getElementById(kind + '-scroll');
-  if (!scroll) return;
+  if (!scroll || scroll._tabLock) return;
   const top = scroll.getBoundingClientRect().top;
   let cur = null, first = null, last = null;
   scroll.querySelectorAll('[data-row]').forEach(row => {
@@ -2872,6 +2885,7 @@ function syncEmojiTabs(kind = 'ep') {
 function filterEmoji(q, kind = 'ep') {
   const scroll = document.getElementById(kind + '-scroll');
   if (!scroll) return;
+  scroll._tabLock = null;
   const query = (q || '').trim().toLowerCase();
 
   if (!query) {

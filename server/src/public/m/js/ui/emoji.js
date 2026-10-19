@@ -45,7 +45,9 @@ B.emoji = {
   // offset — высота закреплённой шапки внутри области прокрутки (она закрывает верх списка).
   bindTabs: function (scroll, tabs, offset) {
     if (!scroll || !tabs) return;
+    var lock = null;   // выбранная нажатием вкладка: держим, пока человек сам не прокрутит
     var sync = function () {
+      if (lock) return;
       var top = scroll.getBoundingClientRect().top + (offset || 0), cur = null, first = null, last = null;
       scroll.querySelectorAll('[data-row]').forEach(function (row) {
         if (row.hidden) return; if (!first) first = row.dataset.row; last = row.dataset.row;
@@ -62,8 +64,14 @@ B.emoji = {
       });
     };
     scroll.addEventListener('scroll', sync, { passive: true });
+    ['touchstart', 'wheel', 'pointerdown'].forEach(function (ev) { scroll.addEventListener(ev, function () { lock = null; }, { passive: true }); });
     tabs.addEventListener('click', function (e) {
       var t = e.target.closest('.ep-tab'); if (!t) return;
+      // Вкладку выбираем сразу: иначе при плавной прокрутке подсветка бежит по группам по пути, а у групп,
+      // которые не могут подняться к верху списка (последние), останавливается на соседней
+      lock = t.dataset.key;
+      tabs.querySelectorAll('.ep-tab').forEach(function (x) { x.setAttribute('aria-selected', String(x === t)); });
+      tabs.scrollTo({ left: t.offsetLeft - (tabs.clientWidth - t.offsetWidth) / 2, behavior: 'smooth' });
       var row = scroll.querySelector('[data-row="' + t.dataset.key + '"]'), head = scroll.querySelector('[data-head="' + t.dataset.key + '"]'); if (!row) return;
       scroll.scrollTo({ top: scroll.scrollTop + row.getBoundingClientRect().top - scroll.getBoundingClientRect().top - (offset || 0) - (head ? head.offsetHeight : 0), behavior: 'smooth' });
     });
