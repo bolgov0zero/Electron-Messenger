@@ -63,9 +63,9 @@
   B.native.onOpen = function (id) { B.native.openFromPush(id, function () { B.native.openHere(id); }); };
   B.bus.on('app:ready', function () {
     if (B.S.pendingOpenChatId) { var id = B.S.pendingOpenChatId; B.S.pendingOpenChatId = null; B.native.fromNotification(id, 'адрес'); }
-    setTimeout(B.native.checkPending, 400); setTimeout(B.native.checkPush, 900);
+    setTimeout(B.native.checkPending, 400);
   });
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) { setTimeout(B.native.checkPending, 300); setTimeout(B.native.checkPush, 700); } });
-  window.addEventListener('pageshow', function () { setTimeout(B.native.checkPending, 300); setTimeout(B.native.checkPush, 700); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { setTimeout(B.native.checkPending, 300); } });
+  window.addEventListener('pageshow', function () { setTimeout(B.native.checkPending, 300); });
   B.app.start();
 })();

@@ -20,7 +20,6 @@ B.ui.settings = (function () {
       '<div class="grp">' + cell({ act: 'appearance', ic: 'palette', bg: '#af52de', label: 'Внешний вид' }) +
         cell({ act: 'notif', ic: 'bell', bg: '#ff3b30', label: 'Уведомления', val: notifText(), chev: false }) +
         cell({ act: 'native', ic: 'link', bg: '#007aff', label: 'Открывать в приложении', val: B.native.enabled() ? 'Включено' : 'Выключено', chev: false }) +
-        cell({ act: 'pushjump', ic: 'bell', bg: '#ff9500', label: 'Чат из последнего пуша', val: B.native.pushJump() ? 'Включено' : 'Выключено', chev: false }) +
         cell({ act: 'modules', ic: 'puzzle', bg: '#34c759', label: 'Модули', val: mods ? String(mods) : '' }) +
         cell({ act: 'folders', ic: 'folder', bg: '#ff9500', label: 'Папки', val: B.folders.list.length ? String(B.folders.list.length) : '' }) + '</div>' +
       '<div class="grp">' + cell({ act: 'blocks', ic: 'block', bg: '#8e8e93', label: 'Блокировки', val: S.blocked.length ? String(S.blocked.length) : '' }) +
@@ -39,10 +38,6 @@ B.ui.settings = (function () {
       else if (a === 'native') {
         B.native.setEnabled(!B.native.enabled()); render();
         B.toast.show(B.native.enabled() ? 'Чат из уведомления откроется в приложении «Электрон», если оно установлено' : 'Чат из уведомления откроется здесь');
-      }
-      else if (a === 'pushjump') {
-        B.native.setPushJump(!B.native.pushJump()); render();
-        B.toast.show(B.native.pushJump() ? 'Если после пуша открыть приложение в течение минуты, откроется чат этого пуша' : 'Приложение откроется как обычно');
       }
       else if (a === 'notif') {
         var p = B.push.permission();

@@ -2,7 +2,7 @@
 // если панели не совпадают с системными областями iPhone. Запас хранится на этом устройстве.
 B.ui = B.ui || {};
 B.ui.diag = (function () {
-  var esc = B.esc, el = null;
+  var esc = B.esc, el = null, logOpen = false;   // открыт ли журнал service worker (по нажатию на строку «Нажатие дошло…»)
   function inset(side) {
     var p = document.createElement('div');
     p.style.cssText = 'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding-' + side + ':env(safe-area-inset-' + side + ',0px)';
@@ -27,8 +27,8 @@ B.ui.diag = (function () {
         return cell('Переход в приложение', B.native && B.native.enabled() ? 'включён, схема ' + B.native.scheme() : 'выключен') +
           cell('Последнее нажатие', l ? new Date(l.t).toLocaleTimeString() + ', чат ' + l.id : 'не было') + (l ? cell('Пришло через', l.via) + cell('Что сделано', l.step) : '') +
           '<div class="cell"><span class="cl">Service worker</span><span class="cv" id="dg-sw">проверяю…</span></div>' +
-          '<div class="cell"><span class="cl">Нажатие дошло до service worker</span><span class="cv" id="dg-swc">проверяю…</span></div>' +
-          '<div class="gf" id="dg-log" style="text-align:left;white-space:pre-line">Журнал service worker…</div>';
+          '<div class="cell tap" data-lg="1" role="button" aria-expanded="' + logOpen + '"><span class="cl">Нажатие дошло до service worker</span><span class="cv" id="dg-swc">проверяю…</span><span class="chev" style="color:var(--fg3);display:flex;margin-left:6px;transition:transform .2s;transform:rotate(' + (logOpen ? 90 : 0) + 'deg)">' + B.ic('chev', 14, 2.4) + '</span></div>' +
+          '<div class="gf" id="dg-log" style="text-align:left;white-space:pre-line;' + (logOpen ? '' : 'display:none') + '">Журнал service worker…</div>';
       })() + '</div>' +
       '<div class="gh">Запас отступов, px</div><div class="grp">' + stepper('Сверху', 'sat_extra') + stepper('Снизу', 'sab_extra') + '</div>' +
       '<div class="gf">Если верх или низ панелей не совпадают с системными областями iPhone, подберите запас. Значения сохраняются на этом телефоне.</div>';
@@ -36,6 +36,8 @@ B.ui.diag = (function () {
   function open() {
     el = B.nav.page({ title: 'Диагностика', back: 'Настройки', gray: true, body: html() });
     el.addEventListener('click', function (e) {
+      var lg = e.target.closest('[data-lg]');
+      if (lg) { logOpen = !logOpen; refresh(); return; }
       var b = e.target.closest('[data-d]'); if (!b) return;
       var css = '--' + b.dataset.k.replace('_', '-'), v = extra(css) + (b.dataset.d === 'inc' ? 1 : -1);
       document.documentElement.style.setProperty(css, v + 'px');

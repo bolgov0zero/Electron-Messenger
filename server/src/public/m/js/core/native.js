@@ -66,18 +66,5 @@ B.native = {
         ctl.postMessage('sw-info'); setTimeout(function () { off('нет ответа (старая версия)'); }, 1500);
       } catch (e) { off(null); }
     });
-  },
-  // Запасной путь, если iOS не доставила нажатие на уведомление service worker'у: если недавно показали пуш и приложение
-  // открыли в течение минуты, открываем чат этого пуша. Можно выключить в настройках
-  pushJump: function () { try { return localStorage.getItem('m.pushJump') !== '0'; } catch (e) { return true; } },
-  setPushJump: function (on) { try { localStorage.setItem('m.pushJump', on ? '1' : '0'); } catch (e) {} },
-  checkPush: function () {
-    if (!B.S.token || !B.native.pushJump()) return;
-    fetch('/m/__push', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
-      if (!d || !d.chatId || !d.shown || Date.now() - d.t > 60000 || B.native._pushT === d.t) return;
-      B.native._pushT = d.t;
-      fetch('/m/__push?clear=1', { cache: 'no-store' }).catch(function () {});
-      B.native.fromNotification(d.chatId, 'недавний пуш (нажатие до service worker не дошло)');
-    }).catch(function () {});
   }
 };

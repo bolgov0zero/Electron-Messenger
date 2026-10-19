@@ -6,7 +6,6 @@ const CACHE = 'm-v3';
 // Нажатие на уведомление запоминаем здесь: iOS при открытии PWA может не передать ни адрес, ни сообщение, а страница заберёт запись сама
 const PENDING = '/m/__open';
 const LAST = '/m/__last';   // последнее нажатие на уведомление: не стирается, нужно «Диагностике»
-const PUSHREC = '/m/__push';   // последний показанный пуш: если нажатие iOS не доставит, страница откроет этот чат сама
 const LOG = '/m/__log';        // журнал событий service worker для «Диагностики»
 const jsonRes = o => new Response(JSON.stringify(o), { headers: { 'content-type': 'application/json' } });
 async function logEv(name, extra) {
@@ -38,14 +37,6 @@ self.addEventListener('fetch', e => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname === LOG) {
     e.respondWith(caches.open(CACHE).then(async c => (await c.match(LOG)) || jsonRes([])));
-    return;
-  }
-  if (url.pathname === PUSHREC) {
-    e.respondWith(caches.open(CACHE).then(async c => {
-      const r = await c.match(PUSHREC);
-      if (url.searchParams.get('clear')) { await c.delete(PUSHREC); return jsonRes({}); }
-      return r || jsonRes({});
-    }));
     return;
   }
   if (url.pathname === LAST) {
@@ -96,7 +87,6 @@ self.addEventListener('push', e => {
       const visible = list.some(c => c.visibilityState === 'visible');
       const tasks = visible ? [] : [self.registration.showNotification(title, options)];
       tasks.push(logEv('push', { chatId: data.chatId || null, shown: !visible }));
-      if (!visible && data.chatId) tasks.push(caches.open(CACHE).then(c => c.put(PUSHREC, jsonRes({ chatId: data.chatId, t: Date.now(), shown: true }))).catch(() => {}));
       if (self.navigator.setAppBadge) {
         if (typeof data.unread === 'number') {
           tasks.push(data.unread > 0 ? self.navigator.setAppBadge(data.unread) : self.navigator.clearAppBadge());
