@@ -163,6 +163,10 @@ B.ui.chat = (function () {
     if (ty.length) return { t: B.typing.label(ty, true), live: 1 };
     return { t: chat.type === 'room' && !chat.parent_id ? 'Комната' : (chat.members ? chat.members.length : 0) + ' участников' };
   }
+  // Заглушки-пузыри вместо пустой страницы, пока сообщения чата ещё не загружены
+  function skeleton() {
+    return '<div class="sk"><i class="l w1"></i><i class="l w2"></i><i class="r w3"></i><i class="l w4"></i><i class="r w5"></i><i class="l w2"></i></div>';
+  }
   function build(cid) {
     var chat = B.find(cid), el = document.createElement('div');
     el.className = 'page chat'; el.dataset.cid = cid; el._title = B.chatName(chat);
@@ -173,7 +177,7 @@ B.ui.chat = (function () {
         '<div class="nl"><button class="nb back" data-nav="back" aria-label="Назад">' + ic('back', 28, 2.4) + '<span class="cnt">' + (n ? (n > 99 ? '99+' : n) : '') + '</span></button></div>' +
         '<div class="nt"><div class="cn-b" data-c="info"><b>' + esc(B.chatName(chat)) + '</b><span class="st' + (st.live ? ' live' : '') + '">' + esc(st.t) + '</span></div></div>' +
         '<div class="nr"><button class="nb addc" data-c="addc" aria-label="Добавить в контакты" hidden>' + ic('userplus', 22, 1.9) + '</button><div class="cn-av" data-c="info">' + B.avatar.chat(chat, 36) + '</div></div></div></div>' +
-      '<div class="scroll"><div class="msgs"><div class="stub-note">Загрузка…</div></div></div>' +
+      '<div class="scroll"><div class="msgs">' + (B.msgs.tail(cid) && !B.S.secretChatIds.has(cid) ? '' : skeleton()) + '</div></div>' +
       '<button class="sdbtn" data-c="down" aria-label="К последним сообщениям">' + ic('down', 20, 2.4) + '<b></b></button>' +
       '<div class="bottom comp"></div>';
     B.avatar.apply(el);
@@ -318,6 +322,7 @@ B.ui.chat = (function () {
   }
 
   function opened(el, d) {
+    var hadPreview = el._preview; el._preview = false;
     render(el, 'none');
     var sc = el.querySelector('.scroll');
     if (d.aroundId) {
@@ -330,8 +335,15 @@ B.ui.chat = (function () {
     }
     updateHeader(el); onScroll(el);
     if (B.ui.composer && B.ui.composer.sync) B.ui.composer.sync(el);
-    if (el._t0) el.querySelector('.msgs').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' });   // сообщения проявляются, а не выпрыгивают
+    if (el._t0 && !hadPreview) el.querySelector('.msgs').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' });   // сообщения проявляются, а не выпрыгивают
   }
+  // Лёгкая первая отрисовка: последние сообщения из кэша показываются сразу, пока страница выезжает и идёт запрос
+  B.bus.on('msgs:preview', function (d) {
+    var el = pageFor(d.chatId); if (!el) return;
+    el._preview = true;
+    render(el, 'bottom');
+    updateHeader(el);
+  });
   B.bus.on('msgs:opened', function (d) {
     var el = pageFor(d.chatId); if (!el) return;
     // Страница ещё выезжает справа: сотни пузырей, отрисованные посреди выезда, рвут анимацию на телефоне.

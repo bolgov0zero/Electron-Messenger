@@ -128,3 +128,12 @@
 .crow2 .t span { font-size: 14px; color: var(--fg2); }
 .sh .ep-row button { color: var(--fg); }
 .sh .ep-row button:active { transform: scale(1.35); }
+
+/* заглушки-пузыри, пока сообщения чата грузятся */
+.sk { display: flex; flex-direction: column; gap: 8px; padding: 14px 12px 0; }
+.sk i { display: block; height: 38px; border-radius: 18px; background: var(--fill); animation: skp 1.4s ease-in-out infinite; }
+.sk i.l { align-self: flex-start; border-bottom-left-radius: 6px; }
+.sk i.r { align-self: flex-end; border-bottom-right-radius: 6px; }
+.sk i.w1 { width: 52%; } .sk i.w2 { width: 38%; height: 32px; } .sk i.w3 { width: 46%; } .sk i.w4 { width: 64%; height: 54px; } .sk i.w5 { width: 34%; height: 32px; }
+@keyframes skp { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .sk i { animation: none; } }

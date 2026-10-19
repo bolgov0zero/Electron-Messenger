@@ -4,10 +4,29 @@
 //   msgs:changed {mode}             — состав или вид сообщений изменился ('smart' — не дёргать прокрутку)
 //   msgs:older                      — подгружена более ранняя страница
 //   msgs:new {message, mine}        — пришло новое сообщение
+//   msgs:preview {chatId}           — до ответа сервера в B.msgs.cache положен кэшированный хвост переписки (лёгкая первая отрисовка)
 B.msgs = {
   PAGE: 100,
   chatId: null, cache: [], unreadAtOpen: 0, hasMoreOlder: false, loadingOlder: false, _applied: {},
 
+  // Хвост переписки (последние сообщения) по чатам: чат открывается сразу с сообщениями, а не с пустой страницей,
+  // пока идёт запрос. Живёт в sessionStorage вкладки и стирается при выходе. Скрытые чаты не храним: их ещё надо расшифровать
+  TAIL_N: 30, PREV_N: 15, _tail: null, _tailT: 0,
+  tail: function (id) {
+    var M = B.msgs;
+    if (!M._tail) { try { M._tail = JSON.parse(sessionStorage.getItem('m.tail') || '{}'); } catch (e) { M._tail = {}; } }
+    return id == null ? M._tail : M._tail[id];
+  },
+  saveTail: function () {
+    var M = B.msgs, id = M.chatId; if (id == null || M._preview || B.S.secretChatIds.has(id)) return;   // пока показан хвост из кэша, его не пересохраняем
+    var t = M.tail(), real = M.cache.filter(function (m) { return !m._optimistic && m.id > 0; }).slice(-M.TAIL_N);
+    if (!real.length) return;
+    t[id] = { t: Date.now(), m: real };
+    var ids = Object.keys(t).sort(function (a, b) { return t[b].t - t[a].t; });
+    ids.slice(12).forEach(function (k) { delete t[k]; });   // помним только последние 12 чатов
+    clearTimeout(M._tailT);
+    M._tailT = setTimeout(function () { try { sessionStorage.setItem('m.tail', JSON.stringify(t)); } catch (e) { try { sessionStorage.removeItem('m.tail'); } catch (e2) {} } }, 800);
+  },
   find: function (id) { return B.msgs.cache.find(function (m) { return m.id === id; }); },
   chat: function () { return B.find(B.msgs.chatId); },
 
@@ -16,9 +35,12 @@ B.msgs = {
     var M = B.msgs, S = B.S;
     M.chatId = chatId; S.activeChatId = chatId; M.cache = []; M.hasMoreOlder = false; M._applied = {};
     var chat = B.find(chatId); if (!chat) return;
+    // Есть хвост этой переписки: показываем его сразу, до ответа сервера
+    var tl = !aroundId && !B.S.secretChatIds.has(chatId) && M.tail(chatId);
+    if (tl && tl.m && tl.m.length) { M.cache = tl.m.slice(-M.PREV_N); M._preview = true; B.bus.emit('msgs:preview', { chatId: chatId }); } else M._preview = false;
     var data = await B.api('GET', '/messages/chat/' + chatId + '?limit=' + M.PAGE + (aroundId ? '&around=' + aroundId : ''));
     if (!data || M.chatId !== chatId) return;
-    M.cache = data.messages || []; M.hasMoreOlder = !!data.hasMore;
+    M.cache = data.messages || []; M.hasMoreOlder = !!data.hasMore; M._preview = false;
     M.unreadAtOpen = chat.unread || 0;
     chat.unread = 0; chat.unread_mentions = 0;
     if (chat.parent_id) {
@@ -168,3 +190,7 @@ B.msgs = {
     if (m) { m.reactions = d.counts; bus.emit('msgs:changed', { mode: 'smart' }); }
   });
 })();
+
+// Хвост переписки обновляем, когда чат открыт, пришло новое или изменилось; при выходе стираем
+['msgs:opened', 'msgs:new', 'msgs:changed'].forEach(function (ev) { B.bus.on(ev, function () { B.msgs.saveTail(); }); });
+B.bus.on('auth:logout', function () { B.msgs._tail = {}; try { sessionStorage.removeItem('m.tail'); } catch (e) {} });
