@@ -1868,6 +1868,20 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .sp-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--c-text);color:var(--c-bg);padding:9px 10px 9px 14px;border-radius:12px;font-size:12.5px;font-weight:600;z-index:400;box-shadow:var(--shadow-md);display:flex;align-items:center;gap:12px;max-width:min(560px,92vw)}
 .sp-toast button{border:0;background:color-mix(in srgb,var(--c-bg) 22%,transparent);color:var(--c-bg);border-radius:8px;padding:4px 10px;font:700 12px var(--f-ui);cursor:pointer}
 .sp-toast s{opacity:.6}
+@keyframes spIn{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes spOut{to{opacity:0;transform:translate(-50%,8px)}}
+.sp-toast{animation:spIn .18s ease}
+.sp-toast.out{animation:spOut .18s ease forwards}
+/* мягкое закрытие всплывающих окон (popHide): открытие и закрытие одной длины */
+@keyframes popOut{to{opacity:0;transform:translateY(-3px) scale(.98)}}
+.pop-out{animation:popOut 110ms ease-in forwards!important;pointer-events:none}
+@keyframes fmDown{to{opacity:0;transform:translateY(14px)}}
+.fm-sheet.out{animation:fmDown .15s ease forwards;pointer-events:none}
+.sb-pal-bg{animation:modalBgIn 140ms ease}
+.sb-pal-bg.out{animation:modalBgOut 120ms ease forwards;pointer-events:none}
+.sb-pal-bg.out .sb-pal{animation:popOut 120ms ease-in forwards}
+.fsm-p{animation:sbup .12s ease}
+@media (prefers-reduced-motion:reduce){.sp-toast,.sp-toast.out,.fm-sheet.out,.sb-pal-bg,.sb-pal-bg.out,.fsm-p{animation:none}}
 .nav-badge.warn{background:var(--c-orange-dim);color:var(--c-orange-text)}
 .sp-acc .btn svg,.sp-acc .sp-conf svg,.sp-acc .sp-inp svg,.sp-acc .sp-toast svg{width:14px;height:14px;flex-shrink:0}
 @container (max-width:860px){.sp-abg{grid-template-columns:1fr}.sp-side{border-left:0;border-top:1px solid var(--c-border)}.sp-ahm b{min-width:0}.sp-ms,.sp-md{display:none}.sp-r{grid-template-columns:1fr}.sp-c{justify-content:flex-start}}
@@ -2295,6 +2309,7 @@ return 'OK';</pre>
 </div>
 <div id="toast-container"></div>
 
+<script src="/shared/slidesel.js"></script>
 <script>
 /* ── STATE ── */
 let token = null, currentUser = null, currentPage = 'dashboard';
@@ -2775,7 +2790,7 @@ function sbMenuOpen() {
   SB.menu = true; sbTipHide();
   document.getElementById('sb-me').setAttribute('aria-expanded', 'true');
   const m = document.getElementById('sb-menu');
-  m.hidden = false;
+  popShow(m); m.hidden = false;
   sbMenuRender(); sbMenuPos();
   hmGet('/api/admin/users').then(us => {
     const me = Array.isArray(us) && us.find(x => x.id === currentUser?.id);
@@ -2785,7 +2800,8 @@ function sbMenuOpen() {
 function sbMenuClose() {
   if (!SB.menu) return;
   SB.menu = false;
-  document.getElementById('sb-menu').hidden = true;
+  const m = document.getElementById('sb-menu');
+  popHide(m, () => { m.hidden = true; });
   document.getElementById('sb-me').setAttribute('aria-expanded', 'false');
 }
 function sbMenuPos() {
@@ -2895,7 +2911,14 @@ function sbPalSel(n, scroll) {
   SB.pal.sel = n;
   document.querySelectorAll('#sb-pl .sb-pi').forEach((b, i) => { b.setAttribute('aria-selected', String(i === n)); if (scroll && i === n) b.scrollIntoView({ block: 'nearest' }); });
 }
-function sbPalClose() { document.getElementById('sb-pal')?.remove(); }
+function sbPalClose() {
+  const d = document.getElementById('sb-pal');
+  if (!d) return;
+  // id снимаем сразу: за 120 мс анимации палитру могут открыть заново
+  d.removeAttribute('id'); d.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+  d.classList.add('out');
+  setTimeout(() => d.remove(), 130);
+}
 function sbPalPick(n) { const it = SB.pal.items[n]; sbPalClose(); if (it) it.go(); }
 document.addEventListener('keydown', e => {
   if (document.getElementById('app')?.style.display !== 'block') return;
@@ -2972,7 +2995,7 @@ CX.mq.addEventListener('change', () => { if (typeof currentPage === 'string' && 
 // скрытыми: выбор в панели нажимает нужную из них, поэтому обработчики и перерисовка страниц прежние.
 const FS = { pend: false, el: null, host: null, page: null };
 function fsClose() {
-  if (FS.el) { FS.el.remove(); FS.el = null; }
+  if (FS.el) { const el = FS.el; FS.el = null; popHide(el, () => el.remove()); }
   if (FS.host) { FS.host.setAttribute('aria-expanded', 'false'); FS.host = null; }
 }
 const fsCur = btns => btns.findIndex(b => b.getAttribute('aria-pressed') === 'true');
@@ -4412,7 +4435,8 @@ function rmRender() {
 }
 function rmTog(e, id) {
   if (e.target.closest('.ux-actions')) return;
-  RM.open.has(id) ? RM.open.delete(id) : (RM.open.add(id), RM.fresh = id);
+  if (RM.open.has(id)) { expCollapse(rowExp(e), () => { RM.open.delete(id); rmRender(); }); return; }
+  RM.open.add(id); RM.fresh = id;
   rmRender();
 }
 function rmSort(k) { RM.sort = k; rmRender(); }
@@ -4695,6 +4719,31 @@ function uxKeepFocus(fn) {
   if (el && el !== a) { el.focus(); try { el.setSelectionRange(caret, caret); } catch {} }
 }
 
+// Мягкое закрытие всплывающих окон: та же анимация, что при открытии, в обратную сторону.
+// finish() делает настоящее скрытие; popShow(el) отменяет закрытие, если окно открыли снова.
+function popHide(el, finish) {
+  if (!el || el._popOut || getComputedStyle(el).display === 'none') return;
+  el._popOut = true;
+  el.classList.add('pop-out');
+  el._popT = setTimeout(() => { if (!el._popOut) return; el._popOut = false; el.classList.remove('pop-out'); finish(); }, 120);
+}
+function popShow(el) {
+  if (!el || !el._popOut) return;
+  clearTimeout(el._popT); el._popOut = false; el.classList.remove('pop-out');
+}
+// Сворачивание раскрытого блока строки: плавно уходит, потом вызывается done (перерисовка страницы)
+function expCollapse(x, done) {
+  if (!x || x.dataset.out) { if (!x) done(); return; }
+  x.dataset.out = '1';
+  const st = x.style;
+  st.height = x.offsetHeight + 'px'; st.overflow = 'hidden';
+  st.transition = 'height .2s ease, padding .2s ease, opacity .16s ease';
+  void x.offsetHeight;
+  st.height = '0'; st.paddingTop = '0'; st.paddingBottom = '0'; st.opacity = '0';
+  setTimeout(done, 210);
+}
+const rowExp = e => e.currentTarget?.parentElement?.querySelector(':scope > [class*="-exp"]');
+
 // Меню «⋯»: fixed, чтобы не обрезалось прокруткой таблицы; у нижнего края открывается вверх
 let uxMenuState = null;
 function uxOpenMenu(e, key, html) {
@@ -4717,7 +4766,8 @@ function uxOpenMenu(e, key, html) {
 }
 function uxCloseMenu() {
   if (!uxMenuState) return;
-  uxMenuState.el.remove();
+  const el = uxMenuState.el;
+  popHide(el, () => el.remove());
   uxMenuState.btn.setAttribute('aria-expanded', 'false');
   uxMenuState = null;
 }
@@ -4970,7 +5020,13 @@ function pkRender(focusId, keep) {
   if (keep && sc) { const l = document.querySelector('.fm-sheet .fm-list'); if (l) l.scrollTop = sc; }
 }
 function pkOpen(ctx) { Object.assign(PK, { ctx, host: ctx, q: '', f: 'all', g: '', limit: 40 }); pkRender('pk-q'); }
-function pkClose() { PK.ctx = null; pkRender(); }
+function pkClose() {
+  const sh = document.querySelector('.fm-sheet');
+  if (!sh) { PK.ctx = null; pkRender(); return; }
+  if (sh.classList.contains('out')) return;
+  sh.classList.add('out');
+  setTimeout(() => { PK.ctx = null; pkRender(); }, 150);
+}
 function pkSearch(v) { PK.q = v; PK.limit = 40; pkRender('pk-q'); }
 function pkFilter(v) { PK.f = v; PK.limit = 40; pkRender(); }
 function pkGroup(i) { PK.g = i < 0 ? '' : PK.groups[i]; PK.limit = 40; pkRender(); }
@@ -5458,7 +5514,8 @@ function chRender() {
 }
 function chTog(e, id) {
   if (e.target.closest('.ux-actions')) return;
-  CH.open.has(id) ? CH.open.delete(id) : (CH.open.add(id), CH.fresh = id);
+  if (CH.open.has(id)) { expCollapse(rowExp(e), () => { CH.open.delete(id); chRender(); }); return; }
+  CH.open.add(id); CH.fresh = id;
   chRender();
 }
 function chSort(k) { CH.sort = k; chRender(); }
@@ -5911,7 +5968,8 @@ function psRender() {
 }
 function psTog(e, uid) {
   if (e.target.closest('.ux-actions')) return;
-  PS.open.has(uid) ? PS.open.delete(uid) : (PS.open.add(uid), PS.fresh = uid);
+  if (PS.open.has(uid)) { expCollapse(rowExp(e), () => { PS.open.delete(uid); psRender(); }); return; }
+  PS.open.add(uid); PS.fresh = uid;
   psRender();
 }
 function psPMenu(e, uid) {
@@ -6047,7 +6105,8 @@ function whRender() {
 }
 function whTog(e, id) {
   if (e.target.closest('.ux-actions')) return;
-  WH.open.has(id) ? WH.open.delete(id) : (WH.open.add(id), WH.fresh = id);
+  if (WH.open.has(id)) { expCollapse(rowExp(e), () => { WH.open.delete(id); whRender(); }); return; }
+  WH.open.add(id); WH.fresh = id;
   whRender();
 }
 
@@ -6960,8 +7019,13 @@ function spToast(html, undo) {
   const e = document.createElement('div');
   e.className = 'sp-toast'; e.innerHTML = `<span>${html}</span>${undo ? '<button type="button">Отменить</button>' : ''}`;
   document.body.appendChild(e);
-  if (undo) e.querySelector('button').onclick = () => { e.remove(); undo(); };
-  setTimeout(() => e.remove(), undo ? 7000 : 2200);
+  if (undo) e.querySelector('button').onclick = () => { spToastOut(e); undo(); };
+  setTimeout(() => spToastOut(e), undo ? 7000 : 2200);
+}
+function spToastOut(e) {
+  if (!e.isConnected || e.classList.contains('out')) return;
+  e.classList.add('out');
+  setTimeout(() => e.remove(), 200);
 }
 
 async function renderSettings() {
@@ -7071,7 +7135,10 @@ function spSug(kind) {
   if (kind === 'gh') { SP.open.add('github'); spRender(); spScroll('github'); setTimeout(() => document.getElementById('st-gh')?.focus(), 400); }
 }
 function spResetSec(k) { const m = {}; SP_KEYS[k].forEach(x => { m[x] = stClone(SP_DEF[x]); }); spSet(m); }
-function spTog(k) { SP.open.has(k) ? SP.open.delete(k) : SP.open.add(k); spRender(); }
+function spTog(k) {
+  if (SP.open.has(k) && !spQ()) { expCollapse(document.querySelector(`#sp-acc-${k} .sp-ab`), () => { SP.open.delete(k); spRender(); }); return; }
+  SP.open.add(k); spRender();
+}
 function spExpand(all) { if (all) SP_ORDER.forEach(k => SP.open.add(k)); else SP.open.clear(); spRender(); }
 function spSearch(v) { SP.q = v; spRender('sp-q'); }
 
@@ -7927,7 +7994,8 @@ function flRender() {
 }
 function flTog(e, name) {
   if (e.target.closest('.ux-actions')) return;
-  FL.open.has(name) ? FL.open.delete(name) : (FL.open.add(name), FL.fresh = name);
+  if (FL.open.has(name)) { expCollapse(rowExp(e), () => { FL.open.delete(name); flRender(); }); return; }
+  FL.open.add(name); FL.fresh = name;
   flRender();
 }
 function flSort(k) { FL.sort = k; flRender(); }
@@ -8204,7 +8272,8 @@ function anRender() {
 }
 function anTog(e, id) {
   if (e.target.closest('.ux-actions')) return;
-  AN.open.has(id) ? AN.open.delete(id) : (AN.open.add(id), AN.fresh = id);
+  if (AN.open.has(id)) { expCollapse(rowExp(e), () => { AN.open.delete(id); anRender(); }); return; }
+  AN.open.add(id); AN.fresh = id;
   anRender();
 }
 // Новое объявление с теми же типом, текстом и длительностью; получателей из выборочного списка выбирают заново

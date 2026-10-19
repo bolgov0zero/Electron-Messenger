@@ -52,21 +52,51 @@ B.ui.composer = (function () {
   function autosize(t) {
     var f = t.closest('.cfield'); if (f) f.classList.toggle('filled', !!(t.textContent || t.querySelector('pre')));
   }
+  // Плавно раскрывает и сворачивает блок над полем (вместо рывка от hidden): высота, отступы и прозрачность.
+  // done вызывается, когда блок свернулся (если его не открыли снова)
+  function slide(box, show, done) {
+    show = !!show;
+    var open = box._open !== undefined ? box._open : (!box.hidden && box.offsetHeight > 0);
+    if (open === show) return;
+    box._open = show;
+    clearTimeout(box._slT);
+    var st = box.style, reset = function () { st.height = st.paddingTop = st.paddingBottom = st.opacity = st.overflow = st.transition = ''; };
+    reset();
+    if (show) {
+      box.hidden = false;
+      var h = box.offsetHeight;
+      st.overflow = 'hidden'; st.height = '0'; st.paddingTop = '0'; st.paddingBottom = '0'; st.opacity = '0';
+      void box.offsetHeight;
+      st.transition = 'height .26s var(--ease), padding .26s var(--ease), opacity .2s';
+      st.height = h + 'px'; st.paddingTop = ''; st.paddingBottom = ''; st.opacity = '';
+      box._slT = setTimeout(reset, 320);
+    } else {
+      st.overflow = 'hidden'; st.height = box.offsetHeight + 'px';
+      void box.offsetHeight;
+      st.transition = 'height .26s var(--ease), padding .26s var(--ease), opacity .2s';
+      st.height = '0'; st.paddingTop = '0'; st.paddingBottom = '0'; st.opacity = '0';
+      box._slT = setTimeout(function () { reset(); box.hidden = true; if (done) done(); }, 300);
+    }
+  }
   // ── меню «↑», панель форматирования и превью ──
   function closeUp(el) { var c = comp(el); if (c) c.querySelector('.crow').classList.remove('up'); }
   function paintFmt(el) { paintLp(el); paintPrev(el); }
   function paintLp(el) {
     var s = cs(el), box = comp(el).querySelector('.lpv'), p = s.lw && s.lw.current();
-    box.hidden = !p;
-    if (p) box.innerHTML = '<span class="lth">' + (p.image ? '<img src="' + esc(B.http() + '://' + B.S.server + p.image) + '" alt="">' : ic('link', 18, 2)) + '</span><div class="lpt"><b>' + esc(p.title || p.site || p.url) + '</b><span>' + esc(p.site || '') + '</span></div><div class="lpx" role="button" data-k="lpx" aria-label="Не показывать превью">' + ic('x', 14, 2.6) + '</div>';
+    if (!p) { slide(box, false); return; }
+    box.innerHTML = '<span class="lth">' + (p.image ? '<img src="' + esc(B.http() + '://' + B.S.server + p.image) + '" alt="">' : ic('link', 18, 2)) + '</span><div class="lpt"><b>' + esc(p.title || p.site || p.url) + '</b><span>' + esc(p.site || '') + '</span></div><div class="lpx" role="button" data-k="lpx" aria-label="Не показывать превью">' + ic('x', 14, 2.6) + '</div>';
+    slide(box, true);
   }
   function paintPrev(el) {
     var s = cs(el), box = comp(el).querySelector('.fpv'), t = ta(el);
-    box.hidden = !(s.fmt && s.prev); if (box.hidden) return;
+    if (!(s.fmt && s.prev)) { slide(box, false); return; }
     var text = t.value, b = box.querySelector('.fpb');
-    if (!text.trim()) { b.innerHTML = '<span class="fpe">Набранный текст появится здесь</span>'; return; }
-    var pb = B.ui.chat.previewBody(text, s.lw && s.lw.current(), chatOf(el));
-    b.innerHTML = '<div class="bub' + pb.cls + '">' + pb.html + '</div>';
+    if (!text.trim()) b.innerHTML = '<span class="fpe">Набранный текст появится здесь</span>';
+    else {
+      var pb = B.ui.chat.previewBody(text, s.lw && s.lw.current(), chatOf(el));
+      b.innerHTML = '<div class="bub' + pb.cls + '">' + pb.html + '</div>';
+    }
+    slide(box, true);
   }
   function fmtState(el) {
     var bar = comp(el).querySelector('.fbar'), st = Fmt.state(ta(el));
@@ -74,7 +104,7 @@ B.ui.composer = (function () {
   }
   function syncFmt(el) {
     var s = cs(el), c = comp(el);
-    c.querySelector('.fbar').hidden = !s.fmt;
+    slide(c.querySelector('.fbar'), s.fmt);
     c.querySelector('.umi[data-k="fmt"]').classList.toggle('on', s.fmt);
     c.querySelector('.fbar [data-f="prev"]').classList.toggle('on', s.prev);
     if (s.fmt) fmtState(el);
@@ -96,7 +126,8 @@ B.ui.composer = (function () {
   function sync(el) {
     var chat = chatOf(el); if (!chat) return;
     var n = B.msgs.note(chat), box = comp(el).querySelector('.ronote'), row = comp(el).querySelector('.crow');
-    box.hidden = !n; box.classList.toggle('soft', !!(n && n.soft)); if (n) box.textContent = n.text;
+    box.classList.toggle('soft', !!(n && n.soft));
+    if (n) { box.textContent = n.text; slide(box, true); } else slide(box, false);
     row.classList.toggle('off', B.msgs.locked(chat));
     if (B.msgs.locked(chat)) closePanel(el);
     secretBanner(el, chat);
@@ -105,14 +136,14 @@ B.ui.composer = (function () {
   function secretBanner(el, chat) {
     var box = comp(el).querySelector('.scb'), cid = chat.id;
     if (!box) return;
-    if (!B.secret.locked(cid)) { box.hidden = true; box.innerHTML = ''; return; }
+    if (!B.secret.locked(cid)) { slide(box, false, function () { box.innerHTML = ''; }); return; }
     var secure = window.isSecureContext && !!(window.crypto && crypto.subtle), pending = window.SC && SC.pendingOf(cid), open = B.secret.bannerOpen === cid, h;
     var lock = '<span class="lk">' + ic('lock', 18, 2) + '</span>';
     if (!secure) h = lock + '<div class="tx"><b>Скрытые чаты работают только по HTTPS</b></div>';
     else if (pending) h = lock + '<div class="tx"><b>Код принят</b><span>Ждём подтверждения собеседника</span></div><button class="gh2" data-k="sccancel">Отменить</button>';
     else if (open) h = lock + '<div class="tx"><b>Введите код</b><span>Код назвал собеседник</span></div><input id="sc-code" placeholder="КОД" maxlength="12" autocomplete="off" autocapitalize="characters"><button data-k="scredeem">Подтвердить</button>';
     else h = lock + '<div class="tx"><b>Чат зашифрован</b><span>Сообщения видны после расшифровки</span></div><button data-k="scopen">Расшифровать</button>';
-    box.innerHTML = h; box.hidden = false;
+    box.innerHTML = h; slide(box, true);
   }
 
   // ── полосы над полем ──
@@ -130,7 +161,9 @@ B.ui.composer = (function () {
       h += '<div class="cbar"><span class="th">' + thumb + '</span><div class="cb" style="border:0;padding-left:0"><b>' + esc(a.done ? 'Вложение' : a.kind) + '</b><span>' + esc(a.done ? (d.name || 'Файл') : a.text) + '</span>' +
         (a.done ? '' : '<div class="trk' + (a.proc ? ' ind' : '') + '"><i style="width:' + a.pct + '%"></i></div>') + '</div><button class="xb" data-k="clr" data-w="att" aria-label="Убрать вложение">' + ic('x', 13, 2.6) + '</button></div>';
     }
-    box.innerHTML = h; syncHas(el);
+    if (h) { box.innerHTML = h; slide(box, true); }
+    else slide(box, false, function () { box.innerHTML = ''; });
+    syncHas(el);
     var ph = comp(el).querySelector('.ph'); if (ph) ph.textContent = s.edit ? 'Изменить сообщение' : (B.S.secretChatIds.has(+el.dataset.cid) ? 'Скрытое сообщение' : 'Сообщение');
   }
   function clear(el, what) {

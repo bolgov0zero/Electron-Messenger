@@ -1045,14 +1045,15 @@ input:not([type]) {
   border: 1px solid var(--border);
   color: var(--muted);
   cursor: pointer;
-  display: none;
+  display: flex;
   align-items: center; justify-content: center;
   box-shadow: 0 4px 12px rgba(0,0,0,.18);
   z-index: 5;
-  opacity: 0;
-  transition: opacity .18s, background .12s, color .12s;
+  /* прячется прозрачностью, а не display: так у кнопки есть и появление, и исчезновение */
+  opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(8px) scale(.85);
+  transition: opacity .18s, transform .2s cubic-bezier(.32,.72,0,1), visibility 0s .2s, background .12s, color .12s;
 }
-.scroll-bottom-btn.visible { display: flex; opacity: 1; }
+.scroll-bottom-btn.visible { opacity: 1; visibility: visible; pointer-events: auto; transform: none; transition-delay: 0s; }
 /* Кнопка лежит поверх переписки, поэтому фон при наведении должен оставаться
    сплошным: --hover-row это полупрозрачная подложка, сквозь неё просвечивали
    сообщения. Подсвечиваем рамкой и цветом значка. */
@@ -2478,6 +2479,7 @@ html.dark .announcement-title { color: var(--danger); }
   transition: height .26s cubic-bezier(.32,.72,0,1);
 }
 .composer-slot-inner {
+  position: relative;
   display: flex; flex-direction: column; gap: 8px;
   padding: 8px 8px 0;
   background: transparent;
@@ -2814,13 +2816,15 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 .chat-search {
   position: absolute; top: 64px; left: 0; right: 0; z-index: 5;
   height: 40px; box-sizing: border-box;
-  display: none; align-items: center; gap: 4px;
+  display: flex; align-items: center; gap: 4px;
   padding: 0; padding-left: 14px;
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 20px;
+  opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-6px);
+  transition: opacity .16s ease, transform .2s cubic-bezier(.32,.72,0,1), visibility 0s .2s;
 }
-.chat-search.open { display: flex; }
+.chat-search.open { opacity: 1; visibility: visible; pointer-events: auto; transform: none; transition-delay: 0s; }
 .chat-search > svg { color: var(--muted); flex-shrink: 0; }
 .chat-search input {
   flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
@@ -3562,3 +3566,23 @@ html.dark .anx-solid { color: #0c0e10; }
 /* Счётчик «сообщений без ответа»: плашка в выдвижной части поля ввода, как панель форматирования */
 .composer-slot .dm-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 14px; background: var(--hover-row); color: var(--muted); font-size: 12.5px; line-height: 1.35; }
 .composer-slot .dm-bar svg { flex-shrink: 0; }
+
+@keyframes ctxIn {
+  from { opacity: 0; transform: scale(.96); }
+  to   { opacity: 1; transform: none; }
+}
+.ctx-menu.open { animation: ctxIn 120ms ease-out; transform-origin: top left; }
+#ctx-chat-menu[style*="block"] { animation: ctxIn 120ms ease-out; transform-origin: top left; }
+
+/* ── Мягкое закрытие всплывающих окон (popHide в app.js): открытие и закрытие одной длины ── */
+@keyframes popOut { to { opacity: 0; transform: scale(.96); } }
+@keyframes popIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.pop-out { animation: popOut 110ms ease-in forwards !important; pointer-events: none; }
+.up-menu:not([hidden]) { animation: ctxIn 120ms ease-out; transform-origin: bottom left; }
+#mention-popup[style*="block"] { animation: ctxIn 120ms ease-out; transform-origin: bottom left; }
+#reaction-picker.open { animation: popIn 130ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .pop-out { animation-duration: .001ms !important; } }
+
+/* смена вкладки сайдбара: список проявляется, а не подменяется */
+@keyframes tabIn { from { opacity: 0; } to { opacity: 1; } }
+.chats-list.tab-in { animation: tabIn .18s ease-out; }

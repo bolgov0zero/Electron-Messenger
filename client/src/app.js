@@ -350,14 +350,14 @@ function headMenuOpen() {
   const m = document.getElementById('head-menu');
   if (!m) return;
   if (m.parentElement !== document.body) document.body.appendChild(m);
-  _hmOpen = true; m.hidden = false;
+  _hmOpen = true; popShow(m); m.hidden = false;
   document.getElementById('head-more')?.setAttribute('aria-expanded', 'true');
   headMenuPlace();
 }
 function headMenuClose(refocus) {
   if (!_hmOpen) return;
   _hmOpen = false;
-  const m = document.getElementById('head-menu'); if (m) m.hidden = true;
+  const m = document.getElementById('head-menu'); if (m) popHide(m, () => { m.hidden = true; });
   const b = document.getElementById('head-more');
   b?.setAttribute('aria-expanded', 'false');
   if (refocus) b?.focus();
@@ -549,7 +549,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   document.addEventListener('click', e => {
     hideCtxMenu();
-    document.getElementById('ctx-chat-menu').style.display = 'none';
+    hideChatCtx();
     const _cm = document.getElementById('ctx-contact-menu'); if (_cm) _cm.style.display = 'none';
     if (!e.target.closest('#mention-popup')) hideMentionPopup();
     if (!e.target.closest('.composer-pill')) closeEmojiPicker();
@@ -1198,6 +1198,7 @@ function setSidebarTab(tab) {
   } else if (tab === 'settings') {
     openSettingsInline();
   }
+  if (tab !== 'settings') { list.classList.remove('tab-in'); void list.offsetWidth; list.classList.add('tab-in'); }
 }
 
 // Сброс формы настроек к разделу «Профиль» — то же самое, что раньше делал
@@ -1937,7 +1938,25 @@ function applyAvatars() {
 }
 
 const _chatRowCache = new Map(); // key -> html последней отрисовки
+const _ROW_EASE = 'cubic-bezier(.4,0,.2,1)';
+// Строка списка плавно раскрывается (новая) или сворачивается (ушедшая): соседние сдвигаются вместе с ней
+function rowAnim(el, show, done) {
+  const cs = getComputedStyle(el);
+  const full = { height: cs.height, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, marginBottom: cs.marginBottom, opacity: 1, overflow: 'hidden' };
+  const zero = { height: '0px', paddingTop: '0px', paddingBottom: '0px', marginBottom: '0px', opacity: 0, overflow: 'hidden' };
+  const a = el.animate(show ? [zero, full] : [full, zero], { duration: 280, easing: _ROW_EASE, fill: show ? 'none' : 'forwards' });
+  if (done) a.onfinish = done;
+}
 function syncChatListKeyed(list, items) {
+  // Анимируем только изменения внутри того же вида списка: при смене папки, выходе из поиска
+  // и первой отрисовке строки просто заменяются
+  const view = String(S.folderFilter);
+  const before = new Map();
+  [...list.children].forEach(ch => { if (ch.dataset.key && !ch.dataset.leaving) before.set(ch.dataset.key, ch.getBoundingClientRect().top); });
+  const anim = list._flipView === view && [...before.keys()].some(k => k.startsWith('chat-')) && items.length < 150
+    && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  list._flipView = view;
+  const added = [];
   const seen = new Set();
   let prev = null;
   items.forEach(it => {
@@ -1948,6 +1967,13 @@ function syncChatListKeyed(list, items) {
       tmp.innerHTML = it.html;
       const fresh = tmp.firstElementChild;
       fresh.dataset.key = it.key;
+      // Значок непрочитанных: появился или сменил число — оживляем, остальное не трогаем
+      if (anim && window.SlideSel) {
+        const ob = el.querySelectorAll('.unread-badge');
+        fresh.querySelectorAll('.unread-badge').forEach((b, i) => {
+          if (!ob[i]) SlideSel.pop(b); else if (ob[i].textContent !== b.textContent) SlideSel.bump(b);
+        });
+      }
       el.replaceWith(fresh);
       el = fresh;
     } else if (!el) {
@@ -1956,6 +1982,7 @@ function syncChatListKeyed(list, items) {
       el = tmp.firstElementChild;
       el.dataset.key = it.key;
       list.appendChild(el);
+      added.push(el);
     }
     _chatRowCache.set(it.key, it.html);
     // Порядок: элемент должен стоять сразу после предыдущего
@@ -1968,10 +1995,22 @@ function syncChatListKeyed(list, items) {
   });
   // Удаляем строки, которых больше нет
   [...list.children].forEach(ch => {
+    if (ch.dataset.leaving) return;
     if (!ch.dataset.key || !seen.has(ch.dataset.key)) {
       if (ch.dataset.key) _chatRowCache.delete(ch.dataset.key);
-      ch.remove();
+      if (anim && ch.dataset.key) { ch.dataset.leaving = '1'; delete ch.dataset.key; rowAnim(ch, false, () => ch.remove()); }
+      else ch.remove();
     }
+  });
+  if (!anim) return;
+  // Новые строки раскрываются, а прежние, у которых изменилось место (новое сообщение поднимает чат),
+  // плавно переезжают со старой позиции на новую
+  added.forEach(el => rowAnim(el, true));
+  [...list.children].forEach(ch => {
+    const k = ch.dataset.key;
+    if (!k || ch.dataset.leaving || added.includes(ch) || !before.has(k)) return;
+    const d = before.get(k) - ch.getBoundingClientRect().top;
+    if (Math.abs(d) > 1) ch.animate([{ transform: `translateY(${d}px)` }, { transform: 'none' }], { duration: 280, easing: _ROW_EASE });
   });
 }
 
@@ -2081,7 +2120,28 @@ function syncComposerSlot() {
   const slot = document.getElementById('composer-slot');
   const inner = slot?.firstElementChild;
   if (!slot || !inner) return;
-  const open = [...inner.children].some(el => el.style.display !== 'none');
+  const kids = [...inner.children].filter(el => !el.dataset.ghost);
+  const open = kids.some(el => el.style.display !== 'none');
+  const was = slot.classList.contains('open');
+  if (open) {
+    inner.querySelectorAll(':scope > [data-ghost]').forEach(g => g.remove());
+    kids.forEach(el => { el._top = el.style.display !== 'none' ? el.offsetTop : null; });
+  } else if (was) {
+    // Плашка гаснет мгновенно (display:none), а слот ещё схлопывается: оставляем её копию,
+    // пока он не закроется, иначе слот съезжает над пустым местом
+    kids.forEach(el => {
+      if (el._top == null) return;
+      const g = el.cloneNode(true);
+      g.removeAttribute('id');
+      g.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+      g.dataset.ghost = '1';
+      Object.assign(g.style, { display: '', position: 'absolute', top: el._top + 'px', left: '8px', right: '8px', pointerEvents: 'none' });
+      inner.appendChild(g);
+      el._top = null;
+    });
+    clearTimeout(slot._gt);
+    slot._gt = setTimeout(() => inner.querySelectorAll(':scope > [data-ghost]').forEach(g => g.remove()), 320);
+  }
   slot.classList.toggle('open', open);
   slot.style.height = (open ? inner.offsetHeight : 0) + 'px';
 }
@@ -4060,6 +4120,7 @@ function _updateMentionPopup(el) {
     : all;
   if (!filtered.length) { hideMentionPopup(); return; }
   const popup = document.getElementById('mention-popup');
+  popShow(popup);
   _mentionIdx = -1;
   popup.innerHTML = filtered.map(m =>
     `<div class="mention-item" data-name="${esc(m.display_name||m.username)}" onclick="insertMention('${esc(m.display_name||m.username)}')">
@@ -4079,7 +4140,7 @@ function _updateMentionPopup(el) {
 }
 function hideMentionPopup() {
   const p = document.getElementById('mention-popup');
-  if (p) { p.style.display = 'none'; p.innerHTML = ''; }
+  if (p) popHide(p, () => { p.style.display = 'none'; p.innerHTML = ''; });
   _mentionIdx = -1;
 }
 function _mentionMove(dir) {
@@ -4168,13 +4229,13 @@ function toggleUpMenu(e) {
   e?.stopPropagation();
   const m = document.getElementById('up-menu');
   if (!m) return;
-  m.hidden = !m.hidden;
-  document.getElementById('up-btn')?.setAttribute('aria-expanded', String(!m.hidden));
+  if (m.hidden || m._popOut) { popShow(m); m.hidden = false; document.getElementById('up-btn')?.setAttribute('aria-expanded', 'true'); }
+  else closeUpMenu();
   document.getElementById('up-fmt')?.classList.toggle('on', CMP.fmt);
 }
 function closeUpMenu() {
   const m = document.getElementById('up-menu');
-  if (m && !m.hidden) { m.hidden = true; document.getElementById('up-btn')?.setAttribute('aria-expanded', 'false'); }
+  if (m && !m.hidden && !m._popOut) { popHide(m, () => { m.hidden = true; }); document.getElementById('up-btn')?.setAttribute('aria-expanded', 'false'); }
 }
 document.addEventListener('click', e => { if (!e.target.closest('#up-menu, #up-btn')) closeUpMenu(); });
 function upPickFile() { closeUpMenu(); pickFile(); }
@@ -4522,6 +4583,7 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
   }
   // Сначала показываем чтобы получить реальные размеры
   ctxReadSetup(msgId, isMine);
+  popShow(menu);
   menu.classList.add('open');
   placeCtxMenu(menu, e.clientX, e.clientY);
 }
@@ -5087,7 +5149,8 @@ function scrollToMsg(msgId, force = false) {
   el.addEventListener('animationend', () => el.classList.remove('msg-highlight'), { once: true });
 }
 function hideCtxMenu() {
-  document.getElementById('ctx-menu').classList.remove('open');
+  const m = document.getElementById('ctx-menu');
+  popHide(m, () => m.classList.remove('open'));
 }
 
 function showReactionPicker(e) {
@@ -5118,6 +5181,7 @@ function showReactionPicker(e) {
   if (search) search.value = '';
   scroll.scrollTop = 0;
   picker.style.left = '-9999px'; picker.style.top = '-9999px';
+  popShow(picker);
   picker.classList.add('open');
   // Выбранная вкладка считается по размерам прокрутки, поэтому только когда панель уже показана
   // (скрытая, она даёт нулевую высоту, и подсвечивался последний раздел)
@@ -5141,12 +5205,13 @@ function showReactionPicker(e) {
 
 function pickerReact(reaction) {
   trackEmojiUse(reaction);
-  document.getElementById('reaction-picker').classList.remove('open');
+  hideReactionPicker();
   sendReaction(S.ctx.messageId, reaction);
 }
 
 function hideReactionPicker() {
-  document.getElementById('reaction-picker').classList.remove('open');
+  const p = document.getElementById('reaction-picker');
+  popHide(p, () => p.classList.remove('open'));
 }
 
 function ctxEdit() {
@@ -5361,6 +5426,8 @@ function markMessageDeleted(chatId, messageId) {
     reply_to_id: null, edited_at: null, status: { delivered: 0, read: 0, total: 0 }, reactions: [] };
   const isLastDeleted = el.classList.contains('irc-tail');
   el.outerHTML = renderMsg(fakeMsg, isChatGroup, false, grouped, isLastDeleted);
+  // удалённое сообщение появляется плавно, а не подменяется рывком
+  document.querySelector(`[data-msg-id="${messageId}"]`)?.classList.add('msg-new');
   reflowSeries();
 }
 // После переподключения сверяем открытый чат с сервером: пока связи не было, сообщения могли удалить или
@@ -5950,7 +6017,7 @@ async function ctxContactRemove() {
 }
 // Заблокировать собеседника в личном чате (и снять блокировку)
 async function ctxChatBlock() {
-  document.getElementById('ctx-chat-menu').style.display = 'none';
+  hideChatCtx();
   const chat = S.chats.find(c => c.id === S.ctxChatId);
   const pid = chat && getPeerUserId(chat); if (!pid) return;
   const name = chat.members?.find(m => m.id === pid)?.display_name || 'собеседника';
@@ -6650,7 +6717,7 @@ function scRenderSyncModal(mode, extra = {}) {
 // Расшифрованное устройство создаёт код, собеседник вводит его на своём устройстве
 async function ctxChatGrant() {
   const chatId = S.ctxChatId;
-  document.getElementById('ctx-chat-menu').style.display = 'none';
+  hideChatCtx();
   if (!chatId) return;
   const deviceId = await scEnsureDeviceId();
   const data = await api('POST', `/secret/${chatId}/grants`, { device_id: deviceId, platform: 'electron' });
@@ -6720,7 +6787,7 @@ async function scCancelRequest(chatId) {
 
 function ctxChatDevices() {
   const chatId = S.ctxChatId;
-  document.getElementById('ctx-chat-menu').style.display = 'none';
+  hideChatCtx();
   if (chatId) scOpenDevices(chatId);
 }
 
@@ -7003,6 +7070,7 @@ function showChatCtx(e, chatId) {
   if (grantBtn) grantBtn.style.display = (chat?.is_secret && S.scKeys[chatId]) ? '' : 'none';
   const muteLabel = document.getElementById('ctx-chat-mute-label');
   if (muteLabel) muteLabel.textContent = S.mutedChats.has(chatId) ? 'Включить уведомления' : 'Выключить уведомления';
+  popShow(menu);
   menu.style.display = 'block';
   // Клик по кнопке «⋯» в шапке — привязываемся к кнопке; правый клик по чату в списке — к курсору
   const btn = e.type === 'click' ? e.currentTarget : null;
@@ -7010,20 +7078,20 @@ function showChatCtx(e, chatId) {
 }
 
 async function ctxChatLeave() {
-  document.getElementById('ctx-chat-menu').style.display = 'none';
+  hideChatCtx();
   if (!S.ctxChatId) return;
   await leaveGroup(S.ctxChatId);
 }
 
 async function ctxChatPin() {
-  document.getElementById('ctx-chat-menu').style.display = 'none';
+  hideChatCtx();
   if (!S.ctxChatId) return;
   await api('POST', `/chats/${S.ctxChatId}/pin`);
   await loadChats();
 }
 
 async function ctxChatMute() {
-  document.getElementById('ctx-chat-menu').style.display = 'none';
+  hideChatCtx();
   if (!S.ctxChatId) return;
   if (S.mutedChats.has(S.ctxChatId)) {
     await api('DELETE', `/chats/${S.ctxChatId}/mute`);
@@ -7036,7 +7104,7 @@ async function ctxChatMute() {
 }
 
 async function ctxChatDelete() {
-  document.getElementById('ctx-chat-menu').style.display = 'none';
+  hideChatCtx();
   if (!S.ctxChatId) return;
   await deleteChat(S.ctxChatId);
 }
@@ -7131,6 +7199,30 @@ function hideForwardBar() {
 }
 
 // ── MODAL HELPERS ──
+// Мягкое закрытие всплывающих окон (меню, подсказки, выбор реакции): та же анимация, что при открытии, только в обратную сторону.
+// finish() делает настоящее скрытие. Если окно открыли снова, пока оно закрывается, вызывается popShow(el).
+function popHide(el, finish) {
+  if (!el || el._popOut || getComputedStyle(el).display === 'none') return;
+  el._popOut = true;
+  el.classList.add('pop-out');
+  el._popT = setTimeout(() => {
+    if (!el._popOut) return;
+    el._popOut = false;
+    el.classList.remove('pop-out');
+    finish();
+  }, 120);
+}
+function popShow(el) {
+  if (!el || !el._popOut) return;
+  clearTimeout(el._popT);
+  el._popOut = false;
+  el.classList.remove('pop-out');
+}
+function hideChatCtx() {
+  const m = document.getElementById('ctx-chat-menu');
+  popHide(m, () => { m.style.display = 'none'; });
+}
+
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) {
   const el = document.getElementById(id);
@@ -7251,6 +7343,7 @@ function haToggleDrives(e) {
   pick.classList.add('open');
   document.getElementById('ha-pick-btn').setAttribute('aria-expanded', 'true');
 
+  document.getElementById('ha-pop')?.remove();
   const pop = document.createElement('div');
   pop.className = 'ha-pop';
   pop.id = 'ha-pop';
@@ -7279,7 +7372,8 @@ function haCloseDrives() {
   _haOpen = false;
   document.getElementById('ha-pick')?.classList.remove('open');
   document.getElementById('ha-pick-btn')?.setAttribute('aria-expanded', 'false');
-  document.getElementById('ha-pop')?.remove();
+  const _hp = document.getElementById('ha-pop');
+  if (_hp) popHide(_hp, () => _hp.remove());
 }
 
 // Список открывается в (0,0), затем координаты правятся по разнице между этой

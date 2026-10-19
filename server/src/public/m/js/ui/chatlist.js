@@ -50,19 +50,66 @@ B.ui.chatlist = (function () {
     if (!g.total) return h + '<div class="empty"><b>' + (B.S.chats.length ? 'Ничего не найдено' : 'Чатов пока нет') + '</b>' + (B.S.chats.length ? '' : 'Начните разговор кнопкой в углу экрана.') + '</div>';
     return h + sections(g);
   }
+  // Строка плавно раскрывается (новая) или сворачивается (ушедшая): соседние сдвигаются вместе с ней
+  var EASE = 'cubic-bezier(.4,0,.2,1)';
+  function rowAnim(el, show, done) {
+    var cs = getComputedStyle(el);
+    var full = { height: cs.height, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, marginBottom: cs.marginBottom, opacity: 1, overflow: 'hidden' };
+    var zero = { height: '0px', paddingTop: '0px', paddingBottom: '0px', marginBottom: '0px', opacity: 0, overflow: 'hidden' };
+    var a = el.animate(show ? [zero, full] : [full, zero], { duration: 280, easing: EASE, fill: show ? 'none' : 'forwards' });
+    if (done) a.onfinish = done;
+  }
+  function flip(oldRows, oldTops, oldBadge) {
+    var rows = {};
+    dyn.querySelectorAll('.swrow[data-id]').forEach(function (el) { rows[el.dataset.id] = el; });
+    // Ушедшие: старая строка возвращается на своё место и сворачивается
+    oldRows.forEach(function (el, i) {
+      if (rows[el.dataset.id]) return;
+      var ref = null, j;
+      for (j = i + 1; j < oldRows.length && !ref; j++) ref = rows[oldRows[j].dataset.id];
+      el.style.pointerEvents = 'none';
+      if (ref) ref.parentNode.insertBefore(el, ref);
+      else { var prev = null; for (j = i - 1; j >= 0 && !prev; j--) prev = rows[oldRows[j].dataset.id]; if (prev) prev.parentNode.insertBefore(el, prev.nextSibling); else dyn.appendChild(el); }
+      rowAnim(el, false, function () { el.remove(); });
+    });
+    // Новые раскрываются, прежние, чьё место изменилось (новое сообщение поднимает чат), переезжают со старой позиции
+    Object.keys(rows).forEach(function (id) { if (!(id in oldTops)) rowAnim(rows[id], true); });
+    Object.keys(rows).forEach(function (id) {
+      if (!(id in oldTops)) return;
+      // значок непрочитанных: появился или сменил число
+      var nb = rows[id].querySelector('.rbd');
+      if (nb && window.SlideSel) { if (oldBadge[id] == null) SlideSel.pop(nb); else if (oldBadge[id] !== nb.textContent) SlideSel.bump(nb); }
+      var d = oldTops[id] - rows[id].getBoundingClientRect().top;
+      if (Math.abs(d) > 1) rows[id].animate([{ transform: 'translateY(' + d + 'px)' }, { transform: 'none' }], { duration: 280, easing: EASE });
+    });
+  }
   function render() {
     if (!dyn) return;
     if (busy) { dirty = true; return; }
     dirty = false;
     var tin = dyn.querySelector('.mtabs-in'), tl = tin ? tin.scrollLeft : 0;   // вкладки папок не должны прыгать при перерисовке
+    // Анимируем только изменения внутри того же вида списка: при смене папки и поиске строки просто заменяются
+    var view = (searching ? 's' : 'n') + B.folders.label(), oldRows = [], oldTops = {}, oldBadge = {};
+    if (!searching) dyn.querySelectorAll('.swrow[data-id]').forEach(function (el) { oldRows.push(el); oldTops[el.dataset.id] = el.getBoundingClientRect().top; var bd = el.querySelector('.rbd'); oldBadge[el.dataset.id] = bd ? bd.textContent : null; });
+    var anim = dyn._view === view && oldRows.length && oldRows.length < 150 && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    dyn._view = view;
     dyn.innerHTML = html(); B.avatar.apply(dyn); updateBadge();
+    if (anim) flip(oldRows, oldTops, oldBadge);
     tin = dyn.querySelector('.mtabs-in'); if (tin) { tin.scrollLeft = tl; var on = tin.querySelector('.mtab.on'); if (on && !(tl)) { var l = on.offsetLeft - 16; if (l > 0) tin.scrollLeft = l; } }
   }
   function schedule() { if (renderTimer) return; renderTimer = setTimeout(function () { renderTimer = null; render(); }, 30); }
   function updateBadge() {
     var b = document.querySelector('.tb[data-tab="chats"] .bd'); if (!b) return;
     var n = B.S.chats.filter(function (c) { return !c.parent_id && !c.muted; }).reduce(function (s, c) { return s + (c.unread || 0); }, 0);
-    b.hidden = !n; b.textContent = n > 99 ? '99+' : n;
+    var txt = String(n > 99 ? '99+' : n);
+    if (n) {
+      var was = b.hidden, old = b.textContent;
+      b.hidden = false; b.textContent = txt;
+      if (window.SlideSel) { if (was) SlideSel.pop(b); else if (old !== txt) SlideSel.bump(b); }
+    } else if (!b.hidden && !b._out) {
+      b._out = true;
+      if (window.SlideSel) SlideSel.out(b, function () { b._out = false; b.hidden = true; b.textContent = '0'; }); else { b._out = false; b.hidden = true; b.textContent = '0'; }
+    }
   }
 
   // ── поиск ──
