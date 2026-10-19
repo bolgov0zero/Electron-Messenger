@@ -6,6 +6,16 @@ const CACHE = 'm-v3';
 // Нажатие на уведомление запоминаем здесь: iOS при открытии PWA может не передать ни адрес, ни сообщение, а страница заберёт запись сама
 const PENDING = '/m/__open';
 const LAST = '/m/__last';   // последнее нажатие на уведомление: не стирается, нужно «Диагностике»
+const PUSHREC = '/m/__push';   // последний показанный пуш: если нажатие iOS не доставит, страница откроет этот чат сама
+const LOG = '/m/__log';        // журнал событий service worker для «Диагностики»
+const jsonRes = o => new Response(JSON.stringify(o), { headers: { 'content-type': 'application/json' } });
+async function logEv(name, extra) {
+  try {
+    const c = await caches.open(CACHE), r = await c.match(LOG), arr = r ? await r.json() : [];
+    arr.push(Object.assign({ e: name, t: Date.now() }, extra || {}));
+    await c.put(LOG, jsonRes(arr.slice(-14)));
+  } catch (err) {}
+}
 // index.html (/m/) намеренно не прекэшируем — он всегда из сети, иначе закэшированная
 // страница может рендериться без актуальной вёрстки.
 const STATIC = ['/m/manifest.json', '/m/manifest-light.json'];
@@ -26,6 +36,18 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws')) return;
   if (url.origin !== self.location.origin) return;
+  if (url.pathname === LOG) {
+    e.respondWith(caches.open(CACHE).then(async c => (await c.match(LOG)) || jsonRes([])));
+    return;
+  }
+  if (url.pathname === PUSHREC) {
+    e.respondWith(caches.open(CACHE).then(async c => {
+      const r = await c.match(PUSHREC);
+      if (url.searchParams.get('clear')) { await c.delete(PUSHREC); return jsonRes({}); }
+      return r || jsonRes({});
+    }));
+    return;
+  }
   if (url.pathname === LAST) {
     e.respondWith(caches.open(CACHE).then(async c => (await c.match(LAST)) || new Response('{}', { headers: { 'content-type': 'application/json' } })));
     return;
@@ -73,6 +95,8 @@ self.addEventListener('push', e => {
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       const visible = list.some(c => c.visibilityState === 'visible');
       const tasks = visible ? [] : [self.registration.showNotification(title, options)];
+      tasks.push(logEv('push', { chatId: data.chatId || null, shown: !visible }));
+      if (!visible && data.chatId) tasks.push(caches.open(CACHE).then(c => c.put(PUSHREC, jsonRes({ chatId: data.chatId, t: Date.now(), shown: true }))).catch(() => {}));
       if (self.navigator.setAppBadge) {
         if (typeof data.unread === 'number') {
           tasks.push(data.unread > 0 ? self.navigator.setAppBadge(data.unread) : self.navigator.clearAppBadge());
@@ -85,11 +109,13 @@ self.addEventListener('push', e => {
   );
 });
 
+self.addEventListener('notificationclose', e => { e.waitUntil(logEv('close', { chatId: e.notification.data?.chatId || null })); });
+
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   const chatId = e.notification.data?.chatId;
   e.waitUntil(
-    caches.open(CACHE).then(c => {
+    logEv('click', { chatId: chatId || null }).then(() => caches.open(CACHE)).then(c => {
       const rec = () => new Response(JSON.stringify({ chatId: chatId || null, t: Date.now() }), { headers: { 'content-type': 'application/json' } });
       return Promise.all([c.put(LAST, rec()), chatId ? c.put(PENDING, rec()) : null]);
     }).catch(() => {})

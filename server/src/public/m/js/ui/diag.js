@@ -27,7 +27,8 @@ B.ui.diag = (function () {
         return cell('Переход в приложение', B.native && B.native.enabled() ? 'включён, схема ' + B.native.scheme() : 'выключен') +
           cell('Последнее нажатие', l ? new Date(l.t).toLocaleTimeString() + ', чат ' + l.id : 'не было') + (l ? cell('Пришло через', l.via) + cell('Что сделано', l.step) : '') +
           '<div class="cell"><span class="cl">Service worker</span><span class="cv" id="dg-sw">проверяю…</span></div>' +
-          '<div class="cell"><span class="cl">Нажатие дошло до service worker</span><span class="cv" id="dg-swc">проверяю…</span></div>';
+          '<div class="cell"><span class="cl">Нажатие дошло до service worker</span><span class="cv" id="dg-swc">проверяю…</span></div>' +
+          '<div class="gf" id="dg-log" style="text-align:left;white-space:pre-line">Журнал service worker…</div>';
       })() + '</div>' +
       '<div class="gh">Запас отступов, px</div><div class="grp">' + stepper('Сверху', 'sat_extra') + stepper('Снизу', 'sab_extra') + '</div>' +
       '<div class="gf">Если верх или низ панелей не совпадают с системными областями iPhone, подберите запас. Значения сохраняются на этом телефоне.</div>';
@@ -50,6 +51,8 @@ B.ui.diag = (function () {
       var a = document.getElementById('dg-sw'), b = document.getElementById('dg-swc');
       if (a) a.textContent = i.sw ? 'версия ' + i.sw : 'не управляет страницей';
       if (b) b.textContent = i.click ? new Date(i.click.t).toLocaleTimeString() + ', чат ' + (i.click.chatId || '—') : 'не было';
+      var lg = document.getElementById('dg-log');
+      if (lg) lg.textContent = (i.log && i.log.length ? i.log.slice(-6).map(function (x) { return new Date(x.t).toLocaleTimeString() + '  ' + ({ push: 'пуш получен' + (x.shown ? ' и показан' : ', окно было на экране'), click: 'нажатие на уведомление', close: 'уведомление закрыто' }[x.e] || x.e) + (x.chatId ? ', чат ' + x.chatId : ''); }).join('\n') : 'Журнал service worker пуст');
     });
   }
   function refresh() { if (el && el.isConnected) { var sc = el.querySelector('.scroll'), y = sc.scrollTop; sc.innerHTML = html(); sc.scrollTop = y; fillSw(); } }
