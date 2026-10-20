@@ -8,7 +8,7 @@ B.ui.login = {
     el.innerHTML =
       '<div class="login-in">' +
         '<div class="lg">' + B.ic('chats', 46, 1.7) + '</div>' +
-        '<h1>Электрон</h1><p class="sub">Корпоративный мессенджер</p>' +
+        '<h1>Electron</h1><p class="sub">Корпоративный мессенджер</p>' +
         '<div class="grp">' +
           '<div class="cell"><input id="l-user" type="text" placeholder="Логин" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next"></div>' +
           '<div class="cell"><input id="l-pass" type="password" placeholder="Пароль" autocomplete="current-password" enterkeyhint="go"></div>' +

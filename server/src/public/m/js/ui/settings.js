@@ -49,10 +49,10 @@ B.ui.settings = (function () {
     var el = B.nav.page({ title: 'Уведомления', back: 'Настройки', gray: true, body: '' });
     function paint() {
       var quiet = prefs.quiet_from != null && prefs.quiet_to != null, h = '<div style="height:14px"></div>';
-      if (needInstall) h += '<div class="how"><b>Чтобы приходили уведомления, добавьте приложение на экран «Домой»</b><ol><li>Нажмите <u>' + ic('share', 14, 2) + ' Поделиться</u> в Safari</li><li>Выберите «На экран “Домой”»</li><li>Откройте «Электрон» с экрана «Домой» и разрешите уведомления</li></ol></div>';
+      if (needInstall) h += '<div class="how"><b>Чтобы приходили уведомления, добавьте приложение на экран «Домой»</b><ol><li>Нажмите <u>' + ic('share', 14, 2) + ' Поделиться</u> в Safari</li><li>Выберите «На экран “Домой”»</li><li>Откройте «Electron» с экрана «Домой» и разрешите уведомления</li></ol></div>';
       h += '<div class="grp"><div class="cell"><span class="cl">Уведомления</span><span class="cv">' + esc(notifText()) + '</span></div>' +
         (p === 'default' && B.push.supported() ? '<button class="cell tap" data-n="allow"><span class="cl" style="color:var(--accent)">Разрешить уведомления</span></button>' : '') + '</div>';
-      if (p === 'denied') h += '<div class="gf" style="margin-top:-16px">Уведомления запрещены. Включить их можно в настройках телефона: Электрон → Уведомления.</div>';
+      if (p === 'denied') h += '<div class="gf" style="margin-top:-16px">Уведомления запрещены. Включить их можно в настройках телефона: Electron → Уведомления.</div>';
       h += '<div class="grp"><div class="cell"><span class="cl">Показывать текст сообщения</span><button class="tg" data-n="text" role="switch" aria-checked="' + !!prefs.show_text + '"><i></i></button></div></div>' +
         '<div class="gf" style="margin-top:-16px">Выключите показ текста, если телефон лежит на виду: в уведомлении будет только «Новое сообщение».</div>' +
         '<div class="grp"><div class="cell"><span class="cl">Тихие часы</span><button class="tg" data-n="quiet" role="switch" aria-checked="' + quiet + '"><i></i></button></div>' +
