@@ -46,6 +46,7 @@ B.ui.chatlist = (function () {
     var h = '';
     if (!searching && B.conn.state === 'offline') h += '<div class="cnoff">' + ic('wifioff', 18, 2) + '<span><b>Нет связи с сервером.</b> Показаны сохранённые чаты. Новые сообщения придут, когда сеть появится.</span></div>';
     if (!searching && B.push.shouldAsk()) h += '<div class="nbanner">' + ic('bell', 20, 2) + '<span>Разрешите уведомления, чтобы получать сообщения в фоне. <b data-cl="allow">Разрешить</b></span><button class="xx" data-cl="hide" aria-label="Закрыть">' + ic('x', 16, 2.4) + '</button></div>';
+    h += B.ui.spaces.barHtml();
     h += B.ui.folders.tabsHtml();
     g = B.chats.groups('');
     if (!g.total) return h + '<div class="empty"><b>' + (B.S.chats.length ? 'Ничего не найдено' : 'Чатов пока нет') + '</b>' + (B.S.chats.length ? '' : 'Начните разговор кнопкой в углу экрана.') + '</div>';
@@ -94,7 +95,7 @@ B.ui.chatlist = (function () {
     dirty = false;
     var tin = dyn.querySelector('.mtabs-in'), tl = tin ? tin.scrollLeft : 0;   // вкладки папок не должны прыгать при перерисовке
     // Анимируем только изменения внутри того же вида списка: при смене папки и поиске строки просто заменяются
-    var view = (searching ? 's' : 'n') + B.folders.label(), oldRows = [], oldTops = {}, oldBadge = {};
+    var view = (searching ? 's' : 'n') + B.folders.label() + '|' + B.spaces.label(), oldRows = [], oldTops = {}, oldBadge = {};
     if (!searching) dyn.querySelectorAll('.swrow[data-id]').forEach(function (el) { oldRows.push(el); oldTops[el.dataset.id] = el.getBoundingClientRect().top; var bd = el.querySelector('.rbd'); oldBadge[el.dataset.id] = bd ? bd.textContent : null; });
     var anim = dyn._view === view && oldRows.length && oldRows.length < 150 && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches;
     dyn._view = view;
@@ -193,6 +194,7 @@ B.ui.chatlist = (function () {
       '<div data-dyn="chats"></div>';
     dyn = scrollEl.querySelector('[data-dyn]'); input = scrollEl.querySelector('#q-chats'); xbtn = scrollEl.querySelector('.sfield .x');
     input.addEventListener('focus', startSearch); input.addEventListener('input', onInput);
+    if (B.ui.spaces) B.ui.spaces.attach(tabview);
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter') input.blur(); });
     scrollEl.addEventListener('click', function (e) {
       var cl = e.target.closest('[data-cl]');
@@ -220,11 +222,15 @@ B.ui.chatlist = (function () {
 
   B.bus.on('chats:changed', schedule);
   B.bus.on('folders:changed', schedule);
+  B.bus.on('spaces:changed', schedule);
   B.bus.on('presence:changed', schedule);
   B.bus.on('avatar:updated', function () { B.avatar.clearCache(); schedule(); });
   B.bus.on('app:ready', function () { if (dyn) render(); });
   B.bus.on('auth:logout', function () { if (dyn) { if (searching) cancel(); dyn.innerHTML = ''; } });
   B.bus.on('typing:changed', schedule);
   B.bus.on('conn:changed', schedule);
-  return { mount: mount, render: render, cancel: cancel };
+  // Для жеста «шторка пространств»: строка не должна ни закрепиться, ни открыть чат
+  function cancelGesture() { if (G) { clearTimeout(G.lp); if (G.f) { G.f.classList.remove('drag'); if (!G.f._tx) G.f.style.transform = ''; } G = null; busy = false; if (dirty) render(); } }
+  function suppress(ms) { suppressUntil = performance.now() + ms; }
+  return { mount: mount, render: render, cancel: cancel, cancelGesture: cancelGesture, suppress: suppress };
 })();

@@ -740,7 +740,7 @@ function renderAccountRail() {
   const rail = document.getElementById('acc-rail');
   if (!rail) return;
   const showAcc = S.acc.list.length > 1;
-  const show = showAcc || (S.folders || []).length > 0;   // бар нужен и с одной записью, если есть папки
+  const show = showAcc || (S.folders || []).length > 0 || (typeof spacesRailShown === 'function' && spacesRailShown());   // бар нужен и с одной записью, если есть папки или общие пространства
   rail.hidden = !show;
   document.body.classList.toggle('has-rail', show);
   if (!show) { rail.innerHTML = ''; return; }
@@ -758,7 +758,7 @@ function renderAccountRail() {
     return `<button type="button" class="acc-btn${isActive ? ' active' : ''}" onclick="window.electron.accountSwitch('${esc(a.id)}')" aria-label="${sys ? sys + ', ' : ''}${name}${srv ? ', ' + srv : ''}">
       <span class="av av-round ${cls}">${esc(m ? initials(m.name) : '?')}${img}</span>${badge}
       <span class="acc-tip">${sys ? `<span class="acc-sys">${sys}</span>` : ''}<b>${name}</b><span>${srv}</span></span></button>`;
-  }).join('') : '') + (typeof foldersRailHtml === 'function' ? foldersRailHtml(showAcc) : '');
+  }).join('') : '') + (typeof foldersRailHtml === 'function' ? foldersRailHtml(showAcc) : '') + (typeof spacesRailHtml === 'function' ? spacesRailHtml(showAcc || (S.folders || []).length > 0) : '');
   if (typeof foldersRailFit === 'function') foldersRailFit();
 }
 
@@ -788,6 +788,7 @@ function enterApp() {
   verifyDownloadedFiles();
   loadChats();
   loadFolders();
+  if (typeof loadSharedSpaces === 'function') loadSharedSpaces();
   loadUsers();
   loadBlocks();
   annSync();
@@ -1261,7 +1262,7 @@ function renderContactsList(filter = '') {
   const list = document.getElementById('chats-list');
   if (!list) return;
   const q = filter.trim().toLowerCase();
-  const users = S.allUsers.filter(u => u.id !== S.user.id && isPickable(u) &&
+  const users = S.allUsers.filter(u => u.id !== S.user.id && isPickable(u) && (typeof spaceUserPass !== 'function' || spaceUserPass(u)) &&
     (!q || u.display_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)));
   // Сначала те, кто в сети; внутри каждой группы — по имени
   const rank = u => ({ online: 0, away: 1 })[S.presence[u.id]] ?? 2;
@@ -2120,6 +2121,7 @@ function renderChatList() {
   const filtered = S.chats
     .filter(c=>chatName(c).toLowerCase().includes(q))
     .filter(c => !byFolder || typeof folderPass !== 'function' || folderPass(c))
+    .filter(c => !byFolder || typeof spacePass !== 'function' || spacePass(c))
     .sort((a,b) => {
       // Приглашения в группы с других серверов — сверху: ответа ждут
       if (!!a.invite !== !!b.invite) return a.invite ? -1 : 1;
@@ -6236,12 +6238,13 @@ function updateUnreadTotal() {
   const total = Object.values(S.unread).reduce((a,b)=>a+b,0);
   window.electron?.setUnread(total);
   if (typeof updateFolderBadges === 'function' && S.folders?.length) updateFolderBadges();
+  if (typeof updateSpaceBadges === 'function') updateSpaceBadges();
 }
 
 // ── USERS ──
 async function loadUsers() {
   const users = await api('GET','/users');
-  if (users) S.allUsers = users;
+  if (users) { S.allUsers = users; if (typeof spaceActive === 'function' && spaceActive() !== null) renderChatList(); }
 }
 
 // ── ПРОСТРАНСТВА, КОНТАКТЫ, БЛОКИРОВКИ ──
@@ -6282,6 +6285,7 @@ async function loadBlocks() {
 async function refreshDirectory() {
   await refreshServerName();   // состав ваших пространств мог измениться: от него зависят значки
   await loadUsers();
+  if (typeof loadSharedSpaces === 'function') await loadSharedSpaces();
   await loadPresence();
   // Аватарка человека с другого сервера может приехать позже первого показа: неудачи не помним, пробуем снова
   for (const [u, ok] of [..._avatarCache]) if (ok === false) _avatarCache.delete(u);

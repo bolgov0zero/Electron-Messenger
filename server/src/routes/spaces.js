@@ -7,6 +7,7 @@ const { sendTo, broadcastAll } = require('../ws');
 const { logAudit } = require('../audit');
 const spaces = require('../spaces');
 const fed = require('../federation');
+const fsp = require('../fedspaces');
 
 // ── Контакты ──
 const contacts = express.Router();
@@ -19,6 +20,13 @@ function tooMany(userId) {
   list.push(now); tries.set(userId, list);
   return list.length > 10;
 }
+
+// Общие пространства человека (между серверами): клиенты показывают их в панели и фильтруют по ним чаты и контакты
+contacts.get('/spaces', (req, res) => {
+  res.json(db.prepare(`SELECT w.id, w.name,
+      (SELECT COUNT(*) FROM fed_space_servers s WHERE s.space_uid = w.fed_uid AND s.state = 'active') AS servers
+    FROM user_workspaces m JOIN workspaces w ON w.id = m.workspace_id WHERE m.user_id = ? AND w.fed_uid IS NOT NULL ORDER BY w.name`).all(req.user.id));
+});
 
 const publicUser = (viewerId, id) => spaces.listFor(viewerId).find(u => u.id === id) || null;
 
@@ -110,9 +118,61 @@ admin.use(authMiddleware, adminMiddleware);
 const nameOk = n => { const s = String(n || '').trim().replace(/\s+/g, ' '); return s && s.length <= 60 ? s : null; };
 
 admin.get('/', (req, res) => {
-  res.json(db.prepare(`SELECT w.id, w.name, w.created_at, (w.id = ?) AS is_default,
+  res.json(db.prepare(`SELECT w.id, w.name, w.created_at, w.fed_uid, w.fed_host, (w.id = ?) AS is_default,
       (SELECT COUNT(*) FROM user_workspaces m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = w.id AND COALESCE(u.is_bot, 0) = 0) AS users
-    FROM workspaces w ORDER BY w.id`).all(spaces.DEFAULT_WS).map(w => ({ ...w, is_default: !!w.is_default })));
+    FROM workspaces w ORDER BY w.id`).all(spaces.DEFAULT_WS).map(w => ({ ...w, is_default: !!w.is_default, fed: fsp.adminInfo(w), candidates: fsp.candidates(w) })));
+});
+// Приглашения и просьбы общих пространств
+admin.get('/fed/offers', (req, res) => res.json(fsp.offersList()));
+admin.post('/fed/offers/:uid/accept', (req, res) => {
+  const r = fsp.acceptOffer(String(req.params.uid));
+  if (r.error) return res.status(400).json(r);
+  logAudit(req, 'server', 'Общее пространство принято', r.name);
+  res.json(r);
+});
+admin.post('/fed/offers/:uid/decline', (req, res) => {
+  const r = fsp.declineOffer(String(req.params.uid));
+  if (r.error) return res.status(400).json(r);
+  logAudit(req, 'server', 'Общее пространство отклонено', String(req.params.uid));
+  res.json(r);
+});
+admin.post('/fed/asks/:id/approve', (req, res) => {
+  const r = fsp.approveAsk(Number(req.params.id));
+  if (r.error) return res.status(404).json(r);
+  logAudit(req, 'server', 'Общее пространство: расширение одобрено', String(req.params.id));
+  res.json(r);
+});
+admin.post('/fed/asks/:id/decline', (req, res) => {
+  const r = fsp.declineAsk(Number(req.params.id));
+  if (r.error) return res.status(404).json(r);
+  res.json(r);
+});
+// «Общее»: включить или выключить, пригласить сервер, убрать сервер (или выйти самому)
+admin.post('/:id/shared', (req, res) => {
+  const id = Number(req.params.id), w = db.prepare('SELECT name FROM workspaces WHERE id = ?').get(id);
+  if (!w) return res.status(404).json({ error: 'Пространство не найдено' });
+  const r = req.body?.on ? fsp.enableShared(id) : fsp.disableShared(id);
+  if (r.error) return res.status(400).json(r);
+  logAudit(req, 'server', req.body?.on ? 'Пространство стало общим' : 'Пространство перестало быть общим', w.name);
+  broadcastAll({ type: 'directory_changed' });
+  res.json({ ok: true });
+});
+admin.post('/:id/servers', (req, res) => {
+  const id = Number(req.params.id), w = db.prepare('SELECT name FROM workspaces WHERE id = ?').get(id);
+  if (!w) return res.status(404).json({ error: 'Пространство не найдено' });
+  const r = fsp.offerServer(id, req.body?.instance);
+  if (r.error) return res.status(400).json(r);
+  logAudit(req, 'server', 'Общее пространство: сервер приглашён', `${w.name} → ${String(req.body?.instance).slice(0, 40)}`);
+  res.json(r);
+});
+admin.delete('/:id/servers/:inst', (req, res) => {
+  const id = Number(req.params.id), w = db.prepare('SELECT name FROM workspaces WHERE id = ?').get(id);
+  if (!w) return res.status(404).json({ error: 'Пространство не найдено' });
+  const r = fsp.removeServer(id, String(req.params.inst));
+  if (r.error) return res.status(400).json(r);
+  logAudit(req, 'server', 'Общее пространство: сервер убран', `${w.name}: ${String(req.params.inst).slice(0, 40)}`);
+  broadcastAll({ type: 'directory_changed' });
+  res.json(r);
 });
 
 admin.post('/', (req, res) => {
@@ -127,11 +187,13 @@ admin.post('/', (req, res) => {
 
 admin.patch('/:id', (req, res) => {
   const id = Number(req.params.id), name = nameOk(req.body?.name);
-  const w = db.prepare('SELECT name FROM workspaces WHERE id = ?').get(id);
+  const w = db.prepare('SELECT name, fed_uid, fed_host FROM workspaces WHERE id = ?').get(id);
   if (!w) return res.status(404).json({ error: 'Пространство не найдено' });
   if (!name) return res.status(400).json({ error: 'Введите название (до 60 символов)' });
+  if (w.fed_uid && w.fed_host !== fed.identity().id) return res.status(400).json({ error: 'Название общего пространства задаёт его хозяин' });
   try {
     db.prepare('UPDATE workspaces SET name = ? WHERE id = ?').run(name, id);
+    if (w.fed_uid) fsp.broadcastTree(w.fed_uid);
     logAudit(req, 'server', 'Пространство переименовано', `«${w.name}» → «${name}»`);
     broadcastAll({ type: 'directory_changed' });   // подписи пространств обновляются у всех
     res.json({ ok: true });
@@ -140,8 +202,9 @@ admin.patch('/:id', (req, res) => {
 
 admin.delete('/:id', (req, res) => {
   const id = Number(req.params.id);
-  const w = db.prepare('SELECT name FROM workspaces WHERE id = ?').get(id);
+  const w = db.prepare('SELECT name, fed_uid FROM workspaces WHERE id = ?').get(id);
   if (!w) return res.status(404).json({ error: 'Пространство не найдено' });
+  if (w.fed_uid) return res.status(400).json({ error: 'Пространство общее. Сначала выключите «Общее» (хозяин) или выйдите из него.' });
   if (id === spaces.DEFAULT_WS) return res.status(400).json({ error: 'Основное пространство удалить нельзя' });
   if (db.prepare('SELECT 1 FROM user_workspaces WHERE workspace_id = ? LIMIT 1').get(id)) return res.status(400).json({ error: 'В пространстве есть люди. Сначала уберите их из него или переведите в другое.' });
   db.prepare('DELETE FROM workspaces WHERE id = ?').run(id);

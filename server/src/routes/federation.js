@@ -4,6 +4,7 @@ const express = require('express');
 const { authMiddleware, adminMiddleware } = require('../auth');
 const { logAudit } = require('../audit');
 const fed = require('../federation');
+const fsp = require('../fedspaces');
 
 // ── Админка ──
 const admin = express.Router();
@@ -19,6 +20,14 @@ const view = () => ({
   },
 });
 admin.get('/', (req, res) => res.json(view()));
+// Карта серверов и общих пространств
+admin.get('/map', (req, res) => res.json(fsp.mapData()));
+admin.post('/verify', (req, res) => {
+  const r = fsp.verifyKey(req.body?.instance);
+  if (r.error) return res.status(404).json(r);
+  logAudit(req, 'security', 'Федерация: ключ сервера сверен', String(req.body.instance).slice(0, 40));
+  res.json(r);
+});
 // Сводка для блока на главной: период day | week | month
 admin.get('/stats', (req, res) => res.json(fed.statsView(String(req.query.period || 'day'))));
 

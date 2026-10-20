@@ -741,9 +741,9 @@ function onLink(peer, online) {
 // Другой сервер сообщил версию протокола. Группы — с версии 2
 function recvCaps(peer, ev) {
   const v = Math.max(0, Math.floor(Number(ev.v)) || 0);
-  db.prepare('UPDATE fed_peers SET proto = ? WHERE id = ?').run(v, peer.id);
+  db.prepare('UPDATE fed_peers SET proto = ?, sp = ? WHERE id = ?').run(v, ev.sp ? 1 : 0, peer.id);
 }
-function sendCaps(peerId) { F().sendLive(peerId, { k: 'caps', v: PROTO }); }
+function sendCaps(peerId) { F().sendLive(peerId, { k: 'caps', v: PROTO, sp: 1 }); }
 
 
 // ─────────────────────────── «печатает», закрепы, галочки ───────────────────────────

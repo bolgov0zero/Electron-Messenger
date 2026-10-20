@@ -585,6 +585,53 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_chat_invites_user ON chat_invites(user_id);
 `);
 
+// Общие пространства между серверами (см. fedspaces.js). Пространство принадлежит серверу-хозяину; у остальных серверов его зеркало:
+// workspaces.fed_uid — «хозяин:номер», fed_host — идентификатор хозяина (у самого хозяина fed_host = его идентификатор).
+// fed_space_servers — копия дерева серверов пространства (parent — сосед по дереву ближе к хозяину); state: active | offered (ждёт ответа).
+// fed_space_offers — приглашения, пришедшие нам и ждущие решения админа; fed_space_asks — просьбы участников расширить пространство (у хозяина).
+// fed_peers.virt = 1 — «сквозной» сервер без прямого соединения: связь с ним идёт через соседей по дереву (свой шифрованный туннель поверх).
+// fed_peers.sp — сервер сообщил, что умеет общие пространства. fed_key_checks — серверы, чей ключ админ сверил вручную.
+tryAlter('ALTER TABLE workspaces ADD COLUMN fed_uid TEXT');
+tryAlter('ALTER TABLE workspaces ADD COLUMN fed_host TEXT');
+tryAlter('CREATE UNIQUE INDEX IF NOT EXISTS idx_workspaces_fed_uid ON workspaces(fed_uid) WHERE fed_uid IS NOT NULL');
+tryAlter('ALTER TABLE fed_peers ADD COLUMN virt INTEGER NOT NULL DEFAULT 0');
+tryAlter('ALTER TABLE fed_peers ADD COLUMN sp INTEGER NOT NULL DEFAULT 0');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS fed_space_servers (
+    space_uid TEXT NOT NULL,
+    instance_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    pub TEXT NOT NULL,
+    parent TEXT NOT NULL DEFAULT '',
+    state TEXT NOT NULL DEFAULT 'active',
+    created_at INTEGER DEFAULT (unixepoch()),
+    PRIMARY KEY (space_uid, instance_id)
+  );
+  CREATE TABLE IF NOT EXISTS fed_space_offers (
+    space_uid TEXT PRIMARY KEY,
+    host TEXT NOT NULL,
+    name TEXT NOT NULL,
+    from_inst TEXT NOT NULL,
+    tree TEXT NOT NULL,
+    created_at INTEGER DEFAULT (unixepoch())
+  );
+  CREATE TABLE IF NOT EXISTS fed_space_asks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    space_uid TEXT NOT NULL,
+    proposer TEXT NOT NULL,
+    target TEXT NOT NULL,
+    target_name TEXT NOT NULL,
+    target_pub TEXT NOT NULL,
+    approved INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER DEFAULT (unixepoch())
+  );
+  CREATE TABLE IF NOT EXISTS fed_key_checks (
+    instance_id TEXT PRIMARY KEY,
+    pub TEXT NOT NULL,
+    created_at INTEGER DEFAULT (unixepoch())
+  );
+`);
+
 // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)
 const sysExists = db.prepare("SELECT id FROM users WHERE username = '__system__'").get();
 if (!sysExists) {

@@ -47,6 +47,7 @@ B.app = {
     B.contacts.loadBlocks();
     B.modules.init();
     B.folders.load();
+    B.spaces.load();
     await B.chats.load();
     B.ws.connect();
     B.modules.refresh();

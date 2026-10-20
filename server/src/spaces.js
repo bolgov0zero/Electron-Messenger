@@ -5,8 +5,9 @@
 // или B добавлен в контакты A (контакты односторонние: A видит B, а B не видит A). Администратор видит всех. Совместные чаты
 // и группы видимость не меняют: участники друг друга там видят, но в списках и поиске чужих нет.
 //
-// Человек с другого сервера (федерация) хранится как «теневой» пользователь, is_bot = 2. Он виден только тому,
-// кто добавил его в контакты (администратор тоже), а в пространстве его нет.
+// Человек с другого сервера (федерация) хранится как «теневой» пользователь, is_bot = 2. Он виден тому, кто добавил его
+// в контакты (администратор тоже), и тем, с кем у него общее пространство: пространство может быть общим для нескольких
+// серверов (workspaces.fed_uid), тогда люди остальных серверов состоят в его зеркале у нас (user_workspaces).
 const db = require('./db');
 
 const DEFAULT_WS = 1;
@@ -33,12 +34,15 @@ const shares = (a, b) => sharedIds(a, b).length > 0;
 // Задать пространства человеку (список номеров, хотя бы одно). Основным становится наименьший номер.
 function setWorkspaces(userId, ids) {
   const list = [...new Set(ids.map(Number))].filter(Boolean).sort((x, y) => x - y);
+  const prev = wsIdsOf(userId);
   db.transaction(() => {
     db.prepare('DELETE FROM user_workspaces WHERE user_id = ?').run(userId);
     const ins = db.prepare('INSERT INTO user_workspaces (user_id, workspace_id) VALUES (?, ?)');
     list.forEach(id => ins.run(userId, id));
     db.prepare('UPDATE users SET workspace_id = ? WHERE id = ?').run(list[0], userId);
   })();
+  // Если в этих пространствах состоят люди других серверов, они должны узнать об изменении состава
+  try { require('./fedspaces').membersChanged([...new Set([...prev, ...list])]); } catch {}
   return list;
 }
 // Человек с другого сервера
@@ -51,7 +55,7 @@ function canSee(viewerId, targetId) {
   if (viewerId === targetId) return true;
   const v = q.user.get(viewerId), t = q.user.get(targetId);
   if (!v || !t) return false;
-  if (t.is_bot === FED || v.is_bot === FED) return !!q.contact.get(viewerId, targetId);
+  if (t.is_bot === FED || v.is_bot === FED) return !!q.contact.get(viewerId, targetId) || shares(viewerId, targetId);
   if (v.is_admin) return true;
   if (shares(viewerId, targetId)) return true;
   return !!q.contact.get(viewerId, targetId);
@@ -114,7 +118,8 @@ function listFor(viewerId) {
   const out = [];
   for (const u of rows) {
     const fed = u.is_bot === FED, isContact = contacts.has(u.id);
-    const common = fed ? [] : (memb.get(u.id) || [u.workspace_id]).filter(id => mine.has(id));
+    // У человека с другого сервера есть только членства в зеркалах общих пространств
+    const common = (memb.get(u.id) || [u.workspace_id]).filter(id => mine.has(id));
     const same = common.length > 0;
     let rel = null;
     if (same) rel = 'ws';
@@ -125,8 +130,9 @@ function listFor(viewerId) {
     // У человека с другого сервера нет пространства: клиент показывает вместо него значок «другой сервер».
     // login и server_id отдаём отдельно, чтобы клиент не разбирал служебное имя (оно менялось: «сервер@логин» → «сервер:логин»)
     // shared_workspaces — только общие с вами пространства (названия): чужие членства человека не раскрываются
-    out.push(fed ? { ...rest, workspace_id: 0, workspace_name: null, rel, contact: isContact, federated: true, login: fed_login, server_id: fed_instance }
-      : { ...rest, rel, contact: isContact, shared_workspaces: common.map(id => wsName.get(id)).filter(Boolean) });
+    const shared = common.map(id => wsName.get(id)).filter(Boolean);
+    out.push(fed ? { ...rest, workspace_id: 0, workspace_name: null, rel, contact: isContact, federated: true, login: fed_login, server_id: fed_instance, shared_workspaces: shared, ws_ids: common }
+      : { ...rest, rel, contact: isContact, shared_workspaces: shared, ws_ids: common });
   }
   return out;
 }
@@ -145,7 +151,7 @@ function canSeePresence(viewerId, targetId) {
   if (viewerId === targetId) return true;
   const v = q.user.get(viewerId), t = q.user.get(targetId);
   if (!v || !t) return false;
-  if (v.is_bot === FED || t.is_bot === FED) return mutualContact(viewerId, targetId);
+  if (v.is_bot === FED || t.is_bot === FED) return mutualContact(viewerId, targetId) || shares(viewerId, targetId);
   return !!v.is_admin || shares(viewerId, targetId) || mutualContact(viewerId, targetId);
 }
 // Кому разослать присутствие человека target
@@ -153,10 +159,12 @@ function presenceViewers(targetId) {
   const t = q.user.get(targetId);
   if (!t) return [];
   const ids = new Set();
-  // Человек с другого сервера: статус видят только те, кто с ним в контактах друг у друга
+  // Человек с другого сервера: статус видят взаимные контакты и те, у кого с ним общее пространство
   if (t.is_bot !== FED) {
     usersInSpaces(wsIdsOf(targetId)).forEach(id => ids.add(id));
     db.prepare('SELECT id FROM users WHERE is_admin = 1').all().forEach(r => ids.add(r.id));
+  } else {
+    usersInSpaces(wsIdsOf(targetId)).forEach(id => { if (!isFed(id)) ids.add(id); });
   }
   db.prepare('SELECT c1.owner_id AS id FROM contacts c1 JOIN contacts c2 ON c2.owner_id = c1.contact_id AND c2.contact_id = c1.owner_id WHERE c1.contact_id = ?')
     .all(targetId).forEach(r => ids.add(r.id));
@@ -167,9 +175,8 @@ function presenceViewers(targetId) {
 function presenceIds(viewerId) {
   const v = q.user.get(viewerId);
   if (!v) return [];
-  const ids = new Set(v.is_admin
-    ? db.prepare(`SELECT id FROM users WHERE id != ? AND COALESCE(is_bot, 0) != ${FED}`).all(viewerId).map(r => r.id)
-    : usersInSpaces(wsIdsOf(viewerId)).filter(id => id !== viewerId && !isFed(id)));
+  const ids = new Set(v.is_admin ? db.prepare(`SELECT id FROM users WHERE id != ? AND COALESCE(is_bot, 0) != ${FED}`).all(viewerId).map(r => r.id) : []);
+  usersInSpaces(wsIdsOf(viewerId)).forEach(id => { if (id !== viewerId) ids.add(id); });
   db.prepare('SELECT c1.contact_id AS id FROM contacts c1 JOIN contacts c2 ON c2.owner_id = c1.contact_id AND c2.contact_id = c1.owner_id WHERE c1.owner_id = ?')
     .all(viewerId).forEach(r => ids.add(r.id));
   return [...ids];

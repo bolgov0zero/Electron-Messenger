@@ -528,6 +528,7 @@ router.post('/users/:id/ban', (req, res) => {
   const userId = Number(req.params.id);
   db.prepare('UPDATE users SET banned = 1, sessions_valid_from = unixepoch() WHERE id = ?').run(userId);
   sendTo(userId, { type: 'force_logout' });
+  try { require('../fedspaces').membersChanged(); } catch {}
   const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
   logAudit(req, 'moderation', 'Блокировка пользователя', name);
   res.json({ ok: true });
@@ -536,6 +537,7 @@ router.post('/users/:id/ban', (req, res) => {
 router.post('/users/:id/unban', (req, res) => {
   const userId = Number(req.params.id);
   db.prepare('UPDATE users SET banned = 0 WHERE id = ?').run(userId);
+  try { require('../fedspaces').membersChanged(); } catch {}
   const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
   logAudit(req, 'moderation', 'Разблокировка пользователя', name);
   res.json({ ok: true });

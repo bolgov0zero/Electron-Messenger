@@ -3993,6 +3993,10 @@ html.dark .anx-solid { color: #0c0e10; }
 .fld-btn:hover .fld-ic { transform: scale(1.06); background: color-mix(in srgb, var(--fc) 24%, transparent); }
 .fld-btn .fld-ic { transition: transform .16s ease, background .16s ease, opacity .2s ease; }
 .fld-btn.active .fld-ic { background: color-mix(in srgb, var(--fc) 28%, transparent); }
+/* Общие пространства в баре: буквы вместо значка, как у аватарки */
+.rail-spaces { margin-top: 0; }
+.spc-ini { font-size: 14px; font-weight: 700; letter-spacing: .02em; color: var(--fc); line-height: 1; }
+.spc-btn:not(.active) .spc-ini { opacity: .95; }
 .fld-btn:focus-visible, .acc-btn:focus-visible { outline: none; }
 .fld-btn:focus-visible .fld-ic, .acc-btn:focus-visible .av { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* Значок папки на аватарке чата: в левом верхнем углу, по диагонали от точки «в сети» */

@@ -117,6 +117,7 @@ B.chats.groups = function (q) {
   var list = B.S.chats.filter(function (c) { return !c.parent_id && (!q || B.chatName(c).toLowerCase().indexOf(q) >= 0); });
   var byTime = function (a, b) { return ((b.last_message && b.last_message.sent_at) || 0) - ((a.last_message && a.last_message.sent_at) || 0); };
   if (!q && B.folders && B.folders.filter !== 'all') list = list.filter(B.folders.pass);   // выбрана папка (поиск идёт по всем чатам)
+  if (!q && B.spaces && B.spaces.active() !== null) list = list.filter(B.spaces.pass);   // выбрано общее пространство
   return {
     rooms: list.filter(function (c) { return c.type === 'room'; }).sort(function (a, b) { return B.chatName(a).localeCompare(B.chatName(b), 'ru', { numeric: true }); }),
     pinned: list.filter(function (c) { return c.type !== 'room' && c.pinned; }).sort(byTime),

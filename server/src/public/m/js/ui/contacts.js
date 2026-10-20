@@ -14,7 +14,7 @@ B.ui.contacts = (function () {
   }
   function render() {
     if (!dyn) return;
-    var s = q.trim().toLowerCase(), all = B.S.contacts, list = all.filter(function (u) { return !s || u.display_name.toLowerCase().indexOf(s) >= 0; });
+    var s = q.trim().toLowerCase(), all = B.S.contacts, list = all.filter(function (u) { return B.spaces.userPass(u) && (!s || u.display_name.toLowerCase().indexOf(s) >= 0); });
     var byName = function (a, b) { return a.display_name.localeCompare(b.display_name, 'ru', { numeric: true }); };
     list.sort(function (a, b) { return rank(a) - rank(b) || byName(a, b); });
     if (!list.length) {
@@ -49,7 +49,7 @@ B.ui.contacts = (function () {
     });
     render();
   }
-  B.bus.on('contacts:changed', render); B.bus.on('presence:changed', function () { render(); });
+  B.bus.on('contacts:changed', render); B.bus.on('spaces:changed', render); B.bus.on('presence:changed', function () { render(); });
   B.bus.on('avatar:updated', render); B.bus.on('app:ready', render);
   return { mount: mount, render: render };
 })();

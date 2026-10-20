@@ -723,6 +723,7 @@ function enterApp() {
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-main').classList.add('active');
   loadFolders();
+  if (typeof loadSharedSpaces === 'function') loadSharedSpaces();
   loadChats().then(() => {
     if (S._pendingOpenChatId) {
       const c = S.chats.find(c => c.id === S._pendingOpenChatId);
@@ -1157,7 +1158,7 @@ function renderContactsList(filter = '') {
   const list = document.getElementById('chats-list');
   if (!list) return;
   const q = filter.trim().toLowerCase();
-  const users = S.allUsers.filter(u => u.id !== S.user.id && isPickable(u) &&
+  const users = S.allUsers.filter(u => u.id !== S.user.id && isPickable(u) && (typeof spaceUserPass !== 'function' || spaceUserPass(u)) &&
     (!q || u.display_name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)));
   // Сначала те, кто в сети; внутри каждой группы — по имени
   const rank = u => ({ online: 0, away: 1 })[S.presence[u.id]] ?? 2;
@@ -2013,6 +2014,7 @@ function renderChatList() {
   const filtered = S.chats
     .filter(c=>chatName(c).toLowerCase().includes(q))
     .filter(c => !byFolder || typeof folderPass !== 'function' || folderPass(c))
+    .filter(c => !byFolder || typeof spacePass !== 'function' || spacePass(c))
     .sort((a,b) => {
       // Приглашения в группы с других серверов — сверху: ответа ждут
       if (!!a.invite !== !!b.invite) return a.invite ? -1 : 1;
@@ -4491,9 +4493,10 @@ function handleKey(e) {
 function renderRail() {
   const rail = document.getElementById('acc-rail');
   if (!rail) return;
-  const show = (S.folders || []).length > 0;
+  const hasSp = typeof spacesRailShown === 'function' && spacesRailShown();
+  const show = (S.folders || []).length > 0 || hasSp;
   rail.hidden = !show;
-  rail.innerHTML = show ? foldersRailHtml(false) : '';
+  rail.innerHTML = show ? foldersRailHtml(false) + (hasSp ? spacesRailHtml((S.folders || []).length > 0) : '') : '';
   if (show) foldersRailFit();
 }
 
@@ -6339,6 +6342,7 @@ function connectWS() {
 function updateUnreadTotal() {
   const total = Object.values(S.unread).reduce((a,b)=>a+b,0);
   if (typeof updateFolderBadges === 'function' && S.folders?.length) updateFolderBadges();
+  if (typeof updateSpaceBadges === 'function') updateSpaceBadges();
   document.title = total > 0 ? `(${total}) Electron` : 'Electron';
   // Счётчик на иконке установленного PWA (iOS 16.4+, Chrome, Edge)
   try {
@@ -6350,7 +6354,7 @@ function updateUnreadTotal() {
 // ── USERS ──
 async function loadUsers() {
   const users = await api('GET','/users');
-  if (users) S.allUsers = users;
+  if (users) { S.allUsers = users; if (typeof spaceActive === 'function' && spaceActive() !== null) renderChatList(); }
 }
 
 // ── ПРОСТРАНСТВА, КОНТАКТЫ, БЛОКИРОВКИ ──
@@ -6391,6 +6395,7 @@ async function loadBlocks() {
 async function refreshDirectory() {
   await refreshServerInfo();   // состав ваших пространств мог измениться: от него зависят значки
   await loadUsers();
+  if (typeof loadSharedSpaces === 'function') await loadSharedSpaces();
   await loadPresence();
   // Аватарка человека с другого сервера может приехать позже первого показа: неудачи не помним, пробуем снова
   for (const [u, ok] of [..._avatarCache]) if (ok === false) _avatarCache.delete(u);

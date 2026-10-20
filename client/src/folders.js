@@ -306,7 +306,7 @@ function csPaneFolders() {
         <button type="button" title="Изменить" aria-label="Изменить" onclick="openFolderEditor(folderById(${f.id}))">${fsvg(FI_EDIT, 16)}</button>
         <button type="button" class="danger" title="Удалить" aria-label="Удалить" onclick="deleteFolder(${f.id})">${fsvg(FI_TRASH, 16)}</button>
       </span></div>`).join('');
-  return `<div class="fp-lead">Папки помогают разбирать чаты по темам. Чат добавляется в папку из его меню: правый клик по чату → «В папку».</div>
+  return (typeof csSpacesRows === 'function' ? csSpacesRows() : '') + `<div class="cs-gt">Папки</div><div class="fp-lead">Папки помогают разбирать чаты по темам. Чат добавляется в папку из его меню: правый клик по чату → «В папку».</div>
     <div class="fp-list" id="fp-list">${rows || '<div class="fp-empty">Папок пока нет</div>'}</div>
     <button type="button" class="fp-new" onclick="openFolderEditor(null)" ${n >= FOLDER_MAX ? 'disabled' : ''}>${fsvg(FI_PLUS, 16)}<span>Новая папка</span></button>`;
 }

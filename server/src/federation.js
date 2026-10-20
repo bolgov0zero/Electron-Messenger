@@ -37,6 +37,7 @@ const OUTBOX_KEEP_DAYS = 14;
 // Ленивые зависимости: ws.js и routes/upload.js сами тянут этот модуль
 const wsm = () => require('./ws');
 const groups = () => require('./fedgroups');
+const spacesMod = () => require('./fedspaces');
 const uploadCfg = () => require('./routes/upload').getUploadSettings();
 
 // ─────────────────────────── настройки и ключи ───────────────────────────
@@ -134,6 +135,12 @@ setInterval(() => { try { flushStats(); } catch (e) { console.warn('[Fed] счё
 // ─────────────────────────── соединения ───────────────────────────
 const peerRow = id => db.prepare('SELECT * FROM fed_peers WHERE id = ?').get(id);
 const peerByInstance = inst => db.prepare('SELECT * FROM fed_peers WHERE instance_id = ?').get(String(inst));
+// Настоящее (прямое) соединение; «сквозные» записи (virt = 1) не считаются
+const realPeerByInstance = inst => { const p = peerByInstance(inst); return p && !p.virt ? p : null; };
+function clearVirtualRow(inst) {
+  const p = peerByInstance(inst);
+  if (p && p.virt) { endVirtual(p.id, true); db.prepare('DELETE FROM fed_peers WHERE id = ?').run(p.id); }
+}
 const sessions = new Map();   // peer.id → сессия (аутентифицированное соединение)
 const dialers = new Map();    // peer.id → { timer, ws, backoff, stopped } (исходящие соединения)
 const pending = new Map();    // rid → ожидающий ответа запрос
@@ -283,12 +290,14 @@ function attach(peer, { ws, nonce, sendKey, recvKey }) {
     clearInterval(sess.ping);
     if (sessions.get(peer.id) === sess) { sessions.delete(peer.id); onOffline(peer.id); }
     for (const [rid, p] of pending) if (p.peerId === peer.id) { pending.delete(rid); clearTimeout(p.timer); p.fail(new Error('offline')); }
+    dropVirtualsVia(peer.id);
   });
   ws.on('error', () => {});
   flush(peer.id);
   syncPresence(peer.id);
   groups().sendCaps(peer.id);
   groups().onLink(peer, true);
+  try { spacesMod().onLink(peer, true); } catch (e) { console.warn('[Fed] пространства:', e.message); }
 }
 
 // Связь пропала: статусы людей оттуда неизвестны, показываем «не в сети» (время последнего визита остаётся прежним)
@@ -298,6 +307,138 @@ function onOffline(peerId) {
   db.prepare('SELECT id FROM users WHERE is_bot = 2 AND fed_instance = ?').all(peer.instance_id)
     .forEach(u => { try { wsm().setRemoteStatus(u.id, 'offline', 0); } catch {} });
   try { groups().onLink(peer, false); } catch (e) { console.warn('[Fed] группы:', e.message); }
+  try { spacesMod().onLink(peer, false); } catch (e) { console.warn('[Fed] пространства:', e.message); }
+}
+
+// ─────────────────────────── сквозные каналы через соседей ───────────────────────────
+// Сервер из общего пространства, с которым нет прямого соединения, у нас «сквозной» (fed_peers.virt = 1). Связь с ним идёт
+// через соседей по дереву пространства: кадр заворачивается в конверт «кому / от кого» (t: 'rl') и пересылается дальше.
+// Поверх конверта строится тот же шифрованный туннель, что и у прямого соединения: рукопожатие подписывается постоянными
+// ключами обоих серверов (их ключи известны из дерева пространства, а после сверки отпечатка проверены людьми), поэтому
+// промежуточный сервер видит лишь «кто с кем», размер и время кадров, но не содержимое. Остальная логика (очередь, подтверждения,
+// файлы, вопрос-ответ) работает по такому каналу так же, как по прямому.
+const RELAY_TTL = 8, HS_MAX_AGE = 60;
+const vHalf = new Map();   // peer.id → { eph, ni }: наше «здравствуйте» отправлено, ждём ответ
+const vSeen = new Map();   // ni → время: защита от повтора чужого «здравствуйте»
+function nextHopPeer(destInst) {
+  const inst = spacesMod().nextHop(destInst);
+  const p = inst && peerByInstance(inst);
+  return p && !p.virt && p.status === 'active' ? p : null;
+}
+function relaySend(destInst, body) {
+  const hop = nextHopPeer(destInst);
+  const hs = hop && sessions.get(hop.id);
+  if (!hs || hs.ws.readyState !== 1) return false;
+  return sendFrame(hs, { t: 'rl', to: destInst, from: identity().id, ttl: RELAY_TTL, ...body });
+}
+function makeVirtualWs(peer) {
+  const hopSess = () => { const hop = nextHopPeer(peer.instance_id); const s = hop && sessions.get(hop.id); return s && s.ws.readyState === 1 ? s : null; };
+  return {
+    get readyState() { return hopSess() ? 1 : 3; },
+    get bufferedAmount() { return hopSess()?.ws.bufferedAmount || 0; },
+    send(buf) { relaySend(peer.instance_id, { d: Buffer.from(buf).toString('base64') }); },
+    close() { endVirtual(peer.id); },
+  };
+}
+function endVirtual(peerId, silent) {
+  const s = sessions.get(peerId);
+  if (!s || !s.virt) return;
+  clearInterval(s.ping);
+  sessions.delete(peerId);
+  vHalf.delete(peerId);
+  for (const [rid, p] of pending) if (p.peerId === peerId) { pending.delete(rid); clearTimeout(p.timer); p.fail(new Error('offline')); }
+  if (!silent) onOffline(peerId);
+}
+// Оборвалась связь с соседом: сквозные каналы, шедшие через него, закрываем (они поднимутся заново, когда путь вернётся)
+function dropVirtualsVia(realPeerId) {
+  for (const [pid, s] of [...sessions]) {
+    if (!s.virt) continue;
+    const p = peerRow(pid), hop = p && nextHopPeer(p.instance_id);
+    if (!hop || hop.id === realPeerId) endVirtual(pid);
+  }
+}
+function attachVirtual(peer, keys) {
+  if (sessions.get(peer.id)) endVirtual(peer.id, true);
+  const sess = { ws: makeVirtualWs(peer), sendKey: keys.sendKey, recvKey: keys.recvKey, sendCtr: 0, recvCtr: 0, peerId: peer.id, sentMax: 0, chain: Promise.resolve(), alive: true, virt: true, lastRx: Date.now() };
+  sessions.set(peer.id, sess);
+  stat(peer.id, 'reconnects');
+  db.prepare('UPDATE fed_peers SET last_contact_at = unixepoch() WHERE id = ?').run(peer.id);
+  sess.ping = setInterval(() => {
+    if (sessions.get(peer.id) !== sess) { clearInterval(sess.ping); return; }
+    if (Date.now() - sess.lastRx > 70000) { endVirtual(peer.id); return; }
+    sendFrame(sess, { t: 'vping' });
+  }, 20000);
+  sess.ping.unref?.();
+  flush(peer.id);
+  syncPresence(peer.id);
+  try { groups().sendCaps(peer.id); groups().onLink(peer, true); } catch (e) { console.warn('[Fed] группы:', e.message); }
+  try { spacesMod().onLink(peer, true); } catch (e) { console.warn('[Fed] пространства:', e.message); }
+}
+// Начать рукопожатие со сквозным сервером (здоровается сервер с большим идентификатором)
+function virtualHello(peer) {
+  const me = identity();
+  const ni = crypto.randomBytes(18).toString('base64url'), eph = newEphemeral(), ts = Math.floor(Date.now() / 1000);
+  vHalf.set(peer.id, { eph, ni });
+  relaySend(peer.instance_id, { hs: { t: 'rhello', ni, ts, epk: eph.pub, sig: sign(`rhello|${me.id}|${peer.instance_id}|${ni}|${ts}|${eph.pub}`) } });
+}
+function virtualTick() {
+  const me = identity();
+  if (!me.configured) return;
+  const now = Date.now();
+  for (const [k, t] of vSeen) if (now - t > 3 * HS_MAX_AGE * 1000) vSeen.delete(k);
+  for (const p of db.prepare("SELECT * FROM fed_peers WHERE virt = 1 AND status = 'active'").all()) {
+    if (sessions.has(p.id) || me.id < p.instance_id || !nextHopPeer(p.instance_id)) continue;
+    try { virtualHello(p); } catch (e) { console.warn('[Fed] сквозной канал:', e.message); }
+  }
+}
+function onVirtualHs(peer, hs) {
+  const me = identity();
+  if (hs.t === 'rhello') {
+    const ts = Math.floor(Number(hs.ts)), ni = str(hs.ni, 40), epk = str(hs.epk, 64);
+    if (!ts || Math.abs(Math.floor(Date.now() / 1000) - ts) > HS_MAX_AGE || !ni || vSeen.has(ni)) return;
+    if (!verify(peer.pub, `rhello|${peer.instance_id}|${me.id}|${ni}|${ts}|${epk}`, hs.sig)) return;
+    vSeen.set(ni, Date.now());
+    const nr = crypto.randomBytes(18).toString('base64url'), eph = newEphemeral();
+    let keys; try { keys = deriveKeys(ephShared(eph.priv, epk), ni + nr, true); } catch { return; }
+    relaySend(peer.instance_id, { hs: { t: 'rwelcome', ni, nr, epk: eph.pub, sig: sign(`rwelcome|${me.id}|${peer.instance_id}|${ni}|${nr}|${epk}|${eph.pub}`) } });
+    attachVirtual(peer, keys);
+  } else if (hs.t === 'rwelcome') {
+    const half = vHalf.get(peer.id);
+    const nr = str(hs.nr, 40), epk = str(hs.epk, 64);
+    if (!half || half.ni !== hs.ni || !nr) return;
+    if (!verify(peer.pub, `rwelcome|${peer.instance_id}|${me.id}|${half.ni}|${nr}|${half.eph.pub}|${epk}`, hs.sig)) return;
+    vHalf.delete(peer.id);
+    let keys; try { keys = deriveKeys(ephShared(half.eph.priv, epk), half.ni + nr, false); } catch { return; }
+    attachVirtual(peer, keys);
+  } else if (hs.t === 'rreset') {
+    // Другая сторона потеряла наш канал (перезапуск): закрываем свою половину, при следующем обходе поздороваемся заново
+    const s = sessions.get(peer.id);
+    if (s && s.virt && Date.now() - s.lastRx > 2000) endVirtual(peer.id);
+  }
+}
+const resetSent = new Map();
+function onRelay(hopSess, f) {
+  const me = identity();
+  const to = str(f.to, 40), from = str(f.from, 40);
+  if (!to || !from) return;
+  if (to !== me.id) {
+    // Транзит: пересылаем только между серверами одного пространства, с которым мы связаны сами
+    if (!(f.ttl > 0) || !spacesMod().mayRelay(from, to)) return;
+    const hop = nextHopPeer(to), hs = hop && sessions.get(hop.id);
+    if (!hs || hs === hopSess) return;
+    sendFrame(hs, { t: 'rl', to, from, ttl: f.ttl - 1, ...(f.hs ? { hs: f.hs } : { d: f.d }) });
+    return;
+  }
+  const peer = peerByInstance(from);
+  if (!peer || !peer.virt || peer.status !== 'active') return;
+  if (f.hs && typeof f.hs === 'object') return onVirtualHs(peer, f.hs);
+  const vs = sessions.get(peer.id);
+  if (typeof f.d !== 'string') return;
+  if (!vs || !vs.virt) {
+    if (Date.now() - (resetSent.get(peer.id) || 0) > 5000) { resetSent.set(peer.id, Date.now()); relaySend(from, { hs: { t: 'rreset' } }); }
+    return;
+  }
+  onFrame(vs, Buffer.from(f.d, 'base64'), true);
 }
 
 function onFrame(sess, raw, isBinary) {
@@ -306,7 +447,11 @@ function onFrame(sess, raw, isBinary) {
   if (raw?.length) stat(peer.id, 'bytes_in', raw.length);
   const f = readFrame(sess, raw, isBinary);
   if (!f) { try { sess.ws.close(4004, 'bad frame'); } catch {} return; }
+  sess.lastRx = Date.now();
   switch (f.t) {
+    case 'rl': if (!sess.virt) onRelay(sess, f); return;
+    case 'vping': sendFrame(sess, { t: 'vpong' }); return;
+    case 'vpong': return;
     case 'ev': {
       if (!f.seq) { handleEvent(peer, f.ev).catch(e => console.warn('[Fed] событие:', e.message)); return; }
       const ack = () => sendFrame(sess, { t: 'ack', seq: f.seq });
@@ -481,14 +626,18 @@ function chatWithPeer(chatId, peer) {
   return !!db.prepare(`SELECT 1 FROM chat_members cm JOIN users u ON u.id = cm.user_id
     WHERE cm.chat_id = ? AND u.is_bot = 2 AND u.fed_instance = ?`).get(chatId, peer.instance_id);
 }
-// Знает ли сервер этого человека: контакт в любую сторону или общий личный чат
+// Есть ли общее пространство между этим человеком (выражение SQL) и нашим localId: пространство, которым владеют несколько серверов
+const SHARED_SPACE = (otherSql, localSql) => `EXISTS (SELECT 1 FROM user_workspaces a JOIN user_workspaces b ON b.workspace_id = a.workspace_id
+  JOIN workspaces w ON w.id = a.workspace_id WHERE w.fed_uid IS NOT NULL AND a.user_id = ${otherSql} AND b.user_id = ${localSql})`;
+// Знает ли сервер этого человека: контакт в любую сторону, общий личный чат или общее пространство
 function isRelated(localId, peer) {
   return !!db.prepare(`SELECT 1 FROM users s WHERE s.is_bot = 2 AND s.fed_instance = ? AND (
       EXISTS (SELECT 1 FROM contacts WHERE owner_id = s.id AND contact_id = ?)
       OR EXISTS (SELECT 1 FROM contacts WHERE owner_id = ? AND contact_id = s.id)
       OR EXISTS (SELECT 1 FROM chat_invites i WHERE i.user_id = s.id AND i.invited_by = ?)
-      OR EXISTS (SELECT 1 FROM chat_members a JOIN chat_members b ON b.chat_id = a.chat_id AND b.user_id = ? WHERE a.user_id = s.id))
-    LIMIT 1`).get(peer.instance_id, localId, localId, localId, localId);
+      OR EXISTS (SELECT 1 FROM chat_members a JOIN chat_members b ON b.chat_id = a.chat_id AND b.user_id = ? WHERE a.user_id = s.id)
+      OR ${SHARED_SPACE('s.id', '?')})
+    LIMIT 1`).get(peer.instance_id, localId, localId, localId, localId, localId);
 }
 function peerOfUser(userId) {
   const u = db.prepare('SELECT is_bot, fed_instance FROM users WHERE id = ?').get(userId);
@@ -499,8 +648,9 @@ function relatedPeers(localId) {
     WHERE p.status = 'active' AND (
       EXISTS (SELECT 1 FROM contacts WHERE owner_id = s.id AND contact_id = ?)
       OR EXISTS (SELECT 1 FROM contacts WHERE owner_id = ? AND contact_id = s.id)
-      OR EXISTS (SELECT 1 FROM chat_members a JOIN chat_members b ON b.chat_id = a.chat_id AND b.user_id = ? WHERE a.user_id = s.id))`)
-    .all(localId, localId, localId);
+      OR EXISTS (SELECT 1 FROM chat_members a JOIN chat_members b ON b.chat_id = a.chat_id AND b.user_id = ? WHERE a.user_id = s.id)
+      OR ${SHARED_SPACE('s.id', '?')})`)
+    .all(localId, localId, localId, localId);
 }
 
 // Создать или обновить «теневого» пользователя. Имя и аватарка берутся из последнего, что прислал его сервер
@@ -656,7 +806,7 @@ function onPin(chatId, msgId, userId, on) { if (isGroupChat(chatId)) groups().on
 function onTyping(chatId, userId) {
   if (isGroupChat(chatId)) return groups().onTyping(chatId, userId);
   const ps = peerAndShadowOfChat(chatId, userId);
-  if (!ps || !spaces.mutualContact(userId, ps.shadow.id)) return;
+  if (!ps || !spaces.canSeePresence(userId, ps.shadow.id)) return;
   sendLive(ps.peer.id, { k: 'typing', from: db.prepare('SELECT username FROM users WHERE id = ?').get(userId).username, to: ps.shadow.fed_login });
 }
 // Статус нашего человека → его взаимным контактам на других серверах
@@ -669,11 +819,13 @@ function onPresence(userId, status, lastSeen, mobile) {
     const peer = peerByInstance(s.fed_instance);
     if (peer) sendLive(peer.id, { k: 'presence', from: me.username, to: s.fed_login, status, last_seen: lastSeen || null, mob: mobile ? 1 : undefined });
   });
+  try { spacesMod().presenceOut(userId, status, lastSeen, mobile); } catch (e) { console.warn('[Fed] пространства:', e.message); }
 }
 // Текущие статусы всех, кто взаимно связан с этим сервером (после подключения и при появлении взаимности)
 function syncPresence(peerId, onlyLocalId) {
   const peer = peerRow(peerId);
   if (!peer || !isOnline(peerId)) return;
+  if (!onlyLocalId) { try { spacesMod().syncPresence(peerId); } catch (e) { console.warn('[Fed] пространства:', e.message); } }
   const rows = db.prepare(`SELECT c1.owner_id AS lid, s.fed_login FROM contacts c1 JOIN contacts c2 ON c2.owner_id = c1.contact_id AND c2.contact_id = c1.owner_id
     JOIN users s ON s.id = c1.contact_id WHERE s.is_bot = 2 AND s.fed_instance = ?`).all(peer.instance_id);
   for (const r of rows) {
@@ -705,8 +857,12 @@ async function handleEvent(peer, ev) {
     case 'rej': return recvReject(peer, ev);
     case 'typing': return recvTyping(peer, ev);
     case 'presence': return recvPresence(peer, ev);
+    case 'spp': return spacesMod().recvPresence(peer, ev);
+    // Общие пространства: всё, что начинается на sp_
     // Группы и комнаты (версия протокола 2): caps и всё, что начинается на g
-    default: if (ev.k === 'caps' || /^g[a-z_]+$/.test(ev.k)) return groups().handle(peer, ev);
+    default:
+      if (/^sp_[a-z_]+$/.test(ev.k)) return spacesMod().handle(peer, ev);
+      if (ev.k === 'caps' || /^g[a-z_]+$/.test(ev.k)) return groups().handle(peer, ev);
   }
 }
 const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
@@ -937,7 +1093,7 @@ function recvReject(peer, ev) {
 }
 function recvTyping(peer, ev) {
   const sh = remoteUser(peer, ev.from), local = findLocalUser(str(ev.to, 64));
-  if (!sh || !local || !spaces.mutualContact(local.id, sh.id)) return;
+  if (!sh || !local || !spaces.canSeePresence(local.id, sh.id)) return;
   const chatId = directChat(local.id, sh.id);
   if (chatId) wsm().sendTo(local.id, { type: 'typing', chat_id: chatId, user_id: sh.id, sender_name: sh.display_name });
 }
@@ -984,7 +1140,7 @@ function previewKey(key) {
   const me = identity();
   if (!me.configured) return { error: 'Сначала задайте идентификатор сервера' };
   if (k.id === me.id) return { error: 'Это ключ вашего собственного сервера' };
-  if (peerByInstance(k.id)) return { error: 'Соединение с этим сервером уже есть' };
+  if (realPeerByInstance(k.id)) return { error: 'Соединение с этим сервером уже есть' };
   return { id: k.id, name: k.name, url: k.url, fp: k.fp };
 }
 // Шаг 1: партнёр называет номер ключа и получает одноразовое значение (живёт минуту)
@@ -1011,8 +1167,9 @@ function acceptConnect(body) {
   const name = String(body.name || id).slice(0, 60);
   if (!inv || inv.used_at || inv.expires_at < Math.floor(Date.now() / 1000)
       || !safeEq(connectProof(inv.secret, body.nonce, id, body.pub, body.url || '', String(body.name || '')), body.proof || '')) return { status: 403, error: 'invite_invalid' };
-  if (peerByInstance(id)) return { status: 409, error: 'exists' };
+  if (realPeerByInstance(id)) return { status: 409, error: 'exists' };
   db.transaction(() => {
+    clearVirtualRow(id);
     db.prepare("INSERT INTO fed_peers (instance_id, name, url, pub, role, status) VALUES (?, ?, ?, ?, 'in', 'active')").run(id, name, url || null, body.pub);
     db.prepare('UPDATE fed_invites SET used_at = unixepoch() WHERE token_hash = ?').run(inv.token_hash);
   })();
@@ -1025,7 +1182,7 @@ async function connectWithKey(key) {
   const me = identity();
   if (!me.configured) return { error: 'Сначала задайте идентификатор сервера' };
   if (k.id === me.id) return { error: 'Это ключ вашего собственного сервера' };
-  if (peerByInstance(k.id)) return { error: 'Соединение с этим сервером уже есть' };
+  if (realPeerByInstance(k.id)) return { error: 'Соединение с этим сервером уже есть' };
   const post = async (path, body) => {
     const res = await fetch(k.url + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(15000), body: JSON.stringify(body) });
     let j = null; try { j = await res.json(); } catch {}
@@ -1043,6 +1200,7 @@ async function connectWithKey(key) {
     // Ответ тоже подтверждается секретом ключа: подставной сервер без него не ответит правильно
     if (!j || j.id !== k.id || j.pub !== k.pub || !safeEq(connectAck(k.secret, nonce, k.pub), j.ack || '')) return { error: 'Ответ партнёра не совпал с ключом. Подключение прервано.' };
   } catch { return { error: 'Не удалось связаться с сервером партнёра. Проверьте адрес и интернет.' }; }
+  clearVirtualRow(k.id);
   const r = db.prepare("INSERT INTO fed_peers (instance_id, name, url, pub, role, status) VALUES (?, ?, ?, ?, 'out', 'active')").run(k.id, k.name, k.url, k.pub);
   const peer = peerRow(r.lastInsertRowid);
   startDialer(peer);
@@ -1054,7 +1212,7 @@ async function connectWithKey(key) {
 // period: day (24 часа по часам), week (7 дней), month (30 дней). Сообщения и файлы берём из messages, объём и отклонённое из fed_stats.
 function statsView(period) {
   flushStats();
-  const peers = db.prepare('SELECT * FROM fed_peers ORDER BY created_at, id').all();
+  const peers = db.prepare('SELECT * FROM fed_peers WHERE virt = 0 ORDER BY created_at, id').all();
   if (!peers.length) return { peers: [] };
   period = ['day', 'week', 'month'].includes(period) ? period : 'day';
   const now = Math.floor(Date.now() / 1000), hourNow = Math.floor(now / 3600) * 3600;
@@ -1100,7 +1258,7 @@ function statsView(period) {
 
 // Сведения для админки
 function peersInfo() {
-  return db.prepare('SELECT * FROM fed_peers ORDER BY created_at, id').all().map(p => ({
+  return db.prepare('SELECT * FROM fed_peers WHERE virt = 0 ORDER BY created_at, id').all().map(p => ({
     id: p.id, instance_id: p.instance_id, name: p.name, url: p.url, role: p.role, status: p.status, fp: fingerprint(p.pub),
     online: isOnline(p.id), proto: p.proto || 0, last_contact_at: p.last_contact_at, created_at: p.created_at, queue: queueSize(p.id),
     people: db.prepare('SELECT COUNT(*) c FROM contacts c JOIN users s ON s.id = c.contact_id WHERE s.is_bot = 2 AND s.fed_instance = ?').get(p.instance_id).c,
@@ -1125,6 +1283,7 @@ function deletePeer(id) {
   try { sessions.get(id)?.ws.close(4000, 'deleted'); } catch {}
   db.prepare('DELETE FROM fed_peers WHERE id = ?').run(id);
   newChatTimes.delete(id);
+  try { spacesMod().onPeerRemoved(p.instance_id); } catch (e) { console.warn('[Fed] пространства:', e.message); }
   return true;
 }
 
@@ -1133,6 +1292,7 @@ function start() {
   purge();
   setInterval(purge, 6 * 3600 * 1000).unref();
   db.prepare("SELECT * FROM fed_peers WHERE role = 'out' AND status = 'active'").all().forEach(startDialer);
+  try { spacesMod().start(); } catch (e) { console.warn('[Fed] пространства:', e.message); }
 }
 // Маршрут /fed для входящих соединений
 function mount(server) {
@@ -1144,10 +1304,10 @@ function mount(server) {
 }
 
 module.exports = {
-  mount, start, statsView, identity, setIdentity, fingerprint, parseAddr, getS, setS,
+  mount, start, statsView, identity, setIdentity, fingerprint, validPub, parseAddr, getS, setS,
   createInvite, previewKey, connectBegin, acceptConnect, connectWithKey, peersInfo, pausePeer, resumePeer, deletePeer,
-  lookupRemote, peerOfUser, peerByInstance, isOnline,
+  lookupRemote, peerOfUser, peerByInstance, realPeerByInstance, peerRow, clearVirtualRow, endVirtual, virtualTick, isOnline,
   onLocalMessage, onGroupMessage, onPin, onEdit, onDelete, onReact, onStatus, onTyping, onPresence, onProfile, onContactAdded, onContactRemoved, afterContactChange,
   // для fedgroups.js
-  enqueue, sendLive, rpc, fetchFile, ensureShadow, remoteUser, shadowByAddr: shadowRow, findLocalUser, avatarVersion, receiveAttachment, receiveAttachments, describeAtt, removeMessageFiles,
+  enqueue, sendLive, rpc, fetchFile, isRelatedTo: isRelated, ensureShadow, remoteUser, shadowByAddr: shadowRow, findLocalUser, avatarVersion, receiveAttachment, receiveAttachments, describeAtt, removeMessageFiles,
 };

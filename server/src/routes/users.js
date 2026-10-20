@@ -196,6 +196,7 @@ router.delete('/:id', authMiddleware, adminMiddleware, (req, res) => {
     db.prepare('UPDATE chats SET created_by = NULL WHERE created_by = ?').run(userId);
     db.prepare('DELETE FROM users WHERE id = ?').run(userId);
   })();
+  try { require('../fedspaces').membersChanged(); } catch {}   // люди других серверов уберут его из общих пространств
   sendTo(userId, { type: 'force_logout' });
   try { fs.unlinkSync(path2.join(AVATAR_DIR, `${userId}.jpg`)); } catch {}
   peers.forEach(uid => sendTo(uid, { type: 'reload_chats' }));

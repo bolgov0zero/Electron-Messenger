@@ -893,6 +893,55 @@ tbody tr:hover td{background:var(--c-surface2)}
 .fd-hint{font-size:12px;color:var(--c-text2);line-height:1.45}
 #fd-body{display:flex;flex-direction:column;gap:12px}
 .fd-ta{width:100%;min-height:96px;border:1px solid var(--border-input);border-radius:9px;background:var(--bg-input);color:var(--c-text);padding:9px 11px;font:12px var(--f-mono);resize:vertical}
+/* ── Общие пространства и карта федерации ── */
+.wsf-offer{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid color-mix(in srgb,var(--c-primary) 40%,var(--c-border))}
+.wsf-ot{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.wsf-ot b{font-size:13.5px}.wsf-ot span{font-size:12.5px;color:var(--c-text2);line-height:1.45}
+.wsf-ask{display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--c-border);font-size:12.5px}.wsf-ask span{flex:1;min-width:0}
+.wsf-sr{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--c-border)}.wsf-sr:first-child{border-top:0}
+.wsf-sr .fd-dot{flex:none}.wsf-sr>div{flex:1;min-width:0}.wsf-sr b{font-size:13px}.wsf-sr code{font:600 11px var(--f-mono);color:var(--c-text2);margin-left:6px}
+.wsf-sr .d{display:block;font-size:12px;color:var(--c-text2);margin-top:2px}
+.wsf-inv{display:flex;gap:8px;align-items:center}.wsf-inv select{flex:1;min-width:0;height:34px;background:var(--bg-input);color:var(--c-text);border:1px solid var(--border-input);border-radius:9px;padding:0 10px;font-family:var(--f-ui);font-size:13px}
+.fm-tabs{display:inline-flex;gap:2px;padding:3px;background:var(--c-surface2);border-radius:10px;align-self:flex-start}
+.fm-tabs button{appearance:none;border:0;background:transparent;color:var(--c-text2);font:500 13px var(--f-ui);padding:6px 14px;border-radius:8px;cursor:pointer}
+.fm-tabs button[aria-pressed="true"]{background:var(--c-surface);color:var(--c-text);font-weight:600;box-shadow:0 1px 2px rgba(18,26,36,.12)}
+.fm{display:flex;gap:16px;align-items:flex-start}
+.fm-main{flex:1;min-width:0;overflow:hidden}
+.fm-tb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--c-border)}
+.fm-tb b{font-size:14px;margin-right:6px}
+.fm-pill{appearance:none;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font:600 12.5px var(--f-ui);padding:5px 11px;border-radius:99px;background:var(--c-surface);color:var(--c-text);border:1px solid var(--c-border)}
+.fm-pill[aria-pressed="true"]{background:var(--c-text);color:var(--c-surface);border-color:var(--c-text)}
+.fm-pill i{width:8px;height:8px;border-radius:50%}
+.fm-zoom{margin-left:auto;display:flex;gap:6px}
+.fm-zoom button{appearance:none;cursor:pointer;min-width:30px;height:30px;border-radius:8px;border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text);font:600 14px var(--f-ui)}
+.fm-stage{position:relative;height:min(62vh,600px);min-height:380px;overflow:hidden;cursor:grab;touch-action:none;user-select:none;background-color:var(--c-surface2);background-image:radial-gradient(color-mix(in srgb,var(--c-text2) 30%,transparent) 1px,transparent 1px);background-size:22px 22px}
+.fm-stage.pan{cursor:grabbing}
+.fm-world{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0}
+.fm-svg{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+.fm-n{position:absolute;width:188px;height:64px;box-sizing:border-box;padding:0 12px;display:flex;align-items:center;gap:10px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:14px;box-shadow:0 1px 2px rgba(18,26,36,.06),0 4px 12px rgba(18,26,36,.05);cursor:pointer;touch-action:none}
+.fm-n.sel{border:2px solid var(--c-primary);padding:0 11px;box-shadow:0 0 0 4px color-mix(in srgb,var(--c-primary) 18%,transparent),0 6px 18px rgba(18,26,36,.10)}
+.fm-n.dim{opacity:.38}
+.fm-n.drag{cursor:grabbing;z-index:5}
+.fm-ni{position:relative;flex:none;width:36px;height:36px;border-radius:10px;background:var(--c-primary-dim);color:var(--c-primary);display:flex;align-items:center;justify-content:center}
+.fm-n.off .fm-ni{background:var(--c-surface2);color:var(--c-text2)}
+.fm-ni svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fm-nd{position:absolute;right:-3px;bottom:-3px;width:10px;height:10px;border-radius:50%;background:var(--c-green);border:2px solid var(--c-surface)}
+.fm-n.off .fm-nd{background:var(--c-muted)}.fm-n.unk .fm-nd{background:var(--c-orange)}
+.fm-nt{min-width:0;display:flex;flex-direction:column;gap:2px}.fm-nt b{font-size:14px;font-weight:600;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fm-nt span{font-size:12px;line-height:16px;color:var(--c-text2);display:flex;align-items:center;gap:6px;white-space:nowrap}.fm-nt span i{width:7px;height:7px;border-radius:50%;flex:none}
+.fm-me{position:absolute;top:-9px;right:12px;font:700 10.5px var(--f-ui);letter-spacing:.04em;line-height:16px;padding:0 7px;border-radius:99px;background:var(--c-text);color:var(--c-surface)}
+.fm-el{position:absolute;width:100px;height:20px;box-sizing:border-box;text-align:center;font:600 11px var(--f-ui);line-height:18px;border-radius:10px;background:var(--c-surface);border:1px solid var(--c-border);color:var(--c-text2);pointer-events:none}
+.fm-el.bad{color:var(--c-red-text)}
+.fm-lg{position:absolute;left:14px;bottom:12px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:7px 12px;background:color-mix(in srgb,var(--c-surface) 92%,transparent);border:1px solid var(--c-border);border-radius:10px;font-size:12px;color:var(--c-text2);pointer-events:none}
+.fm-lg span{display:flex;align-items:center;gap:7px}.fm-lg i{display:block;width:22px;height:3px;border-radius:2px}
+.fm-side{width:330px;flex:none;display:flex;flex-direction:column;gap:12px}
+.fm-sh{padding:14px 16px 12px;display:flex;flex-direction:column;gap:3px}.fm-sh b{font-size:15px}.fm-sh code{font:500 11.5px var(--f-mono);color:var(--c-text2)}
+.fm-f{display:flex;justify-content:space-between;gap:16px;padding:7px 16px;border-top:1px solid var(--c-border);font-size:12.5px;line-height:18px}.fm-f span:first-child{flex:none;color:var(--c-text2)}.fm-f span:last-child{min-width:0;text-align:right;font-weight:600}
+.fm-f .ok{color:var(--c-green-text)}.fm-f .bad{color:var(--c-red-text)}.fm-f .warn{color:var(--c-orange-text)}
+.fm-sp{border-top:1px solid var(--c-border);padding:10px 16px 12px;display:flex;flex-direction:column;gap:8px}
+.fm-sp>span{font-size:12px;color:var(--c-text2)}
+.fm-sp div{display:flex;align-items:center;gap:10px;font-size:12.5px}.fm-sp i{flex:none;width:10px;height:10px;border-radius:3px}.fm-sp b{flex:1;min-width:0;font-weight:600}
+.fm-ac{border-top:1px solid var(--c-border);padding:12px 16px;display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:1000px){.fm{flex-direction:column}.fm-side{width:100%}}
 
 .modal.mdl-log{width:min(780px,calc(100vw - 24px))}
 .mdl-filters{display:flex;flex-wrap:wrap;gap:8px;padding:10px 20px;border-bottom:1px solid var(--c-border)}
@@ -7460,10 +7509,11 @@ function setTopbarActions(html) {
 /* ── ПРОСТРАНСТВА ── */
 // Пространство только объединяет людей: люди с общим пространством друг друга видят (человек может состоять в нескольких),
 // без общего не видят (связать их можно контактами, группами и комнатами). Комнаты к пространству не привязаны.
-const WS = { list: [], editId: null };
+const WS = { list: [], editId: null, offers: [] };
 async function wsLoad() {
-  const r = await api('GET', '/api/admin/workspaces');
+  const [r, o] = await Promise.all([api('GET', '/api/admin/workspaces'), api('GET', '/api/admin/workspaces/fed/offers')]);
   if (Array.isArray(r)) WS.list = r;
+  WS.offers = Array.isArray(o) ? o : [];
   const nb = document.getElementById('nb-workspaces');
   if (nb && Array.isArray(r)) nb.textContent = r.length;
   return WS.list;
@@ -7474,17 +7524,104 @@ async function renderWorkspaces() {
   await wsLoad();
   if (currentPage !== 'workspaces') return;
   wsRender();
+  clearInterval(WS.timer);
+  WS.timer = setInterval(async () => {
+    if (currentPage !== 'workspaces') { clearInterval(WS.timer); return; }
+    if (document.querySelector('#modal-fed.open, #modal-ws.open') || document.activeElement?.closest?.('#page-body input')) return;
+    await wsLoad(); if (currentPage === 'workspaces') wsRender();
+  }, 10000);
+}
+function wsFedBadge(w) {
+  if (!w.fed?.shared) return '';
+  const act = w.fed.servers.filter(s => s.state === 'active').length;
+  return `<span class="badge badge-blue" title="${w.fed.is_host ? 'Вы хозяин пространства' : 'Хозяин: ' + esc(w.fed.servers.find(s => s.host)?.name || w.fed.host)}">Общее · ${act} ${uxPlural(act, 'сервер', 'сервера', 'серверов')}</span>`;
 }
 function wsRender() {
   if (currentPage !== 'workspaces') return;
+  const nm = (w, id) => w.fed.servers.find(s => s.id === id)?.name || id;
   document.getElementById('page-body').innerHTML = `<div class="ux-page">
-    <div><div style="font-size:17px;font-weight:700">Пространства</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Люди видят друг друга, если у них есть общее пространство. Человек может состоять в нескольких. Если общего нет, связать их можно через контакты, группы и комнаты. Пространства человека выбираются в его профиле.</div></div>
-    ${WS.list.map(w => `<div class="card"><div class="mdl-card"><div class="mdl-ico" style="font-size:15px;font-weight:700">${esc(initials(w.name))}</div>
+    <div><div style="font-size:17px;font-weight:700">Пространства</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Люди видят друг друга, если у них есть общее пространство. Человек может состоять в нескольких. Если общего нет, связать их можно через контакты, группы и комнаты. Пространства человека выбираются в его профиле. Пространство можно сделать общим для нескольких серверов федерации: люди всех серверов в нём видят друг друга.</div></div>
+    ${WS.offers.map(o => `<div class="card wsf-offer"><div class="wsf-ot"><b>«${esc(o.from_name)}» предлагает общее пространство «${esc(o.name)}»</b><span>Хозяин: ${esc(o.host_name)}. Серверы в пространстве: ${o.servers.map(esc).join(', ')}. Ваши люди увидят людей этих серверов, а они ваших, но только тех, кого вы сами добавите в это пространство. Название пространства задаёт хозяин.</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="wsOffer('${esc(o.uid)}',false)">Отклонить</button><button class="btn ux-solid btn-sm" onclick="wsOffer('${esc(o.uid)}',true)">Принять</button></div>`).join('')}
+    ${WS.list.map(w => { const mirror = w.fed?.shared && !w.fed.is_host; const fedOn = !!w.fed?.shared;
+      return `<div class="card"><div class="mdl-card"><div class="mdl-ico" style="font-size:15px;font-weight:700">${esc(initials(w.name))}</div>
       <div class="mdl-tx"><b>${esc(w.name)}</b><span>${w.users} ${uxPlural(w.users, 'человек', 'человека', 'человек')} · создано ${fmtDate(w.created_at)}</span></div>
       ${w.is_default ? '<span class="badge badge-green">по умолчанию</span>' : w.users ? '' : '<span class="badge badge-gray">пустое</span>'}
-      <button class="btn btn-ghost btn-sm" onclick="wsOpen(${w.id})">Изменить</button>
-      <button class="btn btn-ghost btn-sm" ${w.is_default || w.users ? 'disabled' : ''} title="${w.is_default ? 'Основное пространство удалить нельзя' : w.users ? 'Сначала переведите людей в другое пространство' : ''}" onclick="wsDelete(${w.id})">Удалить</button></div></div>`).join('')}
+      ${wsFedBadge(w)}
+      ${mirror ? '' : `<label class="toggle-switch" title="Общее пространство: люди нескольких серверов федерации видят друг друга"><input type="checkbox" ${fedOn ? 'checked' : ''} onchange="wsShared(${w.id}, this.checked)" aria-label="Общее пространство"><div class="toggle-track"><div class="toggle-thumb"></div></div></label><span style="font-size:12px;color:var(--c-text2)">Общее</span>`}
+      ${fedOn ? `<button class="btn btn-ghost btn-sm" onclick="wsSrv(${w.id})">Серверы</button>` : ''}
+      <button class="btn btn-ghost btn-sm" ${mirror ? 'disabled title="Название общего пространства задаёт его хозяин"' : ''} onclick="wsOpen(${w.id})">Изменить</button>
+      <button class="btn btn-ghost btn-sm" ${w.is_default || w.users || fedOn ? 'disabled' : ''} title="${w.is_default ? 'Основное пространство удалить нельзя' : fedOn ? 'Пространство общее' : w.users ? 'Сначала переведите людей в другое пространство' : ''}" onclick="wsDelete(${w.id})">Удалить</button></div>
+      ${(w.fed?.asks || []).map(a => `<div class="wsf-ask"><span>Сервер «${esc(nm(w, a.proposer))}» просит добавить в пространство сервер «${esc(a.target_name)}»${a.approved ? ' (одобрено, ждём ответа)' : ''}</span>${a.approved ? '' : `<button class="btn btn-ghost btn-sm" onclick="wsAsk(${a.id},false)">Отклонить</button><button class="btn ux-solid btn-sm" onclick="wsAsk(${a.id},true)">Одобрить</button>`}</div>`).join('')}</div>`; }).join('')}
   </div>`;
+}
+async function wsOffer(uid, accept) {
+  const r = await api('POST', `/api/admin/workspaces/fed/offers/${encodeURIComponent(uid)}/${accept ? 'accept' : 'decline'}`);
+  if (!r || r.error) { toast(esc(r?.error || 'Не удалось'), 'error'); return; }
+  toast(accept ? 'Пространство принято. Добавьте в него своих людей в их профилях.' : 'Предложение отклонено', 'success');
+  await wsLoad(); if (currentPage === 'workspaces') wsRender();
+}
+async function wsAsk(id, ok) {
+  const r = await api('POST', `/api/admin/workspaces/fed/asks/${id}/${ok ? 'approve' : 'decline'}`);
+  if (!r || r.error) { toast(esc(r?.error || 'Не удалось'), 'error'); return; }
+  toast(ok ? 'Одобрено: сервер получит приглашение' : 'Отклонено', 'success');
+  await wsLoad(); if (currentPage === 'workspaces') wsRender();
+}
+function wsShared(id, on) {
+  const w = WS.list.find(x => x.id === id); if (!w) return;
+  const go = async () => {
+    const r = await api('POST', `/api/admin/workspaces/${id}/shared`, { on });
+    if (!r || r.error) { toast(esc(r?.error || 'Не удалось'), 'error'); }
+    else toast(on ? 'Пространство стало общим. Теперь пригласите серверы кнопкой «Серверы».' : 'Пространство больше не общее', 'success');
+    await wsLoad(); if (currentPage === 'workspaces') wsRender();
+  };
+  if (on) go();
+  else confirm('Выключить «Общее»?', `Люди других серверов покинут пространство «${esc(w.name)}», у них оно перестанет быть общим. У вас оно останется обычным, ваши люди в нём сохранятся.`, go);
+  if (!on) wsRender();
+}
+function wsSrv(id) {
+  const w = WS.list.find(x => x.id === id); if (!w?.fed?.shared) return;
+  WS.srvId = id;
+  const f = w.fed, mine = f.is_host;
+  const stateWord = s => s.state === 'offered' ? '<span class="badge badge-gray">приглашён</span>' : s.state === 'asked' ? '<span class="badge badge-gray">ждёт одобрения хозяина</span>' : '';
+  const rows = f.servers.map(s => {
+    const par = f.servers.find(x => x.id === s.parent);
+    return `<div class="wsf-sr"><span class="fd-dot ${s.state !== 'active' ? 'off' : s.online ? '' : 'warn'}"></span><div><b>${esc(s.name)}</b><code>${esc(s.id)}</code> ${s.host ? '<span class="badge badge-blue">хозяин</span>' : ''} ${s.self ? '<span class="badge badge-green">вы</span>' : ''} ${stateWord(s)}
+      <span class="d">${s.state === 'active' ? `${s.people} ${fdPlural(s.people)}${s.online ? '' : ' · нет связи'}` : ''}${par ? ` · подключён через «${esc(par.name)}»` : ''}</span></div>
+      ${mine && !s.self ? `<button class="btn btn-ghost btn-sm" onclick="wsRemove(${id},'${esc(s.id)}')">Убрать</button>` : ''}</div>`;
+  }).join('');
+  const cands = (w.candidates || []);
+  const inv = cands.length ? `<div class="fd-hint" style="margin-top:4px">${mine ? 'Пригласить сервер' : 'Попросить хозяина добавить сервер'} (нужно прямое подключение к нему в разделе «Федерации»). ${mine ? '' : 'Расширять пространство дальше можно только с согласия хозяина.'}</div>
+    <div class="wsf-inv"><select id="wsf-cand" aria-label="Сервер">${cands.map(c => `<option value="${esc(c.id)}" ${c.ok ? '' : 'disabled'}>${esc(c.name)} (${esc(c.id)})${c.ok ? '' : ' — нужно обновить сервер'}</option>`).join('')}</select><button class="btn ux-solid btn-sm" onclick="wsInvite(${id})">${mine ? 'Пригласить' : 'Попросить'}</button></div>`
+    : '<div class="fd-hint">Нет серверов, которых можно добавить: подключите ещё сервер в разделе «Федерации».</div>';
+  fdModal(`Серверы пространства «${w.name}»`, `<div>${rows}</div><div class="fd-note"><span><b>i</b></span><div>Каждый сервер ведёт состав пространства сам: вы добавляете и убираете только своих людей в их профилях. Остальные серверы видят и вас, и ваших.</div></div>${inv}`,
+    `${mine ? '' : `<button class="btn btn-ghost" style="color:var(--c-red-text)" onclick="wsLeave(${id})">Выйти из пространства</button>`}<button class="btn ux-solid" onclick="closeModal('modal-fed')">Закрыть</button>`);
+}
+async function wsInvite(id) {
+  const inst = document.getElementById('wsf-cand')?.value; if (!inst) return;
+  const r = await api('POST', `/api/admin/workspaces/${id}/servers`, { instance: inst });
+  if (!r || r.error) { toast(esc(r?.error || 'Не удалось'), 'error'); return; }
+  toast(r.asked ? 'Просьба отправлена хозяину пространства' : 'Приглашение отправлено', 'success');
+  await wsLoad(); if (currentPage === 'workspaces') wsRender(); wsSrv(id);
+}
+function wsRemove(id, inst) {
+  const w = WS.list.find(x => x.id === id); const s = w?.fed?.servers.find(x => x.id === inst); if (!s) return;
+  confirm('Убрать сервер из пространства?', `«${esc(s.name)}» и все серверы, подключённые через него, покинут пространство «${esc(w.name)}». Их люди перестанут быть здесь видны, переписки сохранятся.`, async () => {
+    const r = await api('DELETE', `/api/admin/workspaces/${id}/servers/${encodeURIComponent(inst)}`);
+    if (!r || r.error) { toast(esc(r?.error || 'Не удалось'), 'error'); return; }
+    toast('Сервер убран', 'success');
+    await wsLoad(); if (currentPage === 'workspaces') wsRender(); wsSrv(id);
+  });
+}
+function wsLeave(id) {
+  const w = WS.list.find(x => x.id === id); if (!w) return;
+  confirm('Выйти из общего пространства?', `Люди других серверов перестанут быть видны в «${esc(w.name)}», а ваши люди перестанут быть видны им. У вас пространство останется обычным.`, async () => {
+    const me = FD.me?.id || (await api('GET', '/api/admin/federation'))?.me?.id;
+    const r = await api('DELETE', `/api/admin/workspaces/${id}/servers/${encodeURIComponent(me)}`);
+    if (!r || r.error) { toast(esc(r?.error || 'Не удалось'), 'error'); return; }
+    closeModal('modal-fed'); toast('Вы вышли из пространства', 'success');
+    await wsLoad(); if (currentPage === 'workspaces') wsRender();
+  });
 }
 function wsOpen(id) {
   WS.editId = id || null;
@@ -7601,7 +7738,7 @@ function fdvPeriod(p) { FDV.period = p; try { localStorage.setItem('fdv-period',
 /* ── ФЕДЕРАЦИИ ── */
 // Соединения с другими серверами: люди оттуда появляются в «Контактах» и пишут в личные чаты. Через соединение
 // нельзя управлять чужим сервером: ни пользователями, ни настройками, ни обновлениями.
-const FD = { me: null, peers: [], rules: { new_per_hour: 20, invites_per_hour: 20, groups_in: true }, menu: null, timer: null };
+const FD = { me: null, peers: [], rules: { new_per_hour: 20, invites_per_hour: 20, groups_in: true }, menu: null, timer: null, tab: 'list' };
 const fdPlural = (n) => uxPlural(n, 'человек', 'человека', 'человек');
 async function fdLoad() {
   const r = await api('GET', '/api/admin/federation');
@@ -7612,13 +7749,16 @@ async function fdLoad() {
 }
 async function renderFederation() {
   setTopbarActions('');
+  clearInterval(FM.timer);
   document.getElementById('page-body').innerHTML = `<div class="ux-page"><div class="ux-empty">Загрузка…</div></div>`;
   await fdLoad();
   if (currentPage !== 'federation') return;
+  if (FD.tab === 'map') { renderMap(); return; }
   fdRender();
   clearInterval(FD.timer);
   FD.timer = setInterval(async () => {
     if (currentPage !== 'federation') { clearInterval(FD.timer); return; }
+    if (FD.tab === 'map') return;
     const busy = document.querySelector('#modal-fed.open') || FD.menu !== null || document.activeElement?.closest?.('#page-body input');
     if (busy) return;
     await fdLoad(); if (currentPage === 'federation') fdRender();
@@ -7631,7 +7771,8 @@ function fdRender() {
     ? `<div class="fd-inl"><div class="ua-inp"><input class="fd-mono" value="${esc(me.id)}" readonly aria-label="Идентификатор"></div><button class="btn btn-ghost btn-sm" onclick="fdCopy('${esc(me.id)}','Идентификатор скопирован')">Копировать</button></div>`
     : `<div class="fd-inl"><div class="ua-inp"><input class="fd-mono" id="fd-id" maxlength="32" placeholder="например, logist" autocomplete="off" aria-label="Идентификатор" onkeydown="if(event.key==='Enter')fdSaveId()"></div><button class="btn ux-solid btn-sm" onclick="fdSaveId()">Задать</button></div>`;
   document.getElementById('page-body').innerHTML = `<div class="ux-page">
-    <div><div style="font-size:17px;font-weight:700">Федерации</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Соединения с другими серверами. Люди оттуда добавляются в контакты по адресу «@сервер:логин» и пишут в личные чаты.</div></div>
+    <div><div style="font-size:17px;font-weight:700">Федерации</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Соединения с другими серверами. Люди оттуда добавляются в контакты по адресу «@сервер:логин» и пишут в личные чаты. Пространство можно сделать общим для нескольких серверов: на странице «Пространства».</div></div>
+    ${fdTabs()}
     <div class="card">
       <div class="fd-head">Этот сервер <small>как он называется для администраторов партнёров и в адресах ваших людей</small></div>
       <div class="fd-row"><div><b>Имя системы</b><span class="d">Видят администраторы подключённых серверов в списке соединений. Обычным людям название не показывается.</span></div>
@@ -7760,6 +7901,212 @@ function fdDelete(i) {
     fdRender();
     const nb = document.getElementById('nb-federation'); if (nb) nb.textContent = FD.peers.length;
   });
+}
+
+/* ── Карта федерации ── */
+// Серверы-узлы и соединения-линии: прямые подключения и общие пространства. Узлы можно двигать (раскладка запоминается в браузере),
+// колесом мыши масштабировать, фон тянуть. Карта у всех серверов пространства одна: хозяин собирает дерево и рассылает его.
+const FM = { data: null, pos: {}, sel: null, space: 'all', k: 1, tx: 20, ty: 20, timer: null, drag: null, fitted: false };
+try { FM.pos = JSON.parse(localStorage.getItem('fm-pos') || '{}') || {}; } catch {}
+const FM_W = 188, FM_H = 64;
+const FM_COL = ['var(--dv-c1)', 'var(--dv-c2)', 'var(--dv-c3)', 'var(--dv-c5)', 'var(--dv-c4)', '#12a672'];
+const FM_SRV = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>';
+function fdTabs() {
+  return `<div class="fm-tabs" role="tablist"><button type="button" aria-pressed="${FD.tab !== 'map'}" onclick="fdTab('list')">Подключения</button><button type="button" aria-pressed="${FD.tab === 'map'}" onclick="fdTab('map')">Карта</button></div>`;
+}
+function fdTab(t) {
+  FD.tab = t; FD.menu = null;
+  clearInterval(FM.timer);
+  if (t === 'map') { renderMap(); } else fdRender();
+}
+async function renderMap() {
+  if (currentPage !== 'federation') return;
+  document.getElementById('page-body').innerHTML = `<div class="ux-page"><div><div style="font-size:17px;font-weight:700">Федерации</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Карта подключений и общих пространств. Серверы можно двигать, колесо мыши меняет масштаб, фон двигается перетаскиванием.</div></div>${fdTabs()}<div class="ux-empty">Загрузка…</div></div>`;
+  await fmLoad();
+  if (currentPage !== 'federation' || FD.tab !== 'map') return;
+  fmPage();
+  clearInterval(FM.timer);
+  FM.timer = setInterval(async () => {
+    if (currentPage !== 'federation' || FD.tab !== 'map') { clearInterval(FM.timer); return; }
+    if (FM.drag || document.hidden || document.querySelector('#modal-fed.open')) return;
+    await fmLoad(); fmDraw();
+  }, 5000);
+}
+async function fmLoad() {
+  const r = await api('GET', '/api/admin/federation/map');
+  if (r && !r.error) { FM.data = r; if (!FM.sel || !r.nodes.some(n => n.id === FM.sel)) FM.sel = r.me; }
+}
+// Начальная раскладка: слои по удалённости от нашего сервера
+function fmDefaultPos(d) {
+  const adj = {}; d.nodes.forEach(n => { adj[n.id] = []; });
+  d.edges.forEach(e => { adj[e.a]?.push(e.b); adj[e.b]?.push(e.a); });
+  const depth = { [d.me]: 0 }, q = [d.me];
+  while (q.length) { const u = q.shift(); (adj[u] || []).forEach(v => { if (!(v in depth)) { depth[v] = depth[u] + 1; q.push(v); } }); }
+  const layers = {};
+  d.nodes.forEach(n => { const dp = n.id in depth ? depth[n.id] : 0; (layers[dp] = layers[dp] || []).push(n.id); });
+  const out = {};
+  Object.keys(layers).forEach(k => layers[k].forEach((id, i) => { out[id] = { x: 30 + k * 250, y: 40 + i * 104 + (k % 2) * 30 }; }));
+  return out;
+}
+const fmP = id => FM.pos[id] || FM._def?.[id] || { x: 0, y: 0 };
+function fmRoute(d) {
+  const adj = {}; d.nodes.forEach(n => { adj[n.id] = []; });
+  d.edges.forEach(e => { adj[e.a]?.push({ to: e.b, e }); adj[e.b]?.push({ to: e.a, e }); });
+  const prev = { [d.me]: null }, q = [d.me];
+  while (q.length) { const u = q.shift(); (adj[u] || []).forEach(x => { if (!(x.to in prev)) { prev[x.to] = { from: u, e: x.e }; q.push(x.to); } }); }
+  const ids = [], edges = new Set();
+  if (FM.sel && FM.sel !== d.me && FM.sel in prev) { let c = FM.sel; while (c !== d.me) { ids.unshift(c); edges.add(prev[c].e); c = prev[c].from; } ids.unshift(d.me); }
+  return { ids, edges };
+}
+function fmPage() {
+  const d = FM.data;
+  if (!d?.configured) {
+    document.getElementById('page-body').innerHTML = `<div class="ux-page"><div><div style="font-size:17px;font-weight:700">Федерации</div></div>${fdTabs()}<div class="card"><div class="fd-empty"><div><b>Федерация не настроена</b><span>Задайте идентификатор сервера на вкладке «Подключения».</span></div></div></div></div>`;
+    return;
+  }
+  document.getElementById('page-body').innerHTML = `<div class="ux-page"><div><div style="font-size:17px;font-weight:700">Федерации</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Карта подключений и общих пространств. Серверы можно двигать, колесо мыши меняет масштаб, фон двигается перетаскиванием.</div></div>${fdTabs()}
+    <div class="fm"><div class="card fm-main"><div class="fm-tb" id="fm-tb"></div><div class="fm-stage" id="fm-stage"><div class="fm-world" id="fm-world"></div><div class="fm-lg"><span><i style="background:var(--c-primary)"></i>в сети</span><span><i style="background:repeating-linear-gradient(90deg,var(--c-muted) 0 7px,transparent 7px 13px)"></i>нет связи</span><span><i style="height:5px;background:var(--c-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--c-primary) 20%,transparent)"></i>маршрут до выбранного</span></div></div></div>
+    <aside class="fm-side" id="fm-side"></aside></div></div>`;
+  const st = document.getElementById('fm-stage');
+  st.addEventListener('pointerdown', fmDown);
+  st.addEventListener('pointermove', fmMove);
+  st.addEventListener('pointerup', fmUp);
+  st.addEventListener('pointercancel', fmUp);
+  st.addEventListener('wheel', fmWheel, { passive: false });
+  FM.fitted = false;
+  fmDraw();
+  fmFit();
+}
+function fmDraw() {
+  const d = FM.data, world = document.getElementById('fm-world');
+  if (!d || !world) return;
+  FM._def = fmDefaultPos(d);
+  const route = fmRoute(d);
+  const spIdx = {}; d.spaces.forEach((s, i) => { spIdx[s.uid] = i; });
+  const inSp = (uids) => FM.space === 'all' || uids.includes(FM.space);
+  // линии
+  let svg = '', labels = '';
+  d.edges.forEach(e => {
+    const a = fmP(e.a), b = fmP(e.b), ax = a.x + FM_W / 2, ay = a.y + FM_H / 2, bx = b.x + FM_W / 2, by = b.y + FM_H / 2;
+    const on = route.edges.has(e), vis = FM.space === 'all' || e.spaces.includes(FM.space) || (!e.spaces.length && FM.space === 'all');
+    const cols = e.spaces.length ? (FM.space === 'all' ? e.spaces : [FM.space]).map(u => FM_COL[spIdx[u] % FM_COL.length]) : ['var(--c-primary)'];
+    const w = on ? 5 : 3, op = vis ? (route.ids.length && !on ? 0.6 : 1) : 0.2;
+    const dash = e.on === false ? 'stroke-dasharray="7 6"' : '';
+    const col = e.on === false ? 'var(--c-muted)' : cols[0];
+    if (on) svg += `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="var(--c-primary)" stroke-opacity=".22" stroke-width="${w + 6}" stroke-linecap="round"/>`;
+    svg += `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="${col}" stroke-width="${w}" stroke-linecap="round" ${dash} opacity="${op}"/>`;
+    if (e.on !== false && cols.length > 1) svg += `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="${cols[1]}" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="12 12" opacity="${op}"/>`;
+    const lab = e.on === false ? 'нет связи' : e.on === null ? 'нет данных' : (e.spaces.length ? e.spaces.length + ' ' + uxPlural(e.spaces.length, 'пространство', 'пространства', 'пространств') : 'прямое');
+    labels += `<div class="fm-el${e.on === false ? ' bad' : ''}" style="left:${(ax + bx) / 2 - 50}px;top:${(ay + by) / 2 - 10}px;opacity:${op}">${lab}</div>`;
+  });
+  // узлы
+  const nodes = d.nodes.map(n => {
+    const p = fmP(n.id), sel = n.id === FM.sel, dim = FM.space !== 'all' && !n.spaces.some(s => s.uid === FM.space);
+    const cls = 'fm-n' + (sel ? ' sel' : '') + (dim ? ' dim' : '') + (n.online === false ? ' off' : n.online === null ? ' unk' : '') + (FM.drag?.id === n.id ? ' drag' : '');
+    const sp = FM.space === 'all' ? n.spaces.map(s => `<i style="background:${FM_COL[spIdx[s.uid] % FM_COL.length]}"></i>`).join('') : '';
+    const sub = n.online === false ? 'нет связи' : n.online === null ? 'нет данных' : (FM.space !== 'all' ? (n.spaces.find(s => s.uid === FM.space)?.people ?? 0) + ' в пространстве' : n.people ? n.people + ' ' + fdPlural(n.people) : 'без пространств');
+    return `<div class="${cls}" data-id="${esc(n.id)}" style="left:${p.x}px;top:${p.y}px"><span class="fm-ni">${FM_SRV}<span class="fm-nd"></span></span><span class="fm-nt"><b>${esc(n.name)}</b><span>${esc(sub)}${sp}</span></span>${n.self ? '<span class="fm-me">ВЫ</span>' : ''}</div>`;
+  }).join('');
+  world.style.transform = `translate(${FM.tx}px,${FM.ty}px) scale(${FM.k})`;
+  world.innerHTML = `<svg class="fm-svg" width="1" height="1">${svg}</svg>${labels}${nodes}`;
+  // панель инструментов
+  const tb = document.getElementById('fm-tb');
+  if (tb && !tb.dataset.k) {
+    tb.dataset.k = '1';
+  }
+  if (tb) tb.innerHTML = `<b>Карта подключений</b>${d.spaces.length ? `<button type="button" class="fm-pill" aria-pressed="${FM.space === 'all'}" onclick="fmSpace('all')">Все</button>${d.spaces.map((s, i) => `<button type="button" class="fm-pill" aria-pressed="${FM.space === s.uid}" onclick="fmSpace('${esc(s.uid)}')"><i style="background:${FM_COL[i % FM_COL.length]}"></i>${esc(s.name)}</button>`).join('')}` : ''}
+    <div class="fm-zoom"><button type="button" aria-label="Уменьшить" onclick="fmZoom(1/1.25)">−</button><button type="button" aria-label="Увеличить" onclick="fmZoom(1.25)">+</button><button type="button" style="padding:0 10px;font-size:12.5px" onclick="fmReset()">Сбросить раскладку</button><button type="button" style="padding:0 10px;font-size:12.5px" onclick="fmFit()">Вместить</button></div>`;
+  fmSide(d, route);
+}
+function fmSide(d, route) {
+  const box = document.getElementById('fm-side'); if (!box) return;
+  const n = d.nodes.find(x => x.id === FM.sel) || d.nodes[0]; if (!n) { box.innerHTML = ''; return; }
+  const spIdx = {}; d.spaces.forEach((s, i) => { spIdx[s.uid] = i; });
+  const status = n.self ? 'это ваш сервер' : n.paused ? 'приостановлено' : n.online === true ? 'в сети' : n.online === false ? 'нет связи' : 'нет данных';
+  const stc = n.self ? '' : n.online === true ? 'ok' : n.online === false ? 'bad' : 'warn';
+  const names = route.ids.map(id => d.nodes.find(x => x.id === id)?.name || id);
+  const f = [`<div class="fm-f"><span>Статус</span><span class="${stc}">${status}</span></div>`, `<div class="fm-f"><span>Людей в общих пространствах</span><span>${n.people}</span></div>`];
+  if (!n.self) {
+    f.push(`<div class="fm-f"><span>Канал</span><span>${n.direct ? 'напрямую' : route.ids.length ? 'через ' + (route.ids.length - 2) + ' ' + uxPlural(route.ids.length - 2, 'сервер', 'сервера', 'серверов') + ', шифруется сквозным' : '—'}</span></div>`);
+    if (route.ids.length && !n.direct) f.push(`<div class="fm-f"><span>Маршрут</span><span>${names.map(esc).join(' → ')}</span></div>`);
+    f.push(`<div class="fm-f"><span>Ключ</span><span class="${n.verified ? 'ok' : 'warn'}">${n.direct ? 'проверен при подключении' : n.verified ? 'проверен вами' : 'не проверен'}</span></div>`);
+  }
+  const memb = n.spaces.length ? `<div class="fm-sp"><span>В общих пространствах</span>${n.spaces.map(s => { const sp = d.spaces.find(x => x.uid === s.uid); return `<div><i style="background:${FM_COL[spIdx[s.uid] % FM_COL.length]}"></i><b>${esc(sp?.name || s.uid)}</b><span style="color:var(--c-text2)">${sp && sp.host === n.id ? 'хозяин · ' : ''}${s.people} ${fdPlural(s.people)}</span></div>`; }).join('')}</div>` : '';
+  box.innerHTML = `<div class="card"><div class="fm-sh"><b>${esc(n.name)}</b><code>${esc(n.id)}</code></div>${f.join('')}${memb}${n.fp ? `<div class="fm-f"><span>Отпечаток</span><span class="fd-mono" style="font-size:11.5px">${esc(n.fp)}</span></div>` : ''}
+    ${!n.self && !n.verified ? `<div class="fm-ac"><button class="btn btn-ghost btn-sm" onclick="fmVerify('${esc(n.id)}')">Сверить отпечаток</button></div>` : ''}</div>
+    ${!n.self && !n.direct && !n.verified ? '<div class="fd-hint" style="padding:0 4px">Ключ получен через хозяина пространства. Сверьте отпечаток с администратором этого сервера по телефону или лично: тогда промежуточные серверы не смогут подменить ключ.</div>' : ''}`;
+}
+function fmVerify(id) {
+  const n = FM.data?.nodes.find(x => x.id === id); if (!n) return;
+  fdModal('Сверка отпечатка', `<div class="fd-kv"><span>Сервер</span><b>${esc(n.name)}</b></div><div class="fd-fp">${esc(n.fp)}</div><div class="fd-hint">Попросите администратора этого сервера показать отпечаток его ключа (раздел «Федерации», вкладка «Подключения») и сверьте с этим по телефону или лично.</div>
+    <label class="fd-chk"><input type="checkbox" id="fm-sure" onchange="document.getElementById('fm-go').disabled=!this.checked"> Отпечаток совпал</label>`,
+    `${fdCancel}<button class="btn ux-solid" id="fm-go" disabled onclick="fmVerifyDo('${esc(id)}')">Отметить проверенным</button>`);
+}
+async function fmVerifyDo(id) {
+  const r = await api('POST', '/api/admin/federation/verify', { instance: id });
+  closeModal('modal-fed');
+  if (!r || r.error) { toast(esc(r?.error || 'Не удалось'), 'error'); return; }
+  toast('Ключ отмечен как проверенный', 'success');
+  await fmLoad(); fmDraw();
+}
+function fmSpace(u) { FM.space = u; fmDraw(); }
+function fmReset() { FM.pos = {}; try { localStorage.removeItem('fm-pos'); } catch {} fmDraw(); fmFit(); }
+function fmFit() {
+  const d = FM.data, st = document.getElementById('fm-stage'); if (!d || !st || !d.nodes.length) return;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  d.nodes.forEach(n => { const p = fmP(n.id); x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x + FM_W); y1 = Math.max(y1, p.y + FM_H); });
+  const w = st.clientWidth, h = st.clientHeight, pad = 50;
+  const k = Math.max(0.3, Math.min(1.2, (w - pad * 2) / Math.max(1, x1 - x0), (h - pad * 2 - 40) / Math.max(1, y1 - y0)));
+  FM.k = k; FM.tx = (w - (x1 - x0) * k) / 2 - x0 * k; FM.ty = (h - 40 - (y1 - y0) * k) / 2 - y0 * k + 6;
+  const world = document.getElementById('fm-world'); if (world) world.style.transform = `translate(${FM.tx}px,${FM.ty}px) scale(${FM.k})`;
+}
+function fmZoom(f, cx, cy) {
+  const st = document.getElementById('fm-stage'); if (!st) return;
+  const r = st.getBoundingClientRect();
+  cx = cx ?? r.width / 2; cy = cy ?? r.height / 2;
+  const k = Math.max(0.25, Math.min(2.5, FM.k * f)), real = k / FM.k;
+  FM.tx = cx - (cx - FM.tx) * real; FM.ty = cy - (cy - FM.ty) * real; FM.k = k;
+  const world = document.getElementById('fm-world'); if (world) world.style.transform = `translate(${FM.tx}px,${FM.ty}px) scale(${FM.k})`;
+}
+function fmWheel(e) {
+  e.preventDefault();
+  const r = e.currentTarget.getBoundingClientRect();
+  fmZoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - r.left, e.clientY - r.top);
+}
+function fmDown(e) {
+  if (e.button !== 0) return;
+  const st = e.currentTarget, nodeEl = e.target.closest('.fm-n');
+  try { st.setPointerCapture(e.pointerId); } catch {}
+  if (nodeEl) {
+    const id = nodeEl.dataset.id, p = fmP(id), r = st.getBoundingClientRect();
+    FM.drag = { id, ox: (e.clientX - r.left - FM.tx) / FM.k - p.x, oy: (e.clientY - r.top - FM.ty) / FM.k - p.y, sx: e.clientX, sy: e.clientY, moved: false };
+  } else {
+    FM.drag = { pan: true, sx: e.clientX, sy: e.clientY, tx: FM.tx, ty: FM.ty, moved: false };
+    st.classList.add('pan');
+  }
+}
+function fmMove(e) {
+  const dr = FM.drag; if (!dr) return;
+  if (Math.abs(e.clientX - dr.sx) + Math.abs(e.clientY - dr.sy) > 4) dr.moved = true;
+  if (!dr.moved) return;
+  const st = e.currentTarget;
+  if (dr.pan) {
+    FM.tx = dr.tx + e.clientX - dr.sx; FM.ty = dr.ty + e.clientY - dr.sy;
+    const world = document.getElementById('fm-world'); if (world) world.style.transform = `translate(${FM.tx}px,${FM.ty}px) scale(${FM.k})`;
+    return;
+  }
+  const r = st.getBoundingClientRect();
+  FM.pos[dr.id] = { x: Math.round((e.clientX - r.left - FM.tx) / FM.k - dr.ox), y: Math.round((e.clientY - r.top - FM.ty) / FM.k - dr.oy) };
+  if (!FM._raf) FM._raf = requestAnimationFrame(() => { FM._raf = 0; fmDraw(); });
+}
+function fmUp(e) {
+  const dr = FM.drag; if (!dr) return;
+  e.currentTarget.classList.remove('pan');
+  FM.drag = null;
+  if (dr.pan) return;
+  if (dr.moved) { try { localStorage.setItem('fm-pos', JSON.stringify(FM.pos)); } catch {} }
+  else FM.sel = dr.id;
+  fmDraw();
 }
 
 /* ── МОДУЛИ ── */
