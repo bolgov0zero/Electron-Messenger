@@ -97,5 +97,5 @@
 .fpa button:disabled { opacity: .25; }
 .fpa button:active:not(:disabled) { color: var(--accent); }
 /* Значок «с другого сервера» в нижнем правом углу аватарки группы и комнаты, на месте статуса «в сети» */
-.fedb { position: absolute; right: -2px; bottom: -2px; width: calc(var(--s) * .34); height: calc(var(--s) * .34); min-width: 17px; min-height: 17px; border-radius: 50%; background: var(--accent); color: #fff; border: 2.5px solid var(--bg); box-sizing: border-box; display: grid; place-items: center; }
-.fedb svg { width: 62%; height: 62%; display: block; }
+.fedb { position: absolute; right: -3px; bottom: -3px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #fff; border: 2px solid var(--bg); box-sizing: border-box; }
+.fedb svg { position: absolute; inset: 0; margin: auto; width: 10px; height: 10px; display: block; }

@@ -335,6 +335,11 @@
   </div>
 </div>
 
+<!-- Профиль группы и комнаты: стоит раньше профиля человека, чтобы тот открывался поверх -->
+<div class="modal-bg" id="modal-group" onclick="if(event.target===this)closeModal('modal-group')">
+  <div class="modal gp-modal" id="gp-modal"></div>
+</div>
+
 <!-- Профиль пользователя -->
 <div class="modal-bg" id="modal-profile" onclick="if(event.target===this)closeModal('modal-profile')">
   <div class="modal pf-modal" id="pf-modal"></div>

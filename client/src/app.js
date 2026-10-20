@@ -10,7 +10,7 @@ const S = {
   ctx: { messageId: null, canEdit: false, isMine: false, replyText: '', replySenderName: '' },
   editingMessageId: null,
   replyTo: null, // { id, text, senderName }
-  giChatId: null, giRemovedIds: new Set(), giAddIds: new Set(), giAvatarBase64: null,
+  gp: null,
   newGroupAvatarBase64: null,
   presence: {},
   lastSeen: {}, // userId -> unix ts последнего онлайна // userId -> 'online'|'away'|'offline'
@@ -1860,6 +1860,7 @@ async function loadChats() {
   renderChatList();
   dropEmptyDirects();
   refreshActiveChatUi();
+  if (gpIsOpen()) { if (gpChat()) renderGroupProfile(true); else closeModal('modal-group'); }   // профиль группы открыт: обновляем состав
 }
 
 function chatName(chat) {
@@ -3357,7 +3358,10 @@ const fedRoot = chat => (chat?.parent_id ? S.chats.find(c => c.id === chat.paren
 const fedOffline = chat => { const c = fedRoot(chat); return !!c?.fed_mirror && !c.invite && c.fed_online === false; };
 const fedKind = chat => (chat?.type === 'room' ? 'комнату' : 'группу');
 // Значок «группа с другого сервера» в углу аватарки, на месте статуса «в сети»
-const fedDotHtml = chat => fedRoot(chat)?.fed_mirror ? `<span class="fed-dot" title="С другого сервера">${FED_GLOBE}</span>` : '';
+const fedDotHtml = chat => fedRoot(chat)?.fed_mirror ? fedDotRaw() : '';
+const fedDotRaw = () => `<span class="fed-dot" title="С другого сервера">${FED_GLOBE}</span>`;
+// Аватарка человека в списках группы: у человека с другого сервера в углу значок земного шара
+const personAv = (u, cls = 'av-sm') => `<div class="av-wrap"><div class="av ${cls} av-round ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}">${initials(u.display_name)}</div>${u.federated ? fedDotRaw() : ''}</div>`;
 const composerLocked = chat => isReadOnlyChat(chat) || dmLocked(chat) || !!chat?.invite || fedOffline(chat);
 // Что написать над полем ввода: «только чтение», «писать нельзя» или мягкая подсказка о счётчике
 function composerNote(chat) {
@@ -5474,6 +5478,7 @@ function closeActiveChat() {
 }
 
 function removeChatLocally(chatId) {
+  if (S.gp?.id === chatId) { S.gp = null; closeModal('modal-group'); }
   S.chats = S.chats.filter(c=>c.id!==chatId);
   if (S.activeChatId === chatId) {
     S.activeChatId = null;
@@ -5484,11 +5489,12 @@ function removeChatLocally(chatId) {
 
 async function leaveGroup(chatId) {
   const ok = await showConfirm(S.chats.find(c => c.id === chatId)?.type === 'room' ? 'Выйти из комнаты?' : 'Выйти из группы?', 'Выйти');
-  if (!ok) return;
+  if (!ok) return false;
   await api('POST', `/chats/${chatId}/leave`);
   S.activeChatId = null;
   document.getElementById('chat-main').innerHTML = `<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Electron</div><div class="empty-sub">Выберите чат или создайте новый</div></div>`;
   loadChats();
+  return true;
 }
 
 // ── WEBSOCKET ──
@@ -5646,6 +5652,7 @@ function connectWS() {
     if (data.type==='chat_online') {
       (S.chatOnline ||= {})[data.chat_id] = { online: data.online, total: data.total };
       if (data.chat_id === S.activeChatId) updateGroupSub();
+      if (gpIsOpen() && S.gp.id === data.chat_id) gpPaintSub();
     }
     // Связь с другим сервером появилась или пропала: у групп оттуда меняется шапка и поле ввода
     if (data.type==='fed_link') loadChats();
@@ -5752,6 +5759,7 @@ function connectWS() {
 
     if (data.type==='presence') {
       S.presence[data.user_id] = data.status;
+      if (gpIsOpen()) setTimeout(gpPaintStatus, 0);
       if (data.last_seen) S.lastSeen[data.user_id] = data.last_seen;
       // Обновляем подпись в шапке открытого личного чата («в сети» / «был(а) в …»)
       const activeChat = S.chats.find(c=>c.id===S.activeChatId);
@@ -6317,17 +6325,6 @@ function presenceDot(userId) {
 function getPeerUserId(chat) {
   if (chat.type !== 'direct') return null;
   return chat.members?.find(m => m.id !== S.user.id)?.id || null;
-}
-
-function triggerGiAvatarUpload() { document.getElementById('gi-avatar-input').click(); }
-function onGiAvatarChange(input) {
-  const file = input.files[0]; if (!file) return;
-  resizeAvatarFile(file).then(base64 => {
-    S.giAvatarBase64 = base64;
-    const el = document.getElementById('gi-av');
-    el.style.backgroundImage = `url('data:image/jpeg;base64,${base64}')`;
-    el.style.backgroundSize = 'cover'; el.textContent = '';
-  });
 }
 
 function triggerGroupAvatarUpload() { document.getElementById('group-avatar-input').click(); }
@@ -6987,177 +6984,250 @@ async function ctpPick(kind) {
 }
 
 
-// ── GROUP INFO PANEL ──
-async function openGroupInfo(chatId) {
-  S.giChatId = chatId;
-  S.giRemovedIds = new Set();
-  S.giAddIds = new Set();
-  S.giAvatarBase64 = null;
-  const chat = S.chats.find(c => c.id === chatId);
-  const isRoom = chat?.type === 'room';
-  // Группа с другого сервера: состав, название и аватарку меняет только её владелец, у нас можно лишь выйти
-  const canEdit = !chat.fed_mirror && (isRoom ? S.user.is_admin : (chat.created_by === S.user.id || S.user.is_admin));
-  const canDelete = !isRoom && !chat.fed_mirror && (chat.created_by === S.user.id || S.user.is_admin);
-  const leaveBtn = (!isRoom || chat.fed_mirror) ? `<button class="gi-btn gi-btn-leave" onclick="giLeave()">Выйти</button>` : '';
-  const deleteBtn = canDelete ? `<button class="gi-btn gi-btn-delete" onclick="giDelete()">Удалить</button>` : '';
-  const addBtn = canEdit ? `<button class="gi-btn gi-btn-add" onclick="giShowAdd()">Добавить участника</button>` : '';
-  document.getElementById('chat-main').innerHTML = `
-    <div class="gi-panel">
-      <div class="gi-top-bar">
-        <button class="icon-btn" onclick="closeGroupInfo()" title="Закрыть">
-          <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
-        <span class="gi-top-title">${isRoom ? 'Комната' : 'Группа'}</span>
-      </div>
-      <div class="gi-body">
-        <div class="gi-avatar-wrap">
-          <div class="av av-round ${avatarColor(chatId)}" id="gi-av" style="width:80px;height:80px;font-size:24px;font-weight:700;${canEdit?'cursor:pointer':''}" ${canEdit?'onclick="triggerGiAvatarUpload()"':''}>${initials(chat?.name||'G')}</div>
-          ${canEdit?`<div class="gi-avatar-badge" onclick="triggerGiAvatarUpload()"><svg width="12" height="12" viewBox="0 0 24 24" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></div>`:''}
-        </div>
-        <input type="file" id="gi-avatar-input" accept="image/*" style="display:none" onchange="onGiAvatarChange(this)">
-        <div class="gi-name-wrap">
-          <input id="gi-name" class="gi-name-input" value="${esc(chat?.name||'')}" placeholder="Название" ${canEdit?'':'readonly'}>
-        </div>
-        <div class="gi-actions">
-          ${addBtn}
-          ${leaveBtn}
-          ${deleteBtn}
-        </div>
-        <div class="gi-section-title">Участники</div>
-        <div class="gi-members-list" id="gi-members"></div>
-        ${(chat?.pending || []).length ? `<div class="gi-section-title">Ожидают ответа</div>
-        <div class="gi-members-list" id="gi-pending">${chat.pending.map(m => `
-          <div class="member-remove-row" id="gip-${m.id}">
-            <div class="av av-sm av-round ${userAvatarColor(m.id, null)}" data-av-user="${m.id}">${initials(m.display_name)}</div>
-            <div class="info"><div class="rname">${esc(m.display_name)}</div><div class="rlogin">${FED_GLOBE} @${esc(m.server_id)}:${esc(m.login)}</div></div>
-            <button class="rm-btn" title="Отменить приглашение" onclick="giCancelInvite(${m.id})">✕</button>
-          </div>`).join('')}</div>` : ''}
-      </div>
-      ${canEdit?`<div class="gi-footer"><button class="modal-btn-ghost" onclick="closeGroupInfo()">Отмена</button><button class="modal-btn-primary" onclick="saveGroupEdit()">Сохранить</button></div>`:''}
-    </div>`;
-  const av = document.getElementById('gi-av');
-  const avatarUrl = `${httpProto()}://${S.server}/api/chats/${chatId}/avatar?t=${Date.now()}`;
-  const img = new Image();
-  img.onload = () => { av.style.backgroundImage = `url('${avatarUrl}')`; av.style.backgroundSize = 'cover'; av.textContent = ''; };
-  img.src = avatarUrl;
-  giRenderMembers(chat?.members || [], canEdit);
-}
+// ── ПРОФИЛЬ ГРУППЫ И КОМНАТЫ ──
+// Окно поверх переписки, как профиль человека. Шапка (аватарка, название, кнопки, поиск, чипы) стоит на месте,
+// список участников прокручивается отдельно. Изменения применяются сразу, кнопки «Сохранить» нет.
+const GP_I = {
+  plus: '<path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="M19 16v6"/><path d="M22 19h-6"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  bellOff: '<path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/>',
+  out: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+  pen: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+  cam: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  back: '<path d="m15 18-6-6 6-6"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+};
+const gpSvg = (n, s = 18, w = 2) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GP_I[n]}</svg>`;
+const gpIsOpen = () => !!S.gp && !!document.getElementById('modal-group')?.classList.contains('open');
+const gpChat = () => S.chats.find(c => c.id === S.gp?.id);
 
-function closeGroupInfo() {
-  const panel = document.querySelector('.gi-panel');
-  if (panel) { panel.classList.add('gi-closing'); setTimeout(() => openChat(S.giChatId), 150); }
-  else openChat(S.giChatId);
-}
-
-function giRenderMembers(members, canEdit = false) {
-  const container = document.getElementById('gi-members');
-  if (!container) return;
-  container.innerHTML = members
-    .filter(m => !S.giRemovedIds.has(m.id))
-    .map(m => `
-      <div class="member-remove-row" id="gim-${m.id}">
-        <div class="av av-sm av-round ${userAvatarColor(m.id, m.tag)}" data-av-user="${m.id}">${initials(m.display_name)}</div>
-        <div class="info"><div class="rname">${esc(m.display_name)}</div><div class="rlogin">${m.federated ? FED_GLOBE + ' ' : ''}@${esc(m.federated ? fedAddr(m).replace(/^@/, '') : m.username)}</div></div>
-        ${m.id !== S.user.id && needsContact(m.id) ? `<button class="gi-addc" data-addc="${m.id}" title="Добавить контакт" onclick="addContactFromChat(${m.id})">В контакты</button>` : ''}
-        ${canEdit?`<button class="rm-btn" onclick="giRemoveMember(${m.id})">✕</button>`:''}
-      </div>`).join('') || '<div style="font-size:13px;color:var(--muted)">Только вы</div>';
-  applyAvatars();
-}
-
-async function giRemoveMember(id) {
-  const ok = await showConfirm('Удалить участника из группы?', 'Удалить');
-  if (!ok) return;
-  S.giRemovedIds.add(id);
-  document.getElementById(`gim-${id}`)?.remove();
-}
-
-async function giCancelInvite(id) {
-  const r = await api('DELETE', `/chats/${S.giChatId}/members/${id}`);
-  if (r?.error) { showActionToast(r.error); return; }
-  document.getElementById(`gip-${id}`)?.remove();
-  loadChats();
-}
-async function giLeave() { await leaveGroup(S.giChatId); }
-async function giDelete() { await deleteChat(S.giChatId); }
-
-function giBackToInfo() {
-  const panel = document.querySelector('.gi-panel');
-  if (panel) { panel.classList.add('gi-closing'); setTimeout(() => openGroupInfo(S.giChatId), 150); }
-  else openGroupInfo(S.giChatId);
-}
-
-async function giShowAdd() {
-  const chat = S.chats.find(c => c.id === S.giChatId);
-  const render = () => {
-    document.getElementById('chat-main').innerHTML = `
-    <div class="gi-panel">
-      <div class="gi-top-bar">
-        <button class="icon-btn" onclick="giBackToInfo()" title="Назад">
-          <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
-        <span class="gi-top-title">Добавить участника</span>
-      </div>
-      <div class="gi-body">
-        <div class="gi-add-list" id="gi-add-list"></div>
-      </div>
-      <div class="gi-footer">
-        <button class="modal-btn-ghost" onclick="giBackToInfo()">Отмена</button>
-        <button class="modal-btn-primary" onclick="giConfirmAdd()">Добавить</button>
-      </div>
-    </div>`;
-    giRenderAddList(chat?.members || []);
+function gpPerms(chat) {
+  const room = chat.type === 'room', mirror = !!chat.fed_mirror, boss = chat.created_by === S.user.id || !!S.user.is_admin;
+  return {
+    mirror, room,
+    canEdit: !mirror && (room ? !!S.user.is_admin : boss),       // состав и аватарка
+    canRename: !mirror && !room && boss,                          // название комнаты меняется в админке
+    canLeave: !room || mirror,                                    // из своей комнаты не выйти
+    canDelete: !mirror && !room && boss,
   };
-  const panel = document.querySelector('.gi-panel');
-  if (panel) { panel.classList.add('gi-closing'); setTimeout(render, 150); }
-  else render();
 }
-
-function giRenderAddList(existingMembers) {
-  const existingIds = new Set(existingMembers.map(m => m.id));
-  const container = document.getElementById('gi-add-list');
-  if (!container) return;
-  // Людей с других серверов можно позвать только в группу (приглашением) и только из своих контактов; в комнаты их добавляет админ в админке
-  const isGroupChat = S.chats.find(c => c.id === S.giChatId)?.type === 'group';
-  const pendingIds = new Set((S.chats.find(c => c.id === S.giChatId)?.pending || []).map(m => m.id));
-  const available = S.allUsers.filter(u => isPickable(u) && (!u.federated || (isGroupChat && u.contact)) && !pendingIds.has(u.id) && (!existingIds.has(u.id) || S.giRemovedIds.has(u.id)));
-  container.innerHTML = available.map(u => `
-    <div class="user-row${S.giAddIds.has(u.id) ? ' selected' : ''}" data-uid="${u.id}" onclick="giToggleAdd(this,${u.id})">
-      <div class="av av-sm av-round ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}">${initials(u.display_name)}</div>
-      <div><div class="uname">${esc(u.display_name)}</div><div class="ulogin">${u.federated ? FED_GLOBE + ' ' + esc(fedAddr(u)) + ' · после согласия' : '@' + esc(u.username)}</div></div>
-    </div>`).join('') || '<div style="font-size:13px;color:var(--muted)">Нет доступных</div>';
+function openGroupInfo(chatId) {
+  if (!S.chats.find(c => c.id === chatId)) return;
+  S.gp = { id: chatId, f: 'all', q: '', view: 'main', add: new Set(), aq: '', rename: false, cmp: false };
+  renderGroupProfile();
+  openModal('modal-group');
+}
+function gpMembers(chat) {
+  const list = (chat.members || []).slice();
+  if (!list.some(m => m.id === S.user.id)) list.push({ id: S.user.id, display_name: S.user.display_name, username: S.user.username, tag: S.user.tag });
+  return list;
+}
+function gpStatus(m) {
+  if (m.id === S.user.id) return { t: 'в сети', cls: 'on' };
+  const st = S.presence[m.id];
+  if (st === 'online') return { t: 'в сети', cls: 'on' };
+  if (st === 'away') return { t: 'отошёл', cls: '' };
+  if (S.presenceReady && st === undefined) return { t: 'был(а) давно', cls: '' };
+  const s = formatLastSeen(S.lastSeen[m.id]);
+  return { t: s.charAt(0).toLowerCase() + s.slice(1), cls: '' };
+}
+function gpSorted(list, chat) {
+  const rank = m => m.id === chat.created_by ? 0 : (m.id === S.user.id || S.presence[m.id] === 'online') ? 1 : S.presence[m.id] === 'away' ? 2 : 3;
+  return list.slice().sort((a, b) => rank(a) - rank(b) || (a.display_name || '').localeCompare(b.display_name || '', 'ru'));
+}
+function gpOnlineCount(chat, members) {
+  const o = (S.chatOnline || {})[chat.id];
+  if (o) return { online: o.online, total: o.total };
+  return { online: members.filter(m => m.id === S.user.id || S.presence[m.id] === 'online' || S.presence[m.id] === 'away').length, total: members.length };
+}
+function gpSubText(chat, members) {
+  const c = gpOnlineCount(chat, members);
+  return `${nMembers(c.total)} · ${c.online} в сети`;
+}
+function gpAv(m) {
+  return `<div class="av-wrap"><div class="av av-round ${userAvatarColor(m.id, m.tag)}" style="width:36px;height:36px;font-size:12px" data-av-user="${m.id}">${initials(m.display_name || m.username || '?')}</div>${m.federated ? fedDotRaw() : presenceDot(m.id)}</div>`;
+}
+function gpRow(m, chat, perms, pending) {
+  const self = m.id === S.user.id, st = gpStatus(m);
+  const login = m.federated ? fedAddr(m) : '@' + (m.username || '');
+  const right = pending ? '<span class="gp-chip wait">ждёт ответа</span>'
+    : m.id === chat.created_by && !perms.mirror ? '<span class="gp-chip role">создатель</span>'
+    : `<span class="gp-st ${st.cls}" data-u="${m.id}">${esc(st.t)}</span>`;
+  const contact = !pending && !self && needsContact(m.id) ? `<button class="gp-mini" onclick="event.stopPropagation(); addContactFromChat(${m.id})">В контакты</button>` : '';
+  const kick = (pending || (perms.canEdit && !self && m.id !== chat.created_by)) && perms.canEdit
+    ? `<button class="gp-x" title="${pending ? 'Отменить приглашение' : 'Убрать из группы'}" aria-label="${pending ? 'Отменить приглашение' : 'Убрать из группы'}" onclick="event.stopPropagation(); gpKick(${m.id}, ${pending ? 'true' : 'false'})">${gpSvg('x', 15)}</button>` : '';
+  return `<div class="gp-row${pending ? ' pend' : ''}" ${self || pending ? '' : `onclick="gpOpenMember(${m.id})"`}>${gpAv(m)}<div class="gp-nm"><b>${esc(m.display_name || m.username || '')}${self ? ' (вы)' : ''}</b><span class="gp-l">${esc(login)}</span></div>${contact}${right}${kick}</div>`;
+}
+function gpFilter(list, q) {
+  q = q.trim().toLowerCase();
+  return q ? list.filter(m => (m.display_name || '').toLowerCase().includes(q) || (m.username || '').toLowerCase().includes(q) || (m.login || '').toLowerCase().includes(q)) : list;
+}
+function renderGroupProfile(keep) {
+  const g = S.gp, chat = gpChat(), box = document.getElementById('gp-modal');
+  if (!g || !chat || !box) return;
+  if (g.view === 'add') return renderGroupAdd(keep);
+  if (!keep) g.cmp = false;
+  const perms = gpPerms(chat), all = gpMembers(chat);
+  const local = gpSorted(all.filter(m => !m.federated), chat), fed = gpSorted(all.filter(m => m.federated), chat);
+  const pend = (chat.pending || []);
+  const showChips = fed.length > 0 || pend.length > 0;
+  if (!showChips) g.f = 'all';
+  if (g.f === 'pend' && !pend.length) g.f = 'all';
+  const lf = gpFilter(local, g.q), ff = gpFilter(fed, g.q), pf = gpFilter(pend, g.q);
+  const show = k => g.f === 'all' || g.f === k;
+  const muted = S.mutedChats.has(chat.id);
+  const kind = chat.type === 'room' ? 'Комната' : 'Группа';
+  const sec = (title, cls, n, body, note) => `<div class="gp-sec"><div class="gp-sec-h">${title}<span class="n">${n}</span></div><div class="gp-box ${cls}">${note || ''}${body}</div></div>`;
+  const chip = (k, label, n) => `<button type="button" class="${g.f === k ? 'on' : ''}" onclick="gpFilterSet('${k}')">${label}<small>${n}</small></button>`;
+  const lists = [];
+  if (show('local')) lists.push(sec('На этом сервере', '', `${lf.length}${lf.length !== local.length ? ' из ' + local.length : ''}`, lf.map(m => gpRow(m, chat, perms)).join('') || '<div class="gp-none">Никого не нашли</div>'));
+  if (fed.length && show('fed')) lists.push(sec(`<span class="gp-globe">${FED_GLOBE}</span><span class="gp-fedt">С других серверов</span>`, 'fed', ff.length, ff.map(m => gpRow(m, chat, perms)).join('') || '<div class="gp-none">Никого не нашли</div>',
+    `<div class="gp-note">${gpSvg('info', 14)}<span>${perms.mirror ? 'Эти люди на сервере, где создана группа, или на серверах, подключённых к нему.' : 'Эти люди видят группу на своём сервере. Если связи нет, они не получают новые сообщения.'}</span></div>`));
+  if (pend.length && show('pend')) lists.push(sec('Ждут ответа', 'pend', pf.length, pf.map(m => gpRow({ ...m, federated: true }, chat, perms, true)).join('') || '<div class="gp-none">Никого не нашли</div>'));
+  if (perms.canDelete && g.f === 'all') lists.push('<div class="gp-ft"><button type="button" class="gp-link d" onclick="gpDelete()">Удалить группу</button></div>');
+  const tiles = [
+    perms.canEdit ? `<button type="button" class="gp-tile" onclick="gpAddView()">${gpSvg('plus', 20)}Добавить</button>` : '',
+    `<button type="button" class="gp-tile" onclick="document.getElementById('gp-q')?.focus()">${gpSvg('search', 20)}Поиск</button>`,
+    `<button type="button" class="gp-tile" onclick="gpMute()">${gpSvg(muted ? 'bell' : 'bellOff', 20)}${muted ? 'Со звуком' : 'Без звука'}</button>`,
+    perms.canLeave ? `<button type="button" class="gp-tile d" onclick="gpLeave()">${gpSvg('out', 20)}Выйти</button>` : '',
+  ].filter(Boolean);
+  const prev = box.querySelector('.gp-scroll'), top = prev ? prev.scrollTop : 0, qHad = document.activeElement?.id === 'gp-q';
+  box.innerHTML = `
+    <div class="gp-top"><span class="t">${kind}</span><button class="icon-btn" onclick="closeModal('modal-group')" aria-label="Закрыть">${gpSvg('x', 16)}</button></div>
+    <div class="gp-fixed">
+      <div class="gp-hero">
+        <div class="gp-avw"><div class="av av-round ${chatAvatarClass(chat)}" id="gp-av" data-av-chat="${chat.id}" style="width:88px;height:88px;font-size:30px">${chatIcon(chat)}</div>
+          ${perms.canEdit ? `<label class="gp-cam" title="Сменить аватарку">${gpSvg('cam', 14)}<input type="file" accept="image/*" hidden onchange="gpAvatar(this)"></label>` : ''}${perms.mirror ? `<span class="gp-fedbig">${FED_GLOBE}</span>` : ''}</div>
+        <div class="gp-txt">
+          ${g.rename ? `<div class="gp-nm1"><input id="gp-name" value="${esc(chat.name || '')}" maxlength="60" onkeydown="if(event.key==='Enter'){event.preventDefault();gpRenameSave(this.value)} if(event.key==='Escape'){event.stopPropagation();S.gp.rename=false;renderGroupProfile(true)}" onblur="gpRenameSave(this.value)"></div>`
+            : `<div class="gp-nm1"><span class="gp-name">${esc(chatName(chat))}</span>${perms.canRename ? `<button class="gp-pen" title="Переименовать" aria-label="Переименовать" onclick="gpRenameStart()">${gpSvg('pen', 15)}</button>` : ''}</div>`}
+          <div class="gp-sub" id="gp-sub">${gpSubText(chat, all)}</div>
+        </div>
+      </div>
+      ${perms.mirror ? `<div class="gp-banner">${gpSvg('info', 14)}<span><b>${kind} на другом сервере.</b> Название, состав и аватарку меняет только её владелец. Вы можете писать, ставить реакции и выйти.</span></div>` : ''}
+      <div class="gp-tiles n${tiles.length}">${tiles.join('')}</div>
+      <div class="gp-tools"><label class="gp-search">${gpSvg('search', 15)}<input id="gp-q" value="${esc(g.q)}" placeholder="Найти участника" autocomplete="off" oninput="gpSearch(this.value)"></label>
+        ${showChips ? `<div class="gp-chips" role="group" aria-label="Показать">${chip('all', 'Все', all.length)}${chip('local', 'На этом сервере', local.length)}${chip('fed', `<span class="gp-cg">${FED_GLOBE}</span>С других серверов`, fed.length)}${pend.length ? chip('pend', 'Ждут ответа', pend.length) : ''}</div>` : ''}</div>
+    </div>
+    <div class="gp-listwrap"><div class="gp-scroll">${lists.join('')}</div></div>`;
+  box.classList.toggle('cmp', !!g.cmp);
+  const sc = box.querySelector('.gp-scroll');
+  sc.scrollTop = keep ? top : 0;
+  sc.addEventListener('scroll', gpOnScroll, { passive: true });
   applyAvatars();
+  if (g.rename) { const i = document.getElementById('gp-name'); i?.focus(); i?.select(); }
+  else if (qHad && keep) { const i = document.getElementById('gp-q'); if (i) { i.focus(); const l = i.value.length; try { i.setSelectionRange(l, l); } catch {} } }
+}
+// Шапка сворачивается, только если списка хватает и после сворачивания: иначе она мигала бы
+function gpOnScroll(e) {
+  const sc = e.target, box = document.getElementById('gp-modal'), cmp = box.classList.contains('cmp'), st = sc.scrollTop, over = sc.scrollHeight - sc.clientHeight;
+  if (!cmp && st > 40 && over > 330) { box.classList.add('cmp'); S.gp.cmp = true; }
+  else if (cmp && st < 4) { box.classList.remove('cmp'); S.gp.cmp = false; }
+}
+function gpFilterSet(k) { S.gp.f = k; S.gp.cmp = false; renderGroupProfile(); }
+function gpSearch(v) { S.gp.q = v; renderGroupProfile(true); }
+function gpPaintSub() {
+  const chat = gpChat(), el = document.getElementById('gp-sub');
+  if (chat && el && S.gp?.view === 'main') el.textContent = gpSubText(chat, gpMembers(chat));
+}
+function gpPaintStatus() {
+  const chat = gpChat(); if (!chat || S.gp?.view !== 'main') return;
+  document.querySelectorAll('#gp-modal .gp-st[data-u]').forEach(el => { const m = gpMembers(chat).find(x => x.id === +el.dataset.u); if (!m) return; const st = gpStatus(m); el.textContent = st.t; el.classList.toggle('on', !!st.cls); });
+  gpPaintSub();
+}
+function gpOpenMember(id) { openProfile(id); }
+async function gpMute() {
+  const id = S.gp.id;
+  if (S.mutedChats.has(id)) { await api('DELETE', `/chats/${id}/mute`); S.mutedChats.delete(id); }
+  else { await api('POST', `/chats/${id}/mute`); S.mutedChats.add(id); }
+  renderChatList(); renderGroupProfile(true);
+}
+function gpRenameStart() { S.gp.rename = true; renderGroupProfile(true); }
+async function gpRenameSave(v) {
+  const g = S.gp; if (!g || !g.rename) return;
+  g.rename = false;
+  const chat = gpChat(), name = (v || '').trim();
+  if (chat && name && name !== chat.name) {
+    const r = await api('PATCH', `/chats/${chat.id}`, { name });
+    if (r?.error) showActionToast(r.error);
+    await loadChats();
+  }
+  renderGroupProfile(true);
+}
+async function gpAvatar(input) {
+  const file = input.files[0]; if (!file) return;
+  const data = await resizeAvatarFile(file);
+  const r = await api('POST', `/chats/${S.gp.id}/avatar`, { data });
+  if (r?.error) { showActionToast(r.error); return; }
+  S.avatarTs = Date.now(); _avatarCache.clear();
+  applyAvatars(); renderChatList();
+}
+async function gpKick(userId, pending) {
+  const chat = gpChat(); if (!chat) return;
+  const m = pending ? (chat.pending || []).find(x => x.id === userId) : (chat.members || []).find(x => x.id === userId);
+  const ok = await showConfirm(pending ? `Отменить приглашение для ${m?.display_name || 'этого человека'}?` : `Убрать ${m?.display_name || 'участника'} из ${chat.type === 'room' ? 'комнаты' : 'группы'}?`, pending ? 'Отменить приглашение' : 'Убрать');
+  if (!ok) return;
+  const r = await api('DELETE', `/chats/${chat.id}/members/${userId}`);
+  if (r?.error) { showActionToast(r.error); return; }
+  await loadChats();
+}
+async function gpLeave() {
+  const id = S.gp.id;
+  if (await leaveGroup(id)) closeModal('modal-group');
+}
+async function gpDelete() {
+  await deleteChat(S.gp.id);
 }
 
-function giToggleAdd(el, id) {
-  el.classList.toggle('selected');
-  S.giAddIds.has(id) ? S.giAddIds.delete(id) : S.giAddIds.add(id);
+// Добавление участников: тот же список выбора, внутри окна
+function gpAvailable(chat) {
+  const existing = new Set((chat.members || []).map(m => m.id)), pending = new Set((chat.pending || []).map(m => m.id));
+  const isGroup = chat.type === 'group', q = S.gp.aq.trim().toLowerCase();
+  return S.allUsers.filter(u => isPickable(u) && (!u.federated || (isGroup && u.contact)) && !pending.has(u.id) && !existing.has(u.id)
+    && (!q || (u.display_name || '').toLowerCase().includes(q) || (u.username || '').toLowerCase().includes(q)));
 }
-
-async function giConfirmAdd() {
-  const chatId = S.giChatId;
-  const res = await Promise.all([...S.giAddIds].map(uid => api('POST', `/chats/${chatId}/members`, {user_id: uid})));
+function gpAddView() { S.gp.view = 'add'; S.gp.add = new Set(); S.gp.aq = ''; renderGroupProfile(); }
+function gpAddBack() { S.gp.view = 'main'; renderGroupProfile(); }
+function renderGroupAdd(keep) {
+  const g = S.gp, chat = gpChat(), box = document.getElementById('gp-modal');
+  if (!chat) return;
+  box.classList.remove('cmp');
+  const list = gpAvailable(chat), n = g.add.size;
+  const row = u => `<button type="button" class="gp-pick${g.add.has(u.id) ? ' on' : ''}" onclick="gpAddToggle(${u.id})" role="checkbox" aria-checked="${g.add.has(u.id)}">
+      <div class="av-wrap"><div class="av av-round ${userAvatarColor(u.id, u.tag)}" style="width:36px;height:36px;font-size:12px" data-av-user="${u.id}">${initials(u.display_name)}</div>${u.federated ? fedDotRaw() : ''}</div>
+      <div class="gp-nm"><b>${esc(u.display_name)}</b><span class="gp-l">${u.federated ? esc(fedAddr(u)) + ' · после согласия' : '@' + esc(u.username)}</span></div>
+      <span class="gp-chk">${gpSvg('check', 13, 3)}</span></button>`;
+  const prev = box.querySelector('.gp-scroll'), top = prev && keep ? prev.scrollTop : 0;
+  box.innerHTML = `
+    <div class="gp-top"><button class="icon-btn" onclick="gpAddBack()" aria-label="Назад">${gpSvg('back', 18)}</button><span class="t">Добавить участника</span><button class="icon-btn" onclick="closeModal('modal-group')" aria-label="Закрыть">${gpSvg('x', 16)}</button></div>
+    <div class="gp-tools" style="padding-top:4px"><label class="gp-search">${gpSvg('search', 15)}<input id="gp-aq" value="${esc(g.aq)}" placeholder="Имя или логин" autocomplete="off" oninput="gpAddSearch(this.value)"></label></div>
+    <div class="gp-listwrap"><div class="gp-scroll">${list.map(row).join('') || '<div class="gp-none">Некого добавить</div>'}
+      ${chat.type === 'group' ? '' : '<p class="gp-hint">Людей с других серверов в комнаты добавляет администратор в админке.</p>'}</div></div>
+    <div class="gp-foot"><span class="gp-cnt">${n ? 'Выбрано: ' + n : 'Отметьте людей'}</span><button class="modal-btn-ghost" onclick="gpAddBack()">Отмена</button><button class="modal-btn-primary" ${n ? '' : 'disabled'} onclick="gpAddConfirm()">Добавить</button></div>`;
+  box.querySelector('.gp-scroll').scrollTop = top;
+  applyAvatars();
+  if (document.activeElement === document.body && g.aq) { const i = document.getElementById('gp-aq'); i?.focus(); }
+}
+function gpAddToggle(id) { const a = S.gp.add; a.has(id) ? a.delete(id) : a.add(id); renderGroupAdd(true); }
+function gpAddSearch(v) { S.gp.aq = v; renderGroupAdd(true); const i = document.getElementById('gp-aq'); if (i) { i.focus(); const l = i.value.length; try { i.setSelectionRange(l, l); } catch {} } }
+async function gpAddConfirm() {
+  const chat = gpChat(); if (!chat || !S.gp.add.size) return;
+  const res = await Promise.all([...S.gp.add].map(uid => api('POST', `/chats/${chat.id}/members`, { user_id: uid })));
   const err = res.find(r => r?.error);
   if (err) showActionToast(err.error);
   else if (res.some(r => r?.pending)) showActionToast('Приглашение отправлено. Человек появится в группе после согласия');
-  S.giAddIds = new Set();
+  S.gp.view = 'main'; S.gp.add = new Set();
   await loadChats();
-  giBackToInfo();
+  renderGroupProfile();
 }
-
-async function saveGroupEdit() {
-  const name = document.getElementById('gi-name').value.trim();
-  const chatId = S.giChatId;
-  const ops = [
-    name && api('PATCH', `/chats/${chatId}`, {name}),
-    ...[...S.giRemovedIds].map(uid => api('DELETE', `/chats/${chatId}/members/${uid}`)),
-    ...[...S.giAddIds].map(uid => api('POST', `/chats/${chatId}/members`, {user_id: uid})),
-  ];
-  if (S.giAvatarBase64) ops.push(api('POST', `/chats/${chatId}/avatar`, {data: S.giAvatarBase64}));
-  await Promise.all(ops);
-  S.giAvatarBase64 = null;
-  await loadChats();
-  openChat(chatId);
-}
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('modal-profile')?.classList.contains('open')) { closeModal('modal-profile'); return; }   // сначала закрывается профиль человека поверх
+  if (gpIsOpen() && !S.gp.rename) { e.preventDefault(); if (S.gp.view === 'add') gpAddBack(); else closeModal('modal-group'); }
+});
 
 // ── CHAT LIST CONTEXT MENU ──
 function showChatCtx(e, chatId) {

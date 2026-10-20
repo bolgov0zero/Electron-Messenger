@@ -120,7 +120,7 @@ B.ui.groups = (function () {
     var list = [{ id: B.S.user.id, display_name: B.S.user.display_name, me: 1 }].concat((chat.members || []).filter(function (m) { return m.id !== B.S.user.id; }));
     B.sheet.open({ size: 'med', title: esc(B.chatName(chat)), right: '<button class="nb" data-sheet="close">Готово</button>',
       body: '<div class="gh" style="margin-top:12px">' + list.length + ' участников</div><div class="grp plist">' + list.map(function (m) {
-        return '<button class="crow2" data-m="' + m.id + '">' + B.avatar.user(m.id, m.display_name, 40) + '<div class="t"><b>' + esc(m.display_name) + (m.me ? ' (вы)' : '') + (m.federated ? ' ' + B.contacts.wsTag(m) : '') + '</b><span>' + (m.me ? 'Онлайн' : esc(B.presence.statusText(m.id))) + '</span></div></button>';
+        return '<button class="crow2" data-m="' + m.id + '">' + B.avatar.user(m.id, m.display_name, 40, false, m.federated) + '<div class="t"><b>' + esc(m.display_name) + (m.me ? ' (вы)' : '') + (m.federated ? ' ' + B.contacts.wsTag(m) : '') + '</b><span>' + (m.me ? 'Онлайн' : esc(B.presence.statusText(m.id))) + '</span></div></button>';
       }).join('') + '</div>' });
     var b = B.sheet.body(); B.avatar.apply(b);
     b.addEventListener('click', function (e) { var t = e.target.closest('[data-m]'); if (!t || +t.dataset.m === B.S.user.id) return; B.sheet.close(); setTimeout(function () { B.openProfile(+t.dataset.m); }, 260); });

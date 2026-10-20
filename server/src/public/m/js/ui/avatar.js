@@ -18,7 +18,7 @@ B.avatar = {
     var root = c.parent_id ? B.find(c.parent_id) || c : c;   // у темы значок комнаты
     return B.avatar.html({ id: c.id, chat: c.id, text: c.type === 'room' ? '#' : B.fmt.initials(B.chatName(c)), fb: fb, fed: !!root.fed_mirror }, size);
   },
-  user: function (id, name, size, nodot) { return B.avatar.html({ id: id, user: id, text: B.fmt.initials(name), dot: nodot ? 0 : id }, size); },
+  user: function (id, name, size, nodot, fed) { return B.avatar.html({ id: id, user: id, text: B.fmt.initials(name), dot: nodot ? 0 : id, fed: !!fed }, size); },
   _load: function (el, url, fb) {
     var cache = B.avatar._cache, cached = cache.get(url);
     var set = function () { el.style.backgroundImage = "url('" + url + "')"; el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center'; el.textContent = ''; };
