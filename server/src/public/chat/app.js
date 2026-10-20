@@ -7185,8 +7185,10 @@ function showChatCtx(e, chatId) {
   }
   const devicesBtn = document.getElementById('ctx-chat-devices');
   if (devicesBtn) devicesBtn.style.display = chat?.is_secret ? '' : 'none';
-  const muteLabel = document.getElementById('ctx-chat-mute-label');
-  if (muteLabel) muteLabel.textContent = S.mutedChats.has(chatId) ? 'Включить уведомления' : 'Выключить уведомления';
+  const _muted = S.mutedChats.has(chatId);
+  const _um = document.getElementById('ctx-chat-unmute'), _ms = document.getElementById('ctx-chat-mute-sub');
+  if (_um) _um.style.display = _muted ? '' : 'none';
+  if (_ms) { _ms.style.display = _muted ? 'none' : ''; _ms.classList.remove('open'); }
   popShow(menu);
   menu.style.display = 'block';
   // Клик по кнопке «⋯» в шапке — привязываемся к кнопке; правый клик по чату в списке — к курсору
@@ -7257,6 +7259,53 @@ function watchMutes() {
   const now = Math.floor(Date.now() / 1000);
   const next = Math.min(Infinity, ...Object.values(S.mutedUntil).filter(t => t && t > now));
   if (next < Infinity) _muteTimer = setTimeout(() => loadChats(), Math.min((next - now + 1) * 1000, 2147000000));
+}
+
+// «Выключить уведомления» в меню чата — подменю, как «В папку»: по наведению (или нажатию) справа раскрывается карточка с выбором срока
+function ctxMuteFill() {
+  const fly = document.getElementById('ctx-mute-fly'); if (!fly) return;
+  const bell = '<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>';
+  fly.innerHTML = MUTE_OPTS.map(([l, s]) => `<button type="button" data-ms="${s}">${bell}<span>${l}</span></button>`).join('');
+}
+function ctxMutePlace() {
+  const menu = document.getElementById('ctx-chat-menu'), wrap = document.getElementById('ctx-chat-mute-sub'), fly = document.getElementById('ctx-mute-fly');
+  if (!menu || !wrap || !fly) return;
+  const m = zoomMetrics();
+  const sc = parseFloat(getComputedStyle(menu).scale) || 1;
+  const cr = menu.getBoundingClientRect(), rr = wrap.getBoundingClientRect();
+  const fw = fly.offsetWidth * m.k * sc, fh = fly.offsetHeight * m.k * sc, margin = 6;
+  const toRight = m.vw - cr.right >= fw + margin + 4 || cr.left < fw + margin + 4;
+  fly.classList.toggle('l', !toRight);
+  fly.style.left = toRight ? 'calc(100% - 2px)' : 'auto';
+  fly.style.right = toRight ? 'auto' : 'calc(100% - 2px)';
+  let top = rr.top - cr.top - 7 * m.k * sc;
+  const over = cr.top + top + fh - (m.vh - margin);
+  if (over > 0) top -= over;
+  if (cr.top + top < margin) top = margin - cr.top;
+  fly.style.top = (top / (m.k * sc)) + 'px';
+}
+function ctxMuteSet(on) {
+  const wrap = document.getElementById('ctx-chat-mute-sub');
+  if (!wrap || wrap.classList.contains('open') === on) return;
+  if (on) { ctxMuteFill(); ctxMutePlace(); }
+  wrap.classList.toggle('open', on);
+  wrap.querySelector('button')?.setAttribute('aria-expanded', on);
+}
+let _ctxMuteT = null;
+function ctxMuteHover(on) {
+  clearTimeout(_ctxMuteT);
+  if (on) ctxMuteSet(true); else _ctxMuteT = setTimeout(() => ctxMuteSet(false), 170);
+}
+function ctxMuteToggle(e) {
+  e && e.stopPropagation();
+  ctxMuteSet(!document.getElementById('ctx-chat-mute-sub').classList.contains('open'));
+}
+function ctxMuteClick(e) {
+  e.stopPropagation();
+  const b = e.target.closest('button[data-ms]'); if (!b) return;
+  const id = S.ctxChatId;
+  hideChatCtx();
+  if (id) setChatMute(id, +b.dataset.ms);
 }
 
 async function ctxChatMute() {
