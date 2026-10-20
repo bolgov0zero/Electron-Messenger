@@ -53,6 +53,12 @@ B.ui.chat = (function () {
     if (k.length > 600) k.slice(0, 200).forEach(function (x) { delete m[x]; });
     m[u] = r; clearTimeout(szRemember._t); szRemember._t = setTimeout(function () { try { localStorage.setItem('m.imgsz', JSON.stringify(m)); } catch (e) {} }, 1500);
   }
+  // Для ленты берётся превью 720 px (/fp/имя), а не оригинал в несколько МБ: оригинал открывается только в просмотре. GIF остаются как есть
+  function feedSrc(att) {
+    if (att.preview) return att.preview;
+    var m = /^\/files\/([\w.\-]+\.(?:jpe?g|png|webp))$/i.exec(att.url || '');
+    return m && !/^enc_/.test(m[1]) && (att.mime || '').indexOf('image/gif') < 0 ? '/fp/' + m[1] : att.url;
+  }
   function imgBox(att) {
     if (att.width && att.height) return { st: 'width:min(' + Math.min(280, att.width) + 'px,calc(80vw - 24px));aspect-ratio:' + att.width + '/' + att.height + ';min-width:0;', ns: '' };
     var c = szMap()[att.url];
@@ -72,7 +78,7 @@ B.ui.chat = (function () {
     if (att.expired) return fileLine(ic('x', 20, 2), 'Файл удалён');
     var box = imgBox(att), mime = att.mime || '';
     var ref = mid ? ' data-mid="' + mid + '" data-i="' + i + '"' : '';
-    if (mime.indexOf('image/') === 0) return '<img class="att-img" src="' + esc(url(att.preview || att.url)) + '" style="' + box.st + '" loading="lazy" decoding="async" data-c="lb" data-url="' + esc(att.url) + '" data-type="image"' + box.ns + ref + ' alt="">';
+    if (mime.indexOf('image/') === 0) return '<img class="att-img" src="' + esc(url(feedSrc(att))) + '" style="' + box.st + '" loading="lazy" decoding="async" data-c="lb" data-url="' + esc(att.url) + '" data-type="image"' + box.ns + ref + ' alt="">';
     if (mime.indexOf('video/') === 0) {
       var poster = att.thumb ? '<img class="att-img" src="' + esc(url(att.thumb)) + '" style="' + box.st + '" loading="lazy" decoding="async" data-url="' + esc(att.thumb) + '"' + box.ns + ' alt="">' : '<div class="vph" style="width:' + IMGW + '"></div>';
       return '<div class="vwrap" data-c="lb" data-url="' + esc(att.url) + '" data-type="video"' + ref + '>' + poster + '<div class="vplay"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div></div>';

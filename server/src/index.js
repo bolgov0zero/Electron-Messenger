@@ -64,8 +64,6 @@ app.get(['/m', '/m/', '/m/index.html'], (req, res) => {
   }
 });
 app.use('/m', express.static(path.join(__dirname, 'public/m')));
-// /test — тестовая страница ленты мобильного клиента на выдуманных данных (см. testpage.js)
-require('./testpage').mount(app, express, serverVersion);
 // Файлы модулей (наборы, которые клиенты скачивают). Клиенты добавляют ?v=<версия набора>, поэтому кэшировать можно надолго
 app.use('/modules', express.static(path.join(__dirname, 'public/modules'), { maxAge: '30d' }));
 // Имя файла — timestamp+случайная строка, при новой загрузке никогда не переиспользуется,
@@ -80,6 +78,31 @@ app.get('/files/enc_:name', require('./auth').authMiddleware, (req, res) => {
     return res.status(404).end();
   res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
   res.sendFile(path.join(FILES_DIR, `enc_${req.params.name}`), err => { if (err) res.status(404).end(); });
+});
+// Превью картинки для ленты мобильного клиента: 720 px по ширине, webp. Делается при первом запросе и лежит рядом с файлом
+// (имя_p.webp), поэтому и старые вложения получают превью без переделки. Оригинал остаётся для просмотра на весь экран
+let _sharp = null; try { _sharp = require('sharp'); } catch {}
+const _pvBusy = new Map();
+app.get('/fp/:name', async (req, res) => {
+  const name = path.basename(String(req.params.name || ''));
+  if (!/^[\w.\-]+$/.test(name) || name.startsWith('enc_') || !/\.(jpe?g|png|webp)$/i.test(name)) return res.status(404).end();
+  const src = path.join(FILES_DIR, name), out = path.join(FILES_DIR, name.replace(/\.[^.]*$/, '') + '_p.webp');
+  const fallback = () => res.redirect(302, '/files/' + encodeURIComponent(name));
+  if (!fs.existsSync(src)) return res.status(404).end();
+  if (!_sharp) return fallback();
+  try {
+    if (!fs.existsSync(out)) {
+      let job = _pvBusy.get(out);
+      if (!job) {
+        job = _sharp(src, { limitInputPixels: 80e6 }).rotate().resize({ width: 720, withoutEnlargement: true }).webp({ quality: 78 }).toFile(out + '.tmp')
+          .then(() => fs.renameSync(out + '.tmp', out)).finally(() => _pvBusy.delete(out));
+        _pvBusy.set(out, job);
+      }
+      await job;
+    }
+    res.set('Cache-Control', 'public, max-age=31536000, immutable').type('image/webp');
+    res.sendFile(out, err => { if (err && !res.headersSent) fallback(); });
+  } catch { try { fs.unlinkSync(out + '.tmp'); } catch {} if (!res.headersSent) fallback(); }
 });
 app.use('/files', express.static(FILES_DIR, { maxAge: '1y', immutable: true }));
 app.use('/lp', express.static(require('./linkprev').DIR, { maxAge: '1y', immutable: true }));

@@ -32,7 +32,9 @@ function list(att) {
   const { more, ...first } = att;
   return [first, ...(Array.isArray(more) ? more : [])];
 }
-const urls = att => list(att).flatMap(a => [a.url, a.thumb]).filter(u => typeof u === 'string' && u);
+// Превью ленты (имя_p.webp) делается при первом просмотре и удаляется вместе с файлом
+const previewOf = u => (typeof u === 'string' && /\.(jpe?g|png|webp)$/i.test(u)) ? u.replace(/\.[^.\/]*$/, '') + '_p.webp' : null;
+const urls = att => list(att).flatMap(a => [a.url, a.thumb, previewOf(a.url)]).filter(u => typeof u === 'string' && u);
 // Помечает недоступные (стёртые с диска) файлы
 function markExpired(att) {
   if (!att) return att;
@@ -48,7 +50,7 @@ function release(att, exceptMsgId) {
     const fname = path.basename(a.url);
     const refs = db.prepare("SELECT COUNT(*) c FROM messages WHERE id != ? AND deleted = 0 AND (attachment LIKE ? OR forward_data LIKE ?)").get(exceptMsgId || 0, `%${fname}%`, `%${fname}%`).c;
     if (refs) return;
-    [a.url, a.thumb].forEach(u => { if (u) { try { fs.unlinkSync(path.join(FILES_DIR, path.basename(u))); } catch {} } });
+    [a.url, a.thumb, previewOf(a.url)].forEach(u => { if (u) { try { fs.unlinkSync(path.join(FILES_DIR, path.basename(u))); } catch {} } });
   });
 }
 // Удаляет все файлы без проверки ссылок (чат удалён целиком)

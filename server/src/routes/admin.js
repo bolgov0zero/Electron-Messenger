@@ -1058,7 +1058,7 @@ function collectFiles() {
         if (!att?.url) continue;
         const fname = path.basename(att.url);
         // Миниатюры (webp у картинок, кадр-превью jpg у видео) — не отдельные файлы
-        if (/_t\.(webp|jpg)$/.test(fname)) continue;
+        if (/_[tp]\.(webp|jpg)$/.test(fname)) continue;
         if (!fileMap.has(fname)) {
           // Зашифрованный файл: имя и тип в базе не хранятся — админка видит только
           // факт и размер, открыть или скачать его нельзя
@@ -1095,7 +1095,7 @@ function collectFiles() {
   // Вторичный источник: файлы на диске, не привязанные ни к одному сообщению
   try {
     for (const fname of fs.readdirSync(FILES_DIR)) {
-      if (/_t\.(webp|jpg)$/.test(fname) || fileMap.has(fname)) continue;
+      if (/_[tp]\.(webp|jpg)$/.test(fname) || fileMap.has(fname)) continue;
       fileMap.set(fname, { filename: fname });
     }
   } catch {}
@@ -1126,7 +1126,7 @@ router.delete('/files/:filename', (req, res) => {
 
   // Удалить файл и миниатюру с диска (webp у картинок, кадр-превью jpg у видео)
   const base = filename.replace(/\.[^.]+$/, '');
-  [filename, base + '_t.webp', base + '_t.jpg'].forEach(n => {
+  [filename, base + '_t.webp', base + '_t.jpg', base + '_p.webp'].forEach(n => {
     const p = path.join(FILES_DIR, n);
     try { if (fs.existsSync(p)) fs.unlinkSync(p); } catch {}
   });
