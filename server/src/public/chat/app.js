@@ -4125,7 +4125,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   } else if (!isDeleted && att?.url && !att.expired && !att.enc) {
     const attUrl = `${httpProto()}://${S.server}${att.url}`;
     if (att.mime?.startsWith('image/')) {
-      attachHtml = `<div class="bubble-image" data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'image')}" data-lb-type="image" onclick="openLightboxEl(this)"><img src="${httpProto()}://${S.server}${att.thumb || att.url}" loading="lazy"></div>`;
+      attachHtml = `<div class="bubble-image" data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'image')}" data-lb-type="image" onclick="openLightboxEl(this)"><img src="${httpProto()}://${S.server}${imgPreviewPath(att)}" loading="lazy"></div>`;
     } else if (att.mime?.startsWith('video/')) {
       const posterUrl = att.thumb ? `${httpProto()}://${S.server}${att.thumb}` : '';
       const safeVName = (att.name||'video').replace(/'/g,"\\'");
@@ -5417,13 +5417,19 @@ const LB_ZOOM_MIN = 1, LB_ZOOM_MAX = 4, LB_ZOOM_STEP = 0.5;
 
 // ── Несколько фото и видео в одном сообщении ──
 const _PLAY_SVG = '<div class="bubble-video-play"><svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg></div>';
+// Фото в ленте — превью 720 px (/fp/имя), а не миниатюра 320 px (мягкая на экранах с высокой плотностью) и не оригинал в несколько МБ.
+// Оригинал открывается только в просмотре. GIF и вложения без обычного имени файла остаются как были
+function imgPreviewPath(att) {
+  const m = /^\/files\/([\w.\-]+\.(?:jpe?g|png|webp))$/i.exec(att.url || '');
+  return m && !/^enc_/.test(m[1]) && !(att.mime || '').includes('gif') ? '/fp/' + m[1] : (att.thumb || att.url);
+}
 const _isMediaAtt = a => !!a && !!a.url && !a.expired && !a.unavailable && !a.enc && !a.gif && /^(image|video)\//.test(a.mime || '');
 function attAll(att) { const { more, ...first } = att; return [first, ...(Array.isArray(more) ? more : [])]; }
 function attAllMedia(att) { return attAll(att).every(_isMediaAtt); }
 function mediaTileHtml(a, cls) {
   const url = `${httpProto()}://${S.server}${a.url}`;
   const v = (a.mime || '').startsWith('video/');
-  const poster = a.thumb ? `${httpProto()}://${S.server}${a.thumb}` : (v ? '' : url);
+  const poster = cls === 'bubble-image' && !v ? `${httpProto()}://${S.server}${imgPreviewPath(a)}` : a.thumb ? `${httpProto()}://${S.server}${a.thumb}` : (v ? '' : url);
   return `<div class="${cls}" data-lb-url="${esc(url)}" data-lb-name="${esc(a.name || (v ? 'video' : 'image'))}" data-lb-type="${v ? 'video' : 'image'}" onclick="openLightboxEl(this)">`
     + (poster ? `<img src="${esc(poster)}" loading="lazy">` : `<video src="${esc(url)}" preload="metadata" muted></video>`) + (v ? _PLAY_SVG : '') + '</div>';
 }
