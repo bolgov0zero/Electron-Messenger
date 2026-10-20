@@ -660,14 +660,14 @@ function onTyping(chatId, userId) {
   sendLive(ps.peer.id, { k: 'typing', from: db.prepare('SELECT username FROM users WHERE id = ?').get(userId).username, to: ps.shadow.fed_login });
 }
 // Статус нашего человека → его взаимным контактам на других серверах
-function onPresence(userId, status, lastSeen) {
+function onPresence(userId, status, lastSeen, mobile) {
   if (!sessions.size) return;
   const me = db.prepare('SELECT username, is_bot FROM users WHERE id = ?').get(userId);
   if (!me || me.is_bot) return;
   db.prepare(`SELECT s.fed_instance, s.fed_login, s.id FROM contacts c1 JOIN contacts c2 ON c2.owner_id = c1.contact_id AND c2.contact_id = c1.owner_id
     JOIN users s ON s.id = c1.contact_id WHERE c1.owner_id = ? AND s.is_bot = 2`).all(userId).forEach(s => {
     const peer = peerByInstance(s.fed_instance);
-    if (peer) sendLive(peer.id, { k: 'presence', from: me.username, to: s.fed_login, status, last_seen: lastSeen || null });
+    if (peer) sendLive(peer.id, { k: 'presence', from: me.username, to: s.fed_login, status, last_seen: lastSeen || null, mob: mobile ? 1 : undefined });
   });
 }
 // Текущие статусы всех, кто взаимно связан с этим сервером (после подключения и при появлении взаимности)
@@ -680,7 +680,7 @@ function syncPresence(peerId, onlyLocalId) {
     if (onlyLocalId && r.lid !== onlyLocalId) continue;
     const u = db.prepare('SELECT username, last_seen_at FROM users WHERE id = ?').get(r.lid);
     const st = wsm().getStatus(r.lid);
-    sendLive(peerId, { k: 'presence', from: u.username, to: r.fed_login, status: st, last_seen: st === 'offline' ? u.last_seen_at : null });
+    sendLive(peerId, { k: 'presence', from: u.username, to: r.fed_login, status: st, last_seen: st === 'offline' ? u.last_seen_at : null, mob: wsm().getMobile(r.lid) ? 1 : undefined });
   }
 }
 // Имя или аватарка нашего человека изменились: сообщаем серверам, которые его знают
@@ -945,7 +945,7 @@ function recvPresence(peer, ev) {
   const sh = remoteUser(peer, ev.from), local = findLocalUser(str(ev.to, 64));
   const st = ev.status;
   if (!sh || !local || !['online', 'away', 'offline'].includes(st) || !spaces.mutualContact(local.id, sh.id)) return;
-  wsm().setRemoteStatus(sh.id, st, st === 'offline' ? Math.floor(Number(ev.last_seen)) || 0 : 0);
+  wsm().setRemoteStatus(sh.id, st, st === 'offline' ? Math.floor(Number(ev.last_seen)) || 0 : 0, ev.mob === 1);
 }
 
 // ─────────────────────────── ключ активации и подключение ───────────────────────────

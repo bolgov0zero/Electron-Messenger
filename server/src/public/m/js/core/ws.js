@@ -55,7 +55,7 @@ B.ws = {
         // Админка показывает устройство клиента — сообщаем, что это PWA или обычная вкладка
         var isPwa = B.pwa.standalone, ua = navigator.userAgent;
         B.ws.send({
-          type: 'client_info', hostname: isPwa ? 'PWA' : 'Web', clientVersion: 'web', osPlatform: navigator.platform || 'web',
+          type: 'client_info', hostname: isPwa ? 'PWA' : 'Web', clientVersion: 'web', mobile: true, osPlatform: navigator.platform || 'web',
           osRelease: /iPhone|iPad|iPod/i.test(ua) ? 'iOS' : /Android/i.test(ua) ? 'Android' : /Mac/i.test(ua) ? 'macOS' : 'Web',
           installScope: isPwa ? 'pwa' : 'web'
         });
@@ -112,6 +112,7 @@ B.ws = {
       }
       case 'presence':
         S.presence[data.user_id] = data.status;
+        (S.presenceMobile = S.presenceMobile || {})[data.user_id] = !!data.mobile && data.status === 'online';
         if (data.last_seen) S.lastSeen[data.user_id] = data.last_seen;
         B.bus.emit('presence:changed', { userId: data.user_id });
         break;

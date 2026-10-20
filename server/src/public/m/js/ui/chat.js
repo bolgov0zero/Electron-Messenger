@@ -221,6 +221,9 @@ B.ui.chat = (function () {
     if (tr) { tr.classList.toggle('show', names.length > 0); if (names.length) tr.querySelector('.tpt').textContent = B.typing.label(names, true); }
     var b = el.querySelector('.cn-b b'); if (b) b.textContent = B.chatName(chat);
     var n = othersUnread(chat.id), c = el.querySelector('.back .cnt'); if (c) c.textContent = n ? (n > 99 ? '99+' : n) : '';
+    // Точка статуса на аватарке в шапке рисуется один раз при открытии: перерисовываем её, когда статус собеседника изменился
+    var pid0 = chat.type === 'direct' ? B.peerId(chat) : 0, sig = pid0 ? (B.S.presence[pid0] || 'offline') + (B.S.presenceMobile && B.S.presenceMobile[pid0] ? 'm' : '') : '';
+    if (pid0 && el._pSig !== sig) { if (el._pSig !== undefined) { var av = el.querySelector('.cn-av'); if (av) { av.innerHTML = B.avatar.chat(chat, 36); B.avatar.apply(av); } } el._pSig = sig; }
     var cb = el.querySelector('.cnbar'), cst = B.conn.state;
     if (cb) { cb.hidden = cst === 'ok'; cb.className = 'cnbar ' + cst; cb.innerHTML = cst === 'offline' ? ic('wifioff', 14, 2.2) + 'Нет связи с сервером' : '<i class="cspin"></i>Подключение…'; }
     var ab = el.querySelector('.addc'), pid = chat.type === 'direct' ? B.peerId(chat) : null; if (ab) ab.hidden = !(pid && B.contacts.needsContact(pid));

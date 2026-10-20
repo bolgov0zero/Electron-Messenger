@@ -9,7 +9,7 @@ B.avatar = {
     if (o.chat) attr = ' data-av-chat="' + o.chat + '"'; else if (o.user) attr = ' data-av-user="' + o.user + '" data-av-fb="' + B.esc(o.text || '') + '"';
     var st = o.dot ? (B.S.presence[o.dot] || 'offline') : 'offline';
     return '<div class="avw" style="--s:' + size + 'px"><div class="av"' + attr + ' style="--c1:' + c[0] + ';--c2:' + c[1] + '">' + B.esc(o.text || '') + '</div>' +
-      (o.fb || '') + (o.dot && st !== 'offline' ? '<i class="pr' + (st === 'away' ? ' away' : '') + '"></i>' : '') + (o.fed ? '<i class="fedb" title="С другого сервера">' + B.avatar.GLOBE + '</i>' : '') + '</div>';
+      (o.fb || '') + (o.dot && st !== 'offline' ? '<i class="pr' + (st === 'away' ? ' away' : '') + (st === 'online' && B.S.presenceMobile && B.S.presenceMobile[o.dot] ? ' mob' : '') + '"></i>' : '') + (o.fed ? '<i class="fedb" title="С другого сервера">' + B.avatar.GLOBE + '</i>' : '') + '</div>';
   },
   // badge — значок папки в левом верхнем углу (в списке чатов)
   chat: function (c, size, badge) {

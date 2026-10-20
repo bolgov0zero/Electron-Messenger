@@ -4,7 +4,8 @@ B.presence = {
   // Присутствие видно только своим из пространства и тем, с кем контакты добавлены с обеих сторон; у остальных заглушка
   setMap: function (pres) {
     var S = B.S; S.presenceReady = true; S.presence = {}; S.lastSeen = {};
-    Object.keys(pres).forEach(function (id) { var v = pres[id]; S.presence[id] = v && v.status; if (v && v.last_seen) S.lastSeen[id] = v.last_seen; });
+    S.presenceMobile = {};
+    Object.keys(pres).forEach(function (id) { var v = pres[id]; S.presence[id] = v && v.status; S.presenceMobile[id] = !!(v && v.mobile && v.status === 'online'); if (v && v.last_seen) S.lastSeen[id] = v.last_seen; });
     B.bus.emit('presence:changed');
   },
   load: async function () { var p = await B.api('GET', '/users/presence'); if (p) B.presence.setMap(p); },

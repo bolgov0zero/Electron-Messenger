@@ -5985,6 +5985,7 @@ function connectWS() {
 
     if (data.type==='presence') {
       S.presence[data.user_id] = data.status;
+      (S.presenceMobile ||= {})[data.user_id] = !!data.mobile && data.status === 'online';
       if (gmIsOpen()) setTimeout(gmPaintStatus, 0);
       if (data.last_seen) S.lastSeen[data.user_id] = data.last_seen;
       // Обновляем подпись в шапке открытого личного чата («в сети» / «был(а) в …»)
@@ -5996,6 +5997,7 @@ function connectWS() {
       // Точечно обновляем presence-dot: зелёный — онлайн, оранжевый — отошёл, скрыта — офлайн
       document.querySelectorAll(`.presence-dot[data-user-id="${data.user_id}"]`).forEach(dot => {
         dot.classList.toggle('away', data.status === 'away');
+        dot.classList.toggle('mob', !!data.mobile && data.status === 'online');
         dot.style.display = data.status === 'offline' ? 'none' : '';
       });
       // Контакты отсортированы по статусу — при смене статуса перестраиваем список
@@ -6580,9 +6582,9 @@ async function loadPresence() {
   const data = await api('GET', '/users/presence');
   if (data) {
     S.presenceReady = true;
-    S.presence = {}; S.lastSeen = {};
+    S.presence = {}; S.lastSeen = {}; S.presenceMobile = {};
     for (const [id, v] of Object.entries(data)) {
-      if (v && typeof v === 'object') { S.presence[id] = v.status; if (v.last_seen) S.lastSeen[id] = v.last_seen; }
+      if (v && typeof v === 'object') { S.presence[id] = v.status; S.presenceMobile[id] = !!v.mobile && v.status === 'online'; if (v.last_seen) S.lastSeen[id] = v.last_seen; }
       else S.presence[id] = v; // совместимость со старым сервером
     }
     renderChatList();
@@ -6638,7 +6640,7 @@ function presenceDot(userId) {
   // Элемент рендерим всегда (скрытым если офлайн) — иначе WS-хендлеру presence
   // нечего показывать, когда пользователь появляется в сети.
   const st = S.presence[userId] || 'offline';
-  return `<span class="presence-dot${st === 'away' ? ' away' : ''}" data-user-id="${userId}"${st === 'offline' ? ' style="display:none"' : ''}></span>`;
+  return `<span class="presence-dot${st === 'away' ? ' away' : ''}${st === 'online' && S.presenceMobile?.[userId] ? ' mob' : ''}" data-user-id="${userId}"${st === 'offline' ? ' style="display:none"' : ''}></span>`;
 }
 
 function getPeerUserId(chat) {

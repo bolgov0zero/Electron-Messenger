@@ -52,6 +52,8 @@ const recentSends = new Map();
 const clients = new Map();
 // userId -> 'online'|'offline'
 const userStatus = new Map();
+// userId -> true, если человек сейчас «с телефона»: в сети, и последним активным был мобильный клиент (/m)
+const userMobile = new Map();
 
 let connCounter = 0;
 // connId -> { ws, userId, username, displayName, hostname, clientVersion, osPlatform, osRelease, connectedAt }
@@ -93,6 +95,7 @@ function sendTo(userId, payload) {
 }
 
 function getStatus(userId) { return userStatus.get(userId) || 'offline'; }
+function getMobile(userId) { return !!userMobile.get(userId) && getStatus(userId) === 'online'; }
 // Есть ли у пользователя хоть одно активное WS-соединение (для админки)
 function isConnected(userId) {
   const conns = clients.get(userId);
@@ -115,11 +118,25 @@ function computeStatus(userId) {
   return away ? 'away' : 'offline';
 }
 
-// Пересчитать агрегат и разослать собеседникам ТОЛЬКО при реальном изменении статуса.
+// Телефон показывается только у статуса «в сети» и только если из подключённых в сети клиентов последним был активен мобильный
+// (_statusAt — момент последнего set_status). «Отошёл» — всегда обычная точка
+function computeMobile(userId, status) {
+  if (status !== 'online') return false;
+  let best = null;
+  for (const ws of clients.get(userId) || []) {
+    if (ws.readyState !== 1 || ws._status !== 'online') continue;
+    if (!best || (ws._statusAt || 0) >= (best._statusAt || 0)) best = ws;
+  }
+  return !!(best && best._mobile);
+}
+
+// Пересчитать агрегат и разослать собеседникам ТОЛЬКО при реальном изменении статуса (или смене «с телефона»).
 function broadcastStatus(userId) {
   const status = computeStatus(userId);
-  if (userStatus.get(userId) === status) return; // не изменилось — не шумим
+  const mobile = computeMobile(userId, status);
+  if (userStatus.get(userId) === status && !!userMobile.get(userId) === mobile) return; // не изменилось — не шумим
   userStatus.set(userId, status);
+  userMobile.set(userId, mobile);
   // Статус видят те, для кого человек виден: его пространство, добавившие его в контакты и администраторы.
   // Из других пространств присутствие не отслеживается
   const online = new Set(clients.keys());
@@ -129,12 +146,12 @@ function broadcastStatus(userId) {
     const row = db.prepare('SELECT last_seen_at FROM users WHERE id = ?').get(userId);
     last_seen = row?.last_seen_at || Math.floor(Date.now() / 1000);
   }
-  const payload = JSON.stringify({ type: 'presence', user_id: userId, status, last_seen });
+  const payload = JSON.stringify({ type: 'presence', user_id: userId, status, last_seen, mobile: mobile || undefined });
   peers.forEach(peerId => {
     getConn(peerId).forEach(ws => { if (ws.readyState === 1) ws.send(payload); });
   });
   // Люди с других серверов, которые видят нас взаимно, узнают статус по федерации
-  fed().onPresence(userId, status, last_seen);
+  fed().onPresence(userId, status, last_seen, mobile);
   // Счётчик «в сети N из M» в шапках групп и комнат
   try { groups().onUserStatus(userId); } catch (e) { console.warn('[Groups] счётчик:', e.message); }
 }
@@ -241,11 +258,13 @@ function finishMessage(msgId, chat_id, senderId, clientId) {
 }
 
 // Статус человека с другого сервера приходит по федерации; рассылаем его тем, кто видит присутствие
-function setRemoteStatus(userId, status, lastSeen) {
+function setRemoteStatus(userId, status, lastSeen, mobile) {
   if (lastSeen) { try { db.prepare('UPDATE users SET last_seen_at = ? WHERE id = ?').run(lastSeen, userId); } catch {} }
-  if (userStatus.get(userId) === status && !lastSeen) return;
+  mobile = !!mobile && status === 'online';
+  if (userStatus.get(userId) === status && !lastSeen && !!userMobile.get(userId) === mobile) return;
   userStatus.set(userId, status);
-  const payload = JSON.stringify({ type: 'presence', user_id: userId, status, last_seen: status === 'offline' ? (lastSeen || Math.floor(Date.now() / 1000)) : undefined });
+  userMobile.set(userId, mobile);
+  const payload = JSON.stringify({ type: 'presence', user_id: userId, status, last_seen: status === 'offline' ? (lastSeen || Math.floor(Date.now() / 1000)) : undefined, mobile: mobile || undefined });
   spaces.presenceViewers(userId).forEach(id => getConn(id).forEach(w => { if (w.readyState === 1) w.send(payload); }));
 }
 
@@ -278,6 +297,7 @@ function setup(server) {
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
     ws._status = 'online'; // уточнится первым set_status от клиента (~через 300мс)
+    ws._statusAt = Date.now();
 
     if (!clients.has(user.id)) clients.set(user.id, new Set());
     clients.get(user.id).add(ws);
@@ -535,6 +555,7 @@ function setup(server) {
             try { db.prepare('UPDATE users SET last_seen_at = unixepoch() WHERE id = ?').run(user.id); } catch {}
           }
           ws._status = s;
+          ws._statusAt = Date.now();
           broadcastStatus(user.id);
         }
       }
@@ -622,6 +643,9 @@ function setup(server) {
       if (data.type === 'client_info') {
         const meta = connMeta.get(ws._connId);
         if (meta) { meta.hostname = data.hostname || '—'; meta.clientVersion = data.clientVersion || '—'; meta.osPlatform = data.osPlatform || '—'; meta.osRelease = data.osRelease || '—'; meta.installScope = data.installScope || null; }
+        // Мобильная версия (/m) сообщает о себе: от этого зависит значок «с телефона» у статуса
+        const mob = data.mobile === true;
+        if (ws._mobile !== mob) { ws._mobile = mob; broadcastStatus(user.id); }
       }
 
       if (data.type === 'update_progress') {
@@ -721,4 +745,4 @@ function broadcastAll(payload) {
   }
 }
 
-module.exports = { setup, finishMessage, setRemoteStatus, hasOpenConnection, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };
+module.exports = { setup, finishMessage, setRemoteStatus, hasOpenConnection, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, getMobile, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };

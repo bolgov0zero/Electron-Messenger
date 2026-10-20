@@ -4,7 +4,7 @@ const path2 = require('path');
 const fs = require('fs');
 const db = require('../db');
 const { authMiddleware, adminMiddleware } = require('../auth');
-const { getStatus, sendTo, broadcastAll } = require('../ws');
+const { getStatus, getMobile, sendTo, broadcastAll } = require('../ws');
 const spaces = require('../spaces');
 const { logAudit } = require('../audit');
 
@@ -38,7 +38,7 @@ router.get('/presence', authMiddleware, (req, res) => {
     WHERE id != ? AND COALESCE(banned, 0) = 0 AND COALESCE(is_bot, 0) IN (0, 2)
   `).all(req.user.id).filter(p => visible.has(p.id));
   const result = {};
-  peers.forEach(({ id, last_seen_at }) => { result[id] = { status: getStatus(id), last_seen: last_seen_at }; });
+  peers.forEach(({ id, last_seen_at }) => { result[id] = { status: getStatus(id), last_seen: last_seen_at, mobile: getMobile(id) || undefined }; });
   res.json(result);
 });
 

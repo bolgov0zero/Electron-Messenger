@@ -3,6 +3,9 @@
 .av { width: var(--s); height: var(--s); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; font-size: calc(var(--s) * .38); letter-spacing: -.02em; background: linear-gradient(180deg, var(--c1), var(--c2)); overflow: hidden; }
 .pr { position: absolute; right: -1px; bottom: -1px; width: calc(var(--s) * .28); height: calc(var(--s) * .28); min-width: 11px; min-height: 11px; border-radius: 50%; background: var(--green); border: 2.5px solid var(--bg); }
 .pr.away { background: var(--orange); }
+/* В сети с мобильного клиента: вместо точки значок телефона */
+.pr.mob { width: calc(var(--s) * .38); height: calc(var(--s) * .38); min-width: 17px; min-height: 17px; right: -3px; bottom: -3px; border-width: 2px; }
+.pr.mob::after { content: ""; position: absolute; inset: 2px; background: #fff; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='14' height='20' x='5' y='2' rx='2' ry='2'/%3E%3Cpath d='M12 18h.01'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='14' height='20' x='5' y='2' rx='2' ry='2'/%3E%3Cpath d='M12 18h.01'/%3E%3C/svg%3E") center / contain no-repeat; }
 .tk { display: inline-block; vertical-align: -1px; }
 
 /* поиск */
