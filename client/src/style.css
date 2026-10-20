@@ -1086,10 +1086,11 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   position: absolute; bottom: -1px; right: -1px;
   width: 10px; height: 10px; border-radius: 50%;
   border: 2px solid var(--side-bg);
+  --halo: var(--side-bg);
   background: var(--presence-online);
 }
 .presence-dot.away { background: var(--presence-away); }
-.chat-header .presence-dot { border-color: var(--chat-bg); }
+.chat-header .presence-dot { border-color: var(--chat-bg); --halo: var(--chat-bg); }
 
 /* Avatar color classes (legacy) */
 .av-blue { background-image: linear-gradient(135deg, #4f46e5, color-mix(in srgb, #4f46e5 65%, #000)); }
@@ -3773,7 +3774,7 @@ html.dark .anx-solid { color: #0c0e10; }
 .pf-head { display: flex; gap: 14px; align-items: flex-end; margin-top: -36px; padding: 0 18px; position: relative; }
 .pf-av { width: 76px; height: 76px; border-radius: 50%; border: 4px solid var(--modal-bg); box-sizing: content-box; position: relative; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 700; color: #fff; text-transform: uppercase; flex-shrink: 0; }
 .pf-av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-.pf-av .presence-dot { width: 16px; height: 16px; right: 0; bottom: 0; border-color: var(--modal-bg); }
+.pf-av .presence-dot { width: 16px; height: 16px; right: 0; bottom: 0; border-color: var(--modal-bg); --halo: var(--modal-bg); }
 .pf-tx { min-width: 0; padding-bottom: 4px; }
 .pf-name { font-size: 18px; font-weight: 700; letter-spacing: -.01em; display: flex; gap: 7px; align-items: center; flex-wrap: wrap; color: var(--text); }
 .pf-st { font-size: 12.5px; color: var(--text2); margin-top: 1px; }
@@ -4190,8 +4191,8 @@ html.tb-open #tb-strip { transform: none; pointer-events: auto; }
 .gm-mini { height: 24px; padding: 0 9px; border-radius: 99px; border: 0; background: rgba(255,159,10,.14); color: var(--presence-away); font-weight: 600; font-size: 11px; font-family: inherit; cursor: pointer; white-space: nowrap; }
 .gm-x { width: 26px; height: 26px; border-radius: 8px; border: 0; background: none; color: var(--muted); cursor: pointer; display: grid; place-items: center; flex: none; }
 .gm-x:hover { color: var(--danger); background: var(--danger-bg); }
-.gm-row .presence-dot, .gm-pick .presence-dot, .gm-row .fed-dot, .gm-pick .fed-dot { border-color: var(--card-bg); }
-.gm-box.fed .presence-dot, .gm-box.fed .fed-dot { border-color: color-mix(in srgb, var(--accent) 10%, var(--card-bg)); }
+.gm-row .presence-dot, .gm-pick .presence-dot, .gm-row .fed-dot, .gm-pick .fed-dot { border-color: var(--card-bg); --halo: var(--card-bg); }
+.gm-box.fed .presence-dot, .gm-box.fed .fed-dot { border-color: color-mix(in srgb, var(--accent) 10%, var(--card-bg)); --halo: color-mix(in srgb, var(--accent) 10%, var(--card-bg)); }
 .gm-none { padding: 18px; text-align: center; color: var(--text2); font-size: 12.5px; }
 .gm-ft { display: flex; justify-content: center; padding: 2px 0 4px; }
 .gm-link { border: 0; background: none; cursor: pointer; font-weight: 600; font-size: 12.5px; font-family: inherit; padding: 4px 2px; }
@@ -4287,6 +4288,7 @@ html.tb-open #tb-strip { transform: none; pointer-events: auto; }
 .pf-link b { flex: 1; font-weight: 500; color: var(--text2); }
 .pf-link .pf-ch { color: var(--muted); }
 
-/* Человек в сети с мобильного клиента (последним был активен он): вместо точки — значок телефона */
-.presence-dot.mob { width: 17px; height: 17px; bottom: -3px; right: -3px; }
-.presence-dot.mob::after { content: ""; position: absolute; inset: 2px; background: #fff; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='14' height='20' x='5' y='2' rx='2' ry='2'/%3E%3Cpath d='M12 18h.01'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect width='14' height='20' x='5' y='2' rx='2' ry='2'/%3E%3Cpath d='M12 18h.01'/%3E%3C/svg%3E") center / contain no-repeat; }
+/* Человек в сети с мобильного клиента (последним был активен он): вместо точки маленький зелёный телефон-контур, внутри и по краю цвет фона */
+.presence-dot.mob { width: 9px; height: 14px; bottom: -3px; right: -3px; border: 1.8px solid var(--presence-online) !important; border-radius: 3px; background: var(--halo, var(--side-bg)); box-shadow: 0 0 0 2px var(--halo, var(--side-bg)); }
+.presence-dot.mob::after { content: ""; position: absolute; left: 50%; bottom: 1px; width: 2px; height: 2px; margin-left: -1px; border-radius: 50%; background: var(--presence-online); }
+.pf-av .presence-dot.mob { width: 11px; height: 17px; }
