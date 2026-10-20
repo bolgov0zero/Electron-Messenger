@@ -7548,7 +7548,7 @@ function wsRender() {
       <div class="mdl-tx"><b>${esc(w.name)}</b><span>${w.users} ${uxPlural(w.users, 'человек', 'человека', 'человек')} · создано ${fmtDate(w.created_at)}</span></div>
       ${w.is_default ? '<span class="badge badge-green">по умолчанию</span>' : w.users ? '' : '<span class="badge badge-gray">пустое</span>'}
       ${wsFedBadge(w)}
-      ${mirror ? '' : `<label class="toggle-switch" title="Общее пространство: люди нескольких серверов федерации видят друг друга"><input type="checkbox" ${fedOn ? 'checked' : ''} onchange="wsShared(${w.id}, this.checked)" aria-label="Общее пространство"><div class="toggle-track"><div class="toggle-thumb"></div></div></label><span style="font-size:12px;color:var(--c-text2)">Общее</span>`}
+      ${mirror || (w.is_default && !fedOn) ? '' : `<label class="toggle-switch" title="Общее пространство: люди нескольких серверов федерации видят друг друга"><input type="checkbox" ${fedOn ? 'checked' : ''} onchange="wsShared(${w.id}, this.checked)" aria-label="Общее пространство"><div class="toggle-track"><div class="toggle-thumb"></div></div></label><span style="font-size:12px;color:var(--c-text2)">Общее</span>`}
       ${fedOn ? `<button class="btn btn-ghost btn-sm" onclick="wsSrv(${w.id})">Серверы</button>` : ''}
       <button class="btn btn-ghost btn-sm" ${mirror ? 'disabled title="Название общего пространства задаёт его хозяин"' : ''} onclick="wsOpen(${w.id})">Изменить</button>
       <button class="btn btn-ghost btn-sm" ${w.is_default || w.users || fedOn ? 'disabled' : ''} title="${w.is_default ? 'Основное пространство удалить нельзя' : fedOn ? 'Пространство общее' : w.users ? 'Сначала переведите людей в другое пространство' : ''}" onclick="wsDelete(${w.id})">Удалить</button></div>

@@ -1,6 +1,6 @@
-// Общие пространства (между серверами) в баре клиента Electron и веб-клиента (одна копия на оба: client/src и server/src/public/shared).
-// Если в настройках включено «Отображать общие пространства в баре», в баре под папками (через разделитель) появляются
-// «Общий вид» и общие пространства человека. Выбранное пространство оставляет в списках только людей из него и чаты с ними;
+// Пространства человека в баре клиента Electron и веб-клиента (одна копия на оба: client/src и server/src/public/shared).
+// Если в настройках включено «Отображать пространства», в баре под папками (через разделитель) появляются
+// «Общий вид» и все пространства, где состоит человек (в том числе общие для нескольких серверов). Выбранное пространство оставляет в списках только людей из него и чаты с ними;
 // «Общий вид» показывает всё. Выбор можно сочетать с папкой. Нужны глобальные S, api, esc, renderChatList, renderContactsList.
 S.sharedSpaces = [];
 S.spaceFilter = 'all';
@@ -63,7 +63,7 @@ function spacesRailHtml(withSep) {
       <span class="fld-ic">${ic}</span>${badge}<span class="acc-tip"><b>${esc(name)}</b><span>${esc(sub)}</span></span></button>`;
   };
   const all = btn('all', `<svg class="fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">${SPACE_ICON_ALL}</svg>`, 'Общий вид', 'Все чаты и контакты', spaceUnread('all'), '');
-  const items = S.sharedSpaces.map((s, i) => btn(s.id, `<span class="spc-ini">${esc(spaceInitials(s.name))}</span>`, s.name, `Общее пространство · ${s.servers} ${s.servers === 1 ? 'сервер' : s.servers < 5 ? 'сервера' : 'серверов'}`, spaceUnread(s.id), SPACE_COLORS[i % SPACE_COLORS.length])).join('');
+  const items = S.sharedSpaces.map((s, i) => btn(s.id, `<span class="spc-ini">${esc(spaceInitials(s.name))}</span>`, s.name, s.shared ? `Общее пространство · ${s.servers} ${s.servers === 1 ? 'сервер' : s.servers < 5 ? 'сервера' : 'серверов'}` : `${s.people} ${s.people % 10 === 1 && s.people % 100 !== 11 ? 'человек' : (s.people % 10 >= 2 && s.people % 10 <= 4 && (s.people % 100 < 12 || s.people % 100 > 14)) ? 'человека' : 'человек'}`, spaceUnread(s.id), SPACE_COLORS[i % SPACE_COLORS.length])).join('');
   return (withSep ? '<span class="rail-sep"></span>' : '') + `<div class="rail-folders rail-spaces" id="rail-spaces">${all}${items}</div>`;
 }
 function updateSpaceBadges() {
@@ -80,8 +80,8 @@ function updateSpaceBadges() {
 // Строка в «Настройки → Папки»
 function csSpacesRows() {
   const on = spacesOn(), n = S.sharedSpaces.length;
-  return `<div class="cs-gt">Общие пространства</div>
-    <div class="cs-g"><div class="cs-r"><div class="cs-l"><b>Отображать общие пространства в баре</b><span>${n ? 'Бар покажет «Общий вид» и ваши общие пространства: выбор оставит в списках людей из него и чаты с ними' : 'Общие пространства объединяют людей нескольких серверов. Сейчас вы ни в одном не состоите: когда администратор добавит вас, они появятся в баре'}</span></div>${csTg(on, 'csSpacesRail()', 'Отображать общие пространства в баре')}</div></div>`;
+  return `<div class="cs-gt">Пространства</div>
+    <div class="cs-g"><div class="cs-r"><div class="cs-l"><b>Отображать пространства</b><span>${n ? 'Бар покажет «Общий вид» и все ваши пространства: выбор оставит в списках людей из него и чаты с ними' : 'Пространства объединяют людей. Сейчас вы ни в одном не состоите'}</span></div>${csTg(on, 'csSpacesRail()', 'Отображать пространства')}</div></div>`;
 }
 function csSpacesRail() {
   S.settings.spacesRail = !spacesOn();

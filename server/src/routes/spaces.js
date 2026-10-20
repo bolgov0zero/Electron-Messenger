@@ -21,11 +21,13 @@ function tooMany(userId) {
   return list.length > 10;
 }
 
-// Общие пространства человека (между серверами): клиенты показывают их в панели и фильтруют по ним чаты и контакты
+// Пространства человека (все, где он состоит): клиенты показывают их в панели и фильтруют по ним чаты и контакты.
+// shared — пространство общее для нескольких серверов, servers — сколько серверов в нём; people — людей этого сервера
 contacts.get('/spaces', (req, res) => {
-  res.json(db.prepare(`SELECT w.id, w.name,
-      (SELECT COUNT(*) FROM fed_space_servers s WHERE s.space_uid = w.fed_uid AND s.state = 'active') AS servers
-    FROM user_workspaces m JOIN workspaces w ON w.id = m.workspace_id WHERE m.user_id = ? AND w.fed_uid IS NOT NULL ORDER BY w.name`).all(req.user.id));
+  res.json(db.prepare(`SELECT w.id, w.name, (w.fed_uid IS NOT NULL) AS shared,
+      (SELECT COUNT(*) FROM fed_space_servers s WHERE s.space_uid = w.fed_uid AND s.state = 'active') AS servers,
+      (SELECT COUNT(*) FROM user_workspaces x JOIN users u ON u.id = x.user_id WHERE x.workspace_id = w.id AND COALESCE(u.is_bot, 0) = 0) AS people
+    FROM user_workspaces m JOIN workspaces w ON w.id = m.workspace_id WHERE m.user_id = ? ORDER BY (w.fed_uid IS NULL), w.name`).all(req.user.id).map(w => ({ ...w, shared: !!w.shared })));
 });
 
 const publicUser = (viewerId, id) => spaces.listFor(viewerId).find(u => u.id === id) || null;

@@ -1,6 +1,6 @@
-// /m — общие пространства: кнопка над списком чатов и «шторка» выбора. Весь список чатов (вместе с шапкой) сдвигается вправо
+// /m — пространства: кнопка над списком чатов и «шторка» выбора. Весь список чатов (вместе с шапкой) сдвигается вправо
 // до середины окна, открывая слева выбор пространства. Тянуть можно свайпом вправо по списку (за пальцем), закрывается свайпом влево,
-// нажатием на сдвинутый список или выбором пространства. Включается в «Настройки → Отображать общие пространства».
+// нажатием на сдвинутый список или выбором пространства. Включается в «Настройки → Отображать пространства».
 B.ui = B.ui || {};
 B.ui.spaces = (function () {
   var esc = B.esc, ic = B.ic, SP = B.spaces;
@@ -8,6 +8,7 @@ B.ui.spaces = (function () {
   var tv = null, drawer = null, W = 0, isOpen = false, G = null, closeT = null;
   function ini(n) { var w = String(n || '?').trim().split(/\s+/); return ((w[0] || '?')[0] + (w.length > 1 ? w[1][0] : (w[0][1] || ''))).toUpperCase(); }
   function plural(n) { return n === 1 ? 'сервер' : n < 5 ? 'сервера' : 'серверов'; }
+  function ppl(n) { var a = n % 10, b = n % 100; return n + ' ' + (a === 1 && b !== 11 ? 'человек' : a >= 2 && a <= 4 && (b < 12 || b > 14) ? 'человека' : 'человек'); }
 
   // Кнопка над вкладками папок: показывает выбранное пространство, нажатие открывает шторку
   function barHtml() {
@@ -23,7 +24,7 @@ B.ui.spaces = (function () {
     if (!drawer) return;
     drawer.innerHTML = '<div class="spdr-h">Пространства</div>' +
       item('all', ic('grid', 20, 2), 'Общий вид', 'Все чаты и контакты', '#3390ec', SP.filter === 'all', SP.unread('all')) +
-      SP.list.map(function (s, i) { return item(s.id, '<b>' + esc(ini(s.name)) + '</b>', s.name, s.servers + ' ' + plural(s.servers), COLORS[i % COLORS.length], SP.filter === s.id, SP.unread(s.id)); }).join('') +
+      SP.list.map(function (s, i) { return item(s.id, '<b>' + esc(ini(s.name)) + '</b>', s.name, s.shared ? 'Общее · ' + s.servers + ' ' + plural(s.servers) : ppl(s.people), COLORS[i % COLORS.length], SP.filter === s.id, SP.unread(s.id)); }).join('') +
       '<div class="spdr-f">Выбранное пространство оставляет в списках чатов и контактов только людей из него и чаты с ними.</div>';
   }
   function ensure() {

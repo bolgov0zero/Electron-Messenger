@@ -121,6 +121,7 @@ function enableShared(wsId) {
   const w = spaceById(wsId);
   if (!w) return { error: 'Пространство не найдено' };
   if (w.fed_uid) return { ok: true };
+  if (w.id === spaces.DEFAULT_WS) return { error: 'Основное пространство нельзя сделать общим: оно используется по умолчанию' };
   const uid = `${id.id}:${w.id}`;
   db.transaction(() => {
     db.prepare('UPDATE workspaces SET fed_uid = ?, fed_host = ? WHERE id = ?').run(uid, id.id, w.id);

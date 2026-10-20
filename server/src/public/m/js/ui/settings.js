@@ -22,8 +22,8 @@ B.ui.settings = (function () {
         cell({ act: 'notif', ic: 'bell', bg: '#ff3b30', label: 'Уведомления', val: notifText() }) +
         cell({ act: 'modules', ic: 'puzzle', bg: '#34c759', label: 'Модули', val: mods ? String(mods) : '' }) +
         cell({ act: 'folders', ic: 'folder', bg: '#ff9500', label: 'Папки', val: B.folders.list.length ? String(B.folders.list.length) : '' }) + '</div>' +
-      '<div class="grp"><div class="cell"><span class="cl">Отображать общие пространства</span><button class="tg" data-s="spaces" role="switch" aria-checked="' + B.spaces.on() + '"><i></i></button></div></div>' +
-      '<div class="gf" style="margin-top:-16px">Общие пространства объединяют людей нескольких серверов. Включите, чтобы выбирать пространство над списком чатов и свайпом вправо.</div>' +
+      '<div class="grp"><div class="cell"><span class="cl">Отображать пространства</span><button class="tg" data-s="spaces" role="switch" aria-checked="' + B.spaces.on() + '"><i></i></button></div></div>' +
+      '<div class="gf" style="margin-top:-16px">Включите, чтобы выбирать пространство над списком чатов и свайпом вправо: останутся люди из него и чаты с ними.</div>' +
       '<div class="grp">' + cell({ act: 'blocks', ic: 'block', bg: '#8e8e93', label: 'Блокировки', val: S.blocked.length ? String(S.blocked.length) : '' }) +
         cell({ act: 'diag', ic: 'gear', bg: '#5e6ad2', label: 'Диагностика' }) + '</div>' +
       '<div class="grp">' + cell({ act: 'logout', ic: 'out', bg: '#ff3b30', label: 'Выйти', red: 1, chev: false }) + '</div>' +
