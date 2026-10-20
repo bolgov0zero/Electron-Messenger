@@ -378,6 +378,7 @@ function leaveMirror(chat, req, res) {
   db.prepare('SELECT cm.user_id FROM chat_members cm JOIN users u ON u.id = cm.user_id WHERE cm.chat_id = ? AND COALESCE(u.is_bot, 0) = 0').all(chat.id)
     .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
   fedgroups.dropMirrorIfEmpty(chat);
+  fedgroups.membersChanged(chat.id);
   res.json({ ok: true });
 }
 

@@ -2204,18 +2204,17 @@ function renderChatRow(c) {
   const myStatus = (lm && lm.sender_id === S.user?.id && !lm.deleted && lm.status)
     ? renderStatus(lm.status) : '';
   const isActive = c.id===S.activeChatId || c.id===S.activeRoomId;
-  const fedChip = c.fed_mirror ? `<span class="ws-chip ws-fed ci-fed" title="Группа с другого сервера">${FED_GLOBE}</span>` : '';
   if (c.invite) previewHtml = `<span style="color:var(--accent)">Приглашение в ${fedKind(c)}</span>`;
   return `<div class="chat-item${isActive?' active':''}${c.invite?' invited':''}" data-chat-id="${c.id}" onclick="openChat(${c.id})" oncontextmenu="showChatCtx(event,${c.id})">
     <div class="av-wrap">
       <div class="av av-md ${chatAvatarClass(c)}${c.type==='room' && c.has_topics?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
-      ${typeof folderBadgeHtml === 'function' ? folderBadgeHtml(c) : ''}${dot}
+      ${typeof folderBadgeHtml === 'function' ? folderBadgeHtml(c) : ''}${dot}${fedDotHtml(c)}
       ${(m>0||u>0) ? `<span class="avb">${m>0 ? '@' : (u>99 ? '99+' : u)}</span>` : ''}
     </div>
     <div class="info">
       <div class="ci-name" style="display:flex;align-items:center;gap:5px">
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</span>
-        ${fedChip}${pinIcon}${muteIcon}${myStatus}
+        ${pinIcon}${muteIcon}${myStatus}
         <span class="ci-time">${time}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
@@ -2505,7 +2504,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
       <div class="chat-header-main">
         <div class="av-wrap"${peerId ? ` style="cursor:pointer" onclick="openProfile(${peerId})"` : ''}>
           <div class="av av-md ${chatAvatarClass(chat)}${chat.type==='room' && chat.has_topics && !S.activeTopicId?' av-sq':' av-round'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
-          ${peerDot}
+          ${peerDot}${fedDotHtml(chat)}
         </div>
         <div class="chat-header-info" ${nameClickable}>
           <div class="ch-name">${esc(name)}</div>
@@ -3357,6 +3356,8 @@ const dmLocked = chat => !!chat?.dm_limit && chat.dm_limit.used >= chat.dm_limit
 const fedRoot = chat => (chat?.parent_id ? S.chats.find(c => c.id === chat.parent_id) : null) || chat;
 const fedOffline = chat => { const c = fedRoot(chat); return !!c?.fed_mirror && !c.invite && c.fed_online === false; };
 const fedKind = chat => (chat?.type === 'room' ? 'комнату' : 'группу');
+// Значок «группа с другого сервера» в углу аватарки, на месте статуса «в сети»
+const fedDotHtml = chat => fedRoot(chat)?.fed_mirror ? `<span class="fed-dot" title="С другого сервера">${FED_GLOBE}</span>` : '';
 const composerLocked = chat => isReadOnlyChat(chat) || dmLocked(chat) || !!chat?.invite || fedOffline(chat);
 // Что написать над полем ввода: «только чтение», «писать нельзя» или мягкая подсказка о счётчике
 function composerNote(chat) {
@@ -3391,7 +3392,7 @@ function groupSubHtml(chat) {
   if (fedOffline(chat)) return `<span class="fed-off">${FED_GLOBE}Группа на другом сервере · нет связи</span>`;
   const o = (S.chatOnline || {})[chat.id];
   const cnt = o ? `в сети ${o.online} из ${o.total}` : nMembers(chat.members?.length || 0);
-  const globe = fedRoot(chat)?.fed_mirror ? `<span class="fed-in">${FED_GLOBE}</span>` : '';
+  const globe = '';
   if (chat.parent_id) return `# тема${o ? ' · ' + cnt : ''}`;
   return chat.type === 'room' ? `${globe}🏠 Комната · ${cnt}` : `${globe}${cnt}`;
 }

@@ -101,6 +101,7 @@ function sendState(chat, onlyPeer) {
   if (!chat) return;
   const st = stateOf(chat);
   (onlyPeer ? [onlyPeer] : hostedPeers(chat.id)).forEach(p => F().enqueue(p.id, homeEvent(chat, { k: 'gstate', ...st })));
+  if (!onlyPeer) membersChanged(chat.id);   // сюда приходят все изменения состава: счётчик «в сети N из M» у открывших чат обновится
 }
 function realLocalMembers(chatId) {
   return db.prepare('SELECT cm.user_id FROM chat_members cm JOIN users u ON u.id = cm.user_id WHERE cm.chat_id = ? AND COALESCE(u.is_bot, 0) = 0').all(chatId).map(r => r.user_id);
@@ -470,7 +471,7 @@ async function reqJoin(peer, f) {
     sendState(chat);
     require('./announcements').sendSystemMessage(chat.id, `${sh.display_name} вступил(а) в ${chat.type === 'room' ? 'комнату' : 'группу'}`, 'member_add');
     notifyReload(chat.id);
-    touch(chat.id);
+    membersChanged(chat.id);
   }
   return stateOf(chat);
 }
@@ -492,7 +493,7 @@ async function accept(chat, userId) {
   })();
   applyState(peer, chat, st);
   wsm().sendTo(userId, { type: 'reload_chats' });
-  touch(chat.id);
+  membersChanged(chat.id);
   return { ok: true };
 }
 // Гость нажал «Отклонить»
@@ -560,7 +561,7 @@ function syncTopics(peer, room, topics) {
 function recvState(peer, ev) {
   if (ev.h !== peer.instance_id) return;
   const chat = mirrorOf(peer.instance_id, Math.floor(Number(ev.gid)));
-  if (chat) { applyState(peer, chat, ev); touch(chat.id); }
+  if (chat) { applyState(peer, chat, ev); membersChanged(chat.id); }
 }
 // Хозяин убрал человека (или он сам вышел) — гость убирает группу у этого человека
 function recvKick(peer, ev) {
@@ -572,7 +573,7 @@ function recvKick(peer, ev) {
   db.prepare('DELETE FROM chat_invites WHERE chat_id = ? AND user_id = ?').run(chat.id, local.id);
   ids.forEach(id => wsm().sendTo(local.id, { type: 'chat_deleted', chat_id: id }));
   dropMirrorIfEmpty(chat);
-  if (chatById(chat.id)) notifyReload(chat.id);
+  if (chatById(chat.id)) { notifyReload(chat.id); membersChanged(chat.id); }
 }
 function recvDrop(peer, ev) {
   if (ev.h !== peer.instance_id) return;
@@ -593,7 +594,7 @@ function recvLeave(peer, ev) {
   sendState(at.chat);
   require('./announcements').sendSystemMessage(at.chat.id, `${sh.display_name} покинул(а) ${at.chat.type === 'room' ? 'комнату' : 'группу'}`, 'member_remove');
   notifyReload(at.chat.id);
-  touch(at.chat.id);
+  membersChanged(at.chat.id);
 }
 
 // ── Действия хозяина (вызываются из маршрутов) ──
@@ -605,7 +606,7 @@ function removeRemote(chat, shadow) {
   treeIds(chat.id).forEach(id => db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(id, shadow.id));
   if (peer) F().enqueue(peer.id, homeEvent(chat, { k: 'gkick', to: shadow.fed_login }));
   sendState(chat);
-  touch(chat.id);
+  membersChanged(chat.id);
 }
 function afterRename(chat) { if (!chat.fed_instance) sendState(chat); }
 // Группа удаляется у хозяина: сообщаем серверам, где есть её зеркало (вызывать до удаления из базы)
@@ -674,6 +675,12 @@ function refresh(chatId) {
   }
 }
 // Пересчёт откладываем: человек может мигать «в сети / не в сети» чаще, чем нужно кому-то об этом сообщать
+// Состав чата изменился: «в сети N из M» пересчитывается у открывших чат. У комнаты и её тем состав общий, пересчитываем все
+function membersChanged(chatId) {
+  const c = chatById(chatId);
+  if (!c) return;
+  treeIds(c.parent_id || c.id).forEach(touch);
+}
 function touch(chatId) {
   if (timers.has(chatId)) return;
   timers.set(chatId, setTimeout(() => { timers.delete(chatId); try { refresh(chatId); } catch (e) { console.warn('[FedGroups] счётчик:', e.message); } }, 1500));
@@ -910,6 +917,6 @@ module.exports = {
   PROTO, isFederated, isMirror, mirrorOnline, hostedPeers, involvedPeers,
   invite, cancelInvite, removeRemote, afterRename, dropAll, leaveMirror, accept, decline, dropMirrorIfEmpty, sendState,
   onMessage, onEdit, onDelete, onReact, onTyping, onPin, onStatus, treeIds, chatAvatarFile, handle, handleReq, sendCaps, onLink,
-  watch, unwatch, onUserStatus, touch,
+  watch, unwatch, onUserStatus, touch, membersChanged,
   pendingFor, inviteInfo,
 };

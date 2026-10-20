@@ -2,19 +2,21 @@
 B.avatar = {
   PAL: [['#ff885e', '#ff516a'], ['#ffcd6a', '#ffa85c'], ['#82b1ff', '#665fff'], ['#a0de7e', '#54cb68'], ['#53edd6', '#28c9b7'], ['#72d5fd', '#2a9ef1'], ['#e0a2f3', '#d669ed']],
   _cache: new Map(),
+  GLOBE: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>',
   // o = { id (для цвета), chat | user (что грузить), text (запасные буквы), dot (id пользователя для значка «в сети») }
   html: function (o, size) {
     var c = B.avatar.PAL[(o.id || 0) % B.avatar.PAL.length], attr = '';
     if (o.chat) attr = ' data-av-chat="' + o.chat + '"'; else if (o.user) attr = ' data-av-user="' + o.user + '" data-av-fb="' + B.esc(o.text || '') + '"';
     var st = o.dot ? (B.S.presence[o.dot] || 'offline') : 'offline';
     return '<div class="avw" style="--s:' + size + 'px"><div class="av"' + attr + ' style="--c1:' + c[0] + ';--c2:' + c[1] + '">' + B.esc(o.text || '') + '</div>' +
-      (o.fb || '') + (o.dot && st !== 'offline' ? '<i class="pr' + (st === 'away' ? ' away' : '') + '"></i>' : '') + '</div>';
+      (o.fb || '') + (o.dot && st !== 'offline' ? '<i class="pr' + (st === 'away' ? ' away' : '') + '"></i>' : '') + (o.fed ? '<i class="fedb" title="С другого сервера">' + B.avatar.GLOBE + '</i>' : '') + '</div>';
   },
   // badge — значок папки в левом верхнем углу (в списке чатов)
   chat: function (c, size, badge) {
     var peer = B.peerId(c), fb = badge && B.folders ? B.folders.badge(c, size) : '';
     if (c.type === 'direct') return B.avatar.html({ id: peer || c.id, chat: c.id, text: B.fmt.initials(B.chatName(c)), dot: peer, fb: fb }, size);
-    return B.avatar.html({ id: c.id, chat: c.id, text: c.type === 'room' ? '#' : B.fmt.initials(B.chatName(c)), fb: fb }, size);
+    var root = c.parent_id ? B.find(c.parent_id) || c : c;   // у темы значок комнаты
+    return B.avatar.html({ id: c.id, chat: c.id, text: c.type === 'room' ? '#' : B.fmt.initials(B.chatName(c)), fb: fb, fed: !!root.fed_mirror }, size);
   },
   user: function (id, name, size, nodot) { return B.avatar.html({ id: id, user: id, text: B.fmt.initials(name), dot: nodot ? 0 : id }, size); },
   _load: function (el, url, fb) {

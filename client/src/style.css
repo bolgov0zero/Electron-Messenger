@@ -4107,3 +4107,9 @@ html.tb-open #tb-strip { transform: none; pointer-events: auto; }
 .inv-bar .inv-btns { display: flex; gap: 8px; flex-shrink: 0; }
 .inv-empty { color: var(--muted); }
 .inv-empty p { text-align: center; line-height: 1.5; max-width: 320px; }
+
+/* Значок «с другого сервера» в нижнем правом углу аватарки группы и комнаты: там же, где статус «в сети» у людей */
+.fed-dot { position: absolute; bottom: -3px; right: -3px; width: 17px; height: 17px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: #fff; border: 2px solid var(--side-bg); box-sizing: border-box; }
+.fed-dot svg { width: 10px; height: 10px; }
+.chat-header .fed-dot { border-color: var(--chat-bg); }
