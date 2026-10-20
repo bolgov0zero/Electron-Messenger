@@ -790,18 +790,6 @@ function accentRgb(a) {
 
 // Переменные ставим инлайном на <html>: так они перебивают оба набора из таблицы
 // стилей, поэтому пересчитываем при каждой смене темы.
-// ── Цвет галочек ──
-// Галочка «прочитано» красится в акцент, но на пузыре того же акцента она сливалась. Для каждого акцента и каждой темы цвет
-// подбирается так, чтобы читаться на своём пузыре: если акцент сливается, он сдвигается к чёрному (светлый фон) или к белому (тёмный).
-function _lum(c) { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); }
-function _contrast(a, b) { const A = _lum(a), B = _lum(b); return (Math.max(A, B) + .05) / (Math.min(A, B) + .05); }
-function _mixRgb(a, b, t) { return a.map((v, i) => Math.round(v + (b[i] - v) * t)); }
-function tickColorFor(accent, bg, target = 3.6) {
-  if (_contrast(accent, bg) >= target) return accent;
-  const toward = _lum(bg) > .4 ? [0, 0, 0] : [255, 255, 255];
-  for (let t = .1; t < 1; t += .1) { const c = _mixRgb(accent, toward, t); if (_contrast(c, bg) >= target) return c; }
-  return toward;
-}
 function applyAccent() {
   const a = ACCENTS[currentAccent()];
   const dark = document.documentElement.classList.contains('dark');
@@ -825,9 +813,9 @@ function applyAccent() {
   // с бирюзовым, менять не стали
   s.setProperty('--active-row', rgba(a.dark, .10));
   s.setProperty('--active-row-border', rgba(a.dark, .25));
-  // Пузырь своего сообщения — акцент на 15% поверх фона переписки; галочка должна читаться на нём
-  const _chatBg = document.documentElement.classList.contains('navy') ? [15, 27, 39] : dark ? [27, 39, 51] : [245, 247, 250];
-  s.setProperty('--tick-read', 'rgb(' + tickColorFor(c, _mixRgb(_chatBg, c, .15)).join(',') + ')');
+  // Галочки «прочитано»: у всех акцентов — цвет голубого акцента, а на самом голубом — оранжевый, чтобы не сливались с пузырём
+  const _tick = currentAccent() === 'blue' ? (dark ? [255, 159, 10] : [224, 120, 0]) : (dark ? ACCENTS.blue.dark : ACCENTS.blue.light);
+  s.setProperty('--tick-read', 'rgb(' + _tick.join(',') + ')');
 }
 
 function accentDotsHtml() {

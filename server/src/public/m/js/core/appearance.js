@@ -30,24 +30,13 @@ B.appearance = {
   isDark: function () { return document.documentElement.classList.contains('dark'); },
   rgb: function (key) { var a = B.appearance.ACCENTS[key]; return B.appearance.isDark() ? a.dark : a.light; },
 
-  _lum: function (c) { var f = function (v) { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); },
-  _contrast: function (a, b) { var A = B.appearance._lum(a), L = B.appearance._lum(b); return (Math.max(A, L) + .05) / (Math.min(A, L) + .05); },
-  tickOn: function (bg) {
-    var A = B.appearance, white = [255, 255, 255];
-    if (A._contrast(white, bg) >= 3.2) return white;
-    for (var t = .1; t < 1; t += .05) {
-      var d = bg.map(function (v) { return Math.round(v * (1 - t)); });
-      if (A._contrast(d, bg) >= 4.6) return d;
-    }
-    return [0, 0, 0];
-  },
-
   apply: function () {
     var A = B.appearance, s = document.documentElement.style, dark = A.isDark();
     var c = A.rgb(A.accent()), hex = '#' + c.map(function (v) { return v.toString(16).padStart(2, '0'); }).join('');
     s.setProperty('--accent', hex); s.setProperty('--accent-rgb', c.join(','));
-    // Цвет времени и галочек на своём пузыре (он залит акцентом): белый, если читается, иначе тёмный оттенок этого же акцента
-    s.setProperty('--tick', 'rgb(' + A.tickOn(c).join(',') + ')');
+    // Галочки на своём пузыре: у всех акцентов — цвет голубого, а на самом голубом — оранжевый, чтобы не сливались с пузырём
+    var tk = A.accent() === 'blue' ? (dark ? [255, 159, 10] : [255, 149, 0]) : (dark ? A.ACCENTS.blue.dark : A.ACCENTS.blue.light);
+    s.setProperty('--tick', 'rgb(' + tk.join(',') + ')');
     var id = A.pattern();
     if (!id) { ['--pat', '--pat-ink', '--pat-a'].forEach(function (k) { s.removeProperty(k); }); }
     else { s.setProperty('--pat', 'url("/chat/assets/patterns/' + id + '.png")'); s.setProperty('--pat-ink', dark ? '#ffffff' : '#111318'); s.setProperty('--pat-a', String(A.ALPHA[dark ? 'dark' : 'light'][A.patternLevel() - 1])); }

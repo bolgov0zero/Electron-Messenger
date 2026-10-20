@@ -45,7 +45,7 @@
 .mrow.out .txt .mn { color: inherit; text-decoration: underline; }
 .txt code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; background: rgba(127, 127, 127, .18); border-radius: 4px; padding: 0 4px; }
 .meta { float: right; margin: 6px 0 -4px 10px; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; line-height: 1; opacity: .75; position: relative; top: 3px; font-variant-numeric: tabular-nums; }
-.mrow.out .meta { color: var(--tick, #fff); }
+.mrow.out .meta { color: #fff; }
 .mrow.out .meta .tk polyline { stroke: var(--tick, #fff) !important; }
 .mrow.out .meta .tk polyline.off { stroke-opacity: .5; }   /* на цветном пузыре «не прочитано» — бледнее, как серая галочка в списке */
 .quote { position: relative; overflow: hidden; padding: 2px 8px 2px 11px; margin: 1px 0 5px; border-radius: 8px; background: rgba(127, 127, 127, .14); font-size: calc(var(--mfs, 16px) - 2.5px); line-height: 1.25; cursor: pointer; }
