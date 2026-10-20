@@ -813,9 +813,6 @@ function applyAccent() {
   // с бирюзовым, менять не стали
   s.setProperty('--active-row', rgba(a.dark, .10));
   s.setProperty('--active-row-border', rgba(a.dark, .25));
-  // Галочки «прочитано»: у всех акцентов — цвет голубого акцента, а на самом голубом — оранжевый, чтобы не сливались с пузырём
-  const _tick = currentAccent() === 'blue' ? (dark ? [255, 159, 10] : [224, 120, 0]) : (dark ? ACCENTS.blue.dark : ACCENTS.blue.light);
-  s.setProperty('--tick-read', 'rgb(' + _tick.join(',') + ')');
 }
 
 function accentDotsHtml() {

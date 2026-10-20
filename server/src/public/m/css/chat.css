@@ -35,7 +35,8 @@
 .mrow.out .mcol { align-items: flex-end; }
 .who { font-weight: 600; font-size: calc(var(--mfs, 16px) - 2px); margin-bottom: 1px; cursor: pointer; }
 .bub { position: relative; padding: 7px 12px 8px; border-radius: 17px; font-size: var(--mfs, 16px); line-height: 1.28; overflow-wrap: anywhere; min-width: 0; }
-.mrow.out .bub { background: var(--accent); color: #fff; }
+/* Свой пузырь, как в клиенте: акцент на 15% поверх цвета переписки, сплошной */
+.mrow.out .bub { background: color-mix(in srgb, var(--accent) 15%, var(--wall-flat)); }
 .mrow.in .bub { background: var(--bubble-in); }
 .mrow.last.out .bub { border-bottom-right-radius: 5px; }
 .mrow.last.in .bub { border-bottom-left-radius: 5px; }
@@ -45,17 +46,12 @@
 .mrow.out .txt .mn { color: inherit; text-decoration: underline; }
 .txt code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; background: rgba(127, 127, 127, .18); border-radius: 4px; padding: 0 4px; }
 .meta { float: right; margin: 6px 0 -4px 10px; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; line-height: 1; opacity: .75; position: relative; top: 3px; font-variant-numeric: tabular-nums; }
-.mrow.out .meta { color: #fff; }
-.mrow.out .meta .tk polyline { stroke: var(--tick, #fff) !important; }
-.mrow.out .meta .tk polyline.off { stroke-opacity: .5; }   /* на цветном пузыре «не прочитано» — бледнее, как серая галочка в списке */
 .quote { position: relative; overflow: hidden; padding: 2px 8px 2px 11px; margin: 1px 0 5px; border-radius: 8px; background: rgba(127, 127, 127, .14); font-size: calc(var(--mfs, 16px) - 2.5px); line-height: 1.25; cursor: pointer; }
 /* Полоса слева — отдельным слоем под скруглением, чтобы углы плашки были ровными */
 .quote::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--rc, var(--accent)); }
 /* В своём пузыре (фон акцента) цитата — светлая плашка: так цвета акцента и чужих авторов остаются читаемыми */
-.mrow.out .quote { background: rgba(255, 255, 255, .92); }
 .quote b { display: block; font-weight: 600; color: var(--rc, var(--accent)); }
 .quote span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; opacity: .85; }
-.mrow.out .quote span { color: #46505e; opacity: 1; }
 .bub.eo { background: none !important; font-size: 54px; line-height: 1.1; padding: 0 2px; }
 .bub.eo .meta { display: none; }
 .bub.dl { font-style: italic; opacity: .65; }
@@ -72,7 +68,6 @@
 .vplay { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(0, 0, 0, .5); color: #fff; display: flex; align-items: center; justify-content: center; }
 .file { display: flex; align-items: center; gap: 10px; min-width: 200px; padding: 3px 0 2px; cursor: pointer; }
 .file .fi { width: 42px; height: 42px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; flex: none; }
-.mrow.out .file .fi { background: rgba(255, 255, 255, .25); }
 .file b { display: block; font-weight: 500; font-size: calc(var(--mfs, 16px) - 1px); word-break: break-all; }
 .file span { font-size: 12.5px; opacity: .7; }
 .rx { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }

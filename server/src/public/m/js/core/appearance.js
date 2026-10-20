@@ -34,9 +34,6 @@ B.appearance = {
     var A = B.appearance, s = document.documentElement.style, dark = A.isDark();
     var c = A.rgb(A.accent()), hex = '#' + c.map(function (v) { return v.toString(16).padStart(2, '0'); }).join('');
     s.setProperty('--accent', hex); s.setProperty('--accent-rgb', c.join(','));
-    // Галочки на своём пузыре: у всех акцентов — цвет голубого, а на самом голубом — оранжевый, чтобы не сливались с пузырём
-    var tk = A.accent() === 'blue' ? (dark ? [255, 159, 10] : [255, 149, 0]) : (dark ? A.ACCENTS.blue.dark : A.ACCENTS.blue.light);
-    s.setProperty('--tick', 'rgb(' + tk.join(',') + ')');
     var id = A.pattern();
     if (!id) { ['--pat', '--pat-ink', '--pat-a'].forEach(function (k) { s.removeProperty(k); }); }
     else { s.setProperty('--pat', 'url("/chat/assets/patterns/' + id + '.png")'); s.setProperty('--pat-ink', dark ? '#ffffff' : '#111318'); s.setProperty('--pat-a', String(A.ALPHA[dark ? 'dark' : 'light'][A.patternLevel() - 1])); }

@@ -168,7 +168,6 @@
 .bub.bcomp .file { margin: 6px 12px; }
 .bub.bcomp:has(> .lcard) { width: min(300px, 100%); }
 .lcard { cursor: pointer; background: rgba(127, 127, 127, .12); }
-.mrow.out .lcard { background: rgba(0, 0, 0, .16); }
 .lcard .lc-im { aspect-ratio: 16 / 9; overflow: hidden; background: var(--fill); }
 .lcard .lc-im img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .lcard .lc-b { padding: 7px 12px 8px; min-width: 0; }
@@ -187,7 +186,7 @@
 
 /* код в строке: подстраивается под акцентный цвет; в своём пузыре (фон акцента) — его тёмный оттенок, чтобы текст читался */
 .txt code { background: color-mix(in srgb, var(--accent) 16%, transparent); }
-.mrow.out .txt code, .fpb .txt code { background: color-mix(in srgb, var(--accent) 55%, #000); color: #fff; }
+.fpb .txt code { background: color-mix(in srgb, var(--accent) 55%, #000); color: #fff; }
 .fcell .cl { font-weight: 600; }
 
 /* пузырь с блоком кода или превью не уже 240 px: иначе шапка блока сжимается */
