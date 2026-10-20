@@ -7219,6 +7219,14 @@ async function ctxChatDelete() {
 // ── «Без звука» на время ──
 // Включить звук — сразу; выключить — на 1 час, 8 часов, сутки или навсегда (меню у места нажатия)
 const MUTE_OPTS = [['На 1 час', 3600], ['На 8 часов', 28800], ['На сутки', 86400], ['Навсегда', 0]];
+// Колокольчик со сроком: на часы — одна «z», на сутки — две, навсегда — перечёркнутый (колокольчик Lucide, «z» дорисованы)
+function muteIcon(secs) {
+  const a = 'width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"';
+  if (!secs) return `<svg ${a}><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>`;
+  const bell = '<g transform="translate(-.5 3.5) scale(.82)"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></g>';
+  const z = secs <= 28800 ? '<path d="M16 2.5h5.5L16 9h5.5" stroke-width="1.8"/>' : '<path d="M13.5 8h3.5l-3.5 4.2H17" stroke-width="1.6"/><path d="M18 2.5h4L18 7.7h4" stroke-width="1.6"/>';
+  return `<svg ${a}>${bell}${z}</svg>`;
+}
 function hideMuteMenu() { const m = document.getElementById('mute-menu'); if (m) m.style.display = 'none'; }
 function showMuteMenu(chatId, x, y, anchor) {
   let m = document.getElementById('mute-menu');
@@ -7231,7 +7239,7 @@ function showMuteMenu(chatId, x, y, anchor) {
     document.addEventListener('keydown', e => { if (e.key === 'Escape') hideMuteMenu(); });
   }
   const bell = '<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>';
-  m.innerHTML = MUTE_OPTS.map(([l, s]) => `<button type="button" onclick="setChatMute(${chatId}, ${s})">${bell}<span>${l}</span></button>`).join('');
+  m.innerHTML = MUTE_OPTS.map(([l, s]) => `<button type="button" onclick="setChatMute(${chatId}, ${s})">${muteIcon(s)}<span>${l}</span></button>`).join('');
   m.style.display = 'block';
   m.classList.remove('pop-out'); m._popOut = false;
   placeCtxMenu(m, x, y, anchor || null);
@@ -7265,7 +7273,7 @@ function watchMutes() {
 function ctxMuteFill() {
   const fly = document.getElementById('ctx-mute-fly'); if (!fly) return;
   const bell = '<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>';
-  fly.innerHTML = MUTE_OPTS.map(([l, s]) => `<button type="button" data-ms="${s}">${bell}<span>${l}</span></button>`).join('');
+  fly.innerHTML = MUTE_OPTS.map(([l, s]) => `<button type="button" data-ms="${s}">${muteIcon(s)}<span>${l}</span></button>`).join('');
 }
 function ctxMutePlace() {
   const menu = document.getElementById('ctx-chat-menu'), wrap = document.getElementById('ctx-chat-mute-sub'), fly = document.getElementById('ctx-mute-fly');
