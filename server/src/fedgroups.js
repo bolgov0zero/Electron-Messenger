@@ -114,10 +114,7 @@ const topicsOf = chatId => db.prepare('SELECT * FROM chats WHERE parent_id = ? O
 const treeIds = chatId => [chatId, ...topicsOf(chatId).map(t => t.id)];
 function purgeFiles(chatId) {
   db.prepare('SELECT attachment FROM messages WHERE chat_id = ? AND attachment IS NOT NULL').all(chatId).forEach(r => {
-    try {
-      const a = JSON.parse(r.attachment);
-      [a?.url, a?.thumb].forEach(u => { if (u) { try { fs.unlinkSync(path.join(FILES_DIR, path.basename(u))); } catch {} } });
-    } catch {}
+    try { require('./attach').purge(JSON.parse(r.attachment)); } catch {}
   });
 }
 // Зеркало больше никому не нужно: ни участников, ни приглашённых
@@ -157,7 +154,7 @@ function msgEvent(m, gidOf) {
   let att = null;
   try {
     const a = m.attachment ? JSON.parse(m.attachment) : null;
-    if (a?.url) att = { name: a.name, size: a.size, mime: a.mime, w: a.width || null, h: a.height || null, thumb: !!a.thumb };
+    if (a?.url) att = F().describeAtt(a);
     else if (a?.gif) att = { gif: a.gif };
   } catch {}
   if (att) ev.att = att;
@@ -280,7 +277,7 @@ async function recvMsg(peer, ev) {
   const mm = applyMentions(text, ev.men, sender.id);
   text = mm.text;
   let attachment = null;
-  if (ev.att && typeof ev.att === 'object') attachment = ev.att.gif ? gifLib.sanitize(ev.att) : await F().receiveAttachment(peer, uid, ev.att);
+  if (ev.att && typeof ev.att === 'object') attachment = ev.att.gif ? gifLib.sanitize(ev.att) : await F().receiveAttachments(peer, uid, ev.att);
   let fwdJson = null;
   if (ev.fwd && typeof ev.fwd === 'object' && sender.id) fwdJson = JSON.stringify({ user_id: sender.id, name: str(ev.fwd.name, 80), text: str(ev.fwd.text, 4096), attachment: null, is_bot: false });
   if (!text && !attachment && !fwdJson) return;

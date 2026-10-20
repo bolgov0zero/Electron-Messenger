@@ -2,9 +2,8 @@
 
 // Service worker /m — тот же механизм push-уведомлений, что у /m/sw.js, но со своим
 // именем кэша и областью видимости (/m/): SW соседних клиентов её не покрывают.
-const CACHE = 'm-v2';
-// index.html (/m/) намеренно не прекэшируем — он всегда из сети, иначе закэшированная
-// страница может рендериться без актуальной вёрстки.
+const CACHE = 'm-v3';
+// index.html (/m/) не прекэшируем: он берётся из сети, а удачная копия остаётся в кэше для запуска без связи.
 const STATIC = ['/m/manifest.json', '/m/manifest-light.json'];
 
 self.addEventListener('install', e => {
@@ -24,22 +23,23 @@ self.addEventListener('fetch', e => {
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws')) return;
   if (url.origin !== self.location.origin) return;
 
+  // Первая загрузка идёт из сети; последняя удачная копия оболочки лежит в кэше: без связи (или если сеть отвечает дольше
+  // нескольких секунд) приложение открывается из неё, а не пустым экраном браузера
+  const slow = (p, fallback, ms) => Promise.race([p.catch(() => fallback), new Promise(res => setTimeout(() => res(fallback), ms))]);
   if (e.request.mode === 'navigate') {
-    e.respondWith(fetch(e.request));
+    e.respondWith((async () => {
+      const cache = await caches.open(CACHE), cached = await cache.match('/m/');
+      const net = fetch(e.request).then(r => { if (r.ok && r.status === 200 && !r.redirected) cache.put('/m/', r.clone()); return r; });
+      return cached ? slow(net, cached, 5000) : net;
+    })());
     return;
   }
 
-  e.respondWith(
-    fetch(e.request)
-      .then(r => {
-        if (r.ok) {
-          const clone = r.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return r;
-      })
-      .catch(() => caches.match(e.request))
-  );
+  e.respondWith((async () => {
+    const cache = await caches.open(CACHE), cached = await cache.match(e.request);
+    const net = fetch(e.request).then(r => { if (r.ok) cache.put(e.request, r.clone()); return r; });
+    return cached ? slow(net, cached, 4000) : net;
+  })());
 });
 
 // ── PUSH NOTIFICATIONS ──

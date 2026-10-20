@@ -24,6 +24,8 @@ B.ui.profile = (function () {
       (canContact ? '<button data-p="contact">' + ic(u.contact ? 'userplus' : 'userplus', 24, 1.8) + (u.contact ? 'Из контактов' : 'В контакты') + '</button>' : '') +
       '<button class="' + (blocked ? '' : 'red') + '" data-p="block">' + ic('block', 24, 1.8) + (blocked ? 'Разблокировать' : 'Заблокировать') + '</button></div>';
     if (blocked) h += '<div class="note">Вы заблокировали этого человека: он не может писать вам в личные сообщения. Общие группы и комнаты остаются.</div>';
+    var dm = B.S.chats.find(function (c) { return c.type === 'direct' && !c.is_secret && B.peerId(c) === id; });
+    if (dm) h += '<div class="grp"><button class="cell tap hasi" data-p="media" data-id="' + dm.id + '"><span class="ci" style="background:#5e6ad2">' + ic('photo', 17, 2) + '</span><span class="cl">Медиа, файлы и ссылки</span><span class="chev">' + ic('chev', 16, 2.4) + '</span></button></div>';
     h += '<div class="grp">' + rows.map(function (r) { return '<div class="cell"><span class="cl">' + r[0] + '</span><span class="cv l">' + esc(r[1]) + '</span></div>'; }).join('') + '</div>';
     h += '<div class="gh">Общие группы · ' + groups.length + '</div><div class="grp">' + (groups.length
       ? groups.map(function (c) { return '<button class="crow2" data-p="chat" data-id="' + c.id + '">' + B.avatar.chat(c, 40) + '<div class="t"><b>' + esc(B.chatName(c)) + '</b><span>' + (c.type === 'room' ? 'Комната' : 'Группа') + ' · ' + (c.members || []).length + ' участн.</span></div></button>'; }).join('')
@@ -71,6 +73,7 @@ B.ui.profile = (function () {
     var b = e.target.closest('[data-p]'); if (!b) return; var p = b.dataset.p;
     if (p === 'write') write(id); else if (p === 'contact') toggleContact(id); else if (p === 'block') block(id);
     else if (p === 'chat') B.openChat(+b.dataset.id);
+    else if (p === 'media') B.media.openChatMedia(+b.dataset.id);
   }
   function removeContact(id) {
     var u = user(id); if (!u) return;

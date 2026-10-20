@@ -1,3 +1,4 @@
+const attach = require('../attach');
 const router = require('express').Router();
 const path = require('path');
 const fs = require('fs');
@@ -64,6 +65,48 @@ router.get('/search', authMiddleware, (req, res) => {
       .replace(/[<>]/g, '');                       // подстраховка от прочих огрызков
   });
   res.json({ results: rows });
+});
+
+// «Медиа чата»: вложения и ссылки одним списком, без переписки вокруг.
+// type: media (фото и видео), files (остальные файлы), links (сообщения со ссылками); before — id сообщения, с которого читать вниз
+router.get('/chat/:chatId/media', authMiddleware, (req, res) => {
+  const chatId = Number(req.params.chatId), type = String(req.query.type || 'media');
+  if (!['media', 'files', 'links'].includes(type)) return res.status(400).json({ error: 'Некорректный тип' });
+  if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id))
+    return res.status(403).json({ error: 'Not a member' });
+  // Секретный чат: сервер не знает ни типов, ни ссылок, всё зашифровано
+  if (db.prepare('SELECT is_secret FROM chats WHERE id = ?').get(chatId)?.is_secret) return res.json({ items: [], more: false, cursor: null });
+  const limit = Math.min(parseInt(req.query.limit) || 60, 120);
+  let cursor = req.query.before ? parseInt(req.query.before) : Number.MAX_SAFE_INTEGER;
+  const where = type === 'links' ? "(m.text LIKE '%http://%' OR m.text LIKE '%https://%')" : "m.attachment LIKE '%\"url\"%'";
+  const stmt = db.prepare(`SELECT m.id, m.sent_at, m.text, m.attachment, m.link_preview, COALESCE(u.display_name, 'Удалённый аккаунт') AS sender_name, u.id AS sender_id
+    FROM messages m LEFT JOIN users u ON u.id = m.sender_id
+    WHERE m.chat_id = ? AND m.deleted = 0 AND m.id < ? AND ${where} ORDER BY m.id DESC LIMIT 200`);
+  const isMedia = a => /^(image|video)\//.test(a.mime || '');
+  const items = []; let more = false;
+  outer: for (;;) {
+    const rows = stmt.all(chatId, cursor);
+    for (const m of rows) {
+      cursor = m.id;
+      const base = { message_id: m.id, sent_at: m.sent_at, sender_id: m.sender_id, sender_name: m.sender_name };
+      if (type === 'links') {
+        const urls = [...new Set((m.text.match(/https?:\/\/[^\s<>"')]+/g) || []).map(u => u.replace(/[.,;:!?]+$/, '')))].slice(0, 5);
+        if (!urls.length) continue;
+        let lp = null; try { lp = m.link_preview ? JSON.parse(m.link_preview) : null; } catch {}
+        items.push({ ...base, urls, title: lp?.title || null, site: lp?.site || null, image: lp?.image || null, text: m.text.slice(0, 200) });
+      } else {
+        let att; try { att = JSON.parse(m.attachment); } catch { continue; }
+        if (!att?.url || att.enc) continue;
+        attach.list(attach.markExpired(att)).forEach((a, idx) => {
+          if (a.expired || !a.url || (type === 'media') !== isMedia(a)) return;
+          items.push({ ...base, idx, att: { url: a.url, thumb: a.thumb || null, name: a.name || null, mime: a.mime || '', size: a.size || 0, width: a.width || null, height: a.height || null }, caption: idx === 0 ? (m.text || '').slice(0, 200) : '' });
+        });
+      }
+      if (items.length >= limit) { more = true; break outer; }
+    }
+    if (rows.length < 200) break;
+  }
+  res.json({ items, more, cursor: more ? cursor : null });
 });
 
 // Получить сообщения чата с пагинацией (query: before | after | around, limit)
@@ -144,12 +187,7 @@ router.get('/chat/:chatId', authMiddleware, (req, res) => {
   const result = messages.map(m => {
     let attachment = null;
     if (m.attachment) { try { attachment = JSON.parse(m.attachment); } catch {} }
-    if (attachment?.url) {
-      const filename = attachment.url.replace(/^\/files\//, '');
-      if (!fs.existsSync(path.join(FILES_DIR, filename))) {
-        attachment = { ...attachment, expired: true };
-      }
-    }
+    if (attachment?.url) attachment = attach.markExpired(attachment);
     let mentions = null;
     if (m.mentions) { try { mentions = JSON.parse(m.mentions); } catch {} }
     let reply_attachment = null;

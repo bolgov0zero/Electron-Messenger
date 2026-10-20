@@ -345,6 +345,11 @@
   <div class="modal pf-modal" id="pf-modal"></div>
 </div>
 
+<!-- Медиа чата: стоит после профилей, чтобы открываться поверх них -->
+<div class="modal-bg" id="modal-media" onclick="if(event.target===this)closeModal('modal-media')">
+  <div class="modal cm-modal" id="cm-modal"></div>
+</div>
+
 <div class="modal-bg" id="modal-newchat" onclick="if(event.target===this)closeNewChat()">
   <div class="modal nc-modal">
     <div class="modal-hdr">

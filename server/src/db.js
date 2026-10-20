@@ -563,6 +563,16 @@ tryAlter('CREATE UNIQUE INDEX IF NOT EXISTS idx_chats_fed ON chats(fed_instance,
 tryAlter('ALTER TABLE fed_peers ADD COLUMN proto INTEGER NOT NULL DEFAULT 0');
 // fed_seq — номер сообщения у хозяина группы (по нему гость запрашивает пропущенное после обрыва); fed_avatar_v — версия аватарки группы у хозяина
 tryAlter('ALTER TABLE messages ADD COLUMN fed_seq INTEGER');
+// «Без звука» на время: until — момент (unixepoch), когда звук возвращается; NULL — навсегда
+tryAlter('ALTER TABLE muted_chats ADD COLUMN until INTEGER');
+// Настройки уведомлений человека: показывать ли текст, тихие часы (минуты от полуночи в часовом поясе tz)
+db.exec(`CREATE TABLE IF NOT EXISTS push_prefs (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  show_text INTEGER NOT NULL DEFAULT 1,
+  quiet_from INTEGER,
+  quiet_to INTEGER,
+  tz TEXT
+)`);
 tryAlter('ALTER TABLE chats ADD COLUMN fed_avatar_v TEXT');
 db.exec(`
   CREATE TABLE IF NOT EXISTS chat_invites (

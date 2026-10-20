@@ -165,5 +165,5 @@ B.ui.groups = (function () {
   B.bus.on('chats:changed', function () { if (B.nav.stack.some(function (s) { return s.el.dataset.room; })) renderTopics(); });
   B.bus.on('topics:reload', function () { var s = B.nav.stack.find(function (x) { return x.el.dataset.room; }); if (s) B.chats.loadTopics(+s.el.dataset.room).then(renderTopics); });
 
-  return { newChat: newChat, createGroup: createGroup, addContact: addContact, members: members, devices: devices };
+  return { resizeAvatar: resizeAvatar, newChat: newChat, createGroup: createGroup, addContact: addContact, members: members, devices: devices };
 })();

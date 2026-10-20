@@ -77,7 +77,9 @@ B.auth = {
     if (!s || !s.token) return false;
     B.S.token = s.token; B.S.user = s.user;
     var ok = await Promise.race([B.api('GET', '/users/presence'), new Promise(function (r) { setTimeout(function () { r(null); }, 5000); })]);
-    return !!(B.S.token && ok !== null);
+    // Нет ответа (связи нет): всё равно входим по сохранённой сессии — список чатов берётся из памяти устройства.
+    // Если сервер ответил 401, api() уже вышел и токена нет
+    return !!B.S.token;
   },
 
   logout: function () {

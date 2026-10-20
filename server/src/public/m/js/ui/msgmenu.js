@@ -179,5 +179,5 @@ B.ui.msgmenu = (function () {
   }
 
   B.bus.on('chat:deleted', function () { close(); });
-  return { init: init, open: open, close: close, isOpen: isOpen };
+  return { init: init, open: open, close: close, isOpen: isOpen, forward: forwardSheet };
 })();

@@ -377,6 +377,13 @@ function onReply(f) {
   }
 }
 // Скачать файл на диск. max — предельный размер в байтах: больше не принимаем
+// Описание вложения для другого сервера: сам файл он потом запросит отдельно (op 'file', idx — номер среди нескольких)
+function describeAtt(a) {
+  const one = x => ({ name: x.name, size: x.size, mime: x.mime, w: x.width || null, h: x.height || null, thumb: !!x.thumb });
+  const out = one(a);
+  if (Array.isArray(a.more) && a.more.length) out.more = a.more.filter(x => x && x.url).map(one);
+  return out;
+}
 function fetchFile(peerId, params, dest, max) {
   const sess = sessions.get(peerId);
   if (!sess || sess.ws.readyState !== 1) return Promise.reject(new Error('offline'));
@@ -448,7 +455,8 @@ async function handleReq(peer, sess, f) {
     })();
     if (!m || !sender || !(grp || (m.type === 'direct' && sender.is_bot !== spaces.FED && chatWithPeer(m.chat_id, peer)))) return fail('not_found');
     let att; try { att = JSON.parse(m.attachment); } catch { att = null; }
-    const url = f.which === 'thumb' ? att?.thumb : att?.url;
+    const item = f.idx ? (Array.isArray(att?.more) ? att.more[Math.floor(Number(f.idx)) - 1] : null) : att;   // idx — номер вложения среди нескольких
+    const url = f.which === 'thumb' ? item?.thumb : item?.url;
     const file = url && path.join(FILES_DIR, path.basename(url));
     if (!file || !fs.existsSync(file)) return fail('gone');
     return sendFileFrames(sess, f.rid, file);
@@ -605,7 +613,7 @@ function onLocalMessage(msgId) {
   let att = null;
   try {
     const a = m.attachment ? JSON.parse(m.attachment) : null;
-    if (a?.url) att = { name: a.name, size: a.size, mime: a.mime, w: a.width || null, h: a.height || null, thumb: !!a.thumb };
+    if (a?.url) att = describeAtt(a);
     else if (a?.gif) att = { gif: a.gif };   // GIF из Klipy: только ссылки, файл с сервера на сервер не передаётся
   } catch {}
   let fwd = null;
@@ -724,7 +732,7 @@ async function recvMessage(peer, ev) {
   const text = str(ev.text, 4096);
   // Вложение: скачиваем у себя, проверяя размер и формат по НАШИМ настройкам
   let attachment = null;
-  if (ev.att && typeof ev.att === 'object') attachment = ev.att.gif ? gifLib.sanitize(ev.att) : await receiveAttachment(peer, uid, ev.att);
+  if (ev.att && typeof ev.att === 'object') attachment = ev.att.gif ? gifLib.sanitize(ev.att) : await receiveAttachments(peer, uid, ev.att);
   let fwdJson = null;
   if (ev.fwd && typeof ev.fwd === 'object') fwdJson = JSON.stringify({ user_id: shadow.id, name: str(ev.fwd.name, 80), text: str(ev.fwd.text, 4096), attachment: null, is_bot: false });
   if (!text && !attachment && !fwdJson) return;
@@ -766,7 +774,17 @@ async function recvMessage(peer, ev) {
 }
 
 // Скачивание вложения. Возвращает объект вложения для базы: готовый файл у нас или пометку «недоступно»
-async function receiveAttachment(peer, uid, a) {
+// Вложение с остальными (more): каждое файл забираем у хозяина по номеру
+async function receiveAttachments(peer, uid, a) {
+  const first = await receiveAttachment(peer, uid, a, 0);
+  if (Array.isArray(a.more) && a.more.length && first) {
+    const more = [];
+    for (const [i, x] of a.more.slice(0, 9).entries()) { if (x && typeof x === 'object') more.push(await receiveAttachment(peer, uid, x, i + 1)); }
+    if (more.length) first.more = more;
+  }
+  return first;
+}
+async function receiveAttachment(peer, uid, a, idx = 0) {
   const name = str(a.name, 200) || 'file';
   const size = Math.max(0, Math.floor(Number(a.size)) || 0);
   const mime = str(a.mime, 100);
@@ -780,7 +798,7 @@ async function receiveAttachment(peer, uid, a) {
   const fname = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext ? '.' + ext.replace(/[^a-z0-9]/g, '') : ''}`;
   const dest = path.join(FILES_DIR, fname);
   try {
-    const r = await fetchFile(peer.id, { uid, which: 'file' }, dest, c.maxSizeMb * 1024 * 1024);
+    const r = await fetchFile(peer.id, { uid, which: 'file', idx }, dest, c.maxSizeMb * 1024 * 1024);
     if (!r.size) throw new Error('empty');
   } catch (e) {
     return { ...meta, unavailable: e.message === 'too_big' ? 'policy' : 'fetch' };
@@ -803,7 +821,7 @@ async function receiveAttachment(peer, uid, a) {
     // Кадр-превью видео берём у отправителя (ffmpeg у нас может не быть); принимаем только маленькую картинку
     const tn = fname.replace(/\.[^.]*$/, '') + '_t.jpg', tp = path.join(FILES_DIR, tn);
     try {
-      await fetchFile(peer.id, { uid, which: 'thumb' }, tp, 512 * 1024);
+      await fetchFile(peer.id, { uid, which: 'thumb', idx }, tp, 512 * 1024);
       if (require('./routes/users').isImageBuffer(fs.readFileSync(tp))) { out.thumb = `/files/${tn}`; out.width = Number(a.w) || null; out.height = Number(a.h) || null; }
       else fs.unlinkSync(tp);
     } catch { try { fs.unlinkSync(tp); } catch {} }
@@ -829,11 +847,7 @@ function recvEdit(peer, ev) {
 function removeMessageFiles(m) {
   try {
     const a = m.attachment ? JSON.parse(m.attachment) : null;
-    if (a?.url) {
-      const fname = path.basename(a.url);
-      const refs = db.prepare("SELECT COUNT(*) c FROM messages WHERE id != ? AND deleted = 0 AND (attachment LIKE ? OR forward_data LIKE ?)").get(m.id, `%${fname}%`, `%${fname}%`).c;
-      if (!refs) [a.url, a.thumb].forEach(u => { if (u) try { fs.unlinkSync(path.join(FILES_DIR, path.basename(u))); } catch {} });
-    }
+    if (a?.url) require('./attach').release(a, m.id);
   } catch {}
 }
 function recvDelete(peer, ev) {
@@ -1135,5 +1149,5 @@ module.exports = {
   lookupRemote, peerOfUser, peerByInstance, isOnline,
   onLocalMessage, onGroupMessage, onPin, onEdit, onDelete, onReact, onStatus, onTyping, onPresence, onProfile, onContactAdded, onContactRemoved, afterContactChange,
   // для fedgroups.js
-  enqueue, sendLive, rpc, fetchFile, ensureShadow, remoteUser, shadowByAddr: shadowRow, findLocalUser, avatarVersion, receiveAttachment, removeMessageFiles,
+  enqueue, sendLive, rpc, fetchFile, ensureShadow, remoteUser, shadowByAddr: shadowRow, findLocalUser, avatarVersion, receiveAttachment, receiveAttachments, describeAtt, removeMessageFiles,
 };

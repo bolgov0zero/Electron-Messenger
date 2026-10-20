@@ -22,10 +22,22 @@ B.chats = {
     B.S.secretChatIds = new Set(list.filter(function (x) { return x.is_secret; }).map(function (x) { return x.id; }));
     return list.filter(function (x) { return !x.is_secret; });
   },
+  // Последний список чатов хранится на устройстве: без связи приложение открывается с ним, а не с пустым экраном
+  store: function (list) {
+    try { localStorage.setItem('m.chats', JSON.stringify({ u: B.S.user && B.S.user.id, t: Date.now(), list: list.filter(function (c) { return !c.parent_id; }) })); } catch (e) {}
+  },
+  stored: function () {
+    try { var o = JSON.parse(localStorage.getItem('m.chats')); return o && B.S.user && o.u === B.S.user.id && Array.isArray(o.list) ? o : null; } catch (e) { return null; }
+  },
   load: async function () {
     await B.secret.boot();
     var list = B.chats.visible(await B.api('GET', '/chats'));
-    if (!list) return;
+    if (!list) {
+      var o = B.chats.stored();
+      if (o && !B.S.chats.length) { B.S.chats = o.list; B.S.cachedAt = o.t; B.chats.onChanged(); }
+      return;
+    }
+    B.S.cachedAt = 0; B.chats.store(list);
     B.S.chats = list;
     B.chats.onChanged();
   },
@@ -36,6 +48,7 @@ B.chats = {
     var fresh = B.chats.visible(await B.api('GET', '/chats'));
     if (!fresh) return;
     var topics = B.S.chats.filter(function (c) { return c.parent_id; });
+    B.S.cachedAt = 0; B.chats.store(fresh);
     B.S.chats = fresh.concat(topics);
     B.chats.onChanged();
   },
@@ -120,6 +133,7 @@ B.chats.preview = function (c) {
   if (lm.forward_data && !lm.text) return 'Пересланное сообщение';
   if (lm.attachment) {
     var a = lm.attachment, mime = a.mime || '';
+    if (a.more && a.more.length) return '🖼 Вложений: ' + (a.more.length + 1);
     return a.gif ? '🖼 GIF' : mime.indexOf('image/') === 0 ? '🖼 Изображение' : mime.indexOf('video/') === 0 ? '🎬 Видео' : '📎 ' + (a.name || 'Файл');
   }
   return '';
@@ -129,11 +143,31 @@ B.chats.pin = async function (id) {
   var res = await B.api('POST', '/chats/' + id + '/pin');
   if (res && res.ok) { c.pinned = res.pinned; B.chats.onChanged(); }
 };
+// Включить звук сразу; выключить — на время (1 час, 8 часов, сутки) или навсегда
 B.chats.mute = async function (id) {
   var c = B.find(id); if (!c) return;
-  var res = await B.api(c.muted ? 'DELETE' : 'POST', '/chats/' + id + '/mute');
-  if (res && res.ok) { c.muted = !c.muted; B.chats.onChanged(); }
+  if (c.muted) {
+    var res = await B.api('DELETE', '/chats/' + id + '/mute');
+    if (res && res.ok) { c.muted = false; c.muted_until = null; B.chats.onChanged(); }
+    return;
+  }
+  var set = function (secs) { return function () { B.chats.setMute(id, secs); }; };
+  B.actions.show({ title: 'Выключить звук чата', items: [{ l: 'На 1 час', f: set(3600) }, { l: 'На 8 часов', f: set(28800) }, { l: 'На сутки', f: set(86400) }, { l: 'Навсегда', f: set(0) }] });
 };
+B.chats.setMute = async function (id, secs) {
+  var c = B.find(id); if (!c) return;
+  var res = await B.api('POST', '/chats/' + id + '/mute', secs ? { seconds: secs } : {});
+  if (res && res.ok) { c.muted = true; c.muted_until = secs ? Math.floor(Date.now() / 1000) + secs : null; B.chats.onChanged(); }
+};
+// Когда срок «без звука» истекает, список обновляется сам: значок колокольчика и счётчики возвращаются
+B.chats._muteTimer = null;
+B.chats.watchMutes = function () {
+  clearTimeout(B.chats._muteTimer);
+  var now = Math.floor(Date.now() / 1000), next = Infinity;
+  B.S.chats.forEach(function (c) { if (c.muted && c.muted_until && c.muted_until > now && c.muted_until < next) next = c.muted_until; });
+  if (next < Infinity) B.chats._muteTimer = setTimeout(function () { B.chats.refresh(); }, Math.min((next - now + 1) * 1000, 2147000000));
+};
+B.bus.on('chats:changed', function () { B.chats.watchMutes(); });
 // Приглашение в группу с другого сервера
 B.chats.acceptInvite = async function (id, btn) {
   if (btn) { btn.disabled = true; btn.textContent = 'Вступаю…'; }
@@ -151,3 +185,5 @@ B.chats.searchMessages = async function (q) {
   var data = await B.api('GET', '/messages/search?q=' + encodeURIComponent(q));
   return (data && data.results) || [];
 };
+
+B.bus.on('auth:logout', function () { try { localStorage.removeItem('m.chats'); } catch (e) {} });

@@ -4,6 +4,7 @@ const spaces = require('./spaces');
 const unreadCounts = require('./unread');
 const gifLib = require('./gif');
 const linkPrev = require('./linkprev');
+const attach = require('./attach');
 // Требуем лениво, как и sendPushToUser ниже: push.js при загрузке генерирует
 // ключи, и раньше времени его дёргать не нужно
 function hasPushSubscription(userId) {
@@ -41,15 +42,11 @@ const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
 
 function deleteAttachmentFile(attachment) {
   if (!attachment) return;
-  try {
-    const att = typeof attachment === 'string' ? JSON.parse(attachment) : attachment;
-    [att?.url, att?.thumb].forEach(u => {
-      if (!u) return;
-      const filepath = path.join(FILES_DIR, path.basename(u));
-      if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-    });
-  } catch {}
+  try { attach.purge(typeof attachment === 'string' ? JSON.parse(attachment) : attachment); } catch {}
 }
+
+// «пользователь:client_id» -> { id сообщения, время }: защита от дублей при повторной отправке (15 минут)
+const recentSends = new Map();
 
 // userId -> Set<ws>
 const clients = new Map();
@@ -187,10 +184,7 @@ function getMessageWithStatus(msgId, viewerId) {
   `).get(msgId);
   if (!msg) return null;
   if (msg.attachment) try { msg.attachment = JSON.parse(msg.attachment); } catch { msg.attachment = null; }
-  if (msg.attachment?.url) {
-    const fname = path.basename(msg.attachment.url);
-    if (!fs.existsSync(path.join(FILES_DIR, fname))) msg.attachment = { ...msg.attachment, expired: true };
-  }
+  if (msg.attachment?.url) msg.attachment = attach.markExpired(msg.attachment);
   if (msg.mentions) try { msg.mentions = JSON.parse(msg.mentions); } catch { msg.mentions = null; }
   if (msg.reply_attachment) try { msg.reply_attachment = JSON.parse(msg.reply_attachment); } catch { msg.reply_attachment = null; }
   if (msg.forward_data) try { msg.forward_data = JSON.parse(msg.forward_data); } catch { msg.forward_data = null; }
@@ -208,8 +202,9 @@ function getMessageWithStatus(msgId, viewerId) {
 
 // Всё, что происходит после того, как сообщение записано в базу: рассылка участникам чата и push.
 // Общая для сообщений своих пользователей и пришедших с другого сервера.
-function finishMessage(msgId, chat_id, senderId) {
+function finishMessage(msgId, chat_id, senderId, clientId) {
   const msg = getMessageWithStatus(msgId, senderId);
+  if (clientId) msg.client_id = clientId;   // отправитель по нему находит своё неподтверждённое сообщение
   const chatMeta = db.prepare('SELECT type, name, parent_id, is_secret FROM chats WHERE id = ?').get(chat_id);
   if (chatMeta?.parent_id) msg.parent_id = chatMeta.parent_id;
   broadcast(chat_id, { type: 'message', message: msg });
@@ -218,7 +213,7 @@ function finishMessage(msgId, chat_id, senderId) {
   const chat = chatMeta;
   const allMembers = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chat_id, senderId);
   const stmtMuted = db.prepare(
-    'SELECT 1 FROM muted_chats WHERE user_id = ? AND (chat_id = ? OR chat_id = ?)'
+    'SELECT 1 FROM muted_chats WHERE user_id = ? AND (chat_id = ? OR chat_id = ?) AND (until IS NULL OR until > unixepoch())'
   );
   allMembers.forEach(({ user_id }) => {
     const parentId = chatMeta?.parent_id || chat_id;
@@ -237,7 +232,7 @@ function finishMessage(msgId, chat_id, senderId) {
     // показываем даже тем, у кого ключ есть (защита от подглядывания).
     pushToUser(user_id, {
       title: chatTitle,
-      body: chat?.is_secret ? 'Новое сообщение' : (String(msg.text || '').replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, '∗∗∗') || (msg.attachment ? (msg.attachment.gif ? 'GIF' : '🖼 Изображение') : '')),
+      body: chat?.is_secret ? 'Новое сообщение' : (String(msg.text || '').replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, '∗∗∗') || (msg.attachment ? (msg.attachment.gif ? 'GIF' : msg.attachment.more?.length ? `📎 Вложений: ${msg.attachment.more.length + 1}` : '🖼 Изображение') : '')),
       chatId: chat_id,
       unread,
     });
@@ -304,6 +299,14 @@ function setup(server) {
         if (ws._msgTimes.length >= 20) return;
         ws._msgTimes.push(nowMs);
         const { chat_id, reply_to_id, iv } = data;
+        // Повторная отправка после обрыва связи: сообщение с тем же client_id второй раз не создаём, отдаём уже созданное
+        const clientId = typeof data.client_id === 'string' && /^[\w.\-]{1,40}$/.test(data.client_id) ? data.client_id : null;
+        const sendKey = clientId ? user.id + ':' + clientId : null;
+        if (sendKey && recentSends.has(sendKey)) {
+          const prev = getMessageWithStatus(recentSends.get(sendKey).id, user.id);
+          if (prev && !prev.deleted) { prev.client_id = clientId; ws.send(JSON.stringify({ type: 'message', message: prev })); }
+          return;
+        }
         const chatRow = db.prepare('SELECT c.is_secret, c.read_only, (SELECT p.read_only FROM chats p WHERE p.id = c.parent_id) AS parent_read_only FROM chats c WHERE c.id = ?').get(chat_id);
         // Комната «только для чтения» (и её темы) — писать может только вебхук; реакции остаются
         if (chatRow?.read_only || chatRow?.parent_read_only) {
@@ -335,6 +338,7 @@ function setup(server) {
         // прячет в шифротексте сообщения, сюда приходит лишь ссылка и вектор
         let attachment = isSecret ? sanitizeEncAttachment(data.attachment) : data.attachment;
         // GIF из Klipy: файла у нас нет, вложение — только проверенные ссылки Klipy; нужен включённый модуль
+        if (!isSecret && attachment && typeof attachment === 'object') attachment = attach.sanitize(attachment);
         if (!isSecret && attachment && typeof attachment === 'object' && attachment.gif !== undefined) {
           attachment = gifLib.sanitize(attachment);
           if (!attachment || !gifLib.isOn()) { ws.send(JSON.stringify({ type: 'send_rejected', chat_id, reason: 'gif_off' })); return; }
@@ -364,7 +368,7 @@ function setup(server) {
         const fdJson = (forward_data && typeof forward_data === 'object' && forward_data.user_id)
           ? JSON.stringify({ user_id: forward_data.user_id, name: forward_data.name || '',
               text: (forward_data.text || '').slice(0, 4096),
-              attachment: (forward_data.attachment && forward_data.attachment.gif !== undefined) ? gifLib.sanitize(forward_data.attachment) : (forward_data.attachment || null),
+              attachment: (forward_data.attachment && forward_data.attachment.gif !== undefined) ? gifLib.sanitize(forward_data.attachment) : attach.sanitize(forward_data.attachment || null),
               is_bot: !!forward_data.is_bot })
           : null;
 
@@ -413,7 +417,11 @@ function setup(server) {
             sendTo(dm.user_id, { type: 'chat_limit', chat_id, dm_limit: spaces.limitFor(dm.user_id, user.id) });
           }
         }
-        finishMessage(msgId, chat_id, user.id);
+        if (sendKey) {
+          recentSends.set(sendKey, { id: msgId, t: Date.now() });
+          if (recentSends.size > 2000) { const old = Date.now() - 900_000; for (const [k, v] of recentSends) if (v.t < old) recentSends.delete(k); }
+        }
+        finishMessage(msgId, chat_id, user.id, clientId);
         // Собеседник с другого сервера: сообщение уходит в очередь отправки
         if (dm && spaces.isFed(dm.user_id)) fed().onLocalMessage(msgId);
         // Группа с участниками или хозяином на другом сервере
@@ -507,11 +515,7 @@ function setup(server) {
         // Удаляем файл только если на него нет ссылок из других сообщений (в т.ч. пересланных)
         const attObj = msg.attachment ? (() => { try { return JSON.parse(msg.attachment); } catch { return null; } })() : null;
         if (attObj?.url) {
-          const fname = path.basename(attObj.url);
-          const refs = db.prepare(
-            "SELECT COUNT(*) as c FROM messages WHERE id != ? AND deleted = 0 AND (attachment LIKE ? OR forward_data LIKE ?)"
-          ).get(message_id, `%${fname}%`, `%${fname}%`).c;
-          if (refs === 0) deleteAttachmentFile(attObj);
+          attach.release(attObj, message_id);
         } else if (msg.attachment) {
           deleteAttachmentFile(msg.attachment);
         }
@@ -560,7 +564,7 @@ function setup(server) {
         if (isAdd && msg.sender_id !== user.id) {
           const chatMeta = db.prepare('SELECT parent_id FROM chats WHERE id = ?').get(msg.chat_id);
           const parentId = chatMeta?.parent_id || msg.chat_id;
-          const muted = db.prepare('SELECT 1 FROM muted_chats WHERE user_id = ? AND (chat_id = ? OR chat_id = ?)').get(msg.sender_id, msg.chat_id, parentId);
+          const muted = db.prepare('SELECT 1 FROM muted_chats WHERE user_id = ? AND (chat_id = ? OR chat_id = ?) AND (until IS NULL OR until > unixepoch())').get(msg.sender_id, msg.chat_id, parentId);
           if (!muted) {
             if (hasPushSubscription(msg.sender_id)) {
               pushToUser(msg.sender_id, {

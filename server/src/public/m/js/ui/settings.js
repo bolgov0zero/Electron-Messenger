@@ -14,11 +14,12 @@ B.ui.settings = (function () {
   function render() {
     if (!box) return;
     var u = S.user || {}, mods = window.Modules ? Modules.list().filter(function (m) { return m.on; }).length : 0;
-    box.innerHTML = '<div style="height:14px"></div>' +
+    var upd = B.app.newVersion ? '<div class="updc">' + ic('refresh', 22, 2) + '<div class="t"><b>Вышла новая версия</b><span>Обновление применится после перезагрузки</span></div><button class="pill" data-s="reload">Обновить</button></div>' : '';
+    box.innerHTML = '<div style="height:14px"></div>' + upd +
       '<div class="grp"><button class="prof tap" data-s="me">' + (u.id ? B.avatar.user(u.id, u.display_name || '', 62, true) : '') +
         '<div style="flex:1;min-width:0"><div class="nm">' + esc(u.display_name || '') + '</div><div class="sb">@' + esc(u.username || '') + '</div></div><span class="chev" style="color:var(--fg3);display:flex">' + ic('chev', 16, 2.4) + '</span></button></div>' +
       '<div class="grp">' + cell({ act: 'appearance', ic: 'palette', bg: '#af52de', label: 'Внешний вид' }) +
-        cell({ act: 'notif', ic: 'bell', bg: '#ff3b30', label: 'Уведомления', val: notifText(), chev: false }) +
+        cell({ act: 'notif', ic: 'bell', bg: '#ff3b30', label: 'Уведомления', val: notifText() }) +
         cell({ act: 'modules', ic: 'puzzle', bg: '#34c759', label: 'Модули', val: mods ? String(mods) : '' }) +
         cell({ act: 'folders', ic: 'folder', bg: '#ff9500', label: 'Папки', val: B.folders.list.length ? String(B.folders.list.length) : '' }) + '</div>' +
       '<div class="grp">' + cell({ act: 'blocks', ic: 'block', bg: '#8e8e93', label: 'Блокировки', val: S.blocked.length ? String(S.blocked.length) : '' }) +
@@ -34,12 +35,49 @@ B.ui.settings = (function () {
       if (a === 'me') openMe(); else if (a === 'appearance') openAppearance(); else if (a === 'modules') openModules(); else if (a === 'folders') B.ui.folders.openPage();
       else if (a === 'blocks') openBlocks(); else if (a === 'diag') B.ui.diag.open();
       else if (a === 'logout') B.actions.confirm('Выйти из аккаунта?', '', 'Выйти', function () { B.auth.logout(); });
-      else if (a === 'notif') {
-        var p = B.push.permission();
-        if (p === 'default') B.push.request().then(render);
-        else B.toast.show(p === 'granted' ? 'Уведомления включены. Отключить их можно в настройках телефона' : 'Разрешите уведомления в настройках телефона');
-      }
+      else if (a === 'reload') location.reload();
+      else if (a === 'notif') openNotif();
     });
+  }
+
+  // ── уведомления: разрешение, показ текста, тихие часы ──
+  function mm(v) { return v == null ? '' : ('0' + Math.floor(v / 60)).slice(-2) + ':' + ('0' + v % 60).slice(-2); }
+  function toMin(s) { var m = /^(\d{1,2}):(\d{2})$/.exec(s || ''); return m ? (+m[1]) * 60 + (+m[2]) : null; }
+  function openNotif() {
+    var p = B.push.permission(), ios = /iPhone|iPad|iPod/i.test(navigator.userAgent), needInstall = !B.push.supported() || (ios && !B.pwa.standalone);
+    var prefs = { show_text: true, quiet_from: null, quiet_to: null };
+    var el = B.nav.page({ title: 'Уведомления', back: 'Настройки', gray: true, body: '' });
+    function paint() {
+      var quiet = prefs.quiet_from != null && prefs.quiet_to != null, h = '<div style="height:14px"></div>';
+      if (needInstall) h += '<div class="how"><b>Чтобы приходили уведомления, добавьте приложение на экран «Домой»</b><ol><li>Нажмите <u>' + ic('share', 14, 2) + ' Поделиться</u> в Safari</li><li>Выберите «На экран “Домой”»</li><li>Откройте «Электрон» с экрана «Домой» и разрешите уведомления</li></ol></div>';
+      h += '<div class="grp"><div class="cell"><span class="cl">Уведомления</span><span class="cv">' + esc(notifText()) + '</span></div>' +
+        (p === 'default' && B.push.supported() ? '<button class="cell tap" data-n="allow"><span class="cl" style="color:var(--accent)">Разрешить уведомления</span></button>' : '') + '</div>';
+      if (p === 'denied') h += '<div class="gf" style="margin-top:-16px">Уведомления запрещены. Включить их можно в настройках телефона: Электрон → Уведомления.</div>';
+      h += '<div class="grp"><div class="cell"><span class="cl">Показывать текст сообщения</span><button class="tg" data-n="text" role="switch" aria-checked="' + !!prefs.show_text + '"><i></i></button></div></div>' +
+        '<div class="gf" style="margin-top:-16px">Выключите показ текста, если телефон лежит на виду: в уведомлении будет только «Новое сообщение».</div>' +
+        '<div class="grp"><div class="cell"><span class="cl">Тихие часы</span><button class="tg" data-n="quiet" role="switch" aria-checked="' + quiet + '"><i></i></button></div>' +
+        (quiet ? '<div class="cell"><span class="cl">С</span><input class="tm" type="time" data-n="qf" value="' + mm(prefs.quiet_from) + '"></div><div class="cell"><span class="cl">До</span><input class="tm" type="time" data-n="qt" value="' + mm(prefs.quiet_to) + '"></div>' : '') + '</div>' +
+        '<div class="gf" style="margin-top:-16px">В тихие часы уведомления на этом и других ваших устройствах не приходят. Сообщения никуда не пропадают.</div>';
+      el.querySelector('.scroll').innerHTML = h;
+    }
+    async function save(part) {
+      var tz = ''; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) {}
+      var r = await B.api('PUT', '/push/prefs', Object.assign({ tz: tz }, part));
+      if (r && !r.error) prefs = r; else B.toast.show('Не удалось сохранить');
+      paint();
+    }
+    el.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-n]'); if (!b || b.tagName === 'INPUT') return; var a = b.dataset.n;
+      if (a === 'allow') B.push.request().then(function () { p = B.push.permission(); render(); paint(); });
+      else if (a === 'text') save({ show_text: !prefs.show_text });
+      else if (a === 'quiet') { if (prefs.quiet_from != null) save({ quiet_from: null, quiet_to: null }); else save({ quiet_from: 22 * 60, quiet_to: 8 * 60 }); }
+    });
+    el.addEventListener('change', function (e) {
+      var b = e.target.closest('input[data-n]'); if (!b) return; var v = toMin(b.value); if (v == null) return;
+      save(b.dataset.n === 'qf' ? { quiet_from: v } : { quiet_to: v });
+    });
+    B.nav.push(el, 'Уведомления'); paint();
+    B.api('GET', '/push/prefs').then(function (r) { if (r && !r.error) { prefs = r; paint(); } });
   }
 
   // ── профиль ──
@@ -152,5 +190,6 @@ B.ui.settings = (function () {
   B.bus.on('app:ready', render); B.bus.on('chats:changed', function () {});
   B.bus.on('avatar:updated', render);
   B.bus.on('folders:changed', render);
+  B.bus.on('app:update', function () { render(); });
   return { mount: mount, render: render };
 })();

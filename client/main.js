@@ -976,8 +976,21 @@ function lightboxUrl(payload) {
   u.searchParams.set('url', payload.url || '');
   u.searchParams.set('filename', payload.filename || '');
   u.searchParams.set('type', payload.type || 'image');
+  // Несколько фото и видео в чате: лента для листания стрелками
+  if (Array.isArray(payload.items) && payload.items.length >= 1) {
+    const items = payload.items.slice(0, 150).map(it => ({ url: String(it.url || ''), filename: String(it.filename || ''), type: it.type === 'video' ? 'video' : 'image', mid: Number(it.mid) || 0, senderId: Number(it.senderId) || 0, sender: String(it.sender || '').slice(0, 80), at: Number(it.at) || 0, caption: String(it.caption || '').slice(0, 300), mine: !!it.mine, total: Number(it.total) || 1, thumb: String(it.thumb || '') }));
+    u.searchParams.set('items', JSON.stringify(items));
+    u.searchParams.set('index', String(Math.max(0, Math.min(items.length - 1, Number(payload.index) || 0))));
+  }
   return u.toString();
 }
+// Из окна просмотра: «Переслать» и «Удалить» — дело главного окна, просмотр при этом закрывается
+ipcMain.handle('lightbox-action', (_, a) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send('lightbox-action', a);
+  if (lightboxWin && !lightboxWin.isDestroyed()) lightboxWin.close();
+  mainWindow.show(); mainWindow.focus();
+});
 ipcMain.handle('lightbox-open', (_, payload) => {
   // Каждый раз новое окно, а не переиспользование прежнего (loadURL в то же окно)
   if (lightboxWin && !lightboxWin.isDestroyed()) lightboxWin.close();

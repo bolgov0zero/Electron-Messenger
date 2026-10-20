@@ -49,8 +49,26 @@ function buildPayload(appUrl, payload) {
   return Object.assign({ web_push: 8030, notification: n }, payload);
 }
 
+// Настройки уведомлений человека: показывать ли текст и тихие часы
+function getPrefs(userId) {
+  const r = db.prepare('SELECT show_text, quiet_from, quiet_to, tz FROM push_prefs WHERE user_id = ?').get(userId);
+  return { show_text: r ? !!r.show_text : true, quiet_from: r?.quiet_from ?? null, quiet_to: r?.quiet_to ?? null, tz: r?.tz || null };
+}
+function inQuietHours(p, now = new Date()) {
+  if (p.quiet_from == null || p.quiet_to == null || p.quiet_from === p.quiet_to) return false;
+  let mins;
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: p.tz || 'UTC', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now);
+    mins = Number(parts.find(x => x.type === 'hour').value) * 60 + Number(parts.find(x => x.type === 'minute').value);
+  } catch { return false; }
+  return p.quiet_from < p.quiet_to ? (mins >= p.quiet_from && mins < p.quiet_to) : (mins >= p.quiet_from || mins < p.quiet_to);
+}
+
 // Экспортируем для использования в ws.js
 function sendPushToUser(userId, payload) {
+  const prefs = getPrefs(userId);
+  if (inQuietHours(prefs)) return;                       // тихие часы: уведомлений нет вообще
+  if (!prefs.show_text) payload = { ...payload, body: 'Новое сообщение' };
   const subs = db.prepare('SELECT endpoint, keys, app_url FROM push_subscriptions WHERE user_id = ?').all(userId);
   subs.forEach(row => {
     const sub = { endpoint: row.endpoint, keys: JSON.parse(row.keys) };
@@ -92,6 +110,22 @@ router.post('/subscribe', (req, res) => {
     ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, keys = excluded.keys, app_url = excluded.app_url
   `).run(req.user.id, endpoint, JSON.stringify(keys), appUrl);
   res.json({ ok: true });
+});
+
+// Настройки уведомлений: показ текста и тихие часы
+router.get('/prefs', (req, res) => res.json(getPrefs(req.user.id)));
+router.put('/prefs', (req, res) => {
+  const b = req.body || {}, cur = getPrefs(req.user.id);
+  const min = v => (v === null ? null : Number.isInteger(v) && v >= 0 && v < 1440 ? v : undefined);
+  const qf = b.quiet_from === undefined ? cur.quiet_from : min(b.quiet_from), qt = b.quiet_to === undefined ? cur.quiet_to : min(b.quiet_to);
+  if (qf === undefined || qt === undefined) return res.status(400).json({ error: 'Некорректное время' });
+  let tz = b.tz === undefined ? cur.tz : (typeof b.tz === 'string' ? b.tz.slice(0, 64) : null);
+  if (tz) { try { new Intl.DateTimeFormat('en-GB', { timeZone: tz }); } catch { tz = cur.tz; } }
+  const show = b.show_text === undefined ? cur.show_text : !!b.show_text;
+  db.prepare(`INSERT INTO push_prefs (user_id, show_text, quiet_from, quiet_to, tz) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET show_text = excluded.show_text, quiet_from = excluded.quiet_from, quiet_to = excluded.quiet_to, tz = excluded.tz`)
+    .run(req.user.id, show ? 1 : 0, qf, qt, tz);
+  res.json(getPrefs(req.user.id));
 });
 
 // Удалить подписку

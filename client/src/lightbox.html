@@ -39,6 +39,22 @@
     display: flex; align-items: center; justify-content: center; transition: background .15s;
   }
   #dl:hover { background: rgba(255,255,255,.22); }
+  .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 72px; border-radius: 14px; background: rgba(255,255,255,.12); color: #fff; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; transition: background .15s; }
+  .nav:hover { background: rgba(255,255,255,.22); }
+  body.gallery .nav { display: flex; }
+  #prev { left: 24px; } #next { right: 24px; }
+  .act { position: absolute; top: 24px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; transition: background .15s; }
+  .act:hover { background: rgba(255,255,255,.22); }
+  #fw { right: 72px; } #rm { right: 120px; }
+  #info { position: absolute; top: 22px; left: 24px; color: #fff; font: 14px -apple-system, system-ui, sans-serif; display: none; flex-direction: column; line-height: 1.25; background: rgba(255,255,255,.12); padding: 7px 14px; border-radius: 12px; max-width: 40vw; }
+  #info b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } #info span { font-size: 12px; opacity: .75; }
+  #bottom { position: absolute; left: 0; right: 0; bottom: 84px; display: none; flex-direction: column; align-items: center; gap: 8px; padding: 0 90px; pointer-events: none; }
+  #cap { color: #fff; font: 14px -apple-system, system-ui, sans-serif; text-align: center; max-width: 640px; background: rgba(0,0,0,.45); padding: 6px 14px; border-radius: 12px; pointer-events: auto; cursor: default; }
+  #thumbs { display: flex; gap: 4px; pointer-events: auto; }
+  #thumbs i { width: 38px; height: 38px; border-radius: 6px; background: #222 center / cover; opacity: .55; cursor: pointer; }
+  #thumbs i.on { opacity: 1; outline: 2px solid #fff; outline-offset: 1px; } #thumbs i:hover { opacity: .9; }
+  #count { position: absolute; top: 30px; left: 50%; transform: translateX(-50%); color: #fff; font: 14px -apple-system, system-ui, sans-serif; background: rgba(255,255,255,.12); padding: 4px 12px; border-radius: 999px; display: none; }
+  body.gallery #count { display: block; }
   .zoom { position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
   .zoom button {
     width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.12);
@@ -49,6 +65,13 @@
 </style>
 </head>
 <body>
+  <button class="nav" id="prev" type="button" title="Назад" onclick="event.stopPropagation();step(-1)"><svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+  <button class="nav" id="next" type="button" title="Дальше" onclick="event.stopPropagation();step(1)"><svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+  <div id="count"></div>
+  <div id="info"></div>
+  <button class="act" id="fw" type="button" title="Переслать" onclick="event.stopPropagation();act('forward')"><svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg></button>
+  <button class="act" id="rm" type="button" title="Удалить" onclick="event.stopPropagation();act('delete')"><svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+  <div id="bottom"><div id="cap"></div><div id="thumbs"></div></div>
   <img id="img">
   <video id="vid" controls playsinline></video>
   <div class="zoom">
@@ -61,19 +84,59 @@
   </button>
 <script>
   const params = new URLSearchParams(location.search);
-  const mediaUrl = params.get('url') || '';
-  const filename = params.get('filename') || 'file';
-  const type = params.get('type') || 'image';
+  let mediaUrl = params.get('url') || '';
+  let filename = params.get('filename') || 'file';
+  let type = params.get('type') || 'image';
+  let items = null, idx = 0;
+  try { const raw = params.get('items'); if (raw) { items = JSON.parse(raw); idx = Number(params.get('index')) || 0; } } catch {}
 
   const img = document.getElementById('img');
   const vid = document.getElementById('vid');
-  if (type === 'video') {
-    document.body.classList.add('video');
-    vid.src = mediaUrl;
-    vid.play().catch(() => {});
-  } else {
-    img.src = mediaUrl;
+  function show() {
+    document.body.classList.toggle('video', type === 'video');
+    if (type === 'video') { img.removeAttribute('src'); vid.src = mediaUrl; vid.play().catch(() => {}); }
+    else { vid.pause(); vid.removeAttribute('src'); img.src = mediaUrl; }
+    if (items && items.length > 1) {
+      document.body.classList.add('gallery');
+      document.getElementById('count').textContent = (idx + 1) + ' из ' + items.length;
+      document.getElementById('prev').style.visibility = idx > 0 ? '' : 'hidden';
+      document.getElementById('next').style.visibility = idx < items.length - 1 ? '' : 'hidden';
+    }
+    paintMeta();
   }
+  function when(ts) {
+    if (!ts) return '';
+    const d = new Date(ts * 1000), n = new Date(), hm = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    return d.toDateString() === n.toDateString() ? 'сегодня, ' + hm : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(d.getFullYear() !== n.getFullYear() ? { year: 'numeric' } : {}) }) + ', ' + hm;
+  }
+  function esc(t) { return String(t || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+  // Кто и когда, подпись, миниатюры и кнопки под текущий кадр
+  function paintMeta() {
+    const it = items && items[idx], n = items ? items.length : 0;
+    const info = document.getElementById('info');
+    info.style.display = it && (it.sender || it.at) ? 'flex' : 'none';
+    info.innerHTML = it ? '<b>' + esc(it.sender) + '</b><span>' + esc(when(it.at)) + '</span>' : '';
+    const cap = document.getElementById('cap'); cap.textContent = it ? it.caption || '' : ''; cap.style.display = it && it.caption ? '' : 'none';
+    const th = document.getElementById('thumbs');
+    if (n > 1) {
+      const from = Math.max(0, Math.min(idx - 10, n - 21)), to = Math.min(n, from + 21);
+      th.innerHTML = items.slice(from, to).map((x, k) => '<i class="' + (from + k === idx ? 'on' : '') + '" style="background-image:url(\'' + esc(x.thumb || x.url) + '\')" onclick="event.stopPropagation();go(' + (from + k) + ')"></i>').join('');
+      th.style.display = '';
+    } else th.style.display = 'none';
+    document.getElementById('bottom').style.display = it && (it.caption || n > 1) ? 'flex' : 'none';
+    document.getElementById('fw').style.display = it && it.mid ? 'flex' : 'none';
+    document.getElementById('rm').style.display = it && it.mid && it.mine ? 'flex' : 'none';
+  }
+  function go(i) { if (items && i >= 0 && i < items.length) step(i - idx); }
+  function act(type) { if (items && items[idx]) window.electron?.lightboxAction({ type, item: items[idx] }); }
+  function step(dir) {
+    if (!items) return;
+    const n = idx + dir;
+    if (n < 0 || n >= items.length) return;
+    idx = n; mediaUrl = items[n].url; filename = items[n].filename || 'file'; type = items[n].type;
+    resetZoom(); show();
+  }
+  show();
 
   document.body.addEventListener('animationend', e => {
     if (e.animationName === 'mediaIn') document.body.classList.add('opened');
@@ -117,7 +180,7 @@
     if (e.target === document.body && !didDrag) closeLightbox();
     didDrag = false;
   });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); else if (e.key === 'ArrowLeft') step(-1); else if (e.key === 'ArrowRight') step(1); });
 
   function downloadCurrent() { window.electron?.downloadFile({ url: mediaUrl, filename }); }
 </script>

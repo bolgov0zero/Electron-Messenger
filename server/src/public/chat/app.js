@@ -39,6 +39,7 @@ const S = {
   activeTopicId: null,
   activeRoomId: null,
   mutedChats: new Set(),
+  mutedUntil: {},
   forwardMsg: null,
   msgData: new Map(),
 };
@@ -646,16 +647,16 @@ window.addEventListener('DOMContentLoaded', async () => {
     e.preventDefault();
     document.getElementById('drag-overlay')?.classList.remove('visible');
     if (!S.activeChatId) return;
-    const file = e.dataTransfer.files[0];
-    if (file) await uploadFile(file);
+    const files = [...e.dataTransfer.files];
+    if (files.length) await uploadFiles(files);
   });
 
   // Paste image from clipboard
   document.addEventListener('paste', async e => {
     if (!S.activeChatId) return;
-    const file = Array.from(e.clipboardData.items)
-      .find(i => i.kind === 'file')?.getAsFile();
-    if (file) { e.preventDefault(); await uploadFile(file); }
+    const files = Array.from(e.clipboardData.items)
+      .filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
+    if (files.length) { e.preventDefault(); await uploadFiles(files); }
   });
 
   // Open chat from URL param (SW notification click)
@@ -690,6 +691,8 @@ async function doLogin() {
 
 function logout(intentional = false) {
   clearInterval(_refreshTimer);
+  // Сохранённые для запуска без связи чаты, переписки и очередь неотправленного стираем: они принадлежат этому входу
+  try { Object.keys(localStorage).filter(k => k.startsWith('cache_') || k.startsWith('outbox_')).forEach(k => localStorage.removeItem(k)); _outbox.length = 0; _outLoaded = false; } catch {}
   _fetchController.abort();
   _fetchController = new AbortController();
   closeSettings();
@@ -1351,7 +1354,11 @@ function csPaneGeneral() {
   const sound = S.settings.soundEnabled !== false;
   return `<div class="cs-gt">Уведомления</div>
     <div class="cs-g"><div class="cs-r"><div class="cs-l"><b>Звук сообщений</b><span>Короткий сигнал, когда приходит новое сообщение</span></div>
-      <div class="cs-ctl"><button type="button" class="cs-btn ghost" ${sound ? '' : 'disabled'} onclick="playNotificationSound()">${CS_I.play}Прослушать</button>${csTg(sound, 'csSound()', 'Звук сообщений')}</div></div></div>
+      <div class="cs-ctl"><button type="button" class="cs-btn ghost" ${sound ? '' : 'disabled'} onclick="playNotificationSound()">${CS_I.play}Прослушать</button>${csTg(sound, 'csSound()', 'Звук сообщений')}</div></div>
+      <div class="cs-r"><div class="cs-l"><b>Показывать текст сообщения</b><span>Выключите, если экран виден посторонним: в уведомлении будет только «Новое сообщение»</span></div>${csTg(_pushPrefs.show_text !== false, 'csPushText()', 'Показывать текст сообщения')}</div>
+      <div class="cs-r"><div class="cs-l"><b>Тихие часы</b><span>${_pushPrefs.quiet_from != null ? 'В это время уведомлений и звука нет, сообщения никуда не пропадают' : 'В выбранные часы уведомлений и звука нет'}</span></div>
+        <div class="cs-ctl">${_pushPrefs.quiet_from != null ? `<input type="time" class="cs-time" value="${_hhmm(_pushPrefs.quiet_from)}" onchange="csQuietTime('quiet_from', this.value)" aria-label="С"><span class="cs-dash">–</span><input type="time" class="cs-time" value="${_hhmm(_pushPrefs.quiet_to)}" onchange="csQuietTime('quiet_to', this.value)" aria-label="До">` : ''}${csTg(_pushPrefs.quiet_from != null, 'csQuiet()', 'Тихие часы')}</div></div>
+    </div>
     ${csIsApp() ? `<div class="cs-gt">Приложение</div>
     <div class="cs-g">
       <div class="cs-r"><div class="cs-l"><b>Автозапуск при старте</b><span>Приложение откроется само после входа в систему</span></div>${csTg(!!CS.autostart, 'csAutostart()', 'Автозапуск')}</div>
@@ -1571,8 +1578,40 @@ async function onAvatarFileChange(input) {
 
 // ── NOTIFICATION SOUND ──
 let _audioCtx = null;
+
+// ── Настройки уведомлений: показ текста и тихие часы (общие с мобильной версией, хранятся на сервере) ──
+let _pushPrefs = { show_text: true, quiet_from: null, quiet_to: null };
+async function loadPushPrefs() {
+  const r = await api('GET', '/push/prefs');
+  if (r && !r.error) { _pushPrefs = r; if (typeof csRefresh === 'function' && _sidebarTab === 'settings') csRefresh(); }
+}
+const _hhmm = v => v == null ? '' : String(Math.floor(v / 60)).padStart(2, '0') + ':' + String(v % 60).padStart(2, '0');
+function _quietNow() {
+  const p = _pushPrefs;
+  if (p.quiet_from == null || p.quiet_to == null || p.quiet_from === p.quiet_to) return false;
+  const d = new Date(), m = d.getHours() * 60 + d.getMinutes();
+  return p.quiet_from < p.quiet_to ? (m >= p.quiet_from && m < p.quiet_to) : (m >= p.quiet_from || m < p.quiet_to);
+}
+async function savePushPrefs(part) {
+  let tz = ''; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch {}
+  const r = await api('PUT', '/push/prefs', { tz, ...part });
+  if (r && !r.error) _pushPrefs = r; else showActionToast(r?.error || 'Не удалось сохранить');
+  csRefresh();
+}
+function csPushText() { savePushPrefs({ show_text: !_pushPrefs.show_text }); }
+function csQuiet() { savePushPrefs(_pushPrefs.quiet_from != null ? { quiet_from: null, quiet_to: null } : { quiet_from: 22 * 60, quiet_to: 8 * 60 }); }
+function csQuietTime(which, val) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(val || ''); if (!m) return;
+  savePushPrefs({ [which]: (+m[1]) * 60 + (+m[2]) });
+}
+// Уведомление о сообщении с учётом настроек: в тихие часы его нет, без показа текста — только «Новое сообщение»
+function msgNotify(title, body, chatId) {
+  if (_quietNow()) return;
+  webNotify(title, _pushPrefs.show_text ? body : 'Новое сообщение', chatId);
+}
+
 function playNotificationSound() {
-  if (S.settings.soundEnabled === false) return;
+  if (S.settings.soundEnabled === false || _quietNow()) return;
   try {
     if (!_audioCtx || _audioCtx.state === 'closed') {
       _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1627,14 +1666,54 @@ function dropEmptyDirects() {
     .forEach(c => dropEmptyDirect(c.id));
 }
 
+// ── Запуск без связи ──
+// Последний список чатов и хвост каждой открытой переписки хранятся на устройстве: без связи приложение
+// открывается с ними, а не с пустым экраном; когда связь вернётся, всё перечитывается с сервера.
+const _cacheKey = k => `cache_${k}_${S.server}_${S.user?.id}`;
+function cacheChats(list) {
+  try { localStorage.setItem(_cacheKey('chats'), JSON.stringify({ t: Date.now(), list: list.filter(c => !c.is_secret && !c.parent_id) })); } catch {}
+}
+function chatsFromCache() {
+  if (S.chats.length) return false;
+  try {
+    const o = JSON.parse(localStorage.getItem(_cacheKey('chats')) || 'null');
+    if (!o || !Array.isArray(o.list) || !o.list.length) return false;
+    S.chats = o.list;
+    S.mutedChats = new Set(o.list.filter(c => c.muted).map(c => c.id));
+    o.list.forEach(c => { S.unread[c.id] = c.unread || 0; S.unreadMentions[c.id] = c.unread_mentions || 0; });
+    updateUnreadTotal();
+    renderChatList();
+    return true;
+  } catch { return false; }
+}
+function tailSave(chatId, messages) {
+  if (!S.user || S.secretChatIds.has(chatId) || !messages?.length) return;
+  try {
+    const key = _cacheKey('tails');
+    const all = JSON.parse(localStorage.getItem(key) || '{}');
+    all[chatId] = { t: Date.now(), m: messages.slice(-40) };
+    Object.keys(all).sort((a, b) => all[b].t - all[a].t).slice(12).forEach(k => delete all[k]);   // помним последние 12 чатов
+    localStorage.setItem(key, JSON.stringify(all));
+  } catch {}
+}
+function tailLoad(chatId) {
+  try {
+    const t = JSON.parse(localStorage.getItem(_cacheKey('tails')) || '{}')[chatId];
+    return t?.m?.length ? { messages: t.m, hasMore: false, hasMoreAfter: false, pins: [], first_unread_id: null } : null;
+  } catch { return null; }
+}
+
 async function loadChats() {
   await scBoot();
   const all = await api('GET','/chats');
-  if (!all) return;
+  if (!all) { chatsFromCache(); return; }
   S.secretChatIds = new Set(all.filter(c => c.is_secret).map(c => c.id));
   const chats = all.filter(c => !(c.is_secret && SC.isHidden(c.id)));
   S.chats = chats;
+  cacheChats(chats);
   S.mutedChats = new Set(chats.filter(c => c.muted).map(c => c.id));
+  S.mutedUntil = Object.fromEntries(chats.filter(c => c.muted).map(c => [c.id, c.muted_until || 0]));
+  watchMutes();
   // В чат попал человек, которого ещё нет в списке людей (добавили в группу): подтянуть список
   if (chats.some(c => (c.members || []).some(m => m.id !== S.user.id && !S.allUsers.some(u => u.id === m.id)))) loadUsers();
   chats.forEach(c => {
@@ -1676,7 +1755,7 @@ function topicRow(s) {
     ? (lm.deleted ? 'Сообщение удалено'
       : ((lm.text ? lm.text.replace(/<[^>]*>/g, '') : '')
         || (lm.attachment
-          ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл'))
+          ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.more?.length ? '🖼 Вложений: ' + (lm.attachment.more.length + 1) : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл'))
           : '')))
     : 'Нет сообщений';
   if (preview.length > 38) preview = preview.slice(0, 38) + '…';
@@ -2076,7 +2155,7 @@ function renderChatRow(c) {
     ? (S.topics[c.id]||[]).reduce((sum,s)=>sum+(S.unreadMentions[s.id]||0),0)
     : S.unreadMentions[c.id]||0;
   const lm = c.last_message;
-  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? Fmt.plain(lm.text).replace(/<[^>]*>/g, '') : (lm.forward_data ? 'Пересланное сообщение' : lm.attachment ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
+  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? Fmt.plain(lm.text).replace(/<[^>]*>/g, '') : (lm.forward_data ? 'Пересланное сообщение' : lm.attachment ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.more?.length ? '🖼 Вложений: ' + (lm.attachment.more.length + 1) : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
   if (preview.length>40) preview = preview.slice(0,40)+'…';
   // Черновик приоритетнее последнего сообщения (как в Telegram)
   const draft = (c.id !== S.activeChatId) ? S.drafts[c.id] : null;
@@ -2360,19 +2439,14 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
                 <span>Форматирование</span>
               </button>
             </div>
-            <input type="file" id="file-input" accept="*" style="display:none" onchange="onFilePicked(this)">
+            <input type="file" id="file-input" accept="*" multiple style="display:none" onchange="onFilePicked(this)">
             <div class="composer-field">
           <div class="composer-slot" id="composer-slot"><div class="composer-slot-inner">
           <div id="dm-bar" class="dm-bar" style="display:${composerNote(chat)?.soft ? '' : 'none'}"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span id="dm-text">${composerNote(chat)?.soft ? esc(composerNote(chat).text) : ''}</span></div>
-          <div id="image-preview-bar" style="display:none" class="input-reply-bar">
-            <div class="attach-thumb" id="attach-thumb-box">
-              <img class="img-preview-thumb" src="" style="display:none">
-              <svg class="attach-preview-icon" width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
-            </div>
+          <div id="image-preview-bar" style="display:none" class="input-reply-bar att-bar">
             <div class="reply-bar-content">
               <div class="reply-bar-name" id="attach-preview-title">Вложение</div>
-              <div class="reply-bar-text img-preview-name"></div>
-              <div class="attach-track" id="attach-track" style="display:none"><div class="attach-fill" id="attach-fill"></div></div>
+              <div class="att-list" id="att-list"></div>
             </div>
             <button onclick="clearImagePreview()" class="icon-btn" style="width:24px;height:24px">
               <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -2459,15 +2533,18 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     _loadingChatId = null;
     return;
   }
-  const data = await api('GET', aroundId
+  let data = await api('GET', aroundId
     ? `/messages/chat/${chatId}?around=${aroundId}&limit=50`
     : `/messages/chat/${chatId}?limit=50${forceBottom ? '' : '&anchor=unread'}`);
+  if (!data && !aroundId) data = tailLoad(chatId);                  // связи нет: показываем сохранённый хвост
+  else if (data && !aroundId && !data.hasMoreAfter) tailSave(chatId, data.messages);
   if (data && S.activeChatId === chatId) {
     S.chatHasMore = data.hasMore;
     S.chatHasMoreAfter = !!data.hasMoreAfter;
     S.chatOldestId = data.messages[0]?.id ?? null;
     S.chatNewestId = data.messages[data.messages.length - 1]?.id ?? null;
     renderMessages(data.messages);
+    outboxShowFor(chatId);
     // Резерв под полосу ввода выставляем до постановки якоря, иначе он считается
     // по ещё не зарезервированной высоте
     watchComposerHeight();
@@ -2695,7 +2772,7 @@ function epMode(mode) {
 // Выбранная GIF уходит сразу: если в поле есть текст, он станет подписью
 function pickGif(att) {
   if (!att || !att.gif || S.editingMessageId) return;
-  _pendingAttachment = att;
+  setPendingAttachment(att);
   sendOrEdit();
 }
 
@@ -3177,7 +3254,7 @@ let _pinIdx = 0;
 function pinPreviewText(p) {
   if (!p) return '';
   const t = p.text ? Fmt.plain(p.text).replace(/<[^>]*>/g, '')
-    : (p.attachment ? (p.attachment.gif ? '🖼 GIF' : p.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : p.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (p.attachment.name || 'Файл')) : '');
+    : (p.attachment ? (p.attachment.gif ? '🖼 GIF' : p.attachment.more?.length ? '🖼 Вложений: ' + (p.attachment.more.length + 1) : p.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : p.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (p.attachment.name || 'Файл')) : '');
   return t.length > 120 ? t.slice(0, 120) + '…' : t;
 }
 
@@ -3644,7 +3721,6 @@ window.addEventListener('blur', _rtHide);
 
 // ── СЕКРЕТНЫЕ ЧАТЫ (E2E) ── создать чат в вебе нельзя; здесь получают доступ по коду,
 // читают зашифрованные сообщения и отключают своё устройство. Криптография — shared/secret-core.js
-let _uploadToken = 0;
 let _scBooted = false;
 const _scInflight = new Set();
 Object.assign(S, { secretChatIds: new Set(), scDecrypted: new Map(), scAtt: new Map(), scAttBlob: new Map(), scMsgObjs: new Map() });
@@ -4044,14 +4120,16 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   let attachHtml = '';
   if (!isDeleted && att?.enc && !att.expired) {
     attachHtml = scAttachHtml(m, att);
+  } else if (!isDeleted && att?.url && !att.expired && !att.enc && !att.gif && Array.isArray(att.more) && att.more.length) {
+    attachHtml = multiAttachHtml(att);
   } else if (!isDeleted && att?.url && !att.expired && !att.enc) {
     const attUrl = `${httpProto()}://${S.server}${att.url}`;
     if (att.mime?.startsWith('image/')) {
-      attachHtml = `<div class="bubble-image" onclick="openLightbox('${attUrl}','${(att.name||'image').replace(/'/g,"\\'")}')"><img src="${httpProto()}://${S.server}${att.thumb || att.url}" loading="lazy"></div>`;
+      attachHtml = `<div class="bubble-image" data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'image')}" data-lb-type="image" onclick="openLightboxEl(this)"><img src="${httpProto()}://${S.server}${att.thumb || att.url}" loading="lazy"></div>`;
     } else if (att.mime?.startsWith('video/')) {
       const posterUrl = att.thumb ? `${httpProto()}://${S.server}${att.thumb}` : '';
       const safeVName = (att.name||'video').replace(/'/g,"\\'");
-      attachHtml = `<div class="bubble-image bubble-video" onclick="openLightbox('${attUrl}','${safeVName}','video')">
+      attachHtml = `<div class="bubble-image bubble-video" data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'video')}" data-lb-type="video" onclick="openLightboxEl(this)">
         ${posterUrl ? `<img src="${posterUrl}" loading="lazy">` : `<video src="${attUrl}" preload="metadata" muted></video>`}
         <div class="bubble-video-play"><svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg></div>
       </div>`;
@@ -4073,13 +4151,13 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   // пузырь, в котором нет ничего кроме картинки: кадр занимает его целиком, а время
   // и реакции ложатся поверх. С подписью, цитатой или пересылкой — обычное поведение
   const bareImage = !isDeleted && !m.text && !m.reply_to_id && !m.forward_data
-    && ((!!att?.url && !att.expired && !!(att.mime?.startsWith('image/') || att.mime?.startsWith('video/'))) || !!att?.gif);
+    && ((!!att?.url && !att.expired && (att.more?.length ? attAllMedia(att) : !!(att.mime?.startsWith('image/') || att.mime?.startsWith('video/')))) || !!att?.gif);
   // сообщение из одного смайлика показываем без пузыря — он проступает по наведению
   // В секретном чате m.text — шифротекст, смотреть нужно на расшифрованное
   const emojiOnly = !isDeleted && !m.attachment && !m.reply_to_id && !m.forward_data && isEmojiOnly(isSecretChat ? scDecryptedText : m.text);
   const posCls = (isFirst ? ' irc-first' : '') + (isTail ? ' irc-tail' : '') + (emojiOnly ? ' emoji-msg' : '');
 
-  return `<div class="irc-msg${posCls}${m._optimistic?' msg-optimistic':''}"${mine?` data-mine="1"`:``}${isChatGroup?'':' data-dm="1"'} data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
+  return `<div class="irc-msg${posCls}${m._optimistic?' msg-optimistic':''}${m._state==='failed'?' msg-failed':''}"${m._cid?` data-cid="${m._cid}"`:''}${mine?` data-mine="1"`:``}${isChatGroup?'':' data-dm="1"'} data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
     oncontextmenu="${!isDeleted?`showCtxMenu(event,${m.id},${m.sent_at},${mine})`:'event.preventDefault()'}"
     ondblclick="${!isDeleted?`dblReply(${m.id})`:''}">
     <div class="irc-content">
@@ -4095,6 +4173,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
         </div>
       </div>
       ${reactionsHtml}
+      ${m._state==='failed' ? failNoteHtml(m._cid) : ''}
     </div>
     ${actionsHtml}
   </div>`;
@@ -4663,35 +4742,110 @@ function clearTyping(chatId, senderName) {
 // Поле ввода растёт само (contenteditable)
 function autoResize() {}
 
+// ── Очередь неотправленных сообщений ──
+// Нет связи — сообщение остаётся в переписке с пометкой «Не отправлено» и уходит само, когда связь вернётся.
+// Повторная отправка идёт с тем же client_id, поэтому сервер не создаёт дубль, если первое всё-таки дошло.
+// Очередь хранится и на диске: закрыли приложение без связи — сообщения не пропали.
+const _outbox = [];
+let _outLoaded = false;
+const _outKey = () => `outbox_${S.server}_${S.user?.id}`;
+function _outSave() {
+  try { localStorage.setItem(_outKey(), JSON.stringify(_outbox.map(({ cid, chatId, payload, temp }) => ({ cid, chatId, payload, temp })))); } catch {}
+}
+function outboxLoad() {
+  if (_outLoaded || !S.user) return;
+  _outLoaded = true;
+  try {
+    JSON.parse(localStorage.getItem(_outKey()) || '[]').forEach(x => { if (x?.cid && x.payload && x.temp) { x.temp._state = 'failed'; _outbox.push(x); } });
+  } catch {}
+}
+const newClientId = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const failNoteHtml = cid => `<div class="msg-failnote">Не отправлено · <button type="button" onclick="retryOutbox('${cid}')">Повторить</button> · <button type="button" onclick="discardOutbox('${cid}')">Удалить</button></div>`;
+function queueSend(payload, temp) {
+  outboxLoad();
+  const it = { cid: payload.client_id, chatId: payload.chat_id, payload, temp };
+  _outbox.push(it);
+  _outSave();
+  flushOne(it);
+}
+function flushOne(it) {
+  clearTimeout(it.t);
+  if (S.ws?.readyState === 1) {
+    S.ws.send(JSON.stringify(it.payload));
+    setOutState(it, 'sending');
+    it.t = setTimeout(() => { if (_outbox.includes(it)) setOutState(it, 'failed'); }, 20000);
+  } else setOutState(it, 'failed');
+}
+function setOutState(it, st) {
+  it.temp._state = st;
+  const el = document.querySelector(`.irc-msg[data-cid="${it.cid}"]`);
+  if (!el) return;
+  el.classList.toggle('msg-failed', st === 'failed');
+  el.querySelector('.msg-failnote')?.remove();
+  if (st === 'failed') el.querySelector('.irc-content')?.insertAdjacentHTML('beforeend', failNoteHtml(it.cid));
+}
+function retryOutbox(cid) {
+  const it = _outbox.find(x => x.cid === cid);
+  if (!it) return;
+  if (S.ws?.readyState !== 1) { showActionToast('Нет связи с сервером'); return; }
+  flushOne(it);
+}
+function retryAllOutbox() { outboxLoad(); _outbox.forEach(flushOne); }
+function discardOutbox(cid) {
+  const i = _outbox.findIndex(x => x.cid === cid);
+  if (i < 0) return;
+  const [it] = _outbox.splice(i, 1);
+  clearTimeout(it.t); _outSave();
+  document.querySelector(`.irc-msg[data-cid="${cid}"]`)?.remove();
+  const a = it.payload.attachment;
+  if (a?.url && !a.gif && !a.enc) [a, ...(a.more || [])].forEach(x => api('DELETE', '/upload', { url: x.url, thumb: x.thumb }));
+}
+// Сервер принял сообщение: убираем его из очереди и заглушку из переписки
+function outboxConfirm(cid) {
+  const i = _outbox.findIndex(x => x.cid === cid);
+  if (i >= 0) { clearTimeout(_outbox[i].t); _outbox.splice(i, 1); _outSave(); }
+  document.querySelector(`.irc-msg[data-cid="${cid}"]`)?.remove();
+}
+// Сервер отклонил отправку в чат (только чтение, блокировка): неотправленные уже не уйдут никогда
+function outboxRejected(chatId) {
+  _outbox.filter(x => x.chatId === chatId && x.temp._state === 'sending').forEach(x => discardOutbox(x.cid));
+}
+// При открытии чата возвращаем в него неотправленное
+function outboxShowFor(chatId) {
+  outboxLoad();
+  _outbox.filter(x => x.chatId === chatId && !document.querySelector(`.irc-msg[data-cid="${x.cid}"]`)).forEach(it => { appendMsg(it.temp); setOutState(it, it.temp._state); });
+}
+
 async function sendOrEdit() {
   if (S.editingMessageId) { submitEdit(); return; }
   if (composerLocked(findChatAny(S.activeChatId))) return;
   const input = document.getElementById('msg-input');
   const text = input?.value.trim();
   const isSecret = S.secretChatIds.has(S.activeChatId);
-  if (!text && !_pendingAttachment && !S.forwardMsg) return;
+  if (!text && !_atts.length && !S.forwardMsg) return;
   // Нет соединения — сообщаем и не теряем набранное молча
   if (!S.ws||S.ws.readyState!==1) {
-    showActionToast('Нет связи с сервером — сообщение не отправлено');
+    // Связи нет: сообщение встанет в очередь («Не отправлено») и уйдёт само, когда она вернётся
     if (S.ws && S.ws.readyState >= 2 && S.token) connectWS();
-    return;
   }
+  if (_atts.some(a => a.state !== 'done')) { showActionToast('Дождитесь окончания загрузки'); return; }
+  const pendAtt = pendingAttachment();
   let payload, secretAtt = null;
   const sendLp = isSecret ? null : (CMP.lw?.current() || null);
   if (isSecret) {
     S.forwardMsg = null;
     const key = SC.keyOf(S.activeChatId);
     if (!key) { showActionToast('Чат ещё не расшифрован на этом устройстве'); return; }
-    secretAtt = _pendingAttachment;
+    secretAtt = pendAtt;
     const enc = await SC.encryptText(key, SC.encodePayload(text || '', secretAtt ? { n: secretAtt.name, m: secretAtt.mime, s: secretAtt.size } : null));
-    payload = { type:'message', chat_id:S.activeChatId, text: enc.text, iv: enc.iv };
+    payload = { type:'message', chat_id:S.activeChatId, text: enc.text, iv: enc.iv, client_id: newClientId() };
     if (secretAtt) payload.attachment = { url: secretAtt.url, enc: 1, fiv: secretAtt.fiv, size: secretAtt.size };
     if (S.replyTo) payload.reply_to_id = S.replyTo.id;
-    _pendingAttachment = null;
+    _atts = [];   // файл уже уходит в сообщении: clearImagePreview ниже его не тронет
   } else {
-    payload = { type:'message', chat_id:S.activeChatId, text: text || '' };
+    payload = { type:'message', chat_id:S.activeChatId, text: text || '', client_id: newClientId() };
     if (S.replyTo) payload.reply_to_id = S.replyTo.id;
-    if (_pendingAttachment) payload.attachment = _pendingAttachment;
+    if (pendAtt) payload.attachment = pendAtt;
     if (S.forwardMsg) payload.forward_data = S.forwardMsg;
     if (sendLp) payload.link_preview = sendLp;
   }
@@ -4713,10 +4867,12 @@ async function sendOrEdit() {
     reply_deleted: false,
     forward_data: S.forwardMsg || null,
     link_preview: sendLp,
-    attachment: _pendingAttachment || null,
+    attachment: pendAtt || null,
     status: { delivered: 0, read: 0, total: 1 },
     reactions: [],
     _optimistic: true,
+    _cid: payload.client_id,
+    _state: 'sending',
   };
   if (isSecret) {
     S.scDecrypted.set(tempMsg.id, text || '');
@@ -4727,11 +4883,11 @@ async function sendOrEdit() {
   }
   if (!S.chatHasMoreAfter) appendMsg(tempMsg);
 
-  S.ws.send(JSON.stringify(payload));
+  queueSend(payload, tempMsg);
   if (S.chatHasMoreAfter) openChat(S.activeChatId, null, true); // мы были вглуби истории — к последним
   hideReplyBar();
   hideForwardBar();
-  clearImagePreview();
+  clearImagePreview(true);
   // Сообщение ушло — панель смайлов больше не нужна. Закрываем именно здесь, а
   // не в начале: при пустом поле или без связи отправки не было, и панель
   // должна остаться открытой.
@@ -4929,8 +5085,12 @@ function hideReplyBar() {
   document.getElementById('composer-pill')?.classList.remove('has-reply');
 }
 
-// ── FILE / IMAGE ATTACH ──
-let _pendingAttachment = null;
+// ── ВЛОЖЕНИЯ (до 10 за раз) ──
+// Каждый выбранный файл грузится отдельно и показывается в полосе над полем ввода. В сообщение уходит одно вложение:
+// первое файлом, остальные в массиве more (так старые клиенты видят хотя бы первое и ничего не ломается)
+let _atts = [];       // { id, kind, name, pct, state ('up' | 'proc' | 'done'), data, xhr, prep, dead, prev }
+let _attSeq = 0;
+const MAX_ATTACH = 10;
 let _uploadSettings = {
   image: { maxSizeMb: 10, extensions: ['jpeg','jpg','png','gif','webp'] },
   video: { maxSizeMb: 50, extensions: ['mp4','mov','webm'] },
@@ -4951,18 +5111,28 @@ function pickFile() {
   document.getElementById('file-input')?.click();
 }
 
-
-async function onFilePicked(input) {
-  const file = input.files?.[0];
-  if (!file) return;
-  input.value = '';
-  await uploadFile(file);
+// Готовое к отправке вложение; null, если вложений нет или что-то ещё грузится
+function pendingAttachment() {
+  if (!_atts.length || _atts.some(a => a.state !== 'done')) return null;
+  const first = _atts[0].data;
+  return _atts.length > 1 ? { ...first, more: _atts.slice(1).map(a => a.data) } : first;
+}
+// Вложение, которое уже есть (GIF из панели): кладём как единственное
+function setPendingAttachment(att) {
+  _atts.forEach(a => killAtt(a));
+  _atts = att ? [{ id: ++_attSeq, kind: '', name: '', pct: 100, state: 'done', data: att, dead: false, prev: '' }] : [];
+  renderAttStrip();
 }
 
-let _uploadXhr = null;
+async function onFilePicked(input) {
+  const files = [...(input.files || [])];
+  input.value = '';
+  await uploadFiles(files);
+}
+
+
 // Подготовка видео на устройстве (HEVC → H.264, shared/video-prep.js): грузим модуль лениво,
 // только когда выбрали видео, — это почти 400 КБ, на каждый запуск они ни к чему
-let _prepAbort = null;
 let _videoPrepLoad = null;
 function loadVideoPrep() {
   if (window.VideoPrep) return Promise.resolve(window.VideoPrep);
@@ -4975,6 +5145,20 @@ function loadVideoPrep() {
   });
   return _videoPrepLoad;
 }
+
+async function uploadFiles(files) {
+  files = (files || []).filter(Boolean);
+  if (!files.length) return;
+  const isSecret = S.secretChatIds.has(S.activeChatId);
+  if (isSecret && (files.length > 1 || _atts.length)) {
+    showActionToast('В секретном чате прикрепляется по одному файлу');
+    files = _atts.length ? [] : files.slice(0, 1);
+  }
+  const room = MAX_ATTACH - _atts.length;
+  if (files.length > room) { showActionToast(`Можно прикрепить не больше ${MAX_ATTACH} файлов`); files = files.slice(0, room); }
+  files.forEach(f => uploadFile(f));
+}
+
 async function uploadFile(file) {
   if (!file) return;
   const isSecret = S.secretChatIds.has(S.activeChatId);
@@ -4995,33 +5179,28 @@ async function uploadFile(file) {
     return;
   }
 
-  if (_uploadXhr) _uploadXhr.abort();
-  _pendingAttachment = null;
-  const token = ++_uploadToken;
-  const sendBtn = document.getElementById('send-btn');
-  if (sendBtn) sendBtn.classList.add('ready');
-  showAttachUploading(isImage ? 'Изображение' : isVideo ? 'Видео' : 'Файл');
+  const a = { id: ++_attSeq, kind: isImage ? 'Изображение' : isVideo ? 'Видео' : 'Файл', name: file.name, pct: 0, state: 'up', data: null, xhr: null, prep: null, dead: false,
+    prev: isImage && !isSecret ? URL.createObjectURL(file) : '' };
+  _atts.push(a);
+  renderAttStrip();
+  const fail = msg => { if (msg) showActionToast(msg); removeAtt(a.id); };
 
   if (isVideo && /\.(mov|mp4|m4v)$/i.test(file.name)) {
     const VP = await loadVideoPrep();
-    if (token !== _uploadToken) return;
+    if (a.dead) return;
     if (VP && VP.supported()) {
-      const ac = _prepAbort = new AbortController();
-      file = await VP.prepare(file, { signal: ac.signal, onProgress: setAttachPreparing });
-      if (_prepAbort === ac) _prepAbort = null;
-      if (token !== _uploadToken) return;
+      const ac = a.prep = new AbortController();
+      file = await VP.prepare(file, { signal: ac.signal, onProgress: p => setAttProgress(a, p) });
+      a.prep = null;
+      if (a.dead) return;
     }
   }
-  if (file.size > cfg.maxSizeMb * 1024 * 1024) {
-    showActionToast(`Файл слишком большой (макс. ${cfg.maxSizeMb} МБ)`);
-    clearImagePreview();
-    return;
-  }
+  if (file.size > cfg.maxSizeMb * 1024 * 1024) { fail(`Файл слишком большой (макс. ${cfg.maxSizeMb} МБ)`); return; }
 
   let formData, endpoint, secretMeta = null;
   if (secretKey) {
     const enc = await scEncryptFileForUpload(file, secretKey);
-    if (token !== _uploadToken) return;
+    if (a.dead) return; // отменили, пока шифровали
     formData = new FormData();
     formData.append('file', enc.blob, 'enc.bin');
     endpoint = '/api/upload?enc=1';
@@ -5032,106 +5211,81 @@ async function uploadFile(file) {
     endpoint = '/api/upload';
   }
   const xhr = new XMLHttpRequest();
-  _uploadXhr = xhr;
+  a.xhr = xhr;
   xhr.open('POST', `${httpProto()}://${S.server}${endpoint}`);
   xhr.setRequestHeader('Authorization', `Bearer ${S.token}`);
-  xhr.upload.onprogress = e => { if (e.lengthComputable) setAttachProgress(Math.round(e.loaded / e.total * 100)); };
-  xhr.upload.onload = () => setAttachProcessing();
+  // Пока тело запроса ещё идёт — честный процент; как только отправка закончилась, а ответа сервера
+  // всё ещё нет (например, идёт транскод видео), — «Обработка…», иначе казалось бы, что всё зависло на 100%
+  xhr.upload.onprogress = e => { if (e.lengthComputable && !a.dead) setAttProgress(a, Math.round(e.loaded / e.total * 100)); };
+  xhr.upload.onload = () => { if (!a.dead) { a.state = 'proc'; paintAtt(a); } };
   xhr.onload = () => {
-    _uploadXhr = null;
+    a.xhr = null;
+    if (a.dead) return;
     if (xhr.status < 200 || xhr.status >= 300) {
       let err = {}; try { err = JSON.parse(xhr.responseText); } catch {}
-      showActionToast(err.error || 'Ошибка загрузки');
-      clearImagePreview();
+      fail(err.error || 'Ошибка загрузки');
       return;
     }
-    const resp = JSON.parse(xhr.responseText);
-    _pendingAttachment = secretMeta ? { ...resp, enc: 1, ...secretMeta } : resp;
-    showAttachmentPreviewBar();
+    let resp; try { resp = JSON.parse(xhr.responseText); } catch { fail('Ошибка загрузки'); return; }
+    a.data = secretMeta ? { ...resp, enc: 1, ...secretMeta } : resp;
+    a.state = 'done';
+    renderAttStrip();
   };
-  xhr.onerror = () => { _uploadXhr = null; showActionToast('Ошибка загрузки'); clearImagePreview(); };
+  xhr.onerror = () => { a.xhr = null; if (!a.dead) fail('Ошибка загрузки'); };
   xhr.send(formData);
 }
 
-
-function attachBarEls() {
-  return {
-    bar: document.getElementById('image-preview-bar'),
-    box: document.getElementById('attach-thumb-box'),
-    img: document.querySelector('#image-preview-bar .img-preview-thumb'),
-    ico: document.querySelector('#image-preview-bar .attach-preview-icon'),
-    title: document.getElementById('attach-preview-title'),
-    name: document.querySelector('#image-preview-bar .img-preview-name'),
-    track: document.getElementById('attach-track'),
-    fill: document.getElementById('attach-fill'),
-  };
-}
-function showAttachUploading(title) {
-  const el = attachBarEls();
-  el.box.className = 'attach-thumb uploading';
-  el.img.style.display = 'none';
-  el.ico.style.display = '';
-  el.title.textContent = title;
-  el.name.textContent = 'Загрузка… 0%';
-  el.track.style.display = '';
-  el.track.classList.remove('indeterminate');
-  el.fill.style.width = '0%';
-  el.bar.style.display = '';
-}
-function setAttachProgress(pct) {
-  const el = attachBarEls();
-  if (el.bar.style.display === 'none') return; // отменено, пока событие шло
-  el.fill.style.width = pct + '%';
-  el.name.textContent = `Загрузка… ${pct}%`;
-}
-function setAttachPreparing(pct) {
-  const el = attachBarEls();
-  if (el.bar.style.display === 'none') return; // отменено, пока событие шло
-  el.fill.style.width = pct + '%';
-  el.name.textContent = `Подготовка видео… ${pct}%`;
-}
-function setAttachProcessing() {
-  const el = attachBarEls();
-  if (el.bar.style.display === 'none') return;
-  el.box.className = 'attach-thumb processing';
-  el.name.textContent = 'Обработка…';
-  el.track.classList.add('indeterminate');
-}
-function showAttachmentPreviewBar() {
-  const att = _pendingAttachment;
-  if (!att) { clearImagePreview(); return; }
-  const el = attachBarEls();
-  el.box.className = 'attach-thumb';
-  el.track.style.display = 'none';
-  el.track.classList.remove('indeterminate');
-  const isImage = att.mime?.startsWith('image/');
-  const isVideo = att.mime?.startsWith('video/');
-  const thumbUrl = (isImage && !att.enc) ? att.url : (isVideo && att.thumb) ? att.thumb : null;
-  el.img.src = thumbUrl ? `${httpProto()}://${S.server}${thumbUrl}` : '';
-  el.img.style.display = thumbUrl ? '' : 'none';
-  el.ico.style.display = thumbUrl ? 'none' : '';
-  el.title.textContent = 'Вложение';
-  el.name.textContent = att.name || (isImage ? 'Изображение' : isVideo ? 'Видео' : 'Файл');
-  el.bar.style.display = '';
-}
-
-
-function clearImagePreview() {
-  _uploadToken++;
-  if (_prepAbort) { _prepAbort.abort(); _prepAbort = null; }
-  if (_uploadXhr) { _uploadXhr.abort(); _uploadXhr = null; }
-  else if (_pendingAttachment && _pendingAttachment.url) {
-    // Загрузка уже завершилась (файл лежит на сервере), просто ещё не
-    // отправлена — крестик должен убрать файл и с сервера, а не только из плашки
-    api('DELETE', '/upload', { url: _pendingAttachment.url, thumb: _pendingAttachment.thumb });
-  }
-  _pendingAttachment = null;
+// Полоса вложений над полем: миниатюры с крестиками и полоской загрузки у каждой
+function renderAttStrip() {
   const bar = document.getElementById('image-preview-bar');
-  if (bar) bar.style.display = 'none';
+  const list = document.getElementById('att-list');
+  if (!bar || !list) return;
+  const n = _atts.length;
+  bar.style.display = n ? '' : 'none';
+  const allImgs = _atts.every(a => a.kind === 'Изображение');
+  const title = document.getElementById('attach-preview-title');
+  if (title) title.textContent = n === 1 ? (_atts[0].kind === 'Изображение' ? 'Изображение' : _atts[0].kind || 'Вложение') : allImgs ? `${n} изображений` : `Вложений: ${n}`;
+  const fileIco = '<svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>';
+  list.innerHTML = _atts.map(a => {
+    const thumb = a.prev || (a.state === 'done' && a.data && !a.data.enc && a.data.thumb ? `${httpProto()}://${S.server}${a.data.thumb}` : '');
+    return `<div class="att-item ${a.state}" data-att-id="${a.id}" title="${esc(a.name || '')}">${thumb ? `<img src="${esc(thumb)}" alt="">` : `<span class="att-file">${fileIco}<small>${esc((a.name || '').slice(-14))}</small></span>`}`
+      + (a.state === 'done' ? '' : `<div class="att-prog"><i style="width:${a.pct}%"></i><span>${a.state === 'proc' ? '…' : a.pct + '%'}</span></div>`)
+      + `<button type="button" class="att-x" onclick="removeAtt(${a.id})" aria-label="Убрать"><svg width="10" height="10" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>`;
+  }).join('') + (n && n < MAX_ATTACH && !S.secretChatIds.has(S.activeChatId) ? '<button type="button" class="att-add" onclick="pickFile()" title="Добавить ещё" aria-label="Добавить ещё"><svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>' : '');
   const sendBtn = document.getElementById('send-btn');
-  if (sendBtn && !document.getElementById('msg-input')?.value.trim()) {
-    sendBtn.classList.remove('ready');
-  }
+  if (sendBtn) sendBtn.classList.toggle('ready', n > 0 || !!document.getElementById('msg-input')?.value.trim());
+  
+}
+function paintAtt(a) {
+  const p = document.querySelector(`.att-item[data-att-id="${a.id}"] .att-prog`);
+  if (!p) return;
+  p.firstChild.style.width = a.pct + '%';
+  p.lastChild.textContent = a.state === 'proc' ? '…' : a.pct + '%';
+}
+function setAttProgress(a, pct) { a.pct = pct; paintAtt(a); }
+
+// Остановить загрузку; уже загруженный, но не отправленный файл удаляется и с сервера
+function killAtt(a, keepServerFile) {
+  a.dead = true;
+  if (a.prep) { try { a.prep.abort(); } catch {} a.prep = null; }
+  if (a.xhr) { try { a.xhr.abort(); } catch {} a.xhr = null; }
+  else if (!keepServerFile && a.state === 'done' && a.data?.url && !a.data.gif) api('DELETE', '/upload', { url: a.data.url, thumb: a.data.thumb });
+  if (a.prev) { URL.revokeObjectURL(a.prev); a.prev = ''; }
+}
+function removeAtt(id) {
+  const i = _atts.findIndex(a => a.id === id);
+  if (i < 0) return;
+  const [a] = _atts.splice(i, 1);
+  killAtt(a);
+  renderAttStrip();
+}
+// keepServerFiles — после отправки: файлы уже принадлежат сообщению, с сервера их не трогаем
+function clearImagePreview(keepServerFiles) {
+  _atts.forEach(a => killAtt(a, keepServerFiles === true));
+  _atts = [];
+  renderAttStrip();
+  const sendBtn = document.getElementById('send-btn');
+  if (sendBtn && !document.getElementById('msg-input')?.value.trim()) sendBtn.classList.remove('ready');
 }
 
 function showSystemAnnouncement(text) {
@@ -5260,13 +5414,90 @@ async function loadBanners() {
 let _lbScale = 1, _lbTx = 0, _lbTy = 0, _lbDrag = null, _lbDidDrag = false;
 const LB_ZOOM_MIN = 1, LB_ZOOM_MAX = 4, LB_ZOOM_STEP = 0.5;
 
-function openLightbox(url, filename, type = 'image') {
+
+// ── Несколько фото и видео в одном сообщении ──
+const _PLAY_SVG = '<div class="bubble-video-play"><svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg></div>';
+const _isMediaAtt = a => !!a && !!a.url && !a.expired && !a.unavailable && !a.enc && !a.gif && /^(image|video)\//.test(a.mime || '');
+function attAll(att) { const { more, ...first } = att; return [first, ...(Array.isArray(more) ? more : [])]; }
+function attAllMedia(att) { return attAll(att).every(_isMediaAtt); }
+function mediaTileHtml(a, cls) {
+  const url = `${httpProto()}://${S.server}${a.url}`;
+  const v = (a.mime || '').startsWith('video/');
+  const poster = a.thumb ? `${httpProto()}://${S.server}${a.thumb}` : (v ? '' : url);
+  return `<div class="${cls}" data-lb-url="${esc(url)}" data-lb-name="${esc(a.name || (v ? 'video' : 'image'))}" data-lb-type="${v ? 'video' : 'image'}" onclick="openLightboxEl(this)">`
+    + (poster ? `<img src="${esc(poster)}" loading="lazy">` : `<video src="${esc(url)}" preload="metadata" muted></video>`) + (v ? _PLAY_SVG : '') + '</div>';
+}
+function fileRowHtml(att) {
+  const attUrl = `${httpProto()}://${S.server}${att.url}`;
+  if (att.expired) return '<div class="irc-text irc-deleted"><em>Файл удалён</em></div>';
+  const sizeFmt = att.size ? (att.size > 1048576 ? (att.size/1048576).toFixed(1)+' МБ' : Math.round(att.size/1024)+' КБ') : '';
+  const localPath = typeof _downloadedFiles !== 'undefined' ? _downloadedFiles[attUrl] : null;
+  const isDone = !!(window.electron && localPath);
+  const safeLocal = (localPath||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const safeUrl = attUrl.replace(/'/g,"\\'");
+  const safeName = (att.name||'file').replace(/'/g,"\\'");
+  const clickAction = isDone ? `openDownloadedFile('${safeLocal}')` : `downloadAttachment('${safeUrl}','${safeName}')`;
+  const rightEl = isDone
+    ? `<span class="bubble-file-open-label">Открыть</span>`
+    : `<svg class="dl-icon" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`;
+  return `<div class="bubble-file${isDone?' bubble-file-done':''}" data-att-url="${attUrl}" onclick="${clickAction}">
+    <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="flex-shrink:0" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+    <div class="bubble-file-info"><div class="bubble-file-name">${esc(att.name||'Файл')}</div>${sizeFmt?`<div class="bubble-file-size">${sizeFmt}</div>`:''}</div>
+    ${rightEl}
+  </div>`;
+}
+// Сообщение с несколькими вложениями: фото и видео сеткой, остальные файлы строками под ней
+function multiAttachHtml(att) {
+  const all = attAll(att), media = all.filter(_isMediaAtt), files = all.filter(a => !_isMediaAtt(a));
+  let h = '';
+  if (media.length === 1) h += mediaTileHtml(media[0], 'bubble-image');
+  else if (media.length) h += `<div class="bubble-grid n${Math.min(media.length, 7)}${media.length > 6 ? ' r' + (media.length % 3) : ''}">${media.map(a => mediaTileHtml(a, 'bubble-tile')).join('')}</div>`;
+  files.forEach(a => { h += a.unavailable ? `<div class="irc-text irc-deleted"><em>Вложение не удалось получить</em></div>` : fileRowHtml(a); });
+  return h;
+}
+// Просмотр: лента из всех фото и видео открытого чата в порядке показа; у каждого кадра — кто, когда, подпись
+function openLightboxEl(el) {
+  const root = document.getElementById('messages') || document;
+  const els = [...root.querySelectorAll('[data-lb-url]')];
+  const items = els.map(e => {
+    const msg = e.closest('.irc-msg');
+    return {
+      url: e.dataset.lbUrl, filename: e.dataset.lbName, type: e.dataset.lbType,
+      mid: msg ? +msg.dataset.msgId : 0, senderId: msg ? +msg.dataset.senderId : 0,
+      sender: msg?.querySelector('.irc-name')?.textContent?.trim() || '', at: msg ? +msg.dataset.sentAt : 0,
+      caption: (msg?.querySelector('.irc-text:not(.irc-deleted)')?.innerText || '').trim().slice(0, 300), mine: !!msg?.dataset.mine,
+      total: msg ? msg.querySelectorAll('[data-lb-url]').length : 1, thumb: e.querySelector('img')?.src || '',
+    };
+  });
+  const i = Math.max(0, els.indexOf(el));
+  if (!items.length) return;
+  openLightbox(items[i].url, items[i].filename, items[i].type, items, i);
+}
+// «Переслать» и «Удалить» из просмотра: целое сообщение, если оно загружено в чат, иначе только этот кадр
+function lbForwardItem(it) {
+  if (!it) return;
+  const d = it.mid ? S.msgData.get(it.mid) : null;
+  const rel = u => (u || '').replace(`${httpProto()}://${S.server}`, '');
+  S.forwardMsg = d
+    ? (d.forwardData ? { ...d.forwardData } : { user_id: d.senderId, name: d.senderName, text: (d.text || '').slice(0, 200), attachment: d.attachment || null, is_bot: d.senderIsBot || false })
+    : { user_id: it.senderId || 0, name: it.sender || '', text: (it.caption || '').slice(0, 200), attachment: { url: rel(it.url), thumb: it.thumb ? rel(it.thumb) : null, name: it.filename || '', mime: it.mime || (it.type === 'video' ? 'video/mp4' : 'image/jpeg'), size: 0 }, is_bot: false };
+  openForwardModal();
+}
+async function lbDeleteItem(it) {
+  if (!it || !it.mid || !S.ws) return false;
+  const ok = await showConfirm(it.total > 1 ? `Удалить сообщение со всеми вложениями (${it.total})? Оно исчезнет у всех участников.` : 'Удалить сообщение? Оно исчезнет у всех участников.');
+  if (!ok) return false;
+  S.ws.send(JSON.stringify({ type: 'delete_message', message_id: it.mid }));
+  return true;
+}
+
+function openLightbox(url, filename, type = 'image', items = null, index = 0) {
   let lb = document.getElementById('lightbox');
   if (!lb) {
     lb = document.createElement('div');
     lb.id = 'lightbox';
     lb.onclick = e => { if (e.target === lb && !_lbDidDrag) closeLightbox(); _lbDidDrag = false; };
-    lb.innerHTML = `<img id="lightbox-img">
+    lb.innerHTML = `<button type="button" id="lightbox-prev" class="lb-nav lb-prev" title="Назад" onclick="event.stopPropagation();lbNav(-1)">‹</button><button type="button" id="lightbox-next" class="lb-nav lb-next" title="Дальше" onclick="event.stopPropagation();lbNav(1)">›</button><div id="lightbox-count" class="lb-count"></div><img id="lightbox-img">
       <video id="lightbox-video" controls playsinline></video>
       <div class="lb-zoom">
         <button type="button" title="Уменьшить" onclick="event.stopPropagation();lbZoom(-1)"><svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="8" x2="14" y1="11" y2="11"/></svg></button>
@@ -5276,6 +5507,10 @@ function openLightbox(url, filename, type = 'image') {
       <button id="lightbox-download" title="Скачать" onclick="event.stopPropagation();downloadAttachment(document.getElementById('lightbox').dataset.url, document.getElementById('lightbox').dataset.filename)">
         <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
       </button>`;
+    lb.insertAdjacentHTML('beforeend', `<div class="lb-info" id="lightbox-info"></div>
+      <button type="button" id="lightbox-fwd" class="lb-act" title="Переслать" onclick="event.stopPropagation();lbAct('forward')"><svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg></button>
+      <button type="button" id="lightbox-del" class="lb-act" title="Удалить" onclick="event.stopPropagation();lbAct('delete')"><svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+      <div class="lb-bottom" id="lightbox-bottom"><div class="lb-cap" id="lightbox-cap"></div><div class="lb-thumbs" id="lightbox-thumbs"></div></div>`);
     document.body.appendChild(lb);
     const lbImg = document.getElementById('lightbox-img');
     lbImg.addEventListener('mousedown', e => {
@@ -5298,6 +5533,8 @@ function openLightbox(url, filename, type = 'image') {
       if (e.animationName === 'lbImgIn') lb.classList.add('lb-opened');
     });
   }
+  _lbItems = items && items.length ? items : null; _lbIdx = index || 0;
+  lbShowNav(lb);
   const img = document.getElementById('lightbox-img');
   const video = document.getElementById('lightbox-video');
   lb.classList.toggle('lb-video', type === 'video');
@@ -5316,6 +5553,82 @@ function openLightbox(url, filename, type = 'image') {
   lb.classList.remove('lb-closing', 'lb-opened');
   lb.classList.add('lb-open');
 }
+
+let _lbItems = null, _lbIdx = 0;
+
+function lbWhen(ts) {
+  if (!ts) return '';
+  const d = new Date(ts * 1000), n = new Date(), hm = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  return d.toDateString() === n.toDateString() ? `сегодня, ${hm}` : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(d.getFullYear() !== n.getFullYear() ? { year: 'numeric' } : {}) }) + `, ${hm}`;
+}
+// Шапка, подпись, миниатюры и кнопки под текущий кадр
+function lbPaintMeta() {
+  const lb = document.getElementById('lightbox'), it = _lbItems && _lbItems[_lbIdx];
+  if (!lb) return;
+  const n = _lbItems ? _lbItems.length : 0;
+  const info = document.getElementById('lightbox-info');
+  if (info) info.innerHTML = it && (it.sender || it.at) ? `<b>${esc(it.sender || '')}</b><span>${esc(lbWhen(it.at))}</span>` : '';
+  const cap = document.getElementById('lightbox-cap');
+  if (cap) { cap.textContent = it?.caption || ''; cap.style.display = it?.caption ? '' : 'none'; }
+  const th = document.getElementById('lightbox-thumbs');
+  if (th) {
+    if (n > 1) {
+      const from = Math.max(0, Math.min(_lbIdx - 10, n - 21)), to = Math.min(n, from + 21);
+      th.innerHTML = _lbItems.slice(from, to).map((x, k) => `<i class="${from + k === _lbIdx ? 'on' : ''}" style="background-image:url('${esc(x.thumb || x.url)}')" onclick="event.stopPropagation();lbGo(${from + k})"></i>`).join('');
+      th.style.display = '';
+    } else th.style.display = 'none';
+  }
+  const canFwd = !!it && !!it.mid && !S.secretChatIds.has(S.activeChatId), canDel = !!it && !!it.mine && !!it.mid;
+  const f = document.getElementById('lightbox-fwd'), d = document.getElementById('lightbox-del');
+  if (f) f.style.display = canFwd ? '' : 'none';
+  if (d) d.style.display = canDel ? '' : 'none';
+  lb.classList.toggle('lb-meta', !!it && (!!it.sender || !!it.caption || n > 1));
+}
+function lbGo(i) { if (_lbItems && i >= 0 && i < _lbItems.length) lbNav(i - _lbIdx); }
+async function lbAct(kind) {
+  const it = _lbItems && _lbItems[_lbIdx];
+  if (!it) return;
+  if (kind === 'forward') { closeLightbox(); lbForwardItem(it); }
+  else if (kind === 'delete') {
+    if (!await lbDeleteItem(it)) return;
+    _lbItems = _lbItems.filter(x => x.mid !== it.mid);
+    if (!_lbItems.length) { closeLightbox(); return; }
+    _lbIdx = Math.min(_lbIdx, _lbItems.length - 1);
+    lbNav(0, true);
+  }
+}
+function lbShowNav(lb) {
+  lb = lb || document.getElementById('lightbox');
+  const n = _lbItems ? _lbItems.length : 0;
+  lb.classList.toggle('lb-gallery', n > 1);
+  const c = document.getElementById('lightbox-count');
+  if (c) c.textContent = n > 1 ? `${_lbIdx + 1} из ${n}` : '';
+  const p = document.getElementById('lightbox-prev'), nx = document.getElementById('lightbox-next');
+  if (p) p.style.visibility = _lbIdx > 0 ? '' : 'hidden';
+  if (nx) nx.style.visibility = _lbIdx < n - 1 ? '' : 'hidden';
+  lbPaintMeta();
+}
+function lbNav(dir, force) {
+  if (!_lbItems) return;
+  const n = _lbIdx + dir;
+  if (n < 0 || n >= _lbItems.length || (!dir && !force)) return;
+  _lbIdx = n;
+  const it = _lbItems[n], lb = document.getElementById('lightbox');
+  const img = document.getElementById('lightbox-img'), video = document.getElementById('lightbox-video');
+  lbResetZoom();
+  lb.classList.toggle('lb-video', it.type === 'video');
+  if (it.type === 'video') { img.removeAttribute('src'); video.src = it.url; video.play().catch(() => {}); }
+  else { video.pause(); video.removeAttribute('src'); img.src = it.url; }
+  lb.dataset.url = it.url; lb.dataset.filename = it.filename || (it.type === 'video' ? 'video' : 'image');
+  lbShowNav(lb);
+}
+document.addEventListener('keydown', e => {
+  const lb = document.getElementById('lightbox');
+  if (!lb || !lb.classList.contains('lb-open')) return;
+  if (e.key === 'ArrowLeft') lbNav(-1);
+  else if (e.key === 'ArrowRight') lbNav(1);
+  else if (e.key === 'Escape') closeLightbox();
+});
 
 function lbApplyTransform() {
   const img = document.getElementById('lightbox-img');
@@ -5628,6 +5941,7 @@ function connectWS() {
 
     if (data.type==='message') {
       const { message } = data;
+      if (message.client_id && message.sender_id === S.user.id) outboxConfirm(message.client_id);
       const chatId = message.chat_id;
       const parentId = message.parent_id || null;
       if (SC.isHidden(chatId)) SC.unhide(chatId);
@@ -5641,7 +5955,7 @@ function connectWS() {
       if (!parentId && chat) chat.last_message = message;
       // Если мы вглуби истории (низ не догружен) — не аппендим, придёт при догрузке
       if (S.activeChatId===chatId && !S.chatHasMoreAfter && _loadingChatId !== chatId) {
-        if (message.sender_id === S.user.id) {
+        if (message.sender_id === S.user.id && !message.client_id) {
           document.querySelector('[data-optimistic="1"]')?.remove();
         }
         appendMsg(message);
@@ -5654,8 +5968,8 @@ function connectWS() {
           if (message.mentions?.includes(S.user.id)) S.unreadMentions[chatId] = (S.unreadMentions[chatId]||0)+1;
           if (!isChatMuted(chatId, parentId)) {
             const title = chatName(chat) || message.sender_name || 'Electron';
-            const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? Fmt.plain(message.text) : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
-            webNotify(title, body, chatId);
+            const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? Fmt.plain(message.text) : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.more?.length ? '🖼 Вложений: ' + (message.attachment.more.length + 1) : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+            msgNotify(title, body, chatId);
             playNotificationSound();
           }
           if (S.ws?.readyState===1) S.ws.send(JSON.stringify({type:'delivered', message_id:message.id}));
@@ -5672,8 +5986,8 @@ function connectWS() {
           // был chatName(undefined) → TypeError, и обработчик обрывался.
           const _srObj = parentId ? (S.topics[parentId]||[]).find(s=>s.id===chatId) : null;
           const title = _srObj?.name || chatName(chat) || message.sender_name || 'Electron';
-          const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? Fmt.plain(message.text) : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
-          webNotify(title, body, chatId);
+          const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? Fmt.plain(message.text) : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.more?.length ? '🖼 Вложений: ' + (message.attachment.more.length + 1) : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+          msgNotify(title, body, chatId);
           playNotificationSound();
         }
         if (S.ws?.readyState===1) S.ws.send(JSON.stringify({type:'delivered', message_id:message.id}));
@@ -5786,7 +6100,7 @@ function connectWS() {
       // Только нативное уведомление, без счётчиков непрочитанного —
       // как и для сообщений, не беспокоим, если окно сейчас видно и в фокусе
       if (!isViewing()) {
-        webNotify(data.reactorName, `${data.reaction} на ваше сообщение`, data.chatId);
+        if (!_quietNow()) webNotify(data.reactorName, `${data.reaction} на ваше сообщение`, data.chatId);
         playNotificationSound();
       }
     }
@@ -5909,6 +6223,7 @@ function connectWS() {
       const c = S.chats.find(x => x.id === data.chat_id);
       if (c) { c.dm_limit = data.dm_limit || c.dm_limit; if (data.chat_id === S.activeChatId) syncReadOnlyUi(); }
     }
+    if (data.type==='send_rejected') outboxRejected(data.chat_id);
     if (data.type==='send_rejected') showActionToast(data.reason === 'limit' ? 'Больше писать нельзя, пока собеседник не ответит или не добавит вас в контакты' : data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' || data.reason === 'rate' ? 'Сообщение не доставлено' : data.reason === 'federation_off' ? 'Нет связи с сервером этого человека' : data.reason === 'fed_offline' ? 'Нет связи с сервером этой группы. Писать пока нельзя' : data.reason === 'gif_off' ? 'GIF сейчас недоступны' : 'Писать сюда нельзя');
     if (data.type==='user_updated') applyUserUpdate(data);
     if (data.type==='perms') annSetAllowed(data.can_announce);
@@ -5957,6 +6272,8 @@ function connectWS() {
   ws.onopen = () => {
     modulesInit(); window.Modules?.refresh();
     S.wsRetry = 0;
+    retryAllOutbox();
+    loadPushPrefs();
     hideServerToast();
     loadChats();
     watchChat(findChatAny(S.activeChatId));
@@ -6202,6 +6519,93 @@ function pfUser(id) {
   const m = (S.chats || []).flatMap(c => c.members || []).find(x => x.id === id);
   return m ? { ...m, rel: 'chat' } : null;
 }
+// ── МЕДИА ЧАТА ──
+// Окно «Медиа, файлы и ссылки»: открывается из профиля группы, комнаты и человека. Сервер отдаёт вложения и ссылки
+// чата по типам и страницами; фото и видео открываются в просмотре с листанием по всей загруженной ленте.
+const CM_MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+const CM_TABS = [['media', 'Фото и видео'], ['files', 'Файлы'], ['links', 'Ссылки']];
+let _cm = null;
+function cmAbs(p) { return `${httpProto()}://${S.server}${p}`; }
+function cmSize(b) { return !b ? '' : b < 1024 ? b + ' Б' : b < 1048576 ? Math.round(b / 1024) + ' КБ' : (b / 1048576).toFixed(1) + ' МБ'; }
+function cmWhen(ts) {
+  const d = new Date(ts * 1000), n = new Date(), hm = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === n.toDateString()) return 'сегодня, ' + hm;
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(d.getFullYear() !== n.getFullYear() ? { year: 'numeric' } : {}) }) + ', ' + hm;
+}
+function openChatMedia(chatId) {
+  const chat = findChatAny(chatId);
+  if (!chat) return;
+  _cm = { id: chatId, tab: 'media', data: {}, more: {}, cursor: {}, busy: false };
+  renderChatMedia();
+  openModal('modal-media');
+  loadChatMedia();
+}
+function cmTab(t) {
+  if (!_cm) return;
+  _cm.tab = t;
+  renderChatMedia();
+  if (_cm.more[t] === undefined) loadChatMedia();
+}
+async function loadChatMedia() {
+  const c = _cm; if (!c || c.busy) return;
+  const tab = c.tab;
+  if (c.more[tab] === false) return;
+  c.busy = true;
+  const r = await api('GET', `/messages/chat/${c.id}/media?type=${tab}${c.cursor[tab] ? '&before=' + c.cursor[tab] : ''}`);
+  c.busy = false;
+  if (_cm !== c) return;
+  if (!r || r.error) { c.more[tab] = false; }
+  else { c.data[tab] = (c.data[tab] || []).concat(r.items); c.more[tab] = !!r.more; c.cursor[tab] = r.cursor; }
+  if (c.tab === tab) renderChatMedia(true);
+}
+function cmItems() {
+  return (_cm.data.media || []).map(x => ({
+    url: cmAbs(x.att.url), filename: x.att.name || (/^video\//.test(x.att.mime) ? 'video' : 'image'), type: /^video\//.test(x.att.mime) ? 'video' : 'image',
+    mid: x.message_id, mime: x.att.mime, sender: x.sender_name, senderId: x.sender_id, at: x.sent_at, caption: x.caption || '', mine: x.sender_id === S.user.id, total: 1, thumb: x.att.thumb ? cmAbs(x.att.thumb) : '',
+  }));
+}
+function cmOpen(k) {
+  if (!_cm) return;
+  if (_cm.tab === 'media') { const items = cmItems(); if (items[k]) openLightbox(items[k].url, items[k].filename, items[k].type, items, k); }
+  else if (_cm.tab === 'files') { const x = _cm.data.files[k]; if (x) downloadAttachment(cmAbs(x.att.url), x.att.name || 'file'); }
+}
+function renderChatMedia(keep) {
+  const c = _cm, box = document.getElementById('cm-modal');
+  if (!c || !box) return;
+  const chat = findChatAny(c.id), list = c.data[c.tab] || [];
+  const prev = box.querySelector('.cm-scroll'), top = prev && keep ? prev.scrollTop : 0;
+  let body = '';
+  if (!list.length) body = `<div class="cm-empty">${c.more[c.tab] === undefined ? 'Загрузка…' : c.tab === 'media' ? 'Фото и видео пока нет' : c.tab === 'files' ? 'Файлов пока нет' : 'Ссылок пока нет'}</div>`;
+  else {
+    let last = '', open = false;
+    list.forEach((x, k) => {
+      const d = new Date(x.sent_at * 1000), mk = CM_MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+      if (mk !== last) { if (open) body += '</div>'; body += `<div class="cm-month">${mk}</div><div class="${c.tab === 'media' ? 'cm-grid' : 'cm-list'}">`; last = mk; open = true; }
+      if (c.tab === 'media') {
+        const v = /^video\//.test(x.att.mime);
+        body += `<button type="button" class="cm-tile" onclick="cmOpen(${k})" title="${esc(x.sender_name)}, ${cmWhen(x.sent_at)}"><img src="${esc(cmAbs(x.att.thumb || x.att.url))}" loading="lazy" alt="">${v ? `<span class="cm-play">${gmSvg('play', 12, 0)}</span>` : ''}</button>`;
+      } else if (c.tab === 'files') {
+        body += `<button type="button" class="cm-row" onclick="cmOpen(${k})"><span class="cm-ic">${gmSvg('file', 20)}</span><span class="cm-tx"><b>${esc(x.att.name || 'Файл')}</b><span>${esc([cmSize(x.att.size), x.sender_name, cmWhen(x.sent_at)].filter(Boolean).join(' · '))}</span></span></button>`;
+      } else {
+        const u = x.urls[0];
+        body += `<a class="cm-row" href="${esc(u)}" target="_blank" rel="noopener noreferrer"><span class="cm-ic">${gmSvg('link', 20)}</span><span class="cm-tx"><b>${esc(x.title || x.site || u)}</b><span>${esc(u.replace(/^https?:\/\//, '').slice(0, 70))} · ${esc(x.sender_name)} · ${cmWhen(x.sent_at)}</span></span></a>`;
+      }
+    });
+    if (open) body += '</div>';
+    if (c.more[c.tab]) body += '<div class="cm-empty">Загрузка…</div>';
+  }
+  box.innerHTML = `
+    <div class="gm-top"><span class="t">Медиа · ${esc(chatName(chat))}</span><button class="icon-btn" onclick="closeModal('modal-media')" aria-label="Закрыть">${gmSvg('x', 16)}</button></div>
+    <div class="cm-tabs" role="tablist">${CM_TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${c.tab === k}" class="${c.tab === k ? 'on' : ''}" onclick="cmTab('${k}')">${l}</button>`).join('')}</div>
+    <div class="cm-scroll" onscroll="cmScroll(this)">${body}</div>`;
+  const sc = box.querySelector('.cm-scroll');
+  if (sc) sc.scrollTop = top;
+}
+function cmScroll(el) {
+  if (_cm && _cm.more[_cm.tab] && el.scrollHeight - el.scrollTop - el.clientHeight < 400) loadChatMedia();
+}
+function pfMedia(chatId) { openChatMedia(chatId); }
+
 function openProfile(userId) {
   if (!userId || userId === S.user?.id || !pfUser(userId)) return;
   S.profileId = userId;
@@ -6223,6 +6627,8 @@ function renderProfile() {
   else if (!fed && u.rel === 'ws' && myWsCount() > 1 && u.shared_workspaces?.length) rows.push(`<div class="pf-r"><b>${u.shared_workspaces.length > 1 ? 'Пространства' : 'Пространство'}</b><span>${esc(u.shared_workspaces.join(' · '))}</span></div>`);
   if (canContact) rows.push(`<div class="pf-r"><b>В ваших контактах</b><span>${u.contact ? 'Да' : 'Нет'}</span></div>`);
   const groups = (S.chats || []).filter(c => (c.type === 'group' || c.type === 'room') && !c.parent_id && !c.is_secret && c.members?.some(m => m.id === id));
+  const dmChat = (S.chats || []).find(c => c.type === 'direct' && !c.is_secret && getPeerUserId(c) === id);
+  const mediaRow = dmChat ? `<button type="button" class="pf-g pf-link" onclick="pfMedia(${dmChat.id})">${gmSvg('image', 18)}<b>Медиа, файлы и ссылки</b><span class="pf-ch">${gmSvg('chev', 16)}</span></button>` : '';
   const groupsHtml = groups.length
     ? `<div class="pf-g pf-gl">${groups.map(c => `<div class="pf-gr" onclick="pfOpenChat(${c.id})">
         <div class="av av-sm ${chatAvatarClass(c)}${c.type === 'room' && c.has_topics ? ' av-sq' : ' av-round'}">${chatIcon(c)}</div>
@@ -6238,6 +6644,7 @@ function renderProfile() {
       <div class="pf-body">
         ${blocked ? `<div class="pf-note">Вы заблокировали этого человека: он не может писать вам в личные сообщения. Общие группы и комнаты остаются.</div>` : ''}
         <div class="pf-g">${rows.join('')}</div>
+        ${mediaRow}
         <div class="pf-gt">Общие группы · ${groups.length}</div>
         ${groupsHtml}
       </div>
@@ -6498,6 +6905,11 @@ async function createGroup() {
 // Окно поверх переписки, как профиль человека. Шапка (аватарка, название, кнопки, поиск, чипы) стоит на месте,
 // список участников прокручивается отдельно. Изменения применяются сразу, кнопки «Сохранить» нет.
 const GM_I = {
+  image: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+  chev: '<path d="m9 18 6-6-6-6"/>',
+  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  play: '<polygon points="6 3 20 12 6 21 6 3"/>',
   plus: '<path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="M19 16v6"/><path d="M22 19h-6"/>',
   search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
@@ -6601,7 +7013,8 @@ function renderGroupProfile(keep) {
   const tiles = [
     perms.canEdit ? `<button type="button" class="gm-tile" onclick="gmAddView()">${gmSvg('plus', 20)}Добавить</button>` : '',
     `<button type="button" class="gm-tile" onclick="document.getElementById('gm-q')?.focus()">${gmSvg('search', 20)}Поиск</button>`,
-    `<button type="button" class="gm-tile" onclick="gmMute()">${gmSvg(muted ? 'bell' : 'bellOff', 20)}${muted ? 'Со звуком' : 'Без звука'}</button>`,
+    `<button type="button" class="gm-tile" onclick="openChatMedia(${chat.id})">${gmSvg('image', 20)}Медиа</button>`,
+    `<button type="button" class="gm-tile" onclick="gmMute(event)">${gmSvg(muted ? 'bell' : 'bellOff', 20)}${muted ? 'Со звуком' : 'Без звука'}</button>`,
     perms.canLeave ? `<button type="button" class="gm-tile d" onclick="gmLeave()">${gmSvg('out', 20)}Выйти</button>` : '',
   ].filter(Boolean);
   const prev = box.querySelector('.gm-scroll'), top = prev ? prev.scrollTop : 0, qHad = document.activeElement?.id === 'gm-q';
@@ -6649,11 +7062,11 @@ function gmPaintStatus() {
   gmPaintSub();
 }
 function gmOpenMember(id) { openProfile(id); }
-async function gmMute() {
+async function gmMute(ev) {
   const id = S.gm.id;
-  if (S.mutedChats.has(id)) { await api('DELETE', `/chats/${id}/mute`); S.mutedChats.delete(id); }
-  else { await api('POST', `/chats/${id}/mute`); S.mutedChats.add(id); }
-  renderChatList(); renderGroupProfile(true);
+  if (S.mutedChats.has(id)) { await unmuteChat(id); return; }
+  const r = ev?.currentTarget?.getBoundingClientRect?.();
+  showMuteMenu(id, r ? r.left : 200, r ? r.bottom : 200, r || null);
 }
 function gmRenameStart() { S.gm.rename = true; renderGroupProfile(true); }
 async function gmRenameSave(v) {
@@ -6735,6 +7148,7 @@ async function gmAddConfirm() {
 }
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
+  if (document.getElementById('modal-media')?.classList.contains('open')) { closeModal('modal-media'); return; }
   if (document.getElementById('modal-profile')?.classList.contains('open')) { closeModal('modal-profile'); return; }   // сначала закрывается профиль человека поверх
   if (gmIsOpen() && !S.gm.rename) { e.preventDefault(); if (S.gm.view === 'add') gmAddBack(); else closeModal('modal-group'); }
 });
@@ -6791,6 +7205,66 @@ async function ctxChatPin() {
   if (!S.ctxChatId) return;
   await api('POST', `/chats/${S.ctxChatId}/pin`);
   await loadChats();
+}
+
+async function ctxChatDelete() {
+  hideChatCtx();
+  if (!S.ctxChatId) return;
+  await deleteChat(S.ctxChatId);
+}
+
+
+// ── «Без звука» на время ──
+// Включить звук — сразу; выключить — на 1 час, 8 часов, сутки или навсегда (меню у места нажатия)
+const MUTE_OPTS = [['На 1 час', 3600], ['На 8 часов', 28800], ['На сутки', 86400], ['Навсегда', 0]];
+function hideMuteMenu() { const m = document.getElementById('mute-menu'); if (m) m.style.display = 'none'; }
+function showMuteMenu(chatId, x, y, anchor) {
+  let m = document.getElementById('mute-menu');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'mute-menu';
+    m.className = 'ctx-menu';
+    document.body.appendChild(m);
+    document.addEventListener('mousedown', e => { if (!e.target.closest('#mute-menu')) hideMuteMenu(); }, true);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') hideMuteMenu(); });
+  }
+  const bell = '<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>';
+  m.innerHTML = MUTE_OPTS.map(([l, s]) => `<button type="button" onclick="setChatMute(${chatId}, ${s})">${bell}<span>${l}</span></button>`).join('');
+  m.style.display = 'block';
+  m.classList.remove('pop-out'); m._popOut = false;
+  placeCtxMenu(m, x, y, anchor || null);
+}
+async function setChatMute(chatId, secs) {
+  hideMuteMenu();
+  const r = await api('POST', `/chats/${chatId}/mute`, secs ? { seconds: secs } : {});
+  if (r?.error) { showActionToast(r.error); return; }
+  S.mutedChats.add(chatId);
+  S.mutedUntil[chatId] = secs ? Math.floor(Date.now() / 1000) + secs : 0;
+  watchMutes();
+  renderChatList();
+  if (typeof gmIsOpen === 'function' && gmIsOpen() && S.gm.id === chatId) renderGroupProfile(true);
+}
+async function unmuteChat(chatId) {
+  await api('DELETE', `/chats/${chatId}/mute`);
+  S.mutedChats.delete(chatId); delete S.mutedUntil[chatId];
+  renderChatList();
+  if (typeof gmIsOpen === 'function' && gmIsOpen() && S.gm.id === chatId) renderGroupProfile(true);
+}
+// Когда срок «без звука» истекает, список чатов перечитывается сам: звук и счётчики возвращаются
+let _muteTimer = null;
+function watchMutes() {
+  clearTimeout(_muteTimer);
+  const now = Math.floor(Date.now() / 1000);
+  const next = Math.min(Infinity, ...Object.values(S.mutedUntil).filter(t => t && t > now));
+  if (next < Infinity) _muteTimer = setTimeout(() => loadChats(), Math.min((next - now + 1) * 1000, 2147000000));
+}
+
+async function ctxChatMute() {
+  const id = S.ctxChatId, pos = S.ctxChatPos || { x: 200, y: 200 };
+  hideChatCtx();
+  if (!id) return;
+  if (S.mutedChats.has(id)) { await unmuteChat(id); return; }
+  showMuteMenu(id, pos.x, pos.y);
 }
 
 async function ctxChatDelete() {

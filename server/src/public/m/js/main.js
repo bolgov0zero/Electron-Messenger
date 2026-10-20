@@ -21,6 +21,8 @@
     B.ui.chatlist.mount(document.getElementById('chats-scroll'));
     B.ui.contacts.mount(document.getElementById('contacts-scroll'));
     B.ui.settings.mount(document.getElementById('settings-scroll'));
+    B.ptr(document.getElementById('chats-scroll'), function () { return Promise.all([B.chats.refresh(), B.presence.load()]); });
+    B.ptr(document.getElementById('contacts-scroll'), function () { return B.contacts.load(); });
     shell.addEventListener('click', function (e) { var tb = e.target.closest('.tb'); if (tb) setTab(tb.dataset.tab); });
     // Кнопки в верхней панели вкладок
     document.getElementById('stack').addEventListener('click', function (e) {

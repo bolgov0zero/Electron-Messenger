@@ -43,7 +43,8 @@ B.ui.chat = (function () {
   function url(path) { return B.http() + '://' + B.S.server + path; }
 
   // ── вложения ──
-  function attachment(att) {
+  // mid и i — сообщение и номер вложения в нём: по ним просмотр собирает ленту фото и видео чата
+  function attachment(att, mid, i) {
     if (!att) return '';
     var fileLine = function (icon, text) { return '<div class="file"><div class="fi">' + icon + '</div><div><b>' + text + '</b></div></div>'; };
     if (att.enc) {
@@ -56,12 +57,30 @@ B.ui.chat = (function () {
     if (att.expired) return fileLine(ic('x', 20, 2), 'Файл удалён');
     var ratio = att.width && att.height ? 'aspect-ratio:' + att.width + '/' + att.height + ';' : '';
     var mime = att.mime || '';
-    if (mime.indexOf('image/') === 0) return '<img class="att-img" src="' + esc(url(att.url)) + '" style="' + ratio + '" loading="lazy" data-c="lb" data-url="' + esc(att.url) + '" data-type="image" alt="">';
+    var ref = mid ? ' data-mid="' + mid + '" data-i="' + i + '"' : '';
+    if (mime.indexOf('image/') === 0) return '<img class="att-img" src="' + esc(url(att.url)) + '" style="' + ratio + '" loading="lazy" data-c="lb" data-url="' + esc(att.url) + '" data-type="image"' + ref + ' alt="">';
     if (mime.indexOf('video/') === 0) {
       var poster = att.thumb ? '<img class="att-img" src="' + esc(url(att.thumb)) + '" style="' + ratio + '" loading="lazy" alt="">' : '<div class="vph"></div>';
-      return '<div class="vwrap" data-c="lb" data-url="' + esc(att.url) + '" data-type="video">' + poster + '<div class="vplay"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div></div>';
+      return '<div class="vwrap" data-c="lb" data-url="' + esc(att.url) + '" data-type="video"' + ref + '>' + poster + '<div class="vplay"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div></div>';
     }
-    return '<div class="file" data-c="dl" data-url="' + esc(att.url) + '" data-name="' + esc(att.name || 'file') + '"><div class="fi">' + ic('doc', 22, 1.8) + '</div><div><b>' + esc(att.name || 'Файл') + '</b><span>' + fmtSize(att.size) + '</span></div></div>';
+    return '<div class="file" data-c="' + (mid ? 'file' : 'dl') + '" data-url="' + esc(att.url) + '" data-name="' + esc(att.name || 'file') + '"' + ref + '><div class="fi">' + ic('doc', 22, 1.8) + '</div><div><b>' + esc(att.name || 'Файл') + '</b><span>' + fmtSize(att.size) + '</span></div></div>';
+  }
+  // Сообщение с несколькими вложениями: фото и видео сеткой, остальные файлы строками под ней
+  function attachments(m) {
+    var att = m.attachment; if (!att) return '';
+    if (att.enc || att.gif || m._skel) return attachment(att, 0, 0);
+    var all = B.media.listOf(att);
+    if (all.length === 1) return attachment(att, m._optimistic ? 0 : m.id, 0);
+    var media = [], files = [], mid = m._optimistic ? 0 : m.id;
+    all.forEach(function (a, i) { (B.media.isMedia(a) ? media : files).push([a, i]); });
+    var h = '';
+    if (media.length === 1) h += attachment(media[0][0], mid, media[0][1]);
+    else if (media.length) h += '<div class="agrid n' + Math.min(media.length, 7) + (media.length > 6 ? ' r' + (media.length % 3) : '') + '">' + media.map(function (x) {
+      var a = x[0], v = /^video\//.test(a.mime || ''), src = a.thumb || (v ? '' : a.url);
+      return '<div class="agt" data-c="lb"' + (mid ? ' data-mid="' + mid + '" data-i="' + x[1] + '"' : '') + ' data-url="' + esc(a.url) + '" data-type="' + (v ? 'video' : 'image') + '">' + (src ? '<img src="' + esc(url(src)) + '" loading="lazy" alt="">' : '<div class="vph"></div>') + (v ? '<div class="vplay"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>' : '') + '</div>';
+    }).join('') + '</div>';
+    files.forEach(function (x) { h += attachment(x[0], mid, x[1]); });
+    return h;
   }
   function reactions(m) {
     if (!m.reactions || !m.reactions.length) return '';
@@ -106,10 +125,11 @@ B.ui.chat = (function () {
     h += '<div class="mcol">';
     if (m.deleted) return h + '<div class="bub dl"><span class="txt">Сообщение удалено</span></div></div></div>';
     var att = m.attachment, eo = !att && !m.reply_to_id && emojiOnly(m.text);
-    var bare = !m.text && !m.reply_to_id && !m.forward_data && att && (att.gif || (att.url && !att.expired && /^(image|video)\//.test(att.mime || '')));
-    var meta = '<span class="meta">' + (m.edited_at ? 'изм. ' : '') + B.fmt.time(m.sent_at) + (mine ? B.ticks(m.status) : '') + '</span>';
+    var bare = !m.text && !m.reply_to_id && !m.forward_data && att && (att.gif || (att.url && !att.expired && (att.enc ? /^(image|video)\//.test(att.mime || '') : B.media.listOf(att).every(B.media.isMedia))));
+    var fail = !!m._optimistic && m._state === 'failed';
+    var meta = '<span class="meta">' + (m.edited_at ? 'изм. ' : '') + B.fmt.time(m.sent_at) + (mine ? (fail ? '<i class="er">!</i>' : m._optimistic ? '<i class="clk">' + ic('clock', 12, 2) + '</i>' : B.ticks(m.status)) : '') + '</span>';
     var comp = compOf(m);
-    h += '<div class="bub' + (eo ? ' eo' : '') + (bare ? ' media' : '') + (bare && att.gif ? ' gifm' : '') + (comp ? ' bcomp' + (!comp.lp && comp.ps.length === 1 ? ' conly' : '') : '') + '" data-mid="' + m.id + '">';
+    h += '<div class="bub' + (eo ? ' eo' : '') + (bare ? ' media' : '') + (bare && att.gif ? ' gifm' : '') + (comp ? ' bcomp' + (!comp.lp && comp.ps.length === 1 ? ' conly' : '') : '') + (fail ? ' fail' : '') + '" data-mid="' + m.id + '"' + (fail ? ' data-c="retry" data-cid="' + m._cid + '"' : '') + '>';
     if (wrapAv && pos.first) h += '<div class="who" style="color:' + nameColor(m.sender_id, m.sender_tag) + '" data-c="who" data-id="' + m.sender_id + '" data-name="' + esc(m.sender_name || '') + '">' + esc(m.sender_name || '') + '</div>';
     var qStart = h.length;
     if (m.reply_to_id) {
@@ -123,13 +143,13 @@ B.ui.chat = (function () {
       h += '<div class="quote"><b>Переслано от ' + esc(fd.name || '') + '</b><span>' + ftxt + '</span></div>';
     }
     if (comp) { var qs = h.slice(qStart); h = h.slice(0, qStart) + (comp.lp ? Fmt.previewCard(comp.lp, B.http() + '://' + B.S.server) : '') + (qs ? '<div class="cpad">' + qs + '</div>' : ''); }
-    h += attachment(att);
+    h += attachments(m);
     if (comp) h += compParts(comp.ps, chat, meta);
     else if (m._skel) h += '<div class="txt">' + m._skel + meta + '</div>';
     else if (m.text) h += '<div class="txt">' + (m.sender_is_bot ? m.text : formatText(m.text, chat || {})) + (bare ? '' : meta) + '</div>';
     else if (!bare) h += '<div class="txt" style="min-height:4px">' + meta + '</div>';
     if (bare) h += meta;
-    h += '</div>' + reactions(m) + '</div><span class="swi">' + ic('reply', 17, 2.2) + '</span></div>';
+    h += '</div>' + reactions(m) + (fail ? '<div class="failnote" data-c="retry" data-cid="' + m._cid + '">Не отправлено · <b>Повторить</b></div>' : '') + '</div><span class="swi">' + ic('reply', 17, 2.2) + '</span></div>';
     return h;
   }
   function feed(chat, cache) {
@@ -180,6 +200,7 @@ B.ui.chat = (function () {
         '<div class="nl"><button class="nb back" data-nav="back" aria-label="Назад">' + ic('back', 28, 2.4) + '<span class="cnt">' + (n ? (n > 99 ? '99+' : n) : '') + '</span></button></div>' +
         '<div class="nt"><div class="cn-b" data-c="info"><b>' + esc(B.chatName(chat)) + '</b><span class="st' + (st.live ? ' live' : '') + '">' + esc(st.t) + '</span></div></div>' +
         '<div class="nr"><button class="nb addc" data-c="addc" aria-label="Добавить в контакты" hidden>' + ic('userplus', 22, 1.9) + '</button><div class="cn-av" data-c="info">' + B.avatar.chat(chat, 36) + '</div></div></div></div>' +
+      '<div class="cnbar" hidden></div>' +
       '<div class="scroll"><div class="msgs">' + (B.msgs.tail(cid) && !B.S.secretChatIds.has(cid) ? '' : skeleton()) + '</div></div>' +
       '<button class="sdbtn" data-c="down" aria-label="К последним сообщениям">' + ic('down', 20, 2.4) + '<b></b></button>' +
       '<div class="bottom comp"></div>';
@@ -200,6 +221,8 @@ B.ui.chat = (function () {
     if (tr) { tr.classList.toggle('show', names.length > 0); if (names.length) tr.querySelector('.tpt').textContent = B.typing.label(names, true); }
     var b = el.querySelector('.cn-b b'); if (b) b.textContent = B.chatName(chat);
     var n = othersUnread(chat.id), c = el.querySelector('.back .cnt'); if (c) c.textContent = n ? (n > 99 ? '99+' : n) : '';
+    var cb = el.querySelector('.cnbar'), cst = B.conn.state;
+    if (cb) { cb.hidden = cst === 'ok'; cb.className = 'cnbar ' + cst; cb.innerHTML = cst === 'offline' ? ic('wifioff', 14, 2.2) + 'Нет связи с сервером' : '<i class="cspin"></i>Подключение…'; }
     var ab = el.querySelector('.addc'), pid = chat.type === 'direct' ? B.peerId(chat) : null; if (ab) ab.hidden = !(pid && B.contacts.needsContact(pid));
   }
 
@@ -304,7 +327,9 @@ B.ui.chat = (function () {
     if (lc) { window.open(lc.dataset.fmtUrl, '_blank', 'noopener,noreferrer'); return; }
     var t = e.target.closest('[data-c]'); if (!t) return;
     var c = t.dataset.c;
-    if (c === 'lb') B.lightbox.open(t.dataset.url, t.dataset.type);
+    if (c === 'lb') { if (t.dataset.mid) B.media.openMsg(+t.dataset.mid, +t.dataset.i); else B.lightbox.open(t.dataset.url, t.dataset.type); }
+    else if (c === 'file') B.media.openFile(+t.dataset.mid, +t.dataset.i);
+    else if (c === 'retry') { var cid = t.dataset.cid; B.actions.show({ title: 'Сообщение не отправлено', msg: 'Оно останется в очереди и уйдёт само, когда появится связь.', items: [{ l: 'Повторить отправку', f: function () { B.msgs.retry(cid); } }, { l: 'Удалить', d: 1, f: function () { B.msgs.discard(cid); } }] }); }
     else if (c === 'dl') download(t.dataset.url, t.dataset.name);
     else if (c === 'jump') jump(el, +t.dataset.id);
     else if (c === 'react') B.msgs.react(+t.dataset.id, t.dataset.e);
@@ -321,6 +346,7 @@ B.ui.chat = (function () {
   function info(cid) {
     var chat = B.find(cid); if (!chat) return;
     if (chat.type === 'direct' && B.openProfile) B.openProfile(B.peerId(chat));
+    else if (B.openGroupProfile) B.openGroupProfile(chat.parent_id || cid);
     else if (B.openMembers) B.openMembers(cid);
   }
 
@@ -371,6 +397,7 @@ B.ui.chat = (function () {
   // Клавиатура или панель смайлов сдвинули поле ввода: держим ленту у низа, если она там и была
   B.bus.on('kbd:changed', function () { var el = activePage(); if (!el) return; var sc = el.querySelector('.scroll'); if (sc && sc.scrollHeight - sc.scrollTop - sc.clientHeight < 400) setTimeout(function () { sc.scrollTop = sc.scrollHeight; }, 60); });
   B.bus.on('presence:changed', function () { var el = activePage(); if (el) updateHeader(el); });
+  B.bus.on('conn:changed', function () { var el = activePage(); if (el) updateHeader(el); });
   B.bus.on('chats:changed', function () {
     var el = activePage(); if (!el) return;
     updateHeader(el);
@@ -412,22 +439,4 @@ B.openChat = function (id, msgId) {
   var c = B.find(id); if (!c) return;
   if (c.has_topics) { if (B.ui.topics) B.ui.topics.open(id); else B.toast.show('Темы комнаты — на этапе 8'); return; }
   B.ui.chat.open(id, msgId);
-};
-
-// Просмотр фото и видео на весь экран
-B.lightbox = {
-  el: null,
-  init: function (root) {
-    var el = this.el = document.createElement('div'); el.className = 'lbx';
-    el.innerHTML = '<button class="cl" aria-label="Закрыть">' + B.ic('x', 18, 2.4) + '</button><img alt=""><video controls playsinline></video>';
-    root.appendChild(el);
-    el.addEventListener('click', function (e) { if (e.target === el || e.target.closest('.cl')) B.lightbox.close(); });
-  },
-  open: function (path, type) {
-    var el = this.el, img = el.querySelector('img'), vid = el.querySelector('video'), src = path.indexOf('blob:') === 0 ? path : B.http() + '://' + B.S.server + path;
-    if (type === 'video') { img.style.display = 'none'; vid.style.display = ''; vid.src = src; vid.play().catch(function () {}); }
-    else { vid.pause(); vid.removeAttribute('src'); vid.style.display = 'none'; img.style.display = ''; img.src = src; }
-    el.classList.add('on');
-  },
-  close: function () { var el = this.el, vid = el.querySelector('video'); vid.pause(); vid.removeAttribute('src'); el.classList.remove('on'); }
 };

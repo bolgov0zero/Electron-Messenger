@@ -44,6 +44,7 @@ B.ui.chatlist = (function () {
       return out || '<div class="empty"><b>Ничего не найдено</b>Попробуйте другое слово.</div>';
     }
     var h = '';
+    if (!searching && B.conn.state === 'offline') h += '<div class="cnoff">' + ic('wifioff', 18, 2) + '<span><b>Нет связи с сервером.</b> Показаны сохранённые чаты. Новые сообщения придут, когда сеть появится.</span></div>';
     if (!searching && B.push.shouldAsk()) h += '<div class="nbanner">' + ic('bell', 20, 2) + '<span>Разрешите уведомления, чтобы получать сообщения в фоне. <b data-cl="allow">Разрешить</b></span><button class="xx" data-cl="hide" aria-label="Закрыть">' + ic('x', 16, 2.4) + '</button></div>';
     h += B.ui.folders.tabsHtml();
     g = B.chats.groups('');
@@ -224,5 +225,6 @@ B.ui.chatlist = (function () {
   B.bus.on('app:ready', function () { if (dyn) render(); });
   B.bus.on('auth:logout', function () { if (dyn) { if (searching) cancel(); dyn.innerHTML = ''; } });
   B.bus.on('typing:changed', schedule);
+  B.bus.on('conn:changed', schedule);
   return { mount: mount, render: render, cancel: cancel };
 })();

@@ -4,7 +4,7 @@ B.ui = B.ui || {};
 B.drafts = B.drafts || {};
 B.ui.composer = (function () {
   var esc = B.esc, ic = B.ic;
-  var COLS = 8;
+  var COLS = 8, MAX_ATT = 10;
 
   function cs(el) { return el._cs; }
   function ta(el) { return el.querySelector('.comp .ce'); }
@@ -12,14 +12,14 @@ B.ui.composer = (function () {
   function chatOf(el) { return B.find(+el.dataset.cid); }
 
   function mount(el, chat) {
-    var c = comp(el); el._cs = { reply: null, fwd: null, edit: null, att: null, panel: null, mode: 'emoji', tab: 0, fmt: false, prev: false, lw: null };
+    var c = comp(el); el._cs = { reply: null, fwd: null, edit: null, atts: [], panel: null, mode: 'emoji', tab: 0, fmt: false, prev: false, lw: null };
     c.innerHTML =
       '<div class="ctx"></div><div class="scb" hidden></div><div class="ronote" hidden></div><div class="invbar" hidden></div>' +
       '<div class="tpr"><span class="dots"><i></i><i></i><i></i></span><span class="tpt"></span></div>' +
       '<div class="fxs"><div class="lpv" hidden></div><div class="fpv" hidden><div class="fpl">Превью — так увидят получатели</div><div class="fpb"></div></div><div class="fbar" hidden>' + Fmt.barHtml() + '</div></div>' +
       '<div class="crow"><div class="cbtn att" role="button" data-k="up" aria-label="Прикрепить, форматирование" aria-haspopup="menu">' + ic('chevup', 26, 2.2) + '</div>' +
         '<div class="upmenu" role="menu"><div class="umi" role="menuitem" data-k="attach">' + ic('clip', 22, 1.8) + '<span>Прикрепить файл</span></div><div class="umi" role="menuitem" data-k="fmt">' + ic('pencil', 22, 1.8) + '<span>Форматирование</span></div></div>' +
-        '<input type="file" style="display:none">' +
+        '<input type="file" multiple style="display:none">' +
         '<div class="cfield">' +
           '<div class="frow"><span class="ph">Сообщение</span><div class="ce fmt-ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Сообщение" enterkeyhint="return" autocapitalize="sentences" spellcheck="true"></div>' +
           '<button class="cbtn cem" data-k="emo" aria-label="Смайлы">' + ic('smile', 24, 1.7) + '</button></div></div>' +
@@ -33,7 +33,7 @@ B.ui.composer = (function () {
       onChange: function () { paintFmt(el); }
     });
     t.value = B.drafts[chat.id] || ''; autosize(t); syncHas(el); cst.lw.check();
-    file.addEventListener('change', function () { var f = file.files[0]; file.value = ''; if (f) attach(el, f); });
+    file.addEventListener('change', function () { var fs = Array.prototype.slice.call(file.files); file.value = ''; if (fs.length) attachMany(el, fs); });
     t.addEventListener('input', function () { B.drafts[chat.id] = t.value; autosize(t); syncHas(el); cs(el).lw.check(); if (cs(el).fmt) { fmtState(el); paintPrev(el); } if (!cs(el).edit) B.msgs.typing(); });
     t.addEventListener('focus', function () { closePanel(el); closeUp(el); });
     t.addEventListener('keydown', function (e) {
@@ -120,7 +120,7 @@ B.ui.composer = (function () {
   }
   function syncHas(el) {
     var s = cs(el), t = ta(el); if (!t) return;
-    comp(el).classList.toggle('has', !!(t.value.trim() || (s.att && s.att.done) || s.fwd));
+    comp(el).classList.toggle('has', !!(t.value.trim() || s.atts.some(function (a) { return a.done; }) || s.fwd));
   }
   // Только чтение или лимит «без ответа»: вместо поля — пояснение
   function sync(el) {
@@ -163,12 +163,7 @@ B.ui.composer = (function () {
     if (s.reply) h += bar('reply', 'Ответ: ' + s.reply.senderName, s.reply.text, 'reply');
     if (s.fwd) h += bar('fwd', 'Переслано от ' + (s.fwd.name || ''), Fmt.plain(s.fwd.text || '') || (s.fwd.attachment ? '📎 Вложение' : ''), 'fwd');
     if (s.edit) h += '<div class="cbar"><span class="ci2">' + ic('pencil', 20, 2) + '</span><div class="cb"><b>Редактирование</b></div><button class="xb" data-k="clr" data-w="edit" aria-label="Отменить">' + ic('x', 13, 2.6) + '</button></div>';
-    if (s.att) {
-      var a = s.att, d = a.data, thumb = ic(a.kind === 'Фото' ? 'photo' : 'doc', 20, 2);
-      if (a.done && d && !d.enc) { var src = d.mime && d.mime.indexOf('image/') === 0 ? d.url : d.thumb; if (src) thumb = '<img src="' + esc(B.http() + '://' + B.S.server + src) + '" alt="">'; }
-      h += '<div class="cbar"><span class="th">' + thumb + '</span><div class="cb" style="border:0;padding-left:0"><b>' + esc(a.done ? 'Вложение' : a.kind) + '</b><span>' + esc(a.done ? (d.name || 'Файл') : a.text) + '</span>' +
-        (a.done ? '' : '<div class="trk' + (a.proc ? ' ind' : '') + '"><i style="width:' + a.pct + '%"></i></div>') + '</div><button class="xb" data-k="clr" data-w="att" aria-label="Убрать вложение">' + ic('x', 13, 2.6) + '</button></div>';
-    }
+    if (s.atts.length) h += attsHtml(el, s);
     if (h) { box.innerHTML = h; slide(box, true); }
     else slide(box, false, function () { box.innerHTML = ''; });
     syncHas(el);
@@ -176,24 +171,66 @@ B.ui.composer = (function () {
   }
   function clear(el, what) {
     var s = cs(el), t = ta(el);
-    if (what === 'att') { B.upload.cancel(s.att && s.att.done ? s.att.data : null); s.att = null; }
+    if (what === 'att') { if (el._cs.atts.length) dropAtt(el, +arguments[2]); return; }
     else if (what === 'edit') { s.edit = null; t.value = ''; B.drafts[+el.dataset.cid] = ''; autosize(t); s.lw.reset(); }
     else s[what] = null;
     renderCtx(el);
   }
 
-  // ── вложение ──
+  // ── вложения (до 10 за раз; в скрытом чате — одно) ──
+  var attSeq = 0;
+  function attsHtml(el, s) {
+    var n = s.atts.length, imgs = s.atts.every(function (a) { return a.kind === 'Фото'; });
+    var title = n === 1 ? s.atts[0].kind : imgs ? n + ' фото' : 'Вложений: ' + n;
+    var items = s.atts.map(function (a, i) {
+      var inner;
+      if (a.prev) inner = '<img src="' + esc(a.prev) + '" alt="">';
+      else if (a.done && a.data && !a.data.enc && a.data.thumb) inner = '<img src="' + esc(B.http() + '://' + B.S.server + a.data.thumb) + '" alt="">';
+      else inner = '<span class="axf">' + ic(a.kind === 'Видео' ? 'play' : 'doc', 22, 1.8) + '<small>' + esc((a.name || '').slice(-14)) + '</small></span>';
+      return '<div class="ax' + (a.done ? '' : ' up') + '" data-id="' + a.id + '">' + inner + (a.done ? '' : '<div class="axp"><i style="width:' + a.pct + '%"></i><span>' + (a.proc ? '…' : a.pct + '%') + '</span></div>') +
+        '<button class="rm" data-k="clr" data-w="att" data-i="' + a.id + '" aria-label="Убрать">' + ic('x', 12, 3) + '</button></div>';
+    }).join('');
+    return '<div class="axs"><div class="axh"><b>' + title + '</b></div><div class="axl">' + items +
+      (n < MAX_ATT && !B.S.secretChatIds.has(+el.dataset.cid) ? '<button class="ax add" data-k="addatt" aria-label="Добавить ещё">' + ic('add', 24, 2) + '</button>' : '') + '</div></div>';
+  }
+  // Ход загрузки: меняем только полоски, не пересоздавая миниатюры
+  function paintProg(el) {
+    var s = cs(el), box = comp(el).querySelector('.ctx');
+    s.atts.forEach(function (a) {
+      var t = box.querySelector('.ax[data-id="' + a.id + '"] .axp'); if (!t) return;
+      t.firstChild.style.width = a.pct + '%'; t.lastChild.textContent = a.proc ? '…' : a.pct + '%';
+    });
+  }
+  function dropAtt(el, id) {
+    var s = cs(el), i = s.atts.findIndex(function (a) { return a.id === id; }); if (i < 0) return;
+    var a = s.atts[i]; s.atts.splice(i, 1);
+    B.upload.cancel(a.done ? a.data : null, a.ctl); if (a.prev) URL.revokeObjectURL(a.prev);
+    renderCtx(el);
+  }
+  function clearAtts(el, keepFiles) {
+    var s = cs(el);
+    s.atts.forEach(function (a) { if (!keepFiles) B.upload.cancel(a.done ? a.data : null, a.ctl); if (a.prev) URL.revokeObjectURL(a.prev); });
+    s.atts = [];
+  }
+  function attachMany(el, files) {
+    var s = cs(el), secret = B.S.secretChatIds.has(+el.dataset.cid);
+    if (secret && (s.atts.length || files.length > 1)) { B.toast.show('В скрытом чате прикрепляется по одному файлу'); files = files.slice(0, s.atts.length ? 0 : 1); }
+    var room = MAX_ATT - s.atts.length;
+    if (files.length > room) { B.toast.show('Можно прикрепить не больше ' + MAX_ATT + ' файлов'); files = files.slice(0, room); }
+    files.forEach(function (f) { attach(el, f); });
+  }
   function attach(el, file) {
-    var s = cs(el), a = s.att = { kind: 'Файл', text: 'Загрузка… 0%', pct: 0, done: false, proc: false, data: null };
-    s.reply = s.reply; renderCtx(el);
+    var s = cs(el), a = { id: ++attSeq, kind: file.type.indexOf('image/') === 0 ? 'Фото' : file.type.indexOf('video/') === 0 ? 'Видео' : 'Файл', name: file.name, pct: 0, done: false, proc: false, data: null, ctl: null, prev: file.type.indexOf('image/') === 0 && !B.S.secretChatIds.has(+el.dataset.cid) ? URL.createObjectURL(file) : '' };
+    s.atts.push(a); renderCtx(el);
+    var drop = function () { var i = s.atts.indexOf(a); if (i >= 0) { s.atts.splice(i, 1); if (a.prev) URL.revokeObjectURL(a.prev); renderCtx(el); } };
     B.upload.pick(file, {
-      onStart: function (k) { a.kind = k; renderCtx(el); },
-      onPrepare: function (p) { if (s.att !== a) return; a.pct = p; a.text = 'Подготовка видео… ' + p + '%'; renderCtx(el); },
-      onProgress: function (p) { if (s.att !== a) return; a.pct = p; a.text = 'Загрузка… ' + p + '%'; renderCtx(el); },
-      onProcessing: function () { if (s.att !== a) return; a.proc = true; a.text = 'Обработка…'; renderCtx(el); },
-      onDone: function (resp) { if (s.att !== a) return; a.done = true; a.data = resp; renderCtx(el); },
-      onError: function (msg) { if (s.att === a) s.att = null; renderCtx(el); B.toast.show(msg); }
-    }, { chatId: +el.dataset.cid });
+      onStart: function (k) { a.kind = k; },
+      onPrepare: function (p) { a.pct = p; paintProg(el); },
+      onProgress: function (p) { a.pct = p; paintProg(el); },
+      onProcessing: function () { a.proc = true; paintProg(el); },
+      onDone: function (resp) { a.done = true; a.data = resp; renderCtx(el); },
+      onError: function (msg) { drop(); B.toast.show(msg); }
+    }, { chatId: +el.dataset.cid }).then(function (ctl) { a.ctl = ctl; if (!s.atts.includes(a)) B.upload.cancel(null, ctl); });
   }
 
   // ── действия ──
@@ -207,7 +244,7 @@ B.ui.composer = (function () {
   function startEdit(el, m) {
     if (!m || m.deleted) return;
     if (Date.now() / 1000 - m.sent_at > (B.S.editLimit || 120)) { B.toast.show('Время редактирования истекло'); return; }
-    var s = cs(el), t = ta(el); s.edit = m.id; s.reply = null; if (s.att) clear(el, 'att');
+    var s = cs(el), t = ta(el); s.edit = m.id; s.reply = null; if (s.atts.length) { clearAtts(el); renderCtx(el); }
     t.value = m.text || ''; autosize(t); renderCtx(el); Fmt.focusEnd(t); s.lw.load(m.link_preview || null, m.text || '');
   }
   function mention(el, id, name) {
@@ -222,10 +259,12 @@ B.ui.composer = (function () {
       if (text) B.msgs.edit(s.edit, text, s.lw.current());
       s.edit = null; t.value = ''; B.drafts[chat.id] = ''; autosize(t); renderCtx(el); s.lw.reset(); closeFmt(el); return;
     }
-    if (s.att && !s.att.done) { B.toast.show('Дождитесь окончания загрузки'); return; }
-    B.msgs.send({ text: text, reply: s.reply, attachment: s.att ? s.att.data : null, forward: s.fwd, linkPreview: s.lw.current() }).then(function (ok) {
+    if (s.atts.some(function (a) { return !a.done; })) { B.toast.show('Дождитесь окончания загрузки'); return; }
+    var att = null;
+    if (s.atts.length) { att = s.atts[0].data; if (s.atts.length > 1) att = Object.assign({}, att, { more: s.atts.slice(1).map(function (a) { return a.data; }) }); }
+    B.msgs.send({ text: text, reply: s.reply, attachment: att, forward: s.fwd, linkPreview: s.lw.current() }).then(function (ok) {
       if (!ok) return;
-      s.reply = s.fwd = s.att = null; t.value = ''; B.drafts[chat.id] = ''; autosize(t); renderCtx(el); closePanel(el); s.lw.reset(); closeFmt(el);
+      clearAtts(el, true); s.reply = s.fwd = null; t.value = ''; B.drafts[chat.id] = ''; autosize(t); renderCtx(el); closePanel(el); s.lw.reset(); closeFmt(el);
     });
   }
   function sendGif(el, att) {
@@ -297,7 +336,8 @@ B.ui.composer = (function () {
     else if (k === 'fmt') { closeUp(el); s.fmt = !s.fmt; syncFmt(el); if (s.fmt) ta(el).focus(); }
     else if (k === 'lpx') { s.lw.dismiss(); }
     else if (k === 'emo') { if (comp(el).classList.contains('pnl')) { ta(el).focus(); } else openPanel(el); }
-    else if (k === 'clr') clear(el, b.dataset.w);
+    else if (k === 'clr') clear(el, b.dataset.w, b.dataset.i);
+    else if (k === 'addatt') pickFile(el);
     else if (k === 'em') { B.emoji.track(b.dataset.e); insert(el, b.dataset.e); }
     else if (k === 'del') del(el);
     else if (k === 'mode') { s.mode = b.dataset.m; renderPanel(el); }
@@ -306,8 +346,8 @@ B.ui.composer = (function () {
   // Вставка файла (скриншот и т.п.) из буфера обмена
   document.addEventListener('paste', function (e) {
     var el = B.ui.chat && B.ui.chat.activePage(); if (!el || !el._cs) return;
-    var f = Array.prototype.map.call((e.clipboardData && e.clipboardData.items) || [], function (i) { return i.kind === 'file' ? i.getAsFile() : null; }).filter(Boolean)[0];
-    if (f && !B.msgs.locked(chatOf(el))) { e.preventDefault(); attach(el, f); }
+    var fl = Array.prototype.map.call((e.clipboardData && e.clipboardData.items) || [], function (i) { return i.kind === 'file' ? i.getAsFile() : null; }).filter(Boolean);
+    if (fl.length && !B.msgs.locked(chatOf(el))) { e.preventDefault(); attachMany(el, fl); }
   });
   B.bus.on('modules:changed', function () { var el = B.ui.chat && B.ui.chat.activePage(); if (el && el._cs && comp(el).classList.contains('pnl')) renderPanel(el); });
   B.bus.on('auth:logout', function () { B.drafts = {}; });

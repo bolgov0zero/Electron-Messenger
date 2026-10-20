@@ -91,10 +91,6 @@
 .sdbtn b.on { display: flex; }
 
 /* просмотр фото и видео */
-.lbx { position: absolute; inset: 0; z-index: 55; background: #000; opacity: 0; pointer-events: none; transition: opacity .3s; display: flex; align-items: center; justify-content: center; }
-.lbx.on { opacity: 1; pointer-events: auto; }
-.lbx img, .lbx video { max-width: 100%; max-height: 100%; object-fit: contain; }
-.lbx .cl { position: absolute; left: 12px; top: calc(var(--sat) + 10px); width: 36px; height: 36px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .18); color: #fff; display: flex; align-items: center; justify-content: center; padding: 0; }
 
 /* свайп по сообщению: влево — ответить */
 .swi { position: absolute; right: -40px; top: 50%; margin-top: -16px; width: 32px; height: 32px; border-radius: 50%; background: var(--fill); color: var(--accent); display: flex; align-items: center; justify-content: center; opacity: 0; transition: background .15s, color .15s; }

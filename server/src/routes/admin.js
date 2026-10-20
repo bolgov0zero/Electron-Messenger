@@ -26,16 +26,7 @@ function getDirSize(dir) {
 
 function deleteChatFiles(chatId) {
   const rows = db.prepare('SELECT attachment FROM messages WHERE chat_id = ? AND attachment IS NOT NULL').all(chatId);
-  rows.forEach(r => {
-    try {
-      const att = JSON.parse(r.attachment);
-      [att?.url, att?.thumb].forEach(u => {
-        if (!u) return;
-        const fp = path.join(FILES_DIR, path.basename(u));
-        if (fs.existsSync(fp)) fs.unlinkSync(fp);
-      });
-    } catch {}
-  });
+  rows.forEach(r => { try { require('../attach').purge(JSON.parse(r.attachment)); } catch {} });
 }
 
 // ── Версия сервера ──
@@ -1062,22 +1053,24 @@ function collectFiles() {
   const fileMap = new Map();
   for (const msg of msgs) {
     try {
-      const att = JSON.parse(msg.attachment);
-      if (!att?.url) continue;
-      const fname = path.basename(att.url);
-      // Миниатюры (webp у картинок, кадр-превью jpg у видео) — не отдельные файлы
-      if (/_t\.(webp|jpg)$/.test(fname)) continue;
-      if (!fileMap.has(fname)) {
-        // Зашифрованный файл: имя и тип в базе не хранятся — админка видит только
-        // факт и размер, открыть или скачать его нельзя
-        const enc = att.enc === 1;
-        fileMap.set(fname, {
-          filename: fname, encrypted: enc,
-          name: enc ? null : (att.name || null), mime: enc ? null : (att.mime || null), thumb: enc ? null : (att.thumb || null),
-          message_id: msg.id, chat_id: msg.chat_id, sender_id: msg.sender_id,
-          chat_name: msg.chat_name, chat_type: msg.chat_type,
-          sender_name: msg.sender_name, sent_at: msg.sent_at,
-        });
+      // Сообщение с несколькими вложениями: каждый файл — отдельная строка
+      for (const att of require('../attach').list(JSON.parse(msg.attachment))) {
+        if (!att?.url) continue;
+        const fname = path.basename(att.url);
+        // Миниатюры (webp у картинок, кадр-превью jpg у видео) — не отдельные файлы
+        if (/_t\.(webp|jpg)$/.test(fname)) continue;
+        if (!fileMap.has(fname)) {
+          // Зашифрованный файл: имя и тип в базе не хранятся — админка видит только
+          // факт и размер, открыть или скачать его нельзя
+          const enc = att.enc === 1;
+          fileMap.set(fname, {
+            filename: fname, encrypted: enc,
+            name: enc ? null : (att.name || null), mime: enc ? null : (att.mime || null), thumb: enc ? null : (att.thumb || null),
+            message_id: msg.id, chat_id: msg.chat_id, sender_id: msg.sender_id,
+            chat_name: msg.chat_name, chat_type: msg.chat_type,
+            sender_name: msg.sender_name, sent_at: msg.sent_at,
+          });
+        }
       }
     } catch {}
   }

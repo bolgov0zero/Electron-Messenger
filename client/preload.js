@@ -55,6 +55,9 @@ contextBridge.exposeInMainWorld('electron', {
   openFile: (filePath) => ipcRenderer.invoke('open-file', filePath),
   resizeWindow: (delta) => ipcRenderer.invoke('resize-window', delta),
   openLightboxWindow: (payload) => ipcRenderer.invoke('lightbox-open', payload),
+  // «Переслать» и «Удалить» в окне просмотра выполняет главное окно
+  lightboxAction: (a) => ipcRenderer.invoke('lightbox-action', a),
+  onLightboxAction: (cb) => ipcRenderer.on('lightbox-action', (_, a) => cb(a)),
   // High Availability
   listDrives: () => ipcRenderer.invoke('ha-list-drives'),
   getHAConfig: () => ipcRenderer.invoke('ha-get-config'),

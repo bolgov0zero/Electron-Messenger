@@ -1,6 +1,19 @@
 // /m — ядро: WebSocket. Здесь обновляются данные списка чатов и присутствие; всё, что относится
 // к содержимому открытого чата (сообщения, статусы, реакции), экран переписки получает событиями
 // шины «ws:<тип>» и разбирает сам (этап 5).
+// Состояние связи с сервером: ok — сокет открыт; connecting — ещё соединяемся (первые попытки); offline — не получилось несколько раз подряд
+B.conn = {
+  state: 'ok', _t: null,
+  update: function () {
+    var S = B.S, w = S.ws, st = (w && w.readyState === 1) ? 'ok' : ((S.wsFails || 0) >= 2 || navigator.onLine === false) ? 'offline' : 'connecting';
+    clearTimeout(B.conn._t);
+    var set = function () { if (st !== B.conn.state) { B.conn.state = st; B.bus.emit('conn:changed', { state: st }); } };
+    // Короткое переподключение плашкой не показываем: «Подключение…» появляется, если соединения нет дольше секунды
+    if (st === 'connecting') B.conn._t = setTimeout(set, 1200); else set();
+  }
+};
+window.addEventListener('online', function () { B.conn.update(); });
+window.addEventListener('offline', function () { B.conn.update(); });
 B.ws = {
   send: function (obj) {
     var w = B.S.ws;
@@ -15,16 +28,18 @@ B.ws = {
     if (prev && prev.readyState <= 1) { try { prev.close(); } catch (e) {} }
     var ws = new WebSocket(B.wsProto() + '://' + S.server + '/ws?token=' + S.token);
     S.ws = ws;
-    ws.onopen = function () { B.bus.emit('ws:state'); if (B.msgs && B.msgs.chatId) B.msgs.watch(B.find(B.msgs.chatId)); };
+    ws.onopen = function () { S.wsFails = 0; B.conn.update(); B.bus.emit('ws:state'); if (B.msgs && B.msgs.chatId) B.msgs.watch(B.find(B.msgs.chatId)); };
     ws.onmessage = function (e) {
       if (ws !== S.ws) return;
       var data; try { data = JSON.parse(e.data); } catch (err) { return; }
       B.ws.handle(data);
     };
     ws.onclose = function () {
+      S.wsFails = (S.wsFails || 0) + 1; B.conn.update();
       B.bus.emit('ws:state');
       if (S.ws === ws) setTimeout(function () { if (S.token) B.ws.connect(); }, 2000);
     };
+    B.conn.update();
     B.bus.emit('ws:state');
   },
 

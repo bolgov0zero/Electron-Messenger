@@ -60,7 +60,12 @@ B.app = {
     try {
       var html = await (await fetch('/m/?_=' + Date.now(), { cache: 'no-store' })).text();
       var m = html.match(/\?v=([\w.\-]+)/), cur = (window.APP_VERSION || '').replace('?v=', '');
-      if (m && m[1] && cur && m[1] !== cur) location.reload();
+      if (m && m[1] && cur && m[1] !== cur) {
+        // Перезагружаемся сами, только если это никому не мешает: открыт список чатов, нет черновиков и неотправленного
+        var busy = B.nav.depth() > 1 || (B.sheet && B.sheet.isOpen()) || (B.lightbox && B.lightbox.open_) || Object.keys(B.drafts || {}).some(function (k) { return B.drafts[k]; }) || (B.msgs.outbox || []).length;
+        if (!busy) { location.reload(); return; }
+        if (!B.app.newVersion) { B.app.newVersion = m[1]; B.bus.emit('app:update'); B.toast.banner('<div class="tt"><b>Вышла новая версия</b><span>Нажмите, чтобы обновить</span></div>', function () { location.reload(); }); }
+      }
     } catch (e) {} finally { B.app._checking = false; }
   }
 };

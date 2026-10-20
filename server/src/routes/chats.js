@@ -20,16 +20,7 @@ const FILES_DIR = path2.join(DB_DIR, 'files');
 
 function deleteChatFiles(chatId) {
   const rows = db.prepare("SELECT attachment FROM messages WHERE chat_id = ? AND attachment IS NOT NULL").all(chatId);
-  rows.forEach(r => {
-    try {
-      const att = JSON.parse(r.attachment);
-      [att?.url, att?.thumb].forEach(u => {
-        if (!u) return;
-        const fp = path2.join(FILES_DIR, path2.basename(u));
-        if (fs.existsSync(fp)) fs.unlinkSync(fp);
-      });
-    } catch {}
-  });
+  rows.forEach(r => { try { require('../attach').purge(JSON.parse(r.attachment)); } catch {} });
 }
 
 function enrichChat(chat, userId) {
@@ -82,7 +73,8 @@ function enrichChat(chat, userId) {
     last.status = { delivered: st?.d || 0, read: st?.r || 0, total };
   }
 
-  const muted = !!db.prepare('SELECT 1 FROM muted_chats WHERE user_id = ? AND chat_id = ?').get(userId, chat.id);
+  const mutedRow = db.prepare('SELECT until FROM muted_chats WHERE user_id = ? AND chat_id = ? AND (until IS NULL OR until > unixepoch())').get(userId, chat.id);
+  const muted = !!mutedRow, muted_until = mutedRow?.until || null;
   // Личный чат с человеком из другого пространства: сколько сообщений без ответа ещё можно отправить
   let dm_limit = null;
   if (chat.type === 'direct') {
@@ -97,7 +89,7 @@ function enrichChat(chat, userId) {
     const pend = fedgroups.pendingFor(chat, userId, !!spaces.isAdminUser(userId));
     if (pend.length) fedInfo.pending = pend;
   }
-  return { ...pub, ...fedInfo, members, last_message: last || null, unread, unread_mentions: unreadMentions, has_topics: hasTopics, muted, dm_limit };
+  return { ...pub, ...fedInfo, members, last_message: last || null, unread, unread_mentions: unreadMentions, has_topics: hasTopics, muted, muted_until, dm_limit };
 }
 
 // Приглашение в группу с другого сервера: человек видит только название и кто пригласил, ни участников, ни сообщений
@@ -413,7 +405,10 @@ router.post('/:id/mute', authMiddleware, (req, res) => {
   const chatId = Number(req.params.id);
   if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id))
     return res.status(403).json({ error: 'Forbidden' });
-  db.prepare('INSERT OR IGNORE INTO muted_chats (user_id, chat_id) VALUES (?, ?)').run(req.user.id, chatId);
+  // seconds — «без звука» на время (до года); без него — навсегда
+  const secs = Math.floor(Number(req.body?.seconds));
+  const until = secs > 0 ? Math.floor(Date.now() / 1000) + Math.min(secs, 366 * 86400) : null;
+  db.prepare('INSERT INTO muted_chats (user_id, chat_id, until) VALUES (?, ?, ?) ON CONFLICT(user_id, chat_id) DO UPDATE SET until = excluded.until').run(req.user.id, chatId, until);
   // Синхронизация на другие устройства пользователя (как у pin) — без этого
   // статус мьюта на других открытых клиентах обновлялся только после
   // перезапуска/ручного обновления списка чатов
