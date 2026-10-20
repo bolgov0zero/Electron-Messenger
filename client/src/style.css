@@ -4288,7 +4288,7 @@ html.tb-open #tb-strip { transform: none; pointer-events: auto; }
 .pf-link b { flex: 1; font-weight: 500; color: var(--text2); }
 .pf-link .pf-ch { color: var(--muted); }
 
-/* Человек в сети с мобильного клиента (последним был активен он): вместо точки маленький зелёный телефон-контур, внутри и по краю цвет фона */
-.presence-dot.mob { width: 9px; height: 14px; bottom: -3px; right: -3px; border: 1.8px solid var(--presence-online) !important; border-radius: 3px; background: var(--halo, var(--side-bg)); box-shadow: 0 0 0 2px var(--halo, var(--side-bg)); }
-.presence-dot.mob::after { content: ""; position: absolute; left: 50%; bottom: 1px; width: 2px; height: 2px; margin-left: -1px; border-radius: 50%; background: var(--presence-online); }
-.pf-av .presence-dot.mob { width: 11px; height: 17px; }
+/* Человек в сети с мобильного клиента (последним был активен он): вместо точки маленький зелёный телефон-контур: внутри прозрачно (видна аватарка), по краям тонкая подложка цвета фона */
+.presence-dot.mob { width: 8px; height: 12px; bottom: -2px; right: -2px; border: 1.6px solid var(--presence-online) !important; border-radius: 2.5px; background: transparent; box-shadow: 0 0 0 2px var(--halo, var(--side-bg)), inset 0 0 0 1.5px var(--halo, var(--side-bg)); }
+.presence-dot.mob::after { content: ""; position: absolute; left: 50%; bottom: .5px; width: 1.6px; height: 1.6px; margin-left: -.8px; border-radius: 50%; background: var(--presence-online); }
+.pf-av .presence-dot.mob { width: 10px; height: 15px; }
