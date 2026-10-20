@@ -96,3 +96,6 @@
 .fpa button.d { color: var(--red); }
 .fpa button:disabled { opacity: .25; }
 .fpa button:active:not(:disabled) { color: var(--accent); }
+/* Значок «другой сервер» у группы и комнаты с другого сервера */
+.rn .fedg { display: inline-flex; margin-left: 6px; flex: none; }
+.rn .fedg .chip { height: 16px; }

@@ -5562,6 +5562,7 @@ async function chMembers(id) {
   if (!c) return;
   CH.openId = id;
   CH.members = (await api('GET', `/api/admin/chats/${id}/members`)) || [];
+  CH.pending = c.type === 'direct' ? [] : (await api('GET', `/api/admin/chats/${id}/pending`)) || [];
   chRenderMembers();
   openModal('modal-chat-members');
 }
@@ -5578,10 +5579,19 @@ function chRenderMembers() {
         <div style="flex:1;min-width:0"><div class="ux-name">${esc(m.display_name)}</div><div class="rm-sub">@${esc(m.username)}</div></div>
         ${direct ? '' : `<button type="button" class="ux-ibtn" aria-label="Убрать из группы: ${esc(m.display_name)}" onclick="chKick(${m.id})">${RM_I.x}</button>`}</div>`).join('')
         || '<div class="rm-li"><span class="rm-sub">Участников нет</span></div>'}</div>
+      ${(CH.pending || []).length ? `<div class="rm-hint" style="margin-top:12px">Ожидают ответа (приглашены с другого сервера)</div><div class="rm-list">${CH.pending.map(m => `<div class="rm-li">${avHtml(m.display_name, 30, 8, m.id, false, true)}
+        <div style="flex:1;min-width:0"><div class="ux-name">${esc(m.display_name)}</div><div class="rm-sub">@${esc(m.username)}</div></div>
+        <button type="button" class="ux-ibtn" aria-label="Отменить приглашение: ${esc(m.display_name)}" onclick="chCancelInvite(${m.id})">${RM_I.x}</button></div>`).join('')}</div>` : ''}
       ${direct ? '<p class="rm-hint">В личном чате участников не меняют. Если переписка больше не нужна — удалите чат.</p>' : ''}
     </div>
     <div class="ua-foot"><button type="button" class="btn btn-danger btn-sm" onclick="chDelete([${c.id}])">${UX_I.trash}Удалить чат</button><span class="ux-grow"></span>
       <button type="button" class="btn btn-ghost" onclick="closeModal('modal-chat-members')">Готово</button></div>`;
+}
+async function chCancelInvite(userId) {
+  await api('DELETE', `/api/admin/chats/${CH.openId}/members/${userId}`);
+  CH.pending = (CH.pending || []).filter(x => x.id !== userId);
+  chRenderMembers();
+  toast('Приглашение отменено', 'success');
 }
 async function chKick(userId) {
   const m = CH.members.find(x => x.id === userId);
@@ -7462,7 +7472,7 @@ function fdvPeriod(p) { FDV.period = p; try { localStorage.setItem('fdv-period',
 /* ── ФЕДЕРАЦИИ ── */
 // Соединения с другими серверами: люди оттуда появляются в «Контактах» и пишут в личные чаты. Через соединение
 // нельзя управлять чужим сервером: ни пользователями, ни настройками, ни обновлениями.
-const FD = { me: null, peers: [], rules: { new_per_hour: 20 }, menu: null, timer: null };
+const FD = { me: null, peers: [], rules: { new_per_hour: 20, invites_per_hour: 20, groups_in: true }, menu: null, timer: null };
 const fdPlural = (n) => uxPlural(n, 'человек', 'человека', 'человек');
 async function fdLoad() {
   const r = await api('GET', '/api/admin/federation');
@@ -7505,7 +7515,11 @@ function fdRender() {
     <div class="fd-note"><span><b>i</b></span><div>Соединение даёт только обмен сообщениями между людьми. Управлять другим сервером через него нельзя: ни пользователями, ни настройками, ни обновлениями.</div></div>
     <div class="card fd-card"><div class="fd-head">Соединения <span class="fd-n">${FD.peers.length}</span>${FD.peers.some(p => p.queue) ? `<span class="fd-qh">в очереди: ${FD.peers.reduce((a, p) => a + p.queue, 0)}</span>` : ''}</div>${fdPeers()}
       <div class="fd-rule"><b style="font-weight:600">Новых переписок в час</b><span class="d">с одного чужого сервера, сверх лимита отклоняются</span><span class="fd-sp"></span>
-        <div class="fd-stp"><button type="button" onclick="fdRule(-5)" aria-label="Меньше">−</button><span>${FD.rules.new_per_hour}</span><button type="button" onclick="fdRule(5)" aria-label="Больше">+</button></div></div></div></div>`;
+        <div class="fd-stp"><button type="button" onclick="fdRule(-5)" aria-label="Меньше">−</button><span>${FD.rules.new_per_hour}</span><button type="button" onclick="fdRule(5)" aria-label="Больше">+</button></div></div>
+      <div class="fd-rule"><b style="font-weight:600">Приглашений в группы в час</b><span class="d">с одного чужого сервера, сверх лимита молча отклоняются</span><span class="fd-sp"></span>
+        <div class="fd-stp"><button type="button" onclick="fdRule(-5,'invites_per_hour')" aria-label="Меньше">−</button><span>${FD.rules.invites_per_hour || 20}</span><button type="button" onclick="fdRule(5,'invites_per_hour')" aria-label="Больше">+</button></div></div>
+      <div class="fd-rule"><b style="font-weight:600">Принимать приглашения в группы</b><span class="d">от людей с других серверов. Если выключить, такие приглашения молча отклоняются</span><span class="fd-sp"></span>
+        <label class="toggle-switch"><input type="checkbox" ${FD.rules.groups_in !== false ? 'checked' : ''} onchange="fdGroupsIn(this.checked)"><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div></div></div>`;
 }
 const FD_I = {
   ins: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="M17 17H7V7"/></svg>',
@@ -7541,8 +7555,12 @@ function fdSaveId() {
   if (!v) { toast('Введите идентификатор', 'error'); return; }
   confirm('Задать идентификатор?', `Идентификатор «${esc(v)}» после сохранения изменить нельзя: он входит в адреса ваших людей у партнёров.`, () => fdPut({ id: v }, 'Идентификатор задан'));
 }
-async function fdRule(d) {
-  const r = await api('PUT', '/api/admin/federation/rules', { new_per_hour: Math.max(1, Math.min(500, FD.rules.new_per_hour + d)) });
+async function fdRule(d, key = 'new_per_hour') {
+  const r = await api('PUT', '/api/admin/federation/rules', { [key]: Math.max(1, Math.min(500, (FD.rules[key] || 20) + d)) });
+  if (r && !r.error && r.rules) { FD.rules = r.rules; fdRender(); }
+}
+async function fdGroupsIn(on) {
+  const r = await api('PUT', '/api/admin/federation/rules', { groups_in: !!on });
   if (r && !r.error && r.rules) { FD.rules = r.rules; fdRender(); }
 }
 // Окно: заголовок, тело, кнопки в подвале

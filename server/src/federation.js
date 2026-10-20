@@ -1,4 +1,4 @@
-// Федерация серверов: люди с разных серверов пишут друг другу в личные чаты.
+// Федерация серверов: люди с разных серверов пишут друг другу в личные чаты. Группы с людьми с других серверов — в fedgroups.js.
 //
 // Устройство:
 //  • У каждого сервера есть идентификатор, имя, пара ключей ed25519 и (необязательно) публичный адрес.
@@ -36,6 +36,7 @@ const OUTBOX_KEEP_DAYS = 14;
 
 // Ленивые зависимости: ws.js и routes/upload.js сами тянут этот модуль
 const wsm = () => require('./ws');
+const groups = () => require('./fedgroups');
 const uploadCfg = () => require('./routes/upload').getUploadSettings();
 
 // ─────────────────────────── настройки и ключи ───────────────────────────
@@ -286,6 +287,8 @@ function attach(peer, { ws, nonce, sendKey, recvKey }) {
   ws.on('error', () => {});
   flush(peer.id);
   syncPresence(peer.id);
+  groups().sendCaps(peer.id);
+  groups().onLink(peer, true);
 }
 
 // Связь пропала: статусы людей оттуда неизвестны, показываем «не в сети» (время последнего визита остаётся прежним)
@@ -294,6 +297,7 @@ function onOffline(peerId) {
   if (!peer) return;
   db.prepare('SELECT id FROM users WHERE is_bot = 2 AND fed_instance = ?').all(peer.instance_id)
     .forEach(u => { try { wsm().setRemoteStatus(u.id, 'offline', 0); } catch {} });
+  try { groups().onLink(peer, false); } catch (e) { console.warn('[Fed] группы:', e.message); }
 }
 
 function onFrame(sess, raw, isBinary) {
@@ -412,6 +416,22 @@ async function handleReq(peer, sess, f) {
     if (!u) return fail('not_found');
     return reply({ login: u.username, name: u.display_name, av: avatarVersion(u.id) });
   }
+  if (f.op === 'gavatar') {
+    const file = groups().chatAvatarFile(peer, f.gid);
+    return file ? sendFileFrames(sess, f.rid, file) : fail('not_found');
+  }
+  if (f.op && f.op[0] === 'g') {
+    return groups().handleReq(peer, f).then(reply, e => fail(e.message || 'error'));
+  }
+  if (f.op === 'avatar' && f.inst && f.inst !== identity().id) {
+    // Человек с третьего сервера, которого гость знает через нас: отдаём, если он состоит в чате с людьми гостя
+    const sh = shadowRow(String(f.inst), String(f.login || ''));
+    const file = sh && path.join(AVATAR_DIR, `${sh.id}.jpg`);
+    const shares = sh && db.prepare(`SELECT 1 FROM chat_members a JOIN chat_members b ON b.chat_id = a.chat_id JOIN users s ON s.id = b.user_id
+      WHERE a.user_id = ? AND s.is_bot = 2 AND s.fed_instance = ? LIMIT 1`).get(sh.id, peer.instance_id);
+    if (!sh || !shares || !fs.existsSync(file)) return fail('not_found');
+    return sendFileFrames(sess, f.rid, file);
+  }
   if (f.op === 'avatar') {
     const u = findLocalUser(String(f.login || ''));
     const file = u && path.join(AVATAR_DIR, `${u.id}.jpg`);
@@ -421,8 +441,12 @@ async function handleReq(peer, sess, f) {
   if (f.op === 'file') {
     const m = db.prepare('SELECT m.*, c.type FROM messages m JOIN chats c ON c.id = m.chat_id WHERE m.fed_uid = ? AND m.deleted = 0').get(String(f.uid || ''));
     const sender = m && db.prepare('SELECT id, is_bot FROM users WHERE id = ?').get(m.sender_id);
-    // Отдаём только то, что мы сами отправили этому серверу
-    if (!m || m.type !== 'direct' || !sender || sender.is_bot === spaces.FED || !chatWithPeer(m.chat_id, peer)) return fail('not_found');
+    // Отдаём только то, что мы сами отправили этому серверу; в группах — любое вложение чата, к которому сервер причастен
+    const grp = m && (m.type === 'group' || m.type === 'room') && (() => {
+      const c = db.prepare('SELECT fed_instance FROM chats WHERE id = ?').get(m.chat_id);
+      return c.fed_instance ? c.fed_instance === peer.instance_id : chatWithPeer(m.chat_id, peer);
+    })();
+    if (!m || !sender || !(grp || (m.type === 'direct' && sender.is_bot !== spaces.FED && chatWithPeer(m.chat_id, peer)))) return fail('not_found');
     let att; try { att = JSON.parse(m.attachment); } catch { att = null; }
     const url = f.which === 'thumb' ? att?.thumb : att?.url;
     const file = url && path.join(FILES_DIR, path.basename(url));
@@ -494,7 +518,7 @@ async function refreshAvatar(peer, shadow, av) {
   if (!av) { try { fs.unlinkSync(file); } catch {} announceAvatar(shadow.id); return; }
   const tmp = file + '.tmp' + process.pid;
   try {
-    await fetchFile(peer.id, { op: 'avatar', login: shadow.fed_login }, tmp, 2 * 1024 * 1024);
+    await fetchFile(peer.id, { op: 'avatar', login: shadow.fed_login, ...(peer.via ? { inst: shadow.fed_instance } : {}) }, tmp, 2 * 1024 * 1024);
   } catch { try { fs.unlinkSync(tmp); } catch {}; db.prepare('UPDATE users SET fed_avatar_v = NULL WHERE id = ?').run(shadow.id); return; }
   try {
     const buf = fs.readFileSync(tmp);
@@ -589,21 +613,28 @@ function onLocalMessage(msgId) {
   enqueue(ps.peer.id, { k: 'msg', uid, from: u.username, to: ps.shadow.fed_login, name: u.display_name, av: avatarVersion(m.sender_id), text: m.text, ts: m.sent_at, reply, fwd, att });
 }
 function msgPeer(m) { return peerAndShadowOfChat(m.chat_id, m.sender_id || 0); }
+const isGroupChat = chatId => { const t = db.prepare('SELECT type FROM chats WHERE id = ?').get(chatId)?.type; return t === 'group' || t === 'room'; };
+function onGroupMessage(msgId) { groups().onMessage(msgId); }
 function onEdit(msgId) {
   const m = db.prepare('SELECT * FROM messages WHERE id = ?').get(msgId);
+  if (m && isGroupChat(m.chat_id)) return groups().onEdit(m);
   const ps = m?.fed_uid && msgPeer(m);
   if (ps) enqueue(ps.peer.id, { k: 'edit', uid: m.fed_uid, text: m.text, at: m.edited_at });
 }
 function onDelete(m) {
+  if (m && isGroupChat(m.chat_id)) return groups().onDelete(m);
   const ps = m?.fed_uid && msgPeer(m);
   if (ps) enqueue(ps.peer.id, { k: 'del', uid: m.fed_uid });
 }
 function onReact(m, userId, emoji, on) {
+  if (isGroupChat(m.chat_id)) return groups().onReact(m, userId, emoji, on);
   const ps = peerAndShadowOfChat(m.chat_id, userId);
   if (ps) enqueue(ps.peer.id, { k: 'react', uid: m.fed_uid, from: db.prepare('SELECT username FROM users WHERE id = ?').get(userId).username, emoji, on: !!on });
 }
 // Статусы «доставлено» и «прочитано» сообщений человека с другого сервера: наш читатель → его сервер
 function onStatus(kind, shadowId, readerId, maxLocalId) {
+  const mc = db.prepare('SELECT chat_id FROM messages WHERE id = ?').get(maxLocalId);
+  if (mc && isGroupChat(mc.chat_id)) return groups().onStatus(kind, readerId, maxLocalId);
   const sh = db.prepare('SELECT fed_instance, fed_login FROM users WHERE id = ?').get(shadowId);
   const peer = sh && peerByInstance(sh.fed_instance);
   const msg = db.prepare('SELECT fed_uid FROM messages WHERE id = ?').get(maxLocalId);
@@ -612,7 +643,9 @@ function onStatus(kind, shadowId, readerId, maxLocalId) {
   if (!upto) return;
   enqueue(peer.id, { k: kind, from: db.prepare('SELECT username FROM users WHERE id = ?').get(readerId).username, to: sh.fed_login, upto });
 }
+function onPin(chatId, msgId, userId, on) { if (isGroupChat(chatId)) groups().onPin(chatId, msgId, userId, on); }
 function onTyping(chatId, userId) {
+  if (isGroupChat(chatId)) return groups().onTyping(chatId, userId);
   const ps = peerAndShadowOfChat(chatId, userId);
   if (!ps || !spaces.mutualContact(userId, ps.shadow.id)) return;
   sendLive(ps.peer.id, { k: 'typing', from: db.prepare('SELECT username FROM users WHERE id = ?').get(userId).username, to: ps.shadow.fed_login });
@@ -663,6 +696,8 @@ async function handleEvent(peer, ev) {
     case 'rej': return recvReject(peer, ev);
     case 'typing': return recvTyping(peer, ev);
     case 'presence': return recvPresence(peer, ev);
+    // Группы и комнаты (версия протокола 2): caps и всё, что начинается на g
+    default: if (ev.k === 'caps' || /^g[a-z_]+$/.test(ev.k)) return groups().handle(peer, ev);
   }
 }
 const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
@@ -789,10 +824,8 @@ function recvEdit(peer, ev) {
   w.broadcast(m.chat_id, { type: 'message_edited', message: w.getMessageWithStatus(m.id, m.sender_id) });
   if (db.prepare('SELECT 1 FROM pinned_messages WHERE message_id = ?').get(m.id)) w.broadcast(m.chat_id, { type: 'pins_updated', chat_id: m.chat_id, pins: w.getPins(m.chat_id) });
 }
-function recvDelete(peer, ev) {
-  const m = senderOfUid(peer, ev.uid);
-  if (!m) return;
-  // Файл удаляем, только если на него больше никто не ссылается
+// Файл сообщения удаляем, только если на него больше никто не ссылается
+function removeMessageFiles(m) {
   try {
     const a = m.attachment ? JSON.parse(m.attachment) : null;
     if (a?.url) {
@@ -801,6 +834,11 @@ function recvDelete(peer, ev) {
       if (!refs) [a.url, a.thumb].forEach(u => { if (u) try { fs.unlinkSync(path.join(FILES_DIR, path.basename(u))); } catch {} });
     }
   } catch {}
+}
+function recvDelete(peer, ev) {
+  const m = senderOfUid(peer, ev.uid);
+  if (!m) return;
+  removeMessageFiles(m);
   db.prepare("UPDATE messages SET deleted = 1, text = '', attachment = NULL WHERE id = ?").run(m.id);
   const w = wsm();
   w.broadcast(m.chat_id, { type: 'message_deleted', message_id: m.id, chat_id: m.chat_id });
@@ -868,7 +906,8 @@ function recvProfile(peer, ev) {
 // Сервер получателя не принял наше сообщение: снимаем его у нас и сообщаем отправителю
 function recvReject(peer, ev) {
   const m = db.prepare('SELECT m.*, u.is_bot AS su FROM messages m JOIN users u ON u.id = m.sender_id WHERE m.fed_uid = ? AND m.deleted = 0').get(str(ev.uid, 80));
-  if (!m || m.su === spaces.FED || !chatWithPeer(m.chat_id, peer)) return;
+  const mirror = m && db.prepare('SELECT 1 FROM chats WHERE id = ? AND fed_instance = ?').get(m.chat_id, peer.instance_id);
+  if (!m || m.su === spaces.FED || !(mirror || chatWithPeer(m.chat_id, peer))) return;
   db.prepare("UPDATE messages SET deleted = 1, text = '', attachment = NULL WHERE id = ?").run(m.id);
   const w = wsm();
   w.broadcast(m.chat_id, { type: 'message_deleted', message_id: m.id, chat_id: m.chat_id });
@@ -1048,7 +1087,7 @@ function statsView(period) {
 function peersInfo() {
   return db.prepare('SELECT * FROM fed_peers ORDER BY created_at, id').all().map(p => ({
     id: p.id, instance_id: p.instance_id, name: p.name, url: p.url, role: p.role, status: p.status, fp: fingerprint(p.pub),
-    online: isOnline(p.id), last_contact_at: p.last_contact_at, created_at: p.created_at, queue: queueSize(p.id),
+    online: isOnline(p.id), proto: p.proto || 0, last_contact_at: p.last_contact_at, created_at: p.created_at, queue: queueSize(p.id),
     people: db.prepare('SELECT COUNT(*) c FROM contacts c JOIN users s ON s.id = c.contact_id WHERE s.is_bot = 2 AND s.fed_instance = ?').get(p.instance_id).c,
   }));
 }
@@ -1093,5 +1132,7 @@ module.exports = {
   mount, start, statsView, identity, setIdentity, fingerprint, parseAddr, getS, setS,
   createInvite, previewKey, connectBegin, acceptConnect, connectWithKey, peersInfo, pausePeer, resumePeer, deletePeer,
   lookupRemote, peerOfUser, peerByInstance, isOnline,
-  onLocalMessage, onEdit, onDelete, onReact, onStatus, onTyping, onPresence, onProfile, onContactAdded, onContactRemoved, afterContactChange,
+  onLocalMessage, onGroupMessage, onPin, onEdit, onDelete, onReact, onStatus, onTyping, onPresence, onProfile, onContactAdded, onContactRemoved, afterContactChange,
+  // для fedgroups.js
+  enqueue, sendLive, rpc, fetchFile, ensureShadow, remoteUser, shadowByAddr: shadowRow, findLocalUser, avatarVersion, receiveAttachment, removeMessageFiles,
 };

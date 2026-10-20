@@ -107,7 +107,8 @@ B.chats.groups = function (q) {
   return {
     rooms: list.filter(function (c) { return c.type === 'room'; }).sort(function (a, b) { return B.chatName(a).localeCompare(B.chatName(b), 'ru', { numeric: true }); }),
     pinned: list.filter(function (c) { return c.type !== 'room' && c.pinned; }).sort(byTime),
-    rest: list.filter(function (c) { return c.type !== 'room' && !c.pinned; }).sort(byTime),
+    // Приглашения в группы с других серверов — сверху: ответа ждут
+    rest: list.filter(function (c) { return c.type !== 'room' && !c.pinned; }).sort(function (a, b) { return (!!b.invite - !!a.invite) || byTime(a, b); }),
     total: list.length
   };
 };
@@ -133,6 +134,13 @@ B.chats.mute = async function (id) {
   var res = await B.api(c.muted ? 'DELETE' : 'POST', '/chats/' + id + '/mute');
   if (res && res.ok) { c.muted = !c.muted; B.chats.onChanged(); }
 };
+// Приглашение в группу с другого сервера
+B.chats.acceptInvite = async function (id, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Вступаю…'; }
+  var r = await B.api('POST', '/chats/' + id + '/invite/accept');
+  if (!r || r.error) { B.toast.show((r && r.error) || 'Не удалось вступить. Попробуйте позже.'); if (btn) { btn.disabled = false; btn.textContent = 'Вступить'; } }
+};
+B.chats.declineInvite = async function (id) { await B.api('POST', '/chats/' + id + '/invite/decline'); };
 B.chats.leave = async function (id) {
   var res = await B.api('POST', '/chats/' + id + '/leave');
   if (res && res.ok) { B.S.chats = B.S.chats.filter(function (c) { return c.id !== id; }); B.chats.onChanged(); B.bus.emit('chat:deleted', { chatId: id }); }

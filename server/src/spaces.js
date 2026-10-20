@@ -177,6 +177,12 @@ function presenceIds(viewerId) {
 
 // Смена пространств человека: ручные контакты, которые теперь в одном пространстве с владельцем, удаляются
 // (и у самого человека, и у тех, кто добавил его, а он теперь «свой»).
+// Сколько человек должны получить сообщение (для галочек): все участники чата, кроме автора.
+// Люди с других серверов тоже считаются: их «доставлено» и «прочитано» приходят по федерации
+function recipientCount(chatId, exceptUserId) {
+  return db.prepare('SELECT COUNT(*) AS c FROM chat_members WHERE chat_id = ? AND user_id IS NOT ?').get(chatId, exceptUserId ?? null).c;
+}
+
 function afterMove(userId) {
   const sameSpace = `SELECT user_id FROM user_workspaces WHERE workspace_id IN (SELECT workspace_id FROM user_workspaces WHERE user_id = ?)`;
   db.prepare(`DELETE FROM contacts WHERE owner_id = ? AND contact_id IN (${sameSpace})`).run(userId, userId);
@@ -213,4 +219,4 @@ const directChatIds = (a, b) => db.prepare(`SELECT c.id FROM chats c
   JOIN chat_members m2 ON m2.chat_id = c.id AND m2.user_id = ?
   WHERE c.type = 'direct'`).all(a, b).map(r => r.id);
 
-module.exports = { FED, isFed, mutualContact, canSeePresence, presenceViewers, presenceIds, DM_LIMIT, limitApplies, limitUsed, limitFor, limitBump, limitReset, directChatIds, DEFAULT_WS, wsOf, wsIdsOf, sharedIds, shares, setWorkspaces, usersInSpaces, isAdminUser, canSee, viewersOf, knownByOf, isBlocked, listFor, visibleIds, afterMove };
+module.exports = { FED, isFed, recipientCount, mutualContact, canSeePresence, presenceViewers, presenceIds, DM_LIMIT, limitApplies, limitUsed, limitFor, limitBump, limitReset, directChatIds, DEFAULT_WS, wsOf, wsIdsOf, sharedIds, shares, setWorkspaces, usersInSpaces, isAdminUser, canSee, viewersOf, knownByOf, isBlocked, listFor, visibleIds, afterMove };

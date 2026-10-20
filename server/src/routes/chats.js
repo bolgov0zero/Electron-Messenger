@@ -8,6 +8,7 @@ const unreadCounts = require('../unread');
 const announcements = require('../announcements');
 const { logAudit } = require('../audit');
 const spaces = require('../spaces');
+const fedgroups = require('../fedgroups');
 
 function nameOf(userId) {
   return db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
@@ -73,8 +74,7 @@ function enrichChat(chat, userId) {
   // рядом со временем показываются галочки. Чужие сообщения статуса не требуют,
   // поэтому лишние запросы для них не делаем.
   if (last && last.sender_id === userId) {
-    const total = db.prepare('SELECT COUNT(*) AS c FROM chat_members WHERE chat_id = ? AND user_id IS NOT ?')
-      .get(last.chat_id || chat.id, userId).c;
+    const total = spaces.recipientCount(last.chat_id || chat.id, userId);
     const st = db.prepare(`
       SELECT COUNT(delivered_at) AS d, COUNT(read_at) AS r
       FROM message_status WHERE message_id = ?
@@ -89,18 +89,37 @@ function enrichChat(chat, userId) {
     const peer = members.find(m => m.id !== userId);
     if (peer) dm_limit = spaces.limitFor(userId, peer.id);
   }
-  return { ...chat, members, last_message: last || null, unread, unread_mentions: unreadMentions, has_topics: hasTopics, muted, dm_limit };
+  // Группа в федерации: зеркало группы с другого сервера (связь, возможность писать) или ожидающие ответа приглашённые
+  const { fed_instance, fed_chat_id, ...pub } = chat;
+  const fedInfo = {};
+  if (fed_instance) { fedInfo.fed_mirror = true; fedInfo.fed_online = fedgroups.mirrorOnline(chat); }
+  else if (chat.type === 'group' || chat.type === 'room') {
+    const pend = fedgroups.pendingFor(chat, userId, !!spaces.isAdminUser(userId));
+    if (pend.length) fedInfo.pending = pend;
+  }
+  return { ...pub, ...fedInfo, members, last_message: last || null, unread, unread_mentions: unreadMentions, has_topics: hasTopics, muted, dm_limit };
+}
+
+// Приглашение в группу с другого сервера: человек видит только название и кто пригласил, ни участников, ни сообщений
+function inviteChat(chat, userId) {
+  return {
+    id: chat.id, type: chat.type, name: chat.name, created_at: chat.created_at, created_by: null, is_secret: 0, read_only: 0, pinned: null,
+    members: [], last_message: null, unread: 0, unread_mentions: 0, has_topics: false, muted: false, dm_limit: null,
+    fed_mirror: true, fed_online: fedgroups.mirrorOnline(chat), invite: fedgroups.inviteInfo(chat.id, userId),
+  };
 }
 
 // Get my chats
 router.get('/', authMiddleware, (req, res) => {
   const chats = db.prepare(`
-    SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.is_secret, c.read_only, cm.pinned_at as pinned
+    SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.is_secret, c.read_only, c.fed_instance, c.fed_chat_id, cm.pinned_at as pinned
     FROM chats c JOIN chat_members cm ON cm.chat_id = c.id
     WHERE cm.user_id = ? AND (cm.hidden_at IS NULL OR c.is_secret = 1) AND c.parent_id IS NULL
     ORDER BY (SELECT COALESCE(MAX(sent_at), 0) FROM messages WHERE chat_id = c.id) DESC
   `).all(req.user.id);
-  res.json(chats.map(c => enrichChat(c, req.user.id)));
+  const invited = db.prepare('SELECT c.* FROM chats c JOIN chat_invites i ON i.chat_id = c.id WHERE i.user_id = ? ORDER BY i.created_at DESC').all(req.user.id)
+    .map(c => inviteChat(c, req.user.id));
+  res.json(invited.concat(chats.map(c => enrichChat(c, req.user.id))));
 });
 
 // Список тем комнаты
@@ -224,7 +243,7 @@ router.post('/group', authMiddleware, (req, res) => {
   if (!name?.trim() || !Array.isArray(member_ids)) return res.status(400).json({ error: 'Missing fields' });
   const allMembers = [...new Set([req.user.id, ...member_ids.map(Number)])];
   if (allMembers.some(uid => !spaces.canSee(req.user.id, uid))) return res.status(403).json({ error: 'Среди участников есть недоступные вам люди' });
-  if (allMembers.some(uid => spaces.isFed(uid))) return res.status(400).json({ error: 'Людей с других серверов в группу добавить нельзя: с ними только личная переписка' });
+  if (allMembers.some(uid => spaces.isFed(uid))) return res.status(400).json({ error: 'Людей с других серверов приглашают в уже созданную группу: создайте её и добавьте их участниками' });
   // Чат и участники — в одной транзакции (несуществующий user_id откатит всё, а не оставит пустой чат)
   const chatId = db.transaction(() => {
     const result = db.prepare("INSERT INTO chats (type, name, created_by) VALUES ('group', ?, ?)").run(name.trim(), req.user.id);
@@ -244,9 +263,13 @@ router.patch('/:id', authMiddleware, (req, res) => {
   if (!chat || chat.type !== 'group') return res.status(404).json({ error: 'Not found' });
   if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(req.params.id, req.user.id))
     return res.status(403).json({ error: 'Not a member' });
+  // Название меняет только создатель группы или администратор; зеркало группы с другого сервера не меняет никто
+  if (chat.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: её меняет только владелец' });
+  if (!(req.user.is_admin || chat.created_by === req.user.id)) return res.status(403).json({ error: 'Forbidden' });
   const { name } = req.body;
   if (name?.trim()) {
     db.prepare('UPDATE chats SET name = ? WHERE id = ?').run(name.trim(), req.params.id);
+    fedgroups.afterRename(db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id));
     // Точечное событие с готовым объектом чата — участники обновляют имя без refetch всего списка
     const updated = db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id);
     db.prepare('SELECT user_id, pinned_at FROM chat_members WHERE chat_id = ?').all(req.params.id)
@@ -264,11 +287,19 @@ router.post('/:id/members', authMiddleware, (req, res) => {
   const userId = Number(user_id);
   const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
   if (!chat || (chat.type !== 'group' && chat.type !== 'room')) return res.status(404).json({ error: 'Not found' });
-  const isMember = db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id);
-  if (chat.type === 'room' ? !req.user.is_admin : !isMember) return res.status(403).json({ error: 'Forbidden' });
+  // Состав группы меняет её создатель или администратор, комнаты — администратор; зеркало с другого сервера не меняет никто
+  if (chat.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: состав меняет её владелец' });
+  if (chat.type === 'room' ? !req.user.is_admin : !(req.user.is_admin || chat.created_by === req.user.id)) return res.status(403).json({ error: 'Forbidden' });
   // В группу добавляют только тех, кого видишь; в комнату любого добавляет администратор
   if (!spaces.canSee(req.user.id, userId)) return res.status(403).json({ error: 'Этот человек вам недоступен' });
-  if (spaces.isFed(userId)) return res.status(400).json({ error: 'Людей с других серверов в группы и комнаты добавить нельзя' });
+  if (spaces.isFed(userId)) {
+    // Человек с другого сервера: только приглашение, он сам решает, вступать ли. В комнаты таких людей добавляет администратор в админке
+    if (chat.type !== 'group') return res.status(400).json({ error: 'В комнаты людей с других серверов добавляет администратор через админку' });
+    const r = fedgroups.invite(chat, req.user.id, db.prepare('SELECT * FROM users WHERE id = ?').get(userId));
+    if (r.error) return res.status(400).json({ error: r.error });
+    sendTo(req.user.id, { type: 'reload_chats' });
+    return res.json({ ok: true, pending: !!r.pending, member: !!r.member });
+  }
   const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
   ins.run(chatId, userId);
   // Комната — добавление каскадом идёт и в её подкомнаты (как при добавлении из админки)
@@ -279,6 +310,7 @@ router.post('/:id/members', authMiddleware, (req, res) => {
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(chatId);
   members.forEach(({ user_id: uid }) => sendTo(uid, { type: 'reload_chats' }));
   announcements.sendSystemMessage(chatId, `${nameOf(req.user.id)} добавил(а) ${nameOf(userId)}`, 'member_add');
+  fedgroups.sendState(chat);   // гости видят новый состав
   res.json({ ok: true });
 });
 
@@ -286,11 +318,23 @@ router.post('/:id/members', authMiddleware, (req, res) => {
 router.delete('/:id/members/:userId', authMiddleware, (req, res) => {
   const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id);
   if (!chat || (chat.type !== 'group' && chat.type !== 'room')) return res.status(404).json({ error: 'Not found' });
-  const isMember = db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(req.params.id, req.user.id);
-  const isAdmin = req.user.is_admin;
-  if (!isMember && !isAdmin) return res.status(403).json({ error: 'Forbidden' });
+  // Убирает создатель группы или администратор (комнаты — администратор); зеркало с другого сервера не меняет никто
+  if (chat.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: состав меняет её владелец' });
+  if (chat.type === 'room' ? !req.user.is_admin : !(req.user.is_admin || chat.created_by === req.user.id)) return res.status(403).json({ error: 'Forbidden' });
   const kickedId = Number(req.params.userId);
   const chatId = Number(req.params.id);
+  if (spaces.isFed(kickedId)) {
+    // Участник с другого сервера или его ожидающее приглашение
+    const sh = db.prepare('SELECT * FROM users WHERE id = ?').get(kickedId);
+    const wasMember = !!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, kickedId);
+    fedgroups.removeRemote(chat, sh);
+    if (wasMember) {
+      announcements.sendSystemMessage(chatId, `${nameOf(req.user.id)} удалил(а) ${nameOf(kickedId)}`, 'member_remove');
+      db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(chatId).forEach(({ user_id: uid }) => sendTo(uid, { type: 'reload_chats' }));
+    }
+    sendTo(req.user.id, { type: 'reload_chats' });
+    return res.json({ ok: true });
+  }
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chatId, kickedId);
   const topics = db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId);
   const del = db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?');
@@ -302,20 +346,50 @@ router.delete('/:id/members/:userId', authMiddleware, (req, res) => {
   members.forEach(({ user_id: uid }) => sendTo(uid, { type: 'reload_chats' }));
   sendTo(kickedId, { type: 'chat_deleted', chat_id: chatId });
   if (req.user.id !== kickedId) announcements.sendSystemMessage(chatId, `${nameOf(req.user.id)} удалил(а) ${nameOf(kickedId)}`, 'member_remove');
+  fedgroups.sendState(chat);
   res.json({ ok: true });
 });
 
 // Leave group (not allowed for rooms)
 router.post('/:id/leave', authMiddleware, (req, res) => {
-  const chat = db.prepare('SELECT type FROM chats WHERE id = ?').get(req.params.id);
+  const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id);
   if (!chat) return res.status(404).json({ error: 'Not found' });
   if (chat.type === 'room') return res.status(403).json({ error: 'Cannot leave a room' });
+  if (chat.fed_instance) return leaveMirror(db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id), req, res);
   db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(req.params.id, req.user.id);
   // Оставшиеся участники обновляют список, ушедший (все его устройства) убирает чат
   db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(req.params.id)
     .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
   sendTo(req.user.id, { type: 'chat_deleted', chat_id: Number(req.params.id) });
   announcements.sendSystemMessage(Number(req.params.id), `${nameOf(req.user.id)} покинул(а) группу`, 'member_remove');
+  fedgroups.sendState(db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id) || { id: 0 });
+  res.json({ ok: true });
+});
+
+// Выход из зеркала группы с другого сервера: хозяин узнаёт по очереди, у нас группа пропадает
+function leaveMirror(chat, req, res) {
+  if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chat.id, req.user.id)) return res.status(403).json({ error: 'Not a member' });
+  fedgroups.leaveMirror(chat, req.user.id);
+  db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(chat.id, req.user.id);
+  sendTo(req.user.id, { type: 'chat_deleted', chat_id: chat.id });
+  db.prepare('SELECT cm.user_id FROM chat_members cm JOIN users u ON u.id = cm.user_id WHERE cm.chat_id = ? AND COALESCE(u.is_bot, 0) = 0').all(chat.id)
+    .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
+  fedgroups.dropMirrorIfEmpty(chat);
+  res.json({ ok: true });
+}
+
+// Приглашение в группу с другого сервера: вступить или отклонить
+router.post('/:id/invite/accept', authMiddleware, async (req, res) => {
+  const chat = db.prepare('SELECT * FROM chats WHERE id = ? AND fed_instance IS NOT NULL').get(Number(req.params.id));
+  if (!chat) return res.status(404).json({ error: 'Not found' });
+  const r = await fedgroups.accept(chat, req.user.id);
+  if (r.error) return res.status(r.status || 400).json({ error: r.error });
+  res.json({ ok: true });
+});
+router.post('/:id/invite/decline', authMiddleware, (req, res) => {
+  const chat = db.prepare('SELECT * FROM chats WHERE id = ? AND fed_instance IS NOT NULL').get(Number(req.params.id));
+  if (!chat) return res.status(404).json({ error: 'Not found' });
+  fedgroups.decline(chat, req.user.id);
   res.json({ ok: true });
 });
 
@@ -356,6 +430,9 @@ router.post('/:id/avatar', authMiddleware, (req, res) => {
   if (!chat) return res.status(404).json({ error: 'Not found' });
   if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(req.params.id, req.user.id))
     return res.status(403).json({ error: 'Forbidden' });
+  // Аватарку меняет создатель группы или администратор; зеркало с другого сервера не меняет никто
+  if (chat.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: её меняет только владелец' });
+  if (chat.type === 'group' && !(req.user.is_admin || chat.created_by === req.user.id)) return res.status(403).json({ error: 'Forbidden' });
   const { data } = req.body;
   if (!data) return res.status(400).json({ error: 'No data' });
   try {
@@ -363,6 +440,7 @@ router.post('/:id/avatar', authMiddleware, (req, res) => {
     const { isImageBuffer } = require('./users');
     if (!isImageBuffer(buf)) return res.status(400).json({ error: 'Not an image' });
     fs.writeFileSync(path2.join(AVATAR_DIR, `chat_${req.params.id}.jpg`), buf);
+    fedgroups.afterRename(chat);   // гости получают новую аватарку группы
     res.json({ ok: true, url: `/api/chats/${req.params.id}/avatar` });
   } catch (e) {
     console.error('chat avatar upload error:', e.stack || e);
@@ -421,10 +499,13 @@ router.delete('/:id', authMiddleware, (req, res) => {
       sendTo(req.user.id, { type: 'chat_deleted', chat_id: id });
     }
   } else {
+    // «Удалить» в зеркале группы с другого сервера — то же, что выйти
+    if (chat.fed_instance) return leaveMirror(chat, req, res);
     // Комнатами управляет только админ через админку (DELETE /api/chats/admin/:id)
     if (chat.type === 'room') return res.status(403).json({ error: 'Rooms are managed by admins only' });
     if (!req.user.is_admin && chat.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
     const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(id);
+    fedgroups.dropAll(chat);
     deleteChatFiles(id);
     db.prepare('DELETE FROM chats WHERE id = ?').run(id);
     members.forEach(({ user_id }) => sendTo(user_id, { type: 'chat_deleted', chat_id: id }));
@@ -437,6 +518,10 @@ router.delete('/admin/:id', authMiddleware, adminMiddleware, (req, res) => {
   const id = Number(req.params.id);
   const chat = db.prepare('SELECT name, type, is_secret FROM chats WHERE id = ?').get(id);
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(id);
+  // Группа в федерации: хозяин сообщает гостям об удалении, у зеркала каждый наш участник «выходит» у хозяина
+  const full = db.prepare('SELECT * FROM chats WHERE id = ?').get(id);
+  if (full?.fed_instance) db.prepare('SELECT cm.user_id FROM chat_members cm JOIN users u ON u.id = cm.user_id WHERE cm.chat_id = ? AND COALESCE(u.is_bot, 0) = 0').all(id).forEach(r => fedgroups.leaveMirror(full, r.user_id));
+  else fedgroups.dropAll(full);
   // Удаляем вебхуки комнаты и её тем (нет ON DELETE CASCADE на webhooks.chat_id)
   const subIds = db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(id).map(r => r.id);
   [id, ...subIds].forEach(cid => db.prepare('DELETE FROM webhooks WHERE chat_id = ?').run(cid));

@@ -137,3 +137,5 @@
 .sk i.w1 { width: 52%; } .sk i.w2 { width: 38%; height: 32px; } .sk i.w3 { width: 46%; } .sk i.w4 { width: 64%; height: 54px; } .sk i.w5 { width: 34%; height: 32px; }
 @keyframes skp { 50% { opacity: .55; } }
 @media (prefers-reduced-motion: reduce) { .sk i { animation: none; } }
+/* Подпись под названием: группа с другого сервера без связи */
+.cn-b .st.warn { color: var(--red); }

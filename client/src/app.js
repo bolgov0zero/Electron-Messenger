@@ -1859,6 +1859,7 @@ async function loadChats() {
   updateUnreadTotal();
   renderChatList();
   dropEmptyDirects();
+  refreshActiveChatUi();
 }
 
 function chatName(chat) {
@@ -2039,6 +2040,8 @@ function renderChatList() {
     .filter(c=>chatName(c).toLowerCase().includes(q))
     .filter(c => !byFolder || typeof folderPass !== 'function' || folderPass(c))
     .sort((a,b) => {
+      // Приглашения в группы с других серверов — сверху: ответа ждут
+      if (!!a.invite !== !!b.invite) return a.invite ? -1 : 1;
       if (a.type==='room' && b.type!=='room') return -1;
       if (a.type!=='room' && b.type==='room') return 1;
       // Комнаты — статичный порядок по имени, не двигаются от новых сообщений
@@ -2187,7 +2190,7 @@ function renderChatRow(c) {
   // там и так стоит «Сообщение удалено»
   const minePreview = lm && !lm.deleted && lm.sender_id === S.user?.id;
   // Секретный чат: превью не показывается вовсе, чтобы не подсматривали
-  const previewHtml = c.is_secret
+  let previewHtml = c.is_secret
     ? '<span class="sc-tag">Скрытый чат</span>'
     : draft
     ? `<span style="color:var(--danger)">Черновик:</span> ${esc(draft.slice(0,34))}`
@@ -2201,7 +2204,9 @@ function renderChatRow(c) {
   const myStatus = (lm && lm.sender_id === S.user?.id && !lm.deleted && lm.status)
     ? renderStatus(lm.status) : '';
   const isActive = c.id===S.activeChatId || c.id===S.activeRoomId;
-  return `<div class="chat-item${isActive?' active':''}" data-chat-id="${c.id}" onclick="openChat(${c.id})" oncontextmenu="showChatCtx(event,${c.id})">
+  const fedChip = c.fed_mirror ? `<span class="ws-chip ws-fed ci-fed" title="Группа с другого сервера">${FED_GLOBE}</span>` : '';
+  if (c.invite) previewHtml = `<span style="color:var(--accent)">Приглашение в группу</span>`;
+  return `<div class="chat-item${isActive?' active':''}${c.invite?' invited':''}" data-chat-id="${c.id}" onclick="openChat(${c.id})" oncontextmenu="showChatCtx(event,${c.id})">
     <div class="av-wrap">
       <div class="av av-md ${chatAvatarClass(c)}${c.type==='room' && c.has_topics?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
       ${typeof folderBadgeHtml === 'function' ? folderBadgeHtml(c) : ''}${dot}
@@ -2210,7 +2215,7 @@ function renderChatRow(c) {
     <div class="info">
       <div class="ci-name" style="display:flex;align-items:center;gap:5px">
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</span>
-        ${pinIcon}${muteIcon}${myStatus}
+        ${fedChip}${pinIcon}${muteIcon}${myStatus}
         <span class="ci-time">${time}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
@@ -2487,8 +2492,9 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   const peerDot = peerId ? presenceDot(peerId) : '';
   const isTopic = !!chat?.parent_id;
   const addContactBtn = peerId && needsContact(peerId) ? `<button class="addc-btn" id="ch-add-contact" onclick="addContactFromChat(${peerId})"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.1" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg><span>Добавить контакт</span></button>` : '';
-  const sub = isTopic ? `# тема` : isRoom ? `🏠 Комната · ${nMembers(memberCount)}` : isGroup ? `${nMembers(memberCount)}` : (peerId ? peerSubText(peerId) : 'Личный чат');
-  const nameClickable = (isGroup || (isRoom && !isTopic)) ? `style="cursor:pointer" onclick="openGroupInfo(${chatId})"` : (peerId ? `style="cursor:pointer" onclick="openProfile(${peerId})"` : '');
+  S.activeInvite = !!chat.invite;
+  const sub = (isTopic || isRoom || isGroup) ? groupSubHtml(chat) : (peerId ? peerSubText(peerId) : 'Личный чат');
+  const nameClickable = (!chat.invite && (isGroup || (isRoom && !isTopic))) ? `style="cursor:pointer" onclick="openGroupInfo(${chatId})"` : (peerId ? `style="cursor:pointer" onclick="openProfile(${peerId})"` : '');
 
   // Delete button: visible for direct chats and for group creator / admins
   const canDelete = chat.type === 'direct' || S.user.is_admin || isCreator;
@@ -2508,10 +2514,10 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
       </div>
       <div class="chat-header-actions">
         ${addContactBtn}
-        ${chat.is_secret ? '' : `<button class="icon-btn${S.chatSearch?.open ? ' active' : ''}" title="Поиск в чате" onclick="toggleChatSearch()">
+        ${(chat.is_secret || chat.invite) ? '' : `<button class="icon-btn${S.chatSearch?.open ? ' active' : ''}" title="Поиск в чате" onclick="toggleChatSearch()">
           <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </button>`}
-        ${isRoom ? '' : `<button class="icon-btn" title="Действия с чатом" onclick="showChatCtx(event, ${chatId})">
+        ${(isRoom || chat.invite) ? '' : `<button class="icon-btn" title="Действия с чатом" onclick="showChatCtx(event, ${chatId})">
           <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
         </button>`}
       </div>
@@ -2525,6 +2531,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
       </button>
     </div>
     <div class="chat-input-wrap" id="input-wrap">
+      ${inviteBarHtml(chat)}
       ${readOnlyBannerHtml(chat)}
       <div class="composer-inner"${composerLocked(chat) ? ' hidden' : ''}>
         <div id="typing-indicator" class="typing-indicator">
@@ -2654,6 +2661,13 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
         <div class="skeleton-av"></div>
         <div class="skeleton-bubble" style="width:${w}px"></div>
       </div>`).join('')}</div>`;
+  }
+  watchChat(chat);
+  if (chat.invite) {
+    // Приглашение: сообщений и участников нет, история откроется после вступления
+    if (msgsEl) msgsEl.innerHTML = `<div class="empty-state inv-empty"><div class="empty-icon">${FED_GLOBE.replace('width="12" height="12"', 'width="34" height="34"')}</div><p>Вас пригласили в группу «${esc(name)}».<br>Сообщения появятся после вступления.</p></div>`;
+    _loadingChatId = null;
+    return;
   }
   const data = await api('GET', aroundId
     ? `/messages/chat/${chatId}?around=${aroundId}&limit=50`
@@ -3338,11 +3352,14 @@ function isReadOnlyChat(chat) {
 }
 // Ограничение «сообщений без ответа» (люди из разных пространств): сервер отдаёт dm_limit = { used, max }
 const dmLocked = chat => !!chat?.dm_limit && chat.dm_limit.used >= chat.dm_limit.max;
-const composerLocked = chat => isReadOnlyChat(chat) || dmLocked(chat);
+// Группа с другого сервера (зеркало): без связи с сервером писать в неё нельзя; приглашение — пока человек не вступил
+const fedOffline = chat => !!chat?.fed_mirror && !chat.invite && chat.fed_online === false;
+const composerLocked = chat => isReadOnlyChat(chat) || dmLocked(chat) || !!chat?.invite || fedOffline(chat);
 // Что написать над полем ввода: «только чтение», «писать нельзя» или мягкая подсказка о счётчике
 function composerNote(chat) {
   if (isReadOnlyChat(chat)) return { text: 'Доступно только для чтения', soft: false };
   if (dmLocked(chat)) return { text: 'Больше писать нельзя: собеседник не ответил и не добавил вас в контакты', soft: false };
+  if (fedOffline(chat)) return { text: 'Группа на другом сервере, связи с ним нет. Писать пока нельзя', soft: false };
   const l = chat?.dm_limit;
   if (l && l.used > 0) return { text: `Без ответа: ${l.used} из ${l.max}. Дальше нужно дождаться ответа или добавления в контакты`, soft: true };
   return null;
@@ -3354,6 +3371,61 @@ function readOnlyBannerHtml(chat) {
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
     <span id="ro-text">${hard ? esc(n.text) : ''}</span>
   </div>`;
+}
+// ── ГРУППЫ С ДРУГИХ СЕРВЕРОВ И СЧЁТЧИК «В СЕТИ» ──
+function findChatAny(id) {
+  const c = S.chats.find(x => x.id === id);
+  if (c) return c;
+  for (const [pid, subs] of Object.entries(S.topics)) {
+    const sub = subs.find(x => x.id === id);
+    if (sub) return { id, type: 'room', name: sub.name, parent_id: Number(pid), members: [] };
+  }
+  return null;
+}
+// Подпись под названием группы и комнаты: «в сети 2 из 5», а у группы с другого сервера без связи — предупреждение
+function groupSubHtml(chat) {
+  if (chat.invite) return 'Приглашение в группу';
+  if (fedOffline(chat)) return `<span class="fed-off">${FED_GLOBE}Группа на другом сервере · нет связи</span>`;
+  const o = (S.chatOnline || {})[chat.id];
+  const cnt = o ? `в сети ${o.online} из ${o.total}` : nMembers(chat.members?.length || 0);
+  const globe = chat.fed_mirror ? `<span class="fed-in">${FED_GLOBE}</span>` : '';
+  if (chat.parent_id) return `# тема${o ? ' · ' + cnt : ''}`;
+  return chat.type === 'room' ? `${globe}🏠 Комната · ${cnt}` : `${globe}${cnt}`;
+}
+function updateGroupSub() {
+  const chat = findChatAny(S.activeChatId), el = document.querySelector('.ch-sub');
+  if (chat && el && chat.type !== 'direct') el.innerHTML = groupSubHtml(chat);
+}
+// Сообщаем серверу, какой чат открыт: он присылает и обновляет «в сети N из M»
+function watchChat(chat) {
+  if (S.ws?.readyState !== 1) return;
+  const on = chat && (chat.type === 'group' || chat.type === 'room') && !chat.invite && !chat.has_topics;
+  S.ws.send(JSON.stringify(on ? { type: 'watch_chat', chat_id: chat.id } : { type: 'unwatch_chat' }));
+}
+// Список чатов обновился: подпись, поле ввода и приглашение открытого чата могли измениться
+function refreshActiveChatUi() {
+  const chat = S.chats.find(c => c.id === S.activeChatId);
+  if (!chat) return;
+  if (S.activeInvite && !chat.invite) { openChat(chat.id); return; }   // приглашение приняли: открываем группу заново
+  updateGroupSub();
+  syncReadOnlyUi();
+}
+function inviteBarHtml(chat) {
+  if (!chat?.invite) return '';
+  const from = chat.invite.from_name;
+  return `<div class="inv-bar" id="inv-bar">
+    <div class="inv-txt">${from ? `<b>${esc(from)}</b> приглашает вас в группу` : 'Вас приглашают в группу'}. Пока вы не вступили, участников и сообщений не видно.</div>
+    <div class="inv-btns"><button class="modal-btn-ghost" onclick="declineInvite(${chat.id})">Отклонить</button><button class="modal-btn-primary" id="inv-join" onclick="acceptInvite(${chat.id})">Вступить</button></div>
+  </div>`;
+}
+async function acceptInvite(id) {
+  const b = document.getElementById('inv-join');
+  if (b) { b.disabled = true; b.textContent = 'Вступаю…'; }
+  const r = await api('POST', `/chats/${id}/invite/accept`);
+  if (r?.error || !r) { showActionToast(r?.error || 'Не удалось вступить. Попробуйте позже.'); if (b) { b.disabled = false; b.textContent = 'Вступить'; } }
+}
+async function declineInvite(id) {
+  await api('POST', `/chats/${id}/invite/decline`);
 }
 function syncReadOnlyUi() {
   const chat = S.chats.find(c => c.id === S.activeChatId), n = composerNote(chat);
@@ -5566,6 +5638,13 @@ function connectWS() {
     if (data.type==='reload_chats') {
       loadChats();
     }
+    // Счётчик «в сети N из M» открытой группы или комнаты
+    if (data.type==='chat_online') {
+      (S.chatOnline ||= {})[data.chat_id] = { online: data.online, total: data.total };
+      if (data.chat_id === S.activeChatId) updateGroupSub();
+    }
+    // Связь с другим сервером появилась или пропала: у групп оттуда меняется шапка и поле ввода
+    if (data.type==='fed_link') loadChats();
     if (data.type==='folders_changed') scheduleFoldersReload();
 
     // Fix 1: handle chat_deleted WS event
@@ -5782,7 +5861,7 @@ function connectWS() {
       const c = S.chats.find(x => x.id === data.chat_id);
       if (c) { c.dm_limit = data.dm_limit || c.dm_limit; if (data.chat_id === S.activeChatId) syncReadOnlyUi(); }
     }
-    if (data.type==='send_rejected') showActionToast(data.reason === 'limit' ? 'Больше писать нельзя, пока собеседник не ответит или не добавит вас в контакты' : data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' || data.reason === 'rate' ? 'Сообщение не доставлено' : data.reason === 'federation_off' ? 'Нет связи с сервером этого человека' : data.reason === 'gif_off' ? 'GIF сейчас недоступны' : 'Писать сюда нельзя');
+    if (data.type==='send_rejected') showActionToast(data.reason === 'limit' ? 'Больше писать нельзя, пока собеседник не ответит или не добавит вас в контакты' : data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' || data.reason === 'rate' ? 'Сообщение не доставлено' : data.reason === 'federation_off' ? 'Нет связи с сервером этого человека' : data.reason === 'fed_offline' ? 'Нет связи с сервером этой группы. Писать пока нельзя' : data.reason === 'gif_off' ? 'GIF сейчас недоступны' : 'Писать сюда нельзя');
     if (data.type==='user_updated') applyUserUpdate(data);
     if (data.type==='perms') annSetAllowed(data.can_announce);
 
@@ -5857,6 +5936,7 @@ function connectWS() {
     S.wsRetry = 0;
     hideServerToast();
     loadChats();
+    watchChat(findChatAny(S.activeChatId));
     loadBanners();
     api('GET', '/auth/refresh').then(d => { if (d?.token) { S.token = d.token; saveSession(); } });
     resyncOpenChat();
@@ -6911,8 +6991,9 @@ async function openGroupInfo(chatId) {
   S.giAvatarBase64 = null;
   const chat = S.chats.find(c => c.id === chatId);
   const isRoom = chat?.type === 'room';
-  const canEdit = isRoom ? S.user.is_admin : (chat.created_by === S.user.id || S.user.is_admin);
-  const canDelete = !isRoom && (chat.created_by === S.user.id || S.user.is_admin);
+  // Группа с другого сервера: состав, название и аватарку меняет только её владелец, у нас можно лишь выйти
+  const canEdit = !chat.fed_mirror && (isRoom ? S.user.is_admin : (chat.created_by === S.user.id || S.user.is_admin));
+  const canDelete = !isRoom && !chat.fed_mirror && (chat.created_by === S.user.id || S.user.is_admin);
   const leaveBtn = !isRoom ? `<button class="gi-btn gi-btn-leave" onclick="giLeave()">Выйти</button>` : '';
   const deleteBtn = canDelete ? `<button class="gi-btn gi-btn-delete" onclick="giDelete()">Удалить</button>` : '';
   const addBtn = canEdit ? `<button class="gi-btn gi-btn-add" onclick="giShowAdd()">Добавить участника</button>` : '';
@@ -6940,6 +7021,13 @@ async function openGroupInfo(chatId) {
         </div>
         <div class="gi-section-title">Участники</div>
         <div class="gi-members-list" id="gi-members"></div>
+        ${(chat?.pending || []).length ? `<div class="gi-section-title">Ожидают ответа</div>
+        <div class="gi-members-list" id="gi-pending">${chat.pending.map(m => `
+          <div class="member-remove-row" id="gip-${m.id}">
+            <div class="av av-sm av-round ${userAvatarColor(m.id, null)}" data-av-user="${m.id}">${initials(m.display_name)}</div>
+            <div class="info"><div class="rname">${esc(m.display_name)}</div><div class="rlogin">${FED_GLOBE} @${esc(m.server_id)}:${esc(m.login)}</div></div>
+            <button class="rm-btn" title="Отменить приглашение" onclick="giCancelInvite(${m.id})">✕</button>
+          </div>`).join('')}</div>` : ''}
       </div>
       ${canEdit?`<div class="gi-footer"><button class="modal-btn-ghost" onclick="closeGroupInfo()">Отмена</button><button class="modal-btn-primary" onclick="saveGroupEdit()">Сохранить</button></div>`:''}
     </div>`;
@@ -6965,7 +7053,7 @@ function giRenderMembers(members, canEdit = false) {
     .map(m => `
       <div class="member-remove-row" id="gim-${m.id}">
         <div class="av av-sm av-round ${userAvatarColor(m.id, m.tag)}" data-av-user="${m.id}">${initials(m.display_name)}</div>
-        <div class="info"><div class="rname">${esc(m.display_name)}</div><div class="rlogin">@${esc(m.username)}</div></div>
+        <div class="info"><div class="rname">${esc(m.display_name)}</div><div class="rlogin">${m.federated ? FED_GLOBE + ' ' : ''}@${esc(m.federated ? fedAddr(m).replace(/^@/, '') : m.username)}</div></div>
         ${m.id !== S.user.id && needsContact(m.id) ? `<button class="gi-addc" data-addc="${m.id}" title="Добавить контакт" onclick="addContactFromChat(${m.id})">В контакты</button>` : ''}
         ${canEdit?`<button class="rm-btn" onclick="giRemoveMember(${m.id})">✕</button>`:''}
       </div>`).join('') || '<div style="font-size:13px;color:var(--muted)">Только вы</div>';
@@ -6979,6 +7067,12 @@ async function giRemoveMember(id) {
   document.getElementById(`gim-${id}`)?.remove();
 }
 
+async function giCancelInvite(id) {
+  const r = await api('DELETE', `/chats/${S.giChatId}/members/${id}`);
+  if (r?.error) { showActionToast(r.error); return; }
+  document.getElementById(`gip-${id}`)?.remove();
+  loadChats();
+}
 async function giLeave() { await leaveGroup(S.giChatId); }
 async function giDelete() { await deleteChat(S.giChatId); }
 
@@ -7018,11 +7112,14 @@ function giRenderAddList(existingMembers) {
   const existingIds = new Set(existingMembers.map(m => m.id));
   const container = document.getElementById('gi-add-list');
   if (!container) return;
-  const available = S.allUsers.filter(u => isPickable(u) && !u.federated && (!existingIds.has(u.id) || S.giRemovedIds.has(u.id)));
+  // Людей с других серверов можно позвать только в группу (приглашением) и только из своих контактов; в комнаты их добавляет админ в админке
+  const isGroupChat = S.chats.find(c => c.id === S.giChatId)?.type === 'group';
+  const pendingIds = new Set((S.chats.find(c => c.id === S.giChatId)?.pending || []).map(m => m.id));
+  const available = S.allUsers.filter(u => isPickable(u) && (!u.federated || (isGroupChat && u.contact)) && !pendingIds.has(u.id) && (!existingIds.has(u.id) || S.giRemovedIds.has(u.id)));
   container.innerHTML = available.map(u => `
     <div class="user-row${S.giAddIds.has(u.id) ? ' selected' : ''}" data-uid="${u.id}" onclick="giToggleAdd(this,${u.id})">
       <div class="av av-sm av-round ${userAvatarColor(u.id, u.tag)}" data-av-user="${u.id}">${initials(u.display_name)}</div>
-      <div><div class="uname">${esc(u.display_name)}</div><div class="ulogin">@${esc(u.username)}</div></div>
+      <div><div class="uname">${esc(u.display_name)}</div><div class="ulogin">${u.federated ? FED_GLOBE + ' ' + esc(fedAddr(u)) + ' · после согласия' : '@' + esc(u.username)}</div></div>
     </div>`).join('') || '<div style="font-size:13px;color:var(--muted)">Нет доступных</div>';
   applyAvatars();
 }
@@ -7034,7 +7131,10 @@ function giToggleAdd(el, id) {
 
 async function giConfirmAdd() {
   const chatId = S.giChatId;
-  await Promise.all([...S.giAddIds].map(uid => api('POST', `/chats/${chatId}/members`, {user_id: uid})));
+  const res = await Promise.all([...S.giAddIds].map(uid => api('POST', `/chats/${chatId}/members`, {user_id: uid})));
+  const err = res.find(r => r?.error);
+  if (err) showActionToast(err.error);
+  else if (res.some(r => r?.pending)) showActionToast('Приглашение отправлено. Человек появится в группе после согласия');
   S.giAddIds = new Set();
   await loadChats();
   giBackToInfo();
@@ -7060,6 +7160,7 @@ function showChatCtx(e, chatId) {
   e.preventDefault();
   e.stopPropagation();
   const chat = S.chats.find(c => c.id === chatId);
+  if (chat?.invite) return;   // у приглашения нет действий: только «Вступить» и «Отклонить»
   S.ctxChatId = chatId;
   S.ctxChatPos = { x: e.clientX, y: e.clientY };
   document.getElementById('ctx-chat-folder')?.classList.remove('open');
@@ -7072,7 +7173,7 @@ function showChatCtx(e, chatId) {
   const pinLabel = document.getElementById('ctx-chat-pin-label');
   if (pinBtn) pinBtn.style.display = isRoom ? 'none' : '';
   if (pinLabel) pinLabel.textContent = chat?.pinned ? 'Открепить' : 'Закрепить';
-  const canDelete = !isGroup || chat.created_by === S.user.id || S.user.is_admin;
+  const canDelete = !isGroup || (!chat.fed_mirror && (chat.created_by === S.user.id || S.user.is_admin));
   const delBtn = document.getElementById('ctx-chat-delete');
   const leaveBtn = document.getElementById('ctx-chat-leave');
   if (delBtn) delBtn.style.display = (isRoom || (!isRoom && !canDelete)) ? 'none' : '';

@@ -35,6 +35,9 @@ B.msgs = {
     var M = B.msgs, S = B.S;
     M.chatId = chatId; S.activeChatId = chatId; M.cache = []; M.hasMoreOlder = false; M._applied = {};
     var chat = B.find(chatId); if (!chat) return;
+    // Приглашение в группу с другого сервера: сообщений до вступления нет, историю не запрашиваем
+    if (chat.invite) { M.cache = []; M._preview = false; M.watch(chat); B.bus.emit('msgs:opened', { chatId: chatId }); return; }
+    M.watch(chat);
     // Есть хвост этой переписки: показываем его сразу, до ответа сервера
     var tl = !aroundId && !B.S.secretChatIds.has(chatId) && M.tail(chatId);
     if (tl && tl.m && tl.m.length) { M.cache = tl.m.slice(-M.PREV_N); M._preview = true; B.bus.emit('msgs:preview', { chatId: chatId }); } else M._preview = false;
@@ -54,7 +57,12 @@ B.msgs = {
     if (chat.parent_id) setTimeout(B.chats.refresh, 400);
     B.bus.emit('msgs:opened', { chatId: chatId, aroundId: aroundId });
   },
-  close: function () { var M = B.msgs; M.chatId = null; B.S.activeChatId = null; M.cache = []; M.hasMoreOlder = false; M.loadingOlder = false; },
+  // Сообщаем серверу, какой чат открыт: он присылает и обновляет «в сети N из M»
+  watch: function (chat) {
+    var on = chat && (chat.type === 'group' || chat.type === 'room') && !chat.invite && !chat.has_topics;
+    B.ws.send(on ? { type: 'watch_chat', chat_id: chat.id } : { type: 'unwatch_chat' });
+  },
+  close: function () { var M = B.msgs; B.ws.send({ type: 'unwatch_chat' }); M.chatId = null; B.S.activeChatId = null; M.cache = []; M.hasMoreOlder = false; M.loadingOlder = false; },
 
   loadOlder: async function () {
     var M = B.msgs, chatId = M.chatId, oldest = M.cache[0];
@@ -111,10 +119,13 @@ B.msgs = {
   },
   // «Сообщений без ответа» (люди из разных пространств): сервер отдаёт dm_limit = { used, max }
   dmLocked: function (chat) { return !!(chat && chat.dm_limit && chat.dm_limit.used >= chat.dm_limit.max); },
-  locked: function (chat) { return B.msgs.isReadOnly(chat) || B.msgs.dmLocked(chat) || (!!chat && B.secret.locked(chat.id)); },
+  // Группа с другого сервера (зеркало): без связи с сервером писать в неё нельзя
+  fedOffline: function (chat) { return !!(chat && chat.fed_mirror && !chat.invite && chat.fed_online === false); },
+  locked: function (chat) { return B.msgs.isReadOnly(chat) || B.msgs.dmLocked(chat) || !!(chat && chat.invite) || B.msgs.fedOffline(chat) || (!!chat && B.secret.locked(chat.id)); },
   note: function (chat) {
     if (B.msgs.isReadOnly(chat)) return { text: 'Доступно только для чтения', soft: false };
     if (B.msgs.dmLocked(chat)) return { text: 'Больше писать нельзя: собеседник не ответил и не добавил вас в контакты', soft: false };
+    if (B.msgs.fedOffline(chat)) return { text: 'Группа на другом сервере, связи с ним нет. Писать пока нельзя', soft: false };
     var l = chat && chat.dm_limit;
     if (l && l.used > 0) return { text: 'Без ответа: ' + l.used + ' из ' + l.max + '. Дальше нужно дождаться ответа или добавления в контакты', soft: true };
     return null;

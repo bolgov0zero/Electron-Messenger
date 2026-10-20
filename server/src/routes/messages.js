@@ -122,7 +122,9 @@ router.get('/chat/:chatId', authMiddleware, (req, res) => {
     messages = rows.reverse();
   }
 
-  const memberCount = db.prepare('SELECT COUNT(*) as c FROM chat_members WHERE chat_id = ?').get(chatId).c;
+  // Получателей считаем по каждому автору отдельно: сам автор не получатель, а в группах люди с других серверов не учитываются
+  const totals = new Map();
+  const totalFor = senderId => { if (!totals.has(senderId)) totals.set(senderId, require('../spaces').recipientCount(chatId, senderId)); return totals.get(senderId); };
 
   // Статусы и реакции — тремя запросами на всю страницу вместо трёх на каждое сообщение
   const ids = messages.map(m => m.id);
@@ -158,7 +160,7 @@ router.get('/chat/:chatId', authMiddleware, (req, res) => {
     if (m.link_preview) { try { link_preview = JSON.parse(m.link_preview); } catch {} }
     return {
       ...m, attachment, mentions, reply_attachment, forward_data, link_preview,
-      status: { delivered: deliveredMap.get(m.id) || 0, read: readMap.get(m.id) || 0, total: memberCount - 1 },
+      status: { delivered: deliveredMap.get(m.id) || 0, read: readMap.get(m.id) || 0, total: totalFor(m.sender_id) },
       reactions: reactionsMap.get(m.id) || [],
     };
   });

@@ -201,3 +201,12 @@
 .spl-host { position: relative; }
 .spl-cv { position: absolute; left: 0; top: 0; pointer-events: none; transition: opacity .45s ease; }
 .spl-e { background: rgba(142, 108, 240, .22); border-bottom: 1.5px dotted #b79bff; border-radius: 3px; }
+/* Приглашение в группу с другого сервера вместо поля ввода */
+.invbar { padding: 12px 16px 6px; }
+.invbar .it { text-align: center; color: var(--fg2); font-size: 14px; line-height: 1.35; }
+.invbar .it b { color: var(--fg); font-weight: 600; }
+.invbar .ib { display: flex; gap: 10px; margin-top: 12px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); }
+.invbar .ib button { flex: 1; height: 46px; border: 0; border-radius: 13px; font-size: 16px; font-weight: 600; background: var(--fill); color: var(--accent); }
+.invbar .ib button.bj { background: var(--accent); color: #fff; }
+.invbar .ib button:disabled { opacity: .6; }
+.crow.hid { display: none; }

@@ -69,6 +69,8 @@ function sendSystemMessage(chatId, text, kind = null) {
   const r = db.prepare('INSERT INTO messages (chat_id, sender_id, text, system_kind) VALUES (?, ?, ?, ?)').run(chatId, sysId, text, kind);
   const msg = getMessageWithStatus(r.lastInsertRowid, null);
   if (msg) broadcast(chatId, { type: 'message', message: msg });
+  // Группа с участниками на других серверах: системное сообщение (вступил, вышел…) уходит и им
+  try { require('./federation').onGroupMessage(r.lastInsertRowid); } catch (e) { console.warn('[Fed] системное сообщение:', e.message); }
 }
 
 // Отправка наступившего объявления. Возвращает число адресатов — для ответа админке.

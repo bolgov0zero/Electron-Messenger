@@ -14,7 +14,7 @@ B.ui.composer = (function () {
   function mount(el, chat) {
     var c = comp(el); el._cs = { reply: null, fwd: null, edit: null, att: null, panel: null, mode: 'emoji', tab: 0, fmt: false, prev: false, lw: null };
     c.innerHTML =
-      '<div class="ctx"></div><div class="scb" hidden></div><div class="ronote" hidden></div>' +
+      '<div class="ctx"></div><div class="scb" hidden></div><div class="ronote" hidden></div><div class="invbar" hidden></div>' +
       '<div class="tpr"><span class="dots"><i></i><i></i><i></i></span><span class="tpt"></span></div>' +
       '<div class="fxs"><div class="lpv" hidden></div><div class="fpv" hidden><div class="fpl">Превью — так увидят получатели</div><div class="fpb"></div></div><div class="fbar" hidden>' + Fmt.barHtml() + '</div></div>' +
       '<div class="crow"><div class="cbtn att" role="button" data-k="up" aria-label="Прикрепить, форматирование" aria-haspopup="menu">' + ic('chevup', 26, 2.2) + '</div>' +
@@ -130,6 +130,14 @@ B.ui.composer = (function () {
     if (n) { box.textContent = n.text; slide(box, true); } else slide(box, false);
     row.classList.toggle('off', B.msgs.locked(chat));
     if (B.msgs.locked(chat)) closePanel(el);
+    // Приглашение в группу с другого сервера: вместо поля ввода кнопки «Вступить» и «Отклонить»
+    var ib = comp(el).querySelector('.invbar'), from = chat.invite && chat.invite.from_name;
+    row.classList.toggle('hid', !!chat.invite);
+    if (chat.invite) {
+      if (ib.hidden || !ib.firstChild) ib.innerHTML = '<div class="it">' + (from ? '<b>' + esc(from) + '</b> приглашает вас в группу' : 'Вас приглашают в группу') + '. Пока вы не вступили, участников и сообщений не видно.</div>' +
+        '<div class="ib"><button class="bd" data-k="invdecl">Отклонить</button><button class="bj" data-k="invjoin">Вступить</button></div>';
+      ib.hidden = false;
+    } else { ib.hidden = true; ib.innerHTML = ''; }
     secretBanner(el, chat);
   }
   // Скрытый чат без ключа на этом устройстве: вместо поля — «Расшифровать» с вводом кода от собеседника
@@ -279,6 +287,8 @@ B.ui.composer = (function () {
     var fb = e.target.closest('.fbar [data-f]'); if (fb) { fmtClick(el, fb.dataset.f); return; }
     var b = e.target.closest('[data-k]'); if (!b) return; var k = b.dataset.k, s = cs(el);
     if (k === 'send') send(el);
+    else if (k === 'invjoin') B.chats.acceptInvite(+el.dataset.cid, b);
+    else if (k === 'invdecl') B.chats.declineInvite(+el.dataset.cid);
     else if (k === 'scopen') { B.secret.bannerOpen = +el.dataset.cid; sync(el); var ci = comp(el).querySelector('#sc-code'); if (ci) ci.focus(); }
     else if (k === 'scredeem') { var code = (comp(el).querySelector('#sc-code').value || '').trim(); if (code) B.secret.redeem(+el.dataset.cid, code).then(function () { sync(el); }); }
     else if (k === 'sccancel') { B.secret.cancelSync(+el.dataset.cid); sync(el); }

@@ -12,7 +12,11 @@ admin.use(authMiddleware, adminMiddleware);
 const view = () => ({
   me: fed.identity(),
   peers: fed.peersInfo(),
-  rules: { new_per_hour: Math.max(1, Number(fed.getS('fed_new_per_hour', '20')) || 20) },
+  rules: {
+    new_per_hour: Math.max(1, Number(fed.getS('fed_new_per_hour', '20')) || 20),
+    invites_per_hour: Math.max(1, Number(fed.getS('fed_invites_per_hour', '20')) || 20),
+    groups_in: fed.getS('fed_groups_in', '1') === '1',
+  },
 });
 admin.get('/', (req, res) => res.json(view()));
 // Сводка для блока на главной: период day | week | month
@@ -26,9 +30,11 @@ admin.put('/identity', (req, res) => {
   res.json(view());
 });
 admin.put('/rules', (req, res) => {
-  const n = Math.floor(Number(req.body?.new_per_hour));
-  if (!(n >= 1 && n <= 500)) return res.status(400).json({ error: 'Число от 1 до 500' });
-  fed.setS('fed_new_per_hour', n);
+  const b = req.body || {};
+  const num = v => { const n = Math.floor(Number(v)); return n >= 1 && n <= 500 ? n : null; };
+  if (b.new_per_hour !== undefined) { const n = num(b.new_per_hour); if (!n) return res.status(400).json({ error: 'Число от 1 до 500' }); fed.setS('fed_new_per_hour', n); }
+  if (b.invites_per_hour !== undefined) { const n = num(b.invites_per_hour); if (!n) return res.status(400).json({ error: 'Число от 1 до 500' }); fed.setS('fed_invites_per_hour', n); }
+  if (b.groups_in !== undefined) { fed.setS('fed_groups_in', b.groups_in ? '1' : '0'); logAudit(req, 'server', 'Федерация: приглашения в группы с других серверов', b.groups_in ? 'принимаются' : 'не принимаются'); }
   res.json(view());
 });
 

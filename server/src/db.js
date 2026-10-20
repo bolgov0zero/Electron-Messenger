@@ -553,6 +553,27 @@ tryAlter('ALTER TABLE messages ADD COLUMN fed_uid TEXT');
 // Адрес человека с другого сервера теперь «сервер:логин» (раньше «сервер@логин»): переименовываем уже созданных теневых пользователей
 try { db.prepare("UPDATE users SET username = fed_instance || ':' || fed_login WHERE is_bot = 2 AND username != fed_instance || ':' || fed_login").run(); } catch (e) { console.warn('[Fed] не удалось переименовать теневых пользователей:', e.message); }
 tryAlter('CREATE INDEX IF NOT EXISTS idx_messages_fed_uid ON messages(fed_uid)');
+// Группы в федерации (см. fedgroups.js). Группа хранится на сервере, где создана (хозяин); у остальных серверов её зеркало:
+// chats.fed_instance — идентификатор сервера-хозяина, fed_chat_id — номер группы у него (у самого хозяина оба пусты).
+// chat_invites — приглашения, ждущие согласия: приглашённый в chat_members не состоит, поэтому не виден участникам и не получает сообщений.
+// fed_peers.proto — версия протокола, о которой сообщил другой сервер (группы с версии 2).
+tryAlter('ALTER TABLE chats ADD COLUMN fed_instance TEXT');
+tryAlter('ALTER TABLE chats ADD COLUMN fed_chat_id INTEGER');
+tryAlter('CREATE UNIQUE INDEX IF NOT EXISTS idx_chats_fed ON chats(fed_instance, fed_chat_id) WHERE fed_instance IS NOT NULL');
+tryAlter('ALTER TABLE fed_peers ADD COLUMN proto INTEGER NOT NULL DEFAULT 0');
+// fed_seq — номер сообщения у хозяина группы (по нему гость запрашивает пропущенное после обрыва); fed_avatar_v — версия аватарки группы у хозяина
+tryAlter('ALTER TABLE messages ADD COLUMN fed_seq INTEGER');
+tryAlter('ALTER TABLE chats ADD COLUMN fed_avatar_v TEXT');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS chat_invites (
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    invited_by INTEGER,
+    created_at INTEGER DEFAULT (unixepoch()),
+    PRIMARY KEY (chat_id, user_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_chat_invites_user ON chat_invites(user_id);
+`);
 
 // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)
 const sysExists = db.prepare("SELECT id FROM users WHERE username = '__system__'").get();

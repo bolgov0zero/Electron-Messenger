@@ -161,7 +161,10 @@ B.ui.chat = (function () {
       return { t: p ? B.contacts.peerSub(p) : 'Личный чат', live: st === 'online' };
     }
     if (ty.length) return { t: B.typing.label(ty, true), live: 1 };
-    return { t: chat.type === 'room' && !chat.parent_id ? 'Комната' : (chat.members ? chat.members.length : 0) + ' участников' };
+    if (chat.invite) return { t: 'Приглашение в группу' };
+    if (B.msgs.fedOffline(chat)) return { t: 'Федеративная группа · нет связи', warn: 1 };
+    var o = (B.S.chatOnline || {})[chat.id], cnt = o ? 'в сети ' + o.online + ' из ' + o.total : (chat.members ? chat.members.length : 0) + ' участников';
+    return { t: chat.type === 'room' && !chat.parent_id ? 'Комната' + (o ? ' · ' + cnt : '') : cnt };
   }
   // Заглушки-пузыри вместо пустой страницы, пока сообщения чата ещё не загружены
   function skeleton() {
@@ -169,7 +172,7 @@ B.ui.chat = (function () {
   }
   function build(cid) {
     var chat = B.find(cid), el = document.createElement('div');
-    el.className = 'page chat'; el.dataset.cid = cid; el._title = B.chatName(chat);
+    el.className = 'page chat'; el.dataset.cid = cid; el._title = B.chatName(chat); el._inv = !!chat.invite;
     var n = othersUnread(cid), st = statusOf(chat);
     el.innerHTML =
       '<div class="wall"></div>' +
@@ -192,7 +195,7 @@ B.ui.chat = (function () {
   function updateHeader(el) {
     var chat = B.find(+el.dataset.cid); if (!chat) return;
     var st = statusOf(chat), s = el.querySelector('.st');
-    if (s) { s.textContent = st.t; s.classList.toggle('live', !!st.live); }
+    if (s) { s.textContent = st.t; s.classList.toggle('live', !!st.live); s.classList.toggle('warn', !!st.warn); }
     var tr = el.querySelector('.tpr'), names = B.typing.names(chat.id);
     if (tr) { tr.classList.toggle('show', names.length > 0); if (names.length) tr.querySelector('.tpt').textContent = B.typing.label(names, true); }
     var b = el.querySelector('.cn-b b'); if (b) b.textContent = B.chatName(chat);
@@ -368,7 +371,15 @@ B.ui.chat = (function () {
   // Клавиатура или панель смайлов сдвинули поле ввода: держим ленту у низа, если она там и была
   B.bus.on('kbd:changed', function () { var el = activePage(); if (!el) return; var sc = el.querySelector('.scroll'); if (sc && sc.scrollHeight - sc.scrollTop - sc.clientHeight < 400) setTimeout(function () { sc.scrollTop = sc.scrollHeight; }, 60); });
   B.bus.on('presence:changed', function () { var el = activePage(); if (el) updateHeader(el); });
-  B.bus.on('chats:changed', function () { var el = activePage(); if (el) updateHeader(el); });
+  B.bus.on('chats:changed', function () {
+    var el = activePage(); if (!el) return;
+    updateHeader(el);
+    var chat = B.find(+el.dataset.cid);
+    // Приглашение приняли: открываем историю; связь с сервером группы появилась или пропала — меняется поле ввода
+    if (chat && el._inv && !chat.invite) { el._inv = false; B.msgs.open(chat.id); }
+    if (chat && B.ui.composer && B.ui.composer.sync) B.ui.composer.sync(el);
+  });
+  B.bus.on('chat:online', function (d) { var el = pageFor(d.chatId); if (el) updateHeader(el); });
   B.bus.on('contacts:changed', function () { var el = activePage(); if (el) updateHeader(el); });
   B.bus.on('chat:updated', function (d) { var el = pageFor(d.chatId); if (el) { updateHeader(el); if (B.ui.composer && B.ui.composer.sync) B.ui.composer.sync(el); } });
   B.bus.on('chat:deleted', function (d) { var el = pageFor(d.chatId); if (el && B.nav.top().el === el) B.nav.pop(); });

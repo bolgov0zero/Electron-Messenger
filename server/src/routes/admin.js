@@ -212,8 +212,16 @@ router.post('/chats/:id/members', (req, res) => {
   if (!user_id) return res.status(400).json({ error: 'Missing user_id' });
   const chatId = Number(req.params.id);
   const userId = Number(user_id);
-  const chat = db.prepare('SELECT type FROM chats WHERE id = ?').get(chatId);
-  if (require('../spaces').isFed(userId)) return res.status(400).json({ error: 'Людей с других серверов в группы и комнаты добавить нельзя' });
+  const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
+  if (chat?.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: состав меняет её владелец' });
+  if (require('../spaces').isFed(userId)) {
+    // Человека с другого сервера приглашают в группу (он сам соглашается); в комнаты — позже
+    if (!chat || chat.type !== 'group') return res.status(400).json({ error: 'В комнаты людей с других серверов добавить пока нельзя' });
+    const r = require('../fedgroups').invite(chat, req.user.id, db.prepare('SELECT * FROM users WHERE id = ?').get(userId));
+    if (r.error) return res.status(400).json({ error: r.error });
+    logAudit(req, 'rooms', 'Приглашение в группу', `${db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—'} → «${chat.name || '#' + chatId}»`);
+    return res.json({ ok: true, pending: !!r.pending });
+  }
   const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
   ins.run(chatId, userId);
   db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId)
@@ -226,6 +234,7 @@ router.post('/chats/:id/members', (req, res) => {
     const chatName = db.prepare('SELECT name FROM chats WHERE id = ?').get(chatId)?.name || `#${chatId}`;
     logAudit(req, 'rooms', 'Добавление участника', `${name} → «${chatName}»`);
   }
+  if (chat) require('../fedgroups').sendState(chat);
   res.json({ ok: true });
 });
 
@@ -233,7 +242,14 @@ router.post('/chats/:id/members', (req, res) => {
 router.delete('/chats/:id/members/:userId', (req, res) => {
   const chatId = Number(req.params.id);
   const kickedId = Number(req.params.userId);
-  const chat = db.prepare('SELECT type FROM chats WHERE id = ?').get(chatId);
+  const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
+  if (chat?.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: состав меняет её владелец' });
+  if (require('../spaces').isFed(kickedId)) {
+    const fg = require('../fedgroups'), wasMember = !!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, kickedId);
+    fg.removeRemote(chat, db.prepare('SELECT * FROM users WHERE id = ?').get(kickedId));
+    if (wasMember) announcements.sendSystemMessage(chatId, `${db.prepare('SELECT display_name FROM users WHERE id = ?').get(kickedId)?.display_name || '—'} удалён(а) ${memberEventLabel(chat.type, 'remove')}`, 'member_remove');
+    return res.json({ ok: true });
+  }
   const remaining = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chatId, kickedId);
   const del = db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?');
   del.run(chatId, kickedId);
@@ -247,6 +263,7 @@ router.delete('/chats/:id/members/:userId', (req, res) => {
     const chatName = db.prepare('SELECT name FROM chats WHERE id = ?').get(chatId)?.name || `#${chatId}`;
     logAudit(req, 'rooms', 'Удаление участника', `${name} из «${chatName}»`);
   }
+  if (chat) require('../fedgroups').sendState(chat);
   res.json({ ok: true });
 });
 
@@ -362,6 +379,11 @@ router.get('/chats', (req, res) => {
   })));
 });
 
+// Приглашённые с других серверов, которые ещё не ответили (в состав чата они не входят)
+router.get('/chats/:id/pending', (req, res) => {
+  res.json(db.prepare(`SELECT u.id, u.display_name, u.username FROM chat_invites i JOIN users u ON u.id = i.user_id
+    JOIN chats c ON c.id = i.chat_id WHERE i.chat_id = ? AND c.fed_instance IS NULL ORDER BY i.created_at`).all(Number(req.params.id)));
+});
 router.get('/chats/:id/members', (req, res) => {
   const members = db.prepare(`
     SELECT u.id, u.username, u.display_name, cm.joined_at FROM users u

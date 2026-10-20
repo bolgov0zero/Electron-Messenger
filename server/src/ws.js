@@ -13,6 +13,7 @@ function hasPushSubscription(userId) {
 const { wsAuth } = require('./auth');
 // Федерация подключается лениво: federation.js сам требует ws.js
 const fed = () => require('./federation');
+const groups = () => require('./fedgroups');
 
 // Ленивая загрузка чтобы избежать циклических зависимостей
 function pushToUser(userId, payload) {
@@ -137,6 +138,8 @@ function broadcastStatus(userId) {
   });
   // Люди с других серверов, которые видят нас взаимно, узнают статус по федерации
   fed().onPresence(userId, status, last_seen);
+  // Счётчик «в сети N из M» в шапках групп и комнат
+  try { groups().onUserStatus(userId); } catch (e) { console.warn('[Groups] счётчик:', e.message); }
 }
 
 // Лимит редактирования сообщений (сек), настраивается в админке. По умолчанию 2 минуты.
@@ -194,7 +197,7 @@ function getMessageWithStatus(msgId, viewerId) {
   if (msg.link_preview) try { msg.link_preview = JSON.parse(msg.link_preview); } catch { msg.link_preview = null; }
 
   // IS NOT вместо != — sender_id может быть NULL (удалённый аккаунт)
-  const memberCount = db.prepare('SELECT COUNT(*) as c FROM chat_members WHERE chat_id = ? AND user_id IS NOT ?').get(msg.chat_id, msg.sender_id).c;
+  const memberCount = spaces.recipientCount(msg.chat_id, msg.sender_id);
   const delivered = db.prepare('SELECT COUNT(*) as c FROM message_status WHERE message_id = ? AND delivered_at IS NOT NULL').get(msgId).c;
   const read = db.prepare('SELECT COUNT(*) as c FROM message_status WHERE message_id = ? AND read_at IS NOT NULL').get(msgId).c;
   // Реакции — чтобы WS-payload совпадал по форме с REST /api/messages
@@ -319,6 +322,12 @@ function setup(server) {
           // Собеседник с другого сервера: соединение должно существовать (не удалено), а секретных чатов с ним нет
           if (spaces.isFed(dm.user_id) && (isSecret || !fed().peerOfUser(dm.user_id))) { ws.send(JSON.stringify({ type: 'send_rejected', chat_id, reason: 'federation_off' })); return; }
         }
+        // Зеркало группы с другого сервера: пока связи нет, писать в него нельзя (сообщение разошлось бы с оригиналом)
+        const gm = db.prepare("SELECT fed_instance FROM chats WHERE id = ? AND fed_instance IS NOT NULL").get(chat_id);
+        if (gm) {
+          const gp = fed().peerByInstance(gm.fed_instance);
+          if (!gp || gp.status !== 'active' || !fed().isOnline(gp.id)) { ws.send(JSON.stringify({ type: 'send_rejected', chat_id, reason: 'fed_offline' })); return; }
+        }
         // В секретном чате attachment/forward_data пока не поддерживаются (не шифруются),
         // а text — это base64-шифротекст, который нельзя обрезать как обычный текст
         // (slice по символам испортил бы шифротекст) — лимит по длине выше и без .trim().
@@ -367,7 +376,7 @@ function setup(server) {
         // шифротекст, разбирать его на упоминания бессмысленно и не нужно.
         let mentionsJson = null;
         if (!isSecret && text.includes('@')) {
-          const names = [...text.matchAll(/@([\w.-]+)/g)].map(m => m[1].toLowerCase());
+          const names = [...text.matchAll(/@([\w.-]+(?::[\w.-]+)?)/g)].map(m => m[1].toLowerCase());
           if (names.length) {
             const members = db.prepare('SELECT u.id, u.username FROM users u JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = ?').all(chat_id);
             const ids = members.filter(mb => mb.id !== user.id && names.includes(mb.username.toLowerCase())).map(mb => mb.id);
@@ -407,6 +416,8 @@ function setup(server) {
         finishMessage(msgId, chat_id, user.id);
         // Собеседник с другого сервера: сообщение уходит в очередь отправки
         if (dm && spaces.isFed(dm.user_id)) fed().onLocalMessage(msgId);
+        // Группа с участниками или хозяином на другом сервере
+        if (!dm && !isSecret) fed().onGroupMessage(msgId);
       }
 
       if (data.type === 'delivered') {
@@ -581,6 +592,7 @@ function setup(server) {
         } else {
           db.prepare('DELETE FROM pinned_messages WHERE chat_id = ? AND message_id = ?').run(msg.chat_id, message_id);
         }
+        fed().onPin(msg.chat_id, message_id, user.id, data.type === 'pin_message');
         broadcast(msg.chat_id, { type: 'pins_updated', chat_id: msg.chat_id, pins: getPins(msg.chat_id) });
       }
 
@@ -598,6 +610,10 @@ function setup(server) {
           .forEach(m => sendTo(m.user_id, { type: 'typing', chat_id, user_id: user.id, sender_name: user.display_name }));
         fed().onTyping(chat_id, user.id);
       }
+
+      // Чат открыт в клиенте: присылаем и обновляем «в сети N из M»
+      if (data.type === 'watch_chat') groups().watch(ws, Number(data.chat_id), user.id);
+      if (data.type === 'unwatch_chat') groups().unwatch(ws);
 
       if (data.type === 'client_info') {
         const meta = connMeta.get(ws._connId);
@@ -617,6 +633,7 @@ function setup(server) {
     });
 
     ws.on('close', () => {
+      try { groups().unwatch(ws); } catch {}
       try { db.prepare('UPDATE users SET last_seen_at = unixepoch() WHERE id = ?').run(user.id); } catch {}
       const updEntry = updateProgress.get(ws._connId);
       if (updEntry && updEntry.status === 'restarting') { updEntry.status = 'restarted'; updEntry.pct = 100; }

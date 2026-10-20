@@ -3594,3 +3594,17 @@ html.dark .anx-solid { color: #0c0e10; }
 /* смена вкладки сайдбара: список проявляется, а не подменяется */
 @keyframes tabIn { from { opacity: 0; } to { opacity: 1; } }
 .chats-list.tab-in { animation: tabIn .18s ease-out; }
+
+/* Группы с других серверов: подпись в шапке, значок в списке, приглашение вместо поля ввода */
+.ch-sub .fed-off { color: var(--danger); display: inline-flex; align-items: center; gap: 5px; }
+.ch-sub .fed-off svg, .ch-sub .fed-in svg { flex-shrink: 0; }
+.ch-sub .fed-in { display: inline-flex; vertical-align: -1px; margin-right: 5px; color: var(--muted); }
+.chat-item .ci-fed { margin-left: 0; padding: 3px 6px; }
+.chat-item.invited .ci-name > span:first-child { font-weight: 700; }
+.inv-bar { max-width: 760px; box-sizing: border-box; margin: 0 auto; padding: 12px 14px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: space-between;
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; font-size: 13px; color: var(--text2); }
+.inv-bar .inv-txt { flex: 1 1 240px; line-height: 1.4; }
+.inv-bar .inv-txt b { color: var(--text); }
+.inv-bar .inv-btns { display: flex; gap: 8px; flex-shrink: 0; }
+.inv-empty { color: var(--muted); }
+.inv-empty p { text-align: center; line-height: 1.5; max-width: 320px; }

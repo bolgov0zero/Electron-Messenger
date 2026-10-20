@@ -10,7 +10,7 @@ B.ui.chatlist = (function () {
   // ── разметка ──
   function rowHtml(c) {
     var lm = c.last_message, S = B.S, mine = lm && lm.sender_id === S.user.id, u = c.unread || 0, men = c.unread_mentions || 0, ty = B.typing.names(c.id);
-    var pv = ty.length ? '<span class="typ">' + esc(B.typing.label(ty, true)) + '</span>' : c.is_secret ? '<span class="sct">Скрытый чат</span>' : esc(((mine ? 'Вы: ' : '') + B.chats.preview(c)).slice(0, 220));
+    var pv = ty.length ? '<span class="typ">' + esc(B.typing.label(ty, true)) + '</span>' : c.invite ? '<span class="typ">Приглашение в группу</span>' : c.is_secret ? '<span class="sct">Скрытый чат</span>' : esc(((mine ? 'Вы: ' : '') + B.chats.preview(c)).slice(0, 220));
     var badge = men ? '<div class="rbd">@</div>' : u ? '<div class="rbd' + (c.muted ? ' m' : '') + '">' + (u > 99 ? '99+' : u) + '</div>' : c.pinned ? '<span class="rpin">' + ic('pin', 16, 2) + '</span>' : '';
     var canDel = c.type !== 'room';
     return '<div class="swrow' + (c.pinned ? ' pinned' : '') + '" data-id="' + c.id + '">' +
@@ -18,7 +18,7 @@ B.ui.chatlist = (function () {
       '<div class="swa trail"><button class="mute" data-sw="mute">' + ic(c.muted ? 'bell' : 'bellOff', 22, 2) + (c.muted ? 'Звук' : 'Без звука') + '</button>' +
         (canDel ? '<button class="del" data-sw="del">' + ic('trash', 22, 2) + 'Удалить</button>' : '') + '</div>' +
       '<div class="swf" data-open="' + c.id + '"><div class="row">' + B.avatar.chat(c, 54, true) +
-        '<div class="rb"><div class="r1"><span class="rn">' + (c.is_secret ? '<span class="lk">' + ic('lock', 14, 2.2) + '</span>' : '') + '<span class="nm">' + esc(B.chatName(c)) + '</span>' + (c.muted ? '<span class="mu">' + ic('bellOff', 13, 2) + '</span>' : '') + '</span>' +
+        '<div class="rb"><div class="r1"><span class="rn">' + (c.is_secret ? '<span class="lk">' + ic('lock', 14, 2.2) + '</span>' : '') + '<span class="nm">' + esc(B.chatName(c)) + '</span>' + (c.fed_mirror ? '<span class="fedg" title="Группа с другого сервера">' + B.contacts.wsTag({ federated: true }) + '</span>' : '') + (c.muted ? '<span class="mu">' + ic('bellOff', 13, 2) + '</span>' : '') + '</span>' +
           '<span class="rt">' + (mine && lm.status ? B.ticks(lm.status) : '') + (lm ? B.fmt.chatListTime(lm.sent_at) : '') + (c.has_topics ? '<span class="chv">' + ic('chev', 14, 2.4) + '</span>' : '') + '</span></div>' +
         '<div class="r2"><div class="rm">' + pv + '</div>' + badge + '</div></div></div></div></div>';
   }

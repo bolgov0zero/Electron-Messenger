@@ -15,7 +15,7 @@ B.ws = {
     if (prev && prev.readyState <= 1) { try { prev.close(); } catch (e) {} }
     var ws = new WebSocket(B.wsProto() + '://' + S.server + '/ws?token=' + S.token);
     S.ws = ws;
-    ws.onopen = function () { B.bus.emit('ws:state'); };
+    ws.onopen = function () { B.bus.emit('ws:state'); if (B.msgs && B.msgs.chatId) B.msgs.watch(B.find(B.msgs.chatId)); };
     ws.onmessage = function (e) {
       if (ws !== S.ws) return;
       var data; try { data = JSON.parse(e.data); } catch (err) { return; }
@@ -102,6 +102,10 @@ B.ws = {
         break;
       case 'typing': B.bus.emit('typing', { chatId: data.chat_id, senderName: data.sender_name }); break;
       case 'reload_chats': B.chats.refresh(); B.bus.emit('topics:reload'); break;
+      // Счётчик «в сети N из M» открытой группы или комнаты
+      case 'chat_online': (S.chatOnline = S.chatOnline || {})[data.chat_id] = { online: data.online, total: data.total }; B.bus.emit('chat:online', { chatId: data.chat_id }); break;
+      // Связь с другим сервером появилась или пропала: у групп оттуда меняется шапка и поле ввода
+      case 'fed_link': B.chats.refresh(); break;
       case 'user_updated': B.chats.applyUserUpdate(data); break;
       case 'chat_updated': {
         // Полный объект (закрепление) или только изменённые поля (переименование, «только чтение»)
@@ -141,6 +145,7 @@ B.ws = {
         break;
       case 'send_rejected':
         if (data.reason === 'limit') { chat = B.find(data.chat_id); if (chat) { chat.dm_limit = data.dm_limit || chat.dm_limit; B.bus.emit('chat:updated', { chatId: data.chat_id }); } }
+        if (data.reason === 'fed_offline') B.toast.show('Нет связи с сервером этой группы. Писать пока нельзя');
         B.bus.emit('send:rejected', { chatId: data.chat_id, reason: data.reason });
         break;
       case 'edit_rejected': B.bus.emit('edit:rejected'); break;
