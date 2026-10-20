@@ -4,7 +4,7 @@
 .pr { position: absolute; right: -1px; bottom: -1px; width: calc(var(--s) * .28); height: calc(var(--s) * .28); min-width: 11px; min-height: 11px; border-radius: 50%; background: var(--green); border: 2.5px solid var(--bg); }
 .pr.away { background: var(--orange); }
 /* В сети с мобильного клиента: вместо точки маленький зелёный телефон-контур, внутри и по краю цвет фона */
-.pr.mob { width: max(7px, calc(var(--s) * .17)); height: max(11px, calc(var(--s) * .27)); min-width: 0; min-height: 0; right: -2px; bottom: -2px; border: 1.6px solid var(--green); border-radius: 2.5px; background: transparent; box-shadow: 0 0 0 2px var(--bg), inset 0 0 0 1.5px var(--bg); }
+.pr.mob { width: max(7px, calc(var(--s) * .17)); height: max(11px, calc(var(--s) * .27)); min-width: 0; min-height: 0; right: 0; bottom: 0; border: 1.6px solid var(--green); border-radius: 2.5px; background: transparent; box-shadow: 0 0 0 2px var(--bg), inset 0 0 0 1.5px var(--bg); }
 .pr.mob::after { content: ""; position: absolute; left: 50%; bottom: .5px; width: 1.6px; height: 1.6px; margin-left: -.8px; border-radius: 50%; background: var(--green); }
 .tk { display: inline-block; vertical-align: -1px; }
 
