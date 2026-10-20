@@ -206,6 +206,19 @@ function memberEventLabel(chatType, action) {
   return action === 'add' ? `в ${place}у` : `из ${place}ы`;
 }
 
+// Пригласить человека с другого сервера по адресу @сервер:логин (в группу или комнату). Он сам соглашается или отказывается
+router.post('/chats/:id/invite', async (req, res) => {
+  const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(Number(req.params.id));
+  if (!chat || chat.type === 'direct' || chat.parent_id || chat.is_secret) return res.status(404).json({ error: 'Приглашают в группу или комнату' });
+  if (chat.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: состав меняет её владелец' });
+  const r = await require('../federation').lookupRemote(req.body?.address);
+  if (r.error) return res.status(r.code === 'offline' ? 503 : 400).json({ error: r.error });
+  const inv = require('../fedgroups').invite(chat, req.user.id, r.shadow);
+  if (inv.error) return res.status(400).json({ error: inv.error });
+  logAudit(req, 'rooms', 'Приглашение с другого сервера', `${r.shadow.display_name} (@${r.shadow.fed_instance}:${r.shadow.fed_login}) → «${chat.name || '#' + chat.id}»`);
+  res.json({ ok: true, pending: !!inv.pending, member: !!inv.member, name: r.shadow.display_name });
+});
+
 // Add member to any chat/room — notify via WS
 router.post('/chats/:id/members', (req, res) => {
   const { user_id } = req.body;
@@ -215,8 +228,8 @@ router.post('/chats/:id/members', (req, res) => {
   const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
   if (chat?.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: состав меняет её владелец' });
   if (require('../spaces').isFed(userId)) {
-    // Человека с другого сервера приглашают в группу (он сам соглашается); в комнаты — позже
-    if (!chat || chat.type !== 'group') return res.status(400).json({ error: 'В комнаты людей с других серверов добавить пока нельзя' });
+    // Человека с другого сервера приглашают (он сам соглашается)
+    if (!chat || chat.type === 'direct' || chat.parent_id) return res.status(400).json({ error: 'Приглашают в группу или комнату' });
     const r = require('../fedgroups').invite(chat, req.user.id, db.prepare('SELECT * FROM users WHERE id = ?').get(userId));
     if (r.error) return res.status(400).json({ error: r.error });
     logAudit(req, 'rooms', 'Приглашение в группу', `${db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—'} → «${chat.name || '#' + chatId}»`);
@@ -284,6 +297,7 @@ router.patch('/rooms/:id', (req, res) => {
   const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(req.params.id);
   const isManual = hasManual ? !!topics_manual : !!prev?.topics_manual;
   members.forEach(({ user_id }) => sendTo(user_id, { type: 'chat_updated', chat_id: Number(req.params.id), name: newName, read_only: isReadOnly, topics_manual: isManual }));
+  require('../fedgroups').sendState(db.prepare('SELECT * FROM chats WHERE id = ?').get(Number(req.params.id)));   // зеркала у других серверов
   if (hasName) logAudit(req, 'rooms', 'Переименование комнаты', `«${prev?.name || '?'}» → «${newName}»`);
   if (hasManual && !!prev?.topics_manual !== !!topics_manual) logAudit(req, 'rooms', 'Сортировка тем', `«${newName}»: ${topics_manual ? 'ручная' : 'по последнему сообщению'}`);
   if (hasReadOnly && !!prev?.read_only !== !!read_only) logAudit(req, 'rooms', 'Режим «только чтение»', `«${newName}»: ${read_only ? 'включён' : 'выключен'}`);
@@ -386,9 +400,9 @@ router.get('/chats/:id/pending', (req, res) => {
 });
 router.get('/chats/:id/members', (req, res) => {
   const members = db.prepare(`
-    SELECT u.id, u.username, u.display_name, cm.joined_at FROM users u
+    SELECT u.id, u.username, u.display_name, cm.joined_at, (u.is_bot = 2) AS federated FROM users u
     JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = ? ORDER BY cm.joined_at
-  `).all(req.params.id);
+  `).all(req.params.id).map(m => ({ ...m, federated: !!m.federated }));
   res.json(members);
 });
 
@@ -980,6 +994,7 @@ router.post('/topics', (req, res) => {
     .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
   const roomName = db.prepare('SELECT name FROM chats WHERE id = ?').get(Number(room_id))?.name || `#${room_id}`;
   logAudit(req, 'rooms', 'Создание темы', `«${name.trim()}» в «${roomName}»`);
+  require('../fedgroups').sendState(db.prepare('SELECT * FROM chats WHERE id = ?').get(Number(room_id)));
   res.json({ id: Number(result) });
 });
 
@@ -991,6 +1006,7 @@ router.patch('/topics/:id', (req, res) => {
   const { sendTo } = require('../ws');
   db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(sub.parent_id)
     .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
+  require('../fedgroups').sendState(db.prepare('SELECT * FROM chats WHERE id = ?').get(sub.parent_id));
   res.json({ ok: true });
 });
 
@@ -1002,6 +1018,7 @@ router.delete('/topics/:id', (req, res) => {
   db.prepare('DELETE FROM chats WHERE id = ?').run(sub.id);
   members.forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
   logAudit(req, 'rooms', 'Удаление темы', `«${sub.name}»`);
+  require('../fedgroups').sendState(db.prepare('SELECT * FROM chats WHERE id = ?').get(sub.parent_id));
   res.json({ ok: true });
 });
 
@@ -1021,6 +1038,8 @@ router.post('/topics/reorder', (req, res) => {
   if (!Array.isArray(ids)) return res.status(400).json({ error: 'Invalid' });
   const upd = db.prepare('UPDATE chats SET position = ? WHERE id = ? AND parent_id IS NOT NULL');
   db.transaction(() => ids.forEach((id, i) => upd.run(i, id)))();
+  const first = ids.length && db.prepare('SELECT parent_id FROM chats WHERE id = ?').get(ids[0]);
+  if (first?.parent_id) require('../fedgroups').sendState(db.prepare('SELECT * FROM chats WHERE id = ?').get(first.parent_id));
   res.json({ ok: true });
 });
 

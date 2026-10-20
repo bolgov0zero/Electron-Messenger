@@ -478,8 +478,9 @@ function isRelated(localId, peer) {
   return !!db.prepare(`SELECT 1 FROM users s WHERE s.is_bot = 2 AND s.fed_instance = ? AND (
       EXISTS (SELECT 1 FROM contacts WHERE owner_id = s.id AND contact_id = ?)
       OR EXISTS (SELECT 1 FROM contacts WHERE owner_id = ? AND contact_id = s.id)
+      OR EXISTS (SELECT 1 FROM chat_invites i WHERE i.user_id = s.id AND i.invited_by = ?)
       OR EXISTS (SELECT 1 FROM chat_members a JOIN chat_members b ON b.chat_id = a.chat_id AND b.user_id = ? WHERE a.user_id = s.id))
-    LIMIT 1`).get(peer.instance_id, localId, localId, localId);
+    LIMIT 1`).get(peer.instance_id, localId, localId, localId, localId);
 }
 function peerOfUser(userId) {
   const u = db.prepare('SELECT is_bot, fed_instance FROM users WHERE id = ?').get(userId);

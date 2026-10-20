@@ -293,8 +293,8 @@ router.post('/:id/members', authMiddleware, (req, res) => {
   // В группу добавляют только тех, кого видишь; в комнату любого добавляет администратор
   if (!spaces.canSee(req.user.id, userId)) return res.status(403).json({ error: 'Этот человек вам недоступен' });
   if (spaces.isFed(userId)) {
-    // Человек с другого сервера: только приглашение, он сам решает, вступать ли. В комнаты таких людей добавляет администратор в админке
-    if (chat.type !== 'group') return res.status(400).json({ error: 'В комнаты людей с других серверов добавляет администратор через админку' });
+    // Человек с другого сервера: только приглашение, он сам решает, вступать ли
+    if (chat.parent_id) return res.status(400).json({ error: 'Приглашают в комнату, а не в тему' });
     const r = fedgroups.invite(chat, req.user.id, db.prepare('SELECT * FROM users WHERE id = ?').get(userId));
     if (r.error) return res.status(400).json({ error: r.error });
     sendTo(req.user.id, { type: 'reload_chats' });
@@ -354,8 +354,9 @@ router.delete('/:id/members/:userId', authMiddleware, (req, res) => {
 router.post('/:id/leave', authMiddleware, (req, res) => {
   const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id);
   if (!chat) return res.status(404).json({ error: 'Not found' });
-  if (chat.type === 'room') return res.status(403).json({ error: 'Cannot leave a room' });
+  // Из своей комнаты выйти нельзя, а из комнаты с другого сервера можно: туда человек пришёл по приглашению
   if (chat.fed_instance) return leaveMirror(db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id), req, res);
+  if (chat.type === 'room') return res.status(403).json({ error: 'Cannot leave a room' });
   db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(req.params.id, req.user.id);
   // Оставшиеся участники обновляют список, ушедший (все его устройства) убирает чат
   db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(req.params.id)
@@ -370,8 +371,10 @@ router.post('/:id/leave', authMiddleware, (req, res) => {
 function leaveMirror(chat, req, res) {
   if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chat.id, req.user.id)) return res.status(403).json({ error: 'Not a member' });
   fedgroups.leaveMirror(chat, req.user.id);
-  db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(chat.id, req.user.id);
-  sendTo(req.user.id, { type: 'chat_deleted', chat_id: chat.id });
+  fedgroups.treeIds(chat.id).forEach(id => {   // в комнате — и из её тем
+    db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(id, req.user.id);
+    sendTo(req.user.id, { type: 'chat_deleted', chat_id: id });
+  });
   db.prepare('SELECT cm.user_id FROM chat_members cm JOIN users u ON u.id = cm.user_id WHERE cm.chat_id = ? AND COALESCE(u.is_bot, 0) = 0').all(chat.id)
     .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
   fedgroups.dropMirrorIfEmpty(chat);

@@ -10,9 +10,9 @@ B.ui.chatlist = (function () {
   // ── разметка ──
   function rowHtml(c) {
     var lm = c.last_message, S = B.S, mine = lm && lm.sender_id === S.user.id, u = c.unread || 0, men = c.unread_mentions || 0, ty = B.typing.names(c.id);
-    var pv = ty.length ? '<span class="typ">' + esc(B.typing.label(ty, true)) + '</span>' : c.invite ? '<span class="typ">Приглашение в группу</span>' : c.is_secret ? '<span class="sct">Скрытый чат</span>' : esc(((mine ? 'Вы: ' : '') + B.chats.preview(c)).slice(0, 220));
+    var pv = ty.length ? '<span class="typ">' + esc(B.typing.label(ty, true)) + '</span>' : c.invite ? '<span class="typ">Приглашение в ' + B.msgs.fedKind(c) + '</span>' : c.is_secret ? '<span class="sct">Скрытый чат</span>' : esc(((mine ? 'Вы: ' : '') + B.chats.preview(c)).slice(0, 220));
     var badge = men ? '<div class="rbd">@</div>' : u ? '<div class="rbd' + (c.muted ? ' m' : '') + '">' + (u > 99 ? '99+' : u) + '</div>' : c.pinned ? '<span class="rpin">' + ic('pin', 16, 2) + '</span>' : '';
-    var canDel = c.type !== 'room';
+    var canDel = c.type !== 'room' || !!c.fed_mirror;   // из своей комнаты не выйти, из комнаты с другого сервера можно
     return '<div class="swrow' + (c.pinned ? ' pinned' : '') + '" data-id="' + c.id + '">' +
       '<div class="swa lead"><button class="pin" data-sw="pin">' + ic(c.pinned ? 'unpin' : 'pin', 22, 2) + (c.pinned ? 'Открепить' : 'Закрепить') + '</button></div>' +
       '<div class="swa trail"><button class="mute" data-sw="mute">' + ic(c.muted ? 'bell' : 'bellOff', 22, 2) + (c.muted ? 'Звук' : 'Без звука') + '</button>' +

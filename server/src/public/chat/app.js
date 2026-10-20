@@ -2098,7 +2098,7 @@ function renderChatRow(c) {
     ? renderStatus(lm.status) : '';
   const isActive = c.id===S.activeChatId || c.id===S.activeRoomId;
   const fedChip = c.fed_mirror ? `<span class="ws-chip ws-fed ci-fed" title="Группа с другого сервера">${FED_GLOBE}</span>` : '';
-  if (c.invite) previewHtml = `<span style="color:var(--accent)">Приглашение в группу</span>`;
+  if (c.invite) previewHtml = `<span style="color:var(--accent)">Приглашение в ${fedKind(c)}</span>`;
   return `<div class="chat-item${isActive?' active':''}${c.invite?' invited':''}" data-chat-id="${c.id}" onclick="openChat(${c.id})" oncontextmenu="showChatCtx(event,${c.id})">
     <div class="av-wrap">
       <div class="av av-md ${chatAvatarClass(c)}${c.type==='room' && c.has_topics?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
@@ -2455,7 +2455,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   watchChat(chat);
   if (chat.invite) {
     // Приглашение: сообщений и участников нет, история откроется после вступления
-    if (msgsEl) msgsEl.innerHTML = `<div class="empty-state inv-empty"><div class="empty-icon">${FED_GLOBE.replace('width="12" height="12"', 'width="34" height="34"')}</div><p>Вас пригласили в группу «${esc(name)}».<br>Сообщения появятся после вступления.</p></div>`;
+    if (msgsEl) msgsEl.innerHTML = `<div class="empty-state inv-empty"><div class="empty-icon">${FED_GLOBE.replace('width="12" height="12"', 'width="34" height="34"')}</div><p>Вас пригласили в ${fedKind(chat)} «${esc(name)}».<br>Сообщения появятся после вступления.</p></div>`;
     _loadingChatId = null;
     return;
   }
@@ -3193,7 +3193,10 @@ function isReadOnlyChat(chat) {
 // Ограничение «сообщений без ответа» (люди из разных пространств): сервер отдаёт dm_limit = { used, max }
 const dmLocked = chat => !!chat?.dm_limit && chat.dm_limit.used >= chat.dm_limit.max;
 // Группа с другого сервера (зеркало): без связи с сервером писать в неё нельзя; приглашение — пока человек не вступил
-const fedOffline = chat => !!chat?.fed_mirror && !chat.invite && chat.fed_online === false;
+// У темы состояние связи общее с комнатой, в которой она лежит
+const fedRoot = chat => (chat?.parent_id ? S.chats.find(c => c.id === chat.parent_id) : null) || chat;
+const fedOffline = chat => { const c = fedRoot(chat); return !!c?.fed_mirror && !c.invite && c.fed_online === false; };
+const fedKind = chat => (chat?.type === 'room' ? 'комнату' : 'группу');
 const composerLocked = chat => isReadOnlyChat(chat) || dmLocked(chat) || !!chat?.invite || fedOffline(chat);
 // Что написать над полем ввода: «только чтение», «писать нельзя» или мягкая подсказка о счётчике
 function composerNote(chat) {
@@ -3224,11 +3227,11 @@ function findChatAny(id) {
 }
 // Подпись под названием группы и комнаты: «в сети 2 из 5», а у группы с другого сервера без связи — предупреждение
 function groupSubHtml(chat) {
-  if (chat.invite) return 'Приглашение в группу';
+  if (chat.invite) return `Приглашение в ${fedKind(chat)}`;
   if (fedOffline(chat)) return `<span class="fed-off">${FED_GLOBE}Группа на другом сервере · нет связи</span>`;
   const o = (S.chatOnline || {})[chat.id];
   const cnt = o ? `в сети ${o.online} из ${o.total}` : nMembers(chat.members?.length || 0);
-  const globe = chat.fed_mirror ? `<span class="fed-in">${FED_GLOBE}</span>` : '';
+  const globe = fedRoot(chat)?.fed_mirror ? `<span class="fed-in">${FED_GLOBE}</span>` : '';
   if (chat.parent_id) return `# тема${o ? ' · ' + cnt : ''}`;
   return chat.type === 'room' ? `${globe}🏠 Комната · ${cnt}` : `${globe}${cnt}`;
 }
@@ -3244,7 +3247,7 @@ function watchChat(chat) {
 }
 // Список чатов обновился: подпись, поле ввода и приглашение открытого чата могли измениться
 function refreshActiveChatUi() {
-  const chat = S.chats.find(c => c.id === S.activeChatId);
+  const chat = findChatAny(S.activeChatId);
   if (!chat) return;
   if (S.activeInvite && !chat.invite) { openChat(chat.id); return; }   // приглашение приняли: открываем группу заново
   updateGroupSub();
@@ -3254,7 +3257,7 @@ function inviteBarHtml(chat) {
   if (!chat?.invite) return '';
   const from = chat.invite.from_name;
   return `<div class="inv-bar" id="inv-bar">
-    <div class="inv-txt">${from ? `<b>${esc(from)}</b> приглашает вас в группу` : 'Вас приглашают в группу'}. Пока вы не вступили, участников и сообщений не видно.</div>
+    <div class="inv-txt">${from ? `<b>${esc(from)}</b> приглашает вас в ${fedKind(chat)}` : `Вас приглашают в ${fedKind(chat)}`}. Пока вы не вступили, участников и сообщений не видно.</div>
     <div class="inv-btns"><button class="modal-btn-ghost" onclick="declineInvite(${chat.id})">Отклонить</button><button class="modal-btn-primary" id="inv-join" onclick="acceptInvite(${chat.id})">Вступить</button></div>
   </div>`;
 }
@@ -3268,7 +3271,7 @@ async function declineInvite(id) {
   await api('POST', `/chats/${id}/invite/decline`);
 }
 function syncReadOnlyUi() {
-  const chat = S.chats.find(c => c.id === S.activeChatId), n = composerNote(chat);
+  const chat = findChatAny(S.activeChatId), n = composerNote(chat);
   const bn = document.getElementById('ro-banner'), hard = n && !n.soft;
   if (bn) { bn.toggleAttribute('hidden', !hard); const t = document.getElementById('ro-text'); if (t && hard) t.textContent = n.text; }
   // Счётчик «без ответа» — плашка внутри поля ввода, как панель форматирования
@@ -4656,7 +4659,7 @@ function autoResize() {}
 
 async function sendOrEdit() {
   if (S.editingMessageId) { submitEdit(); return; }
-  if (composerLocked(S.chats.find(c => c.id === S.activeChatId))) return;
+  if (composerLocked(findChatAny(S.activeChatId))) return;
   const input = document.getElementById('msg-input');
   const text = input?.value.trim();
   const isSecret = S.secretChatIds.has(S.activeChatId);
@@ -5538,7 +5541,7 @@ function removeChatLocally(chatId) {
 }
 
 async function leaveGroup(chatId) {
-  const ok = await showConfirm('Выйти из группы?', 'Выйти');
+  const ok = await showConfirm(S.chats.find(c => c.id === chatId)?.type === 'room' ? 'Выйти из комнаты?' : 'Выйти из группы?', 'Выйти');
   if (!ok) return;
   await api('POST', `/chats/${chatId}/leave`);
   S.activeChatId = null;
@@ -6492,7 +6495,7 @@ async function openGroupInfo(chatId) {
   // Группа с другого сервера: состав, название и аватарку меняет только её владелец, у нас можно лишь выйти
   const canEdit = !chat.fed_mirror && (isRoom ? S.user.is_admin : (chat.created_by === S.user.id || S.user.is_admin));
   const canDelete = !isRoom && !chat.fed_mirror && (chat.created_by === S.user.id || S.user.is_admin);
-  const leaveBtn = !isRoom ? `<button class="gi-btn gi-btn-leave" onclick="giLeave()">Выйти</button>` : '';
+  const leaveBtn = (!isRoom || chat.fed_mirror) ? `<button class="gi-btn gi-btn-leave" onclick="giLeave()">Выйти</button>` : '';
   const deleteBtn = canDelete ? `<button class="gi-btn gi-btn-delete" onclick="giDelete()">Удалить</button>` : '';
   const addBtn = canEdit ? `<button class="gi-btn gi-btn-add" onclick="giShowAdd()">Добавить участника</button>` : '';
   setChatMainContent(`

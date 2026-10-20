@@ -92,6 +92,7 @@ function deliver(row) {
       const r = insertMsg.run(chatId, sysId, row.text);
       const msg = getMessageWithStatus(r.lastInsertRowid, null);
       if (msg) broadcast(chatId, { type: 'message', message: msg });
+      try { require('./federation').onGroupMessage(r.lastInsertRowid); } catch {}   // группы и комнаты с участниками на других серверах
     }
     db.prepare('UPDATE announcements SET sent_at = ? WHERE id = ?').run(now, row.id);
     return chatIds.length;

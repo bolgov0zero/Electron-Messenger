@@ -92,6 +92,8 @@ async function handleWebhook(req, res) {
   const chatMeta = db.prepare('SELECT parent_id FROM chats WHERE id = ?').get(wh.chat_id);
   if (chatMeta?.parent_id) msg.parent_id = chatMeta.parent_id;
   broadcast(wh.chat_id, { type: 'message', message: msg });
+  // Комната с участниками на других серверах: сообщение вебхука уходит и им
+  try { require('../federation').onGroupMessage(result.lastInsertRowid); } catch (e) { console.warn('[Fed] вебхук:', e.message); }
 
   // Push notifications
   try {

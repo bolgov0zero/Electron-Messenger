@@ -606,7 +606,7 @@ tr.ua-banned .ux-cell{opacity:.6}
 .rm-tabs button small{font:600 10px var(--f-mono);background:var(--c-surface2);color:var(--c-muted);border-radius:6px;padding:0 5px}
 .rm-tabs button:hover{color:var(--c-text)}
 .rm-tabs button[aria-selected="true"]{color:var(--c-text);border-bottom-color:var(--c-primary)}
-.rm-body{min-height:340px;gap:14px}
+.rm-body{height:min(440px,calc(88vh - 200px));min-height:240px;gap:14px}
 .rm-hint{font-size:11.5px;color:var(--c-text2)}
 .rm-avpick{display:flex;align-items:center;gap:14px;padding:12px;border-radius:10px;background:var(--c-surface2)}
 .rm-list{display:flex;flex-direction:column;border:1px solid var(--c-border2);border-radius:10px;overflow:hidden}
@@ -630,6 +630,39 @@ tr.ua-banned .ux-cell{opacity:.6}
 .rm-dz b{font-size:12px;display:block}
 .rm-dz span{font-size:11px;color:var(--c-muted)}
 .rm-removed .ux-name{text-decoration:line-through;opacity:.6}
+/* Окно комнаты: вкладки, карточки настроек, меню «⋯» */
+.toggle-track{flex:none}
+.rm-id{display:flex;align-items:flex-end;gap:14px}
+.rm-avb{position:relative;flex:none;cursor:pointer;display:block}
+.rm-avb .rm-cam{position:absolute;right:-5px;bottom:-5px;width:22px;height:22px;border-radius:50%;background:var(--c-surface2);border:1px solid var(--c-border);display:grid;place-items:center;color:var(--c-muted)}
+.rm-avb:hover .rm-cam{color:var(--c-primary)}
+.rm-card{border:1px solid var(--c-border);border-radius:12px;background:var(--c-surface2)}
+.rm-row{display:flex;align-items:center;gap:12px;padding:10px 14px;min-height:46px}
+.rm-rt{flex:1;min-width:0}
+.rm-rt b{display:block;font-size:12.5px;font-weight:600;color:var(--c-text)}
+.rm-rt span{display:block;font-size:11.5px;color:var(--c-muted);line-height:1.4}
+.rm-acts{display:flex;gap:4px;opacity:.55;transition:opacity .12s}
+.rm-li:hover .rm-acts,.rm-li:focus-within .rm-acts{opacity:1}
+.rm-empty-l{padding:14px;text-align:center;color:var(--c-muted);font-size:12px;border:1px dashed var(--c-border);border-radius:10px}
+.rm-mtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rm-mtools select{height:28px;border:1px solid var(--c-border);background:var(--c-surface2);color:var(--c-text);border-radius:8px;font:600 11.5px var(--f-ui);padding:0 6px;max-width:150px}
+.rm-link{border:0;background:none;color:var(--c-primary);font:600 11.5px var(--f-ui);cursor:pointer;padding:2px 4px;border-radius:6px}
+.rm-link:hover{background:var(--c-primary-dim)}
+.rm-link:disabled{color:var(--c-muted);opacity:.5;cursor:default;background:none}
+.rm-ml{display:flex;flex-direction:column;gap:4px}
+.rm-sect{display:flex;align-items:center;gap:7px;font-size:10.5px;font-weight:700;color:var(--c-muted);text-transform:uppercase;letter-spacing:.07em}
+.rm-sect small{font:600 11px var(--f-ui);letter-spacing:0;text-transform:none}
+.rm-glb{display:inline-flex;color:var(--c-primary)}
+.rm-addr{font-family:var(--f-mono)}
+.rm-wait{font:600 10.5px var(--f-ui);padding:1px 7px;border-radius:99px;background:var(--c-orange-dim);color:var(--c-orange-text)}
+.rm-scrim{position:absolute;inset:0;z-index:4}
+.rm-menu{position:absolute;right:50px;top:52px;z-index:5;min-width:200px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:12px;box-shadow:var(--shadow-xl);padding:5px;display:flex;flex-direction:column}
+.rm-menu button{display:flex;align-items:center;gap:9px;height:34px;padding:0 10px;border:0;border-radius:8px;background:none;color:var(--c-text);font:500 12.5px var(--f-ui);cursor:pointer;text-align:left}
+.rm-menu button:hover{background:var(--bg-hover)}
+.rm-menu button.d{color:var(--c-red-text)}
+.rm-menu button.d:hover{background:var(--c-red-dim)}
+#rm-form{position:relative}
+
 @media (max-width:1000px){ .rm-sum{grid-template-columns:repeat(3,minmax(0,1fr))} .rm-sum>div:nth-child(n+4){grid-column:1/-1;border-left:0;border-top:1px solid var(--c-border2)} .rm-cols{grid-template-columns:1fr} .modal.rm-modal{width:calc(100vw - 24px)} }
 
 /* Файлы, объявления, уведомления, вебхуки */
@@ -4489,12 +4522,13 @@ async function rmOpen(id, tab = 'main') {
     topics: (r?.topics || []).map(t => ({ id: t.id, name: t.name, msgs: t.message_count, avatar: null, hasAvatar: !!t.has_avatar, removed: false })),
     initialTopics: new Map((r?.topics || []).map(t => [t.id, t.name])),
     members: new Set(members.map(m => m.id)), initialMembers: new Set(members.map(m => m.id)),
-    mq: '', renaming: null, busy: false, err: '', more: tab !== 'main',
+    fed: members.filter(m => m.federated),   // люди с других серверов: состав у них меняется приглашением и согласием, а не выбором в списке
+    pending: r ? ((await api('GET', `/api/admin/chats/${r.id}/pending`)) || []) : [],
+    mq: '', mf: 'all', mg: '', mlimit: 60, menu: false, renaming: null, busy: false, err: '',
   };
   PK.ctx = null;
-  rmRenderForm(tab === 'topics' ? 'rm-nt' : tab === 'members' ? null : 'rm-name');
+  rmRenderForm(tab === 'topics' ? 'rm-nt' : tab === 'members' ? 'rm-mq' : 'rm-name');
   openModal('modal-room');
-  if (tab === 'members') pkOpen('room');
 }
 
 function rmAv(name, size, base64, chatId, hasAvatar) {
@@ -4504,31 +4538,90 @@ function rmAv(name, size, base64, chatId, hasAvatar) {
   return uaAv(name, size);
 }
 
+// Окно комнаты: вкладки «Основное», «Темы», «Участники». На экране всегда одна группа полей;
+// удаление и очистка истории — в меню «⋯» в шапке.
+const RM_I2 = {
+  dots: rmSvg('<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>'),
+  globe: rmSvg('<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>'),
+};
+const rmSwitch = (checked, onchange, label) => `<label class="toggle-switch" aria-label="${label}"><input type="checkbox" ${checked ? 'checked' : ''} onchange="${onchange}"><div class="toggle-track"><div class="toggle-thumb"></div></div></label>`;
+
+function rmMainHtml(f) {
+  return `<div class="rm-id"><label class="rm-avb" title="${f.avatar || f.hasAvatar ? 'Заменить аватар' : 'Загрузить аватар'}"><span id="rm-av-big">${rmAv(f.name, 64, f.avatar, f.id, f.hasAvatar)}</span><span class="rm-cam">${RM_I.img}</span><input type="file" accept="image/*" hidden onchange="rmPickAvatar(this)"></label>
+      <div class="ua-field" style="flex:1"><label for="rm-name">Название</label>
+        <div class="ua-inp"><input id="rm-name" value="${esc(f.name)}" placeholder="Например, Общая" autocomplete="off" oninput="RM.form.name = this.value; rmLiveAv(); rmFootSync()" onkeydown="if(event.key==='Enter'){event.preventDefault(); rmSave()}"></div></div></div>
+    <div class="rm-card"><div class="rm-row"><span class="rm-rt"><b>Только чтение</b><span>Писать в комнату и её темы сможет только вебхук. Реакции остаются.</span></span>${rmSwitch(f.readOnly, 'RM.form.readOnly = this.checked', 'Только чтение')}</div></div>
+    ${f.id ? '' : '<p class="rm-hint">Темы и участников можно добавить на соседних вкладках сейчас или позже.</p>'}`;
+}
+
 function rmTopicsHtml(f) {
-  return `<p class="rm-hint">Темы делят комнату на отдельные ленты. ${f.manual ? 'Порядок — как в списке тем у людей: перетащите строку за ⋮⋮.' : 'Сейчас темы идут по последнему сообщению: где писали недавно, та выше.'}</p>
-      <label class="toggle-switch rm-ro" style="gap:10px;margin-bottom:10px">
-        <input type="checkbox" ${f.manual ? 'checked' : ''} onchange="RM.form.manual = this.checked; rmRenderForm()">
-        <div class="toggle-track"><div class="toggle-thumb"></div></div>
-        <div><div style="font-size:12.5px;font-weight:600;color:var(--c-text)">Ручная сортировка</div>
-          <div class="ua-hint">Включена: порядок задаёте вы, новые сообщения его не меняют. Выключена: темы сами встают по последнему сообщению</div></div>
-      </label>
+  return `<div class="rm-card"><div class="rm-row"><span class="rm-rt"><b>Ручной порядок</b><span>${f.manual ? 'Темы идут так, как вы их расставили. Перетащите строку за ⋮⋮.' : 'Темы сами встают по последнему сообщению: где писали недавно, та выше.'}</span></span>${rmSwitch(f.manual, 'RM.form.manual = this.checked; rmRenderForm()', 'Ручной порядок')}</div></div>
       <div class="rm-list">${f.topics.map((t, i) => t.removed
         ? `<div class="rm-li rm-removed"><span class="rm-handle"></span>${rmAv(t.name, 28, t.avatar, t.id, t.hasAvatar)}<div style="flex:1;min-width:0"><div class="ux-name">${esc(t.name)}</div>
             <div class="rm-sub">Удалится при сохранении${t.msgs ? ` вместе с ${rmFmt(t.msgs)} ${uxPlural(t.msgs, 'сообщением', 'сообщениями', 'сообщениями')}` : ''}</div></div>
             <button type="button" class="btn btn-ghost btn-sm" onclick="rmTopic('restore', ${i})">Вернуть</button></div>`
         : `<div class="rm-li"${f.manual ? ` draggable="true" ondragstart="rmDrag(event, ${i})" ondragover="event.preventDefault(); this.classList.add('drop')" ondragleave="this.classList.remove('drop')" ondrop="rmDrop(event, ${i})"` : ''}>
-            ${f.manual ? '<span class="rm-handle" title="Перетащите, чтобы поменять порядок">⋮⋮</span>' : '<span class="rm-handle"></span>'}${rmAv(t.name, 28, t.avatar, t.id, t.hasAvatar)}
+            ${f.manual ? '<span class="rm-handle" title="Перетащите, чтобы поменять порядок">⋮⋮</span>' : ''}${rmAv(t.name, 28, t.avatar, t.id, t.hasAvatar)}
             <div style="flex:1;min-width:0">${f.renaming === i
               ? `<input class="rm-rename" id="rm-rn" value="${esc(t.name)}" onkeydown="if(event.key==='Enter'){event.preventDefault(); rmTopic('rename', ${i}, this.value)} if(event.key==='Escape'){event.preventDefault(); rmTopic('rename', ${i})}" onblur="rmTopic('rename', ${i}, this.value)">`
               : `<div class="ux-name">${esc(t.name)}</div><div class="rm-sub">${t.id ? (t.msgs ? rmMsgs(t.msgs) : 'сообщений пока нет') : 'новая — появится после сохранения'}</div>`}</div>
-            <label class="ux-ibtn" title="Аватар темы" style="cursor:pointer">${RM_I.img}<input type="file" accept="image/*" hidden onchange="rmTopicAvatar(${i}, this)"></label>
+            <span class="rm-acts"><label class="ux-ibtn" title="Аватар темы" style="cursor:pointer">${RM_I.img}<input type="file" accept="image/*" hidden onchange="rmTopicAvatar(${i}, this)"></label>
             <button type="button" class="ux-ibtn" aria-label="Переименовать" onclick="rmTopic('edit', ${i})">${UX_I.edit}</button>
-            <button type="button" class="ux-ibtn" aria-label="Удалить тему" onclick="rmTopic('remove', ${i})">${UX_I.trash}</button></div>`).join('')
-        || '<div class="rm-li"><span class="rm-sub">Тем пока нет — вся переписка идёт в одной ленте</span></div>'}</div>
-      <div class="rm-add"><div class="ua-inp" style="flex:1"><input id="rm-nt" placeholder="Новая тема" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); rmTopic('add')}"></div>
+            <button type="button" class="ux-ibtn" aria-label="Удалить тему" onclick="rmTopic('remove', ${i})">${UX_I.trash}</button></span></div>`).join('')
+        || '<div class="rm-empty-l">Тем нет: вся переписка идёт в одной ленте. Добавьте тему, если разговоры нужно разделить.</div>'}</div>
+      <div class="rm-add"><div class="ua-inp" style="flex:1"><input id="rm-nt" placeholder="Название новой темы" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault(); rmTopic('add')}"></div>
         <button type="button" class="btn btn-primary" onclick="rmTopic('add')">${RM_I.plus}Добавить</button></div>`;
 }
-const rmMore = id => { RM.form.more = id ? true : !RM.form.more; rmRenderForm(); if (id) fmScroll('rm-sec-' + id); };
+
+// Участники: выбор своих людей прямо во вкладке, ниже люди с других серверов
+function rmPeople(f) {
+  const q = f.mq.trim().toLowerCase();
+  return pkUsers().filter(p => (!q || p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q) || p.tag.toLowerCase().includes(q))
+    && (!f.mg || (p.tag || 'Без тега') === f.mg) && (f.mf === 'all' || f.members.has(p.id)));
+}
+function rmMembersHtml(f, r) {
+  const all = pkUsers(), found = rmPeople(f), shown = found.slice(0, f.mlimit);
+  const sel = all.filter(p => f.members.has(p.id)).length;
+  const gm = new Map(); all.forEach(p => { const g = p.tag || 'Без тега'; gm.set(g, (gm.get(g) || 0) + 1); });
+  const groups = [...gm.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
+  const others = allRooms.filter(x => x.id !== f.id);
+  const allIn = found.length > 0 && found.every(p => f.members.has(p.id));
+  return `<label class="ux-search" style="min-width:0">${UX_I.search}<input id="rm-mq" value="${esc(f.mq)}" placeholder="Имя, логин или тег" autocomplete="off" oninput="rmMem('q', this.value)" aria-label="Поиск людей"></label>
+    <div class="rm-mtools"><div class="fm-grp" role="group" aria-label="Показать"><button type="button" onclick="rmMem('f', 'all')" aria-pressed="${f.mf === 'all'}">Все<small>${all.length}</small></button><button type="button" onclick="rmMem('f', 'sel')" aria-pressed="${f.mf === 'sel'}">Выбранные<small>${sel}</small></button></div>
+      ${groups.length > 1 ? `<select aria-label="Группа" onchange="rmMem('g', this.value)"><option value="">Все группы</option>${groups.map(g => `<option value="${esc(g[0])}" ${f.mg === g[0] ? 'selected' : ''}>${esc(g[0])} · ${g[1]}</option>`).join('')}</select>` : ''}
+      ${others.length ? `<select aria-label="Добавить участников другой комнаты" onchange="rmMem('copy', this.value); this.value = ''"><option value="">Из комнаты…</option>${others.map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select>` : ''}
+      <span style="flex:1"></span><button type="button" class="rm-link" onclick="rmMem('all')" ${found.length && !allIn ? '' : 'disabled'}>Выбрать найденных (${found.length})</button><button type="button" class="rm-link" onclick="rmMem('none')" ${found.some(p => f.members.has(p.id)) ? '' : 'disabled'}>Снять</button></div>
+    <div class="rm-ml">${shown.map(p => `<button type="button" class="fm-li" aria-pressed="${f.members.has(p.id)}" onclick="rmMem('tog', ${p.id})">${p.av}<span class="n">${esc(p.name)}<small>${esc(p.sub)}</small></span>${p.tag ? `<span class="tg2">${esc(p.tag)}</span>` : ''}<span class="ck">${f.members.has(p.id) ? '✓' : ''}</span></button>`).join('') || '<div class="fm-empty">Никого не нашли. Измените запрос или фильтр</div>'}
+      ${found.length > shown.length ? `<button type="button" class="btn btn-ghost btn-sm" style="align-self:center;margin:4px 0" onclick="rmMem('more')">Показать ещё ${Math.min(60, found.length - shown.length)} из ${found.length - shown.length}</button>` : ''}</div>
+    <p class="rm-hint">Новые участники сразу видят все темы комнаты.</p>${rmRemoteHtml(f, r)}`;
+}
+async function rmMem(act, v) {
+  const f = RM.form; if (!f) return;
+  if (act === 'q') { f.mq = v; f.mlimit = 60; return rmRenderForm('rm-mq'); }
+  if (act === 'f') { f.mf = v; f.mlimit = 60; }
+  else if (act === 'g') { f.mg = v; f.mlimit = 60; }
+  else if (act === 'tog') { f.members.has(v) ? f.members.delete(v) : f.members.add(v); }
+  else if (act === 'all') rmPeople(f).forEach(p => f.members.add(p.id));
+  else if (act === 'none') rmPeople(f).forEach(p => f.members.delete(p.id));
+  else if (act === 'more') f.mlimit += 60;
+  else if (act === 'copy') {
+    const id = Number(v); if (!id) return;
+    const list = (await api('GET', `/api/admin/chats/${id}/members`)) || [];
+    list.filter(m => !m.federated).forEach(m => f.members.add(m.id));
+    toast(`Добавлены участники комнаты «${esc(allRooms.find(x => x.id === id)?.name || '')}»`, 'success');
+  }
+  rmRenderForm();
+}
+
+const rmSetTab = t => { RM.form.tab = t; RM.form.menu = false; rmRenderForm(t === 'topics' ? 'rm-nt' : t === 'members' ? 'rm-mq' : null); };
+const rmMenuToggle = () => { RM.form.menu = !RM.form.menu; rmRenderForm(); };
+function rmMenuHtml(f, r) {
+  if (!r || !f.menu) return '';
+  return `<div class="rm-scrim" onclick="rmMenuToggle()"></div><div class="rm-menu" role="menu">
+    <button type="button" role="menuitem" onclick="closeModal('modal-room'); rmClear(${r.id})">${RM_I.clear}Очистить историю…</button>
+    <button type="button" role="menuitem" class="d" onclick="closeModal('modal-room'); rmDelete([${r.id}])">${UX_I.trash}Удалить комнату…</button></div>`;
+}
+const rmMore = id => { rmSetTab(id === 't' ? 'topics' : id === 'm' ? 'members' : 'main'); };
 function rmFootSync() {
   const f = RM.form; if (!f) return;
   const miss = f.name.trim() ? [] : ['название'], n = document.getElementById('rm-note'), b = document.getElementById('rm-go');
@@ -4540,35 +4633,59 @@ function rmRenderForm(focusId) {
   if (!f || !el) return;
   const r = f.id ? allRooms.find(x => x.id === f.id) : null;
   const live = f.topics.filter(t => !t.removed).length, miss = f.name.trim() ? [] : ['название'];
-  const main = `<div class="ua-sec"><div class="ua-field"><label for="rm-name">Название</label>
-        <div class="ua-inp"><input id="rm-name" value="${esc(f.name)}" placeholder="Например, Общая" autocomplete="off" oninput="RM.form.name = this.value; rmLiveAv(); rmFootSync()" onkeydown="if(event.key==='Enter'){event.preventDefault(); rmSave()}"></div></div>
-      <div class="rm-avpick"><span id="rm-av-big">${rmAv(f.name, 56, f.avatar, f.id, f.hasAvatar)}</span>
-        <div><label class="btn btn-ghost btn-sm" style="cursor:pointer">${RM_I.img}${f.avatar || f.hasAvatar ? 'Заменить аватар' : 'Загрузить аватар'}<input type="file" accept="image/*" hidden onchange="rmPickAvatar(this)"></label>
-          <div class="ua-hint" style="margin-top:5px">Квадратная картинка, лучше от 256 px. Без аватара — буквы названия.</div></div></div>
-      <label class="toggle-switch rm-ro" style="gap:10px">
-        <input type="checkbox" ${f.readOnly ? 'checked' : ''} onchange="RM.form.readOnly = this.checked">
-        <div class="toggle-track"><div class="toggle-thumb"></div></div>
-        <div><div style="font-size:12.5px;font-weight:600;color:var(--c-text)">Только чтение</div>
-          <div class="ua-hint">Писать в комнату и её темы сможет только вебхук. Реакции остаются доступны</div></div>
-      </label></div>`;
-  const topicNames = f.topics.filter(t => !t.removed).slice(0, 3).map(t => t.name).join(', ');
-  const secs = [
-    { id: 't', t: 'Темы', su: live ? `${live} ${uxPlural(live, 'тема', 'темы', 'тем')}: ${topicNames}` : 'Одна общая лента', body: rmTopicsHtml(f) },
-    { id: 'm', t: 'Участники', su: f.members.size ? `${f.members.size} ${uxPlural(f.members.size, 'участник', 'участника', 'участников')}` : 'Пока никого',
-      body: pkSummary('room', 'Выбрать участников…') + '<p class="rm-hint">Новые участники сразу видят все темы комнаты.</p>' },
-    ...(r ? [{ id: 'z', t: 'Удаление', su: 'Комната и вся переписка', body: `<div class="rm-dz"><div><b>Удалить комнату</b><span>Вместе со всеми темами и перепиской</span></div>
-        <button type="button" class="btn btn-danger btn-sm" onclick="closeModal('modal-room'); rmDelete([${r.id}])">${UX_I.trash}Удалить</button></div>` }] : []),
-  ];
+  const tabs = [['main', 'Основное', ''], ['topics', 'Темы', live], ['members', 'Участники', f.members.size]];
+  const body = f.tab === 'topics' ? rmTopicsHtml(f) : f.tab === 'members' ? rmMembersHtml(f, r) : rmMainHtml(f);
+  const prev = el.querySelector('.rm-body'), keep = prev && prev.dataset.tab === f.tab ? prev.scrollTop : 0;
   uaRestoreFocus(() => {
     el.innerHTML = `
       <div class="ua-head"><span id="rm-head-av">${rmAv(f.name, 38, f.avatar, f.id, f.hasAvatar)}</span>
         <div><div class="ua-title">${r ? esc(r.name) : 'Новая комната'}</div><div class="ua-sub">${r ? `Создана ${fmtDate(r.created_at)} · ${rmMsgs(r.msgs)}` : 'Название, остальное можно позже'}</div></div>
-        <button type="button" class="modal-close" aria-label="Закрыть" onclick="closeModal('modal-room')">✕</button></div>
-      <div class="ua-body rm-body">${main}${fmMoreHtml('rm', f.more, 'rmMore', secs)}</div>
+        <span style="flex:1"></span>${r ? `<button type="button" class="ux-ibtn" aria-label="Ещё" aria-haspopup="menu" aria-expanded="${!!f.menu}" onclick="rmMenuToggle()">${RM_I2.dots}</button>` : ''}
+        <button type="button" class="modal-close" style="margin-left:0" aria-label="Закрыть" onclick="closeModal('modal-room')">✕</button></div>
+      <div class="rm-tabs" role="tablist">${tabs.map(t => `<button type="button" role="tab" aria-selected="${f.tab === t[0]}" onclick="rmSetTab('${t[0]}')">${t[1]}${t[2] !== '' ? `<small>${t[2]}</small>` : ''}</button>`).join('')}</div>
+      <div class="ua-body rm-body" data-tab="${f.tab}">${body}</div>
       <div class="ua-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}<span class="fm-note ${miss.length ? '' : 'ok'}" id="rm-note">${fmNote(miss)}</span>
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-room')">Отмена</button>
-        <button type="button" class="btn ux-solid" id="rm-go" ${f.busy || miss.length ? 'disabled' : ''} onclick="rmSave()">${f.busy ? 'Сохраняю…' : r ? 'Сохранить' : 'Создать'}</button></div>${pkSheet()}`;
+        <button type="button" class="btn ux-solid" id="rm-go" ${f.busy || miss.length ? 'disabled' : ''} onclick="rmSave()">${f.busy ? 'Сохраняю…' : r ? 'Сохранить' : 'Создать'}</button></div>${rmMenuHtml(f, r)}`;
   }, focusId);
+  const nb = el.querySelector('.rm-body'); if (nb && keep) nb.scrollTop = keep;
+}
+
+// Люди с других серверов: приглашение по адресу, ответ они дают сами
+function rmRemoteHtml(f, r) {
+  const row = (m, fn, tip, sub, pill) => `<div class="rm-li">${avHtml(m.display_name, 30, 8, m.id, false, true)}
+    <div style="flex:1;min-width:0"><div class="ux-name">${esc(m.display_name)}${pill || ''}</div><div class="rm-sub rm-addr">${sub}</div></div>
+    <button type="button" class="ux-ibtn" aria-label="${tip}: ${esc(m.display_name)}" onclick="${fn}(${m.id})">${RM_I.x}</button></div>`;
+  const head = `<div class="rm-sect"><span class="rm-glb">${RM_I2.globe}</span>С других серверов<span style="flex:1"></span>${r ? `<small>${f.fed.length + f.pending.length}</small>` : ''}</div>`;
+  if (!r) return `<div>${head}<p class="rm-hint" style="margin-top:6px">Приглашать людей с других серверов можно после создания комнаты.</p></div>`;
+  const rows = f.fed.map(m => row(m, 'rmRemoteKick', 'Убрать из комнаты', esc('@' + m.username))).join('')
+    + f.pending.map(m => row(m, 'rmRemoteCancel', 'Отменить приглашение', esc('@' + m.username), ' <span class="rm-wait">ждёт ответа</span>')).join('');
+  return `<div>${head}
+    ${rows ? `<div class="rm-list" style="margin-top:8px">${rows}</div>` : ''}
+    <div class="rm-add" style="margin-top:8px"><div class="ua-inp" style="flex:1"><input id="rm-addr" placeholder="@сервер:логин" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Адрес человека с другого сервера" onkeydown="if(event.key==='Enter'){event.preventDefault(); rmInviteAddr()}"></div><button type="button" class="btn btn-primary" onclick="rmInviteAddr()">Пригласить</button></div>
+    <p class="rm-hint" style="margin-top:6px">Человек получит приглашение и сам решит, вступать ли: до согласия он не виден участникам. Нужно соединение с его сервером (раздел «Федерации»).</p></div>`;
+}
+async function rmInviteAddr() {
+  const f = RM.form, v = (document.getElementById('rm-addr')?.value || '').trim();
+  if (!f?.id) return;
+  if (!v) { toast('Введите адрес вида @сервер:логин', 'error'); return; }
+  const r = await api('POST', `/api/admin/chats/${f.id}/invite`, { address: v });
+  if (!r || r.error) { toast(r?.error || 'Не удалось пригласить', 'error'); return; }
+  toast(r.member ? `«${esc(r.name)}» уже в комнате` : `Приглашение отправлено: «${esc(r.name)}»`, 'success');
+  f.pending = (await api('GET', `/api/admin/chats/${f.id}/pending`)) || [];
+  rmRenderForm('rm-addr');
+}
+async function rmRemoteKick(userId) {
+  const f = RM.form;
+  await api('DELETE', `/api/admin/chats/${f.id}/members/${userId}`);
+  f.fed = f.fed.filter(m => m.id !== userId); f.members.delete(userId); f.initialMembers.delete(userId);
+  toast('Человек убран из комнаты', 'success'); rmRenderForm();
+}
+async function rmRemoteCancel(userId) {
+  const f = RM.form;
+  await api('DELETE', `/api/admin/chats/${f.id}/members/${userId}`);
+  f.pending = f.pending.filter(m => m.id !== userId);
+  toast('Приглашение отменено', 'success'); rmRenderForm();
 }
 
 function rmLiveAv() {
@@ -5582,10 +5699,22 @@ function chRenderMembers() {
       ${(CH.pending || []).length ? `<div class="rm-hint" style="margin-top:12px">Ожидают ответа (приглашены с другого сервера)</div><div class="rm-list">${CH.pending.map(m => `<div class="rm-li">${avHtml(m.display_name, 30, 8, m.id, false, true)}
         <div style="flex:1;min-width:0"><div class="ux-name">${esc(m.display_name)}</div><div class="rm-sub">@${esc(m.username)}</div></div>
         <button type="button" class="ux-ibtn" aria-label="Отменить приглашение: ${esc(m.display_name)}" onclick="chCancelInvite(${m.id})">${RM_I.x}</button></div>`).join('')}</div>` : ''}
+      ${direct ? '' : `<div class="rm-hint" style="margin-top:14px">Пригласить человека с другого сервера</div>
+        <div class="fd-inl"><div class="ua-inp"><input id="cm-addr" placeholder="@сервер:логин" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Адрес человека с другого сервера" onkeydown="if(event.key==='Enter')chInviteAddr()"></div><button class="btn btn-ghost btn-sm" onclick="chInviteAddr()">Пригласить</button></div>
+        <p class="rm-hint">Человек получит приглашение и сам решит, вступать ли: до согласия он не виден участникам и не получает сообщений. Нужно подключённое соединение с его сервером.</p>`}
       ${direct ? '<p class="rm-hint">В личном чате участников не меняют. Если переписка больше не нужна — удалите чат.</p>' : ''}
     </div>
     <div class="ua-foot"><button type="button" class="btn btn-danger btn-sm" onclick="chDelete([${c.id}])">${UX_I.trash}Удалить чат</button><span class="ux-grow"></span>
       <button type="button" class="btn btn-ghost" onclick="closeModal('modal-chat-members')">Готово</button></div>`;
+}
+async function chInviteAddr() {
+  const inp = document.getElementById('cm-addr'), v = (inp?.value || '').trim();
+  if (!v) { toast('Введите адрес вида @сервер:логин', 'error'); return; }
+  const r = await api('POST', `/api/admin/chats/${CH.openId}/invite`, { address: v });
+  if (!r || r.error) { toast(r?.error || 'Не удалось пригласить', 'error'); return; }
+  toast(r.member ? `«${esc(r.name)}» уже в чате` : `Приглашение отправлено: «${esc(r.name)}»`, 'success');
+  CH.pending = (await api('GET', `/api/admin/chats/${CH.openId}/pending`)) || [];
+  chRenderMembers();
 }
 async function chCancelInvite(userId) {
   await api('DELETE', `/api/admin/chats/${CH.openId}/members/${userId}`);

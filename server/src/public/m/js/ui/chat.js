@@ -161,7 +161,7 @@ B.ui.chat = (function () {
       return { t: p ? B.contacts.peerSub(p) : 'Личный чат', live: st === 'online' };
     }
     if (ty.length) return { t: B.typing.label(ty, true), live: 1 };
-    if (chat.invite) return { t: 'Приглашение в группу' };
+    if (chat.invite) return { t: 'Приглашение в ' + B.msgs.fedKind(chat) };
     if (B.msgs.fedOffline(chat)) return { t: 'Федеративная группа · нет связи', warn: 1 };
     var o = (B.S.chatOnline || {})[chat.id], cnt = o ? 'в сети ' + o.online + ' из ' + o.total : (chat.members ? chat.members.length : 0) + ' участников';
     return { t: chat.type === 'room' && !chat.parent_id ? 'Комната' + (o ? ' · ' + cnt : '') : cnt };

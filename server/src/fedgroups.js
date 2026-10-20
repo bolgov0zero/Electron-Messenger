@@ -88,8 +88,17 @@ function rosterOf(chatId) {
 function chatAvatarV(chatId) {
   try { return String(Math.floor(fs.statSync(path.join(AVATAR_DIR, `chat_${chatId}.jpg`)).mtimeMs)); } catch { return ''; }
 }
-const stateOf = chat => ({ name: chat.name || '', av: chatAvatarV(chat.id), roster: rosterOf(chat.id) });
+const stateOf = chat => {
+  const st = { name: chat.name || '', av: chatAvatarV(chat.id), roster: rosterOf(chat.id) };
+  if (chat.type === 'room') {
+    st.ro = chat.read_only ? 1 : 0; st.tm = chat.topics_manual ? 1 : 0;
+    st.topics = topicsOf(chat.id).map(t => ({ id: t.id, n: t.name || '', p: t.position || 0 }));
+  }
+  return st;
+};
 function sendState(chat, onlyPeer) {
+  if (chat?.parent_id) chat = chatById(chat.parent_id);   // состав и темы описывает комната, а не тема
+  if (!chat) return;
   const st = stateOf(chat);
   (onlyPeer ? [onlyPeer] : hostedPeers(chat.id)).forEach(p => F().enqueue(p.id, homeEvent(chat, { k: 'gstate', ...st })));
 }
@@ -99,6 +108,9 @@ function realLocalMembers(chatId) {
 function notifyReload(chatId) {
   realLocalMembers(chatId).forEach(id => wsm().sendTo(id, { type: 'reload_chats' }));
 }
+// Темы комнаты — отдельные чаты с parent_id
+const topicsOf = chatId => db.prepare('SELECT * FROM chats WHERE parent_id = ? ORDER BY position, id').all(chatId);
+const treeIds = chatId => [chatId, ...topicsOf(chatId).map(t => t.id)];
 function purgeFiles(chatId) {
   db.prepare('SELECT attachment FROM messages WHERE chat_id = ? AND attachment IS NOT NULL').all(chatId).forEach(r => {
     try {
@@ -112,9 +124,14 @@ function dropMirrorIfEmpty(chat) {
   if (!chat || !chat.fed_instance) return;
   const left = realLocalMembers(chat.id).length + db.prepare('SELECT COUNT(*) c FROM chat_invites WHERE chat_id = ?').get(chat.id).c;
   if (left) return;
-  purgeFiles(chat.id);
-  db.prepare('DELETE FROM chats WHERE id = ?').run(chat.id);
-  forget(chat.id);
+  purgeTree(chat.id);
+}
+// Чат вместе с темами: файлы с диска, строки из базы (темы уходят каскадом), счётчики из памяти
+function purgeTree(chatId) {
+  const ids = treeIds(chatId);
+  ids.forEach(purgeFiles);
+  db.prepare('DELETE FROM chats WHERE id = ?').run(chatId);
+  ids.forEach(forget);
 }
 
 // ─────────────────────────── сообщения ───────────────────────────
@@ -131,8 +148,8 @@ function msgEvent(m, gidOf) {
   if (!m.fed_uid) db.prepare('UPDATE messages SET fed_uid = ? WHERE id = ?').run(uid, m.id);
   const ev = { k: 'gmsg', uid, text: m.text || '', ts: m.sent_at };
   if (u.is_bot === 1) {
-    if (u.username !== '__system__') return null;   // сообщения вебхуков и ботов пока не пересылаем
-    ev.sys = m.system_kind || 'info';
+    if (u.username === '__system__') ev.sys = m.system_kind || '';   // системное: «вступил», объявление
+    else { ev.bot = m.sender_id; ev.fn = u.display_name; }          // вебхук комнаты: у гостя появится бот с этим именем
   } else if (u.is_bot === 2) {
     ev.fi = u.fed_instance; ev.fl = u.fed_login; ev.fn = u.display_name; ev.av = u.fed_avatar_v || '';   // чужое сообщение, которое хозяин досылает гостю
   } else { ev.fi = me.id; ev.fl = u.username; ev.fn = u.display_name; ev.av = F().avatarVersion(m.sender_id); }
@@ -210,6 +227,19 @@ function locate(peer, ev) {
   }
   return null;
 }
+const isReadOnly = chat => !!(chat.read_only || (chat.parent_id && chatById(chat.parent_id)?.read_only));
+// Вебхук комнаты у гостя: бот с именем и номером из комнаты хозяина
+function botFor(peer, botId, name) {
+  if (!botId) return null;
+  const username = `fedbot:${peer.instance_id}:${botId}`;
+  let u = db.prepare('SELECT id, display_name FROM users WHERE username = ?').get(username);
+  if (!u) {
+    const r = db.prepare("INSERT INTO users (username, password_hash, display_name, is_bot, workspace_id) VALUES (?, '', ?, 1, 0)").run(username, name || 'Бот');
+    return { id: r.lastInsertRowid };
+  }
+  if (name && name !== u.display_name) db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(name, u.id);
+  return { id: u.id };
+}
 function rejectMsg(peer, ev, reason) { F().enqueue(peer.id, { k: 'rej', uid: ev.uid, reason }); }
 
 async function recvMsg(peer, ev) {
@@ -223,16 +253,22 @@ async function recvMsg(peer, ev) {
   }
   const me = F().identity().id;
   let sender, sys = null;
-  if (ev.sys) {
+  if (typeof ev.sys === 'string') {
     if (home) return;   // системные сообщения придумывает только хозяин
-    sender = { id: systemUserId() }; sys = str(ev.sys, 30) || 'info';
+    sender = { id: systemUserId() }; sys = str(ev.sys, 30) || null;
     if (!sender.id) return;
+  } else if (ev.bot !== undefined) {
+    if (home) return;   // вебхуки живут только у хозяина
+    sender = botFor(peer, Math.floor(Number(ev.bot)), str(ev.fn, 80));
+    if (!sender) return;
   } else {
     const fi = str(ev.fi, 32), fl = str(ev.fl, 64);
     if (home) {
       if (fi !== peer.instance_id) return;
       sender = F().remoteUser(peer, fl);
       if (!sender || !isMember(chat.id, sender.id)) return rejectMsg(peer, ev, 'not_member');
+      // Комната «только для чтения» (и её темы): писать может только вебхук
+      if (isReadOnly(chat)) return rejectMsg(peer, ev, 'read_only');
     } else {
       if (fi === me) return;
       sender = shadowVia(peer, fi, fl, str(ev.fn, 80), ev.av === undefined ? undefined : str(ev.av, 40));
@@ -364,7 +400,7 @@ function invite(chat, inviterId, shadow) {
   if (!limitOk(invTimes, peer.id, 'fed_invites_per_hour')) return { error: 'Слишком много приглашений на этот сервер за час. Попробуйте позже.' };
   db.prepare('INSERT INTO chat_invites (chat_id, user_id, invited_by) VALUES (?, ?, ?)').run(chat.id, shadow.id, inviterId);
   const u = db.prepare('SELECT username, display_name FROM users WHERE id = ?').get(inviterId);
-  F().enqueue(peer.id, homeEvent(chat, { k: 'ginv', name: chat.name || '', to: shadow.fed_login, from: u.username, fn: u.display_name, av: F().avatarVersion(inviterId), ts: Math.floor(Date.now() / 1000) }));
+  F().enqueue(peer.id, homeEvent(chat, { k: 'ginv', kind: chat.type === 'room' ? 'room' : 'group', name: chat.name || '', to: shadow.fed_login, from: u.username, fn: u.display_name, av: F().avatarVersion(inviterId), ts: Math.floor(Date.now() / 1000) }));
   return { ok: true, pending: true };
 }
 function cancelInvite(chat, shadow) {
@@ -387,10 +423,11 @@ function recvInvite(peer, ev) {
   let chat = mirrorOf(peer.instance_id, gid);
   if (chat && (isMember(chat.id, local.id) || hasInvite(chat.id, local.id))) return;
   if (!limitOk(inTimes, peer.id, 'fed_invites_per_hour')) return declineBack(peer, ev, local.username);
-  const name = str(ev.name, 100).trim() || 'Группа';
+  const kind = ev.kind === 'room' ? 'room' : 'group';
+  const name = str(ev.name, 100).trim() || (kind === 'room' ? 'Комната' : 'Группа');
   db.transaction(() => {
     if (!chat) {
-      const r = db.prepare("INSERT INTO chats (type, name, created_by, fed_instance, fed_chat_id) VALUES ('group', ?, ?, ?, ?)").run(name, inviter.id, peer.instance_id, gid);
+      const r = db.prepare("INSERT INTO chats (type, name, created_by, fed_instance, fed_chat_id) VALUES (?, ?, ?, ?, ?)").run(kind, name, inviter.id, peer.instance_id, gid);
       chat = chatById(r.lastInsertRowid);
     }
     db.prepare('INSERT OR IGNORE INTO chat_invites (chat_id, user_id, invited_by) VALUES (?, ?, ?)').run(chat.id, local.id, inviter.id);
@@ -398,7 +435,7 @@ function recvInvite(peer, ev) {
   wsm().sendTo(local.id, { type: 'reload_chats' });
   try {
     const push = require('./routes/push');
-    if (push.hasPushSubscription(local.id)) push.sendPushToUser(local.id, { title: name, body: `${inviter.display_name} приглашает вас в группу`, chatId: chat.id });
+    if (push.hasPushSubscription(local.id)) push.sendPushToUser(local.id, { title: name, body: `${inviter.display_name} приглашает вас в ${kind === 'room' ? 'комнату' : 'группу'}`, chatId: chat.id });
   } catch {}
 }
 function recvInviteCancel(peer, ev) {
@@ -428,10 +465,10 @@ async function reqJoin(peer, f) {
     if (!hasInvite(chat.id, sh.id)) throw new Error('no_invite');
     db.transaction(() => {
       db.prepare('DELETE FROM chat_invites WHERE chat_id = ? AND user_id = ?').run(chat.id, sh.id);
-      db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)').run(chat.id, sh.id);
+      treeIds(chat.id).forEach(id => db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)').run(id, sh.id));   // в комнате — и в её темы
     })();
     sendState(chat);
-    require('./announcements').sendSystemMessage(chat.id, `${sh.display_name} вступил(а) в группу`, 'member_add');
+    require('./announcements').sendSystemMessage(chat.id, `${sh.display_name} вступил(а) в ${chat.type === 'room' ? 'комнату' : 'группу'}`, 'member_add');
     notifyReload(chat.id);
     touch(chat.id);
   }
@@ -474,6 +511,13 @@ function applyState(peer, chat, st) {
   const name = str(st.name, 100).trim();
   if (name && name !== chat.name) db.prepare('UPDATE chats SET name = ? WHERE id = ?').run(name, chat.id);
   if (st.av !== undefined && str(st.av, 40) !== String(chat.fed_avatar_v || '')) fetchChatAvatar(peer, chat, str(st.av, 40));
+  if (st.ro !== undefined && chat.type === 'room') {
+    const ro = st.ro ? 1 : 0, tm = st.tm ? 1 : 0;
+    if (ro !== (chat.read_only ? 1 : 0) || tm !== (chat.topics_manual ? 1 : 0)) {
+      db.prepare('UPDATE chats SET read_only = ?, topics_manual = ? WHERE id = ?').run(ro, tm, chat.id);
+      realLocalMembers(chat.id).forEach(id => wsm().sendTo(id, { type: 'chat_updated', chat_id: chat.id, name: name || chat.name, read_only: !!ro, topics_manual: !!tm }));
+    }
+  }
   const want = new Set();
   (Array.isArray(st.roster) ? st.roster.slice(0, 1000) : []).forEach(e => {
     const i = str(e?.i, 32), l = str(e?.l, 64);
@@ -486,7 +530,32 @@ function applyState(peer, chat, st) {
     have.forEach(id => { if (!want.has(id)) db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(chat.id, id); });
     want.forEach(id => { if (!have.has(id)) db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)').run(chat.id, id); });
   })();
+  if (chat.type === 'room' && Array.isArray(st.topics)) syncTopics(peer, chat, st.topics);
   notifyReload(chat.id);
+}
+// Темы зеркала комнаты повторяют темы хозяина; их участники — те же, что у комнаты
+function syncTopics(peer, room, topics) {
+  const keep = new Set();
+  db.transaction(() => {
+    topics.slice(0, 200).forEach(t => {
+      const tid = Math.floor(Number(t?.id)); if (!tid) return;
+      const name = str(t.n, 100) || 'Тема', pos = Math.floor(Number(t.p)) || 0;
+      let c = mirrorOf(peer.instance_id, tid);
+      if (!c) {
+        const r = db.prepare("INSERT INTO chats (type, name, parent_id, position, fed_instance, fed_chat_id) VALUES ('room', ?, ?, ?, ?, ?)").run(name, room.id, pos, peer.instance_id, tid);
+        c = chatById(r.lastInsertRowid);
+      } else if (c.name !== name || c.position !== pos || c.parent_id !== room.id) {
+        db.prepare('UPDATE chats SET name = ?, position = ?, parent_id = ? WHERE id = ?').run(name, pos, room.id, c.id);
+      }
+      keep.add(c.id);
+    });
+  })();
+  topicsOf(room.id).filter(t => t.fed_instance === peer.instance_id && !keep.has(t.id)).forEach(t => { purgeFiles(t.id); db.prepare('DELETE FROM chats WHERE id = ?').run(t.id); forget(t.id); });
+  const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(room.id).map(r => r.user_id);
+  db.transaction(() => keep.forEach(tid => {
+    members.forEach(uid => db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)').run(tid, uid));
+    db.prepare(`DELETE FROM chat_members WHERE chat_id = ? AND user_id NOT IN (${members.map(() => '?').join(',') || 'NULL'})`).run(tid, ...members);
+  }))();
 }
 function recvState(peer, ev) {
   if (ev.h !== peer.instance_id) return;
@@ -498,9 +567,10 @@ function recvKick(peer, ev) {
   if (ev.h !== peer.instance_id) return;
   const chat = mirrorOf(peer.instance_id, Math.floor(Number(ev.gid))), local = F().findLocalUser(str(ev.to, 64));
   if (!chat || !local) return;
-  db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(chat.id, local.id);
+  const ids = treeIds(chat.id);
+  ids.forEach(id => db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(id, local.id));
   db.prepare('DELETE FROM chat_invites WHERE chat_id = ? AND user_id = ?').run(chat.id, local.id);
-  wsm().sendTo(local.id, { type: 'chat_deleted', chat_id: chat.id });
+  ids.forEach(id => wsm().sendTo(local.id, { type: 'chat_deleted', chat_id: id }));
   dropMirrorIfEmpty(chat);
   if (chatById(chat.id)) notifyReload(chat.id);
 }
@@ -509,10 +579,9 @@ function recvDrop(peer, ev) {
   const chat = mirrorOf(peer.instance_id, Math.floor(Number(ev.gid)));
   if (!chat) return;
   const ids = realLocalMembers(chat.id).concat(db.prepare('SELECT user_id FROM chat_invites WHERE chat_id = ?').all(chat.id).map(r => r.user_id));
-  purgeFiles(chat.id);
-  db.prepare('DELETE FROM chats WHERE id = ?').run(chat.id);
-  forget(chat.id);
-  ids.forEach(id => wsm().sendTo(id, { type: 'chat_deleted', chat_id: chat.id }));
+  const tree = treeIds(chat.id);
+  purgeTree(chat.id);
+  ids.forEach(id => tree.forEach(cid => wsm().sendTo(id, { type: 'chat_deleted', chat_id: cid })));
 }
 // Гость вышел сам (хозяин)
 function recvLeave(peer, ev) {
@@ -520,9 +589,9 @@ function recvLeave(peer, ev) {
   if (!at || !at.home) return;
   const sh = F().remoteUser(peer, str(ev.login, 64));
   if (!sh || !isMember(at.chat.id, sh.id)) return;
-  db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(at.chat.id, sh.id);
+  treeIds(at.chat.id).forEach(id => db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(id, sh.id));
   sendState(at.chat);
-  require('./announcements').sendSystemMessage(at.chat.id, `${sh.display_name} покинул(а) группу`, 'member_remove');
+  require('./announcements').sendSystemMessage(at.chat.id, `${sh.display_name} покинул(а) ${at.chat.type === 'room' ? 'комнату' : 'группу'}`, 'member_remove');
   notifyReload(at.chat.id);
   touch(at.chat.id);
 }
@@ -533,7 +602,7 @@ function removeRemote(chat, shadow) {
   if (cancelInvite(chat, shadow)) return;
   if (!isMember(chat.id, shadow.id)) return;
   const peer = F().peerByInstance(shadow.fed_instance);
-  db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(chat.id, shadow.id);
+  treeIds(chat.id).forEach(id => db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(id, shadow.id));
   if (peer) F().enqueue(peer.id, homeEvent(chat, { k: 'gkick', to: shadow.fed_login }));
   sendState(chat);
   touch(chat.id);
@@ -840,7 +909,7 @@ function inviteInfo(chatId, userId) {
 module.exports = {
   PROTO, isFederated, isMirror, mirrorOnline, hostedPeers, involvedPeers,
   invite, cancelInvite, removeRemote, afterRename, dropAll, leaveMirror, accept, decline, dropMirrorIfEmpty, sendState,
-  onMessage, onEdit, onDelete, onReact, onTyping, onPin, onStatus, chatAvatarFile, handle, handleReq, sendCaps, onLink,
+  onMessage, onEdit, onDelete, onReact, onTyping, onPin, onStatus, treeIds, chatAvatarFile, handle, handleReq, sendCaps, onLink,
   watch, unwatch, onUserStatus, touch,
   pendingFor, inviteInfo,
 };

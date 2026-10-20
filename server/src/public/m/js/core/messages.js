@@ -120,7 +120,10 @@ B.msgs = {
   // «Сообщений без ответа» (люди из разных пространств): сервер отдаёт dm_limit = { used, max }
   dmLocked: function (chat) { return !!(chat && chat.dm_limit && chat.dm_limit.used >= chat.dm_limit.max); },
   // Группа с другого сервера (зеркало): без связи с сервером писать в неё нельзя
-  fedOffline: function (chat) { return !!(chat && chat.fed_mirror && !chat.invite && chat.fed_online === false); },
+  // У темы состояние связи общее с комнатой, в которой она лежит
+  fedRoot: function (chat) { return (chat && chat.parent_id && B.find(chat.parent_id)) || chat; },
+  fedOffline: function (chat) { var c = B.msgs.fedRoot(chat); return !!(c && c.fed_mirror && !c.invite && c.fed_online === false); },
+  fedKind: function (chat) { return chat && chat.type === 'room' ? 'комнату' : 'группу'; },
   locked: function (chat) { return B.msgs.isReadOnly(chat) || B.msgs.dmLocked(chat) || !!(chat && chat.invite) || B.msgs.fedOffline(chat) || (!!chat && B.secret.locked(chat.id)); },
   note: function (chat) {
     if (B.msgs.isReadOnly(chat)) return { text: 'Доступно только для чтения', soft: false };

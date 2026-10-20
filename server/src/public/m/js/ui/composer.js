@@ -134,7 +134,7 @@ B.ui.composer = (function () {
     var ib = comp(el).querySelector('.invbar'), from = chat.invite && chat.invite.from_name;
     row.classList.toggle('hid', !!chat.invite);
     if (chat.invite) {
-      if (ib.hidden || !ib.firstChild) ib.innerHTML = '<div class="it">' + (from ? '<b>' + esc(from) + '</b> приглашает вас в группу' : 'Вас приглашают в группу') + '. Пока вы не вступили, участников и сообщений не видно.</div>' +
+      if (ib.hidden || !ib.firstChild) ib.innerHTML = '<div class="it">' + (from ? '<b>' + esc(from) + '</b> приглашает вас в ' + B.msgs.fedKind(chat) : 'Вас приглашают в ' + B.msgs.fedKind(chat)) + '. Пока вы не вступили, участников и сообщений не видно.</div>' +
         '<div class="ib"><button class="bd" data-k="invdecl">Отклонить</button><button class="bj" data-k="invjoin">Вступить</button></div>';
       ib.hidden = false;
     } else { ib.hidden = true; ib.innerHTML = ''; }
