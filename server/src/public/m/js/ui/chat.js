@@ -153,7 +153,7 @@ B.ui.chat = (function () {
     return h;
   }
   function feed(chat, cache) {
-    var M = B.msgs, h = '', lastDay = '', divIdx = M.unreadAtOpen > 0 && M.unreadAtOpen <= cache.length ? cache.length - M.unreadAtOpen : -1;
+    var M = B.msgs, h = '', lastDay = '', divIdx = M.unreadFromId ? cache.findIndex(function (x) { return x.id === M.unreadFromId; }) : -1;
     if (!cache.length) return '<div class="stub-note">Сообщений пока нет</div>';
     cache.forEach(function (m, i) {
       var day = new Date(m.sent_at * 1000).toDateString();

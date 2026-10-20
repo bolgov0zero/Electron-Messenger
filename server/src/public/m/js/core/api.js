@@ -38,7 +38,7 @@ B.api = async function (method, path, body) {
       return null;
     }
     return res.json();
-  } catch (e) { return null; }
+  } catch (e) { B.S._netFail = true; return null; }
 };
 
 B.auth = {
@@ -76,10 +76,12 @@ B.auth = {
     var s = B.session.load();
     if (!s || !s.token) return false;
     B.S.token = s.token; B.S.user = s.user;
-    var ok = await Promise.race([B.api('GET', '/users/presence'), new Promise(function (r) { setTimeout(function () { r(null); }, 5000); })]);
-    // Нет ответа (связи нет): всё равно входим по сохранённой сессии — список чатов берётся из памяти устройства.
-    // Если сервер ответил 401, api() уже вышел и токена нет
-    return !!B.S.token;
+    // Сервер ответил отказом (токен недействителен) — на вход. Не ответил совсем (нет связи, таймаут) — входим по сохранённой
+    // сессии: список чатов берётся из памяти устройства
+    B.S._netFail = false;
+    var ok = await Promise.race([B.api('GET', '/users/presence'), new Promise(function (r) { setTimeout(function () { r('timeout'); }, 5000); })]);
+    if (!B.S.token) return false;
+    return ok !== null || B.S._netFail || ok === 'timeout';
   },
 
   logout: function () {

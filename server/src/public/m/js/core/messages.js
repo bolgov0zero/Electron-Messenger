@@ -7,7 +7,7 @@
 //   msgs:preview {chatId}           — до ответа сервера в B.msgs.cache положен кэшированный хвост переписки (лёгкая первая отрисовка)
 B.msgs = {
   PAGE: 100,
-  chatId: null, cache: [], unreadAtOpen: 0, hasMoreOlder: false, loadingOlder: false, _applied: {},
+  chatId: null, cache: [], unreadAtOpen: 0, unreadFromId: null, hasMoreOlder: false, loadingOlder: false, _applied: {},
 
   // Хвост переписки (последние сообщения) по чатам: чат открывается сразу с сообщениями, а не с пустой страницей,
   // пока идёт запрос. Хранится на устройстве (localStorage), нужен и для открытия чата без связи; стирается при выходе. Скрытые чаты не храним: их ещё надо расшифровать
@@ -33,7 +33,7 @@ B.msgs = {
   // Открыть чат: окно последних сообщений либо окно вокруг aroundId (переход из поиска или цитаты)
   open: async function (chatId, aroundId) {
     var M = B.msgs, S = B.S;
-    M.chatId = chatId; S.activeChatId = chatId; M.cache = []; M.hasMoreOlder = false; M._applied = {};
+    M.chatId = chatId; S.activeChatId = chatId; M.cache = []; M.hasMoreOlder = false; M._applied = {}; M.unreadFromId = null; M.unreadAtOpen = 0;
     var chat = B.find(chatId); if (!chat) return;
     // Приглашение в группу с другого сервера: сообщений до вступления нет, историю не запрашиваем
     if (chat.invite) { M.cache = []; M._preview = false; M.watch(chat); B.bus.emit('msgs:opened', { chatId: chatId }); return; }
@@ -50,6 +50,10 @@ B.msgs = {
     if (!data || M.chatId !== chatId) return;
     M.cache = data.messages || []; M.hasMoreOlder = !!data.hasMore; M._preview = false; M.restoreOutbox(chatId);
     M.unreadAtOpen = chat.unread || 0;
+    // Плашка «Новые сообщения» привязана к конкретному сообщению: если считать от конца ленты, она ползла бы вниз
+    // при каждом новом сообщении, в том числе при своём
+    var fu = data.first_unread_id;
+    M.unreadFromId = fu && M.cache.some(function (m) { return m.id === fu; }) ? fu : (M.unreadAtOpen > 0 && M.unreadAtOpen <= M.cache.length ? M.cache[M.cache.length - M.unreadAtOpen].id : null);
     chat.unread = 0; chat.unread_mentions = 0;
     if (chat.parent_id) {
       var topic = (S.topics[chat.parent_id] || []).find(function (t) { return t.id === chatId; });

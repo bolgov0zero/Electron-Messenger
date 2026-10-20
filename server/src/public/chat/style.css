@@ -1151,9 +1151,9 @@ input:not([type]) {
 /* IRC mode — shown in irc-meta */
 .irc-meta .status-sent      { color: var(--muted); opacity: .45; }
 .irc-meta .status-delivered { color: var(--muted); }
-.irc-meta .status-read      { color: var(--accent); }
+.irc-meta .status-read      { color: var(--tick-read, var(--accent)); }
 .irc-meta .status-part      { color: var(--muted); }
-.status-part .tk1 { stroke: var(--accent); }
+.status-part .tk1 { stroke: var(--tick-read, var(--accent)); }
 
 /* ── IRC VIEW ── */
 .irc-msg {
