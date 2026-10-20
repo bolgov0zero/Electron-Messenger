@@ -430,11 +430,17 @@ function recvInvite(peer, ev) {
     }
     db.prepare('INSERT OR IGNORE INTO chat_invites (chat_id, user_id, invited_by) VALUES (?, ?, ?)').run(chat.id, local.id, inviter.id);
   })();
-  wsm().sendTo(local.id, { type: 'reload_chats' });
-  try {
-    const push = require('./routes/push');
-    if (push.hasPushSubscription(local.id)) push.sendPushToUser(local.id, { title: name, body: `${inviter.display_name} приглашает вас в ${kind === 'room' ? 'комнату' : 'группу'}`, chatId: chat.id });
-  } catch {}
+  const notify = () => {
+    wsm().sendTo(local.id, { type: 'reload_chats' });
+    try {
+      const push = require('./routes/push');
+      if (push.hasPushSubscription(local.id)) push.sendPushToUser(local.id, { title: name, body: `${inviter.display_name} приглашает вас в ${kind === 'room' ? 'комнату' : 'группу'}`, chatId: chat.id });
+    } catch {}
+  };
+  // Приглашающий и приглашённый в одном общем пространстве: человек с другого сервера для него как свой, вступает без подтверждения.
+  // Если не получилось (нет связи), остаётся обычное приглашение
+  if (spaces.shares(local.id, inviter.id)) { accept(chat, local.id).then(r => { if (r.error) notify(); }, notify); return; }
+  notify();
 }
 function recvInviteCancel(peer, ev) {
   if (ev.h !== peer.instance_id) return;

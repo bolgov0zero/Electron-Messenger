@@ -23,7 +23,9 @@ function wsOf(userId) { return q.user.get(userId)?.workspace_id || DEFAULT_WS; }
 const qWs = db.prepare('SELECT workspace_id FROM user_workspaces WHERE user_id = ? ORDER BY workspace_id');
 function wsIdsOf(userId) {
   const ids = qWs.all(userId).map(r => r.workspace_id);
-  return ids.length ? ids : [wsOf(userId)];
+  if (ids.length) return ids;
+  // У человека с другого сервера пространств нет, пока он не состоит в общем: подставлять «основное» нельзя, иначе он «делит» его со всеми
+  return q.user.get(userId)?.is_bot === FED ? [] : [wsOf(userId)];
 }
 // Общие пространства двух людей (номера)
 function sharedIds(a, b) {

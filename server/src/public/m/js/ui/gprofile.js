@@ -192,7 +192,7 @@ B.ui.gprofile = (function () {
     var ex = {}, pend = {}; (chat.members || []).forEach(function (m) { ex[m.id] = 1; }); (chat.pending || []).forEach(function (m) { pend[m.id] = 1; });
     var group = chat.type === 'group'; q = (q || '').trim().toLowerCase();
     return B.S.contacts.filter(function (u) {
-      return !ex[u.id] && !pend[u.id] && (!u.federated || (group && u.contact)) && (!q || (u.display_name || '').toLowerCase().indexOf(q) >= 0 || (u.username || '').toLowerCase().indexOf(q) >= 0);
+      return !ex[u.id] && !pend[u.id] && (!u.federated || (group && (u.contact || u.rel === 'ws'))) && (!q || (u.display_name || '').toLowerCase().indexOf(q) >= 0 || (u.username || '').toLowerCase().indexOf(q) >= 0);
     });
   }
   function addSheet(el) {
@@ -200,7 +200,7 @@ B.ui.gprofile = (function () {
     var list = function () {
       return available(chat, q).map(function (u) {
         var on = sel.indexOf(u.id) >= 0;
-        return '<button class="crow2" data-a="toggle" data-id="' + u.id + '">' + B.avatar.user(u.id, u.display_name, 40, true, !!u.federated) + '<div class="t"><b>' + esc(u.display_name) + '</b><span>' + esc(u.federated ? B.contacts.fedAddr(u) + ' · после согласия' : '@' + (u.username || '')) + '</span></div><span class="pick' + (on ? ' on' : '') + '">' + (on ? ic('check', 15, 3) : '') + '</span></button>';
+        return '<button class="crow2" data-a="toggle" data-id="' + u.id + '">' + B.avatar.user(u.id, u.display_name, 40, true, !!u.federated) + '<div class="t"><b>' + esc(u.display_name) + '</b><span>' + esc(u.federated ? B.contacts.fedAddr(u) + (u.rel === 'ws' ? '' : ' · после согласия') : '@' + (u.username || '')) + '</span></div><span class="pick' + (on ? ' on' : '') + '">' + (on ? ic('check', 15, 3) : '') + '</span></button>';
       }).join('') || '<div class="cell"><span class="cl" style="color:var(--fg2)">Некого добавить</span></div>';
     };
     var right = function () { return '<button class="nb" data-a="go" style="font-weight:600"' + (sel.length ? '' : ' disabled') + '>' + (sel.length ? 'Добавить (' + sel.length + ')' : 'Добавить') + '</button>'; };

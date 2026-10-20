@@ -6869,7 +6869,7 @@ function renderModalUsers(containerId, multi, filter='') {
   const container = document.getElementById(containerId);
   if (!container) return;
   // Людей с других серверов нельзя добавить в группу и позвать в секретный чат: с ними только обычная личная переписка
-  const list = S.allUsers.filter(u=>isPickable(u)&&!(u.federated&&(multi||S.ncKind==='secret'))&&(!filter||u.display_name.toLowerCase().includes(filter)||u.username.toLowerCase().includes(filter)));
+  const list = S.allUsers.filter(u=>isPickable(u)&&!(u.federated&&((multi&&u.rel!=='ws')||S.ncKind==='secret'))&&(!filter||u.display_name.toLowerCase().includes(filter)||u.username.toLowerCase().includes(filter)));
   container.innerHTML = list.map(u=>`
     <div class="pp-row${multi&&S.ncSelected?.has(u.id)?' on':''}" data-uid="${u.id}" onclick="${multi?`toggleModalUser(${u.id})`:`startDirect(${u.id})`}">
       ${ppAvHtml(u)}
@@ -7123,7 +7123,7 @@ async function gmDelete() {
 function gmAvailable(chat) {
   const existing = new Set((chat.members || []).map(m => m.id)), pending = new Set((chat.pending || []).map(m => m.id));
   const isGroup = chat.type === 'group', q = S.gm.aq.trim().toLowerCase();
-  return S.allUsers.filter(u => isPickable(u) && (!u.federated || (isGroup && u.contact)) && !pending.has(u.id) && !existing.has(u.id)
+  return S.allUsers.filter(u => isPickable(u) && (!u.federated || (isGroup && (u.contact || u.rel === 'ws'))) && !pending.has(u.id) && !existing.has(u.id)
     && (!q || (u.display_name || '').toLowerCase().includes(q) || (u.username || '').toLowerCase().includes(q)));
 }
 function gmAddView() { S.gm.view = 'add'; S.gm.add = new Set(); S.gm.aq = ''; renderGroupProfile(); }

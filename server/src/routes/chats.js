@@ -235,17 +235,22 @@ router.post('/group', authMiddleware, (req, res) => {
   if (!name?.trim() || !Array.isArray(member_ids)) return res.status(400).json({ error: 'Missing fields' });
   const allMembers = [...new Set([req.user.id, ...member_ids.map(Number)])];
   if (allMembers.some(uid => !spaces.canSee(req.user.id, uid))) return res.status(403).json({ error: 'Среди участников есть недоступные вам люди' });
-  if (allMembers.some(uid => spaces.isFed(uid))) return res.status(400).json({ error: 'Людей с других серверов приглашают в уже созданную группу: создайте её и добавьте их участниками' });
+  // Человек из общего пространства с другого сервера — как свой: его можно выбрать при создании группы и он вступит без подтверждения.
+  // Остальных людей с других серверов приглашают в уже созданную группу
+  const fedIds = allMembers.filter(uid => spaces.isFed(uid));
+  if (fedIds.some(uid => !spaces.shares(req.user.id, uid))) return res.status(400).json({ error: 'Людей с других серверов приглашают в уже созданную группу: создайте её и добавьте их участниками' });
   // Чат и участники — в одной транзакции (несуществующий user_id откатит всё, а не оставит пустой чат)
   const chatId = db.transaction(() => {
     const result = db.prepare("INSERT INTO chats (type, name, created_by) VALUES ('group', ?, ?)").run(name.trim(), req.user.id);
     const ins = db.prepare('INSERT INTO chat_members (chat_id, user_id) VALUES (?, ?)');
-    allMembers.forEach(uid => ins.run(result.lastInsertRowid, uid));
+    allMembers.filter(uid => !fedIds.includes(uid)).forEach(uid => ins.run(result.lastInsertRowid, uid));
     return result.lastInsertRowid;
   })();
   // Notify all members except creator
-  allMembers.filter(uid => uid !== req.user.id).forEach(uid => sendTo(uid, { type: 'reload_chats' }));
+  allMembers.filter(uid => uid !== req.user.id && !fedIds.includes(uid)).forEach(uid => sendTo(uid, { type: 'reload_chats' }));
   const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
+  // Люди общего пространства получают приглашение, их сервер принимает его сам
+  fedIds.forEach(uid => { try { fedgroups.invite(chat, req.user.id, db.prepare('SELECT * FROM users WHERE id = ?').get(uid)); } catch (e) { console.warn('[Fed] приглашение:', e.message); } });
   res.json(enrichChat(chat, req.user.id));
 });
 

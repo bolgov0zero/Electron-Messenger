@@ -63,7 +63,7 @@ B.ui.groups = (function () {
   }
   function pickHtml() {
     var s = grp.q.trim().toLowerCase();
-    var list = B.S.contacts.filter(function (u) { return !s || u.display_name.toLowerCase().indexOf(s) >= 0; });
+    var list = B.S.contacts.filter(function (u) { return (!u.federated || u.rel === 'ws') && (!s || u.display_name.toLowerCase().indexOf(s) >= 0); });
     return list.map(function (u) {
       var on = grp.sel.indexOf(u.id) >= 0;
       return '<button class="crow2" data-g="toggle" data-id="' + u.id + '">' + B.avatar.user(u.id, u.display_name, 40, true) + '<div class="t"><b>' + esc(u.display_name) + '</b></div><span class="pick' + (on ? ' on' : '') + '">' + (on ? ic('check', 15, 3) : '') + '</span></button>';
