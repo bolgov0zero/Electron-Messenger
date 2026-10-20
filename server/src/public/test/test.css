@@ -1,0 +1,8 @@
+/* /test — панель измерений поверх мобильного клиента */
+#tp { position: fixed; left: 6px; top: calc(env(safe-area-inset-top, 0px) + 4px); z-index: 99999; font: 11px/1.35 ui-monospace, Menlo, monospace; }
+#tp-t { height: 26px; padding: 0 10px; border-radius: 13px; border: 0; background: rgba(0, 0, 0, .55); color: #fff; font: 600 12px -apple-system, system-ui, sans-serif; }
+#tp-b { margin-top: 4px; width: min(88vw, 360px); max-height: 60vh; overflow: auto; padding: 8px; border-radius: 12px; background: rgba(10, 14, 20, .88); color: #dfe7ef; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+#tp-b[hidden] { display: none; }
+#tp-m { margin: 0 0 8px; white-space: pre-wrap; }
+#tp-btns { display: flex; flex-wrap: wrap; gap: 5px; }
+#tp-btns button { height: 28px; padding: 0 10px; border-radius: 14px; border: 0; background: #2f6fed; color: #fff; font: 600 12px -apple-system, system-ui, sans-serif; }

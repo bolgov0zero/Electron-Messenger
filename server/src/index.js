@@ -64,6 +64,8 @@ app.get(['/m', '/m/', '/m/index.html'], (req, res) => {
   }
 });
 app.use('/m', express.static(path.join(__dirname, 'public/m')));
+// /test — тестовая страница ленты мобильного клиента на выдуманных данных (см. testpage.js)
+require('./testpage').mount(app, express, serverVersion);
 // Файлы модулей (наборы, которые клиенты скачивают). Клиенты добавляют ?v=<версия набора>, поэтому кэшировать можно надолго
 app.use('/modules', express.static(path.join(__dirname, 'public/modules'), { maxAge: '30d' }));
 // Имя файла — timestamp+случайная строка, при новой загрузке никогда не переиспользуется,

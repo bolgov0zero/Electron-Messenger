@@ -43,6 +43,21 @@ B.ui.chat = (function () {
   function url(path) { return B.http() + '://' + B.S.server + path; }
 
   // ── вложения ──
+  // Место под картинку резервируется сразу, до загрузки файла: ширина и пропорции известны заранее, поэтому кадр при загрузке
+  // не меняет высоту и лента не дёргается. Если размера нет (старые вложения), ставим заглушку 4:3 и один раз уточняем после
+  // загрузки, запоминая пропорции по адресу
+  var IMGW = 'min(280px,calc(80vw - 24px))', _isz = null;
+  function szMap() { if (!_isz) { try { _isz = JSON.parse(localStorage.getItem('m.imgsz') || '{}'); } catch (e) { _isz = {}; } } return _isz; }
+  function szRemember(u, r) {
+    var m = szMap(), k = Object.keys(m); if (m[u] === r) return;
+    if (k.length > 600) k.slice(0, 200).forEach(function (x) { delete m[x]; });
+    m[u] = r; clearTimeout(szRemember._t); szRemember._t = setTimeout(function () { try { localStorage.setItem('m.imgsz', JSON.stringify(m)); } catch (e) {} }, 1500);
+  }
+  function imgBox(att) {
+    if (att.width && att.height) return { st: 'width:min(' + Math.min(280, att.width) + 'px,calc(80vw - 24px));aspect-ratio:' + att.width + '/' + att.height + ';min-width:0;', ns: '' };
+    var c = szMap()[att.url];
+    return c ? { st: 'width:' + IMGW + ';aspect-ratio:' + c + ';min-width:0;', ns: '' } : { st: 'width:' + IMGW + ';aspect-ratio:4/3;min-width:0;', ns: ' data-ns="1"' };
+  }
   // mid и i — сообщение и номер вложения в нём: по ним просмотр собирает ленту фото и видео чата
   function attachment(att, mid, i) {
     if (!att) return '';
@@ -55,12 +70,11 @@ B.ui.chat = (function () {
     if (att.unavailable) return fileLine(ic('x', 20, 2), att.unavailable === 'policy' ? 'Вложение недоступно: не соответствует настройкам сервера' : 'Вложение не удалось получить');
     if (att.gif) return window.GifKlipy ? GifKlipy.messageHtml(att) : '<div class="file"><div class="fi">GIF</div><div><b>GIF</b></div></div>';
     if (att.expired) return fileLine(ic('x', 20, 2), 'Файл удалён');
-    var ratio = att.width && att.height ? 'aspect-ratio:' + att.width + '/' + att.height + ';' : '';
-    var mime = att.mime || '';
+    var box = imgBox(att), mime = att.mime || '';
     var ref = mid ? ' data-mid="' + mid + '" data-i="' + i + '"' : '';
-    if (mime.indexOf('image/') === 0) return '<img class="att-img" src="' + esc(url(att.url)) + '" style="' + ratio + '" loading="lazy" data-c="lb" data-url="' + esc(att.url) + '" data-type="image"' + ref + ' alt="">';
+    if (mime.indexOf('image/') === 0) return '<img class="att-img" src="' + esc(url(att.preview || att.url)) + '" style="' + box.st + '" loading="lazy" decoding="async" data-c="lb" data-url="' + esc(att.url) + '" data-type="image"' + box.ns + ref + ' alt="">';
     if (mime.indexOf('video/') === 0) {
-      var poster = att.thumb ? '<img class="att-img" src="' + esc(url(att.thumb)) + '" style="' + ratio + '" loading="lazy" alt="">' : '<div class="vph"></div>';
+      var poster = att.thumb ? '<img class="att-img" src="' + esc(url(att.thumb)) + '" style="' + box.st + '" loading="lazy" decoding="async" data-url="' + esc(att.thumb) + '"' + box.ns + ' alt="">' : '<div class="vph" style="width:' + IMGW + '"></div>';
       return '<div class="vwrap" data-c="lb" data-url="' + esc(att.url) + '" data-type="video"' + ref + '>' + poster + '<div class="vplay"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div></div>';
     }
     return '<div class="file" data-c="' + (mid ? 'file' : 'dl') + '" data-url="' + esc(att.url) + '" data-name="' + esc(att.name || 'file') + '"' + ref + '><div class="fi">' + ic('doc', 22, 1.8) + '</div><div><b>' + esc(att.name || 'Файл') + '</b><span>' + fmtSize(att.size) + '</span></div></div>';
@@ -152,19 +166,46 @@ B.ui.chat = (function () {
     h += '</div>' + reactions(m) + (fail ? '<div class="failnote" data-c="retry" data-cid="' + m._cid + '">Не отправлено · <b>Повторить</b></div>' : '') + '</div><span class="swi">' + ic('reply', 17, 2.2) + '</span></div>';
     return h;
   }
-  function feed(chat, cache) {
-    var M = B.msgs, h = '', lastDay = '', divIdx = M.unreadFromId ? cache.findIndex(function (x) { return x.id === M.unreadFromId; }) : -1;
-    if (!cache.length) return '<div class="stub-note">Сообщений пока нет</div>';
+  // Лента как список дней, в каждом — разметка элементов с ключами: по ключу и тексту разметки DOM сверяется с прошлым состоянием
+  function feedGroups(chat, cache) {
+    var M = B.msgs, groups = [], cur = null, divIdx = M.unreadFromId ? cache.findIndex(function (x) { return x.id === M.unreadFromId; }) : -1;
+    if (!cache.length) return null;
     cache.forEach(function (m, i) {
       var day = new Date(m.sent_at * 1000).toDateString();
-      if (day !== lastDay) { if (lastDay) h += '</div>'; h += '<div class="day-group"><div class="day"><span>' + B.fmt.daySep(m.sent_at) + '</span></div>'; lastDay = day; }
+      if (!cur || cur.day !== day) { cur = { day: day, items: [{ key: 'd', html: '<div class="day"><span>' + B.fmt.daySep(m.sent_at) + '</span></div>' }] }; groups.push(cur); }
       var same = function (o) { return !!o && o.sender_id === m.sender_id && Math.abs(o.sent_at - m.sent_at) < GROUP_WINDOW && new Date(o.sent_at * 1000).toDateString() === day && !(o.sender_username === '__system__') && !(m.sender_username === '__system__'); };
-      if (i === divIdx) h += '<div class="unrd" id="unrd">Новые сообщения</div>';
+      if (i === divIdx) cur.items.push({ key: 'u', html: '<div class="unrd" id="unrd">Новые сообщения</div>' });
       var first = !same(cache[i - 1]) || i === divIdx, last = !same(cache[i + 1]) || (i + 1) === divIdx;
-      h += bubble(m, chat, { first: first, last: last });
+      cur.items.push({ key: 'm' + (m._cid || m.id), html: bubble(m, chat, { first: first, last: last }) });
     });
-    if (lastDay) h += '</div>';
-    return h;
+    return groups;
+  }
+  function make(html) { var t = document.createElement('template'); t.innerHTML = html; return t.content.firstElementChild; }
+  function place(parent, el, prev) { var ref = prev ? prev.nextSibling : parent.firstChild; if (el !== ref) parent.insertBefore(el, ref); }
+  // Не пересоздаёт то, что не изменилось: картинки остаются загруженными, ничего не мигает и не меняет высоту
+  function syncItems(parent, items) {
+    var have = {}, prev = null;
+    Array.prototype.forEach.call(parent.children, function (c) { if (c._k) have[c._k] = c; });
+    items.forEach(function (it) {
+      var el = have[it.key]; delete have[it.key];
+      if (!el || el._h !== it.html) {
+        var n = make(it.html); n._k = it.key; n._h = it.html; B.avatar.apply(n);
+        if (el) parent.replaceChild(n, el);
+        el = n;
+      }
+      place(parent, el, prev); prev = el;
+    });
+    Object.keys(have).forEach(function (k) { have[k].remove(); });
+  }
+  function reconcile(box, groups) {
+    var have = {}, prev = null;
+    Array.prototype.slice.call(box.children).forEach(function (g) { if (g.dataset && g.dataset.day) have[g.dataset.day] = g; else g.remove(); });
+    groups.forEach(function (g) {
+      var el = have[g.day]; delete have[g.day];
+      if (!el) { el = document.createElement('div'); el.className = 'day-group'; el.dataset.day = g.day; }
+      place(box, el, prev); syncItems(el, g.items); prev = el;
+    });
+    Object.keys(have).forEach(function (k) { have[k].remove(); });
   }
 
   // ── страница ──
@@ -206,11 +247,21 @@ B.ui.chat = (function () {
       '<div class="bottom comp"></div>';
     B.avatar.apply(el);
     if (B.ui.composer) B.ui.composer.mount(el, chat);
-    el.querySelector('.scroll').addEventListener('scroll', function () { onScroll(el); }, { passive: true });
+    var scr = el.querySelector('.scroll');
+    scr.addEventListener('scroll', function () { el._sa = performance.now(); onScroll(el); }, { passive: true });
+    scr.addEventListener('touchstart', function () { el._touch = 1; }, { passive: true });
+    ['touchend', 'touchcancel'].forEach(function (t) { scr.addEventListener(t, function () { el._touch = 0; el._sa = performance.now(); }, { passive: true }); });
     el.addEventListener('click', function (e) { onClick(el, e); });
     bindGestures(el);
     var comp = el.querySelector('.comp');
-    try { new ResizeObserver(function () { var sc = el.querySelector('.scroll'), stick = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 140; el.style.setProperty('--compH', comp.offsetHeight + 'px'); if (stick) sc.scrollTop = sc.scrollHeight; }).observe(comp); } catch (e) {}
+    // Высота поля ввода меняется (строка «печатает», ответ, несколько строк): отступ ленты обновляется сразу, а у низа лента
+    // остаётся внизу одной записью после того, как высота установилась, и только если её не листают
+    var roStick = null, roT = 0;
+    try { new ResizeObserver(function () {
+      var sc = el.querySelector('.scroll'); if (roStick === null) roStick = nearBottom(sc, 140);
+      el.style.setProperty('--compH', comp.offsetHeight + 'px');
+      clearTimeout(roT); roT = setTimeout(function () { var st = roStick; roStick = null; if (st && !busy(el)) sc.scrollTop = sc.scrollHeight; }, 60);
+    }).observe(comp); } catch (e) {}
     return el;
   }
   function updateHeader(el) {
@@ -230,25 +281,64 @@ B.ui.chat = (function () {
   }
 
   // ── прокрутка ──
+  // Пока палец на экране или идёт инерция (события прокрутки ещё приходят), ленту не трогаем: запись scrollTop в этот момент
+  // обрывает инерцию и даёт рывок. Фоновые обновления (галочки, реакции, правки, чужие сообщения) ждут конца прокрутки
+  function busy(el) { return !!el._touch || performance.now() - (el._sa || 0) < 150; }
+  function nearBottom(sc, px) { return sc.scrollHeight - sc.scrollTop - sc.clientHeight < px; }
+  // Опорное сообщение: первое, что видно у верхнего края. После перестройки возвращаем его на то же место, а не держим scrollTop
+  function anchorGet(sc) {
+    var rows = sc.querySelectorAll('.mrow[data-mid]'), top = sc.getBoundingClientRect().top, lo = 0, hi = rows.length - 1, ans = -1;
+    while (lo <= hi) { var mid = (lo + hi) >> 1; if (rows[mid].getBoundingClientRect().bottom > top + 1) { ans = mid; hi = mid - 1; } else lo = mid + 1; }
+    return ans < 0 ? null : { el: rows[ans], y: rows[ans].getBoundingClientRect().top - top };
+  }
+  function anchorSet(sc, a) {
+    if (!a || !a.el.isConnected) return;
+    var d = a.el.getBoundingClientRect().top - sc.getBoundingClientRect().top - a.y;
+    if (Math.abs(d) > 0.5) sc.scrollTop += d;
+  }
+  function renderLater(el, mode) {
+    el._rq = el._rq === 'keep' ? 'keep' : mode;
+    if (el._rqT) return;
+    el._rqT = setTimeout(function run() {
+      if (!el.isConnected) { el._rqT = 0; return; }
+      if (busy(el)) { el._rqT = setTimeout(run, 120); return; }
+      el._rqT = 0; var m = el._rq; el._rq = null; render(el, m);
+    }, 150);
+  }
   function render(el, mode) {
     var sc = el.querySelector('.scroll'), box = el.querySelector('.msgs'), chat = B.find(+el.dataset.cid); if (!chat) return;
-    var prevH = sc.scrollHeight, prevTop = sc.scrollTop, stick = mode === 'smart' && (prevH - prevTop - sc.clientHeight < 120);
-    box.innerHTML = feed(chat, B.msgs.cache);
-    if (mode === 'keep') {
-      // Инерция iOS «дотягивает» список к нулю после нашего скачка — коротко отключаем прокрутку, чтобы подгрузка не сработала повторно
-      sc.style.overflowY = 'hidden'; sc.scrollTop = prevTop + (sc.scrollHeight - prevH); void sc.offsetHeight; sc.style.overflowY = '';
-    } else if (mode === 'smart') sc.scrollTop = stick ? sc.scrollHeight : prevTop;
+    if (mode === 'smart' && busy(el)) { renderLater(el, mode); return; }
+    var stick = mode === 'smart' && nearBottom(sc, 120), anc = (mode === 'smart' || mode === 'keep') && !stick ? anchorGet(sc) : null;
+    var groups = feedGroups(chat, B.msgs.cache);
+    if (!groups) { box.innerHTML = '<div class="stub-note">Сообщений пока нет</div>'; } else reconcile(box, groups);
+    if (mode === 'smart' || mode === 'keep') { if (stick) sc.scrollTop = sc.scrollHeight; else anchorSet(sc, anc); }
     else if (mode !== 'none') sc.scrollTop = sc.scrollHeight;
-    B.avatar.apply(box); stickAfterMedia(sc); setupSentinel(el); onScroll(el);
+    trackImages(sc); setupSentinel(el); onScroll(el);
     return stick;
   }
-  function stickAfterMedia(sc) {
-    // Картинка получает высоту уже после раскладки: компенсируем именно сдвиг высоты, а не прыгаем в самый низ
-    var pending = Array.prototype.filter.call(sc.querySelectorAll('img'), function (i) { return !i.complete; });
-    if (!pending.length) return;
-    var last = sc.scrollHeight;
-    var onLoad = function () { setTimeout(function () { var now = sc.scrollHeight, d = now - last; if (d) sc.scrollTop += d; last = now; }, 0); };
-    pending.forEach(function (i) { i.addEventListener('load', onLoad, { once: true }); i.addEventListener('error', onLoad, { once: true }); });
+  // Картинка без известных размеров (старое вложение) получает пропорции после загрузки. Если она выше видимой области, держим то,
+  // что читают; если стояли у самого низа, остаёмся внизу. Картинки с известным размером ничего не сдвигают
+  function trackImages(sc) {
+    Array.prototype.forEach.call(sc.querySelectorAll('img[data-ns]:not([data-tr])'), function (img) {
+      img.setAttribute('data-tr', '1');
+      var done = function () {
+        if (!img.naturalWidth || !img.isConnected) return;
+        var h0 = img.offsetHeight, r = img.naturalWidth + '/' + img.naturalHeight;
+        szRemember(img.getAttribute('data-url') || img.getAttribute('src'), r);
+        img.style.aspectRatio = r; img.removeAttribute('data-ns');
+        var d = img.offsetHeight - h0; if (!d) return;
+        var wasBottom = sc.scrollHeight - d - sc.scrollTop - sc.clientHeight < 6;
+        if (wasBottom) sc.scrollTop = sc.scrollHeight;
+        else if (img.getBoundingClientRect().bottom - d <= sc.getBoundingClientRect().top + 1) sc.scrollTop += d;
+      };
+      if (img.complete) done(); else img.addEventListener('load', done, { once: true });
+    });
+  }
+  // Лента не должна расти без конца: если ушли далеко вниз и стоим у конца, давние сообщения выпадают из окна (они подгрузятся снова)
+  function trim(el) {
+    var M = B.msgs, sc = el.querySelector('.scroll');
+    if (M.cache.length <= 400 || !nearBottom(sc, 500) || busy(el) || jumping) return;
+    M.cache = M.cache.slice(-250); M.hasMoreOlder = true; render(el, 'smart');
   }
   function setupSentinel(el) {
     if (observer) observer.disconnect();
@@ -260,6 +350,7 @@ B.ui.chat = (function () {
   }
   function onScroll(el) {
     var sc = el.querySelector('.scroll'), btn = el.querySelector('.sdbtn'), cid = +el.dataset.cid;
+    clearTimeout(el._idleT); el._idleT = setTimeout(function () { if (el.isConnected) trim(el); }, 400);
     var off = sc.scrollHeight - sc.scrollTop - sc.clientHeight > 200;
     btn.classList.toggle('on', off);
     if (!off && away[cid]) { away[cid] = 0; badge(el); }

@@ -25,7 +25,8 @@ B.msgs = {
     var ids = Object.keys(t).sort(function (a, b) { return t[b].t - t[a].t; });
     ids.slice(12).forEach(function (k) { delete t[k]; });   // помним только последние 12 чатов
     clearTimeout(M._tailT);
-    M._tailT = setTimeout(function () { try { localStorage.setItem('m.tail', JSON.stringify(t)); } catch (e) { try { localStorage.removeItem('m.tail'); } catch (e2) {} } }, 800);
+    // Запись и разбор JSON — в простое браузера, а не посреди прокрутки
+    M._tailT = setTimeout(function () { (window.requestIdleCallback || function (f) { setTimeout(f, 50); })(function () { try { localStorage.setItem('m.tail', JSON.stringify(t)); } catch (e) { try { localStorage.removeItem('m.tail'); } catch (e2) {} } }); }, 800);
   },
   find: function (id) { return B.msgs.cache.find(function (m) { return m.id === id; }); },
   chat: function () { return B.find(B.msgs.chatId); },
