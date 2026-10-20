@@ -6530,7 +6530,7 @@ function renderProfile() {
   const mediaRow = dmChat ? `<button type="button" class="pf-g pf-link" onclick="pfMedia(${dmChat.id})">${gmSvg('image', 18)}<b>Медиа, файлы и ссылки</b><span class="pf-ch">${gmSvg('chev', 16)}</span></button>` : '';
   const groupsHtml = groups.length
     ? `<div class="pf-g pf-gl">${groups.map(c => `<div class="pf-gr" onclick="pfOpenChat(${c.id})">
-        <div class="av av-sm ${chatAvatarClass(c)}${c.type === 'room' && c.has_topics ? ' av-sq' : ' av-round'}">${chatIcon(c)}</div>
+        <div class="av av-sm ${chatAvatarClass(c)}${c.type === 'room' && c.has_topics ? ' av-sq' : ' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
         <div class="pf-gi"><b>${esc(chatName(c))}</b><span>${c.type === 'room' ? 'Комната' : 'Группа'} · ${nMembers(c.members.length)}</span></div></div>`).join('')}</div>`
     : `<div class="pf-g"><div class="pf-empty">Общих групп и комнат нет</div></div>`;
   box.innerHTML = `
@@ -6554,6 +6554,7 @@ function renderProfile() {
       ${canContact ? `<button type="button" class="modal-btn-ghost pf-fc" onclick="pfContact()">${u.contact ? PF_I.rem + 'Из контактов' : PF_I.add + 'В контакты'}</button>` : ''}
       <button type="button" class="modal-btn-primary pf-fw" onclick="pfWrite()">${PF_I.msg}Написать</button>
     </div>`;
+  applyAvatars();   // фото общих групп и комнат
 }
 function pfWrite() { const id = S.profileId; closeModal('modal-profile'); if (id) startDirect(id); }
 function pfOpenChat(chatId) { closeModal('modal-profile'); openChat(chatId); }
