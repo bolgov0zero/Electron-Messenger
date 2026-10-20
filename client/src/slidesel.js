@@ -22,8 +22,6 @@
     { b: '.gp-chips', i: '.gp-chip', o: A },
     { b: '.ep-tabs', i: '.ep-tab', o: '[aria-selected="true"]' },   // группы смайлов
     { b: '.cs-nav-list', i: '.cs-sn', o: '[aria-current="page"],[aria-current="true"]' },
-    { b: '.rail-folders', i: '.fld-btn', o: '.active', p: '::before' },
-    { b: '.acc-rail', i: '.acc-btn:not(.fld-btn)', o: '.active', p: '::before' },   // записи (аккаунты) в левой панели клиента
     // мобильная версия
     { b: '.seg2', i: 'button', o: '.on' },
     { b: '.mtabs-in', i: '.mtab', o: '.on', p: '::after' },
