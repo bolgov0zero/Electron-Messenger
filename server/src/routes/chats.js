@@ -25,7 +25,7 @@ function deleteChatFiles(chatId) {
   rows.forEach(r => { try { require('../attach').purge(JSON.parse(r.attachment)); } catch {} });
 }
 
-function enrichChat(chat, userId) {
+async function enrichChat(chat, userId) {
   const members = db.prepare(`
     SELECT u.id, u.username, u.display_name, u.tag, u.is_bot, u.fed_login, u.fed_instance FROM users u
     JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = ?
@@ -45,8 +45,8 @@ function enrichChat(chat, userId) {
       WHERE m.chat_id IN (${placeholders}) ORDER BY m.sent_at DESC LIMIT 1
     `).get(...ids);
     if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
-    unread = unreadCounts.inChats(userId, ids);
-    unreadMentions = unreadCounts.mentionsInChats(userId, ids);
+    unread = await unreadCounts.inChats(userId, ids);
+    unreadMentions = await unreadCounts.mentionsInChats(userId, ids);
   } else {
     last = db.prepare(`
       SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment,
@@ -55,8 +55,8 @@ function enrichChat(chat, userId) {
       WHERE m.chat_id = ? ORDER BY m.sent_at DESC LIMIT 1
     `).get(chat.id);
     if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
-    unread = unreadCounts.inChat(userId, chat.id);
-    unreadMentions = unreadCounts.mentionsInChat(userId, chat.id);
+    unread = await unreadCounts.inChat(userId, chat.id);
+    unreadMentions = await unreadCounts.mentionsInChat(userId, chat.id);
   }
   // Секретный чат: превью в списке никогда не показывает содержимое, даже
   // расшифрованное — защита от подглядывания через плечо. Факт «есть новое
@@ -104,7 +104,7 @@ function inviteChat(chat, userId) {
 }
 
 // Get my chats
-router.get('/', authMiddleware, (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   const chats = db.prepare(`
     SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.is_secret, c.read_only, c.fed_instance, c.fed_chat_id, cm.pinned_at as pinned
     FROM chats c JOIN chat_members cm ON cm.chat_id = c.id
@@ -113,11 +113,11 @@ router.get('/', authMiddleware, (req, res) => {
   `).all(req.user.id);
   const invited = db.prepare('SELECT c.* FROM chats c JOIN chat_invites i ON i.chat_id = c.id WHERE i.user_id = ? ORDER BY i.created_at DESC').all(req.user.id)
     .map(c => inviteChat(c, req.user.id));
-  res.json(invited.concat(chats.map(c => enrichChat(c, req.user.id))));
+  res.json(invited.concat(await Promise.all(chats.map(c => enrichChat(c, req.user.id)))));
 });
 
 // Список тем комнаты
-router.get('/:id/topics', authMiddleware, (req, res) => {
+router.get('/:id/topics', authMiddleware, async (req, res) => {
   const chatId = Number(req.params.id);
   if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id))
     return res.status(403).json({ error: 'Forbidden' });
@@ -128,9 +128,9 @@ router.get('/:id/topics', authMiddleware, (req, res) => {
   `).all(chatId);
   const manual = !!db.prepare('SELECT topics_manual FROM chats WHERE id = ?').get(chatId)?.topics_manual;
   const userId = req.user.id;
-  const result = topics.map(s => {
-    const unread = unreadCounts.inChat(userId, s.id);
-    const unreadMentions = unreadCounts.mentionsInChat(userId, s.id);
+  const result = await Promise.all(topics.map(async s => {
+    const unread = await unreadCounts.inChat(userId, s.id);
+    const unreadMentions = await unreadCounts.mentionsInChat(userId, s.id);
     const has_avatar = fs.existsSync(path2.join(AVATAR_DIR, `chat_${s.id}.jpg`));
     // Превью последнего сообщения — как в обычном списке чатов: иначе у всех
     // тем была одинаковая подпись «# тема» и не понять, что нового
@@ -142,14 +142,14 @@ router.get('/:id/topics', authMiddleware, (req, res) => {
     `).get(s.id);
     if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
     return { ...s, unread, unread_mentions: unreadMentions, has_avatar, last_message: last || null };
-  });
+  }));
   // Автоматическая сортировка: тема с самым свежим сообщением выше, без сообщений — внизу в порядке администратора
   if (!manual) result.sort((a, b) => ((b.last_message?.sent_at || 0) - (a.last_message?.sent_at || 0)));
   res.json(result);
 });
 
 // Create direct chat
-router.post('/direct', authMiddleware, (req, res) => {
+router.post('/direct', authMiddleware, async (req, res) => {
   const targetId = Number(req.body.user_id);
   if (!targetId) return res.status(400).json({ error: 'Missing user_id' });
   if (targetId === req.user.id) return res.status(400).json({ error: 'Cannot create chat with yourself' });
@@ -167,7 +167,7 @@ router.post('/direct', authMiddleware, (req, res) => {
     // Unhide for requester if it was hidden
     db.prepare('UPDATE chat_members SET hidden_at = NULL WHERE chat_id = ? AND user_id = ?').run(existing.id, req.user.id);
     const existingChat = db.prepare('SELECT * FROM chats WHERE id = ?').get(existing.id);
-    return res.json(enrichChat(existingChat, req.user.id));
+    return res.json(await enrichChat(existingChat, req.user.id));
   }
   // Новый личный чат можно начать только с тем, кого видишь (своё пространство, контакты)
   if (!spaces.canSee(req.user.id, targetId)) return res.status(403).json({ error: 'Этот человек вам недоступен' });
@@ -183,7 +183,7 @@ router.post('/direct', authMiddleware, (req, res) => {
     return id;
   })();
   const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
-  res.json(enrichChat(chat, req.user.id));
+  res.json(await enrichChat(chat, req.user.id));
 });
 
 // Создать секретный (E2E) чат. Отдельная сущность от обычного личного чата с тем
@@ -191,7 +191,7 @@ router.post('/direct', authMiddleware, (req, res) => {
 // существующего матчит и по is_secret. Создавать может только Electron: у
 // веб/мобильного клиента нет надёжного постоянного хранилища для приватного
 // ключа (см. обсуждение дизайна секретных чатов).
-router.post('/secret', authMiddleware, (req, res) => {
+router.post('/secret', authMiddleware, async (req, res) => {
   const targetId = Number(req.body.user_id);
   const { device_id, device_label, platform } = req.body;
   if (platform !== 'electron') return res.status(403).json({ error: 'Secret chats can only be created from the desktop app' });
@@ -209,7 +209,7 @@ router.post('/secret', authMiddleware, (req, res) => {
   `).get(req.user.id, targetId);
   if (existing) {
     const existingChat = db.prepare('SELECT * FROM chats WHERE id = ?').get(existing.id);
-    return res.json({ ...enrichChat(existingChat, req.user.id), created: false });
+    return res.json({ ...await enrichChat(existingChat, req.user.id), created: false });
   }
   if (!spaces.canSee(req.user.id, targetId)) return res.status(403).json({ error: 'Этот человек вам недоступен' });
   // Приглашение видно у собеседника на всех его устройствах сразу (в отличие от
@@ -228,11 +228,11 @@ router.post('/secret', authMiddleware, (req, res) => {
   })();
   sendTo(targetId, { type: 'reload_chats' });
   const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
-  res.json({ ...enrichChat(chat, req.user.id), created: true });
+  res.json({ ...await enrichChat(chat, req.user.id), created: true });
 });
 
 // Create group / room — Fix 2: notify all members except creator
-router.post('/group', authMiddleware, (req, res) => {
+router.post('/group', authMiddleware, async (req, res) => {
   const { name, member_ids } = req.body;
   if (!name?.trim() || !Array.isArray(member_ids)) return res.status(400).json({ error: 'Missing fields' });
   const allMembers = [...new Set([req.user.id, ...member_ids.map(Number)])];
@@ -253,11 +253,11 @@ router.post('/group', authMiddleware, (req, res) => {
   const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
   // Люди общего пространства получают приглашение, их сервер принимает его сам
   fedIds.forEach(uid => { try { fedgroups.invite(chat, req.user.id, db.prepare('SELECT * FROM users WHERE id = ?').get(uid)); } catch (e) { console.warn('[Fed] приглашение:', e.message); } });
-  res.json(enrichChat(chat, req.user.id));
+  res.json(await enrichChat(chat, req.user.id));
 });
 
 // Edit group name
-router.patch('/:id', authMiddleware, (req, res) => {
+router.patch('/:id', authMiddleware, async (req, res) => {
   const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id);
   if (!chat || chat.type !== 'group') return res.status(404).json({ error: 'Not found' });
   if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(req.params.id, req.user.id))
@@ -271,10 +271,10 @@ router.patch('/:id', authMiddleware, (req, res) => {
     fedgroups.afterRename(db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id));
     // Точечное событие с готовым объектом чата — участники обновляют имя без refetch всего списка
     const updated = db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id);
-    db.prepare('SELECT user_id, pinned_at FROM chat_members WHERE chat_id = ?').all(req.params.id)
-      .forEach(({ user_id, pinned_at }) => sendTo(user_id, { type: 'chat_updated', chat: { ...enrichChat(updated, user_id), pinned: pinned_at } }));
+    for (const { user_id, pinned_at } of db.prepare('SELECT user_id, pinned_at FROM chat_members WHERE chat_id = ?').all(req.params.id))
+      sendTo(user_id, { type: 'chat_updated', chat: { ...await enrichChat(updated, user_id), pinned: pinned_at } });
   }
-  res.json(enrichChat(db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id), req.user.id));
+  res.json(await enrichChat(db.prepare('SELECT * FROM chats WHERE id = ?').get(req.params.id), req.user.id));
 });
 
 // Add member to group or room. В комнате это админское действие (как и сама

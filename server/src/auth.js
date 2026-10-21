@@ -1,20 +1,22 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const db = require('./db');
+const dal = require('./dal');
 
 // Секрет: env → settings → генерируем и сохраняем при первом старте.
 // Захардкоженный дефолт позволял любому, кто видел исходники, подделать токен админа.
-function getSecret() {
+async function getSecret() {
   if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'jwt_secret'").get();
+  const row = await dal.get("SELECT value FROM settings WHERE key = 'jwt_secret'");
   if (row) return row.value;
   const secret = crypto.randomBytes(32).toString('hex');
-  db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('jwt_secret', secret);
+  await dal.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', 'jwt_secret', secret);
   console.log('[Auth] Сгенерирован новый JWT-секрет (сохранён в settings). Все существующие сессии сброшены.');
   return secret;
 }
 
-const SECRET = getSecret();
+// Секрет читается из базы асинхронно, поэтому index.js вызывает init() до старта
+let SECRET = null;
+async function init() { SECRET = await getSecret(); }
 const EXPIRES_IN = '60d';
 
 function signToken(payload) {
@@ -48,12 +50,12 @@ class AuthError extends Error {
   constructor(code) { super(code); this.code = code; }
 }
 
-function resolveUser(token) {
+async function resolveUser(token) {
   const payload = verifyToken(token);
   // Токен-вызов 2FA (purpose: totp_setup/totp_verify) — не настоящая сессия,
   // иначе его можно было бы подсунуть сюда как Bearer-токен и обойти 2FA целиком
   if (payload.purpose) throw new AuthError('invalid');
-  const user = db.prepare('SELECT id, username, display_name, is_admin, banned, must_change_password, sessions_valid_from FROM users WHERE id = ?').get(payload.id);
+  const user = await dal.get('SELECT id, username, display_name, is_admin, banned, must_change_password, sessions_valid_from FROM users WHERE id = ?', payload.id);
   if (!user) throw new AuthError('user_not_found');
   if (user.banned) throw new AuthError('banned');
   // iat в секундах, как и отметка. Сравнение нестрогое: токен, выданный в ту же
@@ -62,19 +64,19 @@ function resolveUser(token) {
   return { ...user, is_admin: !!user.is_admin, must_change_password: !!user.must_change_password };
 }
 
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   const header = req.headers['authorization'];
   if (!header) return res.status(401).json({ error: 'No token', code: 'no_token' });
   const token = header.replace('Bearer ', '');
   try {
-    req.user = resolveUser(token);
-    next();
+    req.user = await resolveUser(token);
   } catch (e) {
     // code разделяет «сессия больше не действует» и «срок истёк»: по первому
     // клиент выходит, по второму сначала пробует продлить токен
     const code = e.code || (e.name === 'TokenExpiredError' ? 'expired' : 'invalid');
-    res.status(401).json({ error: e.message, code });
+    return res.status(401).json({ error: e.message, code });
   }
+  next();
 }
 
 function adminMiddleware(req, res, next) {
@@ -82,10 +84,10 @@ function adminMiddleware(req, res, next) {
   next();
 }
 
-function wsAuth(token) {
-  const user = resolveUser(token);
+async function wsAuth(token) {
+  const user = await resolveUser(token);
   if (!user) throw new Error('User not found');
   return user;
 }
 
-module.exports = { signToken, verifyToken, signChallengeToken, verifyChallengeToken, authMiddleware, adminMiddleware, wsAuth, AuthError };
+module.exports = { init, signToken, verifyToken, signChallengeToken, verifyChallengeToken, authMiddleware, adminMiddleware, wsAuth, AuthError };

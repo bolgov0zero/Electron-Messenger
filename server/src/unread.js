@@ -20,76 +20,82 @@
 // message_status остаётся как был — по нему рисуются галочки доставки и
 // прочтения у отправителя, и это другая задача.
 
-const db = require('./db');
+const dal = require('./dal');
 
-const stmt = {
-  inChat: db.prepare(`
+const SQL = {
+  inChat: `
     SELECT COUNT(*) AS c FROM messages m
     WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0
       AND m.id > COALESCE((SELECT last_read_id FROM chat_read_state
-        WHERE user_id = ? AND chat_id = ?), 0)`),
+        WHERE user_id = ? AND chat_id = ?), 0)`,
 
-  mentionsInChat: db.prepare(`
+  mentionsInChat: `
     SELECT COUNT(*) AS c FROM messages m
     WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0
       AND m.id > COALESCE((SELECT last_read_id FROM chat_read_state
         WHERE user_id = ? AND chat_id = ?), 0)
       AND m.mentions IS NOT NULL
-      AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)`),
+      AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)`,
 
-  firstUnread: db.prepare(`
+  firstUnread: `
     SELECT MIN(m.id) AS id FROM messages m
     WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0
       AND m.id > COALESCE((SELECT last_read_id FROM chat_read_state
-        WHERE user_id = ? AND chat_id = ?), 0)`),
+        WHERE user_id = ? AND chat_id = ?), 0)`,
 
   // Чаты человека — итог собираем суммой по ним
-  myChats: db.prepare(`SELECT chat_id FROM chat_members WHERE user_id = ? AND hidden_at IS NULL`),
+  myChats: `SELECT chat_id FROM chat_members WHERE user_id = ? AND hidden_at IS NULL`,
 
   // Прочитано всё, что сейчас есть в чате
-  mark: db.prepare(`
+  mark: `
     INSERT INTO chat_read_state (user_id, chat_id, last_read_id)
     VALUES (?, ?, (SELECT COALESCE(MAX(id), 0) FROM messages WHERE chat_id = ?))
     ON CONFLICT(user_id, chat_id) DO UPDATE SET
-      last_read_id = MAX(last_read_id, excluded.last_read_id)`),
+      last_read_id = MAX(last_read_id, excluded.last_read_id)`,
 };
 
 /** Непрочитанных в чате */
-function inChat(userId, chatId) {
-  return stmt.inChat.get(chatId, userId, userId, chatId).c;
+async function inChat(userId, chatId) {
+  return (await dal.get(SQL.inChat, chatId, userId, userId, chatId)).c;
 }
 
 /** Непрочитанных упоминаний в чате */
-function mentionsInChat(userId, chatId) {
-  return stmt.mentionsInChat.get(chatId, userId, userId, chatId, userId).c;
+async function mentionsInChat(userId, chatId) {
+  return (await dal.get(SQL.mentionsInChat, chatId, userId, userId, chatId, userId)).c;
 }
 
 /** Сумма по нескольким чатам — комната считает своими темами */
-function inChats(userId, chatIds) {
-  return chatIds.reduce((sum, id) => sum + inChat(userId, id), 0);
+async function inChats(userId, chatIds) {
+  let sum = 0;
+  for (const id of chatIds) sum += await inChat(userId, id);
+  return sum;
 }
 
 /** Сумма упоминаний по нескольким чатам */
-function mentionsInChats(userId, chatIds) {
-  return chatIds.reduce((sum, id) => sum + mentionsInChat(userId, id), 0);
+async function mentionsInChats(userId, chatIds) {
+  let sum = 0;
+  for (const id of chatIds) sum += await mentionsInChat(userId, id);
+  return sum;
 }
 
 /** Первое непрочитанное сообщение чата — на нём открывается лента */
-function firstUnreadId(userId, chatId) {
-  return stmt.firstUnread.get(chatId, userId, userId, chatId).id || null;
+async function firstUnreadId(userId, chatId) {
+  return (await dal.get(SQL.firstUnread, chatId, userId, userId, chatId)).id || null;
 }
 
 /** Непрочитанных во всех чатах — число на значке приложения.
  *  Считаем суммой по чатам, а не одним запросом со связыванием: один чат теперь
  *  стоит доли микросекунды (упор в индекс по хвосту), а общий запрос вынужден
  *  просматривать все сообщения — на 60 000 он занимал 18 мс против 0,06 суммой. */
-function total(userId) {
-  return stmt.myChats.all(userId).reduce((sum, r) => sum + inChat(userId, r.chat_id), 0);
+async function total(userId) {
+  let sum = 0;
+  for (const r of await dal.all(SQL.myChats, userId)) sum += await inChat(userId, r.chat_id);
+  return sum;
 }
 
 /** Отметить чат прочитанным до последнего сообщения */
-function markRead(userId, chatId) {
-  stmt.mark.run(userId, chatId, chatId);
+async function markRead(userId, chatId) {
+  await dal.run(SQL.mark, userId, chatId, chatId);
 }
 
 module.exports = {

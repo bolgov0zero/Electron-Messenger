@@ -110,7 +110,7 @@ router.get('/chat/:chatId/media', authMiddleware, (req, res) => {
 });
 
 // Получить сообщения чата с пагинацией (query: before | after | around, limit)
-router.get('/chat/:chatId', authMiddleware, (req, res) => {
+router.get('/chat/:chatId', authMiddleware, async (req, res) => {
   const { chatId } = req.params;
   if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id))
     return res.status(403).json({ error: 'Not a member' });
@@ -123,7 +123,7 @@ router.get('/chat/:chatId', authMiddleware, (req, res) => {
   // Первое непрочитанное считаем на сервере: у клиента счётчик мог разойтись,
   // часть могла быть прочитана с другого устройства, а при большом числе новых
   // сообщений нужного просто нет в последней странице.
-  const firstUnreadId = unreadCounts.firstUnreadId(req.user.id, chatId);
+  const firstUnreadId = await unreadCounts.firstUnreadId(req.user.id, chatId);
 
   let messages, hasMore = false, hasMoreAfter = false;
 

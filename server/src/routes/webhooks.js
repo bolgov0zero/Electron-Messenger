@@ -101,17 +101,17 @@ async function handleWebhook(req, res) {
     const chatRow = db.prepare('SELECT type, name FROM chats WHERE id = ?').get(wh.chat_id);
     const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(wh.chat_id, wh.user_id);
     const { hasPushSubscription } = require('./push');
-    members.forEach(({ user_id }) => {
+    for (const { user_id } of members) {
       // Подписки нет — считать непрочитанное незачем (см. ws.js)
-      if (!hasPushSubscription(user_id)) return;
-      const unread = unreadCounts.total(user_id);
+      if (!hasPushSubscription(user_id)) continue;
+      const unread = await unreadCounts.total(user_id);
       sendPushToUser(user_id, {
         title: chatRow?.name || msg.sender_name,
         body: msg.text.replace(/<[^>]*>/g, '') || '',
         chatId: wh.chat_id,
         unread,
       });
-    });
+    }
   } catch {}
 
   res.json({ ok: true, message_id: Number(result.lastInsertRowid) });

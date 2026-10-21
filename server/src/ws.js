@@ -232,7 +232,7 @@ function finishMessage(msgId, chat_id, senderId, clientId) {
   const stmtMuted = db.prepare(
     'SELECT 1 FROM muted_chats WHERE user_id = ? AND (chat_id = ? OR chat_id = ?) AND (until IS NULL OR until > unixepoch())'
   );
-  allMembers.forEach(({ user_id }) => {
+  allMembers.forEach(async ({ user_id }) => { try {
     const parentId = chatMeta?.parent_id || chat_id;
     if (stmtMuted.get(user_id, chat_id, parentId)) return;
     // Сначала проверяем подписку, потом считаем. Раньше порядок был обратный,
@@ -243,7 +243,7 @@ function finishMessage(msgId, chat_id, senderId, clientId) {
     // не обслуживал никого: обращения к базе синхронные.
     if (!hasPushSubscription(user_id)) return;
     const chatTitle = chat?.is_secret ? 'Секретный чат' : chat?.type === 'direct' ? msg.sender_name : (chat?.name || 'Electron');
-    const unread = unreadCounts.total(user_id);
+    const unread = await unreadCounts.total(user_id);
     // Секретный чат: в пуше только факт наличия сообщения, без содержимого —
     // сервер и так не может расшифровать текст, а превью сознательно не
     // показываем даже тем, у кого ключ есть (защита от подглядывания).
@@ -253,7 +253,7 @@ function finishMessage(msgId, chat_id, senderId, clientId) {
       chatId: chat_id,
       unread,
     });
-  });
+  } catch (e) { console.warn('[Push] уведомление не отправлено:', e.message); } });
   return msg;
 }
 
@@ -291,8 +291,19 @@ function setup(server) {
 
   wss.on('connection', (ws, req) => {
     const url = new URL(req.url, 'http://localhost');
-    let user;
-    try { user = wsAuth(url.searchParams.get('token')); } catch { ws.close(1008, 'Unauthorized'); return; }
+    // Проверка токена обращается к базе асинхронно; сообщения, пришедшие за это
+    // время, копим и разбираем сразу после неё, чтобы ничего не потерялось
+    const early = [];
+    const hold = raw => early.push(raw);
+    ws.on('message', hold);
+    wsAuth(url.searchParams.get('token')).then(user => {
+      ws.off('message', hold);
+      attach(ws, req, user);
+      early.forEach(raw => ws.emit('message', raw));
+    }, () => ws.close(1008, 'Unauthorized'));
+  });
+
+  function attach(ws, req, user) {
 
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
@@ -308,7 +319,7 @@ function setup(server) {
     connMeta.set(connId, { ws, userId: user.id, username: user.username, displayName: user.display_name, hostname: '—', clientVersion: '—', osPlatform: '—', osRelease: '—', installScope: null, connectedAt: Date.now(), clientIp });
     ws._connId = connId;
 
-    ws.on('message', raw => {
+    ws.on('message', async raw => {
       let data; try { data = JSON.parse(raw); } catch { return; }
 
       if (data.type === 'message') {
@@ -475,7 +486,7 @@ function setup(server) {
         // Отметка «докуда прочитано» — до раннего выхода: если непрочитанного нет,
         // отметку всё равно надо подтянуть к последнему сообщению, иначе она может
         // отстать и счётчик покажет непрочитанное там, где его нет
-        unreadCounts.markRead(user.id, chat_id);
+        await unreadCounts.markRead(user.id, chat_id);
         if (!unread.length) return;
         // Подготавливаем стейтменты вне транзакции
         const stmtReadInsert = db.prepare('INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)');
@@ -592,7 +603,7 @@ function setup(server) {
                 title: user.display_name,
                 body: `${reaction} на ваше сообщение`,
                 chatId: msg.chat_id,
-                unread: unreadCounts.total(msg.sender_id),
+                unread: await unreadCounts.total(msg.sender_id),
               });
             }
             sendTo(msg.sender_id, {
@@ -708,7 +719,7 @@ function setup(server) {
         });
       } catch (e) { console.error('auto-deliver error:', e); }
     });
-  });
+  }
 }
 
 // Сколько разных людей сейчас в сети (у одного может быть несколько устройств)

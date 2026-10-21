@@ -1,5 +1,9 @@
 const http = require('http');
 const express = require('express');
+require('./asyncsafe');
+// На время перевода на асинхронный слой данных: забытый await или сбой запроса
+// пишется в журнал, а не роняет весь сервер
+process.on('unhandledRejection', e => console.error('[Необработанная ошибка]', e));
 const path = require('path');
 const fs = require('fs');
 
@@ -158,7 +162,7 @@ monitor.setOnlineProvider(require('./ws').onlineUserCount);
 monitor.start();
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+require('./auth').init().then(() => server.listen(PORT, () => {
   console.log(`Electron server running on http://0.0.0.0:${PORT}`);
   console.log(`Admin panel: http://localhost:${PORT}/admin`);
-});
+})).catch(e => { console.error('[Старт] не удалось запустить сервер:', e); process.exit(1); });
