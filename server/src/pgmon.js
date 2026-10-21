@@ -12,7 +12,7 @@ const dal = require('./dal');
 const STEP = 30000, SERIES_MAX = 120;
 const CORES = os.cpus().length;
 const series = [];            // [время, соединений, запросов в секунду]
-let prev = null, last = null, unitName, cgPrev = null;
+let prev = null, last = null, unitName, cgPrev = null, cgDir = null, fast = null;
 
 const readText = p => { try { return fs.readFileSync(p, 'utf8'); } catch { return null; } };
 const sh = (cmd, args) => new Promise(res => execFile(cmd, args, { timeout: 3000 }, (e, out) => res(e ? null : String(out))));
@@ -41,16 +41,10 @@ async function serviceStats() {
   const out = await sh('systemctl', ['show', unit, '--property=ActiveState,ControlGroup,ActiveEnterTimestampMonotonic,NRestarts']);
   if (out == null) return null;
   const kv = kvOf(out);
+  // Каталог cgroup запоминаем: процессор, память и процессы читаются из него часто (fastSample), а systemctl — редко
   const dir = kv.ControlGroup ? path.join('/sys/fs/cgroup', kv.ControlGroup) : null;
-  let cpu = null, mem = null, tasks = null;
-  if (dir && fs.existsSync(path.join(dir, 'cpu.stat'))) {
-    const m = (readText(path.join(dir, 'cpu.stat')) || '').match(/^usage_usec (\d+)/m);
-    const usec = m ? Number(m[1]) : null, now = Date.now();
-    if (usec != null && cgPrev && now > cgPrev.t) cpu = Math.max(0, (usec - cgPrev.usec) / 1e6 / ((now - cgPrev.t) / 1000) / CORES * 100);
-    if (usec != null) cgPrev = { usec, t: now };
-    const n = Number(readText(path.join(dir, 'memory.current'))); mem = n > 0 ? n : null;
-    const p = Number(readText(path.join(dir, 'pids.current'))); tasks = p > 0 ? p : null;
-  }
+  cgDir = dir && fs.existsSync(path.join(dir, 'cpu.stat')) ? dir : null;
+  const cpu = fast ? fast.cpu : null, mem = fast ? fast.mem : null, tasks = fast ? fast.tasks : null;
   const btime = Number(((readText('/proc/stat') || '').match(/^btime (\d+)/m) || [])[1] || 0);
   const mono = Number(kv.ActiveEnterTimestampMonotonic || 0);
   return {
@@ -59,6 +53,20 @@ async function serviceStats() {
     restarts: kv.NRestarts != null && kv.NRestarts !== '' ? Number(kv.NRestarts) : null,
     cpu, mem, tasks,
   };
+}
+
+// Нагрузка службы: читается из cgroup (это чтение трёх файлов), поэтому с тем же шагом, что и у electron.
+// Так в блоке «Службы» обе строки обновляются одновременно
+function fastSample() {
+  if (!cgDir) { fast = null; return; }
+  const now = Date.now();
+  const m = (readText(path.join(cgDir, 'cpu.stat')) || '').match(/^usage_usec (\d+)/m);
+  const usec = m ? Number(m[1]) : null;
+  let cpu = null;
+  if (usec != null && cgPrev && now > cgPrev.t) cpu = Math.max(0, (usec - cgPrev.usec) / 1e6 / ((now - cgPrev.t) / 1000) / CORES * 100);
+  if (usec != null) cgPrev = { usec, t: now };
+  const mem = Number(readText(path.join(cgDir, 'memory.current'))), tasks = Number(readText(path.join(cgDir, 'pids.current')));
+  fast = { cpu, mem: mem > 0 ? mem : null, tasks: tasks > 0 ? tasks : null, t: now };
 }
 
 async function sample() {
@@ -95,10 +103,13 @@ async function sample() {
 }
 
 function start() {
-  sample();
+  sample().then(fastSample);
   setInterval(sample, STEP).unref();
+  setInterval(fastSample, 2000).unref();
 }
-const info = () => (last ? { ...last, series } : null);
+// Службу с самой свежей нагрузкой берём поверх снимка, снятого раз в 30 секунд
+const service = () => (last && last.service ? { ...last.service, ...(fast ? { cpu: fast.cpu, mem: fast.mem, tasks: fast.tasks } : {}) } : null);
+const info = () => (last ? { ...last, service: service(), series } : null);
 const unit = async () => findUnit();
 
-module.exports = { start, info, unit, sample };
+module.exports = { start, info, unit, sample, service };

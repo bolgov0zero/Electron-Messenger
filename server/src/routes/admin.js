@@ -791,7 +791,8 @@ router.get('/audit-log', async (req, res) => {
 
 // Точки графиков. Первый запрос — весь последний час, дальше только новые (since)
 router.get('/monitor', async (req, res) => {
-  res.json({ ...(await monitor.snapshot(req.query.since)), ws: getConnCount() });
+  // На PostgreSQL вместе с точками electron отдаём свежую нагрузку службы базы: блок «Службы» обновляется одним шагом
+  res.json({ ...(await monitor.snapshot(req.query.since)), ws: getConnCount(), ...(dal.pg ? { pgService: require('../pgmon').service() } : {}) });
 });
 
 // Раскрытые графики процессора, отклика и числа людей в сети: сутки, неделя, месяц, год.

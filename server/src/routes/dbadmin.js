@@ -15,6 +15,12 @@ const { broadcastAll } = require('../ws');
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
 const BACKUP_DIR = path.join(path.dirname(DB_PATH), 'backups');
 
+// Файл SQLite и его служебные файлы WAL/SHM: суммарный размер и список существующих
+function legacyFiles() {
+  const files = [DB_PATH, DB_PATH + '-wal', DB_PATH + '-shm'].filter(f => { try { return fs.statSync(f).isFile(); } catch { return false; } });
+  return { files, size: files.reduce((n, f) => n + fs.statSync(f).size, 0) };
+}
+
 let job = null;     // { state: running | restarting | done | failed, phase, text, done, total, error, startedAt, result }
 
 const publicJob = () => (job && { ...job });
@@ -29,6 +35,9 @@ router.get('/', async (req, res) => {
       out.version = String((await dal.get('SHOW server_version')).server_version).split(' ')[0];
       out.size = (await dal.get('SELECT pg_database_size(current_database()) AS b')).b;
       try { const u = new URL(process.env.DATABASE_URL); out.target = `${u.hostname}:${u.port || 5432}/${decodeURIComponent(u.pathname.slice(1))}`; } catch {}
+      // Файл SQLite после переноса остаётся на диске: сервер им больше не пользуется
+      const lg = legacyFiles();
+      if (lg.size) out.legacy = { path: DB_PATH, size: lg.size };
     } else {
       out.version = (await dal.get('SELECT sqlite_version() AS v')).v;
       try { out.size = fs.statSync(DB_PATH).size; } catch {}
@@ -42,6 +51,18 @@ router.post('/test', async (req, res) => {
   if (dal.pg) return res.status(400).json({ error: 'Сервер уже работает на PostgreSQL' });
   try { res.json(await pgmigrate.test(connOf(req.body))); }
   catch (e) { res.status(400).json({ ok: false, error: e.message }); }
+});
+
+// Удалить прежний файл SQLite (после переноса на PostgreSQL). Копия «до переноса» лежит в резервных копиях и не трогается
+router.post('/delete-legacy', async (req, res) => {
+  if (!dal.pg) return res.status(400).json({ error: 'Сервер работает на SQLite: этот файл и есть база' });
+  if (!req.body?.confirm) return res.status(400).json({ error: 'Нужно подтверждение' });
+  const lg = legacyFiles();
+  if (!lg.files.length) return res.status(404).json({ error: 'Файла SQLite уже нет' });
+  try { for (const f of lg.files) fs.unlinkSync(f); }
+  catch (e) { return res.status(500).json({ error: 'Не удалось удалить файл: ' + e.message }); }
+  await logAudit(req, 'server', 'Удалён прежний файл SQLite', path.basename(DB_PATH));
+  res.json({ ok: true, freed: lg.size });
 });
 
 router.get('/migrate', (req, res) => res.json({ job: publicJob() }));

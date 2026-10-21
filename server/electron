@@ -5,6 +5,7 @@ APP_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 # Путь к базе берём из службы (как порт), иначе из окружения, иначе прежний chat_db/chat.db
 DB_PATH_SVC="$(systemctl show "$SERVICE" --property=Environment --value 2>/dev/null | tr ' ' '\n' | grep '^DB_PATH=' | head -1 | cut -d= -f2-)"
 DB_PATH="${DB_PATH:-${DB_PATH_SVC:-$APP_DIR/../chat_db/chat.db}}"
+CONF_DIR="${ELECTRON_CONF_DIR:-/etc/electron}"
 
 # Команды без панели: electron db status | test | migrate | sqlite
 if [ "$1" = "db" ]; then
@@ -74,14 +75,29 @@ show_panel() {
     STATUS_TEXT="Остановлен"
   fi
 
-  [ -f "$DB_PATH" ] && DB_SIZE=$(du -sh "$DB_PATH" 2>/dev/null | cut -f1) || DB_SIZE="—"
-
-  if command -v sqlite3 &>/dev/null && [ -f "$DB_PATH" ]; then
-    USER_COUNT=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM users;" 2>/dev/null || echo "—")
-    MSG_COUNT=$(sqlite3  "$DB_PATH" "SELECT COUNT(*) FROM messages;" 2>/dev/null || echo "—")
-    CHAT_COUNT=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM chats;" 2>/dev/null || echo "—")
+  # Какая база работает: подключение к PostgreSQL лежит в файле окружения службы; нет его — SQLite
+  DB_URL=""; DB_PG=0
+  if [ -r "$CONF_DIR/database.env" ]; then DB_URL="$(sed -n 's/^DATABASE_URL=//p' "$CONF_DIR/database.env" | head -1)"; fi
+  [ -z "$DB_URL" ] && DB_URL="${DATABASE_URL:-}"
+  { [ -n "$DB_URL" ] || [ -e "$CONF_DIR/database.env" ]; } && DB_PG=1
+  DB_KIND="SQLite"; DB_SIZE="—"; USER_COUNT="—"; MSG_COUNT="—"; CHAT_COUNT="—"
+  if [ "$DB_PG" = 1 ]; then
+    DB_KIND="PostgreSQL"
+    if [ -n "$DB_URL" ] && command -v psql &>/dev/null; then
+      _q() { PGCONNECT_TIMEOUT=3 psql "$DB_URL" -X -tA -c "$1" 2>/dev/null | head -1; }
+      _v="$(_q "SHOW server_version" | cut -d' ' -f1)"; [ -n "$_v" ] && DB_KIND="PostgreSQL $_v"
+      DB_SIZE="$(_q "SELECT pg_size_pretty(pg_database_size(current_database()))")"; DB_SIZE="${DB_SIZE:-—}"
+      USER_COUNT="$(_q "SELECT COUNT(*) FROM users")"; USER_COUNT="${USER_COUNT:-—}"
+      MSG_COUNT="$(_q "SELECT COUNT(*) FROM messages")"; MSG_COUNT="${MSG_COUNT:-—}"
+      CHAT_COUNT="$(_q "SELECT COUNT(*) FROM chats")"; CHAT_COUNT="${CHAT_COUNT:-—}"
+    fi
   else
-    USER_COUNT="—"; MSG_COUNT="—"; CHAT_COUNT="—"
+    [ -f "$DB_PATH" ] && DB_SIZE=$(du -sh "$DB_PATH" 2>/dev/null | cut -f1)
+    if command -v sqlite3 &>/dev/null && [ -f "$DB_PATH" ]; then
+      USER_COUNT=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM users;" 2>/dev/null || echo "—")
+      MSG_COUNT=$(sqlite3  "$DB_PATH" "SELECT COUNT(*) FROM messages;" 2>/dev/null || echo "—")
+      CHAT_COUNT=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM chats;" 2>/dev/null || echo "—")
+    fi
   fi
 
   PORT=$(systemctl show "$SERVICE" --property=Environment --value 2>/dev/null | grep -o 'PORT=[0-9]*' | cut -d= -f2)
@@ -139,6 +155,7 @@ show_panel() {
     _row "Версия"  "${DIM}${SERVER_VERSION}${NC}"
     _row "Аптайм"  "${DIM}${UPTIME_STR}${NC}"
     _row "Порт"    "${DIM}${PORT}${NC}"
+    _row "База"    "${DIM}${DB_KIND}${NC}"
     printf "\n"
   fi
 

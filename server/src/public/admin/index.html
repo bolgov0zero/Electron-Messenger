@@ -3604,7 +3604,8 @@ function hmRenderPg() {
   if (!on) return;
 
   // Службы
-  const s = HM.samples[HM.samples.length - 1], live = HM.live || {}, svc = pg.service, el = o.service;
+  // Нагрузка службы базы приходит вместе с точками electron (раз в 2 секунды); снимок из обзора — запасной
+  const s = HM.samples[HM.samples.length - 1], live = HM.live || {}, svc = pg.service ? { ...pg.service, ...(HM.pgService || {}) } : null, el = o.service;
   const dot = (id, lv) => { const d = $hm(id); if (d) d.className = 'dv-dot' + (lv && lv !== 'ok' ? ' ' + lv : ''); };
   dot('hm-m-el-dot', el && el.state !== 'active' ? 'crit' : 'ok');
   // у electron значения обновляются каждые 2 секунды: без подсветки, иначе мерцало бы постоянно
@@ -3612,8 +3613,8 @@ function hmRenderPg() {
   hmText('hm-m-el-mem', s?.[4] == null ? '—' : hmBytes(s[4]));
   const load = pg.conn / pg.maxConn, hot = load > .8 || (pg.cache != null && pg.cache < 95);
   dot('hm-m-pg-dot', svc ? (svc.state !== 'active' ? 'crit' : hot ? 'warn' : 'ok') : (hot ? 'warn' : pg.local ? 'off' : 'ok'));
-  pgTick('hm-m-pg-cpu', svc?.cpu == null ? '—' : `${hmFmt(svc.cpu, 1)}%`);
-  pgTick('hm-m-pg-mem', svc?.mem == null ? '—' : hmBytes(svc.mem));
+  hmText('hm-m-pg-cpu', svc?.cpu == null ? '—' : `${hmFmt(svc.cpu, 1)}%`);
+  hmText('hm-m-pg-mem', svc?.mem == null ? '—' : hmBytes(svc.mem));
   for (const id of ['hm-m-pg-cpu', 'hm-m-pg-mem']) $hm(id)?.classList.toggle('w', !!svc && hot);
   const pb = $hm('hm-m-pg-btn');
   if (pb) { pb.disabled = !svc || PGR.busy; pb.title = svc ? 'Перезапустить postgresql' : 'PostgreSQL на другом сервере: перезапуск отсюда недоступен'; }
@@ -3803,6 +3804,7 @@ async function hmLoadMonitor(full) {
     HM.live = m.live || {};
     HM.cores = m.cores || 1;
     HM.ws = m.ws;
+    HM.pgService = m.pgService || null;
     HM.lastT = HM.samples.length ? HM.samples[HM.samples.length - 1][0] : m.now;
   }
   hmRenderHeadlines();
@@ -7798,6 +7800,16 @@ async function spDbGo() {
   if (r?.ok) { SP.db.job = r.job; spDbPoll(); } else toast(esc(r?.error || 'Не удалось начать перенос'), 'error');
   spRender();
 }
+function spDbDelLegacy() {
+  const lg = SP.db.info?.legacy; if (!lg) return;
+  confirm('Удалить старый файл SQLite?', `Будет удалён файл ${lg.path} (${hmBytes(lg.size)}). Сервер им не пользуется. Копия «до переноса» в резервных копиях останется.`, async () => {
+    const r = await api('POST', '/api/admin/database/delete-legacy', { confirm: true });
+    if (!r?.ok) { toast(esc(r?.error || 'Не удалось удалить файл'), 'error'); return; }
+    toast(`Файл удалён, освобождено ${hmBytes(r.freed)}`, 'success');
+    const info = await api('GET', '/api/admin/database'); if (info && !info.error) SP.db.info = info;
+    spRender();
+  });
+}
 function spDbClose() { SP.db.job = null; spRender(); }
 function spDbPoll() {
   clearInterval(SP.db.t);
@@ -7917,7 +7929,7 @@ function spDatabase() {
       <div class="sp-c"><button type="button" class="btn btn-ghost btn-sm" onclick="spDbClose()">Понятно</button></div></div>`;
     return out;
   }
-  if (pg) return out + spRow('Резервные копии', 'Создаются и восстанавливаются в разделе «Резервные копии» так же, как раньше. Копия — файл формата SQLite: её можно восстановить на любом движке, в том числе копию, сделанную до переноса', '<button type="button" class="btn btn-ghost btn-sm" onclick="spOpen(\'backups\')">Открыть</button>', '', '', 'копия');
+  if (pg) return out + (i.legacy ? spRow('Старый файл SQLite', `${esc(i.legacy.path)}: сервер им больше не пользуется. Копия «до переноса» лежит в резервных копиях и остаётся`, `<span class="mono" style="font-size:12.5px;color:var(--c-muted)">${hmBytes(i.legacy.size)}</span><button type="button" class="btn btn-ghost btn-sm" style="color:var(--c-red-text)" onclick="spDbDelLegacy()">Удалить</button>`, '', '', 'старый файл sqlite удалить') : '') + spRow('Резервные копии', 'Создаются и восстанавливаются в разделе «Резервные копии» так же, как раньше. Копия — файл формата SQLite: её можно восстановить на любом движке, в том числе копию, сделанную до переноса', '<button type="button" class="btn btn-ghost btn-sm" onclick="spOpen(\'backups\')">Открыть</button>', '', '', 'копия');
   if (!i.canMigrate) return out;
   const f = d.form, t = d.test, ok = !!(t && t.ok);
   const inp = (k, label, type = 'text', w = '') => `<label>${label}<span class="sp-inp"><input id="sp-db-${k}" type="${type}" value="${esc(String(f[k]))}" autocomplete="off" spellcheck="false" oninput="spDbF('${k}', this.value)" ${w}></span></label>`;
