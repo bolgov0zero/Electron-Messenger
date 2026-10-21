@@ -870,7 +870,7 @@ tbody tr:hover td{background:var(--c-surface2)}
 .fd-ib svg,.fd-tip svg{width:14px;height:14px}
 .fd-tip{position:relative;display:inline-grid;place-items:center;color:var(--c-muted);cursor:help;text-transform:none;letter-spacing:0}
 .fd-tip:hover,.fd-tip:focus-visible{color:var(--c-text)}
-.fd-tip::after{content:attr(data-t);position:absolute;z-index:40;left:-8px;bottom:calc(100% + 7px);width:max-content;max-width:260px;background:var(--c-surface);color:var(--c-text);border:1px solid var(--c-border);border-radius:9px;box-shadow:var(--shadow-md);padding:8px 10px;font:500 12px/1.4 var(--f-ui);text-align:left;font-weight:400;pointer-events:none;opacity:0;transition:opacity .12s}
+.fd-tip::after{content:attr(data-t);position:absolute;z-index:40;left:-8px;bottom:calc(100% + 7px);width:max-content;max-width:230px;background:var(--c-surface);color:var(--c-text);border:1px solid var(--c-border);border-radius:9px;box-shadow:var(--shadow-md);padding:8px 10px;font:500 12px/1.4 var(--f-ui);text-align:left;font-weight:400;pointer-events:none;opacity:0;transition:opacity .12s}
 .fd-tip:hover::after,.fd-tip:focus-visible::after{opacity:1}
 .fd-safe{display:flex;gap:9px;padding:11px 16px;border-top:1px solid var(--c-border);color:var(--c-text2);font-size:12px;line-height:1.45}
 .fd-safe svg{width:15px;height:15px;flex:none;margin-top:1px}
@@ -7865,7 +7865,7 @@ function fdRender() {
     <div class="fd-cols">
       <div class="card fd-card"><div class="fd-head">Соединения <span class="fd-n">${FD.peers.length}</span>${q ? `<span class="fd-qh">в очереди: ${q}</span>` : ''}</div>${fdPeers()}</div>
       <div class="fd-side">
-        <div class="card">${side}<div class="fd-safe">${I.shield}<span>Соединение даёт только обмен сообщениями между людьми. Управлять другим сервером через него нельзя: ни пользователями, ни настройками, ни обновлениями.</span></div></div>
+        <div class="card fd-card">${side}<div class="fd-safe">${I.shield}<span>Соединение даёт только обмен сообщениями между людьми. Управлять другим сервером через него нельзя: ни пользователями, ни настройками, ни обновлениями.</span></div></div>
         <div class="card"><div class="fd-head">Правила приёма</div><div class="fd-lim">
           <div class="r"><span class="t">Новых переписок в час<small>с одного чужого сервера, сверх лимита отклоняются</small></span><div class="fd-stp"><button type="button" onclick="fdRule(-5)" aria-label="Меньше">−</button><span>${FD.rules.new_per_hour}</span><button type="button" onclick="fdRule(5)" aria-label="Больше">+</button></div></div>
           <div class="r"><span class="t">Приглашений в группы в час<small>с одного чужого сервера, сверх лимита молча отклоняются</small></span><div class="fd-stp"><button type="button" onclick="fdRule(-5,'invites_per_hour')" aria-label="Меньше">−</button><span>${FD.rules.invites_per_hour || 20}</span><button type="button" onclick="fdRule(5,'invites_per_hour')" aria-label="Больше">+</button></div></div>

@@ -13,7 +13,7 @@ B.ui.profile = (function () {
     var fed = !!u.federated, other = !fed && u.rel !== 'ws' && !!u.workspace_name, canContact = fed || other;
     var blocked = B.contacts.isBlocked(id), st = B.presence.statusText(id), on = B.S.presence[id] === 'online';
     var my = (B.S.user.workspaces && B.S.user.workspaces.length) || 1;
-    var rows = [fed ? ['Адрес', B.contacts.fedAddr(u)] : ['Логин', '@' + u.username]];
+    var loginLab = fed ? 'Адрес' : 'Логин', loginTxt = fed ? B.contacts.fedAddr(u) : '@' + u.username, rows = [];
     if (fed) rows.push(['Сервер', 'Другой сервер']);
     else if (other) rows.push(['Пространство', u.workspace_name]);
     else if (u.rel === 'ws' && my > 1 && u.shared_workspaces && u.shared_workspaces.length) rows.push([u.shared_workspaces.length > 1 ? 'Пространства' : 'Пространство', u.shared_workspaces.join(' · ')]);
@@ -26,7 +26,9 @@ B.ui.profile = (function () {
     if (blocked) h += '<div class="note">Вы заблокировали этого человека: он не может писать вам в личные сообщения. Общие группы и комнаты остаются.</div>';
     var dm = B.S.chats.find(function (c) { return c.type === 'direct' && !c.is_secret && B.peerId(c) === id; });
     if (dm) h += '<div class="grp"><button class="cell tap hasi" data-p="media" data-id="' + dm.id + '"><span class="ci" style="background:#5e6ad2">' + ic('photo', 17, 2) + '</span><span class="cl">Медиа, файлы и ссылки</span><span class="chev">' + ic('chev', 16, 2.4) + '</span></button></div>';
-    h += '<div class="grp">' + rows.map(function (r) { return '<div class="cell"><span class="cl">' + r[0] + '</span><span class="cv l">' + esc(r[1]) + '</span></div>'; }).join('') + '</div>';
+    // логин или адрес копируется по нажатию, как ссылка в своём профиле
+    h += '<div class="grp links"><button class="cell tap" data-p="copy" data-v="' + esc(loginTxt) + '"><span class="cl">' + loginLab + '<small>' + esc(loginTxt) + '</small></span><span class="pl">' + ic('copy', 18, 2) + '</span></button></div>';
+    h += rows.length ? '<div class="grp">' + rows.map(function (r) { return '<div class="cell"><span class="cl">' + r[0] + '</span><span class="cv l">' + esc(r[1]) + '</span></div>'; }).join('') + '</div>' : '';
     h += '<div class="gh">Общие группы · ' + groups.length + '</div><div class="grp">' + (groups.length
       ? groups.map(function (c) { return '<button class="crow2" data-p="chat" data-id="' + c.id + '">' + B.avatar.chat(c, 40) + '<div class="t"><b>' + esc(B.chatName(c)) + '</b><span>' + (c.type === 'room' ? 'Комната' : 'Группа') + ' · ' + (c.members || []).length + ' участн.</span></div></button>'; }).join('')
       : '<div class="cell"><span class="cl" style="color:var(--fg2)">Общих групп и комнат нет</span></div>') + '</div>';
@@ -74,6 +76,7 @@ B.ui.profile = (function () {
     if (p === 'write') write(id); else if (p === 'contact') toggleContact(id); else if (p === 'block') block(id);
     else if (p === 'chat') B.openChat(+b.dataset.id);
     else if (p === 'media') B.media.openChatMedia(+b.dataset.id);
+    else if (p === 'copy') { var t = b.dataset.v; navigator.clipboard.writeText(t).then(function () { B.toast.show('Скопировано: ' + t); }, function () { B.toast.show('Не удалось скопировать'); }); }
   }
   function removeContact(id) {
     var u = user(id); if (!u) return;

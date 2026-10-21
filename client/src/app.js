@@ -6524,7 +6524,8 @@ function renderProfile() {
   const canContact = fed || otherSpace;          // у людей своего пространства контакты не нужны
   const blocked = isBlockedId(id);
   const st = peerStatusText(id), on = S.presence[id] === 'online';
-  const rows = [fed ? `<div class="pf-r"><b>Адрес</b><span>${esc(fedAddr(u))}</span></div>` : `<div class="pf-r"><b>Логин</b><span>@${esc(u.username)}</span></div>`];
+  const loginTxt = fed ? fedAddr(u) : '@' + u.username;
+  const rows = [];
   if (fed) rows.push(`<div class="pf-r"><b>Сервер</b><span class="pf-srv">${FED_GLOBE}Другой сервер</span></div>`);
   else if (otherSpace) rows.push(`<div class="pf-r"><b>Пространство</b><span>${esc(u.workspace_name)}</span></div>`);
   else if (!fed && u.rel === 'ws' && myWsCount() > 1 && u.shared_workspaces?.length) rows.push(`<div class="pf-r"><b>${u.shared_workspaces.length > 1 ? 'Пространства' : 'Пространство'}</b><span>${esc(u.shared_workspaces.join(' · '))}</span></div>`);
@@ -6546,6 +6547,7 @@ function renderProfile() {
       </div>
       <div class="pf-body">
         ${blocked ? `<div class="pf-note">Вы заблокировали этого человека: он не может писать вам в личные сообщения. Общие группы и комнаты остаются.</div>` : ''}
+        <button type="button" class="pl-f" id="pf-login" aria-label="Скопировать: ${esc(loginTxt)}" onclick="pfCopyLogin()"><span class="pl-k">${fed ? 'Адрес' : 'Логин'}</span><span class="pl-v">${esc(loginTxt)}</span><span class="pl-i">${CS_I.copy}</span></button>
         <div class="pf-g">${rows.join('')}</div>
         ${mediaRow}
         <div class="pf-gt">Общие группы · ${groups.length}</div>
@@ -6559,6 +6561,17 @@ function renderProfile() {
       <button type="button" class="modal-btn-primary pf-fw" onclick="pfWrite()">${PF_I.msg}Написать</button>
     </div>`;
   applyAvatars();   // фото общих групп и комнат
+}
+// Логин (для людей с других серверов адрес @сервер:логин) копируется по нажатию, как ссылка в своём профиле
+async function pfCopyLogin() {
+  const u = pfUser(S.profileId); if (!u) return;
+  const t = u.federated ? fedAddr(u) : '@' + u.username;
+  try { await navigator.clipboard.writeText(t); } catch { showActionToast('Не удалось скопировать'); return; }
+  showActionToast('Скопировано: ' + t);
+  const b = document.getElementById('pf-login'); if (!b) return;
+  const ic = b.querySelector('.pl-i'), orig = ic.innerHTML;
+  b.classList.add('done'); ic.innerHTML = CS_I.check;
+  setTimeout(() => { b.classList.remove('done'); ic.innerHTML = orig; }, 1600);
 }
 function pfWrite() { const id = S.profileId; closeModal('modal-profile'); if (id) startDirect(id); }
 function pfOpenChat(chatId) { closeModal('modal-profile'); openChat(chatId); }
