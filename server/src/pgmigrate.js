@@ -118,11 +118,17 @@ async function run({ conn, sqlitePath, snapshotPath, onProgress = () => {}, log 
     snapDb.pragma('foreign_keys = OFF');
 
     // 2. строки с нарушенными ссылками уберём из снимка (в рабочей базе они остаются)
-    const bad = snapDb.pragma('foreign_key_check');
-    if (bad.length) {
-      const del = new Map();
-      for (const b of bad) del.set(b.table + ':' + b.rowid, b);
-      for (const b of del.values()) snapDb.prepare(`DELETE FROM "${b.table}" WHERE rowid = ?`).run(b.rowid);
+    // Удалённая строка может быть родителем других (сообщение с реакциями), поэтому проверяем, пока нарушения не кончатся
+    const del = new Set();
+    for (let pass = 0; pass < 20; pass++) {
+      const bad = snapDb.pragma('foreign_key_check');
+      if (!bad.length) break;
+      for (const b of bad) {
+        snapDb.prepare(`DELETE FROM "${b.table}" WHERE rowid = ?`).run(b.rowid);
+        del.add(b.table + ':' + b.rowid);
+      }
+    }
+    if (del.size) {
       result.orphans = del.size;
       say('clean', `Убрано строк с нарушенными ссылками: ${del.size}`);
     }

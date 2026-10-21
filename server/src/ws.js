@@ -2,7 +2,6 @@ const { WebSocketServer } = require('ws');
 const { filterAsync } = require('./aiter.js');
 const dal = require('./dal');
 const maintenance = require('./maintenance');
-const db = require('./db');
 const spaces = require('./spaces');
 const unreadCounts = require('./unread');
 const gifLib = require('./gif');
