@@ -937,6 +937,17 @@ tbody tr:hover td{background:var(--c-surface2)}
 .fm-nt{min-width:0;display:flex;flex-direction:column;gap:2px}.fm-nt b{font-size:14px;font-weight:600;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fm-nt span{font-size:12px;line-height:16px;color:var(--c-text2);display:flex;align-items:center;gap:6px;white-space:nowrap}.fm-nt span i{width:7px;height:7px;border-radius:50%;flex:none}
 .fm-me{position:absolute;top:-9px;right:12px;font:700 10.5px var(--f-ui);letter-spacing:.04em;line-height:16px;padding:0 7px;border-radius:99px;background:var(--c-text);color:var(--c-surface)}
+.fm-ln{fill:none;stroke-linecap:round}
+.fm-ln.flow{stroke-dasharray:8 9;animation:fmflow 1.05s linear infinite}
+.fm-ln.multi{stroke-dasharray:8 26}
+.fm-ln.multi.flow{animation:fmflow2 2.1s linear infinite}
+.fm-ln.off{stroke-dasharray:3 9}
+.fm-halo{fill:none;stroke:var(--c-primary);stroke-opacity:.22;stroke-width:11;stroke-linecap:round}
+.fm-hit{fill:none;stroke:transparent;stroke-width:22;pointer-events:stroke;cursor:pointer}
+.fm-ch{fill:none;stroke:var(--c-text);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+@keyframes fmflow{to{stroke-dashoffset:-17}}
+@keyframes fmflow2{from{stroke-dashoffset:var(--o0)}to{stroke-dashoffset:calc(var(--o0) - 34px)}}
+@media (prefers-reduced-motion:reduce){.fm-ln.flow,.fm-ln.multi.flow{animation:none}}
 .fm-el{position:absolute;width:100px;height:20px;box-sizing:border-box;text-align:center;font:600 11px var(--f-ui);line-height:18px;border-radius:10px;background:var(--c-surface);border:1px solid var(--c-border);color:var(--c-text2);pointer-events:none}
 .fm-el.bad{color:var(--c-red-text)}
 .fm-lg{position:absolute;left:14px;bottom:12px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:7px 12px;background:color-mix(in srgb,var(--c-surface) 92%,transparent);border:1px solid var(--c-border);border-radius:10px;font-size:12px;color:var(--c-text2);pointer-events:none}
@@ -7935,7 +7946,7 @@ function fdDelete(i) {
 /* ── Карта федерации ── */
 // Серверы-узлы и соединения-линии: прямые подключения и общие пространства. Узлы можно двигать (раскладка запоминается в браузере),
 // колесом мыши масштабировать, фон тянуть. Карта у всех серверов пространства одна: хозяин собирает дерево и рассылает его.
-const FM = { data: null, pos: {}, sel: null, space: 'all', k: 1, tx: 20, ty: 20, timer: null, drag: null, fitted: false };
+const FM = { data: null, pos: {}, sel: null, selLink: null, space: 'all', k: 1, tx: 20, ty: 20, timer: null, drag: null, fitted: false };
 try { FM.pos = JSON.parse(localStorage.getItem('fm-pos') || '{}') || {}; } catch {}
 const FM_W = 188, FM_H = 64;
 const FM_COL = ['var(--dv-c1)', 'var(--dv-c2)', 'var(--dv-c3)', 'var(--dv-c5)', 'var(--dv-c4)', '#12a672'];
@@ -7958,7 +7969,8 @@ async function renderMap() {
   FM.timer = setInterval(async () => {
     if (currentPage !== 'federation' || FD.tab !== 'map') { clearInterval(FM.timer); return; }
     if (FM.drag || document.hidden || document.querySelector('#modal-fed.open')) return;
-    await fmLoad(); fmDraw();
+    const before = JSON.stringify(FM.data); await fmLoad();
+    if (JSON.stringify(FM.data) !== before) fmDraw();   // без изменений не трогаем разметку: анимация линий идёт без рывков
   }, 5000);
 }
 async function fmLoad() {
@@ -7974,7 +7986,7 @@ function fmDefaultPos(d) {
   const layers = {};
   d.nodes.forEach(n => { const dp = n.id in depth ? depth[n.id] : 0; (layers[dp] = layers[dp] || []).push(n.id); });
   const out = {};
-  Object.keys(layers).forEach(k => layers[k].forEach((id, i) => { out[id] = { x: 30 + k * 250, y: 40 + i * 104 + (k % 2) * 30 }; }));
+  Object.keys(layers).forEach(k => layers[k].forEach((id, i) => { out[id] = { x: 30 + k * 340, y: 40 + i * 110 + (k % 2) * 30 }; }));
   return out;
 }
 const fmP = id => FM.pos[id] || FM._def?.[id] || { x: 0, y: 0 };
@@ -7994,7 +8006,7 @@ function fmPage() {
     return;
   }
   document.getElementById('page-body').innerHTML = `<div class="ux-page"><div><div style="font-size:17px;font-weight:700">Федерации</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Карта подключений и общих пространств. Серверы можно двигать, колесо мыши меняет масштаб, фон двигается перетаскиванием.</div></div>${fdTabs()}
-    <div class="fm"><div class="card fm-main"><div class="fm-tb" id="fm-tb"></div><div class="fm-stage" id="fm-stage"><div class="fm-world" id="fm-world"></div><div class="fm-lg"><span><i style="background:var(--c-primary)"></i>в сети</span><span><i style="background:repeating-linear-gradient(90deg,var(--c-muted) 0 7px,transparent 7px 13px)"></i>нет связи</span><span><i style="height:5px;background:var(--c-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--c-primary) 20%,transparent)"></i>маршрут до выбранного</span></div></div></div>
+    <div class="fm"><div class="card fm-main"><div class="fm-tb" id="fm-tb"></div><div class="fm-stage" id="fm-stage"><div class="fm-world" id="fm-world"></div><div class="fm-lg"><span><i style="background:repeating-linear-gradient(90deg,var(--c-primary) 0 8px,transparent 8px 17px)"></i>подключение идёт от одного сервера к другому</span><span><i style="background:repeating-linear-gradient(90deg,var(--c-muted) 0 7px,transparent 7px 13px)"></i>нет связи</span><span><i style="height:5px;background:var(--c-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--c-primary) 20%,transparent)"></i>маршрут до выбранного</span></div></div></div>
     <aside class="fm-side" id="fm-side"></aside></div></div>`;
   const st = document.getElementById('fm-stage');
   st.addEventListener('pointerdown', fmDown);
@@ -8006,6 +8018,31 @@ function fmPage() {
   fmDraw();
   fmFit();
 }
+// Кривая Безье между серверами: от середины стороны к середине стороны, касательные идут вдоль связи (плавная S-образная линия).
+// Путь всегда от подключающегося сервера к принимающему, чтобы пунктир бежал в нужную сторону
+function fmEdgeGeom(e) {
+  const src = e.from === e.b ? e.b : e.a, dst = src === e.a ? e.b : e.a;
+  const A = fmP(src), B = fmP(dst), ac = { x: A.x + FM_W / 2, y: A.y + FM_H / 2 }, bc = { x: B.x + FM_W / 2, y: B.y + FM_H / 2 };
+  const dx = bc.x - ac.x, dy = bc.y - ac.y, horiz = Math.abs(dx) * 0.62 >= Math.abs(dy);
+  let p0, p3, c1, c2;
+  if (horiz) { const sx = dx >= 0 ? 1 : -1; p0 = { x: ac.x + sx * FM_W / 2, y: ac.y }; p3 = { x: bc.x - sx * FM_W / 2, y: bc.y }; const h = (p3.x - p0.x) / 2; c1 = { x: p0.x + h, y: p0.y }; c2 = { x: p3.x - h, y: p3.y }; }
+  else { const sy = dy >= 0 ? 1 : -1; p0 = { x: ac.x, y: ac.y + sy * FM_H / 2 }; p3 = { x: bc.x, y: bc.y - sy * FM_H / 2 }; const v = (p3.y - p0.y) / 2; c1 = { x: p0.x, y: p0.y + v }; c2 = { x: p3.x, y: p3.y - v }; }
+  const pt = t => { const u = 1 - t; return { x: u * u * u * p0.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * p3.x, y: u * u * u * p0.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * p3.y }; };
+  const dv = t => { const u = 1 - t; return { x: 3 * u * u * (c1.x - p0.x) + 6 * u * t * (c2.x - c1.x) + 3 * t * t * (p3.x - c2.x), y: 3 * u * u * (c1.y - p0.y) + 6 * u * t * (c2.y - c1.y) + 3 * t * t * (p3.y - c2.y) }; };
+  const m = pt(0.5), q = pt(0.3), v = dv(0.3);
+  return { d: `M${p0.x} ${p0.y}C${c1.x} ${c1.y},${c2.x} ${c2.y},${p3.x} ${p3.y}`, mid: m, ch: { x: q.x, y: q.y, ang: Math.atan2(v.y, v.x) * 180 / Math.PI } };
+}
+// Двигаем уже нарисованное (узлы, линии, подписи), ничего не пересобирая: иначе анимация пунктира сбрасывалась бы на каждом кадре
+function fmReposition() {
+  const d = FM.data, world = document.getElementById('fm-world'); if (!d || !world) return;
+  world.querySelectorAll('.fm-n').forEach(el => { const p = fmP(el.dataset.id); el.style.left = p.x + 'px'; el.style.top = p.y + 'px'; });
+  d.edges.forEach((e, i) => {
+    const g = fmEdgeGeom(e), grp = world.querySelector(`.fm-e[data-i="${i}"]`); if (!grp) return;
+    grp.querySelectorAll('path:not(.fm-ch)').forEach(p => p.setAttribute('d', g.d));
+    const ch = grp.querySelector('.fm-ch'); if (ch) ch.setAttribute('transform', `translate(${g.ch.x} ${g.ch.y}) rotate(${g.ch.ang})`);
+    const lb = world.querySelector(`.fm-el[data-i="${i}"]`); if (lb) { lb.style.left = (g.mid.x - 50) + 'px'; lb.style.top = (g.mid.y - 10) + 'px'; }
+  });
+}
 function fmDraw() {
   const d = FM.data, world = document.getElementById('fm-world');
   if (!d || !world) return;
@@ -8013,20 +8050,22 @@ function fmDraw() {
   const route = fmRoute(d);
   const spIdx = {}; d.spaces.forEach((s, i) => { spIdx[s.uid] = i; });
   const inSp = (uids) => FM.space === 'all' || uids.includes(FM.space);
-  // линии
+  // линии: плавные кривые от стороны к стороне, пунктир бежит от подключающегося сервера к принимающему
   let svg = '', labels = '';
-  d.edges.forEach(e => {
-    const a = fmP(e.a), b = fmP(e.b), ax = a.x + FM_W / 2, ay = a.y + FM_H / 2, bx = b.x + FM_W / 2, by = b.y + FM_H / 2;
+  d.edges.forEach((e, i) => {
+    const g = fmEdgeGeom(e);
     const on = route.edges.has(e), vis = FM.space === 'all' || e.spaces.includes(FM.space) || (!e.spaces.length && FM.space === 'all');
     const cols = e.spaces.length ? (FM.space === 'all' ? e.spaces : [FM.space]).map(u => FM_COL[spIdx[u] % FM_COL.length]) : ['var(--c-primary)'];
     const w = on ? 5 : 3, op = vis ? (route.ids.length && !on ? 0.6 : 1) : 0.2;
-    const dash = e.on === false ? 'stroke-dasharray="7 6"' : '';
-    const col = e.on === false ? 'var(--c-muted)' : cols[0];
-    if (on) svg += `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="var(--c-primary)" stroke-opacity=".22" stroke-width="${w + 6}" stroke-linecap="round"/>`;
-    svg += `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="${col}" stroke-width="${w}" stroke-linecap="round" ${dash} opacity="${op}"/>`;
-    if (e.on !== false && cols.length > 1) svg += `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="${cols[1]}" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="12 12" opacity="${op}"/>`;
+    const off = e.on === false, known = !!e.from, multi = cols.length > 1 && !off;
+    svg += `<g class="fm-e" data-i="${i}">${on ? `<path class="fm-halo" d="${g.d}"/>` : ''}`;
+    (multi ? cols.slice(0, 2) : [cols[0]]).forEach((c, j) => {
+      svg += `<path class="fm-ln${off ? ' off' : known ? ' flow' : ''}${multi ? ' multi' : ''}" d="${g.d}" style="stroke:${off ? 'var(--c-muted)' : c};stroke-width:${w};opacity:${op};--o0:${-j * 17}px;${multi ? `stroke-dashoffset:${-j * 17}px` : ''}"/>`;
+    });
+    if (known) svg += `<path class="fm-ch" d="M-5 -5L3 0L-5 5" transform="translate(${g.ch.x} ${g.ch.y}) rotate(${g.ch.ang})" style="opacity:${off ? 0 : op}"/>`;
+    svg += `<path class="fm-hit" data-i="${i}" d="${g.d}"/></g>`;
     const lab = e.on === false ? 'нет связи' : e.on === null ? 'нет данных' : (e.spaces.length ? e.spaces.length + ' ' + uxPlural(e.spaces.length, 'пространство', 'пространства', 'пространств') : 'прямое');
-    labels += `<div class="fm-el${e.on === false ? ' bad' : ''}" style="left:${(ax + bx) / 2 - 50}px;top:${(ay + by) / 2 - 10}px;opacity:${op}">${lab}</div>`;
+    labels += `<div class="fm-el${e.on === false ? ' bad' : ''}" data-i="${i}" style="left:${g.mid.x - 50}px;top:${g.mid.y - 10}px;opacity:${op}">${lab}</div>`;
   });
   // узлы
   const nodes = d.nodes.map(n => {
@@ -8049,6 +8088,19 @@ function fmDraw() {
 }
 function fmSide(d, route) {
   const box = document.getElementById('fm-side'); if (!box) return;
+  const le = FM.selLink != null ? d.edges[FM.selLink] : null;
+  if (le) {
+    const nm = id => d.nodes.find(x => x.id === id)?.name || id, src = le.from || le.a, dst = src === le.a ? le.b : le.a;
+    const spIdx2 = {}; d.spaces.forEach((s, i) => { spIdx2[s.uid] = i; });
+    const st = le.on === false ? '<span class="bad">нет связи</span>' : le.on === null ? '<span class="warn">нет данных</span>' : '<span class="ok">в сети</span>';
+    box.innerHTML = `<div class="card"><div class="fm-sh"><b>${esc(nm(src))} ${le.from ? '→' : '—'} ${esc(nm(dst))}</b><code>${le.from ? 'подключается ' + esc(nm(src)) : 'направление неизвестно'}</code></div>
+      ${le.from ? `<div class="fm-f"><span>Подключается</span><span>${esc(nm(src))}</span></div><div class="fm-f"><span>Принимает</span><span>${esc(nm(dst))}</span></div>` : ''}
+      <div class="fm-f"><span>Состояние</span><span>${st}</span></div>
+      <div class="fm-f"><span>Тип</span><span>${le.direct ? 'прямое подключение к вам' : 'между другими серверами'}</span></div>
+      ${le.spaces.length ? `<div class="fm-sp"><span>Общие пространства</span>${le.spaces.map(u => { const sp = d.spaces.find(x => x.uid === u); return `<div><i style="background:${FM_COL[spIdx2[u] % FM_COL.length]}"></i><b>${esc(sp?.name || u)}</b></div>`; }).join('')}</div>` : ''}</div>
+      <div class="fd-hint" style="padding:0 4px">Подключается тот сервер, где вводили ключ активации: он сам открывает соединение (поэтому ему не нужен открытый адрес), и все события идут по нему в обе стороны.${le.from ? '' : ' Сервер на другом конце ещё не обновлён и направление не сообщает.'}</div>`;
+    return;
+  }
   const n = d.nodes.find(x => x.id === FM.sel) || d.nodes[0]; if (!n) { box.innerHTML = ''; return; }
   const spIdx = {}; d.spaces.forEach((s, i) => { spIdx[s.uid] = i; });
   const status = n.self ? 'это ваш сервер' : n.paused ? 'приостановлено' : n.online === true ? 'в сети' : n.online === false ? 'нет связи' : 'нет данных';
@@ -8084,8 +8136,8 @@ function fmFit() {
   const d = FM.data, st = document.getElementById('fm-stage'); if (!d || !st || !d.nodes.length) return;
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   d.nodes.forEach(n => { const p = fmP(n.id); x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x + FM_W); y1 = Math.max(y1, p.y + FM_H); });
-  const w = st.clientWidth, h = st.clientHeight, pad = 50;
-  const k = Math.max(0.3, Math.min(1.2, (w - pad * 2) / Math.max(1, x1 - x0), (h - pad * 2 - 40) / Math.max(1, y1 - y0)));
+  const w = st.clientWidth, h = st.clientHeight, pad = 70;
+  const k = Math.max(0.3, Math.min(0.75, (w - pad * 2) / Math.max(1, x1 - x0), (h - pad * 2 - 40) / Math.max(1, y1 - y0)));
   FM.k = k; FM.tx = (w - (x1 - x0) * k) / 2 - x0 * k; FM.ty = (h - 40 - (y1 - y0) * k) / 2 - y0 * k + 6;
   const world = document.getElementById('fm-world'); if (world) world.style.transform = `translate(${FM.tx}px,${FM.ty}px) scale(${FM.k})`;
 }
@@ -8126,15 +8178,19 @@ function fmMove(e) {
   }
   const r = st.getBoundingClientRect();
   FM.pos[dr.id] = { x: Math.round((e.clientX - r.left - FM.tx) / FM.k - dr.ox), y: Math.round((e.clientY - r.top - FM.ty) / FM.k - dr.oy) };
-  if (!FM._raf) FM._raf = requestAnimationFrame(() => { FM._raf = 0; fmDraw(); });
+  if (!FM._raf) FM._raf = requestAnimationFrame(() => { FM._raf = 0; fmReposition(); });
 }
 function fmUp(e) {
   const dr = FM.drag; if (!dr) return;
   e.currentTarget.classList.remove('pan');
   FM.drag = null;
-  if (dr.pan) return;
+  if (dr.pan) {
+    // нажатие по линии (без сдвига) выбирает связь
+    if (!dr.moved) { const t = document.elementFromPoint(e.clientX, e.clientY), hit = t && t.closest && t.closest('.fm-hit'); if (hit) { FM.selLink = +hit.dataset.i; fmDraw(); } }
+    return;
+  }
   if (dr.moved) { try { localStorage.setItem('fm-pos', JSON.stringify(FM.pos)); } catch {} }
-  else FM.sel = dr.id;
+  else { FM.sel = dr.id; FM.selLink = null; }
   fmDraw();
 }
 

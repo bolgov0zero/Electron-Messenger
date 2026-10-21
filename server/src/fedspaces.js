@@ -582,11 +582,11 @@ function reportLinks() {
     if (!isActiveIn(uid, myId)) continue;
     const mine = edgesOf(uid).filter(e => e.a === myId || e.b === myId).map(e => {
       const other = e.a === myId ? e.b : e.a, p = F().realPeerByInstance(other);
-      return [e.a, e.b, p && F().isOnline(p.id) ? 1 : 0];
+      return [e.a, e.b, p && F().isOnline(p.id) ? 1 : 0, p && p.role === 'out' ? myId : other];   // кто подключается: тот, кто вводил ключ активации
     });
     const m = linkInfo.get(uid) || new Map();
     linkInfo.set(uid, m);
-    mine.forEach(([a, b, on]) => m.set(a + '|' + b, { on: !!on, at: Date.now() }));
+    mine.forEach(([a, b, on, from]) => m.set(a + '|' + b, { on: !!on, at: Date.now(), from }));
     for (const n of activeNodes(uid)) {
       if (n.instance_id === myId) continue;
       const p = F().peerByInstance(n.instance_id);
@@ -599,7 +599,7 @@ function recvLinks(peer, ev) {
   if (!spaceByUid(uid) || !isActiveIn(uid, peer.instance_id) || !Array.isArray(ev.links)) return;
   const m = linkInfo.get(uid) || new Map();
   linkInfo.set(uid, m);
-  for (const l of ev.links.slice(0, 200)) if (Array.isArray(l)) m.set(`${str(l[0], 40)}|${str(l[1], 40)}`, { on: !!l[2], at: Date.now() });
+  for (const l of ev.links.slice(0, 200)) if (Array.isArray(l)) m.set(`${str(l[0], 40)}|${str(l[1], 40)}`, { on: !!l[2], at: Date.now(), from: ID_RE.test(String(l[3] || '')) ? String(l[3]) : '' });
 }
 
 // ─────────────────────────── карта ───────────────────────────
@@ -620,7 +620,7 @@ function mapData() {
     const on = p.status === 'active' && F().isOnline(p.id);
     addNode(p.instance_id, p.name, p.pub, { direct: true, online: on, paused: p.status !== 'active' });
     const k = [myId, p.instance_id].sort().join('|');
-    edges.set(k, { a: myId, b: p.instance_id, on, spaces: [], direct: true });
+    edges.set(k, { a: myId, b: p.instance_id, on, spaces: [], direct: true, from: p.role === 'out' ? myId : p.instance_id });
   }
   // Пространства
   const colorOf = i => i % 6;
@@ -644,6 +644,7 @@ function mapData() {
       else { const li = info.get(e.a + '|' + e.b); if (li && Date.now() - li.at < 45000) on = li.on; }
       const cur = edges.get(k) || { a: e.a, b: e.b, on, spaces: [] };
       cur.on = on; cur.spaces.push(uid);
+      if (!cur.from) { const li = info.get(e.a + '|' + e.b); if (li && li.from) cur.from = li.from; }
       edges.set(k, cur);
     }
     spaceList.push(sp);
