@@ -1033,6 +1033,9 @@ tbody tr:hover td{background:var(--c-surface2)}
 .fm-n.off .fm-nd{background:var(--c-muted)}.fm-n.unk .fm-nd{background:var(--c-orange)}
 .fm-nt{min-width:0;display:flex;flex-direction:column;gap:2px}.fm-nt b{font-size:14px;font-weight:600;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fm-nt span{font-size:12px;line-height:16px;color:var(--c-text2);display:flex;align-items:center;gap:6px;white-space:nowrap}.fm-nt span i{width:7px;height:7px;border-radius:50%;flex:none}
+.fm-vt{position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);font:500 10.5px/16px var(--f-mono);padding:0 8px;border-radius:99px;background:var(--c-surface2);border:1px solid var(--c-border);color:var(--c-text2);white-space:nowrap;pointer-events:none}
+.fm-n.sel .fm-vt{bottom:-10px;border-color:var(--c-primary);color:var(--c-primary)}
+.fm-n.off .fm-vt{opacity:.8}
 .fm-me{position:absolute;top:-9px;right:12px;font:700 10.5px var(--f-ui);letter-spacing:.04em;line-height:16px;padding:0 7px;border-radius:99px;background:var(--c-text);color:var(--c-surface)}
 .fm-ln{fill:none;stroke-linecap:round}
 .fm-ln.flow{stroke-dasharray:8 9;animation:fmflow 1.05s linear infinite}
@@ -8306,7 +8309,7 @@ function fmDraw() {
     const cls = 'fm-n' + (sel ? ' sel' : '') + (dim ? ' dim' : '') + (n.online === false ? ' off' : n.online === null ? ' unk' : '') + (FM.drag?.id === n.id ? ' drag' : '');
     const sp = FM.space === 'all' ? n.spaces.map(s => `<i style="background:${FM_COL[spIdx[s.uid] % FM_COL.length]}"></i>`).join('') : '';
     const sub = n.online === false ? 'нет связи' : n.online === null ? 'нет данных' : (FM.space !== 'all' ? (n.spaces.find(s => s.uid === FM.space)?.people ?? 0) + ' в пространстве' : n.people ? n.people + ' ' + fdPlural(n.people) : 'без пространств');
-    return `<div class="${cls}" data-id="${esc(n.id)}" style="left:${p.x}px;top:${p.y}px"><span class="fm-ni">${FM_SRV}<span class="fm-nd"></span></span><span class="fm-nt"><b>${esc(n.name)}</b><span>${esc(sub)}${n.ver ? ' · v' + esc(n.ver) : ''}${sp}</span></span>${n.self ? '<span class="fm-me">ВЫ</span>' : ''}</div>`;
+    return `<div class="${cls}" data-id="${esc(n.id)}" style="left:${p.x}px;top:${p.y}px"><span class="fm-ni">${FM_SRV}<span class="fm-nd"></span></span><span class="fm-nt"><b>${esc(n.name)}</b><span>${esc(sub)}${sp}</span></span>${n.ver ? `<span class="fm-vt" title="Версия сервера">v${esc(n.ver)}</span>` : ''}${n.self ? '<span class="fm-me">ВЫ</span>' : ''}</div>`;
   }).join('');
   world.style.transform = `translate(${FM.tx}px,${FM.ty}px) scale(${FM.k})`;
   world.innerHTML = `<svg class="fm-svg" width="1" height="1">${svg}</svg>${labels}${nodes}`;
