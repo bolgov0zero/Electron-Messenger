@@ -39,7 +39,13 @@ function serverVersion() {
   try { return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8')).version; }
   catch { return '0'; }
 }
-app.get(['/chat', '/chat/', '/chat/index.html'], (req, res) => {
+// Страница ссылается на style.css, app.js и остальное относительными адресами, поэтому без завершающего слэша («/chat»)
+// браузер искал бы их в корне сайта и показывал страницу без стилей и скриптов: ведём на «/chat/»
+app.get('/chat', (req, res, next) => {
+  if (req.originalUrl.split('?')[0] !== '/chat') return next();   // маршрут без слэша совпадает и с «/chat/»
+  res.redirect(301, '/chat/' + (req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : ''));
+});
+app.get(['/chat/', '/chat/index.html'], (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   try {
     const html = fs.readFileSync(CHAT_INDEX, 'utf8').replace(/\?v=[\w.\-]+/g, '?v=' + serverVersion());
