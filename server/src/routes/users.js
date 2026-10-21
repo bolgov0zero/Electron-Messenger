@@ -198,6 +198,10 @@ router.delete('/:id', authMiddleware, adminMiddleware, (req, res) => {
   db.transaction(() => {
     db.prepare('UPDATE messages SET sender_id = NULL WHERE sender_id = ?').run(userId);
     db.prepare('UPDATE chats SET created_by = NULL WHERE created_by = ?').run(userId);
+    // Журнал действий администраторов и одобрения ключей секретных чатов остаются, автор подписывается «Удалённый аккаунт».
+    // Раньше эти ссылки не обнулялись, и удаление любого администратора, успевшего что-то сделать в админке, падало
+    db.prepare('UPDATE admin_audit_log SET actor_id = NULL WHERE actor_id = ?').run(userId);
+    db.prepare('UPDATE secret_key_requests SET approver_user_id = NULL WHERE approver_user_id = ?').run(userId);
     db.prepare('DELETE FROM users WHERE id = ?').run(userId);
   })();
   try { require('../fedspaces').membersChanged(); } catch {}   // люди других серверов уберут его из общих пространств
