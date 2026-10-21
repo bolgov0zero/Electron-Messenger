@@ -11,7 +11,7 @@ const { authMiddleware, adminMiddleware } = require('../auth');
 const announcements = require('../announcements');
 const { sendTo, broadcast, broadcastAll, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, getMessageWithStatus } = require('../ws');
 const monitor = require('../monitor');
-const restore = dal.pg ? null : require('../restore');
+const restore = dal.pg ? require('../restorepg') : require('../restore');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
 const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
@@ -1206,12 +1206,18 @@ function listBackups() {
   } catch { return []; }
 }
 
+// Копия — файл SQLite на обоих движках. На PostgreSQL её собирает pgexport.js одним согласованным снимком
+let _backupBusy = false;
 async function createBackup(kind = 'man') {
-  if (dal.pg) throw new Error('Для PostgreSQL копии делаются средствами PostgreSQL (pg_dump)');
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
   const ts = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
   const name = `chat-${ts}.db`;
-  await db.backup(path.join(BACKUP_DIR, name));
+  if (_backupBusy) throw new Error('Копия уже создаётся');
+  _backupBusy = true;
+  try {
+    if (dal.pg) await require('../pgexport').exportToSqlite(path.join(BACKUP_DIR, name));
+    else await db.backup(path.join(BACKUP_DIR, name));
+  } finally { _backupBusy = false; }
   try { fs.writeFileSync(path.join(BACKUP_DIR, name + '.kind'), kind); } catch {}
   return name;
 }
@@ -1297,10 +1303,10 @@ router.post('/backups/restore/upload', (req, res) => {
 });
 
 // Сравнение «сейчас → в копии» для окна подтверждения: ничего не меняет
-router.post('/backups/restore/inspect', (req, res) => {
+router.post('/backups/restore/inspect', async (req, res) => {
   try {
     const src = restoreSource(req.body);
-    res.json({ ok: true, source: src.info, ...restore.inspect(src.path) });
+    res.json({ ok: true, source: src.info, ...(await restore.inspect(src.path)) });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
@@ -1313,7 +1319,7 @@ router.post('/backups/restore/safety', async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Не удалось создать копию перед восстановлением: ' + e.message }); }
 });
 
-router.post('/backups/restore/apply', (req, res) => {
+router.post('/backups/restore/apply', async (req, res) => {
   let src;
   try {
     src = restoreSource(req.body);
@@ -1321,7 +1327,7 @@ router.post('/backups/restore/apply', (req, res) => {
     const sf = String(req.body.safety || '');
     if (!BACKUP_RE.test(sf) || !fs.existsSync(path.join(BACKUP_DIR, sf)) || Date.now() - fs.statSync(path.join(BACKUP_DIR, sf)).mtimeMs > 20 * 60e3)
       return res.status(400).json({ error: 'Сначала нужна свежая копия «до восстановления»' });
-    const r = restore.apply(src.path, { users: !!req.body.users, chats: !!req.body.chats, settings: !!req.body.settings });
+    const r = await restore.apply(src.path, { users: !!req.body.users, chats: !!req.body.chats, settings: !!req.body.settings });
     const parts = [r.users ? 'пользователи' : '', r.chats ? 'чаты' : '', req.body.settings ? 'настройки' : ''].filter(Boolean).join(', ');
     logAudit(req, 'server', 'Восстановление из копии', `${src.info.name}: ${parts}`);
     console.log('[Restore] Восстановлено из', src.info.name, '—', parts);

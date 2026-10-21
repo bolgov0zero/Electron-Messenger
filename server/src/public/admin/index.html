@@ -7762,7 +7762,7 @@ function spDatabase() {
       <div class="sp-c"><button type="button" class="btn btn-ghost btn-sm" onclick="spDbClose()">Понятно</button></div></div>`;
     return out;
   }
-  if (pg) return out + spRow('Резервные копии', 'Копии средствами PostgreSQL (pg_dump) и восстановление из них пока не подключены к панели', '<span class="sp-stat warn">скоро</span>', '', '', 'копия');
+  if (pg) return out + spRow('Резервные копии', 'Создаются и восстанавливаются в разделе «Резервные копии» так же, как раньше. Копия — файл формата SQLite: её можно восстановить на любом движке, в том числе копию, сделанную до переноса', '<button type="button" class="btn btn-ghost btn-sm" onclick="spOpen(\'backups\')">Открыть</button>', '', '', 'копия');
   if (!i.canMigrate) return out;
   const f = d.form, t = d.test, ok = !!(t && t.ok);
   const inp = (k, label, type = 'text', w = '') => `<label>${label}<span class="sp-inp"><input id="sp-db-${k}" type="${type}" value="${esc(String(f[k]))}" autocomplete="off" spellcheck="false" oninput="spDbF('${k}', this.value)" ${w}></span></label>`;

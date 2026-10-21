@@ -47,7 +47,7 @@ async function flushMetrics() {
   const m = macc; macc = null;
   if (!m || !m.n) return;
   try { await dal.run(UPSERT_METRIC, m.b, m.n, m.cpu, m.lag, m.on, m.onN); }
-  catch (e) { console.error('[Monitor] не удалось записать историю:', e.message); }
+  catch (e) { if (!/обслуживание/.test(e.message)) console.error('[Monitor] не удалось записать историю:', e.message); }
 }
 function addMetric(t, cpu, lag, online) {
   const b = Math.floor(t / 300000) * 300;

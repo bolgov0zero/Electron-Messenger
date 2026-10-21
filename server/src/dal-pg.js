@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { Pool, types } = require('pg');
 const { translate } = require('./dialect');
+const maintenance = require('./maintenance');
 const { applyMigrations, loadMeta } = require('./pgschema');
 
 // bigint и numeric драйвер отдаёт строками; все наши числа (id, секунды) помещаются в double
@@ -28,6 +29,7 @@ function sqlFor(sql, forRun) {
 const clean = p => p.map(v => (typeof v === 'string' && v.includes('\u0000') ? v.replace(/\u0000/g, '') : v === undefined || (typeof v === 'number' && Number.isNaN(v)) ? null : v));
 
 async function exec(kind, sql, params) {
+  if (kind === 'run' && maintenance.isOn()) throw new Error('Идёт обслуживание базы: запись временно запрещена');
   const runner = als.getStore() || pool;
   const r = await runner.query(sqlFor(sql, kind === 'run'), clean(params));
   if (kind === 'get') return r.rows[0];
@@ -37,6 +39,7 @@ async function exec(kind, sql, params) {
 }
 
 async function tx(fn) {
+  if (maintenance.isOn()) throw new Error('Идёт обслуживание базы: запись временно запрещена');
   if (als.getStore()) return fn();             // вложенная транзакция присоединяется к внешней
   const client = await pool.connect();
   try {
@@ -69,6 +72,8 @@ module.exports = {
   // Взаимное исключение внутри транзакции: тот, кто взял замок с тем же именем, ждёт конца первой
   lock: key => exec('get', 'SELECT pg_advisory_xact_lock(hashtext(?))', [String(key)]),
   init,
+  // Отдельное соединение для долгих задач (копии, перенос): вызывающий обязан вернуть его release()
+  getClient: () => pool.connect(),
   close: async () => { if (pool) await pool.end(); },
   _meta: meta,
 };

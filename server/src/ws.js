@@ -292,19 +292,17 @@ function setup(server) {
 
   wss.on('connection', (ws, req) => {
     const url = new URL(req.url, 'http://localhost');
-    // Проверка токена обращается к базе асинхронно; сообщения, пришедшие за это
-    // время, копим и разбираем сразу после неё, чтобы ничего не потерялось
-    const early = [];
-    const hold = raw => early.push(raw);
-    ws.on('message', hold);
-    wsAuth(url.searchParams.get('token')).then(async user => {
-      ws.off('message', hold);
-      await attachConn(ws, req, user);
-      early.forEach(raw => ws.emit('message', raw));
-    }, () => ws.close(1008, 'Unauthorized'));
+    // Проверка токена и подготовка соединения обращаются к базе асинхронно, а клиент может прислать
+    // сообщение сразу после открытия. Поэтому слушатель ставится сразу: сообщения копятся и отдаются
+    // обработчику в порядке прихода, как только он готов
+    let handler = null;
+    const queue = [];
+    ws.on('message', raw => { if (handler) handler(raw); else queue.push(raw); });
+    const setHandler = fn => { handler = fn; queue.splice(0).forEach(fn); };
+    wsAuth(url.searchParams.get('token')).then(user => attachConn(ws, req, user, setHandler), () => ws.close(1008, 'Unauthorized'));
   });
 
-  async function attachConn(ws, req, user) {
+  async function attachConn(ws, req, user, setHandler) {
 
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
@@ -320,7 +318,7 @@ function setup(server) {
     connMeta.set(connId, { ws, userId: user.id, username: user.username, displayName: user.display_name, hostname: '—', clientVersion: '—', osPlatform: '—', osRelease: '—', installScope: null, connectedAt: Date.now(), clientIp });
     ws._connId = connId;
 
-    ws.on('message', async raw => {
+    setHandler(async raw => {
       let data; try { data = JSON.parse(raw); } catch { return; }
 
       // Перенос базы: запись запрещена, клиент получает отказ и оставляет сообщение неотправленным
