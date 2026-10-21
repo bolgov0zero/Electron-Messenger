@@ -2055,6 +2055,14 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .sp-pg i{display:block;height:100%;background:var(--c-primary);transition:width .4s}
 .sp-pg.ind i{width:30%;animation:spInd 1.2s ease-in-out infinite alternate}
 @keyframes spInd{from{margin-left:0}to{margin-left:70%}}
+.pgi-st{display:flex;flex-direction:column;gap:7px;margin:14px 0 4px}
+.pgi-st div{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--c-muted)}
+.pgi-st i{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:10px;font-weight:800;border:1px solid var(--c-border)}
+.pgi-st .dn{color:var(--c-text)}.pgi-st .dn i{background:var(--c-green-dim);color:var(--c-green-text);border-color:transparent}
+.pgi-st .cur{color:var(--c-text);font-weight:600}.pgi-st .cur i{border-color:var(--c-primary);color:var(--c-primary)}
+.pgi-pc{display:flex;justify-content:space-between;align-items:baseline;margin:6px 0 8px}
+.pgi-pc b{font:700 26px var(--f-mono)}.pgi-pc span{font-size:12.5px;color:var(--c-muted)}
+.pgi-log{margin-top:10px;max-height:120px;overflow:auto;font:11px/1.5 var(--f-mono);color:var(--c-muted);background:var(--c-surface2);border:1px solid var(--c-border);border-radius:8px;padding:8px 10px;white-space:pre-wrap;user-select:text}
 .sp-tiles .ub-tile{display:block;width:100%}
 .sp-tiles .ub-sub{margin-top:6px}
 .sp-sk{display:flex;align-items:flex-end;gap:4px;height:22px;margin-top:8px}
@@ -2321,6 +2329,9 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 <input type="file" id="rs-file" accept=".db,.sqlite,.sqlite3" hidden onchange="rsUpload(this.files[0]); this.value = ''">
 
 <!-- User modal -->
+<!-- Установка PostgreSQL на этом сервере (Настройки → База данных) -->
+<div class="modal-bg" id="modal-pginst"><div class="modal modal-sm" id="pginst-box" role="dialog" aria-modal="true"></div></div>
+
 <!-- Обязательная смена пароля: закрыть нельзя, поэтому без крестика и кнопки отмены -->
 <div class="modal-bg" id="modal-force-pass">
   <div class="modal modal-sm">
@@ -7429,6 +7440,7 @@ async function renderSettings() {
   SP.audit = Array.isArray(audit) ? audit.filter(a => a.category === 'server') : [];
   SP.db.info = dbInfo && !dbInfo.error ? dbInfo : null; SP.db.job = SP.db.info?.job || null;
   if (SP.db.job && (SP.db.job.state === 'running' || SP.db.job.state === 'restarting')) { SP.open.add('database'); spDbPoll(); }
+  if (SP.db.info?.install && SP.db.info.install.state === 'running') { SP.open.add('database'); pgiResume(SP.db.info.install); }
   SP.loaded = true; SP.pend = null;
   spLoadRate();
   clearInterval(SP.rateTimer);
@@ -7646,6 +7658,92 @@ function spDbPoll() {
     if (currentPage === 'settings') spRender();
   }, 1200);
 }
+// ── Установка PostgreSQL на этом сервере (модалка) ──
+const PGI = { step: 'confirm', pw: '', err: '', busy: false, job: null, t: null };
+const PGI_STAGES = ['Проверка системы', 'Подготовка репозитория', 'Установка пакетов', 'Запуск службы', 'Настройка доступа', 'Создание роли и базы', 'Проверка подключения'];
+function pgiOpen() { Object.assign(PGI, { step: 'confirm', pw: '', err: '', busy: false, job: null }); pgiRender(); openModal('modal-pginst'); setTimeout(() => document.getElementById('pgi-pw')?.focus(), 200); }
+function pgiClose() {
+  clearInterval(PGI.t);
+  const j = PGI.job;
+  closeModal('modal-pginst');
+  if (PGI.step === 'done' && j?.result) {
+    // Данные подключения подставляются в форму переноса, остаётся проверить и перенести
+    Object.assign(SP.db.form, { host: j.result.host, port: j.result.port, database: j.result.database, user: j.result.user, password: j.result.password, ssl: '' });
+    SP.db.test = null; SP.db.confirm = false; SP.open.add('database');
+    if (SP.db.info) SP.db.info.install = null;
+    if (currentPage === 'settings') { spRender(); spScroll('database'); }
+    toast('Данные подключения подставлены в форму. Проверьте соединение', 'success');
+  }
+}
+function pgiRender() {
+  const box = document.getElementById('pginst-box'); if (!box) return;
+  const j = PGI.job;
+  if (PGI.step === 'confirm') {
+    box.innerHTML = `<div class="modal-head"><h3>Установить PostgreSQL</h3><button class="modal-close" aria-label="Закрыть" onclick="pgiClose()">✕</button></div>
+      <div class="modal-body">
+        <p style="font-size:12.5px;color:var(--c-text2);line-height:1.7;margin:0 0 12px">На этом сервере будет установлен и настроен PostgreSQL: из репозиториев системы поставится пакет, создадутся пользователь и пустая база, доступ откроется только с этого сервера. Данные подключения подставятся в форму переноса. Сам сервер продолжит работать на SQLite.</p>
+        <p style="font-size:12.5px;color:var(--c-text2);line-height:1.7;margin:0 0 14px">Установка занимает несколько минут и требует доступа сервера в интернет. Действие необратимо, поэтому подтвердите его своим паролем.</p>
+        <div class="fg"><label>Ваш пароль</label><input id="pgi-pw" type="password" autocomplete="current-password" placeholder="••••••••" value="${esc(PGI.pw)}" oninput="PGI.pw=this.value" onkeydown="if(event.key==='Enter')pgiStart()"></div>
+        <div class="err" id="pgi-err">${esc(PGI.err)}</div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-ghost" onclick="pgiClose()">Отмена</button><button class="btn btn-primary" id="pgi-go" ${PGI.busy ? 'disabled' : ''} onclick="pgiStart()">${PGI.busy ? 'Проверка…' : 'Установить'}</button></div>`;
+    return;
+  }
+  const st = j?.stage || 1, pct = Math.round(j?.pct || 0);
+  if (PGI.step === 'run') {
+    box.innerHTML = `<div class="modal-head"><h3>Установка PostgreSQL</h3></div>
+      <div class="modal-body">
+        <div class="pgi-pc"><b>${pct}%</b><span>${esc(j?.text || '')}</span></div>
+        <div class="sp-pg"><i style="width:${pct}%"></i></div>
+        <div class="pgi-st">${PGI_STAGES.map((n, i) => `<div class="${i + 1 < st ? 'dn' : i + 1 === st ? 'cur' : ''}"><i>${i + 1 < st ? '✓' : i + 1 === st ? '…' : ''}</i>${n}</div>`).join('')}</div>
+        <p class="rb-meta" style="margin:12px 0 0;white-space:normal">Не закрывайте страницу и не выключайте сервер до конца установки.</p>
+      </div>`;
+    return;
+  }
+  if (PGI.step === 'done') {
+    box.innerHTML = `<div class="modal-head"><h3>PostgreSQL установлен</h3></div>
+      <div class="modal-body">
+        <div class="pgi-pc"><b>100%</b><span>Готово</span></div><div class="sp-pg"><i style="width:100%"></i></div>
+        <div class="pgi-st">${PGI_STAGES.map(n => `<div class="dn"><i>✓</i>${n}</div>`).join('')}</div>
+        <p style="font-size:12.5px;color:var(--c-text2);line-height:1.7;margin:14px 0 0">Данные подключения подставятся в форму: останется проверить соединение и перенести данные. Копия данных подключения сохранена на сервере в <code class="st-code">/etc/electron/postgres.txt</code> (доступ только у администратора сервера).</p>
+      </div>
+      <div class="modal-foot"><button class="btn btn-primary" onclick="pgiClose()">Закрыть</button></div>`;
+    return;
+  }
+  box.innerHTML = `<div class="modal-head"><h3>Установка не удалась</h3></div>
+    <div class="modal-body">
+      <p style="font-size:12.5px;color:var(--c-red-text);line-height:1.7;margin:0">${esc(j?.error || 'Неизвестная ошибка')}</p>
+      <p style="font-size:12.5px;color:var(--c-text2);line-height:1.7;margin:10px 0 0">Сервер продолжает работать на SQLite, данные не затронуты. Установку можно повторить: уже сделанные шаги пропустятся.</p>
+      ${(j?.log || []).length ? `<div class="pgi-log">${esc(j.log.slice(-12).join('\n'))}</div>` : ''}
+    </div>
+    <div class="modal-foot"><button class="btn btn-primary" onclick="pgiClose()">Закрыть</button></div>`;
+}
+async function pgiStart() {
+  if (PGI.busy) return;
+  if (!PGI.pw) { PGI.err = 'Введите пароль'; return pgiRender(); }
+  PGI.busy = true; PGI.err = ''; pgiRender();
+  const r = await api('POST', '/api/admin/database/install-pg', { password: PGI.pw });
+  PGI.busy = false; PGI.pw = '';
+  if (!r?.ok) { PGI.err = r?.error || 'Не удалось начать установку'; return pgiRender(); }
+  PGI.job = r.job; PGI.step = 'run'; pgiRender(); pgiPoll();
+}
+function pgiPoll() {
+  clearInterval(PGI.t);
+  PGI.t = setInterval(async () => {
+    try {
+      const res = await fetch('/api/admin/database/install-pg?_t=' + Date.now(), { headers: { Authorization: 'Bearer ' + token, 'Cache-Control': 'no-cache' } });
+      if (!res.ok) return;
+      const { job } = await res.json();
+      if (!job) return;
+      PGI.job = job;
+      if (job.state === 'done') { PGI.step = 'done'; clearInterval(PGI.t); }
+      else if (job.state === 'failed') { PGI.step = 'fail'; clearInterval(PGI.t); }
+      pgiRender();
+    } catch {}
+  }, 1000);
+}
+// Страницу обновили во время установки: возвращаемся в окно
+function pgiResume(job) { PGI.job = job; PGI.step = job.state === 'running' ? 'run' : job.state === 'done' ? 'done' : 'fail'; pgiRender(); openModal('modal-pginst'); if (job.state === 'running') pgiPoll(); }
 function spDatabase() {
   const d = SP.db, i = d.info, job = d.job;
   if (!i) return '<div class="rb-meta" style="padding:14px 4px">Не удалось получить сведения о базе</div>';
@@ -7668,6 +7766,7 @@ function spDatabase() {
   if (!i.canMigrate) return out;
   const f = d.form, t = d.test, ok = !!(t && t.ok);
   const inp = (k, label, type = 'text', w = '') => `<label>${label}<span class="sp-inp"><input id="sp-db-${k}" type="${type}" value="${esc(String(f[k]))}" autocomplete="off" spellcheck="false" oninput="spDbF('${k}', this.value)" ${w}></span></label>`;
+  out += spRow('PostgreSQL на этом сервере', 'Нет своего PostgreSQL? Сервер установит его и подставит данные подключения в форму ниже', '<button type="button" class="btn btn-ghost btn-sm" onclick="pgiOpen()">Установить PostgreSQL</button>', '', '', 'установить postgres');
   out += `<div class="sp-r wide"><div class="sp-l"><b>Перенос на PostgreSQL</b><span>PostgreSQL 14 или новее на этом же сервере. База должна быть пустой и создана в UTF-8 (скрипт установки создаёт её сам). Текущая база останется как резервная копия</span></div>
     <div class="sp-dbf">${inp('host', 'Адрес сервера')}${inp('port', 'Порт', 'number')}${inp('database', 'Имя базы')}${inp('user', 'Пользователь')}${inp('password', 'Пароль', 'password')}
       <label>Шифрование<span class="sp-inp"><select id="sp-db-ssl" onchange="spDbF('ssl', this.value)"><option value="" ${f.ssl === '' ? 'selected' : ''}>Без шифрования (тот же сервер)</option><option value="require" ${f.ssl === 'require' ? 'selected' : ''}>Шифровать</option><option value="verify-full" ${f.ssl === 'verify-full' ? 'selected' : ''}>Шифровать и проверять сертификат</option></select></span></label></div>
