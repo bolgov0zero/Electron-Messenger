@@ -1624,8 +1624,7 @@ function csPaneUpdate() {
         <span class="cs-state" id="update-status-text"></span><button type="button" class="cs-btn ghost" id="update-check-btn" onclick="checkUpdate()">Проверить</button>`}</div>`;
   return `${has ? `<div class="cs-g">${ver}${_updateNotes ? `<div class="cs-notes"><b>Что нового.</b> ${esc(_updateNotes)}</div>` : ''}</div>
       <p class="cs-hint">Загрузка и установка идут в отдельном окне с прогрессом.</p>`
-      : `${ver}<p class="cs-hint">Приложение само проверяет обновления после запуска и дальше каждые два часа.</p>`}
-    <div class="cs-copy">2026 © bolgov0zero</div>`;
+      : `${ver}<p class="cs-hint">Приложение само проверяет обновления после запуска и дальше каждые два часа.</p>`}`;
 }
 // ── МОДУЛИ ──
 // Состояние, версии и загрузка файлов — в modules.js (общий менеджер для всех клиентов); сами модули подключаются
@@ -1732,7 +1731,7 @@ function csRenderInline(focusId) {
   if (!secs.some(s => s.k === CS.sec)) CS.sec = 'profile';
   const s = secs.find(x => x.k === CS.sec);
   nav.className = 'cs-nav';
-  nav.innerHTML = `<div class="cs-nav-list">${csNavHtml(false)}</div>`;
+  nav.innerHTML = `<div class="cs-nav-list">${csNavHtml(false)}</div><div class="cs-copy">w/ <span class="cp-h">❤️</span> by bolgov0zero</div>`;
   main.innerHTML = `<section class="cs-pane">
       <header class="cs-head"><div><h3>${s.label}</h3><p>${s.desc}</p></div></header>
       <div class="cs-body" id="cs-body">${CS_PANES[s.k]()}</div>

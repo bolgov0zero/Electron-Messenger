@@ -27,7 +27,8 @@ B.ui.settings = (function () {
       '<div class="grp">' + cell({ act: 'blocks', ic: 'block', bg: '#8e8e93', label: 'Блокировки', val: S.blocked.length ? String(S.blocked.length) : '' }) +
         cell({ act: 'diag', ic: 'gear', bg: '#5e6ad2', label: 'Диагностика' }) + '</div>' +
       '<div class="grp">' + cell({ act: 'logout', ic: 'out', bg: '#ff3b30', label: 'Выйти', red: 1, chev: false }) + '</div>' +
-      '<div class="gf" style="text-align:center;margin-top:-8px">Версия ' + esc((window.APP_VERSION || '').replace('?v=', '') || '—') + '</div>';
+      '<div class="gf" style="text-align:center;margin-top:-8px">Версия ' + esc((window.APP_VERSION || '').replace('?v=', '') || '—') + '</div>' +
+      '<div class="mcopy">w/ <span class="cp-h">❤️</span> by bolgov0zero</div>';
     if (u.id) B.avatar.apply(box);
   }
   function mount(el) {

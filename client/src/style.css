@@ -1895,7 +1895,6 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 .cs-state svg { width: 13px; height: 13px; }
 .cs-notes { padding: 12px 14px; font-size: 12.5px; color: var(--text2); line-height: 1.6; border-top: 1px solid var(--border); white-space: pre-wrap; max-height: 240px; overflow-y: auto; }
 .cs-notes b { color: var(--text); }
-.cs-copy { text-align: center; font-size: 11px; color: var(--muted); margin-top: auto; padding-top: 6px; }
 
 .cs-chev { display: grid; color: var(--muted); flex-shrink: 0; }
 .cs-chev svg { width: 16px; height: 16px; }
@@ -4296,3 +4295,8 @@ html.tb-open #tb-strip { transform: none; pointer-events: auto; }
 .presence-dot.mob { width: 8px; height: 12px; bottom: 0; right: 0; border: 1.6px solid var(--presence-online) !important; border-radius: 2.5px; background: transparent; box-shadow: 0 0 0 2px var(--halo, var(--side-bg)), inset 0 0 0 1.5px var(--halo, var(--side-bg)); }
 .presence-dot.mob::after { content: ""; position: absolute; left: 50%; bottom: .5px; width: 1.6px; height: 1.6px; margin-left: -.8px; border-radius: 50%; background: var(--presence-online); }
 .pf-av .presence-dot.mob { width: 10px; height: 15px; right: 1px; bottom: 1px; }
+
+/* Подпись внизу настроек */
+#chats-list.cs-nav { min-height: 100%; box-sizing: border-box; }   /* на всю высоту списка, чтобы подпись прижималась к низу */
+.cs-copy { position: sticky; bottom: -12px; margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 12px 0 10px; font-size: 11.5px; color: var(--muted); letter-spacing: .02em; background: var(--card-bg); user-select: none; }
+.cs-copy .cp-h, .login-copy .cp-h { font-style: normal; font-size: 12px; line-height: 1; }
