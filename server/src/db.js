@@ -642,6 +642,23 @@ db.exec(`
   );
 `);
 
+// Индексы по внешним ключам. Без них каждое удаление сообщения, чата или человека
+// перебирало дочернюю таблицу целиком: на 1,5 млн сообщений удаление одного
+// сообщения занимало 100 мс (проверка ответов на него), а удаление чата на
+// 30 тысяч сообщений тянулось десятки минут. Счёт сообщений по автору и
+// по чату без удалённых (админка) выходил на секунды.
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_messages_sender         ON messages(sender_id);
+  CREATE INDEX IF NOT EXISTS idx_messages_chat_deleted   ON messages(chat_id, deleted);
+  CREATE INDEX IF NOT EXISTS idx_messages_reply          ON messages(reply_to_id) WHERE reply_to_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS idx_message_status_user     ON message_status(user_id);
+  CREATE INDEX IF NOT EXISTS idx_reactions_user          ON reactions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_pinned_message          ON pinned_messages(message_id);
+  CREATE INDEX IF NOT EXISTS idx_muted_chat              ON muted_chats(chat_id);
+  CREATE INDEX IF NOT EXISTS idx_folder_items_chat       ON chat_folder_items(chat_id);
+  CREATE INDEX IF NOT EXISTS idx_chats_parent            ON chats(parent_id);
+`);
+
 // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)
 const sysExists = db.prepare("SELECT id FROM users WHERE username = '__system__'").get();
 if (!sysExists) {
