@@ -36,6 +36,8 @@ module.exports = {
   run: engine.run,
   tx: engine.tx,
   lock: engine.lock,
+  seq: engine.seq,
+  bumpSeq: (t, n) => engine.bumpSeq(t, n),
   init: engine.init,
   close: engine.close,
 };

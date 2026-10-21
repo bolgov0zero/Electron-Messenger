@@ -471,7 +471,8 @@ async function onFrame(sess, raw, isBinary) {
     case 'ev': {
       if (!f.seq) { handleEvent(peer, f.ev).catch(e => console.warn('[Fed] событие:', e.message)); return; }
       const ack = () => sendFrame(sess, { t: 'ack', seq: f.seq });
-      if (f.seq <= peer.last_in_seq) { ack(); return; }
+      // have — до какого номера мы уже приняли: если он выше номеров, которые выдавал отправитель, у того сбросился счётчик очереди
+      if (f.seq <= peer.last_in_seq) { sendFrame(sess, { t: 'ack', seq: f.seq, have: peer.last_in_seq }); return; }
       sess.chain = sess.chain.then(async () => {
         try { await handleEvent(peer, f.ev); } catch (e) { console.warn('[Fed] событие', f.ev?.k, e.message); }
         await dal.run('UPDATE fed_peers SET last_in_seq = MAX(last_in_seq, ?), last_contact_at = unixepoch() WHERE id = ?', f.seq, peer.id);
@@ -480,6 +481,9 @@ async function onFrame(sess, raw, isBinary) {
       return;
     }
     case 'ack':
+      // Сосед принял номера выше всех, что выдавали мы: после переноса или восстановления базы счётчик очереди у нас
+      // сбросился, а наши события он принимал за повторы. Поднимаем счётчик и отправляем очередь под новыми номерами
+      if (Number(f.have) > 0 && Number(f.have) > (await dal.seq('fed_outbox'))) { await rebaseOutbox(peer.id, Number(f.have)); return; }
       await dal.run('DELETE FROM fed_outbox WHERE peer_id = ? AND id <= ?', peer.id, Number(f.seq) || 0);
       return;
     case 'req': handleReq(peer, sess, f).catch(e => sendFrame(sess, { t: 'res', rid: f.rid, ok: false, err: e.message || 'error' })); return;
@@ -488,6 +492,17 @@ async function onFrame(sess, raw, isBinary) {
 }
 
 // ─────────────────────────── очередь ───────────────────────────
+async function rebaseOutbox(peerId, have) {
+  await dal.bumpSeq('fed_outbox', have + 100);
+  await dal.tx(async () => {
+    const rows = await dal.all('SELECT ev FROM fed_outbox WHERE peer_id = ? ORDER BY id', peerId);
+    await dal.run('DELETE FROM fed_outbox WHERE peer_id = ?', peerId);
+    for (const r of rows) await dal.run('INSERT INTO fed_outbox (peer_id, ev) VALUES (?, ?)', peerId, r.ev);
+  });
+  const sess = sessions.get(peerId); if (sess) sess.sentMax = 0;
+  console.warn('[Fed] счётчик очереди был сброшен (перенос или восстановление базы): номера подняты, очередь отправлена заново');
+  await flush(peerId);
+}
 async function enqueue(peerId, ev) {
   await dal.run('INSERT INTO fed_outbox (peer_id, ev) VALUES (?, ?)', peerId, JSON.stringify(ev));
   await flush(peerId);

@@ -187,7 +187,16 @@ async function run({ conn, sqlitePath, snapshotPath, onProgress = () => {}, log 
     // Счётчики id продолжаются с наибольшего перенесённого
     say('sequences', 'Сброс счётчиков');
     const idTables = (await client.query(`SELECT table_name FROM information_schema.columns WHERE table_schema = current_schema() AND column_name = 'id' AND is_identity = 'YES'`)).rows.map(r => r.table_name);
-    for (const tn of idTables) await client.query(`SELECT setval(pg_get_serial_sequence('"${tn}"', 'id'), (SELECT COALESCE(MAX(id), 0) FROM "${tn}") + 1, false)`);
+    // Счётчик продолжается с наибольшего номера, который SQLite когда-либо выдавала (sqlite_sequence), а не только с
+    // наибольшего оставшегося: иначе после удаления последних строк номера пошли бы заново. Очередь федерации
+    // (fed_outbox) этого не прощает: соседний сервер помнит выданные номера и принимает только растущие
+    const issued = new Map();
+    try { for (const r of snapDb.prepare('SELECT name, seq FROM sqlite_sequence').all()) issued.set(r.name, Number(r.seq) || 0); } catch {}
+    for (const tn of idTables) {
+      const mx = Number((await client.query(`SELECT COALESCE(MAX(id), 0) AS m FROM "${tn}"`)).rows[0].m) || 0;
+      const v = Math.max(mx, issued.get(tn) || 0);
+      await client.query(`SELECT setval(pg_get_serial_sequence('"${tn}"', 'id'), $1, $2)`, [Math.max(v, 1), v > 0]);
+    }
 
     // Внешние ключи проверяются здесь (отложенная проверка включается обратно): без этого
     // PostgreSQL не даст строить индексы по таблицам с непроверенными изменениями

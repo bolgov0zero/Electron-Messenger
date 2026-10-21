@@ -83,6 +83,15 @@ async function exportToSqlite(destPath, onProgress = () => {}) {
       }
       await client.query(`CLOSE ${cname}`);
     }
+    // Выданные номера: копия, восстановленная на SQLite, продолжит счёт, а не начнёт с наибольшего из оставшихся
+    const seqRows = (await client.query("SELECT table_name FROM information_schema.columns WHERE table_schema = current_schema() AND column_name = 'id' AND is_identity = 'YES'")).rows;
+    for (const { table_name: tn } of seqRows) {
+      if (!tables.includes(tn)) continue;
+      const last = Number((await client.query(`SELECT pg_sequence_last_value(pg_get_serial_sequence('"${tn}"', 'id')) AS v`)).rows[0].v) || 0;
+      const mx = sq.prepare(`SELECT COALESCE(MAX(id), 0) AS m FROM "${tn}"`).get().m;
+      sq.prepare('DELETE FROM sqlite_sequence WHERE name = ?').run(tn);
+      sq.prepare('INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)').run(tn, Math.max(last, mx));
+    }
     await client.query('COMMIT');
     client.release(); client = null;
 

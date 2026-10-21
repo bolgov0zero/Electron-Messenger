@@ -69,6 +69,12 @@ module.exports = {
   all: (sql, ...p) => exec('all', sql, p),
   run: (sql, ...p) => exec('run', sql, p),
   tx,
+  // Счётчик номеров таблицы: наибольший выданный номер и подъём вверх (см. dal-sqlite.js)
+  seq: async table => Number((await exec('get', `SELECT pg_sequence_last_value(pg_get_serial_sequence('${table}', 'id')) AS v`, [])).v) || 0,
+  bumpSeq: async function (table, n) {
+    if ((await this.seq(table)) >= n) return;
+    await exec('get', `SELECT setval(pg_get_serial_sequence('${table}', 'id'), ?, true)`, [n]);
+  },
   // Взаимное исключение внутри транзакции: тот, кто взял замок с тем же именем, ждёт конца первой
   lock: key => exec('get', 'SELECT pg_advisory_xact_lock(hashtext(?))', [String(key)]),
   init,

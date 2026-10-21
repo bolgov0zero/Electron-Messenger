@@ -85,6 +85,15 @@ module.exports = {
   all: query('all'),
   run: query('run'),
   tx,
+  // Счётчик номеров таблицы (AUTOINCREMENT): наибольший выданный номер и подъём вверх. Нужны очереди федерации,
+  // номера из неё соседний сервер помнит и принимает только растущие
+  seq: async table => { const r = db.prepare('SELECT seq FROM sqlite_sequence WHERE name = ?').get(table); return r ? r.seq : 0; },
+  bumpSeq: async (table, n) => {
+    const cur = db.prepare('SELECT seq FROM sqlite_sequence WHERE name = ?').get(table);
+    if (cur && cur.seq >= n) return;
+    if (cur) db.prepare('UPDATE sqlite_sequence SET seq = ? WHERE name = ?').run(n, table);
+    else db.prepare('INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)').run(table, n);
+  },
   // Транзакции SQLite и так выполняются по одной
   lock: async () => {},
   // SQLite открывается синхронно при загрузке db.js, схема создаётся там же

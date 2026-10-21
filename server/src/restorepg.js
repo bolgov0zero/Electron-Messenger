@@ -168,7 +168,13 @@ async function apply(file, opts) {
       // Счётчики id продолжаются с наибольшего перенесённого
       for (const t of loaded) {
         const hasId = (await dal.get("SELECT 1 AS x FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = ? AND column_name = 'id' AND is_identity = 'YES'", t));
-        if (hasId) await dal.get(`SELECT setval(pg_get_serial_sequence('"${t}"', 'id'), (SELECT COALESCE(MAX(id), 0) FROM "${t}") + 1, false)`);
+        if (hasId) {
+          // Счётчик только растёт: номера удалённых при восстановлении строк (особенно сообщений, которые помнит
+          // федерация) заново не выдаются
+          const mx = Number((await dal.get(`SELECT COALESCE(MAX(id), 0) AS m FROM "${t}"`)).m) || 0;
+          const v = Math.max(mx, await dal.seq(t));
+          await dal.get(`SELECT setval(pg_get_serial_sequence('"${t}"', 'id'), ?, ?)`, Math.max(v, 1), v > 0 ? true : false);
+        }
       }
       if (o.chats) res.chats = await statPg();
     }));
