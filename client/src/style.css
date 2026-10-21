@@ -4299,4 +4299,5 @@ html.tb-open #tb-strip { transform: none; pointer-events: auto; }
 /* Подпись внизу настроек */
 #chats-list.cs-nav { min-height: 100%; box-sizing: border-box; }   /* на всю высоту списка, чтобы подпись прижималась к низу */
 .cs-copy { position: sticky; bottom: -12px; margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 12px 0 10px; font-size: 11.5px; color: var(--muted); letter-spacing: .02em; background: var(--card-bg); user-select: none; }
+@container sb (min-width: 293px) { .cs-copy { background: var(--side-bg); } }   /* в широком виде список без своего фона: подпись под цвет панели */
 .cs-copy .cp-h, .login-copy .cp-h { font-style: normal; font-size: 12px; line-height: 1; }
