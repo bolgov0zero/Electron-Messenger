@@ -232,7 +232,7 @@ async function acceptOffer(uid, attachWsId) {
   let name;
   if (attach) {
     // Название у общего пространства задаёт хозяин: наше переименовывается, если отличается (в том числе регистром)
-    name = String(attach.name) === String(o.name) ? attach.name : (async () => {
+    name = String(attach.name) === String(o.name) ? attach.name : await (async () => {
       const taken = async x => !!(await dal.get('SELECT 1 FROM workspaces WHERE name = ? AND id != ?', x, attach.id));
       let n = String(o.name).slice(0, 60);
       if ((await taken(n))) n = `${o.name} (${hostName})`.slice(0, 60);

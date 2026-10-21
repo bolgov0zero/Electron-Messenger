@@ -610,7 +610,7 @@ async function handleReq(peer, sess, f) {
     const m = await dal.get('SELECT m.*, c.type FROM messages m JOIN chats c ON c.id = m.chat_id WHERE m.fed_uid = ? AND m.deleted = 0', String(f.uid || ''));
     const sender = m && (await dal.get('SELECT id, is_bot FROM users WHERE id = ?', m.sender_id));
     // Отдаём только то, что мы сами отправили этому серверу; в группах — любое вложение чата, к которому сервер причастен
-    const grp = m && (m.type === 'group' || m.type === 'room') && (async () => {
+    const grp = m && (m.type === 'group' || m.type === 'room') && await (async () => {
       const c = await dal.get('SELECT fed_instance FROM chats WHERE id = ?', m.chat_id);
       return c.fed_instance ? c.fed_instance === peer.instance_id : (await chatWithPeer(m.chat_id, peer));
     })();

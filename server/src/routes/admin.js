@@ -114,7 +114,7 @@ router.get('/stats', async (req, res) => {
     filesCount: (await collectFiles()).length,
     wsConnections: getConnCount(),
     serverVersion: getLocalVersion(),
-    pushSubscriptions: (async () => { try { return (await dal.get('SELECT COUNT(*) as c FROM push_subscriptions')).c; } catch { return 0; } })(),
+    pushSubscriptions: await (async () => { try { return (await dal.get('SELECT COUNT(*) as c FROM push_subscriptions')).c; } catch { return 0; } })(),
   });
 });
 
