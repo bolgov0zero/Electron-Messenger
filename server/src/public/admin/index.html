@@ -896,6 +896,7 @@ tbody tr:hover td{background:var(--c-surface2)}
 /* ── Общие пространства и карта федерации ── */
 .wsf-offer{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid color-mix(in srgb,var(--c-primary) 40%,var(--c-border))}
 .wsf-ot{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.wsf-ot b{font-size:13.5px}.wsf-ot span{font-size:12.5px;color:var(--c-text2);line-height:1.45}
+.wsf-att select{height:34px;max-width:100%;background:var(--bg-input);color:var(--c-text);border:1px solid var(--border-input);border-radius:9px;padding:0 10px;font-family:var(--f-ui);font-size:13px}
 .wsf-ask{display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--c-border);font-size:12.5px}.wsf-ask span{flex:1;min-width:0}
 .wsf-sr{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--c-border)}.wsf-sr:first-child{border-top:0}
 .wsf-sr .fd-dot{flex:none}.wsf-sr>div{flex:1;min-width:0}.wsf-sr b{font-size:13px}.wsf-sr code{font:600 11px var(--f-mono);color:var(--c-text2);margin-left:6px}
@@ -7527,7 +7528,7 @@ async function renderWorkspaces() {
   clearInterval(WS.timer);
   WS.timer = setInterval(async () => {
     if (currentPage !== 'workspaces') { clearInterval(WS.timer); return; }
-    if (document.querySelector('#modal-fed.open, #modal-ws.open') || document.activeElement?.closest?.('#page-body input')) return;
+    if (document.querySelector('#modal-fed.open, #modal-ws.open') || document.activeElement?.closest?.('#page-body input, #page-body select')) return;
     await wsLoad(); if (currentPage === 'workspaces') wsRender();
   }, 10000);
 }
@@ -7541,8 +7542,10 @@ function wsRender() {
   const nm = (w, id) => w.fed.servers.find(s => s.id === id)?.name || id;
   document.getElementById('page-body').innerHTML = `<div class="ux-page">
     <div><div style="font-size:17px;font-weight:700">Пространства</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Люди видят друг друга, если у них есть общее пространство. Человек может состоять в нескольких. Если общего нет, связать их можно через контакты, группы и комнаты. Пространства человека выбираются в его профиле. Пространство можно сделать общим для нескольких серверов федерации: люди всех серверов в нём видят друг друга.</div></div>
-    ${WS.offers.map(o => `<div class="card wsf-offer"><div class="wsf-ot"><b>«${esc(o.from_name)}» предлагает общее пространство «${esc(o.name)}»</b><span>Хозяин: ${esc(o.host_name)}. Серверы в пространстве: ${o.servers.map(esc).join(', ')}. Ваши люди увидят людей этих серверов, а они ваших, но только тех, кого вы сами добавите в это пространство. Название пространства задаёт хозяин.</span></div>
-      <button class="btn btn-ghost btn-sm" onclick="wsOffer('${esc(o.uid)}',false)">Отклонить</button><button class="btn ux-solid btn-sm" onclick="wsOffer('${esc(o.uid)}',true)">Принять</button></div>`).join('')}
+    ${WS.offers.map((o, i) => `<div class="card wsf-offer"><div class="wsf-ot"><b>«${esc(o.from_name)}» предлагает общее пространство «${esc(o.name)}»</b><span>Хозяин: ${esc(o.host_name)}. Серверы в пространстве: ${o.servers.map(esc).join(', ')}. Ваши люди увидят людей этих серверов, а они ваших, но только тех, кого вы сами добавите в это пространство. Название пространства задаёт хозяин.</span>
+      <span class="wsf-att"><select id="wsf-att-${i}" aria-label="Что сделать с пространством"><option value="">Создать новое пространство</option>${(o.local || []).map(l => `<option value="${l.id}" ${o.same === l.id ? 'selected' : ''}>Объединить с моим «${esc(l.name)}» (${l.users} ${uxPlural(l.users, 'человек', 'человека', 'человек')})</option>`).join('')}</select></span>
+      ${o.same ? '<span>У вас уже есть пространство с таким названием: при объединении оно станет общим, его люди сразу попадут в общее пространство.</span>' : ''}</div>
+      <button class="btn btn-ghost btn-sm" onclick="wsOffer('${esc(o.uid)}',false)">Отклонить</button><button class="btn ux-solid btn-sm" onclick="wsOffer('${esc(o.uid)}',true,${i})">Принять</button></div>`).join('')}
     ${WS.list.map(w => { const mirror = w.fed?.shared && !w.fed.is_host; const fedOn = !!w.fed?.shared;
       return `<div class="card"><div class="mdl-card"><div class="mdl-ico" style="font-size:15px;font-weight:700">${esc(initials(w.name))}</div>
       <div class="mdl-tx"><b>${esc(w.name)}</b><span>${w.users} ${uxPlural(w.users, 'человек', 'человека', 'человек')} · создано ${fmtDate(w.created_at)}</span></div>
@@ -7556,10 +7559,11 @@ function wsRender() {
       ${(w.fed?.asks || []).map(a => `<div class="wsf-ask"><span>Сервер «${esc(nm(w, a.proposer))}» просит добавить в пространство сервер «${esc(a.target_name)}»${a.approved ? ' (одобрено, ждём ответа)' : ''}</span>${a.approved ? '' : `<button class="btn btn-ghost btn-sm" onclick="wsAsk(${a.id},false)">Отклонить</button><button class="btn ux-solid btn-sm" onclick="wsAsk(${a.id},true)">Одобрить</button>`}</div>`).join('')}</div>`; }).join('')}
   </div>`;
 }
-async function wsOffer(uid, accept) {
-  const r = await api('POST', `/api/admin/workspaces/fed/offers/${encodeURIComponent(uid)}/${accept ? 'accept' : 'decline'}`);
+async function wsOffer(uid, accept, i) {
+  const attach = accept ? Number(document.getElementById('wsf-att-' + i)?.value) || null : null;
+  const r = await api('POST', `/api/admin/workspaces/fed/offers/${encodeURIComponent(uid)}/${accept ? 'accept' : 'decline'}`, attach ? { attach } : undefined);
   if (!r || r.error) { toast(esc(r?.error || 'Не удалось'), 'error'); return; }
-  toast(accept ? 'Пространство принято. Добавьте в него своих людей в их профилях.' : 'Предложение отклонено', 'success');
+  toast(accept ? (r.attached ? 'Пространство объединено с вашим: его люди теперь в общем пространстве.' : 'Пространство принято. Добавьте в него своих людей в их профилях.') : 'Предложение отклонено', 'success');
   await wsLoad(); if (currentPage === 'workspaces') wsRender();
 }
 async function wsAsk(id, ok) {

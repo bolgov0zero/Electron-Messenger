@@ -129,9 +129,9 @@ admin.get('/', (req, res) => {
 // Приглашения и просьбы общих пространств
 admin.get('/fed/offers', (req, res) => res.json(fsp.offersList()));
 admin.post('/fed/offers/:uid/accept', (req, res) => {
-  const r = fsp.acceptOffer(String(req.params.uid));
+  const r = fsp.acceptOffer(String(req.params.uid), req.body?.attach ? Number(req.body.attach) : null);
   if (r.error) return res.status(400).json(r);
-  logAudit(req, 'server', 'Общее пространство принято', r.name);
+  logAudit(req, 'server', r.attached ? 'Общее пространство принято (объединено с существующим)' : 'Общее пространство принято', r.name);
   res.json(r);
 });
 admin.post('/fed/offers/:uid/decline', (req, res) => {

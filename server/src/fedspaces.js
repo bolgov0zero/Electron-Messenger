@@ -210,7 +210,8 @@ function uniqueWsName(base, hostName) {
   for (let i = 2; ; i++) { n = `${base} ${i}`.slice(0, 60); if (!taken(n)) return n; }
 }
 
-function acceptOffer(uid) {
+// attachWsId — объединить с существующим локальным пространством (оно становится общим вместо создания нового)
+function acceptOffer(uid, attachWsId) {
   const o = db.prepare('SELECT * FROM fed_space_offers WHERE space_uid = ?').get(uid);
   if (!o) return { error: 'Приглашение не найдено' };
   const id = me();
@@ -220,9 +221,28 @@ function acceptOffer(uid) {
   const from = F().realPeerByInstance(o.from_inst);
   if (!from || from.status !== 'active') return { error: 'Нет подключения к серверу, приславшему приглашение' };
   const hostName = tree.find(t => t.id === o.host)?.name || o.host;
-  const name = uniqueWsName(o.name, hostName);
+  let attach = null;
+  if (attachWsId) {
+    attach = spaceById(Number(attachWsId));
+    if (!attach) return { error: 'Пространство для объединения не найдено' };
+    if (attach.fed_uid) return { error: 'Это пространство уже общее' };
+    if (attach.id === spaces.DEFAULT_WS) return { error: 'Основное пространство нельзя сделать общим: оно используется по умолчанию' };
+  }
+  let name;
+  if (attach) {
+    // Название у общего пространства задаёт хозяин: наше переименовывается, если отличается (в том числе регистром)
+    name = String(attach.name) === String(o.name) ? attach.name : (() => {
+      const taken = x => !!db.prepare('SELECT 1 FROM workspaces WHERE name = ? AND id != ?').get(x, attach.id);
+      let n = String(o.name).slice(0, 60);
+      if (taken(n)) n = `${o.name} (${hostName})`.slice(0, 60);
+      for (let i = 2; taken(n); i++) n = `${o.name} ${i}`.slice(0, 60);
+      return n;
+    })();
+  } else name = uniqueWsName(o.name, hostName);
+  let wsRowId = null;
   db.transaction(() => {
-    db.prepare('INSERT INTO workspaces (name, fed_uid, fed_host) VALUES (?, ?, ?)').run(name, uid, o.host);
+    if (attach) { db.prepare('UPDATE workspaces SET name = ?, fed_uid = ?, fed_host = ? WHERE id = ?').run(name, uid, o.host, attach.id); wsRowId = attach.id; }
+    else wsRowId = Number(db.prepare('INSERT INTO workspaces (name, fed_uid, fed_host) VALUES (?, ?, ?)').run(name, uid, o.host).lastInsertRowid);
     setS('fedsp_name:' + uid, o.name);
     tree.forEach(t => db.prepare("INSERT OR REPLACE INTO fed_space_servers (space_uid, instance_id, name, pub, parent, state) VALUES (?, ?, ?, ?, ?, 'active')").run(uid, t.id, t.name, t.id === o.from_inst ? from.pub : t.pub, t.p));
     db.prepare("INSERT OR REPLACE INTO fed_space_servers (space_uid, instance_id, name, pub, parent, state) VALUES (?, ?, ?, ?, ?, 'active')").run(uid, id.id, id.name, id.pub, o.from_inst);
@@ -230,7 +250,8 @@ function acceptOffer(uid) {
   })();
   syncVirtual();
   sendTo(o.from_inst, { k: 'sp_accept', uid, name: id.name });
-  return { ok: true, name };
+  if (attach) { membersChanged([wsRowId]); directoryChanged(); }   // люди объединённого пространства сразу становятся видны остальным серверам
+  return { ok: true, name, attached: !!attach };
 }
 function declineOffer(uid) {
   const o = db.prepare('SELECT * FROM fed_space_offers WHERE space_uid = ?').get(uid);
@@ -673,7 +694,12 @@ function adminInfo(w) {
 function offersList() {
   return db.prepare('SELECT space_uid AS uid, host, name, from_inst, created_at FROM fed_space_offers ORDER BY created_at').all().map(o => {
     let tree = []; try { tree = JSON.parse(db.prepare('SELECT tree FROM fed_space_offers WHERE space_uid = ?').get(o.uid).tree); } catch {}
-    return { ...o, host_name: tree.find(t => t.id === o.host)?.name || o.host, from_name: F().realPeerByInstance(o.from_inst)?.name || o.from_inst, servers: tree.map(t => t.name) };
+    // Локальные пространства, с которыми можно объединить; совпадающее по имени предлагается по умолчанию
+    const local = db.prepare(`SELECT w.id, w.name,
+        (SELECT COUNT(*) FROM user_workspaces m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = w.id AND COALESCE(u.is_bot, 0) = 0) AS users
+      FROM workspaces w WHERE w.fed_uid IS NULL AND w.id != ? ORDER BY w.name`).all(spaces.DEFAULT_WS);
+    const same = local.find(w => w.name.toLowerCase() === String(o.name).toLowerCase());
+    return { ...o, host_name: tree.find(t => t.id === o.host)?.name || o.host, from_name: F().realPeerByInstance(o.from_inst)?.name || o.from_inst, servers: tree.map(t => t.name), local, same: same ? same.id : null };
   });
 }
 // Соединения, которым можно предложить пространство: прямые, активные, ещё не в нём
