@@ -914,6 +914,7 @@ tbody tr:hover td{background:var(--c-surface2)}
 .fd-nm{display:flex;align-items:baseline;gap:8px;min-width:0;flex-wrap:wrap}
 .fd-nm b{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .fd-nm code{font:600 11px var(--f-mono);color:var(--c-text2)}
+.fd-ver{font:500 11px var(--f-mono);color:var(--c-muted)}
 .fd-w{font-size:11px;font-weight:600;padding:1px 7px;border-radius:6px;background:var(--c-surface2);color:var(--c-text2)}
 .fd-w.warn{background:var(--c-orange-dim);color:var(--c-orange-text)}
 .fd-meta{display:flex;flex-wrap:wrap;align-items:center;gap:3px 14px;font-size:12px;color:var(--c-text2)}
@@ -7765,7 +7766,7 @@ function wsTree(w) {
   const kids = id => list.filter(x => x.parent === id);
   const word = x => x.state === 'offered' ? '<span class="badge badge-gray">приглашён</span>' : x.state === 'asked' ? '<span class="badge badge-gray">ждёт одобрения хозяина</span>' : '';
   const node = (x, d) => `<div class="ws-tn"><span class="ws-ind" style="padding-left:${d * 18}px">${d ? '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v9a3 3 0 0 0 3 3h10"/></svg>' : ''}</span><span class="fd-dot ${x.state !== 'active' ? 'off' : x.online ? '' : 'warn'}"></span>
-    <span class="ws-tnm"><b>${esc(x.name)}</b>${x.host ? '<span class="badge badge-blue">хозяин</span>' : ''}${x.self ? '<span class="badge badge-green">вы</span>' : ''}${word(x)}<code>${esc(x.id)}</code></span>
+    <span class="ws-tnm"><b>${esc(x.name)}</b>${x.host ? '<span class="badge badge-blue">хозяин</span>' : ''}${x.self ? '<span class="badge badge-green">вы</span>' : ''}${word(x)}<code>${esc(x.id)}</code>${x.ver ? `<span class="fd-ver">v${esc(x.ver)}</span>` : ''}</span>
     <span class="ws-tm">${x.state === 'active' ? `${x.people} ${fdPlural(x.people)}${x.online ? '' : ' · нет связи'}` : x.state === 'offered' ? 'ждём ответа' : ''}</span>
     ${mine && !x.self ? `<button class="btn btn-ghost btn-sm ws-dg" onclick="wsRemove(${w.id},'${esc(x.id)}')">Убрать</button>` : ''}</div>` + kids(x.id).map(k => node(k, d + 1)).join('');
   return `<div class="ws-tree">${roots.map(r => node(r, 0)).join('')}</div>`;
@@ -8077,7 +8078,7 @@ function fdPeers() {
     const st = p.status === 'paused' ? 'off' : !p.online ? 'warn' : '';
     const word = p.status === 'paused' ? '<span class="fd-w">приостановлено</span>' : !p.online ? '<span class="fd-w warn">нет связи</span>' : '';
     const paused = p.status === 'paused';
-    return `<div class="fd-r"><span class="fd-dot ${st}"></span><div class="fd-bd"><div class="fd-nm"><b>${esc(p.name)}</b><code>${esc(p.instance_id)}</code>${word}</div>
+    return `<div class="fd-r"><span class="fd-dot ${st}"></span><div class="fd-bd"><div class="fd-nm"><b>${esc(p.name)}</b><code>${esc(p.instance_id)}</code>${p.ver ? `<span class="fd-ver" title="${p.online ? 'Версия сервера' : 'Последняя известная версия сервера'}">v${esc(p.ver)}</span>` : ''}${word}</div>
       <div class="fd-meta"><span class="fd-dir" title="${p.role === 'in' ? 'Они подключаются к нам сами' : 'Мы подключаемся к ним'}">${p.role === 'in' ? FD_I.ins + 'они к нам' : FD_I.outs + 'мы к ним'}</span><span>${p.last_contact_at ? esc(uaSeen(p.last_contact_at)) : 'обмена не было'}</span><span>${p.people} ${fdPlural(p.people)}</span>${p.queue ? `<span class="q">очередь ${p.queue}</span>` : ''}</div></div>
       <div class="fd-ac"><button class="fd-kb" type="button" aria-label="Действия" onclick="event.stopPropagation();fdMenu(${i})"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>${FD.menu === i ? `<div class="fd-menu"><button type="button" onclick="fdFp(${i})">${FD_I.key}Отпечаток ключа</button><button type="button" onclick="fdPause(${i})">${paused ? FD_I.play + 'Возобновить' : FD_I.pause + 'Приостановить'}</button><hr><button type="button" class="dg" onclick="fdDelete(${i})">${FD_I.trash}Удалить соединение</button></div>` : ''}</div></div>`;
   }).join('');
@@ -8305,7 +8306,7 @@ function fmDraw() {
     const cls = 'fm-n' + (sel ? ' sel' : '') + (dim ? ' dim' : '') + (n.online === false ? ' off' : n.online === null ? ' unk' : '') + (FM.drag?.id === n.id ? ' drag' : '');
     const sp = FM.space === 'all' ? n.spaces.map(s => `<i style="background:${FM_COL[spIdx[s.uid] % FM_COL.length]}"></i>`).join('') : '';
     const sub = n.online === false ? 'нет связи' : n.online === null ? 'нет данных' : (FM.space !== 'all' ? (n.spaces.find(s => s.uid === FM.space)?.people ?? 0) + ' в пространстве' : n.people ? n.people + ' ' + fdPlural(n.people) : 'без пространств');
-    return `<div class="${cls}" data-id="${esc(n.id)}" style="left:${p.x}px;top:${p.y}px"><span class="fm-ni">${FM_SRV}<span class="fm-nd"></span></span><span class="fm-nt"><b>${esc(n.name)}</b><span>${esc(sub)}${sp}</span></span>${n.self ? '<span class="fm-me">ВЫ</span>' : ''}</div>`;
+    return `<div class="${cls}" data-id="${esc(n.id)}" style="left:${p.x}px;top:${p.y}px"><span class="fm-ni">${FM_SRV}<span class="fm-nd"></span></span><span class="fm-nt"><b>${esc(n.name)}</b><span>${esc(sub)}${n.ver ? ' · v' + esc(n.ver) : ''}${sp}</span></span>${n.self ? '<span class="fm-me">ВЫ</span>' : ''}</div>`;
   }).join('');
   world.style.transform = `translate(${FM.tx}px,${FM.ty}px) scale(${FM.k})`;
   world.innerHTML = `<svg class="fm-svg" width="1" height="1">${svg}</svg>${labels}${nodes}`;
@@ -8339,6 +8340,7 @@ function fmSide(d, route) {
   const stc = n.self ? '' : n.online === true ? 'ok' : n.online === false ? 'bad' : 'warn';
   const names = route.ids.map(id => d.nodes.find(x => x.id === id)?.name || id);
   const f = [`<div class="fm-f"><span>Статус</span><span class="${stc}">${status}</span></div>`, `<div class="fm-f"><span>Людей в общих пространствах</span><span>${n.people}</span></div>`];
+  if (n.ver) f.push(`<div class="fm-f"><span>Версия сервера</span><span class="fd-mono">${esc(n.ver)}</span></div>`);
   if (!n.self) {
     f.push(`<div class="fm-f"><span>Канал</span><span>${n.direct ? 'напрямую' : route.ids.length ? 'через ' + (route.ids.length - 2) + ' ' + uxPlural(route.ids.length - 2, 'сервер', 'сервера', 'серверов') + ', шифруется сквозным' : '—'}</span></div>`);
     if (route.ids.length && !n.direct) f.push(`<div class="fm-f"><span>Маршрут</span><span>${names.map(esc).join(' → ')}</span></div>`);

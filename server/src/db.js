@@ -569,6 +569,8 @@ tryAlter('ALTER TABLE chats ADD COLUMN fed_instance TEXT');
 tryAlter('ALTER TABLE chats ADD COLUMN fed_chat_id INTEGER');
 tryAlter('CREATE UNIQUE INDEX IF NOT EXISTS idx_chats_fed ON chats(fed_instance, fed_chat_id) WHERE fed_instance IS NOT NULL');
 tryAlter('ALTER TABLE fed_peers ADD COLUMN proto INTEGER NOT NULL DEFAULT 0');
+// fed_peers.ver — версия сервера, о которой сообщил партнёр; обновляется при каждом новом соединении (после обновления сервера он перезапускается)
+tryAlter('ALTER TABLE fed_peers ADD COLUMN ver TEXT');
 // fed_seq — номер сообщения у хозяина группы (по нему гость запрашивает пропущенное после обрыва); fed_avatar_v — версия аватарки группы у хозяина
 tryAlter('ALTER TABLE messages ADD COLUMN fed_seq INTEGER');
 // «Без звука» на время: until — момент (unixepoch), когда звук возвращается; NULL — навсегда

@@ -666,6 +666,7 @@ function mapData() {
     n.online = n.self ? true : (state.has(n.id) ? state.get(n.id) : null);
     n.people = n.spaces.reduce((a, s) => a + s.people, 0);
     n.verified = n.self ? true : (n.direct ? true : keyOk.get(n.id) === n.pub);
+    n.ver = n.self ? F().ownVersion() : (F().peerByInstance(n.id)?.ver || '');
     delete n.pub;
   }
   return { configured: true, me: myId, nodes: [...byNode.values()], edges: [...edges.values()], spaces: spaceList };
@@ -685,7 +686,7 @@ function adminInfo(w) {
     const real = n.instance_id !== myId ? F().realPeerByInstance(n.instance_id) : null;
     const people = n.instance_id === myId ? localMembers(w.id).length
       : db.prepare(`SELECT COUNT(*) c FROM user_workspaces m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = ? AND u.is_bot = 2 AND u.fed_instance = ?`).get(w.id, n.instance_id).c;
-    return { id: n.instance_id, name: n.name, parent: n.parent, state: n.state, self: n.instance_id === myId, host: n.instance_id === w.fed_host, direct: !!real, online: n.instance_id === myId ? true : !!(real ? F().isOnline(real.id) : (F().peerByInstance(n.instance_id) && F().isOnline(F().peerByInstance(n.instance_id).id))), people };
+    return { id: n.instance_id, name: n.name, parent: n.parent, state: n.state, self: n.instance_id === myId, host: n.instance_id === w.fed_host, direct: !!real, online: n.instance_id === myId ? true : !!(real ? F().isOnline(real.id) : (F().peerByInstance(n.instance_id) && F().isOnline(F().peerByInstance(n.instance_id).id))), people, ver: n.instance_id === myId ? F().ownVersion() : (F().peerByInstance(n.instance_id)?.ver || '') };
   });
   return {
     shared: true, uid, host: w.fed_host, is_host: w.fed_host === myId, servers: list,

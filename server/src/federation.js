@@ -134,6 +134,12 @@ setInterval(() => { try { flushStats(); } catch (e) { console.warn('[Fed] счё
 
 // ─────────────────────────── соединения ───────────────────────────
 const peerRow = id => db.prepare('SELECT * FROM fed_peers WHERE id = ?').get(id);
+// Версия этого сервера (server/version.json): сообщаем партнёрам вместе с возможностями
+let _ownVer = null;
+function ownVersion() {
+  if (_ownVer === null) { try { _ownVer = String(JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', 'version.json'), 'utf8')).version || ''); } catch { _ownVer = ''; } }
+  return _ownVer;
+}
 const peerByInstance = inst => db.prepare('SELECT * FROM fed_peers WHERE instance_id = ?').get(String(inst));
 // Настоящее (прямое) соединение; «сквозные» записи (virt = 1) не считаются
 const realPeerByInstance = inst => { const p = peerByInstance(inst); return p && !p.virt ? p : null; };
@@ -1272,6 +1278,7 @@ function peersInfo() {
     id: p.id, instance_id: p.instance_id, name: p.name, url: p.url, role: p.role, status: p.status, fp: fingerprint(p.pub),
     online: isOnline(p.id), proto: p.proto || 0, last_contact_at: p.last_contact_at, created_at: p.created_at, queue: queueSize(p.id),
     people: db.prepare('SELECT COUNT(*) c FROM contacts c JOIN users s ON s.id = c.contact_id WHERE s.is_bot = 2 AND s.fed_instance = ?').get(p.instance_id).c,
+    ver: p.ver || '',
   }));
 }
 function pausePeer(id) {
@@ -1316,7 +1323,7 @@ function mount(server) {
 module.exports = {
   mount, start, statsView, identity, setIdentity, fingerprint, validPub, parseAddr, getS, setS,
   createInvite, previewKey, connectBegin, acceptConnect, connectWithKey, peersInfo, pausePeer, resumePeer, deletePeer,
-  setShadowTag, lookupRemote, peerOfUser, peerByInstance, realPeerByInstance, peerRow, clearVirtualRow, endVirtual, virtualTick, isOnline,
+  setShadowTag, lookupRemote, peerOfUser, peerByInstance, realPeerByInstance, ownVersion, peerRow, clearVirtualRow, endVirtual, virtualTick, isOnline,
   onLocalMessage, onGroupMessage, onPin, onEdit, onDelete, onReact, onStatus, onTyping, onPresence, onProfile, onContactAdded, onContactRemoved, afterContactChange,
   // для fedgroups.js
   enqueue, sendLive, rpc, fetchFile, isRelatedTo: isRelated, ensureShadow, remoteUser, shadowByAddr: shadowRow, findLocalUser, avatarVersion, receiveAttachment, receiveAttachments, describeAtt, removeMessageFiles,
