@@ -507,8 +507,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   await initSharedSettings();
   const session = loadSession();
   if (session?.token) {
-    // Общие настройки (если они уже есть) главнее сохранённых в сессии этой записи
-    Object.assign(S, { server:session.server, token:session.token, user:session.user, settings:_sharedLoaded ? S.settings : (session.settings||S.settings) });
+    // Общие настройки (тема, размер текста и т.п., если они уже есть) главнее сохранённых в сессии этой записи, остальные настройки
+    // записи (звук, отображение пространств) берутся из сессии: раньше при наличии общих они терялись после перезапуска
+    Object.assign(S, { server:session.server, token:session.token, user:session.user, settings:{ ...(session.settings || {}), ...(_sharedLoaded ? S.settings : {}) } });
     applySettings();
     // Не ждём: форма входа остаётся доступной, а проверка идёт с повторами (см. bootSession)
     bootSession();
@@ -1351,7 +1352,7 @@ function csSections() {
     meta: () => (S.blocked || []).length ? `заблокировано: ${S.blocked.length}` : 'никого нет' });
   list.push({ k: 'modules', label: 'Модули', icon: CS_I.puzzle, desc: 'Дополнительные возможности клиента',
     meta: () => { const l = window.Modules ? Modules.list() : []; if (!l.length) return 'нет доступных'; const n = l.filter(m => m.on).length; return n ? `включено: ${n}` : `${l.length} ${plural(l.length, 'модуль', 'модуля', 'модулей')} доступно`; } });
-  list.push({ k: 'folders', label: 'Папки', icon: CS_I.folder, desc: 'Порядок, название, цвет и значок',
+  list.push({ k: 'folders', label: 'Папки и пространства', icon: CS_I.folder, desc: 'Папки чатов и пространства в баре',
     meta: () => (S.folders || []).length ? `${S.folders.length} ${plural(S.folders.length, 'папка', 'папки', 'папок')}` : 'папок нет' });
   if (csIsApp()) list.push({ k: 'update', label: 'Обновление', icon: CS_I.upd, desc: 'Версия приложения и новые релизы',
     meta: () => _updateDownloadUrl && _updateVersion ? `есть версия ${_updateVersion}` : CS.version ? `версия ${CS.version}` : 'проверка обновлений',

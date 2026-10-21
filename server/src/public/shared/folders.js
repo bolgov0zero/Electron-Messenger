@@ -1,6 +1,6 @@
 // Папки чатов для клиента Electron и веб-клиента (одна копия на оба: client/src и server/src/public/shared правятся вместе).
 // Папки личные, лежат на сервере и общие для всех устройств человека. Панель папок стоит в баре слева от списка,
-// чат добавляется в папку из его меню, управление — в «Настройки → Папки». Нужны глобальные S, api, esc, openModal,
+// чат добавляется в папку из его меню, управление — в «Настройки → Папки и пространства». Нужны глобальные S, api, esc, openModal,
 // closeModal, showConfirm, showActionToast, renderChatList, placeCtxMenu.
 const FOLDER_COLORS = ['#3390ec', '#8e6cf0', '#30b46c', '#f0a030', '#ec5b8f', '#2fb8c4', '#e8604c', '#8a97a8'];
 // Значки — набор Lucide (лицензия ISC), контурные, 24×24
@@ -293,7 +293,7 @@ async function moveFolder(id, dir) {
   await folderApi('PUT', '/folders/order', { ids: S.folders.map(x => x.id) });
 }
 
-// ── Раздел «Папки» в настройках ──
+// ── Раздел «Папки и пространства» в настройках ──
 function csPaneFolders() {
   const n = S.folders.length;
   const rows = S.folders.map((f, i) => `<div class="fp-row" draggable="true" data-fid="${f.id}">

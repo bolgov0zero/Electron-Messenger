@@ -1191,7 +1191,7 @@ function csSections() {
     meta: () => (S.blocked || []).length ? `заблокировано: ${S.blocked.length}` : 'никого нет' });
   list.push({ k: 'modules', label: 'Модули', icon: CS_I.puzzle, desc: 'Дополнительные возможности клиента',
     meta: () => { const l = window.Modules ? Modules.list() : []; if (!l.length) return 'нет доступных'; const n = l.filter(m => m.on).length; return n ? `включено: ${n}` : `${l.length} ${plural(l.length, 'модуль', 'модуля', 'модулей')} доступно`; } });
-  list.push({ k: 'folders', label: 'Папки', icon: CS_I.folder, desc: 'Порядок, название, цвет и значок',
+  list.push({ k: 'folders', label: 'Папки и пространства', icon: CS_I.folder, desc: 'Папки чатов и пространства в баре',
     meta: () => (S.folders || []).length ? `${S.folders.length} ${plural(S.folders.length, 'папка', 'папки', 'папок')}` : 'папок нет' });
   if (csIsApp()) list.push({ k: 'update', label: 'Обновление', icon: CS_I.upd, desc: 'Версия приложения и новые релизы',
     meta: () => _updateDownloadUrl && _updateVersion ? `есть версия ${_updateVersion}` : CS.version ? `версия ${CS.version}` : 'проверка обновлений',

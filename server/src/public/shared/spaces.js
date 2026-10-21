@@ -77,7 +77,7 @@ function updateSpaceBadges() {
   });
 }
 
-// Строка в «Настройки → Папки»
+// Строка в «Настройки → Папки и пространства»
 function csSpacesRows() {
   const on = spacesOn(), n = S.sharedSpaces.length;
   return `<div class="cs-gt">Пространства</div>
