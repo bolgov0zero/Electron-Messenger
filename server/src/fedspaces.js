@@ -447,13 +447,13 @@ function recvCut(peer, ev) {
 // ─────────────────────────── состав ───────────────────────────
 const pendingMembers = new Map();
 function localMembers(wsId) {
-  return db.prepare(`SELECT u.id, u.username, u.display_name FROM user_workspaces m JOIN users u ON u.id = m.user_id
+  return db.prepare(`SELECT u.id, u.username, u.display_name, u.tag FROM user_workspaces m JOIN users u ON u.id = m.user_id
     WHERE m.workspace_id = ? AND COALESCE(u.is_bot, 0) = 0 AND COALESCE(u.banned, 0) = 0 ORDER BY u.id`).all(wsId);
 }
 function sendMembers(uid, toInst) {
   const w = spaceByUid(uid), myId = me().id;
   if (!w || !isActiveIn(uid, myId)) return;
-  const list = localMembers(w.id).slice(0, MAX_MEMBERS).map(u => ({ l: u.username, n: u.display_name, a: F().avatarVersion(u.id) }));
+  const list = localMembers(w.id).slice(0, MAX_MEMBERS).map(u => ({ l: u.username, n: u.display_name, t: u.tag || '', a: F().avatarVersion(u.id) }));
   for (const n of activeNodes(uid)) {
     if (n.instance_id === myId || (toInst && n.instance_id !== toInst)) continue;
     sendTo(n.instance_id, { k: 'sp_members', uid, list }, true);
@@ -496,6 +496,7 @@ function applyMembers(peer, ev) {
     if (!sh) continue;
     have.add(sh.id);
     changed += ins.run(sh.id, w.id).changes;
+    if (it.t !== undefined) F().setShadowTag(sh, str(it.t, 40));
   }
   const cur = db.prepare(`SELECT m.user_id FROM user_workspaces m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = ? AND u.is_bot = 2 AND u.fed_instance = ?`).all(w.id, inst);
   for (const r of cur) if (!have.has(r.user_id)) { db.prepare('DELETE FROM user_workspaces WHERE workspace_id = ? AND user_id = ?').run(w.id, r.user_id); changed++; }

@@ -837,9 +837,9 @@ function syncPresence(peerId, onlyLocalId) {
 }
 // Имя или аватарка нашего человека изменились: сообщаем серверам, которые его знают
 function onProfile(userId) {
-  const u = db.prepare('SELECT username, display_name, is_bot FROM users WHERE id = ?').get(userId);
+  const u = db.prepare('SELECT username, display_name, tag, is_bot FROM users WHERE id = ?').get(userId);
   if (!u || u.is_bot) return;
-  relatedPeers(userId).forEach(p => enqueue(p.id, { k: 'profile', login: u.username, name: u.display_name, av: avatarVersion(userId) }));
+  relatedPeers(userId).forEach(p => enqueue(p.id, { k: 'profile', login: u.username, name: u.display_name, tag: u.tag || '', av: avatarVersion(userId) }));
 }
 
 // ─────────────────────────── приём ───────────────────────────
@@ -1069,10 +1069,20 @@ function afterContactChange(localId, shadowId, wasMutual) {
   if (mutual || wasMutual) w.sendTo(localId, { type: 'presence_refresh' });
   if (mutual) { const sh = db.prepare('SELECT fed_instance FROM users WHERE id = ?').get(shadowId); const p = sh && peerByInstance(sh.fed_instance); if (p) syncPresence(p.id, localId); }
 }
+// Тег человека с другого сервера (подпись «ITS», «Склад» под именем) передаётся только внутри общих пространств
+function setShadowTag(shadow, tag) {
+  const t = tag ? String(tag).trim().slice(0, 40) : null;
+  const cur = db.prepare('SELECT display_name, tag FROM users WHERE id = ?').get(shadow.id);
+  if (!cur || (cur.tag || null) === (t || null)) return;
+  if (!db.prepare('SELECT 1 FROM user_workspaces m JOIN workspaces w ON w.id = m.workspace_id WHERE m.user_id = ? AND w.fed_uid IS NOT NULL LIMIT 1').get(shadow.id)) return;
+  db.prepare('UPDATE users SET tag = ? WHERE id = ?').run(t, shadow.id);
+  spaces.knownByOf(shadow.id).forEach(id => wsm().sendTo(id, { type: 'user_updated', user_id: shadow.id, display_name: cur.display_name, tag: t }));
+}
 function recvProfile(peer, ev) {
   const sh = remoteUser(peer, ev.login);
   if (!sh) return;
   ensureShadow(peer, sh.fed_login, str(ev.name, 80), ev.av === undefined ? undefined : str(ev.av, 40));
+  if (ev.tag !== undefined) setShadowTag(sh, str(ev.tag, 40));
 }
 // Сервер получателя не принял наше сообщение: снимаем его у нас и сообщаем отправителю
 function recvReject(peer, ev) {
@@ -1306,7 +1316,7 @@ function mount(server) {
 module.exports = {
   mount, start, statsView, identity, setIdentity, fingerprint, validPub, parseAddr, getS, setS,
   createInvite, previewKey, connectBegin, acceptConnect, connectWithKey, peersInfo, pausePeer, resumePeer, deletePeer,
-  lookupRemote, peerOfUser, peerByInstance, realPeerByInstance, peerRow, clearVirtualRow, endVirtual, virtualTick, isOnline,
+  setShadowTag, lookupRemote, peerOfUser, peerByInstance, realPeerByInstance, peerRow, clearVirtualRow, endVirtual, virtualTick, isOnline,
   onLocalMessage, onGroupMessage, onPin, onEdit, onDelete, onReact, onStatus, onTyping, onPresence, onProfile, onContactAdded, onContactRemoved, afterContactChange,
   // для fedgroups.js
   enqueue, sendLive, rpc, fetchFile, isRelatedTo: isRelated, ensureShadow, remoteUser, shadowByAddr: shadowRow, findLocalUser, avatarVersion, receiveAttachment, receiveAttachments, describeAtt, removeMessageFiles,

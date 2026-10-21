@@ -130,6 +130,8 @@ router.patch('/:id', authMiddleware, adminMiddleware, (req, res) => {
   try {
     db.prepare('UPDATE users SET username = ?, display_name = ?, is_admin = ?, tag = ? WHERE id = ?')
       .run(username?.trim() || user.username, display_name?.trim() || user.display_name, is_admin !== undefined ? (is_admin ? 1 : 0) : user.is_admin, tag !== undefined ? (tag?.trim() || null) : user.tag, req.params.id);
+    // Люди других серверов в общих пространствах увидят новое имя и тег
+    try { require('../federation').onProfile(Number(req.params.id)); require('../fedspaces').membersChanged(spaces.wsIdsOf(Number(req.params.id))); } catch {}
     // Клиенты обновляют имя и тег без перезапуска (отправляем и тогда, когда поменялся только тег)
     const updated = db.prepare('SELECT id, display_name, tag FROM users WHERE id = ?').get(req.params.id);
     const evt = { type: 'user_updated', user_id: updated.id, display_name: updated.display_name, tag: updated.tag };
