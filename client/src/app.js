@@ -758,7 +758,7 @@ function renderAccountRail() {
     return `<button type="button" class="acc-btn${isActive ? ' active' : ''}" onclick="window.electron.accountSwitch('${esc(a.id)}')" aria-label="${sys ? sys + ', ' : ''}${name}${srv ? ', ' + srv : ''}">
       <span class="av av-round ${cls}">${esc(m ? initials(m.name) : '?')}${img}</span>${badge}
       <span class="acc-tip">${sys ? `<span class="acc-sys">${sys}</span>` : ''}<b>${name}</b><span>${srv}</span></span></button>`;
-  }).join('') : '') + (typeof foldersRailHtml === 'function' ? foldersRailHtml(showAcc) : '') + (typeof spacesRailHtml === 'function' ? spacesRailHtml(showAcc || (S.folders || []).length > 0) : '');
+  }).join('') : '') + (typeof spacesRailHtml === 'function' ? spacesRailHtml(showAcc) : '') + (typeof foldersRailHtml === 'function' ? foldersRailHtml(showAcc || (typeof spacesRailShown === 'function' && spacesRailShown())) : '');
   if (typeof foldersRailFit === 'function') foldersRailFit();
 }
 

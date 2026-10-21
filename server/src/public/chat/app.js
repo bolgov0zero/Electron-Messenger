@@ -4496,7 +4496,7 @@ function renderRail() {
   const hasSp = typeof spacesRailShown === 'function' && spacesRailShown();
   const show = (S.folders || []).length > 0 || hasSp;
   rail.hidden = !show;
-  rail.innerHTML = show ? foldersRailHtml(false) + (hasSp ? spacesRailHtml((S.folders || []).length > 0) : '') : '';
+  rail.innerHTML = show ? (hasSp ? spacesRailHtml(false) : '') + foldersRailHtml(hasSp) : '';
   if (show) foldersRailFit();
 }
 
