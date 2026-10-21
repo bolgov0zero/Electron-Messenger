@@ -2886,8 +2886,10 @@ function epMode(mode) {
   if (gif && !host.dataset.mounted) {
     host.dataset.mounted = '1';
     GifKlipy.setUser(`${S.server}:${S.user?.id || 0}`, 'ru');
-    GifKlipy.mount(host, { onPick: pickGif });
+    host._gif = GifKlipy.mount(host, { onPick: pickGif });
   }
+  // На телефоне фокус поднимает клавиатуру и закрывает панель, поэтому только там, где есть мышь
+  if (gif && !window.matchMedia('(max-width: 767px), (pointer: coarse)').matches) host._gif?.focus();
 }
 // Выбранная GIF уходит сразу: если в поле есть текст, он станет подписью
 function pickGif(att) {
@@ -2923,7 +2925,9 @@ function toggleEmojiPicker(e) {
   panel.classList.add('open');
   epDockSync();
   // На телефоне фокус в поиске поднимает клавиатуру, и она закрывает саму панель
-  if (!window.matchMedia('(max-width: 767px), (pointer: coarse)').matches) input?.focus();
+  if (!window.matchMedia('(max-width: 767px), (pointer: coarse)').matches) {
+    if (_epMode === 'gif') document.getElementById('ep-gif')?._gif?.focus(); else input?.focus();
+  }
 }
 
 // Считаем по рядам, а не по заголовкам: заголовки липкие, и их offsetTop/rect
