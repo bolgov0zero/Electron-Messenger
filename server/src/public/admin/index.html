@@ -383,6 +383,23 @@ html.no-emoji-font .cp-h{font-family:'Apple Color Emoji','Segoe UI Emoji',sans-s
 .ux-search svg{width:12px;height:12px;flex-shrink:0}
 .ux-search input{border:0;background:none;outline:none;font:12px var(--f-ui);color:var(--c-text);width:100%}
 .ux-bulk{display:flex;align-items:center;gap:8px;padding:7px 14px;background:var(--c-primary-dim);border-top:1px solid color-mix(in srgb,var(--c-primary) 35%,transparent);font-size:12px;flex-wrap:wrap}
+.ub-head{position:relative}
+/* Плашка действий ложится поверх шапки списка, поэтому список при выборе не сдвигается */
+.ub-head .ux-bulk{position:absolute;left:0;right:0;top:0;min-height:100%;z-index:6;border:1px solid color-mix(in srgb,var(--c-primary) 40%,transparent);border-radius:12px;padding:0 8px 0 14px;background:color-mix(in srgb,var(--c-primary) 13%,var(--c-surface));box-shadow:var(--shadow);animation:uxbar .16s ease}
+@keyframes uxbar{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.ux-new{animation:uxnew .28s ease both}
+@keyframes uxnew{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.ux-new,.ub-head .ux-bulk{animation:none}}
+/* Свои чекбоксы вместо системных */
+input[type=checkbox]{appearance:none;-webkit-appearance:none;width:17px;height:17px;margin:0;flex:none;vertical-align:middle;display:inline-grid;place-content:center;border:1.5px solid var(--c-muted);border-radius:5px;background:transparent;cursor:pointer;transition:background .14s,border-color .14s,box-shadow .14s}
+input[type=checkbox]::after{content:"";width:4.5px;height:8.5px;margin-top:-1.5px;border:solid var(--c-on-primary);border-width:0 2px 2px 0;transform:rotate(45deg) scale(0);transition:transform .14s cubic-bezier(.3,1.5,.5,1)}
+input[type=checkbox]:hover{border-color:var(--c-primary)}
+input[type=checkbox]:checked{background:var(--c-primary);border-color:var(--c-primary)}
+input[type=checkbox]:checked::after{transform:rotate(45deg) scale(1)}
+input[type=checkbox]:indeterminate{background:var(--c-primary);border-color:var(--c-primary)}
+input[type=checkbox]:indeterminate::after{width:8px;height:0;margin:0;border-width:0 0 2px 0;transform:none}
+input[type=checkbox]:focus-visible{outline:none;box-shadow:0 0 0 3px var(--accent-glow);border-color:var(--border-focus)}
+input[type=checkbox]:disabled{opacity:.45;cursor:default}
 .ux-bulk b{color:var(--c-primary);margin-right:6px}
 .ux-tbl{overflow-x:auto;border-top:1px solid var(--c-border2)}
 .ux-tbl table{width:100%;border-collapse:collapse;min-width:820px}
@@ -393,7 +410,6 @@ html.no-emoji-font .cp-h{font-family:'Apple Color Emoji','Segoe UI Emoji',sans-s
 .ux-tbl tr:last-child td{border-bottom:0}
 .ux-tbl tbody tr:hover td{background:var(--bg-hover)}
 .ux-tbl tr.sel td{background:var(--c-primary-dim)}
-.ux-tbl input[type=checkbox]{accent-color:var(--c-primary);width:14px;height:14px;cursor:pointer;vertical-align:middle}
 .ux-cell{display:flex;align-items:center;gap:11px;min-width:0}
 .ux-name{font-weight:600;font-size:12.5px;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .ux-login{font-family:var(--f-mono);font-size:11px;color:var(--c-muted)}
@@ -933,14 +949,62 @@ tbody tr:hover td{background:var(--c-surface2)}
 #fd-body{display:flex;flex-direction:column;gap:12px}
 .fd-ta{width:100%;min-height:96px;border:1px solid var(--border-input);border-radius:9px;background:var(--bg-input);color:var(--c-text);padding:9px 11px;font:12px var(--f-mono);resize:vertical}
 /* ── Общие пространства и карта федерации ── */
-.wsf-offer{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid color-mix(in srgb,var(--c-primary) 40%,var(--c-border))}
-.wsf-ot{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.wsf-ot b{font-size:13.5px}.wsf-ot span{font-size:12.5px;color:var(--c-text2);line-height:1.45}
-.wsf-att select{height:34px;max-width:100%;background:var(--bg-input);color:var(--c-text);border:1px solid var(--border-input);border-radius:9px;padding:0 10px;font-family:var(--f-ui);font-size:13px}
+.wsf-offer{display:flex;align-items:center;gap:14px;padding:14px 16px;flex-wrap:wrap;border:1px solid color-mix(in srgb,var(--c-primary) 40%,var(--c-border))}
+.wsf-ot{flex:1;min-width:260px;display:flex;flex-direction:column;gap:3px}.wsf-ot b{font-size:13.5px}.wsf-ot span{font-size:12.5px;color:var(--c-text2);line-height:1.45}
+.wsf-att{display:block;margin-top:5px}.wsf-att .ux-sel{max-width:420px}
+/* свой выпадающий список */
+.ux-sel{position:relative;flex:1;min-width:190px}
+.ux-sel-b{width:100%;height:34px;display:flex;align-items:center;gap:8px;background:var(--bg-input);color:var(--c-text);border:1px solid var(--border-input);border-radius:9px;padding:0 10px;font:13px var(--f-ui);cursor:pointer;text-align:left}
+.ux-sel-b:hover{border-color:var(--c-muted)}
+.ux-sel-b[aria-expanded="true"]{border-color:var(--border-focus);box-shadow:0 0 0 3px var(--accent-glow)}
+.ux-sel-b .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ux-sel-b .t.ph{color:var(--c-muted)}
+.ux-sel-b svg{width:14px;height:14px;flex:none;color:var(--c-muted);transition:transform .15s}
+.ux-sel-b[aria-expanded="true"] svg{transform:rotate(180deg)}
+.ux-selp{position:fixed;z-index:200;background:var(--c-surface);border:1px solid var(--c-border);border-radius:11px;box-shadow:var(--shadow-md);padding:4px;max-height:280px;overflow:auto;outline:none;animation:toastIn .12s ease}
+.ux-selp [role=option]{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px}
+.ux-selp [role=option]:hover:not([aria-disabled]),.ux-selp [role=option].act{background:var(--bg-hover)}
+.ux-selp .o-t{flex:1;min-width:0}.ux-selp .o-t b{display:block;font-weight:600}.ux-selp .o-t small{display:block;color:var(--c-text2);font-size:11.5px;margin-top:1px}
+.ux-selp .ck{width:14px;height:14px;flex:none;color:var(--c-primary);visibility:hidden}.ux-selp [aria-selected="true"] .ck{visibility:visible}
+.ux-selp [aria-disabled]{opacity:.5;cursor:default}
+/* страница: список слева, пространство справа */
+.ws-ms{display:grid;grid-template-columns:290px minmax(0,1fr);gap:14px;align-items:start}
+.ws-ml{overflow:hidden}
+.ws-fl{display:flex;gap:4px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--c-border)}
+.ws-fl button{appearance:none;border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text2);border-radius:99px;padding:3px 11px;font:500 12.5px var(--f-ui);cursor:pointer}
+.ws-fl button[aria-pressed="true"]{background:var(--c-surface2);color:var(--c-text);border-color:var(--c-muted)}
+.ws-fl span{opacity:.6;margin-left:4px}
+.ws-it{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:0;border-top:1px solid var(--c-border);background:none;color:var(--c-text);font:inherit;text-align:left;cursor:pointer}
+.ws-fl+.ws-it{border-top:0}
+.ws-it:hover{background:var(--c-surface2)}.ws-it[aria-current="true"]{background:var(--c-surface2);box-shadow:inset 0 0 0 1px var(--c-border2)}
+.ws-in{flex:1;min-width:0}.ws-in b{display:block;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ws-in small{color:var(--c-text2);font-size:12px}
+.ws-cnt{min-width:18px;height:18px;border-radius:9px;background:var(--c-orange);color:#241a05;font-size:11px;font-weight:700;display:grid;place-items:center;padding:0 5px}
+.ws-av{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-weight:700;font-size:14px;flex:none;color:var(--col);background:color-mix(in srgb,var(--col) 16%,transparent)}
+.ws-av.sm{width:30px;height:30px;border-radius:9px;font-size:12px}
+.ws-det{overflow:visible}
+.ws-dh{display:flex;gap:12px;align-items:center;padding:14px 16px;flex-wrap:wrap}
+.ws-dn{flex:1;min-width:200px}.ws-dn h3{margin:0;font-size:16px}
+.ws-bd{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px}.ws-bd:empty{display:none}
+.ws-dh .btn svg{width:14px;height:14px;margin-right:5px;vertical-align:-2px}
+.ws-dg:not([disabled]){color:var(--c-red-text)}
+.ws-ds{display:grid;grid-template-columns:repeat(3,1fr);border-block:1px solid var(--c-border)}
+.ws-ds div{padding:10px 16px;border-right:1px solid var(--c-border);display:flex;flex-direction:column;min-width:0}.ws-ds div:last-child{border-right:0}
+.ws-ds span{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted);font-weight:600}.ws-ds b{font-size:16px;font-variant-numeric:tabular-nums}
+.ws-sec{padding:14px 16px;border-top:1px solid var(--c-border)}.ws-ds+.ws-sec{border-top:0}
+.ws-sec h4{margin:0 0 2px;font-size:13.5px}.ws-sec p{margin:0;color:var(--c-text2);font-size:12.5px;line-height:1.45}
+.ws-shr{display:flex;gap:14px;align-items:center}.ws-shr>div{flex:1;min-width:0}
+.ws-tree{margin-top:10px;border:1px solid var(--c-border);border-radius:10px;overflow:hidden}
+.ws-tn{display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:1px solid var(--c-border)}.ws-tn:first-child{border-top:0}
+.ws-ind{display:flex;align-items:center;color:var(--c-muted);flex:none}.ws-ind svg{width:14px;height:14px}
+.ws-tnm{flex:1;min-width:0;display:flex;gap:7px;align-items:baseline;flex-wrap:wrap}.ws-tnm b{font-size:13px;font-weight:600}.ws-tnm code{font:600 11px var(--f-mono);color:var(--c-text2)}
+.ws-tm{color:var(--c-text2);font-size:12px;white-space:nowrap}
+.ws-ask{margin-top:10px;border:1px solid color-mix(in srgb,var(--c-orange) 35%,var(--c-border));border-radius:10px;background:var(--c-orange-dim)}
+.ws-lab{margin-top:14px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted);font-weight:600}
+@media (max-width:980px){.ws-ms{grid-template-columns:minmax(0,1fr)}}
 .wsf-ask{display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--c-border);font-size:12.5px}.wsf-ask span{flex:1;min-width:0}
 .wsf-sr{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--c-border)}.wsf-sr:first-child{border-top:0}
 .wsf-sr .fd-dot{flex:none}.wsf-sr>div{flex:1;min-width:0}.wsf-sr b{font-size:13px}.wsf-sr code{font:600 11px var(--f-mono);color:var(--c-text2);margin-left:6px}
 .wsf-sr .d{display:block;font-size:12px;color:var(--c-text2);margin-top:2px}
-.wsf-inv{display:flex;gap:8px;align-items:center}.wsf-inv select{flex:1;min-width:0;height:34px;background:var(--bg-input);color:var(--c-text);border:1px solid var(--border-input);border-radius:9px;padding:0 10px;font-family:var(--f-ui);font-size:13px}
+.wsf-inv{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
 .fm-tabs{display:inline-flex;gap:2px;padding:3px;background:var(--c-surface2);border-radius:10px;align-self:flex-start}
 .fm-tabs button{appearance:none;border:0;background:transparent;color:var(--c-text2);font:500 13px var(--f-ui);padding:6px 14px;border-radius:8px;cursor:pointer}
 .fm-tabs button[aria-pressed="true"]{background:var(--c-surface);color:var(--c-text);font-weight:600;box-shadow:0 1px 2px rgba(18,26,36,.12)}
@@ -1722,7 +1786,6 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .ub-row:hover{border-color:color-mix(in srgb,var(--c-primary) 35%,var(--c-border))}
 .ub-row.sel{background:var(--c-primary-dim)}
 .ub-row.ua-banned .ux-cell{opacity:.6}
-.ub-row input[type=checkbox]{accent-color:var(--c-primary);width:15px;height:15px;cursor:pointer}
 .ub-role small{display:block;font:500 11px var(--f-mono);color:var(--c-muted);margin-top:3px}
 .ws-pill{display:inline-flex;align-items:center;gap:5px;font:600 11px var(--f-ui);padding:1px 8px 1px 6px;border-radius:99px;background:var(--c-primary-dim);color:var(--c-primary);white-space:nowrap;vertical-align:middle}
 .ws-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
@@ -2047,7 +2110,6 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .cb-row{display:grid;grid-template-columns:22px minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.1fr) minmax(0,.8fr) 150px;align-items:center;gap:14px;padding:10px 14px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:14px;box-shadow:var(--shadow)}
 .cb-row:hover{border-color:color-mix(in srgb,var(--c-primary) 35%,var(--c-border))}
 .cb-row.sel{background:var(--c-primary-dim)}
-.cb-row input[type=checkbox]{accent-color:var(--c-primary);width:15px;height:15px;cursor:pointer}
 .cb-dur{font:500 11.5px var(--f-mono);color:var(--c-text);white-space:nowrap}
 .cb-dur i{display:block;height:4px;border-radius:2px;background:var(--dv-c1);margin-top:5px;max-width:90px;min-width:3px}
 @container (max-width:1000px){.cb-row{grid-template-columns:22px minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.1fr) 150px}.cb-row .cb-pl,.cb-row .cb-du{display:none}}
@@ -4538,7 +4600,7 @@ function rmRender() {
   const flt = ([k, label, count]) => `<button type="button" aria-pressed="${RM.filter === k}" onclick="rmFilter('${k}')">${label}<span class="n">${count}</span></button>`;
   const sortBtn = (k, label) => `<button type="button" aria-pressed="${RM.sort === k}" onclick="rmSort('${k}')">${label}</button>`;
   uxKeepFocus(() => {
-    page.innerHTML = `<div class="ub" id="rm-page">
+    uxSet(page, `<div class="ub" id="rm-page">
       <div class="ub-tiles">
         <div class="ub-tile static"><div class="ub-lbl">Комнат</div><div class="ub-big">${n.all}<small>${n.topics ? `${n.topics} с темами` : 'без тем'}</small></div><div class="ub-sub">${n.plain} без тем · ${n.quiet} тихих</div></div>
         <div class="ub-tile static"><div class="ub-lbl">Сейчас в сети</div><div class="ub-big">${online}<small>из ${people.size}</small></div><div class="ub-sub">участников комнат</div></div>
@@ -4552,7 +4614,7 @@ function rmRender() {
         ${uxSearch('rm-q', RM.q, 'Комната или тема', 'rmSearch')}</div>
       <div class="ub-rows">${rows.map(r => {
         const open = RM.open.has(r.id), p = rbPresence(r, U), mx = Math.max(1, ...r.topics.map(t => t.message_count || 0));
-        return `<div class="rb-row"><div class="rb-top" onclick="rmTog(event, ${r.id})">
+        return `<div class="rb-row" data-k="${r.id}"><div class="rb-top" onclick="rmTog(event, ${r.id})">
           <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть: ${esc(r.name)}">${UX_I.chev || '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>'}</button>
           <div class="rb-name">${avHtml(r.name || '?', 38, 11, null, p.on.length ? true : false, r.has_avatar, r.id)}<div style="min-width:0"><div class="rb-nl"><b>${esc(r.name || '—')}</b>${r.topics.length ? `<span class="rb-chip">${r.topics.length} ${uxPlural(r.topics.length, 'тема', 'темы', 'тем')}</span>` : ''}${quiet(r) ? '<span class="rb-chip q">тихая</span>' : ''}${r.read_only ? '<span class="rb-chip ro">только чтение</span>' : ''}</div>
             <div class="rb-meta">${r.topics.length ? esc(r.topics.map(t => t.name).join(' · ')) : 'Без тем'}</div></div></div>
@@ -4565,7 +4627,7 @@ function rmRender() {
             return `<div class="rb-p">${avHtml(m.name, 24, 7, m.id, false, m.has_avatar)}<span class="nm">${esc(m.name)}</span>${u?.is_admin ? '<span class="adm">админ</span>' : ''}<span class="s ${st[1]}">${st[0]}</span></div>`; }).join('') || '<span class="rm-sub">никого</span>'}</div></div>
           <div><h4>Темы <span>${r.topics.length}</span></h4>${r.topics.map(t => `<div class="rb-tp"><span class="nm">${esc(t.name)}</span><div class="meter"><i style="width:${Math.round((t.message_count || 0) / mx * 100)}%"></i></div><span class="num">${rmFmt(t.message_count || 0)}</span></div>`).join('') || '<div class="rm-sub">Тем нет: комната работает как один общий чат</div>'}</div>
           <div><h4>Сводка</h4><div class="rb-kv"><div><span>Создана</span><b>${fmtDate(r.created_at)}</b></div><div><span>Сообщений всего</span><b>${rmFmt(r.msgs)}</b></div><div><span>Последнее</span><b>${esc(rmLast(r.last))}</b></div><div><span>Режим</span><b>${r.read_only ? 'только чтение' : 'можно писать всем'}</b></div></div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px"><button class="btn btn-ghost btn-sm" onclick="rmOpen(${r.id}, 'members')">${RM_I.users}Участники</button><button class="btn btn-ghost btn-sm" onclick="rmOpen(${r.id}, 'topics')">${RM_I.topics}Темы</button><button class="btn btn-danger btn-sm" onclick="rmClear(${r.id})">${RM_I.clear}Очистить</button></div></div></div>` : ''}</div>`; }).join('') || `<div class="ub-empty">${allRooms.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Комнат пока нет, создайте первую'}</div>`}</div></div>`;
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px"><button class="btn btn-ghost btn-sm" onclick="rmOpen(${r.id}, 'members')">${RM_I.users}Участники</button><button class="btn btn-ghost btn-sm" onclick="rmOpen(${r.id}, 'topics')">${RM_I.topics}Темы</button><button class="btn btn-danger btn-sm" onclick="rmClear(${r.id})">${RM_I.clear}Очистить</button></div></div></div>` : ''}</div>`; }).join('') || `<div class="ub-empty">${allRooms.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Комнат пока нет, создайте первую'}</div>`}</div></div>`);
   });
   RM.fresh = null;
   const list = page.querySelector('.ub-rows');
@@ -4934,6 +4996,65 @@ const uxSearch = (id, value, placeholder, handler) =>
   `<label class="ux-search">${UX_I.search}<input id="${id}" value="${esc(value)}" placeholder="${placeholder}" autocomplete="off" oninput="${handler}(this.value)"></label>`;
 
 // Поиск перерисовывает страницу — возвращаем фокус и курсор туда, где они были
+// Тихая перерисовка списков. Новая разметка не заменяет старую целиком, а сверяется с ней: нетронутые строки и блоки остаются как были
+// (не мигают аватарки, не сбрасываются прокрутка, фокус и наведение), меняется только то, что изменилось. Новые строки плавно появляются,
+// остальные плавно уезжают на новое место. Если разметка не менялась вовсе, страница не трогается.
+function uxSet(el, html) {
+  const mk = currentPage;
+  if (el._mk !== mk || !el.firstElementChild || el._root !== el.firstElementChild) {
+    el.innerHTML = html; el._mk = mk; el._root = el.firstElementChild; el._html = html; return true;
+  }
+  if (el._html === html) return false;
+  el._html = html;
+  const t = document.createElement('template'); t.innerHTML = html;
+  uxMorphKids(el, t.content);
+  el._root = el.firstElementChild;
+  return true;
+}
+function uxMorphAttrs(x, y) {
+  for (const a of [...x.attributes]) if (!y.hasAttribute(a.name)) { if (!(a.name === 'style' && x.tagName === 'IMG')) x.removeAttribute(a.name); }
+  for (const a of y.attributes) { if (a.name === 'style' && x.tagName === 'IMG') continue; if (x.getAttribute(a.name) !== a.value) x.setAttribute(a.name, a.value); }
+}
+function uxMorphNode(x, y) {
+  if (x.nodeType !== y.nodeType || (x.nodeType === 1 && x.tagName !== y.tagName)) { x.replaceWith(y); return; }
+  if (x.nodeType !== 1) { if (x.nodeValue !== y.nodeValue) x.nodeValue = y.nodeValue; return; }
+  uxMorphAttrs(x, y);
+  const tg = x.tagName;
+  if (tg === 'INPUT' || tg === 'TEXTAREA' || tg === 'SELECT') {
+    if (x.type === 'checkbox' || x.type === 'radio') x.checked = y.hasAttribute('checked');
+    else if (x !== document.activeElement && x.value !== y.getAttribute('value')) x.value = y.getAttribute('value') ?? '';
+    if (tg === 'SELECT') uxMorphKids(x, y);
+    return;
+  }
+  uxMorphKids(x, y);
+}
+function uxMorphKids(a, b) {
+  const nk = [...b.childNodes];
+  if (nk.length && nk.every(n => n.nodeType === 1 && n.dataset.k != null)) return uxMorphKeyed(a, nk);
+  const ok = [...a.childNodes], n = Math.max(ok.length, nk.length);
+  for (let i = 0; i < n; i++) { const x = ok[i], y = nk[i]; if (!y) x.remove(); else if (!x) a.appendChild(y); else uxMorphNode(x, y); }
+}
+function uxMorphKeyed(a, nk) {
+  const old = new Map();
+  [...a.childNodes].forEach(n => { if (n.nodeType === 1 && n.dataset.k != null) old.set(n.dataset.k, n); else n.remove(); });
+  const top = new Map(); old.forEach((e, k) => top.set(k, e.getBoundingClientRect().top));
+  const seen = new Set(); let prev = null;
+  nk.forEach(y => {
+    const k = y.dataset.k; seen.add(k);
+    let x = old.get(k);
+    if (x) uxMorphNode(x, y); else { x = y; x.classList.add('ux-new'); }
+    const want = prev ? prev.nextSibling : a.firstChild;
+    if (x !== want) a.insertBefore(x, want);
+    prev = x;
+  });
+  old.forEach((e, k) => { if (!seen.has(k)) e.remove(); });
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  old.forEach((e, k) => {
+    if (!seen.has(k) || !e.isConnected) return;
+    const dy = top.get(k) - e.getBoundingClientRect().top;
+    if (Math.abs(dy) > 1) e.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.2,.7,.2,1)' });
+  });
+}
 function uxKeepFocus(fn) {
   const a = document.activeElement, id = a?.id, caret = a?.selectionStart;
   fn();
@@ -5076,7 +5197,7 @@ function uaRender() {
   // Прокрутка списка не должна сбрасываться при обновлении данных раз в несколько секунд
   const keepTop = document.querySelector('.ub-rows')?.scrollTop || 0;
   uxKeepFocus(() => {
-    document.getElementById('page-body').innerHTML = `<div class="ub">
+    uxSet(document.getElementById('page-body'), `<div class="ub">
       <div class="ub-tiles">
         ${tile('all', 'Всего', n.all, 'человек', 'var(--dv-c2)')}${tile('online', 'В сети', n.online, 'сейчас', 'var(--c-green)')}
         ${tile('away', 'Отошли', n.away, 'из них', 'var(--c-orange)')}${tile('admins', 'Администраторы', n.admins, 'чел.', 'var(--c-primary)')}
@@ -5085,12 +5206,11 @@ function uaRender() {
       <div class="ub-head"><h3>${title} <span>${rows.length}</span></h3>
         ${n.banned || UA.filter === 'banned' ? uxChips([['banned', 'Заблокированы', n.banned, true]], UA.filter, 'uaFilter') : ''}
         <div class="ub-sort" role="group" aria-label="Сортировка">${sortBtn('name', 'По имени')}${sortBtn('status', 'По статусу')}${sortBtn('seen', 'По дате')}</div>
-        ${uxSearch('ua-q', UA.q, 'Имя, логин или тег', 'uaSearch')}</div>
-      ${UA.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${UA.sel.size}</b>
+        ${uxSearch('ua-q', UA.q, 'Имя, логин или тег', 'uaSearch')}${UA.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${UA.sel.size}</b>
         <button class="btn btn-ghost btn-sm" onclick="uaLogout([...UA.sel])">${UX_I.logout}Завершить сеансы</button>
         <button class="btn btn-ghost btn-sm" onclick="uaBan([...UA.sel])">${UX_I.ban}Заблокировать</button>
-        <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="UA.sel.clear(); uaRender()">Снять выделение</button></div>` : ''}
-      <div class="ub-rows">${rows.map(u => `<div class="ub-row${UA.sel.has(u.id) ? ' sel' : ''}${u.banned ? ' ua-banned' : ''}">
+        <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="UA.sel.clear(); uaRender()">Снять выделение</button></div>` : ''}</div>
+      <div class="ub-rows">${rows.map(u => `<div class="ub-row${UA.sel.has(u.id) ? ' sel' : ''}${u.banned ? ' ua-banned' : ''}" data-k="${u.id}">
         <input type="checkbox" aria-label="Выбрать: ${esc(u.display_name)}" ${UA.sel.has(u.id) ? 'checked' : ''} onchange="uaToggle(${u.id})">
         <div class="ux-cell">${avHtml(u.display_name, 38, 11, u.id, uaDot(u), u.has_avatar)}
           <div style="min-width:0"><div class="ux-name">${esc(u.display_name)}${uxTag(u.tag)}</div><div class="ux-login">@${esc(u.username)}${WS.list.length > 1 ? ' ' + uaWsPills(u) : ''}</div></div></div>
@@ -5100,7 +5220,7 @@ function uaRender() {
           <button class="btn btn-ghost btn-sm" onclick="openEditUser(${u.id})">${UX_I.edit}Изменить</button>
           <button class="ux-ibtn" aria-label="Ещё действия: ${esc(u.display_name)}" aria-haspopup="menu" aria-expanded="false" onclick="uaMenu(event, ${u.id})">${UX_I.more}</button>
         </div></div>`).join('') || '<div class="ub-empty">Никого не нашли. Проверьте запрос или фильтр.</div>'}</div>
-    </div>`;
+    </div>`);
   });
   const list = document.querySelector('.ub-rows');
   if (list && keepTop) list.scrollTop = keepTop;
@@ -5694,7 +5814,7 @@ function chRender() {
   const flt = ([k, label, count]) => `<button type="button" aria-pressed="${CH.filter === k}" onclick="chFilter('${k}')">${label}<span class="n">${count}</span></button>`;
   const sortBtn = (k, label) => `<button type="button" aria-pressed="${CH.sort === k}" onclick="chSort('${k}')">${label}</button>`;
   uxKeepFocus(() => {
-    page.innerHTML = `<div class="ub" id="ch-page">
+    uxSet(page, `<div class="ub" id="ch-page">
       <div class="ub-tiles">
         <div class="ub-tile static"><div class="ub-lbl">Личных чатов</div><div class="ub-big">${allChats.length - groups}<small>переписок двоих</small></div><div class="ub-sub">${allChats.filter(c => c.type !== 'group' && !c.message_count).length} пустых</div></div>
         <div class="ub-tile static"><div class="ub-lbl">Групп</div><div class="ub-big">${groups}<small>${groups ? 'с участниками' : ''}</small></div><div class="ub-sub">${groups ? `${seats} ${uxPlural(seats, 'место', 'места', 'мест')} в группах` : 'групп пока нет'}</div></div>
@@ -5715,7 +5835,7 @@ function chRender() {
           ? `<div class="cb-bw">${avHtml(to.name, 38, 11, to.id, dot(to), to.has_avatar)}<span class="bd">${avHtml(from.name, 20, 6, from.id, false, from.has_avatar)}</span></div>`
           : `<div class="cb-gav">${avHtml(c.name || '?', 38, 11, null, p.on.length ? true : false, c.has_avatar, c.id)}</div>`;
         const chip = c.is_secret ? '<span class="rb-chip sec">секретный</span>' : c.type === 'direct' ? '<span class="rb-chip dir">личный</span>' : '<span class="rb-chip grp">группа</span>';
-        return `<div class="rb-row"><div class="rb-top" onclick="chTog(event, ${c.id})">
+        return `<div class="rb-row" data-k="${c.id}"><div class="rb-top" onclick="chTog(event, ${c.id})">
           <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть: ${esc(chName(c))}">${UX_I.chev}</button>
           <div class="rb-name">${lead}<div style="min-width:0"><div class="rb-nl"><b>${chTitle(c)}</b>${chip}${c.message_count ? '' : '<span class="rb-chip q">пустой</span>'}</div>
             <div class="rb-meta">${c.type === 'direct' ? 'Переписка двоих' : `${c.member_count} ${uxPlural(c.member_count, 'участник', 'участника', 'участников')}`}</div></div></div>
@@ -5728,7 +5848,7 @@ function chRender() {
             return `<div class="rb-p">${avHtml(m.name, 24, 7, m.id, false, m.has_avatar)}<span class="nm">${esc(m.name)}</span>${c.type === 'direct' && from && m.id === from.id ? '<span class="adm start">начал(а)</span>' : ''}${u?.is_admin ? '<span class="adm">админ</span>' : ''}<span class="s ${st[1]}">${st[0]}</span></div>`; }).join('') || '<span class="rm-sub">никого</span>'}</div></div>
           <div><h4>Сводка</h4><div class="rb-kv"><div><span>Создан</span><b>${fmtDate(c.created_at)}</b></div><div><span>Сообщений</span><b>${rmFmt(c.message_count)}</b></div><div><span>Последнее</span><b>${esc(rmLast(c.last_at))}</b></div><div><span>Тип</span><b>${c.is_secret ? 'секретный чат' : c.type === 'direct' ? 'личный чат' : 'группа'}</b></div></div></div>
           <div><h4>Действия</h4><div style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn btn-ghost btn-sm" onclick="chMembers(${c.id})">${RM_I.users}Участники</button><button class="btn btn-danger btn-sm" onclick="chClear(${c.id})">${RM_I.clear}Очистить историю</button><button class="btn btn-danger btn-sm" onclick="chDelete([${c.id}])">${UX_I.trash}Удалить чат</button></div>
-            <div class="rm-sub" style="margin-top:10px">Содержимое переписки в админке не показывается: только состав и сводка.</div></div></div>` : ''}</div>`; }).join('') || `<div class="ub-empty">${allChats.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Чатов пока нет'}</div>`}</div></div>`;
+            <div class="rm-sub" style="margin-top:10px">Содержимое переписки в админке не показывается: только состав и сводка.</div></div></div>` : ''}</div>`; }).join('') || `<div class="ub-empty">${allChats.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Чатов пока нет'}</div>`}</div></div>`);
   });
   CH.fresh = null;
   const list = page.querySelector('.ub-rows');
@@ -6012,17 +6132,16 @@ function clRender() {
   const flt = ([k, label, count, warn]) => `<button type="button" class="${warn && count ? 'warn' : ''}" aria-pressed="${CL.filter === k}" onclick="clFilter('${k}')">${label}<span class="n">${count}</span></button>`;
   page.className = 'ub';
   uxKeepFocus(() => {
-    page.innerHTML = `
+    uxSet(page, `
       <div class="ub-tiles" id="cl-tiles">${clTiles()}</div>
       <div class="ub-head"><h3>Клиенты <span>${rows.length}</span></h3>
         <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все', n.all], ['old', 'Нужно обновить', n.old, true], ['electron', 'Electron', n.electron], ['web', 'Веб и PWA', n.web]].map(flt).join('')}</div>
-        ${uxSearch('cl-q', CL.q, 'Человек, компьютер или IP', 'clSearch')}</div>
-      ${CL.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${CL.sel.size}</b>
+        ${uxSearch('cl-q', CL.q, 'Человек, компьютер или IP', 'clSearch')}${CL.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${CL.sel.size}</b>
         <button class="btn btn-ghost btn-sm" ${selOld.length ? '' : 'disabled'} onclick="clUpdate(${JSON.stringify(selOld.map(c => c.connId))})">${UX_I.up}Обновить · ${selOld.length}</button>
         <button class="btn btn-ghost btn-sm" ${selElectron.length ? '' : 'disabled'} onclick="clRestart(${JSON.stringify(selElectron.map(c => c.connId))})">${UX_I.restart}Перезапустить</button>
         <button class="btn btn-ghost btn-sm" onclick="clLogout([...CL.sel])">${UX_I.logout}Завершить сеансы</button>
-        <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="CL.sel.clear(); clRender()">Снять выделение</button></div>` : ''}
-      <div class="ub-rows">${rows.map(c => `<div class="cb-row${CL.sel.has(c.connId) ? ' sel' : ''}">
+        <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" onclick="CL.sel.clear(); clRender()">Снять выделение</button></div>` : ''}</div>
+      <div class="ub-rows">${rows.map(c => `<div class="cb-row${CL.sel.has(c.connId) ? ' sel' : ''}" data-k="${c.connId}">
         <input type="checkbox" aria-label="Выбрать: ${esc(clHost(c))}" ${CL.sel.has(c.connId) ? 'checked' : ''} onchange="clToggle(${c.connId})">
         <div class="ux-cell">${avHtml(clName(c), 36, 10, c.userId, null, false)}<div style="min-width:0"><div class="ux-name">${esc(clName(c))}</div><div class="ux-login">@${esc(c.username)}</div></div></div>
         <div class="cb-dev"><div class="cl-host">${esc(clHost(c))}</div>${c.clientIp && c.clientIp !== '—' ? `<div class="cl-ip">${esc(c.clientIp)}</div>` : ''}</div>
@@ -6030,7 +6149,7 @@ function clRender() {
         <div data-cl-ver="${c.connId}">${clVersion(c)}</div>
         <div class="cb-du cb-dur" data-cl-dur="${c.connId}">${clDurHtml(c)}</div>
         <div data-cl-act="${c.connId}">${clActions(c)}</div>
-      </div>`).join('') || `<div class="ub-empty">${CL.clients.length ? 'Никого не нашли. Проверьте запрос или фильтр.' : 'Сейчас никто не подключён'}</div>`}</div>`;
+      </div>`).join('') || `<div class="ub-empty">${CL.clients.length ? 'Никого не нашли. Проверьте запрос или фильтр.' : 'Сейчас никто не подключён'}</div>`}</div>`);
   });
   const list = page.querySelector('.ub-rows');
   if (list && keepTop) list.scrollTop = keepTop;
@@ -7565,7 +7684,7 @@ function setTopbarActions(html) {
 /* ── ПРОСТРАНСТВА ── */
 // Пространство только объединяет людей: люди с общим пространством друг друга видят (человек может состоять в нескольких),
 // без общего не видят (связать их можно контактами, группами и комнатами). Комнаты к пространству не привязаны.
-const WS = { list: [], editId: null, offers: [] };
+const WS = { list: [], editId: null, offers: [], filter: 'all', sel: null };
 async function wsLoad() {
   const [r, o] = await Promise.all([api('GET', '/api/admin/workspaces'), api('GET', '/api/admin/workspaces/fed/offers')]);
   if (Array.isArray(r)) WS.list = r;
@@ -7583,7 +7702,7 @@ async function renderWorkspaces() {
   clearInterval(WS.timer);
   WS.timer = setInterval(async () => {
     if (currentPage !== 'workspaces') { clearInterval(WS.timer); return; }
-    if (document.querySelector('#modal-fed.open, #modal-ws.open') || document.activeElement?.closest?.('#page-body input, #page-body select')) return;
+    if (document.querySelector('#modal-fed.open, #modal-ws.open, .ux-selp') || document.activeElement?.closest?.('#page-body input, #page-body select')) return;
     await wsLoad(); if (currentPage === 'workspaces') wsRender();
   }, 10000);
 }
@@ -7592,30 +7711,110 @@ function wsFedBadge(w) {
   const act = w.fed.servers.filter(s => s.state === 'active').length;
   return `<span class="badge badge-blue" title="${w.fed.is_host ? 'Вы хозяин пространства' : 'Хозяин: ' + esc(w.fed.servers.find(s => s.host)?.name || w.fed.host)}">Общее · ${act} ${uxPlural(act, 'сервер', 'сервера', 'серверов')}</span>`;
 }
+// Свой выпадающий список вместо системного: значение хранится в WS_SEL по id, переживает перерисовку страницы
+const WS_SEL = {};
+function uxSelHtml(id, opts, def, ph) {
+  const cur = WS_SEL[id];
+  if (!cur || !opts.some(o => o.v === cur.v && !o.dis)) WS_SEL[id] = { opts, v: def !== undefined ? def : (opts.find(o => !o.dis)?.v ?? '') };
+  else cur.opts = opts;
+  return `<div class="ux-sel" id="${id}"><button type="button" class="ux-sel-b" aria-haspopup="listbox" aria-expanded="false" aria-label="${esc(ph || '')}" onclick="uxSelOpen('${id}')"></button></div>`.replace('</button>', uxSelLabel(id) + '</button>');
+}
+function uxSelLabel(id) {
+  const st = WS_SEL[id], o = st?.opts.find(x => x.v === st.v);
+  return `<span class="t${o ? '' : ' ph'}">${o ? esc(o.t) : 'Выберите'}</span><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
+}
+const uxSelVal = id => WS_SEL[id]?.v ?? '';
+function uxSelClose() { document.querySelectorAll('.ux-selp').forEach(e => e.remove()); document.querySelectorAll('.ux-sel-b[aria-expanded="true"]').forEach(b => b.setAttribute('aria-expanded', 'false')); }
+function uxSelOpen(id) {
+  const host = document.getElementById(id), st = WS_SEL[id]; if (!host || !st) return;
+  const btn = host.querySelector('.ux-sel-b'), was = btn.getAttribute('aria-expanded') === 'true';
+  uxSelClose(); if (was) return;
+  const pop = document.createElement('div'); pop.className = 'ux-selp'; pop.setAttribute('role', 'listbox'); pop.tabIndex = -1;
+  pop.innerHTML = st.opts.map((o, i) => `<div role="option" data-i="${i}" aria-selected="${o.v === st.v}" ${o.dis ? 'aria-disabled="true"' : ''}><span class="o-t"><b>${esc(o.t)}</b>${o.s ? `<small>${esc(o.s)}</small>` : ''}</span><svg class="ck" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>`).join('');
+  const pick = i => { const o = st.opts[i]; if (!o || o.dis) return; st.v = o.v; uxSelClose(); btn.innerHTML = uxSelLabel(id); btn.focus(); };
+  pop.onclick = e => { const o = e.target.closest('[role=option]'); if (o) pick(+o.dataset.i); };
+  pop.onkeydown = e => {
+    const items = [...pop.querySelectorAll('[role=option]:not([aria-disabled])')], cur = items.indexOf(document.activeElement.closest?.('[role=option]') || pop.querySelector('.act'));
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); pop.querySelectorAll('.act').forEach(x => x.classList.remove('act')); const n = items[(cur + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]; n?.classList.add('act'); n?.scrollIntoView({ block: 'nearest' }); }
+    else if (e.key === 'Enter') { e.preventDefault(); const n = pop.querySelector('.act'); if (n) pick(+n.dataset.i); }
+    else if (e.key === 'Escape') { e.preventDefault(); uxSelClose(); btn.focus(); }
+  };
+  document.body.appendChild(pop);
+  btn.setAttribute('aria-expanded', 'true');
+  const r = btn.getBoundingClientRect(), h = pop.offsetHeight, up = innerHeight - r.bottom < h + 12 && r.top > h + 12;
+  pop.style.left = r.left + 'px'; pop.style.minWidth = r.width + 'px'; pop.style.maxWidth = Math.min(420, innerWidth - r.left - 12) + 'px';
+  pop.style.top = (up ? r.top - h - 4 : r.bottom + 4) + 'px';
+  pop.querySelector('[aria-selected="true"]')?.classList.add('act');
+  pop.focus();
+}
+document.addEventListener('mousedown', e => { if (!e.target.closest('.ux-selp, .ux-sel')) uxSelClose(); });
+addEventListener('resize', uxSelClose);
+addEventListener('scroll', e => { if (!e.target.closest?.('.ux-selp')) uxSelClose(); }, true);
+
+const WSF = { filter: 'all', sel: null };
+function wsPick(id) { WS.sel = id; uxSelClose(); wsRender(); }
+function wsFilter(f) { WS.filter = f; wsRender(); }
+function wsAvatar(w, small) {
+  const col = FM_COL[Math.max(0, WS.list.indexOf(w)) % FM_COL.length];
+  return `<span class="ws-av${small ? ' sm' : ''}" style="--col:${col}">${esc(initials(w.name))}</span>`;
+}
+// Дерево серверов пространства: хозяин сверху, дальше подключённые через него
+function wsTree(w) {
+  const f = w.fed, mine = f.is_host, list = f.servers, byId = Object.fromEntries(list.map(x => [x.id, x]));
+  const roots = list.filter(x => !x.parent || !byId[x.parent]).sort((a, b) => (b.host ? 1 : 0) - (a.host ? 1 : 0));
+  const kids = id => list.filter(x => x.parent === id);
+  const word = x => x.state === 'offered' ? '<span class="badge badge-gray">приглашён</span>' : x.state === 'asked' ? '<span class="badge badge-gray">ждёт одобрения хозяина</span>' : '';
+  const node = (x, d) => `<div class="ws-tn"><span class="ws-ind" style="padding-left:${d * 18}px">${d ? '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v9a3 3 0 0 0 3 3h10"/></svg>' : ''}</span><span class="fd-dot ${x.state !== 'active' ? 'off' : x.online ? '' : 'warn'}"></span>
+    <span class="ws-tnm"><b>${esc(x.name)}</b>${x.host ? '<span class="badge badge-blue">хозяин</span>' : ''}${x.self ? '<span class="badge badge-green">вы</span>' : ''}${word(x)}<code>${esc(x.id)}</code></span>
+    <span class="ws-tm">${x.state === 'active' ? `${x.people} ${fdPlural(x.people)}${x.online ? '' : ' · нет связи'}` : x.state === 'offered' ? 'ждём ответа' : ''}</span>
+    ${mine && !x.self ? `<button class="btn btn-ghost btn-sm ws-dg" onclick="wsRemove(${w.id},'${esc(x.id)}')">Убрать</button>` : ''}</div>` + kids(x.id).map(k => node(k, d + 1)).join('');
+  return `<div class="ws-tree">${roots.map(r => node(r, 0)).join('')}</div>`;
+}
 function wsRender() {
   if (currentPage !== 'workspaces') return;
-  const nm = (w, id) => w.fed.servers.find(s => s.id === id)?.name || id;
+  const L = WS.list, fedN = L.filter(w => w.fed?.shared).length, cnt = { all: L.length, shared: fedN, local: L.length - fedN };
+  const vis = L.filter(w => WS.filter === 'all' || (WS.filter === 'shared') === !!w.fed?.shared);
+  let w = L.find(x => x.id === WS.sel); if (!w || !vis.includes(w)) w = vis[0] || null;
+  WS.sel = w ? w.id : null;
+  const nm = (x, id) => x.fed.servers.find(s => s.id === id)?.name || id;
+  const pend = x => (x.fed?.asks || []).filter(a => !a.approved).length;
+  let det = '<div class="card"><div class="fd-empty"><div><b>Нет пространств</b><span>Измените фильтр или создайте пространство.</span></div></div></div>';
+  if (w) {
+    const mirror = w.fed?.shared && !w.fed.is_host, fedOn = !!w.fed?.shared, hostName = fedOn ? (w.fed.servers.find(s => s.host)?.name || w.fed.host) : '';
+    const act = fedOn ? w.fed.servers.filter(s => s.state === 'active').length : 0;
+    const cands = w.candidates || [];
+    det = `<div class="card ws-det"><div class="ws-dh">${wsAvatar(w)}<div class="ws-dn"><h3>${esc(w.name)}</h3><div class="ws-bd">${w.is_default ? '<span class="badge badge-green">по умолчанию</span>' : w.users ? '' : '<span class="badge badge-gray">пустое</span>'}${wsFedBadge(w)}${fedOn && w.fed.is_host ? '<span class="badge badge-green">вы хозяин</span>' : ''}</div></div>
+        <button class="btn btn-ghost btn-sm" ${mirror ? 'disabled title="Название общего пространства задаёт его хозяин"' : ''} onclick="wsOpen(${w.id})">${WS_I.pen}Переименовать</button>
+        ${mirror ? `<button class="btn btn-ghost btn-sm" title="Выйти из общего пространства: у вас оно останется обычным" onclick="wsLeave(${w.id})">${WS_I.out}Выйти</button>` : ''}
+        <button class="btn btn-ghost btn-sm ws-dg" ${w.is_default ? 'disabled' : ''} title="${w.is_default ? 'Основное пространство удалить нельзя' : fedOn ? (mirror ? 'Выйти из общего пространства и удалить его' : 'Выключить «Общее» и удалить пространство') : ''}" onclick="wsDelete(${w.id})">${WS_I.trash}Удалить</button></div>
+      <div class="ws-ds"><div><span>Людей у вас</span><b>${w.users}</b></div><div><span>Создано</span><b>${fmtDate(w.created_at)}</b></div><div><span>${fedOn ? 'Серверов' : 'Видят'}</span><b>${fedOn ? act : 'только вы'}</b></div></div>
+      ${w.is_default && !fedOn ? `<div class="ws-sec"><h4>Пространство по умолчанию</h4><p>Сюда попадают новые люди и те, у кого не осталось других пространств. Общим его сделать нельзя.</p></div>`
+        : `<div class="ws-sec"><div class="ws-shr"><div><h4>Общее пространство</h4><p>${mirror ? `Пространство ведёт «${esc(hostName)}»: название задаёт хозяин. Состав у каждого сервера свой, вы добавляете только своих людей в их профилях.` : 'Люди нескольких серверов федерации видят друг друга. Состав у каждого сервера свой: вы добавляете только своих людей в их профилях.'}</p></div>
+          ${mirror ? '' : `<label class="toggle-switch" title="Общее пространство"><input type="checkbox" ${fedOn ? 'checked' : ''} onchange="wsShared(${w.id}, this.checked)" aria-label="Общее пространство"><div class="toggle-track"><div class="toggle-thumb"></div></div></label>`}</div></div>`}
+      ${fedOn ? `<div class="ws-sec"><h4>Серверы пространства</h4><p>Подключение идёт деревом: каждый сервер связан с тем, через кого вошёл.</p>${wsTree(w)}
+        ${(w.fed.asks || []).map(a => `<div class="wsf-ask ws-ask"><span>Сервер «${esc(nm(w, a.proposer))}» просит добавить в пространство сервер «${esc(a.target_name)}»${a.approved ? ' (одобрено, ждём ответа)' : ''}</span>${a.approved ? '' : `<button class="btn btn-ghost btn-sm" onclick="wsAsk(${a.id},false)">Отклонить</button><button class="btn ux-solid btn-sm" onclick="wsAsk(${a.id},true)">Одобрить</button>`}</div>`).join('')}
+        <div class="ws-lab">${w.fed.is_host ? 'Пригласить сервер' : 'Попросить хозяина добавить сервер'}</div>
+        ${cands.length ? `<div class="wsf-inv">${uxSelHtml('wsf-cand-' + w.id, cands.map(c => ({ v: c.id, t: `${c.name}`, s: c.ok ? c.id : `${c.id} · нужно обновить сервер`, dis: !c.ok })), undefined, 'Сервер')}<button class="btn ux-solid btn-sm" onclick="wsInvite(${w.id})">${w.fed.is_host ? 'Пригласить' : 'Попросить'}</button></div>
+          <div class="fd-hint" style="margin-top:6px">Нужно прямое подключение к серверу в разделе «Федерации».${w.fed.is_host ? '' : ' Расширять пространство дальше можно только с согласия хозяина.'}</div>`
+          : '<div class="fd-hint">Нет серверов, которых можно добавить: подключите ещё сервер в разделе «Федерации».</div>'}</div>` : ''}</div>`;
+  }
   document.getElementById('page-body').innerHTML = `<div class="ux-page">
     <div><div style="font-size:17px;font-weight:700">Пространства</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Люди видят друг друга, если у них есть общее пространство. Человек может состоять в нескольких. Если общего нет, связать их можно через контакты, группы и комнаты. Пространства человека выбираются в его профиле. Пространство можно сделать общим для нескольких серверов федерации: люди всех серверов в нём видят друг друга.</div></div>
     ${WS.offers.map((o, i) => `<div class="card wsf-offer"><div class="wsf-ot"><b>«${esc(o.from_name)}» предлагает общее пространство «${esc(o.name)}»</b><span>Хозяин: ${esc(o.host_name)}. Серверы в пространстве: ${o.servers.map(esc).join(', ')}. Ваши люди увидят людей этих серверов, а они ваших, но только тех, кого вы сами добавите в это пространство. Название пространства задаёт хозяин.</span>
-      <span class="wsf-att"><select id="wsf-att-${i}" aria-label="Что сделать с пространством"><option value="">Создать новое пространство</option>${(o.local || []).map(l => `<option value="${l.id}" ${o.same === l.id ? 'selected' : ''}>Объединить с моим «${esc(l.name)}» (${l.users} ${uxPlural(l.users, 'человек', 'человека', 'человек')})</option>`).join('')}</select></span>
+      <span class="wsf-att">${uxSelHtml('wsf-att-' + i, [{ v: '', t: 'Создать новое пространство' }, ...(o.local || []).map(l => ({ v: String(l.id), t: `Объединить с моим «${l.name}»`, s: `${l.users} ${uxPlural(l.users, 'человек', 'человека', 'человек')}` }))], o.same ? String(o.same) : '', 'Что сделать с пространством')}</span>
       ${o.same ? '<span>У вас уже есть пространство с таким названием: при объединении оно станет общим, его люди сразу попадут в общее пространство.</span>' : ''}</div>
       <button class="btn btn-ghost btn-sm" onclick="wsOffer('${esc(o.uid)}',false)">Отклонить</button><button class="btn ux-solid btn-sm" onclick="wsOffer('${esc(o.uid)}',true,${i})">Принять</button></div>`).join('')}
-    ${WS.list.map(w => { const mirror = w.fed?.shared && !w.fed.is_host; const fedOn = !!w.fed?.shared;
-      return `<div class="card"><div class="mdl-card"><div class="mdl-ico" style="font-size:15px;font-weight:700">${esc(initials(w.name))}</div>
-      <div class="mdl-tx"><b>${esc(w.name)}</b><span>${w.users} ${uxPlural(w.users, 'человек', 'человека', 'человек')} · создано ${fmtDate(w.created_at)}</span></div>
-      ${w.is_default ? '<span class="badge badge-green">по умолчанию</span>' : w.users ? '' : '<span class="badge badge-gray">пустое</span>'}
-      ${wsFedBadge(w)}
-      ${mirror || (w.is_default && !fedOn) ? '' : `<label class="toggle-switch" title="Общее пространство: люди нескольких серверов федерации видят друг друга"><input type="checkbox" ${fedOn ? 'checked' : ''} onchange="wsShared(${w.id}, this.checked)" aria-label="Общее пространство"><div class="toggle-track"><div class="toggle-thumb"></div></div></label><span style="font-size:12px;color:var(--c-text2)">Общее</span>`}
-      ${fedOn ? `<button class="btn btn-ghost btn-sm" onclick="wsSrv(${w.id})">Серверы</button>` : ''}
-      <button class="btn btn-ghost btn-sm" ${mirror ? 'disabled title="Название общего пространства задаёт его хозяин"' : ''} onclick="wsOpen(${w.id})">Изменить</button>
-      ${mirror ? `<button class="btn btn-ghost btn-sm" title="Выйти из общего пространства: у вас оно останется обычным" onclick="wsLeave(${w.id})">Выйти</button>` : ''}
-      <button class="btn btn-ghost btn-sm" ${w.is_default ? 'disabled' : ''} title="${w.is_default ? 'Основное пространство удалить нельзя' : fedOn ? (mirror ? 'Выйти из общего пространства и удалить его' : 'Выключить «Общее» и удалить пространство') : ''}" onclick="wsDelete(${w.id})">Удалить</button></div>
-      ${(w.fed?.asks || []).map(a => `<div class="wsf-ask"><span>Сервер «${esc(nm(w, a.proposer))}» просит добавить в пространство сервер «${esc(a.target_name)}»${a.approved ? ' (одобрено, ждём ответа)' : ''}</span>${a.approved ? '' : `<button class="btn btn-ghost btn-sm" onclick="wsAsk(${a.id},false)">Отклонить</button><button class="btn ux-solid btn-sm" onclick="wsAsk(${a.id},true)">Одобрить</button>`}</div>`).join('')}</div>`; }).join('')}
-  </div>`;
+    <div class="ws-ms"><div class="card ws-ml"><div class="ws-fl">${[['all', 'Все'], ['shared', 'Общие'], ['local', 'Только у вас']].map(([k, l]) => `<button type="button" aria-pressed="${WS.filter === k}" onclick="wsFilter('${k}')">${l}<span>${cnt[k]}</span></button>`).join('')}</div>
+      ${vis.map(x => `<button type="button" class="ws-it" aria-current="${x.id === WS.sel}" onclick="wsPick(${x.id})">${wsAvatar(x, true)}<span class="ws-in"><b>${esc(x.name)}</b><small>${x.users} ${uxPlural(x.users, 'человек', 'человека', 'человек')}${x.fed?.shared ? ' · общее' : ''}</small></span>${pend(x) ? `<span class="ws-cnt" title="Просьбы серверов">${pend(x)}</span>` : ''}</button>`).join('') || '<div class="fd-empty"><div><span>Здесь пока пусто</span></div></div>'}</div>
+      ${det}</div></div>`;
 }
+const WS_I = {
+  pen: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
+  out: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>',
+};
 async function wsOffer(uid, accept, i) {
-  const attach = accept ? Number(document.getElementById('wsf-att-' + i)?.value) || null : null;
+  const attach = accept ? Number(uxSelVal('wsf-att-' + i)) || null : null;
   const r = await api('POST', `/api/admin/workspaces/fed/offers/${encodeURIComponent(uid)}/${accept ? 'accept' : 'decline'}`, attach ? { attach } : undefined);
   if (!r || r.error) { toast(esc(r?.error || 'Не удалось'), 'error'); return; }
   toast(accept ? (r.attached ? 'Пространство объединено с вашим: его люди теперь в общем пространстве.' : 'Пространство принято. Добавьте в него своих людей в их профилях.') : 'Предложение отклонено', 'success');
@@ -7639,30 +7838,12 @@ function wsShared(id, on) {
   else confirm('Выключить «Общее»?', `Люди других серверов покинут пространство «${esc(w.name)}», у них оно перестанет быть общим. У вас оно останется обычным, ваши люди в нём сохранятся.`, go);
   if (!on) wsRender();
 }
-function wsSrv(id) {
-  const w = WS.list.find(x => x.id === id); if (!w?.fed?.shared) return;
-  WS.srvId = id;
-  const f = w.fed, mine = f.is_host;
-  const stateWord = s => s.state === 'offered' ? '<span class="badge badge-gray">приглашён</span>' : s.state === 'asked' ? '<span class="badge badge-gray">ждёт одобрения хозяина</span>' : '';
-  const rows = f.servers.map(s => {
-    const par = f.servers.find(x => x.id === s.parent);
-    return `<div class="wsf-sr"><span class="fd-dot ${s.state !== 'active' ? 'off' : s.online ? '' : 'warn'}"></span><div><b>${esc(s.name)}</b><code>${esc(s.id)}</code> ${s.host ? '<span class="badge badge-blue">хозяин</span>' : ''} ${s.self ? '<span class="badge badge-green">вы</span>' : ''} ${stateWord(s)}
-      <span class="d">${s.state === 'active' ? `${s.people} ${fdPlural(s.people)}${s.online ? '' : ' · нет связи'}` : ''}${par ? ` · подключён через «${esc(par.name)}»` : ''}</span></div>
-      ${mine && !s.self ? `<button class="btn btn-ghost btn-sm" onclick="wsRemove(${id},'${esc(s.id)}')">Убрать</button>` : ''}</div>`;
-  }).join('');
-  const cands = (w.candidates || []);
-  const inv = cands.length ? `<div class="fd-hint" style="margin-top:4px">${mine ? 'Пригласить сервер' : 'Попросить хозяина добавить сервер'} (нужно прямое подключение к нему в разделе «Федерации»). ${mine ? '' : 'Расширять пространство дальше можно только с согласия хозяина.'}</div>
-    <div class="wsf-inv"><select id="wsf-cand" aria-label="Сервер">${cands.map(c => `<option value="${esc(c.id)}" ${c.ok ? '' : 'disabled'}>${esc(c.name)} (${esc(c.id)})${c.ok ? '' : ' — нужно обновить сервер'}</option>`).join('')}</select><button class="btn ux-solid btn-sm" onclick="wsInvite(${id})">${mine ? 'Пригласить' : 'Попросить'}</button></div>`
-    : '<div class="fd-hint">Нет серверов, которых можно добавить: подключите ещё сервер в разделе «Федерации».</div>';
-  fdModal(`Серверы пространства «${w.name}»`, `<div>${rows}</div><div class="fd-note"><span><b>i</b></span><div>Каждый сервер ведёт состав пространства сам: вы добавляете и убираете только своих людей в их профилях. Остальные серверы видят и вас, и ваших.</div></div>${inv}`,
-    `${mine ? '' : `<button class="btn btn-ghost" style="color:var(--c-red-text)" onclick="wsLeave(${id})">Выйти из пространства</button>`}<button class="btn ux-solid" onclick="closeModal('modal-fed')">Закрыть</button>`);
-}
 async function wsInvite(id) {
-  const inst = document.getElementById('wsf-cand')?.value; if (!inst) return;
+  const inst = uxSelVal('wsf-cand-' + id); if (!inst) return;
   const r = await api('POST', `/api/admin/workspaces/${id}/servers`, { instance: inst });
   if (!r || r.error) { toast(esc(r?.error || 'Не удалось'), 'error'); return; }
   toast(r.asked ? 'Просьба отправлена хозяину пространства' : 'Приглашение отправлено', 'success');
-  await wsLoad(); if (currentPage === 'workspaces') wsRender(); wsSrv(id);
+  await wsLoad(); if (currentPage === 'workspaces') wsRender();
 }
 function wsRemove(id, inst) {
   const w = WS.list.find(x => x.id === id); const s = w?.fed?.servers.find(x => x.id === inst); if (!s) return;
@@ -7670,7 +7851,7 @@ function wsRemove(id, inst) {
     const r = await api('DELETE', `/api/admin/workspaces/${id}/servers/${encodeURIComponent(inst)}`);
     if (!r || r.error) { toast(esc(r?.error || 'Не удалось'), 'error'); return; }
     toast('Сервер убран', 'success');
-    await wsLoad(); if (currentPage === 'workspaces') wsRender(); wsSrv(id);
+    await wsLoad(); if (currentPage === 'workspaces') wsRender();
   });
 }
 function wsLeave(id) {
