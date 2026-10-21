@@ -157,6 +157,14 @@ db.exec(`
 
 fs.mkdirSync(path.join(path.dirname(DB_PATH), 'avatar'), { recursive: true });
 fs.mkdirSync(path.join(path.dirname(DB_PATH), 'files'), { recursive: true });
+// Раньше аватарки людей и групп всегда писались в chat_db рядом с репозиторием, даже если DB_PATH указывал в другую папку.
+// Если папки разные, недостающие аватарки переносим на место (уже существующие не трогаем)
+try {
+  const legacy = path.join(__dirname, '..', '..', 'chat_db', 'avatar'), cur = path.join(path.dirname(DB_PATH), 'avatar');
+  if (path.resolve(legacy) !== path.resolve(cur) && fs.existsSync(legacy)) {
+    for (const f of fs.readdirSync(legacy)) if (/^(chat_)?\d+\.jpg$/.test(f) && !fs.existsSync(path.join(cur, f))) fs.copyFileSync(path.join(legacy, f), path.join(cur, f));
+  }
+} catch (e) { console.warn('[DB] перенос аватарок из прежней папки не удался:', e.message); }
 
 // Add columns if upgrading from old schema
 const tryAlter = (sql) => { try { db.exec(sql); } catch {} };

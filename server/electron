@@ -2,7 +2,9 @@
 
 SERVICE="electron"
 APP_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
-DB_PATH="${DB_PATH:-$APP_DIR/../chat_db/chat.db}"
+# Путь к базе берём из службы (как порт), иначе из окружения, иначе прежний chat_db/chat.db
+DB_PATH_SVC="$(systemctl show "$SERVICE" --property=Environment --value 2>/dev/null | tr ' ' '\n' | grep '^DB_PATH=' | head -1 | cut -d= -f2-)"
+DB_PATH="${DB_PATH:-${DB_PATH_SVC:-$APP_DIR/../chat_db/chat.db}}"
 
 RED=$'\033[0;31m'
 GREEN=$'\033[0;32m'

@@ -305,7 +305,7 @@ router.post('/chats/:id/avatar', (req, res) => {
   if (!data) return res.status(400).json({ error: 'Missing data' });
   const buf = Buffer.from(data, 'base64');
   if (!isImgBuf(buf)) return res.status(400).json({ error: 'Not an image' });
-  const avatarDir = path.join(__dirname, '..', '..', '..', 'chat_db', 'avatar');
+  const avatarDir = path.join(path.dirname(DB_PATH), 'avatar');
   fs.mkdirSync(avatarDir, { recursive: true });
   fs.writeFileSync(path.join(avatarDir, `chat_${req.params.id}.jpg`), buf);
   res.json({ ok: true });
@@ -314,7 +314,7 @@ router.post('/chats/:id/avatar', (req, res) => {
 router.get('/users', (req, res) => {
   const fs = require('fs');
   const path = require('path');
-  const avatarDir = path.join(__dirname, '..', '..', '..', 'chat_db', 'avatar');
+  const avatarDir = path.join(path.dirname(DB_PATH), 'avatar');
   const users = db.prepare('SELECT u.id, u.username, u.display_name, u.is_admin, u.tag, u.banned, u.created_at, u.last_seen_at, u.totp_required, u.totp_secret, u.can_announce, u.workspace_id, w.name AS workspace_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE u.is_bot IS NULL OR u.is_bot = 0 ORDER BY u.created_at DESC').all();
   // Устройства, с которых человек сейчас в сети: в списке это «Electron 2.15.9 · macOS»
   const devices = new Map();
@@ -766,7 +766,7 @@ router.get('/audit-log', (req, res) => {
     FROM admin_audit_log a LEFT JOIN users u ON u.id = a.actor_id
     ORDER BY a.id DESC LIMIT ?
   `).all(Math.max(1, Math.min(1000, Number(req.query.limit) || 1000)));
-  const avatarDir = path.join(__dirname, '..', '..', '..', 'chat_db', 'avatar');
+  const avatarDir = path.join(path.dirname(DB_PATH), 'avatar');
   res.json(rows.map(r => ({ ...r, actor_has_avatar: r.actor_id ? fs.existsSync(path.join(avatarDir, `${r.actor_id}.jpg`)) : false })));
 });
 

@@ -4,6 +4,7 @@ server/data/
 *.log
 design_handoff_chat_redesign/
 chat_db/
+electron_db/
 .claude/
 
 # Мусор macOS

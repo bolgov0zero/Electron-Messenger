@@ -17,7 +17,18 @@ APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 PORT="${PORT:-3000}"
 SERVICE_NAME="electron"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
-DB_DIR="${DB_DIR:-$APP_DIR/../chat_db}"
+# База данных: новые установки кладут её в electron_db/main_base.db рядом с папкой server.
+# При переустановке поверх работающей службы путь берётся из неё (так прежние установки с chat_db/chat.db остаются на своём месте);
+# явно заданная переменная DB_DIR сильнее: тогда база будет искаться там, под прежним именем файла main_base.db
+DB_FILE="main_base.db"
+OLD_DB_PATH="$(grep -h '^Environment=DB_PATH=' "$SERVICE_FILE" 2>/dev/null | head -1 | cut -d= -f3-)"
+if [ -z "${DB_DIR+x}" ] && [ -n "$OLD_DB_PATH" ]; then
+  DB_PATH="$OLD_DB_PATH"
+  DB_DIR="$(dirname "$OLD_DB_PATH")"
+else
+  DB_DIR="${DB_DIR:-$APP_DIR/../electron_db}"
+  DB_PATH="$DB_DIR/$DB_FILE"
+fi
 
 # ── Определение дистрибутива ──
 if [ -f /etc/debian_version ]; then
@@ -130,7 +141,7 @@ RestartSec=5
 Environment=NODE_ENV=production
 Environment=PORT=$PORT
 Environment=JWT_SECRET=$JWT_SECRET
-Environment=DB_PATH=$DB_DIR/chat.db
+Environment=DB_PATH=$DB_PATH
 
 [Install]
 WantedBy=multi-user.target
@@ -176,7 +187,7 @@ if systemctl is-active --quiet "$SERVICE_NAME"; then
   echo "╚══════════════════════════════════════════╝"
   echo ""
   echo "  Адрес:     http://$(hostname -I | awk '{print $1}'):$PORT"
-  echo "  База:      $DB_DIR/chat.db"
+  echo "  База:      $DB_PATH"
   echo "  Сервис:    $SERVICE_NAME"
   echo ""
   echo "  Управление:"

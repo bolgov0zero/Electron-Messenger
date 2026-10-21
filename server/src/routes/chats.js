@@ -14,7 +14,9 @@ function nameOf(userId) {
   return db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
 }
 
-const DB_DIR = path2.join(__dirname, '..', '..', '..', 'chat_db');
+// Папка данных всегда берётся из DB_PATH (как во всех остальных модулях): аватарки и файлы лежат рядом с базой
+const DB_PATH = process.env.DB_PATH || path2.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
+const DB_DIR = path2.dirname(DB_PATH);
 const AVATAR_DIR = path2.join(DB_DIR, 'avatar');
 const FILES_DIR = path2.join(DB_DIR, 'files');
 

@@ -8,7 +8,9 @@ const { getStatus, getMobile, sendTo, broadcastAll } = require('../ws');
 const spaces = require('../spaces');
 const { logAudit } = require('../audit');
 
-const DB_DIR = path2.join(__dirname, '..', '..', '..', 'chat_db');
+// Папка данных всегда берётся из DB_PATH (как во всех остальных модулях): аватарки лежат рядом с базой
+const DB_PATH = process.env.DB_PATH || path2.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
+const DB_DIR = path2.dirname(DB_PATH);
 const AVATAR_DIR = path2.join(DB_DIR, 'avatar');
 
 // Проверка магических байтов: принимаем только реальные изображения (JPEG/PNG/WebP/GIF),
