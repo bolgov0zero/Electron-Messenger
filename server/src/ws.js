@@ -504,7 +504,7 @@ function setup(server) {
           r.min = Math.min(r.min, id); r.max = Math.max(r.max, id);
           bySender.set(sender_id, r);
         });
-        for (const [senderId, r] of Array.from(bySender).entries()) {
+        for (const [senderId, r] of bySender) {
           sendTo(senderId, { type: 'status_range', chat_id, kind: 'read', min_id: r.min, max_id: r.max, reader_id: user.id });
           // Отправитель с другого сервера узнаёт о прочтении по федерации
           if ((await spaces.isFed(senderId))) await fed().onStatus('read', senderId, user.id, r.max);
@@ -712,7 +712,7 @@ function setup(server) {
           r.min = Math.min(r.min, id); r.max = Math.max(r.max, id);
           byKey.set(key, r);
         });
-        for (const r of byKey) {
+        for (const r of byKey.values()) {
           sendTo(r.sender_id, { type: 'status_range', chat_id: r.chat_id, kind: 'delivered', min_id: r.min, max_id: r.max, reader_id: user.id });
           if ((await spaces.isFed(r.sender_id))) await fed().onStatus('dlv', r.sender_id, user.id, r.max);
         } ;

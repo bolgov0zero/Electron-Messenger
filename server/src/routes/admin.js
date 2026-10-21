@@ -774,19 +774,19 @@ router.get('/audit-log', async (req, res) => {
 // ── Главная: живые графики и сводка ──
 
 // Точки графиков. Первый запрос — весь последний час, дальше только новые (since)
-router.get('/monitor', (req, res) => {
-  res.json({ ...monitor.snapshot(req.query.since), ws: getConnCount() });
+router.get('/monitor', async (req, res) => {
+  res.json({ ...(await monitor.snapshot(req.query.since)), ws: getConnCount() });
 });
 
 // Раскрытые графики процессора, отклика и числа людей в сети: сутки, неделя, месяц, год.
 // Считается по пятиминуткам из базы; длинные периоды кэшируем, чтобы опрос не нагружал сервер
 const METRICS_TTL = { '24h': 5e3, '7d': 30e3, '30d': 60e3, '1y': 5 * 60e3 };
 const metricsCache = new Map();
-router.get('/metrics', (req, res) => {
+router.get('/metrics', async (req, res) => {
   const range = METRICS_TTL[req.query.range] ? req.query.range : '24h';
   const hit = metricsCache.get(range);
   if (hit && Date.now() - hit.at < METRICS_TTL[range]) return res.json(hit.data);
-  const data = monitor.history(range);
+  const data = await monitor.history(range);
   metricsCache.set(range, { at: Date.now(), data });
   res.json(data);
 });

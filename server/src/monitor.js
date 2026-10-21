@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFile } = require('child_process');
-const db = require('./db');
+const dal = require('./dal');
 
 const STEP_MS = 2000;
 const CAP = 1800;          // час по 2 секунды
@@ -35,26 +35,19 @@ let live = {};
 // Живые графики держат только последний час, а раскрытая плитка на главной показывает сутки, неделю,
 // месяц и год. Поэтому раз в пять минут пишем в базу среднюю загрузку процессора, наибольшую задержку
 // и среднее число людей в сети. За год это около ста тысяч строк.
-db.exec(`CREATE TABLE IF NOT EXISTS metrics_5m (
-  t        INTEGER PRIMARY KEY,   -- начало пятиминутки, секунды
-  n        INTEGER NOT NULL,      -- сколько замеров вошло
-  cpu_sum  REAL NOT NULL,
-  lag_max  REAL NOT NULL,
-  on_sum   REAL NOT NULL,
-  on_n     INTEGER NOT NULL
-)`);
+// Таблица metrics_5m создаётся в db.js вместе с остальной схемой
 const METRICS_KEEP_DAYS = 400;
-const upsertMetric = db.prepare(`INSERT INTO metrics_5m (t, n, cpu_sum, lag_max, on_sum, on_n) VALUES (?, ?, ?, ?, ?, ?)
+const UPSERT_METRIC = `INSERT INTO metrics_5m (t, n, cpu_sum, lag_max, on_sum, on_n) VALUES (?, ?, ?, ?, ?, ?)
   ON CONFLICT(t) DO UPDATE SET n = n + excluded.n, cpu_sum = cpu_sum + excluded.cpu_sum,
-    lag_max = MAX(lag_max, excluded.lag_max), on_sum = on_sum + excluded.on_sum, on_n = on_n + excluded.on_n`);
+    lag_max = MAX(lag_max, excluded.lag_max), on_sum = on_sum + excluded.on_sum, on_n = on_n + excluded.on_n`;
 let macc = null;
 // Накопленное пишем частями (раз в минуту и при остановке): после перезапуска внутри той же пятиминутки
 // новые замеры просто добавляются к уже записанным
-function flushMetrics() {
-  if (!macc || !macc.n) { macc = null; return; }
-  try { upsertMetric.run(macc.b, macc.n, macc.cpu, macc.lag, macc.on, macc.onN); }
+async function flushMetrics() {
+  const m = macc; macc = null;
+  if (!m || !m.n) return;
+  try { await dal.run(UPSERT_METRIC, m.b, m.n, m.cpu, m.lag, m.on, m.onN); }
   catch (e) { console.error('[Monitor] не удалось записать историю:', e.message); }
-  macc = null;
 }
 function addMetric(t, cpu, lag, online) {
   const b = Math.floor(t / 300000) * 300;
@@ -63,8 +56,8 @@ function addMetric(t, cpu, lag, online) {
   macc.n++; macc.cpu += cpu; macc.lag = Math.max(macc.lag, lag || 0);
   if (online != null) { macc.on += online; macc.onN++; }
 }
-function pruneMetrics() {
-  try { db.prepare('DELETE FROM metrics_5m WHERE t < ?').run(Math.floor(Date.now() / 1000) - METRICS_KEEP_DAYS * 86400); } catch {}
+async function pruneMetrics() {
+  try { await dal.run('DELETE FROM metrics_5m WHERE t < ?', Math.floor(Date.now() / 1000) - METRICS_KEEP_DAYS * 86400); } catch {}
 }
 
 // Ряды для раскрытых графиков: n точек на период, шаг зависит от периода
@@ -74,11 +67,11 @@ const HISTORY_RANGES = {
   '30d': { n: 120, step: 6 * 3600000 },
   '1y': { n: 52, step: 7 * 86400000 },
 };
-function history(range) {
+async function history(range) {
   const cfg = HISTORY_RANGES[range] || HISTORY_RANGES['24h'];
-  flushMetrics();   // чтобы свежие минуты уже были на графике
+  await flushMetrics();   // чтобы свежие минуты уже были на графике
   const end = Date.now(), start = end - cfg.n * cfg.step;
-  const rows = db.prepare('SELECT t, n, cpu_sum, lag_max, on_sum, on_n FROM metrics_5m WHERE t >= ? ORDER BY t').all(Math.floor(start / 1000));
+  const rows = await dal.all('SELECT t, n, cpu_sum, lag_max, on_sum, on_n FROM metrics_5m WHERE t >= ? ORDER BY t', Math.floor(start / 1000));
   const acc = Array.from({ length: cfg.n }, () => ({ n: 0, cpu: 0, lag: null, on: 0, onN: 0 }));
   for (const r of rows) {
     const i = Math.floor((r.t * 1000 - start) / cfg.step);
@@ -307,20 +300,19 @@ function addEvent(type) {
 // Отметки отправленных сообщений — точки, а не диапазоны (t0 === t1), считаются
 // с базы каждый раз заново по всему видимому часу, а не с since: HM.events на клиенте
 // не докапливается, а целиком перезаписывается на каждый опрос (см. events выше).
-const msgMarksStmt = db.prepare('SELECT sent_at FROM messages WHERE deleted = 0 AND sent_at > ? ORDER BY sent_at');
-function messageMarks(cutoff) {
-  return msgMarksStmt.all(Math.floor(cutoff / 1000)).map(r => ({ type: 'message', t0: r.sent_at * 1000, t1: r.sent_at * 1000 }));
+async function messageMarks(cutoff) {
+  return (await dal.all('SELECT sent_at FROM messages WHERE deleted = 0 AND sent_at > ? ORDER BY sent_at', Math.floor(cutoff / 1000))).map(r => ({ type: 'message', t0: r.sent_at * 1000, t1: r.sent_at * 1000 }));
 }
 
 // ── Данные для админки ──
-function snapshot(since) {
+async function snapshot(since) {
   const from = Number(since) || 0;
   let i = samples.length;
   while (i > 0 && samples[i - 1][0] > from) i--;
   const cutoff = Date.now() - CAP * STEP_MS;
   return {
     now: Date.now(), step: STEP_MS, cores: CORES, samples: samples.slice(i),
-    events: [...events.filter(e => (e.t1 || Date.now()) > cutoff), ...messageMarks(cutoff)],
+    events: [...events.filter(e => (e.t1 || Date.now()) > cutoff), ...(await messageMarks(cutoff))],
     live,
   };
 }
@@ -402,7 +394,7 @@ function start() {
   pruneMetrics();
   setInterval(pruneMetrics, 24 * 3600000).unref();
   // Сохраняем историю при остановке службы: systemd шлёт SIGTERM
-  const stop = () => { save(); flushMetrics(); process.exit(0); };
+  const stop = async () => { save(); await flushMetrics(); process.exit(0); };
   process.once('SIGTERM', stop);
   process.once('SIGINT', stop);
 }

@@ -659,6 +659,16 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_chats_parent            ON chats(parent_id);
 `);
 
+// Нагрузка сервера по пятиминуткам для графиков на главной админки (см. monitor.js)
+db.exec(`CREATE TABLE IF NOT EXISTS metrics_5m (
+  t        INTEGER PRIMARY KEY,   -- начало пятиминутки, секунды
+  n        INTEGER NOT NULL,      -- сколько замеров вошло
+  cpu_sum  REAL NOT NULL,
+  lag_max  REAL NOT NULL,
+  on_sum   REAL NOT NULL,
+  on_n     INTEGER NOT NULL
+)`);
+
 // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)
 const sysExists = db.prepare("SELECT id FROM users WHERE username = '__system__'").get();
 if (!sysExists) {
