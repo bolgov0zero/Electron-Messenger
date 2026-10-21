@@ -2,84 +2,40 @@
 // ── СЛОЙ ДОСТУПА К ДАННЫМ ──
 //
 // Единый асинхронный интерфейс к базе. Весь код сервера обращается к данным
-// только через него, а не через db.prepare(): так движок (SQLite сейчас,
-// PostgreSQL позже) можно заменить в одном месте, а не в 800 вызовах.
+// только через него, а не к драйверу: движок выбирается здесь, один раз.
 //
 //   await dal.get(sql, ...params)   → строка или undefined
 //   await dal.all(sql, ...params)   → массив строк
-//   await dal.run(sql, ...params)   → { changes, lastId }
+//   await dal.run(sql, ...params)   → { changes, lastId, lastInsertRowid }
 //   await dal.tx(async () => { ... }) → транзакция: всё, что вызвано внутри
 //                                      (dal.get/all/run, в том числе из других
 //                                      функций), идёт в неё
+//   await dal.lock(имя)              → внутри dal.tx: замок на имя до конца транзакции
+//                                      (PostgreSQL; в SQLite транзакции и так идут по одной)
+//   dal.pg                           → true, если движок PostgreSQL
 //
-// Параметры позиционные (?). Результат транзакции — то, что вернула функция;
-// исключение откатывает всё.
+// Параметры позиционные (?). Запросы пишутся на общем подмножестве SQL, близком
+// к SQLite; для PostgreSQL они переводятся автоматически (dialect.js). То, что
+// иначе не выражается (полнотекстовый поиск, форматирование дат), в коде
+// пишется отдельно для каждого движка с проверкой dal.pg.
 //
-// SQLite выполняется синхронно и на одном соединении, поэтому транзакция
-// захватывает его целиком: запросы остальных обработчиков ждут её конца. Иначе
-// они попали бы внутрь чужой транзакции и откатывались бы вместе с ней.
+// Движок: переменная окружения DATABASE_URL (postgres://…) включает
+// PostgreSQL, без неё работает SQLite (DB_PATH).
+//
+// Перед первым запросом PostgreSQL нужен await dal.init() — он подключается и
+// применяет миграции схемы. Для SQLite init() ничего не делает.
 
-const { AsyncLocalStorage } = require('async_hooks');
-const db = require('./db');
-
-const cache = new Map();
-function prep(sql) {
-  let s = cache.get(sql);
-  if (!s) {
-    // Запросы с переменным числом ? (IN (...)) дают много разных строк: не даём кэшу расти без предела
-    if (cache.size >= 500) cache.clear();
-    s = db.prepare(sql); cache.set(sql, s);
-  }
-  return s;
-}
-
-// lastInsertRowid оставлен под старым именем: прежний код читает его из результата
-const base = {
-  get: (sql, ...p) => prep(sql).get(...p),
-  all: (sql, ...p) => prep(sql).all(...p),
-  run: (sql, ...p) => { const r = prep(sql).run(...p); const id = Number(r.lastInsertRowid); return { changes: r.changes, lastId: id, lastInsertRowid: id }; },
-};
-
-// Внутри функции транзакции (и во всём, что она вызывает, сколько бы await ни
-// было) запросы идут напрямую в открытую транзакцию, а не встают в очередь за
-// ней. Без этого вспомогательная функция, вызванная из транзакции, ждала бы её
-// конца и сама же её держала — взаимная блокировка.
-const als = new AsyncLocalStorage();
-
-let active = null;   // промис идущей или ожидающей очереди транзакции
-let tail = Promise.resolve();
-
-function query(kind) {
-  return (sql, ...p) => {
-    if (als.getStore() || !active) { try { return Promise.resolve(base[kind](sql, ...p)); } catch (e) { return Promise.reject(e); } }
-    return active.then(() => base[kind](sql, ...p));
-  };
-}
-
-function tx(fn) {
-  // Вложенная транзакция присоединяется к внешней
-  if (als.getStore()) return Promise.resolve().then(fn);
-  const run = tail.then(() => als.run(true, async () => {
-    db.exec('BEGIN IMMEDIATE');
-    try {
-      const r = await fn();
-      db.exec('COMMIT');
-      return r;
-    } catch (e) {
-      try { db.exec('ROLLBACK'); } catch {}
-      throw e;
-    }
-  }));
-  const mine = run.then(() => {}, () => {});
-  tail = mine;
-  active = mine;
-  mine.then(() => { if (active === mine) active = null; });
-  return run;
-}
+const pg = !!process.env.DATABASE_URL;
+const engine = pg ? require('./dal-pg') : require('./dal-sqlite');
 
 module.exports = {
-  get: query('get'),
-  all: query('all'),
-  run: query('run'),
-  tx,
+  pg,
+  engine: pg ? 'postgresql' : 'sqlite',
+  get: engine.get,
+  all: engine.all,
+  run: engine.run,
+  tx: engine.tx,
+  lock: engine.lock,
+  init: engine.init,
+  close: engine.close,
 };

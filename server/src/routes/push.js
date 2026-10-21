@@ -23,7 +23,7 @@ const VAPID_CONTACT = 'mailto:bolgov@me.com';
 
 // Ключи читаются из базы асинхронно; рассылка идёт уже после запуска сервера
 let vapidKeys = null;
-const vapidReady = (async () => {
+async function initVapid() {
   vapidKeys = await getOrCreateVapidKeys();
 
   // Если контакт сменился — все старые подписки невалидны, сбрасываем
@@ -35,8 +35,10 @@ const vapidReady = (async () => {
   }
 
   webpush.setVapidDetails(VAPID_CONTACT, vapidKeys.publicKey, vapidKeys.privateKey);
-})();
-vapidReady.catch(e => console.error('[Push] не удалось настроить VAPID:', e));
+  initVapid.done();
+}
+// Ключи читаются из базы, поэтому запуск отдельным шагом (index.js, после dal.init)
+const vapidReady = new Promise(res => { initVapid.done = res; });
 
 // Декларативный Web Push (Safari 18.4+): адрес для открытия указан прямо в уведомлении (navigate), и нажатие на него
 // не зависит от service worker, который на iOS событие нажатия не всегда получает. Старое содержимое (title, body, chatId,
@@ -207,3 +209,4 @@ module.exports = router;
 module.exports.sendPushToUser = sendPushToUser;
 module.exports.buildPayload = buildPayload;
 module.exports.hasPushSubscription = hasPushSubscription;
+module.exports.init = initVapid;

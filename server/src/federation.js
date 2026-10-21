@@ -126,7 +126,7 @@ async function flushStats() {
   if (!statAcc.size) return;
   const rows = [...statAcc.values()]; statAcc.clear();
   const cols = STAT_FIELDS.join(', '), ph = STAT_FIELDS.map(() => '?').join(', ');
-  const upd = STAT_FIELDS.map(f => `${f} = ${f} + excluded.${f}`).join(', ');
+  const upd = STAT_FIELDS.map(f => `${f} = fed_stats.${f} + excluded.${f}`).join(', ');
   const st = `INSERT INTO fed_stats (bucket, peer_id, ${cols}) VALUES (?, ?, ${ph}) ON CONFLICT(bucket, peer_id) DO UPDATE SET ${upd}`;
   await dal.tx(async () => { for (const o of rows) { if (await dal.get('SELECT 1 FROM fed_peers WHERE id = ?', o.peerId)) await dal.run(st, o.b, o.peerId, ...STAT_FIELDS.map(f => o[f] || 0)); } });
 }
@@ -673,9 +673,10 @@ async function ensureShadow(peer, login, name, av) {
   const username = `${peer.instance_id}:${login}`;
   let u = await dal.get('SELECT * FROM users WHERE username = ?', username);
   if (!u) {
-    const r = await dal.run(`INSERT INTO users (username, password_hash, display_name, is_bot, workspace_id, fed_instance, fed_login, fed_avatar_v)
+    // OR IGNORE: два одновременных события об одном человеке не должны ронять второе
+    await dal.run(`INSERT OR IGNORE INTO users (username, password_hash, display_name, is_bot, workspace_id, fed_instance, fed_login, fed_avatar_v)
       VALUES (?, '', ?, 2, 0, ?, ?, ?)`, username, String(name || login).slice(0, 80) || login, peer.instance_id, login, null);
-    u = await dal.get('SELECT * FROM users WHERE id = ?', r.lastInsertRowid);
+    u = await dal.get('SELECT * FROM users WHERE username = ?', username);
   } else if (u.is_bot !== 2) {
     return null;   // имя занято настоящим пользователем
   } else if (name && String(name).slice(0, 80) !== u.display_name) {

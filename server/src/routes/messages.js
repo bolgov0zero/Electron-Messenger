@@ -28,27 +28,48 @@ const MSG_SELECT = `
 router.get('/search', authMiddleware, async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (q.length < 2) return res.json({ results: [] });
-  const ftsQuery = q.split(/\s+/).slice(0, 8)
-    .map(t => '"' + t.replace(/["]/g, '') + '"*')
-    .filter(t => t !== '""*').join(' ');
-  if (!ftsQuery) return res.json({ results: [] });
+  const terms = q.split(/\s+/).slice(0, 8).map(t => t.replace(dal.pg ? /[^\p{L}\p{N}_]/gu : /["]/g, '')).filter(Boolean);
+  if (!terms.length) return res.json({ results: [] });
+  // SQLite: FTS5, префиксный поиск по каждому слову. PostgreSQL: tsvector с русской
+  // морфологией (колонка messages.tsv), каждое слово — префикс основы.
+  const ftsQuery = dal.pg ? terms.map(t => t + ':*').join(' & ') : terms.map(t => '"' + t + '"*').join(' ');
   // chat_id — поиск внутри одного чата (строка поиска в чате): вся история, без
   // ограничения по числу чатов; членство проверяется тем же join, что и в общем поиске
   const chatId = Number.isInteger(Number(req.query.chat_id)) && Number(req.query.chat_id) > 0 ? Number(req.query.chat_id) : null;
   let rows = [];
   try {
-    rows = await dal.all(`
-      SELECT m.id, m.chat_id, m.sent_at, u.id as sender_id,
-        COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, (u.is_bot = 1) as sender_is_bot,
-        snippet(messages_fts, 0, char(1), char(2), '…', 10) as snippet
-      FROM messages_fts
-      JOIN messages m ON m.id = messages_fts.rowid
-      JOIN chat_members cm ON cm.chat_id = m.chat_id AND cm.user_id = ? AND cm.hidden_at IS NULL
-      JOIN chats c ON c.id = m.chat_id AND c.is_secret = 0
-      LEFT JOIN users u ON u.id = m.sender_id
-      WHERE messages_fts MATCH ? AND m.deleted = 0 ${chatId ? 'AND m.chat_id = ?' : ''}
-      ORDER BY m.sent_at DESC LIMIT ${chatId ? 1000 : 30}
-    `, ...(chatId ? [req.user.id, ftsQuery, chatId] : [req.user.id, ftsQuery]));
+    const limit = chatId ? 1000 : 30;
+    if (dal.pg) {
+      // Подсветка только у отобранных строк: ts_headline дорогая
+      rows = await dal.all(`
+        SELECT t.id, t.chat_id, t.sent_at, t.sender_id, t.sender_name, t.sender_is_bot,
+          ts_headline('russian', t.text, to_tsquery('russian', ?), ?) AS snippet
+        FROM (
+          SELECT m.id, m.chat_id, m.sent_at, m.text, u.id AS sender_id,
+            COALESCE(u.display_name, 'Удалённый аккаунт') AS sender_name, (u.is_bot = 1) AS sender_is_bot
+          FROM messages m
+          JOIN chat_members cm ON cm.chat_id = m.chat_id AND cm.user_id = ? AND cm.hidden_at IS NULL
+          JOIN chats c ON c.id = m.chat_id AND c.is_secret = 0
+          LEFT JOIN users u ON u.id = m.sender_id
+          WHERE m.tsv @@ to_tsquery('russian', ?) AND m.deleted = 0 ${chatId ? 'AND m.chat_id = ?' : ''}
+          ORDER BY m.sent_at DESC LIMIT ${limit}
+        ) t ORDER BY t.sent_at DESC
+      `, ftsQuery, `StartSel=${String.fromCharCode(1)}, StopSel=${String.fromCharCode(2)}, MaxWords=14, MinWords=6, ShortWord=1, MaxFragments=1`,
+        ...(chatId ? [req.user.id, ftsQuery, chatId] : [req.user.id, ftsQuery]));
+    } else {
+      rows = await dal.all(`
+        SELECT m.id, m.chat_id, m.sent_at, u.id as sender_id,
+          COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, (u.is_bot = 1) as sender_is_bot,
+          snippet(messages_fts, 0, char(1), char(2), '…', 10) as snippet
+        FROM messages_fts
+        JOIN messages m ON m.id = messages_fts.rowid
+        JOIN chat_members cm ON cm.chat_id = m.chat_id AND cm.user_id = ? AND cm.hidden_at IS NULL
+        JOIN chats c ON c.id = m.chat_id AND c.is_secret = 0
+        LEFT JOIN users u ON u.id = m.sender_id
+        WHERE messages_fts MATCH ? AND m.deleted = 0 ${chatId ? 'AND m.chat_id = ?' : ''}
+        ORDER BY m.sent_at DESC LIMIT ${limit}
+      `, ...(chatId ? [req.user.id, ftsQuery, chatId] : [req.user.id, ftsQuery]));
+    }
   } catch (e) { console.error('[FTS] search error:', e.message); }
   // У сообщений ботов в тексте настоящий HTML (<b>, <i>...), который клиент не
   // экранирует (как и в самом пузыре). snippet() режет текст по токенам, и
@@ -236,7 +257,7 @@ router.get('/:messageId/info', authMiddleware, async (req, res) => {
   const statuses = await dal.all(`
     SELECT u.id as user_id, u.display_name, ms.delivered_at, ms.read_at
     FROM message_status ms JOIN users u ON u.id = ms.user_id
-    WHERE ms.message_id = ? ORDER BY ms.read_at ASC, ms.delivered_at ASC
+    WHERE ms.message_id = ? ORDER BY ms.read_at ASC NULLS FIRST, ms.delivered_at ASC NULLS FIRST
   `, messageId);
 
   res.json({ chat_type: msg.chat_type, sent_at: msg.sent_at, statuses });

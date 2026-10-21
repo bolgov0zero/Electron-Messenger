@@ -38,8 +38,8 @@ let live = {};
 // Таблица metrics_5m создаётся в db.js вместе с остальной схемой
 const METRICS_KEEP_DAYS = 400;
 const UPSERT_METRIC = `INSERT INTO metrics_5m (t, n, cpu_sum, lag_max, on_sum, on_n) VALUES (?, ?, ?, ?, ?, ?)
-  ON CONFLICT(t) DO UPDATE SET n = n + excluded.n, cpu_sum = cpu_sum + excluded.cpu_sum,
-    lag_max = MAX(lag_max, excluded.lag_max), on_sum = on_sum + excluded.on_sum, on_n = on_n + excluded.on_n`;
+  ON CONFLICT(t) DO UPDATE SET n = metrics_5m.n + excluded.n, cpu_sum = metrics_5m.cpu_sum + excluded.cpu_sum,
+    lag_max = MAX(metrics_5m.lag_max, excluded.lag_max), on_sum = metrics_5m.on_sum + excluded.on_sum, on_n = metrics_5m.on_n + excluded.on_n`;
 let macc = null;
 // Накопленное пишем частями (раз в минуту и при остановке): после перезапуска внутри той же пятиминутки
 // новые замеры просто добавляются к уже записанным

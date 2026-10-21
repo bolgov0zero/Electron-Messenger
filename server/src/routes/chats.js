@@ -149,6 +149,12 @@ router.get('/:id/topics', authMiddleware, async (req, res) => {
   res.json(result);
 });
 
+const DM_FIND = `
+  SELECT c.id FROM chats c
+  JOIN chat_members cm1 ON cm1.chat_id = c.id AND cm1.user_id = ?
+  JOIN chat_members cm2 ON cm2.chat_id = c.id AND cm2.user_id = ?
+  WHERE c.type = 'direct' AND COALESCE(c.is_secret, 0) = 0 LIMIT 1`;
+
 // Create direct chat
 router.post('/direct', authMiddleware, async (req, res) => {
   const targetId = Number(req.body.user_id);
@@ -158,12 +164,7 @@ router.post('/direct', authMiddleware, async (req, res) => {
   if (!targetUser) return res.status(404).json({ error: 'User not found' });
   if (targetUser.is_bot && targetUser.is_bot !== spaces.FED) return res.status(400).json({ error: 'Cannot create direct chat with a bot' });
   // Check existing (including hidden)
-  const existing = await dal.get(`
-    SELECT c.id FROM chats c
-    JOIN chat_members cm1 ON cm1.chat_id = c.id AND cm1.user_id = ?
-    JOIN chat_members cm2 ON cm2.chat_id = c.id AND cm2.user_id = ?
-    WHERE c.type = 'direct' AND COALESCE(c.is_secret, 0) = 0 LIMIT 1
-  `, req.user.id, targetId);
+  const existing = await dal.get(DM_FIND, req.user.id, targetId);
   if (existing) {
     // Unhide for requester if it was hidden
     await dal.run('UPDATE chat_members SET hidden_at = NULL WHERE chat_id = ? AND user_id = ?', existing.id, req.user.id);
@@ -176,13 +177,18 @@ router.post('/direct', authMiddleware, async (req, res) => {
   // Собеседник добавляется скрытым: до первого сообщения у него в списке висела бы
   // пустая переписка, которую он не заводил. Скрытие снимет отправка первого
   // сообщения (ws.js) — тем же механизмом, что и после «удалить у себя».
-  const chatId = await dal.tx(() => (async () => {
+  // Два одновременных запроса на один и тот же чат не должны создать два: уникального
+  // ключа на пару у чата нет, поэтому замок на пару людей и повторная проверка под ним
+  const chatId = await dal.tx(async () => {
+    await dal.lock(`dm:${Math.min(req.user.id, targetId)}:${Math.max(req.user.id, targetId)}`);
+    const again = await dal.get(DM_FIND, req.user.id, targetId);
+    if (again) return again.id;
     const result = await dal.run("INSERT INTO chats (type, created_by) VALUES ('direct', ?)", req.user.id);
     const id = result.lastInsertRowid;
     await dal.run('INSERT INTO chat_members (chat_id, user_id) VALUES (?, ?)', id, req.user.id);
     await dal.run('INSERT INTO chat_members (chat_id, user_id, hidden_at) VALUES (?, ?, unixepoch())', id, targetId);
     return id;
-  })());
+  });
   const chat = await dal.get('SELECT * FROM chats WHERE id = ?', chatId);
   res.json(await enrichChat(chat, req.user.id));
 });

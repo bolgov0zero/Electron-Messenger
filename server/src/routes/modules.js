@@ -47,8 +47,8 @@ const cleanup = async () => {
   try { await dal.run('DELETE FROM module_events WHERE created_at < unixepoch() - ?', KEEP_DAYS * 86400); }
   catch (e) { console.warn('[Modules] не удалось почистить журнал:', e.message); }
 };
-cleanup();
-setInterval(cleanup, 24 * 3600 * 1000).unref();
+// Журнал чистится после запуска сервера (index.js вызывает init) и раз в сутки
+function init() { cleanup(); setInterval(cleanup, 24 * 3600 * 1000).unref(); }
 
 const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
 
@@ -174,4 +174,4 @@ admin.get('/:key/log', async (req, res) => {
   res.json({ total, rows });
 });
 
-module.exports = { user, admin };
+module.exports = { user, admin, init };

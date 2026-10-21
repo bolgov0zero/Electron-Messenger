@@ -215,7 +215,7 @@ async function limitFor(senderId, recipientId) {
   return (await limitApplies(senderId, recipientId)) ? { used: (await limitUsed(senderId, recipientId)), max: DM_LIMIT } : null;
 }
 async function limitBump(senderId, recipientId) {
-  await dal.run('INSERT INTO dm_limits (sender_id, recipient_id, n) VALUES (?, ?, 1) ON CONFLICT(sender_id, recipient_id) DO UPDATE SET n = n + 1', senderId, recipientId);
+  await dal.run('INSERT INTO dm_limits (sender_id, recipient_id, n) VALUES (?, ?, 1) ON CONFLICT(sender_id, recipient_id) DO UPDATE SET n = dm_limits.n + 1', senderId, recipientId);
 }
 async function limitReset(senderId, recipientId) {
   await dal.run('DELETE FROM dm_limits WHERE sender_id = ? AND recipient_id = ?', senderId, recipientId);

@@ -1,7 +1,7 @@
 const http = require('http');
 const express = require('express');
 require('./asyncsafe');
-// Фоновые задачи запуска, завершения которых ждём перед открытием порта
+// Задачи запуска, которые обращаются к базе: выполняются после dal.init(), до открытия порта
 const boot = [];
 const dal = require('./dal');
 // На время перевода на асинхронный слой данных: забытый await или сбой запроса
@@ -126,11 +126,12 @@ app.use('/api/chats', require('./routes/chats'));
 app.use('/api/messages', require('./routes/messages'));
 const uploadRouter = require('./routes/upload');
 app.use('/api/upload', uploadRouter);
-boot.push(uploadRouter.startCleanupJob());
+boot.push(() => uploadRouter.startCleanupJob());
 const adminRouter = require('./routes/admin');
 app.use('/api/admin', adminRouter);
 adminRouter.startBackupSchedule();
 const modulesRouter = require('./routes/modules');
+boot.push(() => modulesRouter.init());
 app.use('/api/modules', modulesRouter.user);
 app.use('/api/admin/modules', modulesRouter.admin);
 const spacesRouter = require('./routes/spaces');
@@ -139,7 +140,9 @@ app.use('/api/blocks', spacesRouter.blocks);
 app.use('/api/admin/workspaces', spacesRouter.admin);
 app.use('/api/folders', require('./routes/folders'));
 app.use('/api/preview', require('./routes/preview'));
-app.use('/api/push',  require('./routes/push'));
+const pushRouter = require('./routes/push');
+boot.push(() => pushRouter.init());
+app.use('/api/push', pushRouter);
 app.use('/api/webhooks', require('./routes/webhooks'));
 app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/secret', require('./routes/secret'));
@@ -155,17 +158,17 @@ app.get('/api/release-notes', (req, res) => {
 
 require('./ws').setup(server);
 // Межсерверные соединения (федерация) приходят на /fed того же порта
-boot.push(require('./federation').mount(server));
+boot.push(() => require('./federation').mount(server));
 // Отложенные объявления живут в базе; планировщик поднимает наступившие,
 // в том числе те, чьё время пришло, пока сервер был выключен.
-boot.push(require('./announcements').startScheduler());
+boot.push(() => require('./announcements').startScheduler());
 // Нагрузка сервера для живых графиков на главной админки; история переживает перезапуск
 const monitor = require('./monitor');
 monitor.setOnlineProvider(require('./ws').onlineUserCount);
 monitor.start();
 
 const PORT = process.env.PORT || 3000;
-require('./auth').init().then(() => Promise.all(boot)).then(() => server.listen(PORT, () => {
+dal.init().then(() => require('./auth').init()).then(async () => { for (const task of boot) await task(); }).then(() => server.listen(PORT, () => {
   console.log(`Electron server running on http://0.0.0.0:${PORT}`);
   console.log(`Admin panel: http://localhost:${PORT}/admin`);
 })).catch(e => { console.error('[Старт] не удалось запустить сервер:', e); process.exit(1); });

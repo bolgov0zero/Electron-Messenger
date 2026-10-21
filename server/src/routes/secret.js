@@ -131,7 +131,7 @@ router.post('/:chatId/requests/:requestId/complete', authMiddleware, requireSecr
 
 // Список одобренных устройств этого секретного чата (для экрана управления устройствами)
 router.get('/:chatId/devices', authMiddleware, requireSecretMember, async (req, res) => {
-  const rows = await dal.all('SELECT user_id, device_id, device_label, platform, approved_at FROM secret_chat_devices WHERE chat_id = ? ORDER BY approved_at', Number(req.params.chatId));
+  const rows = await dal.all('SELECT user_id, device_id, device_label, platform, approved_at FROM secret_chat_devices WHERE chat_id = ? ORDER BY approved_at NULLS FIRST', Number(req.params.chatId));
   res.json(rows);
 });
 

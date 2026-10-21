@@ -1,7 +1,8 @@
 const router = require('express').Router();
 const { filterAsync } = require('../aiter.js');
 const dal = require('../dal');
-const db = require('../db');
+// Файл SQLite, копии и восстановление из файла есть только у этого движка
+const db = dal.pg ? null : require('../db');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
@@ -10,7 +11,7 @@ const { authMiddleware, adminMiddleware } = require('../auth');
 const announcements = require('../announcements');
 const { sendTo, broadcast, broadcastAll, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, getMessageWithStatus } = require('../ws');
 const monitor = require('../monitor');
-const restore = require('../restore');
+const restore = dal.pg ? null : require('../restore');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
 const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
@@ -95,8 +96,8 @@ async function fetchRemoteVersion() {
 router.use(authMiddleware, adminMiddleware);
 
 router.get('/stats', async (req, res) => {
-  const pageCount = (await dal.get('PRAGMA page_count'))['page_count'];
-  const pageSize  = (await dal.get('PRAGMA page_size'))['page_size'];
+  const dbBytes = dal.pg ? (await dal.get('SELECT pg_database_size(current_database()) AS b')).b
+    : (await dal.get('PRAGMA page_count')).page_count * (await dal.get('PRAGMA page_size')).page_size;
   res.json({
     // Считаем ровно то, что видно в списках: без ботов (вебхуки, __system__)
     // и без тем — иначе бейджи и плитки показывают больше, чем есть на вкладках
@@ -106,7 +107,7 @@ router.get('/stats', async (req, res) => {
     rooms:    (await dal.get("SELECT COUNT(*) as c FROM chats WHERE type='room' AND parent_id IS NULL")).c,
     messages: (await dal.get('SELECT COUNT(*) as c FROM messages WHERE deleted = 0')).c,
     uptimeSeconds: Math.floor(process.uptime()),
-    dbBytes: pageCount * pageSize,
+    dbBytes,
     filesBytes: getDirSize(FILES_DIR),
     // тот же счёт, что и во вкладке «Файлы»: без миниатюр и без дублей
     filesCount: (await collectFiles()).length,
@@ -350,8 +351,8 @@ router.get('/chats', async (req, res) => {
       (SELECT COUNT(*) FROM messages WHERE chat_id = c.id AND deleted = 0) as message_count,
       (SELECT MAX(sent_at) FROM messages WHERE chat_id = c.id AND deleted = 0) as last_at,
       (SELECT COUNT(*) FROM chat_members WHERE chat_id = c.id) as member_count,
-      (SELECT GROUP_CONCAT(u.id || char(31) || u.display_name, char(30)) FROM users u
-       JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = c.id ORDER BY cm.joined_at) as member_list
+      (SELECT GROUP_CONCAT(u.id || char(31) || u.display_name, char(30) ORDER BY cm.joined_at) FROM users u
+       JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = c.id) as member_list
     FROM chats c ORDER BY c.created_at DESC
   `);
   // Участники с номером и признаком фото — таблицы показывают настоящие аватарки.
@@ -859,8 +860,8 @@ router.get('/overview', async (req, res) => {
     .map(u => ({ ...u, has_avatar: fs.existsSync(path.join(avatarDir, `${u.id}.jpg`)) }));
 
   const storage = monitor.storageInfo();
-  const cacheSize = db.pragma('cache_size', { simple: true });
-  const pageSize = db.pragma('page_size', { simple: true });
+  const cacheSize = db ? db.pragma('cache_size', { simple: true }) : 0;
+  const pageSize = db ? db.pragma('page_size', { simple: true }) : 0;
   res.json({
     host: monitor.hostInfo(),
     version: RUNNING_VERSION,
@@ -1205,6 +1206,7 @@ function listBackups() {
 }
 
 async function createBackup(kind = 'man') {
+  if (dal.pg) throw new Error('Для PostgreSQL копии делаются средствами PostgreSQL (pg_dump)');
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
   const ts = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
   const name = `chat-${ts}.db`;

@@ -51,7 +51,7 @@ const SQL = {
     INSERT INTO chat_read_state (user_id, chat_id, last_read_id)
     VALUES (?, ?, (SELECT COALESCE(MAX(id), 0) FROM messages WHERE chat_id = ?))
     ON CONFLICT(user_id, chat_id) DO UPDATE SET
-      last_read_id = MAX(last_read_id, excluded.last_read_id)`,
+      last_read_id = MAX(chat_read_state.last_read_id, excluded.last_read_id)`,
 };
 
 /** Непрочитанных в чате */
