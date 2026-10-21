@@ -159,7 +159,7 @@ async function msgEvent(m, gidOf) {
     else if (a?.gif) att = { gif: a.gif };
   } catch {}
   if (att) ev.att = att;
-  try { const f = m.forward_data ? JSON.parse(m.forward_data) : null; if (f) ev.fwd = { name: f.name, text: f.text }; } catch {}
+  try { const f = m.forward_data ? JSON.parse(m.forward_data) : null; if (f) ev.fwd = F().describeFwd(f); } catch {}
   if (m.reply_to_id) ev.reply = (await dal.get('SELECT fed_uid FROM messages WHERE id = ?', m.reply_to_id))?.fed_uid || null;
   const men = await mentionList(m);
   if (men) ev.men = men;
@@ -280,7 +280,10 @@ async function recvMsg(peer, ev) {
   let attachment = null;
   if (ev.att && typeof ev.att === 'object') attachment = ev.att.gif ? gifLib.sanitize(ev.att) : await F().receiveAttachments(peer, uid, ev.att);
   let fwdJson = null;
-  if (ev.fwd && typeof ev.fwd === 'object' && sender.id) fwdJson = JSON.stringify({ user_id: sender.id, name: str(ev.fwd.name, 80), text: str(ev.fwd.text, 4096), attachment: null, is_bot: false });
+  if (ev.fwd && typeof ev.fwd === 'object' && sender.id) {
+    const fa = ev.fwd.att && typeof ev.fwd.att === 'object' ? (ev.fwd.att.gif ? gifLib.sanitize(ev.fwd.att) : await F().receiveAttachments(peer, uid, ev.fwd.att, { fwd: 1 })) : null;
+    fwdJson = JSON.stringify({ user_id: sender.id, name: str(ev.fwd.name, 80), text: str(ev.fwd.text, 4096), attachment: fa, is_bot: false });
+  }
   if (!text && !attachment && !fwdJson) return;
   // Пока мы ждали файл, мог прийти повтор: проверяем ещё раз
   if ((await dal.get('SELECT 1 FROM messages WHERE fed_uid = ?', uid))) return;
@@ -301,7 +304,7 @@ async function recvMsg(peer, ev) {
     // Остальным гостям уходит то же сообщение; автор подтверждён нами (fi — его сервер)
     const out = { k: 'gmsg', h: me, gid: chat.id, uid, text: str(ev.text, 4096), ts, seq: msgId, fi: peer.instance_id, fl: sender.fed_login, fn: sender.display_name, av: sender.fed_avatar_v || '' };
     if (Array.isArray(ev.men)) out.men = ev.men.slice(0, 50).map(e => ({ i: str(e?.i, 32), l: str(e?.l, 64), t: str(e?.t, 100) }));
-    const att = cleanAtt(ev.att), fwd = ev.fwd && typeof ev.fwd === 'object' ? { name: str(ev.fwd.name, 80), text: str(ev.fwd.text, 4096) } : null;
+    const att = cleanAtt(ev.att), fwd = ev.fwd && typeof ev.fwd === 'object' ? { name: str(ev.fwd.name, 80), text: str(ev.fwd.text, 4096), att: cleanAtt(ev.fwd.att) || undefined } : null;
     if (att) out.att = att;
     if (fwd) out.fwd = fwd;
     if (ev.reply) out.reply = str(ev.reply, 80);

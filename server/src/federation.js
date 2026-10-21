@@ -545,6 +545,14 @@ function describeAtt(a) {
   if (Array.isArray(a.more) && a.more.length) out.more = a.more.filter(x => x && x.url).map(one);
   return out;
 }
+// Пересланное сообщение: имя автора, текст и вложение (файл другой сервер запросит с флагом fwd)
+function describeFwd(f) {
+  const out = { name: f.name, text: f.text };
+  const a = f.attachment;
+  if (a?.url) out.att = describeAtt(a);
+  else if (a?.gif) out.att = { gif: a.gif };
+  return out;
+}
 function fetchFile(peerId, params, dest, max) {
   const sess = sessions.get(peerId);
   if (!sess || sess.ws.readyState !== 1) return Promise.reject(new Error('offline'));
@@ -615,7 +623,8 @@ async function handleReq(peer, sess, f) {
       return c.fed_instance ? c.fed_instance === peer.instance_id : (await chatWithPeer(m.chat_id, peer));
     })();
     if (!m || !sender || !(grp || (m.type === 'direct' && sender.is_bot !== spaces.FED && (await chatWithPeer(m.chat_id, peer))))) return await fail('not_found');
-    let att; try { att = JSON.parse(m.attachment); } catch { att = null; }
+    // fwd — просят вложение пересланного сообщения, оно лежит в forward_data
+    let att; try { att = f.fwd ? JSON.parse(m.forward_data)?.attachment : JSON.parse(m.attachment); } catch { att = null; }
     const item = f.idx ? (Array.isArray(att?.more) ? att.more[Math.floor(Number(f.idx)) - 1] : null) : att;   // idx — номер вложения среди нескольких
     const url = f.which === 'thumb' ? item?.thumb : item?.url;
     const file = url && path.join(FILES_DIR, path.basename(url));
@@ -783,7 +792,7 @@ async function onLocalMessage(msgId) {
     else if (a?.gif) att = { gif: a.gif };   // GIF из Klipy: только ссылки, файл с сервера на сервер не передаётся
   } catch {}
   let fwd = null;
-  try { const f = m.forward_data ? JSON.parse(m.forward_data) : null; if (f) fwd = { name: f.name, text: f.text }; } catch {}
+  try { const f = m.forward_data ? JSON.parse(m.forward_data) : null; if (f) fwd = describeFwd(f); } catch {}
   const reply = m.reply_to_id ? (await dal.get('SELECT fed_uid FROM messages WHERE id = ?', m.reply_to_id))?.fed_uid || null : null;
   await enqueue(ps.peer.id, { k: 'msg', uid, from: u.username, to: ps.shadow.fed_login, name: u.display_name, av: avatarVersion(m.sender_id), text: m.text, ts: m.sent_at, reply, fwd, att });
 }
@@ -906,7 +915,11 @@ async function recvMessage(peer, ev) {
   let attachment = null;
   if (ev.att && typeof ev.att === 'object') attachment = ev.att.gif ? gifLib.sanitize(ev.att) : await receiveAttachments(peer, uid, ev.att);
   let fwdJson = null;
-  if (ev.fwd && typeof ev.fwd === 'object') fwdJson = JSON.stringify({ user_id: shadow.id, name: str(ev.fwd.name, 80), text: str(ev.fwd.text, 4096), attachment: null, is_bot: false });
+  if (ev.fwd && typeof ev.fwd === 'object') {
+    // Вложение пересланного сообщения принимаем так же, как обычное, но файл просим с флагом fwd
+    const fa = ev.fwd.att && typeof ev.fwd.att === 'object' ? (ev.fwd.att.gif ? gifLib.sanitize(ev.fwd.att) : await receiveAttachments(peer, uid, ev.fwd.att, { fwd: 1 })) : null;
+    fwdJson = JSON.stringify({ user_id: shadow.id, name: str(ev.fwd.name, 80), text: str(ev.fwd.text, 4096), attachment: fa, is_bot: false });
+  }
   if (!text && !attachment && !fwdJson) return;
 
   let reload = false;
@@ -946,16 +959,16 @@ async function recvMessage(peer, ev) {
 
 // Скачивание вложения. Возвращает объект вложения для базы: готовый файл у нас или пометку «недоступно»
 // Вложение с остальными (more): каждое файл забираем у хозяина по номеру
-async function receiveAttachments(peer, uid, a) {
-  const first = await receiveAttachment(peer, uid, a, 0);
+async function receiveAttachments(peer, uid, a, extra = {}) {
+  const first = await receiveAttachment(peer, uid, a, 0, extra);
   if (Array.isArray(a.more) && a.more.length && first) {
     const more = [];
-    for (const [i, x] of a.more.slice(0, 9).entries()) { if (x && typeof x === 'object') more.push(await receiveAttachment(peer, uid, x, i + 1)); }
+    for (const [i, x] of a.more.slice(0, 9).entries()) { if (x && typeof x === 'object') more.push(await receiveAttachment(peer, uid, x, i + 1, extra)); }
     if (more.length) first.more = more;
   }
   return first;
 }
-async function receiveAttachment(peer, uid, a, idx = 0) {
+async function receiveAttachment(peer, uid, a, idx = 0, extra = {}) {
   const name = str(a.name, 200) || 'file';
   const size = Math.max(0, Math.floor(Number(a.size)) || 0);
   const mime = str(a.mime, 100);
@@ -969,7 +982,7 @@ async function receiveAttachment(peer, uid, a, idx = 0) {
   const fname = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext ? '.' + ext.replace(/[^a-z0-9]/g, '') : ''}`;
   const dest = path.join(FILES_DIR, fname);
   try {
-    const r = await fetchFile(peer.id, { uid, which: 'file', idx }, dest, c.maxSizeMb * 1024 * 1024);
+    const r = await fetchFile(peer.id, { uid, which: 'file', idx, ...extra }, dest, c.maxSizeMb * 1024 * 1024);
     if (!r.size) throw new Error('empty');
   } catch (e) {
     return { ...meta, unavailable: e.message === 'too_big' ? 'policy' : 'fetch' };
@@ -992,7 +1005,7 @@ async function receiveAttachment(peer, uid, a, idx = 0) {
     // Кадр-превью видео берём у отправителя (ffmpeg у нас может не быть); принимаем только маленькую картинку
     const tn = fname.replace(/\.[^.]*$/, '') + '_t.jpg', tp = path.join(FILES_DIR, tn);
     try {
-      await fetchFile(peer.id, { uid, which: 'thumb', idx }, tp, 512 * 1024);
+      await fetchFile(peer.id, { uid, which: 'thumb', idx, ...extra }, tp, 512 * 1024);
       if (require('./routes/users').isImageBuffer(fs.readFileSync(tp))) { out.thumb = `/files/${tn}`; out.width = Number(a.w) || null; out.height = Number(a.h) || null; }
       else fs.unlinkSync(tp);
     } catch { try { fs.unlinkSync(tp); } catch {} }
@@ -1335,5 +1348,5 @@ module.exports = {
   setShadowTag, lookupRemote, peerOfUser, peerByInstance, realPeerByInstance, ownVersion, peerRow, clearVirtualRow, endVirtual, virtualTick, isOnline,
   onLocalMessage, onGroupMessage, onPin, onEdit, onDelete, onReact, onStatus, onTyping, onPresence, onProfile, onContactAdded, onContactRemoved, afterContactChange,
   // для fedgroups.js
-  enqueue, sendLive, rpc, fetchFile, isRelatedTo: isRelated, ensureShadow, remoteUser, shadowByAddr: shadowRow, findLocalUser, avatarVersion, receiveAttachment, receiveAttachments, describeAtt, removeMessageFiles,
+  enqueue, sendLive, rpc, fetchFile, isRelatedTo: isRelated, ensureShadow, remoteUser, shadowByAddr: shadowRow, findLocalUser, avatarVersion, receiveAttachment, receiveAttachments, describeAtt, describeFwd, removeMessageFiles,
 };
