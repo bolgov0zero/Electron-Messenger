@@ -1,6 +1,7 @@
 const { WebSocketServer } = require('ws');
 const { filterAsync } = require('./aiter.js');
 const dal = require('./dal');
+const maintenance = require('./maintenance');
 const db = require('./db');
 const spaces = require('./spaces');
 const unreadCounts = require('./unread');
@@ -321,6 +322,12 @@ function setup(server) {
 
     ws.on('message', async raw => {
       let data; try { data = JSON.parse(raw); } catch { return; }
+
+      // Перенос базы: запись запрещена, клиент получает отказ и оставляет сообщение неотправленным
+      if (maintenance.isOn() && ['message', 'edit_message', 'delete_message', 'react', 'pin_message', 'unpin_message', 'read', 'delivered'].includes(data.type)) {
+        if (data.type === 'message') ws.send(JSON.stringify({ type: 'send_rejected', chat_id: data.chat_id, reason: 'maintenance' }));
+        return;
+      }
 
       if (data.type === 'message') {
         // Flood-контроль: скользящее окно 20 сообщений / 10 сек на соединение

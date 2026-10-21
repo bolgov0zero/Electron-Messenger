@@ -21,6 +21,7 @@
 
 const { AsyncLocalStorage } = require('async_hooks');
 const db = require('./db');
+const maintenance = require('./maintenance');
 
 const cache = new Map();
 function prep(sql) {
@@ -51,12 +52,14 @@ let tail = Promise.resolve();
 
 function query(kind) {
   return (sql, ...p) => {
+    if (kind === 'run' && maintenance.isOn()) return Promise.reject(new Error('Идёт обслуживание базы: запись временно запрещена'));
     if (als.getStore() || !active) { try { return Promise.resolve(base[kind](sql, ...p)); } catch (e) { return Promise.reject(e); } }
     return active.then(() => base[kind](sql, ...p));
   };
 }
 
 function tx(fn) {
+  if (maintenance.isOn()) return Promise.reject(new Error('Идёт обслуживание базы: запись временно запрещена'));
   // Вложенная транзакция присоединяется к внешней
   if (als.getStore()) return Promise.resolve().then(fn);
   const run = tail.then(() => als.run(true, async () => {

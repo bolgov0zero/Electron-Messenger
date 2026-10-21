@@ -43,7 +43,7 @@ async function enrichChat(chat, userId) {
       SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment,
         COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
-      WHERE m.chat_id IN (${placeholders}) ORDER BY m.sent_at DESC LIMIT 1
+      WHERE m.chat_id IN (${placeholders}) ORDER BY m.sent_at DESC, m.id DESC LIMIT 1
     `, ...ids);
     if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
     unread = await unreadCounts.inChats(userId, ids);
@@ -53,7 +53,7 @@ async function enrichChat(chat, userId) {
       SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment,
         COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
-      WHERE m.chat_id = ? ORDER BY m.sent_at DESC LIMIT 1
+      WHERE m.chat_id = ? ORDER BY m.sent_at DESC, m.id DESC LIMIT 1
     `, chat.id);
     if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
     unread = await unreadCounts.inChat(userId, chat.id);
@@ -110,7 +110,7 @@ router.get('/', authMiddleware, async (req, res) => {
     SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.is_secret, c.read_only, c.fed_instance, c.fed_chat_id, cm.pinned_at as pinned
     FROM chats c JOIN chat_members cm ON cm.chat_id = c.id
     WHERE cm.user_id = ? AND (cm.hidden_at IS NULL OR c.is_secret = 1) AND c.parent_id IS NULL
-    ORDER BY (SELECT COALESCE(MAX(sent_at), 0) FROM messages WHERE chat_id = c.id) DESC
+    ORDER BY (SELECT COALESCE(MAX(sent_at), 0) FROM messages WHERE chat_id = c.id) DESC, c.id DESC
   `, req.user.id);
   const invited = await Promise.all((await dal.all('SELECT c.* FROM chats c JOIN chat_invites i ON i.chat_id = c.id WHERE i.user_id = ? ORDER BY i.created_at DESC', req.user.id))
     .map(c => inviteChat(c, req.user.id)));
@@ -139,7 +139,7 @@ router.get('/:id/topics', authMiddleware, async (req, res) => {
       SELECT m.id, m.text, m.sent_at, m.deleted, m.attachment,
         COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
-      WHERE m.chat_id = ? ORDER BY m.sent_at DESC LIMIT 1
+      WHERE m.chat_id = ? ORDER BY m.sent_at DESC, m.id DESC LIMIT 1
     `, s.id);
     if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
     return { ...s, unread, unread_mentions: unreadMentions, has_avatar, last_message: last || null };

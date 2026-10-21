@@ -27,6 +27,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// Пока идёт перенос базы, изменяющие запросы не принимаются (запись всё равно запрещена в dal)
+app.use((req, res, next) => {
+  if (!require('./maintenance').isOn() || req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+  if (req.path.startsWith('/api/admin/database')) return next();
+  res.status(503).json({ error: 'Идёт перенос базы данных, попробуйте через несколько минут', code: 'maintenance' });
+});
+
 app.use(express.json({ limit: '10mb' }));
 // index.html админки — всегда свежий: HTTP-кэш уже приводил к устаревшей админке после обновления
 app.get(['/admin', '/admin/', '/admin/index.html'], (req, res) => {

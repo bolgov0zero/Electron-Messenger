@@ -6,6 +6,13 @@ APP_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 DB_PATH_SVC="$(systemctl show "$SERVICE" --property=Environment --value 2>/dev/null | tr ' ' '\n' | grep '^DB_PATH=' | head -1 | cut -d= -f2-)"
 DB_PATH="${DB_PATH:-${DB_PATH_SVC:-$APP_DIR/../chat_db/chat.db}}"
 
+# Команды без панели: electron db status | test | migrate | sqlite
+if [ "$1" = "db" ]; then
+  shift
+  export DB_PATH
+  exec node "$APP_DIR/src/cli/db.js" "$@"
+fi
+
 RED=$'\033[0;31m'
 GREEN=$'\033[0;32m'
 YELLOW=$'\033[1;33m'

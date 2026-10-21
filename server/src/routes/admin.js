@@ -94,6 +94,7 @@ async function fetchRemoteVersion() {
 }
 
 router.use(authMiddleware, adminMiddleware);
+router.use('/database', require('./dbadmin'));
 
 router.get('/stats', async (req, res) => {
   const dbBytes = dal.pg ? (await dal.get('SELECT pg_database_size(current_database()) AS b')).b

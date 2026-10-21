@@ -2041,6 +2041,20 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .sp-lg span{display:inline-flex;align-items:center;gap:5px}.sp-lg i{width:8px;height:8px;border-radius:3px}.sp-lg b{color:var(--c-text)}
 .sp-tf{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;color:var(--c-muted)}
 .sp-tf b{color:var(--c-text);font-family:var(--f-mono);font-size:12px}
+.sp-dbf{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;width:100%}
+.sp-dbf label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;color:var(--c-muted);font-weight:600}
+.sp-dbf .sp-inp{width:100%;padding-right:10px}
+.sp-dbf .sp-inp input,.sp-dbf .sp-inp select{width:100%;font:500 13px var(--f-mono)}
+.sp-dbf .sp-inp select{font:600 12.5px var(--f-ui)}
+.sp-ck{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;padding:2px 0}
+.sp-ck i{flex:none;width:16px;height:16px;margin-top:1px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:10px;font-weight:800}
+.sp-ck.ok i{background:var(--c-green-dim);color:var(--c-green-text)}
+.sp-ck.bad i{background:var(--c-red-dim);color:var(--c-red-text)}
+.sp-ck.warn i{background:var(--c-orange-dim);color:var(--c-orange-text)}
+.sp-pg{height:8px;border-radius:5px;background:var(--c-surface2);border:1px solid var(--c-border);overflow:hidden;width:100%}
+.sp-pg i{display:block;height:100%;background:var(--c-primary);transition:width .4s}
+.sp-pg.ind i{width:30%;animation:spInd 1.2s ease-in-out infinite alternate}
+@keyframes spInd{from{margin-left:0}to{margin-left:70%}}
 .sp-tiles .ub-tile{display:block;width:100%}
 .sp-tiles .ub-sub{margin-top:6px}
 .sp-sk{display:flex;align-items:flex-end;gap:4px;height:22px;margin-top:8px}
@@ -7364,7 +7378,8 @@ function restartService() {
 // копий и токена — та же, что у прежнего окна (ST, stBackup, stGhSave). Обновление сервера
 // здесь не настраивается: статус и кнопка «↑ версия» живут в сайдбаре, установка — на главной.
 
-const SP = { open: new Set(), rate: null, disk: null, q: '', files: [], audit: [], online: 0, pend: null, loaded: false, editCustom: false, editUnit: 60, lifeCustom: false, showBk: false, showLog: false };
+const SP = { open: new Set(), rate: null, disk: null, q: '', files: [], audit: [], online: 0, pend: null, loaded: false, editCustom: false, editUnit: 60, lifeCustom: false, showBk: false, showLog: false,
+  db: { info: null, form: { host: '127.0.0.1', port: 5432, database: 'electron', user: 'electron', password: '', ssl: '' }, test: null, testing: false, confirm: false, job: null, down: false, t: null } };
 const SP_KEYS = { messages: ['edit'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime', 'backupRetention'] };
 const SP_DEF = { edit: 120, imgMax: 10, imgExt: ['jpeg', 'jpg', 'png', 'gif', 'webp'], videoMax: 50, videoExt: ['mp4', 'mov', 'webm'], fileMax: 50, fileExt: [], life: 0, backupDays: [], backupTime: '03:00', backupRetention: NaN };
 const SP_AUDIT_KEY = { messages: 'edit_time_limit', attachments: 'upload_', backups: 'backup_', github: 'github_token' };
@@ -7398,10 +7413,10 @@ function spToastOut(e) {
 async function renderSettings() {
   setTopbarActions('');
   document.getElementById('page-body').innerHTML = '<div class="ux-page"><div class="ux-empty">Загрузка…</div></div>';
-  const [settings, stats, backups, files, users, audit, overview] = await Promise.all([
+  const [settings, stats, backups, files, users, audit, overview, dbInfo] = await Promise.all([
     api('GET', '/api/admin/settings'), api('GET', '/api/admin/stats'), api('GET', '/api/admin/backups'),
     api('GET', '/api/admin/files'), api('GET', '/api/admin/users'), api('GET', '/api/admin/audit-log?limit=200'),
-    hmGet('/api/admin/overview'),
+    hmGet('/api/admin/overview'), api('GET', '/api/admin/database'),
   ]);
   if (currentPage !== 'settings') return;
   if (!settings || settings.error) { document.getElementById('page-body').innerHTML = '<div class="ux-page"><div class="ux-empty">Не удалось загрузить настройки</div></div>'; return; }
@@ -7412,6 +7427,8 @@ async function renderSettings() {
   SP.disk = overview?.storage?.disk || null;
   if (Array.isArray(users)) { allUsersCache = users; SP.online = users.filter(u => u.status === 'online' && !u.banned).length; }
   SP.audit = Array.isArray(audit) ? audit.filter(a => a.category === 'server') : [];
+  SP.db.info = dbInfo && !dbInfo.error ? dbInfo : null; SP.db.job = SP.db.info?.job || null;
+  if (SP.db.job && (SP.db.job.state === 'running' || SP.db.job.state === 'restarting')) { SP.open.add('database'); spDbPoll(); }
   SP.loaded = true; SP.pend = null;
   spLoadRate();
   clearInterval(SP.rateTimer);
@@ -7553,8 +7570,8 @@ function spTiles() {
   </div>`;
 }
 
-const SP_ORDER = ['messages', 'attachments', 'backups', 'github', 'history'];
-const spAttn = k => k === 'github' ? !ST.gh.set : k === 'backups' ? stBackupOld() : false;
+const SP_ORDER = ['messages', 'attachments', 'backups', 'database', 'github', 'history'];
+const spAttn = k => k === 'github' ? !ST.gh.set : k === 'backups' ? stBackupOld() : k === 'database' ? SP.db.job?.state === 'failed' : false;
 const spRow = (title, desc, ctl, extra = '', cls = '', kw = '') => spHit(title, desc, kw) ? `<div class="sp-r ${cls}"><div class="sp-l"><b>${title}</b>${desc ? `<span>${desc}</span>` : ''}${extra}</div><div class="sp-c">${ctl}</div></div>` : '';
 const spStepH = k => `<div class="sp-step"><button type="button" aria-label="Меньше" onclick="spStep('${k}', -1)">−</button><input id="sp-n-${k}" type="number" min="1" max="500" value="${spSv(k)}" aria-label="Размер в мегабайтах" oninput="spNum('${k}', this.value)"><button type="button" aria-label="Больше" onclick="spStep('${k}', 1)">+</button><span class="u">МБ</span></div>`;
 const spTokH = (k, any) => `<div class="sp-tok">${spSv(k).map(x => `<span class="sp-tk">${esc(x)}<button type="button" aria-label="Убрать ${esc(x)}" onclick="spTokDel('${k}', '${esc(x)}')">×</button></span>`).join('')}${!spSv(k).length && any ? `<span class="any">${any}</span>` : ''}<input id="sp-tok-${k}" placeholder="${spSv(k).length ? 'ещё…' : 'например, pdf'}" aria-label="Добавить формат" autocomplete="off" spellcheck="false" onkeydown="spTokKey(event, '${k}')" oninput="if(/[,;\\s]/.test(this.value))spTokAdd('${k}', this.value)"></div>`;
@@ -7598,6 +7615,75 @@ function spBackups() {
     + (spHit('Срок хранения копий', 'удаляются') ? `<div class="sp-r"><div class="sp-l"><b>Срок хранения копий</b><span>Копии старше срока удаляются автоматически. Пусто: хранить всегда</span></div><div class="sp-c"><div class="sp-inp"><input type="number" min="1" max="3650" value="${retVal}" placeholder="всегда" aria-label="Дней" oninput="spRet(this.value)"><span class="u">дней</span></div></div>${pend ? `<div class="sp-conf">${ST_I.warn}<span>При сроке <b>${pend.val} дн</b> удалится <b>${oldN} ${uxPlural(oldN, 'копия', 'копии', 'копий')}</b>. Отменить это нельзя.</span><button type="button" class="btn ux-solid btn-sm" onclick="spPendOk()">Применить</button><button type="button" class="btn btn-ghost btn-sm" onclick="spPendNo()">Не менять</button></div>` : ''}</div>` : '')
     + (spHit('Копии', 'список скачать восстановить') ? `<div class="sp-r wide"><div class="sp-l"><b>Копии · ${ST.backups.length}</b><span><button type="button" class="sp-link" onclick="SP.showBk=!SP.showBk;spRender()">${SP.showBk ? 'Скрыть список' : 'Показать список'}</button></span></div>${SP.showBk ? `<div style="grid-column:1/-1">${ST.backups.map(b => `<div class="sp-bk"><span class="n">${esc(uaSeen(b.created_at))}${b.kind === 'pre' ? ' <span class="st-chip warn">До восстановления</span>' : b.kind === 'man' ? ' <span class="st-chip">Вручную</span>' : b.kind === 'auto' ? ' <span class="st-chip">Авто</span>' : ''}</span><span class="z">${hmBytes(b.size)}</span><button type="button" class="btn btn-primary btn-sm" onclick="rsFromBackup('${jesc(b.name)}')">${rsIc('restore', 13)}Восстановить</button><button type="button" class="btn btn-ghost btn-sm" onclick="stDownload('${jesc(b.name)}', this)">${ST_I.down}Скачать</button><button type="button" class="btn btn-ghost btn-sm" aria-label="Удалить копию" onclick="stDeleteBackup('${jesc(b.name)}')">${UX_I.trash}</button></div>`).join('')}</div>` : ''}</div>` : '');
 }
+// ── База данных ──
+const spDbPct = j => (j && j.total ? Math.min(99, Math.round(j.done / j.total * 100)) : null);
+function spDbF(k, v) { SP.db.form[k] = v; if (SP.db.test || SP.db.confirm) { SP.db.test = null; SP.db.confirm = false; spRender('sp-db-' + k); } }
+async function spDbTest() {
+  SP.db.testing = true; SP.db.test = null; SP.db.confirm = false; spRender();
+  const r = await api('POST', '/api/admin/database/test', SP.db.form);
+  SP.db.testing = false; SP.db.test = r || { ok: false, error: 'Нет ответа от сервера' }; spRender();
+}
+function spDbAsk() { SP.db.confirm = true; spRender(); }
+function spDbNo() { SP.db.confirm = false; spRender(); }
+async function spDbGo() {
+  SP.db.confirm = false;
+  const r = await api('POST', '/api/admin/database/migrate', { ...SP.db.form, confirm: true });
+  if (r?.ok) { SP.db.job = r.job; spDbPoll(); } else toast(esc(r?.error || 'Не удалось начать перенос'), 'error');
+  spRender();
+}
+function spDbClose() { SP.db.job = null; spRender(); }
+function spDbPoll() {
+  clearInterval(SP.db.t);
+  SP.db.t = setInterval(async () => {
+    try {
+      const res = await fetch('/api/admin/database?_t=' + Date.now(), { headers: { Authorization: 'Bearer ' + token, 'Cache-Control': 'no-cache' } });
+      if (!res.ok) throw new Error('down');
+      const j = await res.json();
+      SP.db.info = j; SP.db.job = j.job; SP.db.down = false;
+      if (j.engine === 'postgresql') { clearInterval(SP.db.t); toast('Сервер работает на PostgreSQL'); if (currentPage === 'settings') renderSettings(); return; }
+      if (!j.job || (j.job.state !== 'running' && j.job.state !== 'restarting')) clearInterval(SP.db.t);
+    } catch { SP.db.down = SP.db.job?.state === 'restarting'; }
+    if (currentPage === 'settings') spRender();
+  }, 1200);
+}
+function spDatabase() {
+  const d = SP.db, i = d.info, job = d.job;
+  if (!i) return '<div class="rb-meta" style="padding:14px 4px">Не удалось получить сведения о базе</div>';
+  const pg = i.engine === 'postgresql';
+  let out = spRow('Сейчас используется', pg ? `Подключено к ${esc(i.target || 'PostgreSQL')}` : 'Файл рядом с данными сервера: ничего настраивать не нужно',
+    `<span class="sp-stat ok">${pg ? 'PostgreSQL' : 'SQLite'} ${esc(i.version || '')}</span>`, i.size ? `<span style="margin-top:1px">Размер ${hmBytes(i.size)}${i.messages != null ? ` · сообщений ${rmFmt(i.messages)}` : ''}</span>` : '', '', 'база данных sqlite postgres');
+  if (job && (job.state === 'running' || job.state === 'restarting' || job.state === 'done')) {
+    const pct = spDbPct(job), busy = job.state !== 'done';
+    out += `<div class="sp-r wide"><div class="sp-l"><b>${busy ? 'Идёт перенос на PostgreSQL' : 'Перенос завершён'}</b><span>${esc(job.text || '')}${pct != null && job.state === 'running' && job.phase === 'copy' ? ` · ${pct}%` : ''}${d.down ? ' · сервер перезапускается, подождите' : ''}</span></div>
+      <div class="sp-c" style="width:100%"><div class="sp-pg ${pct == null || job.state === 'restarting' ? 'ind' : ''}"><i style="${pct != null && job.state === 'running' ? `width:${pct}%` : ''}"></i></div></div>
+      ${busy ? '<em class="w" style="grid-column:1/-1">Пока идёт перенос, сообщения и другие изменения не сохраняются. Не закрывайте страницу и не выключайте сервер.</em>' : ''}</div>`;
+    return out;
+  }
+  if (job && job.state === 'failed') {
+    out += `<div class="sp-r wide"><div class="sp-l"><b>Перенос не удался</b><span>${esc(job.error || '')}</span><em class="w">Сервер продолжает работать на SQLite, данные не затронуты. PostgreSQL очищен.</em></div>
+      <div class="sp-c"><button type="button" class="btn btn-ghost btn-sm" onclick="spDbClose()">Понятно</button></div></div>`;
+    return out;
+  }
+  if (pg) return out + spRow('Резервные копии', 'Копии средствами PostgreSQL (pg_dump) и восстановление из них пока не подключены к панели', '<span class="sp-stat warn">скоро</span>', '', '', 'копия');
+  if (!i.canMigrate) return out;
+  const f = d.form, t = d.test, ok = !!(t && t.ok);
+  const inp = (k, label, type = 'text', w = '') => `<label>${label}<span class="sp-inp"><input id="sp-db-${k}" type="${type}" value="${esc(String(f[k]))}" autocomplete="off" spellcheck="false" oninput="spDbF('${k}', this.value)" ${w}></span></label>`;
+  out += `<div class="sp-r wide"><div class="sp-l"><b>Перенос на PostgreSQL</b><span>PostgreSQL 14 или новее на этом же сервере. База должна быть пустой и создана в UTF-8 (скрипт установки создаёт её сам). Текущая база останется как резервная копия</span></div>
+    <div class="sp-dbf">${inp('host', 'Адрес сервера')}${inp('port', 'Порт', 'number')}${inp('database', 'Имя базы')}${inp('user', 'Пользователь')}${inp('password', 'Пароль', 'password')}
+      <label>Шифрование<span class="sp-inp"><select id="sp-db-ssl" onchange="spDbF('ssl', this.value)"><option value="" ${f.ssl === '' ? 'selected' : ''}>Без шифрования (тот же сервер)</option><option value="require" ${f.ssl === 'require' ? 'selected' : ''}>Шифровать</option><option value="verify-full" ${f.ssl === 'verify-full' ? 'selected' : ''}>Шифровать и проверять сертификат</option></select></span></label></div>
+    ${t ? `<div style="width:100%">${t.error ? `<div class="sp-ck bad"><i>!</i><span>${esc(t.error)}</span></div>` : ''}${(t.checks || []).map(c => `<div class="sp-ck ${!c.ok ? 'bad' : c.warn ? 'warn' : 'ok'}"><i>${c.ok && !c.warn ? '✓' : '!'}</i><span>${esc(c.text)}</span></div>`).join('')}</div>` : ''}
+    ${d.confirm ? `<div class="sp-conf" style="width:100%">${ST_I.warn}<span>Запись остановится на время переноса${i.messages > 200000 ? ' (при таком объёме это может занять несколько минут)' : ' (обычно это секунды или минуты)'}: сообщения не отправятся. Копия текущей базы сохранится в «Резервных копиях». После переноса сервер перезапустится сам.</span>
+        <button type="button" class="btn btn-primary btn-sm" onclick="spDbGo()">Начать перенос</button><button type="button" class="btn btn-ghost btn-sm" onclick="spDbNo()">Отмена</button></div>` : `
+      <div class="sp-c" style="width:100%;justify-content:flex-start"><button type="button" class="btn btn-ghost btn-sm" ${d.testing ? 'disabled' : ''} onclick="spDbTest()">${d.testing ? '<span class="st-spin"></span>' : ''}Проверить соединение</button>
+        <button type="button" class="btn btn-primary btn-sm" ${ok ? '' : 'disabled'} onclick="spDbAsk()">Перенести</button></div>`}</div>`;
+  return out;
+}
+function spDbSide() {
+  const i = SP.db.info; if (!i) return '';
+  if (i.engine === 'postgresql') return `<h5>PostgreSQL</h5><p class="sp-sd">Поиск по сообщениям понимает русские окончания: «отчёты» находятся по запросу «отчет». Размер базы и число соединений видны на главной.</p>`;
+  return `<h5>Как проходит перенос</h5><p class="sp-sd"><b>1.</b> Проверка PostgreSQL.<br><b>2.</b> Запись останавливается, снимается копия.<br><b>3.</b> Таблицы переносятся в одной транзакции, затем сверяется число строк.<br><b>4.</b> Сервер перезапускается на PostgreSQL.</p>
+    <p class="sp-sd">Любая ошибка отменяет перенос: сервер продолжает работать на SQLite, как раньше. Обратно на SQLite данные не переносятся.</p>`;
+}
 function spGithub() {
   const g = ST.gh;
   return spRow('Токен доступа', g.set ? 'Токен задан: запросы к GitHub идут с токеном, до 5000 в час' : 'Без токена до 60 запросов в час: при частых проверках обновлений лимит кончится',
@@ -7609,7 +7695,7 @@ function spHistory() {
   if (!rows.length) return spHit('история изменений журнал') ? '<div class="rb-meta" style="padding:14px 4px">Изменений пока не было</div>' : '';
   return `${list.map(a => `<div class="sp-log"><span class="tm">${esc(uaSeen(a.created_at))}</span><span>${esc(a.action)}${a.target ? `: <span class="rb-meta">${esc(a.target)}</span>` : ''}</span><span class="rb-meta">${esc(a.actor_name || '')}</span></div>`).join('')}${rows.length > 5 ? `<div style="padding:10px 4px"><button type="button" class="sp-link" onclick="SP.showLog=!SP.showLog;spRender()">${SP.showLog ? 'Свернуть' : 'Показать всё · ' + rows.length}</button></div>` : ''}`;
 }
-const SP_BODY = { messages: spMessages, attachments: spAttachments, backups: spBackups, github: spGithub, history: spHistory };
+const SP_BODY = { messages: spMessages, attachments: spAttachments, backups: spBackups, database: spDatabase, github: spGithub, history: spHistory };
 function spSug2(text, btn, onclick) { return `<div class="sp-sg"><span>${text}</span><button type="button" class="btn btn-ghost btn-sm" onclick="${onclick}" style="color:var(--c-primary)">${btn}</button></div>`; }
 const SP_SIDE = {
   messages: () => `<h5>Как это работает</h5><div class="st-ex" style="margin:0">${stEditExample()}</div><div class="st-cmp" style="margin-top:12px"><span>Для сравнения:</span><span>WhatsApp: <b>15 минут</b></span><span>Telegram: <b>48 часов</b></span></div>`,
@@ -7627,6 +7713,7 @@ const SP_SIDE = {
       ${!spSv('backupDays').length ? spSug2('Автокопий нет: при сбое можно потерять день работы', 'Включить по будням в 03:00', "spSug('days')") : ''}`;
   },
   github: () => `<h5>Лимит запросов в час</h5><div class="sp-lim"><div><span>без токена</span><i style="width:${ST.gh.set ? 2 : 100}%;background:${ST.gh.set ? 'var(--c-muted)' : 'var(--c-orange)'}"></i><b>60</b></div><div><span>с токеном</span><i style="width:100%;background:${ST.gh.set ? 'var(--c-green)' : 'var(--c-muted)'}"></i><b>5000</b></div></div><p class="sp-sd">Сейчас: <b>${ST.gh.set ? 'с токеном' : 'без токена'}</b>.${SP.rate && !SP.rate.error ? ` Потрачено <b>${SP.rate.used} из ${SP.rate.limit}</b>, остаток обнулится в ${hmClock(SP.rate.reset * 1000)}.` : ''} Проверка обновлений делает несколько запросов.</p>${ST.gh.set ? '' : spSug2('Задайте токен: лимит вырастет в 80 раз', 'К полю токена', "spSug('gh')")}`,
+  database: () => spDbSide(),
   history: () => '',
 };
 function spQuickBtn(k) {
@@ -7640,6 +7727,7 @@ function spSummary(k) {
   if (k === 'attachments') return `картинки до ${spSv('imgMax')} МБ · видео до ${spSv('videoMax')} МБ · файлы до ${spSv('fileMax')} МБ · хранение ${spSv('life') ? spSv('life') + ' дн' : 'всегда'}`;
   if (k === 'backups') return `${spSv('backupDays').length ? ST_DAYS.filter(d => spSv('backupDays').includes(d[0])).map(d => d[1]).join(', ') + ' в ' + spSv('backupTime') : 'только вручную'} · последняя ${last ? uaSeen(last.created_at) : 'нет'}`;
   if (k === 'github') return ST.gh.set ? 'токен задан · 5000 запросов в час' : 'токен не задан · 60 запросов в час';
+  if (k === 'database') { const i = SP.db.info; return i ? `${i.engine === 'postgresql' ? 'PostgreSQL' : 'SQLite'} ${i.version || ''}${i.size ? ' · ' + hmBytes(i.size) : ''}` : '…'; }
   return `${SP.audit.filter(a => /настрой|копи|обнов|перезапуск/i.test(a.action)).length} записей`;
 }
 function spMini(k) {
@@ -7647,7 +7735,7 @@ function spMini(k) {
   if (k === 'backups') return `<span class="sp-md" title="Копии за 14 дней">${Array.from({ length: 14 }, (_, i) => 13 - i).map(i => { const d = new Date(); d.setDate(d.getDate() - i); return `<i class="${ST.backups.some(b => new Date(b.created_at * 1000).toDateString() === d.toDateString()) ? 'have' : ''}"></i>`; }).join('')}</span>`;
   return '';
 }
-const SP_META = { messages: ['Сообщения', ST_I.msg], attachments: ['Вложения', ST_I.clip], backups: ['Резервные копии', ST_I.db], github: ['GitHub', ST_I.gh], history: ['История', ST_I.clock] };
+const SP_META = { messages: ['Сообщения', ST_I.msg], attachments: ['Вложения', ST_I.clip], backups: ['Резервные копии', ST_I.db], database: ['База данных', ST_I.db], github: ['GitHub', ST_I.gh], history: ['История', ST_I.clock] };
 function spLastChange(k) {
   const key = SP_AUDIT_KEY[k]; if (!key) return null;
   return SP.audit.find(a => a.action === 'Изменение настроек' && String(a.target || '').includes(key));
