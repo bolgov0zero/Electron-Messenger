@@ -71,7 +71,8 @@ async function sample() {
     const parts = await dal.get(`SELECT pg_total_relation_size('message_status') AS st, pg_table_size('messages') AS msg,
       COALESCE(pg_relation_size(to_regclass('idx_messages_tsv')), 0) AS idx,
       extract(epoch from pg_postmaster_start_time()) * 1000 AS started`);
-    const ver = (await dal.get('SHOW server_version')).server_version;
+    // «15.19 (Debian 15.19-0+deb12u1)» → «15.19»: сборка дистрибутива в карточку не нужна
+    const ver = String((await dal.get('SHOW server_version')).server_version).split(' ')[0];
     const now = Date.now();
     let tps = null, cache = null;
     if (prev && now > prev.t) {

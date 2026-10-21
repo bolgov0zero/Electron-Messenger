@@ -1593,6 +1593,8 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .dv-leg2 div{display:flex;align-items:center;gap:6px;font-size:12px;min-width:0;white-space:nowrap;overflow:hidden}
 .dv-leg2 i{width:8px;height:8px;border-radius:3px;flex:none}
 .dv-leg2 b{margin-left:auto;font-weight:600;font-size:11.5px;border-radius:5px}
+.dv-leg2 span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.dv-leg2 b{flex:none}
 @media (prefers-reduced-motion:reduce){.dv-in,.dv-tick,.dv-dot,.dv-db-spark circle,.dv-ib.busy svg{animation:none}.dv-db-bar span,.dv-db-spark{transition:none}}
 .dv-res-row{margin-top:12px}
 .dv-res-top{display:flex;align-items:center;gap:10px}
@@ -4327,10 +4329,10 @@ async function renderDashboard() {
         <div class="dv-db-spark" id="dv-db-spark"></div>
         <div class="dv-store-bar dv-db-bar"><span id="dv-db-p0" style="background:var(--dv-c1)"></span><span id="dv-db-p1" style="background:var(--dv-c2)"></span><span id="dv-db-p2" style="background:var(--dv-c3)"></span><span id="dv-db-p3" style="background:var(--dv-c4)"></span></div>
         <div class="dv-leg2">
-          <div><i style="background:var(--dv-c1)"></i>Статусы<b class="hm-mono" id="dv-db-v0">—</b></div>
-          <div><i style="background:var(--dv-c2)"></i>Сообщения<b class="hm-mono" id="dv-db-v1">—</b></div>
-          <div><i style="background:var(--dv-c3)"></i>Поиск<b class="hm-mono" id="dv-db-v2">—</b></div>
-          <div><i style="background:var(--dv-c4)"></i>Прочее<b class="hm-mono" id="dv-db-v3">—</b></div>
+          <div><i style="background:var(--dv-c1)"></i><span>Статусы</span><b class="hm-mono" id="dv-db-v0">—</b></div>
+          <div><i style="background:var(--dv-c2)"></i><span>Сообщения</span><b class="hm-mono" id="dv-db-v1">—</b></div>
+          <div><i style="background:var(--dv-c3)"></i><span>Поиск</span><b class="hm-mono" id="dv-db-v2">—</b></div>
+          <div><i style="background:var(--dv-c4)"></i><span>Прочее</span><b class="hm-mono" id="dv-db-v3">—</b></div>
         </div>
       </section>
     </div>

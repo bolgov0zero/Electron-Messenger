@@ -26,7 +26,7 @@ router.get('/', async (req, res) => {
   const out = { engine: dal.engine, canMigrate: !dal.pg && !(job && job.state === 'running'), job: publicJob(), install: publicInst() };
   try {
     if (dal.pg) {
-      out.version = (await dal.get('SHOW server_version')).server_version;
+      out.version = String((await dal.get('SHOW server_version')).server_version).split(' ')[0];
       out.size = (await dal.get('SELECT pg_database_size(current_database()) AS b')).b;
       try { const u = new URL(process.env.DATABASE_URL); out.target = `${u.hostname}:${u.port || 5432}/${decodeURIComponent(u.pathname.slice(1))}`; } catch {}
     } else {
