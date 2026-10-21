@@ -25,7 +25,11 @@ const db = require('./db');
 const cache = new Map();
 function prep(sql) {
   let s = cache.get(sql);
-  if (!s) { s = db.prepare(sql); cache.set(sql, s); }
+  if (!s) {
+    // Запросы с переменным числом ? (IN (...)) дают много разных строк: не даём кэшу расти без предела
+    if (cache.size >= 500) cache.clear();
+    s = db.prepare(sql); cache.set(sql, s);
+  }
   return s;
 }
 

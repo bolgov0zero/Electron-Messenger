@@ -3,7 +3,7 @@
 // Так старые клиенты и все места сервера, читающие attachment.url, видят первое вложение и не ломаются.
 const fs = require('fs');
 const path = require('path');
-const db = require('./db');
+const dal = require('./dal');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', 'chat_db', 'chat.db');
 const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
@@ -44,14 +44,14 @@ function markExpired(att) {
   return out;
 }
 // Удаляет файлы сообщения, на которые больше никто не ссылается (другие сообщения, пересылки)
-function release(att, exceptMsgId) {
-  list(att).forEach(a => {
-    if (!a.url) return;
+async function release(att, exceptMsgId) {
+  for (const a of list(att)) {
+    if (!a.url) continue;
     const fname = path.basename(a.url);
-    const refs = db.prepare("SELECT COUNT(*) c FROM messages WHERE id != ? AND deleted = 0 AND (attachment LIKE ? OR forward_data LIKE ?)").get(exceptMsgId || 0, `%${fname}%`, `%${fname}%`).c;
-    if (refs) return;
+    const refs = (await dal.get("SELECT COUNT(*) c FROM messages WHERE id != ? AND deleted = 0 AND (attachment LIKE ? OR forward_data LIKE ?)", exceptMsgId || 0, `%${fname}%`, `%${fname}%`)).c;
+    if (refs) continue;
     [a.url, a.thumb, previewOf(a.url)].forEach(u => { if (u) { try { fs.unlinkSync(path.join(FILES_DIR, path.basename(u))); } catch {} } });
-  });
+  } ;
 }
 // Удаляет все файлы без проверки ссылок (чат удалён целиком)
 function purge(att) {

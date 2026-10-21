@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const db = require('../db');
+const dal = require('../dal');
 const unreadCounts = require('../unread');
 const { broadcast, getMessageWithStatus } = require('../ws');
 
@@ -74,12 +74,12 @@ async function handleWebhook(req, res) {
   const rawText = req.method === 'GET' ? req.query.text : req.body?.text;
   if (!rawText) return res.status(400).json({ ok: false, error: 'missing text' });
 
-  const wh = db.prepare(`
+  const wh = await dal.get(`
     SELECT w.id, w.user_id, w.chat_id FROM webhooks w WHERE w.token = ?
-  `).get(token);
+  `, token);
   if (!wh) return res.status(404).json({ ok: false, error: 'invalid token' });
 
-  const chat = db.prepare('SELECT id FROM chats WHERE id = ?').get(wh.chat_id);
+  const chat = await dal.get('SELECT id FROM chats WHERE id = ?', wh.chat_id);
   if (!chat) return res.status(410).json({ ok: false, error: 'chat not found' });
 
   if (!checkRateLimit(token)) return res.status(429).json({ ok: false, error: 'rate limit exceeded' });
@@ -87,25 +87,25 @@ async function handleWebhook(req, res) {
   const text = sanitizeHtml(rawText);
   if (!text.replace(/<[^>]*>/g, '').trim()) return res.status(400).json({ ok: false, error: 'empty text after sanitization' });
 
-  const result = db.prepare('INSERT INTO messages (chat_id, sender_id, text) VALUES (?, ?, ?)').run(wh.chat_id, wh.user_id, text);
-  const msg = getMessageWithStatus(result.lastInsertRowid, null);
-  const chatMeta = db.prepare('SELECT parent_id FROM chats WHERE id = ?').get(wh.chat_id);
+  const result = await dal.run('INSERT INTO messages (chat_id, sender_id, text) VALUES (?, ?, ?)', wh.chat_id, wh.user_id, text);
+  const msg = await getMessageWithStatus(result.lastInsertRowid, null);
+  const chatMeta = await dal.get('SELECT parent_id FROM chats WHERE id = ?', wh.chat_id);
   if (chatMeta?.parent_id) msg.parent_id = chatMeta.parent_id;
-  broadcast(wh.chat_id, { type: 'message', message: msg });
+  await broadcast(wh.chat_id, { type: 'message', message: msg });
   // Комната с участниками на других серверах: сообщение вебхука уходит и им
-  try { require('../federation').onGroupMessage(result.lastInsertRowid); } catch (e) { console.warn('[Fed] вебхук:', e.message); }
+  try { await require('../federation').onGroupMessage(result.lastInsertRowid); } catch (e) { console.warn('[Fed] вебхук:', e.message); }
 
   // Push notifications
   try {
     const { sendPushToUser } = require('./push');
-    const chatRow = db.prepare('SELECT type, name FROM chats WHERE id = ?').get(wh.chat_id);
-    const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(wh.chat_id, wh.user_id);
+    const chatRow = await dal.get('SELECT type, name FROM chats WHERE id = ?', wh.chat_id);
+    const members = await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?', wh.chat_id, wh.user_id);
     const { hasPushSubscription } = require('./push');
     for (const { user_id } of members) {
       // Подписки нет — считать непрочитанное незачем (см. ws.js)
-      if (!hasPushSubscription(user_id)) continue;
+      if (!(await hasPushSubscription(user_id))) continue;
       const unread = await unreadCounts.total(user_id);
-      sendPushToUser(user_id, {
+      await sendPushToUser(user_id, {
         title: chatRow?.name || msg.sender_name,
         body: msg.text.replace(/<[^>]*>/g, '') || '',
         chatId: wh.chat_id,

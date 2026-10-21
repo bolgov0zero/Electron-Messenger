@@ -1,4 +1,6 @@
 const router = require('express').Router();
+const { filterAsync } = require('../aiter.js');
+const dal = require('../dal');
 const db = require('../db');
 const path = require('path');
 const fs = require('fs');
@@ -24,8 +26,8 @@ function getDirSize(dir) {
   return total;
 }
 
-function deleteChatFiles(chatId) {
-  const rows = db.prepare('SELECT attachment FROM messages WHERE chat_id = ? AND attachment IS NOT NULL').all(chatId);
+async function deleteChatFiles(chatId) {
+  const rows = await dal.all('SELECT attachment FROM messages WHERE chat_id = ? AND attachment IS NOT NULL', chatId);
   rows.forEach(r => { try { require('../attach').purge(JSON.parse(r.attachment)); } catch {} });
 }
 
@@ -54,9 +56,9 @@ function ghNote(res) {
 
 // Файл из репозитория на GitHub: версия сервера и описание релиза
 function fetchRepoFile(repoPath) {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     try {
-      const token = db.prepare("SELECT value FROM settings WHERE key = 'github_token'").get()?.value;
+      const token = (await dal.get("SELECT value FROM settings WHERE key = 'github_token'"))?.value;
       const headers = { 'User-Agent': 'Electron-Server', 'Accept': 'application/vnd.github.v3+json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
       // Используем GitHub API — не кешируется CDN, в отличие от raw.githubusercontent.com
@@ -92,25 +94,25 @@ async function fetchRemoteVersion() {
 
 router.use(authMiddleware, adminMiddleware);
 
-router.get('/stats', (req, res) => {
-  const pageCount = db.prepare('PRAGMA page_count').get()['page_count'];
-  const pageSize  = db.prepare('PRAGMA page_size').get()['page_size'];
+router.get('/stats', async (req, res) => {
+  const pageCount = (await dal.get('PRAGMA page_count'))['page_count'];
+  const pageSize  = (await dal.get('PRAGMA page_size'))['page_size'];
   res.json({
     // Считаем ровно то, что видно в списках: без ботов (вебхуки, __system__)
     // и без тем — иначе бейджи и плитки показывают больше, чем есть на вкладках
-    users:    db.prepare('SELECT COUNT(*) as c FROM users WHERE is_bot IS NULL OR is_bot = 0').get().c,
-    chats:    db.prepare("SELECT COUNT(*) as c FROM chats WHERE type='direct'").get().c,
-    groups:   db.prepare("SELECT COUNT(*) as c FROM chats WHERE type='group'").get().c,
-    rooms:    db.prepare("SELECT COUNT(*) as c FROM chats WHERE type='room' AND parent_id IS NULL").get().c,
-    messages: db.prepare('SELECT COUNT(*) as c FROM messages WHERE deleted = 0').get().c,
+    users:    (await dal.get('SELECT COUNT(*) as c FROM users WHERE is_bot IS NULL OR is_bot = 0')).c,
+    chats:    (await dal.get("SELECT COUNT(*) as c FROM chats WHERE type='direct'")).c,
+    groups:   (await dal.get("SELECT COUNT(*) as c FROM chats WHERE type='group'")).c,
+    rooms:    (await dal.get("SELECT COUNT(*) as c FROM chats WHERE type='room' AND parent_id IS NULL")).c,
+    messages: (await dal.get('SELECT COUNT(*) as c FROM messages WHERE deleted = 0')).c,
     uptimeSeconds: Math.floor(process.uptime()),
     dbBytes: pageCount * pageSize,
     filesBytes: getDirSize(FILES_DIR),
     // тот же счёт, что и во вкладке «Файлы»: без миниатюр и без дублей
-    filesCount: collectFiles().length,
+    filesCount: (await collectFiles()).length,
     wsConnections: getConnCount(),
     serverVersion: getLocalVersion(),
-    pushSubscriptions: (() => { try { return db.prepare('SELECT COUNT(*) as c FROM push_subscriptions').get().c; } catch { return 0; } })(),
+    pushSubscriptions: (async () => { try { return (await dal.get('SELECT COUNT(*) as c FROM push_subscriptions')).c; } catch { return 0; } })(),
   });
 });
 
@@ -128,7 +130,7 @@ const ACTIVITY = {
 };
 const activityCache = new Map();
 
-router.get('/activity', (req, res) => {
+router.get('/activity', async (req, res) => {
   const range = ACTIVITY[req.query.range] ? req.query.range : '24h';
   const { unit, count, ttl } = ACTIVITY[range];
   const tz = Math.max(-840, Math.min(840, Math.round(Number(req.query.tz) || 0)));
@@ -141,7 +143,7 @@ router.get('/activity', (req, res) => {
   if (unit === 'min5') {
     // пятиминутки не зависят от часового пояса: границы одни и те же по всему миру
     const endB = Math.floor(Date.now() / 300000) * 300000, startMs = endB - (count - 1) * 300000;
-    const rows5 = db.prepare('SELECT (sent_at / 300) AS k, COUNT(*) AS n FROM messages WHERE deleted = 0 AND sent_at >= ? GROUP BY k').all(Math.floor(startMs / 1000));
+    const rows5 = await dal.all('SELECT (sent_at / 300) AS k, COUNT(*) AS n FROM messages WHERE deleted = 0 AND sent_at >= ? GROUP BY k', Math.floor(startMs / 1000));
     const by5 = new Map(rows5.map(r => [r.k, r.n]));
     const data5 = { range, unit, buckets: Array.from({ length: count }, (_, i) => { const t = startMs + i * 300000; return { t, n: by5.get(Math.floor(t / 300000)) || 0 }; }) };
     activityCache.set(cacheKey, { at: Date.now(), data: data5 });
@@ -157,10 +159,10 @@ router.get('/activity', (req, res) => {
       : Date.UTC(Y, M - i, 1));
   }
   const format = { hour: '%Y-%m-%d %H', day: '%Y-%m-%d', month: '%Y-%m' }[unit];
-  const rows = db.prepare(`
+  const rows = await dal.all(`
     SELECT strftime('${format}', sent_at + ?, 'unixepoch') AS k, COUNT(*) AS n
     FROM messages WHERE deleted = 0 AND sent_at >= ? GROUP BY k
-  `).all(off, Math.floor(starts[0] / 1000) - off);
+  `, off, Math.floor(starts[0] / 1000) - off);
   const byKey = new Map(rows.map(r => [r.k, r.n]));
   const p2 = n => String(n).padStart(2, '0');
   const keyOf = ms => {
@@ -174,15 +176,15 @@ router.get('/activity', (req, res) => {
 });
 
 // Create room (admin only) — notifies members via WS
-router.post('/rooms', (req, res) => {
+router.post('/rooms', async (req, res) => {
   const { name, member_ids, read_only } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Missing name' });
-  const result = db.prepare("INSERT INTO chats (type, name, created_by, read_only) VALUES ('room', ?, ?, ?)").run(name.trim(), req.user.id, read_only ? 1 : 0);
+  const result = await dal.run("INSERT INTO chats (type, name, created_by, read_only) VALUES ('room', ?, ?, ?)", name.trim(), req.user.id, read_only ? 1 : 0);
   const chatId = result.lastInsertRowid;
   if (Array.isArray(member_ids) && member_ids.length) {
-    const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
+    const ins = 'INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)';
     // Людей с других серверов (федерация) в комнаты не добавляем
-    member_ids.filter(uid => !require('../spaces').isFed(Number(uid))).forEach(uid => { ins.run(chatId, uid); sendTo(uid, { type: 'reload_chats' }); });
+    for (const uid of (await filterAsync(member_ids, async uid => !(await require('../spaces').isFed(Number(uid)))))) { await dal.run(ins, chatId, uid); sendTo(uid, { type: 'reload_chats' }); } ;
   }
   logAudit(req, 'rooms', 'Создание комнаты', `«${name.trim()}», участников: ${Array.isArray(member_ids) ? member_ids.length : 0}`);
   res.json({ id: chatId });
@@ -199,96 +201,96 @@ function memberEventLabel(chatType, action) {
 
 // Пригласить человека с другого сервера по адресу @сервер:логин (в группу или комнату). Он сам соглашается или отказывается
 router.post('/chats/:id/invite', async (req, res) => {
-  const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(Number(req.params.id));
+  const chat = await dal.get('SELECT * FROM chats WHERE id = ?', Number(req.params.id));
   if (!chat || chat.type === 'direct' || chat.parent_id || chat.is_secret) return res.status(404).json({ error: 'Приглашают в группу или комнату' });
   if (chat.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: состав меняет её владелец' });
   const r = await require('../federation').lookupRemote(req.body?.address);
   if (r.error) return res.status(r.code === 'offline' ? 503 : 400).json({ error: r.error });
-  const inv = require('../fedgroups').invite(chat, req.user.id, r.shadow);
+  const inv = await require('../fedgroups').invite(chat, req.user.id, r.shadow);
   if (inv.error) return res.status(400).json({ error: inv.error });
   logAudit(req, 'rooms', 'Приглашение с другого сервера', `${r.shadow.display_name} (@${r.shadow.fed_instance}:${r.shadow.fed_login}) → «${chat.name || '#' + chat.id}»`);
   res.json({ ok: true, pending: !!inv.pending, member: !!inv.member, name: r.shadow.display_name });
 });
 
 // Add member to any chat/room — notify via WS
-router.post('/chats/:id/members', (req, res) => {
+router.post('/chats/:id/members', async (req, res) => {
   const { user_id } = req.body;
   if (!user_id) return res.status(400).json({ error: 'Missing user_id' });
   const chatId = Number(req.params.id);
   const userId = Number(user_id);
-  const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
+  const chat = await dal.get('SELECT * FROM chats WHERE id = ?', chatId);
   if (chat?.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: состав меняет её владелец' });
-  if (require('../spaces').isFed(userId)) {
+  if ((await require('../spaces').isFed(userId))) {
     // Человека с другого сервера приглашают (он сам соглашается)
     if (!chat || chat.type === 'direct' || chat.parent_id) return res.status(400).json({ error: 'Приглашают в группу или комнату' });
-    const r = require('../fedgroups').invite(chat, req.user.id, db.prepare('SELECT * FROM users WHERE id = ?').get(userId));
+    const r = await require('../fedgroups').invite(chat, req.user.id, (await dal.get('SELECT * FROM users WHERE id = ?', userId)));
     if (r.error) return res.status(400).json({ error: r.error });
-    logAudit(req, 'rooms', 'Приглашение в группу', `${db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—'} → «${chat.name || '#' + chatId}»`);
+    logAudit(req, 'rooms', 'Приглашение в группу', `${(await dal.get('SELECT display_name FROM users WHERE id = ?', userId))?.display_name || '—'} → «${chat.name || '#' + chatId}»`);
     return res.json({ ok: true, pending: !!r.pending });
   }
-  const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
-  ins.run(chatId, userId);
-  db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId)
-    .forEach(s => ins.run(s.id, userId));
-  db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(chatId)
+  const ins = 'INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)';
+  await dal.run(ins, chatId, userId);
+  for (const s of (await dal.all('SELECT id FROM chats WHERE parent_id = ?', chatId))
+    ) (await dal.run(ins, s.id, userId)) ;
+  (await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ?', chatId))
     .forEach(({ user_id: uid }) => sendTo(uid, { type: 'reload_chats' }));
   if (chat && chat.type !== 'direct') {
-    const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
-    announcements.sendSystemMessage(chatId, `${name} добавлен(а) ${memberEventLabel(chat.type, 'add')}`, 'member_add');
-    const chatName = db.prepare('SELECT name FROM chats WHERE id = ?').get(chatId)?.name || `#${chatId}`;
+    const name = (await dal.get('SELECT display_name FROM users WHERE id = ?', userId))?.display_name || '—';
+    await announcements.sendSystemMessage(chatId, `${name} добавлен(а) ${memberEventLabel(chat.type, 'add')}`, 'member_add');
+    const chatName = (await dal.get('SELECT name FROM chats WHERE id = ?', chatId))?.name || `#${chatId}`;
     logAudit(req, 'rooms', 'Добавление участника', `${name} → «${chatName}»`);
   }
-  if (chat) require('../fedgroups').sendState(chat);
+  if (chat) await require('../fedgroups').sendState(chat);
   res.json({ ok: true });
 });
 
 // Remove member from any chat/room
-router.delete('/chats/:id/members/:userId', (req, res) => {
+router.delete('/chats/:id/members/:userId', async (req, res) => {
   const chatId = Number(req.params.id);
   const kickedId = Number(req.params.userId);
-  const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
+  const chat = await dal.get('SELECT * FROM chats WHERE id = ?', chatId);
   if (chat?.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: состав меняет её владелец' });
-  if (require('../spaces').isFed(kickedId)) {
-    const fg = require('../fedgroups'), wasMember = !!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, kickedId);
-    fg.removeRemote(chat, db.prepare('SELECT * FROM users WHERE id = ?').get(kickedId));
-    if (wasMember) announcements.sendSystemMessage(chatId, `${db.prepare('SELECT display_name FROM users WHERE id = ?').get(kickedId)?.display_name || '—'} удалён(а) ${memberEventLabel(chat.type, 'remove')}`, 'member_remove');
+  if ((await require('../spaces').isFed(kickedId))) {
+    const fg = require('../fedgroups'), wasMember = !!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', chatId, kickedId));
+    await fg.removeRemote(chat, (await dal.get('SELECT * FROM users WHERE id = ?', kickedId)));
+    if (wasMember) await announcements.sendSystemMessage(chatId, `${(await dal.get('SELECT display_name FROM users WHERE id = ?', kickedId))?.display_name || '—'} удалён(а) ${memberEventLabel(chat.type, 'remove')}`, 'member_remove');
     return res.json({ ok: true });
   }
-  const remaining = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?').all(chatId, kickedId);
-  const del = db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?');
-  del.run(chatId, kickedId);
-  db.prepare('SELECT id FROM chats WHERE parent_id = ?').all(chatId)
-    .forEach(s => { del.run(s.id, kickedId); sendTo(kickedId, { type: 'chat_deleted', chat_id: s.id }); });
+  const remaining = await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?', chatId, kickedId);
+  const del = 'DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?';
+  await dal.run(del, chatId, kickedId);
+  for (const s of (await dal.all('SELECT id FROM chats WHERE parent_id = ?', chatId))
+    ) { await dal.run(del, s.id, kickedId); sendTo(kickedId, { type: 'chat_deleted', chat_id: s.id }); } ;
   remaining.forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
   sendTo(kickedId, { type: 'chat_deleted', chat_id: chatId });
   if (chat && chat.type !== 'direct') {
-    const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(kickedId)?.display_name || '—';
-    announcements.sendSystemMessage(chatId, `${name} удалён(а) ${memberEventLabel(chat.type, 'remove')}`, 'member_remove');
-    const chatName = db.prepare('SELECT name FROM chats WHERE id = ?').get(chatId)?.name || `#${chatId}`;
+    const name = (await dal.get('SELECT display_name FROM users WHERE id = ?', kickedId))?.display_name || '—';
+    await announcements.sendSystemMessage(chatId, `${name} удалён(а) ${memberEventLabel(chat.type, 'remove')}`, 'member_remove');
+    const chatName = (await dal.get('SELECT name FROM chats WHERE id = ?', chatId))?.name || `#${chatId}`;
     logAudit(req, 'rooms', 'Удаление участника', `${name} из «${chatName}»`);
   }
-  if (chat) require('../fedgroups').sendState(chat);
+  if (chat) await require('../fedgroups').sendState(chat);
   res.json({ ok: true });
 });
 
 // Rename room
-router.patch('/rooms/:id', (req, res) => {
+router.patch('/rooms/:id', async (req, res) => {
   const { name, read_only, topics_manual } = req.body;
   const hasName = name !== undefined;
   const hasReadOnly = read_only !== undefined;
   const hasManual = topics_manual !== undefined;
   if (hasName && !String(name).trim()) return res.status(400).json({ error: 'Missing name' });
   if (!hasName && !hasReadOnly && !hasManual) return res.status(400).json({ error: 'Nothing to update' });
-  const prev = db.prepare("SELECT name, read_only, topics_manual FROM chats WHERE id = ? AND type = 'room'").get(req.params.id);
-  if (hasManual) db.prepare("UPDATE chats SET topics_manual = ? WHERE id = ? AND type = 'room' AND parent_id IS NULL").run(topics_manual ? 1 : 0, req.params.id);
-  if (hasName) db.prepare("UPDATE chats SET name = ? WHERE id = ? AND type = 'room'").run(String(name).trim(), req.params.id);
-  if (hasReadOnly) db.prepare("UPDATE chats SET read_only = ? WHERE id = ? AND type = 'room'").run(read_only ? 1 : 0, req.params.id);
+  const prev = await dal.get("SELECT name, read_only, topics_manual FROM chats WHERE id = ? AND type = 'room'", req.params.id);
+  if (hasManual) await dal.run("UPDATE chats SET topics_manual = ? WHERE id = ? AND type = 'room' AND parent_id IS NULL", topics_manual ? 1 : 0, req.params.id);
+  if (hasName) await dal.run("UPDATE chats SET name = ? WHERE id = ? AND type = 'room'", String(name).trim(), req.params.id);
+  if (hasReadOnly) await dal.run("UPDATE chats SET read_only = ? WHERE id = ? AND type = 'room'", read_only ? 1 : 0, req.params.id);
   const newName = hasName ? String(name).trim() : prev?.name;
   const isReadOnly = hasReadOnly ? !!read_only : !!prev?.read_only;
-  const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(req.params.id);
+  const members = await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ?', req.params.id);
   const isManual = hasManual ? !!topics_manual : !!prev?.topics_manual;
   members.forEach(({ user_id }) => sendTo(user_id, { type: 'chat_updated', chat_id: Number(req.params.id), name: newName, read_only: isReadOnly, topics_manual: isManual }));
-  require('../fedgroups').sendState(db.prepare('SELECT * FROM chats WHERE id = ?').get(Number(req.params.id)));   // зеркала у других серверов
+  await require('../fedgroups').sendState((await dal.get('SELECT * FROM chats WHERE id = ?', Number(req.params.id))));   // зеркала у других серверов
   if (hasName) logAudit(req, 'rooms', 'Переименование комнаты', `«${prev?.name || '?'}» → «${newName}»`);
   if (hasManual && !!prev?.topics_manual !== !!topics_manual) logAudit(req, 'rooms', 'Сортировка тем', `«${newName}»: ${topics_manual ? 'ручная' : 'по последнему сообщению'}`);
   if (hasReadOnly && !!prev?.read_only !== !!read_only) logAudit(req, 'rooms', 'Режим «только чтение»', `«${newName}»: ${read_only ? 'включён' : 'выключен'}`);
@@ -311,11 +313,11 @@ router.post('/chats/:id/avatar', (req, res) => {
   res.json({ ok: true });
 });
 
-router.get('/users', (req, res) => {
+router.get('/users', async (req, res) => {
   const fs = require('fs');
   const path = require('path');
   const avatarDir = path.join(path.dirname(DB_PATH), 'avatar');
-  const users = db.prepare('SELECT u.id, u.username, u.display_name, u.is_admin, u.tag, u.banned, u.created_at, u.last_seen_at, u.totp_required, u.totp_secret, u.can_announce, u.workspace_id, w.name AS workspace_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE u.is_bot IS NULL OR u.is_bot = 0 ORDER BY u.created_at DESC').all();
+  const users = await dal.all('SELECT u.id, u.username, u.display_name, u.is_admin, u.tag, u.banned, u.created_at, u.last_seen_at, u.totp_required, u.totp_secret, u.can_announce, u.workspace_id, w.name AS workspace_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE u.is_bot IS NULL OR u.is_bot = 0 ORDER BY u.created_at DESC');
   // Устройства, с которых человек сейчас в сети: в списке это «Electron 2.15.9 · macOS»
   const devices = new Map();
   for (const c of getClients()) {
@@ -323,7 +325,7 @@ router.get('/users', (req, res) => {
     devices.get(c.userId).push({ version: c.clientVersion, platform: c.osPlatform, hostname: c.hostname, scope: c.installScope, since: c.connectedAt });
   }
   const memb = new Map();
-  db.prepare('SELECT m.user_id, w.id, w.name FROM user_workspaces m JOIN workspaces w ON w.id = m.workspace_id ORDER BY w.id').all()
+  (await dal.all('SELECT m.user_id, w.id, w.name FROM user_workspaces m JOIN workspaces w ON w.id = m.workspace_id ORDER BY w.id'))
     .forEach(r => { if (!memb.has(r.user_id)) memb.set(r.user_id, []); memb.get(r.user_id).push({ id: r.id, name: r.name }); });
   res.json(users.map(u => {
     const { totp_secret, ...rest } = u;
@@ -342,8 +344,8 @@ router.get('/users', (req, res) => {
   }));
 });
 
-router.get('/chats', (req, res) => {
-  const chats = db.prepare(`
+router.get('/chats', async (req, res) => {
+  const chats = await dal.all(`
     SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.parent_id, c.position, c.is_secret, c.read_only, c.topics_manual,
       (SELECT COUNT(*) FROM messages WHERE chat_id = c.id AND deleted = 0) as message_count,
       (SELECT MAX(sent_at) FROM messages WHERE chat_id = c.id AND deleted = 0) as last_at,
@@ -351,7 +353,7 @@ router.get('/chats', (req, res) => {
       (SELECT GROUP_CONCAT(u.id || char(31) || u.display_name, char(30)) FROM users u
        JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = c.id ORDER BY cm.joined_at) as member_list
     FROM chats c ORDER BY c.created_at DESC
-  `).all();
+  `);
   // Участники с номером и признаком фото — таблицы показывают настоящие аватарки.
   // Номер и имя берём одной строкой, чтобы их порядок гарантированно совпадал.
   const hasPhoto = new Map();
@@ -370,8 +372,7 @@ router.get('/chats', (req, res) => {
   // Сообщения за последние 7 дней по дням — мини-график активности в «Комнатах»
   const since = Math.floor(Date.now() / 1000) - 7 * 86400;
   const week = new Map();
-  db.prepare('SELECT chat_id, CAST((sent_at - ?) / 86400 AS INTEGER) AS d, COUNT(*) AS n FROM messages WHERE deleted = 0 AND sent_at >= ? GROUP BY chat_id, d')
-    .all(since, since)
+  (await dal.all('SELECT chat_id, CAST((sent_at - ?) / 86400 AS INTEGER) AS d, COUNT(*) AS n FROM messages WHERE deleted = 0 AND sent_at >= ? GROUP BY chat_id, d', since, since))
     .forEach(r => {
       if (r.d < 0 || r.d > 6) return;
       if (!week.has(r.chat_id)) week.set(r.chat_id, [0, 0, 0, 0, 0, 0, 0]);
@@ -385,15 +386,15 @@ router.get('/chats', (req, res) => {
 });
 
 // Приглашённые с других серверов, которые ещё не ответили (в состав чата они не входят)
-router.get('/chats/:id/pending', (req, res) => {
-  res.json(db.prepare(`SELECT u.id, u.display_name, u.username FROM chat_invites i JOIN users u ON u.id = i.user_id
-    JOIN chats c ON c.id = i.chat_id WHERE i.chat_id = ? AND c.fed_instance IS NULL ORDER BY i.created_at`).all(Number(req.params.id)));
+router.get('/chats/:id/pending', async (req, res) => {
+  res.json((await dal.all(`SELECT u.id, u.display_name, u.username FROM chat_invites i JOIN users u ON u.id = i.user_id
+    JOIN chats c ON c.id = i.chat_id WHERE i.chat_id = ? AND c.fed_instance IS NULL ORDER BY i.created_at`, Number(req.params.id))));
 });
-router.get('/chats/:id/members', (req, res) => {
-  const members = db.prepare(`
+router.get('/chats/:id/members', async (req, res) => {
+  const members = (await dal.all(`
     SELECT u.id, u.username, u.display_name, cm.joined_at, (u.is_bot = 2) AS federated FROM users u
     JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = ? ORDER BY cm.joined_at
-  `).all(req.params.id).map(m => ({ ...m, federated: !!m.federated }));
+  `, req.params.id)).map(m => ({ ...m, federated: !!m.federated }));
   res.json(members);
 });
 
@@ -409,7 +410,7 @@ async function fetchLatestVersion(force = false) {
     return _versionCache.version;
   }
   try {
-    const token = db.prepare("SELECT value FROM settings WHERE key = 'github_token'").get()?.value;
+    const token = (await dal.get("SELECT value FROM settings WHERE key = 'github_token'"))?.value;
     const headers = { 'User-Agent': 'Electron-Admin', 'Accept': 'application/vnd.github.v3+json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const data = await new Promise((resolve, reject) => {
@@ -441,8 +442,8 @@ router.get('/clients', async (req, res) => {
 });
 
 // ── Настройки ──
-router.get('/settings', (req, res) => {
-  const rows = db.prepare('SELECT key, value FROM settings').all();
+router.get('/settings', async (req, res) => {
+  const rows = await dal.all('SELECT key, value FROM settings');
   const settings = Object.fromEntries(rows.map(r => [r.key, r.value]));
   // Маскируем токен
   if (settings.github_token) settings.github_token_set = true;
@@ -454,21 +455,21 @@ router.get('/settings', (req, res) => {
   res.json(settings);
 });
 
-router.put('/settings', (req, res) => {
+router.put('/settings', async (req, res) => {
   const allowed = ['github_token', 'edit_time_limit',
     'upload_image_max_size', 'upload_image_extensions',
     'upload_video_max_size', 'upload_video_extensions',
     'upload_file_max_size', 'upload_file_extensions', 'upload_file_lifetime',
     'backup_schedule_days', 'backup_schedule_time', 'backup_retention_days',
     ];
-  const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
-  const del = db.prepare('DELETE FROM settings WHERE key = ?');
+  const upsert = 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)';
+  const del = 'DELETE FROM settings WHERE key = ?';
   const keepEmpty = ['upload_image_extensions', 'upload_video_extensions', 'upload_file_extensions', 'upload_file_lifetime', 'backup_retention_days'];
   for (const key of allowed) {
     if (key in req.body) {
       const val = req.body[key]?.trim() ?? '';
-      if (val || keepEmpty.includes(key)) upsert.run(key, val);
-      else del.run(key);
+      if (val || keepEmpty.includes(key)) await dal.run(upsert, key, val);
+      else await dal.run(del, key);
     }
   }
   _versionCache = { version: null, fetchedAt: 0 }; // сбросить кэш
@@ -483,7 +484,7 @@ router.post('/clients/:connId/force-update', async (req, res) => {
   const platform = meta?.osPlatform || '';
   let downloadUrl = null;
   try {
-    const token = db.prepare("SELECT value FROM settings WHERE key = 'github_token'").get()?.value;
+    const token = (await dal.get("SELECT value FROM settings WHERE key = 'github_token'"))?.value;
     const headers = { 'User-Agent': 'Electron-Admin', 'Accept': 'application/vnd.github.v3+json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const data = await new Promise((resolve, reject) => {
@@ -514,31 +515,31 @@ router.get('/updates/progress', (req, res) => {
 // Завершить ВСЕ сессии пользователя (все устройства).
 // Отметка нужна для выключенных клиентов: сообщение по соединению до них
 // не дойдёт, а при следующем запуске старый токен уже не подойдёт.
-router.post('/users/:id/logout', (req, res) => {
+router.post('/users/:id/logout', async (req, res) => {
   const userId = Number(req.params.id);
-  db.prepare('UPDATE users SET sessions_valid_from = unixepoch() WHERE id = ?').run(userId);
+  await dal.run('UPDATE users SET sessions_valid_from = unixepoch() WHERE id = ?', userId);
   sendTo(userId, { type: 'force_logout' });
-  const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
+  const name = (await dal.get('SELECT display_name FROM users WHERE id = ?', userId))?.display_name || '—';
   logAudit(req, 'security', 'Завершение всех сессий', name);
   res.json({ ok: true });
 });
 
 // Блокировка / разблокировка пользователя
-router.post('/users/:id/ban', (req, res) => {
+router.post('/users/:id/ban', async (req, res) => {
   const userId = Number(req.params.id);
-  db.prepare('UPDATE users SET banned = 1, sessions_valid_from = unixepoch() WHERE id = ?').run(userId);
+  await dal.run('UPDATE users SET banned = 1, sessions_valid_from = unixepoch() WHERE id = ?', userId);
   sendTo(userId, { type: 'force_logout' });
-  try { require('../fedspaces').membersChanged(); } catch {}
-  const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
+  try { await require('../fedspaces').membersChanged(); } catch {}
+  const name = (await dal.get('SELECT display_name FROM users WHERE id = ?', userId))?.display_name || '—';
   logAudit(req, 'moderation', 'Блокировка пользователя', name);
   res.json({ ok: true });
 });
 
-router.post('/users/:id/unban', (req, res) => {
+router.post('/users/:id/unban', async (req, res) => {
   const userId = Number(req.params.id);
-  db.prepare('UPDATE users SET banned = 0 WHERE id = ?').run(userId);
-  try { require('../fedspaces').membersChanged(); } catch {}
-  const name = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId)?.display_name || '—';
+  await dal.run('UPDATE users SET banned = 0 WHERE id = ?', userId);
+  try { await require('../fedspaces').membersChanged(); } catch {}
+  const name = (await dal.get('SELECT display_name FROM users WHERE id = ?', userId))?.display_name || '—';
   logAudit(req, 'moderation', 'Разблокировка пользователя', name);
   res.json({ ok: true });
 });
@@ -546,23 +547,23 @@ router.post('/users/:id/unban', (req, res) => {
 // Требовать 2FA для входа в админ-панель — имеет смысл только для админов;
 // сама настройка (секрет/QR) происходит у самого пользователя при следующем
 // входе в админку, не здесь.
-router.patch('/users/:id/totp', (req, res) => {
+router.patch('/users/:id/totp', async (req, res) => {
   const userId = Number(req.params.id);
-  const user = db.prepare('SELECT display_name, is_admin FROM users WHERE id = ?').get(userId);
+  const user = await dal.get('SELECT display_name, is_admin FROM users WHERE id = ?', userId);
   if (!user) return res.status(404).json({ error: 'Not found' });
   const required = !!req.body.required;
-  db.prepare('UPDATE users SET totp_required = ? WHERE id = ?').run(required ? 1 : 0, userId);
+  await dal.run('UPDATE users SET totp_required = ? WHERE id = ?', required ? 1 : 0, userId);
   logAudit(req, 'security', required ? 'Включено требование 2FA' : 'Отключено требование 2FA', user.display_name);
   res.json({ ok: true });
 });
 
 // Право отправлять объявления из клиента. Клиент узнаёт о смене сразу, если человек в сети
-router.patch('/users/:id/announce', (req, res) => {
+router.patch('/users/:id/announce', async (req, res) => {
   const userId = Number(req.params.id);
-  const user = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId);
+  const user = await dal.get('SELECT display_name FROM users WHERE id = ?', userId);
   if (!user) return res.status(404).json({ error: 'Not found' });
   const allowed = !!req.body.allowed;
-  db.prepare('UPDATE users SET can_announce = ? WHERE id = ?').run(allowed ? 1 : 0, userId);
+  await dal.run('UPDATE users SET can_announce = ? WHERE id = ?', allowed ? 1 : 0, userId);
   logAudit(req, 'security', allowed ? 'Включено право отправлять объявления' : 'Отключено право отправлять объявления', user.display_name);
   sendTo(userId, { type: 'perms', can_announce: allowed });
   res.json({ ok: true });
@@ -571,11 +572,11 @@ router.patch('/users/:id/announce', (req, res) => {
 // Сброс 2FA — на случай утерянного приложения-аутентификатора. При следующем
 // входе в админку пользователь настраивает её заново (требование остаётся,
 // если было включено).
-router.post('/users/:id/totp/reset', (req, res) => {
+router.post('/users/:id/totp/reset', async (req, res) => {
   const userId = Number(req.params.id);
-  const user = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId);
+  const user = await dal.get('SELECT display_name FROM users WHERE id = ?', userId);
   if (!user) return res.status(404).json({ error: 'Not found' });
-  db.prepare('UPDATE users SET totp_secret = NULL, totp_pending_secret = NULL WHERE id = ?').run(userId);
+  await dal.run('UPDATE users SET totp_secret = NULL, totp_pending_secret = NULL WHERE id = ?', userId);
   logAudit(req, 'security', 'Сброс 2FA', user.display_name);
   res.json({ ok: true });
 });
@@ -623,8 +624,8 @@ function semverGt(a, b) {
 
 // Остаток лимита запросов к GitHub — то, что GitHub сам насчитал для этого токена (или для адреса
 // сервера, если токена нет). Запрос /rate_limit в лимит не засчитывается, поэтому опрос ничего не тратит
-router.get('/github/rate', (req, res) => {
-  const token = db.prepare("SELECT value FROM settings WHERE key = 'github_token'").get()?.value;
+router.get('/github/rate', async (req, res) => {
+  const token = (await dal.get("SELECT value FROM settings WHERE key = 'github_token'"))?.value;
   const headers = { 'User-Agent': 'Electron-Admin', 'Accept': 'application/vnd.github.v3+json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   let done = false;
@@ -759,13 +760,13 @@ router.get('/release-notes', (req, res) => {
 
 // Аудит-лог: последние N действий, новые сверху. Фильтрация по категории и
 // поиск — на клиенте, как у страницы «Файлы» (один запрос, дальше всё в JS).
-router.get('/audit-log', (req, res) => {
-  const rows = db.prepare(`
+router.get('/audit-log', async (req, res) => {
+  const rows = await dal.all(`
     SELECT a.id, a.category, a.action, a.target, a.ip, a.created_at,
       CASE WHEN a.actor_id IS NULL THEN 'Система' ELSE COALESCE(u.display_name, 'Удалённый аккаунт') END as actor_name, u.tag as actor_tag, a.actor_id
     FROM admin_audit_log a LEFT JOIN users u ON u.id = a.actor_id
     ORDER BY a.id DESC LIMIT ?
-  `).all(Math.max(1, Math.min(1000, Number(req.query.limit) || 1000)));
+  `, Math.max(1, Math.min(1000, Number(req.query.limit) || 1000)));
   const avatarDir = path.join(path.dirname(DB_PATH), 'avatar');
   res.json(rows.map(r => ({ ...r, actor_has_avatar: r.actor_id ? fs.existsSync(path.join(avatarDir, `${r.actor_id}.jpg`)) : false })));
 });
@@ -792,23 +793,23 @@ router.get('/metrics', (req, res) => {
 
 // События для таймлайна на главной: обновления и перезапуски сервера (из аудита) и системные
 // объявления (из журнала объявлений). from и to — миллисекунды
-router.get('/timeline', (req, res) => {
+router.get('/timeline', async (req, res) => {
   const to = Number(req.query.to) || Date.now();
   const from = Math.max(Number(req.query.from) || to - 86400000, to - 400 * 86400000);
   const f = Math.floor(from / 1000), t = Math.floor(to / 1000);
   const out = [];
-  const audit = db.prepare(`
+  const audit = await dal.all(`
     SELECT a.action, a.target, a.created_at, u.display_name AS actor
     FROM admin_audit_log a LEFT JOIN users u ON u.id = a.actor_id
     WHERE a.action IN ('Обновление сервера', 'Перезапуск сервера') AND a.created_at BETWEEN ? AND ?
-    ORDER BY a.created_at`).all(f, t);
+    ORDER BY a.created_at`, f, t);
   for (const a of audit) {
     const upd = a.action === 'Обновление сервера';
     out.push({ t: a.created_at * 1000, type: 'upd', title: upd ? 'Обновление сервера' : 'Перезапуск службы',
       text: upd && a.target ? a.target : '', meta: a.actor ? `выполнил ${a.actor}` : '' });
   }
   const KIND = { popup: 'всплывающее', banner: 'полоса', chat: 'в чаты' };
-  const anns = db.prepare('SELECT kind, text, target, targets, sent_at FROM announcements WHERE sent_at IS NOT NULL AND sent_at BETWEEN ? AND ? ORDER BY sent_at').all(f, t);
+  const anns = await dal.all('SELECT kind, text, target, targets, sent_at FROM announcements WHERE sent_at IS NOT NULL AND sent_at BETWEEN ? AND ? ORDER BY sent_at', f, t);
   const plural = (n, a, b, c) => { const x = n % 100, y = x % 10; return x > 10 && x < 20 ? c : y === 1 ? a : y >= 2 && y <= 4 ? b : c; };
   for (const a of anns) {
     let ids = []; try { ids = JSON.parse(a.targets || '[]'); } catch {}
@@ -822,14 +823,14 @@ router.get('/timeline', (req, res) => {
 
 // Тепловая карта: сколько сообщений в среднем приходится на каждый час каждого дня недели за 30 дней
 const heatCache = new Map();
-router.get('/heatmap', (req, res) => {
+router.get('/heatmap', async (req, res) => {
   const tz = Math.max(-840, Math.min(840, Math.round(Number(req.query.tz) || 0)));
   const hit = heatCache.get(tz);
   if (hit && Date.now() - hit.at < 5 * 60e3) return res.json(hit.data);
   const off = tz * 60, days = 30, since = Math.floor(Date.now() / 1000) - days * 86400;
-  const rows = db.prepare(`
+  const rows = await dal.all(`
     SELECT CAST(strftime('%w', sent_at + ?, 'unixepoch') AS INTEGER) AS d, CAST(strftime('%H', sent_at + ?, 'unixepoch') AS INTEGER) AS h, COUNT(*) AS n
-    FROM messages WHERE deleted = 0 AND sent_at >= ? GROUP BY d, h`).all(off, off, since);
+    FROM messages WHERE deleted = 0 AND sent_at >= ? GROUP BY d, h`, off, off, since);
   // сколько раз каждый день недели встретился в окне — чтобы получить среднее, а не сумму
   const seen = Array(7).fill(0);
   for (let i = 0; i < days; i++) seen[new Date(Date.now() + off * 1000 - i * 86400000).getUTCDay()]++;
@@ -842,7 +843,7 @@ router.get('/heatmap', (req, res) => {
 
 // Сводка: сервер, служба, хранилище и чат. Опрашивается реже графиков
 router.get('/overview', async (req, res) => {
-  const count = sql => db.prepare(sql).get().c;
+  const count = async sql => (await dal.get(sql)).c;
 
   // Кто в сети: соединения по людям — у одного человека бывает и компьютер, и телефон
   const avatarDir = path.join(path.dirname(DB_PATH), 'avatar');
@@ -869,11 +870,11 @@ router.get('/overview', async (req, res) => {
     // Отрицательный cache_size — предел в КиБ, положительный — в страницах
     sqliteCacheBytes: cacheSize < 0 ? -cacheSize * 1024 : cacheSize * pageSize,
     chat: {
-      users: count('SELECT COUNT(*) AS c FROM users WHERE is_bot IS NULL OR is_bot = 0'),
-      rooms: count("SELECT COUNT(*) AS c FROM chats WHERE type='room' AND parent_id IS NULL"),
-      groups: count("SELECT COUNT(*) AS c FROM chats WHERE type='group'"),
-      chats: count("SELECT COUNT(*) AS c FROM chats WHERE type='direct'"),
-      messages: count('SELECT COUNT(*) AS c FROM messages WHERE deleted = 0'),
+      users: (await count('SELECT COUNT(*) AS c FROM users WHERE is_bot IS NULL OR is_bot = 0')),
+      rooms: (await count("SELECT COUNT(*) AS c FROM chats WHERE type='room' AND parent_id IS NULL")),
+      groups: (await count("SELECT COUNT(*) AS c FROM chats WHERE type='group'")),
+      chats: (await count("SELECT COUNT(*) AS c FROM chats WHERE type='direct'")),
+      messages: (await count('SELECT COUNT(*) AS c FROM messages WHERE deleted = 0')),
       // Тот же счёт, что во вкладке «Файлы»: файлы на диске без миниатюр
       files: storage.files.count,
     },
@@ -888,8 +889,8 @@ function genToken() {
   return crypto.randomBytes(24).toString('base64url');
 }
 
-router.get('/webhooks', (req, res) => {
-  const webhooks = db.prepare(`
+router.get('/webhooks', async (req, res) => {
+  const webhooks = await dal.all(`
     SELECT w.id, w.token, w.chat_id, w.created_at,
       u.id as user_id, u.display_name as name, u.tag,
       c.name as chat_name, c.type as chat_type,
@@ -898,54 +899,53 @@ router.get('/webhooks', (req, res) => {
     JOIN users u ON u.id = w.user_id
     JOIN chats c ON c.id = w.chat_id
     ORDER BY w.created_at DESC
-  `).all();
+  `);
   // Сообщения бота по дням за неделю — видно, пишет ли внешняя система. По чату и времени:
   // бот пишет в один чат, и запрос идёт по индексу, а не перебором всех сообщений
   const since = Math.floor(Date.now() / 1000) - 7 * 86400;
-  const weekOf = db.prepare('SELECT CAST((sent_at - ?) / 86400 AS INTEGER) AS d, COUNT(*) AS n FROM messages WHERE chat_id = ? AND sender_id = ? AND sent_at >= ? GROUP BY d');
-  res.json(webhooks.map(w => {
+  const weekOf = 'SELECT CAST((sent_at - ?) / 86400 AS INTEGER) AS d, COUNT(*) AS n FROM messages WHERE chat_id = ? AND sender_id = ? AND sent_at >= ? GROUP BY d';
+  res.json((await Promise.all(webhooks.map(async w => {
     const week = [0, 0, 0, 0, 0, 0, 0];
-    weekOf.all(since, w.chat_id, w.user_id, since).forEach(r => { if (r.d >= 0 && r.d < 7) week[r.d] += r.n; });
+    (await dal.all(weekOf, since, w.chat_id, w.user_id, since)).forEach(r => { if (r.d >= 0 && r.d < 7) week[r.d] += r.n; });
     return { ...w, week, has_avatar: fs.existsSync(path.join(AVATAR_DIR, `${w.user_id}.jpg`)) };
-  }));
+  }))));
 });
 
-router.post('/webhooks', (req, res) => {
+router.post('/webhooks', async (req, res) => {
   const { name, tag, chat_id } = req.body;
   if (!name?.trim() || !chat_id) return res.status(400).json({ error: 'Missing fields' });
-  const chat = db.prepare("SELECT id FROM chats WHERE id = ? AND type IN ('group', 'room')").get(Number(chat_id));
+  const chat = await dal.get("SELECT id FROM chats WHERE id = ? AND type IN ('group', 'room')", Number(chat_id));
   if (!chat) return res.status(400).json({ error: 'Invalid chat: must be a group or room' });
 
   const botUsername = 'bot_' + crypto.randomBytes(6).toString('hex');
   const token = genToken();
 
-  const botResult = db.prepare("INSERT INTO users (username, password_hash, display_name, is_bot, tag) VALUES (?, ?, ?, 1, ?)")
-    .run(botUsername, '*', name.trim(), tag?.trim() || null);
+  const botResult = await dal.run("INSERT INTO users (username, password_hash, display_name, is_bot, tag) VALUES (?, ?, ?, 1, ?)", botUsername, '*', name.trim(), tag?.trim() || null);
   const botId = botResult.lastInsertRowid;
 
-  db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)').run(Number(chat_id), botId);
+  await dal.run('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)', Number(chat_id), botId);
 
-  const whResult = db.prepare('INSERT INTO webhooks (token, user_id, chat_id) VALUES (?, ?, ?)').run(token, botId, Number(chat_id));
+  const whResult = await dal.run('INSERT INTO webhooks (token, user_id, chat_id) VALUES (?, ?, ?)', token, botId, Number(chat_id));
   res.json({ id: Number(whResult.lastInsertRowid), token, user_id: Number(botId) });
 });
 
-router.delete('/webhooks/:id', (req, res) => {
-  const wh = db.prepare('SELECT id FROM webhooks WHERE id = ?').get(Number(req.params.id));
+router.delete('/webhooks/:id', async (req, res) => {
+  const wh = await dal.get('SELECT id FROM webhooks WHERE id = ?', Number(req.params.id));
   if (!wh) return res.status(404).json({ error: 'Not found' });
-  db.prepare('DELETE FROM webhooks WHERE id = ?').run(wh.id);
+  await dal.run('DELETE FROM webhooks WHERE id = ?', wh.id);
   res.json({ ok: true });
 });
 
-router.post('/webhooks/:id/regen-token', (req, res) => {
-  const wh = db.prepare('SELECT id FROM webhooks WHERE id = ?').get(Number(req.params.id));
+router.post('/webhooks/:id/regen-token', async (req, res) => {
+  const wh = await dal.get('SELECT id FROM webhooks WHERE id = ?', Number(req.params.id));
   if (!wh) return res.status(404).json({ error: 'Not found' });
   const newToken = genToken();
-  db.prepare('UPDATE webhooks SET token = ? WHERE id = ?').run(newToken, wh.id);
+  await dal.run('UPDATE webhooks SET token = ? WHERE id = ?', newToken, wh.id);
   res.json({ ok: true, token: newToken });
 });
 
-router.post('/webhooks/:id/avatar', (req, res) => {
-  const wh = db.prepare('SELECT user_id FROM webhooks WHERE id = ?').get(Number(req.params.id));
+router.post('/webhooks/:id/avatar', async (req, res) => {
+  const wh = await dal.get('SELECT user_id FROM webhooks WHERE id = ?', Number(req.params.id));
   if (!wh) return res.status(404).json({ error: 'Not found' });
   const { data } = req.body;
   if (!data) return res.status(400).json({ error: 'Missing data' });
@@ -957,66 +957,66 @@ router.post('/webhooks/:id/avatar', (req, res) => {
 });
 
 // ── Темы ──
-router.get('/topics/:roomId', (req, res) => {
+router.get('/topics/:roomId', async (req, res) => {
   const roomId = Number(req.params.roomId);
-  const room = db.prepare("SELECT id FROM chats WHERE id = ? AND type = 'room' AND parent_id IS NULL").get(roomId);
+  const room = await dal.get("SELECT id FROM chats WHERE id = ? AND type = 'room' AND parent_id IS NULL", roomId);
   if (!room) return res.status(404).json({ error: 'Not found' });
-  const topics = db.prepare('SELECT id, name, position FROM chats WHERE parent_id = ? ORDER BY position, id').all(roomId);
-  res.json(topics.map(s => ({
+  const topics = await dal.all('SELECT id, name, position FROM chats WHERE parent_id = ? ORDER BY position, id', roomId);
+  res.json((await Promise.all(topics.map(async s => ({
     ...s,
     has_avatar: fs.existsSync(path.join(AVATAR_DIR, `chat_${s.id}.jpg`)),
-    message_count: db.prepare('SELECT COUNT(*) as c FROM messages WHERE chat_id = ?').get(s.id).c,
-  })));
+    message_count: (await dal.get('SELECT COUNT(*) as c FROM messages WHERE chat_id = ?', s.id)).c,
+  })))));
 });
 
-router.post('/topics', (req, res) => {
+router.post('/topics', async (req, res) => {
   const { name, room_id } = req.body;
   if (!name?.trim() || !room_id) return res.status(400).json({ error: 'Missing fields' });
-  const room = db.prepare("SELECT id FROM chats WHERE id = ? AND type = 'room' AND parent_id IS NULL").get(Number(room_id));
+  const room = await dal.get("SELECT id FROM chats WHERE id = ? AND type = 'room' AND parent_id IS NULL", Number(room_id));
   if (!room) return res.status(400).json({ error: 'Invalid room' });
-  const maxPos = db.prepare('SELECT COALESCE(MAX(position), -1) as m FROM chats WHERE parent_id = ?').get(Number(room_id)).m;
-  const result = db.transaction(() => {
-    const r = db.prepare("INSERT INTO chats (type, name, parent_id, position) VALUES ('room', ?, ?, ?)").run(name.trim(), Number(room_id), maxPos + 1);
-    const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(Number(room_id));
-    const ins = db.prepare('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)');
-    members.forEach(({ user_id }) => ins.run(r.lastInsertRowid, user_id));
+  const maxPos = (await dal.get('SELECT COALESCE(MAX(position), -1) as m FROM chats WHERE parent_id = ?', Number(room_id))).m;
+  const result = await dal.tx(() => (async () => {
+    const r = await dal.run("INSERT INTO chats (type, name, parent_id, position) VALUES ('room', ?, ?, ?)", name.trim(), Number(room_id), maxPos + 1);
+    const members = await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ?', Number(room_id));
+    const ins = 'INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)';
+    for (const { user_id } of members) (await dal.run(ins, r.lastInsertRowid, user_id)) ;
     return r.lastInsertRowid;
-  })();
+  })());
   const { sendTo } = require('../ws');
-  db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(Number(room_id))
+  (await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ?', Number(room_id)))
     .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
-  const roomName = db.prepare('SELECT name FROM chats WHERE id = ?').get(Number(room_id))?.name || `#${room_id}`;
+  const roomName = (await dal.get('SELECT name FROM chats WHERE id = ?', Number(room_id)))?.name || `#${room_id}`;
   logAudit(req, 'rooms', 'Создание темы', `«${name.trim()}» в «${roomName}»`);
-  require('../fedgroups').sendState(db.prepare('SELECT * FROM chats WHERE id = ?').get(Number(room_id)));
+  await require('../fedgroups').sendState((await dal.get('SELECT * FROM chats WHERE id = ?', Number(room_id))));
   res.json({ id: Number(result) });
 });
 
-router.patch('/topics/:id', (req, res) => {
-  const sub = db.prepare('SELECT id, parent_id FROM chats WHERE id = ? AND parent_id IS NOT NULL').get(Number(req.params.id));
+router.patch('/topics/:id', async (req, res) => {
+  const sub = await dal.get('SELECT id, parent_id FROM chats WHERE id = ? AND parent_id IS NOT NULL', Number(req.params.id));
   if (!sub) return res.status(404).json({ error: 'Not found' });
   const { name } = req.body;
-  if (name?.trim()) db.prepare('UPDATE chats SET name = ? WHERE id = ?').run(name.trim(), sub.id);
+  if (name?.trim()) await dal.run('UPDATE chats SET name = ? WHERE id = ?', name.trim(), sub.id);
   const { sendTo } = require('../ws');
-  db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(sub.parent_id)
+  (await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ?', sub.parent_id))
     .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
-  require('../fedgroups').sendState(db.prepare('SELECT * FROM chats WHERE id = ?').get(sub.parent_id));
+  await require('../fedgroups').sendState((await dal.get('SELECT * FROM chats WHERE id = ?', sub.parent_id)));
   res.json({ ok: true });
 });
 
-router.delete('/topics/:id', (req, res) => {
-  const sub = db.prepare('SELECT id, parent_id, name FROM chats WHERE id = ? AND parent_id IS NOT NULL').get(Number(req.params.id));
+router.delete('/topics/:id', async (req, res) => {
+  const sub = await dal.get('SELECT id, parent_id, name FROM chats WHERE id = ? AND parent_id IS NOT NULL', Number(req.params.id));
   if (!sub) return res.status(404).json({ error: 'Not found' });
-  const members = db.prepare('SELECT user_id FROM chat_members WHERE chat_id = ?').all(sub.id);
-  deleteChatFiles(sub.id);
-  db.prepare('DELETE FROM chats WHERE id = ?').run(sub.id);
+  const members = await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ?', sub.id);
+  await deleteChatFiles(sub.id);
+  await dal.run('DELETE FROM chats WHERE id = ?', sub.id);
   members.forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
   logAudit(req, 'rooms', 'Удаление темы', `«${sub.name}»`);
-  require('../fedgroups').sendState(db.prepare('SELECT * FROM chats WHERE id = ?').get(sub.parent_id));
+  await require('../fedgroups').sendState((await dal.get('SELECT * FROM chats WHERE id = ?', sub.parent_id)));
   res.json({ ok: true });
 });
 
-router.post('/topics/:id/avatar', (req, res) => {
-  const sub = db.prepare('SELECT id FROM chats WHERE id = ? AND parent_id IS NOT NULL').get(Number(req.params.id));
+router.post('/topics/:id/avatar', async (req, res) => {
+  const sub = await dal.get('SELECT id FROM chats WHERE id = ? AND parent_id IS NOT NULL', Number(req.params.id));
   if (!sub) return res.status(404).json({ error: 'Not found' });
   const { data } = req.body;
   if (!data) return res.status(400).json({ error: 'Missing data' });
@@ -1026,13 +1026,13 @@ router.post('/topics/:id/avatar', (req, res) => {
   res.json({ ok: true });
 });
 
-router.post('/topics/reorder', (req, res) => {
+router.post('/topics/reorder', async (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids)) return res.status(400).json({ error: 'Invalid' });
-  const upd = db.prepare('UPDATE chats SET position = ? WHERE id = ? AND parent_id IS NOT NULL');
-  db.transaction(() => ids.forEach((id, i) => upd.run(i, id)))();
-  const first = ids.length && db.prepare('SELECT parent_id FROM chats WHERE id = ?').get(ids[0]);
-  if (first?.parent_id) require('../fedgroups').sendState(db.prepare('SELECT * FROM chats WHERE id = ?').get(first.parent_id));
+  const upd = 'UPDATE chats SET position = ? WHERE id = ? AND parent_id IS NOT NULL';
+  await dal.tx(async () => { for (const [i, id] of ids.entries()) await dal.run(upd, i, id); });
+  const first = ids.length && (await dal.get('SELECT parent_id FROM chats WHERE id = ?', ids[0]));
+  if (first?.parent_id) await require('../fedgroups').sendState((await dal.get('SELECT * FROM chats WHERE id = ?', first.parent_id)));
   res.json({ ok: true });
 });
 
@@ -1042,15 +1042,15 @@ router.post('/topics/reorder', (req, res) => {
 // привязки. Миниатюры (_t.webp у картинок, _t.jpg — кадр-превью у видео) не
 // считаются отдельными файлами. Одна функция на
 // дашборд и на вкладку — иначе счётчики расходятся, как было с миниатюрами.
-function collectFiles() {
-  const msgs = db.prepare(`
+async function collectFiles() {
+  const msgs = await dal.all(`
     SELECT m.id, m.chat_id, m.attachment, m.sent_at, m.sender_id,
            u.display_name as sender_name, c.name as chat_name, c.type as chat_type
     FROM messages m
     LEFT JOIN users u ON u.id = m.sender_id
     LEFT JOIN chats c ON c.id = m.chat_id
     WHERE m.attachment IS NOT NULL AND m.deleted = 0
-  `).all();
+  `);
 
   const fileMap = new Map();
   for (const msg of msgs) {
@@ -1082,11 +1082,11 @@ function collectFiles() {
   const directIds = [...new Set([...fileMap.values()].filter(f => f.chat_type === 'direct').map(f => f.chat_id))];
   if (directIds.length) {
     const ph = directIds.map(() => '?').join(',');
-    const rows = db.prepare(`
+    const rows = await dal.all(`
       SELECT cm.chat_id, COALESCE(u.display_name, 'Удалённый аккаунт') AS name
       FROM chat_members cm JOIN users u ON u.id = cm.user_id
       WHERE cm.chat_id IN (${ph}) ORDER BY cm.chat_id, u.display_name
-    `).all(...directIds);
+    `, ...directIds);
     const byChat = new Map();
     rows.forEach(r => { if (!byChat.has(r.chat_id)) byChat.set(r.chat_id, []); byChat.get(r.chat_id).push(r.name); });
     for (const f of fileMap.values()) {
@@ -1115,16 +1115,16 @@ function collectFiles() {
   return out.sort((a, b) => b.mtime - a.mtime);
 }
 
-router.get('/files', (req, res) => {
-  res.json(collectFiles());
+router.get('/files', async (req, res) => {
+  res.json((await collectFiles()));
 });
 
-router.delete('/files/:filename', (req, res) => {
+router.delete('/files/:filename', async (req, res) => {
   const filename = path.basename(req.params.filename);
   if (!filename) return res.status(400).json({ error: 'Invalid filename' });
 
-  const withAtt = db.prepare('SELECT id, chat_id FROM messages WHERE deleted = 0 AND attachment LIKE ?').all(`%${filename}%`);
-  const withFwd = db.prepare('SELECT id, chat_id, forward_data FROM messages WHERE deleted = 0 AND forward_data LIKE ?').all(`%${filename}%`);
+  const withAtt = await dal.all('SELECT id, chat_id FROM messages WHERE deleted = 0 AND attachment LIKE ?', `%${filename}%`);
+  const withFwd = await dal.all('SELECT id, chat_id, forward_data FROM messages WHERE deleted = 0 AND forward_data LIKE ?', `%${filename}%`);
 
   // Удалить файл и миниатюру с диска (webp у картинок, кадр-превью jpg у видео)
   const base = filename.replace(/\.[^.]+$/, '');
@@ -1139,7 +1139,7 @@ router.delete('/files/:filename', (req, res) => {
       const fd = JSON.parse(msg.forward_data);
       if (fd?.attachment?.url && path.basename(fd.attachment.url) === filename) {
         fd.attachment = { name: fd.attachment.name, mime: fd.attachment.mime, expired: true };
-        db.prepare('UPDATE messages SET forward_data = ? WHERE id = ?').run(JSON.stringify(fd), msg.id);
+        await dal.run('UPDATE messages SET forward_data = ? WHERE id = ?', JSON.stringify(fd), msg.id);
       }
     } catch {}
   }
@@ -1148,8 +1148,8 @@ router.delete('/files/:filename', (req, res) => {
   const allAffected = new Map();
   [...withAtt, ...withFwd].forEach(m => allAffected.set(m.id, m.chat_id));
   for (const [msgId, chatId] of allAffected) {
-    const updated = getMessageWithStatus(msgId, null);
-    if (updated) broadcast(chatId, { type: 'message_edited', message: updated });
+    const updated = await getMessageWithStatus(msgId, null);
+    if (updated) await broadcast(chatId, { type: 'message_edited', message: updated });
   }
 
   res.json({ ok: true });
@@ -1162,24 +1162,24 @@ router.delete('/files/:filename', (req, res) => {
 //
 // Отправка и планирование живут в announcements.js — сюда приходит уже разобранный
 // запрос. kind: popup | banner | chat, target: all | select.
-router.post('/announcement', (req, res) => {
-  const p = announcements.parseRequest(req.body, req.user.id);
+router.post('/announcement', async (req, res) => {
+  const p = await announcements.parseRequest(req.body, req.user.id);
   if (p.error) return res.status(p.status || 400).json({ error: p.error });
-  res.json({ ok: true, ...announcements.create(p) });
+  res.json({ ok: true, ...(await announcements.create(p)) });
 });
 
 // Журнал: все объявления всех типов, свежие сверху
-router.get('/announcements', (req, res) => {
-  res.json(announcements.journal());
+router.get('/announcements', async (req, res) => {
+  res.json((await announcements.journal()));
 });
 
-router.post('/announcements/:id/stop', (req, res) => {
-  if (!announcements.stop(Number(req.params.id))) return res.status(400).json({ error: 'Полоса уже не показывается' });
+router.post('/announcements/:id/stop', async (req, res) => {
+  if (!(await announcements.stop(Number(req.params.id)))) return res.status(400).json({ error: 'Полоса уже не показывается' });
   res.json({ ok: true });
 });
 
-router.delete('/announcements/:id', (req, res) => {
-  const ok = announcements.remove(Number(req.params.id));
+router.delete('/announcements/:id', async (req, res) => {
+  const ok = await announcements.remove(Number(req.params.id));
   if (!ok) return res.status(404).json({ error: 'Не найдено' });
   res.json({ ok: true });
 });
@@ -1216,8 +1216,8 @@ async function createBackup(kind = 'man') {
 // Срок хранения — вручную в днях, пусто/0 = хранить всегда (тот же принцип, что и у
 // upload_file_lifetime для файлов). Чистим после каждого создания копии и раз в 6 часов —
 // на случай, если новых копий долго не было, а старые всё равно должны истечь.
-function pruneBackups() {
-  const days = parseInt(db.prepare("SELECT value FROM settings WHERE key = 'backup_retention_days'").get()?.value || '0');
+async function pruneBackups() {
+  const days = parseInt((await dal.get("SELECT value FROM settings WHERE key = 'backup_retention_days'"))?.value || '0');
   if (!days) return;
   const cutoff = Date.now() - days * 86_400_000;
   for (const b of listBackups()) {
@@ -1234,7 +1234,7 @@ router.post('/backups', async (req, res) => {
   try {
     const name = await createBackup();
     console.log('[Backup] Создана копия:', name);
-    pruneBackups();
+    await pruneBackups();
     res.json({ ok: true, name, backups: listBackups() });
   } catch (e) {
     console.error('[Backup] Ошибка:', e.message);
@@ -1340,10 +1340,10 @@ router.post('/backups/restore/apply', (req, res) => {
 let _lastAutoBackupKey = null;
 function startBackupSchedule() {
   setInterval(async () => {
-    const daysRaw = db.prepare("SELECT value FROM settings WHERE key = 'backup_schedule_days'").get()?.value || '';
+    const daysRaw = (await dal.get("SELECT value FROM settings WHERE key = 'backup_schedule_days'"))?.value || '';
     const days = daysRaw.split(',').map(s => s.trim()).filter(Boolean).map(Number);
     if (!days.length) return;
-    const time = db.prepare("SELECT value FROM settings WHERE key = 'backup_schedule_time'").get()?.value || '';
+    const time = (await dal.get("SELECT value FROM settings WHERE key = 'backup_schedule_time'"))?.value || '';
     const m = /^(\d{2}):(\d{2})$/.exec(time);
     if (!m) return;
     const now = new Date();
@@ -1354,7 +1354,7 @@ function startBackupSchedule() {
     try {
       const name = await createBackup('auto');
       console.log('[Backup] Автоматическая копия создана:', name);
-      pruneBackups();
+      await pruneBackups();
     } catch (e) { console.error('[Backup] Ошибка автокопии:', e.message); }
   }, 30_000);
 }

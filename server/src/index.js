@@ -1,6 +1,9 @@
 const http = require('http');
 const express = require('express');
 require('./asyncsafe');
+// Фоновые задачи запуска, завершения которых ждём перед открытием порта
+const boot = [];
+const dal = require('./dal');
 // На время перевода на асинхронный слой данных: забытый await или сбой запроса
 // пишется в журнал, а не роняет весь сервер
 process.on('unhandledRejection', e => console.error('[Необработанная ошибка]', e));
@@ -79,12 +82,12 @@ app.use('/modules', express.static(path.join(__dirname, 'public/modules'), { max
 // Имя файла — timestamp+случайная строка, при новой загрузке никогда не переиспользуется,
 // поэтому старое имя гарантированно не сменит содержимое: можно кэшировать надолго
 // Зашифрованные файлы секретных чатов — только для участников чата, без публичного доступа
-app.get('/files/enc_:name', require('./auth').authMiddleware, (req, res) => {
+app.get('/files/enc_:name', require('./auth').authMiddleware, async (req, res) => {
   const url = `/files/enc_${req.params.name}`;
-  const row = require('./db').prepare(`
+  const row = await dal.get(`
     SELECT m.chat_id FROM messages m WHERE m.attachment LIKE ? LIMIT 1
-  `).get(`%"url":"${url}"%`);
-  if (!row || !require('./db').prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(row.chat_id, req.user.id))
+  `, `%"url":"${url}"%`);
+  if (!row || !(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', row.chat_id, req.user.id)))
     return res.status(404).end();
   res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
   res.sendFile(path.join(FILES_DIR, `enc_${req.params.name}`), err => { if (err) res.status(404).end(); });
@@ -123,7 +126,7 @@ app.use('/api/chats', require('./routes/chats'));
 app.use('/api/messages', require('./routes/messages'));
 const uploadRouter = require('./routes/upload');
 app.use('/api/upload', uploadRouter);
-uploadRouter.startCleanupJob();
+boot.push(uploadRouter.startCleanupJob());
 const adminRouter = require('./routes/admin');
 app.use('/api/admin', adminRouter);
 adminRouter.startBackupSchedule();
@@ -152,17 +155,17 @@ app.get('/api/release-notes', (req, res) => {
 
 require('./ws').setup(server);
 // Межсерверные соединения (федерация) приходят на /fed того же порта
-require('./federation').mount(server);
+boot.push(require('./federation').mount(server));
 // Отложенные объявления живут в базе; планировщик поднимает наступившие,
 // в том числе те, чьё время пришло, пока сервер был выключен.
-require('./announcements').startScheduler();
+boot.push(require('./announcements').startScheduler());
 // Нагрузка сервера для живых графиков на главной админки; история переживает перезапуск
 const monitor = require('./monitor');
 monitor.setOnlineProvider(require('./ws').onlineUserCount);
 monitor.start();
 
 const PORT = process.env.PORT || 3000;
-require('./auth').init().then(() => server.listen(PORT, () => {
+require('./auth').init().then(() => Promise.all(boot)).then(() => server.listen(PORT, () => {
   console.log(`Electron server running on http://0.0.0.0:${PORT}`);
   console.log(`Admin panel: http://localhost:${PORT}/admin`);
 })).catch(e => { console.error('[Старт] не удалось запустить сервер:', e); process.exit(1); });

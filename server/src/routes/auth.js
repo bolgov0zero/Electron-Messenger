@@ -1,16 +1,16 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
-const db = require('../db');
+const dal = require('../dal');
 // Пространство человека: клиент сравнивает его с пространством остальных, чтобы делить список на «своих» и «из других»
 // Имя системы (задаётся в админке, раздел «Федерации») клиент показывает в подсказке бара учётных записей
-const serverName = () => db.prepare("SELECT value FROM settings WHERE key = 'fed_name'").get()?.value || '';
+const serverName = async () => (await dal.get("SELECT value FROM settings WHERE key = 'fed_name'"))?.value || '';
 // Идентификатор сервера (если настроена федерация): из него клиент собирает внешнюю ссылку на профиль «@сервер:логин»
-const serverId = () => db.prepare("SELECT value FROM settings WHERE key = 'fed_id'").get()?.value || '';
+const serverId = async () => (await dal.get("SELECT value FROM settings WHERE key = 'fed_id'"))?.value || '';
 // workspace_id / workspace_name — основное пространство (их читают старые клиенты); workspaces — все пространства человека
-const wsInfo = id => ({
-  ...(db.prepare('SELECT u.workspace_id, w.name AS workspace_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE u.id = ?').get(id) || {}),
-  workspaces: db.prepare('SELECT w.id, w.name FROM user_workspaces m JOIN workspaces w ON w.id = m.workspace_id WHERE m.user_id = ? ORDER BY w.id').all(id),
-  server_name: serverName(), server_id: serverId(),
+const wsInfo = async id => ({
+  ...((await dal.get('SELECT u.workspace_id, w.name AS workspace_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE u.id = ?', id)) || {}),
+  workspaces: (await dal.all('SELECT w.id, w.name FROM user_workspaces m JOIN workspaces w ON w.id = m.workspace_id WHERE m.user_id = ? ORDER BY w.id', id)),
+  server_name: (await serverName()), server_id: (await serverId()),
 });
 const { signToken, authMiddleware, signChallengeToken, verifyChallengeToken } = require('../auth');
 const totp = require('../totp');
@@ -57,7 +57,7 @@ function checkRateLimit(req) {
   return true;
 }
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   // Проверяем rate limit перед обработкой запроса
   if (!checkRateLimit(req)) {
     return res.status(429).json({ error: 'Too many attempts, try again later' });
@@ -66,7 +66,7 @@ router.post('/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Missing fields' });
 
-  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+  const user = await dal.get('SELECT * FROM users WHERE username = ?', username);
   if (!user || !bcrypt.compareSync(password, user.password_hash))
     return res.status(401).json({ error: 'Invalid credentials' });
   // Заблокированный отсекается здесь, а не позже: раньше вход «удавался»,
@@ -86,7 +86,7 @@ router.post('/login', (req, res) => {
   }
 
   const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin });
-  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, ...wsInfo(user.id) } });
+  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, ...(await wsInfo(user.id)) } });
 });
 
 // ── 2FA (только вход в админ-панель) ──
@@ -94,48 +94,48 @@ router.post('/login', (req, res) => {
 // Шаг 1 настройки: выдаём ещё не подтверждённый секрет (повторный вызов с тем
 // же challenge_token отдаёт тот же секрет, а не новый — иначе открытые
 // одновременно вкладка с QR и форма ввода кода разъехались бы по разным ключам)
-router.post('/totp/setup', (req, res) => {
+router.post('/totp/setup', async (req, res) => {
   let payload;
   try { payload = verifyChallengeToken(req.body.challenge_token, 'totp_setup'); }
   catch { return res.status(401).json({ error: 'Истёк или недействителен, войдите заново' }); }
-  const user = db.prepare('SELECT id, username, totp_pending_secret FROM users WHERE id = ?').get(payload.id);
+  const user = await dal.get('SELECT id, username, totp_pending_secret FROM users WHERE id = ?', payload.id);
   if (!user) return res.status(401).json({ error: 'Пользователь не найден' });
   let secret = user.totp_pending_secret;
   if (!secret) {
     secret = totp.generateSecret();
-    db.prepare('UPDATE users SET totp_pending_secret = ? WHERE id = ?').run(secret, user.id);
+    await dal.run('UPDATE users SET totp_pending_secret = ? WHERE id = ?', secret, user.id);
   }
   res.json({ secret, otpauth_url: totp.otpauthUrl(secret, user.username) });
 });
 
 // Шаг 2 настройки: код подтверждён — секрет становится постоянным, сразу выдаём сессию
-router.post('/totp/confirm', (req, res) => {
+router.post('/totp/confirm', async (req, res) => {
   if (!checkRateLimit(req)) return res.status(429).json({ error: 'Too many attempts, try again later' });
   let payload;
   try { payload = verifyChallengeToken(req.body.challenge_token, 'totp_setup'); }
   catch { return res.status(401).json({ error: 'Истёк или недействителен, войдите заново' }); }
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(payload.id);
+  const user = await dal.get('SELECT * FROM users WHERE id = ?', payload.id);
   if (!user || !user.totp_pending_secret) return res.status(400).json({ error: 'Сначала запросите секрет' });
   if (!totp.verifyTotp(user.totp_pending_secret, req.body.code))
     return res.status(401).json({ error: 'Неверный код' });
-  db.prepare('UPDATE users SET totp_secret = ?, totp_pending_secret = NULL WHERE id = ?').run(user.totp_pending_secret, user.id);
+  await dal.run('UPDATE users SET totp_secret = ?, totp_pending_secret = NULL WHERE id = ?', user.totp_pending_secret, user.id);
   logAudit({ user: { id: user.id }, ip: req.ip }, 'security', 'Настройка 2FA', user.display_name);
   const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin });
-  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, ...wsInfo(user.id) } });
+  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, ...(await wsInfo(user.id)) } });
 });
 
 // Обычный вход при уже настроенной 2FA — просто проверка кода
-router.post('/totp/verify', (req, res) => {
+router.post('/totp/verify', async (req, res) => {
   if (!checkRateLimit(req)) return res.status(429).json({ error: 'Too many attempts, try again later' });
   let payload;
   try { payload = verifyChallengeToken(req.body.challenge_token, 'totp_verify'); }
   catch { return res.status(401).json({ error: 'Истёк или недействителен, войдите заново' }); }
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(payload.id);
+  const user = await dal.get('SELECT * FROM users WHERE id = ?', payload.id);
   if (!user || !user.totp_secret) return res.status(400).json({ error: '2FA не настроена' });
   if (!totp.verifyTotp(user.totp_secret, req.body.code))
     return res.status(401).json({ error: 'Неверный код' });
   const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin });
-  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, ...wsInfo(user.id) } });
+  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, ...(await wsInfo(user.id)) } });
 });
 
 router.get('/refresh', authMiddleware, (req, res) => {
@@ -143,15 +143,15 @@ router.get('/refresh', authMiddleware, (req, res) => {
   res.json({ token, must_change_password: !!req.user.must_change_password });
 });
 
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   const auth = req.headers.authorization?.split(' ')[1];
   if (!auth) return res.status(401).json({ error: 'No token' });
   try {
     const { verifyToken } = require('../auth');
     const payload = verifyToken(auth);
-    const user = db.prepare('SELECT id, username, display_name, is_admin, tag, must_change_password, can_announce FROM users WHERE id = ?').get(payload.id);
+    const user = await dal.get('SELECT id, username, display_name, is_admin, tag, must_change_password, can_announce FROM users WHERE id = ?', payload.id);
     if (!user) return res.status(401).json({ error: 'User not found' });
-    res.json({ ...user, is_admin: !!user.is_admin, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, ...wsInfo(user.id) });
+    res.json({ ...user, is_admin: !!user.is_admin, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, ...(await wsInfo(user.id)) });
   } catch { res.status(401).json({ error: 'Invalid token' }); }
 });
 

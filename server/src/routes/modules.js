@@ -7,9 +7,10 @@
 //
 // Журнал module_events: включение и выключение (админом и пользователем), начало загрузки и
 // её ошибка. Окончание загрузки намеренно не пишем. Храним год.
+const { filterAsync } = require('../aiter.js');
 const path = require('path');
 const fs = require('fs');
-const db = require('../db');
+const dal = require('../dal');
 const { authMiddleware, adminMiddleware } = require('../auth');
 const { logAudit } = require('../audit');
 
@@ -36,15 +37,14 @@ function pack(key) {
   } catch { return { version: 0, count: 0, bytes: 0 }; }
 }
 
-const isOn = key => !!db.prepare('SELECT enabled FROM modules WHERE key = ?').get(key)?.enabled && (key !== 'gif' || !!gifLib.getKey());
+const isOn = async key => !!(await dal.get('SELECT enabled FROM modules WHERE key = ?', key))?.enabled && (key !== 'gif' || !!(await gifLib.getKey()));
 
-function logEvent(key, req, ev) {
-  db.prepare('INSERT INTO module_events (module, user_id, device_id, client, version, event, detail) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(key, req.user?.id || null, ev.device_id || null, ev.client || null, ev.version || null, ev.event, ev.detail || null);
+async function logEvent(key, req, ev) {
+  await dal.run('INSERT INTO module_events (module, user_id, device_id, client, version, event, detail) VALUES (?, ?, ?, ?, ?, ?, ?)', key, req.user?.id || null, ev.device_id || null, ev.client || null, ev.version || null, ev.event, ev.detail || null);
 }
 
-const cleanup = () => {
-  try { db.prepare('DELETE FROM module_events WHERE created_at < unixepoch() - ?').run(KEEP_DAYS * 86400); }
+const cleanup = async () => {
+  try { await dal.run('DELETE FROM module_events WHERE created_at < unixepoch() - ?', KEEP_DAYS * 86400); }
   catch (e) { console.warn('[Modules] не удалось почистить журнал:', e.message); }
 };
 cleanup();
@@ -56,38 +56,37 @@ const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
 const user = require('express').Router();
 
 // Что доступно этому пользователю: только включённые админом модули
-user.get('/', authMiddleware, (req, res) => {
-  res.json(Object.entries(REGISTRY).filter(([k]) => isOn(k)).map(([k, m]) => ({
+user.get('/', authMiddleware, async (req, res) => {
+  res.json((await Promise.all((await filterAsync(Object.entries(REGISTRY), async ([k]) => (await isOn(k)))).map(async ([k, m]) => ({
     key: k, title: m.title, description: m.description, icon: m.icon, note: m.note, needsDownload: m.needsDownload, provider: m.provider || null,
     base: `/modules/${k}`, ...pack(k),
     // Ключ Klipy нужен клиенту: по условиям сервиса запросы идут с устройства пользователя
-    ...(k === 'gif' ? { config: { provider: 'klipy', key: gifLib.getKey() } } : {}),
-  })));
+    ...(k === 'gif' ? { config: { provider: 'klipy', key: (await gifLib.getKey()) } } : {}),
+  })))));
 });
 
 // Клиент сообщает, включён ли модуль на этом устройстве
-user.post('/:key/device', authMiddleware, (req, res) => {
+user.post('/:key/device', authMiddleware, async (req, res) => {
   const key = req.params.key;
-  if (!REGISTRY[key] || !isOn(key)) return res.status(404).json({ error: 'Модуль недоступен' });
+  if (!REGISTRY[key] || !(await isOn(key))) return res.status(404).json({ error: 'Модуль недоступен' });
   const device_id = str(req.body?.device_id, 64), client = str(req.body?.client, 16), version = str(req.body?.version, 32);
   const enabled = req.body?.enabled ? 1 : 0;
   const packVer = str(String(req.body?.pack ?? ''), 16);
   if (!device_id || !CLIENTS.includes(client)) return res.status(400).json({ error: 'Неверные данные' });
-  const prev = db.prepare('SELECT enabled FROM module_devices WHERE module = ? AND user_id = ? AND device_id = ?').get(key, req.user.id, device_id);
-  db.prepare(`INSERT INTO module_devices (module, user_id, device_id, client, version, enabled, pack_version, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch())
-    ON CONFLICT(module, user_id, device_id) DO UPDATE SET client = excluded.client, version = excluded.version, enabled = excluded.enabled, pack_version = excluded.pack_version, updated_at = unixepoch()`)
-    .run(key, req.user.id, device_id, client, version, enabled, packVer);
-  if ((prev ? !!prev.enabled : false) !== !!enabled) logEvent(key, req, { device_id, client, version, event: enabled ? 'user_on' : 'user_off' });
+  const prev = await dal.get('SELECT enabled FROM module_devices WHERE module = ? AND user_id = ? AND device_id = ?', key, req.user.id, device_id);
+  await dal.run(`INSERT INTO module_devices (module, user_id, device_id, client, version, enabled, pack_version, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch())
+    ON CONFLICT(module, user_id, device_id) DO UPDATE SET client = excluded.client, version = excluded.version, enabled = excluded.enabled, pack_version = excluded.pack_version, updated_at = unixepoch()`, key, req.user.id, device_id, client, version, enabled, packVer);
+  if ((prev ? !!prev.enabled : false) !== !!enabled) await logEvent(key, req, { device_id, client, version, event: enabled ? 'user_on' : 'user_off' });
   res.json({ ok: true });
 });
 
 // Начало загрузки (или обновления) набора и её ошибка (только Electron: веб и мобильный подгружают по мере показа)
-user.post('/:key/event', authMiddleware, (req, res) => {
+user.post('/:key/event', authMiddleware, async (req, res) => {
   const key = req.params.key;
-  if (!REGISTRY[key] || !isOn(key)) return res.status(404).json({ error: 'Модуль недоступен' });
+  if (!REGISTRY[key] || !(await isOn(key))) return res.status(404).json({ error: 'Модуль недоступен' });
   const event = req.body?.event;
   if (!['download_start', 'download_error', 'update_start', 'update_error'].includes(event)) return res.status(400).json({ error: 'Неверное событие' });
-  logEvent(key, req, { device_id: str(req.body?.device_id, 64), client: str(req.body?.client, 16), version: str(req.body?.version, 32), event, detail: str(req.body?.detail, 200) });
+  await logEvent(key, req, { device_id: str(req.body?.device_id, 64), client: str(req.body?.client, 16), version: str(req.body?.version, 32), event, detail: str(req.body?.detail, 200) });
   res.json({ ok: true });
 });
 
@@ -95,37 +94,36 @@ user.post('/:key/event', authMiddleware, (req, res) => {
 const admin = require('express').Router();
 admin.use(authMiddleware, adminMiddleware);
 
-function stats(key) {
-  const one = sql => db.prepare(sql).get(key);
-  const users = one("SELECT COUNT(DISTINCT user_id) n FROM module_devices WHERE module = ? AND enabled = 1").n;
-  const by = Object.fromEntries(CLIENTS.map(c => [c, db.prepare("SELECT COUNT(DISTINCT user_id) n FROM module_devices WHERE module = ? AND enabled = 1 AND client = ?").get(key, c).n]));
-  const total = db.prepare("SELECT COUNT(*) n FROM users WHERE is_bot = 0 AND COALESCE(banned, 0) = 0").get().n;
-  const errors = db.prepare("SELECT COUNT(*) n FROM module_events WHERE module = ? AND event = 'download_error' AND created_at > unixepoch() - 30 * 86400").get(key).n;
+async function stats(key) {
+  const one = async sql => (await dal.get(sql, key));
+  const users = (await one("SELECT COUNT(DISTINCT user_id) n FROM module_devices WHERE module = ? AND enabled = 1")).n;
+  const by = Object.fromEntries((await Promise.all(CLIENTS.map(async c => [c, (await dal.get("SELECT COUNT(DISTINCT user_id) n FROM module_devices WHERE module = ? AND enabled = 1 AND client = ?", key, c)).n]))));
+  const total = (await dal.get("SELECT COUNT(*) n FROM users WHERE is_bot = 0 AND COALESCE(banned, 0) = 0")).n;
+  const errors = (await dal.get("SELECT COUNT(*) n FROM module_events WHERE module = ? AND event = 'download_error' AND created_at > unixepoch() - 30 * 86400", key)).n;
   // Устройства с включённым модулем, у которых набор не той версии, что сейчас на сервере
   const cur = String(pack(key).version);
-  const outdated = db.prepare("SELECT COUNT(*) n FROM module_devices WHERE module = ? AND enabled = 1 AND COALESCE(pack_version, '') != ?").get(key, cur).n;
+  const outdated = (await dal.get("SELECT COUNT(*) n FROM module_devices WHERE module = ? AND enabled = 1 AND COALESCE(pack_version, '') != ?", key, cur)).n;
   return { users, total, byClient: by, errors30d: errors, outdated };
 }
 
-admin.get('/', (req, res) => {
-  res.json(Object.entries(REGISTRY).map(([k, m]) => ({
+admin.get('/', async (req, res) => {
+  res.json((await Promise.all(Object.entries(REGISTRY).map(async ([k, m]) => ({
     key: k, title: m.title, description: m.description, needsDownload: m.needsDownload,
-    enabled: isOn(k), ...pack(k), stats: stats(k), keepDays: KEEP_DAYS, icon: REGISTRY[k].icon, provider: REGISTRY[k].provider || null,
-    ...(k === 'gif' ? { config: { hasKey: !!gifLib.getKey(), tail: gifLib.getKey().slice(-4) } } : {}),
-  })));
+    enabled: (await isOn(k)), ...pack(k), stats: (await stats(k)), keepDays: KEEP_DAYS, icon: REGISTRY[k].icon, provider: REGISTRY[k].provider || null,
+    ...(k === 'gif' ? { config: { hasKey: !!(await gifLib.getKey()), tail: (await gifLib.getKey()).slice(-4) } } : {}),
+  })))));
 });
 
-admin.put('/:key', (req, res) => {
+admin.put('/:key', async (req, res) => {
   const key = req.params.key;
   if (!REGISTRY[key]) return res.status(404).json({ error: 'Нет такого модуля' });
   const enabled = req.body?.enabled ? 1 : 0;
-  if (key === 'gif' && enabled && !gifLib.getKey()) return res.status(400).json({ error: 'Сначала сохраните API-ключ Klipy' });
-  const was = isOn(key);
-  db.prepare(`INSERT INTO modules (key, enabled, updated_at, updated_by) VALUES (?, ?, unixepoch(), ?)
-    ON CONFLICT(key) DO UPDATE SET enabled = excluded.enabled, updated_at = unixepoch(), updated_by = excluded.updated_by`)
-    .run(key, enabled, req.user.id);
+  if (key === 'gif' && enabled && !(await gifLib.getKey())) return res.status(400).json({ error: 'Сначала сохраните API-ключ Klipy' });
+  const was = await isOn(key);
+  await dal.run(`INSERT INTO modules (key, enabled, updated_at, updated_by) VALUES (?, ?, unixepoch(), ?)
+    ON CONFLICT(key) DO UPDATE SET enabled = excluded.enabled, updated_at = unixepoch(), updated_by = excluded.updated_by`, key, enabled, req.user.id);
   if (was !== !!enabled) {
-    logEvent(key, req, { client: 'admin', event: enabled ? 'admin_on' : 'admin_off' });
+    await logEvent(key, req, { client: 'admin', event: enabled ? 'admin_on' : 'admin_off' });
     logAudit(req, 'server', `Модуль «${REGISTRY[key].title}»`, enabled ? 'включён' : 'выключен');
     // Клиенты узнают сразу, без перезапуска: заново спрашивают список модулей
     try { require('../ws').broadcastAll({ type: 'modules_changed' }); } catch (e) { console.warn('[Modules] не удалось разослать:', e.message); }
@@ -134,23 +132,23 @@ admin.put('/:key', (req, res) => {
 });
 
 // Ключ целиком получает только администратор: для проверки с его устройства (клиентам он и так выдаётся при включении модуля)
-admin.get('/gif/key', (req, res) => res.json({ key: gifLib.getKey() }));
+admin.get('/gif/key', async (req, res) => res.json({ key: (await gifLib.getKey()) }));
 
 // API-ключ Klipy: сохранить, заменить или удалить (без ключа модуль выключается)
-admin.put('/gif/key', (req, res) => {
+admin.put('/gif/key', async (req, res) => {
   const key = typeof req.body?.key === 'string' ? req.body.key.trim() : '';
   if (key.length < 8 || key.length > 200 || !/^[\w.~-]+$/.test(key)) return res.status(400).json({ error: 'Ключ выглядит неверно: латиница, цифры и - _ . ~, не короче 8 символов' });
-  const had = !!gifLib.getKey();
-  gifLib.setKey(key);
+  const had = !!(await gifLib.getKey());
+  await gifLib.setKey(key);
   logAudit(req, 'server', 'Модуль «GIF»', had ? 'API-ключ Klipy заменён' : 'API-ключ Klipy сохранён');
   try { require('../ws').broadcastAll({ type: 'modules_changed' }); } catch {}
   res.json({ ok: true, hasKey: true, tail: key.slice(-4) });
 });
-admin.delete('/gif/key', (req, res) => {
-  if (!gifLib.getKey()) return res.json({ ok: true });
-  gifLib.setKey('');
-  db.prepare("UPDATE modules SET enabled = 0, updated_at = unixepoch(), updated_by = ? WHERE key = 'gif'").run(req.user.id);
-  logEvent('gif', req, { client: 'admin', event: 'admin_off' });
+admin.delete('/gif/key', async (req, res) => {
+  if (!(await gifLib.getKey())) return res.json({ ok: true });
+  await gifLib.setKey('');
+  await dal.run("UPDATE modules SET enabled = 0, updated_at = unixepoch(), updated_by = ? WHERE key = 'gif'", req.user.id);
+  await logEvent('gif', req, { client: 'admin', event: 'admin_off' });
   logAudit(req, 'server', 'Модуль «GIF»', 'API-ключ Klipy удалён, модуль выключен');
   try { require('../ws').broadcastAll({ type: 'modules_changed' }); } catch {}
   res.json({ ok: true });
@@ -158,7 +156,7 @@ admin.delete('/gif/key', (req, res) => {
 
 const EVENT_GROUPS = { on: ['admin_on', 'user_on'], off: ['admin_off', 'user_off'], dl: ['download_start', 'update_start'], err: ['download_error', 'update_error'] };
 
-admin.get('/:key/log', (req, res) => {
+admin.get('/:key/log', async (req, res) => {
   const key = req.params.key;
   if (!REGISTRY[key]) return res.status(404).json({ error: 'Нет такого модуля' });
   const where = ['e.module = ?'], args = [key];
@@ -170,9 +168,9 @@ admin.get('/:key/log', (req, res) => {
   const q = str(req.query.q, 60).trim().toLowerCase();
   if (q) { where.push('(LOWER(u.display_name) LIKE ? OR LOWER(u.username) LIKE ? OR LOWER(COALESCE(e.client, \'\')) LIKE ?)'); args.push(`%${q}%`, `%${q}%`, `%${q}%`); }
   const from = `FROM module_events e LEFT JOIN users u ON u.id = e.user_id WHERE ${where.join(' AND ')}`;
-  const total = db.prepare(`SELECT COUNT(*) n ${from}`).get(...args).n;
+  const total = (await dal.get(`SELECT COUNT(*) n ${from}`, ...args)).n;
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200), offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
-  const rows = db.prepare(`SELECT e.id, e.created_at, e.client, e.version, e.event, e.detail, u.id user_id, u.display_name, u.username ${from} ORDER BY e.id DESC LIMIT ? OFFSET ?`).all(...args, limit, offset);
+  const rows = await dal.all(`SELECT e.id, e.created_at, e.client, e.version, e.event, e.detail, u.id user_id, u.display_name, u.username ${from} ORDER BY e.id DESC LIMIT ? OFFSET ?`, ...args, limit, offset);
   res.json({ total, rows });
 });
 

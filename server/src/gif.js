@@ -4,15 +4,15 @@
 //
 // Условия Klipy требуют, чтобы запросы к их API и загрузка картинок шли с устройства пользователя, поэтому поиск
 // сервер не проксирует и не кэширует.
-const db = require('./db');
+const dal = require('./dal');
 
 const KEY = 'gif_klipy_key';
-const getKey = () => db.prepare('SELECT value FROM settings WHERE key = ?').get(KEY)?.value || '';
-function setKey(v) {
-  if (!v) db.prepare('DELETE FROM settings WHERE key = ?').run(KEY);
-  else db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(KEY, v);
+const getKey = async () => (await dal.get('SELECT value FROM settings WHERE key = ?', KEY))?.value || '';
+async function setKey(v) {
+  if (!v) await dal.run('DELETE FROM settings WHERE key = ?', KEY);
+  else await dal.run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', KEY, v);
 }
-const isOn = () => !!db.prepare("SELECT enabled FROM modules WHERE key = 'gif'").get()?.enabled && !!getKey();
+const isOn = async () => !!(await dal.get("SELECT enabled FROM modules WHERE key = 'gif'"))?.enabled && !!(await getKey());
 
 // Ссылка допустима, если это https-адрес на домене klipy.com (или его поддомене), без лишнего
 function klipyUrl(u) {

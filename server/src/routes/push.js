@@ -2,36 +2,41 @@
 
 const router = require('express').Router();
 const webpush = require('web-push');
-const db = require('../db');
+const dal = require('../dal');
 const { authMiddleware } = require('../auth');
 
 // ── VAPID ключи: генерируем один раз, храним в settings ──
-function getOrCreateVapidKeys() {
-  const pubRow  = db.prepare("SELECT value FROM settings WHERE key = 'vapid_public'").get();
-  const privRow = db.prepare("SELECT value FROM settings WHERE key = 'vapid_private'").get();
+async function getOrCreateVapidKeys() {
+  const pubRow  = await dal.get("SELECT value FROM settings WHERE key = 'vapid_public'");
+  const privRow = await dal.get("SELECT value FROM settings WHERE key = 'vapid_private'");
   if (pubRow && privRow) {
     return { publicKey: pubRow.value, privateKey: privRow.value };
   }
   const keys = webpush.generateVAPIDKeys();
-  const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
-  upsert.run('vapid_public',  keys.publicKey);
-  upsert.run('vapid_private', keys.privateKey);
+  const upsert = 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)';
+  await dal.run(upsert, 'vapid_public',  keys.publicKey);
+  await dal.run(upsert, 'vapid_private', keys.privateKey);
   return keys;
 }
 
 const VAPID_CONTACT = 'mailto:bolgov@me.com';
 
-const vapidKeys = getOrCreateVapidKeys();
+// Ключи читаются из базы асинхронно; рассылка идёт уже после запуска сервера
+let vapidKeys = null;
+const vapidReady = (async () => {
+  vapidKeys = await getOrCreateVapidKeys();
 
-// Если контакт сменился — все старые подписки невалидны, сбрасываем
-const savedContact = db.prepare("SELECT value FROM settings WHERE key = 'vapid_contact'").get()?.value;
-if (savedContact !== VAPID_CONTACT) {
-  const wiped = db.prepare('DELETE FROM push_subscriptions').run().changes;
-  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('vapid_contact', ?)").run(VAPID_CONTACT);
-  if (wiped) console.warn(`[Push] VAPID contact изменился (${savedContact} → ${VAPID_CONTACT}): удалено подписок: ${wiped}. Пользователи переподпишутся при следующем открытии PWA.`);
-}
+  // Если контакт сменился — все старые подписки невалидны, сбрасываем
+  const savedContact = (await dal.get("SELECT value FROM settings WHERE key = 'vapid_contact'"))?.value;
+  if (savedContact !== VAPID_CONTACT) {
+    const wiped = (await dal.run('DELETE FROM push_subscriptions')).changes;
+    await dal.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('vapid_contact', ?)", VAPID_CONTACT);
+    if (wiped) console.warn(`[Push] VAPID contact изменился (${savedContact} → ${VAPID_CONTACT}): удалено подписок: ${wiped}. Пользователи переподпишутся при следующем открытии PWA.`);
+  }
 
-webpush.setVapidDetails(VAPID_CONTACT, vapidKeys.publicKey, vapidKeys.privateKey);
+  webpush.setVapidDetails(VAPID_CONTACT, vapidKeys.publicKey, vapidKeys.privateKey);
+})();
+vapidReady.catch(e => console.error('[Push] не удалось настроить VAPID:', e));
 
 // Декларативный Web Push (Safari 18.4+): адрес для открытия указан прямо в уведомлении (navigate), и нажатие на него
 // не зависит от service worker, который на iOS событие нажатия не всегда получает. Старое содержимое (title, body, chatId,
@@ -50,8 +55,8 @@ function buildPayload(appUrl, payload) {
 }
 
 // Настройки уведомлений человека: показывать ли текст и тихие часы
-function getPrefs(userId) {
-  const r = db.prepare('SELECT show_text, quiet_from, quiet_to, tz FROM push_prefs WHERE user_id = ?').get(userId);
+async function getPrefs(userId) {
+  const r = await dal.get('SELECT show_text, quiet_from, quiet_to, tz FROM push_prefs WHERE user_id = ?', userId);
   return { show_text: r ? !!r.show_text : true, quiet_from: r?.quiet_from ?? null, quiet_to: r?.quiet_to ?? null, tz: r?.tz || null };
 }
 function inQuietHours(p, now = new Date()) {
@@ -65,17 +70,17 @@ function inQuietHours(p, now = new Date()) {
 }
 
 // Экспортируем для использования в ws.js
-function sendPushToUser(userId, payload) {
-  const prefs = getPrefs(userId);
+async function sendPushToUser(userId, payload) {
+  const prefs = await getPrefs(userId);
   if (inQuietHours(prefs)) return;                       // тихие часы: уведомлений нет вообще
   if (!prefs.show_text) payload = { ...payload, body: 'Новое сообщение' };
-  const subs = db.prepare('SELECT endpoint, keys, app_url FROM push_subscriptions WHERE user_id = ?').all(userId);
+  const subs = await dal.all('SELECT endpoint, keys, app_url FROM push_subscriptions WHERE user_id = ?', userId);
   subs.forEach(row => {
     const sub = { endpoint: row.endpoint, keys: JSON.parse(row.keys) };
-    webpush.sendNotification(sub, JSON.stringify(buildPayload(row.app_url, payload))).catch(err => {
+    webpush.sendNotification(sub, JSON.stringify(buildPayload(row.app_url, payload))).catch(async err => {
       if (err.statusCode === 410 || err.statusCode === 404) {
         // Подписка истекла на стороне браузера — удаляем
-        db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').run(row.endpoint);
+        await dal.run('DELETE FROM push_subscriptions WHERE endpoint = ?', row.endpoint);
       } else {
         console.error('[Push] sendNotification failed:', err.statusCode, err.message, row.endpoint.slice(0, 60));
       }
@@ -86,14 +91,15 @@ function sendPushToUser(userId, payload) {
 // ── ROUTES ──
 
 // Публичный VAPID-ключ (без авторизации — нужен до входа для SW)
-router.get('/vapid-public-key', (req, res) => {
+router.get('/vapid-public-key', async (req, res) => {
+  await vapidReady;
   res.json({ key: vapidKeys.publicKey });
 });
 
 router.use(authMiddleware);
 
 // Сохранить подписку
-router.post('/subscribe', (req, res) => {
+router.post('/subscribe', async (req, res) => {
   const { endpoint, keys } = req.body;
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
     return res.status(400).json({ error: 'Invalid subscription' });
@@ -104,56 +110,55 @@ router.post('/subscribe', (req, res) => {
     const u = new URL(String(req.body.app_url || ''));
     if ((u.protocol === 'https:' || u.protocol === 'http:') && u.pathname === '/m/' && !u.search && !u.hash) appUrl = u.toString();
   } catch {}
-  db.prepare(`
+  await dal.run(`
     INSERT INTO push_subscriptions (user_id, endpoint, keys, app_url)
     VALUES (?, ?, ?, ?)
     ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, keys = excluded.keys, app_url = excluded.app_url
-  `).run(req.user.id, endpoint, JSON.stringify(keys), appUrl);
+  `, req.user.id, endpoint, JSON.stringify(keys), appUrl);
   res.json({ ok: true });
 });
 
 // Настройки уведомлений: показ текста и тихие часы
-router.get('/prefs', (req, res) => res.json(getPrefs(req.user.id)));
-router.put('/prefs', (req, res) => {
-  const b = req.body || {}, cur = getPrefs(req.user.id);
+router.get('/prefs', async (req, res) => res.json((await getPrefs(req.user.id))));
+router.put('/prefs', async (req, res) => {
+  const b = req.body || {}, cur = await getPrefs(req.user.id);
   const min = v => (v === null ? null : Number.isInteger(v) && v >= 0 && v < 1440 ? v : undefined);
   const qf = b.quiet_from === undefined ? cur.quiet_from : min(b.quiet_from), qt = b.quiet_to === undefined ? cur.quiet_to : min(b.quiet_to);
   if (qf === undefined || qt === undefined) return res.status(400).json({ error: 'Некорректное время' });
   let tz = b.tz === undefined ? cur.tz : (typeof b.tz === 'string' ? b.tz.slice(0, 64) : null);
   if (tz) { try { new Intl.DateTimeFormat('en-GB', { timeZone: tz }); } catch { tz = cur.tz; } }
   const show = b.show_text === undefined ? cur.show_text : !!b.show_text;
-  db.prepare(`INSERT INTO push_prefs (user_id, show_text, quiet_from, quiet_to, tz) VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(user_id) DO UPDATE SET show_text = excluded.show_text, quiet_from = excluded.quiet_from, quiet_to = excluded.quiet_to, tz = excluded.tz`)
-    .run(req.user.id, show ? 1 : 0, qf, qt, tz);
-  res.json(getPrefs(req.user.id));
+  await dal.run(`INSERT INTO push_prefs (user_id, show_text, quiet_from, quiet_to, tz) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET show_text = excluded.show_text, quiet_from = excluded.quiet_from, quiet_to = excluded.quiet_to, tz = excluded.tz`, req.user.id, show ? 1 : 0, qf, qt, tz);
+  res.json((await getPrefs(req.user.id)));
 });
 
 // Удалить подписку
-router.delete('/subscribe', (req, res) => {
+router.delete('/subscribe', async (req, res) => {
   const { endpoint } = req.body;
   if (endpoint) {
-    db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ? AND user_id = ?').run(endpoint, req.user.id);
+    await dal.run('DELETE FROM push_subscriptions WHERE endpoint = ? AND user_id = ?', endpoint, req.user.id);
   }
   res.json({ ok: true });
 });
 
 // Список всех подписок (только для администраторов)
-router.get('/subscriptions', (req, res) => {
+router.get('/subscriptions', async (req, res) => {
   if (!req.user.is_admin) return res.status(403).json({ error: 'Forbidden' });
-  const rows = db.prepare(`
+  const rows = await dal.all(`
     SELECT ps.id, ps.user_id, ps.endpoint, ps.created_at,
       u.username, u.display_name
     FROM push_subscriptions ps
     JOIN users u ON u.id = ps.user_id
     ORDER BY ps.created_at DESC
-  `).all();
+  `);
   res.json(rows);
 });
 
 // Удаление подписки администратором по id
-router.delete('/subscriptions/:id', (req, res) => {
+router.delete('/subscriptions/:id', async (req, res) => {
   if (!req.user.is_admin) return res.status(403).json({ error: 'Forbidden' });
-  db.prepare('DELETE FROM push_subscriptions WHERE id = ?').run(req.params.id);
+  await dal.run('DELETE FROM push_subscriptions WHERE id = ?', req.params.id);
   res.json({ ok: true });
 });
 
@@ -161,7 +166,7 @@ router.delete('/subscriptions/:id', (req, res) => {
 router.post('/test/:userId', async (req, res) => {
   if (!req.user.is_admin) return res.status(403).json({ error: 'Forbidden' });
   const targetId = Number(req.params.userId);
-  const subs = db.prepare('SELECT endpoint, keys, app_url FROM push_subscriptions WHERE user_id = ?').all(targetId);
+  const subs = await dal.all('SELECT endpoint, keys, app_url FROM push_subscriptions WHERE user_id = ?', targetId);
   if (!subs.length) return res.status(404).json({ error: 'Нет подписок для этого пользователя' });
 
   const results = await Promise.all(subs.map(async row => {
@@ -180,7 +185,7 @@ router.post('/test/:userId', async (req, res) => {
       console.error('[Push] test failed:', code, msg, row.endpoint.slice(0, 60));
       // 410/404 — подписка устарела, чистим
       if (err.statusCode === 410 || err.statusCode === 404) {
-        db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').run(row.endpoint);
+        await dal.run('DELETE FROM push_subscriptions WHERE endpoint = ?', row.endpoint);
       }
       return { service, ok: false, code, error: msg.slice(0, 200) };
     }
@@ -193,9 +198,9 @@ router.post('/test/:userId', async (req, res) => {
 
 // Есть ли у человека подписка на уведомления. Нужна до того, как считать данные
 // для уведомления: подписки нет — считать нечего, а подсчёты недешёвые.
-const stmtHasSub = db.prepare('SELECT 1 FROM push_subscriptions WHERE user_id = ? LIMIT 1');
-function hasPushSubscription(userId) {
-  return !!stmtHasSub.get(userId);
+const stmtHasSub = 'SELECT 1 FROM push_subscriptions WHERE user_id = ? LIMIT 1';
+async function hasPushSubscription(userId) {
+  return !!(await dal.get(stmtHasSub, userId));
 }
 
 module.exports = router;

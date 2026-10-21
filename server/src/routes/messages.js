@@ -2,7 +2,7 @@ const attach = require('../attach');
 const router = require('express').Router();
 const path = require('path');
 const fs = require('fs');
-const db = require('../db');
+const dal = require('../dal');
 const unreadCounts = require('../unread');
 const { authMiddleware } = require('../auth');
 const { getPins } = require('../ws');
@@ -25,7 +25,7 @@ const MSG_SELECT = `
 
 // Полнотекстовый поиск по чатам пользователя (FTS5). Маркеры выделения — \x01/\x02,
 // клиент экранирует текст и заменяет их на <b>/</b>.
-router.get('/search', authMiddleware, (req, res) => {
+router.get('/search', authMiddleware, async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (q.length < 2) return res.json({ results: [] });
   const ftsQuery = q.split(/\s+/).slice(0, 8)
@@ -37,7 +37,7 @@ router.get('/search', authMiddleware, (req, res) => {
   const chatId = Number.isInteger(Number(req.query.chat_id)) && Number(req.query.chat_id) > 0 ? Number(req.query.chat_id) : null;
   let rows = [];
   try {
-    rows = db.prepare(`
+    rows = await dal.all(`
       SELECT m.id, m.chat_id, m.sent_at, u.id as sender_id,
         COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, (u.is_bot = 1) as sender_is_bot,
         snippet(messages_fts, 0, char(1), char(2), '…', 10) as snippet
@@ -48,7 +48,7 @@ router.get('/search', authMiddleware, (req, res) => {
       LEFT JOIN users u ON u.id = m.sender_id
       WHERE messages_fts MATCH ? AND m.deleted = 0 ${chatId ? 'AND m.chat_id = ?' : ''}
       ORDER BY m.sent_at DESC LIMIT ${chatId ? 1000 : 30}
-    `).all(...(chatId ? [req.user.id, ftsQuery, chatId] : [req.user.id, ftsQuery]));
+    `, ...(chatId ? [req.user.id, ftsQuery, chatId] : [req.user.id, ftsQuery]));
   } catch (e) { console.error('[FTS] search error:', e.message); }
   // У сообщений ботов в тексте настоящий HTML (<b>, <i>...), который клиент не
   // экранирует (как и в самом пузыре). snippet() режет текст по токенам, и
@@ -69,23 +69,23 @@ router.get('/search', authMiddleware, (req, res) => {
 
 // «Медиа чата»: вложения и ссылки одним списком, без переписки вокруг.
 // type: media (фото и видео), files (остальные файлы), links (сообщения со ссылками); before — id сообщения, с которого читать вниз
-router.get('/chat/:chatId/media', authMiddleware, (req, res) => {
+router.get('/chat/:chatId/media', authMiddleware, async (req, res) => {
   const chatId = Number(req.params.chatId), type = String(req.query.type || 'media');
   if (!['media', 'files', 'links'].includes(type)) return res.status(400).json({ error: 'Некорректный тип' });
-  if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id))
+  if (!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', chatId, req.user.id)))
     return res.status(403).json({ error: 'Not a member' });
   // Секретный чат: сервер не знает ни типов, ни ссылок, всё зашифровано
-  if (db.prepare('SELECT is_secret FROM chats WHERE id = ?').get(chatId)?.is_secret) return res.json({ items: [], more: false, cursor: null });
+  if ((await dal.get('SELECT is_secret FROM chats WHERE id = ?', chatId))?.is_secret) return res.json({ items: [], more: false, cursor: null });
   const limit = Math.min(parseInt(req.query.limit) || 60, 120);
   let cursor = req.query.before ? parseInt(req.query.before) : Number.MAX_SAFE_INTEGER;
   const where = type === 'links' ? "(m.text LIKE '%http://%' OR m.text LIKE '%https://%')" : "m.attachment LIKE '%\"url\"%'";
-  const stmt = db.prepare(`SELECT m.id, m.sent_at, m.text, m.attachment, m.link_preview, COALESCE(u.display_name, 'Удалённый аккаунт') AS sender_name, u.id AS sender_id
+  const stmt = `SELECT m.id, m.sent_at, m.text, m.attachment, m.link_preview, COALESCE(u.display_name, 'Удалённый аккаунт') AS sender_name, u.id AS sender_id
     FROM messages m LEFT JOIN users u ON u.id = m.sender_id
-    WHERE m.chat_id = ? AND m.deleted = 0 AND m.id < ? AND ${where} ORDER BY m.id DESC LIMIT 200`);
+    WHERE m.chat_id = ? AND m.deleted = 0 AND m.id < ? AND ${where} ORDER BY m.id DESC LIMIT 200`;
   const isMedia = a => /^(image|video)\//.test(a.mime || '');
   const items = []; let more = false;
   outer: for (;;) {
-    const rows = stmt.all(chatId, cursor);
+    const rows = await dal.all(stmt, chatId, cursor);
     for (const m of rows) {
       cursor = m.id;
       const base = { message_id: m.id, sent_at: m.sent_at, sender_id: m.sender_id, sender_name: m.sender_name };
@@ -112,7 +112,7 @@ router.get('/chat/:chatId/media', authMiddleware, (req, res) => {
 // Получить сообщения чата с пагинацией (query: before | after | around, limit)
 router.get('/chat/:chatId', authMiddleware, async (req, res) => {
   const { chatId } = req.params;
-  if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id))
+  if (!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', chatId, req.user.id)))
     return res.status(403).json({ error: 'Not a member' });
 
   const limit = Math.min(parseInt(req.query.limit) || 50, 200);
@@ -131,10 +131,8 @@ router.get('/chat/:chatId', authMiddleware, async (req, res) => {
     // Окно, открывающееся на первом непрочитанном: немного переписки выше для
     // контекста, остальное место отдаём новым сообщениям
     const ctx = Math.min(20, limit);
-    const beforeRows = db.prepare(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id < ? ORDER BY m.id DESC LIMIT ?`)
-      .all(chatId, firstUnreadId, ctx);
-    const afterRows = db.prepare(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id >= ? ORDER BY m.id ASC LIMIT ?`)
-      .all(chatId, firstUnreadId, limit + 1);
+    const beforeRows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id < ? ORDER BY m.id DESC LIMIT ?`, chatId, firstUnreadId, ctx);
+    const afterRows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id >= ? ORDER BY m.id ASC LIMIT ?`, chatId, firstUnreadId, limit + 1);
     hasMore = beforeRows.length === ctx;
     hasMoreAfter = afterRows.length === limit + 1;
     if (hasMoreAfter) afterRows.pop();
@@ -142,49 +140,44 @@ router.get('/chat/:chatId', authMiddleware, async (req, res) => {
   } else if (around) {
     // Окно вокруг сообщения: для перехода из поиска или к цитате
     const half = Math.floor(limit / 2);
-    const beforeRows = db.prepare(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id < ? ORDER BY m.id DESC LIMIT ?`)
-      .all(chatId, around, half);
-    const afterRows = db.prepare(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id >= ? ORDER BY m.id ASC LIMIT ?`)
-      .all(chatId, around, half + 2);
+    const beforeRows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id < ? ORDER BY m.id DESC LIMIT ?`, chatId, around, half);
+    const afterRows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id >= ? ORDER BY m.id ASC LIMIT ?`, chatId, around, half + 2);
     hasMore = beforeRows.length === half;
     hasMoreAfter = afterRows.length === half + 2;
     if (hasMoreAfter) afterRows.pop();
     messages = beforeRows.reverse().concat(afterRows);
   } else if (after) {
     // Догрузка вниз (после перехода вглубь истории)
-    const rows = db.prepare(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id > ? ORDER BY m.id ASC LIMIT ?`)
-      .all(chatId, after, limit);
+    const rows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id > ? ORDER BY m.id ASC LIMIT ?`, chatId, after, limit);
     hasMoreAfter = rows.length === limit;
     messages = rows;
   } else {
     // Обычная загрузка: последние limit или страница выше before
     const rows = before
-      ? db.prepare(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id < ? ORDER BY m.id DESC LIMIT ?`).all(chatId, before, limit)
-      : db.prepare(`${MSG_SELECT} WHERE m.chat_id = ? ORDER BY m.id DESC LIMIT ?`).all(chatId, limit);
+      ? (await dal.all(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id < ? ORDER BY m.id DESC LIMIT ?`, chatId, before, limit))
+      : (await dal.all(`${MSG_SELECT} WHERE m.chat_id = ? ORDER BY m.id DESC LIMIT ?`, chatId, limit));
     hasMore = rows.length === limit;
     messages = rows.reverse();
   }
 
   // Получателей считаем по каждому автору отдельно: сам автор не получатель, а в группах люди с других серверов не учитываются
   const totals = new Map();
-  const totalFor = senderId => { if (!totals.has(senderId)) totals.set(senderId, require('../spaces').recipientCount(chatId, senderId)); return totals.get(senderId); };
+  const totalFor = async senderId => { if (!totals.has(senderId)) totals.set(senderId, (await require('../spaces').recipientCount(chatId, senderId))); return totals.get(senderId); };
 
   // Статусы и реакции — тремя запросами на всю страницу вместо трёх на каждое сообщение
   const ids = messages.map(m => m.id);
   const ph = ids.map(() => '?').join(',');
   const deliveredMap = new Map(), readMap = new Map(), reactionsMap = new Map();
   if (ids.length) {
-    db.prepare(`SELECT message_id, COUNT(delivered_at) as d, COUNT(read_at) as r FROM message_status WHERE message_id IN (${ph}) GROUP BY message_id`)
-      .all(...ids).forEach(row => { deliveredMap.set(row.message_id, row.d); readMap.set(row.message_id, row.r); });
-    db.prepare(`SELECT message_id, reaction, COUNT(*) as count, group_concat(user_id) as user_ids FROM reactions WHERE message_id IN (${ph}) GROUP BY message_id, reaction`)
-      .all(...ids).forEach(row => {
+    (await dal.all(`SELECT message_id, COUNT(delivered_at) as d, COUNT(read_at) as r FROM message_status WHERE message_id IN (${ph}) GROUP BY message_id`, ...ids)).forEach(row => { deliveredMap.set(row.message_id, row.d); readMap.set(row.message_id, row.r); });
+    (await dal.all(`SELECT message_id, reaction, COUNT(*) as count, group_concat(user_id) as user_ids FROM reactions WHERE message_id IN (${ph}) GROUP BY message_id, reaction`, ...ids)).forEach(row => {
         if (!reactionsMap.has(row.message_id)) reactionsMap.set(row.message_id, []);
         // user_ids — чтобы клиент показал аватарки поставивших рядом со смайликом
         reactionsMap.get(row.message_id).push({ reaction: row.reaction, count: row.count, user_ids: row.user_ids });
       });
   }
 
-  const result = messages.map(m => {
+  const result = (await Promise.all(messages.map(async m => {
     let attachment = null;
     if (m.attachment) { try { attachment = JSON.parse(m.attachment); } catch {} }
     if (attachment?.url) attachment = attach.markExpired(attachment);
@@ -198,31 +191,31 @@ router.get('/chat/:chatId', authMiddleware, async (req, res) => {
     if (m.link_preview) { try { link_preview = JSON.parse(m.link_preview); } catch {} }
     return {
       ...m, attachment, mentions, reply_attachment, forward_data, link_preview,
-      status: { delivered: deliveredMap.get(m.id) || 0, read: readMap.get(m.id) || 0, total: totalFor(m.sender_id) },
+      status: { delivered: deliveredMap.get(m.id) || 0, read: readMap.get(m.id) || 0, total: (await totalFor(m.sender_id)) },
       reactions: reactionsMap.get(m.id) || [],
     };
-  });
+  })));
 
   // Закреплённые отдаём вместе с историей — отдельный запрос при каждом
   // открытии чата не нужен
-  res.json({ messages: result, hasMore, hasMoreAfter, pins: getPins(chatId), first_unread_id: firstUnreadId });
+  res.json({ messages: result, hasMore, hasMoreAfter, pins: (await getPins(chatId)), first_unread_id: firstUnreadId });
 });
 
 // Кто поставил реакции на сообщение — для тултипа при наведении.
 // Отдельным запросом по наведению, а не в каждом сообщении: имена нужны редко,
 // а в выдаче истории они раздували бы каждый ответ.
-router.get('/:messageId/reactions', authMiddleware, (req, res) => {
-  const msg = db.prepare('SELECT chat_id FROM messages WHERE id = ?').get(req.params.messageId);
+router.get('/:messageId/reactions', authMiddleware, async (req, res) => {
+  const msg = await dal.get('SELECT chat_id FROM messages WHERE id = ?', req.params.messageId);
   if (!msg) return res.status(404).json({ error: 'Not found' });
-  if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(msg.chat_id, req.user.id))
+  if (!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', msg.chat_id, req.user.id)))
     return res.status(403).json({ error: 'Forbidden' });
 
-  const rows = db.prepare(`
+  const rows = await dal.all(`
     SELECT r.reaction, r.user_id, COALESCE(u.display_name, 'Удалённый аккаунт') AS display_name
     FROM reactions r LEFT JOIN users u ON u.id = r.user_id
     WHERE r.message_id = ?
     ORDER BY r.rowid ASC
-  `).all(req.params.messageId);
+  `, req.params.messageId);
 
   const byReaction = {};
   rows.forEach(r => {
@@ -233,18 +226,18 @@ router.get('/:messageId/reactions', authMiddleware, (req, res) => {
 });
 
 // Получить детальную информацию о доставке/прочтении одного сообщения
-router.get('/:messageId/info', authMiddleware, (req, res) => {
+router.get('/:messageId/info', authMiddleware, async (req, res) => {
   const { messageId } = req.params;
-  const msg = db.prepare('SELECT m.*, c.type as chat_type FROM messages m JOIN chats c ON c.id = m.chat_id WHERE m.id = ?').get(messageId);
+  const msg = await dal.get('SELECT m.*, c.type as chat_type FROM messages m JOIN chats c ON c.id = m.chat_id WHERE m.id = ?', messageId);
   if (!msg) return res.status(404).json({ error: 'Not found' });
-  if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(msg.chat_id, req.user.id))
+  if (!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', msg.chat_id, req.user.id)))
     return res.status(403).json({ error: 'Forbidden' });
 
-  const statuses = db.prepare(`
+  const statuses = await dal.all(`
     SELECT u.id as user_id, u.display_name, ms.delivered_at, ms.read_at
     FROM message_status ms JOIN users u ON u.id = ms.user_id
     WHERE ms.message_id = ? ORDER BY ms.read_at ASC, ms.delivered_at ASC
-  `).all(messageId);
+  `, messageId);
 
   res.json({ chat_type: msg.chat_type, sent_at: msg.sent_at, statuses });
 });

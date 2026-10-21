@@ -5,32 +5,32 @@ const fs = require('fs');
 const util = require('util');
 const { execFile, execFileSync } = require('child_process');
 const { authMiddleware } = require('../auth');
-const db = require('../db');
+const dal = require('../dal');
 
 const execFileP = util.promisify(execFile);
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
 const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
 
-function getSetting(key, def) {
-  return db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value ?? def;
+async function getSetting(key, def) {
+  return (await dal.get('SELECT value FROM settings WHERE key = ?', key))?.value ?? def;
 }
 
-function getUploadSettings() {
+async function getUploadSettings() {
   return {
     image: {
-      maxSizeMb: parseInt(getSetting('upload_image_max_size', '10')),
-      extensions: getSetting('upload_image_extensions', 'jpeg,jpg,png,gif,webp')
+      maxSizeMb: parseInt((await getSetting('upload_image_max_size', '10'))),
+      extensions: (await getSetting('upload_image_extensions', 'jpeg,jpg,png,gif,webp'))
         .split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
     },
     video: {
-      maxSizeMb: parseInt(getSetting('upload_video_max_size', '50')),
-      extensions: getSetting('upload_video_extensions', 'mp4,mov,webm')
+      maxSizeMb: parseInt((await getSetting('upload_video_max_size', '50'))),
+      extensions: (await getSetting('upload_video_extensions', 'mp4,mov,webm'))
         .split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
     },
     file: {
-      maxSizeMb: parseInt(getSetting('upload_file_max_size', '50')),
-      extensions: getSetting('upload_file_extensions', '')
+      maxSizeMb: parseInt((await getSetting('upload_file_max_size', '50'))),
+      extensions: (await getSetting('upload_file_extensions', ''))
         .split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
     },
   };
@@ -53,9 +53,9 @@ const storage = multer.diskStorage({
 // Permissive limit — real limits are validated after upload
 const upload = multer({ storage, limits: { fileSize: 500 * 1024 * 1024 } });
 
-function startCleanupJob() {
-  const run = () => {
-    const lifetimeDays = parseInt(getSetting('upload_file_lifetime', '0'));
+async function startCleanupJob() {
+  const run = async () => {
+    const lifetimeDays = parseInt((await getSetting('upload_file_lifetime', '0')));
     if (!lifetimeDays) return;
     const cutoffMs = Date.now() - lifetimeDays * 86_400_000;
     try {
@@ -70,7 +70,7 @@ function startCleanupJob() {
       }
     } catch (e) { console.warn('[Cleanup] Ошибка:', e.message); }
   };
-  run();
+  await run();
   setInterval(run, 6 * 3_600_000);
 }
 
@@ -178,15 +178,15 @@ async function transcodeToH264IfNeeded(filePath, filename, req) {
   }
 }
 
-router.get('/settings', authMiddleware, (req, res) => {
-  res.json(getUploadSettings());
+router.get('/settings', authMiddleware, async (req, res) => {
+  res.json((await getUploadSettings()));
 });
 
 // Удаление уже загруженного, но ещё не отправленного вложения — крестик на
 // плашке над композером жмут и после того, как файл полностью обработался
 // (см. req.on('close')/res.on('close') выше — та отмена ловит только сам
 // процесс загрузки/обработки, а не «передумал» уже после его завершения).
-router.delete('/', authMiddleware, (req, res) => {
+router.delete('/', authMiddleware, async (req, res) => {
   const resolveSafe = (url) => {
     if (typeof url !== 'string' || !url) return null;
     // path.basename режет любые «..» и разделители — путь гарантированно
@@ -201,7 +201,7 @@ router.delete('/', authMiddleware, (req, res) => {
   // любой авторизованный пользователь мог бы стереть чужое вложение, просто
   // угадав его URL
   for (const t of targets) {
-    const used = db.prepare("SELECT 1 FROM messages WHERE attachment LIKE '%' || ? || '%' LIMIT 1").get(t.name);
+    const used = await dal.get("SELECT 1 FROM messages WHERE attachment LIKE '%' || ? || '%' LIMIT 1", t.name);
     if (used) return res.status(409).json({ error: 'Файл уже используется в сообщении' });
   }
   for (const t of targets) fs.unlink(t.filePath, () => {});
@@ -256,7 +256,7 @@ router.post('/',
       return res.json({ url: `/files/${encName}`, size: req.file.size, enc: 1 });
     }
 
-    const settings = getUploadSettings();
+    const settings = await getUploadSettings();
     const isImage = req.file.mimetype.startsWith('image/');
     const isVideo = req.file.mimetype.startsWith('video/');
     const cfg = isImage ? settings.image : isVideo ? settings.video : settings.file;

@@ -7,7 +7,7 @@
 // дизайна секретных чатов, [[project_secretchat_baseline]]).
 const router = require('express').Router();
 const crypto = require('crypto');
-const db = require('../db');
+const dal = require('../dal');
 const { authMiddleware } = require('../auth');
 const { sendTo } = require('../ws');
 const { logAudit } = require('../audit');
@@ -27,53 +27,52 @@ function genCode() {
   return out;
 }
 
-function requireSecretMember(req, res, next) {
+async function requireSecretMember(req, res, next) {
   const chatId = Number(req.params.chatId);
-  const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(chatId);
+  const chat = await dal.get('SELECT * FROM chats WHERE id = ?', chatId);
   if (!chat || !chat.is_secret) return res.status(404).json({ error: 'Not found' });
-  if (!db.prepare('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, req.user.id))
+  if (!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', chatId, req.user.id)))
     return res.status(403).json({ error: 'Not a member' });
   req.secretChat = chat;
   next();
 }
 
 // Расшифрованное устройство создаёт код доступа для собеседника
-router.post('/:chatId/grants', authMiddleware, requireSecretMember, (req, res) => {
+router.post('/:chatId/grants', authMiddleware, requireSecretMember, async (req, res) => {
   const chatId = Number(req.params.chatId);
   const { device_id, platform } = req.body;
   if (!device_id) return res.status(400).json({ error: 'Missing device_id' });
   if (platform !== 'electron') return res.status(403).json({ error: 'Only the desktop app can grant access' });
-  const hasOwnDevice = db.prepare('SELECT 1 FROM secret_chat_devices WHERE chat_id = ? AND user_id = ? AND device_id = ?')
-    .get(chatId, req.user.id, device_id);
+  const hasOwnDevice = await dal.get('SELECT 1 FROM secret_chat_devices WHERE chat_id = ? AND user_id = ? AND device_id = ?', chatId, req.user.id, device_id);
   if (!hasOwnDevice) return res.status(403).json({ error: 'This device has no access to grant from' });
-  db.prepare('DELETE FROM secret_grants WHERE chat_id = ? AND expires_at < unixepoch()').run(chatId);
-  db.prepare("DELETE FROM secret_grants WHERE chat_id = ? AND granter_user_id = ? AND status = 'open'").run(chatId, req.user.id);
+  await dal.run('DELETE FROM secret_grants WHERE chat_id = ? AND expires_at < unixepoch()', chatId);
+  await dal.run("DELETE FROM secret_grants WHERE chat_id = ? AND granter_user_id = ? AND status = 'open'", chatId, req.user.id);
   const code = genCode();
   const expiresAt = Math.floor(Date.now() / 1000) + CODE_TTL_SEC;
-  const result = db.prepare(`INSERT INTO secret_grants (chat_id, granter_user_id, granter_device_id, code_hash, expires_at)
-    VALUES (?, ?, ?, ?, ?)`).run(chatId, req.user.id, device_id, hashCode(code), expiresAt);
+  const result = await dal.run(`INSERT INTO secret_grants (chat_id, granter_user_id, granter_device_id, code_hash, expires_at)
+    VALUES (?, ?, ?, ?, ?)`, chatId, req.user.id, device_id, hashCode(code), expiresAt);
   res.json({ grant_id: result.lastInsertRowid, code, expires_in: CODE_TTL_SEC });
 });
 
 // Собеседник вводит код на своём устройстве и передаёт свой публичный ключ.
 // Дальше запрос подтверждает владелец ключа: он видит устройство и сам передаёт ключ.
-router.post('/:chatId/grants/redeem', authMiddleware, requireSecretMember, (req, res) => {
+router.post('/:chatId/grants/redeem', authMiddleware, requireSecretMember, async (req, res) => {
   const chatId = Number(req.params.chatId);
   const { code, device_id, device_label, platform, ephemeral_pubkey } = req.body;
   if (!code || !device_id || !ephemeral_pubkey) return res.status(400).json({ error: 'Missing fields' });
-  const grant = db.prepare(`SELECT * FROM secret_grants
-    WHERE chat_id = ? AND code_hash = ? AND status = 'open' AND expires_at > unixepoch()`).get(chatId, hashCode(code));
+  const grant = await dal.get(`SELECT * FROM secret_grants
+    WHERE chat_id = ? AND code_hash = ? AND status = 'open' AND expires_at > unixepoch()`, chatId, hashCode(code));
   if (!grant) return res.status(404).json({ error: 'Код не найден или истёк' });
   if (grant.granter_user_id === req.user.id) return res.status(403).json({ error: 'Нельзя ввести собственный код' });
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || null;
-  const requestId = db.transaction(() => {
-    const r = db.prepare(`INSERT INTO secret_key_requests
+  const requestId = await dal.tx(() => (async () => {
+    const r = await dal.run(`INSERT INTO secret_key_requests
       (chat_id, requester_user_id, requester_device_id, requester_device_label, requester_platform, ephemeral_pubkey, code_hash, expires_at, requester_ip)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(chatId, req.user.id, device_id, device_label || null,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, chatId, req.user.id, device_id, device_label || null,
       platform === 'electron' ? 'electron' : 'web', ephemeral_pubkey, grant.code_hash, grant.expires_at, ip);
-    db.prepare("UPDATE secret_grants SET status = 'redeemed', request_id = ? WHERE id = ?").run(r.lastInsertRowid, grant.id);
+    await dal.run("UPDATE secret_grants SET status = 'redeemed', request_id = ? WHERE id = ?", r.lastInsertRowid, grant.id);
     return r.lastInsertRowid;
-  })();
+  })());
   sendTo(grant.granter_user_id, {
     type: 'secret_grant_redeemed', chat_id: chatId, request_id: requestId,
     device_label: device_label || null, platform: platform === 'electron' ? 'electron' : 'web',
@@ -85,32 +84,30 @@ router.post('/:chatId/grants/redeem', authMiddleware, requireSecretMember, (req,
 // Подтверждение: собеседник шлёт ключ чата, зашифрованный для эфемерного ключа
 // нового устройства. Веб/мобильный клиент не может быть одобряющей стороной —
 // это проверяется и на сервере, не только в интерфейсе.
-router.post('/:chatId/requests/:requestId/approve', authMiddleware, requireSecretMember, (req, res) => {
+router.post('/:chatId/requests/:requestId/approve', authMiddleware, requireSecretMember, async (req, res) => {
   const chatId = Number(req.params.chatId);
   const requestId = Number(req.params.requestId);
   const { code, approver_device_id, approver_ephemeral_pubkey, wrapped_secret, platform } = req.body;
   if (platform !== 'electron') return res.status(403).json({ error: 'Only the desktop app can approve a new device' });
   if (!code || !approver_device_id || !approver_ephemeral_pubkey || !wrapped_secret) return res.status(400).json({ error: 'Missing fields' });
-  const hasOwnDevice = db.prepare('SELECT 1 FROM secret_chat_devices WHERE chat_id = ? AND user_id = ? AND device_id = ?')
-    .get(chatId, req.user.id, approver_device_id);
+  const hasOwnDevice = await dal.get('SELECT 1 FROM secret_chat_devices WHERE chat_id = ? AND user_id = ? AND device_id = ?', chatId, req.user.id, approver_device_id);
   if (!hasOwnDevice) return res.status(403).json({ error: 'This device has no access to grant from' });
-  const reqRow = db.prepare(`
+  const reqRow = await dal.get(`
     SELECT * FROM secret_key_requests WHERE id = ? AND chat_id = ? AND code_hash = ? AND status = 'pending' AND expires_at > unixepoch()
-  `).get(requestId, chatId, hashCode(code));
+  `, requestId, chatId, hashCode(code));
   if (!reqRow) return res.status(404).json({ error: 'Код не найден или истёк' });
   if (reqRow.requester_user_id === req.user.id) return res.status(403).json({ error: 'Нельзя подтвердить собственный запрос' });
-  db.prepare(`
+  await dal.run(`
     UPDATE secret_key_requests SET status = 'approved', wrapped_secret = ?, approver_ephemeral_pubkey = ?, approver_user_id = ?
     WHERE id = ?
-  `).run(wrapped_secret, approver_ephemeral_pubkey, req.user.id, requestId);
+  `, wrapped_secret, approver_ephemeral_pubkey, req.user.id, requestId);
   sendTo(reqRow.requester_user_id, { type: 'secret_key_ready', chat_id: chatId, request_id: requestId });
   res.json({ ok: true });
 });
 
 // Устройство-запросчик забирает результат одобрения
-router.get('/:chatId/requests/:requestId', authMiddleware, requireSecretMember, (req, res) => {
-  const reqRow = db.prepare('SELECT * FROM secret_key_requests WHERE id = ? AND chat_id = ?')
-    .get(Number(req.params.requestId), Number(req.params.chatId));
+router.get('/:chatId/requests/:requestId', authMiddleware, requireSecretMember, async (req, res) => {
+  const reqRow = await dal.get('SELECT * FROM secret_key_requests WHERE id = ? AND chat_id = ?', Number(req.params.requestId), Number(req.params.chatId));
   if (!reqRow || reqRow.requester_user_id !== req.user.id) return res.status(404).json({ error: 'Not found' });
   if (reqRow.status !== 'approved') return res.json({ status: 'pending' });
   res.json({ status: 'approved', wrapped_secret: reqRow.wrapped_secret, approver_ephemeral_pubkey: reqRow.approver_ephemeral_pubkey });
@@ -118,25 +115,23 @@ router.get('/:chatId/requests/:requestId', authMiddleware, requireSecretMember, 
 
 // Устройство-запросчик подтверждает, что ключ успешно расшифрован и сохранён
 // локально — только теперь оно считается «одобренным устройством».
-router.post('/:chatId/requests/:requestId/complete', authMiddleware, requireSecretMember, (req, res) => {
+router.post('/:chatId/requests/:requestId/complete', authMiddleware, requireSecretMember, async (req, res) => {
   const chatId = Number(req.params.chatId);
-  const reqRow = db.prepare('SELECT * FROM secret_key_requests WHERE id = ? AND chat_id = ?')
-    .get(Number(req.params.requestId), chatId);
+  const reqRow = await dal.get('SELECT * FROM secret_key_requests WHERE id = ? AND chat_id = ?', Number(req.params.requestId), chatId);
   if (!reqRow || reqRow.requester_user_id !== req.user.id) return res.status(404).json({ error: 'Not found' });
   if (reqRow.status !== 'approved') return res.status(409).json({ error: 'Not approved yet' });
-  db.prepare(`
+  await dal.run(`
     INSERT OR REPLACE INTO secret_chat_devices (chat_id, user_id, device_id, device_label, platform)
     VALUES (?, ?, ?, ?, ?)
-  `).run(chatId, req.user.id, reqRow.requester_device_id, reqRow.requester_device_label, reqRow.requester_platform);
-  db.prepare('DELETE FROM secret_key_requests WHERE id = ?').run(reqRow.id);
+  `, chatId, req.user.id, reqRow.requester_device_id, reqRow.requester_device_label, reqRow.requester_platform);
+  await dal.run('DELETE FROM secret_key_requests WHERE id = ?', reqRow.id);
   sendTo(req.user.id, { type: 'reload_chats' });
   res.json({ ok: true });
 });
 
 // Список одобренных устройств этого секретного чата (для экрана управления устройствами)
-router.get('/:chatId/devices', authMiddleware, requireSecretMember, (req, res) => {
-  const rows = db.prepare('SELECT user_id, device_id, device_label, platform, approved_at FROM secret_chat_devices WHERE chat_id = ? ORDER BY approved_at')
-    .all(Number(req.params.chatId));
+router.get('/:chatId/devices', authMiddleware, requireSecretMember, async (req, res) => {
+  const rows = await dal.all('SELECT user_id, device_id, device_label, platform, approved_at FROM secret_chat_devices WHERE chat_id = ? ORDER BY approved_at', Number(req.params.chatId));
   res.json(rows);
 });
 
