@@ -845,9 +845,41 @@ tbody tr:hover td{background:var(--c-surface2)}
 .mdl-empty{padding:22px;text-align:center;color:var(--c-muted);font-size:12.5px}
 
 /* ── Федерации ── */
-.fd-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,380px);gap:14px;align-items:center;padding:13px 16px;border-bottom:1px solid var(--c-border)}
-.fd-row:last-child{border-bottom:0}
-.fd-row b{display:block;font-size:13px}.fd-row .d{display:block;color:var(--c-text2);font-size:12px;margin-top:2px;line-height:1.45}
+/* страница: слева соединения, справа узкая колонка с данными сервера и правилами */
+.fd-cols{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;align-items:start}
+.fd-side{display:grid;gap:14px;min-width:0}
+.fd-me{padding:14px 16px}
+.fd-top{display:flex;align-items:center;gap:11px;margin-bottom:12px}
+.fd-gl{width:38px;height:38px;border-radius:11px;background:var(--c-primary-dim);color:var(--c-primary);display:grid;place-items:center;flex:none}
+.fd-gl svg{width:20px;height:20px}
+.fd-tn{min-width:0;flex:1}
+.fd-big .v{font-size:15px;font-weight:700}
+.fd-sm{display:flex;align-items:center;gap:5px;color:var(--c-text2);font-size:12px}
+.fd-kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;align-items:center;padding-top:12px;border-top:1px solid var(--c-border)}
+.fd-lab{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted)}
+.fd-ed{display:flex;align-items:center;gap:3px;min-width:0;justify-content:flex-end;text-align:right}
+.fd-top .fd-ed{justify-content:flex-start;text-align:left}
+.fd-ed .v{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;font-size:12.5px}
+.fd-ed .v.none{color:var(--c-muted)}
+.fd-ed code.v{font:600 12px var(--f-mono)}
+.fd-ed.wide{grid-column:1/-1;justify-content:space-between;text-align:left}
+.fd-fpv{font:600 12px var(--f-mono);letter-spacing:.03em}
+.fd-ed input{flex:1;min-width:0;height:30px;border:1px solid var(--border-focus);border-radius:8px;background:var(--bg-input);color:var(--c-text);padding:0 9px;font:13px var(--f-ui);outline:none;box-shadow:0 0 0 3px var(--accent-glow)}
+.fd-ib{width:28px;height:28px;flex:none;border:0;border-radius:7px;background:none;color:var(--c-text2);display:grid;place-items:center;cursor:pointer}
+.fd-ib:hover{background:var(--c-surface2);color:var(--c-text)}.fd-ib.ok{color:var(--c-primary)}
+.fd-ib svg,.fd-tip svg{width:14px;height:14px}
+.fd-tip{position:relative;display:inline-grid;place-items:center;color:var(--c-muted);cursor:help;text-transform:none;letter-spacing:0}
+.fd-tip:hover,.fd-tip:focus-visible{color:var(--c-text)}
+.fd-tip::after{content:attr(data-t);position:absolute;z-index:40;left:-8px;bottom:calc(100% + 7px);width:max-content;max-width:260px;background:var(--c-surface);color:var(--c-text);border:1px solid var(--c-border);border-radius:9px;box-shadow:var(--shadow-md);padding:8px 10px;font:500 12px/1.4 var(--f-ui);text-align:left;font-weight:400;pointer-events:none;opacity:0;transition:opacity .12s}
+.fd-tip:hover::after,.fd-tip:focus-visible::after{opacity:1}
+.fd-safe{display:flex;gap:9px;padding:11px 16px;border-top:1px solid var(--c-border);color:var(--c-text2);font-size:12px;line-height:1.45}
+.fd-safe svg{width:15px;height:15px;flex:none;margin-top:1px}
+.fd-setup{display:grid;gap:14px}
+.fd-setup b{display:block;font-size:13px}.fd-setup .d{display:block;color:var(--c-text2);font-size:12px;margin:2px 0 7px;line-height:1.45}
+.fd-lim{padding:2px 16px 6px}
+.fd-lim .r{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--c-border);font-size:13px;font-weight:500}
+.fd-lim .r:first-child{border-top:0}
+.fd-lim .t{flex:1;min-width:0}.fd-lim .t small{display:block;color:var(--c-text2);font-weight:400;font-size:12px;line-height:1.4;margin-top:1px}
 .fd-inl{display:flex;gap:8px;align-items:center}.fd-inl .ua-inp{flex:1;min-width:0}
 .fd-mono{font-family:var(--f-mono);font-size:12px}
 .fd-head{display:flex;align-items:center;gap:10px;padding:13px 16px;font-weight:700;font-size:14px;border-bottom:1px solid var(--c-border)}
@@ -858,18 +890,20 @@ tbody tr:hover td{background:var(--c-surface2)}
 .fd-card .fd-head{border-radius:var(--radius) var(--radius) 0 0;padding:11px 16px;font-size:13.5px}
 .fd-n{font-size:11.5px;font-weight:600;color:var(--c-text2);background:var(--c-surface2);padding:0 7px;border-radius:99px}
 .fd-qh{margin-left:auto;font-size:12px;font-weight:500;color:var(--c-text2)}
-.fd-r{display:grid;grid-template-columns:10px minmax(0,1fr) auto 32px;gap:12px;align-items:center;padding:0 12px 0 16px;min-height:54px;border-top:1px solid var(--c-border)}
+.fd-r{display:grid;grid-template-columns:10px minmax(0,1fr) 32px;gap:12px;align-items:center;padding:11px 12px 11px 16px;border-top:1px solid var(--c-border)}
 .fd-r:hover{background:color-mix(in srgb,var(--c-surface2) 55%,transparent)}
 .fd-dot{width:8px;height:8px;border-radius:50%;background:var(--c-green)}
 .fd-dot.warn{background:var(--c-orange)}.fd-dot.off{background:var(--c-muted)}
+.fd-bd{min-width:0;display:grid;gap:4px}
 .fd-nm{display:flex;align-items:baseline;gap:8px;min-width:0;flex-wrap:wrap}
 .fd-nm b{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .fd-nm code{font:600 11px var(--f-mono);color:var(--c-text2)}
 .fd-w{font-size:11px;font-weight:600;padding:1px 7px;border-radius:6px;background:var(--c-surface2);color:var(--c-text2)}
 .fd-w.warn{background:var(--c-orange-dim);color:var(--c-orange-text)}
-.fd-meta{display:grid;grid-template-columns:96px 112px 86px 86px;gap:6px 10px;font-size:12px;color:var(--c-text2);white-space:nowrap;justify-content:end}
+.fd-meta{display:flex;flex-wrap:wrap;align-items:center;gap:3px 14px;font-size:12px;color:var(--c-text2)}
 .fd-meta span{display:inline-flex;align-items:center;gap:5px}
 .fd-meta svg{width:12px;height:12px;flex-shrink:0}
+.fd-meta .fd-dir{padding:1px 8px;border-radius:99px;background:var(--c-surface2);font-size:11.5px;font-weight:500}
 .fd-meta .q{color:var(--c-orange-text);font-weight:600}
 .fd-ac{position:relative}
 .fd-kb{width:30px;height:30px;border-radius:8px;border:0;background:transparent;display:grid;place-items:center;color:var(--c-text2);cursor:pointer}
@@ -882,13 +916,11 @@ tbody tr:hover td{background:var(--c-surface2)}
 .fd-menu hr{border:0;border-top:1px solid var(--c-border);margin:4px 2px}
 .fd-empty{display:flex;align-items:center;gap:14px;padding:16px;flex-wrap:wrap;border-top:1px solid var(--c-border)}
 .fd-empty div{flex:1;min-width:220px}.fd-empty b{display:block;font-size:13.5px}.fd-empty span{font-size:12.5px;color:var(--c-text2)}
-.fd-rule{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;border-top:1px solid var(--c-border);background:color-mix(in srgb,var(--c-surface2) 45%,transparent);border-radius:0 0 var(--radius) var(--radius);font-size:13px}
-.fd-rule .d{color:var(--c-text2);font-size:12px}.fd-rule .fd-sp{flex:1}
 .fd-stp{display:inline-flex;align-items:center;height:30px;border:1px solid var(--c-border);border-radius:8px;background:var(--c-surface);overflow:hidden}
 .fd-stp button{width:28px;height:100%;border:0;background:none;color:var(--c-text2);font-size:15px;cursor:pointer}
 .fd-stp button:hover{background:var(--c-surface2);color:var(--c-text)}
 .fd-stp span{min-width:40px;text-align:center;font:600 12.5px var(--f-mono);border-inline:1px solid var(--c-border);height:100%;display:grid;place-items:center}
-@media (max-width:860px){.fd-row{grid-template-columns:1fr}.fd-r{grid-template-columns:10px minmax(0,1fr) 32px;padding-top:10px;row-gap:2px}.fd-meta{grid-column:2;grid-row:2;justify-content:start;padding-bottom:10px;grid-template-columns:repeat(4,auto);gap:2px 14px}.fd-ac{grid-column:3;grid-row:1 / 3;align-self:start}.fd-rule{flex-wrap:wrap}}
+@media (max-width:980px){.fd-cols{grid-template-columns:minmax(0,1fr)}}
 .fd-note{display:flex;gap:10px;padding:11px 13px;border-radius:11px;background:var(--c-primary-dim);font-size:12.5px;line-height:1.5}
 .fd-opt{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--c-border);border-radius:12px;background:var(--c-surface);cursor:pointer;text-align:left;width:100%;color:var(--c-text);font:inherit}
 .fd-opt:hover{border-color:var(--c-primary)}
@@ -7778,7 +7810,7 @@ function fdvPeriod(p) { FDV.period = p; try { localStorage.setItem('fdv-period',
 /* ── ФЕДЕРАЦИИ ── */
 // Соединения с другими серверами: люди оттуда появляются в «Контактах» и пишут в личные чаты. Через соединение
 // нельзя управлять чужим сервером: ни пользователями, ни настройками, ни обновлениями.
-const FD = { me: null, peers: [], rules: { new_per_hour: 20, invites_per_hour: 20, groups_in: true }, menu: null, timer: null, tab: 'list' };
+const FD = { me: null, peers: [], rules: { new_per_hour: 20, invites_per_hour: 20, groups_in: true }, menu: null, edit: null, timer: null, tab: 'list' };
 const fdPlural = (n) => uxPlural(n, 'человек', 'человека', 'человек');
 async function fdLoad() {
   const r = await api('GET', '/api/admin/federation');
@@ -7806,37 +7838,56 @@ async function renderFederation() {
 }
 function fdRender() {
   if (currentPage !== 'federation') return;
-  const me = FD.me || {}, ok = me.configured;
-  const idRow = ok
-    ? `<div class="fd-inl"><div class="ua-inp"><input class="fd-mono" value="${esc(me.id)}" readonly aria-label="Идентификатор"></div><button class="btn btn-ghost btn-sm" onclick="fdCopy('${esc(me.id)}','Идентификатор скопирован')">Копировать</button></div>`
-    : `<div class="fd-inl"><div class="ua-inp"><input class="fd-mono" id="fd-id" maxlength="32" placeholder="например, logist" autocomplete="off" aria-label="Идентификатор" onkeydown="if(event.key==='Enter')fdSaveId()"></div><button class="btn ux-solid btn-sm" onclick="fdSaveId()">Задать</button></div>`;
+  const me = FD.me || {}, ok = me.configured, I = FD_I;
+  const tip = t => `<span class="fd-tip" tabindex="0" data-t="${esc(t)}">${I.info}</span>`;
+  const lab = (t, tp) => `<span class="fd-lab">${t}${tp ? tip(tp) : ''}</span>`;
+  // значение с правкой по карандашу: в режиме правки поле и кнопки «сохранить» / «отмена»
+  const field = (key, val, ph, save) => FD.edit === key
+    ? `<div class="fd-ed wide"><input id="fd-${key}" maxlength="${key === 'name' ? 60 : 200}" value="${esc(val)}" placeholder="${esc(ph)}" autocomplete="off" aria-label="${key === 'name' ? 'Имя системы' : 'Адрес для соединений'}" onkeydown="if(event.key==='Enter')${save}();if(event.key==='Escape')fdEdit(null)"><button type="button" class="fd-ib ok" aria-label="Сохранить" onclick="${save}()">${I.check}</button><button type="button" class="fd-ib" aria-label="Отмена" onclick="fdEdit(null)">${I.x}</button></div>`
+    : `<div class="fd-ed"><span class="v${key === 'url' ? ' fd-mono' : ''}${val ? '' : ' none'}">${val ? esc(key === 'url' ? val.replace(/^https?:\/\//, '') : val) : 'не задан'}</span><button type="button" class="fd-ib" aria-label="Изменить" onclick="fdEdit('${key}')">${I.pen}</button></div>`;
+  const side = ok
+    ? `<div class="fd-me"><div class="fd-top"><span class="fd-gl">${I.globe}</span><div class="fd-tn">${FD.edit === 'name' ? field('name', me.name || '', 'Например, Склад-Логистика', 'fdSaveName') : `<div class="fd-ed fd-big"><span class="v">${esc(me.name || me.id)}</span><button type="button" class="fd-ib" aria-label="Изменить имя" onclick="fdEdit('name')">${I.pen}</button></div>`}<span class="fd-sm">Этот сервер${tip('Имя видят администраторы подключённых серверов в списке соединений. Обычным людям название не показывается.')}</span></div></div>
+      <div class="fd-kv">
+        ${lab('ID', 'Не меняется. Входит в адрес ваших людей для партнёров: @' + me.id + ':логин.')}<div class="fd-ed"><code class="v">${esc(me.id)}</code><button type="button" class="fd-ib" aria-label="Копировать идентификатор" onclick="fdCopy('${esc(me.id)}','Идентификатор скопирован')">${I.copy}</button></div>
+        ${lab('Адрес', 'По нему партнёры подключаются к вам. Если у сервера нет белого IP или не проброшены порты, оставьте пустым: тогда подключаться будете вы, введя ключ партнёра.')}${field('url', me.url || '', 'https://chat.example.ru (необязательно)', 'fdSaveUrl')}
+        ${lab('Отпечаток', 'Отпечаток вашего ключа. Администратор партнёра сверяет его с вашим по телефону или лично при подключении.')}<div class="fd-ed wide"><span class="v fd-fpv">${esc(me.fp)}</span><button type="button" class="fd-ib" aria-label="Копировать отпечаток" onclick="fdCopy('${esc(me.fp)}','Отпечаток скопирован')">${I.copy}</button></div>
+      </div></div>`
+    : `<div class="fd-me"><div class="fd-top"><span class="fd-gl">${I.globe}</span><div class="fd-tn"><div class="fd-big"><span class="v">Этот сервер</span></div><span class="fd-sm">Сначала задайте идентификатор</span></div></div>
+      <div class="fd-setup">
+        <div><b>Имя системы</b><span class="d">Видят администраторы подключённых серверов. Обычным людям название не показывается.</span><div class="fd-inl"><div class="ua-inp"><input id="fd-name" maxlength="60" value="${esc(me.name || '')}" placeholder="Например, Склад-Логистика" autocomplete="off" aria-label="Имя системы" onkeydown="if(event.key==='Enter')fdSaveName()"></div><button class="btn btn-ghost btn-sm" onclick="fdSaveName()">Сохранить</button></div></div>
+        <div><b>Уникальный идентификатор</b><span class="d">Задаётся один раз и потом не меняется. Латиница, цифры, точка, дефис, подчёркивание; 2–32 символа. Выберите коротко и понятно.</span><div class="fd-inl"><div class="ua-inp"><input class="fd-mono" id="fd-id" maxlength="32" placeholder="например, logist" autocomplete="off" aria-label="Идентификатор" onkeydown="if(event.key==='Enter')fdSaveId()"></div><button class="btn ux-solid btn-sm" onclick="fdSaveId()">Задать</button></div></div>
+        <div><b>Адрес для соединений</b><span class="d">По нему партнёры подключаются к вам. Без белого IP оставьте пустым: тогда подключаться будете вы, введя ключ партнёра.</span><div class="fd-inl"><div class="ua-inp"><input class="fd-mono" id="fd-url" value="${esc(me.url || '')}" placeholder="https://chat.example.ru (необязательно)" autocomplete="off" aria-label="Адрес для соединений" onkeydown="if(event.key==='Enter')fdSaveUrl()"></div><button class="btn btn-ghost btn-sm" onclick="fdSaveUrl()">Сохранить</button></div></div>
+      </div></div>`;
+  const q = FD.peers.reduce((a, p) => a + p.queue, 0);
   document.getElementById('page-body').innerHTML = `<div class="ux-page">
     <div><div style="font-size:17px;font-weight:700">Федерации</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Соединения с другими серверами. Люди оттуда добавляются в контакты по адресу «@сервер:логин» и пишут в личные чаты. Пространство можно сделать общим для нескольких серверов: на странице «Пространства».</div></div>
     ${fdTabs()}
-    <div class="card">
-      <div class="fd-head">Этот сервер <small>как он называется для администраторов партнёров и в адресах ваших людей</small></div>
-      <div class="fd-row"><div><b>Имя системы</b><span class="d">Видят администраторы подключённых серверов в списке соединений. Обычным людям название не показывается.</span></div>
-        <div class="fd-inl"><div class="ua-inp"><input id="fd-name" maxlength="60" value="${esc(me.name || '')}" placeholder="Например, Склад-Логистика" autocomplete="off" aria-label="Имя системы" onkeydown="if(event.key==='Enter')fdSaveName()"></div><button class="btn btn-ghost btn-sm" onclick="fdSaveName()">Сохранить</button></div></div>
-      <div class="fd-row"><div><b>Уникальный идентификатор</b><span class="d">${ok ? `Не меняется. Входит в адрес ваших людей для партнёров: <code>@${esc(me.id)}:логин</code>.` : 'Задаётся один раз и потом не меняется. Латиница, цифры, точка, дефис, подчёркивание; 2–32 символа. Выберите коротко и понятно.'}</span></div>${idRow}</div>
-      <div class="fd-row"><div><b>Адрес для соединений</b><span class="d">По нему партнёры подключаются к вам. Если у сервера нет белого IP или не проброшены порты, оставьте пустым: тогда подключаться будете вы, введя ключ партнёра.</span></div>
-        <div class="fd-inl"><div class="ua-inp"><input class="fd-mono" id="fd-url" value="${esc(me.url || '')}" placeholder="https://chat.example.ru (необязательно)" autocomplete="off" aria-label="Адрес для соединений" onkeydown="if(event.key==='Enter')fdSaveUrl()"></div><button class="btn btn-ghost btn-sm" onclick="fdSaveUrl()">Сохранить</button></div></div>
-      ${ok ? `<div class="fd-row"><div><b>Отпечаток вашего ключа</b><span class="d">Администратор партнёра сверяет его с вашим по телефону или лично при подключении.</span></div><div class="fd-fp" style="font-size:13px;padding:8px">${esc(me.fp)}</div></div>` : ''}
-    </div>
-    <div class="fd-note"><span><b>i</b></span><div>Соединение даёт только обмен сообщениями между людьми. Управлять другим сервером через него нельзя: ни пользователями, ни настройками, ни обновлениями.</div></div>
-    <div class="card fd-card"><div class="fd-head">Соединения <span class="fd-n">${FD.peers.length}</span>${FD.peers.some(p => p.queue) ? `<span class="fd-qh">в очереди: ${FD.peers.reduce((a, p) => a + p.queue, 0)}</span>` : ''}</div>${fdPeers()}
-      <div class="fd-rule"><b style="font-weight:600">Новых переписок в час</b><span class="d">с одного чужого сервера, сверх лимита отклоняются</span><span class="fd-sp"></span>
-        <div class="fd-stp"><button type="button" onclick="fdRule(-5)" aria-label="Меньше">−</button><span>${FD.rules.new_per_hour}</span><button type="button" onclick="fdRule(5)" aria-label="Больше">+</button></div></div>
-      <div class="fd-rule"><b style="font-weight:600">Приглашений в группы в час</b><span class="d">с одного чужого сервера, сверх лимита молча отклоняются</span><span class="fd-sp"></span>
-        <div class="fd-stp"><button type="button" onclick="fdRule(-5,'invites_per_hour')" aria-label="Меньше">−</button><span>${FD.rules.invites_per_hour || 20}</span><button type="button" onclick="fdRule(5,'invites_per_hour')" aria-label="Больше">+</button></div></div>
-      <div class="fd-rule"><b style="font-weight:600">Принимать приглашения в группы</b><span class="d">от людей с других серверов. Если выключить, такие приглашения молча отклоняются</span><span class="fd-sp"></span>
-        <label class="toggle-switch"><input type="checkbox" ${FD.rules.groups_in !== false ? 'checked' : ''} onchange="fdGroupsIn(this.checked)"><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div></div></div>`;
+    <div class="fd-cols">
+      <div class="card fd-card"><div class="fd-head">Соединения <span class="fd-n">${FD.peers.length}</span>${q ? `<span class="fd-qh">в очереди: ${q}</span>` : ''}</div>${fdPeers()}</div>
+      <div class="fd-side">
+        <div class="card">${side}<div class="fd-safe">${I.shield}<span>Соединение даёт только обмен сообщениями между людьми. Управлять другим сервером через него нельзя: ни пользователями, ни настройками, ни обновлениями.</span></div></div>
+        <div class="card"><div class="fd-head">Правила приёма</div><div class="fd-lim">
+          <div class="r"><span class="t">Новых переписок в час<small>с одного чужого сервера, сверх лимита отклоняются</small></span><div class="fd-stp"><button type="button" onclick="fdRule(-5)" aria-label="Меньше">−</button><span>${FD.rules.new_per_hour}</span><button type="button" onclick="fdRule(5)" aria-label="Больше">+</button></div></div>
+          <div class="r"><span class="t">Приглашений в группы в час<small>с одного чужого сервера, сверх лимита молча отклоняются</small></span><div class="fd-stp"><button type="button" onclick="fdRule(-5,'invites_per_hour')" aria-label="Меньше">−</button><span>${FD.rules.invites_per_hour || 20}</span><button type="button" onclick="fdRule(5,'invites_per_hour')" aria-label="Больше">+</button></div></div>
+          <div class="r"><span class="t">Принимать приглашения в группы<small>от людей с других серверов, иначе молча отклоняются</small></span><label class="toggle-switch"><input type="checkbox" ${FD.rules.groups_in !== false ? 'checked' : ''} onchange="fdGroupsIn(this.checked)"><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div>
+        </div></div>
+      </div>
+    </div></div>`;
 }
+function fdEdit(k) { FD.edit = k; fdRender(); if (k) { const el = document.getElementById('fd-' + k); if (el) { el.focus(); el.select(); } } }
 const FD_I = {
   ins: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="M17 17H7V7"/></svg>',
   outs: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>',
   key: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>',
   pause: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg>',
   play: '<svg viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
+  pen: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
+  info: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+  check: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+  x: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+  globe: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>',
   trash: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
 };
 function fdPeers() {
@@ -7845,8 +7896,8 @@ function fdPeers() {
     const st = p.status === 'paused' ? 'off' : !p.online ? 'warn' : '';
     const word = p.status === 'paused' ? '<span class="fd-w">приостановлено</span>' : !p.online ? '<span class="fd-w warn">нет связи</span>' : '';
     const paused = p.status === 'paused';
-    return `<div class="fd-r"><span class="fd-dot ${st}"></span><div class="fd-nm"><b>${esc(p.name)}</b><code>${esc(p.instance_id)}</code>${word}</div>
-      <div class="fd-meta"><span title="${p.role === 'in' ? 'Они подключаются к нам сами' : 'Мы подключаемся к ним'}">${p.role === 'in' ? FD_I.ins + 'они к нам' : FD_I.outs + 'мы к ним'}</span><span>${p.last_contact_at ? esc(uaSeen(p.last_contact_at)) : 'обмена не было'}</span>${p.queue ? `<span class="q">очередь ${p.queue}</span>` : '<span></span>'}<span>${p.people} ${fdPlural(p.people)}</span></div>
+    return `<div class="fd-r"><span class="fd-dot ${st}"></span><div class="fd-bd"><div class="fd-nm"><b>${esc(p.name)}</b><code>${esc(p.instance_id)}</code>${word}</div>
+      <div class="fd-meta"><span class="fd-dir" title="${p.role === 'in' ? 'Они подключаются к нам сами' : 'Мы подключаемся к ним'}">${p.role === 'in' ? FD_I.ins + 'они к нам' : FD_I.outs + 'мы к ним'}</span><span>${p.last_contact_at ? esc(uaSeen(p.last_contact_at)) : 'обмена не было'}</span><span>${p.people} ${fdPlural(p.people)}</span>${p.queue ? `<span class="q">очередь ${p.queue}</span>` : ''}</div></div>
       <div class="fd-ac"><button class="fd-kb" type="button" aria-label="Действия" onclick="event.stopPropagation();fdMenu(${i})"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>${FD.menu === i ? `<div class="fd-menu"><button type="button" onclick="fdFp(${i})">${FD_I.key}Отпечаток ключа</button><button type="button" onclick="fdPause(${i})">${paused ? FD_I.play + 'Возобновить' : FD_I.pause + 'Приостановить'}</button><hr><button type="button" class="dg" onclick="fdDelete(${i})">${FD_I.trash}Удалить соединение</button></div>` : ''}</div></div>`;
   }).join('');
 }
@@ -7856,7 +7907,7 @@ async function fdCopy(text, msg) { try { await navigator.clipboard.writeText(tex
 async function fdPut(body, okMsg) {
   const r = await api('PUT', '/api/admin/federation/identity', body);
   if (!r || r.error) { toast(esc(r?.error || 'Не удалось сохранить'), 'error'); return false; }
-  FD.me = r.me; FD.peers = r.peers || FD.peers; toast(okMsg, 'success'); fdRender(); return true;
+  FD.me = r.me; FD.peers = r.peers || FD.peers; FD.edit = null; toast(okMsg, 'success'); fdRender(); return true;
 }
 function fdSaveName() { fdPut({ name: document.getElementById('fd-name').value }, 'Имя системы сохранено'); }
 function fdSaveUrl() { fdPut({ url: document.getElementById('fd-url').value }, 'Адрес сохранён'); }
