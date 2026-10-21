@@ -7551,7 +7551,8 @@ function wsRender() {
       ${mirror || (w.is_default && !fedOn) ? '' : `<label class="toggle-switch" title="Общее пространство: люди нескольких серверов федерации видят друг друга"><input type="checkbox" ${fedOn ? 'checked' : ''} onchange="wsShared(${w.id}, this.checked)" aria-label="Общее пространство"><div class="toggle-track"><div class="toggle-thumb"></div></div></label><span style="font-size:12px;color:var(--c-text2)">Общее</span>`}
       ${fedOn ? `<button class="btn btn-ghost btn-sm" onclick="wsSrv(${w.id})">Серверы</button>` : ''}
       <button class="btn btn-ghost btn-sm" ${mirror ? 'disabled title="Название общего пространства задаёт его хозяин"' : ''} onclick="wsOpen(${w.id})">Изменить</button>
-      <button class="btn btn-ghost btn-sm" ${w.is_default || w.users || fedOn ? 'disabled' : ''} title="${w.is_default ? 'Основное пространство удалить нельзя' : fedOn ? 'Пространство общее' : w.users ? 'Сначала переведите людей в другое пространство' : ''}" onclick="wsDelete(${w.id})">Удалить</button></div>
+      ${mirror ? `<button class="btn btn-ghost btn-sm" title="Выйти из общего пространства: у вас оно останется обычным" onclick="wsLeave(${w.id})">Выйти</button>` : ''}
+      <button class="btn btn-ghost btn-sm" style="${w.is_default || w.users ? 'opacity:.55' : ''}" title="${w.is_default ? 'Основное пространство удалить нельзя' : w.users ? 'Сначала переведите людей в другое пространство' : fedOn ? (mirror ? 'Выйти из общего пространства и удалить его' : 'Выключить «Общее» и удалить пространство') : ''}" onclick="wsDelete(${w.id})">Удалить</button></div>
       ${(w.fed?.asks || []).map(a => `<div class="wsf-ask"><span>Сервер «${esc(nm(w, a.proposer))}» просит добавить в пространство сервер «${esc(a.target_name)}»${a.approved ? ' (одобрено, ждём ответа)' : ''}</span>${a.approved ? '' : `<button class="btn btn-ghost btn-sm" onclick="wsAsk(${a.id},false)">Отклонить</button><button class="btn ux-solid btn-sm" onclick="wsAsk(${a.id},true)">Одобрить</button>`}</div>`).join('')}</div>`; }).join('')}
   </div>`;
 }
@@ -7643,11 +7644,23 @@ async function wsSave() {
   await wsLoad();
   if (currentPage === 'workspaces') wsRender();
 }
+// Удалить можно пустое пространство, не основное. Общее перед удалением выключается (хозяин) или покидается (зеркало): всё в одном подтверждении
 function wsDelete(id) {
   const w = WS.list.find(x => x.id === id); if (!w) return;
-  confirm('Удалить пространство?', `Пространство «${esc(w.name)}» пустое, оно будет удалено.`, async () => {
+  if (w.is_default) { toast('Основное пространство удалить нельзя: оно используется по умолчанию', 'error'); return; }
+  if (w.users) { toast(`В пространстве ${w.users} ${uxPlural(w.users, 'человек', 'человека', 'человек')}. Сначала переведите их в другое пространство в профилях людей`, 'error'); return; }
+  const shared = !!w.fed?.shared, host = !!w.fed?.is_host;
+  const text = !shared ? `Пространство «${esc(w.name)}» пустое, оно будет удалено.`
+    : host ? `Пространство «${esc(w.name)}» общее. Сначала «Общее» будет выключено: люди других серверов покинут пространство, у них оно станет обычным. Затем пространство удалится у вас.`
+    : `Пространство «${esc(w.name)}» общее, его ведёт другой сервер. Вы выйдете из него (ваши люди перестанут быть видны другим серверам), затем оно удалится у вас.`;
+  confirm(shared ? (host ? 'Выключить «Общее» и удалить?' : 'Выйти и удалить пространство?') : 'Удалить пространство?', text, async () => {
+    if (shared) {
+      const me = FD.me?.id || (await api('GET', '/api/admin/federation'))?.me?.id;
+      const r0 = host ? await api('POST', `/api/admin/workspaces/${id}/shared`, { on: false }) : await api('DELETE', `/api/admin/workspaces/${id}/servers/${encodeURIComponent(me)}`);
+      if (!r0 || r0.error) { toast(esc(r0?.error || 'Не удалось выключить общий доступ'), 'error'); await wsLoad(); if (currentPage === 'workspaces') wsRender(); return; }
+    }
     const r = await api('DELETE', '/api/admin/workspaces/' + id);
-    if (r?.error) { toast(esc(r.error), 'error'); return; }
+    if (r?.error) { toast(esc(r.error), 'error'); await wsLoad(); if (currentPage === 'workspaces') wsRender(); return; }
     toast('Пространство удалено', 'success');
     await wsLoad();
     if (currentPage === 'workspaces') wsRender();
