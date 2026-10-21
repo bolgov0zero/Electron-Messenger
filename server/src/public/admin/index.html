@@ -1554,6 +1554,46 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
   .fdv-chips{grid-column:1 / -1;display:flex;gap:6px;flex-wrap:wrap}
 }
 .dv-bottom{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.dv-bottom.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1320px){.dv-bottom.four{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:960px){.dv-bottom.four{grid-template-columns:minmax(0,1fr)}}
+.dv-card[hidden],#hm-svc-one[hidden],#hm-svc-many[hidden]{display:none}
+.dv-in{animation:xhIn .42s cubic-bezier(.2,.8,.2,1) both}
+.dv-tick{animation:dvTick 1.1s ease-out}
+@keyframes dvTick{0%{background:color-mix(in srgb,var(--dv-accent) 20%,transparent)}100%{background:transparent}}
+.dv-tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.dv-tbl th{text-align:left;font-weight:600;font-size:11px;color:var(--dv-muted);letter-spacing:.03em;padding:0 0 6px}
+.dv-tbl th:not(:first-child),.dv-tbl td:not(:first-child){text-align:right}
+.dv-tbl td{padding:7px 0;border-top:1px solid var(--dv-border);white-space:nowrap}
+.dv-tbl td:last-child,.dv-tbl th:last-child{width:36px;padding-left:6px}
+.dv-tbl td.w{color:var(--dv-warn);font-weight:700}
+.dv-vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.dv-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;background:var(--dv-ok);animation:dvPulse 2.6s ease-in-out infinite}
+.dv-dot.warn{background:var(--dv-warn)}.dv-dot.crit{background:var(--dv-bad);animation:none}.dv-dot.off{background:var(--dv-muted);animation:none}
+@keyframes dvPulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--dv-ok) 22%,transparent)}}
+.dv-m-sub{margin-top:10px;line-height:1.6}
+.dv-ib{width:28px;height:28px;display:inline-grid;place-items:center;border:1px solid var(--dv-border);background:var(--dv-surface2);color:var(--dv-bad);border-radius:8px;cursor:pointer;transition:transform .12s,border-color .15s,background .15s}
+.dv-ib:hover{border-color:color-mix(in srgb,var(--dv-bad) 45%,var(--dv-border))}
+.dv-ib:active{transform:scale(.92)}
+.dv-ib:focus-visible{outline:2px solid var(--dv-accent);outline-offset:1px}
+.dv-ib:disabled{opacity:.4;cursor:not-allowed}
+.dv-ib.busy svg{animation:spin 1s linear infinite}
+.dv-db{gap:0}
+.dv-db .dv-sub{margin-top:2px}
+.dv-db-big{font:700 26px/1.1 var(--f-mono);letter-spacing:-.02em;margin-top:10px;transition:color .3s}
+.dv-db-big small{font:500 12px var(--f-ui);color:var(--dv-muted);margin-left:6px;letter-spacing:0}
+.dv-db-big b{border-radius:6px}
+.dv-db-spark{height:46px;margin:4px 0 12px;opacity:0;transition:opacity .5s ease}
+.dv-db-spark.on{opacity:1}
+.dv-db-spark svg{display:block;width:100%;height:100%}
+.dv-db-spark circle{transform-box:fill-box;transform-origin:center;animation:dvBeat 2s ease-out infinite}
+@keyframes dvBeat{0%{transform:scale(1);opacity:1}60%{transform:scale(1.6);opacity:.75}100%{transform:scale(1);opacity:1}}
+.dv-db-bar span{flex:0 0 auto;flex-grow:0;transition:flex-grow .7s cubic-bezier(.2,.8,.2,1)}
+.dv-leg2{display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;margin-top:9px}
+.dv-leg2 div{display:flex;align-items:center;gap:6px;font-size:12px;min-width:0;white-space:nowrap;overflow:hidden}
+.dv-leg2 i{width:8px;height:8px;border-radius:3px;flex:none}
+.dv-leg2 b{margin-left:auto;font-weight:600;font-size:11.5px;border-radius:5px}
+@media (prefers-reduced-motion:reduce){.dv-in,.dv-tick,.dv-dot,.dv-db-spark circle,.dv-ib.busy svg{animation:none}.dv-db-bar span,.dv-db-spark{transition:none}}
 .dv-res-row{margin-top:12px}
 .dv-res-top{display:flex;align-items:center;gap:10px}
 .dv-res-top b{font-size:13px;font-weight:600}
@@ -3539,6 +3579,91 @@ function hmRenderChron() {
 // со сводкой не накладно
 
 
+// ── PostgreSQL: блок «Службы» (две службы) и блок базы ──
+// Нижний ряд главной на PostgreSQL: «Службы» вместо «Служба electron» и четвёртая карточка про базу.
+// Структура лежит в шаблоне главной, здесь только данные; число меняется — оно коротко подсвечивается.
+function pgTick(id, text) {
+  const el = $hm(id); if (!el || el.textContent === text) return;
+  const had = el.dataset.set === '1';
+  el.textContent = text; el.dataset.set = '1';
+  if (had) { el.classList.remove('dv-tick'); void el.offsetWidth; el.classList.add('dv-tick'); }
+}
+const pgSince = ts => (ts ? `${new Date(ts).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} в ${hmClock(ts)}` : '—');
+function hmRenderPg() {
+  const o = HM.overview, pg = o?.pg;
+  const one = $hm('hm-svc-one'), many = $hm('hm-svc-many'), card = $hm('dv-db');
+  if (!one || !many || !card) return;
+  const on = !!pg;
+  if (many.hidden === on) {                      // режим сменился: показываем нужные блоки с появлением
+    one.hidden = on; many.hidden = !on; card.hidden = !on;
+    $hm('dv-bottom')?.classList.toggle('four', on);
+    if (on) for (const el of [many, card]) { el.classList.remove('dv-in'); void el.offsetWidth; el.classList.add('dv-in'); }
+  }
+  if (!on) return;
+
+  // Службы
+  const s = HM.samples[HM.samples.length - 1], live = HM.live || {}, svc = pg.service, el = o.service;
+  const dot = (id, lv) => { const d = $hm(id); if (d) d.className = 'dv-dot' + (lv && lv !== 'ok' ? ' ' + lv : ''); };
+  dot('hm-m-el-dot', el && el.state !== 'active' ? 'crit' : 'ok');
+  // у electron значения обновляются каждые 2 секунды: без подсветки, иначе мерцало бы постоянно
+  hmText('hm-m-el-cpu', s?.[2] == null ? '—' : `${hmFmt(s[2], 1)}%`);
+  hmText('hm-m-el-mem', s?.[4] == null ? '—' : hmBytes(s[4]));
+  const load = pg.conn / pg.maxConn, hot = load > .8 || (pg.cache != null && pg.cache < 95);
+  dot('hm-m-pg-dot', svc ? (svc.state !== 'active' ? 'crit' : hot ? 'warn' : 'ok') : (hot ? 'warn' : pg.local ? 'off' : 'ok'));
+  pgTick('hm-m-pg-cpu', svc?.cpu == null ? '—' : `${hmFmt(svc.cpu, 1)}%`);
+  pgTick('hm-m-pg-mem', svc?.mem == null ? '—' : hmBytes(svc.mem));
+  for (const id of ['hm-m-pg-cpu', 'hm-m-pg-mem']) $hm(id)?.classList.toggle('w', !!svc && hot);
+  const pb = $hm('hm-m-pg-btn');
+  if (pb) { pb.disabled = !svc || PGR.busy; pb.title = svc ? 'Перезапустить postgresql' : 'PostgreSQL на другом сервере: перезапуск отсюда недоступен'; }
+  const lines = [`Задач: electron ${live.tasks ?? '—'}${svc ? ` · postgresql ${svc.tasks ?? '—'}` : ''}`,
+    `Запущены: electron ${pgSince(el?.since)} · postgresql ${pgSince(svc?.since || pg.started)}`];
+  if (el?.restarts != null || svc?.restarts != null) lines.push(`Сбоев после запуска: electron ${el?.restarts ?? '—'}${svc ? ` · postgresql ${svc.restarts ?? '—'}` : ''}`);
+  if (!pg.local) lines.push(`PostgreSQL на другом сервере · связь ${pg.latency} мс`);
+  hmHtml('hm-m-sub', lines.map(esc).join('<br>'));
+
+  // Блок базы
+  hmText('dv-db-ver', pg.version || '');
+  const lv = svc && svc.state !== 'active' ? 'crit' : hot ? 'warn' : 'ok';
+  hmSetPill('dv-db-state', lv, lv === 'crit' ? 'Остановлена' : lv === 'warn' ? 'Нагрузка' : 'Работает');
+  hmHtml('dv-db-line', `${hmBytes(pg.size)} · кэш ${pg.cache == null ? '—' : `<b${pg.cache < 95 ? ' style="color:var(--dv-warn)"' : ''}>${hmFmt(pg.cache, 1)}%</b>`} · ${pg.tps == null ? '—' : hmFmt(pg.tps, 0)} запросов/с`);
+  pgTick('dv-db-conn', String(pg.conn));
+  const big = $hm('dv-db-conn')?.parentElement; if (big) big.style.color = load > .8 ? 'var(--dv-warn)' : '';
+  hmText('dv-db-max', `соединений из ${pg.maxConn}`);
+  const sp = $hm('dv-db-spark');
+  if (sp) {
+    hmHtml('dv-db-spark', hmSpark(pg.series.map(r => r[1]), load > .8 ? 'var(--dv-warn)' : 'var(--dv-accent)', { smooth: true, ...(Math.max(...pg.series.map(r => r[1])) > pg.maxConn * .5 ? { lim: pg.maxConn * .8 } : {}) }));
+    if (pg.series.length > 1) requestAnimationFrame(() => sp.classList.add('on'));
+  }
+  const P = pg.parts, vals = [P.status, P.messages, P.search, P.other];
+  vals.forEach((v, i) => { const b = $hm('dv-db-p' + i); if (b) b.style.flexGrow = String(Math.max(v, 1)); pgTick('dv-db-v' + i, hmBytes(v)); });
+}
+const PGR = { busy: false };
+function restartPostgres() {
+  if (PGR.busy) return;
+  confirm('Перезапустить PostgreSQL?',
+    'База на несколько секунд оборвёт все соединения: сообщения в этот момент не отправятся, сервер переподключится сам.',
+    async () => {
+      const r = await api('POST', '/api/admin/system/restart-postgres');
+      if (!r?.ok) { toast(r?.error || 'Не удалось перезапустить PostgreSQL', 'error'); return; }
+      PGR.busy = true;
+      const btn = $hm('hm-m-pg-btn'); if (btn) { btn.classList.add('busy'); btn.disabled = true; }
+      toast('PostgreSQL перезапускается…');
+      await new Promise(r2 => setTimeout(r2, 3000));
+      const t0 = Date.now();
+      for (;;) {
+        try {
+          const res = await fetch('/api/admin/stats', { headers: { Authorization: 'Bearer ' + token, 'Cache-Control': 'no-cache' } });
+          if (res.ok) { toast('PostgreSQL перезапущен', 'success'); break; }
+        } catch {}
+        if (Date.now() - t0 > 40000) { toast('PostgreSQL не ответил за 40 секунд', 'error'); break; }
+        await new Promise(r2 => setTimeout(r2, 1500));
+      }
+      PGR.busy = false;
+      const b2 = $hm('hm-m-pg-btn'); if (b2) b2.classList.remove('busy');
+      hmLoadOverview();
+    });
+}
+
 function hmRenderOverview() {
   const o = HM.overview;
   if (!o) return;
@@ -3594,6 +3719,7 @@ function hmRenderOverview() {
     + leg('var(--dv-c3)', 'Резервные копии', backup, sizeOf(S.backups.size))
     + (disk ? leg('var(--dv-c4)', 'Система и прочее', 'Debian, Node.js, журналы', sizeOf(Math.max(0, disk.total - disk.free - chatData))) : ''));
 
+  hmRenderPg();
   hmRenderChron();
   hmRenderHeadlines();
   swRender();
@@ -3653,6 +3779,7 @@ function hmRenderHeadlines() {
   hmText('hm-k-mem', s[4] == null ? '—' : hmBytes(s[4]));
   hmText('hm-k-tasks', live.tasks == null ? '—' : hmFmt(live.tasks));
   hmText('hm-ws', hmFmt(HM.ws));
+  if (o?.pg) hmRenderPg();
 }
 
 // ── Опрос графиков ──
@@ -4160,12 +4287,13 @@ async function renderDashboard() {
       </section>
     </div>
 
-    <div class="dv-bottom">
+    <div class="dv-bottom" id="dv-bottom">
       <section class="hm-panel dv-card" aria-labelledby="dv-h-res">
         <h3 id="dv-h-res">Ресурсы</h3>
         <div id="dv-res"></div>
       </section>
-      <section class="hm-panel dv-card" aria-labelledby="hm-h-svc">
+      <section class="hm-panel dv-card" aria-labelledby="hm-h-svc" id="hm-svc-card">
+        <div id="hm-svc-one">
         <h3 id="hm-h-svc"><span>Служба <span id="hm-unit">electron.service</span></span><span class="hm-pill muted" id="hm-svc-state">—</span></h3>
         <div class="dv-chips" style="margin:10px 0">
           <span class="dv-chip">Процессор<b id="hm-k-cpu">—</b></span>
@@ -4174,12 +4302,36 @@ async function renderDashboard() {
         </div>
         <div class="dv-sub dv-svc-since" id="hm-svc-since">&nbsp;</div>
         <div style="margin-top:12px"><button class="btn btn-danger btn-sm" onclick="restartService()">Перезапустить</button></div>
+        </div>
+        <div id="hm-svc-many" hidden>
+          <h3 id="hm-h-svcs">Службы</h3>
+          <table class="dv-tbl"><thead><tr><th>Служба</th><th>Проц.</th><th>Память</th><th><span class="dv-vh">Перезапуск</span></th></tr></thead><tbody>
+            <tr><td><span class="dv-dot" id="hm-m-el-dot"></span>electron</td><td class="hm-mono" id="hm-m-el-cpu">—</td><td class="hm-mono" id="hm-m-el-mem">—</td>
+              <td><button type="button" class="dv-ib" id="hm-m-el-btn" onclick="restartService()" title="Перезапустить electron" aria-label="Перезапустить electron"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button></td></tr>
+            <tr><td><span class="dv-dot" id="hm-m-pg-dot"></span>postgresql</td><td class="hm-mono" id="hm-m-pg-cpu">—</td><td class="hm-mono" id="hm-m-pg-mem">—</td>
+              <td><button type="button" class="dv-ib" id="hm-m-pg-btn" onclick="restartPostgres()" title="Перезапустить postgresql" aria-label="Перезапустить postgresql"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button></td></tr>
+          </tbody></table>
+          <div class="dv-sub dv-m-sub" id="hm-m-sub">&nbsp;</div>
+        </div>
       </section>
       <section class="hm-panel dv-card" aria-labelledby="hm-h-store">
         <h3 id="hm-h-store">Хранилище <span class="dv-sub" style="margin-left:auto;font-weight:500" id="hm-store-total"></span></h3>
         <div class="dv-sub" id="hm-store-sub" style="margin:2px 0 10px">&nbsp;</div>
         <div id="hm-store"></div>
         <div id="hm-store-list" style="margin-top:8px"></div>
+      </section>
+      <section class="hm-panel dv-card dv-db" id="dv-db" aria-labelledby="dv-h-db" hidden>
+        <h3 id="dv-h-db"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--dv-accent);flex:none"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg><span>PostgreSQL <span class="dv-sub" id="dv-db-ver"></span></span><span class="hm-pill muted" id="dv-db-state" style="margin-left:auto">—</span></h3>
+        <div class="dv-sub" id="dv-db-line">&nbsp;</div>
+        <div class="dv-db-big"><b class="hm-mono" id="dv-db-conn">—</b><small id="dv-db-max">соединений</small></div>
+        <div class="dv-db-spark" id="dv-db-spark"></div>
+        <div class="dv-store-bar dv-db-bar"><span id="dv-db-p0" style="background:var(--dv-c1)"></span><span id="dv-db-p1" style="background:var(--dv-c2)"></span><span id="dv-db-p2" style="background:var(--dv-c3)"></span><span id="dv-db-p3" style="background:var(--dv-c4)"></span></div>
+        <div class="dv-leg2">
+          <div><i style="background:var(--dv-c1)"></i>Статусы<b class="hm-mono" id="dv-db-v0">—</b></div>
+          <div><i style="background:var(--dv-c2)"></i>Сообщения<b class="hm-mono" id="dv-db-v1">—</b></div>
+          <div><i style="background:var(--dv-c3)"></i>Поиск<b class="hm-mono" id="dv-db-v2">—</b></div>
+          <div><i style="background:var(--dv-c4)"></i>Прочее<b class="hm-mono" id="dv-db-v3">—</b></div>
+        </div>
       </section>
     </div>
   </div>`;

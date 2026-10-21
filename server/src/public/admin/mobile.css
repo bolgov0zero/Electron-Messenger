@@ -273,3 +273,11 @@ input, textarea, select { font-size: 16px; }
 .fsm-o.on { background: var(--c-primary-dim); color: var(--c-primary); }
 .fsm-o.on b, .fsm-o.on .n { color: var(--c-primary); }
 .fsm-o.warn b, .fsm-o.warn .n { color: var(--c-orange-text, var(--c-orange)); }
+
+/* ── Главная на PostgreSQL: блок «Службы» и карточка базы ── */
+.dv-ib { width: 38px; height: 38px; border-radius: 10px; }
+.dv-tbl td:last-child, .dv-tbl th:last-child { width: 44px; }
+.dv-tbl { font-size: 13px; }
+.dv-db-big { font-size: 24px; }
+.dv-db-spark { height: 52px; }
+.dv-leg2 { gap: 7px 14px; }

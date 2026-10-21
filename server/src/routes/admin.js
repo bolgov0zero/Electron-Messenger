@@ -601,6 +601,20 @@ router.post('/clients/:connId/force-restart', (req, res) => {
   res.json({ ok: true });
 });
 
+// Перезапуск службы PostgreSQL на этом сервере: на несколько секунд обрывает все соединения
+router.post('/system/restart-postgres', async (req, res) => {
+  if (!dal.pg) return res.status(400).json({ error: 'Сервер работает не на PostgreSQL' });
+  const unit = await require('../pgmon').unit();
+  if (!unit) return res.status(400).json({ error: 'PostgreSQL установлен не на этом сервере: перезапустить его отсюда нельзя' });
+  const { exec } = require('child_process');
+  exec(`systemctl is-active ${unit}`, (err, stdout) => {
+    if ((stdout || '').trim() !== 'active') return res.status(400).json({ error: 'Служба PostgreSQL не активна' });
+    logAudit(req, 'server', 'Перезапуск PostgreSQL', unit);
+    res.json({ ok: true });
+    setTimeout(() => exec(`systemctl restart ${unit}`), 300);
+  });
+});
+
 // Перезапуск службы systemd
 router.post('/system/restart', (req, res) => {
   const { exec } = require('child_process');
@@ -868,6 +882,7 @@ router.get('/overview', async (req, res) => {
     version: RUNNING_VERSION,
     uptime: Math.floor(process.uptime()),
     service: await monitor.serviceInfo(),
+    pg: dal.pg ? require('../pgmon').info() : null,
     storage,
     // Отрицательный cache_size — предел в КиБ, положительный — в страницах
     sqliteCacheBytes: cacheSize < 0 ? -cacheSize * 1024 : cacheSize * pageSize,

@@ -173,6 +173,7 @@ boot.push(() => require('./announcements').startScheduler());
 const monitor = require('./monitor');
 monitor.setOnlineProvider(require('./ws').onlineUserCount);
 monitor.start();
+if (require('./dal').pg) boot.push(() => { require('./pgmon').start(); });
 
 const PORT = process.env.PORT || 3000;
 dal.init().then(() => require('./auth').init()).then(async () => { for (const task of boot) await task(); }).then(() => server.listen(PORT, () => {
