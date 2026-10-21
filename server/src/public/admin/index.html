@@ -7552,7 +7552,7 @@ function wsRender() {
       ${fedOn ? `<button class="btn btn-ghost btn-sm" onclick="wsSrv(${w.id})">Серверы</button>` : ''}
       <button class="btn btn-ghost btn-sm" ${mirror ? 'disabled title="Название общего пространства задаёт его хозяин"' : ''} onclick="wsOpen(${w.id})">Изменить</button>
       ${mirror ? `<button class="btn btn-ghost btn-sm" title="Выйти из общего пространства: у вас оно останется обычным" onclick="wsLeave(${w.id})">Выйти</button>` : ''}
-      <button class="btn btn-ghost btn-sm" style="${w.is_default || w.users ? 'opacity:.55' : ''}" title="${w.is_default ? 'Основное пространство удалить нельзя' : w.users ? 'Сначала переведите людей в другое пространство' : fedOn ? (mirror ? 'Выйти из общего пространства и удалить его' : 'Выключить «Общее» и удалить пространство') : ''}" onclick="wsDelete(${w.id})">Удалить</button></div>
+      <button class="btn btn-ghost btn-sm" ${w.is_default ? 'disabled' : ''} title="${w.is_default ? 'Основное пространство удалить нельзя' : fedOn ? (mirror ? 'Выйти из общего пространства и удалить его' : 'Выключить «Общее» и удалить пространство') : ''}" onclick="wsDelete(${w.id})">Удалить</button></div>
       ${(w.fed?.asks || []).map(a => `<div class="wsf-ask"><span>Сервер «${esc(nm(w, a.proposer))}» просит добавить в пространство сервер «${esc(a.target_name)}»${a.approved ? ' (одобрено, ждём ответа)' : ''}</span>${a.approved ? '' : `<button class="btn btn-ghost btn-sm" onclick="wsAsk(${a.id},false)">Отклонить</button><button class="btn ux-solid btn-sm" onclick="wsAsk(${a.id},true)">Одобрить</button>`}</div>`).join('')}</div>`; }).join('')}
   </div>`;
 }
@@ -7648,11 +7648,11 @@ async function wsSave() {
 function wsDelete(id) {
   const w = WS.list.find(x => x.id === id); if (!w) return;
   if (w.is_default) { toast('Основное пространство удалить нельзя: оно используется по умолчанию', 'error'); return; }
-  if (w.users) { toast(`В пространстве ${w.users} ${uxPlural(w.users, 'человек', 'человека', 'человек')}. Сначала переведите их в другое пространство в профилях людей`, 'error'); return; }
   const shared = !!w.fed?.shared, host = !!w.fed?.is_host;
-  const text = !shared ? `Пространство «${esc(w.name)}» пустое, оно будет удалено.`
-    : host ? `Пространство «${esc(w.name)}» общее. Сначала «Общее» будет выключено: люди других серверов покинут пространство, у них оно станет обычным. Затем пространство удалится у вас.`
-    : `Пространство «${esc(w.name)}» общее, его ведёт другой сервер. Вы выйдете из него (ваши люди перестанут быть видны другим серверам), затем оно удалится у вас.`;
+  const people = w.users ? ` Оно будет убрано у ${w.users} ${uxPlural(w.users, 'человека', 'людей', 'людей')}${w.only_here ? `, из них ${w.only_here} ${uxPlural(w.only_here, 'перейдёт', 'перейдут', 'перейдут')} в «Основное» (у них нет других пространств)` : ''}.` : '';
+  const text = !shared ? `Пространство «${esc(w.name)}» будет удалено.${people}`
+    : host ? `Пространство «${esc(w.name)}» общее. Сначала «Общее» будет выключено: люди других серверов покинут пространство, у них оно станет обычным. Затем пространство удалится у вас.${people}`
+    : `Пространство «${esc(w.name)}» общее, его ведёт другой сервер. Вы выйдете из него (ваши люди перестанут быть видны другим серверам), затем оно удалится у вас.${people}`;
   confirm(shared ? (host ? 'Выключить «Общее» и удалить?' : 'Выйти и удалить пространство?') : 'Удалить пространство?', text, async () => {
     if (shared) {
       const me = FD.me?.id || (await api('GET', '/api/admin/federation'))?.me?.id;

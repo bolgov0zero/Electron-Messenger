@@ -121,7 +121,9 @@ const nameOk = n => { const s = String(n || '').trim().replace(/\s+/g, ' '); ret
 
 admin.get('/', (req, res) => {
   res.json(db.prepare(`SELECT w.id, w.name, w.created_at, w.fed_uid, w.fed_host, (w.id = ?) AS is_default,
-      (SELECT COUNT(*) FROM user_workspaces m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = w.id AND COALESCE(u.is_bot, 0) = 0) AS users
+      (SELECT COUNT(*) FROM user_workspaces m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = w.id AND COALESCE(u.is_bot, 0) = 0) AS users,
+      (SELECT COUNT(*) FROM user_workspaces m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = w.id AND COALESCE(u.is_bot, 0) = 0
+        AND (SELECT COUNT(*) FROM user_workspaces m2 WHERE m2.user_id = m.user_id) = 1) AS only_here
     FROM workspaces w ORDER BY w.id`).all(spaces.DEFAULT_WS).map(w => ({ ...w, is_default: !!w.is_default, fed: fsp.adminInfo(w), candidates: fsp.candidates(w) })));
 });
 // Приглашения и просьбы общих пространств
@@ -208,10 +210,21 @@ admin.delete('/:id', (req, res) => {
   if (!w) return res.status(404).json({ error: 'Пространство не найдено' });
   if (w.fed_uid) return res.status(400).json({ error: 'Пространство общее. Сначала выключите «Общее» (хозяин) или выйдите из него.' });
   if (id === spaces.DEFAULT_WS) return res.status(400).json({ error: 'Основное пространство удалить нельзя' });
-  if (db.prepare('SELECT 1 FROM user_workspaces WHERE workspace_id = ? LIMIT 1').get(id)) return res.status(400).json({ error: 'В пространстве есть люди. Сначала уберите их из него или переведите в другое.' });
-  db.prepare('DELETE FROM workspaces WHERE id = ?').run(id);
-  logAudit(req, 'server', 'Пространство удалено', w.name);
-  res.json({ ok: true });
+  // Пространство убирается у всех, кто в нём состоял; если оно было единственным, человек переходит в основное
+  const members = db.prepare('SELECT m.user_id FROM user_workspaces m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = ? AND COALESCE(u.is_bot, 0) = 0').all(id).map(r => r.user_id);
+  let moved = 0;
+  db.transaction(() => {
+    for (const uid of members) {
+      const rest = spaces.wsIdsOf(uid).filter(x => x !== id);
+      if (!rest.length) moved++;
+      spaces.setWorkspaces(uid, rest.length ? rest : [spaces.DEFAULT_WS]);
+    }
+    db.prepare('DELETE FROM workspaces WHERE id = ?').run(id);
+  })();
+  members.forEach(uid => { try { spaces.afterMove(uid); } catch {} });
+  logAudit(req, 'server', 'Пространство удалено', members.length ? `${w.name}: людей ${members.length}, переведено в основное ${moved}` : w.name);
+  if (members.length) broadcastAll({ type: 'directory_changed' });
+  res.json({ ok: true, people: members.length, moved });
 });
 
 module.exports = { contacts, blocks, admin };
