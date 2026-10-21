@@ -52,8 +52,8 @@ router.get('/search', authMiddleware, async (req, res) => {
           JOIN chats c ON c.id = m.chat_id AND c.is_secret = 0
           LEFT JOIN users u ON u.id = m.sender_id
           WHERE m.tsv @@ to_tsquery('russian', ?) AND m.deleted = 0 ${chatId ? 'AND m.chat_id = ?' : ''}
-          ORDER BY m.sent_at DESC LIMIT ${limit}
-        ) t ORDER BY t.sent_at DESC
+          ORDER BY m.sent_at DESC, m.id DESC LIMIT ${limit}
+        ) t ORDER BY t.sent_at DESC, t.id DESC
       `, ftsQuery, `StartSel=${String.fromCharCode(1)}, StopSel=${String.fromCharCode(2)}, MaxWords=14, MinWords=6, ShortWord=1, MaxFragments=1`,
         ...(chatId ? [req.user.id, ftsQuery, chatId] : [req.user.id, ftsQuery]));
     } else {
@@ -67,7 +67,7 @@ router.get('/search', authMiddleware, async (req, res) => {
         JOIN chats c ON c.id = m.chat_id AND c.is_secret = 0
         LEFT JOIN users u ON u.id = m.sender_id
         WHERE messages_fts MATCH ? AND m.deleted = 0 ${chatId ? 'AND m.chat_id = ?' : ''}
-        ORDER BY m.sent_at DESC LIMIT ${limit}
+        ORDER BY m.sent_at DESC, m.id DESC LIMIT ${limit}
       `, ...(chatId ? [req.user.id, ftsQuery, chatId] : [req.user.id, ftsQuery]));
     }
   } catch (e) { console.error('[FTS] search error:', e.message); }
