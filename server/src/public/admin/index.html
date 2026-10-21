@@ -1571,7 +1571,11 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .dv-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;background:var(--dv-ok);animation:dvPulse 2.6s ease-in-out infinite}
 .dv-dot.warn{background:var(--dv-warn)}.dv-dot.crit{background:var(--dv-bad);animation:none}.dv-dot.off{background:var(--dv-muted);animation:none}
 @keyframes dvPulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 4px color-mix(in srgb,var(--dv-ok) 22%,transparent)}}
-.dv-m-sub{margin-top:10px;line-height:1.6}
+.dv-m-sub{margin-top:10px}
+.dv-m-grid{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:5px 10px;font-size:12px;align-items:baseline}
+.dv-m-grid span{color:var(--dv-muted)}
+.dv-m-grid em{font-style:normal;font-size:11px;color:var(--dv-muted);text-align:right;letter-spacing:.02em}
+.dv-m-grid b{font:600 11.5px var(--f-mono);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .dv-ib{width:28px;height:28px;display:inline-grid;place-items:center;border:1px solid var(--dv-border);background:var(--dv-surface2);color:var(--dv-bad);border-radius:8px;cursor:pointer;transition:transform .12s,border-color .15s,background .15s}
 .dv-ib:hover{border-color:color-mix(in srgb,var(--dv-bad) 45%,var(--dv-border))}
 .dv-ib:active{transform:scale(.92)}
@@ -3618,11 +3622,16 @@ function hmRenderPg() {
   for (const id of ['hm-m-pg-cpu', 'hm-m-pg-mem']) $hm(id)?.classList.toggle('w', !!svc && hot);
   const pb = $hm('hm-m-pg-btn');
   if (pb) { pb.disabled = !svc || PGR.busy; pb.title = svc ? 'Перезапустить postgresql' : 'PostgreSQL на другом сервере: перезапуск отсюда недоступен'; }
-  const lines = [`Задач: electron ${live.tasks ?? '—'}${svc ? ` · postgresql ${svc.tasks ?? '—'}` : ''}`,
-    `Запущены: electron ${pgSince(el?.since)} · postgresql ${pgSince(svc?.since || pg.started)}`];
-  if (el?.restarts != null || svc?.restarts != null) lines.push(`Сбоев после запуска: electron ${el?.restarts ?? '—'}${svc ? ` · postgresql ${svc.restarts ?? '—'}` : ''}`);
-  if (!pg.local) lines.push(`PostgreSQL на другом сервере · связь ${pg.latency} мс`);
-  hmHtml('hm-m-sub', lines.map(esc).join('<br>'));
+  // Подробности двумя колонками (electron, postgresql): так в узкой карточке строки не переносятся
+  const short = ts => (ts ? `${new Date(ts).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} ${hmClock(ts)}` : '—');
+  const row = (l, a, b) => `<span>${l}</span><b>${esc(String(a))}</b><b>${esc(String(b))}</b>`;
+  let grid = `<div class="dv-m-grid"><i></i><em>electron</em><em>postgresql</em>`
+    + row('Задач', live.tasks ?? '—', svc?.tasks ?? '—')
+    + row('Запущена', short(el?.since), short(svc?.since || pg.started))
+    + (el?.restarts != null || svc?.restarts != null ? row('Сбоев', el?.restarts ?? '—', svc ? (svc.restarts ?? '—') : '—') : '')
+    + '</div>';
+  if (!pg.local) grid += `<div class="dv-sub" style="margin-top:6px">PostgreSQL на другом сервере · связь ${esc(String(pg.latency))} мс</div>`;
+  hmHtml('hm-m-sub', grid);
 
   // Блок базы
   hmText('dv-db-ver', pg.version || '');
