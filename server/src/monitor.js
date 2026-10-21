@@ -366,7 +366,20 @@ function dirStats(dir, isAux) {
 }
 
 let storage = null, storageAt = 0;
-function storageInfo() {
+// Размер базы: файл SQLite (и журнал WAL) или, на PostgreSQL, размер самой базы у PostgreSQL.
+// dbLocal — лежит ли база на диске этого сервера: если нет, её размер не вычитается из занятого места
+async function dbSize() {
+  if (!dal.pg) {
+    const sizeOf = p => { try { return fs.statSync(p).size; } catch { return 0; } };
+    return { engine: 'sqlite', db: sizeOf(DB_PATH), wal: sizeOf(DB_PATH + '-wal'), dbLocal: true };
+  }
+  let local = true;
+  try { const h = new URL(process.env.DATABASE_URL).hostname; local = ['127.0.0.1', 'localhost', '::1', '[::1]', ''].includes(h); } catch {}
+  let db = 0;
+  try { db = Number((await dal.get('SELECT pg_database_size(current_database()) AS b')).b) || 0; } catch {}
+  return { engine: 'postgresql', db, wal: 0, dbLocal: local };
+}
+async function storageInfo() {
   if (storage && Date.now() - storageAt < 60000) return storage;
   const sizeOf = p => { try { return fs.statSync(p).size; } catch { return 0; } };
   let disk = null;
@@ -374,8 +387,7 @@ function storageInfo() {
   const files = dirStats(path.join(DATA_DIR, 'files'), n => /_t\.(webp|jpg)$/.test(n));
   storage = {
     disk,
-    db: sizeOf(DB_PATH),
-    wal: sizeOf(DB_PATH + '-wal'),
+    ...(await dbSize()),
     files: { size: files.size, count: files.count },
     backups: dirStats(path.join(DATA_DIR, 'backups')),
     avatars: { size: dirStats(path.join(DATA_DIR, 'avatar')).size },

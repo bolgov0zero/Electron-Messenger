@@ -860,7 +860,7 @@ router.get('/overview', async (req, res) => {
     .sort((a, b) => b.since - a.since)
     .map(u => ({ ...u, has_avatar: fs.existsSync(path.join(avatarDir, `${u.id}.jpg`)) }));
 
-  const storage = monitor.storageInfo();
+  const storage = await monitor.storageInfo();
   const cacheSize = db ? db.pragma('cache_size', { simple: true }) : 0;
   const pageSize = db ? db.pragma('page_size', { simple: true }) : 0;
   res.json({

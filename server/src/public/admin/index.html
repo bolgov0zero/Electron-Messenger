@@ -3545,7 +3545,8 @@ function hmRenderOverview() {
   hmRenderEvTile();
   const disk = o.storage.disk;
   const S = o.storage;
-  const chatData = S.db + S.wal + S.files.size + S.backups.size + S.avatars.size;
+  // База на другом сервере не занимает место на этом диске
+  const chatData = (S.dbLocal === false ? 0 : S.db + S.wal) + S.files.size + S.backups.size + S.avatars.size;
   HM.disk = disk;
 
   // Сервер
@@ -3588,7 +3589,7 @@ function hmRenderOverview() {
         + (days === 0 ? 'сегодня' : days === 1 ? 'вчера' : `${days} ${hmPlural(days, 'день', 'дня', 'дней')} назад`);
   const leg = (color, name, note, value) => `<div class="dv-leg" title="${esc(note)}"><i style="background:${color}"></i>${name}<span class="v">${value}</span></div>`;
   hmHtml('hm-store-list',
-    leg('var(--dv-c1)', 'База данных', `chat.db ${hmBytes(S.db)} + журнал WAL ${hmBytes(S.wal)}`, sizeOf(S.db + S.wal))
+    leg('var(--dv-c1)', 'База данных', S.engine === 'postgresql' ? `PostgreSQL${S.dbLocal === false ? ' на другом сервере' : ''}: ${hmBytes(S.db)}` : `chat.db ${hmBytes(S.db)} + журнал WAL ${hmBytes(S.wal)}`, sizeOf(S.db + S.wal))
     + leg('var(--dv-c2)', 'Файлы чата', `${hmFmt(S.files.count)} ${hmPlural(S.files.count, 'файл', 'файла', 'файлов')} · аватары ${hmBytes(S.avatars.size)}`, sizeOf(S.files.size + S.avatars.size))
     + leg('var(--dv-c3)', 'Резервные копии', backup, sizeOf(S.backups.size))
     + (disk ? leg('var(--dv-c4)', 'Система и прочее', 'Debian, Node.js, журналы', sizeOf(Math.max(0, disk.total - disk.free - chatData))) : ''));
