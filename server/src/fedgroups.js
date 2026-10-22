@@ -151,7 +151,7 @@ async function msgEvent(m, gidOf) {
     else { ev.bot = m.sender_id; ev.fn = u.display_name; }          // вебхук комнаты: у гостя появится бот с этим именем
   } else if (u.is_bot === 2) {
     ev.fi = u.fed_instance; ev.fl = u.fed_login; ev.fn = u.display_name; ev.av = u.fed_avatar_v || '';   // чужое сообщение, которое хозяин досылает гостю
-  } else { ev.fi = me.id; ev.fl = u.username; ev.fn = u.display_name; ev.av = F().avatarVersion(m.sender_id); }
+  } else { ev.fi = me.id; ev.fl = u.username; ev.fn = u.display_name; ev.av = F().avatarVersion(m.sender_id); if (u.is_bot === 3) ev.tg = 'Гость'; }   // гость по ссылке: на других серверах он с меткой «Гость»
   let att = null;
   try {
     const a = m.attachment ? JSON.parse(m.attachment) : null;
@@ -272,6 +272,7 @@ async function recvMsg(peer, ev) {
       if (fi === me) return;
       sender = await shadowVia(peer, fi, fl, str(ev.fn, 80), ev.av === undefined ? undefined : str(ev.av, 40));
       if (!sender) return;
+      if (ev.tg !== undefined) await dal.run('UPDATE users SET tag = ? WHERE id = ? AND is_bot = 2 AND tag IS NOT ?', str(ev.tg, 40) || null, sender.id, str(ev.tg, 40) || null);   // метка гостя; у обычного человека тег приходит с профилем
     }
   }
   let text = str(ev.text, 4096);

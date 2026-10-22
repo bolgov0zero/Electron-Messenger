@@ -2585,6 +2585,7 @@ return 'OK';</pre>
 
 <script src="/chat/emoji-font.js?v=1"></script>
 <script src="/shared/slidesel.js"></script>
+<script src="/shared/guestlinks.js"></script>
 <script>
 /* ── STATE ── */
 let token = null, currentUser = null, currentPage = 'dashboard';
@@ -4840,10 +4841,23 @@ function rmFilter(k) { RM.filter = k; RM.sel.clear(); rmRender(); }
 function rmSearch(v) { RM.q = v; rmRender(); }
 function rmToggle(id) { RM.sel.has(id) ? RM.sel.delete(id) : RM.sel.add(id); rmRender(); }
 function rmSelAll(on) { document.querySelectorAll('#page-body tbody input[type=checkbox]').forEach(() => {}); allRooms.forEach(r => on ? RM.sel.add(r.id) : RM.sel.delete(r.id)); rmRender(); }
+// Гостевая ссылка комнаты или группы: окно из shared/guestlinks.js, запросы идут с токеном админа
+function glOpen(chatId, name) {
+  if (typeof GuestLinks === 'undefined') return;
+  GuestLinks.open({ chatId, chatName: name, request: async (method, path, body) => {
+    try {
+      const res = await fetch('/api' + path, { method, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: body ? JSON.stringify(body) : undefined });
+      let data = null; try { data = await res.json(); } catch {}
+      return { ok: res.ok, status: res.status, data: data || {} };
+    } catch { return { ok: false, status: 0, data: { error: 'Нет связи с сервером' } }; }
+  } });
+}
+const GL_I = '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
 function rmMenu(e, id) {
   uxOpenMenu(e, 'rm' + id, `
     <button role="menuitem" onclick="uxCloseMenu(); rmOpen(${id}, 'topics')">${RM_I.topics}Темы</button>
     <button role="menuitem" onclick="uxCloseMenu(); rmOpen(${id}, 'members')">${RM_I.users}Участники</button>
+    <button role="menuitem" onclick="uxCloseMenu(); glOpen(${id}, allRooms.find(r => r.id === ${id})?.name)">${GL_I}Гостевая ссылка</button>
     <button role="menuitem" onclick="uxCloseMenu(); rmClear(${id})">${RM_I.clear}Очистить историю</button>
     <hr><button role="menuitem" class="danger" onclick="uxCloseMenu(); rmDelete([${id}])">${UX_I.trash}Удалить комнату</button>`);
 }
@@ -4980,6 +4994,7 @@ const rmMenuToggle = () => { RM.form.menu = !RM.form.menu; rmRenderForm(); };
 function rmMenuHtml(f, r) {
   if (!r || !f.menu) return '';
   return `<div class="rm-scrim" onclick="rmMenuToggle()"></div><div class="rm-menu" role="menu">
+    <button type="button" role="menuitem" onclick="closeModal('modal-room'); glOpen(${r.id}, allRooms.find(x => x.id === ${r.id})?.name)">${GL_I}Гостевая ссылка…</button>
     <button type="button" role="menuitem" onclick="closeModal('modal-room'); rmClear(${r.id})">${RM_I.clear}Очистить историю…</button>
     <button type="button" role="menuitem" class="d" onclick="closeModal('modal-room'); rmDelete([${r.id}])">${UX_I.trash}Удалить комнату…</button></div>`;
 }
@@ -6063,8 +6078,10 @@ function chSearch(v) { CH.q = v; chRender(); }
 function chToggle(id) { CH.sel.has(id) ? CH.sel.delete(id) : CH.sel.add(id); chRender(); }
 function chSelAll(on) { allChats.forEach(c => on ? CH.sel.add(c.id) : CH.sel.delete(c.id)); chRender(); }
 function chMenu(e, id) {
+  const c = allChats.find(x => x.id === id), guestOk = c && c.type === 'group' && !c.fed_instance;
   uxOpenMenu(e, 'ch' + id, `
     <button role="menuitem" onclick="uxCloseMenu(); chMembers(${id})">${RM_I.users}Участники</button>
+    ${guestOk ? `<button role="menuitem" onclick="uxCloseMenu(); glOpen(${id}, chName(allChats.find(x => x.id === ${id})))">${GL_I}Гостевая ссылка</button>` : ''}
     <button role="menuitem" onclick="uxCloseMenu(); chClear(${id})">${RM_I.clear}Очистить историю</button>
     <hr><button role="menuitem" class="danger" onclick="uxCloseMenu(); chDelete([${id}])">${UX_I.trash}Удалить чат</button>`);
 }

@@ -69,6 +69,13 @@ app.get(['/chat/', '/chat/index.html'], (req, res) => {
   }
 });
 app.use('/chat', express.static(path.join(__dirname, 'public/chat')));
+// Страница гостя по ссылке: /g/<токен>. Ни кэша, ни индексации, ссылка не уходит в Referer
+app.use('/g', (req, res, next) => { res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('X-Robots-Tag', 'noindex, nofollow'); next(); });
+app.use('/g', express.static(path.join(__dirname, 'public/g'), { index: false, maxAge: 0 }));
+app.get('/g/:token', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'public/g/index.html'));
+});
 app.use('/shared', express.static(path.join(__dirname, 'public/shared')));
 
 // /m — мобильный клиент (PWA для iOS), отдельный от /chat; тот же принцип
@@ -146,6 +153,7 @@ app.use('/api/contacts', spacesRouter.contacts);
 app.use('/api/blocks', spacesRouter.blocks);
 app.use('/api/admin/workspaces', spacesRouter.admin);
 app.use('/api/folders', require('./routes/folders'));
+app.use('/api/guest', require('./routes/guest'));
 app.use('/api/preview', require('./routes/preview'));
 const pushRouter = require('./routes/push');
 boot.push(() => pushRouter.init());
@@ -169,6 +177,8 @@ boot.push(() => require('./federation').mount(server));
 // Отложенные объявления живут в базе; планировщик поднимает наступившие,
 // в том числе те, чьё время пришло, пока сервер был выключен.
 boot.push(() => require('./announcements').startScheduler());
+// Гостевые ссылки: загрузка действующих гостей и закрытие тех, у кого срок вышел, пока сервер не работал
+boot.push(() => require('./guest').startScheduler());
 // Нагрузка сервера для живых графиков на главной админки; история переживает перезапуск
 const monitor = require('./monitor');
 monitor.setOnlineProvider(require('./ws').onlineUserCount);

@@ -7,6 +7,7 @@ const unreadCounts = require('./unread');
 const gifLib = require('./gif');
 const linkPrev = require('./linkprev');
 const attach = require('./attach');
+const guestLib = require('./guest');
 // Требуем лениво, как и sendPushToUser ниже: push.js при загрузке генерирует
 // ключи, и раньше времени его дёргать не нужно
 async function hasPushSubscription(userId) {
@@ -88,7 +89,11 @@ async function broadcast(chatId, payload, excludeUserId = null) {
   const members = await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ?', chatId);
   members.forEach(({ user_id }) => {
     if (user_id === excludeUserId) return;
-    getConn(user_id).forEach(ws => { if (ws.readyState === 1) ws.send(JSON.stringify(payload)); });
+    // Гость не получает ничего о сообщениях до своего подключения; цитаты старых сообщений ему скрываются
+    const pl = guestLib.isGuest(user_id) ? guestLib.forRecipient(user_id, payload) : payload;
+    if (!pl) return;
+    const json = JSON.stringify(pl);
+    getConn(user_id).forEach(ws => { if (ws.readyState === 1) ws.send(json); });
   });
 }
 
@@ -134,6 +139,7 @@ function computeMobile(userId, status) {
 
 // Пересчитать агрегат и разослать собеседникам ТОЛЬКО при реальном изменении статуса (или смене «с телефона»).
 async function broadcastStatus(userId) {
+  if (guestLib.isGuest(userId)) return;
   const status = computeStatus(userId);
   const mobile = computeMobile(userId, status);
   if (userStatus.get(userId) === status && !!userMobile.get(userId) === mobile) return; // не изменилось — не шумим
@@ -166,17 +172,17 @@ async function getEditTimeLimit() {
 
 // Список закреплённых сообщений чата — свежие первыми: плашка показывает
 // последнее закреплённое, дальше перебор идёт к более старым.
-async function getPins(chatId) {
+async function getPins(chatId, floor = 0) {
   return (await dal.all(`
     SELECT p.message_id, p.pinned_by, p.pinned_at,
       m.text, m.deleted, m.attachment,
-      COALESCE(u.display_name, 'Удалённый аккаунт') AS sender_name
+      COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') AS sender_name
     FROM pinned_messages p
     JOIN messages m ON m.id = p.message_id
     LEFT JOIN users u ON u.id = m.sender_id
-    WHERE p.chat_id = ? AND m.deleted = 0
+    WHERE p.chat_id = ? AND m.deleted = 0 AND m.id > ?
     ORDER BY p.pinned_at DESC, p.message_id DESC
-  `, chatId)).map(r => {
+  `, chatId, Number(floor) || 0)).map(r => {
     if (r.attachment) { try { r.attachment = JSON.parse(r.attachment); } catch { r.attachment = null; } }
     return r;
   });
@@ -191,11 +197,11 @@ function sanitizeEncAttachment(att) {
 async function getMessageWithStatus(msgId, viewerId) {
   const msg = await dal.get(`
     SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.link_preview, m.system_kind,
-      u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.tag as sender_tag, (u.is_bot = 1) as sender_is_bot,
+      u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, COALESCE(u.tag, m.guest_tag) as sender_tag, (u.is_bot = 1) as sender_is_bot,
       m.reply_to_id,
       rm.text as reply_text, rm.attachment as reply_attachment, rm.deleted as reply_deleted,
-      COALESCE(ru.display_name, 'Удалённый аккаунт') as reply_sender_name, (ru.is_bot = 1) as reply_sender_is_bot,
-      ru.id as reply_sender_id, ru.tag as reply_sender_tag
+      COALESCE(ru.display_name, rm.guest_name, 'Удалённый аккаунт') as reply_sender_name, (ru.is_bot = 1) as reply_sender_is_bot,
+      ru.id as reply_sender_id, COALESCE(ru.tag, rm.guest_tag) as reply_sender_tag
     FROM messages m LEFT JOIN users u ON u.id = m.sender_id
     LEFT JOIN messages rm ON rm.id = m.reply_to_id
     LEFT JOIN users ru ON ru.id = rm.sender_id
@@ -319,6 +325,10 @@ function setup(server) {
 
     setHandler(async raw => {
       let data; try { data = JSON.parse(raw); } catch { return; }
+
+      // Гость: короткий список событий (запрет по умолчанию); порог истории применяется ниже, где читаются сообщения
+      if (user.is_guest && !guestLib.WS_ALLOW.has(data.type)) return;
+      const gfloor = user.is_guest ? guestLib.floorOf(user.id) : 0;
 
       // Перенос базы: запись запрещена, клиент получает отказ и оставляет сообщение неотправленным
       if (maintenance.isOn() && ['message', 'edit_message', 'delete_message', 'react', 'pin_message', 'unpin_message', 'read', 'delivered'].includes(data.type)) {
@@ -466,7 +476,7 @@ function setup(server) {
       if (data.type === 'delivered') {
         const { message_id } = data;
         const msg = await dal.get('SELECT * FROM messages WHERE id = ?', message_id);
-        if (!msg || msg.sender_id === user.id) return;
+        if (!msg || msg.sender_id === user.id || msg.id <= gfloor) return;
         // Членство в чате — как в обработчике 'read' ниже: иначе можно подтвердить
         // доставку чужого сообщения и исказить счётчики статусов
         if (!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', msg.chat_id, user.id))) return;
@@ -485,8 +495,8 @@ function setup(server) {
         const unread = await dal.all(`
           SELECT m.id, m.sender_id FROM messages m
           LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-          WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL
-        `, user.id, chat_id, user.id);
+          WHERE m.chat_id = ? AND m.id > ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL
+        `, user.id, chat_id, gfloor, user.id);
         // Отметка «докуда прочитано» — до раннего выхода: если непрочитанного нет,
         // отметку всё равно надо подтянуть к последнему сообщению, иначе она может
         // отстать и счётчик покажет непрочитанное там, где его нет
@@ -581,7 +591,7 @@ function setup(server) {
         if (typeof reaction !== 'string' || !reaction || reaction.length > 16) return;
         if (!/\p{Extended_Pictographic}/u.test(reaction)) return;
         const msg = await dal.get('SELECT * FROM messages WHERE id = ? AND deleted = 0', message_id);
-        if (!msg) return;
+        if (!msg || msg.id <= gfloor) return;
         if (!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', msg.chat_id, user.id))) return;
         const existing = await dal.get('SELECT 1 FROM reactions WHERE message_id = ? AND user_id = ? AND reaction = ?', message_id, user.id, reaction);
         const isAdd = !existing;
@@ -754,9 +764,14 @@ function getConnCount() { return connMeta.size; }
 function getConnMeta(connId) { return connMeta.get(connId) || null; }
 
 function broadcastAll(payload) {
-  for (const [, conns] of clients) {
+  for (const [uid, conns] of clients) {
+    if (guestLib.isGuest(uid)) continue;    // объявления и служебные события гостям не нужны
     conns.forEach(ws => { if (ws.readyState === 1) ws.send(JSON.stringify(payload)); });
   }
 }
+// Разорвать все соединения пользователя (закрытие доступа гостя)
+function kick(userId) {
+  getConn(userId).forEach(ws => { try { ws.close(4001, 'guest_ended'); } catch {} });
+}
 
-module.exports = { setup, finishMessage, setRemoteStatus, hasOpenConnection, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, getMobile, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };
+module.exports = { setup, kick, finishMessage, setRemoteStatus, hasOpenConnection, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, getMobile, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };

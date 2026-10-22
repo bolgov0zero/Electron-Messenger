@@ -149,8 +149,8 @@ router.get('/me', async (req, res) => {
   try {
     const { verifyToken } = require('../auth');
     const payload = verifyToken(auth);
-    const user = await dal.get('SELECT id, username, display_name, is_admin, tag, must_change_password, can_announce FROM users WHERE id = ?', payload.id);
-    if (!user) return res.status(401).json({ error: 'User not found' });
+    const user = await dal.get('SELECT id, username, display_name, is_admin, tag, must_change_password, can_announce, is_bot FROM users WHERE id = ?', payload.id);
+    if (!user || user.is_bot === 3) return res.status(401).json({ error: 'User not found' });   // гость входит только через /api/guest
     res.json({ ...user, is_admin: !!user.is_admin, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, ...(await wsInfo(user.id)) });
   } catch { res.status(401).json({ error: 'Invalid token' }); }
 });

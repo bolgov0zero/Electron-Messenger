@@ -348,7 +348,7 @@ router.get('/users', async (req, res) => {
 
 router.get('/chats', async (req, res) => {
   const chats = await dal.all(`
-    SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.parent_id, c.position, c.is_secret, c.read_only, c.topics_manual,
+    SELECT c.id, c.type, c.name, c.created_at, c.created_by, c.parent_id, c.position, c.is_secret, c.read_only, c.topics_manual, c.fed_instance,
       (SELECT COUNT(*) FROM messages WHERE chat_id = c.id AND deleted = 0) as message_count,
       (SELECT MAX(sent_at) FROM messages WHERE chat_id = c.id AND deleted = 0) as last_at,
       (SELECT COUNT(*) FROM chat_members WHERE chat_id = c.id) as member_count,

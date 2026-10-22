@@ -41,7 +41,7 @@ async function enrichChat(chat, userId) {
     const placeholders = ids.map(() => '?').join(',');
     last = await dal.get(`
       SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment,
-        COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
+        COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
       WHERE m.chat_id IN (${placeholders}) ORDER BY m.sent_at DESC, m.id DESC LIMIT 1
     `, ...ids);
@@ -51,7 +51,7 @@ async function enrichChat(chat, userId) {
   } else {
     last = await dal.get(`
       SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment,
-        COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
+        COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
       WHERE m.chat_id = ? ORDER BY m.sent_at DESC, m.id DESC LIMIT 1
     `, chat.id);
@@ -137,7 +137,7 @@ router.get('/:id/topics', authMiddleware, async (req, res) => {
     // тем была одинаковая подпись «# тема» и не понять, что нового
     const last = await dal.get(`
       SELECT m.id, m.text, m.sent_at, m.deleted, m.attachment,
-        COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
+        COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
       WHERE m.chat_id = ? ORDER BY m.sent_at DESC, m.id DESC LIMIT 1
     `, s.id);
@@ -329,6 +329,11 @@ router.delete('/:id/members/:userId', authMiddleware, async (req, res) => {
   if (chat.type === 'room' ? !req.user.is_admin : !(req.user.is_admin || chat.created_by === req.user.id)) return res.status(403).json({ error: 'Forbidden' });
   const kickedId = Number(req.params.userId);
   const chatId = Number(req.params.id);
+  // Гостя «убирают» отзывом его ссылки: доступ закрывается полностью, в чате появляется «отключился»
+  if (require('../guest').isGuest(kickedId)) {
+    const gl = await dal.get('SELECT id FROM guest_links WHERE guest_user_id = ? AND chat_id = ?', kickedId, chatId);
+    if (gl) { await require('../guest').revoke(gl.id, chatId); return res.json({ ok: true }); }
+  }
   if ((await spaces.isFed(kickedId))) {
     // Участник с другого сервера или его ожидающее приглашение
     const sh = await dal.get('SELECT * FROM users WHERE id = ?', kickedId);

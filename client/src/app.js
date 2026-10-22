@@ -7445,6 +7445,7 @@ function renderGroupProfile(keep) {
     perms.canEdit ? `<button type="button" class="gm-tile" onclick="gmAddView()">${gmSvg('plus', 20)}Добавить</button>` : '',
     `<button type="button" class="gm-tile" onclick="document.getElementById('gm-q')?.focus()">${gmSvg('search', 20)}Поиск</button>`,
     `<button type="button" class="gm-tile" onclick="openChatMedia(${chat.id})">${gmSvg('image', 20)}Медиа</button>`,
+    perms.canEdit ? `<button type="button" class="gm-tile" onclick="gmGuest()">${gmSvg('link', 20)}Гость</button>` : '',
     `<button type="button" class="gm-tile" onclick="gmMute(event)">${gmSvg(muted ? 'bell' : 'bellOff', 20)}${muted ? 'Со звуком' : 'Без звука'}</button>`,
     perms.canLeave ? `<button type="button" class="gm-tile d" onclick="gmLeave()">${gmSvg('out', 20)}Выйти</button>` : '',
   ].filter(Boolean);
@@ -7493,6 +7494,17 @@ function gmPaintStatus() {
   gmPaintSub();
 }
 function gmOpenMember(id) { openProfile(id); }
+// Гостевая ссылка: вход в группу или комнату без учётной записи на время (окно — shared/guestlinks.js)
+function gmGuest() {
+  const chat = gmChat(); if (!chat || typeof GuestLinks === 'undefined') return;
+  GuestLinks.open({ chatId: chat.id, chatName: chatName(chat), request: async (method, path, body) => {
+    try {
+      const res = await fetch(`${httpProto()}://${S.server}/api${path}`, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${S.token}` }, body: body ? JSON.stringify(body) : undefined });
+      let data = null; try { data = await res.json(); } catch {}
+      return { ok: res.ok, status: res.status, data: data || {} };
+    } catch { return { ok: false, status: 0, data: { error: 'Нет связи с сервером' } }; }
+  } });
+}
 async function gmMute(ev) {
   const id = S.gm.id;
   if (S.mutedChats.has(id)) { await unmuteChat(id); return; }

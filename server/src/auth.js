@@ -55,8 +55,14 @@ async function resolveUser(token) {
   // Токен-вызов 2FA (purpose: totp_setup/totp_verify) — не настоящая сессия,
   // иначе его можно было бы подсунуть сюда как Bearer-токен и обойти 2FA целиком
   if (payload.purpose) throw new AuthError('invalid');
-  const user = await dal.get('SELECT id, username, display_name, is_admin, banned, must_change_password, sessions_valid_from FROM users WHERE id = ?', payload.id);
-  if (!user) throw new AuthError('user_not_found');
+  const user = await dal.get('SELECT id, username, display_name, is_admin, banned, must_change_password, sessions_valid_from, is_bot FROM users WHERE id = ?', payload.id);
+  if (!user) throw new AuthError(payload.guest ? 'guest_expired' : 'user_not_found');   // гостя по окончании срока удаляют целиком
+  // Гость (is_bot = 3): доступ только пока действует его ссылка; о закрытии клиент узнаёт по коду guest_expired
+  if (user.is_bot === 3) {
+    const g = await dal.get('SELECT chat_id, expires_at, revoked_at, ended_at FROM guest_links WHERE guest_user_id = ?', user.id);
+    if (!g || g.revoked_at || g.ended_at || g.expires_at <= Math.floor(Date.now() / 1000)) throw new AuthError('guest_expired');
+    return { ...user, is_admin: false, must_change_password: false, is_guest: true, guest_chat_id: g.chat_id };
+  }
   if (user.banned) throw new AuthError('banned');
   // iat в секундах, как и отметка. Сравнение нестрогое: токен, выданный в ту же
   // секунду, что и отзыв, тоже считаем отозванным — иначе он проскочит
@@ -76,6 +82,8 @@ async function authMiddleware(req, res, next) {
     const code = e.code || (e.name === 'TokenExpiredError' ? 'expired' : 'invalid');
     return res.status(401).json({ error: e.message, code });
   }
+  // Гостю открыт только короткий список запросов (см. guest.js): остальное закрыто по умолчанию
+  if (req.user.is_guest && !require('./guest').httpAllowed(req)) return res.status(403).json({ error: 'Недоступно гостю', code: 'guest_forbidden' });
   next();
 }
 
@@ -90,4 +98,7 @@ async function wsAuth(token) {
   return user;
 }
 
-module.exports = { init, signToken, verifyToken, signChallengeToken, verifyChallengeToken, authMiddleware, adminMiddleware, wsAuth, AuthError };
+// Токен гостя действует ровно до конца ссылки
+function signGuestToken(payload, ttlSec) { return jwt.sign(payload, SECRET, { expiresIn: Math.max(1, Math.floor(ttlSec)) }); }
+
+module.exports = { init, signToken, signGuestToken, verifyToken, signChallengeToken, verifyChallengeToken, authMiddleware, adminMiddleware, wsAuth, AuthError };

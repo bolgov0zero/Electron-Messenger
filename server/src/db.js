@@ -669,6 +669,34 @@ db.exec(`CREATE TABLE IF NOT EXISTS metrics_5m (
   on_n     INTEGER NOT NULL
 )`);
 
+// Имя и метка гостя при удалении его учётной записи остаются у сообщений (sender_id обнуляется, см. guest.js)
+tryAlter('ALTER TABLE messages ADD COLUMN guest_name TEXT');
+tryAlter('ALTER TABLE messages ADD COLUMN guest_tag TEXT');
+
+// Гостевые ссылки: вход в группу или комнату без учётной записи на ограниченное время (см. guest.js).
+// В базе только хеш токена; одна ссылка — один гость, привязанный к устройству первого входа.
+// Гость — пользователь с is_bot = 3: он не попадает в списки людей, а к чату доступ только через эту ссылку
+db.exec(`
+  CREATE TABLE IF NOT EXISTS guest_links (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id       INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    token_hash    TEXT NOT NULL UNIQUE,
+    created_by    INTEGER,
+    created_at    INTEGER NOT NULL DEFAULT (unixepoch()),
+    expires_at    INTEGER NOT NULL,
+    revoked_at    INTEGER,
+    ended_at      INTEGER,
+    guest_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    guest_name    TEXT,
+    device_hash   TEXT,
+    base_msg_id   INTEGER NOT NULL DEFAULT 0,
+    first_used_at INTEGER,
+    last_used_at  INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_guest_links_chat ON guest_links(chat_id);
+  CREATE INDEX IF NOT EXISTS idx_guest_links_user ON guest_links(guest_user_id);
+`);
+
 // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)
 const sysExists = db.prepare("SELECT id FROM users WHERE username = '__system__'").get();
 if (!sysExists) {

@@ -65,6 +65,7 @@ B.ui.gprofile = (function () {
     var nm = '<div class="pgn"><span>' + esc(B.chatName(chat)) + '</span>' + (P.canRename ? '<button class="pgpen" data-r="rename" aria-label="Переименовать">' + ic('pencil', 17, 2) + '</button>' : '') + '</div>';
     var tiles = [
       P.canEdit ? '<button data-r="add">' + ic('userplus', 22, 1.8) + '<span>Добавить</span></button>' : '',
+      P.canEdit ? '<button data-r="guest">' + ic('link', 22, 1.8) + '<span>Гость</span></button>' : '',
       '<button data-r="find">' + ic('search', 22, 1.8) + '<span>Поиск</span></button>',
       '<button data-r="mute">' + ic(muted ? 'bell' : 'bellOff', 22, 1.8) + '<span>' + (muted ? 'Со звуком' : 'Без звука') + '</span></button>',
       P.canLeave ? '<button class="red" data-r="leave">' + ic('out', 22, 1.8) + '<span>Выйти</span></button>' : ''
@@ -147,6 +148,17 @@ B.ui.gprofile = (function () {
     });
   }
   async function mute(el) { var c = chatOf(el); await B.chats.mute(c.id); paint(el); }
+  // Гостевая ссылка: окно из shared/guestlinks.js (вход в группу или комнату без учётной записи на время)
+  function guest(el) {
+    var c = chatOf(el); if (!c || !window.GuestLinks) return;
+    window.GuestLinks.open({ chatId: c.id, chatName: B.chatName(c), request: async function (method, path, body) {
+      try {
+        var res = await fetch(B.http() + '://' + B.S.server + '/api' + path, { method: method, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + B.S.token }, body: body ? JSON.stringify(body) : undefined });
+        var data = null; try { data = await res.json(); } catch (e) {}
+        return { ok: res.ok, status: res.status, data: data || {} };
+      } catch (e) { return { ok: false, status: 0, data: { error: 'Нет связи с сервером' } }; }
+    } });
+  }
   function leave(el) {
     var chat = chatOf(el);
     B.actions.confirm('Выйти из ' + (chat.type === 'room' ? 'комнаты' : 'группы') + ' «' + B.chatName(chat) + '»?', 'Переписка исчезнет из списка.', 'Выйти', async function () {
@@ -259,6 +271,7 @@ B.ui.gprofile = (function () {
     else if (r === 'add') addSheet(el);
     else if (r === 'find') { var i = el.querySelector('#pg-q'); if (i) { el.querySelector('.scroll').scrollTop = i.getBoundingClientRect().top - el.querySelector('.scroll').getBoundingClientRect().top + el.querySelector('.scroll').scrollTop - 12; i.focus(); } }
     else if (r === 'mute') mute(el);
+    else if (r === 'guest') guest(el);
     else if (r === 'leave') leave(el);
     else if (r === 'delete') del(el);
     else if (r === 'rename') rename(el);

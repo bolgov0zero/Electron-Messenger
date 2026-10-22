@@ -6,6 +6,7 @@ const dal = require('../dal');
 const unreadCounts = require('../unread');
 const { authMiddleware } = require('../auth');
 const { getPins } = require('../ws');
+const guestLib = require('../guest');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
 const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
@@ -13,11 +14,11 @@ const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
 // Общий SELECT сообщения с данными отправителя и цитаты
 const MSG_SELECT = `
   SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.link_preview, m.system_kind,
-    u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, u.tag as sender_tag, (u.is_bot = 1) as sender_is_bot,
+    u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, COALESCE(u.tag, m.guest_tag) as sender_tag, (u.is_bot = 1) as sender_is_bot,
     m.reply_to_id,
     rm.text as reply_text, rm.deleted as reply_deleted, rm.attachment as reply_attachment,
-    COALESCE(ru.display_name, 'Удалённый аккаунт') as reply_sender_name, (ru.is_bot = 1) as reply_sender_is_bot,
-      ru.id as reply_sender_id, ru.tag as reply_sender_tag
+    COALESCE(ru.display_name, rm.guest_name, 'Удалённый аккаунт') as reply_sender_name, (ru.is_bot = 1) as reply_sender_is_bot,
+      ru.id as reply_sender_id, COALESCE(ru.tag, rm.guest_tag) as reply_sender_tag
   FROM messages m LEFT JOIN users u ON u.id = m.sender_id
   LEFT JOIN messages rm ON rm.id = m.reply_to_id
   LEFT JOIN users ru ON ru.id = rm.sender_id
@@ -46,7 +47,7 @@ router.get('/search', authMiddleware, async (req, res) => {
           ts_headline('russian', t.text, to_tsquery('russian', ?), ?) AS snippet
         FROM (
           SELECT m.id, m.chat_id, m.sent_at, m.text, u.id AS sender_id,
-            COALESCE(u.display_name, 'Удалённый аккаунт') AS sender_name, (u.is_bot = 1) AS sender_is_bot
+            COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') AS sender_name, (u.is_bot = 1) AS sender_is_bot
           FROM messages m
           JOIN chat_members cm ON cm.chat_id = m.chat_id AND cm.user_id = ? AND cm.hidden_at IS NULL
           JOIN chats c ON c.id = m.chat_id AND c.is_secret = 0
@@ -59,7 +60,7 @@ router.get('/search', authMiddleware, async (req, res) => {
     } else {
       rows = await dal.all(`
         SELECT m.id, m.chat_id, m.sent_at, u.id as sender_id,
-          COALESCE(u.display_name, 'Удалённый аккаунт') as sender_name, (u.is_bot = 1) as sender_is_bot,
+          COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, (u.is_bot = 1) as sender_is_bot,
           snippet(messages_fts, 0, char(1), char(2), '…', 10) as snippet
         FROM messages_fts
         JOIN messages m ON m.id = messages_fts.rowid
@@ -100,7 +101,7 @@ router.get('/chat/:chatId/media', authMiddleware, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit) || 60, 120);
   let cursor = req.query.before ? parseInt(req.query.before) : Number.MAX_SAFE_INTEGER;
   const where = type === 'links' ? "(m.text LIKE '%http://%' OR m.text LIKE '%https://%')" : "m.attachment LIKE '%\"url\"%'";
-  const stmt = `SELECT m.id, m.sent_at, m.text, m.attachment, m.link_preview, COALESCE(u.display_name, 'Удалённый аккаунт') AS sender_name, u.id AS sender_id
+  const stmt = `SELECT m.id, m.sent_at, m.text, m.attachment, m.link_preview, COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') AS sender_name, u.id AS sender_id
     FROM messages m LEFT JOIN users u ON u.id = m.sender_id
     WHERE m.chat_id = ? AND m.deleted = 0 AND m.id < ? AND ${where} ORDER BY m.id DESC LIMIT 200`;
   const isMedia = a => /^(image|video)\//.test(a.mime || '');
@@ -136,6 +137,9 @@ router.get('/chat/:chatId', authMiddleware, async (req, res) => {
   if (!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', chatId, req.user.id)))
     return res.status(403).json({ error: 'Not a member' });
 
+  // Гость видит только сообщения после своего подключения: порог — номер сообщения, в SQL он вставляется числом
+  const gfloor = guestLib.floorOf(req.user.id);
+  const FL = gfloor ? ` AND m.id > ${Number(gfloor)}` : '';
   const limit = Math.min(parseInt(req.query.limit) || 50, 200);
   const before = req.query.before ? parseInt(req.query.before) : null;
   const after  = req.query.after  ? parseInt(req.query.after)  : null;
@@ -144,7 +148,8 @@ router.get('/chat/:chatId', authMiddleware, async (req, res) => {
   // Первое непрочитанное считаем на сервере: у клиента счётчик мог разойтись,
   // часть могла быть прочитана с другого устройства, а при большом числе новых
   // сообщений нужного просто нет в последней странице.
-  const firstUnreadId = await unreadCounts.firstUnreadId(req.user.id, chatId);
+  let firstUnreadId = await unreadCounts.firstUnreadId(req.user.id, chatId);
+  if (gfloor && firstUnreadId && firstUnreadId <= gfloor) firstUnreadId = null;
 
   let messages, hasMore = false, hasMoreAfter = false;
 
@@ -152,8 +157,8 @@ router.get('/chat/:chatId', authMiddleware, async (req, res) => {
     // Окно, открывающееся на первом непрочитанном: немного переписки выше для
     // контекста, остальное место отдаём новым сообщениям
     const ctx = Math.min(20, limit);
-    const beforeRows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id < ? ORDER BY m.id DESC LIMIT ?`, chatId, firstUnreadId, ctx);
-    const afterRows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id >= ? ORDER BY m.id ASC LIMIT ?`, chatId, firstUnreadId, limit + 1);
+    const beforeRows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ?${FL} AND m.id < ? ORDER BY m.id DESC LIMIT ?`, chatId, firstUnreadId, ctx);
+    const afterRows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ?${FL} AND m.id >= ? ORDER BY m.id ASC LIMIT ?`, chatId, firstUnreadId, limit + 1);
     hasMore = beforeRows.length === ctx;
     hasMoreAfter = afterRows.length === limit + 1;
     if (hasMoreAfter) afterRows.pop();
@@ -161,22 +166,22 @@ router.get('/chat/:chatId', authMiddleware, async (req, res) => {
   } else if (around) {
     // Окно вокруг сообщения: для перехода из поиска или к цитате
     const half = Math.floor(limit / 2);
-    const beforeRows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id < ? ORDER BY m.id DESC LIMIT ?`, chatId, around, half);
-    const afterRows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id >= ? ORDER BY m.id ASC LIMIT ?`, chatId, around, half + 2);
+    const beforeRows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ?${FL} AND m.id < ? ORDER BY m.id DESC LIMIT ?`, chatId, around, half);
+    const afterRows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ?${FL} AND m.id >= ? ORDER BY m.id ASC LIMIT ?`, chatId, around, half + 2);
     hasMore = beforeRows.length === half;
     hasMoreAfter = afterRows.length === half + 2;
     if (hasMoreAfter) afterRows.pop();
     messages = beforeRows.reverse().concat(afterRows);
   } else if (after) {
     // Догрузка вниз (после перехода вглубь истории)
-    const rows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id > ? ORDER BY m.id ASC LIMIT ?`, chatId, after, limit);
+    const rows = await dal.all(`${MSG_SELECT} WHERE m.chat_id = ?${FL} AND m.id > ? ORDER BY m.id ASC LIMIT ?`, chatId, after, limit);
     hasMoreAfter = rows.length === limit;
     messages = rows;
   } else {
     // Обычная загрузка: последние limit или страница выше before
     const rows = before
-      ? (await dal.all(`${MSG_SELECT} WHERE m.chat_id = ? AND m.id < ? ORDER BY m.id DESC LIMIT ?`, chatId, before, limit))
-      : (await dal.all(`${MSG_SELECT} WHERE m.chat_id = ? ORDER BY m.id DESC LIMIT ?`, chatId, limit));
+      ? (await dal.all(`${MSG_SELECT} WHERE m.chat_id = ?${FL} AND m.id < ? ORDER BY m.id DESC LIMIT ?`, chatId, before, limit))
+      : (await dal.all(`${MSG_SELECT} WHERE m.chat_id = ?${FL} ORDER BY m.id DESC LIMIT ?`, chatId, limit));
     hasMore = rows.length === limit;
     messages = rows.reverse();
   }
@@ -219,7 +224,7 @@ router.get('/chat/:chatId', authMiddleware, async (req, res) => {
 
   // Закреплённые отдаём вместе с историей — отдельный запрос при каждом
   // открытии чата не нужен
-  res.json({ messages: result, hasMore, hasMoreAfter, pins: (await getPins(chatId)), first_unread_id: firstUnreadId });
+  res.json({ messages: guestLib.sanitizeRows(req.user.id, result), hasMore, hasMoreAfter, pins: (await getPins(chatId, gfloor)), first_unread_id: firstUnreadId });
 });
 
 // Кто поставил реакции на сообщение — для тултипа при наведении.
@@ -230,6 +235,7 @@ router.get('/:messageId/reactions', authMiddleware, async (req, res) => {
   if (!msg) return res.status(404).json({ error: 'Not found' });
   if (!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', msg.chat_id, req.user.id)))
     return res.status(403).json({ error: 'Forbidden' });
+  if (Number(req.params.messageId) <= guestLib.floorOf(req.user.id)) return res.status(404).json({ error: 'Not found' });
 
   const rows = await dal.all(`
     SELECT r.reaction, r.user_id, COALESCE(u.display_name, 'Удалённый аккаунт') AS display_name
