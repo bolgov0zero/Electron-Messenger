@@ -1136,7 +1136,7 @@ input:not([type]) {
 #lightbox.lb-video .lb-zoom { display: none; }
 #lightbox.lb-zoomed #lightbox-img { cursor: grab; }
 #lightbox.lb-zoomed #lightbox-img:active { cursor: grabbing; }
-#lightbox-download { position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,.4); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+#lightbox-download { position: absolute; top: 24px; right: 72px; width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,.4); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
 #lightbox-download:hover { background: rgba(0,0,0,.7); }
 .lb-zoom { position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
 .lb-zoom button { width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,.4); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
@@ -3819,7 +3819,9 @@ html.dark .anx-solid { color: #0c0e10; }
 #lightbox.lb-meta .lb-info { display: flex; }
 .lb-act { position: absolute; top: 24px; width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,.4); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s; z-index: 2; }
 .lb-act:hover { background: rgba(0,0,0,.7); }
-#lightbox-fwd { right: 72px; } #lightbox-del { right: 120px; }
+#lightbox-fwd { right: 120px; } #lightbox-del { right: 168px; }
+#lightbox-close { position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,.4); color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s; z-index: 2; }
+#lightbox-close:hover { background: rgba(0,0,0,.7); }
 .lb-bottom { position: absolute; left: 0; right: 0; bottom: 84px; display: none; flex-direction: column; align-items: center; gap: 8px; padding: 0 90px; pointer-events: none; z-index: 2; }
 #lightbox.lb-meta .lb-bottom { display: flex; }
 .lb-cap { color: #fff; font-size: 14px; text-align: center; max-width: 640px; background: rgba(0,0,0,.45); padding: 6px 14px; border-radius: 12px; pointer-events: auto; }
