@@ -42,6 +42,17 @@ router.post('/open', async (req, res) => {
   res.json({ token: jwt, device_key: r.device_key, expires_at: r.expires_at, user: { id: r.user.id, display_name: r.user.display_name, tag: r.user.tag, is_guest: true }, chat });
 });
 
+// Диагностика страницы гостя: если живое сообщение не показалось само, страница присылает состояние клиента. Пишем в журнал сервера
+const diagSeen = new Map();
+router.post('/diag', (req, res) => {
+  const f = diagSeen.get(req.ip) || { n: 0, t: Date.now() };
+  if (Date.now() - f.t > 60e3) { f.n = 0; f.t = Date.now(); }
+  if (++f.n > 5) return res.json({ ok: true });
+  diagSeen.set(req.ip, f);
+  console.warn('[Гость] страница не показала живое сообщение:', JSON.stringify(req.body || {}).slice(0, 1500), '| UA:', String(req.headers['user-agent'] || '').slice(0, 160));
+  res.json({ ok: true });
+});
+
 // ── Для самого гостя ──
 const onlyGuest = (req, res, next) => (req.user.is_guest ? next() : res.status(403).json({ error: 'Только для гостя' }));
 

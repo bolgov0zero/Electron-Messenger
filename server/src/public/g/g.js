@@ -173,10 +173,34 @@
     ws.onclose = function (e) { if (e.code === 4001 || e.code === 1008) { end('expired'); return; } if (oc) oc.call(ws, e); };
     ws.addEventListener('message', function (ev) {
       var d; try { d = JSON.parse(ev.data); } catch (x) { return; }
+      st.lastWs = Date.now();
       if (d.type === 'guest_ended') end(d.reason === 'revoked' ? 'revoked' : 'expired');
       else if (d.type === 'guest_extended') { st.expires = d.expires_at; save(); tick(); }
+      else if (d.type === 'message' && d.message) liveCheck(d.message);
     });
   };
+
+  // Живое сообщение должно появиться само. Если после обработки клиентом его всё ещё нет на экране, показываем его сами
+  // (клиент мог пропустить событие по своим условиям) и отправляем серверу состояние клиента для разбора
+  st.errs = []; st.reported = 0;
+  window.addEventListener('unhandledrejection', function (e) { st.errs.push(String((e.reason && (e.reason.stack || e.reason.message)) || e.reason).slice(0, 240)); if (st.errs.length > 4) st.errs.shift(); });
+  window.addEventListener('error', function (e) { st.errs.push(String(e.message).slice(0, 240)); if (st.errs.length > 4) st.errs.shift(); });
+  function report(reason, extra) {
+    if (st.reported >= 3) return; st.reported++;
+    try {
+      fetch('/api/guest/diag', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ reason: reason, ws: S.ws && S.ws.readyState, activeChat: S.activeChatId, loading: typeof _loadingChatId !== 'undefined' ? _loadingChatId : null,
+        moreAfter: S.chatHasMoreAfter, newest: S.chatNewestId, hidden: document.hidden, errs: st.errs }, extra || {})) }).catch(function () {});
+    } catch (e) {}
+  }
+  function liveCheck(m) {
+    setTimeout(function () {
+      if (st.ended || !m.id || document.querySelector('[data-msg-id="' + m.id + '"]')) return;
+      var info = { msgChat: m.chat_id, msgId: m.id };
+      if (m.chat_id !== S.activeChatId) { report('other-chat', info); return; }
+      report('not-rendered', info);
+      try { appendMsg(m); S.chatNewestId = Math.max(S.chatNewestId || 0, m.id); S.chatHasMoreAfter = false; } catch (e) { st.errs.push('append:' + String(e).slice(0, 200)); report('append-failed', info); }
+    }, 250);
+  }
 
   // Страховка от потерянных событий: соединение могло молча оборваться (телефон, прокси, спящая вкладка), поэтому
   // раз в несколько секунд и при возвращении на вкладку подтягиваем то, что пришло после последнего сообщения
@@ -187,6 +211,10 @@
     try {
       var cid = S.activeChatId, d = await rawApi('GET', '/messages/chat/' + cid + '?after=' + S.chatNewestId + '&limit=50');
       if (d && d.messages && d.messages.length && S.activeChatId === cid) {
+        if (Date.now() - (st.lastWs || 0) > 20000 && S.ws && S.ws.readyState === 1) {   // сообщения пришли, а по соединению 20 секунд ничего не было: оно молчит
+          report('ws-silent', { found: d.messages.length });
+          try { S.ws.close(); } catch (e) {}
+        }
         S.chatHasMoreAfter = !!d.hasMoreAfter;
         S.chatNewestId = d.messages[d.messages.length - 1].id;
         appendMessagesAfter(d.messages, cid);

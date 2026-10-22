@@ -94,8 +94,8 @@ function guestPageHtml() {
     .replace('<head>', '<head>\n<base href="/chat/">\n<meta name="robots" content="noindex, nofollow">\n<meta name="referrer" content="no-referrer">\n' + GUEST_SHIM)
     .replace(/\(function\(\)\{\s*var mq = matchMedia[\s\S]*?\}\)\(\);/, '')           // заглушка «для телефона есть /m»: гость открывает ссылку с любого устройства
     .replace(/<link rel="manifest"[^>]*>\s*/, '')
-    .replace('<title>Electron</title>', '<title>Электрон · гостевой вход</title>\n<link rel="stylesheet" href="/g/g.css">')
-    .replace('</body>', '<script src="/g/g.js"></script>\n</body>');
+    .replace('<title>Electron</title>', '<title>Электрон · гостевой вход</title>\n<link rel="stylesheet" href="/g/g.css?v=' + serverVersion() + '">')
+    .replace('</body>', '<script src="/g/g.js?v=' + serverVersion() + '"></script>\n</body>');   // с номером версии: браузер или прокси не отдадут старые файлы гостя
   return html;
 }
 app.use('/g', (req, res, next) => { res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('X-Robots-Tag', 'noindex, nofollow'); next(); });
