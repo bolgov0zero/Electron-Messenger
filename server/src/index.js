@@ -27,6 +27,12 @@ app.use((req, res, next) => {
   next();
 });
 
+// Для всех ответов: не отдавать чужим сайтам полный адрес страницы и выключить возможности браузера, которыми клиенты не пользуются
+app.use((req, res, next) => {
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=(), serial=(), bluetooth=()');
+  next();
+});
 // Защитные заголовки страниц (админка, веб-клиент, мобильный клиент, страница гостя): их нельзя встроить в чужой сайт, а скрипты,
 // внешние адреса и подключения ограничены. Политика мягкая: inline-скрипты и стили разрешены, потому что клиенты на них построены
 const PAGE_PATH = /^\/(admin|chat|m|g)(\/|$)/;
