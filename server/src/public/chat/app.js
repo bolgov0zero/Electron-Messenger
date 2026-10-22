@@ -4120,8 +4120,10 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     const fdThumb = fd.attachment?.url ? ((fdIsImg || (fdIsVideo && fd.attachment.thumb))
       ? `<img src="${httpProto()}://${S.server}${fd.attachment.thumb || fd.attachment.url}" class="irc-reply-thumb" onerror="this.style.display='none'">`
       : `<div class="irc-reply-thumb irc-reply-file"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg></div>`) : '';
+    const fdLb = (fdIsImg || fdIsVideo) && fd.attachment?.url && !fd.attachment.expired && !fd.attachment.unavailable
+      ? ` data-lb-url="${httpProto()}://${S.server}${fd.attachment.url}" data-lb-name="${esc(fd.attachment.name || (fdIsVideo ? 'video' : 'image'))}" data-lb-type="${fdIsVideo ? 'video' : 'image'}" onclick="openLightboxEl(this)" style="cursor:pointer"` : '';
     const fdText = fd.text || (fd.attachment ? (fdIsImg ? '📷 Фото' : fdIsVideo ? '🎬 Видео' : '📎 ' + (fd.attachment.name || 'Файл')) : '');
-    return `<div class="irc-reply irc-forward-block">${fdThumb}<div class="irc-reply-body"><div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div><div class="irc-reply-text">${fd.is_bot ? fdText : mdLite(esc(Fmt.noCode(fdText)))}</div></div></div>`;
+    return `<div class="irc-reply irc-forward-block"${fdLb}>${fdThumb}<div class="irc-reply-body"><div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div><div class="irc-reply-text">${fd.is_bot ? fdText : mdLite(esc(Fmt.noCode(fdText)))}</div></div></div>`;
   })() : '';
 
   const actionsHtml = '';
