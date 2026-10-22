@@ -131,7 +131,11 @@ B.chats.preview = function (c) {
   if (!lm) return 'Нет сообщений';
   if (lm.deleted) return 'Сообщение удалено';
   if (lm.text) return (window.Fmt ? Fmt.plain(lm.text) : lm.text).replace(/<[^>]*>/g, '');
-  if (lm.forward_data && !lm.text) return 'Пересланное сообщение';
+  if (lm.forward_data && !lm.text) {   // пересылка без своего текста: что именно переслали
+    var fd = lm.forward_data, fa = fd.attachment, ft = fd.text ? (window.Fmt ? Fmt.plain(fd.text) : fd.text).replace(/<[^>]*>/g, '') : '';
+    var fm = fa ? (fa.gif ? '🖼 GIF' : fa.more && fa.more.length ? '🖼 Вложений: ' + (fa.more.length + 1) : (fa.mime || '').indexOf('image/') === 0 ? '🖼 Изображение' : (fa.mime || '').indexOf('video/') === 0 ? '🎬 Видео' : '📎 ' + (fa.name || 'Файл')) : '';
+    return 'Переслано: ' + (ft || fm || 'сообщение');
+  }
   if (lm.attachment) {
     var a = lm.attachment, mime = a.mime || '';
     if (a.more && a.more.length) return '🖼 Вложений: ' + (a.more.length + 1);

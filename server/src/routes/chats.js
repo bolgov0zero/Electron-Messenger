@@ -40,22 +40,24 @@ async function enrichChat(chat, userId) {
     const ids = topics.map(s => s.id);
     const placeholders = ids.map(() => '?').join(',');
     last = await dal.get(`
-      SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment,
+      SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.forward_data,
         COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
       WHERE m.chat_id IN (${placeholders}) ORDER BY m.sent_at DESC, m.id DESC LIMIT 1
     `, ...ids);
     if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
+    if (last?.forward_data) try { last.forward_data = JSON.parse(last.forward_data); } catch { last.forward_data = null; }
     unread = await unreadCounts.inChats(userId, ids);
     unreadMentions = await unreadCounts.mentionsInChats(userId, ids);
   } else {
     last = await dal.get(`
-      SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment,
+      SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.forward_data,
         COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
       WHERE m.chat_id = ? ORDER BY m.sent_at DESC, m.id DESC LIMIT 1
     `, chat.id);
     if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
+    if (last?.forward_data) try { last.forward_data = JSON.parse(last.forward_data); } catch { last.forward_data = null; }
     unread = await unreadCounts.inChat(userId, chat.id);
     unreadMentions = await unreadCounts.mentionsInChat(userId, chat.id);
   }
@@ -136,12 +138,13 @@ router.get('/:id/topics', authMiddleware, async (req, res) => {
     // Превью последнего сообщения — как в обычном списке чатов: иначе у всех
     // тем была одинаковая подпись «# тема» и не понять, что нового
     const last = await dal.get(`
-      SELECT m.id, m.text, m.sent_at, m.deleted, m.attachment,
+      SELECT m.id, m.text, m.sent_at, m.deleted, m.attachment, m.forward_data,
         COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
       WHERE m.chat_id = ? ORDER BY m.sent_at DESC, m.id DESC LIMIT 1
     `, s.id);
     if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
+    if (last?.forward_data) try { last.forward_data = JSON.parse(last.forward_data); } catch { last.forward_data = null; }
     return { ...s, unread, unread_mentions: unreadMentions, has_avatar, last_message: last || null };
   }));
   // Автоматическая сортировка: тема с самым свежим сообщением выше, без сообщений — внизу в порядке администратора

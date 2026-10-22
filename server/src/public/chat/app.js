@@ -2156,7 +2156,7 @@ function renderChatRow(c) {
     ? (S.topics[c.id]||[]).reduce((sum,s)=>sum+(S.unreadMentions[s.id]||0),0)
     : S.unreadMentions[c.id]||0;
   const lm = c.last_message;
-  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? Fmt.plain(lm.text).replace(/<[^>]*>/g, '') : (lm.forward_data ? 'Пересланное сообщение' : lm.attachment ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.more?.length ? '🖼 Вложений: ' + (lm.attachment.more.length + 1) : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
+  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? Fmt.plain(lm.text).replace(/<[^>]*>/g, '') : (lm.forward_data ? fwdPreview(lm.forward_data) : lm.attachment ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.more?.length ? '🖼 Вложений: ' + (lm.attachment.more.length + 1) : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
   if (preview.length>40) preview = preview.slice(0,40)+'…';
   // Черновик приоритетнее последнего сообщения (как в Telegram)
   const draft = (c.id !== S.activeChatId) ? S.drafts[c.id] : null;
@@ -4010,8 +4010,16 @@ function senderNameClass(tag) {
   return 'tag-' + (h % TAG_COLORS + 1);
 }
 
+// Превью пересланного сообщения в списке чатов (когда своего текста нет): что именно переслали
+function fwdPreview(fd) {
+  const a = fd.attachment, t = fd.text ? Fmt.plain(fd.text).replace(/<[^>]*>/g, '') : '';
+  const att = a ? (a.gif ? '🖼 GIF' : a.more?.length ? '🖼 Вложений: ' + (a.more.length + 1) : a.mime?.startsWith('image/') ? '🖼 Изображение' : a.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (a.name || 'Файл')) : '';
+  return 'Переслано: ' + (t || att || 'сообщение');
+}
 // Отметка «сообщение пересылали»: стрелка и число слева от галок и времени
 function fwdTimes(n) { const a = n % 10, b = n % 100; return n + (a === 1 && b !== 11 ? ' раз' : (a >= 2 && a <= 4 && (b < 12 || b > 14) ? ' раза' : ' раз')); }
+// Сколько места под отметку: стрелка, цифры и отступы
+const fwdReserve = n => 27 + 7 * (String(n).length - 1);
 function fwdMarkHtml(m) {
   const n = Number(m.forward_count) || 0;
   return n > 0 && !m.deleted ? `<span class="fwd-mark" title="Сообщение переслали ${fwdTimes(n)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 17 5-5-5-5"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>${n}</span>` : '';
@@ -4022,6 +4030,8 @@ function applyForwardCount(id, count) {
   if (!meta) return;
   meta.querySelector('.fwd-mark')?.remove();
   if (count > 0) meta.insertAdjacentHTML('afterbegin', fwdMarkHtml({ forward_count: count }));
+  const bub = meta.parentElement;
+  if (bub) { bub.classList.toggle('has-fwd', count > 0); if (count > 0) bub.style.setProperty('--fwd-w', fwdReserve(count) + 'px'); else bub.style.removeProperty('--fwd-w'); }
 }
 function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   if (m.status && m.id > 0) S.msgStatus[m.id] = { ...m.status };
@@ -4125,6 +4135,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const header = `<div class="irc-header">
       <span class="irc-name msg-sender-name ${senderCls}${mine?' mine':''}" onclick="event.stopPropagation();mentionUserInComposer(${m.sender_id})">${senderName}</span>${ircTagHtml}
     </div>`;
+  const fwdN = isDeleted ? 0 : (Number(m.forward_count) || 0);   // пересылали: в конце текста резервируется место под отметку
   const metaHtml = `<div class="irc-meta">${fwdMarkHtml(m)}<span class="status-wrap">${statusIcon}</span><span class="irc-time">${time}</span></div>`;
 
   const scAttMeta = isSecretChat ? S.scAtt.get(m.id) : null;
@@ -4182,7 +4193,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       ${header}
       <div class="bubble-row">
         ${avCol}
-        <div class="msg-bubble${bareImage ? ' bubble-photo' : ''}${comp ? comp.cls : ''}">
+        <div class="msg-bubble${bareImage ? ' bubble-photo' : ''}${comp ? comp.cls : ''}${fwdN ? ' has-fwd' : ''}"${fwdN ? ` style="--fwd-w:${fwdReserve(fwdN)}px"` : ''}>
           ${comp ? `${comp.lpHtml}${(m.reply_to_id || fd) ? `<div class="ct-pad">${replyHtml}${forwardHtml}</div>` : ''}${attachHtml}${comp.html}` : `${replyHtml}
           ${forwardHtml}
           ${attachHtml}

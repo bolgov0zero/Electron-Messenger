@@ -2943,6 +2943,9 @@ html.dark .announcement-title { color: var(--danger); }
    transform, а не top: сдвиг не округляется до целого пикселя. Только обычные пузыри, без фото */
 .msg-bubble:not(.bubble-photo) > .irc-text { transform: translateY(var(--bubble-text-shift, -0.107em)); }
 .irc-msg[data-mine] .irc-text::after { width: 60px; }
+/* Под отметку «переслали N раз» в конце текста резервируется место: она не ложится на последние буквы */
+.msg-bubble.has-fwd .irc-text::after { width: calc(50px + var(--fwd-w, 0px)); }
+.irc-msg[data-mine] .msg-bubble.has-fwd .irc-text::after { width: calc(60px + var(--fwd-w, 0px)); }
 
 /* вложения — под края пузыря */
 /* Картинка выходит под края пузыря. Если под ней есть подпись — все углы картинки
