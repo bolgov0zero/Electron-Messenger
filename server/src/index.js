@@ -69,12 +69,40 @@ app.get(['/chat/', '/chat/index.html'], (req, res) => {
   }
 });
 app.use('/chat', express.static(path.join(__dirname, 'public/chat')));
-// Страница гостя по ссылке: /g/<токен>. Ни кэша, ни индексации, ссылка не уходит в Referer
+// Страница гостя по ссылке: /g/<токен>. Это тот же веб-клиент (/chat), запущенный в гостевом режиме: страница собирается из
+// chat/index.html на лету, поэтому внешний вид и поведение всегда совпадают с веб-версией. Ни кэша, ни индексации,
+// ссылка не уходит в Referer. Хранилище браузера у гостя отдельное (см. SHIM), чтобы не задеть сессию того же браузера в /chat
+const GUEST_SHIM = `<script>(function(){
+  var seg = location.pathname.split('/')[2] || '', P = 'guest:' + seg.slice(0, 24) + ':', real = window.localStorage;
+  var own = function () { var o = []; try { for (var i = 0; i < real.length; i++) { var k = real.key(i); if (k && k.indexOf(P) === 0) o.push(k.slice(P.length)); } } catch (e) {} return o; };
+  var api = { getItem: function (k) { return real.getItem(P + k); }, setItem: function (k, v) { real.setItem(P + k, String(v)); }, removeItem: function (k) { real.removeItem(P + k); },
+    clear: function () { own().forEach(function (k) { real.removeItem(P + k); }); }, key: function (i) { var o = own(); return i < o.length ? o[i] : null; } };
+  var shim = new Proxy({}, {
+    get: function (t, p) { if (p === 'length') return own().length; if (typeof p === 'string' && api[p]) return api[p]; return typeof p === 'string' ? real.getItem(P + p) : undefined; },
+    set: function (t, p, v) { if (typeof p === 'string') real.setItem(P + p, String(v)); return true; },
+    deleteProperty: function (t, p) { if (typeof p === 'string') real.removeItem(P + p); return true; },
+    has: function (t, p) { return typeof p === 'string' && (!!api[p] || real.getItem(P + p) !== null); },
+    ownKeys: function () { return own(); },
+    getOwnPropertyDescriptor: function (t, p) { return typeof p === 'string' && real.getItem(P + p) !== null ? { value: real.getItem(P + p), enumerable: true, configurable: true, writable: true } : undefined; }
+  });
+  Object.defineProperty(window, 'localStorage', { value: shim, configurable: true });
+  window.__GUEST__ = { token: decodeURIComponent(seg), ls: real };
+})();</script>`;
+function guestPageHtml() {
+  let html = fs.readFileSync(CHAT_INDEX, 'utf8').replace(/\?v=[\w.\-]+/g, '?v=' + serverVersion());
+  html = html.replace('<html lang="ru">', '<html lang="ru" class="guest">')
+    .replace('<head>', '<head>\n<base href="/chat/">\n<meta name="robots" content="noindex, nofollow">\n<meta name="referrer" content="no-referrer">\n' + GUEST_SHIM)
+    .replace(/\(function\(\)\{\s*var mq = matchMedia[\s\S]*?\}\)\(\);/, '')           // заглушка «для телефона есть /m»: гость открывает ссылку с любого устройства
+    .replace(/<link rel="manifest"[^>]*>\s*/, '')
+    .replace('<title>Electron</title>', '<title>Электрон · гостевой вход</title>\n<link rel="stylesheet" href="/g/g.css">')
+    .replace('</body>', '<script src="/g/g.js"></script>\n</body>');
+  return html;
+}
 app.use('/g', (req, res, next) => { res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('X-Robots-Tag', 'noindex, nofollow'); next(); });
 app.use('/g', express.static(path.join(__dirname, 'public/g'), { index: false, maxAge: 0 }));
 app.get('/g/:token', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  res.sendFile(path.join(__dirname, 'public/g/index.html'));
+  try { res.type('html').send(guestPageHtml()); } catch { res.status(500).send('Страница недоступна'); }
 });
 app.use('/shared', express.static(path.join(__dirname, 'public/shared')));
 

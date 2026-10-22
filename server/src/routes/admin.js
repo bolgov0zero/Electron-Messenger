@@ -352,7 +352,7 @@ router.get('/chats', async (req, res) => {
       (SELECT COUNT(*) FROM messages WHERE chat_id = c.id AND deleted = 0) as message_count,
       (SELECT MAX(sent_at) FROM messages WHERE chat_id = c.id AND deleted = 0) as last_at,
       (SELECT COUNT(*) FROM chat_members WHERE chat_id = c.id) as member_count,
-      (SELECT GROUP_CONCAT(u.id || char(31) || u.display_name, char(30) ORDER BY cm.joined_at) FROM users u
+      (SELECT GROUP_CONCAT(u.id || char(31) || u.display_name || char(31) || (CASE WHEN u.is_bot = 3 THEN '1' ELSE '0' END), char(30) ORDER BY cm.joined_at) FROM users u
        JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = c.id) as member_list
     FROM chats c ORDER BY c.created_at DESC
   `);
@@ -365,8 +365,9 @@ router.get('/chats', async (req, res) => {
   };
   chats.forEach(c => {
     c.members = (c.member_list ? c.member_list.split('\x1e') : []).map(row => {
-      const [id, name] = row.split('\x1f');
-      return { id: Number(id), name, has_avatar: photo(Number(id)) };
+      const [id, name, g] = row.split('\x1f');
+      // Гость по ссылке: в списке участников помечается, статус «в сети» берётся из его соединения
+      return { id: Number(id), name, has_avatar: photo(Number(id)), ...(g === '1' ? { guest: true, online: require('../ws').isConnected(Number(id)) } : {}) };
     });
     c.member_names = c.members.map(m => m.name);
     delete c.member_list;
@@ -394,9 +395,9 @@ router.get('/chats/:id/pending', async (req, res) => {
 });
 router.get('/chats/:id/members', async (req, res) => {
   const members = (await dal.all(`
-    SELECT u.id, u.username, u.display_name, cm.joined_at, (u.is_bot = 2) AS federated FROM users u
+    SELECT u.id, u.username, u.display_name, cm.joined_at, (u.is_bot = 2) AS federated, (u.is_bot = 3) AS guest FROM users u
     JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = ? ORDER BY cm.joined_at
-  `, req.params.id)).map(m => ({ ...m, federated: !!m.federated }));
+  `, req.params.id)).map(m => ({ ...m, federated: !!m.federated, guest: !!m.guest }));
   res.json(members);
 });
 
