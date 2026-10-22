@@ -8689,7 +8689,7 @@ function fmDraw() {
     const p = fmP(n.id), sel = n.id === FM.sel, dim = FM.space !== 'all' && !n.spaces.some(s => s.uid === FM.space);
     const cls = 'fm-n' + (sel ? ' sel' : '') + (dim ? ' dim' : '') + (n.online === false ? ' off' : n.online === null ? ' unk' : '') + (FM.drag?.id === n.id ? ' drag' : '');
     const sp = FM.space === 'all' ? n.spaces.map(s => `<i style="background:${FM_COL[spIdx[s.uid] % FM_COL.length]}"></i>`).join('') : '';
-    const sub = n.online === false ? 'нет связи' : n.online === null ? 'нет данных' : (FM.space !== 'all' ? (n.spaces.find(s => s.uid === FM.space)?.people ?? 0) + ' в пространстве' : n.people ? n.people + ' ' + fdPlural(n.people) : 'без пространств');
+    const sub = n.online === false ? 'нет связи' : n.online === null ? 'нет данных' : (FM.space !== 'all' ? (n.spaces.find(s => s.uid === FM.space)?.people ?? 0) + ' в пространстве' : n.people ? n.people + ' ' + fdPlural(n.people) : (n.spaces.length ? 'людей пока нет' : 'без пространств'));
     return `<div class="${cls}" data-id="${esc(n.id)}" style="left:${p.x}px;top:${p.y}px"><span class="fm-ni">${FM_SRV}<span class="fm-nd"></span></span><span class="fm-nt"><b>${esc(n.name)}</b><span>${esc(sub)}${sp}</span></span>${n.ver ? `<span class="fm-vt" title="Версия сервера">v${esc(n.ver)}</span>` : ''}${n.self ? '<span class="fm-me">ВЫ</span>' : ''}</div>`;
   }).join('');
   world.style.transform = `translate(${FM.tx}px,${FM.ty}px) scale(${FM.k})`;
