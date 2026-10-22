@@ -30,7 +30,7 @@ app.use((req, res, next) => {
 // Для всех ответов: не отдавать чужим сайтам полный адрес страницы и выключить возможности браузера, которыми клиенты не пользуются
 app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=(), serial=(), bluetooth=()');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(self), payment=(self), usb=(), display-capture=(), serial=(), bluetooth=()');
   next();
 });
 // Защитные заголовки страниц (админка, веб-клиент, мобильный клиент, страница гостя): их нельзя встроить в чужой сайт, а скрипты,
