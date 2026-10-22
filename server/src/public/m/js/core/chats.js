@@ -31,6 +31,7 @@ B.chats = {
   },
   load: async function () {
     await B.secret.boot();
+    await B.avatar.loadIndex();
     var list = B.chats.visible(await B.api('GET', '/chats'));
     if (!list) {
       var o = B.chats.stored();

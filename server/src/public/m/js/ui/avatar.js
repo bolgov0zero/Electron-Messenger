@@ -19,11 +19,22 @@ B.avatar = {
     return B.avatar.html({ id: c.id, chat: c.id, text: c.type === 'room' ? '#' : B.fmt.initials(B.chatName(c)), fb: fb, fed: !!root.fed_mirror }, size);
   },
   user: function (id, name, size, nodot, fed) { return B.avatar.html({ id: id, user: id, text: B.fmt.initials(name), dot: nodot ? 0 : id, fed: !!fed }, size); },
+  // Список id с аватарками на сервере: файл запрашиваем только для них (иначе 404 в консоли на каждого без фото)
+  idx: null,
+  loadIndex: async function () {
+    var r = await B.api('GET', '/users/avatars/index');
+    B.avatar.idx = r && Array.isArray(r.u) && Array.isArray(r.c) ? new Set(r.u.map(function (i) { return 'u' + i; }).concat(r.c.map(function (i) { return 'c' + i; }))) : null;
+  },
+  _missing: function (url) {
+    if (!B.avatar.idx) return false;
+    var m = /\/api\/(users|chats)\/(\d+)\/avatar/.exec(url);
+    return !!m && !B.avatar.idx.has((m[1] === 'users' ? 'u' : 'c') + m[2]);
+  },
   _load: function (el, url, fb) {
     var cache = B.avatar._cache, cached = cache.get(url);
     var set = function () { el.style.backgroundImage = "url('" + url + "')"; el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center'; el.textContent = ''; };
     if (cached === true) { set(); return; }
-    if (cached === false) return;
+    if (cached === false || B.avatar._missing(url)) return;
     var img = new Image();
     img.onload = function () { cache.set(url, true); set(); };
     img.onerror = function () { cache.set(url, false); };

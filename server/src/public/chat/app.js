@@ -1705,6 +1705,7 @@ function tailLoad(chatId) {
 
 async function loadChats() {
   await scBoot();
+  await loadAvatarIndex();
   const all = await api('GET','/chats');
   if (!all) { chatsFromCache(); return; }
   S.secretChatIds = new Set(all.filter(c => c.is_secret).map(c => c.id));
@@ -1862,6 +1863,17 @@ function chatIcon(chat) {
   return initials(chatName(chat));
 }
 
+async function loadAvatarIndex() {
+  const r = await api('GET', '/users/avatars/index');
+  S.avIdx = r && Array.isArray(r.u) && Array.isArray(r.c) ? new Set([...r.u.map(i => 'u' + i), ...r.c.map(i => 'c' + i)]) : null;
+}
+// Аватарки нет в списке сервера: файл не запрашиваем (иначе 404 в консоли на каждого без фото). Список ещё не загружен — запрашиваем как раньше
+function avatarMissing(url) {
+  if (!S.avIdx) return false;
+  const m = /\/api\/(users|chats)\/(\d+)\/avatar/.exec(url);
+  return !!m && !S.avIdx.has((m[1] === 'users' ? 'u' : 'c') + m[2]);
+}
+
 function tryLoadAvatar(el, url, fallbackText) {
   const cached = _avatarCache.get(url);
   if (cached === true) {
@@ -1876,6 +1888,7 @@ function tryLoadAvatar(el, url, fallbackText) {
     el.textContent = fallbackText;
     return;
   }
+  if (avatarMissing(url)) { el.style.backgroundImage = ''; el.textContent = fallbackText; return; }
   const img = new Image();
   img.onload = () => {
     _avatarCache.set(url, true);
@@ -6247,9 +6260,7 @@ function connectWS() {
     }
 
     if (data.type==='avatar_updated') {
-      S.avatarTs = Date.now();
-      _avatarCache.clear();
-      renderChatList();
+      loadAvatarIndex().finally(() => { S.avatarTs = Date.now(); _avatarCache.clear(); renderChatList(); });
     }
 
     if (data.type==='user_created') {
@@ -7154,6 +7165,7 @@ async function gmAvatar(input) {
   const data = await resizeAvatarFile(file);
   const r = await api('POST', `/chats/${S.gm.id}/avatar`, { data });
   if (r?.error) { showActionToast(r.error); return; }
+  await loadAvatarIndex();
   S.avatarTs = Date.now(); _avatarCache.clear();
   applyAvatars(); renderChatList();
 }

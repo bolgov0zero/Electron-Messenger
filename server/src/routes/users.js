@@ -74,6 +74,19 @@ router.post('/me/avatar', authMiddleware, async (req, res) => {
   }
 });
 
+// Список id, у которых есть аватарка: клиенты запрашивают файл только для них и не получают 404 на каждого без фото
+router.get('/avatars/index', authMiddleware, (req, res) => {
+  const u = [], c = [];
+  try {
+    for (const f of fs.readdirSync(AVATAR_DIR)) {
+      const m = /^(chat_)?(\d+)\.jpg$/.exec(f);
+      if (m) (m[1] ? c : u).push(Number(m[2]));
+    }
+  } catch {}
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ u, c });
+});
+
 // Serve user avatar
 router.get('/:id/avatar', (req, res) => {
   const file = path2.join(AVATAR_DIR, `${req.params.id}.jpg`);

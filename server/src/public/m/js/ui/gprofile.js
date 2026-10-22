@@ -196,6 +196,7 @@ B.ui.gprofile = (function () {
     var data = await B.ui.groups.resizeAvatar(file), chat = chatOf(el);
     var r = await B.api('POST', '/chats/' + chat.id + '/avatar', { data: data });
     if (r && r.error) { B.toast.show(r.error); return; }
+    await B.avatar.loadIndex();
     B.S.avatarTs = Date.now(); B.avatar.clearCache(); paint(el); B.chats.onChanged();
   }
 

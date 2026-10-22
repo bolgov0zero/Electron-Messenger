@@ -148,7 +148,7 @@ B.ws = {
         S.chats = S.chats.filter(function (c) { return c.id !== data.chat_id; });
         B.chats.onChanged(); B.bus.emit('chat:deleted', { chatId: data.chat_id });
         break;
-      case 'avatar_updated': S.avatarTs = Date.now(); B.bus.emit('avatar:updated'); B.chats.onChanged(); break;
+      case 'avatar_updated': B.avatar.loadIndex().then(function () { S.avatarTs = Date.now(); B.bus.emit('avatar:updated'); B.chats.onChanged(); }); break;
       case 'user_created': B.bus.emit('contacts:reload'); break;
       case 'contacts_changed': case 'directory_changed': case 'presence_refresh':
         if (data.type !== 'presence_refresh') B.chats.refreshServerInfo().then(function () { B.bus.emit('contacts:reload'); });

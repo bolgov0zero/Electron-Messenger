@@ -117,7 +117,7 @@ B.ui.settings = (function () {
     el.querySelector('#me-file').addEventListener('change', async function (e) {
       var f = e.target.files[0]; e.target.value = ''; if (!f) return;
       var res = await B.api('POST', '/users/me/avatar', { data: await resize(f) });
-      if (res && res.ok) { S.avatarTs = Date.now(); B.avatar.clearCache(); B.bus.emit('avatar:updated'); B.avatar.apply(el); render(); B.toast.show('Фото обновлено'); } else B.toast.show('Не удалось загрузить фото');
+      if (res && res.ok) { await B.avatar.loadIndex(); S.avatarTs = Date.now(); B.avatar.clearCache(); B.bus.emit('avatar:updated'); B.avatar.apply(el); render(); B.toast.show('Фото обновлено'); } else B.toast.show('Не удалось загрузить фото');
     });
     B.nav.push(el, 'Профиль'); B.avatar.apply(el);
   }
