@@ -1096,6 +1096,36 @@ async function collectFiles() {
     } catch {}
   }
 
+  // Вложения пересланных сообщений: файл есть только в forward_data (например, переслан из общего
+  // пространства с другого сервера). Отправитель — тот, кто переслал, чат — где лежит пересылка
+  const fwds = await dal.all(`
+    SELECT m.id, m.chat_id, m.forward_data, m.sent_at, m.sender_id,
+           u.display_name as sender_name, c.name as chat_name, c.type as chat_type
+    FROM messages m
+    LEFT JOIN users u ON u.id = m.sender_id
+    LEFT JOIN chats c ON c.id = m.chat_id
+    WHERE m.forward_data IS NOT NULL AND m.deleted = 0
+  `);
+  for (const msg of fwds) {
+    try {
+      const fa = JSON.parse(msg.forward_data)?.attachment;
+      if (!fa) continue;
+      for (const att of require('../attach').list(fa)) {
+        if (!att?.url) continue;
+        const fname = path.basename(att.url);
+        if (/_[tp]\.(webp|jpg)$/.test(fname) || fileMap.has(fname)) continue;
+        const enc = att.enc === 1;
+        fileMap.set(fname, {
+          filename: fname, encrypted: enc,
+          name: enc ? null : (att.name || null), mime: enc ? null : (att.mime || null), thumb: enc ? null : (att.thumb || null),
+          message_id: msg.id, chat_id: msg.chat_id, sender_id: msg.sender_id,
+          chat_name: msg.chat_name, chat_type: msg.chat_type,
+          sender_name: msg.sender_name, sent_at: msg.sent_at,
+        });
+      }
+    } catch {}
+  }
+
   // У личных чатов нет названия — подставляем имена собеседников, иначе в списке
   // файлов вместо чата стоял прочерк
   const directIds = [...new Set([...fileMap.values()].filter(f => f.chat_type === 'direct').map(f => f.chat_id))];
