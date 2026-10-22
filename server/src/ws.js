@@ -225,14 +225,12 @@ async function getMessageWithStatus(msgId, viewerId) {
   if (msg.forward_data) try { msg.forward_data = JSON.parse(msg.forward_data); } catch { msg.forward_data = null; }
   if (msg.link_preview) try { msg.link_preview = JSON.parse(msg.link_preview); } catch { msg.link_preview = null; }
 
-  // IS NOT вместо != — sender_id может быть NULL (удалённый аккаунт)
-  const memberCount = await spaces.recipientCount(msg.chat_id, msg.sender_id);
-  const delivered = (await dal.get('SELECT COUNT(*) as c FROM message_status WHERE message_id = ? AND delivered_at IS NOT NULL', msgId)).c;
-  const read = (await dal.get('SELECT COUNT(*) as c FROM message_status WHERE message_id = ? AND read_at IS NOT NULL', msgId)).c;
+  // Статус по отметкам участников: прочитал позднее — прочитал и раннее (msgstatus.js)
+  const status = await require('./msgstatus').statusOf(msg.chat_id, { id: msg.id, sender_id: msg.sender_id });
   // Реакции — чтобы WS-payload совпадал по форме с REST /api/messages
   const reactions = await dal.all('SELECT reaction, COUNT(*) as count, group_concat(user_id) as user_ids FROM reactions WHERE message_id = ? GROUP BY reaction', msgId);
 
-  return { ...msg, reactions, status: { delivered, read, total: memberCount } };
+  return { ...msg, reactions, status };
 }
 
 // Всё, что происходит после того, как сообщение записано в базу: рассылка участникам чата и push.

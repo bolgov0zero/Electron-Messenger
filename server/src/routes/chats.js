@@ -70,12 +70,7 @@ async function enrichChat(chat, userId) {
   // рядом со временем показываются галочки. Чужие сообщения статуса не требуют,
   // поэтому лишние запросы для них не делаем.
   if (last && last.sender_id === userId) {
-    const total = await spaces.recipientCount(last.chat_id || chat.id, userId);
-    const st = await dal.get(`
-      SELECT COUNT(delivered_at) AS d, COUNT(read_at) AS r
-      FROM message_status WHERE message_id = ?
-    `, last.id);
-    last.status = { delivered: st?.d || 0, read: st?.r || 0, total };
+    last.status = await require('../msgstatus').statusOf(last.chat_id || chat.id, { id: last.id, sender_id: userId });
   }
 
   const mutedRow = await dal.get('SELECT until FROM muted_chats WHERE user_id = ? AND chat_id = ? AND (until IS NULL OR until > unixepoch())', userId, chat.id);

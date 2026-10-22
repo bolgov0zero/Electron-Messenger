@@ -186,41 +186,14 @@ router.get('/chat/:chatId', authMiddleware, async (req, res) => {
     messages = rows.reverse();
   }
 
-  // Получателей считаем по каждому автору отдельно: сам автор не получатель, а в группах люди с других серверов не учитываются
-  const totals = new Map();
-  const totalFor = async senderId => { if (!totals.has(senderId)) totals.set(senderId, (await require('../spaces').recipientCount(chatId, senderId))); return totals.get(senderId); };
 
   // Статусы и реакции — тремя запросами на всю страницу вместо трёх на каждое сообщение
   const ids = messages.map(m => m.id);
   const ph = ids.map(() => '?').join(',');
-  const deliveredMap = new Map(), readMap = new Map(), reactionsMap = new Map(), hiddenGuests = new Map();
+  const reactionsMap = new Map();
+  // Статусы считаем по отметкам участников (прочитал позднее — прочитал и раннее), см. msgstatus.js
+  const stMap = ids.length ? await require('../msgstatus').statuses(chatId, messages) : new Map();
   if (ids.length) {
-    // Кто доставил и прочитал каждое сообщение страницы. Прочитал более позднее сообщение — значит, прочитал и раннее (как в Telegram):
-    // иначе у соседних сообщений получались разные галочки. Считаем только нынешних участников, а гостя — только для сообщений после его входа
-    // (до этого он их не видел). Раньше считали все строки подряд: ушедший участник и гость с поздним входом искажали счётчики
-    const members = new Set((await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ?', chatId)).map(r => r.user_id));
-    const gfl = (await dal.all('SELECT cm.user_id FROM chat_members cm JOIN users u ON u.id = cm.user_id WHERE cm.chat_id = ? AND u.is_bot = ?', chatId, guestLib.IS_GUEST))
-      .map(r => [r.user_id, guestLib.floorOf(r.user_id)]);
-    const gflOf = new Map(gfl);
-    const rows = await dal.all(`SELECT message_id, user_id, delivered_at, read_at FROM message_status WHERE message_id IN (${ph})`, ...ids);
-    const mxD = new Map(), mxR = new Map(), byMsg = new Map();
-    for (const r of rows) {
-      if (r.read_at != null) mxR.set(r.user_id, Math.max(mxR.get(r.user_id) || 0, r.message_id));
-      if (r.delivered_at != null || r.read_at != null) mxD.set(r.user_id, Math.max(mxD.get(r.user_id) || 0, r.message_id));
-      if (!byMsg.has(r.message_id)) byMsg.set(r.message_id, []);
-      byMsg.get(r.message_id).push(r.user_id);
-    }
-    for (const m of messages) {
-      const sees = u => members.has(u) && u !== m.sender_id && !(gflOf.has(u) && gflOf.get(u) >= m.id);
-      const cand = new Set([...mxD.keys(), ...(byMsg.get(m.id) || [])]);
-      let d = 0, r = 0;
-      for (const u of cand) {
-        if (!sees(u)) continue;
-        if ((mxR.get(u) || 0) >= m.id) { r++; d++; } else if ((mxD.get(u) || 0) >= m.id) d++;
-      }
-      deliveredMap.set(m.id, d); readMap.set(m.id, r);
-      hiddenGuests.set(m.id, gfl.filter(([u, f]) => u !== m.sender_id && f >= m.id).length);
-    }
     (await dal.all(`SELECT message_id, reaction, COUNT(*) as count, group_concat(user_id) as user_ids FROM reactions WHERE message_id IN (${ph}) GROUP BY message_id, reaction`, ...ids)).forEach(row => {
         if (!reactionsMap.has(row.message_id)) reactionsMap.set(row.message_id, []);
         // user_ids — чтобы клиент показал аватарки поставивших рядом со смайликом
@@ -242,7 +215,7 @@ router.get('/chat/:chatId', authMiddleware, async (req, res) => {
     if (m.link_preview) { try { link_preview = JSON.parse(m.link_preview); } catch {} }
     return {
       ...m, attachment, mentions, reply_attachment, forward_data, link_preview,
-      status: { delivered: deliveredMap.get(m.id) || 0, read: readMap.get(m.id) || 0, total: Math.max(0, (await totalFor(m.sender_id)) - (hiddenGuests.get(m.id) || 0)) },
+      status: stMap.get(m.id) || { delivered: 0, read: 0, total: 0 },
       reactions: reactionsMap.get(m.id) || [],
     };
   })));
