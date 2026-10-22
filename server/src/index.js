@@ -27,6 +27,32 @@ app.use((req, res, next) => {
   next();
 });
 
+// Защитные заголовки страниц (админка, веб-клиент, мобильный клиент, страница гостя): их нельзя встроить в чужой сайт, а скрипты,
+// внешние адреса и подключения ограничены. Политика мягкая: inline-скрипты и стили разрешены, потому что клиенты на них построены
+const PAGE_PATH = /^\/(admin|chat|m|g)(\/|$)/;
+app.use((req, res, next) => {
+  if (!PAGE_PATH.test(req.path)) return next();
+  const host = String(req.headers.host || '').replace(/[^\w.:\-\[\]]/g, '');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "img-src * data: blob:",
+    "media-src * data: blob:",
+    `connect-src 'self' blob: data: ws://${host} wss://${host} https://api.klipy.com https://api.giphy.com`,
+    "worker-src 'self' blob:",
+    "frame-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; '));
+  next();
+});
+
 // Пока идёт перенос базы, изменяющие запросы не принимаются (запись всё равно запрещена в dal)
 app.use((req, res, next) => {
   if (!require('./maintenance').isOn() || req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
