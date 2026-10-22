@@ -945,21 +945,24 @@ router.post('/webhooks', async (req, res) => {
   await dal.run('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)', Number(chat_id), botId);
 
   const whResult = await dal.run('INSERT INTO webhooks (token, user_id, chat_id) VALUES (?, ?, ?)', token, botId, Number(chat_id));
+  logAudit(req, 'security', 'Создан вебхук', `«${name.trim()}» → ${(await dal.get('SELECT name FROM chats WHERE id = ?', Number(chat_id)))?.name || 'чат ' + chat_id}`);
   res.json({ id: Number(whResult.lastInsertRowid), token, user_id: Number(botId) });
 });
 
 router.delete('/webhooks/:id', async (req, res) => {
-  const wh = await dal.get('SELECT id FROM webhooks WHERE id = ?', Number(req.params.id));
+  const wh = await dal.get('SELECT w.id, u.display_name AS bot, c.name AS chat FROM webhooks w LEFT JOIN users u ON u.id = w.user_id LEFT JOIN chats c ON c.id = w.chat_id WHERE w.id = ?', Number(req.params.id));
   if (!wh) return res.status(404).json({ error: 'Not found' });
   await dal.run('DELETE FROM webhooks WHERE id = ?', wh.id);
+  logAudit(req, 'security', 'Удалён вебхук', `«${wh.bot || ''}» → ${wh.chat || '—'}`);
   res.json({ ok: true });
 });
 
 router.post('/webhooks/:id/regen-token', async (req, res) => {
-  const wh = await dal.get('SELECT id FROM webhooks WHERE id = ?', Number(req.params.id));
+  const wh = await dal.get('SELECT w.id, u.display_name AS bot FROM webhooks w LEFT JOIN users u ON u.id = w.user_id WHERE w.id = ?', Number(req.params.id));
   if (!wh) return res.status(404).json({ error: 'Not found' });
   const newToken = genToken();
   await dal.run('UPDATE webhooks SET token = ? WHERE id = ?', newToken, wh.id);
+  logAudit(req, 'security', 'Перевыпущен токен вебхука', `«${wh.bot || ''}»`);
   res.json({ ok: true, token: newToken });
 });
 
@@ -1014,7 +1017,11 @@ router.patch('/topics/:id', async (req, res) => {
   const sub = await dal.get('SELECT id, parent_id FROM chats WHERE id = ? AND parent_id IS NOT NULL', Number(req.params.id));
   if (!sub) return res.status(404).json({ error: 'Not found' });
   const { name } = req.body;
-  if (name?.trim()) await dal.run('UPDATE chats SET name = ? WHERE id = ?', name.trim(), sub.id);
+  if (name?.trim()) {
+    const old = await dal.get('SELECT name FROM chats WHERE id = ?', sub.id);
+    await dal.run('UPDATE chats SET name = ? WHERE id = ?', name.trim(), sub.id);
+    if (old && old.name !== name.trim()) logAudit(req, 'rooms', 'Переименование темы', `«${old.name}» → «${name.trim()}»`);
+  }
   const { sendTo } = require('../ws');
   (await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ?', sub.parent_id))
     .forEach(({ user_id }) => sendTo(user_id, { type: 'reload_chats' }));
@@ -1172,6 +1179,7 @@ router.delete('/files/:filename', async (req, res) => {
   const filename = path.basename(req.params.filename);
   if (!filename) return res.status(400).json({ error: 'Invalid filename' });
 
+  logAudit(req, 'moderation', 'Удалён файл', filename);
   const withAtt = await dal.all('SELECT id, chat_id FROM messages WHERE deleted = 0 AND attachment LIKE ?', `%${filename}%`);
   const withFwd = await dal.all('SELECT id, chat_id, forward_data FROM messages WHERE deleted = 0 AND forward_data LIKE ?', `%${filename}%`);
 
@@ -1214,7 +1222,10 @@ router.delete('/files/:filename', async (req, res) => {
 router.post('/announcement', async (req, res) => {
   const p = await announcements.parseRequest(req.body, req.user.id);
   if (p.error) return res.status(p.status || 400).json({ error: p.error });
-  res.json({ ok: true, ...(await announcements.create(p)) });
+  const kinds = { popup: 'всплывающее', banner: 'полоса', chat: 'в чаты' };
+  const made = await announcements.create(p);
+  logAudit(req, 'server', made.scheduled ? 'Запланировано объявление' : 'Отправлено объявление', `${kinds[p.kind]}: ${p.text.replace(/\s+/g, ' ').slice(0, 80)}`);
+  res.json({ ok: true, ...made });
 });
 
 // Журнал: все объявления всех типов, свежие сверху
@@ -1224,12 +1235,14 @@ router.get('/announcements', async (req, res) => {
 
 router.post('/announcements/:id/stop', async (req, res) => {
   if (!(await announcements.stop(Number(req.params.id)))) return res.status(400).json({ error: 'Полоса уже не показывается' });
+  logAudit(req, 'server', 'Остановлена полоса объявления', `№${req.params.id}`);
   res.json({ ok: true });
 });
 
 router.delete('/announcements/:id', async (req, res) => {
   const ok = await announcements.remove(Number(req.params.id));
   if (!ok) return res.status(404).json({ error: 'Не найдено' });
+  logAudit(req, 'server', 'Удалено объявление', `№${req.params.id}`);
   res.json({ ok: true });
 });
 
@@ -1290,6 +1303,7 @@ router.post('/backups', async (req, res) => {
   try {
     const name = await createBackup();
     console.log('[Backup] Создана копия:', name);
+    logAudit(req, 'server', 'Создана резервная копия', name);
     await pruneBackups();
     res.json({ ok: true, name, backups: listBackups() });
   } catch (e) {
@@ -1305,6 +1319,7 @@ router.delete('/backups/:name', (req, res) => {
     fs.unlinkSync(path.join(BACKUP_DIR, name));
     try { fs.unlinkSync(path.join(BACKUP_DIR, name + '.kind')); } catch {}
     console.log('[Backup] Копия удалена вручную:', name);
+    logAudit(req, 'server', 'Удалена резервная копия', name);
     res.json({ ok: true, backups: listBackups() });
   } catch (e) {
     res.status(404).json({ error: 'Копия не найдена' });

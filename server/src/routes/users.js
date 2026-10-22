@@ -129,6 +129,7 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
     // Иначе новый человек не появляется в списках (упоминания, «написать») до
     // перезапуска клиента — список людей грузится один раз при входе
     broadcastAll({ type: 'user_created' });
+    logAudit(req, 'moderation', 'Создан пользователь', `${display_name.trim()} (@${username.trim()})${is_admin ? ', администратор' : ''}`);
     res.json({ id: result.lastInsertRowid, username, display_name, is_admin: !!is_admin, tag: tag?.trim() || null });
   } catch { res.status(409).json({ error: 'Username already exists' }); }
 });
@@ -142,6 +143,13 @@ router.patch('/:id', authMiddleware, adminMiddleware, async (req, res) => {
   const newWs = (req.body.workspace_ids !== undefined || req.body.workspace_id !== undefined) ? (await parseWsIds(req.body, null)) : undefined;
   if (newWs === null) return res.status(400).json({ error: 'Пространство не найдено' });
   try {
+    const nu = { username: username?.trim() || user.username, display_name: display_name?.trim() || user.display_name, is_admin: is_admin !== undefined ? (is_admin ? 1 : 0) : user.is_admin };
+    const diff = [];
+    if (nu.username !== user.username) diff.push(`логин @${user.username} → @${nu.username}`);
+    if (nu.display_name !== user.display_name) diff.push(`имя «${user.display_name}» → «${nu.display_name}»`);
+    if (!!nu.is_admin !== !!user.is_admin) diff.push(nu.is_admin ? 'выданы права администратора' : 'сняты права администратора');
+    if (tag !== undefined && (tag?.trim() || null) !== (user.tag || null)) diff.push(`тег «${user.tag || ''}» → «${tag?.trim() || ''}»`);
+    if (diff.length) logAudit(req, !!nu.is_admin !== !!user.is_admin ? 'security' : 'moderation', 'Изменён пользователь', `${user.display_name}: ${diff.join('; ')}`);
     await dal.run('UPDATE users SET username = ?, display_name = ?, is_admin = ?, tag = ? WHERE id = ?', username?.trim() || user.username, display_name?.trim() || user.display_name, is_admin !== undefined ? (is_admin ? 1 : 0) : user.is_admin, tag !== undefined ? (tag?.trim() || null) : user.tag, req.params.id);
     // Люди других серверов в общих пространствах увидят новое имя и тег
     try { await require('../federation').onProfile(Number(req.params.id)); await require('../fedspaces').membersChanged((await spaces.wsIdsOf(Number(req.params.id)))); } catch {}
@@ -171,6 +179,8 @@ router.patch('/:id/password', authMiddleware, adminMiddleware, async (req, res) 
   if (String(password).length < MIN_PASSWORD_LEN)
     return res.status(400).json({ error: `Пароль должен быть не короче ${MIN_PASSWORD_LEN} символов` });
   await dal.run('UPDATE users SET password_hash = ? WHERE id = ?', bcrypt.hashSync(password, 10), req.params.id);
+  const pu = await dal.get('SELECT display_name, username FROM users WHERE id = ?', req.params.id);
+  logAudit(req, 'security', 'Администратор задал новый пароль', pu ? `${pu.display_name} (@${pu.username})` : `id ${req.params.id}`);
   res.json({ ok: true });
 });
 
@@ -198,7 +208,8 @@ router.post('/me/password', authMiddleware, async (req, res) => {
 // по FK (messages.sender_id REFERENCES users), если пользователь что-то писал.
 router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
   const userId = Number(req.params.id);
-  if (!(await dal.get('SELECT 1 FROM users WHERE id = ?', userId))) return res.status(404).json({ error: 'Not found' });
+  const delUser = await dal.get('SELECT display_name, username, is_admin FROM users WHERE id = ?', userId);
+  if (!delUser) return res.status(404).json({ error: 'Not found' });
   if (userId === req.user.id) return res.status(400).json({ error: 'Cannot delete yourself' });
   // Собеседники по общим чатам — им уйдёт reload_chats после удаления
   const peers = (await dal.all(`
@@ -219,6 +230,7 @@ router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
   try { fs.unlinkSync(path2.join(AVATAR_DIR, `${userId}.jpg`)); } catch {}
   peers.forEach(uid => sendTo(uid, { type: 'reload_chats' }));
   broadcastAll({ type: 'directory_changed' });
+  logAudit(req, 'moderation', 'Удалён пользователь', `${delUser.display_name} (@${delUser.username})${delUser.is_admin ? ', был администратором' : ''}`);
   res.json({ ok: true });
 });
 
