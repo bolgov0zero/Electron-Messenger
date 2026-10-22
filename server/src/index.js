@@ -30,7 +30,10 @@ app.use((req, res, next) => {
 // Для всех ответов: не отдавать чужим сайтам полный адрес страницы и выключить возможности браузера, которыми клиенты не пользуются
 app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(self), payment=(self), usb=(), display-capture=(), serial=(), bluetooth=()');
+  // Микрофон, геолокация и платежи: только сам сайт, адрес указан явно (так проверяют сканеры); клиенты ими не пользуются
+  const ph = String(req.headers.host || '').replace(/[^\w.:\-\[\]]/g, '');
+  const own = ph ? `(self "${req.protocol}://${ph}")` : '(self)';
+  res.setHeader('Permissions-Policy', `camera=(), microphone=${own}, geolocation=${own}, payment=${own}, usb=(), display-capture=(), serial=(), bluetooth=()`);
   next();
 });
 // Защитные заголовки страниц (админка, веб-клиент, мобильный клиент, страница гостя): их нельзя встроить в чужой сайт, а скрипты,
