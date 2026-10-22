@@ -5681,8 +5681,9 @@ document.addEventListener('keydown', e => {
   if (!lb || !lb.classList.contains('lb-open')) return;
   if (e.key === 'ArrowLeft') lbNav(-1);
   else if (e.key === 'ArrowRight') lbNav(1);
-  else if (e.key === 'Escape') closeLightbox();
-});
+  // Escape в фазе перехвата и без передачи дальше: обработчик закрытия чата вешается позже и иначе видел бы уже закрытый просмотр
+  else if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); closeLightbox(); }
+}, true);
 
 function lbApplyTransform() {
   const img = document.getElementById('lightbox-img');
