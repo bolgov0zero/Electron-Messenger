@@ -168,9 +168,8 @@ async function broadcastStatus(userId) {
   peers.forEach(peerId => {
     getConn(peerId).forEach(ws => { if (ws.readyState === 1) ws.send(payload); });
   });
-  if (isGuest) return;   // гость есть только на этом сервере и в счётчики «в сети N из M» не входит
-  // Люди с других серверов, которые видят нас взаимно, узнают статус по федерации
-  await fed().onPresence(userId, status, last_seen, mobile);
+  // Люди с других серверов, которые видят нас взаимно, узнают статус по федерации (гость есть только на этом сервере)
+  if (!isGuest) await fed().onPresence(userId, status, last_seen, mobile);
   // Счётчик «в сети N из M» в шапках групп и комнат
   try { await groups().onUserStatus(userId); } catch (e) { console.warn('[Groups] счётчик:', e.message); }
 }
