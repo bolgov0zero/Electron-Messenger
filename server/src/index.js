@@ -55,6 +55,15 @@ function serverVersion() {
 }
 // Страница ссылается на style.css, app.js и остальное относительными адресами, поэтому без завершающего слэша («/chat»)
 // браузер искал бы их в корне сайта и показывал страницу без стилей и скриптов: ведём на «/chat/»
+// Главная страница сайта: с телефона ведёт в мобильную версию, с остальных устройств в веб-версию. Редирект временный (302) и без кэша:
+// решение зависит от устройства. Планшеты (iPad, Android без слова Mobile) считаются компьютером. Клиент сюда не заходит: ему нужны только /api и /ws
+const PHONE_UA = /iPhone|iPod|Android.+Mobile|Mobile.+Android|Windows Phone|IEMobile|BlackBerry|Opera Mini|Mobile.+Firefox|Firefox.+Mobile/i;
+app.get('/', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Vary', 'User-Agent');
+  const q = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
+  res.redirect(302, (PHONE_UA.test(req.headers['user-agent'] || '') ? '/m/' : '/chat/') + q);
+});
 app.get('/chat', (req, res, next) => {
   if (req.originalUrl.split('?')[0] !== '/chat') return next();   // маршрут без слэша совпадает и с «/chat/»
   res.redirect(301, '/chat/' + (req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : ''));
