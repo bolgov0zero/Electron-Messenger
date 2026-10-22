@@ -669,6 +669,9 @@ db.exec(`CREATE TABLE IF NOT EXISTS metrics_5m (
   on_n     INTEGER NOT NULL
 )`);
 
+// Какое сообщение переслано: номер исходного (при пересылке пересланного — самого первого). По нему считается отметка «переслали N раз»
+tryAlter('ALTER TABLE messages ADD COLUMN fwd_src INTEGER');
+tryAlter('CREATE INDEX IF NOT EXISTS idx_messages_fwd_src ON messages(fwd_src) WHERE fwd_src IS NOT NULL');
 // Имя и метка гостя при удалении его учётной записи остаются у сообщений (sender_id обнуляется, см. guest.js)
 tryAlter('ALTER TABLE messages ADD COLUMN guest_name TEXT');
 tryAlter('ALTER TABLE messages ADD COLUMN guest_tag TEXT');

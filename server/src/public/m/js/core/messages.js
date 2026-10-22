@@ -277,6 +277,11 @@ B.msgs = {
     });
     if (changed) bus.emit('msgs:changed', { mode: 'smart' });
   });
+  // Число пересылок сообщения изменилось: отметка у времени обновляется
+  bus.on('ws:forward_count', function (d) {
+    var m = M.find(d.message_id);
+    if (m) { m.forward_count = d.count; bus.emit('msgs:changed', { mode: 'smart' }); }
+  });
   bus.on('ws:reaction_update', function (d) {
     var m = M.find(d.message_id);
     if (m) { m.reactions = d.counts; bus.emit('msgs:changed', { mode: 'smart' }); }

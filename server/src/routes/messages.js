@@ -13,7 +13,7 @@ const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
 
 // Общий SELECT сообщения с данными отправителя и цитаты
 const MSG_SELECT = `
-  SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.link_preview, m.system_kind,
+  SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.link_preview, m.system_kind, (SELECT COUNT(*) FROM messages fx WHERE fx.fwd_src = m.id AND fx.deleted = 0) AS forward_count,
     u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, COALESCE(u.tag, m.guest_tag) as sender_tag, (u.is_bot = 1) as sender_is_bot,
     m.reply_to_id,
     rm.text as reply_text, rm.deleted as reply_deleted, rm.attachment as reply_attachment,

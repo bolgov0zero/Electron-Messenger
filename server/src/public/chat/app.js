@@ -4010,6 +4010,19 @@ function senderNameClass(tag) {
   return 'tag-' + (h % TAG_COLORS + 1);
 }
 
+// Отметка «сообщение пересылали»: стрелка и число слева от галок и времени
+function fwdTimes(n) { const a = n % 10, b = n % 100; return n + (a === 1 && b !== 11 ? ' раз' : (a >= 2 && a <= 4 && (b < 12 || b > 14) ? ' раза' : ' раз')); }
+function fwdMarkHtml(m) {
+  const n = Number(m.forward_count) || 0;
+  return n > 0 && !m.deleted ? `<span class="fwd-mark" title="Сообщение переслали ${fwdTimes(n)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 17 5-5-5-5"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>${n}</span>` : '';
+}
+// Число пересылок изменилось (кто-то переслал сообщение или удалил копию): обновляем отметку на уже нарисованном сообщении
+function applyForwardCount(id, count) {
+  const meta = document.querySelector(`.irc-msg[data-msg-id="${id}"] .irc-meta`);
+  if (!meta) return;
+  meta.querySelector('.fwd-mark')?.remove();
+  if (count > 0) meta.insertAdjacentHTML('afterbegin', fwdMarkHtml({ forward_count: count }));
+}
 function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   if (m.status && m.id > 0) S.msgStatus[m.id] = { ...m.status };
   const isSystem = m.sender_username === '__system__';
@@ -4112,7 +4125,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const header = `<div class="irc-header">
       <span class="irc-name msg-sender-name ${senderCls}${mine?' mine':''}" onclick="event.stopPropagation();mentionUserInComposer(${m.sender_id})">${senderName}</span>${ircTagHtml}
     </div>`;
-  const metaHtml = `<div class="irc-meta"><span class="status-wrap">${statusIcon}</span><span class="irc-time">${time}</span></div>`;
+  const metaHtml = `<div class="irc-meta">${fwdMarkHtml(m)}<span class="status-wrap">${statusIcon}</span><span class="irc-time">${time}</span></div>`;
 
   const scAttMeta = isSecretChat ? S.scAtt.get(m.id) : null;
   const att = isSecretChat
@@ -5493,6 +5506,7 @@ function lbForwardItem(it) {
   S.forwardMsg = d
     ? (d.forwardData ? { ...d.forwardData } : { user_id: d.senderId, name: d.senderName, text: (d.text || '').slice(0, 200), attachment: d.attachment || null, is_bot: d.senderIsBot || false })
     : { user_id: it.senderId || 0, name: it.sender || '', text: (it.caption || '').slice(0, 200), attachment: { url: rel(it.url), thumb: it.thumb ? rel(it.thumb) : null, name: it.filename || '', mime: it.mime || (it.type === 'video' ? 'video/mp4' : 'image/jpeg'), size: 0 }, is_bot: false };
+  if (d && it.mid) S.forwardMsg.src = it.mid;
   openForwardModal();
 }
 async function lbDeleteItem(it) {
@@ -5949,6 +5963,7 @@ function connectWS() {
 
     if (data.type==='connected') { S.editLimit = data.edit_time_limit || 120; return; }
     if (data.type==='modules_changed') { window.Modules?.refresh(); return; }
+    if (data.type==='forward_count') { applyForwardCount(data.message_id, data.count); return; }
     if (data.type==='secret_key_ready') { scTick(data.chat_id); return; }
 
     if (data.type==='message') {
@@ -7394,6 +7409,7 @@ function ctxForward() {
   S.forwardMsg = d.forwardData
     ? { ...d.forwardData }
     : { user_id: d.senderId, name: d.senderName, text: (d.text || '').slice(0, 200), attachment: d.attachment || null, is_bot: d.senderIsBot || false };
+  S.forwardMsg.src = msgId;   // какое сообщение переслали: по нему сервер считает отметку «переслали N раз»
   openForwardModal();
 }
 

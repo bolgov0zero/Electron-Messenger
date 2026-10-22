@@ -97,6 +97,16 @@ async function broadcast(chatId, payload, excludeUserId = null) {
   });
 }
 
+// Число пересылок сообщения (без удалённых копий) всем в чате, где оно лежит
+async function emitForwardCount(srcId) {
+  try {
+    const r = await dal.get('SELECT chat_id FROM messages WHERE id = ?', srcId);
+    if (!r) return;
+    const count = Number((await dal.get('SELECT COUNT(*) AS c FROM messages WHERE fwd_src = ? AND deleted = 0', srcId)).c) || 0;
+    await broadcast(r.chat_id, { type: 'forward_count', message_id: srcId, count });
+  } catch (e) { console.warn('[Пересылки]', e.message); }
+}
+
 function sendTo(userId, payload) {
   getConn(userId).forEach(ws => { if (ws.readyState === 1) ws.send(JSON.stringify(payload)); });
 }
@@ -196,7 +206,7 @@ function sanitizeEncAttachment(att) {
 
 async function getMessageWithStatus(msgId, viewerId) {
   const msg = await dal.get(`
-    SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.link_preview, m.system_kind,
+    SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.link_preview, m.system_kind, (SELECT COUNT(*) FROM messages fx WHERE fx.fwd_src = m.id AND fx.deleted = 0) AS forward_count,
       u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, COALESCE(u.tag, m.guest_tag) as sender_tag, (u.is_bot = 1) as sender_is_bot,
       m.reply_to_id,
       rm.text as reply_text, rm.attachment as reply_attachment, rm.deleted as reply_deleted,
@@ -417,6 +427,13 @@ function setup(server) {
               is_bot: !!forward_data.is_bot })
           : null;
 
+        // Пересылка: запоминаем исходное сообщение (при пересылке пересланного — самое первое), если отправитель его видит
+        let fwdSrc = null;
+        if (fdJson && !isSecret && !user.is_guest && Number(forward_data.src) > 0) {
+          const sr = await dal.get('SELECT m.id, m.fwd_src FROM messages m JOIN chat_members cm ON cm.chat_id = m.chat_id AND cm.user_id = ? JOIN chats c ON c.id = m.chat_id AND c.is_secret = 0 WHERE m.id = ? AND m.deleted = 0', user.id, Number(forward_data.src));
+          if (sr) fwdSrc = sr.fwd_src || sr.id;
+        }
+
         // Превью ссылки: только проверенное (картинка — наша), в секретных чатах не бывает
         const lpObj = isSecret ? null : linkPrev.sanitize(data.link_preview);
         const lpJson = lpObj ? JSON.stringify(lpObj) : null;
@@ -434,14 +451,14 @@ function setup(server) {
         }
 
         // Подготавливаем стейтменты вне транзакции — db.prepare нельзя вызывать внутри неё
-        const stmtInsertMsg = 'INSERT INTO messages (chat_id, sender_id, text, iv, reply_to_id, attachment, mentions, forward_data, link_preview) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        const stmtInsertMsg = 'INSERT INTO messages (chat_id, sender_id, text, iv, reply_to_id, attachment, mentions, forward_data, link_preview, fwd_src) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
         const stmtGetMembers = 'SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?';
         const stmtInsStatus = 'INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)';
         const stmtUpdDelivered = 'UPDATE message_status SET delivered_at = COALESCE(delivered_at, unixepoch()) WHERE message_id = ? AND user_id = ?';
 
         // Вставка сообщения и статусов доставки в одной транзакции
         const msgId = await dal.tx(() => (async () => {
-          const result = await dal.run(stmtInsertMsg, chat_id, user.id, text, isSecret && typeof iv === 'string' ? iv.slice(0, 256) : null, reply_to_id || null, attJson, mentionsJson, fdJson, lpJson);
+          const result = await dal.run(stmtInsertMsg, chat_id, user.id, text, isSecret && typeof iv === 'string' ? iv.slice(0, 256) : null, reply_to_id || null, attJson, mentionsJson, fdJson, lpJson, fwdSrc);
           const newMsgId = result.lastInsertRowid;
           // Пометить как delivered тем участникам, которые сейчас онлайн (кроме отправителя)
           const members = await dal.all(stmtGetMembers, chat_id, user.id);
@@ -467,6 +484,7 @@ function setup(server) {
           if (recentSends.size > 2000) { const old = Date.now() - 900_000; for (const [k, v] of recentSends) if (v.t < old) recentSends.delete(k); }
         }
         await finishMessage(msgId, chat_id, user.id, clientId);
+        if (fwdSrc) await emitForwardCount(fwdSrc);   // у автора и читателей исходного сообщения обновится «переслали N раз»
         // Собеседник с другого сервера: сообщение уходит в очередь отправки
         if (dm && (await spaces.isFed(dm.user_id))) await fed().onLocalMessage(msgId);
         // Группа с участниками или хозяином на другом сервере
@@ -566,6 +584,7 @@ function setup(server) {
         }
         await dal.run("UPDATE messages SET deleted = 1, text = '', attachment = NULL WHERE id = ?", message_id);
         await broadcast(msg.chat_id, { type: 'message_deleted', message_id, chat_id: msg.chat_id });
+        if (msg.fwd_src) await emitForwardCount(msg.fwd_src);   // удалили копию: у исходного сообщения число пересылок уменьшилось
         if (msg.fed_uid) await fed().onDelete(msg);
         // Удаление мягкое (deleted = 1), поэтому ON DELETE CASCADE не сработает —
         // снимаем закрепление руками и сообщаем клиентам

@@ -148,6 +148,7 @@ B.ui.msgmenu = (function () {
   function forwardSheet(m) {
     var mine = m.sender_id === B.S.user.id;
     var data = m.forward_data ? Object.assign({}, m.forward_data) : { user_id: m.sender_id, name: mine ? B.S.user.display_name : (m.sender_name || ''), text: (m.text || '').slice(0, 200), attachment: m.attachment || null, is_bot: !!m.sender_is_bot };
+    data.src = m.id;   // какое сообщение переслали: по нему сервер считает отметку «переслали N раз»
     B.sheet.open({ size: 'large', title: 'Переслать', left: '<button class="nb" data-sheet="close">Отмена</button>',
       body: '<div class="srch"><div class="sfield">' + ic('search', 16, 2.2) + '<input id="fw-q" placeholder="Поиск" autocomplete="off"></div></div><div id="fw-list"></div>' });
     var body = B.sheet.body(), q = body.querySelector('#fw-q'), list = body.querySelector('#fw-list');

@@ -147,7 +147,10 @@ B.ui.chat = (function () {
     var att = m.attachment, eo = !att && !m.reply_to_id && emojiOnly(m.text);
     var bare = !m.text && !m.reply_to_id && !m.forward_data && att && (att.gif || (att.url && !att.expired && (att.enc ? /^(image|video)\//.test(att.mime || '') : B.media.listOf(att).every(B.media.isMedia))));
     var fail = !!m._optimistic && m._state === 'failed';
-    var meta = '<span class="meta">' + (m.edited_at ? 'изм. ' : '') + B.fmt.time(m.sent_at) + (mine ? (fail ? '<i class="er">!</i>' : m._optimistic ? '<i class="clk">' + ic('clock', 12, 2) + '</i>' : B.ticks(m.status)) : '') + '</span>';
+    // Сначала отметка «переслали N раз», затем галки прочтения, затем время (как в остальных клиентах)
+    var fwn = Number(m.forward_count) || 0;
+    var meta = '<span class="meta">' + (fwn > 0 ? '<span class="fwd" data-c="fwd" data-n="' + fwn + '">' + ic('fwd', 12, 2.4) + fwn + '</span>' : '') +
+      (mine ? (fail ? '<i class="er">!</i>' : m._optimistic ? '<i class="clk">' + ic('clock', 12, 2) + '</i>' : B.ticks(m.status)) : '') + (m.edited_at ? 'изм. ' : '') + B.fmt.time(m.sent_at) + '</span>';
     var comp = compOf(m);
     h += '<div class="bub' + (eo ? ' eo' : '') + (bare ? ' media' : '') + (bare && att.gif ? ' gifm' : '') + (comp ? ' bcomp' + (!comp.lp && comp.ps.length === 1 ? ' conly' : '') : '') + (fail ? ' fail' : '') + '" data-mid="' + m.id + '"' + (fail ? ' data-c="retry" data-cid="' + m._cid + '"' : '') + '>';
     if (wrapAv && pos.first) h += '<div class="who" style="color:' + nameColor(m.sender_id, m.sender_tag) + '" data-c="who" data-id="' + m.sender_id + '" data-name="' + esc(m.sender_name || '') + '">' + esc(m.sender_name || '') + '</div>';
@@ -433,6 +436,7 @@ B.ui.chat = (function () {
     else if (c === 'dl') download(t.dataset.url, t.dataset.name);
     else if (c === 'jump') jump(el, +t.dataset.id);
     else if (c === 'react') B.msgs.react(+t.dataset.id, t.dataset.e);
+    else if (c === 'fwd') { var n = +t.dataset.n, a = n % 10, b = n % 100; B.toast.show('Сообщение переслали ' + n + (a === 1 && b !== 11 ? ' раз' : (a >= 2 && a <= 4 && (b < 12 || b > 14) ? ' раза' : ' раз'))); }
     else if (c === 'down') toBottom(el);
     else if (c === 'scsave') B.secret.saveAtt(+t.dataset.id);
     else if (c === 'addc') { var pid = B.peerId(B.find(+el.dataset.cid)); if (pid && B.openAddFromChat) B.openAddFromChat(pid); }
