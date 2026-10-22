@@ -37,7 +37,7 @@ router.get('/presence', authMiddleware, async (req, res) => {
   const visible = new Set((await spaces.presenceIds(req.user.id)));
   const peers = (await dal.all(`
     SELECT id, last_seen_at FROM users
-    WHERE id != ? AND COALESCE(banned, 0) = 0 AND COALESCE(is_bot, 0) IN (0, 2)
+    WHERE id != ? AND COALESCE(banned, 0) = 0 AND COALESCE(is_bot, 0) IN (0, 2, 3)
   `, req.user.id)).filter(p => visible.has(p.id));
   const result = {};
   peers.forEach(({ id, last_seen_at }) => { result[id] = { status: getStatus(id), last_seen: last_seen_at, mobile: getMobile(id) || undefined }; });

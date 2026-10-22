@@ -367,7 +367,7 @@ router.get('/chats', async (req, res) => {
     c.members = (c.member_list ? c.member_list.split('\x1e') : []).map(row => {
       const [id, name, g] = row.split('\x1f');
       // Гость по ссылке: в списке участников помечается, статус «в сети» берётся из его соединения
-      return { id: Number(id), name, has_avatar: photo(Number(id)), ...(g === '1' ? { guest: true, online: require('../ws').isConnected(Number(id)) } : {}) };
+      return { id: Number(id), name, has_avatar: photo(Number(id)), ...(g === '1' ? { guest: true, online: require('../ws').isConnected(Number(id)), status: getStatus(Number(id)) } : {}) };
     });
     c.member_names = c.members.map(m => m.name);
     delete c.member_list;

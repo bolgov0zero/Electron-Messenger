@@ -149,7 +149,7 @@ function computeMobile(userId, status) {
 
 // Пересчитать агрегат и разослать собеседникам ТОЛЬКО при реальном изменении статуса (или смене «с телефона»).
 async function broadcastStatus(userId) {
-  if (guestLib.isGuest(userId)) return;
+  const isGuest = guestLib.isGuest(userId);
   const status = computeStatus(userId);
   const mobile = computeMobile(userId, status);
   if (userStatus.get(userId) === status && !!userMobile.get(userId) === mobile) return; // не изменилось — не шумим
@@ -168,6 +168,7 @@ async function broadcastStatus(userId) {
   peers.forEach(peerId => {
     getConn(peerId).forEach(ws => { if (ws.readyState === 1) ws.send(payload); });
   });
+  if (isGuest) return;   // гость есть только на этом сервере и в счётчики «в сети N из M» не входит
   // Люди с других серверов, которые видят нас взаимно, узнают статус по федерации
   await fed().onPresence(userId, status, last_seen, mobile);
   // Счётчик «в сети N из M» в шапках групп и комнат

@@ -49,6 +49,7 @@ async function setWorkspaces(userId, ids) {
 }
 // Человек с другого сервера
 const FED = 2;
+const GUEST = 3;   // users.is_bot у гостя по ссылке
 async function isFed(userId) { return (await dal.get(q.user, userId))?.is_bot === FED; }
 async function isAdminUser(userId) { return !!(await dal.get(q.user, userId))?.is_admin; }
 
@@ -153,6 +154,8 @@ async function canSeePresence(viewerId, targetId) {
   if (viewerId === targetId) return true;
   const v = await dal.get(q.user, viewerId), t = await dal.get(q.user, targetId);
   if (!v || !t) return false;
+  // Гость по ссылке (is_bot = 3) виден участникам тех чатов, куда он вошёл, и администраторам
+  if (t.is_bot === GUEST) return !!v.is_admin || !!(await dal.get('SELECT 1 FROM chat_members a JOIN chat_members b ON b.chat_id = a.chat_id WHERE a.user_id = ? AND b.user_id = ?', viewerId, targetId));
   if (v.is_bot === FED || t.is_bot === FED) return (await mutualContact(viewerId, targetId)) || (await shares(viewerId, targetId));
   return !!v.is_admin || (await shares(viewerId, targetId)) || (await mutualContact(viewerId, targetId));
 }
@@ -161,6 +164,12 @@ async function presenceViewers(targetId) {
   const t = await dal.get(q.user, targetId);
   if (!t) return [];
   const ids = new Set();
+  if (t.is_bot === GUEST) {
+    (await dal.all('SELECT DISTINCT b.user_id AS id FROM chat_members a JOIN chat_members b ON b.chat_id = a.chat_id WHERE a.user_id = ?', targetId)).forEach(r => ids.add(r.id));
+    (await dal.all('SELECT id FROM users WHERE is_admin = 1')).forEach(r => ids.add(r.id));
+    ids.delete(targetId);
+    return [...ids];
+  }
   // Человек с другого сервера: статус видят взаимные контакты и те, у кого с ним общее пространство
   if (t.is_bot !== FED) {
     (await usersInSpaces((await wsIdsOf(targetId)))).forEach(id => ids.add(id));
@@ -178,6 +187,8 @@ async function presenceIds(viewerId) {
   if (!v) return [];
   const ids = new Set(v.is_admin ? (await dal.all(`SELECT id FROM users WHERE id != ? AND COALESCE(is_bot, 0) != ${FED}`, viewerId)).map(r => r.id) : []);
   (await usersInSpaces((await wsIdsOf(viewerId)))).forEach(id => { if (id !== viewerId) ids.add(id); });
+  // Гости по ссылке в тех же чатах
+  (await dal.all(`SELECT DISTINCT b.user_id AS id FROM chat_members a JOIN chat_members b ON b.chat_id = a.chat_id JOIN users u ON u.id = b.user_id WHERE a.user_id = ? AND u.is_bot = ${GUEST}`, viewerId)).forEach(r => { if (r.id !== viewerId) ids.add(r.id); });
   (await dal.all('SELECT c1.contact_id AS id FROM contacts c1 JOIN contacts c2 ON c2.owner_id = c1.contact_id AND c2.contact_id = c1.owner_id WHERE c1.owner_id = ?', viewerId)).forEach(r => ids.add(r.id));
   return [...ids];
 }
