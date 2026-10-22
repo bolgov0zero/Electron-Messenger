@@ -7051,9 +7051,9 @@ function stPaneAttachments() {
     <div class="st-gt">${ST_I.file}Файлы</div>
     <div class="st-g">
       <div class="st-r"><div class="st-l"><b>Наибольший размер</b><span>Касается документов, архивов и всего, что не картинка</span></div>${stStepHtml('fileMax')}</div>
-      <div class="st-r stack"><div class="st-l"><b>Форматы</b><span>Оставьте пустым, чтобы разрешить любые</span></div>${stTokHtml('fileExt', 'Разрешены любые форматы')}
+      <div class="st-r stack"><div class="st-l"><b>Форматы</b><span>Разрешено только то, что в списке. Пустой список: файлы отправлять нельзя</span></div>${stTokHtml('fileExt', 'Форматы не разрешены')}
         <div class="st-quick"><span class="st-hint">Добавить набор:</span>${Object.keys(ST_QUICK).map(n => `<button type="button" class="btn btn-ghost btn-sm" onclick="stQuick('${n}')">${ST_I.plus}${n}</button>`).join('')}
-          ${d.fileExt.length ? '<button type="button" class="btn btn-ghost btn-sm" onclick="stTokClear()">Разрешить любые</button>' : ''}</div></div>
+          ${d.fileExt.length ? '<button type="button" class="btn btn-ghost btn-sm" onclick="stTokClear()">Очистить список</button>' : ''}</div></div>
     </div>
     <div class="st-gt">${ST_I.box}Хранение</div>
     <div class="st-g"><div class="st-r stack">
@@ -7597,7 +7597,7 @@ const SP_AUDIT_KEY = { messages: 'edit_time_limit', attachments: 'upload_', back
 const spShortDur = s => s >= 3600 && s % 3600 === 0 ? `${s / 3600} ч` : s >= 60 && s % 60 === 0 ? `${s / 60} мин` : `${s} с`;
 const SP_LABEL = {
   edit: ['Время на правку', spShortDur], imgMax: ['Размер картинок', v => v + ' МБ'], imgExt: ['Форматы картинок', v => v.join(', ')], videoMax: ['Размер видео', v => v + ' МБ'],
-  videoExt: ['Форматы видео', v => v.join(', ')], fileMax: ['Размер файлов', v => v + ' МБ'], fileExt: ['Форматы файлов', v => v.length ? v.join(', ') : 'любые'],
+  videoExt: ['Форматы видео', v => v.join(', ')], fileMax: ['Размер файлов', v => v + ' МБ'], fileExt: ['Форматы файлов', v => v.length ? v.join(', ') : 'не разрешены'],
   life: ['Хранение файлов', v => v ? v + ' дн' : 'всегда'], backupDays: ['Дни копий', v => v.length ? ST_DAYS.filter(d => v.includes(d[0])).map(d => d[1]).join(', ') : 'вручную'],
   backupTime: ['Время копий', v => v], backupRetention: ['Хранение копий', v => v ? v + ' дн' : 'всегда'],
 };
@@ -7813,7 +7813,7 @@ function spAttachments() {
     + spRow('Видео: наибольший размер', 'Видео тяжелее загрузить не получится', spStepH('videoMax'), warn(big('video', spSv('videoMax'))), '', 'вложения размер')
     + spRow('Видео: форматы', 'Только эти расширения отправляются как видео с проигрыванием', spTokH('videoExt'), '', 'wide', 'расширения')
     + spRow('Файлы: наибольший размер', 'Документы, архивы и всё, что не картинка и не видео', spStepH('fileMax'), '', '', 'вложения размер')
-    + spRow('Файлы: форматы', 'Оставьте пустым, чтобы разрешить любые', `${spTokH('fileExt', 'Разрешены любые форматы')}<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">${Object.keys(ST_QUICK).map(n => `<button type="button" class="btn btn-ghost btn-sm" onclick="spQuick('${n}')">${ST_I.plus}${n}</button>`).join('')}${spSv('fileExt').length ? '<button type="button" class="btn btn-ghost btn-sm" onclick="spQ2()">Разрешить любые</button>' : ''}</div>`, '', 'wide', 'расширения')
+    + spRow('Файлы: форматы', 'Разрешено только то, что в списке. Пустой список: файлы отправлять нельзя', `${spTokH('fileExt', 'Форматы не разрешены')}<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">${Object.keys(ST_QUICK).map(n => `<button type="button" class="btn btn-ghost btn-sm" onclick="spQuick('${n}')">${ST_I.plus}${n}</button>`).join('')}${spSv('fileExt').length ? '<button type="button" class="btn btn-ghost btn-sm" onclick="spQ2()">Очистить список</button>' : ''}</div>`, '', 'wide', 'расширения')
     + (spHit('Хранение файлов', 'срок хранить удаляются') ? `<div class="sp-r wide"><div class="sp-l"><b>Хранение файлов</b><span>Старые файлы удаляются сами, проверка раз в 6 часов. В переписке на их месте «Файл удалён»</span><em>Сейчас на сервере ${SP.files.length} ${uxPlural(SP.files.length, 'файл', 'файла', 'файлов')}, ${hmBytes(total)} · <button type="button" class="sp-link" onclick="nav('files')">открыть «Файлы»</button></em></div>
       <div class="sp-c"><div class="sp-seg">${ST_LIFE.map(([v, l]) => `<button type="button" aria-pressed="${!lifeCustom && life === v}" onclick="spLife(${v})">${l}</button>`).join('')}<button type="button" aria-pressed="${lifeCustom}" onclick="spLife('custom')">Своё</button></div>${lifeCustom ? `<div class="sp-inp" style="width:130px"><input id="sp-life-n" type="number" min="1" max="3650" value="${life || ''}" aria-label="Дней" oninput="spLifeN(this.value)"><span class="u">дней</span></div>` : ''}</div>${conf}</div>` : '');
 }

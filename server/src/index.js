@@ -168,8 +168,15 @@ app.get('/fp/:name', async (req, res) => {
     res.sendFile(out, err => { if (err && !res.headersSent) fallback(); });
   } catch { try { fs.unlinkSync(out + '.tmp'); } catch {} if (!res.headersSent) fallback(); }
 });
-app.use('/files', express.static(FILES_DIR, { maxAge: '1y', immutable: true }));
-app.use('/lp', express.static(require('./linkprev').DIR, { maxAge: '1y', immutable: true }));
+// Файлы лежат на том же домене, что и клиенты: страница, открытая прямо по ссылке, получила бы доступ к токену пользователя.
+// nosniff запрещает браузеру считать файл страницей по содержимому, а типы, которые браузер исполняет (html, svg, xml, js), отдаются только на скачивание
+const ACTIVE_EXT = /\.(x?html?|svgz?|xml|xsl|xslt|js|mjs|jsx|hta|mht|mhtml|swf)$/i;
+const safeFileHeaders = (res, filePath) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  if (ACTIVE_EXT.test(filePath)) { res.setHeader('Content-Disposition', 'attachment'); }
+};
+app.use('/files', express.static(FILES_DIR, { maxAge: '1y', immutable: true, setHeaders: safeFileHeaders }));
+app.use('/lp', express.static(require('./linkprev').DIR, { maxAge: '1y', immutable: true, setHeaders: safeFileHeaders }));
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));

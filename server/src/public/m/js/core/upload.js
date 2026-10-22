@@ -24,7 +24,7 @@ B.upload = {
     var U = B.upload, ctl = { dead: false, xhr: null, prep: null }, isImage = file.type.indexOf('image/') === 0, isVideo = file.type.indexOf('video/') === 0;
     var cfg = isImage ? U.cfg.image : isVideo ? U.cfg.video : U.cfg.file, ext = (file.name.split('.').pop() || '').toLowerCase();
     if (!isVideo && file.size > cfg.maxSizeMb * 1048576) { cb.onError('Файл слишком большой (макс. ' + cfg.maxSizeMb + ' МБ)'); return ctl; }
-    if (cfg.extensions.length > 0 && cfg.extensions.indexOf(ext) < 0) { cb.onError('Расширение .' + ext + ' не разрешено'); return ctl; }
+    if (!(opts && opts.chatId && B.S.secretChatIds.has(opts.chatId)) && cfg.extensions.indexOf(ext) < 0) { cb.onError('Расширение .' + ext + ' не разрешено'); return ctl; }
     cb.onStart(isImage ? 'Фото' : isVideo ? 'Видео' : 'Файл');
     if (isVideo && /\.(mov|mp4|m4v)$/i.test(file.name)) {
       var VP = await U._loadPrep(); if (ctl.dead) return ctl;

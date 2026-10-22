@@ -993,7 +993,7 @@ async function receiveAttachment(peer, uid, a, idx = 0, extra = {}) {
   const c = cfg[kind];
   const ext = path.extname(name).replace('.', '').toLowerCase();
   if (!size || size > c.maxSizeMb * 1024 * 1024) return { ...meta, unavailable: 'policy' };
-  if (c.extensions.length && !c.extensions.includes(ext)) return { ...meta, unavailable: 'policy' };
+  if (!c.extensions.includes(ext)) return { ...meta, unavailable: 'policy' };
   const fname = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext ? '.' + ext.replace(/[^a-z0-9]/g, '') : ''}`;
   const dest = path.join(FILES_DIR, fname);
   try {

@@ -20,12 +20,12 @@ async function getUploadSettings() {
   return {
     image: {
       maxSizeMb: parseInt((await getSetting('upload_image_max_size', '10'))),
-      extensions: (await getSetting('upload_image_extensions', 'jpeg,jpg,png,gif,webp'))
+      extensions: ((await getSetting('upload_image_extensions', '')).trim() || 'jpeg,jpg,png,gif,webp')
         .split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
     },
     video: {
       maxSizeMb: parseInt((await getSetting('upload_video_max_size', '50'))),
-      extensions: (await getSetting('upload_video_extensions', 'mp4,mov,webm'))
+      extensions: ((await getSetting('upload_video_extensions', '')).trim() || 'mp4,mov,webm')
         .split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
     },
     file: {
@@ -267,7 +267,8 @@ router.post('/',
       return res.status(400).json({ error: `Файл превышает лимит ${cfg.maxSizeMb} МБ` });
     }
 
-    if (cfg.extensions.length > 0 && !cfg.extensions.includes(ext)) {
+    // Разрешено только то, что есть в списке: пустой список файлов означает «ничего не разрешено»
+    if (!cfg.extensions.includes(ext)) {
       fs.unlink(req.file.path, () => {});
       return res.status(400).json({ error: `Расширение .${ext} не разрешено` });
     }

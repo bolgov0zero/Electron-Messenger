@@ -5206,7 +5206,7 @@ async function uploadFile(file) {
     showActionToast(`Файл слишком большой (макс. ${cfg.maxSizeMb} МБ)`);
     return;
   }
-  if (cfg.extensions.length > 0 && !cfg.extensions.includes(ext)) {
+  if (!isSecret && !cfg.extensions.includes(ext)) {
     showActionToast(`Расширение .${ext} не разрешено`);
     return;
   }
