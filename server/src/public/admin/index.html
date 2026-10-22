@@ -3134,27 +3134,43 @@ document.addEventListener('mouseout', e => { if (!e.relatedTarget?.closest?.('.s
 document.addEventListener('click', e => { if (SB.menu && !e.target.closest('#sb-menu, #sb-me')) sbMenuClose(); });
 
 /* быстрый переход */
-const SB_SETS = [['messages', 'Сообщения'], ['attachments', 'Вложения'], ['backups', 'Резервные копии'], ['github', 'GitHub'], ['history', 'История']];
+const SB_SETS = [['messages', 'Сообщения', 'редактирование удаление лимит время правки'], ['attachments', 'Вложения', 'файлы фото видео размер расширения форматы загрузка'], ['backups', 'Резервные копии', 'бэкап копия восстановление расписание'],
+  ['database', 'База данных', 'postgres postgresql sqlite бд перенос миграция установка размер'], ['github', 'GitHub', 'токен релизы обновления лимит'], ['history', 'История', 'журнал изменений настроек']];
+// Слова, по которым страницу можно найти кроме названия (поиск по приставке слова, см. sbPalGroups)
+const SB_KW = { dashboard: 'главная нагрузка процессор память сервер графики', workspaces: 'общее пространство рабочие', federation: 'сервер партнёр ключ подключение карта связь', users: 'люди сотрудники пароль тег блокировка',
+  rooms: 'темы подкомнаты комната гостевая ссылка гость', chats: 'группы личные переписка гостевая ссылка гость', clients: 'версии приложение устройства', push: 'уведомления подписки', files: 'вложения хранилище диск', announcements: 'баннер оповещение',
+  webhooks: 'бот интеграция', modules: 'gif klipy гиф модуль', settings: 'параметры конфигурация', audit: 'журнал действий безопасность', releases: 'версии обновление история изменений' };
 async function sbCheckFromPal() {
   sbGoHome();
   for (let i = 0; i < 50 && !document.getElementById('hm-upd-panel'); i++) await new Promise(r => setTimeout(r, 100));
   hmUpdCheck();
 }
+// Закладка страницы «Федерации»: подключения или карта
+function sbFed(tab) { FD.tab = tab; if (currentPage === 'federation') fdTab(tab); else nav('federation'); }
 function sbPalGroups() {
-  const q = SB.pal.q.trim().toLowerCase(), stem = q.slice(0, Math.max(3, q.length - 1));
+  // Каждое слово запроса ищется по приставке (без последней буквы, чтобы падеж не мешал), слова могут идти в любом порядке
+  const q = SB.pal.q.trim().toLowerCase(), words = q.split(/\s+/).filter(Boolean).map(w => w.slice(0, Math.max(3, w.length - 1)));
   const to = k => () => nav(k), act = (k, fn) => () => { nav(k); fn(); };
+  const pg = !!(typeof HM !== 'undefined' && HM.pgService);   // служба postgresql есть только на PostgreSQL
   return [
-    ['Страницы', Object.keys(pageTitles).map(k => ({ t: pageTitles[k], go: to(k) }))],
-    ['Разделы настроек', SB_SETS.map(([k, n]) => ({ t: 'Настройки → ' + n, go: () => openSettingsModal(k) }))],
+    ['Страницы', Object.keys(pageTitles).filter(k => k !== 'more').map(k => ({ t: pageTitles[k], k: SB_KW[k], go: to(k) }))
+      .concat([{ t: 'Федерации → Карта', k: 'карта серверов пространств связи схема', go: () => sbFed('map') }, { t: 'Федерации → Подключения', k: 'серверы правила приёма лимиты ключ', go: () => sbFed('list') }])],
+    ['Разделы настроек', SB_SETS.map(([k, n, kw]) => ({ t: 'Настройки → ' + n, k: kw, go: () => openSettingsModal(k) }))],
     ['Действия', [
       { t: 'Создать пользователя', h: 'Пользователи', go: act('users', openCreateUser) },
       { t: 'Создать комнату', h: 'Комнаты', go: act('rooms', openCreateRoom) },
+      { t: 'Создать пространство', h: 'Пространства', go: act('workspaces', wsOpen) },
+      { t: 'Подключить сервер федерации', h: 'Федерации', k: 'ключ приглашение партнёр', go: act('federation', fdChoose) },
       { t: 'Новое объявление', h: 'Объявления', go: act('announcements', openAnnouncementModal) },
       { t: 'Создать вебхук', h: 'Вебхуки', go: act('webhooks', whOpen) },
+      { t: 'Гостевая ссылка для комнаты', h: 'Комнаты → меню комнаты', k: 'гость приглашение временный доступ', go: to('rooms') },
       { t: 'Создать резервную копию', h: 'Настройки', go: () => openSettingsModal('backups') },
+      { t: 'Перенести базу на PostgreSQL', h: 'Настройки → База данных', k: 'миграция sqlite postgres', go: () => openSettingsModal('database') },
+      { t: 'Установить PostgreSQL на этом сервере', h: 'Настройки → База данных', k: 'установка postgres', go: () => openSettingsModal('database') },
       { t: 'Проверить обновления', h: 'Главная', go: sbCheckFromPal },
-    ]],
-  ].map(([g, l]) => [g, l.filter(x => !q || x.t.toLowerCase().includes(stem))]).filter(x => x[1].length);
+      { t: 'Перезапустить сервер', h: 'Главная', k: 'рестарт electron служба', go: () => { sbGoHome(); setTimeout(() => restartService(), 150); } },
+    ].concat(pg ? [{ t: 'Перезапустить PostgreSQL', h: 'Главная', k: 'рестарт база служба', go: () => { sbGoHome(); setTimeout(() => restartPostgres(), 150); } }] : [])],
+  ].map(([g, l]) => [g, l.filter(x => { const hay = (x.t + ' ' + (x.k || '')).toLowerCase(); return words.every(w => hay.includes(w)); })]).filter(x => x[1].length);
 }
 function sbPalList() {
   const groups = sbPalGroups();
@@ -7961,7 +7977,7 @@ function spDatabase() {
   const f = d.form, t = d.test, ok = !!(t && t.ok);
   const inp = (k, label, type = 'text', w = '') => `<label>${label}<span class="sp-inp"><input id="sp-db-${k}" type="${type}" value="${esc(String(f[k]))}" autocomplete="off" spellcheck="false" oninput="spDbF('${k}', this.value)" ${w}></span></label>`;
   out += spRow('PostgreSQL на этом сервере', 'Нет своего PostgreSQL? Сервер установит его и подставит данные подключения в форму ниже', '<button type="button" class="btn btn-ghost btn-sm" onclick="pgiOpen()">Установить PostgreSQL</button>', '', '', 'установить postgres');
-  out += `<div class="sp-r wide"><div class="sp-l"><b>Перенос на PostgreSQL</b><span>PostgreSQL 14 или новее на этом же сервере. База должна быть пустой и создана в UTF-8 (скрипт установки создаёт её сам). Текущая база останется как резервная копия</span></div>
+  out += !spHit('перенос на postgresql миграция sqlite проверить соединение адрес порт имя базы пользователь пароль шифрование') ? '' : `<div class="sp-r wide"><div class="sp-l"><b>Перенос на PostgreSQL</b><span>PostgreSQL 14 или новее на этом же сервере. База должна быть пустой и создана в UTF-8 (скрипт установки создаёт её сам). Текущая база останется как резервная копия</span></div>
     <div class="sp-dbf">${inp('host', 'Адрес сервера')}${inp('port', 'Порт', 'number')}${inp('database', 'Имя базы')}${inp('user', 'Пользователь')}${inp('password', 'Пароль', 'password')}
       <label>Шифрование<span class="sp-inp"><select id="sp-db-ssl" onchange="spDbF('ssl', this.value)"><option value="" ${f.ssl === '' ? 'selected' : ''}>Без шифрования (тот же сервер)</option><option value="require" ${f.ssl === 'require' ? 'selected' : ''}>Шифровать</option><option value="verify-full" ${f.ssl === 'verify-full' ? 'selected' : ''}>Шифровать и проверять сертификат</option></select></span></label></div>
     ${t ? `<div style="width:100%">${t.error ? `<div class="sp-ck bad"><i>!</i><span>${esc(t.error)}</span></div>` : ''}${(t.checks || []).map(c => `<div class="sp-ck ${!c.ok ? 'bad' : c.warn ? 'warn' : 'ok'}"><i>${c.ok && !c.warn ? '✓' : '!'}</i><span>${esc(c.text)}</span></div>`).join('')}</div>` : ''}
