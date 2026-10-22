@@ -178,6 +178,26 @@
     });
   };
 
+  // Страховка от потерянных событий: соединение могло молча оборваться (телефон, прокси, спящая вкладка), поэтому
+  // раз в несколько секунд и при возвращении на вкладку подтягиваем то, что пришло после последнего сообщения
+  var catching = false;
+  async function catchUp() {
+    if (catching || st.ended || !S.token || !S.activeChatId || !S.chatNewestId || S.chatHasMoreAfter) return;
+    catching = true;
+    try {
+      var cid = S.activeChatId, d = await rawApi('GET', '/messages/chat/' + cid + '?after=' + S.chatNewestId + '&limit=50');
+      if (d && d.messages && d.messages.length && S.activeChatId === cid) {
+        S.chatHasMoreAfter = !!d.hasMoreAfter;
+        S.chatNewestId = d.messages[d.messages.length - 1].id;
+        appendMessagesAfter(d.messages, cid);
+        if (typeof isViewing === 'function' && isViewing() && S.ws && S.ws.readyState === 1) S.ws.send(JSON.stringify({ type: 'read', chat_id: cid }));
+      }
+    } finally { catching = false; }
+  }
+  setInterval(function () { if (!document.hidden) catchUp(); }, 8000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) catchUp(); });
+  window.addEventListener('focus', catchUp);
+
   // Что гостю недоступно: профили, сведения о группе, поиск по чату, переслать и закрепить
   var noop = function () {};
   ['openProfile', 'openGroupInfo', 'toggleChatSearch', 'showChatCtx', 'ctxForward', 'ctxTogglePin', 'ctxReadToggle', 'addContactFromChat', 'openChatMedia',
