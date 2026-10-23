@@ -53,6 +53,20 @@ function isTrustedUpdateUrl(url) {
   } catch { return false; }
 }
 
+// Контрольная сумма из поля digest ассета GitHub («sha256:<hex>»), иначе null
+function sha256Of(digest) {
+  const m = /^sha256:([0-9a-f]{64})$/i.exec(String(digest || ''));
+  return m ? m[1].toLowerCase() : null;
+}
+
+function sha256File(file) {
+  const crypto = require('crypto');
+  return new Promise((resolve, reject) => {
+    const h = crypto.createHash('sha256');
+    fs.createReadStream(file).on('data', d => h.update(d)).on('end', () => resolve(h.digest('hex'))).on('error', reject);
+  });
+}
+
 function httpsGet(url) {
   return new Promise((resolve, reject) => {
     const req = net.request({ url, redirect: 'follow' });
@@ -69,6 +83,8 @@ function httpsGet(url) {
 }
 
 let _activeUpdateReq = null;
+// Адрес и контрольная сумма (SHA-256) последнего найденного обновления: install-update ставит только его
+let _pendingUpdate = null;
 
 function downloadFileOnce(url, dest, onProgress) {
   return new Promise((resolve, reject) => {
@@ -132,12 +148,14 @@ ipcMain.handle('check-update', async () => {
   try {
     diag('Обновление: проверяю наличие новой версии');
     const data = JSON.parse(await httpsGet(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`));
+    _pendingUpdate = null;
     if (data.status === '404' || data.message === 'Not Found') return { upToDate: true };
     if (data.message) return { error: data.message };
     const latest = data.tag_name.replace(/^[a-zA-Z]+/, '');
     const current = app.getVersion();
     if (!semverGt(latest, current)) { diag(`Обновление: установлена актуальная версия ${current}`); return { upToDate: true, version: current }; }
     const asset = data.assets?.find(a => getAssetPattern().test(a.name));
+    _pendingUpdate = asset ? { url: asset.browser_download_url, sha256: sha256Of(asset.digest) } : null;
     diag(`Обновление: доступна версия ${latest} (установлена ${current})`);
     return { upToDate: false, version: latest, notes: data.body || '', publishedAt: data.published_at || null, downloadUrl: asset?.browser_download_url || null };
   } catch(e) { diag(`ОШИБКА: проверка обновления не удалась (${e.message})`); return { error: e.message }; }
@@ -148,6 +166,15 @@ ipcMain.handle('install-update', async (e, downloadUrl) => {
     console.error('[Update] Отклонён недоверенный адрес:', downloadUrl);
     return { error: 'Недоверенный адрес обновления' };
   }
+  // Ставим только тот файл, адрес и контрольная сумма которого получены при проверке обновления
+  if (!_pendingUpdate || _pendingUpdate.url !== downloadUrl) {
+    console.error('[Update] Адрес не совпадает с найденным обновлением:', downloadUrl);
+    return { error: 'Адрес обновления не совпадает с найденным. Проверьте обновление ещё раз' };
+  }
+  if (!_pendingUpdate.sha256) {
+    return { error: 'У релиза нет контрольной суммы, установка остановлена' };
+  }
+  const expectedSha = _pendingUpdate.sha256;
   // Прерываем предыдущую загрузку, если она ещё идёт
   if (_activeUpdateReq) { try { _activeUpdateReq.abort(); } catch {} _activeUpdateReq = null; }
   const ext = process.platform === 'win32' ? '.exe' : process.platform === 'darwin' ? '.dmg' : '.deb';
@@ -155,6 +182,12 @@ ipcMain.handle('install-update', async (e, downloadUrl) => {
   try {
     diag('Обновление: начата загрузка установочного файла');
     await downloadFile(downloadUrl, tmpFile, p => broadcastToViews('update-progress', p));
+    // Файл запускаем только если его SHA-256 совпадает с суммой релиза
+    if ((await sha256File(tmpFile)) !== expectedSha) {
+      try { fs.unlinkSync(tmpFile); } catch {}
+      throw new Error('Контрольная сумма файла не совпала, установка остановлена');
+    }
+    diag('Обновление: контрольная сумма совпала');
     diag('Обновление: файл загружен, запускаю установку, приложение перезапустится');
 
     broadcastToViews('update-restarting');
