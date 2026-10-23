@@ -2738,7 +2738,6 @@ function uxOpenMenu(e, key, html) {
   el.className = 'ux-menu';
   el.setAttribute('role', 'menu');
   el.innerHTML = html;
-  el.addEventListener('click', ev => ev.stopPropagation());
   document.body.appendChild(el);
   el.style.left = Math.max(8, r.right - el.offsetWidth) + 'px';
   el.style.top = (r.bottom + 6 + el.offsetHeight > innerHeight ? r.top - el.offsetHeight - 6 : r.bottom + 6) + 'px';
@@ -2753,7 +2752,7 @@ function uxCloseMenu() {
   uxMenuState.btn.setAttribute('aria-expanded', 'false');
   uxMenuState = null;
 }
-document.addEventListener('click', uxCloseMenu);
+document.addEventListener('click', e => { if (!e.target.closest?.('.ux-menu')) uxCloseMenu(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') uxCloseMenu(); });
 document.getElementById('page-body')?.addEventListener('scroll', uxCloseMenu);
 
@@ -2880,6 +2879,10 @@ function uaSortBy(key) { UA.sort = UA.sort.key === key ? { key, dir: -UA.sort.di
 function uaToggle(id) { UA.sel.has(id) ? UA.sel.delete(id) : UA.sel.add(id); uaRender(); }
 function uaSelAll(on) { uaRows().forEach(u => on ? UA.sel.add(u.id) : UA.sel.delete(u.id)); uaRender(); }
 
+// Пункт меню пользователя «Заблокировать» / «Разблокировать»: закрываем меню и меняем статус
+function uaBanMenu(id, banned) { uxCloseMenu(); banned ? uaUnban(id) : uaBan([id]); }
+// То же из окна пользователя: закрываем окно и меняем статус
+function uaBanModal(id, banned) { closeModal('modal-user'); banned ? uaUnban(id) : uaBan([id]); }
 function uaMenu(e, id) {
   const u = allUsers.find(x => x.id === id);
   if (!u) return;
@@ -2887,7 +2890,7 @@ function uaMenu(e, id) {
   uxOpenMenu(e, 'ua' + id, `
     <button role="menuitem" data-on-click="__h35" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.key}Сменить пароль</button>
     <button role="menuitem" ${devices ? '' : 'disabled'} data-on-click="__h36" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.logout}Завершить сеансы${devices ? `<small>${devices}</small>` : ''}</button>
-    <button role="menuitem" ${self ? 'disabled' : ''} data-on-click="__h37" data-a-click="${esc(JSON.stringify([u.banned ? `uaUnban(${id})` : `uaBan([${id}])`]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button>
+    <button role="menuitem" ${self ? 'disabled' : ''} data-on-click="uaBanMenu" data-a-click="${esc(JSON.stringify([id, !!u.banned]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button>
     <hr><button role="menuitem" class="danger" ${self ? 'disabled' : ''} data-on-click="__h38" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить</button>`);
 }
 
@@ -3165,7 +3168,7 @@ function uaDangerZone(u) {
     <div class="ua-dz-row"><div><b>Завершить все сеансы</b><span>Выход на всех устройствах; войти снова можно</span></div>
       <button type="button" class="btn btn-ghost btn-sm" ${devices ? '' : 'disabled'} data-on-click="__h42" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.logout}Завершить</button></div>
     <div class="ua-dz-row"><div><b>${u.banned ? 'Разблокировать' : 'Заблокировать'}</b><span>${u.banned ? 'Снова сможет входить' : 'Не сможет войти, пока не разблокируете'}</span></div>
-      <button type="button" class="btn btn-ghost btn-sm" data-on-click="__h43" data-a-click="${esc(JSON.stringify([u.banned ? `uaUnban(${u.id})` : `uaBan([${u.id}])`]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button></div>
+      <button type="button" class="btn btn-ghost btn-sm" data-on-click="uaBanModal" data-a-click="${esc(JSON.stringify([u.id, !!u.banned]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button></div>
     <div class="ua-dz-row"><div><b>Удалить пользователя</b><span>Навсегда; сообщения в чатах останутся</span></div>
       <button type="button" class="btn btn-danger btn-sm" data-on-click="__h44" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.trash}Удалить</button></div>
   </details>`;
@@ -3274,7 +3277,7 @@ function uaDangerRows(u) {
   return `<div class="ua-dz-row"><div><b>Завершить все сеансы</b><span>Выход на всех устройствах; войти снова можно</span></div>
       <button type="button" class="btn btn-ghost btn-sm" ${devices ? '' : 'disabled'} data-on-click="__h42" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.logout}Завершить</button></div>
     <div class="ua-dz-row"><div><b>${u.banned ? 'Разблокировать' : 'Заблокировать'}</b><span>${u.banned ? 'Снова сможет входить' : 'Не сможет войти, пока не разблокируете'}</span></div>
-      <button type="button" class="btn btn-ghost btn-sm" data-on-click="__h43" data-a-click="${esc(JSON.stringify([u.banned ? `uaUnban(${u.id})` : `uaBan([${u.id}])`]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button></div>
+      <button type="button" class="btn btn-ghost btn-sm" data-on-click="uaBanModal" data-a-click="${esc(JSON.stringify([u.id, !!u.banned]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button></div>
     <div class="ua-dz-row"><div><b>Удалить пользователя</b><span>Навсегда; сообщения в чатах останутся</span></div>
       <button type="button" class="btn btn-danger btn-sm" data-on-click="__h44" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.trash}Удалить</button></div>`;
 }
