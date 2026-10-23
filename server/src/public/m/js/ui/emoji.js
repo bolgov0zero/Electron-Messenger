@@ -9,6 +9,13 @@ B.emoji = {
     var f = B.emoji.freq(); f[em] = (f[em] || 0) + 1; try { localStorage.setItem('emoji_freq', JSON.stringify(f)); } catch (e) {}
     B.api('POST', '/users/me/emoji', { use: em }).catch(function () {});
   },
+  // Другое устройство выбрало смайл: счётчики только растут, поэтому берём большее значение
+  merge: function (freq) {
+    if (!freq) return;
+    var f = B.emoji.freq();
+    Object.keys(freq).forEach(function (e) { if (freq[e] > (f[e] || 0)) f[e] = freq[e]; });
+    try { localStorage.setItem('emoji_freq', JSON.stringify(f)); } catch (e) {}
+  },
   // Частые смайлы общие на всех устройствах: список берём с сервера (localStorage — кэш для мгновенного показа),
   // а накопленное на этом устройстве до перехода на сервер отправляем один раз
   sync: async function () {

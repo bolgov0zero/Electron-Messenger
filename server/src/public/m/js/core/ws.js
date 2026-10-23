@@ -99,6 +99,7 @@ B.ws = {
         if (chat && chat.last_message && chat.last_message.id === sm.id) { chat.last_message.status = Object.assign({}, sm.status); B.chats.onChanged(); }
         break;
       }
+      case 'emoji_freq': if (B.emoji && B.emoji.merge) B.emoji.merge(data.freq); break;
       case 'status_range': {
         // Для открытого чата галочки пересчитывает экран переписки; здесь — только последнее сообщение в списке
         if (data.chat_id === S.activeChatId) break;

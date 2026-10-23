@@ -2827,6 +2827,13 @@ function trackEmojiUse(em) {
   const f=getEmojiFreq(); f[em]=(f[em]||0)+1; try { localStorage.setItem('emoji_freq',JSON.stringify(f)); } catch {}
   api('POST','/users/me/emoji',{ use: em }).catch(()=>{});
 }
+// Другое устройство выбрало смайл: счётчики только растут, поэтому берём большее значение
+function mergeEmojiFreq(freq) {
+  if (!freq) return;
+  const f=getEmojiFreq();
+  for (const [e,n] of Object.entries(freq)) if (n>(f[e]||0)) f[e]=n;
+  try { localStorage.setItem('emoji_freq',JSON.stringify(f)); } catch {}
+}
 // Частые смайлы общие на всех устройствах: список берём с сервера (localStorage — кэш для мгновенного показа),
 // а накопленное на этом устройстве до перехода на сервер отправляем один раз
 async function syncEmojiFreq() {
@@ -5855,6 +5862,7 @@ function connectWS() {
     if (data.type==='pong') { ws._pongOk = true; return; }
 
     if (data.type==='connected') { S.editLimit = data.edit_time_limit || 120; syncEmojiFreq(); return; }
+    if (data.type==='emoji_freq') { mergeEmojiFreq(data.freq); return; }
     if (data.type==='modules_changed') { window.Modules?.refresh(); return; }
     if (data.type==='forward_count') { applyForwardCount(data.message_id, data.count); return; }
 

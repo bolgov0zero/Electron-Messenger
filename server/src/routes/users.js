@@ -261,7 +261,10 @@ router.post('/me/emoji', authMiddleware, async (req, res) => {
   // Больше предела — забываем самые редкие
   if (add.size) await dal.run(`DELETE FROM user_emoji_freq WHERE user_id = ? AND emoji NOT IN
     (SELECT emoji FROM (SELECT emoji FROM user_emoji_freq WHERE user_id = ? ORDER BY cnt DESC LIMIT ?) t)`, req.user.id, req.user.id, EMOJI_KEEP);
-  res.json({ freq: await emojiFreq(req.user.id) });
+  const freq = await emojiFreq(req.user.id);
+  // Остальные устройства человека узнают сразу: шлём новые значения изменившихся смайлов
+  if (add.size) sendTo(req.user.id, { type: 'emoji_freq', freq: Object.fromEntries([...add.keys()].filter(e => e in freq).map(e => [e, freq[e]])) });
+  res.json({ freq });
 });
 
 module.exports = router;
