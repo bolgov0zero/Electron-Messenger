@@ -455,7 +455,7 @@ router.post('/:id/avatar', authMiddleware, async (req, res) => {
     const buf = Buffer.from(data, 'base64');
     const { isImageBuffer } = require('./users');
     if (!isImageBuffer(buf)) return res.status(400).json({ error: 'Not an image' });
-    fs.writeFileSync(path2.join(AVATAR_DIR, `chat_${req.params.id}.jpg`), buf);
+    fs.writeFileSync(path2.join(AVATAR_DIR, `chat_${chat.id}.jpg`), buf);
     await fedgroups.afterRename(chat);   // гости получают новую аватарку группы
     res.json({ ok: true, url: `/api/chats/${req.params.id}/avatar` });
   } catch (e) {

@@ -305,13 +305,15 @@ function isImgBuf(buf) {
          (buf[0]===0x47&&buf[1]===0x49)||(buf[0]===0x52&&buf[1]===0x49);
 }
 router.post('/chats/:id/avatar', (req, res) => {
+  const chatId = Number(req.params.id);
+  if (!Number.isInteger(chatId) || chatId <= 0) return res.status(404).json({ error: 'Not found' });
   const { data } = req.body;
   if (!data) return res.status(400).json({ error: 'Missing data' });
   const buf = Buffer.from(data, 'base64');
   if (!isImgBuf(buf)) return res.status(400).json({ error: 'Not an image' });
   const avatarDir = path.join(path.dirname(DB_PATH), 'avatar');
   fs.mkdirSync(avatarDir, { recursive: true });
-  fs.writeFileSync(path.join(avatarDir, `chat_${req.params.id}.jpg`), buf);
+  fs.writeFileSync(path.join(avatarDir, `chat_${chatId}.jpg`), buf);
   res.json({ ok: true });
 });
 

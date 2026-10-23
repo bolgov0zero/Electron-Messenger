@@ -21,6 +21,8 @@
     if (raw) {
       try { args = JSON.parse(raw); } catch (e) { console.error('[act] неверные данные', raw); return; }
     }
+    // Как у нативного onclick: event.currentTarget — элемент с атрибутом (иначе это document, у которого нет getBoundingClientRect)
+    try { Object.defineProperty(ev, 'currentTarget', { configurable: true, get: function () { return el; } }); } catch (e) {}
     var fn = window[name];
     if (typeof fn !== 'function') { console.error('[act] нет обработчика', name); return; }
     if (name.indexOf('__h') === 0) return fn.call(el, el, ev, args);

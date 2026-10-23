@@ -6693,7 +6693,7 @@ function flDelete(names) {
 function fselHtml(id, placeholder, options, current, handler) {
   const opt = (value, label, active) =>
     `<button class="fsel-opt${active ? ' active' : ''}" data-value="${esc(value)}"` +
-    ` data-on-click="fselPick" data-a-click="${esc(JSON.stringify([`${id}`, `${handler}`, this.dataset.value]))}">${esc(label)}</button>`;
+    ` data-on-click="fselPick" data-a-click="${esc(JSON.stringify([`${id}`, `${handler}`, `${value}`]))}">${esc(label)}</button>`;
   return `<div class="fsel" id="${id}" data-placeholder="${esc(placeholder)}">
     <button class="fsel-btn${current ? ' on' : ''}" data-on-click="fselToggle" data-a-click="${esc(JSON.stringify(["__event", `${id}`]))}">
       <span>${esc(current || placeholder)}</span>

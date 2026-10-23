@@ -161,6 +161,7 @@ app.use('/modules', express.static(path.join(__dirname, 'public/modules'), { max
 // поэтому старое имя гарантированно не сменит содержимое: можно кэшировать надолго
 // Зашифрованные файлы секретных чатов — только для участников чата, без публичного доступа
 app.get('/files/enc_:name', require('./auth').authMiddleware, async (req, res) => {
+  if (!/^[\w.\-]+$/.test(req.params.name)) return res.status(404).end();
   const url = `/files/enc_${req.params.name}`;
   const row = await dal.get(`
     SELECT m.chat_id FROM messages m WHERE m.attachment LIKE ? LIMIT 1
