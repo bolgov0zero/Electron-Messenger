@@ -45,8 +45,8 @@ app.use((req, res, next) => {
   // Картинки и видео: в админке только свои файлы. В остальных страницах ещё GIF с Klipy: gif.js пропускает только *.klipy.com.
   // Превью ссылок (/lp), аватарки и вложения федерации сервер хранит у себя, поэтому внешних адресов больше не нужно
   const isAdmin = /^\/admin(\/|$)/.test(req.path);
-  // Скрипты админки, веб-клиента и страницы гостя без встроенного кода (мобильная версия пока с ним)
-  const noInlineScripts = isAdmin || /^\/(chat|g)(\/|$)/.test(req.path);
+  // Скрипты админки, веб-клиента, мобильной версии и страницы гостя без встроенного кода
+  const noInlineScripts = isAdmin || /^\/(chat|g|m)(\/|$)/.test(req.path);
   const imgSrc = isAdmin ? "img-src 'self' data: blob:" : "img-src 'self' data: blob: https://*.klipy.com";
   const mediaSrc = isAdmin ? "media-src 'self' blob:" : "media-src 'self' data: blob: https://*.klipy.com";
   res.setHeader('X-Frame-Options', 'DENY');

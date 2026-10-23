@@ -117,7 +117,12 @@
       const ital = tag === 'I' || tag === 'EM' || st.fontStyle === 'italic';
       let r = inner;
       if (tag === 'CODE') return inner.trim() ? '`' + inner + '`' : inner;
-      if (tag === 'SPAN' && n.classList.contains('spl-e')) return inner.trim() ? '||' + inner + '||' : inner;
+      if (tag === 'SPAN' && n.classList.contains('spl-e')) {
+        // Пробелы по краям выделения выносим за маркеры: «|| текст||» уже не считается секретом
+        const core = inner.trim(); if (!core) return inner;
+        const lead = inner.match(/^\s*/)[0], trail = inner.match(/\s*$/)[0];
+        return lead + '||' + core + '||' + trail;
+      }
       if (bold && r.trim()) r = '**' + r + '**';
       if (ital && r.trim()) r = '__' + r + '__';
       if (tag === 'DIV' || tag === 'P') return r + '\n';

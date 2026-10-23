@@ -37,6 +37,8 @@
         }
         el = el.parentElement;
       }
+      // Обработчик остановил всплытие (как stopPropagation в инлайн-атрибуте): остальные слушатели document не должны сработать
+      if (ev.cancelBubble) ev.stopImmediatePropagation();
     });
   });
 

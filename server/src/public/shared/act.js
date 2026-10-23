@@ -37,6 +37,9 @@
         }
         el = el.parentElement;
       }
+      // Обработчик остановил всплытие (как stopPropagation в инлайн-атрибуте): остальные слушатели document
+      // не должны сработать, иначе глобальный «закрыть по клику снаружи» закроет то, что только открыли
+      if (ev.cancelBubble) ev.stopImmediatePropagation();
     });
   });
 
