@@ -111,7 +111,7 @@ function foldersRailHtml(withSep) {
   const btn = (id, ic, name, sub, cnt, color) => {
     const on = S.folderFilter === id;
     const badge = cnt > 0 ? `<span class="acc-badge">${cnt > 99 ? '99+' : cnt}</span>` : '';
-    return `<button type="button" class="acc-btn fld-btn${on ? ' active' : ''}" data-fid="${typeof id === 'number' ? id : 'all'}" style="--fc:${color || 'var(--accent)'}" onclick="folderSelect(${typeof id === 'number' ? id : `'all'`})"${typeof id === 'number' ? ` oncontextmenu="folderItemMenu(event,${id})"` : ''} aria-label="${esc(name)}" aria-pressed="${on}">
+    return `<button type="button" class="acc-btn fld-btn${on ? ' active' : ''}" data-fid="${typeof id === 'number' ? id : 'all'}" style="--fc:${color || 'var(--accent)'}" data-on-click="folderSelect" data-a-click="${esc(JSON.stringify([typeof id === 'number' ? id : `'all'`]))}"${typeof id === 'number' ? ` data-on-contextmenu="folderItemMenu" data-a-contextmenu="${esc(JSON.stringify(["__event", id]))}"` : ''} aria-label="${esc(name)}" aria-pressed="${on}">
       <span class="fld-ic">${ic}</span>${badge}<span class="acc-tip"><b>${esc(name)}</b><span>${esc(sub)}</span></span></button>`;
   };
   return (withSep ? '<span class="rail-sep"></span>' : '') + `<div class="rail-folders" id="rail-folders">` +
@@ -253,12 +253,12 @@ function paintFolderEditor() {
   document.getElementById('fe-title').textContent = f ? (nameOnly ? 'Переименовать папку' : 'Изменить папку') : 'Новая папка';
   document.getElementById('fe-body').innerHTML = `
     <div class="fe-top"><span class="fe-big" style="--fc:${st.color}">${folderSvg(st.icon, 26)}</span>
-      <div class="ac-fld"><input id="fe-name" maxlength="30" placeholder="Название папки" autocomplete="off" value="${esc(name)}" oninput="feName(this.value)" onkeydown="if(event.key==='Enter')feSave()"></div></div>
+      <div class="ac-fld"><input id="fe-name" maxlength="30" placeholder="Название папки" autocomplete="off" value="${esc(name)}" data-on-input="feName" data-a-input='["__value"]' data-on-keydown="__h44"></div></div>
     ${nameOnly ? '' : `<div class="fe-l">Цвет</div>
-    <div class="fe-cols">${FOLDER_COLORS.map(c => `<button type="button" style="--fc:${c}" class="${c === st.color ? 'on' : ''}" onclick="feColor('${c}')" aria-label="Цвет"></button>`).join('')}</div>
+    <div class="fe-cols">${FOLDER_COLORS.map(c => `<button type="button" style="--fc:${c}" class="${c === st.color ? 'on' : ''}" data-on-click="feColor" data-a-click="${esc(JSON.stringify([`${c}`]))}" aria-label="Цвет"></button>`).join('')}</div>
     <div class="fe-l">Значок</div>
-    <div class="fe-icons">${FOLDER_ICON_KEYS.map(n => `<button type="button" class="${n === st.icon ? 'on' : ''}" onclick="feIcon('${n}')" style="--fc:${st.color}">${folderSvg(n, 20)}</button>`).join('')}</div>`}
-    <div class="ac-foot"><button class="modal-btn-ghost" onclick="closeModal('modal-folder')">Отмена</button><button class="modal-btn-primary" id="fe-go" onclick="feSave()" ${st.name.trim() ? '' : 'disabled'}>${f ? 'Сохранить' : 'Создать'}</button></div>`;
+    <div class="fe-icons">${FOLDER_ICON_KEYS.map(n => `<button type="button" class="${n === st.icon ? 'on' : ''}" data-on-click="feIcon" data-a-click="${esc(JSON.stringify([`${n}`]))}" style="--fc:${st.color}">${folderSvg(n, 20)}</button>`).join('')}</div>`}
+    <div class="ac-foot"><button class="modal-btn-ghost" data-on-click="closeModal" data-a-click='["modal-folder"]'>Отмена</button><button class="modal-btn-primary" id="fe-go" data-on-click="feSave" ${st.name.trim() ? '' : 'disabled'}>${f ? 'Сохранить' : 'Создать'}</button></div>`;
 }
 function feName(v) { _fe.st.name = v; document.getElementById('fe-go').disabled = !v.trim(); }
 function feColor(c) { _fe.st.color = c; const v = document.getElementById('fe-name').value; paintFolderEditor(); const i = document.getElementById('fe-name'); i.value = v; _fe.st.name = v; }
@@ -301,14 +301,14 @@ function csPaneFolders() {
       <span class="fp-ic" style="--fc:${f.color}">${folderSvg(f.icon, 20)}</span>
       <span class="fp-tx"><b>${esc(f.name)}</b><small>${f.chat_ids.length} ${folderPlural(f.chat_ids.length)}</small></span>
       <span class="fp-acts">
-        <button type="button" title="Выше" aria-label="Выше" onclick="moveFolder(${f.id},-1)" ${i === 0 ? 'disabled' : ''}>${fsvg(FI_UP, 16)}</button>
-        <button type="button" title="Ниже" aria-label="Ниже" onclick="moveFolder(${f.id},1)" ${i === n - 1 ? 'disabled' : ''}>${fsvg(FI_DOWN, 16)}</button>
-        <button type="button" title="Изменить" aria-label="Изменить" onclick="openFolderEditor(folderById(${f.id}))">${fsvg(FI_EDIT, 16)}</button>
-        <button type="button" class="danger" title="Удалить" aria-label="Удалить" onclick="deleteFolder(${f.id})">${fsvg(FI_TRASH, 16)}</button>
+        <button type="button" title="Выше" aria-label="Выше" data-on-click="moveFolder" data-a-click="${esc(JSON.stringify([f.id, -1]))}" ${i === 0 ? 'disabled' : ''}>${fsvg(FI_UP, 16)}</button>
+        <button type="button" title="Ниже" aria-label="Ниже" data-on-click="moveFolder" data-a-click="${esc(JSON.stringify([f.id, 1]))}" ${i === n - 1 ? 'disabled' : ''}>${fsvg(FI_DOWN, 16)}</button>
+        <button type="button" title="Изменить" aria-label="Изменить" data-on-click="openFolderEditor" data-a-click="${esc(JSON.stringify([folderById(f.id)]))}">${fsvg(FI_EDIT, 16)}</button>
+        <button type="button" class="danger" title="Удалить" aria-label="Удалить" data-on-click="deleteFolder" data-a-click="${esc(JSON.stringify([f.id]))}">${fsvg(FI_TRASH, 16)}</button>
       </span></div>`).join('');
   return (typeof csSpacesRows === 'function' ? csSpacesRows() : '') + `<div class="cs-gt">Папки</div><div class="fp-lead">Папки помогают разбирать чаты по темам. Чат добавляется в папку из его меню: правый клик по чату → «В папку».</div>
     <div class="fp-list" id="fp-list">${rows || '<div class="fp-empty">Папок пока нет</div>'}</div>
-    <button type="button" class="fp-new" onclick="openFolderEditor(null)" ${n >= FOLDER_MAX ? 'disabled' : ''}>${fsvg(FI_PLUS, 16)}<span>Новая папка</span></button>`;
+    <button type="button" class="fp-new" data-on-click="openFolderEditor" data-a-click='[null]' ${n >= FOLDER_MAX ? 'disabled' : ''}>${fsvg(FI_PLUS, 16)}<span>Новая папка</span></button>`;
 }
 // Перетаскивание строк в настройках
 let _fpDrag = null;
@@ -330,3 +330,10 @@ document.addEventListener('drop', async e => {
   await folderApi('PUT', '/folders/order', { ids: S.folders.map(x => x.id) });
 });
 document.addEventListener('dragend', () => { _fpDrag = null; document.querySelectorAll('.fp-row.drag,.fp-row.over').forEach(x => x.classList.remove('drag', 'over')); });
+
+// Функции из const-объявлений: обработчики из HTML (act.js) находят их по имени в window
+window.chatInFolder = chatInFolder;
+window.folderById = folderById;
+window.folderPlural = folderPlural;
+window.folderSvg = folderSvg;
+window.fsvg = fsvg;

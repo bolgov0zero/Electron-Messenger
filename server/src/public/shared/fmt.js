@@ -62,7 +62,7 @@
     if (!lp || !lp.url) return '';
     let host = lp.site || '';
     if (!host) { try { host = new URL(lp.url).hostname.replace(/^www\./, ''); } catch {} }
-    const img = lp.image ? `<div class="lc-im"><img src="${esc((base || '') + lp.image)}" alt="" loading="lazy" onerror="this.parentNode.remove()"></div>` : '';
+    const img = lp.image ? `<div class="lc-im"><img src="${esc((base || '') + lp.image)}" alt="" loading="lazy" data-on-error="__h43"></div>` : '';
     return `<div class="lcard" data-fmt-url="${esc(lp.url)}" role="link" tabindex="0">${img}<div class="lc-b">${lp.title ? `<div class="lc-t">${esc(lp.title)}</div>` : ''}<div class="lc-d">${esc(host)}</div></div></div>`;
   }
 

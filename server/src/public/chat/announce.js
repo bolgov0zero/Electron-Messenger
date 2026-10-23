@@ -126,20 +126,20 @@ const annMatch = p => { const q = AN.q.trim().toLowerCase(); return !q || p.name
 
 function annAv(p) {
   const init = esc(annInit(p.name)), base = `${httpProto()}://${S.server}/api`;
-  if (p.user) return `<span class="pp-av anx-av ${userAvatarColor(p.id, p.tag)}"><span>${init}</span><img src="${base}/users/${p.id}/avatar" loading="lazy" alt="" onerror="this.style.display='none'"></span>`;
+  if (p.user) return `<span class="pp-av anx-av ${userAvatarColor(p.id, p.tag)}"><span>${init}</span><img src="${base}/users/${p.id}/avatar" loading="lazy" alt="" data-on-error="__h22"></span>`;
   const cls = p.type === 'room' ? 'av-orange' : p.type === 'group' ? 'av-green' : 'av-blue';
-  return `<span class="pp-av anx-av ${cls}"><span>${p.type === 'room' ? '🏠' : init}</span>${p.type === 'direct' ? '' : `<img src="${base}/chats/${p.id}/avatar" loading="lazy" alt="" onerror="this.style.display='none'">`}</span>`;
+  return `<span class="pp-av anx-av ${cls}"><span>${p.type === 'room' ? '🏠' : init}</span>${p.type === 'direct' ? '' : `<img src="${base}/chats/${p.id}/avatar" loading="lazy" alt="" data-on-error="__h22">`}</span>`;
 }
 const annTag = p => p.user ? (p.tag ? `<span class="role-pill ${senderNameClass(p.tag)} anx-tg">${esc(p.tag)}</span>` : '') : `<span class="anx-tg2">${esc(p.sub)}</span>`;
 function annRow(p) {
-  return `<button type="button" class="anx-li" aria-pressed="${AN.who.has(p.id)}" onclick="annPick(${p.id})">${annAv(p)}<span class="anx-lt"><b>${esc(p.name)}</b>${p.user ? `<span>${esc(p.sub)}</span>` : ''}</span>${annTag(p)}</button>`;
+  return `<button type="button" class="anx-li" aria-pressed="${AN.who.has(p.id)}" data-on-click="annPick" data-a-click="${esc(JSON.stringify([p.id]))}">${annAv(p)}<span class="anx-lt"><b>${esc(p.name)}</b>${p.user ? `<span>${esc(p.sub)}</span>` : ''}</span>${annTag(p)}</button>`;
 }
 function annList() {
   const f = annItems().filter(p => annMatch(p) && (!AN.only || AN.who.has(p.id))), shown = f.slice(0, AN.lim);
   if (!shown.length) return `<div class="anx-empty">${annItems().length ? 'Ничего не найдено. Измените запрос' : (AN.err ? '' : 'Загружаю…')}</div>`;
   let last = '';
   return shown.map(p => { const l = (p.name[0] || '?').toUpperCase(), h = l !== last ? `<div class="anx-letter">${esc(l)}</div>` : ''; last = l; return h + annRow(p); }).join('')
-    + (f.length > shown.length ? `<button type="button" class="anx-btn sm" style="align-self:center;margin:6px 0;flex-shrink:0" onclick="annMore()">Показать ещё ${Math.min(60, f.length - shown.length)} из ${f.length - shown.length}</button>` : '');
+    + (f.length > shown.length ? `<button type="button" class="anx-btn sm" style="align-self:center;margin:6px 0;flex-shrink:0" data-on-click="annMore">Показать ещё ${Math.min(60, f.length - shown.length)} из ${f.length - shown.length}</button>` : '');
 }
 
 /* половины окна */
@@ -148,13 +148,13 @@ function annLeft(head) {
   return `<div class="anx-half l">${head ? `<div class="modal-hdr anx-hdr"><div><div class="anx-title">Новое объявление</div><div class="anx-sub">Текст, тип и время</div></div></div>` : ''}
     <div class="anx-pvw" id="ann-pv">${annPreview()}</div>
     <div class="anx-lbd"><div class="anx-types" role="radiogroup" aria-label="Тип объявления">${Object.entries(AN_KINDS).map(([k, v]) =>
-        `<button type="button" role="radio" aria-checked="${AN.kind === k}" onclick="annSet('kind','${k}')">${v[0]}</button>`).join('')}</div>
-      <textarea id="ann-text" class="anx-ta" placeholder="Что сказать людям" aria-label="Текст объявления" oninput="annTextInput(this.value)">${esc(AN.text)}</textarea>
-      <div class="anx-f"><label>Когда</label><div class="anx-chs">${chips.map(([k, l]) => `<button type="button" class="anx-ch" aria-pressed="${AN.wk === k}" onclick="annWhen('${k}')">${l}</button>`).join('')}<button type="button" class="anx-ch" aria-pressed="${AN.wk === 'custom'}" onclick="annPicker()">${AN.wk === 'custom' ? esc(annDate(AN.when)) : 'Другое…'}</button></div>${AN.picker ? annPickerHtml() : ''}</div>
-      ${AN.kind === 'banner' ? `<div class="anx-f"><label>Показывать</label><div class="anx-chs">${AN_DURS.map(([d, l]) => `<button type="button" class="anx-ch" aria-pressed="${Number(AN.duration) === d}" onclick="annDur(${d})">${l}</button>`).join('')}</div></div>` : ''}</div>
+        `<button type="button" role="radio" aria-checked="${AN.kind === k}" data-on-click="annSet" data-a-click="${esc(JSON.stringify(["kind", `${k}`]))}">${v[0]}</button>`).join('')}</div>
+      <textarea id="ann-text" class="anx-ta" placeholder="Что сказать людям" aria-label="Текст объявления" data-on-input="annTextInput" data-a-input='["__value"]'>${esc(AN.text)}</textarea>
+      <div class="anx-f"><label>Когда</label><div class="anx-chs">${chips.map(([k, l]) => `<button type="button" class="anx-ch" aria-pressed="${AN.wk === k}" data-on-click="annWhen" data-a-click="${esc(JSON.stringify([`${k}`]))}">${l}</button>`).join('')}<button type="button" class="anx-ch" aria-pressed="${AN.wk === 'custom'}" data-on-click="annPicker">${AN.wk === 'custom' ? esc(annDate(AN.when)) : 'Другое…'}</button></div>${AN.picker ? annPickerHtml() : ''}</div>
+      ${AN.kind === 'banner' ? `<div class="anx-f"><label>Показывать</label><div class="anx-chs">${AN_DURS.map(([d, l]) => `<button type="button" class="anx-ch" aria-pressed="${Number(AN.duration) === d}" data-on-click="annDur" data-a-click="${esc(JSON.stringify([d]))}">${l}</button>`).join('')}</div></div>` : ''}</div>
     ${head ? `<div class="anx-foot"><span class="anx-note ${miss.length ? '' : 'ok'}" id="ann-note">${annNote(miss)}</span>
-      <button type="button" class="anx-btn" onclick="closeModal('modal-announce')">Отмена</button>
-      <button type="button" class="anx-btn anx-solid" id="ann-go" ${AN.busy || miss.length ? 'disabled' : ''} onclick="annSend()">${annGoText()}</button></div>` : ''}</div>`;
+      <button type="button" class="anx-btn" data-on-click="closeModal" data-a-click='["modal-announce"]'>Отмена</button>
+      <button type="button" class="anx-btn anx-solid" id="ann-go" ${AN.busy || miss.length ? 'disabled' : ''} data-on-click="annSend">${annGoText()}</button></div>` : ''}</div>`;
 }
 // Список пространств: администратор отмечает любые, пользователь с правом объявлений видит одно своё
 function annSpaces() {
@@ -162,30 +162,30 @@ function annSpaces() {
   const note = AN.scoped
     ? `Объявление уйдёт только в ваше пространство${chat ? ': в группы и комнаты, где все из него' : ''}.`
     : chat ? 'Строка появится в группах и комнатах, где есть люди из отмеченных пространств.' : 'Объявление получат люди из отмеченных пространств.';
-  return `<div class="anx-spl">${AN.spaces.map(s => `<button type="button" class="anx-li" aria-pressed="${AN.spSel.has(s.id)}" ${AN.scoped ? 'disabled' : ''} onclick="annSp(${s.id})"><span class="anx-lt"><b>${esc(s.name)}</b><span>${s.users} ${annPlural(s.users, 'человек', 'человека', 'человек')}</span></span></button>`).join('')}</div>
+  return `<div class="anx-spl">${AN.spaces.map(s => `<button type="button" class="anx-li" aria-pressed="${AN.spSel.has(s.id)}" ${AN.scoped ? 'disabled' : ''} data-on-click="annSp" data-a-click="${esc(JSON.stringify([s.id]))}"><span class="anx-lt"><b>${esc(s.name)}</b><span>${s.users} ${annPlural(s.users, 'человек', 'человека', 'человек')}</span></span></button>`).join('')}</div>
     <div class="anx-lock" style="margin-top:10px">${note}</div>`;
 }
 function annRight(head) {
   const chat = AN.kind === 'chat', items = annItems(), sp = AN.sp, pk = AN.pick, all = !pk && !sp;
   const fq = items.filter(annMatch), q = AN.q.trim();
   const allPicked = fq.length > 0 && fq.every(p => AN.who.has(p.id));
-  const bulk = `<div class="anx-bulk"><button type="button" class="anx-btn sm" onclick="annSelFound()" ${fq.length && !allPicked ? '' : 'disabled'}>${q ? 'Выбрать найденных' : 'Выбрать всех'} (${fq.length})</button><button type="button" class="anx-btn sm" onclick="annUnsel()" ${AN.who.size ? '' : 'disabled'}>Снять</button>
-      <label class="anx-only"><input type="checkbox" ${AN.only ? 'checked' : ''} onchange="annOnly(this.checked)">Только выбранные</label></div>`;
+  const bulk = `<div class="anx-bulk"><button type="button" class="anx-btn sm" data-on-click="annSelFound" ${fq.length && !allPicked ? '' : 'disabled'}>${q ? 'Выбрать найденных' : 'Выбрать всех'} (${fq.length})</button><button type="button" class="anx-btn sm" data-on-click="annUnsel" ${AN.who.size ? '' : 'disabled'}>Снять</button>
+      <label class="anx-only"><input type="checkbox" ${AN.only ? 'checked' : ''} data-on-change="annOnly" data-a-change='["__checked"]'>Только выбранные</label></div>`;
   // Режимы: всем / по пространствам / выбранным. Пространства предлагаем, когда их больше одного (или всегда у пользователя с правом)
   const modes = [];
   if (!AN.scoped) modes.push(['all', chat ? 'Все чаты' : 'Всем', all]);
   if (AN.scoped) modes.push(['spaces', 'Моё пространство', sp]);
   else if (AN.spaces.length > 1) modes.push(['spaces', 'Пространства', sp]);
   modes.push(['pick', chat ? 'Выбранные' : 'Выбранным', pk]);
-  const sg = modes.map(([m, l, on]) => `<button type="button" aria-pressed="${on}" onclick="annMode('${m}')">${l}</button>`).join('');
+  const sg = modes.map(([m, l, on]) => `<button type="button" aria-pressed="${on}" data-on-click="annMode" data-a-click="${esc(JSON.stringify([`${m}`]))}">${l}</button>`).join('');
   const lockWord = chat ? 'Выбранные' : 'Выбранным';
   return `<div class="anx-half r">${head ? `<div class="modal-hdr anx-hdr"><div class="anx-title">${chat ? 'Куда отправить' : 'Кому отправить'}</div>
-      <button class="icon-btn" aria-label="Закрыть" onclick="closeModal('modal-announce')" style="width:28px;height:28px">${AN_X}</button></div>` : ''}
+      <button class="icon-btn" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-announce"]' style="width:28px;height:28px">${AN_X}</button></div>` : ''}
     <div class="anx-rbar"><div class="anx-rhead"><span class="anx-t2">${all ? (chat ? 'Во все чаты' : 'Получат все') : sp ? 'Пространства' : 'Получатели'}</span>
         <div class="anx-sg">${sg}</div></div>
-      <label class="anx-search">${AN_SEARCH}<input id="ann-pq" value="${esc(AN.q)}" placeholder="${chat ? 'Название чата' : 'Имя, логин или тег'}" autocomplete="off" ${pk ? '' : 'disabled'} oninput="annSearch(this.value)"></label>${pk ? bulk : ''}</div>
+      <label class="anx-search">${AN_SEARCH}<input id="ann-pq" value="${esc(AN.q)}" placeholder="${chat ? 'Название чата' : 'Имя, логин или тег'}" autocomplete="off" ${pk ? '' : 'disabled'} data-on-input="annSearch" data-a-input='["__value"]'></label>${pk ? bulk : ''}</div>
     <div class="anx-rlist">${all ? `<div class="anx-lock"><b>${chat ? 'Во все группы и комнаты' : `Получат все ${annAllCount()}`}</b>${chat ? `Строка появится в ${annAllCount()} ${annPlural(annAllCount(), 'чате', 'чатах', 'чатах')}.` : 'Объявление уйдёт каждому.'} Нажмите «${lockWord}», чтобы отметить ${chat ? 'чаты' : 'людей'}.</div>` : ''}${sp ? annSpaces() : pk ? annList() : ''}</div>
-    <div class="anx-rfoot"><span>${sp ? `Выбрано <b>${AN.spSel.size}</b> из ${AN.spaces.length}` : `Выбрано <b>${all ? annAllCount() : AN.who.size}</b> из ${all && chat ? annAllCount() : items.length}`}</span>${pk && AN.who.size ? `<button type="button" class="anx-btn sm" style="margin-left:auto" onclick="annClear()">Очистить</button>` : ''}</div></div>`;
+    <div class="anx-rfoot"><span>${sp ? `Выбрано <b>${AN.spSel.size}</b> из ${AN.spaces.length}` : `Выбрано <b>${all ? annAllCount() : AN.who.size}</b> из ${all && chat ? annAllCount() : items.length}`}</span>${pk && AN.who.size ? `<button type="button" class="anx-btn sm" style="margin-left:auto" data-on-click="annClear">Очистить</button>` : ''}</div></div>`;
 }
 
 function annMissing() {
@@ -222,12 +222,12 @@ function annRender(focusId, resetList) {
   if (AN.narrow) {
     const pill = AN.pick ? AN.who.size : AN.sp ? AN.spSel.size : 'все';
     el.innerHTML = `<div class="modal-hdr anx-hdr"><div class="anx-title">Новое объявление</div>
-        <button class="icon-btn" aria-label="Закрыть" onclick="closeModal('modal-announce')" style="width:28px;height:28px">${AN_X}</button></div>
-      <div class="anx-tabsbar" role="tablist"><button type="button" role="tab" aria-selected="${AN.tab === 'msg'}" onclick="annTab('msg')">Сообщение</button>
-        <button type="button" role="tab" aria-selected="${AN.tab === 'who'}" onclick="annTab('who')">Получатели<span class="anx-pill ${AN.pick && !AN.who.size ? '' : 'on'}">${pill}</span></button></div>
+        <button class="icon-btn" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-announce"]' style="width:28px;height:28px">${AN_X}</button></div>
+      <div class="anx-tabsbar" role="tablist"><button type="button" role="tab" aria-selected="${AN.tab === 'msg'}" data-on-click="annTab" data-a-click='["msg"]'>Сообщение</button>
+        <button type="button" role="tab" aria-selected="${AN.tab === 'who'}" data-on-click="annTab" data-a-click='["who"]'>Получатели<span class="anx-pill ${AN.pick && !AN.who.size ? '' : 'on'}">${pill}</span></button></div>
       ${AN.tab === 'msg' ? annLeft(false) : annRight(false)}
       <div class="anx-foot"><span class="anx-note ${miss.length ? '' : 'ok'}" id="ann-note">${annNote(miss)}</span>
-        <button type="button" class="anx-btn anx-solid" id="ann-go" ${AN.busy || miss.length ? 'disabled' : ''} onclick="annSend()">${annGoText()}</button></div>`;
+        <button type="button" class="anx-btn anx-solid" id="ann-go" ${AN.busy || miss.length ? 'disabled' : ''} data-on-click="annSend">${annGoText()}</button></div>`;
   } else el.innerHTML = annLeft(true) + annRight(true);
   const f = keep && document.getElementById(keep);
   if (f) { f.focus(); try { if (caret != null) f.setSelectionRange(caret, caret); } catch {} }
@@ -274,12 +274,12 @@ function annPickerHtml() {
     const date = new Date(y, m, d), cls = ['anx-day'];
     if (+date === +today) cls.push('today');
     if (AN.day && +date === +AN.day) cls.push('sel');
-    cells.push(`<button type="button" class="${cls.join(' ')}" ${date < today ? 'disabled' : ''} onclick="annDay(${y},${m},${d})">${d}</button>`);
+    cells.push(`<button type="button" class="${cls.join(' ')}" ${date < today ? 'disabled' : ''} data-on-click="annDay" data-a-click="${esc(JSON.stringify([y, m, d]))}">${d}</button>`);
   }
-  return `<div class="anx-pick"><div class="anx-ph2"><button type="button" onclick="annShift(-1)" aria-label="Предыдущий месяц">‹</button><b>${AN.vm.toLocaleDateString('ru', { month: 'long', year: 'numeric' })}</b><button type="button" onclick="annShift(1)" aria-label="Следующий месяц">›</button></div>
+  return `<div class="anx-pick"><div class="anx-ph2"><button type="button" data-on-click="annShift" data-a-click='[-1]' aria-label="Предыдущий месяц">‹</button><b>${AN.vm.toLocaleDateString('ru', { month: 'long', year: 'numeric' })}</b><button type="button" data-on-click="annShift" data-a-click='[1]' aria-label="Следующий месяц">›</button></div>
     <div class="anx-grid">${cells.join('')}</div>
-    <div class="anx-pf"><span class="anx-time"><input id="ann-hh" maxlength="2" inputmode="numeric" value="${esc(AN.hh)}" aria-label="Часы" oninput="annTime()">:<input id="ann-mm" maxlength="2" inputmode="numeric" value="${esc(AN.mm)}" aria-label="Минуты" oninput="annTime()"></span>
-      <button type="button" class="anx-btn" style="margin-left:auto" onclick="annWhen('now')">Сейчас</button><button type="button" class="anx-btn anx-solid" onclick="annApply()">Готово</button></div></div>`;
+    <div class="anx-pf"><span class="anx-time"><input id="ann-hh" maxlength="2" inputmode="numeric" value="${esc(AN.hh)}" aria-label="Часы" data-on-input="annTime">:<input id="ann-mm" maxlength="2" inputmode="numeric" value="${esc(AN.mm)}" aria-label="Минуты" data-on-input="annTime"></span>
+      <button type="button" class="anx-btn" style="margin-left:auto" data-on-click="annWhen" data-a-click='["now"]'>Сейчас</button><button type="button" class="anx-btn anx-solid" data-on-click="annApply">Готово</button></div></div>`;
 }
 function annPicker() {
   AN.picker = !AN.picker;
@@ -326,3 +326,19 @@ async function annSend() {
   closeModal('modal-announce');
   showActionToast(r.scheduled ? `Запланировано на ${annDate(ts)}` : 'Объявление отправлено');
 }
+
+// Функции из const-объявлений: обработчики из HTML (act.js) находят их по имени в window
+window.annAllCount = annAllCount;
+window.annCan = annCan;
+window.annChName = annChName;
+window.annCount = annCount;
+window.annDate = annDate;
+window.annInit = annInit;
+window.annMatch = annMatch;
+window.annNote = annNote;
+window.annNoun = annNoun;
+window.annPlural = annPlural;
+window.annSpPeople = annSpPeople;
+window.annTag = annTag;
+window.annVerb = annVerb;
+window.annWhenText = annWhenText;

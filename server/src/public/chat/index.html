@@ -3,18 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<script>
-// Применяем масштаб интерфейса ДО первого layout — без вспышки и без overflow
-(function(){try{var s=JSON.parse(localStorage.getItem('electron_v2')||'{}');var z=(s.settings&&s.settings.uiScale)||100;var r=z/100;var d=document.documentElement;if(r!==1){d.style.zoom=z+'%';d.style.setProperty('--vh100','calc(100dvh / '+r+')');d.style.setProperty('--vw100','calc(100vw / '+r+')');}}catch(e){}})();
-// /chat — десктопная веб-версия, под телефон не адаптирована (для этого есть
-// отдельный /m). До первого layout показываем заглушку со ссылкой на /m,
-// чтобы десктопный интерфейс не мелькал на маленьком экране.
-(function(){
-  var mq = matchMedia('(max-width: 767px), (pointer: coarse)');
-  function sync(){ document.documentElement.classList.toggle('chat-phone', mq.matches); }
-  sync(); mq.addEventListener('change', sync);
-})();
-</script>
+<script src="boot.js?v=1"></script>
+<script src="/shared/act.js?v=1"></script>
+<script src="actions.js?v=1"></script>
 <meta name="theme-color" content="#0a0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -57,7 +48,7 @@
     <div class="boot-box">
       <div class="boot-spin"></div>
       <div class="boot-text" id="boot-text">Подключаюсь к серверу…</div>
-      <button class="boot-manual" type="button" onclick="bootCancel()">Войти вручную</button>
+      <button class="boot-manual" type="button" data-on-click="bootCancel">Войти вручную</button>
     </div>
   </div>
   <div class="login-wrap">
@@ -70,7 +61,7 @@
     <p class="login-sub">Корпоративный мессенджер</p>
     <div class="field"><label>Логин</label><input id="l-username" placeholder="username" autocomplete="username"></div>
     <div class="field"><label>Пароль</label><input id="l-password" type="password" placeholder="••••••••" autocomplete="current-password"></div>
-    <button class="btn-login" id="l-btn" onclick="doLogin()">Войти</button>
+    <button class="btn-login" id="l-btn" data-on-click="doLogin">Войти</button>
     <div class="login-err" id="l-err"></div>
     <div class="login-copy">w/ <span class="cp-h">❤️</span> by bolgov0zero</div>
   </div>
@@ -86,8 +77,8 @@
     <div class="link-modal-desc">Эта страница может быть потенциально опасной. Вы уверены, что хотите её открыть?</div>
     <div id="link-modal-url" class="link-modal-url"></div>
     <div class="link-modal-footer">
-      <button class="ha-btn-cancel" onclick="closeModal('modal-link')">Отмена</button>
-      <button class="ha-btn-apply" onclick="confirmLink()">
+      <button class="ha-btn-cancel" data-on-click="closeModal" data-a-click='["modal-link"]'>Отмена</button>
+      <button class="ha-btn-apply" data-on-click="confirmLink">
         <svg width="13" height="13" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg>
         Открыть
       </button>
@@ -101,8 +92,8 @@
   <div id="notif-banner" class="notif-banner" style="display:none">
     <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
     <span>Разрешите уведомления, чтобы получать сообщения в фоне</span>
-    <button onclick="requestNotificationPermission()">Разрешить</button>
-    <button class="notif-banner-close" onclick="dismissNotifBanner()">✕</button>
+    <button data-on-click="requestNotificationPermission">Разрешить</button>
+    <button class="notif-banner-close" data-on-click="dismissNotifBanner">✕</button>
   </div>
 
   <!-- App body: sidebar + chat -->
@@ -121,31 +112,31 @@
           </div>
         </div>
         <div class="topbar-actions">
-          <button class="icon-btn head-more" id="head-more" type="button" title="Ещё" aria-label="Ещё" aria-haspopup="menu" aria-expanded="false" onclick="headMenuToggle(event)"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
-          <button class="btn-new-chat" title="Новый чат" onclick="openNewChat()">
+          <button class="icon-btn head-more" id="head-more" type="button" title="Ещё" aria-label="Ещё" aria-haspopup="menu" aria-expanded="false" data-on-click="headMenuToggle" data-a-click='["__event"]'><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+          <button class="btn-new-chat" title="Новый чат" data-on-click="openNewChat">
             <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
           </button>
         </div>
   </header>
 <!-- Меню шапки: рисуется поверх всего (при первом открытии переезжает в body: граница сайдбара его бы срезала) -->
 <div class="head-menu" id="head-menu" role="menu" hidden>
-  <button type="button" class="hm-i" role="menuitem" data-tip="Сменить тему" aria-label="Сменить тему" onclick="headMenuClose();toggleTheme()"><svg id="sidebar-theme-sun" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg id="sidebar-theme-moon" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="display:none" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
-  <button type="button" class="hm-i" role="menuitem" id="btn-announce" data-tip="Отправить объявление" aria-label="Отправить объявление" onclick="headMenuClose();openAnnounce()" style="display:none"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
+  <button type="button" class="hm-i" role="menuitem" data-tip="Сменить тему" aria-label="Сменить тему" data-on-click="__h1"><svg id="sidebar-theme-sun" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><svg id="sidebar-theme-moon" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="display:none" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
+  <button type="button" class="hm-i" role="menuitem" id="btn-announce" data-tip="Отправить объявление" aria-label="Отправить объявление" data-on-click="__h2" style="display:none"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
 </div>
 
       <div class="sidebar-search" id="sidebar-search">
-        <button class="strip-back" onclick="leaveRoom()" title="К списку чатов"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+        <button class="strip-back" data-on-click="leaveRoom" title="К списку чатов"><svg width="17" height="17" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
         <div class="room-title" id="room-title"></div>
         <div class="search-wrap" id="chats-search-wrap">
           <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <input id="search" placeholder="Поиск" oninput="filterChats()">
-          <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display:none">
+          <input id="search" placeholder="Поиск" data-on-input="filterChats">
+          <button class="search-clear" id="search-clear" data-on-click="clearSearch" style="display:none">
             <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
           </button>
         </div>
         <div class="search-wrap" id="contacts-search-wrap" style="display:none">
           <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <input id="contacts-search" placeholder="Поиск контактов..." oninput="filterContacts(this.value)">
+          <input id="contacts-search" placeholder="Поиск контактов..." data-on-input="filterContacts" data-a-input='["__value"]'>
         </div>
       </div>
       <div class="sidebar-list-wrap">
@@ -154,13 +145,13 @@
         <nav class="topics-panel" id="topics-panel"></nav>
       </div>
       <div class="sidebar-tabbar" id="sidebar-tabbar">
-        <button type="button" class="sb-tab on" data-tab="chats" onclick="setSidebarTab('chats')" title="Чаты">
+        <button type="button" class="sb-tab on" data-tab="chats" data-on-click="setSidebarTab" data-a-click='["chats"]' title="Чаты">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg>
         </button>
-        <button type="button" class="sb-tab" data-tab="contacts" onclick="setSidebarTab('contacts')" title="Контакты">
+        <button type="button" class="sb-tab" data-tab="contacts" data-on-click="setSidebarTab" data-a-click='["contacts"]' title="Контакты">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg>
         </button>
-        <button type="button" class="sb-tab" data-tab="settings" onclick="setSidebarTab('settings')" title="Настройки" style="position:relative">
+        <button type="button" class="sb-tab" data-tab="settings" data-on-click="setSidebarTab" data-a-click='["settings"]' title="Настройки" style="position:relative">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
           <span id="update-badge" style="display:none;position:absolute;top:4px;right:9px;width:7px;height:7px;border-radius:50%;background:#ef4444;pointer-events:none"></span>
         </button>
@@ -183,15 +174,15 @@
 
 <!-- Настройки теперь рисуются во вкладке сайдбара (см. setSidebarTab/csRenderInline в app.js),
      не в модалке — но поле выбора фото профиля общее, ему всё равно нужно жить где-то в DOM. -->
-<input type="file" id="avatar-file-input" accept="image/*" hidden onchange="onAvatarFileChange(this)">
+<input type="file" id="avatar-file-input" accept="image/*" hidden data-on-change="onAvatarFileChange" data-a-change='["__this"]'>
 
 <!-- Контекстное меню контакта из другого пространства -->
 <div class="ctx-menu" id="ctx-contact-menu">
-  <button onclick="ctxContactProfile()">
+  <button data-on-click="ctxContactProfile">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20a6 6 0 0 0-12 0"/><circle cx="12" cy="10" r="4"/><circle cx="12" cy="12" r="10"/></svg>
     Профиль
   </button>
-  <button id="ctx-contact-remove" onclick="ctxContactRemove()">
+  <button id="ctx-contact-remove" data-on-click="ctxContactRemove">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
     Удалить из контактов
   </button>
@@ -199,44 +190,44 @@
 
 <!-- Chat list context menu -->
 <div class="ctx-menu" id="ctx-chat-menu">
-  <button id="ctx-chat-pin" onclick="ctxChatPin()">
+  <button id="ctx-chat-pin" data-on-click="ctxChatPin">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>
     <span id="ctx-chat-pin-label">Закрепить</span>
   </button>
-  <div class="ctx-read ctx-sub" id="ctx-chat-folder" onmouseenter="ctxSubHover(true)" onmouseleave="ctxSubHover(false)">
-    <button type="button" aria-expanded="false" onclick="ctxSubToggle(event)">
+  <div class="ctx-read ctx-sub" id="ctx-chat-folder" data-on-mouseenter="ctxSubHover" data-a-mouseenter='[true]' data-on-mouseleave="ctxSubHover" data-a-mouseleave='[false]'>
+    <button type="button" aria-expanded="false" data-on-click="ctxSubToggle" data-a-click='["__event"]'>
       <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
       <span>В папку</span>
       <svg class="ctx-read-chev" width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
     </button>
-    <div class="ctx-read-fly ctx-sub-fly" id="ctx-sub-fly" onclick="ctxSubClick(event)"></div>
+    <div class="ctx-read-fly ctx-sub-fly" id="ctx-sub-fly" data-on-click="ctxSubClick" data-a-click='["__event"]'></div>
   </div>
-  <button id="ctx-chat-unmute" onclick="ctxChatMute()" style="display:none">
+  <button id="ctx-chat-unmute" data-on-click="ctxChatMute" style="display:none">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>
     <span>Включить уведомления</span>
   </button>
-  <div class="ctx-read ctx-sub" id="ctx-chat-mute-sub" onmouseenter="ctxMuteHover(true)" onmouseleave="ctxMuteHover(false)">
-    <button type="button" aria-expanded="false" onclick="ctxMuteToggle(event)">
+  <div class="ctx-read ctx-sub" id="ctx-chat-mute-sub" data-on-mouseenter="ctxMuteHover" data-a-mouseenter='[true]' data-on-mouseleave="ctxMuteHover" data-a-mouseleave='[false]'>
+    <button type="button" aria-expanded="false" data-on-click="ctxMuteToggle" data-a-click='["__event"]'>
       <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>
       <span>Уведомления</span>
       <svg class="ctx-read-chev" width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
     </button>
-    <div class="ctx-read-fly ctx-sub-fly" id="ctx-mute-fly" onclick="ctxMuteClick(event)"></div>
+    <div class="ctx-read-fly ctx-sub-fly" id="ctx-mute-fly" data-on-click="ctxMuteClick" data-a-click='["__event"]'></div>
   </div>
-  <button id="ctx-chat-devices" onclick="ctxChatDevices()" style="display:none">
+  <button id="ctx-chat-devices" data-on-click="ctxChatDevices" style="display:none">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
     Устройства чата
   </button>
-  <button id="ctx-chat-block" onclick="ctxChatBlock()" style="display:none">
+  <button id="ctx-chat-block" data-on-click="ctxChatBlock" style="display:none">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>
     <span id="ctx-chat-block-label">Заблокировать</span>
   </button>
   <div class="ctx-sep"></div>
-  <button id="ctx-chat-delete" onclick="ctxChatDelete()">
+  <button id="ctx-chat-delete" data-on-click="ctxChatDelete">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
     Удалить чат
   </button>
-  <button id="ctx-chat-leave" onclick="ctxChatLeave()">
+  <button id="ctx-chat-leave" data-on-click="ctxChatLeave">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
     Выйти из группы
   </button>
@@ -245,38 +236,38 @@
 <!-- Context menu -->
 <div class="ctx-menu" id="ctx-menu">
   <div class="ctx-reactions">
-    <button class="ctx-reaction-btn" data-r="👍" onclick="ctxReact(this.dataset.r)">👍</button>
-    <button class="ctx-reaction-btn" data-r="❤️" onclick="ctxReact(this.dataset.r)">❤️</button>
-    <button class="ctx-reaction-btn" data-r="😂" onclick="ctxReact(this.dataset.r)">😂</button>
-    <button class="ctx-reaction-btn" data-r="🤔" onclick="ctxReact(this.dataset.r)">🤔</button>
-    <button class="ctx-reaction-btn" data-r="🔥" onclick="ctxReact(this.dataset.r)">🔥</button>
-    <button class="ctx-reaction-btn" data-r="🎉" onclick="ctxReact(this.dataset.r)">🎉</button>
-    <button class="ctx-reaction-btn" data-r="😢" onclick="ctxReact(this.dataset.r)">😢</button>
-    <button class="ctx-reaction-btn ctx-reaction-more" onclick="showReactionPicker(event)">→</button>
+    <button class="ctx-reaction-btn" data-r="👍" data-on-click="__h3">👍</button>
+    <button class="ctx-reaction-btn" data-r="❤️" data-on-click="__h3">❤️</button>
+    <button class="ctx-reaction-btn" data-r="😂" data-on-click="__h3">😂</button>
+    <button class="ctx-reaction-btn" data-r="🤔" data-on-click="__h3">🤔</button>
+    <button class="ctx-reaction-btn" data-r="🔥" data-on-click="__h3">🔥</button>
+    <button class="ctx-reaction-btn" data-r="🎉" data-on-click="__h3">🎉</button>
+    <button class="ctx-reaction-btn" data-r="😢" data-on-click="__h3">😢</button>
+    <button class="ctx-reaction-btn ctx-reaction-more" data-on-click="showReactionPicker" data-a-click='["__event"]'>→</button>
   </div>
-  <button id="ctx-reply-btn" onclick="ctxReply()">
+  <button id="ctx-reply-btn" data-on-click="ctxReply">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
     Ответить
   </button>
-  <button id="ctx-forward-btn" onclick="ctxForward()">
+  <button id="ctx-forward-btn" data-on-click="ctxForward">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>
     Переслать
   </button>
-  <button id="ctx-copy-btn" onclick="ctxCopy()">
+  <button id="ctx-copy-btn" data-on-click="ctxCopy">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
     Скопировать
   </button>
   <div class="ctx-sep"></div>
-  <button onclick="ctxTogglePin()">
+  <button data-on-click="ctxTogglePin">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>
     <span id="ctx-pin-label">Закрепить</span>
   </button>
-  <button id="ctx-edit-btn" onclick="ctxEdit()">
+  <button id="ctx-edit-btn" data-on-click="ctxEdit">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
     Изменить
   </button>
-  <div class="ctx-read" id="ctx-read" onmouseenter="ctxReadHover(true)" onmouseleave="ctxReadHover(false)">
-    <button id="ctx-info-btn" type="button" aria-expanded="false" onclick="ctxReadToggle()">
+  <div class="ctx-read" id="ctx-read" data-on-mouseenter="ctxReadHover" data-a-mouseenter='[true]' data-on-mouseleave="ctxReadHover" data-a-mouseleave='[false]'>
+    <button id="ctx-info-btn" type="button" aria-expanded="false" data-on-click="ctxReadToggle">
       <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/></svg>
       <span id="ctx-read-label">Прочитано</span>
       <svg class="ctx-read-chev" width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
@@ -284,7 +275,7 @@
     <div class="ctx-read-fly" id="ctx-read-fly"><div class="ctx-read-h" id="ctx-read-h"></div><div class="ctx-read-list" id="ctx-read-list"></div></div>
   </div>
   <div class="ctx-sep"></div>
-  <button id="ctx-delete-btn" class="ctx-danger" onclick="ctxDelete()">
+  <button id="ctx-delete-btn" class="ctx-danger" data-on-click="ctxDelete">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
     Удалить
   </button>
@@ -292,23 +283,23 @@
 </div>
 
 <!-- Confirm modal -->
-<div class="modal-bg" id="modal-confirm" onclick="if(event.target===this)_confirmReject()">
+<div class="modal-bg" id="modal-confirm" data-on-click="__h4">
   <div class="modal" style="width:300px">
     <div class="modal-hdr"><span>Подтверждение</span></div>
     <div id="confirm-body" style="padding:12px 18px 4px;font-size:14px;color:var(--text)"></div>
     <div class="modal-footer" style="padding:12px 14px">
-      <button class="modal-btn-ghost" onclick="_confirmReject()">Отмена</button>
-      <button class="modal-btn-danger" id="confirm-ok" onclick="_confirmResolve()">Удалить</button>
+      <button class="modal-btn-ghost" data-on-click="_confirmReject">Отмена</button>
+      <button class="modal-btn-danger" id="confirm-ok" data-on-click="_confirmResolve">Удалить</button>
     </div>
   </div>
 </div>
 
 <!-- Новый чат: мастер в два шага -->
-<div class="modal-bg" id="modal-secret-sync" onclick="if(event.target===this)scCancelSyncModal()">
+<div class="modal-bg" id="modal-secret-sync" data-on-click="__h5">
   <div class="modal nc-modal">
     <div class="modal-hdr">
       <span id="sc-sync-title" style="flex:1">Секретный чат — синхронизация</span>
-      <button class="icon-btn" onclick="scCancelSyncModal()" style="width:28px;height:28px">
+      <button class="icon-btn" data-on-click="scCancelSyncModal" style="width:28px;height:28px">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
     </div>
@@ -317,11 +308,11 @@
 </div>
 <!-- Добавить контакт -->
 <!-- Папка: создание и правка -->
-<div class="modal-bg" id="modal-folder" onclick="if(event.target===this)closeModal('modal-folder')">
+<div class="modal-bg" id="modal-folder" data-on-click="__h6">
   <div class="modal nc-modal">
     <div class="modal-hdr">
       <span style="flex:1" id="fe-title">Новая папка</span>
-      <button class="icon-btn" onclick="closeModal('modal-folder')" style="width:28px;height:28px">
+      <button class="icon-btn" data-on-click="closeModal" data-a-click='["modal-folder"]' style="width:28px;height:28px">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
     </div>
@@ -329,11 +320,11 @@
   </div>
 </div>
 
-<div class="modal-bg" id="modal-addcontact" onclick="if(event.target===this)closeModal('modal-addcontact')">
+<div class="modal-bg" id="modal-addcontact" data-on-click="__h7">
   <div class="modal nc-modal">
     <div class="modal-hdr">
       <span style="flex:1">Добавить контакт</span>
-      <button class="icon-btn" onclick="closeModal('modal-addcontact')" style="width:28px;height:28px">
+      <button class="icon-btn" data-on-click="closeModal" data-a-click='["modal-addcontact"]' style="width:28px;height:28px">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
     </div>
@@ -342,47 +333,47 @@
 </div>
 
 <!-- Профиль группы и комнаты: стоит раньше профиля человека, чтобы тот открывался поверх -->
-<div class="modal-bg" id="modal-group" onclick="if(event.target===this)closeModal('modal-group')">
+<div class="modal-bg" id="modal-group" data-on-click="__h8">
   <div class="modal gm-modal" id="gm-modal"></div>
 </div>
 
 <!-- Профиль пользователя -->
-<div class="modal-bg" id="modal-profile" onclick="if(event.target===this)closeModal('modal-profile')">
+<div class="modal-bg" id="modal-profile" data-on-click="__h9">
   <div class="modal pf-modal" id="pf-modal"></div>
 </div>
 
 <!-- Медиа чата: стоит после профилей, чтобы открываться поверх них -->
-<div class="modal-bg" id="modal-media" onclick="if(event.target===this)closeModal('modal-media')">
+<div class="modal-bg" id="modal-media" data-on-click="__h10">
   <div class="modal cm-modal" id="cm-modal"></div>
 </div>
 
-<div class="modal-bg" id="modal-newchat" onclick="if(event.target===this)closeNewChat()">
+<div class="modal-bg" id="modal-newchat" data-on-click="__h11">
   <div class="modal nc-modal">
     <div class="modal-hdr">
-      <button class="icon-btn nc-back" id="nc-back" style="display:none" onclick="ncBack()" title="Назад">
+      <button class="icon-btn nc-back" id="nc-back" style="display:none" data-on-click="ncBack" title="Назад">
         <svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
       <span id="nc-title" style="flex:1">Новый чат</span>
       <span class="nc-step" id="nc-step"></span>
-      <button class="icon-btn" onclick="closeNewChat()" style="width:28px;height:28px">
+      <button class="icon-btn" data-on-click="closeNewChat" style="width:28px;height:28px">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
     </div>
     <div id="nc-body"></div>
   </div>
 </div>
-<div class="modal-bg" id="modal-forward" onclick="if(event.target===this)closeForwardModal()">
+<div class="modal-bg" id="modal-forward" data-on-click="__h12">
   <div class="modal" style="width:380px;max-height:80vh;display:flex;flex-direction:column">
     <div class="modal-hdr">
       <span>Переслать в...</span>
-      <button class="icon-btn" onclick="closeForwardModal()" style="width:28px;height:28px">
+      <button class="icon-btn" data-on-click="closeForwardModal" style="width:28px;height:28px">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
     </div>
     <div style="padding:6px 14px 8px">
       <div class="nc-search" style="margin:0">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        <input id="forward-search" placeholder="Поиск..." oninput="renderForwardList(this.value.toLowerCase())">
+        <input id="forward-search" placeholder="Поиск..." data-on-input="__h13">
       </div>
     </div>
     <div id="forward-list" style="overflow-y:auto;flex:1;padding:0 8px 8px"></div>

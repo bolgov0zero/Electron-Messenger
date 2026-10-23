@@ -45,13 +45,15 @@ app.use((req, res, next) => {
   // Картинки и видео: в админке только свои файлы. В остальных страницах ещё GIF с Klipy: gif.js пропускает только *.klipy.com.
   // Превью ссылок (/lp), аватарки и вложения федерации сервер хранит у себя, поэтому внешних адресов больше не нужно
   const isAdmin = /^\/admin(\/|$)/.test(req.path);
+  // Скрипты админки, веб-клиента и страницы гостя без встроенного кода (мобильная версия пока с ним)
+  const noInlineScripts = isAdmin || /^\/(chat|g)(\/|$)/.test(req.path);
   const imgSrc = isAdmin ? "img-src 'self' data: blob:" : "img-src 'self' data: blob: https://*.klipy.com";
   const mediaSrc = isAdmin ? "media-src 'self' blob:" : "media-src 'self' data: blob: https://*.klipy.com";
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
-    isAdmin ? "script-src 'self' 'wasm-unsafe-eval' blob:" : "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
+    noInlineScripts ? "script-src 'self' 'wasm-unsafe-eval' blob:" : "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self' data:",
     imgSrc,
@@ -121,22 +123,7 @@ app.use('/chat', express.static(path.join(__dirname, 'public/chat')));
 // Страница гостя по ссылке: /g/<токен>. Это тот же веб-клиент (/chat), запущенный в гостевом режиме: страница собирается из
 // chat/index.html на лету, поэтому внешний вид и поведение всегда совпадают с веб-версией. Ни кэша, ни индексации,
 // ссылка не уходит в Referer. Хранилище браузера у гостя отдельное (см. SHIM), чтобы не задеть сессию того же браузера в /chat
-const GUEST_SHIM = `<script>(function(){
-  var seg = location.pathname.split('/')[2] || '', P = 'guest:' + seg.slice(0, 24) + ':', real = window.localStorage;
-  var own = function () { var o = []; try { for (var i = 0; i < real.length; i++) { var k = real.key(i); if (k && k.indexOf(P) === 0) o.push(k.slice(P.length)); } } catch (e) {} return o; };
-  var api = { getItem: function (k) { return real.getItem(P + k); }, setItem: function (k, v) { real.setItem(P + k, String(v)); }, removeItem: function (k) { real.removeItem(P + k); },
-    clear: function () { own().forEach(function (k) { real.removeItem(P + k); }); }, key: function (i) { var o = own(); return i < o.length ? o[i] : null; } };
-  var shim = new Proxy({}, {
-    get: function (t, p) { if (p === 'length') return own().length; if (typeof p === 'string' && api[p]) return api[p]; return typeof p === 'string' ? real.getItem(P + p) : undefined; },
-    set: function (t, p, v) { if (typeof p === 'string') real.setItem(P + p, String(v)); return true; },
-    deleteProperty: function (t, p) { if (typeof p === 'string') real.removeItem(P + p); return true; },
-    has: function (t, p) { return typeof p === 'string' && (!!api[p] || real.getItem(P + p) !== null); },
-    ownKeys: function () { return own(); },
-    getOwnPropertyDescriptor: function (t, p) { return typeof p === 'string' && real.getItem(P + p) !== null ? { value: real.getItem(P + p), enumerable: true, configurable: true, writable: true } : undefined; }
-  });
-  Object.defineProperty(window, 'localStorage', { value: shim, configurable: true });
-  window.__GUEST__ = { token: decodeURIComponent(seg), ls: real };
-})();</script>`;
+const GUEST_SHIM = `<script src="/g/shim.js?v=1"></script>`;
 function guestPageHtml() {
   let html = fs.readFileSync(CHAT_INDEX, 'utf8').replace(/\?v=[\w.\-]+/g, '?v=' + serverVersion());
   html = html.replace('<html lang="ru">', '<html lang="ru" class="guest">')

@@ -176,8 +176,8 @@
     const w = g.w || 320, h = g.h || 240, maxW = Math.min(280, Math.max(160, w));
     const poster = g.jpg ? ` poster="${esc(g.jpg)}"` : '';
     const media = g.mp4
-      ? `<video class="gif-v" src="${esc(g.mp4)}"${poster} muted loop playsinline preload="metadata" disablepictureinpicture onerror="GifKlipy.fail(this)"></video>`
-      : `<img class="gif-v" src="${esc(g.webp)}" alt="${esc(g.title || 'GIF')}" loading="lazy" onerror="GifKlipy.fail(this)">`;
+      ? `<video class="gif-v" src="${esc(g.mp4)}"${poster} muted loop playsinline preload="metadata" disablepictureinpicture data-on-error="__h45"></video>`
+      : `<img class="gif-v" src="${esc(g.webp)}" alt="${esc(g.title || 'GIF')}" loading="lazy" data-on-error="__h45">`;
     return `<div class="gif-msg" style="aspect-ratio:${w} / ${h};width:${maxW}px">${media}${BADGE}</div>`;
   }
   // Ролик не загрузился (Klipy убрал или нет связи): заглушка вместо пустого места
