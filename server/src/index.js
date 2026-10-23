@@ -42,6 +42,11 @@ const PAGE_PATH = /^\/(admin|chat|m|g)(\/|$)/;
 app.use((req, res, next) => {
   if (!PAGE_PATH.test(req.path)) return next();
   const host = String(req.headers.host || '').replace(/[^\w.:\-\[\]]/g, '');
+  // Картинки и видео: в админке только свои файлы. В остальных страницах ещё GIF с Klipy: gif.js пропускает только *.klipy.com.
+  // Превью ссылок (/lp), аватарки и вложения федерации сервер хранит у себя, поэтому внешних адресов больше не нужно
+  const isAdmin = /^\/admin(\/|$)/.test(req.path);
+  const imgSrc = isAdmin ? "img-src 'self' data: blob:" : "img-src 'self' data: blob: https://*.klipy.com";
+  const mediaSrc = isAdmin ? "media-src 'self' blob:" : "media-src 'self' data: blob: https://*.klipy.com";
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Content-Security-Policy', [
@@ -49,8 +54,8 @@ app.use((req, res, next) => {
     "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self' data:",
-    "img-src * data: blob:",
-    "media-src * data: blob:",
+    imgSrc,
+    mediaSrc,
     `connect-src 'self' blob: data: ws://${host} wss://${host} https://api.klipy.com https://api.giphy.com`,
     "worker-src 'self' blob:",
     "frame-src 'self' blob:",
