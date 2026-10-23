@@ -161,7 +161,7 @@ function linkifyText(text) {
   const urlRe = /(https?:\/\/[^\s]+)/g;
   return text.split(urlRe).map((part, i) => {
     if (i % 2 !== 1) return Fmt.spl(mdLite(highlightMentions(esc(part))));
-    return `<a class="msg-link" href="#" onclick="openExternalLink(event,this)" data-url="${esc(part)}">${esc(part)}</a>`;
+    return `<a class="msg-link" href="#" data-on-click="openExternalLink" data-a-click='["__event", "__this"]' data-url="${esc(part)}">${esc(part)}</a>`;
   }).join('');
 }
 
@@ -752,11 +752,11 @@ function renderAccountRail() {
   rail.innerHTML = (showAcc ? S.acc.list.map(a => {
     const m = a.meta;
     const cls = m ? userAvatarColor(m.userId, m.tag) : 'av-default';
-    const img = m ? `<img src="${accHttp(m.server)}://${esc(m.server)}/api/users/${m.userId}/avatar" alt="" onerror="this.style.display='none'">` : '';
+    const img = m ? `<img src="${accHttp(m.server)}://${esc(m.server)}/api/users/${m.userId}/avatar" alt="" data-on-error="__h17">` : '';
     const isActive = a.id === S.acc.activeId;
     const badge = !isActive && a.unread > 0 ? `<span class="acc-badge">${a.unread > 99 ? '99+' : a.unread}</span>` : '';
     const name = m ? esc(m.name) : 'Вход не выполнен', srv = m ? esc(m.server) : '', sys = m && m.serverName ? esc(m.serverName) : '';
-    return `<button type="button" class="acc-btn${isActive ? ' active' : ''}" onclick="window.electron.accountSwitch('${esc(a.id)}')" aria-label="${sys ? sys + ', ' : ''}${name}${srv ? ', ' + srv : ''}">
+    return `<button type="button" class="acc-btn${isActive ? ' active' : ''}" data-on-click="__h18" data-a-click="${esc(JSON.stringify([esc(a.id)]))}" aria-label="${sys ? sys + ', ' : ''}${name}${srv ? ', ' + srv : ''}">
       <span class="av av-round ${cls}">${esc(m ? initials(m.name) : '?')}${img}</span>${badge}
       <span class="acc-tip">${sys ? `<span class="acc-sys">${sys}</span>` : ''}<b>${name}</b><span>${srv}</span></span></button>`;
   }).join('') : '') + (typeof spacesRailHtml === 'function' ? spacesRailHtml(showAcc) : '') + (typeof foldersRailHtml === 'function' ? foldersRailHtml(showAcc || (typeof spacesRailShown === 'function' && spacesRailShown())) : '');
@@ -874,7 +874,7 @@ function accentDotsHtml() {
   return Object.entries(ACCENTS).map(([k, a]) =>
     '<button class="accent-dot' + (k === cur ? ' active' : '') + '" data-accent="' + k + '"' +
     ' title="' + a.name + '" aria-label="' + a.name + '"' +
-    ' style="--dot:rgb(' + accentRgb(a).join(',') + ')" onclick="setAccent(\'' + k + '\')"></button>').join('');
+    ' style="--dot:rgb(' + accentRgb(a).join(',') + ')" data-on-click="setAccent" data-a-click="' + esc(JSON.stringify([k])) + '"></button>').join('');
 }
 
 
@@ -954,7 +954,7 @@ function chatPatternCardsHtml() {
   const cur = currentPattern();
   return '<div class="pat-cards" id="pattern-cards">' + PATTERNS.map(p =>
     '<button class="pat-card' + (p.id === cur ? ' active' : '') + '" data-pattern="' + p.id + '"' +
-    ' onclick="setChatPattern(\'' + p.id + '\')">' +
+    ' data-on-click="setChatPattern" data-a-click="' + esc(JSON.stringify([p.id])) + '">' +
       '<span class="pat-swatch"></span>' +
       '<span class="pat-cap">' + p.name + '</span>' +
     '</button>').join('') + '</div>';
@@ -1005,7 +1005,7 @@ function chatBgCardsHtml() {
       <span class="bs-side"><i></i><i></i><i></i></span>
       <span class="bs-chat${split ? ' split' : ''}"><i class="a"></i><i class="b"></i><i class="c"></i></span>
     </span>`;
-  const card = (mode, title, sub) => `<button class="bg-card${cur === mode ? ' active' : ''}" data-bg="${mode}" onclick="setChatBg('${mode}')">
+  const card = (mode, title, sub) => `<button class="bg-card${cur === mode ? ' active' : ''}" data-bg="${mode}" data-on-click="setChatBg" data-a-click="${esc(JSON.stringify([`${mode}`]))}">
       ${skel(mode === 'split')}
       <span class="bg-cap"><b>${title}</b>${sub}</span>
     </button>`;
@@ -1241,8 +1241,8 @@ function restoreChatMainArea() {
 // Список всех пользователей компании — та же аватарка и подложка тега, что и при
 // выборе собеседника для нового чата (ppAvHtml), плюс индикатор «в сети».
 function contactRowHtml(u) {
-  return `<div class="pp-row" data-uid="${u.id}" onclick="openContactChat(${u.id})" oncontextmenu="contactMenu(event,${u.id})">
-    <div class="av-wrap" title="Профиль" onclick="event.stopPropagation();openProfile(${u.id})">${ppAvHtml(u)}${presenceDot(u.id)}</div>
+  return `<div class="pp-row" data-uid="${u.id}" data-on-click="openContactChat" data-a-click="${esc(JSON.stringify([u.id]))}" data-on-contextmenu="contactMenu" data-a-contextmenu="${esc(JSON.stringify(["__event", u.id]))}">
+    <div class="av-wrap" title="Профиль" data-on-click="__h19" data-a-click="${esc(JSON.stringify([u.id]))}">${ppAvHtml(u)}${presenceDot(u.id)}</div>
     <div class="pp-col"><div class="pp-line"><span class="pp-name">${esc(u.display_name)}</span>${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div>${wsTag(u)}</div>
   </div>`;
 }
@@ -1275,7 +1275,7 @@ function renderContactsList(filter = '') {
     ? `<div class="cs-stub"><div class="cs-stub-i">${CS_I.search || CS_I.user}</div><b>Никого не нашлось</b><span>Проверьте написание имени или логина.</span></div>`
     : `<div class="cs-stub"><div class="cs-stub-i">${CS_I.user}</div><b>Контактов пока нет</b>
         <span>В вашем пространстве больше никого нет. Человека из другого пространства можно добавить по логину.</span>
-        <button type="button" class="modal-btn-primary" style="margin-top:12px" onclick="openAddContact()">Добавить контакт</button></div>`);
+        <button type="button" class="modal-btn-primary" style="margin-top:12px" data-on-click="openAddContact">Добавить контакт</button></div>`);
 }
 function filterContacts(q) { renderContactsList(q); }
 async function openContactChat(userId) {
@@ -1411,7 +1411,7 @@ function csPaneProfile() {
   const type = CS.pwShow ? 'text' : 'password';
   const where = csIsApp() ? 'На этом компьютере' : csIsPhone() ? 'На этом телефоне' : 'В этом браузере';
   return `<div class="cs-hero">
-      <button type="button" class="cs-av-edit" aria-label="Сменить фото" onclick="triggerAvatarUpload()">${csAv(72)}<span class="cs-badge">${CS_I.pen}</span></button>
+      <button type="button" class="cs-av-edit" aria-label="Сменить фото" data-on-click="triggerAvatarUpload">${csAv(72)}<span class="cs-badge">${CS_I.pen}</span></button>
       <div class="cs-hero-t"><b>${esc(u.display_name)}</b><span>@${esc(u.username)}</span>
         ${u.tag ? `<div class="cs-chips"><span class="cs-chip">${esc(u.tag)}</span></div>` : ''}</div>
     </div>
@@ -1421,38 +1421,38 @@ function csPaneProfile() {
       <div class="cs-l"><b>Как вас видят в чатах</b><span>Логин @${esc(u.username)} не меняется — его задаёт администратор.</span></div>
       <div class="cs-ctl">
         <div class="cs-inp ${ok ? '' : 'bad'}" style="flex:1;min-width:180px"><input id="cs-name" value="${esc(draft)}" maxlength="40" aria-label="Имя" autocomplete="off"
-          oninput="csNameInput(this.value)" onkeydown="if(event.key==='Enter')csSaveName(); if(event.key==='Escape'){event.stopPropagation(); this.value=S.user.display_name; csNameInput(this.value)}"><span class="cs-cnt" id="cs-cnt">${draft.length}/40</span></div>
-        <button type="button" class="cs-btn solid" id="cs-name-save" ${ok && changed && !CS.nameBusy ? '' : 'disabled'} onclick="csSaveName()">${CS.nameBusy ? 'Сохраняю…' : 'Сохранить'}</button>
+          data-on-input="csNameInput" data-a-input='["__value"]' data-on-keydown="__h20"><span class="cs-cnt" id="cs-cnt">${draft.length}/40</span></div>
+        <button type="button" class="cs-btn solid" id="cs-name-save" ${ok && changed && !CS.nameBusy ? '' : 'disabled'} data-on-click="csSaveName">${CS.nameBusy ? 'Сохраняю…' : 'Сохранить'}</button>
       </div>
       <div id="cs-name-msg">${!ok ? '<span class="cs-err">Имя не может быть пустым</span>' : CS.nameMsg === 'ok' ? '<span class="cs-okt">Имя сохранено — его увидят все собеседники</span>' : CS.nameMsg ? `<span class="cs-err">${esc(CS.nameMsg)}</span>` : ''}</div>
     </div></div>
     <div class="cs-gt">Безопасность</div>
     <div class="cs-g">
       <div class="cs-r"><div class="cs-l"><b>Пароль</b>${CS.pwDone ? '<span class="cs-okt">Пароль изменён</span>' : `<span>${CS.pwOpen ? 'Введите текущий пароль и придумайте новый — от 6 символов' : 'Меняется здесь же, без администратора'}</span>`}</div>
-        ${CS.pwOpen ? '' : `<button type="button" class="cs-btn ghost" onclick="csPwToggle()">${CS_I.lock}Сменить пароль</button>`}</div>
+        ${CS.pwOpen ? '' : `<button type="button" class="cs-btn ghost" data-on-click="csPwToggle">${CS_I.lock}Сменить пароль</button>`}</div>
       ${CS.pwOpen ? `<div class="cs-r stack">
-        <div class="cs-inp"><input id="cs-pw0" type="${type}" placeholder="Текущий пароль" autocomplete="current-password" oninput="csPwInput('old', this.value)">
-          <button type="button" class="cs-eye" aria-label="${CS.pwShow ? 'Скрыть пароли' : 'Показать пароли'}" onclick="csPwEye()">${CS.pwShow ? CS_I.eyeOff : CS_I.eye}</button></div>
-        <div class="cs-inp"><input id="cs-pw1" type="${type}" placeholder="Новый пароль" autocomplete="new-password" oninput="csPwInput('a', this.value)"></div>
+        <div class="cs-inp"><input id="cs-pw0" type="${type}" placeholder="Текущий пароль" autocomplete="current-password" data-on-input="csPwInput" data-a-input='["old", "__value"]'>
+          <button type="button" class="cs-eye" aria-label="${CS.pwShow ? 'Скрыть пароли' : 'Показать пароли'}" data-on-click="csPwEye">${CS.pwShow ? CS_I.eyeOff : CS_I.eye}</button></div>
+        <div class="cs-inp"><input id="cs-pw1" type="${type}" placeholder="Новый пароль" autocomplete="new-password" data-on-input="csPwInput" data-a-input='["a", "__value"]'></div>
         <div class="cs-pwbar" id="cs-pwbar">${csPwBar(csPwStrength(CS.pw.a))}</div>
-        <div class="cs-inp ${CS.pw.b && CS.pw.a !== CS.pw.b ? 'bad' : ''}" id="cs-pw2box"><input id="cs-pw2" type="${type}" placeholder="Повторите новый пароль" autocomplete="new-password" oninput="csPwInput('b', this.value)" onkeydown="if(event.key==='Enter')submitOwnPassword()"></div>
+        <div class="cs-inp ${CS.pw.b && CS.pw.a !== CS.pw.b ? 'bad' : ''}" id="cs-pw2box"><input id="cs-pw2" type="${type}" placeholder="Повторите новый пароль" autocomplete="new-password" data-on-input="csPwInput" data-a-input='["b", "__value"]' data-on-keydown="__h21"></div>
         <div id="cs-pwmsg">${csPwMsg()}</div>
-        <div class="cs-ctl"><span class="cs-grow"></span><button type="button" class="cs-btn ghost" onclick="csPwToggle()">Отмена</button>
-          <button type="button" class="cs-btn solid" id="cs-pwsave" ${csPwReady() && !CS.pwBusy ? '' : 'disabled'} onclick="submitOwnPassword()">${CS.pwBusy ? 'Сохраняю…' : 'Сохранить пароль'}</button></div>
+        <div class="cs-ctl"><span class="cs-grow"></span><button type="button" class="cs-btn ghost" data-on-click="csPwToggle">Отмена</button>
+          <button type="button" class="cs-btn solid" id="cs-pwsave" ${csPwReady() && !CS.pwBusy ? '' : 'disabled'} data-on-click="submitOwnPassword">${CS.pwBusy ? 'Сохраняю…' : 'Сохранить пароль'}</button></div>
       </div>` : ''}
     </div>
     <div class="cs-gt">Сервер</div>
     <div class="cs-g"><div class="cs-r">
       <div class="cs-l"><b>Адрес сервера</b><span>${esc(S.server)}</span></div>
-      <button type="button" class="cs-btn ghost" id="cs-server-copy" onclick="csCopyServer(this)">${CS_I.copy}Скопировать</button>
+      <button type="button" class="cs-btn ghost" id="cs-server-copy" data-on-click="csCopyServer" data-a-click='["__this"]'>${CS_I.copy}Скопировать</button>
     </div></div>
     ${csIsApp() ? `<div class="cs-gt">Учётные записи</div>
     <div class="cs-g"><div class="cs-r">
       <div class="cs-l"><b>Добавить учётную запись</b><span>Вторая запись на этом или другом сервере — обе работают одновременно</span></div>
-      <button type="button" class="cs-btn ghost" onclick="window.electron.accountAdd()">Добавить</button>
+      <button type="button" class="cs-btn ghost" data-on-click="__h22">Добавить</button>
     </div></div>` : ''}
     <div class="cs-logout"><div class="cs-l"><b>Выйти из аккаунта</b><span>${where} понадобится снова ввести логин и пароль</span></div>
-      <button type="button" class="cs-btn danger" onclick="logout(true)">${CS_I.out}Выйти</button></div>`;
+      <button type="button" class="cs-btn danger" data-on-click="logout" data-a-click='[true]'>${CS_I.out}Выйти</button></div>`;
 }
 // ── Ссылка на профиль ──
 // Внутренняя (@логин) для людей этого сервера, внешняя (@сервер:логин) для людей с других; внешняя есть, только если на сервере настроена федерация
@@ -1464,7 +1464,7 @@ function profileLinks() {
 function profileLinksHtml() {
   const u = S.user;
   return `<div class="cs-gt">Ссылка на профиль</div>
-    <div class="cs-g"><div class="cs-r stack"><div class="pl-b">${profileLinks().map(([k, lab, v]) => `<button type="button" class="pl-f" data-pl="${k}" aria-label="Скопировать: ${esc(v)}" onclick="copyProfileLink('${k}')"><span class="pl-k">${lab}</span><span class="pl-v">${esc(v)}</span><span class="pl-i">${CS_I.copy}</span></button>`).join('')}</div>
+    <div class="cs-g"><div class="cs-r stack"><div class="pl-b">${profileLinks().map(([k, lab, v]) => `<button type="button" class="pl-f" data-pl="${k}" aria-label="Скопировать: ${esc(v)}" data-on-click="copyProfileLink" data-a-click="${esc(JSON.stringify([`${k}`]))}"><span class="pl-k">${lab}</span><span class="pl-v">${esc(v)}</span><span class="pl-i">${CS_I.copy}</span></button>`).join('')}</div>
     <p class="pl-n">${u.server_id ? 'Внутреннюю называйте коллегам на вашем сервере, внешнюю людям с других серверов.' : 'Внешняя ссылка появится, когда администратор настроит федерацию сервера.'}</p></div></div>`;
 }
 async function copyProfileLink(kind) {
@@ -1530,25 +1530,25 @@ async function submitOwnPassword() {
 }
 
 // ── Основные ──
-const csTg = (on, fn, label) => `<button type="button" class="cs-tg" role="switch" aria-checked="${on}" aria-label="${label}" onclick="${fn}"></button>`;
+const csTg = (on, fn, label, arg) => `<button type="button" class="cs-tg" role="switch" aria-checked="${on}" aria-label="${label}" data-on-click="${fn}" data-a-click="${esc(JSON.stringify(arg === undefined ? [] : [arg]))}"></button>`;
 function csPaneGeneral() {
   const sound = S.settings.soundEnabled !== false;
   return `<div class="cs-gt">Уведомления</div>
     <div class="cs-g"><div class="cs-r"><div class="cs-l"><b>Звук сообщений</b><span>Короткий сигнал, когда приходит новое сообщение</span></div>
-      <div class="cs-ctl"><button type="button" class="cs-btn ghost" ${sound ? '' : 'disabled'} onclick="playNotificationSound()">${CS_I.play}Прослушать</button>${csTg(sound, 'csSound()', 'Звук сообщений')}</div></div>
-      <div class="cs-r"><div class="cs-l"><b>Показывать текст сообщения</b><span>Выключите, если экран виден посторонним: в уведомлении будет только «Новое сообщение»</span></div>${csTg(_pushPrefs.show_text !== false, 'csPushText()', 'Показывать текст сообщения')}</div>
+      <div class="cs-ctl"><button type="button" class="cs-btn ghost" ${sound ? '' : 'disabled'} data-on-click="playNotificationSound">${CS_I.play}Прослушать</button>${csTg(sound, 'csSound', 'Звук сообщений')}</div></div>
+      <div class="cs-r"><div class="cs-l"><b>Показывать текст сообщения</b><span>Выключите, если экран виден посторонним: в уведомлении будет только «Новое сообщение»</span></div>${csTg(_pushPrefs.show_text !== false, 'csPushText', 'Показывать текст сообщения')}</div>
       <div class="cs-r"><div class="cs-l"><b>Тихие часы</b><span>${_pushPrefs.quiet_from != null ? 'В это время уведомлений и звука нет, сообщения никуда не пропадают' : 'В выбранные часы уведомлений и звука нет'}</span></div>
-        <div class="cs-ctl">${_pushPrefs.quiet_from != null ? `<input type="time" class="cs-time" value="${_hhmm(_pushPrefs.quiet_from)}" onchange="csQuietTime('quiet_from', this.value)" aria-label="С"><span class="cs-dash">–</span><input type="time" class="cs-time" value="${_hhmm(_pushPrefs.quiet_to)}" onchange="csQuietTime('quiet_to', this.value)" aria-label="До">` : ''}${csTg(_pushPrefs.quiet_from != null, 'csQuiet()', 'Тихие часы')}</div></div>
+        <div class="cs-ctl">${_pushPrefs.quiet_from != null ? `<input type="time" class="cs-time" value="${_hhmm(_pushPrefs.quiet_from)}" data-on-change="csQuietTime" data-a-change='["quiet_from", "__value"]' aria-label="С"><span class="cs-dash">–</span><input type="time" class="cs-time" value="${_hhmm(_pushPrefs.quiet_to)}" data-on-change="csQuietTime" data-a-change='["quiet_to", "__value"]' aria-label="До">` : ''}${csTg(_pushPrefs.quiet_from != null, 'csQuiet', 'Тихие часы')}</div></div>
     </div>
     ${csIsApp() ? `<div class="cs-gt">Приложение</div>
     <div class="cs-g">
-      <div class="cs-r"><div class="cs-l"><b>Автозапуск при старте</b><span>Приложение откроется само после входа в систему</span></div>${csTg(!!CS.autostart, 'csAutostart()', 'Автозапуск')}</div>
-      <div class="cs-r"><div class="cs-l"><b>Скрыть сайдбар</b><span>Список чатов прячется и выезжает при наведении на левый край окна</span></div>${csTg(document.body.classList.contains('sidebar-hidden'), 'csHideSidebar()', 'Скрыть сайдбар')}</div>
+      <div class="cs-r"><div class="cs-l"><b>Автозапуск при старте</b><span>Приложение откроется само после входа в систему</span></div>${csTg(!!CS.autostart, 'csAutostart', 'Автозапуск')}</div>
+      <div class="cs-r"><div class="cs-l"><b>Скрыть сайдбар</b><span>Список чатов прячется и выезжает при наведении на левый край окна</span></div>${csTg(document.body.classList.contains('sidebar-hidden'), 'csHideSidebar', 'Скрыть сайдбар')}</div>
     </div>
     <div class="cs-gt">Журнал работы</div>
     <div class="cs-g"><div class="cs-r">
       <div class="cs-l"><b>Журнал событий</b><span>Учётные записи, соединения с сервером и обновления — пригодится, если что-то работает не так</span></div>
-      <button type="button" class="cs-btn ghost" onclick="openDiagLog()">Открыть журнал</button>
+      <button type="button" class="cs-btn ghost" data-on-click="openDiagLog">Открыть журнал</button>
     </div></div>` : `<p class="cs-hint">Разрешение на уведомления меняется ${csIsPhone() ? 'в настройках телефона' : 'в настройках сайта в самом браузере'}.</p>`}`;
 }
 // ── Журнал работы ──
@@ -1581,10 +1581,15 @@ async function csAutostart() { CS.autostart = !CS.autostart; csRefresh(); await 
 function csHideSidebar() { toggleSidebar(); csRefresh(); }
 
 // ── Внешний вид ──
+// Выбор в сегментированном переключателе: вызываем функцию по имени и обновляем панель
+function csPick(name, v) { window[name](v); csRefresh(); }
+// Меню сообщения для удалённых не открывается: только отменяем системное меню браузера
+function ctxNoop(ev) { ev.preventDefault(); }
+function noop() {}
 function csPaneAppearance() {
   const s = S.settings, lvl = currentPatternLevel(), scales = csIsApp() ? [80, 90, 100] : [80, 90, 100, 110];
   const seg = (items, cur, fn, label) => `<div class="cs-seg" role="group" aria-label="${label}">${items.map(([v, t, title]) =>
-    `<button type="button" aria-pressed="${cur === v}" ${title ? `aria-label="${title}" title="${title}"` : ''} onclick="${fn}(${typeof v === 'string' ? `'${v}'` : v}); csRefresh()">${t}</button>`).join('')}</div>`;
+    `<button type="button" aria-pressed="${cur === v}" ${title ? `aria-label="${title}" title="${title}"` : ''} data-on-click="csPick" data-a-click="${esc(JSON.stringify([fn, v]))}">${t}</button>`).join('')}</div>`;
   return `<div class="cs-pv" aria-hidden="true">
       <div class="cs-pv-side"><i></i><i class="on"></i><i></i><i></i><i></i></div>
       <div class="cs-pv-chat"><div class="cs-pv-pat"></div><span class="cs-pv-cap">Так будет выглядеть</span>
@@ -1595,13 +1600,13 @@ function csPaneAppearance() {
     <div class="cs-g">
       <div class="cs-r"><div class="cs-l"><b>Тема</b></div>${seg([['light', CS_I.sun + 'Светлая'], ['dark', CS_I.moon + 'Тёмная'], ['navy', CS_I.navy + 'Тёмно-синяя']], s.theme, 'setTheme', 'Тема')}</div>
       <div class="cs-r"><div class="cs-l"><b>Цвет акцента</b><span>Кнопки, свои сообщения, выделение</span></div>
-        <div class="cs-ctl"><span class="cs-aname">${ACCENTS[currentAccent()].name}</span><div id="accent-seg" class="accent-seg" onclick="if(event.target.closest('.accent-dot'))csRefresh()">${accentDotsHtml()}</div></div></div>
+        <div class="cs-ctl"><span class="cs-aname">${ACCENTS[currentAccent()].name}</span><div id="accent-seg" class="accent-seg" data-on-click="__h23">${accentDotsHtml()}</div></div></div>
     </div>
     <div class="cs-gt">Фон переписки</div>
-    <div onclick="if(event.target.closest('.bg-card'))csRefresh()">${chatBgCardsHtml()}</div>
+    <div data-on-click="__h24">${chatBgCardsHtml()}</div>
     <div class="cs-gt">Узор фона</div>
     <div class="cs-g"><div class="cs-r stack">
-      <div onclick="if(event.target.closest('.pat-card'))csRefresh()">${chatPatternCardsHtml()}</div>
+      <div data-on-click="__h25">${chatPatternCardsHtml()}</div>
       ${currentPattern() ? `<div class="cs-ctl cs-between"><div class="cs-l"><b>Заметность</b></div>${seg([[1, 'Слабая'], [2, 'Средняя'], [3, 'Сильная']], lvl, 'setPatternLevel', 'Заметность узора')}</div>` : ''}
     </div></div>
     <div class="cs-gt">Текст</div>
@@ -1619,9 +1624,9 @@ function csPaneUpdate() {
   const date = _updatePublishedAt ? new Date(_updatePublishedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '';
   const ver = `<div class="cs-ver"><span class="cs-logo">${CS_I.bolt}</span>
       ${has ? `<div class="cs-ver-t"><span>Доступна новая версия${date ? ' · ' + date : ''}</span><b>${esc(_updateVersion || '—')}</b><span>Сейчас стоит ${esc(CS.version || '—')}</span></div>
-        <button type="button" class="cs-btn solid" onclick="closeSettings(); openModal('modal-update')">${CS_I.down}Установить</button>`
+        <button type="button" class="cs-btn solid" data-on-click="__h26">${CS_I.down}Установить</button>`
       : `<div class="cs-ver-t"><span>Установлена версия</span><b>${esc(CS.version || '—')}</b><span>Приложение для компьютера</span></div>
-        <span class="cs-state" id="update-status-text"></span><button type="button" class="cs-btn ghost" id="update-check-btn" onclick="checkUpdate()">Проверить</button>`}</div>`;
+        <span class="cs-state" id="update-status-text"></span><button type="button" class="cs-btn ghost" id="update-check-btn" data-on-click="checkUpdate">Проверить</button>`}</div>`;
   return `${has ? `<div class="cs-g">${ver}${_updateNotes ? `<div class="cs-notes"><b>Что нового.</b> ${esc(_updateNotes)}</div>` : ''}</div>
       <p class="cs-hint">Загрузка и установка идут в отдельном окне с прогрессом.</p>`
       : `${ver}<p class="cs-hint">Приложение само проверяет обновления после запуска и дальше каждые два часа.</p>`}`;
@@ -1671,7 +1676,7 @@ function csPaneModules() {
     return `<div class="cs-r"><div class="cs-l"><b>${esc(m.title)}${m.provider ? ` <span class="cs-pill">${esc(m.provider)}</span>` : ''}</b>
       <span>${esc(m.description)}${csIsApp() && m.needsDownload && !m.on && mb ? ` При включении загружается около ${mb} МБ.` : ''}</span>
       ${st ? `<span class="cs-mod-st">${st}</span>` : ''}</div>
-      <div class="cs-ctl">${m.on && m.needsDownload ? `<button type="button" class="cs-btn ghost" ${m.busy ? 'disabled' : ''} onclick="csModuleRedo('${m.key}')">Перекачать</button>` : ''}${csTg(m.on, `csModuleToggle('${m.key}')`, esc(m.title))}</div></div>`;
+      <div class="cs-ctl">${m.on && m.needsDownload ? `<button type="button" class="cs-btn ghost" ${m.busy ? 'disabled' : ''} data-on-click="csModuleRedo" data-a-click="${esc(JSON.stringify([`${m.key}`]))}">Перекачать</button>` : ''}${csTg(m.on, `csModuleToggle('${m.key}')`, esc(m.title))}</div></div>`;
   }).join('')}</div>
     ${list.filter(m => m.note && (m.provider || (!csIsApp() && m.on))).map(m => `<p class="cs-hint">${esc(m.note)}</p>`).join('')}`;
 }
@@ -1710,7 +1715,7 @@ function modDownload(key, kind) {
 const CS_PANES = { profile: csPaneProfile, general: csPaneGeneral, appearance: csPaneAppearance, blocks: csPaneBlocks, modules: csPaneModules, folders: () => csPaneFolders(), update: csPaneUpdate };
 
 function csNavHtml(list) {
-  return csSections().map(s => `<button type="button" class="cs-sn" ${list ? '' : `aria-current="${CS.sec === s.k ? 'page' : 'false'}"`} onclick="csGo('${s.k}')">
+  return csSections().map(s => `<button type="button" class="cs-sn" ${list ? '' : `aria-current="${CS.sec === s.k ? 'page' : 'false'}"`} data-on-click="csGo" data-a-click="${esc(JSON.stringify([`${s.k}`]))}">
     <span class="cs-sn-ic">${s.icon}</span><span class="cs-sn-tx"><b>${s.label}</b><small>${esc(s.meta())}</small></span>${s.dot?.() ? '<i class="cs-dot"></i>' : ''}${list ? `<span class="cs-chev">${CS_I.chev}</span>` : ''}</button>`).join('');
 }
 // Настройки рисуются на месте — категории в сайдбаре (там, где обычно
@@ -2301,7 +2306,7 @@ function renderChatRow(c) {
     ? renderStatus(lm.status) : '';
   const isActive = c.id===S.activeChatId || c.id===S.activeRoomId;
   if (c.invite) previewHtml = `<span style="color:var(--accent)">Приглашение в ${fedKind(c)}</span>`;
-  return `<div class="chat-item${isActive?' active':''}${c.invite?' invited':''}" data-chat-id="${c.id}" onclick="openChat(${c.id})" oncontextmenu="showChatCtx(event,${c.id})">
+  return `<div class="chat-item${isActive?' active':''}${c.invite?' invited':''}" data-chat-id="${c.id}" data-on-click="openChat" data-a-click="${esc(JSON.stringify([c.id]))}" data-on-contextmenu="showChatCtx" data-a-contextmenu="${esc(JSON.stringify(["__event", c.id]))}">
     <div class="av-wrap">
       <div class="av av-md ${chatAvatarClass(c)}${c.type==='room' && c.has_topics?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
       ${typeof folderBadgeHtml === 'function' ? folderBadgeHtml(c) : ''}${dot}${fedDotHtml(c)}
@@ -2354,7 +2359,7 @@ function renderSearchRow(r) {
   // Сообщения ботов хранят доверенный HTML (как и в самом пузыре, см. renderMsgIRC) —
   // экранировать их нельзя, иначе теги вроде <b> показываются как текст
   const snip = (r.sender_is_bot ? (r.snippet || '') : esc(r.snippet || '')).replaceAll('\u0001', '<b>').replaceAll('\u0002', '</b>');
-  return `<div class="chat-item" onclick="openSearchResult(${r.chat_id},${r.id})">
+  return `<div class="chat-item" data-on-click="openSearchResult" data-a-click="${esc(JSON.stringify([r.chat_id, r.id]))}">
     <div class="av av-md ${userAvatarColor(r.sender_id || 0)} av-round">${initials(r.sender_name || '?')}</div>
     <div class="info">
       <div class="ci-name" style="display:flex;align-items:center;gap:5px">
@@ -2419,7 +2424,7 @@ function topicRow(s) {
     ? ' style="background-image:url(\'' + httpProto() + '://' + S.server + '/api/chats/' + s.id + '/avatar' + '\');background-size:cover;background-position:center"'
     : '';
   return '<div class="chat-item' + (S.activeTopicId === s.id ? ' active' : '') + '"' +
-    ' data-topic-id="' + s.id + '" onclick="openTopic(' + s.id + ')">' +
+    ' data-topic-id="' + s.id + '" data-on-click="openTopic" data-a-click="' + esc(JSON.stringify([s.id])) + '">' +
     '<div class="av-wrap"><div class="av av-md av-round ' + avCls + '"' + avStyle + '>' +
       (s.has_avatar ? '' : '#') + '</div>' +
       ((mentions > 0 || unread > 0) ? '<span class="avb">' + (mentions > 0 ? '@' : (unread > 99 ? '99+' : unread)) + '</span>' : '') + '</div>' +
@@ -2586,10 +2591,10 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   const peerId = getPeerUserId(chat);
   const peerDot = peerId ? presenceDot(peerId) : '';
   const isTopic = !!chat?.parent_id;
-  const addContactBtn = peerId && needsContact(peerId) ? `<button class="addc-btn" id="ch-add-contact" onclick="addContactFromChat(${peerId})"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.1" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg><span>Добавить контакт</span></button>` : '';
+  const addContactBtn = peerId && needsContact(peerId) ? `<button class="addc-btn" id="ch-add-contact" data-on-click="addContactFromChat" data-a-click="${esc(JSON.stringify([peerId]))}"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.1" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg><span>Добавить контакт</span></button>` : '';
   S.activeInvite = !!chat.invite;
   const sub = (isTopic || isRoom || isGroup) ? groupSubHtml(chat) : (peerId ? peerSubText(peerId) : 'Личный чат');
-  const nameClickable = (!chat.invite && (isGroup || (isRoom && !isTopic))) ? `style="cursor:pointer" onclick="openGroupInfo(${chatId})"` : (peerId ? `style="cursor:pointer" onclick="openProfile(${peerId})"` : '');
+  const nameClickable = (!chat.invite && (isGroup || (isRoom && !isTopic))) ? `style="cursor:pointer" data-on-click="openGroupInfo" data-a-click="${esc(JSON.stringify([chatId]))}"` : (peerId ? `style="cursor:pointer" data-on-click="openProfile" data-a-click="${esc(JSON.stringify([peerId]))}"` : '');
 
   // Delete button: visible for direct chats and for group creator / admins
   const canDelete = chat.type === 'direct' || S.user.is_admin || isCreator;
@@ -2598,7 +2603,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   main.innerHTML = `
     <div class="chat-header">
       <div class="chat-header-main">
-        <div class="av-wrap"${peerId ? ` style="cursor:pointer" onclick="openProfile(${peerId})"` : ''}>
+        <div class="av-wrap"${peerId ? ` style="cursor:pointer" data-on-click="openProfile" data-a-click="${esc(JSON.stringify([peerId]))}"` : ''}>
           <div class="av av-md ${chatAvatarClass(chat)}${chat.type==='room' && chat.has_topics && !S.activeTopicId?' av-sq':' av-round'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
           ${peerDot}${fedDotHtml(chat)}
         </div>
@@ -2609,10 +2614,10 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
       </div>
       <div class="chat-header-actions">
         ${addContactBtn}
-        ${(chat.is_secret || chat.invite) ? '' : `<button class="icon-btn${S.chatSearch?.open ? ' active' : ''}" title="Поиск в чате" onclick="toggleChatSearch()">
+        ${(chat.is_secret || chat.invite) ? '' : `<button class="icon-btn${S.chatSearch?.open ? ' active' : ''}" title="Поиск в чате" data-on-click="toggleChatSearch">
           <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </button>`}
-        ${(isRoom || chat.invite) ? '' : `<button class="icon-btn" title="Действия с чатом" onclick="showChatCtx(event, ${chatId})">
+        ${(isRoom || chat.invite) ? '' : `<button class="icon-btn" title="Действия с чатом" data-on-click="showChatCtx" data-a-click="${esc(JSON.stringify(["__event", chatId]))}">
           <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
         </button>`}
       </div>
@@ -2621,7 +2626,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     ${chatSearchBarHtml(chatId, chat.is_secret)}
     <div class="messages-wrap">
     <div class="messages" id="messages"></div>
-      <button id="scroll-bottom-btn" class="scroll-bottom-btn" onclick="scrollMessagesToBottom()" title="К последним сообщениям">
+      <button id="scroll-bottom-btn" class="scroll-bottom-btn" data-on-click="scrollMessagesToBottom" title="К последним сообщениям">
         <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
       </button>
     </div>
@@ -2639,34 +2644,34 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
           <div class="ep-grid" id="ep-grid">
             <div class="ep-search">
               <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-              <input id="ep-search-input" placeholder="Поиск смайла" autocomplete="off" oninput="filterEmoji(this.value)">
+              <input id="ep-search-input" placeholder="Поиск смайла" autocomplete="off" data-on-input="filterEmoji" data-a-input='["__value"]'>
             </div>
             <div class="ep-tabs" id="ep-tabs"></div>
-            <div class="ep-scroll" id="ep-scroll" onscroll="syncEmojiTabs()"></div>
+            <div class="ep-scroll" id="ep-scroll" data-on-scroll="syncEmojiTabs"></div>
             <div class="ep-gif" id="ep-gif" hidden></div>
             <div class="ep-dock" id="ep-dock" hidden>
               <div class="ep-sw" role="group" aria-label="Смайлы или GIF">
-                <button type="button" id="ep-sw-emoji" aria-pressed="true" onclick="epMode('emoji')">Смайлы</button>
-                <button type="button" id="ep-sw-gif" aria-pressed="false" onclick="epMode('gif')">GIF</button>
+                <button type="button" id="ep-sw-emoji" aria-pressed="true" data-on-click="epMode" data-a-click='["emoji"]'>Смайлы</button>
+                <button type="button" id="ep-sw-gif" aria-pressed="false" data-on-click="epMode" data-a-click='["gif"]'>GIF</button>
               </div>
               <span class="ep-pw" id="ep-pw" hidden>Powered by <span class="gp-kl"><i></i>KLIPY</span></span>
             </div>
           </div>
           <div class="composer-main">
-            <button class="composer-icon-btn composer-attach" id="up-btn" title="Прикрепить, форматирование" aria-haspopup="menu" aria-expanded="false" onclick="toggleUpMenu(event)">
+            <button class="composer-icon-btn composer-attach" id="up-btn" title="Прикрепить, форматирование" aria-haspopup="menu" aria-expanded="false" data-on-click="toggleUpMenu" data-a-click='["__event"]'>
               <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
             </button>
             <div class="up-menu" id="up-menu" role="menu" hidden>
-              <button type="button" role="menuitem" onclick="upPickFile()">
+              <button type="button" role="menuitem" data-on-click="upPickFile">
                 <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                 <span>Прикрепить файл</span>
               </button>
-              <button type="button" role="menuitem" id="up-fmt" onclick="upToggleFmt()">
+              <button type="button" role="menuitem" id="up-fmt" data-on-click="upToggleFmt">
                 <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>
                 <span>Форматирование</span>
               </button>
             </div>
-            <input type="file" id="file-input" accept="*" multiple style="display:none" onchange="onFilePicked(this)">
+            <input type="file" id="file-input" accept="*" multiple style="display:none" data-on-change="onFilePicked" data-a-change='["__this"]'>
             <div class="composer-field">
           <div class="composer-slot" id="composer-slot"><div class="composer-slot-inner">
           <div id="dm-bar" class="dm-bar" style="display:${composerNote(chat)?.soft ? '' : 'none'}"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span id="dm-text">${composerNote(chat)?.soft ? esc(composerNote(chat).text) : ''}</span></div>
@@ -2675,7 +2680,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
               <div class="reply-bar-name" id="attach-preview-title">Вложение</div>
               <div class="att-list" id="att-list"></div>
             </div>
-            <button onclick="clearImagePreview()" class="icon-btn" style="width:24px;height:24px">
+            <button data-on-click="clearImagePreview" class="icon-btn" style="width:24px;height:24px">
               <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
           </div>
@@ -2685,7 +2690,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
               <div class="reply-bar-name" id="reply-bar-name"></div>
               <div class="reply-bar-text" id="reply-bar-text"></div>
             </div>
-            <button onclick="hideReplyBar()" class="icon-btn" style="width:24px;height:24px">
+            <button data-on-click="hideReplyBar" class="icon-btn" style="width:24px;height:24px">
               <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
           </div>
@@ -2694,13 +2699,13 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
               <div class="reply-bar-name" id="forward-bar-name"></div>
               <div class="reply-bar-text" id="forward-bar-text"></div>
             </div>
-            <button onclick="hideForwardBar()" class="icon-btn" style="width:24px;height:24px">
+            <button data-on-click="hideForwardBar" class="icon-btn" style="width:24px;height:24px">
               <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
           </div>
           <div id="edit-bar" style="display:none" class="input-edit-bar">
             <span>Редактирование</span>
-            <button onclick="cancelEdit()" class="icon-btn" style="width:24px;height:24px;color:var(--accent)">
+            <button data-on-click="cancelEdit" class="icon-btn" style="width:24px;height:24px;color:var(--accent)">
               <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
           </div>
@@ -2710,7 +2715,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
               <div class="lprev-title" id="lprev-title"></div>
               <div class="reply-bar-text" id="lprev-site"></div>
             </div>
-            <button onclick="dismissLinkPreview()" class="icon-btn" title="Не показывать превью" aria-label="Не показывать превью" style="width:24px;height:24px">
+            <button data-on-click="dismissLinkPreview" class="icon-btn" title="Не показывать превью" aria-label="Не показывать превью" style="width:24px;height:24px">
               <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
           </div>
@@ -2718,16 +2723,16 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
             <div class="fmt-prev-l">Превью — так увидят получатели</div>
             <div class="fmt-prev-b" id="fmt-prev-b"></div>
           </div>
-          <div id="fmt-bar" style="display:none" class="fmt-bar" onmousedown="event.preventDefault()" onclick="fmtBarClick(event)">${Fmt.barHtml()}</div>
+          <div id="fmt-bar" style="display:none" class="fmt-bar" data-on-mousedown="__h27" data-on-click="fmtBarClick" data-a-click='["__event"]'>${Fmt.barHtml()}</div>
           </div></div>
               <div class="composer-field-row">
-              <div id="msg-input" class="fmt-ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Сообщение" data-ph="Сообщение…" spellcheck="true" onkeydown="handleKey(event)" oninput="onMsgInput(this)" onfocus="closeEmojiPicker()" onpointerdown="closeEmojiPicker()"></div>
-              <button class="composer-icon-btn" title="Эмодзи" onclick="toggleEmojiPicker(event)">
+              <div id="msg-input" class="fmt-ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Сообщение" data-ph="Сообщение…" spellcheck="true" data-on-keydown="handleKey" data-a-keydown='["__event"]' data-on-input="onMsgInput" data-a-input='["__this"]' data-on-focus="closeEmojiPicker" data-on-pointerdown="closeEmojiPicker"></div>
+              <button class="composer-icon-btn" title="Эмодзи" data-on-click="toggleEmojiPicker" data-a-click='["__event"]'>
                 <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>
               </button>
               </div>
             </div>
-            <button class="send-btn" id="send-btn" onclick="sendOrEdit()">
+            <button class="send-btn" id="send-btn" data-on-click="sendOrEdit">
               <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>
             </button>
           </div>
@@ -2877,8 +2882,7 @@ function emojiSectionHtml(g, kind) {
   const h = Math.ceil(g.items.length / k.cols) * k.cell;
   return '<div class="ep-head" data-head="' + g.key + '">' + g.name + '</div>' +
     '<div class="ep-row" data-row="' + g.key + '" style="contain-intrinsic-size:auto ' + h + 'px">' +
-      g.items.map(em => '<button class="emoji-item" data-em="' + em + '" onclick="' +
-        k.pick + '(\'' + em + '\')">' + em + '</button>').join('') +
+      g.items.map(em => '<button class="emoji-item" data-em="' + em + '" data-on-click="' + k.pick + '" data-a-click="' + esc(JSON.stringify([em])) + '">' + em + '</button>').join('') +
     '</div>';
 }
 
@@ -2970,7 +2974,7 @@ function toggleEmojiPicker(e) {
 function emojiTabsHtml(kind) {
   return emojiSections().map((g, i) =>
     '<button class="ep-tab" data-tab="' + g.key + '" title="' + g.name + '"' +
-    ' aria-selected="' + (i === 0) + '" onclick="emojiTabTo(\'' + g.key + '\', \'' + kind + '\')">' +
+    ' aria-selected="' + (i === 0) + '" data-on-click="emojiTabTo" data-a-click="' + esc(JSON.stringify([g.key, kind])) + '">' +
     g.icon + '</button>').join('');
 }
 
@@ -3052,7 +3056,7 @@ function filterEmoji(q, kind = 'ep') {
   scroll.innerHTML = hits.length
     ? '<div class="ep-head" data-head="found">Найдено: ' + hits.length + '</div>' +
       '<div class="ep-row" data-row="found">' + hits.map(h =>
-        '<button class="emoji-item" data-em="' + h.em + '" onclick="' + EP_KIND[kind].pick + '(\'' + h.em + '\')">' + h.em + '</button>').join('') +
+        '<button class="emoji-item" data-em="' + h.em + '" data-on-click="' + EP_KIND[kind].pick + '" data-a-click="' + esc(JSON.stringify([h.em])) + '">' + h.em + '</button>').join('') +
       '</div>'
     : '<div class="ep-miss">Ничего не нашлось</div>';
   scroll.scrollTop = 0;
@@ -3541,7 +3545,7 @@ function inviteBarHtml(chat) {
   const from = chat.invite.from_name;
   return `<div class="inv-bar" id="inv-bar">
     <div class="inv-txt">${from ? `<b>${esc(from)}</b> приглашает вас в ${fedKind(chat)}` : `Вас приглашают в ${fedKind(chat)}`}. Пока вы не вступили, участников и сообщений не видно.</div>
-    <div class="inv-btns"><button class="modal-btn-ghost" onclick="declineInvite(${chat.id})">Отклонить</button><button class="modal-btn-primary" id="inv-join" onclick="acceptInvite(${chat.id})">Вступить</button></div>
+    <div class="inv-btns"><button class="modal-btn-ghost" data-on-click="declineInvite" data-a-click="${esc(JSON.stringify([chat.id]))}">Отклонить</button><button class="modal-btn-primary" id="inv-join" data-on-click="acceptInvite" data-a-click="${esc(JSON.stringify([chat.id]))}">Вступить</button></div>
   </div>`;
 }
 async function acceptInvite(id) {
@@ -3579,15 +3583,15 @@ function chatSearchBarHtml(chatId, isSecret) {
   const open = !!(st && st.open && st.chatId === chatId);
   return `<div id="chat-search" class="chat-search${open ? ' open' : ''}">
     <svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-    <input id="cs-input" type="text" placeholder="Поиск в чате" autocomplete="off" value="${esc(open ? st.q : '')}" oninput="onChatSearchInput(this.value)" onkeydown="onChatSearchKey(event)">
+    <input id="cs-input" type="text" placeholder="Поиск в чате" autocomplete="off" value="${esc(open ? st.q : '')}" data-on-input="onChatSearchInput" data-a-input='["__value"]' data-on-keydown="onChatSearchKey" data-a-keydown='["__event"]'>
     <span class="cs-count" id="cs-count">${open ? csCountText() : ''}</span>
-    <button class="icon-btn" id="cs-up" title="Предыдущее" onclick="chatSearchStep(-1)">
+    <button class="icon-btn" id="cs-up" title="Предыдущее" data-on-click="chatSearchStep" data-a-click='[-1]'>
       <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
     </button>
-    <button class="icon-btn" id="cs-down" title="Следующее" onclick="chatSearchStep(1)">
+    <button class="icon-btn" id="cs-down" title="Следующее" data-on-click="chatSearchStep" data-a-click='[1]'>
       <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
     </button>
-    <button class="icon-btn" title="Закрыть поиск" onclick="closeChatSearch()">
+    <button class="icon-btn" title="Закрыть поиск" data-on-click="closeChatSearch">
       <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
     </button>
   </div>`;
@@ -3763,13 +3767,13 @@ function renderPinBar() {
     : 'Закреплённое сообщение';
   bar.style.display = 'flex';
   bar.innerHTML = `${ticks}
-    <span class="pin-body" onclick="pinBarClick()">
+    <span class="pin-body" data-on-click="pinBarClick">
       <span class="pin-slide" id="pin-slide">
         <span class="pin-label">${esc(label)}</span>
         <span class="pin-text">${esc(p.sender_name)}: ${esc(pinPreviewText(p))}</span>
       </span>
     </span>
-    <button class="icon-btn pin-unpin" title="Открепить" onclick="unpinMessage(${p.message_id})">
+    <button class="icon-btn pin-unpin" title="Открепить" data-on-click="unpinMessage" data-a-click="${esc(JSON.stringify([p.message_id]))}">
       <svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
     </button>`;
 }
@@ -3810,7 +3814,7 @@ function renderReactions(msgId) {
   if (!counts.length) return '';
   return `<div class="reactions">${counts.map(r => {
     const mine = String(r.user_ids || '').split(',').includes(String(S.user?.id));
-    return `<button class="reaction-btn${mine ? ' mine' : ''}" data-msg-id="${msgId}" data-reaction="${esc(r.reaction)}" onclick="sendReaction(${msgId},'${r.reaction}')">` +
+    return `<button class="reaction-btn${mine ? ' mine' : ''}" data-msg-id="${msgId}" data-reaction="${esc(r.reaction)}" data-on-click="sendReaction" data-a-click="${esc(JSON.stringify([msgId, `${r.reaction}`]))}">` +
       `<span class="ra-emoji">${r.reaction}</span><span class="ra-count">${r.count}</span></button>`;
   }).join('')}</div>`;
 }
@@ -3860,7 +3864,7 @@ function _rtRender(btn, reaction, users) {
       const url = `${httpProto()}://${S.server}/api/users/${u.user_id}/avatar?t=${S.avatarTs || 1}`;
       return `<span class="rt-row" style="--i:${i}">` +
         `<span class="rt-av ${userAvatarColor(u.user_id)}">${esc(initials(u.display_name) || '?')}` +
-        `<img src="${url}" alt="" onerror="this.style.display='none'"></span>` +
+        `<img src="${url}" alt="" data-on-error="__h17"></span>` +
         `<span class="rt-name">${esc(u.display_name)}</span></span>`;
     }).join('') +
     (rest > 0 ? `<span class="rt-row rt-more">и ещё ${rest}</span>` : '');
@@ -4021,7 +4025,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       : isMemberRemove
       ? '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="22" x2="16" y1="11" y2="11"/>'
       : '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>';
-    return `<div class="irc-msg" data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}" oncontextmenu="event.preventDefault()" style="padding:2px 0">
+    return `<div class="irc-msg" data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}" data-on-contextmenu="__h27" style="padding:2px 0">
       <div style="width:100%;display:flex;justify-content:center;padding:0 20px;box-sizing:border-box">
         <div style="${pillStyle}border-radius:14px;padding:5px 14px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;max-width:80%">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.7">${iconSvg}</svg>
@@ -4053,12 +4057,12 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const avColor = userAvatarColor(m.sender_id, m.sender_tag);
   // аватарка 32px вмещает обе буквы; обрезка до одной осталась от прежних 28px
   const avLetter = initials(m.sender_name);
-  const avImg = `<img src="${httpProto()}://${S.server}/api/users/${m.sender_id}/avatar" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%" onerror="this.style.display='none'">`;
+  const avImg = `<img src="${httpProto()}://${S.server}/api/users/${m.sender_id}/avatar" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%" data-on-error="__h17">`;
   const rAtt = m.reply_attachment;
   const rIsImg = rAtt?.mime?.startsWith('image/');
   const rIsVideo = rAtt?.mime?.startsWith('video/');
   const rThumbHtml = rAtt && !m.reply_deleted ? ((rIsImg || (rIsVideo && rAtt.thumb))
-    ? `<img src="${httpProto()}://${S.server}${rAtt.thumb || rAtt.url}" class="irc-reply-thumb" onerror="this.style.display='none'">`
+    ? `<img src="${httpProto()}://${S.server}${rAtt.thumb || rAtt.url}" class="irc-reply-thumb" data-on-error="__h17">`
     : `<div class="irc-reply-thumb irc-reply-file"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg></div>`
   ) : '';
   const rTextRaw = m.reply_deleted
@@ -4073,7 +4077,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     ? 'reply-mine'
     : 'reply-' + (_replyTagCls === 'default' ? 'plain' : _replyTagCls);
   const replyHtml = m.reply_to_id ? `
-    <div class="irc-reply ${replyCls}" onclick="scrollToMsg(${m.reply_to_id})">
+    <div class="irc-reply ${replyCls}" data-on-click="scrollToMsg" data-a-click="${esc(JSON.stringify([m.reply_to_id]))}">
       ${rThumbHtml}
       <div class="irc-reply-body">
         <div class="irc-reply-name">${esc(m.reply_sender_name || '')}</div>
@@ -4098,7 +4102,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const senderCls = senderNameClass(m.sender_tag);
   // имя и тег стоят над пузырём; у своих и внутри серии их скрывает CSS
   const header = `<div class="irc-header">
-      <span class="irc-name msg-sender-name ${senderCls}${mine?' mine':''}" onclick="event.stopPropagation();mentionUserInComposer(${m.sender_id})">${senderName}</span>${ircTagHtml}
+      <span class="irc-name msg-sender-name ${senderCls}${mine?' mine':''}" data-on-click="__h28" data-a-click="${esc(JSON.stringify([m.sender_id]))}">${senderName}</span>${ircTagHtml}
     </div>`;
   const fwdN = isDeleted ? 0 : (Number(m.forward_count) || 0);   // пересылали: в конце текста резервируется место под отметку
   const metaHtml = `<div class="irc-meta">${fwdMarkHtml(m)}<span class="status-wrap">${statusIcon}</span><span class="irc-time">${time}</span></div>`;
@@ -4122,8 +4126,8 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const posCls = (isFirst ? ' irc-first' : '') + (isTail ? ' irc-tail' : '') + (emojiOnly ? ' emoji-msg' : '');
 
   return `<div class="irc-msg${posCls}${m._optimistic?' msg-optimistic':''}${m._state==='failed'?' msg-failed':''}"${m._cid?` data-cid="${m._cid}"`:''}${mine?` data-mine="1"`:``}${isChatGroup?'':' data-dm="1"'} data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
-    oncontextmenu="${!isDeleted?`showCtxMenu(event,${m.id},${m.sent_at},${mine})`:'event.preventDefault()'}"
-    ondblclick="${!isDeleted?`dblReply(${m.id})`:''}">
+    data-on-contextmenu="${isDeleted ? 'ctxNoop' : 'showCtxMenu'}" data-a-contextmenu="${esc(JSON.stringify(isDeleted ? [] : ['__event', m.id, m.sent_at, mine]))}"
+    data-on-dblclick="${isDeleted ? 'noop' : 'dblReply'}" data-a-dblclick="${esc(JSON.stringify(isDeleted ? [] : [m.id]))}">
     <div class="irc-content">
       ${header}
       <div class="bubble-row">
@@ -4151,11 +4155,11 @@ function attachBlockHtml(att) {
   } else if (att?.url && !att.expired && !att.enc) {
     const attUrl = `${httpProto()}://${S.server}${att.url}`;
     if (att.mime?.startsWith('image/')) {
-      attachHtml = `<div class="bubble-image" data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'image')}" data-lb-type="image" onclick="openLightboxEl(this)"><img src="${httpProto()}://${S.server}${imgPreviewPath(att)}" loading="lazy"></div>`;
+      attachHtml = `<div class="bubble-image" data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'image')}" data-lb-type="image" data-on-click="openLightboxEl" data-a-click='["__this"]'><img src="${httpProto()}://${S.server}${imgPreviewPath(att)}" loading="lazy"></div>`;
     } else if (att.mime?.startsWith('video/')) {
       const posterUrl = att.thumb ? `${httpProto()}://${S.server}${att.thumb}` : '';
       const safeVName = (att.name||'video').replace(/'/g,"\\'");
-      attachHtml = `<div class="bubble-image bubble-video" data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'video')}" data-lb-type="video" onclick="openLightboxEl(this)">
+      attachHtml = `<div class="bubble-image bubble-video" data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'video')}" data-lb-type="video" data-on-click="openLightboxEl" data-a-click='["__this"]'>
         ${posterUrl ? `<img src="${posterUrl}" loading="lazy">` : `<video src="${attUrl}" preload="metadata" muted></video>`}
         <div class="bubble-video-play"><svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg></div>
       </div>`;
@@ -4166,11 +4170,11 @@ function attachBlockHtml(att) {
       const safeLocal = (localPath||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       const safeUrl = attUrl.replace(/'/g,"\\'");
       const safeName = (att.name||'file').replace(/'/g,"\\'");
-      const clickAction = isDone ? `openDownloadedFile('${safeLocal}')` : `downloadAttachment('${safeUrl}','${safeName}')`;
+      const clickAction = isDone ? ['openDownloadedFile', [localPath]] : ['downloadAttachment', [attUrl, att.name || 'file']];
       const rightEl = isDone
         ? `<span class="bubble-file-open-label">Открыть</span>`
         : `<svg class="dl-icon" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`;
-      attachHtml = `<div class="bubble-file${isDone?' bubble-file-done':''}" data-att-url="${attUrl}" onclick="${clickAction}">
+      attachHtml = `<div class="bubble-file${isDone?' bubble-file-done':''}" data-att-url="${attUrl}" data-on-click="${clickAction[0]}" data-a-click="${esc(JSON.stringify(clickAction[1]))}">
         <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="flex-shrink:0" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
         <div class="bubble-file-info"><div class="bubble-file-name">${att.name||'Файл'}</div>${sizeFmt?`<div class="bubble-file-size">${sizeFmt}</div>`:''}</div>
         ${rightEl}
@@ -4362,7 +4366,7 @@ function _updateMentionPopup(el) {
   popShow(popup);
   _mentionIdx = -1;
   popup.innerHTML = filtered.map(m =>
-    `<div class="mention-item" data-name="${esc(m.display_name||m.username)}" onclick="insertMention('${esc(m.display_name||m.username)}')">
+    `<div class="mention-item" data-name="${esc(m.display_name||m.username)}" data-on-click="insertMention" data-a-click="${esc(JSON.stringify([`${esc(m.display_name||m.username)}`]))}">
       <div class="av av-sm av-round ${userAvatarColor(m.id, m.tag)}" data-av-user="${m.id}">${initials(m.display_name)}</div>
       <div><div class="mn-name">${esc(m.display_name||m.username)}</div><div class="mn-login">@${esc(m.username)}</div></div>
     </div>`
@@ -4524,7 +4528,7 @@ function paintLinkPreview(p) {
     document.getElementById('lprev-title').textContent = p.title || p.site || p.url;
     document.getElementById('lprev-site').textContent = p.site || '';
     const th = document.getElementById('lprev-thumb');
-    th.innerHTML = p.image ? `<img src="${httpProto()}://${S.server}${esc(p.image)}" alt="" onerror="this.remove()">` : '';
+    th.innerHTML = p.image ? `<img src="${httpProto()}://${S.server}${esc(p.image)}" alt="" data-on-error="__h29">` : '';
     th.style.display = p.image ? '' : 'none';
   }
   bar.style.display = p ? '' : 'none';
@@ -4699,7 +4703,7 @@ function outboxLoad() {
   } catch {}
 }
 const newClientId = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-const failNoteHtml = cid => `<div class="msg-failnote">Не отправлено · <button type="button" onclick="retryOutbox('${cid}')">Повторить</button> · <button type="button" onclick="discardOutbox('${cid}')">Удалить</button></div>`;
+const failNoteHtml = cid => `<div class="msg-failnote">Не отправлено · <button type="button" data-on-click="retryOutbox" data-a-click="${esc(JSON.stringify([`${cid}`]))}">Повторить</button> · <button type="button" data-on-click="discardOutbox" data-a-click="${esc(JSON.stringify([`${cid}`]))}">Удалить</button></div>`;
 function queueSend(payload, temp) {
   outboxLoad();
   const it = { cid: payload.client_id, chatId: payload.chat_id, payload, temp };
@@ -4886,7 +4890,7 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
     const _freq = getFreqEmojis(7);
     // Уже поставленная вами реакция подсвечена
     const _mine = new Set([...document.querySelectorAll(`.reaction-btn.mine[data-msg-id="${msgId}"]`)].map(b => b.dataset.reaction));
-    ctxReactEl.innerHTML = _freq.map(em=>`<button class="ctx-reaction-btn${_mine.has(em) ? ' mine' : ''}" onclick="ctxReact('${em}')">${em}</button>`).join('')+`<button class="ctx-reaction-btn ctx-reaction-more" onclick="showReactionPicker(event)">→</button>`;
+    ctxReactEl.innerHTML = _freq.map(em=>`<button class="ctx-reaction-btn${_mine.has(em) ? ' mine' : ''}" data-on-click="ctxReact" data-a-click="${esc(JSON.stringify([`${em}`]))}">${em}</button>`).join('')+`<button class="ctx-reaction-btn ctx-reaction-more" data-on-click="showReactionPicker" data-a-click='["__event"]'>→</button>`;
   }
   const _cap = document.getElementById('ctx-cap');
   if (_cap) {
@@ -5197,8 +5201,8 @@ function renderAttStrip() {
     const thumb = a.prev || (a.state === 'done' && a.data && !a.data.enc && a.data.thumb ? `${httpProto()}://${S.server}${a.data.thumb}` : '');
     return `<div class="att-item ${a.state}" data-att-id="${a.id}" title="${esc(a.name || '')}">${thumb ? `<img src="${esc(thumb)}" alt="">` : `<span class="att-file">${fileIco}<small>${esc((a.name || '').slice(-14))}</small></span>`}`
       + (a.state === 'done' ? '' : `<div class="att-prog"><i style="width:${a.pct}%"></i><span>${a.state === 'proc' ? '…' : a.pct + '%'}</span></div>`)
-      + `<button type="button" class="att-x" onclick="removeAtt(${a.id})" aria-label="Убрать"><svg width="10" height="10" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>`;
-  }).join('') + (n && n < MAX_ATTACH && !S.secretChatIds.has(S.activeChatId) ? '<button type="button" class="att-add" onclick="pickFile()" title="Добавить ещё" aria-label="Добавить ещё"><svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>' : '');
+      + `<button type="button" class="att-x" data-on-click="removeAtt" data-a-click="${esc(JSON.stringify([a.id]))}" aria-label="Убрать"><svg width="10" height="10" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>`;
+  }).join('') + (n && n < MAX_ATTACH && !S.secretChatIds.has(S.activeChatId) ? '<button type="button" class="att-add" data-on-click="pickFile" title="Добавить ещё" aria-label="Добавить ещё"><svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>' : '');
   const sendBtn = document.getElementById('send-btn');
   if (sendBtn) sendBtn.classList.toggle('ready', n > 0 || !!document.getElementById('msg-input')?.value.trim());
   _stickyBottom();
@@ -5249,7 +5253,7 @@ function showSystemAnnouncement(text) {
         Системное объявление
       </div>
       <div id="announcement-text" style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap"></div>
-      <button onclick="closeSystemAnnouncement()" style="margin-top:16px;width:100%;height:36px;padding:0;background:var(--accent);color:#0c0e10;border:none;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer">OK</button>
+      <button data-on-click="closeSystemAnnouncement" style="margin-top:16px;width:100%;height:36px;padding:0;background:var(--accent);color:#0c0e10;border:none;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer">OK</button>
     </div>`;
     document.body.appendChild(modal);
   }
@@ -5375,7 +5379,7 @@ function mediaTileHtml(a, cls) {
   const url = `${httpProto()}://${S.server}${a.url}`;
   const v = (a.mime || '').startsWith('video/');
   const poster = cls === 'bubble-image' && !v ? `${httpProto()}://${S.server}${imgPreviewPath(a)}` : a.thumb ? `${httpProto()}://${S.server}${a.thumb}` : (v ? '' : url);
-  return `<div class="${cls}" data-lb-url="${esc(url)}" data-lb-name="${esc(a.name || (v ? 'video' : 'image'))}" data-lb-type="${v ? 'video' : 'image'}" onclick="openLightboxEl(this)">`
+  return `<div class="${cls}" data-lb-url="${esc(url)}" data-lb-name="${esc(a.name || (v ? 'video' : 'image'))}" data-lb-type="${v ? 'video' : 'image'}" data-on-click="openLightboxEl" data-a-click='["__this"]'>`
     + (poster ? `<img src="${esc(poster)}" loading="lazy">` : `<video src="${esc(url)}" preload="metadata" muted></video>`) + (v ? _PLAY_SVG : '') + '</div>';
 }
 function fileRowHtml(att) {
@@ -5387,11 +5391,11 @@ function fileRowHtml(att) {
   const safeLocal = (localPath||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   const safeUrl = attUrl.replace(/'/g,"\\'");
   const safeName = (att.name||'file').replace(/'/g,"\\'");
-  const clickAction = isDone ? `openDownloadedFile('${safeLocal}')` : `downloadAttachment('${safeUrl}','${safeName}')`;
+  const clickAction = isDone ? ['openDownloadedFile', [localPath]] : ['downloadAttachment', [attUrl, att.name || 'file']];
   const rightEl = isDone
     ? `<span class="bubble-file-open-label">Открыть</span>`
     : `<svg class="dl-icon" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`;
-  return `<div class="bubble-file${isDone?' bubble-file-done':''}" data-att-url="${attUrl}" onclick="${clickAction}">
+  return `<div class="bubble-file${isDone?' bubble-file-done':''}" data-att-url="${attUrl}" data-on-click="${clickAction[0]}" data-a-click="${esc(JSON.stringify(clickAction[1]))}">
     <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="flex-shrink:0" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
     <div class="bubble-file-info"><div class="bubble-file-name">${esc(att.name||'Файл')}</div>${sizeFmt?`<div class="bubble-file-size">${sizeFmt}</div>`:''}</div>
     ${rightEl}
@@ -5555,9 +5559,9 @@ function showReactionPicker(e) {
     picker.innerHTML =
       '<div class="ep-search">' + "<svg viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg>" +
         '<input id="rp-search-input" placeholder="Поиск смайла" autocomplete="off"' +
-        ' oninput="filterEmoji(this.value, \'rp\')"></div>' +
+        ' data-on-input="__h30"></div>' +
       '<div class="ep-tabs" id="rp-tabs">' + emojiTabsHtml('rp') + '</div>' +
-      '<div class="ep-scroll" id="rp-scroll" onscroll="syncEmojiTabs(\'rp\')"></div>';
+      '<div class="ep-scroll" id="rp-scroll" data-on-scroll="__h31"></div>';
   }
   // «Часто используемые» меняются от нажатий — сверяем и пересобираем при сдвиге
   const scroll = document.getElementById('rp-scroll');
@@ -6362,9 +6366,9 @@ async function refreshDirectory() {
 function openAddContact() {
   document.getElementById('ac-body').innerHTML = `
     <p class="ac-lead">Введите логин человека точно. Если он на другом сервере, укажите адрес: @сервер:логин. Он не узнает, что вы его добавили.</p>
-    <div class="ac-fld" id="ac-fld"><span>@</span><input id="ac-input" placeholder="логин или сервер:логин" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="acClear()" onkeydown="if(event.key==='Enter')submitAddContact()"></div>
+    <div class="ac-fld" id="ac-fld"><span>@</span><input id="ac-input" placeholder="логин или сервер:логин" autocomplete="off" autocapitalize="off" spellcheck="false" data-on-input="acClear" data-on-keydown="__h32"></div>
     <div class="ac-hint" id="ac-hint">Логин можно узнать у самого человека.</div>
-    <div class="ac-foot"><button class="modal-btn-ghost" onclick="closeModal('modal-addcontact')">Отмена</button><button class="modal-btn-primary" id="ac-go" onclick="submitAddContact()">Добавить</button></div>`;
+    <div class="ac-foot"><button class="modal-btn-ghost" data-on-click="closeModal" data-a-click='["modal-addcontact"]'>Отмена</button><button class="modal-btn-primary" id="ac-go" data-on-click="submitAddContact">Добавить</button></div>`;
   openModal('modal-addcontact');
   setTimeout(() => document.getElementById('ac-input')?.focus(), 80);
 }
@@ -6452,7 +6456,7 @@ function csPaneBlocks() {
   }
   return `<div class="cs-gt">Заблокированные</div><div class="cs-g">${list.map(b => `<div class="cs-r"><div class="cs-l"><b>${esc(b.display_name)}</b>
       <span>${b.federated ? esc(fedAddr(b)) + ' · другой сервер' : '@' + esc(b.username) + (b.workspace_name ? ' · ' + esc(b.workspace_name) : '')}</span></div>
-      <div class="cs-ctl"><button type="button" class="cs-btn ghost" onclick="unblockUser(${b.id})">Разблокировать</button></div></div>`).join('')}</div>
+      <div class="cs-ctl"><button type="button" class="cs-btn ghost" data-on-click="unblockUser" data-a-click="${esc(JSON.stringify([b.id]))}">Разблокировать</button></div></div>`).join('')}</div>
     <p class="cs-hint">Заблокированный не может писать вам в личные сообщения. Общие группы и комнаты остаются.</p>`;
 }
 
@@ -6543,9 +6547,9 @@ function renderChatMedia(keep) {
       if (mk !== last) { if (open) body += '</div>'; body += `<div class="cm-month">${mk}</div><div class="${c.tab === 'media' ? 'cm-grid' : 'cm-list'}">`; last = mk; open = true; }
       if (c.tab === 'media') {
         const v = /^video\//.test(x.att.mime);
-        body += `<button type="button" class="cm-tile" onclick="cmOpen(${k})" title="${esc(x.sender_name)}, ${cmWhen(x.sent_at)}"><img src="${esc(cmAbs(x.att.thumb || x.att.url))}" loading="lazy" alt="">${v ? `<span class="cm-play">${gmSvg('play', 12, 0)}</span>` : ''}</button>`;
+        body += `<button type="button" class="cm-tile" data-on-click="cmOpen" data-a-click="${esc(JSON.stringify([k]))}" title="${esc(x.sender_name)}, ${cmWhen(x.sent_at)}"><img src="${esc(cmAbs(x.att.thumb || x.att.url))}" loading="lazy" alt="">${v ? `<span class="cm-play">${gmSvg('play', 12, 0)}</span>` : ''}</button>`;
       } else if (c.tab === 'files') {
-        body += `<button type="button" class="cm-row" onclick="cmOpen(${k})"><span class="cm-ic">${gmSvg('file', 20)}</span><span class="cm-tx"><b>${esc(x.att.name || 'Файл')}</b><span>${esc([cmSize(x.att.size), x.sender_name, cmWhen(x.sent_at)].filter(Boolean).join(' · '))}</span></span></button>`;
+        body += `<button type="button" class="cm-row" data-on-click="cmOpen" data-a-click="${esc(JSON.stringify([k]))}"><span class="cm-ic">${gmSvg('file', 20)}</span><span class="cm-tx"><b>${esc(x.att.name || 'Файл')}</b><span>${esc([cmSize(x.att.size), x.sender_name, cmWhen(x.sent_at)].filter(Boolean).join(' · '))}</span></span></button>`;
       } else {
         const u = x.urls[0];
         body += `<a class="cm-row" href="${esc(u)}" target="_blank" rel="noopener noreferrer"><span class="cm-ic">${gmSvg('link', 20)}</span><span class="cm-tx"><b>${esc(x.title || x.site || u)}</b><span>${esc(u.replace(/^https?:\/\//, '').slice(0, 70))} · ${esc(x.sender_name)} · ${cmWhen(x.sent_at)}</span></span></a>`;
@@ -6555,9 +6559,9 @@ function renderChatMedia(keep) {
     if (c.more[c.tab]) body += '<div class="cm-empty">Загрузка…</div>';
   }
   box.innerHTML = `
-    <div class="gm-top"><span class="t">Медиа · ${esc(chatName(chat))}</span><button class="icon-btn" onclick="closeModal('modal-media')" aria-label="Закрыть">${gmSvg('x', 16)}</button></div>
-    <div class="cm-tabs" role="tablist">${CM_TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${c.tab === k}" class="${c.tab === k ? 'on' : ''}" onclick="cmTab('${k}')">${l}</button>`).join('')}</div>
-    <div class="cm-scroll" onscroll="cmScroll(this)">${body}</div>`;
+    <div class="gm-top"><span class="t">Медиа · ${esc(chatName(chat))}</span><button class="icon-btn" data-on-click="closeModal" data-a-click='["modal-media"]' aria-label="Закрыть">${gmSvg('x', 16)}</button></div>
+    <div class="cm-tabs" role="tablist">${CM_TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${c.tab === k}" class="${c.tab === k ? 'on' : ''}" data-on-click="cmTab" data-a-click="${esc(JSON.stringify([`${k}`]))}">${l}</button>`).join('')}</div>
+    <div class="cm-scroll" data-on-scroll="cmScroll" data-a-scroll='["__this"]'>${body}</div>`;
   const sc = box.querySelector('.cm-scroll');
   if (sc) sc.scrollTop = top;
 }
@@ -6582,24 +6586,24 @@ function renderProfile() {
   const blocked = isBlockedId(id);
   const st = peerStatusText(id), on = S.presence[id] === 'online';
   const loginTxt = fed ? fedAddr(u) : '@' + u.username;
-  const rows = [`<button type="button" class="pf-r pf-cp" id="pf-login" aria-label="Скопировать логин: ${esc(loginTxt)}" onclick="pfCopyLogin()"><b>Логин</b><span>${esc(loginTxt)}<i class="pf-ci">${CS_I.copy}</i></span></button>`];
+  const rows = [`<button type="button" class="pf-r pf-cp" id="pf-login" aria-label="Скопировать логин: ${esc(loginTxt)}" data-on-click="pfCopyLogin"><b>Логин</b><span>${esc(loginTxt)}<i class="pf-ci">${CS_I.copy}</i></span></button>`];
   if (fed) rows.push(`<div class="pf-r"><b>Сервер</b><span class="pf-srv">${FED_GLOBE}Другой сервер</span></div>`);
   else if (otherSpace) rows.push(`<div class="pf-r"><b>Пространство</b><span>${esc(u.workspace_name)}</span></div>`);
   else if (!fed && u.rel === 'ws' && myWsCount() > 1 && u.shared_workspaces?.length) rows.push(`<div class="pf-r"><b>${u.shared_workspaces.length > 1 ? 'Пространства' : 'Пространство'}</b><span>${esc(u.shared_workspaces.join(' · '))}</span></div>`);
   if (canContact) rows.push(`<div class="pf-r"><b>В ваших контактах</b><span>${u.contact ? 'Да' : 'Нет'}</span></div>`);
   const groups = (S.chats || []).filter(c => (c.type === 'group' || c.type === 'room') && !c.parent_id && !c.is_secret && c.members?.some(m => m.id === id));
   const dmChat = (S.chats || []).find(c => c.type === 'direct' && !c.is_secret && getPeerUserId(c) === id);
-  const mediaRow = dmChat ? `<button type="button" class="pf-g pf-link" onclick="pfMedia(${dmChat.id})">${gmSvg('image', 18)}<b>Медиа, файлы и ссылки</b><span class="pf-ch">${gmSvg('chev', 16)}</span></button>` : '';
+  const mediaRow = dmChat ? `<button type="button" class="pf-g pf-link" data-on-click="pfMedia" data-a-click="${esc(JSON.stringify([dmChat.id]))}">${gmSvg('image', 18)}<b>Медиа, файлы и ссылки</b><span class="pf-ch">${gmSvg('chev', 16)}</span></button>` : '';
   const groupsHtml = groups.length
-    ? `<div class="pf-g pf-gl">${groups.map(c => `<div class="pf-gr" onclick="pfOpenChat(${c.id})">
+    ? `<div class="pf-g pf-gl">${groups.map(c => `<div class="pf-gr" data-on-click="pfOpenChat" data-a-click="${esc(JSON.stringify([c.id]))}">
         <div class="av av-sm ${chatAvatarClass(c)}${c.type === 'room' && c.has_topics ? ' av-sq' : ' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
         <div class="pf-gi"><b>${esc(chatName(c))}</b><span>${c.type === 'room' ? 'Комната' : 'Группа'} · ${nMembers(c.members.length)}</span></div></div>`).join('')}</div>`
     : `<div class="pf-g"><div class="pf-empty">Общих групп и комнат нет</div></div>`;
   box.innerHTML = `
     <div class="pf-scroll">
-      <div class="pf-cover" style="--cv:${pfCoverColor(cls)}"><button class="pf-x" type="button" aria-label="Закрыть" onclick="closeModal('modal-profile')">${PF_I.close}</button></div>
+      <div class="pf-cover" style="--cv:${pfCoverColor(cls)}"><button class="pf-x" type="button" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-profile"]'>${PF_I.close}</button></div>
       <div class="pf-head">
-        <div class="pf-av ${cls}"><span>${esc(initials(u.display_name))}</span><img src="${httpProto()}://${S.server}/api/users/${u.id}/avatar" onerror="this.style.display='none'">${presenceDot(id)}</div>
+        <div class="pf-av ${cls}"><span>${esc(initials(u.display_name))}</span><img src="${httpProto()}://${S.server}/api/users/${u.id}/avatar" data-on-error="__h17">${presenceDot(id)}</div>
         <div class="pf-tx"><div class="pf-name">${esc(u.display_name)}${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div><div class="pf-st${on ? ' on' : ''}">${esc(st)}</div></div>
       </div>
       <div class="pf-body">
@@ -6611,10 +6615,10 @@ function renderProfile() {
       </div>
     </div>
     <div class="pf-foot">
-      <button type="button" class="pf-fb ${blocked ? 'modal-btn-ghost' : 'pf-danger'}" onclick="pfBlock()">${blocked ? PF_I.unban + 'Разблокировать' : PF_I.ban + 'Заблокировать'}</button>
+      <button type="button" class="pf-fb ${blocked ? 'modal-btn-ghost' : 'pf-danger'}" data-on-click="pfBlock">${blocked ? PF_I.unban + 'Разблокировать' : PF_I.ban + 'Заблокировать'}</button>
       <span class="pf-sp"></span>
-      ${canContact ? `<button type="button" class="modal-btn-ghost pf-fc" onclick="pfContact()">${u.contact ? PF_I.rem + 'Из контактов' : PF_I.add + 'В контакты'}</button>` : ''}
-      <button type="button" class="modal-btn-primary pf-fw" onclick="pfWrite()">${PF_I.msg}Написать</button>
+      ${canContact ? `<button type="button" class="modal-btn-ghost pf-fc" data-on-click="pfContact">${u.contact ? PF_I.rem + 'Из контактов' : PF_I.add + 'В контакты'}</button>` : ''}
+      <button type="button" class="modal-btn-primary pf-fw" data-on-click="pfWrite">${PF_I.msg}Написать</button>
     </div>`;
   applyAvatars();   // фото общих групп и комнат
 }
@@ -6742,7 +6746,7 @@ async function onGroupAvatarChange(input) {
 // ── NEW CHAT MODAL ──
 // Мини-аватар для списков выбора: инициалы + фото поверх если есть
 function ppAvHtml(u) {
-  return `<div class="pp-av ${userAvatarColor(u.id, u.tag)}"><span>${initials(u.display_name)}</span><img src="${httpProto()}://${S.server}/api/users/${u.id}/avatar" loading="lazy" onerror="this.style.display='none'"></div>`;
+  return `<div class="pp-av ${userAvatarColor(u.id, u.tag)}"><span>${initials(u.display_name)}</span><img src="${httpProto()}://${S.server}/api/users/${u.id}/avatar" loading="lazy" data-on-error="__h17"></div>`;
 }
 
 // ── НОВЫЙ ЧАТ ──
@@ -6778,17 +6782,17 @@ function ncStep1() {
   ncHead('Новый чат', '', false);
   document.getElementById('nc-body').innerHTML = `
     <div class="nc-kinds">
-      <button class="nc-kind" onclick="ncPick('direct')">
+      <button class="nc-kind" data-on-click="ncPick" data-a-click='["direct"]'>
         <span class="nc-kind-ic">${NC_ICON.person}</span>
         <span class="nc-kind-txt"><b>Личный чат</b><span>Личная переписка с пользователем</span></span>
         <span class="nc-kind-go">›</span>
       </button>
-      <button class="nc-kind" onclick="ncPick('secret')">
+      <button class="nc-kind" data-on-click="ncPick" data-a-click='["secret"]'>
         <span class="nc-kind-ic">${NC_ICON.secret}</span>
         <span class="nc-kind-txt"><b>Секретный чат</b><span>Сквозное шифрование, сообщения только на ваших устройствах</span></span>
         <span class="nc-kind-go">›</span>
       </button>
-      <button class="nc-kind" onclick="ncPick('group')">
+      <button class="nc-kind" data-on-click="ncPick" data-a-click='["group"]'>
         <span class="nc-kind-ic">${NC_ICON.group}</span>
         <span class="nc-kind-txt"><b>Группа</b><span>Общая переписка с названием и участниками</span></span>
         <span class="nc-kind-go">›</span>
@@ -6803,19 +6807,19 @@ function ncPick(kind) {
   ncHead(group ? 'Новая группа' : kind === 'secret' ? 'Секретный чат' : 'Личный чат', 'Шаг 2 из 2', true);
   document.getElementById('nc-body').innerHTML = `
     ${group ? `<div class="nc-group-bar">
-      <div class="av av-md av-round av-green" id="new-group-av" style="cursor:pointer;flex-shrink:0" onclick="triggerGroupAvatarUpload()">Г</div>
+      <div class="av av-md av-round av-green" id="new-group-av" style="cursor:pointer;flex-shrink:0" data-on-click="triggerGroupAvatarUpload">Г</div>
       <input id="group-name" class="nc-name-input" placeholder="Название группы" autocomplete="off">
-      <input type="file" id="group-avatar-input" accept="image/*" style="display:none" onchange="onGroupAvatarChange(this)">
+      <input type="file" id="group-avatar-input" accept="image/*" style="display:none" data-on-change="onGroupAvatarChange" data-a-change='["__this"]'>
     </div>` : ''}
     <div class="nc-search">
       ${NC_ICON.search}
-      <input id="nc-search-input" placeholder="Поиск по имени или логину" autocomplete="off" oninput="filterModalUsers(this.value)">
+      <input id="nc-search-input" placeholder="Поиск по имени или логину" autocomplete="off" data-on-input="filterModalUsers" data-a-input='["__value"]'>
     </div>
     <div id="nc-list" class="users-list nc-list"></div>
     ${group ? `<div class="nc-foot">
       <span class="nc-hint" id="nc-hint">Отметьте участников</span>
-      <button class="modal-btn-ghost" onclick="ncBack()">Назад</button>
-      <button class="modal-btn-primary" onclick="createGroup()">Создать группу</button>
+      <button class="modal-btn-ghost" data-on-click="ncBack">Назад</button>
+      <button class="modal-btn-primary" data-on-click="createGroup">Создать группу</button>
     </div>` : `<div class="nc-foot"><span class="nc-hint">Нажмите на человека — откроется переписка</span></div>`}`;
   renderModalUsers('nc-list', group);
   document.getElementById(group ? 'group-name' : 'nc-search-input')?.focus();
@@ -6836,7 +6840,7 @@ function renderModalUsers(containerId, multi, filter='') {
   // Людей с других серверов нельзя добавить в группу и позвать в секретный чат: с ними только обычная личная переписка
   const list = S.allUsers.filter(u=>isPickable(u)&&!(u.federated&&((multi&&u.rel!=='ws')||S.ncKind==='secret'))&&(!filter||u.display_name.toLowerCase().includes(filter)||u.username.toLowerCase().includes(filter)));
   container.innerHTML = list.map(u=>`
-    <div class="pp-row${multi&&S.ncSelected?.has(u.id)?' on':''}" data-uid="${u.id}" onclick="${multi?`toggleModalUser(${u.id})`:S.ncKind==='secret'?`startSecret(${u.id})`:`startDirect(${u.id})`}">
+    <div class="pp-row${multi&&S.ncSelected?.has(u.id)?' on':''}" data-uid="${u.id}" data-on-click="${multi ? 'toggleModalUser' : S.ncKind==='secret' ? 'startSecret' : 'startDirect'}" data-a-click="${esc(JSON.stringify([u.id]))}">
       ${ppAvHtml(u)}
       <div class="pp-col"><div class="pp-line"><span class="pp-name">${esc(u.display_name)}</span>${u.tag?`<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>`:''}</div>${wsTag(u)}</div>
     </div>`).join('') || '<div class="pp-empty">Нет пользователей</div>';
@@ -7110,10 +7114,10 @@ function scAttachHtml(m, att) {
   const sizeFmt = meta.s ? (meta.s > 1048576 ? (meta.s / 1048576).toFixed(1) + ' МБ' : Math.round(meta.s / 1024) + ' КБ') : '';
   if (meta.m?.startsWith('image/')) {
     const blob = S.scAttBlob.get(m.id);
-    if (blob && S.scKeys[m.chat_id]) return `<div class="bubble-image" onclick="scOpenImage(${m.id})"><img src="${esc(blob)}" loading="lazy"></div>`;
+    if (blob && S.scKeys[m.chat_id]) return `<div class="bubble-image" data-on-click="scOpenImage" data-a-click="${esc(JSON.stringify([m.id]))}"><img src="${esc(blob)}" loading="lazy"></div>`;
     return `<div class="bubble-file sc-att-locked"><div class="bubble-file-info"><div class="bubble-file-name">Изображение</div></div></div>`;
   }
-  return `<div class="bubble-file" onclick="scSaveAttachment(${m.id})">
+  return `<div class="bubble-file" data-on-click="scSaveAttachment" data-a-click="${esc(JSON.stringify([m.id]))}">
     <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="flex-shrink:0" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
     <div class="bubble-file-info"><div class="bubble-file-name">${esc(meta.n || 'Файл')}</div>${sizeFmt ? `<div class="bubble-file-size">${sizeFmt}</div>` : ''}</div>
     <svg class="dl-icon" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
@@ -7147,15 +7151,15 @@ function scRenderBanner(chatId) {
   let inner;
   if (mode === 'closed') {
     inner = `<div class="sc-b-txt"><div class="sc-b-t">Чат зашифрован</div><div class="sc-b-s">Сообщения видны после расшифровки</div></div>
-      <button class="sc-btn" onclick="scOpenBanner(${chatId})">Расшифровать</button>`;
+      <button class="sc-btn" data-on-click="scOpenBanner" data-a-click="${esc(JSON.stringify([chatId]))}">Расшифровать</button>`;
   } else if (mode === 'open') {
     inner = `<div class="sc-b-txt"><div class="sc-b-t">Введите код</div><div class="sc-b-s">Код назвал собеседник</div></div>
-      <input id="sc-enter-code" class="sc-b-inp" placeholder="КОД" maxlength="12" autocomplete="off" onkeydown="if(event.key==='Enter')scRedeem(${chatId})">
-      <button class="sc-btn" onclick="scRedeem(${chatId})">Подтвердить</button>
-      <button class="sc-b-x" aria-label="Свернуть" onclick="scCloseBanner(${chatId})">×</button>`;
+      <input id="sc-enter-code" class="sc-b-inp" placeholder="КОД" maxlength="12" autocomplete="off" data-on-keydown="__h33" data-a-keydown="${esc(JSON.stringify([chatId]))}">
+      <button class="sc-btn" data-on-click="scRedeem" data-a-click="${esc(JSON.stringify([chatId]))}">Подтвердить</button>
+      <button class="sc-b-x" aria-label="Свернуть" data-on-click="scCloseBanner" data-a-click="${esc(JSON.stringify([chatId]))}">×</button>`;
   } else {
     inner = `<div class="sc-b-txt"><div class="sc-b-t">Код принят</div><div class="sc-b-s"><span class="sc-dot"></span>Ждём подтверждения собеседника</div></div>
-      <button class="sc-btn ghost" onclick="scCancelRequest(${chatId})">Отменить</button>`;
+      <button class="sc-btn ghost" data-on-click="scCancelRequest" data-a-click="${esc(JSON.stringify([chatId]))}">Отменить</button>`;
   }
   wrap.insertAdjacentHTML('afterbegin', `<div class="sc-locked-banner sc-${mode}"><div class="sc-lock">${SC_LOCK_ICO}</div>${inner}</div>`);
   if (mode === 'open') setTimeout(() => document.getElementById('sc-enter-code')?.focus(), 30);
@@ -7201,7 +7205,7 @@ function scRenderSyncModal(mode, extra = {}) {
     const g = S.scGrant[chatId];
     body.innerHTML = `<div class="sc-m">
       <p class="sc-m-hint">Продиктуйте собеседнику код. Он действует 10 минут.</p>
-      <div class="sc-codebox"><span class="sc-code">${esc(scFmtCode(g.code))}</span><button class="sc-copy" onclick="scCopyCode('${esc(g.code)}')">Копировать</button></div>
+      <div class="sc-codebox"><span class="sc-code">${esc(scFmtCode(g.code))}</span><button class="sc-copy" data-on-click="scCopyCode" data-a-click="${esc(JSON.stringify([`${esc(g.code)}`]))}">Копировать</button></div>
       <div class="sc-wait"><span class="sc-dot"></span>Ждём, пока собеседник введёт код</div></div>`;
   } else if (mode === 'confirm') {
     S.scConfirm = extra;
@@ -7212,7 +7216,7 @@ function scRenderSyncModal(mode, extra = {}) {
         <div class="sc-dev-n">${esc(dev)}</div>
         <div class="sc-dev-s">${extra.ip ? 'IP ' + esc(extra.ip) + ' · ' : ''}запрос только что</div></div></div>
       <p class="sc-meta">Подтверждайте, только если собеседник ввёл продиктованный вами код и сейчас с вами на связи.</p></div>
-      <div class="sc-mfoot"><button class="sc-btn ghost" onclick="scRenderSyncModal('grant')">Назад</button><button class="sc-btn" onclick="scApproveRequest(${chatId})">Подтвердить</button></div>`;
+      <div class="sc-mfoot"><button class="sc-btn ghost" data-on-click="scRenderSyncModal" data-a-click='["grant"]'>Назад</button><button class="sc-btn" data-on-click="scApproveRequest" data-a-click="${esc(JSON.stringify([chatId]))}">Подтвердить</button></div>`;
   }
 }
 
@@ -7303,7 +7307,7 @@ async function scOpenDevices(chatId) {
   document.getElementById('sc-sync-body').innerHTML = `
     <p class="sc-sync-hint">Здесь видно, на каких устройствах открыт доступ к чату. Ключ не переносится сам: новое устройство подключается только с подтверждения собеседника.</p>
     ${rows.map(r => `<div class="sc-sync-device">${esc(r.device_label || 'Устройство')} · ${esc(names[r.user_id] || 'Пользователь')}${r.device_id === mine ? ' — это устройство' : ''}</div>`).join('')}
-    <div class="sc-sync-foot"><button class="modal-btn-ghost" onclick="scCancelSyncModal()">Закрыть</button></div>`;
+    <div class="sc-sync-foot"><button class="modal-btn-ghost" data-on-click="scCancelSyncModal">Закрыть</button></div>`;
   openModal('modal-secret-sync');
 }
 
@@ -7363,12 +7367,12 @@ function openChatTypePicker(userId) {
   S.ctpUserId = userId;
   document.getElementById('ctp-body').innerHTML = `
     <div class="nc-kinds">
-      <button class="nc-kind" onclick="ctpPick('direct')">
+      <button class="nc-kind" data-on-click="ctpPick" data-a-click='["direct"]'>
         <span class="nc-kind-ic">${NC_ICON.person}</span>
         <span class="nc-kind-txt"><b>Личный чат</b><span>Обычная переписка</span></span>
         <span class="nc-kind-go">›</span>
       </button>
-      <button class="nc-kind" onclick="ctpPick('secret')">
+      <button class="nc-kind" data-on-click="ctpPick" data-a-click='["secret"]'>
         <span class="nc-kind-ic">${NC_ICON.secret}</span>
         <span class="nc-kind-txt"><b>Секретный чат</b><span>Сквозное шифрование, сообщения только на ваших устройствах</span></span>
         <span class="nc-kind-go">›</span>
@@ -7462,9 +7466,9 @@ function gmRow(m, chat, perms, pending) {
   const right = pending ? '<span class="gm-chip wait">ждёт ответа</span>'
     : m.id === chat.created_by && !perms.mirror ? '<span class="gm-chip role">создатель</span>'
     : `<span class="gm-st ${st.cls}" data-u="${m.id}">${esc(st.t)}</span>`;
-  const contact = !pending && !self && needsContact(m.id) ? `<button class="gm-mini" onclick="event.stopPropagation(); addContactFromChat(${m.id})">В контакты</button>` : '';
+  const contact = !pending && !self && needsContact(m.id) ? `<button class="gm-mini" data-on-click="__h34" data-a-click="${esc(JSON.stringify([m.id]))}">В контакты</button>` : '';
   const kick = (pending || (perms.canEdit && !self && m.id !== chat.created_by)) && perms.canEdit
-    ? `<button class="gm-x" title="${pending ? 'Отменить приглашение' : 'Убрать из группы'}" aria-label="${pending ? 'Отменить приглашение' : 'Убрать из группы'}" onclick="event.stopPropagation(); gmKick(${m.id}, ${pending ? 'true' : 'false'})">${gmSvg('x', 15)}</button>` : '';
+    ? `<button class="gm-x" title="${pending ? 'Отменить приглашение' : 'Убрать из группы'}" aria-label="${pending ? 'Отменить приглашение' : 'Убрать из группы'}" data-on-click="__h35" data-a-click="${esc(JSON.stringify([m.id, !!pending]))}">${gmSvg('x', 15)}</button>` : '';
   return `<div class="gm-row${pending ? ' pend' : ''}" ${self || pending ? '' : `onclick="gmOpenMember(${m.id})"`}>${gmAv(m)}<div class="gm-nm"><b>${esc(m.display_name || m.username || '')}${self ? ' (вы)' : ''}</b><span class="gm-l">${esc(login)}</span></div>${contact}${right}${kick}</div>`;
 }
 function gmFilter(list, q) {
@@ -7487,37 +7491,37 @@ function renderGroupProfile(keep) {
   const muted = S.mutedChats.has(chat.id);
   const kind = chat.type === 'room' ? 'Комната' : 'Группа';
   const sec = (title, cls, n, body, note) => `<div class="gm-sec"><div class="gm-sec-h">${title}<span class="n">${n}</span></div><div class="gm-box ${cls}">${note || ''}${body}</div></div>`;
-  const chip = (k, label, n) => `<button type="button" class="${g.f === k ? 'on' : ''}" onclick="gmFilterSet('${k}')">${label}<small>${n}</small></button>`;
+  const chip = (k, label, n) => `<button type="button" class="${g.f === k ? 'on' : ''}" data-on-click="gmFilterSet" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label}<small>${n}</small></button>`;
   const lists = [];
   if (show('local')) lists.push(sec('На этом сервере', '', `${lf.length}${lf.length !== local.length ? ' из ' + local.length : ''}`, lf.map(m => gmRow(m, chat, perms)).join('') || '<div class="gm-none">Никого не нашли</div>'));
   if (fed.length && show('fed')) lists.push(sec(`<span class="gm-globe">${FED_GLOBE}</span><span class="gm-fedt">С других серверов</span>`, 'fed', ff.length, ff.map(m => gmRow(m, chat, perms)).join('') || '<div class="gm-none">Никого не нашли</div>',
     `<div class="gm-note">${gmSvg('info', 14)}<span>${perms.mirror ? 'Эти люди на сервере, где создана группа, или на серверах, подключённых к нему.' : 'Эти люди видят группу на своём сервере. Если связи нет, они не получают новые сообщения.'}</span></div>`));
   if (pend.length && show('pend')) lists.push(sec('Ждут ответа', 'pend', pf.length, pf.map(m => gmRow({ ...m, federated: true }, chat, perms, true)).join('') || '<div class="gm-none">Никого не нашли</div>'));
-  if (perms.canDelete && g.f === 'all') lists.push('<div class="gm-ft"><button type="button" class="gm-link d" onclick="gmDelete()">Удалить группу</button></div>');
+  if (perms.canDelete && g.f === 'all') lists.push('<div class="gm-ft"><button type="button" class="gm-link d" data-on-click="gmDelete">Удалить группу</button></div>');
   const tiles = [
-    perms.canEdit ? `<button type="button" class="gm-tile" onclick="gmAddView()">${gmSvg('plus', 20)}Добавить</button>` : '',
-    `<button type="button" class="gm-tile" onclick="document.getElementById('gm-q')?.focus()">${gmSvg('search', 20)}Поиск</button>`,
-    `<button type="button" class="gm-tile" onclick="openChatMedia(${chat.id})">${gmSvg('image', 20)}Медиа</button>`,
-    perms.canEdit ? `<button type="button" class="gm-tile" onclick="gmGuest()">${gmSvg('link', 20)}Гость</button>` : '',
-    `<button type="button" class="gm-tile" onclick="gmMute(event)">${gmSvg(muted ? 'bell' : 'bellOff', 20)}${muted ? 'Со звуком' : 'Без звука'}</button>`,
-    perms.canLeave ? `<button type="button" class="gm-tile d" onclick="gmLeave()">${gmSvg('out', 20)}Выйти</button>` : '',
+    perms.canEdit ? `<button type="button" class="gm-tile" data-on-click="gmAddView">${gmSvg('plus', 20)}Добавить</button>` : '',
+    `<button type="button" class="gm-tile" data-on-click="__h36">${gmSvg('search', 20)}Поиск</button>`,
+    `<button type="button" class="gm-tile" data-on-click="openChatMedia" data-a-click="${esc(JSON.stringify([chat.id]))}">${gmSvg('image', 20)}Медиа</button>`,
+    perms.canEdit ? `<button type="button" class="gm-tile" data-on-click="gmGuest">${gmSvg('link', 20)}Гость</button>` : '',
+    `<button type="button" class="gm-tile" data-on-click="gmMute" data-a-click='["__event"]'>${gmSvg(muted ? 'bell' : 'bellOff', 20)}${muted ? 'Со звуком' : 'Без звука'}</button>`,
+    perms.canLeave ? `<button type="button" class="gm-tile d" data-on-click="gmLeave">${gmSvg('out', 20)}Выйти</button>` : '',
   ].filter(Boolean);
   const prev = box.querySelector('.gm-scroll'), top = prev ? prev.scrollTop : 0, qHad = document.activeElement?.id === 'gm-q';
   box.innerHTML = `
-    <div class="gm-top"><span class="t">${kind}</span><button class="icon-btn" onclick="closeModal('modal-group')" aria-label="Закрыть">${gmSvg('x', 16)}</button></div>
+    <div class="gm-top"><span class="t">${kind}</span><button class="icon-btn" data-on-click="closeModal" data-a-click='["modal-group"]' aria-label="Закрыть">${gmSvg('x', 16)}</button></div>
     <div class="gm-fixed">
       <div class="gm-hero">
         <div class="gm-avw"><div class="av av-round ${chatAvatarClass(chat)}" id="gm-av" data-av-chat="${chat.id}" style="width:88px;height:88px;font-size:30px">${chatIcon(chat)}</div>
-          ${perms.canEdit ? `<label class="gm-cam" title="Сменить аватарку">${gmSvg('cam', 14)}<input type="file" accept="image/*" hidden onchange="gmAvatar(this)"></label>` : ''}${perms.mirror ? `<span class="gm-fedbig">${FED_GLOBE}</span>` : ''}</div>
+          ${perms.canEdit ? `<label class="gm-cam" title="Сменить аватарку">${gmSvg('cam', 14)}<input type="file" accept="image/*" hidden data-on-change="gmAvatar" data-a-change='["__this"]'></label>` : ''}${perms.mirror ? `<span class="gm-fedbig">${FED_GLOBE}</span>` : ''}</div>
         <div class="gm-txt">
-          ${g.rename ? `<div class="gm-nm1"><input id="gm-name" value="${esc(chat.name || '')}" maxlength="60" onkeydown="if(event.key==='Enter'){event.preventDefault();gmRenameSave(this.value)} if(event.key==='Escape'){event.stopPropagation();S.gm.rename=false;renderGroupProfile(true)}" onblur="gmRenameSave(this.value)"></div>`
-            : `<div class="gm-nm1"><span class="gm-name">${esc(chatName(chat))}</span>${perms.canRename ? `<button class="gm-pen" title="Переименовать" aria-label="Переименовать" onclick="gmRenameStart()">${gmSvg('pen', 15)}</button>` : ''}</div>`}
+          ${g.rename ? `<div class="gm-nm1"><input id="gm-name" value="${esc(chat.name || '')}" maxlength="60" data-on-keydown="__h37" data-on-blur="gmRenameSave" data-a-blur='["__value"]'></div>`
+            : `<div class="gm-nm1"><span class="gm-name">${esc(chatName(chat))}</span>${perms.canRename ? `<button class="gm-pen" title="Переименовать" aria-label="Переименовать" data-on-click="gmRenameStart">${gmSvg('pen', 15)}</button>` : ''}</div>`}
           <div class="gm-sub" id="gm-sub">${gmSubText(chat, all)}</div>
         </div>
       </div>
       ${perms.mirror ? `<div class="gm-banner">${gmSvg('info', 14)}<span><b>${kind} на другом сервере.</b> Название, состав и аватарку меняет только её владелец. Вы можете писать, ставить реакции и выйти.</span></div>` : ''}
       <div class="gm-tiles n${tiles.length}">${tiles.join('')}</div>
-      <div class="gm-tools"><label class="gm-search">${gmSvg('search', 15)}<input id="gm-q" value="${esc(g.q)}" placeholder="Найти участника" autocomplete="off" oninput="gmSearch(this.value)"></label>
+      <div class="gm-tools"><label class="gm-search">${gmSvg('search', 15)}<input id="gm-q" value="${esc(g.q)}" placeholder="Найти участника" autocomplete="off" data-on-input="gmSearch" data-a-input='["__value"]'></label>
         ${showChips ? `<div class="gm-chips" role="group" aria-label="Показать">${chip('all', 'Все', all.length)}${chip('local', 'На этом сервере', local.length)}${chip('fed', `<span class="gm-cg">${FED_GLOBE}</span>С других серверов`, fed.length)}${pend.length ? chip('pend', 'Ждут ответа', pend.length) : ''}</div>` : ''}</div>
     </div>
     <div class="gm-listwrap"><div class="gm-scroll">${lists.join('')}</div></div>`;
@@ -7615,17 +7619,17 @@ function renderGroupAdd(keep) {
   if (!chat) return;
   box.classList.remove('cmp');
   const list = gmAvailable(chat), n = g.add.size;
-  const row = u => `<button type="button" class="gm-pick${g.add.has(u.id) ? ' on' : ''}" onclick="gmAddToggle(${u.id})" role="checkbox" aria-checked="${g.add.has(u.id)}">
+  const row = u => `<button type="button" class="gm-pick${g.add.has(u.id) ? ' on' : ''}" data-on-click="gmAddToggle" data-a-click="${esc(JSON.stringify([u.id]))}" role="checkbox" aria-checked="${g.add.has(u.id)}">
       <div class="av-wrap"><div class="av av-round ${userAvatarColor(u.id, u.tag)}" style="width:36px;height:36px;font-size:12px" data-av-user="${u.id}">${initials(u.display_name)}</div>${u.federated ? fedDotRaw() : ''}</div>
       <div class="gm-nm"><b>${esc(u.display_name)}</b><span class="gm-l">${u.federated ? esc(fedAddr(u)) + ' · после согласия' : '@' + esc(u.username)}</span></div>
       <span class="gm-chk">${gmSvg('check', 13, 3)}</span></button>`;
   const prev = box.querySelector('.gm-scroll'), top = prev && keep ? prev.scrollTop : 0;
   box.innerHTML = `
-    <div class="gm-top"><button class="icon-btn" onclick="gmAddBack()" aria-label="Назад">${gmSvg('back', 18)}</button><span class="t">Добавить участника</span><button class="icon-btn" onclick="closeModal('modal-group')" aria-label="Закрыть">${gmSvg('x', 16)}</button></div>
-    <div class="gm-tools" style="padding-top:4px"><label class="gm-search">${gmSvg('search', 15)}<input id="gm-aq" value="${esc(g.aq)}" placeholder="Имя или логин" autocomplete="off" oninput="gmAddSearch(this.value)"></label></div>
+    <div class="gm-top"><button class="icon-btn" data-on-click="gmAddBack" aria-label="Назад">${gmSvg('back', 18)}</button><span class="t">Добавить участника</span><button class="icon-btn" data-on-click="closeModal" data-a-click='["modal-group"]' aria-label="Закрыть">${gmSvg('x', 16)}</button></div>
+    <div class="gm-tools" style="padding-top:4px"><label class="gm-search">${gmSvg('search', 15)}<input id="gm-aq" value="${esc(g.aq)}" placeholder="Имя или логин" autocomplete="off" data-on-input="gmAddSearch" data-a-input='["__value"]'></label></div>
     <div class="gm-listwrap"><div class="gm-scroll">${list.map(row).join('') || '<div class="gm-none">Некого добавить</div>'}
       ${chat.type === 'group' ? '' : '<p class="gm-hint">Людей с других серверов в комнаты добавляет администратор в админке.</p>'}</div></div>
-    <div class="gm-foot"><span class="gm-cnt">${n ? 'Выбрано: ' + n : 'Отметьте людей'}</span><button class="modal-btn-ghost" onclick="gmAddBack()">Отмена</button><button class="modal-btn-primary" ${n ? '' : 'disabled'} onclick="gmAddConfirm()">Добавить</button></div>`;
+    <div class="gm-foot"><span class="gm-cnt">${n ? 'Выбрано: ' + n : 'Отметьте людей'}</span><button class="modal-btn-ghost" data-on-click="gmAddBack">Отмена</button><button class="modal-btn-primary" ${n ? '' : 'disabled'} data-on-click="gmAddConfirm">Добавить</button></div>`;
   box.querySelector('.gm-scroll').scrollTop = top;
   applyAvatars();
   if (document.activeElement === document.body && g.aq) { const i = document.getElementById('gm-aq'); i?.focus(); }
@@ -7731,7 +7735,7 @@ function showMuteMenu(chatId, x, y, anchor) {
     document.addEventListener('keydown', e => { if (e.key === 'Escape') hideMuteMenu(); });
   }
   const bell = '<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>';
-  m.innerHTML = MUTE_OPTS.map(([l, s]) => `<button type="button" onclick="setChatMute(${chatId}, ${s})">${muteIcon(s)}<span>${l}</span></button>`).join('');
+  m.innerHTML = MUTE_OPTS.map(([l, s]) => `<button type="button" data-on-click="setChatMute" data-a-click="${esc(JSON.stringify([chatId, s]))}">${muteIcon(s)}<span>${l}</span></button>`).join('');
   m.style.display = 'block';
   m.classList.remove('pop-out'); m._popOut = false;
   placeCtxMenu(m, x, y, anchor || null);
@@ -7864,14 +7868,14 @@ function renderForwardList(q = '') {
   let html = '';
   if (chats.length) {
     html += `<div class="chat-list-section-label">Чаты</div>`;
-    html += chats.map(c => `<div class="pp-row" onclick="selectForwardChat(${c.id})" style="cursor:pointer">
+    html += chats.map(c => `<div class="pp-row" data-on-click="selectForwardChat" data-a-click="${esc(JSON.stringify([c.id]))}" style="cursor:pointer">
       <div class="av av-sm ${chatAvatarClass(c)}${c.type==='room' && c.has_topics?' av-sq':' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
       <span>${esc(chatName(c))}</span>
     </div>`).join('');
   }
   if (users.length) {
     html += `<div class="chat-list-section-label">Пользователи</div>`;
-    html += users.map(u => `<div class="pp-row" onclick="selectForwardUser(${u.id})" style="cursor:pointer">
+    html += users.map(u => `<div class="pp-row" data-on-click="selectForwardUser" data-a-click="${esc(JSON.stringify([u.id]))}" style="cursor:pointer">
       <div class="av av-sm av-round av-blue" data-av-user="${u.id}">${esc((u.display_name||'?')[0].toUpperCase())}</div>
       <span>${esc(u.display_name)}</span>
     </div>`).join('');
@@ -8065,7 +8069,7 @@ function haToggleDrives(e) {
   pop.setAttribute('aria-label', 'Диск для хранения данных');
   pop.innerHTML = _haDrives.length ? _haDrives.map(d => {
     const sel = d.letter === _haSelected;
-    return `<button type="button" class="ha-opt${sel ? ' sel' : ''}" role="option" aria-selected="${sel}" onclick="haPickDrive('${d.letter}')">
+    return `<button type="button" class="ha-opt${sel ? ' sel' : ''}" role="option" aria-selected="${sel}" data-on-click="haPickDrive" data-a-click="${esc(JSON.stringify([`${d.letter}`]))}">
         <span class="ha-opt-ic">${HA_DRIVE_ICON[d.type] || HA_I.other}</span>
         <span class="ha-opt-tx"><b>${esc(d.letter)}: — ${esc(d.volumeName || d.typeLabel)}</b><span>${esc(d.letter)}:\\Electron</span></span>
         <span class="ha-opt-tag${d.type === 'network' ? ' net' : ''}">${esc(d.typeLabel)}</span>
@@ -8318,3 +8322,39 @@ function markChatGroups(list) {
   const start = () => { ['chats-list', 'topics-panel'].forEach(id => { const el = document.getElementById(id); if (el) obs.observe(el, { childList: true }); }); run(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
+
+// Функции из const-объявлений: обработчики из HTML (act.js) находят их по имени в window
+window._cacheKey = _cacheKey;
+window._hhmm = _hhmm;
+window._isMediaAtt = _isMediaAtt;
+window._outKey = _outKey;
+window.bootLog = bootLog;
+window.composerLocked = composerLocked;
+window.csAv = csAv;
+window.csIsApp = csIsApp;
+window.csIsPhone = csIsPhone;
+window.csPwBar = csPwBar;
+window.csPwReady = csPwReady;
+window.csSvg = csSvg;
+window.csTg = csTg;
+window.dmLocked = dmLocked;
+window.failNoteHtml = failNoteHtml;
+window.fedDotHtml = fedDotHtml;
+window.fedDotRaw = fedDotRaw;
+window.fedKind = fedKind;
+window.fedOffline = fedOffline;
+window.fedRoot = fedRoot;
+window.fwdReserve = fwdReserve;
+window.gmChat = gmChat;
+window.gmIsOpen = gmIsOpen;
+window.gmSvg = gmSvg;
+window.isBlockedId = isBlockedId;
+window.isPickable = isPickable;
+window.myWsCount = myWsCount;
+window.nMembers = nMembers;
+window.needsContact = needsContact;
+window.newClientId = newClientId;
+window.peerSubText = peerSubText;
+window.personAv = personAv;
+window.scFmtCode = scFmtCode;
+window.wsTag = wsTag;

@@ -62,7 +62,7 @@
     if (!lp || !lp.url) return '';
     let host = lp.site || '';
     if (!host) { try { host = new URL(lp.url).hostname.replace(/^www\./, ''); } catch {} }
-    const img = lp.image ? `<div class="lc-im"><img src="${esc((base || '') + lp.image)}" alt="" loading="lazy" onerror="this.parentNode.remove()"></div>` : '';
+    const img = lp.image ? `<div class="lc-im"><img src="${esc((base || '') + lp.image)}" alt="" loading="lazy" data-on-error="__h39"></div>` : '';
     return `<div class="lcard" data-fmt-url="${esc(lp.url)}" role="link" tabindex="0">${img}<div class="lc-b">${lp.title ? `<div class="lc-t">${esc(lp.title)}</div>` : ''}<div class="lc-d">${esc(host)}</div></div></div>`;
   }
 
@@ -117,7 +117,12 @@
       const ital = tag === 'I' || tag === 'EM' || st.fontStyle === 'italic';
       let r = inner;
       if (tag === 'CODE') return inner.trim() ? '`' + inner + '`' : inner;
-      if (tag === 'SPAN' && n.classList.contains('spl-e')) return inner.trim() ? '||' + inner + '||' : inner;
+      if (tag === 'SPAN' && n.classList.contains('spl-e')) {
+        // Пробелы по краям выделения выносим за маркеры: «|| текст||» уже не считается секретом
+        const core = inner.trim(); if (!core) return inner;
+        const lead = inner.match(/^\s*/)[0], trail = inner.match(/\s*$/)[0];
+        return lead + '||' + core + '||' + trail;
+      }
       if (bold && r.trim()) r = '**' + r + '**';
       if (ital && r.trim()) r = '__' + r + '__';
       if (tag === 'DIV' || tag === 'P') return r + '\n';
