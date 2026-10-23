@@ -7076,7 +7076,7 @@ function gmRow(m, chat, perms, pending) {
     : `<span class="gm-st ${st.cls}" data-u="${m.id}">${esc(st.t)}</span>`;
   const contact = !pending && !self && needsContact(m.id) ? `<button class="gm-mini" data-on-click="__h39" data-a-click="${esc(JSON.stringify([m.id]))}">В контакты</button>` : '';
   const kick = (pending || (perms.canEdit && !self && m.id !== chat.created_by)) && perms.canEdit
-    ? `<button class="gm-x" title="${pending ? 'Отменить приглашение' : 'Убрать из группы'}" aria-label="${pending ? 'Отменить приглашение' : 'Убрать из группы'}" data-on-click="__h40" data-a-click="${esc(JSON.stringify([m.id, pending ? 'true' : 'false']))}">${gmSvg('x', 15)}</button>` : '';
+    ? `<button class="gm-x" title="${pending ? 'Отменить приглашение' : 'Убрать из группы'}" aria-label="${pending ? 'Отменить приглашение' : 'Убрать из группы'}" data-on-click="__h40" data-a-click="${esc(JSON.stringify([m.id, !!pending]))}">${gmSvg('x', 15)}</button>` : '';
   return `<div class="gm-row${pending ? ' pend' : ''}" ${self || pending ? '' : `onclick="gmOpenMember(${m.id})"`}>${gmAv(m)}<div class="gm-nm"><b>${esc(m.display_name || m.username || '')}${self ? ' (вы)' : ''}</b><span class="gm-l">${esc(login)}</span></div>${contact}${right}${kick}</div>`;
 }
 function gmFilter(list, q) {

@@ -111,7 +111,7 @@ function foldersRailHtml(withSep) {
   const btn = (id, ic, name, sub, cnt, color) => {
     const on = S.folderFilter === id;
     const badge = cnt > 0 ? `<span class="acc-badge">${cnt > 99 ? '99+' : cnt}</span>` : '';
-    return `<button type="button" class="acc-btn fld-btn${on ? ' active' : ''}" data-fid="${typeof id === 'number' ? id : 'all'}" style="--fc:${color || 'var(--accent)'}" data-on-click="folderSelect" data-a-click="${esc(JSON.stringify([typeof id === 'number' ? id : `'all'`]))}"${typeof id === 'number' ? ` data-on-contextmenu="folderItemMenu" data-a-contextmenu="${esc(JSON.stringify(["__event", id]))}"` : ''} aria-label="${esc(name)}" aria-pressed="${on}">
+    return `<button type="button" class="acc-btn fld-btn${on ? ' active' : ''}" data-fid="${typeof id === 'number' ? id : 'all'}" style="--fc:${color || 'var(--accent)'}" data-on-click="folderSelect" data-a-click="${esc(JSON.stringify([typeof id === 'number' ? id : 'all']))}"${typeof id === 'number' ? ` data-on-contextmenu="folderItemMenu" data-a-contextmenu="${esc(JSON.stringify(["__event", id]))}"` : ''} aria-label="${esc(name)}" aria-pressed="${on}">
       <span class="fld-ic">${ic}</span>${badge}<span class="acc-tip"><b>${esc(name)}</b><span>${esc(sub)}</span></span></button>`;
   };
   return (withSep ? '<span class="rail-sep"></span>' : '') + `<div class="rail-folders" id="rail-folders">` +
