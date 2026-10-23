@@ -4,6 +4,12 @@ B.ui = B.ui || {};
 B.ui.msgmenu = (function () {
   var esc = B.esc, ic = B.ic, layer = null, cur = null, openedAt = 0;
   var QUICK = ['👍', '❤️', '😂', '😮', '😢', '🙏'], EASE = 'cubic-bezier(.32,.72,0,1)';
+  // Быстрые реакции — самые частые смайлы человека (общий список на всех устройствах), недостающее добирается из стандартных
+  function quickList() {
+    var f = B.emoji.freq(), list = Object.keys(f).sort(function (a, b) { return f[b] - f[a]; }).slice(0, QUICK.length);
+    QUICK.forEach(function (e) { if (list.length < QUICK.length && list.indexOf(e) < 0) list.push(e); });
+    return list;
+  }
 
   function init(root) {
     layer = document.createElement('div'); layer.className = 'cml'; root.appendChild(layer);
@@ -13,7 +19,7 @@ B.ui.msgmenu = (function () {
       if (!b) { close(); return; }
       var m = b.dataset.m, c = cur; close();
       if (!c) return;
-      if (m === 'rx') B.msgs.react(c.msg.id, b.dataset.e);
+      if (m === 'rx') { B.emoji.track(b.dataset.e); B.msgs.react(c.msg.id, b.dataset.e); }
       else if (m === 'more') setTimeout(function () { reactionSheet(c.msg); }, 160);
       else if (m === 'item') setTimeout(c.items[+b.dataset.i].f, 120);
     });
@@ -42,7 +48,7 @@ B.ui.msgmenu = (function () {
     clone.innerHTML = '<div class="mcol">' + bub.outerHTML + '</div>';
     clone.style.cssText = 'left:' + r.x + 'px;top:' + r.y + 'px;width:' + r.w + 'px';
     var rx = document.createElement('div'); rx.className = 'cmr';
-    rx.innerHTML = QUICK.map(function (e) { return '<button data-m="rx" data-e="' + e + '">' + e + '</button>'; }).join('') + '<button class="more" data-m="more" aria-label="Другие реакции">' + ic('plus', 20, 2.4) + '</button>';
+    rx.innerHTML = quickList().map(function (e) { return '<button data-m="rx" data-e="' + e + '">' + e + '</button>'; }).join('') + '<button class="more" data-m="more" aria-label="Другие реакции">' + ic('plus', 20, 2.4) + '</button>';
     var mn = document.createElement('div'); mn.className = 'cmm';
     mn.innerHTML = items.map(function (it, i) { return '<button class="' + (it.d ? 'd' : '') + '" data-m="item" data-i="' + i + '"><span>' + it.l + '</span>' + ic(it.i, 20, 1.8) + '</button>'; }).join('');
     layer.append(clone, rx, mn); layer.classList.add('on'); openedAt = performance.now();
