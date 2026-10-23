@@ -234,5 +234,35 @@ router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Часто используемые смайлы: счётчики хранятся на сервере, чтобы список был общим на всех устройствах человека.
+// use — один выбранный смайл; merge — накопленное устройством до перехода на сервер (складывается с имеющимся)
+const EMOJI_KEEP = 200;      // сколько разных смайлов помним на человека
+const emojiOk = e => typeof e === 'string' && e.length > 0 && e.length <= 32;
+async function emojiFreq(userId) {
+  const rows = await dal.all('SELECT emoji, cnt FROM user_emoji_freq WHERE user_id = ? ORDER BY cnt DESC LIMIT ?', userId, EMOJI_KEEP);
+  return Object.fromEntries(rows.map(r => [r.emoji, r.cnt]));
+}
+router.get('/me/emoji', authMiddleware, async (req, res) => {
+  res.json({ freq: await emojiFreq(req.user.id) });
+});
+router.post('/me/emoji', authMiddleware, async (req, res) => {
+  const { use, merge } = req.body || {};
+  const add = new Map();
+  if (use !== undefined) { if (!emojiOk(use)) return res.status(400).json({ error: 'Некорректный смайл' }); add.set(use, 1); }
+  if (merge && typeof merge === 'object' && !Array.isArray(merge)) {
+    for (const [e, n] of Object.entries(merge).slice(0, EMOJI_KEEP)) {
+      const c = Math.floor(Number(n));
+      if (emojiOk(e) && c > 0) add.set(e, (add.get(e) || 0) + Math.min(c, 100000));
+    }
+  }
+  for (const [e, c] of add) {
+    await dal.run('INSERT INTO user_emoji_freq (user_id, emoji, cnt) VALUES (?, ?, ?) ON CONFLICT(user_id, emoji) DO UPDATE SET cnt = user_emoji_freq.cnt + excluded.cnt', req.user.id, e, c);
+  }
+  // Больше предела — забываем самые редкие
+  if (add.size) await dal.run(`DELETE FROM user_emoji_freq WHERE user_id = ? AND emoji NOT IN
+    (SELECT emoji FROM (SELECT emoji FROM user_emoji_freq WHERE user_id = ? ORDER BY cnt DESC LIMIT ?) t)`, req.user.id, req.user.id, EMOJI_KEEP);
+  res.json({ freq: await emojiFreq(req.user.id) });
+});
+
 module.exports = router;
 module.exports.isImageBuffer = isImageBuffer;

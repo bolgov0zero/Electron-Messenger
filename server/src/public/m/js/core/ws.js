@@ -52,6 +52,7 @@ B.ws = {
     switch (data.type) {
       case 'connected': {
         S.editLimit = data.edit_time_limit || 120;
+        if (B.emoji && B.emoji.sync) B.emoji.sync();
         // Админка показывает устройство клиента — сообщаем, что это PWA или обычная вкладка
         var isPwa = B.pwa.standalone, ua = navigator.userAgent;
         B.ws.send({

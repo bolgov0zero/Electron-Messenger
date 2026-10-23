@@ -81,6 +81,13 @@ db.exec(`
   );
   -- Время доставки и прочтения за «окно времени статуса»: одна запись на человека,
   -- чат и вид за минуту (upto_id — до какого сообщения). См. src/statusmarks.js.
+  -- Часто используемые смайлы человека: общий список на всех его устройствах (routes/users.js)
+  CREATE TABLE IF NOT EXISTS user_emoji_freq (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    emoji   TEXT    NOT NULL,
+    cnt     INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, emoji)
+  );
   CREATE TABLE IF NOT EXISTS status_log (
     chat_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,

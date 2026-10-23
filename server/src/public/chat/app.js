@@ -2705,7 +2705,21 @@ const EMOJIS = EMOJI_GROUPS.flatMap(g => g.items);
 
 const EMOJIS_DEFAULT_FREQ = ['👍','❤️','😂','🔥','😎','🎉','😭','🤔'];
 function getEmojiFreq() { try { return JSON.parse(localStorage.getItem('emoji_freq')||'{}'); } catch { return {}; } }
-function trackEmojiUse(em) { const f=getEmojiFreq(); f[em]=(f[em]||0)+1; try { localStorage.setItem('emoji_freq',JSON.stringify(f)); } catch {} }
+function trackEmojiUse(em) {
+  const f=getEmojiFreq(); f[em]=(f[em]||0)+1; try { localStorage.setItem('emoji_freq',JSON.stringify(f)); } catch {}
+  api('POST','/users/me/emoji',{ use: em }).catch(()=>{});
+}
+// Частые смайлы общие на всех устройствах: список берём с сервера (localStorage — кэш для мгновенного показа),
+// а накопленное на этом устройстве до перехода на сервер отправляем один раз
+async function syncEmojiFreq() {
+  try {
+    const local = getEmojiFreq(), first = !localStorage.getItem('emoji_freq_synced');
+    const r = first && Object.keys(local).length ? await api('POST','/users/me/emoji',{ merge: local }) : await api('GET','/users/me/emoji');
+    if (!r || !r.freq) return;
+    localStorage.setItem('emoji_freq_synced','1');
+    localStorage.setItem('emoji_freq',JSON.stringify(r.freq));
+  } catch {}
+}
 function getFreqEmojis(n) {
   const f=getEmojiFreq();
   const sorted=Object.entries(f).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
@@ -5991,7 +6005,7 @@ function connectWS() {
 
     if (data.type==='pong') { ws._pongOk = true; return; }
 
-    if (data.type==='connected') { S.editLimit = data.edit_time_limit || 120; return; }
+    if (data.type==='connected') { S.editLimit = data.edit_time_limit || 120; syncEmojiFreq(); return; }
     if (data.type==='modules_changed') { window.Modules?.refresh(); return; }
     if (data.type==='forward_count') { applyForwardCount(data.message_id, data.count); return; }
     if (data.type==='secret_key_ready') { scTick(data.chat_id); return; }

@@ -5,7 +5,21 @@ B.emoji = {
   groups: function () { return typeof EMOJI_GROUPS !== 'undefined' ? EMOJI_GROUPS : []; },
   keywords: function () { return typeof EMOJI_KEYWORDS !== 'undefined' ? EMOJI_KEYWORDS : {}; },
   freq: function () { try { return JSON.parse(localStorage.getItem('emoji_freq') || '{}'); } catch (e) { return {}; } },
-  track: function (em) { var f = B.emoji.freq(); f[em] = (f[em] || 0) + 1; try { localStorage.setItem('emoji_freq', JSON.stringify(f)); } catch (e) {} },
+  track: function (em) {
+    var f = B.emoji.freq(); f[em] = (f[em] || 0) + 1; try { localStorage.setItem('emoji_freq', JSON.stringify(f)); } catch (e) {}
+    B.api('POST', '/users/me/emoji', { use: em }).catch(function () {});
+  },
+  // Частые смайлы общие на всех устройствах: список берём с сервера (localStorage — кэш для мгновенного показа),
+  // а накопленное на этом устройстве до перехода на сервер отправляем один раз
+  sync: async function () {
+    try {
+      var local = B.emoji.freq(), first = !localStorage.getItem('emoji_freq_synced');
+      var r = first && Object.keys(local).length ? await B.api('POST', '/users/me/emoji', { merge: local }) : await B.api('GET', '/users/me/emoji');
+      if (!r || !r.freq) return;
+      localStorage.setItem('emoji_freq_synced', '1');
+      localStorage.setItem('emoji_freq', JSON.stringify(r.freq));
+    } catch (e) {}
+  },
   freqList: function (n) {
     var f = B.emoji.freq(), sorted = Object.keys(f).sort(function (a, b) { return f[b] - f[a]; });
     B.emoji.DEFAULT_FREQ.forEach(function (e) { if (sorted.length < n && sorted.indexOf(e) < 0) sorted.push(e); });
