@@ -51,7 +51,7 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
+    isAdmin ? "script-src 'self' 'wasm-unsafe-eval' blob:" : "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self' data:",
     imgSrc,
@@ -80,7 +80,7 @@ app.get(['/admin', '/admin/', '/admin/index.html'], (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.sendFile(path.join(__dirname, 'public/admin/index.html'));
 });
-app.use('/admin', express.static(path.join(__dirname, 'public/admin')));
+app.use('/admin', express.static(path.join(__dirname, 'public/admin'), { setHeaders: (res, f) => { if (f.endsWith('.js')) res.setHeader('Cache-Control', 'no-cache'); } }));
 app.get('/chat/manifest.json', (req, res) => {
   res.setHeader('Content-Type', 'application/manifest+json');
   res.sendFile(path.join(__dirname, 'public/chat/manifest.json'));
