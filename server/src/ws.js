@@ -224,6 +224,7 @@ async function getMessageWithStatus(msgId, viewerId) {
   if (msg.mentions) try { msg.mentions = JSON.parse(msg.mentions); } catch { msg.mentions = null; }
   if (msg.reply_attachment) try { msg.reply_attachment = JSON.parse(msg.reply_attachment); } catch { msg.reply_attachment = null; }
   if (msg.forward_data) try { msg.forward_data = JSON.parse(msg.forward_data); } catch { msg.forward_data = null; }
+  if (msg.forward_data?.attachment?.url) msg.forward_data.attachment = attach.markExpired(msg.forward_data.attachment);   // пересланный файл могли стереть
   if (msg.link_preview) try { msg.link_preview = JSON.parse(msg.link_preview); } catch { msg.link_preview = null; }
 
   // Статус по отметкам участников: прочитал позднее — прочитал и раннее (msgstatus.js)

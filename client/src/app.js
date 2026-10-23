@@ -4083,21 +4083,10 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
 
   const fd = m.forward_data;
   const forwardHtml = (!isDeleted && fd) ? (() => {
-    const fdIsImg = fd.attachment?.mime?.startsWith('image/');
-    const fdIsVideo = fd.attachment?.mime?.startsWith('video/');
-    const fdThumb = fd.attachment?.url ? ((fdIsImg || (fdIsVideo && fd.attachment.thumb))
-      ? `<img src="${httpProto()}://${S.server}${fd.attachment.thumb || fd.attachment.url}" class="irc-reply-thumb" onerror="this.style.display='none'">`
-      : `<div class="irc-reply-thumb irc-reply-file"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg></div>`) : '';
-    const fdLb = (fdIsImg || fdIsVideo) && fd.attachment?.url && !fd.attachment.expired && !fd.attachment.unavailable
-      ? ` data-lb-url="${httpProto()}://${S.server}${fd.attachment.url}" data-lb-name="${esc(fd.attachment.name || (fdIsVideo ? 'video' : 'image'))}" data-lb-type="${fdIsVideo ? 'video' : 'image'}" onclick="openLightboxEl(this)" style="cursor:pointer"` : '';
-    const fdText = fd.text || (fd.attachment ? (fdIsImg ? '📷 Фото' : fdIsVideo ? '🎬 Видео' : '📎 ' + (fd.attachment.name || 'Файл')) : '');
-    return `<div class="irc-reply irc-forward-block"${fdLb}>
-      ${fdThumb}
-      <div class="irc-reply-body">
-        <div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div>
-        <div class="irc-reply-text">${fd.is_bot ? fdText : mdLite(esc(Fmt.noCode(fdText)))}</div>
-      </div>
-    </div>`;
+    // Пересланное вложение показывается превью, как обычное, под шапкой «Переслано от»
+    const fa = fd.attachment, fdAtt = fa ? attachBlockHtml(fa) : '';
+    const fdText = fd.text || (fa && !fdAtt ? '📎 ' + (fa.name || 'Файл') : '');
+    return `<div class="irc-reply irc-forward-block"><div class="irc-reply-body"><div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div>${fdText ? `<div class="irc-reply-text">${fd.is_bot ? fdText : mdLite(esc(Fmt.noCode(fdText)))}</div>` : ''}</div></div>${fdAtt}`;
   })() : '';
 
   const actionsHtml = '';
@@ -4118,48 +4107,9 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const att = isSecretChat
     ? (m.attachment ? { url: m.attachment.url, enc: 1, expired: m.attachment.expired, fiv: m.attachment.fiv, size: scAttMeta?.s, name: scAttMeta?.n, mime: scAttMeta?.m } : null)
     : m.attachment;
-  // Вложение, которого больше нет. Раньше на его месте оставалась подложка во всю
-  // ширину пузыря, и время с галочками ложилось поверх неё. Теперь это обычная
-  // строка — такая же, как «Сообщение удалено»: место под время она держит сама
-  const attExpired = !isDeleted && !!att?.url && !!att.expired;
   let attachHtml = '';
-  if (!isDeleted && att?.enc && !att.expired) {
-    attachHtml = scAttachHtml(m, att);
-  } else if (!isDeleted && att?.url && !att.expired && !att.enc && !att.gif && Array.isArray(att.more) && att.more.length) {
-    attachHtml = multiAttachHtml(att);
-  } else if (!isDeleted && att?.url && !att.expired && !att.enc) {
-    const attUrl = `${httpProto()}://${S.server}${att.url}`;
-    if (att.mime?.startsWith('image/')) {
-      attachHtml = `<div class="bubble-image" data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'image')}" data-lb-type="image" onclick="openLightboxEl(this)"><img src="${httpProto()}://${S.server}${imgPreviewPath(att)}" loading="lazy"></div>`;
-    } else if (att.mime?.startsWith('video/')) {
-      const posterUrl = att.thumb ? `${httpProto()}://${S.server}${att.thumb}` : '';
-      const safeVName = (att.name||'video').replace(/'/g,"\\'");
-      attachHtml = `<div class="bubble-image bubble-video" data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'video')}" data-lb-type="video" onclick="openLightboxEl(this)">
-        ${posterUrl ? `<img src="${posterUrl}" loading="lazy">` : `<video src="${attUrl}" preload="metadata" muted></video>`}
-        <div class="bubble-video-play"><svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg></div>
-      </div>`;
-    } else {
-      const sizeFmt = att.size ? (att.size > 1048576 ? (att.size/1048576).toFixed(1)+' МБ' : Math.round(att.size/1024)+' КБ') : '';
-      const localPath = _downloadedFiles[attUrl];
-      const isDone = !!(window.electron && localPath);
-      const safeLocal = (localPath||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      const safeUrl = attUrl.replace(/'/g,"\\'");
-      const safeName = (att.name||'file').replace(/'/g,"\\'");
-      const clickAction = isDone ? `openDownloadedFile('${safeLocal}')` : `downloadAttachment('${safeUrl}','${safeName}')`;
-      const rightEl = isDone
-        ? `<span class="bubble-file-open-label">Открыть</span>`
-        : `<svg class="dl-icon" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`;
-      attachHtml = `<div class="bubble-file${isDone?' bubble-file-done':''}" data-att-url="${attUrl}" onclick="${clickAction}">
-        <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="flex-shrink:0" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
-        <div class="bubble-file-info"><div class="bubble-file-name">${att.name||'Файл'}</div>${sizeFmt?`<div class="bubble-file-size">${sizeFmt}</div>`:''}</div>
-        ${rightEl}
-      </div>`;
-    }
-  }
-  if (!isDeleted && att?.gif) attachHtml = GifKlipy.messageHtml(att);   // GIF из Klipy: ссылки на ролик, файла у нас нет
-  if (attExpired) attachHtml = `<div class="irc-text irc-deleted"><em>Файл удалён</em></div>`;
-  // Вложение с другого сервера, которое у нас не приняли (размер или формат по настройкам этого сервера) или не удалось получить
-  if (!isDeleted && att?.unavailable) attachHtml = `<div class="irc-text irc-deleted"><em>${att.unavailable === 'policy' ? 'Вложение недоступно: не соответствует настройкам сервера' : 'Вложение не удалось получить'}</em></div>`;
+  if (!isDeleted && att?.enc && !att.expired) attachHtml = scAttachHtml(m, att);
+  else if (!isDeleted) attachHtml = attachBlockHtml(att);
 
   const attDataAttrs = (att?.url && !att.enc) ? ` data-msg-att-url="${esc(att.url)}" data-msg-att-thumb="${esc(att.thumb||'')}" data-msg-att-mime="${esc(att.mime||'')}" data-msg-att-name="${esc(att.name||'')}"` : '';
   // пузырь, в котором нет ничего кроме картинки: кадр занимает его целиком, а время
@@ -4191,6 +4141,47 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     </div>
     ${actionsHtml}
   </div>`;
+}
+
+// Вложение сообщения (и пересланного): картинка, видео, файл, GIF, «файл удалён». Зашифрованные вложения секретных чатов здесь не рисуются
+function attachBlockHtml(att) {
+  let attachHtml = '';
+  if (att?.url && !att.expired && !att.enc && !att.gif && Array.isArray(att.more) && att.more.length) {
+    attachHtml = multiAttachHtml(att);
+  } else if (att?.url && !att.expired && !att.enc) {
+    const attUrl = `${httpProto()}://${S.server}${att.url}`;
+    if (att.mime?.startsWith('image/')) {
+      attachHtml = `<div class="bubble-image" data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'image')}" data-lb-type="image" onclick="openLightboxEl(this)"><img src="${httpProto()}://${S.server}${imgPreviewPath(att)}" loading="lazy"></div>`;
+    } else if (att.mime?.startsWith('video/')) {
+      const posterUrl = att.thumb ? `${httpProto()}://${S.server}${att.thumb}` : '';
+      const safeVName = (att.name||'video').replace(/'/g,"\\'");
+      attachHtml = `<div class="bubble-image bubble-video" data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'video')}" data-lb-type="video" onclick="openLightboxEl(this)">
+        ${posterUrl ? `<img src="${posterUrl}" loading="lazy">` : `<video src="${attUrl}" preload="metadata" muted></video>`}
+        <div class="bubble-video-play"><svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg></div>
+      </div>`;
+    } else {
+      const sizeFmt = att.size ? (att.size > 1048576 ? (att.size/1048576).toFixed(1)+' МБ' : Math.round(att.size/1024)+' КБ') : '';
+      const localPath = _downloadedFiles[attUrl];
+      const isDone = !!(window.electron && localPath);
+      const safeLocal = (localPath||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      const safeUrl = attUrl.replace(/'/g,"\\'");
+      const safeName = (att.name||'file').replace(/'/g,"\\'");
+      const clickAction = isDone ? `openDownloadedFile('${safeLocal}')` : `downloadAttachment('${safeUrl}','${safeName}')`;
+      const rightEl = isDone
+        ? `<span class="bubble-file-open-label">Открыть</span>`
+        : `<svg class="dl-icon" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`;
+      attachHtml = `<div class="bubble-file${isDone?' bubble-file-done':''}" data-att-url="${attUrl}" onclick="${clickAction}">
+        <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="flex-shrink:0" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+        <div class="bubble-file-info"><div class="bubble-file-name">${att.name||'Файл'}</div>${sizeFmt?`<div class="bubble-file-size">${sizeFmt}</div>`:''}</div>
+        ${rightEl}
+      </div>`;
+    }
+  }
+  if (att?.gif) attachHtml = GifKlipy.messageHtml(att);   // GIF из Klipy: ссылки на ролик, файла у нас нет
+  if (att?.url && att.expired) attachHtml = `<div class="irc-text irc-deleted"><em>Файл удалён</em></div>`;
+  // Вложение с другого сервера, которое у нас не приняли (размер или формат по настройкам этого сервера) или не удалось получить
+  if (att?.unavailable) attachHtml = `<div class="irc-text irc-deleted"><em>${att.unavailable === 'policy' ? 'Вложение недоступно: не соответствует настройкам сервера' : 'Вложение не удалось получить'}</em></div>`;
+  return attachHtml;
 }
 
 function renderStatus(status) {

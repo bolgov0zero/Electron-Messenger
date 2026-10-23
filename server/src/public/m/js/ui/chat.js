@@ -162,11 +162,11 @@ B.ui.chat = (function () {
     }
     var fd = m.forward_data;
     if (fd) {
-      var fa = fd.attachment, ftxt = fd.text ? esc(fd.text) : fa ? ((fa.mime || '').indexOf('image/') === 0 ? '📷 Фото' : (fa.mime || '').indexOf('video/') === 0 ? '🎬 Видео' : '📎 ' + esc(fa.name || 'Файл')) : '';
-      var flb = fa && fa.url && !fa.expired && !fa.unavailable && ((fa.mime || '').indexOf('image/') === 0 || (fa.mime || '').indexOf('video/') === 0) ? ' data-c="lb" data-url="' + esc(fa.url) + '" data-type="' + ((fa.mime || '').indexOf('video/') === 0 ? 'video' : 'image') + '" style="cursor:pointer"' : '';
-      h += '<div class="quote"' + flb + '><b>Переслано от ' + esc(fd.name || '') + '</b><span>' + ftxt + '</span></div>';
+      // Пересланное вложение показывается превью, как обычное (ниже), под шапкой «Переслано от»
+      h += '<div class="quote"><b>Переслано от ' + esc(fd.name || '') + '</b>' + (fd.text ? '<span>' + esc(fd.text) + '</span>' : '') + '</div>';
     }
     if (comp) { var qs = h.slice(qStart); h = h.slice(0, qStart) + (comp.lp ? Fmt.previewCard(comp.lp, B.http() + '://' + B.S.server) : '') + (qs ? '<div class="cpad">' + qs + '</div>' : ''); }
+    if (fd && fd.attachment) h += attachments({ attachment: fd.attachment, id: 0 });
     h += attachments(m);
     if (comp) h += compParts(comp.ps, chat, meta);
     else if (m._skel) h += '<div class="txt">' + m._skel + meta + '</div>';

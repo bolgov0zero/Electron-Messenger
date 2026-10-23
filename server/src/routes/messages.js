@@ -211,6 +211,7 @@ router.get('/chat/:chatId', authMiddleware, async (req, res) => {
     if (m.reply_attachment) { try { reply_attachment = JSON.parse(m.reply_attachment); } catch {} }
     let forward_data = null;
     if (m.forward_data) { try { forward_data = JSON.parse(m.forward_data); } catch {} }
+    if (forward_data?.attachment?.url) forward_data.attachment = attach.markExpired(forward_data.attachment);   // пересланный файл могли стереть
     let link_preview = null;
     if (m.link_preview) { try { link_preview = JSON.parse(m.link_preview); } catch {} }
     return {
