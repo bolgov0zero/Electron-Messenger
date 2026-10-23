@@ -5822,14 +5822,15 @@ function ctxReadSetup(msgId, isMine) {
     if (req !== S.ctxReadReq || !data || data.error) return;
     const list = document.getElementById('ctx-read-list');
     if (!list) return;
-    const rd = data.statuses.filter(s => s.read_at);
-    const dlv = data.statuses.filter(s => s.delivered_at || s.read_at).length;
+    // read/delivered — факт (хранится постоянно), read_at/delivered_at — время, есть только в «окне времени статуса»
+    const rd = data.statuses.filter(s => s.read || s.read_at);
+    const dlv = data.statuses.filter(s => s.delivered || s.delivered_at || s.read_at).length;
     ctxReadLabel(data.chat_type === 'direct', rd.length, dlv, rd[0]?.read_at, st.total || data.statuses.length);
     const direct2 = data.chat_type === 'direct';
     list.innerHTML = rd.length
-      ? rd.map(s => `<div class="ctx-read-row" title="Прочитано ${new Date(s.read_at * 1000).toLocaleString('ru-RU')}">
+      ? rd.map(s => `<div class="ctx-read-row"${s.read_at ? ` title="Прочитано ${new Date(s.read_at * 1000).toLocaleString('ru-RU')}"` : ''}>
           <div class="av av-round ${userAvatarColor(s.user_id)}" data-av-user="${s.user_id}">${esc(initials(s.display_name))}</div>
-          <span class="ctx-read-name">${esc(s.display_name)}</span><span class="ctx-read-time">${ctxReadTime(s.read_at)}</span></div>`).join('')
+          <span class="ctx-read-name">${esc(s.display_name)}</span>${s.read_at ? `<span class="ctx-read-time">${ctxReadTime(s.read_at)}</span>` : ''}</div>`).join('')
       : `<div class="ctx-read-empty">${direct2 ? 'Собеседник ещё не открыл сообщение.' : dlv ? `Пока никто не прочитал. Сообщение получили ${dlv}.` : 'Сообщение пока никому не доставлено.'}</div>`;
     applyAvatars();
     if (wrap.classList.contains('open')) ctxReadPlace();

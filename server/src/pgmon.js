@@ -76,7 +76,7 @@ async function sample() {
       pg_database_size(current_database()) AS size FROM pg_stat_database WHERE datname = current_database()`);
     const latency = Date.now() - t0;
     const mx = Number((await dal.get('SHOW max_connections')).max_connections);
-    const parts = await dal.get(`SELECT pg_total_relation_size('message_status') AS st, pg_table_size('messages') AS msg,
+    const parts = await dal.get(`SELECT pg_total_relation_size('chat_read_state') + pg_total_relation_size('status_log') AS st, pg_table_size('messages') AS msg,
       COALESCE(pg_relation_size(to_regclass('idx_messages_tsv')), 0) AS idx,
       extract(epoch from pg_postmaster_start_time()) * 1000 AS started`);
     // «15.19 (Debian 15.19-0+deb12u1)» → «15.19»: сборка дистрибутива в карточку не нужна

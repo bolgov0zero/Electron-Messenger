@@ -258,12 +258,23 @@ router.get('/:messageId/info', authMiddleware, async (req, res) => {
   if (!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', msg.chat_id, req.user.id)))
     return res.status(403).json({ error: 'Forbidden' });
 
-  const statuses = await dal.all(`
-    SELECT u.id as user_id, u.display_name, ms.delivered_at, ms.read_at
-    FROM message_status ms JOIN users u ON u.id = ms.user_id
-    WHERE ms.message_id = ? ORDER BY ms.read_at ASC NULLS FIRST, ms.delivered_at ASC NULLS FIRST
-  `, messageId);
-
+  // Кто получил и прочитал: по отметкам участников (msgstatus.js). Точное время есть, пока сообщение
+  // укладывается в «окно времени статуса» (statusmarks.js); дальше остаётся только факт, а время null
+  const marks = await require('../msgstatus').marks(msg.chat_id);
+  const times = await require('../statusmarks').timesFor(msg.chat_id, msg);
+  const guest = require('../guest');
+  const names = new Map((await dal.all('SELECT u.id, u.display_name FROM chat_members cm JOIN users u ON u.id = cm.user_id WHERE cm.chat_id = ?', msg.chat_id)).map(u => [u.id, u.display_name]));
+  const statuses = [];
+  for (const u of marks) {
+    if (u.user_id === msg.sender_id || (u.is_bot === guest.IS_GUEST && guest.floorOf(u.user_id) >= msg.id)) continue;
+    const read = u.r >= msg.id, delivered = u.d >= msg.id;
+    if (!delivered) continue;
+    const t = times.get(u.user_id) || {};
+    statuses.push({ user_id: u.user_id, display_name: names.get(u.user_id), read: read ? 1 : 0, delivered: 1,
+      delivered_at: t.d ?? t.r ?? null, read_at: read ? (t.r ?? null) : null });
+  }
+  // Сначала те, кто ещё не прочитал; прочитавшие — по времени, а без времени (старые) — в конце списка прочитавших
+  statuses.sort((x, y) => (x.read - y.read) || (x.read_at === y.read_at ? 0 : x.read_at == null ? 1 : y.read_at == null ? -1 : x.read_at - y.read_at));
   res.json({ chat_type: msg.chat_type, sent_at: msg.sent_at, statuses });
 });
 

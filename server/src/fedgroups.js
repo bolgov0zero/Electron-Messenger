@@ -294,10 +294,7 @@ async function recvMsg(peer, ev) {
   const targets = (await realLocalMembers(chat.id)).filter(id => id !== sender.id);
   const msgId = await dal.tx(() => (async () => {
     const r = await dal.run('INSERT INTO messages (chat_id, sender_id, text, sent_at, reply_to_id, attachment, forward_data, fed_uid, system_kind, mentions, fed_seq) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', chat.id, sender.id, text, ts, replyTo, attachment ? JSON.stringify(attachment) : null, fwdJson, uid, sys, mm.json, seq);
-    for (const id of targets.filter(id => wsm().hasOpenConnection(id))) {
-      await dal.run('INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)', r.lastInsertRowid, id);
-      await dal.run('UPDATE message_status SET delivered_at = COALESCE(delivered_at, unixepoch()) WHERE message_id = ? AND user_id = ?', r.lastInsertRowid, id);
-    } ;
+    await require('./statusmarks').delivered(chat.id, targets.filter(id => wsm().hasOpenConnection(id)), r.lastInsertRowid);
     return r.lastInsertRowid;
   })());
   await wsm().finishMessage(msgId, chat.id, sender.id);
@@ -818,11 +815,12 @@ async function recvStat(peer, ev) {
   if (!author) return;
   if (author.is_bot === 0) {
     const read = ev.st === 'read';
-    const ids = (await dal.all('SELECT id FROM messages WHERE chat_id = ? AND sender_id = ? AND id <= ? AND deleted = 0 ORDER BY id', at.chat.id, author.id, msg.id)).map(r => r.id);
+    const marks = require('./statusmarks');
+    // Только то, что новее прежней отметки этого человека: старое он уже подтверждал
+    const prev = await marks.marksOf(who.id, at.chat.id);
+    const ids = (await dal.all('SELECT id FROM messages WHERE chat_id = ? AND sender_id = ? AND id <= ? AND id > ? AND deleted = 0 ORDER BY id', at.chat.id, author.id, msg.id, read ? prev.r : prev.d)).map(r => r.id);
+    if (read) await marks.read(who.id, at.chat.id, msg.id); else await marks.delivered(at.chat.id, [who.id], msg.id);
     if (!ids.length) return;
-    const ins = 'INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)';
-    const upd = `UPDATE message_status SET delivered_at = COALESCE(delivered_at, unixepoch())${read ? ', read_at = COALESCE(read_at, unixepoch())' : ''} WHERE message_id = ? AND user_id = ?`;
-    await dal.tx(async () => { for (const id of ids) { await dal.run(ins, id, who.id); await dal.run(upd, id, who.id); } });
     wsm().sendTo(author.id, { type: 'status_range', chat_id: at.chat.id, kind: read ? 'read' : 'delivered', min_id: ids[0], max_id: ids[ids.length - 1], reader_id: who.id });
   } else if (author.is_bot === 2 && at.home && author.fed_instance !== peer.instance_id) {
     const p = await F().peerByInstance(author.fed_instance);

@@ -3,15 +3,15 @@
 // гость в получатели сообщений до его входа не входит (их он не видел)
 const dal = require('./dal');
 
-// До какого сообщения чата каждый участник доставил (d) и прочитал (r)
+// До какого сообщения чата каждый участник доставил (d) и прочитал (r): отметки из chat_read_state
+// (см. statusmarks.js). Прочитанное считается и доставленным
 async function marks(chatId) {
   return dal.all(`
-    SELECT cm.user_id, u.is_bot,
-      (SELECT m2.id FROM messages m2 JOIN message_status ms ON ms.message_id = m2.id AND ms.user_id = cm.user_id
-        WHERE m2.chat_id = cm.chat_id AND ms.read_at IS NOT NULL ORDER BY m2.id DESC LIMIT 1) AS r,
-      (SELECT m2.id FROM messages m2 JOIN message_status ms ON ms.message_id = m2.id AND ms.user_id = cm.user_id
-        WHERE m2.chat_id = cm.chat_id AND (ms.delivered_at IS NOT NULL OR ms.read_at IS NOT NULL) ORDER BY m2.id DESC LIMIT 1) AS d
-    FROM chat_members cm JOIN users u ON u.id = cm.user_id WHERE cm.chat_id = ?`, chatId);
+    SELECT cm.user_id, u.is_bot, COALESCE(s.last_read_id, 0) AS r,
+      MAX(COALESCE(s.delivered_id, 0), COALESCE(s.last_read_id, 0)) AS d
+    FROM chat_members cm JOIN users u ON u.id = cm.user_id
+    LEFT JOIN chat_read_state s ON s.user_id = cm.user_id AND s.chat_id = cm.chat_id
+    WHERE cm.chat_id = ?`, chatId);
 }
 
 // msgs: [{ id, sender_id }] → Map(id → { delivered, read, total })
@@ -33,4 +33,4 @@ async function statuses(chatId, msgs) {
 
 async function statusOf(chatId, msg) { return (await statuses(chatId, [msg])).get(msg.id); }
 
-module.exports = { statuses, statusOf };
+module.exports = { statuses, statusOf, marks };

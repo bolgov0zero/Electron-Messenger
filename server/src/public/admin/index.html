@@ -6894,12 +6894,13 @@ const ST_I = {
   server: stSvg('<rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/>'),
 };
 const ST_EDIT = [[60, '1 мин'], [120, '2 мин'], [900, '15 мин'], [3600, '1 час'], [172800, '48 часов']];
+const ST_STATUS = [[0, 'Не хранить'], [1, '1 день'], [3, '3 дня'], [7, '7 дней'], [14, '14 дней'], [30, '30 дней']];
 const ST_LIFE = [[0, 'Всегда'], [30, '30 дней'], [90, '90 дней'], [365, '1 год']];
-const ST_FORM = { messages: ['edit'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime', 'backupRetention'] };
+const ST_FORM = { messages: ['edit', 'statusDays'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime', 'backupRetention'] };
 const ST_IN = { messages: 'в «Сообщениях»', attachments: 'во «Вложениях»', backups: 'в «Резервных копиях»' };
 const ST_QUICK = { 'Документы': ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'], 'Архивы': ['zip', 'rar', '7z'] };
 const ST_KEYS = {
-  edit: ['edit_time_limit', String], imgMax: ['upload_image_max_size', String], imgExt: ['upload_image_extensions', v => v.join(',')],
+  edit: ['edit_time_limit', String], statusDays: ['status_window_days', String], imgMax: ['upload_image_max_size', String], imgExt: ['upload_image_extensions', v => v.join(',')],
   videoMax: ['upload_video_max_size', String], videoExt: ['upload_video_extensions', v => v.join(',')],
   fileMax: ['upload_file_max_size', String], fileExt: ['upload_file_extensions', v => v.join(',')], life: ['upload_file_lifetime', String],
   backupDays: ['backup_schedule_days', v => v.join(',')], backupTime: ['backup_schedule_time', String],
@@ -6926,6 +6927,7 @@ function stFromSettings(s) {
   const list = v => String(v || '').split(',').map(x => x.trim().toLowerCase().replace(/^\.+/, '')).filter(Boolean);
   ST.saved = {
     edit: Number(s.edit_time_limit) || 120,
+    statusDays: s.status_window_days === undefined || s.status_window_days === '' || !(Number(s.status_window_days) >= 0) ? 7 : Number(s.status_window_days),
     imgMax: Number(s.upload_image_max_size) || 10,
     imgExt: s.upload_image_extensions ? list(s.upload_image_extensions) : ['jpeg', 'jpg', 'png', 'gif', 'webp'],
     videoMax: Number(s.upload_video_max_size) || 50,
@@ -7020,6 +7022,11 @@ function stPaneMessages() {
       </div>
       <div class="st-ex" id="st-edit-example">${stEditExample()}</div>
       <div class="st-cmp"><span>Для сравнения:</span><span>WhatsApp — <b>15 минут</b></span><span>Telegram — <b>48 часов</b></span></div>
+    </div></div>
+    <div class="st-gt">${ST_I.clock}Статусы</div>
+    <div class="st-g"><div class="st-r stack">
+      <div class="st-l"><b>Окно времени статуса</b><span>Сколько хранится точное время доставки и прочтения. Позже остаётся только факт «прочитано» без времени. Работает в чатах до 100 участников.</span></div>
+      <div class="st-ctl"><div class="st-seg" role="group" aria-label="Окно времени статуса">${ST_STATUS.map(([v, l]) => `<button type="button" aria-pressed="${d.statusDays === v}" onclick="stStatusPreset(${v})">${l}</button>`).join('')}</div></div>
     </div></div>
     <p class="st-hint">Новый срок действует сразу после сохранения; приложения узнают о нём при переподключении.</p>`;
 }
@@ -7216,6 +7223,7 @@ function stRender(focusId) {
 }
 
 function stGo(k) { ST.sec = k; ST.confirmClose = false; ST.bkNew = false; stRender(); const b = document.getElementById('st-body'); if (b) b.scrollTop = 0; }
+function stStatusPreset(v) { ST.draft.statusDays = v; stRender(); }
 function stEditPreset(v) {
   if (v === 'custom') { ST.editCustom = true; ST.editUnit = ST.draft.edit % 3600 === 0 ? 3600 : ST.draft.edit % 60 === 0 ? 60 : 1; return stRender('st-edit-n'); }
   ST.editCustom = false; ST.draft.edit = v; stRender();
@@ -7591,12 +7599,12 @@ function restartService() {
 
 const SP = { open: new Set(), rate: null, disk: null, q: '', files: [], audit: [], online: 0, pend: null, loaded: false, editCustom: false, editUnit: 60, lifeCustom: false, showBk: false, showLog: false,
   db: { info: null, form: { host: '127.0.0.1', port: 5432, database: 'electron', user: 'electron', password: '', ssl: '' }, test: null, testing: false, confirm: false, job: null, down: false, t: null } };
-const SP_KEYS = { messages: ['edit'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime', 'backupRetention'] };
-const SP_DEF = { edit: 120, imgMax: 10, imgExt: ['jpeg', 'jpg', 'png', 'gif', 'webp'], videoMax: 50, videoExt: ['mp4', 'mov', 'webm'], fileMax: 50, fileExt: [], life: 0, backupDays: [], backupTime: '03:00', backupRetention: NaN };
+const SP_KEYS = { messages: ['edit', 'statusDays'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime', 'backupRetention'] };
+const SP_DEF = { edit: 120, statusDays: 7, imgMax: 10, imgExt: ['jpeg', 'jpg', 'png', 'gif', 'webp'], videoMax: 50, videoExt: ['mp4', 'mov', 'webm'], fileMax: 50, fileExt: [], life: 0, backupDays: [], backupTime: '03:00', backupRetention: NaN };
 const SP_AUDIT_KEY = { messages: 'edit_time_limit', attachments: 'upload_', backups: 'backup_', github: 'github_token' };
 const spShortDur = s => s >= 3600 && s % 3600 === 0 ? `${s / 3600} ч` : s >= 60 && s % 60 === 0 ? `${s / 60} мин` : `${s} с`;
 const SP_LABEL = {
-  edit: ['Время на правку', spShortDur], imgMax: ['Размер картинок', v => v + ' МБ'], imgExt: ['Форматы картинок', v => v.join(', ')], videoMax: ['Размер видео', v => v + ' МБ'],
+  edit: ['Время на правку', spShortDur], statusDays: ['Окно времени статуса', v => v ? v + ' дн' : 'не хранить'], imgMax: ['Размер картинок', v => v + ' МБ'], imgExt: ['Форматы картинок', v => v.join(', ')], videoMax: ['Размер видео', v => v + ' МБ'],
   videoExt: ['Форматы видео', v => v.join(', ')], fileMax: ['Размер файлов', v => v + ' МБ'], fileExt: ['Форматы файлов', v => v.length ? v.join(', ') : 'не разрешены'],
   life: ['Хранение файлов', v => v ? v + ' дн' : 'всегда'], backupDays: ['Дни копий', v => v.length ? ST_DAYS.filter(d => v.includes(d[0])).map(d => d[1]).join(', ') : 'вручную'],
   backupTime: ['Время копий', v => v], backupRetention: ['Хранение копий', v => v ? v + ' дн' : 'всегда'],
@@ -7799,7 +7807,10 @@ function spMessages() {
   return spRow('Время на правку сообщения', 'Когда срок выйдет, пункт «Изменить» пропадёт из меню сообщения',
     `<div class="sp-seg">${ST_EDIT.map(([v, l]) => `<button type="button" aria-pressed="${!custom && spSv('edit') === v}" onclick="spEditPreset(${v})">${l}</button>`).join('')}<button type="button" aria-pressed="${custom}" onclick="spEditPreset('custom')">Своё</button></div>
     ${custom ? `<div class="sp-inp"><input id="sp-edit-n" type="number" min="1" value="${Number.isInteger(n) ? n : ''}" aria-label="Срок правки" oninput="spEditN(this.value)"><select aria-label="Единицы" onchange="spEditUnit(+this.value)">${[[1, 'секунд'], [60, 'минут'], [3600, 'часов']].map(([u, l]) => `<option value="${u}" ${SP.editUnit === u ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}`,
-    '', 'wide', 'срок правка редактирование изменить');
+    '', 'wide', 'срок правка редактирование изменить')
+    + spRow('Окно времени статуса', 'Сколько хранится точное время доставки и прочтения. Позже остаётся только факт «прочитано» без времени. Работает в чатах до 100 участников',
+    `<div class="sp-seg">${ST_STATUS.map(([v, l]) => `<button type="button" aria-pressed="${spSv('statusDays') === v}" onclick="spSet({ statusDays: ${v} })">${l}</button>`).join('')}</div>`,
+    '', 'wide', 'статус доставка прочтение время окно хранить');
 }
 function spAttachments() {
   const life = SP.pend?.key === 'life' ? SP.pend.val : spSv('life'), lifeCustom = SP.lifeCustom || !ST_LIFE.some(([v]) => v === life);

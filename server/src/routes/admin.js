@@ -459,7 +459,7 @@ router.get('/settings', async (req, res) => {
 });
 
 router.put('/settings', async (req, res) => {
-  const allowed = ['github_token', 'edit_time_limit',
+  const allowed = ['github_token', 'edit_time_limit', 'status_window_days',
     'upload_image_max_size', 'upload_image_extensions',
     'upload_video_max_size', 'upload_video_extensions',
     'upload_file_max_size', 'upload_file_extensions', 'upload_file_lifetime',
@@ -467,6 +467,10 @@ router.put('/settings', async (req, res) => {
     ];
   const upsert = 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)';
   const del = 'DELETE FROM settings WHERE key = ?';
+  // «Окно времени статуса»: допустимо только целое число дней от 0 (0 — время не хранить)
+  const statusDays = 'status_window_days' in req.body ? Math.floor(Number(req.body.status_window_days)) : null;
+  if (statusDays !== null && !(statusDays >= 0 && statusDays <= 365)) return res.status(400).json({ error: 'Окно времени статуса — от 0 до 365 дней' });
+  const prevStatusDays = statusDays !== null ? Number((await dal.get("SELECT value FROM settings WHERE key = 'status_window_days'"))?.value ?? require('../statusmarks').DEFAULT_DAYS) : null;
   const keepEmpty = ['upload_image_extensions', 'upload_video_extensions', 'upload_file_extensions', 'upload_file_lifetime', 'backup_retention_days'];
   for (const key of allowed) {
     if (key in req.body) {
@@ -475,6 +479,7 @@ router.put('/settings', async (req, res) => {
       else await dal.run(del, key);
     }
   }
+  if (statusDays !== null) await require('../statusmarks').windowChanged(prevStatusDays, statusDays);
   _versionCache = { version: null, fetchedAt: 0 }; // сбросить кэш
   logAudit(req, 'server', 'Изменение настроек', Object.keys(req.body).filter(k => allowed.includes(k)).join(', ') || '—');
   res.json({ ok: true });

@@ -955,10 +955,7 @@ async function recvMessage(peer, ev) {
   const online = wsm().hasOpenConnection(local.id);
   const msgId = await dal.tx(() => (async () => {
     const r = await dal.run('INSERT INTO messages (chat_id, sender_id, text, sent_at, reply_to_id, attachment, forward_data, fed_uid) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', chatId, shadow.id, text, ts, replyTo, attachment ? JSON.stringify(attachment) : null, fwdJson, uid);
-    if (online) {
-      await dal.run('INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)', r.lastInsertRowid, local.id);
-      await dal.run('UPDATE message_status SET delivered_at = COALESCE(delivered_at, unixepoch()) WHERE message_id = ? AND user_id = ?', r.lastInsertRowid, local.id);
-    }
+    if (online) await require('./statusmarks').delivered(chatId, [local.id], r.lastInsertRowid);
     return r.lastInsertRowid;
   })());
   // Счётчики «сообщений без ответа»: его сообщение увеличивает его счётчик, а наш сбрасывает (он нам ответил)
@@ -1079,12 +1076,13 @@ async function recvStatus(peer, ev) {
   if (!sh || !local || !upto) return;
   const chatId = await directChat(local.id, sh.id);
   if (!chatId) return;
-  const ids = (await dal.all('SELECT id FROM messages WHERE chat_id = ? AND sender_id = ? AND id <= ? AND deleted = 0 ORDER BY id', chatId, local.id, upto)).map(r => r.id);
-  if (!ids.length) return;
   const read = ev.k === 'read';
-  const ins = 'INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)';
-  const upd = `UPDATE message_status SET delivered_at = COALESCE(delivered_at, unixepoch())${read ? ', read_at = COALESCE(read_at, unixepoch())' : ''} WHERE message_id = ? AND user_id = ?`;
-  await dal.tx(async () => { for (const id of ids) { await dal.run(ins, id, sh.id); await dal.run(upd, id, sh.id); } });
+  const marks = require('./statusmarks');
+  // Только то, что новее прежней отметки собеседника: старое он уже подтверждал
+  const prev = await marks.marksOf(sh.id, chatId);
+  const ids = (await dal.all('SELECT id FROM messages WHERE chat_id = ? AND sender_id = ? AND id <= ? AND id > ? AND deleted = 0 ORDER BY id', chatId, local.id, upto, read ? prev.r : prev.d)).map(r => r.id);
+  if (read) await marks.read(sh.id, chatId, upto); else await marks.delivered(chatId, [sh.id], upto);
+  if (!ids.length) return;
   const wsmod = wsm();
   wsmod.sendTo(local.id, { type: 'status_range', chat_id: chatId, kind: read ? 'read' : 'delivered', min_id: ids[0], max_id: ids[ids.length - 1], reader_id: sh.id });
 }

@@ -47,14 +47,6 @@ db.exec(`
     sent_at INTEGER DEFAULT (unixepoch())
   );
 
-  CREATE TABLE IF NOT EXISTS message_status (
-    message_id INTEGER REFERENCES messages(id) ON DELETE CASCADE,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    delivered_at INTEGER,
-    read_at INTEGER,
-    PRIMARY KEY (message_id, user_id)
-  );
-
   CREATE TABLE IF NOT EXISTS reactions (
     message_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
@@ -77,18 +69,31 @@ db.exec(`
   -- сразу; без индекса подсчёт за сутки перебирал бы всю историю.
   CREATE INDEX IF NOT EXISTS idx_messages_sent_at      ON messages(sent_at);
 
-  -- Докуда человек прочитал чат. Непрочитанное — хвост новее этой отметки, а не
-  -- перебор всей истории с проверкой message_status по каждому сообщению.
-  -- Подробности в src/unread.js.
+  -- Докуда человек прочитал и докуда получил сообщения чата. Непрочитанное —
+  -- хвост новее отметки, а не перебор всей истории; по тем же отметкам рисуются
+  -- галочки у отправителя. Подробности в src/unread.js и src/statusmarks.js.
   CREATE TABLE IF NOT EXISTS chat_read_state (
     user_id      INTEGER NOT NULL,
     chat_id      INTEGER NOT NULL,
     last_read_id INTEGER NOT NULL DEFAULT 0,
+    delivered_id INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, chat_id)
   );
+  -- Время доставки и прочтения за «окно времени статуса»: одна запись на человека,
+  -- чат и вид за минуту (upto_id — до какого сообщения). См. src/statusmarks.js.
+  CREATE TABLE IF NOT EXISTS status_log (
+    chat_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    kind    TEXT    NOT NULL,
+    bucket  INTEGER NOT NULL,
+    upto_id INTEGER NOT NULL,
+    ts      INTEGER NOT NULL,
+    PRIMARY KEY (chat_id, user_id, kind, bucket)
+  );
+  CREATE INDEX IF NOT EXISTS idx_status_log_msg ON status_log(chat_id, upto_id);
+  CREATE INDEX IF NOT EXISTS idx_status_log_at  ON status_log(ts);
   CREATE INDEX IF NOT EXISTS idx_chat_members_user     ON chat_members(user_id);
   CREATE INDEX IF NOT EXISTS idx_chat_members_chat     ON chat_members(chat_id);
-  CREATE INDEX IF NOT EXISTS idx_message_status_msg    ON message_status(message_id);
   CREATE INDEX IF NOT EXISTS idx_reactions_msg         ON reactions(message_id);
 
   CREATE TABLE IF NOT EXISTS push_subscriptions (
@@ -371,10 +376,11 @@ try {
 // Берём id прямо перед первым непрочитанным — тогда счётчики после перехода
 // совпадают с прежними до единицы. Если непрочитанного нет, отметка встаёт на
 // последнее сообщение чата.
+const hasMessageStatus = () => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'message_status'").get();
 try {
   const filled = db.prepare('SELECT COUNT(*) AS c FROM chat_read_state').get().c;
   const members = db.prepare('SELECT COUNT(*) AS c FROM chat_members').get().c;
-  if (filled === 0 && members > 0) {
+  if (filled === 0 && members > 0 && hasMessageStatus()) {
     db.exec(`
       INSERT OR REPLACE INTO chat_read_state (user_id, chat_id, last_read_id)
       SELECT cm.user_id, cm.chat_id, COALESCE(
@@ -389,6 +395,44 @@ try {
       db.prepare('SELECT COUNT(*) AS c FROM chat_read_state').get().c);
   }
 } catch (e) { console.error('[DB] Не удалось заполнить отметки прочтения:', e.message); }
+
+// Статусы доставки и прочтения: строка на сообщение и получателя (message_status) заменена
+// отметками «доставлено до N» / «прочитано до N» на человека и чат и журналом времени за
+// окно status_window_days (src/statusmarks.js). Миграция одноразовая: таблица удаляется.
+// Эта же миграция для PostgreSQL — migrations/pg/007_status_marks.sql.
+tryAlter('ALTER TABLE chat_read_state ADD COLUMN delivered_id INTEGER NOT NULL DEFAULT 0');
+try {
+  if (hasMessageStatus()) {
+    db.transaction(() => {
+      const win = Number(db.prepare("SELECT value FROM settings WHERE key = 'status_window_days'").get()?.value);
+      const days = Number.isFinite(win) && win >= 0 ? win : 7;
+      const now = Math.floor(Date.now() / 1000), since = now - days * 86400;
+      db.exec(`
+        INSERT INTO chat_read_state (user_id, chat_id, last_read_id, delivered_id)
+        SELECT ms.user_id, m.chat_id,
+               COALESCE(MAX(CASE WHEN ms.read_at IS NOT NULL THEN m.id END), 0),
+               COALESCE(MAX(CASE WHEN ms.delivered_at IS NOT NULL OR ms.read_at IS NOT NULL THEN m.id END), 0)
+        FROM message_status ms JOIN messages m ON m.id = ms.message_id
+        GROUP BY ms.user_id, m.chat_id
+        ON CONFLICT(user_id, chat_id) DO UPDATE SET
+          last_read_id = MAX(chat_read_state.last_read_id, excluded.last_read_id),
+          delivered_id = MAX(chat_read_state.delivered_id, excluded.delivered_id)`);
+      if (days > 0) {
+        for (const [kind, col] of [['r', 'read_at'], ['d', 'delivered_at']]) {
+          db.prepare(`
+            INSERT OR REPLACE INTO status_log (chat_id, user_id, kind, bucket, upto_id, ts)
+            SELECT m.chat_id, ms.user_id, ?, ms.${col} / 60, MAX(m.id), MAX(ms.${col})
+            FROM message_status ms JOIN messages m ON m.id = ms.message_id
+            WHERE ms.${col} >= ? AND m.chat_id IN (SELECT chat_id FROM chat_members GROUP BY chat_id HAVING COUNT(*) <= 100)
+            GROUP BY m.chat_id, ms.user_id, ms.${col} / 60`).run(kind, since);
+        }
+      }
+      db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('status_log_from', ?)").run(String(days > 0 ? since : now));
+      db.exec('DROP TABLE message_status');
+    })();
+    console.log('[DB] Статусы сообщений переведены на отметки, таблица message_status удалена');
+  }
+} catch (e) { console.error('[DB] Не удалось перевести статусы сообщений на отметки:', e.message); }
 
 // Default admin
 const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get();
@@ -651,7 +695,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_messages_sender         ON messages(sender_id);
   CREATE INDEX IF NOT EXISTS idx_messages_chat_deleted   ON messages(chat_id, deleted);
   CREATE INDEX IF NOT EXISTS idx_messages_reply          ON messages(reply_to_id) WHERE reply_to_id IS NOT NULL;
-  CREATE INDEX IF NOT EXISTS idx_message_status_user     ON message_status(user_id);
   CREATE INDEX IF NOT EXISTS idx_reactions_user          ON reactions(user_id);
   CREATE INDEX IF NOT EXISTS idx_pinned_message          ON pinned_messages(message_id);
   CREATE INDEX IF NOT EXISTS idx_muted_chat              ON muted_chats(chat_id);

@@ -258,6 +258,8 @@ boot.push(() => require('./federation').mount(server));
 boot.push(() => require('./announcements').startScheduler());
 // Гостевые ссылки: загрузка действующих гостей и закрытие тех, у кого срок вышел, пока сервер не работал
 boot.push(() => require('./guest').startScheduler());
+// Журнал времени доставки и прочтения: раз в сутки убираются записи старше окна
+boot.push(() => require('./statusmarks').start());
 // Нагрузка сервера для живых графиков на главной админки; история переживает перезапуск
 const monitor = require('./monitor');
 monitor.setOnlineProvider(require('./ws').onlineUserCount);

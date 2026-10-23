@@ -14,7 +14,7 @@ const BATCH_PARAMS = 30000;
 
 // Те же таблицы чатов и ссылки на людей, что в restore.js: [таблица, столбцы с людьми (можно пустые), столбцы с людьми (обязательные)]
 const CHAT_TABLES = [
-  ['reactions', [], ['user_id']], ['message_status', [], ['user_id']], ['pinned_messages', ['pinned_by'], []],
+  ['reactions', [], ['user_id']], ['status_log', [], ['user_id']], ['pinned_messages', ['pinned_by'], []],
   ['chat_read_state', [], ['user_id']], ['muted_chats', [], ['user_id']],
   ['secret_grants', [], ['granter_user_id']], ['secret_key_requests', ['approver_user_id'], ['requester_user_id']], ['secret_chat_devices', [], ['user_id']],
   ['webhooks', [], ['user_id']], ['chat_members', [], ['user_id']], ['messages', ['sender_id'], []], ['chats', ['created_by'], []],
@@ -143,6 +143,26 @@ async function apply(file, opts) {
           await flush();
           loaded.push(t);
         }
+        // Копия, снятая до перехода на отметки статусов, хранит их строками message_status: сводим их в отметки.
+        // Времени в такой копии для журнала нет, поэтому полным журнал считается только с этого момента
+        if (bkHas('message_status')) {
+          const agg = new Map();
+          for (const r of c.prepare('SELECT ms.user_id, m.chat_id, ms.read_at, ms.delivered_at, m.id FROM message_status ms JOIN messages m ON m.id = ms.message_id').iterate()) {
+            const u = umap.get(r.user_id); if (u == null) continue;
+            const k = u + ':' + r.chat_id, a = agg.get(k) || { u, chat: r.chat_id, r: 0, d: 0 };
+            if (r.read_at != null) a.r = Math.max(a.r, r.id);
+            if (r.read_at != null || r.delivered_at != null) a.d = Math.max(a.d, r.id);
+            agg.set(k, a);
+          }
+          const all = [...agg.values()];
+          for (let i = 0; i < all.length; i += 1000) {
+            const part = all.slice(i, i + 1000);
+            await dal.run(`INSERT INTO chat_read_state (user_id, chat_id, last_read_id, delivered_id) VALUES ${part.map(() => '(?, ?, ?, ?)').join(', ')}
+              ON CONFLICT(user_id, chat_id) DO UPDATE SET last_read_id = MAX(chat_read_state.last_read_id, excluded.last_read_id),
+                delivered_id = MAX(chat_read_state.delivered_id, excluded.delivered_id)`, ...part.flatMap(a => [a.u, a.chat, a.r, a.d]));
+          }
+        }
+        await dal.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('status_log_from', ?)", String(Math.floor(Date.now() / 1000)));
         // вернуть строки папок, приглашений и т. п. для чатов, которые остались
         const chatIds = new Set((await dal.all('SELECT id FROM chats')).map(x => x.id));
         for (const k of keep) {

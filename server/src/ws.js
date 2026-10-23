@@ -4,6 +4,7 @@ const dal = require('./dal');
 const maintenance = require('./maintenance');
 const spaces = require('./spaces');
 const unreadCounts = require('./unread');
+const statusMarks = require('./statusmarks');
 const gifLib = require('./gif');
 const linkPrev = require('./linkprev');
 const attach = require('./attach');
@@ -451,8 +452,6 @@ function setup(server) {
         // Подготавливаем стейтменты вне транзакции — db.prepare нельзя вызывать внутри неё
         const stmtInsertMsg = 'INSERT INTO messages (chat_id, sender_id, text, iv, reply_to_id, attachment, mentions, forward_data, link_preview, fwd_src) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
         const stmtGetMembers = 'SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?';
-        const stmtInsStatus = 'INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)';
-        const stmtUpdDelivered = 'UPDATE message_status SET delivered_at = COALESCE(delivered_at, unixepoch()) WHERE message_id = ? AND user_id = ?';
 
         // Вставка сообщения и статусов доставки в одной транзакции
         const msgId = await dal.tx(() => (async () => {
@@ -460,12 +459,8 @@ function setup(server) {
           const newMsgId = result.lastInsertRowid;
           // Пометить как delivered тем участникам, которые сейчас онлайн (кроме отправителя)
           const members = await dal.all(stmtGetMembers, chat_id, user.id);
-          for (const { user_id } of members) {
-            if (hasOpenConnection(user_id)) {
-              await dal.run(stmtInsStatus, newMsgId, user_id);
-              await dal.run(stmtUpdDelivered, newMsgId, user_id);
-            }
-          } ;
+          const online = members.filter(m => hasOpenConnection(m.user_id)).map(m => m.user_id);
+          await statusMarks.delivered(chat_id, online, newMsgId, members.length + 1);
           return newMsgId;
         })());
 
@@ -496,8 +491,7 @@ function setup(server) {
         // Членство в чате — как в обработчике 'read' ниже: иначе можно подтвердить
         // доставку чужого сообщения и исказить счётчики статусов
         if (!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', msg.chat_id, user.id))) return;
-        await dal.run('INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)', message_id, user.id);
-        await dal.run('UPDATE message_status SET delivered_at = unixepoch() WHERE message_id = ? AND user_id = ? AND delivered_at IS NULL', message_id, user.id);
+        await statusMarks.delivered(msg.chat_id, [user.id], message_id);
         const updated = await getMessageWithStatus(message_id, msg.sender_id);
         sendTo(msg.sender_id, { type: 'status_update', message: updated });
         if ((await spaces.isFed(msg.sender_id))) await fed().onStatus('dlv', msg.sender_id, user.id, message_id);
@@ -508,23 +502,18 @@ function setup(server) {
         if (!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', chat_id, user.id))) return;
         // Только реально непрочитанные — иначе на чате в 5000 сообщений каждый вход
         // в чат рассылал status_update по КАЖДОМУ сообщению (шторм WS + SQL)
+        const prevRead = (await statusMarks.marksOf(user.id, chat_id)).r;
         const unread = await dal.all(`
           SELECT m.id, m.sender_id FROM messages m
-          LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-          WHERE m.chat_id = ? AND m.id > ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND ms.read_at IS NULL
-        `, user.id, chat_id, gfloor, user.id);
+          WHERE m.chat_id = ? AND m.id > ? AND m.sender_id IS NOT ? AND m.deleted = 0
+        `, chat_id, Math.max(gfloor, prevRead), user.id);
         // Отметка «докуда прочитано» — до раннего выхода: если непрочитанного нет,
         // отметку всё равно надо подтянуть к последнему сообщению, иначе она может
         // отстать и счётчик покажет непрочитанное там, где его нет
         await unreadCounts.markRead(user.id, chat_id);
         if (!unread.length) return;
-        // Подготавливаем стейтменты вне транзакции
-        const stmtReadInsert = 'INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)';
-        const stmtReadUpdate = 'UPDATE message_status SET delivered_at = COALESCE(delivered_at, unixepoch()), read_at = COALESCE(read_at, unixepoch()) WHERE message_id = ? AND user_id = ?';
-        // Обновляем статусы всех непрочитанных сообщений в одной транзакции
-        await dal.tx(() => (async () => {
-          for (const { id } of unread) { await dal.run(stmtReadInsert, id, user.id); await dal.run(stmtReadUpdate, id, user.id); } ;
-        })());
+        // Статус — это отметка «прочитано до»: одна запись вместо строки на каждое сообщение
+        await statusMarks.read(user.id, chat_id, Math.max(...unread.map(m => m.id)));
         // Одно событие-диапазон на отправителя вместо status_update на каждое
         // сообщение (модель read_up_to из Telegram): меньше трафика и SQL
         const bySender = new Map();
@@ -722,31 +711,25 @@ function setup(server) {
     // Авто-доставка при подключении: безопасно, после регистрации всех обработчиков
     setImmediate(async () => {
       try {
+        // По одной строке на (чат, отправитель): всё, что новее отметки «доставлено» этого человека
         const undelivered = await dal.all(`
-          SELECT m.id, m.sender_id, m.chat_id FROM messages m
-          JOIN chat_members cm ON cm.chat_id = m.chat_id AND cm.user_id = ?
-          LEFT JOIN message_status ms ON ms.message_id = m.id AND ms.user_id = ?
-          WHERE m.sender_id != ? AND m.deleted = 0 AND ms.delivered_at IS NULL
-        `, user.id, user.id, user.id);
+          SELECT m.chat_id, m.sender_id, MIN(m.id) AS min_id, MAX(m.id) AS max_id
+          FROM chat_members cm
+          JOIN messages m ON m.chat_id = cm.chat_id
+          LEFT JOIN chat_read_state s ON s.user_id = cm.user_id AND s.chat_id = cm.chat_id
+          WHERE cm.user_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND m.id > ?
+            AND m.id > MAX(COALESCE(s.delivered_id, 0), COALESCE(s.last_read_id, 0))
+          GROUP BY m.chat_id, m.sender_id
+        `, user.id, user.id, user.is_guest ? guestLib.floorOf(user.id) : 0);
         if (!undelivered.length) return;
-        const ins = 'INSERT OR IGNORE INTO message_status (message_id, user_id) VALUES (?, ?)';
-        const upd = 'UPDATE message_status SET delivered_at = unixepoch() WHERE message_id = ? AND user_id = ? AND delivered_at IS NULL';
-        await dal.tx(() => (async () => {
-          for (const { id } of undelivered) { await dal.run(ins, id, user.id); await dal.run(upd, id, user.id); } ;
-        })());
-        // Диапазоны по (отправитель, чат) вместо события на каждое сообщение
-        const byKey = new Map();
-        undelivered.forEach(({ id, sender_id, chat_id }) => {
-          if (!sender_id) return; // удалённый аккаунт
-          const key = sender_id + ':' + chat_id;
-          const r = byKey.get(key) || { sender_id, chat_id, min: id, max: id };
-          r.min = Math.min(r.min, id); r.max = Math.max(r.max, id);
-          byKey.set(key, r);
-        });
-        for (const r of byKey.values()) {
-          sendTo(r.sender_id, { type: 'status_range', chat_id: r.chat_id, kind: 'delivered', min_id: r.min, max_id: r.max, reader_id: user.id });
-          if ((await spaces.isFed(r.sender_id))) await fed().onStatus('dlv', r.sender_id, user.id, r.max);
-        } ;
+        const upto = new Map();
+        for (const r of undelivered) upto.set(r.chat_id, Math.max(upto.get(r.chat_id) || 0, r.max_id));
+        for (const [chatId, id] of upto) await statusMarks.delivered(chatId, [user.id], id);
+        for (const r of undelivered) {
+          if (!r.sender_id) continue; // удалённый аккаунт
+          sendTo(r.sender_id, { type: 'status_range', chat_id: r.chat_id, kind: 'delivered', min_id: r.min_id, max_id: r.max_id, reader_id: user.id });
+          if ((await spaces.isFed(r.sender_id))) await fed().onStatus('dlv', r.sender_id, user.id, r.max_id);
+        }
       } catch (e) { console.error('auto-deliver error:', e); }
     });
   }

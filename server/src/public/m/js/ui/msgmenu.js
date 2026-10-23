@@ -134,11 +134,11 @@ B.ui.msgmenu = (function () {
       body: '<div style="height:12px"></div><div class="grp"><div class="cell"><span class="cl" id="rd-l">' + rdLabel(direct, st.read || 0, st.delivered || 0, null, st.total) + '</span></div></div><div id="rd-list"><div class="stub-note">Загрузка…</div></div>' });
     var data = await B.api('GET', '/messages/' + m.id + '/info');
     var list = document.getElementById('rd-list'); if (!list || !data || data.error) { if (list) list.innerHTML = ''; return; }
-    var rd = data.statuses.filter(function (s) { return s.read_at; }), dlv = data.statuses.filter(function (s) { return s.delivered_at || s.read_at; }).length, dr = data.chat_type === 'direct';
+    var rd = data.statuses.filter(function (s) { return s.read || s.read_at; }), dlv = data.statuses.filter(function (s) { return s.delivered || s.delivered_at || s.read_at; }).length, dr = data.chat_type === 'direct';
     document.getElementById('rd-l').textContent = rdLabel(dr, rd.length, dlv, rd[0] && rd[0].read_at, (m.status && m.status.total) || data.statuses.length);
     list.innerHTML = rd.length
       ? '<div class="gh" style="margin-top:16px">Прочитали</div><div class="grp">' + rd.map(function (s) {
-          return '<div class="cell" style="min-height:56px">' + B.avatar.user(s.user_id, s.display_name, 36, true) + '<span class="cl">' + esc(s.display_name) + '</span><span class="cv">' + rdTime(s.read_at) + '</span></div>';
+          return '<div class="cell" style="min-height:56px">' + B.avatar.user(s.user_id, s.display_name, 36, true) + '<span class="cl">' + esc(s.display_name) + '</span>' + (s.read_at ? '<span class="cv">' + rdTime(s.read_at) + '</span>' : '') + '</div>';
         }).join('') + '</div>'
       : '<div class="stub-note">' + (dr ? 'Собеседник ещё не открыл сообщение.' : dlv ? 'Пока никто не прочитал. Сообщение получили ' + dlv + '.' : 'Сообщение пока никому не доставлено.') + '</div>';
     B.avatar.apply(list);

@@ -64,7 +64,7 @@ const FTS_TRIGGERS_NEW = `
 // Таблицы чатов: от зависимых к главным (так их чистим); для каждой — какие столбцы ссылаются на людей
 // (nullable — можно оставить пустым, req — без человека строка бессмысленна и пропускается)
 const CHAT_TABLES = [
-  ['reactions', [], ['user_id']], ['message_status', [], ['user_id']], ['pinned_messages', ['pinned_by'], []],
+  ['reactions', [], ['user_id']], ['status_log', [], ['user_id']], ['pinned_messages', ['pinned_by'], []],
   ['chat_read_state', [], ['user_id']], ['muted_chats', [], ['user_id']],
   ['secret_grants', [], ['granter_user_id']], ['secret_key_requests', ['approver_user_id'], ['requester_user_id']], ['secret_chat_devices', [], ['user_id']],
   ['webhooks', [], ['user_id']], ['chat_members', [], ['user_id']], ['messages', ['sender_id'], []], ['chats', ['created_by'], []],
@@ -129,6 +129,20 @@ function apply(file, opts) {
           const where = req.filter(c => cs.includes(c)).map(c => `EXISTS (SELECT 1 FROM temp.umap WHERE bk = s.${c})`).join(' AND ');
           db.exec(`INSERT INTO main.${t} (${cs.join(', ')}) SELECT ${sel.join(', ')} FROM bk.${t} s${where ? ' WHERE ' + where : ''}`);
         }
+        // Копия, снятая до перехода на отметки статусов, хранит их строками message_status: сводим их в отметки.
+        // Времени в такой копии для журнала нет, поэтому полным журнал считается только с этого момента
+        if (bkHas('message_status')) db.exec(`
+          INSERT INTO main.chat_read_state (user_id, chat_id, last_read_id, delivered_id)
+          SELECT (SELECT cur FROM temp.umap WHERE bk = ms.user_id), m.chat_id,
+                 COALESCE(MAX(CASE WHEN ms.read_at IS NOT NULL THEN m.id END), 0),
+                 COALESCE(MAX(CASE WHEN ms.delivered_at IS NOT NULL OR ms.read_at IS NOT NULL THEN m.id END), 0)
+          FROM bk.message_status ms JOIN main.messages m ON m.id = ms.message_id
+          WHERE EXISTS (SELECT 1 FROM temp.umap WHERE bk = ms.user_id)
+          GROUP BY ms.user_id, m.chat_id
+          ON CONFLICT(user_id, chat_id) DO UPDATE SET
+            last_read_id = MAX(chat_read_state.last_read_id, excluded.last_read_id),
+            delivered_id = MAX(chat_read_state.delivered_id, excluded.delivered_id)`);
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('status_log_from', ?)").run(String(Math.floor(Date.now() / 1000)));
         // упоминания хранят номера людей списком: переписываем, только если номера в копии и в базе различаются
         const ident = db.prepare('SELECT COUNT(*) AS c FROM temp.umap WHERE bk != cur').get().c === 0;
         if (!ident && common('messages').includes('mentions')) {

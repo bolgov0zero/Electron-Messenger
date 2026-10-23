@@ -5,7 +5,7 @@
 const fs = require('fs');
 const Database = require('better-sqlite3');
 
-const PROTECTED_SETTINGS = ['jwt_secret', 'vapid_public', 'vapid_private', 'vapid_public_key', 'vapid_private_key', 'system_user_id', 'fts_secret_v2', 'fed_id', 'fed_pub', 'fed_priv'];
+const PROTECTED_SETTINGS = ['jwt_secret', 'vapid_public', 'vapid_private', 'vapid_public_key', 'vapid_private_key', 'system_user_id', 'fts_secret_v2', 'fed_id', 'fed_pub', 'fed_priv', 'status_log_from'];
 const REQUIRED_TABLES = ['users', 'chats', 'messages', 'settings'];
 
 // Копия открывается только на чтение; все проверки — до того, как что-то будет записано
@@ -48,7 +48,7 @@ const stat = (conn) => {
 };
 
 const SET_LABEL = {
-  github_token: 'GitHub-токен', backup_retention_days: 'Хранить копии', edit_time_limit: 'Время на правку сообщения',
+  github_token: 'GitHub-токен', backup_retention_days: 'Хранить копии', edit_time_limit: 'Время на правку сообщения', status_window_days: 'Окно времени статуса',
   upload_image_max_size: 'Изображения: размер', upload_video_max_size: 'Видео: размер', upload_file_max_size: 'Файлы: размер',
   upload_file_lifetime: 'Срок хранения файлов',
 };
