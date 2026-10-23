@@ -2,6 +2,7 @@ const router = require('express').Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const util = require('util');
 const { execFile, execFileSync } = require('child_process');
 const { authMiddleware } = require('../auth');
@@ -40,7 +41,7 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, FILES_DIR),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    const name = `${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`;
+    const name = `${Date.now()}_${crypto.randomBytes(12).toString('hex')}${ext}`;
     // Кладём путь в req ещё до того, как multer допишет файл — если клиент
     // отменит загрузку (крестик) или порвётся соединение прямо во время
     // передачи, req.file появиться не успеет, а req.on('close') ниже
