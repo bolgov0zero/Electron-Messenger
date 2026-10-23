@@ -47,8 +47,8 @@ app.use((req, res, next) => {
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' data: https://fonts.gstatic.com",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
     "img-src * data: blob:",
     "media-src * data: blob:",
     `connect-src 'self' blob: data: ws://${host} wss://${host} https://api.klipy.com https://api.giphy.com`,
