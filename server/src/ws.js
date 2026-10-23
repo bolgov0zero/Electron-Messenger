@@ -314,7 +314,7 @@ function setup(server) {
     const queue = [];
     ws.on('message', raw => { if (handler) handler(raw); else queue.push(raw); });
     const setHandler = fn => { handler = fn; queue.splice(0).forEach(fn); };
-    wsAuth(url.searchParams.get('token')).then(user => attachConn(ws, req, user, setHandler), () => ws.close(1008, 'Unauthorized'));
+    wsAuth(url.searchParams.get('token')).then(user => user.must_change_password ? ws.close(1008, 'must_change_password') : attachConn(ws, req, user, setHandler), () => ws.close(1008, 'Unauthorized'));
   });
 
   async function attachConn(ws, req, user, setHandler) {

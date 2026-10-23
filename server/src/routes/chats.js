@@ -466,7 +466,10 @@ router.post('/:id/avatar', authMiddleware, async (req, res) => {
 
 // Serve group avatar
 router.get('/:id/avatar', (req, res) => {
-  const file = path2.join(AVATAR_DIR, `chat_${req.params.id}.jpg`);
+  // id — только целое число: иначе «../» в адресе уводит путь из папки аватарок
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(404).end();
+  const file = path2.join(AVATAR_DIR, `chat_${id}.jpg`);
   // См. пояснение в users.js: с ?t= (клиент версионирует URL при смене аватарки)
   // кэшируем надолго, без него (напр. админка) — коротко
   res.setHeader('Cache-Control', req.query.t ? 'private, max-age=31536000, immutable' : 'private, max-age=60');

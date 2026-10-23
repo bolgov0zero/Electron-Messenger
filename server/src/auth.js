@@ -70,12 +70,18 @@ async function resolveUser(token) {
   return { ...user, is_admin: !!user.is_admin, must_change_password: !!user.must_change_password };
 }
 
+// Пока пароль по умолчанию не сменён, токен даёт доступ только к смене пароля и обновлению токена
+const PASSWORD_CHANGE_ALLOWED = new Set(['/api/auth/refresh', '/api/users/me/password']);
+
 async function authMiddleware(req, res, next) {
   const header = req.headers['authorization'];
   if (!header) return res.status(401).json({ error: 'No token', code: 'no_token' });
   const token = header.replace('Bearer ', '');
   try {
     req.user = await resolveUser(token);
+    if (req.user.must_change_password && !PASSWORD_CHANGE_ALLOWED.has(req.baseUrl + req.path)) {
+      return res.status(403).json({ error: 'Сначала смените пароль', code: 'must_change_password' });
+    }
   } catch (e) {
     // code разделяет «сессия больше не действует» и «срок истёк»: по первому
     // клиент выходит, по второму сначала пробует продлить токен

@@ -89,7 +89,10 @@ router.get('/avatars/index', authMiddleware, (req, res) => {
 
 // Serve user avatar
 router.get('/:id/avatar', (req, res) => {
-  const file = path2.join(AVATAR_DIR, `${req.params.id}.jpg`);
+  // id — только целое число: иначе «../» в адресе уводит путь из папки аватарок
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(404).end();
+  const file = path2.join(AVATAR_DIR, `${id}.jpg`);
   // С ?t=... (клиенты /m и /chat сами версионируют URL при смене аватарки) файл под
   // этим URL больше не изменится — кэшируем надолго. Без ?t= (напр., таблица клиентов
   // в админке, она URL не версионирует) — короткий кэш, чтобы не мигало и не бомбило
