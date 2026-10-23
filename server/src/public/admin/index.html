@@ -2235,7 +2235,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 <div id="app">
   <!-- TOPBAR -->
   <div class="topbar">
-    <button type="button" class="mback" id="mback" aria-label="Назад" data-on-click="nav" data-a='["more"]'><svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+    <button type="button" class="mback" id="mback" aria-label="Назад" data-on-click="nav" data-a-click='["more"]'><svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
     <div class="topbar-center">
       <span id="page-title">Главная</span>
     </div>
@@ -2260,76 +2260,76 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
     </button>
     <nav>
         <div class="nav-section">Обзор</div>
-        <div class="nav-item active" data-on-click="nav" data-a='["dashboard"]' data-page="dashboard">
+        <div class="nav-item active" data-on-click="nav" data-a-click='["dashboard"]' data-page="dashboard">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
           <span class="lb">Главная</span>
         </div>
                 <div class="nav-section">Управление</div>
-        <div class="nav-item" data-on-click="nav" data-a='["federation"]' data-page="federation">
+        <div class="nav-item" data-on-click="nav" data-a-click='["federation"]' data-page="federation">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
           <span class="lb">Федерации</span>
           <span class="nav-badge" id="nb-federation">—</span>
         </div>
-        <div class="nav-item" data-on-click="nav" data-a='["workspaces"]' data-page="workspaces">
+        <div class="nav-item" data-on-click="nav" data-a-click='["workspaces"]' data-page="workspaces">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
           <span class="lb">Пространства</span>
           <span class="nav-badge" id="nb-workspaces">—</span>
         </div>
-        <div class="nav-item" data-on-click="nav" data-a='["users"]' data-page="users">
+        <div class="nav-item" data-on-click="nav" data-a-click='["users"]' data-page="users">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           <span class="lb">Пользователи</span>
           <span class="nav-badge" id="nb-users">—</span>
         </div>
-        <div class="nav-item" data-on-click="nav" data-a='["rooms"]' data-page="rooms">
+        <div class="nav-item" data-on-click="nav" data-a-click='["rooms"]' data-page="rooms">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
           <span class="lb">Комнаты</span>
           <span class="nav-badge" id="nb-rooms">—</span>
         </div>
-        <div class="nav-item" data-on-click="nav" data-a='["chats"]' data-page="chats">
+        <div class="nav-item" data-on-click="nav" data-a-click='["chats"]' data-page="chats">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <span class="lb">Чаты и группы</span>
           <span class="nav-badge" id="nb-chats">—</span>
         </div>
-        <div class="nav-item" data-on-click="nav" data-a='["clients"]' data-page="clients">
+        <div class="nav-item" data-on-click="nav" data-a-click='["clients"]' data-page="clients">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
           <span class="lb">Клиенты</span>
           <span class="nav-badge" id="nb-clients">—</span>
         </div>
-        <div class="nav-item" data-on-click="nav" data-a='["push"]' data-page="push">
+        <div class="nav-item" data-on-click="nav" data-a-click='["push"]' data-page="push">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
           <span class="lb">Уведомления</span>
           <span class="nav-badge" id="nb-push">—</span>
         </div>
-        <div class="nav-item" data-on-click="nav" data-a='["files"]' data-page="files">
+        <div class="nav-item" data-on-click="nav" data-a-click='["files"]' data-page="files">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
           <span class="lb">Файлы</span>
           <span class="nav-badge" id="nb-files">—</span>
         </div>
-        <div class="nav-item" data-on-click="nav" data-a='["announcements"]' data-page="announcements">
+        <div class="nav-item" data-on-click="nav" data-a-click='["announcements"]' data-page="announcements">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/></svg>
           <span class="lb">Объявления</span>
           <span class="nav-badge" id="nb-announcements">—</span>
         </div>
-        <div class="nav-item" data-on-click="nav" data-a='["webhooks"]' data-page="webhooks">
+        <div class="nav-item" data-on-click="nav" data-a-click='["webhooks"]' data-page="webhooks">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
           <span class="lb">Вебхуки</span>
           <span class="nav-badge" id="nb-webhooks">—</span>
         </div>
-        <div class="nav-item" data-on-click="nav" data-a='["modules"]' data-page="modules">
+        <div class="nav-item" data-on-click="nav" data-a-click='["modules"]' data-page="modules">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>
           <span class="lb">Модули</span>
         </div>
         <div class="nav-section">Система</div>
-        <div class="nav-item" data-on-click="nav" data-a='["settings"]' data-page="settings">
+        <div class="nav-item" data-on-click="nav" data-a-click='["settings"]' data-page="settings">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
           <span class="lb">Настройки</span>
           <span class="nav-badge warn" id="nb-settings" style="display:none"></span>
         </div>
-        <div class="nav-item" data-on-click="nav" data-a='["audit"]' data-page="audit">
+        <div class="nav-item" data-on-click="nav" data-a-click='["audit"]' data-page="audit">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
           <span class="lb">Аудит-лог</span>
         </div>
-        <div class="nav-item" data-on-click="nav" data-a='["releases"]' data-page="releases">
+        <div class="nav-item" data-on-click="nav" data-a-click='["releases"]' data-page="releases">
           <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>
           <span class="lb">Релизы</span>
         </div>
@@ -2337,7 +2337,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
     <div class="sb-bottom">
       <div id="sb-srv-wrap"></div>
       <div class="sb-merow">
-        <button type="button" class="sb-me" id="sb-me" data-on-click="sbMenuToggle" data-a='["__event"]' aria-haspopup="menu" aria-expanded="false">
+        <button type="button" class="sb-me" id="sb-me" data-on-click="sbMenuToggle" data-a-click='["__event"]' aria-haspopup="menu" aria-expanded="false">
           <span class="sb-av" id="sb-av"></span>
           <span class="sb-tx"><b id="sb-name">Admin</b><small id="sb-email">admin</small></span>
         </button>
@@ -2357,11 +2357,11 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 
   <!-- Нижняя панель телефонного вида: пять главных разделов, остальные под «Ещё» -->
   <nav class="mnav" id="mnav" aria-label="Разделы">
-    <button type="button" data-page="dashboard" data-on-click="nav" data-a='["dashboard"]'><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>Главная<i class="mn-b" id="mn-b-dash" hidden></i></button>
-    <button type="button" data-page="users" data-on-click="nav" data-a='["users"]'><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Люди</button>
-    <button type="button" data-page="clients" data-on-click="nav" data-a='["clients"]'><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>Клиенты</button>
-    <button type="button" data-page="settings" data-on-click="nav" data-a='["settings"]'><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Настройки</button>
-    <button type="button" data-page="more" data-on-click="nav" data-a='["more"]'><svg viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>Ещё</button>
+    <button type="button" data-page="dashboard" data-on-click="nav" data-a-click='["dashboard"]'><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>Главная<i class="mn-b" id="mn-b-dash" hidden></i></button>
+    <button type="button" data-page="users" data-on-click="nav" data-a-click='["users"]'><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Люди</button>
+    <button type="button" data-page="clients" data-on-click="nav" data-a-click='["clients"]'><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>Клиенты</button>
+    <button type="button" data-page="settings" data-on-click="nav" data-a-click='["settings"]'><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Настройки</button>
+    <button type="button" data-page="more" data-on-click="nav" data-a-click='["more"]'><svg viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>Ещё</button>
   </nav>
 </div>
 
@@ -2418,7 +2418,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
   <div class="modal" style="width:760px;max-height:88vh">
     <div class="modal-head">
       <h3>Инструкция по вебхукам</h3>
-      <button class="modal-close" data-on-click="closeModal" data-a='["modal-webhook-help"]'>✕</button>
+      <button class="modal-close" data-on-click="closeModal" data-a-click='["modal-webhook-help"]'>✕</button>
     </div>
     <div class="modal-body" style="overflow-y:auto;display:flex;flex-direction:column;gap:20px">
 
@@ -2494,7 +2494,7 @@ return 'OK';</pre>
   <div class="modal mdk-help">
     <div class="modal-head">
       <h3>Как получить ключ Klipy</h3>
-      <button class="modal-close" data-on-click="closeModal" data-a='["modal-klipy"]' aria-label="Закрыть">✕</button>
+      <button class="modal-close" data-on-click="closeModal" data-a-click='["modal-klipy"]' aria-label="Закрыть">✕</button>
     </div>
     <div class="modal-body">
       <ol class="mdk-steps">
@@ -2505,7 +2505,7 @@ return 'OK';</pre>
       </ol>
       <div class="mdk-help-n">Фильтр запрещённых слов и тем настраивается там же, в кабинете Klipy.</div>
     </div>
-    <div class="modal-foot mdk-help-f"><button class="btn btn-ghost btn-sm" data-on-click="closeModal" data-a='["modal-klipy"]'>Закрыть</button><a class="btn btn-primary btn-sm" href="https://partner.klipy.com/" target="_blank" rel="noopener">Открыть кабинет Klipy</a></div>
+    <div class="modal-foot mdk-help-f"><button class="btn btn-ghost btn-sm" data-on-click="closeModal" data-a-click='["modal-klipy"]'>Закрыть</button><a class="btn btn-primary btn-sm" href="https://partner.klipy.com/" target="_blank" rel="noopener">Открыть кабинет Klipy</a></div>
   </div>
 </div>
 
@@ -2514,13 +2514,13 @@ return 'OK';</pre>
   <div class="modal mdl-log">
     <div class="modal-head">
       <h3 id="modlog-title">Журнал модуля</h3>
-      <button class="modal-close" data-on-click="closeModal" data-a='["modal-modlog"]'>✕</button>
+      <button class="modal-close" data-on-click="closeModal" data-a-click='["modal-modlog"]'>✕</button>
     </div>
     <div class="mdl-filters">
-      <select id="ml-event" data-on-change="mlSet" data-a='["event", "__value"]' aria-label="Событие"><option value="all">Все события</option><option value="on">Включение</option><option value="off">Выключение</option><option value="dl">Загрузка и обновление</option><option value="err">Ошибки</option></select>
-      <select id="ml-client" data-on-change="mlSet" data-a='["client", "__value"]' aria-label="Клиент"><option value="all">Все клиенты</option><option value="electron">Electron</option><option value="web">Веб</option><option value="mobile">Мобильный</option><option value="admin">Админка</option></select>
-      <select id="ml-days" data-on-change="mlSet" data-a='["days", "__value"]' aria-label="Период"><option value="30">30 дней</option><option value="90">90 дней</option><option value="365">Год</option></select>
-      <label class="ux-search"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="ml-q" placeholder="Имя или клиент" autocomplete="off" data-on-input="mlSearch" data-a='["__value"]'></label>
+      <select id="ml-event" data-on-change="mlSet" data-a-change='["event", "__value"]' aria-label="Событие"><option value="all">Все события</option><option value="on">Включение</option><option value="off">Выключение</option><option value="dl">Загрузка и обновление</option><option value="err">Ошибки</option></select>
+      <select id="ml-client" data-on-change="mlSet" data-a-change='["client", "__value"]' aria-label="Клиент"><option value="all">Все клиенты</option><option value="electron">Electron</option><option value="web">Веб</option><option value="mobile">Мобильный</option><option value="admin">Админка</option></select>
+      <select id="ml-days" data-on-change="mlSet" data-a-change='["days", "__value"]' aria-label="Период"><option value="30">30 дней</option><option value="90">90 дней</option><option value="365">Год</option></select>
+      <label class="ux-search"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="ml-q" placeholder="Имя или клиент" autocomplete="off" data-on-input="mlSearch" data-a-input='["__value"]'></label>
     </div>
     <div class="modal-body mdl-tw" id="modlog-body"></div>
     <div class="modal-foot mdl-foot"><span id="modlog-count">—</span><span style="flex:1"></span><button class="btn btn-ghost btn-sm" id="modlog-more" data-on-click="mlMore" style="display:none">Показать ещё</button></div>
@@ -2532,7 +2532,7 @@ return 'OK';</pre>
   <div class="modal modal-sm">
     <div class="modal-head">
       <h3 id="ws-title">Новое пространство</h3>
-      <button class="modal-close" data-on-click="closeModal" data-a='["modal-ws"]'>✕</button>
+      <button class="modal-close" data-on-click="closeModal" data-a-click='["modal-ws"]'>✕</button>
     </div>
     <div class="modal-body">
       <div class="ua-field"><label for="ws-name">Название</label>
@@ -2540,7 +2540,7 @@ return 'OK';</pre>
         <span class="ua-err" id="ws-err"></span></div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-ghost" data-on-click="closeModal" data-a='["modal-ws"]'>Отмена</button>
+      <button class="btn btn-ghost" data-on-click="closeModal" data-a-click='["modal-ws"]'>Отмена</button>
       <button class="btn ux-solid" id="ws-go" data-on-click="wsSave">Создать</button>
     </div>
   </div>
@@ -2550,7 +2550,7 @@ return 'OK';</pre>
   <div class="modal modal-sm">
     <div class="modal-head">
       <h3 id="fd-title">Федерации</h3>
-      <button class="modal-close" data-on-click="closeModal" data-a='["modal-fed"]'>✕</button>
+      <button class="modal-close" data-on-click="closeModal" data-a-click='["modal-fed"]'>✕</button>
     </div>
     <div class="modal-body" id="fd-body"></div>
     <div class="modal-foot" id="fd-foot"></div>
@@ -2561,13 +2561,13 @@ return 'OK';</pre>
   <div class="modal modal-sm">
     <div class="modal-head">
       <h3 id="confirm-title">Подтверждение</h3>
-      <button class="modal-close" data-on-click="closeModal" data-a='["modal-confirm"]'>✕</button>
+      <button class="modal-close" data-on-click="closeModal" data-a-click='["modal-confirm"]'>✕</button>
     </div>
     <div class="modal-body">
       <p id="confirm-text" style="color:var(--c-text2);font-size:13px;line-height:1.6"></p>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-ghost" data-on-click="closeModal" data-a='["modal-confirm"]'>Отмена</button>
+      <button class="btn btn-ghost" data-on-click="closeModal" data-a-click='["modal-confirm"]'>Отмена</button>
       <button class="btn btn-danger" id="confirm-ok">Подтвердить</button>
     </div>
   </div>

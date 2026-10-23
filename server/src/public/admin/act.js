@@ -16,7 +16,7 @@
 
   function run(el, type, ev) {
     var name = el.getAttribute('data-on-' + type);
-    var raw = el.getAttribute('data-a');
+    var raw = el.getAttribute('data-a-' + type) || el.getAttribute('data-a');
     var args = [];
     if (raw) {
       try { args = JSON.parse(raw); } catch (e) { console.error('[act] неверные данные', raw); return; }

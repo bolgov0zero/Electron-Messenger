@@ -448,7 +448,7 @@ function sbSrvInfo() {
   const bad = svc && svc.state && svc.state !== 'active' ? `Служба: ${esc(svc.state)}` : dp >= 90 ? `Диск занят на ${dp}%` : '';
   if (bad) return { st: 'problem', cls: 'bad', dot: 'bad', t: 'Нужно внимание', r: '', l2: `<span class="sb-pill">${esc(ver)}</span><span class="sb-bad">${bad}</span>`, tip: 'Нужно внимание: ' + bad.replace(/&[a-z]+;/g, '') };
   const name = 'Сервер работает';
-  if (up?.hasUpdate) return { st: 'available', cls: '', dot: '', t: name, r: run, l2: `<span class="sb-pill">${esc(ver)}</span><button type="button" class="sb-pill up" data-on-click="sbUpdClick" data-a='["__event"]' title="Показать обновление на главной">↑ ${esc(up.latest)}</button>${onl}`, tip: `Сервер работает${run ? ' ' + run : ''} · ${ver} · доступна ${up.latest}${online != null ? ` · ${online} в сети` : ''}`, ar: true };
+  if (up?.hasUpdate) return { st: 'available', cls: '', dot: '', t: name, r: run, l2: `<span class="sb-pill">${esc(ver)}</span><button type="button" class="sb-pill up" data-on-click="sbUpdClick" data-a-click='["__event"]' title="Показать обновление на главной">↑ ${esc(up.latest)}</button>${onl}`, tip: `Сервер работает${run ? ' ' + run : ''} · ${ver} · доступна ${up.latest}${online != null ? ` · ${online} в сети` : ''}`, ar: true };
   const fresh = up && up.hasUpdate === false;
   return { st: 'latest', cls: '', dot: '', t: name, r: run, l2: `<span class="sb-pill ${fresh ? 'ok' : ''}" ${fresh ? 'title="Установлена последняя версия"' : ''}>${esc(ver)}${fresh ? ' ✓' : ''}</span>${onl}`, tip: `Сервер работает${run ? ' ' + run : ''} · ${ver}${fresh ? ' (последняя)' : ''}${online != null ? ` · ${online} в сети` : ''}` };
 }
@@ -457,7 +457,7 @@ function sbRender() {
   if (!w) return;
   const i = sbSrvInfo(), act = i.st === 'available' ? ['sbUpdClick', ['__event']] : ['sbGoHome', []];
   const html = `<div class="sb-srv ${i.cls}" data-on-click="sbGoHome"><div class="sb-l1">${i.st === 'installing' ? '' : `<i class="sb-sd ${i.dot}"></i>`}${i.t}<span class="r">${i.r}</span></div><div class="sb-l2">${i.l2}</div></div>`
-    + `<button type="button" class="sb-srvb" data-on-click="${act[0]}" data-a="${esc(JSON.stringify(act[1]))}" data-tip="${esc(i.tip)}" aria-label="${esc(i.tip)}">${i.st === 'installing' ? '<span class="sb-spn"></span>' : `<i class="sb-sd ${i.dot}"></i>`}${i.ar ? '<span class="ar">↑</span>' : ''}</button>`;
+    + `<button type="button" class="sb-srvb" data-on-click="${act[0]}" data-a-click="${esc(JSON.stringify(act[1]))}" data-tip="${esc(i.tip)}" aria-label="${esc(i.tip)}">${i.st === 'installing' ? '<span class="sb-spn"></span>' : `<i class="sb-sd ${i.dot}"></i>`}${i.ar ? '<span class="ar">↑</span>' : ''}</button>`;
   if (w._h !== html) { w._h = html; w.innerHTML = html; }
   sbBadges();
 }
@@ -501,7 +501,7 @@ function sbMenuRender() {
   const u = currentUser || {}, dark = document.documentElement.dataset.theme !== 'light', t = SB.totp;
   const st = !t ? '' : t.totp_required ? (t.totp_configured ? 'вкл' : 'ждёт настройки') : 'выкл';
   document.getElementById('sb-menu').innerHTML = `<div class="sb-who"><span class="sb-av">${avHtml(u.display_name || '?', 32, 10, u.id, false, true)}<i></i></span><div><b>${esc(u.display_name || '')}</b><small>${u.username ? '@' + esc(u.username) + ' · ' : ''}в сети</small></div></div>
-    <div class="sb-th" role="group" aria-label="Тема"><button type="button" data-on-click="sbTheme" data-a='["dark"]' aria-pressed="${dark}">Тёмная</button><button type="button" data-on-click="sbTheme" data-a='["light"]' aria-pressed="${!dark}">Светлая</button></div>
+    <div class="sb-th" role="group" aria-label="Тема"><button type="button" data-on-click="sbTheme" data-a-click='["dark"]' aria-pressed="${dark}">Тёмная</button><button type="button" data-on-click="sbTheme" data-a-click='["light"]' aria-pressed="${!dark}">Светлая</button></div>
     <button type="button" class="sb-mi" role="menuitem" data-on-click="sb2fa">${SB_I.key}Двухфакторная защита<small>${st}</small></button>
     <button type="button" class="sb-mi bad" role="menuitem" data-on-click="logout">${SB_I.out}Выйти</button>`;
 }
@@ -587,7 +587,7 @@ function sbPalList() {
   SB.pal.items = groups.flatMap(g => g[1]);
   SB.pal.sel = Math.min(SB.pal.sel, Math.max(0, SB.pal.items.length - 1));
   let i = 0;
-  document.getElementById('sb-pl').innerHTML = groups.map(([g, l]) => `<div class="sb-pg">${g}</div>${l.map(x => { const n = i++; return `<button type="button" class="sb-pi" aria-selected="${n === SB.pal.sel}" data-on-mousemove="sbPalSel" data-a="${esc(JSON.stringify([n]))}" data-on-click="sbPalPick" data-a="${esc(JSON.stringify([n]))}">${g === 'Действия' ? SB_I.plus : SB_I.go}${esc(x.t)}${x.h ? `<small>${esc(x.h)}</small>` : ''}</button>`; }).join('')}`).join('') || '<div class="sb-pe">Ничего не нашли</div>';
+  document.getElementById('sb-pl').innerHTML = groups.map(([g, l]) => `<div class="sb-pg">${g}</div>${l.map(x => { const n = i++; return `<button type="button" class="sb-pi" aria-selected="${n === SB.pal.sel}" data-on-mousemove="sbPalSel" data-a-mousemove="${esc(JSON.stringify([n]))}" data-on-click="sbPalPick" data-a-click="${esc(JSON.stringify([n]))}">${g === 'Действия' ? SB_I.plus : SB_I.go}${esc(x.t)}${x.h ? `<small>${esc(x.h)}</small>` : ''}</button>`; }).join('')}`).join('') || '<div class="sb-pe">Ничего не нашли</div>';
 }
 function sbPalOpen() {
   if (document.getElementById('sb-pal')) return;
@@ -842,7 +842,7 @@ function renderMore() {
   document.getElementById('page-body').innerHTML = `<div class="mm">
     <div class="mm-list">${rows.map(([k, n]) => {
       const ico = document.querySelector(`.nav-item[data-page="${k}"] svg`)?.outerHTML || '', b = document.getElementById('nb-' + k)?.textContent;
-      return `<button type="button" class="mm-row" data-on-click="nav" data-a="${esc(JSON.stringify([`${k}`]))}"><span class="mm-ic">${ico}</span><span class="mm-t">${n}</span>${b && b !== '—' && b !== '0' ? `<span class="mm-n">${esc(b)}</span>` : ''}<svg class="mm-ch" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>`;
+      return `<button type="button" class="mm-row" data-on-click="nav" data-a-click="${esc(JSON.stringify([`${k}`]))}"><span class="mm-ic">${ico}</span><span class="mm-t">${n}</span>${b && b !== '—' && b !== '0' ? `<span class="mm-n">${esc(b)}</span>` : ''}<svg class="mm-ch" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>`;
     }).join('')}</div>
     <div class="mm-card">
       <div class="mm-set"><span class="mm-t">Тёмная тема</span><button type="button" class="mm-tg" role="switch" aria-checked="${document.documentElement.dataset.theme === 'dark'}" data-on-click="__h14"></button></div>
@@ -2220,8 +2220,8 @@ function rmRender() {
   const wt = [0, 1, 2, 3, 4, 5, 6].map(i => allRooms.reduce((s, r) => s + (r.week[i] || 0), 0)), wmax = Math.max(1, ...wt), wsum = wt.reduce((a, b) => a + b, 0);
   const today = new Date().getDay(), dn = rbDays();
   const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
-  const flt = ([k, label, count]) => `<button type="button" aria-pressed="${RM.filter === k}" data-on-click="rmFilter" data-a="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${count}</span></button>`;
-  const sortBtn = (k, label) => `<button type="button" aria-pressed="${RM.sort === k}" data-on-click="rmSort" data-a="${esc(JSON.stringify([`${k}`]))}">${label}</button>`;
+  const flt = ([k, label, count]) => `<button type="button" aria-pressed="${RM.filter === k}" data-on-click="rmFilter" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${count}</span></button>`;
+  const sortBtn = (k, label) => `<button type="button" aria-pressed="${RM.sort === k}" data-on-click="rmSort" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label}</button>`;
   uxKeepFocus(() => {
     uxSet(page, `<div class="ub" id="rm-page">
       <div class="ub-tiles">
@@ -2237,20 +2237,20 @@ function rmRender() {
         ${uxSearch('rm-q', RM.q, 'Комната или тема', 'rmSearch')}</div>
       <div class="ub-rows">${rows.map(r => {
         const open = RM.open.has(r.id), p = rbPresence(r, U), mx = Math.max(1, ...r.topics.map(t => t.message_count || 0));
-        return `<div class="rb-row" data-k="${r.id}"><div class="rb-top" data-on-click="rmTog" data-a="${esc(JSON.stringify(["__event", r.id]))}">
+        return `<div class="rb-row" data-k="${r.id}"><div class="rb-top" data-on-click="rmTog" data-a-click="${esc(JSON.stringify(["__event", r.id]))}">
           <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть: ${esc(r.name)}">${UX_I.chev || '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>'}</button>
           <div class="rb-name">${avHtml(r.name || '?', 38, 11, null, p.on.length ? true : false, r.has_avatar, r.id)}<div style="min-width:0"><div class="rb-nl"><b>${esc(r.name || '—')}</b>${r.topics.length ? `<span class="rb-chip">${r.topics.length} ${uxPlural(r.topics.length, 'тема', 'темы', 'тем')}</span>` : ''}${quiet(r) ? '<span class="rb-chip q">тихая</span>' : ''}${r.read_only ? '<span class="rb-chip ro">только чтение</span>' : ''}</div>
             <div class="rb-meta">${r.topics.length ? esc(r.topics.map(t => t.name).join(' · ')) : 'Без тем'}</div></div></div>
           ${rbPresHtml(p)}
           <div class="rb-act">${rbWk(r.week)}<div class="t"><b>${rmWeek(r)}</b> за неделю<small>${r.last ? 'последнее ' + esc(rmLast(r.last)) : 'сообщений нет'}</small></div></div>
-          <div class="ux-actions"><button class="btn btn-ghost btn-sm" data-on-click="__h15" data-a="${esc(JSON.stringify([r.id]))}">${UX_I.edit}Изменить</button>
-            <button class="ux-ibtn" aria-label="Ещё действия: ${esc(r.name)}" aria-haspopup="menu" aria-expanded="false" data-on-click="__h16" data-a="${esc(JSON.stringify([r.id]))}">${UX_I.more}</button></div></div>
+          <div class="ux-actions"><button class="btn btn-ghost btn-sm" data-on-click="__h15" data-a-click="${esc(JSON.stringify([r.id]))}">${UX_I.edit}Изменить</button>
+            <button class="ux-ibtn" aria-label="Ещё действия: ${esc(r.name)}" aria-haspopup="menu" aria-expanded="false" data-on-click="__h16" data-a-click="${esc(JSON.stringify([r.id]))}">${UX_I.more}</button></div></div>
         ${open ? `<div class="rb-exp${RM.fresh === r.id ? ' fresh' : ''}">
           <div><h4>Участники <span>${(r.members || []).length}</span></h4><div class="rb-pl">${(r.members || []).map(m => { const u = U.get(m.id), st = m.guest ? (m.status === 'online' ? ['в сети', 'on'] : m.status === 'away' ? ['отошёл', 'aw'] : m.online ? ['в сети', 'on'] : ['не в сети', '']) : u?.banned ? ['заблокирован', 'bn'] : u?.status === 'online' ? ['в сети', 'on'] : u?.status === 'away' ? ['отошёл', 'aw'] : ['не в сети', ''];
             return `<div class="rb-p">${avHtml(m.name, 24, 7, m.id, false, m.has_avatar)}<span class="nm">${esc(m.name)}</span>${u?.is_admin ? '<span class="adm">админ</span>' : ''}${m.guest ? '<span class="adm guest" title="Гость по ссылке: доступ закончится вместе со ссылкой">гость</span>' : ''}<span class="s ${st[1]}">${st[0]}</span></div>`; }).join('') || '<span class="rm-sub">никого</span>'}</div></div>
           <div><h4>Темы <span>${r.topics.length}</span></h4>${r.topics.map(t => `<div class="rb-tp"><span class="nm">${esc(t.name)}</span><div class="meter"><i style="width:${Math.round((t.message_count || 0) / mx * 100)}%"></i></div><span class="num">${rmFmt(t.message_count || 0)}</span></div>`).join('') || '<div class="rm-sub">Тем нет: комната работает как один общий чат</div>'}</div>
           <div><h4>Сводка</h4><div class="rb-kv"><div><span>Создана</span><b>${fmtDate(r.created_at)}</b></div><div><span>Сообщений всего</span><b>${rmFmt(r.msgs)}</b></div><div><span>Последнее</span><b>${esc(rmLast(r.last))}</b></div><div><span>Режим</span><b>${r.read_only ? 'только чтение' : 'можно писать всем'}</b></div></div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px"><button class="btn btn-ghost btn-sm" data-on-click="rmOpen" data-a="${esc(JSON.stringify([r.id, "members"]))}">${RM_I.users}Участники</button><button class="btn btn-ghost btn-sm" data-on-click="rmOpen" data-a="${esc(JSON.stringify([r.id, "topics"]))}">${RM_I.topics}Темы</button><button class="btn btn-danger btn-sm" data-on-click="rmClear" data-a="${esc(JSON.stringify([r.id]))}">${RM_I.clear}Очистить</button></div></div></div>` : ''}</div>`; }).join('') || `<div class="ub-empty">${allRooms.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Комнат пока нет, создайте первую'}</div>`}</div></div>`);
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px"><button class="btn btn-ghost btn-sm" data-on-click="rmOpen" data-a-click="${esc(JSON.stringify([r.id, "members"]))}">${RM_I.users}Участники</button><button class="btn btn-ghost btn-sm" data-on-click="rmOpen" data-a-click="${esc(JSON.stringify([r.id, "topics"]))}">${RM_I.topics}Темы</button><button class="btn btn-danger btn-sm" data-on-click="rmClear" data-a-click="${esc(JSON.stringify([r.id]))}">${RM_I.clear}Очистить</button></div></div></div>` : ''}</div>`; }).join('') || `<div class="ub-empty">${allRooms.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Комнат пока нет, создайте первую'}</div>`}</div></div>`);
   });
   RM.fresh = null;
   const list = page.querySelector('.ub-rows');
@@ -2282,11 +2282,11 @@ function glOpen(chatId, name) {
 const GL_I = '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
 function rmMenu(e, id) {
   uxOpenMenu(e, 'rm' + id, `
-    <button role="menuitem" data-on-click="__h17" data-a="${esc(JSON.stringify([id]))}">${RM_I.topics}Темы</button>
-    <button role="menuitem" data-on-click="__h18" data-a="${esc(JSON.stringify([id]))}">${RM_I.users}Участники</button>
-    <button role="menuitem" data-on-click="__h19" data-a="${esc(JSON.stringify([id, id]))}">${GL_I}Гостевая ссылка</button>
-    <button role="menuitem" data-on-click="__h20" data-a="${esc(JSON.stringify([id]))}">${RM_I.clear}Очистить историю</button>
-    <hr><button role="menuitem" class="danger" data-on-click="__h21" data-a="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить комнату</button>`);
+    <button role="menuitem" data-on-click="__h17" data-a-click="${esc(JSON.stringify([id]))}">${RM_I.topics}Темы</button>
+    <button role="menuitem" data-on-click="__h18" data-a-click="${esc(JSON.stringify([id]))}">${RM_I.users}Участники</button>
+    <button role="menuitem" data-on-click="__h19" data-a-click="${esc(JSON.stringify([id, id]))}">${GL_I}Гостевая ссылка</button>
+    <button role="menuitem" data-on-click="__h20" data-a-click="${esc(JSON.stringify([id]))}">${RM_I.clear}Очистить историю</button>
+    <hr><button role="menuitem" class="danger" data-on-click="__h21" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить комнату</button>`);
 }
 
 function rmDelete(ids) {
@@ -2347,10 +2347,10 @@ const RM_I2 = {
   dots: rmSvg('<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>'),
   globe: rmSvg('<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>'),
 };
-const rmSwitch = (checked, onchange, label) => `<label class="toggle-switch" aria-label="${label}"><input type="checkbox" ${checked ? 'checked' : ''} data-on-change="${onchange}" data-a='["__this"]'><div class="toggle-track"><div class="toggle-thumb"></div></div></label>`;
+const rmSwitch = (checked, onchange, label) => `<label class="toggle-switch" aria-label="${label}"><input type="checkbox" ${checked ? 'checked' : ''} data-on-change="${onchange}" data-a-change='["__this"]'><div class="toggle-track"><div class="toggle-thumb"></div></div></label>`;
 
 function rmMainHtml(f) {
-  return `<div class="rm-id"><label class="rm-avb" title="${f.avatar || f.hasAvatar ? 'Заменить аватар' : 'Загрузить аватар'}"><span id="rm-av-big">${rmAv(f.name, 64, f.avatar, f.id, f.hasAvatar)}</span><span class="rm-cam">${RM_I.img}</span><input type="file" accept="image/*" hidden data-on-change="rmPickAvatar" data-a='["__this"]'></label>
+  return `<div class="rm-id"><label class="rm-avb" title="${f.avatar || f.hasAvatar ? 'Заменить аватар' : 'Загрузить аватар'}"><span id="rm-av-big">${rmAv(f.name, 64, f.avatar, f.id, f.hasAvatar)}</span><span class="rm-cam">${RM_I.img}</span><input type="file" accept="image/*" hidden data-on-change="rmPickAvatar" data-a-change='["__this"]'></label>
       <div class="ua-field" style="flex:1"><label for="rm-name">Название</label>
         <div class="ua-inp"><input id="rm-name" value="${esc(f.name)}" placeholder="Например, Общая" autocomplete="off" data-on-input="__h22" data-on-keydown="__h23"></div></div></div>
     <div class="rm-card"><div class="rm-row"><span class="rm-rt"><b>Только чтение</b><span>Писать в комнату и её темы сможет только вебхук. Реакции остаются.</span></span>${rmSwitch(f.readOnly, 'rmSetReadOnly', 'Только чтение')}</div></div>
@@ -2362,18 +2362,18 @@ function rmTopicsHtml(f) {
       <div class="rm-list">${f.topics.map((t, i) => t.removed
         ? `<div class="rm-li rm-removed"><span class="rm-handle"></span>${rmAv(t.name, 28, t.avatar, t.id, t.hasAvatar)}<div style="flex:1;min-width:0"><div class="ux-name">${esc(t.name)}</div>
             <div class="rm-sub">Удалится при сохранении${t.msgs ? ` вместе с ${rmFmt(t.msgs)} ${uxPlural(t.msgs, 'сообщением', 'сообщениями', 'сообщениями')}` : ''}</div></div>
-            <button type="button" class="btn btn-ghost btn-sm" data-on-click="rmTopic" data-a="${esc(JSON.stringify(["restore", i]))}">Вернуть</button></div>`
-        : `<div class="rm-li"${f.manual ? ` draggable="true" data-on-dragstart="rmDrag" data-a="${esc(JSON.stringify(["__event", i]))}" data-on-dragover="__h24" data-on-dragleave="this.classList.remove" data-a='["drop"]' data-on-drop="rmDrop" data-a="${esc(JSON.stringify(["__event", i]))}"` : ''}>
+            <button type="button" class="btn btn-ghost btn-sm" data-on-click="rmTopic" data-a-click="${esc(JSON.stringify(["restore", i]))}">Вернуть</button></div>`
+        : `<div class="rm-li"${f.manual ? ` draggable="true" data-on-dragstart="rmDrag" data-a-dragstart="${esc(JSON.stringify(["__event", i]))}" data-on-dragover="__h24" data-on-dragleave="this.classList.remove" data-a-dragleave='["drop"]' data-on-drop="rmDrop" data-a-drop="${esc(JSON.stringify(["__event", i]))}"` : ''}>
             ${f.manual ? '<span class="rm-handle" title="Перетащите, чтобы поменять порядок">⋮⋮</span>' : ''}${rmAv(t.name, 28, t.avatar, t.id, t.hasAvatar)}
             <div style="flex:1;min-width:0">${f.renaming === i
-              ? `<input class="rm-rename" id="rm-rn" value="${esc(t.name)}" data-on-keydown="__h25" data-a="${esc(JSON.stringify([i, i]))}" data-on-blur="rmTopic" data-a="${esc(JSON.stringify(["rename", i, "__value"]))}">`
+              ? `<input class="rm-rename" id="rm-rn" value="${esc(t.name)}" data-on-keydown="__h25" data-a-keydown="${esc(JSON.stringify([i, i]))}" data-on-blur="rmTopic" data-a-blur="${esc(JSON.stringify(["rename", i, "__value"]))}">`
               : `<div class="ux-name">${esc(t.name)}</div><div class="rm-sub">${t.id ? (t.msgs ? rmMsgs(t.msgs) : 'сообщений пока нет') : 'новая — появится после сохранения'}</div>`}</div>
-            <span class="rm-acts"><label class="ux-ibtn" title="Аватар темы" style="cursor:pointer">${RM_I.img}<input type="file" accept="image/*" hidden data-on-change="rmTopicAvatar" data-a="${esc(JSON.stringify([i, "__this"]))}"></label>
-            <button type="button" class="ux-ibtn" aria-label="Переименовать" data-on-click="rmTopic" data-a="${esc(JSON.stringify(["edit", i]))}">${UX_I.edit}</button>
-            <button type="button" class="ux-ibtn" aria-label="Удалить тему" data-on-click="rmTopic" data-a="${esc(JSON.stringify(["remove", i]))}">${UX_I.trash}</button></span></div>`).join('')
+            <span class="rm-acts"><label class="ux-ibtn" title="Аватар темы" style="cursor:pointer">${RM_I.img}<input type="file" accept="image/*" hidden data-on-change="rmTopicAvatar" data-a-change="${esc(JSON.stringify([i, "__this"]))}"></label>
+            <button type="button" class="ux-ibtn" aria-label="Переименовать" data-on-click="rmTopic" data-a-click="${esc(JSON.stringify(["edit", i]))}">${UX_I.edit}</button>
+            <button type="button" class="ux-ibtn" aria-label="Удалить тему" data-on-click="rmTopic" data-a-click="${esc(JSON.stringify(["remove", i]))}">${UX_I.trash}</button></span></div>`).join('')
         || '<div class="rm-empty-l">Тем нет: вся переписка идёт в одной ленте. Добавьте тему, если разговоры нужно разделить.</div>'}</div>
       <div class="rm-add"><div class="ua-inp" style="flex:1"><input id="rm-nt" placeholder="Название новой темы" autocomplete="off" data-on-keydown="__h26"></div>
-        <button type="button" class="btn btn-primary" data-on-click="rmTopic" data-a='["add"]'>${RM_I.plus}Добавить</button></div>`;
+        <button type="button" class="btn btn-primary" data-on-click="rmTopic" data-a-click='["add"]'>${RM_I.plus}Добавить</button></div>`;
 }
 
 // Участники: выбор своих людей прямо во вкладке, ниже люди с других серверов
@@ -2389,13 +2389,13 @@ function rmMembersHtml(f, r) {
   const groups = [...gm.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
   const others = allRooms.filter(x => x.id !== f.id);
   const allIn = found.length > 0 && found.every(p => f.members.has(p.id));
-  return `<label class="ux-search" style="min-width:0">${UX_I.search}<input id="rm-mq" value="${esc(f.mq)}" placeholder="Имя, логин или тег" autocomplete="off" data-on-input="rmMem" data-a='["q", "__value"]' aria-label="Поиск людей"></label>
-    <div class="rm-mtools"><div class="fm-grp" role="group" aria-label="Показать"><button type="button" data-on-click="rmMem" data-a='["f", "all"]' aria-pressed="${f.mf === 'all'}">Все<small>${all.length}</small></button><button type="button" data-on-click="rmMem" data-a='["f", "sel"]' aria-pressed="${f.mf === 'sel'}">Выбранные<small>${sel}</small></button></div>
-      ${groups.length > 1 ? `<select aria-label="Группа" data-on-change="rmMem" data-a='["g", "__value"]'><option value="">Все группы</option>${groups.map(g => `<option value="${esc(g[0])}" ${f.mg === g[0] ? 'selected' : ''}>${esc(g[0])} · ${g[1]}</option>`).join('')}</select>` : ''}
+  return `<label class="ux-search" style="min-width:0">${UX_I.search}<input id="rm-mq" value="${esc(f.mq)}" placeholder="Имя, логин или тег" autocomplete="off" data-on-input="rmMem" data-a-input='["q", "__value"]' aria-label="Поиск людей"></label>
+    <div class="rm-mtools"><div class="fm-grp" role="group" aria-label="Показать"><button type="button" data-on-click="rmMem" data-a-click='["f", "all"]' aria-pressed="${f.mf === 'all'}">Все<small>${all.length}</small></button><button type="button" data-on-click="rmMem" data-a-click='["f", "sel"]' aria-pressed="${f.mf === 'sel'}">Выбранные<small>${sel}</small></button></div>
+      ${groups.length > 1 ? `<select aria-label="Группа" data-on-change="rmMem" data-a-change='["g", "__value"]'><option value="">Все группы</option>${groups.map(g => `<option value="${esc(g[0])}" ${f.mg === g[0] ? 'selected' : ''}>${esc(g[0])} · ${g[1]}</option>`).join('')}</select>` : ''}
       ${others.length ? `<select aria-label="Добавить участников другой комнаты" data-on-change="__h27"><option value="">Из комнаты…</option>${others.map(x => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select>` : ''}
-      <span style="flex:1"></span><button type="button" class="rm-link" data-on-click="rmMem" data-a='["all"]' ${found.length && !allIn ? '' : 'disabled'}>Выбрать найденных (${found.length})</button><button type="button" class="rm-link" data-on-click="rmMem" data-a='["none"]' ${found.some(p => f.members.has(p.id)) ? '' : 'disabled'}>Снять</button></div>
-    <div class="rm-ml">${shown.map(p => `<button type="button" class="fm-li" aria-pressed="${f.members.has(p.id)}" data-on-click="rmMem" data-a="${esc(JSON.stringify(["tog", p.id]))}">${p.av}<span class="n">${esc(p.name)}<small>${esc(p.sub)}</small></span>${p.tag ? `<span class="tg2">${esc(p.tag)}</span>` : ''}<span class="ck">${f.members.has(p.id) ? '✓' : ''}</span></button>`).join('') || '<div class="fm-empty">Никого не нашли. Измените запрос или фильтр</div>'}
-      ${found.length > shown.length ? `<button type="button" class="btn btn-ghost btn-sm" style="align-self:center;margin:4px 0" data-on-click="rmMem" data-a='["more"]'>Показать ещё ${Math.min(60, found.length - shown.length)} из ${found.length - shown.length}</button>` : ''}</div>
+      <span style="flex:1"></span><button type="button" class="rm-link" data-on-click="rmMem" data-a-click='["all"]' ${found.length && !allIn ? '' : 'disabled'}>Выбрать найденных (${found.length})</button><button type="button" class="rm-link" data-on-click="rmMem" data-a-click='["none"]' ${found.some(p => f.members.has(p.id)) ? '' : 'disabled'}>Снять</button></div>
+    <div class="rm-ml">${shown.map(p => `<button type="button" class="fm-li" aria-pressed="${f.members.has(p.id)}" data-on-click="rmMem" data-a-click="${esc(JSON.stringify(["tog", p.id]))}">${p.av}<span class="n">${esc(p.name)}<small>${esc(p.sub)}</small></span>${p.tag ? `<span class="tg2">${esc(p.tag)}</span>` : ''}<span class="ck">${f.members.has(p.id) ? '✓' : ''}</span></button>`).join('') || '<div class="fm-empty">Никого не нашли. Измените запрос или фильтр</div>'}
+      ${found.length > shown.length ? `<button type="button" class="btn btn-ghost btn-sm" style="align-self:center;margin:4px 0" data-on-click="rmMem" data-a-click='["more"]'>Показать ещё ${Math.min(60, found.length - shown.length)} из ${found.length - shown.length}</button>` : ''}</div>
     <p class="rm-hint">Новые участники сразу видят все темы комнаты.</p>${rmRemoteHtml(f, r)}`;
 }
 async function rmMem(act, v) {
@@ -2421,9 +2421,9 @@ const rmMenuToggle = () => { RM.form.menu = !RM.form.menu; rmRenderForm(); };
 function rmMenuHtml(f, r) {
   if (!r || !f.menu) return '';
   return `<div class="rm-scrim" data-on-click="rmMenuToggle"></div><div class="rm-menu" role="menu">
-    <button type="button" role="menuitem" data-on-click="__h28" data-a="${esc(JSON.stringify([r.id, r.id]))}">${GL_I}Гостевая ссылка…</button>
-    <button type="button" role="menuitem" data-on-click="__h29" data-a="${esc(JSON.stringify([r.id]))}">${RM_I.clear}Очистить историю…</button>
-    <button type="button" role="menuitem" class="d" data-on-click="__h30" data-a="${esc(JSON.stringify([r.id]))}">${UX_I.trash}Удалить комнату…</button></div>`;
+    <button type="button" role="menuitem" data-on-click="__h28" data-a-click="${esc(JSON.stringify([r.id, r.id]))}">${GL_I}Гостевая ссылка…</button>
+    <button type="button" role="menuitem" data-on-click="__h29" data-a-click="${esc(JSON.stringify([r.id]))}">${RM_I.clear}Очистить историю…</button>
+    <button type="button" role="menuitem" class="d" data-on-click="__h30" data-a-click="${esc(JSON.stringify([r.id]))}">${UX_I.trash}Удалить комнату…</button></div>`;
 }
 const rmMore = id => { rmSetTab(id === 't' ? 'topics' : id === 'm' ? 'members' : 'main'); };
 function rmFootSync() {
@@ -2447,11 +2447,11 @@ function rmRenderForm(focusId) {
       <div class="ua-head"><span id="rm-head-av">${rmAv(f.name, 38, f.avatar, f.id, f.hasAvatar)}</span>
         <div><div class="ua-title">${r ? esc(r.name) : 'Новая комната'}</div><div class="ua-sub">${r ? `Создана ${fmtDate(r.created_at)} · ${rmMsgs(r.msgs)}` : 'Название, остальное можно позже'}</div></div>
         <span style="flex:1"></span>${r ? `<button type="button" class="ux-ibtn" aria-label="Ещё" aria-haspopup="menu" aria-expanded="${!!f.menu}" data-on-click="rmMenuToggle">${RM_I2.dots}</button>` : ''}
-        <button type="button" class="modal-close" style="margin-left:0" aria-label="Закрыть" data-on-click="closeModal" data-a='["modal-room"]'>✕</button></div>
-      <div class="rm-tabs" role="tablist">${tabs.map(t => `<button type="button" role="tab" aria-selected="${f.tab === t[0]}" data-on-click="rmSetTab" data-a="${esc(JSON.stringify([`${t[0]}`]))}">${t[1]}${t[2] !== '' ? `<small>${t[2]}</small>` : ''}</button>`).join('')}</div>
+        <button type="button" class="modal-close" style="margin-left:0" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-room"]'>✕</button></div>
+      <div class="rm-tabs" role="tablist">${tabs.map(t => `<button type="button" role="tab" aria-selected="${f.tab === t[0]}" data-on-click="rmSetTab" data-a-click="${esc(JSON.stringify([`${t[0]}`]))}">${t[1]}${t[2] !== '' ? `<small>${t[2]}</small>` : ''}</button>`).join('')}</div>
       <div class="ua-body rm-body" data-tab="${f.tab}">${body}</div>
       <div class="ua-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}<span class="fm-note ${miss.length ? '' : 'ok'}" id="rm-note">${fmNote(miss)}</span>
-        <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a='["modal-room"]'>Отмена</button>
+        <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a-click='["modal-room"]'>Отмена</button>
         <button type="button" class="btn ux-solid" id="rm-go" ${f.busy || miss.length ? 'disabled' : ''} data-on-click="rmSave">${f.busy ? 'Сохраняю…' : r ? 'Сохранить' : 'Создать'}</button></div>${rmMenuHtml(f, r)}`;
   }, focusId);
   const nb = el.querySelector('.rm-body'); if (nb && keep) nb.scrollTop = keep;
@@ -2461,7 +2461,7 @@ function rmRenderForm(focusId) {
 function rmRemoteHtml(f, r) {
   const row = (m, fn, tip, sub, pill) => `<div class="rm-li">${avHtml(m.display_name, 30, 8, m.id, false, true)}
     <div style="flex:1;min-width:0"><div class="ux-name">${esc(m.display_name)}${pill || ''}</div><div class="rm-sub rm-addr">${sub}</div></div>
-    <button type="button" class="ux-ibtn" aria-label="${tip}: ${esc(m.display_name)}" data-on-click="${esc(fn)}" data-a="${esc(JSON.stringify([m.id]))}">${RM_I.x}</button></div>`;
+    <button type="button" class="ux-ibtn" aria-label="${tip}: ${esc(m.display_name)}" data-on-click="${esc(fn)}" data-a-click="${esc(JSON.stringify([m.id]))}">${RM_I.x}</button></div>`;
   const head = `<div class="rm-sect"><span class="rm-glb">${RM_I2.globe}</span>С других серверов<span style="flex:1"></span>${r ? `<small>${f.fed.length + f.pending.length}</small>` : ''}</div>`;
   if (!r) return `<div>${head}<p class="rm-hint" style="margin-top:6px">Приглашать людей с других серверов можно после создания комнаты.</p></div>`;
   const rows = f.fed.map(m => row(m, 'rmRemoteKick', 'Убрать из комнаты', esc('@' + m.username))).join('')
@@ -2629,10 +2629,10 @@ const uxClock = ms => new Date(ms).toLocaleTimeString('ru-RU', { hour: '2-digit'
 
 function uxChips(items, current, handler, label = 'Фильтр') {
   return `<div class="ux-chips" role="group" aria-label="${label}">${items.map(([key, label, count, warn]) =>
-    `<button class="ux-chip${warn && count ? ' warn' : ''}" aria-pressed="${current === key}" data-on-click="${esc(handler)}" data-a="${esc(JSON.stringify([`${key}`]))}">${label}<b>${count}</b></button>`).join('')}</div>`;
+    `<button class="ux-chip${warn && count ? ' warn' : ''}" aria-pressed="${current === key}" data-on-click="${esc(handler)}" data-a-click="${esc(JSON.stringify([`${key}`]))}">${label}<b>${count}</b></button>`).join('')}</div>`;
 }
 const uxSearch = (id, value, placeholder, handler) =>
-  `<label class="ux-search">${UX_I.search}<input id="${id}" value="${esc(value)}" placeholder="${placeholder}" autocomplete="off" data-on-input="${esc(handler)}" data-a="${esc(JSON.stringify(["__value"]))}"></label>`;
+  `<label class="ux-search">${UX_I.search}<input id="${id}" value="${esc(value)}" placeholder="${placeholder}" autocomplete="off" data-on-input="${esc(handler)}" data-a-input="${esc(JSON.stringify(["__value"]))}"></label>`;
 
 // Поиск перерисовывает страницу — возвращаем фокус и курсор туда, где они были
 // Тихая перерисовка списков. Новая разметка не заменяет старую целиком, а сверяется с ней: нетронутые строки и блоки остаются как были
@@ -2829,10 +2829,10 @@ function uaRender() {
   const rows = uaRows();
   const n = { all: allUsers.length, online: allUsers.filter(uaOnline).length, away: allUsers.filter(uaAway).length, admins: allUsers.filter(u => u.is_admin).length, banned: allUsers.filter(u => u.banned).length };
   const title = { all: 'Все', online: 'В сети', away: 'Отошли', admins: 'Администраторы', banned: 'Заблокированы' }[UA.filter];
-  const tile = (key, label, num, unit, color) => `<button type="button" class="ub-tile" aria-pressed="${UA.filter === key}" data-on-click="uaFilter" data-a="${esc(JSON.stringify([`${key}`]))}">
+  const tile = (key, label, num, unit, color) => `<button type="button" class="ub-tile" aria-pressed="${UA.filter === key}" data-on-click="uaFilter" data-a-click="${esc(JSON.stringify([`${key}`]))}">
     <div class="ub-lbl">${label}</div><div class="ub-big">${num}<small>${unit}</small></div>
     <div class="ub-meter"><i style="width:${n.all ? Math.round(num / n.all * 100) : 0}%;background:${color}"></i></div></button>`;
-  const sortBtn = (key, label) => `<button type="button" aria-pressed="${UA.sort.key === key}" data-on-click="uaSortBy" data-a="${esc(JSON.stringify([`${key}`]))}">${label}${UA.sort.key === key ? (UA.sort.dir > 0 ? ' ↑' : ' ↓') : ''}</button>`;
+  const sortBtn = (key, label) => `<button type="button" aria-pressed="${UA.sort.key === key}" data-on-click="uaSortBy" data-a-click="${esc(JSON.stringify([`${key}`]))}">${label}${UA.sort.key === key ? (UA.sort.dir > 0 ? ' ↑' : ' ↓') : ''}</button>`;
   // Прокрутка списка не должна сбрасываться при обновлении данных раз в несколько секунд
   const keepTop = document.querySelector('.ub-rows')?.scrollTop || 0;
   uxKeepFocus(() => {
@@ -2850,14 +2850,14 @@ function uaRender() {
         <button class="btn btn-ghost btn-sm" data-on-click="__h33">${UX_I.ban}Заблокировать</button>
         <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" data-on-click="__h34">Снять выделение</button></div>` : ''}</div>
       <div class="ub-rows">${rows.map(u => `<div class="ub-row${UA.sel.has(u.id) ? ' sel' : ''}${u.banned ? ' ua-banned' : ''}" data-k="${u.id}">
-        <input type="checkbox" aria-label="Выбрать: ${esc(u.display_name)}" ${UA.sel.has(u.id) ? 'checked' : ''} data-on-change="uaToggle" data-a="${esc(JSON.stringify([u.id]))}">
+        <input type="checkbox" aria-label="Выбрать: ${esc(u.display_name)}" ${UA.sel.has(u.id) ? 'checked' : ''} data-on-change="uaToggle" data-a-change="${esc(JSON.stringify([u.id]))}">
         <div class="ux-cell">${avHtml(u.display_name, 38, 11, u.id, uaDot(u), u.has_avatar)}
           <div style="min-width:0"><div class="ux-name">${esc(u.display_name)}${uxTag(u.tag)}</div><div class="ux-login">@${esc(u.username)}${WS.list.length > 1 ? ' ' + uaWsPills(u) : ''}</div></div></div>
         <div class="ub-role">${uaRole(u)}<small>создан ${fmtDate(u.created_at)}</small></div>
         <div class="ub-st">${uaStatusPill(u)}</div>
         <div class="ux-actions">
-          <button class="btn btn-ghost btn-sm" data-on-click="openEditUser" data-a="${esc(JSON.stringify([u.id]))}">${UX_I.edit}Изменить</button>
-          <button class="ux-ibtn" aria-label="Ещё действия: ${esc(u.display_name)}" aria-haspopup="menu" aria-expanded="false" data-on-click="uaMenu" data-a="${esc(JSON.stringify(["__event", u.id]))}">${UX_I.more}</button>
+          <button class="btn btn-ghost btn-sm" data-on-click="openEditUser" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.edit}Изменить</button>
+          <button class="ux-ibtn" aria-label="Ещё действия: ${esc(u.display_name)}" aria-haspopup="menu" aria-expanded="false" data-on-click="uaMenu" data-a-click="${esc(JSON.stringify(["__event", u.id]))}">${UX_I.more}</button>
         </div></div>`).join('') || '<div class="ub-empty">Никого не нашли. Проверьте запрос или фильтр.</div>'}</div>
     </div>`);
   });
@@ -2885,10 +2885,10 @@ function uaMenu(e, id) {
   if (!u) return;
   const self = currentUser?.id === id, devices = (u.clients || []).length;
   uxOpenMenu(e, 'ua' + id, `
-    <button role="menuitem" data-on-click="__h35" data-a="${esc(JSON.stringify([id]))}">${UX_I.key}Сменить пароль</button>
-    <button role="menuitem" ${devices ? '' : 'disabled'} data-on-click="__h36" data-a="${esc(JSON.stringify([id]))}">${UX_I.logout}Завершить сеансы${devices ? `<small>${devices}</small>` : ''}</button>
-    <button role="menuitem" ${self ? 'disabled' : ''} data-on-click="__h37" data-a="${esc(JSON.stringify([u.banned ? `uaUnban(${id})` : `uaBan([${id}])`]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button>
-    <hr><button role="menuitem" class="danger" ${self ? 'disabled' : ''} data-on-click="__h38" data-a="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить</button>`);
+    <button role="menuitem" data-on-click="__h35" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.key}Сменить пароль</button>
+    <button role="menuitem" ${devices ? '' : 'disabled'} data-on-click="__h36" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.logout}Завершить сеансы${devices ? `<small>${devices}</small>` : ''}</button>
+    <button role="menuitem" ${self ? 'disabled' : ''} data-on-click="__h37" data-a-click="${esc(JSON.stringify([u.banned ? `uaUnban(${id})` : `uaBan([${id}])`]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button>
+    <hr><button role="menuitem" class="danger" ${self ? 'disabled' : ''} data-on-click="__h38" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить</button>`);
 }
 
 // ── Действия ──
@@ -2946,7 +2946,7 @@ function fmMoreHtml(prefix, open, toggleFn, secs) {
   const n = secs.length;
   return `<div class="fm-more ${open ? 'open' : ''}"><button type="button" data-on-click="${esc(toggleFn)}" aria-expanded="${open}"><span>Дополнительно</span><span class="ua-hint">${n} ${uxPlural(n, 'раздел', 'раздела', 'разделов')}</span><span class="ch">›</span></button>
     ${open ? `<div class="fm-mb">${secs.map(s => `<section class="ua-sec" id="${prefix}-sec-${s.id}"><div class="ua-sec-title">${s.t}</div>${s.body}</section>`).join('')}</div>`
-      : `<div class="fm-chips">${secs.map(s => `<button type="button" class="fm-chip" data-on-click="${esc(toggleFn)}" data-a="${esc(JSON.stringify([`${s.id}`]))}">${s.t}: <b>${esc(s.su)}</b></button>`).join('')}</div>`}</div>`;
+      : `<div class="fm-chips">${secs.map(s => `<button type="button" class="fm-chip" data-on-click="${esc(toggleFn)}" data-a-click="${esc(JSON.stringify([`${s.id}`]))}">${s.t}: <b>${esc(s.su)}</b></button>`).join('')}</div>`}</div>`;
 }
 const fmScroll = id => setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 40);
 
@@ -2969,11 +2969,11 @@ function pkFound() {
 function pkSummary(ctx, label) {
   const c = pkCfg(ctx), items = c.items(), sel = c.sel(), chosen = items.filter(p => sel.has(p.id));
   const short = n => n.length > 22 ? n.slice(0, 21) + '…' : n;
-  const chips = chosen.slice(0, 5).map(p => `<span class="fm-chip static">${esc(short(p.name))}<button type="button" aria-label="Убрать" data-on-click="pkRm" data-a="${esc(JSON.stringify([`${ctx}`, p.id]))}">×</button></span>`).join('')
-    + (chosen.length > 5 ? `<button type="button" class="fm-chip cnt" data-on-click="pkOpen" data-a="${esc(JSON.stringify([`${ctx}`]))}">+${chosen.length - 5}</button>` : '');
+  const chips = chosen.slice(0, 5).map(p => `<span class="fm-chip static">${esc(short(p.name))}<button type="button" aria-label="Убрать" data-on-click="pkRm" data-a-click="${esc(JSON.stringify([`${ctx}`, p.id]))}">×</button></span>`).join('')
+    + (chosen.length > 5 ? `<button type="button" class="fm-chip cnt" data-on-click="pkOpen" data-a-click="${esc(JSON.stringify([`${ctx}`]))}">+${chosen.length - 5}</button>` : '');
   return `<div class="fm-pick"><div class="fm-pickhead"><span class="fm-pill ${chosen.length ? 'on' : ''}">${chosen.length ? `${chosen.length} ${pkNoun(c, chosen.length)}` : 'никого'}</span><span class="ua-hint">из ${items.length}</span></div>
     ${chips ? `<div class="fm-chips2">${chips}</div>` : ''}
-    <div class="fm-pickacts"><button type="button" class="btn ux-solid btn-sm" data-on-click="pkOpen" data-a="${esc(JSON.stringify([`${ctx}`]))}">${label}</button><button type="button" class="btn btn-ghost btn-sm" data-on-click="pkAll" data-a="${esc(JSON.stringify([`${ctx}`]))}">Добавить всех (${items.length})</button>${chosen.length ? `<button type="button" class="btn btn-ghost btn-sm" data-on-click="pkClear" data-a="${esc(JSON.stringify([`${ctx}`]))}">Очистить</button>` : ''}</div></div>`;
+    <div class="fm-pickacts"><button type="button" class="btn ux-solid btn-sm" data-on-click="pkOpen" data-a-click="${esc(JSON.stringify([`${ctx}`]))}">${label}</button><button type="button" class="btn btn-ghost btn-sm" data-on-click="pkAll" data-a-click="${esc(JSON.stringify([`${ctx}`]))}">Добавить всех (${items.length})</button>${chosen.length ? `<button type="button" class="btn btn-ghost btn-sm" data-on-click="pkClear" data-a-click="${esc(JSON.stringify([`${ctx}`]))}">Очистить</button>` : ''}</div></div>`;
 }
 function pkSheet() {
   if (!PK.ctx) return '';
@@ -2986,12 +2986,12 @@ function pkSheet() {
   const roomsCopy = PK.ctx === 'room' ? allRooms.filter(r => !RM.form.id || r.id !== RM.form.id) : [];
   return `<div class="fm-sheet"><div class="fm-sh"><button type="button" class="modal-close" data-on-click="pkClose" aria-label="Назад">‹</button>
     <div><div class="t">${c.title}</div><div class="s">${items.length} ${c.people ? 'людей' : 'чатов'}: найдите, отметьте, нажмите «Готово»</div></div><span class="fm-pill on" style="margin-left:auto">${sel.size}</span></div>
-    <div class="fm-tools"><label class="ux-search" style="min-width:0">${UX_I.search}<input id="pk-q" value="${esc(PK.q)}" placeholder="Имя, логин или тег" autocomplete="off" data-on-input="pkSearch" data-a='["__value"]'></label>
-      <div class="fm-grp" role="group" aria-label="Показать">${[['all', 'Все', items.length], ['sel', 'Выбранные', sel.size], ['unsel', 'Не выбранные', items.length - sel.size]].map(([v, l, n]) => `<button type="button" data-on-click="pkFilter" data-a="${esc(JSON.stringify([`${v}`]))}" aria-pressed="${PK.f === v}">${l}<small>${n}</small></button>`).join('')}</div>
-      ${groups.length > 1 ? `<div class="fm-grp" role="group" aria-label="Группа"><button type="button" data-on-click="pkGroup" data-a='[-1]' aria-pressed="${!PK.g}">Все группы</button>${groups.map((g, i) => `<button type="button" data-on-click="pkGroup" data-a="${esc(JSON.stringify([i]))}" aria-pressed="${PK.g === g[0]}">${esc(g[0])}<small>${g[1]}</small></button>`).join('')}</div>` : ''}
+    <div class="fm-tools"><label class="ux-search" style="min-width:0">${UX_I.search}<input id="pk-q" value="${esc(PK.q)}" placeholder="Имя, логин или тег" autocomplete="off" data-on-input="pkSearch" data-a-input='["__value"]'></label>
+      <div class="fm-grp" role="group" aria-label="Показать">${[['all', 'Все', items.length], ['sel', 'Выбранные', sel.size], ['unsel', 'Не выбранные', items.length - sel.size]].map(([v, l, n]) => `<button type="button" data-on-click="pkFilter" data-a-click="${esc(JSON.stringify([`${v}`]))}" aria-pressed="${PK.f === v}">${l}<small>${n}</small></button>`).join('')}</div>
+      ${groups.length > 1 ? `<div class="fm-grp" role="group" aria-label="Группа"><button type="button" data-on-click="pkGroup" data-a-click='[-1]' aria-pressed="${!PK.g}">Все группы</button>${groups.map((g, i) => `<button type="button" data-on-click="pkGroup" data-a-click="${esc(JSON.stringify([i]))}" aria-pressed="${PK.g === g[0]}">${esc(g[0])}<small>${g[1]}</small></button>`).join('')}</div>` : ''}
       <div class="fm-acts"><button type="button" class="btn btn-ghost btn-sm" data-on-click="pkSelFound" ${found.length && !allSel ? '' : 'disabled'}>Выбрать найденных (${found.length})</button><button type="button" class="btn btn-ghost btn-sm" data-on-click="pkUnselFound" ${found.some(p => sel.has(p.id)) ? '' : 'disabled'}>Снять</button>
-        ${roomsCopy.length ? `<select aria-label="Добавить участников другой комнаты" title="Добавить участников другой комнаты" data-on-change="pkCopy" data-a='["__this"]'><option value="">Из комнаты…</option>${roomsCopy.map(r => `<option value="${r.id}">${esc(r.name)}</option>`).join('')}</select>` : ''}</div></div>
-    <div class="fm-list">${shown.map(p => `<button type="button" class="fm-li" aria-pressed="${sel.has(p.id)}" data-on-click="pkToggle" data-a="${esc(JSON.stringify([p.id]))}">${p.av}<span class="n">${esc(p.name)}<small>${esc(p.sub)}</small></span>${p.tag ? `<span class="tg2">${esc(p.tag)}</span>` : ''}<span class="ck">${sel.has(p.id) ? '✓' : ''}</span></button>`).join('') || '<div class="fm-empty">Ничего не найдено. Измените запрос или фильтр</div>'}
+        ${roomsCopy.length ? `<select aria-label="Добавить участников другой комнаты" title="Добавить участников другой комнаты" data-on-change="pkCopy" data-a-change='["__this"]'><option value="">Из комнаты…</option>${roomsCopy.map(r => `<option value="${r.id}">${esc(r.name)}</option>`).join('')}</select>` : ''}</div></div>
+    <div class="fm-list">${shown.map(p => `<button type="button" class="fm-li" aria-pressed="${sel.has(p.id)}" data-on-click="pkToggle" data-a-click="${esc(JSON.stringify([p.id]))}">${p.av}<span class="n">${esc(p.name)}<small>${esc(p.sub)}</small></span>${p.tag ? `<span class="tg2">${esc(p.tag)}</span>` : ''}<span class="ck">${sel.has(p.id) ? '✓' : ''}</span></button>`).join('') || '<div class="fm-empty">Ничего не найдено. Измените запрос или фильтр</div>'}
       ${found.length > shown.length ? `<button type="button" class="btn btn-ghost btn-sm" style="align-self:center;margin:4px 0" data-on-click="pkMore">Показать ещё ${Math.min(40, found.length - shown.length)} из ${found.length - shown.length}</button>` : ''}</div>
     <div class="fm-sf"><span class="fm-note">Выбрано <b>${sel.size}</b> из ${items.length}</span><button type="button" class="btn ux-solid" data-on-click="pkClose">Готово</button></div></div>`;
 }
@@ -3069,14 +3069,14 @@ function uaProfileSection(f) {
   return `<div class="ua-sec">
     <div class="ua-sec-title">Профиль</div>
     <div class="ua-field"><label for="ua-name">Имя и фамилия</label>
-      <div class="ua-inp${f.errors.name ? ' bad' : ''}"><input id="ua-name" value="${esc(f.name)}" placeholder="Анна Смирнова" autocomplete="off" aria-invalid="${!!f.errors.name}" data-on-input="uaSet" data-a='["name", "__value"]'></div>${err('name')}</div>
+      <div class="ua-inp${f.errors.name ? ' bad' : ''}"><input id="ua-name" value="${esc(f.name)}" placeholder="Анна Смирнова" autocomplete="off" aria-invalid="${!!f.errors.name}" data-on-input="uaSet" data-a-input='["name", "__value"]'></div>${err('name')}</div>
     <div class="ua-row2">
       <div class="ua-field"><label for="ua-login">Логин</label>
         <div class="ua-inp${f.errors.login ? ' bad' : ''}"><span class="pre">@</span><input id="ua-login" value="${esc(f.login)}" placeholder="a.smirnova" autocomplete="off" spellcheck="false" aria-invalid="${!!f.errors.login}"
           data-on-input="__h39"></div>
         ${err('login') || '<span class="ua-hint">Латиница, цифры, точка</span>'}</div>
       <div class="ua-field"><label for="ua-tag">Тег <span class="opt">· необязательно</span></label>
-        <div class="ua-inp"><input id="ua-tag" value="${esc(f.tag)}" maxlength="20" placeholder="HR, Dev, Склад" autocomplete="off" data-on-input="uaSet" data-a='["tag", "__value"]'></div>
+        <div class="ua-inp"><input id="ua-tag" value="${esc(f.tag)}" maxlength="20" placeholder="HR, Dev, Склад" autocomplete="off" data-on-input="uaSet" data-a-input='["tag", "__value"]'></div>
         <span class="ua-hint">Виден рядом с именем в чате</span></div>
     </div>
     <div class="ua-preview" aria-hidden="true"><span id="ua-pv-av">${uaAv(f.name, 32)}</span>
@@ -3087,12 +3087,12 @@ function uaAccessSection(f, editing, u) {
   return `<div class="ua-sec">
     <div class="ua-sec-title">Доступ</div>
     <div class="ua-roles" role="radiogroup" aria-label="Роль">
-      <button type="button" role="radio" class="ua-role-opt" aria-checked="${!f.admin}" data-on-click="uaSet" data-a='["admin", false, true]'><b>Пользователь</b><span>Чаты, комнаты и файлы</span></button>
-      <button type="button" role="radio" class="ua-role-opt" aria-checked="${f.admin}" data-on-click="uaSet" data-a='["admin", true, true]'><b>${UX_I.shield}Администратор</b><span>И управление в этой панели</span></button>
+      <button type="button" role="radio" class="ua-role-opt" aria-checked="${!f.admin}" data-on-click="uaSet" data-a-click='["admin", false, true]'><b>Пользователь</b><span>Чаты, комнаты и файлы</span></button>
+      <button type="button" role="radio" class="ua-role-opt" aria-checked="${f.admin}" data-on-click="uaSet" data-a-click='["admin", true, true]'><b>${UX_I.shield}Администратор</b><span>И управление в этой панели</span></button>
     </div>
     ${f.admin ? uaTotpSection(f, editing, u) : uaAnnSection(f)}
     ${editing && !f.pwOpen
-      ? `<div class="ua-pw-closed"><div><b>Пароль</b><span>Остаётся прежним</span></div><button type="button" class="btn btn-ghost btn-sm" data-on-click="uaSet" data-a='["pwOpen", true, true, "ua-pass"]'>${UX_I.key}Сменить пароль</button></div>`
+      ? `<div class="ua-pw-closed"><div><b>Пароль</b><span>Остаётся прежним</span></div><button type="button" class="btn btn-ghost btn-sm" data-on-click="uaSet" data-a-click='["pwOpen", true, true, "ua-pass"]'>${UX_I.key}Сменить пароль</button></div>`
       : uaPasswordField(f, editing)}
   </div>`;
 }
@@ -3103,7 +3103,7 @@ function uaAnnSection(f) {
     <div class="ua-totp-row">
       <div><b>Отправлять объявления</b><span>В клиенте появится кнопка с колокольчиком: всплывающее, полоса и сообщение в чаты, как у администратора. Объявление уходит от имени системы, автор виден только здесь, в журнале</span></div>
       <label class="toggle-switch" style="gap:0">
-        <input type="checkbox" ${f.canAnnounce ? 'checked' : ''} data-on-change="uaSet" data-a='["canAnnounce", "__checked"]'>
+        <input type="checkbox" ${f.canAnnounce ? 'checked' : ''} data-on-change="uaSet" data-a-change='["canAnnounce", "__checked"]'>
         <div class="toggle-track"><div class="toggle-thumb"></div></div>
       </label>
     </div>
@@ -3118,13 +3118,13 @@ function uaTotpSection(f, editing, u) {
     <div class="ua-totp-row">
       <div><b>Требовать 2FA</b><span>При входе в админ-панель запросит код из приложения-аутентификатора${configured ? '' : ' (настроит при первом входе)'}</span></div>
       <label class="toggle-switch" style="gap:0">
-        <input type="checkbox" ${f.totpRequired ? 'checked' : ''} data-on-change="uaSet" data-a='["totpRequired", "__checked"]'>
+        <input type="checkbox" ${f.totpRequired ? 'checked' : ''} data-on-change="uaSet" data-a-change='["totpRequired", "__checked"]'>
         <div class="toggle-track"><div class="toggle-thumb"></div></div>
       </label>
     </div>
     ${editing && configured ? `<div class="ua-totp-row">
       <div><b>Сбросить 2FA</b><span>Если потерян доступ к приложению-аутентификатору</span></div>
-      <button type="button" class="btn btn-ghost btn-sm" data-on-click="__h40" data-a="${esc(JSON.stringify([u.id]))}">${UX_I.key}Сбросить</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-on-click="__h40" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.key}Сбросить</button>
     </div>` : ''}
   </div>`;
 }
@@ -3143,7 +3143,7 @@ function uaResetTotp(id) {
 function uaPasswordField(f, editing) {
   const s = uaStrength(f.password);
   return `<div class="ua-field"><label for="ua-pass">${editing ? 'Новый пароль' : 'Пароль'}</label>
-    <div class="ua-inp${f.errors.password ? ' bad' : ''}"><input id="ua-pass" type="${f.show ? 'text' : 'password'}" value="${esc(f.password)}" placeholder="Не короче 6 символов" autocomplete="new-password" aria-invalid="${!!f.errors.password}" data-on-input="uaSet" data-a='["password", "__value"]'>
+    <div class="ua-inp${f.errors.password ? ' bad' : ''}"><input id="ua-pass" type="${f.show ? 'text' : 'password'}" value="${esc(f.password)}" placeholder="Не короче 6 символов" autocomplete="new-password" aria-invalid="${!!f.errors.password}" data-on-input="uaSet" data-a-input='["password", "__value"]'>
       <button type="button" class="ua-sfx" aria-label="${f.show ? 'Скрыть пароль' : 'Показать пароль'}" data-on-click="__h41">${f.show ? UX_I.eyeOff : UX_I.eye}</button>
       <button type="button" class="ua-sfx" data-on-click="uaGenerate">${UX_I.wand}Придумать</button></div>
     <div class="ua-strength${s.good ? ' good' : ''}" id="ua-strength">${s.html}</div>
@@ -3163,11 +3163,11 @@ function uaDangerZone(u) {
   const devices = (u.clients || []).length;
   return `<details class="ua-dz"><summary>${UX_I.chev}Действия с учётной записью</summary>
     <div class="ua-dz-row"><div><b>Завершить все сеансы</b><span>Выход на всех устройствах; войти снова можно</span></div>
-      <button type="button" class="btn btn-ghost btn-sm" ${devices ? '' : 'disabled'} data-on-click="__h42" data-a="${esc(JSON.stringify([u.id]))}">${UX_I.logout}Завершить</button></div>
+      <button type="button" class="btn btn-ghost btn-sm" ${devices ? '' : 'disabled'} data-on-click="__h42" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.logout}Завершить</button></div>
     <div class="ua-dz-row"><div><b>${u.banned ? 'Разблокировать' : 'Заблокировать'}</b><span>${u.banned ? 'Снова сможет входить' : 'Не сможет войти, пока не разблокируете'}</span></div>
-      <button type="button" class="btn btn-ghost btn-sm" data-on-click="__h43" data-a="${esc(JSON.stringify([u.banned ? `uaUnban(${u.id})` : `uaBan([${u.id}])`]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button></div>
+      <button type="button" class="btn btn-ghost btn-sm" data-on-click="__h43" data-a-click="${esc(JSON.stringify([u.banned ? `uaUnban(${u.id})` : `uaBan([${u.id}])`]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button></div>
     <div class="ua-dz-row"><div><b>Удалить пользователя</b><span>Навсегда; сообщения в чатах останутся</span></div>
-      <button type="button" class="btn btn-danger btn-sm" data-on-click="__h44" data-a="${esc(JSON.stringify([u.id]))}">${UX_I.trash}Удалить</button></div>
+      <button type="button" class="btn btn-danger btn-sm" data-on-click="__h44" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.trash}Удалить</button></div>
   </details>`;
 }
 
@@ -3205,10 +3205,10 @@ function uaWsField(f, u) {
   const removed = u ? uaUserWs(u).filter(id => !sel.includes(id)) : [];
   const warn = removed.length ? `<div class="ws-warn"><b>!</b><div>Человек перестанет видеть людей из ${removed.length > 1 ? 'пространств' : 'пространства'} «${removed.map(id => esc(name(id))).join('», «')}» и пропадёт у них в списках. Чаты, группы и комнаты сохранятся.</div></div>` : '';
   return `<div class="ua-field"><label id="ua-ws-l">Пространства</label>
-    <div class="uaws" id="ua-ws"><button type="button" class="uaws-btn" aria-haspopup="listbox" aria-labelledby="ua-ws-l" aria-expanded="${f.wsOpen}" data-on-click="uaWsOpen" data-a='["__event"]'>
+    <div class="uaws" id="ua-ws"><button type="button" class="uaws-btn" aria-haspopup="listbox" aria-labelledby="ua-ws-l" aria-expanded="${f.wsOpen}" data-on-click="uaWsOpen" data-a-click='["__event"]'>
       ${sel.map(id => `<span class="ws-pill">${esc(name(id))}</span>`).join('')}${UA_CHEV}</button>
       <div class="uaws-pop" role="listbox" aria-multiselectable="true" ${f.wsOpen ? '' : 'hidden'}>
-        ${WS.list.map(w => `<button type="button" role="option" class="uaws-opt" aria-checked="${sel.includes(w.id)}" data-on-click="uaWsToggle" data-a="${esc(JSON.stringify([w.id]))}"><span class="uaws-ck">${UA_TICK}</span><span class="n">${esc(w.name)}</span>${w.id === 1 ? '<span class="m">по умолчанию</span>' : ''}</button>`).join('')}
+        ${WS.list.map(w => `<button type="button" role="option" class="uaws-opt" aria-checked="${sel.includes(w.id)}" data-on-click="uaWsToggle" data-a-click="${esc(JSON.stringify([w.id]))}"><span class="uaws-ck">${UA_TICK}</span><span class="n">${esc(w.name)}</span>${w.id === 1 ? '<span class="m">по умолчанию</span>' : ''}</button>`).join('')}
         <div class="uaws-foot">Выберите одно или несколько</div></div></div>
     <span class="${f.wsErr ? 'ua-err' : 'ua-hint'}">${f.wsErr ? 'Нужно оставить хотя бы одно пространство' : 'Человек виден в выбранных пространствах и видит людей из них'}</span>${warn}</div>`;
 }
@@ -3232,14 +3232,14 @@ function uaRenderForm(focusId) {
   const wsPick = WS.list.length > 1 || (u && !(uaUserWs(u).length === 1 && uaUserWs(u)[0] === 1)) ? uaWsField(f, u) : '';
   const quick = `<div class="ua-sec">
       <div class="ua-field"><label for="ua-name">Имя и фамилия</label>
-        <div class="ua-inp${f.errors.name ? ' bad' : ''}"><input id="ua-name" value="${esc(f.name)}" placeholder="Анна Смирнова" autocomplete="off" aria-invalid="${!!f.errors.name}" data-on-input="uaSet" data-a='["name", "__value"]'></div>${err('name')}</div>
+        <div class="ua-inp${f.errors.name ? ' bad' : ''}"><input id="ua-name" value="${esc(f.name)}" placeholder="Анна Смирнова" autocomplete="off" aria-invalid="${!!f.errors.name}" data-on-input="uaSet" data-a-input='["name", "__value"]'></div>${err('name')}</div>
       <div class="ua-row2">
         <div class="ua-field"><label for="ua-login">Логин</label>
           <div class="ua-inp${f.errors.login ? ' bad' : ''}"><span class="pre">@</span><input id="ua-login" value="${esc(f.login)}" placeholder="a.smirnova" autocomplete="off" spellcheck="false" aria-invalid="${!!f.errors.login}"
             data-on-input="__h39"></div>
           ${err('login') || '<span class="ua-hint">Латиница, цифры, точка</span>'}</div>
         <div class="ua-field"><label for="ua-tag">Тег <span class="opt">· необязательно</span></label>
-          <div class="ua-inp"><input id="ua-tag" value="${esc(f.tag)}" maxlength="20" placeholder="HR, Dev, Склад" autocomplete="off" data-on-input="uaSet" data-a='["tag", "__value"]'></div>
+          <div class="ua-inp"><input id="ua-tag" value="${esc(f.tag)}" maxlength="20" placeholder="HR, Dev, Склад" autocomplete="off" data-on-input="uaSet" data-a-input='["tag", "__value"]'></div>
           <span class="ua-hint">Виден рядом с именем в чате</span></div>
       </div></div>
     ${wsPick}
@@ -3249,11 +3249,11 @@ function uaRenderForm(focusId) {
   const pwSu = editing ? (f.pwOpen ? 'Будет изменён' : 'Остаётся прежним') : (f.generated ? 'Придуман автоматически' : f.password ? 'Задан вручную' : 'Не задан');
   const secs = [
     { id: 'a', t: 'Доступ', su: accessSu, body: `<div class="ua-roles" role="radiogroup" aria-label="Роль">
-        <button type="button" role="radio" class="ua-role-opt" aria-checked="${!f.admin}" data-on-click="uaSet" data-a='["admin", false, true]'><b>Пользователь</b><span>Чаты, комнаты и файлы</span></button>
-        <button type="button" role="radio" class="ua-role-opt" aria-checked="${f.admin}" data-on-click="uaSet" data-a='["admin", true, true]'><b>${UX_I.shield}Администратор</b><span>И управление в этой панели</span></button></div>
+        <button type="button" role="radio" class="ua-role-opt" aria-checked="${!f.admin}" data-on-click="uaSet" data-a-click='["admin", false, true]'><b>Пользователь</b><span>Чаты, комнаты и файлы</span></button>
+        <button type="button" role="radio" class="ua-role-opt" aria-checked="${f.admin}" data-on-click="uaSet" data-a-click='["admin", true, true]'><b>${UX_I.shield}Администратор</b><span>И управление в этой панели</span></button></div>
       ${f.admin ? uaTotpSection(f, editing, u) : uaAnnSection(f)}` },
     { id: 'w', t: 'Пароль', su: pwSu, body: editing && !f.pwOpen
-        ? `<div class="ua-pw-closed"><div><b>Пароль</b><span>Остаётся прежним</span></div><button type="button" class="btn btn-ghost btn-sm" data-on-click="uaSet" data-a='["pwOpen", true, true, "ua-pass"]'>${UX_I.key}Сменить пароль</button></div>`
+        ? `<div class="ua-pw-closed"><div><b>Пароль</b><span>Остаётся прежним</span></div><button type="button" class="btn btn-ghost btn-sm" data-on-click="uaSet" data-a-click='["pwOpen", true, true, "ua-pass"]'>${UX_I.key}Сменить пароль</button></div>`
         : uaPasswordField(f, editing) },
     ...(u && u.id !== currentUser?.id ? [{ id: 'z', t: 'Действия с учётной записью', su: 'Сеансы, блокировка, удаление', body: uaDangerRows(u) }] : []),
   ];
@@ -3262,21 +3262,21 @@ function uaRenderForm(focusId) {
       <div class="ua-head"><span id="ua-head-av">${uaAv(f.name, 38)}</span>
         <div><div class="ua-title">${u ? esc(u.display_name) : 'Новый пользователь'}</div>
           <div class="ua-sub">${u ? `@${esc(u.username)} · создан ${fmtDate(u.created_at)}` : 'Имя и логин, остальное можно позже'}</div></div>
-        <button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a='["modal-user"]'>✕</button></div>
+        <button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-user"]'>✕</button></div>
       <div class="ua-body">${quick}${fmMoreHtml('ua', f.more, 'uaMore', secs)}</div>
       <div class="ua-foot">${f.errors.form ? `<span class="ua-err">${esc(f.errors.form)}</span>` : ''}<span class="fm-note ${miss.length ? '' : 'ok'}" id="ua-note">${fmNote(miss)}</span>
-        <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a='["modal-user"]'>Отмена</button>
+        <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a-click='["modal-user"]'>Отмена</button>
         <button class="btn ux-solid" id="ua-go" ${f.busy || miss.length ? 'disabled' : ''}>${f.busy ? 'Сохраняю…' : u ? 'Сохранить' : 'Создать'}</button></div>`;
   }, focusId);
 }
 function uaDangerRows(u) {
   const devices = (u.clients || []).length;
   return `<div class="ua-dz-row"><div><b>Завершить все сеансы</b><span>Выход на всех устройствах; войти снова можно</span></div>
-      <button type="button" class="btn btn-ghost btn-sm" ${devices ? '' : 'disabled'} data-on-click="__h42" data-a="${esc(JSON.stringify([u.id]))}">${UX_I.logout}Завершить</button></div>
+      <button type="button" class="btn btn-ghost btn-sm" ${devices ? '' : 'disabled'} data-on-click="__h42" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.logout}Завершить</button></div>
     <div class="ua-dz-row"><div><b>${u.banned ? 'Разблокировать' : 'Заблокировать'}</b><span>${u.banned ? 'Снова сможет входить' : 'Не сможет войти, пока не разблокируете'}</span></div>
-      <button type="button" class="btn btn-ghost btn-sm" data-on-click="__h43" data-a="${esc(JSON.stringify([u.banned ? `uaUnban(${u.id})` : `uaBan([${u.id}])`]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button></div>
+      <button type="button" class="btn btn-ghost btn-sm" data-on-click="__h43" data-a-click="${esc(JSON.stringify([u.banned ? `uaUnban(${u.id})` : `uaBan([${u.id}])`]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button></div>
     <div class="ua-dz-row"><div><b>Удалить пользователя</b><span>Навсегда; сообщения в чатах останутся</span></div>
-      <button type="button" class="btn btn-danger btn-sm" data-on-click="__h44" data-a="${esc(JSON.stringify([u.id]))}">${UX_I.trash}Удалить</button></div>`;
+      <button type="button" class="btn btn-danger btn-sm" data-on-click="__h44" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.trash}Удалить</button></div>`;
 }
 function uaRenderPassword(focusId) {
   const f = UA.form, u = allUsers.find(x => x.id === UA.passId);
@@ -3286,11 +3286,11 @@ function uaRenderPassword(focusId) {
     form.innerHTML = `
       <div class="ua-head">${avHtml(u.display_name, 34, 9, u.id, false, u.has_avatar)}
         <div><div class="ua-title">Новый пароль</div><div class="ua-sub">${esc(u.display_name)} · @${esc(u.username)}</div></div>
-        <button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a='["modal-user-pass"]'>✕</button></div>
+        <button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-user-pass"]'>✕</button></div>
       <div class="ua-body">${uaPasswordField(f, true)}
         <label class="ua-check"><input type="checkbox" ${f.closeSessions ? 'checked' : ''} data-on-change="__h45">Завершить сеансы на всех устройствах</label></div>
       <div class="ua-foot">${f.errors.form ? `<span class="ua-err">${esc(f.errors.form)}</span>` : ''}<span class="ux-grow"></span>
-        <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a='["modal-user-pass"]'>Отмена</button>
+        <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a-click='["modal-user-pass"]'>Отмена</button>
         <button class="btn ux-solid" ${f.busy ? 'disabled' : ''}>${f.busy ? 'Сохраняю…' : 'Сохранить пароль'}</button></div>`;
   }, focusId);
 }
@@ -3450,14 +3450,14 @@ function chRender() {
   const wt = [0, 1, 2, 3, 4, 5, 6].map(i => allChats.reduce((s, c) => s + ((c.week || [])[i] || 0), 0)), wmax = Math.max(1, ...wt);
   const today = new Date().getDay(), dn = rbDays(), total = allChats.reduce((s, c) => s + c.message_count, 0);
   const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
-  const flt = ([k, label, count]) => `<button type="button" aria-pressed="${CH.filter === k}" data-on-click="chFilter" data-a="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${count}</span></button>`;
-  const sortBtn = (k, label) => `<button type="button" aria-pressed="${CH.sort === k}" data-on-click="chSort" data-a="${esc(JSON.stringify([`${k}`]))}">${label}</button>`;
+  const flt = ([k, label, count]) => `<button type="button" aria-pressed="${CH.filter === k}" data-on-click="chFilter" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${count}</span></button>`;
+  const sortBtn = (k, label) => `<button type="button" aria-pressed="${CH.sort === k}" data-on-click="chSort" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label}</button>`;
   uxKeepFocus(() => {
     uxSet(page, `<div class="ub" id="ch-page">
       <div class="ub-tiles">
         <div class="ub-tile static"><div class="ub-lbl">Личных чатов</div><div class="ub-big">${allChats.length - groups}<small>переписок двоих</small></div><div class="ub-sub">${allChats.filter(c => c.type !== 'group' && !c.message_count).length} пустых</div></div>
         <div class="ub-tile static"><div class="ub-lbl">Групп</div><div class="ub-big">${groups}<small>${groups ? 'с участниками' : ''}</small></div><div class="ub-sub">${groups ? `${seats} ${uxPlural(seats, 'место', 'места', 'мест')} в группах` : 'групп пока нет'}</div></div>
-        ${top ? `<button type="button" class="ub-tile" data-on-click="chPerson" data-a="${esc(JSON.stringify([top[0]]))}" title="Показать его чаты"><div class="ub-lbl">Больше всех переписок</div><div class="ub-big" style="font-size:18px;line-height:1.3;margin-top:8px;font-family:var(--f-mono)">${esc(top[0])}</div><div class="ub-sub">${top[1]} ${uxPlural(top[1], 'чат', 'чата', 'чатов')} · нажмите, чтобы показать</div></button>`
+        ${top ? `<button type="button" class="ub-tile" data-on-click="chPerson" data-a-click="${esc(JSON.stringify([top[0]]))}" title="Показать его чаты"><div class="ub-lbl">Больше всех переписок</div><div class="ub-big" style="font-size:18px;line-height:1.3;margin-top:8px;font-family:var(--f-mono)">${esc(top[0])}</div><div class="ub-sub">${top[1]} ${uxPlural(top[1], 'чат', 'чата', 'чатов')} · нажмите, чтобы показать</div></button>`
           : '<div class="ub-tile static"><div class="ub-lbl">Больше всех переписок</div><div class="ub-sub" style="margin-top:8px">пока нет</div></div>'}
         <div class="ub-tile static"><div class="ub-lbl">Сообщений за неделю</div><div class="ub-big">${rmFmt(wt.reduce((a, b) => a + b, 0))}<small>${rmFmt(total)} всего</small></div>
           <div class="rb-bars">${wt.map((v, i) => `<div title="${dn[(today - 6 + i + 14) % 7]}: ${v}"><i class="${i === 6 ? 'cur' : ''}" style="height:${Math.max(2, Math.round(v / wmax * 26))}px"></i><span>${dn[(today - 6 + i + 14) % 7]}</span></div>`).join('')}</div></div>
@@ -3465,7 +3465,7 @@ function chRender() {
       <div class="ub-head"><h3>Чаты и группы <span>${rows.length}</span></h3>
         <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все', allChats.length], ['group', 'Группы', groups], ['direct', 'Личные', allChats.length - groups], ['empty', 'Пустые', empty.length]].map(flt).join('')}</div>
         <div class="ub-sort" role="group" aria-label="Сортировка">${sortBtn('last', 'По времени')}${sortBtn('act', 'По активности')}${sortBtn('name', 'По имени')}</div>
-        ${empty.length ? `<button class="btn btn-ghost btn-sm" data-on-click="chDelete" data-a="${esc(JSON.stringify([JSON.stringify(empty.map(c => c.id))]))}">${UX_I.trash}Удалить пустые · ${empty.length}</button>` : ''}
+        ${empty.length ? `<button class="btn btn-ghost btn-sm" data-on-click="chDelete" data-a-click="${esc(JSON.stringify([JSON.stringify(empty.map(c => c.id))]))}">${UX_I.trash}Удалить пустые · ${empty.length}</button>` : ''}
         ${uxSearch('ch-q', CH.q, 'Название или участник', 'chSearch')}</div>
       <div class="ub-rows">${rows.map(c => {
         const open = CH.open.has(c.id), p = rbPresence(c, U), [from, to] = c.type === 'direct' ? chPair(c) : [];
@@ -3474,19 +3474,19 @@ function chRender() {
           ? `<div class="cb-bw">${avHtml(to.name, 38, 11, to.id, dot(to), to.has_avatar)}<span class="bd">${avHtml(from.name, 20, 6, from.id, false, from.has_avatar)}</span></div>`
           : `<div class="cb-gav">${avHtml(c.name || '?', 38, 11, null, p.on.length ? true : false, c.has_avatar, c.id)}</div>`;
         const chip = c.is_secret ? '<span class="rb-chip sec">секретный</span>' : c.type === 'direct' ? '<span class="rb-chip dir">личный</span>' : '<span class="rb-chip grp">группа</span>';
-        return `<div class="rb-row" data-k="${c.id}"><div class="rb-top" data-on-click="chTog" data-a="${esc(JSON.stringify(["__event", c.id]))}">
+        return `<div class="rb-row" data-k="${c.id}"><div class="rb-top" data-on-click="chTog" data-a-click="${esc(JSON.stringify(["__event", c.id]))}">
           <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть: ${esc(chName(c))}">${UX_I.chev}</button>
           <div class="rb-name">${lead}<div style="min-width:0"><div class="rb-nl"><b>${chTitle(c)}</b>${chip}${c.message_count ? '' : '<span class="rb-chip q">пустой</span>'}</div>
             <div class="rb-meta">${c.type === 'direct' ? 'Переписка двоих' : `${c.member_count} ${uxPlural(c.member_count, 'участник', 'участника', 'участников')}`}</div></div></div>
           ${rbPresHtml(p)}
           <div class="rb-act">${rbWk(c.week || [0, 0, 0, 0, 0, 0, 0])}<div class="t"><b>${rmFmt(c.message_count)}</b> сообщ.<small>${c.last_at ? 'последнее ' + esc(rmLast(c.last_at)) : 'сообщений нет'}</small></div></div>
-          <div class="ux-actions"><button class="btn btn-ghost btn-sm" data-on-click="__h46" data-a="${esc(JSON.stringify([c.id]))}">${RM_I.users}Участники</button>
-            <button class="ux-ibtn" aria-label="Ещё действия: ${esc(chName(c))}" aria-haspopup="menu" aria-expanded="false" data-on-click="__h47" data-a="${esc(JSON.stringify([c.id]))}">${UX_I.more}</button></div></div>
+          <div class="ux-actions"><button class="btn btn-ghost btn-sm" data-on-click="__h46" data-a-click="${esc(JSON.stringify([c.id]))}">${RM_I.users}Участники</button>
+            <button class="ux-ibtn" aria-label="Ещё действия: ${esc(chName(c))}" aria-haspopup="menu" aria-expanded="false" data-on-click="__h47" data-a-click="${esc(JSON.stringify([c.id]))}">${UX_I.more}</button></div></div>
         ${open ? `<div class="rb-exp${CH.fresh === c.id ? ' fresh' : ''}">
           <div><h4>Участники <span>${(c.members || []).length}</span></h4><div class="rb-pl">${(c.members || []).map(m => { const u = U.get(m.id), st = m.guest ? (m.status === 'online' ? ['в сети', 'on'] : m.status === 'away' ? ['отошёл', 'aw'] : m.online ? ['в сети', 'on'] : ['не в сети', '']) : u?.banned ? ['заблокирован', 'bn'] : u?.status === 'online' ? ['в сети', 'on'] : u?.status === 'away' ? ['отошёл', 'aw'] : ['не в сети', ''];
             return `<div class="rb-p">${avHtml(m.name, 24, 7, m.id, false, m.has_avatar)}<span class="nm">${esc(m.name)}</span>${c.type === 'direct' && from && m.id === from.id ? '<span class="adm start">начал(а)</span>' : ''}${u?.is_admin ? '<span class="adm">админ</span>' : ''}${m.guest ? '<span class="adm guest" title="Гость по ссылке: доступ закончится вместе со ссылкой">гость</span>' : ''}<span class="s ${st[1]}">${st[0]}</span></div>`; }).join('') || '<span class="rm-sub">никого</span>'}</div></div>
           <div><h4>Сводка</h4><div class="rb-kv"><div><span>Создан</span><b>${fmtDate(c.created_at)}</b></div><div><span>Сообщений</span><b>${rmFmt(c.message_count)}</b></div><div><span>Последнее</span><b>${esc(rmLast(c.last_at))}</b></div><div><span>Тип</span><b>${c.is_secret ? 'секретный чат' : c.type === 'direct' ? 'личный чат' : 'группа'}</b></div></div></div>
-          <div><h4>Действия</h4><div style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn btn-ghost btn-sm" data-on-click="chMembers" data-a="${esc(JSON.stringify([c.id]))}">${RM_I.users}Участники</button><button class="btn btn-danger btn-sm" data-on-click="chClear" data-a="${esc(JSON.stringify([c.id]))}">${RM_I.clear}Очистить историю</button><button class="btn btn-danger btn-sm" data-on-click="chDelete" data-a="${esc(JSON.stringify([[c.id]]))}">${UX_I.trash}Удалить чат</button></div>
+          <div><h4>Действия</h4><div style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn btn-ghost btn-sm" data-on-click="chMembers" data-a-click="${esc(JSON.stringify([c.id]))}">${RM_I.users}Участники</button><button class="btn btn-danger btn-sm" data-on-click="chClear" data-a-click="${esc(JSON.stringify([c.id]))}">${RM_I.clear}Очистить историю</button><button class="btn btn-danger btn-sm" data-on-click="chDelete" data-a-click="${esc(JSON.stringify([[c.id]]))}">${UX_I.trash}Удалить чат</button></div>
             <div class="rm-sub" style="margin-top:10px">Содержимое переписки в админке не показывается: только состав и сводка.</div></div></div>` : ''}</div>`; }).join('') || `<div class="ub-empty">${allChats.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Чатов пока нет'}</div>`}</div></div>`);
   });
   CH.fresh = null;
@@ -3509,10 +3509,10 @@ function chSelAll(on) { allChats.forEach(c => on ? CH.sel.add(c.id) : CH.sel.del
 function chMenu(e, id) {
   const c = allChats.find(x => x.id === id), guestOk = c && c.type === 'group' && !c.fed_instance;
   uxOpenMenu(e, 'ch' + id, `
-    <button role="menuitem" data-on-click="__h48" data-a="${esc(JSON.stringify([id]))}">${RM_I.users}Участники</button>
-    ${guestOk ? `<button role="menuitem" data-on-click="__h49" data-a="${esc(JSON.stringify([id, id]))}">${GL_I}Гостевая ссылка</button>` : ''}
-    <button role="menuitem" data-on-click="__h50" data-a="${esc(JSON.stringify([id]))}">${RM_I.clear}Очистить историю</button>
-    <hr><button role="menuitem" class="danger" data-on-click="__h51" data-a="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить чат</button>`);
+    <button role="menuitem" data-on-click="__h48" data-a-click="${esc(JSON.stringify([id]))}">${RM_I.users}Участники</button>
+    ${guestOk ? `<button role="menuitem" data-on-click="__h49" data-a-click="${esc(JSON.stringify([id, id]))}">${GL_I}Гостевая ссылка</button>` : ''}
+    <button role="menuitem" data-on-click="__h50" data-a-click="${esc(JSON.stringify([id]))}">${RM_I.clear}Очистить историю</button>
+    <hr><button role="menuitem" class="danger" data-on-click="__h51" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить чат</button>`);
 }
 
 function chDelete(ids) {
@@ -3556,22 +3556,22 @@ function chRenderMembers() {
   el.innerHTML = `
     <div class="ua-head">${chAv(c, 36)}<div><div class="ua-title">${esc(chName(c))}</div>
       <div class="ua-sub">${direct ? 'Личный чат' : `Группа · ${CH.members.length} ${uxPlural(CH.members.length, 'участник', 'участника', 'участников')}`}</div></div>
-      <button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a='["modal-chat-members"]'>✕</button></div>
+      <button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-chat-members"]'>✕</button></div>
     <div class="ua-body">
       <div class="rm-list rm-scroll" style="max-height:360px">${CH.members.map(m => `<div class="rm-li">${avHtml(m.display_name, 30, 8, m.id, false, true)}
         <div style="flex:1;min-width:0"><div class="ux-name">${esc(m.display_name)}</div><div class="rm-sub">${m.guest ? 'гость по ссылке' : '@' + esc(m.username)}</div></div>
-        ${direct ? '' : `<button type="button" class="ux-ibtn" aria-label="Убрать из группы: ${esc(m.display_name)}" data-on-click="chKick" data-a="${esc(JSON.stringify([m.id]))}">${RM_I.x}</button>`}</div>`).join('')
+        ${direct ? '' : `<button type="button" class="ux-ibtn" aria-label="Убрать из группы: ${esc(m.display_name)}" data-on-click="chKick" data-a-click="${esc(JSON.stringify([m.id]))}">${RM_I.x}</button>`}</div>`).join('')
         || '<div class="rm-li"><span class="rm-sub">Участников нет</span></div>'}</div>
       ${(CH.pending || []).length ? `<div class="rm-hint" style="margin-top:12px">Ожидают ответа (приглашены с другого сервера)</div><div class="rm-list">${CH.pending.map(m => `<div class="rm-li">${avHtml(m.display_name, 30, 8, m.id, false, true)}
         <div style="flex:1;min-width:0"><div class="ux-name">${esc(m.display_name)}</div><div class="rm-sub">@${esc(m.username)}</div></div>
-        <button type="button" class="ux-ibtn" aria-label="Отменить приглашение: ${esc(m.display_name)}" data-on-click="chCancelInvite" data-a="${esc(JSON.stringify([m.id]))}">${RM_I.x}</button></div>`).join('')}</div>` : ''}
+        <button type="button" class="ux-ibtn" aria-label="Отменить приглашение: ${esc(m.display_name)}" data-on-click="chCancelInvite" data-a-click="${esc(JSON.stringify([m.id]))}">${RM_I.x}</button></div>`).join('')}</div>` : ''}
       ${direct ? '' : `<div class="rm-hint" style="margin-top:14px">Пригласить человека с другого сервера</div>
         <div class="fd-inl"><div class="ua-inp"><input id="cm-addr" placeholder="@сервер:логин" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Адрес человека с другого сервера" data-on-keydown="__h52"></div><button class="btn btn-ghost btn-sm" data-on-click="chInviteAddr">Пригласить</button></div>
         <p class="rm-hint">Человек получит приглашение и сам решит, вступать ли: до согласия он не виден участникам и не получает сообщений. Нужно подключённое соединение с его сервером.</p>`}
       ${direct ? '<p class="rm-hint">В личном чате участников не меняют. Если переписка больше не нужна — удалите чат.</p>' : ''}
     </div>
-    <div class="ua-foot"><button type="button" class="btn btn-danger btn-sm" data-on-click="chDelete" data-a="${esc(JSON.stringify([[c.id]]))}">${UX_I.trash}Удалить чат</button><span class="ux-grow"></span>
-      <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a='["modal-chat-members"]'>Готово</button></div>`;
+    <div class="ua-foot"><button type="button" class="btn btn-danger btn-sm" data-on-click="chDelete" data-a-click="${esc(JSON.stringify([[c.id]]))}">${UX_I.trash}Удалить чат</button><span class="ux-grow"></span>
+      <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a-click='["modal-chat-members"]'>Готово</button></div>`;
 }
 async function chInviteAddr() {
   const inp = document.getElementById('cm-addr'), v = (inp?.value || '').trim();
@@ -3673,7 +3673,7 @@ function clVersion(c) {
   const p = clProg(c);
   if (p?.status === 'error' && p.connId === c.connId) {
     return `<div class="cl-prog error"><div class="cl-prog-line"><span>Не обновился</span><span class="cl-ip">${esc(c.clientVersion)}</span></div>
-      <div class="cl-prog-err">${esc(p.error || 'Клиент сообщил об ошибке')} <button data-on-click="clUpdate" data-a="${esc(JSON.stringify([[c.connId], true]))}">Повторить</button></div></div>`;
+      <div class="cl-prog-err">${esc(p.error || 'Клиент сообщил об ошибке')} <button data-on-click="clUpdate" data-a-click="${esc(JSON.stringify([[c.connId], true]))}">Повторить</button></div></div>`;
   }
   if (p && CL_STAGE[p.status]) {
     const [stage, color] = CL_STAGE[p.status];
@@ -3689,8 +3689,8 @@ function clVersion(c) {
   return `<span class="cl-ver ok">${UX_I.check}${esc(c.clientVersion)}${p?.status === 'restarted' && c.clientVersion === CL.latest ? ' <span class="note">· только что обновлён</span>' : ''}</span>`;
 }
 function clActions(c) {
-  const update = clOutdated(c) && !clBusy(c) ? `<button class="btn btn-primary btn-sm" data-on-click="clUpdate" data-a="${esc(JSON.stringify([[c.connId]]))}">${UX_I.up}Обновить</button>` : '';
-  return `<div class="ux-actions">${update}<button class="ux-ibtn" aria-label="Действия: ${esc(clHost(c))}" aria-haspopup="menu" aria-expanded="false" data-on-click="clMenu" data-a="${esc(JSON.stringify(["__event", c.connId]))}">${UX_I.more}</button></div>`;
+  const update = clOutdated(c) && !clBusy(c) ? `<button class="btn btn-primary btn-sm" data-on-click="clUpdate" data-a-click="${esc(JSON.stringify([[c.connId]]))}">${UX_I.up}Обновить</button>` : '';
+  return `<div class="ux-actions">${update}<button class="ux-ibtn" aria-label="Действия: ${esc(clHost(c))}" aria-haspopup="menu" aria-expanded="false" data-on-click="clMenu" data-a-click="${esc(JSON.stringify(["__event", c.connId]))}">${UX_I.more}</button></div>`;
 }
 
 // Адрес из локальной сети: частные диапазоны. Остальные считаем удалёнными
@@ -3726,7 +3726,7 @@ function clTiles() {
     <div class="ub-tile static"><div class="ub-lbl">Подключено</div><div class="ub-big">${all.length}<small>${devUnit}</small></div>
       <div class="ub-sub">${withIp.length ? `${local} в локальной сети · ${remote} удалённо` : 'адреса не определены'}</div>
       ${withIp.length ? `<div class="ub-stack"><i style="flex:${local};background:var(--c-green)"></i><i style="flex:${remote};background:var(--dv-c4)"></i></div>` : ''}</div>
-    <button type="button" class="ub-tile" data-on-click="clFilter" data-a='["old"]' title="Показать тех, кому нужно обновление"><div class="ub-lbl">Версии Electron</div>
+    <button type="button" class="ub-tile" data-on-click="clFilter" data-a-click='["old"]' title="Показать тех, кому нужно обновление"><div class="ub-lbl">Версии Electron</div>
       <div class="ub-big">${CL.latest ? esc(CL.latest) : '—'}<small>${electron.length ? `актуальная у ${curN}` : 'нет компьютеров'}</small></div>
       ${electron.length ? `<div class="ub-sub">${versions.length} ${uxPlural(versions.length, 'версия', 'версии', 'версий')} на ${electron.length} ${uxPlural(electron.length, 'компьютере', 'компьютерах', 'компьютерах')}</div>
         <div class="ub-stack">${versions.map(([v, n], i) => `<i style="flex:${n};background:${vcol[i]}" title="${esc(v)}: ${n}"></i>`).join('')}</div>
@@ -3740,7 +3740,7 @@ function clTiles() {
       <div class="ub-big">${busy || waiting.length}<small>${busy ? 'в процессе' : 'устарели'}</small></div>
       <div class="ub-sub">Последняя ${CL.latest ? esc(CL.latest) : 'неизвестна'}${CL.checkedAt ? ` · проверено в ${uxClock(CL.checkedAt)}` : ''}</div>
       <div class="row ub-acts" style="margin-top:10px;gap:8px;display:flex;align-items:center">
-        ${waiting.length ? `<button class="btn ux-solid btn-sm" data-on-click="clUpdate" data-a="${esc(JSON.stringify([JSON.stringify(waiting.map(c => c.connId))]))}">${UX_I.up}Обновить устаревшие · ${waiting.length}</button>`
+        ${waiting.length ? `<button class="btn ux-solid btn-sm" data-on-click="clUpdate" data-a-click="${esc(JSON.stringify([JSON.stringify(waiting.map(c => c.connId))]))}">${UX_I.up}Обновить устаревшие · ${waiting.length}</button>`
           : electron.length && CL.latest && !busy ? `<span class="cl-ver ok">${UX_I.check}Все на последней версии</span>` : ''}${check}</div></div>`;
 }
 
@@ -3770,7 +3770,7 @@ function clRender() {
   const sel = CL.clients.filter(c => CL.sel.has(c.connId));
   const selOld = sel.filter(c => clOutdated(c) && !clBusy(c)), selElectron = sel.filter(c => !clIsWeb(c));
   const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
-  const flt = ([k, label, count, warn]) => `<button type="button" class="${warn && count ? 'warn' : ''}" aria-pressed="${CL.filter === k}" data-on-click="clFilter" data-a="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${count}</span></button>`;
+  const flt = ([k, label, count, warn]) => `<button type="button" class="${warn && count ? 'warn' : ''}" aria-pressed="${CL.filter === k}" data-on-click="clFilter" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${count}</span></button>`;
   page.className = 'ub';
   uxKeepFocus(() => {
     uxSet(page, `
@@ -3778,12 +3778,12 @@ function clRender() {
       <div class="ub-head"><h3>Клиенты <span>${rows.length}</span></h3>
         <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все', n.all], ['old', 'Нужно обновить', n.old, true], ['electron', 'Electron', n.electron], ['web', 'Веб и PWA', n.web]].map(flt).join('')}</div>
         ${uxSearch('cl-q', CL.q, 'Человек, компьютер или IP', 'clSearch')}${CL.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${CL.sel.size}</b>
-        <button class="btn btn-ghost btn-sm" ${selOld.length ? '' : 'disabled'} data-on-click="clUpdate" data-a="${esc(JSON.stringify([JSON.stringify(selOld.map(c => c.connId))]))}">${UX_I.up}Обновить · ${selOld.length}</button>
-        <button class="btn btn-ghost btn-sm" ${selElectron.length ? '' : 'disabled'} data-on-click="clRestart" data-a="${esc(JSON.stringify([JSON.stringify(selElectron.map(c => c.connId))]))}">${UX_I.restart}Перезапустить</button>
+        <button class="btn btn-ghost btn-sm" ${selOld.length ? '' : 'disabled'} data-on-click="clUpdate" data-a-click="${esc(JSON.stringify([JSON.stringify(selOld.map(c => c.connId))]))}">${UX_I.up}Обновить · ${selOld.length}</button>
+        <button class="btn btn-ghost btn-sm" ${selElectron.length ? '' : 'disabled'} data-on-click="clRestart" data-a-click="${esc(JSON.stringify([JSON.stringify(selElectron.map(c => c.connId))]))}">${UX_I.restart}Перезапустить</button>
         <button class="btn btn-ghost btn-sm" data-on-click="__h53">${UX_I.logout}Завершить сеансы</button>
         <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" data-on-click="__h54">Снять выделение</button></div>` : ''}</div>
       <div class="ub-rows">${rows.map(c => `<div class="cb-row${CL.sel.has(c.connId) ? ' sel' : ''}" data-k="${c.connId}">
-        <input type="checkbox" aria-label="Выбрать: ${esc(clHost(c))}" ${CL.sel.has(c.connId) ? 'checked' : ''} data-on-change="clToggle" data-a="${esc(JSON.stringify([c.connId]))}">
+        <input type="checkbox" aria-label="Выбрать: ${esc(clHost(c))}" ${CL.sel.has(c.connId) ? 'checked' : ''} data-on-change="clToggle" data-a-change="${esc(JSON.stringify([c.connId]))}">
         <div class="ux-cell">${avHtml(clName(c), 36, 10, c.userId, null, false)}<div style="min-width:0"><div class="ux-name">${esc(clName(c))}</div><div class="ux-login">@${esc(c.username)}</div></div></div>
         <div class="cb-dev"><div class="cl-host">${esc(clHost(c))}</div>${c.clientIp && c.clientIp !== '—' ? `<div class="cl-ip">${esc(c.clientIp)}</div>` : ''}</div>
         <div class="cb-pl">${clPlatform(c)}</div>
@@ -3813,11 +3813,11 @@ function clSelAll(on) { clRows().forEach(c => on ? CL.sel.add(c.connId) : CL.sel
 function clMenu(e, connId) {
   const c = CL.clients.find(x => x.connId === connId);
   if (!c) return;
-  const logout = `<button role="menuitem" class="danger" data-on-click="__h55" data-a="${esc(JSON.stringify([connId]))}">${UX_I.logout}Завершить сеанс</button>`;
+  const logout = `<button role="menuitem" class="danger" data-on-click="__h55" data-a-click="${esc(JSON.stringify([connId]))}">${UX_I.logout}Завершить сеанс</button>`;
   uxOpenMenu(e, 'cl' + connId, clIsWeb(c)
     ? `<div class="note">Веб и PWA обновляются сами — достаточно обновить страницу в браузере</div><hr>${logout}`
-    : `<button role="menuitem" ${clOutdated(c) && !clBusy(c) ? '' : 'disabled'} data-on-click="__h56" data-a="${esc(JSON.stringify([connId]))}">${UX_I.up}Обновить${CL.latest ? ' до ' + esc(CL.latest) : ''}</button>
-       <button role="menuitem" ${clBusy(c) ? 'disabled' : ''} data-on-click="__h57" data-a="${esc(JSON.stringify([connId]))}">${UX_I.restart}Перезапустить клиент</button>
+    : `<button role="menuitem" ${clOutdated(c) && !clBusy(c) ? '' : 'disabled'} data-on-click="__h56" data-a-click="${esc(JSON.stringify([connId]))}">${UX_I.up}Обновить${CL.latest ? ' до ' + esc(CL.latest) : ''}</button>
+       <button role="menuitem" ${clBusy(c) ? 'disabled' : ''} data-on-click="__h57" data-a-click="${esc(JSON.stringify([connId]))}">${UX_I.restart}Перезапустить клиент</button>
        <hr>${logout}`);
 }
 
@@ -3939,7 +3939,7 @@ function psRender() {
   const cover = people.length ? Math.round(people.filter(u => withPush.has(u.id)).length / people.length * 100) : 0;
   const shown = without.slice(0, 3).map(u => u.display_name).join(', ') + (without.length > 3 ? ` и ещё ${without.length - 3}` : '');
   const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
-  const flt = ([k, label, n]) => `<button type="button" aria-pressed="${PS.filter === k}" data-on-click="psFilter" data-a="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${n}</span></button>`;
+  const flt = ([k, label, n]) => `<button type="button" aria-pressed="${PS.filter === k}" data-on-click="psFilter" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${n}</span></button>`;
   uxKeepFocus(() => {
     page.innerHTML = `<div class="ub" id="ps-page">
       <div class="ub-tiles">
@@ -3948,22 +3948,22 @@ function psRender() {
         <div class="ub-tile static"><div class="ub-lbl">Уведомления включены</div><div class="ub-big">${withPush.size}<small>из ${people.length}</small></div><div class="ub-sub">охват ${cover}%</div><div class="ub-meter"><i style="width:${cover}%;background:var(--c-primary)"></i></div></div>
         <div class="ub-tile static"><div class="ub-lbl">Не включили</div><div class="ub-big">${without.length}<small>${uxPlural(without.length, 'человек', 'человека', 'человек')}</small></div><div class="ub-sub" style="white-space:normal">${without.length ? `${esc(shown)}. Они узнают о сообщениях, только открыв чат.` : 'Уведомления включили все'}</div></div>
         <div class="ub-tile static" style="display:flex;flex-direction:column;justify-content:space-between"><div><div class="ub-lbl">Проверка доставки</div><div class="ub-sub" style="margin-top:6px">Тестовое уведомление уйдёт на все устройства. Видно, куда дошло, а куда нет.</div></div>
-          <button class="btn ux-solid btn-sm" style="align-self:flex-start;margin-top:10px" ${PS.subs.length ? '' : 'disabled'} data-on-click="psTest" data-a="${esc(JSON.stringify([JSON.stringify(PS.subs.map(s => s.id))]))}">${PS_BELL}Проверить всех</button></div>
+          <button class="btn ux-solid btn-sm" style="align-self:flex-start;margin-top:10px" ${PS.subs.length ? '' : 'disabled'} data-on-click="psTest" data-a-click="${esc(JSON.stringify([JSON.stringify(PS.subs.map(s => s.id))]))}">${PS_BELL}Проверить всех</button></div>
       </div>
       <div class="ub-head"><h3>Подписки <span>${rows.length}</span></h3>
         <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все', ppl.length], ...services.map(k => [k, PS_SVC[k][0], ppl.filter(p => p.subs.some(s => s.svc === k)).length])].map(flt).join('')}</div>
         ${uxSearch('ps-q', PS.q, 'Человек или сервис', 'psSearch')}</div>
       <div class="ub-rows">${rows.map(p => {
         const open = PS.open.has(p.user_id), svcs = [...new Set(p.subs.map(s => s.svc))], since = Math.min(...p.subs.map(s => s.created_at || 0)), ids = p.subs.map(s => s.id);
-        return `<div class="rb-row"><div class="pg-top" style="grid-template-columns:22px minmax(0,1.5fr) minmax(0,1.3fr) minmax(0,.8fr) 150px" data-on-click="psTog" data-a="${esc(JSON.stringify(["__event", p.user_id]))}">
+        return `<div class="rb-row"><div class="pg-top" style="grid-template-columns:22px minmax(0,1.5fr) minmax(0,1.3fr) minmax(0,.8fr) 150px" data-on-click="psTog" data-a-click="${esc(JSON.stringify(["__event", p.user_id]))}">
           <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть: ${esc(p.name)}">${UX_I.chev}</button>
           <div class="rb-name">${avHtml(p.name, 36, 10, p.user_id, false, true)}<div style="min-width:0"><div class="rb-nl"><b>${esc(p.name)}</b></div><div class="ux-login">@${esc(p.username)}</div></div></div>
           <div class="pg-h2" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="rb-meta" style="margin-right:2px">${p.subs.length} ${uxPlural(p.subs.length, 'устройство', 'устройства', 'устройств')}</span>${svcs.map(psChip).join('')}</div>
           <div class="pg-h1 rb-meta">с ${esc(uaSeen(since))}</div>
-          <div class="ux-actions"><button class="btn btn-ghost btn-sm" title="Тестовое уведомление на все устройства человека" data-on-click="__h58" data-a="${esc(JSON.stringify([JSON.stringify(ids)]))}">${PS_BELL}Проверить</button>
-            <button class="ux-ibtn" aria-label="Ещё действия: ${esc(p.name)}" aria-haspopup="menu" aria-expanded="false" data-on-click="__h59" data-a="${esc(JSON.stringify([p.user_id]))}">${UX_I.more}</button></div></div>
+          <div class="ux-actions"><button class="btn btn-ghost btn-sm" title="Тестовое уведомление на все устройства человека" data-on-click="__h58" data-a-click="${esc(JSON.stringify([JSON.stringify(ids)]))}">${PS_BELL}Проверить</button>
+            <button class="ux-ibtn" aria-label="Ещё действия: ${esc(p.name)}" aria-haspopup="menu" aria-expanded="false" data-on-click="__h59" data-a-click="${esc(JSON.stringify([p.user_id]))}">${UX_I.more}</button></div></div>
         ${open ? `<div class="pg-exp${PS.fresh === p.user_id ? ' fresh' : ''}" style="grid-template-columns:minmax(0,1fr)"><div><h4>Устройства</h4><div style="display:flex;flex-direction:column;gap:8px">${p.subs.map(s => `<div class="pg-dev">${psChip(s.svc)}<span class="h">${esc(s.host || '—')}</span><span class="rb-meta">подписан ${esc(uaSeen(s.created_at))}</span>
-          <div class="ux-actions"><button class="btn btn-ghost btn-sm" data-on-click="psTest" data-a="${esc(JSON.stringify([[s.id]]))}">${PS_BELL}Проверить</button><button class="ux-ibtn" aria-label="Удалить подписку" title="Удалить подписку" data-on-click="psDelete" data-a="${esc(JSON.stringify([[s.id]]))}">${UX_I.trash}</button></div></div>`).join('')}</div></div></div>` : ''}</div>`;
+          <div class="ux-actions"><button class="btn btn-ghost btn-sm" data-on-click="psTest" data-a-click="${esc(JSON.stringify([[s.id]]))}">${PS_BELL}Проверить</button><button class="ux-ibtn" aria-label="Удалить подписку" title="Удалить подписку" data-on-click="psDelete" data-a-click="${esc(JSON.stringify([[s.id]]))}">${UX_I.trash}</button></div></div>`).join('')}</div></div></div>` : ''}</div>`;
       }).join('') || `<div class="ub-empty">${PS.subs.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Подписок пока нет'}</div>`}</div></div>`;
   });
   PS.fresh = null;
@@ -3979,8 +3979,8 @@ function psTog(e, uid) {
 function psPMenu(e, uid) {
   const ids = PS.subs.filter(s => s.user_id === uid).map(s => s.id);
   uxOpenMenu(e, 'psp' + uid, `
-    <button role="menuitem" data-on-click="__h60" data-a="${esc(JSON.stringify([JSON.stringify(ids)]))}">${PS_BELL}Проверить все устройства</button>
-    <hr><button role="menuitem" class="danger" data-on-click="__h61" data-a="${esc(JSON.stringify([JSON.stringify(ids)]))}">${UX_I.trash}Удалить подписки</button>`);
+    <button role="menuitem" data-on-click="__h60" data-a-click="${esc(JSON.stringify([JSON.stringify(ids)]))}">${PS_BELL}Проверить все устройства</button>
+    <hr><button role="menuitem" class="danger" data-on-click="__h61" data-a-click="${esc(JSON.stringify([JSON.stringify(ids)]))}">${UX_I.trash}Удалить подписки</button>`);
 }
 
 function psFilter(k) { PS.filter = k; PS.sel.clear(); psRender(); }
@@ -3989,8 +3989,8 @@ function psToggle(id) { PS.sel.has(id) ? PS.sel.delete(id) : PS.sel.add(id); psR
 function psSelAll(on) { PS.subs.forEach(s => on ? PS.sel.add(s.id) : PS.sel.delete(s.id)); psRender(); }
 function psMenu(e, id) {
   uxOpenMenu(e, 'ps' + id, `
-    <button role="menuitem" data-on-click="__h62" data-a="${esc(JSON.stringify([id]))}">${PS_BELL}Проверить</button>
-    <hr><button role="menuitem" class="danger" data-on-click="__h63" data-a="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить подписку</button>`);
+    <button role="menuitem" data-on-click="__h62" data-a-click="${esc(JSON.stringify([id]))}">${PS_BELL}Проверить</button>
+    <hr><button role="menuitem" class="danger" data-on-click="__h63" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить подписку</button>`);
 }
 
 // Тест уходит человеку целиком — на все его подписки, поэтому выбранные строки сводим к людям
@@ -4073,7 +4073,7 @@ function whRender() {
   const wt = [0, 1, 2, 3, 4, 5, 6].map(i => WH.hooks.reduce((s, h) => s + ((h.week || [])[i] || 0), 0)), wmax = Math.max(1, ...wt), dn = WH_DAYS();
   const silentNames = silent.slice(0, 3).map(h => h.name).join(', ') + (silent.length > 3 ? ` и ещё ${silent.length - 3}` : '');
   const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
-  const flt = ([k, label, n]) => `<button type="button" aria-pressed="${WH.filter === k}" data-on-click="whFilter" data-a="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${n}</span></button>`;
+  const flt = ([k, label, n]) => `<button type="button" aria-pressed="${WH.filter === k}" data-on-click="whFilter" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${n}</span></button>`;
   uxKeepFocus(() => {
     page.innerHTML = `<div class="ub" id="wh-page">
       <div class="ub-tiles">
@@ -4082,25 +4082,25 @@ function whRender() {
           <div class="rb-bars">${wt.map((v, i) => `<div title="${dn[i]}: ${v}"><i class="${i === 6 ? 'cur' : ''}" style="height:${Math.max(2, Math.round(v / wmax * 26))}px"></i><span>${dn[i]}</span></div>`).join('')}</div></div>
         <div class="ub-tile static"><div class="ub-lbl">Молчат</div><div class="ub-big" style="color:${silent.length ? 'var(--c-orange-text)' : 'var(--c-green-text)'}">${silent.length}</div><div class="ub-sub" style="white-space:normal">${!WH.hooks.length ? 'Вебхуков пока нет' : silent.length ? `Неделю не писали: ${esc(silentNames)}. Проверьте адрес у внешней системы.` : 'Все боты писали за последнюю неделю'}</div></div>
         <div class="ub-tile static" style="display:flex;flex-direction:column;justify-content:space-between"><div><div class="ub-lbl">Новый вебхук</div><div class="ub-sub" style="margin-top:6px">Адрес для внешней системы: она пишет в выбранный чат от имени бота.</div></div>
-          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn ux-solid btn-sm" data-on-click="whOpen">${RM_I.plus}Создать</button><button class="btn btn-ghost btn-sm" data-on-click="openModal" data-a='["modal-webhook-help"]'>${WH_I.book}Инструкция</button></div></div>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn ux-solid btn-sm" data-on-click="whOpen">${RM_I.plus}Создать</button><button class="btn btn-ghost btn-sm" data-on-click="openModal" data-a-click='["modal-webhook-help"]'>${WH_I.book}Инструкция</button></div></div>
       </div>
       <div class="ub-head"><h3>Вебхуки <span>${rows.length}</span></h3>
         <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все', WH.hooks.length], ['active', 'Пишут', WH.hooks.length - silent.length], ['silent', 'Молчат', silent.length]].map(flt).join('')}</div>
         ${uxSearch('wh-q', WH.q, 'Бот или чат', 'whSearch')}</div>
       <div class="ub-rows">${rows.map(h => {
         const open = WH.open.has(h.id), on = whWeek(h);
-        return `<div class="rb-row"><div class="pg-top" style="grid-template-columns:22px minmax(0,1.4fr) minmax(0,1.1fr) minmax(0,1.1fr) minmax(0,.9fr) 150px" data-on-click="whTog" data-a="${esc(JSON.stringify(["__event", h.id]))}">
+        return `<div class="rb-row"><div class="pg-top" style="grid-template-columns:22px minmax(0,1.4fr) minmax(0,1.1fr) minmax(0,1.1fr) minmax(0,.9fr) 150px" data-on-click="whTog" data-a-click="${esc(JSON.stringify(["__event", h.id]))}">
           <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть: ${esc(h.name)}">${UX_I.chev}</button>
           <div class="rb-name">${avHtml(h.name, 38, 11, h.user_id, false, h.has_avatar)}<div style="min-width:0"><div class="rb-nl"><b>${esc(h.name)}</b>${h.tag ? `<span class="rb-chip dir">${esc(h.tag)}</span>` : ''}${whActive(h) ? '' : '<span class="rb-chip q">молчит</span>'}</div><div class="rb-meta">бот · вебхук</div></div></div>
           <div class="pg-h2" style="min-width:0"><div style="font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.chat_name || '—')}</div><span class="rb-meta">${h.chat_type === 'group' ? 'группа' : 'комната'}</span></div>
           <div class="pg-h1 pg-act">${whWk(h.week || [0, 0, 0, 0, 0, 0, 0])}<div class="t"><b>${on}</b> за неделю<small>${rmFmt(h.message_count)} всего</small></div></div>
           <div class="pg-h1 pg-url"><code>…/webhooks/${esc(String(h.token).slice(0, 3))}•••••</code></div>
-          <div class="ux-actions"><button class="btn btn-ghost btn-sm" data-on-click="__h64" data-a="${esc(JSON.stringify([h.id]))}">${WH_I.copy}Скопировать</button>
-            <button class="ux-ibtn" aria-label="Ещё действия: ${esc(h.name)}" aria-haspopup="menu" aria-expanded="false" data-on-click="__h65" data-a="${esc(JSON.stringify([h.id]))}">${UX_I.more}</button></div></div>
+          <div class="ux-actions"><button class="btn btn-ghost btn-sm" data-on-click="__h64" data-a-click="${esc(JSON.stringify([h.id]))}">${WH_I.copy}Скопировать</button>
+            <button class="ux-ibtn" aria-label="Ещё действия: ${esc(h.name)}" aria-haspopup="menu" aria-expanded="false" data-on-click="__h65" data-a-click="${esc(JSON.stringify([h.id]))}">${UX_I.more}</button></div></div>
         ${open ? `<div class="pg-exp${WH.fresh === h.id ? ' fresh' : ''}" style="grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)"><div><h4>Как отправить сообщение</h4><div class="pg-code">${esc(whCurl(h))}</div>
-            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" data-on-click="whCopyExample" data-a="${esc(JSON.stringify([h.id]))}">${WH_I.copy}Скопировать пример</button><button class="btn btn-ghost btn-sm" data-on-click="whTest" data-a="${esc(JSON.stringify([h.id]))}">Отправить тест</button></div></div>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" data-on-click="whCopyExample" data-a-click="${esc(JSON.stringify([h.id]))}">${WH_I.copy}Скопировать пример</button><button class="btn btn-ghost btn-sm" data-on-click="whTest" data-a-click="${esc(JSON.stringify([h.id]))}">Отправить тест</button></div></div>
           <div><h4>Детали</h4><div class="pg-kv"><div><span>Пишет в</span><b>${esc(h.chat_name || '—')}</b></div><div><span>Создан</span><b>${esc(fmtDate(h.created_at))}</b></div><div><span>Сообщений всего</span><b>${rmFmt(h.message_count)}</b></div><div><span>За неделю</span><b>${on}</b></div></div>
-            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" data-on-click="whAvatar" data-a="${esc(JSON.stringify([h.id]))}">${WH_I.img}Аватар</button><button class="btn btn-ghost btn-sm" data-on-click="whRegen" data-a="${esc(JSON.stringify([h.id]))}">${WH_I.key}Новый адрес</button><button class="btn btn-danger btn-sm" data-on-click="whDelete" data-a="${esc(JSON.stringify([[h.id]]))}">${UX_I.trash}Удалить</button></div></div></div>` : ''}</div>`;
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" data-on-click="whAvatar" data-a-click="${esc(JSON.stringify([h.id]))}">${WH_I.img}Аватар</button><button class="btn btn-ghost btn-sm" data-on-click="whRegen" data-a-click="${esc(JSON.stringify([h.id]))}">${WH_I.key}Новый адрес</button><button class="btn btn-danger btn-sm" data-on-click="whDelete" data-a-click="${esc(JSON.stringify([[h.id]]))}">${UX_I.trash}Удалить</button></div></div></div>` : ''}</div>`;
       }).join('') || `<div class="ub-empty">${WH.hooks.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Вебхуков пока нет'}</div>`}</div></div>`;
   });
   WH.fresh = null;
@@ -4120,10 +4120,10 @@ function whToggle(id) { WH.sel.has(id) ? WH.sel.delete(id) : WH.sel.add(id); whR
 function whSelAll(on) { WH.hooks.forEach(h => on ? WH.sel.add(h.id) : WH.sel.delete(h.id)); whRender(); }
 function whMenu(e, id) {
   uxOpenMenu(e, 'wh' + id, `
-    <button role="menuitem" data-on-click="__h66" data-a="${esc(JSON.stringify([id]))}">${WH_I.copy}Скопировать адрес</button>
-    <button role="menuitem" data-on-click="__h67" data-a="${esc(JSON.stringify([id]))}">${WH_I.img}Сменить аватар</button>
-    <button role="menuitem" data-on-click="__h68" data-a="${esc(JSON.stringify([id]))}">${WH_I.key}Выдать новый адрес</button>
-    <hr><button role="menuitem" class="danger" data-on-click="__h69" data-a="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить вебхук</button>`);
+    <button role="menuitem" data-on-click="__h66" data-a-click="${esc(JSON.stringify([id]))}">${WH_I.copy}Скопировать адрес</button>
+    <button role="menuitem" data-on-click="__h67" data-a-click="${esc(JSON.stringify([id]))}">${WH_I.img}Сменить аватар</button>
+    <button role="menuitem" data-on-click="__h68" data-a-click="${esc(JSON.stringify([id]))}">${WH_I.key}Выдать новый адрес</button>
+    <hr><button role="menuitem" class="danger" data-on-click="__h69" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить вебхук</button>`);
 }
 
 function whCopyText(text) {
@@ -4205,7 +4205,7 @@ function whHeadAv() {
 function whRenderForm(focusId) {
   const f = WH.form, el = document.getElementById('wh-form');
   if (!f || !el) return;
-  const close = `<button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a='["modal-webhook"]'>✕</button>`;
+  const close = `<button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-webhook"]'>✕</button>`;
   if (f.created) {
     const url = whUrl(f.created);
     el.innerHTML = `
@@ -4216,7 +4216,7 @@ function whRenderForm(focusId) {
         <div class="ua-field"><label>Пример запроса</label><pre class="wh-code">${esc(`curl -X POST ${url} \\\n  -H "Content-Type: application/json" \\\n  -d '{"text": "Сборка прошла успешно"}'`)}</pre></div>
         <p class="ua-hint">Адрес — это и есть ключ: кто его знает, тот может писать от имени бота. Если он утёк, выдайте новый в меню «⋯».</p>
       </div>
-      <div class="ua-foot"><span class="ux-grow"></span><button type="button" class="btn ux-solid" data-on-click="closeModal" data-a='["modal-webhook"]'>Готово</button></div>`;
+      <div class="ua-foot"><span class="ux-grow"></span><button type="button" class="btn ux-solid" data-on-click="closeModal" data-a-click='["modal-webhook"]'>Готово</button></div>`;
     return;
   }
   const opt = o => `<option value="${o.id}" ${String(f.chat_id) === String(o.id) ? 'selected' : ''}>${esc(o.label)}</option>`;
@@ -4241,9 +4241,9 @@ function whRenderForm(focusId) {
             ${f.avatar ? '<button type="button" class="btn btn-ghost btn-sm" data-on-click="__h75">Убрать</button>' : ''}</div></div>
       </div>
       <div class="ua-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}
-        <button type="button" class="btn btn-ghost" data-on-click="openModal" data-a='["modal-webhook-help"]'>${WH_I.book}Инструкция</button>
+        <button type="button" class="btn btn-ghost" data-on-click="openModal" data-a-click='["modal-webhook-help"]'>${WH_I.book}Инструкция</button>
         <span class="fm-note ${whMissing(f).length ? '' : 'ok'}" id="wh-note" style="margin-left:auto">${fmNote(whMissing(f))}</span>
-        <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a='["modal-webhook"]'>Отмена</button>
+        <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a-click='["modal-webhook"]'>Отмена</button>
         <button type="button" class="btn ux-solid" id="wh-go" ${f.busy || whMissing(f).length ? 'disabled' : ''} data-on-click="saveWebhook">${f.busy ? 'Создаю…' : 'Создать'}</button></div>`;
   }, focusId);
 }
@@ -4407,7 +4407,7 @@ function stNavHtml() {
   const dirty = new Set(stChanged().map(c => c.sec));
   return ST_SECTIONS.map(s => {
     const dot = dirty.has(s.k) ? '<i class="st-dot edit" title="Есть несохранённые изменения"></i>' : s.dot?.() ? `<i class="st-dot ${s.dot()}"></i>` : '';
-    return `<button type="button" class="st-sn" aria-current="${ST.sec === s.k ? 'page' : 'false'}" data-on-click="stGo" data-a="${esc(JSON.stringify([`${s.k}`]))}"><span class="st-sn-ic">${s.icon}</span>
+    return `<button type="button" class="st-sn" aria-current="${ST.sec === s.k ? 'page' : 'false'}" data-on-click="stGo" data-a-click="${esc(JSON.stringify([`${s.k}`]))}"><span class="st-sn-ic">${s.icon}</span>
       <span class="st-sn-tx"><b>${s.label}</b><small>${esc(s.meta())}</small></span>${dot}</button>`;
   }).join('');
 }
@@ -4427,9 +4427,9 @@ function stPaneMessages() {
   return `<div class="st-gt">${ST_I.msg}Редактирование</div>
     <div class="st-g"><div class="st-r stack">
       <div class="st-l"><b>Сколько можно править своё сообщение</b><span>Когда срок выйдет, пункт «Изменить» пропадёт из меню сообщения.</span></div>
-      <div class="st-ctl"><div class="st-seg" role="group" aria-label="Срок правки">${ST_EDIT.map(([v, l]) => `<button type="button" aria-pressed="${!custom && d.edit === v}" data-on-click="stEditPreset" data-a="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}
-        <button type="button" aria-pressed="${custom}" data-on-click="stEditPreset" data-a='["custom"]'>Своё</button></div>
-        ${custom ? `<div class="st-inp st-num ${stErrors().edit ? 'bad' : ''}" id="st-box-edit"><input id="st-edit-n" type="number" min="1" value="${Number.isInteger(n) ? n : ''}" aria-label="Срок правки" data-on-input="stEditN" data-a='["__value"]'></div>
+      <div class="st-ctl"><div class="st-seg" role="group" aria-label="Срок правки">${ST_EDIT.map(([v, l]) => `<button type="button" aria-pressed="${!custom && d.edit === v}" data-on-click="stEditPreset" data-a-click="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}
+        <button type="button" aria-pressed="${custom}" data-on-click="stEditPreset" data-a-click='["custom"]'>Своё</button></div>
+        ${custom ? `<div class="st-inp st-num ${stErrors().edit ? 'bad' : ''}" id="st-box-edit"><input id="st-edit-n" type="number" min="1" value="${Number.isInteger(n) ? n : ''}" aria-label="Срок правки" data-on-input="stEditN" data-a-input='["__value"]'></div>
           <div class="st-inp" style="width:auto"><select aria-label="Единицы" data-on-change="__h76">${[[1, 'секунд'], [60, 'минут'], [3600, 'часов']].map(([u, l]) => `<option value="${u}" ${ST.editUnit === u ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}
       </div>
       <div class="st-ex" id="st-edit-example">${stEditExample()}</div>
@@ -4438,23 +4438,23 @@ function stPaneMessages() {
     <div class="st-gt">${ST_I.clock}Статусы</div>
     <div class="st-g"><div class="st-r stack">
       <div class="st-l"><b>Окно времени статуса</b><span>Сколько хранится точное время доставки и прочтения. Позже остаётся только факт «прочитано» без времени. Работает в чатах до 100 участников.</span></div>
-      <div class="st-ctl"><div class="st-seg" role="group" aria-label="Окно времени статуса">${ST_STATUS.map(([v, l]) => `<button type="button" aria-pressed="${d.statusDays === v}" data-on-click="stStatusPreset" data-a="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}</div></div>
+      <div class="st-ctl"><div class="st-seg" role="group" aria-label="Окно времени статуса">${ST_STATUS.map(([v, l]) => `<button type="button" aria-pressed="${d.statusDays === v}" data-on-click="stStatusPreset" data-a-click="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}</div></div>
     </div></div>
     <p class="st-hint">Новый срок действует сразу после сохранения; приложения узнают о нём при переподключении.</p>`;
 }
 
 // ── Вложения ──
 function stStepHtml(k) {
-  return `<div class="st-step ${stErrors()[k] ? 'bad' : ''}" id="st-box-${k}"><button type="button" aria-label="Меньше" data-on-click="stStep" data-a="${esc(JSON.stringify([`${k}`, -1]))}">−</button>
-    <input id="st-n-${k}" type="number" min="1" max="500" value="${Number.isFinite(ST.draft[k]) ? ST.draft[k] : ''}" aria-label="Размер в мегабайтах" data-on-input="stNum" data-a="${esc(JSON.stringify([`${k}`, "__value"]))}"><button type="button" aria-label="Больше" data-on-click="stStep" data-a="${esc(JSON.stringify([`${k}`, 1]))}">+</button><span>МБ</span></div>`;
+  return `<div class="st-step ${stErrors()[k] ? 'bad' : ''}" id="st-box-${k}"><button type="button" aria-label="Меньше" data-on-click="stStep" data-a-click="${esc(JSON.stringify([`${k}`, -1]))}">−</button>
+    <input id="st-n-${k}" type="number" min="1" max="500" value="${Number.isFinite(ST.draft[k]) ? ST.draft[k] : ''}" aria-label="Размер в мегабайтах" data-on-input="stNum" data-a-input="${esc(JSON.stringify([`${k}`, "__value"]))}"><button type="button" aria-label="Больше" data-on-click="stStep" data-a-click="${esc(JSON.stringify([`${k}`, 1]))}">+</button><span>МБ</span></div>`;
 }
 function stTokHtml(k, anyText) {
   const list = ST.draft[k];
-  return `<div class="st-tok ${stErrors()[k] || ST.tokErr[k] ? 'bad' : ''}" data-on-click="__h77" data-a="${esc(JSON.stringify([k]))}">
-      ${list.map(x => `<span class="st-tk">${esc(x)}<button type="button" aria-label="Убрать ${esc(x)}" data-on-click="stTokDel" data-a="${esc(JSON.stringify([`${k}`, `${esc(x)}`]))}">×</button></span>`).join('')}
+  return `<div class="st-tok ${stErrors()[k] || ST.tokErr[k] ? 'bad' : ''}" data-on-click="__h77" data-a-click="${esc(JSON.stringify([k]))}">
+      ${list.map(x => `<span class="st-tk">${esc(x)}<button type="button" aria-label="Убрать ${esc(x)}" data-on-click="stTokDel" data-a-click="${esc(JSON.stringify([`${k}`, `${esc(x)}`]))}">×</button></span>`).join('')}
       ${!list.length && anyText ? `<span class="st-any">${ST_I.check}${anyText}</span>` : ''}
       <input id="st-tok-${k}" placeholder="${list.length ? 'ещё формат…' : 'например, pdf'}" aria-label="Добавить формат" autocomplete="off" spellcheck="false"
-        data-on-keydown="stTokKey" data-a="${esc(JSON.stringify(["__event", `${k}`]))}" data-on-input="__h78" data-a="${esc(JSON.stringify([k]))}">
+        data-on-keydown="stTokKey" data-a-keydown="${esc(JSON.stringify(["__event", `${k}`]))}" data-on-input="__h78" data-a-input="${esc(JSON.stringify([k]))}">
     </div>
     ${ST.tokErr[k] ? `<div class="st-err">${esc(ST.tokErr[k])}</div>` : ''}`;
 }
@@ -4471,15 +4471,15 @@ function stPaneAttachments() {
     <div class="st-g">
       <div class="st-r"><div class="st-l"><b>Наибольший размер</b><span>Касается документов, архивов и всего, что не картинка</span></div>${stStepHtml('fileMax')}</div>
       <div class="st-r stack"><div class="st-l"><b>Форматы</b><span>Разрешено только то, что в списке. Пустой список: файлы отправлять нельзя</span></div>${stTokHtml('fileExt', 'Форматы не разрешены')}
-        <div class="st-quick"><span class="st-hint">Добавить набор:</span>${Object.keys(ST_QUICK).map(n => `<button type="button" class="btn btn-ghost btn-sm" data-on-click="stQuick" data-a="${esc(JSON.stringify([`${n}`]))}">${ST_I.plus}${n}</button>`).join('')}
+        <div class="st-quick"><span class="st-hint">Добавить набор:</span>${Object.keys(ST_QUICK).map(n => `<button type="button" class="btn btn-ghost btn-sm" data-on-click="stQuick" data-a-click="${esc(JSON.stringify([`${n}`]))}">${ST_I.plus}${n}</button>`).join('')}
           ${d.fileExt.length ? '<button type="button" class="btn btn-ghost btn-sm" data-on-click="stTokClear">Очистить список</button>' : ''}</div></div>
     </div>
     <div class="st-gt">${ST_I.box}Хранение</div>
     <div class="st-g"><div class="st-r stack">
       <div class="st-l"><b>Сколько хранить файлы</b><span>Старые файлы удаляются сами — проверка раз в 6 часов. В переписке на их месте остаётся «Файл удалён».</span></div>
-      <div class="st-ctl"><div class="st-seg" role="group" aria-label="Срок хранения">${ST_LIFE.map(([v, l]) => `<button type="button" aria-pressed="${!lifeCustom && d.life === v}" data-on-click="stLifePreset" data-a="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}
-        <button type="button" aria-pressed="${lifeCustom}" data-on-click="stLifePreset" data-a='["custom"]'>Своё</button></div>
-        ${lifeCustom ? `<div class="st-inp st-num ${stErrors().life ? 'bad' : ''}" id="st-box-life" style="width:130px"><input id="st-n-life" type="number" min="1" max="3650" value="${d.life || ''}" aria-label="Срок хранения в днях" data-on-input="stNum" data-a='["life", "__value"]'><span class="st-u">дней</span></div>` : ''}
+      <div class="st-ctl"><div class="st-seg" role="group" aria-label="Срок хранения">${ST_LIFE.map(([v, l]) => `<button type="button" aria-pressed="${!lifeCustom && d.life === v}" data-on-click="stLifePreset" data-a-click="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}
+        <button type="button" aria-pressed="${lifeCustom}" data-on-click="stLifePreset" data-a-click='["custom"]'>Своё</button></div>
+        ${lifeCustom ? `<div class="st-inp st-num ${stErrors().life ? 'bad' : ''}" id="st-box-life" style="width:130px"><input id="st-n-life" type="number" min="1" max="3650" value="${d.life || ''}" aria-label="Срок хранения в днях" data-on-input="stNum" data-a-input='["life", "__value"]'><span class="st-u">дней</span></div>` : ''}
       </div>
       ${s ? `<div class="st-ex">${ST_I.box}<span>Сейчас на сервере <b>${rmFmt(s.filesCount)}</b> ${uxPlural(s.filesCount || 0, 'файл', 'файла', 'файлов')}, <b>${hmBytes(s.filesBytes || 0)}</b></span><span class="ux-grow"></span>
         <button type="button" class="st-link" data-on-click="stToFiles">Открыть «Файлы»</button></div>` : ''}
@@ -4498,16 +4498,16 @@ function stPaneBackups() {
     <div class="st-gt">${ST_I.clock}Расписание</div>
     <div class="st-g"><div class="st-r stack">
       <div class="st-l"><b>Дни недели</b><span>Автокопия по этим дням. Пусто — только по кнопке.</span></div>
-      <div class="st-seg" role="group" aria-label="Дни автокопирования">${ST_DAYS.map(([v, l]) => `<button type="button" aria-pressed="${d.backupDays.includes(v)}" data-on-click="stBackupDay" data-a="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}</div>
+      <div class="st-seg" role="group" aria-label="Дни автокопирования">${ST_DAYS.map(([v, l]) => `<button type="button" aria-pressed="${d.backupDays.includes(v)}" data-on-click="stBackupDay" data-a-click="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}</div>
     </div>
     ${d.backupDays.length ? `<div class="st-r"><div class="st-l"><b>Время</b><span>По времени сервера</span></div>
-      <div class="st-inp st-num ${err.backupTime ? 'bad' : ''}" style="width:130px"><input type="time" value="${esc(d.backupTime)}" aria-label="Время автокопирования" data-on-input="stBackupTime" data-a='["__value"]'></div></div>
+      <div class="st-inp st-num ${err.backupTime ? 'bad' : ''}" style="width:130px"><input type="time" value="${esc(d.backupTime)}" aria-label="Время автокопирования" data-on-input="stBackupTime" data-a-input='["__value"]'></div></div>
       <div class="st-r stack">${err.backupTime ? `<div class="st-err">${esc(err.backupTime)}</div>` : `<p class="st-hint" style="margin:0">Ближайшая копия — ${esc(stNextBackupLabel())}.</p>`}</div>` : ''}
     </div>
     <div class="st-gt">Хранение</div>
     <div class="st-g"><div class="st-r">
       <div class="st-l"><b>Срок хранения</b><span>Копии старше срока удаляются автоматически. Пусто — хранить всегда.</span></div>
-      <div class="st-inp st-num ${err.backupRetention ? 'bad' : ''}" id="st-box-backupRetention" style="width:130px"><input type="number" min="1" max="3650" value="${d.backupRetention == null || Number.isNaN(d.backupRetention) ? '' : d.backupRetention}" aria-label="Срок хранения копий в днях" data-on-input="stNum" data-a='["backupRetention", "__value"]'><span class="st-u">дней</span></div></div>
+      <div class="st-inp st-num ${err.backupRetention ? 'bad' : ''}" id="st-box-backupRetention" style="width:130px"><input type="number" min="1" max="3650" value="${d.backupRetention == null || Number.isNaN(d.backupRetention) ? '' : d.backupRetention}" aria-label="Срок хранения копий в днях" data-on-input="stNum" data-a-input='["backupRetention", "__value"]'><span class="st-u">дней</span></div></div>
       ${err.backupRetention ? `<div class="st-r stack"><div class="st-err">${esc(err.backupRetention)}</div></div>` : ''}
     </div>
     ${ST.backups.length ? `<div class="st-gt">${ST_I.db}Копии · ${ST.backups.length}</div>
@@ -4515,9 +4515,9 @@ function stPaneBackups() {
         <div><b>${esc(uaSeen(b.created_at))} ${i === 0 && ST.bkNew ? '<span class="st-chip new">новая</span>' : ''}${b.kind === 'pre' ? '<span class="st-chip warn">До восстановления</span>' : b.kind === 'man' ? '<span class="st-chip">Вручную</span>' : b.kind === 'auto' ? '<span class="st-chip">Авто</span>' : ''}</b><small>${esc(new Date(b.created_at * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }))}</small></div>
         <span class="st-sz">${hmBytes(b.size)}</span>
         <div style="display:flex;gap:6px">
-          <button type="button" class="btn btn-primary btn-sm" data-on-click="rsFromBackup" data-a="${esc(JSON.stringify([`${jesc(b.name)}`]))}">${rsIc('restore', 13)}Восстановить</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-on-click="stDownload" data-a="${esc(JSON.stringify([`${jesc(b.name)}`, "__this"]))}">${ST_I.down}Скачать</button>
-          <button type="button" class="btn btn-ghost btn-sm" aria-label="Удалить копию ${esc(b.name)}" data-on-click="stDeleteBackup" data-a="${esc(JSON.stringify([`${jesc(b.name)}`]))}">${UX_I.trash}</button>
+          <button type="button" class="btn btn-primary btn-sm" data-on-click="rsFromBackup" data-a-click="${esc(JSON.stringify([`${jesc(b.name)}`]))}">${rsIc('restore', 13)}Восстановить</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-on-click="stDownload" data-a-click="${esc(JSON.stringify([`${jesc(b.name)}`, "__this"]))}">${ST_I.down}Скачать</button>
+          <button type="button" class="btn btn-ghost btn-sm" aria-label="Удалить копию ${esc(b.name)}" data-on-click="stDeleteBackup" data-a-click="${esc(JSON.stringify([`${jesc(b.name)}`]))}">${UX_I.trash}</button>
         </div></div>`).join('')}</div>` : ''}`;
 }
 
@@ -4584,8 +4584,8 @@ function stFootRender() {
   const busy = ST.saving ? 'disabled' : '';
   if (ST.confirmClose) {
     f.innerHTML = `<span class="st-state warn">${ST_I.warn}<span><b>Закрыть без сохранения?</b> Изменения пропадут.</span></span><span class="ux-grow"></span>
-      <button type="button" class="btn btn-ghost" ${busy} data-on-click="stDiscard" data-a='[true]'>Не сохранять</button>
-      <button type="button" class="btn ux-solid" id="st-foot-save" ${errs.length || ST.saving ? 'disabled' : ''} data-on-click="stSave" data-a='[true]'>${ST.saving ? 'Сохраняю…' : 'Сохранить и закрыть'}</button>`;
+      <button type="button" class="btn btn-ghost" ${busy} data-on-click="stDiscard" data-a-click='[true]'>Не сохранять</button>
+      <button type="button" class="btn ux-solid" id="st-foot-save" ${errs.length || ST.saving ? 'disabled' : ''} data-on-click="stSave" data-a-click='[true]'>${ST.saving ? 'Сохраняю…' : 'Сохранить и закрыть'}</button>`;
     return;
   }
   const secs = [...new Set(ch.map(c => c.sec))];
@@ -4843,7 +4843,7 @@ function rsRender(keepScroll) {
   } else if (RS.step === 'confirm') {
     const i = RS.info, sw = RS.sw, E = rsEff(), n = i.now, c = i.copy, name = RS.src?.upload_id ? esc(RS.src.file_name) : esc(rsWhen(i.source.created_at)) + ' · ' + esc(i.source.name);
     const cell = (cur, nw) => `<td class="${nw > cur ? 'up' : nw < cur ? 'dn' : 'eq'}">${rsN(nw)}${nw !== cur ? `<small>${nw > cur ? '+' : '−'}${rsN(Math.abs(nw - cur))}</small>` : ''}</td>`;
-    const swRow = (k, title, desc, eff, lock) => `<div class="rs-sw ${sw[k] ? 'on' : ''}"><button type="button" class="rs-tg" role="switch" aria-checked="${sw[k]}" data-on-click="rsSw" data-a="${esc(JSON.stringify([`${k}`]))}" ${lock ? 'disabled title="Включено, потому что чаты ссылаются на людей"' : ''}></button><div><b>${title}${lock ? ' ' + rsIc('lock', 13) : ''}</b><div class="rs-d">${desc}</div></div>${sw[k] && eff ? `<div class="rs-eff">${eff}</div>` : ''}</div>`;
+    const swRow = (k, title, desc, eff, lock) => `<div class="rs-sw ${sw[k] ? 'on' : ''}"><button type="button" class="rs-tg" role="switch" aria-checked="${sw[k]}" data-on-click="rsSw" data-a-click="${esc(JSON.stringify([`${k}`]))}" ${lock ? 'disabled title="Включено, потому что чаты ссылаются на людей"' : ''}></button><div><b>${title}${lock ? ' ' + rsIc('lock', 13) : ''}</b><div class="rs-d">${desc}</div></div>${sw[k] && eff ? `<div class="rs-eff">${eff}</div>` : ''}</div>`;
     const warns = [];
     if (!rsAny()) warns.push(['warn', '<b>Ничего не выбрано.</b> Включите хотя бы один переключатель']);
     if (sw.chats) warns.push(['warn', '<b>Клиенты перезапустятся сами</b>: у людей в сети это 1–2 секунды']);
@@ -4865,7 +4865,7 @@ function rsRender(keepScroll) {
       <div class="rs-adm">${rsIc('shield', 18)}<div><b>Администраторы сохранятся всегда:</b> ${(i.admins || []).map(a => `<span class="rs-pill">${esc(a)}</span>`).join(' ')}<div class="rs-sub" style="margin-top:3px">Останутся с текущими паролем, правами и 2FA, ваша сессия не прервётся</div></div></div>
       <div class="rs-warns">${warns.map(([k, t]) => `<div class="${k}">${rsIc(k === 'ok' ? 'shield' : 'warn', 14)}<span>${t}</span></div>`).join('')}</div>
       ${RS.err ? `<div class="rs-err">${esc(RS.err)}</div>` : ''}
-      <div class="rs-word"><label class="rs-lbl" for="rs-word">Введите слово ВОССТАНОВИТЬ, чтобы продолжить</label><input id="rs-word" autocomplete="off" spellcheck="false" placeholder="ВОССТАНОВИТЬ" value="${esc(RS.word)}" class="${rsReady() ? 'ok' : ''}" data-on-input="rsWordInput" data-a='["__value"]' data-on-keydown="__h81"></div></div>
+      <div class="rs-word"><label class="rs-lbl" for="rs-word">Введите слово ВОССТАНОВИТЬ, чтобы продолжить</label><input id="rs-word" autocomplete="off" spellcheck="false" placeholder="ВОССТАНОВИТЬ" value="${esc(RS.word)}" class="${rsReady() ? 'ok' : ''}" data-on-input="rsWordInput" data-a-input='["__value"]' data-on-keydown="__h81"></div></div>
     <div class="rs-f"><span class="rs-note ${rsReady() ? 'ok' : ''}" id="rs-note">${rsNote()}</span><button type="button" class="btn btn-ghost" data-on-click="rsClose">Отмена</button><button type="button" class="btn btn-danger" id="rs-go" data-on-click="rsGo" ${rsReady() ? '' : 'disabled'}>Восстановить${parts.length ? ': ' + parts.join(', ') : ''}</button></div>`;
   }
   box.innerHTML = html;
@@ -5196,18 +5196,18 @@ function spTiles() {
   const lc = ch[0];
   const small = 'font-size:18px;line-height:1.3;margin-top:8px;font-family:var(--f-ui)';
   return `<div class="ub-tiles sp-tiles">
-    <button type="button" class="ub-tile" data-on-click="spOpen" data-a='["attachments"]'><div class="ub-lbl">Вложения</div><div class="ub-big">${hmBytes(total)}</div><span class="sp-ms big">${Object.keys(k).map(x => `<i style="flex:${Math.max(k[x], 1)};background:${SP_KC[x]}"></i>`).join('')}</span><div class="ub-sub">${rmFmt(nf)} ${uxPlural(nf, 'файл', 'файла', 'файлов')}${free != null ? ` · на диске свободно ${hmBytes(free)}` : ''}</div></button>
-    <button type="button" class="ub-tile" data-on-click="spOpen" data-a='["backups"]'><div class="ub-lbl">Резервные копии</div><div class="ub-big" style="${small}${old ? ';color:var(--c-orange)' : ''}">${last ? esc(uaSeen(last.created_at)) : 'копий нет'}</div><span class="sp-md" style="margin-top:8px">${dots}</span><div class="ub-sub">Всего ${ST.backups.length} · следующая: ${esc(stNextBackupLabel() || 'только вручную')}</div></button>
+    <button type="button" class="ub-tile" data-on-click="spOpen" data-a-click='["attachments"]'><div class="ub-lbl">Вложения</div><div class="ub-big">${hmBytes(total)}</div><span class="sp-ms big">${Object.keys(k).map(x => `<i style="flex:${Math.max(k[x], 1)};background:${SP_KC[x]}"></i>`).join('')}</span><div class="ub-sub">${rmFmt(nf)} ${uxPlural(nf, 'файл', 'файла', 'файлов')}${free != null ? ` · на диске свободно ${hmBytes(free)}` : ''}</div></button>
+    <button type="button" class="ub-tile" data-on-click="spOpen" data-a-click='["backups"]'><div class="ub-lbl">Резервные копии</div><div class="ub-big" style="${small}${old ? ';color:var(--c-orange)' : ''}">${last ? esc(uaSeen(last.created_at)) : 'копий нет'}</div><span class="sp-md" style="margin-top:8px">${dots}</span><div class="ub-sub">Всего ${ST.backups.length} · следующая: ${esc(stNextBackupLabel() || 'только вручную')}</div></button>
     <button type="button" class="ub-tile" id="sp-t-gh" data-on-click="spGhTileClick">${spGhTile()}</button>
-    <button type="button" class="ub-tile" data-on-click="spOpen" data-a='["history"]'><div class="ub-lbl">Изменения за 7 дней</div><div class="ub-big">${ch.length}</div><div class="sp-sk">${per.map(n => `<i style="height:${Math.max(2, Math.round(n / mx * 22))}px"></i>`).join('')}</div><div class="ub-sub">${lc ? `Последнее: ${esc(uaSeen(lc.created_at))}${lc.actor_name ? ', ' + esc(lc.actor_name) : ''}` : 'За неделю изменений не было'}</div></button>
+    <button type="button" class="ub-tile" data-on-click="spOpen" data-a-click='["history"]'><div class="ub-lbl">Изменения за 7 дней</div><div class="ub-big">${ch.length}</div><div class="sp-sk">${per.map(n => `<i style="height:${Math.max(2, Math.round(n / mx * 22))}px"></i>`).join('')}</div><div class="ub-sub">${lc ? `Последнее: ${esc(uaSeen(lc.created_at))}${lc.actor_name ? ', ' + esc(lc.actor_name) : ''}` : 'За неделю изменений не было'}</div></button>
   </div>`;
 }
 
 const SP_ORDER = ['messages', 'attachments', 'backups', 'database', 'github', 'history'];
 const spAttn = k => k === 'github' ? !ST.gh.set : k === 'backups' ? stBackupOld() : k === 'database' ? SP.db.job?.state === 'failed' : false;
 const spRow = (title, desc, ctl, extra = '', cls = '', kw = '') => spHit(title, desc, kw) ? `<div class="sp-r ${cls}"><div class="sp-l"><b>${title}</b>${desc ? `<span>${desc}</span>` : ''}${extra}</div><div class="sp-c">${ctl}</div></div>` : '';
-const spStepH = k => `<div class="sp-step"><button type="button" aria-label="Меньше" data-on-click="spStep" data-a="${esc(JSON.stringify([`${k}`, -1]))}">−</button><input id="sp-n-${k}" type="number" min="1" max="500" value="${spSv(k)}" aria-label="Размер в мегабайтах" data-on-input="spNum" data-a="${esc(JSON.stringify([`${k}`, "__value"]))}"><button type="button" aria-label="Больше" data-on-click="spStep" data-a="${esc(JSON.stringify([`${k}`, 1]))}">+</button><span class="u">МБ</span></div>`;
-const spTokH = (k, any) => `<div class="sp-tok">${spSv(k).map(x => `<span class="sp-tk">${esc(x)}<button type="button" aria-label="Убрать ${esc(x)}" data-on-click="spTokDel" data-a="${esc(JSON.stringify([`${k}`, `${esc(x)}`]))}">×</button></span>`).join('')}${!spSv(k).length && any ? `<span class="any">${any}</span>` : ''}<input id="sp-tok-${k}" placeholder="${spSv(k).length ? 'ещё…' : 'например, pdf'}" aria-label="Добавить формат" autocomplete="off" spellcheck="false" data-on-keydown="spTokKey" data-a="${esc(JSON.stringify(["__event", `${k}`]))}" data-on-input="__h82" data-a="${esc(JSON.stringify([k]))}"></div>`;
+const spStepH = k => `<div class="sp-step"><button type="button" aria-label="Меньше" data-on-click="spStep" data-a-click="${esc(JSON.stringify([`${k}`, -1]))}">−</button><input id="sp-n-${k}" type="number" min="1" max="500" value="${spSv(k)}" aria-label="Размер в мегабайтах" data-on-input="spNum" data-a-input="${esc(JSON.stringify([`${k}`, "__value"]))}"><button type="button" aria-label="Больше" data-on-click="spStep" data-a-click="${esc(JSON.stringify([`${k}`, 1]))}">+</button><span class="u">МБ</span></div>`;
+const spTokH = (k, any) => `<div class="sp-tok">${spSv(k).map(x => `<span class="sp-tk">${esc(x)}<button type="button" aria-label="Убрать ${esc(x)}" data-on-click="spTokDel" data-a-click="${esc(JSON.stringify([`${k}`, `${esc(x)}`]))}">×</button></span>`).join('')}${!spSv(k).length && any ? `<span class="any">${any}</span>` : ''}<input id="sp-tok-${k}" placeholder="${spSv(k).length ? 'ещё…' : 'например, pdf'}" aria-label="Добавить формат" autocomplete="off" spellcheck="false" data-on-keydown="spTokKey" data-a-keydown="${esc(JSON.stringify(["__event", `${k}`]))}" data-on-input="__h82" data-a-input="${esc(JSON.stringify([k]))}"></div>`;
 function spKindSizes() {
   const m = { image: 0, video: 0, doc: 0, other: 0 };
   SP.files.forEach(f => { const k = flKind(f); m[k === 'encrypted' ? 'other' : k] += f.size || 0; });
@@ -5218,11 +5218,11 @@ const SP_KC = { image: 'var(--dv-c1)', video: 'var(--dv-c5)', doc: 'var(--dv-c2)
 function spMessages() {
   const custom = SP.editCustom || !ST_EDIT.some(([v]) => v === spSv('edit')), n = spSv('edit') / SP.editUnit;
   return spRow('Время на правку сообщения', 'Когда срок выйдет, пункт «Изменить» пропадёт из меню сообщения',
-    `<div class="sp-seg">${ST_EDIT.map(([v, l]) => `<button type="button" aria-pressed="${!custom && spSv('edit') === v}" data-on-click="spEditPreset" data-a="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}<button type="button" aria-pressed="${custom}" data-on-click="spEditPreset" data-a='["custom"]'>Своё</button></div>
-    ${custom ? `<div class="sp-inp"><input id="sp-edit-n" type="number" min="1" value="${Number.isInteger(n) ? n : ''}" aria-label="Срок правки" data-on-input="spEditN" data-a='["__value"]'><select aria-label="Единицы" data-on-change="__h83">${[[1, 'секунд'], [60, 'минут'], [3600, 'часов']].map(([u, l]) => `<option value="${u}" ${SP.editUnit === u ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}`,
+    `<div class="sp-seg">${ST_EDIT.map(([v, l]) => `<button type="button" aria-pressed="${!custom && spSv('edit') === v}" data-on-click="spEditPreset" data-a-click="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}<button type="button" aria-pressed="${custom}" data-on-click="spEditPreset" data-a-click='["custom"]'>Своё</button></div>
+    ${custom ? `<div class="sp-inp"><input id="sp-edit-n" type="number" min="1" value="${Number.isInteger(n) ? n : ''}" aria-label="Срок правки" data-on-input="spEditN" data-a-input='["__value"]'><select aria-label="Единицы" data-on-change="__h83">${[[1, 'секунд'], [60, 'минут'], [3600, 'часов']].map(([u, l]) => `<option value="${u}" ${SP.editUnit === u ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}`,
     '', 'wide', 'срок правка редактирование изменить')
     + spRow('Окно времени статуса', 'Сколько хранится точное время доставки и прочтения. Позже остаётся только факт «прочитано» без времени. Работает в чатах до 100 участников',
-    `<div class="sp-seg">${ST_STATUS.map(([v, l]) => `<button type="button" aria-pressed="${spSv('statusDays') === v}" data-on-click="spSet" data-a="${esc(JSON.stringify([{ statusDays: v }]))}">${l}</button>`).join('')}</div>`,
+    `<div class="sp-seg">${ST_STATUS.map(([v, l]) => `<button type="button" aria-pressed="${spSv('statusDays') === v}" data-on-click="spSet" data-a-click="${esc(JSON.stringify([{ statusDays: v }]))}">${l}</button>`).join('')}</div>`,
     '', 'wide', 'статус доставка прочтение время окно хранить');
 }
 function spAttachments() {
@@ -5237,19 +5237,19 @@ function spAttachments() {
     + spRow('Видео: наибольший размер', 'Видео тяжелее загрузить не получится', spStepH('videoMax'), warn(big('video', spSv('videoMax'))), '', 'вложения размер')
     + spRow('Видео: форматы', 'Только эти расширения отправляются как видео с проигрыванием', spTokH('videoExt'), '', 'wide', 'расширения')
     + spRow('Файлы: наибольший размер', 'Документы, архивы и всё, что не картинка и не видео', spStepH('fileMax'), '', '', 'вложения размер')
-    + spRow('Файлы: форматы', 'Разрешено только то, что в списке. Пустой список: файлы отправлять нельзя', `${spTokH('fileExt', 'Форматы не разрешены')}<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">${Object.keys(ST_QUICK).map(n => `<button type="button" class="btn btn-ghost btn-sm" data-on-click="spQuick" data-a="${esc(JSON.stringify([`${n}`]))}">${ST_I.plus}${n}</button>`).join('')}${spSv('fileExt').length ? '<button type="button" class="btn btn-ghost btn-sm" data-on-click="spQ2">Очистить список</button>' : ''}</div>`, '', 'wide', 'расширения')
-    + (spHit('Хранение файлов', 'срок хранить удаляются') ? `<div class="sp-r wide"><div class="sp-l"><b>Хранение файлов</b><span>Старые файлы удаляются сами, проверка раз в 6 часов. В переписке на их месте «Файл удалён»</span><em>Сейчас на сервере ${SP.files.length} ${uxPlural(SP.files.length, 'файл', 'файла', 'файлов')}, ${hmBytes(total)} · <button type="button" class="sp-link" data-on-click="nav" data-a='["files"]'>открыть «Файлы»</button></em></div>
-      <div class="sp-c"><div class="sp-seg">${ST_LIFE.map(([v, l]) => `<button type="button" aria-pressed="${!lifeCustom && life === v}" data-on-click="spLife" data-a="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}<button type="button" aria-pressed="${lifeCustom}" data-on-click="spLife" data-a='["custom"]'>Своё</button></div>${lifeCustom ? `<div class="sp-inp" style="width:130px"><input id="sp-life-n" type="number" min="1" max="3650" value="${life || ''}" aria-label="Дней" data-on-input="spLifeN" data-a='["__value"]'><span class="u">дней</span></div>` : ''}</div>${conf}</div>` : '');
+    + spRow('Файлы: форматы', 'Разрешено только то, что в списке. Пустой список: файлы отправлять нельзя', `${spTokH('fileExt', 'Форматы не разрешены')}<div style="display:flex;gap:8px;flex-wrap:wrap;width:100%">${Object.keys(ST_QUICK).map(n => `<button type="button" class="btn btn-ghost btn-sm" data-on-click="spQuick" data-a-click="${esc(JSON.stringify([`${n}`]))}">${ST_I.plus}${n}</button>`).join('')}${spSv('fileExt').length ? '<button type="button" class="btn btn-ghost btn-sm" data-on-click="spQ2">Очистить список</button>' : ''}</div>`, '', 'wide', 'расширения')
+    + (spHit('Хранение файлов', 'срок хранить удаляются') ? `<div class="sp-r wide"><div class="sp-l"><b>Хранение файлов</b><span>Старые файлы удаляются сами, проверка раз в 6 часов. В переписке на их месте «Файл удалён»</span><em>Сейчас на сервере ${SP.files.length} ${uxPlural(SP.files.length, 'файл', 'файла', 'файлов')}, ${hmBytes(total)} · <button type="button" class="sp-link" data-on-click="nav" data-a-click='["files"]'>открыть «Файлы»</button></em></div>
+      <div class="sp-c"><div class="sp-seg">${ST_LIFE.map(([v, l]) => `<button type="button" aria-pressed="${!lifeCustom && life === v}" data-on-click="spLife" data-a-click="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}<button type="button" aria-pressed="${lifeCustom}" data-on-click="spLife" data-a-click='["custom"]'>Своё</button></div>${lifeCustom ? `<div class="sp-inp" style="width:130px"><input id="sp-life-n" type="number" min="1" max="3650" value="${life || ''}" aria-label="Дней" data-on-input="spLifeN" data-a-input='["__value"]'><span class="u">дней</span></div>` : ''}</div>${conf}</div>` : '');
 }
 const spQ2 = () => spSet({ fileExt: [] });
 function spBackups() {
   const last = ST.backups[0], pend = SP.pend?.key === 'backupRetention' ? SP.pend : null, ret = pend ? pend.val : spSv('backupRetention'), retVal = Number.isFinite(ret) && ret > 0 ? ret : '';
   const oldN = retVal ? ST.backups.filter(b => spBkAgeDays(b) > retVal).length : 0;
   return spRow('Создать копию сейчас', last ? `Последняя: ${esc(uaSeen(last.created_at))}, ${hmBytes(last.size)}. Следующая: ${esc(stNextBackupLabel() || 'только вручную')}` : 'Копий пока нет', `<button type="button" class="btn btn-ghost" data-on-click="rsPick">${rsIc('upload', 14)}Восстановить из файла…</button><button type="button" class="btn ux-solid" ${ST.bkBusy ? 'disabled' : ''} data-on-click="stBackup">${ST.bkBusy ? '<span class="st-spin light"></span>Создаю…' : ST_I.plus + 'Создать копию'}</button>`, '', '', 'резервные бэкап восстановить')
-    + spRow('Дни автокопий', 'Пусто: копии только по кнопке', `<div class="sp-seg">${ST_DAYS.map(([v, l]) => `<button type="button" aria-pressed="${spSv('backupDays').includes(v)}" data-on-click="spDay" data-a="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}</div>`, '', 'wide', 'расписание')
-    + (spSv('backupDays').length ? spRow('Время копии', 'По времени сервера', `<div class="sp-inp"><input type="time" value="${esc(spSv('backupTime'))}" aria-label="Время автокопирования" style="width:96px" data-on-input="spTime" data-a='["__value"]'></div>`, '', '', 'расписание') : '')
-    + (spHit('Срок хранения копий', 'удаляются') ? `<div class="sp-r"><div class="sp-l"><b>Срок хранения копий</b><span>Копии старше срока удаляются автоматически. Пусто: хранить всегда</span></div><div class="sp-c"><div class="sp-inp"><input type="number" min="1" max="3650" value="${retVal}" placeholder="всегда" aria-label="Дней" data-on-input="spRet" data-a='["__value"]'><span class="u">дней</span></div></div>${pend ? `<div class="sp-conf">${ST_I.warn}<span>При сроке <b>${pend.val} дн</b> удалится <b>${oldN} ${uxPlural(oldN, 'копия', 'копии', 'копий')}</b>. Отменить это нельзя.</span><button type="button" class="btn ux-solid btn-sm" data-on-click="spPendOk">Применить</button><button type="button" class="btn btn-ghost btn-sm" data-on-click="spPendNo">Не менять</button></div>` : ''}</div>` : '')
-    + (spHit('Копии', 'список скачать восстановить') ? `<div class="sp-r wide"><div class="sp-l"><b>Копии · ${ST.backups.length}</b><span><button type="button" class="sp-link" data-on-click="__h84">${SP.showBk ? 'Скрыть список' : 'Показать список'}</button></span></div>${SP.showBk ? `<div style="grid-column:1/-1">${ST.backups.map(b => `<div class="sp-bk"><span class="n">${esc(uaSeen(b.created_at))}${b.kind === 'pre' ? ' <span class="st-chip warn">До восстановления</span>' : b.kind === 'man' ? ' <span class="st-chip">Вручную</span>' : b.kind === 'auto' ? ' <span class="st-chip">Авто</span>' : ''}</span><span class="z">${hmBytes(b.size)}</span><button type="button" class="btn btn-primary btn-sm" data-on-click="rsFromBackup" data-a="${esc(JSON.stringify([`${jesc(b.name)}`]))}">${rsIc('restore', 13)}Восстановить</button><button type="button" class="btn btn-ghost btn-sm" data-on-click="stDownload" data-a="${esc(JSON.stringify([`${jesc(b.name)}`, "__this"]))}">${ST_I.down}Скачать</button><button type="button" class="btn btn-ghost btn-sm" aria-label="Удалить копию" data-on-click="stDeleteBackup" data-a="${esc(JSON.stringify([`${jesc(b.name)}`]))}">${UX_I.trash}</button></div>`).join('')}</div>` : ''}</div>` : '');
+    + spRow('Дни автокопий', 'Пусто: копии только по кнопке', `<div class="sp-seg">${ST_DAYS.map(([v, l]) => `<button type="button" aria-pressed="${spSv('backupDays').includes(v)}" data-on-click="spDay" data-a-click="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}</div>`, '', 'wide', 'расписание')
+    + (spSv('backupDays').length ? spRow('Время копии', 'По времени сервера', `<div class="sp-inp"><input type="time" value="${esc(spSv('backupTime'))}" aria-label="Время автокопирования" style="width:96px" data-on-input="spTime" data-a-input='["__value"]'></div>`, '', '', 'расписание') : '')
+    + (spHit('Срок хранения копий', 'удаляются') ? `<div class="sp-r"><div class="sp-l"><b>Срок хранения копий</b><span>Копии старше срока удаляются автоматически. Пусто: хранить всегда</span></div><div class="sp-c"><div class="sp-inp"><input type="number" min="1" max="3650" value="${retVal}" placeholder="всегда" aria-label="Дней" data-on-input="spRet" data-a-input='["__value"]'><span class="u">дней</span></div></div>${pend ? `<div class="sp-conf">${ST_I.warn}<span>При сроке <b>${pend.val} дн</b> удалится <b>${oldN} ${uxPlural(oldN, 'копия', 'копии', 'копий')}</b>. Отменить это нельзя.</span><button type="button" class="btn ux-solid btn-sm" data-on-click="spPendOk">Применить</button><button type="button" class="btn btn-ghost btn-sm" data-on-click="spPendNo">Не менять</button></div>` : ''}</div>` : '')
+    + (spHit('Копии', 'список скачать восстановить') ? `<div class="sp-r wide"><div class="sp-l"><b>Копии · ${ST.backups.length}</b><span><button type="button" class="sp-link" data-on-click="__h84">${SP.showBk ? 'Скрыть список' : 'Показать список'}</button></span></div>${SP.showBk ? `<div style="grid-column:1/-1">${ST.backups.map(b => `<div class="sp-bk"><span class="n">${esc(uaSeen(b.created_at))}${b.kind === 'pre' ? ' <span class="st-chip warn">До восстановления</span>' : b.kind === 'man' ? ' <span class="st-chip">Вручную</span>' : b.kind === 'auto' ? ' <span class="st-chip">Авто</span>' : ''}</span><span class="z">${hmBytes(b.size)}</span><button type="button" class="btn btn-primary btn-sm" data-on-click="rsFromBackup" data-a-click="${esc(JSON.stringify([`${jesc(b.name)}`]))}">${rsIc('restore', 13)}Восстановить</button><button type="button" class="btn btn-ghost btn-sm" data-on-click="stDownload" data-a-click="${esc(JSON.stringify([`${jesc(b.name)}`, "__this"]))}">${ST_I.down}Скачать</button><button type="button" class="btn btn-ghost btn-sm" aria-label="Удалить копию" data-on-click="stDeleteBackup" data-a-click="${esc(JSON.stringify([`${jesc(b.name)}`]))}">${UX_I.trash}</button></div>`).join('')}</div>` : ''}</div>` : '');
 }
 // ── База данных ──
 const spDbPct = j => (j && j.total ? Math.min(99, Math.round(j.done / j.total * 100)) : null);
@@ -5399,11 +5399,11 @@ function spDatabase() {
   if (pg) return out + (i.legacy ? spRow('Старый файл SQLite', `${esc(i.legacy.path)}: сервер им больше не пользуется. Копия «до переноса» лежит в резервных копиях и остаётся`, `<span class="mono" style="font-size:12.5px;color:var(--c-muted)">${hmBytes(i.legacy.size)}</span><button type="button" class="btn btn-ghost btn-sm" style="color:var(--c-red-text)" data-on-click="spDbDelLegacy">Удалить</button>`, '', '', 'старый файл sqlite удалить') : '') + spRow('Резервные копии', 'Создаются и восстанавливаются в разделе «Резервные копии» так же, как раньше. Копия — файл формата SQLite: её можно восстановить на любом движке, в том числе копию, сделанную до переноса', '<button type="button" class="btn btn-ghost btn-sm" data-on-click="__h87">Открыть</button>', '', '', 'копия');
   if (!i.canMigrate) return out;
   const f = d.form, t = d.test, ok = !!(t && t.ok);
-  const inp = (k, label, type = 'text', w = '') => `<label>${label}<span class="sp-inp"><input id="sp-db-${k}" type="${type}" value="${esc(String(f[k]))}" autocomplete="off" spellcheck="false" data-on-input="spDbF" data-a="${esc(JSON.stringify([`${k}`, "__value"]))}" ${w}></span></label>`;
+  const inp = (k, label, type = 'text', w = '') => `<label>${label}<span class="sp-inp"><input id="sp-db-${k}" type="${type}" value="${esc(String(f[k]))}" autocomplete="off" spellcheck="false" data-on-input="spDbF" data-a-input="${esc(JSON.stringify([`${k}`, "__value"]))}" ${w}></span></label>`;
   out += spRow('PostgreSQL на этом сервере', 'Нет своего PostgreSQL? Сервер установит его и подставит данные подключения в форму ниже', '<button type="button" class="btn btn-ghost btn-sm" data-on-click="pgiOpen">Установить PostgreSQL</button>', '', '', 'установить postgres');
   out += !spHit('перенос на postgresql миграция sqlite проверить соединение адрес порт имя базы пользователь пароль шифрование') ? '' : `<div class="sp-r wide"><div class="sp-l"><b>Перенос на PostgreSQL</b><span>PostgreSQL 14 или новее на этом же сервере. База должна быть пустой и создана в UTF-8 (скрипт установки создаёт её сам). Текущая база останется как резервная копия</span></div>
     <div class="sp-dbf">${inp('host', 'Адрес сервера')}${inp('port', 'Порт', 'number')}${inp('database', 'Имя базы')}${inp('user', 'Пользователь')}${inp('password', 'Пароль', 'password')}
-      <label>Шифрование<span class="sp-inp"><select id="sp-db-ssl" data-on-change="spDbF" data-a='["ssl", "__value"]'><option value="" ${f.ssl === '' ? 'selected' : ''}>Без шифрования (тот же сервер)</option><option value="require" ${f.ssl === 'require' ? 'selected' : ''}>Шифровать</option><option value="verify-full" ${f.ssl === 'verify-full' ? 'selected' : ''}>Шифровать и проверять сертификат</option></select></span></label></div>
+      <label>Шифрование<span class="sp-inp"><select id="sp-db-ssl" data-on-change="spDbF" data-a-change='["ssl", "__value"]'><option value="" ${f.ssl === '' ? 'selected' : ''}>Без шифрования (тот же сервер)</option><option value="require" ${f.ssl === 'require' ? 'selected' : ''}>Шифровать</option><option value="verify-full" ${f.ssl === 'verify-full' ? 'selected' : ''}>Шифровать и проверять сертификат</option></select></span></label></div>
     ${t ? `<div style="width:100%">${t.error ? `<div class="sp-ck bad"><i>!</i><span>${esc(t.error)}</span></div>` : ''}${(t.checks || []).map(c => `<div class="sp-ck ${!c.ok ? 'bad' : c.warn ? 'warn' : 'ok'}"><i>${c.ok && !c.warn ? '✓' : '!'}</i><span>${esc(c.text)}</span></div>`).join('')}</div>` : ''}
     ${d.confirm ? `<div class="sp-conf" style="width:100%">${ST_I.warn}<span>Запись остановится на время переноса${i.messages > 200000 ? ' (при таком объёме это может занять несколько минут)' : ' (обычно это секунды или минуты)'}: сообщения не отправятся. Копия текущей базы сохранится в «Резервных копиях». После переноса сервер перезапустится сам.</span>
         <button type="button" class="btn btn-primary btn-sm" data-on-click="spDbGo">Начать перенос</button><button type="button" class="btn btn-ghost btn-sm" data-on-click="spDbNo">Отмена</button></div>` : `
@@ -5429,7 +5429,7 @@ function spHistory() {
   return `${list.map(a => `<div class="sp-log"><span class="tm">${esc(uaSeen(a.created_at))}</span><span>${esc(a.action)}${a.target ? `: <span class="rb-meta">${esc(a.target)}</span>` : ''}</span><span class="rb-meta">${esc(a.actor_name || '')}</span></div>`).join('')}${rows.length > 5 ? `<div style="padding:10px 4px"><button type="button" class="sp-link" data-on-click="__h88">${SP.showLog ? 'Свернуть' : 'Показать всё · ' + rows.length}</button></div>` : ''}`;
 }
 const SP_BODY = { messages: spMessages, attachments: spAttachments, backups: spBackups, database: spDatabase, github: spGithub, history: spHistory };
-function spSug2(text, btn, fn, arg) { return `<div class="sp-sg"><span>${text}</span><button type="button" class="btn btn-ghost btn-sm" data-on-click="${fn}" data-a="${esc(JSON.stringify([arg]))}" style="color:var(--c-primary)">${btn}</button></div>`; }
+function spSug2(text, btn, fn, arg) { return `<div class="sp-sg"><span>${text}</span><button type="button" class="btn btn-ghost btn-sm" data-on-click="${fn}" data-a-click="${esc(JSON.stringify([arg]))}" style="color:var(--c-primary)">${btn}</button></div>`; }
 const SP_SIDE = {
   messages: () => `<h5>Как это работает</h5><div class="st-ex" style="margin:0">${stEditExample()}</div><div class="st-cmp" style="margin-top:12px"><span>Для сравнения:</span><span>WhatsApp: <b>15 минут</b></span><span>Telegram: <b>48 часов</b></span></div>`,
   attachments: () => {
@@ -5451,7 +5451,7 @@ const SP_SIDE = {
 };
 function spQuickBtn(k) {
   if (k === 'backups') return `<button type="button" class="btn btn-ghost btn-sm" ${ST.bkBusy ? 'disabled' : ''} data-on-click="stBackup">${ST.bkBusy ? '<span class="st-spin"></span>' : ST_I.plus}Создать копию</button>`;
-  if (k === 'github') return ST.gh.set ? '' : `<button type="button" class="btn btn-ghost btn-sm" style="color:var(--c-primary)" data-on-click="spSug" data-a='["gh"]'>Задать токен</button>`;
+  if (k === 'github') return ST.gh.set ? '' : `<button type="button" class="btn btn-ghost btn-sm" style="color:var(--c-primary)" data-on-click="spSug" data-a-click='["gh"]'>Задать токен</button>`;
   return '';
 }
 function spSummary(k) {
@@ -5485,12 +5485,12 @@ function spRender(focusId) {
   const one = k => {
     const open = q ? true : SP.open.has(k), w = spAttn(k), lc = spLastChange(k), keys = SP_KEYS[k], quick = spQuickBtn(k), side = SP_SIDE[k]();
     const changed = keys && keys.some(x => JSON.stringify(spSv(x)) !== JSON.stringify(SP_DEF[x]));
-    return `<section class="sp-acc ${open ? 'open' : ''}" id="sp-acc-${k}"><div class="sp-ah"><button type="button" class="sp-ahm" data-on-click="spTog" data-a="${esc(JSON.stringify([`${k}`]))}" aria-expanded="${open}"><span class="sp-ai">${SP_META[k][1]}</span><b>${SP_META[k][0]}</b><span class="sp-as ${w ? 'w' : ''}">${esc(spSummary(k))}</span>${spMini(k)}${w ? '<i class="sp-wd"></i>' : ''}</button>${quick ? `<div class="sp-aq">${quick}</div>` : ''}<button type="button" class="sp-ahc" data-on-click="spTog" data-a="${esc(JSON.stringify([`${k}`]))}" aria-expanded="${open}" aria-label="${open ? 'Свернуть' : 'Развернуть'}: ${SP_META[k][0]}"><span class="sp-chv">›</span></button></div>
-      ${open ? `<div class="sp-ab"><div class="sp-abg"><div class="sp-rows">${bodies[k]}</div>${side ? `<aside class="sp-side">${side}</aside>` : ''}</div>${k !== 'history' ? `<div class="sp-af"><span>${lc ? `Последнее изменение: ${esc(uaSeen(lc.created_at))}, ${esc(lc.actor_name || '')}` : 'Не менялось'}</span>${changed ? `<button type="button" class="sp-link" data-on-click="spResetSec" data-a="${esc(JSON.stringify([`${k}`]))}">Сбросить раздел к умолчаниям</button>` : ''}</div>` : ''}</div>` : ''}</section>`;
+    return `<section class="sp-acc ${open ? 'open' : ''}" id="sp-acc-${k}"><div class="sp-ah"><button type="button" class="sp-ahm" data-on-click="spTog" data-a-click="${esc(JSON.stringify([`${k}`]))}" aria-expanded="${open}"><span class="sp-ai">${SP_META[k][1]}</span><b>${SP_META[k][0]}</b><span class="sp-as ${w ? 'w' : ''}">${esc(spSummary(k))}</span>${spMini(k)}${w ? '<i class="sp-wd"></i>' : ''}</button>${quick ? `<div class="sp-aq">${quick}</div>` : ''}<button type="button" class="sp-ahc" data-on-click="spTog" data-a-click="${esc(JSON.stringify([`${k}`]))}" aria-expanded="${open}" aria-label="${open ? 'Свернуть' : 'Развернуть'}: ${SP_META[k][0]}"><span class="sp-chv">›</span></button></div>
+      ${open ? `<div class="sp-ab"><div class="sp-abg"><div class="sp-rows">${bodies[k]}</div>${side ? `<aside class="sp-side">${side}</aside>` : ''}</div>${k !== 'history' ? `<div class="sp-af"><span>${lc ? `Последнее изменение: ${esc(uaSeen(lc.created_at))}, ${esc(lc.actor_name || '')}` : 'Не менялось'}</span>${changed ? `<button type="button" class="sp-link" data-on-click="spResetSec" data-a-click="${esc(JSON.stringify([`${k}`]))}">Сбросить раздел к умолчаниям</button>` : ''}</div>` : ''}</div>` : ''}</section>`;
   };
   const allOpen = list.length && list.every(k => SP.open.has(k));
   uxKeepFocus(() => {
-    page.innerHTML = `<div class="sp"><div class="sp-tb">${uxSearch('sp-q', SP.q, 'Найти настройку: копия, размер, токен…', 'spSearch')}<button type="button" class="btn btn-ghost btn-sm" data-on-click="spExpand" data-a="${esc(JSON.stringify([allOpen ? 'false' : 'true']))}">${allOpen ? 'Свернуть всё' : 'Развернуть всё'}</button></div>
+    page.innerHTML = `<div class="sp"><div class="sp-tb">${uxSearch('sp-q', SP.q, 'Найти настройку: копия, размер, токен…', 'spSearch')}<button type="button" class="btn btn-ghost btn-sm" data-on-click="spExpand" data-a-click="${esc(JSON.stringify([allOpen ? 'false' : 'true']))}">${allOpen ? 'Свернуть всё' : 'Развернуть всё'}</button></div>
       <div class="sp-scroll">${q ? '' : spTiles()}${need.length ? `<div class="sp-gl"><i class="sp-wd"></i>Требует внимания · ${need.length}</div>${need.map(one).join('')}${rest.length ? '<div class="sp-gl">Остальное</div>' : ''}` : ''}${rest.map(one).join('')}${!list.length ? '<div class="ub-empty">Ничего не нашли. Попробуйте «копия», «токен» или «размер».</div>' : ''}</div></div>`;
   });
   const sc = page.querySelector('.sp-scroll'); if (sc) sc.scrollTop = scroll;
@@ -5542,7 +5542,7 @@ function uxSelHtml(id, opts, def, ph) {
   const cur = WS_SEL[id];
   if (!cur || !opts.some(o => o.v === cur.v && !o.dis)) WS_SEL[id] = { opts, v: def !== undefined ? def : (opts.find(o => !o.dis)?.v ?? '') };
   else cur.opts = opts;
-  return `<div class="ux-sel" id="${id}"><button type="button" class="ux-sel-b" aria-haspopup="listbox" aria-expanded="false" aria-label="${esc(ph || '')}" data-on-click="uxSelOpen" data-a="${esc(JSON.stringify([`${id}`]))}"></button></div>`.replace('</button>', uxSelLabel(id) + '</button>');
+  return `<div class="ux-sel" id="${id}"><button type="button" class="ux-sel-b" aria-haspopup="listbox" aria-expanded="false" aria-label="${esc(ph || '')}" data-on-click="uxSelOpen" data-a-click="${esc(JSON.stringify([`${id}`]))}"></button></div>`.replace('</button>', uxSelLabel(id) + '</button>');
 }
 function uxSelLabel(id) {
   const st = WS_SEL[id], o = st?.opts.find(x => x.v === st.v);
@@ -5592,7 +5592,7 @@ function wsTree(w) {
   const node = (x, d) => `<div class="ws-tn"><span class="ws-ind" style="padding-left:${d * 18}px">${d ? '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v9a3 3 0 0 0 3 3h10"/></svg>' : ''}</span><span class="fd-dot ${x.state !== 'active' ? 'off' : x.online ? '' : 'warn'}"></span>
     <span class="ws-tnm"><b>${esc(x.name)}</b>${x.host ? '<span class="badge badge-blue">хозяин</span>' : ''}${x.self ? '<span class="badge badge-green">вы</span>' : ''}${word(x)}<code>${esc(x.id)}</code>${x.ver ? `<span class="fd-ver">v${esc(x.ver)}</span>` : ''}</span>
     <span class="ws-tm">${x.state === 'active' ? `${x.people} ${fdPlural(x.people)}${x.online ? '' : ' · нет связи'}` : x.state === 'offered' ? 'ждём ответа' : ''}</span>
-    ${mine && !x.self ? `<button class="btn btn-ghost btn-sm ws-dg" data-on-click="wsRemove" data-a="${esc(JSON.stringify([w.id, `${esc(x.id)}`]))}">Убрать</button>` : ''}</div>` + kids(x.id).map(k => node(k, d + 1)).join('');
+    ${mine && !x.self ? `<button class="btn btn-ghost btn-sm ws-dg" data-on-click="wsRemove" data-a-click="${esc(JSON.stringify([w.id, `${esc(x.id)}`]))}">Убрать</button>` : ''}</div>` + kids(x.id).map(k => node(k, d + 1)).join('');
   return `<div class="ws-tree">${roots.map(r => node(r, 0)).join('')}</div>`;
 }
 function wsRender() {
@@ -5609,17 +5609,17 @@ function wsRender() {
     const act = fedOn ? w.fed.servers.filter(s => s.state === 'active').length : 0;
     const cands = w.candidates || [];
     det = `<div class="card ws-det"><div class="ws-dh">${wsAvatar(w)}<div class="ws-dn"><h3>${esc(w.name)}</h3><div class="ws-bd">${w.is_default ? '<span class="badge badge-green">по умолчанию</span>' : w.users ? '' : '<span class="badge badge-gray">пустое</span>'}${wsFedBadge(w)}${fedOn && w.fed.is_host ? '<span class="badge badge-green">вы хозяин</span>' : ''}</div></div>
-        <button class="btn btn-ghost btn-sm" ${mirror ? 'disabled title="Название общего пространства задаёт его хозяин"' : ''} data-on-click="wsOpen" data-a="${esc(JSON.stringify([w.id]))}">${WS_I.pen}Переименовать</button>
-        ${mirror ? `<button class="btn btn-ghost btn-sm" title="Выйти из общего пространства: у вас оно останется обычным" data-on-click="wsLeave" data-a="${esc(JSON.stringify([w.id]))}">${WS_I.out}Выйти</button>` : ''}
-        <button class="btn btn-ghost btn-sm ws-dg" ${w.is_default ? 'disabled' : ''} title="${w.is_default ? 'Основное пространство удалить нельзя' : fedOn ? (mirror ? 'Выйти из общего пространства и удалить его' : 'Выключить «Общее» и удалить пространство') : ''}" data-on-click="wsDelete" data-a="${esc(JSON.stringify([w.id]))}">${WS_I.trash}Удалить</button></div>
+        <button class="btn btn-ghost btn-sm" ${mirror ? 'disabled title="Название общего пространства задаёт его хозяин"' : ''} data-on-click="wsOpen" data-a-click="${esc(JSON.stringify([w.id]))}">${WS_I.pen}Переименовать</button>
+        ${mirror ? `<button class="btn btn-ghost btn-sm" title="Выйти из общего пространства: у вас оно останется обычным" data-on-click="wsLeave" data-a-click="${esc(JSON.stringify([w.id]))}">${WS_I.out}Выйти</button>` : ''}
+        <button class="btn btn-ghost btn-sm ws-dg" ${w.is_default ? 'disabled' : ''} title="${w.is_default ? 'Основное пространство удалить нельзя' : fedOn ? (mirror ? 'Выйти из общего пространства и удалить его' : 'Выключить «Общее» и удалить пространство') : ''}" data-on-click="wsDelete" data-a-click="${esc(JSON.stringify([w.id]))}">${WS_I.trash}Удалить</button></div>
       <div class="ws-ds"><div><span>Людей у вас</span><b>${w.users}</b></div><div><span>Создано</span><b>${fmtDate(w.created_at)}</b></div><div><span>${fedOn ? 'Серверов' : 'Видят'}</span><b>${fedOn ? act : 'только вы'}</b></div></div>
       ${w.is_default && !fedOn ? `<div class="ws-sec"><h4>Пространство по умолчанию</h4><p>Сюда попадают новые люди и те, у кого не осталось других пространств. Общим его сделать нельзя.</p></div>`
         : `<div class="ws-sec"><div class="ws-shr"><div><h4>Общее пространство</h4><p>${mirror ? `Пространство ведёт «${esc(hostName)}»: название задаёт хозяин. Состав у каждого сервера свой, вы добавляете только своих людей в их профилях.` : 'Люди нескольких серверов федерации видят друг друга. Состав у каждого сервера свой: вы добавляете только своих людей в их профилях.'}</p></div>
-          ${mirror ? '' : `<label class="toggle-switch" title="Общее пространство"><input type="checkbox" ${fedOn ? 'checked' : ''} data-on-change="wsShared" data-a="${esc(JSON.stringify([w.id, "__checked"]))}" aria-label="Общее пространство"><div class="toggle-track"><div class="toggle-thumb"></div></div></label>`}</div></div>`}
+          ${mirror ? '' : `<label class="toggle-switch" title="Общее пространство"><input type="checkbox" ${fedOn ? 'checked' : ''} data-on-change="wsShared" data-a-change="${esc(JSON.stringify([w.id, "__checked"]))}" aria-label="Общее пространство"><div class="toggle-track"><div class="toggle-thumb"></div></div></label>`}</div></div>`}
       ${fedOn ? `<div class="ws-sec"><h4>Серверы пространства</h4><p>Подключение идёт деревом: каждый сервер связан с тем, через кого вошёл.</p>${wsTree(w)}
-        ${(w.fed.asks || []).map(a => `<div class="wsf-ask ws-ask"><span>Сервер «${esc(nm(w, a.proposer))}» просит добавить в пространство сервер «${esc(a.target_name)}»${a.approved ? ' (одобрено, ждём ответа)' : ''}</span>${a.approved ? '' : `<button class="btn btn-ghost btn-sm" data-on-click="wsAsk" data-a="${esc(JSON.stringify([a.id, false]))}">Отклонить</button><button class="btn ux-solid btn-sm" data-on-click="wsAsk" data-a="${esc(JSON.stringify([a.id, true]))}">Одобрить</button>`}</div>`).join('')}
+        ${(w.fed.asks || []).map(a => `<div class="wsf-ask ws-ask"><span>Сервер «${esc(nm(w, a.proposer))}» просит добавить в пространство сервер «${esc(a.target_name)}»${a.approved ? ' (одобрено, ждём ответа)' : ''}</span>${a.approved ? '' : `<button class="btn btn-ghost btn-sm" data-on-click="wsAsk" data-a-click="${esc(JSON.stringify([a.id, false]))}">Отклонить</button><button class="btn ux-solid btn-sm" data-on-click="wsAsk" data-a-click="${esc(JSON.stringify([a.id, true]))}">Одобрить</button>`}</div>`).join('')}
         <div class="ws-lab">${w.fed.is_host ? 'Пригласить сервер' : 'Попросить хозяина добавить сервер'}</div>
-        ${cands.length ? `<div class="wsf-inv">${uxSelHtml('wsf-cand-' + w.id, cands.map(c => ({ v: c.id, t: `${c.name}`, s: c.ok ? c.id : `${c.id} · нужно обновить сервер`, dis: !c.ok })), undefined, 'Сервер')}<button class="btn ux-solid btn-sm" data-on-click="wsInvite" data-a="${esc(JSON.stringify([w.id]))}">${w.fed.is_host ? 'Пригласить' : 'Попросить'}</button></div>
+        ${cands.length ? `<div class="wsf-inv">${uxSelHtml('wsf-cand-' + w.id, cands.map(c => ({ v: c.id, t: `${c.name}`, s: c.ok ? c.id : `${c.id} · нужно обновить сервер`, dis: !c.ok })), undefined, 'Сервер')}<button class="btn ux-solid btn-sm" data-on-click="wsInvite" data-a-click="${esc(JSON.stringify([w.id]))}">${w.fed.is_host ? 'Пригласить' : 'Попросить'}</button></div>
           <div class="fd-hint" style="margin-top:6px">Нужно прямое подключение к серверу в разделе «Федерации».${w.fed.is_host ? '' : ' Расширять пространство дальше можно только с согласия хозяина.'}</div>`
           : '<div class="fd-hint">Нет серверов, которых можно добавить: подключите ещё сервер в разделе «Федерации».</div>'}</div>` : ''}</div>`;
   }
@@ -5628,9 +5628,9 @@ function wsRender() {
     ${WS.offers.map((o, i) => `<div class="card wsf-offer"><div class="wsf-ot"><b>«${esc(o.from_name)}» предлагает общее пространство «${esc(o.name)}»</b><span>Хозяин: ${esc(o.host_name)}. Серверы в пространстве: ${o.servers.map(esc).join(', ')}. Ваши люди увидят людей этих серверов, а они ваших, но только тех, кого вы сами добавите в это пространство. Название пространства задаёт хозяин.</span>
       <span class="wsf-att">${uxSelHtml('wsf-att-' + i, [{ v: '', t: 'Создать новое пространство' }, ...(o.local || []).map(l => ({ v: String(l.id), t: `Объединить с моим «${l.name}»`, s: `${l.users} ${uxPlural(l.users, 'человек', 'человека', 'человек')}` }))], o.same ? String(o.same) : '', 'Что сделать с пространством')}</span>
       ${o.same ? '<span>У вас уже есть пространство с таким названием: при объединении оно станет общим, его люди сразу попадут в общее пространство.</span>' : ''}</div>
-      <button class="btn btn-ghost btn-sm" data-on-click="wsOffer" data-a="${esc(JSON.stringify([`${esc(o.uid)}`, false]))}">Отклонить</button><button class="btn ux-solid btn-sm" data-on-click="wsOffer" data-a="${esc(JSON.stringify([`${esc(o.uid)}`, true, i]))}">Принять</button></div>`).join('')}
-    <div class="ws-ms"><div class="card ws-ml"><div class="ws-fl">${[['all', 'Все'], ['shared', 'Общие'], ['local', 'Только у вас']].map(([k, l]) => `<button type="button" aria-pressed="${WS.filter === k}" data-on-click="wsFilter" data-a="${esc(JSON.stringify([`${k}`]))}">${l}<span>${cnt[k]}</span></button>`).join('')}</div>
-      ${vis.map(x => `<button type="button" class="ws-it" aria-current="${x.id === WS.sel}" data-on-click="wsPick" data-a="${esc(JSON.stringify([x.id]))}">${wsAvatar(x, true)}<span class="ws-in"><b>${esc(x.name)}</b><small>${x.users} ${uxPlural(x.users, 'человек', 'человека', 'человек')}${x.fed?.shared ? ' · общее' : ''}</small></span>${pend(x) ? `<span class="ws-cnt" title="Просьбы серверов">${pend(x)}</span>` : ''}</button>`).join('') || '<div class="fd-empty"><div><span>Здесь пока пусто</span></div></div>'}</div>
+      <button class="btn btn-ghost btn-sm" data-on-click="wsOffer" data-a-click="${esc(JSON.stringify([`${esc(o.uid)}`, false]))}">Отклонить</button><button class="btn ux-solid btn-sm" data-on-click="wsOffer" data-a-click="${esc(JSON.stringify([`${esc(o.uid)}`, true, i]))}">Принять</button></div>`).join('')}
+    <div class="ws-ms"><div class="card ws-ml"><div class="ws-fl">${[['all', 'Все'], ['shared', 'Общие'], ['local', 'Только у вас']].map(([k, l]) => `<button type="button" aria-pressed="${WS.filter === k}" data-on-click="wsFilter" data-a-click="${esc(JSON.stringify([`${k}`]))}">${l}<span>${cnt[k]}</span></button>`).join('')}</div>
+      ${vis.map(x => `<button type="button" class="ws-it" aria-current="${x.id === WS.sel}" data-on-click="wsPick" data-a-click="${esc(JSON.stringify([x.id]))}">${wsAvatar(x, true)}<span class="ws-in"><b>${esc(x.name)}</b><small>${x.users} ${uxPlural(x.users, 'человек', 'человека', 'человек')}${x.fed?.shared ? ' · общее' : ''}</small></span>${pend(x) ? `<span class="ws-cnt" title="Просьбы серверов">${pend(x)}</span>` : ''}</button>`).join('') || '<div class="fd-empty"><div><span>Здесь пока пусто</span></div></div>'}</div>
       ${det}</div></div>`;
 }
 const WS_I = {
@@ -5787,7 +5787,7 @@ function fdvRender() {
     const m = FDV.metric, S = d.series;
     const cfg = { msg: ['Сообщения', S.map(x => x.msgOut), S.map(x => x.msgIn), v => v], file: ['Файлы', S.map(x => x.fOut), S.map(x => x.fIn), v => v], vol: ['Объём', S.map(x => x.bOut), S.map(x => x.bIn), fdvBytes] }[m];
     const young = Date.now() / 1000 - d.newest_peer_at < 86400;
-    const tabs = (attr, items, cur, fn) => `<div class="fdv-tabs">${items.map(x => `<button type="button" aria-pressed="${cur === x[0]}" data-on-click="${esc(fn)}" data-a="${esc(JSON.stringify([`${x[0]}`]))}">${x[1]}</button>`).join('')}</div>`;
+    const tabs = (attr, items, cur, fn) => `<div class="fdv-tabs">${items.map(x => `<button type="button" aria-pressed="${cur === x[0]}" data-on-click="${esc(fn)}" data-a-click="${esc(JSON.stringify([`${x[0]}`]))}">${x[1]}</button>`).join('')}</div>`;
     h += `<div class="fdv-w${FDV.open ? ' open' : ''}"${FDV.open ? '' : ' inert'}><div class="fdv-in"><div class="fdv-b"><div><div class="fdv-top"><span class="fdv-lab">${cfg[0]}</span>${tabs('m', [['msg', 'Сообщения'], ['file', 'Файлы'], ['vol', 'Объём']], m, 'fdvMetric')}${tabs('p', [['day', 'Сутки'], ['week', 'Неделя'], ['month', 'Месяц']], sp, 'fdvPeriod')}</div>
       ${young ? '<div class="fdv-note">Соединение подключено недавно. График наполнится по мере обмена, объём считается с момента подключения.</div>' : ''}
       ${fdvChart(cfg[1], cfg[2], S.map(x => x.t), cfg[3])}
@@ -5849,14 +5849,14 @@ function fdRender() {
   const lab = (t, tp) => `<span class="fd-lab">${t}${tp ? tip(tp) : ''}</span>`;
   // значение с правкой по карандашу: в режиме правки поле и кнопки «сохранить» / «отмена»
   const field = (key, val, ph, save) => FD.edit === key
-    ? `<div class="fd-ed wide"><input id="fd-${key}" maxlength="${key === 'name' ? 60 : 200}" value="${esc(val)}" placeholder="${esc(ph)}" autocomplete="off" aria-label="${key === 'name' ? 'Имя системы' : 'Адрес для соединений'}" data-on-keydown="__h89" data-a="${esc(JSON.stringify([save]))}"><button type="button" class="fd-ib ok" aria-label="Сохранить" data-on-click="${esc(save)}">${I.check}</button><button type="button" class="fd-ib" aria-label="Отмена" data-on-click="fdEdit" data-a='[null]'>${I.x}</button></div>`
-    : `<div class="fd-ed"><span class="v${key === 'url' ? ' fd-mono' : ''}${val ? '' : ' none'}">${val ? esc(key === 'url' ? val.replace(/^https?:\/\//, '') : val) : 'не задан'}</span><button type="button" class="fd-ib" aria-label="Изменить" data-on-click="fdEdit" data-a="${esc(JSON.stringify([`${key}`]))}">${I.pen}</button></div>`;
+    ? `<div class="fd-ed wide"><input id="fd-${key}" maxlength="${key === 'name' ? 60 : 200}" value="${esc(val)}" placeholder="${esc(ph)}" autocomplete="off" aria-label="${key === 'name' ? 'Имя системы' : 'Адрес для соединений'}" data-on-keydown="__h89" data-a-keydown="${esc(JSON.stringify([save]))}"><button type="button" class="fd-ib ok" aria-label="Сохранить" data-on-click="${esc(save)}">${I.check}</button><button type="button" class="fd-ib" aria-label="Отмена" data-on-click="fdEdit" data-a-click='[null]'>${I.x}</button></div>`
+    : `<div class="fd-ed"><span class="v${key === 'url' ? ' fd-mono' : ''}${val ? '' : ' none'}">${val ? esc(key === 'url' ? val.replace(/^https?:\/\//, '') : val) : 'не задан'}</span><button type="button" class="fd-ib" aria-label="Изменить" data-on-click="fdEdit" data-a-click="${esc(JSON.stringify([`${key}`]))}">${I.pen}</button></div>`;
   const side = ok
-    ? `<div class="fd-me"><div class="fd-top"><span class="fd-gl">${I.globe}</span><div class="fd-tn">${FD.edit === 'name' ? field('name', me.name || '', 'Например, Склад-Логистика', 'fdSaveName') : `<div class="fd-ed fd-big"><span class="v">${esc(me.name || me.id)}</span><button type="button" class="fd-ib" aria-label="Изменить имя" data-on-click="fdEdit" data-a='["name"]'>${I.pen}</button></div>`}<span class="fd-sm">Этот сервер${tip('Имя видят администраторы подключённых серверов в списке соединений. Обычным людям название не показывается.')}</span></div></div>
+    ? `<div class="fd-me"><div class="fd-top"><span class="fd-gl">${I.globe}</span><div class="fd-tn">${FD.edit === 'name' ? field('name', me.name || '', 'Например, Склад-Логистика', 'fdSaveName') : `<div class="fd-ed fd-big"><span class="v">${esc(me.name || me.id)}</span><button type="button" class="fd-ib" aria-label="Изменить имя" data-on-click="fdEdit" data-a-click='["name"]'>${I.pen}</button></div>`}<span class="fd-sm">Этот сервер${tip('Имя видят администраторы подключённых серверов в списке соединений. Обычным людям название не показывается.')}</span></div></div>
       <div class="fd-kv">
-        ${lab('ID', 'Не меняется. Входит в адрес ваших людей для партнёров: @' + me.id + ':логин.')}<div class="fd-ed"><code class="v">${esc(me.id)}</code><button type="button" class="fd-ib" aria-label="Копировать идентификатор" data-on-click="fdCopy" data-a="${esc(JSON.stringify([`${esc(me.id)}`, "Идентификатор скопирован"]))}">${I.copy}</button></div>
+        ${lab('ID', 'Не меняется. Входит в адрес ваших людей для партнёров: @' + me.id + ':логин.')}<div class="fd-ed"><code class="v">${esc(me.id)}</code><button type="button" class="fd-ib" aria-label="Копировать идентификатор" data-on-click="fdCopy" data-a-click="${esc(JSON.stringify([`${esc(me.id)}`, "Идентификатор скопирован"]))}">${I.copy}</button></div>
         ${lab('Адрес', 'По нему партнёры подключаются к вам. Если у сервера нет белого IP или не проброшены порты, оставьте пустым: тогда подключаться будете вы, введя ключ партнёра.')}${field('url', me.url || '', 'https://chat.example.ru (необязательно)', 'fdSaveUrl')}
-        ${lab('Отпечаток', 'Отпечаток вашего ключа. Администратор партнёра сверяет его с вашим по телефону или лично при подключении.')}<div class="fd-ed wide"><span class="v fd-fpv">${esc(me.fp)}</span><button type="button" class="fd-ib" aria-label="Копировать отпечаток" data-on-click="fdCopy" data-a="${esc(JSON.stringify([`${esc(me.fp)}`, "Отпечаток скопирован"]))}">${I.copy}</button></div>
+        ${lab('Отпечаток', 'Отпечаток вашего ключа. Администратор партнёра сверяет его с вашим по телефону или лично при подключении.')}<div class="fd-ed wide"><span class="v fd-fpv">${esc(me.fp)}</span><button type="button" class="fd-ib" aria-label="Копировать отпечаток" data-on-click="fdCopy" data-a-click="${esc(JSON.stringify([`${esc(me.fp)}`, "Отпечаток скопирован"]))}">${I.copy}</button></div>
       </div></div>`
     : `<div class="fd-me"><div class="fd-top"><span class="fd-gl">${I.globe}</span><div class="fd-tn"><div class="fd-big"><span class="v">Этот сервер</span></div><span class="fd-sm">Сначала задайте идентификатор</span></div></div>
       <div class="fd-setup">
@@ -5873,9 +5873,9 @@ function fdRender() {
       <div class="fd-side">
         <div class="card fd-card">${side}<div class="fd-safe">${I.shield}<span>Соединение даёт только обмен сообщениями между людьми. Управлять другим сервером через него нельзя: ни пользователями, ни настройками, ни обновлениями.</span></div></div>
         <div class="card"><div class="fd-head">Правила приёма</div><div class="fd-lim">
-          <div class="r"><span class="t">Новых переписок в час<small>с одного чужого сервера, сверх лимита отклоняются</small></span><div class="fd-stp"><button type="button" data-on-click="fdRule" data-a='[-5]' aria-label="Меньше">−</button><span>${FD.rules.new_per_hour}</span><button type="button" data-on-click="fdRule" data-a='[5]' aria-label="Больше">+</button></div></div>
-          <div class="r"><span class="t">Приглашений в группы в час<small>с одного чужого сервера, сверх лимита молча отклоняются</small></span><div class="fd-stp"><button type="button" data-on-click="fdRule" data-a='[-5, "invites_per_hour"]' aria-label="Меньше">−</button><span>${FD.rules.invites_per_hour || 20}</span><button type="button" data-on-click="fdRule" data-a='[5, "invites_per_hour"]' aria-label="Больше">+</button></div></div>
-          <div class="r"><span class="t">Принимать приглашения в группы<small>от людей с других серверов, иначе молча отклоняются</small></span><label class="toggle-switch"><input type="checkbox" ${FD.rules.groups_in !== false ? 'checked' : ''} data-on-change="fdGroupsIn" data-a='["__checked"]'><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div>
+          <div class="r"><span class="t">Новых переписок в час<small>с одного чужого сервера, сверх лимита отклоняются</small></span><div class="fd-stp"><button type="button" data-on-click="fdRule" data-a-click='[-5]' aria-label="Меньше">−</button><span>${FD.rules.new_per_hour}</span><button type="button" data-on-click="fdRule" data-a-click='[5]' aria-label="Больше">+</button></div></div>
+          <div class="r"><span class="t">Приглашений в группы в час<small>с одного чужого сервера, сверх лимита молча отклоняются</small></span><div class="fd-stp"><button type="button" data-on-click="fdRule" data-a-click='[-5, "invites_per_hour"]' aria-label="Меньше">−</button><span>${FD.rules.invites_per_hour || 20}</span><button type="button" data-on-click="fdRule" data-a-click='[5, "invites_per_hour"]' aria-label="Больше">+</button></div></div>
+          <div class="r"><span class="t">Принимать приглашения в группы<small>от людей с других серверов, иначе молча отклоняются</small></span><label class="toggle-switch"><input type="checkbox" ${FD.rules.groups_in !== false ? 'checked' : ''} data-on-change="fdGroupsIn" data-a-change='["__checked"]'><div class="toggle-track"><div class="toggle-thumb"></div></div></label></div>
         </div></div>
       </div>
     </div></div>`;
@@ -5904,7 +5904,7 @@ function fdPeers() {
     const paused = p.status === 'paused';
     return `<div class="fd-r"><span class="fd-dot ${st}"></span><div class="fd-bd"><div class="fd-nm"><b>${esc(p.name)}</b><code>${esc(p.instance_id)}</code>${p.ver ? `<span class="fd-ver" title="${p.online ? 'Версия сервера' : 'Последняя известная версия сервера'}">v${esc(p.ver)}</span>` : ''}${word}</div>
       <div class="fd-meta"><span class="fd-dir" title="${p.role === 'in' ? 'Они подключаются к нам сами' : 'Мы подключаемся к ним'}">${p.role === 'in' ? FD_I.ins + 'они к нам' : FD_I.outs + 'мы к ним'}</span><span>${p.last_contact_at ? esc(uaSeen(p.last_contact_at)) : 'обмена не было'}</span><span>${p.people} ${fdPlural(p.people)}</span>${p.queue ? `<span class="q">очередь ${p.queue}</span>` : ''}</div></div>
-      <div class="fd-ac"><button class="fd-kb" type="button" aria-label="Действия" data-on-click="__h93" data-a="${esc(JSON.stringify([i]))}"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>${FD.menu === i ? `<div class="fd-menu"><button type="button" data-on-click="fdFp" data-a="${esc(JSON.stringify([i]))}">${FD_I.key}Отпечаток ключа</button><button type="button" data-on-click="fdPause" data-a="${esc(JSON.stringify([i]))}">${paused ? FD_I.play + 'Возобновить' : FD_I.pause + 'Приостановить'}</button><hr><button type="button" class="dg" data-on-click="fdDelete" data-a="${esc(JSON.stringify([i]))}">${FD_I.trash}Удалить соединение</button></div>` : ''}</div></div>`;
+      <div class="fd-ac"><button class="fd-kb" type="button" aria-label="Действия" data-on-click="__h93" data-a-click="${esc(JSON.stringify([i]))}"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>${FD.menu === i ? `<div class="fd-menu"><button type="button" data-on-click="fdFp" data-a-click="${esc(JSON.stringify([i]))}">${FD_I.key}Отпечаток ключа</button><button type="button" data-on-click="fdPause" data-a-click="${esc(JSON.stringify([i]))}">${paused ? FD_I.play + 'Возобновить' : FD_I.pause + 'Приостановить'}</button><hr><button type="button" class="dg" data-on-click="fdDelete" data-a-click="${esc(JSON.stringify([i]))}">${FD_I.trash}Удалить соединение</button></div>` : ''}</div></div>`;
   }).join('');
 }
 function fdMenu(i) { FD.menu = FD.menu === i ? null : i; fdRender(); }
@@ -5982,7 +5982,7 @@ async function fdConnect() {
 function fdFp(i) {
   const p = FD.peers[i]; FD.menu = null; fdRender(); if (!p) return;
   fdModal('Отпечаток ключа', `<div class="fd-kv"><span>Партнёр</span><b>${esc(p.name)}</b></div><div class="fd-fp">${esc(p.fp)}</div><div class="fd-hint">Сверяйте при подключении и после смены ключа. Если отпечаток изменился без вашего ведома, приостановите соединение.</div>`,
-    `<button class="btn ux-solid" data-on-click="closeModal" data-a='["modal-fed"]'>Закрыть</button>`);
+    `<button class="btn ux-solid" data-on-click="closeModal" data-a-click='["modal-fed"]'>Закрыть</button>`);
 }
 async function fdPause(i) {
   const p = FD.peers[i]; FD.menu = null; if (!p) return;
@@ -6009,7 +6009,7 @@ const FM_W = 188, FM_H = 64;
 const FM_COL = ['var(--dv-c1)', 'var(--dv-c2)', 'var(--dv-c3)', 'var(--dv-c5)', 'var(--dv-c4)', '#12a672'];
 const FM_SRV = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>';
 function fdTabs() {
-  return `<div class="fm-tabs" role="tablist"><button type="button" aria-pressed="${FD.tab !== 'map'}" data-on-click="fdTab" data-a='["list"]'>Подключения</button><button type="button" aria-pressed="${FD.tab === 'map'}" data-on-click="fdTab" data-a='["map"]'>Карта</button></div>`;
+  return `<div class="fm-tabs" role="tablist"><button type="button" aria-pressed="${FD.tab !== 'map'}" data-on-click="fdTab" data-a-click='["list"]'>Подключения</button><button type="button" aria-pressed="${FD.tab === 'map'}" data-on-click="fdTab" data-a-click='["map"]'>Карта</button></div>`;
 }
 function fdTab(t) {
   FD.tab = t; FD.menu = null;
@@ -6139,8 +6139,8 @@ function fmDraw() {
   if (tb && !tb.dataset.k) {
     tb.dataset.k = '1';
   }
-  if (tb) tb.innerHTML = `<b>Карта подключений</b>${d.spaces.length ? `<button type="button" class="fm-pill" aria-pressed="${FM.space === 'all'}" data-on-click="fmSpace" data-a='["all"]'>Все</button>${d.spaces.map((s, i) => `<button type="button" class="fm-pill" aria-pressed="${FM.space === s.uid}" data-on-click="fmSpace" data-a="${esc(JSON.stringify([`${esc(s.uid)}`]))}"><i style="background:${FM_COL[i % FM_COL.length]}"></i>${esc(s.name)}</button>`).join('')}` : ''}
-    <div class="fm-zoom"><button type="button" aria-label="Уменьшить" data-on-click="__h98">−</button><button type="button" aria-label="Увеличить" data-on-click="fmZoom" data-a='[1.25]'>+</button><button type="button" style="padding:0 10px;font-size:12.5px" data-on-click="fmReset">Сбросить раскладку</button><button type="button" style="padding:0 10px;font-size:12.5px" data-on-click="fmFit">Вместить</button></div>`;
+  if (tb) tb.innerHTML = `<b>Карта подключений</b>${d.spaces.length ? `<button type="button" class="fm-pill" aria-pressed="${FM.space === 'all'}" data-on-click="fmSpace" data-a-click='["all"]'>Все</button>${d.spaces.map((s, i) => `<button type="button" class="fm-pill" aria-pressed="${FM.space === s.uid}" data-on-click="fmSpace" data-a-click="${esc(JSON.stringify([`${esc(s.uid)}`]))}"><i style="background:${FM_COL[i % FM_COL.length]}"></i>${esc(s.name)}</button>`).join('')}` : ''}
+    <div class="fm-zoom"><button type="button" aria-label="Уменьшить" data-on-click="__h98">−</button><button type="button" aria-label="Увеличить" data-on-click="fmZoom" data-a-click='[1.25]'>+</button><button type="button" style="padding:0 10px;font-size:12.5px" data-on-click="fmReset">Сбросить раскладку</button><button type="button" style="padding:0 10px;font-size:12.5px" data-on-click="fmFit">Вместить</button></div>`;
   fmSide(d, route);
 }
 function fmSide(d, route) {
@@ -6172,14 +6172,14 @@ function fmSide(d, route) {
   }
   const memb = n.spaces.length ? `<div class="fm-sp"><span>В общих пространствах</span>${n.spaces.map(s => { const sp = d.spaces.find(x => x.uid === s.uid); return `<div><i style="background:${FM_COL[spIdx[s.uid] % FM_COL.length]}"></i><b>${esc(sp?.name || s.uid)}</b><span style="color:var(--c-text2)">${sp && sp.host === n.id ? 'хозяин · ' : ''}${s.people} ${fdPlural(s.people)}</span></div>`; }).join('')}</div>` : '';
   box.innerHTML = `<div class="card"><div class="fm-sh"><b>${esc(n.name)}</b><code>${esc(n.id)}</code></div>${f.join('')}${memb}${n.fp ? `<div class="fm-f"><span>Отпечаток</span><span class="fd-mono" style="font-size:11.5px">${esc(n.fp)}</span></div>` : ''}
-    ${!n.self && !n.verified ? `<div class="fm-ac"><button class="btn btn-ghost btn-sm" data-on-click="fmVerify" data-a="${esc(JSON.stringify([`${esc(n.id)}`]))}">Сверить отпечаток</button></div>` : ''}</div>
+    ${!n.self && !n.verified ? `<div class="fm-ac"><button class="btn btn-ghost btn-sm" data-on-click="fmVerify" data-a-click="${esc(JSON.stringify([`${esc(n.id)}`]))}">Сверить отпечаток</button></div>` : ''}</div>
     ${!n.self && !n.direct && !n.verified ? '<div class="fd-hint" style="padding:0 4px">Ключ получен через хозяина пространства. Сверьте отпечаток с администратором этого сервера по телефону или лично: тогда промежуточные серверы не смогут подменить ключ.</div>' : ''}`;
 }
 function fmVerify(id) {
   const n = FM.data?.nodes.find(x => x.id === id); if (!n) return;
   fdModal('Сверка отпечатка', `<div class="fd-kv"><span>Сервер</span><b>${esc(n.name)}</b></div><div class="fd-fp">${esc(n.fp)}</div><div class="fd-hint">Попросите администратора этого сервера показать отпечаток его ключа (раздел «Федерации», вкладка «Подключения») и сверьте с этим по телефону или лично.</div>
     <label class="fd-chk"><input type="checkbox" id="fm-sure" data-on-change="__h99"> Отпечаток совпал</label>`,
-    `${fdCancel}<button class="btn ux-solid" id="fm-go" disabled data-on-click="fmVerifyDo" data-a="${esc(JSON.stringify([`${esc(id)}`]))}">Отметить проверенным</button>`);
+    `${fdCancel}<button class="btn ux-solid" id="fm-go" disabled data-on-click="fmVerifyDo" data-a-click="${esc(JSON.stringify([`${esc(id)}`]))}">Отметить проверенным</button>`);
 }
 async function fmVerifyDo(id) {
   const r = await api('POST', '/api/admin/federation/verify', { instance: id });
@@ -6275,8 +6275,8 @@ function mdRender() {
       return `<div class="card"><div class="mdl-card"><div class="mdl-ico${/^[A-Za-z]/.test(m.icon || '') ? ' t' : ''}">${esc(m.icon || '🧩')}</div>
         <div class="mdl-tx"><b>${esc(m.title)}</b><span>${esc(m.description)}${m.needsDownload ? ` Набор: ${mdNum(m.count)} файлов, около ${mdBytes(m.bytes)}, лежит на сервере.` : ''}</span></div>
         <span class="badge ${m.enabled ? 'badge-green' : 'badge-gray'}">${m.enabled ? 'Включён' : 'Выключен'}</span>
-        <button class="btn btn-ghost btn-sm" data-on-click="mlOpen" data-a="${esc(JSON.stringify([`${m.key}`]))}">Журнал</button>
-        <label class="toggle-switch" title="${m.config && !m.config.hasKey ? 'Сначала сохраните API-ключ' : 'Модуль на сервере'}"><input type="checkbox" ${m.enabled ? 'checked' : ''} ${m.config && !m.config.hasKey ? 'disabled' : ''} data-on-change="mdToggle" data-a="${esc(JSON.stringify([`${m.key}`, "__checked"]))}" aria-label="Модуль включён на сервере"><span class="toggle-track"><span class="toggle-thumb"></span></span></label></div>
+        <button class="btn btn-ghost btn-sm" data-on-click="mlOpen" data-a-click="${esc(JSON.stringify([`${m.key}`]))}">Журнал</button>
+        <label class="toggle-switch" title="${m.config && !m.config.hasKey ? 'Сначала сохраните API-ключ' : 'Модуль на сервере'}"><input type="checkbox" ${m.enabled ? 'checked' : ''} ${m.config && !m.config.hasKey ? 'disabled' : ''} data-on-change="mdToggle" data-a-change="${esc(JSON.stringify([`${m.key}`, "__checked"]))}" aria-label="Модуль включён на сервере"><span class="toggle-track"><span class="toggle-thumb"></span></span></label></div>
         ${m.config ? mdKeyBlock(m) : ''}
         <div class="mdl-stats"><div><b>${mdNum(st.users)} из ${mdNum(st.total)}</b><span>пользователей включили у себя</span></div>
           <div><b>${mdNum(bc.electron)} · ${mdNum(bc.web)} · ${mdNum(bc.mobile)}</b><span>Electron · веб · мобильный</span></div>
@@ -6295,11 +6295,11 @@ function mdKeyBlock(m) {
         <button type="button" class="btn btn-ghost btn-sm" ${MOD.checking ? 'disabled' : ''} data-on-click="mdKeyCheck">${MOD.checking ? 'Проверяем…' : 'Проверить ключ'}</button>
         <button type="button" class="btn btn-ghost btn-sm" data-on-click="mdKeyDelete">Удалить</button></div>
         <div class="mdk-kv"><span>Сохранён, виден только конец: <code>…${esc(c.tail)}</code></span>${MOD.check === 'ok' ? '<span class="mdk-ok">Ключ работает</span>' : MOD.check === 'limit' ? '<span class="mdk-ok">Ключ верный, но лимит запросов исчерпан</span>' : MOD.check === 'bad' ? `<span class="mdk-bad">${name} не принял ключ</span>` : MOD.check === 'net' ? '<span class="mdk-bad">Нет связи с сервисом</span>' : ''}</div>`
-    : `<div class="mdk-row"><div class="mdk-inp"><input id="md-key" type="${MOD.show ? 'text' : 'password'}" value="${esc(MOD.draft)}" placeholder="Вставьте ключ из кабинета ${name}" autocomplete="off" spellcheck="false" aria-label="API-ключ ${name}" data-on-input="mdKeyInput" data-a='["__value"]' data-on-keydown="__h100">
+    : `<div class="mdk-row"><div class="mdk-inp"><input id="md-key" type="${MOD.show ? 'text' : 'password'}" value="${esc(MOD.draft)}" placeholder="Вставьте ключ из кабинета ${name}" autocomplete="off" spellcheck="false" aria-label="API-ключ ${name}" data-on-input="mdKeyInput" data-a-input='["__value"]' data-on-keydown="__h100">
         <button type="button" class="mdk-eye" aria-label="${MOD.show ? 'Скрыть' : 'Показать'}" data-on-click="mdKeyEye">${MOD.show ? MD_EYE_OFF : MD_EYE}</button></div>
         <button type="button" class="btn btn-primary btn-sm" id="md-key-save" ${MOD.draft.trim().length < 8 || MOD.busy ? 'disabled' : ''} data-on-click="mdKeySave">Сохранить</button>${c.hasKey ? '<button type="button" class="btn btn-ghost btn-sm" data-on-click="mdKeyCancel">Отмена</button>' : ''}</div>
         <div class="mdk-kv"><span>Ключ создаётся в разделе API Keys кабинета ${name}. <a class="mdk-lnk" href="https://partner.klipy.com/" target="_blank" rel="noopener">Открыть кабинет</a></span></div>`;
-  return `<div class="mdk"><div class="mdk-h"><b>API-ключ ${name} <button type="button" class="mdk-i" data-on-click="openModal" data-a='["modal-klipy"]' aria-label="Как получить ключ" title="Как получить ключ">i</button></b><span>Сервер хранит ключ и выдаёт его клиентам при включении модуля.</span></div>
+  return `<div class="mdk"><div class="mdk-h"><b>API-ключ ${name} <button type="button" class="mdk-i" data-on-click="openModal" data-a-click='["modal-klipy"]' aria-label="Как получить ключ" title="Как получить ключ">i</button></b><span>Сервер хранит ключ и выдаёт его клиентам при включении модуля.</span></div>
       <div>${body}
         <div class="mdk-note"><b>!</b><div>Тестовый ключ ограничен <strong>100 запросами в час</strong> на всех пользователей сразу. Для команды запросите Production в кабинете ${name}: раздел API Keys, затем «Request production».</div></div></div></div>
     <div class="mdk"><div class="mdk-h"><b>Условия ${name}</b><span>Действуют независимо от настроек чата.</span></div>
@@ -6456,14 +6456,14 @@ function alRender() {
   const last = AL.all[0];
   const cats = ['all', ...Object.keys(AL_CAT)];
   const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
-  const flt = k => `<button type="button" aria-pressed="${AL.category === k}" data-on-click="alFilter" data-a="${esc(JSON.stringify([`${k}`]))}">${k === 'all' ? 'Все' : AL_CAT[k]}<span class="n">${count(k)}</span></button>`;
+  const flt = k => `<button type="button" aria-pressed="${AL.category === k}" data-on-click="alFilter" data-a-click="${esc(JSON.stringify([`${k}`]))}">${k === 'all' ? 'Все' : AL_CAT[k]}<span class="n">${count(k)}</span></button>`;
   let prev = '';
   uxKeepFocus(() => {
     page.innerHTML = `<div class="ub" id="al-page">
       <div class="ub-tiles">
         <div class="ub-tile static"><div class="ub-lbl">Событий за сутки</div><div class="ub-big">${day.length}</div>
           <div class="rb-bars">${hrs.map((v, i) => `<div title="${v}"><i class="${i === 11 ? 'cur' : ''}" style="height:${Math.max(2, Math.round(v / hmax * 26))}px"></i><span>${i % 3 === 0 ? (12 - i) * 2 + 'ч' : ''}</span></div>`).join('')}</div></div>
-        <button type="button" class="ub-tile" data-on-click="alFilter" data-a='["security"]' title="Показать события безопасности"><div class="ub-lbl">Безопасность</div><div class="ub-big" style="color:${sec.length ? 'var(--c-red-text)' : 'var(--c-green-text)'}">${sec.length}</div><div class="ub-sub">за сутки: входы, неудачные попытки, завершение сеансов</div></button>
+        <button type="button" class="ub-tile" data-on-click="alFilter" data-a-click='["security"]' title="Показать события безопасности"><div class="ub-lbl">Безопасность</div><div class="ub-big" style="color:${sec.length ? 'var(--c-red-text)' : 'var(--c-green-text)'}">${sec.length}</div><div class="ub-sub">за сутки: входы, неудачные попытки, завершение сеансов</div></button>
         <div class="ub-tile static"><div class="ub-lbl">Самый активный</div>${top ? `<div class="ub-big" style="font-size:17px;line-height:1.3;margin-top:8px;font-family:var(--f-ui)">${esc(top[0])}</div><div class="ub-sub">${top[1]} ${uxPlural(top[1], 'действие', 'действия', 'действий')} за сутки</div>` : '<div class="ub-sub" style="margin-top:8px">за сутки действий не было</div>'}</div>
         <div class="ub-tile static"><div class="ub-lbl">Последнее</div>${last ? `<div class="ub-big" style="font-size:15px;line-height:1.3;margin-top:8px;font-family:var(--f-ui)">${esc(last.action)}</div><div class="ub-sub">${alClock(last.created_at)} · ${esc(last.actor_name || '—')}</div>` : '<div class="ub-sub" style="margin-top:8px">пока пусто</div>'}</div>
       </div>
@@ -6473,7 +6473,7 @@ function alRender() {
       <div class="ub-rows">${rows.map(r => {
         const open = AL.open.has(r.id ?? r.created_at + r.action), key = r.id ?? (r.created_at + r.action), d = alDayLabel(r.created_at), sep = d !== prev ? `<div class="al-day2">${esc(d)}</div>` : ''; prev = d;
         const cat = r.category || '';
-        return `${sep}<div class="rb-row"><div class="pg-top" style="grid-template-columns:22px 60px minmax(0,1.2fr) minmax(0,1.5fr) minmax(0,1.2fr) minmax(0,.8fr)" data-on-click="alTog" data-a="${esc(JSON.stringify([`${esc(String(key))}`]))}">
+        return `${sep}<div class="rb-row"><div class="pg-top" style="grid-template-columns:22px 60px minmax(0,1.2fr) minmax(0,1.5fr) minmax(0,1.2fr) minmax(0,.8fr)" data-on-click="alTog" data-a-click="${esc(JSON.stringify([`${esc(String(key))}`]))}">
           <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть">${UX_I.chev}</button>
           <div class="al-tm2">${alClock(r.created_at)}</div>
           <div style="display:flex;align-items:center;gap:9px;min-width:0">${avHtml(r.actor_name || '?', 26, 8, r.actor_id, false, r.actor_has_avatar)}<span style="font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.actor_name || '—')}</span></div>
@@ -6517,7 +6517,7 @@ function reRender() {
   const srv = RE.list.find(r => r.k === 'server'), cli = RE.list.find(r => r.k === 'client');
   const n = lab => RE.list.reduce((a, r) => a + (r.sections || []).filter(s => s.label === lab).reduce((x, s) => x + s.items.length, 0), 0);
   const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
-  const flt = ([k, label, c]) => `<button type="button" aria-pressed="${RE.f === k}" data-on-click="reFilter" data-a="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${c}</span></button>`;
+  const flt = ([k, label, c]) => `<button type="button" aria-pressed="${RE.f === k}" data-on-click="reFilter" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${c}</span></button>`;
   uxKeepFocus(() => {
     page.innerHTML = `<div class="ub" id="re-page">
       <div class="ub-tiles">
@@ -6532,7 +6532,7 @@ function reRender() {
         ${uxSearch('re-q', RE.q, 'Версия или текст', 'reSearch')}</div>
       <div class="ub-rows">${rows.map(r => {
         const key = r.k + r.version, open = RE.open.has(key), secs = r.sections || [];
-        return `<div class="rl"><div class="rl-h" data-on-click="reTog" data-a="${esc(JSON.stringify([`${esc(key)}`]))}"><button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть">${UX_I.chev}</button>
+        return `<div class="rl"><div class="rl-h" data-on-click="reTog" data-a-click="${esc(JSON.stringify([`${esc(key)}`]))}"><button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть">${UX_I.chev}</button>
           <span class="rl-v ${r.k}">${esc(r.version)}</span><span class="rb-meta">${esc(r.dateLabel)}</span><span style="flex:1"></span>
           ${secs.map(s => { const c = (RE_SEC[s.label] || ['', 'var(--c-muted)'])[1]; return `<span class="pg-mini" style="background:color-mix(in srgb,${c} 16%,transparent);color:${c}">${esc(s.label)} ${s.items.length}</span>`; }).join('')}</div>
           ${open ? secs.map(s => `<div><div class="rl-sl ${(RE_SEC[s.label] || [''])[0]}">${esc(s.label)}</div><ul>${s.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('') : `<div class="rl-pre">${esc(secs[0]?.items[0] || '')}</div>`}</div>`;
@@ -6587,9 +6587,9 @@ function flRender() {
   const biggest = FL.files.slice().sort((a, b) => (b.size || 0) - (a.size || 0))[0];
   const soon = FL.lifetime ? FL.files.filter(f => flLeftDays(f) <= 3) : [], soonSize = soon.reduce((s, f) => s + (f.size || 0), 0);
   const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
-  const flt = ([k, label]) => `<button type="button" aria-pressed="${FL.filter === k}" data-on-click="flFilter" data-a="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${count2(k)}</span></button>`;
+  const flt = ([k, label]) => `<button type="button" aria-pressed="${FL.filter === k}" data-on-click="flFilter" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${count2(k)}</span></button>`;
   const count2 = k => k === 'all' ? FL.files.length : count(k);
-  const sortBtn = (k, label) => `<button type="button" aria-pressed="${FL.sort === k}" data-on-click="flSort" data-a="${esc(JSON.stringify([`${k}`]))}">${label}</button>`;
+  const sortBtn = (k, label) => `<button type="button" aria-pressed="${FL.sort === k}" data-on-click="flSort" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label}</button>`;
   uxKeepFocus(() => {
     page.innerHTML = `<div class="ub" id="fl-page">
       <div class="ub-tiles">
@@ -6599,7 +6599,7 @@ function flRender() {
         <div class="ub-tile static"><div class="ub-lbl">Хранятся</div><div class="ub-big">${FL.lifetime ? `${FL.lifetime}<small>${uxPlural(FL.lifetime, 'день', 'дня', 'дней')}</small>` : 'всегда'}</div>
           <div class="ub-sub">${FL.lifetime ? (soon.length ? `скоро удалятся: ${soon.length} ${uxPlural(soon.length, 'файл', 'файла', 'файлов')}, ${hmBytes(soonSize)}` : 'в ближайшие 3 дня ничего не удалится') : 'автоудаление выключено'}</div>
           <div style="margin-top:8px"><button class="btn btn-ghost btn-sm" data-on-click="flSettings">Настройки хранения</button></div></div>
-        ${top ? `<button type="button" class="ub-tile" data-on-click="flWho" data-a="${esc(JSON.stringify([top[0]]))}" title="Показать его файлы"><div class="ub-lbl">Больше всего места</div><div class="ub-big" style="font-size:17px;line-height:1.3;margin-top:8px;font-family:var(--f-ui)">${esc(top[0])}</div><div class="ub-sub">${hmBytes(top[1])} · ${total ? Math.round(top[1] / total * 100) : 0}% всех файлов</div><div class="ub-meter"><i style="width:${total ? Math.round(top[1] / total * 100) : 0}%;background:var(--dv-c5)"></i></div></button>`
+        ${top ? `<button type="button" class="ub-tile" data-on-click="flWho" data-a-click="${esc(JSON.stringify([top[0]]))}" title="Показать его файлы"><div class="ub-lbl">Больше всего места</div><div class="ub-big" style="font-size:17px;line-height:1.3;margin-top:8px;font-family:var(--f-ui)">${esc(top[0])}</div><div class="ub-sub">${hmBytes(top[1])} · ${total ? Math.round(top[1] / total * 100) : 0}% всех файлов</div><div class="ub-meter"><i style="width:${total ? Math.round(top[1] / total * 100) : 0}%;background:var(--dv-c5)"></i></div></button>`
           : '<div class="ub-tile static"><div class="ub-lbl">Больше всего места</div><div class="ub-sub" style="margin-top:8px">пока нет</div></div>'}
       </div>
       <div class="ub-head"><h3>Файлы <span>${rows.length}</span></h3>
@@ -6611,17 +6611,17 @@ function flRender() {
       <div class="ub-rows">${rows.map(f => {
         const kind = flKind(f), name = jesc(f.filename), open = FL.open.has(f.filename), openable = kind === 'image' || kind === 'video', ld = flLeftDays(f);
         const act = kind === 'encrypted' ? '<button class="btn btn-ghost btn-sm" disabled title="Вложение секретного чата — открыть нельзя">Зашифровано</button>'
-          : `<button class="btn btn-ghost btn-sm" data-on-click="__h101" data-a="${esc(JSON.stringify([name]))}">${openable ? FL_I.eye + 'Открыть' : FL_I.down + 'Скачать'}</button>`;
-        return `<div class="rb-row"><div class="fb-top" data-on-click="flTog" data-a="${esc(JSON.stringify(["__event", `${name}`]))}">
+          : `<button class="btn btn-ghost btn-sm" data-on-click="__h101" data-a-click="${esc(JSON.stringify([name]))}">${openable ? FL_I.eye + 'Открыть' : FL_I.down + 'Скачать'}</button>`;
+        return `<div class="rb-row"><div class="fb-top" data-on-click="flTog" data-a-click="${esc(JSON.stringify(["__event", `${name}`]))}">
           <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть: ${esc(flName(f))}">${UX_I.chev}</button>
           <div class="fb-name">${flThumbHtml(f, kind)}<div style="min-width:0"><b title="${esc(flName(f))}">${esc(flShort(flName(f)))}</b><span class="rb-meta">${FL_KIND[kind][0]}</span></div></div>
           <div class="fb-sz">${hmBytes(f.size || 0)}<div class="meter"><i style="width:${Math.max(4, (f.size || 0) / max * 100)}%;background:${FL_KIND_COLOR[kind]}"></i></div></div>
           <div class="fb-sd">${f.sender_name ? `${avHtml(f.sender_name, 26, 8, f.sender_id, false, true)}<div style="min-width:0"><div class="l1">${esc(f.sender_name)}</div><div class="l2">${esc(f.chat_name || '—')}</div></div>` : `<div><div class="l1" style="font-weight:500;color:var(--c-muted)">без сообщения</div><div class="l2">${esc(f.chat_name || '—')}</div></div>`}</div>
           <div class="fb-when">${esc(uaSeen(flTs(f)))}${ld != null ? `<small class="${ld <= 3 ? 'w' : ''}">удалится через ${ld} ${uxPlural(ld, 'день', 'дня', 'дней')}</small>` : ''}</div>
-          <div class="ux-actions">${act}<button class="ux-ibtn" aria-label="Ещё действия: ${esc(flName(f))}" aria-haspopup="menu" aria-expanded="false" data-on-click="__h102" data-a="${esc(JSON.stringify([name]))}">${UX_I.more}</button></div></div>
+          <div class="ux-actions">${act}<button class="ux-ibtn" aria-label="Ещё действия: ${esc(flName(f))}" aria-haspopup="menu" aria-expanded="false" data-on-click="__h102" data-a-click="${esc(JSON.stringify([name]))}">${UX_I.more}</button></div></div>
         ${open ? `<div class="fb-exp${FL.fresh === f.filename ? ' fresh' : ''}"><div><div class="fb-big" style="background:${FL_KIND[kind][1]}">${esc((flExt(f) || '?').toUpperCase())}${kind === 'image' ? `<img src="${esc(flUrl(f.filename))}" alt="" data-on-error="this.remove">` : kind === 'video' && f.thumb ? `<img src="${esc(f.thumb)}" alt="" data-on-error="this.remove">` : ''}</div></div>
           <div><h4>О файле</h4><div class="rb-kv"><div><span>Тип</span><b>${FL_KIND[kind][0]}${flExt(f) ? ', .' + esc(flExt(f)) : ''}</b></div><div><span>Размер</span><b>${hmBytes(f.size || 0)}</b></div><div><span>Отправил</span><b>${esc(f.sender_name || '—')}</b></div><div><span>Чат</span><b>${esc(f.chat_name || '—')}${flChatChip(f.chat_type)}</b></div><div><span>Когда</span><b>${esc(uaSeen(flTs(f)))}</b></div><div><span>Удалится</span><b>${ld != null ? `через ${ld} ${uxPlural(ld, 'день', 'дня', 'дней')}` : 'не удаляется'}</b></div></div></div>
-          <div><h4>Действия</h4><div style="display:flex;flex-wrap:wrap;gap:8px">${kind === 'encrypted' ? '' : `${openable ? `<button class="btn btn-ghost btn-sm" data-on-click="flOpen" data-a="${esc(JSON.stringify([`${name}`]))}">${FL_I.eye}Открыть</button>` : ''}<button class="btn btn-ghost btn-sm" data-on-click="flDownload" data-a="${esc(JSON.stringify([`${name}`]))}">${FL_I.down}Скачать</button>`}${f.sender_name ? `<button class="btn btn-ghost btn-sm" data-on-click="flWho" data-a="${esc(JSON.stringify([f.sender_name]))}">Все файлы ${esc(f.sender_name.split(' ')[0])}</button>` : ''}<button class="btn btn-danger btn-sm" data-on-click="flDelete" data-a="${esc(JSON.stringify([['name']]))}">${UX_I.trash}Удалить</button></div>
+          <div><h4>Действия</h4><div style="display:flex;flex-wrap:wrap;gap:8px">${kind === 'encrypted' ? '' : `${openable ? `<button class="btn btn-ghost btn-sm" data-on-click="flOpen" data-a-click="${esc(JSON.stringify([`${name}`]))}">${FL_I.eye}Открыть</button>` : ''}<button class="btn btn-ghost btn-sm" data-on-click="flDownload" data-a-click="${esc(JSON.stringify([`${name}`]))}">${FL_I.down}Скачать</button>`}${f.sender_name ? `<button class="btn btn-ghost btn-sm" data-on-click="flWho" data-a-click="${esc(JSON.stringify([f.sender_name]))}">Все файлы ${esc(f.sender_name.split(' ')[0])}</button>` : ''}<button class="btn btn-danger btn-sm" data-on-click="flDelete" data-a-click="${esc(JSON.stringify([['name']]))}">${UX_I.trash}Удалить</button></div>
             <div class="rm-sub" style="margin-top:10px">После удаления в чате на месте файла останется «Файл удалён».</div></div></div>` : ''}</div>`;
       }).join('') || `<div class="ub-empty">${FL.files.length ? 'Ничего не нашли. Проверьте запрос или фильтры.' : 'Файлов пока нет'}</div>`}</div></div>`;
   });
@@ -6667,12 +6667,12 @@ function flMenu(e, name) {
   const f = FL.files.find(x => x.filename === name);
   const kind = f && flKind(f);
   const openItem = (kind === 'image' || kind === 'video')
-    ? `<button role="menuitem" data-on-click="__h103" data-a="${esc(JSON.stringify([n]))}">${FL_I.eye}Открыть</button>` : '';
-  const dlItem = kind === 'encrypted' ? '' : `<button role="menuitem" data-on-click="__h104" data-a="${esc(JSON.stringify([n]))}">${FL_I.down}Скачать</button>`;
+    ? `<button role="menuitem" data-on-click="__h103" data-a-click="${esc(JSON.stringify([n]))}">${FL_I.eye}Открыть</button>` : '';
+  const dlItem = kind === 'encrypted' ? '' : `<button role="menuitem" data-on-click="__h104" data-a-click="${esc(JSON.stringify([n]))}">${FL_I.down}Скачать</button>`;
   uxOpenMenu(e, 'fl' + name, `
     ${openItem}
     ${dlItem}
-    <hr><button role="menuitem" class="danger" data-on-click="__h105" data-a="${esc(JSON.stringify([n]))}">${UX_I.trash}Удалить файл</button>`);
+    <hr><button role="menuitem" class="danger" data-on-click="__h105" data-a-click="${esc(JSON.stringify([n]))}">${UX_I.trash}Удалить файл</button>`);
 }
 function flDelete(names) {
   if (!names.length) return;
@@ -6693,9 +6693,9 @@ function flDelete(names) {
 function fselHtml(id, placeholder, options, current, handler) {
   const opt = (value, label, active) =>
     `<button class="fsel-opt${active ? ' active' : ''}" data-value="${esc(value)}"` +
-    ` data-on-click="fselPick" data-a="${esc(JSON.stringify([`${id}`, `${handler}`, this.dataset.value]))}">${esc(label)}</button>`;
+    ` data-on-click="fselPick" data-a-click="${esc(JSON.stringify([`${id}`, `${handler}`, this.dataset.value]))}">${esc(label)}</button>`;
   return `<div class="fsel" id="${id}" data-placeholder="${esc(placeholder)}">
-    <button class="fsel-btn${current ? ' on' : ''}" data-on-click="fselToggle" data-a="${esc(JSON.stringify(["__event", `${id}`]))}">
+    <button class="fsel-btn${current ? ' on' : ''}" data-on-click="fselToggle" data-a-click="${esc(JSON.stringify(["__event", `${id}`]))}">
       <span>${esc(current || placeholder)}</span>
       <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
     </button>
@@ -6869,13 +6869,13 @@ function anRender() {
     .filter(a => !q || (a.text || '').toLowerCase().includes(q) || (a.author_name || '').toLowerCase().includes(q));
   const first = active[0];
   const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
-  const flt = ([k, label, n]) => `<button type="button" aria-pressed="${AN.filter === k}" data-on-click="anFilter" data-a="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${n}</span></button>`;
+  const flt = ([k, label, n]) => `<button type="button" aria-pressed="${AN.filter === k}" data-on-click="anFilter" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label}<span class="n">${n}</span></button>`;
   const stackOf = list => { const k = kinds(list); return k.length ? `<div class="ub-stack">${k.map(x => `<i style="flex:${x[1]};background:${AN_KCOLOR[x[0]]}"></i>`).join('')}</div><div class="ub-leg">${k.map(x => `<span><i style="background:${AN_KCOLOR[x[0]]}"></i>${ANN_KINDS[x[0]].label} <b>${x[1]}</b></span>`).join('')}</div>` : ''; };
   uxKeepFocus(() => {
     page.innerHTML = `<div class="ub" id="an-page">
       <div class="ub-tiles">
         <div class="ub-tile static"><div class="ub-lbl">Активно сейчас</div><div class="ub-big">${active.length}<small>${active.length ? uxPlural(active.length, 'полоса', 'полосы', 'полос') : ''}</small></div>
-          ${first ? `${anLeftHtml(first, now)}<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" data-on-click="anStop" data-a="${esc(JSON.stringify([first.id]))}">${AN_I.stop}Снять полосу</button></div>` : '<div class="ub-sub">сейчас ничего не показывается</div>'}</div>
+          ${first ? `${anLeftHtml(first, now)}<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" data-on-click="anStop" data-a-click="${esc(JSON.stringify([first.id]))}">${AN_I.stop}Снять полосу</button></div>` : '<div class="ub-sub">сейчас ничего не показывается</div>'}</div>
         <div class="ub-tile static"><div class="ub-lbl">Запланировано</div><div class="ub-big">${sched.length}</div><div class="ub-sub">${sched[0] ? `ближайшее ${esc(fmtDateTime(sched[0].start_at))}, ${anIn(sched[0].start_at - now)}` : 'ничего не запланировано'}</div>${stackOf(sched)}</div>
         <div class="ub-tile static"><div class="ub-lbl">Отправлено за месяц</div><div class="ub-big">${monthList.length}<small>${uxPlural(monthList.length, 'объявление', 'объявления', 'объявлений')}</small></div>${stackOf(monthList) || '<div class="ub-sub">пока ничего</div>'}</div>
         <div class="ub-tile static" style="display:flex;flex-direction:column;justify-content:space-between"><div><div class="ub-lbl">Новое объявление</div><div class="ub-sub" style="margin-top:6px">Полоса сверху, карточка по центру или строка в чате. Можно запланировать на время.</div></div>
@@ -6888,17 +6888,17 @@ function anRender() {
         const st = anState(a), k = ANN_KINDS[a.kind] || { label: a.kind }, open = AN.open.has(a.id);
         const meta = [[a.kind === 'chat' ? 'Куда' : 'Кому', anTargets(a)], [a.sent_at ? 'Отправлено' : 'Запланировано', fmtDateTime(a.sent_at || a.start_at)], ['Автор', a.author_name || '—']];
         if (a.kind === 'banner') { meta.push(['Показ', `${a.duration_min || 0} мин${st === 'active' ? `, осталось ${fmtLeft(a.expires_at - now)}` : st === 'past' ? ', завершён' : ''}`]); meta.push(['Закрыли', String(a.dismissed_count || 0)]); }
-        return `<div class="rb-row"><div class="an-top" data-on-click="anTog" data-a="${esc(JSON.stringify(["__event", a.id]))}">
+        return `<div class="rb-row"><div class="an-top" data-on-click="anTog" data-a-click="${esc(JSON.stringify(["__event", a.id]))}">
           <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть">${UX_I.chev}</button>
           <div class="fb-name"><div class="kt ${a.kind}">${AN_KI[a.kind] || ''}</div><div style="min-width:0"><div class="an-snip2">${esc(a.text || '')}</div><span class="rb-meta">${k.label}</span></div></div>
           <div class="an-to rb-meta" style="color:var(--c-text);font-size:12.5px" title="${esc((a.target_names || []).join(', '))}">${esc(anTargets(a))}</div>
           <div>${anStatusHtml(a, now)}</div>
           <div class="an-by fb-sd">${a.author_name ? `${avHtml(a.author_name, 24, 7, a.author_id, false, true)}<div class="l1">${esc(a.author_name.split(' ')[0])}</div>` : '<span class="rm-sub">—</span>'}</div>
-          <div class="ux-actions"><button class="btn btn-ghost btn-sm" data-on-click="__h106" data-a="${esc(JSON.stringify([a.id]))}">${AN_I.eye}Открыть</button>
-            <button class="ux-ibtn" aria-label="Ещё действия" aria-haspopup="menu" aria-expanded="false" data-on-click="__h107" data-a="${esc(JSON.stringify([a.id]))}">${UX_I.more}</button></div></div>
+          <div class="ux-actions"><button class="btn btn-ghost btn-sm" data-on-click="__h106" data-a-click="${esc(JSON.stringify([a.id]))}">${AN_I.eye}Открыть</button>
+            <button class="ux-ibtn" aria-label="Ещё действия" aria-haspopup="menu" aria-expanded="false" data-on-click="__h107" data-a-click="${esc(JSON.stringify([a.id]))}">${UX_I.more}</button></div></div>
         ${open ? `<div class="an-exp${AN.fresh === a.id ? ' fresh' : ''}"><div><h4>Как это выглядит</h4>${anPreview(a.kind, a.text || '')}</div>
           <div><h4>Подробности</h4><div class="rb-kv">${meta.map(([n, v]) => `<div><span>${n}</span><b>${esc(v)}</b></div>`).join('')}</div></div>
-          <div><h4>Действия</h4><div style="display:flex;flex-wrap:wrap;gap:8px">${st === 'active' ? `<button class="btn btn-ghost btn-sm" data-on-click="anStop" data-a="${esc(JSON.stringify([a.id]))}">${AN_I.stop}Снять полосу</button>` : ''}${st === 'scheduled' ? `<button class="btn btn-ghost btn-sm" data-on-click="anDelete" data-a="${esc(JSON.stringify([[a.id]]))}">${AN_I.x}Отменить отправку</button>` : ''}<button class="btn btn-ghost btn-sm" data-on-click="anResend" data-a="${esc(JSON.stringify([a.id]))}">${UX_I.refresh}Отправить снова</button><button class="btn btn-danger btn-sm" data-on-click="anDelete" data-a="${esc(JSON.stringify([[a.id]]))}">${UX_I.trash}Удалить</button></div>
+          <div><h4>Действия</h4><div style="display:flex;flex-wrap:wrap;gap:8px">${st === 'active' ? `<button class="btn btn-ghost btn-sm" data-on-click="anStop" data-a-click="${esc(JSON.stringify([a.id]))}">${AN_I.stop}Снять полосу</button>` : ''}${st === 'scheduled' ? `<button class="btn btn-ghost btn-sm" data-on-click="anDelete" data-a-click="${esc(JSON.stringify([[a.id]]))}">${AN_I.x}Отменить отправку</button>` : ''}<button class="btn btn-ghost btn-sm" data-on-click="anResend" data-a-click="${esc(JSON.stringify([a.id]))}">${UX_I.refresh}Отправить снова</button><button class="btn btn-danger btn-sm" data-on-click="anDelete" data-a-click="${esc(JSON.stringify([[a.id]]))}">${UX_I.trash}Удалить</button></div>
             <div class="rm-sub" style="margin-top:10px">«Отправить снова» открывает новое объявление с тем же текстом${a.target === 'select' ? '; получателей нужно выбрать заново' : ''}.</div></div></div>` : ''}</div>`;
       }).join('') || `<div class="ub-empty">${AN.list.length ? 'Ничего не нашли. Проверьте запрос или фильтр.' : 'Объявлений пока не было'}</div>`}</div></div>`;
   });
@@ -6959,10 +6959,10 @@ function anMenu(e, id) {
   if (!a) return;
   const st = anState(a);
   uxOpenMenu(e, 'an' + id, `
-    <button role="menuitem" data-on-click="__h108" data-a="${esc(JSON.stringify([id]))}">${AN_I.eye}Открыть</button>
-    ${st === 'active' ? `<button role="menuitem" data-on-click="__h109" data-a="${esc(JSON.stringify([id]))}">${AN_I.stop}Снять полосу</button>` : ''}
-    ${st === 'scheduled' ? `<button role="menuitem" data-on-click="__h110" data-a="${esc(JSON.stringify([id]))}">${AN_I.x}Отменить отправку</button>` : ''}
-    <hr><button role="menuitem" class="danger" data-on-click="__h110" data-a="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить</button>`);
+    <button role="menuitem" data-on-click="__h108" data-a-click="${esc(JSON.stringify([id]))}">${AN_I.eye}Открыть</button>
+    ${st === 'active' ? `<button role="menuitem" data-on-click="__h109" data-a-click="${esc(JSON.stringify([id]))}">${AN_I.stop}Снять полосу</button>` : ''}
+    ${st === 'scheduled' ? `<button role="menuitem" data-on-click="__h110" data-a-click="${esc(JSON.stringify([id]))}">${AN_I.x}Отменить отправку</button>` : ''}
+    <hr><button role="menuitem" class="danger" data-on-click="__h110" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить</button>`);
 }
 
 // Превью по стилям веб-клиента: полоса, карточка поверх затемнённого окна, строка в ленте
@@ -6993,12 +6993,12 @@ function anView(id) {
   document.getElementById('an-view-form').innerHTML = `
     <div class="ua-head">${avHtml(a.author_name || '?', 38, 10, a.author_id, false, true)}
       <div><div class="ua-title">Объявление · ${k.label}</div><div class="ua-sub">${esc(a.author_name || '—')} · ${esc(fmtDateTime(a.sent_at || a.start_at))}</div></div>
-      <button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a='["modal-ann-view"]'>✕</button></div>
+      <button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-ann-view"]'>✕</button></div>
     <div class="ua-body">${anPreview(a.kind, a.text)}
       <dl class="an-meta">${meta.map(([n, v]) => `<dt>${n}</dt><dd>${esc(v)}</dd>`).join('')}</dl></div>
-    <div class="ua-foot"><button type="button" class="btn btn-danger btn-sm" data-on-click="__h111" data-a="${esc(JSON.stringify([a.id]))}">${UX_I.trash}Удалить</button><span class="ux-grow"></span>
-      ${st === 'active' ? `<button type="button" class="btn btn-ghost" data-on-click="__h112" data-a="${esc(JSON.stringify([a.id]))}">${AN_I.stop}Снять полосу</button>` : ''}
-      <button type="button" class="btn ux-solid" data-on-click="closeModal" data-a='["modal-ann-view"]'>Закрыть</button></div>`;
+    <div class="ua-foot"><button type="button" class="btn btn-danger btn-sm" data-on-click="__h111" data-a-click="${esc(JSON.stringify([a.id]))}">${UX_I.trash}Удалить</button><span class="ux-grow"></span>
+      ${st === 'active' ? `<button type="button" class="btn btn-ghost" data-on-click="__h112" data-a-click="${esc(JSON.stringify([a.id]))}">${AN_I.stop}Снять полосу</button>` : ''}
+      <button type="button" class="btn ux-solid" data-on-click="closeModal" data-a-click='["modal-ann-view"]'>Закрыть</button></div>`;
   openModal('modal-ann-view');
 }
 
@@ -7063,7 +7063,7 @@ function anRenderForm(focusId) {
   const chat = f.kind === 'chat', miss = anMissing(f);
   const quick = `<div class="ua-sec">
       <div class="an-kinds ua-roles" role="radiogroup" aria-label="Тип объявления">${Object.entries(ANN_KINDS).map(([k, v]) =>
-        `<button type="button" class="ua-role-opt" role="radio" aria-checked="${f.kind === k}" data-on-click="anSet" data-a="${esc(JSON.stringify(["kind", `${k}`]))}"><b>${v.label}</b><span>${ANN_HINTS[k]}</span></button>`).join('')}</div>
+        `<button type="button" class="ua-role-opt" role="radio" aria-checked="${f.kind === k}" data-on-click="anSet" data-a-click="${esc(JSON.stringify(["kind", `${k}`]))}"><b>${v.label}</b><span>${ANN_HINTS[k]}</span></button>`).join('')}</div>
       <div class="ua-field"><label for="an-text">Текст</label>
         <div class="ua-inp an-area"><textarea id="an-text" placeholder="Что сказать людям" data-on-input="__h113">${esc(f.text)}</textarea></div></div>
       <div class="ua-field fm-pv"><label>Так увидят</label><div id="an-pv">${anPreview(f.kind, f.text.trim())}</div></div></div>`;
@@ -7073,16 +7073,16 @@ function anRenderForm(focusId) {
     { id: 'w', t: 'Когда', su: whenSu, body: `<div class="ua-row2">
         <div class="ua-field"><label>Когда</label>
           <div class="dtp">
-            <button type="button" class="dtp-field" data-on-click="dtpToggle" data-a='["__event"]'>
+            <button type="button" class="dtp-field" data-on-click="dtpToggle" data-a-click='["__event"]'>
               <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
               <span class="dtp-val" id="dtp-val">${annStartAt ? esc(fmtDateTime(annStartAt)) : 'Сейчас'}</span>
               <span class="dtp-reset" id="dtp-reset" style="${annStartAt ? '' : 'display:none'}" data-on-click="__h114">✕</span>
             </button>
             <div class="dtp-pop" id="dtp-pop" hidden>
               <div class="dtp-head">
-                <button type="button" class="dtp-nav" aria-label="Предыдущий месяц" data-on-click="dtpShiftMonth" data-a='[-1]'>‹</button>
+                <button type="button" class="dtp-nav" aria-label="Предыдущий месяц" data-on-click="dtpShiftMonth" data-a-click='[-1]'>‹</button>
                 <div class="dtp-head-title" id="dtp-title"></div>
-                <button type="button" class="dtp-nav" aria-label="Следующий месяц" data-on-click="dtpShiftMonth" data-a='[1]'>›</button>
+                <button type="button" class="dtp-nav" aria-label="Следующий месяц" data-on-click="dtpShiftMonth" data-a-click='[1]'>›</button>
               </div>
               <div class="dtp-grid" id="dtp-grid"></div>
               <div class="dtp-foot">
@@ -7097,10 +7097,10 @@ function anRenderForm(focusId) {
         ${f.kind === 'banner' ? `<div class="ua-field"><label for="an-dur">Показывать, мин</label>
           <div class="ua-inp"><input id="an-dur" type="number" min="1" max="10080" value="${f.duration}" data-on-input="__h115"></div>
           <span class="ua-hint">Потом полоса исчезнет сама</span></div>` : '<div></div>'}</div>` },
-    { id: 'a', t: chat ? 'Куда' : 'Кому', su: audSu, body: `<div class="an-seg"><button type="button" aria-pressed="${!f.pick && !f.sp}" data-on-click="anMode" data-a='["all"]'>${chat ? 'Во все группы и комнаты' : 'Всем'}</button>
-        ${WS.list.length > 1 ? `<button type="button" aria-pressed="${f.sp}" data-on-click="anMode" data-a='["spaces"]'>По пространствам</button>` : ''}
-        <button type="button" aria-pressed="${f.pick}" data-on-click="anMode" data-a='["pick"]'>${chat ? 'Выбрать чаты' : 'Выбрать людей'}</button></div>
-      ${f.sp ? `<div class="ws-checks">${WS.list.map(w => `<label class="ua-check"><input type="checkbox" ${f.spSel.has(w.id) ? 'checked' : ''} data-on-change="anSp" data-a="${esc(JSON.stringify([w.id, "__checked"]))}">${esc(w.name)}<span>${w.users} ${uxPlural(w.users, 'человек', 'человека', 'человек')}</span></label>`).join('')}</div>
+    { id: 'a', t: chat ? 'Куда' : 'Кому', su: audSu, body: `<div class="an-seg"><button type="button" aria-pressed="${!f.pick && !f.sp}" data-on-click="anMode" data-a-click='["all"]'>${chat ? 'Во все группы и комнаты' : 'Всем'}</button>
+        ${WS.list.length > 1 ? `<button type="button" aria-pressed="${f.sp}" data-on-click="anMode" data-a-click='["spaces"]'>По пространствам</button>` : ''}
+        <button type="button" aria-pressed="${f.pick}" data-on-click="anMode" data-a-click='["pick"]'>${chat ? 'Выбрать чаты' : 'Выбрать людей'}</button></div>
+      ${f.sp ? `<div class="ws-checks">${WS.list.map(w => `<label class="ua-check"><input type="checkbox" ${f.spSel.has(w.id) ? 'checked' : ''} data-on-change="anSp" data-a-change="${esc(JSON.stringify([w.id, "__checked"]))}">${esc(w.name)}<span>${w.users} ${uxPlural(w.users, 'человек', 'человека', 'человек')}</span></label>`).join('')}</div>
         <span class="ua-hint">${chat ? 'Строка появится в группах и комнатах, где есть люди из отмеченных пространств' : 'Объявление получат люди из отмеченных пространств'}</span>` : ''}
       ${f.pick ? pkSummary('ann', chat ? 'Выбрать чаты…' : 'Выбрать людей…') : ''}
       ${f.kind === 'popup' ? '<span class="ua-hint">Всплывающее увидят только те, кто сейчас в сети</span>' : ''}` },
@@ -7108,10 +7108,10 @@ function anRenderForm(focusId) {
   uaRestoreFocus(() => {
     el.innerHTML = `
       <div class="ua-head"><div><div class="ua-title">Новое объявление</div><div class="ua-sub">Тип, текст и куда отправить</div></div>
-        <button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a='["modal-announcement"]'>✕</button></div>
+        <button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-announcement"]'>✕</button></div>
       <div class="ua-body">${quick}${fmMoreHtml('an', f.more, 'anMore', secs)}</div>
       <div class="ua-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}<span class="fm-note ${miss.length ? '' : 'ok'}" id="an-note">${fmNote(miss)}</span>
-        <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a='["modal-announcement"]'>Отмена</button>
+        <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a-click='["modal-announcement"]'>Отмена</button>
         <button type="button" class="btn ux-solid" id="an-go" ${f.busy || miss.length ? 'disabled' : ''} data-on-click="sendAnnouncement">${f.busy ? 'Отправляю…' : anVerb()}</button></div>${pkSheet()}`;
   }, focusId);
 }
@@ -7225,7 +7225,7 @@ function dtpRender() {
     const cls = ['dtp-day'];
     if (+date === +today) cls.push('today');
     if (_dtpDay && +date === +_dtpDay) cls.push('sel');
-    cells.push(`<button type="button" class="${cls.join(' ')}" ${past?'disabled':''} data-on-click="dtpPick" data-a="${esc(JSON.stringify([y, m, d]))}">${d}</button>`);
+    cells.push(`<button type="button" class="${cls.join(' ')}" ${past?'disabled':''} data-on-click="dtpPick" data-a-click="${esc(JSON.stringify([y, m, d]))}">${d}</button>`);
   }
   document.getElementById('dtp-grid').innerHTML = cells.join('');
   // В месяце может стать на строку больше — при раскрытии вверх пересчитываем
