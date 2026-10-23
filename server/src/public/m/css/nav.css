@@ -15,7 +15,7 @@
 
 /* шторки (page sheet): ручка, заголовок, закрытие свайпом вниз */
 .shl, .asl { position: absolute; inset: 0; pointer-events: none; }
-.shl { z-index: 30; } .asl { z-index: 40; }
+.shl { z-index: 30; } .asl { z-index: 60; }   /* выше просмотра фото и видео (.lbx 55): его меню «⋯» открывается поверх него */
 .shl.on, .asl.on { pointer-events: auto; }
 .shb, .asb { position: absolute; inset: 0; background: rgba(0, 0, 0, .4); opacity: 0; transition: opacity .35s; }
 .on > .shb, .on > .asb { opacity: 1; }
