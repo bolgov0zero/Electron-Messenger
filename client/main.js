@@ -144,6 +144,13 @@ function getAssetPattern() {
   return /\.deb$/i;
 }
 
+// Запоминает адрес и контрольную сумму установочного файла из последнего релиза GitHub для этой платформы
+async function refreshPendingUpdate() {
+  const data = JSON.parse(await httpsGet(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`));
+  const asset = data.assets?.find(a => getAssetPattern().test(a.name));
+  _pendingUpdate = asset ? { url: asset.browser_download_url, sha256: sha256Of(asset.digest) } : null;
+}
+
 ipcMain.handle('check-update', async () => {
   try {
     diag('Обновление: проверяю наличие новой версии');
@@ -166,7 +173,12 @@ ipcMain.handle('install-update', async (e, downloadUrl) => {
     console.error('[Update] Отклонён недоверенный адрес:', downloadUrl);
     return { error: 'Недоверенный адрес обновления' };
   }
-  // Ставим только тот файл, адрес и контрольная сумма которого получены при проверке обновления
+  // Ставим только тот файл, адрес и контрольная сумма которого получены от GitHub. При дистанционном обновлении
+  // адрес приходит от сервера без предварительной проверки в этом приложении: сверяем его со свежим ответом GitHub
+  if (!_pendingUpdate || _pendingUpdate.url !== downloadUrl) {
+    try { await refreshPendingUpdate(); }
+    catch (err) { diag(`ОШИБКА: проверка обновления не удалась (${err.message})`); return { error: 'Не удалось проверить обновление: ' + err.message }; }
+  }
   if (!_pendingUpdate || _pendingUpdate.url !== downloadUrl) {
     console.error('[Update] Адрес не совпадает с найденным обновлением:', downloadUrl);
     return { error: 'Адрес обновления не совпадает с найденным. Проверьте обновление ещё раз' };
