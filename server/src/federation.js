@@ -284,8 +284,8 @@ async function attach(peer, { ws, nonce, sendKey, recvKey }) {
   if (old && old.ws !== ws) { try { old.ws.close(4000, 'replaced'); } catch {} }
   const sess = { ws, nonce, sendKey, recvKey, sendCtr: 0, recvCtr: 0, peerId: peer.id, sentMax: 0, chain: Promise.resolve(), alive: true };
   sessions.set(peer.id, sess);
-  stat(peer.id, 'reconnects');
-  await dal.run('UPDATE fed_peers SET last_contact_at = unixepoch() WHERE id = ?', peer.id);
+  // Обработчики входящих кадров подключаем до первого await: запрос к PostgreSQL идёт заметное время, и кадры,
+  // пришедшие за него, терялись бы (у ws событие без слушателя пропадает), а счётчик кадров сбивался
   ws.on('pong', () => { sess.alive = true; });
   sess.ping = setInterval(() => {
     if (!sess.alive) { try { ws.terminate(); } catch {} return; }
@@ -299,6 +299,8 @@ async function attach(peer, { ws, nonce, sendKey, recvKey }) {
     await dropVirtualsVia(peer.id);
   });
   ws.on('error', () => {});
+  stat(peer.id, 'reconnects');
+  await dal.run('UPDATE fed_peers SET last_contact_at = unixepoch() WHERE id = ?', peer.id);
   await flush(peer.id);
   await syncPresence(peer.id);
   groups().sendCaps(peer.id);
@@ -457,36 +459,49 @@ async function onRelay(hopSess, f) {
   await onFrame(vs, Buffer.from(f.d, 'base64'), true);
 }
 
-async function onFrame(sess, raw, isBinary) {
+// Действующий сосед сессии; если его отключили или удалили, соединение закрываем
+async function activePeer(sess) {
   const peer = await peerRow(sess.peerId);
-  if (!peer || peer.status !== 'active') { try { sess.ws.close(4003, 'denied'); } catch {} return; }
-  if (raw?.length) stat(peer.id, 'bytes_in', raw.length);
+  if (!peer || peer.status !== 'active') { try { sess.ws.close(4003, 'denied'); } catch {} return null; }
+  return peer;
+}
+async function onFrame(sess, raw, isBinary) {
+  // Кадр расшифровывается сразу, до любого await. Счётчики кадров идут строго по порядку, а запросы к PostgreSQL
+  // завершаются в произвольном порядке: если читать кадр после запроса, два пришедших подряд кадра читались бы
+  // наоборот, и соединение рвалось бы с «bad frame» (очередь копилась, связь пропадала)
   const f = readFrame(sess, raw, isBinary);
+  if (raw?.length) stat(sess.peerId, 'bytes_in', raw.length);
   if (!f) { try { sess.ws.close(4004, 'bad frame'); } catch {} return; }
   sess.lastRx = Date.now();
   switch (f.t) {
-    case 'rl': if (!sess.virt) await onRelay(sess, f); return;
+    case 'rl':
+      // Сквозные кадры тоже должны идти по порядку: ставим в очередь соединения
+      if (!sess.virt) sess.rl = (sess.rl || Promise.resolve()).then(() => onRelay(sess, f)).catch(e => console.warn('[Fed] сквозной кадр:', e.message));
+      return;
     case 'vping': sendFrame(sess, { t: 'vpong' }); return;
     case 'vpong': return;
     case 'ev': {
-      if (!f.seq) { handleEvent(peer, f.ev).catch(e => console.warn('[Fed] событие:', e.message)); return; }
-      const ack = () => sendFrame(sess, { t: 'ack', seq: f.seq });
-      // have — до какого номера мы уже приняли: если он выше номеров, которые выдавал отправитель, у того сбросился счётчик очереди
-      if (f.seq <= peer.last_in_seq) { sendFrame(sess, { t: 'ack', seq: f.seq, have: peer.last_in_seq }); return; }
+      if (!f.seq) { const peer = await activePeer(sess); if (peer) handleEvent(peer, f.ev).catch(e => console.warn('[Fed] событие:', e.message)); return; }
+      // События с номером обрабатываются строго по порядку: встают в очередь сразу, а проверки и запросы к базе идут внутри неё
       sess.chain = sess.chain.then(async () => {
+        const peer = await activePeer(sess);
+        if (!peer) return;
+        const ack = () => sendFrame(sess, { t: 'ack', seq: f.seq });
+        // have — до какого номера мы уже приняли: если он выше номеров, которые выдавал отправитель, у того сбросился счётчик очереди
+        if (f.seq <= peer.last_in_seq) { sendFrame(sess, { t: 'ack', seq: f.seq, have: peer.last_in_seq }); return; }
         try { await handleEvent(peer, f.ev); } catch (e) { console.warn('[Fed] событие', f.ev?.k, e.message); }
         await dal.run('UPDATE fed_peers SET last_in_seq = MAX(last_in_seq, ?), last_contact_at = unixepoch() WHERE id = ?', f.seq, peer.id);
         ack();
-      });
+      }).catch(e => console.warn('[Fed] очередь событий:', e.message));
       return;
     }
     case 'ack':
       // Сосед принял номера выше всех, что выдавали мы: после переноса или восстановления базы счётчик очереди у нас
       // сбросился, а наши события он принимал за повторы. Поднимаем счётчик и отправляем очередь под новыми номерами
-      if (Number(f.have) > 0 && Number(f.have) > (await dal.seq('fed_outbox'))) { await rebaseOutbox(peer.id, Number(f.have)); return; }
-      await dal.run('DELETE FROM fed_outbox WHERE peer_id = ? AND id <= ?', peer.id, Number(f.seq) || 0);
+      if (Number(f.have) > 0 && Number(f.have) > (await dal.seq('fed_outbox'))) { await rebaseOutbox(sess.peerId, Number(f.have)); return; }
+      await dal.run('DELETE FROM fed_outbox WHERE peer_id = ? AND id <= ?', sess.peerId, Number(f.seq) || 0);
       return;
-    case 'req': handleReq(peer, sess, f).catch(e => sendFrame(sess, { t: 'res', rid: f.rid, ok: false, err: e.message || 'error' })); return;
+    case 'req': { const peer = await activePeer(sess); if (peer) handleReq(peer, sess, f).catch(e => sendFrame(sess, { t: 'res', rid: f.rid, ok: false, err: e.message || 'error' })); return; }
     case 'res': case 'chunk': case 'end': onReply(f); return;
   }
 }
