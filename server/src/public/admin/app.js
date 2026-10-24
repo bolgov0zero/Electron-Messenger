@@ -3468,7 +3468,7 @@ function chRender() {
       <div class="ub-head"><h3>Чаты и группы <span>${rows.length}</span></h3>
         <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все', allChats.length], ['group', 'Группы', groups], ['direct', 'Личные', allChats.length - groups], ['empty', 'Пустые', empty.length]].map(flt).join('')}</div>
         <div class="ub-sort" role="group" aria-label="Сортировка">${sortBtn('last', 'По времени')}${sortBtn('act', 'По активности')}${sortBtn('name', 'По имени')}</div>
-        ${empty.length ? `<button class="btn btn-ghost btn-sm" data-on-click="chDelete" data-a-click="${esc(JSON.stringify([JSON.stringify(empty.map(c => c.id))]))}">${UX_I.trash}Удалить пустые · ${empty.length}</button>` : ''}
+        ${empty.length ? `<button class="btn btn-ghost btn-sm" data-on-click="chDelete" data-a-click="${esc(JSON.stringify([empty.map(c => c.id)]))}">${UX_I.trash}Удалить пустые · ${empty.length}</button>` : ''}
         ${uxSearch('ch-q', CH.q, 'Название или участник', 'chSearch')}</div>
       <div class="ub-rows">${rows.map(c => {
         const open = CH.open.has(c.id), p = rbPresence(c, U), [from, to] = c.type === 'direct' ? chPair(c) : [];
@@ -3743,7 +3743,7 @@ function clTiles() {
       <div class="ub-big">${busy || waiting.length}<small>${busy ? 'в процессе' : 'устарели'}</small></div>
       <div class="ub-sub">Последняя ${CL.latest ? esc(CL.latest) : 'неизвестна'}${CL.checkedAt ? ` · проверено в ${uxClock(CL.checkedAt)}` : ''}</div>
       <div class="row ub-acts" style="margin-top:10px;gap:8px;display:flex;align-items:center">
-        ${waiting.length ? `<button class="btn ux-solid btn-sm" data-on-click="clUpdate" data-a-click="${esc(JSON.stringify([JSON.stringify(waiting.map(c => c.connId))]))}">${UX_I.up}Обновить устаревшие · ${waiting.length}</button>`
+        ${waiting.length ? `<button class="btn ux-solid btn-sm" data-on-click="clUpdate" data-a-click="${esc(JSON.stringify([waiting.map(c => c.connId)]))}">${UX_I.up}Обновить устаревшие · ${waiting.length}</button>`
           : electron.length && CL.latest && !busy ? `<span class="cl-ver ok">${UX_I.check}Все на последней версии</span>` : ''}${check}</div></div>`;
 }
 
@@ -3781,8 +3781,8 @@ function clRender() {
       <div class="ub-head"><h3>Клиенты <span>${rows.length}</span></h3>
         <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все', n.all], ['old', 'Нужно обновить', n.old, true], ['electron', 'Electron', n.electron], ['web', 'Веб и PWA', n.web]].map(flt).join('')}</div>
         ${uxSearch('cl-q', CL.q, 'Человек, компьютер или IP', 'clSearch')}${CL.sel.size ? `<div class="ux-bulk"><b>Выбрано: ${CL.sel.size}</b>
-        <button class="btn btn-ghost btn-sm" ${selOld.length ? '' : 'disabled'} data-on-click="clUpdate" data-a-click="${esc(JSON.stringify([JSON.stringify(selOld.map(c => c.connId))]))}">${UX_I.up}Обновить · ${selOld.length}</button>
-        <button class="btn btn-ghost btn-sm" ${selElectron.length ? '' : 'disabled'} data-on-click="clRestart" data-a-click="${esc(JSON.stringify([JSON.stringify(selElectron.map(c => c.connId))]))}">${UX_I.restart}Перезапустить</button>
+        <button class="btn btn-ghost btn-sm" ${selOld.length ? '' : 'disabled'} data-on-click="clUpdate" data-a-click="${esc(JSON.stringify([selOld.map(c => c.connId)]))}">${UX_I.up}Обновить · ${selOld.length}</button>
+        <button class="btn btn-ghost btn-sm" ${selElectron.length ? '' : 'disabled'} data-on-click="clRestart" data-a-click="${esc(JSON.stringify([selElectron.map(c => c.connId)]))}">${UX_I.restart}Перезапустить</button>
         <button class="btn btn-ghost btn-sm" data-on-click="__h53">${UX_I.logout}Завершить сеансы</button>
         <span class="ux-grow"></span><button class="btn btn-ghost btn-sm" data-on-click="__h54">Снять выделение</button></div>` : ''}</div>
       <div class="ub-rows">${rows.map(c => `<div class="cb-row${CL.sel.has(c.connId) ? ' sel' : ''}" data-k="${c.connId}">
@@ -3951,7 +3951,7 @@ function psRender() {
         <div class="ub-tile static"><div class="ub-lbl">Уведомления включены</div><div class="ub-big">${withPush.size}<small>из ${people.length}</small></div><div class="ub-sub">охват ${cover}%</div><div class="ub-meter"><i style="width:${cover}%;background:var(--c-primary)"></i></div></div>
         <div class="ub-tile static"><div class="ub-lbl">Не включили</div><div class="ub-big">${without.length}<small>${uxPlural(without.length, 'человек', 'человека', 'человек')}</small></div><div class="ub-sub" style="white-space:normal">${without.length ? `${esc(shown)}. Они узнают о сообщениях, только открыв чат.` : 'Уведомления включили все'}</div></div>
         <div class="ub-tile static" style="display:flex;flex-direction:column;justify-content:space-between"><div><div class="ub-lbl">Проверка доставки</div><div class="ub-sub" style="margin-top:6px">Тестовое уведомление уйдёт на все устройства. Видно, куда дошло, а куда нет.</div></div>
-          <button class="btn ux-solid btn-sm" style="align-self:flex-start;margin-top:10px" ${PS.subs.length ? '' : 'disabled'} data-on-click="psTest" data-a-click="${esc(JSON.stringify([JSON.stringify(PS.subs.map(s => s.id))]))}">${PS_BELL}Проверить всех</button></div>
+          <button class="btn ux-solid btn-sm" style="align-self:flex-start;margin-top:10px" ${PS.subs.length ? '' : 'disabled'} data-on-click="psTest" data-a-click="${esc(JSON.stringify([PS.subs.map(s => s.id)]))}">${PS_BELL}Проверить всех</button></div>
       </div>
       <div class="ub-head"><h3>Подписки <span>${rows.length}</span></h3>
         <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все', ppl.length], ...services.map(k => [k, PS_SVC[k][0], ppl.filter(p => p.subs.some(s => s.svc === k)).length])].map(flt).join('')}</div>
@@ -3963,7 +3963,7 @@ function psRender() {
           <div class="rb-name">${avHtml(p.name, 36, 10, p.user_id, false, true)}<div style="min-width:0"><div class="rb-nl"><b>${esc(p.name)}</b></div><div class="ux-login">@${esc(p.username)}</div></div></div>
           <div class="pg-h2" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="rb-meta" style="margin-right:2px">${p.subs.length} ${uxPlural(p.subs.length, 'устройство', 'устройства', 'устройств')}</span>${svcs.map(psChip).join('')}</div>
           <div class="pg-h1 rb-meta">с ${esc(uaSeen(since))}</div>
-          <div class="ux-actions"><button class="btn btn-ghost btn-sm" title="Тестовое уведомление на все устройства человека" data-on-click="__h58" data-a-click="${esc(JSON.stringify([JSON.stringify(ids)]))}">${PS_BELL}Проверить</button>
+          <div class="ux-actions"><button class="btn btn-ghost btn-sm" title="Тестовое уведомление на все устройства человека" data-on-click="__h58" data-a-click="${esc(JSON.stringify([ids]))}">${PS_BELL}Проверить</button>
             <button class="ux-ibtn" aria-label="Ещё действия: ${esc(p.name)}" aria-haspopup="menu" aria-expanded="false" data-on-click="__h59" data-a-click="${esc(JSON.stringify([p.user_id]))}">${UX_I.more}</button></div></div>
         ${open ? `<div class="pg-exp${PS.fresh === p.user_id ? ' fresh' : ''}" style="grid-template-columns:minmax(0,1fr)"><div><h4>Устройства</h4><div style="display:flex;flex-direction:column;gap:8px">${p.subs.map(s => `<div class="pg-dev">${psChip(s.svc)}<span class="h">${esc(s.host || '—')}</span><span class="rb-meta">подписан ${esc(uaSeen(s.created_at))}</span>
           <div class="ux-actions"><button class="btn btn-ghost btn-sm" data-on-click="psTest" data-a-click="${esc(JSON.stringify([[s.id]]))}">${PS_BELL}Проверить</button><button class="ux-ibtn" aria-label="Удалить подписку" title="Удалить подписку" data-on-click="psDelete" data-a-click="${esc(JSON.stringify([[s.id]]))}">${UX_I.trash}</button></div></div>`).join('')}</div></div></div>` : ''}</div>`;
@@ -3982,8 +3982,8 @@ function psTog(e, uid) {
 function psPMenu(e, uid) {
   const ids = PS.subs.filter(s => s.user_id === uid).map(s => s.id);
   uxOpenMenu(e, 'psp' + uid, `
-    <button role="menuitem" data-on-click="__h60" data-a-click="${esc(JSON.stringify([JSON.stringify(ids)]))}">${PS_BELL}Проверить все устройства</button>
-    <hr><button role="menuitem" class="danger" data-on-click="__h61" data-a-click="${esc(JSON.stringify([JSON.stringify(ids)]))}">${UX_I.trash}Удалить подписки</button>`);
+    <button role="menuitem" data-on-click="__h60" data-a-click="${esc(JSON.stringify([ids]))}">${PS_BELL}Проверить все устройства</button>
+    <hr><button role="menuitem" class="danger" data-on-click="__h61" data-a-click="${esc(JSON.stringify([ids]))}">${UX_I.trash}Удалить подписки</button>`);
 }
 
 function psFilter(k) { PS.filter = k; PS.sel.clear(); psRender(); }
