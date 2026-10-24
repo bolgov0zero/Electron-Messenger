@@ -148,6 +148,10 @@ async function clearVirtualRow(inst) {
   if (p && p.virt) { await endVirtual(p.id, true); await dal.run('DELETE FROM fed_peers WHERE id = ?', p.id); }
 }
 const sessions = new Map();   // peer.id → сессия (аутентифицированное соединение)
+// Рукопожатие «ты живой? — я живой!»: раз в HB_MS сервер, который подключался (role = out), шлёт запрос, второй отвечает.
+// Время обмена видно в админке (вкладка «Подключения»). Если сосед уже отвечал, а потом молчит дольше HB_DEAD_MS, связь считаем потерянной
+const HB_MS = 20000, HB_DEAD_MS = 65000;
+const lastHs = new Map();      // peer.id → время последнего рукопожатия в этой сессии, мс
 const dialers = new Map();    // peer.id → { timer, ws, backoff, stopped } (исходящие соединения)
 const pending = new Map();    // rid → ожидающий ответа запрос
 const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME });
@@ -289,16 +293,23 @@ async function attach(peer, { ws, nonce, sendKey, recvKey }) {
   ws.on('pong', () => { sess.alive = true; });
   sess.ping = setInterval(() => {
     if (!sess.alive) { try { ws.terminate(); } catch {} return; }
+    // Сосед уже отвечал на «ты живой?», а теперь молчит: он завис или связь пропала, не дожидаясь системного таймаута
+    if (sess.hs && Date.now() - sess.hsAt > HB_DEAD_MS) { console.warn('[Fed] нет ответа на «ты живой?»:', peer.instance_id); try { ws.terminate(); } catch {} return; }
     sess.alive = false; try { ws.ping(); } catch {}
   }, 25000);
   ws.on('message', async (raw, isBinary) => (await onFrame(sess, raw, isBinary)));
   ws.on('close', async () => {
-    clearInterval(sess.ping);
-    if (sessions.get(peer.id) === sess) { sessions.delete(peer.id); await onOffline(peer.id); }
+    clearInterval(sess.ping); clearInterval(sess.hbTimer); clearTimeout(sess.hbFirst);
+    if (sessions.get(peer.id) === sess) { sessions.delete(peer.id); lastHs.delete(peer.id); await onOffline(peer.id); }
     for (const [rid, p] of pending) if (p.peerId === peer.id) { pending.delete(rid); clearTimeout(p.timer); p.fail(new Error('offline')); }
     await dropVirtualsVia(peer.id);
   });
   ws.on('error', () => {});
+  if (peer.role === 'out') {
+    const sendHb = () => { sess.hbN = (sess.hbN || 0) + 1; sendFrame(sess, { t: 'hbq', n: sess.hbN }); };
+    sess.hbFirst = setTimeout(sendHb, 1500);
+    sess.hbTimer = setInterval(sendHb, HB_MS);
+  }
   stat(peer.id, 'reconnects');
   await dal.run('UPDATE fed_peers SET last_contact_at = unixepoch() WHERE id = ?', peer.id);
   await flush(peer.id);
@@ -459,6 +470,12 @@ async function onRelay(hopSess, f) {
   await onFrame(vs, Buffer.from(f.d, 'base64'), true);
 }
 
+// Рукопожатие состоялось: запоминаем время (в памяти и в базе, чтобы после перезапуска было видно, когда сосед был на связи)
+function touchHs(sess) {
+  sess.hs = true; sess.hsAt = Date.now();
+  lastHs.set(sess.peerId, sess.hsAt);
+  dal.run('UPDATE fed_peers SET last_contact_at = unixepoch() WHERE id = ?', sess.peerId).catch(() => {});
+}
 // Действующий сосед сессии; если его отключили или удалили, соединение закрываем
 async function activePeer(sess) {
   const peer = await peerRow(sess.peerId);
@@ -478,6 +495,8 @@ async function onFrame(sess, raw, isBinary) {
       // Сквозные кадры тоже должны идти по порядку: ставим в очередь соединения
       if (!sess.virt) sess.rl = (sess.rl || Promise.resolve()).then(() => onRelay(sess, f)).catch(e => console.warn('[Fed] сквозной кадр:', e.message));
       return;
+    case 'hbq': if (!sess.virt) { sendFrame(sess, { t: 'hba', n: f.n }); touchHs(sess); } return;
+    case 'hba': if (!sess.virt) touchHs(sess); return;
     case 'vping': sendFrame(sess, { t: 'vpong' }); return;
     case 'vpong': return;
     case 'ev': {
@@ -1327,7 +1346,8 @@ async function peersInfo() {
   return (await Promise.all((await dal.all('SELECT * FROM fed_peers WHERE virt = 0 ORDER BY created_at, id')).map(async p => ({
     id: p.id, instance_id: p.instance_id, name: p.name, url: p.url, role: p.role, status: p.status, fp: fingerprint(p.pub),
     online: isOnline(p.id), proto: p.proto || 0, last_contact_at: p.last_contact_at, created_at: p.created_at, queue: (await queueSize(p.id)),
-    people: (await dal.get('SELECT COUNT(*) c FROM contacts c JOIN users s ON s.id = c.contact_id WHERE s.is_bot = 2 AND s.fed_instance = ?', p.instance_id)).c,
+    // Сколько секунд назад было рукопожатие (null — в этой сессии ещё не было или сосед не умеет), и период обмена
+    hs_ago: isOnline(p.id) && lastHs.has(p.id) ? Math.max(0, (Date.now() - lastHs.get(p.id)) / 1000) : null, hs_period: HB_MS / 1000,
     ver: p.ver || '',
   }))));
 }

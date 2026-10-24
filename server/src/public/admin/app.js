@@ -3297,7 +3297,20 @@ function uaRenderPassword(focusId) {
         <button class="btn ux-solid" ${f.busy ? 'disabled' : ''}>${f.busy ? 'Сохраняю…' : 'Сохранить пароль'}</button></div>`;
   }, focusId);
 }
-const uaRerender = focusId => UA.passId ? uaRenderPassword(focusId) : uaRenderForm(focusId);
+const uaRerender = focusId => { const r = UA.passId ? uaRenderPassword(focusId) : uaRenderForm(focusId); uaWsFit(); return r; };
+// Список пространств лежит внутри прокручиваемого тела окна: если снизу он не помещается и уходит под кнопки,
+// открываем его вверх (когда сверху места больше), иначе прокручиваем окно, чтобы список был виден целиком
+function uaWsFit() {
+  const pop = document.querySelector('#ua-ws .uaws-pop');
+  if (!pop || pop.hidden) return;
+  const body = pop.closest('.ua-body, .modal-body'), btn = document.querySelector('#ua-ws .uaws-btn');
+  if (!body || !btn) return;
+  pop.classList.remove('up');
+  const b = body.getBoundingClientRect(), r = btn.getBoundingClientRect(), h = pop.offsetHeight + 8;
+  const below = b.bottom - r.bottom, above = r.top - b.top;
+  if (h > below && above > below) pop.classList.add('up');
+  else if (h > below) pop.scrollIntoView({ block: 'nearest' });
+}
 
 function uaSet(key, value, rerender, focusId) {
   const f = UA.form;
@@ -5823,7 +5836,7 @@ const FD = { me: null, peers: [], rules: { new_per_hour: 20, invites_per_hour: 2
 const fdPlural = (n) => uxPlural(n, 'человек', 'человека', 'человек');
 async function fdLoad() {
   const r = await api('GET', '/api/admin/federation');
-  if (r && !r.error && r.me) { FD.me = r.me; FD.peers = r.peers || []; FD.rules = r.rules || FD.rules; }
+  if (r && !r.error && r.me) { FD.me = r.me; FD.peers = r.peers || []; FD.rules = r.rules || FD.rules; FD.loadedAt = Date.now(); }
   const nb = document.getElementById('nb-federation');
   if (nb) nb.textContent = FD.peers.length;
   return r;
@@ -5885,6 +5898,7 @@ function fdRender() {
 }
 function fdEdit(k) { FD.edit = k; fdRender(); if (k) { const el = document.getElementById('fd-' + k); if (el) { el.focus(); el.select(); } } }
 const FD_I = {
+  clock: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   ins: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17"/><path d="M17 17H7V7"/></svg>',
   outs: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>',
   key: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>',
@@ -5899,14 +5913,45 @@ const FD_I = {
   shield: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>',
   trash: '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
 };
+// Время последнего рукопожатия: сегодня «13:34», вчера «вчера 22:17», раньше «23 окт 22:17»
+function fdClock(ts) {
+  const d = new Date(ts * 1000), t0 = new Date(); t0.setHours(0, 0, 0, 0);
+  const hm = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  if (d >= t0) return hm;
+  if (d >= new Date(t0.getTime() - 86400000)) return 'вчера ' + hm;
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '') + ' ' + hm;
+}
+// Капсула: наш сервер, пунктир, удалённый сервер, время последнего рукопожатия. Раз в период обмена по пунктиру
+// бежит оранжевая точка (от того, кто начинает обмен), кольцо вокруг его точки отсчитывает время до следующего.
+// Анимация начинается с поправкой на то, сколько секунд назад было рукопожатие, поэтому перерисовка списка её не сбивает
+function fdCap(p) {
+  const paused = p.status === 'paused', on = !paused && p.online, inb = p.role === 'in';
+  const live = on && p.hs_ago != null, per = p.hs_period || 20;
+  const age = live ? p.hs_ago + (Date.now() - (FD.loadedAt || Date.now())) / 1000 : 0;
+  const ph = live ? `animation-delay:-${(age % per).toFixed(2)}s` : '';
+  const ring = `<svg class="fh-ring" viewBox="0 0 27 27" aria-hidden="true"><circle class="tr" cx="13.5" cy="13.5" r="11" pathLength="100"/><circle class="pg" cx="13.5" cy="13.5" r="11" pathLength="100" style="${ph}"/></svg>`;
+  const node = (cls, starts, gets) => `<span class="fh-nw"><span class="fh-node ${cls}${live && gets ? ' fl' : ''}" ${live && gets ? `style="${ph}"` : ''}></span>${live && starts ? ring : ''}</span>`;
+  const dir = inb ? 'to-l' : 'to-r';
+  const clock = p.last_contact_at ? fdClock(p.last_contact_at) : '—';
+  const full = p.last_contact_at ? new Date(p.last_contact_at * 1000).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'обмена ещё не было';
+  const state = paused ? 'Приостановлено' : on ? (live ? 'Связь есть' : 'Связь есть, но сосед ещё не умеет обмен «ты живой?»: обновите его') : 'Нет связи';
+  return `<div class="fh-cap${!on && !paused ? ' lost' : ''}" role="img" aria-label="${esc(state + '. Последнее рукопожатие: ' + clock)}" title="${esc(state + '. Последнее рукопожатие: ' + full)}">
+    ${node('', !inb, inb)}
+    <div class="fh-wire ${on ? 'on ' + dir : paused ? 'stop' : 'dead'}">${live ? `<span class="fh-dot ${dir}" style="${ph}"></span>` : ''}</div>
+    ${node(paused ? 'off' : on ? '' : 'bad', inb, !inb)}
+    <span class="fh-sep"></span>
+    <span class="fh-tm${!on && !paused ? ' bad' : ''}">${FD_I.clock}${esc(clock)}</span>
+  </div>`;
+}
 function fdPeers() {
   if (!FD.peers.length) return `<div class="fd-empty"><div><b>Соединений пока нет</b><span>Подключите сервер партнёра ключом активации, и его люди появятся у вас в контактах.</span></div><button class="btn ux-solid btn-sm" ${FD.me?.configured ? '' : 'disabled title="Сначала задайте идентификатор"'} data-on-click="fdChoose">+ Подключить сервер</button></div>`;
   return FD.peers.map((p, i) => {
     const st = p.status === 'paused' ? 'off' : !p.online ? 'warn' : '';
     const word = p.status === 'paused' ? '<span class="fd-w">приостановлено</span>' : !p.online ? '<span class="fd-w warn">нет связи</span>' : '';
     const paused = p.status === 'paused';
-    return `<div class="fd-r"><span class="fd-dot ${st}"></span><div class="fd-bd"><div class="fd-nm"><b>${esc(p.name)}</b><code>${esc(p.instance_id)}</code>${p.ver ? `<span class="fd-ver" title="${p.online ? 'Версия сервера' : 'Последняя известная версия сервера'}">v${esc(p.ver)}</span>` : ''}${word}</div>
-      <div class="fd-meta"><span class="fd-dir" title="${p.role === 'in' ? 'Они подключаются к нам сами' : 'Мы подключаемся к ним'}">${p.role === 'in' ? FD_I.ins + 'они к нам' : FD_I.outs + 'мы к ним'}</span><span>${p.last_contact_at ? esc(uaSeen(p.last_contact_at)) : 'обмена не было'}</span><span>${p.people} ${fdPlural(p.people)}</span>${p.queue ? `<span class="q">очередь ${p.queue}</span>` : ''}</div></div>
+    return `<div class="fd-r"><div class="fd-bd"><div class="fd-nm"><b>${esc(p.name)}</b><code>${esc(p.instance_id)}</code>${p.ver ? `<span class="fd-ver" title="${p.online ? 'Версия сервера' : 'Последняя известная версия сервера'}">v${esc(p.ver)}</span>` : ''}${word}</div>
+      <div class="fd-meta"><span class="fd-dir" title="${p.role === 'in' ? 'Они подключаются к нам сами' : 'Мы подключаемся к ним'}">${p.role === 'in' ? FD_I.ins + 'они к нам' : FD_I.outs + 'мы к ним'}</span>${p.queue ? `<span class="q">очередь ${p.queue}</span>` : ''}</div></div>
+      ${fdCap(p)}
       <div class="fd-ac"><button class="fd-kb" type="button" aria-label="Действия" data-on-click="__h93" data-a-click="${esc(JSON.stringify([i]))}"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>${FD.menu === i ? `<div class="fd-menu"><button type="button" data-on-click="fdFp" data-a-click="${esc(JSON.stringify([i]))}">${FD_I.key}Отпечаток ключа</button><button type="button" data-on-click="fdPause" data-a-click="${esc(JSON.stringify([i]))}">${paused ? FD_I.play + 'Возобновить' : FD_I.pause + 'Приостановить'}</button><hr><button type="button" class="dg" data-on-click="fdDelete" data-a-click="${esc(JSON.stringify([i]))}">${FD_I.trash}Удалить соединение</button></div>` : ''}</div></div>`;
   }).join('');
 }
