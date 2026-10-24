@@ -1189,7 +1189,8 @@ function setSidebarTab(tab) {
   if (_nb) {
     const c = tab === 'contacts';
     _nb.title = c ? 'Добавить контакт' : 'Новый чат';
-    _nb.setAttribute('onclick', c ? 'openAddContact()' : 'openNewChat()');
+    _nb.setAttribute('data-on-click', c ? 'openAddContact' : 'openNewChat');
+    _nb.setAttribute('data-a-click', '[]');
     _nb.innerHTML = c ? NB_ICON_CONTACT : NB_ICON_CHAT;
   }
   document.querySelectorAll('.sb-tab').forEach(el => el.classList.toggle('on', el.dataset.tab === tab));
@@ -1676,7 +1677,7 @@ function csPaneModules() {
     return `<div class="cs-r"><div class="cs-l"><b>${esc(m.title)}${m.provider ? ` <span class="cs-pill">${esc(m.provider)}</span>` : ''}</b>
       <span>${esc(m.description)}${csIsApp() && m.needsDownload && !m.on && mb ? ` При включении загружается около ${mb} МБ.` : ''}</span>
       ${st ? `<span class="cs-mod-st">${st}</span>` : ''}</div>
-      <div class="cs-ctl">${m.on && m.needsDownload ? `<button type="button" class="cs-btn ghost" ${m.busy ? 'disabled' : ''} data-on-click="csModuleRedo" data-a-click="${esc(JSON.stringify([`${m.key}`]))}">Перекачать</button>` : ''}${csTg(m.on, `csModuleToggle('${m.key}')`, esc(m.title))}</div></div>`;
+      <div class="cs-ctl">${m.on && m.needsDownload ? `<button type="button" class="cs-btn ghost" ${m.busy ? 'disabled' : ''} data-on-click="csModuleRedo" data-a-click="${esc(JSON.stringify([`${m.key}`]))}">Перекачать</button>` : ''}${csTg(m.on, 'csModuleToggle', esc(m.title), m.key)}</div></div>`;
   }).join('')}</div>
     ${list.filter(m => m.note && (m.provider || (!csIsApp() && m.on))).map(m => `<p class="cs-hint">${esc(m.note)}</p>`).join('')}`;
 }
@@ -5495,7 +5496,8 @@ function showDownloadSuccessToast() {
 function updateAttachmentButtons(url, localPath) {
   document.querySelectorAll(`.bubble-file[data-att-url="${CSS.escape(url)}"]`).forEach(el => {
     el.classList.add('bubble-file-done');
-    el.setAttribute('onclick', `openDownloadedFile('${localPath.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')`);
+    el.setAttribute('data-on-click', 'openDownloadedFile');
+    el.setAttribute('data-a-click', JSON.stringify([localPath]));
     const icon = el.querySelector('.dl-icon');
     if (icon) icon.outerHTML = `<span class="bubble-file-open-label">Открыть</span>`;
   });
@@ -7469,7 +7471,7 @@ function gmRow(m, chat, perms, pending) {
   const contact = !pending && !self && needsContact(m.id) ? `<button class="gm-mini" data-on-click="__h34" data-a-click="${esc(JSON.stringify([m.id]))}">В контакты</button>` : '';
   const kick = (pending || (perms.canEdit && !self && m.id !== chat.created_by)) && perms.canEdit
     ? `<button class="gm-x" title="${pending ? 'Отменить приглашение' : 'Убрать из группы'}" aria-label="${pending ? 'Отменить приглашение' : 'Убрать из группы'}" data-on-click="__h35" data-a-click="${esc(JSON.stringify([m.id, !!pending]))}">${gmSvg('x', 15)}</button>` : '';
-  return `<div class="gm-row${pending ? ' pend' : ''}" ${self || pending ? '' : `onclick="gmOpenMember(${m.id})"`}>${gmAv(m)}<div class="gm-nm"><b>${esc(m.display_name || m.username || '')}${self ? ' (вы)' : ''}</b><span class="gm-l">${esc(login)}</span></div>${contact}${right}${kick}</div>`;
+  return `<div class="gm-row${pending ? ' pend' : ''}" ${self || pending ? '' : `data-on-click="gmOpenMember" data-a-click="${esc(JSON.stringify([m.id]))}"`}>${gmAv(m)}<div class="gm-nm"><b>${esc(m.display_name || m.username || '')}${self ? ' (вы)' : ''}</b><span class="gm-l">${esc(login)}</span></div>${contact}${right}${kick}</div>`;
 }
 function gmFilter(list, q) {
   q = q.trim().toLowerCase();

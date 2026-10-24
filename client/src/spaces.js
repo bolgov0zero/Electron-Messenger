@@ -81,7 +81,7 @@ function updateSpaceBadges() {
 function csSpacesRows() {
   const on = spacesOn(), n = S.sharedSpaces.length;
   return `<div class="cs-gt">Пространства</div>
-    <div class="cs-g"><div class="cs-r"><div class="cs-l"><b>Отображать пространства</b><span>${n ? 'Бар покажет «Общий вид» и все ваши пространства: выбор оставит в списках людей из него и чаты с ними' : 'Пространства объединяют людей. Сейчас вы ни в одном не состоите'}</span></div>${csTg(on, 'csSpacesRail()', 'Отображать пространства')}</div></div>`;
+    <div class="cs-g"><div class="cs-r"><div class="cs-l"><b>Отображать пространства</b><span>${n ? 'Бар покажет «Общий вид» и все ваши пространства: выбор оставит в списках людей из него и чаты с ними' : 'Пространства объединяют людей. Сейчас вы ни в одном не состоите'}</span></div>${csTg(on, 'csSpacesRail', 'Отображать пространства')}</div></div>`;
 }
 function csSpacesRail() {
   S.settings.spacesRail = !spacesOn();
