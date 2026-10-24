@@ -10,10 +10,11 @@ async function run(dal) {
 
   // Администратор по умолчанию
   if ((await dal.get('SELECT COUNT(*) AS c FROM users')).c === 0) {
+    const initial = require('./initialpass').pick();
     const r = await dal.run('INSERT INTO users (username, password_hash, display_name, is_admin, must_change_password) VALUES (?, ?, ?, 1, 1)',
-      'admin', bcrypt.hashSync('admin', 10), 'Administrator');
+      'admin', bcrypt.hashSync(initial.password, 10), 'Administrator');
     await dal.run('INSERT INTO user_workspaces (user_id, workspace_id) VALUES (?, 1) ON CONFLICT DO NOTHING', r.lastId);
-    console.log('Created default admin: admin / admin (потребуется смена пароля при первом входе)');
+    require('./initialpass').used(initial);
   }
 
   // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)

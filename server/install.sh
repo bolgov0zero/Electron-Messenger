@@ -67,7 +67,8 @@ TOTAL=${#NAMES[@]}
 CONF_DIR="${ELECTRON_CONF_DIR:-/etc/electron}"
 MODE="install"            # install — установка или обновление, pgonly — только PostgreSQL на готовом сервере
 DB_ENGINE=""              # sqlite | postgres
-FRESH=0                   # 1 — сервера ещё не было (создаётся администратор по умолчанию)
+FRESH=0                   # 1 — сервера ещё не было (создаётся первый администратор)
+ADMIN_PASS=""             # пароль первого администратора (только при FRESH=1), показывается в конце установки
 CUR_K=0                   # номер выполняемого шага (шаги пишут по нему свои заметки)
 ST=()                     # состояние шагов: pend / run / ok / warn / err
 TM=()                     # время шагов
@@ -414,15 +415,40 @@ step_tools() {
     return 10
   fi
 }
+# Случайный пароль из 8 читаемых знаков (без 0 o 1 l i). Байты от 248 отбрасываем, чтобы буквы выпадали поровну
+gen_pass() {
+  local a=abcdefghjkmnpqrstuvwxyz23456789 s="" b
+  while [ ${#s} -lt 8 ]; do
+    for b in $(od -An -N16 -tu1 /dev/urandom); do
+      [ "$b" -lt 248 ] && s+="${a:$((b % 31)):1}"
+      [ ${#s} -ge 8 ] && break
+    done
+  done
+  printf '%s' "$s"
+}
 step_start() {
   local i
   live "ожидание порта $PORT"
+  # Пароль первого администратора: сервер возьмёт его при создании учётной записи и удалит файл
+  if [ "$FRESH" = 1 ] && [ -n "$ADMIN_PASS" ]; then
+    mkdir -p "$CONF_DIR"; chmod 700 "$CONF_DIR"
+    ( umask 077; printf '%s\n' "$ADMIN_PASS" > "$CONF_DIR/admin.pass" )
+  fi
   systemctl restart "$SERVICE_NAME"
   for i in $(seq 1 40); do
-    if systemctl is-active --quiet "$SERVICE_NAME" && (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; then return 0; fi
+    if systemctl is-active --quiet "$SERVICE_NAME" && (exec 3<>"/dev/tcp/127.0.0.1/$PORT") 2>/dev/null; then
+      # Порт открыт, а файл на месте: администратор не создавался (в базе уже были пользователи), пароль не действует
+      if [ -f "$CONF_DIR/admin.pass" ]; then rm -f "$CONF_DIR/admin.pass"; : > "$STATE_DIR/adminpass.skipped"; fi
+      return 0
+    fi
     sleep 0.5
   done
   return 1
+}
+# Строка «Вход» для итогового экрана
+login_text() {
+  if [ -e "$STATE_DIR/adminpass.skipped" ]; then echo "admin  (пароль не создавался, база не новая)"
+  else echo "admin / $ADMIN_PASS  (сменить при входе)"; fi
 }
 
 # ═════════════ Запуск шагов ═════════════
@@ -621,7 +647,7 @@ done_box() {
   for w in "${warns[@]}"; do ui_plain "$bc" "$C_Y" "   $w"; echo; done
   ui_blank "$bc"; echo
   ui_label "$bc" "Адрес" "http://$ip:$PORT" "$C_C"; echo
-  [ "$FRESH" = 1 ] && { ui_label "$bc" "Вход" "admin / admin  (сменить при входе)" "$C_W"; echo; }
+  [ "$FRESH" = 1 ] && { ui_label "$bc" "Вход" "$(login_text)" "$C_W"; echo; }
   ui_label "$bc" "Админка" "http://$ip:$PORT/admin" "$C_0"; echo
   ui_blank "$bc"; echo
   ui_plain "$bc" "$C_D" " Дальше"; echo
@@ -690,6 +716,7 @@ main() {
   else echo "✗ Неизвестный дистрибутив. Установите Node.js 20+ вручную."; exit 1; fi
 
   server_installed || FRESH=1
+  [ "$FRESH" = 1 ] && ADMIN_PASS="$(gen_pass)"
 
   # ── Экран 1: проверка сервера ──
   ui_screen
@@ -748,7 +775,7 @@ main() {
   if [ "$FINAL" = warn ]; then echo "${C_Y}${I_WARN} Сервер запущен, но не всё получилось${C_0}"
   else echo "${C_G}${I_OK} Сервер запущен${C_0} ${C_D}за $(fmt_time $(( (SECONDS - T_STEPS) * 1000 )))${C_0}"; fi
   echo "  http://$ip:$PORT"
-  [ "$FRESH" = 1 ] && echo "  Вход: admin / admin (смена пароля при первом входе)"
+  [ "$FRESH" = 1 ] && echo "  Вход: $(login_text)"
   echo "  electron — панель управления"
 }
 

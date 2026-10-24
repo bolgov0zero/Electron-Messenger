@@ -444,10 +444,11 @@ try {
 // Default admin
 const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get();
 if (userCount.c === 0) {
-  const hash = bcrypt.hashSync('admin', 10);
+  const initial = require('./initialpass').pick();
+  const hash = bcrypt.hashSync(initial.password, 10);
   db.prepare('INSERT INTO users (username, password_hash, display_name, is_admin, must_change_password) VALUES (?, ?, ?, 1, 1)')
     .run('admin', hash, 'Administrator');
-  console.log('Created default admin: admin / admin (потребуется смена пароля при первом входе)');
+  require('./initialpass').used(initial);
 }
 
 // Уже работающие установки: если у admin до сих пор дефолтный пароль — требуем смену.
