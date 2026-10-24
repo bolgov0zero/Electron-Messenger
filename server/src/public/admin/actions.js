@@ -114,3 +114,6 @@ window.__h112 = function (el, ev, a) { closeModal('modal-ann-view'); anStop(a[0]
 window.__h113 = function (el, ev, a) { AN.form.text = el.value; document.getElementById('an-pv').innerHTML = anPreview(AN.form.kind, el.value.trim()); anFootSync() };
 window.__h114 = function (el, ev, a) { ev.stopPropagation();dtpReset() };
 window.__h115 = function (el, ev, a) { AN.form.duration = el.value; anFootSync() };
+// Общие обработчики для элементов, у которых раньше в атрибуте было this.…(): act.js вызывает их с this = элемент
+window.clsRemove = function (c) { this.classList.remove(c); };
+window.elRemove = function () { this.remove(); };
