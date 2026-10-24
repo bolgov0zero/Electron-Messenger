@@ -77,7 +77,15 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json({ limit: '10mb' }));
+// Страницы со скриптами по относительным адресам (admin, m) должны открываться со слэшем на конце: иначе браузер
+// ищет act.js и app.js в корне сайта и получает 404. Без слэша отправляем на адрес со слэшем (как /chat)
+const withSlash = base => (req, res, next) => {
+  if (req.originalUrl.split('?')[0] !== base) return next();   // маршрут без слэша совпадает и с «/admin/»
+  const q = req.originalUrl.indexOf('?');
+  res.redirect(301, base + '/' + (q >= 0 ? req.originalUrl.slice(q) : ''));
+};
 // index.html админки — всегда свежий: HTTP-кэш уже приводил к устаревшей админке после обновления
+app.get('/admin', withSlash('/admin'));
 app.get(['/admin', '/admin/', '/admin/index.html'], (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.sendFile(path.join(__dirname, 'public/admin/index.html'));
@@ -145,6 +153,7 @@ app.use('/shared', express.static(path.join(__dirname, 'public/shared')));
 // /m — мобильный клиент (PWA для iOS), отдельный от /chat; тот же принцип
 // подмены версии в index.html, чтобы не залипал в HTTP-кэше между релизами
 const M_INDEX = path.join(__dirname, 'public/m/index.html');
+app.get('/m', withSlash('/m'));
 app.get(['/m', '/m/', '/m/index.html'], (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   try {
