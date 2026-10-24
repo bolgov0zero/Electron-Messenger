@@ -5929,7 +5929,7 @@ function fdCap(p) {
   const live = on && p.hs_ago != null, per = p.hs_period || 20;
   const age = live ? p.hs_ago + (Date.now() - (FD.loadedAt || Date.now())) / 1000 : 0;
   const ph = live ? `animation-delay:-${(age % per).toFixed(2)}s` : '';
-  const ring = `<svg class="fh-ring" viewBox="0 0 27 27" aria-hidden="true"><circle class="tr" cx="13.5" cy="13.5" r="11" pathLength="100"/><circle class="pg" cx="13.5" cy="13.5" r="11" pathLength="100" style="${ph}"/></svg>`;
+  const ring = `<svg class="fh-ring" viewBox="0 0 27 27" aria-hidden="true"><circle class="tr" cx="13.5" cy="13.5" r="11" pathLength="100"/><circle class="pg" cx="13.5" cy="13.5" r="11" pathLength="100" transform="rotate(-90 13.5 13.5)" style="${ph}"/></svg>`;
   const node = (cls, starts, gets) => `<span class="fh-nw"><span class="fh-node ${cls}${live && gets ? ' fl' : ''}" ${live && gets ? `style="${ph}"` : ''}></span>${live && starts ? ring : ''}</span>`;
   const dir = inb ? 'to-l' : 'to-r';
   const clock = p.last_contact_at ? fdClock(p.last_contact_at) : '—';

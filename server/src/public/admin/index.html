@@ -922,14 +922,15 @@ tbody tr:hover td{background:var(--c-surface2)}
 .fd-meta .q{color:var(--c-orange-text);font-weight:600}
 .fd-ac{position:relative}
 /* Капсула «рукопожатия»: наш сервер, пунктир, удалённый сервер, время последнего обмена */
-.fh-cap{display:flex;align-items:center;gap:12px;width:268px;box-sizing:border-box;padding:7px 14px 7px 16px;border-radius:99px;background:var(--c-surface2);border:1px solid var(--c-border)}
+.fh-cap{display:flex;align-items:center;gap:4px;width:268px;height:39px;box-sizing:border-box;padding:0 14px 0 8px;border-radius:99px;background:var(--c-surface2);border:1px solid var(--c-border)}
 .fh-cap.lost{border-color:color-mix(in srgb,var(--c-red) 35%,var(--c-border))}
-.fh-nw{position:relative;flex:none;width:11px;height:11px}
+/* Точка и кольцо лежат в одной нечётной ячейке 27×27 и центруются целыми пикселями (высота капсулы 37 внутри рамки) */
+.fh-nw{position:relative;flex:none;width:27px;height:27px;display:grid;place-items:center}
 .fh-node{display:block;width:11px;height:11px;border-radius:50%;background:var(--c-green);box-shadow:0 0 0 3px color-mix(in srgb,var(--c-green) 20%,transparent)}
 .fh-node.bad{background:var(--c-red);box-shadow:0 0 0 3px color-mix(in srgb,var(--c-red) 20%,transparent)}
 .fh-node.off{background:var(--c-muted);opacity:.55;box-shadow:0 0 0 3px color-mix(in srgb,var(--c-muted) 14%,transparent)}
 .fh-node.fl{animation:fh-flash 20s ease-out infinite}
-.fh-ring{position:absolute;left:-8px;top:-8px;width:27px;height:27px;transform:rotate(-90deg);pointer-events:none}
+.fh-ring{position:absolute;left:0;top:0;width:27px;height:27px;pointer-events:none}
 .fh-ring circle{fill:none;stroke-width:2;stroke-linecap:round}
 .fh-ring .tr{stroke:color-mix(in srgb,var(--c-muted) 22%,transparent)}
 .fh-ring .pg{stroke:var(--c-orange);stroke-dasharray:100;stroke-dashoffset:0;animation:fh-drain 20s linear infinite}
@@ -948,8 +949,8 @@ tbody tr:hover td{background:var(--c-surface2)}
 @keyframes fh-dot-r{0%{left:0%;opacity:0}1%{opacity:1}7%{left:100%;opacity:1}8%{left:100%;opacity:0}100%{left:100%;opacity:0}}
 @keyframes fh-flash{0%,6.5%{transform:scale(1)}8%{transform:scale(1.55)}14%,100%{transform:scale(1)}}
 @keyframes fh-drain{0%{stroke-dashoffset:0}100%{stroke-dashoffset:100}}
-.fh-sep{width:1px;height:18px;background:var(--c-border);flex:none}
-.fh-tm{display:flex;align-items:center;gap:6px;min-width:56px;font-size:12px;color:var(--c-text2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.fh-sep{width:1px;height:17px;margin-left:8px;background:var(--c-border);flex:none}
+.fh-tm{display:flex;align-items:center;gap:6px;min-width:56px;font-size:12px;line-height:15px;color:var(--c-text2);font-variant-numeric:tabular-nums;white-space:nowrap}
 .fh-tm svg{width:13px;height:13px;flex:none}
 .fh-tm.bad{color:var(--c-red-text)}
 @media (prefers-reduced-motion:reduce){.fh-wire::before,.fh-dot,.fh-node.fl{animation:none!important}.fh-ring .pg{animation:none!important}}
