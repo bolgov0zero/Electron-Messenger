@@ -2890,7 +2890,7 @@ function uaMenu(e, id) {
   const self = currentUser?.id === id, devices = (u.clients || []).length;
   uxOpenMenu(e, 'ua' + id, `
     <button role="menuitem" data-on-click="__h35" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.key}Сменить пароль</button>
-    <button role="menuitem" data-on-click="uaDevices" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.laptop}Устройства</button>
+    <button role="menuitem" data-on-click="uaDevicesOpen" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.laptop}Устройства</button>
     <button role="menuitem" ${devices ? '' : 'disabled'} data-on-click="__h36" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.logout}Завершить сеансы${devices ? `<small>${devices}</small>` : ''}</button>
     <button role="menuitem" ${self ? 'disabled' : ''} data-on-click="uaBanMenu" data-a-click="${esc(JSON.stringify([id, !!u.banned]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button>
     <hr><button role="menuitem" class="danger" ${self ? 'disabled' : ''} data-on-click="__h38" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить</button>`);
@@ -2905,7 +2905,7 @@ const dvcDate = ts => {
   const d = new Date(ts * 1000);
   return `${d.getDate()} ${d.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '')} ${d.getFullYear()}, ${d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
 };
-async function uaDevices(id) {
+async function uaDevicesOpen(id) {
   uxCloseMenu();
   DVC.uid = id; DVC.list = []; DVC.busy = false;
   const name = allUsers.find(u => u.id === id)?.display_name || '';
