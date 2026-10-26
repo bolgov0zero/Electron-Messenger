@@ -1175,3 +1175,9 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 .cs-body::-webkit-scrollbar{display:none}
 
 .cs-sn-ic svg { width: var(--ic-m); height: var(--ic-m); }
+
+/* Выбранный пункт бара: плитка рисуется самой кнопкой (её копирует плашка выбора), полоска у края едет вместе с ней */
+.fld-btn.active { background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow); }
+.fld-btn.active .fld-ic { background: transparent; box-shadow: none; }
+.fld-btn.ss-mute::before { opacity: 0; }
+.acc-rail .ss-ghost::before { content: ""; position: absolute; left: -14px; top: 14px; width: 4px; height: 20px; border-radius: 0 4px 4px 0; background: var(--accent); }

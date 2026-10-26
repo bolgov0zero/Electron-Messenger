@@ -18,7 +18,8 @@
     // клиент и веб
     { b: '.seg', i: 'button', o: '.active' },
     { b: '.cs-seg', i: 'button', o: A },
-    { b: '.sidebar-tabbar', i: '.sb-tab', o: '.on' },   // нижняя панель сайдбара веб клиента
+    { b: '.sidebar-tabbar', i: '.sb-tab', o: '.on' },
+    { b: '.acc-rail', i: '.fld-btn', o: '.active' },   // бар папок и пространств веб клиента: плитка и полоска едут вместе   // нижняя панель сайдбара веб клиента
     { b: '.ep-sw', i: 'button', o: A },
     { b: '.anx-sg', i: 'button', o: A },
     { b: '.anx-types', i: 'button', o: '[aria-checked="true"]', above: true },
