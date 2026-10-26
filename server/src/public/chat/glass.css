@@ -627,3 +627,67 @@ html.dark .anx-solid { color: #fff; }
 .sb-tab svg { width: 20px; height: 20px; }
 .sb-tab:hover:not(.on) { color: var(--text); }
 .sb-tab.on { background: var(--gl2); color: var(--accent); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px var(--gl-shadow); }
+
+/* ══════════════════════════════════════════════════════════════
+   Как в макете: выделение строки, меню «+», полоска в баре
+   ══════════════════════════════════════════════════════════════ */
+:root { --gl-hov: rgba(255, 255, 255, .34); }
+html.dark { --gl-hov: rgba(255, 255, 255, .08); }
+
+/* Строки списка (чаты, темы, контакты): наведение — светлая подложка, выбранная — приподнятое стекло, которое переезжает пружиной */
+.chats-list .chat-item:hover::after, .topics-panel .chat-item:hover::after, .chats-list .pp-row:hover::after { background: var(--gl-hov); }
+.chats-list .chat-item.active:hover::after, .topics-panel .chat-item.active:hover::after { background: var(--gl2); }
+.chats-list .pp-row::after, .chats-list .pp-row.cg-first::after, .chats-list .pp-row.cg-last::after { inset: 1px 2px; border-radius: 18px; transition: background .2s; }
+.chats-list .chat-item::after, .topics-panel .chat-item::after { transition: background .2s; }
+.ss-ghost { z-index: -1; }
+
+/* Меню «+» над полем ввода: слева над кнопкой, стекло, пружинное появление снизу-слева */
+.composer-main .up-menu {
+  left: 0; bottom: 64px; width: auto; min-width: 230px; padding: 6px; border-radius: 18px;
+  display: flex; flex-direction: column; gap: 2px; transform-origin: bottom left;
+}
+.composer-main .up-menu[hidden] { display: none; }
+.composer-main .up-menu:not([hidden]) { animation: glMenuIn .45s var(--gl-spring) both; }
+.composer-main .up-menu.pop-out { animation: glMenuOut .2s ease-in forwards !important; }
+@keyframes glMenuIn { from { opacity: 0; transform: translateY(10px) scale(.92); } to { opacity: 1; transform: none; } }
+@keyframes glMenuOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(10px) scale(.92); } }
+.composer-main .up-menu button { height: 42px; padding: 0 14px; gap: 12px; border-radius: 13px; font-size: 14px; font-weight: 500; }
+.composer-main .up-menu button svg { width: 18px; height: 18px; color: var(--accent); }
+.composer-main .up-menu button.on { background: var(--accent-soft); }
+@media (prefers-reduced-motion: reduce) { .composer-main .up-menu:not([hidden]) { animation: none; } }
+
+/* Полоска выбранного пункта бара: как в макете, срезана по краю панели (видна внутренняя часть шириной 2 px) */
+.acc-rail:not([hidden]) { clip-path: inset(1px -400px 1px 1px); }
+
+/* ══════════════════════════════════════════════════════════════
+   Интерактивное стекло: наведение, блик за курсором, пружина при нажатии (макет: .gi)
+   ══════════════════════════════════════════════════════════════ */
+:root { --gl-spotlight: rgba(255, 255, 255, .55); }
+html.dark { --gl-spotlight: rgba(255, 255, 255, .20); }
+.composer-main .composer-attach, .composer-main .send-btn, .reaction-btn, .strip-back, .sb-tab.on, .chat-header-main { position: relative; }
+.chat-header-main::after, .composer-main .composer-attach::after, .composer-main .send-btn::after, .scroll-bottom-btn::after,
+.reaction-btn::after, .strip-back::after, .sb-tab.on::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .2s;
+  background: radial-gradient(90px circle at var(--mx, 50%) var(--my, 50%), var(--gl-spotlight), transparent 70%);
+}
+.chat-header-main:not(:has([data-on-click]))::after { display: none; }
+.chat-header-main:hover::after, .composer-main .composer-attach:hover::after, .composer-main .send-btn:hover::after, .scroll-bottom-btn:hover::after,
+.reaction-btn:hover::after, .strip-back:hover::after, .sb-tab.on:hover::after { opacity: 1; }
+.composer-main .send-btn:not(.ready):hover { background: var(--gl2); }
+.scroll-bottom-btn:active { transform: scale(.95); }
+
+/* Шапка: аватар и название — одна капсула; если по ней можно нажать, при наведении она проявляется стеклом */
+.chat-header-main {
+  flex: 0 1 auto; min-width: 0; max-width: calc(100% - 140px); padding: 6px 14px 6px 6px; border: 1px solid transparent; border-radius: 999px;
+  transition: transform .35s var(--gl-spring), background .2s, border-color .2s, box-shadow .2s;
+}
+.chat-header-actions { margin-left: auto; }
+.chat-header-main:has([data-on-click]) { cursor: pointer; }
+.chat-header-main:has([data-on-click]):hover { background: var(--gl2); border-color: var(--gl-edge); box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow); }
+.chat-header-main:has([data-on-click]):active { transform: scale(.97); }
+@media (prefers-reduced-motion: reduce) { .chat-header-main:active, .scroll-bottom-btn:active { transform: none; } }
+
+/* Зелёная точка у подписи «в сети» */
+.chat-header .ch-sub.gl-online::before {
+  content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px; vertical-align: 1px; border-radius: 50%; background: var(--presence-online);
+}
