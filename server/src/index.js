@@ -164,6 +164,10 @@ app.get(['/m', '/m/', '/m/index.html'], (req, res) => {
   }
 });
 app.use('/m', express.static(path.join(__dirname, 'public/m')));
+// /beta — кликабельные макеты нового оформления (мобильный и для компьютера): статические страницы без доступа к данным
+app.get('/beta', (req, res, next) => (req.originalUrl.split('?')[0] !== '/beta' ? next() : res.redirect(301, '/beta/')));   // маршрут без слэша совпадает и с «/beta/»
+app.use('/beta', (req, res, next) => { res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Robots-Tag', 'noindex, nofollow'); next(); },
+  express.static(path.join(__dirname, 'public/beta')));
 // Файлы модулей (наборы, которые клиенты скачивают). Клиенты добавляют ?v=<версия набора>, поэтому кэшировать можно надолго
 app.use('/modules', express.static(path.join(__dirname, 'public/modules'), { maxAge: '30d' }));
 // Имя файла — timestamp+случайная строка, при новой загрузке никогда не переиспользуется,
