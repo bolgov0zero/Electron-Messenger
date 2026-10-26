@@ -1110,9 +1110,30 @@ function closeSettings() { if (_sidebarTab === 'settings') setSidebarTab('chats'
 // (csRenderInline), без модалки.
 let _sidebarTab = 'chats';
 
+// Смена вкладки сайдбара как в макете: прежнее содержимое уходит вправо и гаснет, новое выезжает справа и проявляется
+function sidebarGhost() {
+  const list = document.getElementById('chats-list'), par = list && list.offsetParent;
+  if (!par || !list.animate || document.hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
+  const g = list.cloneNode(true);
+  g.removeAttribute('id'); g.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+  g.setAttribute('aria-hidden', 'true'); g.inert = true;
+  Object.assign(g.style, { position: 'absolute', left: list.offsetLeft + 'px', top: list.offsetTop + 'px', width: list.offsetWidth + 'px', height: list.offsetHeight + 'px', margin: '0', pointerEvents: 'none', overflow: 'hidden', zIndex: '2' });
+  par.appendChild(g); g.scrollTop = list.scrollTop;
+  return g;
+}
+function sidebarSwap(g) {
+  if (!g) return;
+  const ease = 'cubic-bezier(.22,1,.36,1)', list = document.getElementById('chats-list');
+  const out = g.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(8%)' }], { duration: 300, easing: ease, fill: 'forwards' });
+  out.onfinish = () => g.remove();
+  setTimeout(() => g.remove(), 700);   // не rAF: в свёрнутом окне onfinish может не прийти
+  if (list) list.animate([{ opacity: 0, transform: 'translateX(8%)' }, { opacity: 1, transform: 'none' }], { duration: 450, easing: ease });
+}
+
 function setSidebarTab(tab) {
   if (tab === _sidebarTab) return;
   const prevTab = _sidebarTab;
+  const _swap = sidebarGhost();
   // уходя со вкладки «Чаты» — выходим из открытой панели тем, чтобы не путать
   // сжатый в полосу сайдбар с контактами/настройками
   if (prevTab === 'chats' && S.activeRoomId) leaveRoom();
@@ -1143,7 +1164,7 @@ function setSidebarTab(tab) {
   } else if (tab === 'settings') {
     openSettingsInline();
   }
-  if (tab !== 'settings') { list.classList.remove('tab-in'); void list.offsetWidth; list.classList.add('tab-in'); }
+  sidebarSwap(_swap);
 }
 
 // Сброс формы настроек к разделу «Профиль» — то же самое, что раньше делал

@@ -691,7 +691,7 @@ html.dark { --gl-hov: rgba(255, 255, 255, .08); }
 @media (prefers-reduced-motion: reduce) { .composer-main .up-menu:not([hidden]) { animation: none; } }
 
 /* Полоска выбранного пункта бара: как в макете, срезана по краю панели (видна внутренняя часть шириной 2 px) */
-.acc-rail:not([hidden]) { clip-path: inset(1px -400px 1px 1px); }
+.acc-rail:not([hidden]) { clip-path: none; }
 
 /* ══════════════════════════════════════════════════════════════
    Интерактивное стекло: наведение, блик за курсором, пружина при нажатии (макет: .gi)
@@ -1181,3 +1181,6 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 .fld-btn.active .fld-ic { background: transparent; box-shadow: none; }
 .fld-btn.ss-mute::before { opacity: 0; }
 .acc-rail .ss-ghost::before { content: ""; position: absolute; left: -14px; top: 14px; width: 4px; height: 20px; border-radius: 0 4px 4px 0; background: var(--accent); }
+
+/* Полоска выбранного пункта бара: ровно от внутреннего края панели (рамка панели остаётся целой), видимая ширина 2 px как в макете */
+.acc-btn.active::before, .fld-btn.active::before, .acc-rail .ss-ghost::before { left: -12px; width: 2px; border-radius: 0 2px 2px 0; }
