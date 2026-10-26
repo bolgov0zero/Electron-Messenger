@@ -126,6 +126,7 @@ router.get('/:id/topics', authMiddleware, async (req, res) => {
   `, chatId);
   const manual = !!(await dal.get('SELECT topics_manual FROM chats WHERE id = ?', chatId))?.topics_manual;
   const userId = req.user.id;
+  const floor = require('../guest').floorOf(userId);   // гость не видит превью сообщений до своего подключения
   const result = await Promise.all(topics.map(async s => {
     const unread = await unreadCounts.inChat(userId, s.id);
     const unreadMentions = await unreadCounts.mentionsInChat(userId, s.id);
@@ -136,8 +137,8 @@ router.get('/:id/topics', authMiddleware, async (req, res) => {
       SELECT m.id, m.text, m.sent_at, m.deleted, m.attachment, m.forward_data,
         COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
       FROM messages m LEFT JOIN users u ON u.id = m.sender_id
-      WHERE m.chat_id = ? ORDER BY m.sent_at DESC, m.id DESC LIMIT 1
-    `, s.id);
+      WHERE m.chat_id = ? AND m.id > ? ORDER BY m.sent_at DESC, m.id DESC LIMIT 1
+    `, s.id, floor);
     if (last?.attachment) try { last.attachment = JSON.parse(last.attachment); } catch { last.attachment = null; }
     if (last?.forward_data) try { last.forward_data = JSON.parse(last.forward_data); } catch { last.forward_data = null; }
     return { ...s, unread, unread_mentions: unreadMentions, has_avatar, last_message: last || null };

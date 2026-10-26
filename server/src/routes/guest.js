@@ -68,7 +68,7 @@ router.get('/chat', authMiddleware, onlyGuest, async (req, res) => {
   const members = await dal.all(`
     SELECT u.id, u.display_name, u.tag FROM chat_members cm JOIN users u ON u.id = cm.user_id
     WHERE cm.chat_id = ? AND COALESCE(u.banned, 0) = 0 AND COALESCE(u.is_bot, 0) != 1 ORDER BY u.display_name`, chat.id);
-  res.json({ chat: { ...chat, read_only: !!chat.read_only }, members });
+  res.json({ chat: { ...chat, read_only: !!chat.read_only, has_topics: await guest.hasTopics(chat.id) }, members });
 });
 
 // ── Для хозяина группы и администратора ──

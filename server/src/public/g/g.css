@@ -1,6 +1,21 @@
 /* Гостевой режим веб-клиента: интерфейс тот же, что в /chat, убрано всё, что гостю недоступно */
-html.guest .acc-rail, html.guest .sidebar { display: none !important; }
-html.guest .chat-main { width: 100% !important; max-width: none !important; flex: 1 1 auto; }
+html.guest .acc-rail { display: none !important; }
+/* Без тем сайдбара нет: гость сразу в чате. В комнате с темами (g-topics) сайдбар остаётся, но только со списком тем */
+html.guest:not(.g-topics) .sidebar { display: none !important; }
+html.guest:not(.g-topics) .chat-main { width: 100% !important; max-width: none !important; flex: 1 1 auto; }
+html.guest.g-topics .sidebar-head .topbar-actions, html.guest.g-topics .sidebar-tabbar, html.guest.g-topics #chats-list, html.guest.g-topics .strip-back { display: none !important; }
+/* Сверху сайдбара — таймер вместо кнопок; в шапке чата он нужен только на узком экране, где список скрыт */
+html.guest.g-topics .chat-header-actions { display: none !important; }
+.g-back { display: none; flex: none; align-items: center; justify-content: center; width: 28px; height: 28px; margin: 0 -4px 0 -2px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
+.g-back:hover { background: var(--hover-row); color: var(--text); }
+@media (max-width: 700px) {
+  html.guest.g-topics .sidebar { width: auto; min-width: 0; flex: 1; margin: 0; border-radius: 0; border: 0; position: static; }
+  html.guest.g-topics:not(.g-in-chat) .chat-main { display: none; }
+  html.guest.g-topics.g-in-chat .sidebar { display: none; }
+  html.guest.g-topics .chat-main { margin: 0 8px; }
+  html.guest.g-topics .chat-header-actions { display: flex !important; }
+  html.guest.g-topics .g-back { display: flex; }
+}
 html.guest .chat-header-actions > :not(.g-timer) { display: none !important; }
 html.guest .chat-header-info, html.guest .chat-header-main .av-wrap, html.guest .irc-av { cursor: default !important; pointer-events: none; }
 /* Контекстное меню сообщения: без «Переслать», закрепа и списка прочитавших */
@@ -22,3 +37,9 @@ html.guest .pin-bar button, html.guest #chats-list { display: none !important; }
 .g-timer b { font-size: 14px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
 .g-timer.low b, .g-timer.low svg { color: #d23737; }
 @media (max-width: 520px) { .g-timer span { display: none; } }
+
+.g-timer-sb { height: auto; padding: 0 2px 0 0; }
+.g-timer-sb span { display: inline; }
+
+/* Заглушка «для телефона есть /m» не для гостя: у него нет учётной записи, он открывает ссылку с любого устройства */
+html.guest #screen-phone-guard { display: none !important; }

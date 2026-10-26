@@ -62,6 +62,10 @@ function sanitizeRows(userId, rows) {
   return rows.map(m => { const x = scrub(m); return x.reply_to_id && x.reply_to_id <= base ? hideQuote(x) : x; });
 }
 
+// Комната с темами: писать можно только в темы, самой комнаты в ленте нет. Гость входит в комнату и во все её темы сразу
+const topicIds = async roomId => (await dal.all('SELECT id FROM chats WHERE parent_id = ? ORDER BY position, id', roomId)).map(r => r.id);
+const hasTopics = async roomId => !!(await dal.get('SELECT 1 FROM chats WHERE parent_id = ? LIMIT 1', roomId));
+
 // Можно ли такому чату выдавать гостевые ссылки: группа или комната на этом сервере, не тема и не секретный чат
 async function checkChat(chatId) {
   const c = await dal.get('SELECT id, type, name, parent_id, is_secret, fed_instance FROM chats WHERE id = ?', chatId);
@@ -141,10 +145,16 @@ async function open(token, name, dk) {
     await dal.lock('guest:' + row.id);
     const cur = await dal.get('SELECT guest_user_id FROM guest_links WHERE id = ?', row.id);
     if (cur.guest_user_id) return false;      // кто-то открыл ссылку одновременно с нами
-    const base = (await dal.get('SELECT COALESCE(MAX(id), 0) AS m FROM messages WHERE chat_id = ?', row.chat_id)).m;
+    // Номера сообщений общие для всех чатов, поэтому один порог действует и в темах комнаты
+    const tids = await topicIds(row.chat_id), all = [row.chat_id, ...tids];
+    const base = (await dal.get(`SELECT COALESCE(MAX(id), 0) AS m FROM messages WHERE chat_id IN (${all.map(() => '?').join(',')})`, ...all)).m;
     const uname = 'guest_' + crypto.randomBytes(6).toString('hex');
     const ur = await dal.run("INSERT INTO users (username, password_hash, display_name, is_bot, tag) VALUES (?, '*', ?, ?, ?)", uname, nm, IS_GUEST, TAG);
-    await dal.run('INSERT INTO chat_members (chat_id, user_id) VALUES (?, ?)', row.chat_id, ur.lastInsertRowid);
+    for (const cid of all) {
+      await dal.run('INSERT INTO chat_members (chat_id, user_id) VALUES (?, ?)', cid, ur.lastInsertRowid);
+      // Прочитано до порога: счётчики непрочитанного в темах не считают сообщения, которых гость не видит
+      if (tids.length) await dal.run('INSERT INTO chat_read_state (user_id, chat_id, last_read_id) VALUES (?, ?, ?)', ur.lastInsertRowid, cid, base);
+    }
     await dal.run('UPDATE guest_links SET guest_user_id = ?, guest_name = ?, device_hash = ?, base_msg_id = ?, first_used_at = ?, last_used_at = ? WHERE id = ?',
       ur.lastInsertRowid, nm, sha(key), base, t, t, row.id);
     user = { id: ur.lastInsertRowid, username: uname, display_name: nm, tag: TAG };
@@ -152,7 +162,7 @@ async function open(token, name, dk) {
     return true;
   });
   if (!claimed) return { status: 403, code: 'other_device' };
-  await sys(row.chat_id, `${nm} подключился(ась)`, 'guest_join');
+  if (!(await hasTopics(row.chat_id))) await sys(row.chat_id, `${nm} подключился(ась)`, 'guest_join');   // в ленте комнаты с темами записи не видно
   try { require('./ws').broadcast(row.chat_id, { type: 'reload_chats' }); } catch {}   // у участников обновится состав
   return { status: 200, user, link: { ...row, guest_user_id: user.id }, device_key: key, expires_at: row.expires_at };
 }
@@ -176,11 +186,12 @@ async function end(row, revoke) {
   const ws = require('./ws');
   ws.sendTo(uid, { type: 'guest_ended', reason: revoke ? 'revoked' : 'expired' });
   ws.kick(uid);
-  await sys(row.chat_id, `${row.guest_name || 'Гость'} отключился(ась)`, 'guest_leave');
+  if (!(await hasTopics(row.chat_id))) await sys(row.chat_id, `${row.guest_name || 'Гость'} отключился(ась)`, 'guest_leave');
   // Учётная запись гостя удаляется целиком; у его сообщений остаются имя и метка (sender_id обнуляется, как у удалённого аккаунта)
   const u = await dal.get('SELECT display_name FROM users WHERE id = ?', uid);
   await dal.tx(async () => {
     await dal.run('UPDATE messages SET guest_name = ?, guest_tag = ?, sender_id = NULL WHERE sender_id = ?', u?.display_name || row.guest_name || 'Гость', TAG, uid);
+    await dal.run('DELETE FROM chat_read_state WHERE user_id = ?', uid);
     await dal.run('DELETE FROM users WHERE id = ?', uid);
   });
   try { require('./ws').broadcast(row.chat_id, { type: 'reload_chats' }); } catch {}
@@ -230,6 +241,7 @@ function startScheduler() {
 // Что гость может вызывать по HTTP: всё остальное закрыто (запрет по умолчанию)
 const ALLOW = [
   ['GET', /^\/api\/guest\/(me|chat)$/],
+  ['GET', /^\/api\/chats\/\d+\/topics$/],
   ['GET', /^\/api\/messages\/chat\/\d+$/],
   ['GET', /^\/api\/messages\/\d+\/reactions$/],
   ['GET', /^\/api\/upload\/settings$/],
@@ -240,4 +252,4 @@ const httpAllowed = req => { const p = req.originalUrl.split('?')[0]; return ALL
 // Что гость может присылать по WebSocket
 const WS_ALLOW = new Set(['message', 'edit_message', 'delete_message', 'react', 'typing', 'read', 'delivered', 'ping', 'set_status', 'client_info']);
 
-module.exports = { IS_GUEST, TOKEN_TTL, load, isGuest, floorOf, chatOf, forRecipient, sanitizeRows, hideQuote, checkChat, create, list, peek, open, revoke, extend, resetDevice, end, expireDue, startScheduler, httpAllowed, WS_ALLOW, cleanName };
+module.exports = { hasTopics, IS_GUEST, TOKEN_TTL, load, isGuest, floorOf, chatOf, forRecipient, sanitizeRows, hideQuote, checkChat, create, list, peek, open, revoke, extend, resetDevice, end, expireDue, startScheduler, httpAllowed, WS_ALLOW, cleanName };

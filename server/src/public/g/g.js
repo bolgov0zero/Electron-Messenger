@@ -5,7 +5,7 @@
   'use strict';
   var G = window.__GUEST__ || {}, token = G.token, real = G.ls || window.localStorage;
   var KEY = 'electron_guest:' + (token || '').slice(0, 24), CK = 'gdk_' + (token || '').slice(0, 16);
-  var st = { jwt: null, dk: null, expires: 0, skew: 0, ended: false, reopening: false, chat: null, members: [] };
+  var st = { hasTopics: false, jwt: null, dk: null, expires: 0, skew: 0, ended: false, reopening: false, chat: null, members: [] };
 
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var $ = function (id) { return document.getElementById(id); };
@@ -89,7 +89,7 @@
   function toMembers(list) { return list.map(function (m) { return { id: m.id, username: '', display_name: m.display_name, tag: m.tag || null }; }); }
   function guestChat(info) {
     var c = info.chat;
-    return { id: c.id, type: c.type, name: c.name, created_by: null, is_secret: 0, read_only: c.read_only ? 1 : 0, pinned: 0, has_topics: 0, muted: 0, unread: 0, unread_mentions: 0, last_message: null, members: toMembers(info.members) };
+    return { id: c.id, type: c.type, name: c.name, created_by: null, is_secret: 0, read_only: c.read_only ? 1 : 0, pinned: 0, has_topics: c.has_topics ? 1 : 0, muted: 0, unread: 0, unread_mentions: 0, last_message: null, members: toMembers(info.members) };
   }
   async function enter(d) {
     st.jwt = d.token; st.dk = d.device_key; st.expires = d.expires_at; save();
@@ -100,6 +100,7 @@
     st.chat = info.chat; st.members = info.members;
     S.allUsers = toMembers(info.members);
     S.chats = [guestChat(info)];
+    st.hasTopics = !!info.chat.has_topics; setMode();
     S.settings.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     applySettings();
     document.title = (info.chat.name || 'Чат') + ' · Электрон';
@@ -113,12 +114,19 @@
 
   // ── Сколько ещё действует ссылка: правый блок шапки (как блок кнопок в /chat); шапка перерисовывается при открытии чата, поэтому вставка следит за ней ──
   var CLOCK = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+  var BACK = '<button type="button" class="g-back" aria-label="К списку тем"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>';
+  var TIMER = function (cls) { return '<div class="g-timer ' + cls + '" title="Сколько ещё действует ссылка">' + CLOCK + '<span>Осталось</span><b class="g-timer-t">--:--</b></div>'; };
   function drawPill() {
     var put = function () {
       var box = document.querySelector('.chat-header-actions');
-      if (box && !box.querySelector('.g-timer')) { var d = document.createElement('div'); d.className = 'g-timer'; d.title = 'Сколько ещё действует ссылка'; d.innerHTML = CLOCK + '<span>Осталось</span><b class="g-timer-t">--:--</b>'; box.appendChild(d); tick(); }
+      if (box && !box.querySelector('.g-timer')) { box.insertAdjacentHTML('afterbegin', TIMER('')); tick(); }
+      var hm = document.querySelector('.chat-header-main');
+      if (hm && st.hasTopics && !hm.querySelector('.g-back')) hm.insertAdjacentHTML('afterbegin', BACK);
+      // Комната с темами: таймер ещё и сверху сайдбара, чтобы он был виден, пока тема не выбрана
+      var sh = document.querySelector('.sidebar-head');
+      if (sh && !sh.querySelector('.g-timer')) { sh.insertAdjacentHTML('beforeend', TIMER('g-timer-sb')); tick(); }
     };
-    put(); new MutationObserver(put).observe($('chat-main'), { childList: true, subtree: true });
+    put(); new MutationObserver(put).observe(document.body, { childList: true, subtree: true });
   }
   function tick() {
     var left = st.expires - Math.floor((Date.now() + st.skew) / 1000);
@@ -132,7 +140,7 @@
   }
 
   // ── Запросы к серверу: гостю открыты немногие; остальное клиент просит впустую и получает «ничего» ──
-  var ALLOW = [/^GET \/guest\/(me|chat)$/, /^GET \/messages\/chat\/\d+(\?.*)?$/, /^GET \/messages\/\d+\/reactions$/, /^GET \/upload\/settings$/, /^DELETE \/upload\/?$/];
+  var ALLOW = [/^GET \/guest\/(me|chat)$/, /^GET \/chats\/\d+\/topics$/, /^GET \/messages\/chat\/\d+(\?.*)?$/, /^GET \/messages\/\d+\/reactions$/, /^GET \/upload\/settings$/, /^DELETE \/upload\/?$/];
   async function rawApi(method, path, body) {
     try {
       var res = await fetch('/api' + path, { method: method, headers: Object.assign({ 'Content-Type': 'application/json' }, st.jwt ? { Authorization: 'Bearer ' + st.jwt } : {}), body: body ? JSON.stringify(body) : undefined });
@@ -155,12 +163,39 @@
     if (!ALLOW.some(function (re) { return re.test(method + ' ' + path); })) return Promise.resolve(null);
     return rawApi(method, path, body);
   };
+  // Комната с темами: слева список тем, справа выбранная тема («Выберите тему», пока не выбрана). Без тем сайдбара нет, гость сразу в чате
+  function setMode() {
+    var h = document.documentElement;
+    h.classList.toggle('g-topics', st.hasTopics);
+    h.classList.toggle('g-in-chat', st.hasTopics && !!S.activeChatId);   // на узком экране: открыта тема, список скрыт
+  }
   window.loadChats = async function () {
     var info = await rawApi('GET', '/guest/chat'); if (!info || !info.chat) return;
     S.allUsers = toMembers(info.members);
-    var keep = S.chats[0] || {}, c = guestChat(info); c.last_message = keep.last_message || null; S.chats = [c];
+    var keep = S.chats[0] || {}, c = guestChat(info), was = st.hasTopics; c.last_message = keep.last_message || null; S.chats = [c];
+    st.hasTopics = !!info.chat.has_topics;
+    if (st.hasTopics) {
+      await loadTopics(c.id, { render: true });
+      var live = (S.topics[c.id] || []).some(function (t) { return t.id === S.activeTopicId; });
+      // Открытую тему удалили, либо в комнате только что появились темы: показываем «Выберите тему»
+      if (!was || (S.activeTopicId && !live)) { S.activeTopicId = null; await openChat(c.id); }
+    } else if (was) {   // темы удалены: комната снова обычный чат
+      if (typeof closeTopicsPanel === 'function') closeTopicsPanel();
+      S.activeRoomId = null; S.activeTopicId = null; S.topics = {};
+      await openChat(c.id);
+    }
+    setMode();
     if (typeof refreshActiveChatUi === 'function') refreshActiveChatUi();
   };
+  // Открытие чата или темы: на узком экране переключаем список и переписку
+  var origOpen = window.openChat;
+  window.openChat = async function () { var r = await origOpen.apply(this, arguments); setMode(); return r; };
+  // «Назад» в шапке темы (только узкий экран): снова список тем
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest || !e.target.closest('.g-back') || !st.hasTopics) return;
+    S.activeChatId = null; S.activeTopicId = null; S.activeRoomId = null;
+    openChat(st.chat.id);
+  });
   window.logout = function () { end('expired'); };
   window.refreshToken = function () { return Promise.resolve(false); };
 
@@ -229,7 +264,7 @@
   // Что гостю недоступно: профили, сведения о группе, поиск по чату, переслать и закрепить
   var noop = function () {};
   ['openProfile', 'openGroupInfo', 'toggleChatSearch', 'showChatCtx', 'ctxForward', 'ctxTogglePin', 'ctxReadToggle', 'addContactFromChat', 'openChatMedia',
-    'maybeShowNotifBanner', 'subscribePush', 'loadPushPrefs', 'loadBanners'].forEach(function (n) { if (typeof window[n] === 'function') window[n] = noop; });
+    'leaveRoom', 'maybeShowNotifBanner', 'subscribePush', 'loadPushPrefs', 'loadBanners'].forEach(function (n) { if (typeof window[n] === 'function') window[n] = noop; });
 
   document.addEventListener('DOMContentLoaded', boot);
 })();
