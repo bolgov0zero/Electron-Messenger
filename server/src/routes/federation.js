@@ -29,7 +29,14 @@ admin.post('/verify', async (req, res) => {
   res.json(r);
 });
 // Сводка для блока на главной: период day | week | month
-admin.get('/stats', async (req, res) => res.json((await fed.statsView(String(req.query.period || 'day')))));
+// Главная опрашивает сводку раз в 2 секунды: ответ на один и тот же период держим секунду, чтобы несколько открытых админок не множили выборки
+const statsMemo = new Map();
+admin.get('/stats', async (req, res) => {
+  const period = ['week', 'month'].includes(req.query.period) ? req.query.period : 'day', hit = statsMemo.get(period);
+  if (hit && Date.now() - hit.at < 1000) return res.json(await hit.p);
+  const p = fed.statsView(period); statsMemo.set(period, { at: Date.now(), p });
+  try { res.json(await p); } catch (e) { statsMemo.delete(period); throw e; }
+});
 
 // Имя, адрес и (один раз) идентификатор этого сервера
 admin.put('/identity', async (req, res) => {

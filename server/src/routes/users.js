@@ -76,15 +76,18 @@ router.post('/me/avatar', authMiddleware, async (req, res) => {
 
 // Список id, у которых есть аватарка: клиенты запрашивают файл только для них и не получают 404 на каждого без фото
 router.get('/avatars/index', authMiddleware, (req, res) => {
-  const u = [], c = [];
+  const u = [], c = [], v = {};
   try {
     for (const f of fs.readdirSync(AVATAR_DIR)) {
       const m = /^(chat_)?(\d+)\.jpg$/.exec(f);
-      if (m) (m[1] ? c : u).push(Number(m[2]));
+      if (!m) continue;
+      (m[1] ? c : u).push(Number(m[2]));
+      // Версия файла (время изменения): клиент ставит её в адрес аватарки, и новая картинка не путается с закэшированной старой
+      try { v[(m[1] ? 'c' : 'u') + m[2]] = Math.floor(fs.statSync(path2.join(AVATAR_DIR, f)).mtimeMs); } catch {}
     }
   } catch {}
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ u, c });
+  res.json({ u, c, v });
 });
 
 // Serve user avatar

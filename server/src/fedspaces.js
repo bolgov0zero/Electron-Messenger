@@ -620,7 +620,7 @@ async function mapData() {
     const on = p.status === 'active' && F().isOnline(p.id);
     addNode(p.instance_id, p.name, p.pub, { direct: true, online: on, paused: p.status !== 'active' });
     const k = [myId, p.instance_id].sort().join('|');
-    edges.set(k, { a: myId, b: p.instance_id, on, spaces: [], direct: true, from: p.role === 'out' ? myId : p.instance_id });
+    edges.set(k, { a: myId, b: p.instance_id, on, spaces: [], direct: true, from: p.role === 'out' ? myId : p.instance_id, hs_ago: on ? F().hsAgo(p.id) : null, hs_period: F().HB_S });
   }
   // Пространства
   const colorOf = i => i % 6;

@@ -1341,13 +1341,16 @@ async function statsView(period) {
   };
 }
 
+// Сколько секунд назад было рукопожатие с соседом (null — в этой сессии ещё не было или связи нет)
+function hsAgo(peerId) { return isOnline(peerId) && lastHs.has(peerId) ? Math.max(0, (Date.now() - lastHs.get(peerId)) / 1000) : null; }
+
 // Сведения для админки
 async function peersInfo() {
   return (await Promise.all((await dal.all('SELECT * FROM fed_peers WHERE virt = 0 ORDER BY created_at, id')).map(async p => ({
     id: p.id, instance_id: p.instance_id, name: p.name, url: p.url, role: p.role, status: p.status, fp: fingerprint(p.pub),
     online: isOnline(p.id), proto: p.proto || 0, last_contact_at: p.last_contact_at, created_at: p.created_at, queue: (await queueSize(p.id)),
     // Сколько секунд назад было рукопожатие (null — в этой сессии ещё не было или сосед не умеет), и период обмена
-    hs_ago: isOnline(p.id) && lastHs.has(p.id) ? Math.max(0, (Date.now() - lastHs.get(p.id)) / 1000) : null, hs_period: HB_MS / 1000,
+    hs_ago: hsAgo(p.id), hs_period: HB_MS / 1000,
     ver: p.ver || '',
   }))));
 }
@@ -1392,7 +1395,7 @@ async function mount(server) {
 
 module.exports = {
   mount, start, statsView, identity, setIdentity, fingerprint, validPub, parseAddr, getS, setS,
-  createInvite, previewKey, connectBegin, acceptConnect, connectWithKey, peersInfo, pausePeer, resumePeer, deletePeer,
+  createInvite, previewKey, connectBegin, acceptConnect, connectWithKey, peersInfo, hsAgo, HB_S: HB_MS / 1000, pausePeer, resumePeer, deletePeer,
   setShadowTag, lookupRemote, peerOfUser, peerByInstance, realPeerByInstance, ownVersion, peerRow, clearVirtualRow, endVirtual, virtualTick, isOnline,
   onLocalMessage, onGroupMessage, onPin, onEdit, onDelete, onReact, onStatus, onTyping, onPresence, onProfile, onContactAdded, onContactRemoved, afterContactChange,
   // для fedgroups.js

@@ -1073,6 +1073,8 @@ body.sidebar-hidden #sidebar-peek-zone { display: flex; }
   overflow: hidden;
   position: relative;
 }
+.room-ic { width: 1.15em; height: 1.15em; flex-shrink: 0; }
+.ch-sub .room-ic { vertical-align: -2px; margin-right: 4px; }
 .av-sm  { width: 32px; height: 32px; font-size: 13px; }
 .av-md  { width: 50px; height: 50px; font-size: 18px; }
 .av-round { border-radius: 50% !important; }

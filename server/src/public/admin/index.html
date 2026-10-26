@@ -933,7 +933,7 @@ tbody tr:hover td{background:var(--c-surface2)}
 .fh-ring{position:absolute;left:0;top:0;width:27px;height:27px;pointer-events:none}
 .fh-ring circle{fill:none;stroke-width:2;stroke-linecap:round}
 .fh-ring .tr{stroke:color-mix(in srgb,var(--c-muted) 22%,transparent)}
-.fh-ring .pg{stroke:var(--c-orange);stroke-dasharray:100;stroke-dashoffset:0;animation:fh-drain 20s linear infinite}
+.fh-ring .pg{stroke:var(--c-orange);stroke-dasharray:100;stroke-dashoffset:0;animation:fh-fill 20s linear infinite}
 .fh-wire{position:relative;flex:1;height:11px;min-width:70px}
 .fh-wire::before{content:'';position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;border-radius:2px;background-image:repeating-linear-gradient(90deg,var(--ln) 0 6px,transparent 6px 12px)}
 .fh-wire.on::before{--ln:color-mix(in srgb,var(--c-green) 75%,transparent)}
@@ -948,7 +948,7 @@ tbody tr:hover td{background:var(--c-surface2)}
 @keyframes fh-dot-l{0%{left:100%;opacity:0}1%{opacity:1}7%{left:0%;opacity:1}8%{left:0%;opacity:0}100%{left:0%;opacity:0}}
 @keyframes fh-dot-r{0%{left:0%;opacity:0}1%{opacity:1}7%{left:100%;opacity:1}8%{left:100%;opacity:0}100%{left:100%;opacity:0}}
 @keyframes fh-flash{0%,6.5%{transform:scale(1)}8%{transform:scale(1.55)}14%,100%{transform:scale(1)}}
-@keyframes fh-drain{0%{stroke-dashoffset:0}100%{stroke-dashoffset:100}}
+@keyframes fh-fill{0%{stroke-dashoffset:100}100%{stroke-dashoffset:0}}
 .fh-sep{width:1px;height:17px;margin-left:8px;background:var(--c-border);flex:none}
 .fh-tm{display:flex;align-items:center;gap:6px;min-width:56px;font-size:12px;line-height:15px;color:var(--c-text2);font-variant-numeric:tabular-nums;white-space:nowrap}
 .fh-tm svg{width:13px;height:13px;flex:none}
@@ -1074,6 +1074,7 @@ tbody tr:hover td{background:var(--c-surface2)}
 .fm-ln.multi{stroke-dasharray:8 26}
 .fm-ln.multi.flow{animation:fmflow2 2.1s linear infinite}
 .fm-ln.off{stroke-dasharray:3 9}
+.fm-dot{fill:var(--c-orange);opacity:0;pointer-events:none;filter:drop-shadow(0 0 5px var(--c-orange))}
 .fm-halo{fill:none;stroke:var(--c-primary);stroke-opacity:.22;stroke-width:11;stroke-linecap:round}
 .fm-hit{fill:none;stroke:transparent;stroke-width:22;pointer-events:stroke;cursor:pointer}
 .fm-ch{fill:none;stroke:var(--c-text);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}

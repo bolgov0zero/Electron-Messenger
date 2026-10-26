@@ -1862,8 +1862,10 @@ function chatAvatarClass(chat) {
   return peer ? userAvatarColor(peer) : avatarColor(chat.id);
 }
 
+// Значок комнаты: дом из набора значков папок (Lucide). Без размера масштабируется шрифтом аватарки, с размером — фиксированный, для строки подписи
+const roomIcon = size => `<svg class="room-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"${size ? ` width="${size}" height="${size}"` : ''}>${FOLDER_ICONS.home}</svg>`;
 function chatIcon(chat) {
-  if (chat.type==='room') return '🏠';
+  if (chat.type==='room') return roomIcon();
   return initials(chatName(chat));
 }
 
@@ -1878,6 +1880,8 @@ function avatarMissing(url) {
   return !!m && !S.avIdx.has((m[1] === 'users' ? 'u' : 'c') + m[2]);
 }
 
+// Запасной вид аватарки: буквы текстом, значок комнаты (svg) разметкой
+function setAvFallback(el, f) { if (typeof f === 'string' && f.startsWith('<svg')) el.innerHTML = f; else el.textContent = f; }
 function tryLoadAvatar(el, url, fallbackText) {
   const cached = _avatarCache.get(url);
   if (cached === true) {
@@ -1889,10 +1893,10 @@ function tryLoadAvatar(el, url, fallbackText) {
   }
   if (cached === false) {
     el.style.backgroundImage = '';
-    el.textContent = fallbackText;
+    setAvFallback(el, fallbackText);
     return;
   }
-  if (avatarMissing(url)) { el.style.backgroundImage = ''; el.textContent = fallbackText; return; }
+  if (avatarMissing(url)) { el.style.backgroundImage = ''; setAvFallback(el, fallbackText); return; }
   const img = new Image();
   img.onload = () => {
     _avatarCache.set(url, true);
@@ -1904,7 +1908,7 @@ function tryLoadAvatar(el, url, fallbackText) {
   img.onerror = () => {
     _avatarCache.set(url, false);
     el.style.backgroundImage = '';
-    el.textContent = fallbackText;
+    setAvFallback(el, fallbackText);
   };
   img.src = url;
 }
@@ -3357,7 +3361,7 @@ function groupSubHtml(chat) {
   const cnt = o ? `в сети ${o.online} из ${o.total}` : nMembers(chat.members?.length || 0);
   const globe = '';
   if (chat.parent_id) return `# тема${o ? ' · ' + cnt : ''}`;
-  return chat.type === 'room' ? `${globe}🏠 Комната · ${cnt}` : `${globe}${cnt}`;
+  return chat.type === 'room' ? `${globe}${roomIcon(14)}Комната · ${cnt}` : `${globe}${cnt}`;
 }
 function updateGroupSub() {
   const chat = findChatAny(S.activeChatId), el = document.querySelector('.ch-sub');

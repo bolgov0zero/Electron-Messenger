@@ -1968,8 +1968,10 @@ function chatAvatarClass(chat) {
   return peer ? userAvatarColor(peer) : avatarColor(chat.id);
 }
 
+// Значок комнаты: дом из набора значков папок (Lucide). Без размера масштабируется шрифтом аватарки, с размером — фиксированный, для строки подписи
+const roomIcon = size => `<svg class="room-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"${size ? ` width="${size}" height="${size}"` : ''}>${FOLDER_ICONS.home}</svg>`;
 function chatIcon(chat) {
-  if (chat.type==='room') return '🏠';
+  if (chat.type==='room') return roomIcon();
   return initials(chatName(chat));
 }
 
@@ -1977,6 +1979,25 @@ function chatIcon(chat) {
 async function loadAvatarIndex() {
   const r = await api('GET', '/users/avatars/index');
   S.avIdx = r && Array.isArray(r.u) && Array.isArray(r.c) ? new Set([...r.u.map(i => 'u' + i), ...r.c.map(i => 'c' + i)]) : null;
+  S.avVer = (r && r.v) || {};
+}
+// Адрес аватарки с версией файла: сменили фото — версия другая, и браузер не отдаёт старую картинку из кэша (адрес без версии кэшируется на год).
+// kind — 'users' или 'chats'. Нет версии (список ещё не загружен) — адрес без метки, он кэшируется ненадолго
+function avUrl(kind, id) {
+  const v = S.avVer?.[(kind === 'users' ? 'u' : 'c') + id];
+  return `${httpProto()}://${S.server}/api/${kind}/${id}/avatar${v ? '?t=' + v : ''}`;
+}
+// Обновились фото: переписываем адреса уже стоящих на странице картинок и заново подставляем аватарки
+function refreshAvatars() {
+  const pre = `${httpProto()}://${S.server}/api/`;
+  document.querySelectorAll('img[src*="/avatar"]').forEach(img => {
+    const src = img.getAttribute('src') || '';
+    const m = src.startsWith(pre) && /^(users|chats)\/(\d+)\/avatar/.exec(src.slice(pre.length));
+    if (!m) return;
+    const url = avUrl(m[1], m[2]);
+    if (url !== src) { img.src = url; img.style.display = ''; }
+  });
+  applyAvatars();
 }
 // Аватарки нет в списке сервера: файл не запрашиваем (иначе 404 в консоли на каждого без фото). Список ещё не загружен — запрашиваем как раньше
 function avatarMissing(url) {
@@ -1985,6 +2006,8 @@ function avatarMissing(url) {
   return !!m && !S.avIdx.has((m[1] === 'users' ? 'u' : 'c') + m[2]);
 }
 
+// Запасной вид аватарки: буквы текстом, значок комнаты (svg) разметкой
+function setAvFallback(el, f) { if (typeof f === 'string' && f.startsWith('<svg')) el.innerHTML = f; else el.textContent = f; }
 function tryLoadAvatar(el, url, fallbackText) {
   const cached = _avatarCache.get(url);
   if (cached === true) {
@@ -1996,10 +2019,10 @@ function tryLoadAvatar(el, url, fallbackText) {
   }
   if (cached === false) {
     el.style.backgroundImage = '';
-    el.textContent = fallbackText;
+    setAvFallback(el, fallbackText);
     return;
   }
-  if (avatarMissing(url)) { el.style.backgroundImage = ''; el.textContent = fallbackText; return; }
+  if (avatarMissing(url)) { el.style.backgroundImage = ''; setAvFallback(el, fallbackText); return; }
   const img = new Image();
   img.onload = () => {
     _avatarCache.set(url, true);
@@ -2011,7 +2034,7 @@ function tryLoadAvatar(el, url, fallbackText) {
   img.onerror = () => {
     _avatarCache.set(url, false);
     el.style.backgroundImage = '';
-    el.textContent = fallbackText;
+    setAvFallback(el, fallbackText);
   };
   img.src = url;
 }
@@ -2027,10 +2050,10 @@ function applyAvatars() {
     if (chat.type === 'direct') {
       const peerId = getPeerUserId(chat);
       if (!peerId) return;
-      const url = `${httpProto()}://${S.server}/api/users/${peerId}/avatar?t=${S.avatarTs||1}`;
+      const url = avUrl('users', peerId);
       tryLoadAvatar(el, url, initials(chatName(chat)));
     } else {
-      const url = `${httpProto()}://${S.server}/api/chats/${chatId}/avatar?t=${S.avatarTs||1}`;
+      const url = avUrl('chats', chatId);
       tryLoadAvatar(el, url, chatIcon(chat));
     }
   });
@@ -2039,7 +2062,7 @@ function applyAvatars() {
     const uid = parseInt(el.dataset.avUser);
     const user = S.allUsers.find(u => u.id === uid) || (uid === S.user.id ? S.user : null);
     if (!user) return;
-    const url = `${httpProto()}://${S.server}/api/users/${uid}/avatar?t=${S.avatarTs||1}`;
+    const url = avUrl('users', uid);
     tryLoadAvatar(el, url, initials(user.display_name));
   });
 }
@@ -2422,7 +2445,7 @@ function topicRow(s) {
   // Раньше у всех тем был один оранжевый домик, и список не читался.
   const avCls = 'av-' + senderNameClass(s.name);
   const avStyle = s.has_avatar
-    ? ' style="background-image:url(\'' + httpProto() + '://' + S.server + '/api/chats/' + s.id + '/avatar' + '\');background-size:cover;background-position:center"'
+    ? ' style="background-image:url(\'' + avUrl('chats', s.id) + '\');background-size:cover;background-position:center"'
     : '';
   return '<div class="chat-item' + (S.activeTopicId === s.id ? ' active' : '') + '"' +
     ' data-topic-id="' + s.id + '" data-on-click="openTopic" data-a-click="' + esc(JSON.stringify([s.id])) + '">' +
@@ -3521,7 +3544,7 @@ function groupSubHtml(chat) {
   const cnt = o ? `в сети ${o.online} из ${o.total}` : nMembers(chat.members?.length || 0);
   const globe = '';
   if (chat.parent_id) return `# тема${o ? ' · ' + cnt : ''}`;
-  return chat.type === 'room' ? `${globe}🏠 Комната · ${cnt}` : `${globe}${cnt}`;
+  return chat.type === 'room' ? `${globe}${roomIcon(14)}Комната · ${cnt}` : `${globe}${cnt}`;
 }
 function updateGroupSub() {
   const chat = findChatAny(S.activeChatId), el = document.querySelector('.ch-sub');
@@ -3862,7 +3885,7 @@ function _rtRender(btn, reaction, users) {
   const rest = users.length - shown.length;
   el.innerHTML =
     shown.map((u, i) => {
-      const url = `${httpProto()}://${S.server}/api/users/${u.user_id}/avatar?t=${S.avatarTs || 1}`;
+      const url = avUrl('users', u.user_id);
       return `<span class="rt-row" style="--i:${i}">` +
         `<span class="rt-av ${userAvatarColor(u.user_id)}">${esc(initials(u.display_name) || '?')}` +
         `<img src="${url}" alt="" data-on-error="__h17"></span>` +
@@ -4058,7 +4081,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const avColor = userAvatarColor(m.sender_id, m.sender_tag);
   // аватарка 32px вмещает обе буквы; обрезка до одной осталась от прежних 28px
   const avLetter = initials(m.sender_name);
-  const avImg = `<img src="${httpProto()}://${S.server}/api/users/${m.sender_id}/avatar" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%" data-on-error="__h17">`;
+  const avImg = `<img src="${avUrl('users', m.sender_id)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%" data-on-error="__h17">`;
   const rAtt = m.reply_attachment;
   const rIsImg = rAtt?.mime?.startsWith('image/');
   const rIsVideo = rAtt?.mime?.startsWith('video/');
@@ -6156,7 +6179,7 @@ function connectWS() {
     }
 
     if (data.type==='avatar_updated') {
-      loadAvatarIndex().finally(() => { S.avatarTs = Date.now(); _avatarCache.clear(); renderChatList(); });
+      loadAvatarIndex().finally(() => { _avatarCache.clear(); renderChatList(); refreshAvatars(); });
     }
 
     if (data.type==='user_created') {
@@ -6351,8 +6374,9 @@ async function refreshDirectory() {
   if (typeof loadSharedSpaces === 'function') await loadSharedSpaces();
   await loadPresence();
   // Аватарка человека с другого сервера может приехать позже первого показа: неудачи не помним, пробуем снова
+  await loadAvatarIndex();
   for (const [u, ok] of [..._avatarCache]) if (ok === false) _avatarCache.delete(u);
-  applyAvatars();
+  refreshAvatars();
   if (pfIsOpen()) renderProfile();
   if (_sidebarTab === 'contacts') renderContactsList(document.getElementById('contacts-search')?.value || '');
   const chat = S.chats.find(c => c.id === S.activeChatId);
@@ -6605,7 +6629,7 @@ function renderProfile() {
     <div class="pf-scroll">
       <div class="pf-cover" style="--cv:${pfCoverColor(cls)}"><button class="pf-x" type="button" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-profile"]'>${PF_I.close}</button></div>
       <div class="pf-head">
-        <div class="pf-av ${cls}"><span>${esc(initials(u.display_name))}</span><img src="${httpProto()}://${S.server}/api/users/${u.id}/avatar" data-on-error="__h17">${presenceDot(id)}</div>
+        <div class="pf-av ${cls}"><span>${esc(initials(u.display_name))}</span><img src="${avUrl('users', u.id)}" data-on-error="__h17">${presenceDot(id)}</div>
         <div class="pf-tx"><div class="pf-name">${esc(u.display_name)}${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div><div class="pf-st${on ? ' on' : ''}">${esc(st)}</div></div>
       </div>
       <div class="pf-body">
@@ -6748,7 +6772,7 @@ async function onGroupAvatarChange(input) {
 // ── NEW CHAT MODAL ──
 // Мини-аватар для списков выбора: инициалы + фото поверх если есть
 function ppAvHtml(u) {
-  return `<div class="pp-av ${userAvatarColor(u.id, u.tag)}"><span>${initials(u.display_name)}</span><img src="${httpProto()}://${S.server}/api/users/${u.id}/avatar" loading="lazy" data-on-error="__h17"></div>`;
+  return `<div class="pp-av ${userAvatarColor(u.id, u.tag)}"><span>${initials(u.display_name)}</span><img src="${avUrl('users', u.id)}" loading="lazy" data-on-error="__h17"></div>`;
 }
 
 // ── НОВЫЙ ЧАТ ──
@@ -7587,8 +7611,8 @@ async function gmAvatar(input) {
   const data = await resizeAvatarFile(file);
   const r = await api('POST', `/chats/${S.gm.id}/avatar`, { data });
   if (r?.error) { showActionToast(r.error); return; }
-  S.avatarTs = Date.now(); _avatarCache.clear();
-  applyAvatars(); renderChatList();
+  await loadAvatarIndex(); _avatarCache.clear();
+  refreshAvatars(); renderChatList();
 }
 async function gmKick(userId, pending) {
   const chat = gmChat(); if (!chat) return;

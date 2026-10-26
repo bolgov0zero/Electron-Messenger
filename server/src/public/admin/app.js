@@ -5761,12 +5761,15 @@ function fdvBytes(b) {
 function fdvStart() {
   clearInterval(FDV.timer);
   fdvLoad();
-  FDV.timer = setInterval(() => { if (currentPage !== 'dashboard') { clearInterval(FDV.timer); return; } if (!document.hidden) fdvLoad(); }, 30000);
+  FDV.timer = setInterval(() => { if (currentPage !== 'dashboard') { clearInterval(FDV.timer); return; } if (!document.hidden) fdvLoad(); }, 2000);   // как остальные блоки главной
 }
 async function fdvLoad() {
   const r = await api('GET', '/api/admin/federation/stats?period=' + FDV.period);
   if (!r || r.error) return;
-  FDV.data = r; fdvRender();
+  // Без изменений блок не перерисовываем: опрос идёт раз в 2 секунды, а анимации и наведение внутри не должны сбрасываться
+  const j = JSON.stringify(r), same = j === FDV.json && document.getElementById('dv-fed')?.childElementCount;
+  FDV.data = r; FDV.json = j;
+  if (!same) fdvRender();
 }
 function fdvNice(mx) {
   if (mx <= 5) return 5;
@@ -5922,14 +5925,15 @@ function fdClock(ts) {
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '') + ' ' + hm;
 }
 // Капсула: наш сервер, пунктир, удалённый сервер, время последнего рукопожатия. Раз в период обмена по пунктиру
-// бежит оранжевая точка (от того, кто начинает обмен), кольцо вокруг его точки отсчитывает время до следующего.
+// бежит оранжевая точка (от того, кто начинает обмен), кольцо вокруг его точки наполняется до следующего обмена: ноль кольца
+// смотрит в сторону пунктира (откуда уходит пинг), полное кольцо — момент отправки.
 // Анимация начинается с поправкой на то, сколько секунд назад было рукопожатие, поэтому перерисовка списка её не сбивает
 function fdCap(p) {
   const paused = p.status === 'paused', on = !paused && p.online, inb = p.role === 'in';
   const live = on && p.hs_ago != null, per = p.hs_period || 20;
   const age = live ? p.hs_ago + (Date.now() - (FD.loadedAt || Date.now())) / 1000 : 0;
   const ph = live ? `animation-delay:-${(age % per).toFixed(2)}s` : '';
-  const ring = `<svg class="fh-ring" viewBox="0 0 27 27" aria-hidden="true"><circle class="tr" cx="13.5" cy="13.5" r="11" pathLength="100"/><circle class="pg" cx="13.5" cy="13.5" r="11" pathLength="100" transform="rotate(-90 13.5 13.5)" style="${ph}"/></svg>`;
+  const ring = `<svg class="fh-ring" viewBox="0 0 27 27" aria-hidden="true"><circle class="tr" cx="13.5" cy="13.5" r="11" pathLength="100"/><circle class="pg" cx="13.5" cy="13.5" r="11" pathLength="100" transform="rotate(${inb ? 180 : 0} 13.5 13.5)" style="${ph}"/></svg>`;
   const node = (cls, starts, gets) => `<span class="fh-nw"><span class="fh-node ${cls}${live && gets ? ' fl' : ''}" ${live && gets ? `style="${ph}"` : ''}></span>${live && starts ? ring : ''}</span>`;
   const dir = inb ? 'to-l' : 'to-r';
   const clock = p.last_contact_at ? fdClock(p.last_contact_at) : '—';
@@ -6070,6 +6074,7 @@ async function renderMap() {
   await fmLoad();
   if (currentPage !== 'federation' || FD.tab !== 'map') return;
   fmPage();
+  fmDotsStart();
   clearInterval(FM.timer);
   FM.timer = setInterval(async () => {
     if (currentPage !== 'federation' || FD.tab !== 'map') { clearInterval(FM.timer); return; }
@@ -6080,7 +6085,11 @@ async function renderMap() {
 }
 async function fmLoad() {
   const r = await api('GET', '/api/admin/federation/map');
-  if (r && !r.error) { FM.data = r; if (!FM.sel || !r.nodes.some(n => n.id === FM.sel)) FM.sel = r.me; }
+  if (r && !r.error) {
+    // Время рукопожатий храним отдельно от данных карты: оно меняется при каждом опросе и не должно вызывать перерисовку
+    FM.hs = {}; const at = Date.now();
+    (r.edges || []).forEach(e => { if (e.hs_ago != null) FM.hs[e.a + '|' + e.b] = { ago: e.hs_ago, per: e.hs_period || 20, at }; delete e.hs_ago; delete e.hs_period; });
+    FM.data = r; if (!FM.sel || !r.nodes.some(n => n.id === FM.sel)) FM.sel = r.me; }
 }
 // Начальная раскладка: слои по удалённости от нашего сервера
 function fmDefaultPos(d) {
@@ -6137,6 +6146,26 @@ function fmEdgeGeom(e) {
   const m = pt(0.5), q = pt(0.3), v = dv(0.3);
   return { d: `M${p0.x} ${p0.y}C${c1.x} ${c1.y},${c2.x} ${c2.y},${p3.x} ${p3.y}`, mid: m, ch: { x: q.x, y: q.y, ang: Math.atan2(v.y, v.x) * 180 / Math.PI } };
 }
+// Точка рукопожатия: раз в период обмена бежит по линии от подключающегося сервера к принимающему, в момент настоящего обмена.
+// Положение считается по времени последнего рукопожатия (как в капсуле списка подключений), поэтому перерисовка карты её не сбивает
+function fmDotsStart() {
+  cancelAnimationFrame(FM.raf);
+  const tick = () => {
+    const world = document.getElementById('fm-world');
+    if (currentPage !== 'federation' || FD.tab !== 'map' || !world) { FM.raf = 0; return; }
+    const now = Date.now(), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    world.querySelectorAll('.fm-dot').forEach(c => {
+      const h = FM.hs?.[c.dataset.k], path = c.parentNode.querySelector('.fm-ln');
+      let t = -1;
+      if (h && path && !still) { const ph = ((h.ago + (now - h.at) / 1000) % h.per) / h.per; t = (ph - 0.01) / 0.06; }
+      if (t < 0 || t > 1) { c.style.opacity = 0; return; }
+      const pt = path.getPointAtLength(t * path.getTotalLength());
+      c.setAttribute('cx', pt.x); c.setAttribute('cy', pt.y); c.style.opacity = c.dataset.op;
+    });
+    FM.raf = requestAnimationFrame(tick);
+  };
+  FM.raf = requestAnimationFrame(tick);
+}
 // Двигаем уже нарисованное (узлы, линии, подписи), ничего не пересобирая: иначе анимация пунктира сбрасывалась бы на каждом кадре
 function fmReposition() {
   const d = FM.data, world = document.getElementById('fm-world'); if (!d || !world) return;
@@ -6167,6 +6196,7 @@ function fmDraw() {
     (multi ? cols.slice(0, 2) : [cols[0]]).forEach((c, j) => {
       svg += `<path class="fm-ln${off ? ' off' : known ? ' flow' : ''}${multi ? ' multi' : ''}" d="${g.d}" style="stroke:${off ? 'var(--c-muted)' : c};stroke-width:${w};opacity:${op};--o0:${-j * 17}px;${multi ? `stroke-dashoffset:${-j * 17}px` : ''}"/>`;
     });
+    if (known && e.on === true && FM.hs?.[e.a + '|' + e.b]) svg += `<circle class="fm-dot" r="4.5" data-k="${esc(e.a + '|' + e.b)}" data-op="${op}"/>`;
     if (known) svg += `<path class="fm-ch" d="M-5 -5L3 0L-5 5" transform="translate(${g.ch.x} ${g.ch.y}) rotate(${g.ch.ang})" style="opacity:${off ? 0 : op}"/>`;
     svg += `<path class="fm-hit" data-i="${i}" d="${g.d}"/></g>`;
     const lab = e.on === false ? 'нет связи' : e.on === null ? 'нет данных' : (e.spaces.length ? e.spaces.length + ' ' + uxPlural(e.spaces.length, 'пространство', 'пространства', 'пространств') : 'прямое');

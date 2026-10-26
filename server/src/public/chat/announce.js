@@ -128,7 +128,7 @@ function annAv(p) {
   const init = esc(annInit(p.name)), base = `${httpProto()}://${S.server}/api`;
   if (p.user) return `<span class="pp-av anx-av ${userAvatarColor(p.id, p.tag)}"><span>${init}</span><img src="${base}/users/${p.id}/avatar" loading="lazy" alt="" data-on-error="__h22"></span>`;
   const cls = p.type === 'room' ? 'av-orange' : p.type === 'group' ? 'av-green' : 'av-blue';
-  return `<span class="pp-av anx-av ${cls}"><span>${p.type === 'room' ? '🏠' : init}</span>${p.type === 'direct' ? '' : `<img src="${base}/chats/${p.id}/avatar" loading="lazy" alt="" data-on-error="__h22">`}</span>`;
+  return `<span class="pp-av anx-av ${cls}"><span>${p.type === 'room' ? roomIcon() : init}</span>${p.type === 'direct' ? '' : `<img src="${base}/chats/${p.id}/avatar" loading="lazy" alt="" data-on-error="__h22">`}</span>`;
 }
 const annTag = p => p.user ? (p.tag ? `<span class="role-pill ${senderNameClass(p.tag)} anx-tg">${esc(p.tag)}</span>` : '') : `<span class="anx-tg2">${esc(p.sub)}</span>`;
 function annRow(p) {
