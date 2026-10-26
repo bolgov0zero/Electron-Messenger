@@ -3,7 +3,8 @@
 //
 // У каждого человека есть служебный чат с системой «Electron» (скрытый пользователь с логотипом проекта). Это личный чат только для
 // чтения (chats.read_only), в админке он не виден (chats.system_kind). Сюда приходят уведомления; пока одно: вход с нового устройства,
-// с кнопкой «Заблокировать». Если человек удалил чат, он скрыт только у него: следующее уведомление вернёт его (так же, как возвращается
+// с кнопкой «Заблокировать». Самому новому устройству уведомление о его же входе не показывается: оно скрыто от него (messages.hide_dk) в ленте,
+// списке чатов и событиях. Если человек удалил чат, он скрыт только у него: следующее уведомление вернёт его (так же, как возвращается
 // любой скрытый личный чат). Хранятся последние KEEP уведомлений.
 
 const fs = require('fs');
@@ -60,11 +61,11 @@ async function chatOf(userId) {
 }
 
 // Сообщение от «Electron» в служебный чат человека: рассылка по соединениям и push, как у любого сообщения
-async function post(userId, text, actions) {
+async function post(userId, text, actions, hideDk = null) {
   const bot = await botId(), chatId = await chatOf(userId);
-  const r = await dal.run('INSERT INTO messages (chat_id, sender_id, text, actions) VALUES (?, ?, ?, ?)', chatId, bot, text, actions ? JSON.stringify(actions) : null);
+  const r = await dal.run('INSERT INTO messages (chat_id, sender_id, text, actions, hide_dk) VALUES (?, ?, ?, ?, ?)', chatId, bot, text, actions ? JSON.stringify(actions) : null, hideDk);
   await dal.run('DELETE FROM messages WHERE chat_id = ? AND id NOT IN (SELECT id FROM messages WHERE chat_id = ? ORDER BY id DESC LIMIT ?)', chatId, chatId, KEEP);
-  await require('./ws').finishMessage(r.lastInsertRowid, chatId, bot, null);
+  await require('./ws').finishMessage(r.lastInsertRowid, chatId, bot, null, hideDk);
   return r.lastInsertRowid;
 }
 
@@ -73,7 +74,7 @@ async function newDevice(userId, dev, ip) {
   const others = await dal.get("SELECT 1 FROM device_keys WHERE user_id = ? AND kind = 'device' AND id != ? AND revoked_at IS NULL LIMIT 1", userId, dev.id);
   if (!others) return;
   const text = `Вход с нового устройства\nУстройство: ${dev.name}\nIP-адрес: ${ip || 'неизвестен'}\nЕсли это были не вы, заблокируйте устройство.`;
-  await post(userId, text, [{ id: 'block_device', label: 'Заблокировать', device: dev.id, state: 'new' }]);
+  await post(userId, text, [{ id: 'block_device', label: 'Заблокировать', device: dev.id, state: 'new' }], dev.id);   // самому новому устройству уведомление не показывается
 }
 
 // Устройство заблокировано: кнопка в его уведомлениях меняется на «Заблокировано», у всех устройств человека сразу
@@ -88,7 +89,7 @@ async function markBlocked(userId, deviceId) {
     a.forEach(x => { if (x.device === deviceId) x.state = 'done'; });
     await dal.run('UPDATE messages SET actions = ? WHERE id = ?', JSON.stringify(a), m.id);
     const updated = await ws.getMessageWithStatus(m.id, null);
-    if (updated) await ws.broadcast(chat.id, { type: 'message_edited', message: updated });
+    if (updated) await ws.broadcast(chat.id, { type: 'message_edited', message: updated }, null, deviceId);
   }
 }
 

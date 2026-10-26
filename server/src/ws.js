@@ -86,7 +86,8 @@ function clearUpdateProgress(connIds) { connIds.forEach(id => updateProgress.del
 
 function getConn(userId) { return clients.get(userId) || new Set(); }
 
-async function broadcast(chatId, payload, excludeUserId = null) {
+// exceptDk — соединения устройства с этим ключом не получают событие (уведомление о входе не показывается самому новому устройству)
+async function broadcast(chatId, payload, excludeUserId = null, exceptDk = null) {
   const members = await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ?', chatId);
   members.forEach(({ user_id }) => {
     if (user_id === excludeUserId) return;
@@ -94,7 +95,7 @@ async function broadcast(chatId, payload, excludeUserId = null) {
     const pl = guestLib.isGuest(user_id) ? guestLib.forRecipient(user_id, payload) : payload;
     if (!pl) return;
     const json = JSON.stringify(pl);
-    getConn(user_id).forEach(ws => { if (ws.readyState === 1) ws.send(json); });
+    getConn(user_id).forEach(ws => { if (ws.readyState === 1 && !(exceptDk && ws._dk === exceptDk)) ws.send(json); });
   });
 }
 
@@ -238,12 +239,12 @@ async function getMessageWithStatus(msgId, viewerId) {
 
 // Всё, что происходит после того, как сообщение записано в базу: рассылка участникам чата и push.
 // Общая для сообщений своих пользователей и пришедших с другого сервера.
-async function finishMessage(msgId, chat_id, senderId, clientId) {
+async function finishMessage(msgId, chat_id, senderId, clientId, exceptDk = null) {
   const msg = await getMessageWithStatus(msgId, senderId);
   if (clientId) msg.client_id = clientId;   // отправитель по нему находит своё неподтверждённое сообщение
   const chatMeta = await dal.get('SELECT type, name, parent_id, is_secret FROM chats WHERE id = ?', chat_id);
   if (chatMeta?.parent_id) msg.parent_id = chatMeta.parent_id;
-  await broadcast(chat_id, { type: 'message', message: msg });
+  await broadcast(chat_id, { type: 'message', message: msg }, null, exceptDk);
 
   // Push-уведомления всем участникам (кроме отправителя).
   const chat = chatMeta;

@@ -139,7 +139,8 @@ router.get('/chat/:chatId', authMiddleware, async (req, res) => {
 
   // Гость видит только сообщения после своего подключения: порог — номер сообщения, в SQL он вставляется числом
   const gfloor = guestLib.floorOf(req.user.id);
-  const FL = gfloor ? ` AND m.id > ${Number(gfloor)}` : '';
+  // Уведомление о входе скрыто от самого нового устройства (messages.hide_dk, notify.js): ключ устройства берётся из его токена
+  const FL = (gfloor ? ` AND m.id > ${Number(gfloor)}` : '') + (req.user.dk ? ` AND (m.hide_dk IS NULL OR m.hide_dk != ${Number(req.user.dk)})` : '');
   const limit = Math.min(parseInt(req.query.limit) || 50, 200);
   const before = req.query.before ? parseInt(req.query.before) : null;
   const after  = req.query.after  ? parseInt(req.query.after)  : null;

@@ -26,7 +26,7 @@ async function deleteChatFiles(chatId) {
   rows.forEach(r => { try { require('../attach').purge(JSON.parse(r.attachment)); } catch {} });
 }
 
-async function enrichChat(chat, userId) {
+async function enrichChat(chat, userId, dk = null) {
   const members = (await dal.all(`
     SELECT u.id, u.username, u.display_name, u.tag, u.is_bot, u.fed_login, u.fed_instance FROM users u
     JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = ?
@@ -60,6 +60,18 @@ async function enrichChat(chat, userId) {
     if (last?.forward_data) try { last.forward_data = JSON.parse(last.forward_data); } catch { last.forward_data = null; }
     unread = await unreadCounts.inChat(userId, chat.id);
     unreadMentions = await unreadCounts.mentionsInChat(userId, chat.id);
+    // Служебный чат «Electron»: уведомление, скрытое от этого устройства (его же вход), не попадает ни в превью, ни в счётчик
+    if (chat.system_kind && dk) {
+      last = await dal.get(`
+        SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.forward_data,
+          COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, u.id as sender_id
+        FROM messages m LEFT JOIN users u ON u.id = m.sender_id
+        WHERE m.chat_id = ? AND (m.hide_dk IS NULL OR m.hide_dk != ?) ORDER BY m.sent_at DESC, m.id DESC LIMIT 1
+      `, chat.id, dk);
+      unread = (await dal.get(`SELECT COUNT(*) AS c FROM messages m WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0 AND (m.hide_dk IS NULL OR m.hide_dk != ?)
+        AND m.id > COALESCE((SELECT last_read_id FROM chat_read_state WHERE user_id = ? AND chat_id = ?), 0)`, chat.id, userId, dk, userId, chat.id)).c;
+      unreadMentions = 0;
+    }
   }
   // Секретный чат: превью в списке никогда не показывает содержимое, даже
   // расшифрованное — защита от подглядывания через плечо. Факт «есть новое
@@ -111,7 +123,14 @@ router.get('/', authMiddleware, async (req, res) => {
   `, req.user.id);
   const invited = await Promise.all((await dal.all('SELECT c.* FROM chats c JOIN chat_invites i ON i.chat_id = c.id WHERE i.user_id = ? ORDER BY i.created_at DESC', req.user.id))
     .map(c => inviteChat(c, req.user.id)));
-  res.json(invited.concat(await Promise.all(chats.map(c => enrichChat(c, req.user.id)))));
+  // Служебный чат «Electron» не показывается устройству, от которого скрыты все его сообщения (оно только что вошло)
+  const dk = req.user.dk || null;
+  const shown = [];
+  for (const c of chats) {
+    if (c.system_kind && dk && !(await dal.get('SELECT 1 FROM messages WHERE chat_id = ? AND (hide_dk IS NULL OR hide_dk != ?) LIMIT 1', c.id, dk))) continue;
+    shown.push(c);
+  }
+  res.json(invited.concat(await Promise.all(shown.map(c => enrichChat(c, req.user.id, dk)))));
 });
 
 // Список тем комнаты
