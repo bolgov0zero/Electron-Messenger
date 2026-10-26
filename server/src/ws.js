@@ -326,6 +326,7 @@ function setup(server) {
 
     if (!clients.has(user.id)) clients.set(user.id, new Set());
     clients.get(user.id).add(ws);
+    ws._dk = user.dk || null;   // ключ устройства, по которому выдан токен: отзыв устройства закрывает его соединения
     await broadcastStatus(user.id);
 
     const connId = ++connCounter;
@@ -771,8 +772,13 @@ function broadcastAll(payload) {
   }
 }
 // Разорвать все соединения пользователя (закрытие доступа гостя)
+// Отозвано устройство: его соединения получают выход и закрываются, остальные устройства человека не затрагиваются
+function kickDevice(userId, dk) {
+  getConn(userId).forEach(ws => { if (ws._dk === dk) { try { ws.send(JSON.stringify({ type: 'force_logout' })); ws.close(4001, 'device_revoked'); } catch {} } });
+}
+
 function kick(userId) {
   getConn(userId).forEach(ws => { try { ws.close(4001, 'guest_ended'); } catch {} });
 }
 
-module.exports = { setup, kick, finishMessage, setRemoteStatus, hasOpenConnection, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, getMobile, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };
+module.exports = { setup, kick, kickDevice, finishMessage, setRemoteStatus, hasOpenConnection, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, getMobile, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };

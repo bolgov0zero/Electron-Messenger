@@ -185,6 +185,7 @@ router.patch('/:id/password', authMiddleware, adminMiddleware, async (req, res) 
   if (String(password).length < MIN_PASSWORD_LEN)
     return res.status(400).json({ error: `Пароль должен быть не короче ${MIN_PASSWORD_LEN} символов` });
   await dal.run('UPDATE users SET password_hash = ? WHERE id = ?', bcrypt.hashSync(password, 10), req.params.id);
+  await require('../devices').wipe(Number(req.params.id));   // ключи устройств выданы под старый пароль
   const pu = await dal.get('SELECT display_name, username FROM users WHERE id = ?', req.params.id);
   logAudit(req, 'security', 'Администратор задал новый пароль', pu ? `${pu.display_name} (@${pu.username})` : `id ${req.params.id}`);
   res.json({ ok: true });
@@ -205,6 +206,7 @@ router.post('/me/password', authMiddleware, async (req, res) => {
   if (bcrypt.compareSync(new_password, row.password_hash))
     return res.status(400).json({ error: 'Новый пароль совпадает со старым' });
   await dal.run('UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?', bcrypt.hashSync(new_password, 10), req.user.id);
+  await require('../devices').wipe(req.user.id, req.user.dk);   // остальные ключи сбрасываются; ключ этого устройства остаётся: его токен продолжает действовать
   res.json({ ok: true });
 });
 

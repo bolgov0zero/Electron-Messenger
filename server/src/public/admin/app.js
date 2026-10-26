@@ -2600,6 +2600,7 @@ const uxSvg = (p, sw = 2, fill = false) => `<svg width="12" height="12" viewBox=
 const UX_I = {
   search: uxSvg('<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>'),
   edit: uxSvg('<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>'),
+  laptop: uxSvg('<path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16"/>'),
   key: uxSvg('<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>'),
   logout: uxSvg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>'),
   ban: uxSvg('<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>'),
@@ -2889,9 +2890,80 @@ function uaMenu(e, id) {
   const self = currentUser?.id === id, devices = (u.clients || []).length;
   uxOpenMenu(e, 'ua' + id, `
     <button role="menuitem" data-on-click="__h35" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.key}Сменить пароль</button>
+    <button role="menuitem" data-on-click="uaDevices" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.laptop}Устройства</button>
     <button role="menuitem" ${devices ? '' : 'disabled'} data-on-click="__h36" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.logout}Завершить сеансы${devices ? `<small>${devices}</small>` : ''}</button>
     <button role="menuitem" ${self ? 'disabled' : ''} data-on-click="uaBanMenu" data-a-click="${esc(JSON.stringify([id, !!u.banned]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button>
     <hr><button role="menuitem" class="danger" ${self ? 'disabled' : ''} data-on-click="__h38" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить</button>`);
+}
+
+// ── Устройства пользователя ──
+// Ключи для входа без пароля (см. server/src/devices.js): у каждой пары «человек + устройство» свой, отозвать можно любой.
+// Ключ профиля (режим «Высокая доступность») лежит на сетевом диске пользователя и позволяет новому компьютеру зарегистрироваться без пароля
+const DVC = { uid: null, list: [], now: 0, busy: false };
+const dvcDate = ts => {
+  if (!ts) return '—';
+  const d = new Date(ts * 1000);
+  return `${d.getDate()} ${d.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '')} ${d.getFullYear()}, ${d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+};
+async function uaDevices(id) {
+  uxCloseMenu();
+  DVC.uid = id; DVC.list = []; DVC.busy = false;
+  const name = allUsers.find(u => u.id === id)?.display_name || '';
+  document.getElementById('dvc-title').textContent = 'Устройства';
+  document.getElementById('dvc-sub').textContent = name;
+  document.getElementById('dvc-body').innerHTML = '<div class="dvc-empty">Загрузка…</div>';
+  document.getElementById('dvc-all').disabled = true;
+  openModal('modal-dev');
+  await dvcLoad();
+}
+async function dvcLoad() {
+  const r = await api('GET', `/api/admin/users/${DVC.uid}/devices`);
+  if (!r || r.error) { document.getElementById('dvc-body').innerHTML = `<div class="dvc-empty">${esc(r?.error || 'Не удалось загрузить')}</div>`; return; }
+  DVC.list = r.devices; DVC.now = r.now;
+  dvcRender();
+}
+function dvcRender() {
+  const prof = DVC.list.filter(d => d.kind === 'profile'), devs = DVC.list.filter(d => d.kind === 'device');
+  const act = DVC.list.filter(d => !d.revoked_at && !d.expired).length;
+  document.getElementById('dvc-all').disabled = !act || DVC.busy;
+  const KIND = { app: ['Приложение', UX_I.laptop], web: ['Браузер', UX_I.web], mobile: ['Телефон', UX_I.phone] };
+  const row = d => {
+    const off = d.revoked_at || d.expired, k = d.kind === 'profile' ? ['', UX_I.key] : (KIND[d.platform] || KIND.app);
+    const btn = (label, fn) => `<button type="button" class="btn btn-ghost btn-sm" ${DVC.busy ? 'disabled' : ''} data-on-click="${fn}" data-a-click="${esc(JSON.stringify([d.id]))}">${label}</button>`;
+    return `<div class="dvc-r${off ? ' off' : ''}"><span class="dvc-ic">${k[1]}</span>
+      <div class="dvc-tx"><b>${esc(d.name)}</b><span>${k[0] ? k[0] + ' · ' : ''}${d.os_user ? 'Windows: ' + esc(d.os_user) + ' · ' : ''}зарегистрировано ${dvcDate(d.created_at)}</span></div>
+      ${d.revoked_at ? `<span class="dvc-chip bad">${d.kind === 'profile' ? 'Регистрация запрещена' : 'Отозвано'}</span>` : d.expired ? '<span class="dvc-chip">Срок истёк</span>' : ''}
+      ${d.kind === 'profile' ? (d.revoked_at ? btn('Разрешить', 'dvcAllow') : btn('Запретить регистрацию', 'dvcRevoke')) : (off ? '' : btn('Отозвать', 'dvcRevoke'))}
+    </div>`;
+  };
+  let h = '';
+  if (prof.length) h += `<div class="dvc-grp">Профиль на сетевом диске</div><div class="dvc-list">${prof.map(row).join('')}</div>
+    <p class="dvc-note">Режим «Высокая доступность»: ключ лежит на диске человека, по нему новый компьютер регистрирует себя и входит без пароля. Запрет не отключает уже зарегистрированные устройства.</p>`;
+  h += `<div class="dvc-grp">Устройства${devs.length ? ` · ${devs.filter(d => !d.revoked_at && !d.expired).length}` : ''}</div>`;
+  h += devs.length ? `<div class="dvc-list">${devs.map(row).join('')}</div>`
+    : '<div class="dvc-empty">Устройств пока нет. Они появляются, когда человек входит по паролю в приложении, браузере или на телефоне.</div>';
+  document.getElementById('dvc-body').innerHTML = h;
+}
+async function dvcAct(path, okText) {
+  if (DVC.busy) return;
+  DVC.busy = true; dvcRender();
+  const r = await api('POST', `/api/admin/users/${DVC.uid}/devices/${path}`);
+  DVC.busy = false;
+  if (!r || r.error) { toast(esc(r?.error || 'Не удалось'), 'error'); dvcRender(); return; }
+  toast(okText, 'success');
+  await dvcLoad();
+}
+function dvcRevoke(id) {
+  const d = DVC.list.find(x => x.id === id); if (!d) return;
+  if (d.kind === 'profile') {
+    confirm('Запретить регистрацию?', 'Новые компьютеры больше не смогут войти по ключу профиля с сетевого диска. Уже зарегистрированные устройства продолжат работать.', () => dvcAct(`${id}/revoke`, 'Регистрация запрещена'));
+    return;
+  }
+  confirm('Отозвать устройство?', `«${esc(d.name)}» выйдет из аккаунта и не сможет войти по ключу. Войти снова можно будет только по паролю.`, () => dvcAct(`${id}/revoke`, 'Устройство отозвано'));
+}
+function dvcAllow(id) { dvcAct(`${id}/allow`, 'Регистрация разрешена'); }
+function dvcRevokeAll() {
+  confirm('Отозвать все устройства?', 'Все устройства выйдут из аккаунта, а регистрация новых по ключу профиля будет запрещена. Войти снова можно будет по паролю.', () => dvcAct('revoke-all', 'Устройства отозваны'));
 }
 
 // ── Действия ──

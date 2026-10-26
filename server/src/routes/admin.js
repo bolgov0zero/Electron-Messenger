@@ -528,9 +528,37 @@ router.get('/updates/progress', (req, res) => {
 router.post('/users/:id/logout', async (req, res) => {
   const userId = Number(req.params.id);
   await dal.run('UPDATE users SET sessions_valid_from = unixepoch() WHERE id = ?', userId);
+  await require('../devices').revokeAll(userId);   // иначе устройства тут же вошли бы обратно по своим ключам
   sendTo(userId, { type: 'force_logout' });
   const name = (await dal.get('SELECT display_name FROM users WHERE id = ?', userId))?.display_name || '—';
   logAudit(req, 'security', 'Завершение всех сессий', name);
+  res.json({ ok: true });
+});
+
+// Устройства пользователя (ключи для входа без пароля, см. devices.js): список, отзыв одного, отзыв всех
+const devName = async id => (await dal.get('SELECT display_name FROM users WHERE id = ?', id))?.display_name || '—';
+router.get('/users/:id/devices', async (req, res) => {
+  const userId = Number(req.params.id);
+  if (!(await dal.get('SELECT 1 FROM users WHERE id = ?', userId))) return res.status(404).json({ error: 'Пользователь не найден' });
+  res.json({ devices: await require('../devices').list(userId), now: Math.floor(Date.now() / 1000) });
+});
+router.post('/users/:id/devices/revoke-all', async (req, res) => {
+  const userId = Number(req.params.id);
+  const n = await require('../devices').revokeAll(userId);
+  logAudit(req, 'security', 'Отозваны все устройства', await devName(userId));
+  res.json({ ok: true, revoked: n });
+});
+router.post('/users/:id/devices/:keyId/revoke', async (req, res) => {
+  const userId = Number(req.params.id);
+  const row = await require('../devices').revoke(userId, Number(req.params.keyId));
+  if (!row) return res.status(404).json({ error: 'Не найдено' });
+  logAudit(req, 'security', row.kind === 'profile' ? 'Запрещена регистрация устройств' : 'Отозвано устройство', `${await devName(userId)}: ${row.name}`);
+  res.json({ ok: true });
+});
+router.post('/users/:id/devices/:keyId/allow', async (req, res) => {
+  const userId = Number(req.params.id);
+  if (!(await require('../devices').allow(userId, Number(req.params.keyId)))) return res.status(404).json({ error: 'Не найдено' });
+  logAudit(req, 'security', 'Разрешена регистрация устройств', await devName(userId));
   res.json({ ok: true });
 });
 
@@ -538,6 +566,7 @@ router.post('/users/:id/logout', async (req, res) => {
 router.post('/users/:id/ban', async (req, res) => {
   const userId = Number(req.params.id);
   await dal.run('UPDATE users SET banned = 1, sessions_valid_from = unixepoch() WHERE id = ?', userId);
+  await require('../devices').revokeAll(userId);
   sendTo(userId, { type: 'force_logout' });
   try { await require('../fedspaces').membersChanged(); } catch {}
   const name = (await dal.get('SELECT display_name FROM users WHERE id = ?', userId))?.display_name || '—';

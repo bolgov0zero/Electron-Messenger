@@ -67,7 +67,9 @@ async function resolveUser(token) {
   // iat в секундах, как и отметка. Сравнение нестрогое: токен, выданный в ту же
   // секунду, что и отзыв, тоже считаем отозванным — иначе он проскочит
   if (user.sessions_valid_from && payload.iat <= user.sessions_valid_from) throw new AuthError('revoked');
-  return { ...user, is_admin: !!user.is_admin, must_change_password: !!user.must_change_password };
+  // Токен, выданный устройству по его ключу (dk — номер ключа): ключ отозван — токен тоже закрыт (см. devices.js)
+  if (payload.dk && !(await require('./devices').alive(payload.dk))) throw new AuthError('revoked');
+  return { ...user, is_admin: !!user.is_admin, must_change_password: !!user.must_change_password, dk: payload.dk || null };
 }
 
 // Пока пароль по умолчанию не сменён, токен даёт доступ только к смене пароля и обновлению токена

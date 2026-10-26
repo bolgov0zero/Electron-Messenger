@@ -278,11 +278,14 @@ function readHAConfig() {
 // ДО переопределения userData ниже и больше не трогаем.
 const LOCAL_MACHINE_DIR = app.getPath('userData');
 
-// Apply BEFORE app.ready so Electron uses the correct userData path
+// «Высокая доступность»: на сетевой диск уходит только небольшой переносимый набор (общие настройки и ключ профиля) в папку
+// <диск>:\Electron\<пользователь Windows>\. Профиль Chromium (хранилище, кэш) остаётся на самом компьютере: на сетевом диске
+// он ломается при работе с двух компьютеров сразу, а токен и пароль на общий диск попадать не должны.
+// Раньше на диск уходил весь профиль: при первом запуске новой версии вход из него переносится (см. ha-legacy-* ниже)
 const haConfig = readHAConfig();
-if (haConfig?.drive) {
-  app.setPath('userData', path.join(haConfig.drive + ':\\Electron'));
-}
+const haOsUser = () => { try { return os.userInfo().username.replace(/[\\/:*?"<>|]/g, '_') || 'user'; } catch { return 'user'; } };
+const HA_ROOT = haConfig?.drive ? haConfig.drive + ':\\Electron' : null;
+const HA_DIR = HA_ROOT ? path.join(HA_ROOT, haOsUser()) : null;
 
 let mainWindow = null;
 
@@ -511,8 +514,13 @@ function destroyAccount(id) {
 // Тема, размер текста, масштаб, акцент, узор и фон переписки — одни на все записи. Хранятся здесь,
 // а не в хранилище записи: у каждой записи оно своё. Изменение в одной записи сразу уходит в остальные.
 const APP_SETTINGS_FILE = path.join(app.getPath('userData'), 'app-settings.json');
+// В режиме HA настройки едут за человеком: основной экземпляр лежит на сетевом диске, копия — рядом с приложением
+const HA_SETTINGS_FILE = HA_DIR ? path.join(HA_DIR, 'app-settings.json') : null;
 let appSettings = null;
-try { appSettings = JSON.parse(fs.readFileSync(APP_SETTINGS_FILE, 'utf8')); } catch {}
+for (const f of [HA_SETTINGS_FILE, HA_ROOT && path.join(HA_ROOT, 'app-settings.json'), APP_SETTINGS_FILE]) {   // второй — старая раскладка, когда на диске лежал весь профиль
+  if (!f || appSettings) continue;
+  try { appSettings = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {}
+}
 function cleanAppSettings(d) {
   const out = {};
   if (!d || typeof d !== 'object') return out;
@@ -550,6 +558,7 @@ ipcMain.on('app-settings-set', (e, patch) => {
   appSettings = { ...(appSettings || {}), ...clean };
   if (clean.theme) applyTitleTheme();
   try { fs.writeFileSync(APP_SETTINGS_FILE, JSON.stringify(appSettings)); } catch {}
+  if (HA_SETTINGS_FILE) { try { fs.mkdirSync(HA_DIR, { recursive: true }); fs.writeFileSync(HA_SETTINGS_FILE, JSON.stringify(appSettings)); } catch {} }
   // Остальным записям — сразу; отправившая уже применила у себя
   for (const [, view] of accountViews) {
     if (view.webContents.isDestroyed() || view.webContents.id === e.sender.id) continue;
@@ -559,6 +568,7 @@ ipcMain.on('app-settings-set', (e, patch) => {
 
 // Новая запись: окно входа в отдельном экземпляре; закрыть его можно — вернёмся к прежней записи
 function addAccount() {
+  if (HA_DIR) return;   // в режиме HA в клиенте одна учётная запись
   if (accounts.some(a => a.pending)) { showAccount(accounts.find(a => a.pending).id); return; }
   const id = 'a' + Date.now().toString(36);
   accounts.push({ id, partition: `persist:acc-${id}`, meta: null, unread: 0, pending: true });
@@ -789,15 +799,12 @@ ipcMain.on('unread', (e, count) => {
 // средствами системы: прочитать сможет только тот же пользователь на той же машине.
 const SESSION_FILE = path.join(app.getPath('userData'), 'session.bin');
 
-// DPAPI-шифрование (safeStorage) привязано к паре пользователь+машина — файл,
-// зашифрованный так, не читается на другом компьютере. При включённой «Высокой
-// доступности» файл специально лежит на сетевом диске, чтобы читаться с любой
-// машины под этим пользователем, поэтому в этом режиме храним его как обычный JSON.
+// Файл лежит на самом компьютере и шифруется средствами системы (safeStorage). В режиме HA сессия на сетевой диск
+// не уходит: за человеком едет ключ профиля, а токен каждый компьютер получает свой.
 ipcMain.handle('session-save', (e, json) => {
   const SESSION_FILE_ = accFile(SESSION_FILE, accountIdOf(e));
   try {
-    const isHA = !!haConfig?.drive;
-    const data = (!isHA && safeStorage.isEncryptionAvailable())
+    const data = safeStorage.isEncryptionAvailable()
       ? safeStorage.encryptString(json)
       : Buffer.from(json, 'utf8');
     fs.writeFileSync(SESSION_FILE_, data);
@@ -810,8 +817,7 @@ ipcMain.handle('session-load', (e) => {
     const file = accFile(SESSION_FILE, accountIdOf(e));
     if (!fs.existsSync(file)) return null;
     const buf = fs.readFileSync(file);
-    const isHA = !!haConfig?.drive;
-    if (!isHA && safeStorage.isEncryptionAvailable()) {
+    if (safeStorage.isEncryptionAvailable()) {
       try { return safeStorage.decryptString(buf); } catch { return null; }
     }
     return buf.toString('utf8');
@@ -850,6 +856,66 @@ ipcMain.handle('secret-device-id', () => {
     if (!id) { id = crypto.randomUUID(); secretFileWrite(SECRET_DEVICE_FILE, id); }
     return id;
   } catch { return null; }
+});
+
+// ── Ключи устройства и профиль HA ──
+// Вход по паролю выдаёт серверу «пару человек + устройство» и ключ для входа без пароля (server/src/devices.js).
+// Ключ устройства лежит на самом компьютере, зашифрованный; в режиме HA на сетевом диске лежит ключ профиля, по нему
+// новый компьютер регистрирует своё устройство. Пароль и токен нигде не хранятся.
+const DEVKEY_FILE = path.join(LOCAL_MACHINE_DIR, 'device_key.bin');
+const localDeviceId = () => {
+  let id = secretFileRead(SECRET_DEVICE_FILE);
+  if (!id) { id = crypto.randomUUID(); secretFileWrite(SECRET_DEVICE_FILE, id); }
+  return id;
+};
+ipcMain.handle('device-info', () => {
+  try { return { id: localDeviceId(), name: os.hostname(), osUser: (() => { try { return os.userInfo().username; } catch { return ''; } })(), ha: !!HA_DIR }; } catch { return null; }
+});
+ipcMain.handle('devkey-load', (e) => { try { return secretFileRead(accFile(DEVKEY_FILE, accountIdOf(e))); } catch { return null; } });
+ipcMain.handle('devkey-save', (e, str) => { try { secretFileWrite(accFile(DEVKEY_FILE, accountIdOf(e)), String(str)); return true; } catch { return false; } });
+ipcMain.handle('devkey-clear', (e) => { try { fs.unlinkSync(accFile(DEVKEY_FILE, accountIdOf(e))); } catch {} return true; });
+
+const HA_PROFILE_FILE = HA_DIR ? path.join(HA_DIR, 'profile.json') : null;
+const readJsonFile = f => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
+ipcMain.handle('ha-profile-load', () => {
+  if (!HA_PROFILE_FILE) return null;
+  const d = readJsonFile(HA_PROFILE_FILE);
+  if (!d) return null;
+  let key = null;   // зашифрованный ключ читается только там, где работает расшифровка системы; иначе вход по паролю
+  if (d.key && typeof d.key.data === 'string') {
+    if (d.key.enc === 'safe') { try { key = safeStorage.decryptString(Buffer.from(d.key.data, 'base64')); } catch {} }
+    else if (d.key.enc === 'plain') key = d.key.data;
+  }
+  return { server: String(d.server || ''), username: String(d.username || ''), profile_key: key };
+});
+ipcMain.handle('ha-profile-save', (_, o) => {
+  if (!HA_PROFILE_FILE || !o || typeof o !== 'object') return false;
+  try {
+    const cur = readJsonFile(HA_PROFILE_FILE) || {};
+    const next = { v: 1, server: String(o.server ?? cur.server ?? ''), username: String(o.username ?? cur.username ?? ''), key: cur.key || null };
+    if (typeof o.profile_key === 'string') {
+      next.key = safeStorage.isEncryptionAvailable()
+        ? { enc: 'safe', data: safeStorage.encryptString(o.profile_key).toString('base64') }
+        : { enc: 'plain', data: o.profile_key };
+    }
+    fs.mkdirSync(HA_DIR, { recursive: true });
+    const tmp = HA_PROFILE_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(next));
+    fs.renameSync(tmp, HA_PROFILE_FILE);
+    return true;
+  } catch { return false; }
+});
+ipcMain.handle('ha-profile-clear', () => { try { if (HA_PROFILE_FILE) fs.unlinkSync(HA_PROFILE_FILE); } catch {} return true; });
+// Старая раскладка HA: на диске лежал весь профиль, сессия в session.bin обычным JSON. Читаем её один раз для переноса и после него стираем
+// всё, где могли остаться токен и пароль (session.bin, хранилище страницы)
+ipcMain.handle('ha-legacy-load', () => {
+  if (!HA_ROOT) return null;
+  try { return fs.readFileSync(path.join(HA_ROOT, 'session.bin'), 'utf8'); } catch { return null; }
+});
+ipcMain.handle('ha-legacy-cleanup', () => {
+  if (!HA_ROOT) return false;
+  for (const n of ['session.bin', 'Local Storage', 'Session Storage']) { try { fs.rmSync(path.join(HA_ROOT, n), { recursive: true, force: true }); } catch {} }
+  return true;
 });
 
 ipcMain.handle('secret-keys-load', (e) => {

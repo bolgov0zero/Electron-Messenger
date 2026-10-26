@@ -46,14 +46,15 @@ const S = {
 
 const SESSION_KEY = 'electron_v2';
 const CRED_KEY = 'electron_creds';
-function saveCredentials(u, p) { try { localStorage.setItem(CRED_KEY, JSON.stringify({ u, p })); } catch {} }
+// Хранится только логин, чтобы он подставлялся в форму входа. Пароль не хранится: вместо него вход по ключу устройства (shared/devicekey.js)
+function saveCredentials(u) { try { localStorage.setItem(CRED_KEY, JSON.stringify({ u })); } catch {} }
 function clearCredentials() { try { localStorage.removeItem(CRED_KEY); } catch {} }
 function fillLoginFromCreds() {
   try {
     const c = JSON.parse(localStorage.getItem(CRED_KEY));
     if (!c) return;
+    if (c.p !== undefined) { delete c.p; localStorage.setItem(CRED_KEY, JSON.stringify(c)); }   // пароль, сохранённый прежними версиями, стирается
     const un = document.getElementById('l-username'); if (un && c.u) un.value = c.u;
-    const pw = document.getElementById('l-password'); if (pw && c.p) pw.value = c.p;
   } catch {}
 }
 let _loadingMore = false;
@@ -197,6 +198,7 @@ async function api(method, path, body) {
       if (info.code === 'expired' && path !== '/auth/refresh') {
         const ok = await refreshToken();
         if (ok) return api(method, path, body);
+        if (await keyLogin()) return api(method, path, body);
         logout();
       }
       return null;
@@ -213,6 +215,11 @@ async function api(method, path, body) {
 let _refreshTimer = null;
 async function refreshToken() {
   if (!S.token || !S.server) return false;
+  // С ключом устройства суточное обновление меняет и токен, и ключ: копия ключа обнаруживается в течение суток
+  try {
+    const d = window.DeviceKey && await DeviceKey.refresh(S.server);
+    if (d && d.token) { S.token = d.token; saveSession(); return true; }
+  } catch {}
   try {
     const res = await fetch(`${httpProto()}://${S.server}/api/auth/refresh`, {
       headers: { Authorization: 'Bearer ' + S.token },
@@ -521,6 +528,14 @@ function bootUi(on, text) {
 }
 // Одна попытка: 'ok' — сервер принял токен, 'revoked' — сессию отозвали или пользователя заблокировали,
 // 'invalid' — токен не принят, 'retry' — ответа нет или сервер ещё поднимается
+// Токен не принят: входим по ключу устройства (shared/devicekey.js), форма входа остаётся для случая, когда ключа нет или он не принят
+async function keyLogin() {
+  const d = window.DeviceKey && await DeviceKey.login(S.server);
+  if (!d || !d.token) return false;
+  Object.assign(S, { token: d.token, user: d.user });
+  saveSession();
+  return true;
+}
 async function bootProbe() {
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), BOOT_TRY_MS);
   try {
@@ -529,7 +544,7 @@ async function bootProbe() {
     if (res.status === 401) {
       const info = await res.json().catch(() => ({}));
       if (['revoked', 'banned', 'user_not_found'].includes(info.code)) return 'revoked';
-      if (info.code === 'expired') return (await refreshToken()) ? 'ok' : 'revoked';
+      if (info.code === 'expired') return (await refreshToken()) ? 'ok' : 'expired';
       return 'invalid';
     }
     return 'retry';
@@ -558,7 +573,14 @@ async function bootSession() {
       logout();
       return;
     }
-    if (r === 'invalid') { bootLog('проверка сессии: сервер не принял токен, показан экран входа'); break; }
+    if (r === 'invalid' || r === 'expired') {
+      bootUi(true, 'Вхожу…');
+      if (await keyLogin()) { if (run !== _bootRun) return; _bootActive = false; bootUi(false); enterApp(); return; }
+      if (run !== _bootRun) return;
+      if (r === 'expired') { _bootActive = false; bootUi(false); bootLog('проверка сессии: токен истёк и обновить его не удалось, выполняется выход'); logout(); return; }
+      bootLog('проверка сессии: сервер не принял токен, показан экран входа');
+      break;
+    }
     const spent = Math.round((Date.now() - t0) / 1000);
     bootLog(`проверка сессии: нет ответа от сервера (попытка ${n}, ${spent} с), пробую ещё раз`);
     if (Date.now() - t0 > BOOT_TOTAL_MS) { bootLog(`проверка сессии: сервер не ответил за ${spent} с, показан экран входа`); break; }
@@ -585,6 +607,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     applySettings();
     // Не ждём: форма входа остаётся доступной, а проверка идёт с повторами (см. bootSession)
     bootSession();
+  } else if (await keyLogin()) {
+    // Сессии нет, но есть ключ устройства: входим сразу, без формы
+    applySettings();
+    enterApp();
   } else {
     applySettings();
     fillLoginFromCreds();
@@ -679,11 +705,13 @@ async function doLogin() {
   if (!username||!password) { err.textContent='Заполните все поля'; return; }
   btn.disabled=true; btn.textContent='Подключение...'; err.textContent='';
   try {
-    const res = await fetch(`${httpProto()}://${S.server}/api/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+    const device = window.DeviceKey ? DeviceKey.payload() : null;
+    const res = await fetch(`${httpProto()}://${S.server}/api/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,...(device ? { device } : {})})});
     const data = await res.json();
     if (data.token) {
       Object.assign(S, { token:data.token, user:data.user });
-      saveCredentials(username, password);
+      saveCredentials(username);
+      window.DeviceKey && DeviceKey.store(S.server, data);
       saveSession(); enterApp();
     } else { err.textContent = data.error||'Неверный логин или пароль'; }
   } catch { err.textContent='Не удалось подключиться к серверу'; }
@@ -691,6 +719,7 @@ async function doLogin() {
 }
 
 function logout(intentional = false) {
+  window.DeviceKey && DeviceKey.logout(S.server);   // ключ этого устройства удаляется здесь и на сервере
   clearInterval(_refreshTimer);
   // Сохранённые для запуска без связи чаты, переписки и очередь неотправленного стираем: они принадлежат этому входу
   try { Object.keys(localStorage).filter(k => k.startsWith('cache_') || k.startsWith('outbox_')).forEach(k => localStorage.removeItem(k)); _outbox.length = 0; _outLoaded = false; } catch {}
@@ -720,6 +749,8 @@ async function refreshServerInfo() {
 }
 function enterApp() {
   startTokenRefresh();
+  // Вошли раньше, чем появились ключи (после обновления): выдаём по действующему токену
+  if (window.DeviceKey) DeviceKey.ensure(S.server, S.token).then(t => { if (t) { S.token = t; saveSession(); } });
   refreshServerInfo();
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-main').classList.add('active');

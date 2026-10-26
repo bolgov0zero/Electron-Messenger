@@ -751,6 +751,29 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_guest_links_user ON guest_links(guest_user_id);
 `);
 
+// Ключи устройств: вход без пароля, когда токен не принят (см. devices.js). kind = 'device' — ключ пары «человек + устройство»,
+// 'profile' — ключ профиля на сетевом диске (режим «Высокая доступность»): им новый компьютер регистрирует своё устройство.
+// В базе только хеш ключа; revoked_at — отозван администратором (у профиля это запрет регистрации новых устройств)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS device_keys (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind         TEXT NOT NULL,
+    device_id    TEXT,
+    platform     TEXT NOT NULL DEFAULT 'app',
+    name         TEXT NOT NULL DEFAULT '',
+    os_user      TEXT NOT NULL DEFAULT '',
+    key_hash     TEXT NOT NULL UNIQUE,
+    prev_hash    TEXT,
+    prev_at      INTEGER,
+    parent_id    INTEGER,
+    created_at   INTEGER NOT NULL DEFAULT (unixepoch()),
+    last_used_at INTEGER,
+    revoked_at   INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_device_keys_user ON device_keys(user_id);
+`);
+
 // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)
 const sysExists = db.prepare("SELECT id FROM users WHERE username = '__system__'").get();
 if (!sysExists) {

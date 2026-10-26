@@ -1109,6 +1109,30 @@ tbody tr:hover td{background:var(--c-surface2)}
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .modal{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);width:480px;max-height:88vh;display:flex;flex-direction:column;box-shadow:var(--shadow-xl);overflow:hidden}
 .modal-sm{width:380px}
+/* Устройства пользователя (модалка из меню «⋯» на странице «Пользователи») */
+.dvc-modal{width:540px;max-width:calc(100vw - 24px)}
+.dvc-hd{display:flex;align-items:baseline;gap:10px;min-width:0}
+.dvc-hd h3{margin:0}
+.dvc-hd span{color:var(--c-text2);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dvc-modal .modal-foot{justify-content:space-between}
+.dvc-danger{color:var(--c-red-text)}
+.dvc-grp{font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--c-text2);margin:0 0 8px}
+.dvc-grp:not(:first-child){margin-top:20px}
+.dvc-list{border:1px solid var(--c-border);border-radius:12px;overflow:hidden}
+.dvc-r{display:flex;align-items:center;gap:12px;padding:11px 12px 11px 14px;border-top:1px solid var(--c-border)}
+.dvc-r:first-child{border-top:0}
+.dvc-r.off .dvc-ic,.dvc-r.off .dvc-tx{opacity:.5}
+.dvc-ic{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--c-surface2);color:var(--c-text2)}
+.dvc-ic svg{width:17px;height:17px}
+.dvc-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.dvc-tx b{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dvc-tx span{font-size:12px;color:var(--c-text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dvc-chip{flex:none;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--c-surface2);color:var(--c-text2)}
+.dvc-chip.bad{color:var(--c-red-text);background:color-mix(in srgb,var(--c-red) 12%,transparent)}
+.dvc-note{margin:8px 2px 0;font-size:12px;line-height:1.5;color:var(--c-text2)}
+.dvc-empty{padding:22px 12px;text-align:center;font-size:13px;color:var(--c-text2);border:1px dashed var(--c-border);border-radius:12px}
+@media (max-width:560px){.dvc-r{flex-wrap:wrap}.dvc-tx{flex-basis:calc(100% - 60px)}}
+
 .modal-head{padding:16px 20px;border-bottom:1px solid var(--c-border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .modal-head h3{font-size:14px;font-weight:700;color:var(--c-text)}
 .modal-close{background:var(--c-surface2);border:1px solid var(--c-border);color:var(--c-muted);font-size:14px;cursor:pointer;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-xs);transition:background var(--t-fast),border-color var(--t-fast),color var(--t-fast);line-height:1}
@@ -2564,6 +2588,20 @@ return 'OK';</pre>
 </div>
 
 <!-- Confirm modal -->
+<div class="modal-bg" id="modal-dev">
+  <div class="modal dvc-modal">
+    <div class="modal-head">
+      <div class="dvc-hd"><h3 id="dvc-title">Устройства</h3><span id="dvc-sub"></span></div>
+      <button class="modal-close" data-on-click="closeModal" data-a-click='["modal-dev"]'>✕</button>
+    </div>
+    <div class="modal-body" id="dvc-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost dvc-danger" id="dvc-all" data-on-click="dvcRevokeAll">Отозвать все</button>
+      <button class="btn ux-solid" data-on-click="closeModal" data-a-click='["modal-dev"]'>Закрыть</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-ws">
   <div class="modal modal-sm">
     <div class="modal-head">

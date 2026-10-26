@@ -40,6 +40,8 @@ B.app = {
   // Вход после успешной авторизации (по паролю или по сохранённой сессии)
   enter: async function () {
     B.auth.startRefresh();
+    // Вошли раньше, чем появились ключи (после обновления): выдаём по действующему токену
+    if (window.DeviceKey) DeviceKey.ensure(B.S.server, B.S.token).then(function (t) { if (t) { B.S.token = t; B.session.save(); } });
     B.chats.refreshServerInfo();
     B.presence.load();
     B.upload.load();

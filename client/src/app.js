@@ -53,14 +53,15 @@ const CRED_KEY = 'electron_creds';
 // Признак включённой «Высокой доступности» — выставляется один раз при старте
 // (см. DOMContentLoaded ниже) и не меняется без перезапуска приложения.
 let _haActive = false;
-function saveCredentials(u, p) { try { localStorage.setItem(CRED_KEY, JSON.stringify({ u, p })); } catch {} }
+// Хранится только логин, чтобы он подставлялся в форму входа. Пароль не хранится нигде: вместо него вход по ключу устройства (см. keyLogin)
+function saveCredentials(u) { try { localStorage.setItem(CRED_KEY, JSON.stringify({ u })); } catch {} }
 function clearCredentials() { try { localStorage.removeItem(CRED_KEY); } catch {} }
 function fillLoginFromCreds() {
   try {
     const c = JSON.parse(localStorage.getItem(CRED_KEY));
     if (!c) return;
+    if (c.p !== undefined) { delete c.p; localStorage.setItem(CRED_KEY, JSON.stringify(c)); }   // пароль, сохранённый прежними версиями, стирается
     const un = document.getElementById('l-username'); if (un && c.u) un.value = c.u;
-    const pw = document.getElementById('l-password'); if (pw && c.p) pw.value = c.p;
   } catch {}
 }
 
@@ -271,6 +272,7 @@ async function api(method, path, body) {
       if (info.code === 'expired' && path !== '/auth/refresh') {
         const ok = await refreshToken();
         if (ok) return api(method, path, body);
+        if (await keyLogin()) return api(method, path, body);
         logout();
       }
       return null;
@@ -296,6 +298,11 @@ function diagOnce(key, text) {
 let _refreshTimer = null;
 async function refreshToken() {
   if (!S.token || !S.server) return false;
+  // С ключом устройства суточное обновление меняет и токен, и ключ: копия ключа обнаруживается в течение суток
+  try {
+    const k = await keyRotate();
+    if (k?.ok && k.server === S.server) { S.token = k.data.token; saveSession(); return true; }
+  } catch {}
   try {
     const res = await fetch(`${httpProto()}://${S.server}/api/auth/refresh`, {
       headers: { Authorization: 'Bearer ' + S.token },
@@ -402,6 +409,94 @@ function bootUi(on, text) {
   // Без мигания: если ответ приходит быстро, надпись так и не появится
   if (el.hidden) _bootUiTimer = setTimeout(() => { el.hidden = false; }, 400);
 }
+// ── ВХОД БЕЗ ПАРОЛЯ ──
+// Вход по паролю выдаёт ключ этого устройства (server/src/devices.js); он лежит на компьютере зашифрованным. Токен не принят — входим по ключу сами,
+// форма входа остаётся пустой. В режиме HA на сетевом диске лежит ключ профиля: новый компьютер по нему регистрирует своё устройство и входит.
+let _dev = null;
+async function deviceInfo() {
+  if (_dev || !window.electron?.deviceInfo) return _dev;
+  try { _dev = await window.electron.deviceInfo(); } catch {}
+  if (_dev?.ha) _haActive = true;
+  return _dev;
+}
+const devPayload = d => d && d.id ? { id: d.id, name: d.name, os_user: d.osUser, ha: !!d.ha } : null;
+async function keyFetch(server, path, body, token) {
+  try {
+    const proto = /:\d+$/.test(server) ? 'http' : 'https';
+    const res = await fetch(`${proto}://${server}/api${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) }, body: JSON.stringify(body) });
+    return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
+  } catch { return { ok: false, status: 0, data: {} }; }
+}
+// Сохранить выданные сервером ключи: устройство — локально, профиль — на сетевом диске (только HA)
+async function storeKeys(server, r) {
+  if (!window.electron) return;
+  try {
+    if (r.device_key) await window.electron.devkeySave?.(JSON.stringify({ server, key: r.device_key }));
+    if (r.profile_key && S.user) await window.electron.haProfileSave?.({ server, username: S.user.username, profile_key: r.profile_key });
+  } catch {}
+}
+function adoptSession(server, data) {
+  Object.assign(S, { server, token: data.token, user: data.user });
+  localStorage.setItem('lastServer', server);
+  saveSession();
+}
+// Обмен ключа этого устройства на новый (ротация, server/src/devices.js). Один обмен за раз: два параллельных запроса оставили бы в файле
+// не тот ключ, и сервер принял бы это за копию. Возвращает null (ключа нет), { ok: true, server, data } или { ok: false, status }
+let _keyOp = null;
+function keyRotate() {
+  if (_keyOp) return _keyOp;
+  _keyOp = (async () => {
+    const dev = devPayload(await deviceInfo());
+    if (!dev) return null;
+    let saved = null;
+    try { saved = JSON.parse(await window.electron.devkeyLoad() || 'null'); } catch {}
+    if (!saved?.key || !saved.server) return null;
+    const r = await keyFetch(saved.server, '/auth/device-login', { key: saved.key, device: dev });
+    if (r.ok && r.data.token) { await storeKeys(saved.server, r.data); return { ok: true, server: saved.server, data: r.data }; }
+    if (r.status === 401) { try { await window.electron.devkeyClear?.(); } catch {} }   // отозван, не найден, истёк срок или использован повторно
+    return { ok: false, status: r.status };
+  })().finally(() => { _keyOp = null; });
+  return _keyOp;
+}
+async function keyLogin() {
+  const dev = devPayload(await deviceInfo());
+  if (!dev) return false;
+  const k = await keyRotate();
+  if (k?.ok) { adoptSession(k.server, k.data); bootLog('вход по ключу устройства'); return true; }
+  if (k && k.status !== 401) return false;                                             // сервер не ответил или заблокировал вход: профиль не пробуем
+  if (!dev.ha) return false;
+  let hp = null;
+  try { hp = await window.electron.haProfileLoad?.(); } catch {}
+  if (hp?.profile_key && hp.server) {
+    const r = await keyFetch(hp.server, '/auth/device-register', { profile_key: hp.profile_key, device: dev });
+    if (r.ok && r.data.token) { adoptSession(hp.server, r.data); await storeKeys(hp.server, { device_key: r.data.device_key }); bootLog('вход по ключу профиля: устройство зарегистрировано'); return true; }
+    bootLog(`ключ профиля не принят (${r.data.code || r.status})`);
+  }
+  return false;
+}
+// Ключи по действующей сессии: у клиента, вошедшего до появления ключей (после обновления), у старой HA-установки при переносе,
+// при включении HA и после смены пароля (сервер сбрасывает ключи профиля). force — выдать ключ профиля заново
+async function ensureKeys(force) {
+  if (!S.token || !S.server || !window.electron?.deviceInfo) return;
+  const dev = devPayload(await deviceInfo());
+  if (!dev) return;
+  let hasDev = false, hasProf = true;
+  try { const k = JSON.parse(await window.electron.devkeyLoad() || 'null'); hasDev = !!(k?.key && k.server === S.server); } catch {}
+  if (dev.ha) { try { const hp = await window.electron.haProfileLoad?.(); hasProf = !force && !!(hp?.profile_key && hp.server === S.server); } catch { hasProf = false; } }
+  if (!hasDev || !hasProf) {
+    const r = await keyFetch(S.server, '/auth/device-keys', { device: dev, device_key: !hasDev, profile: dev.ha && !hasProf }, S.token);
+    if (r.ok) {
+      if (r.data.token) { S.token = r.data.token; saveSession(); }
+      await storeKeys(S.server, r.data);
+    }
+  }
+  // Старая HA-установка перенесена: всё, где лежали токен и пароль, стирается с диска
+  if (_haLegacy) {
+    let hp = null; try { hp = await window.electron.haProfileLoad?.(); } catch {}
+    if (hp?.profile_key) { await window.electron.haLegacyCleanup?.(); _haLegacy = false; }
+  }
+}
+let _haLegacy = false;
 // Одна попытка: 'ok' — сервер принял токен, 'revoked' — сессию отозвали или пользователя заблокировали,
 // 'invalid' — токен не принят, 'retry' — ответа нет или сервер ещё поднимается
 async function bootProbe() {
@@ -412,7 +507,7 @@ async function bootProbe() {
     if (res.status === 401) {
       const info = await res.json().catch(() => ({}));
       if (['revoked', 'banned', 'user_not_found'].includes(info.code)) return 'revoked';
-      if (info.code === 'expired') return (await refreshToken()) ? 'ok' : 'revoked';
+      if (info.code === 'expired') return (await refreshToken()) ? 'ok' : 'expired';
       return 'invalid';
     }
     return 'retry';
@@ -441,7 +536,15 @@ async function bootSession() {
       logout();
       return;
     }
-    if (r === 'invalid') { bootLog('проверка сессии: сервер не принял токен, показан экран входа'); break; }
+    if (r === 'invalid' || r === 'expired') {
+      // Токен не подошёл: входим по ключу устройства, и только если он не принят, показываем форму
+      bootUi(true, 'Вхожу…');
+      if (await keyLogin()) { if (run !== _bootRun) return; _bootActive = false; bootUi(false); enterApp(); return; }
+      if (run !== _bootRun) return;
+      if (r === 'expired') { _bootActive = false; bootUi(false); bootLog('проверка сессии: токен истёк и обновить его не удалось, выполняется выход'); logout(); return; }
+      bootLog('проверка сессии: сервер не принял токен, показан экран входа');
+      break;
+    }
     const spent = Math.round((Date.now() - t0) / 1000);
     bootLog(`проверка сессии: нет ответа от сервера (попытка ${n}, ${spent} с), пробую ещё раз`);
     if (Date.now() - t0 > BOOT_TOTAL_MS) { bootLog(`проверка сессии: сервер не ответил за ${spent} с, показан экран входа`); break; }
@@ -467,6 +570,12 @@ async function restoreFromDisk() {
     if (!localStorage.getItem(SESSION_KEY)) {
       const json = await window.electron.sessionLoad?.();
       if (json) localStorage.setItem(SESSION_KEY, json);
+    }
+    // Старая HA-установка: сессия лежала на сетевом диске открытым текстом. Берём её токен один раз, чтобы получить ключ профиля (ensureKeys),
+    // после чего эти файлы стираются
+    if (!localStorage.getItem(SESSION_KEY) && window.electron.haLegacyLoad) {
+      const old = await window.electron.haLegacyLoad();
+      if (old) { try { if (JSON.parse(old).token) { localStorage.setItem(SESSION_KEY, old); _haLegacy = true; } } catch {} }
     }
     if (!localStorage.getItem('lastServer')) {
       const preset = await window.electron.getPresetServer?.();
@@ -513,6 +622,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     applySettings();
     // Не ждём: форма входа остаётся доступной, а проверка идёт с повторами (см. bootSession)
     bootSession();
+  } else if (await keyLogin()) {
+    // Нет сессии, но есть ключ устройства или (HA, новый компьютер) ключ профиля: входим сразу, без формы
+    applySettings();
+    enterApp();
   } else {
     applySettings();
     const lastServer = localStorage.getItem('lastServer');
@@ -622,18 +735,32 @@ async function doLogin() {
   btn.disabled=true; btn.textContent='Подключение...'; err.textContent='';
   try {
     const proto = /:\d+$/.test(server) ? 'http' : 'https';
-    const res = await fetch(`${proto}://${server}/api/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+    const device = devPayload(await deviceInfo());
+    const res = await fetch(`${proto}://${server}/api/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,...(device ? { device } : {})})});
     const data = await res.json();
     if (data.token) {
       Object.assign(S, { server, token:data.token, user:data.user });
-      saveCredentials(username, password);
+      saveCredentials(username);
+      await storeKeys(server, data);
       saveSession(); enterApp();
     } else { err.textContent = data.error||'Неверный логин или пароль'; }
   } catch { err.textContent='Не удалось подключиться к серверу'; }
   finally { btn.disabled=false; btn.textContent='Войти'; }
 }
 
+// Выход: ключ этого устройства удаляется и на компьютере, и на сервере (при явном выходе), в режиме HA снимается и ключ профиля с диска,
+// иначе при следующем запуске клиент вошёл бы снова. Ключи других устройств человека не затрагиваются
+async function dropKeys(intentional) {
+  if (!window.electron?.devkeyLoad) return;
+  try {
+    let k = null; try { k = JSON.parse(await window.electron.devkeyLoad() || 'null'); } catch {}
+    await window.electron.devkeyClear?.();
+    if (intentional && k?.key && k.server) keyFetch(k.server, '/auth/device-logout', { key: k.key });
+    if (intentional && _haActive) await window.electron.haProfileClear?.();
+  } catch {}
+}
 function logout(intentional = false) {
+  dropKeys(intentional);
   clearInterval(_refreshTimer);
   // Сохранённые для запуска без связи чаты, переписки и очередь неотправленного стираем: они принадлежат этому входу
   try { Object.keys(localStorage).filter(k => k.startsWith('cache_') || k.startsWith('outbox_')).forEach(k => localStorage.removeItem(k)); _outbox.length = 0; _outLoaded = false; } catch {}
@@ -783,6 +910,7 @@ function enterApp() {
   // Общего файла ещё нет (первый запуск после обновления) — настройки этой записи становятся общими
   if (!_sharedLoaded) { _sharedLoaded = true; pushAppSettings(); }
   startTokenRefresh();
+  ensureKeys();
   document.getElementById('screen-login').classList.remove('active');
   document.getElementById('screen-main').classList.add('active');
   loadDownloadedFiles();
@@ -1447,7 +1575,7 @@ function csPaneProfile() {
       <div class="cs-l"><b>Адрес сервера</b><span>${esc(S.server)}</span></div>
       <button type="button" class="cs-btn ghost" id="cs-server-copy" data-on-click="csCopyServer" data-a-click='["__this"]'>${CS_I.copy}Скопировать</button>
     </div></div>
-    ${csIsApp() ? `<div class="cs-gt">Учётные записи</div>
+    ${csIsApp() && !_haActive ? `<div class="cs-gt">Учётные записи</div>
     <div class="cs-g"><div class="cs-r">
       <div class="cs-l"><b>Добавить учётную запись</b><span>Вторая запись на этом или другом сервере — обе работают одновременно</span></div>
       <button type="button" class="cs-btn ghost" data-on-click="__h22">Добавить</button>
@@ -1528,6 +1656,7 @@ async function submitOwnPassword() {
   if (!r || r.error) { CS.pwErr = r?.error || 'Не удалось сменить пароль'; return csRefresh('cs-pw0'); }
   Object.assign(CS, { pwOpen: false, pw: { old: '', a: '', b: '' }, pwShow: false, pwDone: true });
   csRefresh();
+  ensureKeys(true);   // сервер сбросил остальные ключи (в том числе ключ профиля HA): выдаём новый
 }
 
 // ── Основные ──

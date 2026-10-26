@@ -58,6 +58,16 @@ contextBridge.exposeInMainWorld('electron', {
   // «Переслать» и «Удалить» в окне просмотра выполняет главное окно
   lightboxAction: (a) => ipcRenderer.invoke('lightbox-action', a),
   onLightboxAction: (cb) => ipcRenderer.on('lightbox-action', (_, a) => cb(a)),
+  // Ключи устройства и профиль HA (см. main.js)
+  deviceInfo: () => ipcRenderer.invoke('device-info'),
+  devkeyLoad: () => ipcRenderer.invoke('devkey-load'),
+  devkeySave: (s) => ipcRenderer.invoke('devkey-save', s),
+  devkeyClear: () => ipcRenderer.invoke('devkey-clear'),
+  haProfileLoad: () => ipcRenderer.invoke('ha-profile-load'),
+  haProfileSave: (o) => ipcRenderer.invoke('ha-profile-save', o),
+  haProfileClear: () => ipcRenderer.invoke('ha-profile-clear'),
+  haLegacyLoad: () => ipcRenderer.invoke('ha-legacy-load'),
+  haLegacyCleanup: () => ipcRenderer.invoke('ha-legacy-cleanup'),
   // High Availability
   listDrives: () => ipcRenderer.invoke('ha-list-drives'),
   getHAConfig: () => ipcRenderer.invoke('ha-get-config'),
