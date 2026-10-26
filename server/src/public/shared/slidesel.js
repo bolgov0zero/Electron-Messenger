@@ -18,12 +18,13 @@
     // клиент и веб
     { b: '.seg', i: 'button', o: '.active' },
     { b: '.cs-seg', i: 'button', o: A },
+    { b: '.sidebar-tabbar', i: '.sb-tab', o: '.on' },   // нижняя панель сайдбара веб клиента
     { b: '.ep-sw', i: 'button', o: A },
     { b: '.anx-sg', i: 'button', o: A },
     { b: '.anx-types', i: 'button', o: '[aria-checked="true"]', above: true },
     { b: '.gp-chips', i: '.gp-chip', o: A },
     { b: '.ep-tabs', i: '.ep-tab', o: '[aria-selected="true"]' },   // группы смайлов
-    { b: '.cs-nav-list', i: '.cs-sn', o: '[aria-current="page"],[aria-current="true"]' },
+    { b: '.cs-nav-list', i: '.cs-sn', o: '[aria-current="page"],[aria-current="true"]', ease: SPRING, dur: 500 },
     // списки чатов и тем: выделение — псевдоэлемент строки, плашка едет под текстом строк
     { b: '.chats-list', i: '.chat-item', o: '.active', p: '::after', below: true, ease: SPRING, dur: 500 },
     { b: '.topics-panel', i: '.chat-item', o: '.active', p: '::after', below: true, ease: SPRING, dur: 500 },

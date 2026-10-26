@@ -180,7 +180,7 @@ function annRight(head) {
   const sg = modes.map(([m, l, on]) => `<button type="button" aria-pressed="${on}" data-on-click="annMode" data-a-click="${esc(JSON.stringify([`${m}`]))}">${l}</button>`).join('');
   const lockWord = chat ? 'Выбранные' : 'Выбранным';
   return `<div class="anx-half r">${head ? `<div class="modal-hdr anx-hdr"><div class="anx-title">${chat ? 'Куда отправить' : 'Кому отправить'}</div>
-      <button class="icon-btn" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-announce"]' style="width:28px;height:28px">${AN_X}</button></div>` : ''}
+      <button class="icon-btn" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-announce"]'>${AN_X}</button></div>` : ''}
     <div class="anx-rbar"><div class="anx-rhead"><span class="anx-t2">${all ? (chat ? 'Во все чаты' : 'Получат все') : sp ? 'Пространства' : 'Получатели'}</span>
         <div class="anx-sg">${sg}</div></div>
       <label class="anx-search">${AN_SEARCH}<input id="ann-pq" value="${esc(AN.q)}" placeholder="${chat ? 'Название чата' : 'Имя, логин или тег'}" autocomplete="off" ${pk ? '' : 'disabled'} data-on-input="annSearch" data-a-input='["__value"]'></label>${pk ? bulk : ''}</div>
@@ -222,7 +222,7 @@ function annRender(focusId, resetList) {
   if (AN.narrow) {
     const pill = AN.pick ? AN.who.size : AN.sp ? AN.spSel.size : 'все';
     el.innerHTML = `<div class="modal-hdr anx-hdr"><div class="anx-title">Новое объявление</div>
-        <button class="icon-btn" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-announce"]' style="width:28px;height:28px">${AN_X}</button></div>
+        <button class="icon-btn" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-announce"]'>${AN_X}</button></div>
       <div class="anx-tabsbar" role="tablist"><button type="button" role="tab" aria-selected="${AN.tab === 'msg'}" data-on-click="annTab" data-a-click='["msg"]'>Сообщение</button>
         <button type="button" role="tab" aria-selected="${AN.tab === 'who'}" data-on-click="annTab" data-a-click='["who"]'>Получатели<span class="anx-pill ${AN.pick && !AN.who.size ? '' : 'on'}">${pill}</span></button></div>
       ${AN.tab === 'msg' ? annLeft(false) : annRight(false)}

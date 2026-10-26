@@ -1,6 +1,14 @@
 // Стеклянный вид веб клиента: подсветка под курсором у интерактивного стекла и зелёная точка у подписи «в сети».
 // Только оформление: разметку и обработчики приложения не трогает. Стили — в glass.css.
 (function () {
+  // Цветные пятна под стеклом (настройка «Цветная картинка» гасит их классом gl-noimg на <html>)
+  function amb() {
+    if (document.querySelector('.gl-amb')) return;
+    var d = document.createElement('div'); d.className = 'gl-amb'; d.setAttribute('aria-hidden', 'true');
+    d.innerHTML = '<i></i><i></i><i></i><i></i>';
+    document.body.insertBefore(d, document.body.firstChild);
+  }
+  if (document.body) amb(); else document.addEventListener('DOMContentLoaded', amb);
   // Элементы, у которых за курсором ездит блик (в макете это .gi): кнопки у поля ввода и «вниз», реакции, «назад», выбранная вкладка,
   // левая часть шапки (аватар и название), если по ней можно нажать
   var SPOT = '.composer-main .composer-attach, .composer-main .send-btn, .scroll-bottom-btn, .reaction-btn, .strip-back, .sb-tab.on, .chat-header-main';
@@ -30,3 +38,8 @@
   }
   if (document.body) init(); else document.addEventListener('DOMContentLoaded', init);
 })();
+
+// После щелчка мышью фокус снимается у кнопок (рамка остаётся только при управлении с клавиатуры), как в макете
+document.addEventListener('click', e => {
+  if (e.detail > 0) { const b = e.target.closest('button,[role=button],[role=tab],[role=radio],.chat-item,.sb-tab,.cs-sn'); if (b) setTimeout(() => { if (document.activeElement === b) b.blur(); }, 0); }
+});

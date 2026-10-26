@@ -833,10 +833,10 @@ function applyAccent() {
   s.setProperty('--accent', hex(c));
   s.setProperty('--accent-rgb', c.join(','));
   s.setProperty('--primary', hex(c));
-  s.setProperty('--accent-soft', rgba(c, .10));
+  s.setProperty('--accent-soft', rgba(c, .12));
   s.setProperty('--primary-light', rgba(c, .10));
-  s.setProperty('--accent-border', rgba(c, .25));
-  s.setProperty('--accent-shadow', rgba(c, .20));
+  s.setProperty('--accent-border', rgba(c, .28));
+  s.setProperty('--accent-shadow', rgba(c, .22));
   s.setProperty('--reaction-mine', rgba(c, dark ? .15 : .13));
   s.setProperty('--reply-bg', rgba(c, .08));
   s.setProperty('--blob1', rgba(c, .12));
@@ -991,6 +991,8 @@ function chatBgCardsHtml() {
   </div>`;
 }
 
+// Прозрачность стекла → множитель плотности --gl-k: 50% = 1, 0% = 1,9 (плотнее), 100% = 0,15 (почти прозрачное)
+function glassK(t) { return Math.max(.15, 1.9 - .018 * (t == null ? 50 : Math.min(100, Math.max(0, +t)))); }
 function applySettings() {
   headMenuClose();
   const isDark = S.settings.theme === 'dark' || S.settings.theme === 'navy';
@@ -1023,6 +1025,9 @@ function applySettings() {
   document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');
   if (themeColorMeta) themeColorMeta.content = S.settings.theme === 'navy' ? '#1c2835' : isDark ? '#0b0d14' : '#f7f7fb';
+  // Стекло: «Цветная картинка» (пятна под стеклом) и «Прозрачность» (0–100, 50 — стандартная плотность)
+  document.documentElement.classList.toggle('gl-noimg', S.settings.glassImage === false);
+  document.documentElement.style.setProperty('--gl-k', glassK(S.settings.glassTransparency).toFixed(3));
   applyAccent();
   applyChatBg();
   applyChatPattern();
@@ -1389,7 +1394,7 @@ function csPaneGeneral() {
   const sound = S.settings.soundEnabled !== false;
   return `<div class="cs-gt">Уведомления</div>
     <div class="cs-g"><div class="cs-r"><div class="cs-l"><b>Звук сообщений</b><span>Короткий сигнал, когда приходит новое сообщение</span></div>
-      <div class="cs-ctl"><button type="button" class="cs-btn ghost" ${sound ? '' : 'disabled'} data-on-click="playNotificationSound">${CS_I.play}Прослушать</button>${csTg(sound, 'csSound', 'Звук сообщений')}</div></div>
+      <div class="cs-ctl"><button type="button" class="cs-btn ghost sm" ${sound ? '' : 'disabled'} data-on-click="playNotificationSound">${CS_I.play}Прослушать</button>${csTg(sound, 'csSound', 'Звук сообщений')}</div></div>
       <div class="cs-r"><div class="cs-l"><b>Показывать текст сообщения</b><span>Выключите, если экран виден посторонним: в уведомлении будет только «Новое сообщение»</span></div>${csTg(_pushPrefs.show_text !== false, 'csPushText', 'Показывать текст сообщения')}</div>
       <div class="cs-r"><div class="cs-l"><b>Тихие часы</b><span>${_pushPrefs.quiet_from != null ? 'В это время уведомлений и звука нет, сообщения никуда не пропадают' : 'В выбранные часы уведомлений и звука нет'}</span></div>
         <div class="cs-ctl">${_pushPrefs.quiet_from != null ? `<input type="time" class="cs-time" value="${_hhmm(_pushPrefs.quiet_from)}" data-on-change="csQuietTime" data-a-change='["quiet_from", "__value"]' aria-label="С"><span class="cs-dash">–</span><input type="time" class="cs-time" value="${_hhmm(_pushPrefs.quiet_to)}" data-on-change="csQuietTime" data-a-change='["quiet_to", "__value"]' aria-label="До">` : ''}${csTg(_pushPrefs.quiet_from != null, 'csQuiet', 'Тихие часы')}</div></div>
@@ -1400,6 +1405,14 @@ function csPaneGeneral() {
       <div class="cs-r"><div class="cs-l"><b>Скрыть сайдбар</b><span>Список чатов прячется и выезжает при наведении на левый край окна</span></div>${csTg(document.body.classList.contains('sidebar-hidden'), 'csHideSidebar', 'Скрыть сайдбар')}</div>
     </div>` : `<p class="cs-hint">Разрешение на уведомления меняется в настройках сайта в самом браузере.</p>`}`;
 }
+function csGlassTr(v) {
+  v = Math.min(100, Math.max(0, +v || 0));
+  S.settings.glassTransparency = v; document.documentElement.style.setProperty('--gl-k', glassK(v).toFixed(3)); saveSession();
+  const r = document.getElementById('cs-tr'), o = document.getElementById('cs-trval');
+  if (r) r.style.setProperty('--v', v + '%');
+  if (o) o.textContent = v + '%';
+}
+function csGlassImage() { S.settings.glassImage = S.settings.glassImage === false; applySettings(); saveSession(); csRefresh(); }
 function csSound() { S.settings.soundEnabled = S.settings.soundEnabled === false; saveSession(); csRefresh(); }
 async function csAutostart() { CS.autostart = !CS.autostart; csRefresh(); await setAutostart(CS.autostart); }
 function csHideSidebar() { toggleSidebar(); csRefresh(); }
@@ -1408,7 +1421,7 @@ function csHideSidebar() { toggleSidebar(); csRefresh(); }
 // Выбор в сегментированном переключателе: вызываем функцию по имени и обновляем панель
 function csPick(name, v) { window[name](v); csRefresh(); }
 function csPaneAppearance() {
-  const s = S.settings, lvl = currentPatternLevel(), scales = csIsApp() ? [80, 90, 100] : [80, 90, 100, 110];
+  const s = S.settings, tr = s.glassTransparency == null ? 50 : s.glassTransparency, lvl = currentPatternLevel(), scales = csIsApp() ? [80, 90, 100] : [80, 90, 100, 110];
   const seg = (items, cur, fn, label) => `<div class="cs-seg" role="group" aria-label="${label}">${items.map(([v, t, title]) =>
     `<button type="button" aria-pressed="${cur === v}" ${title ? `aria-label="${title}" title="${title}"` : ''} data-on-click="csPick" data-a-click="${esc(JSON.stringify([fn, v]))}">${t}</button>`).join('')}</div>`;
   return `<div class="cs-pv" aria-hidden="true">
@@ -1422,13 +1435,17 @@ function csPaneAppearance() {
       <div class="cs-r"><div class="cs-l"><b>Тема</b></div>${seg([['light', CS_I.sun + 'Светлая'], ['dark', CS_I.moon + 'Тёмная'], ['navy', CS_I.navy + 'Тёмно-синяя']], s.theme, 'setTheme', 'Тема')}</div>
       <div class="cs-r"><div class="cs-l"><b>Цвет акцента</b><span>Кнопки, свои сообщения, выделение</span></div>
         <div class="cs-ctl"><span class="cs-aname">${ACCENTS[currentAccent()].name}</span><div id="accent-seg" class="accent-seg" data-on-click="__h17">${accentDotsHtml()}</div></div></div>
+      <div class="cs-r"><div class="cs-l"><b>Прозрачность</b><span>Стекло панелей, меню и окон: правее — прозрачнее, левее — плотнее</span></div>
+        <div class="cs-ctl"><input id="cs-tr" class="rng" type="range" min="0" max="100" step="1" value="${tr}" style="--v:${tr}%" aria-label="Прозрачность стекла" data-on-input="csGlassTr" data-a-input='["__value"]'><span class="rng-val" id="cs-trval">${tr}%</span></div></div>
     </div>
     <div class="cs-gt">Фон переписки</div>
     <div data-on-click="__h18">${chatBgCardsHtml()}</div>
-    <div class="cs-gt">Узор фона</div>
-    <div class="cs-g"><div class="cs-r stack">
+    <div class="cs-gt">Фон</div>
+    <div class="cs-g">
+      <div class="cs-r"><div class="cs-l"><b>Цветная картинка</b><span>Размытые цветные пятна за стеклом. Выключите — фон станет ровным. С узором не связана.</span></div>${csTg(s.glassImage !== false, 'csGlassImage', 'Цветная картинка')}</div>
+      <div class="cs-r stack"><div class="cs-l"><b>Узор</b><span>Рисунок поверх фона переписки</span></div>
       <div data-on-click="__h19">${chatPatternCardsHtml()}</div>
-      ${currentPattern() ? `<div class="cs-ctl cs-between"><div class="cs-l"><b>Заметность</b></div>${seg([[1, 'Слабая'], [2, 'Средняя'], [3, 'Сильная']], lvl, 'setPatternLevel', 'Заметность узора')}</div>` : ''}
+      ${currentPattern() ? `<div class="cs-ctl cs-between"><div class="cs-l"><b>Заметность узора</b></div>${seg([[1, 'Слабая'], [2, 'Средняя'], [3, 'Сильная']], lvl, 'setPatternLevel', 'Заметность узора')}</div>` : ''}
     </div></div>
     <div class="cs-gt">Текст</div>
     <div class="cs-g">
@@ -2377,21 +2394,30 @@ function watchComposerHeight() {
     _composerRO.observe(bar);
   } catch { _composerRO = null; }
 }
+let _topMO = null;
 function watchTopHeight() {
   const main = document.getElementById('chat-main');
   const header = main?.querySelector('.chat-header');
   const pin = document.getElementById('pin-bar');
+  const search = main?.querySelector('.chat-search');
   if (!main || !header) return;
+  // Верхний отступ ленты (+8 в формуле CSS): первое сообщение на 110 px от верха окна, а когда под шапкой закреп или поиск — на 162
+  // (в макете 98 и 150 от верха области чата, которая начинается на 12 px ниже). Шапка: 12 px от верха, высота 72, полосы 48
   const apply = () => {
-    const pinH = pin && pin.style.display !== 'none' ? pin.offsetHeight + 8 : 0;
-    main.style.setProperty('--chat-top-h', (16 + header.offsetHeight + pinH) + 'px');
+    const strip = (pin && pin.style.display !== 'none') || search?.classList.contains('open');
+    main.style.setProperty('--chat-top-h', (strip ? 154 : 102) + 'px');
   };
+  window._topApply = apply;
   apply();
   if (_topRO) _topRO.disconnect();
+  if (_topMO) _topMO.disconnect();
   try {
     _topRO = new ResizeObserver(apply);
     _topRO.observe(header);
     if (pin) _topRO.observe(pin);
+    _topMO = new MutationObserver(apply);
+    if (search) _topMO.observe(search, { attributes: true, attributeFilter: ['class'] });
+    if (pin) _topMO.observe(pin, { attributes: true, attributeFilter: ['style'] });
   } catch { _topRO = null; }
 }
 const NB_ICON_CHAT = '<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>';
@@ -6673,7 +6699,7 @@ function csPaneBlocks() {
   }
   return `<div class="cs-gt">Заблокированные</div><div class="cs-g">${list.map(b => `<div class="cs-r"><div class="cs-l"><b>${esc(b.display_name)}</b>
       <span>${b.federated ? esc(fedAddr(b)) + ' · другой сервер' : '@' + esc(b.username) + (b.workspace_name ? ' · ' + esc(b.workspace_name) : '')}</span></div>
-      <div class="cs-ctl"><button type="button" class="cs-btn ghost" data-on-click="unblockUser" data-a-click="${esc(JSON.stringify([b.id]))}">Разблокировать</button></div></div>`).join('')}</div>
+      <div class="cs-ctl"><button type="button" class="cs-btn ghost sm" data-on-click="unblockUser" data-a-click="${esc(JSON.stringify([b.id]))}">Разблокировать</button></div></div>`).join('')}</div>
     <p class="cs-hint">Заблокированный не может писать вам в личные сообщения. Общие группы и комнаты остаются.</p>`;
 }
 
@@ -7056,6 +7082,7 @@ function renderModalUsers(containerId, multi, filter='') {
     <div class="pp-row${multi&&S.ncSelected?.has(u.id)?' on':''}" data-uid="${u.id}" data-on-click="${multi ? 'toggleModalUser' : 'startDirect'}" data-a-click="${esc(JSON.stringify([u.id]))}">
       ${ppAvHtml(u)}
       <div class="pp-col"><div class="pp-line"><span class="pp-name">${esc(u.display_name)}</span>${u.tag?`<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>`:''}</div>${wsTag(u)}</div>
+      ${multi ? '<span class="pp-chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>' : ''}
     </div>`).join('') || '<div class="pp-empty">Нет пользователей</div>';
 }
 
