@@ -1,0 +1,578 @@
+/* ══════════════════════════════════════════════════════════════
+   LIQUID GLASS — стеклянный слой веб клиента (макет docs/glass-mockup/index.html)
+   Подключается после style.css и только переопределяет вид: разметку и поведение не трогает.
+   Откат: убрать <link> на этот файл (или git checkout cf1c737 -- server/src/public/chat/).
+
+   Правила:
+   • Размытое стекло — только на слое навигации и управления: панели, шапка, поле ввода, меню, окна.
+     Сообщения, реакции и строки остаются контентом: у них полупрозрачная заливка без размытия
+     (десятки размытых слоёв в ленте тормозили бы прокрутку).
+   • Стекло берёт цвет у темы (--side-bg, --text) и акцента (--accent), поэтому светлая, тёмная,
+     тёмно-синяя темы и все пять акцентов работают без отдельных наборов.
+   • Под стеклом живой цветной фон (градиенты у body), а не сплошная заливка.
+   • У предка стекла не должно быть overflow:hidden/isolation вплотную к краю: Chromium режет по нему
+     выборку фона, и у края видна светлая полоса.
+   • prefers-reduced-transparency и браузеры без backdrop-filter получают плотный фон.
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  --gl-blur: 26px;
+  --gl-spring: cubic-bezier(.34, 1.56, .64, 1);
+
+  /* Заливки стекла: считаются от цвета панели темы */
+  --gl:       color-mix(in srgb, var(--side-bg) 46%, transparent);
+  --gl2:      color-mix(in srgb, var(--side-bg) 66%, transparent);
+  --gl-pop:   color-mix(in srgb, var(--side-bg) 80%, transparent);
+  --gl-card:  color-mix(in srgb, var(--text) 5%, transparent);
+  --gl-card2: color-mix(in srgb, var(--text) 9%, transparent);
+  --gl-inset: color-mix(in srgb, var(--text) 6%, transparent);
+  --gl-edge:  rgba(255, 255, 255, .75);
+  --gl-hi:    rgba(255, 255, 255, .85);
+  --gl-lo:    rgba(12, 26, 25, .07);
+  --gl-shadow: rgba(20, 50, 60, .16);
+  --gl-spec:  rgba(255, 255, 255, .30);
+
+  /* Пузыри */
+  --gl-in:    rgba(255, 255, 255, .74);
+  --gl-out-a: color-mix(in srgb, var(--accent) 80%, #000);
+  --gl-out-b: color-mix(in srgb, var(--accent) 68%, #0b4f96);
+
+  /* Цветные пятна фона (как в макете): бирюза от акцента, индиго, розовый, янтарь */
+  --gl-base: #e3f0ef;
+  --amb-1: color-mix(in srgb, var(--accent) 60%, #fff);
+  --amb-2: #8e9cff;
+  --amb-3: #ffb4d3;
+  --amb-4: #ffd391;
+}
+html.dark {
+  --gl-edge:  rgba(255, 255, 255, .16);
+  --gl-hi:    rgba(255, 255, 255, .20);
+  --gl-lo:    rgba(0, 0, 0, .35);
+  --gl-shadow: rgba(0, 0, 0, .5);
+  --gl-spec:  rgba(255, 255, 255, .09);
+  --gl:       color-mix(in srgb, var(--side-bg) 52%, transparent);
+  --gl2:      color-mix(in srgb, #fff 9%, color-mix(in srgb, var(--side-bg) 62%, transparent));
+  --gl-pop:   color-mix(in srgb, var(--side-bg) 84%, transparent);
+  --gl-in:    color-mix(in srgb, var(--bubble-bg) 74%, transparent);
+  /* В тёмных темах акцент светлый: темнее, чтобы белый текст в своём пузыре давал контраст от 4.5:1 */
+  --gl-out-a: color-mix(in srgb, var(--accent) 58%, #000);
+  --gl-out-b: color-mix(in srgb, var(--accent) 48%, #0b3d7a);
+  --gl-base: color-mix(in srgb, var(--chat-bg) 70%, #000);
+  --amb-1: color-mix(in srgb, var(--accent) 55%, #000);
+  --amb-2: #4a4fd0;
+  --amb-3: #a33a73;
+  --amb-4: #a8742c;
+}
+
+/* ── Живой фон под стеклом ── */
+body {
+  background:
+    radial-gradient(circle 41vh at 48.5% 14%, color-mix(in srgb, var(--amb-1) 78%, transparent) 0, color-mix(in srgb, var(--amb-1) 78%, transparent) 38%, transparent 100%),
+    radial-gradient(circle 38vh at 89.7% 44%, color-mix(in srgb, var(--amb-2) 78%, transparent) 0, color-mix(in srgb, var(--amb-2) 78%, transparent) 38%, transparent 100%),
+    radial-gradient(circle 36vh at 26% 93%, color-mix(in srgb, var(--amb-3) 78%, transparent) 0, color-mix(in srgb, var(--amb-3) 78%, transparent) 38%, transparent 100%),
+    radial-gradient(circle 33vh at 73% 92%, color-mix(in srgb, var(--amb-4) 78%, transparent) 0, color-mix(in srgb, var(--amb-4) 78%, transparent) 38%, transparent 100%),
+    var(--gl-base);
+  background-attachment: fixed;
+}
+#screen-login { background: transparent; }
+.chat-main { isolation: auto; overflow: visible; }
+.messages-wrap { overflow: visible; }
+
+/* ── Конструкция стекла: панели ── */
+.sidebar, .acc-rail, .chat-header, .chat-header-actions, .pin-bar, .chat-search,
+.ro-banner, .sc-locked-banner, .inv-bar, .composer-field, .scroll-bottom-btn, .login-wrap,
+.composer-main .composer-attach, .composer-main .send-btn:not(.ready) {
+  background:
+    radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%),
+    var(--gl);
+  border: 1px solid var(--gl-edge);
+  -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%);
+          backdrop-filter: blur(var(--gl-blur)) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 12px 32px var(--gl-shadow);
+}
+.sidebar { --cg: transparent; }
+
+/* Всплывающее: окна, меню, панели — плотнее, чтобы текст читался поверх сообщений */
+.modal, .ctx-menu, #reaction-picker, #mention-popup, .head-menu, .up-menu, .ep-grid, .ha-pop,
+.reaction-tip, .acc-tip, #server-toast, #action-toast, .am-dlg, .ctx-read-fly, .anx-card,
+.topics-panel, .force-update-modal {
+  background:
+    radial-gradient(120% 80% at 0% 0%, var(--gl-spec), transparent 55%),
+    var(--gl-pop);
+  border: 1px solid var(--gl-edge);
+  -webkit-backdrop-filter: blur(calc(var(--gl-blur) + 6px)) saturate(190%);
+          backdrop-filter: blur(calc(var(--gl-blur) + 6px)) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 24px 60px var(--gl-shadow);
+}
+.ctx-menu, #reaction-picker, #mention-popup, .head-menu, .up-menu, .ha-pop, .ctx-read-fly { border-radius: 20px; }
+.modal { border-radius: 30px; }
+.topics-panel { border: 0; border-radius: 0; box-shadow: none; background: color-mix(in srgb, var(--side-bg) 78%, transparent); }
+.ann-banner {
+  -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(180%); backdrop-filter: blur(var(--gl-blur)) saturate(180%);
+  background-color: color-mix(in srgb, var(--side-bg) 70%, transparent);
+  border-radius: 18px;
+}
+
+/* Затемнение за окном: лёгкое и без размытия. Размытие здесь делало бы .modal-bg корнем фона,
+   и стекло окна видело бы только эту плёнку, а не страницу */
+.modal-bg { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* Появление и исчезновение затемнения живут на псевдоэлементе: анимация прозрачности у самого .modal-bg
+   (даже с forwards) делает его корнем фона, и стекло окна перестаёт видеть страницу под собой */
+.modal-bg.open, .modal-bg.closing { animation: none; }
+.modal-bg::before { content: ""; position: absolute; inset: 0; background: rgba(20, 40, 50, .20); pointer-events: none; }
+html.dark .modal-bg::before { background: rgba(0, 0, 0, .38); }
+.modal-bg.open::before { animation: modalBgIn 180ms ease-out; }
+.modal-bg.closing::before { animation: modalBgOut 150ms ease-in forwards; }
+.modal-bg > * { position: relative; }
+.am-dlg-bg { background: rgba(20, 40, 50, .20); -webkit-backdrop-filter: none; backdrop-filter: none; }
+html.dark .am-dlg-bg { background: rgba(0, 0, 0, .38); }
+
+/* Вложенное внутри окон: заливки прозрачные, чтобы стекло читалось */
+.modal { --md-card: var(--gl-card); --md-hover: var(--gl-card2); }
+.modal-hdr .icon-btn, .ha-close, .diag-head .icon-btn { background: var(--gl-card); }
+.ha-pick-ic, .cs-sn-ic { background: var(--gl-card); border: 0; }
+.gm-cam, .gm-tile, .gm-box, .gm-chips button, .cm-tabs button, .pf-g, .fp-row, .anx-pick, .nc-group-bar,
+.link-modal-url, .cs-stub-i, .bg-card, .stub-i {
+  background: var(--gl-card); border-color: var(--gl-edge);
+}
+.gm-box.fed { background: var(--accent-soft); border-color: var(--accent-border); }
+.gm-tile:hover, .gm-chips button:hover, .cm-tabs button:hover { background: var(--gl-card2); }
+.gm-chips button.on, .cm-tabs button.on { background: var(--accent-soft); border-color: var(--accent-border); }
+.anx-half:not(.l) { background: var(--gl-card); }
+.anx-types button, .anx-ch, .anx-sg, .anx-search, .anx-ta, .anx-app, .anx-pill { background: var(--gl-inset); }
+.anx-types button:hover, .anx-ch:hover { background: var(--gl-card2); }
+.anx-types button[aria-checked="true"], .anx-ch[aria-pressed="true"], .anx-sg button[aria-pressed="true"] { background: var(--accent-soft); }
+.anx-lock { background: color-mix(in srgb, var(--side-bg) 70%, transparent); }
+.cs-pv-side { background: var(--gl-card); }
+.cs-pv-cap { background: var(--gl2); }
+.cs-copy { background: transparent; }
+.ep-head { background: color-mix(in srgb, var(--side-bg) 70%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+
+/* ── Шапка и полосы над чатом ──
+   Как в макете: одна стеклянная полоса 72px, аватар и название слева, кнопки справа внутри своей капсулы */
+.chat-header {
+  top: 12px; height: 72px; padding: 0 14px 0 10px; gap: 12px; border-radius: 26px;
+}
+.chat-header-main { background: none; border: 0; box-shadow: none; border-radius: 0; height: auto; padding: 0; gap: 12px;
+  -webkit-backdrop-filter: none; backdrop-filter: none; }
+.chat-header .av-md { width: 44px; height: 44px; font-size: 15px; }
+.chat-header-info .ch-name { font-size: 16px; font-weight: 700; }
+.chat-header-info .ch-sub { font-size: 12.5px; color: var(--text2); margin-top: 1px; }
+.chat-header-actions { height: 44px; padding: 2px; gap: 0; border-radius: 999px; }
+.chat-header-actions > .icon-btn, .chat-header-actions > .icon-btn:first-child, .chat-header-actions > .icon-btn:last-child,
+.chat-header-actions > .icon-btn:only-child { width: 40px; height: 40px; border-radius: 50%; }
+.pin-bar, .chat-search, .ro-banner, .sc-locked-banner, .inv-bar { border-radius: 999px; }
+.inv-bar { border-radius: 26px; }
+.pin-bar, .chat-search { top: 92px; height: 42px; }
+.chat-search > .icon-btn:last-child, .pin-bar > .pin-unpin:last-child { height: 40px; border-radius: 0 21px 21px 0; }
+
+/* Поле ввода и плашки вместо него на всю ширину чата, как в макете */
+.composer-inner, .ro-banner, .sc-locked-banner, .inv-bar { max-width: none; }
+
+/* Отступы окна 12px, как в макете */
+.sidebar, .acc-rail { margin: 12px 0 12px 12px; border-radius: 30px; }
+.chat-main { margin: 0 12px; }
+body.sidebar-hidden .sidebar { left: 12px; top: 12px; bottom: 12px; }
+.chat-input-wrap { padding-bottom: 12px; }
+
+/* ── Сайдбар ── */
+.sidebar-head .btn-new-chat, .topbar-actions .icon-btn {
+  background: transparent; border: 0; color: var(--text); border-radius: 50%; width: 34px; height: 34px;
+}
+.topbar-actions {
+  gap: 0; padding: 2px; border-radius: 999px;
+  background: var(--gl); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow);
+}
+.sidebar-head .btn-new-chat:hover, .topbar-actions .icon-btn:hover { background: var(--gl2); color: var(--text); }
+.topbar-actions .head-more[aria-expanded="true"] { background: var(--gl2); border-radius: 50%; }
+.search-wrap {
+  height: 38px; background: var(--gl-inset); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 3px var(--gl-lo);
+}
+.search-wrap:focus-within { border-color: var(--accent); box-shadow: inset 0 1px 3px var(--gl-lo), 0 0 0 3px var(--accent-soft); }
+.sidebar-search { height: 46px; }
+.strip-back { background: var(--gl-inset); border-radius: 50%; }
+.strip-back:hover { background: var(--gl2); }
+
+/* Выбранный чат: приподнятое стекло (плавный переезд делает slidesel.js по этому же облику) */
+.chats-list .chat-item.active::after, .topics-panel .chat-item.active::after {
+  background: var(--gl2); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 6px 18px var(--gl-shadow);
+}
+.chats-list .chat-item:hover::after, .topics-panel .chat-item:hover::after, .chats-list .pp-row:hover::after {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.unread-badge { box-shadow: 0 2px 8px var(--accent-shadow); }
+
+/* Нижние вкладки: стеклянная капсула, активная вкладка — приподнятая плашка */
+.sidebar-tabbar {
+  margin: 4px 14px 14px; padding: 4px; gap: 2px; justify-content: stretch; border-radius: 999px;
+  background: var(--gl-inset); box-shadow: inset 0 1px 3px var(--gl-lo); border: 1px solid var(--gl-edge);
+}
+.sb-tab { border-radius: 999px; height: 38px; transition: color .15s, background .25s, box-shadow .25s, transform .35s var(--gl-spring); }
+.sb-tab.on { background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 3px 10px var(--gl-shadow); }
+.sb-tab:active { transform: scale(.94); }
+
+/* Бар папок и учётных записей */
+.acc-badge { border-color: transparent; box-shadow: 0 0 0 2px color-mix(in srgb, var(--side-bg) 80%, transparent); }
+.fbd { border-color: color-mix(in srgb, var(--side-bg) 80%, transparent); }
+.presence-dot { border-color: color-mix(in srgb, var(--side-bg) 85%, transparent); }
+.rail-sep { background: var(--gl-lo); }
+
+/* ── Поле ввода ── */
+.composer-field { border-radius: 26px; }
+.composer-field-row { min-height: 44px; }
+.composer-main .composer-attach, .composer-main .send-btn { width: 44px; height: 44px; }
+.composer-main .composer-attach:hover { background: var(--gl2); }
+.composer-main .send-btn.ready {
+  background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b));
+  color: #fff; border: 1px solid rgba(255, 255, 255, .4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), 0 8px 22px color-mix(in srgb, var(--gl-out-b) 45%, transparent);
+  transform: scale(1.04);
+}
+.composer-main .send-btn.ready:active { transform: scale(.96); }
+.composer-main .composer-attach, .composer-main .send-btn { transition: background .25s, color .25s, transform .4s var(--gl-spring), box-shadow .3s; }
+.composer-slot .input-reply-bar, .composer-slot .input-edit-bar, .composer-slot .lprev-bar { background: var(--gl-card); }
+.composer-slot .fmt-bar, .composer-slot .fmt-prev, .composer-slot .dm-bar { background: var(--gl-card); }
+.fmt-bar button:hover { background: var(--gl-card2); }
+.fmt-bar button.on { background: var(--accent-soft); }
+.typing-pill { background: var(--gl); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.scroll-bottom-btn { box-shadow: inset 0 1px 0 var(--gl-hi), 0 10px 26px var(--gl-shadow); }
+.scroll-bottom-btn:hover { background: var(--gl2); }
+
+/* Меню «+» над композером и прочие меню */
+.up-menu button:hover, .ctx-menu button:hover, .hm-i:hover, .ctx-read.open > button, .mention-item:hover,
+.mention-item.mn-active, .ctx-read-row:hover { background: var(--gl-card2); }
+.ctx-menu button.ctx-danger:hover { background: var(--danger-bg); }
+.ctx-reactions { background: var(--gl-inset); }
+.ctx-menu .ctx-reactions button:hover { background: var(--gl2); }
+.ep-search, .gp-search, .nc-search, .gm-search { background: var(--gl-inset); box-shadow: inset 0 1px 3px var(--gl-lo); }
+.ep-tab:hover { background: var(--gl-card2); }
+.ep-sw { background: var(--gl-inset); }
+.ep-sw button[aria-pressed="true"] { background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 6px var(--gl-shadow); }
+.emoji-item:hover { background: var(--gl-card2); }
+.hm-i::after, .acc-tip { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.hm-i::after { background: var(--text); color: var(--app-bg); }
+
+/* ── Сообщения: контент, не стекло ── */
+.msg-bubble {
+  background: var(--gl-in); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow);
+}
+.irc-msg[data-mine] .msg-bubble {
+  background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b));
+  border-color: rgba(255, 255, 255, .22); color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -1px 0 rgba(0, 0, 0, .12),
+              0 8px 20px color-mix(in srgb, var(--gl-out-b) 38%, transparent);
+}
+.irc-msg.emoji-msg .msg-bubble, .irc-msg.emoji-msg[data-mine] .msg-bubble { background: none; border-color: transparent; box-shadow: none; }
+.irc-msg.emoji-msg .msg-bubble:hover { background: var(--gl-in); border-color: var(--gl-edge); }
+.irc-msg.emoji-msg[data-mine] .msg-bubble:hover { background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); border-color: rgba(255,255,255,.22); }
+.msg-bubble.bubble-photo { border: 0; }
+
+/* Всё, что лежит внутри своего пузыря, читается на тёмной заливке */
+.irc-msg[data-mine] .irc-text, .irc-msg[data-mine] .irc-time, .irc-msg[data-mine] .fwd-mark,
+.irc-msg[data-mine] .edited-tag { color: rgba(255, 255, 255, .92); }
+.irc-msg[data-mine] .irc-time, .irc-msg[data-mine] .fwd-mark, .irc-msg[data-mine] .edited-tag { color: rgba(255, 255, 255, .8); }
+.irc-msg[data-mine] .irc-meta .status-sent, .irc-msg[data-mine] .irc-meta .status-delivered,
+.irc-msg[data-mine] .irc-meta .status-part { color: rgba(255, 255, 255, .75); }
+.irc-msg[data-mine] .irc-meta .status-read, .irc-msg[data-mine] .status-part .tk1 { color: #fff; stroke: #fff; }
+.irc-msg[data-mine] .irc-meta .status-read svg, .irc-msg[data-mine] .irc-meta .status-read path { stroke: #fff; }
+.irc-msg[data-mine] .msg-link, .irc-msg[data-mine] .mention, .irc-msg[data-mine] .mention[class*="mtag-"] { color: #fff; }
+.irc-msg[data-mine] .md-code { background: rgba(255, 255, 255, .2); }
+.irc-msg[data-mine] .irc-text blockquote { background: rgba(255, 255, 255, .16); border-left-color: rgba(255, 255, 255, .85); }
+.irc-msg[data-mine] .irc-reply, .irc-msg[data-mine] .irc-reply[class*="reply-"] { --rc: #fff; background: rgba(255, 255, 255, .16); }
+.irc-msg[data-mine] .irc-reply-text, .irc-msg[data-mine] .irc-reply-name { color: rgba(255, 255, 255, .92); }
+.irc-msg[data-mine] .bubble-file, .irc-msg[data-mine] .lcard { background: rgba(255, 255, 255, .15); }
+.irc-msg[data-mine] .bubble-file-size, .irc-msg[data-mine] .lc-d { color: rgba(255, 255, 255, .75); }
+.irc-msg[data-mine] .lcard .lc-t, .irc-msg[data-mine] .lcard:hover .lc-t { color: #fff; }
+.irc-msg[data-mine] .msg-search-hl { color: #fff; }
+.irc-msg[data-mine] .msg-bubble.bubble-photo > .irc-meta .status-read { color: #fff; }
+.bubble-file { background: var(--gl-card); }
+.bubble-file:hover { background: var(--gl-card2); }
+.lcard { background: var(--gl-card); }
+
+/* Плашка даты и реакции: полупрозрачные, без тяжёлого размытия */
+.date-divider span {
+  background: var(--gl); border: 1px solid var(--gl-edge); color: var(--text2);
+  border-radius: 999px; padding: 4px 14px; font-weight: 600;
+  -webkit-backdrop-filter: blur(12px) saturate(170%); backdrop-filter: blur(12px) saturate(170%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 12px var(--gl-shadow);
+}
+.reaction-btn {
+  background: var(--gl); border-color: var(--gl-edge); -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px var(--gl-shadow);
+  transition: background .2s, border-color .2s, transform .35s var(--gl-spring);
+}
+.reaction-btn:hover { background: var(--gl2); }
+.reaction-btn:active { transform: scale(.92); }
+.reaction-btn.mine { background: color-mix(in srgb, var(--accent) 24%, var(--gl2)); border-color: var(--accent); }
+.role-pill[class*="tag-"], .pp-tag[class*="tag-"] { background: color-mix(in srgb, currentColor 14%, transparent); }
+.role-pill.default, .pp-tag { background: var(--gl-card); }
+
+/* ── Кнопки: капсулы, отклик на нажатие ── */
+.icon-btn { border-radius: 50%; }
+.icon-btn:hover, .composer-icon-btn:hover { background: var(--gl-card2); }
+.icon-btn, .composer-icon-btn, .btn-new-chat, .ha-btn-cancel, .ha-btn-apply, .modal-btn-ghost, .modal-btn-primary,
+.modal-btn-danger, .cs-btn, .gi-btn, .am-btn, .anx-btn, .sc-btn, .pf-danger, .addc-btn, .gi-addc, .fp-new, .msg-act {
+  transition: background .2s, color .2s, transform .35s var(--gl-spring), box-shadow .2s, filter .2s;
+}
+.icon-btn:active, .composer-icon-btn:active, .btn-new-chat:active, .ha-btn-cancel:active, .ha-btn-apply:active,
+.modal-btn-ghost:active, .modal-btn-primary:active, .modal-btn-danger:active, .cs-btn:active, .gi-btn:active,
+.am-btn:active, .anx-btn:active, .sc-btn:active, .pf-danger:active, .addc-btn:active, .fp-new:active, .msg-act:active {
+  transform: scale(.95);
+}
+.modal-btn-ghost, .ha-btn-cancel, .anx-btn, .gi-btn, .am-btn, .diag-foot .cs-btn {
+  background: var(--gl-card); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 0 var(--gl-hi);
+}
+.modal-btn-ghost:hover, .ha-btn-cancel:hover, .anx-btn:hover:not(:disabled), .gi-btn:hover, .am-btn:hover:not(:disabled),
+.diag-foot .cs-btn:hover:not([disabled]) { background: var(--gl-card2); border: 1px solid var(--gl-edge); }
+/* Основное действие: акцентное стекло с градиентом, как кнопка отправки */
+.modal-btn-primary, .ha-btn-apply, .anx-solid, .cs-btn.solid, .am-btn.pri, .diag-foot .cs-btn.solid, .btn-login {
+  background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b));
+  color: #fff; border: 1px solid rgba(255, 255, 255, .35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 6px 18px color-mix(in srgb, var(--gl-out-b) 38%, transparent);
+}
+html.dark .anx-solid { color: #fff; }
+.modal-btn-primary:hover, .ha-btn-apply:hover, .anx-solid:hover:not(:disabled), .cs-btn.solid:hover:not([disabled]),
+.am-btn.pri:hover:not(:disabled), .diag-foot .cs-btn.solid:hover:not([disabled]), .btn-login:hover {
+  background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); filter: brightness(1.12); border-color: rgba(255,255,255,.35);
+}
+.btn-login { height: 44px; border-radius: 999px; font-size: 15px; font-weight: 700; padding: 0; }
+.btn-login:hover { filter: brightness(1.1); }
+.modal-btn-danger, .ha-btn-danger {
+  background: linear-gradient(140deg, var(--danger), color-mix(in srgb, var(--danger) 70%, #5a0f1a));
+  border: 1px solid rgba(255, 255, 255, .3); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 6px 18px var(--danger-border);
+}
+.cs-btn { background: var(--accent-soft); border: 1px solid var(--accent-border); }
+.cs-btn.ghost { background: var(--gl-card); border-color: var(--gl-edge); }
+.cs-btn.danger { border-color: var(--danger-border); }
+.gi-btn-add, .addc-btn, .gi-addc { background: var(--accent-soft); border: 1px solid var(--accent-border); color: var(--accent); }
+.gi-btn-delete, .pf-danger { background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger); }
+.msg-act { border-radius: 999px; }
+
+/* ── Поля ввода ── */
+.field input, .field textarea, .nc-name-input, .gi-name-input:not([readonly]), .profile-name-input, .cs-inp, .ac-fld,
+.anx-time input, .cs-time, .sc-b-inp, .pl-f, .gm-nm1 input, .anx-ta {
+  background: var(--gl-inset); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 3px var(--gl-lo);
+}
+.field input, .field textarea { border-radius: 999px; padding: 11px 16px; }
+.field textarea { border-radius: 18px; }
+.field input:focus, .field textarea:focus, .nc-name-input:focus, .profile-name-input:focus, .ac-fld:focus-within, .cs-inp:focus-within,
+.anx-ta:focus, .anx-search:focus-within {
+  border-color: var(--accent); box-shadow: inset 0 1px 3px var(--gl-lo), 0 0 0 3px var(--accent-soft);
+}
+.cs-inp.bad, .ac-fld.err { border-color: var(--danger-border); }
+.pl-f.done { background: var(--accent-soft); border-color: var(--accent-border); }
+
+/* ── Переключатели и сегменты ── */
+.seg, .cs-seg, .anx-sg, .ep-sw {
+  background: var(--gl-inset); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 3px var(--gl-lo); border-radius: 999px; overflow: visible;
+}
+.seg button.active, .cs-seg button[aria-pressed="true"], .anx-sg button[aria-pressed="true"] {
+  background: var(--gl2); color: var(--text);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px var(--gl-shadow);
+}
+.seg button { border-radius: 999px; }
+.tab { border-radius: 999px; background: var(--gl-inset); border-color: var(--gl-edge); }
+.tab.active { background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); border-color: rgba(255,255,255,.3); color: #fff; }
+.cs-tg { background: color-mix(in srgb, var(--text) 14%, transparent); box-shadow: inset 0 1px 3px var(--gl-lo); }
+.cs-tg::after { box-shadow: 0 2px 6px rgba(0, 0, 0, .3), inset 0 1px 0 #fff; transition: transform .35s var(--gl-spring); }
+.cs-tg[aria-checked="true"] { background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); box-shadow: inset 0 1px 3px rgba(0,0,0,.2); }
+.accent-dot { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 3px 8px var(--gl-shadow); transition: transform .35s var(--gl-spring), box-shadow .2s; }
+.accent-dot.active { box-shadow: 0 0 0 3px var(--gl2), 0 0 0 5px var(--dot); }
+.nc-kind, .ha-pick-btn, .ha-path-row, .update-notes, .diag-text, .sc-sync-device, .sc-codebox { background: var(--gl-card); border: 1px solid var(--gl-edge); }
+.nc-kind:hover, .ha-pick-btn:hover { background: var(--gl-card2); border-color: var(--gl-edge); }
+.update-progress-bar, .force-update-bar, .attach-track, .am-prog { background: var(--gl-inset); }
+.update-progress-fill, .force-update-fill, .attach-fill, .am-prog i { background: linear-gradient(90deg, var(--gl-out-a), var(--accent)); }
+
+/* ── Настройки (рисуются прямо в области чата) ── */
+.cs-g > .cs-r, .cs-g > .cs-notes, .cs-hero, .cs-ver, .bg-card, .pat-card {
+  background: var(--gl); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 6px 18px var(--gl-shadow);
+}
+.cs-hero { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%), var(--gl); }
+.cs-logout { background: var(--danger-bg); border: 1px solid var(--danger-border); }
+.cs-sn[aria-current="page"], .cs-sn[aria-current="true"] { background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow); }
+.cs-sn[aria-current="page"] .cs-sn-ic { background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); color: #fff; }
+.cs-sn:hover { background: var(--gl-card); }
+.cs-badge, .cs-logo { background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); color: #fff; }
+.cs-pv-msg.in { background: var(--gl-in); }
+.cs-pv-msg.out { background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); color: #fff; }
+.bg-card.active, .pat-card.active { box-shadow: 0 0 0 2px var(--accent), 0 6px 18px var(--gl-shadow); }
+
+/* ── Вход ── */
+.login-wrap { border-radius: 30px; padding: 40px 36px 32px; }
+.login-logo { border-radius: 22px; box-shadow: inset 0 1px 0 var(--gl-hi), 0 12px 28px var(--gl-shadow); }
+#ha-toggle-btn { background: var(--gl); border-color: var(--gl-edge); border-radius: 999px; -webkit-backdrop-filter: blur(var(--gl-blur)); backdrop-filter: blur(var(--gl-blur)); }
+.boot-overlay { background: color-mix(in srgb, var(--chat-bg) 55%, transparent); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+#server-toast, #action-toast { border-radius: 999px; }
+
+/* ── Просмотр медиа и перетаскивание ── */
+#drag-overlay { border-radius: 26px; background: rgba(var(--accent-rgb, 99, 102, 241), .14); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.lb-nav, .lb-act, #lightbox-close, #lightbox-download, .lb-zoom button, .lb-info, .lb-cap, .lb-count {
+  background: rgba(30, 40, 46, .42); border: 1px solid rgba(255, 255, 255, .18);
+  -webkit-backdrop-filter: blur(16px) saturate(180%); backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+.lb-nav:hover, .lb-act:hover, #lightbox-close:hover, #lightbox-download:hover, .lb-zoom button:hover { background: rgba(30, 40, 46, .6); }
+
+/* ── Размеры и ритм как в макете: список чатов, вкладки, поле ввода, пузыри ── */
+.sidebar-head .topbar-wordmark .tw-main, .topbar-wordmark .tw-accent { font-size: 13px; letter-spacing: .9px; font-weight: 700; }
+.sidebar-search { height: 54px; }
+.search-wrap { height: 40px; }
+.chat-list-section-label { text-transform: uppercase; letter-spacing: .4px; font-size: 11.5px; font-weight: 600; padding: 12px 12px 4px; }
+
+/* Строки списка: без общей карточки секции, выбранная — приподнятая плашка */
+.chats-list .chat-item, .topics-panel .chat-item, .chats-list .pp-row { padding: 9px 12px; }
+.chats-list .chat-item.cg-first, .topics-panel .chat-item.cg-first, .chats-list .pp-row.cg-first,
+.chats-list .chat-item.cg-last, .topics-panel .chat-item.cg-last, .chats-list .pp-row.cg-last { padding-top: 9px; padding-bottom: 9px; }
+.chats-list .chat-item::after, .topics-panel .chat-item::after, .chats-list .pp-row::after { inset: 1px 2px; border-radius: 18px; }
+.chats-list .cg-first::after, .topics-panel .cg-first::after { top: 1px; }
+.chats-list .cg-last::after, .topics-panel .cg-last::after { bottom: 1px; }
+.chats-list .cg-first::before, .chats-list .cg-last::before, .topics-panel .cg-first::before, .topics-panel .cg-last::before { border-radius: 0; }
+.chat-item .av-md { width: 48px; height: 48px; font-size: 16px; }
+.chat-item { gap: 12px; }
+.chat-item .ci-name { font-size: 14.5px; font-weight: 600; }
+.chat-item .ci-preview { font-size: 13px; }
+
+/* Вкладки снизу: капсула по центру, три вкладки по 64px */
+.sidebar-tabbar { width: max-content; margin: 4px auto 14px; padding: 4px; justify-content: center; }
+.sb-tab { flex: 0 0 64px; width: 64px; }
+
+/* Поле ввода: круглые кнопки и поле по 52px */
+.composer-main { gap: 10px; }
+.composer-main .composer-attach, .composer-main .send-btn { width: 52px; height: 52px; }
+.composer-field { border-radius: 26px; }
+.composer-field-row { min-height: 50px; padding: 0 8px 0 20px; }
+.composer-field-row.multi { padding-top: 11px; padding-bottom: 11px; }
+.scroll-bottom-btn { width: 44px; height: 44px; }
+
+/* Пузыри: скругление 20px, срезанный угол 7px, аватар 36px */
+.msg-bubble { border-radius: 20px; padding: 7px 14px; }
+.irc-msg:not([data-mine]):not(.irc-tail) .msg-bubble { border-bottom-left-radius: 7px; }
+.irc-msg:not([data-mine]):not(.irc-first) .msg-bubble { border-top-left-radius: 7px; }
+.irc-msg[data-mine]:not(.irc-tail) .msg-bubble { border-bottom-right-radius: 7px; }
+.irc-msg[data-mine]:not(.irc-first) .msg-bubble { border-top-right-radius: 7px; }
+.msg-bubble > .irc-meta { right: 14px; }
+.msg-bubble:not(.bubble-photo) > .irc-meta { bottom: 11px; }
+.msg-bubble .bubble-image, .msg-bubble .bubble-grid { margin: -7px -14px 6px; border-radius: 12px; border-top-left-radius: inherit; border-top-right-radius: inherit; }
+.msg-bubble.bubble-photo .bubble-image, .msg-bubble.bubble-photo .bubble-grid { margin: 0; border-radius: inherit; }
+.msg-bubble.bubble-comp > .ct-pad { padding: 7px 14px 0; }
+.msg-bubble.bubble-comp > .irc-text.ct { padding: 7px 14px; }
+.irc-av, .irc-msg .irc-av { width: 36px; height: 36px; border-radius: 50%; }
+.bubble-row { gap: 10px; }
+.irc-msg:not([data-mine]) .reactions { margin-left: 46px; }
+.irc-msg[data-dm]:not([data-mine]) .reactions { margin-left: 0; }
+.reaction-btn { height: 28px; padding: 0 10px; gap: 5px; }
+.ra-count { font-size: 12px; }
+
+/* ── Запасной вариант: нет стекла — плотный фон ── */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .sidebar, .acc-rail, .chat-header, .chat-header-actions, .pin-bar, .chat-search, .ro-banner, .sc-locked-banner,
+  .inv-bar, .composer-field, .scroll-bottom-btn, .login-wrap, .composer-main .composer-attach, .composer-main .send-btn:not(.ready),
+  .modal, .ctx-menu, #reaction-picker, #mention-popup, .head-menu, .up-menu, .ep-grid, .ha-pop, .reaction-tip, .acc-tip,
+  #server-toast, #action-toast, .am-dlg, .ctx-read-fly, .anx-card, .topics-panel, .force-update-modal, .ann-banner {
+    background: var(--modal-bg);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sidebar, .acc-rail, .chat-header, .chat-header-actions, .pin-bar, .chat-search, .ro-banner, .sc-locked-banner,
+  .inv-bar, .composer-field, .scroll-bottom-btn, .login-wrap, .composer-main .composer-attach, .composer-main .send-btn:not(.ready),
+  .modal, .ctx-menu, #reaction-picker, #mention-popup, .head-menu, .up-menu, .ep-grid, .ha-pop, .reaction-tip, .acc-tip,
+  #server-toast, #action-toast, .am-dlg, .ctx-read-fly, .anx-card, .topics-panel, .force-update-modal, .ann-banner,
+  .date-divider span, .typing-pill, .ep-head, #ha-toggle-btn, .boot-overlay {
+    -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--modal-bg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .icon-btn:active, .composer-icon-btn:active, .sb-tab:active, .reaction-btn:active, .cs-btn:active { transform: none; }
+}
+
+/* Кнопка «+» у поля ввода: при открытом меню поворачивается в «×» */
+.composer-attach svg { transition: transform .45s var(--gl-spring); }
+.composer-attach[aria-expanded="true"] svg { transform: rotate(135deg); }
+@media (prefers-reduced-motion: reduce) { .composer-attach svg { transition: none; } }
+
+/* ── Бар папок и пространств — часть панели списка чатов (как в макете: один стеклянный блок с линией между ними) ── */
+.acc-rail:not([hidden]) {
+  flex-basis: 72px; margin-right: 0; gap: 10px; z-index: 1;
+  border-radius: 30px 0 0 30px; border-right: 0;
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), -8px 12px 28px var(--gl-shadow);
+}
+.acc-rail:not([hidden]) + .sidebar {
+  margin-left: 0; border-radius: 0 30px 30px 0; border-left: 1px solid var(--gl-lo);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 8px 12px 28px var(--gl-shadow);
+}
+/* Отметка выбранного пункта бара: акцентная полоска у левого края, как в макете */
+.acc-btn.active::before, .fld-btn.active::before {
+  content: ""; position: absolute; left: -14px; top: 12px; width: 4px; height: 20px;
+  border-radius: 0 4px 4px 0; background: var(--accent);
+}
+.fld-btn { position: relative; }
+
+/* ── Фильтр списка чатов: все / новые / личные / группы ── */
+.chat-filter {
+  position: relative; display: grid; grid-template-columns: repeat(4, 1fr); flex-shrink: 0;
+  height: 36px; margin: 0 14px 8px; padding: 3px;
+}
+.chat-filter button { padding: 0; font-size: 12.5px; font-weight: 600; color: var(--text2); }
+.chat-filter button.active { color: var(--text); }
+.sidebar-search.room-mode ~ .chat-filter { display: none; }
+
+/* Свой аватар внизу бара */
+.rail-me { margin-top: auto; flex-shrink: 0; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; transition: transform .35s var(--gl-spring); }
+.rail-me:active { transform: scale(.94); }
+.rail-me .av-wrap, .rail-me .av { display: block; width: 44px; height: 44px; font-size: 14px; display: flex; }
+.rail-me .av { align-items: center; justify-content: center; }
+.rail-me .presence-dot { width: 12px; height: 12px; right: 0; bottom: 0; }
+.rail-folders.scroll + .rail-me { margin-top: 0; }
+
+/* ══════════════════════════════════════════════════════════════
+   Комната с темами: панель тем, шапка комнаты, пустые состояния
+   ══════════════════════════════════════════════════════════════ */
+/* Список тем выезжает поверх списка чатов; список под ним гаснет, поэтому подложка панели прозрачная */
+.topics-panel { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; border: 0; }
+.chats-list { transition: opacity .3s, transform .45s cubic-bezier(.22, 1, .36, 1); }
+.sidebar-search.room-mode ~ .sidebar-list-wrap .chats-list { opacity: 0; transform: translateX(-18%); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .chats-list { transition: none; } }
+
+/* Вместо строки поиска: стеклянная кнопка «назад» и название комнаты */
+.sidebar-search.room-mode { height: 54px; }
+.strip-back { width: 40px; height: 40px; flex-shrink: 0; color: var(--text);
+  background: var(--gl); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow); }
+.strip-back:hover { background: var(--gl2); }
+.strip-back:active { transform: scale(.94); }
+.room-title-name { font-size: 15px; font-weight: 700; }
+.room-title-sub { font-size: 12px; color: var(--text2); }
+
+/* Комната: аватар — скруглённый квадрат, тема — круг с «#» */
+.av-sq { border-radius: 15px !important; }
+.chat-header .av-sq { border-radius: 14px !important; }
+.av[class*="av-tag-"], .chats-list .av-round, .topics-panel .av-round { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
+.topics-panel .av-md { font-size: 22px; font-weight: 600; }
+
+/* Пустое состояние: стеклянный круг с иконкой Lucide вместо смайла */
+.empty-state { gap: 12px; }
+.empty-icon {
+  width: 72px; height: 72px; border-radius: 50%; opacity: 1; font-size: 0; display: grid; place-items: center;
+  background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl);
+  border: 1px solid var(--gl-edge);
+  -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%); backdrop-filter: blur(var(--gl-blur)) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 12px 32px var(--gl-shadow);
+}
+.empty-icon::before {
+  content: ""; width: 30px; height: 30px; background: var(--accent);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7.9 20A9 9 0 1 0 4 16.1L2 22Z'/></svg>") center / contain no-repeat;
+          mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7.9 20A9 9 0 1 0 4 16.1L2 22Z'/></svg>") center / contain no-repeat;
+}
+.empty-icon.ei-hash::before {
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 9h16'/><path d='M4 15h16'/><path d='M10 3 8 21'/><path d='M16 3l-2 18'/></svg>");
+          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 9h16'/><path d='M4 15h16'/><path d='M10 3 8 21'/><path d='M16 3l-2 18'/></svg>");
+}
+.empty-icon:has(svg)::before { display: none; }
+.empty-icon svg { color: var(--accent); }
+.empty-title { font-size: 18px; opacity: 1; color: var(--text); }
+.empty-sub { font-size: 13.5px; color: var(--text2); }

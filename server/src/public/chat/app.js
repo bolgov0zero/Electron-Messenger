@@ -1124,6 +1124,7 @@ function setSidebarTab(tab) {
   document.getElementById('chats-search-wrap').style.display = tab === 'chats' ? '' : 'none';
   document.getElementById('contacts-search-wrap').style.display = tab === 'contacts' ? '' : 'none';
   document.getElementById('sidebar-search').style.display = tab === 'settings' ? 'none' : '';
+  const _cf = document.getElementById('chat-filter'); if (_cf) _cf.style.display = tab === 'chats' ? '' : 'none';
   const list = document.getElementById('chats-list');
   if (tab === 'chats') {
     list.className = 'chats-list';
@@ -2052,6 +2053,45 @@ function syncChatListKeyed(list, items) {
   });
 }
 
+// ── ФИЛЬТР СПИСКА ЧАТОВ: все / новые (непрочитанные) / личные / группы ──
+// Выбор помнится на устройстве. Открытый сейчас чат остаётся в списке при любом фильтре:
+// иначе в «Новых» он исчез бы из-под курсора в момент прочтения.
+const CHAT_FILTERS = ['all', 'unread', 'direct', 'group'];
+function chatFilterGet() {
+  if (!S.chatFilter) {
+    let v = 'all';
+    try { v = localStorage.getItem('chatFilter') || 'all'; } catch {}
+    S.chatFilter = CHAT_FILTERS.includes(v) ? v : 'all';
+  }
+  return S.chatFilter;
+}
+function chatUnreadTotal(c) {
+  const ids = c.has_topics ? (S.topics[c.id] || []).map(s => s.id) : [c.id];
+  return ids.reduce((sum, id) => sum + (S.unread[id] || 0) + (S.unreadMentions[id] || 0), 0);
+}
+function chatFilterPass(c) {
+  const f = chatFilterGet();
+  if (f === 'all' || c.id === S.activeChatId || c.id === S.activeRoomId) return true;
+  if (f === 'unread') return chatUnreadTotal(c) > 0;
+  if (f === 'direct') return c.type === 'direct';
+  return c.type === 'group';
+}
+function setChatFilter(f) {
+  if (!CHAT_FILTERS.includes(f) || f === chatFilterGet()) return;
+  S.chatFilter = f;
+  try { localStorage.setItem('chatFilter', f); } catch {}
+  syncChatFilterUi();
+  renderChatList();
+}
+function syncChatFilterUi() {
+  const f = chatFilterGet();
+  document.querySelectorAll('#chat-filter button').forEach(b => {
+    const on = b.dataset.f === f;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on);
+  });
+}
+
 function renderChatList() {
   // Список чатов — общий контейнер с контактами и настройками (#chats-list).
   // Фоновые обновления (переподключение WS, ресинк после возврата фокуса и т.п.)
@@ -2059,6 +2099,7 @@ function renderChatList() {
   // сюда нельзя: затрёт контакты/настройки, а подсветка таб-бара не совпадёт.
   // S.chats к этому моменту уже обновлён — при возврате на «Чаты» отрисуется сам.
   if (_sidebarTab !== 'chats') return;
+  if (!document.querySelector('#chat-filter button.active[data-f="' + chatFilterGet() + '"]')) syncChatFilterUi();
   const q = document.getElementById('search').value.toLowerCase();
   const list = document.getElementById('chats-list');
   const byFolder = !q && !S.searchResults;   // поиск идёт по всем чатам, а не только по выбранной папке
@@ -2066,6 +2107,7 @@ function renderChatList() {
     .filter(c=>chatName(c).toLowerCase().includes(q))
     .filter(c => !byFolder || typeof folderPass !== 'function' || folderPass(c))
     .filter(c => !byFolder || typeof spacePass !== 'function' || spacePass(c))
+    .filter(c => !byFolder || chatFilterPass(c))
     .sort((a,b) => {
       // Приглашения в группы с других серверов — сверху: ответа ждут
       if (!!a.invite !== !!b.invite) return a.invite ? -1 : 1;
@@ -2115,7 +2157,8 @@ function renderChatList() {
   // остальные DOM-узлы (и их аватары) не трогаются — нет мигания при каждом событии
   const items = [];
   if (!filtered.length) {
-    items.push({ key: 'empty', html: '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Нет чатов</div>' });
+    const emptyText = { unread: 'Нет новых сообщений', direct: 'Нет личных чатов', group: 'Нет групп' }[chatFilterGet()] || 'Нет чатов';
+    items.push({ key: 'empty', html: `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">${emptyText}</div>` });
   } else {
     if (rooms.length) {
       items.push({ key: 'label-rooms', html: '<div class="chat-list-section-label">Комнаты</div>' });
@@ -2377,7 +2420,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     await loadTopics(chatId, { render: true });
     // Переписка остаётся от прошлого чата, если её не очистить
     setChatMainContent('<div class="empty-state">' +
-      '<div class="empty-icon">📋</div><div class="empty-title">Выберите тему</div>' +
+      '<div class="empty-icon ei-hash">📋</div><div class="empty-title">Выберите тему</div>' +
       '<div class="empty-sub">Слева список тем этой комнаты</div></div>');
     return;
   }
@@ -2420,7 +2463,9 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     <div class="chat-header">
       <div class="chat-header-main">
         <div class="av-wrap"${peerId ? ` style="cursor:pointer" data-on-click="openProfile" data-a-click="${esc(JSON.stringify([peerId]))}"` : ''}>
-          <div class="av av-md ${chatAvatarClass(chat)}${chat.type==='room' && chat.has_topics && !S.activeTopicId?' av-sq':' av-round'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
+          ${isTopic
+            ? `<div class="av av-md av-round av-${senderNameClass(chat.name)}"${chat.has_avatar ? ` style="background-image:url('/api/chats/${chat.id}/avatar');background-size:cover;background-position:center"` : ''}>${chat.has_avatar ? '' : '#'}</div>`
+            : `<div class="av av-md ${chatAvatarClass(chat)}${chat.type==='room' && chat.has_topics && !S.activeTopicId?' av-sq':' av-round'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>`}
           ${peerDot}${fedDotHtml(chat)}
         </div>
         <div class="chat-header-info" ${nameClickable}>
@@ -2480,7 +2525,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
           </div>
           <div class="composer-main">
             <button class="composer-icon-btn composer-attach" id="up-btn" title="Прикрепить, форматирование" aria-haspopup="menu" aria-expanded="false" data-on-click="toggleUpMenu" data-a-click='["__event"]'>
-              <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
             </button>
             <div class="up-menu" id="up-menu" role="menu" hidden>
               <button type="button" role="menuitem" data-on-click="upPickFile">
@@ -4610,8 +4655,10 @@ function renderRail() {
   const hasSp = typeof spacesRailShown === 'function' && spacesRailShown();
   const show = (S.folders || []).length > 0 || hasSp;
   rail.hidden = !show;
-  rail.innerHTML = show ? (hasSp ? spacesRailHtml(false) : '') + foldersRailHtml(hasSp) : '';
-  if (show) foldersRailFit();
+  // Внизу бара — свой аватар со статусом (как в макете); по нажатию открывается профиль
+  const me = S.user ? `<button type="button" class="rail-me" title="Профиль" aria-label="Профиль" data-on-click="openProfile" data-a-click="${esc(JSON.stringify([S.user.id]))}"><span class="av-wrap"><span class="av av-round ${userAvatarColor(S.user.id, S.user.tag)}" data-av-user="${S.user.id}">${esc(initials(S.user.display_name || S.user.username || '?'))}</span><i class="presence-dot"></i></span></button>` : '';
+  rail.innerHTML = show ? (hasSp ? spacesRailHtml(false) : '') + foldersRailHtml(hasSp) + me : '';
+  if (show) { foldersRailFit(); applyAvatars(); }
 }
 
 // ── ФОРМАТИРОВАНИЕ И ПРЕВЬЮ ССЫЛКИ В ПОЛЕ ВВОДА ──
