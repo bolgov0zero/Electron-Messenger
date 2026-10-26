@@ -191,6 +191,17 @@ router.patch('/:id/password', authMiddleware, adminMiddleware, async (req, res) 
   res.json({ ok: true });
 });
 
+// Заблокировать своё устройство (кнопка в уведомлении «Electron» о входе с нового устройства): ключ отзывается, токен и соединения
+// устройства закрываются, войти с него можно только по логину и паролю
+router.post('/me/devices/:id/block', authMiddleware, async (req, res) => {
+  const id = Number(req.params.id);
+  const row = await dal.get("SELECT id, kind, revoked_at FROM device_keys WHERE id = ? AND user_id = ? AND kind = 'device'", id, req.user.id);
+  if (!row) return res.status(404).json({ error: 'Устройство не найдено' });
+  await require('../devices').revoke(req.user.id, id);
+  await require('../notify').markBlocked(req.user.id, id);
+  res.json({ ok: true, already: !!row.revoked_at });
+});
+
 // Смена собственного пароля: старый → новый. Снимает требование смены.
 // Используется модалкой в админке для дефолтного пароля admin.
 const MIN_PASSWORD_LEN = 6;

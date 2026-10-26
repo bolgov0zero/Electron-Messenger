@@ -139,3 +139,9 @@
 /* Время и галочки на фото без подписи лежат на тёмной плашке: там они белые */
 .mrow.out .bub.media .meta { color: #fff; }
 .mrow.out .bub.media .meta .tk polyline { stroke: #fff !important; }
+
+/* Кнопки в сообщении (уведомления «Electron») */
+.bacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.bbtn { appearance: none; -webkit-appearance: none; font: inherit; font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 12px; border: 1px solid rgba(210,55,55,.45); background: rgba(210,55,55,.1); color: #e05555; cursor: pointer; }
+.bbtn:disabled { opacity: .55; }
+.bbtn.done { border-color: rgba(128,128,128,.3); background: none; color: var(--muted, #888); cursor: default; }

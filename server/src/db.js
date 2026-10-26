@@ -774,6 +774,12 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_device_keys_user ON device_keys(user_id);
 `);
 
+// Уведомления «Electron» (notify.js): служебный чат человека с системой, сообщение с кнопкой, адрес входа устройства
+tryAlter('ALTER TABLE chats ADD COLUMN system_kind TEXT');
+tryAlter('ALTER TABLE messages ADD COLUMN actions TEXT');
+tryAlter('ALTER TABLE device_keys ADD COLUMN ip TEXT');
+tryAlter('ALTER TABLE device_keys ADD COLUMN last_ip TEXT');
+
 // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)
 const sysExists = db.prepare("SELECT id FROM users WHERE username = '__system__'").get();
 if (!sysExists) {

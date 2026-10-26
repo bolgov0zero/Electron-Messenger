@@ -2451,7 +2451,7 @@ function renderChatRow(c) {
     : (minePreview ? `<span style="color:var(--text2)">Вы:</span> ${esc(preview)}` : esc(preview));
   const time = lm ? fmtChatListTime(lm.sent_at) : '';
   const peerId = getPeerUserId(c);
-  const dot = peerId ? presenceDot(peerId) : '';
+  const dot = peerId && !isSysChat(c) ? presenceDot(peerId) : '';
   const pinIcon = c.pinned ? `<svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="color:var(--muted);opacity:.7" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>` : '';
   const muteIcon = S.mutedChats.has(c.id) ? `<svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="color:var(--muted);opacity:.7" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>` : '';
   // Галочки доставки/прочтения — только если последнее сообщение моё
@@ -2742,12 +2742,12 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   const isCreator = chat.created_by === S.user.id;
   const memberCount = chat.members?.length||0;
   const peerId = getPeerUserId(chat);
-  const peerDot = peerId ? presenceDot(peerId) : '';
+  const peerDot = peerId && !isSysChat(chat) ? presenceDot(peerId) : '';
   const isTopic = !!chat?.parent_id;
-  const addContactBtn = peerId && needsContact(peerId) ? `<button class="addc-btn" id="ch-add-contact" data-on-click="addContactFromChat" data-a-click="${esc(JSON.stringify([peerId]))}"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.1" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg><span>Добавить контакт</span></button>` : '';
+  const addContactBtn = peerId && !isSysChat(chat) && needsContact(peerId) ? `<button class="addc-btn" id="ch-add-contact" data-on-click="addContactFromChat" data-a-click="${esc(JSON.stringify([peerId]))}"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.1" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg><span>Добавить контакт</span></button>` : '';
   S.activeInvite = !!chat.invite;
-  const sub = (isTopic || isRoom || isGroup) ? groupSubHtml(chat) : (peerId ? peerSubText(peerId) : 'Личный чат');
-  const nameClickable = (!chat.invite && (isGroup || (isRoom && !isTopic))) ? `style="cursor:pointer" data-on-click="openGroupInfo" data-a-click="${esc(JSON.stringify([chatId]))}"` : (peerId ? `style="cursor:pointer" data-on-click="openProfile" data-a-click="${esc(JSON.stringify([peerId]))}"` : '');
+  const sub = (isTopic || isRoom || isGroup) ? groupSubHtml(chat) : (isSysChat(chat) ? 'Служебные уведомления' : peerId ? peerSubText(peerId) : 'Личный чат');
+  const nameClickable = (!chat.invite && (isGroup || (isRoom && !isTopic))) ? `style="cursor:pointer" data-on-click="openGroupInfo" data-a-click="${esc(JSON.stringify([chatId]))}"` : (peerId && !isSysChat(chat) ? `style="cursor:pointer" data-on-click="openProfile" data-a-click="${esc(JSON.stringify([peerId]))}"` : '');
 
   // Delete button: visible for direct chats and for group creator / admins
   const canDelete = chat.type === 'direct' || S.user.is_admin || isCreator;
@@ -4154,6 +4154,21 @@ function applyForwardCount(id, count) {
   const bub = meta.parentElement;
   if (bub) { bub.classList.toggle('has-fwd', count > 0); if (count > 0) bub.style.setProperty('--fwd-w', fwdReserve(count) + 'px'); else bub.style.removeProperty('--fwd-w'); }
 }
+// Кнопки в сообщении (сообщение может нести actions, например «Заблокировать» в уведомлении «Electron» о входе с нового устройства)
+function msgActionsHtml(m) {
+  if (!Array.isArray(m.actions) || !m.actions.length) return '';
+  return '<div class="msg-actions">' + m.actions.map(a => a.state === 'done'
+    ? '<span class="msg-act done">Заблокировано</span>'
+    : `<button type="button" class="msg-act" data-on-click="msgAction" data-a-click="${esc(JSON.stringify([m.id, a.id, a.device]))}">${esc(a.label || 'Действие')}</button>`).join('') + '</div>';
+}
+async function msgAction(msgId, id, device) {
+  if (id !== 'block_device') return;
+  const btn = document.querySelector(`[data-msg-id="${msgId}"] .msg-act`);
+  if (btn) btn.disabled = true;
+  const r = await api('POST', `/users/me/devices/${Number(device)}/block`);
+  if (!r || r.error) { if (btn) btn.disabled = false; showActionToast(r?.error || 'Не удалось заблокировать устройство'); return; }
+  showActionToast('Устройство заблокировано');   // кнопка у всех устройств сменится по событию message_edited
+}
 function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   if (m.status && m.id > 0) S.msgStatus[m.id] = { ...m.status };
   const isSystem = m.sender_username === '__system__';
@@ -4201,9 +4216,10 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const lp = (!isDeleted && !isSecretChat && !m.sender_is_bot) ? (m.link_preview || null) : null;
   const comp = (!isDeleted && !isSecretChat && !m.sender_is_bot && typeof m.text === 'string' && (lp || Fmt.hasCode(m.text)))
     ? bubbleBody(m.text, lp, m.edited_at) : null;
-  const bodyText = isDeleted ? '<em class="irc-deleted">Сообщение удалено</em>'
+  const bodyText0 = isDeleted ? '<em class="irc-deleted">Сообщение удалено</em>'
     : scLocked ? scSkelHtml(m.text)
     : m.sender_is_bot ? effectiveText + (m.edited_at ? ' <span class="edited-tag">изм.</span>' : '') : linkifyText(effectiveText) + (m.edited_at?` <span class="edited-tag">изм.</span>`:'');
+  const bodyText = bodyText0 + (isDeleted ? '' : msgActionsHtml(m));
   const statusIcon = mine && !isDeleted ? renderStatus(m.status) : '';
   const reactionsHtml = isDeleted ? '' : renderReactions(m.id);
   const senderName = esc(m.sender_name);
@@ -6882,6 +6898,8 @@ function presenceDot(userId) {
   return `<span class="presence-dot${st === 'away' ? ' away' : ''}${st === 'online' && S.presenceMobile?.[userId] ? ' mob' : ''}" data-user-id="${userId}"${st === 'offline' ? ' style="display:none"' : ''}></span>`;
 }
 
+// Служебный чат с системой («Electron», chats.system_kind): только для чтения, у собеседника нет профиля, присутствия и контакта
+const isSysChat = c => !!c?.system_kind;
 function getPeerUserId(chat) {
   if (chat.type !== 'direct') return null;
   return chat.members?.find(m => m.id !== S.user.id)?.id || null;
@@ -7834,7 +7852,7 @@ function showChatCtx(e, chatId) {
 
   const blockBtn = document.getElementById('ctx-chat-block');
   if (blockBtn) {
-    const pid = chat?.type === 'direct' ? getPeerUserId(chat) : null;
+    const pid = chat?.type === 'direct' && !isSysChat(chat) ? getPeerUserId(chat) : null;
     blockBtn.style.display = pid ? '' : 'none';
     const bl = document.getElementById('ctx-chat-block-label'); if (bl && pid) bl.textContent = isBlockedId(pid) ? 'Разблокировать' : 'Заблокировать';
   }

@@ -2931,7 +2931,7 @@ function dvcRender() {
     const off = d.revoked_at || d.expired, k = d.kind === 'profile' ? ['', UX_I.key] : (KIND[d.platform] || KIND.app);
     const btn = (label, fn) => `<button type="button" class="btn btn-ghost btn-sm" ${DVC.busy ? 'disabled' : ''} data-on-click="${fn}" data-a-click="${esc(JSON.stringify([d.id]))}">${label}</button>`;
     return `<div class="dvc-r${off ? ' off' : ''}"><span class="dvc-ic">${k[1]}</span>
-      <div class="dvc-tx"><b>${esc(d.name)}</b><span>${k[0] ? k[0] + ' · ' : ''}${d.os_user ? 'Windows: ' + esc(d.os_user) + ' · ' : ''}зарегистрировано ${dvcDate(d.created_at)}</span></div>
+      <div class="dvc-tx"><b>${esc(d.name)}</b><span>${k[0] ? k[0] + ' · ' : ''}${d.os_user ? 'Windows: ' + esc(d.os_user) + ' · ' : ''}${d.last_ip ? 'IP ' + esc(d.last_ip) + ' · ' : ''}зарегистрировано ${dvcDate(d.created_at)}</span></div>
       ${d.revoked_at ? `<span class="dvc-chip bad">${d.kind === 'profile' ? 'Регистрация запрещена' : 'Отозвано'}</span>` : d.expired ? '<span class="dvc-chip">Срок истёк</span>' : ''}
       ${d.kind === 'profile' ? (d.revoked_at ? btn('Разрешить', 'dvcAllow') : btn('Запретить регистрацию', 'dvcRevoke')) : (off ? '' : btn('Отозвать', 'dvcRevoke'))}
     </div>`;

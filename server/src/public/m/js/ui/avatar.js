@@ -14,7 +14,7 @@ B.avatar = {
   // badge — значок папки в левом верхнем углу (в списке чатов)
   chat: function (c, size, badge) {
     var peer = B.peerId(c), fb = badge && B.folders ? B.folders.badge(c, size) : '';
-    if (c.type === 'direct') return B.avatar.html({ id: peer || c.id, chat: c.id, text: B.fmt.initials(B.chatName(c)), dot: peer, fb: fb }, size);
+    if (c.type === 'direct') return B.avatar.html({ id: peer || c.id, chat: c.id, text: B.fmt.initials(B.chatName(c)), dot: B.isSys(c) ? 0 : peer, fb: fb }, size);
     var root = c.parent_id ? B.find(c.parent_id) || c : c;   // у темы значок комнаты
     return B.avatar.html({ id: c.id, chat: c.id, text: c.type === 'room' ? '#' : B.fmt.initials(B.chatName(c)), fb: fb, fed: !!root.fed_mirror }, size);
   },

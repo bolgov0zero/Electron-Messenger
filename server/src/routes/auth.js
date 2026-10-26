@@ -16,6 +16,7 @@ const { signToken, authMiddleware, signChallengeToken, verifyChallengeToken } = 
 const totp = require('../totp');
 const { logAudit } = require('../audit');
 const devices = require('../devices');
+const notify = require('../notify');
 
 // In-memory rate limiter для /login: ip -> { count, resetAt }
 const loginAttempts = new Map();
@@ -92,7 +93,9 @@ router.post('/login', async (req, res) => {
   const dev = req.body.context === 'admin' || user.must_change_password ? null : devices.parseDevice(req.body.device);
   if (dev) {
     try {
-      const d = await devices.issueDevice(user.id, dev);
+      const d = await devices.issueDevice(user.id, dev, null, req.ip);
+      // Новое устройство: остальным устройствам человека уходит уведомление «Electron» (notify.js)
+      if (d.created) notify.newDevice(user.id, { id: d.id, name: dev.name }, devices.cleanIp(req.ip)).catch(e => console.warn('[Electron] уведомление:', e.message));
       const p = req.body.device.ha ? await devices.issueProfile(user.id, dev.os_user) : null;
       keys = { device_key: d.key, ...(p ? { profile_key: p.key } : {}), dk: d.id };
     } catch (e) { console.warn('[Ключи устройств] выдача:', e.message); }
@@ -142,7 +145,7 @@ router.post('/device-login', async (req, res) => {
     if (c.status !== 403) keyFail(req);
     return res.status(c.status || 401).json({ code: c.code, error: c.error || KEY_TEXT[c.code] || 'Ключ не принят' });
   }
-  await dal.run('UPDATE device_keys SET name = ?, os_user = ? WHERE id = ?', dev.name, dev.os_user, c.row.id);
+  await dal.run('UPDATE device_keys SET name = ?, os_user = ?, last_ip = ? WHERE id = ?', dev.name, dev.os_user, devices.cleanIp(req.ip), c.row.id);
   const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, dk: c.row.id });
   res.json({ ...(await sessionReply(user, token)), device_key: c.key });
 });
@@ -158,7 +161,8 @@ router.post('/device-register', async (req, res) => {
   if (await dal.get("SELECT 1 FROM device_keys WHERE user_id = ? AND kind = 'device' AND device_id = ? AND revoked_at IS NOT NULL", user.id, dev.id)) {
     return res.status(401).json({ code: 'device_revoked', error: KEY_TEXT.device_revoked });
   }
-  const d = await devices.issueDevice(user.id, dev, f.row.id);
+  const d = await devices.issueDevice(user.id, dev, f.row.id, req.ip);
+  if (d.created) notify.newDevice(user.id, { id: d.id, name: dev.name }, devices.cleanIp(req.ip)).catch(e => console.warn('[Electron] уведомление:', e.message));
   await devices.touch(f.row.id);
   const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, dk: d.id });
   res.json({ ...(await sessionReply(user, token)), device_key: d.key });
@@ -171,7 +175,7 @@ router.post('/device-keys', authMiddleware, async (req, res) => {
   if (!dev || req.user.is_guest) return res.status(400).json({ error: 'Нет сведений об устройстве' });
   const out = {};
   let dk = req.user.dk || null;
-  if (req.body.device_key !== false) { const d = await devices.issueDevice(req.user.id, dev); out.device_key = d.key; dk = d.id; }
+  if (req.body.device_key !== false) { const d = await devices.issueDevice(req.user.id, dev, null, req.ip); out.device_key = d.key; dk = d.id; }
   if (req.body.profile && req.body.device.ha) { const p = await devices.issueProfile(req.user.id, dev.os_user); if (p) out.profile_key = p.key; }
   if (out.device_key) out.token = signToken({ id: req.user.id, username: req.user.username, display_name: req.user.display_name, is_admin: req.user.is_admin, dk });
   res.json(out);

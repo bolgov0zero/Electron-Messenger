@@ -17,6 +17,8 @@ const crypto = require('crypto');
 const dal = require('./dal');
 
 const WEB_IDLE_DAYS = 90;
+// Адрес клиента без префикса IPv4-в-IPv6 («::ffff:1.2.3.4»)
+const cleanIp = ip => String(ip || '').replace(/^::ffff:/i, '').slice(0, 64) || null;
 const GRACE_SEC = 300;
 const sha = s => crypto.createHash('sha256').update(String(s)).digest('hex');
 const now = () => Math.floor(Date.now() / 1000);
@@ -37,18 +39,19 @@ function idleExpired(row) {
 }
 
 // Ключ устройства для пары (человек, устройство). Есть действующий — меняем его ключ (старый перестаёт работать), дата регистрации остаётся
-async function issueDevice(userId, dev, parentId = null) {
+async function issueDevice(userId, dev, parentId = null, ip = null) {
+  ip = cleanIp(ip);
   const key = newKey('dk_'), t = now();
   const cur = await dal.get("SELECT id FROM device_keys WHERE user_id = ? AND kind = 'device' AND device_id = ? AND revoked_at IS NULL", userId, dev.id);
   if (cur) {
-    await dal.run('UPDATE device_keys SET key_hash = ?, prev_hash = NULL, prev_at = NULL, platform = ?, name = ?, os_user = ?, last_used_at = ?, parent_id = COALESCE(?, parent_id) WHERE id = ?', sha(key), dev.platform, dev.name, dev.os_user, t, parentId, cur.id);
-    return { key, id: cur.id };
+    await dal.run('UPDATE device_keys SET key_hash = ?, prev_hash = NULL, prev_at = NULL, platform = ?, name = ?, os_user = ?, last_used_at = ?, last_ip = COALESCE(?, last_ip), parent_id = COALESCE(?, parent_id) WHERE id = ?', sha(key), dev.platform, dev.name, dev.os_user, t, ip, parentId, cur.id);
+    return { key, id: cur.id, created: false };
   }
   // Устройство вошло снова после отзыва: прежние отозванные записи этой пары больше не нужны
   await dal.run("DELETE FROM device_keys WHERE user_id = ? AND kind = 'device' AND device_id = ? AND revoked_at IS NOT NULL", userId, dev.id);
-  const r = await dal.run("INSERT INTO device_keys (user_id, kind, device_id, platform, name, os_user, key_hash, parent_id, created_at, last_used_at) VALUES (?, 'device', ?, ?, ?, ?, ?, ?, ?, ?)",
-    userId, dev.id, dev.platform, dev.name, dev.os_user, sha(key), parentId, t, t);
-  return { key, id: Number(r.lastInsertRowid) };
+  const r = await dal.run("INSERT INTO device_keys (user_id, kind, device_id, platform, name, os_user, key_hash, parent_id, created_at, last_used_at, ip, last_ip) VALUES (?, 'device', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    userId, dev.id, dev.platform, dev.name, dev.os_user, sha(key), parentId, t, t, ip, ip);
+  return { key, id: Number(r.lastInsertRowid), created: true };
 }
 
 // Найти ключ устройства: действующий или прежний (после ротации). Ничего не меняет. { row, via: 'cur' | 'prev', hash } или { code }
@@ -76,6 +79,7 @@ async function consumeDevice(key, check) {
       await dal.run('UPDATE device_keys SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL', t, f.row.id);
       kickLive(f.row.user_id, f.row.id);
       try { await require('./audit').logAudit({ user: { id: f.row.user_id }, ip: null }, 'security', 'Повторное использование ключа устройства: устройство отозвано', f.row.name); } catch {}
+      require('./notify').deviceReuse(f.row.user_id, f.row.name).catch(e => console.warn('[Electron] уведомление:', e.message));
       return { code: 'device_reuse', row: f.row };
     }
     const nk = newKey('dk_');
@@ -119,7 +123,7 @@ async function alive(id) {
 async function forget(row) { await dal.run('DELETE FROM device_keys WHERE id = ?', row.id); }
 
 async function list(userId) {
-  const rows = await dal.all("SELECT id, kind, platform, name, os_user, created_at, last_used_at, revoked_at FROM device_keys WHERE user_id = ? ORDER BY CASE kind WHEN 'profile' THEN 0 ELSE 1 END, created_at DESC, id DESC", userId);
+  const rows = await dal.all("SELECT id, kind, platform, name, os_user, last_ip, created_at, last_used_at, revoked_at FROM device_keys WHERE user_id = ? ORDER BY CASE kind WHEN 'profile' THEN 0 ELSE 1 END, created_at DESC, id DESC", userId);
   return rows.map(r => ({ ...r, expired: !r.revoked_at && idleExpired(r) }));
 }
 
@@ -151,4 +155,4 @@ async function wipe(userId, keepId) {
   else await dal.run("DELETE FROM device_keys WHERE user_id = ? AND NOT (kind = 'profile' AND revoked_at IS NOT NULL)", userId);
 }
 
-module.exports = { lookupDevice, consumeDevice, parseDevice, issueDevice, issueProfile, find, touch, alive, forget, list, revoke, allow, revokeAll, wipe };
+module.exports = { cleanIp, lookupDevice, consumeDevice, parseDevice, issueDevice, issueProfile, find, touch, alive, forget, list, revoke, allow, revokeAll, wipe };

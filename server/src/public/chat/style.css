@@ -3842,3 +3842,10 @@ html.dark .anx-solid { color: #0c0e10; }
 .cs-copy { position: sticky; bottom: -12px; margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 12px 0 10px; font-size: 11.5px; color: var(--muted); letter-spacing: .02em; background: var(--card-bg); user-select: none; }
 @container sb (min-width: 293px) { .cs-copy { background: var(--side-bg); } }   /* в широком виде список без своего фона: подпись под цвет панели */
 .cs-copy .cp-h, .login-copy .cp-h { font-style: normal; font-size: 12px; line-height: 1; }
+
+/* Кнопки в сообщении (уведомления «Electron») */
+.msg-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.msg-act { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--danger, #d23737) 45%, transparent); background: color-mix(in srgb, var(--danger, #d23737) 10%, transparent); color: var(--danger, #d23737); cursor: pointer; }
+.msg-act:hover:not(:disabled) { background: color-mix(in srgb, var(--danger, #d23737) 18%, transparent); }
+.msg-act:disabled { opacity: .55; cursor: default; }
+.msg-act.done { border-color: var(--border); background: none; color: var(--muted); cursor: default; }

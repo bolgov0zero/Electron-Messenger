@@ -133,6 +133,21 @@ B.ui.chat = (function () {
   }
 
   // ── сообщение ──
+  // Кнопки в сообщении (actions): «Заблокировать» в уведомлении «Electron» о входе с нового устройства
+  function msgActions(m) {
+    if (!Array.isArray(m.actions) || !m.actions.length) return '';
+    return '<div class="bacts">' + m.actions.map(function (a) {
+      return a.state === 'done' ? '<span class="bbtn done">Заблокировано</span>'
+        : '<button type="button" class="bbtn" data-c="act" data-id="' + m.id + '" data-act="' + esc(a.id) + '" data-dev="' + Number(a.device) + '">' + esc(a.label || 'Действие') + '</button>';
+    }).join('') + '</div>';
+  }
+  async function runAction(t) {
+    if (t.dataset.act !== 'block_device') return;
+    t.disabled = true;
+    var r = await B.api('POST', '/users/me/devices/' + Number(t.dataset.dev) + '/block');
+    if (!r || r.error) { t.disabled = false; B.toast.show((r && r.error) || 'Не удалось заблокировать устройство'); return; }
+    B.toast.show('Устройство заблокировано');   // кнопка у всех устройств сменится по событию message_edited
+  }
   function bubble(m, chat, pos) {
     if (B.S.secretChatIds.has(m.chat_id)) m = B.secret.display(m);
     var mine = m.sender_id === B.S.user.id;
@@ -172,6 +187,7 @@ B.ui.chat = (function () {
     else if (m._skel) h += '<div class="txt">' + m._skel + meta + '</div>';
     else if (m.text) h += '<div class="txt">' + (m.sender_is_bot ? m.text : formatText(m.text, chat || {})) + (bare ? '' : meta) + '</div>';
     else if (!bare) h += '<div class="txt" style="min-height:4px">' + meta + '</div>';
+    h += msgActions(m);
     if (bare) h += meta;
     h += '</div>' + reactions(m) + (fail ? '<div class="failnote" data-c="retry" data-cid="' + m._cid + '">Не отправлено · <b>Повторить</b></div>' : '') + '</div><span class="swi">' + ic('reply', 17, 2.2) + '</span></div>';
     return h;
@@ -227,6 +243,7 @@ B.ui.chat = (function () {
   function statusOf(chat) {
     var ty = B.typing.names(chat.id);
     if (chat.type === 'direct') {
+      if (B.isSys(chat)) return { t: 'Служебные уведомления' };
       if (ty.length) return { t: B.typing.label(ty, false), live: 1 };
       var p = B.peerId(chat), st = B.S.presence[p];
       return { t: p ? B.contacts.peerSub(p) : 'Личный чат', live: st === 'online' };
@@ -283,11 +300,11 @@ B.ui.chat = (function () {
     var b = el.querySelector('.cn-b b'); if (b) b.textContent = B.chatName(chat);
     var n = othersUnread(chat.id), c = el.querySelector('.back .cnt'); if (c) c.textContent = n ? (n > 99 ? '99+' : n) : '';
     // Точка статуса на аватарке в шапке рисуется один раз при открытии: перерисовываем её, когда статус собеседника изменился
-    var pid0 = chat.type === 'direct' ? B.peerId(chat) : 0, sig = pid0 ? (B.S.presence[pid0] || 'offline') + (B.S.presenceMobile && B.S.presenceMobile[pid0] ? 'm' : '') : '';
+    var pid0 = chat.type === 'direct' && !B.isSys(chat) ? B.peerId(chat) : 0, sig = pid0 ? (B.S.presence[pid0] || 'offline') + (B.S.presenceMobile && B.S.presenceMobile[pid0] ? 'm' : '') : '';
     if (pid0 && el._pSig !== sig) { if (el._pSig !== undefined) { var av = el.querySelector('.cn-av'); if (av) { av.innerHTML = B.avatar.chat(chat, 36); B.avatar.apply(av); } } el._pSig = sig; }
     var cb = el.querySelector('.cnbar'), cst = B.conn.state;
     if (cb) { cb.hidden = cst === 'ok'; cb.className = 'cnbar ' + cst; cb.innerHTML = cst === 'offline' ? ic('wifioff', 14, 2.2) + 'Нет связи с сервером' : '<i class="cspin"></i>Подключение…'; }
-    var ab = el.querySelector('.addc'), pid = chat.type === 'direct' ? B.peerId(chat) : null; if (ab) ab.hidden = !(pid && B.contacts.needsContact(pid));
+    var ab = el.querySelector('.addc'), pid = chat.type === 'direct' && !B.isSys(chat) ? B.peerId(chat) : null; if (ab) ab.hidden = !(pid && B.contacts.needsContact(pid));
   }
 
   // ── прокрутка ──
@@ -443,13 +460,14 @@ B.ui.chat = (function () {
     else if (c === 'addc') { var pid = B.peerId(B.find(+el.dataset.cid)); if (pid && B.openAddFromChat) B.openAddFromChat(pid); }
     else if (c === 'who') { if (B.ui.composer && B.ui.composer.mention) B.ui.composer.mention(el, +t.dataset.id, t.dataset.name); }
     else if (c === 'info') info(+el.dataset.cid);
+    else if (c === 'act') runAction(t);
   }
   function download(path, name) {
     var a = document.createElement('a'); a.href = url(path); a.download = name; a.target = '_blank';
     document.body.appendChild(a); a.click(); a.remove();
   }
   function info(cid) {
-    var chat = B.find(cid); if (!chat) return;
+    var chat = B.find(cid); if (!chat || B.isSys(chat)) return;
     if (chat.type === 'direct' && B.openProfile) B.openProfile(B.peerId(chat));
     else if (B.openGroupProfile) B.openGroupProfile(chat.parent_id || cid);
     else if (B.openMembers) B.openMembers(cid);

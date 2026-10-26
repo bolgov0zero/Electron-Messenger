@@ -207,7 +207,7 @@ function sanitizeEncAttachment(att) {
 
 async function getMessageWithStatus(msgId, viewerId) {
   const msg = await dal.get(`
-    SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.link_preview, m.system_kind, (SELECT COUNT(*) FROM messages fx WHERE fx.fwd_src = m.id AND fx.deleted = 0) AS forward_count,
+    SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.link_preview, m.system_kind, m.actions, (SELECT COUNT(*) FROM messages fx WHERE fx.fwd_src = m.id AND fx.deleted = 0) AS forward_count,
       u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, COALESCE(u.tag, m.guest_tag) as sender_tag, (u.is_bot = 1) as sender_is_bot,
       m.reply_to_id,
       rm.text as reply_text, rm.attachment as reply_attachment, rm.deleted as reply_deleted,
@@ -226,6 +226,7 @@ async function getMessageWithStatus(msgId, viewerId) {
   if (msg.forward_data) try { msg.forward_data = JSON.parse(msg.forward_data); } catch { msg.forward_data = null; }
   if (msg.forward_data?.attachment?.url) msg.forward_data.attachment = attach.markExpired(msg.forward_data.attachment);   // пересланный файл могли стереть
   if (msg.link_preview) try { msg.link_preview = JSON.parse(msg.link_preview); } catch { msg.link_preview = null; }
+  if (msg.actions) try { msg.actions = JSON.parse(msg.actions); } catch { msg.actions = null; }   // кнопки сообщения (notify.js)
 
   // Статус по отметкам участников: прочитал позднее — прочитал и раннее (msgstatus.js)
   const status = await require('./msgstatus').statusOf(msg.chat_id, { id: msg.id, sender_id: msg.sender_id });
@@ -781,4 +782,4 @@ function kick(userId) {
   getConn(userId).forEach(ws => { try { ws.close(4001, 'guest_ended'); } catch {} });
 }
 
-module.exports = { setup, kick, kickDevice, finishMessage, setRemoteStatus, hasOpenConnection, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, getMobile, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };
+module.exports = { setup, kick, kickDevice, finishMessage, getMessageWithStatus, setRemoteStatus, hasOpenConnection, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, getMobile, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };

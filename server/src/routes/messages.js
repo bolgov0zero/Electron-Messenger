@@ -13,7 +13,7 @@ const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
 
 // Общий SELECT сообщения с данными отправителя и цитаты
 const MSG_SELECT = `
-  SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.link_preview, m.system_kind, (SELECT COUNT(*) FROM messages fx WHERE fx.fwd_src = m.id AND fx.deleted = 0) AS forward_count,
+  SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.link_preview, m.system_kind, m.actions, (SELECT COUNT(*) FROM messages fx WHERE fx.fwd_src = m.id AND fx.deleted = 0) AS forward_count,
     u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, COALESCE(u.tag, m.guest_tag) as sender_tag, (u.is_bot = 1) as sender_is_bot,
     m.reply_to_id,
     rm.text as reply_text, rm.deleted as reply_deleted, rm.attachment as reply_attachment,
@@ -214,8 +214,10 @@ router.get('/chat/:chatId', authMiddleware, async (req, res) => {
     if (forward_data?.attachment?.url) forward_data.attachment = attach.markExpired(forward_data.attachment);   // пересланный файл могли стереть
     let link_preview = null;
     if (m.link_preview) { try { link_preview = JSON.parse(m.link_preview); } catch {} }
+    let actions = null;
+    if (m.actions) { try { actions = JSON.parse(m.actions); } catch {} }   // кнопки сообщения (notify.js)
     return {
-      ...m, attachment, mentions, reply_attachment, forward_data, link_preview,
+      ...m, attachment, mentions, reply_attachment, forward_data, link_preview, actions,
       status: stMap.get(m.id) || { delivered: 0, read: 0, total: 0 },
       reactions: reactionsMap.get(m.id) || [],
     };

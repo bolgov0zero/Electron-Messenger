@@ -103,7 +103,7 @@ router.get('/stats', async (req, res) => {
     // Считаем ровно то, что видно в списках: без ботов (вебхуки, __system__)
     // и без тем — иначе бейджи и плитки показывают больше, чем есть на вкладках
     users:    (await dal.get('SELECT COUNT(*) as c FROM users WHERE is_bot IS NULL OR is_bot = 0')).c,
-    chats:    (await dal.get("SELECT COUNT(*) as c FROM chats WHERE type='direct'")).c,
+    chats:    (await dal.get("SELECT COUNT(*) as c FROM chats WHERE type='direct' AND system_kind IS NULL")).c,
     groups:   (await dal.get("SELECT COUNT(*) as c FROM chats WHERE type='group'")).c,
     rooms:    (await dal.get("SELECT COUNT(*) as c FROM chats WHERE type='room' AND parent_id IS NULL")).c,
     messages: (await dal.get('SELECT COUNT(*) as c FROM messages WHERE deleted = 0')).c,
@@ -356,7 +356,7 @@ router.get('/chats', async (req, res) => {
       (SELECT COUNT(*) FROM chat_members WHERE chat_id = c.id) as member_count,
       (SELECT GROUP_CONCAT(u.id || char(31) || u.display_name || char(31) || (CASE WHEN u.is_bot = 3 THEN '1' ELSE '0' END), char(30) ORDER BY cm.joined_at) FROM users u
        JOIN chat_members cm ON cm.user_id = u.id WHERE cm.chat_id = c.id) as member_list
-    FROM chats c ORDER BY c.created_at DESC
+    FROM chats c WHERE c.system_kind IS NULL ORDER BY c.created_at DESC
   `);
   // Участники с номером и признаком фото — таблицы показывают настоящие аватарки.
   // Номер и имя берём одной строкой, чтобы их порядок гарантированно совпадал.
@@ -928,7 +928,7 @@ router.get('/overview', async (req, res) => {
       users: (await count('SELECT COUNT(*) AS c FROM users WHERE is_bot IS NULL OR is_bot = 0')),
       rooms: (await count("SELECT COUNT(*) AS c FROM chats WHERE type='room' AND parent_id IS NULL")),
       groups: (await count("SELECT COUNT(*) AS c FROM chats WHERE type='group'")),
-      chats: (await count("SELECT COUNT(*) AS c FROM chats WHERE type='direct'")),
+      chats: (await count("SELECT COUNT(*) AS c FROM chats WHERE type='direct' AND system_kind IS NULL")),
       messages: (await count('SELECT COUNT(*) AS c FROM messages WHERE deleted = 0')),
       // Тот же счёт, что во вкладке «Файлы»: файлы на диске без миниатюр
       files: storage.files.count,

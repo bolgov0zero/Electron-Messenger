@@ -8,6 +8,8 @@ B.chatName = function (chat) {
   var other = (chat.members || []).find(function (m) { return m.id !== B.S.user.id; });
   return (other && other.display_name) || 'Чат';
 };
+// Служебный чат с системой («Electron», chats.system_kind): только для чтения, у собеседника нет профиля, присутствия и контакта
+B.isSys = function (c) { return !!(c && c.system_kind); };
 B.peerId = function (chat) {
   if (chat.type !== 'direct') return null;
   var other = (chat.members || []).find(function (m) { return m.id !== B.S.user.id; });
