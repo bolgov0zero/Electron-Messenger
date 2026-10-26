@@ -557,7 +557,7 @@ html.dark .anx-solid { color: #fff; }
 /* Пустое состояние: стеклянный круг с иконкой Lucide вместо смайла */
 .empty-state { gap: 12px; }
 .empty-icon {
-  width: 72px; height: 72px; border-radius: 50%; opacity: 1; font-size: 0; display: grid; place-items: center;
+  width: 72px; height: 72px; border-radius: 50%; opacity: 1; font-size: 0; display: flex; align-items: center; justify-content: center; flex: none;
   background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl);
   border: 1px solid var(--gl-edge);
   -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%); backdrop-filter: blur(var(--gl-blur)) saturate(190%);
@@ -576,3 +576,54 @@ html.dark .anx-solid { color: #fff; }
 .empty-icon svg { color: var(--accent); }
 .empty-title { font-size: 18px; opacity: 1; color: var(--text); }
 .empty-sub { font-size: 13.5px; color: var(--text2); }
+
+/* ══════════════════════════════════════════════════════════════
+   Кнопки бара и три вкладки внизу — точно как в макете
+   ══════════════════════════════════════════════════════════════ */
+/* Бар: нейтральные кнопки 48×48 со скруглением 16; выбранная — приподнятое стекло с акцентным цветом и полоской у края */
+.acc-rail:not([hidden]) { gap: 10px; }
+.rail-folders, .rail-folders.scroll { gap: 10px; }
+.acc-btn.fld-btn, .fld-btn { width: 48px; height: 48px; border-radius: 16px; transition: transform .35s var(--gl-spring); }
+.fld-btn .fld-ic, .acc-btn.fld-btn .fld-ic {
+  width: 48px; height: 48px; border-radius: 16px; background: transparent; color: var(--text2);
+  font-size: 15px; font-weight: 700; letter-spacing: .2px; opacity: 1;
+  transition: transform .35s var(--gl-spring), background .2s, color .2s, box-shadow .2s;
+}
+.fld-btn .fld-ic .fi { width: 22px; height: 22px; }
+.fld-btn:hover .fld-ic { background: var(--gl-card); color: var(--text); transform: none; }
+.fld-btn:active .fld-ic { transform: scale(.94); }
+.fld-btn:not(.active) .fld-ic { opacity: 1; }
+.fld-btn.active .fld-ic {
+  background: var(--gl2); color: var(--accent);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow);
+}
+.fld-btn .fld-ic::after { display: none; }
+.spc-ini { color: inherit; font-size: 15px; font-weight: 700; letter-spacing: .2px; }
+.acc-btn.active::before, .fld-btn.active::before { left: -14px; top: 14px; width: 4px; height: 20px; border-radius: 0 4px 4px 0; background: var(--accent); }
+.acc-badge {
+  right: -4px; top: -4px; min-width: 20px; height: 20px; padding: 0 5px; border: 0; border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 62%, #000); color: #fff; font: 600 11px/20px var(--ff, inherit);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--side-bg) 88%, transparent);
+}
+.rail-sep { width: 28px; height: 1px; margin: 0; background: var(--gl-lo); }
+.rail-me:hover { filter: brightness(1.06); }
+
+/* Счётчики непрочитанного в списке — той же заливкой и размером, что в макете */
+.unread-badge {
+  min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; box-sizing: border-box;
+  background: color-mix(in srgb, var(--accent) 62%, #000) !important; color: #fff; font-size: 12px; font-weight: 600; line-height: 22px;
+  box-shadow: none;
+}
+
+/* Три вкладки внизу: стеклянная капсула, у выбранной вкладки приподнятая плашка */
+.sidebar-tabbar {
+  width: max-content; margin: 8px auto 14px; padding: 4px; gap: 2px; justify-content: center; flex-shrink: 0; border-radius: 999px;
+  background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl);
+  border: 1px solid var(--gl-edge);
+  -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%); backdrop-filter: blur(var(--gl-blur)) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 12px 32px var(--gl-shadow);
+}
+.sb-tab { flex: 0 0 64px; width: 64px; height: 38px; border-radius: 999px; color: var(--text2); transition: background .25s, color .25s, transform .35s var(--gl-spring), box-shadow .25s; }
+.sb-tab svg { width: 20px; height: 20px; }
+.sb-tab:hover:not(.on) { color: var(--text); }
+.sb-tab.on { background: var(--gl2); color: var(--accent); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px var(--gl-shadow); }
