@@ -1192,6 +1192,8 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 
 /* ── Пузыри сообщений как в мобильной версии: скругление 21, у каждого пузыря срезан нижний угол у стороны отправителя, размытие под чужими ── */
 .msg-bubble { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+/* Свои пузыри сплошные, размытие под ними не видно, а слой стоит: как в /m, оно только у чужих */
+.irc-msg[data-mine] .msg-bubble { -webkit-backdrop-filter: none; backdrop-filter: none; }
 .irc-msg:not([data-mine]) .msg-bubble { border-radius: 21px 21px 21px 7px !important; box-shadow: inset 0 1px 0 var(--gl-hi), 0 3px 12px var(--gl-shadow); }
 .irc-msg[data-mine] .msg-bubble { border-radius: 21px 21px 7px 21px !important; border-color: transparent;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -1px 0 rgba(0, 0, 0, .12), 0 6px 16px color-mix(in srgb, var(--gl-out-b) 38%, transparent); }
@@ -1392,3 +1394,6 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 .msg-bubble.bubble-emoji::before, .msg-bubble.bubble-emoji::after { display: none !important; }
 .msg-bubble.bubble-emoji > .irc-meta { background: var(--gl-card); border-radius: 99px; padding: 1px 8px; color: var(--text2); }
 .msg-bubble.bubble-emoji > .irc-meta .irc-time, .msg-bubble.bubble-emoji > .irc-meta .msg-status { color: var(--text2); }
+
+/* Быстрая прокрутка ленты: без размытия фона под пузырями, иначе слои не успевают отрисоваться (см. onMessagesScroll) */
+.messages.fast-scroll, .messages.fast-scroll * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }

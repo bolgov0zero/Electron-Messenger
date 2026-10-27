@@ -3287,6 +3287,7 @@ function renderMessages(msgs) {
 // возврат на прежнее место в чате и счётчики на кнопках «вниз» и «@»
 var FEED_MAX = 320, FEED_KEEP = 200;
 var _trimT = null, _readT = null, _lastScroll = 0;
+var _vTop = 0, _vAt = 0, _fastT = null;
 var _readSent = {};
 S.lastPos = S.lastPos || {};
 function feedEdge(c) { return Math.max(1400, c.clientHeight * 2); }
@@ -3417,6 +3418,12 @@ document.addEventListener('load', e => {
 function onMessagesScroll() {
   const container = document.getElementById('messages');
   if (!container) return;
+  // Быстрая прокрутка: у каждого пузыря своё размытие фона (backdrop-filter), и при полёте ленты слои не успевают отрисоваться —
+  // вместо сообщений мелькают замыленные прямоугольники. Пока лента летит, размытие снимаем, а после остановки возвращаем
+  const _t = performance.now(), _v = Math.abs(container.scrollTop - _vTop) / Math.max(1, _t - _vAt);
+  _vTop = container.scrollTop; _vAt = _t;
+  if (_v > 1 && !_anchor) container.classList.add('fast-scroll');
+  if (container.classList.contains('fast-scroll')) { clearTimeout(_fastT); _fastT = setTimeout(() => container.classList.remove('fast-scroll'), 160); }
   // Отслеживаем, находится ли пользователь у нижнего края (для авто-прокрутки)
   const dist = container.scrollHeight - container.scrollTop - container.clientHeight;
   _stickBottom = dist < 80 && !S.chatHasMoreAfter;
