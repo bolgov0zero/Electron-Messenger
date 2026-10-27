@@ -69,6 +69,8 @@
 .att-img { display: block; width: 100%; max-width: 280px; min-width: 160px; border-radius: 14px; background: var(--fill); cursor: zoom-in; object-fit: cover; }
 .bub:not(.media) .att-img { margin: 2px 0 5px; border-radius: 11px; }
 .vwrap { position: relative; cursor: pointer; }
+/* вертикальное видео не растягивает ленту: обложка не выше 300 px (как в веб клиенте), лишнее обрезается, в просмотре видео целиком */
+.vwrap .att-img { max-height: 300px; }
 .vwrap .vph { height: 160px; border-radius: 14px; background: var(--fill); }
 .vplay { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(0, 0, 0, .5); color: #fff; display: flex; align-items: center; justify-content: center; }
 .file { display: flex; align-items: center; gap: 10px; min-width: 200px; padding: 3px 0 2px; cursor: pointer; }

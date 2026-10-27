@@ -68,6 +68,8 @@ html, body { background: var(--gl-base); }
 .att-img { display: block; width: 100%; max-width: 280px; min-width: 160px; border-radius: 15px; background: var(--gl-card); cursor: zoom-in; object-fit: cover; }
 .bub:not(.media) .att-img { margin: -3px -7px 7px; width: calc(100% + 14px); max-width: none; }
 .vwrap { position: relative; cursor: pointer; }
+/* вертикальное видео не растягивает ленту: обложка не выше 300 px (как в веб клиенте), лишнее обрезается, в просмотре видео целиком */
+.vwrap .att-img { max-height: 300px; }
 .vwrap .vph { height: 160px; border-radius: 15px; background: var(--gl-card); }
 .vplay { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(0, 0, 0, .5); color: #fff; display: grid; place-items: center; font-size: 22px; }
 .agrid { display: grid; gap: 2px; width: 280px; max-width: 100%; border-radius: 15px; overflow: hidden; background: var(--gl-card); }
