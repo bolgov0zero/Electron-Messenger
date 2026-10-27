@@ -896,4 +896,13 @@ buildRoot();bindChats();bindContacts();bindSettings();
 setTheme('dark');fit();
 requestAnimationFrame(()=>{fit();setTab('chats',true)});setTimeout(fit,300);
 
+/* ---------- PWA: сервис-воркер, обрыв сети, обновление ---------- */
+if('serviceWorker' in navigator&&location.protocol!=='file:'){
+  const had=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('/beta/sw.js',{scope:'/beta/'}).catch(()=>{});
+  let first=!had;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(first){first=false;return}toast('Макет обновлён: перезапустите приложение','upd')});
+}
+addEventListener('offline',()=>toast('Нет сети: макет работает из кэша','bellOff'));
+addEventListener('online',()=>toast('Сеть появилась','check'));
+
 </script></body></html>
