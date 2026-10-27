@@ -409,13 +409,22 @@ html, body { background: var(--gl-base); }
 .page.mv .mrow.in .bub, .page.drag .mrow.in .bub, .page.mv .day .glass, .page.drag .day .glass { -webkit-backdrop-filter: none; backdrop-filter: none; }
 
 /* переключатель папок: активный чип подсвечивает бегунок (едет, как у нижней панели), а не фон самого чипа */
-.fgrp .thumb { position: absolute; top: 4px; bottom: 4px; left: 4px; width: 0; border-radius: 22px; background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px -2px var(--gl-shadow); transition: left .45s var(--gl-spring), width .45s var(--gl-spring); pointer-events: none; }
+.fgrp .thumb { position: absolute; top: 0; bottom: 0; left: 0; width: 0; border-radius: 22px; background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px -2px var(--gl-shadow); transition: left .45s var(--gl-spring), width .45s var(--gl-spring); pointer-events: none; }
 .fgrp .chip { position: relative; z-index: 1; }
 .fgrp .chip.on { background: none; box-shadow: none; }
-.fgrp.nt .chip.on { background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px -2px var(--gl-shadow); }
+.fgrp .fin.nt .chip.on { background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px -2px var(--gl-shadow); }
 
 /* переключатель папок: стеклянный блок на всю ширину окна (как строка поиска), чипы прокручиваются внутри него */
-.chips.fo > .fgrp, .chips.fo > .fgrp.glass { width: 100%; box-sizing: border-box; margin: 0; justify-content: flex-start; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; }
-.chips.fo > .fgrp::-webkit-scrollbar { display: none; }
+.chips.fo > .fgrp, .chips.fo > .fgrp.glass { display: block; width: 100%; box-sizing: border-box; margin: 0; padding: 0; overflow: visible; }
+/* прокручиваемая лента внутри стеклянного блока отступает на 4 px от его границы, поэтому чипы обрезаются не вплотную к границе, а с таким же отступом, как у выбранного */
+.fgrp .fin { position: relative; display: flex; gap: 2px; margin: 4px; border-radius: 22px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; }
+.fgrp .fin::-webkit-scrollbar { display: none; }
 /* значок на аватаре (папка, группа, федерация): непрозрачный фон, чтобы не просвечивал на любой теме и прозрачности */
 .av .type { background: color-mix(in srgb, var(--card-bg) 86%, #fff); }
+
+/* края ленты папок: затухание текста (маска) и лёгкое размытие поверх него, только там, где чипы уходят под край блока */
+.fgrp .fin { --fl: 0px; --fr: 0px; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%); }
+.chips.fo > .fgrp.glass { position: relative; --bl: 0; --br: 0; }
+.chips.fo > .fgrp.glass::before, .chips.fo > .fgrp.glass::after { content: ""; display: block; position: absolute; top: 4px; bottom: 4px; width: 26px; z-index: 2; pointer-events: none; -webkit-backdrop-filter: blur(2.5px); backdrop-filter: blur(2.5px); transition: opacity .2s; }
+.chips.fo > .fgrp.glass::before { left: 4px; border-radius: 22px 0 0 22px; opacity: var(--bl); -webkit-mask-image: linear-gradient(90deg, #000, transparent); mask-image: linear-gradient(90deg, #000, transparent); }
+.chips.fo > .fgrp.glass::after { right: 4px; border-radius: 0 22px 22px 0; opacity: var(--br); -webkit-mask-image: linear-gradient(270deg, #000, transparent); mask-image: linear-gradient(270deg, #000, transparent); }
