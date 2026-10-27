@@ -418,29 +418,17 @@ html:not(.dark) .edge.t{--ea:.46}
 .phone{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .phone input,.phone textarea{-webkit-touch-callout:default}
 
-/* ── Низ как в /m: окно iOS заканчивается над индикатором «домой», а оставшаяся полоса экрана — вне страницы.
-   Нарисовать там ничего нельзя (прозрачной её тоже не сделать: видно только цвет фона html), поэтому нижнюю панель
-   прижимаем к самому краю окна сплошной «доской» того же цвета, что и фон html: полоса выглядит её продолжением. ── */
-:root{--dock:#151c24;--dock-h:66px;--cdock:62px}
-html:not(.dark){--dock:#e8efef}
-html.dark.navy{--dock:#142030}
-html{background:var(--dock)}
-.phone{--dockpad:34px}   /* в рамке на компьютере полосу под окном имитируем отступом доски */
-@media (max-width:520px){.phone{--dockpad:0px}}
-.phone.kb,.phone.kbr{--dockpad:0px}
-.scroll{padding-bottom:calc(var(--dock-h) + var(--dockpad) + 14px)}
-.scroll.nobot{padding-bottom:calc(var(--dockpad) + 30px)}
-.tabbar.glass{left:0;right:0;bottom:0;transform:none;border-radius:0;border:0;border-top:1px solid var(--gl-edge);background:var(--dock);-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;padding:5px 10px calc(5px + var(--dockpad));gap:4px}
-.tabbar .thumb{top:5px;bottom:calc(5px + var(--dockpad));border-radius:28px}
-.tb{flex:1;width:auto;height:56px;border-radius:28px}
-.tb .bd{right:auto;left:calc(50% + 6px)}
-.comp{left:0;right:0;bottom:0;padding:8px 10px calc(8px + var(--dockpad));background:var(--dock);border-top:1px solid var(--gl-edge)}
-.phone.kb .comp{bottom:300px}.phone.kbr .comp{bottom:0}
-.chat .scroll{padding-bottom:calc(var(--cdock) + var(--dockpad) + 14px)}
-.phone.kb .chat .scroll{padding-bottom:376px}.phone.kbr .chat .scroll{padding-bottom:78px}
-.jump{bottom:calc(var(--cdock) + var(--dockpad) + 12px)}.phone.kb .jump{bottom:372px}.phone.kbr .jump{bottom:80px}
-.edge.b{height:calc(var(--dockpad) + 40px);background:linear-gradient(transparent,var(--dock) 88%)}
-.phone.kb .home{opacity:0}
+/* ── Низ в установленном приложении iOS 26+ ──
+   Известная ошибка WebKit (bug 301108/316008): у веб-приложения с «Домой» при viewport-fit=cover и black-translucent
+   раскладка получает высоту окна короче экрана примерно на высоту статус-бара, и низ остаётся голой полосой цвета html.
+   Манифест тут ни при чём: iOS читает из него только цвет запуска. Обход: только в standalone растягиваем html на
+   высоту окна + верхний отступ (но не выше 100lvh), без position:fixed (фиксированные слои тоже кончаются над полосой).
+   Тогда нижняя область закрашивается самим макетом, и под парящей панелью виден список чатов. */
+@media (display-mode: standalone){
+  html{position:absolute;top:0;left:0;width:100%;height:min(100lvh,calc(100% + env(safe-area-inset-top,0px)));overflow:hidden}
+  body{position:absolute;inset:0;height:100%;overflow:hidden}
+  .fit{position:absolute;top:0;left:0;width:100%;height:100%}
+}
 
 </style></head>
 <body>
@@ -583,7 +571,7 @@ function setTheme(t){const m=document.querySelector('meta[name=theme-color]');m&
   $$('.dot2').forEach(d=>d.style.setProperty('--dot','rgb('+ACC[d.dataset.a][root.classList.contains('dark')?2:1]+')'))}
 function segMove(seg){const b=$('button.on',seg),t=$('.thumb',seg);if(!b||!t)return;t.style.left=b.offsetLeft+'px';t.style.width=b.offsetWidth+'px'}
 const real=()=>window.innerWidth<=520;   /* на настоящем телефоне: на весь экран и со своей клавиатурой телефона */
-function fit(){const f=$('.fit');if(real()){const full=f.clientHeight||innerHeight,vv=window.visualViewport,kb=vv&&vv.height<full-80;const H=kb?vv.height:full;sc=innerWidth/393;phone.style.width='393px';phone.style.height=H/sc+'px';phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',sc);phone.style.left='0';phone.style.top=(kb?vv.offsetTop:0)+'px';return}
+function fit(){const f=$('.fit');if(real()){const full=f.clientHeight||innerHeight,vv=window.visualViewport,kb=vv&&vv.height<full-120;const H=kb?vv.height:full;sc=innerWidth/393;phone.style.width='393px';phone.style.height=H/sc+'px';phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',sc);phone.style.left='0';phone.style.top=(kb?vv.offsetTop:0)+'px';return}
   sc=Math.min(f.clientWidth/453,f.clientHeight/(852+40),1.2);phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',1);phone.style.left=(f.clientWidth-393*sc)/2+'px';phone.style.top=Math.max(14,(f.clientHeight-852*sc)/2)+'px'}
 addEventListener('resize',fit);
 if(window.visualViewport)visualViewport.addEventListener('scroll',()=>{if(real())fit()});
