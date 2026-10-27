@@ -580,6 +580,18 @@ html:not(.dark) .edge.t{--ea:.46}
 .fmtbar button{width:40px;height:34px;border-radius:17px;display:grid;place-items:center;font-size:19px;color:var(--text2);transition:background .2s,transform .35s var(--gl-spring)}
 .fmtbar button:active{background:var(--gl2);transform:scale(.9)}
 
+/* Панель форматирования как в /m: B, I, код в строке, блок кода, секрет | превью ... закрыть */
+.fmtbar{padding:8px 6px 0 10px;gap:0;align-items:center}
+.fmtbar button{width:34px;height:34px;border-radius:17px;font-size:18px}
+.fmtbar button.on{background:var(--accent-soft);color:var(--accent-ink)}
+.fsep{width:1px;height:20px;background:var(--gl-lo);margin:0 6px;flex:none}.fgrow{flex:1}
+.fpv{padding:10px 16px 2px;font-size:14px}.fpv[hidden]{display:none}
+.fpl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.fpb{color:var(--text);line-height:1.4;max-height:90px;overflow:auto;word-break:break-word}.fpb .fe{color:var(--muted)}
+.fpb code{font-family:ui-monospace,Menlo,monospace;font-size:13px;padding:1px 6px;border-radius:6px;background:var(--gl-card2)}
+.fpb pre{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;padding:8px 10px;border-radius:12px;background:var(--gl-card);margin:4px 0;white-space:pre-wrap}
+.fpb .sec{filter:blur(5px);background:var(--gl-card2);border-radius:6px;padding:0 3px}
+
 </style></head>
 <body>
 <div class="stage">

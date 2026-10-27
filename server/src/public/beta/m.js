@@ -328,11 +328,16 @@ function openChat(id,fromRoom){const c=findChat(id);if(!c)return;if(c.k==='room'
    `<button class="jump glass gi" data-jump aria-label="Вниз">${I('down')}</button>`+composerHtml(c));
   push(el,c.n);const sc_=$('.scroll',el);requestAnimationFrame(()=>{sc_.scrollTop=1e6});bindChat(el,c);return el}
 function composerHtml(c){return `<div class="comp"><button class="cbtn glass gi" data-plus aria-label="Вложение">${I('plus')}</button>
-  <div class="cfield glass"><div class="cbar-wrap"></div><div class="fmtbar" hidden>${['bold|Жирный','italic|Курсив','code|Моноширинный','braces|Блок кода'].map(x=>{const [i,l]=x.split('|');return `<button data-f="${i}" aria-label="${l}">${I(i)}</button>`}).join('')}</div><div class="cin"><textarea rows="1" placeholder="Сообщение" aria-label="Сообщение" enterkeyhint="send"></textarea><button class="em" data-emoji aria-label="Смайлы">${I('smile')}</button></div></div>
+  <div class="cfield glass"><div class="cbar-wrap"></div><div class="fpv" hidden></div><div class="fmtbar" hidden>${['bold|Жирный','italic|Курсив','code|Код в строке','braces|Блок кода','secret|Секрет'].map(x=>{const [i,l]=x.split('|');return `<button data-f="${i}" aria-label="${l}" title="${l}">${i==='secret'?I('eyeOff'):I(i)}</button>`}).join('')}<span class="fsep"></span><button data-f="prev" aria-label="Превью" title="Показать превью">${I('eye')}</button><span class="fgrow"></span><button data-f="close" aria-label="Закрыть" title="Закрыть панель форматирования">${I('x')}</button></div><div class="cin"><textarea rows="1" placeholder="Сообщение" aria-label="Сообщение" enterkeyhint="send"></textarea><button class="em" data-emoji aria-label="Смайлы">${I('smile')}</button></div></div>
   <button class="sendb glass gi" data-send aria-label="Отправить">${I('send','s')}</button></div>`}
+/* простая разметка: **жирный**, _курсив_, `код`, ```блок```, ||секрет|| */
+function fmtHtml(t){let h=esc(t);const blocks=[];h=h.replace(/```\n?([\s\S]*?)\n?```/g,(m,x)=>{blocks.push(x);return '\u0000'+(blocks.length-1)+'\u0000'});
+  h=h.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/(^|\W)_([^_]+)_(?=\W|$)/g,'$1<i>$2</i>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\|\|([^|]+)\|\|/g,'<span class="sec">$1</span>').replace(/\n/g,'<br>');
+  return h.replace(/\u0000(\d+)\u0000/g,(m,i)=>'<pre>'+blocks[+i]+'</pre>')}
 function bindChat(el,c){const sc_=$('.scroll',el),ta=$('textarea',el),send=$('.sendb',el),jump=$('.jump',el);let ctx=null,att=null;
   const bar=()=>{const w=$('.cbar-wrap',el);w.innerHTML=(ctx?`<div class="cbar"><i class="tk"></i><div class="ct"><b>${ctx.k==='edit'?'Редактирование':'Ответ: '+esc(ctx.who)}</b><span>${esc(ctx.text)}</span></div><button class="ibtn" data-cx aria-label="Отмена">${I('x')}</button></div>`:'')+(att?`<div class="cbar"><i class="tk" style="background:#5b8def"></i><div class="ct"><b>Вложение</b><span>${esc(att.name)} · ${att.size}</span></div><button class="ibtn" data-ca aria-label="Убрать вложение">${I('x')}</button></div>`:'')};
-  const sync=()=>{send.classList.toggle('ready',!!ta.value.trim()||!!att||ctx?.k==='edit');ta.style.height='46px';ta.style.height=Math.min(120,ta.scrollHeight)+'px'};
+  const fmtPrev=()=>{const fp=$('.fpv',el);if(fp.hidden)return;const t=ta.value;fp.innerHTML='<div class="fpl">Превью — так увидят получатели</div><div class="fpb">'+(t.trim()?fmtHtml(t):'<span class="fe">Здесь появится оформленный текст</span>')+'</div>'};
+  const sync=()=>{fmtPrev();send.classList.toggle('ready',!!ta.value.trim()||!!att||ctx?.k==='edit');ta.style.height='46px';ta.style.height=Math.min(120,ta.scrollHeight)+'px'};
   ta.addEventListener('input',sync);ta.addEventListener('focus',()=>showKb(ta));
   ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doSend()}});
   const doSend=()=>{const t=ta.value.trim();if(!t&&!att&&ctx?.k!=='edit')return;
@@ -350,7 +355,10 @@ function bindChat(el,c){const sc_=$('.scroll',el),ta=$('textarea',el),send=$('.s
     if(t.closest('[data-cx]')){ctx=null;bar();ta.value='';sync();return}
     if(t.closest('[data-plus]')){upMenu(t.closest('[data-plus]'),{attach:()=>{att={name:['Презентация.pdf','Отчёт_ноябрь.xlsx','Схема.png'][Math.random()*3|0],size:['1,2 МБ','86 КБ','2,4 МБ'][Math.random()*3|0]};bar();sync()},fmt:()=>{const f=$('.fmtbar',el);f.hidden=!f.hidden;if(!f.hidden)ta.focus()}});return}
     if(t.closest('[data-ca]')){att=null;bar();sync();return}
-    const fb=t.closest('.fmtbar [data-f]');if(fb){const mk={bold:['**','**'],italic:['_','_'],code:['`','`'],braces:['```\n','\n```']}[fb.dataset.f],s0=ta.selectionStart,e0=ta.selectionEnd,v=ta.value;ta.value=v.slice(0,s0)+mk[0]+v.slice(s0,e0)+mk[1]+v.slice(e0);ta.setSelectionRange(s0+mk[0].length,e0+mk[0].length);sync();return}
+    const fb=t.closest('.fmtbar [data-f]');if(fb){const k=fb.dataset.f,fp=$('.fpv',el);
+      if(k==='close'){$('.fmtbar',el).hidden=true;fp.hidden=true;fb.closest('.fmtbar').querySelector('[data-f="prev"]').classList.remove('on');return}
+      if(k==='prev'){fp.hidden=!fp.hidden;fb.classList.toggle('on',!fp.hidden);fmtPrev();return}
+      const mk={bold:['**','**'],italic:['_','_'],code:['`','`'],braces:['```\n','\n```'],secret:['||','||']}[k],s0=ta.selectionStart,e0=ta.selectionEnd,v=ta.value;ta.value=v.slice(0,s0)+mk[0]+v.slice(s0,e0)+mk[1]+v.slice(e0);ta.setSelectionRange(s0+mk[0].length,e0+mk[0].length);sync();return}
     if(t.closest('[data-emoji]')){phone.classList.contains('ep')?closeEp(true):openEp();return}
     if(t.closest('[data-jump]')){sc_.scrollTo({top:1e6,behavior:'smooth'});return}
     if(t.closest('[data-pin]')){const m=$('.mrow',sc_);m.classList.add('hl');m.scrollIntoView({block:'center',behavior:'smooth'});setTimeout(()=>m.classList.remove('hl'),1500);return}
