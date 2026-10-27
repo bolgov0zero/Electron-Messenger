@@ -129,7 +129,7 @@ B.ui.chatlist = (function () {
     input.addEventListener('input', onInput); input.addEventListener('focus', function () { showKb(); }); input.addEventListener('keydown', function (e) { if (e.key === 'Enter') input.blur(); });
     v.addEventListener('click', function (e) {
       var fo = e.target.closest('[data-fo]');
-      if (fo) { B.folders.select(fo.dataset.fo === 'all' ? 'all' : +fo.dataset.fo); return; }
+      if (fo) { B.ui.folders.center = true; B.folders.select(fo.dataset.fo === 'all' ? 'all' : +fo.dataset.fo); return; }
       var a = e.target.closest('[data-act]');
       if (a) {
         var k = a.dataset.act;

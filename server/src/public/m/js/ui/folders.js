@@ -25,6 +25,12 @@ B.ui.folders = (function () {
     g.classList.remove('nt');
     if (prev && prev.w) { th.style.transition = 'none'; th.style.left = prev.l; th.style.width = prev.w; void th.offsetWidth; th.style.transition = ''; }
     th.style.left = b.offsetLeft + 'px'; th.style.width = b.offsetWidth + 'px';
+    // Выбранная папка плавно встаёт посередине экрана; у первой и последней прокрутка упирается в край, и они остаются у своего края
+    if (B.ui.folders.center) {
+      B.ui.folders.center = false;
+      var fo = bar.querySelector('.chips.fo');
+      if (fo) { var fr = fo.getBoundingClientRect(), br = b.getBoundingClientRect(); fo.scrollTo({ left: fo.scrollLeft + (br.left + br.width / 2) - (fr.left + fr.width / 2), behavior: 'smooth' }); }
+    }
   }
   function thumbOf(bar) { var th = bar && bar.querySelector('.fgrp .thumb'); return th && th.style.width ? { l: th.style.left, w: th.style.width } : null; }
 
