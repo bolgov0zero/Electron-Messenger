@@ -28,7 +28,7 @@ B.ui.folders = (function () {
     // Выбранная папка плавно встаёт посередине экрана; у первой и последней прокрутка упирается в край, и они остаются у своего края
     if (B.ui.folders.center) {
       B.ui.folders.center = false;
-      var fo = bar.querySelector('.chips.fo');
+      var fo = bar.querySelector('.fgrp');
       if (fo) { var fr = fo.getBoundingClientRect(), br = b.getBoundingClientRect(); fo.scrollTo({ left: fo.scrollLeft + (br.left + br.width / 2) - (fr.left + fr.width / 2), behavior: 'smooth' }); }
     }
   }

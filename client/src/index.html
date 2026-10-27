@@ -7,6 +7,7 @@
 <title>Electron</title>
 <link rel="stylesheet" href="assets/fonts/inter.css">
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="glass.css">
 </head>
 <body>
 
@@ -232,6 +233,13 @@
           <input id="contacts-search" placeholder="Поиск контактов..." data-on-input="filterContacts" data-a-input='["__value"]'>
         </div>
       </div>
+      <!-- Фильтр списка чатов: все / новые / личные / группы (см. setChatFilter в app.js) -->
+      <div class="seg chat-filter" id="chat-filter" role="tablist" aria-label="Фильтр чатов">
+        <button type="button" role="tab" class="active" aria-selected="true" data-f="all" data-on-click="setChatFilter" data-a-click='["all"]'>Все</button>
+        <button type="button" role="tab" aria-selected="false" data-f="unread" data-on-click="setChatFilter" data-a-click='["unread"]'>Новые</button>
+        <button type="button" role="tab" aria-selected="false" data-f="direct" data-on-click="setChatFilter" data-a-click='["direct"]'>Личные</button>
+        <button type="button" role="tab" aria-selected="false" data-f="group" data-on-click="setChatFilter" data-a-click='["group"]'>Группы</button>
+      </div>
       <div class="sidebar-list-wrap">
         <div class="chats-list" id="chats-list"></div>
         <!-- Список тем — выезжает поверх списка чатов, когда открыта комната с темами -->
@@ -402,7 +410,7 @@
   <div class="modal nc-modal">
     <div class="modal-hdr">
       <span style="flex:1" id="fe-title">Новая папка</span>
-      <button class="icon-btn" data-on-click="closeModal" data-a-click='["modal-folder"]' style="width:28px;height:28px">
+      <button class="icon-btn" data-on-click="closeModal" data-a-click='["modal-folder"]'>
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
     </div>
@@ -416,7 +424,7 @@
   <div class="modal nc-modal">
     <div class="modal-hdr">
       <span style="flex:1">Добавить контакт</span>
-      <button class="icon-btn" data-on-click="closeModal" data-a-click='["modal-addcontact"]' style="width:28px;height:28px">
+      <button class="icon-btn" data-on-click="closeModal" data-a-click='["modal-addcontact"]'>
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
     </div>
@@ -447,7 +455,7 @@
       </button>
       <span id="nc-title" style="flex:1">Новый чат</span>
       <span class="nc-step" id="nc-step"></span>
-      <button class="icon-btn" data-on-click="closeNewChat" style="width:28px;height:28px">
+      <button class="icon-btn" data-on-click="closeNewChat">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
     </div>
@@ -459,7 +467,7 @@
   <div class="modal nc-modal">
     <div class="modal-hdr">
       <span style="flex:1">Тип чата</span>
-      <button class="icon-btn" data-on-click="closeModal" data-a-click='["modal-chattype"]' style="width:28px;height:28px">
+      <button class="icon-btn" data-on-click="closeModal" data-a-click='["modal-chattype"]'>
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
     </div>
@@ -471,7 +479,7 @@
   <div class="modal sc-sync-modal">
     <div class="modal-hdr">
       <span id="sc-sync-title" style="flex:1">Секретный чат — синхронизация</span>
-      <button class="icon-btn" data-on-click="scCancelSyncModal" style="width:28px;height:28px">
+      <button class="icon-btn" data-on-click="scCancelSyncModal">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
     </div>
@@ -482,7 +490,7 @@
   <div class="modal" style="width:380px;max-height:80vh;display:flex;flex-direction:column">
     <div class="modal-hdr">
       <span>Переслать в...</span>
-      <button class="icon-btn" data-on-click="closeForwardModal" style="width:28px;height:28px">
+      <button class="icon-btn" data-on-click="closeForwardModal">
         <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
       </button>
     </div>
@@ -506,6 +514,7 @@
 <script src="fmt.js"></script>
 <script src="slidesel.js"></script>
 <script src="app.js"></script>
+<script src="glass.js"></script>
 <script src="guestlinks.js"></script>
 <script src="folders.js"></script>
 <script src="spaces.js"></script>

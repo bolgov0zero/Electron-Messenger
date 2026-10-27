@@ -886,8 +886,11 @@ function renderAccountRail() {
     return `<button type="button" class="acc-btn${isActive ? ' active' : ''}" data-on-click="__h18" data-a-click="${esc(JSON.stringify([esc(a.id)]))}" aria-label="${sys ? sys + ', ' : ''}${name}${srv ? ', ' + srv : ''}">
       <span class="av av-round ${cls}">${esc(m ? initials(m.name) : '?')}${img}</span>${badge}
       <span class="acc-tip">${sys ? `<span class="acc-sys">${sys}</span>` : ''}<b>${name}</b><span>${srv}</span></span></button>`;
-  }).join('') : '') + (typeof spacesRailHtml === 'function' ? spacesRailHtml(showAcc) : '') + (typeof foldersRailHtml === 'function' ? foldersRailHtml(showAcc || (typeof spacesRailShown === 'function' && spacesRailShown())) : '');
+  }).join('') : '') + (typeof spacesRailHtml === 'function' ? spacesRailHtml(showAcc) : '') + (typeof foldersRailHtml === 'function' ? foldersRailHtml(showAcc || (typeof spacesRailShown === 'function' && spacesRailShown())) : '')
+    // Внизу бара — свой аватар со статусом (как в вебе); по нажатию открывается профиль
+    + (S.user ? `<button type="button" class="rail-me" title="Профиль" aria-label="Профиль" data-on-click="openProfile" data-a-click="${esc(JSON.stringify([S.user.id]))}"><span class="av-wrap"><span class="av av-round ${userAvatarColor(S.user.id, S.user.tag)}" data-av-user="${S.user.id}">${esc(initials(S.user.display_name || S.user.username || '?'))}</span><i class="presence-dot"></i></span></button>` : '');
   if (typeof foldersRailFit === 'function') foldersRailFit();
+  applyAvatars();
 }
 
 // Имя сервера могли задать или поменять уже после входа: подтягиваем актуальное и обновляем подсказку бара
@@ -943,7 +946,6 @@ function updateSidebarThemeIcon() {
 // компьютере у того же человека может быть свой цвет.
 const ACCENTS = {
   teal:   { name: 'Бирюзовый', light: [29, 168, 140], dark: [41, 214, 184] },
-  blue:   { name: 'Синий',     light: [37, 118, 199], dark: [96, 170, 245] },
   indigo: { name: 'Индиго',    light: [92, 96, 205],  dark: [143, 148, 245] },
   plum:   { name: 'Сливовый',  light: [146, 84, 190], dark: [196, 146, 240] },
   amber:  { name: 'Янтарный',  light: [186, 120, 38], dark: [236, 176, 92] },
@@ -982,10 +984,10 @@ function applyAccent() {
   s.setProperty('--accent', hex(c));
   s.setProperty('--accent-rgb', c.join(','));
   s.setProperty('--primary', hex(c));
-  s.setProperty('--accent-soft', rgba(c, .10));
+  s.setProperty('--accent-soft', rgba(c, .12));
   s.setProperty('--primary-light', rgba(c, .10));
-  s.setProperty('--accent-border', rgba(c, .25));
-  s.setProperty('--accent-shadow', rgba(c, .20));
+  s.setProperty('--accent-border', rgba(c, .28));
+  s.setProperty('--accent-shadow', rgba(c, .22));
   s.setProperty('--reaction-mine', rgba(c, dark ? .15 : .13));
   s.setProperty('--reply-bg', rgba(c, .08));
   s.setProperty('--blob1', rgba(c, .12));
@@ -1143,6 +1145,8 @@ function chatBgCardsHtml() {
   </div>`;
 }
 
+// Прозрачность стекла → множитель плотности --gl-k: 50% = 1, 0% = 1,9 (плотнее), 100% = 0,15 (почти прозрачное)
+function glassK(t) { return Math.max(.15, 1.9 - .018 * (t == null ? 50 : Math.min(100, Math.max(0, +t)))); }
 function applySettings() {
   headMenuClose();
   const isDark = S.settings.theme === 'dark' || S.settings.theme === 'navy';
@@ -1161,6 +1165,9 @@ function applySettings() {
   document.body.style.height = '';
   document.documentElement.style.setProperty('--vh100', _scale !== 100 ? `calc(100vh / ${_scale / 100})` : '100vh');
   document.querySelectorAll('#scale-seg button').forEach(b => b.classList.toggle('active', parseInt(b.textContent) === _scale));
+  // Стекло: «Цветная картинка» (пятна под стеклом) и «Прозрачность» (0–100, 50 — стандартная плотность)
+  document.documentElement.classList.toggle('gl-noimg', S.settings.glassImage === false);
+  document.documentElement.style.setProperty('--gl-k', glassK(S.settings.glassTransparency).toFixed(3));
   applyAccent();
   applyChatBg();
   applyChatPattern();
@@ -1306,9 +1313,30 @@ function initSidebarPeek() {
 // прямо в сайдбаре и основной области (csRenderInline), без модалки.
 let _sidebarTab = 'chats';
 
+// Смена вкладки сайдбара как в макете: прежнее содержимое уходит вправо и гаснет, новое выезжает справа и проявляется
+function sidebarGhost() {
+  const list = document.getElementById('chats-list'), par = list && list.offsetParent;
+  if (!par || !list.animate || document.hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) return null;
+  const g = list.cloneNode(true);
+  g.removeAttribute('id'); g.querySelectorAll('[id]').forEach(e => e.removeAttribute('id'));
+  g.setAttribute('aria-hidden', 'true'); g.inert = true;
+  Object.assign(g.style, { position: 'absolute', left: list.offsetLeft + 'px', top: list.offsetTop + 'px', width: list.offsetWidth + 'px', height: list.offsetHeight + 'px', margin: '0', pointerEvents: 'none', overflow: 'hidden', zIndex: '2' });
+  par.appendChild(g); g.scrollTop = list.scrollTop;
+  return g;
+}
+function sidebarSwap(g) {
+  if (!g) return;
+  const ease = 'cubic-bezier(.22,1,.36,1)', list = document.getElementById('chats-list');
+  const out = g.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(8%)' }], { duration: 300, easing: ease, fill: 'forwards' });
+  out.onfinish = () => g.remove();
+  setTimeout(() => g.remove(), 700);   // не rAF: в свёрнутом окне onfinish может не прийти
+  if (list) list.animate([{ opacity: 0, transform: 'translateX(8%)' }, { opacity: 1, transform: 'none' }], { duration: 450, easing: ease });
+}
+
 function setSidebarTab(tab) {
   if (tab === _sidebarTab) return;
   const prevTab = _sidebarTab;
+  const _swap = sidebarGhost();
   // уходя со вкладки «Чаты» — выходим из открытой панели тем, чтобы не путать
   // сжатый в полосу сайдбар с контактами/настройками
   if (prevTab === 'chats' && S.activeRoomId) leaveRoom();
@@ -1325,6 +1353,7 @@ function setSidebarTab(tab) {
   document.getElementById('chats-search-wrap').style.display = tab === 'chats' ? '' : 'none';
   document.getElementById('contacts-search-wrap').style.display = tab === 'contacts' ? '' : 'none';
   document.getElementById('sidebar-search').style.display = tab === 'settings' ? 'none' : '';
+  const _cf = document.getElementById('chat-filter'); if (_cf) _cf.style.display = tab === 'chats' ? '' : 'none';
   const list = document.getElementById('chats-list');
   if (tab === 'chats') {
     list.className = 'chats-list';
@@ -1338,7 +1367,7 @@ function setSidebarTab(tab) {
   } else if (tab === 'settings') {
     openSettingsInline();
   }
-  if (tab !== 'settings') { list.classList.remove('tab-in'); void list.offsetWidth; list.classList.add('tab-in'); }
+  sidebarSwap(_swap);
 }
 
 // Сброс формы настроек к разделу «Профиль» — то же самое, что раньше делал
@@ -1665,7 +1694,7 @@ function csPaneGeneral() {
   const sound = S.settings.soundEnabled !== false;
   return `<div class="cs-gt">Уведомления</div>
     <div class="cs-g"><div class="cs-r"><div class="cs-l"><b>Звук сообщений</b><span>Короткий сигнал, когда приходит новое сообщение</span></div>
-      <div class="cs-ctl"><button type="button" class="cs-btn ghost" ${sound ? '' : 'disabled'} data-on-click="playNotificationSound">${CS_I.play}Прослушать</button>${csTg(sound, 'csSound', 'Звук сообщений')}</div></div>
+      <div class="cs-ctl"><button type="button" class="cs-btn ghost sm" ${sound ? '' : 'disabled'} data-on-click="playNotificationSound">${CS_I.play}Прослушать</button>${csTg(sound, 'csSound', 'Звук сообщений')}</div></div>
       <div class="cs-r"><div class="cs-l"><b>Показывать текст сообщения</b><span>Выключите, если экран виден посторонним: в уведомлении будет только «Новое сообщение»</span></div>${csTg(_pushPrefs.show_text !== false, 'csPushText', 'Показывать текст сообщения')}</div>
       <div class="cs-r"><div class="cs-l"><b>Тихие часы</b><span>${_pushPrefs.quiet_from != null ? 'В это время уведомлений и звука нет, сообщения никуда не пропадают' : 'В выбранные часы уведомлений и звука нет'}</span></div>
         <div class="cs-ctl">${_pushPrefs.quiet_from != null ? `<input type="time" class="cs-time" value="${_hhmm(_pushPrefs.quiet_from)}" data-on-change="csQuietTime" data-a-change='["quiet_from", "__value"]' aria-label="С"><span class="cs-dash">–</span><input type="time" class="cs-time" value="${_hhmm(_pushPrefs.quiet_to)}" data-on-change="csQuietTime" data-a-change='["quiet_to", "__value"]' aria-label="До">` : ''}${csTg(_pushPrefs.quiet_from != null, 'csQuiet', 'Тихие часы')}</div></div>
@@ -1706,6 +1735,14 @@ function diagCopy(all) {
   navigator.clipboard.writeText(text).then(() => showActionToast(all ? 'Журнал скопирован' : 'Выделенное скопировано')).catch(() => {});
 }
 
+function csGlassTr(v) {
+  v = Math.min(100, Math.max(0, +v || 0));
+  S.settings.glassTransparency = v; document.documentElement.style.setProperty('--gl-k', glassK(v).toFixed(3)); saveSession();
+  const r = document.getElementById('cs-tr'), o = document.getElementById('cs-trval');
+  if (r) r.style.setProperty('--v', v + '%');
+  if (o) o.textContent = v + '%';
+}
+function csGlassImage() { S.settings.glassImage = S.settings.glassImage === false; applySettings(); saveSession(); csRefresh(); }
 function csSound() { S.settings.soundEnabled = S.settings.soundEnabled === false; saveSession(); csRefresh(); }
 async function csAutostart() { CS.autostart = !CS.autostart; csRefresh(); await setAutostart(CS.autostart); }
 function csHideSidebar() { toggleSidebar(); csRefresh(); }
@@ -1717,7 +1754,7 @@ function csPick(name, v) { window[name](v); csRefresh(); }
 function ctxNoop(ev) { ev.preventDefault(); }
 function noop() {}
 function csPaneAppearance() {
-  const s = S.settings, lvl = currentPatternLevel(), scales = csIsApp() ? [80, 90, 100] : [80, 90, 100, 110];
+  const s = S.settings, tr = s.glassTransparency == null ? 50 : s.glassTransparency, lvl = currentPatternLevel(), scales = csIsApp() ? [80, 90, 100] : [80, 90, 100, 110];
   const seg = (items, cur, fn, label) => `<div class="cs-seg" role="group" aria-label="${label}">${items.map(([v, t, title]) =>
     `<button type="button" aria-pressed="${cur === v}" ${title ? `aria-label="${title}" title="${title}"` : ''} data-on-click="csPick" data-a-click="${esc(JSON.stringify([fn, v]))}">${t}</button>`).join('')}</div>`;
   return `<div class="cs-pv" aria-hidden="true">
@@ -1731,13 +1768,17 @@ function csPaneAppearance() {
       <div class="cs-r"><div class="cs-l"><b>Тема</b></div>${seg([['light', CS_I.sun + 'Светлая'], ['dark', CS_I.moon + 'Тёмная'], ['navy', CS_I.navy + 'Тёмно-синяя']], s.theme, 'setTheme', 'Тема')}</div>
       <div class="cs-r"><div class="cs-l"><b>Цвет акцента</b><span>Кнопки, свои сообщения, выделение</span></div>
         <div class="cs-ctl"><span class="cs-aname">${ACCENTS[currentAccent()].name}</span><div id="accent-seg" class="accent-seg" data-on-click="__h23">${accentDotsHtml()}</div></div></div>
+      <div class="cs-r"><div class="cs-l"><b>Прозрачность</b><span>Стекло панелей, меню и окон: правее — прозрачнее, левее — плотнее</span></div>
+        <div class="cs-ctl"><input id="cs-tr" class="rng" type="range" min="0" max="100" step="1" value="${tr}" style="--v:${tr}%" aria-label="Прозрачность стекла" data-on-input="csGlassTr" data-a-input='["__value"]'><span class="rng-val" id="cs-trval">${tr}%</span></div></div>
     </div>
     <div class="cs-gt">Фон переписки</div>
     <div data-on-click="__h24">${chatBgCardsHtml()}</div>
-    <div class="cs-gt">Узор фона</div>
-    <div class="cs-g"><div class="cs-r stack">
+    <div class="cs-gt">Фон</div>
+    <div class="cs-g">
+      <div class="cs-r"><div class="cs-l"><b>Цветная картинка</b><span>Размытые цветные пятна за стеклом. Выключите — фон станет ровным. С узором не связана.</span></div>${csTg(s.glassImage !== false, 'csGlassImage', 'Цветная картинка')}</div>
+      <div class="cs-r stack"><div class="cs-l"><b>Узор</b><span>Рисунок поверх фона переписки</span></div>
       <div data-on-click="__h25">${chatPatternCardsHtml()}</div>
-      ${currentPattern() ? `<div class="cs-ctl cs-between"><div class="cs-l"><b>Заметность</b></div>${seg([[1, 'Слабая'], [2, 'Средняя'], [3, 'Сильная']], lvl, 'setPatternLevel', 'Заметность узора')}</div>` : ''}
+      ${currentPattern() ? `<div class="cs-ctl cs-between"><div class="cs-l"><b>Заметность узора</b></div>${seg([[1, 'Слабая'], [2, 'Средняя'], [3, 'Сильная']], lvl, 'setPatternLevel', 'Заметность узора')}</div>` : ''}
     </div></div>
     <div class="cs-gt">Текст</div>
     <div class="cs-g">
@@ -2279,6 +2320,45 @@ function syncChatListKeyed(list, items) {
   });
 }
 
+// ── ФИЛЬТР СПИСКА ЧАТОВ: все / новые (непрочитанные) / личные / группы ──
+// Выбор помнится на устройстве. Открытый сейчас чат остаётся в списке при любом фильтре:
+// иначе в «Новых» он исчез бы из-под курсора в момент прочтения.
+const CHAT_FILTERS = ['all', 'unread', 'direct', 'group'];
+function chatFilterGet() {
+  if (!S.chatFilter) {
+    let v = 'all';
+    try { v = localStorage.getItem('chatFilter') || 'all'; } catch {}
+    S.chatFilter = CHAT_FILTERS.includes(v) ? v : 'all';
+  }
+  return S.chatFilter;
+}
+function chatUnreadTotal(c) {
+  const ids = c.has_topics ? (S.topics[c.id] || []).map(s => s.id) : [c.id];
+  return ids.reduce((sum, id) => sum + (S.unread[id] || 0) + (S.unreadMentions[id] || 0), 0);
+}
+function chatFilterPass(c) {
+  const f = chatFilterGet();
+  if (f === 'all' || c.id === S.activeChatId || c.id === S.activeRoomId) return true;
+  if (f === 'unread') return chatUnreadTotal(c) > 0;
+  if (f === 'direct') return c.type === 'direct';
+  return c.type === 'group';
+}
+function setChatFilter(f) {
+  if (!CHAT_FILTERS.includes(f) || f === chatFilterGet()) return;
+  S.chatFilter = f;
+  try { localStorage.setItem('chatFilter', f); } catch {}
+  syncChatFilterUi();
+  renderChatList();
+}
+function syncChatFilterUi() {
+  const f = chatFilterGet();
+  document.querySelectorAll('#chat-filter button').forEach(b => {
+    const on = b.dataset.f === f;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on);
+  });
+}
+
 function renderChatList() {
   // Список чатов — общий контейнер с контактами и настройками (#chats-list).
   // Фоновые обновления (переподключение WS, ресинк после возврата фокуса и т.п.)
@@ -2286,6 +2366,7 @@ function renderChatList() {
   // сюда нельзя: затрёт контакты/настройки, а подсветка таб-бара не совпадёт.
   // S.chats к этому моменту уже обновлён — при возврате на «Чаты» отрисуется сам.
   if (_sidebarTab !== 'chats') return;
+  if (!document.querySelector('#chat-filter button.active[data-f="' + chatFilterGet() + '"]')) syncChatFilterUi();
   const q = document.getElementById('search').value.toLowerCase();
   const list = document.getElementById('chats-list');
   const byFolder = !q && !S.searchResults;   // поиск идёт по всем чатам, а не только по выбранной папке
@@ -2293,6 +2374,7 @@ function renderChatList() {
     .filter(c=>chatName(c).toLowerCase().includes(q))
     .filter(c => !byFolder || typeof folderPass !== 'function' || folderPass(c))
     .filter(c => !byFolder || typeof spacePass !== 'function' || spacePass(c))
+    .filter(c => !byFolder || chatFilterPass(c))
     .sort((a,b) => {
       // Приглашения в группы с других серверов — сверху: ответа ждут
       if (!!a.invite !== !!b.invite) return a.invite ? -1 : 1;
@@ -2342,7 +2424,8 @@ function renderChatList() {
   // остальные DOM-узлы (и их аватары) не трогаются — нет мигания при каждом событии
   const items = [];
   if (!filtered.length) {
-    items.push({ key: 'empty', html: '<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Нет чатов</div>' });
+    const emptyText = { unread: 'Нет новых сообщений', direct: 'Нет личных чатов', group: 'Нет групп' }[chatFilterGet()] || 'Нет чатов';
+    items.push({ key: 'empty', html: `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">${emptyText}</div>` });
   } else {
     if (rooms.length) {
       items.push({ key: 'label-rooms', html: '<div class="chat-list-section-label">Комнаты</div>' });
@@ -2665,21 +2748,30 @@ function watchComposerHeight() {
     _composerRO.observe(bar);
   } catch { _composerRO = null; }
 }
+let _topMO = null;
 function watchTopHeight() {
   const main = document.getElementById('chat-main');
   const header = main?.querySelector('.chat-header');
   const pin = document.getElementById('pin-bar');
+  const search = main?.querySelector('.chat-search');
   if (!main || !header) return;
+  // Верхний отступ ленты (+8 в формуле CSS): первое сообщение на 110 px от верха окна, а когда под шапкой закреп или поиск — на 162
+  // (в макете 98 и 150 от верха области чата, которая начинается на 12 px ниже). Шапка: 12 px от верха, высота 72, полосы 48
   const apply = () => {
-    const pinH = pin && pin.style.display !== 'none' ? pin.offsetHeight + 8 : 0;
-    main.style.setProperty('--chat-top-h', (16 + header.offsetHeight + pinH) + 'px');
+    const strip = (pin && pin.style.display !== 'none') || search?.classList.contains('open');
+    main.style.setProperty('--chat-top-h', (strip ? 154 : 102) + 'px');
   };
+  window._topApply = apply;
   apply();
   if (_topRO) _topRO.disconnect();
+  if (_topMO) _topMO.disconnect();
   try {
     _topRO = new ResizeObserver(apply);
     _topRO.observe(header);
     if (pin) _topRO.observe(pin);
+    _topMO = new MutationObserver(apply);
+    if (search) _topMO.observe(search, { attributes: true, attributeFilter: ['class'] });
+    if (pin) _topMO.observe(pin, { attributes: true, attributeFilter: ['style'] });
   } catch { _topRO = null; }
 }
 const NB_ICON_CHAT = '<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>';
@@ -2709,7 +2801,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     renderChatList();
     await loadTopics(chatId, { render: true });
     document.getElementById('chat-main').innerHTML = `<div class="empty-state">
-      <div class="empty-icon" style="font-size:36px">📋</div>
+      <div class="empty-icon ei-hash" style="font-size:36px">📋</div>
       <p>Выберите тему</p>
     </div>`;
     return;
@@ -2757,7 +2849,9 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     <div class="chat-header">
       <div class="chat-header-main">
         <div class="av-wrap"${peerId ? ` style="cursor:pointer" data-on-click="openProfile" data-a-click="${esc(JSON.stringify([peerId]))}"` : ''}>
-          <div class="av av-md ${chatAvatarClass(chat)}${chat.type==='room' && chat.has_topics && !S.activeTopicId?' av-sq':' av-round'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
+          ${isTopic
+            ? `<div class="av av-md av-round av-${senderNameClass(chat.name)}"${chat.has_avatar ? ` style="background-image:url('/api/chats/${chat.id}/avatar');background-size:cover;background-position:center"` : ''}>${chat.has_avatar ? '' : '#'}</div>`
+            : `<div class="av av-md ${chatAvatarClass(chat)}${chat.type==='room' && chat.has_topics && !S.activeTopicId?' av-sq':' av-round'}" data-av-chat="${chat.id}">${chatIcon(chat)}</div>`}
           ${peerDot}${fedDotHtml(chat)}
         </div>
         <div class="chat-header-info" ${nameClickable}>
@@ -2812,7 +2906,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
           </div>
           <div class="composer-main">
             <button class="composer-icon-btn composer-attach" id="up-btn" title="Прикрепить, форматирование" aria-haspopup="menu" aria-expanded="false" data-on-click="toggleUpMenu" data-a-click='["__event"]'>
-              <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
             </button>
             <div class="up-menu" id="up-menu" role="menu" hidden>
               <button type="button" role="menuitem" data-on-click="upPickFile">
@@ -6627,7 +6721,7 @@ function csPaneBlocks() {
   }
   return `<div class="cs-gt">Заблокированные</div><div class="cs-g">${list.map(b => `<div class="cs-r"><div class="cs-l"><b>${esc(b.display_name)}</b>
       <span>${b.federated ? esc(fedAddr(b)) + ' · другой сервер' : '@' + esc(b.username) + (b.workspace_name ? ' · ' + esc(b.workspace_name) : '')}</span></div>
-      <div class="cs-ctl"><button type="button" class="cs-btn ghost" data-on-click="unblockUser" data-a-click="${esc(JSON.stringify([b.id]))}">Разблокировать</button></div></div>`).join('')}</div>
+      <div class="cs-ctl"><button type="button" class="cs-btn ghost sm" data-on-click="unblockUser" data-a-click="${esc(JSON.stringify([b.id]))}">Разблокировать</button></div></div>`).join('')}</div>
     <p class="cs-hint">Заблокированный не может писать вам в личные сообщения. Общие группы и комнаты остаются.</p>`;
 }
 
@@ -7016,6 +7110,7 @@ function renderModalUsers(containerId, multi, filter='') {
     <div class="pp-row${multi&&S.ncSelected?.has(u.id)?' on':''}" data-uid="${u.id}" data-on-click="${multi ? 'toggleModalUser' : S.ncKind==='secret' ? 'startSecret' : 'startDirect'}" data-a-click="${esc(JSON.stringify([u.id]))}">
       ${ppAvHtml(u)}
       <div class="pp-col"><div class="pp-line"><span class="pp-name">${esc(u.display_name)}</span>${u.tag?`<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>`:''}</div>${wsTag(u)}</div>
+      ${multi ? '<span class="pp-chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>' : ''}
     </div>`).join('') || '<div class="pp-empty">Нет пользователей</div>';
 }
 

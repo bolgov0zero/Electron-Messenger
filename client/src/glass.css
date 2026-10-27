@@ -1,0 +1,1201 @@
+/* ══════════════════════════════════════════════════════════════
+   LIQUID GLASS — стеклянный слой веб клиента. Источник правды: макет docs/glass-mockup/index.html
+   (карта соответствия — docs/glass-mockup/TRANSFER.md). Подключается после style.css и только переопределяет вид.
+   Откат: refs/backup/before-glass-port (git) либо релиз s2.22.2.
+
+   Правила макета:
+   • Размытое стекло — только на навигации и управлении (панели, шапка, поле ввода, меню, окна); сообщения, реакции и строки —
+     контент: полупрозрачная заливка без размытия.
+   • Система форм (концентричность: радиус вложенного = внешний − отступ): окно/панель 30 · шапка и полосы 26 · карточка/меню 20 ·
+     пункт меню 14 · строка списка 18; кнопки, поля, переключатели, чипы — капсулы; значки-кнопки и аватары — круги;
+     группа кнопок — капсула с круглыми кнопками.
+   • Цвет стекла считается от цвета панели темы (--side-bg) и акцента (--accent): светлая, тёмная, тёмно-синяя темы и пять акцентов
+     работают без отдельных наборов. Под стеклом цветные пятна (.gl-amb) или ровный фон (настройка «Цветная картинка»).
+   • У предка стекла не должно быть overflow:hidden / isolation вплотную к краю: Chromium режет по нему выборку фона.
+   • Движение отключается при prefers-reduced-motion; при prefers-reduced-transparency и без backdrop-filter стекло плотное.
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* тексты и акцент: контраст ≥ 4.5:1 (в макете --text2 и --muted темнее, чем в style.css) */
+  --text2: #4f5666;
+  --muted: #6c7484;
+  --accent-ink: color-mix(in srgb, var(--accent) 72%, #000);   /* акцент для текста и значков: темнее заливочного */
+  --danger: #d23a3a; --danger-bg: rgba(210, 58, 58, .10); --danger-border: rgba(210, 58, 58, .28);
+
+  /* форма, ритм, слои */
+  --r-panel: 30px; --r-bar: 26px; --r-card: 20px; --r-menu: 20px; --r-item: 14px; --r-row: 18px; --r-pill: 999px;
+  --ic-s: 16px; --ic-m: 18px; --ic-l: 22px;
+  --z-bar: 20; --z-pop: 30; --z-modal: 40; --z-toast: 50;
+
+  /* стекло */
+  --gl-k: 1;   /* множитель плотности: настройка «Прозрачность» (50% = 1) */
+  --gl-blur: 26px;
+  --gl-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --gl-ease: cubic-bezier(.22, 1, .36, 1);
+  --gl:       color-mix(in srgb, var(--side-bg) calc(min(var(--gl-k) * 46, 100) * 1%), transparent);
+  --gl2:      color-mix(in srgb, var(--side-bg) calc(min(var(--gl-k) * 66, 100) * 1%), transparent);
+  --gl-pop:   color-mix(in srgb, var(--side-bg) calc(min(var(--gl-k) * 30 + 50, 100) * 1%), transparent);
+  --gl-card:  color-mix(in srgb, var(--text) 5%, transparent);
+  --gl-card2: color-mix(in srgb, var(--text) 9%, transparent);
+  --gl-inset: color-mix(in srgb, var(--text) 6%, transparent);
+  --gl-edge:  rgba(255, 255, 255, .75);
+  --gl-hi:    rgba(255, 255, 255, .85);
+  --gl-lo:    rgba(12, 26, 25, .07);
+  --gl-shadow: rgba(20, 50, 60, .16);
+  --gl-spec:  rgba(255, 255, 255, .30);
+  --gl-hov:   rgba(255, 255, 255, .34);
+  --gl-spotlight: rgba(255, 255, 255, .55);
+
+  /* пузыри */
+  --gl-in:    rgba(255, 255, 255, .74);
+  --gl-out-a: color-mix(in srgb, var(--accent) 80%, #000);
+  --gl-out-b: color-mix(in srgb, var(--accent) 68%, #0b4f96);
+
+  /* фон: ровная подложка и четыре цветных пятна */
+  --gl-base: #e3f0ef;
+  --amb-1: color-mix(in srgb, var(--accent) 60%, #fff);
+  --amb-2: #8e9cff;
+  --amb-3: #ffb4d3;
+  --amb-4: #ffd391;
+  --scrim: rgba(20, 40, 50, .22);
+}
+html.dark {
+  --text: #eef6f5; --text2: rgba(238, 246, 245, .74); --muted: rgba(238, 246, 245, .56);
+  --accent-ink: var(--accent);
+  --danger: #ef6f6f; --danger-bg: rgba(239, 111, 111, .12); --danger-border: rgba(239, 111, 111, .32);
+  --gl-edge:  rgba(255, 255, 255, .17);
+  --gl-hi:    rgba(255, 255, 255, .20);
+  --gl-lo:    rgba(0, 0, 0, .35);
+  --gl-shadow: rgba(0, 0, 0, .5);
+  --gl-spec:  rgba(255, 255, 255, .09);
+  --gl-hov:   rgba(255, 255, 255, .08);
+  --gl-spotlight: rgba(255, 255, 255, .20);
+  --gl:       color-mix(in srgb, var(--side-bg) calc(min(var(--gl-k) * 52, 100) * 1%), transparent);
+  /* плашки темнее дорожки: выделение читается как вдавленное в светлую подложку со светлой кромкой */
+  --gl2:      color-mix(in srgb, color-mix(in srgb, var(--side-bg) 82%, #4a7080) calc(min(var(--gl-k) * 68, 100) * 1%), transparent);
+  --gl-pop:   color-mix(in srgb, var(--side-bg) calc(min(var(--gl-k) * 34 + 50, 100) * 1%), transparent);
+  --gl-in:    color-mix(in srgb, var(--bubble-bg) 74%, transparent);
+  /* в тёмных темах акцент светлый: темнее, чтобы белый текст в своём пузыре давал контраст от 4.5:1 */
+  --gl-out-a: color-mix(in srgb, var(--accent) 58%, #000);
+  --gl-out-b: color-mix(in srgb, var(--accent) 48%, #0b3d7a);
+  --gl-base:  color-mix(in srgb, var(--chat-bg) 70%, #000);
+  --amb-1: color-mix(in srgb, var(--accent) 55%, #000);
+  --amb-2: #4a4fd0;
+  --amb-3: #a33a73;
+  --amb-4: #a8742c;
+  --scrim: rgba(0, 0, 0, .40);
+}
+html.dark.navy { --text: #eef2f6; --text2: rgba(238, 242, 246, .74); --muted: rgba(238, 242, 246, .56); }
+
+/* ── Фон: ровная подложка и цветные пятна (размеры и движение — как в макете окном 1360×860, пересчитаны в vh/vw) ── */
+body { background: var(--gl-base); }
+.gl-amb { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; transition: opacity .6s var(--gl-ease); }
+.gl-amb i { position: absolute; border-radius: 50%; filter: blur(8.14vh); opacity: .85; transition: background .5s; }
+.gl-amb i:nth-child(1) { width: 65.1vh; height: 65.1vh; left: 27.94vw; top: -18.6vh; background: var(--amb-1); animation: glf1 26s ease-in-out infinite alternate; }
+.gl-amb i:nth-child(2) { width: 60.5vh; height: 60.5vh; right: -8.8vw; top: 13.95vh; background: var(--amb-2); animation: glf2 30s ease-in-out infinite alternate; }
+.gl-amb i:nth-child(3) { width: 55.8vh; height: 55.8vh; left: 8.8vw; bottom: -20.9vh; background: var(--amb-3); animation: glf2 34s ease-in-out infinite alternate-reverse; }
+.gl-amb i:nth-child(4) { width: 48.8vh; height: 48.8vh; right: 11.8vw; bottom: -16.3vh; background: var(--amb-4); animation: glf1 28s ease-in-out infinite alternate-reverse; }
+@keyframes glf1 { to { transform: translate(6.6vw, 8.1vh) scale(1.12); } }
+@keyframes glf2 { to { transform: translate(-5.9vw, -7vh) scale(1.1); } }
+html.gl-noimg .gl-amb { opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .gl-amb i { animation: none; } }
+#screen-login { background: transparent; }
+.chat-main { isolation: auto; overflow: visible; }
+.messages-wrap { overflow: visible; }
+
+/* ── Конструкция стекла: панели ── */
+.sidebar, .acc-rail, .chat-header, .chat-header-actions, .pin-bar, .chat-search,
+.ro-banner, .sc-locked-banner, .inv-bar, .composer-field, .scroll-bottom-btn, .login-wrap,
+.composer-main .composer-attach, .composer-main .send-btn:not(.ready) {
+  background:
+    radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%),
+    var(--gl);
+  border: 1px solid var(--gl-edge);
+  -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%);
+          backdrop-filter: blur(var(--gl-blur)) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 12px 32px var(--gl-shadow);
+}
+.sidebar { --cg: transparent; }
+/* ширина: бар 72 + список 304 = 376, как в макете (без бара список занимает все 376) */
+:root { --sidebar-w: 376px; }
+.acc-rail:not([hidden]) + .sidebar { --sidebar-w: 304px; }
+
+/* Всплывающее: окна, меню, панели — плотнее, чтобы текст читался поверх сообщений */
+.modal, .ctx-menu, #reaction-picker, #mention-popup, .head-menu, .up-menu, .ep-grid, .ha-pop,
+.reaction-tip, .acc-tip, #server-toast, #action-toast, .am-dlg, .ctx-read-fly, .anx-card,
+.topics-panel, .force-update-modal {
+  background:
+    radial-gradient(120% 80% at 0% 0%, var(--gl-spec), transparent 55%),
+    var(--gl-pop);
+  border: 1px solid var(--gl-edge);
+  -webkit-backdrop-filter: blur(calc(var(--gl-blur) + 6px)) saturate(190%);
+          backdrop-filter: blur(calc(var(--gl-blur) + 6px)) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 24px 60px var(--gl-shadow);
+}
+.ctx-menu, #reaction-picker, #mention-popup, .head-menu, .up-menu, .ha-pop, .ctx-read-fly { border-radius: 20px; }
+.modal { border-radius: 30px; }
+.topics-panel { border: 0; border-radius: 0; box-shadow: none; background: color-mix(in srgb, var(--side-bg) 78%, transparent); }
+.ann-banner {
+  -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(180%); backdrop-filter: blur(var(--gl-blur)) saturate(180%);
+  background-color: color-mix(in srgb, var(--side-bg) 70%, transparent);
+  border-radius: 18px;
+}
+
+/* Затемнение за окном: лёгкое и без размытия. Размытие здесь делало бы .modal-bg корнем фона,
+   и стекло окна видело бы только эту плёнку, а не страницу */
+.modal-bg { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* Появление и исчезновение затемнения живут на псевдоэлементе: анимация прозрачности у самого .modal-bg
+   (даже с forwards) делает его корнем фона, и стекло окна перестаёт видеть страницу под собой */
+.modal-bg.open, .modal-bg.closing { animation: none; }
+.modal-bg::before { content: ""; position: absolute; inset: 0; background: rgba(20, 40, 50, .20); pointer-events: none; }
+html.dark .modal-bg::before { background: rgba(0, 0, 0, .38); }
+.modal-bg.open::before { animation: modalBgIn 180ms ease-out; }
+.modal-bg.closing::before { animation: modalBgOut 150ms ease-in forwards; }
+.modal-bg > * { position: relative; }
+.am-dlg-bg { background: rgba(20, 40, 50, .20); -webkit-backdrop-filter: none; backdrop-filter: none; }
+html.dark .am-dlg-bg { background: rgba(0, 0, 0, .38); }
+
+/* Вложенное внутри окон: заливки прозрачные, чтобы стекло читалось */
+.modal { --md-card: var(--gl-card); --md-hover: var(--gl-card2); }
+.modal-hdr .icon-btn, .ha-close, .diag-head .icon-btn { background: var(--gl-card); }
+.ha-pick-ic, .cs-sn-ic { background: var(--gl-card); border: 0; }
+.gm-cam, .gm-tile, .gm-box, .gm-chips button, .cm-tabs button, .pf-g, .fp-row, .anx-pick, .nc-group-bar,
+.link-modal-url, .cs-stub-i, .bg-card, .stub-i {
+  background: var(--gl-card); border-color: var(--gl-edge);
+}
+.gm-box.fed { background: var(--accent-soft); border-color: var(--accent-border); }
+.gm-tile:hover, .gm-chips button:hover, .cm-tabs button:hover { background: var(--gl-card2); }
+.gm-chips button.on, .cm-tabs button.on { background: var(--accent-soft); border-color: var(--accent-border); }
+.anx-half:not(.l) { background: var(--gl-card); }
+.anx-types button, .anx-ch, .anx-sg, .anx-search, .anx-ta, .anx-app, .anx-pill { background: var(--gl-inset); }
+.anx-types button:hover, .anx-ch:hover { background: var(--gl-card2); }
+.anx-types button[aria-checked="true"], .anx-ch[aria-pressed="true"], .anx-sg button[aria-pressed="true"] { background: var(--accent-soft); }
+.anx-lock { background: color-mix(in srgb, var(--side-bg) 70%, transparent); }
+.cs-pv-side { background: var(--gl-card); }
+.cs-pv-cap { background: var(--gl2); }
+.cs-copy { background: transparent; }
+.ep-head { background: color-mix(in srgb, var(--side-bg) 70%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+
+/* ── Шапка и полосы над чатом ──
+   Как в макете: одна стеклянная полоса 72px, аватар и название слева, кнопки справа внутри своей капсулы */
+.chat-header {
+  top: 12px; height: 72px; padding: 0 14px 0 10px; gap: 12px; border-radius: 26px;
+}
+.chat-header-main { background: none; border: 0; box-shadow: none; border-radius: 0; height: auto; padding: 0; gap: 12px;
+  -webkit-backdrop-filter: none; backdrop-filter: none; }
+.chat-header .av-md { width: 44px; height: 44px; font-size: 15px; }
+.chat-header-info .ch-name { font-size: 16px; font-weight: 700; }
+.chat-header-info .ch-sub { font-size: 12.5px; color: var(--text2); margin-top: 1px; }
+.chat-header-actions { height: 44px; padding: 2px; gap: 0; border-radius: 999px; }
+.chat-header-actions > .icon-btn, .chat-header-actions > .icon-btn:first-child, .chat-header-actions > .icon-btn:last-child,
+.chat-header-actions > .icon-btn:only-child { width: 40px; height: 40px; border-radius: 50%; }
+.pin-bar, .chat-search, .ro-banner, .sc-locked-banner, .inv-bar { border-radius: 999px; }
+.inv-bar { border-radius: 26px; }
+.pin-bar, .chat-search { top: 92px; height: 42px; }
+.chat-search > .icon-btn:last-child, .pin-bar > .pin-unpin:last-child { height: 40px; border-radius: 0 21px 21px 0; }
+
+/* Поле ввода и плашки вместо него на всю ширину чата, как в макете */
+.composer-inner, .ro-banner, .sc-locked-banner, .inv-bar { max-width: none; }
+
+/* Отступы окна 12px, как в макете */
+.sidebar, .acc-rail { margin: 12px 0 12px 12px; border-radius: 30px; }
+.chat-main { margin: 0 12px; }
+body.sidebar-hidden .sidebar { left: 12px; top: 12px; bottom: 12px; }
+.chat-input-wrap { padding-bottom: 12px; }
+
+/* ── Сайдбар ── */
+.sidebar-head .btn-new-chat, .topbar-actions .icon-btn {
+  background: transparent; border: 0; color: var(--text); border-radius: 50%; width: 34px; height: 34px;
+}
+.topbar-actions {
+  gap: 0; padding: 2px; border-radius: 999px;
+  background: var(--gl); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow);
+}
+.sidebar-head .btn-new-chat:hover, .topbar-actions .icon-btn:hover { background: var(--gl2); color: var(--text); }
+.topbar-actions .head-more[aria-expanded="true"] { background: var(--gl2); border-radius: 50%; }
+.search-wrap {
+  height: 38px; background: var(--gl-inset); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 3px var(--gl-lo);
+}
+.search-wrap:focus-within { border-color: var(--accent); box-shadow: inset 0 1px 3px var(--gl-lo), 0 0 0 3px var(--accent-soft); }
+.sidebar-search { height: 46px; }
+.strip-back { background: var(--gl-inset); border-radius: 50%; }
+.strip-back:hover { background: var(--gl2); }
+
+/* Выбранный чат: приподнятое стекло (плавный переезд делает slidesel.js по этому же облику) */
+.chats-list .chat-item.active::after, .topics-panel .chat-item.active::after {
+  background: var(--gl2); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 6px 18px var(--gl-shadow);
+}
+.chats-list .chat-item:hover::after, .topics-panel .chat-item:hover::after, .chats-list .pp-row:hover::after {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.unread-badge { box-shadow: 0 2px 8px var(--accent-shadow); }
+
+/* Нижние вкладки: стеклянная капсула, активная вкладка — приподнятая плашка */
+.sidebar-tabbar {
+  margin: 4px 14px 14px; padding: 4px; gap: 2px; justify-content: stretch; border-radius: 999px;
+  background: var(--gl-inset); box-shadow: inset 0 1px 3px var(--gl-lo); border: 1px solid var(--gl-edge);
+}
+.sb-tab { border-radius: 999px; height: 38px; transition: color .15s, background .25s, box-shadow .25s, transform .35s var(--gl-spring); }
+.sb-tab.on { background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 3px 10px var(--gl-shadow); }
+.sb-tab:active { transform: scale(.94); }
+
+/* Бар папок и учётных записей */
+.acc-badge { border-color: transparent; box-shadow: 0 0 0 2px color-mix(in srgb, var(--side-bg) 80%, transparent); }
+/* Значок папки на аватарке чата — как в мобильной версии: 20 px, непрозрачный фон, значок цвета папки, кольцо и тень */
+.fbd { left: -3px; top: -3px; width: 20px; height: 20px; background: color-mix(in srgb, var(--side-bg) 86%, #fff); color: var(--fc); border: 0; box-shadow: 0 0 0 1.5px var(--gl-edge), 0 2px 6px var(--gl-shadow); }
+.chat-item.active .fbd { border: 0; }
+.presence-dot { --halo: color-mix(in srgb, var(--side-bg) 85%, transparent); }
+.rail-sep { background: var(--gl-lo); }
+
+/* ── Поле ввода ── */
+.composer-field { border-radius: 26px; }
+.composer-field-row { min-height: 44px; }
+.composer-main .composer-attach, .composer-main .send-btn { width: 44px; height: 44px; }
+.composer-main .composer-attach:hover { background: var(--gl2); }
+.composer-main .send-btn.ready {
+  background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b));
+  color: #fff; border: 1px solid rgba(255, 255, 255, .4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), 0 8px 22px color-mix(in srgb, var(--gl-out-b) 45%, transparent);
+  transform: scale(1.04);
+}
+.composer-main .send-btn.ready:active { transform: scale(.96); }
+.composer-main .composer-attach, .composer-main .send-btn { transition: background .25s, color .25s, transform .4s var(--gl-spring), box-shadow .3s; }
+.composer-slot .input-reply-bar, .composer-slot .input-edit-bar, .composer-slot .lprev-bar { background: var(--gl-card); }
+.composer-slot .fmt-bar, .composer-slot .fmt-prev, .composer-slot .dm-bar { background: var(--gl-card); }
+.fmt-bar button:hover { background: var(--gl-card2); }
+.fmt-bar button.on { background: var(--accent-soft); }
+.typing-pill { background: var(--gl); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.scroll-bottom-btn { box-shadow: inset 0 1px 0 var(--gl-hi), 0 10px 26px var(--gl-shadow); }
+.scroll-bottom-btn:hover { background: var(--gl2); }
+
+/* Меню «+» над композером и прочие меню */
+.up-menu button:hover, .ctx-menu button:hover, .hm-i:hover, .ctx-read.open > button, .mention-item:hover,
+.mention-item.mn-active, .ctx-read-row:hover { background: var(--gl-card2); }
+.ctx-menu button.ctx-danger:hover { background: var(--danger-bg); }
+.ctx-reactions { background: var(--gl-inset); }
+.ctx-menu .ctx-reactions button:hover { background: var(--gl2); }
+.ep-search, .gp-search, .nc-search, .gm-search { background: var(--gl-inset); box-shadow: inset 0 1px 3px var(--gl-lo); }
+.ep-tab:hover { background: var(--gl-card2); }
+.ep-sw { background: var(--gl-inset); }
+.ep-sw button[aria-pressed="true"] { background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 6px var(--gl-shadow); }
+.emoji-item:hover { background: var(--gl-card2); }
+.hm-i::after, .acc-tip { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.hm-i::after { background: var(--text); color: var(--app-bg); }
+
+/* ── Сообщения: контент, не стекло ── */
+.msg-bubble {
+  background: var(--gl-in); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow);
+}
+.irc-msg[data-mine] .msg-bubble {
+  background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b));
+  border-color: rgba(255, 255, 255, .22); color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -1px 0 rgba(0, 0, 0, .12),
+              0 8px 20px color-mix(in srgb, var(--gl-out-b) 38%, transparent);
+}
+.irc-msg.emoji-msg .msg-bubble, .irc-msg.emoji-msg[data-mine] .msg-bubble { background: none; border-color: transparent; box-shadow: none; }
+.irc-msg.emoji-msg .msg-bubble:hover { background: var(--gl-in); border-color: var(--gl-edge); }
+.irc-msg.emoji-msg[data-mine] .msg-bubble:hover { background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); border-color: rgba(255,255,255,.22); }
+.msg-bubble.bubble-photo { border: 0; }
+
+/* Всё, что лежит внутри своего пузыря, читается на тёмной заливке */
+.irc-msg[data-mine] .irc-text, .irc-msg[data-mine] .irc-time, .irc-msg[data-mine] .fwd-mark,
+.irc-msg[data-mine] .edited-tag { color: rgba(255, 255, 255, .92); }
+.irc-msg[data-mine] .irc-time, .irc-msg[data-mine] .fwd-mark, .irc-msg[data-mine] .edited-tag { color: rgba(255, 255, 255, .8); }
+.irc-msg[data-mine] .irc-meta .status-sent, .irc-msg[data-mine] .irc-meta .status-delivered,
+.irc-msg[data-mine] .irc-meta .status-part { color: rgba(255, 255, 255, .75); }
+.irc-msg[data-mine] .irc-meta .status-read, .irc-msg[data-mine] .status-part .tk1 { color: #3ea6ff; stroke: #3ea6ff; }
+.irc-msg[data-mine] .irc-meta .status-read svg, .irc-msg[data-mine] .irc-meta .status-read path { stroke: #3ea6ff; }
+.irc-msg[data-mine] .msg-link, .irc-msg[data-mine] .mention, .irc-msg[data-mine] .mention[class*="mtag-"] { color: #fff; }
+.irc-msg[data-mine] .md-code { background: rgba(255, 255, 255, .2); }
+.irc-msg[data-mine] .irc-text blockquote { background: rgba(255, 255, 255, .16); border-left-color: rgba(255, 255, 255, .85); }
+.irc-msg[data-mine] .irc-reply, .irc-msg[data-mine] .irc-reply[class*="reply-"] { --rc: #fff; background: rgba(255, 255, 255, .16); }
+.irc-msg[data-mine] .irc-reply-text, .irc-msg[data-mine] .irc-reply-name { color: rgba(255, 255, 255, .92); }
+.irc-msg[data-mine] .bubble-file, .irc-msg[data-mine] .lcard { background: rgba(255, 255, 255, .15); }
+.irc-msg[data-mine] .bubble-file-size, .irc-msg[data-mine] .lc-d { color: rgba(255, 255, 255, .75); }
+.irc-msg[data-mine] .lcard .lc-t, .irc-msg[data-mine] .lcard:hover .lc-t { color: #fff; }
+.irc-msg[data-mine] .msg-search-hl { color: #fff; }
+.irc-msg[data-mine] .msg-bubble.bubble-photo > .irc-meta .status-read { color: #3ea6ff; }
+.bubble-file { background: var(--gl-card); }
+.bubble-file:hover { background: var(--gl-card2); }
+.lcard { background: var(--gl-card); }
+
+/* Плашка даты и реакции: полупрозрачные, без тяжёлого размытия */
+.date-divider span {
+  background: var(--gl); border: 1px solid var(--gl-edge); color: var(--text2);
+  border-radius: 999px; padding: 4px 14px; font-weight: 600;
+  -webkit-backdrop-filter: blur(12px) saturate(170%); backdrop-filter: blur(12px) saturate(170%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 12px var(--gl-shadow);
+}
+.reaction-btn {
+  background: var(--gl); border-color: var(--gl-edge); -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px var(--gl-shadow);
+  transition: background .2s, border-color .2s, transform .35s var(--gl-spring);
+}
+.reaction-btn:hover { background: var(--gl2); }
+.reaction-btn:active { transform: scale(.92); }
+.reaction-btn.mine { background: color-mix(in srgb, var(--accent) 24%, var(--gl2)); border-color: var(--accent); }
+.role-pill[class*="tag-"], .pp-tag[class*="tag-"] { background: color-mix(in srgb, currentColor 14%, transparent); }
+.role-pill.default, .pp-tag { background: var(--gl-card); }
+
+/* ── Кнопки: капсулы, отклик на нажатие ── */
+.icon-btn { border-radius: 50%; }
+.icon-btn:hover, .composer-icon-btn:hover { background: var(--gl-card2); }
+.icon-btn, .composer-icon-btn, .btn-new-chat, .ha-btn-cancel, .ha-btn-apply, .modal-btn-ghost, .modal-btn-primary,
+.modal-btn-danger, .cs-btn, .gi-btn, .am-btn, .anx-btn, .sc-btn, .pf-danger, .addc-btn, .gi-addc, .fp-new, .msg-act {
+  transition: background .2s, color .2s, transform .35s var(--gl-spring), box-shadow .2s, filter .2s;
+}
+.icon-btn:active, .composer-icon-btn:active, .btn-new-chat:active, .ha-btn-cancel:active, .ha-btn-apply:active,
+.modal-btn-ghost:active, .modal-btn-primary:active, .modal-btn-danger:active, .cs-btn:active, .gi-btn:active,
+.am-btn:active, .anx-btn:active, .sc-btn:active, .pf-danger:active, .addc-btn:active, .fp-new:active, .msg-act:active {
+  transform: scale(.95);
+}
+.modal-btn-ghost, .ha-btn-cancel, .anx-btn, .gi-btn, .am-btn, .diag-foot .cs-btn {
+  background: var(--gl-card); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 0 var(--gl-hi);
+}
+.modal-btn-ghost:hover, .ha-btn-cancel:hover, .anx-btn:hover:not(:disabled), .gi-btn:hover, .am-btn:hover:not(:disabled),
+.diag-foot .cs-btn:hover:not([disabled]) { background: var(--gl-card2); border: 1px solid var(--gl-edge); }
+/* Основное действие: акцентное стекло с градиентом, как кнопка отправки */
+.modal-btn-primary, .ha-btn-apply, .anx-solid, .cs-btn.solid, .am-btn.pri, .diag-foot .cs-btn.solid, .btn-login {
+  background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b));
+  color: #fff; border: 1px solid rgba(255, 255, 255, .35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 6px 18px color-mix(in srgb, var(--gl-out-b) 38%, transparent);
+}
+html.dark .anx-solid { color: #fff; }
+.modal-btn-primary:hover, .ha-btn-apply:hover, .anx-solid:hover:not(:disabled), .cs-btn.solid:hover:not([disabled]),
+.am-btn.pri:hover:not(:disabled), .diag-foot .cs-btn.solid:hover:not([disabled]), .btn-login:hover {
+  background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); filter: brightness(1.12); border-color: rgba(255,255,255,.35);
+}
+.btn-login { height: 44px; border-radius: 999px; font-size: 15px; font-weight: 700; padding: 0; }
+.btn-login:hover { filter: brightness(1.1); }
+.modal-btn-danger, .ha-btn-danger {
+  background: linear-gradient(140deg, var(--danger), color-mix(in srgb, var(--danger) 70%, #5a0f1a));
+  border: 1px solid rgba(255, 255, 255, .3); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 6px 18px var(--danger-border);
+}
+.cs-btn { background: var(--accent-soft); border: 1px solid var(--accent-border); }
+.cs-btn.ghost { background: var(--gl-card); border-color: var(--gl-edge); }
+.cs-btn.danger { border-color: var(--danger-border); }
+.gi-btn-add, .addc-btn, .gi-addc { background: var(--accent-soft); border: 1px solid var(--accent-border); color: var(--accent); }
+.gi-btn-delete, .pf-danger { background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger); }
+.msg-act { border-radius: 999px; }
+
+/* ── Поля ввода ── */
+.field input, .field textarea, .nc-name-input, .gi-name-input:not([readonly]), .profile-name-input, .cs-inp, .ac-fld,
+.anx-time input, .cs-time, .sc-b-inp, .pl-f, .gm-nm1 input, .anx-ta {
+  background: var(--gl-inset); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 3px var(--gl-lo);
+}
+.field input, .field textarea { border-radius: 999px; padding: 11px 16px; }
+.field textarea { border-radius: 18px; }
+.field input:focus, .field textarea:focus, .nc-name-input:focus, .profile-name-input:focus, .ac-fld:focus-within, .cs-inp:focus-within,
+.anx-ta:focus, .anx-search:focus-within {
+  border-color: var(--accent); box-shadow: inset 0 1px 3px var(--gl-lo), 0 0 0 3px var(--accent-soft);
+}
+.cs-inp.bad, .ac-fld.err { border-color: var(--danger-border); }
+.pl-f.done { background: var(--accent-soft); border-color: var(--accent-border); }
+
+/* ── Переключатели и сегменты ── */
+.seg, .cs-seg, .anx-sg, .ep-sw {
+  background: var(--gl-inset); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 3px var(--gl-lo); border-radius: 999px; overflow: visible;
+}
+.seg button.active, .cs-seg button[aria-pressed="true"], .anx-sg button[aria-pressed="true"] {
+  background: var(--gl2); color: var(--text);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px var(--gl-shadow);
+}
+.seg button { border-radius: 999px; }
+.tab { border-radius: 999px; background: var(--gl-inset); border-color: var(--gl-edge); }
+.tab.active { background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); border-color: rgba(255,255,255,.3); color: #fff; }
+.cs-tg { background: color-mix(in srgb, var(--text) 14%, transparent); box-shadow: inset 0 1px 3px var(--gl-lo); }
+.cs-tg::after { box-shadow: 0 2px 6px rgba(0, 0, 0, .3), inset 0 1px 0 #fff; transition: transform .35s var(--gl-spring); }
+.cs-tg[aria-checked="true"] { background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); box-shadow: inset 0 1px 3px rgba(0,0,0,.2); }
+.accent-dot { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 3px 8px var(--gl-shadow); transition: transform .35s var(--gl-spring), box-shadow .2s; }
+.accent-dot.active { box-shadow: 0 0 0 3px var(--gl2), 0 0 0 5px var(--dot); }
+.nc-kind, .ha-pick-btn, .ha-path-row, .update-notes, .diag-text, .sc-sync-device, .sc-codebox { background: var(--gl-card); border: 1px solid var(--gl-edge); }
+.nc-kind:hover, .ha-pick-btn:hover { background: var(--gl-card2); border-color: var(--gl-edge); }
+.update-progress-bar, .force-update-bar, .attach-track, .am-prog { background: var(--gl-inset); }
+.update-progress-fill, .force-update-fill, .attach-fill, .am-prog i { background: linear-gradient(90deg, var(--gl-out-a), var(--accent)); }
+
+/* ── Настройки (рисуются прямо в области чата) ── */
+.cs-g > .cs-r, .cs-g > .cs-notes, .cs-hero, .cs-ver, .bg-card, .pat-card {
+  background: var(--gl); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 6px 18px var(--gl-shadow);
+}
+.cs-hero { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%), var(--gl); }
+.cs-logout { background: var(--danger-bg); border: 1px solid var(--danger-border); }
+.cs-sn[aria-current="page"], .cs-sn[aria-current="true"] { background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow); }
+/* Плитка выбранного раздела: градиент проявляется слоем (сам градиент не анимируется), в такт скользящей плашке */
+.cs-sn-ic { position: relative; isolation: isolate; transition: color .35s var(--gl-ease, cubic-bezier(.22,1,.36,1)); }
+.cs-sn-ic::before { content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -1; opacity: 0;
+  background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); transition: opacity .45s cubic-bezier(.22, 1, .36, 1); }
+.cs-sn[aria-current="page"] .cs-sn-ic { color: #fff; }
+.cs-sn[aria-current="page"] .cs-sn-ic::before { opacity: 1; }
+.cs-sn:hover { background: var(--gl-card); }
+.cs-sn[aria-current="page"]:hover, .cs-sn[aria-current="true"]:hover { background: var(--gl2); }
+.cs-badge, .cs-logo { background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); color: #fff; }
+.cs-pv-msg.in { background: var(--gl-in); }
+.cs-pv-msg.out { background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); color: #fff; }
+.bg-card.active, .pat-card.active { box-shadow: 0 0 0 2px var(--accent), 0 6px 18px var(--gl-shadow); }
+
+/* ── Вход ── */
+.login-wrap { border-radius: 30px; padding: 40px 36px 32px; }
+.login-logo { border-radius: 22px; box-shadow: inset 0 1px 0 var(--gl-hi), 0 12px 28px var(--gl-shadow); }
+#ha-toggle-btn { background: var(--gl); border-color: var(--gl-edge); border-radius: 999px; -webkit-backdrop-filter: blur(var(--gl-blur)); backdrop-filter: blur(var(--gl-blur)); }
+.boot-overlay { background: color-mix(in srgb, var(--chat-bg) 55%, transparent); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+#server-toast, #action-toast { border-radius: 999px; }
+
+/* ── Просмотр медиа и перетаскивание ── */
+#drag-overlay { border-radius: 26px; background: rgba(var(--accent-rgb, 99, 102, 241), .14); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.lb-nav, .lb-act, #lightbox-close, #lightbox-download, .lb-zoom button, .lb-info, .lb-cap, .lb-count {
+  background: rgba(30, 40, 46, .42); border: 1px solid rgba(255, 255, 255, .18);
+  -webkit-backdrop-filter: blur(16px) saturate(180%); backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+.lb-nav:hover, .lb-act:hover, #lightbox-close:hover, #lightbox-download:hover, .lb-zoom button:hover { background: rgba(30, 40, 46, .6); }
+
+/* ── Размеры и ритм как в макете: список чатов, вкладки, поле ввода, пузыри ── */
+.sidebar-head .topbar-wordmark .tw-main, .topbar-wordmark .tw-accent { font-size: 13px; letter-spacing: .9px; font-weight: 700; }
+.sidebar-search { height: 54px; }
+.search-wrap { height: 40px; }
+.chat-list-section-label { text-transform: uppercase; letter-spacing: .4px; font-size: 11.5px; font-weight: 600; padding: 12px 12px 4px; }
+
+/* Строки списка: без общей карточки секции, выбранная — приподнятая плашка */
+.chats-list .chat-item, .topics-panel .chat-item, .chats-list .pp-row { padding: 9px 12px; }
+.chats-list .chat-item.cg-first, .topics-panel .chat-item.cg-first, .chats-list .pp-row.cg-first,
+.chats-list .chat-item.cg-last, .topics-panel .chat-item.cg-last, .chats-list .pp-row.cg-last { padding-top: 9px; padding-bottom: 9px; }
+.chats-list .chat-item::after, .topics-panel .chat-item::after, .chats-list .pp-row::after { inset: 1px 2px; border-radius: 18px; }
+.chats-list .cg-first::after, .topics-panel .cg-first::after { top: 1px; }
+.chats-list .cg-last::after, .topics-panel .cg-last::after { bottom: 1px; }
+.chats-list .cg-first::before, .chats-list .cg-last::before, .topics-panel .cg-first::before, .topics-panel .cg-last::before { border-radius: 0; }
+.chat-item .av-md { width: 48px; height: 48px; font-size: 16px; }
+.chat-item { gap: 12px; }
+.chat-item .ci-name { font-size: 14.5px; font-weight: 600; }
+.chat-item .ci-preview { font-size: 13px; }
+
+/* Вкладки снизу: капсула по центру, три вкладки по 64px */
+.sidebar-tabbar { width: max-content; margin: 4px auto 14px; padding: 4px; justify-content: center; }
+.sb-tab { flex: 0 0 64px; width: 64px; }
+
+/* Поле ввода: круглые кнопки и поле по 52px */
+.composer-main { gap: 10px; }
+.composer-main .composer-attach, .composer-main .send-btn { width: 52px; height: 52px; }
+.composer-field { border-radius: 26px; }
+.composer-field-row { min-height: 50px; padding: 0 8px 0 20px; }
+.composer-field-row.multi { padding-top: 11px; padding-bottom: 11px; }
+.scroll-bottom-btn { width: 44px; height: 44px; }
+
+/* Пузыри: скругление 20px, срезанный угол 7px, аватар 36px */
+.msg-bubble { border-radius: 20px; padding: 7px 14px; }
+.irc-msg:not([data-mine]):not(.irc-tail) .msg-bubble { border-bottom-left-radius: 7px; }
+.irc-msg:not([data-mine]):not(.irc-first) .msg-bubble { border-top-left-radius: 7px; }
+.irc-msg[data-mine]:not(.irc-tail) .msg-bubble { border-bottom-right-radius: 7px; }
+.irc-msg[data-mine]:not(.irc-first) .msg-bubble { border-top-right-radius: 7px; }
+.msg-bubble > .irc-meta { right: 14px; }
+.msg-bubble:not(.bubble-photo) > .irc-meta { bottom: 11px; }
+.msg-bubble .bubble-image, .msg-bubble .bubble-grid { margin: -7px -14px 6px; border-radius: 12px; border-top-left-radius: inherit; border-top-right-radius: inherit; }
+.msg-bubble.bubble-photo .bubble-image, .msg-bubble.bubble-photo .bubble-grid { margin: 0; border-radius: inherit; }
+.msg-bubble.bubble-comp > .ct-pad { padding: 7px 14px 0; }
+.msg-bubble.bubble-comp > .irc-text.ct { padding: 7px 14px; }
+.irc-av, .irc-msg .irc-av { width: 36px; height: 36px; border-radius: 50%; }
+.bubble-row { gap: 10px; }
+.irc-msg:not([data-mine]) .reactions { margin-left: 46px; }
+.irc-msg[data-dm]:not([data-mine]) .reactions { margin-left: 0; }
+.reaction-btn { height: 28px; padding: 0 10px; gap: 5px; }
+.ra-count { font-size: 12px; }
+
+/* ── Запасной вариант: нет стекла — плотный фон ── */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .sidebar, .acc-rail, .chat-header, .chat-header-actions, .pin-bar, .chat-search, .ro-banner, .sc-locked-banner,
+  .inv-bar, .composer-field, .scroll-bottom-btn, .login-wrap, .composer-main .composer-attach, .composer-main .send-btn:not(.ready),
+  .modal, .ctx-menu, #reaction-picker, #mention-popup, .head-menu, .up-menu, .ep-grid, .ha-pop, .reaction-tip, .acc-tip,
+  #server-toast, #action-toast, .am-dlg, .ctx-read-fly, .anx-card, .topics-panel, .force-update-modal, .ann-banner {
+    background: var(--modal-bg);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sidebar, .acc-rail, .chat-header, .chat-header-actions, .pin-bar, .chat-search, .ro-banner, .sc-locked-banner,
+  .inv-bar, .composer-field, .scroll-bottom-btn, .login-wrap, .composer-main .composer-attach, .composer-main .send-btn:not(.ready),
+  .modal, .ctx-menu, #reaction-picker, #mention-popup, .head-menu, .up-menu, .ep-grid, .ha-pop, .reaction-tip, .acc-tip,
+  #server-toast, #action-toast, .am-dlg, .ctx-read-fly, .anx-card, .topics-panel, .force-update-modal, .ann-banner,
+  .date-divider span, .typing-pill, .ep-head, #ha-toggle-btn, .boot-overlay {
+    -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--modal-bg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .icon-btn:active, .composer-icon-btn:active, .sb-tab:active, .reaction-btn:active, .cs-btn:active { transform: none; }
+}
+
+/* Кнопка «+» у поля ввода: при открытом меню поворачивается в «×» */
+.composer-attach svg { transition: transform .45s var(--gl-spring); }
+.composer-attach[aria-expanded="true"] svg { transform: rotate(135deg); }
+@media (prefers-reduced-motion: reduce) { .composer-attach svg { transition: none; } }
+
+/* ── Бар папок и пространств — часть панели списка чатов (как в макете: один стеклянный блок с линией между ними) ── */
+.acc-rail:not([hidden]) {
+  flex-basis: 72px; margin-right: 0; gap: 10px; z-index: 1;
+  border-radius: 30px 0 0 30px; border-right: 0;
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), -8px 12px 28px var(--gl-shadow);
+}
+.acc-rail:not([hidden]) + .sidebar {
+  margin-left: 0; border-radius: 0 30px 30px 0; border-left: 1px solid var(--gl-lo);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 8px 12px 28px var(--gl-shadow);
+}
+/* Отметка выбранного пункта бара: акцентная полоска у левого края, как в макете */
+.acc-btn.active::before, .fld-btn.active::before {
+  content: ""; position: absolute; left: -14px; top: 12px; width: 4px; height: 20px;
+  border-radius: 0 4px 4px 0; background: var(--accent);
+}
+.fld-btn { position: relative; }
+
+/* ── Фильтр списка чатов: все / новые / личные / группы ── */
+.chat-filter {
+  position: relative; display: grid; grid-template-columns: repeat(4, 1fr); flex-shrink: 0;
+  height: 36px; margin: 0 14px 8px; padding: 3px;
+}
+.chat-filter button { padding: 0; font-size: 12.5px; font-weight: 600; color: var(--text2); }
+.chat-filter button.active { color: var(--text); }
+.sidebar-search.room-mode ~ .chat-filter { display: none; }
+
+/* Свой аватар внизу бара */
+.rail-me { margin-top: auto; flex-shrink: 0; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; transition: transform .35s var(--gl-spring); }
+.rail-me:active { transform: scale(.94); }
+.rail-me .av-wrap, .rail-me .av { display: block; width: 44px; height: 44px; font-size: 14px; display: flex; }
+.rail-me .av { align-items: center; justify-content: center; }
+.rail-me .presence-dot { width: 12px; height: 12px; right: 0; bottom: 0; }
+.rail-folders.scroll + .rail-me { margin-top: 0; }
+
+/* ══════════════════════════════════════════════════════════════
+   Комната с темами: панель тем, шапка комнаты, пустые состояния
+   ══════════════════════════════════════════════════════════════ */
+/* Список тем выезжает поверх списка чатов; список под ним гаснет, поэтому подложка панели прозрачная */
+.topics-panel { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; border: 0; }
+.chats-list { transition: opacity .3s, transform .45s cubic-bezier(.22, 1, .36, 1); }
+.sidebar-search.room-mode ~ .sidebar-list-wrap .chats-list { opacity: 0; transform: translateX(-18%); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .chats-list { transition: none; } }
+
+/* Вместо строки поиска: стеклянная кнопка «назад» и название комнаты */
+.sidebar-search.room-mode { height: 54px; }
+.strip-back { width: 40px; height: 40px; flex-shrink: 0; color: var(--text);
+  background: var(--gl); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow); }
+.strip-back:hover { background: var(--gl2); }
+.strip-back:active { transform: scale(.94); }
+.room-title-name { font-size: 15px; font-weight: 700; }
+.room-title-sub { font-size: 12px; color: var(--text2); }
+
+/* Комната: аватар — скруглённый квадрат, тема — круг с «#» */
+.av-sq { border-radius: 15px !important; }
+.chat-header .av-sq { border-radius: 14px !important; }
+.av[class*="av-tag-"], .chats-list .av-round, .topics-panel .av-round { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
+.topics-panel .av-md { font-size: 22px; font-weight: 600; }
+
+/* Пустое состояние: стеклянный круг с иконкой Lucide вместо смайла */
+.empty-state { gap: 12px; }
+.empty-icon {
+  width: 72px; height: 72px; border-radius: 50%; opacity: 1; font-size: 0; display: flex; align-items: center; justify-content: center; flex: none;
+  background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl);
+  border: 1px solid var(--gl-edge);
+  -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%); backdrop-filter: blur(var(--gl-blur)) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 12px 32px var(--gl-shadow);
+}
+.empty-icon::before {
+  content: ""; width: 30px; height: 30px; background: var(--accent);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7.9 20A9 9 0 1 0 4 16.1L2 22Z'/></svg>") center / contain no-repeat;
+          mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7.9 20A9 9 0 1 0 4 16.1L2 22Z'/></svg>") center / contain no-repeat;
+}
+.empty-icon.ei-hash::before {
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 9h16'/><path d='M4 15h16'/><path d='M10 3 8 21'/><path d='M16 3l-2 18'/></svg>");
+          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 9h16'/><path d='M4 15h16'/><path d='M10 3 8 21'/><path d='M16 3l-2 18'/></svg>");
+}
+.empty-icon:has(svg)::before { display: none; }
+.empty-icon svg { color: var(--accent); }
+.empty-title { font-size: 18px; opacity: 1; color: var(--text); }
+.empty-sub { font-size: 13.5px; color: var(--text2); }
+
+/* ══════════════════════════════════════════════════════════════
+   Кнопки бара и три вкладки внизу — точно как в макете
+   ══════════════════════════════════════════════════════════════ */
+/* Бар: нейтральные кнопки 48×48 со скруглением 16; выбранная — приподнятое стекло с акцентным цветом и полоской у края */
+.acc-rail:not([hidden]) { gap: 10px; }
+.rail-folders, .rail-folders.scroll { gap: 10px; }
+.acc-btn.fld-btn, .fld-btn { width: 48px; height: 48px; border-radius: 16px; transition: transform .35s var(--gl-spring); }
+.fld-btn .fld-ic, .acc-btn.fld-btn .fld-ic {
+  width: 48px; height: 48px; border-radius: 16px; background: transparent; color: var(--text2);
+  font-size: 15px; font-weight: 700; letter-spacing: .2px; opacity: 1;
+  transition: transform .35s var(--gl-spring), background .2s, color .2s, box-shadow .2s;
+}
+.fld-btn .fld-ic .fi { width: 22px; height: 22px; }
+.fld-btn:hover .fld-ic { background: var(--gl-card); color: var(--text); transform: none; }
+.fld-btn:active .fld-ic { transform: scale(.94); }
+.fld-btn:not(.active) .fld-ic { opacity: 1; }
+.fld-btn.active .fld-ic {
+  background: var(--gl2); color: var(--accent);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow);
+}
+.fld-btn .fld-ic::after { display: none; }
+.spc-ini { color: inherit; font-size: 15px; font-weight: 700; letter-spacing: .2px; }
+.acc-btn.active::before, .fld-btn.active::before { left: -14px; top: 14px; width: 4px; height: 20px; border-radius: 0 4px 4px 0; background: var(--accent); }
+.acc-badge {
+  right: -4px; top: -4px; min-width: 20px; height: 20px; padding: 0 5px; border: 0; border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 62%, #000); color: #fff; font: 600 11px/20px var(--ff, inherit);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--side-bg) 88%, transparent);
+}
+.rail-sep { width: 28px; height: 1px; margin: 0; background: var(--gl-lo); }
+.rail-me:hover { filter: brightness(1.06); }
+
+/* Счётчики непрочитанного в списке — той же заливкой и размером, что в макете */
+.unread-badge {
+  min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; box-sizing: border-box;
+  background: color-mix(in srgb, var(--accent) 62%, #000) !important; color: #fff; font-size: 12px; font-weight: 600; line-height: 22px;
+  box-shadow: none;
+}
+
+/* Три вкладки внизу: стеклянная капсула, у выбранной вкладки приподнятая плашка */
+.sidebar-tabbar {
+  width: max-content; margin: 8px auto 14px; padding: 4px; gap: 2px; justify-content: center; flex-shrink: 0; border-radius: 999px;
+  background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl);
+  border: 1px solid var(--gl-edge);
+  -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%); backdrop-filter: blur(var(--gl-blur)) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 12px 32px var(--gl-shadow);
+}
+.sb-tab { flex: 0 0 64px; width: 64px; height: 38px; border-radius: 999px; color: var(--text2); transition: background .25s, color .25s, transform .35s var(--gl-spring), box-shadow .25s; }
+.sb-tab svg { width: 20px; height: 20px; }
+.sb-tab:hover:not(.on) { color: var(--text); }
+.sb-tab.on { background: var(--gl2); color: var(--accent); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px var(--gl-shadow); }
+
+/* ══════════════════════════════════════════════════════════════
+   Как в макете: выделение строки, меню «+», полоска в баре
+   ══════════════════════════════════════════════════════════════ */
+:root { --gl-hov: rgba(255, 255, 255, .34); }
+html.dark { --gl-hov: rgba(255, 255, 255, .08); }
+
+/* Строки списка (чаты, темы, контакты): наведение — светлая подложка, выбранная — приподнятое стекло, которое переезжает пружиной */
+.chats-list .chat-item:hover::after, .topics-panel .chat-item:hover::after, .chats-list .pp-row:hover::after { background: var(--gl-hov); }
+.chats-list .chat-item.active:hover::after, .topics-panel .chat-item.active:hover::after { background: var(--gl2); }
+.chats-list .pp-row::after, .chats-list .pp-row.cg-first::after, .chats-list .pp-row.cg-last::after { inset: 1px 2px; border-radius: 18px; transition: background .2s; }
+.chats-list .chat-item::after, .topics-panel .chat-item::after { transition: background .2s; }
+.ss-ghost { z-index: -1; }
+
+/* Меню «+» над полем ввода: слева над кнопкой, стекло, пружинное появление снизу-слева */
+.composer-main .up-menu {
+  left: 0; bottom: 64px; width: auto; min-width: 230px; padding: 6px; border-radius: 18px;
+  display: flex; flex-direction: column; gap: 2px; transform-origin: bottom left;
+}
+.composer-main .up-menu[hidden] { display: none; }
+.composer-main .up-menu:not([hidden]) { animation: glMenuIn .45s var(--gl-spring) both; }
+.composer-main .up-menu.pop-out { animation: glMenuOut .2s ease-in forwards !important; }
+@keyframes glMenuIn { from { opacity: 0; transform: translateY(10px) scale(.92); } to { opacity: 1; transform: none; } }
+@keyframes glMenuOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(10px) scale(.92); } }
+.composer-main .up-menu button { height: 42px; padding: 0 14px; gap: 12px; border-radius: 13px; font-size: 14px; font-weight: 500; }
+.composer-main .up-menu button svg { width: 18px; height: 18px; color: var(--accent); }
+.composer-main .up-menu button.on { background: var(--accent-soft); }
+@media (prefers-reduced-motion: reduce) { .composer-main .up-menu:not([hidden]) { animation: none; } }
+
+/* Полоска выбранного пункта бара: как в макете, срезана по краю панели (видна внутренняя часть шириной 2 px) */
+.acc-rail:not([hidden]) { clip-path: none; }
+
+/* ══════════════════════════════════════════════════════════════
+   Интерактивное стекло: наведение, блик за курсором, пружина при нажатии (макет: .gi)
+   ══════════════════════════════════════════════════════════════ */
+:root { --gl-spotlight: rgba(255, 255, 255, .55); }
+html.dark { --gl-spotlight: rgba(255, 255, 255, .20); }
+.composer-main .composer-attach, .composer-main .send-btn, .reaction-btn, .strip-back, .sb-tab.on, .chat-header-main { position: relative; }
+.chat-header-main::after, .composer-main .composer-attach::after, .composer-main .send-btn::after, .scroll-bottom-btn::after,
+.reaction-btn::after, .strip-back::after, .sb-tab.on::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .2s;
+  background: radial-gradient(90px circle at var(--mx, 50%) var(--my, 50%), var(--gl-spotlight), transparent 70%);
+}
+.chat-header-main:not(:has([data-on-click]))::after { display: none; }
+.chat-header-main:hover::after, .composer-main .composer-attach:hover::after, .composer-main .send-btn:hover::after, .scroll-bottom-btn:hover::after,
+.reaction-btn:hover::after, .strip-back:hover::after, .sb-tab.on:hover::after { opacity: 1; }
+/* пока плашка выбора едет к вкладке, блик за курсором у самой вкладки скрыт: он рисуется сразу и опережал бы плашку */
+.sb-tab.ss-mute::after { opacity: 0 !important; transition: none; }
+.composer-main .send-btn:not(.ready):hover { background: var(--gl2); }
+.scroll-bottom-btn:active { transform: scale(.95); }
+
+/* Шапка: аватар и название — одна капсула; если по ней можно нажать, при наведении она проявляется стеклом */
+.chat-header-main {
+  flex: 0 1 auto; min-width: 0; max-width: calc(100% - 140px); padding: 6px 14px 6px 6px; border: 1px solid transparent; border-radius: 999px;
+  transition: transform .35s var(--gl-spring), background .2s, border-color .2s, box-shadow .2s;
+}
+.chat-header-actions { margin-left: auto; }
+/* Подпись шапки в потоке: капсула по ширине совпадает с самой длинной строкой («Комната · 3 в сети» не обрезается), «печатает…» накладывается сверху */
+.ch-subwrap .ch-sub { position: relative; }
+.chat-header-info { flex: 0 1 auto; }
+.chat-header-main:has([data-on-click]) { cursor: pointer; }
+.chat-header-main:has([data-on-click]):hover { background: var(--gl2); border-color: var(--gl-edge); box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow); }
+.chat-header-main:has([data-on-click]):active { transform: scale(.97); }
+@media (prefers-reduced-motion: reduce) { .chat-header-main:active, .scroll-bottom-btn:active { transform: none; } }
+
+/* Зелёная точка у подписи «в сети» */
+.chat-header .ch-sub.gl-online::before {
+  content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px; vertical-align: 1px; border-radius: 50%; background: var(--presence-online);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ПЕРЕНОС МАКЕТА v2 — точные значения из docs/glass-mockup/index.html (идёт после старых правил и перекрывает их)
+   ══════════════════════════════════════════════════════════════ */
+/* ── Сайдбар: шапка, поиск, фильтр, список, вкладки ── */
+.sidebar-head { height: 46px; min-height: 46px; padding: 0 14px 0 16px; }
+.topbar-wordmark .tw-main, .topbar-wordmark .tw-accent { font-size: 13px; font-weight: 700; letter-spacing: .9px; }
+.topbar-wordmark .tw-accent { color: var(--accent-ink); }
+.topbar-actions {   /* web: .cap.glass */
+  gap: 0; padding: 2px; border-radius: var(--r-pill); height: auto;
+  background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl);
+  border: 1px solid var(--gl-edge);
+  -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%); backdrop-filter: blur(var(--gl-blur)) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 12px 32px var(--gl-shadow);
+}
+.topbar-actions .icon-btn, .sidebar-head .btn-new-chat { width: 34px; height: 34px; border-radius: 50%; color: var(--text); background: transparent; border: 0; padding: 0; }
+.topbar-actions svg { width: var(--ic-m); height: var(--ic-m); }
+.topbar-actions .icon-btn:hover, .sidebar-head .btn-new-chat:hover { background: var(--gl-card2); color: var(--text); }
+.topbar-actions .head-more[aria-expanded="true"] { background: var(--accent-soft); color: var(--accent-ink); }
+.sidebar-search { height: 54px; padding: 4px 14px 10px; align-items: stretch; }
+.search-wrap { height: 40px; padding: 0 14px; gap: 8px; background: var(--gl-hov); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 3px var(--gl-lo); color: var(--text2); }
+.search-wrap input { font-size: 14px; }
+.search-wrap input::placeholder, .search-icon { color: var(--muted); }
+.chat-filter { margin: 0 14px 8px; height: 36px; padding: 3px; border: 0; background: var(--gl-hov); box-shadow: inset 0 1px 3px var(--gl-lo); }
+.chat-filter button { padding: 0 14px; gap: 6px; }
+.chats-list, .topics-panel { padding: 0 8px 10px; }
+.chat-list-section-label { padding: 12px 12px 4px; color: var(--muted); }
+.av, .av-md, .av-sm, .av-lg, .av-xl { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
+.sb-tab.on { color: var(--accent-ink); }
+.sidebar-tabbar { margin: 8px auto 14px; }
+
+/* ── Бар: отступы как в макете (сверху место под «светофор» окна 46 + зазор 10, снизу 14), цвета значков ── */
+.acc-rail:not([hidden]) { padding: 56px 0 14px; }
+.fld-btn.active .fld-ic { color: var(--accent-ink); }
+.fld-btn:not(.spc-btn) .fld-ic, .fld-btn:not(.spc-btn).active .fld-ic { color: var(--fc); }   /* значок папки — цвета самой папки */
+.acc-badge { letter-spacing: .2px; font-size: 11px; font-weight: 600; line-height: 20px; }
+.rail-me .av { box-shadow: none; }
+
+/* ── Чат: шапка, полосы, лента, поле ввода (значения макета) ── */
+.chat-header-actions { height: 46px; }
+.chat-header-actions .icon-btn { color: var(--text); }
+.chat-header-actions .icon-btn.active { background: var(--accent-soft); color: var(--accent-ink); }
+.pin-bar, .chat-search { top: 96px; height: 48px; padding: 0 4px 0 18px; gap: 4px; }
+.pin-bar { padding-left: 14px; gap: 12px; }
+.chat-search input { padding: 0 8px; font-size: 14px; }
+.chat-search > svg { font-size: var(--ic-m); width: var(--ic-m); height: var(--ic-m); color: var(--muted); }
+.chat-search .icon-btn, .pin-bar .pin-unpin, .chat-search > .icon-btn:last-child, .pin-bar > .pin-unpin:last-child { width: 40px; height: 40px; border-radius: 50%; color: var(--text2); }
+.cs-count { font-size: 12px; color: var(--text2); padding: 0 6px; }
+.pin-label { font-size: 11.5px; color: var(--accent-ink); }
+.pin-text { font-size: 12.5px; color: var(--text2); }
+
+.date-divider span {
+  padding: 5px 14px; font-size: 12px; font-weight: 600; color: var(--text2); border-radius: var(--r-pill);
+  background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl); border: 1px solid var(--gl-edge);
+  -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%); backdrop-filter: blur(var(--gl-blur)) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 12px 32px var(--gl-shadow);
+}
+.role-pill, .pp-tag { font-weight: 600; font-size: 11px; padding: 1px 8px; border-radius: var(--r-pill); }
+.role-pill[class*="tag-"], .pp-tag[class*="tag-"] { background: color-mix(in srgb, currentColor 14%, transparent); border-color: color-mix(in srgb, currentColor 25%, transparent); }
+.irc-name { font-weight: 600; }
+
+@media (min-width: 768px) and (pointer: fine) {
+  .chat-main .messages { padding-left: 28px; padding-right: 28px; padding-bottom: calc(var(--composer-h, 70px) + 48px); }
+}
+.msg-bubble { padding: 9px 14px 8px; }
+.irc-text { font-size: calc(var(--font-size) * 1.0357); line-height: 1.42; }
+.msg-bubble:not(.bubble-photo) > .irc-text { transform: none; margin-bottom: 3.74px; }
+.msg-bubble > .irc-meta, .msg-bubble:not(.bubble-photo) > .irc-meta { right: 14px; bottom: 8px; gap: 4px; align-items: center; }
+.irc-time { font-size: 11.5px; line-height: 1.42; color: var(--text2); }
+.irc-msg[data-mine] .msg-bubble { border: 0; }
+.msg-bubble .bubble-image, .msg-bubble .bubble-grid { margin: -9px -14px 6px; }
+.msg-bubble.bubble-photo .bubble-image, .msg-bubble.bubble-photo .bubble-grid { margin: 0; }
+.msg-bubble.bubble-comp > .ct-pad { padding: 9px 14px 0; }
+.msg-bubble.bubble-comp > .irc-text.ct { padding: 9px 14px; }
+
+.composer-main .composer-attach { color: var(--text); }
+.composer-main .send-btn:not(.ready) { color: var(--text2); }
+.composer-field-row .composer-icon-btn { width: 40px; height: 40px; color: var(--text2); }
+.composer-field-row .composer-icon-btn:hover { background: var(--gl-card2); color: var(--text); }
+.fmt-ce { font-size: 15px; }
+.msg-bubble:not(.bubble-photo) > .irc-meta .irc-time, .msg-bubble > .irc-meta .irc-time { line-height: 1.42; }
+
+/* ══════════ Контекстные меню, подменю, реакции, смайлы, упоминания (макет: .ctx-menu, .fly, .ctx-react, .ep, .mention) ══════════ */
+.ctx-menu { width: auto; min-width: 224px; padding: 6px; flex-direction: column; gap: 2px; border-radius: var(--r-menu); z-index: var(--z-pop); }
+.ctx-menu.open, .ctx-menu[style*="block"] { display: flex !important; }
+.ctx-menu.open, #ctx-chat-menu[style*="block"] { animation: glCtxIn .45s var(--gl-spring) both; transform-origin: top left; }
+.ctx-menu.pop-out { animation: glCtxOut .18s ease-in forwards !important; }
+@keyframes glCtxIn { from { opacity: 0; transform: scale(.92) translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes glCtxOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(.92) translateY(6px); } }
+.ctx-menu button { height: 40px; padding: 0 12px; gap: 12px; border-radius: var(--r-item); font-size: 13.5px; font-weight: 500; color: var(--text); transition: background .2s, transform .35s var(--gl-spring); }
+.ctx-menu button:active { transform: scale(.97); }
+.ctx-menu button svg { width: var(--ic-m); height: var(--ic-m); color: var(--accent-ink); stroke-width: 2; }
+.ctx-menu button:hover svg { color: var(--accent-ink); }
+.ctx-menu button.ctx-danger svg, .ctx-menu button.ctx-danger:hover svg { color: var(--danger); }
+.ctx-menu button .ctx-read-chev, .ctx-menu .ctx-read .ctx-read-chev { width: 14px; height: 14px; color: var(--muted); }
+.ctx-sep { height: 1px; margin: 4px 12px; border: 0; background: var(--gl-lo); }
+html.dark .ctx-sep { background: rgba(255, 255, 255, .08); }
+.ctx-cap { margin: 0; padding: 8px 12px 4px; font-size: 11.5px; color: var(--muted); }
+.ctx-cap::before { display: none; }
+.ctx-reactions { height: 40px; padding: 3px; margin-bottom: 4px; gap: 2px; border-radius: var(--r-pill); background: var(--gl-inset); }
+.ctx-menu .ctx-reactions button { width: 34px; height: 34px; font-size: 18px; border-radius: 50%; }
+.ctx-menu .ctx-reactions button:hover { background: var(--gl2); transform: scale(1.14); }
+.ctx-menu .ctx-reactions button.mine { background: var(--accent-soft); }
+.ctx-menu .ctx-reactions .ctx-reaction-more { font-size: 15px; font-weight: 600; color: var(--text2); }
+/* подменю */
+.ctx-read-fly, .ctx-sub-fly { width: auto; min-width: 214px; padding: 6px; border-radius: var(--r-menu); transform: translateX(-6px) scale(.96); transition: opacity .15s, transform .35s var(--gl-spring); }
+.ctx-read-fly.l, .ctx-sub-fly.l { transform: translateX(6px) scale(.96); }
+.ctx-read.open .ctx-read-fly { transform: none; }
+.ctx-sub-fly button { height: 38px; font-size: 13px; }
+.ctx-read-h { padding: 6px 12px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--gl-lo); margin-bottom: 4px; }
+.ctx-read-row { padding: 5px 8px; border-radius: 12px; gap: 10px; }
+.ctx-read-name { font-size: 12.5px; }
+.ctx-read-time { font-size: 11px; color: var(--muted); }
+.fld-mini { width: 24px; height: 24px; border-radius: 8px; }
+/* упоминания, реакции, смайлы */
+#mention-popup { padding: 6px; min-width: 230px; border-radius: var(--r-menu); }
+.mention-item { padding: 6px 10px; gap: 10px; border-radius: var(--r-item); }
+.mention-item .mn-name { font-size: 13.5px; font-weight: 500; }
+.mention-item .mn-login { font-size: 11.5px; color: var(--muted); }
+#reaction-picker { width: 260px; padding: 6px; border-radius: var(--r-menu); }
+.ep-grid { padding: 8px; border-radius: var(--r-menu); width: 340px; bottom: calc(100% + 12px); }
+.ep-search { height: 34px; padding: 0 12px; font-size: 12.5px; background: var(--gl-hov); border: 1px solid var(--gl-edge); }
+.ep-head { padding: 6px 6px 2px; font-size: 10.5px; font-weight: 700; color: var(--muted); }
+.emoji-item { width: 36px; height: 36px; font-size: 20px; }
+/* меню шапки сайдбара: узкая капсула из круглых кнопок, подсказка сбоку */
+.head-menu { padding: 4px; gap: 2px; border-radius: var(--r-pill); }
+.hm-i { width: 34px; height: 34px; border-radius: 50%; color: var(--text2); }
+.hm-i svg { width: var(--ic-m); height: var(--ic-m); }
+.hm-i:hover, .hm-i:focus-visible { background: var(--gl-card2); color: var(--text); }
+/* тосты */
+#action-toast, #server-toast { padding: 10px 20px; font-size: 13px; font-weight: 600; z-index: var(--z-toast); }
+.up-menu button svg { color: var(--accent-ink); }
+.ep-tab { width: 30px; height: 30px; max-width: 30px; flex: none; aspect-ratio: auto; }
+.ep-head { background: transparent; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.emoji-item { padding: 0; }
+#reaction-picker .emoji-item { width: 36px; height: 36px; font-size: 20px; }
+
+/* ══════════ Окна: общие размеры, кнопки, шапка, подвал (макет: .modal, .modal-hdr, .modal-footer, .btn) ══════════ */
+html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 24px 60px var(--gl-shadow); }
+.modal-hdr { padding: 18px 18px 8px 24px; gap: 10px; font-size: 15px; font-weight: 700; }
+.modal-hdr .icon-btn, .ha-close, .diag-head .icon-btn { width: 36px; height: 36px; border-radius: 50%; color: var(--text2); background: var(--gl-card); }
+.modal-hdr .icon-btn:hover, .ha-close:hover, .diag-head .icon-btn:hover { background: var(--gl-card2); color: var(--text); }
+.modal-footer, .nc-foot, .ha-footer, .update-modal-footer, .ac-foot { padding: 8px 18px 18px; gap: 8px; }
+.modal-btn-ghost, .modal-btn-primary, .modal-btn-danger, .ha-btn-cancel, .ha-btn-apply, .ha-btn-danger, .anx-btn, .gi-btn, .am-btn, .pf-danger, .addc-btn {
+  height: 36px; padding: 0 18px; gap: 8px; font-size: 13px; font-weight: 600; border-radius: var(--r-pill);
+}
+.pf-danger { padding: 0 18px; box-shadow: inset 0 1px 0 var(--gl-hi); }
+.modal-hdr svg, .modal-footer svg { width: var(--ic-s); height: var(--ic-s); }
+#confirm-body { padding: 6px 24px 10px !important; font-size: 14px; line-height: 1.5; }
+#modal-confirm .modal-footer { padding: 8px 18px 18px !important; }
+
+/* новый чат */
+.nc-kinds { padding: 6px 18px 18px; gap: 8px; }
+.nc-kind { padding: 12px 14px; gap: 14px; border-radius: var(--r-card); background: var(--gl-card); border: 1px solid var(--gl-edge); }
+.nc-kind-ic { width: 44px; height: 44px; color: var(--accent-ink); }
+.nc-kind-ic svg { width: 20px; height: 20px; }
+.nc-kind-txt b { font-size: 14px; margin-bottom: 0; }
+.nc-kind-txt span { font-size: 12.5px; line-height: normal; color: var(--text2); }
+.nc-kind-go { font-size: 18px; color: var(--muted); }
+.nc-group-bar { padding: 6px 18px 4px; gap: 12px; background: none; }
+.nc-group-bar .av-md { width: 44px; height: 44px; font-size: 15px; }
+.nc-name-input, #group-name { height: 40px; padding: 0 14px; font-size: 14px; border-radius: var(--r-pill); background: var(--gl-hov); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 3px var(--gl-lo); color: var(--text); }
+.nc-search { margin: 8px 18px; height: 40px; padding: 0 14px; background: var(--gl-hov); border: 1px solid var(--gl-edge); border-radius: var(--r-pill); box-shadow: inset 0 1px 3px var(--gl-lo); color: var(--text2); }
+#forward-list, #modal-forward .nc-search { margin-left: 18px; margin-right: 18px; }
+#modal-forward .nc-search { margin-top: 2px; margin-bottom: 8px; }
+.nc-list, #nc-list { padding: 4px 10px; }
+.modal .pp-row { padding: 8px 12px; gap: 12px; border-radius: var(--r-row); }
+.modal .pp-row .pp-av { width: 36px; height: 36px; font-size: 13px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
+.modal .pp-name { font-size: 14px; font-weight: 600; }
+.modal .pp-row.on { background: var(--accent-soft); }
+.pp-chk { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--text) 28%, transparent); display: grid; place-items: center; color: transparent; flex: none; margin-left: auto; transition: background .2s, border-color .2s, color .2s, transform .35s var(--gl-spring); }
+.pp-chk svg { width: 14px; height: 14px; }
+.pp-row.on .pp-chk { background: var(--accent); border-color: var(--accent); color: #fff; transform: scale(1.05); }
+.nc-hint { font-size: 12px; color: var(--text2); }
+
+/* профиль */
+.pf-cover { height: 96px; }
+.pf-x { width: 32px; height: 32px; }
+.pf-head { padding: 0 20px; margin-top: -38px; gap: 14px; }
+.pf-av { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
+.pf-name { font-size: 19px; letter-spacing: -.01em; }
+.pf-st { color: var(--text2); }
+.pf-st.on { color: var(--accent-ink); }
+.pf-body { padding: 16px 20px 12px; gap: 12px; }
+.pf-g { border-radius: var(--r-card); background: var(--gl-card); border: 1px solid var(--gl-edge); overflow: hidden; }
+.pf-r { padding: 12px 16px; gap: 16px; font-size: 13px; }
+.pf-r + .pf-r, .pf-gr + .pf-gr, .pf-gr + .pf-gr { border-top: 1px solid var(--gl-lo); }
+.pf-r b { color: var(--text2); font-weight: 500; }
+.pf-ci { font-size: 15px; }
+.pf-link { padding: 12px 16px; gap: 12px; font-size: 13px; }
+.pf-link svg:first-child { color: var(--accent-ink); width: var(--ic-m); height: var(--ic-m); }
+.pf-gt { font-size: 11px; letter-spacing: .08em; margin: 2px 0 -4px 4px; }
+.pf-gr { padding: 10px 14px; gap: 12px; }
+.pf-gi b { font-size: 13.5px; }
+.pf-gi span { font-size: 12px; color: var(--text2); }
+.pf-foot { padding: 6px 20px 18px; gap: 8px; }
+
+/* профиль группы и комнаты */
+.gm-modal { height: min(660px, 90vh); }
+.gm-tile { padding: 12px 4px 10px; gap: 6px; border-radius: var(--r-card); font-size: 11.5px; font-weight: 600; color: var(--accent-ink); }
+.gm-tile.d { color: var(--danger); }
+.gm-sec-h { padding: 0 18px; }
+.gm-row, .gm-pick { padding: 8px 14px; gap: 12px; }
+.gm-nm b { font-size: 13.5px; }
+.gm-chip { height: 18px; padding: 0 9px; font-size: 11px; font-weight: 600; color: var(--accent-ink); }
+.gm-chip.role { color: var(--accent-ink); }
+
+/* редактор папки */
+.ac-body { padding: 4px 22px 6px; gap: 12px; }
+.ac-fld { height: 40px; padding: 0 14px; border-radius: var(--r-pill); background: var(--gl-hov); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 3px var(--gl-lo); color: var(--text2); font-size: 14px; }
+.ac-fld:focus-within { border-color: var(--accent); box-shadow: inset 0 1px 3px var(--gl-lo), 0 0 0 3px var(--accent-soft); }
+.fe-l { font-weight: 700; }
+.fe-cols button { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5); }
+.fe-icons button { height: 40px; border-radius: var(--r-item); }
+.fe-icons button svg { width: var(--ic-m); height: var(--ic-m); }
+
+.gm-chip { padding-block: 2px; }
+.pf-ci svg { width: 19px; height: 19px; }
+.pf-gr .av { width: 36px; height: 36px; font-size: 13px; }
+.pf-foot button { padding-inline: 18px; }
+.pf-fb, .pf-fc, .pf-fw { width: auto; }
+.pf-foot { flex-wrap: wrap; }
+.pf-foot button { gap: 8px; }
+
+/* Содержимое пузырька как в макете: цитата, файл, картинка */
+.irc-reply { border-radius: 4px 10px 10px 4px; padding: 5px 10px 5px 13px; margin: 0 0 6px; font-size: 13px; line-height: 1.42; }
+.irc-reply.reply-plain { --rc: var(--accent); }
+.irc-reply-name { font-size: 12.5px; }
+.irc-reply.reply-plain .irc-reply-name { color: var(--accent-ink); }
+.bubble-file { gap: 12px; padding: 8px 10px; margin: -3px -6px 6px; border-radius: 14px; background: var(--gl-card); border: 1px solid var(--gl-edge); min-width: 300px; max-width: none; }
+.bubble-file > svg:first-child { width: 42px; height: 42px; padding: 11px; box-sizing: border-box; border-radius: 12px; background: var(--accent-soft); color: var(--accent-ink); }
+.bubble-file-name { font-size: 14px; font-weight: 600; }
+.bubble-file-size { font-size: 12px; color: var(--text2); margin-top: 0; }
+.bubble-file > svg:last-child:not(:first-child) { width: 34px; height: 34px; padding: 9px; box-sizing: border-box; border-radius: 50%; opacity: 1 !important; margin-left: auto; background: var(--gl); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 0 var(--gl-hi); }
+.msg-bubble:not(.bubble-photo) .bubble-image, .msg-bubble:not(.bubble-photo) .bubble-grid { margin: -3px -8px 8px; border-radius: 14px; }
+
+/* ── Окно «Новое объявление»: слева текст, тип и время, справа получатели ── */
+.anx-modal{width:min(920px,94vw);height:min(640px,90vh);max-height:none;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}
+.anx-modal.anx-tabs{width:min(560px,96vw);display:flex;flex-direction:column}
+.anx-half{display:flex;flex-direction:column;min-width:0;min-height:0}
+.anx-half.l{border-right:1px solid var(--gl-lo)}
+.anx-half.r{background:var(--gl-card)}
+.anx-tabs .anx-half{flex:1;border-right:0}
+.anx-hdr{height:auto;padding:18px 18px 8px 24px}
+.anx-title{font-size:15px;font-weight:700;color:var(--text)}
+.anx-sub{font-size:12px;font-weight:500;color:var(--text2);margin-top:2px}
+.anx-pvw{padding:4px 20px 0;flex:none}
+.anx-pv{display:flex;flex-direction:column;gap:8px}
+.anx-hint{font-size:12px;color:var(--text2);line-height:1.4;padding:0 6px}
+.anx-ph{color:var(--muted);font-style:italic}
+.anx-app,.anx-feed{position:relative;height:116px;border-radius:var(--r-card);border:1px solid var(--gl-edge);background:var(--gl-inset);overflow:hidden}
+.anx-app>i{position:absolute;left:16px;height:8px;border-radius:99px;background:var(--gl-hov)}
+.anx-dim::after{content:"";position:absolute;inset:0;background:rgba(8,10,18,.3)}
+.anx-banner{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--danger-bg);border:0;border-bottom:1px solid var(--danger-border);font-size:12px;color:var(--text)}
+.anx-banner svg{width:14px;height:14px;color:var(--danger);flex:none}
+.anx-banner span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.anx-card{position:absolute;z-index:1;left:50%;top:50%;transform:translate(-50%,-50%);width:70%;padding:12px 14px;border-radius:14px;background:var(--gl-pop);border:1px solid var(--danger-border);box-shadow:inset 0 1px 0 var(--gl-hi),0 8px 24px var(--gl-shadow)}
+.anx-ct{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--danger)}
+.anx-ring{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--danger-bg)}
+.anx-ring svg{width:12px;height:12px}
+.anx-cx{margin-top:6px;font-size:12px;color:var(--text);line-height:1.4;max-height:34px;overflow:hidden}
+.anx-ok{display:inline-flex;align-items:center;height:20px;margin-top:8px;padding:0 12px;border-radius:99px;background:var(--accent);color:#fff;font-size:11px;font-weight:700}
+.anx-feed{display:flex;flex-direction:column;gap:8px;padding:14px 16px;justify-content:center}
+.anx-feed>i{display:block;height:20px;border-radius:99px;background:var(--gl-hov)}
+.anx-sys{display:flex;align-items:center;gap:7px;align-self:center;max-width:92%;padding:5px 12px;border-radius:99px;background:var(--gl-card);border:1px solid var(--gl-edge);font-size:12px}
+.anx-sys svg{width:13px;height:13px;color:var(--danger);flex:none}
+.anx-sys span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.anx-sys small{color:var(--muted);font-size:10.5px}
+.anx-lbd{padding:14px 20px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;min-height:0;flex:1 1 auto;scrollbar-width:none}
+.anx-lbd>*{flex-shrink:0}
+.anx-f{display:flex;flex-direction:column;gap:8px;min-width:0}
+.anx-f>label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-left:6px}
+.anx-types{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:4px;border-radius:var(--r-pill);background:var(--gl-hov);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 3px var(--gl-lo)}
+.anx-types button{height:32px;padding:0 8px;border:0;border-radius:var(--r-pill);background:none;color:var(--text2);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .25s,background .25s,box-shadow .25s}
+.anx-types button:hover{background:none;color:var(--text)}
+.anx-types button[aria-checked="true"]{background:var(--gl2);color:var(--text);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 8px var(--gl-shadow)}
+.anx-ta{width:100%;box-sizing:border-box;min-height:96px;resize:none;border:1px solid var(--gl-edge);background:var(--gl-hov);box-shadow:inset 0 1px 3px var(--gl-lo);color:var(--text);border-radius:var(--r-card);padding:12px 16px;font:inherit;font-size:14px;line-height:1.5;outline:none;transition:box-shadow .2s,border-color .2s}
+.anx-ta::placeholder{color:var(--muted)}
+.anx-ta:focus{border-color:var(--accent);box-shadow:inset 0 1px 3px var(--gl-lo),0 0 0 3px var(--accent-soft)}
+.anx-chs{display:flex;gap:6px;flex-wrap:wrap}
+.anx-ch{height:32px;padding:0 14px;border:1px solid var(--gl-edge);background:var(--gl-card);color:var(--text2);font:inherit;font-size:12.5px;font-weight:600;border-radius:var(--r-pill);cursor:pointer;white-space:nowrap;transition:background .2s,color .2s,transform .35s var(--gl-spring)}
+.anx-ch:hover{background:var(--gl-card2);color:var(--text)}
+.anx-ch:active{transform:scale(.95)}
+.anx-ch[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent-border)}
+.anx-foot,.anx-rfoot{display:flex;align-items:center;gap:8px;padding:8px 18px 18px;min-height:62px;box-sizing:border-box;flex:none;border-top:0}
+.anx-note{font-size:12px;color:var(--text2);margin-right:auto;min-width:0}
+.anx-note b{color:var(--warn,#d98a0b);font-weight:600}
+.anx-note.ok b{color:var(--accent-ink)}
+.anx-err{color:var(--danger);font-size:12px}
+.anx-btn.sm{height:30px;padding:0 14px;font-size:12.5px}
+.anx-pill{font-size:11px;font-weight:700;padding:1px 8px;border-radius:var(--r-pill);background:var(--gl-hov);color:var(--muted)}
+.anx-pill.on{color:var(--accent-ink);background:var(--accent-soft)}
+.anx-tabsbar{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin:4px 20px 8px;padding:4px;border-radius:var(--r-pill);background:var(--gl-hov);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 3px var(--gl-lo);flex:none}
+.anx-tabsbar button{height:32px;display:flex;align-items:center;justify-content:center;gap:6px;border:0;background:none;color:var(--text2);border-radius:var(--r-pill);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+.anx-tabsbar button[aria-selected="true"]{background:var(--gl2);color:var(--text);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 8px var(--gl-shadow)}
+.anx-rbar{display:flex;flex-direction:column;gap:10px;padding:4px 18px 10px;flex:none}
+.anx-rhead{display:flex;align-items:center;gap:8px}
+.anx-t2{font-size:14px;font-weight:700;color:var(--text)}
+.anx-sg{display:inline-flex;padding:3px;gap:2px;margin-left:auto;background:var(--gl-hov);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 3px var(--gl-lo);border-radius:var(--r-pill)}
+.anx-sg button{height:28px;padding:0 12px;border:0;background:none;color:var(--text2);font:inherit;font-size:12.5px;font-weight:600;border-radius:var(--r-pill);cursor:pointer;transition:color .25s}
+.anx-sg button[aria-pressed="true"]{background:var(--gl2);color:var(--text);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 8px var(--gl-shadow)}
+.anx-search{display:flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:var(--r-pill);border:1px solid var(--gl-edge);background:var(--gl-hov);box-shadow:inset 0 1px 3px var(--gl-lo);color:var(--text2);transition:box-shadow .2s,border-color .2s}
+.anx-search:focus-within{border-color:var(--accent);box-shadow:inset 0 1px 3px var(--gl-lo),0 0 0 3px var(--accent-soft)}
+.anx-search input{flex:1;min-width:0;height:100%;border:0;background:none;color:var(--text);font:inherit;font-size:14px;outline:0}
+.anx-search input::placeholder{color:var(--muted)}
+.anx-search input:disabled{opacity:.5}
+.anx-bulk{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.anx-only{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer}
+.anx-rlist{flex:1;min-height:0;overflow-y:auto;padding:4px 10px;position:relative;display:flex;flex-direction:column;gap:2px;scrollbar-width:none}
+.anx-letter{font-size:11px;font-weight:700;color:var(--accent-ink);padding:8px 12px 2px;flex:none}
+.anx-li{display:flex;align-items:center;gap:12px;width:100%;padding:8px 12px;border:0;border-radius:var(--r-row);background:none;color:var(--text);font:inherit;text-align:left;cursor:pointer;flex:none;transition:background .2s}
+.anx-li:hover{background:var(--gl-hov)}
+.anx-li[aria-pressed="true"]{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent-border)}
+.anx-li[aria-pressed="true"] .anx-lt span{color:var(--accent-ink)}
+.anx-av{width:36px;height:36px;font-size:13px;flex:none}
+.anx-lt{flex:1;min-width:0;display:flex;flex-direction:column}
+.anx-lt b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.anx-lt span{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.anx-tg{flex-shrink:1;min-width:0;max-width:42%;overflow:hidden;text-overflow:ellipsis;display:inline-block;line-height:18px}
+.anx-tg2{font-size:11px;font-weight:600;color:var(--text2);border-radius:var(--r-pill);padding:1px 8px;white-space:nowrap;background:var(--gl-hov)}
+.anx-empty{padding:20px;text-align:center;color:var(--muted);font-size:13px}
+.anx-lock{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:24px;color:var(--text2);font-size:13px;line-height:1.45;background:color-mix(in srgb,var(--side-bg) 70%,transparent)}
+.anx-lock b{font-size:15px;color:var(--text)}
+.anx-rfoot{font-size:12px;color:var(--text2)}
+.anx-rfoot b{color:var(--text)}
+.anx-pick{margin-top:2px;padding:12px;border-radius:var(--r-card);border:1px solid var(--gl-edge);background:var(--gl-card)}
+.anx-ph2{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;text-transform:capitalize}
+.anx-ph2 button{width:30px;height:30px;border:0;border-radius:50%;background:var(--gl-hov);color:var(--text);cursor:pointer;font-size:16px}
+.anx-ph2 button:hover{background:var(--gl-card2)}
+.anx-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin:8px 0}
+.anx-dow{font-size:10.5px;text-align:center;color:var(--muted);padding:2px 0;text-transform:uppercase}
+.anx-day{aspect-ratio:1;border:0;border-radius:50%;background:none;color:var(--text);font:inherit;font-size:12.5px;cursor:pointer}
+.anx-day:hover:not(:disabled){background:var(--gl-hov)}
+.anx-day:disabled{color:var(--muted);opacity:.4;cursor:default}
+.anx-day.today{box-shadow:inset 0 0 0 1px var(--accent-border)}
+.anx-day.sel{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff}
+.anx-pf{display:flex;align-items:center;gap:8px}
+.anx-time{display:inline-flex;align-items:center;gap:4px;font-weight:700}
+.anx-time input{width:44px;height:34px;text-align:center;border:1px solid var(--gl-edge);background:var(--gl-hov);box-shadow:inset 0 1px 3px var(--gl-lo);color:var(--text);border-radius:var(--r-pill);padding:0;font:inherit;font-size:14px;outline:none}
+.rng{-webkit-appearance:none;appearance:none;width:200px;height:24px;background:none;cursor:pointer}
+.rng::-webkit-slider-runnable-track{height:6px;border-radius:99px;background:linear-gradient(90deg,var(--accent) var(--v,50%),var(--gl-card2) var(--v,50%));box-shadow:inset 0 1px 2px var(--gl-lo)}
+.rng::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;margin-top:-7px;border-radius:50%;background:#fff;border:0;box-shadow:0 2px 6px rgba(0,0,0,.3),inset 0 1px 0 #fff;transition:transform .35s var(--gl-spring)}
+.rng:hover::-webkit-slider-thumb{transform:scale(1.12)}.rng:active::-webkit-slider-thumb{transform:scale(.94)}
+.rng:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:99px}
+.rng-val{font-size:12px;color:var(--text2);min-width:38px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ── Настройки: размеры и формы как в макете ── */
+.cs-gt{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:0 0 -10px 8px}
+.cs-g{display:flex;flex-direction:column;gap:2px}
+.cs-r{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 18px;border-radius:8px;background:var(--gl);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi),0 6px 18px var(--gl-shadow);transition:background .2s}
+.cs-g>.cs-r:first-child{border-top-left-radius:var(--r-card);border-top-right-radius:var(--r-card)}
+.cs-g>.cs-r:last-child{border-bottom-left-radius:var(--r-card);border-bottom-right-radius:var(--r-card)}
+.cs-g>.cs-r:only-child{border-radius:var(--r-card)}
+.cs-r.stack{flex-direction:column;align-items:stretch;gap:12px}
+.cs-l{min-width:0}.cs-l b{display:block;font-size:13.5px;font-weight:600}.cs-l span{display:block;font-size:12px;color:var(--text2);margin-top:2px;line-height:1.4;max-width:58ch}
+.cs-ctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.cs-ctl.between{justify-content:space-between}
+.cs-hint{font-size:12px;color:var(--muted);padding:0 8px}.cs-err{font-size:12px;color:var(--danger)}.cs-okt{font-size:12px;color:var(--accent-ink)}
+.cs-hero{display:flex;align-items:center;gap:18px;padding:18px;border-radius:var(--r-card);background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 16%,transparent),transparent 70%),var(--gl);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi),0 6px 18px var(--gl-shadow)}
+.cs-av-edit{position:relative;border-radius:50%;flex:none;transition:transform .35s var(--gl-spring)}.cs-av-edit:hover{transform:scale(1.04)}
+.cs-badge{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));border:3px solid color-mix(in srgb,var(--side-bg) 85%,transparent);display:grid;place-items:center;color:#fff;font-size:12px}
+.cs-hero-t b{display:block;font-size:20px;font-weight:700;letter-spacing:-.02em}.cs-hero-t>span{display:block;font-size:13px;color:var(--text2)}
+.cs-chips{display:flex;gap:6px;margin-top:8px}.cs-chip{font-size:11px;font-weight:600;border-radius:var(--r-pill);padding:2px 10px;background:var(--accent-soft);color:var(--accent-ink)}
+.pl-b{display:flex;flex-direction:column;gap:8px}
+.pl-f{display:flex;align-items:center;gap:10px;height:44px;border-radius:var(--r-pill);background:var(--gl-inset);padding:0 8px 0 16px;border:1px solid var(--gl-edge);box-shadow:inset 0 1px 3px var(--gl-lo);width:100%;text-align:left;transition:border-color .2s,background .2s}
+.pl-f:hover{border-color:var(--accent-border)}.pl-f.done{background:var(--accent-soft);border-color:var(--accent-border)}
+.pl-k{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);width:86px;flex:none}
+.pl-v{flex:1;min-width:0;font-family:'JetBrains Mono',ui-monospace,Menlo,monospace;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-i{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:var(--text2);font-size:15px}.pl-f.done .pl-i{color:var(--accent-ink)}
+.pl-n{font-size:12px;color:var(--text2);padding:0 4px}
+.cs-pwbar{display:flex;gap:4px;align-items:center}.cs-pwbar i{flex:1;height:4px;border-radius:2px;background:var(--gl-inset);transition:background .3s}.cs-pwbar i.on{background:var(--c)}.cs-pwbar span{font-size:11px;color:var(--text2);min-width:96px;text-align:right}
+.cs-logout{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:var(--r-card);border:1px solid var(--danger-border);background:var(--danger-bg)}.cs-logout .cs-l{flex:1}.cs-logout .cs-l b{color:var(--danger)}
+.cs-pv{display:grid;grid-template-columns:100px minmax(0,1fr);height:168px;border-radius:var(--r-card);overflow:hidden;border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi),0 6px 18px var(--gl-shadow);flex:none}
+.cs-pv-side{background:var(--gl-card);padding:10px 8px;display:flex;flex-direction:column;gap:7px}
+.cs-pv-side i{display:flex;align-items:center;gap:6px;height:24px;border-radius:12px;padding:0 6px}.cs-pv-side i::before{content:"";width:14px;height:14px;border-radius:50%;background:var(--gl-card2)}.cs-pv-side i::after{content:"";flex:1;height:5px;border-radius:3px;background:var(--gl-card2)}
+.cs-pv-side i.on{background:var(--gl2);box-shadow:inset 0 1px 0 var(--gl-hi)}.cs-pv-side i.on::before{background:var(--accent)}
+.cs-pv-chat{position:relative;padding:12px 14px;display:flex;flex-direction:column;justify-content:flex-end;gap:7px;background:var(--gl-inset)}
+.cs-pv-msg{max-width:78%;padding:6px 12px;border-radius:16px;font-size:12.5px;line-height:1.4}
+.cs-pv-msg b{display:block;font-size:11px;color:var(--accent-ink)}.cs-pv-msg small{display:block;font-size:10px;opacity:.65;text-align:right}
+.cs-pv-msg.in{align-self:flex-start;background:var(--gl-in);border:1px solid var(--gl-edge);border-bottom-left-radius:5px}
+.cs-pv-msg.out{align-self:flex-end;background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;border-bottom-right-radius:5px}
+.accent-seg{display:flex;align-items:center;gap:10px}
+.accent-dot{width:26px;height:26px;border-radius:50%;background:var(--dot);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 8px var(--gl-shadow);transition:transform .35s var(--gl-spring),box-shadow .2s}
+.accent-dot:hover{transform:scale(1.14)}.accent-dot.on,.accent-dot.active{box-shadow:0 0 0 3px var(--gl2),0 0 0 5px var(--dot)}
+.bg-cards,.pat-cards{display:grid;gap:10px}.bg-cards{grid-template-columns:1fr 1fr}.pat-cards{grid-template-columns:repeat(3,1fr)}
+.bg-card,.pat-card{border-radius:var(--r-card);overflow:hidden;background:var(--gl);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi),0 6px 18px var(--gl-shadow);text-align:left;transition:box-shadow .2s,transform .35s var(--gl-spring)}
+.bg-card:hover,.pat-card:hover{transform:translateY(-2px)}.bg-card:active,.pat-card:active{transform:scale(.98)}
+.bg-card.on,.pat-card.on,.bg-card.active,.pat-card.active{box-shadow:0 0 0 2px var(--accent),0 6px 18px var(--gl-shadow)}
+.bg-skel{display:flex;height:62px}.bs-side{width:34%;background:var(--gl-card);padding:8px 6px;display:flex;flex-direction:column;gap:5px}
+.bs-chat{flex:1;padding:8px;display:flex;flex-direction:column;gap:5px;background:var(--gl-inset)}.bs-chat.split{background:var(--gl-card2)}
+.bg-skel i{display:block;height:4px;border-radius:2px;background:var(--muted);opacity:.5}.bs-chat i.c{width:44%;align-self:flex-end;background:var(--accent);opacity:.8}
+.bg-cap{display:block;padding:9px 13px 11px;font-size:11.5px;color:var(--text2);line-height:1.35}.bg-cap b{display:block;font-size:12.5px;color:var(--text)}.bg-card.on .bg-cap b,.pat-card.on .pat-cap,.bg-card.active .bg-cap b,.pat-card.active .pat-cap{color:var(--accent-ink)}
+.pat-swatch{display:block;height:52px;background:repeating-linear-gradient(45deg,var(--gl-card2) 0 6px,transparent 6px 14px)}.pat-card:first-child .pat-swatch{background:var(--gl-inset)}
+.pat-cap{display:block;padding:7px;font-size:11.5px;text-align:center;color:var(--text2)}
+.cs-aa{font-weight:700;line-height:1}.cs-aname{font-size:12px;color:var(--text2);min-width:74px;text-align:right}
+.cs-stub{margin:40px auto;text-align:center;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--text2)}
+.cs-stub-i{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:26px;color:var(--accent-ink);margin-bottom:8px}.cs-stub b{color:var(--text);font-size:15px}.cs-stub span{font-size:12.5px;line-height:1.5}
+.cs-pill{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:var(--r-pill);background:var(--accent-soft);color:var(--accent-ink);margin-left:6px;vertical-align:middle}
+.fp-lead{font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:-6px}
+.fp-list{display:flex;flex-direction:column;gap:6px}
+.fp-row{display:flex;align-items:center;gap:12px;padding:8px 10px 8px 8px;border-radius:var(--r-card);background:var(--gl);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi),0 4px 14px var(--gl-shadow);transition:transform .35s var(--gl-spring),opacity .2s}
+.fp-row.drag{opacity:.5;transform:scale(.98)}
+.fp-grip{color:var(--muted);cursor:grab;width:20px;display:grid;place-items:center}
+.fp-ic{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;color:var(--fc);background:color-mix(in srgb,var(--fc) 16%,transparent);font-size:var(--ic-l);flex:none}
+.fp-tx{flex:1;min-width:0}.fp-tx b{display:block;font-size:13.5px;font-weight:600}.fp-tx small{font-size:12px;color:var(--muted)}
+.fp-acts{display:inline-flex;padding:2px;border-radius:var(--r-pill);background:var(--gl-card)}.fp-acts button{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:var(--text2);font-size:var(--ic-s);transition:background .2s,color .2s}
+.fp-acts button:hover:not(:disabled){background:var(--gl-card2);color:var(--text)}.fp-acts button.danger:hover{background:var(--danger-bg);color:var(--danger)}
+.cs-ver{display:flex;align-items:center;gap:16px;padding:18px;border-radius:var(--r-card);background:var(--gl);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi),0 6px 18px var(--gl-shadow)}
+.cs-logo{width:52px;height:52px;border-radius:18px;background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));display:grid;place-items:center;color:#fff;font-size:24px;flex:none}
+.cs-ver-t{flex:1}.cs-ver-t span{display:block;font-size:12px;color:var(--text2)}.cs-ver-t b{display:block;font-size:22px;font-weight:800;letter-spacing:-.03em}
+.cs-notes{padding:14px 18px;font-size:12.5px;color:var(--text2);line-height:1.7;border-radius:8px 8px var(--r-card) var(--r-card);background:var(--gl);border:1px solid var(--gl-edge)}.cs-notes b{color:var(--text)}
+.am-prog{height:8px;border-radius:99px;background:var(--gl-inset);overflow:hidden}.am-prog i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gl-out-a),var(--accent));transition:width .3s}
+.fp-add{align-self:flex-start}
+/* переключатели настроек как .seg и .tg макета */
+.cs-seg{position:relative;display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;height:36px;padding:3px;gap:0;border-radius:var(--r-pill);background:var(--gl-hov);border:0;box-shadow:inset 0 1px 3px var(--gl-lo)}
+.cs-seg button{position:relative;z-index:1;height:auto;padding:0 14px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text2);border-radius:var(--r-pill);white-space:nowrap;transition:color .25s}
+.cs-seg button[aria-pressed="true"]{color:var(--text)}
+.cs-tg,.cs-tg[aria-checked="true"]{box-shadow:inset 0 1px 3px var(--gl-lo)}
+.cs-g > .cs-r, .cs-g > .cs-notes { padding: 14px 18px; }
+.bg-card.bg-card, .pat-card.pat-card { border: 1px solid var(--gl-edge); }
+.cs-g > .cs-r + .cs-r { border-top: 1px solid var(--gl-edge); }
+.cs-btn { height: 36px; padding: 0 18px; gap: 8px; font-size: 13px; font-weight: 600; border-radius: var(--r-pill); }
+.cs-btn.ghost, .cs-btn.danger { box-shadow: inset 0 1px 0 var(--gl-hi); }
+.cs-inp { height: 40px; padding: 0 14px; gap: 8px; border-radius: var(--r-pill); font-size: 14px; }
+.cs-inp .cs-cnt { padding: 0; }
+.cs-btn svg { width: var(--ic-s); height: var(--ic-s); }
+.cs-btn.sm { height: 30px; padding: 0 14px; font-size: 12.5px; }
+
+/* ── Навигация настроек и шапка раздела как в макете ── */
+.cs-nav-list{display:flex;flex-direction:column;gap:2px;padding:4px 8px}
+.cs-sn{position:relative;z-index:1;display:flex;align-items:center;gap:12px;width:100%;padding:8px 10px;border-radius:var(--r-row);text-align:left;color:var(--text2);transition:background .2s}
+.cs-sn:hover{background:var(--gl-hov);color:var(--text)}
+.cs-sn[aria-current="page"]{color:var(--text)}.cs-sn[aria-current="page"]:hover{background:none}   /* как .row.on:hover: подложка наведения не лежит поверх плашки выбора */
+.cs-sn-ic{position:relative;isolation:isolate;width:34px;height:34px;border-radius:12px;display:grid;place-items:center;background:var(--gl-card);color:var(--text2);flex:none;font-size:var(--ic-m);transition:color .35s var(--gl-ease)}
+/* градиент плитки включается плавным проявлением слоя (сам градиент не анимируется), в такт плашке выделения */
+.cs-sn-ic::before{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));opacity:0;transition:opacity .45s var(--gl-ease);z-index:-1}
+.cs-sn[aria-current="page"] .cs-sn-ic{color:#fff}.cs-sn[aria-current="page"] .cs-sn-ic::before{opacity:1}
+.cs-sn{transition:background .2s,color .35s var(--gl-ease)}
+.cs-sn-tx{flex:1;min-width:0;display:flex;flex-direction:column}.cs-sn-tx b{font-size:13.5px;font-weight:600}.cs-sn-tx small{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cs-sn .cs-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.cs-copy{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:5px;padding:14px 0 6px;font-size:11.5px;color:var(--muted)}
+.cs-head{padding:16px 8px 10px}.cs-head h3{font-size:22px;letter-spacing:-.02em;font-weight:700}.cs-head p{font-size:13px;color:var(--text2);margin-top:2px}
+.cs-body{flex:1;overflow:auto;padding:4px 8px 28px;display:flex;flex-direction:column;gap:18px;scrollbar-width:none}
+.cs-body::-webkit-scrollbar{display:none}
+
+.cs-sn-ic svg { width: var(--ic-m); height: var(--ic-m); }
+
+/* Выбранный пункт бара: плитка рисуется самой кнопкой (её копирует плашка выбора), полоска у края едет вместе с ней */
+.fld-btn.active { background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow); }
+.fld-btn.active .fld-ic { background: transparent; box-shadow: none; }
+.fld-btn.ss-mute::before { opacity: 0; }
+.acc-rail .ss-ghost::before { content: ""; position: absolute; left: -14px; top: 14px; width: 4px; height: 20px; border-radius: 0 4px 4px 0; background: var(--accent); }
+
+/* Полоска выбранного пункта бара: ровно от внутреннего края панели (рамка панели остаётся целой), видимая ширина 2 px как в макете */
+.acc-btn.active::before, .fld-btn.active::before, .acc-rail .ss-ghost::before { left: -12px; width: 2px; border-radius: 0 2px 2px 0; }
+
+/* Кнопка «к последним сообщениям»: без акцентной рамки при наведении и фокусе, как остальные стеклянные кнопки */
+.scroll-bottom-btn { border-color: var(--gl-edge); color: var(--text2); }
+.scroll-bottom-btn:hover { background: var(--gl2); border-color: var(--gl-edge); color: var(--text); }
+.scroll-bottom-btn:focus, .scroll-bottom-btn:focus-visible { outline: none; }
+
+/* ── Пузыри сообщений как в мобильной версии: скругление 21, у каждого пузыря срезан нижний угол у стороны отправителя, размытие под чужими ── */
+.msg-bubble { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.irc-msg:not([data-mine]) .msg-bubble { border-radius: 21px 21px 21px 7px !important; box-shadow: inset 0 1px 0 var(--gl-hi), 0 3px 12px var(--gl-shadow); }
+.irc-msg[data-mine] .msg-bubble { border-radius: 21px 21px 7px 21px !important; border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -1px 0 rgba(0, 0, 0, .12), 0 6px 16px color-mix(in srgb, var(--gl-out-b) 38%, transparent); }
+.irc-msg.emoji-msg .msg-bubble, .irc-msg.emoji-msg[data-mine] .msg-bubble { border-radius: 21px !important; }
+.msg-bubble.bubble-photo { overflow: hidden; }

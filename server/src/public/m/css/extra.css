@@ -413,3 +413,9 @@ html, body { background: var(--gl-base); }
 .fgrp .chip { position: relative; z-index: 1; }
 .fgrp .chip.on { background: none; box-shadow: none; }
 .fgrp.nt .chip.on { background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px -2px var(--gl-shadow); }
+
+/* переключатель папок: стеклянный блок на всю ширину окна (как строка поиска), чипы прокручиваются внутри него */
+.chips.fo > .fgrp, .chips.fo > .fgrp.glass { width: 100%; box-sizing: border-box; margin: 0; justify-content: flex-start; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; }
+.chips.fo > .fgrp::-webkit-scrollbar { display: none; }
+/* значок на аватаре (папка, группа, федерация): непрозрачный фон, чтобы не просвечивал на любой теме и прозрачности */
+.av .type { background: color-mix(in srgb, var(--card-bg) 86%, #fff); }

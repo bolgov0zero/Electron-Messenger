@@ -57,10 +57,10 @@ B.ui.chatlist = (function () {
   }
   function render() {
     if (!dyn) return;
-    var tl = bar.querySelector('.chips.fo'), l = tl ? tl.scrollLeft : 0, pt = B.ui.folders.thumbOf(bar);
+    var tl = bar.querySelector('.fgrp'), l = tl ? tl.scrollLeft : 0, pt = B.ui.folders.thumbOf(bar);
     bar.innerHTML = barHtml(); dyn.innerHTML = listHtml();
     B.avatar.apply(dyn); badge();
-    var fo = bar.querySelector('.chips.fo'); if (fo) { fo.scrollLeft = l; B.ui.folders.settle(bar, pt); }
+    var fo = bar.querySelector('.fgrp'); if (fo) { fo.scrollLeft = l; B.ui.folders.settle(bar, pt); }
     var fb = bar.querySelector('.fbar'); if (fb) stuck();
   }
   function schedule() { if (renderT) return; renderT = setTimeout(function () { renderT = 0; render(); }, 30); }
