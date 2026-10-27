@@ -239,9 +239,12 @@ function renderChats(){const v=$('.tabview[data-tab="chats"]');const keep=$('.sc
   <div class="scroll"><h1 class="lt">Чаты</h1>
    <label class="srch glass">${I('search')}<input id="cq" placeholder="Поиск" autocomplete="off" value="${esc(S.q)}"></label>
    ${S.set.spaces?`<div class="chips"><button class="chip on" data-act="space">${I('grid')}${esc(S.space)}${I('chevDown')}</button></div>`:''}
-   <div class="chips">${FOLD.map(([k,l,ic])=>`<button class="chip${S.folder===k?' on':''}" data-fo="${k}">${I(ic)}${l}</button>`).join('')}</div>
+   <div class="fbar"><div class="chips fo">${FOLD.map(([k,l,ic])=>`<button class="chip${S.folder===k?' on':''}" data-fo="${k}">${I(ic)}${l}</button>`).join('')}</div></div>
    <div id="clist"></div></div>`;
-  paintList();$('.scroll',v).scrollTop=keep;scrollWatch(v);badge()}
+  paintList();const sc_=$('.scroll',v);sc_.scrollTop=keep;scrollWatch(v);badge();
+  /* панель папок липнет под бейджем раздела; когда прилипла, под ней появляется плавное затемнение */
+  const fb=$('.fbar',v),stuck=()=>{const pad=parseFloat(getComputedStyle(sc_).paddingTop)||0;fb.classList.toggle('stuck',rel(fb).y-rel(sc_).y<=pad+51)};
+  sc_.addEventListener('scroll',stuck,{passive:true});stuck()}
 function chatRow(c){const dm=c.k==='dm',pv=c.k==='group'&&c.p&&!/^Вы:/.test(c.p)&&c.who?`<i>${c.who}: </i>`:'';
   const mute=S.muted.has(c.id),pin=S.pinned.has(c.id);
   return `<button class="row${pin?' pinned':''}" data-id="${c.id}">${avHtml(c,'')}<div class="rt"><div class="r1"><b>${esc(c.n)}</b>${c.tick?`<span class="st rd">${I('checks')}</span>`:''}<span class="tm${c.u&&!mute?' new':''}">${c.t}</span></div>

@@ -513,6 +513,14 @@ html:not(.dark) .edge.t{--ea:.46}
 .tb .bd{top:1px;right:15px;min-width:18px;height:18px;font-size:10.5px;padding:0 5px;border-radius:9px}
 .scroll{padding-bottom:calc(var(--sab) + 84px)}
 
+/* Папки в списке чатов: панель прилипает под бейджем раздела (поиск уезжает вместе с лентой).
+   Папки по центру, если помещаются; если нет — от левого края со скроллом (автоотступы схлопываются при переполнении) */
+.fbar{position:sticky;top:50px;z-index:6;margin:0 -16px 6px}
+.fbar::before{content:"";position:absolute;inset:-8px 0 -12px;background:linear-gradient(var(--gl-base) 55%,transparent);opacity:0;transition:opacity .25s;pointer-events:none}
+.fbar.stuck::before{opacity:.92}
+.fbar .chips{position:relative;margin:0;padding:6px 16px}
+.chips.fo>:first-child{margin-left:auto}.chips.fo>:last-child{margin-right:auto}
+
 </style></head>
 <body>
 <div class="stage">
