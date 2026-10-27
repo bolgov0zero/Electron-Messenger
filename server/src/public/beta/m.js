@@ -130,7 +130,8 @@ function setTheme(t){const m=document.querySelector('meta[name=theme-color]');m&
   $$('.dot2').forEach(d=>d.style.setProperty('--dot','rgb('+ACC[d.dataset.a][root.classList.contains('dark')?2:1]+')'))}
 function segMove(seg){const b=$('button.on',seg),t=$('.thumb',seg);if(!b||!t)return;t.style.left=b.offsetLeft+'px';t.style.width=b.offsetWidth+'px'}
 const real=()=>window.innerWidth<=520;   /* на настоящем телефоне: на весь экран и со своей клавиатурой телефона */
-function fit(){const f=$('.fit');if(real()){const full=f.clientHeight||innerHeight,vv=window.visualViewport,kb=vv&&vv.height<full-120;const H=kb?vv.height:full;sc=innerWidth/393;phone.style.width='393px';phone.style.height=H/sc+'px';phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',sc);phone.style.left='0';phone.style.top=(kb?vv.offsetTop:0)+'px';return}
+function fit(){const f=$('.fit');if(real()){const full=f.clientHeight||innerHeight,vv=window.visualViewport,kb=vv&&vv.height<full-120;/* с клавиатурой окно остаётся на всю высоту (фон виден и за полосой «назад / вперёд / готово» над клавиатурой), поле ввода поднимается на высоту клавиатуры (--kbh) */
+    const top=kb?vv.offsetTop:0,H=full-top,kbh=kb?Math.max(0,full-top-vv.height):0;sc=innerWidth/393;phone.style.width='393px';phone.style.height=H/sc+'px';phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',sc);phone.style.setProperty('--kbh',kbh/sc+'px');phone.style.left='0';phone.style.top=top+'px';return}
   sc=Math.min(f.clientWidth/453,f.clientHeight/(852+40),1.2);phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',1);phone.style.left=(f.clientWidth-393*sc)/2+'px';phone.style.top=Math.max(14,(f.clientHeight-852*sc)/2)+'px'}
 addEventListener('resize',fit);
 if(window.visualViewport)visualViewport.addEventListener('scroll',()=>{if(real())fit()});

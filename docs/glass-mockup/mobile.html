@@ -169,7 +169,7 @@ html.dark.navy{--app-bg:#111a24;--side-bg:#182430;--card-bg:#213040;--modal-bg:#
    Токены, стекло, кнопки, .seg/.tg/.fld/.av — те же, что в макете компьютера (блок выше).
    iOS-логика навигации: стек страниц, большие заголовки, плавающие стеклянные шапка и вкладки, шторки снизу.
    Размеры: цель нажатия ≥ 44, радиусы: телефон 58 · шапка/вкладки — капсулы · карточка 26 · шторка 32 · строка 20 */
-:root{--sat:54px;--sab:34px;--r-card:26px;--r-sheet:32px;--r-row:20px}
+:root{--sat:54px;--sat0:54px;--sab:34px;--r-card:26px;--r-sheet:32px;--r-row:20px}
 html{position:fixed;top:0;left:0;width:100vw;height:100dvh;background:#12171d;overscroll-behavior:none}body{position:fixed;inset:0;overscroll-behavior:none}
 .stage{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center}
 .bar{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 16px 0;flex:none;position:relative;z-index:60}
@@ -405,14 +405,14 @@ html.dark .grp>*+*{border-top-color:rgba(255,255,255,.07)}
 .mcopy{text-align:center;font-size:12.5px;color:var(--muted);padding:6px 0 20px}
 .fedit{display:flex;gap:10px;align-items:center;margin:10px 0}.fcols{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.fcols button{width:34px;height:34px;border-radius:50%;background:var(--fc);box-shadow:inset 0 1px 0 rgba(255,255,255,.4);transition:transform .35s var(--gl-spring)}.fcols button.on{box-shadow:0 0 0 3px var(--gl2),0 0 0 5px var(--fc)}
 .fic{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;font-size:24px;color:var(--fc);background:color-mix(in srgb,var(--fc) 18%,transparent);flex:none}
-@media (max-width:520px){.bar{display:none}.phone{border-radius:0;box-shadow:none}.fit{position:fixed;top:0;left:0;width:100vw;height:100dvh}body{background:var(--gl-base)}.isl,.sbar,.home{display:none}.phone{--sat:calc(max(14px,env(safe-area-inset-top)) / var(--sc,1));--sab:calc(max(20px,env(safe-area-inset-bottom)) / var(--sc,1));touch-action:manipulation}}
+@media (max-width:520px){.bar{display:none}.phone{border-radius:0;box-shadow:none}.fit{position:fixed;top:0;left:0;width:100vw;height:100dvh}body{background:var(--gl-base)}.isl,.sbar,.home{display:none}.phone{--sat0:calc(max(14px,env(safe-area-inset-top)) / var(--sc,1));--sat:calc(var(--sat0) + 24px);--sab:calc(max(20px,env(safe-area-inset-bottom)) / var(--sc,1));touch-action:manipulation}}
 @media (prefers-reduced-motion:reduce){.page,.tabview,.sheet,.cmm,.cmr,.toast{transition-duration:.01s}.amb i{animation:none!important}}
 
 /* Служебные области iOS (резервирует система): статус-бар/остров сверху и индикатор «домой» снизу.
    Страница идёт под них (black-translucent, viewport-fit=cover), поэтому у краёв — «краевой эффект» как в iOS 26:
    размытие + плавный градиент, чтобы белое время и значки статус-бара читались на любом фоне и любой теме. */
 .edge{position:absolute;left:0;right:0;pointer-events:none;z-index:8}
-.edge.t{top:0;height:calc(var(--sat) + 16px);background:linear-gradient(rgba(6,12,18,var(--ea,.5)),transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);-webkit-mask-image:linear-gradient(#000 58%,transparent);mask-image:linear-gradient(#000 58%,transparent)}
+.edge.t{top:0;height:calc(var(--sat0) + 8px);background:linear-gradient(rgba(6,12,18,var(--ea,.5)),transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);-webkit-mask-image:linear-gradient(#000 58%,transparent);mask-image:linear-gradient(#000 58%,transparent)}
 html:not(.dark) .edge.t{--ea:.46}
 .edge.b{bottom:0;height:calc(var(--sab) + 22px);background:linear-gradient(transparent,color-mix(in srgb,var(--gl-base) 78%,transparent));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);-webkit-mask-image:linear-gradient(transparent,#000 52%);mask-image:linear-gradient(transparent,#000 52%)}
 .phone{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
@@ -429,6 +429,14 @@ html:not(.dark) .edge.t{--ea:.46}
   body{position:absolute;inset:0;height:100%;overflow:hidden}
   .fit{position:absolute;top:0;left:0;width:100%;height:100%}
 }
+
+/* Низ прозрачный: ни размытия, ни подложки, под парящими панелями виден список */
+.edge.b{display:none}
+
+/* настоящая клавиатура iOS: поле ввода над ней, страница продолжается под полосой «назад / вперёд / готово» */
+.phone.kbr .comp{bottom:calc(var(--kbh,0px) + 8px)}
+.phone.kbr .chat .scroll{padding-bottom:calc(var(--kbh,0px) + 78px)}
+.phone.kbr .jump{bottom:calc(var(--kbh,0px) + 80px)}
 
 </style></head>
 <body>
@@ -571,7 +579,8 @@ function setTheme(t){const m=document.querySelector('meta[name=theme-color]');m&
   $$('.dot2').forEach(d=>d.style.setProperty('--dot','rgb('+ACC[d.dataset.a][root.classList.contains('dark')?2:1]+')'))}
 function segMove(seg){const b=$('button.on',seg),t=$('.thumb',seg);if(!b||!t)return;t.style.left=b.offsetLeft+'px';t.style.width=b.offsetWidth+'px'}
 const real=()=>window.innerWidth<=520;   /* на настоящем телефоне: на весь экран и со своей клавиатурой телефона */
-function fit(){const f=$('.fit');if(real()){const full=f.clientHeight||innerHeight,vv=window.visualViewport,kb=vv&&vv.height<full-120;const H=kb?vv.height:full;sc=innerWidth/393;phone.style.width='393px';phone.style.height=H/sc+'px';phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',sc);phone.style.left='0';phone.style.top=(kb?vv.offsetTop:0)+'px';return}
+function fit(){const f=$('.fit');if(real()){const full=f.clientHeight||innerHeight,vv=window.visualViewport,kb=vv&&vv.height<full-120;/* с клавиатурой окно остаётся на всю высоту (фон виден и за полосой «назад / вперёд / готово» над клавиатурой), поле ввода поднимается на высоту клавиатуры (--kbh) */
+    const top=kb?vv.offsetTop:0,H=full-top,kbh=kb?Math.max(0,full-top-vv.height):0;sc=innerWidth/393;phone.style.width='393px';phone.style.height=H/sc+'px';phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',sc);phone.style.setProperty('--kbh',kbh/sc+'px');phone.style.left='0';phone.style.top=top+'px';return}
   sc=Math.min(f.clientWidth/453,f.clientHeight/(852+40),1.2);phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',1);phone.style.left=(f.clientWidth-393*sc)/2+'px';phone.style.top=Math.max(14,(f.clientHeight-852*sc)/2)+'px'}
 addEventListener('resize',fit);
 if(window.visualViewport)visualViewport.addEventListener('scroll',()=>{if(real())fit()});
