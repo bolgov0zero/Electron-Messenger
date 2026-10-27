@@ -1199,3 +1199,47 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -1px 0 rgba(0, 0, 0, .12), 0 6px 16px color-mix(in srgb, var(--gl-out-b) 38%, transparent); }
 .irc-msg.emoji-msg .msg-bubble, .irc-msg.emoji-msg[data-mine] .msg-bubble { border-radius: 21px !important; }
 .msg-bubble.bubble-photo { overflow: hidden; }
+
+/* ══════════════════════════════════════════════════════════════
+   Компактнее: меню, поле ввода, кнопки шапок; список уходит под нижнюю панель
+   ══════════════════════════════════════════════════════════════ */
+/* Нижняя панель вкладок парит над списком: список и контакты занимают сайдбар целиком и уходят под неё */
+.sidebar-tabbar { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); margin: 0; z-index: 3; }
+.sidebar .chats-list { padding-bottom: 76px; }
+
+/* Контекстные меню и выпадающие списки: ниже строки, мельче шрифт и значки */
+.ctx-menu { min-width: 192px; padding: 5px; gap: 1px; }
+.ctx-menu button { height: 34px; padding: 0 10px; gap: 10px; font-size: 13px; border-radius: 12px; }
+.ctx-menu button svg { width: 16px; height: 16px; }
+.ctx-sep { margin: 3px 10px; }
+.ctx-cap { padding: 6px 10px 3px; font-size: 11px; }
+.ctx-reactions { height: 36px; margin-bottom: 3px; }
+.ctx-menu .ctx-reactions button { width: 30px; height: 30px; font-size: 16px; }
+.ctx-read-fly, .ctx-sub-fly { min-width: 184px; padding: 5px; }
+.ctx-sub-fly button { height: 32px; font-size: 12.5px; }
+.up-menu button { height: 34px; padding: 0 10px; gap: 10px; font-size: 13px; }
+#mention-popup { min-width: 200px; padding: 5px; }
+.mention-item { padding: 5px 8px; }
+.mention-item .mn-name { font-size: 13px; }
+#reaction-picker { width: 232px; padding: 5px; }
+#reaction-picker .emoji-item, .emoji-item { width: 32px; height: 32px; font-size: 18px; }
+.ep-grid { width: 312px; padding: 6px; }
+.head-menu { padding: 3px; }
+.hm-i { width: 30px; height: 30px; }
+.hm-i svg { width: 16px; height: 16px; }
+
+/* Поле ввода и кнопки по бокам */
+.composer-main { gap: 8px; }
+.composer-main .composer-attach, .composer-main .send-btn { width: 44px; height: 44px; }
+.composer-field { border-radius: 22px; }
+.composer-field-row { min-height: 44px; padding: 0 6px 0 18px; }
+
+/* Кнопки шапок: мельче; кнопки в шапке сайдбара не прижаты к верхнему краю */
+.chat-header-actions { height: 38px; }
+.chat-header-actions > .icon-btn, .chat-header-actions > .icon-btn:first-child, .chat-header-actions > .icon-btn:last-child,
+.chat-header-actions > .icon-btn:only-child { width: 34px; height: 34px; }
+.sidebar-head { height: 56px; min-height: 56px; }
+.sidebar-head .btn-new-chat, .topbar-actions .icon-btn { width: 30px; height: 30px; }
+.topbar-actions svg, .topbar-actions .head-more svg { width: 16px; height: 16px; }
+/* значок папки: оптическая центровка — контур папки смещён вправо относительно своей рамки */
+.fbd svg { transform: translateX(-.7px); }

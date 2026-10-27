@@ -1,0 +1,29 @@
+/* Стекло — только для Electron: бар и сайдбар как единый блок (скрываются, выезжают и меняют ширину вместе). Подключается после glass.css. */
+
+/* Ширину списка задаёт ручка (--sidebar-w на корне); в glass.css при баре она была жёстко 304 px, из-за чего сужение не работало */
+.acc-rail:not([hidden]) + .sidebar { --sidebar-w: inherit; }
+
+/* Учётные записи — внизу бара, под папками; одна запись — просто свой аватар */
+.rail-accs { margin-top: auto; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.rail-folders.scroll + .rail-accs, .acc-rail > :not(.rail-accs):last-of-type + .rail-accs { margin-top: auto; }
+.rail-accs .rail-me { margin-top: 0; }
+.rail-accs .acc-btn { position: relative; width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; }
+.rail-accs .acc-btn .presence-dot { position: absolute; right: 0; bottom: 0; z-index: 2; }
+.rail-accs .acc-btn .av { width: 44px; height: 44px; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+
+/* Скрытие: бар и сайдбар уезжают за левый край и выезжают одним блоком (одно и то же смещение, плотно друг к другу) */
+body.sidebar-overlay .sidebar {
+  left: 12px; top: 12px; bottom: 12px; margin: 0;
+  transform: translateX(calc(-100% - 12px));
+}
+body.has-rail.sidebar-overlay { --unit-w: calc(var(--sidebar-w) + 72px + 12px); }
+body.sidebar-overlay .acc-rail:not([hidden]) {
+  position: absolute; left: 12px; top: 12px; bottom: 12px; z-index: 21; flex: none; width: 72px; min-width: 72px; margin: 0; padding: 12px 0;
+  border-width: 1px; border-right: 0; overflow: visible;
+  transform: translateX(calc(-1 * var(--unit-w)));
+  transition: transform .22s cubic-bezier(.4, 0, .2, 1), box-shadow .22s;
+}
+body.has-rail.sidebar-overlay .sidebar { left: 84px; transform: translateX(calc(-1 * var(--unit-w))); border-radius: 0 30px 30px 0; border-left: 1px solid var(--gl-lo); }
+body.sidebar-overlay.sidebar-peeking .acc-rail,
+body.has-rail.sidebar-overlay.sidebar-peeking .sidebar,
+body.sidebar-overlay.sidebar-peeking .sidebar { transform: translateX(0); }

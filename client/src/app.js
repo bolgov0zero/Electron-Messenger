@@ -108,6 +108,14 @@ function refreshActivity() {
 // Таймер не перезапускается при повторных сменах фокуса: отсчёт идёт от первой потери.
 const AWAY_DELAY = 5000;
 let _awayTimer = null;
+// Свой статус отдаём главному процессу: по нему другие окна рисуют точку у аватара этой записи в баре
+let _ownStReported = null;
+function reportOwnStatus() {
+  if (!window.electron?.setAccountStatus || !S.user) return;
+  const st = S.presence[S.user.id] || 'offline';
+  if (st === _ownStReported) return;
+  _ownStReported = st; window.electron.setAccountStatus(st);
+}
 function sendPresenceStatus(status) {
   const name = { online: 'Онлайн', away: 'Отошёл', offline: 'Не в сети' }[status] || status;
   if (S.ws?.readyState===1) {
@@ -871,24 +879,30 @@ function renderAccountRail() {
   const show = showAcc || (S.folders || []).length > 0 || (typeof spacesRailShown === 'function' && spacesRailShown());   // бар нужен и с одной записью, если есть папки или общие пространства
   rail.hidden = !show;
   document.body.classList.toggle('has-rail', show);
-  if (!show) { rail.innerHTML = ''; return; }
+  if (!show) { rail.innerHTML = ''; applySidebarW(); return; }
   // Записи — отдельные окна клиента: при переключении плашка выбора должна проехать от прежней записи к новой
   // и в только что открытом окне, где нажатия не было
   if (window.SlideSel && S.acc.activeId !== _railActive) SlideSel.allowNext(500);
   _railActive = S.acc.activeId;
-  rail.innerHTML = (showAcc ? S.acc.list.map(a => {
+  // Сверху — пространства и папки, внизу — учётные записи (аватарки со своим настоящим статусом): активная открывает профиль, остальные переключают запись
+  const accBtn = a => {
     const m = a.meta;
     const cls = m ? userAvatarColor(m.userId, m.tag) : 'av-default';
     const img = m ? `<img src="${accHttp(m.server)}://${esc(m.server)}/api/users/${m.userId}/avatar" alt="" data-on-error="__h17">` : '';
-    const isActive = a.id === S.acc.activeId;
+    const isActive = a.id === S.acc.activeId, isSelf = a.id === S.acc.selfId && S.user;
     const badge = !isActive && a.unread > 0 ? `<span class="acc-badge">${a.unread > 99 ? '99+' : a.unread}</span>` : '';
     const name = m ? esc(m.name) : 'Вход не выполнен', srv = m ? esc(m.server) : '', sys = m && m.serverName ? esc(m.serverName) : '';
-    return `<button type="button" class="acc-btn${isActive ? ' active' : ''}" data-on-click="__h18" data-a-click="${esc(JSON.stringify([esc(a.id)]))}" aria-label="${sys ? sys + ', ' : ''}${name}${srv ? ', ' + srv : ''}">
-      <span class="av av-round ${cls}">${esc(m ? initials(m.name) : '?')}${img}</span>${badge}
+    const st = a.status || 'offline';
+    const dot = isSelf ? presenceDot(S.user.id) : `<span class="presence-dot${st === 'away' ? ' away' : ''}"${st === 'offline' ? ' style="display:none"' : ''}></span>`;
+    const click = isActive && S.user ? `data-on-click="openProfile" data-a-click="${esc(JSON.stringify([S.user.id]))}"` : `data-on-click="__h18" data-a-click="${esc(JSON.stringify([esc(a.id)]))}"`;
+    return `<button type="button" class="acc-btn rail-acc${isActive ? ' active' : ''}" ${click} aria-label="${sys ? sys + ', ' : ''}${name}${srv ? ', ' + srv : ''}">
+      <span class="av av-round ${cls}">${esc(m ? initials(m.name) : '?')}${img}</span>${dot}${badge}
       <span class="acc-tip">${sys ? `<span class="acc-sys">${sys}</span>` : ''}<b>${name}</b><span>${srv}</span></span></button>`;
-  }).join('') : '') + (typeof spacesRailHtml === 'function' ? spacesRailHtml(showAcc) : '') + (typeof foldersRailHtml === 'function' ? foldersRailHtml(showAcc || (typeof spacesRailShown === 'function' && spacesRailShown())) : '')
-    // Внизу бара — свой аватар со статусом (как в вебе); по нажатию открывается профиль
-    + (S.user ? `<button type="button" class="rail-me" title="Профиль" aria-label="Профиль" data-on-click="openProfile" data-a-click="${esc(JSON.stringify([S.user.id]))}"><span class="av-wrap"><span class="av av-round ${userAvatarColor(S.user.id, S.user.tag)}" data-av-user="${S.user.id}">${esc(initials(S.user.display_name || S.user.username || '?'))}</span><i class="presence-dot"></i></span></button>` : '');
+  };
+  const meBtn = S.user ? `<button type="button" class="rail-me" title="Профиль" aria-label="Профиль" data-on-click="openProfile" data-a-click="${esc(JSON.stringify([S.user.id]))}"><span class="av-wrap"><span class="av av-round ${userAvatarColor(S.user.id, S.user.tag)}" data-av-user="${S.user.id}">${esc(initials(S.user.display_name || S.user.username || '?'))}</span>${presenceDot(S.user.id)}</span></button>` : '';
+  rail.innerHTML = (typeof spacesRailHtml === 'function' ? spacesRailHtml(false) : '') + (typeof foldersRailHtml === 'function' ? foldersRailHtml(typeof spacesRailShown === 'function' && spacesRailShown()) : '')
+    + `<div class="rail-accs">${showAcc ? S.acc.list.map(accBtn).join('') : meBtn}</div>`;
+  applySidebarW();
   if (typeof foldersRailFit === 'function') foldersRailFit();
   applyAvatars();
 }
@@ -1194,16 +1208,18 @@ function setUiScale(v) { S.settings.uiScale=v; applySettings(); saveSession(); p
 // Хранится на устройстве и общая для всех учётных записей (уходит в общие настройки приложения).
 // Минимум — аватарка с отступами, максимум ограничен шириной окна, чтобы переписке осталось место.
 // Минимум — как ширина бара учётных записей (66px: аватарка 44px и отступы)
-const SB_MIN = 66, SB_MAX = 460, SB_DEF = 350;
+const SB_MIN = 66, SB_MAX = 460;
+// Ширина списка по умолчанию: с баром весь блок (бар 72 + список) 376, как в макете; без бара список занимает все 376
+const sbDefault = () => document.body.classList.contains('has-rail') ? 304 : 376;
 let _sbHideDelta = null;
 function currentSidebarW() {
   try { const n = Number(localStorage.getItem('sidebarW')); if (n >= SB_MIN && n <= SB_MAX) return Math.round(n); } catch {}
-  return SB_DEF;
+  return sbDefault();
 }
 function applySidebarW() { document.documentElement.style.setProperty('--sidebar-w', currentSidebarW() + 'px'); }
 function setSidebarW(w, persist) {
   const m = zoomMetrics();
-  const max = Math.max(SB_MIN, Math.min(SB_MAX, Math.round(m.vw - 340 - (document.body.classList.contains('has-rail') ? 82 : 0))));
+  const max = Math.max(SB_MIN, Math.min(SB_MAX, Math.round(m.vw - 340 - (document.body.classList.contains('has-rail') ? 84 : 0))));
   const v = Math.max(SB_MIN, Math.min(max, Math.round(w)));
   try { localStorage.setItem('sidebarW', String(v)); } catch {}
   applySidebarW();
@@ -1261,7 +1277,7 @@ function initSidebarResize() {
   const end = () => { if (!dragging()) return; document.body.classList.remove('sb-dragging'); setSidebarW(currentSidebarW(), true); };
   grip.addEventListener('pointerup', end);
   grip.addEventListener('pointercancel', end);
-  grip.addEventListener('dblclick', () => setSidebarW(SB_DEF, true));
+  grip.addEventListener('dblclick', () => setSidebarW(sbDefault(), true));
   grip.addEventListener('keydown', e => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     e.preventDefault();
@@ -1279,7 +1295,7 @@ function toggleSidebar() {
   localStorage.setItem('sidebarHidden', hidden ? '1' : '');
   // Ширину окна подстраиваем под убранные колонки: сайдбар, а при двух записях и бар записей (66px + отступ 16px)
   // Окно меняется на ту же величину, что и при скрытии (ширина сайдбара может быть любой), поэтому её запоминаем
-  const railW = document.body.classList.contains('has-rail') ? 82 : 0;
+  const railW = document.body.classList.contains('has-rail') ? 84 : 0;
   if (hidden) _sbHideDelta = currentSidebarW() - 70 + railW;
   const delta = _sbHideDelta ?? (currentSidebarW() - 70 + railW);
   window.electron?.resizeWindow(hidden ? -delta : delta);
@@ -6321,6 +6337,7 @@ function connectWS() {
     if (data.type==='presence') {
       S.presence[data.user_id] = data.status;
       (S.presenceMobile ||= {})[data.user_id] = !!data.mobile && data.status === 'online';
+      if (S.user && data.user_id === S.user.id) reportOwnStatus();
       if (gmIsOpen()) setTimeout(gmPaintStatus, 0);
       if (data.last_seen) S.lastSeen[data.user_id] = data.last_seen;
       // Обновляем подпись в шапке открытого личного чата («в сети» / «был(а) в …»)
@@ -6936,6 +6953,7 @@ async function loadPresence() {
       if (v && typeof v === 'object') { S.presence[id] = v.status; S.presenceMobile[id] = !!v.mobile && v.status === 'online'; if (v.last_seen) S.lastSeen[id] = v.last_seen; }
       else S.presence[id] = v; // совместимость со старым сервером
     }
+    reportOwnStatus();
     renderChatList();
   }
 }

@@ -358,7 +358,7 @@ const totalUnread = () => accounts.reduce((sum, a) => sum + (a.unread || 0), 0);
 
 function accountsPayload() {
   return { activeId: activeAccountId,
-    accounts: accounts.filter(a => !a.pending).map(a => ({ id: a.id, meta: a.meta, unread: a.unread || 0 })) };
+    accounts: accounts.filter(a => !a.pending).map(a => ({ id: a.id, meta: a.meta, unread: a.unread || 0, status: a.status || 'offline' })) };
 }
 function broadcastAccounts() {
   const base = accountsPayload();
@@ -778,6 +778,14 @@ ipcMain.on('notify', (e, { title, body, chatId }) => {
     if (chatId && view && !view.webContents.isDestroyed()) view.webContents.send('open-chat', chatId);
   });
   n.show();
+});
+
+// Статус записи (онлайн / отошёл / не в сети) для точки у аватара в баре: каждая запись — отдельное окно, и только оно знает свой статус
+ipcMain.on('account-status', (e, status) => {
+  const acc = accounts.find(a => a.id === accountIdOf(e));
+  if (!acc || acc.status === status) return;
+  acc.status = status;
+  broadcastAccounts();
 });
 
 ipcMain.on('unread', (e, count) => {

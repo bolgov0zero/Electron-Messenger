@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electron', {
   notify: (title, body, chatId) => ipcRenderer.send('notify', { title, body, chatId }),
   setUnread: (count) => ipcRenderer.send('unread', count),
+  setAccountStatus: (status) => ipcRenderer.send('account-status', status),
   getPlatform: () => ipcRenderer.invoke('get-platform'),
   // macOS: выезжающая полоса шапки (см. initMacTitlebar в app.js)
   onTitlebar: cb => ipcRenderer.on('titlebar-open', (_, on) => cb(on)),
