@@ -131,6 +131,14 @@ router.get('/chat/:chatId/media', authMiddleware, async (req, res) => {
   res.json({ items, more, cursor: more ? cursor : null });
 });
 
+// Ближайшее непрочитанное упоминание в чате: на него ведёт кнопка «@» над кнопкой «вниз»
+router.get('/chat/:chatId/next-mention', authMiddleware, async (req, res) => {
+  const { chatId } = req.params;
+  if (!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', chatId, req.user.id)))
+    return res.status(403).json({ error: 'Not a member' });
+  res.json({ id: await unreadCounts.firstUnreadMention(req.user.id, chatId) });
+});
+
 // Получить сообщения чата с пагинацией (query: before | after | around, limit)
 router.get('/chat/:chatId', authMiddleware, async (req, res) => {
   const { chatId } = req.params;

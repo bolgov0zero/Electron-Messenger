@@ -401,11 +401,7 @@ function refreshActivity() {
       else loadChats();
     }
     if (S.activeChatId && S.ws?.readyState===1) {
-      S.ws.send(JSON.stringify({type:'read', chat_id: S.activeChatId}));
-      S.unread[S.activeChatId] = 0;
-      S.unreadMentions[S.activeChatId] = 0;
-      updateUnreadTotal();
-      renderChatList();
+    sendRead(S.activeChatId);
     }
   }
   sendPresence(viewing);
@@ -1763,15 +1759,36 @@ function tailSave(chatId, messages) {
   if (!S.user || S.secretChatIds.has(chatId) || !messages?.length) return;
   try {
     const key = _cacheKey('tails');
-    const all = JSON.parse(localStorage.getItem(key) || '{}');
+    const all = tailAll();
     all[chatId] = { t: Date.now(), m: messages.slice(-40) };
     Object.keys(all).sort((a, b) => all[b].t - all[a].t).slice(12).forEach(k => delete all[k]);   // помним последние 12 чатов
+    _tailMem = all;
     localStorage.setItem(key, JSON.stringify(all));
   } catch {}
 }
+let _tailMem = null, _tailT = null;
+function tailAll() { if (!_tailMem) { try { _tailMem = JSON.parse(localStorage.getItem(_cacheKey('tails')) || '{}'); } catch { _tailMem = {}; } } return _tailMem; }
+function tailPersist() {
+  clearTimeout(_tailT);
+  _tailT = setTimeout(() => { try { localStorage.setItem(_cacheKey('tails'), JSON.stringify(tailAll())); } catch {} }, 1500);
+}
+// Новое сообщение открытого чата попадает в сохранённый хвост: при следующем входе чат откроется сразу и с ним
+function tailPush(chatId, m) {
+  if (!S.user || S.secretChatIds.has(chatId) || S.chatHasMoreAfter) return;
+  const all = tailAll(), t = all[chatId];
+  if (!t || !t.m?.length || t.m.some(x => x.id === m.id)) return;
+  t.m = t.m.concat(m).slice(-40); t.t = Date.now();
+  tailPersist();
+}
+// Правка или удаление сообщения обновляют его же в хвосте
+function tailPatch(m) {
+  const t = tailAll()[m.chat_id];
+  const i = t ? t.m.findIndex(x => x.id === m.id) : -1;
+  if (i >= 0) { t.m[i] = { ...t.m[i], ...m }; tailPersist(); }
+}
 function tailLoad(chatId) {
   try {
-    const t = JSON.parse(localStorage.getItem(_cacheKey('tails')) || '{}')[chatId];
+    const t = tailAll()[chatId];
     return t?.m?.length ? { messages: t.m, hasMore: false, hasMoreAfter: false, pins: [], first_unread_id: null } : null;
   } catch { return null; }
 }
@@ -1791,9 +1808,11 @@ async function loadChats() {
   // В чат попал человек, которого ещё нет в списке людей (добавили в группу): подтянуть список
   if (chats.some(c => (c.members || []).some(m => m.id !== S.user.id && !S.allUsers.some(u => u.id === m.id)))) loadUsers();
   chats.forEach(c => {
-    S.unread[c.id] = (c.id === S.activeChatId) ? 0 : (c.unread || 0);
-    S.unreadMentions[c.id] = (c.id === S.activeChatId) ? 0 : (c.unread_mentions || 0);
+    S.unread[c.id] = c.unread || 0;
+    S.unreadMentions[c.id] = c.unread_mentions || 0;
   });
+  // Открытый чат: сервер считает непрочитанное по отметке «прочитано», уточняем её по тому, что сейчас видно
+  if (S.activeChatId) { _readSent[S.activeChatId] = 0; scheduleRead(); }
   await Promise.all(chats.filter(c=>c.has_topics).map(c=>loadTopics(c.id)));
   updateUnreadTotal();
   renderChatList();
@@ -2476,6 +2495,8 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     S.activeTopicId = null;
   }
   if (S.editingMessageId) cancelEdit();
+  if (S.activeChatId && S.activeChatId !== chatId) savePos(S.activeChatId);
+  const _hadUnread = (S.unread[chatId] || 0) > 0;
   S.activeChatId = chatId;
   _loadingChatId = chatId;
   S.chatHasMore = false;
@@ -2486,8 +2507,8 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   _loadingMore = false;
   releaseAnchor(); // удержание от прошлого чата не должно мешать новому
   releaseStick();
-  S.unread[chatId] = 0;
-  S.unreadMentions[chatId] = 0;
+  // Счётчик не обнуляем: «прочитано» уходит по мере показа, остаток приходит от сервера
+  _readSent[chatId] = 0;
   updateUnreadTotal();
   renderChatList();
   if (chat?.parent_id) renderTopicsPanel(chat.parent_id);
@@ -2533,8 +2554,9 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     ${chatSearchBarHtml(chatId, chat.is_secret)}
     <div class="messages-wrap">
       <div class="messages" id="messages"></div>
+      <button id="mention-btn" class="scroll-bottom-btn mention-btn" data-on-click="scrollToNextMention" title="К упоминанию" aria-label="К упоминанию"><span>@</span></button>
       <button id="scroll-bottom-btn" class="scroll-bottom-btn" data-on-click="scrollMessagesToBottom" aria-label="К последним сообщениям">
-        <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg><span id="sb-badge" class="sb-badge"></span>
       </button>
     </div>
 `);
@@ -2663,7 +2685,15 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   // read_at раньше, чем посчитает первое непрочитанное, и разделитель пропадает
 
   const msgsEl = document.getElementById('messages');
-  if (msgsEl) {
+  // Вернулись в чат, из которого ушли с историей выше: открываем на том же месте
+  const _pos = (!aroundId && !forceBottom && !_hadUnread) ? S.lastPos[chatId] : null;
+  if (_pos) { aroundId = _pos.id; delete S.lastPos[chatId]; }
+  // Чат без непрочитанного открывается сразу из сохранённого хвоста; настоящие сообщения заменят его, когда придёт ответ
+  const _tl = (!aroundId && !forceBottom && !_hadUnread) ? tailLoad(chatId) : null;
+  if (msgsEl && _tl) {
+    S.activeChatId === chatId && renderMessages(_tl.messages);
+    setAnchor({ mode: 'bottom' });
+  } else if (msgsEl) {
     msgsEl.innerHTML = `<div class="skeleton-wrap">${[200,280,160,240,120].map((w,i) =>
       `<div class="skeleton-msg ${i%2===0?'theirs':'mine'}">
         <div class="skeleton-av"></div>
@@ -2694,19 +2724,21 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     watchComposerHeight();
     watchTopHeight();
     renderTyping(chatId);
-    if (aroundId) {
+    // Закреплённые приходят вместе с историей
+    S.pins = data.pins || [];
+    _pinIdx = 0;
+    renderPinBar();
+    if (_pos && aroundId === _pos.id) {
+      requestAnimationFrame(() => { if (!restorePos(_pos)) scrollToMsg(aroundId, true); });
+    } else if (aroundId) {
       requestAnimationFrame(() => scrollToMsg(aroundId, true));
     } else {
-      // Закреплённые приходят вместе с историей
-      S.pins = data.pins || [];
-      _pinIdx = 0;
-      renderPinBar();
       const divider = insertUnreadDivider(data.first_unread_id);
       setAnchor(divider && !forceBottom
         ? { mode: 'el', id: data.first_unread_id, offset: 8 }
         : { mode: 'bottom' });
     }
-    if (S.ws && isViewing()) S.ws.send(JSON.stringify({ type: 'read', chat_id: chatId }));
+    setTimeout(() => sendRead(chatId), 350);
     const msgsEl2 = document.getElementById('messages');
     if (msgsEl2) {
       msgsEl2.addEventListener('scroll', onMessagesScroll, { passive: true });
@@ -3249,16 +3281,152 @@ function renderMessages(msgs) {
   reflowSeries();
 }
 
+
+// ── ЛЕНТА КАК В TELEGRAM ──
+// Подгрузка заранее (за два экрана до края), окно ограниченного размера, «прочитано» по мере показа,
+// возврат на прежнее место в чате и счётчики на кнопках «вниз» и «@»
+var FEED_MAX = 320, FEED_KEEP = 200;
+var _trimT = null, _readT = null, _lastScroll = 0;
+var _readSent = {};
+S.lastPos = S.lastPos || {};
+function feedEdge(c) { return Math.max(1400, c.clientHeight * 2); }
+
+// Первое сообщение, видимое у верхнего края ленты
+function firstVisibleMsg(c) {
+  const rows = c.querySelectorAll('[data-msg-id]');
+  const top = c.getBoundingClientRect().top;
+  let lo = 0, hi = rows.length - 1, ans = -1;
+  while (lo <= hi) { const mid = (lo + hi) >> 1; if (rows[mid].getBoundingClientRect().bottom > top + 1) { ans = mid; hi = mid - 1; } else lo = mid + 1; }
+  return ans < 0 ? null : rows[ans];
+}
+
+// Лента не должна расти без конца: оставляем окно вокруг того, что читают, дальнее с обеих сторон выпадает
+// (подгрузится снова через loadMoreMessages / loadMoreAfter)
+function feedTrim() {
+  const c = document.getElementById('messages');
+  if (!c || _loadingMore || _anchor || _loadingChatId) return;
+  const rows = [...c.querySelectorAll('[data-msg-id]')];
+  const n = rows.length;
+  // Пока лента летит, лишнее убираем только когда оно сильно перерасходовано: запись scrollTop на лету рвёт инерцию
+  if (n <= FEED_MAX) return;
+  if (performance.now() - _lastScroll < 150 && n <= FEED_MAX * 1.6) { _trimT = setTimeout(() => { _trimT = null; feedTrim(); }, 300); return; }
+  const ref = firstVisibleMsg(c);
+  const ai = ref ? rows.indexOf(ref) : -1;
+  if (ai < 0) return;
+  const lo = Math.max(0, ai - FEED_KEEP);
+  let hi = Math.min(n, ai + FEED_KEEP);
+  // Неотправленное из хвоста не убираем: оно живёт в очереди и должно оставаться в ленте
+  if (hi < n && rows.slice(hi).some(r => r.dataset.optimistic || r.dataset.cid)) hi = n;
+  if (lo + (n - hi) < 40) return;
+  const y0 = ref.getBoundingClientRect().top;
+  const drop = rows.slice(0, lo).concat(rows.slice(hi));
+  drop.forEach(r => r.remove());
+  c.querySelectorAll(':scope > .day-group').forEach(g => { if (!g.querySelector('[data-msg-id]')) g.remove(); });
+  const left = [...c.querySelectorAll('[data-msg-id]')].filter(r => +r.dataset.msgId > 0);
+  if (lo > 0) { S.chatHasMore = true; S.chatOldestId = +left[0]?.dataset.msgId || S.chatOldestId; }
+  if (hi < n) { S.chatHasMoreAfter = true; S.chatNewestId = +left[left.length - 1]?.dataset.msgId || S.chatNewestId; }
+  const d = ref.getBoundingClientRect().top - y0;
+  if (Math.abs(d) > .5) c.scrollTop += d;
+  onMessagesScroll();
+}
+
+// Последнее сообщение, которое видно над полем ввода
+function lastSeenMsgId() {
+  const c = document.getElementById('messages');
+  if (!c) return 0;
+  const bar = document.getElementById('chat-input-bar');
+  const edge = (bar ? bar.getBoundingClientRect().top : c.getBoundingClientRect().bottom) - 8;
+  const rows = c.querySelectorAll('[data-msg-id]');
+  let lo = 0, hi = rows.length - 1, ans = -1;
+  while (lo <= hi) { const mid = (lo + hi) >> 1; if (rows[mid].getBoundingClientRect().top < edge) { ans = mid; lo = mid + 1; } else hi = mid - 1; }
+  while (ans >= 0 && !(+rows[ans].dataset.msgId > 0)) ans--;
+  return ans < 0 ? 0 : +rows[ans].dataset.msgId;
+}
+// «Прочитано» уходит по мере показа: до последнего видимого сообщения, а не всё сразу при открытии чата
+function sendRead(chatId, upTo) {
+  if (!chatId || S.activeChatId !== chatId || !S.ws || S.ws.readyState !== 1 || !isViewing()) return;
+  const id = upTo || lastSeenMsgId();
+  if (!id || id <= (_readSent[chatId] || 0)) return;
+  _readSent[chatId] = id;
+  if (!S.readUpTo) {
+    // Сервер старой версии не умеет «прочитано до сообщения»: отмечает весь чат и не присылает остаток — обнуляем счётчик сами
+    S.ws.send(JSON.stringify({ type: 'read', chat_id: chatId }));
+    S.unread[chatId] = 0; S.unreadMentions[chatId] = 0;
+    updateUnreadTotal(); renderChatList();
+    return;
+  }
+  S.ws.send(JSON.stringify({ type: 'read', chat_id: chatId, up_to: id }));
+}
+function scheduleRead() {
+  clearTimeout(_readT);
+  _readT = setTimeout(() => sendRead(S.activeChatId), 250);
+}
+
+// Место в ленте запоминается, когда человек уходит из чата, оставив историю выше: при возврате чат открывается там же
+function savePos(chatId) {
+  const c = document.getElementById('messages');
+  if (!c || !chatId) return;
+  const dist = c.scrollHeight - c.scrollTop - c.clientHeight;
+  if (dist < 300) { delete S.lastPos[chatId]; return; }
+  const ref = firstVisibleMsg(c);
+  const id = ref ? +ref.dataset.msgId : 0;
+  if (id > 0) S.lastPos[chatId] = { id, off: ref.getBoundingClientRect().top - c.getBoundingClientRect().top };
+}
+function restorePos(pos) {
+  const c = document.getElementById('messages');
+  const el = c?.querySelector(`[data-msg-id="${pos.id}"]`);
+  if (!c || !el) return false;
+  c.scrollTop += el.getBoundingClientRect().top - c.getBoundingClientRect().top - pos.off;
+  return true;
+}
+
+// Счётчики на кнопке «вниз» и кнопка «@» к ближайшему упоминанию
+function updateDownBadge() {
+  const id = S.activeChatId;
+  const b = document.getElementById('sb-badge'), m = document.getElementById('mention-btn');
+  const n = id ? (S.unread[id] || 0) : 0, mn = id ? (S.unreadMentions[id] || 0) : 0;
+  if (b) { b.textContent = n > 99 ? '99+' : n || ''; b.classList.toggle('on', n > 0); }
+  if (m) m.classList.toggle('visible', mn > 0);
+}
+async function scrollToNextMention() {
+  const id = S.activeChatId;
+  if (!id) return;
+  const r = await api('GET', `/messages/chat/${id}/next-mention`);
+  if (r?.id && S.activeChatId === id) scrollToMsg(r.id, true);
+}
+
+// Размеры вложений: место под фото и видео резервируется по пропорциям до загрузки кадра
+var _szMap = null, _szT = null;
+function szMap() { if (!_szMap) { try { _szMap = JSON.parse(localStorage.getItem('imgsz_v1') || '{}'); } catch { _szMap = {}; } } return _szMap; }
+function szOf(att, key) { if (att.width > 0 && att.height > 0) return [att.width, att.height]; return szMap()[key] || null; }
+function szAttrs(att, key) { const d = szOf(att, key); return d ? { cls: ' bubble-sized', st: ` style="--w:${d[0]};--h:${d[1]}"` } : { cls: '', st: '' }; }
+document.addEventListener('load', e => {
+  const i = e.target;
+  if (i?.tagName !== 'IMG' || !i.naturalWidth) return;
+  const b = i.closest?.('.bubble-image:not(.bubble-sized)');
+  const u = b?.dataset.lbUrl;
+  if (!u) return;
+  const m = szMap(), k = Object.keys(m);
+  if (m[u]) return;
+  if (k.length > 600) k.slice(0, 200).forEach(x => delete m[x]);
+  m[u] = [i.naturalWidth, i.naturalHeight];
+  clearTimeout(_szT);
+  _szT = setTimeout(() => { try { localStorage.setItem('imgsz_v1', JSON.stringify(m)); } catch {} }, 1500);
+}, true);
+
 function onMessagesScroll() {
   const container = document.getElementById('messages');
   if (!container) return;
   // Отслеживаем, находится ли пользователь у нижнего края (для авто-прокрутки)
   const dist = container.scrollHeight - container.scrollTop - container.clientHeight;
   _stickBottom = dist < 80 && !S.chatHasMoreAfter;
-  if (S.chatHasMore && !_loadingMore && container.scrollTop < 80) loadMoreMessages();
-  if (S.chatHasMoreAfter && !_loadingMore && dist < 80) loadMoreAfter();
+  if (S.chatHasMore && !_loadingMore && container.scrollTop < feedEdge(container)) loadMoreMessages();
+  if (S.chatHasMoreAfter && !_loadingMore && dist < feedEdge(container)) loadMoreAfter();
   const btn = document.getElementById('scroll-bottom-btn');
   if (btn) btn.classList.toggle('visible', dist > 300 || !!S.chatHasMoreAfter);
+  _lastScroll = performance.now();
+  if (!_trimT) _trimT = setTimeout(() => { _trimT = null; feedTrim(); }, 500);
+  scheduleRead(); updateDownBadge();
 }
 
 function scrollMessagesToBottom() {
@@ -3282,6 +3450,7 @@ async function loadMoreMessages() {
   S.chatHasMore = hasMore;
   S.chatOldestId = messages[0].id;
   prependMessages(messages, chatId);
+  requestAnimationFrame(onMessagesScroll);
 }
 
 // Догрузка вниз — после перехода вглубь истории (поиск / цитата)
@@ -3296,6 +3465,7 @@ async function loadMoreAfter() {
   if (!data.messages.length) return;
   S.chatNewestId = data.messages[data.messages.length - 1].id;
   appendMessagesAfter(data.messages, chatId);
+  requestAnimationFrame(onMessagesScroll);
 }
 
 function appendMessagesAfter(msgs, chatId) {
@@ -3371,12 +3541,13 @@ function prependMessages(msgs, chatId) {
   });
   if (lastDate !== '') html += `</div>`;
 
-  const prevHeight = container.scrollHeight;
-  const prevTop = container.scrollTop;
+  // Опорное сообщение: после вставки возвращаем его на то же место. Запись scrollTop только при расхождении:
+  // там, где браузер уже сдвинул ленту сам (scroll anchoring), лишняя запись обрывала бы инерцию
+  const ref = firstVisibleMsg(container), y0 = ref ? ref.getBoundingClientRect().top : 0;
   container.insertAdjacentHTML('afterbegin', html);
   reflowSeries();
   mergeDayGroups(container);
-  container.scrollTop = prevTop + (container.scrollHeight - prevHeight);
+  if (ref?.isConnected) { const d = ref.getBoundingClientRect().top - y0; if (Math.abs(d) > .5) container.scrollTop += d; }
 }
 
 // Смайлик сидит в своём боксе не по центру: у эмодзи-шрифтов рисунок смещён
@@ -4330,6 +4501,9 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   // сообщение из одного смайлика показываем без пузыря — он проступает по наведению
   // В секретном чате m.text — шифротекст, смотреть нужно на расшифрованное
   const emojiOnly = !isDeleted && !m.attachment && !m.reply_to_id && !m.forward_data && isEmojiOnly(isSecretChat ? scDecryptedText : m.text);
+  // Фото с подписью: пузырь по ширине кадра (как в Telegram), а не всегда 280 px; кадр показывается целиком
+  const _fitD = (!bareImage && !comp && att?.url && !att.expired && !att.enc && !att.gif && !att.more?.length && /^(image|video)\//.test(att.mime || '')) ? szOf(att, `${httpProto()}://${S.server}${att.url}`) : null;
+  const _fitW = _fitD ? Math.max(180, Math.min(280, Math.round(360 * _fitD[0] / _fitD[1]))) : 0;
   const posCls = (isFirst ? ' irc-first' : '') + (isTail ? ' irc-tail' : '') + (emojiOnly ? ' emoji-msg' : '');
 
   return `<div class="irc-msg${posCls}${m._optimistic?' msg-optimistic':''}${m._state==='failed'?' msg-failed':''}"${m._cid?` data-cid="${m._cid}"`:''}${mine?` data-mine="1"`:``}${isChatGroup?'':' data-dm="1"'} data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
@@ -4339,7 +4513,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       ${header}
       <div class="bubble-row">
         ${avCol}
-        <div class="msg-bubble${bareImage ? ' bubble-photo' : ''}${emojiOnly ? ' bubble-emoji' : ''}${comp ? comp.cls : ''}${fwdN ? ' has-fwd' : ''}"${fwdN ? ` style="--fwd-w:${fwdReserve(fwdN)}px"` : ''}>
+        <div class="msg-bubble${bareImage ? ' bubble-photo' : ''}${_fitW ? ' bubble-fit' : ''}${emojiOnly ? ' bubble-emoji' : ''}${comp ? comp.cls : ''}${fwdN ? ' has-fwd' : ''}"${(fwdN || _fitW) ? ` style="${fwdN ? `--fwd-w:${fwdReserve(fwdN)}px;` : ''}${_fitW ? `--bw:${_fitW}px` : ''}"` : ''}>
           ${comp ? `${comp.lpHtml}${(m.reply_to_id || fd) ? `<div class="ct-pad">${replyHtml}${forwardHtml}</div>` : ''}${attachHtml}${comp.html}` : `${replyHtml}
           ${forwardHtml}
           ${attachHtml}
@@ -4362,11 +4536,13 @@ function attachBlockHtml(att) {
   } else if (att?.url && !att.expired && !att.enc) {
     const attUrl = `${httpProto()}://${S.server}${att.url}`;
     if (att.mime?.startsWith('image/')) {
-      attachHtml = `<div class="bubble-image" data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'image')}" data-lb-type="image" data-on-click="openLightboxEl" data-a-click='["__this"]'><img src="${httpProto()}://${S.server}${imgPreviewPath(att)}" loading="lazy"></div>`;
+      const _sz = szAttrs(att, attUrl);
+      attachHtml = `<div class="bubble-image${_sz.cls}"${_sz.st} data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'image')}" data-lb-type="image" data-on-click="openLightboxEl" data-a-click='["__this"]'><img src="${httpProto()}://${S.server}${imgPreviewPath(att)}" loading="lazy"></div>`;
     } else if (att.mime?.startsWith('video/')) {
       const posterUrl = att.thumb ? `${httpProto()}://${S.server}${att.thumb}` : '';
       const safeVName = (att.name||'video').replace(/'/g,"\\'");
-      attachHtml = `<div class="bubble-image bubble-video" data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'video')}" data-lb-type="video" data-on-click="openLightboxEl" data-a-click='["__this"]'>
+      const _szv = szAttrs(att, attUrl);
+      attachHtml = `<div class="bubble-image bubble-video${_szv.cls}"${_szv.st} data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'video')}" data-lb-type="video" data-on-click="openLightboxEl" data-a-click='["__this"]'>
         ${posterUrl ? `<img src="${posterUrl}" loading="lazy">` : `<video src="${attUrl}" preload="metadata" muted></video>`}
         <div class="bubble-video-play"><svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg></div>
       </div>`;
@@ -5643,7 +5819,8 @@ function mediaTileHtml(a, cls) {
   const url = `${httpProto()}://${S.server}${a.url}`;
   const v = (a.mime || '').startsWith('video/');
   const poster = cls === 'bubble-image' && !v ? `${httpProto()}://${S.server}${imgPreviewPath(a)}` : a.thumb ? `${httpProto()}://${S.server}${a.thumb}` : (v ? '' : url);
-  return `<div class="${cls}" data-lb-url="${esc(url)}" data-lb-name="${esc(a.name || (v ? 'video' : 'image'))}" data-lb-type="${v ? 'video' : 'image'}" data-on-click="openLightboxEl" data-a-click='["__this"]'>`
+  const _sz = cls === 'bubble-image' ? szAttrs(a, url) : { cls: '', st: '' };
+  return `<div class="${cls}${_sz.cls}"${_sz.st} data-lb-url="${esc(url)}" data-lb-name="${esc(a.name || (v ? 'video' : 'image'))}" data-lb-type="${v ? 'video' : 'image'}" data-on-click="openLightboxEl" data-a-click='["__this"]'>`
     + (poster ? `<img src="${esc(poster)}" loading="lazy">` : `<video src="${esc(url)}" preload="metadata" muted></video>`) + (v ? _PLAY_SVG : '') + '</div>';
 }
 function fileRowHtml(att) {
@@ -6158,7 +6335,7 @@ function connectWS() {
 
     if (data.type==='pong') { ws._pongOk = true; return; }
 
-    if (data.type==='connected') { S.editLimit = data.edit_time_limit || 120; syncEmojiFreq(); return; }
+    if (data.type==='connected') { S.editLimit = data.edit_time_limit || 120; S.readUpTo = !!data.read_up_to; syncEmojiFreq(); return; }
     if (data.type==='emoji_freq') { mergeEmojiFreq(data.freq); return; }
     if (data.type==='modules_changed') { window.Modules?.refresh(); return; }
     if (data.type==='forward_count') { applyForwardCount(data.message_id, data.count); return; }
@@ -6183,10 +6360,21 @@ function connectWS() {
         if (message.sender_id === S.user.id && !message.client_id) {
           document.querySelector('[data-optimistic="1"]')?.remove();
         }
+        const _mc = document.getElementById('messages');
+        const _near = !_mc || (_mc.scrollHeight - _mc.scrollTop - _mc.clientHeight) < 120;
         appendMsg(message);
         S.chatNewestId = message.id;
+        tailPush(chatId, message);
+        if (message.sender_id !== S.user.id && isViewing()) {
+          if (_near) sendRead(chatId, message.id);
+          else {
+            // Не видно (лента выше) — это непрочитанное: счётчик растёт, пока не долистают
+            S.unread[chatId] = (S.unread[chatId] || 0) + 1;
+            if (message.mentions?.includes(S.user.id)) S.unreadMentions[chatId] = (S.unreadMentions[chatId] || 0) + 1;
+          }
+        }
         if (isViewing() && S.ws?.readyState===1) {
-          S.ws.send(JSON.stringify({type:'read', chat_id:chatId}));
+          // Пользователь смотрит в чат — сообщение доставлено
           S.ws.send(JSON.stringify({type:'delivered', message_id:message.id}));
         } else if (!isViewing() && message.sender_id !== S.user.id) {
           S.unread[chatId] = (S.unread[chatId]||0)+1;
@@ -6205,7 +6393,8 @@ function connectWS() {
       } else {
         S.unread[chatId] = (S.unread[chatId]||0)+1;
         if (message.mentions?.includes(S.user.id)) S.unreadMentions[chatId] = (S.unreadMentions[chatId]||0)+1;
-        if (!isChatMuted(chatId, parentId)) {
+        // Читают историю в этом же чате: звук и уведомление ни к чему, сообщение придёт при догрузке вниз
+        if (!isChatMuted(chatId, parentId) && !(S.activeChatId === chatId && isViewing())) {
           // Темы нет в S.chats — берём её имя из S.topics, иначе имя
           // родительской комнаты (chat уже содержит этот фолбэк). Раньше здесь
           // был chatName(undefined) → TypeError, и обработчик обрывался.
@@ -6227,6 +6416,7 @@ function connectWS() {
       const m = data.message;
       const chat = S.chats.find(c=>c.id===m.chat_id);
       if (chat?.last_message?.id===m.id) chat.last_message = m;
+      tailPatch(m);
       if (S.activeChatId===m.chat_id) updateMsgInDOM(m);
       renderChatList();
     }
@@ -6235,6 +6425,7 @@ function connectWS() {
       const { message_id, chat_id } = data;
       const chat = S.chats.find(c=>c.id===chat_id);
       if (chat?.last_message?.id===message_id) chat.last_message = {...chat.last_message, deleted:1, text:'', attachment:null};
+      tailPatch({ id: message_id, chat_id, deleted: 1, text: '', attachment: null });
       if (S.activeChatId===chat_id) markMessageDeleted(chat_id, message_id);
       renderChatList();
     }
@@ -6253,8 +6444,9 @@ function connectWS() {
 
     if (data.type==='chat_read') {
       // Чат прочитан на другом устройстве этого пользователя
-      S.unread[data.chat_id] = 0;
-      S.unreadMentions[data.chat_id] = 0;
+      // Остаток приходит, когда прочитано не всё (up_to); без него чат прочитан целиком
+      S.unread[data.chat_id] = typeof data.unread === 'number' ? data.unread : 0;
+      S.unreadMentions[data.chat_id] = typeof data.unread_mentions === 'number' ? data.unread_mentions : 0;
       updateUnreadTotal();
       renderChatList();
     }
@@ -6297,7 +6489,7 @@ function connectWS() {
         if (msgEl) {
           const container = document.getElementById('messages');
           const isAtBottom = container && (container.scrollHeight - container.scrollTop - container.clientHeight < 10);
-          const prevScrollHeight = container?.scrollHeight || 0;
+          const _rf = container ? firstVisibleMsg(container) : null, _ry = _rf ? _rf.getBoundingClientRect().top : 0;
           const existing = msgEl.querySelector('.reactions');
           const reactionsHtml = renderReactions(message_id);
           if (existing) {
@@ -6313,9 +6505,12 @@ function connectWS() {
           // (см. .irc-reaction-split в reflowSeries)
           reflowSeries();
           if (container) {
-            const delta = container.scrollHeight - prevScrollHeight;
             if (isAtBottom) container.scrollTop = container.scrollHeight;
-            else if (delta > 0) container.scrollTop += delta;
+            else if (_rf?.isConnected) {
+              // Возвращаем на место то, что читают: реакция выше экрана сдвигает ленту, реакция на видимом сообщении — нет
+              const d = _rf.getBoundingClientRect().top - _ry;
+              if (Math.abs(d) > .5) container.scrollTop += d;
+            }
           }
         }
       }
@@ -6514,10 +6709,7 @@ function connectWS() {
         S.chatNewestId = data.messages[data.messages.length - 1].id;
         appendMessagesAfter(data.messages, _ccId);
         if (isViewing() && S.ws?.readyState === 1) {
-          S.ws.send(JSON.stringify({type:'read', chat_id:_ccId}));
-          S.unread[_ccId] = 0;
-          S.unreadMentions[_ccId] = 0;
-          updateUnreadTotal(); renderChatList();
+          scheduleRead();
         }
       });
     }
@@ -6554,6 +6746,7 @@ function connectWS() {
 }
 
 function updateUnreadTotal() {
+  updateDownBadge();
   const total = Object.values(S.unread).reduce((a,b)=>a+b,0);
   if (typeof updateFolderBadges === 'function' && S.folders?.length) updateFolderBadges();
   if (typeof updateSpaceBadges === 'function') updateSpaceBadges();

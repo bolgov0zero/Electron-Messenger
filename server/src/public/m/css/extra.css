@@ -453,3 +453,7 @@ html, body { background: var(--gl-base); }
 /* оптическая центровка значков: масса самолётика смещена вправо-вверх, стрелка «назад» кажется правее центра — сдвиг на 1–2 px */
 .sendb .i { margin: calc(-.5em + 1.7px) 0 0 calc(-.5em - 1.6px); }
 .nb[data-back] > svg { transform: translateX(-1px); }
+
+/* «@» над кнопкой «вниз»: ведёт к ближайшему непрочитанному упоминанию */
+.jump .mnt { position: absolute; left: 0; bottom: calc(100% + 12px); width: 44px; height: 44px; border-radius: 50%; display: none; place-items: center; font-size: 18px; font-weight: 700; }
+.jump .mnt.on { display: grid; }

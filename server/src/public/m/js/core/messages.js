@@ -3,11 +3,12 @@
 //   msgs:opened {chatId, aroundId}  — чат открыт, B.msgs.cache заполнен
 //   msgs:changed {mode}             — состав или вид сообщений изменился ('smart' — не дёргать прокрутку)
 //   msgs:older                      — подгружена более ранняя страница
+//   msgs:newer                      — подгружена более поздняя страница (после перехода вглубь истории)
 //   msgs:new {message, mine}        — пришло новое сообщение
 //   msgs:preview {chatId}           — до ответа сервера в B.msgs.cache положен кэшированный хвост переписки (лёгкая первая отрисовка)
 B.msgs = {
   PAGE: 100,
-  chatId: null, cache: [], pins: [], unreadAtOpen: 0, unreadFromId: null, hasMoreOlder: false, loadingOlder: false, _applied: {},
+  chatId: null, cache: [], pins: [], unreadAtOpen: 0, unreadFromId: null, hasMoreOlder: false, loadingOlder: false, hasMoreNewer: false, loadingNewer: false, _applied: {},
 
   // Хвост переписки (последние сообщения) по чатам: чат открывается сразу с сообщениями, а не с пустой страницей,
   // пока идёт запрос. Хранится на устройстве (localStorage), нужен и для открытия чата без связи; стирается при выходе. Скрытые чаты не храним: их ещё надо расшифровать
@@ -18,7 +19,7 @@ B.msgs = {
     return id == null ? M._tail : M._tail[id];
   },
   saveTail: function () {
-    var M = B.msgs, id = M.chatId; if (id == null || M._preview || B.S.secretChatIds.has(id)) return;   // пока показан хвост из кэша, его не пересохраняем
+    var M = B.msgs, id = M.chatId; if (id == null || M._preview || M.hasMoreNewer || B.S.secretChatIds.has(id)) return;   // пока показан хвост из кэша, его не пересохраняем
     var t = M.tail(), real = M.cache.filter(function (m) { return !m._optimistic && m.id > 0; }).slice(-M.TAIL_N);
     if (!real.length) return;
     t[id] = { t: Date.now(), m: real };
@@ -32,47 +33,43 @@ B.msgs = {
   chat: function () { return B.find(B.msgs.chatId); },
 
   // Открыть чат: окно последних сообщений либо окно вокруг aroundId (переход из поиска или цитаты)
-  open: async function (chatId, aroundId) {
-    var M = B.msgs, S = B.S;
-    M.chatId = chatId; S.activeChatId = chatId; M.cache = []; M.pins = []; M.hasMoreOlder = false; M._applied = {}; M.unreadFromId = null; M.unreadAtOpen = 0;
+  // opts.bottom — открыть на последних сообщениях, а не на первом непрочитанном (кнопка «вниз» из глубины истории)
+  open: async function (chatId, aroundId, opts) {
+    var M = B.msgs, S = B.S, bottom = !!(opts && opts.bottom);
+    M.chatId = chatId; S.activeChatId = chatId; M.cache = []; M.pins = []; M.hasMoreOlder = false; M.hasMoreNewer = false; M.loadingNewer = false; M._applied = {}; M.unreadFromId = null; M.unreadAtOpen = 0;
     var chat = B.find(chatId); if (!chat) return;
     // Приглашение в группу с другого сервера: сообщений до вступления нет, историю не запрашиваем
     if (chat.invite) { M.cache = []; M._preview = false; M.watch(chat); B.bus.emit('msgs:opened', { chatId: chatId }); return; }
     M.watch(chat);
     // Есть хвост этой переписки: показываем его сразу, до ответа сервера
-    var tl = !aroundId && !B.S.secretChatIds.has(chatId) && M.tail(chatId);
+    var tl = !aroundId && !bottom && !B.S.secretChatIds.has(chatId) && M.tail(chatId);
     if (tl && tl.m && tl.m.length) { M.cache = tl.m.slice(-M.PREV_N); M._preview = true; B.bus.emit('msgs:preview', { chatId: chatId }); } else M._preview = false;
-    var data = await B.api('GET', '/messages/chat/' + chatId + '?limit=' + M.PAGE + (aroundId ? '&around=' + aroundId : ''));
+    // Без around лента открывается на первом непрочитанном (anchor=unread): немного переписки выше и всё новое ниже
+    var data = await B.api('GET', '/messages/chat/' + chatId + '?limit=' + M.PAGE + (aroundId ? '&around=' + aroundId : bottom ? '' : '&anchor=unread'));
     if (!data && M.chatId === chatId && tl && tl.m && tl.m.length) {
       // Связи нет: показываем сохранённый хвост переписки и неотправленное
       M.cache = tl.m.slice(); M._preview = false; M.hasMoreOlder = false; M.restoreOutbox(chatId);
       B.bus.emit('msgs:opened', { chatId: chatId }); return;
     }
     if (!data || M.chatId !== chatId) return;
-    M.cache = data.messages || []; M.pins = data.pins || []; M.hasMoreOlder = !!data.hasMore; M._preview = false; M.restoreOutbox(chatId);
+    M.cache = data.messages || []; M.pins = data.pins || []; M.hasMoreOlder = !!data.hasMore; M.hasMoreNewer = !!data.hasMoreAfter; M._preview = false;
+    if (!M.hasMoreNewer) M.restoreOutbox(chatId);
     M.unreadAtOpen = chat.unread || 0;
     // Плашка «Новые сообщения» привязана к конкретному сообщению: если считать от конца ленты, она ползла бы вниз
     // при каждом новом сообщении, в том числе при своём
     var fu = data.first_unread_id;
     M.unreadFromId = fu && M.cache.some(function (m) { return m.id === fu; }) ? fu : (M.unreadAtOpen > 0 && M.unreadAtOpen <= M.cache.length ? M.cache[M.cache.length - M.unreadAtOpen].id : null);
-    chat.unread = 0; chat.unread_mentions = 0;
-    if (chat.parent_id) {
-      var topic = (S.topics[chat.parent_id] || []).find(function (t) { return t.id === chatId; });
-      if (topic) { topic.unread = 0; topic.unread_mentions = 0; }
-      B.chats.syncRoomUnread(chat.parent_id);
-    }
+    // Счётчик непрочитанного не обнуляем: «прочитано» уходит по мере показа сообщений (экран переписки, up_to),
+    // остаток приходит от сервера событием chat_read
     B.chats.onChanged();
-    B.ws.send({ type: 'read', chat_id: chatId });
-    // Отметка применяется на сервере после отправки по WS — подтверждаем агрегат комнаты уже после неё
-    if (chat.parent_id) setTimeout(B.chats.refresh, 400);
-    B.bus.emit('msgs:opened', { chatId: chatId, aroundId: aroundId });
+    B.bus.emit('msgs:opened', { chatId: chatId, aroundId: aroundId, bottom: bottom });
   },
   // Сообщаем серверу, какой чат открыт: он присылает и обновляет «в сети N из M»
   watch: function (chat) {
     var on = chat && (chat.type === 'group' || chat.type === 'room') && !chat.invite && !chat.has_topics;
     B.ws.send(on ? { type: 'watch_chat', chat_id: chat.id } : { type: 'unwatch_chat' });
   },
-  close: function () { var M = B.msgs; B.ws.send({ type: 'unwatch_chat' }); M.chatId = null; B.S.activeChatId = null; M.cache = []; M.hasMoreOlder = false; M.loadingOlder = false; },
+  close: function () { var M = B.msgs; B.ws.send({ type: 'unwatch_chat' }); M.chatId = null; B.S.activeChatId = null; M.cache = []; M.hasMoreOlder = false; M.hasMoreNewer = false; M.loadingOlder = false; M.loadingNewer = false; },
 
   loadOlder: async function () {
     var M = B.msgs, chatId = M.chatId, oldest = M.cache[0];
@@ -87,9 +84,25 @@ B.msgs = {
     B.bus.emit('msgs:older');
   },
 
+  // Догрузка вниз: чат открыт на середине истории (цитата, поиск, первое непрочитанное), последние сообщения ещё не загружены
+  loadNewer: async function () {
+    var M = B.msgs, chatId = M.chatId, real = M.cache.filter(function (x) { return x.id > 0; }), last = real[real.length - 1];
+    if (!chatId || !M.hasMoreNewer || M.loadingNewer || !last) return;
+    M.loadingNewer = true;
+    var data = await B.api('GET', '/messages/chat/' + chatId + '?limit=' + M.PAGE + '&after=' + last.id);
+    M.loadingNewer = false;
+    if (!data || M.chatId !== chatId) return;
+    M.hasMoreNewer = !!data.hasMoreAfter;
+    var fresh = (data.messages || []).filter(function (m) { return !M.find(m.id); });
+    if (!fresh.length) return;
+    M.cache = M.cache.concat(fresh);
+    if (!M.hasMoreNewer) M.restoreOutbox(chatId);
+    B.bus.emit('msgs:newer');
+  },
+
   // Новые сообщения открытого чата, пришедшие, пока приложение было свёрнуто или без связи (события по WebSocket пропущены)
   catchUp: async function () {
-    var M = B.msgs, id = M.chatId; if (!id || !M.cache.length) return;
+    var M = B.msgs, id = M.chatId; if (!id || !M.cache.length || M.hasMoreNewer) return;   // окно не у конца: недостающее подгрузит loadNewer
     var real = M.cache.filter(function (x) { return x.id > 0; }), last = real[real.length - 1]; if (!last) return;
     var data = await B.api('GET', '/messages/chat/' + id + '?after=' + last.id + '&limit=50');
     if (!data || !data.messages || M.chatId !== id) return;
@@ -103,7 +116,6 @@ B.msgs = {
       if (!mine) B.ws.send({ type: 'delivered', message_id: m.id });
     });
     B.bus.emit('msgs:changed', { mode: 'smart' });
-    B.ws.send({ type: 'read', chat_id: id });
   },
 
   // Пока связи не было, сообщения могли удалить или исправить, а события телефон пропустил
@@ -152,6 +164,7 @@ B.msgs = {
     if (!chat || B.msgs.locked(chat)) return false;
     var text = (o.text || '').trim();
     if (!text && !o.attachment && !o.forward) return false;
+    if (M.hasMoreNewer) { await M.open(chat.id, undefined, { bottom: true }); if (M.chatId !== chat.id) return false; }   // были вглубь истории: своё сообщение ставим в конец ленты
     var cid = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     var payload = { type: 'message', chat_id: chat.id, text: text, client_id: cid };
     var temp = { id: -Date.now(), chat_id: chat.id, sender_id: S.user.id, text: text, sent_at: Math.floor(Date.now() / 1000), deleted: 0, status: { delivered: 0, read: 0, total: 1 }, _optimistic: true, _cid: cid, _state: 'sending' };
@@ -246,10 +259,11 @@ B.msgs = {
     var mine = m.sender_id === B.S.user.id;
     if (mine && m.client_id) M._confirm(m.client_id);
     if (M.find(m.id)) return;   // повтор после обрыва связи
+    // Окно не доходит до конца переписки: сообщение в него не вставляем (получился бы пропуск), оно придёт при догрузке вниз
+    if (M.hasMoreNewer) { bus.emit('msgs:new', { message: m, mine: mine, detached: true }); if (!mine) B.ws.send({ type: 'delivered', message_id: m.id }); return; }
     M.cache.push(m);
     bus.emit('msgs:new', { message: m, mine: mine });
     bus.emit('msgs:changed', { mode: 'smart' });
-    B.ws.send({ type: 'read', chat_id: m.chat_id });
     if (!mine) B.ws.send({ type: 'delivered', message_id: m.id });
   });
   bus.on('ws:message_edited', function (d) {

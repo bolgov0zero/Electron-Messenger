@@ -51,7 +51,7 @@ B.ws = {
 
     switch (data.type) {
       case 'connected': {
-        S.editLimit = data.edit_time_limit || 120;
+        S.editLimit = data.edit_time_limit || 120; S.readUpTo = !!data.read_up_to;
         if (B.emoji && B.emoji.sync) B.emoji.sync();
         // Админка показывает устройство клиента — сообщаем, что это PWA или обычная вкладка
         var isPwa = B.pwa.standalone, ua = navigator.userAgent;
@@ -69,7 +69,11 @@ B.ws = {
         var tpar = m.parent_id || (chat && chat.parent_id);
         if (tpar) { var tp = (S.topics[tpar] || []).find(function (t) { return t.id === m.chat_id; }); if (tp) tp.last_message = m; }   // строка в списке тем: по ней идёт сортировка
         if (S.activeChatId === m.chat_id) {
-          // Открытый чат: «прочитано» и «доставлено» отправит экран переписки
+          // Открытый чат: «прочитано» и «доставлено» отправит экран переписки; счётчик уточнит ответ сервера на «прочитано»
+          if (m.sender_id !== S.user.id && chat) {
+            chat.unread = (chat.unread || 0) + 1;
+            if (m.mentions && m.mentions.indexOf(S.user.id) >= 0) chat.unread_mentions = (chat.unread_mentions || 0) + 1;
+          }
           if (chat && chat.parent_id) setTimeout(B.chats.refresh, 400);
         } else if (m.sender_id !== S.user.id && chat) {
           chat.unread = (chat.unread || 0) + 1;
@@ -144,7 +148,13 @@ B.ws = {
       }
       case 'chat_read':
         chat = B.find(data.chat_id);
-        if (chat) { chat.unread = 0; if (chat.parent_id) B.chats.syncRoomUnread(chat.parent_id); B.chats.onChanged(); }
+        if (chat) {
+          // Прочитано частично (up_to): сервер присылает остаток; без него чат прочитан целиком
+          chat.unread = typeof data.unread === 'number' ? data.unread : 0;
+          chat.unread_mentions = typeof data.unread_mentions === 'number' ? data.unread_mentions : 0;
+          if (chat.parent_id) { var tpc = (S.topics[chat.parent_id] || []).find(function (t) { return t.id === chat.id; }); if (tpc) { tpc.unread = chat.unread; tpc.unread_mentions = chat.unread_mentions; } B.chats.syncRoomUnread(chat.parent_id); }
+          B.chats.onChanged();
+        }
         break;
       case 'chat_deleted':
         S.chats = S.chats.filter(function (c) { return c.id !== data.chat_id; });

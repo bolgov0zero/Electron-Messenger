@@ -3,8 +3,8 @@
 B.ui = B.ui || {};
 B.ui.chat = (function () {
   var S = B.S, esc = B.esc;
-  var GROUP_WINDOW = 60, SENTINEL_INDEX = 50;
-  var away = {}, around = null, jumping = null, observer = null, pinIdx = {};
+  var GROUP_WINDOW = 60;
+  var away = {}, around = null, jumping = null, pinIdx = {}, readSent = {};
 
   // ── вспомогательное ──
   // Цвет имени: пять оттенков из токенов темы (--tag-1…5), выбор — по тегу человека или его id
@@ -281,7 +281,7 @@ B.ui.chat = (function () {
       '<div class="cnbar glass" hidden></div>' +
       '<div class="scroll"><div class="msgs">' + (B.msgs.tail(cid) && !B.S.secretChatIds.has(cid) ? '' : skeleton()) + '</div></div>' +
       '<button class="pinbar glass gi" data-c="pin" hidden></button>' +
-      '<button class="jump glass gi" data-c="down" aria-label="К последним сообщениям">' + I('down') + '<b class="bd" style="display:none"></b></button><div class="comp"></div>';
+      '<button class="jump glass gi" data-c="down" aria-label="К последним сообщениям">' + I('down') + '<b class="bd" style="display:none"></b><span class="mnt glass gi" data-c="mention" role="button" aria-label="К упоминанию">@</span></button><div class="comp"></div>';
     B.avatar.apply(el);
     B.ui.composer.mount(el, chat);
     var scr = $('.scroll', el);
@@ -355,6 +355,10 @@ B.ui.chat = (function () {
   // обрывает инерцию и даёт рывок. Фоновые обновления (галочки, реакции, правки, чужие сообщения) ждут конца прокрутки
   function busy(el) { return !!el._touch || performance.now() - (el._sa || 0) < 150; }
   function nearBottom(sc, px) { return sc.scrollHeight - sc.scrollTop - sc.clientHeight < px; }
+  // Расстояние до ближайшего края ленты; страницы истории подгружаются заранее, когда до края меньше двух экранов (как в Telegram)
+  var EDGE_NEAR = 500;
+  function edgeGap(sc) { return Math.min(sc.scrollTop, sc.scrollHeight - sc.scrollTop - sc.clientHeight); }
+  function edgeLoad(sc) { return Math.max(1400, sc.clientHeight * 2); }
   // Опорное сообщение: первое, что видно у верхнего края. После перестройки возвращаем его на то же место, а не держим scrollTop
   function anchorGet(sc) {
     var rows = sc.querySelectorAll('.mrow[data-mid]'), top = sc.getBoundingClientRect().top, lo = 0, hi = rows.length - 1, ans = -1;
@@ -371,19 +375,22 @@ B.ui.chat = (function () {
     if (el._rqT) return;
     el._rqT = setTimeout(function run() {
       if (!el.isConnected) { el._rqT = 0; return; }
-      if (busy(el)) { el._rqT = setTimeout(run, 120); return; }
+      if (busy(el) && !(el._rq === 'keep' && edgeGap($('.scroll', el)) <= EDGE_NEAR)) { el._rqT = setTimeout(run, 120); return; }
       el._rqT = 0; var m = el._rq; el._rq = null; render(el, m);
     }, 150);
   }
   function render(el, mode) {
     var sc = el.querySelector('.scroll'), box = el.querySelector('.msgs'), chat = B.find(+el.dataset.cid); if (!chat) return;
     if (mode === 'smart' && busy(el)) { renderLater(el, mode); return; }
+    // Страница старых или новых сообщений приходит, пока лента летит по инерции: запись scrollTop обрывает инерцию (Safari),
+    // поэтому вставляем после остановки. Если до края уже близко, ждать нельзя: упрёмся в стену — вставляем сразу
+    if (mode === 'keep' && busy(el) && edgeGap(sc) > EDGE_NEAR) { renderLater(el, mode); return; }
     var stick = mode === 'smart' && nearBottom(sc, 120), anc = (mode === 'smart' || mode === 'keep') && !stick ? anchorGet(sc) : null;
     var groups = feedGroups(chat, B.msgs.cache);
     if (!groups) { box.innerHTML = '<div class="stub-note">Сообщений пока нет</div>'; } else reconcile(box, groups);
     if (mode === 'smart' || mode === 'keep') { if (stick) sc.scrollTop = sc.scrollHeight; else anchorSet(sc, anc); }
     else if (mode !== 'none') sc.scrollTop = sc.scrollHeight;
-    trackImages(sc); setupSentinel(el); onScroll(el);
+    trackImages(sc); onScroll(el);
     return stick;
   }
   // Картинка без известных размеров (старое вложение) получает пропорции после загрузки. Если она выше видимой области, держим то,
@@ -405,31 +412,78 @@ B.ui.chat = (function () {
       if (img.complete) done(); else img.addEventListener('load', done, { once: true });
     });
   }
-  // Лента не должна расти без конца: если ушли далеко вниз и стоим у конца, давние сообщения выпадают из окна (они подгрузятся снова)
+  // Лента не должна расти без конца: оставляем окно вокруг того, что читают, а дальние сообщения выпадают из него с обеих сторон
+  // (они подгрузятся снова: вверх через loadOlder, вниз через loadNewer)
   function trim(el) {
     var M = B.msgs, sc = el.querySelector('.scroll');
-    if (M.cache.length <= 400 || !nearBottom(sc, 500) || busy(el) || jumping) return;
-    M.cache = M.cache.slice(-250); M.hasMoreOlder = true; render(el, 'smart');
+    if (M.cache.length <= 400 || busy(el) || jumping || M.loadingOlder || M.loadingNewer) return;
+    var a = anchorGet(sc); if (!a) return;
+    var mid = +a.el.dataset.mid, ai = M.cache.findIndex(function (m) { return m.id === mid; }), n = M.cache.length;
+    if (ai < 0) return;
+    var lo = Math.max(0, ai - 200), hi = Math.min(n, ai + 200);
+    // Неотправленные сообщения из хвоста не убираем: они живут в очереди и должны оставаться в ленте
+    if (hi < n && M.cache.slice(hi).some(function (m) { return m._optimistic; })) hi = n;
+    if (lo + (n - hi) < 50) return;
+    M.cache = M.cache.slice(lo, hi);
+    if (lo > 0) M.hasMoreOlder = true;
+    if (hi < n) M.hasMoreNewer = true;
+    render(el, 'smart');
   }
-  function setupSentinel(el) {
-    if (observer) observer.disconnect();
-    if (!B.msgs.hasMoreOlder) return;
-    var m = B.msgs.cache[SENTINEL_INDEX]; if (!m) return;
-    var t = el.querySelector('[data-mid="' + m.id + '"]'); if (!t) return;
-    observer = new IntersectionObserver(function (en) { if (!jumping && en[0].isIntersecting) B.msgs.loadOlder(); }, { root: el.querySelector('.scroll') });
-    observer.observe(t);
+  // Края ленты: до верха или низа осталось меньше двух экранов — подгружаем следующую страницу
+  function checkEdges(el) {
+    var M = B.msgs, sc = el.querySelector('.scroll'); if (!sc || jumping || el._edgeOff || +el.dataset.cid !== M.chatId || M._preview) return;
+    var lim = edgeLoad(sc);
+    if (M.hasMoreOlder && sc.scrollTop < lim) M.loadOlder();
+    if (M.hasMoreNewer && sc.scrollHeight - sc.scrollTop - sc.clientHeight < lim) M.loadNewer();
   }
+  // «Прочитано» уходит по мере показа: до последнего сообщения, которое видно над полем ввода, а не всё сразу при открытии чата
+  function lastSeen(el) {
+    var sc = $('.scroll', el), comp = $('.comp', el), rows = sc && sc.querySelectorAll('.mrow[data-mid]');
+    if (!rows || !rows.length || !comp) return 0;
+    var edge = comp.getBoundingClientRect().top - 12, lo = 0, hi = rows.length - 1, ans = -1;
+    while (lo <= hi) { var mid = (lo + hi) >> 1; if (rows[mid].getBoundingClientRect().top < edge) { ans = mid; lo = mid + 1; } else hi = mid - 1; }
+    while (ans >= 0 && +rows[ans].dataset.mid <= 0) ans--;   // неотправленные (отрицательные номера) пропускаем
+    return ans < 0 ? 0 : +rows[ans].dataset.mid;
+  }
+  function markVisible(el) {
+    var cid = +el.dataset.cid, M = B.msgs;
+    if (!el.isConnected || document.hidden || M.chatId !== cid || M._preview || !B.ws.isOpen()) return;
+    var id = lastSeen(el); if (!id || id <= (readSent[cid] || 0)) return;
+    // Сервер старой версии не умеет «прочитано до сообщения»: отмечает весь чат и не присылает остаток — обнуляем счётчик сами
+    if (!B.S.readUpTo) {
+      if (B.ws.send({ type: 'read', chat_id: cid })) { readSent[cid] = id; var ch = B.find(cid); if (ch) { ch.unread = 0; ch.unread_mentions = 0; B.chats.onChanged(); } }
+      return;
+    }
+    if (B.ws.send({ type: 'read', chat_id: cid, up_to: id })) readSent[cid] = id;
+  }
+  function scheduleRead(el) { clearTimeout(el._rdT); el._rdT = setTimeout(function () { markVisible(el); }, 250); }
+  document.addEventListener('visibilitychange', function () { var el = activePage(); if (el && !document.hidden) scheduleRead(el); });
+  B.bus.on('ws:connected', function () { var el = activePage(); if (el) scheduleRead(el); });
   function onScroll(el) {
     var sc = el.querySelector('.scroll'), btn = el.querySelector('.jump'), cid = +el.dataset.cid;
     clearTimeout(el._idleT); el._idleT = setTimeout(function () { if (el.isConnected) trim(el); }, 400);
-    var off = sc.scrollHeight - sc.scrollTop - sc.clientHeight > 200;
+    var off = sc.scrollHeight - sc.scrollTop - sc.clientHeight > 200 || B.msgs.hasMoreNewer;
     btn.classList.toggle('on', off);
-    if (!off && away[cid]) { away[cid] = 0; badge(el); }
+    checkEdges(el); scheduleRead(el);
+    if (!off && away[cid]) away[cid] = 0;
+    badge(el);
   }
-  function badge(el) { var b = el.querySelector('.jump .bd'), n = away[+el.dataset.cid] || 0; b.textContent = n > 99 ? '99+' : n || ''; b.style.display = n > 0 ? '' : 'none'; }
+  // На кнопке «вниз» число непрочитанных (его ведёт сервер: уменьшается по мере чтения), а над ней «@», пока есть непрочитанные упоминания
+  function badge(el) {
+    var chat = B.find(+el.dataset.cid), b = el.querySelector('.jump .bd'), m = el.querySelector('.jump .mnt');
+    var n = (chat && chat.unread) || 0;
+    b.textContent = n > 99 ? '99+' : n || ''; b.style.display = n > 0 ? '' : 'none';
+    if (m) m.classList.toggle('on', !!(chat && chat.unread_mentions > 0));
+  }
+  async function toMention(el) {
+    var cid = +el.dataset.cid, r = await B.api('GET', '/messages/chat/' + cid + '/next-mention');
+    if (r && r.id && el.isConnected) jump(el, r.id);
+  }
   // Своя анимация вместо scrollTo smooth: любая посторонняя запись в scrollTop обрывает родную, а здесь цель пересчитывается на каждом кадре
   function toBottom(el) {
     var sc = el.querySelector('.scroll'); away[+el.dataset.cid] = 0; badge(el);
+    // Последние сообщения не загружены (ушли вглубь истории): открываем чат заново на конце переписки
+    if (B.msgs.hasMoreNewer) { B.msgs.open(+el.dataset.cid, undefined, { bottom: true }); return; }
     cancelAnimationFrame(jumping);
     var step = function () {
       var target = sc.scrollHeight - sc.clientHeight, dist = target - sc.scrollTop;
@@ -499,6 +553,7 @@ B.ui.chat = (function () {
     else if (c === 'jump') jump(el, +t.dataset.id);
     else if (c === 'react') B.msgs.react(+t.dataset.id, t.dataset.e);
     else if (c === 'fwd') { var n = +t.dataset.n, a = n % 10, b = n % 100; B.toast.show('Сообщение переслали ' + n + (a === 1 && b !== 11 ? ' раз' : (a >= 2 && a <= 4 && (b < 12 || b > 14) ? ' раза' : ' раз')), 'fwd'); }
+    else if (c === 'mention') { e.stopPropagation(); toMention(el); }
     else if (c === 'down') toBottom(el);
     else if (c === 'scsave') B.secret.saveAtt(+t.dataset.id);
     else if (c === 'addc') { var pid = B.peerId(B.find(+el.dataset.cid)); if (pid && B.openAddFromChat) B.openAddFromChat(pid); }
@@ -525,19 +580,22 @@ B.ui.chat = (function () {
 
   function opened(el, d) {
     var hadPreview = el._preview; el._preview = false;
+    el._edgeOff = true;   // пока лента не поставлена на место, края не проверяем: scrollTop ещё 0 и это вызвало бы лишнюю подгрузку
     render(el, 'none');
     var scr = $('.scroll', el);
     if (d.aroundId) {
       var row = $('.mrow[data-mid="' + d.aroundId + '"]', el);
       if (row) { row.scrollIntoView({ block: 'center' }); setTimeout(function () { flash(row); }, 320); } else scr.scrollTop = scr.scrollHeight;
     } else {
-      var u = $('#unrd', el);
+      var u = d.bottom ? null : $('#unrd', el);
       if (u) scr.scrollTop = Math.max(0, u.getBoundingClientRect().top / sc - scr.getBoundingClientRect().top / sc + scr.scrollTop - $('.nav', el).offsetHeight - 8);
       else { scr.scrollTop = scr.scrollHeight; el._stickUntil = performance.now() + 4000; settle(el); holdBottom(el); }
     }
+    el._edgeOff = false;
     updateHeader(el); onScroll(el); renderPin(el);
     if (B.ui.composer.sync) B.ui.composer.sync(el);
-    if (el._t0 && !hadPreview) $('.msgs', el).animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' });
+    readSent[+el.dataset.cid] = 0; scheduleRead(el);
+    if (el._t0 && !hadPreview && !d.bottom) $('.msgs', el).animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' });
   }
   B.bus.on('msgs:preview', function (d) { var el = pageFor(d.chatId); if (!el) return; el._preview = true; render(el, 'bottom'); updateHeader(el); });
   B.bus.on('msgs:opened', function (d) {
@@ -547,12 +605,13 @@ B.ui.chat = (function () {
     opened(el, d);
   });
   B.bus.on('msgs:older', function () { var el = activePage(); if (el) render(el, 'keep'); });
+  B.bus.on('msgs:newer', function () { var el = activePage(); if (el) render(el, 'keep'); });
   B.bus.on('msgs:changed', function (d) { var el = activePage(); if (el && +el.dataset.cid === B.msgs.chatId) render(el, d && d.mode === 'bottom' ? undefined : (d && d.mode) || 'smart'); });
   B.bus.on('pins:changed', function () { var el = activePage(); if (el) renderPin(el); });
   B.bus.on('msgs:new', function (d) {
     var el = activePage(); if (!el || d.mine) return;
     var scr = $('.scroll', el);
-    if (scr.scrollHeight - scr.scrollTop - scr.clientHeight > 200) { var cid = +el.dataset.cid; away[cid] = (away[cid] || 0) + 1; badge(el); }
+    if (d.detached || scr.scrollHeight - scr.scrollTop - scr.clientHeight > 200) { var cid = +el.dataset.cid; away[cid] = (away[cid] || 0) + 1; badge(el); }
   });
   function refreshTyping(cid) { var el = pageFor(cid); if (el) updateHeader(el); }
   B.bus.on('typing:changed', function (d) { refreshTyping(d.chatId); });
@@ -562,7 +621,7 @@ B.ui.chat = (function () {
   B.bus.on('conn:changed', function () { var el = activePage(); if (el) updateHeader(el); });
   B.bus.on('chats:changed', function () {
     var el = activePage(); if (!el) return;
-    updateHeader(el);
+    updateHeader(el); badge(el);
     var chat = B.find(+el.dataset.cid);
     if (chat && el._inv && !chat.invite) { el._inv = false; B.msgs.open(chat.id); }   // приглашение приняли: открываем историю
     if (chat && B.ui.composer.sync) B.ui.composer.sync(el);

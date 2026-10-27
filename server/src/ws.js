@@ -507,15 +507,29 @@ function setup(server) {
         // Только реально непрочитанные — иначе на чате в 5000 сообщений каждый вход
         // в чат рассылал status_update по КАЖДОМУ сообщению (шторм WS + SQL)
         const prevRead = (await statusMarks.marksOf(user.id, chat_id)).r;
+        // up_to — прочитано до этого сообщения (клиент показал ленту только до него):
+        // как в Telegram, непрочитанное остаётся там, куда человек ещё не долистал
+        const upTo = Number.isInteger(data.up_to) && data.up_to > 0 ? data.up_to : null;
+        let readTo = null;
+        if (upTo) {
+          readTo = await unreadCounts.markReadTo(user.id, chat_id, upTo);
+          if (!readTo) return;
+        }
         const unread = await dal.all(`
           SELECT m.id, m.sender_id FROM messages m
-          WHERE m.chat_id = ? AND m.id > ? AND m.sender_id IS NOT ? AND m.deleted = 0
-        `, chat_id, Math.max(gfloor, prevRead), user.id);
+          WHERE m.chat_id = ? AND m.id > ? AND m.sender_id IS NOT ? AND m.deleted = 0${readTo ? ' AND m.id <= ?' : ''}
+        `, ...[chat_id, Math.max(gfloor, prevRead), user.id].concat(readTo ? [readTo] : []));
         // Отметка «докуда прочитано» — до раннего выхода: если непрочитанного нет,
         // отметку всё равно надо подтянуть к последнему сообщению, иначе она может
         // отстать и счётчик покажет непрочитанное там, где его нет
-        await unreadCounts.markRead(user.id, chat_id);
-        if (!unread.length) return;
+        if (!readTo) await unreadCounts.markRead(user.id, chat_id);
+        // Остаток непрочитанного после частичного прочтения — всем устройствам, в том числе этому
+        const ackPartial = async () => {
+          const left = await unreadCounts.inChat(user.id, chat_id), leftMn = await unreadCounts.mentionsInChat(user.id, chat_id);
+          const ev = JSON.stringify({ type: 'chat_read', chat_id, unread: left, unread_mentions: leftMn });
+          getConn(user.id).forEach(w => { if (w.readyState === 1) w.send(ev); });
+        };
+        if (!unread.length) { if (readTo) await ackPartial(); return; }
         // Статус — это отметка «прочитано до»: одна запись вместо строки на каждое сообщение
         await statusMarks.read(user.id, chat_id, Math.max(...unread.map(m => m.id)));
         // Одно событие-диапазон на отправителя вместо status_update на каждое
@@ -533,7 +547,8 @@ function setup(server) {
           if ((await spaces.isFed(senderId))) await fed().onStatus('read', senderId, user.id, r.max);
         } ;
         // Синхронизация прочтения между устройствами самого пользователя
-        getConn(user.id).forEach(w => { if (w !== ws && w.readyState === 1) w.send(JSON.stringify({ type: 'chat_read', chat_id })); });
+        if (readTo) await ackPartial();
+        else getConn(user.id).forEach(w => { if (w !== ws && w.readyState === 1) w.send(JSON.stringify({ type: 'chat_read', chat_id })); });
       }
 
       if (data.type === 'edit_message') {
@@ -710,7 +725,7 @@ function setup(server) {
     });
 
     // Конфигурация для клиента: лимит редактирования подхватывается без релиза клиента
-    ws.send(JSON.stringify({ type: 'connected', user_id: user.id, edit_time_limit: (await getEditTimeLimit()) }));
+    ws.send(JSON.stringify({ type: 'connected', user_id: user.id, edit_time_limit: (await getEditTimeLimit()), read_up_to: true }));
 
     // Авто-доставка при подключении: безопасно, после регистрации всех обработчиков
     setImmediate(async () => {

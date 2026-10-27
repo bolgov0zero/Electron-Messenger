@@ -37,6 +37,14 @@ const SQL = {
       AND m.mentions IS NOT NULL
       AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)`,
 
+  firstUnreadMention: `
+    SELECT MIN(m.id) AS id FROM messages m
+    WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0
+      AND m.id > COALESCE((SELECT last_read_id FROM chat_read_state
+        WHERE user_id = ? AND chat_id = ?), 0)
+      AND m.mentions IS NOT NULL
+      AND EXISTS (SELECT 1 FROM json_each(m.mentions) WHERE value = ?)`,
+
   firstUnread: `
     SELECT MIN(m.id) AS id FROM messages m
     WHERE m.chat_id = ? AND m.sender_id IS NOT ? AND m.deleted = 0
@@ -78,6 +86,11 @@ async function mentionsInChats(userId, chatIds) {
   return sum;
 }
 
+/** Первое непрочитанное сообщение с упоминанием человека — на него ведёт кнопка «@» */
+async function firstUnreadMention(userId, chatId) {
+  return (await dal.get(SQL.firstUnreadMention, chatId, userId, userId, chatId, userId)).id || null;
+}
+
 /** Первое непрочитанное сообщение чата — на нём открывается лента */
 async function firstUnreadId(userId, chatId) {
   return (await dal.get(SQL.firstUnread, chatId, userId, userId, chatId)).id || null;
@@ -98,7 +111,20 @@ async function markRead(userId, chatId) {
   await dal.run(SQL.mark, userId, chatId, chatId);
 }
 
+/** Отметить чат прочитанным до сообщения upto (меньшее значение отметку не сдвигает назад).
+ *  Возвращает сообщение, до которого фактически прочитано: ближайшее не новее upto, либо null */
+async function markReadTo(userId, chatId, upto) {
+  const row = await dal.get('SELECT MAX(id) AS id FROM messages WHERE chat_id = ? AND id <= ?', chatId, upto);
+  const id = row && row.id;
+  if (!id) return null;
+  await dal.run(`
+    INSERT INTO chat_read_state (user_id, chat_id, last_read_id) VALUES (?, ?, ?)
+    ON CONFLICT(user_id, chat_id) DO UPDATE SET
+      last_read_id = MAX(chat_read_state.last_read_id, excluded.last_read_id)`, userId, chatId, id);
+  return id;
+}
+
 module.exports = {
   inChat, mentionsInChat, inChats, mentionsInChats,
-  firstUnreadId, total, markRead,
+  firstUnreadId, firstUnreadMention, total, markRead, markReadTo,
 };
