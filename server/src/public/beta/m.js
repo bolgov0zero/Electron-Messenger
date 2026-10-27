@@ -244,7 +244,7 @@ function renderChats(){const v=$('.tabview[data-tab="chats"]');const keep=$('.sc
   paintList();$('.scroll',v).scrollTop=keep;scrollWatch(v);badge()}
 function chatRow(c){const dm=c.k==='dm',pv=c.k==='group'&&c.p&&!/^Вы:/.test(c.p)&&c.who?`<i>${c.who}: </i>`:'';
   const mute=S.muted.has(c.id),pin=S.pinned.has(c.id);
-  return `<button class="row${pin?' pinned':''}" data-id="${c.id}">${avHtml(c,'')}<div class="rt"><div class="r1"><b>${esc(c.n)}</b>${c.tick?`<span class="st" style="color:var(--accent-ink)">${I('checks')}</span>`:''}<span class="tm${c.u&&!mute?' new':''}">${c.t}</span></div>
+  return `<button class="row${pin?' pinned':''}" data-id="${c.id}">${avHtml(c,'')}<div class="rt"><div class="r1"><b>${esc(c.n)}</b>${c.tick?`<span class="st rd">${I('checks')}</span>`:''}<span class="tm${c.u&&!mute?' new':''}">${c.t}</span></div>
    <div class="r2"><span class="pv">${pv}${esc(c.p)}</span>${mute?`<span class="st">${I('bellOff')}</span>`:''}${pin&&!c.u?`<span class="st">${I('pin')}</span>`:''}${c.u?`<span class="bd${mute?' mute':''}">${c.u}</span>`:''}</div></div></button>`}
 function paintList(){const el=$('#clist');if(!el)return;const q=S.q.trim().toLowerCase();
   let rows=CH.filter(c=>(S.filter==='all'||(S.filter==='new'?c.u>0:S.filter==='dm'?c.k==='dm':c.k!=='dm'))&&(S.folder==='all'||c.f===S.folder)&&(!q||c.n.toLowerCase().includes(q)||c.p.toLowerCase().includes(q)));

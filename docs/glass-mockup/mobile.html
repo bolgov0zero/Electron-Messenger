@@ -457,6 +457,11 @@ html:not(.dark) .edge.t{--ea:.46}
 .day-group{display:flex;flex-direction:column}
 .day{position:sticky;top:6px;z-index:5;align-self:stretch;display:flex;justify-content:center;margin:6px 0 12px;pointer-events:none}
 
+/* Галочки «прочитано» всегда синие: не зависят ни от темы, ни от цвета акцента */
+:root{--read:#3ea6ff}
+.st.rd,.st.rd .i,.mrow .bub .t .i{color:var(--read)}
+.mrow.out .bub .t{opacity:1;color:rgba(255,255,255,.78)}
+
 </style></head>
 <body>
 <div class="stage">
@@ -712,7 +717,7 @@ function renderChats(){const v=$('.tabview[data-tab="chats"]');const keep=$('.sc
   paintList();$('.scroll',v).scrollTop=keep;scrollWatch(v);badge()}
 function chatRow(c){const dm=c.k==='dm',pv=c.k==='group'&&c.p&&!/^Вы:/.test(c.p)&&c.who?`<i>${c.who}: </i>`:'';
   const mute=S.muted.has(c.id),pin=S.pinned.has(c.id);
-  return `<button class="row${pin?' pinned':''}" data-id="${c.id}">${avHtml(c,'')}<div class="rt"><div class="r1"><b>${esc(c.n)}</b>${c.tick?`<span class="st" style="color:var(--accent-ink)">${I('checks')}</span>`:''}<span class="tm${c.u&&!mute?' new':''}">${c.t}</span></div>
+  return `<button class="row${pin?' pinned':''}" data-id="${c.id}">${avHtml(c,'')}<div class="rt"><div class="r1"><b>${esc(c.n)}</b>${c.tick?`<span class="st rd">${I('checks')}</span>`:''}<span class="tm${c.u&&!mute?' new':''}">${c.t}</span></div>
    <div class="r2"><span class="pv">${pv}${esc(c.p)}</span>${mute?`<span class="st">${I('bellOff')}</span>`:''}${pin&&!c.u?`<span class="st">${I('pin')}</span>`:''}${c.u?`<span class="bd${mute?' mute':''}">${c.u}</span>`:''}</div></div></button>`}
 function paintList(){const el=$('#clist');if(!el)return;const q=S.q.trim().toLowerCase();
   let rows=CH.filter(c=>(S.filter==='all'||(S.filter==='new'?c.u>0:S.filter==='dm'?c.k==='dm':c.k!=='dm'))&&(S.folder==='all'||c.f===S.folder)&&(!q||c.n.toLowerCase().includes(q)||c.p.toLowerCase().includes(q)));

@@ -349,7 +349,7 @@ html.dark .fmtbar .vs{background:rgba(255,255,255,.12)}
 .cs-body{flex:1;overflow:auto;padding:4px 8px 28px;display:flex;flex-direction:column;gap:18px;scrollbar-width:none}
 .cs-body::-webkit-scrollbar{display:none}
 .cs-body>*{animation:cvin .4s var(--gl-ease) both}
-
+\n/* галочки «прочитано» всегда синие, вне зависимости от темы и акцента */\n:root{--read:#3ea6ff}\n.out .t .i,.row .tick,.row .meta .i{color:var(--read)}\n
 /* ── Слои поверх окна: всплывающее, окна, тосты ── */
 .layer{position:absolute;inset:0;pointer-events:none;z-index:var(--z-pop)}
 .layer>*{pointer-events:auto}

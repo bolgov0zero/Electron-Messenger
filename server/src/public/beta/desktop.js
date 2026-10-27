@@ -170,7 +170,7 @@ const fmtU=u=>u?`<span class="bd">${u}</span>`:'';
 const avHtml=(o,cls='')=>`<span class="av ${cls}${o.sq?' sq':''}" style="background:linear-gradient(135deg,${o.bg})">${o.ico?I(o.ico):(o.ini||'')}${o.on?'<i class="dot"></i>':''}${o.type?`<i class="type">${I('case')}</i>`:''}</span>`;
 function rowHtml(c){
   const pin=S.pinned.has(c.id)?`<span class="pinic">${I('pin')}</span>`:'',mu=S.muted.has(c.id)?`<span class="pinic">${I('bellOff')}</span>`:'';
-  const meta=c.tick?`<span style="display:flex;align-items:center;gap:4px">${CHK}${c.t}</span>`:c.t;
+  const meta=c.tick?`<span style="display:flex;align-items:center;gap:4px"><span class="tick" style="display:flex">${CHK}</span>${c.t}</span>`:c.t;
   return `<button class="row${S.chat===c.id&&!S.topic&&S.tab==='chats'?' on':''}" data-id="${c.id}">${avHtml(c)}<span class="rt"><b><span class="nm">${c.n}</span>${pin}${mu}</b><span>${c.p}</span></span><span class="rm">${meta}<span class="badges">${fmtU(c.u)}</span></span></button>`;
 }
 function topicHtml(t){const tick=t.who==='Вы'?CHK:'';

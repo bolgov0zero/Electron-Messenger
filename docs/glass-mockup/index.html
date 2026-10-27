@@ -351,7 +351,7 @@ html.dark .fmtbar .vs{background:rgba(255,255,255,.12)}
 .cs-body{flex:1;overflow:auto;padding:4px 8px 28px;display:flex;flex-direction:column;gap:18px;scrollbar-width:none}
 .cs-body::-webkit-scrollbar{display:none}
 .cs-body>*{animation:cvin .4s var(--gl-ease) both}
-
+\n/* галочки «прочитано» всегда синие, вне зависимости от темы и акцента */\n:root{--read:#3ea6ff}\n.out .t .i,.row .tick,.row .meta .i{color:var(--read)}\n
 /* ── Слои поверх окна: всплывающее, окна, тосты ── */
 .layer{position:absolute;inset:0;pointer-events:none;z-index:var(--z-pop)}
 .layer>*{pointer-events:auto}
@@ -977,7 +977,7 @@ const fmtU=u=>u?`<span class="bd">${u}</span>`:'';
 const avHtml=(o,cls='')=>`<span class="av ${cls}${o.sq?' sq':''}" style="background:linear-gradient(135deg,${o.bg})">${o.ico?I(o.ico):(o.ini||'')}${o.on?'<i class="dot"></i>':''}${o.type?`<i class="type">${I('case')}</i>`:''}</span>`;
 function rowHtml(c){
   const pin=S.pinned.has(c.id)?`<span class="pinic">${I('pin')}</span>`:'',mu=S.muted.has(c.id)?`<span class="pinic">${I('bellOff')}</span>`:'';
-  const meta=c.tick?`<span style="display:flex;align-items:center;gap:4px">${CHK}${c.t}</span>`:c.t;
+  const meta=c.tick?`<span style="display:flex;align-items:center;gap:4px"><span class="tick" style="display:flex">${CHK}</span>${c.t}</span>`:c.t;
   return `<button class="row${S.chat===c.id&&!S.topic&&S.tab==='chats'?' on':''}" data-id="${c.id}">${avHtml(c)}<span class="rt"><b><span class="nm">${c.n}</span>${pin}${mu}</b><span>${c.p}</span></span><span class="rm">${meta}<span class="badges">${fmtU(c.u)}</span></span></button>`;
 }
 function topicHtml(t){const tick=t.who==='Вы'?CHK:'';

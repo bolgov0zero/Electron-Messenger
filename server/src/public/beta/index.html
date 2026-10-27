@@ -457,6 +457,11 @@ html:not(.dark) .edge.t{--ea:.46}
 .day-group{display:flex;flex-direction:column}
 .day{position:sticky;top:6px;z-index:5;align-self:stretch;display:flex;justify-content:center;margin:6px 0 12px;pointer-events:none}
 
+/* Галочки «прочитано» всегда синие: не зависят ни от темы, ни от цвета акцента */
+:root{--read:#3ea6ff}
+.st.rd,.st.rd .i,.mrow .bub .t .i{color:var(--read)}
+.mrow.out .bub .t{opacity:1;color:rgba(255,255,255,.78)}
+
 </style></head>
 <body>
 <div class="stage">
