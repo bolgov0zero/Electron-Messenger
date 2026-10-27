@@ -149,6 +149,9 @@ function avHtml(name, size=32, radius=8, userId=null, connected=false, _hasAvata
   return `<div class="av-wrap"><div class="av" style="width:${size}px;height:${size}px;border-radius:${radius}px;font-size:${fs}px;background:${bg}">${initials(name)}</div>${dotHtml}</div>`;
 }
 
+// Ответ сервера с ошибкой приходит JSON-ом {error}: api его не бросает, поэтому успех проверяем по телу
+function failed(r) { return !r || !!r.error; }
+function failText(rs) { const b = [].concat(rs).find(failed); return b ? esc((b && b.error) || 'Не удалось выполнить') : ''; }
 function toast(msg, type='') {
   const el = document.createElement('div');
   el.className = 'toast'+(type?' '+type:'');
@@ -2295,7 +2298,8 @@ function rmDelete(ids) {
   confirm(list.length > 1 ? `Удалить комнаты · ${list.length}` : 'Удалить комнату?',
     `${esc(list.map(r => r.name).join(', '))} — вместе со всеми темами и перепиской. У участников комната исчезнет сразу. Отменить нельзя.`,
     async () => {
-      await Promise.all(list.map(r => api('DELETE', '/api/chats/admin/' + r.id)));
+      const rs = await Promise.all(list.map(r => api('DELETE', '/api/chats/admin/' + r.id)));
+      if (failText(rs)) { toast(failText(rs), 'error'); renderRooms(); return; }
       toast(list.length > 1 ? `Удалено комнат: ${list.length}` : 'Комната удалена', 'success');
       RM.sel.clear();
       renderRooms();
@@ -2305,7 +2309,8 @@ function rmDelete(ids) {
 function rmClear(id) {
   const r = allRooms.find(x => x.id === id);
   confirm('Очистить историю?', `Все сообщения комнаты «${esc(r?.name || '')}» будут удалены безвозвратно.`, async () => {
-    await api('DELETE', '/api/chats/admin/' + id + '/messages');
+    const r = await api('DELETE', '/api/chats/admin/' + id + '/messages');
+    if (failed(r)) return toast(failText(r), 'error');
     toast('История очищена', 'success');
     renderRooms();
   });
@@ -2974,7 +2979,8 @@ function uaLogout(ids) {
   confirm(ids.length > 1 ? `Завершить сеансы · ${ids.length}` : 'Завершить сеансы?',
     `${esc(names.join(', '))} — выход на всех устройствах. Войти снова можно будет.`,
     async () => {
-      await Promise.all(ids.map(id => api('POST', `/api/admin/users/${id}/logout`)));
+      const rs = await Promise.all(ids.map(id => api('POST', `/api/admin/users/${id}/logout`)));
+      if (failText(rs)) return toast(failText(rs), 'error');
       toast(ids.length > 1 ? `Сеансы завершены: ${ids.length}` : 'Сеансы завершены', 'success');
       UA.sel.clear();
       renderUsers();
@@ -2987,14 +2993,16 @@ function uaBan(ids) {
   confirm(ids.length > 1 ? `Заблокировать · ${ids.length}` : 'Заблокировать?',
     `${esc(names.join(', '))} не ${ids.length > 1 ? 'смогут' : 'сможет'} войти, пока вы не разблокируете. Все сеансы завершатся сразу.`,
     async () => {
-      await Promise.all(ids.map(id => api('POST', `/api/admin/users/${id}/ban`)));
+      const rs = await Promise.all(ids.map(id => api('POST', `/api/admin/users/${id}/ban`)));
+      if (failText(rs)) { toast(failText(rs), 'error'); renderUsers(); return; }
       toast(ids.length > 1 ? `Заблокировано: ${ids.length}` : 'Пользователь заблокирован', 'success');
       UA.sel.clear();
       renderUsers();
     });
 }
 async function uaUnban(id) {
-  await api('POST', `/api/admin/users/${id}/unban`);
+  const r = await api('POST', `/api/admin/users/${id}/unban`);
+  if (failed(r)) return toast(failText(r), 'error');
   toast(`«${esc(uaNames([id])[0] || '')}» разблокирован`, 'success');
   renderUsers();
 }
@@ -3609,7 +3617,8 @@ function chDelete(ids) {
   confirm(list.length > 1 ? `Удалить чаты · ${list.length}` : 'Удалить чат?',
     `${esc(list.map(chName).join(', '))} — переписка удалится у всех участников. Отменить нельзя.`,
     async () => {
-      await Promise.all(list.map(c => api('DELETE', '/api/chats/admin/' + c.id)));
+      const rs = await Promise.all(list.map(c => api('DELETE', '/api/chats/admin/' + c.id)));
+      if (failText(rs)) { toast(failText(rs), 'error'); renderChats(); return; }
       toast(list.length > 1 ? `Удалено чатов: ${list.length}` : 'Чат удалён', 'success');
       if (list.some(c => c.id === CH.openId)) closeModal('modal-chat-members');
       CH.sel.clear();
@@ -3620,7 +3629,8 @@ function chDelete(ids) {
 function chClear(id) {
   const c = allChats.find(x => x.id === id);
   confirm('Очистить историю?', `Все сообщения чата «${esc(c ? chName(c) : '')}» будут удалены безвозвратно.`, async () => {
-    await api('DELETE', '/api/chats/admin/' + id + '/messages');
+    const r = await api('DELETE', '/api/chats/admin/' + id + '/messages');
+    if (failed(r)) return toast(failText(r), 'error');
     toast('История очищена', 'success');
     renderChats();
   });
@@ -3671,14 +3681,16 @@ async function chInviteAddr() {
   chRenderMembers();
 }
 async function chCancelInvite(userId) {
-  await api('DELETE', `/api/admin/chats/${CH.openId}/members/${userId}`);
+  const r = await api('DELETE', `/api/admin/chats/${CH.openId}/members/${userId}`);
+  if (failed(r)) return toast(failText(r), 'error');
   CH.pending = (CH.pending || []).filter(x => x.id !== userId);
   chRenderMembers();
   toast('Приглашение отменено', 'success');
 }
 async function chKick(userId) {
   const m = CH.members.find(x => x.id === userId);
-  await api('DELETE', `/api/admin/chats/${CH.openId}/members/${userId}`);
+  const r = await api('DELETE', `/api/admin/chats/${CH.openId}/members/${userId}`);
+  if (failed(r)) return toast(failText(r), 'error');
   CH.members = CH.members.filter(x => x.id !== userId);
   chRenderMembers();
   toast(`«${esc(m?.display_name || '')}» больше не в группе`, 'success');
@@ -6771,7 +6783,7 @@ function flRender() {
           <div class="ux-actions">${act}<button class="ux-ibtn" aria-label="Ещё действия: ${esc(flName(f))}" aria-haspopup="menu" aria-expanded="false" data-on-click="__h102" data-a-click="${esc(JSON.stringify([name]))}">${UX_I.more}</button></div></div>
         ${open ? `<div class="fb-exp${FL.fresh === f.filename ? ' fresh' : ''}"><div><div class="fb-big" style="background:${FL_KIND[kind][1]}">${esc((flExt(f) || '?').toUpperCase())}${kind === 'image' ? `<img src="${esc(flUrl(f.filename))}" alt="" data-on-error="elRemove">` : kind === 'video' && f.thumb ? `<img src="${esc(f.thumb)}" alt="" data-on-error="elRemove">` : ''}</div></div>
           <div><h4>О файле</h4><div class="rb-kv"><div><span>Тип</span><b>${FL_KIND[kind][0]}${flExt(f) ? ', .' + esc(flExt(f)) : ''}</b></div><div><span>Размер</span><b>${hmBytes(f.size || 0)}</b></div><div><span>Отправил</span><b>${esc(f.sender_name || '—')}</b></div><div><span>Чат</span><b>${esc(f.chat_name || '—')}${flChatChip(f.chat_type)}</b></div><div><span>Когда</span><b>${esc(uaSeen(flTs(f)))}</b></div><div><span>Удалится</span><b>${ld != null ? `через ${ld} ${uxPlural(ld, 'день', 'дня', 'дней')}` : 'не удаляется'}</b></div></div></div>
-          <div><h4>Действия</h4><div style="display:flex;flex-wrap:wrap;gap:8px">${kind === 'encrypted' ? '' : `${openable ? `<button class="btn btn-ghost btn-sm" data-on-click="flOpen" data-a-click="${esc(JSON.stringify([`${name}`]))}">${FL_I.eye}Открыть</button>` : ''}<button class="btn btn-ghost btn-sm" data-on-click="flDownload" data-a-click="${esc(JSON.stringify([`${name}`]))}">${FL_I.down}Скачать</button>`}${f.sender_name ? `<button class="btn btn-ghost btn-sm" data-on-click="flWho" data-a-click="${esc(JSON.stringify([f.sender_name]))}">Все файлы ${esc(f.sender_name.split(' ')[0])}</button>` : ''}<button class="btn btn-danger btn-sm" data-on-click="flDelete" data-a-click="${esc(JSON.stringify([['name']]))}">${UX_I.trash}Удалить</button></div>
+          <div><h4>Действия</h4><div style="display:flex;flex-wrap:wrap;gap:8px">${kind === 'encrypted' ? '' : `${openable ? `<button class="btn btn-ghost btn-sm" data-on-click="flOpen" data-a-click="${esc(JSON.stringify([`${name}`]))}">${FL_I.eye}Открыть</button>` : ''}<button class="btn btn-ghost btn-sm" data-on-click="flDownload" data-a-click="${esc(JSON.stringify([`${name}`]))}">${FL_I.down}Скачать</button>`}${f.sender_name ? `<button class="btn btn-ghost btn-sm" data-on-click="flWho" data-a-click="${esc(JSON.stringify([f.sender_name]))}">Все файлы ${esc(f.sender_name.split(' ')[0])}</button>` : ''}<button class="btn btn-danger btn-sm" data-on-click="flDelete" data-a-click="${esc(JSON.stringify([[name]]))}">${UX_I.trash}Удалить</button></div>
             <div class="rm-sub" style="margin-top:10px">После удаления в чате на месте файла останется «Файл удалён».</div></div></div>` : ''}</div>`;
       }).join('') || `<div class="ub-empty">${FL.files.length ? 'Ничего не нашли. Проверьте запрос или фильтры.' : 'Файлов пока нет'}</div>`}</div></div>`;
   });

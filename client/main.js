@@ -1054,7 +1054,10 @@ ipcMain.handle('set-autostart', (_, enabled) => {
 });
 
 ipcMain.handle('download-file', (e, { url, filename }) => {
-  const dest = path.join(app.getPath('downloads'), filename || 'file');
+  // Имя приходит от отправителя вложения: только последний сегмент, без «..» и служебных символов
+  if (!/^https?:\/\//i.test(String(url || ''))) return Promise.reject(new Error('Bad url'));
+  const safeName = path.basename(String(filename || '')).replace(/[\x00-\x1f<>:"|?*]/g, '_').replace(/^\.+$/, '') || 'file';
+  const dest = path.join(app.getPath('downloads'), safeName);
   return new Promise((resolve, reject) => {
     e.sender.session.once('will-download', (event, item) => {
       item.setSavePath(dest);
@@ -1076,7 +1079,12 @@ ipcMain.handle('restart-app', () => {
 
 ipcMain.handle('open-file', (_, filePath) => {
   const { shell } = require('electron');
-  return shell.openPath(filePath);
+  // Открываем только то, что лежит в папке загрузок; исполняемые типы показываем в папке, а не запускаем
+  let real, dir;
+  try { real = fs.realpathSync(String(filePath || '')); dir = fs.realpathSync(app.getPath('downloads')); } catch { return 'Файл не найден'; }
+  if (!real.startsWith(dir + path.sep)) return 'Недопустимый путь';
+  if (/\.(exe|bat|cmd|com|msi|scr|ps1|vbs|vbe|wsf|jar|command|sh|app|pkg|dmg|desktop|lnk|appimage)$/i.test(real)) { shell.showItemInFolder(real); return ''; }
+  return shell.openPath(real);
 });
 
 ipcMain.handle('resize-window', (_, delta) => {

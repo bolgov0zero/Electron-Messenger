@@ -1253,11 +1253,18 @@ async function acceptConnect(body) {
   if (!inv || inv.used_at || inv.expires_at < Math.floor(Date.now() / 1000)
       || !safeEq(connectProof(inv.secret, body.nonce, id, body.pub, body.url || '', String(body.name || '')), body.proof || '')) return { status: 403, error: 'invite_invalid' };
   if ((await realPeerByInstance(id))) return { status: 409, error: 'exists' };
-  await dal.tx(() => (async () => {
-    await clearVirtualRow(id);
-    await dal.run("INSERT INTO fed_peers (instance_id, name, url, pub, role, status) VALUES (?, ?, ?, ?, 'in', 'active')", id, name, url || null, body.pub);
-    await dal.run('UPDATE fed_invites SET used_at = unixepoch() WHERE token_hash = ?', inv.token_hash);
-  })());
+  try {
+    await dal.tx(() => (async () => {
+      // Приглашение занимаем первым и условно: два одновременных запроса не пройдут оба
+      const claim = await dal.run('UPDATE fed_invites SET used_at = unixepoch() WHERE token_hash = ? AND used_at IS NULL', inv.token_hash);
+      if (!claim.changes) throw new Error('invite_used');
+      await clearVirtualRow(id);
+      await dal.run("INSERT INTO fed_peers (instance_id, name, url, pub, role, status) VALUES (?, ?, ?, ?, 'in', 'active')", id, name, url || null, body.pub);
+    })());
+  } catch (e) {
+    if (e.message === 'invite_used') return { status: 403, error: 'invite_invalid' };
+    throw e;
+  }
   return { status: 200, id: me.id, name: me.name, pub: me.pub, ack: connectAck(inv.secret, body.nonce, me.pub) };
 }
 // Подключиться по ключу партнёра (мы — сторона, которая вводит ключ)

@@ -334,10 +334,6 @@ try {
     CREATE TRIGGER IF NOT EXISTS messages_fts_ad AFTER DELETE ON messages BEGIN
       INSERT INTO messages_fts(messages_fts, rowid, text) VALUES ('delete', old.id, old.text);
     END;
-    CREATE TRIGGER IF NOT EXISTS messages_fts_au AFTER UPDATE OF text ON messages BEGIN
-      INSERT INTO messages_fts(messages_fts, rowid, text) VALUES ('delete', old.id, old.text);
-      INSERT INTO messages_fts(rowid, text) VALUES (new.id, new.text);
-    END;
   `);
   // Разовое заполнение существующей истории
   const ftsCount = db.prepare('SELECT COUNT(*) as c FROM messages_fts').get().c;
@@ -378,6 +374,8 @@ try {
     db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('fts_secret_v2', '1')").run();
   }
 } catch (e) { console.warn('[FTS] миграция секретных чатов не выполнена:', e.message); }
+// Прежний триггер правки без условия iv: раньше он создавался при каждом старте и писал шифротексты в индекс
+try { db.exec('DROP TRIGGER IF EXISTS messages_fts_au'); } catch {}
 
 // Разовое заполнение отметок «докуда прочитано» для уже работающих установок.
 // Берём id прямо перед первым непрочитанным — тогда счётчики после перехода

@@ -129,7 +129,13 @@ async function create({ kind, text, author_id, start_at, duration_min, target, t
 }
 
 // Наступившее — отправить. Ошибка на одном объявлении не должна ронять цикл.
+let delivering = false;   // долгая рассылка не должна перекрываться следующим тиком: иначе то же объявление уйдёт дважды
 async function deliverDue() {
+  if (delivering) return;
+  delivering = true;
+  try { await deliverDueNow(); } finally { delivering = false; }
+}
+async function deliverDueNow() {
   const now = Math.floor(Date.now() / 1000);
   const due = await dal.all('SELECT * FROM announcements WHERE sent_at IS NULL AND start_at <= ?', now);
   for (const row of due) {

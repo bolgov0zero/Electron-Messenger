@@ -469,6 +469,7 @@ router.post('/:id/avatar', authMiddleware, async (req, res) => {
   // Аватарку меняет создатель группы или администратор; зеркало с другого сервера не меняет никто
   if (chat.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: её меняет только владелец' });
   if (chat.type === 'group' && !(req.user.is_admin || chat.created_by === req.user.id)) return res.status(403).json({ error: 'Forbidden' });
+  if (chat.type === 'room' && !req.user.is_admin) return res.status(403).json({ error: 'Forbidden' });
   const { data } = req.body;
   if (!data) return res.status(400).json({ error: 'No data' });
   try {

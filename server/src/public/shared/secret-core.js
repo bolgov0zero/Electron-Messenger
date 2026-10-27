@@ -56,15 +56,20 @@
   let wrapP = null;
   function wrapKey() {
     if (!wrapP) wrapP = (async () => {
-      let k = await idbGet('wrap').catch(() => null);
+      let k = null, readFailed = false;
+      try { k = await idbGet('wrap'); } catch { readFailed = true; }
       if (!k) {
+        // Сбой чтения не значит «ключа нет»: новый ключ затёр бы прежний, и сохранённые ключи чатов перестали бы открываться
+        if (readFailed) throw new Error('idb_unavailable');
         k = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
         await idbPut('wrap', k);
       }
       return k;
     })();
+    wrapP.catch(() => { wrapP = null; });   // следующая попытка начнётся заново, а не получит тот же отказ
     return wrapP;
   }
+  let blobLocked = false;   // blob не удалось открыть из-за сбоя хранилища ключа: поверх него ничего не пишем
   async function loadBlob() {
     const raw = localStorage.getItem('sc_v1');
     if (!raw) return {};
@@ -72,9 +77,14 @@
       const o = JSON.parse(raw);
       const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(o.iv) }, await wrapKey(), unb64(o.ct));
       return JSON.parse(dec.decode(pt));
-    } catch { return {}; }
+    } catch (e) {
+      if (e && e.message === 'idb_unavailable') blobLocked = true;
+      else { try { localStorage.setItem('sc_v1_bak', raw); } catch {} }   // не расшифровался: оставляем копию, прежде чем начнём с чистого состояния
+      return {};
+    }
   }
   async function saveBlob() {
+    if (blobLocked) return;
     try {
       const iv = crypto.getRandomValues(new Uint8Array(12));
       const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await wrapKey(),

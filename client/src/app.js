@@ -2023,7 +2023,8 @@ async function dropEmptyDirect(chatId) {
   if (!chat || chat.type !== 'direct' || chat.is_secret) return;
   if (chat.last_message) return;
   if ((S.drafts[chatId] || '').trim()) return;
-  try { await api('DELETE', '/chats/' + chatId); } catch { return; }
+  let delRes; try { delRes = await api('DELETE', '/chats/' + chatId); } catch { return; }
+  if (!delRes || delRes.error) return;   // api не бросает при сбое сети: без ответа чат остаётся в списке
   // Сервер пришлёт chat_deleted, но список чистим сразу: иначе пустая строка
   // мелькает до прихода события
   S.chats = S.chats.filter(c => c.id !== chatId);
@@ -2105,11 +2106,14 @@ function tailLoad(chatId) {
   } catch { return null; }
 }
 
+let _loadChatsReq = 0;
 async function loadChats() {
   await scLoadKeys();
   await loadAvatarIndex();
+  const loadReq = ++_loadChatsReq;
   const all = await api('GET','/chats');
-  if (!all) { chatsFromCache(); return; }
+  if (loadReq !== _loadChatsReq) return;   // пока шёл запрос, начался более новый: старый ответ не применяем
+  if (!Array.isArray(all)) { chatsFromCache(); return; }
   S.secretChatIds = new Set(all.filter(c => c.is_secret).map(c => c.id));
   const chats = all.filter(c => !(c.is_secret && S.scHidden.has(c.id)));
   S.chats = chats;
@@ -4242,7 +4246,7 @@ function renderReactions(msgId) {
   return `<div class="reactions">${counts.map(r => {
     const mine = String(r.user_ids || '').split(',').includes(String(S.user?.id));
     return `<button class="reaction-btn${mine ? ' mine' : ''}" data-msg-id="${msgId}" data-reaction="${esc(r.reaction)}" data-on-click="sendReaction" data-a-click="${esc(JSON.stringify([msgId, `${r.reaction}`]))}">` +
-      `<span class="ra-emoji">${r.reaction}</span><span class="ra-count">${r.count}</span></button>`;
+      `<span class="ra-emoji">${esc(r.reaction)}</span><span class="ra-count">${r.count}</span></button>`;
   }).join('')}</div>`;
 }
 
@@ -4624,7 +4628,7 @@ function attachBlockHtml(att) {
         : `<svg class="dl-icon" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`;
       attachHtml = `<div class="bubble-file${isDone?' bubble-file-done':''}" data-att-url="${attUrl}" data-on-click="${clickAction[0]}" data-a-click="${esc(JSON.stringify(clickAction[1]))}">
         <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="flex-shrink:0" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
-        <div class="bubble-file-info"><div class="bubble-file-name">${att.name||'Файл'}</div>${sizeFmt?`<div class="bubble-file-size">${sizeFmt}</div>`:''}</div>
+        <div class="bubble-file-info"><div class="bubble-file-name">${esc(att.name||'Файл')}</div>${sizeFmt?`<div class="bubble-file-size">${sizeFmt}</div>`:''}</div>
         ${rightEl}
       </div>`;
     }

@@ -98,7 +98,7 @@ router.get('/chat/:chatId/media', authMiddleware, async (req, res) => {
     return res.status(403).json({ error: 'Not a member' });
   // Секретный чат: сервер не знает ни типов, ни ссылок, всё зашифровано
   if ((await dal.get('SELECT is_secret FROM chats WHERE id = ?', chatId))?.is_secret) return res.json({ items: [], more: false, cursor: null });
-  const limit = Math.min(parseInt(req.query.limit) || 60, 120);
+  const limit = Math.min(Math.max(parseInt(req.query.limit) || 60, 1), 120);
   let cursor = req.query.before ? parseInt(req.query.before) : Number.MAX_SAFE_INTEGER;
   const where = type === 'links' ? "(m.text LIKE '%http://%' OR m.text LIKE '%https://%')" : "m.attachment LIKE '%\"url\"%'";
   const stmt = `SELECT m.id, m.sent_at, m.text, m.attachment, m.link_preview, COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') AS sender_name, u.id AS sender_id
@@ -149,7 +149,7 @@ router.get('/chat/:chatId', authMiddleware, async (req, res) => {
   const gfloor = guestLib.floorOf(req.user.id);
   // Уведомление о входе скрыто от самого нового устройства (messages.hide_dk, notify.js): ключ устройства берётся из его токена
   const FL = (gfloor ? ` AND m.id > ${Number(gfloor)}` : '') + (req.user.dk ? ` AND (m.hide_dk IS NULL OR m.hide_dk != ${Number(req.user.dk)})` : '');
-  const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+  const limit = Math.min(Math.max(parseInt(req.query.limit) || 50, 1), 200);
   const before = req.query.before ? parseInt(req.query.before) : null;
   const after  = req.query.after  ? parseInt(req.query.after)  : null;
   const around = req.query.around ? parseInt(req.query.around) : null;

@@ -34,7 +34,9 @@ B.chats = {
   load: async function () {
     await B.secret.boot();
     await B.avatar.loadIndex();
+    var req = B.chats._req = (B.chats._req || 0) + 1;
     var list = B.chats.visible(await B.api('GET', '/chats'));
+    if (req !== B.chats._req) return;   // пока шёл запрос, начался более новый: старый ответ не применяем
     if (!list) {
       var o = B.chats.stored();
       if (o && !B.S.chats.length) { B.S.chats = o.list; B.S.cachedAt = o.t; B.chats.onChanged(); }
@@ -48,8 +50,9 @@ B.chats = {
   // а темы подмешивает loadTopics(). Использовать везде, где список обновляется при открытом списке тем.
   refresh: async function () {
     await B.secret.boot();
+    var req = B.chats._req = (B.chats._req || 0) + 1;
     var fresh = B.chats.visible(await B.api('GET', '/chats'));
-    if (!fresh) return;
+    if (!fresh || req !== B.chats._req) return;
     var topics = B.S.chats.filter(function (c) { return c.parent_id; });
     B.S.cachedAt = 0; B.chats.store(fresh);
     B.S.chats = fresh.concat(topics);

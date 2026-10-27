@@ -246,8 +246,8 @@ async function recvMsg(peer, ev) {
   if (!at || !uid) return;
   const { chat, home } = at;
   const seq = !home && Math.floor(Number(ev.seq)) > 0 ? Math.floor(Number(ev.seq)) : null;
-  if ((await dal.get('SELECT 1 FROM messages WHERE fed_uid = ?', uid))) {   // повтор после обрыва; номер у хозяина запоминаем
-    if (seq) await dal.run('UPDATE messages SET fed_seq = ? WHERE fed_uid = ? AND fed_seq IS NULL', seq, uid);
+  if ((await dal.get('SELECT 1 FROM messages WHERE fed_uid = ? AND chat_id = ?', uid, chat.id))) {   // повтор после обрыва; номер у хозяина запоминаем
+    if (seq) await dal.run('UPDATE messages SET fed_seq = ? WHERE fed_uid = ? AND chat_id = ? AND fed_seq IS NULL', seq, uid, chat.id);
     return;
   }
   const me = (await F().identity()).id;
@@ -287,7 +287,7 @@ async function recvMsg(peer, ev) {
   }
   if (!text && !attachment && !fwdJson) return;
   // Пока мы ждали файл, мог прийти повтор: проверяем ещё раз
-  if ((await dal.get('SELECT 1 FROM messages WHERE fed_uid = ?', uid))) return;
+  if ((await dal.get('SELECT 1 FROM messages WHERE fed_uid = ? AND chat_id = ?', uid, chat.id))) return;
   const replyTo = ev.reply ? (await dal.get('SELECT id FROM messages WHERE fed_uid = ? AND chat_id = ?', str(ev.reply, 80), chat.id))?.id || null : null;
   const now = Math.floor(Date.now() / 1000);
   const ts = Math.min(Math.floor(Number(ev.ts)) || now, now);
@@ -345,7 +345,7 @@ async function recvDel(peer, ev) {
 async function recvReact(peer, ev) {
   const at = await locate(peer, ev); if (!at) return;
   const msg = await localMsg(at.chat, ev.uid), emoji = str(ev.emoji, 16);
-  if (!msg || !emoji || !/\p{Extended_Pictographic}/u.test(emoji)) return;
+  if (!msg || !emoji || !/\p{Extended_Pictographic}/u.test(emoji) || !/^(?:\p{Extended_Pictographic}|\p{Emoji_Component})+$/u.test(emoji)) return;
   const me = (await F().identity()).id, fi = str(ev.fi, 32), fl = str(ev.fl, 64);
   let who;
   if (at.home) {
@@ -560,7 +560,8 @@ async function syncTopics(peer, room, topics) {
   await dal.tx(async () => {
     for (const tid of keep) {
       for (const uid of members) await dal.run('INSERT OR IGNORE INTO chat_members (chat_id, user_id) VALUES (?, ?)', tid, uid);
-      await dal.run(`DELETE FROM chat_members WHERE chat_id = ? AND user_id NOT IN (${members.map(() => '?').join(',') || 'NULL'})`, tid, ...members);
+      if (members.length) await dal.run(`DELETE FROM chat_members WHERE chat_id = ? AND user_id NOT IN (${members.map(() => '?').join(',')})`, tid, ...members);
+      else await dal.run('DELETE FROM chat_members WHERE chat_id = ?', tid);
     }
   });
 }

@@ -113,3 +113,11 @@ B.bus.on('ws:message', function (d) {
 B.bus.on('ws:secret_key_ready', function (d) { B.secret.tick(d.chat_id); });
 B.bus.on('msgs:opened', function () { B.secret.decrypt(); });
 B.bus.on('ws:message', function (d) { if (d.message.chat_id === B.msgs.chatId) setTimeout(B.secret.decrypt, 0); });
+
+// Выход: расшифрованные тексты, вложения и список скрытых чатов не должны остаться в памяти для следующего входа
+B.bus.on('auth:logout', function () {
+  B.S.scDecrypted.clear();
+  B.S.scAttBlob.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) {} });
+  B.S.scAttBlob.clear(); B.S.scAtt.clear();
+  if (B.S.secretChatIds && B.S.secretChatIds.clear) B.S.secretChatIds.clear();
+});

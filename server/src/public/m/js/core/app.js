@@ -50,7 +50,8 @@ B.app = {
     B.modules.init();
     B.folders.load();
     B.spaces.load();
-    await B.chats.load();
+    // Сбой списка чатов (в том числе при загрузке ключей скрытых чатов) не должен оставлять приложение без соединения
+    try { await B.chats.load(); } catch (e) { console.warn('[m] список чатов:', e && e.message); }
     B.ws.connect();
     B.modules.refresh();
     if (B.push.permission() === 'granted') B.push.subscribe();

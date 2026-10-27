@@ -315,11 +315,16 @@ function setup(server) {
     let handler = null;
     const queue = [];
     ws.on('message', raw => { if (handler) handler(raw); else queue.push(raw); });
-    const setHandler = fn => { handler = fn; queue.splice(0).forEach(fn); };
-    wsAuth(url.searchParams.get('token')).then(user => user.must_change_password ? ws.close(1008, 'must_change_password') : attachConn(ws, req, user, setHandler), () => ws.close(1008, 'Unauthorized'));
+    const setHandler = fn => {
+      handler = raw => { Promise.resolve(fn(raw)).catch(e => console.warn('[WS] обработчик:', e && e.message)); };
+      queue.splice(0).forEach(handler);
+    };
+    wsAuth(url.searchParams.get('token')).then(user => user.must_change_password ? ws.close(1008, 'must_change_password') : attachConn(ws, req, user, setHandler), () => ws.close(1008, 'Unauthorized'))
+      .catch(e => { console.warn('[WS] подключение:', e && e.message); try { ws.close(1011, 'error'); } catch {} });
   });
 
   async function attachConn(ws, req, user, setHandler) {
+    if (ws.readyState > 1) return;   // сокет закрылся, пока проверялся токен: событие close уже прошло
 
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
@@ -330,6 +335,12 @@ function setup(server) {
     clients.get(user.id).add(ws);
     ws._dk = user.dk || null;   // ключ устройства, по которому выдан токен: отзыв устройства закрывает его соединения
     await broadcastStatus(user.id);
+    if (ws.readyState > 1) {   // закрылся за время рассылки статуса: слушателя close ещё нет, убираем сами
+      const c = clients.get(user.id);
+      if (c) { c.delete(ws); if (!c.size) clients.delete(user.id); }
+      await broadcastStatus(user.id);
+      return;
+    }
 
     const connId = ++connCounter;
     const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || '—';
@@ -338,6 +349,7 @@ function setup(server) {
 
     setHandler(async raw => {
       let data; try { data = JSON.parse(raw); } catch { return; }
+      if (!data || typeof data !== 'object') return;
 
       // Гость: короткий список событий (запрет по умолчанию); порог истории применяется ниже, где читаются сообщения
       if (user.is_guest && !guestLib.WS_ALLOW.has(data.type)) return;
@@ -614,7 +626,7 @@ function setup(server) {
         const { message_id, reaction } = data;
         // Любой эмодзи (как в Telegram), но именно эмодзи: короткая строка с пиктограммой
         if (typeof reaction !== 'string' || !reaction || reaction.length > 16) return;
-        if (!/\p{Extended_Pictographic}/u.test(reaction)) return;
+        if (!/\p{Extended_Pictographic}/u.test(reaction) || !/^(?:\p{Extended_Pictographic}|\p{Emoji_Component})+$/u.test(reaction)) return;
         const msg = await dal.get('SELECT * FROM messages WHERE id = ? AND deleted = 0', message_id);
         if (!msg || msg.id <= gfloor) return;
         if (!(await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ?', msg.chat_id, user.id))) return;

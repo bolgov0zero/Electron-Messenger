@@ -226,7 +226,8 @@ async function run({ conn, sqlitePath, snapshotPath, onProgress = () => {}, log 
     // После массовой загрузки: карта видимости и статистика. Без VACUUM PostgreSQL не может
     // считать только по индексу, и счётчики сообщений по чатам тянутся секундами
     say('vacuum', 'Оптимизация базы');
-    await pool.query('VACUUM (ANALYZE)');
+    // Перенос уже зафиксирован: сбой VACUUM не должен уходить в catch, который стирает схему
+    try { await pool.query('VACUUM (ANALYZE)'); } catch (e) { log('VACUUM не выполнен: ' + e.message); }
     result.seconds = Math.round((Date.now() - t0) / 1000);
     say('done', `Перенесено строк: ${result.rows}, таблиц: ${result.tables}`);
     return result;

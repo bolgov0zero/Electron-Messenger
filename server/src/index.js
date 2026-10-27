@@ -14,6 +14,19 @@ const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', 'chat_db
 const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
 
 const app = express();
+// Express 4 не ловит отказы async-обработчиков: при ошибке БД запрос висел без ответа. Ловим здесь и отвечаем 500
+const ExpressLayer = require('express/lib/router/layer');
+ExpressLayer.prototype.handle_request = function (req, res, next) {
+  const fn = this.handle;
+  if (fn.length > 3) return next();
+  try {
+    const r = fn(req, res, next);
+    if (r && typeof r.catch === 'function') r.catch(e => {
+      console.warn('[Express] необработанная ошибка', req.method, req.originalUrl, e && e.message);
+      if (!res.headersSent) res.status(500).json({ error: 'Internal error' });
+    });
+  } catch (e) { next(e); }
+};
 // Доверяем первому прокси (nginx): req.ip берётся из X-Forwarded-For корректно,
 // а не из самодельного разбора заголовка, который можно подделать
 app.set('trust proxy', 1);
