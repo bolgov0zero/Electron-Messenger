@@ -407,3 +407,9 @@ html, body { background: var(--gl-base); }
 
 /* страницы в движении: без размытия под пузырями и плашками дней (десятки слоёв backdrop-filter на движущейся странице) */
 .page.mv .mrow.in .bub, .page.drag .mrow.in .bub, .page.mv .day .glass, .page.drag .day .glass { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* переключатель папок: активный чип подсвечивает бегунок (едет, как у нижней панели), а не фон самого чипа */
+.fgrp .thumb { position: absolute; top: 4px; bottom: 4px; left: 4px; width: 0; border-radius: 22px; background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px -2px var(--gl-shadow); transition: left .45s var(--gl-spring), width .45s var(--gl-spring); pointer-events: none; }
+.fgrp .chip { position: relative; z-index: 1; }
+.fgrp .chip.on { background: none; box-shadow: none; }
+.fgrp.nt .chip.on { background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px -2px var(--gl-shadow); }

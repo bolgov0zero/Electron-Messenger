@@ -14,8 +14,19 @@ B.ui.folders = (function () {
       return '<button class="chip' + (F.filter === id ? ' on' : '') + '" data-fo="' + id + '">' + I(ic) + B.esc(name) + (n ? '<b class="cb">' + (n > 99 ? '99+' : n) + '</b>' : '') + '</button>';
     };
     var all = F.list.reduce(function (s, f) { return s + F.unread(f); }, 0);
-    return '<div class="fbar"><div class="chips fo"><div class="fgrp glass">' + chip('all', 'chat', 'Все чаты', all) + F.list.map(function (f) { return chip(f.id, f.icon || 'folder', f.name, F.unread(f)); }).join('') + '</div></div></div>';
+    return '<div class="fbar"><div class="chips fo"><div class="fgrp glass"><i class="thumb"></i>' + chip('all', 'chat', 'Все чаты', all) + F.list.map(function (f) { return chip(f.id, f.icon || 'folder', f.name, F.unread(f)); }).join('') + '</div></div></div>';
   }
+
+  // Бегунок под активным чипом (как у нижней панели): панель при смене папки строится заново, поэтому новый бегунок
+  // стартует с места прежнего и плавно едет к активному чипу. prev — {l, w} прежнего бегунка
+  function settle(bar, prev) {
+    var g = bar && bar.querySelector('.fgrp'), th = g && g.querySelector('.thumb'), b = g && g.querySelector('.chip.on');
+    if (!th || !b || !b.offsetWidth) { if (g) g.classList.add('nt'); return; }   // панель не отрисована (вкладка скрыта): пока подсвечиваем сам чип
+    g.classList.remove('nt');
+    if (prev && prev.w) { th.style.transition = 'none'; th.style.left = prev.l; th.style.width = prev.w; void th.offsetWidth; th.style.transition = ''; }
+    th.style.left = b.offsetLeft + 'px'; th.style.width = b.offsetWidth + 'px';
+  }
+  function thumbOf(bar) { var th = bar && bar.querySelector('.fgrp .thumb'); return th && th.style.width ? { l: th.style.left, w: th.style.width } : null; }
 
   // «В папку»: лист с галочками (чат может лежать в нескольких папках)
   function chatSheet(chatId) {
@@ -85,5 +96,5 @@ B.ui.folders = (function () {
     var p = B.nav.stack.map(function (s) { return s.el; }).find(function (e) { return e.dataset.fldpg; });
     if (p) { var sc_ = $('.scroll', p), y = sc_.scrollTop; sc_.innerHTML = rowsHtml(); sc_.scrollTop = y; }
   });
-  return { barHtml: barHtml, chatSheet: chatSheet, editor: editor, openPage: openPage };
+  return { barHtml: barHtml, settle: settle, thumbOf: thumbOf, chatSheet: chatSheet, editor: editor, openPage: openPage };
 })();
