@@ -1,7 +1,7 @@
 {
-  "name": "Electron β — макет",
+  "name": "Electron β",
   "short_name": "Electron β",
-  "description": "Кликабельный макет нового оформления мобильного клиента",
+  "description": "Корпоративный мессенджер — мобильная версия (бета)",
   "id": "/beta/",
   "start_url": "/beta/",
   "scope": "/beta/",

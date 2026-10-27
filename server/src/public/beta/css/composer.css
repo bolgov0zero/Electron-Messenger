@@ -1,0 +1,211 @@
+/* /m — поле ввода: строка 49 px + отступ под «домой» (как у таб-бара), полосы ответа и вложения, панель смайлов и GIF */
+.comp { display: flex; flex-direction: column; }
+.bottom.comp { background: var(--bar-solid); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.page.chat .sdbtn { bottom: calc(var(--compH, var(--bot)) + 12px); }
+.page.chat .scroll { padding-bottom: calc(var(--compH, var(--bot)) + 8px); }
+.ctx { display: flex; flex-direction: column; }
+.cbar { display: flex; align-items: center; gap: 10px; padding: 8px 14px 2px; }
+.cbar .ci2 { color: var(--accent); flex: none; display: flex; }
+.cbar .cb { flex: 1; min-width: 0; border-left: 2px solid var(--accent); padding-left: 8px; }
+.cbar b { display: block; font-size: 13px; color: var(--accent); font-weight: 600; }
+.cbar span { display: block; font-size: 14px; color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cbar .xb { border: 0; background: var(--fill); color: var(--fg2); width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; flex: none; }
+.cbar .th { width: 38px; height: 38px; border-radius: 8px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--fill); color: var(--accent); overflow: hidden; }
+.cbar .th img { width: 100%; height: 100%; object-fit: cover; }
+.cbar .trk { height: 3px; border-radius: 2px; background: var(--fill); margin-top: 5px; overflow: hidden; }
+.cbar .trk i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s linear; }
+.cbar .trk.ind i { width: 40%; animation: ind 1.1s ease-in-out infinite; }
+@keyframes ind { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
+.ronote { padding: 14px 16px 6px; text-align: center; color: var(--fg2); font-size: 14px; line-height: 1.3; }
+.ronote.soft { padding: 6px 16px 0; font-size: 12.5px; }
+/* «Печатает» над полем ввода: строка входит в высоту полосы (она растёт на 24 px), лента отступает на эту высоту через --compH */
+.tpr { display: flex; align-items: center; gap: 7px; height: 0; overflow: hidden; opacity: 0; padding: 0 16px; color: var(--fg2); font-size: 13px; transition: opacity .22s; }   /* высота меняется сразу, без анимации: иначе поле ввода меняет размер на каждом кадре и тянет за собой ленту */
+.tpr.show { height: 24px; opacity: 1; }
+.tpt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.crow { display: flex; align-items: flex-end; gap: 8px; padding: var(--bpadt) 10px var(--bpadb); min-height: var(--tabh); }
+.crow.off { display: none; }
+.cbtn { width: 36px; height: 36px; flex: none; border: 0; background: none; color: var(--fg2); display: flex; align-items: center; justify-content: center; border-radius: 50%; padding: 0;
+  -webkit-appearance: none; appearance: none; outline: 0; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+/* Нажатие — сменой цвета иконки, не прозрачностью: в iOS слой с opacity на время тапа проступал белым квадратом */
+.cbtn:active { color: var(--accent); }
+.cbtn.att { cursor: pointer; touch-action: auto; }
+.cbtn.on { color: var(--accent); }
+.cfield { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: stretch; overflow: hidden; min-height: 36px; border-radius: 18px; background: var(--card); box-shadow: 0 0 0 .5px var(--sep); position: relative; }
+.cfield .ph { position: absolute; left: 14px; top: 7px; line-height: 22px; font-size: 17px; color: var(--fg2); pointer-events: none; white-space: nowrap; max-width: calc(100% - 56px); overflow: hidden; text-overflow: ellipsis; }
+.cfield.filled .ph { display: none; }
+.cfield .ce { flex: 1; min-width: 0; display: block; margin: 0; border: 0; background: none; outline: 0; -webkit-appearance: none; appearance: none; font: inherit; font-size: 17px; line-height: 22px; padding: 7px 4px 7px 14px; min-height: 36px; max-height: 122px; color: var(--fg); overflow-y: auto; scrollbar-width: none; border-radius: 0; box-sizing: border-box; white-space: pre-wrap; overflow-wrap: anywhere;
+  -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+.csend { width: 36px; height: 36px; flex: none; border: 0; border-radius: 50%; background: var(--accent); color: #fff; display: none; align-items: center; justify-content: center; padding: 0; }
+.comp.has .csend { display: flex; animation: pop .25s var(--ease); }
+@keyframes pop { from { transform: scale(.4); opacity: 0; } }
+.hb { height: var(--sab); transition: height .25s var(--ease); }
+#app.kb .comp .hb, .comp.pnl .hb { height: 0; }
+
+/* панель смайлов и GIF — на месте клавиатуры, той же высоты */
+.epanel { height: 0; overflow: hidden; display: flex; flex-direction: column; transition: height .3s var(--ease); background: var(--bar-solid); }
+.comp.pnl .epanel { height: calc(var(--pnl, 300px) + var(--sab) + 40px); border-top: .5px solid var(--sep); }
+.comp.pnl.gif .epanel { height: calc(var(--pnl, 300px) + var(--sab) + 80px); }
+/* идёт поиск смайлов и открыта клавиатура: панель ужимается до строки поиска и сетки */
+.comp.pnl.esearch .epanel { height: 250px; }
+.comp.esearch .ep-dock { display: none; }
+.epanel .ep-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.eg { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0 8px; scrollbar-width: none; }
+.eg::-webkit-scrollbar { display: none; }
+.ep-head { padding: 10px 6px 4px; font-size: 13px; font-weight: 600; color: var(--fg2); }
+.ep-row { display: grid; grid-template-columns: repeat(8, 1fr); content-visibility: auto; contain-intrinsic-size: auto 200px; }
+.ep-row button { border: 0; background: none; font-size: 28px; height: 42px; padding: 0; line-height: 1; }
+.ep-row button:active { transform: scale(1.35); }
+.ep-dock { height: 44px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 6px; margin-bottom: var(--sab); border-top: .5px solid var(--sep); }
+.ep-top { flex: none; }
+.ep-top .ep-tabs { padding: 0 8px 6px; }
+.ep-top .ep-tabs[hidden] { display: none; }
+.ep-tabs { flex: 1; min-width: 0; display: flex; overflow-x: auto; scrollbar-width: none; }
+.ep-tabs::-webkit-scrollbar { display: none; }
+.ep-tab { flex: none; width: 36px; height: 36px; border: 0; background: none; font-size: 20px; border-radius: 10px; padding: 0; opacity: .55; }
+.ep-tab[aria-selected="true"] { opacity: 1; background: var(--fill); }
+.ep-sw { display: inline-flex; padding: 2px; border-radius: 999px; background: var(--fill); flex: none; }
+.ep-sw button { height: 28px; padding: 0 12px; border: 0; border-radius: 999px; background: none; font-weight: 600; font-size: 13px; color: var(--fg2); }
+.ep-sw button[aria-pressed="true"] { background: var(--card); color: var(--fg); box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
+.ep-del { flex: none; width: 40px; height: 36px; border: 0; background: none; color: var(--fg2); display: flex; align-items: center; justify-content: center; }
+.ep-r { flex: 1; display: flex; align-items: center; min-width: 0; }
+.ep-r .ep-del { margin-left: auto; }
+.ep-pw { font-size: 10px; color: var(--fg2); padding: 0 8px; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; line-height: 1.15; white-space: nowrap; }   /* в два яруса: справа от переключателя места мало */
+.ep-gif { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 8px 8px 0; }
+
+/* GIF из Klipy (shared/gif-klipy.js собирает свою разметку, стили под наши токены) */
+.gp-kl { display: inline-flex; align-items: center; gap: 5px; font-weight: 800; letter-spacing: .09em; font-size: 10px; color: #8b72ff; }
+.gp-kl i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; background: conic-gradient(from 210deg, #7a5cff, #ff5ca8, #ffb347, #7a5cff); }
+.gp { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.gp-search { display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; background: var(--fill); border-radius: 999px; flex: none; }
+.gp-search svg { width: 14px; height: 14px; color: var(--fg2); flex: none; }
+.gp-search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; color: var(--fg); font-size: 16px; font-family: inherit; }
+.gp-search input::placeholder { color: var(--fg2); }
+.gp-chips { display: flex; gap: 6px; padding: 8px 2px 6px; overflow-x: auto; scrollbar-width: none; flex: none; }
+.gp-chips::-webkit-scrollbar { display: none; }
+.gp-chip { flex: none; height: 28px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--sep); background: none; font-weight: 600; font-size: 12.5px; color: var(--fg2); }
+.gp-chip[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 15%, transparent); border-color: transparent; color: var(--accent); }
+.gp-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0 2px 6px; overscroll-behavior: contain; }
+.gp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: start; }
+.gp-cols > div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.gp-item { position: relative; display: block; width: 100%; padding: 0; border: 0; border-radius: 12px; overflow: hidden; background: var(--fill) center / cover; }
+.gp-item img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.gp-item.bad { display: none; }
+.gp-note { padding: 28px 10px; text-align: center; color: var(--fg2); font-size: 13px; line-height: 1.55; }
+.gp-retry { margin-top: 8px; height: 30px; padding: 0 14px; border-radius: 999px; border: 0; background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); font-weight: 600; font-size: 13px; }
+.gif-msg { position: relative; overflow: hidden; border-radius: 12px; background: var(--fill); max-width: 100%; }
+.gif-v { display: block; width: 100%; height: 100%; object-fit: cover; }
+.gif-badge { position: absolute; left: 8px; top: 8px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 7px; border-radius: 8px; background: rgba(0, 0, 0, .5); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .05em; z-index: 2; pointer-events: none; }
+.gif-badge .gp-kl { color: #fff; font-size: 9.5px; }
+.gif-off { display: flex; align-items: center; gap: 10px; padding: 6px 4px; font-size: 12.5px; color: var(--fg2); line-height: 1.4; }
+.gif-off small { font-size: 11.5px; }
+.gif-off-i { width: 36px; height: 36px; border-radius: 10px; background: var(--fill); display: grid; place-items: center; flex: none; font-size: 10px; font-weight: 800; }
+
+/* скрытый чат без ключа: плашка вместо поля ввода */
+.scb { display: flex; align-items: center; gap: 10px; padding: 12px 14px 8px; }
+.scb[hidden] { display: none; }
+.scb .lk { color: var(--green); display: flex; flex: none; }
+.scb .tx { flex: 1; min-width: 0; }
+.scb .tx b { display: block; font-size: 15px; font-weight: 600; }
+.scb .tx span { display: block; font-size: 13px; color: var(--fg2); }
+.scb input { width: 96px; height: 36px; border: 0; border-radius: 10px; background: var(--fill); color: var(--fg); font: 600 15px var(--font); letter-spacing: .08em; text-align: center; outline: 0; text-transform: uppercase; }
+.scb button { height: 36px; padding: 0 14px; border: 0; border-radius: 18px; background: var(--accent); color: #fff; font-weight: 600; font-size: 14px; flex: none; }
+.scb button.gh2 { background: var(--fill); color: var(--fg); }
+
+/* шторка «Реакция»: шапка с поиском и вкладками групп неподвижна, смайлы прокручиваются под ней */
+.rp-hd { flex: none; background: var(--sheet); }
+.rp-hd .ep-tabs { padding: 0 8px 6px; }
+.rp-hd .ep-tabs[hidden] { display: none; }
+.rp-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 8px 8px; scrollbar-width: none; }
+.rp-body::-webkit-scrollbar { display: none; }
+
+/* ── форматирование, блоки кода, превью ссылок ── */
+.frow { display: flex; align-items: flex-end; position: relative; min-width: 0; }
+.cfield .ce b { font-weight: 700; }
+.cfield .ce code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; background: color-mix(in srgb, var(--accent) 18%, transparent); border-radius: 5px; padding: 0 4px; }
+.cfield .ce pre.cb { margin: 3px 8px 3px 0; padding: 7px 10px; border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: #0b0e13; color: #d6e2ee; }
+/* Дополнения поля: превью ссылки, превью набранного, панель форматирования — часть поля, сверху */
+.fxs { display: flex; flex-direction: column; min-width: 0; border-top: .5px solid var(--sep); }
+.fxs:empty { display: none; }
+.fxs > [hidden] { display: none; }
+.lpv { display: flex; align-items: center; gap: 10px; padding: 8px 14px; }
+.lpv .lth { width: 36px; height: 36px; border-radius: 8px; flex: none; overflow: hidden; background: var(--fill); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+.lpv .lth img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lpt { flex: 1; min-width: 0; border-left: 2px solid var(--accent); padding-left: 8px; }
+.lpt b { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lpt span { display: block; font-size: 13px; color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lpx { width: 26px; height: 26px; border-radius: 50%; background: var(--fill); color: var(--fg2); display: flex; align-items: center; justify-content: center; flex: none; }
+.fpv { padding: 8px 14px 10px; background: var(--fill); }
+.fpl { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--fg2); margin-bottom: 6px; }
+.fpb { max-height: 180px; overflow-y: auto; }
+.fpb .bub { display: block; width: fit-content; max-width: 100%; background: var(--accent); color: #fff; }
+.fpe { font-size: 14px; color: var(--fg2); }
+.fbar { display: flex; align-items: center; gap: 2px; padding: 3px 10px; }
+.fbar button { width: 40px; height: 36px; border: 0; border-radius: 9px; background: none; color: var(--fg2); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; padding: 0; }
+.fbar button.on { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.fbar .fmt-sep { width: .5px; height: 20px; background: var(--sep); margin: 0 4px; }
+.fbar .fmt-grow { flex: 1; }
+.fbar svg { display: block; }
+
+/* меню «↑»: прикрепить файл или включить форматирование. Пункты — div, а не button: iOS на миг рисует нажатую button белым квадратом */
+.crow { position: relative; }
+.upmenu { position: absolute; left: 8px; bottom: calc(100% + 2px); z-index: 20; min-width: 230px; padding: 4px; border-radius: 14px; background: var(--bar2); -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8); box-shadow: 0 8px 30px rgba(0, 0, 0, .22);
+  transform: scale(.6); transform-origin: left bottom; opacity: 0; pointer-events: none; transition: transform .3s var(--ease), opacity .18s; }
+.crow.up .upmenu { transform: none; opacity: 1; pointer-events: auto; }
+.umi { display: flex; align-items: center; gap: 12px; height: 46px; padding: 0 14px; border-radius: 10px; font-size: 17px; color: var(--fg); }
+.umi .ic { color: var(--fg2); }
+.umi:active { background: var(--fill); }
+.umi.on, .umi.on .ic { color: var(--accent); }
+.crow.up .cbtn.att { color: var(--accent); }
+.cbtn.att .ic { transition: transform .25s var(--ease); }
+.crow.up .cbtn.att .ic { transform: rotate(180deg); }
+
+/* пузырь из частей: превью ссылки и блоки кода — во всю ширину пузыря, текст держит свои отступы */
+.bub.bcomp { padding: 0; overflow: hidden; }
+.bub.bcomp > .who { padding: 7px 12px 0; }
+.bub.bcomp > .cpad { padding: 7px 12px 0; }
+.bub.bcomp > .txt.ct { padding: 7px 12px 8px; }
+.bub.bcomp .att-img { margin: 0 0 5px; border-radius: 0; max-width: none; }
+.bub.bcomp .file { margin: 6px 12px; }
+.bub.bcomp:has(> .lcard) { width: min(300px, 100%); }
+.lcard { cursor: pointer; background: rgba(127, 127, 127, .12); }
+.lcard .lc-im { aspect-ratio: 16 / 9; overflow: hidden; background: var(--fill); }
+.lcard .lc-im img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lcard .lc-b { padding: 7px 12px 8px; min-width: 0; }
+.lcard .lc-t { font-weight: 600; font-size: calc(var(--mfs, 16px) - 2px); line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lcard .lc-d { font-size: 12.5px; opacity: .7; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cblk { background: #0b0e13; color: #d6e2ee; }
+.mrow.out .cblk { background: #0b0e13; }
+.cblk .cbh { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px 4px 12px; font-size: 12px; color: #8b9aaa; background: #151a21; }
+.cblk .cblk-cp { display: flex; align-items: center; gap: 5px; border: 0; background: none; color: inherit; font: inherit; padding: 4px 6px; border-radius: 6px; }
+.cblk .cblk-cp:active { background: rgba(255, 255, 255, .12); }
+.cblk .cblk-cp i { font-style: normal; }
+.cblk.done .cblk-cp { color: var(--green); }
+.cblk pre { margin: 0; padding: 8px 12px; white-space: pre-wrap; overflow-wrap: anywhere; font: 0.88em/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: #d6e2ee; }
+.cblk .cbf { display: flow-root; text-align: right; padding: 0 12px 6px; min-height: 8px; color: #8b9aaa; }
+.cblk .cbf .meta { float: none; margin: 0; top: 0; }
+
+/* код в строке: подстраивается под акцентный цвет; в своём пузыре (фон акцента) — его тёмный оттенок, чтобы текст читался */
+.txt code { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.fpb .txt code { background: color-mix(in srgb, var(--accent) 55%, #000); color: #fff; }
+.fcell .cl { font-weight: 600; }
+
+/* пузырь с блоком кода или превью не уже 240 px: иначе шапка блока сжимается */
+.bub.bcomp { min-width: 240px; }
+.cblk .cbh { gap: 12px; white-space: nowrap; }
+.cblk .cblk-cp { white-space: nowrap; flex: none; }
+
+/* ── секрет: текст закрыт облачком из частиц (рисует Fmt), нажатие открывает ── */
+.spl { color: transparent; cursor: pointer; -webkit-user-select: none; user-select: none; transition: color .45s ease; }
+.spl.open { color: inherit; }
+.spl-host { position: relative; }
+.spl-cv { position: absolute; left: 0; top: 0; pointer-events: none; transition: opacity .45s ease; }
+.spl-e { background: rgba(142, 108, 240, .22); border-bottom: 1.5px dotted #b79bff; border-radius: 3px; }
+/* Приглашение в группу с другого сервера вместо поля ввода */
+.invbar { padding: 12px 16px 6px; }
+.invbar .it { text-align: center; color: var(--fg2); font-size: 14px; line-height: 1.35; }
+.invbar .it b { color: var(--fg); font-weight: 600; }
+.invbar .ib { display: flex; gap: 10px; margin-top: 12px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6px); }
+.invbar .ib button { flex: 1; height: 46px; border: 0; border-radius: 13px; font-size: 16px; font-weight: 600; background: var(--fill); color: var(--accent); }
+.invbar .ib button.bj { background: var(--accent); color: #fff; }
+.invbar .ib button:disabled { opacity: .6; }
+.crow.hid { display: none; }

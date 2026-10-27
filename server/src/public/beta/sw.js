@@ -1,25 +1,87 @@
-// /beta — сервис-воркер макетов: оболочка доступна без сети.
-// Страницы и скрипты: сначала сеть (макет часто правится), при обрыве — из кэша. Шрифты и значки: сначала кэш.
-const CACHE = 'beta-shell-2';
-const cmatch = (r, o) => caches.open(CACHE).then(c => c.match(r, o));   // только свой кэш: в общем поиске всплывали бы чужие копии
-const SHELL = ['/beta/', '/beta/index.html', '/beta/m.js', '/beta/desktop.html', '/beta/desktop.js', '/beta/manifest.json',
-  '/beta/icons/icon-192.png', '/beta/icons/apple-touch-icon.png', '/shared/fonts/inter.css'];
+'use strict';
+
+// Service worker /m — тот же механизм push-уведомлений, что у /beta/sw.js, но со своим
+// именем кэша и областью видимости (/beta/): SW соседних клиентов её не покрывают.
+const CACHE = 'beta-v1';
+// index.html (/beta/) не прекэшируем: он берётся из сети, а удачная копия остаётся в кэше для запуска без связи.
+const STATIC = ['/beta/manifest.json', '/beta/manifest-light.json'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => Promise.all(SHELL.map(u => c.add(u).catch(() => {})))).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC).catch(() => {})));
+  self.skipWaiting();
 });
+
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('beta-') && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => clients.claim())
+  );
 });
+
 self.addEventListener('fetch', e => {
-  const r = e.request, u = new URL(r.url);
-  if (r.method !== 'GET' || u.origin !== location.origin) return;
-  const mine = u.pathname.startsWith('/beta/') || u.pathname === '/beta', shared = u.pathname.startsWith('/shared/fonts/');
-  if (!mine && !shared) return;
-  if (shared || /\.(png|woff2?)$/.test(u.pathname)) {
-    e.respondWith(cmatch(r).then(c => c || fetch(r).then(res => { if (res.ok) { const cp = res.clone(); caches.open(CACHE).then(x => x.put(r, cp)); } return res; })));
+  const url = new URL(e.request.url);
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws')) return;
+  if (url.origin !== self.location.origin) return;
+
+  // Первая загрузка идёт из сети; последняя удачная копия оболочки лежит в кэше: без связи (или если сеть отвечает дольше
+  // нескольких секунд) приложение открывается из неё, а не пустым экраном браузера
+  const slow = (p, fallback, ms) => Promise.race([p.catch(() => fallback), new Promise(res => setTimeout(() => res(fallback), ms))]);
+  if (e.request.mode === 'navigate') {
+    e.respondWith((async () => {
+      const cache = await caches.open(CACHE), cached = await cache.match('/beta/');
+      const net = fetch(e.request).then(r => { if (r.ok && r.status === 200 && !r.redirected) cache.put('/beta/', r.clone()); return r; });
+      return cached ? slow(net, cached, 5000) : net;
+    })());
     return;
   }
-  e.respondWith(fetch(r).then(res => { if (res.ok) { const cp = res.clone(); caches.open(CACHE).then(x => x.put(r, cp)); } return res; })
-    .catch(() => cmatch(r, { ignoreSearch: true }).then(c => c || (r.mode === 'navigate' ? cmatch('/beta/index.html') : Response.error()))));
+
+  e.respondWith((async () => {
+    const cache = await caches.open(CACHE), cached = await cache.match(e.request);
+    const net = fetch(e.request).then(r => { if (r.ok) cache.put(e.request, r.clone()); return r; });
+    return cached ? slow(net, cached, 4000) : net;
+  })());
+});
+
+// ── PUSH NOTIFICATIONS ──
+self.addEventListener('push', e => {
+  const data = e.data?.json?.() || {};
+  const title = data.title || 'Новое сообщение';
+  const options = {
+    body: data.body || '',
+    icon: '/chat/icons/icon.svg',
+    badge: '/chat/icons/icon.svg',
+    tag: data.chatId ? `chat-${data.chatId}` : 'msg',
+    renotify: true,
+    data: { chatId: data.chatId },
+  };
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const visible = list.some(c => c.visibilityState === 'visible');
+      const tasks = visible ? [] : [self.registration.showNotification(title, options)];
+      if (self.navigator.setAppBadge) {
+        if (typeof data.unread === 'number') {
+          tasks.push(data.unread > 0 ? self.navigator.setAppBadge(data.unread) : self.navigator.clearAppBadge());
+        } else if (!visible) {
+          tasks.push(self.navigator.setAppBadge());
+        }
+      }
+      return Promise.all(tasks);
+    }).catch(() => {})
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const chatId = e.notification.data?.chatId;
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const existing = list.find(c => c.visibilityState === 'visible') || list[0];
+      if (existing) {
+        existing.focus();
+        if (chatId) existing.postMessage({ type: 'open-chat', chatId });
+      } else {
+        clients.openWindow(chatId ? `/beta/?chatId=${chatId}` : '/beta/');
+      }
+    })
+  );
 });

@@ -106,11 +106,11 @@ router.post('/subscribe', async (req, res) => {
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
     return res.status(400).json({ error: 'Invalid subscription' });
   }
-  // Адрес приложения (мобильная версия /m/): по нему строится адрес для открытия чата в декларативном пуше
+  // Адрес приложения (мобильная версия /m/ или её бета /beta/): по нему строится адрес для открытия чата в декларативном пуше
   let appUrl = null;
   try {
     const u = new URL(String(req.body.app_url || ''));
-    if ((u.protocol === 'https:' || u.protocol === 'http:') && u.pathname === '/m/' && !u.search && !u.hash) appUrl = u.toString();
+    if ((u.protocol === 'https:' || u.protocol === 'http:') && (u.pathname === '/m/' || u.pathname === '/beta/') && !u.search && !u.hash) appUrl = u.toString();
   } catch {}
   await dal.run(`
     INSERT INTO push_subscriptions (user_id, endpoint, keys, app_url)

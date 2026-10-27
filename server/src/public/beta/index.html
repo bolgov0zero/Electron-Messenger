@@ -1,10 +1,19 @@
-<!doctype html>
-<html lang="ru" class="dark"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="robots" content="noindex"><meta name="theme-color" content="#12171d">
-<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Electron β"><meta name="format-detection" content="telephone=no">
-<link rel="manifest" href="/beta/manifest.json"><link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1320x2868.png">
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="app-version" content="?v=1">
+<script src="/beta/boot-version.js?v=1"></script>
+<script src="/beta/boot-theme.js?v=1"></script>
+<script src="/beta/boot-desktop.js?v=1"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Electron β">
+<meta name="format-detection" content="telephone=no">
+<link rel="icon" href="/beta/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1320x2868.png">
 <link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1206x2622.png">
 <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1290x2796.png">
 <link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1179x2556.png">
@@ -14,603 +23,86 @@
 <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/beta/splash/828x1792.png">
 <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1125x2436.png">
 <link rel="apple-touch-startup-image" media="(device-width: 360px) and (device-height: 780px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1080x2340.png">
-<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/beta/splash/750x1334.png"><link rel="apple-touch-icon" href="/beta/icons/apple-touch-icon.png"><link rel="icon" href="/beta/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/beta/splash/750x1334.png">
+<link rel="apple-touch-icon" href="/beta/icons/apple-touch-icon.png">
+<meta name="robots" content="noindex">
 <title>Electron β</title>
-<link rel="stylesheet" href="/shared/fonts/inter.css">
-<style>
-/* ═══════════════════════════════════════════════════════════════════════════
-   МАКЕТ КЛИЕНТА — Liquid Glass (v2)
-   Источник правды для переноса в веб клиент (glass.css) и Electron.
-   • Имена токенов и классов те же, что в веб клиенте (--gl*, --text, .modal, .ctx-menu, .cs-*, .pf-*, .cm-*, .nc-*).
-     Блоки CSS ниже можно переносить как есть: комментарий «web:» называет селектор, который они заменяют.
-   • Система форм (концентричность: радиус вложенного = радиус внешнего − отступ):
-       окно/панель 30 · шапка и полосы 26 · карточка/меню/окно-карточка 20 · пункт меню 14 · строка списка 18
-       кнопки, поля, переключатели, чипы — капсулы (999), значки-кнопки — круги, группа кнопок — капсула с круглыми кнопками
-   • Отступы 4/8, значки 16/18/20/22 (обводка 2), слои z: 10 контент · 20 полосы · 30 всплывающее · 40 окна · 50 тосты
-   • Фокус: 2px кольцо акцента со смещением 2px; нажатие — сжатие 0.95 пружиной, без сдвига соседей; движение отключается при reduced-motion
-   ═══════════════════════════════════════════════════════════════════════════ */
-:root{
-  --ff:Inter,-apple-system,system-ui,sans-serif;
-  /* тема: светлая (как в style.css) */
-  --app-bg:#eef1f4; --side-bg:#ffffff; --card-bg:#ffffff; --modal-bg:#ffffff; --chat-bg:#eef1f4;
-  --text:#111318; --text2:#4f5666; --muted:#6c7484;
-  --accent:#1fa88c; --accent-rgb:29,168,140; --accent-ink:color-mix(in srgb,var(--accent) 72%,#000);
-  --accent-soft:rgba(var(--accent-rgb),.12); --accent-border:rgba(var(--accent-rgb),.28); --accent-shadow:rgba(var(--accent-rgb),.22);
-  --danger:#d23a3a; --danger-bg:rgba(210,58,58,.10); --danger-border:rgba(210,58,58,.28);
-  --presence-online:#34c759; --presence-away:#ff9f0a;
-  --bubble-bg:#ffffff;
-  --tag-1:41,50,96;--tag-2:37,131,37;--tag-3:131,78,37;--tag-4:34,119,114;--tag-5:131,37,78;
-  /* радиусы, ритм, слои, значки */
-  --r-panel:30px;--r-bar:26px;--r-card:20px;--r-menu:20px;--r-item:14px;--r-row:18px;--r-pill:999px;
-  --ic-s:16px;--ic-m:18px;--ic-l:22px;
-  --z-bar:20;--z-pop:30;--z-modal:40;--z-toast:50;
-  /* стекло (glass.css) */
-  --gl-k:1;   /* множитель плотности стекла: настройка «Прозрачность» (50% = 1) */
-  --gl-blur:26px;--gl-spring:cubic-bezier(.34,1.56,.64,1);--gl-ease:cubic-bezier(.22,1,.36,1);
-  --gl:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 46,100) * 1%),transparent);
-  --gl2:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 66,100) * 1%),transparent);
-  --gl-pop:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 30 + 50,100) * 1%),transparent);
-  --gl-card:color-mix(in srgb,var(--text) 5%,transparent);
-  --gl-card2:color-mix(in srgb,var(--text) 9%,transparent);
-  --gl-inset:color-mix(in srgb,var(--text) 6%,transparent);
-  --gl-edge:rgba(255,255,255,.75);--gl-hi:rgba(255,255,255,.85);--gl-lo:rgba(12,26,25,.07);
-  --gl-shadow:rgba(20,50,60,.16);--gl-spec:rgba(255,255,255,.30);--gl-hov:rgba(255,255,255,.34);--gl-spotlight:rgba(255,255,255,.55);
-  --gl-in:rgba(255,255,255,.74);
-  --gl-out-a:color-mix(in srgb,var(--accent) 80%,#000);--gl-out-b:color-mix(in srgb,var(--accent) 68%,#0b4f96);
-  --gl-base:#e3f0ef;--amb-1:color-mix(in srgb,var(--accent) 60%,#fff);--amb-2:#8e9cff;--amb-3:#ffb4d3;--amb-4:#ffd391;
-  --scrim:rgba(20,40,50,.22);
-  --stage:linear-gradient(160deg,#c9d9e6 0%,#d8e6df 50%,#e6dcec 100%);
-}
-html.dark{
-  --app-bg:#12171d;--side-bg:#1e252d;--card-bg:#1e252d;--modal-bg:#1e252d;--chat-bg:#12171d;
-  --text:#eef6f5;--text2:rgba(238,246,245,.74);--muted:rgba(238,246,245,.56);
-  --accent:#29d6b8;--accent-rgb:41,214,184;--accent-ink:var(--accent);
-  --danger:#ef6f6f;--danger-bg:rgba(239,111,111,.12);--danger-border:rgba(239,111,111,.32);
-  --bubble-bg:#1b2733;
-  --tag-1:125,136,191;--tag-2:98,218,98;--tag-3:218,150,98;--tag-4:98,218,210;--tag-5:218,98,150;
-  --gl-edge:rgba(255,255,255,.17);--gl-hi:rgba(255,255,255,.20);--gl-lo:rgba(0,0,0,.35);--gl-shadow:rgba(0,0,0,.5);
-  --gl-spec:rgba(255,255,255,.09);--gl-hov:rgba(255,255,255,.08);--gl-spotlight:rgba(255,255,255,.20);
-  --gl:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 52,100) * 1%),transparent);
-  /* плашки темнее дорожки: выделение читается как вдавленное в светлую подложку со светлой кромкой (как в первом макете) */
-  --gl2:color-mix(in srgb,color-mix(in srgb,var(--side-bg) 82%,#4a7080) calc(min(var(--gl-k) * 68,100) * 1%),transparent);
-  --gl-pop:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 34 + 50,100) * 1%),transparent);
-  --gl-in:color-mix(in srgb,var(--bubble-bg) 74%,transparent);
-  --gl-out-a:color-mix(in srgb,var(--accent) 58%,#000);--gl-out-b:color-mix(in srgb,var(--accent) 48%,#0b3d7a);
-  --gl-base:color-mix(in srgb,var(--chat-bg) 70%,#000);--amb-1:color-mix(in srgb,var(--accent) 55%,#000);--amb-2:#4a4fd0;--amb-3:#a33a73;--amb-4:#a8742c;
-  --scrim:rgba(0,0,0,.40);
-  --stage:linear-gradient(160deg,#10181f 0%,#14201f 50%,#1b1626 100%);
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-body{font-family:var(--ff);background:var(--stage);color:var(--text);overflow:hidden;-webkit-font-smoothing:antialiased;transition:background .5s var(--gl-ease)}
-button,input,textarea{font:inherit;color:inherit;border:0;background:none;outline:none}
-button{cursor:pointer}
-button:disabled{cursor:default;opacity:.45}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
-.hide{display:none!important}
-
-/* ── Стекло: панель, всплывающее, интерактивное ── web: glass.css «Конструкция стекла» */
-.glass{position:relative;background:radial-gradient(120% 90% at 0% 0%,var(--gl-spec),transparent 55%),var(--gl);border:1px solid var(--gl-edge);
-  -webkit-backdrop-filter:blur(var(--gl-blur)) saturate(190%);backdrop-filter:blur(var(--gl-blur)) saturate(190%);
-  box-shadow:inset 0 1px 0 var(--gl-hi),inset 0 -1px 0 var(--gl-lo),0 12px 32px var(--gl-shadow)}
-.glass-pop{position:relative;background:radial-gradient(120% 80% at 0% 0%,var(--gl-spec),transparent 55%),var(--gl-pop);border:1px solid var(--gl-edge);
-  -webkit-backdrop-filter:blur(calc(var(--gl-blur) + 6px)) saturate(190%);backdrop-filter:blur(calc(var(--gl-blur) + 6px)) saturate(190%);
-  box-shadow:inset 0 1px 0 var(--gl-hi),inset 0 -1px 0 var(--gl-lo),0 24px 60px var(--gl-shadow)}
-/* Интерактивное стекло (.gi): наведение, блик за курсором, пружина при нажатии */
-.gi{position:relative;transition:transform .35s var(--gl-spring),background .2s,box-shadow .2s,border-color .2s}
-.gi::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .2s;
-  background:radial-gradient(90px circle at var(--mx,50%) var(--my,50%),var(--gl-spotlight),transparent 70%)}
-.gi:hover::after{opacity:1}
-.gi:hover{background-color:var(--gl2)}
-.gi:active{transform:scale(.95)}
-
-/* ── Кнопки: значок-круг, капсула-группа, текстовая капсула ── web: .icon-btn, .topbar-actions, .modal-btn-* */
-.ibtn{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:var(--ic-m);color:var(--text2);flex:none;transition:background .2s,color .2s,transform .35s var(--gl-spring)}
-.ibtn:hover{background:var(--gl-card2);color:var(--text)}
-.ibtn:active{transform:scale(.92)}
-.ibtn.on{background:var(--accent-soft);color:var(--accent-ink)}
-.ibtn.danger:hover{background:var(--danger-bg);color:var(--danger)}
-.cap{display:inline-flex;align-items:center;padding:2px;border-radius:var(--r-pill);flex:none}
-.cap>button{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:var(--ic-m);color:var(--text);transition:background .2s,transform .35s var(--gl-spring),color .2s}
-.cap>button:hover{background:var(--gl-card2)}
-.cap>button:active{transform:scale(.9)}
-.cap>button.on{background:var(--accent-soft);color:var(--accent-ink)}
-.btn{height:36px;padding:0 18px;border-radius:var(--r-pill);display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;white-space:nowrap;
-  background:var(--gl-card);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi);color:var(--text);transition:background .2s,transform .35s var(--gl-spring),filter .2s,box-shadow .2s}
-.btn .i{font-size:var(--ic-s)}
-.btn:hover:not(:disabled){background:var(--gl-card2)}
-.btn:active:not(:disabled){transform:scale(.95)}
-.btn.pri{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;border-color:rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px color-mix(in srgb,var(--gl-out-b) 38%,transparent)}
-.btn.pri:hover:not(:disabled){filter:brightness(1.12);background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b))}
-.btn.soft{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent-ink)}
-.btn.danger{background:var(--danger-bg);border-color:var(--danger-border);color:var(--danger)}
-.btn.danger.fill{background:linear-gradient(140deg,var(--danger),color-mix(in srgb,var(--danger) 70%,#5a0f1a));color:#fff;border-color:rgba(255,255,255,.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 6px 18px var(--danger-border)}
-.btn.sm{height:30px;padding:0 14px;font-size:12.5px}
-
-/* ── Поля, переключатель, сегменты, значки ── web: .search-wrap, .cs-inp, .cs-tg, .cs-seg */
-.fld{display:flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:var(--r-pill);background:var(--gl-hov);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 3px var(--gl-lo);color:var(--text2);font-size:14px;transition:box-shadow .2s,border-color .2s}
-.fld:focus-within{border-color:var(--accent);box-shadow:inset 0 1px 3px var(--gl-lo),0 0 0 3px var(--accent-soft)}
-.fld.bad{border-color:var(--danger-border)}
-.fld input{flex:1;min-width:0;height:100%;color:var(--text)}
-.fld input::placeholder{color:var(--muted)}
-.fld .cnt{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
-.tg{position:relative;width:40px;height:24px;border-radius:99px;background:color-mix(in srgb,var(--text) 14%,transparent);box-shadow:inset 0 1px 3px var(--gl-lo);flex:none;transition:background .25s}
-.tg::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3),inset 0 1px 0 #fff;transition:transform .35s var(--gl-spring)}
-.tg[aria-checked="true"]{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b))}
-.tg[aria-checked="true"]::after{transform:translateX(16px)}
-.seg{position:relative;display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;height:36px;padding:3px;border-radius:var(--r-pill);background:var(--gl-hov);box-shadow:inset 0 1px 3px var(--gl-lo)}
-.seg button{position:relative;z-index:1;padding:0 14px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text2);border-radius:var(--r-pill);transition:color .25s;white-space:nowrap}
-.seg button.on{color:var(--text)}
-.seg .thumb{position:absolute;top:3px;bottom:3px;border-radius:var(--r-pill);background:var(--gl2);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 8px var(--gl-shadow);transition:left .45s var(--gl-spring),width .45s var(--gl-spring)}
-.seg.full{display:grid;width:auto}
-.bd{min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:color-mix(in srgb,var(--accent) 62%,#000);color:#fff;font-weight:600;font-size:12px;line-height:22px;text-align:center}
-.bd.at{padding:0;width:22px}
-.pill-tag{font-weight:600;font-size:11px;padding:1px 8px;border-radius:var(--r-pill);background:color-mix(in srgb,currentColor 14%,transparent);border:1px solid color-mix(in srgb,currentColor 25%,transparent)}
-.av{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:16px;position:relative;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);text-transform:uppercase}
-.av.sm{width:36px;height:36px;font-size:13px}.av.xs{width:28px;height:28px;font-size:11px}.av.lg{width:44px;height:44px;font-size:15px}.av.xl{width:76px;height:76px;font-size:26px}
-.av.sq{border-radius:15px}.av.hash{font-weight:600}
-.av .dot{position:absolute;right:0;bottom:0;width:13px;height:13px;border-radius:50%;background:var(--presence-online);box-shadow:0 0 0 2.5px color-mix(in srgb,var(--side-bg) 85%,transparent)}
-.av .dot.away{background:var(--presence-away)}
-.av .type{position:absolute;left:-3px;top:-3px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;background:var(--gl2);color:var(--accent-ink);box-shadow:0 0 0 1.5px var(--gl-edge),0 2px 6px var(--gl-shadow)}
-.sep{height:1px;margin:4px 12px;background:var(--gl-lo);border:0}
-html.dark .sep{background:rgba(255,255,255,.08)}
-
-html.dark.navy{--app-bg:#111a24;--side-bg:#182430;--card-bg:#213040;--modal-bg:#1b2836;--chat-bg:#0f1b27;--bubble-bg:#213040;--text:#eef2f6;--text2:rgba(238,242,246,.74);--muted:rgba(238,242,246,.56);
-  --stage:linear-gradient(160deg,#0c1520 0%,#10202c 50%,#161a2e 100%)}
-/* ── Панель «Принципы» (не часть клиента) ── */
-.notes{position:absolute;right:16px;top:56px;width:360px;max-height:calc(100% - 72px);overflow:auto;border-radius:var(--r-menu);padding:18px 20px;font-size:12.5px;line-height:1.55;color:var(--text2);z-index:70;
-  opacity:0;transform:translateY(-8px) scale(.97);transform-origin:top right;pointer-events:none;transition:opacity .3s,transform .45s var(--gl-spring)}
-.notes.show{opacity:1;transform:none;pointer-events:auto}
-.notes h3{font-size:13.5px;color:var(--text);margin:12px 0 4px}.notes h3:first-child{margin-top:0}.notes li{margin:0 0 3px 16px}.notes b{color:var(--text)}
-.notes table{width:100%;border-collapse:collapse;margin:4px 0}.notes td{padding:3px 0;border-bottom:1px solid var(--gl-lo)}.notes td:last-child{text-align:right;color:var(--text);font-variant-numeric:tabular-nums}
-
-/* ═══════════════ МОБИЛЬНЫЙ КЛИЕНТ (/m) — макет Liquid Glass ═══════════════
-   Токены, стекло, кнопки, .seg/.tg/.fld/.av — те же, что в макете компьютера (блок выше).
-   iOS-логика навигации: стек страниц, большие заголовки, плавающие стеклянные шапка и вкладки, шторки снизу.
-   Размеры: цель нажатия ≥ 44, радиусы: телефон 58 · шапка/вкладки — капсулы · карточка 26 · шторка 32 · строка 20 */
-:root{--sat:54px;--sat0:54px;--sab:34px;--r-card:26px;--r-sheet:32px;--r-row:20px}
-html{position:fixed;top:0;left:0;width:100vw;height:100dvh;background:#12171d;overscroll-behavior:none}body{position:fixed;inset:0;overscroll-behavior:none}
-.stage{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center}
-.bar{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 16px 0;flex:none;position:relative;z-index:60}
-.bar .seg{height:34px}.bar .seg button{padding:0 12px}
-.slider{display:flex;align-items:center;gap:10px;padding:0 16px;height:36px;border-radius:999px;font-size:13px;color:var(--text2);font-weight:500}
-.slider input{width:100px;accent-color:var(--accent)}
-.scenes{display:flex;gap:2px;padding:3px;border-radius:999px;font-size:12px;flex-wrap:wrap;justify-content:center;max-width:980px}
-.scenes button{height:28px;padding:0 11px;border-radius:999px;font-weight:600;color:var(--text2);transition:background .2s,color .2s}
-.scenes button:hover{background:var(--gl-card2);color:var(--text)}
-.fit{flex:1;position:relative;width:100%;min-height:0}
-.phone{width:393px;height:852px;position:absolute;left:0;top:0;border-radius:58px;overflow:hidden;background:var(--gl-base);isolation:isolate;transform-origin:top left;
-  box-shadow:0 0 0 10px #0a0c0f,0 0 0 11px rgba(255,255,255,.2),0 40px 90px rgba(10,20,30,.45);transition:background .5s var(--gl-ease);font-size:16px}
-.phone.noamb .amb{opacity:0}
-.amb{position:absolute;inset:0;overflow:hidden;pointer-events:none;transition:opacity .6s var(--gl-ease);z-index:0}
-.amb i{position:absolute;border-radius:50%;filter:blur(55px);opacity:.85;transition:background .5s}
-.amb i:nth-child(1){width:340px;height:340px;left:-60px;top:-80px;background:var(--amb-1)}
-.amb i:nth-child(2){width:320px;height:320px;right:-110px;top:230px;background:var(--amb-2)}
-.amb i:nth-child(3){width:340px;height:340px;left:-90px;bottom:-60px;background:var(--amb-3)}
-.amb i:nth-child(4){width:260px;height:260px;right:-40px;bottom:30px;background:var(--amb-4)}
-.phone>.amb i:nth-child(1){animation:f1 26s ease-in-out infinite alternate}.phone>.amb i:nth-child(2){animation:f2 30s ease-in-out infinite alternate}
-@keyframes f1{to{transform:translate(70px,60px) scale(1.12)}}@keyframes f2{to{transform:translate(-60px,-50px) scale(1.1)}}
-/* оболочка телефона */
-.isl{position:absolute;top:11px;left:50%;width:122px;height:35px;border-radius:20px;background:#000;transform:translateX(-50%);z-index:120}
-.sbar{position:absolute;left:0;right:0;top:0;height:54px;z-index:110;display:flex;justify-content:space-between;align-items:center;padding:6px 34px 0 46px;font-size:16px;font-weight:700;pointer-events:none}
-.sbar .r{display:flex;gap:6px;align-items:center;font-size:17px}
-.sbar .bat{width:26px;height:13px;border-radius:4px;border:1.5px solid var(--text);opacity:.8;position:relative}
-.sbar .bat::after{content:"";position:absolute;inset:1.5px;right:5px;border-radius:2px;background:var(--text)}
-.home{position:absolute;left:50%;bottom:8px;width:138px;height:5px;border-radius:3px;background:var(--text);opacity:.55;transform:translateX(-50%);z-index:120;pointer-events:none}
-/* стек страниц */
-#stack{position:absolute;inset:0;z-index:2}
-.page{position:absolute;inset:0;background:var(--gl-base);transition:transform .45s var(--gl-ease);will-change:transform;overflow:hidden}
-.page.enter{transform:translateX(100%)}
-.page.under{transform:translateX(-28%)}
-.page.drag{transition:none}
-.page:not(.base){box-shadow:-18px 0 40px rgba(0,0,0,.18)}
-.page>.amb{z-index:0}
-.page>.amb i{filter:blur(50px)}
-.scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:calc(var(--sat) + 62px) 16px calc(var(--sab) + 96px);scrollbar-width:none;z-index:1;overscroll-behavior:contain}
-.scroll::-webkit-scrollbar{display:none}
-.scroll.nobot{padding-bottom:calc(var(--sab) + 24px)}
-/* верхняя панель: плавающие стеклянные элементы; на больших заголовках появляется при прокрутке */
-.nav{position:absolute;left:0;right:0;top:0;z-index:10;padding:calc(var(--sat) - 6px) 14px 8px;display:flex;align-items:center;gap:10px;pointer-events:none}
-.nav>*{pointer-events:auto}
-.nav::before{content:"";position:absolute;inset:0 0 -18px;background:linear-gradient(var(--gl-base) 38%,transparent);opacity:0;transition:opacity .3s;pointer-events:none;z-index:-1}
-.nav.sc::before{opacity:.92}
-.nb{height:44px;min-width:44px;border-radius:22px;display:flex;align-items:center;justify-content:center;gap:2px;font-size:21px;color:var(--text);flex:none;padding:0 11px}
-.nb .cnt{font-size:15px;font-weight:600;padding-right:3px}
-.nb.t{font-size:15px;font-weight:600;color:var(--accent-ink)}
-.nt{flex:1;display:flex;justify-content:center;min-width:0}
-.nt>span{height:44px;padding:0 20px;border-radius:22px;display:flex;align-items:center;font-size:16px;font-weight:700;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .25s,transform .35s var(--gl-spring)}
-.nav.lg .nt>span{opacity:0;transform:scale(.9)}.nav.lg.sc .nt>span{opacity:1;transform:none}
-.nr{display:flex;gap:8px;flex:none;min-width:44px;justify-content:flex-end}
-.nr.cap{padding:2px;gap:0}.nr.cap button{width:42px;height:42px}
-.lt{font-size:34px;font-weight:800;letter-spacing:-.03em;padding:0 6px 10px;margin-top:-4px}
-.nav.lg~.scroll{padding-top:calc(var(--sat) + 52px)}
-/* строки и группы */
-.grp{border-radius:var(--r-card);overflow:hidden;margin-bottom:16px}
-.grp>*+*{border-top:1px solid var(--gl-lo)}
-html.dark .grp>*+*{border-top-color:rgba(255,255,255,.07)}
-.gl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:2px 12px 6px}
-.gf{font-size:12.5px;color:var(--muted);line-height:1.45;padding:0 14px 14px;margin-top:-8px}
-.cell{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:8px 16px;text-align:left;font-size:16px;position:relative;transition:background .2s}
-.cell:active,.row:active{background:var(--gl-card2)}
-.cell .cl{flex:1;min-width:0;font-weight:500}.cell .cl.red{color:var(--danger)}
-.cell .cv{color:var(--text2);font-size:15px}.cell .ch{color:var(--muted);font-size:16px;display:flex}
-.ci{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;color:#fff;font-size:17px;flex:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
-.row{display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;text-align:left;position:relative;transition:background .2s,transform .35s var(--gl-spring);-webkit-user-select:none;user-select:none}
-.row .av{width:54px;height:54px;font-size:18px}
-.rt{flex:1;min-width:0}
-.r1,.r2{display:flex;align-items:center;gap:8px}
-.r1 b{flex:1;min-width:0;font-size:16.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.r1 .tm{font-size:12.5px;color:var(--muted);flex:none}.r1 .tm.new{color:var(--accent-ink)}
-.r2{margin-top:2px}.r2 .pv{flex:1;min-width:0;font-size:14.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.r2 .pv i{font-style:normal;color:var(--accent-ink);font-weight:600}
-.bd{min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:color-mix(in srgb,var(--accent) 62%,#000);color:#fff;font-size:12.5px;font-weight:700;display:grid;place-items:center;flex:none}
-.bd.mute{background:var(--muted)}
-.r2 .st{color:var(--muted);font-size:14px;display:flex;flex:none}
-.row.pinned{background:var(--gl-card)}
-.row .av .type{left:-2px;top:-2px}
-/* поиск и фильтры */
-.srch{height:44px;border-radius:22px;margin:0 0 12px;padding:0 16px;font-size:16px;display:flex;align-items:center;gap:8px;background:var(--gl-hov);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 3px var(--gl-lo);color:var(--muted)}
-.srch input{flex:1;min-width:0;height:100%;color:var(--text);font-size:16px}
-.srch input::placeholder{color:var(--muted)}
-.seg.f{display:grid;width:100%;height:40px;margin-bottom:12px}.seg.f button{font-size:13.5px;padding:0 6px}
-.chips{display:flex;gap:8px;overflow-x:auto;margin:0 -16px 12px;padding:0 16px;scrollbar-width:none}
-.chips::-webkit-scrollbar{display:none}
-.chip{height:36px;padding:0 14px;border-radius:18px;display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:var(--text2);flex:none;background:var(--gl-card);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi);transition:background .2s,color .2s,transform .35s var(--gl-spring)}
-.chip:active{transform:scale(.94)}
-.chip.on{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent-ink)}
-.chip .i{font-size:16px}
-/* вкладки: плавающая стеклянная капсула */
-.tabbar{position:absolute;left:50%;bottom:calc(var(--sab) - 10px);transform:translateX(-50%);z-index:20;display:flex;padding:5px;border-radius:34px;gap:2px}
-.tabbar .thumb{position:absolute;top:5px;bottom:5px;left:5px;width:96px;border-radius:29px;background:var(--gl2);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 8px var(--gl-shadow);transition:left .45s var(--gl-spring),width .45s var(--gl-spring)}
-.tb{position:relative;z-index:1;width:100px;height:58px;border-radius:29px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:24px;color:var(--text2);transition:color .25s,transform .35s var(--gl-spring)}
-.tb span{font-size:11px;font-weight:600}.tb.on{color:var(--accent-ink)}.tb:active{transform:scale(.94)}
-.tb .bd{position:absolute;top:3px;right:20px;min-width:20px;height:20px;font-size:11.5px;padding:0 5px}
-.tabview{position:absolute;inset:0;opacity:0;pointer-events:none;transform:translateX(8%);transition:opacity .3s,transform .45s var(--gl-ease)}
-.tabview.on{opacity:1;pointer-events:auto;transform:none}
-.tabview.out{transform:translateX(-8%)}
-/* переписка */
-.chat .scroll{padding:calc(var(--sat) + 64px) 12px calc(var(--sab) + 84px);display:flex;flex-direction:column}
-.chat.pinned .scroll{padding-top:calc(var(--sat) + 112px)}
-.who{height:44px;padding:0 16px 0 5px;border-radius:22px;display:flex;align-items:center;gap:10px;min-width:0;flex:1;max-width:214px}
-.who .av{width:34px;height:34px;font-size:12px}
-.who b{display:block;font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.who small{display:block;font-size:11.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.who small.on{color:var(--accent-ink)}
-.pinbar{position:absolute;left:14px;right:14px;top:calc(var(--sat) + 44px);height:44px;border-radius:22px;z-index:9;display:flex;align-items:center;gap:10px;padding:0 6px 0 14px;font-size:13px}
-.pinbar .tk{width:3px;height:24px;border-radius:2px;background:var(--accent)}
-.pinbar .pt{flex:1;min-width:0}.pinbar b{display:block;font-size:12px;color:var(--accent-ink)}.pinbar span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2)}
-.day{align-self:center;margin:6px 0 12px}.day span{display:block;padding:5px 14px;border-radius:99px;font-size:12.5px;font-weight:600;color:var(--text2)}
-.mrow{display:flex;flex-direction:column;margin-bottom:4px}.mrow.out{align-items:flex-end}.mrow.in{align-items:flex-start}
-.who-n{font-size:12.5px;font-weight:700;padding:0 14px 3px;margin-top:8px}
-.bub{max-width:min(300px,80%);padding:9px 13px 8px;border-radius:21px;font-size:calc(15.5px * var(--fs,1));line-height:1.38;position:relative;-webkit-user-select:none;user-select:none;transition:transform .3s var(--gl-spring)}
-.mrow.in .bub{background:var(--gl-in);border:1px solid var(--gl-edge);border-bottom-left-radius:7px;box-shadow:inset 0 1px 0 var(--gl-hi),0 3px 12px var(--gl-shadow);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
-.mrow.out .bub{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;border-bottom-right-radius:7px;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -1px 0 rgba(0,0,0,.12),0 6px 16px color-mix(in srgb,var(--gl-out-b) 38%,transparent)}
-.bub .t{float:right;margin:7px 0 -3px 12px;font-size:11px;opacity:.7;display:inline-flex;gap:3px;align-items:center;line-height:1}
-.bub .t .i{font-size:14px}.mrow.in .bub .t{color:var(--text2);opacity:1}
-.bub.pop{animation:bpop .4s var(--gl-spring)}@keyframes bpop{from{transform:scale(.7) translateY(12px);opacity:0}}
-.quote{border-left:3px solid rgba(255,255,255,.85);background:rgba(255,255,255,.16);border-radius:4px 12px 12px 4px;padding:5px 10px;margin:0 0 6px;font-size:13px}
-.quote b{display:block;font-weight:600;font-size:12.5px}.quote span{color:rgba(255,255,255,.9)}
-.mrow.in .quote{border-left-color:var(--accent);background:var(--accent-soft)}.mrow.in .quote span{color:var(--text2)}.mrow.in .quote b{color:var(--accent-ink)}
-.pic{width:272px;height:170px;max-width:100%;border-radius:15px;margin:-3px -7px 7px;background:conic-gradient(from 210deg at 30% 120%,#2ed3b7,#6a6cf0,#f0a020,#2ed3b7);position:relative;overflow:hidden}
-.pic::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 80% at 80% 0%,rgba(255,255,255,.4),transparent 60%)}
-.file{display:flex;align-items:center;gap:11px;padding:8px 10px;margin:-3px -7px 6px;border-radius:15px;background:var(--gl-card);border:1px solid var(--gl-edge);min-width:236px}
-.mrow.out .file{background:rgba(255,255,255,.15)}
-.file .fi{width:40px;height:40px;border-radius:12px;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;font-size:20px}
-.mrow.out .file .fi{background:rgba(255,255,255,.2);color:#fff}
-.file b{display:block;font-weight:600;font-size:14px}.file small{font-size:12px;opacity:.75}
-.file .dl{margin-left:auto;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:16px}
-.big{font-size:56px;line-height:1.1;padding:0 6px}
-.react{display:flex;gap:6px;margin:3px 6px 8px;flex-wrap:wrap}.mrow.out+.react{justify-content:flex-end}
-.react button{height:30px;padding:0 11px;border-radius:15px;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:5px;background:var(--gl);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 8px var(--gl-shadow);transition:background .2s,transform .35s var(--gl-spring)}
-.react button:active{transform:scale(.9)}.react button.mine{background:color-mix(in srgb,var(--accent) 24%,var(--gl2));border-color:var(--accent)}
-.typing{display:flex;align-items:center;gap:4px;font-size:12.5px;color:var(--text2);padding:2px 14px;height:22px}
-.typing i{width:5px;height:5px;border-radius:50%;background:var(--muted);animation:dot 1.2s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
-@keyframes dot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
-.mrow.hl .bub{box-shadow:0 0 0 2px var(--accent),0 0 0 10px var(--accent-soft)}
-.phone.pat .chat .scroll{background-image:radial-gradient(circle at 12px 12px,color-mix(in srgb,var(--text) 10%,transparent) 1.5px,transparent 2px);background-size:34px 34px}
-.jump{position:absolute;right:16px;bottom:calc(var(--sab) + 74px);width:44px;height:44px;border-radius:50%;z-index:12;display:grid;place-items:center;font-size:20px;opacity:0;transform:scale(.6);pointer-events:none;transition:opacity .25s,transform .35s var(--gl-spring)}
-.jump.on{opacity:1;transform:none;pointer-events:auto}
-/* поле ввода */
-.comp{position:absolute;left:10px;right:10px;bottom:calc(var(--sab) - 14px);z-index:12;display:flex;align-items:flex-end;gap:8px;transition:bottom .35s var(--gl-ease)}
-.comp .cbtn{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:22px;flex:none;color:var(--text)}
-.cfield{flex:1;min-width:0;border-radius:23px;display:flex;flex-direction:column;overflow:hidden}
-.cbar{display:flex;align-items:center;gap:10px;padding:8px 8px 0 16px;font-size:13px}
-.cbar .tk{width:3px;align-self:stretch;border-radius:2px;background:var(--accent)}
-.cbar .ct{flex:1;min-width:0}.cbar b{display:block;font-size:12.5px;color:var(--accent-ink)}.cbar span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text2)}
-.cin{display:flex;align-items:flex-end;min-height:46px;padding:0 6px 0 16px}
-.cin textarea{flex:1;min-width:0;resize:none;height:46px;padding:13px 0;font-size:16px;line-height:20px;color:var(--text);max-height:120px}
-.cin textarea::placeholder{color:var(--muted)}
-.cin .em{width:44px;height:46px;display:grid;place-items:center;font-size:21px;color:var(--text2);flex:none}
-.sendb{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:21px;flex:none;color:var(--text);position:relative;transition:background .3s,color .3s,transform .35s var(--gl-spring)}
-.sendb.ready{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;border-color:rgba(255,255,255,.35)}
-.sendb .i{position:absolute;transition:opacity .2s,transform .3s var(--gl-spring)}.sendb .s{opacity:0;transform:scale(.4)}
-.sendb.ready .s{opacity:1;transform:none}.sendb.ready .m{opacity:0;transform:scale(.4)}
-.kbd{position:absolute;left:0;right:0;bottom:0;height:0;z-index:30;overflow:hidden;transition:height .35s var(--gl-ease);background:color-mix(in srgb,var(--side-bg) 78%,transparent);-webkit-backdrop-filter:blur(30px) saturate(170%);backdrop-filter:blur(30px) saturate(170%);border-top:1px solid var(--gl-edge)}
-.phone.kb .kbd{height:300px}
-.phone.kb .comp{bottom:310px}.phone.kb .chat .scroll{padding-bottom:370px}.phone.kb .jump{bottom:370px}.phone.kb .home{opacity:0}
-.phone.kbr .comp{bottom:8px}.phone.kbr .home{opacity:0}.phone.kbr .chat .scroll{padding-bottom:72px}
-.kr{display:flex;justify-content:center;gap:5px;margin-top:9px;padding:0 4px}
-.kr button{flex:1;max-width:33px;height:44px;border-radius:8px;background:var(--gl-card2);font-size:20px;display:grid;place-items:center;box-shadow:0 1px 0 var(--gl-shadow);transition:transform .15s,background .15s}
-.kr button:active{transform:scale(1.18);background:var(--gl2)}
-.kr button.w{flex:none;max-width:none;width:44px;font-size:17px}
-.kr.last button{max-width:none}.kr.last .sp{flex:1}.kr.last .go{width:96px;flex:none;font-size:15px;font-weight:600;background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff}
-.kr.last .n{width:64px;flex:none;font-size:15px}
-/* всплывающее: оверлей, меню, шторки */
-#layer{position:absolute;inset:0;z-index:80;pointer-events:none}
-#layer>*{pointer-events:auto}
-.scrim{position:absolute;inset:0;background:var(--scrim);opacity:0;transition:opacity .3s}.scrim.on{opacity:1}
-.cml{position:absolute;inset:0;opacity:0;transition:opacity .25s}.cml.on{opacity:1}
-.cml .cmb{position:absolute;inset:0;background:color-mix(in srgb,var(--gl-base) 38%,transparent);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%)}
-.cmc{position:absolute;transform-origin:center}
-.cmr{position:absolute;display:flex;gap:2px;padding:5px;border-radius:30px;transform:scale(.6);opacity:0;transition:transform .4s var(--gl-spring),opacity .2s}
-.cmr.in,.cmm.in{transform:none;opacity:1}
-.cmr button{width:42px;height:42px;border-radius:50%;font-size:25px;display:grid;place-items:center;transition:transform .3s var(--gl-spring)}.cmr button:active{transform:scale(1.3)}
-.cmr .more{font-size:20px;color:var(--text2)}
-.cmm{position:absolute;width:250px;padding:6px;border-radius:22px;transform:scale(.6);opacity:0;transition:transform .4s var(--gl-spring),opacity .2s}
-.cmm button{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;height:46px;padding:0 14px;border-radius:16px;font-size:16px;text-align:left;transition:background .2s}
-.cmm button:active{background:var(--gl-card2)}.cmm button .i{font-size:20px;color:var(--text2)}
-.cmm button.d{color:var(--danger)}.cmm button.d .i{color:var(--danger)}
-.cmm .sp{height:1px;background:var(--gl-lo);margin:4px 8px}
-.sheet{position:absolute;left:8px;right:8px;bottom:8px;border-radius:var(--r-sheet);padding:8px 14px calc(var(--sab) - 8px);transform:translateY(110%);transition:transform .5s var(--gl-ease);max-height:86%;display:flex;flex-direction:column}
-.sheet.on{transform:none}
-.sheet .gr{width:40px;height:5px;border-radius:3px;background:var(--text);opacity:.25;margin:2px auto 10px;flex:none}
-.sheet h3{font-size:18px;font-weight:800;text-align:center;margin:2px 0 4px}.sheet .sub{font-size:13.5px;color:var(--text2);text-align:center;margin-bottom:12px;line-height:1.4}
-.sheet .sb{overflow-y:auto;scrollbar-width:none;min-height:0}.sheet .sb::-webkit-scrollbar{display:none}
-.abtn{width:100%;height:52px;border-radius:26px;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;background:var(--gl-card);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi);transition:transform .35s var(--gl-spring),background .2s}
-.abtn:active{transform:scale(.96)}.abtn.d{color:var(--danger)}.abtn.pri{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;border-color:rgba(255,255,255,.35)}
-.abtn:disabled{opacity:.45}
-.atiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:6px 0 4px}
-.atile{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--text2)}
-.atile span.ic{width:62px;height:62px;border-radius:22px;display:grid;place-items:center;font-size:26px;color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.4);transition:transform .35s var(--gl-spring)}.atile:active span.ic{transform:scale(.9)}
-.toast{position:absolute;left:50%;top:calc(var(--sat) + 10px);transform:translate(-50%,-20px) scale(.9);opacity:0;z-index:90;padding:0 18px;height:44px;border-radius:22px;display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:600;white-space:nowrap;transition:transform .45s var(--gl-spring),opacity .25s;pointer-events:none}
-.toast.on{transform:translate(-50%,0);opacity:1}.toast .i{color:var(--accent-ink);font-size:18px}
-/* профили, настройки */
-.hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:6px 0 16px}
-.hero .av{width:104px;height:104px;font-size:36px;margin-bottom:8px}
-.hero h2{font-size:24px;font-weight:800;letter-spacing:-.02em}.hero p{font-size:14px;color:var(--text2)}.hero p.on{color:var(--accent-ink)}
-.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
-.tile{height:68px;border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;font-weight:600;color:var(--accent-ink);transition:transform .35s var(--gl-spring)}
-.tile:active{transform:scale(.94)}.tile .i{font-size:22px}.tile.d{color:var(--danger)}
-.prow{display:flex;align-items:center;gap:14px;padding:12px 16px;width:100%;text-align:left}
-.prow .av{width:64px;height:64px;font-size:22px}.prow b{display:block;font-size:19px;font-weight:800}.prow span{font-size:14px;color:var(--text2)}
-.cs-l b{font-weight:500;font-size:16px}
-.mini{display:flex;align-items:center;gap:12px;padding:8px 16px;width:100%;text-align:left}
-.mini .av{width:40px;height:40px;font-size:14px}.mini b{display:block;font-size:15.5px;font-weight:600}.mini small{font-size:13px;color:var(--text2)}.mini .rt{flex:1}
-.ck{width:24px;height:24px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--text) 30%,transparent);display:grid;place-items:center;color:transparent;flex:none;transition:background .2s,border-color .2s,color .2s,transform .35s var(--gl-spring)}
-.mini.on .ck,.sel .ck{background:var(--accent);border-color:var(--accent);color:#fff;transform:scale(1.06)}
-.rng{-webkit-appearance:none;appearance:none;width:130px;height:28px;background:none}
-.rng::-webkit-slider-runnable-track{height:6px;border-radius:99px;background:linear-gradient(90deg,var(--accent) var(--v,50%),var(--gl-card2) var(--v,50%))}
-.rng::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;margin-top:-9px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3)}
-.dots{display:flex;gap:10px}.dot2{width:30px;height:30px;border-radius:50%;background:var(--dot);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 3px 8px var(--gl-shadow);transition:transform .35s var(--gl-spring),box-shadow .2s}
-.dot2.on{box-shadow:0 0 0 3px var(--gl2),0 0 0 5px var(--dot)}.dot2:active{transform:scale(.9)}
-.pcards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:4px 16px 14px}
-.pcard{border-radius:18px;overflow:hidden;background:var(--gl-card);border:1px solid var(--gl-edge);font-size:12px;color:var(--text2);text-align:center;transition:box-shadow .2s,transform .35s var(--gl-spring)}
-.pcard:active{transform:scale(.95)}.pcard.on{box-shadow:0 0 0 2px var(--accent);color:var(--accent-ink)}
-.pcard i{display:block;height:44px;background:repeating-linear-gradient(45deg,var(--gl-card2) 0 6px,transparent 6px 14px)}.pcard:first-child i{background:var(--gl-inset)}
-.pcard span{display:block;padding:6px}
-.pvw{height:120px;border-radius:var(--r-card);margin-bottom:16px;overflow:hidden;position:relative;padding:12px;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;background:var(--gl-inset);border:1px solid var(--gl-edge)}
-.pvw .m{max-width:74%;padding:6px 12px;border-radius:16px;font-size:12.5px;line-height:1.35}
-.pvw .a{align-self:flex-start;background:var(--gl-in);border:1px solid var(--gl-edge)}.pvw .b{align-self:flex-end;background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff}
-.fld.m{height:46px;margin:6px 0}
-.pl{display:flex;align-items:center;gap:10px;height:48px;border-radius:24px;background:var(--gl-inset);padding:0 6px 0 16px;border:1px solid var(--gl-edge);box-shadow:inset 0 1px 3px var(--gl-lo);width:100%;text-align:left;margin-bottom:8px}
-.pl .k{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);width:84px}.pl .v{flex:1;font-family:ui-monospace,Menlo,monospace;font-size:14px;font-weight:600}
-.pl .ic{width:34px;height:34px;display:grid;place-items:center;color:var(--text2);font-size:16px}
-.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;border-radius:var(--r-card);overflow:hidden}
-.mgrid i{display:block;aspect-ratio:1;background:conic-gradient(from var(--a,0deg) at 30% 110%,#2ed3b7,#6a6cf0,#f0a020,#2ed3b7);transition:transform .3s var(--gl-spring)}.mgrid i:active{transform:scale(.94)}
-.lb{position:absolute;inset:0;z-index:85;background:rgba(0,0,0,.86);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .25s}.lb.on{opacity:1}
-.lb i{width:100%;aspect-ratio:1;display:block;background:conic-gradient(from 210deg at 30% 120%,#2ed3b7,#6a6cf0,#f0a020,#2ed3b7)}
-.empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:60px 30px;color:var(--text2);text-align:center;font-size:14px}
-.empty .ei{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:26px;color:var(--accent-ink)}
-.mcopy{text-align:center;font-size:12.5px;color:var(--muted);padding:6px 0 20px}
-.fedit{display:flex;gap:10px;align-items:center;margin:10px 0}.fcols{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.fcols button{width:34px;height:34px;border-radius:50%;background:var(--fc);box-shadow:inset 0 1px 0 rgba(255,255,255,.4);transition:transform .35s var(--gl-spring)}.fcols button.on{box-shadow:0 0 0 3px var(--gl2),0 0 0 5px var(--fc)}
-.fic{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;font-size:24px;color:var(--fc);background:color-mix(in srgb,var(--fc) 18%,transparent);flex:none}
-@media (max-width:520px){.bar{display:none}.phone{border-radius:0;box-shadow:none}.fit{position:fixed;top:0;left:0;width:100vw;height:100dvh}body{background:var(--gl-base)}.isl,.sbar,.home{display:none}.phone{--sat0:calc(max(14px,env(safe-area-inset-top)) / var(--sc,1));--sat:calc(var(--sat0) + 24px);--sab:calc(max(20px,env(safe-area-inset-bottom)) / var(--sc,1));touch-action:manipulation}}
-@media (prefers-reduced-motion:reduce){.page,.tabview,.sheet,.cmm,.cmr,.toast{transition-duration:.01s}.amb i{animation:none!important}}
-
-/* Служебные области iOS (резервирует система): статус-бар/остров сверху и индикатор «домой» снизу.
-   Страница идёт под них (black-translucent, viewport-fit=cover), поэтому у краёв — «краевой эффект» как в iOS 26:
-   размытие + плавный градиент, чтобы белое время и значки статус-бара читались на любом фоне и любой теме. */
-.edge{position:absolute;left:0;right:0;pointer-events:none;z-index:8}
-.edge.t{top:0;height:calc(var(--sat0) + 8px);background:linear-gradient(rgba(6,12,18,var(--ea,.5)),transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);-webkit-mask-image:linear-gradient(#000 58%,transparent);mask-image:linear-gradient(#000 58%,transparent)}
-html:not(.dark) .edge.t{--ea:.46}
-.edge.b{bottom:0;height:calc(var(--sab) + 22px);background:linear-gradient(transparent,color-mix(in srgb,var(--gl-base) 78%,transparent));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);-webkit-mask-image:linear-gradient(transparent,#000 52%);mask-image:linear-gradient(transparent,#000 52%)}
-.phone{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
-.phone input,.phone textarea{-webkit-touch-callout:default}
-
-/* ── Низ в установленном приложении iOS 26+ ──
-   Известная ошибка WebKit (bug 301108/316008): у веб-приложения с «Домой» при viewport-fit=cover и black-translucent
-   раскладка получает высоту окна короче экрана примерно на высоту статус-бара, и низ остаётся голой полосой цвета html.
-   Манифест тут ни при чём: iOS читает из него только цвет запуска. Обход: только в standalone растягиваем html на
-   высоту окна + верхний отступ (но не выше 100lvh), без position:fixed (фиксированные слои тоже кончаются над полосой).
-   Тогда нижняя область закрашивается самим макетом, и под парящей панелью виден список чатов. */
-@media (display-mode: standalone){
-  html{position:absolute;top:0;left:0;width:100%;height:min(100lvh,calc(100% + env(safe-area-inset-top,0px)));overflow:hidden}
-  body{position:absolute;inset:0;height:100%;overflow:hidden}
-  .fit{position:absolute;top:0;left:0;width:100%;height:100%}
-}
-
-/* Низ прозрачный: ни размытия, ни подложки, под парящими панелями виден список */
-.edge.b{display:none}
-
-/* настоящая клавиатура iOS: поле ввода над ней, страница продолжается под полосой «назад / вперёд / готово» */
-.phone.kbr .comp{bottom:calc(var(--kbh,0px) + 8px)}
-.phone.kbr .chat .scroll{padding-bottom:calc(var(--kbh,0px) + 78px)}
-.phone.kbr .jump{bottom:calc(var(--kbh,0px) + 80px)}
-
-/* Клавиатура: лента кончается у клавиатуры, как в /m (последнее сообщение прижато к полю ввода), а страница продолжается под ней */
-.phone.kb .chat .scroll{bottom:300px;padding-bottom:78px}
-.phone.kbr .chat .scroll{bottom:var(--kbh,0px);padding-bottom:78px}
-.phone.kb .jump{bottom:372px}.phone.kbr .jump{bottom:calc(var(--kbh,0px) + 80px)}
-.phone.kb .comp{bottom:308px}
-/* копия сообщения в меню занимает ровно ширину исходного пузыря: без проценты от её ширины пузырь пересчитывал бы перенос строк и менял форму */
-.cmc .mrow .bub{max-width:none;width:100%}
-
-/* Шапка страниц: кнопка «назад» — просто стрелка, название по центру (три колонки: слева, центр, справа) */
-.nav:not(.cn){display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}
-.nav:not(.cn)>:first-child{justify-self:start}
-.nav:not(.cn) .nr{justify-self:end}
-.nav:not(.cn) .nt{min-width:0}
-.nav:not(.cn) .nt>span{max-width:190px}
-
-/* Бейдж дня: липнет к верху ленты внутри своей группы (position:sticky), top отсчитывается от низа верхней панели */
-.day-group{display:flex;flex-direction:column}
-.day{position:sticky;top:6px;z-index:5;align-self:stretch;display:flex;justify-content:center;margin:6px 0 12px;pointer-events:none}
-
-/* Галочки «прочитано» всегда синие: не зависят ни от темы, ни от цвета акцента */
-:root{--read:#3ea6ff}
-.st.rd,.st.rd .i,.mrow .bub .t .i{color:var(--read)}
-.mrow.out .bub .t{opacity:1;color:rgba(255,255,255,.78)}
-
-/* Панель смайлов и GIF (как в /m): поиск, вкладки групп, сетка, переключатель «Смайлы / GIF», удаление символа */
-.epanel{position:absolute;left:0;right:0;bottom:0;height:0;z-index:30;overflow:hidden;display:flex;flex-direction:column;transition:height .35s var(--gl-ease);background:color-mix(in srgb,var(--side-bg) 78%,transparent);-webkit-backdrop-filter:blur(30px) saturate(170%);backdrop-filter:blur(30px) saturate(170%);border-top:1px solid var(--gl-edge)}
-.phone.ep .epanel{height:300px}.phone.ep .kbd{height:0!important;border:0}
-.ep-top{padding:8px 12px 0;flex:none}
-.ep-s{display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-radius:19px;background:var(--gl-hov);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 3px var(--gl-lo);color:var(--muted);font-size:15px}
-.ep-q{flex:1;min-width:0;height:100%;color:var(--text);font-size:16px}.ep-q::placeholder{color:var(--muted)}
-.ep-tabs{display:flex;gap:2px;overflow-x:auto;padding:6px 0 2px;scrollbar-width:none}.ep-tabs::-webkit-scrollbar{display:none}
-.ep-tab{width:40px;height:36px;border-radius:18px;font-size:20px;flex:none;display:grid;place-items:center;transition:background .25s,box-shadow .25s,transform .35s var(--gl-spring)}
-.ep-tab:active{transform:scale(.9)}.ep-tab[aria-selected="true"]{background:var(--gl2);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 8px var(--gl-shadow)}
-.ep-chip{height:32px;padding:0 14px;border-radius:16px;font-size:13.5px;font-weight:600;color:var(--text2);flex:none;background:var(--gl-card);border:1px solid var(--gl-edge)}
-.ep-body{flex:1;min-height:0;overflow-y:auto;padding:0 8px;scrollbar-width:none}.ep-body::-webkit-scrollbar{display:none}
-.ep-head{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 6px 4px}
-.ep-row{display:grid;grid-template-columns:repeat(8,1fr)}
-.ep-row button{height:42px;font-size:27px;border-radius:12px;display:grid;place-items:center;transition:background .15s,transform .25s var(--gl-spring)}.ep-row button:active{background:var(--gl-card2);transform:scale(1.25)}
-.ep-none{padding:34px 12px;text-align:center;color:var(--muted);font-size:14px}
-.ep-gif{columns:2;column-gap:6px;padding:8px 10px}
-.gt{display:block;width:100%;margin-bottom:6px;border-radius:16px;break-inside:avoid;background:conic-gradient(from var(--a) at 30% 110%,#2ed3b7,#6a6cf0,#f0a020,#2ed3b7);animation:gifm 4s linear infinite;box-shadow:inset 0 1px 0 rgba(255,255,255,.3);transition:transform .3s var(--gl-spring)}.gt:active{transform:scale(.95)}
-@keyframes gifm{to{filter:hue-rotate(360deg)}}
-.ep-dock{display:flex;align-items:center;justify-content:space-between;padding:6px 12px 8px;flex:none;border-top:1px solid var(--gl-lo)}
-.ep-sw{display:inline-flex;padding:3px;border-radius:19px;background:var(--gl-hov);box-shadow:inset 0 1px 3px var(--gl-lo)}
-.ep-sw button{height:30px;padding:0 14px;border-radius:15px;font-size:13px;font-weight:600;color:var(--text2);transition:background .25s,color .25s}
-.ep-sw button[aria-pressed="true"]{background:var(--gl2);color:var(--text);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 8px var(--gl-shadow)}
-.ep-r{display:flex;align-items:center;gap:10px}.ep-pw{font-size:11.5px;color:var(--muted)}.ep-pw b{color:var(--text2)}
-.ep-del{width:44px;height:36px;border-radius:18px;display:grid;place-items:center;font-size:24px;color:var(--text2);transition:transform .35s var(--gl-spring)}.ep-del:active{transform:scale(.88)}
-.ep-sheet{display:flex;flex-direction:column;height:360px;margin:0 -6px}
-.ep-sheet .ep-body{height:auto}
-.bub.gifb{padding:4px}.pic.gif{width:226px;height:164px;margin:0;border-radius:18px;--a:0deg;animation:gifm 4s linear infinite;background:conic-gradient(from var(--a) at 30% 110%,#2ed3b7,#6a6cf0,#f0a020,#2ed3b7)}
-.pic.gif b{position:absolute;left:8px;top:8px;padding:2px 7px;border-radius:9px;background:rgba(0,0,0,.45);color:#fff;font-size:11px;letter-spacing:.04em}
-.bub.gifb .t{position:absolute;right:10px;bottom:9px;margin:0;float:none;padding:2px 7px;border-radius:10px;background:rgba(0,0,0,.45);color:#fff!important}
-
-/* Панель выше (400), GIF — две колонки с вертикальной прокруткой */
-.phone{--eph:400px}
-.phone.ep .epanel{height:var(--eph)}
-.phone.ep .comp{bottom:calc(var(--eph) + 8px)}
-.phone.ep .chat .scroll{bottom:var(--eph);padding-bottom:78px}
-.phone.ep .jump{bottom:calc(var(--eph) + 72px)}
-.ep-gif{display:flex;gap:6px;align-items:flex-start;columns:auto;padding:8px 10px;overflow-y:auto;overflow-x:hidden}
-.gcol{flex:1;min-width:0;display:flex;flex-direction:column}
-
-/* Главные страницы (Чаты / Контакты / Настройки): большой заголовок на одном уровне с кнопкой справа сверху */
-.nav.lg~.scroll{padding-top:calc(var(--sat) - 6px)}
-.lt{margin-top:0;line-height:44px;padding-bottom:12px}
-
-/* Нижняя панель вкладок компактнее */
-.tabbar{padding:4px;border-radius:28px}
-.tabbar .thumb{top:4px;bottom:4px;left:4px;width:84px;border-radius:24px}
-.tb{width:86px;height:48px;border-radius:24px;font-size:21px;gap:1px}
-.tb span{font-size:10.5px}
-.tb .bd{top:1px;right:15px;min-width:18px;height:18px;font-size:10.5px;padding:0 5px;border-radius:9px}
-.scroll{padding-bottom:calc(var(--sab) + 84px)}
-
-/* Папки в списке чатов: панель прилипает под бейджем раздела (поиск уезжает вместе с лентой).
-   Папки по центру, если помещаются; если нет — от левого края со скроллом (автоотступы схлопываются при переполнении) */
-.fbar{position:sticky;top:50px;z-index:6;margin:0 -16px 6px}
-.fbar::before{content:"";position:absolute;inset:-8px 0 -12px;background:linear-gradient(var(--gl-base) 55%,transparent);opacity:0;transition:opacity .25s;pointer-events:none}
-.fbar.stuck::before{opacity:.92}
-.fbar .chips{position:relative;margin:0;padding:6px 16px}
-.chips.fo>:first-child{margin-left:auto}.chips.fo>:last-child{margin-right:auto}
-
-/* Без тёмной подложки под папками: чипы остаются отдельными стеклянными капсулами, читаемость даёт их собственное размытие */
-.fbar::before,.fbar.stuck::before{display:none}
-.fbar .chip{-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%)}
-
-/* Панель папок — стеклянная капсула (как плавающие кнопки и панель вкладок): список проходит под ней через размытие, а не через тёмную подложку */
-.fbar .chip{-webkit-backdrop-filter:none;backdrop-filter:none}
-.chips.fo>.fgrp{margin:0 auto;display:flex;gap:2px;padding:4px;border-radius:26px;flex:none}
-.chips.fo>:first-child,.chips.fo>:last-child{margin-left:auto;margin-right:auto}
-.fgrp .chip{height:36px;background:none;border-color:transparent;box-shadow:none;border-radius:22px}
-.fgrp .chip.on{background:var(--gl2);border-color:transparent;color:var(--accent-ink);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 8px var(--gl-shadow)}
-
-/* Без подложки под папками: капсула-контейнер прозрачная, каждая папка — отдельная стеклянная таблетка с собственным размытием */
-.chips.fo>.fgrp,.chips.fo>.fgrp.glass{background:none;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;padding:0;gap:8px;border-radius:0}
-.chips.fo>.fgrp::before,.chips.fo>.fgrp::after{display:none}
-.fgrp .chip{background:var(--gl);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 10px var(--gl-shadow);border-radius:18px;-webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%)}
-.fgrp .chip.on{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent-ink);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 10px var(--gl-shadow)}
-
-/* Папки — единая стеклянная капсула, как нижняя панель вкладок. Под ней нет подложки; тень мягкая и короткая,
-   а у контейнера с прокруткой (он режет всё, что выходит за его край) оставлены поля под тень: иначе её обрезало бы ровной линией */
-.fbar{display:flow-root}
-.fbar .chips{padding:10px 16px 26px;margin:-4px 0 -20px}
-.chips.fo>.fgrp,.chips.fo>.fgrp.glass{margin:0 auto;display:flex;gap:2px;padding:4px;border-radius:26px;flex:none;
-  background:radial-gradient(120% 90% at 0% 0%,var(--gl-spec),transparent 55%),var(--gl);border:1px solid var(--gl-edge);
-  -webkit-backdrop-filter:blur(var(--gl-blur)) saturate(190%);backdrop-filter:blur(var(--gl-blur)) saturate(190%);
-  box-shadow:inset 0 1px 0 var(--gl-hi),inset 0 -1px 0 var(--gl-lo),0 10px 18px -10px var(--gl-shadow)}
-.fgrp .chip{background:none;border-color:transparent;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;border-radius:22px}
-.fgrp .chip.on{background:var(--gl2);border-color:transparent;color:var(--accent-ink);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 8px -2px var(--gl-shadow)}
-
-/* У полей ввода нет прямоугольной рамки фокуса: фокус показывает сама капсула-контейнер */
-.phone input:focus,.phone input:focus-visible,.phone textarea:focus,.phone textarea:focus-visible{outline:none;box-shadow:none}
-.srch:focus-within,.ep-s:focus-within{border-color:var(--accent);box-shadow:inset 0 1px 3px var(--gl-lo),0 0 0 3px var(--accent-soft)}
-
-/* Настоящая клавиатура iOS поднимает всё, что стоит у низа: шторки (добавить контакт, смена пароля, папка...), панель смайлов и
-   ленты страниц. Высота клавиатуры --kbh и признак .kbo (клавиатура открыта) выставляет fit() по visualViewport */
-.sheet{bottom:calc(8px + var(--kbh,0px));max-height:calc(100% - var(--kbh,0px) - 20px);transition:transform .5s var(--gl-ease),bottom .3s var(--gl-ease)}
-.phone.kbo .sheet{padding-bottom:12px}
-.scroll{padding-bottom:calc(var(--sab) + 84px + var(--kbh,0px))}
-.scroll.nobot{padding-bottom:calc(var(--sab) + 30px + var(--kbh,0px))}
-.phone.kbo.ep{--eph:210px}
-.phone.kbo.ep .epanel{bottom:var(--kbh,0px)}
-.phone.kbo.ep .comp{bottom:calc(var(--eph) + var(--kbh,0px) + 8px)}
-.phone.kbo.ep .chat .scroll{bottom:calc(var(--eph) + var(--kbh,0px))}
-.phone.kbo.ep .jump{bottom:calc(var(--eph) + var(--kbh,0px) + 72px)}
-
-.cml .cmb{transition:opacity .35s}.cml.off .cmb{opacity:0}
-
-/* Кнопка отправки — всегда самолётик (голосовых нет): пока пусто, он приглушён, с текстом или вложением — акцентная заливка */
-.sendb .i.s{opacity:1;transform:none;color:var(--text2)}
-.sendb.ready .i.s{color:#fff}
-/* Меню «+»: прикрепить файл и форматирование */
-.upw{position:absolute;inset:0;z-index:70}
-.upm{position:absolute;min-width:236px;padding:6px;border-radius:22px;transform-origin:left bottom;transform:scale(.6);opacity:0;transition:transform .4s var(--gl-spring),opacity .2s}
-.upm.in{transform:none;opacity:1}
-.upm button{display:flex;align-items:center;gap:14px;width:100%;height:48px;padding:0 14px;border-radius:16px;font-size:16px;font-weight:500;text-align:left;transition:background .2s}
-.upm button:active{background:var(--gl-card2)}.upm button .i{font-size:21px;color:var(--accent-ink)}
-.fmtbar{display:flex;gap:2px;padding:8px 8px 0 12px}.fmtbar[hidden]{display:none}
-.fmtbar button{width:40px;height:34px;border-radius:17px;display:grid;place-items:center;font-size:19px;color:var(--text2);transition:background .2s,transform .35s var(--gl-spring)}
-.fmtbar button:active{background:var(--gl2);transform:scale(.9)}
-
-/* Панель форматирования как в /m: B, I, код в строке, блок кода, секрет | превью ... закрыть */
-.fmtbar{padding:8px 6px 0 10px;gap:0;align-items:center}
-.fmtbar button{width:34px;height:34px;border-radius:17px;font-size:18px}
-.fmtbar button.on{background:var(--accent-soft);color:var(--accent-ink)}
-.fsep{width:1px;height:20px;background:var(--gl-lo);margin:0 6px;flex:none}.fgrow{flex:1}
-.fpv{padding:10px 16px 2px;font-size:14px}.fpv[hidden]{display:none}
-.fpl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
-.fpb{color:var(--text);line-height:1.4;max-height:90px;overflow:auto;word-break:break-word}.fpb .fe{color:var(--muted)}
-.fpb code{font-family:ui-monospace,Menlo,monospace;font-size:13px;padding:1px 6px;border-radius:6px;background:var(--gl-card2)}
-.fpb pre{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;padding:8px 10px;border-radius:12px;background:var(--gl-card);margin:4px 0;white-space:pre-wrap}
-.fpb .sec{filter:blur(5px);background:var(--gl-card2);border-radius:6px;padding:0 3px}
-
-/* Выделение: везде выключено, кроме полей ввода и текста внутри пузыря (время, реакции, вложения и всё в слое меню не выделяются) */
-.phone,.phone *{-webkit-user-select:none;user-select:none}
-.phone input,.phone textarea{-webkit-user-select:text;user-select:text}
-.phone .mrow .bub,.phone .mrow .bub *{-webkit-user-select:text;user-select:text}
-.phone .mrow .bub .t,.phone .mrow .bub .file,.phone .mrow .bub .pic,.phone .mrow .bub .quote{-webkit-user-select:none;user-select:none}
-.phone #layer,.phone #layer *{-webkit-user-select:none;user-select:none}
-
-/* Зазор между последним сообщением и полем ввода одинаков всегда (24): отступ ленты считается от положения и высоты поля */
-.phone{--co:calc(var(--sab) - 14px)}
-.chat .scroll{padding-bottom:calc(var(--co) + var(--ch,46px) + 24px)}
-.phone.kb .chat .scroll,.phone.kbr .chat .scroll,.phone.ep .chat .scroll{padding-bottom:calc(8px + var(--ch,46px) + 24px)}
-
-</style></head>
+<link rel="stylesheet" href="/beta/css/tokens.css?v=1">
+<link rel="stylesheet" href="/beta/css/layout.css?v=1">
+<link rel="stylesheet" href="/beta/css/components.css?v=1">
+<link rel="stylesheet" href="/beta/css/nav.css?v=1">
+<link rel="stylesheet" href="/beta/css/chatlist.css?v=1">
+<link rel="stylesheet" href="/beta/css/chat.css?v=1">
+<link rel="stylesheet" href="/beta/css/composer.css?v=1">
+<link rel="stylesheet" href="/beta/css/people.css?v=1">
+<link rel="stylesheet" href="/beta/css/gprofile.css?v=1">
+<link rel="stylesheet" href="/beta/css/media.css?v=1">
+<link rel="stylesheet" href="/beta/css/settings.css?v=1">
+<link rel="stylesheet" href="/beta/css/announce.css?v=1">
+<link rel="stylesheet" href="/beta/css/glass.css?v=1">
+<link rel="stylesheet" href="/chat/emoji-font.css?v=1">
+</head>
 <body>
-<div class="stage">
- <div class="bar"><div class="seg" id="themeseg"><i class="thumb"></i><button data-t="light">Светлая</button><button data-t="dark" class="on">Тёмная</button><button data-t="navy">Тёмно-синяя</button></div>
-  <div class="scenes glass" id="scenes"><button data-s="chats">Чаты</button><button data-s="chat">Переписка</button><button data-s="room">Комната</button><button data-s="contacts">Контакты</button><button data-s="settings">Настройки</button><button data-s="msgmenu">Меню сообщения</button><button data-s="chatmenu">Меню чата</button><button data-s="profile">Профиль</button><button data-s="group">Группа</button><button data-s="media">Медиа</button><button data-s="appearance">Внешний вид</button><button data-s="newchat">Новый чат</button></div><a class="scenes glass" href="desktop.html" style="padding:0 14px;height:34px;align-items:center;font-weight:600;color:var(--text2)">Макет для компьютера</a></div>
- <div class="fit"><div class="phone" id="phone"><div class="amb"><i></i><i></i><i></i><i></i></div><div class="isl"></div>
-  <div class="sbar"><span>9:41</span><span class="r"><svg class="i" viewBox="0 0 24 24"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 20V4"/></svg><i class="bat"></i></span></div>
-  <div id="stack"></div><div id="layer"></div><div class="home"></div></div></div>
+<!-- Заглушка для компьютера: /m рассчитан на телефон -->
+<div id="screen-desktop">
+  <div class="dk-wrap">
+    <img class="dk-logo" src="/chat/icons/icon-192.png" width="72" height="72" alt="">
+    <div class="dk-title">Electron</div>
+    <p class="dk-text">Эта версия сделана для телефона: жесты, размер кнопок и навигация рассчитаны на маленький экран с сенсорным управлением.</p>
+    <p class="dk-text">На компьютере пользуйтесь обычной веб-версией.</p>
+    <a class="dk-btn" href="/chat/">Открыть веб-версию</a>
+  </div>
 </div>
-<script src="m.js"></script></body></html>
+<div id="app"><div id="stack"></div></div>
+<script src="/shared/act.js?v=1"></script>
+<script src="/chat/actions.js?v=1"></script>
+<script src="/chat/emoji-font.js?v=1"></script>
+<script src="/chat/emoji-data.js?v=1"></script>
+<script src="/shared/secret-core.js?v=1"></script>
+<script src="/shared/modules.js?v=1"></script>
+<script src="/shared/gif-klipy.js?v=1"></script>
+<script src="/shared/fmt.js?v=1"></script>
+<script src="/shared/guestlinks.js?v=1"></script>
+<script src="/shared/devicekey.js?v=1"></script>
+<script src="/shared/slidesel.js?v=1"></script>
+<script src="/beta/js/icons.js?v=1"></script>
+<script src="/beta/js/theme.js?v=1"></script>
+<script src="/beta/js/pwa.js?v=1"></script>
+<script src="/beta/js/core/state.js?v=1"></script>
+<script src="/beta/js/core/api.js?v=1"></script>
+<script src="/beta/js/core/appearance.js?v=1"></script>
+<script src="/beta/js/core/chats.js?v=1"></script>
+<script src="/beta/js/core/presence.js?v=1"></script>
+<script src="/beta/js/core/ws.js?v=1"></script>
+<script src="/beta/js/core/push.js?v=1"></script>
+<script src="/beta/js/core/messages.js?v=1"></script>
+<script src="/beta/js/core/upload.js?v=1"></script>
+<script src="/beta/js/core/contacts.js?v=1"></script>
+<script src="/beta/js/core/secret.js?v=1"></script>
+<script src="/beta/js/core/folders.js?v=1"></script>
+<script src="/beta/js/core/spaces.js?v=1"></script>
+<script src="/beta/js/core/app.js?v=1"></script>
+<script src="/beta/js/ui/nav.js?v=1"></script>
+<script src="/beta/js/ui/sheet.js?v=1"></script>
+<script src="/beta/js/ui/avatar.js?v=1"></script>
+<script src="/beta/js/ui/chatlist.js?v=1"></script>
+<script src="/beta/js/ui/kbd.js?v=1"></script>
+<script src="/beta/js/ui/emoji.js?v=1"></script>
+<script src="/beta/js/ui/composer.js?v=1"></script>
+<script src="/beta/js/ui/chat.js?v=1"></script>
+<script src="/beta/js/ui/msgmenu.js?v=1"></script>
+<script src="/beta/js/ui/media.js?v=1"></script>
+<script src="/beta/js/ui/ptr.js?v=1"></script>
+<script src="/beta/js/ui/contacts.js?v=1"></script>
+<script src="/beta/js/ui/profile.js?v=1"></script>
+<script src="/beta/js/ui/groups.js?v=1"></script>
+<script src="/beta/js/ui/gprofile.js?v=1"></script>
+<script src="/beta/js/ui/folders.js?v=1"></script>
+<script src="/beta/js/ui/spaces.js?v=1"></script>
+<script src="/beta/js/ui/settings.js?v=1"></script>
+<script src="/beta/js/ui/diag.js?v=1"></script>
+<script src="/beta/js/ui/announce.js?v=1"></script>
+<script src="/beta/js/ui/login.js?v=1"></script>
+<script src="/beta/js/main.js?v=1"></script>
+</body>
+</html>

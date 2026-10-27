@@ -1,0 +1,65 @@
+/* /m — навигация: стек страниц, шторки, листы действий, уведомления */
+#stack { position: absolute; inset: 0; overflow: hidden; background: var(--bg); transform-origin: 50% 100%; transition: transform .5s var(--ease), border-radius .5s var(--ease); }
+#app.sheeted #stack { transform: scale(.93) translateY(10px); border-radius: 14px; }
+#stack > .page { transition: transform .4s var(--ease); will-change: transform; }
+#stack > .page.drag { transition: none; }
+#stack > .page:not(.base) { box-shadow: -8px 0 28px rgba(0, 0, 0, .14); }
+#stack > .page.enter { transform: translateX(100%); }
+#stack > .page.under { transform: translateX(-30%); }
+#stack > .page.under::after { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, .1); z-index: 20; pointer-events: none; }
+#stack > .page.under > .tabbar { z-index: 21; }   /* затемнение при свайпе назад не должно ложиться на нижнюю панель вкладок */
+.nobot .scroll { padding-bottom: calc(var(--sab) + 24px); }
+.nb.back { padding-left: 0; margin-left: -2px; }
+.nb.back .cnt { font-size: 17px; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav.fix .nt { opacity: 1; }
+
+/* шторки (page sheet): ручка, заголовок, закрытие свайпом вниз */
+.shl, .asl { position: absolute; inset: 0; pointer-events: none; }
+.shl { z-index: 30; } .asl { z-index: 60; }   /* выше просмотра фото и видео (.lbx 55): его меню «⋯» открывается поверх него */
+.shl.on, .asl.on { pointer-events: auto; }
+.shb, .asb { position: absolute; inset: 0; background: rgba(0, 0, 0, .4); opacity: 0; transition: opacity .35s; }
+.on > .shb, .on > .asb { opacity: 1; }
+.sh {
+  --card: var(--sheet-card);
+  position: absolute; left: 0; right: 0; bottom: 0; background: var(--sheet); border-radius: 14px 14px 0 0;
+  transform: translateY(100%); transition: transform .5s var(--ease); display: flex; flex-direction: column; overflow: hidden; color: var(--fg);
+}
+.on > .sh { transform: none; }
+.sh.large { top: calc(var(--sat) + 8px); }
+.sh.med { height: 54%; }
+.sh::before { content: ""; position: absolute; top: 5px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 3px; background: var(--fg3); z-index: 3; }
+.sh-nav { height: 56px; flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 8px 8px 0; touch-action: none; }
+.sh-nav .t { font-weight: 600; font-size: 17px; }
+.sh-nav .l { justify-self: start; } .sh-nav .r { justify-self: end; }
+.sh-body { flex: 1; overflow-y: auto; padding-bottom: calc(var(--sab) + 10px); overscroll-behavior: contain; scrollbar-width: none; }
+.sh-body::-webkit-scrollbar { display: none; }
+
+/* панель действий и подтверждений: выезжает снизу в том же стиле, что и шторки (ручка, скруглённый верх, группы ячеек) */
+.as {
+  position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; gap: 8px;
+  padding: 26px 0 calc(var(--sab) + 12px); background: var(--sheet); border-radius: 14px 14px 0 0; color: var(--fg);
+  transform: translateY(105%); transition: transform .45s var(--ease);
+}
+.on > .as { transform: none; }
+.asgrab { position: absolute; left: 0; right: 0; top: 0; height: 28px; touch-action: none; }
+.asgrab::before { content: ""; position: absolute; top: 5px; left: 50%; width: 36px; height: 5px; margin-left: -18px; border-radius: 3px; background: var(--fg3); }
+.ash { padding: 2px 24px 6px; text-align: center; line-height: 1.3; }
+.ash b { display: block; font-size: 17px; font-weight: 600; }
+.ash span { display: block; margin-top: 3px; font-size: 13px; color: var(--fg2); }
+.asg { margin: 0 16px; background: var(--sheet-card); border-radius: 12px; overflow: hidden; }
+.asg button { display: block; width: 100%; height: 52px; border: 0; border-top: .5px solid var(--sep); background: none; color: var(--accent); font-size: 17px; }
+.asg button:first-child { border-top: 0; }
+.asg button.d { color: var(--red); } .asg button.b { font-weight: 600; }
+.asg button:active { background: color-mix(in srgb, var(--fg) 8%, var(--sheet-card)); }
+
+/* уведомления: короткая подсказка и баннер нового сообщения */
+.toast {
+  position: absolute; left: 50%; top: calc(var(--sat) + 8px); transform: translate(-50%, -160%); opacity: 0; visibility: hidden; pointer-events: none; padding: 11px 18px; border-radius: 22px;
+  background: var(--bar2); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px); box-shadow: 0 6px 24px rgba(0, 0, 0, .2);
+  font-size: 14.5px; font-weight: 500; z-index: 60; transition: transform .45s var(--ease), opacity .25s, visibility 0s .45s; max-width: 92%; display: flex; gap: 10px; align-items: center; color: var(--fg); text-align: center;
+}
+.toast.on { transform: translate(-50%, 0); opacity: 1; visibility: visible; transition: transform .45s var(--ease), opacity .2s; }
+.toast.pn { left: 12px; right: 12px; max-width: none; transform: translateY(-160%); padding: 10px 14px; text-align: left; }
+.toast.pn.on { transform: none; opacity: 1; pointer-events: auto; }
+.toast .tt { min-width: 0; } .toast .tt b { display: block; font-size: 14px; } .toast .tt span { display: block; font-size: 13.5px; color: var(--fg2); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (prefers-reduced-motion: reduce) { #stack, #stack > .page, .sh, .as, .toast { transition-duration: .01s !important; } }
