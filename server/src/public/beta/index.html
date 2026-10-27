@@ -4,7 +4,17 @@
 <meta name="robots" content="noindex"><meta name="theme-color" content="#12171d">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Electron β"><meta name="format-detection" content="telephone=no">
-<link rel="manifest" href="/beta/manifest.json"><link rel="apple-touch-icon" href="/beta/icons/apple-touch-icon.png"><link rel="icon" href="/beta/icons/icon-192.png" type="image/png">
+<link rel="manifest" href="/beta/manifest.json"><link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1320x2868.png">
+<link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1206x2622.png">
+<link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1290x2796.png">
+<link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1179x2556.png">
+<link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1284x2778.png">
+<link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1170x2532.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1242x2688.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/beta/splash/828x1792.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1125x2436.png">
+<link rel="apple-touch-startup-image" media="(device-width: 360px) and (device-height: 780px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/beta/splash/1080x2340.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/beta/splash/750x1334.png"><link rel="apple-touch-icon" href="/beta/icons/apple-touch-icon.png"><link rel="icon" href="/beta/icons/icon-192.png" type="image/png">
 <title>Electron β</title>
 <link rel="stylesheet" href="/shared/fonts/inter.css">
 <style>
@@ -395,8 +405,18 @@ html.dark .grp>*+*{border-top-color:rgba(255,255,255,.07)}
 .mcopy{text-align:center;font-size:12.5px;color:var(--muted);padding:6px 0 20px}
 .fedit{display:flex;gap:10px;align-items:center;margin:10px 0}.fcols{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.fcols button{width:34px;height:34px;border-radius:50%;background:var(--fc);box-shadow:inset 0 1px 0 rgba(255,255,255,.4);transition:transform .35s var(--gl-spring)}.fcols button.on{box-shadow:0 0 0 3px var(--gl2),0 0 0 5px var(--fc)}
 .fic{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;font-size:24px;color:var(--fc);background:color-mix(in srgb,var(--fc) 18%,transparent);flex:none}
-@media (max-width:520px){.bar{display:none}.phone{border-radius:0;box-shadow:none}.fit{position:fixed;top:0;left:0;width:100vw;height:100dvh}body{background:var(--gl-base)}.isl,.sbar,.home{display:none}:root{--sat:max(14px,env(safe-area-inset-top));--sab:max(20px,env(safe-area-inset-bottom))}.phone{touch-action:manipulation}}
+@media (max-width:520px){.bar{display:none}.phone{border-radius:0;box-shadow:none}.fit{position:fixed;top:0;left:0;width:100vw;height:100dvh}body{background:var(--gl-base)}.isl,.sbar,.home{display:none}.phone{--sat:calc(max(14px,env(safe-area-inset-top)) / var(--sc,1));--sab:calc(max(20px,env(safe-area-inset-bottom)) / var(--sc,1));touch-action:manipulation}}
 @media (prefers-reduced-motion:reduce){.page,.tabview,.sheet,.cmm,.cmr,.toast{transition-duration:.01s}.amb i{animation:none!important}}
+
+/* Служебные области iOS (резервирует система): статус-бар/остров сверху и индикатор «домой» снизу.
+   Страница идёт под них (black-translucent, viewport-fit=cover), поэтому у краёв — «краевой эффект» как в iOS 26:
+   размытие + плавный градиент, чтобы белое время и значки статус-бара читались на любом фоне и любой теме. */
+.edge{position:absolute;left:0;right:0;pointer-events:none;z-index:8}
+.edge.t{top:0;height:calc(var(--sat) + 16px);background:linear-gradient(rgba(6,12,18,var(--ea,.5)),transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);-webkit-mask-image:linear-gradient(#000 58%,transparent);mask-image:linear-gradient(#000 58%,transparent)}
+html:not(.dark) .edge.t{--ea:.46}
+.edge.b{bottom:0;height:calc(var(--sab) + 22px);background:linear-gradient(transparent,color-mix(in srgb,var(--gl-base) 78%,transparent));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);-webkit-mask-image:linear-gradient(transparent,#000 52%);mask-image:linear-gradient(transparent,#000 52%)}
+.phone{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.phone input,.phone textarea{-webkit-touch-callout:default}
 
 </style></head>
 <body>

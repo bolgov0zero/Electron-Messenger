@@ -124,13 +124,14 @@ function rel(el){const a=phone.getBoundingClientRect(),r=el.getBoundingClientRec
 const tagColor=p=>`style="color:rgb(${p.c.replace(/var\(--tag-(\d)\)/,(m,n)=>({1:'125,136,191',2:'98,218,98',3:'218,150,98',4:'98,218,210',5:'218,98,150'}[n]))})"`;
 /* ---------- тема, акцент, масштаб ---------- */
 function applyAccent(){const a=ACC[S.acc],c=root.classList.contains('dark')?a[2]:a[1];root.style.setProperty('--accent','rgb('+c+')');root.style.setProperty('--accent-rgb',c.join(','))}
-function setTheme(t){root.classList.toggle('dark',t!=='light');root.classList.toggle('navy',t==='navy');S.theme=t;
+const TC={light:'#e3f0ef',dark:'#12171d',navy:'#0f1b27'};
+function setTheme(t){const m=document.querySelector('meta[name=theme-color]');m&&m.setAttribute('content',TC[t]);root.classList.toggle('dark',t!=='light');root.classList.toggle('navy',t==='navy');S.theme=t;
   $$('#themeseg button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));segMove($('#themeseg'));applyAccent();
   $$('.dot2').forEach(d=>d.style.setProperty('--dot','rgb('+ACC[d.dataset.a][root.classList.contains('dark')?2:1]+')'))}
 function segMove(seg){const b=$('button.on',seg),t=$('.thumb',seg);if(!b||!t)return;t.style.left=b.offsetLeft+'px';t.style.width=b.offsetWidth+'px'}
 const real=()=>window.innerWidth<=520;   /* на настоящем телефоне: на весь экран и со своей клавиатурой телефона */
-function fit(){const f=$('.fit');if(real()){const full=f.clientHeight||innerHeight,vv=window.visualViewport,kb=vv&&vv.height<full-80;const H=kb?vv.height:full;sc=innerWidth/393;phone.style.width='393px';phone.style.height=H/sc+'px';phone.style.transform='scale('+sc+')';phone.style.left='0';phone.style.top=(kb?vv.offsetTop:0)+'px';return}
-  sc=Math.min(f.clientWidth/453,f.clientHeight/(852+40),1.2);phone.style.transform='scale('+sc+')';phone.style.left=(f.clientWidth-393*sc)/2+'px';phone.style.top=Math.max(14,(f.clientHeight-852*sc)/2)+'px'}
+function fit(){const f=$('.fit');if(real()){const full=f.clientHeight||innerHeight,vv=window.visualViewport,kb=vv&&vv.height<full-80;const H=kb?vv.height:full;sc=innerWidth/393;phone.style.width='393px';phone.style.height=H/sc+'px';phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',sc);phone.style.left='0';phone.style.top=(kb?vv.offsetTop:0)+'px';return}
+  sc=Math.min(f.clientWidth/453,f.clientHeight/(852+40),1.2);phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',1);phone.style.left=(f.clientWidth-393*sc)/2+'px';phone.style.top=Math.max(14,(f.clientHeight-852*sc)/2)+'px'}
 addEventListener('resize',fit);
 if(window.visualViewport)visualViewport.addEventListener('scroll',()=>{if(real())fit()});
 if(window.visualViewport)visualViewport.addEventListener('resize',()=>{if(!real())return;fit();scrollTo(0,0);if(cur&&phone.classList.contains('kbr')){const sc_=$('.scroll',cur.el);sc_.scrollTop=1e6}});
@@ -153,7 +154,7 @@ function confirmSheet(title,sub,label,fn,danger=true){const s=sheet(`<h3>${title
   $('[data-ok]',s.el).onclick=()=>{s.close();setTimeout(fn,200)};return s}
 /* ---------- стек страниц ---------- */
 const NAV=[];
-function ambHtml(){return '<div class="amb"><i></i><i></i><i></i><i></i></div>'}
+function ambHtml(){return '<div class="amb"><i></i><i></i><i></i><i></i></div><i class="edge t"></i><i class="edge b"></i>'}
 /* o: {title, back, right, lg, body, cls, nav (своя шапка), bottom, nobot} */
 function page(o){const el=document.createElement('div');el.className='page'+(o.cls?' '+o.cls:'');
   const prev=NAV[NAV.length-1],back=o.back!==undefined?o.back:(prev&&prev.title)||'Назад';
