@@ -131,7 +131,7 @@ function setTheme(t){const m=document.querySelector('meta[name=theme-color]');m&
 function segMove(seg){const b=$('button.on',seg),t=$('.thumb',seg);if(!b||!t)return;t.style.left=b.offsetLeft+'px';t.style.width=b.offsetWidth+'px'}
 const real=()=>window.innerWidth<=520;   /* на настоящем телефоне: на весь экран и со своей клавиатурой телефона */
 function fit(){const f=$('.fit');if(real()){const full=f.clientHeight||innerHeight,vv=window.visualViewport,kb=vv&&vv.height<full-120;/* с клавиатурой окно остаётся на всю высоту (фон виден и за полосой «назад / вперёд / готово» над клавиатурой), поле ввода поднимается на высоту клавиатуры (--kbh) */
-    const top=kb?vv.offsetTop:0,H=full-top,kbh=kb?Math.max(0,full-top-vv.height):0;sc=innerWidth/393;phone.style.width='393px';phone.style.height=H/sc+'px';phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',sc);phone.style.setProperty('--kbh',kbh/sc+'px');phone.style.left='0';phone.style.top=top+'px';return}
+    const top=kb?vv.offsetTop:0,H=full-top,kbh=kb?Math.max(0,full-top-vv.height):0;sc=innerWidth/393;phone.style.width='393px';phone.style.height=H/sc+'px';phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',sc);phone.style.setProperty('--kbh',kbh/sc+'px');phone.classList.toggle('kbo',kbh>0);phone.style.left='0';phone.style.top=top+'px';return}
   sc=Math.min(f.clientWidth/453,f.clientHeight/(852+40),1.2);phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',1);phone.style.left=(f.clientWidth-393*sc)/2+'px';phone.style.top=Math.max(14,(f.clientHeight-852*sc)/2)+'px'}
 addEventListener('resize',fit);
 if(window.visualViewport)visualViewport.addEventListener('scroll',()=>{if(real())fit()});
@@ -288,13 +288,17 @@ function overlay(elem,r,items,rx,mine){closeOverlay();const L=document.createEle
   L.append(clone);let rxe=null;
   if(rx){rxe=document.createElement('div');rxe.className='cmr glass-pop';rxe.innerHTML=rx.map(e=>`<button data-e="${e}">${e}</button>`).join('')+`<button class="more" data-more>${I('plus')}</button>`;
     rxe.style.top=(top-rxh-gap+4)+'px';rxe.style[mine?'right':'left']=(mine?12:Math.max(12,r.x))+'px';rxe.style.transformOrigin=(mine?'right':'left')+' bottom';L.append(rxe)}
-  L.append(mn);layer.append(L);ov={L,items,mn,rxe,elem};void L.offsetWidth;L.classList.add('on');mn.classList.add('in');rxe&&rxe.classList.add('in');
+  L.append(mn);layer.append(L);ov={L,items,mn,rxe,elem,clone,dy:r.y-top};void L.offsetWidth;L.classList.add('on');mn.classList.add('in');rxe&&rxe.classList.add('in');
   elem.style.visibility='hidden';const t0=performance.now();
   if(top!==r.y)clone.animate([{transform:`translateY(${r.y-top}px)`},{transform:'none'}],{duration:380,easing:'cubic-bezier(.32,.72,0,1)'});
   L.addEventListener('click',e=>{if(performance.now()-t0<350)return;const it=e.target.closest('[data-i]'),em=e.target.closest('[data-e]');const o=ov;
     if(it){const f=o.items[+it.dataset.i].f;closeOverlay();setTimeout(f,140)}else if(em){const f=o.onReact;closeOverlay();f&&f(em.dataset.e)}else if(e.target.closest('[data-more]')){closeOverlay();setTimeout(()=>emojiSheet(o.onReact),160)}else closeOverlay()});
   return ov}
-function closeOverlay(){if(!ov)return;const o=ov;ov=null;o.L.classList.remove('on');o.mn.classList.remove('in');o.rxe&&o.rxe.classList.remove('in');o.elem.style.visibility='';setTimeout(()=>o.L.remove(),260)}
+function closeOverlay(){if(!ov)return;const o=ov;ov=null;o.mn.classList.remove('in');o.rxe&&o.rxe.classList.remove('in');o.L.classList.add('off');
+  /* сообщение (или строка) плавно возвращается на своё место, как и выезжало; оригинал показываем, когда копия села ровно на него */
+  const dur=o.dy&&o.clone.animate?380:0;
+  if(dur)o.clone.animate([{transform:'none'},{transform:`translateY(${o.dy}px)`}],{duration:dur,easing:'cubic-bezier(.32,.72,0,1)',fill:'forwards'});
+  setTimeout(()=>{o.elem.style.visibility='';o.L.remove()},dur+20)}
 /* ---------- переписка ---------- */
 const MS={};let mseq=0;
 const QUICK=['👍','❤️','😂','😮','😢','🙏'];

@@ -553,6 +553,20 @@ html:not(.dark) .edge.t{--ea:.46}
 .phone input:focus,.phone input:focus-visible,.phone textarea:focus,.phone textarea:focus-visible{outline:none;box-shadow:none}
 .srch:focus-within,.ep-s:focus-within{border-color:var(--accent);box-shadow:inset 0 1px 3px var(--gl-lo),0 0 0 3px var(--accent-soft)}
 
+/* Настоящая клавиатура iOS поднимает всё, что стоит у низа: шторки (добавить контакт, смена пароля, папка...), панель смайлов и
+   ленты страниц. Высота клавиатуры --kbh и признак .kbo (клавиатура открыта) выставляет fit() по visualViewport */
+.sheet{bottom:calc(8px + var(--kbh,0px));max-height:calc(100% - var(--kbh,0px) - 20px);transition:transform .5s var(--gl-ease),bottom .3s var(--gl-ease)}
+.phone.kbo .sheet{padding-bottom:12px}
+.scroll{padding-bottom:calc(var(--sab) + 84px + var(--kbh,0px))}
+.scroll.nobot{padding-bottom:calc(var(--sab) + 30px + var(--kbh,0px))}
+.phone.kbo.ep{--eph:210px}
+.phone.kbo.ep .epanel{bottom:var(--kbh,0px)}
+.phone.kbo.ep .comp{bottom:calc(var(--eph) + var(--kbh,0px) + 8px)}
+.phone.kbo.ep .chat .scroll{bottom:calc(var(--eph) + var(--kbh,0px))}
+.phone.kbo.ep .jump{bottom:calc(var(--eph) + var(--kbh,0px) + 72px)}
+
+.cml .cmb{transition:opacity .35s}.cml.off .cmb{opacity:0}
+
 </style></head>
 <body>
 <div class="stage">
