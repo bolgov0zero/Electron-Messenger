@@ -233,6 +233,8 @@ B.ui.composer = (function () {
     closeUp(); var r = rel(btn), H = phone.offsetHeight, w = document.createElement('div'); w.className = 'upw';
     w.innerHTML = '<div class="upm glass-pop" role="menu" style="left:' + Math.max(10, r.x) + 'px;bottom:' + (H - r.y + 8) + 'px"><button role="menuitem" data-u="attach">' + I('clip') + '<span>Прикрепить файл</span></button><button role="menuitem" data-u="fmt">' + I('pen') + '<span>Форматирование</span></button></div>';
     layer.append(w); void w.offsetWidth; $('.upm', w).classList.add('in');
+    // нажатие на пункт меню не должно забирать фокус у поля: иначе клавиатура закрывается, а программно вернуть её iOS не даёт
+    ['pointerdown', 'mousedown'].forEach(function (ev) { w.addEventListener(ev, function (e) { if (e.target.closest('button')) e.preventDefault(); }); });
     w.onclick = function (e) {
       var u = e.target.closest('[data-u]'); closeUp(); if (!u) return;
       setTimeout(function () {
