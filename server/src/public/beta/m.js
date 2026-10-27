@@ -239,7 +239,7 @@ function renderChats(){const v=$('.tabview[data-tab="chats"]');const keep=$('.sc
   <div class="scroll"><h1 class="lt">Чаты</h1>
    <label class="srch glass">${I('search')}<input id="cq" placeholder="Поиск" autocomplete="off" value="${esc(S.q)}"></label>
    ${S.set.spaces?`<div class="chips"><button class="chip on" data-act="space">${I('grid')}${esc(S.space)}${I('chevDown')}</button></div>`:''}
-   <div class="fbar"><div class="chips fo">${FOLD.map(([k,l,ic])=>`<button class="chip${S.folder===k?' on':''}" data-fo="${k}">${I(ic)}${l}</button>`).join('')}</div></div>
+   <div class="fbar"><div class="chips fo"><div class="fgrp glass">${FOLD.map(([k,l,ic])=>`<button class="chip${S.folder===k?' on':''}" data-fo="${k}">${I(ic)}${l}</button>`).join('')}</div></div></div>
    <div id="clist"></div></div>`;
   paintList();const sc_=$('.scroll',v);sc_.scrollTop=keep;scrollWatch(v);badge();
   /* панель папок липнет под бейджем раздела; когда прилипла, под ней появляется плавное затемнение */
@@ -453,8 +453,12 @@ function openRoom(){const rows=TOPICS.map(t=>`<button class="row" data-id="${t.i
   longPress(el,'.row',r=>toast('Тема: '+findChat(r.dataset.id).n,'hash'));push(el,'Вся компания');$$('.hero .av',el).forEach(a=>{a.style.cssText='width:84px;height:84px;font-size:30px'})}
 /* ---------- вкладка «Контакты» ---------- */
 function renderContacts(){const v=$('.tabview[data-tab="contacts"]');const q=(S.cq||'').toLowerCase();
-  const ks=Object.keys(PPL).filter(k=>!q||PPL[k].n.toLowerCase().includes(q)||PPL[k].login.includes(q)).sort((a,b)=>PPL[a].n.localeCompare(PPL[b].n,'ru'));let last='',h='';
-  ks.forEach(k=>{const p=PPL[k],l=p.n[0];if(l!==last){h+=(last?'</div>':'')+`<div class="gl">${l}</div><div class="grp glass">`;last=l}
+  const ks=Object.keys(PPL).filter(k=>!q||PPL[k].n.toLowerCase().includes(q)||PPL[k].login.includes(q));
+  /* по статусу: сначала в сети, затем недавно был(а), вчера и остальные; внутри статуса по имени */
+  const stRank=p=>p.on?0:/минут|час/.test(p.st||'')?1:/вчера/.test(p.st||'')?2:3;
+  ks.sort((a,b)=>stRank(PPL[a])-stRank(PPL[b])||PPL[a].n.localeCompare(PPL[b].n,'ru'));
+  const nOn=ks.filter(k=>PPL[k].on).length;let last='',h='';
+  ks.forEach(k=>{const p=PPL[k],l=p.on?'В сети · '+nOn:'Не в сети · '+(ks.length-nOn);if(l!==last){h+=(last?'</div>':'')+`<div class="gl">${l}</div><div class="grp glass">`;last=l}
     h+=`<button class="row" data-k="${k}">${avHtml({...p,ini:p.ini},'')}<div class="rt"><div class="r1"><b>${p.n}</b>${p.tag?`<span class="pill-tag" ${tagColor(p)}>${p.tag}</span>`:''}</div><div class="r2"><span class="pv" style="${p.on?'color:var(--accent-ink)':''}">${p.on?'в сети':p.st||'был(а) недавно'}</span></div></div></button>`});
   v.innerHTML=`<div class="nav lg"><div class="nb" style="visibility:hidden"></div><div class="nt"><span class="glass">Контакты</span></div><div class="nr"><button class="nb glass gi" data-act="add" aria-label="Добавить контакт">${I('userPlus')}</button></div></div>
    <div class="scroll"><h1 class="lt">Контакты</h1><label class="srch glass">${I('search')}<input id="kq" placeholder="Поиск контактов" autocomplete="off" value="${esc(S.cq||'')}"></label>${h?h+'</div>':'<div class="empty"><span class="ei glass">'+I('users')+'</span><b>Никого не найдено</b></div>'}</div>`;

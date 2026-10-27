@@ -521,6 +521,17 @@ html:not(.dark) .edge.t{--ea:.46}
 .fbar .chips{position:relative;margin:0;padding:6px 16px}
 .chips.fo>:first-child{margin-left:auto}.chips.fo>:last-child{margin-right:auto}
 
+/* Без тёмной подложки под папками: чипы остаются отдельными стеклянными капсулами, читаемость даёт их собственное размытие */
+.fbar::before,.fbar.stuck::before{display:none}
+.fbar .chip{-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%)}
+
+/* Панель папок — стеклянная капсула (как плавающие кнопки и панель вкладок): список проходит под ней через размытие, а не через тёмную подложку */
+.fbar .chip{-webkit-backdrop-filter:none;backdrop-filter:none}
+.chips.fo>.fgrp{margin:0 auto;display:flex;gap:2px;padding:4px;border-radius:26px;flex:none}
+.chips.fo>:first-child,.chips.fo>:last-child{margin-left:auto;margin-right:auto}
+.fgrp .chip{height:36px;background:none;border-color:transparent;box-shadow:none;border-radius:22px}
+.fgrp .chip.on{background:var(--gl2);border-color:transparent;color:var(--accent-ink);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 8px var(--gl-shadow)}
+
 </style></head>
 <body>
 <div class="stage">
