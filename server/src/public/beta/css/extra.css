@@ -192,6 +192,19 @@ html, body { background: var(--gl-base); }
 .ep-gif .gp-search { height: 32px; }
 .ep-gif .gp-chips { padding: 6px 2px 4px; }
 
+/* Стекло не должно «мигать» при переключении разделов и возврате из чата.
+   1) Вкладки: никакой прозрачности в анимации. Пока у родителя opacity < 1, backdrop-filter детей отключается и стекло выглядит плоским,
+      а в конце перехода «включается» рывком. Предыдущий раздел прячется сразу, новый подъезжает сдвигом.
+   2) Цветные пятна фона: радиальные градиенты вместо filter: blur(50px) — четыре тяжёлых размытия на каждой странице тормозили переходы,
+      и размытие под стеклом не успевало за кадрами. */
+.tabview { opacity: 1; visibility: hidden; transition: transform .45s var(--gl-ease), visibility 0s; }
+.tabview.on { visibility: visible; }
+.amb i { filter: none !important; }
+.amb i:nth-child(1) { width: 440px; height: 440px; left: -110px; top: -130px; background: radial-gradient(closest-side, var(--amb-1), transparent); }
+.amb i:nth-child(2) { width: 420px; height: 420px; right: -160px; top: 180px; background: radial-gradient(closest-side, var(--amb-2), transparent); }
+.amb i:nth-child(3) { width: 440px; height: 440px; left: -140px; bottom: -110px; background: radial-gradient(closest-side, var(--amb-3), transparent); }
+.amb i:nth-child(4) { width: 340px; height: 340px; right: -80px; bottom: -10px; background: radial-gradient(closest-side, var(--amb-4), transparent); }
+
 /* панель папок липнет под бейджем раздела: обёртка не должна ограничивать sticky */
 #cbar { display: contents; }
 /* лист правки папки: тени выбранного цвета и значка не должны обрезаться по краям */

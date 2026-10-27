@@ -1848,12 +1848,12 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 #ctx-menu { overflow: visible; }
 .ctx-read { border-radius: 8px; }
 .ctx-read.open > button { background: var(--hover-row); }
-.ctx-menu .ctx-read.rd-part > button svg:first-child .tk1 { stroke: var(--accent); }
-.ctx-menu .ctx-read.rd-all > button svg:first-child { color: var(--accent); }
+.ctx-menu .ctx-read.rd-part > button svg:first-child .tk1 { stroke: var(--tick-read, #3ea6ff); }
+.ctx-menu .ctx-read.rd-all > button svg:first-child { color: var(--tick-read, #3ea6ff); }
 .ctx-menu .ctx-read.flat > button svg:first-child .tk1 { display: none; }
 .ctx-menu .ctx-read > button > span { display: flex; align-items: baseline; gap: 5px; }
 .ctx-read .cnt { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
-.ctx-read .cnt b { color: var(--accent); font-weight: 700; }
+.ctx-read .cnt b { color: var(--tick-read, #3ea6ff); font-weight: 700; }
 .ctx-menu .ctx-read .ctx-read-chev { margin-left: auto; width: 13px; height: 13px; }
 .ctx-read.flat > button { cursor: default; }
 .ctx-read.flat > button:hover { background: none; }
@@ -2420,7 +2420,8 @@ html.dark .announcement-title { color: var(--danger); }
 .ci-name .msg-status { flex-shrink: 0; display: flex; align-items: center; }
 .ci-name .status-sent      { color: var(--muted); opacity: .45; }
 .ci-name .status-delivered { color: var(--muted); }
-.ci-name .status-read      { color: var(--accent); }
+.ci-name .status-read      { color: var(--tick-read, #3ea6ff); }
+.ci-name .status-part .tk1 { stroke: var(--tick-read, #3ea6ff); }
 .ci-name .status-part      { color: var(--muted); }
 
 /* ── ЕДИНОЕ ПОЛЕ ВВОДА ──
@@ -2663,7 +2664,7 @@ html.dark .announcement-title { color: var(--danger); }
 .msg-bubble.bubble-photo > .irc-meta .msg-status { color: #fff; }
 /* «Прочитано» оставляем акцентным, как в обычных сообщениях: белым это
    состояние не отличить от «доставлено» */
-.msg-bubble.bubble-photo > .irc-meta .status-read { color: var(--accent); }
+.msg-bubble.bubble-photo > .irc-meta .status-read { color: var(--tick-read, #3ea6ff); }
 
 @media (prefers-reduced-motion: reduce) { .irc-msg.emoji-msg .msg-bubble { transition: none; } }
 
