@@ -43,3 +43,29 @@
 document.addEventListener('click', e => {
   if (e.detail > 0) { const b = e.target.closest('button,[role=button],[role=tab],[role=radio],.chat-item,.sb-tab,.cs-sn'); if (b) setTimeout(() => { if (document.activeElement === b) b.blur(); }, 0); }
 });
+
+// Выделять текст можно только в полях ввода и внутри одного пузыря сообщения: протяжка через несколько пузырей
+// (и «выделить всё» вне полей) обрезается краем пузыря, с которого она началась
+(function () {
+  let busy = false;
+  const owner = n => { const el = n && (n.nodeType === 1 ? n : n.parentElement); return el || null; };
+  const inField = n => !!(owner(n) && owner(n).closest('input,textarea,[contenteditable]'));
+  document.addEventListener('selectionchange', () => {
+    if (busy) return;
+    const s = getSelection();
+    if (!s || s.isCollapsed || !s.anchorNode || inField(s.anchorNode) || inField(s.focusNode)) return;
+    const a = owner(s.anchorNode)?.closest('.msg-bubble'), f = owner(s.focusNode)?.closest('.msg-bubble');
+    if (a === f && a) return;
+    busy = true;
+    try {
+      if (!a) s.removeAllRanges();
+      else {
+        const after = !!(a.compareDocumentPosition(s.focusNode) & Node.DOCUMENT_POSITION_FOLLOWING) && !a.contains(s.focusNode);
+        s.setBaseAndExtent(s.anchorNode, s.anchorOffset, a, after ? a.childNodes.length : 0);
+      }
+    } finally { setTimeout(() => { busy = false; }, 0); }
+  });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'a' || e.key === 'ф' || e.key === 'A') && !inField(e.target)) e.preventDefault();
+  }, true);
+})();

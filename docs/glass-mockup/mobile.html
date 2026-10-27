@@ -567,6 +567,19 @@ html:not(.dark) .edge.t{--ea:.46}
 
 .cml .cmb{transition:opacity .35s}.cml.off .cmb{opacity:0}
 
+/* Кнопка отправки — всегда самолётик (голосовых нет): пока пусто, он приглушён, с текстом или вложением — акцентная заливка */
+.sendb .i.s{opacity:1;transform:none;color:var(--text2)}
+.sendb.ready .i.s{color:#fff}
+/* Меню «+»: прикрепить файл и форматирование */
+.upw{position:absolute;inset:0;z-index:70}
+.upm{position:absolute;min-width:236px;padding:6px;border-radius:22px;transform-origin:left bottom;transform:scale(.6);opacity:0;transition:transform .4s var(--gl-spring),opacity .2s}
+.upm.in{transform:none;opacity:1}
+.upm button{display:flex;align-items:center;gap:14px;width:100%;height:48px;padding:0 14px;border-radius:16px;font-size:16px;font-weight:500;text-align:left;transition:background .2s}
+.upm button:active{background:var(--gl-card2)}.upm button .i{font-size:21px;color:var(--accent-ink)}
+.fmtbar{display:flex;gap:2px;padding:8px 8px 0 12px}.fmtbar[hidden]{display:none}
+.fmtbar button{width:40px;height:34px;border-radius:17px;display:grid;place-items:center;font-size:19px;color:var(--text2);transition:background .2s,transform .35s var(--gl-spring)}
+.fmtbar button:active{background:var(--gl2);transform:scale(.9)}
+
 </style></head>
 <body>
 <div class="stage">
@@ -882,7 +895,7 @@ const MS={};let mseq=0;
 const QUICK=['👍','❤️','😂','😮','😢','🙏'];
 function rxHtml(re){return `<div class="react">${re.map(r=>{const[x,m]=r.split('|');return `<button class="${m?'mine':''}" data-r="${x.split(' ')[0]}">${x}</button>`}).join('')}</div>`}
 function bubHtml(cid,m,prev,dm,id){const plain=(m.t||m.big||'').replace(/<[^>]+>/g,'');MS[id]={cid,...m,id,text:plain};let h='';
-  if(m.a==='me'){const body=m.gif!=null?`<div class="bub gifb"><div class="pic gif" style="--a:${m.gif}deg"><b>GIF</b></div><span class="t">${m.tm}${CHK}</span></div>`:m.big?`<span class="big">${m.big}</span>`:`<div class="bub">${m.q?`<div class="quote"><b>${m.q[0]}</b><span>${m.q[1]}</span></div>`:''}${m.t}<span class="t">${m.ed?'изм. ':''}${m.tm}${CHK}</span></div>`;h+=`<div class="mrow out" data-m="${id}">${body}</div>`}
+  if(m.a==='me'){const body=m.gif!=null?`<div class="bub gifb"><div class="pic gif" style="--a:${m.gif}deg"><b>GIF</b></div><span class="t">${m.tm}${CHK}</span></div>`:m.big?`<span class="big">${m.big}</span>`:`<div class="bub">${m.q?`<div class="quote"><b>${m.q[0]}</b><span>${m.q[1]}</span></div>`:''}${m.file?`<div class="file"><span class="fi">${I('file')}</span><span><b>${m.file[0]}</b><small>${m.file[1]}</small></span></div>`:''}${m.t}<span class="t">${m.ed?'изм. ':''}${m.tm}${CHK}</span></div>`;h+=`<div class="mrow out" data-m="${id}">${body}</div>`}
   else{const p=PPL[m.a];if(prev!==m.a&&!dm)h+=`<div class="who-n" style="color:${ink(p)}">${p.n}</div>`;
     const body=m.big?`<span class="big">${m.big}</span>`:`<div class="bub">${m.pic?'<div class="pic"></div>':''}${m.file?`<div class="file"><span class="fi">${I('file')}</span><span><b>${m.file[0]}</b><small>${m.file[1]}</small></span><button class="dl glass gi" aria-label="Скачать">${I('dl')}</button></div>`:''}${m.t||''}<span class="t">${m.tm}</span></div>`;
     h+=`<div class="mrow in" data-m="${id}">${body}</div>`}
@@ -906,19 +919,19 @@ function openChat(id,fromRoom){const c=findChat(id);if(!c)return;if(c.k==='room'
    `<button class="jump glass gi" data-jump aria-label="Вниз">${I('down')}</button>`+composerHtml(c));
   push(el,c.n);const sc_=$('.scroll',el);requestAnimationFrame(()=>{sc_.scrollTop=1e6});bindChat(el,c);return el}
 function composerHtml(c){return `<div class="comp"><button class="cbtn glass gi" data-plus aria-label="Вложение">${I('plus')}</button>
-  <div class="cfield glass"><div class="cbar-wrap"></div><div class="cin"><textarea rows="1" placeholder="Сообщение" aria-label="Сообщение" enterkeyhint="send"></textarea><button class="em" data-emoji aria-label="Смайлы">${I('smile')}</button></div></div>
-  <button class="sendb glass gi" data-send aria-label="Отправить">${I('mic','m')}${I('send','s')}</button></div>`}
-function bindChat(el,c){const sc_=$('.scroll',el),ta=$('textarea',el),send=$('.sendb',el),jump=$('.jump',el);let ctx=null;
-  const bar=()=>{const w=$('.cbar-wrap',el);w.innerHTML=ctx?`<div class="cbar"><i class="tk"></i><div class="ct"><b>${ctx.k==='edit'?'Редактирование':'Ответ: '+esc(ctx.who)}</b><span>${esc(ctx.text)}</span></div><button class="ibtn" data-cx aria-label="Отмена">${I('x')}</button></div>`:''};
-  const sync=()=>{send.classList.toggle('ready',!!ta.value.trim()||ctx?.k==='edit');ta.style.height='46px';ta.style.height=Math.min(120,ta.scrollHeight)+'px'};
+  <div class="cfield glass"><div class="cbar-wrap"></div><div class="fmtbar" hidden>${['bold|Жирный','italic|Курсив','code|Моноширинный','braces|Блок кода'].map(x=>{const [i,l]=x.split('|');return `<button data-f="${i}" aria-label="${l}">${I(i)}</button>`}).join('')}</div><div class="cin"><textarea rows="1" placeholder="Сообщение" aria-label="Сообщение" enterkeyhint="send"></textarea><button class="em" data-emoji aria-label="Смайлы">${I('smile')}</button></div></div>
+  <button class="sendb glass gi" data-send aria-label="Отправить">${I('send','s')}</button></div>`}
+function bindChat(el,c){const sc_=$('.scroll',el),ta=$('textarea',el),send=$('.sendb',el),jump=$('.jump',el);let ctx=null,att=null;
+  const bar=()=>{const w=$('.cbar-wrap',el);w.innerHTML=(ctx?`<div class="cbar"><i class="tk"></i><div class="ct"><b>${ctx.k==='edit'?'Редактирование':'Ответ: '+esc(ctx.who)}</b><span>${esc(ctx.text)}</span></div><button class="ibtn" data-cx aria-label="Отмена">${I('x')}</button></div>`:'')+(att?`<div class="cbar"><i class="tk" style="background:#5b8def"></i><div class="ct"><b>Вложение</b><span>${esc(att.name)} · ${att.size}</span></div><button class="ibtn" data-ca aria-label="Убрать вложение">${I('x')}</button></div>`:'')};
+  const sync=()=>{send.classList.toggle('ready',!!ta.value.trim()||!!att||ctx?.k==='edit');ta.style.height='46px';ta.style.height=Math.min(120,ta.scrollHeight)+'px'};
   ta.addEventListener('input',sync);ta.addEventListener('focus',()=>showKb(ta));
   ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doSend()}});
-  const doSend=()=>{const t=ta.value.trim();if(!t&&ctx?.k!=='edit'){toast('Удерживайте для записи голосового','mic');return}
+  const doSend=()=>{const t=ta.value.trim();if(!t&&!att&&ctx?.k!=='edit')return;
     const tm=new Date().toTimeString().slice(0,5);
     if(ctx?.k==='edit'){const m=MS[ctx.id];m.t=t;m.text=t;m.ed=1;const b=$(`[data-m="${ctx.id}"] .bub`,el);if(b){b.innerHTML=esc(t)+`<span class="t">изм. ${m.tm}${CHK}</span>`}ctx=null;bar();ta.value='';sync();toast('Сообщение изменено','pen');return}
-    const m={a:'me',t:esc(t),tm,q:ctx?[ctx.who,ctx.text]:null};if(!m.q)delete m.q;const id=c.id+'-'+(mseq++);
+    const m={a:'me',t:esc(t),tm,q:ctx?[ctx.who,ctx.text]:null};if(!m.q)delete m.q;if(att){m.file=[att.name,att.size];att=null}const id=c.id+'-'+(mseq++);
     const grp=$$('.day-group',sc_).pop()||sc_,ty=$('.typing',grp);const h=document.createElement('div');h.innerHTML=bubHtml(c.id,m,null,true,id);[...h.children].forEach(x=>{ty?grp.insertBefore(x,ty):grp.append(x)});$(`[data-m="${id}"] .bub`,el)?.classList.add('pop');
-    ctx=null;bar();ta.value='';sync();sc_.scrollTo({top:1e6,behavior:'smooth'});
+    ctx=null;att=null;bar();ta.value='';sync();sc_.scrollTo({top:1e6,behavior:'smooth'});
     if(c.k==='dm'||Math.random()>.4)setTimeout(()=>{const who=c.k==='dm'?c.peer:'elena';const ty2=document.createElement('div');ty2.className='typing';ty2.innerHTML='<i></i><i></i><i></i>'+(PPL[who].n.split(' ')[0])+' печатает…';($$('.day-group',sc_).pop()||sc_).append(ty2);sc_.scrollTo({top:1e6,behavior:'smooth'});
       setTimeout(()=>{ty2.remove();const id2=c.id+'-'+(mseq++);const hh=document.createElement('div');hh.innerHTML=bubHtml(c.id,{a:who,t:['Принято 👍','Да, посмотрю чуть позже','Спасибо!','Хорошо, договорились'][Math.random()*4|0],tm:new Date().toTimeString().slice(0,5)},null,c.k==='dm',id2);[...hh.children].forEach(x=>($$('.day-group',sc_).pop()||sc_).append(x));$(`[data-m="${id2}"] .bub`,el)?.classList.add('pop');sc_.scrollTo({top:1e6,behavior:'smooth'})},1500)},700)};
   el._send=doSend;
@@ -926,7 +939,9 @@ function bindChat(el,c){const sc_=$('.scroll',el),ta=$('textarea',el),send=$('.s
   el.addEventListener('click',e=>{const t=e.target;
     if(t.closest('[data-send]')){doSend();return}
     if(t.closest('[data-cx]')){ctx=null;bar();ta.value='';sync();return}
-    if(t.closest('[data-plus]')){attachSheet();return}
+    if(t.closest('[data-plus]')){upMenu(t.closest('[data-plus]'),{attach:()=>{att={name:['Презентация.pdf','Отчёт_ноябрь.xlsx','Схема.png'][Math.random()*3|0],size:['1,2 МБ','86 КБ','2,4 МБ'][Math.random()*3|0]};bar();sync()},fmt:()=>{const f=$('.fmtbar',el);f.hidden=!f.hidden;if(!f.hidden)ta.focus()}});return}
+    if(t.closest('[data-ca]')){att=null;bar();sync();return}
+    const fb=t.closest('.fmtbar [data-f]');if(fb){const mk={bold:['**','**'],italic:['_','_'],code:['`','`'],braces:['```\n','\n```']}[fb.dataset.f],s0=ta.selectionStart,e0=ta.selectionEnd,v=ta.value;ta.value=v.slice(0,s0)+mk[0]+v.slice(s0,e0)+mk[1]+v.slice(e0);ta.setSelectionRange(s0+mk[0].length,e0+mk[0].length);sync();return}
     if(t.closest('[data-emoji]')){phone.classList.contains('ep')?closeEp(true):openEp();return}
     if(t.closest('[data-jump]')){sc_.scrollTo({top:1e6,behavior:'smooth'});return}
     if(t.closest('[data-pin]')){const m=$('.mrow',sc_);m.classList.add('hl');m.scrollIntoView({block:'center',behavior:'smooth'});setTimeout(()=>m.classList.remove('hl'),1500);return}
@@ -1009,6 +1024,12 @@ function openEp(){if(!cur)return;const sc_=$('.scroll',cur.el),near=sc_.scrollHe
 function closeEp(focus){phone.classList.remove('ep');if(focus&&cur){phone.classList.remove('kb');cur.ta.focus()}else phone.classList.remove('kb')}
 
 function emojiSheet(fn){const s=sheet(`<h3>Реакция</h3><div class="ep-sheet">${epTop()}<div class="ep-body">${epGrid(EG)}</div></div>`);epBind(s.el,e=>{fn&&fn(e);s.close()})}
+/* Меню кнопки «+» как в /m: только «Прикрепить файл» и «Форматирование» */
+function closeUp(){const w=$('.upw',layer);if(!w)return;const m=$('.upm',w);m.classList.remove('in');setTimeout(()=>w.remove(),200)}
+function upMenu(btn,h){closeUp();const r=rel(btn),H=phone.offsetHeight,w=document.createElement('div');w.className='upw';
+  w.innerHTML=`<div class="upm glass-pop" role="menu" style="left:${Math.max(10,r.x)}px;bottom:${H-r.y+8}px"><button role="menuitem" data-u="attach">${I('clip')}<span>Прикрепить файл</span></button><button role="menuitem" data-u="fmt">${I('pen')}<span>Форматирование</span></button></div>`;
+  layer.append(w);void w.offsetWidth;$('.upm',w).classList.add('in');
+  w.onclick=e=>{const u=e.target.closest('[data-u]');closeUp();if(u)setTimeout(()=>h[u.dataset.u]&&h[u.dataset.u](),120)}}
 function attachSheet(){const s=sheet(`<h3>Вложение</h3><div class="atiles">${[['image','Фото','#5b8def'],['file','Файл','#34c759'],['bold','Формат','#af52de'],['mic','Голос','#ff9500']].map(([ic,l,bg])=>`<button class="atile" data-a="${l}"><span class="ic" style="background:${bg}">${I(ic)}</span>${l}</button>`).join('')}</div><button class="abtn" data-close>Отмена</button>`);
   s.el.addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(a){s.close();toast(a.dataset.a==='Формат'?'Панель форматирования':'Выберите: '+a.dataset.a.toLowerCase(),'clip')}})}
 function forwardSheet(m){const sel=new Set();const s=sheet(`<h3>Переслать</h3><div class="sb"><div class="grp glass">${CH.filter(x=>x.k!=='room').map(x=>`<button class="mini" data-id="${x.id}">${avHtml(x,'')}<span class="rt"><b>${esc(x.n)}</b></span><span class="ck">${I('check')}</span></button>`).join('')}</div></div><button class="abtn pri" data-go disabled>Переслать</button>`);
