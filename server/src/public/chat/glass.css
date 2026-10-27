@@ -1383,3 +1383,12 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 #gm-modal.gmm .mini.pend { cursor: default; }
 #pf-modal .mini .ci, #gm-modal.gmm .mini .ci { width: 30px; height: 30px; margin: 0 5px; border-radius: 10px; display: grid; place-items: center; color: #fff; flex: none; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35); }
 #pf-modal .mini .ci svg, #gm-modal.gmm .mini .ci svg { width: 17px; height: 17px; }
+
+/* Одиночный смайл без пузыря, как в мобильном клиенте: крупный смайл прямо на фоне, время мелкой плашкой */
+.msg-bubble.bubble-emoji, .irc-msg .msg-bubble.bubble-emoji {
+  background: none !important; border-color: transparent !important; box-shadow: none !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+.msg-bubble.bubble-emoji::before, .msg-bubble.bubble-emoji::after { display: none !important; }
+.msg-bubble.bubble-emoji > .irc-meta { background: var(--gl-card); border-radius: 99px; padding: 1px 8px; color: var(--text2); }
+.msg-bubble.bubble-emoji > .irc-meta .irc-time, .msg-bubble.bubble-emoji > .irc-meta .msg-status { color: var(--text2); }

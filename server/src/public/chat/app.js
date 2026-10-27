@@ -4339,7 +4339,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       ${header}
       <div class="bubble-row">
         ${avCol}
-        <div class="msg-bubble${bareImage ? ' bubble-photo' : ''}${comp ? comp.cls : ''}${fwdN ? ' has-fwd' : ''}"${fwdN ? ` style="--fwd-w:${fwdReserve(fwdN)}px"` : ''}>
+        <div class="msg-bubble${bareImage ? ' bubble-photo' : ''}${emojiOnly ? ' bubble-emoji' : ''}${comp ? comp.cls : ''}${fwdN ? ' has-fwd' : ''}"${fwdN ? ` style="--fwd-w:${fwdReserve(fwdN)}px"` : ''}>
           ${comp ? `${comp.lpHtml}${(m.reply_to_id || fd) ? `<div class="ct-pad">${replyHtml}${forwardHtml}</div>` : ''}${attachHtml}${comp.html}` : `${replyHtml}
           ${forwardHtml}
           ${attachHtml}
