@@ -794,7 +794,7 @@ html.dark { --gl-spotlight: rgba(255, 255, 255, .20); }
 .irc-name { font-weight: 600; }
 
 @media (min-width: 768px) and (pointer: fine) {
-  .chat-main .messages { padding-left: 28px; padding-right: 28px; padding-bottom: calc(var(--composer-h, 70px) + 48px); }
+  .chat-main .messages { padding-left: 28px; padding-right: 28px; padding-bottom: calc(var(--composer-h, 70px) + 28px); }
 }
 .msg-bubble { padding: 9px 14px 8px; }
 .irc-text { font-size: calc(var(--font-size) * 1.0357); line-height: 1.42; }

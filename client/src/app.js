@@ -827,7 +827,6 @@ function applyAppSettings(d) {
     if (d.chatPattern !== undefined) setChatPattern(d.chatPattern);
     if (d.chatPatternLevel) setPatternLevel(d.chatPatternLevel);
     if (d.chatBg) setChatBg(d.chatBg);
-    if (d.sidebarW) { try { localStorage.setItem('sidebarW', String(d.sidebarW)); } catch {} applySidebarW(); }
     updateSidebarThemeIcon();
     if (S.token) saveSession();
   } finally { _applyingShared = false; }
@@ -1208,23 +1207,12 @@ function setUiScale(v) { S.settings.uiScale=v; applySettings(); saveSession(); p
 // Хранится на устройстве и общая для всех учётных записей (уходит в общие настройки приложения).
 // Минимум — аватарка с отступами, максимум ограничен шириной окна, чтобы переписке осталось место.
 // Минимум — как ширина бара учётных записей (66px: аватарка 44px и отступы)
-const SB_MIN = 66, SB_MAX = 460;
 // Ширина списка по умолчанию: с баром весь блок (бар 72 + список) 376, как в макете; без бара список занимает все 376
 const sbDefault = () => document.body.classList.contains('has-rail') ? 304 : 376;
 let _sbHideDelta = null;
-function currentSidebarW() {
-  try { const n = Number(localStorage.getItem('sidebarW')); if (n >= SB_MIN && n <= SB_MAX) return Math.round(n); } catch {}
-  return sbDefault();
-}
-function applySidebarW() { document.documentElement.style.setProperty('--sidebar-w', currentSidebarW() + 'px'); }
-function setSidebarW(w, persist) {
-  const m = zoomMetrics();
-  const max = Math.max(SB_MIN, Math.min(SB_MAX, Math.round(m.vw - 340 - (document.body.classList.contains('has-rail') ? 84 : 0))));
-  const v = Math.max(SB_MIN, Math.min(max, Math.round(w)));
-  try { localStorage.setItem('sidebarW', String(v)); } catch {}
-  applySidebarW();
-  if (persist) pushAppSettings();
-}
+// Ширина сайдбара фиксирована (задаётся в glass.css: бар 72 + список 304, без бара 376): изменение ширины убрано
+function currentSidebarW() { return sbDefault(); }
+function applySidebarW() { document.documentElement.style.removeProperty('--sidebar-w'); }
 // Подсказки у значков в узком сайдбаре: когда подписи скрыты, название показывается справа от значка
 function sidebarNarrow() { return currentSidebarW() <= 172 && !document.body.classList.contains('sidebar-hidden'); }
 function initSidebarTips() {
@@ -1262,27 +1250,6 @@ function initSidebarTips() {
 
 function initSidebarResize() {
   initSidebarTips();
-  const grip = document.getElementById('sb-grip');
-  if (!grip) return;
-  let startX = 0, startW = 0, m = null;
-  const dragging = () => document.body.classList.contains('sb-dragging');
-  grip.addEventListener('pointerdown', e => {
-    grip.setPointerCapture(e.pointerId);
-    startX = e.clientX; startW = currentSidebarW(); m = zoomMetrics();
-    document.body.classList.add('sb-dragging');
-    e.preventDefault();
-  });
-  // Сдвиг мыши приходит в пикселях события, ширина задаётся в пикселях раскладки — переводим (см. zoomMetrics)
-  grip.addEventListener('pointermove', e => { if (dragging()) setSidebarW(startW + (e.clientX - startX) * m.f / m.k, false); });
-  const end = () => { if (!dragging()) return; document.body.classList.remove('sb-dragging'); setSidebarW(currentSidebarW(), true); };
-  grip.addEventListener('pointerup', end);
-  grip.addEventListener('pointercancel', end);
-  grip.addEventListener('dblclick', () => setSidebarW(sbDefault(), true));
-  grip.addEventListener('keydown', e => {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    e.preventDefault();
-    setSidebarW(currentSidebarW() + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 30 : 10), true);
-  });
 }
 
 let _sidebarPeekTimer = null;
