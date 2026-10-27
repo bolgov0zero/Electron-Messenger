@@ -170,8 +170,6 @@ html{position:fixed;top:0;left:0;width:100vw;height:100dvh;background:#12171d;ov
 .amb i:nth-child(2){width:320px;height:320px;right:-110px;top:230px;background:var(--amb-2)}
 .amb i:nth-child(3){width:340px;height:340px;left:-90px;bottom:-60px;background:var(--amb-3)}
 .amb i:nth-child(4){width:260px;height:260px;right:-40px;bottom:30px;background:var(--amb-4)}
-.phone>.amb i:nth-child(1){animation:f1 26s ease-in-out infinite alternate}.phone>.amb i:nth-child(2){animation:f2 30s ease-in-out infinite alternate}
-@keyframes f1{to{transform:translate(70px,60px) scale(1.12)}}@keyframes f2{to{transform:translate(-60px,-50px) scale(1.1)}}
 /* оболочка телефона */
 .isl{position:absolute;top:11px;left:50%;width:122px;height:35px;border-radius:20px;background:#000;transform:translateX(-50%);z-index:120}
 .sbar{position:absolute;left:0;right:0;top:0;height:54px;z-index:110;display:flex;justify-content:space-between;align-items:center;padding:6px 34px 0 46px;font-size:16px;font-weight:700;pointer-events:none}

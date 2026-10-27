@@ -87,16 +87,14 @@ html.dark {
 }
 html.dark.navy { --text: #eef2f6; --text2: rgba(238, 242, 246, .74); --muted: rgba(238, 242, 246, .56); }
 
-/* ── Фон: ровная подложка и цветные пятна (размеры и движение — как в макете окном 1360×860, пересчитаны в vh/vw) ── */
+/* ── Фон: ровная подложка и цветные пятна (размеры — как в макете окном 1360×860, пересчитаны в vh/vw). Пятна неподвижны: дрейф заставлял Chromium каждый кадр заново размывать всё стекло, около 29 % процессора в простое вместо 3 % ── */
 body { background: var(--gl-base); }
 .gl-amb { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; transition: opacity .6s var(--gl-ease); }
 .gl-amb i { position: absolute; border-radius: 50%; filter: blur(8.14vh); opacity: .85; transition: background .5s; }
-.gl-amb i:nth-child(1) { width: 65.1vh; height: 65.1vh; left: 27.94vw; top: -18.6vh; background: var(--amb-1); animation: glf1 26s ease-in-out infinite alternate; }
-.gl-amb i:nth-child(2) { width: 60.5vh; height: 60.5vh; right: -8.8vw; top: 13.95vh; background: var(--amb-2); animation: glf2 30s ease-in-out infinite alternate; }
-.gl-amb i:nth-child(3) { width: 55.8vh; height: 55.8vh; left: 8.8vw; bottom: -20.9vh; background: var(--amb-3); animation: glf2 34s ease-in-out infinite alternate-reverse; }
-.gl-amb i:nth-child(4) { width: 48.8vh; height: 48.8vh; right: 11.8vw; bottom: -16.3vh; background: var(--amb-4); animation: glf1 28s ease-in-out infinite alternate-reverse; }
-@keyframes glf1 { to { transform: translate(6.6vw, 8.1vh) scale(1.12); } }
-@keyframes glf2 { to { transform: translate(-5.9vw, -7vh) scale(1.1); } }
+.gl-amb i:nth-child(1) { width: 65.1vh; height: 65.1vh; left: 27.94vw; top: -18.6vh; background: var(--amb-1); }
+.gl-amb i:nth-child(2) { width: 60.5vh; height: 60.5vh; right: -8.8vw; top: 13.95vh; background: var(--amb-2); }
+.gl-amb i:nth-child(3) { width: 55.8vh; height: 55.8vh; left: 8.8vw; bottom: -20.9vh; background: var(--amb-3); }
+.gl-amb i:nth-child(4) { width: 48.8vh; height: 48.8vh; right: 11.8vw; bottom: -16.3vh; background: var(--amb-4); }
 html.gl-noimg .gl-amb { opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .gl-amb i { animation: none; } }
 #screen-login { background: transparent; }
