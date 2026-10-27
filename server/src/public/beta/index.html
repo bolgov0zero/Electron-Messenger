@@ -592,6 +592,18 @@ html:not(.dark) .edge.t{--ea:.46}
 .fpb pre{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;padding:8px 10px;border-radius:12px;background:var(--gl-card);margin:4px 0;white-space:pre-wrap}
 .fpb .sec{filter:blur(5px);background:var(--gl-card2);border-radius:6px;padding:0 3px}
 
+/* Выделение: везде выключено, кроме полей ввода и текста внутри пузыря (время, реакции, вложения и всё в слое меню не выделяются) */
+.phone,.phone *{-webkit-user-select:none;user-select:none}
+.phone input,.phone textarea{-webkit-user-select:text;user-select:text}
+.phone .mrow .bub,.phone .mrow .bub *{-webkit-user-select:text;user-select:text}
+.phone .mrow .bub .t,.phone .mrow .bub .file,.phone .mrow .bub .pic,.phone .mrow .bub .quote{-webkit-user-select:none;user-select:none}
+.phone #layer,.phone #layer *{-webkit-user-select:none;user-select:none}
+
+/* Зазор между последним сообщением и полем ввода одинаков всегда (24): отступ ленты считается от положения и высоты поля */
+.phone{--co:calc(var(--sab) - 14px)}
+.chat .scroll{padding-bottom:calc(var(--co) + var(--ch,46px) + 24px)}
+.phone.kb .chat .scroll,.phone.kbr .chat .scroll,.phone.ep .chat .scroll{padding-bottom:calc(8px + var(--ch,46px) + 24px)}
+
 </style></head>
 <body>
 <div class="stage">

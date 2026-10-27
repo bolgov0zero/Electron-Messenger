@@ -180,7 +180,7 @@ stack.addEventListener('click',e=>{if(e.target.closest('[data-back]'))pop()});
   stack.addEventListener('pointerup',e=>end(e,0));stack.addEventListener('pointercancel',e=>end(e,1))})();
 /* долгое нажатие */
 function longPress(host,sel,fn){let T=0,s=null,fired=false;
-  host.addEventListener('pointerdown',e=>{const t=e.target.closest(sel);if(!t||e.button>0)return;fired=false;s={x:e.clientX,y:e.clientY};clearTimeout(T);T=setTimeout(()=>{fired=true;fn(t,e);},430)});
+  host.addEventListener('pointerdown',e=>{const t=e.target.closest(sel);if(!t||e.button>0)return;fired=false;s={x:e.clientX,y:e.clientY};clearTimeout(T);T=setTimeout(()=>{fired=true;try{getSelection().removeAllRanges()}catch(_){}fn(t,e);},430)});
   host.addEventListener('pointermove',e=>{if(s&&Math.hypot(e.clientX-s.x,e.clientY-s.y)>9){clearTimeout(T);s=null}});
   ['pointerup','pointercancel','pointerleave'].forEach(ev=>host.addEventListener(ev,()=>{clearTimeout(T);s=null}));
   host.addEventListener('contextmenu',e=>{const t=e.target.closest(sel);if(t){e.preventDefault();clearTimeout(T);fired=true;fn(t,e)}});
@@ -370,7 +370,11 @@ function bindChat(el,c){const sc_=$('.scroll',el),ta=$('textarea',el),send=$('.s
   longPress(el,'.mrow',(row,e)=>msgMenu(el,row,c,{reply:m=>{ctx={k:'reply',who:m.a==='me'?S.name.split(' ')[0]:PPL[m.a].n,text:m.text};bar();sync();ta.focus()},
     edit:m=>{ctx={k:'edit',id:m.id,text:m.text};bar();ta.value=m.text;sync();ta.focus()}}));
   sc_.addEventListener('scroll',()=>jump.classList.toggle('on',sc_.scrollHeight-sc_.scrollTop-sc_.clientHeight>260),{passive:true});
-  cur={el,c,ta}}
+  cur={el,c,ta};
+  /* нижний отступ ленты = положение поля ввода + его высота + зазор 24: последнее сообщение всегда на одном и том же расстоянии над полем,
+     и при открытии чата, и с клавиатурой, и когда поле выросло (ответ, вложение, форматирование) */
+  let atBottom=true;sc_.addEventListener('scroll',()=>{atBottom=sc_.scrollHeight-sc_.scrollTop-sc_.clientHeight<60},{passive:true});
+  const comp=$('.comp',el);if(window.ResizeObserver&&comp)new ResizeObserver(()=>{el.style.setProperty('--ch',comp.offsetHeight+'px');if(atBottom)sc_.scrollTop=1e6}).observe(comp)}
 function toggleReact(b){const m=/(\S+)\s*(\d*)/.exec(b.textContent.trim());let n=+(m[2]||1);const mine=b.classList.toggle('mine');n+=mine?1:-1;if(n<=0){const w=b.parentElement;b.remove();if(!w.children.length)w.remove();return}b.textContent=m[1]+' '+n}
 function addReact(row,em){let w=row.nextElementSibling;if(!w||!w.classList.contains('react')){w=document.createElement('div');w.className='react';row.after(w)}
   const ex=[...w.children].find(b=>b.dataset.r===em);if(ex){if(!ex.classList.contains('mine'))toggleReact(ex);return}
@@ -612,4 +616,17 @@ if('serviceWorker' in navigator&&location.protocol!=='file:'){
 }
 addEventListener('offline',()=>toast('Нет сети: макет работает из кэша','bellOff'));
 addEventListener('online',()=>toast('Сеть появилась','check'));
+
+/* ---------- выделение как в веб клиенте: только в полях ввода и внутри одного пузыря ---------- */
+(function(){let busy=false;
+  const owner=n=>n&&(n.nodeType===1?n:n.parentElement)||null,inField=n=>!!(owner(n)&&owner(n).closest('input,textarea,[contenteditable]'));
+  document.addEventListener('selectionchange',()=>{if(busy)return;const sl=getSelection();if(!sl||sl.isCollapsed||!sl.anchorNode)return;
+    if(inField(sl.anchorNode)||inField(sl.focusNode))return;
+    /* пока открыто меню, ничего выделять нельзя (долгое нажатие не должно выделять слова в меню) */
+    const a=owner(sl.anchorNode)?.closest('.bub'),f=owner(sl.focusNode)?.closest('.bub');
+    if(a&&a===f&&!ov&&!owner(sl.anchorNode).closest('#layer'))return;
+    busy=true;try{if(!a||ov||owner(sl.anchorNode).closest('#layer'))sl.removeAllRanges();
+      else{const after=!!(a.compareDocumentPosition(sl.focusNode)&Node.DOCUMENT_POSITION_FOLLOWING)&&!a.contains(sl.focusNode);sl.setBaseAndExtent(sl.anchorNode,sl.anchorOffset,a,after?a.childNodes.length:0)}}
+    finally{setTimeout(()=>{busy=false},0)}});
+  document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&/^[aAфФ]$/.test(e.key)&&!inField(e.target))e.preventDefault()},true)})();
 
