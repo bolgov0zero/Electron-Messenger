@@ -128,9 +128,11 @@ function setTheme(t){root.classList.toggle('dark',t!=='light');root.classList.to
   $$('#themeseg button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));segMove($('#themeseg'));applyAccent();
   $$('.dot2').forEach(d=>d.style.setProperty('--dot','rgb('+ACC[d.dataset.a][root.classList.contains('dark')?2:1]+')'))}
 function segMove(seg){const b=$('button.on',seg),t=$('.thumb',seg);if(!b||!t)return;t.style.left=b.offsetLeft+'px';t.style.width=b.offsetWidth+'px'}
-function fit(){const f=$('.fit');if(window.innerWidth<=520){sc=Math.min(innerWidth/393,innerHeight/852);phone.style.width=innerWidth/sc+'px';phone.style.height=innerHeight/sc+'px';phone.style.transform='scale('+sc+')';return}
+const real=()=>window.innerWidth<=520;   /* на настоящем телефоне: на весь экран и со своей клавиатурой телефона */
+function fit(){const f=$('.fit');if(real()){const H=(window.visualViewport&&visualViewport.height)||innerHeight;sc=innerWidth/393;phone.style.width='393px';phone.style.height=H/sc+'px';phone.style.transform='scale('+sc+')';phone.style.left='0';phone.style.top='0';return}
   sc=Math.min(f.clientWidth/453,f.clientHeight/(852+40),1.2);phone.style.transform='scale('+sc+')';phone.style.left=(f.clientWidth-393*sc)/2+'px';phone.style.top=Math.max(14,(f.clientHeight-852*sc)/2)+'px'}
 addEventListener('resize',fit);
+if(window.visualViewport)visualViewport.addEventListener('resize',()=>{if(!real())return;fit();scrollTo(0,0);if(cur&&phone.classList.contains('kbr')){const sc_=$('.scroll',cur.el);sc_.scrollTop=1e6}});
 /* ---------- тост, шторки, подтверждение ---------- */
 let toastT=0;
 function toast(m,ic='check'){let t=$('.toast',layer);if(!t){t=document.createElement('div');t.className='toast glass-pop';layer.append(t)}
@@ -342,13 +344,14 @@ function chatActions(c,el){const items=[['search','Поиск по перепи�
   s.el.addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(b){s.close();setTimeout(items[+b.dataset.i][2],200)}})}
 /* ---------- клавиатура (имитация) ---------- */
 const KR=['йцукенгшщзхъ','фывапролджэ','ячсмитьбю'];
-function showKb(ta){if(!$('.kbd',phone)){const k=document.createElement('div');k.className='kbd';
+function showKb(ta){if(real()){phone.classList.add('kbr');setTimeout(()=>{if(cur)$('.scroll',cur.el).scrollTop=1e6},350);return}
+  if(!$('.kbd',phone)){const k=document.createElement('div');k.className='kbd';
     k.innerHTML=KR.map((r,i)=>`<div class="kr">${i===2?'<button class="w" data-k="shift">⇧</button>':''}${[...r].map(ch=>`<button data-k="${ch}">${ch}</button>`).join('')}${i===2?'<button class="w" data-k="del">⌫</button>':''}</div>`).join('')+'<div class="kr last"><button class="n" data-k="num">123</button><button class="sp" data-k=" ">пробел</button><button class="go" data-k="go">Отправить</button></div>';
     k.addEventListener('pointerdown',e=>{if(e.target.closest('button'))e.preventDefault()});
     k.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!cur)return;const t=cur.ta,v=b.dataset.k;if(v==='go'){cur.el._send();return}if(v==='del'){t.value=t.value.slice(0,-1)}else if(v==='shift'||v==='num'){return}else t.value+=v;t.dispatchEvent(new Event('input'))});
     phone.append(k)}
   phone.classList.add('kb');setTimeout(()=>{const s=$('.scroll',cur.el);s.scrollTop=1e6},350)}
-function hideKb(){phone.classList.remove('kb');document.activeElement&&document.activeElement.blur&&document.activeElement.blur()}
+function hideKb(){phone.classList.remove('kb','kbr');document.activeElement&&document.activeElement.blur&&document.activeElement.blur()}
 /* ---------- комната с темами ---------- */
 function openRoom(){const rows=TOPICS.map(t=>`<button class="row" data-id="${t.id}">${avHtml({...t,ini:'#'},'sq')}<div class="rt"><div class="r1"><b>${t.n}</b><span class="tm${t.u?' new':''}">${t.t}</span></div><div class="r2"><span class="pv"><i>${t.who}: </i>${esc(t.p)}</span>${t.at?`<span class="st" style="color:#ff9500">${I('bell')}</span>`:''}${t.u?`<span class="bd">${t.u}</span>`:''}</div></div></button>`).join('');
   const el=page({title:'Вся компания',back:'Чаты',cap:1,right:`<button data-i aria-label="О комнате">${I('info')}</button>`,body:`<div class="hero" style="padding-bottom:10px"><div style="margin-bottom:6px">${avHtml(CH[0],'')}</div><p>Комната · ${TOPICS.length} тем · в сети 4 из 12</p></div><div class="gl">Темы</div><div class="grp glass">${rows}</div>`});
