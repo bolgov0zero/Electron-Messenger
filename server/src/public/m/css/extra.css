@@ -404,3 +404,6 @@ html, body { background: var(--gl-base); }
 .av .dot.mob { width: 10px; height: 15px; right: 1px; bottom: 0; border-radius: 3px; background: transparent; border: 1.6px solid var(--presence-online);
   box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--side-bg) 85%, transparent), inset 0 0 0 1.5px color-mix(in srgb, var(--side-bg) 85%, transparent); }
 .av .dot.mob::after { content: ""; position: absolute; left: 50%; bottom: .5px; width: 1.8px; height: 1.8px; margin-left: -.9px; border-radius: 50%; background: var(--presence-online); }
+
+/* страницы в движении: без размытия под пузырями и плашками дней (десятки слоёв backdrop-filter на движущейся странице) */
+.page.mv .mrow.in .bub, .page.drag .mrow.in .bub, .page.mv .day .glass, .page.drag .day .glass { -webkit-backdrop-filter: none; backdrop-filter: none; }

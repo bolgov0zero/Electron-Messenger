@@ -112,6 +112,9 @@ function av(o, cls) {
 
 // ── стек страниц ──
 // o: { title, back (не выводится: кнопка — стрелка), right, cap (правые кнопки капсулой), lg (большой заголовок), body, cls, nav (своя шапка), bottom, nobot }
+// Пока страницы едут (переход, свайп назад), у них временно снимается размытие под пузырями: десятки слоёв backdrop-filter на движущейся
+// странице пересчитывались каждый кадр, и свайп назад из чата подтормаживал. Класс mv держится чуть дольше анимации (.45 с)
+function moving(els) { els.forEach(function (e) { if (!e) return; e.classList.add('mv'); clearTimeout(e._mvT); e._mvT = setTimeout(function () { e.classList.remove('mv'); }, 520); }); }
 B.nav = {
   stack: [], el: null,
   init: function (stackEl) {
@@ -138,7 +141,7 @@ B.nav = {
   },
   push: function (el, title) {
     var prev = this.top(); if (!prev) return;
-    hideKb(); el.classList.add('enter'); this.el.appendChild(el);
+    hideKb(); moving([el, prev.el]); el.classList.add('enter'); this.el.appendChild(el);
     this.stack.push({ el: el, title: title !== undefined ? title : el._title || '' });
     void el.offsetWidth; el._t0 = performance.now();
     el.classList.remove('enter'); prev.el.classList.add('under');
@@ -147,7 +150,7 @@ B.nav = {
   pop: function () {
     if (this.stack.length < 2) return;
     hideKb();
-    var top = this.stack.pop(), under = this.top().el;
+    var top = this.stack.pop(), under = this.top().el; moving([top.el, under]);
     top.el.classList.remove('drag'); under.classList.remove('drag'); void top.el.offsetWidth;
     top.el.style.transform = 'translateX(100%)'; under.style.transform = ''; under.classList.remove('under');
     setTimeout(function () { top.el.remove(); }, 460);
@@ -177,7 +180,7 @@ B.nav = {
       if (!G || e.pointerId !== G.id) return; var g = G; G = null; if (!g.m) return;
       var dx = (e.clientX - g.x) / sc, dt = performance.now() - g.t;
       if (!c && (dx > 130 || dx / dt * sc > 0.6)) { N.pop(); return; }
-      g.top.classList.remove('drag'); g.und.classList.remove('drag'); g.top.style.transform = ''; g.und.style.transform = '';
+      moving([g.top, g.und]); g.top.classList.remove('drag'); g.und.classList.remove('drag'); g.top.style.transform = ''; g.und.style.transform = '';
     };
     host.addEventListener('pointerup', function (e) { end(e, 0); });
     host.addEventListener('pointercancel', function (e) { end(e, 1); });
