@@ -1154,9 +1154,10 @@ input:not([type]) {
 /* IRC mode — shown in irc-meta */
 .irc-meta .status-sent      { color: var(--muted); opacity: .45; }
 .irc-meta .status-delivered { color: var(--muted); }
-.irc-meta .status-read      { color: var(--tick-read, var(--accent)); }
+/* галочки «прочитано» всегда синие: не зависят ни от темы, ни от цвета акцента */
+.irc-meta .status-read      { color: var(--tick-read, #3ea6ff); }
 .irc-meta .status-part      { color: var(--muted); }
-.status-part .tk1 { stroke: var(--tick-read, var(--accent)); }
+.status-part .tk1 { stroke: var(--tick-read, #3ea6ff); }
 
 /* ── IRC VIEW ── */
 .irc-msg {

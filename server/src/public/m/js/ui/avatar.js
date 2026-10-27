@@ -61,7 +61,7 @@ B.ticks = function (status) {
   // (у личного чата это одно и то же). Класс off у «непрочитанной» галочки: на синем пузыре она бледнее
   var all = status.read >= status.total, part = status.read > 0 && !all, dbl = status.delivered > 0 || status.read > 0;
   var on1 = all || part, on2 = all;
-  var tk = function (pts, on) { return '<polyline class="' + (on ? 'on' : 'off') + '" stroke="' + (on ? 'var(--accent)' : 'var(--fg2)') + '" points="' + pts + '"/>'; };
+  var tk = function (pts, on) { return '<polyline class="' + (on ? 'on' : 'off') + '" stroke="' + (on ? '#3ea6ff' : 'var(--fg2)') + '" points="' + pts + '"/>'; };
   return '<svg class="tk" width="16" height="11" viewBox="0 0 18 9" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
     (dbl ? tk('1,5.5 3.5,8 9,1', on1) : '') + tk('7,5.5 9.5,8 15,1', on2) + '</svg>';
 };

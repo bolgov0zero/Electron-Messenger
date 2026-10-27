@@ -2,8 +2,7 @@
 // поэтому выбор человека одинаков во всех клиентах: 'accent', 'chatBg', 'chatPattern', 'chatPatternLevel', settings.fontSize.
 B.appearance = {
   ACCENTS: {
-    blue:   { name: 'Синий',      light: [51, 144, 236], dark: [76, 160, 244] },
-    teal:   { name: 'Бирюзовый',  light: [29, 168, 140], dark: [41, 214, 184] },
+    teal:  { name: 'Бирюзовый',  light: [29, 168, 140], dark: [41, 214, 184] },
     indigo: { name: 'Индиго',     light: [92, 96, 205],  dark: [143, 148, 245] },
     plum:   { name: 'Сливовый',   light: [146, 84, 190], dark: [196, 146, 240] },
     amber:  { name: 'Янтарный',   light: [186, 120, 38], dark: [236, 176, 92] }
@@ -22,7 +21,7 @@ B.appearance = {
     prev.settings = Object.assign({}, prev.settings, (function (o) { o[key] = value; return o; })({}));
     B.appearance._set(B.SESSION_KEY, JSON.stringify(prev));
   },
-  accent: function () { var v = B.appearance._ls('accent'); return B.appearance.ACCENTS[v] ? v : 'blue'; },
+  accent: function () { var v = B.appearance._ls('accent'); return B.appearance.ACCENTS[v] ? v : 'teal'; },
   pattern: function () { var v = B.appearance._ls('chatPattern'); return B.appearance.PATTERNS.some(function (p) { return p.id === v && v; }) ? v : ''; },
   patternLevel: function () { var n = Number(B.appearance._ls('chatPatternLevel')); return n === 1 || n === 3 ? n : 2; },
   chatBg: function () { return B.appearance._ls('chatBg') === 'split' ? 'split' : 'plain'; },

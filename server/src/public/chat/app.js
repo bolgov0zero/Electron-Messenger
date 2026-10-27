@@ -795,7 +795,6 @@ function updateSidebarThemeIcon() {
 // компьютере у того же человека может быть свой цвет.
 const ACCENTS = {
   teal:   { name: 'Бирюзовый', light: [29, 168, 140], dark: [41, 214, 184] },
-  blue:   { name: 'Синий',     light: [37, 118, 199], dark: [96, 170, 245] },
   indigo: { name: 'Индиго',    light: [92, 96, 205],  dark: [143, 148, 245] },
   plum:   { name: 'Сливовый',  light: [146, 84, 190], dark: [196, 146, 240] },
   amber:  { name: 'Янтарный',  light: [186, 120, 38], dark: [236, 176, 92] },

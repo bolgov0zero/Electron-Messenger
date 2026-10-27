@@ -138,7 +138,7 @@
 
 /* Время и галочки на фото без подписи лежат на тёмной плашке: там они белые */
 .mrow.out .bub.media .meta { color: #fff; }
-.mrow.out .bub.media .meta .tk polyline { stroke: #fff !important; }
+.mrow.out .bub.media .meta .tk polyline.off { stroke: #fff !important; }
 
 /* Кнопки в сообщении (уведомления «Electron») */
 .bacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }

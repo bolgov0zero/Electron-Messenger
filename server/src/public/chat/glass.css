@@ -305,8 +305,8 @@ body.sidebar-hidden .sidebar { left: 12px; top: 12px; bottom: 12px; }
 .irc-msg[data-mine] .irc-time, .irc-msg[data-mine] .fwd-mark, .irc-msg[data-mine] .edited-tag { color: rgba(255, 255, 255, .8); }
 .irc-msg[data-mine] .irc-meta .status-sent, .irc-msg[data-mine] .irc-meta .status-delivered,
 .irc-msg[data-mine] .irc-meta .status-part { color: rgba(255, 255, 255, .75); }
-.irc-msg[data-mine] .irc-meta .status-read, .irc-msg[data-mine] .status-part .tk1 { color: #fff; stroke: #fff; }
-.irc-msg[data-mine] .irc-meta .status-read svg, .irc-msg[data-mine] .irc-meta .status-read path { stroke: #fff; }
+.irc-msg[data-mine] .irc-meta .status-read, .irc-msg[data-mine] .status-part .tk1 { color: #3ea6ff; stroke: #3ea6ff; }
+.irc-msg[data-mine] .irc-meta .status-read svg, .irc-msg[data-mine] .irc-meta .status-read path { stroke: #3ea6ff; }
 .irc-msg[data-mine] .msg-link, .irc-msg[data-mine] .mention, .irc-msg[data-mine] .mention[class*="mtag-"] { color: #fff; }
 .irc-msg[data-mine] .md-code { background: rgba(255, 255, 255, .2); }
 .irc-msg[data-mine] .irc-text blockquote { background: rgba(255, 255, 255, .16); border-left-color: rgba(255, 255, 255, .85); }
@@ -316,7 +316,7 @@ body.sidebar-hidden .sidebar { left: 12px; top: 12px; bottom: 12px; }
 .irc-msg[data-mine] .bubble-file-size, .irc-msg[data-mine] .lc-d { color: rgba(255, 255, 255, .75); }
 .irc-msg[data-mine] .lcard .lc-t, .irc-msg[data-mine] .lcard:hover .lc-t { color: #fff; }
 .irc-msg[data-mine] .msg-search-hl { color: #fff; }
-.irc-msg[data-mine] .msg-bubble.bubble-photo > .irc-meta .status-read { color: #fff; }
+.irc-msg[data-mine] .msg-bubble.bubble-photo > .irc-meta .status-read { color: #3ea6ff; }
 .bubble-file { background: var(--gl-card); }
 .bubble-file:hover { background: var(--gl-card2); }
 .lcard { background: var(--gl-card); }
@@ -1189,3 +1189,11 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 .scroll-bottom-btn { border-color: var(--gl-edge); color: var(--text2); }
 .scroll-bottom-btn:hover { background: var(--gl2); border-color: var(--gl-edge); color: var(--text); }
 .scroll-bottom-btn:focus, .scroll-bottom-btn:focus-visible { outline: none; }
+
+/* ── Пузыри сообщений как в мобильной версии: скругление 21, у каждого пузыря срезан нижний угол у стороны отправителя, размытие под чужими ── */
+.msg-bubble { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.irc-msg:not([data-mine]) .msg-bubble { border-radius: 21px 21px 21px 7px !important; box-shadow: inset 0 1px 0 var(--gl-hi), 0 3px 12px var(--gl-shadow); }
+.irc-msg[data-mine] .msg-bubble { border-radius: 21px 21px 7px 21px !important; border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -1px 0 rgba(0, 0, 0, .12), 0 6px 16px color-mix(in srgb, var(--gl-out-b) 38%, transparent); }
+.irc-msg.emoji-msg .msg-bubble, .irc-msg.emoji-msg[data-mine] .msg-bubble { border-radius: 21px !important; }
+.msg-bubble.bubble-photo { overflow: hidden; }

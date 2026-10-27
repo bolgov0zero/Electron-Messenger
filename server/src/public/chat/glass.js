@@ -69,3 +69,21 @@ document.addEventListener('click', e => {
     if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'a' || e.key === 'ф' || e.key === 'A') && !inField(e.target)) e.preventDefault();
   }, true);
 })();
+
+// Нажатие кнопок и переключателей — сжатие и возврат пружиной, как в мобильной версии. Свойство scale не мешает transform самих элементов
+(function () {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var SPR = 'cubic-bezier(.34,1.56,.64,1)', SEL = 'button:not(:disabled), [role="button"], [role="switch"], .accent-dot, .pat-card, .bg-card', cur = null;
+  document.addEventListener('pointerdown', function (e) {
+    var b = e.target.closest && e.target.closest(SEL);
+    if (!b || b.offsetWidth > 280 || b.offsetHeight > 90 || b.closest('.ctx-menu')) return;
+    cur = b; b.getAnimations().forEach(function (a) { if (a._glPress) a.cancel(); });
+    var a = b.animate([{ scale: '1' }, { scale: '.94' }], { duration: 110, easing: 'ease-out', fill: 'forwards' }); a._glPress = 1;
+  }, true);
+  function up() {
+    var b = cur; cur = null; if (!b) return;
+    b.getAnimations().forEach(function (a) { if (a._glPress) a.cancel(); });
+    b.animate([{ scale: '.94' }, { scale: '1' }], { duration: 420, easing: SPR });
+  }
+  ['pointerup', 'pointercancel', 'dragend'].forEach(function (ev) { document.addEventListener(ev, up, true); });
+})();

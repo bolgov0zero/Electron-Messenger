@@ -180,6 +180,32 @@ html, body { background: var(--gl-base); }
 .pgav .av { width: 104px; height: 104px; font-size: 36px; }
 .pgcam { position: absolute; right: -2px; bottom: -2px; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; border: 3px solid var(--gl-base); display: grid; place-items: center; font-size: 15px; }
 .mini .rt small.on { color: var(--accent-ink); }
+/* GIF: в переписке не крупнее 226 px, в панели выбора — мелкие плитки (видно не меньше четырёх, сетка 2 в ряд) */
+.gif-msg { position: relative; overflow: hidden; border-radius: 15px; background: var(--gl-card2); max-width: 100%; width: min(226px, 100%) !important; }
+.gif-v { display: block; width: 100%; height: 100%; object-fit: cover; }
+.gif-badge { position: absolute; left: 8px; top: 8px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 7px; border-radius: 8px; background: rgba(0, 0, 0, .5); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .05em; z-index: 2; pointer-events: none; }
+.gif-badge .gp-kl { color: #fff; font-size: 9.5px; }
+.bub.gifm .gif-msg { border-radius: 17px; }
+.ep-gif .gp-item { aspect-ratio: auto !important; height: 96px; border-radius: 14px; }
+.ep-gif .gp-item img { height: 100%; }
+.ep-gif .gp-cols, .ep-gif .gp-cols > div { gap: 6px; }
+.ep-gif .gp-search { height: 32px; }
+.ep-gif .gp-chips { padding: 6px 2px 4px; }
+
+/* панель папок липнет под бейджем раздела: обёртка не должна ограничивать sticky */
+#cbar { display: contents; }
+/* лист правки папки: тени выбранного цвета и значка не должны обрезаться по краям */
+.fcols { padding: 6px; margin: 4px -2px; }
+.ficons { padding: 4px; margin: 6px -2px; }
+.sheet .sb { padding: 0 4px; margin: 0 -4px; }
+/* нижняя панель: только значки, бейдж внутри капсулы */
+.tb span { display: none; }
+.tb { width: 76px; height: 48px; font-size: 24px; }
+.tabbar .thumb { width: 76px; }
+.tb .bd { top: 5px; right: 13px; max-width: 34px; overflow: hidden; }
+
+/* число в кружке по центру: у .bd в макете line-height 22px, в маленьких кружках текст съезжал вниз */
+.bd, .tb .bd { line-height: 1; padding-top: 0; padding-bottom: 0; }
 .tiles.sm { gap: 8px; } .tiles.sm .tile { font-size: 11px; padding: 0 2px; } .tiles.sm .tile .i { font-size: 20px; }
 .mini a, a.mini { color: inherit; text-decoration: none; }
 .mini .ch { color: var(--muted); display: flex; }

@@ -8,7 +8,7 @@
     if (shell) return;
     shell = document.createElement('div'); shell.className = 'page base'; shell.hidden = true;
     shell.innerHTML = B.nav.amb + TABS.map(function (t) { return '<div class="tabview' + (t[0] === 'chats' ? ' on' : '') + '" data-tab="' + t[0] + '"></div>'; }).join('') +
-      '<div class="tabbar glass" id="tabbar"><i class="thumb"></i>' + TABS.map(function (t, i) { return '<button class="tb' + (i ? '' : ' on') + '" data-tab="' + t[0] + '">' + I(t[2]) + '<span>' + t[1] + '</span>' + (t[0] === 'chats' ? '<b class="bd" id="chbd" style="display:none"></b>' : '') + '</button>'; }).join('') + '</div>';
+      '<div class="tabbar glass" id="tabbar"><i class="thumb"></i>' + TABS.map(function (t, i) { return '<button class="tb' + (i ? '' : ' on') + '" data-tab="' + t[0] + '" aria-label="' + t[1] + '">' + I(t[2]) + '<span>' + t[1] + '</span>' + (t[0] === 'chats' ? '<b class="bd" id="chbd" style="display:none"></b>' : '') + '</button>'; }).join('') + '</div>';
     B.nav.setRoot(shell);
     B.ui.chatlist.mount($('.tabview[data-tab="chats"]', shell)); B.ui.contacts.mount($('.tabview[data-tab="contacts"]', shell)); B.ui.settings.mount($('.tabview[data-tab="settings"]', shell));
     shell.addEventListener('click', function (e) { var b = e.target.closest('.tb'); if (b) setTab(b.dataset.tab); });

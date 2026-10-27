@@ -16,15 +16,16 @@
   var A = '[aria-pressed="true"]';
   var G = [
     // клиент и веб
-    { b: '.seg', i: 'button', o: '.active' },
-    { b: '.cs-seg', i: 'button', o: A },
-    { b: '.sidebar-tabbar', i: '.sb-tab', o: '.on' },
-    { b: '.acc-rail', i: '.fld-btn', o: '.active' },   // бар папок и пространств веб клиента: плитка и полоска едут вместе   // нижняя панель сайдбара веб клиента
-    { b: '.ep-sw', i: 'button', o: A },
-    { b: '.anx-sg', i: 'button', o: A },
-    { b: '.anx-types', i: 'button', o: '[aria-checked="true"]', above: true },
-    { b: '.gp-chips', i: '.gp-chip', o: A },
-    { b: '.ep-tabs', i: '.ep-tab', o: '[aria-selected="true"]' },   // группы смайлов
+    // веб клиент: выделение едет с пружиной (перелёт), как нижняя панель в мобильной версии
+    { b: '.seg', i: 'button', o: '.active', ease: SPRING, dur: 450 },
+    { b: '.cs-seg', i: 'button', o: A, ease: SPRING, dur: 450 },
+    { b: '.sidebar-tabbar', i: '.sb-tab', o: '.on', ease: SPRING, dur: 450 },
+    { b: '.acc-rail', i: '.fld-btn', o: '.active', ease: SPRING, dur: 450 },   // бар папок и пространств веб клиента: плитка и полоска едут вместе   // нижняя панель сайдбара веб клиента
+    { b: '.ep-sw', i: 'button', o: A, ease: SPRING, dur: 450 },
+    { b: '.anx-sg', i: 'button', o: A, ease: SPRING, dur: 450 },
+    { b: '.anx-types', i: 'button', o: '[aria-checked="true"]', above: true, ease: SPRING, dur: 450 },
+    { b: '.gp-chips', i: '.gp-chip', o: A, ease: SPRING, dur: 450 },
+    { b: '.ep-tabs', i: '.ep-tab', o: '[aria-selected="true"]', ease: SPRING, dur: 450 },   // группы смайлов
     { b: '.cs-nav-list', i: '.cs-sn', o: '[aria-current="page"],[aria-current="true"]', ease: SPRING, dur: 500 },
     // списки чатов и тем: выделение — псевдоэлемент строки, плашка едет под текстом строк
     { b: '.chats-list', i: '.chat-item', o: '.active', p: '::after', below: true, ease: SPRING, dur: 500 },
