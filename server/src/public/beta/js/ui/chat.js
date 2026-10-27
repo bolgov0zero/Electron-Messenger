@@ -40,6 +40,16 @@ B.ui.chat = (function () {
   }
   function fmtSize(b) { return !b ? '' : b < 1024 ? b + ' Б' : b < 1048576 ? Math.round(b / 1024) + ' КБ' : (b / 1048576).toFixed(1) + ' МБ'; }
   function url(path) { return B.http() + '://' + B.S.server + path; }
+  // Обложки видео держатся в памяти (до 80 штук; они маленькие, 320 px): страница чата при повторном открытии строится заново, и без этого обложка, уже лежавшая в кэше,
+  // снова проходила путь «пусто → загрузка → показ». Объект Image с тем же адресом оставляет декодированную картинку в памяти браузера
+  var kept = new Map();
+  function keep(u) {
+    if (!u) return u;
+    if (kept.has(u)) { var i0 = kept.get(u); kept.delete(u); kept.set(u, i0); return u; }
+    var i = new Image(); i.decoding = 'async'; i.src = u; kept.set(u, i);
+    if (kept.size > 80) kept.delete(kept.keys().next().value);
+    return u;
+  }
 
   // Место под картинку резервируется сразу, до загрузки файла: ширина и пропорции известны заранее, поэтому кадр при загрузке
   // не меняет высоту и лента не дёргается. Если размера нет (старые вложения), ставим заглушку 4:3 и один раз уточняем после
@@ -83,7 +93,7 @@ B.ui.chat = (function () {
     if (mime.indexOf('video/') === 0) {
       // Размер задаёт сама обёртка (ширина и пропорции), а обложка лежит в ней поверх: высота пузыря не зависит от того, загрузилась ли картинка
       // (ленивая картинка в Safari давала высоте «скакать»), и не больше 300 px — вертикальное видео не занимает пол-экрана
-      var poster = att.thumb ? '<img class="att-img vimg" src="' + esc(url(att.thumb)) + '" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;min-width:0;max-height:none;margin:0;border-radius:0" loading="lazy" decoding="async" data-url="' + esc(att.thumb) + '"' + box.ns + ' alt="">' : '<div class="vph" style="width:' + IMGW + '"></div>';
+      var poster = att.thumb ? '<img class="att-img vimg" src="' + esc(keep(url(att.thumb))) + '" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;min-width:0;max-height:none;margin:0;border-radius:0" decoding="sync" data-url="' + esc(att.thumb) + '"' + box.ns + ' alt="">' : '<div class="vph" style="width:' + IMGW + '"></div>';
       return '<div class="vwrap" style="' + (att.thumb ? box.st : '') + '" data-c="lb" data-url="' + esc(att.url) + '" data-type="video"' + ref + '>' + poster + '<div class="vplay">' + I('play') + '</div></div>';
     }
     return fileCard(I('file'), esc(att.name || 'Файл'), fmtSize(att.size), ' data-c="' + (mid ? 'file' : 'dl') + '" data-url="' + esc(att.url) + '" data-name="' + esc(att.name || 'file') + '"' + ref);
