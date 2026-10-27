@@ -277,7 +277,7 @@ B.menu = {
     var mn = document.createElement('div'); mn.className = 'cmm glass-pop';
     mn.innerHTML = items.map(function (it, i) { return it.sp ? '<div class="sp"></div>' : '<button class="' + (it.d ? 'd' : '') + '" data-i="' + i + '"><span>' + it.l + '</span>' + I(it.i || 'dots') + '</button>'; }).join('');
     var mL = mine ? W - 12 - menuW : Math.min(Math.max(r.x, 12), W - 12 - menuW);
-    mn.style.left = mL + 'px'; mn.style.top = (top + chH + gap) + 'px'; mn.style.transformOrigin = (mine ? 'right' : 'left') + ' top';
+    mn.style.left = mL + 'px'; mn.style.top = (top + chH + 6) + 'px';   // зазор под пузырём такой же (6), как между панелью реакций и пузырём mn.style.transformOrigin = (mine ? 'right' : 'left') + ' top';
     L.append(clone); var rxe = null;
     if (rx) {
       rxe = document.createElement('div'); rxe.className = 'cmr glass-pop';
