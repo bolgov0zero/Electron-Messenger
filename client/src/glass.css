@@ -1241,3 +1241,13 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 .topbar-actions svg, .topbar-actions .head-more svg { width: 16px; height: 16px; }
 /* значок папки: оптическая центровка — контур папки смещён вправо относительно своей рамки */
 .fbd svg { transform: translateX(-.7px); }
+
+/* Подменю внутри контекстного меню: вложенное размытие не работает (родитель уже размывает фон), и подменю просвечивало, поэтому фон делаем почти сплошным —
+   такой же по цвету и плотности, как кажется у меню первого уровня */
+.ctx-menu .ctx-read-fly, .ctx-menu .ctx-sub-fly, .ctx-read-fly, .ctx-sub-fly {
+  background:
+    radial-gradient(120% 80% at 0% 0%, var(--gl-spec), transparent 55%),
+    color-mix(in srgb, var(--side-bg) 97%, transparent);
+  border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 16px 40px var(--gl-shadow);
+}

@@ -261,10 +261,14 @@ B.ui.chat = (function () {
   }
   // Заглушки-пузыри вместо пустой страницы, пока сообщения чата ещё не загружены
   function skeleton() { return '<div class="sk"><i class="l w1"></i><i class="l w2"></i><i class="r w3"></i><i class="l w4"></i><i class="r w5"></i><i class="l w2"></i></div>'; }
+  // Аватарка собеседника (кнопка справа в шапке) и подпись по центру: имя и статус
+  function headAvatar(chat) {
+    var peer = chat.type === 'direct' ? B.peerId(chat) : 0;
+    return chat.type === 'direct' ? B.avatar.html({ id: peer || chat.id, chat: chat.id, text: B.fmt.initials(B.chatName(chat)) }) : B.avatar.html({ id: chat.id, chat: chat.id, text: chat.type === 'room' || chat.parent_id ? '#' : B.fmt.initials(B.chatName(chat)), sq: !!chat.parent_id });
+  }
   function whoHtml(chat) {
-    var st = statusOf(chat), peer = chat.type === 'direct' ? B.peerId(chat) : 0;
-    var avh = chat.type === 'direct' ? B.avatar.html({ id: peer || chat.id, chat: chat.id, text: B.fmt.initials(B.chatName(chat)) }) : B.avatar.html({ id: chat.id, chat: chat.id, text: chat.type === 'room' || chat.parent_id ? '#' : B.fmt.initials(B.chatName(chat)), sq: !!chat.parent_id });
-    return avh + '<span style="min-width:0"><b>' + esc(B.chatName(chat)) + '</b><small class="' + (st.live ? 'on' : '') + '">' + esc(st.t) + '</small></span>';
+    var st = statusOf(chat);
+    return '<span style="min-width:0"><b>' + esc(B.chatName(chat)) + '</b><small class="' + (st.live ? 'on' : '') + '">' + esc(st.t) + '</small></span>';
   }
   function build(cid) {
     var chat = B.find(cid), el = document.createElement('div');
@@ -273,7 +277,7 @@ B.ui.chat = (function () {
     el.innerHTML = B.nav.amb +
       '<div class="nav cn"><button class="nb glass gi" data-back aria-label="Назад">' + I('chevLeft') + '<span class="cnt">' + (n ? (n > 99 ? '99+' : n) : '') + '</span></button>' +
         '<button class="who glass gi" data-c="info">' + whoHtml(chat) + '</button>' +
-        '<div class="nr cap glass"><button data-c="addc" aria-label="Добавить в контакты" hidden>' + I('userPlus') + '</button><button data-c="more" aria-label="Ещё">' + I('dots') + '</button></div></div>' +
+        '<div class="nr"><button class="glass gi" data-c="addc" aria-label="Добавить в контакты" hidden>' + I('userPlus') + '</button><button class="navav glass gi" data-c="info" aria-label="Профиль">' + headAvatar(chat) + '</button></div></div>' +
       '<div class="cnbar glass" hidden></div>' +
       '<div class="scroll"><div class="msgs">' + (B.msgs.tail(cid) && !B.S.secretChatIds.has(cid) ? '' : skeleton()) + '</div></div>' +
       '<button class="pinbar glass gi" data-c="pin" hidden></button>' +
@@ -329,7 +333,7 @@ B.ui.chat = (function () {
     var n = othersUnread(chat.id), c = $('.nb .cnt', el); if (c) c.textContent = n ? (n > 99 ? '99+' : n) : '';
     // Точка «в сети» на аватаре в шапке: перерисовываем, когда статус собеседника изменился
     var pid0 = chat.type === 'direct' && !B.isSys(chat) ? B.peerId(chat) : 0, sig = pid0 ? (B.S.presence[pid0] || 'offline') : '';
-    if (pid0 && el._pSig !== sig) { if (el._pSig !== undefined) { var w = $('.who', el); w.firstElementChild.outerHTML = B.avatar.html({ id: pid0, chat: chat.id, text: B.fmt.initials(B.chatName(chat)), dot: pid0 }); B.avatar.apply(w); } el._pSig = sig; }
+    if (pid0 && el._pSig !== sig) { if (el._pSig !== undefined) { var w = $('.navav', el); w.firstElementChild.outerHTML = B.avatar.html({ id: pid0, chat: chat.id, text: B.fmt.initials(B.chatName(chat)), dot: pid0 }); B.avatar.apply(w); } el._pSig = sig; }
     var cb = $('.cnbar', el), cst = B.conn.state;
     if (cb) { cb.hidden = cst === 'ok'; cb.className = 'cnbar glass ' + cst; cb.innerHTML = cst === 'offline' ? I('bellOff') + 'Нет связи с сервером' : '<i class="cspin"></i>Подключение…'; }
     var ab = $('[data-c="addc"]', el), pid = chat.type === 'direct' && !B.isSys(chat) ? B.peerId(chat) : null; if (ab) ab.hidden = !(pid && B.contacts.needsContact(pid));
@@ -482,16 +486,6 @@ B.ui.chat = (function () {
   }
 
   // ── события ──
-  function chatActions(el) {
-    var chat = B.find(+el.dataset.cid); if (!chat) return;
-    var items = [];
-    if (!B.isSys(chat)) items.push(['info', chat.type === 'direct' ? 'Профиль' : 'О группе', function () { info(chat.id); }]);
-    items.push(['image', 'Медиа, файлы и ссылки', function () { B.media.openChatMedia(chat.id); }]);
-    items.push([chat.muted ? 'bell' : 'bellOff', chat.muted ? 'Включить звук' : 'Без звука', function () { B.chats.mute(chat.id); }]);
-    if (chat.type === 'group' || chat.type === 'room') items.push(['users', 'Участники', function () { B.openMembers(chat.id); }]);
-    var S_ = B.sheet.open({ title: esc(B.chatName(chat)), body: '<div class="grp glass" style="margin-top:6px">' + items.map(function (x, i) { return '<button class="cell" data-i="' + i + '"><span class="ci" style="background:var(--accent)">' + I(x[0]) + '</span><span class="cl">' + x[1] + '</span></button>'; }).join('') + '</div><button class="abtn" data-close>Отмена</button>' });
-    S_.el.addEventListener('click', function (e) { var b = e.target.closest('[data-i]'); if (b) { B.sheet.close(); setTimeout(items[+b.dataset.i][2], 460); } });
-  }
   function onClick(el, e) {
     if (Fmt.copyClick(e)) return;                               // «Копировать» в шапке блока кода
     var lc = e.target.closest('.lcard[data-fmt-url]');
@@ -510,7 +504,6 @@ B.ui.chat = (function () {
     else if (c === 'addc') { var pid = B.peerId(B.find(+el.dataset.cid)); if (pid && B.openAddFromChat) B.openAddFromChat(pid); }
     else if (c === 'who') { if (B.ui.composer.mention) B.ui.composer.mention(el, +t.dataset.id, t.dataset.name); }
     else if (c === 'info') info(+el.dataset.cid);
-    else if (c === 'more') chatActions(el);
     else if (c === 'act') runAction(t);
     else if (c === 'unpin') { e.stopPropagation(); B.pins.unpin(+t.dataset.id); }
     else if (c === 'pin') {

@@ -434,8 +434,15 @@ html, body { background: var(--gl-base); }
 .nav.cn { padding-left: 10px; padding-right: 10px; gap: 8px; }
 .nav.cn .who { flex: 1; max-width: none; }
 .nav.cn .nb { width: 46px; height: 46px; }
-.nav.cn .nr.cap { padding: 1px; }
 .nav.cn .who { height: 46px; }
 
 /* вертикальные фото в ленте не выше 300 px, как и обложки видео: лишнее обрезается, целиком — в просмотре */
 .att-img { max-height: 300px; }
+
+/* аватарка вместо «трёх точек»: круглая кнопка справа открывает профиль; имя и статус по центру капсулы без аватарки */
+.nav.cn .nr { gap: 8px; }
+.nav.cn .nr button { width: 46px; height: 46px; border-radius: 50%; padding: 0; display: grid; place-items: center; }
+.nav.cn .nr button[hidden] { display: none; }
+.nav.cn .navav .av { width: 38px; height: 38px; font-size: 13px; }
+.nav.cn .who { justify-content: center; text-align: center; padding: 0 16px; }
+.nav.cn .who > span { text-align: center; }
