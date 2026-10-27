@@ -449,3 +449,7 @@ html, body { background: var(--gl-base); }
 
 /* фильтры участников в профиле группы и комнаты: тот же переключатель, что у папок, но не липкий */
 .fbar.pgf { position: static; margin: 0 -16px 6px; }
+
+/* оптическая центровка значков: масса самолётика смещена вправо-вверх, стрелка «назад» кажется правее центра — сдвиг на 1–2 px */
+.sendb .i { margin: calc(-.5em + 1.7px) 0 0 calc(-.5em - 1.6px); }
+.nb[data-back] > svg { transform: translateX(-1px); }
