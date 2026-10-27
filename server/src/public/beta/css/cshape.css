@@ -13,8 +13,7 @@
 .xtra:empty { display: none; }
 
 /* панели: зазор снизу появляется вместе с содержимым; содержимое не ближе ~20 px к скруглённому краю */
-.comp.cs > .xtra { padding-bottom: 0; transition: padding-bottom .3s var(--ease); }
-.comp.cs > .xtra.on { padding-bottom: 16px; }
+.comp.cs > .xtra { padding-bottom: 0; }   /* отступ снизу выставляет cshape.js по высоте содержимого */
 .xtra .ctx:empty { display: none; }
 .xtra .cbar { padding: 14px 12px 0 22px; }
 .xtra .fmtbar { padding: 12px 12px 0 18px; }

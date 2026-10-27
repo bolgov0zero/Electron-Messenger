@@ -50,9 +50,7 @@ B.ui.composer = (function () {
     var open = box._open !== undefined ? box._open : (!box.hidden && box.offsetHeight > 0);
     if (open === show) return;
     box._open = show; clearTimeout(box._slT);
-    // у панели с содержимым снизу появляется воздух и зазор до кнопок (в .xtra.on), у пустой — ничего
     var cc = box.closest('.comp'); if (cc && cc._cs) cc._cs.burst(800);
-    var xt = box.closest('.xtra'); if (xt) xt.classList.toggle('on', ['.rnote', '.ctx', '.lpv', '.fpv', '.fmtbar'].some(function (q) { var b = xt.querySelector(q); return b && b._open; }));
     var st = box.style, reset = function () { st.height = st.paddingTop = st.paddingBottom = st.opacity = st.overflow = st.transition = ''; };
     reset();
     if (show) {

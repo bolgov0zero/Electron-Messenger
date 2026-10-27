@@ -69,8 +69,14 @@
     comp.classList.add('cs');
     var last = '';
     function draw() {
+      // Воздух под содержимым панели (до 16 px) вычисляется здесь из текущей высоты содержимого, а не отдельным CSS-переходом: переход
+      // иногда не доходил до конца (панель ответа открывалась вместе с клавиатурой), и подложка оказывалась короче содержимого
+      var ph = 0;
+      if (xtra) for (var i = 0; i < xtra.children.length; i++) ph += xtra.children[i].offsetHeight;
+      var pb = Math.round(16 * clamp(ph / 24, 0, 1));
+      if (xtra && xtra._pb !== pb) { xtra._pb = pb; xtra.style.paddingBottom = pb + 'px'; }
       var W = comp.clientWidth, H = comp.clientHeight; if (!W || !H) return;
-      var xt = xtra ? xtra.offsetHeight : 0, yT = xt > 0 ? Math.max(0, xt - GAP) : 0;
+      var xt = ph + pb, yT = xt > 0 ? Math.max(0, xt - GAP) : 0;
       var L = COL + GAP, R = COL + GAP;
       if (comp.classList.contains('lk')) { L = 0; R = 0; }   // плашка вместо поля: без кнопок по бокам
       var key = W + '|' + H + '|' + yT + '|' + L; if (key === last) return; last = key;
