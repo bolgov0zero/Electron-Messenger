@@ -56,8 +56,18 @@
       if (xtra) xtra.style.opacity = String(clamp((yT - 20) / 26, 0, 1));
     }
     var ro = new ResizeObserver(draw); ro.observe(comp); if (xtra) ro.observe(xtra);
+    // ResizeObserver не видит изменения отступов и срабатывает не на каждом кадре перехода: пока панель раскрывается, клавиатура выезжает
+    // или страница двигается, форма перерисовывается каждый кадр, иначе она отставала от содержимого
+    var until = 0, run = false;
+    function burst(ms) {
+      until = Math.max(until, performance.now() + (ms || 700));
+      if (run) return; run = true;
+      (function step() { draw(); if (performance.now() < until && comp.isConnected) requestAnimationFrame(step); else { run = false; draw(); } })();
+    }
+    ['transitionrun', 'transitionend', 'focusin', 'focusout', 'input'].forEach(function (ev) { comp.addEventListener(ev, function () { burst(); }); });
+    if (window.visualViewport) visualViewport.addEventListener('resize', function () { burst(900); });
     draw();
-    comp._cs = { draw: draw, ro: ro };
+    comp._cs = { draw: draw, ro: ro, burst: burst };
     return comp._cs;
   }
   window.CShape = { attach: attach, shape: shape };
