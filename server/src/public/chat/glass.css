@@ -245,7 +245,7 @@ body.sidebar-hidden .sidebar { left: 12px; top: 12px; bottom: 12px; }
 /* Бар папок и учётных записей */
 .acc-badge { border-color: transparent; box-shadow: 0 0 0 2px color-mix(in srgb, var(--side-bg) 80%, transparent); }
 .fbd { border-color: color-mix(in srgb, var(--side-bg) 80%, transparent); }
-.presence-dot { border-color: color-mix(in srgb, var(--side-bg) 85%, transparent); }
+.presence-dot { --halo: color-mix(in srgb, var(--side-bg) 85%, transparent); }
 .rail-sep { background: var(--gl-lo); }
 
 /* ── Поле ввода ── */

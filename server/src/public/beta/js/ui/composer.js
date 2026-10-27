@@ -12,13 +12,15 @@ B.ui.composer = (function () {
   var FMT = [['bold', 'b', 'Жирный'], ['italic', 'i', 'Курсив'], ['code', 'c', 'Код в строке'], ['braces', 'blk', 'Блок кода'], ['eyeOff', 's', 'Секрет']];
   function mount(el, chat) {
     var c = comp(el); el._cs = { reply: null, fwd: null, edit: null, atts: [], mode: 'emoji', fmt: false, prev: false, lw: null };
+    // Дополнительные панели (.xtra) лежат над рядом на всю ширину и огибают кнопки; подложку рисует CShape по их высоте
     c.innerHTML =
+      '<div class="xtra"><div class="rnote" hidden></div><div class="ctx"></div><div class="lpv" hidden></div><div class="fpv" hidden><div class="fpl">Превью — так увидят получатели</div><div class="fpb"></div></div>' +
+        '<div class="fmtbar" hidden>' + FMT.map(function (x) { return '<button data-f="' + x[1] + '" aria-label="' + x[2] + '" title="' + x[2] + '">' + I(x[0]) + '</button>'; }).join('') + '<span class="fsep"></span><button data-f="prev" aria-label="Превью" title="Показать превью">' + I('eye') + '</button><span class="fgrow"></span><button data-f="close" aria-label="Закрыть" title="Закрыть панель форматирования">' + I('x') + '</button></div></div>' +
       '<button class="cbtn glass gi" data-k="up" aria-label="Вложение" aria-haspopup="menu">' + I('plus') + '</button>' +
-      '<div class="cfield glass"><div class="rnote" hidden></div><div class="cbar-wrap ctx"></div><div class="lpv" hidden></div><div class="fpv" hidden><div class="fpl">Превью — так увидят получатели</div><div class="fpb"></div></div>' +
-        '<div class="fmtbar" hidden>' + FMT.map(function (x) { return '<button data-f="' + x[1] + '" aria-label="' + x[2] + '" title="' + x[2] + '">' + I(x[0]) + '</button>'; }).join('') + '<span class="fsep"></span><button data-f="prev" aria-label="Превью" title="Показать превью">' + I('eye') + '</button><span class="fgrow"></span><button data-f="close" aria-label="Закрыть" title="Закрыть панель форматирования">' + I('x') + '</button></div>' +
-        '<div class="cin"><span class="ph">Сообщение</span><div class="ce fmt-ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Сообщение" enterkeyhint="return" autocapitalize="sentences" spellcheck="true"></div><button class="em" data-k="emo" aria-label="Смайлы">' + I('smile') + '</button></div></div>' +
+      '<div class="cfield"><div class="cin"><span class="ph">Сообщение</span><div class="ce fmt-ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Сообщение" enterkeyhint="return" autocapitalize="sentences" spellcheck="true"></div><button class="em" data-k="emo" aria-label="Смайлы">' + I('smile') + '</button></div></div>' +
       '<button class="sendb glass gi" data-k="send" aria-label="Отправить">' + I('send', 's') + '</button>' +
-      '<div class="lkb glass" hidden></div><input type="file" multiple style="display:none">';
+      '<div class="lkb" hidden></div><input type="file" multiple style="display:none">';
+    CShape.attach(c);
     var t = ta(el), file = $('input[type=file]', c), cst = cs(el);
     Fmt.init(t);
     cst.lw = Fmt.linkWatch({
@@ -48,6 +50,8 @@ B.ui.composer = (function () {
     var open = box._open !== undefined ? box._open : (!box.hidden && box.offsetHeight > 0);
     if (open === show) return;
     box._open = show; clearTimeout(box._slT);
+    // у панели с содержимым снизу появляется воздух и зазор до кнопок (в .xtra.on), у пустой — ничего
+    var xt = box.closest('.xtra'); if (xt) xt.classList.toggle('on', ['.rnote', '.ctx', '.lpv', '.fpv', '.fmtbar'].some(function (q) { var b = xt.querySelector(q); return b && b._open; }));
     var st = box.style, reset = function () { st.height = st.paddingTop = st.paddingBottom = st.opacity = st.overflow = st.transition = ''; };
     reset();
     if (show) {

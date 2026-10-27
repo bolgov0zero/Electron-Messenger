@@ -4,10 +4,17 @@ B.ui = B.ui || {};
 B.ui.contacts = (function () {
   var v, dyn, input, q = '';
   function rank(u) { var r = { online: 0, away: 1 }[B.S.presence[u.id]]; return r === undefined ? 2 : r; }
+  // Пространство человека: общее с вашими (если у вас их несколько), чужое пространство; у людей с других серверов — значок глобуса на аватаре
+  function wsText(u) {
+    if (u.federated) return '';
+    var my = (B.S.user && B.S.user.workspaces && B.S.user.workspaces.length) || 1;
+    if (u.rel === 'ws') { var n = u.shared_workspaces || []; if (my > 1 && n.length) { var full = n.join(' · '); return n.length === 1 ? n[0] : full.length <= 22 ? full : n[0] + ' +' + (n.length - 1); } return ''; }
+    return (u.rel === 'other' || u.rel === 'chat') && u.workspace_name ? u.workspace_name : '';
+  }
   function row(u) {
     var on = B.S.presence[u.id] === 'online', sub = u.federated ? B.contacts.fedAddr(u) : B.contacts.peerSub(u.id);
     return '<button class="row" data-k="' + u.id + '">' + B.avatar.user(u.id, u.display_name, 0, false, u.federated) + '<div class="rt"><div class="r1"><b>' + B.esc(u.display_name) + '</b>' + (u.tag ? '<span class="pill-tag" style="' + B.tagInk(u.tag) + '">' + B.esc(u.tag) + '</span>' : '') + '</div>' +
-      '<div class="r2"><span class="pv" style="' + (on ? 'color:var(--accent-ink)' : '') + '">' + B.esc(sub) + '</span></div></div></button>';
+      '<div class="r2"><span class="pv" style="' + (on ? 'color:var(--accent-ink)' : '') + '">' + B.esc(sub) + '</span>' + (wsText(u) ? '<span class="pill-tag wst">' + B.esc(wsText(u)) + '</span>' : '') + '</div></div></button>';
   }
   function render() {
     if (!dyn) return;

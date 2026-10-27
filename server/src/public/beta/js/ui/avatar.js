@@ -9,15 +9,15 @@ B.avatar = {
     var st = o.dot ? (B.S.presence[o.dot] || 'offline') : 'offline';
     var sz = size ? ';width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.34) + 'px' : '';
     return '<span class="av' + (o.sq ? ' sq' : '') + (o.cls ? ' ' + o.cls : '') + '"' + attr + ' style="background:linear-gradient(135deg,' + c[0] + ',' + c[1] + ')' + sz + '"><span class="ini">' + B.esc(o.text || '') + '</span>' +
-      (o.dot && st !== 'offline' ? '<i class="dot' + (st === 'away' ? ' away' : '') + '"></i>' : '') +
-      (o.type ? '<i class="type">' + I('users') + '</i>' : '') + (o.fed ? '<i class="type">' + I('globe') + '</i>' : '') + '</span>';
+      (o.dot && st !== 'offline' ? '<i class="dot' + (st === 'away' ? ' away' : '') + (st === 'online' && B.S.presenceMobile && B.S.presenceMobile[o.dot] ? ' mob' : '') + '"></i>' : '') +
+      (o.folder ? '<i class="type fb" style="--fc:' + B.esc(o.folder.color) + '">' + I(o.folder.icon || 'folder') + '</i>' : o.type ? '<i class="type">' + I('users') + '</i>' : '') + (o.fed ? '<i class="type">' + I('globe') + '</i>' : '') + '</span>';
   },
   // Аватар чата: личный — по собеседнику, группа — значок группы, комната — квадрат с «#»
   chat: function (c, size, nobadge) {
-    var peer = B.peerId(c);
-    if (c.type === 'direct') return B.avatar.html({ id: peer || c.id, chat: c.id, text: B.fmt.initials(B.chatName(c)), dot: B.isSys(c) ? 0 : peer }, size);
+    var peer = B.peerId(c), fo = !nobadge && B.folders && B.folders.filter === 'all' ? B.folders.of(c) : null;   // значок папки (как в веб клиенте): у чата в папке
+    if (c.type === 'direct') return B.avatar.html({ id: peer || c.id, chat: c.id, text: B.fmt.initials(B.chatName(c)), dot: B.isSys(c) ? 0 : peer, folder: fo }, size);
     var root_ = c.parent_id ? B.find(c.parent_id) || c : c;
-    return B.avatar.html({ id: c.id, chat: c.id, text: c.type === 'room' ? '#' : B.fmt.initials(B.chatName(c)), sq: c.type === 'room', type: c.type === 'group' && !nobadge, fed: !!root_.fed_mirror }, size);
+    return B.avatar.html({ id: c.id, chat: c.id, text: c.type === 'room' ? '#' : B.fmt.initials(B.chatName(c)), sq: c.type === 'room', type: c.type === 'group' && !nobadge, folder: fo, fed: !!root_.fed_mirror }, size);
   },
   user: function (id, name, size, nodot, fed) { return B.avatar.html({ id: id, user: id, text: B.fmt.initials(name), dot: nodot ? 0 : id, fed: !!fed }, size); },
   // Список id с аватарками на сервере: файл запрашиваем только для них (иначе 404 в консоли на каждого без фото)

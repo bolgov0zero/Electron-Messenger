@@ -116,8 +116,6 @@ html, body { background: var(--gl-base); }
 .cin .ce code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; background: color-mix(in srgb, var(--accent) 18%, transparent); border-radius: 5px; padding: 0 4px; }
 .cin .ce pre.cb { margin: 3px 8px 3px 0; padding: 7px 10px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: #0b0e13; color: #d6e2ee; }
 .cin .em.on { color: var(--accent-ink); }
-.cfield .ctx:empty { display: none; }
-.cfield .ctx > .cbar { padding-right: 6px; }
 .rnote { padding: 8px 16px 0; font-size: 13px; color: var(--text2); }
 .rnote[hidden] { display: none; } .rnote.soft { color: var(--accent-ink); }
 .lpv { display: flex; align-items: center; gap: 10px; padding: 8px 10px 0 14px; }
@@ -143,7 +141,7 @@ html, body { background: var(--gl-base); }
 .ax .rm { position: absolute; right: -5px; top: -5px; width: 20px; height: 20px; border-radius: 50%; background: var(--text); color: var(--gl-base); display: grid; place-items: center; font-size: 11px; }
 .ax.add { display: grid; place-items: center; color: var(--accent-ink); font-size: 24px; border: 1.5px dashed var(--accent-border); background: none; }
 /* плашка вместо поля: приглашение, скрытый чат без ключа, только чтение */
-.comp.lk > .cbtn, .comp.lk > .cfield, .comp.lk > .sendb { display: none; }
+.comp.lk > .cbtn, .comp.lk > .cfield, .comp.lk > .sendb, .comp.lk > .xtra { display: none; }
 .lkb { flex: 1; min-width: 0; border-radius: 26px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .lkb[hidden] { display: none; }
 .lkb .it { flex: 1; min-width: 0; font-size: 13.5px; color: var(--text2); line-height: 1.4; }
@@ -387,3 +385,14 @@ html, body { background: var(--gl-base); }
 
 /* узор фона переписки: картинка из настроек (общие с /chat и /m) поверх цветной подсветки */
 .chat .amb::after { content: ""; position: absolute; inset: 0; background: var(--pat-ink, transparent); -webkit-mask-image: var(--pat, none); mask-image: var(--pat, none); -webkit-mask-size: calc(var(--pat-size, 680px) * .55); mask-size: calc(var(--pat-size, 680px) * .55); opacity: var(--pat-a, 0); }
+
+/* самолётик по центру кнопки отправки: абсолютно позиционированный значок в grid без смещений уезжал в левый верхний угол */
+.sendb .i { left: 50%; top: 50%; margin: -.5em 0 0 -.5em; }
+
+/* значок папки на аватаре чата (левый верхний угол, как в веб клиенте) и пространство в списке контактов */
+.av .type.fb { color: var(--fc); }
+.pill-tag.wst { flex: none; max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2); font-weight: 600; }
+/* человек в сети с мобильного клиента: вместо точки контур телефона */
+.av .dot.mob { width: 10px; height: 15px; right: 1px; bottom: 0; border-radius: 3px; background: transparent; border: 1.6px solid var(--presence-online);
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--side-bg) 85%, transparent), inset 0 0 0 1.5px color-mix(in srgb, var(--side-bg) 85%, transparent); }
+.av .dot.mob::after { content: ""; position: absolute; left: 50%; bottom: .5px; width: 1.8px; height: 1.8px; margin-left: -.9px; border-radius: 50%; background: var(--presence-online); }

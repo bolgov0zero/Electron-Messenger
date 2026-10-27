@@ -880,10 +880,12 @@ body.sidebar-hidden .sidebar {
 /* Avatar wrap for presence dot */
 .av-wrap { position: relative; flex-shrink: 0; }
 .presence-dot {
-  position: absolute; bottom: -1px; right: -1px;
-  width: 10px; height: 10px; border-radius: 50%;
-  border: 2px solid var(--side-bg);
+  /* как в мобильной версии: цветной кружок 13 px без рамки, а светлое кольцо 2.5 px вокруг него — тенью цвета фона (--halo) */
+  position: absolute; bottom: 0; right: 0;
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 0;
   --halo: var(--side-bg);
+  box-shadow: 0 0 0 2.5px var(--halo);
   background: var(--presence-online);
 }
 .presence-dot.away { background: var(--presence-away); }
@@ -3835,7 +3837,7 @@ html.dark .anx-solid { color: #0c0e10; }
 .lb-thumbs i:hover { opacity: .9; }
 
 /* Человек в сети с мобильного клиента (последним был активен он): вместо точки маленький зелёный телефон-контур: внутри прозрачно (видна аватарка), по краям тонкая подложка цвета фона */
-.presence-dot.mob { width: 8px; height: 12px; bottom: 0; right: 0; border: 1.6px solid var(--presence-online) !important; border-radius: 2.5px; background: transparent; box-shadow: 0 0 0 2px var(--halo, var(--side-bg)), inset 0 0 0 1.5px var(--halo, var(--side-bg)); }
+.presence-dot.mob { width: 10px; height: 15px; bottom: 0; right: 1px; border: 1.6px solid var(--presence-online) !important; border-radius: 2.5px; background: transparent; box-shadow: 0 0 0 2px var(--halo, var(--side-bg)), inset 0 0 0 1.5px var(--halo, var(--side-bg)); }
 .presence-dot.mob::after { content: ""; position: absolute; left: 50%; bottom: .5px; width: 1.6px; height: 1.6px; margin-left: -.8px; border-radius: 50%; background: var(--presence-online); }
 .pf-av .presence-dot.mob { width: 10px; height: 15px; right: 1px; bottom: 1px; }
 
