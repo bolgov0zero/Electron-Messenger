@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+<meta charset="utf-8">
+<title>Макет: выбор аккаунта в баре</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="../../client/src/assets/fonts/inter.css">
+<link rel="stylesheet" href="../../client/src/style.css">
+<link rel="stylesheet" href="../../client/src/glass.css">
+<style>
+  body { margin: 0; min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: var(--text); display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 26px 20px; box-sizing: border-box; }
+  h1 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: .2px; }
+  p.sub { margin: -14px 0 0; font-size: 12.5px; color: var(--text2); text-align: center; max-width: 560px; line-height: 1.5; }
+  .ctl { display: flex; gap: 8px; }
+  .ctl button { height: 32px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--gl-edge); background: var(--gl); color: var(--text); font: 600 12.5px Inter, sans-serif; cursor: pointer; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+  .ctl button.on { background: var(--gl2); color: var(--accent); }
+  .row { display: flex; gap: 34px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 12px; color: var(--text2); }
+  .col b { color: var(--text); font-size: 13px; }
+  /* кусок бара: те же стекло, ширина 72 и расстояния, что в приложении */
+  .rail { width: 72px; height: 340px; box-sizing: border-box; padding: 12px 0; border-radius: 30px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+    background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl); border: 1px solid var(--gl-edge);
+    -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%); backdrop-filter: blur(var(--gl-blur)) saturate(190%);
+    box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 12px 32px var(--gl-shadow); }
+  .rail .fld-btn { position: relative; padding: 0; border: 0; background: none; cursor: pointer; flex: none; color: var(--text2); }
+  .rail .fld-ic { display: grid; place-items: center; }
+  .rail .grow { flex: 1; }
+  .rail-accs { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+  /* ── кнопка учётной записи: оформление как у папок, но круглая; аватарка с отступом от края круга ── */
+  .acc-round { width: 48px; height: 48px; border-radius: 50%; }
+  .acc-round .fld-ic { width: 48px; height: 48px; border-radius: 50%; background: transparent; box-shadow: none; transition: transform .35s var(--gl-spring), background .2s, box-shadow .2s; }
+  .acc-round:hover .fld-ic { background: var(--gl-card); }
+  .acc-round:active .fld-ic { transform: scale(.94); }
+  .acc-round.active .fld-ic { background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow); }
+  .acc-round .ava { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); background-size: cover; background-position: center; }
+  .acc-round.active::before { content: ""; position: absolute; left: -14px; top: 14px; width: 4px; height: 20px; border-radius: 0 4px 4px 0; background: var(--accent); }
+  .acc-round .acc-badge { position: absolute; right: -2px; top: -2px; }
+  .acc-round .presence-dot { position: absolute; right: 1px; bottom: 1px; z-index: 2; }
+  .acc-round .presence-dot.away { background: #f0a030; }
+  .acc-round .presence-dot.off { display: none; }
+  .av1 { background: linear-gradient(135deg, #1d9c80, #0d6e85); } .av2 { background: linear-gradient(135deg, #8a5cf0, #5b3ad0); } .av3 { background: linear-gradient(135deg, #e8731f, #c2411f); }
+</style>
+</head>
+<body>
+<div class="gl-amb"><i></i><i></i><i></i><i></i></div>
+<h1>Выбор аккаунта в баре: как папки, но круглый</h1>
+<p class="sub">Слева — три записи (активная, с непрочитанным, «отошёл»), справа — одна. Аватарка 38 px в круге 48 px, отступ 5 px от края; выбранная запись — приподнятое стекло и полоска у края, как у папок. Тема переключается кнопками.</p>
+<div class="ctl" id="th"><button data-t="dark" class="on">Тёмная</button><button data-t="navy">Тёмно-синяя</button><button data-t="light">Светлая</button></div>
+<div class="row">
+  <div class="col"><b>Несколько записей</b>
+    <nav class="rail">
+      <button class="acc-btn fld-btn active"><span class="fld-ic"><svg class="fi" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span></button>
+      <button class="acc-btn fld-btn" style="color:#e8731f"><span class="fld-ic"><svg class="fi" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></span></button>
+      <div class="grow"></div>
+      <div class="rail-accs">
+        <button class="fld-btn acc-round active"><span class="fld-ic"><span class="ava av1">АИ</span></span><i class="presence-dot"></i></button>
+        <button class="fld-btn acc-round"><span class="fld-ic"><span class="ava av2">МП</span></span><span class="acc-badge">3</span><i class="presence-dot away"></i></button>
+        <button class="fld-btn acc-round"><span class="fld-ic"><span class="ava av3">ДС</span></span><i class="presence-dot off"></i></button>
+      </div>
+    </nav>
+  </div>
+  <div class="col"><b>Одна запись</b>
+    <nav class="rail">
+      <button class="acc-btn fld-btn active"><span class="fld-ic"><svg class="fi" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span></button>
+      <div class="grow"></div>
+      <div class="rail-accs">
+        <button class="fld-btn acc-round"><span class="fld-ic"><span class="ava av1">АИ</span></span><i class="presence-dot"></i></button>
+      </div>
+    </nav>
+  </div>
+</div>
+<script>
+  document.getElementById('th').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const t = b.dataset.t, h = document.documentElement;
+    h.classList.toggle('dark', t !== 'light'); h.classList.toggle('navy', t === 'navy'); document.querySelectorAll('#th button').forEach(x => x.classList.toggle('on', x === b)); });
+</script>
+</body>
+</html>

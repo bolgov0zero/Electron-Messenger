@@ -109,18 +109,29 @@ function refreshActivity() {
 const AWAY_DELAY = 5000;
 let _awayTimer = null;
 // Свой статус отдаём главному процессу: по нему другие окна рисуют точку у аватара этой записи в баре
-let _ownStReported = null;
+// Сервер присутствие самого человека клиенту не присылает (в списке только остальные), поэтому свой статус считаем сами:
+// соединение открыто — «онлайн» или «отошёл» (то, что клиент последним отправил), закрыто — «не в сети»
+let _ownStReported = null, _ownPres = 'online';
+function ownStatus() { return S.ws?.readyState === 1 ? _ownPres : 'offline'; }
+function ownDotHtml() { const st = ownStatus(); return `<span class="presence-dot${st === 'away' ? ' away' : ''}" data-own-dot${st === 'offline' ? ' style="display:none"' : ''}></span>`; }
+function paintOwnDot() {
+  const st = ownStatus();
+  document.querySelectorAll('#acc-rail [data-own-dot]').forEach(d => { d.classList.toggle('away', st === 'away'); d.style.display = st === 'offline' ? 'none' : ''; });
+}
 function reportOwnStatus() {
+  paintOwnDot();
   if (!window.electron?.setAccountStatus || !S.user) return;
-  const st = S.presence[S.user.id] || 'offline';
+  const st = ownStatus();
   if (st === _ownStReported) return;
   _ownStReported = st; window.electron.setAccountStatus(st);
 }
 function sendPresenceStatus(status) {
+  if (status === 'online' || status === 'away') _ownPres = status;
   const name = { online: 'Онлайн', away: 'Отошёл', offline: 'Не в сети' }[status] || status;
   if (S.ws?.readyState===1) {
     S.ws.send(JSON.stringify({type:'set_status', status}));
     window.electron?.diag?.(`статус «${name}» отправлен на сервер`);
+    reportOwnStatus();
   } else {
     window.electron?.diag?.(`ОШИБКА: статус «${name}» не отправлен — соединение с сервером не открыто`);
   }
@@ -892,13 +903,13 @@ function renderAccountRail() {
     const badge = !isActive && a.unread > 0 ? `<span class="acc-badge">${a.unread > 99 ? '99+' : a.unread}</span>` : '';
     const name = m ? esc(m.name) : 'Вход не выполнен', srv = m ? esc(m.server) : '', sys = m && m.serverName ? esc(m.serverName) : '';
     const st = a.status || 'offline';
-    const dot = isSelf ? presenceDot(S.user.id) : `<span class="presence-dot${st === 'away' ? ' away' : ''}"${st === 'offline' ? ' style="display:none"' : ''}></span>`;
+    const dot = isSelf ? ownDotHtml() : `<span class="presence-dot${st === 'away' ? ' away' : ''}"${st === 'offline' ? ' style="display:none"' : ''}></span>`;
     const click = isActive && S.user ? `data-on-click="openProfile" data-a-click="${esc(JSON.stringify([S.user.id]))}"` : `data-on-click="__h18" data-a-click="${esc(JSON.stringify([esc(a.id)]))}"`;
-    return `<button type="button" class="acc-btn rail-acc${isActive ? ' active' : ''}" ${click} aria-label="${sys ? sys + ', ' : ''}${name}${srv ? ', ' + srv : ''}">
-      <span class="av av-round ${cls}">${esc(m ? initials(m.name) : '?')}${img}</span>${dot}${badge}
+    return `<button type="button" class="acc-btn fld-btn rail-acc acc-round${isActive ? ' active' : ''}" ${click} aria-label="${sys ? sys + ', ' : ''}${name}${srv ? ', ' + srv : ''}">
+      <span class="fld-ic"><span class="av av-round ${cls}">${esc(m ? initials(m.name) : '?')}${img}</span></span>${dot}${badge}
       <span class="acc-tip">${sys ? `<span class="acc-sys">${sys}</span>` : ''}<b>${name}</b><span>${srv}</span></span></button>`;
   };
-  const meBtn = S.user ? `<button type="button" class="rail-me" title="Профиль" aria-label="Профиль" data-on-click="openProfile" data-a-click="${esc(JSON.stringify([S.user.id]))}"><span class="av-wrap"><span class="av av-round ${userAvatarColor(S.user.id, S.user.tag)}" data-av-user="${S.user.id}">${esc(initials(S.user.display_name || S.user.username || '?'))}</span>${presenceDot(S.user.id)}</span></button>` : '';
+  const meBtn = S.user ? `<button type="button" class="acc-btn fld-btn acc-round" title="Профиль" aria-label="Профиль" data-on-click="openProfile" data-a-click="${esc(JSON.stringify([S.user.id]))}"><span class="fld-ic"><span class="av av-round ${userAvatarColor(S.user.id, S.user.tag)}" data-av-user="${S.user.id}">${esc(initials(S.user.display_name || S.user.username || '?'))}</span></span>${ownDotHtml()}</button>` : '';
   rail.innerHTML = (typeof spacesRailHtml === 'function' ? spacesRailHtml(false) : '') + (typeof foldersRailHtml === 'function' ? foldersRailHtml(typeof spacesRailShown === 'function' && spacesRailShown()) : '')
     + `<div class="rail-accs">${showAcc ? S.acc.list.map(accBtn).join('') : meBtn}</div>`;
   applySidebarW();
@@ -6475,6 +6486,7 @@ function connectWS() {
 
   ws.onclose = (event) => {
     clearInterval(ws._hb);
+    if (ws === S.ws) setTimeout(reportOwnStatus, 0);
     // Нас уже заменил более новый сокет — не реконнектим повторно
     if (ws !== S.ws) return;
     window.electron?.diag?.(event.code === 1008
@@ -6489,6 +6501,7 @@ function connectWS() {
     }
   };
   ws.onopen = async () => {
+    setTimeout(reportOwnStatus, 0);
     modulesInit(); window.Modules?.refresh();
     window.electron?.diag?.(`соединение с сервером ${S.server} установлено`);
     S.wsRetry = 0;

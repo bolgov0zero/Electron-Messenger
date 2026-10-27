@@ -5,9 +5,16 @@
 .rail-accs { margin-top: auto; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .rail-folders.scroll + .rail-accs, .acc-rail > :not(.rail-accs):last-of-type + .rail-accs { margin-top: auto; }
 .rail-accs .rail-me { margin-top: 0; }
-.rail-accs .acc-btn { position: relative; width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; }
-.rail-accs .acc-btn .presence-dot { position: absolute; right: 0; bottom: 0; z-index: 2; }
-.rail-accs .acc-btn .av { width: 44px; height: 44px; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+/* Кнопка учётной записи: как кнопка папки, но круглая; аватарка меньше круга (отступ 5 px от края) */
+.rail-accs .acc-round { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; }
+.rail-accs .acc-round .fld-ic { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: transparent; box-shadow: none; opacity: 1; }
+.rail-accs .acc-round:hover .fld-ic { background: var(--gl-card); }
+.rail-accs .acc-round.active .fld-ic { background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow); }
+.rail-accs .acc-round .av { width: 38px; height: 38px; font-size: 13px; opacity: 1; transform: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22); }
+.rail-accs .acc-round .av::after { display: none; }
+.rail-accs .acc-round:hover .av { transform: none; }
+.rail-accs .acc-round .acc-badge { right: -2px; top: -2px; }
+.rail-accs .acc-round .presence-dot { position: absolute; right: 1px; bottom: 1px; z-index: 2; }
 
 /* Скрытие: бар и сайдбар уезжают за левый край и выезжают одним блоком (одно и то же смещение, плотно друг к другу) */
 body.sidebar-overlay .sidebar {
