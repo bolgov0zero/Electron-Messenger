@@ -428,3 +428,11 @@ html, body { background: var(--gl-base); }
 .chips.fo > .fgrp.glass::before, .chips.fo > .fgrp.glass::after { content: ""; display: block; position: absolute; top: 4px; bottom: 4px; width: 26px; z-index: 2; pointer-events: none; -webkit-backdrop-filter: blur(2.5px); backdrop-filter: blur(2.5px); transition: opacity .2s; }
 .chips.fo > .fgrp.glass::before { left: 4px; border-radius: 22px 0 0 22px; opacity: var(--bl); -webkit-mask-image: linear-gradient(90deg, #000, transparent); mask-image: linear-gradient(90deg, #000, transparent); }
 .chips.fo > .fgrp.glass::after { right: 4px; border-radius: 0 22px 22px 0; opacity: var(--br); -webkit-mask-image: linear-gradient(270deg, #000, transparent); mask-image: linear-gradient(270deg, #000, transparent); }
+
+/* шапка чата зеркальна полю ввода: кнопки по краям с тем же отступом 10 px и зазором 8 px, капсула собеседника тянется на всю ширину между ними
+   (раньше капсула была ограничена 214 px, и вся шапка съезжала влево) */
+.nav.cn { padding-left: 10px; padding-right: 10px; gap: 8px; }
+.nav.cn .who { flex: 1; max-width: none; }
+.nav.cn .nb { width: 46px; height: 46px; }
+.nav.cn .nr.cap { padding: 1px; }
+.nav.cn .who { height: 46px; }
