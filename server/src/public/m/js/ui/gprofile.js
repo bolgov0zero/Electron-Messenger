@@ -52,7 +52,7 @@ B.ui.gprofile = (function () {
     ].filter(Boolean);
     var ban = P.mirror ? '<div class="nbanner glass" style="margin:0 0 16px">' + I('globe') + '<span><b>' + (P.room ? 'Комната' : 'Группа') + ' на другом сервере.</b> Название, состав и аватарку меняет только её владелец. Писать и ставить реакции можно.</span></div>' : '';
     var chip = function (k, label, n) { return '<button class="chip' + (g.f === k ? ' on' : '') + '" data-r="chip" data-k="' + k + '">' + label + ' ' + n + '</button>'; };
-    var chips = (fed.length || pend.length) ? '<div class="chips">' + chip('all', 'Все', all.length) + chip('local', 'На этом сервере', local.length) + (fed.length ? chip('fed', 'С других серверов', fed.length) : '') + (pend.length ? chip('pend', 'Ждут ответа', pend.length) : '') + '</div>' : '';
+    var chips = (fed.length || pend.length) ? '<div class="fbar pgf"><div class="chips fo"><div class="fgrp glass"><div class="fin"><i class="thumb"></i>' + chip('all', 'Все', all.length) + chip('local', 'На этом сервере', local.length) + (fed.length ? chip('fed', 'С других серверов', fed.length) : '') + (pend.length ? chip('pend', 'Ждут ответа', pend.length) : '') + '</div></div></div></div>' : '';
     var topics = '';
     if (P.room) {
       var subs = B.chats.topicsOf(chat.id);
@@ -86,8 +86,10 @@ B.ui.gprofile = (function () {
     if (!(d.fed.length || d.pend.length)) g.f = 'all';
     if (g.f === 'pend' && !d.pend.length) g.f = 'all';
     var s = $('.scroll', el), y = s.scrollTop, had = document.activeElement && document.activeElement.id === 'pg-q';
+    var oldFin = $('.fin', s), fl = oldFin ? oldFin.scrollLeft : 0, pt = B.ui.folders.thumbOf(s);
     s.innerHTML = head(el, chat, P, d.all, d.local, d.fed, d.pend) + '<div id="pg-lists">' + lists(el, chat, P, d.local, d.fed, d.pend) + '</div>';
     s.scrollTop = y; B.avatar.apply(s);
+    var nf = $('.fin', s); if (nf) { nf.scrollLeft = fl; B.ui.folders.settle(s, pt); B.ui.folders.watchEdges(s); }
     $('.nt > span', el).textContent = P.room ? 'Комната' : 'Группа';
     if (had) { var i = $('#pg-q', s); i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch (e) {} }
   }
@@ -208,7 +210,7 @@ B.ui.gprofile = (function () {
 
   function onClick(el, e) {
     var t = e.target.closest('[data-r]'); if (!t) return; var r = t.dataset.r, id = +t.dataset.id;
-    if (r === 'chip') { el._g.f = t.dataset.k; paint(el); }
+    if (r === 'chip') { B.ui.folders.center = true; el._g.f = t.dataset.k; paint(el); }
     else if (r === 'add') addSheet(el);
     else if (r === 'mute') mute(el);
     else if (r === 'guest') guest(el);

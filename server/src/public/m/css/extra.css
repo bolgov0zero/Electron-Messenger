@@ -446,3 +446,6 @@ html, body { background: var(--gl-base); }
 .nav.cn .navav .av { width: 38px; height: 38px; font-size: 13px; }
 .nav.cn .who { justify-content: center; text-align: center; padding: 0 16px; }
 .nav.cn .who > span { text-align: center; }
+
+/* фильтры участников в профиле группы и комнаты: тот же переключатель, что у папок, но не липкий */
+.fbar.pgf { position: static; margin: 0 -16px 6px; }
