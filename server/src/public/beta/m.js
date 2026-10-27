@@ -297,7 +297,7 @@ const MS={};let mseq=0;
 const QUICK=['👍','❤️','😂','😮','😢','🙏'];
 function rxHtml(re){return `<div class="react">${re.map(r=>{const[x,m]=r.split('|');return `<button class="${m?'mine':''}" data-r="${x.split(' ')[0]}">${x}</button>`}).join('')}</div>`}
 function bubHtml(cid,m,prev,dm,id){const plain=(m.t||m.big||'').replace(/<[^>]+>/g,'');MS[id]={cid,...m,id,text:plain};let h='';
-  if(m.a==='me'){const body=m.big?`<span class="big">${m.big}</span>`:`<div class="bub">${m.q?`<div class="quote"><b>${m.q[0]}</b><span>${m.q[1]}</span></div>`:''}${m.t}<span class="t">${m.ed?'изм. ':''}${m.tm}${CHK}</span></div>`;h+=`<div class="mrow out" data-m="${id}">${body}</div>`}
+  if(m.a==='me'){const body=m.gif!=null?`<div class="bub gifb"><div class="pic gif" style="--a:${m.gif}deg"><b>GIF</b></div><span class="t">${m.tm}${CHK}</span></div>`:m.big?`<span class="big">${m.big}</span>`:`<div class="bub">${m.q?`<div class="quote"><b>${m.q[0]}</b><span>${m.q[1]}</span></div>`:''}${m.t}<span class="t">${m.ed?'изм. ':''}${m.tm}${CHK}</span></div>`;h+=`<div class="mrow out" data-m="${id}">${body}</div>`}
   else{const p=PPL[m.a];if(prev!==m.a&&!dm)h+=`<div class="who-n" style="color:${ink(p)}">${p.n}</div>`;
     const body=m.big?`<span class="big">${m.big}</span>`:`<div class="bub">${m.pic?'<div class="pic"></div>':''}${m.file?`<div class="file"><span class="fi">${I('file')}</span><span><b>${m.file[0]}</b><small>${m.file[1]}</small></span><button class="dl glass gi" aria-label="Скачать">${I('dl')}</button></div>`:''}${m.t||''}<span class="t">${m.tm}</span></div>`;
     h+=`<div class="mrow in" data-m="${id}">${body}</div>`}
@@ -337,18 +337,19 @@ function bindChat(el,c){const sc_=$('.scroll',el),ta=$('textarea',el),send=$('.s
     if(c.k==='dm'||Math.random()>.4)setTimeout(()=>{const who=c.k==='dm'?c.peer:'elena';const ty2=document.createElement('div');ty2.className='typing';ty2.innerHTML='<i></i><i></i><i></i>'+(PPL[who].n.split(' ')[0])+' печатает…';($$('.day-group',sc_).pop()||sc_).append(ty2);sc_.scrollTo({top:1e6,behavior:'smooth'});
       setTimeout(()=>{ty2.remove();const id2=c.id+'-'+(mseq++);const hh=document.createElement('div');hh.innerHTML=bubHtml(c.id,{a:who,t:['Принято 👍','Да, посмотрю чуть позже','Спасибо!','Хорошо, договорились'][Math.random()*4|0],tm:new Date().toTimeString().slice(0,5)},null,c.k==='dm',id2);[...hh.children].forEach(x=>($$('.day-group',sc_).pop()||sc_).append(x));$(`[data-m="${id2}"] .bub`,el)?.classList.add('pop');sc_.scrollTo({top:1e6,behavior:'smooth'})},1500)},700)};
   el._send=doSend;
+  el._gif=deg=>{const m={a:'me',gif:deg,tm:new Date().toTimeString().slice(0,5)},id=c.id+'-'+(mseq++),grp=$$('.day-group',sc_).pop()||sc_,ty=$('.typing',grp),h=document.createElement('div');h.innerHTML=bubHtml(c.id,m,null,true,id);[...h.children].forEach(x=>{ty?grp.insertBefore(x,ty):grp.append(x)});$(`[data-m="${id}"] .bub`,el)?.classList.add('pop');sc_.scrollTo({top:1e6,behavior:'smooth'})};
   el.addEventListener('click',e=>{const t=e.target;
     if(t.closest('[data-send]')){doSend();return}
     if(t.closest('[data-cx]')){ctx=null;bar();ta.value='';sync();return}
     if(t.closest('[data-plus]')){attachSheet();return}
-    if(t.closest('[data-emoji]')){emojiSheet(x=>{ta.value+=x;sync();ta.focus()});return}
+    if(t.closest('[data-emoji]')){phone.classList.contains('ep')?closeEp(true):openEp();return}
     if(t.closest('[data-jump]')){sc_.scrollTo({top:1e6,behavior:'smooth'});return}
     if(t.closest('[data-pin]')){const m=$('.mrow',sc_);m.classList.add('hl');m.scrollIntoView({block:'center',behavior:'smooth'});setTimeout(()=>m.classList.remove('hl'),1500);return}
     if(t.closest('[data-info]')){c.k==='dm'?openProfile(c.peer):(c.who||String(c.id).startsWith('t-'))?toast('Тема комнаты «Вся компания»','hash'):openGroup(c.id);return}
     if(t.closest('[data-s]')){toast('Поиск по переписке','search');return}
     if(t.closest('[data-more]')){chatActions(c,el);return}
     const rb=t.closest('.react button');if(rb){toggleReact(rb);return}
-    if(!t.closest('.comp,.kbd'))hideKb()});
+    if(!t.closest('.comp,.kbd,.epanel'))hideKb()});
   longPress(el,'.mrow',(row,e)=>msgMenu(el,row,c,{reply:m=>{ctx={k:'reply',who:m.a==='me'?S.name.split(' ')[0]:PPL[m.a].n,text:m.text};bar();sync();ta.focus()},
     edit:m=>{ctx={k:'edit',id:m.id,text:m.text};bar();ta.value=m.text;sync();ta.focus()}}));
   sc_.addEventListener('scroll',()=>jump.classList.toggle('on',sc_.scrollHeight-sc_.scrollTop-sc_.clientHeight>260),{passive:true});
@@ -362,9 +363,67 @@ function msgMenu(el,row,c,h){const m=MS[row.dataset.m];if(!m)return;const mine=m
     mine&&m.text&&{l:'Изменить',i:'pen',f:()=>h.edit(m)},c.id==='team'&&{l:'Закрепить',i:'pin',f:()=>toast('Сообщение закреплено','pin')},mine&&{l:'Информация',i:'eye',f:()=>readSheet(m)},
     {sp:1},mine&&{l:'Удалить',i:'trash',d:1,f:()=>confirmSheet('Удалить сообщение?','','Удалить',()=>{const nx=row.nextElementSibling;nx&&nx.classList.contains('react')&&nx.remove();row.remove();toast('Сообщение удалено','trash')})}].filter(Boolean);
   const o=overlay(bub,r,items,QUICK,mine);o.onReact=e=>addReact(row,e);try{navigator.vibrate&&navigator.vibrate(10)}catch(_){}}
-function emojiSheet(fn){const E='😀 😃 😄 😁 😆 😅 😂 🙂 😉 😊 😍 😘 😎 🤔 😐 😢 😭 😡 👍 👎 👏 🙏 💪 🔥 ❤️ 💔 🎉 ✨ 🍕 ☕ 🚀 👀 ✅ ❌ ⭐ 🌈 🐱 🐶 🌟 💡'.split(' ');
-  const s=sheet(`<h3>Смайлы</h3><div class="sb" style="display:grid;grid-template-columns:repeat(8,1fr);gap:2px;padding:6px 0;font-size:26px;text-align:center">${E.map(e=>`<button data-e="${e}" style="height:44px;border-radius:12px">${e}</button>`).join('')}</div>`);
-  s.el.onclick=e=>{const b=e.target.closest('[data-e]');if(b){fn&&fn(b.dataset.e);s.close()}}}
+/* ---------- панель смайлов и GIF (как в /m: поиск, вкладки групп, сетка, переключатель «Смайлы / GIF», удаление символа) ---------- */
+const EG=[
+ {key:'freq',icon:'🕘',name:'Часто используемые',items:'👍 ❤️ 😂 🔥 🙏 😊 🎉 👏 😮 😢 🤔 👌 😍 😎 ✅ 💯 🙌 😁 🤝 😅 👀'.split(' ')},
+ {key:'smile',icon:'😀',name:'Смайлы',items:'😀 😃 😄 😁 😆 😅 😂 🤣 🙂 🙃 😉 😊 😇 🥰 😍 🤩 😘 😋 😛 😜 🤪 🤔 🤨 😐 😑 😶 🙄 😏 😬 😌 😔 😴 🤒 🤕 🥵 🥶 😵 🤯 😎 🤓 😕 😟 🙁 😮 😲 😳 🥺 😢 😭 😱 😖 😞 😤 😡 🤬 😈 💀 💩 🤡 👻 👽'.split(' ')},
+ {key:'people',icon:'👋',name:'Люди',items:'👋 🤚 ✋ 🖖 👌 🤌 🤏 ✌️ 🤞 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ 👍 👎 ✊ 👊 🤛 🤜 👏 🙌 👐 🤲 🤝 🙏 ✍️ 💅 💪 🧠 👀 👂 👃 👄 🧑 👨 👩 🧓 👶'.split(' ')},
+ {key:'nature',icon:'🐶',name:'Животные и природа',items:'🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🦆 🦉 🐝 🦋 🐢 🐍 🐙 🐬 🐳 🌵 🌲 🌳 🌴 🌻 🌹 🌷 🍀 🍁 🌈 ☀️ 🌙 ⭐ ⚡ 🔥 💧 ❄️'.split(' ')},
+ {key:'food',icon:'🍔',name:'Еда и напитки',items:'🍏 🍎 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🍒 🍑 🥭 🍍 🥥 🥝 🍅 🥑 🌽 🥕 🍞 🧀 🥚 🍳 🥞 🥓 🍔 🍟 🍕 🌭 🌮 🍣 🍜 🍩 🍪 🎂 🍫 🍿 ☕ 🍵 🍺 🍷 🥂'.split(' ')},
+ {key:'act',icon:'⚽',name:'Активности',items:'⚽ 🏀 🏈 ⚾ 🎾 🏐 🏓 🥊 ⛳ 🎯 🎳 🎮 🎲 🧩 🎸 🎹 🥁 🎤 🎧 🎬 🎨 🏆 🥇 🎉 🎊 🎁'.split(' ')},
+ {key:'travel',icon:'🚗',name:'Путешествия',items:'🚗 🚕 🚌 🚓 🚑 🚒 🚚 🚲 🛵 ✈️ 🚀 🛸 🚁 ⛵ 🚢 🚂 🏠 🏢 🏰 🗼 🗽 ⛰️ 🌋 🗺️ 🧭'.split(' ')},
+ {key:'obj',icon:'💡',name:'Предметы',items:'⌚ 📱 💻 ⌨️ 🖥️ 📷 📞 📺 🔋 💡 🔦 💰 💳 🔧 🔨 ⚙️ 🔒 🔑 📦 ✉️ 📌 📎 📝 📅 📚 🔍'.split(' ')},
+ {key:'sym',icon:'❤️',name:'Символы',items:'❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💔 💕 💯 ✅ ❌ ⭕ ❗ ❓ ⚠️ 🔔 ➕ ➖ ➡️ ⬅️ ⬆️ ⬇️ 🔄 ♻️ 🆗 🆕 🔝'.split(' ')},
+ {key:'flags',icon:'🏁',name:'Флаги',items:'🏁 🚩 🏳️ 🏴 🇷🇺 🇺🇸 🇬🇧 🇩🇪 🇫🇷 🇮🇹 🇪🇸 🇨🇳 🇯🇵 🇰🇷 🇹🇷 🇧🇾 🇰🇿 🇺🇦'.split(' ')}
+];
+const EKW={сердце:'❤️🧡💛💚💙💜🖤🤍💔💕',огонь:'🔥',смех:'😂🤣😆',улыбка:'😀😃😄😊🙂',да:'👍✅👌',нет:'👎❌',кот:'🐱',собака:'🐶',пицца:'🍕',кофе:'☕',ракета:'🚀',звезда:'⭐🌟',спасибо:'🙏',праздник:'🎉🎊🎁',грусть:'😢😭😞',любовь:'😍🥰😘❤️',деньги:'💰💳',время:'⌚🕘'};
+const GIFQ=['Привет','Круто','Спасибо','Ура','Ок','Смеюсь','Думаю','Танцую'];
+const BK='<svg class="i" viewBox="0 0 24 24"><path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z"/><line x1="18" x2="12" y1="9" y2="15"/><line x1="12" x2="18" y1="9" y2="15"/></svg>';
+const epGrid=secs=>secs.map(g=>`<div class="ep-head" data-head="${g.key}">${g.name}</div><div class="ep-row" data-row="${g.key}">${g.items.map(e=>`<button data-e="${e}">${e}</button>`).join('')}</div>`).join('');
+const epTabs=()=>`<div class="ep-tabs">${EG.map((g,i)=>`<button class="ep-tab" data-key="${g.key}" title="${g.name}" aria-selected="${i===0}">${g.icon}</button>`).join('')}</div>`;
+const epTop=()=>`<div class="ep-top"><label class="ep-s">${I('search')}<input class="ep-q" type="search" placeholder="Поиск смайла" autocomplete="off" autocapitalize="none"></label>${epTabs()}</div>`;
+function epSearch(q){q=q.trim().toLowerCase();const seen=new Set(),hits=[];
+  const add=e=>{if(!seen.has(e)){seen.add(e);hits.push(e)}};
+  Object.keys(EKW).forEach(k=>{if(k.includes(q))[...EKW[k].match(/\p{Extended_Pictographic}️?/gu)||[]].forEach(add)});
+  EG.slice(1).forEach(g=>{if(g.name.toLowerCase().includes(q))g.items.forEach(add)});
+  return hits}
+/* привязка: вкладки прокручивают к группе, прокрутка подсвечивает вкладку, поиск подменяет сетку; pick(e) — выбор смайла */
+function epBind(root,pick){const eg=$('.ep-body',root),tabs=$('.ep-tabs',root),q=$('.ep-q',root);if(!eg)return;const all=eg.innerHTML;let lock=null;
+  const sync=()=>{if(lock||!tabs)return;const top=eg.getBoundingClientRect().top;let cur=null,first=null,last=null;
+    $$('[data-row]',eg).forEach(r=>{if(!first)first=r.dataset.row;last=r.dataset.row;if((r.getBoundingClientRect().top-top)/sc<=34)cur=r.dataset.row});
+    if(eg.scrollHeight-eg.scrollTop-eg.clientHeight<4)cur=last;cur=cur||first;
+    $$('.ep-tab',tabs).forEach(t=>{const on=t.dataset.key===cur;if(t.getAttribute('aria-selected')!==String(on)){t.setAttribute('aria-selected',on);if(on)tabs.scrollTo({left:t.offsetLeft-(tabs.clientWidth-t.offsetWidth)/2,behavior:'smooth'})}})};
+  eg.addEventListener('scroll',sync,{passive:true});['touchstart','wheel','pointerdown'].forEach(ev=>eg.addEventListener(ev,()=>{lock=null},{passive:true}));
+  tabs&&tabs.addEventListener('click',e=>{const t=e.target.closest('.ep-tab');if(!t)return;lock=t.dataset.key;$$('.ep-tab',tabs).forEach(x=>x.setAttribute('aria-selected',x===t));
+    tabs.scrollTo({left:t.offsetLeft-(tabs.clientWidth-t.offsetWidth)/2,behavior:'smooth'});
+    const row=$(`[data-row="${t.dataset.key}"]`,eg),head=$(`[data-head="${t.dataset.key}"]`,eg);if(!row)return;
+    eg.scrollTo({top:eg.scrollTop+(row.getBoundingClientRect().top-eg.getBoundingClientRect().top)/sc-(head?head.offsetHeight:0),behavior:'smooth'})});
+  eg.addEventListener('click',e=>{const b=e.target.closest('[data-e]');if(b)pick(b.dataset.e)});
+  q&&q.addEventListener('input',()=>{const v=q.value.trim();tabs&&(tabs.hidden=!!v);
+    if(!v){eg.innerHTML=all;eg.scrollTop=0;return}
+    const r=epSearch(v);eg.innerHTML=r.length?`<div class="ep-head">Найдено: ${r.length}</div><div class="ep-row">${r.map(e=>`<button data-e="${e}">${e}</button>`).join('')}</div>`:'<div class="ep-none">Ничего не найдено</div>';eg.scrollTop=0});
+  sync()}
+/* панель под полем ввода вместо клавиатуры: «Смайлы» или GIF */
+let epMode='emoji';
+function epPanel(){let p=$('.epanel',phone);if(!p){p=document.createElement('div');p.className='epanel';phone.append(p);
+    p.addEventListener('pointerdown',e=>{if(e.target.closest('button'))e.preventDefault()});
+    p.addEventListener('click',e=>{const m=e.target.closest('[data-m]');if(m){epMode=m.dataset.m;epRender();return}
+      if(e.target.closest('[data-del]')&&cur){cur.ta.value=[...cur.ta.value].slice(0,-1).join('');cur.ta.dispatchEvent(new Event('input'));return}
+      const g=e.target.closest('.gt');if(g&&cur){cur.el._gif(+g.dataset.a);return}
+      const gq=e.target.closest('[data-gq]');if(gq){const i=$('.ep-q',p);i.value=gq.dataset.gq;return}})}
+  return p}
+function epRender(){const p=epPanel(),gif=epMode==='gif';
+  const tiles=Array.from({length:14},(_,i)=>`<button class="gt" data-a="${(i*47)%360}" style="--a:${(i*47)%360}deg;height:${[96,132,112,150,104,126][i%6]}px" aria-label="GIF ${i+1}"></button>`).join('');
+  p.innerHTML=(gif?`<div class="ep-top"><label class="ep-s">${I('search')}<input class="ep-q" type="search" placeholder="Поиск GIF" autocomplete="off"></label><div class="ep-tabs gq">${GIFQ.map(x=>`<button class="ep-chip" data-gq="${x}">${x}</button>`).join('')}</div></div>`:epTop())+
+    `<div class="ep-body${gif?' ep-gif':''}">${gif?tiles:epGrid(EG)}</div>
+     <div class="ep-dock"><div class="ep-sw"><button data-m="emoji" aria-pressed="${!gif}">Смайлы</button><button data-m="gif" aria-pressed="${gif}">GIF</button></div>
+      <div class="ep-r">${gif?'<span class="ep-pw">Powered by <b>Klipy</b></span>':''}<button class="ep-del" data-del aria-label="Удалить символ">${BK}</button></div></div>`;
+  if(!gif)epBind(p,e=>{if(!cur)return;cur.ta.value+=e;cur.ta.dispatchEvent(new Event('input'))})}
+function openEp(){if(!cur)return;const sc_=$('.scroll',cur.el),near=sc_.scrollHeight-sc_.scrollTop-sc_.clientHeight<400;
+  cur.ta.blur();phone.classList.remove('kbr');epRender();phone.classList.add('kb','ep');if(near){sc_.scrollTop=1e6;setTimeout(()=>{sc_.scrollTop=1e6},360)}}
+function closeEp(focus){phone.classList.remove('ep');if(focus&&cur){phone.classList.remove('kb');cur.ta.focus()}else phone.classList.remove('kb')}
+
+function emojiSheet(fn){const s=sheet(`<h3>Реакция</h3><div class="ep-sheet">${epTop()}<div class="ep-body">${epGrid(EG)}</div></div>`);epBind(s.el,e=>{fn&&fn(e);s.close()})}
 function attachSheet(){const s=sheet(`<h3>Вложение</h3><div class="atiles">${[['image','Фото','#5b8def'],['file','Файл','#34c759'],['bold','Формат','#af52de'],['mic','Голос','#ff9500']].map(([ic,l,bg])=>`<button class="atile" data-a="${l}"><span class="ic" style="background:${bg}">${I(ic)}</span>${l}</button>`).join('')}</div><button class="abtn" data-close>Отмена</button>`);
   s.el.addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(a){s.close();toast(a.dataset.a==='Формат'?'Панель форматирования':'Выберите: '+a.dataset.a.toLowerCase(),'clip')}})}
 function forwardSheet(m){const sel=new Set();const s=sheet(`<h3>Переслать</h3><div class="sb"><div class="grp glass">${CH.filter(x=>x.k!=='room').map(x=>`<button class="mini" data-id="${x.id}">${avHtml(x,'')}<span class="rt"><b>${esc(x.n)}</b></span><span class="ck">${I('check')}</span></button>`).join('')}</div></div><button class="abtn pri" data-go disabled>Переслать</button>`);
@@ -376,14 +435,14 @@ function chatActions(c,el){const items=[['search','Поиск по перепи�
   s.el.addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(b){s.close();setTimeout(items[+b.dataset.i][2],200)}})}
 /* ---------- клавиатура (имитация) ---------- */
 const KR=['йцукенгшщзхъ','фывапролджэ','ячсмитьбю'];
-function showKb(ta){if(real()){const sc_=$('.scroll',cur.el),near=sc_.scrollHeight-sc_.scrollTop-sc_.clientHeight<400;phone.classList.add('kbr');if(near){sc_.scrollTop=1e6;setTimeout(()=>{sc_.scrollTop=1e6},350)}return}
+function showKb(ta){if(real()){const sc_=$('.scroll',cur.el),near=sc_.scrollHeight-sc_.scrollTop-sc_.clientHeight<400;phone.classList.remove('ep','kb');phone.classList.add('kbr');if(near){sc_.scrollTop=1e6;setTimeout(()=>{sc_.scrollTop=1e6},350)}return}
   if(!$('.kbd',phone)){const k=document.createElement('div');k.className='kbd';
     k.innerHTML=KR.map((r,i)=>`<div class="kr">${i===2?'<button class="w" data-k="shift">⇧</button>':''}${[...r].map(ch=>`<button data-k="${ch}">${ch}</button>`).join('')}${i===2?'<button class="w" data-k="del">⌫</button>':''}</div>`).join('')+'<div class="kr last"><button class="n" data-k="num">123</button><button class="sp" data-k=" ">пробел</button><button class="go" data-k="go">Отправить</button></div>';
     k.addEventListener('pointerdown',e=>{if(e.target.closest('button'))e.preventDefault()});
     k.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!cur)return;const t=cur.ta,v=b.dataset.k;if(v==='go'){cur.el._send();return}if(v==='del'){t.value=t.value.slice(0,-1)}else if(v==='shift'||v==='num'){return}else t.value+=v;t.dispatchEvent(new Event('input'))});
     phone.append(k)}
-  {const s=$('.scroll',cur.el),near=s.scrollHeight-s.scrollTop-s.clientHeight<400;phone.classList.add('kb');if(near){s.scrollTop=1e6;setTimeout(()=>{s.scrollTop=1e6},360)}}}
-function hideKb(){phone.classList.remove('kb','kbr');document.activeElement&&document.activeElement.blur&&document.activeElement.blur()}
+  {const s=$('.scroll',cur.el),near=s.scrollHeight-s.scrollTop-s.clientHeight<400;phone.classList.remove('ep');phone.classList.add('kb');if(near){s.scrollTop=1e6;setTimeout(()=>{s.scrollTop=1e6},360)}}}
+function hideKb(){phone.classList.remove('kb','kbr','ep');document.activeElement&&document.activeElement.blur&&document.activeElement.blur()}
 /* ---------- комната с темами ---------- */
 function openRoom(){const rows=TOPICS.map(t=>`<button class="row" data-id="${t.id}">${avHtml({...t,ini:'#'},'sq')}<div class="rt"><div class="r1"><b>${t.n}</b><span class="tm${t.u?' new':''}">${t.t}</span></div><div class="r2"><span class="pv"><i>${t.who}: </i>${esc(t.p)}</span>${t.at?`<span class="st" style="color:#ff9500">${I('bell')}</span>`:''}${t.u?`<span class="bd">${t.u}</span>`:''}</div></div></button>`).join('');
   const el=page({title:'Вся компания',back:'Чаты',cap:1,right:`<button data-i aria-label="О комнате">${I('info')}</button>`,body:`<div class="hero" style="padding-bottom:10px"><div style="margin-bottom:6px">${avHtml(CH[0],'')}</div><p>Комната · ${TOPICS.length} тем · в сети 4 из 12</p></div><div class="gl">Темы</div><div class="grp glass">${rows}</div>`});
