@@ -492,6 +492,15 @@ html:not(.dark) .edge.t{--ea:.46}
 .pic.gif b{position:absolute;left:8px;top:8px;padding:2px 7px;border-radius:9px;background:rgba(0,0,0,.45);color:#fff;font-size:11px;letter-spacing:.04em}
 .bub.gifb .t{position:absolute;right:10px;bottom:9px;margin:0;float:none;padding:2px 7px;border-radius:10px;background:rgba(0,0,0,.45);color:#fff!important}
 
+/* Панель выше (400), GIF — две колонки с вертикальной прокруткой */
+.phone{--eph:400px}
+.phone.ep .epanel{height:var(--eph)}
+.phone.ep .comp{bottom:calc(var(--eph) + 8px)}
+.phone.ep .chat .scroll{bottom:var(--eph);padding-bottom:78px}
+.phone.ep .jump{bottom:calc(var(--eph) + 72px)}
+.ep-gif{display:flex;gap:6px;align-items:flex-start;columns:auto;padding:8px 10px;overflow-y:auto;overflow-x:hidden}
+.gcol{flex:1;min-width:0;display:flex;flex-direction:column}
+
 </style></head>
 <body>
 <div class="stage">

@@ -413,7 +413,7 @@ function epPanel(){let p=$('.epanel',phone);if(!p){p=document.createElement('div
       const gq=e.target.closest('[data-gq]');if(gq){const i=$('.ep-q',p);i.value=gq.dataset.gq;return}})}
   return p}
 function epRender(){const p=epPanel(),gif=epMode==='gif';
-  const tiles=Array.from({length:14},(_,i)=>`<button class="gt" data-a="${(i*47)%360}" style="--a:${(i*47)%360}deg;height:${[96,132,112,150,104,126][i%6]}px" aria-label="GIF ${i+1}"></button>`).join('');
+  const gt=i=>`<button class="gt" data-a="${(i*47)%360}" style="--a:${(i*47)%360}deg;height:${[96,132,112,150,104,126,140,100][i%8]}px" aria-label="GIF ${i+1}"></button>`,tiles=[0,1].map(c=>`<div class="gcol">${Array.from({length:14},(_,k)=>gt(k*2+c)).join('')}</div>`).join('');
   p.innerHTML=(gif?`<div class="ep-top"><label class="ep-s">${I('search')}<input class="ep-q" type="search" placeholder="Поиск GIF" autocomplete="off"></label><div class="ep-tabs gq">${GIFQ.map(x=>`<button class="ep-chip" data-gq="${x}">${x}</button>`).join('')}</div></div>`:epTop())+
     `<div class="ep-body${gif?' ep-gif':''}">${gif?tiles:epGrid(EG)}</div>
      <div class="ep-dock"><div class="ep-sw"><button data-m="emoji" aria-pressed="${!gif}">Смайлы</button><button data-m="gif" aria-pressed="${gif}">GIF</button></div>
