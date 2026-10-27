@@ -159,7 +159,7 @@ function ambHtml(){return '<div class="amb"><i></i><i></i><i></i><i></i></div><i
 /* o: {title, back, right, lg, body, cls, nav (своя шапка), bottom, nobot} */
 function page(o){const el=document.createElement('div');el.className='page'+(o.cls?' '+o.cls:'');
   const prev=NAV[NAV.length-1],back=o.back!==undefined?o.back:(prev&&prev.title)||'Назад';
-  const nav=o.nav||`<div class="nav${o.lg?' lg':''}"><button class="nb glass gi" data-back aria-label="Назад">${I('chevLeft')}<span class="cnt">${esc(back)}</span></button><div class="nt"><span class="glass">${o.title||''}</span></div><div class="nr${o.cap?' cap glass':''}">${o.right||''}</div></div>`;
+  const nav=o.nav||`<div class="nav${o.lg?' lg':''}"><button class="nb glass gi" data-back aria-label="Назад">${I('chevLeft')}</button><div class="nt"><span class="glass">${o.title||''}</span></div><div class="nr${o.cap?' cap glass':''}">${o.right||''}</div></div>`;
   el.innerHTML=ambHtml()+nav+`<div class="scroll${o.nobot===false?'':' nobot'}">${o.lg?`<h1 class="lt">${o.title}</h1>`:''}${o.body||''}</div>${o.bottom||''}`;
   el._title=o.title||'';scrollWatch(el);return el}
 function scrollWatch(el){const s=$('.scroll',el),n=$('.nav',el);if(!s||!n)return;s.addEventListener('scroll',()=>n.classList.toggle('sc',s.scrollTop>(n.classList.contains('lg')?34:6)),{passive:true})}
@@ -310,7 +310,7 @@ function openChat(id,fromRoom){const c=findChat(id);if(!c)return;if(c.k==='room'
   const dm=c.k==='dm',isTopic=!!c.who||String(c.id).startsWith('t-'),pin=c.id==='team';
   const sub=isTopic?'# тема · в сети 4 из 12':(c.sub||''),onl=/в сети/.test(sub);
   const back=NAV[NAV.length-1].title||'Чаты',n=CH.reduce((s,x)=>s+(x.u||0),0);
-  const nav=`<div class="nav"><button class="nb glass gi" data-back aria-label="Назад">${I('chevLeft')}${n?`<span class="cnt">${n}</span>`:''}</button>
+  const nav=`<div class="nav cn"><button class="nb glass gi" data-back aria-label="Назад">${I('chevLeft')}${n?`<span class="cnt">${n}</span>`:''}</button>
    <button class="who glass gi" data-info>${avHtml({...c,ini:isTopic?'#':c.ini,on:0,type:0},'')}<span style="min-width:0"><b>${esc(c.n)}</b><small class="${onl?'on':''}">${esc(sub)}</small></span></button>
    <div class="nr cap glass"><button data-s aria-label="Поиск">${I('search')}</button><button data-more aria-label="Ещё">${I('dots')}</button></div></div>`;
   const el=page({cls:'chat'+(pin?' pinned':''),nav,title:c.n,body:convoHtml(id,dm)+(id==='team'?'<div class="typing"><i></i><i></i><i></i>Елена печатает…</div>':''),nobot:false});

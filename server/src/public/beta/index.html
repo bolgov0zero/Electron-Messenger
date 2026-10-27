@@ -446,6 +446,13 @@ html:not(.dark) .edge.t{--ea:.46}
 /* копия сообщения в меню занимает ровно ширину исходного пузыря: без проценты от её ширины пузырь пересчитывал бы перенос строк и менял форму */
 .cmc .mrow .bub{max-width:none;width:100%}
 
+/* Шапка страниц: кнопка «назад» — просто стрелка, название по центру (три колонки: слева, центр, справа) */
+.nav:not(.cn){display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}
+.nav:not(.cn)>:first-child{justify-self:start}
+.nav:not(.cn) .nr{justify-self:end}
+.nav:not(.cn) .nt{min-width:0}
+.nav:not(.cn) .nt>span{max-width:190px}
+
 </style></head>
 <body>
 <div class="stage">
