@@ -6732,6 +6732,7 @@ const PF_I = {
   ban: '<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>',
   unban: '<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>',
   close: '<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+  image: '<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>',
 };
 // Цвет обложки — цвет тега, как у аватарки
 function pfCoverColor(cls) {
@@ -6848,39 +6849,38 @@ function renderProfile() {
   const blocked = isBlockedId(id);
   const st = peerStatusText(id), on = S.presence[id] === 'online';
   const loginTxt = fed ? fedAddr(u) : '@' + u.username;
-  const rows = [`<button type="button" class="pf-r pf-cp" id="pf-login" aria-label="Скопировать логин: ${esc(loginTxt)}" data-on-click="pfCopyLogin"><b>Логин</b><span>${esc(loginTxt)}<i class="pf-ci">${CS_I.copy}</i></span></button>`];
-  if (fed) rows.push(`<div class="pf-r"><b>Сервер</b><span class="pf-srv">${FED_GLOBE}Другой сервер</span></div>`);
-  else if (otherSpace) rows.push(`<div class="pf-r"><b>Пространство</b><span>${esc(u.workspace_name)}</span></div>`);
-  else if (!fed && u.rel === 'ws' && myWsCount() > 1 && u.shared_workspaces?.length) rows.push(`<div class="pf-r"><b>${u.shared_workspaces.length > 1 ? 'Пространства' : 'Пространство'}</b><span>${esc(u.shared_workspaces.join(' · '))}</span></div>`);
-  if (canContact) rows.push(`<div class="pf-r"><b>В ваших контактах</b><span>${u.contact ? 'Да' : 'Нет'}</span></div>`);
+  const cellRow = (l, v) => `<div class="cell"><span class="cl">${l}</span><span class="cv">${v}</span></div>`;
+  const rows = [`<button type="button" class="cell" id="pf-login" aria-label="Скопировать логин: ${esc(loginTxt)}" data-on-click="pfCopyLogin"><span class="cl">Логин</span><span class="cv">${esc(loginTxt)}</span><span class="ch pf-ci">${CS_I.copy}</span></button>`];
+  if (fed) rows.push(cellRow('Сервер', 'Другой сервер'));
+  else if (otherSpace) rows.push(cellRow('Пространство', esc(u.workspace_name)));
+  else if (!fed && u.rel === 'ws' && myWsCount() > 1 && u.shared_workspaces?.length) rows.push(cellRow(u.shared_workspaces.length > 1 ? 'Пространства' : 'Пространство', esc(u.shared_workspaces.join(' · '))));
+  if (canContact) rows.push(cellRow('В ваших контактах', u.contact ? 'Да' : 'Нет'));
   const groups = (S.chats || []).filter(c => (c.type === 'group' || c.type === 'room') && !c.parent_id && !c.is_secret && c.members?.some(m => m.id === id));
   const dmChat = (S.chats || []).find(c => c.type === 'direct' && !c.is_secret && getPeerUserId(c) === id);
-  const mediaRow = dmChat ? `<button type="button" class="pf-g pf-link" data-on-click="pfMedia" data-a-click="${esc(JSON.stringify([dmChat.id]))}">${gmSvg('image', 18)}<b>Медиа, файлы и ссылки</b><span class="pf-ch">${gmSvg('chev', 16)}</span></button>` : '';
+  const mediaAttr = dmChat ? `data-on-click="pfMedia" data-a-click="${esc(JSON.stringify([dmChat.id]))}"` : 'disabled';
+  // Оформление перенесено из мобильного клиента (/m, профиль человека): шапка-капсула, аватарка, три плитки, сведения и общие группы стеклянными блоками
+  const tiles = `<div class="tiles">
+      <button type="button" class="tile glass gi" data-on-click="pfWrite">${PF_I.msg}Написать</button>
+      ${canContact ? `<button type="button" class="tile glass gi" data-on-click="pfContact">${u.contact ? PF_I.rem : PF_I.add}${u.contact ? 'Из контактов' : 'В контакты'}</button>` : `<button type="button" class="tile glass gi" ${mediaAttr}>${PF_I.image}Медиа</button>`}
+      <button type="button" class="tile glass gi${blocked ? '' : ' d'}" data-on-click="pfBlock">${blocked ? PF_I.unban : PF_I.ban}${blocked ? 'Разблокировать' : 'Блок'}</button></div>`;
+  const mediaCell = dmChat && canContact ? `<button type="button" class="cell glass" style="border-radius:var(--r-card);margin-bottom:16px" ${mediaAttr}><span class="ci" style="background:#5b8def">${PF_I.image}</span><span class="cl">Медиа, файлы и ссылки</span><span class="ch">${gmSvg('chev', 16)}</span></button>` : '';
   const groupsHtml = groups.length
-    ? `<div class="pf-g pf-gl">${groups.map(c => `<div class="pf-gr" data-on-click="pfOpenChat" data-a-click="${esc(JSON.stringify([c.id]))}">
+    ? `<div class="gl">Общие группы · ${groups.length}</div><div class="grp glass">${groups.map(c => `<button type="button" class="mini" data-on-click="pfOpenChat" data-a-click="${esc(JSON.stringify([c.id]))}">
         <div class="av av-sm ${chatAvatarClass(c)}${c.type === 'room' && c.has_topics ? ' av-sq' : ' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
-        <div class="pf-gi"><b>${esc(chatName(c))}</b><span>${c.type === 'room' ? 'Комната' : 'Группа'} · ${nMembers(c.members.length)}</span></div></div>`).join('')}</div>`
-    : `<div class="pf-g"><div class="pf-empty">Общих групп и комнат нет</div></div>`;
+        <span class="rt"><b>${esc(chatName(c))}</b><small>${c.type === 'room' ? 'Комната' : 'Группа'} · ${nMembers(c.members.length)}</small></span><span class="ch">${gmSvg('chev', 16)}</span></button>`).join('')}</div>`
+    : '';
   box.innerHTML = `
-    <div class="pf-scroll">
-      <div class="pf-cover" style="--cv:${pfCoverColor(cls)}"><button class="pf-x" type="button" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-profile"]'>${PF_I.close}</button></div>
-      <div class="pf-head">
+    <div class="pm-scroll">
+      <div class="pm-nav"><span class="pm-t glass">${esc(u.display_name)}</span><button class="pm-x glass gi" type="button" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-profile"]'>${PF_I.close}</button></div>
+      <div class="hero">
         <div class="pf-av ${cls}"><span>${esc(initials(u.display_name))}</span><img src="${avUrl('users', u.id)}" data-on-error="__h17">${presenceDot(id)}</div>
-        <div class="pf-tx"><div class="pf-name">${esc(u.display_name)}${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}">${esc(u.tag)}</span>` : ''}</div><div class="pf-st${on ? ' on' : ''}">${esc(st)}</div></div>
+        <h2>${esc(u.display_name)}</h2><p class="${on ? 'on' : ''}">${esc(st)}</p>${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}" style="margin-top:6px">${esc(u.tag)}</span>` : ''}
       </div>
-      <div class="pf-body">
-        ${blocked ? `<div class="pf-note">Вы заблокировали этого человека: он не может писать вам в личные сообщения. Общие группы и комнаты остаются.</div>` : ''}
-        <div class="pf-g">${rows.join('')}</div>
-        ${mediaRow}
-        <div class="pf-gt">Общие группы · ${groups.length}</div>
-        ${groupsHtml}
-      </div>
-    </div>
-    <div class="pf-foot">
-      <button type="button" class="pf-fb ${blocked ? 'modal-btn-ghost' : 'pf-danger'}" data-on-click="pfBlock">${blocked ? PF_I.unban + 'Разблокировать' : PF_I.ban + 'Заблокировать'}</button>
-      <span class="pf-sp"></span>
-      ${canContact ? `<button type="button" class="modal-btn-ghost pf-fc" data-on-click="pfContact">${u.contact ? PF_I.rem + 'Из контактов' : PF_I.add + 'В контакты'}</button>` : ''}
-      <button type="button" class="modal-btn-primary pf-fw" data-on-click="pfWrite">${PF_I.msg}Написать</button>
+      ${tiles}
+      ${blocked ? `<div class="nbanner glass">${PF_I.ban}<span>Вы заблокировали этого человека: он не может писать вам в личные сообщения. Общие группы и комнаты остаются.</span></div>` : ''}
+      ${mediaCell}
+      <div class="grp glass">${rows.join('')}</div>
+      ${groupsHtml}
     </div>`;
   applyAvatars();   // фото общих групп и комнат
 }
@@ -7723,19 +7723,22 @@ function gmSubText(chat, members) {
   const c = gmOnlineCount(chat, members);
   return `${nMembers(c.total)} · ${c.online} в сети`;
 }
-function gmAv(m) {
-  return `<div class="av-wrap"><div class="av av-round ${userAvatarColor(m.id, m.tag)}" style="width:36px;height:36px;font-size:12px" data-av-user="${m.id}">${initials(m.display_name || m.username || '?')}</div>${m.federated ? fedDotRaw() : presenceDot(m.id)}</div>`;
+function gmAv(m, size) {
+  const z = size || 36;
+  return `<div class="av-wrap"><div class="av av-round ${userAvatarColor(m.id, m.tag)}" style="width:${z}px;height:${z}px;font-size:${z > 38 ? 14 : 12}px" data-av-user="${m.id}">${initials(m.display_name || m.username || '?')}</div>${m.federated ? fedDotRaw() : presenceDot(m.id)}</div>`;
 }
+// Строка участника — как в мобильном клиенте (профиль группы): аватарка, имя, статус под ним, справа метка роли или тега
 function gmRow(m, chat, perms, pending) {
   const self = m.id === S.user.id, st = gmStatus(m);
   const login = m.federated ? fedAddr(m) : '@' + (m.username || '');
-  const right = pending ? '<span class="gm-chip wait">ждёт ответа</span>'
-    : m.id === chat.created_by && !perms.mirror ? '<span class="gm-chip role">создатель</span>'
-    : `<span class="gm-st ${st.cls}" data-u="${m.id}">${esc(st.t)}</span>`;
+  const pill = (t, cls, st_) => `<span class="pill-tag ${cls || ''}"${st_ ? ` style="${st_}"` : ''}>${esc(t)}</span>`;
+  const right = pending ? pill('ждёт ответа', '', 'color:var(--accent-ink)')
+    : m.id === chat.created_by && !perms.mirror ? pill('создатель', '', 'color:var(--accent-ink)')
+    : (m.tag ? pill(m.tag, 'pp-tag ' + senderNameClass(m.tag)) : '');
   const contact = !pending && !self && needsContact(m.id) ? `<button class="gm-mini" data-on-click="__h34" data-a-click="${esc(JSON.stringify([m.id]))}">В контакты</button>` : '';
   const kick = (pending || (perms.canEdit && !self && m.id !== chat.created_by)) && perms.canEdit
     ? `<button class="gm-x" title="${pending ? 'Отменить приглашение' : 'Убрать из группы'}" aria-label="${pending ? 'Отменить приглашение' : 'Убрать из группы'}" data-on-click="__h35" data-a-click="${esc(JSON.stringify([m.id, !!pending]))}">${gmSvg('x', 15)}</button>` : '';
-  return `<div class="gm-row${pending ? ' pend' : ''}" ${self || pending ? '' : `data-on-click="gmOpenMember" data-a-click="${esc(JSON.stringify([m.id]))}"`}>${gmAv(m)}<div class="gm-nm"><b>${esc(m.display_name || m.username || '')}${self ? ' (вы)' : ''}</b><span class="gm-l">${esc(login)}</span></div>${contact}${right}${kick}</div>`;
+  return `<div class="mini${pending ? ' pend' : ''}" ${self || pending ? '' : `data-on-click="gmOpenMember" data-a-click="${esc(JSON.stringify([m.id]))}"`}>${gmAv(m, 40)}<span class="rt"><b>${esc(m.display_name || m.username || '')}${self ? ' (вы)' : ''}</b><small data-u="${m.id}" class="${pending ? '' : (st.cls ? 'on' : '')}">${esc(pending ? login : st.t)}</small></span>${right}${contact}${kick}</div>`;
 }
 function gmFilter(list, q) {
   q = q.trim().toLowerCase();
@@ -7744,8 +7747,8 @@ function gmFilter(list, q) {
 function renderGroupProfile(keep) {
   const g = S.gm, chat = gmChat(), box = document.getElementById('gm-modal');
   if (!g || !chat || !box) return;
-  if (g.view === 'add') return renderGroupAdd(keep);
-  if (!keep) g.cmp = false;
+  if (g.view === 'add') { box.classList.remove('gmm'); return renderGroupAdd(keep); }
+  box.classList.add('gmm');
   const perms = gmPerms(chat), all = gmMembers(chat);
   const local = gmSorted(all.filter(m => !m.federated), chat), fed = gmSorted(all.filter(m => m.federated), chat);
   const pend = (chat.pending || []);
@@ -7756,48 +7759,68 @@ function renderGroupProfile(keep) {
   const show = k => g.f === 'all' || g.f === k;
   const muted = S.mutedChats.has(chat.id);
   const kind = chat.type === 'room' ? 'Комната' : 'Группа';
-  const sec = (title, cls, n, body, note) => `<div class="gm-sec"><div class="gm-sec-h">${title}<span class="n">${n}</span></div><div class="gm-box ${cls}">${note || ''}${body}</div></div>`;
-  const chip = (k, label, n) => `<button type="button" class="${g.f === k ? 'on' : ''}" data-on-click="gmFilterSet" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label}<small>${n}</small></button>`;
-  const lists = [];
-  if (show('local')) lists.push(sec('На этом сервере', '', `${lf.length}${lf.length !== local.length ? ' из ' + local.length : ''}`, lf.map(m => gmRow(m, chat, perms)).join('') || '<div class="gm-none">Никого не нашли</div>'));
-  if (fed.length && show('fed')) lists.push(sec(`<span class="gm-globe">${FED_GLOBE}</span><span class="gm-fedt">С других серверов</span>`, 'fed', ff.length, ff.map(m => gmRow(m, chat, perms)).join('') || '<div class="gm-none">Никого не нашли</div>',
-    `<div class="gm-note">${gmSvg('info', 14)}<span>${perms.mirror ? 'Эти люди на сервере, где создана группа, или на серверах, подключённых к нему.' : 'Эти люди видят группу на своём сервере. Если связи нет, они не получают новые сообщения.'}</span></div>`));
-  if (pend.length && show('pend')) lists.push(sec('Ждут ответа', 'pend', pf.length, pf.map(m => gmRow({ ...m, federated: true }, chat, perms, true)).join('') || '<div class="gm-none">Никого не нашли</div>'));
-  if (perms.canDelete && g.f === 'all') lists.push('<div class="gm-ft"><button type="button" class="gm-link d" data-on-click="gmDelete">Удалить группу</button></div>');
+  const q = g.q.trim();
+  const none = '<div class="cell"><span class="cl" style="color:var(--text2)">Никого не нашли</span></div>';
+  const chip = (k, label, n) => `<button type="button" class="chip${g.f === k ? ' on' : ''}" data-on-click="gmFilterSet" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label} ${n}</button>`;
+  // Оформление перенесено из мобильного клиента (/m, профиль группы и комнаты): шапка-капсула, аватарка, плитки, поиск, переключатель фильтров как у папок и стеклянные списки
+  let lists = '';
+  if (show('local')) lists += `<div class="gl">${fed.length ? 'На этом сервере' : 'Участники'} · ${lf.length}${lf.length !== local.length ? ' из ' + local.length : ''}</div><div class="grp glass">${lf.map(m => gmRow(m, chat, perms)).join('') || none}${perms.canEdit && g.f !== 'pend' && !q ? `<button type="button" class="mini" data-on-click="gmAddView"><span class="ci" style="background:var(--accent)">${gmSvg('plus', 17)}</span><span class="rt"><b style="color:var(--accent-ink)">Добавить участников</b></span></button>` : ''}</div>`;
+  if (fed.length && show('fed')) lists += `<div class="gl">С других серверов · ${ff.length}</div><div class="grp glass">${ff.map(m => gmRow(m, chat, perms)).join('') || none}</div>`;
+  if (pend.length && show('pend')) lists += `<div class="gl">Ждут ответа · ${pf.length}</div><div class="grp glass">${pf.map(m => gmRow({ ...m, federated: true }, chat, perms, true)).join('') || none}</div>`;
+  if (perms.canDelete && g.f === 'all' && !q) lists += `<div class="grp glass"><button type="button" class="cell" data-on-click="gmDelete"><span class="cl red">Удалить группу</span></button></div>`;
   const tiles = [
-    perms.canEdit ? `<button type="button" class="gm-tile" data-on-click="gmAddView">${gmSvg('plus', 20)}Добавить</button>` : '',
-    `<button type="button" class="gm-tile" data-on-click="__h36">${gmSvg('search', 20)}Поиск</button>`,
-    `<button type="button" class="gm-tile" data-on-click="openChatMedia" data-a-click="${esc(JSON.stringify([chat.id]))}">${gmSvg('image', 20)}Медиа</button>`,
-    perms.canEdit ? `<button type="button" class="gm-tile" data-on-click="gmGuest">${gmSvg('link', 20)}Гость</button>` : '',
-    `<button type="button" class="gm-tile" data-on-click="gmMute" data-a-click='["__event"]'>${gmSvg(muted ? 'bell' : 'bellOff', 20)}${muted ? 'Со звуком' : 'Без звука'}</button>`,
-    perms.canLeave ? `<button type="button" class="gm-tile d" data-on-click="gmLeave">${gmSvg('out', 20)}Выйти</button>` : '',
+    perms.canEdit ? `<button type="button" class="tile glass gi" data-on-click="gmAddView">${gmSvg('plus', 22)}Добавить</button>` : '',
+    perms.canEdit ? `<button type="button" class="tile glass gi" data-on-click="gmGuest">${gmSvg('link', 22)}Гость</button>` : '',
+    `<button type="button" class="tile glass gi" data-on-click="gmMute" data-a-click='["__event"]'>${gmSvg(muted ? 'bell' : 'bellOff', 22)}${muted ? 'Звук' : 'Без звука'}</button>`,
+    `<button type="button" class="tile glass gi" data-on-click="openChatMedia" data-a-click="${esc(JSON.stringify([chat.id]))}">${gmSvg('image', 22)}Медиа</button>`,
+    perms.canLeave ? `<button type="button" class="tile glass gi d" data-on-click="gmLeave">${gmSvg('out', 22)}Выйти</button>` : '',
   ].filter(Boolean);
-  const prev = box.querySelector('.gm-scroll'), top = prev ? prev.scrollTop : 0, qHad = document.activeElement?.id === 'gm-q';
+  const prev = box.querySelector('.pm-scroll'), top = prev ? prev.scrollTop : 0, qHad = document.activeElement?.id === 'gm-q';
+  const pFin = box.querySelector('.fin'), pLeft = pFin ? pFin.scrollLeft : 0, pTh = pFin?.querySelector('.thumb'), pThumb = pTh && pTh.style.width ? { l: pTh.style.left, w: pTh.style.width } : null;
   box.innerHTML = `
-    <div class="gm-top"><span class="t">${kind}</span><button class="icon-btn" data-on-click="closeModal" data-a-click='["modal-group"]' aria-label="Закрыть">${gmSvg('x', 16)}</button></div>
-    <div class="gm-fixed">
-      <div class="gm-hero">
-        <div class="gm-avw"><div class="av av-round ${chatAvatarClass(chat)}" id="gm-av" data-av-chat="${chat.id}" style="width:88px;height:88px;font-size:30px">${chatIcon(chat)}</div>
-          ${perms.canEdit ? `<label class="gm-cam" title="Сменить аватарку">${gmSvg('cam', 14)}<input type="file" accept="image/*" hidden data-on-change="gmAvatar" data-a-change='["__this"]'></label>` : ''}${perms.mirror ? `<span class="gm-fedbig">${FED_GLOBE}</span>` : ''}</div>
-        <div class="gm-txt">
-          ${g.rename ? `<div class="gm-nm1"><input id="gm-name" value="${esc(chat.name || '')}" maxlength="60" data-on-keydown="__h37" data-on-blur="gmRenameSave" data-a-blur='["__value"]'></div>`
-            : `<div class="gm-nm1"><span class="gm-name">${esc(chatName(chat))}</span>${perms.canRename ? `<button class="gm-pen" title="Переименовать" aria-label="Переименовать" data-on-click="gmRenameStart">${gmSvg('pen', 15)}</button>` : ''}</div>`}
-          <div class="gm-sub" id="gm-sub">${gmSubText(chat, all)}</div>
-        </div>
+    <div class="pm-scroll">
+      <div class="pm-nav"><span class="pm-t glass">${kind}</span><button class="pm-x glass gi" type="button" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-group"]'>${gmSvg('x', 18)}</button></div>
+      <div class="hero">
+        <div class="pgav"><div class="av av-round ${chatAvatarClass(chat)}" id="gm-av" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
+          ${perms.canEdit ? `<label class="pgcam" title="Сменить аватарку">${gmSvg('cam', 15)}<input type="file" accept="image/*" hidden data-on-change="gmAvatar" data-a-change='["__this"]'></label>` : ''}${perms.mirror ? `<span class="gm-fedbig">${FED_GLOBE}</span>` : ''}</div>
+        ${g.rename ? `<div class="gm-nm1"><input id="gm-name" value="${esc(chat.name || '')}" maxlength="60" data-on-keydown="__h37" data-on-blur="gmRenameSave" data-a-blur='["__value"]'></div>`
+          : `<h2 class="gm-nm1"><span class="gm-name">${esc(chatName(chat))}</span>${perms.canRename ? `<button class="gm-pen" title="Переименовать" aria-label="Переименовать" data-on-click="gmRenameStart">${gmSvg('pen', 15)}</button>` : ''}</h2>`}
+        <p id="gm-sub">${gmSubText(chat, all)}</p>
       </div>
-      ${perms.mirror ? `<div class="gm-banner">${gmSvg('info', 14)}<span><b>${kind} на другом сервере.</b> Название, состав и аватарку меняет только её владелец. Вы можете писать, ставить реакции и выйти.</span></div>` : ''}
-      <div class="gm-tiles n${tiles.length}">${tiles.join('')}</div>
-      <div class="gm-tools"><label class="gm-search">${gmSvg('search', 15)}<input id="gm-q" value="${esc(g.q)}" placeholder="Найти участника" autocomplete="off" data-on-input="gmSearch" data-a-input='["__value"]'></label>
-        ${showChips ? `<div class="gm-chips" role="group" aria-label="Показать">${chip('all', 'Все', all.length)}${chip('local', 'На этом сервере', local.length)}${chip('fed', `<span class="gm-cg">${FED_GLOBE}</span>С других серверов`, fed.length)}${pend.length ? chip('pend', 'Ждут ответа', pend.length) : ''}</div>` : ''}</div>
-    </div>
-    <div class="gm-listwrap"><div class="gm-scroll">${lists.join('')}</div></div>`;
-  box.classList.toggle('cmp', !!g.cmp);
-  const sc = box.querySelector('.gm-scroll');
+      ${perms.mirror ? `<div class="nbanner glass" style="margin:0 0 16px">${gmSvg('info', 18)}<span><b>${kind} на другом сервере.</b> Название, состав и аватарку меняет только её владелец. Писать и ставить реакции можно, а также выйти.</span></div>` : ''}
+      <div class="tiles${tiles.length > 3 ? ' sm' : ''}" style="grid-template-columns:repeat(${Math.min(tiles.length, 5)},1fr)">${tiles.join('')}</div>
+      <label class="srch glass">${gmSvg('search', 18)}<input id="gm-q" value="${esc(g.q)}" placeholder="Найти участника" autocomplete="off" data-on-input="gmSearch" data-a-input='["__value"]'></label>
+      ${showChips ? `<div class="fbar pgf"><div class="chips fo"><div class="fgrp glass"><div class="fin"><i class="thumb"></i>${chip('all', 'Все', all.length)}${chip('local', 'На этом сервере', local.length)}${fed.length ? chip('fed', 'С других серверов', fed.length) : ''}${pend.length ? chip('pend', 'Ждут ответа', pend.length) : ''}</div></div></div></div>` : ''}
+      <div id="gm-lists">${lists}</div>
+    </div>`;
+  const sc = box.querySelector('.pm-scroll');
   sc.scrollTop = keep ? top : 0;
-  sc.addEventListener('scroll', gmOnScroll, { passive: true });
+  gmChipsInit(box, pLeft, pThumb);
   applyAvatars();
   if (g.rename) { const i = document.getElementById('gm-name'); i?.focus(); i?.select(); }
   else if (qHad && keep) { const i = document.getElementById('gm-q'); if (i) { i.focus(); const l = i.value.length; try { i.setSelectionRange(l, l); } catch {} } }
+}
+// Переключатель фильтров, как у папок в мобильном клиенте: бегунок едет к выбранному чипу, выбранный встаёт по центру, у края, под который чипы уходят, текст гаснет
+function gmChipsInit(box, left, prev) {
+  const fin = box.querySelector('.fin'); if (!fin) return;
+  const th = fin.querySelector('.thumb'), on = fin.querySelector('.chip.on'), grp = fin.parentNode;
+  const edges = () => {
+    const m = fin.scrollWidth - fin.clientWidth, x = fin.scrollLeft, l = x > 2, r = x < m - 2;
+    fin.style.setProperty('--fl', l ? '22px' : '0px'); fin.style.setProperty('--fr', r ? '22px' : '0px');
+    grp.style.setProperty('--bl', l ? 1 : 0); grp.style.setProperty('--br', r ? 1 : 0);
+  };
+  fin.addEventListener('scroll', edges, { passive: true });
+  fin.scrollLeft = left || 0;
+  if (th && on && on.offsetWidth) {
+    if (prev && prev.w) { th.style.transition = 'none'; th.style.left = prev.l; th.style.width = prev.w; void th.offsetWidth; th.style.transition = ''; }
+    th.style.left = on.offsetLeft + 'px'; th.style.width = on.offsetWidth + 'px';
+    if (S.gm?.center) {
+      S.gm.center = false;
+      const fr = fin.getBoundingClientRect(), br = on.getBoundingClientRect();
+      fin.scrollTo({ left: fin.scrollLeft + (br.left + br.width / 2) - (fr.left + fr.width / 2), behavior: 'smooth' });
+    }
+  }
+  edges();
 }
 // Шапка сворачивается, только если списка хватает и после сворачивания: иначе она мигала бы
 function gmOnScroll(e) {
@@ -7805,7 +7828,7 @@ function gmOnScroll(e) {
   if (!cmp && st > 40 && over > 330) { box.classList.add('cmp'); S.gm.cmp = true; }
   else if (cmp && st < 4) { box.classList.remove('cmp'); S.gm.cmp = false; }
 }
-function gmFilterSet(k) { S.gm.f = k; S.gm.cmp = false; renderGroupProfile(); }
+function gmFilterSet(k) { S.gm.f = k; S.gm.center = true; renderGroupProfile(true); }
 function gmSearch(v) { S.gm.q = v; renderGroupProfile(true); }
 function gmPaintSub() {
   const chat = gmChat(), el = document.getElementById('gm-sub');
@@ -7813,7 +7836,7 @@ function gmPaintSub() {
 }
 function gmPaintStatus() {
   const chat = gmChat(); if (!chat || S.gm?.view !== 'main') return;
-  document.querySelectorAll('#gm-modal .gm-st[data-u]').forEach(el => { const m = gmMembers(chat).find(x => x.id === +el.dataset.u); if (!m) return; const st = gmStatus(m); el.textContent = st.t; el.classList.toggle('on', !!st.cls); });
+  document.querySelectorAll('#gm-modal small[data-u]').forEach(el => { const m = gmMembers(chat).find(x => x.id === +el.dataset.u); if (!m) return; if (el.closest('.pend')) return; const st = gmStatus(m); el.textContent = st.t; el.classList.toggle('on', !!st.cls); });
   gmPaintSub();
 }
 function gmOpenMember(id) { openProfile(id); }

@@ -1251,3 +1251,135 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
   border: 1px solid var(--gl-edge);
   box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 16px 40px var(--gl-shadow);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Профиль человека: оформление перенесено из мобильного клиента (/m): шапка-капсула, аватарка, три плитки, сведения и общие группы
+   ══════════════════════════════════════════════════════════════ */
+#pf-modal.pf-modal { width: 420px; max-width: 94vw; max-height: 90vh; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+#pf-modal .pm-scroll { overflow-y: auto; min-height: 0; padding: 16px; scrollbar-width: none; }
+#pf-modal .pm-scroll::-webkit-scrollbar { display: none; }
+#pf-modal .glass { background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl-card); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 8px 22px var(--gl-shadow); }
+#pf-modal .pm-nav { position: relative; display: flex; align-items: center; justify-content: center; height: 44px; margin-bottom: 6px; }
+#pf-modal .pm-t { height: 44px; padding: 0 20px; border-radius: 22px; display: flex; align-items: center; font-size: 16px; font-weight: 700; max-width: calc(100% - 112px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pf-modal .pm-x { position: absolute; right: 0; top: 0; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--text); cursor: pointer; padding: 0; transition: transform .35s var(--gl-spring); }
+#pf-modal .pm-x svg { width: 18px; height: 18px; }
+#pf-modal .pm-x:active { transform: scale(.92); }
+#pf-modal .hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 6px 0 16px; }
+#pf-modal .hero .pf-av { width: 104px; height: 104px; border: 0; font-size: 36px; margin: 0 0 8px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
+#pf-modal .hero h2 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+#pf-modal .hero p { margin: 0; font-size: 14px; color: var(--text2); }
+#pf-modal .hero p.on { color: var(--accent-ink); }
+#pf-modal .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+#pf-modal .tile { height: 68px; border-radius: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0 2px; font: 600 12px var(--ff, inherit); color: var(--accent-ink); cursor: pointer; transition: transform .35s var(--gl-spring), background .2s; }
+#pf-modal .tile svg { width: 22px; height: 22px; }
+#pf-modal .tile:hover { background: var(--gl-card2); }
+#pf-modal .tile:active { transform: scale(.94); }
+#pf-modal .tile.d { color: var(--danger); }
+#pf-modal .tile:disabled { opacity: .5; cursor: default; }
+#pf-modal .nbanner { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 22px; margin: 0 0 12px; font-size: 13.5px; line-height: 1.35; color: var(--text2); }
+#pf-modal .nbanner > svg { width: 20px; height: 20px; color: var(--accent-ink); flex: none; }
+#pf-modal .grp { border-radius: var(--r-card); overflow: hidden; margin-bottom: 16px; }
+#pf-modal .grp > * + * { border-top: 1px solid var(--gl-lo); }
+#pf-modal .gl { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 2px 12px 6px; }
+#pf-modal .cell { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 16px; box-sizing: border-box; text-align: left; font: 16px var(--ff, inherit); color: var(--text); background: none; border: 0; cursor: default; transition: background .2s; }
+#pf-modal button.cell { cursor: pointer; }
+#pf-modal .grp > button.cell:hover, #pf-modal .mini:hover { background: var(--gl-card2); }
+#pf-modal .cell.glass { background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl-card); border: 1px solid var(--gl-edge); }
+#pf-modal .cell .cl { flex: 1; min-width: 0; font-weight: 500; }
+#pf-modal .cell .cv { color: var(--text2); font-size: 15px; }
+#pf-modal .cell .ch { color: var(--muted); font-size: 16px; display: flex; }
+#pf-modal .cell .ch svg { width: 16px; height: 16px; }
+#pf-modal .cell .ci { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; color: #fff; flex: none; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35); }
+#pf-modal .cell .ci svg { width: 17px; height: 17px; }
+#pf-modal .cell.done .ch { color: var(--accent-ink); }
+#pf-modal .mini { display: flex; align-items: center; gap: 12px; padding: 8px 16px; width: 100%; box-sizing: border-box; text-align: left; background: none; border: 0; color: var(--text); cursor: pointer; font: inherit; transition: background .2s; }
+#pf-modal .mini .av { width: 40px; height: 40px; font-size: 14px; flex: none; }
+#pf-modal .mini b { display: block; font-size: 15.5px; font-weight: 600; }
+#pf-modal .mini small { font-size: 13px; color: var(--text2); }
+#pf-modal .mini .rt { flex: 1; min-width: 0; }
+#pf-modal .mini .ch { color: var(--muted); display: flex; }
+#pf-modal .mini .ch svg { width: 16px; height: 16px; }
+#gm-modal.gmm.gm-modal { width: 420px; max-width: 94vw; max-height: 90vh; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+#gm-modal.gmm .pm-scroll { overflow-y: auto; min-height: 0; padding: 16px; scrollbar-width: none; }
+#gm-modal.gmm .pm-scroll::-webkit-scrollbar { display: none; }
+#gm-modal.gmm .glass { background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl-card); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 8px 22px var(--gl-shadow); }
+#gm-modal.gmm .pm-nav { position: relative; display: flex; align-items: center; justify-content: center; height: 44px; margin-bottom: 6px; }
+#gm-modal.gmm .pm-t { height: 44px; padding: 0 20px; border-radius: 22px; display: flex; align-items: center; font-size: 16px; font-weight: 700; max-width: calc(100% - 112px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#gm-modal.gmm .pm-x { position: absolute; right: 0; top: 0; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--text); cursor: pointer; padding: 0; transition: transform .35s var(--gl-spring); }
+#gm-modal.gmm .pm-x svg { width: 18px; height: 18px; }
+#gm-modal.gmm .pm-x:active { transform: scale(.92); }
+#gm-modal.gmm .hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 6px 0 16px; }
+#gm-modal.gmm .hero .pf-av { width: 104px; height: 104px; border: 0; font-size: 36px; margin: 0 0 8px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
+#gm-modal.gmm .hero h2 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+#gm-modal.gmm .hero p { margin: 0; font-size: 14px; color: var(--text2); }
+#gm-modal.gmm .hero p.on { color: var(--accent-ink); }
+#gm-modal.gmm .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+#gm-modal.gmm .tile { height: 68px; border-radius: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0 2px; font: 600 12px var(--ff, inherit); color: var(--accent-ink); cursor: pointer; transition: transform .35s var(--gl-spring), background .2s; }
+#gm-modal.gmm .tile svg { width: 22px; height: 22px; }
+#gm-modal.gmm .tile:hover { background: var(--gl-card2); }
+#gm-modal.gmm .tile:active { transform: scale(.94); }
+#gm-modal.gmm .tile.d { color: var(--danger); }
+#gm-modal.gmm .tile:disabled { opacity: .5; cursor: default; }
+#gm-modal.gmm .nbanner { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 22px; margin: 0 0 12px; font-size: 13.5px; line-height: 1.35; color: var(--text2); }
+#gm-modal.gmm .nbanner > svg { width: 20px; height: 20px; color: var(--accent-ink); flex: none; }
+#gm-modal.gmm .grp { border-radius: var(--r-card); overflow: hidden; margin-bottom: 16px; }
+#gm-modal.gmm .grp > * + * { border-top: 1px solid var(--gl-lo); }
+#gm-modal.gmm .gl { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 2px 12px 6px; }
+#gm-modal.gmm .cell { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 16px; box-sizing: border-box; text-align: left; font: 16px var(--ff, inherit); color: var(--text); background: none; border: 0; cursor: default; transition: background .2s; }
+#gm-modal.gmm button.cell { cursor: pointer; }
+#gm-modal.gmm .grp > button.cell:hover, #gm-modal.gmm .mini:hover { background: var(--gl-card2); }
+#gm-modal.gmm .cell.glass { background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl-card); border: 1px solid var(--gl-edge); }
+#gm-modal.gmm .cell .cl { flex: 1; min-width: 0; font-weight: 500; }
+#gm-modal.gmm .cell .cv { color: var(--text2); font-size: 15px; }
+#gm-modal.gmm .cell .ch { color: var(--muted); font-size: 16px; display: flex; }
+#gm-modal.gmm .cell .ch svg { width: 16px; height: 16px; }
+#gm-modal.gmm .cell .ci { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; color: #fff; flex: none; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35); }
+#gm-modal.gmm .cell .ci svg { width: 17px; height: 17px; }
+#gm-modal.gmm .cell.done .ch { color: var(--accent-ink); }
+#gm-modal.gmm .mini { display: flex; align-items: center; gap: 12px; padding: 8px 16px; width: 100%; box-sizing: border-box; text-align: left; background: none; border: 0; color: var(--text); cursor: pointer; font: inherit; transition: background .2s; }
+#gm-modal.gmm .mini .av { width: 40px; height: 40px; font-size: 14px; flex: none; }
+#gm-modal.gmm .mini b { display: block; font-size: 15.5px; font-weight: 600; }
+#gm-modal.gmm .mini small { font-size: 13px; color: var(--text2); }
+#gm-modal.gmm .mini .rt { flex: 1; min-width: 0; }
+#gm-modal.gmm .mini .ch { color: var(--muted); display: flex; }
+#gm-modal.gmm .mini .ch svg { width: 16px; height: 16px; }
+
+/* ── Профиль группы и комнаты: то же оформление, плюс аватарка с камерой, имя с карандашом, поиск и переключатель фильтров как у папок ── */
+#gm-modal.gmm .pgav { position: relative; width: 104px; height: 104px; margin-bottom: 8px; }
+#gm-modal.gmm .pgav .av { width: 104px; height: 104px; font-size: 36px; }
+#gm-modal.gmm .pgcam { position: absolute; right: -2px; bottom: -2px; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; border: 3px solid var(--modal-bg); display: grid; place-items: center; cursor: pointer; }
+#gm-modal.gmm .gm-fedbig { position: absolute; left: -4px; top: -4px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--gl2); color: var(--accent-ink); box-shadow: 0 0 0 1.5px var(--gl-edge); }
+#gm-modal.gmm .gm-nm1 { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; max-width: 100%; }
+#gm-modal.gmm h2.gm-nm1 { font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+#gm-modal.gmm .gm-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#gm-modal.gmm .gm-pen { width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--gl-card); color: var(--muted); display: grid; place-items: center; cursor: pointer; flex: none; }
+#gm-modal.gmm .gm-nm1 input { width: 100%; text-align: center; font: 800 22px var(--ff, inherit); color: var(--text); background: var(--gl-hov, var(--gl-card)); border: 1px solid var(--gl-edge); border-radius: 16px; padding: 6px 12px; outline: 0; }
+#gm-modal.gmm .tiles.sm { gap: 8px; } #gm-modal.gmm .tiles.sm .tile { font-size: 11px; } #gm-modal.gmm .tiles.sm .tile svg { width: 20px; height: 20px; }
+#gm-modal.gmm .srch { height: 44px; border-radius: 22px; margin: 0 0 12px; padding: 0 16px; font-size: 16px; display: flex; align-items: center; gap: 8px; cursor: text; }
+#gm-modal.gmm .srch svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+#gm-modal.gmm .srch input { flex: 1; min-width: 0; height: 100%; color: var(--text); font: 16px var(--ff, inherit); background: none; border: 0; outline: 0; padding: 0; }
+#gm-modal.gmm .srch input::placeholder { color: var(--muted); }
+#gm-modal.gmm .fbar { margin: 0 0 14px; }
+#gm-modal.gmm .chips { display: block; margin: 0; padding: 0; }
+#gm-modal.gmm .fgrp { position: relative; display: block; width: 100%; box-sizing: border-box; padding: 0; border-radius: 26px; overflow: visible; --bl: 0; --br: 0; }
+#gm-modal.gmm .fin { position: relative; display: flex; gap: 2px; margin: 4px; border-radius: 22px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; --fl: 0px; --fr: 0px;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%); }
+#gm-modal.gmm .fin::-webkit-scrollbar { display: none; }
+#gm-modal.gmm .thumb { position: absolute; top: 0; bottom: 0; left: 0; width: 0; border-radius: 22px; background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px -2px var(--gl-shadow); transition: left .45s var(--gl-spring), width .45s var(--gl-spring); pointer-events: none; }
+#gm-modal.gmm .chip { position: relative; z-index: 1; height: 36px; padding: 0 14px; border-radius: 22px; display: flex; align-items: center; gap: 7px; font: 600 14px var(--ff, inherit); color: var(--text2); flex: none; background: none; border: 0; cursor: pointer; white-space: nowrap; transition: color .2s; }
+#gm-modal.gmm .chip.on { color: var(--accent-ink); }
+#gm-modal.gmm .fgrp::before, #gm-modal.gmm .fgrp::after { content: ""; position: absolute; top: 4px; bottom: 4px; width: 26px; z-index: 2; pointer-events: none; -webkit-backdrop-filter: blur(2.5px); backdrop-filter: blur(2.5px); transition: opacity .2s; }
+#gm-modal.gmm .fgrp::before { left: 4px; border-radius: 22px 0 0 22px; opacity: var(--bl); -webkit-mask-image: linear-gradient(90deg, #000, transparent); mask-image: linear-gradient(90deg, #000, transparent); }
+#gm-modal.gmm .fgrp::after { right: 4px; border-radius: 0 22px 22px 0; opacity: var(--br); -webkit-mask-image: linear-gradient(270deg, #000, transparent); mask-image: linear-gradient(270deg, #000, transparent); }
+#gm-modal.gmm .cell .cl.red { color: var(--danger); }
+#gm-modal.gmm .mini .rt small.on { color: var(--accent-ink); }
+#gm-modal.gmm .mini .av-wrap { position: relative; flex: none; }
+#gm-modal.gmm .mini .pill-tag { flex: none; font-weight: 600; font-size: 11px; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, currentColor 14%, transparent); border: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
+#gm-modal.gmm .mini .gm-mini { flex: none; height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid var(--gl-edge); background: var(--gl-card); color: var(--accent-ink); font: 600 12px var(--ff, inherit); cursor: pointer; }
+#gm-modal.gmm .mini .gm-x { flex: none; width: 28px; height: 28px; border-radius: 50%; border: 0; background: none; color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+#gm-modal.gmm .mini .gm-x:hover { background: var(--gl-card2); color: var(--danger); }
+#gm-modal.gmm .mini.pend { cursor: default; }
+#pf-modal .mini .ci, #gm-modal.gmm .mini .ci { width: 30px; height: 30px; margin: 0 5px; border-radius: 10px; display: grid; place-items: center; color: #fff; flex: none; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35); }
+#pf-modal .mini .ci svg, #gm-modal.gmm .mini .ci svg { width: 17px; height: 17px; }
