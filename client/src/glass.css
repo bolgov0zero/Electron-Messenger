@@ -1397,3 +1397,15 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 
 /* Быстрая прокрутка ленты: без размытия фона под пузырями, иначе слои не успевают отрисоваться (см. onMessagesScroll) */
 .messages.fast-scroll, .messages.fast-scroll * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+
+/* Профиль человека: обычная кнопка закрытия, как в других окнах (без заголовка с именем) */
+#pf-modal .pm-xi { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+
+/* Рамка не пропадает при наведении и фокусе: правила style.css сбрасывали её сокращением «border: 0», и содержимое кнопок и полей сдвигалось на 1 px */
+.nc-kind:hover, .ha-pick-btn:hover, .anx-ch:hover,
+.modal-btn-primary:hover, .ha-btn-apply:hover, .anx-solid:hover:not(:disabled) { border-style: solid; border-width: 1px; }
+.anx-ch:hover { border-color: var(--gl-edge); }
+.nc-name-input:focus, .gi-name-input:not([readonly]):focus, .anx-ta:focus, .anx-search:focus-within { border-style: solid; border-width: 1px; border-color: var(--accent); }
+
+/* Настройки: у выбранного пункта меню при наведении фон не меняется (раньше сбрасывался в none) */
+.cs-sn[aria-current="page"]:hover, .cs-sn[aria-current="true"]:hover { background: var(--gl2); color: var(--text); }

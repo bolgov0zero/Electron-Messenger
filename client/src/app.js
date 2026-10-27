@@ -3589,10 +3589,18 @@ function sendRead(chatId, upTo) {
     // Сервер старой версии не умеет «прочитано до сообщения»: отмечает весь чат и не присылает остаток — обнуляем счётчик сами
     S.ws.send(JSON.stringify({ type: 'read', chat_id: chatId }));
     S.unread[chatId] = 0; S.unreadMentions[chatId] = 0;
-    updateUnreadTotal(); renderChatList();
+    updateUnreadTotal(); renderChatListSoon();
     return;
   }
   S.ws.send(JSON.stringify({ type: 'read', chat_id: chatId, up_to: id }));
+}
+// Перерисовка списка чатов после «прочитано»: пока выделение едет к выбранному чату (плашка-призрак в полёте),
+// строку заменять нельзя — у новой нет приглушения, и выделение мигает. Ждём, пока плашка долетит
+var _rclT = null;
+function renderChatListSoon() {
+  clearTimeout(_rclT);
+  const go = () => { if (document.querySelector('.ss-ghost')) _rclT = setTimeout(go, 120); else renderChatList(); };
+  go();
 }
 function scheduleRead() {
   clearTimeout(_readT);
@@ -6418,10 +6426,13 @@ function connectWS() {
     if (data.type==='chat_read') {
       // Чат прочитан на другом устройстве этого пользователя
       // Остаток приходит, когда прочитано не всё (up_to); без него чат прочитан целиком
-      S.unread[data.chat_id] = typeof data.unread === 'number' ? data.unread : 0;
-      S.unreadMentions[data.chat_id] = typeof data.unread_mentions === 'number' ? data.unread_mentions : 0;
+      const _nu = typeof data.unread === 'number' ? data.unread : 0, _nm = typeof data.unread_mentions === 'number' ? data.unread_mentions : 0;
+      // Ответ на «прочитано» часто ничего не меняет: тогда ни список, ни бар не трогаем
+      if ((S.unread[data.chat_id] || 0) === _nu && (S.unreadMentions[data.chat_id] || 0) === _nm) return;
+      S.unread[data.chat_id] = _nu;
+      S.unreadMentions[data.chat_id] = _nm;
       updateUnreadTotal();
-      renderChatList();
+      renderChatListSoon();
     }
 
     if (data.type==='chat_cleared') {
@@ -6748,10 +6759,12 @@ function connectWS() {
   ws.onerror = () => ws.close();
 }
 
+var _unreadSent = -1;
 function updateUnreadTotal() {
   updateDownBadge();
   const total = Object.values(S.unread).reduce((a,b)=>a+b,0);
-  window.electron?.setUnread(total);
+  // Главный процесс отвечает перерисовкой бара записей: посылаем только при изменении, иначе бар перестраивается зря и обрывает анимацию выбора папки
+  if (total !== _unreadSent) { _unreadSent = total; window.electron?.setUnread(total); }
   if (typeof updateFolderBadges === 'function' && S.folders?.length) updateFolderBadges();
   if (typeof updateSpaceBadges === 'function') updateSpaceBadges();
 }
@@ -7064,7 +7077,7 @@ function renderProfile() {
     : '';
   box.innerHTML = `
     <div class="pm-scroll">
-      <div class="pm-nav"><span class="pm-t glass">${esc(u.display_name)}</span><button class="pm-x glass gi" type="button" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-profile"]'>${PF_I.close}</button></div>
+      <div class="pm-nav"><button class="icon-btn pm-xi" type="button" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-profile"]'>${gmSvg('x', 16)}</button></div>
       <div class="hero">
         <div class="pf-av ${cls}"><span>${esc(initials(u.display_name))}</span><img src="${avUrl('users', u.id)}" data-on-error="__h17">${presenceDot(id)}</div>
         <h2>${esc(u.display_name)}</h2><p class="${on ? 'on' : ''}">${esc(st)}</p>${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}" style="margin-top:6px">${esc(u.tag)}</span>` : ''}

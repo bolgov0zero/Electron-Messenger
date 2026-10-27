@@ -20,7 +20,10 @@
     { b: '.seg', i: 'button', o: '.active', ease: SPRING, dur: 450 },
     { b: '.cs-seg', i: 'button', o: A, ease: SPRING, dur: 450 },
     { b: '.sidebar-tabbar', i: '.sb-tab', o: '.on', ease: SPRING, dur: 450 },
-    { b: '.acc-rail', i: '.fld-btn', o: '.active', ease: SPRING, dur: 450 },   // бар папок и пространств веб клиента: плитка и полоска едут вместе   // нижняя панель сайдбара веб клиента
+    // Бар: папки, пространства и учётные записи лежат в нём тремя отдельными блоками, и в каждом свой выбранный пункт.
+    // Одной группой на весь бар они не работали: выбранных пунктов несколько, и выделение «не было переключателем»
+    { b: '.rail-folders', i: '.fld-btn', o: '.active', ease: SPRING, dur: 450 },   // папки и пространства: плитка и полоска едут вместе
+    { b: '.rail-accs', i: '.fld-btn', o: '.active', ease: SPRING, dur: 450 },   // бар папок и пространств веб клиента: плитка и полоска едут вместе   // нижняя панель сайдбара веб клиента
     { b: '.ep-sw', i: 'button', o: A, ease: SPRING, dur: 450 },
     { b: '.anx-sg', i: 'button', o: A, ease: SPRING, dur: 450 },
     { b: '.anx-types', i: 'button', o: '[aria-checked="true"]', above: true, ease: SPRING, dur: 450 },
