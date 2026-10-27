@@ -81,8 +81,10 @@ B.ui.chat = (function () {
     var ref = mid ? ' data-mid="' + mid + '" data-i="' + i + '"' : '';
     if (mime.indexOf('image/') === 0) return '<img class="att-img" src="' + esc(url(feedSrc(att))) + '" style="' + box.st + '" loading="lazy" decoding="async" data-c="lb" data-url="' + esc(att.url) + '" data-type="image"' + box.ns + ref + ' alt="">';
     if (mime.indexOf('video/') === 0) {
-      var poster = att.thumb ? '<img class="att-img" src="' + esc(url(att.thumb)) + '" style="' + box.st + '" loading="lazy" decoding="async" data-url="' + esc(att.thumb) + '"' + box.ns + ' alt="">' : '<div class="vph" style="width:' + IMGW + '"></div>';
-      return '<div class="vwrap" data-c="lb" data-url="' + esc(att.url) + '" data-type="video"' + ref + '>' + poster + '<div class="vplay">' + I('play') + '</div></div>';
+      // Размер задаёт сама обёртка (ширина и пропорции), а обложка лежит в ней поверх: высота пузыря не зависит от того, загрузилась ли картинка
+      // (ленивая картинка в Safari давала высоте «скакать»), и не больше 300 px — вертикальное видео не занимает пол-экрана
+      var poster = att.thumb ? '<img class="att-img vimg" src="' + esc(url(att.thumb)) + '" style="position:absolute;inset:0;width:100%;height:100%;max-width:none;min-width:0;max-height:none;margin:0;border-radius:0" loading="lazy" decoding="async" data-url="' + esc(att.thumb) + '"' + box.ns + ' alt="">' : '<div class="vph" style="width:' + IMGW + '"></div>';
+      return '<div class="vwrap" style="' + (att.thumb ? box.st : '') + '" data-c="lb" data-url="' + esc(att.url) + '" data-type="video"' + ref + '>' + poster + '<div class="vplay">' + I('play') + '</div></div>';
     }
     return fileCard(I('file'), esc(att.name || 'Файл'), fmtSize(att.size), ' data-c="' + (mid ? 'file' : 'dl') + '" data-url="' + esc(att.url) + '" data-name="' + esc(att.name || 'file') + '"' + ref);
   }
@@ -359,8 +361,9 @@ B.ui.chat = (function () {
       var done = function () {
         if (!img.naturalWidth || !img.isConnected) return;
         var h0 = img.offsetHeight, r = img.naturalWidth + '/' + img.naturalHeight;
-        szRemember(img.getAttribute('data-url') || img.getAttribute('src'), r);
-        img.style.aspectRatio = r; img.removeAttribute('data-ns');
+        var vw = img.parentNode && img.parentNode.classList.contains('vwrap') ? img.parentNode : null;   // у видео размер держит обёртка и запоминается он под адресом видео
+        szRemember(vw ? vw.getAttribute('data-url') : (img.getAttribute('data-url') || img.getAttribute('src')), r);
+        (vw || img).style.aspectRatio = r; img.removeAttribute('data-ns');
         var d = img.offsetHeight - h0; if (!d) return;
         var wasBottom = sc.scrollHeight - d - sc.scrollTop - sc.clientHeight < 6;
         if (wasBottom) sc.scrollTop = sc.scrollHeight;
