@@ -7,12 +7,12 @@ html.guest.g-topics .sidebar-head .topbar-actions, html.guest.g-topics .sidebar-
 /* Сверху сайдбара — таймер вместо кнопок; в шапке чата он нужен только на узком экране, где список скрыт */
 html.guest.g-topics .chat-header-actions { display: none !important; }
 .g-back { display: none; flex: none; align-items: center; justify-content: center; width: 28px; height: 28px; margin: 0 -4px 0 -2px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
-.g-back:hover { background: var(--hover-row); color: var(--text); }
+.g-back:hover { background: var(--gl-card2, var(--hover-row)); color: var(--text); }
 @media (max-width: 700px) {
-  html.guest.g-topics .sidebar { width: auto; min-width: 0; flex: 1; margin: 0; border-radius: 0; border: 0; position: static; }
+  html.guest.g-topics .sidebar { width: auto; min-width: 0; flex: 1; margin: 12px; position: static; }
   html.guest.g-topics:not(.g-in-chat) .chat-main { display: none; }
   html.guest.g-topics.g-in-chat .sidebar { display: none; }
-  html.guest.g-topics .chat-main { margin: 0 8px; }
+  html.guest.g-topics .chat-main { margin: 0; }
   html.guest.g-topics .chat-header-actions { display: flex !important; }
   html.guest.g-topics .g-back { display: flex; }
 }
@@ -23,19 +23,19 @@ html.guest #ctx-forward-btn, html.guest #ctx-menu button[onclick="ctxTogglePin()
 html.guest .pin-bar button, html.guest #chats-list { display: none !important; }
 
 /* Вход и итоговые экраны */
-#g-gate { position: fixed; inset: 0; z-index: 9000; background: var(--app-bg); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; overflow: auto; }
+#g-gate { position: fixed; inset: 0; z-index: 9000; background: color-mix(in srgb, var(--chat-bg) 30%, transparent); -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; overflow: auto; }
 #g-gate .login-wrap { margin: auto; }
 .g-note { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 6px 0 14px; text-align: center; }
-.g-err { color: #d23737; font-size: 13px; min-height: 18px; text-align: center; margin-top: 10px; }
-.g-end-icon { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); margin: 0 auto 14px; }
-.g-warn { background: rgba(201,138,18,.12); border: 1px solid rgba(201,138,18,.4); color: var(--text); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.5; margin: 10px 0 4px; }
-.g-warn b { display: block; color: #c98a12; font-size: 13px; margin-bottom: 2px; }
+.g-err { color: var(--danger, #d23737); font-size: 13px; min-height: 18px; text-align: center; margin-top: 10px; }
+.g-end-icon { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--gl2); color: var(--accent-ink, var(--accent)); margin: 0 auto 14px; border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 0 var(--gl-hi), 0 8px 20px var(--gl-shadow); }
+.g-warn { background: color-mix(in srgb, #e8a33a 14%, var(--gl-card)); border: 1px solid color-mix(in srgb, #e8a33a 38%, var(--gl-edge)); box-shadow: inset 0 1px 0 var(--gl-hi); color: var(--text); border-radius: 18px; padding: 12px 14px; font-size: 12.5px; line-height: 1.5; margin: 12px 0 4px; }
+.g-warn b { display: block; color: #e8a33a; font-size: 13px; margin-bottom: 2px; }
 
 /* Сколько ещё действует ссылка: правый блок шапки, такой же, как блок с кнопками в /chat */
 .g-timer { display: flex; align-items: center; gap: 8px; padding: 0 14px 0 12px; height: 100%; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .g-timer svg { flex: none; color: var(--accent); }
 .g-timer b { font-size: 14px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
-.g-timer.low b, .g-timer.low svg { color: #d23737; }
+.g-timer.low b, .g-timer.low svg { color: var(--danger, #d23737); }
 @media (max-width: 520px) { .g-timer span { display: none; } }
 
 .g-timer-sb { height: auto; padding: 0 2px 0 0; }
@@ -43,3 +43,6 @@ html.guest .pin-bar button, html.guest #chats-list { display: none !important; }
 
 /* Заглушка «для телефона есть /m» не для гостя: у него нет учётной записи, он открывает ссылку с любого устройства */
 html.guest #screen-phone-guard { display: none !important; }
+
+/* Пока открыт экран входа/итога, веб-клиент под ним скрыт: сквозь стеклянную подложку виден только цветной фон, а не форма входа /chat */
+html.guest:has(#g-gate) #screen-login, html.guest:has(#g-gate) #screen-main { visibility: hidden; }
