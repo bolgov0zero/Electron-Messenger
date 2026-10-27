@@ -298,9 +298,28 @@ B.ui.chat = (function () {
     $('.msgs', el).addEventListener('load', function (e) { if (e.target.tagName === 'IMG' && performance.now() < (el._stickUntil || 0) && !el._touch) scr.scrollTop = scr.scrollHeight; }, true);
     // Пока чат только открыт, любой рост ленты (картинка или видео получили размер, подъехал композер) сразу, до отрисовки, возвращает её к низу:
     // иначе последнее сообщение на кадр-другой оказывалось под композером. Касание ленты это прекращает
-    try { new ResizeObserver(function () { if (performance.now() < (el._stickUntil || 0) && !el._touch) scr.scrollTop = scr.scrollHeight; }).observe($('.msgs', el)); } catch (e) {}
+    try { new ResizeObserver(function () { if (performance.now() < (el._stickUntil || 0) && !el._touch) { scr.scrollTop = scr.scrollHeight; settle(el); } }).observe($('.msgs', el)); } catch (e) {}
     renderPin(el);
     return el;
+  }
+  // Последнее сообщение должно стоять над полем ввода: меряем по настоящему положению пузыря и композера, а не по scrollHeight (в Safari
+  // с видео в конце ленты он оказывался меньше нужного, и сообщение уходило под композер). Возвращает true, если пришлось подвинуть
+  function settle(el) {
+    var sc = $('.scroll', el), comp = $('.comp', el), rows = sc && sc.querySelectorAll('.mrow'), last = rows && rows[rows.length - 1];
+    if (!last || !comp) return false;
+    var k = sc.clientHeight ? sc.getBoundingClientRect().height / sc.clientHeight : 1;
+    var need = (last.getBoundingClientRect().bottom - (comp.getBoundingClientRect().top - 12)) / (k || 1);
+    if (need > 1) { sc.scrollTop += need; return true; }
+    return false;
+  }
+  // Пока чат только открыт и его не листают, каждый кадр проверяем положение ленты (картинки, видео, шрифты и композер подъезжают по очереди)
+  function holdBottom(el) {
+    var until = performance.now() + 4000;
+    (function step() {
+      if (!el.isConnected || performance.now() > until || el._touch || performance.now() > (el._stickUntil || 0)) return;
+      var sc = $('.scroll', el); if (sc && sc.scrollHeight - sc.scrollTop - sc.clientHeight > 1) sc.scrollTop = sc.scrollHeight;
+      settle(el); requestAnimationFrame(step);
+    })();
   }
   function updateHeader(el) {
     var chat = B.find(+el.dataset.cid); if (!chat) return;
@@ -521,7 +540,7 @@ B.ui.chat = (function () {
     } else {
       var u = $('#unrd', el);
       if (u) scr.scrollTop = Math.max(0, u.getBoundingClientRect().top / sc - scr.getBoundingClientRect().top / sc + scr.scrollTop - $('.nav', el).offsetHeight - 8);
-      else { scr.scrollTop = scr.scrollHeight; el._stickUntil = performance.now() + 4000; }
+      else { scr.scrollTop = scr.scrollHeight; el._stickUntil = performance.now() + 4000; settle(el); holdBottom(el); }
     }
     updateHeader(el); onScroll(el); renderPin(el);
     if (B.ui.composer.sync) B.ui.composer.sync(el);

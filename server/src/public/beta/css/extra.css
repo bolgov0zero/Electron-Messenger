@@ -17,7 +17,8 @@ html, body { background: var(--gl-base); }
 .phone [contenteditable] { outline: none; }
 #layer > #ann-banners { pointer-events: none; }
 .scroll { -webkit-overflow-scrolling: touch; }
-.chat .msgs, .msgs { display: flex; flex-direction: column; min-width: 0; }
+.chat .msgs, .msgs { display: flex; flex-direction: column; min-width: 0; flex-shrink: 0; }
+.chat .scroll > *, .msgs > *, .vwrap { flex-shrink: 0; }   /* в прокручиваемой ленте ничего не должно сжиматься: пузырь с видео мог оказаться ниже, чем занимает */
 .mg { display: flex; flex-direction: column; min-width: 0; }
 .stub-note { padding: 40px 20px; text-align: center; color: var(--text2); font-size: 14px; }
 .nb[hidden], .nr button[hidden] { display: none; }
