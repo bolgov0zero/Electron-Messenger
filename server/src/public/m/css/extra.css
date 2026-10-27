@@ -436,3 +436,6 @@ html, body { background: var(--gl-base); }
 .nav.cn .nb { width: 46px; height: 46px; }
 .nav.cn .nr.cap { padding: 1px; }
 .nav.cn .who { height: 46px; }
+
+/* вертикальные фото в ленте не выше 300 px, как и обложки видео: лишнее обрезается, целиком — в просмотре */
+.att-img { max-height: 300px; }
