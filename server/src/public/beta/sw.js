@@ -2,7 +2,7 @@
 
 // Service worker /m — тот же механизм push-уведомлений, что у /beta/sw.js, но со своим
 // именем кэша и областью видимости (/beta/): SW соседних клиентов её не покрывают.
-const CACHE = 'beta-v1';
+const CACHE = 'beta-v2';
 // index.html (/beta/) не прекэшируем: он берётся из сети, а удачная копия остаётся в кэше для запуска без связи.
 const STATIC = ['/beta/manifest.json', '/beta/manifest-light.json'];
 

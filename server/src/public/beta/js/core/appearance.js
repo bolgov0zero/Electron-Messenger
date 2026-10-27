@@ -32,8 +32,6 @@ B.appearance = {
 
   apply: function () {
     var A = B.appearance, s = document.documentElement.style, dark = A.isDark();
-    var c = A.rgb(A.accent()), hex = '#' + c.map(function (v) { return v.toString(16).padStart(2, '0'); }).join('');
-    s.setProperty('--accent', hex); s.setProperty('--accent-rgb', c.join(','));
     var id = A.pattern();
     if (!id) { ['--pat', '--pat-ink', '--pat-a'].forEach(function (k) { s.removeProperty(k); }); }
     else { s.setProperty('--pat', 'url("/chat/assets/patterns/' + id + '.png")'); s.setProperty('--pat-ink', dark ? '#ffffff' : '#111318'); s.setProperty('--pat-a', String(A.ALPHA[dark ? 'dark' : 'light'][A.patternLevel() - 1])); }

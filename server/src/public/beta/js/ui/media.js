@@ -284,7 +284,7 @@ B.media = (function () {
     var el = B.nav.page({ title: 'Медиа', gray: true, back: B.chatName(chat) || 'Назад', body: '' });
     el.classList.add('mpage');
     var sc = el.querySelector('.scroll');
-    sc.innerHTML = '<div class="mseg seg2">' + TABS.map(function (t) { return '<button data-t="' + t[0] + '" class="' + (t[0] === 'media' ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div><div class="mbody"></div>';
+    sc.innerHTML = '<div class="seg f mseg" id="mseg"><i class="thumb"></i>' + TABS.map(function (t) { return '<button data-t="' + t[0] + '" class="' + (t[0] === 'media' ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div><div class="mbody"></div>';
     var body = sc.querySelector('.mbody');
     function monthKey(ts) { var d = new Date(ts * 1000); return MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
     function paint() {
@@ -293,10 +293,10 @@ B.media = (function () {
       var last = '';
       list.forEach(function (x, k) {
         var mk = monthKey(x.sent_at);
-        if (mk !== last) { if (last) h += st.tab === 'media' ? '</div>' : '</div>'; h += '<div class="hdr-s">' + mk + '</div><div class="' + (st.tab === 'media' ? 'mgrid' : 'grp') + '">'; last = mk; }
-        if (st.tab === 'media') h += '<button class="mt" data-k="' + k + '" style="background-image:url(\'' + esc(abs(x.att.thumb || x.att.url)) + '\')">' + (/^video\//.test(x.att.mime) ? '<span class="mv">' + ic('play', 14, 0) + '</span>' : '') + '</button>';
-        else if (st.tab === 'files') h += '<button class="crow2" data-k="' + k + '"><span class="mfi">' + ic('doc', 22, 1.7) + '</span><div class="t"><b>' + esc(x.att.name || 'Файл') + '</b><span>' + esc([fmtSize(x.att.size), x.sender_name, when(x.sent_at)].join(' · ')) + '</span></div></button>';
-        else h += '<a class="crow2" href="' + esc(x.urls[0]) + '" target="_blank" rel="noopener noreferrer"><span class="mfi">' + ic('link', 22, 1.7) + '</span><div class="t"><b>' + esc(x.title || x.site || x.urls[0]) + '</b><span>' + esc(x.urls[0].replace(/^https?:\/\//, '').slice(0, 60)) + ' · ' + esc(x.sender_name) + ' · ' + when(x.sent_at) + '</span></div></a>';
+        if (mk !== last) { if (last) h += st.tab === 'media' ? '</div>' : '</div>'; h += '<div class="gl">' + mk + '</div><div class="' + (st.tab === 'media' ? 'mgrid' : 'grp glass') + '">'; last = mk; }
+        if (st.tab === 'media') h += '<button class="mt" data-k="' + k + '" style="background-image:url(\'' + esc(abs(x.att.thumb || x.att.url)) + '\')">' + (/^video\//.test(x.att.mime) ? '<span class="mv">' + I('play') + '</span>' : '') + '</button>';
+        else if (st.tab === 'files') h += '<button class="mini" data-k="' + k + '"><span class="mfi">' + I('file') + '</span><span class="rt"><b>' + esc(x.att.name || 'Файл') + '</b><small>' + esc([fmtSize(x.att.size), x.sender_name, when(x.sent_at)].join(' · ')) + '</small></span></button>';
+        else h += '<a class="mini" href="' + esc(x.urls[0]) + '" target="_blank" rel="noopener noreferrer"><span class="mfi">' + I('link') + '</span><span class="rt"><b>' + esc(x.title || x.site || x.urls[0]) + '</b><small>' + esc(x.urls[0].replace(/^https?:\/\//, '').slice(0, 60)) + ' · ' + esc(x.sender_name) + ' · ' + when(x.sent_at) + '</small></span></a>';
       });
       body.innerHTML = h + '</div>' + (st.more[st.tab] ? '<div class="stub-note">Загрузка…</div>' : '');
     }
@@ -312,7 +312,7 @@ B.media = (function () {
     sc.addEventListener('scroll', function () { if (st.more[st.tab] && sc.scrollHeight - sc.scrollTop - sc.clientHeight < 500) load(); }, { passive: true });
     el.addEventListener('click', function (e) {
       var tb = e.target.closest('.mseg [data-t]');
-      if (tb) { st.tab = tb.dataset.t; el.querySelectorAll('.mseg button').forEach(function (b) { b.classList.toggle('on', b === tb); }); paint(); if (st.more[st.tab] === undefined) load(); return; }
+      if (tb) { st.tab = tb.dataset.t; el.querySelectorAll('.mseg button').forEach(function (b) { b.classList.toggle('on', b === tb); }); segMove($('#mseg', el)); paint(); if (st.more[st.tab] === undefined) load(); return; }
       var k = e.target.closest('[data-k]'); if (!k) return;
       var list = st.data[st.tab], x = list[+k.dataset.k];
       if (st.tab === 'media') {
@@ -320,7 +320,7 @@ B.media = (function () {
         L.open(items, +k.dataset.k);
       } else if (st.tab === 'files') openFileItem({ mid: x.message_id, i: x.idx, url: x.att.url, name: x.att.name, mime: x.att.mime, size: x.att.size, who: x.sender_name, at: x.sent_at, sid: x.sender_id, total: 1, text: x.caption });
     });
-    B.nav.push(el, 'Медиа'); paint(); load();
+    B.nav.push(el, 'Медиа'); paint(); load(); setTimeout(function () { segMove($('#mseg', el)); }, 480);
   }
 
   return { openMsg: openMsg, openFile: openFile, openChatMedia: openChatMedia, isMedia: isMedia, listOf: listOf, fmtSize: fmtSize };

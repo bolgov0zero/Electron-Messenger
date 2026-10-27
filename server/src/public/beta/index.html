@@ -6,7 +6,6 @@
 <meta name="app-version" content="?v=1">
 <script src="/beta/boot-version.js?v=1"></script>
 <script src="/beta/boot-theme.js?v=1"></script>
-<script src="/beta/boot-desktop.js?v=1"></script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -27,33 +26,15 @@
 <link rel="apple-touch-icon" href="/beta/icons/apple-touch-icon.png">
 <meta name="robots" content="noindex">
 <title>Electron β</title>
-<link rel="stylesheet" href="/beta/css/tokens.css?v=1">
-<link rel="stylesheet" href="/beta/css/layout.css?v=1">
-<link rel="stylesheet" href="/beta/css/components.css?v=1">
-<link rel="stylesheet" href="/beta/css/nav.css?v=1">
-<link rel="stylesheet" href="/beta/css/chatlist.css?v=1">
-<link rel="stylesheet" href="/beta/css/chat.css?v=1">
-<link rel="stylesheet" href="/beta/css/composer.css?v=1">
-<link rel="stylesheet" href="/beta/css/people.css?v=1">
-<link rel="stylesheet" href="/beta/css/gprofile.css?v=1">
-<link rel="stylesheet" href="/beta/css/media.css?v=1">
-<link rel="stylesheet" href="/beta/css/settings.css?v=1">
-<link rel="stylesheet" href="/beta/css/announce.css?v=1">
-<link rel="stylesheet" href="/beta/css/glass.css?v=1">
+<link rel="stylesheet" href="/shared/fonts/inter.css">
+<link rel="stylesheet" href="/beta/css/app.css?v=1">
+<link rel="stylesheet" href="/beta/css/extra.css?v=1">
 <link rel="stylesheet" href="/chat/emoji-font.css?v=1">
 </head>
 <body>
-<!-- Заглушка для компьютера: /m рассчитан на телефон -->
-<div id="screen-desktop">
-  <div class="dk-wrap">
-    <img class="dk-logo" src="/chat/icons/icon-192.png" width="72" height="72" alt="">
-    <div class="dk-title">Electron</div>
-    <p class="dk-text">Эта версия сделана для телефона: жесты, размер кнопок и навигация рассчитаны на маленький экран с сенсорным управлением.</p>
-    <p class="dk-text">На компьютере пользуйтесь обычной веб-версией.</p>
-    <a class="dk-btn" href="/chat/">Открыть веб-версию</a>
-  </div>
-</div>
-<div id="app"><div id="stack"></div></div>
+<div class="stage"><div class="fit"><div class="phone" id="app"><div class="amb"><i></i><i></i><i></i><i></i></div><div class="isl"></div>
+<div class="sbar"><span>9:41</span><span class="r"><svg class="i" viewBox="0 0 24 24"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 20V4"/></svg><i class="bat"></i></span></div>
+<div id="stack"></div><div id="layer"></div><div class="home"></div></div></div></div>
 <script src="/shared/act.js?v=1"></script>
 <script src="/chat/actions.js?v=1"></script>
 <script src="/chat/emoji-font.js?v=1"></script>
@@ -64,9 +45,7 @@
 <script src="/shared/fmt.js?v=1"></script>
 <script src="/shared/guestlinks.js?v=1"></script>
 <script src="/shared/devicekey.js?v=1"></script>
-<script src="/shared/slidesel.js?v=1"></script>
 <script src="/beta/js/icons.js?v=1"></script>
-<script src="/beta/js/theme.js?v=1"></script>
 <script src="/beta/js/pwa.js?v=1"></script>
 <script src="/beta/js/core/state.js?v=1"></script>
 <script src="/beta/js/core/api.js?v=1"></script>
@@ -82,27 +61,23 @@
 <script src="/beta/js/core/folders.js?v=1"></script>
 <script src="/beta/js/core/spaces.js?v=1"></script>
 <script src="/beta/js/core/app.js?v=1"></script>
-<script src="/beta/js/ui/nav.js?v=1"></script>
-<script src="/beta/js/ui/sheet.js?v=1"></script>
+<script src="/beta/js/ui/kit.js?v=1"></script>
 <script src="/beta/js/ui/avatar.js?v=1"></script>
+<script src="/beta/js/ui/folders.js?v=1"></script>
 <script src="/beta/js/ui/chatlist.js?v=1"></script>
-<script src="/beta/js/ui/kbd.js?v=1"></script>
+<script src="/beta/js/ui/contacts.js?v=1"></script>
+<script src="/beta/js/ui/profile.js?v=1"></script>
+<script src="/beta/js/ui/groups.js?v=1"></script>
+<script src="/beta/js/ui/gprofile.js?v=1"></script>
+<script src="/beta/js/ui/settings.js?v=1"></script>
+<script src="/beta/js/ui/diag.js?v=1"></script>
+<script src="/beta/js/ui/announce.js?v=1"></script>
+<script src="/beta/js/ui/login.js?v=1"></script>
 <script src="/beta/js/ui/emoji.js?v=1"></script>
 <script src="/beta/js/ui/composer.js?v=1"></script>
 <script src="/beta/js/ui/chat.js?v=1"></script>
 <script src="/beta/js/ui/msgmenu.js?v=1"></script>
 <script src="/beta/js/ui/media.js?v=1"></script>
-<script src="/beta/js/ui/ptr.js?v=1"></script>
-<script src="/beta/js/ui/contacts.js?v=1"></script>
-<script src="/beta/js/ui/profile.js?v=1"></script>
-<script src="/beta/js/ui/groups.js?v=1"></script>
-<script src="/beta/js/ui/gprofile.js?v=1"></script>
-<script src="/beta/js/ui/folders.js?v=1"></script>
-<script src="/beta/js/ui/spaces.js?v=1"></script>
-<script src="/beta/js/ui/settings.js?v=1"></script>
-<script src="/beta/js/ui/diag.js?v=1"></script>
-<script src="/beta/js/ui/announce.js?v=1"></script>
-<script src="/beta/js/ui/login.js?v=1"></script>
 <script src="/beta/js/main.js?v=1"></script>
 </body>
 </html>
