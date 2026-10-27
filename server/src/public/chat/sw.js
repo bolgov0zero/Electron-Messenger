@@ -4,7 +4,7 @@
 // мог пережить обновление. После переименования подкомнат в темы это ломало
 // список: свежий index.html содержит узел mobile-topics, а закэшированный
 // сценарий искал mobile-subrooms — список просто некуда было отрисовать.
-const CACHE = 'corp-chat-v59';
+const CACHE = 'corp-chat-v60';
 // index.html (/chat/) намеренно не прекэшируем — он всегда из сети,
 // иначе закэшированная страница может рендериться без актуального viewport/вёрстки.
 // Сценарий и стили тоже не прекэшируем: адреса пришлось бы держать с версией,
@@ -31,6 +31,9 @@ self.addEventListener('fetch', e => {
   // Не перехватываем API, WebSocket и запросы к другим хостам
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws')) return;
   if (url.origin !== self.location.origin) return;
+  // Вложения и превью лежат с Cache-Control immutable на год: их отдаёт кэш браузера сразу. Через воркер каждая картинка ждала ответа сети
+  // (гонка «сеть или таймер») и заодно копировалась в кэш воркера, поэтому в ленте они появлялись пустыми и с задержкой
+  if (url.pathname.startsWith('/files/') || url.pathname.startsWith('/fp/')) return;
 
   // Навигация (index.html) — всегда из сети, без кэширования страницы
   if (e.request.mode === 'navigate') {

@@ -2,7 +2,7 @@
 
 // Service worker /m — тот же механизм push-уведомлений, что у /m/sw.js, но со своим
 // именем кэша и областью видимости (/m/): SW соседних клиентов её не покрывают.
-const CACHE = 'm-v3';
+const CACHE = 'm-v4';
 // index.html (/m/) не прекэшируем: он берётся из сети, а удачная копия остаётся в кэше для запуска без связи.
 const STATIC = ['/m/manifest.json', '/m/manifest-light.json'];
 
@@ -22,6 +22,9 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/ws')) return;
   if (url.origin !== self.location.origin) return;
+  // Вложения и превью лежат с Cache-Control immutable на год: их отдаёт кэш браузера сразу. Через воркер каждая картинка ждала ответа сети
+  // (гонка «сеть или таймер») и заодно копировалась в кэш воркера, поэтому в ленте они появлялись пустыми и с задержкой
+  if (url.pathname.startsWith('/files/') || url.pathname.startsWith('/fp/')) return;
 
   // Первая загрузка идёт из сети; последняя удачная копия оболочки лежит в кэше: без связи (или если сеть отвечает дольше
   // нескольких секунд) приложение открывается из неё, а не пустым экраном браузера

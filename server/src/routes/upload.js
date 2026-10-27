@@ -302,6 +302,16 @@ router.post('/',
           .webp({ quality: 78 }).toFile(thumbPath);
         thumb = `/files/${thumbName}`;
       } catch (e) { console.warn('[Upload] thumbnail failed:', e.message); }
+      // Превью ленты (720 px) делается сразу: иначе его строил бы /fp/ при первом просмотре получателем, и картинка в ленте долго была пустой
+      if (/^[\w.\-]+\.(?:jpe?g|png|webp)$/i.test(req.file.filename) && !req.file.filename.startsWith('enc_')) {
+        try {
+          const pvPath = path.join(FILES_DIR, req.file.filename.replace(/\.[^.]*$/, '') + '_p.webp');
+          req._extraCleanupPaths.push(pvPath);
+          await sharp(req.file.path, { limitInputPixels: 80e6 }).rotate().resize({ width: 720, withoutEnlargement: true })
+            .webp({ quality: 78 }).toFile(pvPath + '.tmp');
+          fs.renameSync(pvPath + '.tmp', pvPath);
+        } catch (e) { console.warn('[Upload] preview failed:', e.message); }
+      }
     }
     if (isImage && sharp) {
       // EXIF-ориентация 5-8 — кадр повёрнут на 90°, ширина и высота меняются местами
