@@ -6,41 +6,36 @@
 <meta name="app-version" content="?v=1">
 <script src="/m/boot-version.js?v=1"></script>
 <script src="/m/boot-theme.js?v=1"></script>
-<script src="/m/boot-desktop.js?v=1"></script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Electron">
 <meta name="format-detection" content="telephone=no">
-<link rel="icon" href="/chat/icons/icon-192.png" type="image/png">
-<link rel="apple-touch-icon" href="/chat/icons/apple-touch-icon.png">
+<link rel="icon" href="/m/icons/icon-192.png" type="image/png">
+<link rel="apple-touch-startup-image" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/m/splash/1320x2868.png">
+<link rel="apple-touch-startup-image" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/m/splash/1206x2622.png">
+<link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/m/splash/1290x2796.png">
+<link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/m/splash/1179x2556.png">
+<link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/m/splash/1284x2778.png">
+<link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/m/splash/1170x2532.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/m/splash/1242x2688.png">
+<link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/m/splash/828x1792.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/m/splash/1125x2436.png">
+<link rel="apple-touch-startup-image" media="(device-width: 360px) and (device-height: 780px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/m/splash/1080x2340.png">
+<link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/m/splash/750x1334.png">
+<link rel="apple-touch-icon" href="/m/icons/apple-touch-icon.png">
+<meta name="robots" content="noindex">
 <title>Electron</title>
-<link rel="stylesheet" href="/m/css/tokens.css?v=1">
-<link rel="stylesheet" href="/m/css/layout.css?v=1">
-<link rel="stylesheet" href="/m/css/components.css?v=1">
-<link rel="stylesheet" href="/m/css/nav.css?v=1">
-<link rel="stylesheet" href="/m/css/chatlist.css?v=1">
-<link rel="stylesheet" href="/m/css/chat.css?v=1">
-<link rel="stylesheet" href="/m/css/composer.css?v=1">
-<link rel="stylesheet" href="/m/css/people.css?v=1">
-<link rel="stylesheet" href="/m/css/gprofile.css?v=1">
-<link rel="stylesheet" href="/m/css/media.css?v=1">
-<link rel="stylesheet" href="/m/css/settings.css?v=1">
-<link rel="stylesheet" href="/m/css/announce.css?v=1">
+<link rel="stylesheet" href="/shared/fonts/inter.css">
+<link rel="stylesheet" href="/m/css/app.css?v=1">
+<link rel="stylesheet" href="/m/css/extra.css?v=1">
+<link rel="stylesheet" href="/m/css/cshape.css?v=1">
 <link rel="stylesheet" href="/chat/emoji-font.css?v=1">
 </head>
 <body>
-<!-- Заглушка для компьютера: /m рассчитан на телефон -->
-<div id="screen-desktop">
-  <div class="dk-wrap">
-    <img class="dk-logo" src="/chat/icons/icon-192.png" width="72" height="72" alt="">
-    <div class="dk-title">Electron</div>
-    <p class="dk-text">Эта версия сделана для телефона: жесты, размер кнопок и навигация рассчитаны на маленький экран с сенсорным управлением.</p>
-    <p class="dk-text">На компьютере пользуйтесь обычной веб-версией.</p>
-    <a class="dk-btn" href="/chat/">Открыть веб-версию</a>
-  </div>
-</div>
-<div id="app"><div id="stack"></div></div>
+<div class="stage"><div class="fit"><div class="phone" id="app"><div class="amb"><i></i><i></i><i></i><i></i></div><div class="isl"></div>
+<div class="sbar"><span>9:41</span><span class="r"><svg class="i" viewBox="0 0 24 24"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20V8M22 20V4"/></svg><i class="bat"></i></span></div>
+<div id="stack"></div><div id="layer"></div><div class="home"></div></div></div></div>
 <script src="/shared/act.js?v=1"></script>
 <script src="/chat/actions.js?v=1"></script>
 <script src="/chat/emoji-font.js?v=1"></script>
@@ -51,9 +46,7 @@
 <script src="/shared/fmt.js?v=1"></script>
 <script src="/shared/guestlinks.js?v=1"></script>
 <script src="/shared/devicekey.js?v=1"></script>
-<script src="/shared/slidesel.js?v=1"></script>
 <script src="/m/js/icons.js?v=1"></script>
-<script src="/m/js/theme.js?v=1"></script>
 <script src="/m/js/pwa.js?v=1"></script>
 <script src="/m/js/core/state.js?v=1"></script>
 <script src="/m/js/core/api.js?v=1"></script>
@@ -69,27 +62,24 @@
 <script src="/m/js/core/folders.js?v=1"></script>
 <script src="/m/js/core/spaces.js?v=1"></script>
 <script src="/m/js/core/app.js?v=1"></script>
-<script src="/m/js/ui/nav.js?v=1"></script>
-<script src="/m/js/ui/sheet.js?v=1"></script>
+<script src="/m/js/ui/kit.js?v=1"></script>
 <script src="/m/js/ui/avatar.js?v=1"></script>
+<script src="/m/js/ui/folders.js?v=1"></script>
 <script src="/m/js/ui/chatlist.js?v=1"></script>
-<script src="/m/js/ui/kbd.js?v=1"></script>
-<script src="/m/js/ui/emoji.js?v=1"></script>
-<script src="/m/js/ui/composer.js?v=1"></script>
-<script src="/m/js/ui/chat.js?v=1"></script>
-<script src="/m/js/ui/msgmenu.js?v=1"></script>
-<script src="/m/js/ui/media.js?v=1"></script>
-<script src="/m/js/ui/ptr.js?v=1"></script>
 <script src="/m/js/ui/contacts.js?v=1"></script>
 <script src="/m/js/ui/profile.js?v=1"></script>
 <script src="/m/js/ui/groups.js?v=1"></script>
 <script src="/m/js/ui/gprofile.js?v=1"></script>
-<script src="/m/js/ui/folders.js?v=1"></script>
-<script src="/m/js/ui/spaces.js?v=1"></script>
 <script src="/m/js/ui/settings.js?v=1"></script>
 <script src="/m/js/ui/diag.js?v=1"></script>
 <script src="/m/js/ui/announce.js?v=1"></script>
 <script src="/m/js/ui/login.js?v=1"></script>
+<script src="/m/js/ui/emoji.js?v=1"></script>
+<script src="/m/js/ui/cshape.js?v=1"></script>
+<script src="/m/js/ui/composer.js?v=1"></script>
+<script src="/m/js/ui/chat.js?v=1"></script>
+<script src="/m/js/ui/msgmenu.js?v=1"></script>
+<script src="/m/js/ui/media.js?v=1"></script>
 <script src="/m/js/main.js?v=1"></script>
 </body>
 </html>

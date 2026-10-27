@@ -1,0 +1,23 @@
+/* Поле ввода со стеклянной подложкой сложной формы (см. js/ui/cshape.js): верхние панели на всю ширину огибают кнопки слева и справа */
+.comp.cs { display: grid; grid-template-columns: 46px minmax(0, 1fr) 46px; gap: 0 8px; align-items: end; }   /* gap: 0 8px — между строками зазор даёт сама панель (8 px внизу), общий gap макета добавлял второй */
+.comp.cs > .cs-gl, .comp.cs > .cs-ed { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+.comp.cs > .cs-gl { z-index: 0; }
+.comp.cs > .cs-ed { z-index: 1; overflow: visible; }
+.cs-gl { -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl); -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%); backdrop-filter: blur(var(--gl-blur)) saturate(190%); }
+.cs-edp { stroke: var(--gl-edge); stroke-width: 1; }
+.comp.cs > .xtra { grid-column: 1 / -1; grid-row: 1; position: relative; z-index: 2; overflow: hidden; }
+.comp.cs > .cbtn { grid-column: 1; grid-row: 2; z-index: 2; }
+.comp.cs > .cfield { grid-column: 2; grid-row: 2; z-index: 2; background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; overflow: visible; }
+.comp.cs > .sendb { grid-column: 3; grid-row: 2; z-index: 2; }
+.comp.cs > .lkb { grid-column: 1 / -1; grid-row: 2; z-index: 2; background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.xtra:empty { display: none; }
+
+/* панели: зазор снизу появляется вместе с содержимым; содержимое не ближе ~20 px к скруглённому краю */
+.comp.cs > .xtra { padding-bottom: 0; }   /* отступ снизу выставляет cshape.js по высоте содержимого */
+.xtra .ctx:empty { display: none; }
+.xtra .cbar { padding: 14px 12px 0 22px; }
+.xtra .fmtbar { padding: 12px 12px 0 18px; }
+.xtra .axs { padding: 14px 20px 0; }
+.xtra .lpv { padding: 14px 14px 0 22px; }
+.xtra .fpv { padding: 12px 22px 0; }
+.xtra .rnote { padding: 14px 22px 0; }

@@ -1,4 +1,4 @@
-// /m — ядро: обращения к серверу и сессия (перенесено из /m/app.js без изменения протокола)
+// /m — ядро: обращения к серверу и сессия (перенесено из /beta/app.js без изменения протокола)
 B.http = function () { return /:\d+$/.test(B.S.server) ? 'http' : 'https'; };
 B.wsProto = function () { return /:\d+$/.test(B.S.server) ? 'ws' : 'wss'; };
 

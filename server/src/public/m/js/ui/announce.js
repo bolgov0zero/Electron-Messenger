@@ -8,7 +8,7 @@ B.ui.announce = (function () {
   var X = '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
   var timers = {}, host = null, queue = [], popup = null;
 
-  function root() { return document.getElementById('app') || document.body; }
+  function root() { return layer; }
   function ensureHost() {
     if (host && host.isConnected) return host;
     host = document.createElement('div'); host.id = 'ann-banners'; root().appendChild(host); return host;

@@ -7,7 +7,7 @@
 //   msgs:preview {chatId}           — до ответа сервера в B.msgs.cache положен кэшированный хвост переписки (лёгкая первая отрисовка)
 B.msgs = {
   PAGE: 100,
-  chatId: null, cache: [], unreadAtOpen: 0, unreadFromId: null, hasMoreOlder: false, loadingOlder: false, _applied: {},
+  chatId: null, cache: [], pins: [], unreadAtOpen: 0, unreadFromId: null, hasMoreOlder: false, loadingOlder: false, _applied: {},
 
   // Хвост переписки (последние сообщения) по чатам: чат открывается сразу с сообщениями, а не с пустой страницей,
   // пока идёт запрос. Хранится на устройстве (localStorage), нужен и для открытия чата без связи; стирается при выходе. Скрытые чаты не храним: их ещё надо расшифровать
@@ -34,7 +34,7 @@ B.msgs = {
   // Открыть чат: окно последних сообщений либо окно вокруг aroundId (переход из поиска или цитаты)
   open: async function (chatId, aroundId) {
     var M = B.msgs, S = B.S;
-    M.chatId = chatId; S.activeChatId = chatId; M.cache = []; M.hasMoreOlder = false; M._applied = {}; M.unreadFromId = null; M.unreadAtOpen = 0;
+    M.chatId = chatId; S.activeChatId = chatId; M.cache = []; M.pins = []; M.hasMoreOlder = false; M._applied = {}; M.unreadFromId = null; M.unreadAtOpen = 0;
     var chat = B.find(chatId); if (!chat) return;
     // Приглашение в группу с другого сервера: сообщений до вступления нет, историю не запрашиваем
     if (chat.invite) { M.cache = []; M._preview = false; M.watch(chat); B.bus.emit('msgs:opened', { chatId: chatId }); return; }
@@ -49,7 +49,7 @@ B.msgs = {
       B.bus.emit('msgs:opened', { chatId: chatId }); return;
     }
     if (!data || M.chatId !== chatId) return;
-    M.cache = data.messages || []; M.hasMoreOlder = !!data.hasMore; M._preview = false; M.restoreOutbox(chatId);
+    M.cache = data.messages || []; M.pins = data.pins || []; M.hasMoreOlder = !!data.hasMore; M._preview = false; M.restoreOutbox(chatId);
     M.unreadAtOpen = chat.unread || 0;
     // Плашка «Новые сообщения» привязана к конкретному сообщению: если считать от конца ленты, она ползла бы вниз
     // при каждом новом сообщении, в том числе при своём
@@ -282,6 +282,8 @@ B.msgs = {
     var m = M.find(d.message_id);
     if (m) { m.forward_count = d.count; bus.emit('msgs:changed', { mode: 'smart' }); }
   });
+  // Закреплённые сообщения чата: список приходит с окном сообщений и обновляется событием
+  bus.on('ws:pins_updated', function (d) { if (d.chat_id !== M.chatId) return; M.pins = d.pins || []; bus.emit('pins:changed'); });
   bus.on('ws:reaction_update', function (d) {
     var m = M.find(d.message_id);
     if (m) { m.reactions = d.counts; bus.emit('msgs:changed', { mode: 'smart' }); }
@@ -291,3 +293,15 @@ B.msgs = {
 // Хвост переписки обновляем, когда чат открыт, пришло новое или изменилось; при выходе стираем
 ['msgs:opened', 'msgs:new', 'msgs:changed'].forEach(function (ev) { B.bus.on(ev, function () { B.msgs.saveTail(); }); });
 B.bus.on('auth:logout', function () { B.msgs.outbox = []; try { localStorage.removeItem('m.outbox'); } catch (e) {} B.msgs._tail = {}; try { localStorage.removeItem('m.tail'); } catch (e) {} });
+
+// Закрепление сообщений (любой участник): список — B.msgs.pins, действия — по WebSocket
+B.pins = {
+  can: function (chat) { return !!chat && !B.S.secretChatIds.has(chat.id) && !B.msgs.locked(chat); },
+  isPinned: function (chat, m) { return B.msgs.pins.some(function (p) { return p.message_id === m.id; }); },
+  toggle: function (chat, m) {
+    var on = B.pins.isPinned(chat, m);
+    B.ws.send({ type: on ? 'unpin_message' : 'pin_message', message_id: m.id });
+    B.toast.show(on ? 'Сообщение откреплено' : 'Сообщение закреплено', 'pin');
+  },
+  unpin: function (id) { B.ws.send({ type: 'unpin_message', message_id: id }); }
+};

@@ -1,61 +1,33 @@
-// /m — сборка приложения: оболочка с тремя вкладками (панели одинаковой высоты), экран входа, навигация, шторки.
+// /m — сборка приложения по макету: оболочка с тремя вкладками и плавающей панелью, экран входа, навигация.
 (function () {
-  var ic = B.ic, app = document.getElementById('app'), shell = null;
-  B.nav.init(document.getElementById('stack'));
-  B.kbd.init();
-  var tabs = [['chats', 'Чаты', 'tabchats'], ['contacts', 'Контакты', 'person'], ['settings', 'Настройки', 'gear']];
+  B.nav.init(stack);
+  B.theme.init(); fit(); requestAnimationFrame(fit); setTimeout(fit, 300);
+  var TABS = [['chats', 'Чаты', 'chat'], ['contacts', 'Контакты', 'users'], ['settings', 'Настройки', 'gear']], shell = null, curTab = 'chats';
 
-  function nav(title, right) { return '<div class="nav fix"><div class="nav-in"><div class="nl"></div><div class="nt">' + title + '</div><div class="nr">' + (right || '') + '</div></div></div>'; }
   function mountShell() {
     if (shell) return;
-    shell = document.createElement('div');
-    shell.className = 'page'; shell.hidden = true;
-    shell.innerHTML =
-      '<div class="tabview on" data-tab="chats">' + nav('Чаты', '<button class="nb" data-act="newChat" aria-label="Новый чат">' + ic('compose', 24) + '</button>') + '<div class="scroll" id="chats-scroll"></div></div>' +
-      '<div class="tabview" data-tab="contacts">' + nav('Контакты', '<button class="nb" data-act="addContact" aria-label="Добавить контакт">' + ic('userplus', 24, 1.8) + '</button>') + '<div class="scroll" id="contacts-scroll"></div></div>' +
-      '<div class="tabview" data-tab="settings">' + nav('Настройки') + '<div class="scroll" style="background:var(--bg2)" id="settings-scroll"></div></div>' +
-      '<div class="bottom tabbar" id="tabbar">' + tabs.map(function (t, i) {
-        return '<button class="tb' + (i === 0 ? ' on' : '') + '" data-tab="' + t[0] + '">' + ic(t[2], 24, 1.7) + '<span>' + t[1] + '</span>' + (t[0] === 'chats' ? '<b class="bd" hidden></b>' : '') + '</button>';
-      }).join('') + '</div>';
+    shell = document.createElement('div'); shell.className = 'page base'; shell.hidden = true;
+    shell.innerHTML = B.nav.amb + TABS.map(function (t) { return '<div class="tabview' + (t[0] === 'chats' ? ' on' : '') + '" data-tab="' + t[0] + '"></div>'; }).join('') +
+      '<div class="tabbar glass" id="tabbar"><i class="thumb"></i>' + TABS.map(function (t, i) { return '<button class="tb' + (i ? '' : ' on') + '" data-tab="' + t[0] + '" aria-label="' + t[1] + '">' + I(t[2]) + '<span>' + t[1] + '</span>' + (t[0] === 'chats' ? '<b class="bd" id="chbd" style="display:none"></b>' : '') + '</button>'; }).join('') + '</div>';
     B.nav.setRoot(shell);
-    B.ui.chatlist.mount(document.getElementById('chats-scroll'));
-    B.ui.contacts.mount(document.getElementById('contacts-scroll'));
-    B.ui.settings.mount(document.getElementById('settings-scroll'));
-    B.ptr(document.getElementById('chats-scroll'), function () { return Promise.all([B.chats.refresh(), B.presence.load()]); });
-    B.ptr(document.getElementById('contacts-scroll'), function () { return B.contacts.load(); });
-    shell.addEventListener('click', function (e) { var tb = e.target.closest('.tb'); if (tb) setTab(tb.dataset.tab); });
-    // Кнопки в верхней панели вкладок
-    document.getElementById('stack').addEventListener('click', function (e) {
-      var a = e.target.closest('[data-act]'); if (!a) return;
-      if (a.dataset.act === 'newChat') B.ui.groups.newChat(); else if (a.dataset.act === 'addContact') B.ui.groups.addContact();
-    });
+    B.ui.chatlist.mount($('.tabview[data-tab="chats"]', shell)); B.ui.contacts.mount($('.tabview[data-tab="contacts"]', shell)); B.ui.settings.mount($('.tabview[data-tab="settings"]', shell));
+    shell.addEventListener('click', function (e) { var b = e.target.closest('.tb'); if (b) setTab(b.dataset.tab); });
   }
-  // Вкладки снизу: новая вкладка въезжает со стороны своего места в панели и проявляется, прежняя уезжает в обратную
-  var TABS = ['chats', 'contacts', 'settings'], curTab = 'chats', tabAnims = [];
-  function setTab(name) {
-    var prev = curTab;
-    tabAnims.forEach(function (a) { try { a.cancel(); } catch (e) {} }); tabAnims = [];
-    shell.querySelectorAll('.tabview').forEach(function (v) { v.style.visibility = ''; v.style.zIndex = ''; });
-    shell.querySelectorAll('.tabview').forEach(function (v) { v.classList.toggle('on', v.dataset.tab === name); });
-    shell.querySelectorAll('.tb').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === name); });
-    curTab = name;
-    var from = shell.querySelector('.tabview[data-tab="' + prev + '"]'), to = shell.querySelector('.tabview[data-tab="' + name + '"]');
-    if (prev === name || !from || !to || !from.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    var dir = TABS.indexOf(name) > TABS.indexOf(prev) ? 1 : -1, d = 32, ease = 'cubic-bezier(.32,.72,0,1)';
-    from.style.visibility = 'visible'; from.style.zIndex = '1'; to.style.zIndex = '2';
-    var a1 = from.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(' + (-dir * d * 0.6) + 'px)' }], { duration: 240, easing: ease, fill: 'forwards' });
-    var a2 = to.animate([{ opacity: 0, transform: 'translateX(' + (dir * d) + 'px)' }, { opacity: 1, transform: 'none' }], { duration: 300, easing: ease });
-    tabAnims = [a1, a2];
-    var done = function () { from.style.visibility = ''; from.style.zIndex = ''; to.style.zIndex = ''; try { a1.cancel(); } catch (e) {} };
-    a1.onfinish = done;
-    setTimeout(function () { if (tabAnims[0] === a1) done(); }, 450);   // страховка: в свёрнутом окне кадры не рисуются
+  function setTab(t) {
+    if (!shell) return; var prev = curTab; curTab = t;
+    $$('.tb', shell).forEach(function (b) { b.classList.toggle('on', b.dataset.tab === t); });
+    moveThumb();
+    $$('.tabview', shell).forEach(function (v) { var on = v.dataset.tab === t; v.classList.toggle('on', on); v.classList.toggle('out', !on && TABS.findIndex(function (x) { return x[0] === v.dataset.tab; }) < TABS.findIndex(function (x) { return x[0] === t; })); });
+    if (prev !== t) hideKb();
   }
-  B.setTab = function (name) { if (shell) setTab(name); };
-  function showShell() { mountShell(); B.ui.login.hide(); shell.hidden = false; B.ui.chatlist.render(); B.ui.settings.render(); }
+  function moveThumb() { var th = shell && $('#tabbar .thumb', shell), b = shell && $('.tb.on', shell); if (!th || !b || !b.offsetWidth) return; th.style.left = b.offsetLeft + 'px'; th.style.width = b.offsetWidth + 'px'; }
+  B.setTab = setTab;
+  function showShell() { mountShell(); B.ui.login.hide(); shell.hidden = false; B.ui.chatlist.render(); B.ui.settings.render(); requestAnimationFrame(moveThumb); setTimeout(moveThumb, 300); }
   function showLogin() { if (shell) { shell.hidden = true; B.nav.popToRoot(); } B.ui.login.show(); }
+  addEventListener('resize', function () { moveThumb(); });
 
-  B.sheet.init(app); B.actions.init(app); B.toast.init(app); B.lightbox.init(app); B.ui.msgmenu.init(app);
-  B.ui.login.mount(app);
+  B.lightbox.init(phone);
+  B.ui.login.mount(phone);
   B.bus.on('app:login', showLogin);
   B.bus.on('auth:logout', showLogin);
   B.bus.on('app:ready', showShell);
