@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8">
+<html lang="ru" class="dark"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#12171d">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
@@ -160,6 +160,7 @@ html.dark.navy{--app-bg:#111a24;--side-bg:#182430;--card-bg:#213040;--modal-bg:#
    iOS-логика навигации: стек страниц, большие заголовки, плавающие стеклянные шапка и вкладки, шторки снизу.
    Размеры: цель нажатия ≥ 44, радиусы: телефон 58 · шапка/вкладки — капсулы · карточка 26 · шторка 32 · строка 20 */
 :root{--sat:54px;--sab:34px;--r-card:26px;--r-sheet:32px;--r-row:20px}
+html{position:fixed;top:0;left:0;width:100vw;height:100dvh;background:#12171d;overscroll-behavior:none}body{position:fixed;inset:0;overscroll-behavior:none}
 .stage{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center}
 .bar{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 16px 0;flex:none;position:relative;z-index:60}
 .bar .seg{height:34px}.bar .seg button{padding:0 12px}
@@ -394,7 +395,7 @@ html.dark .grp>*+*{border-top-color:rgba(255,255,255,.07)}
 .mcopy{text-align:center;font-size:12.5px;color:var(--muted);padding:6px 0 20px}
 .fedit{display:flex;gap:10px;align-items:center;margin:10px 0}.fcols{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.fcols button{width:34px;height:34px;border-radius:50%;background:var(--fc);box-shadow:inset 0 1px 0 rgba(255,255,255,.4);transition:transform .35s var(--gl-spring)}.fcols button.on{box-shadow:0 0 0 3px var(--gl2),0 0 0 5px var(--fc)}
 .fic{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;font-size:24px;color:var(--fc);background:color-mix(in srgb,var(--fc) 18%,transparent);flex:none}
-@media (max-width:520px){.bar{display:none}.phone{border-radius:0;box-shadow:none}.fit{position:fixed;inset:0}.isl,.sbar,.home{display:none}:root{--sat:max(14px,env(safe-area-inset-top));--sab:max(20px,env(safe-area-inset-bottom))}.phone{touch-action:manipulation}}
+@media (max-width:520px){.bar{display:none}.phone{border-radius:0;box-shadow:none}.fit{position:fixed;top:0;left:0;width:100vw;height:100dvh}body{background:var(--gl-base)}.isl,.sbar,.home{display:none}:root{--sat:max(14px,env(safe-area-inset-top));--sab:max(20px,env(safe-area-inset-bottom))}.phone{touch-action:manipulation}}
 @media (prefers-reduced-motion:reduce){.page,.tabview,.sheet,.cmm,.cmr,.toast{transition-duration:.01s}.amb i{animation:none!important}}
 
 </style></head>
@@ -537,9 +538,10 @@ function setTheme(t){root.classList.toggle('dark',t!=='light');root.classList.to
   $$('.dot2').forEach(d=>d.style.setProperty('--dot','rgb('+ACC[d.dataset.a][root.classList.contains('dark')?2:1]+')'))}
 function segMove(seg){const b=$('button.on',seg),t=$('.thumb',seg);if(!b||!t)return;t.style.left=b.offsetLeft+'px';t.style.width=b.offsetWidth+'px'}
 const real=()=>window.innerWidth<=520;   /* на настоящем телефоне: на весь экран и со своей клавиатурой телефона */
-function fit(){const f=$('.fit');if(real()){const H=(window.visualViewport&&visualViewport.height)||innerHeight;sc=innerWidth/393;phone.style.width='393px';phone.style.height=H/sc+'px';phone.style.transform='scale('+sc+')';phone.style.left='0';phone.style.top='0';return}
+function fit(){const f=$('.fit');if(real()){const full=f.clientHeight||innerHeight,vv=window.visualViewport,kb=vv&&vv.height<full-80;const H=kb?vv.height:full;sc=innerWidth/393;phone.style.width='393px';phone.style.height=H/sc+'px';phone.style.transform='scale('+sc+')';phone.style.left='0';phone.style.top=(kb?vv.offsetTop:0)+'px';return}
   sc=Math.min(f.clientWidth/453,f.clientHeight/(852+40),1.2);phone.style.transform='scale('+sc+')';phone.style.left=(f.clientWidth-393*sc)/2+'px';phone.style.top=Math.max(14,(f.clientHeight-852*sc)/2)+'px'}
 addEventListener('resize',fit);
+if(window.visualViewport)visualViewport.addEventListener('scroll',()=>{if(real())fit()});
 if(window.visualViewport)visualViewport.addEventListener('resize',()=>{if(!real())return;fit();scrollTo(0,0);if(cur&&phone.classList.contains('kbr')){const sc_=$('.scroll',cur.el);sc_.scrollTop=1e6}});
 /* ---------- тост, шторки, подтверждение ---------- */
 let toastT=0;
