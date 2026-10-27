@@ -386,6 +386,9 @@ html, body { background: var(--gl-base); }
 /* узор фона переписки: картинка из настроек (общие с /chat и /m) поверх цветной подсветки */
 .chat .amb::after { content: ""; position: absolute; inset: 0; background: var(--pat-ink, transparent); -webkit-mask-image: var(--pat, none); mask-image: var(--pat, none); -webkit-mask-size: calc(var(--pat-size, 680px) * .55); mask-size: calc(var(--pat-size, 680px) * .55); opacity: var(--pat-a, 0); }
 
+/* текст сообщений не выделяется (долгое нажатие открывает меню, копирование — в нём); выделение остаётся только в полях ввода */
+.phone .mrow .bub, .phone .mrow .bub *, .phone .big { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important; }
+
 /* самолётик по центру кнопки отправки: абсолютно позиционированный значок в grid без смещений уезжал в левый верхний угол */
 .sendb .i { left: 50%; top: 50%; margin: -.5em 0 0 -.5em; }
 
