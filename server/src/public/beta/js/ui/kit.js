@@ -25,7 +25,9 @@ function fit() {
     phone.style.width = '393px'; phone.style.height = H / sc + 'px'; phone.style.transform = 'scale(' + sc + ')';
     phone.style.setProperty('--sc', sc); phone.style.setProperty('--kbh', kbh / sc + 'px'); phone.classList.toggle('kbo', kbh > 0);
     phone.style.left = '0'; phone.style.top = top + 'px';
-    if (!kb && phone.classList.contains('kbr')) { var fa = document.activeElement; if (!(fa && fa.matches && fa.matches('input,textarea,[contenteditable="true"]'))) phone.classList.remove('kbr'); }
+    // Класс kbr (поле ввода над клавиатурой) ставит только фактическая высота клавиатуры, а не фокус: программный фокус (ответ, правка, панель)
+    // клавиатуру на iOS не открывает, и поле ввода не должно опускаться
+    phone.classList.toggle('kbr', kbh > 0 && !phone.classList.contains('ep'));
     if ((kbh > 0 ? 1 : 0) !== (B.kbd._o || 0)) { B.kbd._o = kbh > 0 ? 1 : 0; B.kbd.h = kbh; B.bus.emit('kbd:changed', { h: kbh }); }
     return;
   }
@@ -47,7 +49,7 @@ document.addEventListener('focusout', function () {
   }, 80);
 });
 // Поле ввода получило фокус: настоящая клавиатура (телефон) или имитация (компьютер)
-function showKb() { phone.classList.remove('ep'); phone.classList.add(real() ? 'kbr' : 'kb'); B.bus.emit('kbd:changed', {}); }
+function showKb() { phone.classList.remove('ep'); if (!real()) phone.classList.add('kb'); else fit(); B.bus.emit('kbd:changed', {}); }
 function hideKb() {
   var had = phone.classList.contains('kb') || phone.classList.contains('kbr') || phone.classList.contains('ep');
   phone.classList.remove('kb', 'kbr', 'ep');
