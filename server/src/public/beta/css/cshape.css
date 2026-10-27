@@ -3,7 +3,7 @@
 .comp.cs > .cs-gl, .comp.cs > .cs-ed { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
 .comp.cs > .cs-gl { z-index: 0; }
 .comp.cs > .cs-ed { z-index: 1; overflow: visible; }
-.cs-gl { -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl); -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%); backdrop-filter: blur(var(--gl-blur)) saturate(190%); }
+.cs-gl { -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl); -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%); backdrop-filter: blur(var(--gl-blur)) saturate(190%); }
 .cs-edp { stroke: var(--gl-edge); stroke-width: 1; }
 .comp.cs > .xtra { grid-column: 1 / -1; grid-row: 1; position: relative; z-index: 2; overflow: hidden; }
 .comp.cs > .cbtn { grid-column: 1; grid-row: 2; z-index: 2; }
