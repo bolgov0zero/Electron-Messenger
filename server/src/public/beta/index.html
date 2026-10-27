@@ -438,6 +438,14 @@ html:not(.dark) .edge.t{--ea:.46}
 .phone.kbr .chat .scroll{padding-bottom:calc(var(--kbh,0px) + 78px)}
 .phone.kbr .jump{bottom:calc(var(--kbh,0px) + 80px)}
 
+/* Клавиатура: лента кончается у клавиатуры, как в /m (последнее сообщение прижато к полю ввода), а страница продолжается под ней */
+.phone.kb .chat .scroll{bottom:300px;padding-bottom:78px}
+.phone.kbr .chat .scroll{bottom:var(--kbh,0px);padding-bottom:78px}
+.phone.kb .jump{bottom:372px}.phone.kbr .jump{bottom:calc(var(--kbh,0px) + 80px)}
+.phone.kb .comp{bottom:308px}
+/* копия сообщения в меню занимает ровно ширину исходного пузыря: без проценты от её ширины пузырь пересчитывал бы перенос строк и менял форму */
+.cmc .mrow .bub{max-width:none;width:100%}
+
 </style></head>
 <body>
 <div class="stage">

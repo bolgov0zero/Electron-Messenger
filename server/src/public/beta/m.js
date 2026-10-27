@@ -135,7 +135,7 @@ function fit(){const f=$('.fit');if(real()){const full=f.clientHeight||innerHeig
   sc=Math.min(f.clientWidth/453,f.clientHeight/(852+40),1.2);phone.style.transform='scale('+sc+')';phone.style.setProperty('--sc',1);phone.style.left=(f.clientWidth-393*sc)/2+'px';phone.style.top=Math.max(14,(f.clientHeight-852*sc)/2)+'px'}
 addEventListener('resize',fit);
 if(window.visualViewport)visualViewport.addEventListener('scroll',()=>{if(real())fit()});
-if(window.visualViewport)visualViewport.addEventListener('resize',()=>{if(!real())return;fit();scrollTo(0,0);if(cur&&phone.classList.contains('kbr')){const sc_=$('.scroll',cur.el);sc_.scrollTop=1e6}});
+if(window.visualViewport)visualViewport.addEventListener('resize',()=>{if(!real())return;const sc_=cur&&$('.scroll',cur.el),near=sc_&&sc_.scrollHeight-sc_.scrollTop-sc_.clientHeight<400;fit();scrollTo(0,0);if(near&&phone.classList.contains('kbr'))setTimeout(()=>{sc_.scrollTop=1e6},0)});
 /* ---------- тост, шторки, подтверждение ---------- */
 let toastT=0;
 function toast(m,ic='check'){let t=$('.toast',layer);if(!t){t=document.createElement('div');t.className='toast glass-pop';layer.append(t)}
@@ -187,6 +187,34 @@ function longPress(host,sel,fn){let T=0,s=null,fired=false;
   host.addEventListener('click',e=>{if(fired){e.stopPropagation();e.preventDefault();fired=false}},true)}
 /* ---------- данные ---------- */
 const CH=CHATS.map(c=>({...c}));
+/* ---------- длинная история: чтобы было что прокручивать ---------- */
+(function seedHistory(){
+  const PH=['Доброе утро! Как продвигается задача?','Посмотрю после обеда','Скинул файлы в общую папку','Согласен, так будет проще','Давайте созвонимся в 15:00','Окей, принято','Нужна помощь с макетами?','Готово, проверяйте','Есть вопрос по срокам','Перенесли встречу на завтра','Отличная идея 👍','Подготовлю короткий отчёт','Сделаю до конца дня','Что по бюджету?','Ссылку отправил в личку','Вернусь через 10 минут','Спасибо, очень выручил!','Не получается открыть файл, пришлёшь ещё раз?','Всё работает, проблема была в кэше','Записал, учту в следующем спринте','Кто на связи по релизу?','Проверил на телефоне — выглядит хорошо','Давайте обсудим на планёрке','Внёс правки, посмотрите, пожалуйста','Длинное сообщение для проверки переноса строк: нужно, чтобы текст занимал несколько строк, а пузырёк корректно растягивался по высоте без обрезания и наползания времени','Принял, спасибо!','Согласовано','Жду ответа от заказчика','Это важно, не забудьте отметить в календаре','Пока без изменений'];
+  const FILES=[['Отчёт_октябрь.pdf','212 КБ'],['Схема_процесса.png','1,4 МБ'],['Бюджет_Q4.xlsx','86 КБ']];
+  const days=['Понедельник','Вторник','Среда','Вчера'];
+  let seed=7;const rnd=()=>(seed=(seed*1103515245+12345)&0x7fffffff)/0x7fffffff;
+  Object.keys(CONVO).forEach(id=>{
+    const c=CHATS.find(x=>x.id===id),dm=c&&c.k==='dm';
+    const pool=dm?[c.peer,'me']:[...(MEMBERS[id]||MEMBERS.room||['anna','dmitry']),'me','me'];
+    const hist=[];let last=null;
+    days.forEach(d=>{
+      const n=8+Math.floor(rnd()*5);let h=9,mi=3;
+      for(let i=0;i<n;i++){
+        mi+=2+Math.floor(rnd()*14);if(mi>=60){h++;mi-=60}
+        const a=pool[Math.floor(rnd()*pool.length)],tm=('0'+h).slice(-2)+':'+('0'+mi).slice(-2),r=rnd();
+        const m={a,t:PH[Math.floor(rnd()*PH.length)],tm};
+        if(i===0)m.day=d;
+        if(r<.08)m.re=['👍 '+(1+Math.floor(rnd()*3)),'❤️ 1'];
+        else if(r<.14&&last&&last.a!==a&&a==='me')m.q=[PPL[last.a]?PPL[last.a].n:S.name.split(' ')[0],last.t.replace(/<[^>]+>/g,'').slice(0,60)];
+        else if(r<.18&&a!=='me')m.file=FILES[Math.floor(rnd()*FILES.length)];
+        hist.push(m);last=m;
+      }
+    });
+    if(CONVO[id].length)CONVO[id][0].day='Сегодня';
+    CONVO[id]=hist.concat(CONVO[id]);
+  });
+})();
+
 const findChat=id=>CH.find(c=>c.id===id)||TOPICS.find(t=>t.id===id);
 const initials=n=>n.split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
 /* ---------- корневая страница ---------- */
@@ -274,8 +302,8 @@ function bubHtml(cid,m,prev,dm,id){const plain=(m.t||m.big||'').replace(/<[^>]+>
     const body=m.big?`<span class="big">${m.big}</span>`:`<div class="bub">${m.pic?'<div class="pic"></div>':''}${m.file?`<div class="file"><span class="fi">${I('file')}</span><span><b>${m.file[0]}</b><small>${m.file[1]}</small></span><button class="dl glass gi" aria-label="Скачать">${I('dl')}</button></div>`:''}${m.t||''}<span class="t">${m.tm}</span></div>`;
     h+=`<div class="mrow in" data-m="${id}">${body}</div>`}
   if(m.re)h+=rxHtml(m.re);return h}
-function convoHtml(cid,dm){let prev=null,h='<div class="day"><span class="glass">Сегодня</span></div>';
-  (CONVO[cid]||[]).forEach(m=>{h+=bubHtml(cid,m,prev,dm,cid+'-'+(mseq++));prev=m.a==='me'?null:m.a});return h}
+function convoHtml(cid,dm){let prev=null,h='';
+  (CONVO[cid]||[]).forEach(m=>{if(m.day){h+=`<div class="day"><span class="glass">${m.day}</span></div>`;prev=null}h+=bubHtml(cid,m,prev,dm,cid+'-'+(mseq++));prev=m.a==='me'?null:m.a});return h}
 let cur=null;
 function openChat(id,fromRoom){const c=findChat(id);if(!c)return;if(c.k==='room'){openRoom();return}
   if(c.u){c.u=0;paintList();badge();const t=TOPICS.find(x=>x.id===id);t&&(t.u=0)}
@@ -346,13 +374,13 @@ function chatActions(c,el){const items=[['search','Поиск по перепи�
   s.el.addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(b){s.close();setTimeout(items[+b.dataset.i][2],200)}})}
 /* ---------- клавиатура (имитация) ---------- */
 const KR=['йцукенгшщзхъ','фывапролджэ','ячсмитьбю'];
-function showKb(ta){if(real()){phone.classList.add('kbr');setTimeout(()=>{if(cur)$('.scroll',cur.el).scrollTop=1e6},350);return}
+function showKb(ta){if(real()){const sc_=$('.scroll',cur.el),near=sc_.scrollHeight-sc_.scrollTop-sc_.clientHeight<400;phone.classList.add('kbr');if(near){sc_.scrollTop=1e6;setTimeout(()=>{sc_.scrollTop=1e6},350)}return}
   if(!$('.kbd',phone)){const k=document.createElement('div');k.className='kbd';
     k.innerHTML=KR.map((r,i)=>`<div class="kr">${i===2?'<button class="w" data-k="shift">⇧</button>':''}${[...r].map(ch=>`<button data-k="${ch}">${ch}</button>`).join('')}${i===2?'<button class="w" data-k="del">⌫</button>':''}</div>`).join('')+'<div class="kr last"><button class="n" data-k="num">123</button><button class="sp" data-k=" ">пробел</button><button class="go" data-k="go">Отправить</button></div>';
     k.addEventListener('pointerdown',e=>{if(e.target.closest('button'))e.preventDefault()});
     k.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!cur)return;const t=cur.ta,v=b.dataset.k;if(v==='go'){cur.el._send();return}if(v==='del'){t.value=t.value.slice(0,-1)}else if(v==='shift'||v==='num'){return}else t.value+=v;t.dispatchEvent(new Event('input'))});
     phone.append(k)}
-  phone.classList.add('kb');setTimeout(()=>{const s=$('.scroll',cur.el);s.scrollTop=1e6},350)}
+  {const s=$('.scroll',cur.el),near=s.scrollHeight-s.scrollTop-s.clientHeight<400;phone.classList.add('kb');if(near){s.scrollTop=1e6;setTimeout(()=>{s.scrollTop=1e6},360)}}}
 function hideKb(){phone.classList.remove('kb','kbr');document.activeElement&&document.activeElement.blur&&document.activeElement.blur()}
 /* ---------- комната с темами ---------- */
 function openRoom(){const rows=TOPICS.map(t=>`<button class="row" data-id="${t.id}">${avHtml({...t,ini:'#'},'sq')}<div class="rt"><div class="r1"><b>${t.n}</b><span class="tm${t.u?' new':''}">${t.t}</span></div><div class="r2"><span class="pv"><i>${t.who}: </i>${esc(t.p)}</span>${t.at?`<span class="st" style="color:#ff9500">${I('bell')}</span>`:''}${t.u?`<span class="bd">${t.u}</span>`:''}</div></div></button>`).join('');
