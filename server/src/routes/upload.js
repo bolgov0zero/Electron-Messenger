@@ -94,8 +94,12 @@ function hasFfmpeg() {
 // (aspect-ratio) и не дёргал ленту, когда вложение наконец догрузится
 async function getVideoSize(filePath) {
   try {
-    const { stdout } = await execFileP('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=s=x:p=0', filePath]);
-    const [w, h] = stdout.trim().split('x').map(Number);
+    const { stdout } = await execFileP('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height:stream_tags=rotate:stream_side_data=rotation', '-of', 'json', filePath]);
+    const st = (JSON.parse(stdout).streams || [])[0] || {};
+    let w = Number(st.width), h = Number(st.height);
+    // Видео с телефона хранится горизонтально и помечено поворотом на 90°: показываться оно будет вертикальным, как и обложка
+    const rot = Math.abs(Number(st.tags && st.tags.rotate) || Number(((st.side_data_list || []).find(d => d.rotation !== undefined) || {}).rotation) || 0) % 180;
+    if (rot === 90) [w, h] = [h, w];
     return w > 0 && h > 0 ? { width: w, height: h } : null;
   } catch { return null; }
 }

@@ -270,7 +270,7 @@ B.ui.chat = (function () {
     B.ui.composer.mount(el, chat);
     var scr = $('.scroll', el);
     scr.addEventListener('scroll', function () { el._sa = performance.now(); onScroll(el); }, { passive: true });
-    scr.addEventListener('touchstart', function () { el._touch = 1; }, { passive: true });
+    scr.addEventListener('touchstart', function () { el._touch = 1; el._stickUntil = 0; }, { passive: true });
     ['touchend', 'touchcancel'].forEach(function (t) { scr.addEventListener(t, function () { el._touch = 0; el._sa = performance.now(); }, { passive: true }); });
     el.addEventListener('click', function (e) { onClick(el, e); });
     bindGestures(el);
@@ -284,6 +284,9 @@ B.ui.chat = (function () {
     }).observe(comp); } catch (e) {}
     // Картинки подгружаются уже после открытия: пока чат только открыт и его не листают, лента остаётся у низа
     $('.msgs', el).addEventListener('load', function (e) { if (e.target.tagName === 'IMG' && performance.now() < (el._stickUntil || 0) && !el._touch) scr.scrollTop = scr.scrollHeight; }, true);
+    // Пока чат только открыт, любой рост ленты (картинка или видео получили размер, подъехал композер) сразу, до отрисовки, возвращает её к низу:
+    // иначе последнее сообщение на кадр-другой оказывалось под композером. Касание ленты это прекращает
+    try { new ResizeObserver(function () { if (performance.now() < (el._stickUntil || 0) && !el._touch) scr.scrollTop = scr.scrollHeight; }).observe($('.msgs', el)); } catch (e) {}
     renderPin(el);
     return el;
   }
@@ -505,7 +508,7 @@ B.ui.chat = (function () {
     } else {
       var u = $('#unrd', el);
       if (u) scr.scrollTop = Math.max(0, u.getBoundingClientRect().top / sc - scr.getBoundingClientRect().top / sc + scr.scrollTop - $('.nav', el).offsetHeight - 8);
-      else { scr.scrollTop = scr.scrollHeight; el._stickUntil = performance.now() + 2500; }
+      else { scr.scrollTop = scr.scrollHeight; el._stickUntil = performance.now() + 4000; }
     }
     updateHeader(el); onScroll(el); renderPin(el);
     if (B.ui.composer.sync) B.ui.composer.sync(el);
