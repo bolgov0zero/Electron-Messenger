@@ -418,6 +418,30 @@ html:not(.dark) .edge.t{--ea:.46}
 .phone{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .phone input,.phone textarea{-webkit-touch-callout:default}
 
+/* ── Низ как в /m: окно iOS заканчивается над индикатором «домой», а оставшаяся полоса экрана — вне страницы.
+   Нарисовать там ничего нельзя (прозрачной её тоже не сделать: видно только цвет фона html), поэтому нижнюю панель
+   прижимаем к самому краю окна сплошной «доской» того же цвета, что и фон html: полоса выглядит её продолжением. ── */
+:root{--dock:#151c24;--dock-h:66px;--cdock:62px}
+html:not(.dark){--dock:#e8efef}
+html.dark.navy{--dock:#142030}
+html{background:var(--dock)}
+.phone{--dockpad:34px}   /* в рамке на компьютере полосу под окном имитируем отступом доски */
+@media (max-width:520px){.phone{--dockpad:0px}}
+.phone.kb,.phone.kbr{--dockpad:0px}
+.scroll{padding-bottom:calc(var(--dock-h) + var(--dockpad) + 14px)}
+.scroll.nobot{padding-bottom:calc(var(--dockpad) + 30px)}
+.tabbar.glass{left:0;right:0;bottom:0;transform:none;border-radius:0;border:0;border-top:1px solid var(--gl-edge);background:var(--dock);-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;padding:5px 10px calc(5px + var(--dockpad));gap:4px}
+.tabbar .thumb{top:5px;bottom:calc(5px + var(--dockpad));border-radius:28px}
+.tb{flex:1;width:auto;height:56px;border-radius:28px}
+.tb .bd{right:auto;left:calc(50% + 6px)}
+.comp{left:0;right:0;bottom:0;padding:8px 10px calc(8px + var(--dockpad));background:var(--dock);border-top:1px solid var(--gl-edge)}
+.phone.kb .comp{bottom:300px}.phone.kbr .comp{bottom:0}
+.chat .scroll{padding-bottom:calc(var(--cdock) + var(--dockpad) + 14px)}
+.phone.kb .chat .scroll{padding-bottom:376px}.phone.kbr .chat .scroll{padding-bottom:78px}
+.jump{bottom:calc(var(--cdock) + var(--dockpad) + 12px)}.phone.kb .jump{bottom:372px}.phone.kbr .jump{bottom:80px}
+.edge.b{height:calc(var(--dockpad) + 40px);background:linear-gradient(transparent,var(--dock) 88%)}
+.phone.kb .home{opacity:0}
+
 </style></head>
 <body>
 <div class="stage">
@@ -639,10 +663,9 @@ function renderChats(){const v=$('.tabview[data-tab="chats"]');const keep=$('.sc
   <div class="scroll"><h1 class="lt">Чаты</h1>
    <label class="srch glass">${I('search')}<input id="cq" placeholder="Поиск" autocomplete="off" value="${esc(S.q)}"></label>
    ${S.set.spaces?`<div class="chips"><button class="chip on" data-act="space">${I('grid')}${esc(S.space)}${I('chevDown')}</button></div>`:''}
-   <div class="seg f" id="fseg"><i class="thumb"></i>${FILTERS.map(([k,l])=>`<button class="${S.filter===k?'on':''}" data-f="${k}">${l}</button>`).join('')}</div>
    <div class="chips">${FOLD.map(([k,l,ic])=>`<button class="chip${S.folder===k?' on':''}" data-fo="${k}">${I(ic)}${l}</button>`).join('')}</div>
    <div id="clist"></div></div>`;
-  paintList();$('.scroll',v).scrollTop=keep;scrollWatch(v);segMove($('#fseg'));badge()}
+  paintList();$('.scroll',v).scrollTop=keep;scrollWatch(v);badge()}
 function chatRow(c){const dm=c.k==='dm',pv=c.k==='group'&&c.p&&!/^Вы:/.test(c.p)&&c.who?`<i>${c.who}: </i>`:'';
   const mute=S.muted.has(c.id),pin=S.pinned.has(c.id);
   return `<button class="row${pin?' pinned':''}" data-id="${c.id}">${avHtml(c,'')}<div class="rt"><div class="r1"><b>${esc(c.n)}</b>${c.tick?`<span class="st" style="color:var(--accent-ink)">${I('checks')}</span>`:''}<span class="tm${c.u&&!mute?' new':''}">${c.t}</span></div>
@@ -655,7 +678,7 @@ function paintList(){const el=$('#clist');if(!el)return;const q=S.q.trim().toLow
     (!rows.length?`<div class="empty"><span class="ei glass">${I('search')}</span><b>Ничего не найдено</b><span>Измените запрос или фильтр</span></div>`:'')}
 function bindChats(){const v=$('.tabview[data-tab="chats"]');
   v.addEventListener('input',e=>{if(e.target.id==='cq'){S.q=e.target.value;paintList()}});
-  v.addEventListener('click',e=>{const f=e.target.closest('[data-f]');if(f){S.filter=f.dataset.f;$$('#fseg button').forEach(b=>b.classList.toggle('on',b===f));segMove($('#fseg'));paintList();return}
+  v.addEventListener('click',e=>{
     const fo=e.target.closest('[data-fo]');if(fo){S.folder=fo.dataset.fo;$$('[data-fo]',v).forEach(b=>b.classList.toggle('on',b===fo));paintList();return}
     const a=e.target.closest('[data-act]');if(a){if(a.dataset.act==='compose')newChat();else if(a.dataset.act==='space')spaceSheet();return}
     const r=e.target.closest('.row');if(r)openChat(r.dataset.id)});

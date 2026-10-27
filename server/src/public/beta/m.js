@@ -210,10 +210,9 @@ function renderChats(){const v=$('.tabview[data-tab="chats"]');const keep=$('.sc
   <div class="scroll"><h1 class="lt">Чаты</h1>
    <label class="srch glass">${I('search')}<input id="cq" placeholder="Поиск" autocomplete="off" value="${esc(S.q)}"></label>
    ${S.set.spaces?`<div class="chips"><button class="chip on" data-act="space">${I('grid')}${esc(S.space)}${I('chevDown')}</button></div>`:''}
-   <div class="seg f" id="fseg"><i class="thumb"></i>${FILTERS.map(([k,l])=>`<button class="${S.filter===k?'on':''}" data-f="${k}">${l}</button>`).join('')}</div>
    <div class="chips">${FOLD.map(([k,l,ic])=>`<button class="chip${S.folder===k?' on':''}" data-fo="${k}">${I(ic)}${l}</button>`).join('')}</div>
    <div id="clist"></div></div>`;
-  paintList();$('.scroll',v).scrollTop=keep;scrollWatch(v);segMove($('#fseg'));badge()}
+  paintList();$('.scroll',v).scrollTop=keep;scrollWatch(v);badge()}
 function chatRow(c){const dm=c.k==='dm',pv=c.k==='group'&&c.p&&!/^Вы:/.test(c.p)&&c.who?`<i>${c.who}: </i>`:'';
   const mute=S.muted.has(c.id),pin=S.pinned.has(c.id);
   return `<button class="row${pin?' pinned':''}" data-id="${c.id}">${avHtml(c,'')}<div class="rt"><div class="r1"><b>${esc(c.n)}</b>${c.tick?`<span class="st" style="color:var(--accent-ink)">${I('checks')}</span>`:''}<span class="tm${c.u&&!mute?' new':''}">${c.t}</span></div>
@@ -226,7 +225,7 @@ function paintList(){const el=$('#clist');if(!el)return;const q=S.q.trim().toLow
     (!rows.length?`<div class="empty"><span class="ei glass">${I('search')}</span><b>Ничего не найдено</b><span>Измените запрос или фильтр</span></div>`:'')}
 function bindChats(){const v=$('.tabview[data-tab="chats"]');
   v.addEventListener('input',e=>{if(e.target.id==='cq'){S.q=e.target.value;paintList()}});
-  v.addEventListener('click',e=>{const f=e.target.closest('[data-f]');if(f){S.filter=f.dataset.f;$$('#fseg button').forEach(b=>b.classList.toggle('on',b===f));segMove($('#fseg'));paintList();return}
+  v.addEventListener('click',e=>{
     const fo=e.target.closest('[data-fo]');if(fo){S.folder=fo.dataset.fo;$$('[data-fo]',v).forEach(b=>b.classList.toggle('on',b===fo));paintList();return}
     const a=e.target.closest('[data-act]');if(a){if(a.dataset.act==='compose')newChat();else if(a.dataset.act==='space')spaceSheet();return}
     const r=e.target.closest('.row');if(r)openChat(r.dataset.id)});
