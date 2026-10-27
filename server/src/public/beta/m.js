@@ -302,8 +302,10 @@ function bubHtml(cid,m,prev,dm,id){const plain=(m.t||m.big||'').replace(/<[^>]+>
     const body=m.big?`<span class="big">${m.big}</span>`:`<div class="bub">${m.pic?'<div class="pic"></div>':''}${m.file?`<div class="file"><span class="fi">${I('file')}</span><span><b>${m.file[0]}</b><small>${m.file[1]}</small></span><button class="dl glass gi" aria-label="Скачать">${I('dl')}</button></div>`:''}${m.t||''}<span class="t">${m.tm}</span></div>`;
     h+=`<div class="mrow in" data-m="${id}">${body}</div>`}
   if(m.re)h+=rxHtml(m.re);return h}
-function convoHtml(cid,dm){let prev=null,h='';
-  (CONVO[cid]||[]).forEach(m=>{if(m.day){h+=`<div class="day"><span class="glass">${m.day}</span></div>`;prev=null}h+=bubHtml(cid,m,prev,dm,cid+'-'+(mseq++));prev=m.a==='me'?null:m.a});return h}
+/* сообщения лежат в группах по дням: бейдж дня липнет к верху ленты, пока видна его группа, и уезжает, когда её сменяет следующая (как в /chat и /m) */
+function convoHtml(cid,dm,extra=''){let prev=null,h='',open=false;
+  (CONVO[cid]||[]).forEach(m=>{if(m.day){if(open)h+='</div>';h+=`<div class="day-group"><div class="day"><span class="glass">${m.day}</span></div>`;open=true;prev=null}h+=bubHtml(cid,m,prev,dm,cid+'-'+(mseq++));prev=m.a==='me'?null:m.a});
+  return h+extra+(open?'</div>':'')}
 let cur=null;
 function openChat(id,fromRoom){const c=findChat(id);if(!c)return;if(c.k==='room'){openRoom();return}
   if(c.u){c.u=0;paintList();badge();const t=TOPICS.find(x=>x.id===id);t&&(t.u=0)}
@@ -313,7 +315,7 @@ function openChat(id,fromRoom){const c=findChat(id);if(!c)return;if(c.k==='room'
   const nav=`<div class="nav cn"><button class="nb glass gi" data-back aria-label="Назад">${I('chevLeft')}${n?`<span class="cnt">${n}</span>`:''}</button>
    <button class="who glass gi" data-info>${avHtml({...c,ini:isTopic?'#':c.ini,on:0,type:0},'')}<span style="min-width:0"><b>${esc(c.n)}</b><small class="${onl?'on':''}">${esc(sub)}</small></span></button>
    <div class="nr cap glass"><button data-s aria-label="Поиск">${I('search')}</button><button data-more aria-label="Ещё">${I('dots')}</button></div></div>`;
-  const el=page({cls:'chat'+(pin?' pinned':''),nav,title:c.n,body:convoHtml(id,dm)+(id==='team'?'<div class="typing"><i></i><i></i><i></i>Елена печатает…</div>':''),nobot:false});
+  const el=page({cls:'chat'+(pin?' pinned':''),nav,title:c.n,body:convoHtml(id,dm,id==='team'?'<div class="typing"><i></i><i></i><i></i>Елена печатает…</div>':''),nobot:false});
   el.dataset.cid=id;el.dataset.dm=dm?1:'';
   el.insertAdjacentHTML('beforeend',(pin?`<button class="pinbar glass gi" data-pin>${'<i class="tk"></i>'}<span class="pt"><b>Закреплённое сообщение</b><span>Макеты профиля готовы, посмотрите вариант B</span></span><span class="ibtn" style="width:32px;height:32px">${I('pin')}</span></button>`:'')+
    `<button class="jump glass gi" data-jump aria-label="Вниз">${I('down')}</button>`+composerHtml(c));
@@ -330,10 +332,10 @@ function bindChat(el,c){const sc_=$('.scroll',el),ta=$('textarea',el),send=$('.s
     const tm=new Date().toTimeString().slice(0,5);
     if(ctx?.k==='edit'){const m=MS[ctx.id];m.t=t;m.text=t;m.ed=1;const b=$(`[data-m="${ctx.id}"] .bub`,el);if(b){b.innerHTML=esc(t)+`<span class="t">изм. ${m.tm}${CHK}</span>`}ctx=null;bar();ta.value='';sync();toast('Сообщение изменено','pen');return}
     const m={a:'me',t:esc(t),tm,q:ctx?[ctx.who,ctx.text]:null};if(!m.q)delete m.q;const id=c.id+'-'+(mseq++);
-    const ty=$('.typing',sc_);const h=document.createElement('div');h.innerHTML=bubHtml(c.id,m,null,true,id);[...h.children].forEach(x=>{ty?sc_.insertBefore(x,ty):sc_.append(x)});$(`[data-m="${id}"] .bub`,el)?.classList.add('pop');
+    const grp=$$('.day-group',sc_).pop()||sc_,ty=$('.typing',grp);const h=document.createElement('div');h.innerHTML=bubHtml(c.id,m,null,true,id);[...h.children].forEach(x=>{ty?grp.insertBefore(x,ty):grp.append(x)});$(`[data-m="${id}"] .bub`,el)?.classList.add('pop');
     ctx=null;bar();ta.value='';sync();sc_.scrollTo({top:1e6,behavior:'smooth'});
-    if(c.k==='dm'||Math.random()>.4)setTimeout(()=>{const who=c.k==='dm'?c.peer:'elena';const ty2=document.createElement('div');ty2.className='typing';ty2.innerHTML='<i></i><i></i><i></i>'+(PPL[who].n.split(' ')[0])+' печатает…';sc_.append(ty2);sc_.scrollTo({top:1e6,behavior:'smooth'});
-      setTimeout(()=>{ty2.remove();const id2=c.id+'-'+(mseq++);const hh=document.createElement('div');hh.innerHTML=bubHtml(c.id,{a:who,t:['Принято 👍','Да, посмотрю чуть позже','Спасибо!','Хорошо, договорились'][Math.random()*4|0],tm:new Date().toTimeString().slice(0,5)},null,c.k==='dm',id2);[...hh.children].forEach(x=>sc_.append(x));$(`[data-m="${id2}"] .bub`,el)?.classList.add('pop');sc_.scrollTo({top:1e6,behavior:'smooth'})},1500)},700)};
+    if(c.k==='dm'||Math.random()>.4)setTimeout(()=>{const who=c.k==='dm'?c.peer:'elena';const ty2=document.createElement('div');ty2.className='typing';ty2.innerHTML='<i></i><i></i><i></i>'+(PPL[who].n.split(' ')[0])+' печатает…';($$('.day-group',sc_).pop()||sc_).append(ty2);sc_.scrollTo({top:1e6,behavior:'smooth'});
+      setTimeout(()=>{ty2.remove();const id2=c.id+'-'+(mseq++);const hh=document.createElement('div');hh.innerHTML=bubHtml(c.id,{a:who,t:['Принято 👍','Да, посмотрю чуть позже','Спасибо!','Хорошо, договорились'][Math.random()*4|0],tm:new Date().toTimeString().slice(0,5)},null,c.k==='dm',id2);[...hh.children].forEach(x=>($$('.day-group',sc_).pop()||sc_).append(x));$(`[data-m="${id2}"] .bub`,el)?.classList.add('pop');sc_.scrollTo({top:1e6,behavior:'smooth'})},1500)},700)};
   el._send=doSend;
   el.addEventListener('click',e=>{const t=e.target;
     if(t.closest('[data-send]')){doSend();return}

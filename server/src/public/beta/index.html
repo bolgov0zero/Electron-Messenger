@@ -453,6 +453,10 @@ html:not(.dark) .edge.t{--ea:.46}
 .nav:not(.cn) .nt{min-width:0}
 .nav:not(.cn) .nt>span{max-width:190px}
 
+/* Бейдж дня: липнет к верху ленты внутри своей группы (position:sticky), top отсчитывается от низа верхней панели */
+.day-group{display:flex;flex-direction:column}
+.day{position:sticky;top:6px;z-index:5;align-self:stretch;display:flex;justify-content:center;margin:6px 0 12px;pointer-events:none}
+
 </style></head>
 <body>
 <div class="stage">
