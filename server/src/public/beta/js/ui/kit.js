@@ -25,6 +25,7 @@ function fit() {
     phone.style.width = '393px'; phone.style.height = H / sc + 'px'; phone.style.transform = 'scale(' + sc + ')';
     phone.style.setProperty('--sc', sc); phone.style.setProperty('--kbh', kbh / sc + 'px'); phone.classList.toggle('kbo', kbh > 0);
     phone.style.left = '0'; phone.style.top = top + 'px';
+    if (!kb && phone.classList.contains('kbr')) { var fa = document.activeElement; if (!(fa && fa.matches && fa.matches('input,textarea,[contenteditable="true"]'))) phone.classList.remove('kbr'); }
     if ((kbh > 0 ? 1 : 0) !== (B.kbd._o || 0)) { B.kbd._o = kbh > 0 ? 1 : 0; B.kbd.h = kbh; B.bus.emit('kbd:changed', { h: kbh }); }
     return;
   }
@@ -37,6 +38,14 @@ if (window.visualViewport) {
   visualViewport.addEventListener('scroll', function () { if (real()) fit(); });
   visualViewport.addEventListener('resize', function () { if (!real()) return; fit(); scrollTo(0, 0); B.bus.emit('kbd:changed', { h: B.kbd.h }); });
 }
+// Клавиатуру закрыли кнопкой iOS (фокус ушёл, а hideKb не вызывался): класс kbr оставался, и поле ввода садилось ниже обычного положения
+document.addEventListener('focusout', function () {
+  setTimeout(function () {
+    var a = document.activeElement;
+    if (a && a.matches && a.matches('input,textarea,[contenteditable="true"]')) return;
+    if (phone.classList.contains('kbr')) { phone.classList.remove('kbr'); B.bus.emit('kbd:changed', {}); }
+  }, 80);
+});
 // Поле ввода получило фокус: настоящая клавиатура (телефон) или имитация (компьютер)
 function showKb() { phone.classList.remove('ep'); phone.classList.add(real() ? 'kbr' : 'kb'); B.bus.emit('kbd:changed', {}); }
 function hideKb() {
