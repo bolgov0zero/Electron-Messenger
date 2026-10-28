@@ -434,7 +434,7 @@ async function deviceInfo() {
   if (_dev?.ha) _haActive = true;
   return _dev;
 }
-const devPayload = d => d && d.id ? { id: d.id, name: d.name, os_user: d.osUser, ha: !!d.ha } : null;
+const devPayload = d => d && d.id ? { id: d.id, name: d.name, os: d.os, os_user: d.osUser, ha: !!d.ha } : null;
 async function keyFetch(server, path, body, token) {
   try {
     const proto = /:\d+$/.test(server) ? 'http' : 'https';

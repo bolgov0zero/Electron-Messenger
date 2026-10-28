@@ -31,7 +31,9 @@ function parseDevice(d) {
   const id = String(d.id || '');
   if (!/^[\w-]{8,64}$/.test(id)) return null;
   const platform = ['web', 'mobile'].includes(d.platform) ? d.platform : 'app';
-  return { id, platform, name: clean(d.name, 80) || 'Устройство', os_user: clean(d.os_user, 80) };
+  // Система компьютера: приложение присылает process.platform, браузер и телефон узнаются по названию устройства
+  const os = ({ darwin: 'macOS', win32: 'Windows', linux: 'Linux' })[d.os] || clean(d.os, 20);
+  return { id, platform, name: clean(d.name, 80) || 'Устройство', os_user: clean(d.os_user, 80), os };
 }
 // Ключ браузера или телефона не использовался дольше срока
 function idleExpired(row) {
@@ -44,13 +46,13 @@ async function issueDevice(userId, dev, parentId = null, ip = null) {
   const key = newKey('dk_'), t = now();
   const cur = await dal.get("SELECT id FROM device_keys WHERE user_id = ? AND kind = 'device' AND device_id = ? AND revoked_at IS NULL", userId, dev.id);
   if (cur) {
-    await dal.run('UPDATE device_keys SET key_hash = ?, prev_hash = NULL, prev_at = NULL, platform = ?, name = ?, os_user = ?, last_used_at = ?, last_ip = COALESCE(?, last_ip), parent_id = COALESCE(?, parent_id) WHERE id = ?', sha(key), dev.platform, dev.name, dev.os_user, t, ip, parentId, cur.id);
+    await dal.run('UPDATE device_keys SET key_hash = ?, prev_hash = NULL, prev_at = NULL, platform = ?, name = ?, os_user = ?, os = COALESCE(NULLIF(?, \'\'), os), last_used_at = ?, last_ip = COALESCE(?, last_ip), parent_id = COALESCE(?, parent_id) WHERE id = ?', sha(key), dev.platform, dev.name, dev.os_user, dev.os, t, ip, parentId, cur.id);
     return { key, id: cur.id, created: false };
   }
   // Устройство вошло снова после отзыва: прежние отозванные записи этой пары больше не нужны
   await dal.run("DELETE FROM device_keys WHERE user_id = ? AND kind = 'device' AND device_id = ? AND revoked_at IS NOT NULL", userId, dev.id);
-  const r = await dal.run("INSERT INTO device_keys (user_id, kind, device_id, platform, name, os_user, key_hash, parent_id, created_at, last_used_at, ip, last_ip) VALUES (?, 'device', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    userId, dev.id, dev.platform, dev.name, dev.os_user, sha(key), parentId, t, t, ip, ip);
+  const r = await dal.run("INSERT INTO device_keys (user_id, kind, device_id, platform, name, os_user, os, key_hash, parent_id, created_at, last_used_at, ip, last_ip) VALUES (?, 'device', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    userId, dev.id, dev.platform, dev.name, dev.os_user, dev.os || '', sha(key), parentId, t, t, ip, ip);
   return { key, id: Number(r.lastInsertRowid), created: true };
 }
 
@@ -134,7 +136,7 @@ async function remove(userId, id) {
 async function forget(row) { await dal.run('DELETE FROM device_keys WHERE id = ?', row.id); }
 
 async function list(userId) {
-  const rows = await dal.all("SELECT id, kind, platform, name, os_user, last_ip, created_at, last_used_at, revoked_at FROM device_keys WHERE user_id = ? ORDER BY CASE kind WHEN 'profile' THEN 0 ELSE 1 END, created_at DESC, id DESC", userId);
+  const rows = await dal.all("SELECT id, kind, platform, name, os_user, os, last_ip, created_at, last_used_at, revoked_at FROM device_keys WHERE user_id = ? ORDER BY CASE kind WHEN 'profile' THEN 0 ELSE 1 END, created_at DESC, id DESC", userId);
   return rows.map(r => ({ ...r, expired: !r.revoked_at && idleExpired(r) }));
 }
 

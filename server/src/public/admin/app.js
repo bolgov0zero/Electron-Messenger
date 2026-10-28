@@ -2912,7 +2912,9 @@ function dvcRender() {
     const off = d.revoked_at || d.expired, k = d.kind === 'profile' ? ['', UX_I.key] : (KIND[d.platform] || KIND.app);
     const btn = (label, fn) => `<button type="button" class="btn btn-ghost btn-sm" ${DVC.busy ? 'disabled' : ''} data-on-click="${fn}" data-a-click="${esc(JSON.stringify([d.id]))}">${label}</button>`;
     const chip = d.revoked_at ? `<span class="dvc-chip bad">${d.kind === 'profile' ? 'Регистрация запрещена' : 'Отозвано'}</span>` : d.expired ? '<span class="dvc-chip">Срок истёк</span>' : '';
-    const info = `${k[0] ? k[0] + ' · ' : ''}${d.os_user ? 'Windows: ' + d.os_user + ' · ' : ''}${d.last_ip ? 'IP ' + d.last_ip + ' · ' : ''}зарегистрировано ${dvcDate(d.created_at)}`;
+    // Система есть у приложения (присылает клиент); у браузера и телефона она уже в названии. Имя учётной записи в системе подписано как есть, без угадывания ОС
+    const osName = d.os && !String(d.name).includes(d.os) ? d.os : '';
+    const info = [k[0], osName, d.os_user ? 'пользователь ' + d.os_user : '', d.last_ip ? 'IP ' + d.last_ip : '', 'зарегистрировано ' + dvcDate(d.created_at)].filter(Boolean).join(' · ');
     // Отозванное устройство отозвать повторно нельзя, зато можно убрать из списка
     const action = d.kind === 'profile' ? (d.revoked_at ? btn('Разрешить', 'dvcAllow') : btn('Запретить регистрацию', 'dvcRevoke')) : (d.revoked_at ? btn('Удалить', 'dvcDelete') : off ? '' : btn('Отозвать', 'dvcRevoke'));
     return `<div class="dvc-r${off ? ' off' : ''}"><span class="dvc-ic">${k[1]}</span>

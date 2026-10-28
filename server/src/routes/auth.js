@@ -145,7 +145,7 @@ router.post('/device-login', async (req, res) => {
     if (c.status !== 403) keyFail(req);
     return res.status(c.status || 401).json({ code: c.code, error: c.error || KEY_TEXT[c.code] || 'Ключ не принят' });
   }
-  await dal.run('UPDATE device_keys SET name = ?, os_user = ?, last_ip = ? WHERE id = ?', dev.name, dev.os_user, devices.cleanIp(req.ip), c.row.id);
+  await dal.run('UPDATE device_keys SET name = ?, os_user = ?, os = COALESCE(NULLIF(?, \'\'), os), last_ip = ? WHERE id = ?', dev.name, dev.os_user, dev.os, devices.cleanIp(req.ip), c.row.id);
   const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, dk: c.row.id });
   res.json({ ...(await sessionReply(user, token)), device_key: c.key });
 });

@@ -877,7 +877,7 @@ const localDeviceId = () => {
   return id;
 };
 ipcMain.handle('device-info', () => {
-  try { return { id: localDeviceId(), name: os.hostname(), osUser: (() => { try { return os.userInfo().username; } catch { return ''; } })(), ha: !!HA_DIR }; } catch { return null; }
+  try { return { id: localDeviceId(), name: os.hostname(), os: process.platform, osUser: (() => { try { return os.userInfo().username; } catch { return ''; } })(), ha: !!HA_DIR }; } catch { return null; }
 });
 ipcMain.handle('devkey-load', (e) => { try { return secretFileRead(accFile(DEVKEY_FILE, accountIdOf(e))); } catch { return null; } });
 ipcMain.handle('devkey-save', (e, str) => { try { secretFileWrite(accFile(DEVKEY_FILE, accountIdOf(e)), String(str)); return true; } catch { return false; } });
