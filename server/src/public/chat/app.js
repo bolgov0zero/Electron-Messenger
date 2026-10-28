@@ -4522,7 +4522,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const emojiOnly = !isDeleted && !m.attachment && !m.reply_to_id && !m.forward_data && isEmojiOnly(isSecretChat ? scDecryptedText : m.text);
   // Фото с подписью: пузырь по ширине кадра (как в Telegram), а не всегда 280 px; кадр показывается целиком
   const _fitD = (!bareImage && !comp && att?.url && !att.expired && !att.enc && !att.gif && !att.more?.length && /^(image|video)\//.test(att.mime || '')) ? szOf(att, `${httpProto()}://${S.server}${att.url}`) : null;
-  const _fitW = _fitD ? Math.max(180, Math.min(280, Math.round(360 * _fitD[0] / _fitD[1]))) : 0;
+  const _fitW = _fitD ? Math.max(180, Math.min(280, Math.round(_fitD[0]))) : 0;
   const posCls = (isFirst ? ' irc-first' : '') + (isTail ? ' irc-tail' : '') + (emojiOnly ? ' emoji-msg' : '');
 
   return `<div class="irc-msg${posCls}${m._optimistic?' msg-optimistic':''}${m._state==='failed'?' msg-failed':''}"${m._cid?` data-cid="${m._cid}"`:''}${mine?` data-mine="1"`:``}${isChatGroup?'':' data-dm="1"'} data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
