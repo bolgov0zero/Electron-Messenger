@@ -485,6 +485,8 @@ html.dark .anx-solid { color: #fff; }
 .composer-field-row { min-height: 50px; padding: 0 8px 0 20px; }
 .composer-field-row.multi { padding-top: 11px; padding-bottom: 11px; }
 .scroll-bottom-btn { width: 44px; height: 44px; }
+/* Оптическая центровка стрелки: у шеврона «вниз» масса сверху, и он кажется выше центра круга; сдвиг на полпикселя вниз (замер в Electron: без сдвига значок на 0,2–0,4 px выше центра, со сдвигом в 1 px уже ниже) */
+.scroll-bottom-btn > svg { transform: translateY(.5px); }
 
 /* Пузыри: скругление 20px, срезанный угол 7px, аватар 36px */
 .msg-bubble { border-radius: 20px; padding: 7px 14px; }
