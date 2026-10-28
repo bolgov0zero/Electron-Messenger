@@ -3259,6 +3259,10 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 /* Имя сервера над именем пользователя */
 .acc-tip .acc-sys { display: block; margin-bottom: 2px; color: var(--accent); font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
 .acc-btn:hover .acc-tip { opacity: 1; }
+/* Подсказки бара рисует отдельный элемент поверх всего (railTipsInit в folders.js): внутри бара их закрывал список чатов */
+.acc-rail .acc-btn .acc-tip { display: none; }
+.acc-tip.rail-tip { position: fixed; left: 0; top: 0; transform: none; z-index: 400; }
+.acc-tip.rail-tip.visible { opacity: 1; }
 /* Бар записей скрывается и выезжает вместе с сайдбаром теми же состояниями body.
    Схлопывание в потоке — как у сайдбара; в режиме накладки бар уезжает за левый край на
    собственную ширину и отступ, а сайдбар, стоящий правее бара, — на ширину бара, отступы и свою: ничего не выглядывает */

@@ -3405,6 +3405,10 @@ html.dark .anx-solid { color: #0c0e10; }
 /* Имя сервера над именем пользователя */
 .acc-tip .acc-sys { display: block; margin-bottom: 2px; color: var(--accent); font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
 .acc-btn:hover .acc-tip { opacity: 1; }
+/* Подсказки бара рисует отдельный элемент поверх всего (railTipsInit в folders.js): внутри бара их закрывал список чатов */
+.acc-rail .acc-btn .acc-tip { display: none; }
+.acc-tip.rail-tip { position: fixed; left: 0; top: 0; transform: none; z-index: 400; }
+.acc-tip.rail-tip.visible { opacity: 1; }
 
 
 /* ══════════════════════════════════════════

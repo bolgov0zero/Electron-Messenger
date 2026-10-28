@@ -131,16 +131,42 @@ function updateFolderBadges() {
   });
 }
 // Много папок не помещается в бар: тогда он прокручивается, а подсказки показывает системная
+// Подсказки бара (название, сервер или адрес записи): одна на всё приложение, поверх остальных слоёв.
+// Внутри самой кнопки их закрывал список чатов: бар лежит ниже него по порядку наложения
+let _railTip = null;
+function railTipsInit() {
+  if (_railTip) return;
+  const rail = document.getElementById('acc-rail');
+  if (!rail) return;
+  const tip = _railTip = document.createElement('div');
+  tip.className = 'acc-tip rail-tip';
+  document.body.appendChild(tip);
+  const hide = () => tip.classList.remove('visible');
+  rail.addEventListener('mouseover', e => {
+    const b = e.target.closest?.('.acc-btn');
+    const src = b && rail.contains(b) && b.querySelector('.acc-tip');
+    if (!src) { hide(); return; }
+    tip.innerHTML = src.innerHTML;
+    // rect и style.left считаются в разных пикселях при масштабе окна: берём пробу (см. zoomMetrics)
+    const m = typeof zoomMetrics === 'function' ? zoomMetrics() : { k: 1, vh: window.innerHeight };
+    tip.style.left = '0px'; tip.style.top = '0px';
+    const r = b.getBoundingClientRect(), th = tip.getBoundingClientRect().height;
+    tip.style.left = Math.round((r.right + 14) / m.k) + 'px';
+    tip.style.top = Math.round(Math.max(6, Math.min(m.vh - th - 6, r.top + r.height / 2 - th / 2)) / m.k) + 'px';
+    tip.classList.add('visible');
+  });
+  rail.addEventListener('mouseleave', hide);
+  rail.addEventListener('click', hide);
+  rail.addEventListener('scroll', hide, true);
+}
 function foldersRailFit() {
+  railTipsInit();
   const box = document.getElementById('rail-folders');
   if (!box) return;
   box.classList.remove('scroll');
-  box.querySelectorAll('.fld-btn').forEach(b => b.removeAttribute('title'));
+  box.querySelectorAll('.fld-btn').forEach(b => b.removeAttribute('title'));   // свою подсказку рисует railTipsInit, встроенная была бы второй
   const rail = box.parentElement;
-  if (rail.scrollHeight > rail.clientHeight + 1) {
-    box.classList.add('scroll');
-    box.querySelectorAll('.fld-btn').forEach(b => b.title = b.getAttribute('aria-label'));
-  }
+  if (rail.scrollHeight > rail.clientHeight + 1) box.classList.add('scroll');
 }
 
 // ── Небольшое меню у курсора (папка в баре, «В папку» у чата) ──
