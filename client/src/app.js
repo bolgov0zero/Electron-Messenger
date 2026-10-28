@@ -6976,7 +6976,8 @@ async function loadChatMedia() {
   const tab = c.tab;
   if (c.more[tab] === false) return;
   c.busy = true;
-  const r = await api('GET', `/messages/chat/${c.id}/media?type=${tab}${c.cursor[tab] ? '&before=' + c.cursor[tab] : ''}`);
+  let r = null;
+  try { r = await api('GET', `/messages/chat/${c.id}/media?type=${tab}${c.cursor[tab] ? '&before=' + c.cursor[tab] : ''}`); } catch {}   // сбой запроса не должен оставлять загрузку «занятой»
   c.busy = false;
   if (_cm !== c) return;
   if (!r || r.error) { c.more[tab] = false; }
@@ -6995,10 +6996,12 @@ function cmOpen(k) {
   else if (_cm.tab === 'files') { const x = _cm.data.files[k]; if (x) downloadAttachment(cmAbs(x.att.url), x.att.name || 'file'); }
 }
 function renderChatMedia(keep) {
-  const c = _cm, box = document.getElementById('cm-modal');
-  if (!c || !box) return;
+  const c = _cm; if (!c) return;
+  // Во вкладках профиля (host — id панели справа) список рисуется прямо в правой панели профиля, без отдельного окна
+  const host = c.host ? document.getElementById(c.host) : null, box = c.host ? null : document.getElementById('cm-modal');
+  if (!host && !box) return;
   const chat = findChatAny(c.id), list = c.data[c.tab] || [];
-  const prev = box.querySelector('.cm-scroll'), top = prev && keep ? prev.scrollTop : 0;
+  const prev = host || box.querySelector('.cm-scroll'), top = prev && keep ? prev.scrollTop : 0;
   let body = '';
   if (!list.length) body = `<div class="cm-empty">${c.more[c.tab] === undefined ? 'Загрузка…' : c.tab === 'media' ? 'Фото и видео пока нет' : c.tab === 'files' ? 'Файлов пока нет' : 'Ссылок пока нет'}</div>`;
   else {
@@ -7019,6 +7022,7 @@ function renderChatMedia(keep) {
     if (open) body += '</div>';
     if (c.more[c.tab]) body += '<div class="cm-empty">Загрузка…</div>';
   }
+  if (host) { host.innerHTML = body; host.scrollTop = top; return; }
   box.innerHTML = `
     <div class="gm-top"><span class="t">Медиа · ${esc(chatName(chat))}</span><button class="icon-btn" data-on-click="closeModal" data-a-click='["modal-media"]' aria-label="Закрыть">${gmSvg('x', 16)}</button></div>
     <div class="cm-tabs" role="tablist">${CM_TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${c.tab === k}" class="${c.tab === k ? 'on' : ''}" data-on-click="cmTab" data-a-click="${esc(JSON.stringify([`${k}`]))}">${l}</button>`).join('')}</div>
@@ -7030,10 +7034,37 @@ function cmScroll(el) {
   if (_cm && _cm.more[_cm.tab] && el.scrollHeight - el.scrollTop - el.clientHeight < 400) loadChatMedia();
 }
 function pfMedia(chatId) { openChatMedia(chatId); }
+// Вкладки окон профиля человека и группы: «Медиа», «Файлы» и «Ссылки» показывают то же, что окно «Медиа», но внутри профиля
+function paMedia(chatId, tab, host) {   // host — id панели справа: у окон человека и группы они разные, окна остаются в странице после закрытия
+  if (_cm && _cm.host === host && _cm.id === chatId) _cm.tab = tab;
+  else _cm = { id: chatId, tab, data: {}, more: {}, cursor: {}, busy: false, host };
+}
+function paLoad() { if (_cm?.host && _cm.more[_cm.tab] === undefined) loadChatMedia(); }
+function pfTab(k) {
+  S.pfTab = k;
+  if (k !== 'groups') {
+    const dm = (S.chats || []).find(c => c.type === 'direct' && !c.is_secret && getPeerUserId(c) === S.profileId);
+    if (!dm) return;   // личной переписки нет: медиа, файлов и ссылок тоже
+    paMedia(dm.id, k, 'pf-body');
+  }
+  renderProfile();
+  if (k !== 'groups') paLoad();
+}
+function gmTab(k) {
+  if (!S.gm) return;
+  S.gm.tab = k;
+  const media = k === 'media' || k === 'files' || k === 'links';
+  if (media) paMedia(S.gm.id, k, 'gm-body');
+  renderGroupProfile();
+  if (media) paLoad();
+}
+function gmOpenTopic(id) { closeModal('modal-group'); openChat(id); }
 
 function openProfile(userId) {
   if (!userId || userId === S.user?.id || !pfUser(userId)) return;
   S.profileId = userId;
+  S.pfTab = 'groups';
+  if (_cm?.host) _cm = null;
   renderProfile();
   openModal('modal-profile');
 }
@@ -7056,31 +7087,37 @@ function renderProfile() {
   const groups = (S.chats || []).filter(c => (c.type === 'group' || c.type === 'room') && !c.parent_id && !c.is_secret && c.members?.some(m => m.id === id));
   const dmChat = (S.chats || []).find(c => c.type === 'direct' && !c.is_secret && getPeerUserId(c) === id);
   const mediaAttr = dmChat ? `data-on-click="pfMedia" data-a-click="${esc(JSON.stringify([dmChat.id]))}"` : 'disabled';
-  // Оформление перенесено из мобильного клиента (/m, профиль человека): шапка-капсула, аватарка, три плитки, сведения и общие группы стеклянными блоками
-  const tiles = `<div class="tiles">
-      <button type="button" class="tile glass gi" data-on-click="pfWrite">${PF_I.msg}Написать</button>
-      ${canContact ? `<button type="button" class="tile glass gi" data-on-click="pfContact">${u.contact ? PF_I.rem : PF_I.add}${u.contact ? 'Из контактов' : 'В контакты'}</button>` : `<button type="button" class="tile glass gi" ${mediaAttr}>${PF_I.image}Медиа</button>`}
-      <button type="button" class="tile glass gi${blocked ? '' : ' d'}" data-on-click="pfBlock">${blocked ? PF_I.unban : PF_I.ban}${blocked ? 'Разблокировать' : 'Блок'}</button></div>`;
-  const mediaCell = dmChat && canContact ? `<button type="button" class="cell glass" style="border-radius:var(--r-card);margin-bottom:16px" ${mediaAttr}><span class="ci" style="background:#5b8def">${PF_I.image}</span><span class="cl">Медиа, файлы и ссылки</span><span class="ch">${gmSvg('chev', 16)}</span></button>` : '';
+  // Оформление — вариант A макета docs/glass-mockup/profile.html: слева личность, действия и сведения, справа вкладки и списки
+  const tab = S.pfTab || 'groups', mediaTab = tab !== 'groups';
+  const acts = `
+    <button type="button" class="pa-btn pri" data-on-click="pfWrite">${PF_I.msg}Написать</button>
+    ${canContact ? `<button type="button" class="pa-btn" data-on-click="pfContact">${u.contact ? PF_I.rem : PF_I.add}${u.contact ? 'Из контактов' : 'В контакты'}</button>` : ''}
+    <button type="button" class="pa-btn${blocked ? '' : ' d'}" data-on-click="pfBlock">${blocked ? PF_I.unban : PF_I.ban}${blocked ? 'Разблокировать' : 'Заблокировать'}</button>`;
+  const tabs = [['groups', 'Общие группы' + (groups.length ? ' ' + groups.length : '')], ['media', 'Медиа'], ['files', 'Файлы'], ['links', 'Ссылки']];
   const groupsHtml = groups.length
-    ? `<div class="gl">Общие группы · ${groups.length}</div><div class="grp glass">${groups.map(c => `<button type="button" class="mini" data-on-click="pfOpenChat" data-a-click="${esc(JSON.stringify([c.id]))}">
+    ? `<div class="grp glass">${groups.map(c => `<button type="button" class="mini" data-on-click="pfOpenChat" data-a-click="${esc(JSON.stringify([c.id]))}">
         <div class="av av-sm ${chatAvatarClass(c)}${c.type === 'room' && c.has_topics ? ' av-sq' : ' av-round'}" data-av-chat="${c.id}">${chatIcon(c)}</div>
         <span class="rt"><b>${esc(chatName(c))}</b><small>${c.type === 'room' ? 'Комната' : 'Группа'} · ${nMembers(c.members.length)}</small></span><span class="ch">${gmSvg('chev', 16)}</span></button>`).join('')}</div>`
-    : '';
+    : '<div class="pa-empty">Общих групп пока нет</div>';
   box.innerHTML = `
-    <div class="pm-scroll">
-      <div class="pm-nav"><button class="icon-btn pm-xi" type="button" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-profile"]'>${gmSvg('x', 16)}</button></div>
-      <div class="hero">
-        <div class="pf-av ${cls}"><span>${esc(initials(u.display_name))}</span><img src="${avUrl('users', u.id)}" data-on-error="__h17">${presenceDot(id)}</div>
-        <h2>${esc(u.display_name)}</h2><p class="${on ? 'on' : ''}">${esc(st)}</p>${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}" style="margin-top:6px">${esc(u.tag)}</span>` : ''}
-      </div>
-      ${tiles}
-      ${blocked ? `<div class="nbanner glass">${PF_I.ban}<span>Вы заблокировали этого человека: он не может писать вам в личные сообщения. Общие группы и комнаты остаются.</span></div>` : ''}
-      ${mediaCell}
-      <div class="grp glass">${rows.join('')}</div>
-      ${groupsHtml}
+    <div class="pa">
+      <aside class="pa-l">
+        <div class="pa-who">
+          <div class="pf-av ${cls}"><span>${esc(initials(u.display_name))}</span><img src="${avUrl('users', u.id)}" data-on-error="__h17">${presenceDot(id)}</div>
+          <h2>${esc(u.display_name)}</h2><p class="${on ? 'on' : ''}">${esc(st)}</p>${u.tag ? `<span class="pp-tag ${senderNameClass(u.tag)}" style="margin-top:6px">${esc(u.tag)}</span>` : ''}
+        </div>
+        <div class="pa-acts">${acts}</div>
+        ${blocked ? `<div class="nbanner glass" style="margin:0">${PF_I.ban}<span>Вы заблокировали этого человека: он не может писать вам в личные сообщения. Общие группы и комнаты остаются.</span></div>` : ''}
+        <div class="grp glass">${rows.join('')}</div>
+      </aside>
+      <section class="pa-r">
+        <div class="pa-rh"><div class="pa-seg" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" aria-selected="${tab === k}" class="${tab === k ? 'on' : ''}"${k !== 'groups' && !dmChat ? ' disabled' : ''} data-on-click="pfTab" data-a-click="${esc(JSON.stringify([`${k}`]))}">${l}</button>`).join('')}</div></div>
+        <div class="pa-body" id="pf-body"${mediaTab ? ` data-on-scroll="cmScroll" data-a-scroll='["__this"]'` : ''}>${mediaTab ? '' : groupsHtml}</div>
+      </section>
+      <button class="pa-x" type="button" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-profile"]'>${gmSvg('x', 18)}</button>
     </div>`;
   applyAvatars();   // фото общих групп и комнат
+  if (mediaTab && _cm?.host === 'pf-body') renderChatMedia(true);
 }
 // Логин (для людей с других серверов адрес @сервер:логин) копируется по нажатию, как ссылка в своём профиле
 async function pfCopyLogin() {
@@ -7872,6 +7909,7 @@ const GM_I = {
   info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
   x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
   back: '<path d="m15 18-6-6 6-6"/>',
+  hash: '<path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="M16 3l-2 18"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
 };
 const gmSvg = (n, s = 18, w = 2) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GM_I[n]}</svg>`;
@@ -7890,7 +7928,8 @@ function gmPerms(chat) {
 }
 function openGroupInfo(chatId) {
   if (!S.chats.find(c => c.id === chatId)) return;
-  S.gm = { id: chatId, f: 'all', q: '', view: 'main', add: new Set(), aq: '', rename: false, cmp: false };
+  S.gm = { id: chatId, f: 'all', q: '', view: 'main', add: new Set(), aq: '', rename: false, cmp: false, tab: 'members' };
+  if (_cm?.host) _cm = null;
   renderGroupProfile();
   openModal('modal-group');
 }
@@ -7965,34 +8004,52 @@ function renderGroupProfile(keep) {
   if (show('local')) lists += `<div class="gl">${fed.length ? 'На этом сервере' : 'Участники'} · ${lf.length}${lf.length !== local.length ? ' из ' + local.length : ''}</div><div class="grp glass">${lf.map(m => gmRow(m, chat, perms)).join('') || none}${perms.canEdit && g.f !== 'pend' && !q ? `<button type="button" class="mini" data-on-click="gmAddView"><span class="ci" style="background:var(--accent)">${gmSvg('plus', 17)}</span><span class="rt"><b style="color:var(--accent-ink)">Добавить участников</b></span></button>` : ''}</div>`;
   if (fed.length && show('fed')) lists += `<div class="gl">С других серверов · ${ff.length}</div><div class="grp glass">${ff.map(m => gmRow(m, chat, perms)).join('') || none}</div>`;
   if (pend.length && show('pend')) lists += `<div class="gl">Ждут ответа · ${pf.length}</div><div class="grp glass">${pf.map(m => gmRow({ ...m, federated: true }, chat, perms, true)).join('') || none}</div>`;
-  if (perms.canDelete && g.f === 'all' && !q) lists += `<div class="grp glass"><button type="button" class="cell" data-on-click="gmDelete"><span class="cl red">Удалить группу</span></button></div>`;
-  const tiles = [
-    perms.canEdit ? `<button type="button" class="tile glass gi" data-on-click="gmAddView">${gmSvg('plus', 22)}Добавить</button>` : '',
-    perms.canEdit ? `<button type="button" class="tile glass gi" data-on-click="gmGuest">${gmSvg('link', 22)}Гость</button>` : '',
-    `<button type="button" class="tile glass gi" data-on-click="gmMute" data-a-click='["__event"]'>${gmSvg(muted ? 'bell' : 'bellOff', 22)}${muted ? 'Звук' : 'Без звука'}</button>`,
-    `<button type="button" class="tile glass gi" data-on-click="openChatMedia" data-a-click="${esc(JSON.stringify([chat.id]))}">${gmSvg('image', 22)}Медиа</button>`,
-    perms.canLeave ? `<button type="button" class="tile glass gi d" data-on-click="gmLeave">${gmSvg('out', 22)}Выйти</button>` : '',
-  ].filter(Boolean);
-  const prev = box.querySelector('.pm-scroll'), top = prev ? prev.scrollTop : 0, qHad = document.activeElement?.id === 'gm-q';
+  const topics = chat.has_topics ? (S.topics[chat.id] || []) : [];
+  const tabs = [['members', 'Участники ' + all.length]];
+  if (topics.length) tabs.push(['topics', 'Темы ' + topics.length]);
+  tabs.push(['media', 'Медиа'], ['files', 'Файлы'], ['links', 'Ссылки']);
+  if (!tabs.some(t => t[0] === g.tab)) g.tab = 'members';
+  const tab = g.tab, mediaTab = tab === 'media' || tab === 'files' || tab === 'links';
+  const acts = [
+    perms.canEdit ? `<button type="button" class="pa-btn pri" data-on-click="gmAddView">${gmSvg('plus', 16)}Добавить участника</button>` : '',
+    perms.canEdit ? `<button type="button" class="pa-btn" data-on-click="gmGuest">${gmSvg('link', 16)}Гостевая ссылка</button>` : '',
+    `<button type="button" class="pa-btn" data-on-click="gmMute" data-a-click='["__event"]'>${gmSvg(muted ? 'bell' : 'bellOff', 16)}${muted ? 'Включить звук' : 'Без звука'}</button>`,
+    perms.canLeave ? `<button type="button" class="pa-btn d" data-on-click="gmLeave">${gmSvg('out', 16)}Выйти</button>` : '',
+    perms.canDelete ? `<button type="button" class="pa-btn d" data-on-click="gmDelete">${gmSvg('x', 16)}Удалить группу</button>` : '',
+  ].join('');
+  const creator = all.find(m => m.id === chat.created_by) || (S.allUsers || []).find(u => u.id === chat.created_by);
+  const when = Number(chat.created_at) > 0 ? new Date(chat.created_at * 1000).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const cell = (l, v) => `<div class="cell"><span class="cl">${l}</span><span class="cv">${esc(v)}</span></div>`;
+  const info = cell('Тип', chat.type === 'room' ? (chat.has_topics ? 'Комната с темами' : 'Комната') : 'Группа') + (creator?.display_name ? cell('Создал', creator.display_name) : '') + (when ? cell('Создана', when) : '');
+  const prev = box.querySelector('.pa-body'), top = prev ? prev.scrollTop : 0, qHad = document.activeElement?.id === 'gm-q';
   const pFin = box.querySelector('.fin'), pLeft = pFin ? pFin.scrollLeft : 0, pTh = pFin?.querySelector('.thumb'), pThumb = pTh && pTh.style.width ? { l: pTh.style.left, w: pTh.style.width } : null;
+  const searchHtml = `<label class="srch glass">${gmSvg('search', 18)}<input id="gm-q" value="${esc(g.q)}" placeholder="Найти участника" autocomplete="off" data-on-input="gmSearch" data-a-input='["__value"]'></label>`;
+  const chipsHtml = showChips ? `<div class="fbar pgf"><div class="chips fo"><div class="fgrp glass"><div class="fin"><i class="thumb"></i>${chip('all', 'Все', all.length)}${chip('local', 'На этом сервере', local.length)}${fed.length ? chip('fed', 'С других серверов', fed.length) : ''}${pend.length ? chip('pend', 'Ждут ответа', pend.length) : ''}</div></div></div></div>` : '';
+  const topicsHtml = `<div class="grp glass">${topics.map(t => `<button type="button" class="mini" data-on-click="gmOpenTopic" data-a-click="${esc(JSON.stringify([t.id]))}"><span class="ci" style="background:var(--accent)">${gmSvg('hash', 17)}</span><span class="rt"><b>${esc(t.name || 'Тема')}</b></span><span class="ch">${gmSvg('chev', 16)}</span></button>`).join('')}</div>`;
+  const bodyHtml = tab === 'members' ? `${searchHtml}${chipsHtml}<div id="gm-lists">${lists}</div>` : tab === 'topics' ? topicsHtml : '';
   box.innerHTML = `
-    <div class="pm-scroll">
-      <div class="pm-nav"><span class="pm-t glass">${kind}</span><button class="pm-x glass gi" type="button" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-group"]'>${gmSvg('x', 18)}</button></div>
-      <div class="hero">
-        <div class="pgav"><div class="av av-round ${chatAvatarClass(chat)}" id="gm-av" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
-          ${perms.canEdit ? `<label class="pgcam" title="Сменить аватарку">${gmSvg('cam', 15)}<input type="file" accept="image/*" hidden data-on-change="gmAvatar" data-a-change='["__this"]'></label>` : ''}${perms.mirror ? `<span class="gm-fedbig">${FED_GLOBE}</span>` : ''}</div>
-        ${g.rename ? `<div class="gm-nm1"><input id="gm-name" value="${esc(chat.name || '')}" maxlength="60" data-on-keydown="__h37" data-on-blur="gmRenameSave" data-a-blur='["__value"]'></div>`
-          : `<h2 class="gm-nm1"><span class="gm-name">${esc(chatName(chat))}</span>${perms.canRename ? `<button class="gm-pen" title="Переименовать" aria-label="Переименовать" data-on-click="gmRenameStart">${gmSvg('pen', 15)}</button>` : ''}</h2>`}
-        <p id="gm-sub">${gmSubText(chat, all)}</p>
-      </div>
-      ${perms.mirror ? `<div class="nbanner glass" style="margin:0 0 16px">${gmSvg('info', 18)}<span><b>${kind} на другом сервере.</b> Название, состав и аватарку меняет только её владелец. Писать и ставить реакции можно, а также выйти.</span></div>` : ''}
-      <div class="tiles${tiles.length > 3 ? ' sm' : ''}" style="grid-template-columns:repeat(${Math.min(tiles.length, 5)},1fr)">${tiles.join('')}</div>
-      <label class="srch glass">${gmSvg('search', 18)}<input id="gm-q" value="${esc(g.q)}" placeholder="Найти участника" autocomplete="off" data-on-input="gmSearch" data-a-input='["__value"]'></label>
-      ${showChips ? `<div class="fbar pgf"><div class="chips fo"><div class="fgrp glass"><div class="fin"><i class="thumb"></i>${chip('all', 'Все', all.length)}${chip('local', 'На этом сервере', local.length)}${fed.length ? chip('fed', 'С других серверов', fed.length) : ''}${pend.length ? chip('pend', 'Ждут ответа', pend.length) : ''}</div></div></div></div>` : ''}
-      <div id="gm-lists">${lists}</div>
+    <div class="pa">
+      <aside class="pa-l">
+        <div class="pa-who">
+          <div class="pgav"><div class="av av-round ${chatAvatarClass(chat)}" id="gm-av" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
+            ${perms.canEdit ? `<label class="pgcam" title="Сменить аватарку">${gmSvg('cam', 15)}<input type="file" accept="image/*" hidden data-on-change="gmAvatar" data-a-change='["__this"]'></label>` : ''}${perms.mirror ? `<span class="gm-fedbig">${FED_GLOBE}</span>` : ''}</div>
+          ${g.rename ? `<div class="gm-nm1"><input id="gm-name" value="${esc(chat.name || '')}" maxlength="60" data-on-keydown="__h37" data-on-blur="gmRenameSave" data-a-blur='["__value"]'></div>`
+            : `<h2 class="gm-nm1"><span class="gm-name">${esc(chatName(chat))}</span>${perms.canRename ? `<button class="gm-pen" title="Переименовать" aria-label="Переименовать" data-on-click="gmRenameStart">${gmSvg('pen', 15)}</button>` : ''}</h2>`}
+          <p id="gm-sub">${gmSubText(chat, all)}</p>
+        </div>
+        ${perms.mirror ? `<div class="nbanner glass" style="margin:0">${gmSvg('info', 18)}<span><b>${kind} на другом сервере.</b> Название, состав и аватарку меняет только её владелец. Писать и ставить реакции можно, а также выйти.</span></div>` : ''}
+        <div class="pa-acts">${acts}</div>
+        <div class="grp glass">${info}</div>
+      </aside>
+      <section class="pa-r">
+        <div class="pa-rh"><div class="pa-seg" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" aria-selected="${tab === k}" class="${tab === k ? 'on' : ''}" data-on-click="gmTab" data-a-click="${esc(JSON.stringify([`${k}`]))}">${l}</button>`).join('')}</div></div>
+        <div class="pa-body" id="gm-body"${mediaTab ? ` data-on-scroll="cmScroll" data-a-scroll='["__this"]'` : ''}>${bodyHtml}</div>
+      </section>
+      <button class="pa-x" type="button" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-group"]'>${gmSvg('x', 18)}</button>
     </div>`;
-  const sc = box.querySelector('.pm-scroll');
+  const sc = box.querySelector('.pa-body');
   sc.scrollTop = keep ? top : 0;
+  if (mediaTab && _cm?.host === 'gm-body') renderChatMedia(true);
   gmChipsInit(box, pLeft, pThumb);
   applyAvatars();
   if (g.rename) { const i = document.getElementById('gm-name'); i?.focus(); i?.select(); }
