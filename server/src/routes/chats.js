@@ -19,7 +19,6 @@ async function nameOf(userId) {
 const DB_PATH = process.env.DB_PATH || path2.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
 const DB_DIR = path2.dirname(DB_PATH);
 const AVATAR_DIR = path2.join(DB_DIR, 'avatar');
-const FILES_DIR = path2.join(DB_DIR, 'files');
 
 async function deleteChatFiles(chatId) {
   const rows = await dal.all("SELECT attachment FROM messages WHERE chat_id = ? AND attachment IS NOT NULL", chatId);

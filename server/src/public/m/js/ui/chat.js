@@ -257,7 +257,7 @@ B.ui.chat = (function () {
     if (chat.invite) return { t: 'Приглашение в ' + B.msgs.fedKind(chat) };
     if (B.msgs.fedOffline(chat)) return { t: 'Федеративная группа · нет связи' };
     var o = (B.S.chatOnline || {})[chat.id], cnt = o ? 'в сети ' + o.online + ' из ' + o.total : (chat.members ? chat.members.length : 0) + ' участников';
-    return { t: chat.parent_id ? '# тема · ' + cnt : chat.type === 'room' ? 'Комната' + (o ? ' · ' + cnt : '') : cnt, live: !!o && o.online > 0 && false };
+    return { t: chat.parent_id ? '# тема · ' + cnt : chat.type === 'room' ? 'Комната' + (o ? ' · ' + cnt : '') : cnt, live: false };
   }
   // Заглушки-пузыри вместо пустой страницы, пока сообщения чата ещё не загружены
   function skeleton() { return '<div class="sk"><i class="l w1"></i><i class="l w2"></i><i class="r w3"></i><i class="l w4"></i><i class="r w5"></i><i class="l w2"></i></div>'; }

@@ -1,15 +1,11 @@
 const attach = require('../attach');
 const router = require('express').Router();
-const path = require('path');
-const fs = require('fs');
 const dal = require('../dal');
 const unreadCounts = require('../unread');
 const { authMiddleware } = require('../auth');
 const { getPins } = require('../ws');
 const guestLib = require('../guest');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
-const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
 
 // Общий SELECT сообщения с данными отправителя и цитаты
 const MSG_SELECT = `

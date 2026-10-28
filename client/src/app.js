@@ -3086,7 +3086,6 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   const inputEl = document.getElementById('msg-input');
   if (inputEl) {
     inputEl.value = S.drafts[chatId] || '';
-    autoResize(inputEl);
     onMsgInput(inputEl, true);
   }
   inputEl?.focus();
@@ -3949,9 +3948,8 @@ function groupSubHtml(chat) {
   if (fedOffline(chat)) return `<span class="fed-off">${FED_GLOBE}Группа на другом сервере · нет связи</span>`;
   const o = (S.chatOnline || {})[chat.id];
   const cnt = o ? `в сети ${o.online} из ${o.total}` : nMembers(chat.members?.length || 0);
-  const globe = '';
   if (chat.parent_id) return `# тема${o ? ' · ' + cnt : ''}`;
-  return chat.type === 'room' ? `${globe}${roomIcon(14)}Комната · ${cnt}` : `${globe}${cnt}`;
+  return chat.type === 'room' ? `${roomIcon(14)}Комната · ${cnt}` : `${cnt}`;
 }
 function updateGroupSub() {
   const chat = findChatAny(S.activeChatId), el = document.querySelector('.ch-sub');
@@ -4540,7 +4538,6 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     return `<div class="irc-reply irc-forward-block"><div class="irc-reply-body"><div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div>${fdText ? `<div class="irc-reply-text">${fd.is_bot ? fdText : mdLite(esc(Fmt.noCode(fdText)))}</div>` : ''}</div></div>${fdAtt}`;
   })() : '';
 
-  const actionsHtml = '';
 
   // аватарка есть у каждого сообщения — CSS показывает её только у последнего в серии
   const avCol = `<div class="irc-av av av-round ${avColor}" style="position:relative;flex-shrink:0">${avLetter}${avImg}</div>`;
@@ -4593,7 +4590,6 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       ${reactionsHtml}
       ${m._state==='failed' ? failNoteHtml(m._cid) : ''}
     </div>
-    ${actionsHtml}
   </div>`;
 }
 
@@ -4609,7 +4605,6 @@ function attachBlockHtml(att) {
       attachHtml = `<div class="bubble-image${_sz.cls}"${_sz.st} data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'image')}" data-lb-type="image" data-on-click="openLightboxEl" data-a-click='["__this"]'><img src="${httpProto()}://${S.server}${imgPreviewPath(att)}" loading="lazy"></div>`;
     } else if (att.mime?.startsWith('video/')) {
       const posterUrl = att.thumb ? `${httpProto()}://${S.server}${att.thumb}` : '';
-      const safeVName = (att.name||'video').replace(/'/g,"\\'");
       const _szv = szAttrs(att, attUrl);
       attachHtml = `<div class="bubble-image bubble-video${_szv.cls}"${_szv.st} data-lb-url="${attUrl}" data-lb-name="${esc(att.name||'video')}" data-lb-type="video" data-on-click="openLightboxEl" data-a-click='["__this"]'>
         ${posterUrl ? `<img src="${posterUrl}" loading="lazy">` : `<video src="${attUrl}" preload="metadata" muted></video>`}
@@ -4619,9 +4614,6 @@ function attachBlockHtml(att) {
       const sizeFmt = att.size ? (att.size > 1048576 ? (att.size/1048576).toFixed(1)+' МБ' : Math.round(att.size/1024)+' КБ') : '';
       const localPath = _downloadedFiles[attUrl];
       const isDone = !!(window.electron && localPath);
-      const safeLocal = (localPath||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      const safeUrl = attUrl.replace(/'/g,"\\'");
-      const safeName = (att.name||'file').replace(/'/g,"\\'");
       const clickAction = isDone ? ['openDownloadedFile', [localPath]] : ['downloadAttachment', [attUrl, att.name || 'file']];
       const rightEl = isDone
         ? `<span class="bubble-file-open-label">Открыть</span>`
@@ -5135,7 +5127,6 @@ function _stickyBottom() {
 }
 
 // Поле ввода растёт само (contenteditable), высоту за ним держит наблюдатель полосы ввода
-function autoResize() {}
 
 // ── Очередь неотправленных сообщений ──
 // Нет связи — сообщение остаётся в переписке с пометкой «Не отправлено» и уходит само, когда связь вернётся.
@@ -5843,9 +5834,6 @@ function fileRowHtml(att) {
   const sizeFmt = att.size ? (att.size > 1048576 ? (att.size/1048576).toFixed(1)+' МБ' : Math.round(att.size/1024)+' КБ') : '';
   const localPath = typeof _downloadedFiles !== 'undefined' ? _downloadedFiles[attUrl] : null;
   const isDone = !!(window.electron && localPath);
-  const safeLocal = (localPath||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-  const safeUrl = attUrl.replace(/'/g,"\\'");
-  const safeName = (att.name||'file').replace(/'/g,"\\'");
   const clickAction = isDone ? ['openDownloadedFile', [localPath]] : ['downloadAttachment', [attUrl, att.name || 'file']];
   const rightEl = isDone
     ? `<span class="bubble-file-open-label">Открыть</span>`
@@ -6947,11 +6935,6 @@ const PF_I = {
   image: '<svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>',
 };
 // Цвет обложки — цвет тега, как у аватарки
-function pfCoverColor(cls) {
-  const m = /^av-tag-(\d+)$/.exec(cls);
-  if (m) return `rgb(${getComputedStyle(document.documentElement).getPropertyValue('--tag-' + m[1] + '-av').trim()})`;
-  return { 'av-blue': '#4f46e5', 'av-green': '#059669', 'av-purple': '#7c3aed', 'av-orange': '#d97706' }[cls] || 'var(--accent)';
-}
 function pfUser(id) {
   const u = (S.allUsers || []).find(x => x.id === id);
   if (u) return u;
@@ -8035,11 +8018,6 @@ function gmChipsInit(box, left, prev) {
   edges();
 }
 // Шапка сворачивается, только если списка хватает и после сворачивания: иначе она мигала бы
-function gmOnScroll(e) {
-  const sc = e.target, box = document.getElementById('gm-modal'), cmp = box.classList.contains('cmp'), st = sc.scrollTop, over = sc.scrollHeight - sc.clientHeight;
-  if (!cmp && st > 40 && over > 330) { box.classList.add('cmp'); S.gm.cmp = true; }
-  else if (cmp && st < 4) { box.classList.remove('cmp'); S.gm.cmp = false; }
-}
 function gmFilterSet(k) { S.gm.f = k; S.gm.center = true; renderGroupProfile(true); }
 function gmSearch(v) { S.gm.q = v; renderGroupProfile(true); }
 function gmPaintSub() {
@@ -8235,7 +8213,6 @@ function showMuteMenu(chatId, x, y, anchor) {
     document.addEventListener('mousedown', e => { if (!e.target.closest('#mute-menu')) hideMuteMenu(); }, true);
     document.addEventListener('keydown', e => { if (e.key === 'Escape') hideMuteMenu(); });
   }
-  const bell = '<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>';
   m.innerHTML = MUTE_OPTS.map(([l, s]) => `<button type="button" data-on-click="setChatMute" data-a-click="${esc(JSON.stringify([chatId, s]))}">${muteIcon(s)}<span>${l}</span></button>`).join('');
   m.style.display = 'block';
   m.classList.remove('pop-out'); m._popOut = false;
@@ -8269,7 +8246,6 @@ function watchMutes() {
 // «Выключить уведомления» в меню чата — подменю, как «В папку»: по наведению (или нажатию) справа раскрывается карточка с выбором срока
 function ctxMuteFill() {
   const fly = document.getElementById('ctx-mute-fly'); if (!fly) return;
-  const bell = '<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5"/><path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="m2 2 20 20"/></svg>';
   fly.innerHTML = MUTE_OPTS.map(([l, s]) => `<button type="button" data-ms="${s}">${muteIcon(s)}<span>${l}</span></button>`).join('');
 }
 function ctxMutePlace() {

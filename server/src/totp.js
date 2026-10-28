@@ -43,10 +43,6 @@ function hotp(secretBase32, counter, digits = 6) {
   return String(binCode % 10 ** digits).padStart(digits, '0');
 }
 
-function totpNow(secretBase32, timeStep = 30, digits = 6) {
-  return hotp(secretBase32, Math.floor(Date.now() / 1000 / timeStep), digits);
-}
-
 // window=1 — принимаем код из соседнего 30-секундного шага в обе стороны
 // (расхождение часов на телефоне — обычное дело)
 function verifyTotp(secretBase32, code, window = 1, timeStep = 30, digits = 6) {

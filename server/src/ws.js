@@ -38,11 +38,7 @@ function hasOpenConnection(userId) {
   }
   return false;
 }
-const path = require('path');
-const fs = require('fs');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', 'chat_db', 'chat.db');
-const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
 
 function deleteAttachmentFile(attachment) {
   if (!attachment) return;

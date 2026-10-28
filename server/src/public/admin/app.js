@@ -1,9 +1,6 @@
 /* ── STATE ── */
 let token = null, currentUser = null, currentPage = 'dashboard';
-let membersForChatId = null, membersForChatType = null;
 let allUsers = [], allRooms = [], allChats = [], allUsersCache = [];
-let createRoomSelectedIds = new Set(), selectedAddMembers = new Set();
-let chatFilter = '';
 
 function resizeAvatarFile(file) {
   return new Promise(resolve => {
@@ -99,35 +96,6 @@ function jesc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;')
 
 function fmtDate(ts) { return ts ? new Date(ts*1000).toLocaleDateString('ru',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—'; }
 
-function fmtUptime(sec) {
-  if (!sec && sec !== 0) return '—';
-  const d = Math.floor(sec / 86400);
-  const h = Math.floor((sec % 86400) / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  if (d > 0) return `${d} д ${h} ч`;
-  if (h > 0) return `${h} ч ${m} мин`;
-  return `${m} мин`;
-}
-
-function fmtBytes(b) {
-  if (b < 1024) return b + ' Б';
-  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' КБ';
-  return (b / 1024 / 1024).toFixed(1) + ' МБ';
-}
-
-function fmtOS(platform, release, installScope) {
-  if (!platform || platform === '—') return `<span style="color:var(--c-muted)">—</span>`;
-  const names = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' };
-  const icons = {
-    win32: `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="color:#0078d4;flex-shrink:0"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>`,
-    darwin: `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="color:var(--c-text2);flex-shrink:0"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>`,
-    linux: `<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="color:var(--c-text2);flex-shrink:0"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.831-.401 1.681-.401 2.463 0 .225.011.443.033.652a4.966 4.966 0 0 0-.336.643c-.238.532-.487.88-.865 1.148-.375.291-.94.482-1.7.654-.482.122-.774.476-.88.892-.107.402.076.812.375 1.082.302.278.734.481 1.216.729.481.246 1.011.622 1.532 1.031.526.415 1.038.848 1.717 1.023.226.048.457.076.702.076.478 0 1.031-.129 1.633-.427.353-.171.679-.269 1.024-.279a4.098 4.098 0 0 0 .946-.135c.354-.107.716-.298 1.11-.615.394.317.756.508 1.11.615.301.09.62.132.945.135.345.01.671.108 1.024.279.602.298 1.155.427 1.633.427.245 0 .476-.028.702-.076.679-.175 1.191-.608 1.717-1.023.521-.409 1.05-.785 1.532-1.031.482-.248.914-.451 1.216-.729.299-.27.482-.68.375-1.082-.106-.416-.398-.77-.88-.892-.76-.172-1.325-.363-1.7-.654-.378-.268-.627-.616-.865-1.148a5.033 5.033 0 0 0-.336-.643 5.63 5.63 0 0 0 .033-.652c0-.782-.123-1.632-.4-2.463-.59-1.771-1.832-3.47-2.717-4.521-.75-1.067-.974-1.928-1.05-3.02-.065-1.491 1.056-5.965-3.17-6.298A6.319 6.319 0 0 0 12.504 0zm.216 5.184c.397 0 .719.322.719.719a.719.719 0 0 1-1.438 0c0-.397.322-.719.719-.719zm-1.416.135c.397 0 .719.322.719.719a.719.719 0 0 1-1.438 0c0-.397.322-.719.719-.719z"/></svg>`
-  };
-  const name = names[platform] || platform;
-  const icon = icons[platform] || '';
-  const ver = release && release !== '—' ? `<span style="color:var(--c-muted);font-size:10px;font-family:var(--f-mono);margin-left:4px">${esc(release)}</span>` : '';
-  return `<div style="display:flex;align-items:center;gap:5px">${icon}<span style="font-size:12px">${name}</span>${ver}</div>`;
-}
 
 function avHtml(name, size=32, radius=8, userId=null, connected=false, _hasAvatar=false, chatId=null) {
   const bg = avColor(name);
@@ -2269,8 +2237,6 @@ function rmSort(k) { RM.sort = k; rmRender(); }
 
 function rmFilter(k) { RM.filter = k; RM.sel.clear(); rmRender(); }
 function rmSearch(v) { RM.q = v; rmRender(); }
-function rmToggle(id) { RM.sel.has(id) ? RM.sel.delete(id) : RM.sel.add(id); rmRender(); }
-function rmSelAll(on) { document.querySelectorAll('#page-body tbody input[type=checkbox]').forEach(() => {}); allRooms.forEach(r => on ? RM.sel.add(r.id) : RM.sel.delete(r.id)); rmRender(); }
 // Гостевая ссылка комнаты или группы: окно из shared/guestlinks.js, запросы идут с токеном админа
 function glOpen(chatId, name) {
   if (typeof GuestLinks === 'undefined') return;
@@ -2883,7 +2849,6 @@ function uaSearch(v) { UA.q = v; uaRender(); }
 // По дате сначала самые свежие: первое нажатие даёт убывание
 function uaSortBy(key) { UA.sort = UA.sort.key === key ? { key, dir: -UA.sort.dir } : { key, dir: key === 'seen' ? -1 : 1 }; uaRender(); }
 function uaToggle(id) { UA.sel.has(id) ? UA.sel.delete(id) : UA.sel.add(id); uaRender(); }
-function uaSelAll(on) { uaRows().forEach(u => on ? UA.sel.add(u.id) : UA.sel.delete(u.id)); uaRender(); }
 
 // Пункт меню пользователя «Заблокировать» / «Разблокировать»: закрываем меню и меняем статус
 function uaBanMenu(id, banned) { uxCloseMenu(); banned ? uaUnban(id) : uaBan([id]); }
@@ -3147,38 +3112,6 @@ function openEditUser(id) {
   setTimeout(() => document.getElementById('ua-name')?.focus(), 60);
 }
 
-function uaProfileSection(f) {
-  const err = k => f.errors[k] ? `<span class="ua-err">${f.errors[k]}</span>` : '';
-  return `<div class="ua-sec">
-    <div class="ua-sec-title">Профиль</div>
-    <div class="ua-field"><label for="ua-name">Имя и фамилия</label>
-      <div class="ua-inp${f.errors.name ? ' bad' : ''}"><input id="ua-name" value="${esc(f.name)}" placeholder="Анна Смирнова" autocomplete="off" aria-invalid="${!!f.errors.name}" data-on-input="uaSet" data-a-input='["name", "__value"]'></div>${err('name')}</div>
-    <div class="ua-row2">
-      <div class="ua-field"><label for="ua-login">Логин</label>
-        <div class="ua-inp${f.errors.login ? ' bad' : ''}"><span class="pre">@</span><input id="ua-login" value="${esc(f.login)}" placeholder="a.smirnova" autocomplete="off" spellcheck="false" aria-invalid="${!!f.errors.login}"
-          data-on-input="__h39"></div>
-        ${err('login') || '<span class="ua-hint">Латиница, цифры, точка</span>'}</div>
-      <div class="ua-field"><label for="ua-tag">Тег <span class="opt">· необязательно</span></label>
-        <div class="ua-inp"><input id="ua-tag" value="${esc(f.tag)}" maxlength="20" placeholder="HR, Dev, Склад" autocomplete="off" data-on-input="uaSet" data-a-input='["tag", "__value"]'></div>
-        <span class="ua-hint">Виден рядом с именем в чате</span></div>
-    </div>
-    <div class="ua-preview" aria-hidden="true"><span id="ua-pv-av">${uaAv(f.name, 32)}</span>
-      <div><div class="ua-pv-name" id="ua-pv-name">${f.name ? esc(f.name) : '<span class="ph">Имя появится здесь</span>'}${uxTag(f.tag)}</div><div class="ua-pv-bubble">Так человека увидят в чате</div></div></div>
-  </div>`;
-}
-function uaAccessSection(f, editing, u) {
-  return `<div class="ua-sec">
-    <div class="ua-sec-title">Доступ</div>
-    <div class="ua-roles" role="radiogroup" aria-label="Роль">
-      <button type="button" role="radio" class="ua-role-opt" aria-checked="${!f.admin}" data-on-click="uaSet" data-a-click='["admin", false, true]'><b>Пользователь</b><span>Чаты, комнаты и файлы</span></button>
-      <button type="button" role="radio" class="ua-role-opt" aria-checked="${f.admin}" data-on-click="uaSet" data-a-click='["admin", true, true]'><b>${UX_I.shield}Администратор</b><span>И управление в этой панели</span></button>
-    </div>
-    ${f.admin ? uaTotpSection(f, editing, u) : uaAnnSection(f)}
-    ${editing && !f.pwOpen
-      ? `<div class="ua-pw-closed"><div><b>Пароль</b><span>Остаётся прежним</span></div><button type="button" class="btn btn-ghost btn-sm" data-on-click="uaSet" data-a-click='["pwOpen", true, true, "ua-pass"]'>${UX_I.key}Сменить пароль</button></div>`
-      : uaPasswordField(f, editing)}
-  </div>`;
-}
 // Право отправлять объявления из клиента: кнопка с колокольчиком у человека в шапке, окно как в этой панели.
 // Админам не нужно: у них это есть в панели.
 function uaAnnSection(f) {
@@ -3241,17 +3174,6 @@ function uaStrength(p) {
   const score = !p ? 0 : [p.length >= 6, p.length >= 10, /\d/.test(p) && /[a-zа-яё]/i.test(p), /[^a-zа-яё0-9]/i.test(p) || /[A-ZА-ЯЁ]/.test(p)].filter(Boolean).length;
   const label = !p ? '' : p.length < 6 ? 'Короткий' : score <= 2 ? 'Простой' : score === 3 ? 'Хороший' : 'Надёжный';
   return { good: score >= 3 && p.length >= 6, html: [0, 1, 2, 3].map(i => `<i class="${i < score ? 'on' : ''}"></i>`).join('') + `<span>${label}</span>` };
-}
-function uaDangerZone(u) {
-  const devices = (u.clients || []).length;
-  return `<details class="ua-dz"><summary>${UX_I.chev}Действия с учётной записью</summary>
-    <div class="ua-dz-row"><div><b>Завершить все сеансы</b><span>Выход на всех устройствах; войти снова можно</span></div>
-      <button type="button" class="btn btn-ghost btn-sm" ${devices ? '' : 'disabled'} data-on-click="__h42" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.logout}Завершить</button></div>
-    <div class="ua-dz-row"><div><b>${u.banned ? 'Разблокировать' : 'Заблокировать'}</b><span>${u.banned ? 'Снова сможет входить' : 'Не сможет войти, пока не разблокируете'}</span></div>
-      <button type="button" class="btn btn-ghost btn-sm" data-on-click="uaBanModal" data-a-click="${esc(JSON.stringify([u.id, !!u.banned]))}">${u.banned ? UX_I.unban + 'Разблокировать' : UX_I.ban + 'Заблокировать'}</button></div>
-    <div class="ua-dz-row"><div><b>Удалить пользователя</b><span>Навсегда; сообщения в чатах останутся</span></div>
-      <button type="button" class="btn btn-danger btn-sm" data-on-click="__h44" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.trash}Удалить</button></div>
-  </details>`;
 }
 
 function uaRestoreFocus(fn, focusId) {
@@ -3600,8 +3522,6 @@ function chPerson(name) { CH.q = name; CH.filter = 'all'; chRender(); }
 
 function chFilter(k) { CH.filter = k; CH.sel.clear(); chRender(); }
 function chSearch(v) { CH.q = v; chRender(); }
-function chToggle(id) { CH.sel.has(id) ? CH.sel.delete(id) : CH.sel.add(id); chRender(); }
-function chSelAll(on) { allChats.forEach(c => on ? CH.sel.add(c.id) : CH.sel.delete(c.id)); chRender(); }
 function chMenu(e, id) {
   const c = allChats.find(x => x.id === id), guestOk = c && c.type === 'group' && !c.fed_instance;
   uxOpenMenu(e, 'ch' + id, `
@@ -3908,7 +3828,6 @@ function clPatch() {
 function clFilter(k) { CL.filter = k; CL.sel.clear(); clRender(); }
 function clSearch(v) { CL.q = v; clRender(); }
 function clToggle(id) { CL.sel.has(id) ? CL.sel.delete(id) : CL.sel.add(id); clRender(); }
-function clSelAll(on) { clRows().forEach(c => on ? CL.sel.add(c.connId) : CL.sel.delete(c.connId)); clRender(); }
 
 function clMenu(e, connId) {
   const c = CL.clients.find(x => x.connId === connId);
@@ -4085,13 +4004,6 @@ function psPMenu(e, uid) {
 
 function psFilter(k) { PS.filter = k; PS.sel.clear(); psRender(); }
 function psSearch(v) { PS.q = v; psRender(); }
-function psToggle(id) { PS.sel.has(id) ? PS.sel.delete(id) : PS.sel.add(id); psRender(); }
-function psSelAll(on) { PS.subs.forEach(s => on ? PS.sel.add(s.id) : PS.sel.delete(s.id)); psRender(); }
-function psMenu(e, id) {
-  uxOpenMenu(e, 'ps' + id, `
-    <button role="menuitem" data-on-click="__h62" data-a-click="${esc(JSON.stringify([id]))}">${PS_BELL}Проверить</button>
-    <hr><button role="menuitem" class="danger" data-on-click="__h63" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.trash}Удалить подписку</button>`);
-}
 
 // Тест уходит человеку целиком — на все его подписки, поэтому выбранные строки сводим к людям
 async function psTest(ids) {
@@ -4216,8 +4128,6 @@ function whTog(e, id) {
 
 function whFilter(k) { WH.filter = k; WH.sel.clear(); whRender(); }
 function whSearch(v) { WH.q = v; whRender(); }
-function whToggle(id) { WH.sel.has(id) ? WH.sel.delete(id) : WH.sel.add(id); whRender(); }
-function whSelAll(on) { WH.hooks.forEach(h => on ? WH.sel.add(h.id) : WH.sel.delete(h.id)); whRender(); }
 function whMenu(e, id) {
   uxOpenMenu(e, 'wh' + id, `
     <button role="menuitem" data-on-click="__h66" data-a-click="${esc(JSON.stringify([id]))}">${WH_I.copy}Скопировать адрес</button>
@@ -4409,7 +4319,6 @@ const ST_EDIT = [[60, '1 мин'], [120, '2 мин'], [900, '15 мин'], [3600,
 const ST_STATUS = [[0, 'Не хранить'], [1, '1 день'], [3, '3 дня'], [7, '7 дней'], [14, '14 дней'], [30, '30 дней']];
 const ST_LIFE = [[0, 'Всегда'], [30, '30 дней'], [90, '90 дней'], [365, '1 год']];
 const ST_FORM = { messages: ['edit', 'statusDays'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime', 'backupRetention'] };
-const ST_IN = { messages: 'в «Сообщениях»', attachments: 'во «Вложениях»', backups: 'в «Резервных копиях»' };
 const ST_QUICK = { 'Документы': ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'], 'Архивы': ['zip', 'rar', '7z'] };
 const ST_KEYS = {
   edit: ['edit_time_limit', String], statusDays: ['status_window_days', String], imgMax: ['upload_image_max_size', String], imgExt: ['upload_image_extensions', v => v.join(',')],
@@ -4427,12 +4336,6 @@ function stDur(sec) {
   if (sec >= 3600 && sec % 3600 === 0) { const h = sec / 3600; return `${h} ${uxPlural(h, 'час', 'часа', 'часов')}`; }
   if (sec >= 60 && sec % 60 === 0) { const m = sec / 60; return `${m} ${uxPlural(m, 'минута', 'минуты', 'минут')}`; }
   return `${sec} ${uxPlural(sec, 'секунда', 'секунды', 'секунд')}`;
-}
-function stUptime(sec) {
-  const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
-  if (d) return `${d} ${uxPlural(d, 'день', 'дня', 'дней')}${h ? ` ${h} ч` : ''}`;
-  if (h) return `${h} ч ${m} мин`;
-  return `${Math.max(1, m)} мин`;
 }
 
 function stFromSettings(s) {
@@ -4455,8 +4358,6 @@ function stFromSettings(s) {
   ST.gh.set = !!s.github_token_set;
 }
 
-// Прежнее имя: «Файлы» открывают окно сразу на «Вложениях»
-function showSettingsSection(section) { openSettingsModal(section); }
 
 const stChanged = () => ST.draft ? Object.entries(ST_FORM).flatMap(([sec, keys]) =>
   keys.filter(k => JSON.stringify(ST.draft[k]) !== JSON.stringify(ST.saved[k])).map(k => ({ sec, k }))) : [];
@@ -4495,22 +4396,6 @@ function stNextBackupLabel() {
 }
 const stVersion = () => ST.stats?.serverVersion || '—';
 
-const ST_SECTIONS = [
-  { k: 'messages', label: 'Сообщения', icon: ST_I.msg, desc: 'Что можно делать с уже отправленными сообщениями', meta: () => `${stDur(ST.saved.edit)} на правку` },
-  { k: 'attachments', label: 'Вложения', icon: ST_I.clip, desc: 'Размер, форматы и срок хранения медиа и файлов', meta: () => `до ${ST.saved.imgMax} и ${ST.saved.fileMax} МБ${ST.saved.life ? ` · ${ST.saved.life} дн.` : ''}` },
-  { k: 'backups', label: 'Резервные копии', icon: ST_I.db, desc: 'Снимки базы: сообщения, пользователи, чаты и настройки', meta: () => (ST.saved.backupDays?.length ? 'по расписанию · ' : '') + (ST.backups.length ? `последняя ${uaSeen(stLastBackup().created_at)}` : 'копий нет'), dot: () => stBackupOld() ? 'warn' : '' },
-  { k: 'github', label: 'GitHub', icon: ST_I.gh, desc: 'Доступ к репозиторию для проверки обновлений', meta: () => ST.gh.set ? 'токен задан' : 'без токена', dot: () => ST.gh.set ? 'ok' : 'warn' },
-  { k: 'update', label: 'Обновление', icon: ST_I.upd, title: 'Обновление сервера', desc: 'Версия сервера и установка новых релизов', meta: () => ST.upd.state === 'available' ? `есть версия ${ST.upd.v.latest}` : `версия ${stVersion()}`, dot: () => ST.upd.state === 'available' ? 'warn' : '' },
-];
-
-function stNavHtml() {
-  const dirty = new Set(stChanged().map(c => c.sec));
-  return ST_SECTIONS.map(s => {
-    const dot = dirty.has(s.k) ? '<i class="st-dot edit" title="Есть несохранённые изменения"></i>' : s.dot?.() ? `<i class="st-dot ${s.dot()}"></i>` : '';
-    return `<button type="button" class="st-sn" aria-current="${ST.sec === s.k ? 'page' : 'false'}" data-on-click="stGo" data-a-click="${esc(JSON.stringify([`${s.k}`]))}"><span class="st-sn-ic">${s.icon}</span>
-      <span class="st-sn-tx"><b>${s.label}</b><small>${esc(s.meta())}</small></span>${dot}</button>`;
-  }).join('');
-}
 
 // ── Сообщения ──
 function stEditExample() {
@@ -4521,302 +4406,19 @@ function stEditExample() {
   const when = until.toDateString() === now.toDateString() ? t(until) : `${until.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' })}, ${t(until)}`;
   return `${ST_I.clock}<span>Отправленное сейчас, в <b>${t(now)}</b>, можно исправить до <b>${when}</b></span>`;
 }
-function stPaneMessages() {
-  const d = ST.draft, custom = ST.editCustom || !ST_EDIT.some(([v]) => v === d.edit);
-  const n = d.edit / ST.editUnit;
-  return `<div class="st-gt">${ST_I.msg}Редактирование</div>
-    <div class="st-g"><div class="st-r stack">
-      <div class="st-l"><b>Сколько можно править своё сообщение</b><span>Когда срок выйдет, пункт «Изменить» пропадёт из меню сообщения.</span></div>
-      <div class="st-ctl"><div class="st-seg" role="group" aria-label="Срок правки">${ST_EDIT.map(([v, l]) => `<button type="button" aria-pressed="${!custom && d.edit === v}" data-on-click="stEditPreset" data-a-click="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}
-        <button type="button" aria-pressed="${custom}" data-on-click="stEditPreset" data-a-click='["custom"]'>Своё</button></div>
-        ${custom ? `<div class="st-inp st-num ${stErrors().edit ? 'bad' : ''}" id="st-box-edit"><input id="st-edit-n" type="number" min="1" value="${Number.isInteger(n) ? n : ''}" aria-label="Срок правки" data-on-input="stEditN" data-a-input='["__value"]'></div>
-          <div class="st-inp" style="width:auto"><select aria-label="Единицы" data-on-change="__h76">${[[1, 'секунд'], [60, 'минут'], [3600, 'часов']].map(([u, l]) => `<option value="${u}" ${ST.editUnit === u ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}
-      </div>
-      <div class="st-ex" id="st-edit-example">${stEditExample()}</div>
-      <div class="st-cmp"><span>Для сравнения:</span><span>WhatsApp — <b>15 минут</b></span><span>Telegram — <b>48 часов</b></span></div>
-    </div></div>
-    <div class="st-gt">${ST_I.clock}Статусы</div>
-    <div class="st-g"><div class="st-r stack">
-      <div class="st-l"><b>Окно времени статуса</b><span>Сколько хранится точное время доставки и прочтения. Позже остаётся только факт «прочитано» без времени. Работает в чатах до 100 участников.</span></div>
-      <div class="st-ctl"><div class="st-seg" role="group" aria-label="Окно времени статуса">${ST_STATUS.map(([v, l]) => `<button type="button" aria-pressed="${d.statusDays === v}" data-on-click="stStatusPreset" data-a-click="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}</div></div>
-    </div></div>
-    <p class="st-hint">Новый срок действует сразу после сохранения; приложения узнают о нём при переподключении.</p>`;
-}
 
 // ── Вложения ──
-function stStepHtml(k) {
-  return `<div class="st-step ${stErrors()[k] ? 'bad' : ''}" id="st-box-${k}"><button type="button" aria-label="Меньше" data-on-click="stStep" data-a-click="${esc(JSON.stringify([`${k}`, -1]))}">−</button>
-    <input id="st-n-${k}" type="number" min="1" max="500" value="${Number.isFinite(ST.draft[k]) ? ST.draft[k] : ''}" aria-label="Размер в мегабайтах" data-on-input="stNum" data-a-input="${esc(JSON.stringify([`${k}`, "__value"]))}"><button type="button" aria-label="Больше" data-on-click="stStep" data-a-click="${esc(JSON.stringify([`${k}`, 1]))}">+</button><span>МБ</span></div>`;
-}
-function stTokHtml(k, anyText) {
-  const list = ST.draft[k];
-  return `<div class="st-tok ${stErrors()[k] || ST.tokErr[k] ? 'bad' : ''}" data-on-click="__h77" data-a-click="${esc(JSON.stringify([k]))}">
-      ${list.map(x => `<span class="st-tk">${esc(x)}<button type="button" aria-label="Убрать ${esc(x)}" data-on-click="stTokDel" data-a-click="${esc(JSON.stringify([`${k}`, `${esc(x)}`]))}">×</button></span>`).join('')}
-      ${!list.length && anyText ? `<span class="st-any">${ST_I.check}${anyText}</span>` : ''}
-      <input id="st-tok-${k}" placeholder="${list.length ? 'ещё формат…' : 'например, pdf'}" aria-label="Добавить формат" autocomplete="off" spellcheck="false"
-        data-on-keydown="stTokKey" data-a-keydown="${esc(JSON.stringify(["__event", `${k}`]))}" data-on-input="__h78" data-a-input="${esc(JSON.stringify([k]))}">
-    </div>
-    ${ST.tokErr[k] ? `<div class="st-err">${esc(ST.tokErr[k])}</div>` : ''}`;
-}
-function stPaneAttachments() {
-  const d = ST.draft, s = ST.stats, lifeCustom = ST.lifeCustom || !ST_LIFE.some(([v]) => v === d.life);
-  return `<div class="st-gt">${ST_I.img}Медиа</div>
-    <div class="st-g">
-      <div class="st-r"><div class="st-l"><b>Наибольший размер картинок</b><span>Картинку тяжелее загрузить не получится</span></div>${stStepHtml('imgMax')}</div>
-      <div class="st-r stack"><div class="st-l"><b>Форматы картинок</b><span>Только эти расширения отправляются как картинка с превью. Enter или запятая — добавить.</span></div>${stTokHtml('imgExt')}</div>
-      <div class="st-r"><div class="st-l"><b>Наибольший размер видео</b><span>Видео тяжелее загрузить не получится</span></div>${stStepHtml('videoMax')}</div>
-      <div class="st-r stack"><div class="st-l"><b>Форматы видео</b><span>Только эти расширения отправляются как видео с превью и проигрыванием. Enter или запятая — добавить.</span></div>${stTokHtml('videoExt')}</div>
-    </div>
-    <div class="st-gt">${ST_I.file}Файлы</div>
-    <div class="st-g">
-      <div class="st-r"><div class="st-l"><b>Наибольший размер</b><span>Касается документов, архивов и всего, что не картинка</span></div>${stStepHtml('fileMax')}</div>
-      <div class="st-r stack"><div class="st-l"><b>Форматы</b><span>Разрешено только то, что в списке. Пустой список: файлы отправлять нельзя</span></div>${stTokHtml('fileExt', 'Форматы не разрешены')}
-        <div class="st-quick"><span class="st-hint">Добавить набор:</span>${Object.keys(ST_QUICK).map(n => `<button type="button" class="btn btn-ghost btn-sm" data-on-click="stQuick" data-a-click="${esc(JSON.stringify([`${n}`]))}">${ST_I.plus}${n}</button>`).join('')}
-          ${d.fileExt.length ? '<button type="button" class="btn btn-ghost btn-sm" data-on-click="stTokClear">Очистить список</button>' : ''}</div></div>
-    </div>
-    <div class="st-gt">${ST_I.box}Хранение</div>
-    <div class="st-g"><div class="st-r stack">
-      <div class="st-l"><b>Сколько хранить файлы</b><span>Старые файлы удаляются сами — проверка раз в 6 часов. В переписке на их месте остаётся «Файл удалён».</span></div>
-      <div class="st-ctl"><div class="st-seg" role="group" aria-label="Срок хранения">${ST_LIFE.map(([v, l]) => `<button type="button" aria-pressed="${!lifeCustom && d.life === v}" data-on-click="stLifePreset" data-a-click="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}
-        <button type="button" aria-pressed="${lifeCustom}" data-on-click="stLifePreset" data-a-click='["custom"]'>Своё</button></div>
-        ${lifeCustom ? `<div class="st-inp st-num ${stErrors().life ? 'bad' : ''}" id="st-box-life" style="width:130px"><input id="st-n-life" type="number" min="1" max="3650" value="${d.life || ''}" aria-label="Срок хранения в днях" data-on-input="stNum" data-a-input='["life", "__value"]'><span class="st-u">дней</span></div>` : ''}
-      </div>
-      ${s ? `<div class="st-ex">${ST_I.box}<span>Сейчас на сервере <b>${rmFmt(s.filesCount)}</b> ${uxPlural(s.filesCount || 0, 'файл', 'файла', 'файлов')}, <b>${hmBytes(s.filesBytes || 0)}</b></span><span class="ux-grow"></span>
-        <button type="button" class="st-link" data-on-click="stToFiles">Открыть «Файлы»</button></div>` : ''}
-    </div></div>`;
-}
 
 // ── Резервные копии ──
-function stPaneBackups() {
-  const d = ST.draft, last = stLastBackup(), old = stBackupOld(), err = stErrors();
-  return `<div class="st-stat ${old ? 'warn' : 'ok'}"><span class="st-ring">${old ? ST_I.warn : ST_I.db}</span>
-      <div class="st-stat-t"><b>${last ? `Последняя копия — ${uaSeen(last.created_at)}` : 'Копий пока нет'}</b>
-        <span>${old ? 'Больше недели без копии — сделайте свежую перед обновлением или крупными правками.' : `${hmBytes(last.size)} · всего копий: ${ST.backups.length}`}</span></div>
-      <div class="st-stat-acts"><button type="button" class="btn btn-ghost" data-on-click="rsPick">${RS_I ? rsIc('upload', 14) : ''}Восстановить из файла…</button>
-      <button type="button" class="btn ux-solid" ${ST.bkBusy ? 'disabled' : ''} data-on-click="stBackup">${ST.bkBusy ? '<span class="st-spin light"></span>Создаю…' : `${ST_I.plus}Создать копию`}</button></div></div>
-    <p class="st-hint">Снимок делается на живой базе и не мешает людям работать. Файлы копий лежат на сервере в <code class="st-code">chat_db/backups</code>.</p>
-    <div class="st-gt">${ST_I.clock}Расписание</div>
-    <div class="st-g"><div class="st-r stack">
-      <div class="st-l"><b>Дни недели</b><span>Автокопия по этим дням. Пусто — только по кнопке.</span></div>
-      <div class="st-seg" role="group" aria-label="Дни автокопирования">${ST_DAYS.map(([v, l]) => `<button type="button" aria-pressed="${d.backupDays.includes(v)}" data-on-click="stBackupDay" data-a-click="${esc(JSON.stringify([v]))}">${l}</button>`).join('')}</div>
-    </div>
-    ${d.backupDays.length ? `<div class="st-r"><div class="st-l"><b>Время</b><span>По времени сервера</span></div>
-      <div class="st-inp st-num ${err.backupTime ? 'bad' : ''}" style="width:130px"><input type="time" value="${esc(d.backupTime)}" aria-label="Время автокопирования" data-on-input="stBackupTime" data-a-input='["__value"]'></div></div>
-      <div class="st-r stack">${err.backupTime ? `<div class="st-err">${esc(err.backupTime)}</div>` : `<p class="st-hint" style="margin:0">Ближайшая копия — ${esc(stNextBackupLabel())}.</p>`}</div>` : ''}
-    </div>
-    <div class="st-gt">Хранение</div>
-    <div class="st-g"><div class="st-r">
-      <div class="st-l"><b>Срок хранения</b><span>Копии старше срока удаляются автоматически. Пусто — хранить всегда.</span></div>
-      <div class="st-inp st-num ${err.backupRetention ? 'bad' : ''}" id="st-box-backupRetention" style="width:130px"><input type="number" min="1" max="3650" value="${d.backupRetention == null || Number.isNaN(d.backupRetention) ? '' : d.backupRetention}" aria-label="Срок хранения копий в днях" data-on-input="stNum" data-a-input='["backupRetention", "__value"]'><span class="st-u">дней</span></div></div>
-      ${err.backupRetention ? `<div class="st-r stack"><div class="st-err">${esc(err.backupRetention)}</div></div>` : ''}
-    </div>
-    ${ST.backups.length ? `<div class="st-gt">${ST_I.db}Копии · ${ST.backups.length}</div>
-    <div class="st-g">${ST.backups.map((b, i) => `<div class="st-bk ${i === 0 && ST.bkNew ? 'new' : ''}">
-        <div><b>${esc(uaSeen(b.created_at))} ${i === 0 && ST.bkNew ? '<span class="st-chip new">новая</span>' : ''}${b.kind === 'pre' ? '<span class="st-chip warn">До восстановления</span>' : b.kind === 'man' ? '<span class="st-chip">Вручную</span>' : b.kind === 'auto' ? '<span class="st-chip">Авто</span>' : ''}</b><small>${esc(new Date(b.created_at * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }))}</small></div>
-        <span class="st-sz">${hmBytes(b.size)}</span>
-        <div style="display:flex;gap:6px">
-          <button type="button" class="btn btn-primary btn-sm" data-on-click="rsFromBackup" data-a-click="${esc(JSON.stringify([`${jesc(b.name)}`]))}">${rsIc('restore', 13)}Восстановить</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-on-click="stDownload" data-a-click="${esc(JSON.stringify([`${jesc(b.name)}`, "__this"]))}">${ST_I.down}Скачать</button>
-          <button type="button" class="btn btn-ghost btn-sm" aria-label="Удалить копию ${esc(b.name)}" data-on-click="stDeleteBackup" data-a-click="${esc(JSON.stringify([`${jesc(b.name)}`]))}">${UX_I.trash}</button>
-        </div></div>`).join('')}</div>` : ''}`;
-}
 
 // ── GitHub ──
-function stPaneGithub() {
-  const g = ST.gh;
-  return `<div class="st-stat ${g.set ? 'ok' : 'warn'}"><span class="st-ring">${g.set ? ST_I.check : ST_I.warn}</span>
-      <div class="st-stat-t"><b>${g.set ? 'Токен задан' : 'Токен не задан'}</b>
-        <span>${g.set ? 'Запросы к GitHub идут с токеном — до 5000 в час.' : 'Анонимный доступ — до 60 запросов в час. При частых проверках обновлений лимит заканчивается.'}</span></div>
-      <span class="st-chip ${g.set ? 'ok' : 'warn'}">${g.set ? '5000' : '60'} / час</span></div>
-    <div class="st-gt">${ST_I.key}Personal Access Token</div>
-    <div class="st-g"><div class="st-r stack">
-      <div class="st-l"><b>${g.set ? 'Заменить токен' : 'Вставьте токен'}</b><span>Токен хранится только на сервере и в браузер не возвращается — даже администратору.</span></div>
-      <div class="st-ctl">
-        <div class="st-inp ${g.err ? 'bad' : ''}" style="flex:1;min-width:220px"><input id="st-gh" type="${g.show ? 'text' : 'password'}" placeholder="${g.set ? '•••••••••••••••••••• (задан)' : 'ghp_… или github_pat_…'}" autocomplete="off" spellcheck="false" class="st-mono" data-on-keydown="__h79">
-          <button type="button" class="st-eye" aria-label="${g.show ? 'Скрыть токен' : 'Показать токен'}" data-on-click="stGhShow">${g.show ? ST_I.eyeOff : ST_I.eye}</button></div>
-        <button type="button" class="btn ux-solid" ${g.busy ? 'disabled' : ''} data-on-click="stGhSave">Сохранить</button>
-        ${g.set ? `<button type="button" class="btn btn-danger" ${g.busy ? 'disabled' : ''} data-on-click="stGhDel">Удалить</button>` : ''}
-      </div>
-      ${g.err ? `<div class="st-err">${esc(g.err)}</div>` : ''}
-      <p class="st-hint">Создать токен: <a href="https://github.com/settings/tokens/new?scopes=public_repo&description=Electron+Admin" target="_blank" rel="noopener">github.com/settings/tokens</a> — достаточно права <code class="st-code">public_repo</code>.</p>
-    </div></div>
-    <div class="st-gt">Для чего нужен</div>
-    <div class="st-g">
-      <div class="st-use">${ST_I.server}<div><b>Проверка обновлений сервера</b><span>Версия и описание релиза для блока обновления на главной</span></div></div>
-      <div class="st-use">${ST_I.upd}<div><b>Версии клиентов</b><span>Последний релиз для сравнения на странице «Клиенты»; ответ кэшируется на 15 минут</span></div></div>
-      <div class="st-use">${ST_I.down}<div><b>Принудительное обновление</b><span>Ссылка на установщик под систему конкретного устройства</span></div></div>
-    </div>`;
-}
 
 // ── Обновление ──
-function stPaneUpdate() {
-  const u = ST.upd, busy = typeof HM !== 'undefined' && HM.upd?.busy;
-  const chip = busy ? `<span class="st-chip new">идёт установка</span>`
-    : u.state === 'checking' ? '<span class="st-state"><span class="st-spin"></span>Проверяю…</span>'
-    : u.state === 'latest' ? '<span class="st-chip ok">последняя версия</span>'
-    : u.state === 'available' ? `<span class="st-chip warn">доступна ${esc(u.v.latest)}</span>`
-    : u.state === 'error' ? '<span class="st-chip warn">не удалось проверить</span>' : '';
-  const up = ST.stats?.uptimeSeconds;
-  return `<div class="st-stat plain"><span class="st-ring">${ST_I.server}</span>
-      <div class="st-stat-t"><span>Установлена версия</span><b class="st-ver">${esc(stVersion())}</b><span>${up ? `Запущена ${stUptime(up)} назад · ` : ''}служба <code class="st-code">electron</code></span></div>
-      ${chip}
-      <button type="button" class="btn btn-ghost" ${u.state === 'checking' || busy ? 'disabled' : ''} data-on-click="stCheck">${ST_I.upd}Проверить</button></div>
-    ${busy ? `<div class="st-g"><div class="st-r"><div class="st-l"><b>Устанавливается ${esc(HM.upd.target || '')}</b><span>Ход установки по шагам виден в блоке обновления на главной странице.</span></div>
-        <button type="button" class="btn btn-ghost" data-on-click="__h80">Открыть главную</button></div></div>`
-    : u.state === 'available' ? `<div class="st-g">
-      <div class="st-r"><div class="st-l"><b>Версия ${esc(u.v.latest)}</b><span>Служба перезапустится — у людей пропадёт связь примерно на 10–20 секунд, потом приложения переподключатся сами.</span></div>
-        <button type="button" class="btn ux-solid" data-on-click="stInstall">${ST_I.down}Установить</button></div>
-      ${u.v.notes ? `<div class="st-notes"><b>Что нового.</b> ${esc(u.v.notes)}</div>` : ''}
-    </div>`
-    : u.state === 'latest' ? '<p class="st-hint">Обновлений нет. Проверка обращается к GitHub — без токена это расходует анонимный лимит.</p>'
-    : u.state === 'error' ? '<p class="st-hint">GitHub не ответил. Проверьте доступ сервера в интернет или токен в разделе «GitHub» и попробуйте ещё раз.</p>'
-    : '<p class="st-hint">Ход установки показывается по шагам в блоке обновления на главной странице.</p>'}`;
-}
-const ST_PANES = { messages: stPaneMessages, attachments: stPaneAttachments, backups: stPaneBackups, github: stPaneGithub, update: stPaneUpdate };
 
-function stFootRender() {
-  const f = document.getElementById('st-foot');
-  if (!f) return;
-  const ch = stChanged(), errs = Object.values(stErrors());
-  f.classList.toggle('ask', ST.confirmClose);
-  if (!ch.length && !ST_FORM[ST.sec]) { f.hidden = true; return; }
-  f.hidden = false;
-  const busy = ST.saving ? 'disabled' : '';
-  if (ST.confirmClose) {
-    f.innerHTML = `<span class="st-state warn">${ST_I.warn}<span><b>Закрыть без сохранения?</b> Изменения пропадут.</span></span><span class="ux-grow"></span>
-      <button type="button" class="btn btn-ghost" ${busy} data-on-click="stDiscard" data-a-click='[true]'>Не сохранять</button>
-      <button type="button" class="btn ux-solid" id="st-foot-save" ${errs.length || ST.saving ? 'disabled' : ''} data-on-click="stSave" data-a-click='[true]'>${ST.saving ? 'Сохраняю…' : 'Сохранить и закрыть'}</button>`;
-    return;
-  }
-  const secs = [...new Set(ch.map(c => c.sec))];
-  const where = secs.length === 1 && secs[0] !== ST.sec ? ` ${ST_IN[secs[0]]}` : secs.length > 1 ? ' в двух разделах' : '';
-  const state = ch.length && errs.length ? `<span class="st-state bad">${ST_I.warn}${esc(errs[0])}</span>`
-    : ch.length ? `<span class="st-state warn"><i class="st-dot edit"></i><span>Не сохранено: <b>${ch.length} ${uxPlural(ch.length, 'изменение', 'изменения', 'изменений')}</b>${where}</span></span>`
-    : `<span class="st-state ok">${ST_I.check}Все изменения сохранены</span>`;
-  f.innerHTML = `${state}<span class="ux-grow"></span>
-    <button type="button" class="btn btn-ghost" ${ch.length && !ST.saving ? '' : 'disabled'} data-on-click="stDiscard">Отменить</button>
-    <button type="button" class="btn ux-solid" ${!ch.length || errs.length || ST.saving ? 'disabled' : ''} data-on-click="stSave">${ST.saving ? 'Сохраняю…' : 'Сохранить'}</button>`;
-}
-// Лёгкая перерисовка при вводе: навигация, подвал и подсветка ошибок — без пересоздания полей
-function stChrome() {
-  const nav = document.getElementById('st-nav');
-  if (nav) nav.innerHTML = stNavHtml();
-  stFootRender();
-  const e = stErrors();
-  ['imgMax', 'fileMax', 'life', 'edit', 'backupRetention'].forEach(k => document.getElementById('st-box-' + k)?.classList.toggle('bad', !!e[k]));
-  const ex = document.getElementById('st-edit-example');
-  if (ex) ex.innerHTML = stEditExample();
-}
 function stRender(focusId) {
   if (currentPage === 'settings') return spRender(focusId);
-  const el = document.getElementById('st-form');
-  if (!el || !ST.draft) return;
-  const a = document.activeElement, keep = focusId || (a?.id && el.contains(a) ? a.id : null);
-  let caret = null;
-  try { caret = a?.selectionStart; } catch {}
-  const body = document.getElementById('st-body'), scroll = body?.scrollTop || 0;
-  const s = ST_SECTIONS.find(x => x.k === ST.sec);
-  el.innerHTML = `
-    <nav class="st-nav" aria-label="Разделы настроек">
-      <div class="st-nav-h"><h2 id="st-title">Настройки</h2><p>Сервер · версия <b>${esc(stVersion())}</b></p></div>
-      <div id="st-nav" class="st-nav-list">${stNavHtml()}</div>
-    </nav>
-    <section class="st-pane">
-      <header class="st-head"><div><h3>${s.title || s.label}</h3><p>${s.desc}</p></div>
-        <button type="button" class="modal-close" aria-label="Закрыть настройки" data-on-click="stClose">✕</button></header>
-      <div class="st-body" id="st-body">${ST_PANES[ST.sec]()}</div>
-      <footer class="st-foot" id="st-foot" hidden></footer>
-    </section>`;
-  stFootRender();
-  const nb = document.getElementById('st-body');
-  if (nb && !focusId) nb.scrollTop = scroll;
-  const f = keep && document.getElementById(keep);
-  if (f) { f.focus(); if (!focusId && caret != null) { try { f.setSelectionRange(caret, caret); } catch {} } }
 }
 
-function stGo(k) { ST.sec = k; ST.confirmClose = false; ST.bkNew = false; stRender(); const b = document.getElementById('st-body'); if (b) b.scrollTop = 0; }
-function stStatusPreset(v) { ST.draft.statusDays = v; stRender(); }
-function stEditPreset(v) {
-  if (v === 'custom') { ST.editCustom = true; ST.editUnit = ST.draft.edit % 3600 === 0 ? 3600 : ST.draft.edit % 60 === 0 ? 60 : 1; return stRender('st-edit-n'); }
-  ST.editCustom = false; ST.draft.edit = v; stRender();
-}
-function stEditN(v) { ST.draft.edit = v === '' ? NaN : Math.round(Number(v) * ST.editUnit); stChrome(); }
-function stEditUnit(u) { const n = ST.draft.edit / ST.editUnit; ST.editUnit = u; if (Number.isFinite(n)) ST.draft.edit = Math.round(n * u); stRender(); }
-function stNum(k, v) { ST.draft[k] = v === '' ? NaN : Number(v); stChrome(); }
-function stStep(k, delta) {
-  const cur = Number.isFinite(ST.draft[k]) ? Math.round(ST.draft[k]) : 0;
-  ST.draft[k] = Math.max(1, Math.min(500, cur + delta));
-  const inp = document.getElementById('st-n-' + k);
-  if (inp) inp.value = ST.draft[k];
-  stChrome();
-}
-function stLifePreset(v) {
-  if (v === 'custom') { ST.lifeCustom = true; if (!ST.draft.life) ST.draft.life = 180; return stRender('st-n-life'); }
-  ST.lifeCustom = false; ST.draft.life = v; stRender();
-}
-function stTokKey(e, k) {
-  if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); stTokAdd(k, e.target.value); }
-  else if (e.key === 'Backspace' && !e.target.value && ST.draft[k].length) { ST.draft[k] = ST.draft[k].slice(0, -1); stRender('st-tok-' + k); }
-}
-function stTokAdd(k, raw) {
-  const items = String(raw).toLowerCase().split(/[\s,;]+/).map(x => x.replace(/^\.+/, '')).filter(Boolean);
-  const ok = x => /^[a-z0-9]{1,10}$/.test(x);
-  const bad = items.find(x => !ok(x));
-  ST.draft[k] = [...new Set([...ST.draft[k], ...items.filter(ok)])];
-  ST.tokErr[k] = bad ? `«${bad}» не похоже на расширение — только латиница и цифры, без точки` : '';
-  stRender('st-tok-' + k);
-}
-function stTokDel(k, x) { ST.draft[k] = ST.draft[k].filter(y => y !== x); stRender('st-tok-' + k); }
-function stTokClear() { ST.draft.fileExt = []; stRender(); }
-function stQuick(name) { ST.draft.fileExt = [...new Set([...ST.draft.fileExt, ...ST_QUICK[name]])]; stRender(); }
-function stBackupDay(d) {
-  const set = new Set(ST.draft.backupDays);
-  set.has(d) ? set.delete(d) : set.add(d);
-  ST.draft.backupDays = [...set].sort();
-  stRender();
-}
-function stBackupTime(v) { ST.draft.backupTime = v; stChrome(); }
-function stToFiles() {
-  if (stChanged().length) return stClose();
-  closeModal('modal-settings');
-  nav('files');
-}
-
-async function stSave(andClose) {
-  const ch = stChanged();
-  if (!ch.length || Object.keys(stErrors()).length || ST.saving) return;
-  // Дни и время расписания копий сохраняются только вместе: иначе, включив дни
-  // впервые при времени по умолчанию (совпадает с ST.saved), время не попадёт
-  // в изменения и на сервере останется пустым — расписание не сработает
-  if (ch.some(c => c.k === 'backupDays' || c.k === 'backupTime')) {
-    for (const k of ['backupDays', 'backupTime']) if (!ch.some(c => c.k === k)) ch.push({ sec: 'backups', k });
-  }
-  ST.saving = true;
-  stFootRender();
-  const body = Object.fromEntries(ch.map(({ k }) => [ST_KEYS[k][0], ST_KEYS[k][1](ST.draft[k])]));
-  const r = await api('PUT', '/api/admin/settings', body);
-  ST.saving = false;
-  if (!r?.ok) { toast(esc(r?.error || 'Не удалось сохранить настройки'), 'error'); return stFootRender(); }
-  ST.saved = stClone(ST.draft);
-  ST.confirmClose = false;
-  toast(`Настройки сохранены: ${ch.length} ${uxPlural(ch.length, 'изменение', 'изменения', 'изменений')}`, 'success');
-  if (currentPage === 'files' && ch.some(c => c.k === 'life')) renderFiles();
-  if (andClose) return closeModal('modal-settings');
-  stRender();
-}
-function stDiscard(andClose) {
-  ST.draft = stClone(ST.saved);
-  Object.assign(ST, { editCustom: false, lifeCustom: false, tokErr: {}, confirmClose: false });
-  if (andClose) return closeModal('modal-settings');
-  stRender();
-}
-function stClose() {
-  if (stChanged().length) {
-    if (!ST.confirmClose) { ST.confirmClose = true; stFootRender(); document.getElementById('st-foot-save')?.focus(); }
-    return;
-  }
-  closeModal('modal-settings');
-}
 
 /* ── ВОССТАНОВЛЕНИЕ ИЗ РЕЗЕРВНОЙ КОПИИ ── */
 // Окно открывается из списка копий («Восстановить») или кнопкой «Восстановить из файла…». Три переключателя:
@@ -4909,7 +4511,7 @@ async function rsGo() {
   try { updateNavBadges(); } catch {}
 }
 function rsRefreshLists() {
-  try { if (document.getElementById('modal-settings')?.classList.contains('open')) stRender(); else if (currentPage === 'settings') spRender(); } catch {}
+  try { if (currentPage === 'settings') spRender(); } catch {}
 }
 
 function rsEff() {
@@ -5050,27 +4652,6 @@ function stGhDel() {
   });
 }
 
-async function stCheck() {
-  ST.upd = { state: 'checking', v: null };
-  stRender();
-  const v = await api('GET', '/api/admin/server/version');
-  ST.upd = !v?.latest ? { state: 'error', v: null } : { state: v.hasUpdate ? 'available' : 'latest', v };
-  // Та же проверка нужна главной: там кнопка сразу покажет результат, а установка возьмёт версию отсюда
-  if (v?.latest && typeof HM !== 'undefined') { HM.upd.check = v; HM.upd.checkedAt = Date.now(); }
-  if (currentPage === 'settings') spRender();
-  else if (document.getElementById('modal-settings')?.classList.contains('open')) stRender();
-}
-// Установка идёт с главной: там шаги, опрос состояния и проверка версии после перезапуска
-async function stInstall() {
-  const v = ST.upd.v;
-  if (!v?.hasUpdate) return;
-  closeModal('modal-settings');
-  HM.upd.check = v;
-  HM.upd.checkedAt = Date.now();
-  nav('dashboard');
-  for (let i = 0; i < 50 && !document.getElementById('hm-upd-panel'); i++) await new Promise(r => setTimeout(r, 100));
-  hmUpdInstall();
-}
 
 function restartService() {
   confirm('Перезапустить службу?',
@@ -5676,7 +5257,6 @@ document.addEventListener('mousedown', e => { if (!e.target.closest('.ux-selp, .
 addEventListener('resize', uxSelClose);
 addEventListener('scroll', e => { if (!e.target.closest?.('.ux-selp')) uxSelClose(); }, true);
 
-const WSF = { filter: 'all', sel: null };
 function wsPick(id) { WS.sel = id; uxSelClose(); wsRender(); }
 function wsFilter(f) { WS.filter = f; wsRender(); }
 function wsAvatar(w, small) {
@@ -6578,14 +6158,6 @@ const AL = { all: [], category: 'all', q: '', open: new Set(), fresh: null };
 const RE = { f: 'all', q: '', open: new Set(), fresh: null, list: [], first: true };
 function alFilter(cat) { AL.category = cat; alRender(); }
 function alSearch(q) { AL.q = q; alRender(); }
-function alTimeLabel(ts) {
-  const d = new Date(ts * 1000), now = new Date();
-  const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  const day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const diff = Math.round((day(now) - day(d)) / 86400000);
-  const label = diff === 0 ? 'сегодня' : diff === 1 ? 'вчера' : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-  return `${time}<small>${label}</small>`;
-}
 async function renderAudit() {
   setTopbarActions('');
   document.getElementById('page-body').innerHTML = `<div class="ux-page"><div class="ux-empty">Загрузка…</div></div>`;
@@ -6803,8 +6375,6 @@ function flFilter(k) { FL.filter = k; FL.sel.clear(); flRender(); }
 function flSearch(v) { FL.q = v; flRender(); }
 function flWho(v) { FL.who = v || ''; FL.sel.clear(); flRender(); }
 function flChat(v) { FL.chat = v || ''; FL.sel.clear(); flRender(); }
-function flToggle(name) { FL.sel.has(name) ? FL.sel.delete(name) : FL.sel.add(name); flRender(); }
-function flSelAll(on) { FL.files.forEach(f => on ? FL.sel.add(f.filename) : FL.sel.delete(f.filename)); flRender(); }
 function flSettings() { openSettingsModal('attachments'); }
 
 function flOpen(name) {
@@ -6892,12 +6462,6 @@ document.addEventListener('click', e => {
 });
 
 /* Вид чата рядом с названием: у личных своего имени нет, там имена собеседников */
-function chatKindBadge(type) {
-  if (type === 'direct') return ' <span class="badge badge-gray" style="margin-left:4px">личный</span>';
-  if (type === 'group')  return ' <span class="badge badge-purple" style="margin-left:4px">группа</span>';
-  if (type === 'room')   return ' <span class="badge badge-blue" style="margin-left:4px">комната</span>';
-  return '';
-}
 
 /* ── ПРОСМОТР КАРТИНКИ И ВИДЕО ── */
 let _flPreviewTimer = null;   // отложенное закрытие: при повторном открытии его нужно отменить
@@ -7116,8 +6680,6 @@ function startAnnCountdown() {
 
 function anFilter(k) { AN.filter = k; AN.sel.clear(); anRender(); }
 function anSearch(v) { AN.q = v; anRender(); }
-function anToggle(id) { AN.sel.has(id) ? AN.sel.delete(id) : AN.sel.add(id); anRender(); }
-function anSelAll(on) { AN.list.forEach(a => on ? AN.sel.add(a.id) : AN.sel.delete(a.id)); anRender(); }
 function anMenu(e, id) {
   const a = AN.list.find(x => x.id === id);
   if (!a) return;

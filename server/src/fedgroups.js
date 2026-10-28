@@ -33,7 +33,6 @@ const wsm = () => require('./ws');
 const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
 const getS = async (k, d = '') => (await dal.get('SELECT value FROM settings WHERE key = ?', k))?.value ?? d;
 const isGroupType = t => t === 'group' || t === 'room';
-const nameOf = async id => (await dal.get('SELECT display_name FROM users WHERE id = ?', id))?.display_name || '—';
 
 const chatById = async id => (await dal.get('SELECT * FROM chats WHERE id = ?', id));
 const mirrorOf = async (inst, gid) => (await dal.get('SELECT * FROM chats WHERE fed_instance = ? AND fed_chat_id = ?', String(inst), gid));

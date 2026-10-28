@@ -4,7 +4,6 @@
 B.ui = B.ui || {};
 var $ = function (s, r) { return (r || document).querySelector(s); };
 var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
-var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
 var esc = B.esc, root = document.documentElement;
 var phone = document.getElementById('app'), stack = document.getElementById('stack'), layer = document.getElementById('layer');
 var sc = 1;   // масштаб оболочки: 1 на iPhone 393 pt, меньше или больше на других ширинах

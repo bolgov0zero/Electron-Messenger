@@ -305,7 +305,7 @@ B.media = (function () {
       var r = await B.api('GET', '/messages/chat/' + cid + '/media?type=' + tab + (st.cursor[tab] ? '&before=' + st.cursor[tab] : ''));
       st.busy = false;
       if (!r || r.error) { st.more[tab] = false; if (tab === st.tab) paint(); return; }
-      st.data[tab] = (st.data[tab] || []).concat(r.items.map(function (x) { x.sent_at = x.sent_at; return x; }));
+      st.data[tab] = (st.data[tab] || []).concat(r.items);
       st.more[tab] = !!r.more; st.cursor[tab] = r.cursor;
       if (tab === st.tab) paint();
     }
