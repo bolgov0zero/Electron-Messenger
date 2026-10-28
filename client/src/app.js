@@ -1379,7 +1379,7 @@ function openSettingsInline(section) {
 function restoreChatMainArea() {
   if (S.activeChatId) { openChat(S.activeChatId, null, true); return; }
   document.getElementById('chat-main').innerHTML = `<div class="empty-state">
-    <div class="empty-icon"><svg width="56" height="56" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+    <div class="empty-icon"></div>
     <div class="empty-title">Electron</div>
     <div class="empty-sub">Выберите чат или создайте новый</div>
   </div>`;
