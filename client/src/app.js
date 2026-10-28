@@ -778,7 +778,7 @@ function logout(intentional = false) {
   dropKeys(intentional);
   clearInterval(_refreshTimer);
   // Сохранённые для запуска без связи чаты, переписки и очередь неотправленного стираем: они принадлежат этому входу
-  try { Object.keys(localStorage).filter(k => k.startsWith('cache_') || k.startsWith('outbox_')).forEach(k => localStorage.removeItem(k)); _outbox.length = 0; _outLoaded = false; } catch {}
+  try { Object.keys(localStorage).filter(k => k.startsWith('cache_') || k.startsWith('outbox_')).forEach(k => localStorage.removeItem(k)); _outbox.length = 0; _outLoaded = false; _tailMem = null; clearTimeout(_tailT); } catch {}
   window.electron?.sessionClear?.();
   _fetchController.abort();
   _fetchController = new AbortController();
@@ -5234,8 +5234,10 @@ async function sendOrEdit() {
     const key = S.scKeys[S.activeChatId];
     if (!key) { showActionToast('Чат ещё не расшифрован на этом устройстве'); return; }
     secretAtt = pendAtt;
+    const sendChatId = S.activeChatId;
     const plain = JSON.stringify({ v: 2, t: text || '', a: secretAtt ? { n: secretAtt.name, m: secretAtt.mime, s: secretAtt.size } : null });
     const enc = await scEncryptText(key, plain);
+    if (S.activeChatId !== sendChatId) { showActionToast('Чат переключён, сообщение не отправлено'); return; }   // ключ и текст относятся к прежнему чату
     payload = { type:'message', chat_id:S.activeChatId, text: enc.text, iv: enc.iv, client_id: newClientId() };
     if (secretAtt) payload.attachment = { url: secretAtt.url, enc: 1, fiv: secretAtt.fiv, size: secretAtt.size };
     if (S.replyTo) payload.reply_to_id = S.replyTo.id;

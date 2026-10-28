@@ -27,12 +27,21 @@
   }
 
   // ── Хранилище ──
+  let idbP = null;   // одно соединение на модуль, а не новое на каждый вызов
   function idbOpen() {
+    if (!idbP) { idbP = idbOpenNew(); idbP.catch(() => { idbP = null; }); }
+    return idbP;
+  }
+  function idbOpenNew() {
     return new Promise((res, rej) => {
       if (!global.indexedDB) return rej(new Error('no indexedDB'));
       const r = indexedDB.open('secret-chat', 1);
       r.onupgradeneeded = () => r.result.createObjectStore('kv');
-      r.onsuccess = () => res(r.result);
+      r.onsuccess = () => {
+        r.result.onversionchange = () => { r.result.close(); idbP = null; };
+        r.result.onclose = () => { idbP = null; };
+        res(r.result);
+      };
       r.onerror = () => rej(r.error);
     });
   }
@@ -246,8 +255,8 @@
     const p = st.pending[chatId];
     if (!p || p.busy) return false;
     p.busy = true;
-    const data = await C.api('GET', `/secret/${chatId}/requests/${p.requestId}`);
-    p.busy = false;
+    let data;
+    try { data = await C.api('GET', `/secret/${chatId}/requests/${p.requestId}`); } finally { p.busy = false; }
     if (!data || data.status !== 'approved') return false;
     cancelPending(chatId);
     try {

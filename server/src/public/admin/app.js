@@ -1087,7 +1087,7 @@ function restartPostgres() {
     'База на несколько секунд оборвёт все соединения: сообщения в этот момент не отправятся, сервер переподключится сам.',
     async () => {
       const r = await api('POST', '/api/admin/system/restart-postgres');
-      if (!r?.ok) { toast(r?.error || 'Не удалось перезапустить PostgreSQL', 'error'); return; }
+      if (!r?.ok) { toast(esc(r?.error || 'Не удалось перезапустить PostgreSQL'), 'error'); return; }
       PGR.busy = true;
       const btn = $hm('hm-m-pg-btn'); if (btn) { btn.classList.add('busy'); btn.disabled = true; }
       toast('PostgreSQL перезапускается…');
@@ -2481,7 +2481,7 @@ async function rmInviteAddr() {
   if (!f?.id) return;
   if (!v) { toast('Введите адрес вида @сервер:логин', 'error'); return; }
   const r = await api('POST', `/api/admin/chats/${f.id}/invite`, { address: v });
-  if (!r || r.error) { toast(r?.error || 'Не удалось пригласить', 'error'); return; }
+  if (!r || r.error) { toast(esc(r?.error || 'Не удалось пригласить'), 'error'); return; }
   toast(r.member ? `«${esc(r.name)}» уже в комнате` : `Приглашение отправлено: «${esc(r.name)}»`, 'success');
   f.pending = (await api('GET', `/api/admin/chats/${f.id}/pending`)) || [];
   rmRenderForm('rm-addr');
@@ -3675,7 +3675,7 @@ async function chInviteAddr() {
   const inp = document.getElementById('cm-addr'), v = (inp?.value || '').trim();
   if (!v) { toast('Введите адрес вида @сервер:логин', 'error'); return; }
   const r = await api('POST', `/api/admin/chats/${CH.openId}/invite`, { address: v });
-  if (!r || r.error) { toast(r?.error || 'Не удалось пригласить', 'error'); return; }
+  if (!r || r.error) { toast(esc(r?.error || 'Не удалось пригласить'), 'error'); return; }
   toast(r.member ? `«${esc(r.name)}» уже в чате` : `Приглашение отправлено: «${esc(r.name)}»`, 'success');
   CH.pending = (await api('GET', `/api/admin/chats/${CH.openId}/pending`)) || [];
   chRenderMembers();
@@ -6505,7 +6505,7 @@ async function mdKeyCheck() {
 async function mdToggle(key, on) {
   try {
     const r = await api('PUT', '/api/admin/modules/' + key, { enabled: on });
-    if (r && r.error) toast(r.error, 'error'); else toast(on ? 'Модуль включён' : 'Модуль выключен', 'success');
+    if (r && r.error) toast(esc(r.error), 'error'); else toast(on ? 'Модуль включён' : 'Модуль выключен', 'success');
   } catch { toast('Не удалось изменить модуль', 'error'); }
   renderModules();
 }
@@ -6900,11 +6900,13 @@ function chatKindBadge(type) {
 }
 
 /* ── ПРОСМОТР КАРТИНКИ И ВИДЕО ── */
+let _flPreviewTimer = null;   // отложенное закрытие: при повторном открытии его нужно отменить
 function openFilePreview(name) {
   const f = FL.files.find(x => x.filename === name);
   const kind = f ? flKind(f) : 'image';
   const box = document.getElementById('file-lightbox');
   const img = document.getElementById('fl-img'), vid = document.getElementById('fl-vid');
+  clearTimeout(_flPreviewTimer);
   box.classList.remove('closing');
   box.classList.toggle('video', kind === 'video');
   if (kind === 'video') {
@@ -6928,7 +6930,7 @@ function closeFilePreview() {
   if (!box || !box.classList.contains('open') || box.classList.contains('closing')) return;
   box.classList.add('closing');
   document.getElementById('fl-vid')?.pause();
-  setTimeout(() => {
+  _flPreviewTimer = setTimeout(() => {
     box.classList.remove('open', 'closing', 'video');
     document.getElementById('fl-img').src = '';
     const vid = document.getElementById('fl-vid');

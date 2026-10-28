@@ -186,7 +186,10 @@ admin.post('/', async (req, res) => {
     const r = await dal.run('INSERT INTO workspaces (name) VALUES (?)', name);
     logAudit(req, 'server', 'Пространство создано', name);
     res.json({ id: r.lastInsertRowid, name });
-  } catch { res.status(409).json({ error: 'Пространство с таким названием уже есть' }); }
+  } catch (e) {
+    if (!/UNIQUE|unique|duplicate|23505/.test(String(e && e.message) + String(e && e.code))) { console.warn('[spaces.js]', e && e.message); return res.status(500).json({ error: 'Internal error' }); }
+    res.status(409).json({ error: 'Пространство с таким названием уже есть' });
+  }
 });
 
 admin.patch('/:id', async (req, res) => {
@@ -201,7 +204,10 @@ admin.patch('/:id', async (req, res) => {
     logAudit(req, 'server', 'Пространство переименовано', `«${w.name}» → «${name}»`);
     broadcastAll({ type: 'directory_changed' });   // подписи пространств обновляются у всех
     res.json({ ok: true });
-  } catch { res.status(409).json({ error: 'Пространство с таким названием уже есть' }); }
+  } catch (e) {
+    if (!/UNIQUE|unique|duplicate|23505/.test(String(e && e.message) + String(e && e.code))) { console.warn('[spaces.js]', e && e.message); return res.status(500).json({ error: 'Internal error' }); }
+    res.status(409).json({ error: 'Пространство с таким названием уже есть' });
+  }
 });
 
 admin.delete('/:id', async (req, res) => {

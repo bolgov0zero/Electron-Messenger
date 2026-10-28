@@ -40,7 +40,7 @@ self.addEventListener('fetch', e => {
 
   e.respondWith((async () => {
     const cache = await caches.open(CACHE), cached = await cache.match(e.request);
-    const net = fetch(e.request).then(r => { if (r.ok) cache.put(e.request, r.clone()); return r; });
+    const net = fetch(e.request).then(r => { if (r.ok && !new URL(e.request.url).searchParams.has('_')) cache.put(e.request, r.clone()); return r; });
     return cached ? slow(net, cached, 4000) : net;
   })());
 });

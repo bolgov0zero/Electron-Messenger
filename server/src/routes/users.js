@@ -137,7 +137,10 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
     broadcastAll({ type: 'user_created' });
     logAudit(req, 'moderation', 'Создан пользователь', `${display_name.trim()} (@${username.trim()})${is_admin ? ', администратор' : ''}`);
     res.json({ id: result.lastInsertRowid, username, display_name, is_admin: !!is_admin, tag: tag?.trim() || null });
-  } catch { res.status(409).json({ error: 'Username already exists' }); }
+  } catch (e) {
+    if (!/UNIQUE|unique|duplicate|23505/.test(String(e && e.message) + String(e && e.code))) { console.warn('[users.js]', e && e.message); return res.status(500).json({ error: 'Internal error' }); }
+    res.status(409).json({ error: 'Username already exists' });
+  }
 });
 
 // Admin: edit user
@@ -175,7 +178,10 @@ router.patch('/:id', authMiddleware, adminMiddleware, async (req, res) => {
       }
     }
     res.json({ ok: true });
-  } catch { res.status(409).json({ error: 'Username already exists' }); }
+  } catch (e) {
+    if (!/UNIQUE|unique|duplicate|23505/.test(String(e && e.message) + String(e && e.code))) { console.warn('[users.js]', e && e.message); return res.status(500).json({ error: 'Internal error' }); }
+    res.status(409).json({ error: 'Username already exists' });
+  }
 });
 
 // Admin: change password

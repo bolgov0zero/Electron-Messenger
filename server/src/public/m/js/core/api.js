@@ -38,7 +38,7 @@ B.api = async function (method, path, body) {
       }
       return null;
     }
-    return res.json();
+    return await res.json();
   } catch (e) { B.S._netFail = true; return null; }
 };
 
