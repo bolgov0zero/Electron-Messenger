@@ -7491,7 +7491,6 @@ function renderGroupProfile(keep) {
   if (g.f === 'pend' && !pend.length) g.f = 'all';
   const lf = gmFilter(local, g.q), ff = gmFilter(fed, g.q), pf = gmFilter(pend, g.q);
   const show = k => g.f === 'all' || g.f === k;
-  const muted = S.mutedChats.has(chat.id);
   const kind = chat.type === 'room' ? 'Комната' : 'Группа';
   const q = g.q.trim();
   const none = '<div class="cell"><span class="cl" style="color:var(--text2)">Никого не нашли</span></div>';
@@ -7510,7 +7509,6 @@ function renderGroupProfile(keep) {
   const acts = [
     perms.canEdit ? `<button type="button" class="pa-btn pri" data-on-click="gmAddView">${gmSvg('plus', 16)}Добавить участника</button>` : '',
     perms.canEdit ? `<button type="button" class="pa-btn" data-on-click="gmGuest">${gmSvg('link', 16)}Гостевая ссылка</button>` : '',
-    `<button type="button" class="pa-btn" data-on-click="gmMute" data-a-click='["__event"]'>${gmSvg(muted ? 'bell' : 'bellOff', 16)}${muted ? 'Включить звук' : 'Без звука'}</button>`,
     perms.canLeave ? `<button type="button" class="pa-btn d" data-on-click="gmLeave">${gmSvg('out', 16)}Выйти</button>` : '',
     perms.canDelete ? `<button type="button" class="pa-btn d" data-on-click="gmDelete">${gmSvg('x', 16)}Удалить группу</button>` : '',
   ].join('');
@@ -7597,12 +7595,6 @@ function gmGuest() {
       return { ok: res.ok, status: res.status, data: data || {} };
     } catch { return { ok: false, status: 0, data: { error: 'Нет связи с сервером' } }; }
   } });
-}
-async function gmMute(ev) {
-  const id = S.gm.id;
-  if (S.mutedChats.has(id)) { await unmuteChat(id); return; }
-  const r = ev?.currentTarget?.getBoundingClientRect?.();
-  showMuteMenu(id, r ? r.left : 200, r ? r.bottom : 200, r || null);
 }
 function gmRenameStart() { S.gm.rename = true; renderGroupProfile(true); }
 async function gmRenameSave(v) {

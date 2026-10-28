@@ -42,11 +42,10 @@ B.ui.gprofile = (function () {
       '<span class="rt"><b>' + B.esc(m.display_name || m.username || '') + (self ? ' (вы)' : '') + '</b><small data-u="' + m.id + '" class="' + (st.on ? 'on' : '') + '">' + B.esc(pending ? login(m) : st.t) + '</small></span>' + right + '</button>';
   }
   function head(el, chat, P, all, local, fed, pend) {
-    var g = el._g, muted = !!chat.muted;
+    var g = el._g;
     var tiles = [
       P.canEdit ? '<button class="tile glass gi" data-r="add">' + I('userPlus') + 'Добавить</button>' : '',
       P.canEdit ? '<button class="tile glass gi" data-r="guest">' + I('link') + 'Гость</button>' : '',
-      '<button class="tile glass gi" data-r="mute">' + I(muted ? 'bell' : 'bellOff') + (muted ? 'Звук' : 'Без звука') + '</button>',
       '<button class="tile glass gi" data-r="media">' + I('image') + 'Медиа</button>',
       P.canLeave ? '<button class="tile glass gi d" data-r="leave">' + I('logout') + 'Выйти</button>' : ''
     ].filter(Boolean);
@@ -122,7 +121,6 @@ B.ui.gprofile = (function () {
       await B.chats.refresh(); paint(el);
     });
   }
-  async function mute(el) { var c = chatOf(el); await B.chats.mute(c.id); paint(el); }
   // Гостевая ссылка: окно из shared/guestlinks.js (вход в группу или комнату без учётной записи на время)
   function guest(el) {
     var c = chatOf(el); if (!c || !window.GuestLinks) return;
@@ -212,7 +210,6 @@ B.ui.gprofile = (function () {
     var t = e.target.closest('[data-r]'); if (!t) return; var r = t.dataset.r, id = +t.dataset.id;
     if (r === 'chip') { B.ui.folders.center = true; el._g.f = t.dataset.k; paint(el); }
     else if (r === 'add') addSheet(el);
-    else if (r === 'mute') mute(el);
     else if (r === 'guest') guest(el);
     else if (r === 'leave') leave(el);
     else if (r === 'delete') del(el);

@@ -14,7 +14,7 @@ const fail = req => { const f = fails.get(req.ip); fails.set(req.ip, { n: (f && 
 setInterval(() => { const t = Date.now(); for (const [k, v] of fails) if (t - v.t > 10 * 60e3) fails.delete(k); }, 5 * 60e3).unref();
 
 const TEXT = {
-  not_found: 'Ссылка не найдена',
+  not_found: 'Ссылка не найдена или доступ по ней закончился',
   expired: 'Доступ закончился',
   revoked: 'Ссылка отозвана',
   other_device: 'Эта ссылка уже открыта на другом устройстве',

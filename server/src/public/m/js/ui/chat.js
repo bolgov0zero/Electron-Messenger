@@ -441,7 +441,7 @@ B.ui.chat = (function () {
   }
   // «Прочитано» уходит по мере показа: до последнего сообщения, которое видно над полем ввода, а не всё сразу при открытии чата
   function lastSeen(el) {
-    var sc = $('.scroll', el), comp = $('.comp', el), rows = sc && sc.querySelectorAll('.mrow[data-mid]');
+    var sc = $('.scroll', el), comp = $('.comp', el), rows = sc && sc.querySelectorAll('.mrow[data-mid], .sys[data-mid]');   // служебные сообщения тоже считаются увиденными
     if (!rows || !rows.length || !comp) return 0;
     var edge = comp.getBoundingClientRect().top - 12, lo = 0, hi = rows.length - 1, ans = -1;
     while (lo <= hi) { var mid = (lo + hi) >> 1; if (rows[mid].getBoundingClientRect().top < edge) { ans = mid; lo = mid + 1; } else hi = mid - 1; }

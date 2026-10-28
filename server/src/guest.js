@@ -173,13 +173,13 @@ async function sys(chatId, text, kind) {
 }
 
 // Закрыть доступ гостя: снять членство и сессию, написать «отключился», разорвать соединения.
-// revoke — отзыв вручную (ссылка помечается отозванной), иначе истёк срок
+// revoke — отзыв вручную, иначе истёк срок. Закрытая ссылка не нужна: запись о ней удаляется сразу, в базе ничего не остаётся
 async function end(row, revoke) {
   const t = now();
-  if (row.ended_at || (revoke && row.revoked_at)) return false;
-  await dal.run(revoke ? 'UPDATE guest_links SET ended_at = ?, revoked_at = ? WHERE id = ? AND ended_at IS NULL' : 'UPDATE guest_links SET ended_at = ? WHERE id = ? AND ended_at IS NULL',
-    ...(revoke ? [t, t, row.id] : [t, row.id]));
-  if (!row.guest_user_id) return true;
+  if (row.ended_at || row.revoked_at) return false;
+  const claim = await dal.run('UPDATE guest_links SET ended_at = ? WHERE id = ? AND ended_at IS NULL', t, row.id);
+  if (!claim.changes) return false;          // другой вызов уже закрывает эту ссылку
+  if (!row.guest_user_id) { await dal.run('DELETE FROM guest_links WHERE id = ?', row.id); return true; }
   const uid = row.guest_user_id;
   await dal.run('DELETE FROM chat_members WHERE user_id = ?', uid);
   active.delete(uid);
@@ -193,6 +193,7 @@ async function end(row, revoke) {
     await dal.run('UPDATE messages SET guest_name = ?, guest_tag = ?, sender_id = NULL WHERE sender_id = ?', u?.display_name || row.guest_name || 'Гость', TAG, uid);
     await dal.run('DELETE FROM chat_read_state WHERE user_id = ?', uid);
     await dal.run('DELETE FROM users WHERE id = ?', uid);
+    await dal.run('DELETE FROM guest_links WHERE id = ?', row.id);
   });
   try { require('./ws').broadcast(row.chat_id, { type: 'reload_chats' }); } catch {}
   return true;
@@ -201,8 +202,7 @@ async function end(row, revoke) {
 async function revoke(linkId, chatId) {
   const row = await dal.get('SELECT * FROM guest_links WHERE id = ? AND chat_id = ?', linkId, chatId);
   if (!row) return false;
-  if (row.revoked_at) return true;
-  if (row.ended_at) { await dal.run('UPDATE guest_links SET revoked_at = ? WHERE id = ?', now(), row.id); return true; }
+  if (row.revoked_at || row.ended_at) { await dal.run('DELETE FROM guest_links WHERE id = ?', row.id); return true; }
   await end(row, true);
   return true;
 }
@@ -227,6 +227,7 @@ async function resetDevice(linkId, chatId) {
 
 // Закрыть всё, у чего вышел срок. Раз в полминуты и при старте (в том числе то, что истекло, пока сервер не работал)
 async function expireDue() {
+  await dal.run('DELETE FROM guest_links WHERE ended_at IS NOT NULL OR revoked_at IS NOT NULL');   // закрытые прежними версиями
   const rows = await dal.all('SELECT * FROM guest_links WHERE ended_at IS NULL AND revoked_at IS NULL AND expires_at <= ?', now());
   for (const r of rows) { try { await end(r, false); } catch (e) { console.warn('[Гость] закрытие ссылки:', e.message); } }
 }
