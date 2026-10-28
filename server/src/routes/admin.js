@@ -331,6 +331,7 @@ router.get('/users', async (req, res) => {
   const memb = new Map();
   (await dal.all('SELECT m.user_id, w.id, w.name FROM user_workspaces m JOIN workspaces w ON w.id = m.workspace_id ORDER BY w.id'))
     .forEach(r => { if (!memb.has(r.user_id)) memb.set(r.user_id, []); memb.get(r.user_id).push({ id: r.id, name: r.name }); });
+  const devCounts = await require('../devices').activeCounts();
   res.json(users.map(u => {
     const { totp_secret, ...rest } = u;
     rest.workspaces = memb.get(u.id) || [{ id: u.workspace_id, name: u.workspace_name }];
@@ -340,6 +341,7 @@ router.get('/users', async (req, res) => {
       connected: isConnected(u.id),
       status: getStatus(u.id), // online / away / offline — с учётом фокуса окон
       clients: devices.get(u.id) || [],
+      device_count: devCounts.get(u.id) || 0,   // действующие устройства (ключи для входа без пароля), не только подключённые сейчас
       has_avatar: fs.existsSync(path.join(avatarDir, `${u.id}.jpg`)),
       can_announce: !!u.can_announce,
       totp_required: !!u.totp_required,
@@ -559,6 +561,14 @@ router.post('/users/:id/devices/:keyId/allow', async (req, res) => {
   const userId = Number(req.params.id);
   if (!(await require('../devices').allow(userId, Number(req.params.keyId)))) return res.status(404).json({ error: 'Не найдено' });
   logAudit(req, 'security', 'Разрешена регистрация устройств', await devName(userId));
+  res.json({ ok: true });
+});
+
+router.post('/users/:id/devices/:keyId/delete', async (req, res) => {
+  const userId = Number(req.params.id);
+  const row = await dal.get("SELECT name FROM device_keys WHERE id = ? AND user_id = ? AND kind = 'device'", Number(req.params.keyId), userId);
+  if (!row || !(await require('../devices').remove(userId, Number(req.params.keyId)))) return res.status(404).json({ error: 'Удалить можно только отозванное устройство' });
+  logAudit(req, 'security', 'Удалено устройство', `${await devName(userId)}: ${row.name}`);
   res.json({ ok: true });
 });
 

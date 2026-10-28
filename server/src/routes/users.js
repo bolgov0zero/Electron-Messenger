@@ -208,6 +208,16 @@ router.post('/me/devices/:id/block', authMiddleware, async (req, res) => {
   res.json({ ok: true, already: !!row.revoked_at });
 });
 
+// «Это я» в том же уведомлении: на устройство ничего не влияет, у всех устройств человека кнопки сменяются надписью «Подтверждено»
+router.post('/me/devices/:id/confirm', authMiddleware, async (req, res) => {
+  const id = Number(req.params.id);
+  const row = await dal.get("SELECT id, revoked_at FROM device_keys WHERE id = ? AND user_id = ? AND kind = 'device'", id, req.user.id);
+  if (!row) return res.status(404).json({ error: 'Устройство не найдено' });
+  if (row.revoked_at) return res.status(409).json({ error: 'Устройство уже заблокировано' });
+  await require('../notify').markConfirmed(req.user.id, id);
+  res.json({ ok: true });
+});
+
 // Смена собственного пароля: старый → новый. Снимает требование смены.
 // Используется модалкой в админке для дефолтного пароля admin.
 const MIN_PASSWORD_LEN = 6;

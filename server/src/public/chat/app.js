@@ -1181,7 +1181,7 @@ function openSettingsInline(section) {
 function restoreChatMainArea() {
   if (S.activeChatId) { openChat(S.activeChatId, null, true); return; }
   setChatMainContent(`<div class="empty-state">
-    <div class="empty-icon">💬</div>
+    <div class="empty-icon"></div>
     <div class="empty-title">Electron</div>
     <div class="empty-sub">Выберите чат или создайте новый</div>
   </div>`);
@@ -1897,7 +1897,7 @@ function leaveRoom() {
   // Через setChatMainContent: полоса ввода лежит внутри chat-main, и прямая
   // запись innerHTML снесла бы её вместе с содержимым
   setChatMainContent('<div class="empty-state">' +
-    '<div class="empty-icon">💬</div><div class="empty-title">Electron</div>' +
+    '<div class="empty-icon"></div><div class="empty-title">Electron</div>' +
     '<div class="empty-sub">Выберите чат или создайте новый</div></div>');
 }
 
@@ -2489,7 +2489,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
     await loadTopics(chatId, { render: true });
     // Переписка остаётся от прошлого чата, если её не очистить
     setChatMainContent('<div class="empty-state">' +
-      '<div class="empty-icon ei-hash">📋</div><div class="empty-title">Выберите тему</div>' +
+      '<div class="empty-icon ei-hash"></div><div class="empty-title">Выберите тему</div>' +
       '<div class="empty-sub">Слева список тем этой комнаты</div></div>');
     return;
   }
@@ -4387,17 +4387,20 @@ function applyForwardCount(id, count) {
 // Кнопки в сообщении (сообщение может нести actions, например «Заблокировать» в уведомлении «Electron» о входе с нового устройства)
 function msgActionsHtml(m) {
   if (!Array.isArray(m.actions) || !m.actions.length) return '';
-  return '<div class="msg-actions">' + m.actions.map(a => a.state === 'done'
-    ? '<span class="msg-act done">Заблокировано</span>'
-    : `<button type="button" class="msg-act" data-on-click="msgAction" data-a-click="${esc(JSON.stringify([m.id, a.id, a.device]))}">${esc(a.label || 'Действие')}</button>`).join('') + '</div>';
+  // Кнопки одного устройства работают вместе: когда решение принято, вместо них остаётся одна надпись
+  const fin = m.actions.find(a => a.state === 'done' || a.state === 'blocked' || a.state === 'confirmed');
+  if (fin) return `<div class="msg-actions"><span class="msg-act done">${fin.state === 'confirmed' ? 'Подтверждено' : 'Заблокировано'}</span></div>`;
+  return '<div class="msg-actions">' + m.actions.map(a =>
+    `<button type="button" class="msg-act${a.id === 'confirm_device' ? ' ok' : ''}" data-on-click="msgAction" data-a-click="${esc(JSON.stringify([m.id, a.id, a.device]))}">${esc(a.label || 'Действие')}</button>`).join('') + '</div>';
 }
 async function msgAction(msgId, id, device) {
-  if (id !== 'block_device') return;
-  const btn = document.querySelector(`[data-msg-id="${msgId}"] .msg-act`);
-  if (btn) btn.disabled = true;
-  const r = await api('POST', `/users/me/devices/${Number(device)}/block`);
-  if (!r || r.error) { if (btn) btn.disabled = false; showActionToast(r?.error || 'Не удалось заблокировать устройство'); return; }
-  showActionToast('Устройство заблокировано');   // кнопка у всех устройств сменится по событию message_edited
+  const path = id === 'block_device' ? 'block' : id === 'confirm_device' ? 'confirm' : null;
+  if (!path) return;
+  const btns = document.querySelectorAll(`[data-msg-id="${msgId}"] .msg-act`);
+  btns.forEach(b => { b.disabled = true; });
+  const r = await api('POST', `/users/me/devices/${Number(device)}/${path}`);
+  if (!r || r.error) { btns.forEach(b => { b.disabled = false; }); showActionToast(r?.error || 'Не удалось выполнить действие'); return; }
+  showActionToast(path === 'block' ? 'Устройство заблокировано' : 'Спасибо, устройство подтверждено');   // надпись у всех устройств сменится по событию message_edited
 }
 function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   if (m.status && m.id > 0) S.msgStatus[m.id] = { ...m.status };
@@ -6258,7 +6261,7 @@ async function deleteChat(chatId) {
 
 function closeActiveChat() {
   S.activeChatId = null;
-  setChatMainContent(`<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Electron</div><div class="empty-sub">Выберите чат или создайте новый</div></div>`);
+  setChatMainContent(`<div class="empty-state"><div class="empty-icon"></div><div class="empty-title">Electron</div><div class="empty-sub">Выберите чат или создайте новый</div></div>`);
   renderChatList();
 }
 
@@ -6267,7 +6270,7 @@ function removeChatLocally(chatId) {
   S.chats = S.chats.filter(c=>c.id!==chatId);
   if (S.activeChatId === chatId) {
     S.activeChatId = null;
-    setChatMainContent(`<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Electron</div><div class="empty-sub">Выберите чат или создайте новый</div></div>`);
+    setChatMainContent(`<div class="empty-state"><div class="empty-icon"></div><div class="empty-title">Electron</div><div class="empty-sub">Выберите чат или создайте новый</div></div>`);
   }
   renderChatList();
 }
@@ -6277,7 +6280,7 @@ async function leaveGroup(chatId) {
   if (!ok) return false;
   await api('POST', `/chats/${chatId}/leave`);
   S.activeChatId = null;
-  setChatMainContent(`<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Electron</div><div class="empty-sub">Выберите чат или создайте новый</div></div>`);
+  setChatMainContent(`<div class="empty-state"><div class="empty-icon"></div><div class="empty-title">Electron</div><div class="empty-sub">Выберите чат или создайте новый</div></div>`);
   loadChats();
   return true;
 }

@@ -4326,6 +4326,8 @@ html.tb-open #tb-strip { transform: none; pointer-events: auto; }
 .msg-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .msg-act { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--danger, #d23737) 45%, transparent); background: color-mix(in srgb, var(--danger, #d23737) 10%, transparent); color: var(--danger, #d23737); cursor: pointer; }
 .msg-act:hover:not(:disabled) { background: color-mix(in srgb, var(--danger, #d23737) 18%, transparent); }
+.msg-act.ok { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent); }
+.msg-act.ok:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 18%, transparent); }
 .msg-act:disabled { opacity: .55; cursor: default; }
 .msg-act.done { border-color: var(--border); background: none; color: var(--muted); cursor: default; }
 

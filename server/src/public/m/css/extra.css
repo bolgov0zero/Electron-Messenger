@@ -91,6 +91,7 @@ html, body { background: var(--gl-base); }
 .file small { display: block; }
 .bacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .bbtn { font: inherit; font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--danger-border); background: var(--danger-bg); color: var(--danger); cursor: pointer; }
+.bbtn.ok { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent-ink); }
 .bbtn:disabled { opacity: .55; } .bbtn.done { border-color: var(--gl-edge); background: none; color: var(--muted); cursor: default; }
 .sk { display: flex; flex-direction: column; gap: 8px; padding: 14px 0 0; }
 .sk i { display: block; height: 38px; border-radius: 20px; background: var(--gl-card2); animation: skp 1.4s ease-in-out infinite; }

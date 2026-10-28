@@ -790,12 +790,20 @@ function openModal(id) {
 }
 function closeModal(id) {
   const el = document.getElementById(id);
-  if (!el) return;
+  if (!el || el.classList.contains('closing')) return;
   el.classList.add('closing');
-  const cleanup = () => { el.classList.remove('open', 'closing'); };
-  el.addEventListener('animationend', cleanup, { once: true });
-  setTimeout(cleanup, 300); // fallback если animationend не сработает
+  let done = false;
+  const cleanup = () => { if (done) return; done = true; clearTimeout(timer); el.removeEventListener('animationend', onEnd); el.classList.remove('open', 'closing'); };
+  // Закрытие заканчивает анимация самого окна или подложки: события вложенных элементов не в счёт, иначе окно исчезало бы сразу
+  const onEnd = e => { if (e.target === el || e.target.parentElement === el) cleanup(); };
+  el.addEventListener('animationend', onEnd);
+  const timer = setTimeout(cleanup, 300); // fallback если animationend не сработает
 }
+// Окно устройств: Escape и клик по затемнению закрывают его с той же анимацией
+function dvcBackdrop(e) { if (e && e.target && e.target.id === 'modal-dev') closeModal('modal-dev'); }
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('modal-dev')?.classList.contains('open') && !document.querySelector('#modal-confirm.open')) closeModal('modal-dev');
+});
 
 function confirm(title, text, onOk) {
   document.getElementById('confirm-title').textContent=title;
@@ -2827,6 +2835,7 @@ function uaRender() {
         <div class="ub-role">${uaRole(u)}<small>создан ${fmtDate(u.created_at)}</small></div>
         <div class="ub-st">${uaStatusPill(u)}</div>
         <div class="ux-actions">
+          <button type="button" class="ub-dev" title="Устройства: ${u.device_count || 0}" aria-label="Устройства: ${u.device_count || 0}" data-on-click="uaDevicesOpen" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.laptop}<b>${u.device_count || 0}</b></button>
           <button class="btn btn-ghost btn-sm" data-on-click="openEditUser" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.edit}Изменить</button>
           <button class="ux-ibtn" aria-label="Ещё действия: ${esc(u.display_name)}" aria-haspopup="menu" aria-expanded="false" data-on-click="uaMenu" data-a-click="${esc(JSON.stringify(["__event", u.id]))}">${UX_I.more}</button>
         </div></div>`).join('') || '<div class="ub-empty">Никого не нашли. Проверьте запрос или фильтр.</div>'}</div>
@@ -2890,6 +2899,8 @@ async function dvcLoad() {
   const r = await api('GET', `/api/admin/users/${DVC.uid}/devices`);
   if (!r || r.error) { document.getElementById('dvc-body').innerHTML = `<div class="dvc-empty">${esc(r?.error || 'Не удалось загрузить')}</div>`; return; }
   DVC.list = r.devices; DVC.now = r.now;
+  const mine = allUsers.find(u => u.id === DVC.uid);   // число в строке пользователя обновляется сразу, не ждёт следующей загрузки списка
+  if (mine) { mine.device_count = DVC.list.filter(d => d.kind === 'device' && !d.revoked_at && !d.expired).length; uaRender(); }
   dvcRender();
 }
 function dvcRender() {
@@ -2900,10 +2911,13 @@ function dvcRender() {
   const row = d => {
     const off = d.revoked_at || d.expired, k = d.kind === 'profile' ? ['', UX_I.key] : (KIND[d.platform] || KIND.app);
     const btn = (label, fn) => `<button type="button" class="btn btn-ghost btn-sm" ${DVC.busy ? 'disabled' : ''} data-on-click="${fn}" data-a-click="${esc(JSON.stringify([d.id]))}">${label}</button>`;
+    const chip = d.revoked_at ? `<span class="dvc-chip bad">${d.kind === 'profile' ? 'Регистрация запрещена' : 'Отозвано'}</span>` : d.expired ? '<span class="dvc-chip">Срок истёк</span>' : '';
+    const info = `${k[0] ? k[0] + ' · ' : ''}${d.os_user ? 'Windows: ' + d.os_user + ' · ' : ''}${d.last_ip ? 'IP ' + d.last_ip + ' · ' : ''}зарегистрировано ${dvcDate(d.created_at)}`;
+    // Отозванное устройство отозвать повторно нельзя, зато можно убрать из списка
+    const action = d.kind === 'profile' ? (d.revoked_at ? btn('Разрешить', 'dvcAllow') : btn('Запретить регистрацию', 'dvcRevoke')) : (d.revoked_at ? btn('Удалить', 'dvcDelete') : off ? '' : btn('Отозвать', 'dvcRevoke'));
     return `<div class="dvc-r${off ? ' off' : ''}"><span class="dvc-ic">${k[1]}</span>
-      <div class="dvc-tx"><b>${esc(d.name)}</b><span>${k[0] ? k[0] + ' · ' : ''}${d.os_user ? 'Windows: ' + esc(d.os_user) + ' · ' : ''}${d.last_ip ? 'IP ' + esc(d.last_ip) + ' · ' : ''}зарегистрировано ${dvcDate(d.created_at)}</span></div>
-      ${d.revoked_at ? `<span class="dvc-chip bad">${d.kind === 'profile' ? 'Регистрация запрещена' : 'Отозвано'}</span>` : d.expired ? '<span class="dvc-chip">Срок истёк</span>' : ''}
-      ${d.kind === 'profile' ? (d.revoked_at ? btn('Разрешить', 'dvcAllow') : btn('Запретить регистрацию', 'dvcRevoke')) : (off ? '' : btn('Отозвать', 'dvcRevoke'))}
+      <div class="dvc-tx"><div class="dvc-nm"><b>${esc(d.name)}</b>${chip}</div><span title="${esc(info)}">${esc(info)}</span></div>
+      ${action}
     </div>`;
   };
   let h = '';
@@ -2930,6 +2944,10 @@ function dvcRevoke(id) {
     return;
   }
   confirm('Отозвать устройство?', `«${esc(d.name)}» выйдет из аккаунта и не сможет войти по ключу. Войти снова можно будет только по паролю.`, () => dvcAct(`${id}/revoke`, 'Устройство отозвано'));
+}
+function dvcDelete(id) {
+  const d = DVC.list.find(x => x.id === id); if (!d) return;
+  confirm('Удалить устройство?', `«${esc(d.name)}» исчезнет из списка. Оно уже отозвано, на вход с него это не влияет.`, () => dvcAct(`${id}/delete`, 'Устройство удалено'));
 }
 function dvcAllow(id) { dvcAct(`${id}/allow`, 'Регистрация разрешена'); }
 function dvcRevokeAll() {

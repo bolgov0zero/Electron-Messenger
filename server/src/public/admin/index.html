@@ -1110,7 +1110,7 @@ tbody tr:hover td{background:var(--c-surface2)}
 .modal{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius);width:480px;max-height:88vh;display:flex;flex-direction:column;box-shadow:var(--shadow-xl);overflow:hidden}
 .modal-sm{width:380px}
 /* Устройства пользователя (модалка из меню «⋯» на странице «Пользователи») */
-.dvc-modal{width:540px;max-width:calc(100vw - 24px)}
+.dvc-modal{width:720px;max-width:calc(100vw - 24px)}
 .dvc-hd{display:flex;align-items:baseline;gap:10px;min-width:0}
 .dvc-hd h3{margin:0}
 .dvc-hd span{color:var(--c-text2);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1121,7 +1121,9 @@ tbody tr:hover td{background:var(--c-surface2)}
 .dvc-list{border:1px solid var(--c-border);border-radius:12px;overflow:hidden}
 .dvc-r{display:flex;align-items:center;gap:12px;padding:11px 12px 11px 14px;border-top:1px solid var(--c-border)}
 .dvc-r:first-child{border-top:0}
-.dvc-r.off .dvc-ic,.dvc-r.off .dvc-tx{opacity:.5}
+.dvc-r.off .dvc-ic,.dvc-r.off .dvc-nm b,.dvc-r.off .dvc-tx>span{opacity:.5}
+.dvc-nm{display:flex;align-items:center;gap:8px;min-width:0}
+.dvc-nm b{min-width:0}
 .dvc-ic{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--c-surface2);color:var(--c-text2)}
 .dvc-ic svg{width:17px;height:17px}
 .dvc-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
@@ -1893,6 +1895,10 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .ub-row:hover{border-color:color-mix(in srgb,var(--c-primary) 35%,var(--c-border))}
 .ub-row.sel{background:var(--c-primary-dim)}
 .ub-row.ua-banned .ux-cell{opacity:.6}
+.ub-dev{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:8px;border:1px solid transparent;background:none;color:var(--c-text2);font:inherit;font-size:12.5px;cursor:pointer}
+.ub-dev svg{width:15px;height:15px}
+.ub-dev b{font-weight:600;font-variant-numeric:tabular-nums}
+.ub-dev:hover{background:var(--c-surface2);color:var(--c-text)}
 .ub-role small{display:block;font:500 11px var(--f-mono);color:var(--c-muted);margin-top:3px}
 .ws-pill{display:inline-flex;align-items:center;gap:5px;font:600 11px var(--f-ui);padding:1px 8px 1px 6px;border-radius:99px;background:var(--c-primary-dim);color:var(--c-primary);white-space:nowrap;vertical-align:middle}
 .ws-pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
@@ -2587,7 +2593,7 @@ return 'OK';</pre>
 </div>
 
 <!-- Confirm modal -->
-<div class="modal-bg" id="modal-dev">
+<div class="modal-bg" id="modal-dev" data-on-click="dvcBackdrop" data-a-click='["__event"]'>
   <div class="modal dvc-modal">
     <div class="modal-head">
       <div class="dvc-hd"><h3 id="dvc-title">Устройства</h3><span id="dvc-sub"></span></div>

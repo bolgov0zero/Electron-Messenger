@@ -14,6 +14,7 @@ const dal = require('./dal');
 const BOT_USERNAME = '__electron__';
 const KIND = 'electron';
 const KEEP = 50;
+const FINISHED = ['done', 'blocked', 'confirmed'];   // решение по устройству принято; «done» — прежняя запись «заблокировано»
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', 'chat_db', 'chat.db');
 const AVATAR_DIR = path.join(path.dirname(DB_PATH), 'avatar');
 const LOGO = path.join(__dirname, 'public', 'chat', 'icons', 'icon-512.png');
@@ -73,29 +74,34 @@ async function post(userId, text, actions, hideDk = null) {
 async function newDevice(userId, dev, ip) {
   const others = await dal.get("SELECT 1 FROM device_keys WHERE user_id = ? AND kind = 'device' AND id != ? AND revoked_at IS NULL LIMIT 1", userId, dev.id);
   if (!others) return;
-  const text = `Вход с нового устройства\nУстройство: ${dev.name}\nIP-адрес: ${ip || 'неизвестен'}\nЕсли это были не вы, заблокируйте устройство.`;
-  await post(userId, text, [{ id: 'block_device', label: 'Заблокировать', device: dev.id, state: 'new' }], dev.id);   // самому новому устройству уведомление не показывается
+  const text = `Вход с нового устройства\nУстройство: ${dev.name}\nIP-адрес: ${ip || 'неизвестен'}\nЭто были вы? Если нет, заблокируйте устройство.`;
+  const actions = [{ id: 'confirm_device', label: 'Это я', device: dev.id, state: 'new' }, { id: 'block_device', label: 'Это не я', device: dev.id, state: 'new' }];
+  await post(userId, text, actions, dev.id);   // самому новому устройству уведомление не показывается
 }
 
 // Устройство заблокировано: кнопка в его уведомлениях меняется на «Заблокировано», у всех устройств человека сразу
-async function markBlocked(userId, deviceId) {
+async function settle(userId, deviceId, state) {
   const bot = await botId();
   const chat = await dal.get("SELECT c.id FROM chats c JOIN chat_members cm ON cm.chat_id = c.id AND cm.user_id = ? WHERE c.system_kind = ?", userId, KIND);
   if (!chat) return;
   const ws = require('./ws');
   for (const m of await dal.all('SELECT id, actions FROM messages WHERE chat_id = ? AND sender_id = ? AND actions IS NOT NULL', chat.id, bot)) {
     let a; try { a = JSON.parse(m.actions); } catch { continue; }
-    if (!Array.isArray(a) || !a.some(x => x.device === deviceId && x.state !== 'done')) continue;
-    a.forEach(x => { if (x.device === deviceId) x.state = 'done'; });
+    if (!Array.isArray(a) || !a.some(x => x.device === deviceId && !FINISHED.includes(x.state))) continue;
+    a.forEach(x => { if (x.device === deviceId) x.state = state; });
     await dal.run('UPDATE messages SET actions = ? WHERE id = ?', JSON.stringify(a), m.id);
     const updated = await ws.getMessageWithStatus(m.id, null);
     if (updated) await ws.broadcast(chat.id, { type: 'message_edited', message: updated }, null, deviceId);
   }
 }
 
+// Устройство заблокировано или подтверждено: у всех устройств человека кнопки в его уведомлениях сменяются надписью
+const markBlocked = (userId, deviceId) => settle(userId, deviceId, 'blocked');
+const markConfirmed = (userId, deviceId) => settle(userId, deviceId, 'confirmed');
+
 // Копия ключа обнаружена, устройство отозвано (devices.js): человеку сообщение без кнопки
 async function deviceReuse(userId, name) {
   await post(userId, `Устройство «${name}» заблокировано: его ключ входа был использован повторно, возможно, у кого-то есть копия. Войти с него можно только по паролю. Если это не вы пытались войти, смените пароль.`, null);
 }
 
-module.exports = { botId, chatOf, post, newDevice, markBlocked, deviceReuse, KIND };
+module.exports = { botId, chatOf, post, newDevice, markBlocked, markConfirmed, deviceReuse, KIND };

@@ -119,6 +119,17 @@ async function alive(id) {
   return !!r && !r.revoked_at;
 }
 
+// Число действующих устройств у каждого человека: не отозваны, ключ браузера или телефона не просрочен
+async function activeCounts() {
+  const rows = await dal.all("SELECT user_id, COUNT(*) AS n FROM device_keys WHERE kind = 'device' AND revoked_at IS NULL AND (platform = 'app' OR COALESCE(last_used_at, created_at) >= ?) GROUP BY user_id", now() - WEB_IDLE_DAYS * 86400);
+  return new Map(rows.map(r => [r.user_id, Number(r.n)]));
+}
+// Убрать отозванное устройство из списка совсем (профиль снимается через allow). Действующее удалять нельзя
+async function remove(userId, id) {
+  const r = await dal.run("DELETE FROM device_keys WHERE id = ? AND user_id = ? AND kind = 'device' AND revoked_at IS NOT NULL", id, userId);
+  return r.changes > 0;
+}
+
 // Явный выход с устройства: ключ перестаёт существовать
 async function forget(row) { await dal.run('DELETE FROM device_keys WHERE id = ?', row.id); }
 
@@ -155,4 +166,4 @@ async function wipe(userId, keepId) {
   else await dal.run("DELETE FROM device_keys WHERE user_id = ? AND NOT (kind = 'profile' AND revoked_at IS NOT NULL)", userId);
 }
 
-module.exports = { cleanIp, lookupDevice, consumeDevice, parseDevice, issueDevice, issueProfile, find, touch, alive, forget, list, revoke, allow, revokeAll, wipe };
+module.exports = { cleanIp, lookupDevice, consumeDevice, parseDevice, issueDevice, issueProfile, find, touch, alive, forget, list, revoke, allow, remove, activeCounts, revokeAll, wipe };

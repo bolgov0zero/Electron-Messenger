@@ -148,17 +148,20 @@ B.ui.chat = (function () {
   // Кнопки в сообщении (actions): «Заблокировать» в уведомлении «Electron» о входе с нового устройства
   function msgActions(m) {
     if (!Array.isArray(m.actions) || !m.actions.length) return '';
+    var fin = m.actions.filter(function (a) { return a.state === 'done' || a.state === 'blocked' || a.state === 'confirmed'; })[0];
+    if (fin) return '<div class="bacts"><span class="bbtn done">' + (fin.state === 'confirmed' ? 'Подтверждено' : 'Заблокировано') + '</span></div>';
     return '<div class="bacts">' + m.actions.map(function (a) {
-      return a.state === 'done' ? '<span class="bbtn done">Заблокировано</span>'
-        : '<button type="button" class="bbtn" data-c="act" data-id="' + m.id + '" data-act="' + esc(a.id) + '" data-dev="' + Number(a.device) + '">' + esc(a.label || 'Действие') + '</button>';
+      return '<button type="button" class="bbtn' + (a.id === 'confirm_device' ? ' ok' : '') + '" data-c="act" data-id="' + m.id + '" data-act="' + esc(a.id) + '" data-dev="' + Number(a.device) + '">' + esc(a.label || 'Действие') + '</button>';
     }).join('') + '</div>';
   }
   async function runAction(t) {
-    if (t.dataset.act !== 'block_device') return;
-    t.disabled = true;
-    var r = await B.api('POST', '/users/me/devices/' + Number(t.dataset.dev) + '/block');
-    if (!r || r.error) { t.disabled = false; B.toast.show((r && r.error) || 'Не удалось заблокировать устройство'); return; }
-    B.toast.show('Устройство заблокировано');   // кнопка у всех устройств сменится по событию message_edited
+    var path = t.dataset.act === 'block_device' ? 'block' : t.dataset.act === 'confirm_device' ? 'confirm' : null;
+    if (!path) return;
+    var btns = t.parentNode ? Array.prototype.slice.call(t.parentNode.querySelectorAll('.bbtn')) : [t];
+    btns.forEach(function (b) { b.disabled = true; });
+    var r = await B.api('POST', '/users/me/devices/' + Number(t.dataset.dev) + '/' + path);
+    if (!r || r.error) { btns.forEach(function (b) { b.disabled = false; }); B.toast.show((r && r.error) || 'Не удалось выполнить действие'); return; }
+    B.toast.show(path === 'block' ? 'Устройство заблокировано' : 'Спасибо, устройство подтверждено');   // надпись у всех устройств сменится по событию message_edited
   }
 
   // ── сообщение: [имя] + строка + реакции, всё внутри обёртки .mg (одна единица для сверки ленты) ──
