@@ -8002,7 +8002,7 @@ function renderGroupProfile(keep) {
   const kind = chat.type === 'room' ? 'Комната' : 'Группа';
   const q = g.q.trim();
   const none = '<div class="cell"><span class="cl" style="color:var(--text2)">Никого не нашли</span></div>';
-  const chip = (k, label, n) => `<button type="button" class="chip${g.f === k ? ' on' : ''}" data-on-click="gmFilterSet" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label} ${n}</button>`;
+  const chip = (k, label, n) => `<button type="button" role="tab" aria-selected="${g.f === k}" class="${g.f === k ? 'on' : ''}" data-on-click="gmFilterSet" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label} ${n}</button>`;
   // Оформление перенесено из мобильного клиента (/m, профиль группы и комнаты): шапка-капсула, аватарка, плитки, поиск, переключатель фильтров как у папок и стеклянные списки
   let lists = '';
   if (show('local')) lists += `<div class="gl">${fed.length ? 'На этом сервере' : 'Участники'} · ${lf.length}${lf.length !== local.length ? ' из ' + local.length : ''}</div><div class="grp glass">${lf.map(m => gmRow(m, chat, perms)).join('') || none}${perms.canEdit && g.f !== 'pend' && !q ? `<button type="button" class="mini" data-on-click="gmAddView"><span class="ci" style="background:var(--accent)">${gmSvg('plus', 17)}</span><span class="rt"><b style="color:var(--accent-ink)">Добавить участников</b></span></button>` : ''}</div>`;
@@ -8025,9 +8025,8 @@ function renderGroupProfile(keep) {
   const cell = (l, v) => `<div class="cell"><span class="cl">${l}</span><span class="cv">${esc(v)}</span></div>`;
   const info = cell('Тип', chat.type === 'room' ? (chat.has_topics ? 'Комната с темами' : 'Комната') : 'Группа') + (creator?.display_name ? cell('Создал', creator.display_name) : '') + (when ? cell('Создана', when) : '');
   const prev = box.querySelector('.pa-body'), top = prev ? prev.scrollTop : 0, qHad = document.activeElement?.id === 'gm-q';
-  const pFin = box.querySelector('.fin'), pLeft = pFin ? pFin.scrollLeft : 0, pTh = pFin?.querySelector('.thumb'), pThumb = pTh && pTh.style.width ? { l: pTh.style.left, w: pTh.style.width } : null;
   const searchHtml = `<label class="srch glass">${gmSvg('search', 18)}<input id="gm-q" value="${esc(g.q)}" placeholder="Найти участника" autocomplete="off" data-on-input="gmSearch" data-a-input='["__value"]'></label>`;
-  const chipsHtml = showChips ? `<div class="fbar pgf"><div class="chips fo"><div class="fgrp glass"><div class="fin"><i class="thumb"></i>${chip('all', 'Все', all.length)}${chip('local', 'На этом сервере', local.length)}${fed.length ? chip('fed', 'С других серверов', fed.length) : ''}${pend.length ? chip('pend', 'Ждут ответа', pend.length) : ''}</div></div></div></div>` : '';
+  const chipsHtml = showChips ? `<div class="pa-seg pa-flt" role="tablist">${chip('all', 'Все', all.length)}${chip('local', 'На этом сервере', local.length)}${fed.length ? chip('fed', 'С других серверов', fed.length) : ''}${pend.length ? chip('pend', 'Ждут ответа', pend.length) : ''}</div>` : '';
   const topicsHtml = `<div class="grp glass">${topics.map(t => `<button type="button" class="mini" data-on-click="gmOpenTopic" data-a-click="${esc(JSON.stringify([t.id]))}"><span class="ci" style="background:var(--accent)">${gmSvg('hash', 17)}</span><span class="rt"><b>${esc(t.name || 'Тема')}</b></span><span class="ch">${gmSvg('chev', 16)}</span></button>`).join('')}</div>`;
   const bodyHtml = tab === 'members' ? `${searchHtml}${chipsHtml}<div id="gm-lists">${lists}</div>` : tab === 'topics' ? topicsHtml : '';
   box.innerHTML = `
@@ -8054,35 +8053,12 @@ function renderGroupProfile(keep) {
   const sc = box.querySelector('.pa-body');
   sc.scrollTop = keep ? top : 0;
   if (mediaTab && _cm?.host === 'gm-body') renderChatMedia(true);
-  gmChipsInit(box, pLeft, pThumb);
   applyAvatars();
   if (g.rename) { const i = document.getElementById('gm-name'); i?.focus(); i?.select(); }
   else if (qHad && keep) { const i = document.getElementById('gm-q'); if (i) { i.focus(); const l = i.value.length; try { i.setSelectionRange(l, l); } catch {} } }
 }
-// Переключатель фильтров, как у папок в мобильном клиенте: бегунок едет к выбранному чипу, выбранный встаёт по центру, у края, под который чипы уходят, текст гаснет
-function gmChipsInit(box, left, prev) {
-  const fin = box.querySelector('.fin'); if (!fin) return;
-  const th = fin.querySelector('.thumb'), on = fin.querySelector('.chip.on'), grp = fin.parentNode;
-  const edges = () => {
-    const m = fin.scrollWidth - fin.clientWidth, x = fin.scrollLeft, l = x > 2, r = x < m - 2;
-    fin.style.setProperty('--fl', l ? '22px' : '0px'); fin.style.setProperty('--fr', r ? '22px' : '0px');
-    grp.style.setProperty('--bl', l ? 1 : 0); grp.style.setProperty('--br', r ? 1 : 0);
-  };
-  fin.addEventListener('scroll', edges, { passive: true });
-  fin.scrollLeft = left || 0;
-  if (th && on && on.offsetWidth) {
-    if (prev && prev.w) { th.style.transition = 'none'; th.style.left = prev.l; th.style.width = prev.w; void th.offsetWidth; th.style.transition = ''; }
-    th.style.left = on.offsetLeft + 'px'; th.style.width = on.offsetWidth + 'px';
-    if (S.gm?.center) {
-      S.gm.center = false;
-      const fr = fin.getBoundingClientRect(), br = on.getBoundingClientRect();
-      fin.scrollTo({ left: fin.scrollLeft + (br.left + br.width / 2) - (fr.left + fr.width / 2), behavior: 'smooth' });
-    }
-  }
-  edges();
-}
 // Шапка сворачивается, только если списка хватает и после сворачивания: иначе она мигала бы
-function gmFilterSet(k) { S.gm.f = k; S.gm.center = true; renderGroupProfile(true); }
+function gmFilterSet(k) { S.gm.f = k; renderGroupProfile(true); }
 function gmSearch(v) { S.gm.q = v; renderGroupProfile(true); }
 function gmPaintSub() {
   const chat = gmChat(), el = document.getElementById('gm-sub');

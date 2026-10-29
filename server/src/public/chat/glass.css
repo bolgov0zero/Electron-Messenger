@@ -1293,6 +1293,7 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 .pa-seg button { position: relative; z-index: 1; height: 30px; padding: 0 14px; border: 0; border-radius: 99px; background: none; color: var(--text2); font: 600 12.5px var(--ff, inherit); white-space: nowrap; cursor: pointer; transition: color .25s; }
 .pa-seg button.on { color: var(--text); background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px var(--gl-shadow); }
 .pa-seg button:disabled { opacity: .4; cursor: default; }
+.pa-flt { margin: 0 0 14px; }
 .pa-empty { padding: 56px 0; text-align: center; color: var(--muted); font-size: 13px; }
 @media (max-width: 760px) {
   .pa-scroll { grid-template-columns: 1fr; overflow-y: auto; }
@@ -1383,18 +1384,6 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 #pf-modal .mini small, #gm-modal.gmm .mini small { font-size: 12.5px; }
 #gm-modal.gmm .srch { height: 40px; border-radius: var(--r-pill); padding: 0 14px; font-size: 14px; background: var(--gl-hov); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 3px var(--gl-lo); }
 #gm-modal.gmm .srch input { font-size: 14px; }
-#gm-modal.gmm .fbar { margin: 0 0 14px; }
-#gm-modal.gmm .chips { display: block; margin: 0; padding: 0; }
-#gm-modal.gmm .fgrp { position: relative; display: block; width: 100%; box-sizing: border-box; padding: 0; border-radius: 26px; overflow: visible; --bl: 0; --br: 0; }
-#gm-modal.gmm .fin { position: relative; display: flex; gap: 2px; margin: 4px; border-radius: 22px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior-x: contain; --fl: 0px; --fr: 0px;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 var(--fl), #000 calc(100% - var(--fr)), transparent 100%); }
-#gm-modal.gmm .fin::-webkit-scrollbar { display: none; }
-#gm-modal.gmm .thumb { position: absolute; top: 0; bottom: 0; left: 0; width: 0; border-radius: 22px; background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px -2px var(--gl-shadow); transition: left .45s var(--gl-spring), width .45s var(--gl-spring); pointer-events: none; }
-#gm-modal.gmm .chip { position: relative; z-index: 1; height: 36px; padding: 0 14px; border-radius: 22px; display: flex; align-items: center; gap: 7px; font: 600 14px var(--ff, inherit); color: var(--text2); flex: none; background: none; border: 0; cursor: pointer; white-space: nowrap; transition: color .2s; }
-#gm-modal.gmm .chip.on { color: var(--accent-ink); }
-#gm-modal.gmm .fgrp::before, #gm-modal.gmm .fgrp::after { content: ""; position: absolute; top: 4px; bottom: 4px; width: 26px; z-index: 2; pointer-events: none; -webkit-backdrop-filter: blur(2.5px); backdrop-filter: blur(2.5px); transition: opacity .2s; }
-#gm-modal.gmm .fgrp::before { left: 4px; border-radius: 22px 0 0 22px; opacity: var(--bl); -webkit-mask-image: linear-gradient(90deg, #000, transparent); mask-image: linear-gradient(90deg, #000, transparent); }
-#gm-modal.gmm .fgrp::after { right: 4px; border-radius: 0 22px 22px 0; opacity: var(--br); -webkit-mask-image: linear-gradient(270deg, #000, transparent); mask-image: linear-gradient(270deg, #000, transparent); }
 #gm-modal.gmm .cell .cl.red { color: var(--danger); }
 #gm-modal.gmm .mini .rt small.on { color: var(--accent-ink); }
 #gm-modal.gmm .mini .av-wrap { position: relative; flex: none; }

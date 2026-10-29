@@ -15,7 +15,8 @@ B.ui.chatlist = (function () {
   function tick(lm) {
     if (!lm.status || !lm.status.total) return '';
     var all = lm.status.read >= lm.status.total;
-    return '<span class="st' + (all ? ' rd' : '') + '">' + I(all || lm.status.delivered ? 'checks' : 'check') + '</span>';
+    var part = !all && lm.status.read > 0;   // прочитали не все: первая галочка синяя
+    return '<span class="st' + (all ? ' rd' : part ? ' part' : '') + '">' + I(all || part || lm.status.delivered ? 'checks' : 'check') + '</span>';
   }
   function chatRow(c, pin) {
     var lm = c.last_message, mine = lm && lm.sender_id === B.S.user.id, u = c.unread || 0, men = c.unread_mentions || 0, ty = B.typing.names(c.id), dm = c.type === 'direct';

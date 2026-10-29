@@ -55,9 +55,10 @@ B.avatar = {
   },
   clearCache: function () { B.avatar._cache.clear(); }
 };
-// Галочки доставки/прочтения в пузыре: одна — отправлено, две серые — доставлено, две синие — прочитано всеми
+// Галочки доставки/прочтения в пузыре: одна — отправлено, две серые — доставлено, первая синяя — прочитали не все,
+// две синие — прочитано всеми
 B.ticks = function (status) {
   if (!status || !status.total) return '';
   var all = status.read >= status.total;
-  return all ? I('checks') : status.delivered > 0 || status.read > 0 ? '<span class="dv">' + I('checks') + '</span>' : '<span class="dv">' + I('check') + '</span>';
+  return all ? I('checks') : status.read > 0 ? '<span class="dv part">' + I('checks') + '</span>' : status.delivered > 0 ? '<span class="dv">' + I('checks') + '</span>' : '<span class="dv">' + I('check') + '</span>';
 };
