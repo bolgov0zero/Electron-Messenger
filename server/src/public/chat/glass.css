@@ -1260,23 +1260,24 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 
 /* ══════════════════════════════════════════════════════════════
    Окна профиля человека, группы и комнаты (вариант A макета docs/glass-mockup/profile.html):
-   одна колонка, как окно «Новый чат»: личность, действия и сведения, ниже вкладки и списки
+   две панели: слева личность, действия и сведения, справа вкладки и списки
    ══════════════════════════════════════════════════════════════ */
-#pf-modal.pf-modal, #gm-modal.gmm.gm-modal { position: relative; width: min(480px, 94vw); height: min(680px, 90vh); max-height: none; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
-/* Одна колонка, как в окне «Новый чат»: заголовок с крестиком и прокручиваемое содержимое; высота и ширина подстраиваются под окно */
+#pf-modal.pf-modal, #gm-modal.gmm.gm-modal { position: relative; width: min(900px, 94vw); height: min(620px, 90vh); max-height: none; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+/* Две панели: слева личность, действия и сведения, справа вкладки и списки; сверху заголовок с крестиком, как в окне «Новый чат».
+   Размер подстраивается под окно: в узком окне панели встают друг под другом */
 .pa { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-.pa-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 0 18px 18px; }
-.pa-l { display: flex; flex-direction: column; gap: 10px; padding: 4px 0 14px; }
-.pa-r { display: flex; flex-direction: column; }
-.pa-rh { position: sticky; top: 0; z-index: 2; margin: 0 -18px; padding: 6px 18px 10px; background: var(--modal-bg); }
-.pa-body { padding: 0; }
-.pa-btn { display: flex; align-items: center; gap: 13px; min-height: 56px; padding: 8px 14px; border-radius: 16px; background: var(--gl-card); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 0 var(--gl-hi); color: var(--text); font: 600 14px var(--ff, inherit); text-align: left; cursor: pointer; transition: background .2s, filter .2s, transform .35s var(--gl-spring); }
+.pa-scroll { flex: 1; min-height: 0; display: grid; grid-template-columns: 310px minmax(0, 1fr); }
+.pa-l { display: flex; flex-direction: column; gap: 10px; padding: 6px 18px 16px; overflow-y: auto; min-height: 0; border-right: 1px solid var(--gl-lo); scrollbar-width: none; }
+.pa-l::-webkit-scrollbar { display: none; }
+.pa-r { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.pa-rh { flex: none; padding: 6px 20px 12px; }
+.pa-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 14px; overscroll-behavior: contain; scrollbar-width: thin; }
+.pa-btn { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: var(--r-card); background: var(--gl-card); border: 1px solid var(--gl-edge); color: var(--text); font: 600 14px var(--ff, inherit); text-align: left; cursor: pointer; transition: background .2s, filter .2s, transform .35s var(--gl-spring); }
 .pa-btn::after { content: '\203A'; margin-left: auto; font-size: 18px; font-weight: 400; color: var(--muted); }
-.pa-btn svg { width: 40px; height: 40px; padding: 11px; border-radius: 50%; flex: none; background: var(--accent-soft); color: var(--accent-ink); }
-.pa-btn.pri svg { background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35); }
+.pa-btn svg { width: 44px; height: 44px; padding: 12px; border-radius: 50%; flex: none; background: var(--accent-soft); color: var(--accent-ink); }
+.pa-btn.pri svg { background: var(--accent-soft); color: var(--accent-ink); }
 .pa-btn.d { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger); }
 .pa-btn.d svg { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
-}
 .pa-who { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding-top: 4px; }
 .pa-who .pf-av { width: 88px; height: 88px; border: 0; font-size: 30px; margin: 0 0 8px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25); }
 .pa-who h2 { margin: 0; max-width: 100%; font-size: 22px; font-weight: 700; letter-spacing: -.01em; overflow-wrap: anywhere; }
@@ -1292,16 +1293,22 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 .pa-seg button.on { color: var(--text); background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px var(--gl-shadow); }
 .pa-seg button:disabled { opacity: .4; cursor: default; }
 .pa-empty { padding: 56px 0; text-align: center; color: var(--muted); font-size: 13px; }
-@media (max-height: 700px) {
-  .pa-who .pf-av, #gm-modal.gmm .pa-who .pgav, #gm-modal.gmm .pa-who .pgav .av { width: 64px; height: 64px; font-size: 22px; }
-  .pa-who h2 { font-size: 19px; }
-  .pa-btn { min-height: 48px; }
-  .pa-btn svg { width: 34px; height: 34px; padding: 9px; }
+@media (max-width: 760px) {
+  .pa-scroll { grid-template-columns: 1fr; overflow-y: auto; }
+  .pa-l { overflow: visible; border-right: 0; border-bottom: 1px solid var(--gl-lo); }
+  .pa-r { min-height: 420px; }
+}
 #pf-modal .pa-l .grp, #gm-modal.gmm .pa-l .grp, #pf-modal .pa-body .grp, #gm-modal.gmm .pa-body .grp { margin-bottom: 0; }
 #pf-modal .pa-l .cell, #gm-modal.gmm .pa-l .cell { min-height: 40px; padding: 6px 14px; }
 #gm-modal.gmm .pa-who .pgav { width: 88px; height: 88px; margin-bottom: 8px; }
 #gm-modal.gmm .pa-who .pgav .av { width: 88px; height: 88px; font-size: 30px; }
 #pf-modal .pa-body .grp + .gl, #gm-modal.gmm .pa-body .grp + .gl { margin-top: 14px; }
+@media (max-height: 700px) {
+  .pa-who .pf-av, #gm-modal.gmm .pa-who .pgav, #gm-modal.gmm .pa-who .pgav .av { width: 64px; height: 64px; font-size: 22px; }
+  .pa-who h2 { font-size: 19px; }
+  .pa-btn { padding: 8px 12px; }
+  .pa-btn svg { width: 36px; height: 36px; padding: 9px; }
+}
 #pf-modal .glass { background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl-card); border: 1px solid var(--gl-edge);
   box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 8px 22px var(--gl-shadow); }
 #pf-modal .nbanner { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 22px; margin: 0 0 12px; font-size: 13.5px; line-height: 1.35; color: var(--text2); }
@@ -1367,6 +1374,14 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 #gm-modal.gmm .srch svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
 #gm-modal.gmm .srch input { flex: 1; min-width: 0; height: 100%; color: var(--text); font: 16px var(--ff, inherit); background: none; border: 0; outline: 0; padding: 0; }
 #gm-modal.gmm .srch input::placeholder { color: var(--muted); }
+/* Блоки, разделы и поиск в окнах профиля — как карточки и поле поиска окна «Новый чат»: без наложенного блика и тени */
+#pf-modal .glass, #gm-modal.gmm .glass { background: var(--gl-card); box-shadow: none; }
+#pf-modal .cell, #gm-modal.gmm .cell { font-size: 14px; }
+#pf-modal .cell .cv, #gm-modal.gmm .cell .cv { font-size: 13.5px; }
+#pf-modal .mini b, #gm-modal.gmm .mini b { font-size: 14px; }
+#pf-modal .mini small, #gm-modal.gmm .mini small { font-size: 12.5px; }
+#gm-modal.gmm .srch { height: 40px; border-radius: var(--r-pill); padding: 0 14px; font-size: 14px; background: var(--gl-hov); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 3px var(--gl-lo); }
+#gm-modal.gmm .srch input { font-size: 14px; }
 #gm-modal.gmm .fbar { margin: 0 0 14px; }
 #gm-modal.gmm .chips { display: block; margin: 0; padding: 0; }
 #gm-modal.gmm .fgrp { position: relative; display: block; width: 100%; box-sizing: border-box; padding: 0; border-radius: 26px; overflow: visible; --bl: 0; --br: 0; }

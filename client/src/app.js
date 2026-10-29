@@ -7074,7 +7074,7 @@ function pfIsOpen() { return !!S.profileId && !!document.getElementById('modal-p
 function renderProfile(keep) {
   const id = S.profileId, u = pfUser(id), box = document.getElementById('pf-modal');
   if (!u || !box) return;
-  const top = keep ? (box.querySelector('.pa-scroll')?.scrollTop || 0) : 0;
+  const top = keep ? (box.querySelector('.pa-body')?.scrollTop || 0) : 0;
   const cls = userAvatarColor(u.id, u.tag), fed = !!u.federated;
   const otherSpace = !fed && u.rel !== 'ws' && !!u.workspace_name;
   const canContact = fed || otherSpace;          // у людей своего пространства контакты не нужны
@@ -7105,7 +7105,7 @@ function renderProfile(keep) {
   box.innerHTML = `
     <div class="pa">
       <div class="modal-hdr"><span>Профиль</span><button class="icon-btn" type="button" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-profile"]'>${gmSvg('x', 14)}</button></div>
-      <div class="pa-scroll"${mediaTab ? ` data-on-scroll="cmScroll" data-a-scroll='["__this"]'` : ''}>
+      <div class="pa-scroll">
       <aside class="pa-l">
         <div class="pa-who">
           <div class="pf-av ${cls}"><span>${esc(initials(u.display_name))}</span><img src="${avUrl('users', u.id)}" data-on-error="__h17">${presenceDot(id)}</div>
@@ -7117,10 +7117,10 @@ function renderProfile(keep) {
       </aside>
       <section class="pa-r">
         <div class="pa-rh"><div class="pa-seg" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" aria-selected="${tab === k}" class="${tab === k ? 'on' : ''}"${k !== 'groups' && !dmChat ? ' disabled' : ''} data-on-click="pfTab" data-a-click="${esc(JSON.stringify([`${k}`]))}">${l}</button>`).join('')}</div></div>
-        <div class="pa-body" id="pf-body">${mediaTab ? '' : groupsHtml}</div>
+        <div class="pa-body" id="pf-body"${mediaTab ? ` data-on-scroll="cmScroll" data-a-scroll='["__this"]'` : ''}>${mediaTab ? '' : groupsHtml}</div>
       </section></div>
     </div>`;
-  if (top) box.querySelector('.pa-scroll').scrollTop = top;
+  if (top) box.querySelector('.pa-body').scrollTop = top;
   applyAvatars();   // фото общих групп и комнат
   if (mediaTab && _cm?.host === 'pf-body') renderChatMedia(true);
 }
@@ -8024,7 +8024,7 @@ function renderGroupProfile(keep) {
   const when = Number(chat.created_at) > 0 ? new Date(chat.created_at * 1000).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   const cell = (l, v) => `<div class="cell"><span class="cl">${l}</span><span class="cv">${esc(v)}</span></div>`;
   const info = cell('Тип', chat.type === 'room' ? (chat.has_topics ? 'Комната с темами' : 'Комната') : 'Группа') + (creator?.display_name ? cell('Создал', creator.display_name) : '') + (when ? cell('Создана', when) : '');
-  const prev = box.querySelector('.pa-scroll'), top = prev ? prev.scrollTop : 0, qHad = document.activeElement?.id === 'gm-q';
+  const prev = box.querySelector('.pa-body'), top = prev ? prev.scrollTop : 0, qHad = document.activeElement?.id === 'gm-q';
   const pFin = box.querySelector('.fin'), pLeft = pFin ? pFin.scrollLeft : 0, pTh = pFin?.querySelector('.thumb'), pThumb = pTh && pTh.style.width ? { l: pTh.style.left, w: pTh.style.width } : null;
   const searchHtml = `<label class="srch glass">${gmSvg('search', 18)}<input id="gm-q" value="${esc(g.q)}" placeholder="Найти участника" autocomplete="off" data-on-input="gmSearch" data-a-input='["__value"]'></label>`;
   const chipsHtml = showChips ? `<div class="fbar pgf"><div class="chips fo"><div class="fgrp glass"><div class="fin"><i class="thumb"></i>${chip('all', 'Все', all.length)}${chip('local', 'На этом сервере', local.length)}${fed.length ? chip('fed', 'С других серверов', fed.length) : ''}${pend.length ? chip('pend', 'Ждут ответа', pend.length) : ''}</div></div></div></div>` : '';
@@ -8033,7 +8033,7 @@ function renderGroupProfile(keep) {
   box.innerHTML = `
     <div class="pa">
       <div class="modal-hdr"><span>${kind}</span><button class="icon-btn" type="button" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-group"]'>${gmSvg('x', 14)}</button></div>
-      <div class="pa-scroll"${mediaTab ? ` data-on-scroll="cmScroll" data-a-scroll='["__this"]'` : ''}>
+      <div class="pa-scroll">
       <aside class="pa-l">
         <div class="pa-who">
           <div class="pgav"><div class="av av-round ${chatAvatarClass(chat)}" id="gm-av" data-av-chat="${chat.id}">${chatIcon(chat)}</div>
@@ -8048,10 +8048,10 @@ function renderGroupProfile(keep) {
       </aside>
       <section class="pa-r">
         <div class="pa-rh"><div class="pa-seg" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" aria-selected="${tab === k}" class="${tab === k ? 'on' : ''}" data-on-click="gmTab" data-a-click="${esc(JSON.stringify([`${k}`]))}">${l}</button>`).join('')}</div></div>
-        <div class="pa-body" id="gm-body">${bodyHtml}</div>
+        <div class="pa-body" id="gm-body"${mediaTab ? ` data-on-scroll="cmScroll" data-a-scroll='["__this"]'` : ''}>${bodyHtml}</div>
       </section></div>
     </div>`;
-  const sc = box.querySelector('.pa-scroll');
+  const sc = box.querySelector('.pa-body');
   sc.scrollTop = keep ? top : 0;
   if (mediaTab && _cm?.host === 'gm-body') renderChatMedia(true);
   gmChipsInit(box, pLeft, pThumb);
