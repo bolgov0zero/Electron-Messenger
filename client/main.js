@@ -697,7 +697,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: bounds?.width ?? 1100, height: bounds?.height ?? 720,
     x: bounds?.x, y: bounds?.y,
-    minWidth: 500, minHeight: 540,
+    minWidth: 1000, minHeight: 700,
     title: 'Electron',
     // Linux: без скруглённой тёмной подложки — только стрелка, как у значка в трее
     icon: path.join(_ASSETS, process.platform === 'linux' ? 'icon-arrow-512.png' : 'icon-512.png'),
