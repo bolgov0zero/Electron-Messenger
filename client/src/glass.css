@@ -1417,3 +1417,31 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 
 /* Настройки: у выбранного пункта меню при наведении фон не меняется (раньше сбрасывался в none) */
 .cs-sn[aria-current="page"]:hover, .cs-sn[aria-current="true"]:hover { background: var(--gl2); color: var(--text); }
+
+/* Окно «Добавить участника»: компактный список */
+.gm-scroll { gap: 2px; padding: 8px 14px 10px; }
+.gm-pick { min-height: 46px; padding: 6px 12px; }
+
+/* Окно «Гостевая ссылка» (shared/guestlinks.js) — в стиле окон профиля: стеклянная панель, круглый крестик, карточки и пилюли */
+.gl-bg:not(.gl-adm):not(.gl-m) { background: rgba(20, 40, 50, .20); -webkit-backdrop-filter: none; backdrop-filter: none; --gl-h: 38px; --gl-fs: 13.5px; --gl-r: 999px; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl { background: radial-gradient(120% 80% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl-pop); border: 1px solid var(--gl-edge); border-radius: 30px; max-width: 720px;
+  -webkit-backdrop-filter: blur(calc(var(--gl-blur) + 6px)) saturate(190%); backdrop-filter: blur(calc(var(--gl-blur) + 6px)) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 24px 60px var(--gl-shadow); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-h { padding: 18px 18px 8px 24px; border-bottom: 0; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-h b { font-size: 15px; font-weight: 700; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-x { width: 36px; height: 36px; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--gl-card); color: var(--text2); font-size: 15px; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-x:hover { background: var(--gl-card2); color: var(--text); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-top { padding: 6px 24px 12px; border-bottom: 0; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-b { padding: 2px 24px 22px; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-sel-b { background: var(--gl-card); border: 1px solid var(--gl-edge); border-radius: 999px; padding: 0 12px 0 16px; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-sel-b:hover { background: var(--gl-card2); border-color: var(--gl-edge); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-sel.open .gl-sel-b, .gl-bg:not(.gl-adm):not(.gl-m) .gl-sel-b:focus-visible { border-color: var(--accent); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-btn:not(.gl-ic) { border-radius: 999px; padding: 0 18px; background: var(--accent-soft); color: var(--accent-ink); border: 1px solid var(--accent-border); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-ib { border-radius: 50%; background: var(--gl-card); border: 1px solid var(--gl-edge); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-ic { border-radius: 50%; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl input { background: var(--gl-hov); border: 1px solid var(--gl-edge); border-radius: 999px; padding: 0 14px; box-shadow: inset 0 1px 3px var(--gl-lo); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-list, .gl-bg:not(.gl-adm):not(.gl-m) .gl-new { background: var(--gl-card); border: 1px solid var(--gl-edge); border-radius: var(--r-card); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-th, .gl-bg:not(.gl-adm):not(.gl-m) .gl-it + .gl-it { border-color: var(--gl-lo); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-pop { background: radial-gradient(120% 80% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl-pop); border: 1px solid var(--gl-edge); border-radius: 16px;
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 16px 40px var(--gl-shadow); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-opt { border-radius: 10px; padding: 8px 12px; }

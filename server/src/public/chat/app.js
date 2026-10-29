@@ -7502,7 +7502,7 @@ function renderGroupProfile(keep) {
   const chip = (k, label, n) => `<button type="button" role="tab" aria-selected="${g.f === k}" class="${g.f === k ? 'on' : ''}" data-on-click="gmFilterSet" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label} ${n}</button>`;
   // Оформление перенесено из мобильного клиента (/m, профиль группы и комнаты): шапка-капсула, аватарка, плитки, поиск, переключатель фильтров как у папок и стеклянные списки
   let lists = '';
-  if (show('local')) lists += `<div class="gl">${fed.length ? 'На этом сервере' : 'Участники'} · ${lf.length}${lf.length !== local.length ? ' из ' + local.length : ''}</div><div class="grp glass">${lf.map(m => gmRow(m, chat, perms)).join('') || none}${perms.canEdit && g.f !== 'pend' && !q ? `<button type="button" class="mini" data-on-click="gmAddView"><span class="ci" style="background:var(--accent)">${gmSvg('plus', 17)}</span><span class="rt"><b style="color:var(--accent-ink)">Добавить участников</b></span></button>` : ''}</div>`;
+  if (show('local')) lists += `<div class="gl">${fed.length ? 'На этом сервере' : 'Участники'} · ${lf.length}${lf.length !== local.length ? ' из ' + local.length : ''}</div><div class="grp glass">${lf.map(m => gmRow(m, chat, perms)).join('') || none}</div>`;
   if (fed.length && show('fed')) lists += `<div class="gl">С других серверов · ${ff.length}</div><div class="grp glass">${ff.map(m => gmRow(m, chat, perms)).join('') || none}</div>`;
   if (pend.length && show('pend')) lists += `<div class="gl">Ждут ответа · ${pf.length}</div><div class="grp glass">${pf.map(m => gmRow({ ...m, federated: true }, chat, perms, true)).join('') || none}</div>`;
   const topics = chat.has_topics ? (S.topics[chat.id] || []) : [];
