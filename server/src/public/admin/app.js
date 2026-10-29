@@ -6780,7 +6780,7 @@ async function openAnnouncementModal() {
   AN.chats = (Array.isArray(chats) ? chats : []).filter(c => !c.parent_id && !c.is_secret);
   if (Array.isArray(users)) allUsersCache = users;
   annStartAt = null;
-  AN.form = { kind: 'chat', text: '', pick: false, sp: false, spSel: new Set(), who: new Set(), q: '', duration: 60, err: '', busy: false, more: false };
+  AN.form = { kind: 'chat', text: '', pick: false, sp: false, spSel: new Set(), who: new Set(), q: '', only: false, lim: 60, wk: 'now', duration: 60, err: '', busy: false };
   PK.ctx = null;
   anRenderForm('an-text');
   openModal('modal-announcement');
@@ -6795,34 +6795,57 @@ const anMissing = f => {
   return m;
 };
 const anVerb = () => annStartAt ? 'Запланировать' : 'Отправить';
-const anMore = id => { AN.form.more = id ? true : !AN.form.more; anRenderForm(); if (id) fmScroll('an-sec-' + id); };
+const AN_DURS = [[15, '15 мин'], [60, '1 ч'], [180, '3 ч'], [1440, 'Сутки']];
+// Получатели: для чатов «всем» — только группы и комнаты, личные переписки без выбора не затрагиваются
+const anItems = () => pkCfg('ann').items().sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+const anMatch = (p, q) => !q || p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q) || (p.tag || '').toLowerCase().includes(q);
+function anCount() {
+  const f = AN.form, chat = f.kind === 'chat';
+  if (f.pick) return f.who.size;
+  if (f.sp) return chat ? 0 : WS.list.filter(w => f.spSel.has(w.id)).reduce((n, w) => n + (w.users || 0), 0);
+  return chat ? AN.chats.filter(c => c.type !== 'direct').length : pkUsers().length;
+}
+function anGoText() {
+  const f = AN.form;
+  if (f.busy) return 'Отправляю…';
+  const n = anCount();
+  return n ? `${anVerb()} · ${n} ${f.kind === 'chat' ? uxPlural(n, 'чат', 'чата', 'чатов') : uxPlural(n, 'человек', 'человека', 'человек')}` : anVerb();
+}
 // Подвал и превью обновляются на лету, без перерисовки формы: иначе пропадёт курсор в тексте
 function anFootSync() {
   const f = AN.form; if (!f) return;
   const miss = anMissing(f), n = document.getElementById('an-note'), b = document.getElementById('an-go');
   if (n) { n.innerHTML = fmNote(miss); n.classList.toggle('ok', !miss.length); }
-  if (b) { b.disabled = !!f.busy || !!miss.length; b.textContent = f.busy ? 'Отправляю…' : anVerb(); }
+  if (b) { b.disabled = !!f.busy || !!miss.length; b.textContent = anGoText(); }
 }
-function anRenderForm(focusId) {
-  const f = AN.form, el = document.getElementById('an-form');
-  if (!f || !el) return;
-  const chat = f.kind === 'chat', miss = anMissing(f);
-  const quick = `<div class="ua-sec">
-      <div class="an-kinds ua-roles" role="radiogroup" aria-label="Тип объявления">${Object.entries(ANN_KINDS).map(([k, v]) =>
-        `<button type="button" class="ua-role-opt" role="radio" aria-checked="${f.kind === k}" data-on-click="anSet" data-a-click="${esc(JSON.stringify(["kind", `${k}`]))}"><b>${v.label}</b><span>${ANN_HINTS[k]}</span></button>`).join('')}</div>
-      <div class="ua-field"><label for="an-text">Текст</label>
-        <div class="ua-inp an-area"><textarea id="an-text" placeholder="Что сказать людям" data-on-input="__h113">${esc(f.text)}</textarea></div></div>
-      <div class="ua-field fm-pv"><label>Так увидят</label><div id="an-pv">${anPreview(f.kind, f.text.trim())}</div></div></div>`;
-  const whenSu = (annStartAt ? fmtDateTime(annStartAt) : 'Сейчас') + (f.kind === 'banner' ? ` · показывать ${f.duration} мин` : '');
-  const audSu = f.sp ? (f.spSel.size ? `Пространства: ${f.spSel.size}` : 'Выберите пространства') : !f.pick ? (chat ? 'Во все группы и комнаты' : 'Всем') : f.who.size ? `Выбрано: ${f.who.size}` : (chat ? 'Выберите чаты' : 'Выберите получателей');
-  const secs = [
-    { id: 'w', t: 'Когда', su: whenSu, body: `<div class="ua-row2">
-        <div class="ua-field"><label>Когда</label>
-          <div class="dtp">
-            <button type="button" class="dtp-field" data-on-click="dtpToggle" data-a-click='["__event"]'>
-              <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
-              <span class="dtp-val" id="dtp-val">${annStartAt ? esc(fmtDateTime(annStartAt)) : 'Сейчас'}</span>
-              <span class="dtp-reset" id="dtp-reset" style="${annStartAt ? '' : 'display:none'}" data-on-click="__h114">✕</span>
+function anListHtml() {
+  const f = AN.form, q = (f.q || '').trim().toLowerCase(), all = anItems();
+  const found = all.filter(p => anMatch(p, q) && (!f.only || f.who.has(p.id))), shown = found.slice(0, f.lim);
+  if (!shown.length) return `<div class="an-empty">${all.length ? 'Ничего не найдено. Измените запрос' : 'Список пуст'}</div>`;
+  let last = '';
+  return shown.map(p => {
+    const l = (p.name[0] || '?').toUpperCase(), h = l !== last ? `<div class="an-letter">${esc(l)}</div>` : ''; last = l;
+    return h + `<button type="button" class="fm-li" aria-pressed="${f.who.has(p.id)}" data-on-click="anPick" data-a-click="${esc(JSON.stringify([p.id]))}">${p.av}<span class="n">${esc(p.name)}<small>${esc(p.sub)}</small></span>${p.tag ? `<span class="tg2">${esc(p.tag)}</span>` : ''}<span class="ck">${f.who.has(p.id) ? '✓' : ''}</span></button>`;
+  }).join('') + (found.length > shown.length ? `<button type="button" class="btn btn-ghost btn-sm" style="align-self:center;margin:4px 0" data-on-click="anMoreList">Показать ещё ${Math.min(60, found.length - shown.length)} из ${found.length - shown.length}</button>` : '');
+}
+// Левая половина: превью, тип, текст, время. Правая: кому отправить, во всю высоту окна
+function anLeftHtml2(f) {
+  const miss = anMissing(f), chat = f.kind === 'chat';
+  const now = new Date(), hasToday = now.getHours() < 18;
+  const chips = [['now', 'Сейчас'], ['hour', 'Через час'], ...(hasToday ? [['today', 'Сегодня 18:00']] : []), ['tom', 'Завтра 09:00']];
+  const custom = f.wk === 'custom' && annStartAt;
+  return `<div class="an-half l">
+    <div class="ua-head"><div><div class="ua-title">Новое объявление</div><div class="ua-sub">Текст, тип и время</div></div></div>
+    <div class="an-lbody">
+      <div id="an-pv">${anPreview(f.kind, f.text.trim())}</div>
+      <div class="an-seg an-types" role="radiogroup" aria-label="Тип объявления">${Object.entries(ANN_KINDS).map(([k, v]) =>
+        `<button type="button" role="radio" aria-checked="${f.kind === k}" aria-pressed="${f.kind === k}" data-on-click="anSet" data-a-click="${esc(JSON.stringify(["kind", `${k}`]))}">${v.label}</button>`).join('')}</div>
+      <div class="ua-inp an-area"><textarea id="an-text" placeholder="Что сказать людям" aria-label="Текст объявления" data-on-input="__h113">${esc(f.text)}</textarea></div>
+      <div class="ua-field"><label>Когда</label>
+        <div class="an-chs">${chips.map(([k, l]) => `<button type="button" class="an-ch" aria-pressed="${f.wk === k}" data-on-click="anWhen" data-a-click="${esc(JSON.stringify([`${k}`]))}">${l}</button>`).join('')}
+          <div class="dtp an-dtp">
+            <button type="button" class="dtp-field an-ch" aria-pressed="${!!custom}" data-on-click="dtpToggle" data-a-click='["__event"]'>
+              <span class="dtp-val" id="dtp-val">${custom ? esc(fmtDateTime(annStartAt)) : 'Другое…'}</span>
             </button>
             <div class="dtp-pop" id="dtp-pop" hidden>
               <div class="dtp-head">
@@ -6839,39 +6862,72 @@ function anRenderForm(focusId) {
                 <button type="button" class="btn btn-primary btn-sm" data-on-click="dtpApply">Готово</button>
               </div>
             </div>
-          </div></div>
-        ${f.kind === 'banner' ? `<div class="ua-field"><label for="an-dur">Показывать, мин</label>
-          <div class="ua-inp"><input id="an-dur" type="number" min="1" max="10080" value="${f.duration}" data-on-input="__h115"></div>
-          <span class="ua-hint">Потом полоса исчезнет сама</span></div>` : '<div></div>'}</div>` },
-    { id: 'a', t: chat ? 'Куда' : 'Кому', su: audSu, body: `<div class="an-seg"><button type="button" aria-pressed="${!f.pick && !f.sp}" data-on-click="anMode" data-a-click='["all"]'>${chat ? 'Во все группы и комнаты' : 'Всем'}</button>
-        ${WS.list.length > 1 ? `<button type="button" aria-pressed="${f.sp}" data-on-click="anMode" data-a-click='["spaces"]'>По пространствам</button>` : ''}
-        <button type="button" aria-pressed="${f.pick}" data-on-click="anMode" data-a-click='["pick"]'>${chat ? 'Выбрать чаты' : 'Выбрать людей'}</button></div>
-      ${f.sp ? `<div class="ws-checks">${WS.list.map(w => `<label class="ua-check"><input type="checkbox" ${f.spSel.has(w.id) ? 'checked' : ''} data-on-change="anSp" data-a-change="${esc(JSON.stringify([w.id, "__checked"]))}">${esc(w.name)}<span>${w.users} ${uxPlural(w.users, 'человек', 'человека', 'человек')}</span></label>`).join('')}</div>
-        <span class="ua-hint">${chat ? 'Строка появится в группах и комнатах, где есть люди из отмеченных пространств' : 'Объявление получат люди из отмеченных пространств'}</span>` : ''}
-      ${f.pick ? pkSummary('ann', chat ? 'Выбрать чаты…' : 'Выбрать людей…') : ''}
-      ${f.kind === 'popup' ? '<span class="ua-hint">Всплывающее увидят только те, кто сейчас в сети</span>' : ''}` },
-  ];
-  uaRestoreFocus(() => {
-    el.innerHTML = `
-      <div class="ua-head"><div><div class="ua-title">Новое объявление</div><div class="ua-sub">Тип, текст и куда отправить</div></div>
-        <button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-announcement"]'>✕</button></div>
-      <div class="ua-body">${quick}${fmMoreHtml('an', f.more, 'anMore', secs)}</div>
-      <div class="ua-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}<span class="fm-note ${miss.length ? '' : 'ok'}" id="an-note">${fmNote(miss)}</span>
-        <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a-click='["modal-announcement"]'>Отмена</button>
-        <button type="button" class="btn ux-solid" id="an-go" ${f.busy || miss.length ? 'disabled' : ''} data-on-click="sendAnnouncement">${f.busy ? 'Отправляю…' : anVerb()}</button></div>${pkSheet()}`;
-  }, focusId);
+          </div></div></div>
+      ${f.kind === 'banner' ? `<div class="ua-field"><label>Показывать</label><div class="an-chs">${AN_DURS.map(([d, l]) => `<button type="button" class="an-ch" aria-pressed="${Number(f.duration) === d}" data-on-click="anDur" data-a-click="${esc(JSON.stringify([d]))}">${l}</button>`).join('')}
+          <span class="an-durin"><input id="an-dur" type="number" min="1" max="10080" value="${f.duration}" aria-label="Минут" data-on-input="__h115"> мин</span></div></div>` : ''}
+    </div>
+    <div class="ua-foot an-foot">${f.err ? `<span class="ua-err">${esc(f.err)}</span>` : ''}<span class="fm-note ${miss.length ? '' : 'ok'}" id="an-note">${fmNote(miss)}</span>
+      <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a-click='["modal-announcement"]'>Отмена</button>
+      <button type="button" class="btn ux-solid" id="an-go" ${f.busy || miss.length ? 'disabled' : ''} data-on-click="sendAnnouncement">${anGoText()}</button></div></div>`;
+}
+function anRightHtml(f) {
+  const chat = f.kind === 'chat', all = !f.pick && !f.sp, items = anItems(), q = (f.q || '').trim().toLowerCase();
+  const found = items.filter(p => anMatch(p, q)), allPicked = found.length > 0 && found.every(p => f.who.has(p.id));
+  const modes = [['all', chat ? 'Все чаты' : 'Всем', all]];
+  if (WS.list.length > 1) modes.push(['spaces', 'Пространства', f.sp]);
+  modes.push(['pick', chat ? 'Выбранные' : 'Выбранным', f.pick]);
+  const nAll = anCount();
+  const body = all ? `<div class="an-lock"><b>${chat ? 'Во все группы и комнаты' : `Получат все ${nAll}`}</b>${chat ? `Строка появится в ${nAll} ${uxPlural(nAll, 'чате', 'чатах', 'чатах')}.` : 'Объявление уйдёт каждому.'} Нажмите «${chat ? 'Выбранные' : 'Выбранным'}», чтобы отметить ${chat ? 'чаты' : 'людей'}.</div>`
+    : f.sp ? `<div class="ws-checks">${WS.list.map(w => `<label class="ua-check"><input type="checkbox" ${f.spSel.has(w.id) ? 'checked' : ''} data-on-change="anSp" data-a-change="${esc(JSON.stringify([w.id, "__checked"]))}">${esc(w.name)}<span>${w.users} ${uxPlural(w.users, 'человек', 'человека', 'человек')}</span></label>`).join('')}</div>
+      <span class="ua-hint">${chat ? 'Строка появится в группах и комнатах, где есть люди из отмеченных пространств' : 'Объявление получат люди из отмеченных пространств'}</span>`
+    : anListHtml();
+  return `<div class="an-half r">
+    <div class="ua-head"><div class="ua-title">${chat ? 'Куда отправить' : 'Кому отправить'}</div>
+      <button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-announcement"]'>✕</button></div>
+    <div class="an-rbar"><div class="an-rhead"><span class="ua-sec-title">${all ? (chat ? 'Во все чаты' : 'Получат все') : f.sp ? 'Пространства' : 'Получатели'}</span>
+        <div class="an-seg">${modes.map(([m, l, on]) => `<button type="button" aria-pressed="${on}" data-on-click="anMode" data-a-click="${esc(JSON.stringify([`${m}`]))}">${l}</button>`).join('')}</div></div>
+      <label class="ux-search" style="min-width:0">${UX_I.search}<input id="an-q" value="${esc(f.q || '')}" placeholder="${chat ? 'Название чата' : 'Имя, логин или тег'}" autocomplete="off" ${f.pick ? '' : 'disabled'} data-on-input="anSearch" data-a-input='["__value"]'></label>
+      ${f.pick ? `<div class="an-bulk"><button type="button" class="btn btn-ghost btn-sm" data-on-click="anSelFound" ${found.length && !allPicked ? '' : 'disabled'}>${q ? 'Выбрать найденных' : 'Выбрать всех'} (${found.length})</button><button type="button" class="btn btn-ghost btn-sm" data-on-click="anUnsel" ${f.who.size ? '' : 'disabled'}>Снять</button>
+        <label class="an-only"><input type="checkbox" ${f.only ? 'checked' : ''} data-on-change="anOnly" data-a-change='["__checked"]'>Только выбранные</label></div>` : ''}</div>
+    <div class="an-rlist">${body}</div>
+    <div class="an-rfoot"><span>${f.sp ? `Выбрано <b>${f.spSel.size}</b> из ${WS.list.length}` : `Выбрано <b>${all ? nAll : f.who.size}</b> из ${all && chat ? nAll : items.length}`}</span>${f.pick && f.who.size ? `<button type="button" class="btn btn-ghost btn-sm" style="margin-left:auto" data-on-click="anClear">Очистить</button>` : ''}</div></div>`;
+}
+function anRenderForm(focusId, resetList) {
+  const f = AN.form, el = document.getElementById('an-form');
+  if (!f || !el) return;
+  const sl = el.querySelector('.an-lbody')?.scrollTop || 0, sr = resetList ? 0 : (el.querySelector('.an-rlist')?.scrollTop || 0);
+  uaRestoreFocus(() => { el.innerHTML = `<div class="an-halves">${anLeftHtml2(f)}${anRightHtml(f)}</div>`; }, focusId);
+  const l = el.querySelector('.an-lbody'), r = el.querySelector('.an-rlist');
+  if (l && sl) l.scrollTop = sl;
+  if (r && sr) r.scrollTop = sr;
 }
 
-function anMode(m) { const f = AN.form; f.pick = m === 'pick'; f.sp = m === 'spaces'; if (f.pick || f.sp) f.more = true; f.err = ''; anRenderForm(); }
+function anMode(m) { const f = AN.form; f.pick = m === 'pick'; f.sp = m === 'spaces'; f.err = ''; anRenderForm(null, true); }
 function anSp(id, on) { const f = AN.form; on ? f.spSel.add(id) : f.spSel.delete(id); f.err = ''; anRenderForm(); }
 function anSet(key, value) {
   const f = AN.form;
   f[key] = value;
-  if (key === 'kind') { f.who = new Set(); f.q = ''; }
-  if (key === 'pick' && value) f.more = true;
+  if (key === 'kind') { f.who = new Set(); f.q = ''; f.only = false; f.lim = 60; }
   f.err = '';
+  anRenderForm(null, key === 'kind');
+}
+function anWhen(k) {
+  const f = AN.form, n = new Date(), at = (dd, h) => Math.floor(new Date(n.getFullYear(), n.getMonth(), n.getDate() + dd, h, 0).getTime() / 1000);
+  annStartAt = k === 'hour' ? Math.floor(Date.now() / 1000) + 3600 : k === 'today' ? at(0, 18) : k === 'tom' ? at(1, 9) : null;
+  f.wk = k; f.err = ''; anRenderForm();
+}
+function anDur(d) { AN.form.duration = d; anRenderForm(); }
+function anPick(id) { const f = AN.form; f.who.has(id) ? f.who.delete(id) : f.who.add(id); f.err = ''; anRenderForm(); }
+function anSearch(v) { const f = AN.form; f.q = v; f.lim = 60; anRenderForm('an-q', true); }
+function anOnly(v) { const f = AN.form; f.only = !!v; f.lim = 60; anRenderForm(null, true); }
+function anMoreList() { AN.form.lim += 60; anRenderForm(); }
+function anSelFound() { const f = AN.form, q = (f.q || '').trim().toLowerCase(); anItems().filter(p => anMatch(p, q)).forEach(p => f.who.add(p.id)); anRenderForm(); }
+function anUnsel() {
+  const f = AN.form, q = (f.q || '').trim().toLowerCase();
+  if (q) anItems().filter(p => anMatch(p, q)).forEach(p => f.who.delete(p.id)); else f.who.clear();
   anRenderForm();
 }
+function anClear() { AN.form.who.clear(); anRenderForm(); }
 
 
 async function sendAnnouncement() {
@@ -7002,22 +7058,15 @@ function dtpApply() {
   // Прошедшее время смысла не имеет: такое объявление уйдёт сразу же
   if (when.getTime() <= Date.now()) { dtpReset(); return; }
   annStartAt = Math.floor(when.getTime() / 1000);
-  document.getElementById('dtp-val').textContent = fmtDateTime(annStartAt);
-  document.getElementById('dtp-reset').style.display = '';
-  document.getElementById('dtp-pop').hidden = true;
-  if (typeof anFootSync === 'function') anFootSync();
+  if (AN.form) { AN.form.wk = 'custom'; AN.form.err = ''; anRenderForm(); }
 }
 
 function dtpReset() {
   annStartAt = null;
   _dtpDay = null;
-  const val = document.getElementById('dtp-val');
-  if (val) val.textContent = 'Сейчас';
-  const reset = document.getElementById('dtp-reset');
-  if (reset) reset.style.display = 'none';
   const pop = document.getElementById('dtp-pop');
   if (pop) pop.hidden = true;
-  if (typeof anFootSync === 'function') anFootSync();
+  if (AN.form) { AN.form.wk = 'now'; anRenderForm(); }
 }
 
 // Клик мимо пикера закрывает его. Перехват (capture), а не всплытие: выбор дня
@@ -7039,7 +7088,6 @@ window.$hm = $hm;
 window.WH_DAYS = WH_DAYS;
 window.alClock = alClock;
 window.anMissing = anMissing;
-window.anMore = anMore;
 window.anNow = anNow;
 window.anSvg = anSvg;
 window.anVerb = anVerb;
