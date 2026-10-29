@@ -1267,14 +1267,15 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
    Размер подстраивается под окно: в узком окне панели встают друг под другом */
 .pa { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .pa-scroll { flex: 1; min-height: 0; display: grid; grid-template-columns: 310px minmax(0, 1fr); }
-.pa-l { display: flex; flex-direction: column; gap: 10px; padding: 6px 18px 16px; overflow-y: auto; min-height: 0; border-right: 1px solid var(--gl-lo); scrollbar-width: none; }
+.pa-l > * { flex-shrink: 0; }
+.pa-l { display: flex; flex-direction: column; gap: 8px; padding: 6px 18px 16px; overflow-y: auto; min-height: 0; border-right: 1px solid var(--gl-lo); scrollbar-width: none; }
 .pa-l::-webkit-scrollbar { display: none; }
 .pa-r { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .pa-rh { flex: none; padding: 6px 20px 12px; }
 .pa-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 14px 14px; overscroll-behavior: contain; scrollbar-width: thin; }
-.pa-btn { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: var(--r-card); background: var(--gl-card); border: 1px solid var(--gl-edge); color: var(--text); font: 600 14px var(--ff, inherit); text-align: left; cursor: pointer; transition: background .2s, filter .2s, transform .35s var(--gl-spring); }
+.pa-btn { display: flex; align-items: center; gap: 12px; padding: 7px 12px; border-radius: var(--r-card); background: var(--gl-card); border: 1px solid var(--gl-edge); color: var(--text); font: 600 13.5px var(--ff, inherit); text-align: left; cursor: pointer; transition: background .2s, filter .2s, transform .35s var(--gl-spring); }
 .pa-btn::after { content: '\203A'; margin-left: auto; font-size: 18px; font-weight: 400; color: var(--muted); }
-.pa-btn svg { width: 44px; height: 44px; padding: 12px; border-radius: 50%; flex: none; background: var(--accent-soft); color: var(--accent-ink); }
+.pa-btn svg { width: 34px; height: 34px; padding: 9px; border-radius: 50%; flex: none; background: var(--accent-soft); color: var(--accent-ink); }
 .pa-btn.pri svg { background: var(--accent-soft); color: var(--accent-ink); }
 .pa-btn.d { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger); }
 .pa-btn.d svg { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
@@ -1283,11 +1284,11 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 .pa-who h2 { margin: 0; max-width: 100%; font-size: 22px; font-weight: 700; letter-spacing: -.01em; overflow-wrap: anywhere; }
 .pa-who p { margin: 0; font-size: 13px; color: var(--text2); }
 .pa-who p.on { color: var(--accent-ink); }
-.pa-acts { display: flex; flex-direction: column; gap: 8px; }
+.pa-acts { display: flex; flex-direction: column; gap: 6px; }
 .pa-btn:hover:not(:disabled) { background: var(--gl-card2); }
 .pa-btn:active:not(:disabled) { transform: scale(.97); }
 .pa-btn:disabled { opacity: .5; cursor: default; }
-.pa-seg { position: relative; display: flex; gap: 2px; width: fit-content; max-width: 100%; padding: 3px; border-radius: 99px; background: var(--gl-hov); box-shadow: inset 0 1px 3px var(--gl-lo); overflow-x: auto; scrollbar-width: none; }
+.pa-seg { position: relative; display: flex; gap: 2px; width: fit-content; max-width: 100%; padding: 3px; border-radius: 99px; background: var(--gl-hov); box-shadow: inset 0 1px 3px var(--gl-lo); overflow: visible; }
 .pa-seg::-webkit-scrollbar { display: none; }
 .pa-seg button { position: relative; z-index: 1; height: 30px; padding: 0 14px; border: 0; border-radius: 99px; background: none; color: var(--text2); font: 600 12.5px var(--ff, inherit); white-space: nowrap; cursor: pointer; transition: color .25s; }
 .pa-seg button.on { color: var(--text); background: var(--gl2); box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px var(--gl-shadow); }
@@ -1299,15 +1300,15 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
   .pa-r { min-height: 420px; }
 }
 #pf-modal .pa-l .grp, #gm-modal.gmm .pa-l .grp, #pf-modal .pa-body .grp, #gm-modal.gmm .pa-body .grp { margin-bottom: 0; }
-#pf-modal .pa-l .cell, #gm-modal.gmm .pa-l .cell { min-height: 40px; padding: 6px 14px; }
+#pf-modal .pa-l .cell, #gm-modal.gmm .pa-l .cell { min-height: 34px; padding: 5px 14px; font-size: 13.5px; }
 #gm-modal.gmm .pa-who .pgav { width: 88px; height: 88px; margin-bottom: 8px; }
 #gm-modal.gmm .pa-who .pgav .av { width: 88px; height: 88px; font-size: 30px; }
 #pf-modal .pa-body .grp + .gl, #gm-modal.gmm .pa-body .grp + .gl { margin-top: 14px; }
 @media (max-height: 700px) {
   .pa-who .pf-av, #gm-modal.gmm .pa-who .pgav, #gm-modal.gmm .pa-who .pgav .av { width: 64px; height: 64px; font-size: 22px; }
   .pa-who h2 { font-size: 19px; }
-  .pa-btn { padding: 8px 12px; }
-  .pa-btn svg { width: 36px; height: 36px; padding: 9px; }
+  .pa-btn { padding: 5px 10px; }
+  .pa-btn svg { width: 30px; height: 30px; padding: 8px; }
 }
 #pf-modal .glass { background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl-card); border: 1px solid var(--gl-edge);
   box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 8px 22px var(--gl-shadow); }
@@ -1377,7 +1378,7 @@ html:not(.dark) .modal, .modal { box-shadow: inset 0 1px 0 var(--gl-hi), inset 0
 /* Блоки, разделы и поиск в окнах профиля — как карточки и поле поиска окна «Новый чат»: без наложенного блика и тени */
 #pf-modal .glass, #gm-modal.gmm .glass { background: var(--gl-card); box-shadow: none; }
 #pf-modal .cell, #gm-modal.gmm .cell { font-size: 14px; }
-#pf-modal .cell .cv, #gm-modal.gmm .cell .cv { font-size: 13.5px; }
+#pf-modal .cell .cv, #gm-modal.gmm .cell .cv { font-size: 13px; }
 #pf-modal .mini b, #gm-modal.gmm .mini b { font-size: 14px; }
 #pf-modal .mini small, #gm-modal.gmm .mini small { font-size: 12.5px; }
 #gm-modal.gmm .srch { height: 40px; border-radius: var(--r-pill); padding: 0 14px; font-size: 14px; background: var(--gl-hov); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 3px var(--gl-lo); }
