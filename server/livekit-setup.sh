@@ -108,6 +108,17 @@ IP="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src
 [ -n "$IP" ] || IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 [ -n "$IP" ] || fail "Не удалось определить адрес сервера в сети"
 
+# Ждём, пока LiveKit начнёт отвечать на 7880: на слабом сервере (1 процессор) во время установки старт идёт больше минуты
+wait_lk() {
+  local i
+  for i in $(seq 1 120); do
+    wget -qO- -T 2 -t 1 http://127.0.0.1:7880/ >/dev/null 2>&1 && return 0
+    [ $((i % 20)) -eq 0 ] && log "LiveKit ещё запускается (сервер занят), жду…"
+    sleep 1
+  done
+  return 1
+}
+
 # Кто достучится до сигнального порта 7880: в локальной сети и за внешним прокси — все, у Caddy на этом же сервере — только он
 if [ "$MODE" = lan ]; then
   BIND='"0.0.0.0"'; RTC_IP="  use_external_ip: false
@@ -117,6 +128,14 @@ elif [ "$MODE" = proxy ]; then
   RTC_IP="  use_external_ip: true"
 else
   BIND='"127.0.0.1"'; RTC_IP="  use_external_ip: true"
+  # Домен должен указывать на этот сервер: его адрес и объявляем клиентам. Так LiveKit не зависит от STUN (на части хостингов
+  # исходящий UDP закрыт, и LiveKit при старте падает с «could not resolve external IP»)
+  PUBIP="$(getent ahostsv4 "$DOMAIN" 2>/dev/null | awk 'NR==1{print $1}')"
+  if echo "$PUBIP" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' && ! echo "$PUBIP" | grep -Eq '^(10\.|127\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|169\.254\.)'; then
+    RTC_IP="  use_external_ip: false
+  node_ip: $PUBIP"
+    log "Внешний адрес для звонков: $PUBIP (из домена $DOMAIN)"
+  fi
 fi
 umask 077
 cat > "$YAML" <<EOF
@@ -153,8 +172,7 @@ step 55 5 "Запуск службы"
 run systemctl daemon-reload
 run systemctl enable livekit || fail "Не удалось включить службу livekit"
 run systemctl restart livekit || fail "Не удалось запустить службу livekit"
-for _ in $(seq 1 20); do wget -qO- -T 2 -t 1 http://127.0.0.1:7880/ >/dev/null 2>&1 && break; sleep 1; done
-wget -qO- -T 2 -t 1 http://127.0.0.1:7880/ >/dev/null 2>&1 || { journalctl -u livekit -n 8 --no-pager >>"$LOG_TMP" 2>&1; fail "LiveKit запущен, но не отвечает на порту 7880"; }
+wait_lk || { journalctl -u livekit -n 15 --no-pager >>"$LOG_TMP" 2>&1; fail "LiveKit запущен, но не отвечает на порту 7880"; }
 
 # ── 6. Сертификат (Caddy) ───────────────────────────────────────────────────
 if [ "$MODE" = public ]; then
@@ -236,7 +254,7 @@ WantedBy=timers.target
 EOF
     run systemctl daemon-reload; run systemctl enable --now livekit-renew.timer
     run systemctl restart livekit || fail "LiveKit не запустился с TURN"
-    for _ in $(seq 1 20); do wget -qO- -T 2 -t 1 http://127.0.0.1:7880/ >/dev/null 2>&1 && break; sleep 1; done
+    wait_lk
     log "TURN включён: 5349/tcp (TLS) и 3478/udp"
   else
     log "Файлы сертификата Caddy не найдены: TURN по TLS не включён"
@@ -246,7 +264,7 @@ elif [ "$MODE" = proxy ]; then
   # За прокси сертификата на этой машине нет: TURN только по UDP
   printf 'turn:\n  enabled: true\n  udp_port: 3478\n' >> "$YAML"
   run systemctl restart livekit || fail "LiveKit не запустился с TURN"
-  for _ in $(seq 1 20); do wget -qO- -T 2 -t 1 http://127.0.0.1:7880/ >/dev/null 2>&1 && break; sleep 1; done
+  wait_lk
   log "Настройте у прокси домен $DOMAIN: проксирование на http://$([ "$TLS" = local ] && echo 127.0.0.1 || echo "$IP"):7880 с поддержкой WebSocket"
 else
   step 68 6 "Сертификат не нужен (локальная сеть)"
