@@ -1617,9 +1617,10 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 @keyframes dc-ring{0%{transform:scale(.5);opacity:.7}100%{transform:scale(1.5);opacity:0}}
 .cdv-sub{font-size:12.5px;color:var(--dv-muted)}
 .cdv-sub b{color:var(--dv-text);font-weight:600}.cdv-sub i{font-style:normal}
-.dc-seg{display:inline-flex;gap:2px;padding:3px;border-radius:11px;background:var(--dv-surface2);border:1px solid var(--dv-border)}
+.dc-seg{display:inline-flex;gap:2px;padding:3px;border-radius:11px;background:var(--dv-surface);border:1px solid var(--dv-border)}
 .dc-seg button{padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;color:var(--dv-muted);transition:background .2s,color .2s}
-.dc-seg button[aria-pressed=true]{background:var(--dv-surface);color:var(--dv-text);box-shadow:0 1px 2px rgba(0,0,0,.14)}
+.dc-seg button:hover{color:var(--dv-text)}
+.dc-seg button[aria-pressed=true]{background:var(--dv-accent-soft);color:var(--dv-accent)}
 .cdv-tg{width:32px;height:32px;border-radius:10px;border:1px solid var(--dv-border);background:var(--dv-surface);display:grid;place-items:center;color:var(--dv-muted);transition:transform .3s,background .2s}
 .cdv-tg:hover{background:var(--dv-surface2);color:var(--dv-text)}.cdv-tg[aria-expanded=true]{transform:rotate(180deg)}
 
@@ -2849,7 +2850,7 @@ return 'OK';</pre>
 <div id="toast-container"></div>
 
 <script src="/chat/emoji-font.js?v=1"></script>
-<script src="/shared/slidesel.js"></script>
+<script src="/shared/slidesel.js?v=2"></script>
 <script src="/shared/guestlinks.js"></script>
 <script src="act.js"></script>
 <script src="actions.js"></script>

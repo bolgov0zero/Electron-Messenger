@@ -5901,6 +5901,10 @@ function dcToggle(id, st, key) {
   tg.setAttribute('aria-label', st.open ? 'Свернуть' : 'Развернуть');
   return true;
 }
+// Чип периода переключаем сразу, до ответа сервера: плашка выделения плавно переезжает, а цифры обновятся следом
+function dcPress(id, key) {
+  document.querySelectorAll(`#${id} .dc-seg button`).forEach(b => { try { if (JSON.parse(b.dataset.aClick || '[]')[0] in DC_PER) b.setAttribute('aria-pressed', String(JSON.parse(b.dataset.aClick)[0] === key)); } catch {} });
+}
 const dcCycle = p => { const k = Object.keys(DC_PER); return k[(k.indexOf(p) + 1) % k.length]; };
 const dcMeter = (pct, color = '', cls = '') => `<div class="dc-meter ${cls}"><i style="width:${Math.max(0, Math.min(100, pct))}%${color ? ';background:' + color : ''}"></i></div>`;
 const dcMin = s => `${Math.floor(s / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;
@@ -5973,7 +5977,7 @@ function fdvRender() {
 }
 function fdvToggle() { if (!dcToggle('dv-fed', FDV, 'fdv-open')) fdvRender(); }
 function fdvMetric(m) { FDV.metric = m; fdvRender(); }
-function fdvPeriod(p) { FDV.period = p; try { localStorage.setItem('fdv-period', p); } catch {} fdvLoad(); }
+function fdvPeriod(p) { FDV.period = p; dcPress('dv-fed', p); try { localStorage.setItem('fdv-period', p); } catch {} fdvLoad(); }
 function fdvCycle() { fdvPeriod(dcCycle(FDV.period)); }
 
 /* ── Звонки ── */
@@ -6042,7 +6046,7 @@ function cdvRender() {
 }
 function cdvToggle() { if (!dcToggle('dv-calls', CDV, 'cdv-open')) cdvRender(); }
 function cdvMetric(m) { CDV.metric = m; cdvRender(); }
-function cdvPeriod(p) { CDV.period = p; try { localStorage.setItem('cdv-period', p); } catch {} cdvLoad(); }
+function cdvPeriod(p) { CDV.period = p; dcPress('dv-calls', p); try { localStorage.setItem('cdv-period', p); } catch {} cdvLoad(); }
 function cdvCycle() { cdvPeriod(dcCycle(CDV.period)); }
 
 /* ── ФЕДЕРАЦИИ ── */

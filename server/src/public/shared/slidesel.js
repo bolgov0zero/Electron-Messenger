@@ -47,7 +47,7 @@
     { b: '.ub-sort', i: 'button', o: A },
     { b: '.xp-tabs', i: '.xp-tab', o: '[aria-selected="true"]' },
     { b: '.ux-chips', i: '.ux-chip', o: A },
-    { b: '.fdv-tabs', i: 'button', o: A },
+    { b: '.dc-seg', i: 'button', o: A },   // период и вид графика в блоках «Звонки» и «Федерация» на главной
     { b: '.ua-roles', i: '.ua-role-opt', o: '[aria-checked="true"]', above: true },
     { b: '.ub-tiles', i: '.ub-tile', o: A, above: true },
     { b: 'nav', i: '.nav-item', o: '.active' }
