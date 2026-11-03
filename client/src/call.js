@@ -197,9 +197,11 @@
       // Нет микрофона или доступа к нему — не повод бросать звонок: человек подключается как слушатель и видит собеседника
       const micOk = await window.callApi.mediaAccess('microphone');
       room = new Room({
-        adaptiveStream: true, dynacast: true,
+        // В звонке двоих без слоёв качества: собеседник всегда получает полную картинку; слои нужны только в группе
+        adaptiveStream: !!init.group, dynacast: true,
         audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         videoCaptureDefaults: { resolution: { width: 1280, height: 720, frameRate: 30 } },
+        publishDefaults: { simulcast: !!init.group, audioPreset: { maxBitrate: 40000 }, videoEncoding: init.group ? undefined : { maxBitrate: 3000000, maxFramerate: 30 } },
       });
       room
         .on(RoomEvent.TrackSubscribed, (track, pub, p) => {

@@ -120,6 +120,20 @@
     play(); ringT = setInterval(play, kind === 'in' ? 2400 : 3500);
   }
   // Звуки вызова играет WebAudio: после вызова контекст закрываем, иначе на iPhone он держит свой маршрут звука и голос собеседника идёт сразу в два динамика
+  // Режим «Звук через Web Audio» (для iPhone и iPad, если голос идёт сразу из двух динамиков): удалённый звук играет не элементом audio, а через AudioContext.
+  // Контекст создаём при нажатии (до запроса микрофона), как советуют разработчики в багах WebKit про маршрут звука
+  var waCtx = null, waNodes = {};
+  function waOn() { return lget('wa'); }
+  function waInit() { if (!waOn()) return; try { waCtx = waCtx || new (window.AudioContext || window.webkitAudioContext)(); if (waCtx.state === 'suspended') waCtx.resume(); } catch (e) {} }
+  function waAttach(track) {
+    try {
+      waInit(); if (!waCtx) return false;
+      var src = waCtx.createMediaStreamSource(new MediaStream([track.mediaStreamTrack])), g = waCtx.createGain();
+      src.connect(g); g.connect(waCtx.destination); waNodes[track.sid] = [src, g]; return true;
+    } catch (e) { return false; }
+  }
+  function waDetach(sid) { var n = waNodes[sid]; if (n) { try { n[0].disconnect(); n[1].disconnect(); } catch (e) {} delete waNodes[sid]; } }
+  function waClose() { Object.keys(waNodes).forEach(waDetach); try { if (waCtx) waCtx.close(); } catch (e) {} waCtx = null; }
   function closeAc() { try { if (ac) ac.close(); } catch (e) {} ac = null; }
   // Забытые слои звонка (после сна страницы, после уведомления) перехватывают нажатия на весь экран: снимаем всё, чего уже нет в состоянии
   function sweep() {
@@ -134,6 +148,7 @@
   // Разрешение на микрофон (и камеру) просим сразу при нажатии «Позвонить» или «Принять», пока человек смотрит на экран: в Safari оно запрашивается
   // заново при каждой загрузке страницы, и запрос посреди соединения легко пропустить, тогда звонок так и не соединяется
   async function ensureMedia(video) {
+    waInit();
     if (!hasMedia()) return true;
     try { var s = await navigator.mediaDevices.getUserMedia({ audio: true }); s.getTracks().forEach(function (t) { t.stop(); }); }
     catch (e) {
@@ -403,11 +418,11 @@
       var rep = await room.engine.pcManager.publisher.getStats(), pair = null, byId = {};
       rep.forEach(function (v) { byId[v.id] = v; if (v.type === 'candidate-pair' && (v.selected || (v.nominated && v.state === 'succeeded')) && (!pair || v.selected)) pair = v; });
       if (pair) { var lc = byId[pair.localCandidateId], rc = byId[pair.remoteCandidateId];
-        L.push('Путь: ' + String((rc && rc.protocol) || (lc && lc.protocol) || '?').toUpperCase() + ', ' + ({ host: 'напрямую', srflx: 'через NAT', prflx: 'через NAT', relay: 'через TURN' }[(lc && lc.candidateType)] || (lc && lc.candidateType) || '?') + ', задержка ' + Math.round((pair.currentRoundTripTime || 0) * 1000) + ' мс'); }
+        L.push('Путь: ' + (lc && lc.relayProtocol ? 'до сервера связи ' + ({ tls: 'TLS (TCP)', tcp: 'TCP', udp: 'UDP' }[lc.relayProtocol] || lc.relayProtocol) : String((rc && rc.protocol) || (lc && lc.protocol) || '?').toUpperCase()) + ', ' + ({ host: 'напрямую', srflx: 'через NAT', prflx: 'через NAT', relay: 'через TURN' }[(lc && lc.candidateType)] || (lc && lc.candidateType) || '?') + ', задержка ' + Math.round((pair.currentRoundTripTime || 0) * 1000) + ' мс'); }
     } catch (e) {}
-    L.push('Связь: ' + (tcpMode ? (tcpUsed ? 'принудительно через TCP (' + tcpUrls + ')' : 'TCP включён, но у сервера нет TURN по TLS') : 'по возможности UDP'));
+    L.push('Связь: ' + (tcpMode ? (tcpUsed ? 'через TCP (' + tcpUrls + ')' : 'у сервера нет TURN по TLS, идёт по UDP') : 'по UDP (выбрано в настройках или сервер без wss://)'));
     L.push('ICE: ' + (iceSeen.length ? iceSeen.join(' ; ') : 'соединения не создавались') + '  [' + CLV + ']');
-    try { if (navigator.audioSession) L.push('Звук: сеанс «' + navigator.audioSession.type + '»'); } catch (e) {}
+    try { L.push('Звук: ' + (waOn() ? 'через Web Audio (' + (waCtx ? waCtx.state : 'нет контекста') + ')' : 'через элемент audio') + (navigator.audioSession ? ', сеанс «' + navigator.audioSession.type + '»' : '')); } catch (e) {}
     d.textContent = L.join('\n');
   }
 
@@ -424,16 +439,18 @@
     if (location.protocol === 'https:' && /^ws:/i.test(url)) throw new Error('Сервер звонков работает без сертификата (ws://): в браузере звонки доступны только с wss://');
     LK = await loadLK(); ended = false;
     closeAc();
-    tcpMode = lget('tcp'); tcpUsed = false; tcpUrls = ''; iceSeen = []; patchPc();
+    // По умолчанию через TCP (TURN по TLS): на Wi-Fi с потерями UDP видео рассыпается. Только для wss:// (при ws:// TURN по TLS не бывает); отключается в настройках
+    tcpMode = !lget('udp') && /^wss:/i.test(String(url)); tcpUsed = false; tcpUrls = ''; iceSeen = []; patchPc();
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     ensureVideos();
     var R = LK.RoomEvent, T = LK.Track;
     // В звонке двоих без слоёв качества: приёмник всегда получает полную картинку, а передатчик не гоняет три кодировщика (на телефоне это тяжело, и картинка падала до 180×320 при 7 к/с). Слои нужны только в группе
-    room = new LK.Room({ adaptiveStream: !!c.group, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: H.mobile ? { width: 960, height: 540, frameRate: 24 } : { width: 1280, height: 720, frameRate: 30 }, deviceId: devOpt('videoin') }, publishDefaults: { simulcast: !!c.group, videoCodec: isIOS ? 'h264' : undefined, videoEncoding: H.mobile ? { maxBitrate: 1500000, maxFramerate: 24 } : undefined } });
+    room = new LK.Room({ adaptiveStream: !!c.group, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: H.mobile && c.group ? { width: 960, height: 540, frameRate: 24 } : { width: 1280, height: 720, frameRate: 30 }, deviceId: devOpt('videoin') }, publishDefaults: { simulcast: !!c.group, videoCodec: isIOS ? 'h264' : undefined, audioPreset: { maxBitrate: 40000 }, videoEncoding: !c.group ? { maxBitrate: 3000000, maxFramerate: 30 } : (H.mobile ? { maxBitrate: 1200000, maxFramerate: 24 } : undefined) } });
     room.on(R.TrackSubscribed, function (track) {
+      if (track.kind === T.Kind.Audio && waOn() && waAttach(track)) { remoteState(); return; }
       if (track.kind === T.Kind.Audio) { document.querySelectorAll('audio[data-sid="' + track.sid + '"]').forEach(function (o) { o.remove(); }); var el = track.attach(); el.dataset.cl = '1'; el.dataset.sid = track.sid; el.setAttribute('playsinline', ''); document.body.appendChild(el); try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {} el.play && el.play().catch(function () {}); }
       remoteState();
-    }).on(R.TrackUnsubscribed, function (track) { var els = track.detach(); if (track.kind === T.Kind.Audio) els.forEach(function (el) { el.remove(); }); remoteState(); })
+    }).on(R.TrackUnsubscribed, function (track) { waDetach(track.sid); var els = track.detach(); if (track.kind === T.Kind.Audio) els.forEach(function (el) { el.remove(); }); remoteState(); })
       .on(R.TrackMuted, remoteState).on(R.TrackUnmuted, remoteState).on(R.TrackUnpublished, function () { setTimeout(remoteState, 0); })
       .on(R.ParticipantConnected, function () { liveNow(); remoteState(); })
       .on(R.ParticipantDisconnected, function () { if (!ended && st.call) { if (st.call.group) render(); else hangup(); } })
@@ -503,6 +520,7 @@
     try { if (room) await room.disconnect(); } catch (e) {}
     room = null; tvids = {}; speaking = {};
     document.querySelectorAll('audio[data-cl]').forEach(function (a) { a.remove(); });
+    waClose();
     try { if (navigator.audioSession) navigator.audioSession.type = 'auto'; } catch (e) {}
     if (lv) lv.srcObject = null; if (rv) rv.srcObject = null;
   }
@@ -645,7 +663,7 @@
   // Свои настройки этого устройства (не на сервере): через TCP
   function lget(k) { try { return localStorage.getItem('cl_' + k) === '1'; } catch (e) { return false; } }
   function lset(k, v) { try { if (v) localStorage.setItem('cl_' + k, '1'); else localStorage.removeItem('cl_' + k); } catch (e) {} }
-  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'tcp-5';
+  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'tcp-7';
   // Только TURN по TLS (TCP) и запрет прямых путей. LiveKit создаёт соединение раньше, чем получает от сервера список ICE-серверов, и
   // потом задаёт его через setConfiguration, поэтому подменяем и конструктор, и setConfiguration. Если у сервера нет TURN по TLS, идём как обычно
   function tcpize(cfg) {
@@ -743,6 +761,6 @@
     if (typeof H.onConfig === 'function') H.onConfig(st);
     return st.prefs;
   }
-  window.Calls = { available: function () { return st.enabled; }, prefs: function () { return st.prefs; }, setPref: setPref, init: init, load: load, onWs: onWs, canCall: canCall, btns: btns, start: start, state: st, local: { get: lget, set: lset }, devices: { select: devSelect }, media: { chip: mediaChip, refresh: mediaRefresh, ask: mediaAsk, get: function () { return { audio: media.audio, video: media.video }; }, onChange: function (f) { media.subs.push(f); } } };
+  window.Calls = { available: function () { return st.enabled; }, prefs: function () { return st.prefs; }, setPref: setPref, init: init, load: load, onWs: onWs, canCall: canCall, btns: btns, start: start, state: st, local: { get: lget, set: lset }, isIOS: function () { return isIOS; }, devices: { select: devSelect }, media: { chip: mediaChip, refresh: mediaRefresh, ask: mediaAsk, get: function () { return { audio: media.audio, video: media.video }; }, onChange: function (f) { media.subs.push(f); } } };
   window.callStart = function (chatId, video) { start(Number(chatId), !!video); };
 })();

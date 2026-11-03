@@ -190,7 +190,7 @@
     if (st.call) return toast(ERR.in_call);
     const r = await api('POST', '/calls/group/join', { chat_id: chatId, video: !!video });
     if (!r || r.error) return toast({ full: 'В звонке уже много людей' }[r?.code] || r?.error || 'Не удалось присоединиться');
-    const o = await el.callOpen({ devices: devAll(), tcp: localStorage.getItem('cl_tcp') === '1', url: r.url, certFp: r.cert_fp, token: r.token, video: !!video, group: true, outgoing: false, peer: { id: 0, name: name || 'Группа' }, theme: theme() });
+    const o = await el.callOpen({ devices: devAll(), tcp: localStorage.getItem('cl_udp') !== '1' && /^wss:/i.test(String(r.url)), url: r.url, certFp: r.cert_fp, token: r.token, video: !!video, group: true, outgoing: false, peer: { id: 0, name: name || 'Группа' }, theme: theme() });
     if (!o?.ok) { api('POST', `/calls/group/${r.call_id}/leave`); return toast(ERR.in_call); }
     st.call = { id: r.call_id, chatId, peer: { id: 0, name: name || 'Группа' }, group: true, video: !!video, outgoing: false, phase: 'connecting', mic: true, cam: !!video, since: 0 };
     dismissIncoming(); renderDock();
@@ -202,7 +202,7 @@
     if (st.call || st.incoming) return toast(ERR.in_call);
     const r = await api('POST', '/calls/start', { chat_id: chatId, video: !!video });
     if (!r || r.error) return toast(ERR[r?.code] || r?.error || 'Не удалось начать звонок');
-    const o = await el.callOpen({ devices: devAll(), tcp: localStorage.getItem('cl_tcp') === '1', canAdd: true, url: r.url, certFp: r.cert_fp, token: r.token, video: !!video, outgoing: true, peer: r.peer, theme: theme() });
+    const o = await el.callOpen({ devices: devAll(), tcp: localStorage.getItem('cl_udp') !== '1' && /^wss:/i.test(String(r.url)), canAdd: true, url: r.url, certFp: r.cert_fp, token: r.token, video: !!video, outgoing: true, peer: r.peer, theme: theme() });
     if (!o?.ok) { api('POST', `/calls/${r.call_id}/end`); return toast(ERR.in_call); }
     st.call = { id: r.call_id, chatId, peer: r.peer, video: !!video, outgoing: true, phase: 'ringing', mic: true, cam: !!video, since: 0 };
     ring('out'); renderDock();
@@ -215,7 +215,7 @@
     dismissIncoming();
     if (!r || r.error) return toast('Звонок уже завершён');
     const cf = !!(r.group && r.conf), peer = cf ? { id: 0, name: 'Групповой звонок' } : inc.from;
-    const o = await el.callOpen({ devices: devAll(), tcp: localStorage.getItem('cl_tcp') === '1', url: r.url, certFp: r.cert_fp, token: r.token, video: !!withVideo, outgoing: false, group: cf, canAdd: true, peer, theme: theme() });
+    const o = await el.callOpen({ devices: devAll(), tcp: localStorage.getItem('cl_udp') !== '1' && /^wss:/i.test(String(r.url)), url: r.url, certFp: r.cert_fp, token: r.token, video: !!withVideo, outgoing: false, group: cf, canAdd: true, peer, theme: theme() });
     if (!o?.ok) { api('POST', `/calls/${inc.call_id}/end`); return toast(ERR.in_call); }
     st.call = { id: inc.call_id, chatId: inc.chat_id, peer, group: cf, conf: cf, video: !!withVideo, outgoing: false, phase: 'connecting', mic: true, cam: !!withVideo, since: 0 };
     renderDock();
