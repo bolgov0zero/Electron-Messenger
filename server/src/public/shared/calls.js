@@ -406,6 +406,7 @@
         L.push('Путь: ' + String((rc && rc.protocol) || (lc && lc.protocol) || '?').toUpperCase() + ', ' + ({ host: 'напрямую', srflx: 'через NAT', prflx: 'через NAT', relay: 'через TURN' }[(lc && lc.candidateType)] || (lc && lc.candidateType) || '?') + ', задержка ' + Math.round((pair.currentRoundTripTime || 0) * 1000) + ' мс'); }
     } catch (e) {}
     L.push('Связь: ' + (tcpMode ? (tcpUsed ? 'принудительно через TCP (' + tcpUrls + ')' : 'TCP включён, но у сервера нет TURN по TLS') : 'по возможности UDP'));
+    L.push('ICE: ' + (iceSeen.length ? iceSeen.join(' ; ') : 'соединения не создавались') + '  [' + CLV + ']');
     try { if (navigator.audioSession) L.push('Звук: сеанс «' + navigator.audioSession.type + '»'); } catch (e) {}
     d.textContent = L.join('\n');
   }
@@ -423,7 +424,7 @@
     if (location.protocol === 'https:' && /^ws:/i.test(url)) throw new Error('Сервер звонков работает без сертификата (ws://): в браузере звонки доступны только с wss://');
     LK = await loadLK(); ended = false;
     closeAc();
-    tcpMode = lget('tcp'); tcpUsed = false; tcpUrls = ''; patchPc();
+    tcpMode = lget('tcp'); tcpUsed = false; tcpUrls = ''; iceSeen = []; patchPc();
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     ensureVideos();
     var R = LK.RoomEvent, T = LK.Track;
@@ -644,11 +645,12 @@
   // Свои настройки этого устройства (не на сервере): через TCP
   function lget(k) { try { return localStorage.getItem('cl_' + k) === '1'; } catch (e) { return false; } }
   function lset(k, v) { try { if (v) localStorage.setItem('cl_' + k, '1'); else localStorage.removeItem('cl_' + k); } catch (e) {} }
-  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false;
+  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'tcp-4';
   function patchPc() {
     if (pcPatched || !window.RTCPeerConnection) return; pcPatched = true;
     var O = window.RTCPeerConnection;
     var N = function (cfg, c) {
+      try { iceSeen.push(cfg && cfg.iceServers ? cfg.iceServers.map(function (s) { return [].concat(s.urls || []).join(' '); }).join(' | ') || 'без серверов' : 'без настроек'); if (iceSeen.length > 4) iceSeen.shift(); } catch (e) {}
       if (tcpMode && cfg && cfg.iceServers) {
         // LiveKit объявляет TURN по TLS на порту 443 (за балансировщиком), а у нас он слушает 5349: пробуем оба адреса
         var srv = cfg.iceServers.map(function (s) {
