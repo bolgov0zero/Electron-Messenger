@@ -141,8 +141,12 @@
   const findEl = src => { for (const e of document.querySelectorAll('.vm[data-vsrc]')) if (e.dataset.vsrc === src) return e; return null; };
   function paint(el, pos, playing) {
     if (!el) return;
-    const dur = Number(el.dataset.vdur) || 1, bars = el.querySelectorAll('.wv i'), k = Math.floor(Math.min(1, pos / dur) * bars.length);
-    bars.forEach((b, i) => { b.classList.toggle('d', i < k); b.classList.toggle('cur', playing && i === k); });
+    // Заливка идёт непрерывно: каждый столбик закрашивается на свою долю (--f 0..1), а не целиком, поэтому по волне заливка скользит плавно
+    const dur = Number(el.dataset.vdur) || 1, bars = el.querySelectorAll('.wv i'), x = Math.min(1, pos / dur) * bars.length, k = Math.floor(x);
+    bars.forEach((b, i) => {
+      const f = i < k ? 1 : i === k ? +(x - k).toFixed(3) : 0;
+      if (b._f !== f) { b._f = f; b.style.setProperty('--f', f); }
+    });
     el.classList.toggle('playing', playing);
     if (playing || pos > 0) el.classList.add('act'); else el.classList.remove('act');
     const du = el.querySelector('.du'); if (du) du.textContent = playing || pos > 0 ? fmt(pos) : fmt(dur);
@@ -155,6 +159,9 @@
   function ensureAudio() {
     if (audio) return audio;
     audio = new Audio(); audio.preload = 'auto';
+    // timeupdate приходит раз в четверть секунды, для плавной заливки положение читаем на каждом кадре
+    const frame = () => { if (cur && audio && !audio.paused) { paint(findEl(cur.src), audio.currentTime, true); requestAnimationFrame(frame); } };
+    audio.addEventListener('playing', () => requestAnimationFrame(frame));
     audio.addEventListener('timeupdate', () => { if (cur) paint(findEl(cur.src), audio.currentTime, !audio.paused); });
     audio.addEventListener('ended', () => { const el = cur && findEl(cur.src); cur = null; paint(el, 0, false); });
     audio.addEventListener('pause', () => { if (cur && !audio.ended) paint(findEl(cur.src), audio.currentTime, false); });
