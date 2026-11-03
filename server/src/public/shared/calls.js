@@ -54,7 +54,7 @@
     '.cl-win{position:fixed;z-index:100001;display:flex;flex-direction:column;overflow:hidden;color:var(--text);background:var(--gl-pop,var(--gl2,var(--modal-bg,#1e252d)));border:1px solid var(--gl-edge,rgba(255,255,255,.3));-webkit-backdrop-filter:blur(32px) saturate(190%);backdrop-filter:blur(32px) saturate(190%)}' +
     '.cl-win.web{inset:12px;border-radius:30px;box-shadow:0 30px 80px rgba(0,0,0,.45)}.cl-win.mob{inset:0;border-radius:0;background:var(--gl-base,var(--bg,#12171d))}' +
     '.cl-dim{position:fixed;inset:0;z-index:100000;background:var(--scrim,rgba(0,0,0,.4));-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}' +
-    '.cl-hd{height:48px;flex:none;display:grid;grid-template-columns:150px 1fr 150px;align-items:center;padding:0 14px}.cl-win.mob .cl-hd{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:6;height:46px;grid-template-columns:48px 1fr 48px;padding:0 12px}' +
+    '.cl-hd{height:48px;flex:none;display:grid;grid-template-columns:150px 1fr 150px;align-items:center;padding:0 14px}.cl-win.mob .cl-hd{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 22px);z-index:6;height:46px;grid-template-columns:48px 1fr 48px;padding:0 12px}' +
     '.cl-hd .c{text-align:center;min-width:0}.cl-hd b{font-size:13.5px;font-weight:700}.cl-hd small{font-size:12.5px;font-weight:600;margin-left:8px;color:var(--accent-ink,var(--accent));font-variant-numeric:tabular-nums}.cl-win.mob.v .cl-hd .c{color:#fff}.cl-win.mob.v .cl-hd small{color:#fff;opacity:.85}.cl-win.mob .cl-hd .c b,.cl-win.mob .cl-hd .c small{display:block;margin:0}' +
     '.cl-stage{position:absolute;left:12px;right:12px;top:48px;bottom:12px}.cl-win.mob .cl-stage{inset:0}' +
     '.cl-remote{position:absolute;inset:0;border-radius:22px;overflow:hidden;background:#0d1217;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}.cl-win.mob .cl-remote{border-radius:0}' +
@@ -63,7 +63,7 @@
     '.cl-ph[hidden]{display:none}' +
     '.cl-ph .av{width:min(30vmin,180px)!important;height:min(30vmin,180px)!important;font-size:min(10vmin,60px)!important}' +
     '.cl-pip{position:absolute;right:16px;bottom:96px;width:min(220px,28%);aspect-ratio:16/10;border-radius:16px;overflow:hidden;z-index:4;background:#0d1217;box-shadow:0 0 0 2px rgba(255,255,255,.4),0 12px 30px rgba(0,0,0,.4)}' +
-    '.cl-win.mob .cl-pip{right:14px;top:calc(env(safe-area-inset-top,0px) + 66px);bottom:auto;width:100px;height:136px;aspect-ratio:auto;border-radius:20px}.cl-pip video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.cl-pip video.rear,.cl-tile video.mirror.rear{transform:none}' +
+    '.cl-win.mob .cl-pip{right:14px;top:calc(env(safe-area-inset-top,0px) + 80px);bottom:auto;width:100px;height:136px;aspect-ratio:auto;border-radius:20px}.cl-pip video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.cl-pip video.rear,.cl-tile video.mirror.rear{transform:none}' +
     '.cl-vg{background:rgba(14,20,26,.46);-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);border:1px solid rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}' +
     '.cl-chip{position:absolute;left:12px;top:12px;height:28px;padding:0 12px;border-radius:999px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#fff;z-index:3;white-space:nowrap}.cl-win.mob .cl-chip{display:none}' +
     '.cl-ctrls{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:8px;border-radius:999px;z-index:10}.cl-win.mob .cl-ctrls{bottom:calc(env(safe-area-inset-bottom,0px) + 24px)}' +
@@ -77,13 +77,13 @@
     '.cl-full .nm{font-size:30px;font-weight:700;letter-spacing:-.02em;margin-top:34px}.cl-full .sub{font-size:15px;color:var(--text2);margin-top:6px;font-variant-numeric:tabular-nums}.cl-full.dark .sub{color:rgba(255,255,255,.78)}' +
     '.cl-acts{display:flex;justify-content:center;gap:34px;width:100%}.cl-win .cl-acts{gap:8px;padding:0 6px;box-sizing:border-box}.cl-win .cl-mb{flex:1 1 0;min-width:0;max-width:76px;font-size:11.5px;white-space:nowrap}.cl-win .cl-mb .rnd.sq{width:58px;height:58px;font-size:24px}.cl-mb{display:flex;flex-direction:column;align-items:center;gap:9px;font-size:12.5px;font-weight:600;color:var(--text2);cursor:pointer;background:none;border:0;font-family:inherit}.cl-full.dark .cl-mb{color:rgba(255,255,255,.85)}' +
     '.cl-mb .rnd{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;font-size:30px;color:#fff;border:1px solid rgba(255,255,255,.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 10px 24px rgba(0,0,0,.22)}.cl-mb .rnd.sq{width:64px;height:64px;font-size:26px}' +
-    '.cl-mb .rnd.ok{background:linear-gradient(140deg,#3fd573,#1f9f4c)}.cl-mb .rnd.no{background:linear-gradient(140deg,#ee6060,#c42f2f)}.cl-mb .rnd.gl{background:var(--gl2,rgba(127,127,127,.2));color:var(--text);border-color:var(--gl-edge,rgba(255,255,255,.3))}.cl-full.dark .cl-mb .rnd.gl{background:rgba(255,255,255,.18);color:#fff}.cl-mb .rnd.off{background:var(--text);color:var(--gl-base,#fff)}' +
+    '.cl-mb .rnd.ok{background:linear-gradient(140deg,#3fd573,#1f9f4c)}.cl-mb .rnd.no{background:linear-gradient(140deg,#ee6060,#c42f2f)}.cl-mb .rnd.clg{background:var(--gl2,rgba(127,127,127,.2));color:var(--text);border-color:var(--gl-edge,rgba(255,255,255,.3))}.cl-full.dark .cl-mb .rnd.clg{background:rgba(255,255,255,.18);color:#fff}.cl-mb .rnd.off{background:var(--text);color:var(--gl-base,#fff)}' +
     '.cl-mid{display:flex;flex-direction:column;align-items:center}' +
     '#cl-bar{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 22px);height:42px;border-radius:21px;z-index:100003;display:flex;align-items:center;gap:10px;padding:0 6px 0 16px;color:#fff;font-size:13.5px;font-weight:600;cursor:pointer;background:linear-gradient(140deg,#3fd573,#1f9f4c);box-shadow:0 8px 22px rgba(31,159,76,.4),inset 0 1px 0 rgba(255,255,255,.4)}' +
     '#cl-bar .i{font-size:16px}#cl-bar .tm{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:700}#cl-bar .x{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.22)}#cl-bar .x .i{font-size:15px}' +
     '.cl-note{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 64px);transform:translateX(-50%);z-index:100010;max-width:86vw;padding:9px 16px;border-radius:999px;font-size:13px;font-weight:600;color:#fff;background:rgba(14,20,26,.78)}' +
     '.cl-grid{position:absolute;inset:0 0 84px 0;display:grid;gap:10px;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr}.cl-grid.n1{grid-template-columns:1fr}.cl-grid.n2,.cl-grid.n4{grid-template-columns:repeat(2,1fr)}.cl-grid.n5,.cl-grid.n6,.cl-grid.n9{grid-template-columns:repeat(3,1fr)}.cl-grid.n7,.cl-grid.n8,.cl-grid.n10,.cl-grid.n11,.cl-grid.n12{grid-template-columns:repeat(4,1fr)}' +
-    '.cl-win.mob .cl-grid{inset:calc(env(safe-area-inset-top,0px) + 62px) 8px calc(env(safe-area-inset-bottom,0px) + 100px) 8px;gap:8px;grid-template-columns:repeat(2,1fr)}.cl-win.mob .cl-grid.n1{grid-template-columns:1fr}' +
+    '.cl-win.mob .cl-grid{inset:calc(env(safe-area-inset-top,0px) + 76px) 8px calc(env(safe-area-inset-bottom,0px) + 100px) 8px;gap:8px;grid-template-columns:repeat(2,1fr)}.cl-win.mob .cl-grid.n1{grid-template-columns:1fr}' +
     '.cl-tile{position:relative;min-height:0;min-width:0;border-radius:22px;overflow:hidden;background:#0d1217;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}.cl-tile video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.cl-tile video.mirror{transform:scaleX(-1)}' +
     '.cl-tile.sp{box-shadow:0 0 0 3px var(--accent),0 0 28px rgba(var(--accent-rgb,31,168,140),.55)}.cl-tile.self .cl-chip{background:rgba(var(--accent-rgb,31,168,140),.55)}.cl-tile .cl-chip{font-size:12px;height:26px;padding:0 10px 0 6px}.cl-tile .cl-chip:not(:has(.cl-mb2)){padding-left:10px}' +
     '.cl-mb2{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#e04848;font-size:11px}.cl-tile .cl-ph .av,.cl-tile .cl-ph .cl-av{width:min(40%,110px)!important;height:auto!important;aspect-ratio:1;font-size:min(8vmin,34px)!important}' +
@@ -136,24 +136,31 @@
   // Аудиозвонок на iPhone по умолчанию идёт в трубку: setSinkId разрешён только прямо в обработчике нажатия, поэтому вызываем его сразу при нажатии,
   // пока ничего не ждали. Номер трубки запоминается после первого выбора кнопкой «Трубка»
   var pendingSpk = null;
-  function prepEarpiece(video) {
-    pendingSpk = null;
-    if (video || !isIOS || !canSink() || !waOn()) return;
-    var id = ''; try { id = localStorage.getItem('cl_recv') || ''; } catch (e) {}
-    var el = id && waEnsureEl(); if (!el || !el.setSinkId) return;
-    pendingSpk = 'receiver';
-    try { el.setSinkId(id).catch(function () { pendingSpk = null; }); } catch (e) { pendingSpk = null; }
-  }
+  function prepEarpiece() { pendingSpk = null; }
+  var holdMic = null, sinkLog = [];
+  function sinkNote(t) { sinkLog.push(t); if (sinkLog.length > 5) sinkLog.shift(); }
+  // Микрофон, полученный при нажатии, держим включённым до тех пор, пока его не подхватит LiveKit: пока захват идёт, iOS остаётся в режиме звонка
+  // и выбор трубки не сбрасывается (если отпустить микрофон сразу, режим меняется на «медиа», и громкая связь возвращается)
+  function releaseMic() { if (holdMic) { try { holdMic.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} holdMic = null; } }
   // Если номера трубки ещё нет (первый звонок): после разрешения микрофона список устройств с названиями уже виден, ищем трубку и пробуем выбрать её сразу,
   // пока нажатие «свежее». Не вышло — человек один раз нажмёт «Трубка» в звонке, и номер запомнится
   async function earpieceNow() {
     if (pendingSpk === 'receiver' || !isIOS || !canSink() || !waOn()) return;
-    await mediaRefresh();
-    var r = (media.devs || []).filter(function (d) { return d.kind === 'audiooutput' && /receiver|earpiece|iphone|трубк|приём|приемн|разговор/i.test(d.label || ''); })[0];
-    if (!r) return;
-    try { localStorage.setItem('cl_recv', r.deviceId); } catch (e) {}
+    var id = ''; try { id = localStorage.getItem('cl_recv') || ''; } catch (e) {}
+    if (!id) {
+      await mediaRefresh();
+      var r = (media.devs || []).filter(function (d) { return d.kind === 'audiooutput' && /receiver|earpiece|iphone|трубк|приём|приемн|разговор/i.test(d.label || ''); })[0];
+      if (!r) { sinkNote('трубка в списке не найдена'); return; }
+      id = r.deviceId; try { localStorage.setItem('cl_recv', id); } catch (e) {}
+    }
     var el = waEnsureEl(); if (!el || !el.setSinkId) return;
-    try { await el.setSinkId(r.deviceId); pendingSpk = 'receiver'; } catch (e) { pendingSpk = null; }
+    try { await el.setSinkId(id); pendingSpk = 'receiver'; sinkNote('при нажатии: трубка выбрана'); } catch (e) { pendingSpk = null; sinkNote('при нажатии: ' + (e && e.name || e)); }
+  }
+  // Когда голос собеседника уже пошёл и микрофон захвачен, подтверждаем выбор повторно (без переключения туда-сюда: если система не примет, остаётся как есть)
+  function reapplyEarpiece() {
+    var c = st.call, id = ''; try { id = localStorage.getItem('cl_recv') || ''; } catch (e) {}
+    if (!c || c.spk !== 'receiver' || !id || !waEl || !waEl.setSinkId) return;
+    waEl.setSinkId(id).then(function () { sinkNote('повторно: ок'); }).catch(function (e) { sinkNote('повторно: ' + (e && e.name || e)); });
   }
   function waAttach(track) {
     try {
@@ -179,9 +186,9 @@
   // Разрешение на микрофон (и камеру) просим сразу при нажатии «Позвонить» или «Принять», пока человек смотрит на экран: в Safari оно запрашивается
   // заново при каждой загрузке страницы, и запрос посреди соединения легко пропустить, тогда звонок так и не соединяется
   async function ensureMedia(video) {
-    waInit(); prepEarpiece(video);
+    waInit(); prepEarpiece();
     if (!hasMedia()) return true;
-    try { var s = await navigator.mediaDevices.getUserMedia({ audio: true }); s.getTracks().forEach(function (t) { t.stop(); }); }
+    try { releaseMic(); holdMic = await navigator.mediaDevices.getUserMedia({ audio: true }); var hm = holdMic; setTimeout(function () { if (holdMic === hm) releaseMic(); }, 20000); }
     catch (e) {
       // Микрофона нет или доступ не дали: звонок всё равно идёт, человек видит и слышит собеседника
       H.toast(/NotAllowed|Security|Permission/i.test(e && e.name || '') ? (H.mobile ? 'Нет доступа к микрофону: вы только слушаете. Разрешите его в настройках телефона для этого сайта, чтобы говорить' : 'Нет доступа к микрофону: вы только слушаете. Нажмите на значок замка в адресной строке и разрешите его, чтобы говорить') : 'Микрофон не найден: вы только слушаете');
@@ -230,7 +237,7 @@
       el.innerHTML = '<div class="lbl">' + lab + (grp ? '' : '') + '</div>' +
         '<div class="cl-mid"><div class="cl-ring big">' + H.avatar(inc.from.id, who, 140) + '</div><div class="nm">' + E(who) + '</div>' + (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div>' +
         '<div class="cl-acts"><button class="cl-mb" data-cl="decline"><span class="rnd no">' + svg(grp ? 'x' : 'phone', grp ? '' : 'hang') + '</span>' + no + '</button>' +
-        (vid ? '<button class="cl-mb" data-cl="audio"><span class="rnd gl">' + svg('phone') + '</span>Только звук</button>' : '') +
+        (vid ? '<button class="cl-mb" data-cl="audio"><span class="rnd clg">' + svg('phone') + '</span>Только звук</button>' : '') +
         '<button class="cl-mb" data-cl="' + (vid ? 'video' : 'audio') + '"><span class="rnd ok">' + svg(vid ? 'video' : 'phone') + '</span>' + yes + '</button></div>';
     } else {
       el.className = 'cl-card';
@@ -385,7 +392,7 @@
         // аудиоразговор на мобильном: экран с аватаркой и кнопками
         win.innerHTML = hd + '<div class="cl-full" id="cl-full-in" style="position:absolute;z-index:1;background:none;animation:none">' +
           '<span></span><div class="cl-mid"><div style="padding:14px;border-radius:50%;box-shadow:0 0 0 3px var(--accent),0 0 38px rgba(var(--accent-rgb,31,168,140),.45)">' + H.avatar(c.peer.id, c.peer.name, 140) + '</div><div class="nm">' + E(c.peer.name) + '</div><div class="sub cl-tm">' + status() + '</div></div>' +
-          '<div class="cl-acts">' + (canSpk() ? '<button class="cl-mb" data-cl="spk"><span class="rnd sq ' + (c.spk === 'receiver' ? 'gl' : 'off') + '">' + svg('volume') + '</span>' + (c.spk === 'receiver' ? 'Трубка' : 'Громко') + '</button>' : '') + '<button class="cl-mb" data-cl="mic"><span class="rnd sq ' + (c.mic ? 'gl' : 'off') + '">' + svg(c.mic ? 'mic' : 'micOff') + '</span>Микрофон</button><button class="cl-mb" data-cl="cam"><span class="rnd sq gl">' + svg('video') + '</span>Видео</button>' + (canAdd(c) ? '<button class="cl-mb" data-cl="add"><span class="rnd sq gl">' + svg('userPlus') + '</span>Добавить</button>' : '') + '<button class="cl-mb" data-cl="end"><span class="rnd sq no">' + svg('phone', 'hang') + '</span>Завершить</button></div></div>';
+          '<div class="cl-acts">' + (canSpk() ? '<button class="cl-mb" data-cl="spk"><span class="rnd sq ' + (c.spk === 'receiver' ? 'clg' : 'off') + '">' + svg('volume') + '</span>' + (c.spk === 'receiver' ? 'Трубка' : 'Громко') + '</button>' : '') + '<button class="cl-mb" data-cl="mic"><span class="rnd sq ' + (c.mic ? 'clg' : 'off') + '">' + svg(c.mic ? 'mic' : 'micOff') + '</span>Микрофон</button><button class="cl-mb" data-cl="cam"><span class="rnd sq clg">' + svg('video') + '</span>Видео</button>' + (canAdd(c) ? '<button class="cl-mb" data-cl="add"><span class="rnd sq clg">' + svg('userPlus') + '</span>Добавить</button>' : '') + '<button class="cl-mb" data-cl="end"><span class="rnd sq no">' + svg('phone', 'hang') + '</span>Завершить</button></div></div>';
       }
     }
     if (mob) {
@@ -478,6 +485,7 @@
     try {
       var vm = /Version\/([\d.]+)/.exec(navigator.userAgent), mt = room.localParticipant.getTrackPublication(T.Source.Microphone), mst = mt && mt.track && mt.track.mediaStreamTrack;
       L.push('Safari ' + (vm ? vm[1] : '?') + ', setSinkId: ' + (canSink() ? 'есть' : 'нет') + ', микрофон: ' + (mst ? mst.readyState + (mst.enabled ? '' : ', выкл') + (mst.muted ? ', muted' : '') : 'нет трека'));
+      if (sinkLog.length) L.push('Выбор динамика: ' + sinkLog.join('; '));
       var ou = outputs(); if (ou.length) L.push('Динамики: ' + ou.map(function (d) { return d.label || d.deviceId.slice(0, 6); }).join(' | '));
     } catch (e) {}
     try { L.push('Звук: ' + (waOn() ? 'через Web Audio (' + (waCtx ? waCtx.state : 'нет контекста') + ')' : 'через элемент audio') + (navigator.audioSession ? ', сеанс «' + navigator.audioSession.type + '»' : '')); } catch (e) {}
@@ -506,7 +514,7 @@
     // В звонке двоих без слоёв качества: приёмник всегда получает полную картинку, а передатчик не гоняет три кодировщика (на телефоне это тяжело, и картинка падала до 180×320 при 7 к/с). Слои нужны только в группе
     room = new LK.Room({ adaptiveStream: !!c.group, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: H.mobile && c.group ? { width: 960, height: 540, frameRate: 24 } : { width: 1280, height: 720, frameRate: 30 }, deviceId: devOpt('videoin') }, publishDefaults: { simulcast: !!c.group, videoCodec: isIOS ? 'h264' : undefined, audioPreset: { maxBitrate: 40000 }, videoEncoding: !c.group ? { maxBitrate: 3000000, maxFramerate: 30 } : (H.mobile ? { maxBitrate: 1200000, maxFramerate: 24 } : undefined) } });
     room.on(R.TrackSubscribed, function (track) {
-      if (track.kind === T.Kind.Audio && waOn() && waAttach(track)) { remoteState(); return; }
+      if (track.kind === T.Kind.Audio && waOn() && waAttach(track)) { setTimeout(reapplyEarpiece, 300); remoteState(); return; }
       if (track.kind === T.Kind.Audio) { document.querySelectorAll('audio[data-sid="' + track.sid + '"]').forEach(function (o) { o.remove(); }); var el = track.attach(); el.dataset.cl = '1'; el.dataset.sid = track.sid; el.setAttribute('playsinline', ''); document.body.appendChild(el);
         // Обход ошибки WebKit 320087: на iOS setSinkId на элементе с одним удалённым треком ничего не меняет, а с двумя работает
         if (lget('two')) { try { var cl = track.mediaStreamTrack.clone(); cl.enabled = false; twoClones[track.sid] = cl; el.srcObject = new MediaStream([track.mediaStreamTrack, cl]); } catch (e) {} } try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {} el.play && el.play().catch(function () {}); }
@@ -524,7 +532,7 @@
     await room.connect(url, token);
     var so = devGet('audioout'); if (so && so.id && canSink() && room.switchActiveDevice) { try { await room.switchActiveDevice('audiooutput', so.id); } catch (e) {} }
     try { await room.localParticipant.setMicrophoneEnabled(true); c.mic = true; } catch (e) { c.mic = false; }
-    mediaRefresh();
+    releaseMic(); mediaRefresh(); setTimeout(reapplyEarpiece, 600); setTimeout(reapplyEarpiece, 2500);
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     if (c.group) { c.since = Date.now(); liveNow(); }
     else if (room.remoteParticipants.size) { liveNow(); remoteState(); } else { c.phase = c.outgoing ? 'ringing' : 'connecting'; render(); }
@@ -578,7 +586,7 @@
     render();
   }
   async function leave() {
-    ended = true;
+    ended = true; releaseMic();
     try { if (room) await room.disconnect(); } catch (e) {}
     room = null; tvids = {}; speaking = {};
     document.querySelectorAll('audio[data-cl]').forEach(function (a) { a.remove(); });
@@ -725,7 +733,7 @@
   // Свои настройки этого устройства (не на сервере): через TCP
   function lget(k) { try { return localStorage.getItem('cl_' + k) === '1'; } catch (e) { return false; } }
   function lset(k, v) { try { if (v) localStorage.setItem('cl_' + k, '1'); else localStorage.removeItem('cl_' + k); } catch (e) {} }
-  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'snd-3';
+  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'snd-5';
   // Только TURN по TLS (TCP) и запрет прямых путей. LiveKit создаёт соединение раньше, чем получает от сервера список ICE-серверов, и
   // потом задаёт его через setConfiguration, поэтому подменяем и конструктор, и setConfiguration. Если у сервера нет TURN по TLS, идём как обычно
   function tcpize(cfg) {
