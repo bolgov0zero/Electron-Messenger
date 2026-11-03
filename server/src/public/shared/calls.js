@@ -144,6 +144,17 @@
     pendingSpk = 'receiver';
     try { el.setSinkId(id).catch(function () { pendingSpk = null; }); } catch (e) { pendingSpk = null; }
   }
+  // Если номера трубки ещё нет (первый звонок): после разрешения микрофона список устройств с названиями уже виден, ищем трубку и пробуем выбрать её сразу,
+  // пока нажатие «свежее». Не вышло — человек один раз нажмёт «Трубка» в звонке, и номер запомнится
+  async function earpieceNow() {
+    if (pendingSpk === 'receiver' || !isIOS || !canSink() || !waOn()) return;
+    await mediaRefresh();
+    var r = (media.devs || []).filter(function (d) { return d.kind === 'audiooutput' && /receiver|earpiece|iphone|трубк|приём|приемн|разговор/i.test(d.label || ''); })[0];
+    if (!r) return;
+    try { localStorage.setItem('cl_recv', r.deviceId); } catch (e) {}
+    var el = waEnsureEl(); if (!el || !el.setSinkId) return;
+    try { await el.setSinkId(r.deviceId); pendingSpk = 'receiver'; } catch (e) { pendingSpk = null; }
+  }
   function waAttach(track) {
     try {
       waInit(); if (!waCtx) return false;
@@ -175,6 +186,7 @@
       // Микрофона нет или доступ не дали: звонок всё равно идёт, человек видит и слышит собеседника
       H.toast(/NotAllowed|Security|Permission/i.test(e && e.name || '') ? (H.mobile ? 'Нет доступа к микрофону: вы только слушаете. Разрешите его в настройках телефона для этого сайта, чтобы говорить' : 'Нет доступа к микрофону: вы только слушаете. Нажмите на значок замка в адресной строке и разрешите его, чтобы говорить') : 'Микрофон не найден: вы только слушаете');
     }
+    if (!video) { try { await earpieceNow(); } catch (e) {} }
     if (video) { try { var v = await navigator.mediaDevices.getUserMedia({ video: true }); v.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} }
     return true;
   }
@@ -713,7 +725,7 @@
   // Свои настройки этого устройства (не на сервере): через TCP
   function lget(k) { try { return localStorage.getItem('cl_' + k) === '1'; } catch (e) { return false; } }
   function lset(k, v) { try { if (v) localStorage.setItem('cl_' + k, '1'); else localStorage.removeItem('cl_' + k); } catch (e) {} }
-  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'snd-2';
+  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'snd-3';
   // Только TURN по TLS (TCP) и запрет прямых путей. LiveKit создаёт соединение раньше, чем получает от сервера список ICE-серверов, и
   // потом задаёт его через setConfiguration, поэтому подменяем и конструктор, и setConfiguration. Если у сервера нет TURN по TLS, идём как обычно
   function tcpize(cfg) {
