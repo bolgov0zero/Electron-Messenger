@@ -6,6 +6,7 @@ const { authMiddleware, adminMiddleware } = require('../auth');
 const { logAudit } = require('../audit');
 const calls = require('../calls');
 const lk = require('../lkinstall');
+const lkk = require('../lkkeys');
 const fed = require('../federation');
 
 const wrap = fn => async (req, res) => {
@@ -186,5 +187,41 @@ admin.post('/install', wrap(async (req, res) => {
   logAudit(req, 'server', 'Установка LiveKit по SSH: начата', target);
   res.status(202).json(r);
 }));
+
+// ── Доступ к нашему серверу звонков для других серверов: отдельная пара ключей на каждый, любую можно отозвать ──
+// Пары лежат в конфиге LiveKit рядом с основной; менять его админка может по SSH-ключу без пароля (настраивается один раз).
+const keysRes = (res, r) => (r.error ? res.status(r.status || 400).json(r) : res.json(r));
+admin.get('/keys', wrap(async (req, res) => res.json(await lkk.view())));
+// Включить управление без пароля: один раз по паролю root сервера LiveKit (он нигде не сохраняется), отпечаток подтверждён заранее
+admin.post('/keys/ssh', wrap(async (req, res) => {
+  if (!(await confirmPassword(req, res))) return;
+  const r = await lkk.sshOn(req.body);
+  logAudit(req, 'security', r.error ? 'Звонки: управление ключами без пароля не настроено' : 'Звонки: управление ключами без пароля включено', r.error ? String(r.error).slice(0, 120) : String(req.body?.host || '').slice(0, 80));
+  keysRes(res, r);
+}));
+admin.post('/keys/ssh/off', wrap(async (req, res) => {
+  if (!(await confirmPassword(req, res))) return;
+  const r = await lkk.sshOff({ password: String(req.body?.ssh_password || ''), localOnly: !!req.body?.local_only });
+  if (!r.error) logAudit(req, 'security', 'Звонки: управление ключами без пароля выключено', req.body?.local_only ? 'только в админке' : '—');
+  keysRes(res, r);
+}));
+admin.post('/keys', wrap(async (req, res) => {
+  const r = await lkk.create(req.body?.name);
+  if (!r.error) logAudit(req, 'security', 'Звонки: создана пара ключей для сервера', r.name);
+  keysRes(res, r);
+}));
+admin.post('/keys/:id/revoke', wrap(async (req, res) => {
+  const r = await lkk.revoke(String(req.params.id));
+  if (!r.error) logAudit(req, 'security', 'Звонки: пара ключей отозвана', r.name);
+  keysRes(res, r);
+}));
+// Данные пары целиком, с секретом: только по паролю администратора, значения в аудит не попадают
+admin.post('/keys/:id/reveal', wrap(async (req, res) => {
+  if (!(await confirmPassword(req, res))) return;
+  const r = await lkk.reveal(String(req.params.id));
+  if (!r.error) logAudit(req, 'security', 'Звонки: данные пары ключей показаны', r.name);
+  keysRes(res, r);
+}));
+admin.delete('/keys/:id', wrap(async (req, res) => keysRes(res, await lkk.purge(String(req.params.id)))));
 
 module.exports = { user, admin };

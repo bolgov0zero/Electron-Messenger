@@ -1602,6 +1602,53 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 .dv-empty{color:var(--dv-muted);font-size:12px;padding:12px 0}
 
 /* Ресурсы, служба, хранилище */
+
+/* Доступ для других серверов: пары ключей LiveKit (Настройки → Звонки) */
+.lkk{padding-top:4px}
+.lkk-wrap{display:flex;flex-direction:column;gap:12px;min-width:0}
+.lkk-i{width:1em;height:1em;flex:none}
+.lkk-ssh{display:flex;align-items:center;gap:13px;padding:13px 15px;border:1px solid var(--c-border);border-radius:12px;background:var(--c-surface);flex-wrap:wrap}
+.lkk-ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:18px;flex:none;background:color-mix(in srgb,var(--c-orange) 16%,transparent);color:var(--c-orange)}
+.lkk-ssh.on .lkk-ic{background:color-mix(in srgb,var(--c-green) 16%,transparent);color:var(--c-green)}
+.lkk-tx{flex:1;min-width:200px;display:flex;flex-direction:column;gap:2px}
+.lkk-tx b{font-size:13.5px}.lkk-tx span{font-size:12.5px;color:var(--c-text2);line-height:1.55}
+.lkk-fp{display:inline-block;padding:1px 7px;border-radius:6px;background:var(--c-surface2);color:var(--c-text);font-size:11.5px;word-break:break-all}
+.lkk-red{color:var(--c-red)!important;border-color:color-mix(in srgb,var(--c-red) 35%,transparent)!important}
+.lkk-list{border:1px solid var(--c-border);border-radius:12px;background:var(--c-surface);padding:4px 6px;container-type:inline-size}
+.lkk-row{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:3px 13px;align-items:center;padding:12px 10px}
+.lkk-row+.lkk-row{border-top:1px solid var(--c-border)}
+.lkk-row .lkk-ic{width:40px;height:40px;border-radius:12px;font-size:19px;grid-row:1/3;background:color-mix(in srgb,var(--c-primary) 14%,transparent);color:var(--c-primary)}
+.lkk-row.main .lkk-ic,.lkk-row.off .lkk-ic{background:var(--c-surface2);color:var(--c-text2)}
+.lkk-nm{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;font-size:14px}
+.lkk-row.off .lkk-nm b{text-decoration:line-through;text-decoration-thickness:1px;color:var(--c-text2)}
+.lkk-meta{grid-column:2;display:flex;gap:4px 12px;flex-wrap:wrap;font-size:12px;color:var(--c-text2);min-width:0}
+.lkk-act{grid-column:3;grid-row:1/3;display:flex;gap:8px;justify-content:flex-end}
+.lkk-act .btn{display:inline-flex;align-items:center;gap:6px}
+.lkk-chip{display:inline-flex;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px}
+.lkk-chip.ok{background:color-mix(in srgb,var(--c-green) 15%,transparent);color:var(--c-green)}
+.lkk-chip.off{background:var(--c-surface2);color:var(--c-text2)}
+.lkk-chip.info{background:color-mix(in srgb,var(--c-primary) 14%,transparent);color:var(--c-primary)}
+.lkk-foot{display:flex;gap:9px;align-items:flex-start;margin:0;font-size:12.5px;color:var(--c-text2);line-height:1.55}
+.lkk-foot .lkk-i{font-size:15px;margin-top:2px;color:var(--c-orange)}
+@container (max-width:560px){
+  .lkk-row{grid-template-columns:40px minmax(0,1fr)}
+  .lkk-act{grid-column:1/-1;grid-row:auto;justify-content:flex-start;flex-wrap:wrap;padding-top:8px}
+  .lkk-act .btn{flex:1 1 auto}
+}
+.lkk-warn{display:flex;gap:10px;padding:10px 12px;border-radius:11px;background:color-mix(in srgb,var(--c-orange) 12%,transparent);border:1px solid color-mix(in srgb,var(--c-orange) 28%,transparent);font-size:12.5px;line-height:1.5;margin-top:12px}
+.lkk-warn .lkk-i{font-size:16px;color:var(--c-orange);margin-top:2px}
+.lkk-warn.ok{background:var(--c-surface2);border-color:var(--c-border)}.lkk-warn.ok .lkk-i{color:var(--c-green)}
+.lkk-g2{display:grid;grid-template-columns:1fr 100px;gap:10px}
+.lkk-cr{display:flex;align-items:center;gap:10px;padding:9px 0}.lkk-cr+.lkk-cr{border-top:1px solid var(--c-border)}
+.lkk-cr div{flex:1;min-width:0}.lkk-cr span{display:block;font-size:11.5px;color:var(--c-text2)}.lkk-cr b{display:block;word-break:break-all;font-size:12px;font-weight:500;margin-top:2px}
+.lkk-steps{list-style:none;margin:6px 0 2px;padding:0}
+.lkk-steps li{display:flex;align-items:center;gap:11px;padding:8px 0;font-size:13px;color:var(--c-text2);transition:color .3s}
+.lkk-steps .d{width:20px;height:20px;border-radius:50%;border:2px solid var(--c-border);display:grid;place-items:center;font-size:12px;flex:none;transition:all .3s}
+.lkk-steps .d .lkk-i{opacity:0;stroke-width:3.4;font-size:11px}
+.lkk-steps li.run{color:var(--c-text)}.lkk-steps li.run .d{border-color:var(--c-primary);border-top-color:transparent;animation:lkk-sp .8s linear infinite}
+.lkk-steps li.done{color:var(--c-text)}.lkk-steps li.done .d{background:var(--c-green);border-color:var(--c-green);color:#fff}.lkk-steps li.done .d .lkk-i{opacity:1}
+@keyframes lkk-sp{to{transform:rotate(360deg)}}
+
 /* Блоки «Звонки» и «Федерация» на главной: общий вид (свёрнутый ряд итогов, раскрытая часть с плитками, графиком и списком) */
 :where(.cdv,.cdv *){box-sizing:border-box}
 :where(.cdv) button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
@@ -2627,6 +2674,8 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 <!-- Данные подключения к серверу звонков для другого сервера чата (Настройки → Звонки) -->
 <!-- Порты сервера звонков (Настройки → Звонки) -->
 <div class="modal-bg" id="modal-lkports"><div class="modal" style="width:720px;max-width:calc(100vw - 24px)" id="lkports-box" role="dialog" aria-modal="true"></div></div>
+
+<div class="modal-bg" id="modal-lkkeys"><div class="modal modal-sm" id="lkkeys-box" role="dialog" aria-modal="true"></div></div>
 
 <div class="modal-bg" id="modal-lkcopy"><div class="modal modal-sm" id="lkcopy-box" role="dialog" aria-modal="true"></div></div>
 

@@ -25,8 +25,8 @@ function clean(o) {
   if (!/^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$|^[0-9a-fA-F:]+$/.test(host)) return { error: 'Укажите адрес сервера: IP или имя' };
   if (port < 1 || port > 65535) return { error: 'Порт должен быть от 1 до 65535' };
   if (!/^[a-z_][a-z0-9_-]{0,31}$/i.test(user)) return { error: 'Некорректный логин' };
-  if (!password) return { error: 'Введите пароль' };
-  return { host, port, user, password };
+  if (!password && !o?.privateKey) return { error: 'Введите пароль' };
+  return { host, port, user, password, privateKey: o?.privateKey };
 }
 
 function connect(c, fingerprint) {
@@ -45,7 +45,7 @@ function connect(c, fingerprint) {
         : 'Не удалось подключиться: ' + m));
     });
     cl.connect({
-      host: c.host, port: c.port, username: c.user, password: c.password, tryKeyboard: true, readyTimeout: 15000, keepaliveInterval: 10000,
+      host: c.host, port: c.port, username: c.user, password: c.password, privateKey: c.privateKey, tryKeyboard: !c.privateKey, readyTimeout: 15000, keepaliveInterval: 10000,
       hostHash: 'sha256',
       hostVerifier: hex => { seen = fpOf(hex); if (fingerprint && fingerprint !== seen) { fin(reject, new Error('Отпечаток сервера не совпал с подтверждённым: подключение остановлено')); return false; } return true; },
     });
@@ -134,4 +134,5 @@ async function start(o, onResult, onFail) {
   return { ok: true, job: pub() };
 }
 
-module.exports = { check, start, job: pub };
+// connect, exec, collect, clean и fpOf нужны lkkeys.js (вход на тот же сервер уже по ключу)
+module.exports = { check, start, job: pub, connect, exec, collect, clean, fpOf };

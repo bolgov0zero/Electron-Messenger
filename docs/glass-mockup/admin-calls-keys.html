@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Макет: доступ к серверу звонков для других серверов</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* Макет: «Настройки → Звонки → Доступ для других серверов». Данные вымышленные, всё кликабельно. */
+:root{
+  --f-ui:'Inter',system-ui,sans-serif;--f-mono:'JetBrains Mono',ui-monospace,monospace;
+  --bg:#eef2f6;--surface:#ffffff;--surface2:#f3f6f9;--border:#dde4ec;--text:#121a24;--muted:#66758a;
+  --accent:#0f9e8e;--accent-soft:rgba(15,158,142,.12);--ok:#12a672;--warn:#d98a0b;--bad:#d64545;
+  --shadow:0 1px 2px rgba(18,26,36,.05),0 8px 24px rgba(18,26,36,.06);--scrim:rgba(18,26,36,.38)
+}
+[data-theme=dark]{
+  --bg:#0a0f15;--surface:#121a23;--surface2:#17212c;--border:#243040;--text:#e7edf4;--muted:#8796a8;
+  --accent:#2fd0b9;--accent-soft:rgba(47,208,185,.14);--ok:#3ddc97;--warn:#f2b13d;--bad:#ff6b6b;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.28);--scrim:rgba(0,0,0,.55)
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--f-ui);background:var(--bg);color:var(--text);padding:20px 20px 60px;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit;border:0;background:none;outline:none}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.bar{max-width:1280px;margin:0 auto 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bar h1{font-size:15px;flex:1;min-width:260px}.bar h1 span{color:var(--muted);font-weight:500}
+.tg{height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12.5px;font-weight:600;color:var(--muted)}
+.note{max-width:1280px;margin:0 auto 20px;font-size:13px;line-height:1.55;color:var(--muted)}.note b{color:var(--text)}
+.stage{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 375px;gap:28px;align-items:start}
+.lab{font-size:12.5px;color:var(--muted);margin:0 4px 10px}.lab b{color:var(--text)}
+@media (max-width:1100px){.stage{grid-template-columns:1fr;justify-items:center}.stage>section{width:100%}.stage>section:last-child{display:flex;flex-direction:column;align-items:center}}
+
+/* страница настроек: рамка с меню слева тут не нужна, показываем только содержимое раздела */
+.page{position:relative;background:var(--bg);border:1px solid var(--border);border-radius:18px;padding:18px;min-height:640px;overflow:hidden;container-type:inline-size}
+.phone{width:375px;max-width:100%;border-radius:30px;padding:14px}
+.phone .page{padding:14px;border-radius:20px;min-height:760px}
+.h{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.h>div{flex:1;min-width:220px}
+.h h2{font-size:16px;font-weight:700}.h p{font-size:12.5px;color:var(--muted);line-height:1.55;margin-top:4px}
+.btn{height:36px;padding:0 15px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;transition:background .2s,transform .2s}
+.btn:hover{background:var(--surface2)}.btn:active{transform:scale(.97)}.btn .i{font-size:15px}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}[data-theme=dark] .btn.pri{color:#06201c}.btn.pri:hover{filter:brightness(1.07);background:var(--accent)}
+.btn.dng{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 35%,transparent);background:color-mix(in srgb,var(--bad) 8%,transparent)}
+.btn.dng.solid{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.sm{height:30px;padding:0 11px;font-size:12px}.btn[disabled]{opacity:.45;pointer-events:none}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
+
+/* управление без пароля */
+.ssh{display:flex;align-items:center;gap:13px;padding:13px 15px;margin-bottom:14px;flex-wrap:wrap}
+.ssh .ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:18px;flex:none;background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.ssh.on .ic{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.ssh .tx{flex:1;min-width:200px}.ssh b{font-size:13.5px}.ssh p{font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:2px}
+.mono{font-family:var(--f-mono);font-size:11.5px}
+.fp{display:inline-block;padding:1px 7px;border-radius:6px;background:var(--surface2);color:var(--text)}
+
+/* список пар */
+.kl{padding:4px 6px}
+.kr{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:3px 13px;align-items:center;padding:12px 10px;border-radius:12px;transition:background .2s}
+.kr+.kr{border-top:1px solid var(--border);border-radius:0}
+.kr:hover{background:var(--surface2)}
+.kr .ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:19px;background:var(--accent-soft);color:var(--accent);grid-row:1/3}
+.kr.main .ic{background:var(--surface2);color:var(--muted)}
+.kr.off .ic{background:var(--surface2);color:var(--muted)}
+.kr .nm{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.kr.off .nm b{text-decoration:line-through;text-decoration-thickness:1px;color:var(--muted)}
+.kr .meta{font-size:12px;color:var(--muted);grid-column:2;display:flex;gap:4px 12px;flex-wrap:wrap;min-width:0}
+.kr .act{grid-column:3;grid-row:1/3;display:flex;gap:8px;justify-content:flex-end}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px}
+.chip.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+.chip.off{background:var(--surface2);color:var(--muted)}
+.chip.info{background:var(--accent-soft);color:var(--accent)}
+.foot{display:flex;gap:9px;align-items:flex-start;margin-top:14px;font-size:12.5px;color:var(--muted);line-height:1.55}
+.foot .i{font-size:15px;margin-top:2px;color:var(--warn)}
+.empty{padding:26px 10px;text-align:center;color:var(--muted);font-size:13px}
+@container (max-width:560px){
+  .kr{grid-template-columns:40px minmax(0,1fr)}
+  .kr .act{grid-column:1/-1;grid-row:auto;justify-content:flex-start;padding-top:8px}
+  .kr .act{flex-wrap:wrap}
+  .kr .act .btn{flex:1 1 auto;padding:0 10px}
+  .ssh .btn{width:100%}
+  .h .btn{width:100%}
+}
+
+/* окна */
+.ov{position:absolute;inset:0;background:var(--scrim);display:none;align-items:center;justify-content:center;padding:16px;z-index:5;opacity:0}
+.ov.on{display:flex;animation:fi .2s forwards}@keyframes fi{to{opacity:1}}
+.md{width:min(480px,100%);max-height:100%;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:up .3s cubic-bezier(.22,1,.36,1)}
+@keyframes up{from{transform:translateY(14px) scale(.98);opacity:0}}
+.phone .ov{align-items:flex-end;padding:0}.phone .md{width:100%;border-radius:22px 22px 0 0;border-bottom:0;animation:sheet .35s cubic-bezier(.22,1,.36,1)}
+@keyframes sheet{from{transform:translateY(40px);opacity:0}}
+.mh{display:flex;align-items:center;gap:10px;padding:16px 18px 6px}.mh h3{flex:1;font-size:15.5px}
+.x{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--muted);font-size:16px}.x:hover{background:var(--surface2);color:var(--text)}
+.mb{padding:6px 18px 14px;font-size:13px;line-height:1.6;color:var(--muted)}
+.mb p+p{margin-top:8px}.mb b{color:var(--text)}
+.mf{display:flex;gap:10px;justify-content:flex-end;padding:12px 18px 18px;flex-wrap:wrap}
+.phone .mf .btn{flex:1}
+.fg{margin:12px 0 4px}.fg label{display:block;font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px}
+.fg input{width:100%;height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);font-size:14px;color:var(--text);transition:border-color .2s,box-shadow .2s}
+.fg input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.fg small{display:block;font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.45}
+.g2{display:grid;grid-template-columns:1fr 90px;gap:10px}
+.warn{display:flex;gap:10px;padding:10px 12px;border-radius:11px;background:color-mix(in srgb,var(--warn) 12%,transparent);border:1px solid color-mix(in srgb,var(--warn) 28%,transparent);color:var(--text);font-size:12.5px;line-height:1.5;margin-top:12px}
+.warn .i{font-size:16px;color:var(--warn);margin-top:2px}
+.warn.ok{background:var(--surface2);border-color:var(--border)}.warn.ok .i{color:var(--ok)}
+.cr{display:flex;align-items:center;gap:10px;padding:9px 0}.cr+.cr{border-top:1px solid var(--border)}
+.cr div{flex:1;min-width:0}.cr span{display:block;font-size:11.5px;color:var(--muted)}.cr .mono{display:block;color:var(--text);word-break:break-all;font-size:12px;margin-top:2px}
+.ok-t{color:var(--ok);font-size:12.5px;font-weight:600;min-height:20px;margin-top:6px}
+.steps{list-style:none;margin:10px 0 4px}
+.steps li{display:flex;align-items:center;gap:11px;padding:8px 0;font-size:13px;color:var(--muted);transition:color .3s}
+.steps li .d{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:grid;place-items:center;font-size:12px;flex:none;transition:all .3s}
+.steps li.run{color:var(--text)}.steps li.run .d{border-color:var(--accent);border-top-color:transparent;animation:sp .8s linear infinite}
+.steps li.done{color:var(--text)}.steps li.done .d{background:var(--ok);border-color:var(--ok);color:#fff;animation:none}
+.steps li .d .i{opacity:0;stroke-width:3.4;font-size:11px}.steps li.done .d .i{opacity:1}
+@keyframes sp{to{transform:rotate(360deg)}}
+.toast{position:absolute;left:50%;bottom:18px;transform:translate(-50%,16px);z-index:9;padding:10px 16px;border-radius:12px;background:var(--text);color:var(--bg);font-size:12.5px;font-weight:600;opacity:0;pointer-events:none;transition:all .35s cubic-bezier(.22,1,.36,1);max-width:90%}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Настройки → Звонки → Доступ для других серверов <span>· макет, всё кликабельно</span></h1>
+  <button class="tg" id="tSsh">Управление без пароля: настроено</button>
+  <button class="tg" id="tLive">Идущих звонков: 2</button>
+  <button class="tg" id="tTheme">Тёмная тема</button>
+</div>
+<p class="note">Для каждого сервера создаётся своя пара ключей с названием, которое вы вводите вручную. Любую пару можно скопировать (адрес, ключ и секрет одним блоком), показать или отозвать, остальные продолжают работать. Создание и отзыв перезапускают LiveKit, поэтому окно предупреждает об идущих звонках. Вход на сервер LiveKit настраивается один раз, пароль не сохраняется. <b>Кнопки сверху показывают разные состояния.</b></p>
+<main class="stage">
+  <section><div class="lab"><b>Полная версия админки</b> · раздел внутри «Настройки → Звонки»</div><div class="page" id="d"></div></section>
+  <section><div class="lab"><b>Телефон</b></div><div class="phone card"><div class="page" id="m"></div></div></section>
+</main>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const ic=n=>`<svg class="i" viewBox="0 0 24 24">${{
+ key:'<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+ srv:'<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/>',
+ lock:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+ shield:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+ plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',copy:'<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+ x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+ check:'<path d="M20 6 9 17l-5-5"/>',eye:'<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+ ban:'<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',trash:'<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>'
+}[n]}</svg>`;
+const S={ssh:true,live:2,keys:[
+ {id:1,name:'Партнёр Север',key:'APIk3Hq9Rz7Wm2f',created:'3 ноября 2026',off:false},
+ {id:2,name:'Филиал Казань',key:'APIx8Tn4Lc1Vb6d',created:'21 октября 2026',off:false},
+ {id:3,name:'Тестовый стенд',key:'APIp2Ys5Dk9Ge0a',created:'2 сентября 2026',off:true,when:'14 октября 2026'}
+]};
+const URL_='wss://calls.example.com',MAIN={key:'APIm1Qa7Zs3Xc8b'};
+const fake=()=>Math.random().toString(36).slice(2,8);
+const mask=k=>k.slice(0,6)+'…'+k.slice(-3);
+const nowS='4 ноября 2026';
+const ST={d:{m:null},m:{m:null}};
+
+function liveWarn(){return S.live?`<div class="warn">${ic('alert')}<div>Идущих сейчас звонков: <b>${S.live}</b>. LiveKit перезапустится на несколько секунд, эти звонки прервутся.</div></div>`:`<div class="warn ok">${ic('check')}<div>Идущих звонков нет. LiveKit перезапустится на несколько секунд, это никому не помешает.</div></div>`}
+
+function page(id){
+  const box=$('#'+id),keys=S.keys;
+  box.innerHTML=`
+  <div class="h"><div><h2>Доступ для других серверов</h2><p>Отдельная пара ключей для каждого сервера, которому вы разрешили пользоваться вашим сервером звонков. Любую пару можно отозвать, остальные продолжат работать.</p></div>
+    <button class="btn pri" data-a="new" ${S.ssh?'':'disabled'}>${ic('plus')}Создать пару</button></div>
+  ${S.ssh?`<div class="card ssh on"><div class="ic">${ic('shield')}</div><div class="tx"><b>Управление без пароля включено</b><p>Ограниченный ключ <span class="mono fp">SHA256:Qw8e…n3Kc</span> на сервере LiveKit <span class="mono fp">172.20.99.250</span>, с 3 ноября 2026. Он умеет только добавлять и удалять пары и перезапускать LiveKit.</p></div><button class="btn dng sm" data-a="sshoff">Закрыть доступ</button></div>`
+  :`<div class="card ssh"><div class="ic">${ic('lock')}</div><div class="tx"><b>Управление без пароля не настроено</b><p>Чтобы создавать и отзывать пары, админке нужен вход на сервер LiveKit. Настройте его один раз: пароль не сохранится, на сервер встанет ограниченный ключ.</p></div><button class="btn pri sm" data-a="sshon">Настроить</button></div>`}
+  <div class="card kl">
+    <div class="kr main"><div class="ic">${ic('key')}</div><div class="nm"><b>Основная пара</b><span class="chip info">этот сервер</span></div>
+      <div class="meta"><span class="mono">${mask(MAIN.key)}</span><span>Используют ваши клиенты и сервер. Отозвать нельзя</span></div>
+      <div class="act"><button class="btn sm" data-a="copy" data-i="0">${ic('copy')}Копировать</button><button class="btn sm" data-a="show" data-i="0">${ic('eye')}Данные</button></div></div>
+    ${keys.map(k=>`<div class="kr${k.off?' off':''}"><div class="ic">${ic(k.off?'ban':'srv')}</div>
+      <div class="nm"><b>${k.name}</b>${k.off?'<span class="chip off">отозвана</span>':'<span class="chip ok">активна</span>'}</div>
+      <div class="meta"><span class="mono">${mask(k.key)}</span><span>${k.off?'выдана '+k.created+', отозвана '+k.when:'создана '+k.created}</span></div>
+      <div class="act">${k.off?`<button class="btn sm" data-a="del" data-i="${k.id}">${ic('trash')}Убрать из списка</button>`:`<button class="btn sm" data-a="copy" data-i="${k.id}">${ic('copy')}Копировать</button><button class="btn sm" data-a="show" data-i="${k.id}">${ic('eye')}Данные</button><button class="btn dng sm" data-a="rev" data-i="${k.id}" ${S.ssh?'':'disabled'}>${ic('ban')}Отозвать</button>`}</div></div>`).join('')}
+    ${keys.length?'':`<div class="empty">Пока ни одной пары. Нажмите «Создать пару», когда нужно выдать доступ другому серверу.</div>`}
+  </div>
+  <div class="foot">${ic('alert')}<div>Создание и отзыв перезапускают LiveKit на несколько секунд, идущие в этот момент звонки прервутся. Название сервера видите только вы: оно нужно, чтобы потом не перепутать, кому выдан доступ.</div></div>
+  <div class="ov" id="${id}-ov"></div><div class="toast" id="${id}-t"></div>`;
+  box.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;act(id,b.dataset.a,+b.dataset.i)};
+}
+function toast(id,t){const e=$('#'+id+'-t');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),2600)}
+function open(id,html){const o=$('#'+id+'-ov');o.innerHTML=`<div class="md">${html}</div>`;o.classList.add('on');o.onclick=e=>{if(e.target===o&&!o.dataset.lock)close(id);if(e.target.closest('[data-c]'))close(id)}}
+function close(id){const o=$('#'+id+'-ov');o.classList.remove('on');o.dataset.lock=''}
+const head=(t,x=true)=>`<div class="mh"><h3>${t}</h3>${x?`<button class="x" data-c aria-label="Закрыть">${ic('x')}</button>`:''}</div>`;
+function run(id,title,steps,done){
+  const o=$('#'+id+'-ov');o.dataset.lock='1';
+  open(id,`${head(title,false)}<div class="mb"><ul class="steps">${steps.map(s=>`<li><span class="d">${ic('check')}</span>${s}</li>`).join('')}</ul></div>`);o.dataset.lock='1';
+  const li=[...$('#'+id+'-ov').querySelectorAll('.steps li')];let i=0;
+  const next=()=>{if(i>0)li[i-1].className='done';if(i<li.length){li[i].className='run';i++;setTimeout(next,i===3?1100:650)}else setTimeout(()=>{o.dataset.lock='';done()},450)};next();
+}
+function credModal(id,name,k,secret,fresh){
+  const row=(l,v)=>`<div class="cr"><div><span>${l}</span><b class="mono">${v}</b></div><button class="btn sm" data-cp="${v}">${ic('copy')}Копировать</button></div>`;
+  open(id,`${head(fresh?'Пара создана':'Данные подключения')}<div class="mb"><p><b>${name}</b>${fresh?': передайте эти данные его администратору через защищённый канал.':''}</p><div class="card" style="padding:2px 14px;margin-top:10px;box-shadow:none">${row('Адрес',URL_)}${row('API key',k)}${row('Секрет',secret)}</div>
+  <p style="margin-top:10px">На другом сервере чата: «Настройки → Звонки», вставьте блок в поле «Сервер LiveKit».${fresh?' Секрет позже можно показать кнопкой «Данные» (потребуется ваш пароль администратора).':''}</p><div class="ok-t"></div></div>
+  <div class="mf"><button class="btn" data-c>Закрыть</button><button class="btn pri" data-cp="Адрес: ${URL_}\\nAPI key: ${k}\\nСекрет: ${secret}">${ic('copy')}Копировать всё</button></div>`);
+  $('#'+id+'-ov').onclick=e=>{const c=e.target.closest('[data-cp]');if(c){navigator.clipboard&&navigator.clipboard.writeText(c.dataset.cp.replace(/\\n/g,'\n')).catch(()=>{});$('#'+id+'-ov .ok-t').textContent='Скопировано';return}if(e.target===e.currentTarget||e.target.closest('[data-c]'))close(id)};
+}
+function act(id,a,i){
+  const find=n=>S.keys.find(k=>k.id===n);
+  if(a==='new'){
+    open(id,`${head('Новая пара ключей')}<div class="mb"><div class="fg"><label>Название сервера</label><input id="${id}-nm" placeholder="Например, Партнёр Север" maxlength="60" autocomplete="off"><small>Название видите только вы. Оно нужно, чтобы потом не перепутать, кому выдан доступ.</small></div>${liveWarn()}</div>
+    <div class="mf"><button class="btn" data-c>Отмена</button><button class="btn pri" id="${id}-go" disabled>Создать</button></div>`);
+    const inp=$('#'+id+'-nm'),go=$('#'+id+'-go');setTimeout(()=>inp.focus(),120);
+    inp.oninput=()=>go.disabled=!inp.value.trim();
+    inp.onkeydown=e=>{if(e.key==='Enter'&&inp.value.trim())go.click()};
+    go.onclick=()=>{const name=inp.value.trim(),k='API'+fake()+fake().slice(0,4),sec=fake()+fake()+fake()+fake()+fake();
+      run(id,'Создаём пару «'+name+'»',['Генерируем ключ и секрет','Записываем в конфиг LiveKit','Перезапускаем LiveKit','Проверяем, что новая пара работает'],()=>{
+        S.keys.unshift({id:Date.now(),name,key:k,created:nowS,off:false,secret:sec});page(id==='d'?'d':'m');if(id==='d')page('m');else page('d');
+        credModal(id,name,k,sec,true)})};
+  }
+  if(a==='show'){const k=i===0?{name:'Основная пара',key:MAIN.key,secret:'••••••••••••••••••••'}:find(i);
+    open(id,`${head('Данные подключения')}<div class="mb"><p>Секрет даёт право создавать комнаты на этом сервере звонков. Для показа введите ваш пароль администратора.</p><div class="fg"><label>Ваш пароль администратора</label><input type="password" id="${id}-pw" placeholder="••••••••"></div></div><div class="mf"><button class="btn" data-c>Отмена</button><button class="btn pri" id="${id}-ok">Показать</button></div>`);
+    $('#'+id+'-ok').onclick=()=>credModal(id,k.name,k.key,k.secret||'s3cR3tK3y'+fake()+fake()+fake(),false)}
+  if(a==='copy'){const k=i===0?{name:'Основная пара',key:MAIN.key,secret:'s3cR3tMain'+fake()}:find(i);
+    open(id,`${head('Копировать данные подключения')}<div class="mb"><p><b>${k.name}</b>: в буфер попадут адрес сервера, API key и секрет одним блоком, как его принимает поле «Сервер LiveKit» на другом сервере чата.</p><div class="card" style="padding:12px 14px;margin-top:10px;box-shadow:none"><span class="mono" style="display:block;color:var(--text);line-height:1.7">Адрес: ${URL_}<br>API key: ${k.key}<br>Секрет: ••••••••••••••••</span></div><p style="margin-top:10px">Секрет защищён: подтвердите действие паролем администратора.</p><div class="fg"><label>Ваш пароль администратора</label><input type="password" id="${id}-cpw" placeholder="••••••••"></div></div><div class="mf"><button class="btn" data-c>Отмена</button><button class="btn pri" id="${id}-cok">${ic('copy')}Скопировать</button></div>`);
+    $('#'+id+'-cok').onclick=()=>{const sec=k.secret||'s3cR3tK3y'+fake()+fake()+fake();try{navigator.clipboard.writeText('Адрес: '+URL_+'\nAPI key: '+k.key+'\nСекрет: '+sec).catch(()=>{})}catch(e){}close(id);toast(id,'Скопировано: адрес, ключ и секрет «'+k.name+'»')}}
+  if(a==='rev'){const k=find(i);
+    open(id,`${head('Отозвать доступ «'+k.name+'»?')}<div class="mb"><p>Этот сервер потеряет доступ к вашему серверу звонков сразу после перезапуска LiveKit. Идущие у него звонки прервутся. Остальные пары продолжат работать.</p><p>Вернуть доступ получится только новой парой ключей.</p>${liveWarn()}</div><div class="mf"><button class="btn" data-c>Отмена</button><button class="btn dng solid" id="${id}-ok">Отозвать</button></div>`);
+    $('#'+id+'-ok').onclick=()=>run(id,'Отзываем «'+k.name+'»',['Удаляем пару из конфига LiveKit','Перезапускаем LiveKit','Проверяем, что доступ закрыт'],()=>{k.off=true;k.when=nowS;close(id);page('d');page('m');toast(id,'Доступ «'+k.name+'» отозван')})}
+  if(a==='del'){S.keys=S.keys.filter(k=>k.id!==i);page('d');page('m');toast(id,'Запись убрана из списка')}
+  if(a==='sshon'){
+    open(id,`${head('Управление без пароля')}<div class="mb"><p>Админка один раз войдёт на сервер LiveKit по паролю, создаст ключ и поставит его в ограниченном виде: он умеет только добавлять и удалять пары и перезапускать LiveKit, оболочки и других команд у него нет.</p>
+    <div class="g2"><div class="fg"><label>Адрес сервера LiveKit</label><input value="172.20.99.250"></div><div class="fg"><label>Порт SSH</label><input value="22"></div></div>
+    <div class="g2"><div class="fg"><label>Логин</label><input value="root"></div><div class="fg"><label>Пароль</label><input type="password" placeholder="••••••••"></div></div><small style="display:block;margin-top:8px;font-size:11.5px">Пароль используется один раз и нигде не сохраняется. Нужен вход под root.</small></div>
+    <div class="mf"><button class="btn" data-c>Отмена</button><button class="btn pri" id="${id}-ok">Подключиться</button></div>`);
+    $('#'+id+'-ok').onclick=()=>open(id,`${head('Проверьте отпечаток сервера')}<div class="mb"><p>Сверьте отпечаток с тем, что показывает сам сервер LiveKit (команда <span class="mono fp">ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub</span>). Если не совпадает, остановитесь: это может быть чужой сервер.</p><div class="card" style="padding:12px 14px;margin-top:10px;box-shadow:none"><span class="mono" style="word-break:break-all">SHA256:Qw8eT3vLr9ZpK1xYd2HnB6sUj0CfMa4GiVoRt5Ln3Kc</span></div></div>
+      <div class="mf"><button class="btn" data-c>Не совпадает</button><button class="btn pri" id="${id}-ok2">Совпадает, продолжить</button></div>`);
+    document.addEventListener('click',function h(e){const b=e.target.closest('#'+id+'-ok2');if(!b)return;document.removeEventListener('click',h);
+      run(id,'Настраиваем управление',['Создаём ключ ed25519','Ставим ограниченный ключ на сервер','Ставим скрипт управления парами','Проверяем вход без пароля'],()=>{S.ssh=true;page('d');page('m');close(id);toast(id,'Управление без пароля включено')})})}
+  if(a==='sshoff'){
+    open(id,`${head('Закрыть доступ без пароля?')}<div class="mb"><p>Ключ будет удалён с сервера LiveKit и стёрт в админке. Создавать и отзывать пары станет нельзя, пока вы не настроите доступ снова.</p><p><b>Уже выданные пары продолжат работать.</b> Для удаления ключа с сервера нужен пароль от него.</p><div class="fg"><label>Пароль root сервера LiveKit</label><input type="password" placeholder="••••••••"></div></div><div class="mf"><button class="btn" data-c>Отмена</button><button class="btn dng solid" id="${id}-ok">Закрыть доступ</button></div>`);
+    $('#'+id+'-ok').onclick=()=>run(id,'Закрываем доступ',['Удаляем ключ с сервера LiveKit','Стираем ключ в админке'],()=>{S.ssh=false;page('d');page('m');close(id);toast(id,'Управление без пароля выключено')})}
+}
+$('#tTheme').onclick=()=>{const d=document.documentElement.dataset.theme!=='dark';document.documentElement.dataset.theme=d?'dark':'light';$('#tTheme').textContent=d?'Светлая тема':'Тёмная тема'};
+$('#tSsh').onclick=()=>{S.ssh=!S.ssh;$('#tSsh').textContent='Управление без пароля: '+(S.ssh?'настроено':'не настроено');page('d');page('m')};
+$('#tLive').onclick=()=>{S.live=S.live?0:2;$('#tLive').textContent='Идущих звонков: '+S.live};
+page('d');page('m');
+</script>
+</body>
+</html>

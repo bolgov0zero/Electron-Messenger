@@ -4770,6 +4770,7 @@ async function renderSettings() {
   SP.calls.cfg = callsCfg && !callsCfg.error ? callsCfg : null;
   SP.calls.form = { url: SP.calls.cfg?.url || '', key: SP.calls.cfg?.key || '', secret: '' }; SP.calls.err = ''; SP.calls.ok = '';
   api('GET', '/api/admin/calls/access').then(r => { SP.calls.access = r && !r.error ? r.peers : null; if (currentPage === 'settings') spRender(); }).catch(() => {});
+  lkkLoad();
   api('GET', '/api/admin/calls/fed').then(r => { SP.calls.fed = r && !r.error ? r : null; if (currentPage === 'settings') spRender(); }).catch(() => {});
   api('GET', '/api/admin/calls/install').then(r => { if (r?.job?.state === 'running' && currentPage === 'settings') { SP.open.add('calls'); lkiResume(r.job); } }).catch(() => {});
   if (currentPage !== 'settings') return;
@@ -5169,6 +5170,7 @@ function spCalls() {
     `<button type="button" class="btn btn-ghost btn-sm" ${busy ? 'disabled' : ''} data-on-click="lkiOpen">Установить…</button>`, '', 'wide', 'установить ssh сервер livekit caddy сертификат домен')
   + (c.cfg?.ready ? spRow('Данные для другого сервера', 'Адрес, ключ и секрет этого сервера звонков одним блоком. Вставьте их в такой же раздел на другом сервере чата, и он будет звонить через этот LiveKit. Секрет показывается только по вашему паролю',
     `<button type="button" class="btn btn-ghost btn-sm" data-on-click="lkcOpen">Скопировать…</button>`, '', 'wide', 'копировать данные подключения ключ секрет другой сервер') : '')
+  + spCallsKeys()
   + spRow('Подключение', 'Проверка спрашивает у LiveKit список комнат: так видно, что адрес, ключ и секрет верны',
     `<button type="button" class="btn btn-ghost btn-sm" ${busy ? 'disabled' : ''} data-on-click="spCallsTest">${c.busy === 'test' ? '<span class="st-spin"></span>' : ''}Проверить</button><button type="button" class="btn ux-solid btn-sm" ${busy ? 'disabled' : ''} data-on-click="spCallsSave">${c.busy === 'save' ? '<span class="st-spin"></span>' : ''}Сохранить</button>`,
     c.err ? `<em class="w">${esc(c.err)}</em>` : c.ok ? `<em style="color:var(--c-green)">${esc(c.ok)}</em>` : '', 'wide', 'проверить подключение сохранить');
@@ -5820,6 +5822,183 @@ function wsDelete(id) {
     await wsLoad();
     if (currentPage === 'workspaces') wsRender();
   });
+}
+
+/* ── Доступ для других серверов: отдельная пара ключей LiveKit на каждый, любую можно отозвать ── */
+// Раздел «Настройки → Звонки». Логика на сервере: lkkeys.js. Создание и отзыв перезапускают LiveKit на несколько секунд,
+// поэтому окна предупреждают об идущих звонках. Макет: docs/glass-mockup/admin-calls-keys.html.
+const LKK = { d: null, m: null, name: '', apw: '', spw: '', f: { host: '', port: '22', user: 'root' }, fp: '', os: '', err: '', can_local: false, id: '', run: null, res: null, ok: '' };
+const LKK_I = {
+  key: '<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+  srv: '<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/>',
+  lock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  copy: '<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  eye: '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+  ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
+  trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  warn: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  ok: '<path d="M20 6 9 17l-5-5"/>',
+};
+const lkkIc = n => `<svg class="lkk-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LKK_I[n]}</svg>`;
+const lkkDate = iso => iso ? new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+const lkkMask = k => k.slice(0, 6) + '…' + k.slice(-3);
+async function lkkLoad() {
+  const r = await api('GET', '/api/admin/calls/keys').catch(() => null);
+  LKK.d = r && !r.error ? r : null;
+  if (currentPage === 'settings') spRender();
+  return LKK.d;
+}
+// Строки раздела «Звонки»: заголовок с кнопкой, карточка «управление без пароля» и список пар
+function spCallsKeys() {
+  const d = LKK.d;
+  if (!d || !SP.calls.cfg?.ready) return '';
+  const ssh = d.ssh, fp = v => `<span class="mono lkk-fp">${esc(v)}</span>`;
+  const strip = ssh.on
+    ? `<div class="lkk-ssh on"><div class="lkk-ic">${lkkIc('shield')}</div><div class="lkk-tx"><b>Управление без пароля включено</b><span>Ограниченный ключ ${fp(ssh.fp)} на сервере LiveKit ${fp(ssh.host)}, с ${lkkDate(ssh.since)}. Он умеет только добавлять и удалять пары и перезапускать LiveKit.</span></div><button type="button" class="btn btn-ghost btn-sm lkk-red" data-on-click="lkkSshOffOpen">Закрыть доступ</button></div>`
+    : `<div class="lkk-ssh"><div class="lkk-ic">${lkkIc('lock')}</div><div class="lkk-tx"><b>Управление без пароля не настроено</b><span>Чтобы создавать и отзывать пары, админке нужен вход на сервер LiveKit. Настройте его один раз: пароль не сохранится, на сервер встанет ограниченный ключ.</span></div><button type="button" class="btn ux-solid btn-sm" data-on-click="lkkSshOnOpen">Настроить</button></div>`;
+  const act = (a, id, ic, label, cls = '', dis = false) => `<button type="button" class="btn btn-ghost btn-sm ${cls}" ${dis ? 'disabled' : ''} data-on-click="${a}" data-a-click="${esc(JSON.stringify([id]))}">${lkkIc(ic)}${label}</button>`;
+  const main = `<div class="lkk-row main"><div class="lkk-ic">${lkkIc('key')}</div><div class="lkk-nm"><b>Основная пара</b><span class="lkk-chip info">этот сервер</span></div><div class="lkk-meta"><span class="mono">${esc(lkkMask(SP.calls.cfg.key || 'APIxxxxxxxxx'))}</span><span>Используют ваши клиенты и сервер. Отозвать нельзя</span></div><div class="lkk-act">${act('lkkPwOpen', 'main:copy', 'copy', 'Копировать')}${act('lkcOpen', '', 'eye', 'Данные')}</div></div>`;
+  const rows = d.keys.map(k => `<div class="lkk-row${k.off ? ' off' : ''}"><div class="lkk-ic">${lkkIc(k.off ? 'ban' : 'srv')}</div><div class="lkk-nm"><b>${esc(k.name)}</b>${k.off ? '<span class="lkk-chip off">отозвана</span>' : '<span class="lkk-chip ok">активна</span>'}</div><div class="lkk-meta"><span class="mono">${esc(lkkMask(k.key))}</span><span>${k.off ? 'выдана ' + lkkDate(k.created) + ', отозвана ' + lkkDate(k.when) : 'создана ' + lkkDate(k.created)}</span></div><div class="lkk-act">${k.off
+    ? act('lkkPurge', k.id, 'trash', 'Убрать из списка')
+    : act('lkkPwOpen', k.id + ':copy', 'copy', 'Копировать') + act('lkkPwOpen', k.id + ':show', 'eye', 'Данные') + act('lkkRevOpen', k.id, 'ban', 'Отозвать', 'lkk-red', !ssh.on)}</div></div>`).join('');
+  return spRow('Доступ для других серверов', 'Отдельная пара ключей для каждого постороннего сервера, которому вы разрешили пользоваться вашим сервером звонков. Любую пару можно отозвать, остальные продолжат работать',
+      `<button type="button" class="btn ux-solid btn-sm" ${ssh.on ? '' : 'disabled'} data-on-click="lkkNewOpen">Создать пару</button>`, '', 'wide', 'доступ другие серверы пара ключей отозвать livekit ключ секрет сервер')
+    + `<div class="sp-r wide lkk"><div class="lkk-wrap">${strip}<div class="lkk-list">${main}${rows}</div><p class="lkk-foot">${lkkIc('warn')}<span>Создание и отзыв перезапускают LiveKit на несколько секунд, идущие в этот момент звонки прервутся. Название сервера видите только вы: оно нужно, чтобы потом не перепутать, кому выдан доступ.</span></p></div></div>`;
+}
+
+/* окно */
+const lkkHead = (t, x = true) => `<div class="modal-head"><h3>${t}</h3>${x ? '<button class="modal-close" aria-label="Закрыть" data-on-click="lkkClose">✕</button>' : ''}</div>`;
+const lkkP = 'font-size:12.5px;color:var(--c-text2);line-height:1.7;margin:0';
+const lkkLive = () => LKK.d?.live ? `<div class="lkk-warn">${lkkIc('warn')}<div>Идущих сейчас звонков: <b>${LKK.d.live}</b>. LiveKit перезапустится на несколько секунд, эти звонки прервутся.</div></div>`
+  : `<div class="lkk-warn ok">${lkkIc('ok')}<div>Идущих звонков нет. LiveKit перезапустится на несколько секунд, это никому не помешает.</div></div>`;
+function lkkOpen(m, extra = {}) { Object.assign(LKK, { m, err: '', can_local: false }, extra); lkkRender(); openModal('modal-lkkeys'); }
+function lkkClose() { if (LKK.m === 'run') return; LKK.apw = LKK.spw = ''; LKK.res = null; closeModal('modal-lkkeys'); }
+function lkkF(k, v) { LKK[k] = v; if (k === 'name') { const b = document.getElementById('lkk-go'); if (b) b.disabled = !v.trim(); } }
+function lkkH(k, v) { LKK.f[k] = v; }
+function lkkKey(ev, fn) { if (ev.key === 'Enter') window[fn]?.(); }
+const lkkInp = (id, label, v, type, ph, on, extra = '') => `<div class="fg" ${extra}><label>${label}</label><input id="${id}" type="${type}" value="${esc(v)}" placeholder="${esc(ph)}" autocomplete="${type === 'password' ? 'current-password' : 'off'}" spellcheck="false" data-on-input="${on[0]}" data-a-input="${esc(JSON.stringify(on[1]))}"></div>`;
+const lkkApwF = () => lkkInp('lkk-apw', 'Ваш пароль администратора', LKK.apw, 'password', '••••••••', ['lkkF', ['apw', '__value']]);
+function lkkRender() {
+  const box = document.getElementById('lkkeys-box'); if (!box) return;
+  const m = LKK.m, d = LKK.d, err = `<div class="err">${esc(LKK.err)}</div>`;
+  const foot = (a, b) => `<div class="modal-foot">${a}${b}</div>`;
+  const cancel = '<button class="btn btn-ghost" data-on-click="lkkClose">Отмена</button>';
+  if (m === 'new') {
+    box.innerHTML = `${lkkHead('Новая пара ключей')}<div class="modal-body">${lkkInp('lkk-name', 'Название сервера', LKK.name, 'text', 'Например, Партнёр Север', ['lkkF', ['name', '__value']]).replace('<input', '<input maxlength="60" data-on-keydown="lkkKey" data-a-keydown=\'["__event","lkkGo"]\'')}<p style="${lkkP};margin-top:-4px">Название видите только вы. Оно нужно, чтобы потом не перепутать, кому выдан доступ.</p>${lkkLive()}${err}</div>${foot(cancel, `<button class="btn btn-primary" id="lkk-go" ${LKK.name.trim() ? '' : 'disabled'} data-on-click="lkkGo">Создать</button>`)}`;
+  } else if (m === 'run') {
+    const r = LKK.run;
+    box.innerHTML = `${lkkHead(r.title, false)}<div class="modal-body"><ul class="lkk-steps">${r.labels.map((l, i) => `<li class="${r.done ? 'done' : i < r.i ? 'done' : i === r.i ? 'run' : ''}"><span class="d">${lkkIc('ok')}</span>${esc(l)}</li>`).join('')}</ul></div>`;
+  } else if (m === 'cred') {
+    const c = LKK.res, row = (lab, v, k) => `<div class="lkk-cr"><div><span>${lab}</span><b class="mono">${esc(v)}</b></div><button type="button" class="btn btn-ghost btn-sm" data-on-click="lkkCp" data-a-click="${esc(JSON.stringify([k]))}">${lkkIc('copy')}Копировать</button></div>`;
+    box.innerHTML = `${lkkHead(LKK.fresh ? 'Пара создана' : 'Данные подключения')}<div class="modal-body"><p style="${lkkP};margin-bottom:10px"><b style="color:var(--c-text)">${esc(c.name)}</b>${LKK.fresh ? ': передайте эти данные его администратору через защищённый канал.' : ''}</p><div class="card" style="padding:2px 14px;margin-bottom:12px">${row('Адрес', c.url, 'url')}${row('API key', c.key, 'key')}${row('Секрет', c.secret, 'secret')}</div><p style="${lkkP}">На другом сервере чата откройте «Настройки → Звонки», вставьте блок в поле «Сервер LiveKit».${LKK.fresh ? ' Секрет позже можно показать кнопкой «Данные» (потребуется ваш пароль администратора).' : ''}</p><div class="err" style="color:var(--c-green)">${esc(LKK.ok)}</div></div>${foot('<button class="btn btn-ghost" data-on-click="lkkClose">Закрыть</button>', '<button class="btn btn-primary" data-on-click="lkkCp" data-a-click=\'["all"]\'>Копировать всё</button>')}`;
+  } else if (m === 'pw') {
+    const copy = LKK.act === 'copy';
+    box.innerHTML = `${lkkHead(copy ? 'Копировать данные подключения' : 'Данные подключения')}<div class="modal-body"><p style="${lkkP};margin-bottom:12px"><b style="color:var(--c-text)">${esc(LKK.pname)}</b>: ${copy ? 'в буфер попадут адрес сервера, API key и секрет одним блоком, как его принимает поле «Сервер LiveKit» на другом сервере чата.' : 'секрет даёт право создавать комнаты на этом сервере звонков.'} Подтвердите действие паролем администратора.</p>${lkkApwF().replace('<input', '<input data-on-keydown="lkkKey" data-a-keydown=\'["__event","lkkPwGo"]\'')}${err}</div>${foot(cancel, `<button class="btn btn-primary" data-on-click="lkkPwGo">${copy ? 'Скопировать' : 'Показать'}</button>`)}`;
+    setTimeout(() => document.getElementById('lkk-apw')?.focus(), 150);
+  } else if (m === 'rev') {
+    const k = d.keys.find(x => x.id === LKK.id);
+    box.innerHTML = `${lkkHead('Отозвать доступ «' + esc(k?.name || '') + '»?')}<div class="modal-body"><p style="${lkkP}">Этот сервер потеряет доступ к вашему серверу звонков сразу после перезапуска LiveKit. Идущие у него звонки прервутся. Остальные пары продолжат работать.</p><p style="${lkkP};margin-top:8px">Вернуть доступ получится только новой парой ключей.</p>${lkkLive()}${err}</div>${foot(cancel, '<button class="btn btn-danger" data-on-click="lkkRevGo">Отозвать</button>')}`;
+  } else if (m === 'sshon') {
+    box.innerHTML = `${lkkHead('Управление без пароля')}<div class="modal-body"><p style="${lkkP}">Админка один раз войдёт на сервер LiveKit по паролю, создаст ключ и поставит его в ограниченном виде: он умеет только добавлять и удалять пары и перезапускать LiveKit, оболочки и других команд у него нет.</p>
+      <div class="lkk-g2">${lkkInp('lkk-h', 'Адрес сервера LiveKit', LKK.f.host, 'text', '172.20.0.5', ['lkkH', ['host', '__value']])}${lkkInp('lkk-p', 'Порт SSH', LKK.f.port, 'text', '22', ['lkkH', ['port', '__value']])}</div>
+      <div class="lkk-g2" style="grid-template-columns:1fr 1fr">${lkkInp('lkk-u', 'Логин', LKK.f.user, 'text', 'root', ['lkkH', ['user', '__value']])}${lkkInp('lkk-sp', 'Пароль сервера', LKK.spw, 'password', '••••••••', ['lkkF', ['spw', '__value']])}</div>
+      ${lkkApwF().replace('<input', '<input data-on-keydown="lkkKey" data-a-keydown=\'["__event","lkkSshCheck"]\'')}<p style="${lkkP};margin-top:-2px;font-size:11.5px">Пароль сервера используется один раз и нигде не сохраняется. Нужен вход под root.</p>${err}</div>${foot(cancel, '<button class="btn btn-primary" id="lkk-chk" data-on-click="lkkSshCheck">Подключиться</button>')}`;
+  } else if (m === 'fp') {
+    box.innerHTML = `${lkkHead('Проверьте отпечаток сервера')}<div class="modal-body"><p style="${lkkP}">Сверьте отпечаток с тем, что показывает сам сервер LiveKit (команда <span class="mono lkk-fp">ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub</span>). Если не совпадает, остановитесь: это может быть чужой сервер.</p><div class="card" style="padding:12px 14px;margin-top:10px"><span class="mono" style="word-break:break-all">${esc(LKK.fp)}</span></div><p style="${lkkP};margin-top:8px">Система сервера: ${esc(LKK.os)}</p>${err}</div>${foot('<button class="btn btn-ghost" data-on-click="lkkClose">Не совпадает</button>', '<button class="btn btn-primary" data-on-click="lkkSshGo">Совпадает, продолжить</button>')}`;
+  } else if (m === 'sshoff') {
+    box.innerHTML = `${lkkHead('Закрыть доступ без пароля?')}<div class="modal-body"><p style="${lkkP}">Ключ будет удалён с сервера LiveKit и стёрт в админке. Создавать и отзывать пары станет нельзя, пока вы не настроите доступ снова.</p><p style="${lkkP};margin:8px 0 10px"><b style="color:var(--c-text)">Уже выданные пары продолжат работать.</b> Для удаления ключа с сервера нужен пароль от него.</p>${lkkInp('lkk-sp', 'Пароль сервера LiveKit', LKK.spw, 'password', '••••••••', ['lkkF', ['spw', '__value']])}${lkkApwF()}${err}</div>${foot(cancel, (LKK.can_local ? '<button class="btn btn-ghost" data-on-click="lkkSshOffGo" data-a-click=\'[true]\'>Стереть только здесь</button>' : '') + '<button class="btn btn-danger" data-on-click="lkkSshOffGo" data-a-click=\'[false]\'>Закрыть доступ</button>')}`;
+  }
+}
+/* шаги с ходом выполнения: пока идёт запрос, шаги зажигаются по очереди, на ответе сервера все отмечаются */
+async function lkkRun(title, labels, fn) {
+  LKK.m = 'run'; LKK.run = { title, labels, i: 0, done: false }; lkkRender();
+  const t = setInterval(() => { if (LKK.run.i < labels.length - 1) { LKK.run.i++; lkkRender(); } }, 1100);
+  let r; try { r = await fn(); } catch { r = { error: 'Нет связи с сервером' }; }
+  clearInterval(t);
+  if (!r?.error) { LKK.run.done = true; lkkRender(); await new Promise(res => setTimeout(res, 450)); }
+  LKK.m = null;   // шаги закончились: окно можно закрыть или заменить другим
+  return r;
+}
+async function lkkNewOpen() { await lkkLoad(); lkkOpen('new', { name: '' }); setTimeout(() => document.getElementById('lkk-name')?.focus(), 150); }
+async function lkkGo() {
+  const name = LKK.name.trim(); if (!name) return;
+  const r = await lkkRun(`Создаём пару «${name}»`, ['Генерируем ключ и секрет', 'Записываем в конфиг LiveKit', 'Перезапускаем LiveKit', 'Проверяем запуск LiveKit'], () => api('POST', '/api/admin/calls/keys', { name }));
+  if (r?.error) { lkkOpen('new', { err: r.error }); return; }
+  LKK.d = r.view; spRender();
+  lkkOpen('cred', { res: { name: r.name, url: r.url, key: r.key, secret: r.secret }, fresh: true, ok: '' });
+}
+async function lkkRevOpen(id) { await lkkLoad(); lkkOpen('rev', { id }); }
+async function lkkRevGo() {
+  const k = LKK.d.keys.find(x => x.id === LKK.id); if (!k) return;
+  const r = await lkkRun(`Отзываем «${k.name}»`, ['Удаляем пару из конфига LiveKit', 'Перезапускаем LiveKit', 'Проверяем запуск LiveKit'], () => api('POST', '/api/admin/calls/keys/' + encodeURIComponent(k.id) + '/revoke'));
+  if (r?.error) { lkkOpen('rev', { err: r.error }); return; }
+  LKK.d = r.view; spRender(); lkkClose(); toast(`Доступ «${k.name}» отозван`, 'success');
+}
+async function lkkPurge(id) {
+  const r = await api('DELETE', '/api/admin/calls/keys/' + encodeURIComponent(id));
+  if (r?.error) { toast(esc(r.error), 'error'); return; }
+  LKK.d = r.view; spRender(); toast('Запись убрана из списка', 'success');
+}
+// «Копировать» и «Данные»: секрет отдаётся только по паролю администратора
+function lkkPwOpen(a) {
+  const [id, act] = String(a).split(':'), main = id === 'main', k = main ? null : LKK.d.keys.find(x => x.id === id);
+  lkkOpen('pw', { id, act: act || 'show', pname: main ? 'Основная пара' : (k?.name || ''), apw: '', main });
+}
+async function lkkPwGo() {
+  const pw = document.getElementById('lkk-apw')?.value || LKK.apw;
+  if (!pw) { LKK.err = 'Введите пароль'; return lkkRender(); }
+  const r = LKK.main ? await api('POST', '/api/admin/calls/credentials', { admin_password: pw }) : await api('POST', '/api/admin/calls/keys/' + encodeURIComponent(LKK.id) + '/reveal', { admin_password: pw });
+  LKK.apw = '';
+  if (!r || r.error) { LKK.err = r?.error || 'Не удалось получить данные'; return lkkRender(); }
+  const res = { name: LKK.pname, url: r.url, key: r.key, secret: r.secret };
+  if (LKK.act === 'copy') {
+    try { await navigator.clipboard.writeText(lkkText(res)); closeModal('modal-lkkeys'); toast(`Скопировано: адрес, ключ и секрет «${LKK.pname}»`, 'success'); }
+    catch { LKK.res = res; lkkOpen('cred', { res, fresh: false, ok: '' }); toast('Браузер не дал скопировать: данные показаны в окне', 'error'); }
+    return;
+  }
+  lkkOpen('cred', { res, fresh: false, ok: '' });
+}
+const lkkText = c => `Адрес: ${c.url}\nAPI key: ${c.key}\nСекрет: ${c.secret}`;
+async function lkkCp(what) {
+  const c = LKK.res; if (!c) return;
+  try { await navigator.clipboard.writeText(what === 'all' ? lkkText(c) : c[what]); LKK.ok = what === 'all' ? 'Скопировано: адрес, ключ и секрет' : 'Скопировано'; }
+  catch { LKK.ok = ''; toast('Браузер не дал скопировать: выделите текст вручную', 'error'); }
+  lkkRender();
+}
+/* управление без пароля */
+function lkkSshOnOpen() {
+  let host = LKK.d?.host || '';
+  lkkOpen('sshon', { f: { host, port: '22', user: 'root' }, spw: '', apw: '' });
+}
+async function lkkSshCheck() {
+  const f = LKK.f, apw = document.getElementById('lkk-apw')?.value || LKK.apw, spw = document.getElementById('lkk-sp')?.value || LKK.spw;
+  LKK.apw = apw; LKK.spw = spw;
+  if (!spw) { LKK.err = 'Введите пароль сервера LiveKit'; return lkkRender(); }
+  if (!apw) { LKK.err = 'Введите ваш пароль администратора'; return lkkRender(); }
+  const chk = document.getElementById('lkk-chk'); if (chk) { chk.disabled = true; chk.textContent = 'Проверка…'; }
+  const r = await api('POST', '/api/admin/calls/install/check', { host: f.host.trim(), port: Number(f.port) || 22, user: f.user.trim() || 'root', password: spw }).catch(() => null);
+  if (!r || r.error) { LKK.err = r?.error || 'Не удалось подключиться'; return lkkRender(); }
+  LKK.fp = r.fingerprint; LKK.os = r.os; LKK.err = ''; LKK.m = 'fp'; lkkRender();
+}
+async function lkkSshGo() {
+  const f = LKK.f;
+  const r = await lkkRun('Настраиваем управление', ['Подключаемся к серверу', 'Создаём ключ ed25519', 'Ставим ограниченный ключ и скрипт', 'Проверяем вход без пароля'],
+    () => api('POST', '/api/admin/calls/keys/ssh', { host: f.host.trim(), port: Number(f.port) || 22, user: f.user.trim() || 'root', password: LKK.spw, fingerprint: LKK.fp, admin_password: LKK.apw }));
+  LKK.spw = ''; LKK.apw = '';
+  if (r?.error) { lkkOpen('sshon', { err: r.error }); return; }
+  LKK.d = r.view; spRender(); lkkClose(); toast('Управление без пароля включено', 'success');
+}
+function lkkSshOffOpen() { lkkOpen('sshoff', { spw: '', apw: '' }); }
+async function lkkSshOffGo(localOnly) {
+  const apw = document.getElementById('lkk-apw')?.value || LKK.apw, spw = document.getElementById('lkk-sp')?.value || LKK.spw;
+  LKK.apw = apw; LKK.spw = spw;
+  if (!apw) { LKK.err = 'Введите ваш пароль администратора'; return lkkRender(); }
+  if (!localOnly && !spw) { LKK.err = 'Введите пароль сервера LiveKit'; return lkkRender(); }
+  const r = await lkkRun('Закрываем доступ', ['Удаляем ключ с сервера LiveKit', 'Стираем ключ в админке'], () => api('POST', '/api/admin/calls/keys/ssh/off', { admin_password: apw, ssh_password: spw, local_only: !!localOnly }));
+  LKK.spw = ''; LKK.apw = '';
+  if (r?.error) { lkkOpen('sshoff', { err: r.error, can_local: !!r.can_local }); return; }
+  LKK.d = r.view; spRender(); lkkClose(); toast('Управление без пароля выключено', 'success');
 }
 
 /* ── Блоки «Федерация» и «Звонки» на главной ── */
