@@ -137,8 +137,8 @@
     if (!hasMedia()) return true;
     try { var s = await navigator.mediaDevices.getUserMedia({ audio: true }); s.getTracks().forEach(function (t) { t.stop(); }); }
     catch (e) {
-      H.toast(/NotAllowed|Security|Permission/i.test(e && e.name || '') ? (H.mobile ? 'Нужен доступ к микрофону. Разрешите его в настройках телефона для этого сайта и позвоните снова' : 'Нужен доступ к микрофону. Нажмите на значок замка в адресной строке и разрешите его') : 'Микрофон не найден');
-      return false;
+      // Микрофона нет или доступ не дали: звонок всё равно идёт, человек видит и слышит собеседника
+      H.toast(/NotAllowed|Security|Permission/i.test(e && e.name || '') ? (H.mobile ? 'Нет доступа к микрофону: вы только слушаете. Разрешите его в настройках телефона для этого сайта, чтобы говорить' : 'Нет доступа к микрофону: вы только слушаете. Нажмите на значок замка в адресной строке и разрешите его, чтобы говорить') : 'Микрофон не найден: вы только слушаете');
     }
     if (video) { try { var v = await navigator.mediaDevices.getUserMedia({ video: true }); v.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} }
     return true;
@@ -425,7 +425,8 @@
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     ensureVideos();
     var R = LK.RoomEvent, T = LK.Track;
-    room = new LK.Room({ adaptiveStream: true, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: H.mobile ? { width: 960, height: 540, frameRate: 24 } : { width: 1280, height: 720, frameRate: 30 }, deviceId: devOpt('videoin') }, publishDefaults: H.mobile ? { videoEncoding: { maxBitrate: 1200000, maxFramerate: 24 } } : undefined });
+    // В звонке двоих без слоёв качества: приёмник всегда получает полную картинку, а передатчик не гоняет три кодировщика (на телефоне это тяжело, и картинка падала до 180×320 при 7 к/с). Слои нужны только в группе
+    room = new LK.Room({ adaptiveStream: !!c.group, dynacast: !!c.group, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: H.mobile ? { width: 960, height: 540, frameRate: 24 } : { width: 1280, height: 720, frameRate: 30 }, deviceId: devOpt('videoin') }, publishDefaults: { simulcast: !!c.group, videoEncoding: H.mobile ? { maxBitrate: 1200000, maxFramerate: 24 } : undefined } });
     room.on(R.TrackSubscribed, function (track) {
       if (track.kind === T.Kind.Audio) { document.querySelectorAll('audio[data-sid="' + track.sid + '"]').forEach(function (o) { o.remove(); }); var el = track.attach(); el.dataset.cl = '1'; el.dataset.sid = track.sid; el.setAttribute('playsinline', ''); document.body.appendChild(el); try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {} el.play && el.play().catch(function () {}); }
       remoteState();
@@ -441,8 +442,7 @@
       .on(R.Disconnected, function () { if (!ended && st.call) { H.toast('Соединение разорвано'); hangup(); } });
     await room.connect(url, token);
     var so = devGet('audioout'); if (so && so.id && canSink() && room.switchActiveDevice) { try { await room.switchActiveDevice('audiooutput', so.id); } catch (e) {} }
-    await room.localParticipant.setMicrophoneEnabled(true);
-    c.mic = true;
+    try { await room.localParticipant.setMicrophoneEnabled(true); c.mic = true; } catch (e) { c.mic = false; }
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     if (c.group) { c.since = Date.now(); liveNow(); }
     else if (room.remoteParticipants.size) { liveNow(); remoteState(); } else { c.phase = c.outgoing ? 'ringing' : 'connecting'; render(); }
@@ -561,9 +561,11 @@
     finish(t);
   }
   function decline() { var inc = st.incoming; if (!inc) return; if (!inc.group) H.api('POST', '/calls/' + inc.call_id + '/decline'); dismissIncoming(); }
+  function fixViewport() { try { window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; window.dispatchEvent(new Event('resize')); } catch (e) {} }
   function finish(msg) {
     var c = st.call; if (!c) return;
     st.call = null; st.min = false; stopRing(); leave(); render();
+    if (H.mobile) { setTimeout(fixViewport, 60); setTimeout(fixViewport, 600); }
     if (msg) H.toast(msg);
   }
   function hangup() { var c = st.call; if (!c) return; H.api('POST', c.group ? '/calls/group/' + c.id + '/leave' : '/calls/' + c.id + '/end'); finish(); }

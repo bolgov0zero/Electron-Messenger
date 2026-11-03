@@ -170,6 +170,10 @@ EOF
 # ── 5. Служба ───────────────────────────────────────────────────────────────
 step 55 5 "Запуск службы"
 run systemctl daemon-reload
+# Буфер приёма UDP по умолчанию мал для звонков: на загруженном сервере пакеты теряются, и клиенты урезают видео до нескольких кбит/с.
+# LiveKit сам предупреждает об этом при запуске («UDP receive buffer is too small»)
+printf 'net.core.rmem_max=5000000\nnet.core.wmem_max=5000000\n' > /etc/sysctl.d/99-livekit.conf
+sysctl -w net.core.rmem_max=5000000 net.core.wmem_max=5000000 >/dev/null 2>&1 || log 'Не удалось увеличить буфер UDP: сделайте это вручную (sysctl net.core.rmem_max=5000000)'
 run systemctl enable livekit || fail "Не удалось включить службу livekit"
 run systemctl restart livekit || fail "Не удалось запустить службу livekit"
 wait_lk || { journalctl -u livekit -n 15 --no-pager >>"$LOG_TMP" 2>&1; fail "LiveKit запущен, но не отвечает на порту 7880"; }

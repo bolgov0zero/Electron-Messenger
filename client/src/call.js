@@ -171,7 +171,8 @@
   async function connect() {
     render(); send();
     try {
-      if (!(await window.callApi.mediaAccess('microphone'))) return fail('Нет доступа к микрофону. Разрешите его в настройках системы');
+      // Нет микрофона или доступа к нему — не повод бросать звонок: человек подключается как слушатель и видит собеседника
+      const micOk = await window.callApi.mediaAccess('microphone');
       room = new Room({
         adaptiveStream: true, dynacast: true,
         audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -195,8 +196,11 @@
         .on(RoomEvent.Reconnected, () => setPhase(room.remoteParticipants.size ? 'live' : 'waiting'))
         .on(RoomEvent.Disconnected, () => { if (!ended) fail('Соединение разорвано', 'dropped'); });
       await room.connect(init.url, init.token);
-      { const mid = await devId('audioin'); await room.localParticipant.setMicrophoneEnabled(true, mid ? { deviceId: { ideal: mid } } : undefined); }
-      st.mic = true;
+      st.mic = false;
+      if (micOk) {
+        try { const mid = await devId('audioin'); await room.localParticipant.setMicrophoneEnabled(true, mid ? { deviceId: { ideal: mid } } : undefined); st.mic = true; }
+        catch { note('Микрофон не найден: вы только слушаете'); }
+      } else note('Нет доступа к микрофону: вы только слушаете. Разрешите его в настройках системы, чтобы говорить');
       { const oid = await devId('audioout'); if (oid) { try { await room.switchActiveDevice('audiooutput', oid); } catch {} } }
       if (init.group || room.remoteParticipants.size) { hadPeer = true; setPhase('live'); onRemoteState(); } else setPhase('waiting');
       if (init.video) await setCam(true);
