@@ -4769,6 +4769,7 @@ async function renderSettings() {
   const callsCfg = await api('GET', '/api/admin/calls').catch(() => null);
   SP.calls.cfg = callsCfg && !callsCfg.error ? callsCfg : null;
   SP.calls.form = { url: SP.calls.cfg?.url || '', key: SP.calls.cfg?.key || '', secret: '' }; SP.calls.err = ''; SP.calls.ok = '';
+  api('GET', '/api/admin/calls/access').then(r => { SP.calls.access = r && !r.error ? r.peers : null; if (currentPage === 'settings') spRender(); }).catch(() => {});
   api('GET', '/api/admin/calls/fed').then(r => { SP.calls.fed = r && !r.error ? r : null; if (currentPage === 'settings') spRender(); }).catch(() => {});
   api('GET', '/api/admin/calls/install').then(r => { if (r?.job?.state === 'running' && currentPage === 'settings') { SP.open.add('calls'); lkiResume(r.job); } }).catch(() => {});
   if (currentPage !== 'settings') return;
@@ -5148,12 +5149,12 @@ function spGithub() {
 /* ── Звонки ── */
 function spCalls() {
   const c = SP.calls, f = c.form, on = !!c.cfg?.enabled, busy = !!c.busy;
-  const stat = !c.cfg ? '' : on ? '<span class="sp-stat ok">включены</span>' : `<span class="sp-stat warn">${c.cfg.ready ? 'выключены' : 'не настроены'}</span>`;
+  const stat = !c.cfg ? '' : on ? '<span class="sp-stat ok">' + (c.cfg.guest ? 'включены без своего сервера' : 'включены') + '</span>' : `<span class="sp-stat warn">${c.cfg.ready ? 'выключены' : 'не настроены'}</span>`;
   const inp = (id, k, ph, w, type = 'text') => `<div class="sp-inp"><input id="${id}" type="${type}" value="${esc(f[k])}" placeholder="${esc(ph)}" style="width:${w}px;font-weight:500" autocomplete="off" spellcheck="false" data-on-input="spCallsF" data-a-input='${JSON.stringify([k, '__value'])}'></div>`;
   return spRow('Звонки в личных чатах', 'Аудио и видео между двумя людьми через сервер LiveKit. Пока выключено, кнопок звонка у пользователей нет',
     `${stat}<div class="sp-seg"><button type="button" aria-pressed="${!on}" ${busy ? 'disabled' : ''} data-on-click="spCallsOn" data-a-click='[false]'>Выключены</button><button type="button" aria-pressed="${on}" ${busy ? 'disabled' : ''} data-on-click="spCallsOn" data-a-click='[true]'>Включены</button></div>`,
     '', 'wide', 'звонки аудио видео livekit включить')
-  + spRow('Сервер LiveKit', 'В локальной сети: ws://172.20.0.5:7880. С сертификатом: wss://calls.example.com',
+  + spRow('Сервер LiveKit', 'В локальной сети: ws://172.20.0.5:7880. С сертификатом: wss://calls.example.com. Можно оставить пустым: тогда звонки идут только людям с серверов, которые разрешили вам свой сервер звонков (см. ниже)',
     inp('sp-ck-url', 'url', 'ws://адрес:7880', 300), '', 'wide', 'адрес сервер livekit url')
   + spRow('Порты для файрвола', 'Какие порты должны быть открыты у сервера звонков в каждом режиме установки: локальная сеть, публичный сервер с доменом, за обратным прокси',
     `<button type="button" class="btn btn-ghost btn-sm" data-on-click="lkpOpen">Показать порты…</button>`, '', 'wide', 'порты файрвол firewall открыть 7880 7881 7882 3478 5349 443 turn')
@@ -5162,6 +5163,7 @@ function spCalls() {
   + spRow('Доступен из интернета', 'Нужно, чтобы люди с других серверов звонили через этот сервер: к нему подключатся и они. Включайте, только если адрес открыт снаружи (wss:// с сертификатом, свой или через обратный прокси)',
     `<div class="sp-seg"><button type="button" aria-pressed="${!c.cfg?.public}" ${busy ? 'disabled' : ''} data-on-click="spCallsPublic" data-a-click='[false]'>Нет</button><button type="button" aria-pressed="${!!c.cfg?.public}" ${busy ? 'disabled' : ''} data-on-click="spCallsPublic" data-a-click='[true]'>Да</button></div>`, '', 'wide', 'публичный интернет федерация другие серверы')
   + spCallsFed()
+  + spCallsAccess()
   + (/^wss:/i.test(f.url) ? spCallsCert() : '')
   + spRow('Установить на другой сервер', 'Чистый сервер с Debian или Ubuntu: по SSH поставятся LiveKit и, для публичного сервера, Caddy с сертификатом. Адрес, ключ и секрет подставятся сами',
     `<button type="button" class="btn btn-ghost btn-sm" ${busy ? 'disabled' : ''} data-on-click="lkiOpen">Установить…</button>`, '', 'wide', 'установить ssh сервер livekit caddy сертификат домен')
@@ -5196,6 +5198,14 @@ function spCallsPin(fp) {
 }
 function spCallsCertPin(fp) { return spCallsPin(fp); }
 // Серверы-соседи, чьим людям разрешён наш LiveKit
+// Серверы звонков соседей, которыми можно пользоваться: просто запись, подтверждать ничего не нужно
+function spCallsAccess() {
+  const a = SP.calls.access;
+  if (!a || !a.length) return '';
+  const rows = a.map(p => `<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0"><span class="sp-stat ${p.allowed ? 'ok' : ''}">${p.allowed ? 'доступен' : p.allowed === null ? (p.online ? 'нет ответа' : 'нет связи') : 'не разрешён'}</span>${esc(p.name || p.instance_id)}</div>`).join('');
+  return spRow('Серверы звонков других серверов', 'Если сервер разрешил вам свой сервер звонков, вы звоните его людям через него, даже если у вас нет своего. Разрешение выдаёт администратор того сервера, подтверждать ничего не нужно',
+    `<div style="display:flex;flex-direction:column;align-items:flex-start;min-width:170px">${rows}</div>`, '', 'wide', 'доступные серверы звонков других серверов федерация');
+}
 function spCallsFed() {
   const f = SP.calls.fed, pub = !!SP.calls.cfg?.public;
   if (!f || !f.peers?.length) return '';

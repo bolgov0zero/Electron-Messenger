@@ -25,7 +25,7 @@ user.use((req, res, next) => (req.user.is_guest ? res.status(403).json({ error: 
 
 // Доступны ли звонки (кнопки в шапке чата) и нет ли звонка, начатого до перезагрузки клиента
 // scheme нужна браузеру: страница по https не откроет ws://, а значит, звонить с неё нельзя
-user.get('/config', wrap(async (req, res) => { const c = await calls.getConfig(); res.json({ prefs: await calls.getPrefs(req.user.id), enabled: await calls.active(), scheme: /^wss:/i.test(c.url) ? 'wss' : 'ws', current: calls.currentFor(req.user.id), groups: await calls.groupsFor(req.user.id) }); }));
+user.get('/config', wrap(async (req, res) => { const c = await calls.getConfig(); res.json({ prefs: await calls.getPrefs(req.user.id), enabled: await calls.active(), guest: !calls.ownOk(c), scheme: /^wss:/i.test(c.url) ? 'wss' : 'ws', current: calls.currentFor(req.user.id), groups: await calls.groupsFor(req.user.id) }); }));
 user.post('/start', wrap(async (req, res) => {
   const chatId = Number(req.body?.chat_id);
   if (!Number.isInteger(chatId) || chatId <= 0) return res.status(400).json({ error: 'Не указан чат', code: 'bad_chat' });
@@ -84,7 +84,8 @@ admin.put('/', wrap(async (req, res) => {
   const merged = { ...prev, ...next };
   // Другим серверам и браузерам рассылается именно этот адрес, поэтому у публичного сервера он должен быть wss:// с доменом
   if (merged.public && (next.public !== undefined || next.url !== undefined) && !/^wss:\/\/[^\s/:]*[A-Za-z][^\s/:]*(:\d+)?(\/.*)?$/i.test(merged.url)) return res.status(400).json({ error: 'Публичным можно отметить только адрес вида wss://calls.example.com с доменом: именно он рассылается клиентам и другим серверам' });
-  if (next.enabled) {
+  // Без своего LiveKit (все три поля пусты) включить можно: звонки пойдут через серверы, которые разрешили свой
+  if (next.enabled && (merged.url || merged.key || merged.secret)) {
     const r = await calls.check(merged);
     if (r.error) return res.status(400).json({ error: 'Включить нельзя: ' + r.error });
   }
@@ -95,6 +96,9 @@ admin.put('/', wrap(async (req, res) => {
   logAudit(req, 'server', 'Звонки: настройки', what || '—');
   res.json(await calls.publicConfig());
 }));
+
+// Каким соседям мы доступны: чей LiveKit нам разрешён (запрашивается у соседей)
+admin.get('/access', wrap(async (req, res) => res.json({ peers: await calls.peerAccess() })));
 
 // Звонки с других серверов: какие соседи могут пользоваться нашим LiveKit (только если он доступен из интернета)
 admin.get('/fed', wrap(async (req, res) => {

@@ -49,7 +49,7 @@ B.ui.settings = (function () {
       '<div class="grp glass"><div class="cell"><span class="cl">Микрофон</span>' + Calls.media.chip('audio') + '</div><div class="cell"><span class="cl">Камера</span>' + Calls.media.chip('video') + '</div></div><div class="gf">Нажмите на состояние, чтобы проверить или разрешить доступ. Микрофон нужен для любых звонков, камера для видеозвонков.</div>' +
       '<div class="grp glass">' + [['audioin', 'Микрофон'], ['audioout', 'Динамик'], ['videoin', 'Камера']].map(function (x) { var sel = Calls.devices.select(x[0]); return sel ? '<div class="cell"><span class="cl">' + x[1] + '</span>' + sel + '</div>' : ''; }).join('') + '</div><div class="gf">Какие микрофон, динамик и камера используются в звонках. Применится к следующему звонку.</div>' +
       '<div class="grp glass"><div class="cell"><span class="cl">Идти по UDP</span>' + tg('l-udp', Calls.local.get('udp')) + '</div></div><div class="gf">Запасной вариант. По умолчанию звонок идёт через TCP: на Wi-Fi так не теряются пакеты и видео не рассыпается. Включите, если TCP не соединяется. Применится к следующему звонку.</div>' +
-      (Calls.isIOS() ? '<div class="grp glass"><div class="cell"><span class="cl">Звук через Web Audio</span>' + tg('l-wa', Calls.local.get('wa')) + '</div></div><div class="gf">Если голос собеседника идёт сразу из двух динамиков, включите: звук пойдёт другим путём. Применится к следующему звонку.</div>' : '') +
+      (Calls.isIOS() ? '<div class="grp glass"><div class="cell"><span class="cl">Звук через Web Audio</span>' + tg('l-wa', Calls.local.get('wa')) + '</div><div class="cell"><span class="cl">Два аудиотрека (обход ошибки iOS)</span>' + tg('l-two', Calls.local.get('two')) + '</div></div><div class="gf">Если голос идёт сразу из двух динамиков: «Web Audio» пускает звук через скрытый элемент, и кнопкой в звонке можно выбрать трубку. «Два аудиотрека» помогает, если кнопка ничего не меняет. Применится к следующему звонку.</div>' : '') +
       '<div class="grp glass">' + row('fed', 'Принимать звонки с других серверов', on && p.fed, !on) + '</div><div class="gf">Выключите, чтобы вам могли звонить только люди с вашего сервера.</div>';
   }
   function openCalls() {
@@ -59,6 +59,7 @@ B.ui.settings = (function () {
     el.addEventListener('click', async function (e) {
       var t = e.target.closest('[data-tg]');
       if (t && t.dataset.tg === 'l-wa') { Calls.local.set('wa', !Calls.local.get('wa')); $('.scroll', el).innerHTML = callsHtml(); return; }
+      if (t && t.dataset.tg === 'l-two') { Calls.local.set('two', !Calls.local.get('two')); $('.scroll', el).innerHTML = callsHtml(); return; }
       if (t && t.dataset.tg === 'l-udp') { Calls.local.set('udp', !Calls.local.get('udp')); $('.scroll', el).innerHTML = callsHtml(); return; }
       if (!t || t.dataset.tg.indexOf('c-') !== 0) return;
       var k = t.dataset.tg.slice(2); await Calls.setPref(k, !Calls.prefs()[k]); $('.scroll', el).innerHTML = callsHtml(); render();

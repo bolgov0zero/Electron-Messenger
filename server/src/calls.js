@@ -36,14 +36,17 @@ async function getConfig() {
   return { enabled: enabled === '1', url: url || '', key: key || '', secret: secret || '', public: pubFlag === '1', certFp: certFp || '' };
 }
 // Включено и подключение задано целиком
+// Включено: со своим LiveKit или без него. Без своего («гостевой режим») звонить можно только людям с серверов, которые разрешили нам свой LiveKit
+const ownOk = c => !!(c.url && c.key && c.secret);
 async function active() {
   const c = await getConfig();
-  return c.enabled && !!(c.url && c.key && c.secret);
+  return c.enabled;
 }
+const NO_OWN = 'У вашего сервера нет своего сервера звонков: звонить можно только людям с серверов, которые разрешили вам свой сервер звонков';
 // Для админки: секрет не отдаём, только факт, что он задан
 async function publicConfig() {
   const c = await getConfig();
-  return { enabled: c.enabled, url: c.url, key: c.key, secret_set: !!c.secret, ready: !!(c.url && c.key && c.secret), public: c.public, cert_fp: c.certFp };
+  return { enabled: c.enabled, url: c.url, key: c.key, secret_set: !!c.secret, ready: !!(c.url && c.key && c.secret), guest: c.enabled && !ownOk(c), public: c.public, cert_fp: c.certFp };
 }
 async function saveConfig({ enabled, url, key, secret, public: pub, certFp }) {
   if (certFp !== undefined) await setS(KEYS.certFp, certFp);
@@ -196,7 +199,7 @@ function tooOften(userId) {
 setInterval(() => { const now = Date.now(); for (const [u, l] of startLog) if (!l.some(t => now - t < 60000)) startLog.delete(u); }, 300000).unref();
 async function start(user, chatId, video) {
   const cfg = await getConfig();
-  if (!(cfg.enabled && cfg.url && cfg.key && cfg.secret)) throw new CallError('disabled', 'Звонки не включены на сервере', 403);
+  if (!cfg.enabled) throw new CallError('disabled', 'Звонки не включены на сервере', 403);
   const chat = await dal.get('SELECT type, is_secret FROM chats WHERE id = ?', chatId);
   const peer = chat?.type === 'direct'
     ? await dal.get('SELECT u.id, u.display_name FROM chat_members cm JOIN users u ON u.id = cm.user_id WHERE cm.chat_id = ? AND cm.user_id != ?', chatId, user.id)
@@ -211,6 +214,7 @@ async function start(user, chatId, video) {
   const myp = await getPrefs(user.id), mb = prefBlock(myp, !!video);
   if (mb) throw new CallError('prefs_self', mb === 'all' ? 'У вас выключены звонки в настройках' : mb === 'video' ? 'У вас выключены видеозвонки в настройках' : 'У вас выключены аудиозвонки в настройках', 403);
   if (await spaces().isFed(peer.id)) return await startFed(cfg, user, chatId, peer, video);
+  if (!ownOk(cfg)) throw new CallError('no_own', NO_OWN, 400);
   if (busy.has(peer.id)) throw new CallError('busy', 'Собеседник занят');
   const pb = prefBlock(await getPrefs(peer.id), !!video);
   if (pb) throw new CallError('prefs_peer', pb === 'all' ? 'Собеседник не принимает звонки' : pb === 'video' ? 'Собеседник не принимает видеозвонки' : 'Собеседник не принимает аудиозвонки', 403);
@@ -439,7 +443,7 @@ async function confInvite(cf, from, t, cfg) {
 const USER_COLS = 'id, username, display_name, is_bot, banned, fed_instance, fed_login';
 async function callAdd(user, id, targetId) {
   const cfg = await getConfig();
-  if (!(cfg.enabled && cfg.url && cfg.key && cfg.secret)) throw new CallError('disabled', 'Звонки не включены на сервере', 403);
+  if (!cfg.enabled) throw new CallError('disabled', 'Звонки не включены на сервере', 403);
   const t = await dal.get('SELECT ' + USER_COLS + ' FROM users WHERE id = ?', targetId);
   if (!t || (t.is_bot && t.is_bot !== 2) || t.banned || t.id === user.id) throw new CallError('bad_user', CONF_ERR.bad_user, 400);
   let cf = confs.get(id);
@@ -461,6 +465,7 @@ async function callAdd(user, id, targetId) {
     }
     return { ok: true, call_id: id, user: { id: t.id, name: t.display_name } };
   }
+  if (!ownOk(cfg)) throw new CallError('no_own', NO_OWN, 400);
   if (!cf) {   // звонок двоих у нас: переводим в общий
     if (!c || (c.callerId !== user.id && c.calleeId !== user.id)) throw new CallError('gone', 'Звонок уже завершён', 404);
     if (c.state !== 'active') throw new CallError('not_active', 'Добавить человека можно, когда собеседник уже ответил', 409);
@@ -538,7 +543,7 @@ async function remoteConfLeave(userId, id) {
 // Хозяин зовёт нашего человека (op call_conf_invite)
 async function fedConfInvite(peer, f) {
   const cfg = await getConfig();
-  if (!(cfg.enabled && cfg.url && cfg.key && cfg.secret)) throw new Error('disabled');
+  if (!cfg.enabled) throw new Error('disabled');
   const cid = String(f.cid || '').slice(0, 64), video = !!f.video;
   if (!/^[0-9a-f-]{36}$/i.test(cid) || calls.has(cid) || confs.has(cid)) throw new Error('not_found');
   const url = normUrl(f.url), token = typeof f.token === 'string' ? f.token.slice(0, 4000) : '';
@@ -679,7 +684,8 @@ async function hostAdd(chatId, userId, video) {
 }
 async function groupJoin(user, chatId, video) {
   const cfg = await getConfig();
-  if (!(cfg.enabled && cfg.url && cfg.key && cfg.secret)) throw new CallError('disabled', 'Звонки не включены на сервере', 403);
+  if (!cfg.enabled) throw new CallError('disabled', 'Звонки не включены на сервере', 403);
+  if (!ownOk(cfg)) throw new CallError('no_own', NO_OWN, 400);
   const chat = await dal.get('SELECT type, is_secret, fed_instance, fed_chat_id FROM chats WHERE id = ?', chatId);
   const mine = await dal.get('SELECT 1 AS x FROM chat_members WHERE chat_id = ? AND user_id = ?', chatId, user.id);
   if (!chat || !mine || chat.type !== 'group') throw new CallError('bad_chat', 'Групповой звонок возможен только в группе', 400);
@@ -818,6 +824,16 @@ async function recvGroupEvent(peer, ev) {
   await notifyLocals(chat.id, event, info, exu && exu.id, true);
 }
 
+// Какие соседи разрешили нам пользоваться их LiveKit (для настроек: «звонки к их людям идут через их сервер звонков»)
+async function peerAccess() {
+  const peers = await fedMod().peersInfo();
+  return await Promise.all(peers.filter(p => p.status === 'active').map(async p => {
+    let allowed = null;
+    if (p.online) { try { allowed = !!(await fedMod().rpc(p.id, 'call_access', {}, { timeout: 5000 })).allowed; } catch (e) { allowed = null; } }
+    return { instance_id: p.instance_id, name: p.name, online: !!p.online, allowed };
+  }));
+}
+
 // Звонки включили или выключили: клиенты узнают сразу (кнопки, раздел настроек, идущие звонки)
 async function shutdownAll() {
   for (const c of [...calls.values()]) finish(c, 'disabled');
@@ -892,9 +908,11 @@ async function fedOffer(peer, f) {
   if (f.op === 'call_gjoin' || f.op === 'call_gleave') return await fedGroupReq(peer, f);
   if (f.op === 'call_conf_invite') return await fedConfInvite(peer, f);
   if (f.op === 'call_conf_add') return await fedConfAdd(peer, f);
+  // Сосед спрашивает, можно ли ему пользоваться нашим LiveKit (для списка «доступные серверы звонков» в его настройках)
+  if (f.op === 'call_access') { const c = await getConfig(); return { allowed: await hostable(c, peer.instance_id), name: '' }; }
   if (f.op !== 'call_offer') throw new Error('unknown');
   const cfg = await getConfig();
-  if (!(cfg.enabled && cfg.url && cfg.key && cfg.secret)) throw new Error('disabled');
+  if (!cfg.enabled) throw new Error('disabled');
   const cid = String(f.cid || '').slice(0, 64);
   if (!/^[0-9a-f-]{36}$/i.test(cid) || calls.has(cid)) throw new Error('not_found');
   const shadow = await fedMod().remoteUser(peer, String(f.from || ''));
@@ -951,6 +969,8 @@ async function cspSources() {
   if (Date.now() - cspMemo.at < 5000) return cspMemo.v;
   const c = await getConfig();
   let v = '';
+  // Без своего LiveKit (гостевой режим) звонок идёт на LiveKit соседа, адрес которого заранее неизвестен: разрешаем любой wss://
+  if (c.enabled && !c.url && (await dal.get('SELECT COUNT(*) AS n FROM fed_peers WHERE virt = 0')).n > 0) v = ' wss: https:';
   if (c.enabled && c.url) {
     try {
       const u = new URL(c.url), tls = u.protocol === 'wss:';
@@ -1039,4 +1059,4 @@ async function compute(period) {
   return { period, enabled: cfg.enabled, ready, show: ready || any, live, ringing, series, top, totals: { ...tot, minutes: Math.round(tot.minutes) } };
 }
 
-module.exports = { activeList, adminEnd, logList, callAdd, inspectCert, afterConfigChange, getPrefs, setPrefs, groupJoin, groupLeave, groupsFor, init, stats, cspSources, getConfig, handleFedReq, recvFedEvent, fedAllowed, setFedAllowed, active, publicConfig, saveConfig, normUrl, check, start, accept, decline, end, onDisconnect, currentFor, CallError };
+module.exports = { peerAccess, ownOk, activeList, adminEnd, logList, callAdd, inspectCert, afterConfigChange, getPrefs, setPrefs, groupJoin, groupLeave, groupsFor, init, stats, cspSources, getConfig, handleFedReq, recvFedEvent, fedAllowed, setFedAllowed, active, publicConfig, saveConfig, normUrl, check, start, accept, decline, end, onDisconnect, currentFor, CallError };

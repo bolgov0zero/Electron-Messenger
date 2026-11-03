@@ -18,6 +18,7 @@
     min: '<polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" x2="21" y1="10" y2="3"/><line x1="3" x2="10" y1="21" y2="14"/>',
     x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
+    volume: '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',
     activity: '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
     screen: '<path d="m9 10 3-3 3 3"/><path d="M12 13V7"/><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/>',
     flip: '<path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/>',
@@ -122,18 +123,21 @@
   // Звуки вызова играет WebAudio: после вызова контекст закрываем, иначе на iPhone он держит свой маршрут звука и голос собеседника идёт сразу в два динамика
   // Режим «Звук через Web Audio» (для iPhone и iPad, если голос идёт сразу из двух динамиков): удалённый звук играет не элементом audio, а через AudioContext.
   // Контекст создаём при нажатии (до запроса микрофона), как советуют разработчики в багах WebKit про маршрут звука
-  var waCtx = null, waNodes = {};
+  var waCtx = null, waNodes = {}, waDst = null, waEl = null, twoClones = {};
   function waOn() { return lget('wa'); }
   function waInit() { if (!waOn()) return; try { waCtx = waCtx || new (window.AudioContext || window.webkitAudioContext)(); if (waCtx.state === 'suspended') waCtx.resume(); } catch (e) {} }
   function waAttach(track) {
     try {
       waInit(); if (!waCtx) return false;
       var src = waCtx.createMediaStreamSource(new MediaStream([track.mediaStreamTrack])), g = waCtx.createGain();
-      src.connect(g); g.connect(waCtx.destination); waNodes[track.sid] = [src, g]; return true;
+      // Не напрямую в динамики, а через скрытый элемент audio: на iOS 26 ему можно выбрать «трубку» через setSinkId
+      waDst = waDst || waCtx.createMediaStreamDestination();
+      if (!waEl) { waEl = document.createElement('audio'); waEl.autoplay = true; waEl.setAttribute('playsinline', ''); waEl.dataset.cl = 'wa'; waEl.srcObject = waDst.stream; document.body.appendChild(waEl); }
+      src.connect(g); g.connect(waDst); waNodes[track.sid] = [src, g]; var pl = waEl.play(); if (pl && pl.catch) pl.catch(function () {}); return true;
     } catch (e) { return false; }
   }
   function waDetach(sid) { var n = waNodes[sid]; if (n) { try { n[0].disconnect(); n[1].disconnect(); } catch (e) {} delete waNodes[sid]; } }
-  function waClose() { Object.keys(waNodes).forEach(waDetach); try { if (waCtx) waCtx.close(); } catch (e) {} waCtx = null; }
+  function waClose() { Object.keys(waNodes).forEach(waDetach); try { if (waEl) waEl.remove(); } catch (e) {} waEl = null; waDst = null; try { if (waCtx) waCtx.close(); } catch (e) {} waCtx = null; Object.keys(twoClones).forEach(function (k) { try { twoClones[k].stop(); } catch (e) {} }); twoClones = {}; }
   function closeAc() { try { if (ac) ac.close(); } catch (e) {} ac = null; }
   // Забытые слои звонка (после сна страницы, после уведомления) перехватывают нажатия на весь экран: снимаем всё, чего уже нет в состоянии
   function sweep() {
@@ -278,8 +282,10 @@
   }
   // Позвать ещё человека можно в разговоре двоих и в звонке, который уже стал общим; в группе чата люди входят сами, на чужом сервере не звонят
   function canAdd(c) { return !!(c && c.phase === 'live' && !c.fedGroup && (c.conf || !c.group) && H.contacts); }
+  function canSpk() { return isIOS && canSink(); }
+  function spkBtn(c) { return canSpk() ? '<button class="cl-rb ' + (c.spk === 'receiver' ? 'ac' : '') + '" data-cl="spk" aria-label="Трубка или громкая связь">' + svg('volume') + '</button>' : ''; }
   function ctrlsHtml(c) {
-    return '<button class="cl-rb ' + (c.mic ? '' : 'off') + '" data-cl="mic" aria-label="Микрофон">' + svg(c.mic ? 'mic' : 'micOff') + '</button>' +
+    return spkBtn(c) + '<button class="cl-rb ' + (c.mic ? '' : 'off') + '" data-cl="mic" aria-label="Микрофон">' + svg(c.mic ? 'mic' : 'micOff') + '</button>' +
       '<button class="cl-rb ' + (c.cam ? '' : 'off') + '" data-cl="cam" aria-label="Камера">' + svg(c.cam ? 'video' : 'videoOff') + '</button>' +
       (!H.mobile && navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia ? '<button class="cl-rb ' + (c.screen ? 'ac' : '') + '" data-cl="screen" aria-label="Показать экран" title="Показать экран">' + svg('screen') + '</button>' : '') +
       (canAdd(c) ? '<button class="cl-rb" data-cl="add" aria-label="Добавить в звонок" title="Добавить в звонок">' + svg('userPlus') + '</button>' : '') +
@@ -351,7 +357,7 @@
         // аудиоразговор на мобильном: экран с аватаркой и кнопками
         win.innerHTML = hd + '<div class="cl-full" id="cl-full-in" style="position:absolute;z-index:1;background:none;animation:none">' +
           '<span></span><div class="cl-mid"><div style="padding:14px;border-radius:50%;box-shadow:0 0 0 3px var(--accent),0 0 38px rgba(var(--accent-rgb,31,168,140),.45)">' + H.avatar(c.peer.id, c.peer.name, 140) + '</div><div class="nm">' + E(c.peer.name) + '</div><div class="sub cl-tm">' + status() + '</div></div>' +
-          '<div class="cl-acts"><button class="cl-mb" data-cl="mic"><span class="rnd sq ' + (c.mic ? 'gl' : 'off') + '">' + svg(c.mic ? 'mic' : 'micOff') + '</span>Микрофон</button><button class="cl-mb" data-cl="cam"><span class="rnd sq gl">' + svg('video') + '</span>Видео</button>' + (canAdd(c) ? '<button class="cl-mb" data-cl="add"><span class="rnd sq gl">' + svg('userPlus') + '</span>Добавить</button>' : '') + '<button class="cl-mb" data-cl="end"><span class="rnd sq no">' + svg('phone', 'hang') + '</span>Завершить</button></div></div>';
+          '<div class="cl-acts">' + (canSpk() ? '<button class="cl-mb" data-cl="spk"><span class="rnd sq ' + (c.spk === 'receiver' ? 'gl' : 'off') + '">' + svg('volume') + '</span>' + (c.spk === 'receiver' ? 'Трубка' : 'Громко') + '</button>' : '') + '<button class="cl-mb" data-cl="mic"><span class="rnd sq ' + (c.mic ? 'gl' : 'off') + '">' + svg(c.mic ? 'mic' : 'micOff') + '</span>Микрофон</button><button class="cl-mb" data-cl="cam"><span class="rnd sq gl">' + svg('video') + '</span>Видео</button>' + (canAdd(c) ? '<button class="cl-mb" data-cl="add"><span class="rnd sq gl">' + svg('userPlus') + '</span>Добавить</button>' : '') + '<button class="cl-mb" data-cl="end"><span class="rnd sq no">' + svg('phone', 'hang') + '</span>Завершить</button></div></div>';
       }
     }
     if (mob) {
@@ -377,6 +383,7 @@
     else if (a === 'cam') setCam(!(st.call && st.call.cam));
     else if (a === 'flip') flip();
     else if (a === 'diag') diagToggle();
+    else if (a === 'spk') spkToggle();
     else if (a === 'screen') setScreen(!(st.call && st.call.screen));
     else if (a === 'add') openPick();
     else if (a === 'pclose') closePick();
@@ -394,6 +401,24 @@
     if (d) { d.remove(); clearInterval(diagT); diagT = null; return; }
     d = document.createElement('div'); d.id = 'cl-diag'; d.textContent = 'Собираю данные…'; document.body.appendChild(d); diagPrev = {};
     diagTick(); diagT = setInterval(diagTick, 1500);
+  }
+  // Трубка или громкая связь (iOS 26+: Speaker Selection API). Вызов setSinkId должен быть прямо в обработчике нажатия
+  function outputs() { return (media.devs || []).filter(function (d) { return d.kind === 'audiooutput'; }); }
+  function spkToggle() {
+    var c = st.call; if (!c) return;
+    var outs = outputs(), want = c.spk === 'receiver' ? 'speaker' : 'receiver', id = '';
+    if (want === 'receiver') {
+      var r = outs.filter(function (d) { return /receiver|earpiece|iphone|трубк|приём|приемн|разговор/i.test(d.label || ''); })[0];
+      if (!r) { H.toast(outs.length ? 'Трубка не найдена. Динамики: ' + outs.map(function (d) { return d.label || d.deviceId.slice(0, 6); }).join(', ') : 'Список динамиков пуст: разрешите микрофон'); return; }
+      id = r.deviceId;
+    }
+    var els = [].slice.call(document.querySelectorAll('audio[data-cl]'));
+    if (!els.length) { H.toast('Нет звука для переключения'); return; }
+    var n = 0;
+    els.forEach(function (el) {
+      if (!el.setSinkId) return;
+      el.setSinkId(id).then(function () { if (++n === 1) { c.spk = want; H.toast(want === 'receiver' ? 'Звук в трубку' : 'Громкая связь'); render(); } }).catch(function (e) { H.toast('Не вышло переключить: ' + (e && e.name || e)); });
+    });
   }
   function diagStop() { var d = document.getElementById('cl-diag'); if (d) d.remove(); clearInterval(diagT); diagT = null; }
   async function diagTick() {
@@ -422,6 +447,11 @@
     } catch (e) {}
     L.push('Связь: ' + (tcpMode ? (tcpUsed ? 'через TCP (' + tcpUrls + ')' : 'у сервера нет TURN по TLS, идёт по UDP') : 'по UDP (выбрано в настройках или сервер без wss://)'));
     L.push('ICE: ' + (iceSeen.length ? iceSeen.join(' ; ') : 'соединения не создавались') + '  [' + CLV + ']');
+    try {
+      var vm = /Version\/([\d.]+)/.exec(navigator.userAgent), mt = room.localParticipant.getTrackPublication(T.Source.Microphone), mst = mt && mt.track && mt.track.mediaStreamTrack;
+      L.push('Safari ' + (vm ? vm[1] : '?') + ', setSinkId: ' + (canSink() ? 'есть' : 'нет') + ', микрофон: ' + (mst ? mst.readyState + (mst.enabled ? '' : ', выкл') + (mst.muted ? ', muted' : '') : 'нет трека'));
+      var ou = outputs(); if (ou.length) L.push('Динамики: ' + ou.map(function (d) { return d.label || d.deviceId.slice(0, 6); }).join(' | '));
+    } catch (e) {}
     try { L.push('Звук: ' + (waOn() ? 'через Web Audio (' + (waCtx ? waCtx.state : 'нет контекста') + ')' : 'через элемент audio') + (navigator.audioSession ? ', сеанс «' + navigator.audioSession.type + '»' : '')); } catch (e) {}
     d.textContent = L.join('\n');
   }
@@ -448,7 +478,9 @@
     room = new LK.Room({ adaptiveStream: !!c.group, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: H.mobile && c.group ? { width: 960, height: 540, frameRate: 24 } : { width: 1280, height: 720, frameRate: 30 }, deviceId: devOpt('videoin') }, publishDefaults: { simulcast: !!c.group, videoCodec: isIOS ? 'h264' : undefined, audioPreset: { maxBitrate: 40000 }, videoEncoding: !c.group ? { maxBitrate: 3000000, maxFramerate: 30 } : (H.mobile ? { maxBitrate: 1200000, maxFramerate: 24 } : undefined) } });
     room.on(R.TrackSubscribed, function (track) {
       if (track.kind === T.Kind.Audio && waOn() && waAttach(track)) { remoteState(); return; }
-      if (track.kind === T.Kind.Audio) { document.querySelectorAll('audio[data-sid="' + track.sid + '"]').forEach(function (o) { o.remove(); }); var el = track.attach(); el.dataset.cl = '1'; el.dataset.sid = track.sid; el.setAttribute('playsinline', ''); document.body.appendChild(el); try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {} el.play && el.play().catch(function () {}); }
+      if (track.kind === T.Kind.Audio) { document.querySelectorAll('audio[data-sid="' + track.sid + '"]').forEach(function (o) { o.remove(); }); var el = track.attach(); el.dataset.cl = '1'; el.dataset.sid = track.sid; el.setAttribute('playsinline', ''); document.body.appendChild(el);
+        // Обход ошибки WebKit 320087: на iOS setSinkId на элементе с одним удалённым треком ничего не меняет, а с двумя работает
+        if (lget('two')) { try { var cl = track.mediaStreamTrack.clone(); cl.enabled = false; twoClones[track.sid] = cl; el.srcObject = new MediaStream([track.mediaStreamTrack, cl]); } catch (e) {} } try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {} el.play && el.play().catch(function () {}); }
       remoteState();
     }).on(R.TrackUnsubscribed, function (track) { waDetach(track.sid); var els = track.detach(); if (track.kind === T.Kind.Audio) els.forEach(function (el) { el.remove(); }); remoteState(); })
       .on(R.TrackMuted, remoteState).on(R.TrackUnmuted, remoteState).on(R.TrackUnpublished, function () { setTimeout(remoteState, 0); })
@@ -463,6 +495,7 @@
     await room.connect(url, token);
     var so = devGet('audioout'); if (so && so.id && canSink() && room.switchActiveDevice) { try { await room.switchActiveDevice('audiooutput', so.id); } catch (e) {} }
     try { await room.localParticipant.setMicrophoneEnabled(true); c.mic = true; } catch (e) { c.mic = false; }
+    mediaRefresh();
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     if (c.group) { c.since = Date.now(); liveNow(); }
     else if (room.remoteParticipants.size) { liveNow(); remoteState(); } else { c.phase = c.outgoing ? 'ringing' : 'connecting'; render(); }
@@ -663,7 +696,7 @@
   // Свои настройки этого устройства (не на сервере): через TCP
   function lget(k) { try { return localStorage.getItem('cl_' + k) === '1'; } catch (e) { return false; } }
   function lset(k, v) { try { if (v) localStorage.setItem('cl_' + k, '1'); else localStorage.removeItem('cl_' + k); } catch (e) {} }
-  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'tcp-7';
+  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'snd-1';
   // Только TURN по TLS (TCP) и запрет прямых путей. LiveKit создаёт соединение раньше, чем получает от сервера список ICE-серверов, и
   // потом задаёт его через setConfiguration, поэтому подменяем и конструктор, и setConfiguration. Если у сервера нет TURN по TLS, идём как обычно
   function tcpize(cfg) {
