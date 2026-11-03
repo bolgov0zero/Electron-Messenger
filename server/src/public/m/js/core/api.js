@@ -8,8 +8,6 @@ B.session = {
     var prev = {};
     try { prev = JSON.parse(localStorage.getItem(B.SESSION_KEY)) || {}; } catch (e) {}
     localStorage.setItem(B.SESSION_KEY, JSON.stringify(Object.assign({}, prev, { server: B.S.server, token: B.S.token, user: B.S.user })));
-    // Оболочка Android: фоновой службе нужен вход, чтобы показывать уведомления при закрытом приложении
-    try { if (window.AndroidApp && window.AndroidApp.setSession && B.S.token) window.AndroidApp.setSession(B.wsProto() + '://' + B.S.server + '/ws?native=1&token=' + B.S.token); } catch (e) {}
   },
   load: function () { try { return JSON.parse(localStorage.getItem(B.SESSION_KEY)); } catch (e) { return null; } },
   // При выходе стираем только вход, а настройки (тема, размер текста) остаются — они общие с /chat и /m
@@ -17,7 +15,6 @@ B.session = {
     var prev = {};
     try { prev = JSON.parse(localStorage.getItem(B.SESSION_KEY)) || {}; } catch (e) {}
     localStorage.setItem(B.SESSION_KEY, JSON.stringify(prev.settings ? { settings: prev.settings } : {}));
-    try { if (window.AndroidApp && window.AndroidApp.setSession) window.AndroidApp.setSession(''); } catch (e) {}
   }
 };
 

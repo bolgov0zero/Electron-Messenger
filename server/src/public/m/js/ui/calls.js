@@ -19,7 +19,6 @@ B.ui.calls = (function () {
         var p = B.nav.top && B.nav.top(); if (p && p.el && p.el.dataset.calls && !Calls.available()) B.nav.pop();
       },
       contacts: function () { return B.S.contacts.filter(function (u) { return u.id !== B.S.user.id && !u.is_bot; }).map(function (u) { return { id: u.id, name: (u.display_name || u.username) + (u.federated ? ' · ' + (u.server_name || u.server_id || 'другой сервер') : '') }; }); },
-      autoAnswer: function () { var c = B.S.autoAnswer; B.S.autoAnswer = null; return c; },
       pendingCall: function () { var c = B.S.pendingCall; B.S.pendingCall = null; return c; },
       sound: function () { return true; }
     });
@@ -44,7 +43,7 @@ B.ui.calls = (function () {
   }
   B.bus.on('ws:connected', function () { init(); Calls.load().then(rehead); });
   // Нажали на уведомление, когда приложение уже открыто в фоне
-  B.onOpenCall = function (callId, answer) { init(); B.S.pendingCall = callId || null; B.S.autoAnswer = answer ? callId : null; if (window.Calls) Calls.load().then(rehead); };
+  B.onOpenCall = function (callId) { init(); B.S.pendingCall = callId || null; if (window.Calls) Calls.load().then(rehead); };
   ['incoming', 'accepted', 'answered', 'ended', 'group', 'prefs', 'config', 'conf'].forEach(function (t) { B.bus.on('ws:call_' + t, function (d) { if (window.Calls) Calls.onWs(d); }); });
   return { init: init, btns: btns, start: function (cid, video) { if (window.Calls) Calls.start(cid, video); } };
 })();

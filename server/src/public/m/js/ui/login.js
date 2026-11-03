@@ -9,8 +9,7 @@ B.ui.login = {
       '<div class="login-in"><div class="lg glass">' + I('chat') + '</div><h1>Electron</h1><p class="sub">Корпоративный мессенджер</p>' +
       '<label class="fld m glass-inset">' + I('user') + '<input id="l-user" type="text" placeholder="Логин" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next"></label>' +
       '<label class="fld m glass-inset">' + I('lock') + '<input id="l-pass" type="password" placeholder="Пароль" autocomplete="current-password" enterkeyhint="go"></label>' +
-      '<div class="err" id="l-err" role="alert"></div><button class="abtn pri" id="l-btn" type="button">Войти</button>' +
-      (window.AndroidApp && window.AndroidApp.changeServer ? '<button class="abtn" id="l-srv" type="button" style="margin-top:10px;background:none;box-shadow:none;opacity:.8">Сменить сервер</button>' : '') + '</div>';
+      '<div class="err" id="l-err" role="alert"></div><button class="abtn pri" id="l-btn" type="button">Войти</button></div>';
     host.appendChild(el);
     var user = $('#l-user', el), pass = $('#l-pass', el), btn = $('#l-btn', el), err = $('#l-err', el);
     var submit = async function () {
@@ -21,7 +20,6 @@ B.ui.login = {
       btn.disabled = false; btn.textContent = 'Войти';
     };
     btn.addEventListener('click', submit);
-    var srv = $('#l-srv', el); if (srv) srv.addEventListener('click', function () { try { window.AndroidApp.changeServer(); } catch (e) {} });
     [user, pass].forEach(function (i) { i.addEventListener('focus', function () { showKb(); }); });
     user.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); pass.focus(); } });
     pass.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submit(); } });

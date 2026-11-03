@@ -324,7 +324,7 @@
   }
   // Позвать ещё человека можно в разговоре двоих и в звонке, который уже стал общим; в группе чата люди входят сами, на чужом сервере не звонят
   function canAdd(c) { return !!(c && c.phase === 'live' && !c.fedGroup && (c.conf || !c.group) && H.contacts); }
-  function canSpk() { return !!NA || (isIOS && canSink()); }
+  function canSpk() { return isIOS && canSink(); }
   function spkBtn(c) { return canSpk() ? '<button class="cl-rb ' + (c.spk === 'receiver' ? 'ac' : '') + '" data-cl="spk" aria-label="Трубка или громкая связь">' + svg('volume') + '</button>' : ''; }
   function ctrlsHtml(c) {
     return spkBtn(c) + '<button class="cl-rb ' + (c.mic ? '' : 'off') + '" data-cl="mic" aria-label="Микрофон">' + svg(c.mic ? 'mic' : 'micOff') + '</button>' +
@@ -448,8 +448,6 @@
   function outputs() { return (media.devs || []).filter(function (d) { return d.kind === 'audiooutput'; }); }
   function spkToggle() {
     var c = st.call; if (!c) return;
-    // Оболочка Android: динамик переключает система
-    if (NA) { c.spk = c.spk === 'speaker' ? 'receiver' : 'speaker'; try { NA.setSpeaker(c.spk === 'speaker'); } catch (e) {} H.toast(c.spk === 'receiver' ? 'Звук в трубку' : 'Громкая связь'); render(); return; }
     var outs = outputs(), want = c.spk === 'receiver' ? 'speaker' : 'receiver', id = '';
     if (want === 'receiver') {
       var r = outs.filter(function (d) { return /receiver|earpiece|iphone|трубк|приём|приемн|разговор/i.test(d.label || ''); })[0];
@@ -515,7 +513,6 @@
     LK = await loadLK(); ended = false;
     closeAc();
     if (pendingSpk) { c.spk = pendingSpk; pendingSpk = null; }
-    if (NA) { if (!c.spk) c.spk = c.video ? 'speaker' : 'receiver'; try { NA.callMode(true, !!c.video, c.spk === 'speaker'); } catch (e) {} }
     earDone = false;
     // По умолчанию через TCP (TURN по TLS): на Wi-Fi с потерями UDP видео рассыпается. Только для wss:// (при ws:// TURN по TLS не бывает); отключается в настройках
     tcpMode = !lget('udp') && /^wss:/i.test(String(url)); tcpUsed = false; tcpUrls = ''; iceSeen = []; patchPc();
@@ -669,7 +666,6 @@
   function finish(msg) {
     var c = st.call; if (!c) return;
     st.call = null; st.min = false; stopRing(); leave(); render();
-    if (NA) { try { NA.callMode(false, false, false); } catch (e) {} }
     if (H.mobile) { setTimeout(fixViewport, 60); setTimeout(fixViewport, 600); }
     if (msg) H.toast(msg);
   }
@@ -732,9 +728,6 @@
       st.incoming = { call_id: cur.call_id, chat_id: cur.chat_id, video: cur.video, from: cur.from, timeout: cur.timeout };
       renderIncoming(); ring('in');
     }
-    // «Ответить» в уведомлении приложения Android: входящий уже на экране (пришёл по соединению или из настроек), сразу принимаем
-    var aa = H.autoAnswer && H.autoAnswer();
-    if (aa && st.incoming && st.incoming.call_id === aa && !st.call) accept(!!st.incoming.video);
     var want = H.pendingCall && H.pendingCall();
     if (want && !st.call && !st.incoming) {
       var g = (r && r.groups || []).find(function (x) { return x.call_id === want; });
@@ -780,7 +773,6 @@
     if (SC) O.prototype.setConfiguration = function (cfg) { seen('настройка', cfg); return SC.call(this, tcpize(cfg)); };
     window.RTCPeerConnection = N;
   }
-  var NA = (window.AndroidApp && window.AndroidApp.callMode) ? window.AndroidApp : null;   // оболочка Android: звук и датчик приближения
   var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   var media = { audio: 'unknown', video: 'unknown', busy: {}, subs: [], devs: [] };
   // ── Выбор микрофона, динамика и камеры: хранится на этом устройстве (идентификаторы у каждого браузера свои), применяется к следующему звонку ──

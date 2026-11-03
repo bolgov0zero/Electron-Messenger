@@ -80,7 +80,6 @@ async function sendPushToUser(userId, payload) {
   const prefs = await getPrefs(userId);
   if (inQuietHours(prefs)) return;                       // тихие часы: уведомлений нет вообще
   if (!prefs.show_text) payload = { ...payload, body: 'Новое сообщение' };
-  try { require('../ws').sendNative(userId, payload); } catch {}
   const subs = await dal.all('SELECT endpoint, keys, app_url FROM push_subscriptions WHERE user_id = ?', userId);
   subs.forEach(row => {
     const sub = { endpoint: row.endpoint, keys: JSON.parse(row.keys) };
@@ -208,8 +207,6 @@ router.post('/test/:userId', async (req, res) => {
 // для уведомления: подписки нет — считать нечего, а подсчёты недешёвые.
 const stmtHasSub = 'SELECT 1 FROM push_subscriptions WHERE user_id = ? LIMIT 1';
 async function hasPushSubscription(userId) {
-  // Приложение Android принимает уведомления по своему соединению, подписки Web Push у него нет
-  try { if (require('../ws').hasNative(userId)) return true; } catch {}
   return !!(await dal.get(stmtHasSub, userId));
 }
 

@@ -109,18 +109,6 @@ function sendTo(userId, payload) {
   getConn(userId).forEach(ws => { if (ws.readyState === 1) ws.send(JSON.stringify(payload)); });
 }
 
-// Уведомление приложению Android через его фоновую службу (у WebView нет Web Push)
-function hasNative(userId) {
-  const conns = clients.get(userId);
-  if (conns) for (const ws of conns) if (ws._native && ws.readyState === 1) return true;
-  return false;
-}
-function sendNative(userId, payload) {
-  const conns = clients.get(userId);
-  if (!conns) return;
-  for (const ws of conns) if (ws._native && ws.readyState === 1) ws.send(JSON.stringify({ type: 'native_push', payload }));
-}
-
 function getStatus(userId) { return userStatus.get(userId) || 'offline'; }
 function getMobile(userId) { return !!userMobile.get(userId) && getStatus(userId) === 'online'; }
 // Есть ли у пользователя хоть одно активное WS-соединение (для админки)
@@ -345,9 +333,7 @@ function setup(server) {
 
     ws.isAlive = true;
     ws.on('pong', () => { ws.isAlive = true; });
-    // Фоновая служба приложения Android (?native=1): держит связь ради уведомлений, человеком «в сети» не считается
-    ws._native = new URL(req.url, 'http://localhost').searchParams.get('native') === '1';
-    ws._status = ws._native ? 'offline' : 'online'; // у остальных уточнится первым set_status от клиента (~через 300мс)
+    ws._status = 'online'; // уточнится первым set_status от клиента (~через 300мс)
     ws._statusAt = Date.now();
 
     if (!clients.has(user.id)) clients.set(user.id, new Set());
@@ -831,4 +817,4 @@ function kick(userId) {
   getConn(userId).forEach(ws => { try { ws.close(4001, 'guest_ended'); } catch {} });
 }
 
-module.exports = { hasNative, sendNative, hasFocusedMobile, setup, kick, kickDevice, finishMessage, getMessageWithStatus, setRemoteStatus, hasOpenConnection, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, getMobile, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };
+module.exports = { hasFocusedMobile, setup, kick, kickDevice, finishMessage, getMessageWithStatus, setRemoteStatus, hasOpenConnection, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, getMobile, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };
