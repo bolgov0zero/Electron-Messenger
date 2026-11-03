@@ -1213,7 +1213,7 @@ ipcMain.handle('call-open', (e, p) => {
   if (callAlive()) return { error: 'busy' };
   callOwner = e.sender; callLast = null; installDisplayHandler(); pinCert(String(p.url || ''), p.certFp);
   callInit = {
-    url: String(p.url || ''), token: String(p.token || ''), video: !!p.video, outgoing: !!p.outgoing, group: !!p.group, canAdd: !!p.canAdd,
+    url: String(p.url || ''), token: String(p.token || ''), video: !!p.video, outgoing: !!p.outgoing, group: !!p.group, canAdd: !!p.canAdd, tcp: !!p.tcp,
     devices: ['audioin', 'audioout', 'videoin'].reduce((o, k) => { const d = p.devices?.[k]; if (d?.id) o[k] = { id: String(d.id).slice(0, 300), label: String(d.label || '').slice(0, 300) }; return o; }, {}),
     peer: { id: Number(p.peer?.id) || 0, name: String(p.peer?.name || '') },
     theme: { dark: !!p.theme?.dark, accent: String(p.theme?.accent || '') },

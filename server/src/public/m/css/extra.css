@@ -464,3 +464,7 @@ html, body { background: var(--gl-base); }
 /* «@» над кнопкой «вниз»: ведёт к ближайшему непрочитанному упоминанию */
 .jump .mnt { position: absolute; left: 0; bottom: calc(100% + 12px); width: 44px; height: 44px; border-radius: 50%; display: none; place-items: center; font-size: 18px; font-weight: 700; }
 .jump .mnt.on { display: grid; }
+
+/* Скрытые всплывающие сообщения и баннеры лежат поверх шапки и перехватывают нажатия: правило «#layer > *» делало их нажимаемыми
+   даже при нулевой прозрачности, поэтому после любого баннера (например, о новом сообщении) кнопки шапки нажимались только по нижнему краю */
+#layer > .toast:not(.on) { pointer-events: none; }

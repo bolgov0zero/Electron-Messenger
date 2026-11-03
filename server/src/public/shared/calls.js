@@ -405,6 +405,7 @@
       if (pair) { var lc = byId[pair.localCandidateId], rc = byId[pair.remoteCandidateId];
         L.push('Путь: ' + String((rc && rc.protocol) || (lc && lc.protocol) || '?').toUpperCase() + ', ' + ({ host: 'напрямую', srflx: 'через NAT', prflx: 'через NAT', relay: 'через TURN' }[(lc && lc.candidateType)] || (lc && lc.candidateType) || '?') + ', задержка ' + Math.round((pair.currentRoundTripTime || 0) * 1000) + ' мс'); }
     } catch (e) {}
+    L.push('Связь: ' + (tcpMode ? (tcpUsed ? 'принудительно через TCP' : 'TCP включён, но у сервера нет TURN по TLS') : 'по возможности UDP'));
     try { if (navigator.audioSession) L.push('Звук: сеанс «' + navigator.audioSession.type + '»'); } catch (e) {}
     d.textContent = L.join('\n');
   }
@@ -422,11 +423,12 @@
     if (location.protocol === 'https:' && /^ws:/i.test(url)) throw new Error('Сервер звонков работает без сертификата (ws://): в браузере звонки доступны только с wss://');
     LK = await loadLK(); ended = false;
     closeAc();
+    tcpMode = lget('tcp'); patchPc();
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     ensureVideos();
     var R = LK.RoomEvent, T = LK.Track;
     // В звонке двоих без слоёв качества: приёмник всегда получает полную картинку, а передатчик не гоняет три кодировщика (на телефоне это тяжело, и картинка падала до 180×320 при 7 к/с). Слои нужны только в группе
-    room = new LK.Room({ adaptiveStream: !!c.group, dynacast: !!c.group, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: H.mobile ? { width: 960, height: 540, frameRate: 24 } : { width: 1280, height: 720, frameRate: 30 }, deviceId: devOpt('videoin') }, publishDefaults: { simulcast: !!c.group, videoEncoding: H.mobile ? { maxBitrate: 1200000, maxFramerate: 24 } : undefined } });
+    room = new LK.Room({ adaptiveStream: !!c.group, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: H.mobile ? { width: 960, height: 540, frameRate: 24 } : { width: 1280, height: 720, frameRate: 30 }, deviceId: devOpt('videoin') }, publishDefaults: { simulcast: !!c.group, videoCodec: isIOS ? 'h264' : undefined, videoEncoding: H.mobile ? { maxBitrate: 1500000, maxFramerate: 24 } : undefined } });
     room.on(R.TrackSubscribed, function (track) {
       if (track.kind === T.Kind.Audio) { document.querySelectorAll('audio[data-sid="' + track.sid + '"]').forEach(function (o) { o.remove(); }); var el = track.attach(); el.dataset.cl = '1'; el.dataset.sid = track.sid; el.setAttribute('playsinline', ''); document.body.appendChild(el); try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {} el.play && el.play().catch(function () {}); }
       remoteState();
@@ -639,6 +641,26 @@
   }
   // ── Доступ к микрофону и камере (раздел «Звонки» в настройках) ──
   // Состояния: granted (есть) | denied (запрещён) | prompt (ещё не спрашивали) | nodev (устройства нет) | nosecure (страница не по https) | unknown
+  // Свои настройки этого устройства (не на сервере): через TCP
+  function lget(k) { try { return localStorage.getItem('cl_' + k) === '1'; } catch (e) { return false; } }
+  function lset(k, v) { try { if (v) localStorage.setItem('cl_' + k, '1'); else localStorage.removeItem('cl_' + k); } catch (e) {} }
+  var tcpMode = false, tcpUsed = false, pcPatched = false;
+  function patchPc() {
+    if (pcPatched || !window.RTCPeerConnection) return; pcPatched = true;
+    var O = window.RTCPeerConnection;
+    var N = function (cfg, c) {
+      tcpUsed = false;
+      if (tcpMode && cfg && cfg.iceServers) {
+        var srv = cfg.iceServers.map(function (s) { return Object.assign({}, s, { urls: [].concat(s.urls || []).filter(function (u) { return /^turns:|transport=tcp/i.test(u); }) }); }).filter(function (s) { return s.urls.length; });
+        if (srv.length) { cfg = Object.assign({}, cfg, { iceTransportPolicy: 'relay', iceServers: srv }); tcpUsed = true; }   // у сервера нет TURN по TLS: идём как обычно
+      }
+      return c !== undefined ? new O(cfg, c) : new O(cfg);
+    };
+    N.prototype = O.prototype;
+    if (O.generateCertificate) N.generateCertificate = O.generateCertificate.bind(O);
+    window.RTCPeerConnection = N;
+  }
+  var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   var media = { audio: 'unknown', video: 'unknown', busy: {}, subs: [], devs: [] };
   // ── Выбор микрофона, динамика и камеры: хранится на этом устройстве (идентификаторы у каждого браузера свои), применяется к следующему звонку ──
   var DEVK = { audioin: ['audioinput', 'Микрофон'], audioout: ['audiooutput', 'Динамик'], videoin: ['videoinput', 'Камера'] };
@@ -706,6 +728,6 @@
     if (typeof H.onConfig === 'function') H.onConfig(st);
     return st.prefs;
   }
-  window.Calls = { available: function () { return st.enabled; }, prefs: function () { return st.prefs; }, setPref: setPref, init: init, load: load, onWs: onWs, canCall: canCall, btns: btns, start: start, state: st, devices: { select: devSelect }, media: { chip: mediaChip, refresh: mediaRefresh, ask: mediaAsk, get: function () { return { audio: media.audio, video: media.video }; }, onChange: function (f) { media.subs.push(f); } } };
+  window.Calls = { available: function () { return st.enabled; }, prefs: function () { return st.prefs; }, setPref: setPref, init: init, load: load, onWs: onWs, canCall: canCall, btns: btns, start: start, state: st, local: { get: lget, set: lset }, devices: { select: devSelect }, media: { chip: mediaChip, refresh: mediaRefresh, ask: mediaAsk, get: function () { return { audio: media.audio, video: media.video }; }, onChange: function (f) { media.subs.push(f); } } };
   window.callStart = function (chatId, video) { start(Number(chatId), !!video); };
 })();

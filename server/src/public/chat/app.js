@@ -1579,6 +1579,7 @@ function csPaneCalls() {
     <div class="cs-gt">Виды звонков</div><div class="cs-g">${row('audio', 'Аудиозвонки', 'Голосовые звонки без видео', !!p.audio && !!p.enabled, !p.enabled)}${row('video', 'Видеозвонки', 'Звонки с камерой', !!p.video && !!p.enabled, !p.enabled)}</div>
     <div class="cs-gt">Доступ к устройствам</div><div class="cs-g"><div class="cs-r"><div class="cs-l"><b>Микрофон</b><span>Нужен для любых звонков. Нажмите, чтобы проверить или разрешить доступ</span></div>${Calls.media.chip('audio')}</div><div class="cs-r"><div class="cs-l"><b>Камера</b><span>Нужна для видеозвонков</span></div>${Calls.media.chip('video')}</div></div>
     <div class="cs-gt">Устройства для звонков</div><div class="cs-g">${[['audioin', 'Микрофон', 'Каким микрофоном говорить'], ['audioout', 'Динамик', 'Где слышать собеседника'], ['videoin', 'Камера', 'Какую камеру включать']].map(([k, t, d]) => { const sel = window.Calls?.devices?.select(k); return sel ? `<div class="cs-r"><div class="cs-l"><b>${t}</b><span>${d}. Применится к следующему звонку</span></div>${sel}</div>` : ''; }).join('')}</div>
+    <div class="cs-gt">Если видео тормозит</div><div class="cs-g"><div class="cs-r"><div class="cs-l"><b>Идти через TCP</b><span>Для Wi-Fi, где теряются пакеты и картинка рассыпается: звонок идёт через TCP (TURN по TLS), потерь нет, но задержка чуть больше. Нужен сервер звонков с доменом (wss://). Применится к следующему звонку</span></div>${csTg(!!window.Calls?.local?.get('tcp'), 'csCallLocal', 'Идти через TCP', 'tcp')}</div></div>
     <div class="cs-gt">С других серверов</div><div class="cs-g">${row('fed', 'Принимать звонки с других серверов', 'Выключите, чтобы вам могли звонить только люди с вашего сервера', !!p.fed && !!p.enabled, !p.enabled)}</div>`;
 }
 // Звонки включили или выключили на сервере: раздел настроек появляется или исчезает сразу
@@ -1594,6 +1595,8 @@ function callsMediaWatch() {
   if (_callsMediaWatched || !window.Calls?.media) return; _callsMediaWatched = true;
   window.Calls.media.onChange(() => { try { if (typeof CS !== 'undefined' && CS.sec === 'calls' && _sidebarTab === 'settings') csRefresh(); } catch {} });
 }
+function csCallLocal(k) { const L = window.Calls?.local; if (L) L.set(k, !L.get(k)); csRefresh(); }
+window.csCallLocal = csCallLocal;
 async function csCallPref(key) { const p = Calls.prefs(); await Calls.setPref(key, !p[key]); csRefresh(); }
 const CS_PANES = { calls: csPaneCalls, profile: csPaneProfile, general: csPaneGeneral, appearance: csPaneAppearance, blocks: csPaneBlocks, modules: csPaneModules, folders: () => csPaneFolders(), update: csPaneUpdate };
 

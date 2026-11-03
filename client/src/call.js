@@ -17,6 +17,19 @@
   const svg = n => `<svg class="i" viewBox="0 0 24 24">${ICON[n]}</svg>`;
   const init = await window.callApi.init();
   if (!init) return;
+  // «Через TCP»: только TURN по TLS и запрет прямых путей (если у сервера нет TURN по TLS, идём как обычно)
+  if (init.tcp && window.RTCPeerConnection) {
+    const O = window.RTCPeerConnection;
+    const N = function (cfg, c) {
+      if (cfg?.iceServers) {
+        const srv = cfg.iceServers.map(s => ({ ...s, urls: [].concat(s.urls || []).filter(u => /^turns:|transport=tcp/i.test(u)) })).filter(s => s.urls.length);
+        if (srv.length) cfg = { ...cfg, iceTransportPolicy: 'relay', iceServers: srv };
+      }
+      return c !== undefined ? new O(cfg, c) : new O(cfg);
+    };
+    N.prototype = O.prototype; if (O.generateCertificate) N.generateCertificate = O.generateCertificate.bind(O);
+    window.RTCPeerConnection = N;
+  }
 
   document.documentElement.classList.toggle('dark', init.theme.dark);
   document.body.classList.add(init.platform === 'darwin' ? 'mac' : 'other');

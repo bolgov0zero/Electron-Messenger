@@ -48,6 +48,7 @@ B.ui.settings = (function () {
       '<div class="grp glass">' + row('audio', 'Аудиозвонки', on && p.audio, !on) + row('video', 'Видеозвонки', on && p.video, !on) + '</div>' +
       '<div class="grp glass"><div class="cell"><span class="cl">Микрофон</span>' + Calls.media.chip('audio') + '</div><div class="cell"><span class="cl">Камера</span>' + Calls.media.chip('video') + '</div></div><div class="gf">Нажмите на состояние, чтобы проверить или разрешить доступ. Микрофон нужен для любых звонков, камера для видеозвонков.</div>' +
       '<div class="grp glass">' + [['audioin', 'Микрофон'], ['audioout', 'Динамик'], ['videoin', 'Камера']].map(function (x) { var sel = Calls.devices.select(x[0]); return sel ? '<div class="cell"><span class="cl">' + x[1] + '</span>' + sel + '</div>' : ''; }).join('') + '</div><div class="gf">Какие микрофон, динамик и камера используются в звонках. Применится к следующему звонку.</div>' +
+      '<div class="grp glass"><div class="cell"><span class="cl">Идти через TCP</span>' + tg('l-tcp', Calls.local.get('tcp')) + '</div></div><div class="gf">Если видео тормозит и рассыпается на Wi-Fi: звонок пойдёт через TCP, без потерь пакетов, с чуть большей задержкой. Нужен сервер звонков с доменом (wss://). Применится к следующему звонку.</div>' +
       '<div class="grp glass">' + row('fed', 'Принимать звонки с других серверов', on && p.fed, !on) + '</div><div class="gf">Выключите, чтобы вам могли звонить только люди с вашего сервера.</div>';
   }
   function openCalls() {
@@ -55,7 +56,9 @@ B.ui.settings = (function () {
     callsEl = el; Calls.media.refresh();
     if (!mediaSub) { mediaSub = true; Calls.media.onChange(function () { if (callsEl && document.body.contains(callsEl)) $('.scroll', callsEl).innerHTML = callsHtml(); }); }
     el.addEventListener('click', async function (e) {
-      var t = e.target.closest('[data-tg]'); if (!t || t.dataset.tg.indexOf('c-') !== 0) return;
+      var t = e.target.closest('[data-tg]');
+      if (t && t.dataset.tg === 'l-tcp') { Calls.local.set('tcp', !Calls.local.get('tcp')); $('.scroll', el).innerHTML = callsHtml(); return; }
+      if (!t || t.dataset.tg.indexOf('c-') !== 0) return;
       var k = t.dataset.tg.slice(2); await Calls.setPref(k, !Calls.prefs()[k]); $('.scroll', el).innerHTML = callsHtml(); render();
     });
   }
