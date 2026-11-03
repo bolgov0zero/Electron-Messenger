@@ -245,6 +245,7 @@
     if (c.cmd === 'mic') setMic(c.on !== undefined ? !!c.on : !st.mic);
     else if (c.cmd === 'cam') setCam(c.on !== undefined ? !!c.on : !st.cam);
     else if (c.cmd === 'end') end();
+    else if (c.cmd === 'screen-stop') setScreen(false);
     else if (c.cmd === 'note') note(c.text);
     else if (c.cmd === 'ungroup') { init.group = false; init.peer = { id: c.id || 0, name: c.name || '' }; pendingList = []; document.title = init.peer.name || 'Звонок'; $('peer').textContent = init.peer.name || 'Звонок'; $('rn').textContent = init.peer.name || ''; $('grid').hidden = true; $('remote').hidden = false; onRemoteState(); render(); }
     else if (c.cmd === 'pending') { pendingList = c.list || []; if (init.group) renderGrid(); }

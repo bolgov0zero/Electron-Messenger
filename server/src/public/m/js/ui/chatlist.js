@@ -28,7 +28,7 @@ B.ui.chatlist = (function () {
     var bd = men ? '<span class="bd at' + (c.muted ? ' mute' : '') + '">@</span>' : u ? '<span class="bd' + (c.muted ? ' mute' : '') + '">' + (u > 99 ? '99+' : u) + '</span>' : '';
     return '<button class="row' + (pin ? ' pinned' : '') + '" data-id="' + c.id + '">' + B.avatar.chat(c) + '<div class="rt"><div class="r1"><b>' + (c.is_secret ? I('lock') + ' ' : '') + B.esc(B.chatName(c)) + '</b>' + (mine && lm ? tick(lm) : '') +
       '<span class="tm' + (u && !c.muted ? ' new' : '') + '">' + (lm ? B.fmt.chatListTime(lm.sent_at) : '') + '</span></div>' +
-      '<div class="r2"><span class="pv">' + pv + '</span>' + (c.muted ? '<span class="st">' + I('bellOff') + '</span>' : '') + (c.pinned && !u && !men ? '<span class="st">' + I('pin') + '</span>' : '') + bd + '</div></div></button>';
+      '<div class="r2"><span class="pv">' + pv + '</span>' + (window.Calls && Calls.inCall && Calls.inCall(c.id) ? '<span class="st" style="color:#1fa84c">' + I('phone') + '</span>' : '') + (c.muted ? '<span class="st">' + I('bellOff') + '</span>' : '') + (c.pinned && !u && !men ? '<span class="st">' + I('pin') + '</span>' : '') + bd + '</div></div></button>';
   }
   function msgRow(r) {
     var c = B.find(r.chat_id), title = c ? B.chatName(c) : (r.sender_name || '');

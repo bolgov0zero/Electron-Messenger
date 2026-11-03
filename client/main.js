@@ -1,3 +1,4 @@
+const shareFrame = require('./shareframe');
 const { app, BrowserWindow, BrowserView, Tray, Menu, nativeImage, nativeTheme, Notification, ipcMain, net, safeStorage, screen, session, shell } = require('electron');
 
 if (process.platform === 'linux') {
@@ -1234,7 +1235,7 @@ ipcMain.handle('call-open', (e, p) => {
   win.setMenuBarVisibility(false);
   // Закрытие окна видеозвонка не обрывает разговор: камера выключается, окно прячется, звонок остаётся аудио
   win.on('close', ev => { if (!win.__quit && callAlive()) { ev.preventDefault(); win.webContents.send('call-cmd', { cmd: 'window-closed' }); win.hide(); } });
-  win.on('closed', () => { if (callWin === win) { callWin = null; callToOwner({ phase: 'closed' }); callOwner = null; callInit = null; } });
+  win.on('closed', () => { if (callWin === win) { shareFrame.stop(); callWin = null; callToOwner({ phase: 'closed' }); callOwner = null; callInit = null; } });
   win.webContents.on('render-process-gone', (_, d) => { diag(`ОШИБКА: окно звонка аварийно завершилось (причина: ${d.reason})`); callToOwner({ phase: 'error', error: 'Окно звонка завершилось с ошибкой' }); });
   win.loadFile(path.join(__dirname, 'src', 'call.html'));
   if (callInit.video || callInit.group) win.once('ready-to-show', () => win.show());
@@ -1260,7 +1261,9 @@ ipcMain.on('call-screen-chosen', (e, id) => {
   if (!callAlive() || e.sender !== callWin.webContents || !screenCb) return;
   const cb = screenCb; screenCb = null;
   if (!id) return cb({});
-  require('electron').desktopCapturer.getSources({ types: ['screen', 'window'] }).then(list => { const src = list.find(x => x.id === id); cb(src ? { video: src } : {}); }).catch(() => cb({}));
+  require('electron').desktopCapturer.getSources({ types: ['screen', 'window'] }).then(list => { const src = list.find(x => x.id === id); cb(src ? { video: src } : {});
+    // Рамка вокруг показываемого экрана или окна и плашка «Остановить» (сами в трансляцию не попадают)
+    if (src) { try { shareFrame.start({ source: src, onStop: () => { if (callAlive()) callWin.webContents.send('call-cmd', { cmd: 'screen-stop' }); } }); } catch {} } }).catch(() => cb({}));
 });
 ipcMain.handle('call-init', e => (callWin && e.sender === callWin.webContents ? callInit : null));
 // Окно приложения пережило перезагрузку: звонок идёт, ему нужно вернуть панель управления
@@ -1275,13 +1278,16 @@ ipcMain.on('call-cmd', (_, c) => {
   if (c?.cmd === 'group') { callInit.group = true; callInit.peer = { id: 0, name: String(c.name || 'Групповой звонок') }; callWin.setTitle(callInit.peer.name); if (!callWin.isVisible()) callWin.show(); }
   callWin.webContents.send('call-cmd', c);
 });
+let screenWas = false;
 ipcMain.on('call-state', (e, st) => {
   if (!callAlive() || e.sender !== callWin.webContents) return;
   if (st?.window === 'show') { if (!callWin.isVisible()) callWin.show(); return; }
   if (st?.window === 'hide') { callWin.hide(); return; }
+  // Рамку снимаем, когда показ экрана реально закончился (а не пока он ещё запускается)
+  if (st && typeof st.screen === 'boolean') { if (!st.screen && screenWas) shareFrame.stop(); screenWas = st.screen; }
   callToOwner(st);
 });
-app.on('before-quit', () => { if (callAlive()) { callWin.__quit = true; callWin.close(); } });
+app.on('before-quit', () => { shareFrame.stop(); if (callAlive()) { callWin.__quit = true; callWin.close(); } });
 
 // Входящий звонок — маленькое окно поверх всех окон в углу экрана: видно, даже если приложение свёрнуто.
 // Карточку рисует callin.html, нажатия уходят окну записи, которое её показало (call-incoming-action).

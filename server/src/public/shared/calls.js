@@ -216,12 +216,13 @@
     if (!st.enabled || !st.secure || !hasMedia() || !chat || chat.is_secret || chat.system_kind) return false;
     if (!st.prefs.enabled || (!st.prefs.audio && !st.prefs.video)) return false;   // человек выключил звонки в настройках
     if (chat.type === 'group') return true;
+    if (chat.type === 'room') return !chat.has_topics;   // комната с подкомнатами — только «папка»: звонок идёт в самой подкомнате
     return chat.type === 'direct' && !!peerId;
   }
   function btns(chat, peerId) {
     if (!canCall(chat, peerId)) return '';
     // В группе уже идёт звонок: вместо двух кнопок одна «Присоединиться»
-    var g = chat.type === 'group' && st.groups[chat.id];
+    var g = (chat.type === 'group' || chat.type === 'room') && st.groups[chat.id];
     if (g) return '<button class="icon-btn call-hd-btn cl-join" title="Присоединиться к звонку" data-on-click="callStart" data-a-click="' + E(JSON.stringify([chat.id, false])) + '"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">' + IC.phone + '</svg><span>Присоединиться · ' + g.participants.length + '</span></button>';
     var mk = function (v, t, ic) { return '<button class="icon-btn call-hd-btn" title="' + t + '" data-on-click="callStart" data-a-click="' + E(JSON.stringify([chat.id, v])) + '"><svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">' + IC[ic] + '</svg></button>'; };
     return (st.prefs.audio ? mk(false, 'Аудиозвонок', 'phone') : '') + (st.prefs.video ? mk(true, 'Видеозвонок', 'video') : '');
@@ -327,7 +328,7 @@
   function spkBtn(c) { return canSpk() ? '<button class="cl-rb ' + (c.spk === 'receiver' ? 'ac' : '') + '" data-cl="spk" aria-label="Трубка или громкая связь">' + svg('volume') + '</button>' : ''; }
   function ctrlsHtml(c) {
     return spkBtn(c) + '<button class="cl-rb ' + (c.mic ? '' : 'off') + '" data-cl="mic" aria-label="Микрофон">' + svg(c.mic ? 'mic' : 'micOff') + '</button>' +
-      '<button class="cl-rb ' + (c.cam ? '' : 'off') + '" data-cl="cam" aria-label="Камера">' + svg(c.cam ? 'video' : 'videoOff') + '</button>' +
+      (c.micOnly ? '' : '<button class="cl-rb ' + (c.cam ? '' : 'off') + '" data-cl="cam" aria-label="Камера">' + svg(c.cam ? 'video' : 'videoOff') + '</button>') +
       (!H.mobile && navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia ? '<button class="cl-rb ' + (c.screen ? 'ac' : '') + '" data-cl="screen" aria-label="Показать экран" title="Показать экран">' + svg('screen') + '</button>' : '') +
       (canAdd(c) ? '<button class="cl-rb" data-cl="add" aria-label="Добавить в звонок" title="Добавить в звонок">' + svg('userPlus') + '</button>' : '') +
       '<button class="cl-rb end" data-cl="end">' + svg('phone') + (H.mobile ? '' : 'Завершить') + '</button>';
@@ -398,7 +399,7 @@
         // аудиоразговор на мобильном: экран с аватаркой и кнопками
         win.innerHTML = hd + '<div class="cl-full" id="cl-full-in" style="position:absolute;z-index:1;background:none;animation:none">' +
           '<span></span><div class="cl-mid"><div style="padding:14px;border-radius:50%;box-shadow:0 0 0 3px var(--accent),0 0 38px rgba(var(--accent-rgb,31,168,140),.45)">' + H.avatar(c.peer.id, c.peer.name, 140) + '</div><div class="nm">' + E(c.peer.name) + '</div><div class="sub cl-tm">' + status() + '</div></div>' +
-          '<div class="cl-acts">' + (canSpk() ? '<button class="cl-mb" data-cl="spk"><span class="rnd sq ' + (c.spk === 'receiver' ? 'clg' : 'off') + '">' + svg('volume') + '</span>' + (c.spk === 'receiver' ? 'Трубка' : 'Громко') + '</button>' : '') + '<button class="cl-mb" data-cl="mic"><span class="rnd sq ' + (c.mic ? 'clg' : 'off') + '">' + svg(c.mic ? 'mic' : 'micOff') + '</span>Микрофон</button><button class="cl-mb" data-cl="cam"><span class="rnd sq clg">' + svg('video') + '</span>Видео</button>' + (canAdd(c) ? '<button class="cl-mb" data-cl="add"><span class="rnd sq clg">' + svg('userPlus') + '</span>Добавить</button>' : '') + '<button class="cl-mb" data-cl="end"><span class="rnd sq no">' + svg('phone', 'hang') + '</span>Завершить</button></div></div>';
+          '<div class="cl-acts">' + (canSpk() ? '<button class="cl-mb" data-cl="spk"><span class="rnd sq ' + (c.spk === 'receiver' ? 'clg' : 'off') + '">' + svg('volume') + '</span>' + (c.spk === 'receiver' ? 'Трубка' : 'Громко') + '</button>' : '') + '<button class="cl-mb" data-cl="mic"><span class="rnd sq ' + (c.mic ? 'clg' : 'off') + '">' + svg(c.mic ? 'mic' : 'micOff') + '</span>Микрофон</button>' + (c.micOnly ? '' : '<button class="cl-mb" data-cl="cam"><span class="rnd sq clg">' + svg('video') + '</span>Видео</button>') + (canAdd(c) ? '<button class="cl-mb" data-cl="add"><span class="rnd sq clg">' + svg('userPlus') + '</span>Добавить</button>' : '') + '<button class="cl-mb" data-cl="end"><span class="rnd sq no">' + svg('phone', 'hang') + '</span>Завершить</button></div></div>';
       }
     }
     if (mob) {
@@ -605,7 +606,7 @@
   // ── действия ──
   async function start(chatId, video) {
     var info = H.chatInfo && H.chatInfo(chatId);
-    if (info && info.type === 'group') return joinGroup(chatId, video, info.name);
+    if (info && (info.type === 'group' || info.type === 'room')) return joinGroup(chatId, video, info.name);
     if (!st.enabled) return H.toast(ERR.disabled);
     if (st.call || st.incoming) return H.toast(ERR.in_call);
     if (!hasMedia()) return H.toast('Браузер не даёт доступ к микрофону: откройте клиент по https');
@@ -634,6 +635,8 @@
     var r = await H.api('POST', '/calls/group/join', { chat_id: chatId, video: !!video });
     if (!r || r.error) return H.toast({ full: 'В звонке уже много людей' }[r && r.code] || (r && r.error) || 'Не удалось присоединиться');
     var c = st.call = { id: r.call_id, chatId: chatId, fedGroup: !!r.fed_group, peer: { id: 0, name: name || 'Группа' }, group: true, video: !!video, outgoing: false, phase: 'connecting', mic: true, cam: false, remoteCam: false, remoteMic: true, since: 0 };
+    // Видео в звонке на 12 человек, дальше только звук (звук без ограничений)
+    if (r.mic_only) { c.micOnly = true; c.video = false; video = false; H.toast('В звонке уже 12 человек с видео: вы подключены только со звуком'); }
     st.min = false; dismissIncoming(); render();
     try { await join(c, r.url, r.token, !!video); }
     catch (e) { fail(e); }
@@ -740,7 +743,7 @@
   // Свои настройки этого устройства (не на сервере): через TCP
   function lget(k) { try { return localStorage.getItem('cl_' + k) === '1'; } catch (e) { return false; } }
   function lset(k, v) { try { if (v) localStorage.setItem('cl_' + k, '1'); else localStorage.removeItem('cl_' + k); } catch (e) {} }
-  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'snd-6';
+  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'snd-7';
   // Только TURN по TLS (TCP) и запрет прямых путей. LiveKit создаёт соединение раньше, чем получает от сервера список ICE-серверов, и
   // потом задаёт его через setConfiguration, поэтому подменяем и конструктор, и setConfiguration. Если у сервера нет TURN по TLS, идём как обычно
   function tcpize(cfg) {
@@ -838,6 +841,6 @@
     if (typeof H.onConfig === 'function') H.onConfig(st);
     return st.prefs;
   }
-  window.Calls = { available: function () { return st.enabled; }, prefs: function () { return st.prefs; }, setPref: setPref, init: init, load: load, onWs: onWs, canCall: canCall, btns: btns, start: start, state: st, local: { get: function (k) { return k === 'wa' ? waOn() : lget(k); }, set: function (k, v) { if (k === 'wa') { try { localStorage.setItem('cl_wa', v ? '1' : '0'); } catch (e) {} } else lset(k, v); } }, isIOS: function () { return isIOS; }, devices: { select: devSelect }, media: { chip: mediaChip, refresh: mediaRefresh, ask: mediaAsk, get: function () { return { audio: media.audio, video: media.video }; }, onChange: function (f) { media.subs.push(f); } } };
+  window.Calls = { available: function () { return st.enabled; }, prefs: function () { return st.prefs; }, setPref: setPref, init: init, load: load, onWs: onWs, canCall: canCall, btns: btns, start: start, state: st, inCall: function (chatId) { return !!st.groups[chatId]; }, local: { get: function (k) { return k === 'wa' ? waOn() : lget(k); }, set: function (k, v) { if (k === 'wa') { try { localStorage.setItem('cl_wa', v ? '1' : '0'); } catch (e) {} } else lset(k, v); } }, isIOS: function () { return isIOS; }, devices: { select: devSelect }, media: { chip: mediaChip, refresh: mediaRefresh, ask: mediaAsk, get: function () { return { audio: media.audio, video: media.video }; }, onChange: function (f) { media.subs.push(f); } } };
   window.callStart = function (chatId, video) { start(Number(chatId), !!video); };
 })();

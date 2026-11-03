@@ -58,9 +58,9 @@ async function saveConfig({ enabled, url, key, secret, public: pub, certFp }) {
 }
 
 // Токен доступа LiveKit (JWT HS256). iss — API key, sub — идентификатор участника, video — права
-function signToken(cfg, { identity, name, room, admin, kill, ttl = TOKEN_TTL }) {
+function signToken(cfg, { identity, name, room, admin, kill, micOnly, ttl = TOKEN_TTL }) {
   const video = room
-    ? { roomJoin: true, room, canPublish: true, canSubscribe: true, canPublishData: true }
+    ? { roomJoin: true, room, canPublish: true, canSubscribe: true, canPublishData: true, ...(micOnly ? { canPublishSources: ['microphone'] } : {}) }
     : kill ? { roomCreate: true } : admin ? { roomList: true } : {};
   return jwt.sign({ name, video }, cfg.secret, { algorithm: 'HS256', issuer: cfg.key, subject: identity, expiresIn: ttl });
 }
@@ -676,7 +676,6 @@ async function groupsFor(userId) {
 async function hostAdd(chatId, userId, video) {
   let g = groupCalls.get(chatId), created = false;
   if (!g) { created = true; g = { id: crypto.randomUUID(), chatId, room: 'gcall-' + crypto.randomUUID().slice(0, 12), startedBy: userId, video: !!video, participants: new Set(), createdAt: Math.floor(Date.now() / 1000), startedAt: Date.now(), firstLocal: 0 }; groupCalls.set(chatId, g); }
-  if (!g.participants.has(userId) && g.participants.size >= GROUP_MAX) throw new CallError('full', 'В звонке уже ' + GROUP_MAX + ' человек', 409);
   g.participants.add(userId); busy.set(userId, g.id);
   if (!g.names) g.names = new Map();
   if (!g.names.has(userId)) g.names.set(userId, await nameOf(userId));
@@ -688,16 +687,21 @@ async function groupJoin(user, chatId, video) {
   if (!ownOk(cfg)) throw new CallError('no_own', NO_OWN, 400);
   const chat = await dal.get('SELECT type, is_secret, fed_instance, fed_chat_id FROM chats WHERE id = ?', chatId);
   const mine = await dal.get('SELECT 1 AS x FROM chat_members WHERE chat_id = ? AND user_id = ?', chatId, user.id);
-  if (!chat || !mine || chat.type !== 'group') throw new CallError('bad_chat', 'Групповой звонок возможен только в группе', 400);
+  if (!chat || !mine || (chat.type !== 'group' && chat.type !== 'room')) throw new CallError('bad_chat', 'Групповой звонок возможен в группе или комнате', 400);
+  // Комната с подкомнатами — только «папка»: звонок идёт в самой подкомнате
+  if (chat.type === 'room' && await dal.get('SELECT 1 AS x FROM chats WHERE parent_id = ?', chatId)) throw new CallError('bad_chat', 'В этой комнате звонки идут в подкомнатах', 400);
   if (chat.is_secret) throw new CallError('bad_chat', 'В этой группе звонки недоступны', 400);
   if (busy.has(user.id)) throw new CallError('in_call', 'Вы уже в звонке');
   if (!(await getPrefs(user.id)).enabled) throw new CallError('prefs_self', 'У вас выключены звонки в настройках', 403);
   if (chat.fed_instance) return await groupJoinMirror(user, chatId, chat, video);
+  // Свыше 12 человек в звонке новые участники подключаются только со звуком: видео на 12, звук без ограничений
+  const micOnly = (groupCalls.get(chatId)?.participants.size || 0) >= GROUP_MAX && !groupCalls.get(chatId)?.participants.has(user.id);
   const { g, created } = await hostAdd(chatId, user.id, video);
   if (!g.firstLocal) g.firstLocal = user.id;
-  // Начавшему звонок приглашение не нужно: остальным — приглашение, а когда кто-то присоединился, всем обновляется число
-  if (created) await groupTell(g, 'started', user.id); else await groupTell(g, 'update');
-  return { ...groupPub(g), group: true, url: cfg.url, cert_fp: cfg.certFp || undefined, token: signToken(cfg, { identity: 'u' + user.id, name: user.display_name, room: g.room }) };
+  // Начавшему звонок приглашение не нужно: остальным — приглашение, а когда кто-то присоединился, всем обновляется число.
+  // В комнате (в ней все сотрудники) не звоним и не шлём push: только обновляется отметка «идёт звонок» и кнопка «Присоединиться»
+  if (created && chat.type !== 'room') await groupTell(g, 'started', user.id); else await groupTell(g, 'update');
+  return { ...groupPub(g), group: true, mic_only: micOnly || undefined, url: cfg.url, cert_fp: cfg.certFp || undefined, token: signToken(cfg, { identity: 'u' + user.id, name: user.display_name, room: g.room, micOnly }) };
 }
 // Мы — зеркало чужой группы: комната у хозяина, входим запросом к нему
 async function groupJoinMirror(user, chatId, chat, video) {
@@ -800,9 +804,10 @@ async function fedGroupReq(peer, f) {
   if (!chat || chat.type !== 'group' || chat.is_secret || chat.fed_instance || !sh) throw new Error('not_found');
   if (!(await dal.get('SELECT 1 AS x FROM chat_members WHERE chat_id = ? AND user_id = ?', chat.id, sh.id))) throw new Error('not_found');
   if (busy.has(sh.id) && !groupCalls.get(chat.id)?.participants.has(sh.id)) throw new Error('busy');
+  const micOnly = (groupCalls.get(chat.id)?.participants.size || 0) >= GROUP_MAX && !groupCalls.get(chat.id)?.participants.has(sh.id);
   const { g, created } = await hostAdd(chat.id, sh.id, !!f.video);
   if (created) await groupTell(g, 'started', sh.id); else await groupTell(g, 'update');
-  return { call_id: g.id, video: g.video, participants: [...g.participants], from: { id: g.startedBy, name: await sendersName(g.startedBy) }, url: cfg.url, fp: cfg.certFp || '', token: signToken(cfg, { identity: 'u' + sh.id, name: sh.display_name, room: g.room }) };
+  return { call_id: g.id, video: g.video, participants: [...g.participants], from: { id: g.startedBy, name: await sendersName(g.startedBy) }, url: cfg.url, fp: cfg.certFp || '', token: signToken(cfg, { identity: 'u' + sh.id, name: sh.display_name, room: g.room, micOnly }) };
 }
 // События хозяина группы: звонок начался, изменился состав, закончился
 async function recvGroupEvent(peer, ev) {

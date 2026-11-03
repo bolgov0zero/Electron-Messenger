@@ -14,7 +14,7 @@ B.ui.calls = (function () {
       openChat: function (id) { B.openChat(id); },
       chatInfo: function (id) { var c = B.find(id); return c ? { type: c.type, name: B.chatName(c) } : null; },
       onConfig: function () {
-        rehead(); if (B.ui.settings && B.ui.settings.render) B.ui.settings.render();
+        rehead(); B.bus.emit('chats:changed'); if (B.ui.settings && B.ui.settings.render) B.ui.settings.render();
         // Звонки выключили на сервере, а открыта страница их настроек: закрываем её
         var p = B.nav.top && B.nav.top(); if (p && p.el && p.el.dataset.calls && !Calls.available()) B.nav.pop();
       },
@@ -28,14 +28,15 @@ B.ui.calls = (function () {
     var peer = chat.type === 'direct' && !B.isSys(chat) ? B.peerId(chat) : null;
     if (!window.Calls || !Calls.canCall(chat, peer)) return '';
     var g = chat.type === 'group' && Calls.state.groups[chat.id];
-    if (g) return '<button class="glass gi cl-mjoin" data-c="gjoin" aria-label="Присоединиться к звонку" style="width:auto;padding:0 14px;color:#fff;background:linear-gradient(140deg,#3fd573,#1f9f4c);font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:6px">' + I('phone') + g.participants.length + '</button>';
+    // Круглая кнопка того же размера, что и остальные: трубка и число участников друг под другом
+    if (g) return '<button class="glass gi cl-mjoin" data-c="gjoin" aria-label="Присоединиться к звонку, участников: ' + g.participants.length + '" style="color:#fff;background:linear-gradient(140deg,#3fd573,#1f9f4c);display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:0;font-weight:800;font-size:11px;line-height:1"><span style="display:grid;place-items:center;font-size:15px;line-height:0">' + I('phone') + '</span><span style="margin-top:2px">' + g.participants.length + '</span></button>';
     return '<button class="glass gi" data-c="call" aria-label="Аудиозвонок">' + I('phone') + '</button><button class="glass gi" data-c="vcall" aria-label="Видеозвонок">' + I('video') + '</button>';
   }
   // Настройка пришла уже после отрисовки переписки: кнопки звонка вставляются в готовые шапки
   function rehead() {
     document.querySelectorAll('.page.chat[data-cid]').forEach(function (el) {
       var nr = el.querySelector('.nr'); if (!nr) return;
-      nr.querySelectorAll('[data-c="call"],[data-c="vcall"]').forEach(function (b) { b.remove(); });
+      nr.querySelectorAll('[data-c="call"],[data-c="vcall"],[data-c="gjoin"]').forEach(function (b) { b.remove(); });
       var chat = B.find(+el.dataset.cid), h = chat ? btns(chat) : '';
       if (h) nr.insertAdjacentHTML('afterbegin', h);
     });

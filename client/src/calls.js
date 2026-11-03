@@ -110,6 +110,7 @@
     if (!st.prefs.enabled || (!st.prefs.audio && !st.prefs.video)) return false;   // человек выключил звонки в настройках
     if (typeof isSysChat === 'function' && isSysChat(chat)) return false;
     if (chat.type === 'group') return true;
+    if (chat.type === 'room') return !chat.has_topics;   // комната с подкомнатами — только «папка»: звонок идёт в самой подкомнате
     if (chat.type !== 'direct' || !peerId) return false;
     const u = (S.allUsers || []).find(x => x.id === peerId);
     return !!u && !u.is_bot;
@@ -117,13 +118,14 @@
   function btnsHtml(chat, peerId) {
     if (!canCall(chat, peerId)) return '';
     // В группе уже идёт звонок: вместо двух кнопок одна «Присоединиться»
-    const g = chat.type === 'group' && st.groups[chat.id];
+    const g = (chat.type === 'group' || chat.type === 'room') && st.groups[chat.id];
     if (g) return `<button class="icon-btn call-hd-btn call-join" title="Присоединиться к звонку" data-on-click="callStart" data-a-click="${E(JSON.stringify([chat.id, false]))}"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">${IC.phone}</svg><span>Присоединиться · ${g.participants.length}</span></button>`;
     const mk = (v, t, ic) => `<button class="icon-btn call-hd-btn" title="${t}" data-on-click="callStart" data-a-click="${E(JSON.stringify([chat.id, v]))}"><svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">${IC[ic]}</svg></button>`;
     return (st.prefs.audio ? mk(false, 'Аудиозвонок', 'phone') : '') + (st.prefs.video ? mk(true, 'Видеозвонок', 'video') : '');
   }
   // Настройка пришла уже после отрисовки шапки: кнопки вставляются в готовую шапку
   function rehead() {
+    window.renderChatListSoon?.();   // отметка «идёт звонок» в списке чатов
     document.querySelectorAll('.call-hd-btn').forEach(b => b.remove());
     const box = document.querySelector('.chat-header-actions');
     if (!box || typeof S === 'undefined' || !S.activeChatId) return;
@@ -197,7 +199,7 @@
   }
   async function start(chatId, video) {
     const chat = (S.chats || []).find(c => c.id === chatId);
-    if (chat?.type === 'group') return joinGroup(chatId, video, chatName(chat));
+    if (chat?.type === 'group' || chat?.type === 'room') return joinGroup(chatId, video, chatName(chat));
     if (!st.enabled) return toast(ERR.disabled);
     if (st.call || st.incoming) return toast(ERR.in_call);
     const r = await api('POST', '/calls/start', { chat_id: chatId, video: !!video });
@@ -400,7 +402,7 @@
     rehead();
     return st.prefs;
   }
-  window.Calls = { available: () => st.enabled, prefs: () => st.prefs, setPref, init, load, onWs, btnsHtml, rehead, start, local: { get: k => { try { return localStorage.getItem('cl_' + k) === '1'; } catch { return false; } }, set: (k, v) => { try { v ? localStorage.setItem('cl_' + k, '1') : localStorage.removeItem('cl_' + k); } catch {} } }, devices: { select: devSelect }, media: { chip: mediaChip, refresh: mediaRefresh, ask: mediaAsk, get: () => ({ audio: media.audio, video: media.video }), hasScreen: () => media.hasScreen, onChange: f => media.subs.push(f) } };
+  window.Calls = { inCall: chatId => !!st.groups[chatId], available: () => st.enabled, prefs: () => st.prefs, setPref, init, load, onWs, btnsHtml, rehead, start, local: { get: k => { try { return localStorage.getItem('cl_' + k) === '1'; } catch { return false; } }, set: (k, v) => { try { v ? localStorage.setItem('cl_' + k, '1') : localStorage.removeItem('cl_' + k); } catch {} } }, devices: { select: devSelect }, media: { chip: mediaChip, refresh: mediaRefresh, ask: mediaAsk, get: () => ({ audio: media.audio, video: media.video }), hasScreen: () => media.hasScreen, onChange: f => media.subs.push(f) } };
   window.callStart = (chatId, video) => start(Number(chatId), !!video);
   window.callAccept = v => accept(!!v);
   window.callDecline = () => decline();

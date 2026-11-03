@@ -1,6 +1,6 @@
 {
   "name": "electron",
-  "version": "3.26.0",
+  "version": "3.27.0",
   "description": "Corporate Chat Client",
   "author": "bolgov@me.com",
   "homepage": "https://github.com/bolgov0zero/corp-chat",
@@ -24,6 +24,8 @@
       "preload.js",
       "callpreload.js",
       "callinpreload.js",
+      "shareframe.js",
+      "sharepreload.js",
       "src/**/*"
     ],
     "mac": {
