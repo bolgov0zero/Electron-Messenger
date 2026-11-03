@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Макет: кнопка и волна голосового</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Варианты кнопки воспроизведения и волны голосового сообщения. «Сейчас» — то, что в клиентах. Нажмите на кнопку: идёт воспроизведение. */
+:root{
+  --ff:Inter,system-ui,sans-serif;--text:#111318;--text2:#4f5666;--muted:#6c7484;
+  --accent:#1fa88c;--accent-rgb:29,168,140;--accent-ink:color-mix(in srgb,var(--accent) 72%,#000);
+  --accent-soft:rgba(var(--accent-rgb),.12);--accent-border:rgba(var(--accent-rgb),.28);
+  --gl-in:rgba(255,255,255,.78);--gl-edge:rgba(255,255,255,.75);--gl-hi:rgba(255,255,255,.85);--gl-shadow:rgba(20,50,60,.16);
+  --gl-out-a:color-mix(in srgb,var(--accent) 80%,#000);--gl-out-b:color-mix(in srgb,var(--accent) 68%,#0b4f96);
+  --stage:linear-gradient(160deg,#c9d9e6,#d8e6df 50%,#e6dcec);--card:rgba(255,255,255,.55)
+}
+html.dark{--text:#eef6f5;--text2:rgba(238,246,245,.74);--muted:rgba(238,246,245,.56);--accent:#29d6b8;--accent-rgb:41,214,184;--accent-ink:#29d6b8;
+  --gl-in:rgba(27,39,51,.78);--gl-edge:rgba(255,255,255,.17);--gl-hi:rgba(255,255,255,.2);--gl-shadow:rgba(0,0,0,.5);
+  --gl-out-a:color-mix(in srgb,var(--accent) 58%,#000);--gl-out-b:color-mix(in srgb,var(--accent) 48%,#0b3d7a);
+  --stage:linear-gradient(160deg,#10181f,#14201f 50%,#1b1626);--card:rgba(30,37,45,.6)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--ff);background:var(--stage);background-attachment:fixed;color:var(--text);padding:20px 20px 60px;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+.top{max-width:1100px;margin:0 auto 14px;display:flex;align-items:center;gap:14px}
+.top h1{font-size:15px;flex:1}.top h1 span{color:var(--muted);font-weight:500}
+.tg{height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--gl-edge);background:var(--card);font-size:12.5px;font-weight:600}
+.rows{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.row{display:grid;grid-template-columns:200px minmax(0,1fr) 360px;gap:20px;align-items:center;padding:18px 20px;border-radius:22px;background:var(--card);border:1px solid var(--gl-edge);backdrop-filter:blur(20px)}
+.row h2{font-size:14px}.row p{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.5}
+.col{display:flex;flex-direction:column;gap:8px}
+.msg{display:flex}.msg.out{justify-content:flex-end}
+.bub{padding:9px 14px 8px;border-radius:20px;position:relative}
+.in .bub{background:var(--gl-in);border:1px solid var(--gl-edge);border-bottom-left-radius:7px;box-shadow:inset 0 1px 0 var(--gl-hi),0 4px 14px var(--gl-shadow)}
+.out .bub{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;border-bottom-right-radius:7px;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 8px 20px color-mix(in srgb,var(--gl-out-b) 38%,transparent)}
+.vm{display:flex;align-items:center;gap:12px;padding-top:2px}
+.pl{flex:none;position:relative;display:grid;place-items:center;transition:transform .3s cubic-bezier(.34,1.56,.64,1),background .2s}
+.pl svg{position:absolute;width:1em;height:1em;stroke-linejoin:round;transition:opacity .2s,transform .3s cubic-bezier(.34,1.56,.64,1)}
+.pl .p2{opacity:0;transform:scale(.4)}.vm.playing .pl .p1{opacity:0;transform:scale(.4)}.vm.playing .pl .p2{opacity:1;transform:none}
+.pl:active{transform:scale(.92)}
+.vb{flex:1;min-width:0}
+.wv{display:flex;align-items:center;cursor:pointer;height:30px}
+.wv i{display:block;flex:none;border-radius:99px;--f:0;background:linear-gradient(90deg,currentColor calc(var(--f)*100%),color-mix(in srgb,currentColor 38%,transparent) calc(var(--f)*100%))}
+.in .wv{color:var(--accent)}.out .wv{color:#fff}
+.mt{display:flex;justify-content:space-between;font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--text2);margin-top:1px}
+.out .mt{color:rgba(255,255,255,.88)}
+/* сейчас */
+.v0 .pl{width:40px;height:40px;border-radius:50%;font-size:17px}
+.v0 .pl svg{fill:currentColor;stroke:currentColor;stroke-width:1.6}
+.v0.in .pl{background:var(--accent-soft);color:var(--accent-ink);box-shadow:inset 0 0 0 1px var(--accent-border)}
+.v0.out .pl{background:rgba(255,255,255,.2);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
+.v0 .wv{gap:3px}.v0 .wv i{width:3px}
+/* A: без круга */
+.va .pl{width:30px;height:34px;font-size:26px}
+.va .pl svg{fill:currentColor;stroke:currentColor;stroke-width:1.2}
+.va.in .pl{color:var(--accent-ink)}.va.out .pl{color:#fff}
+.va .wv{gap:2.5px}.va .wv i{width:3px}
+/* B: мягкая плитка */
+.vb2 .pl{width:36px;height:36px;border-radius:12px;font-size:16px}
+.vb2 .pl svg{fill:currentColor;stroke:currentColor;stroke-width:1.4}
+.vb2.in .pl{background:var(--accent);color:#fff}
+.vb2.out .pl{background:rgba(255,255,255,.96);color:var(--gl-out-b)}
+.vb2 .wv{gap:2px}.vb2 .wv i{width:3px;border-radius:2px}
+/* C: сплошной круг в цвет, толстая волна и ползунок */
+.vc .pl{width:38px;height:38px;border-radius:50%;font-size:16px}
+.vc .pl svg{fill:currentColor;stroke:currentColor;stroke-width:1.4}
+.vc.in .pl{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;box-shadow:0 3px 10px color-mix(in srgb,var(--gl-out-b) 40%,transparent)}
+.vc.out .pl{background:rgba(255,255,255,.26);color:#fff}
+.vc .wv{gap:2px;position:relative}.vc .wv i{width:4px}
+.vc .knob{position:absolute;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:currentColor;box-shadow:0 0 0 3px color-mix(in srgb,currentColor 25%,transparent);left:0;opacity:0;transition:opacity .2s}
+.vc.playing .knob{opacity:1}
+@media (max-width:980px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="top"><h1>Кнопка и волна голосового <span>· нажмите на кнопку: идёт воспроизведение</span></h1><button class="tg" id="th">Тёмная тема</button></div>
+<div class="rows" id="rows"></div>
+<script>
+const P='<svg class="p1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg><svg class="p2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg>';
+const W=Array.from({length:48},(_, i)=>{const e=Math.max(0,Math.sin(i/3.2+Math.sin(i/9)*2));return Math.round(3+e*26*(.55+.45*Math.abs(Math.sin(i*1.7))))});
+const V=[
+ ['v0','Сейчас','Стеклянное кольцо с белым контуром, волна тонкая.',36,3,3,22],
+ ['va','A · Без круга','Только значок, без подложки. Спокойнее всего, как в WhatsApp. Волна чуть плотнее.',38,3,2.5,24],
+ ['vb2','B · Мягкая плитка','Скруглённый квадрат, как значки файлов в приложении. На своём сообщении светлый, на чужом акцентный.',38,3,2,24],
+ ['vc','C · Сплошной круг','Круг в цвет сообщения без контура, волна толще, и бегунок на месте воспроизведения.',30,4,2,26]
+];
+function bub(cls,dir,n,bw,gap,hmax,w){
+  const bars=Array.from({length:n},(_, i)=>{const x=i*(W.length-1)/(n-1),a=Math.floor(x),b=Math.min(W.length-1,a+1),v=W[a]+(W[b]-W[a])*(x-a);return`<i style="width:${bw}px;height:${Math.round(4+Math.pow(Math.min(1,v/28),.8)*hmax)}px"></i>`}).join('');
+  return`<div class="msg ${dir}"><div class="bub"><div class="vm ${cls} ${dir}" data-n="${n}" data-bw="${bw}"><button class="pl" aria-label="Воспроизвести">${P}</button><div class="vb"><div class="wv" style="gap:${gap}px;width:${w}px">${bars}${cls==='vc'?'<b class="knob"></b>':''}</div><div class="mt"><span class="du">0:06</span><span>${dir==='out'?'22:57 ✓✓':'22:57'}</span></div></div></div></div></div>`}
+const rows=document.getElementById('rows');
+V.forEach(v=>{const [c,t,d,n,bw,gap,hm]=v;const wd=n*bw+(n-1)*gap,wm=Math.round(wd*.8);
+  const nm=Math.round(n*.8);
+  rows.insertAdjacentHTML('beforeend',`<div class="row"><div><h2>${t}</h2><p>${d}</p></div><div class="col">${bub(c,'in',n,bw,gap,hm,wd)}${bub(c,'out',n,bw,gap,hm,wd)}</div><div class="col" style="max-width:300px">${bub(c,'in',nm,bw,gap,hm,Math.round(nm*bw+(nm-1)*gap))}${bub(c,'out',nm,bw,gap,hm,Math.round(nm*bw+(nm-1)*gap))}</div></div>`)});
+// воспроизведение
+const dur=6;let cur=null;
+function paint(el,p){const bs=el.querySelectorAll('.wv i'),x=p*bs.length,k=Math.floor(x);bs.forEach((b,i)=>b.style.setProperty('--f',i<k?1:i===k?(x-k).toFixed(3):0));const kn=el.querySelector('.knob');if(kn){kn.style.left=(p*100)+'%'}el.querySelector('.du').textContent='0:0'+Math.floor(p*dur)}
+document.addEventListener('click',e=>{const b=e.target.closest('.pl');if(!b)return;const el=b.closest('.vm');
+  if(el.classList.contains('playing')){el.classList.remove('playing');cancelAnimationFrame(el._r);return}
+  el.classList.add('playing');let t0=performance.now()-(el._p||0)*dur*1000;
+  const f=now=>{const p=Math.min(1,(now-t0)/(dur*1000));el._p=p;paint(el,p);if(p<1)el._r=requestAnimationFrame(f);else{el.classList.remove('playing');el._p=0;setTimeout(()=>paint(el,0),400)}};el._r=requestAnimationFrame(f)});
+document.getElementById('th').onclick=()=>{const d=document.documentElement.classList.toggle('dark');document.getElementById('th').textContent=d?'Светлая тема':'Тёмная тема'};
+</script>
+</body>
+</html>

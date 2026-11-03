@@ -113,7 +113,7 @@
   // o: { own — своё сообщение, small — компактный вид, bars — число столбиков, meta — HTML справа (время и статус), unread — показывать точку «не прослушано», id }
   function html(att, src, o) {
     o = o || {};
-    const v = att.voice || {}, dur = Math.max(1, v.dur || 1), n = o.bars || 36;
+    const v = att.voice || {}, dur = Math.max(1, v.dur || 1), n = o.bars || 38;
     const w = Array.isArray(v.wave) && v.wave.length ? v.wave : Array(WAVE_BARS).fill(8);
     // Волна: интерполяция до нужного числа столбиков, лёгкое сглаживание и сжатие громкости, чтобы тихие участки не превращались в точки
     const pts = [];
@@ -122,11 +122,13 @@
       pts.push(w[i0] + (w[i1] - w[i0]) * (x - i0));
     }
     const sm = pts.map((v, i) => (pts[i - 1] === undefined ? v : pts[i - 1]) * 0.25 + v * 0.5 + (pts[i + 1] === undefined ? v : pts[i + 1]) * 0.25);
-    const bars = sm.map(v => '<i style="height:' + Math.round(4 + Math.pow(Math.min(1, Math.max(0, v) / 28), 0.8) * 22) + 'px"></i>').join('');
+    // Все столбики одной ширины: размеры подгоняем под физические пиксели экрана (при масштабе 125% или 150% иначе соседние столбики выходят то тоньше, то толще)
+    const dpr = window.devicePixelRatio || 1, px = v => Math.max(1, Math.round(v * dpr)) / dpr, bw = px(3), gp = px(2);
+    const bars = sm.map(v => '<i style="width:' + bw + 'px;height:' + (Math.max(2, Math.round((4 + Math.pow(Math.min(1, Math.max(0, v) / 28), 0.8) * 22) * dpr / 2)) * 2 / dpr) + 'px"></i>').join('');
     const unread = o.unread && o.id && !heard.has(String(o.id));
     return '<div class="vm ' + (o.own ? 'vm-out' : 'vm-in') + (o.small ? ' vm-sm' : '') + '" data-vsrc="' + esc(src) + '" data-vdur="' + dur + '"' + (o.id ? ' data-vid="' + esc(o.id) + '"' : '') + '>' +
       '<button class="pl" type="button" aria-label="Воспроизвести">' + I.play.replace('class="i"', 'class="i p1"') + I.pause.replace('class="i"', 'class="i p2"') + '</button>' +
-      '<div class="vb"><div class="wv">' + bars + '</div>' +
+      '<div class="vb"><div class="wv" style="gap:' + gp + 'px">' + bars + '</div>' +
       '<div class="mt"><span class="du">' + fmt(dur) + '</span>' + (unread ? '<i class="ud"></i>' : '') + '<button class="spd" type="button">' + speedLabel() + '</button>' +
       (o.meta ? '<span class="tm">' + o.meta + '</span>' : '') + '</div></div></div>';
   }
