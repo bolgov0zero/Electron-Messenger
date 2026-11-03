@@ -6685,7 +6685,7 @@ function caRender() {
   const page = document.getElementById('page-body'), sm = CALOG.sum || { ok: 0, minutes: 0, group: 0, video: 0, recorded: 0 };
   const per = [['day', 'Сутки'], ['week', 'Неделя'], ['month', 'Месяц'], ['all', 'Всё время']], kinds = [['all', 'Все'], ['direct', 'Личные'], ['group', 'Групповые']];
   const seg = (items, cur, fn) => `<div class="ub-sort" role="group">${items.map(([k, t]) => `<button type="button" aria-pressed="${cur === k}" data-on-click="${fn}" data-a-click="${esc(JSON.stringify([k]))}">${t}</button>`).join('')}</div>`;
-  const grid = 'grid-template-columns:112px minmax(0,2.2fr) 150px 74px 110px 130px';
+  const keepTop = page.querySelector('#cl-list')?.scrollTop || 0;
   uxKeepFocus(() => {
     page.innerHTML = `<div class="ub" id="cl-page">
       <div class="ub-tiles">
@@ -6699,24 +6699,44 @@ function caRender() {
       <div class="ub-head"><h3>Журнал <span>${CALOG.total}</span></h3>
         ${seg(per, CALOG.period, 'caPeriod')}${seg(kinds, CALOG.kind, 'caKind')}
         ${uxSearch('calog-q', CALOG.q, 'Кто, кому, группа…', 'caSearch')}</div>
-      <div class="ub-rows">
-        <div class="pg-top" style="${grid};font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--c-text2);padding:6px 14px;cursor:default"><span>Когда</span><span>Кто · кому</span><span>Вид</span><span>Длит.</span><span>Итог</span><span>Запись</span></div>
-        ${CALOG.rows.map(r => {
-          const open = CALOG.open.has(r.id), res = CALOG_RES[r.result] || ['—', ''], grp = r.kind !== 'direct';
-          const who = grp ? `<b>${esc(r.caller)}</b> ${r.kind === 'conf' ? '· общий звонок' : '· группа «' + esc(r.group || 'без названия') + '»'}${r.members.length ? ` <span class="rb-meta">· ${r.members.length} ${uxPlural(r.members.length, 'участник', 'участника', 'участников')}</span>` : ''}` : `<b>${esc(r.caller)}</b> <span class="rb-meta">→</span> <b>${esc(r.callee)}</b>${r.peer_server ? ` <span class="rb-meta">· сервер «${esc(r.peer_server)}»</span>` : ''}`;
-          return `<div class="rb-row"><div class="pg-top ca-top" style="${grid}" data-on-click="caTog" data-a-click="${esc(JSON.stringify([r.id]))}">
-            <div class="ca-c" style="font-variant-numeric:tabular-nums;font-weight:600">${caTime(r.at)}</div>
-            <div class="ca-c" style="min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${who}</div>
-            <div class="ca-c rb-meta">${grp ? (r.kind === 'conf' ? 'Групповой (из личного)' : 'Групповой') : 'Личный'} · ${r.video ? 'видео' : 'аудио'}</div>
-            <div class="ca-c rb-meta" style="font-variant-numeric:tabular-nums">${caDur(r.duration)}</div>
-            <div class="ca-c"><span class="sp-stat ${res[1]}">${res[0]}</span></div>
-            <div class="ca-c rb-meta">${r.recorded ? '<b style="color:var(--c-orange-text)">Записывался</b>' : 'Не записывался'}</div></div>
-            ${open ? caDetail(r) : ''}</div>`;
-        }).join('') || `<div class="ub-empty">${CALOG.q || CALOG.kind !== 'all' ? 'Ничего не нашли' : 'За этот период звонков не было'}</div>`}
+      <div class="ub-rows" id="cl-list">
+        <div class="pg-top ca-top ca-hd"><span></span><span>Когда</span><span>Кто · кому</span><span class="ca-dur">Длит.</span><span class="ca-res">Итог</span><span class="ca-rec"></span><span></span></div>
+        ${CALOG.rows.map(r => caRow(r)).join('') || `<div class="ub-empty">${CALOG.q || CALOG.kind !== 'all' ? 'Ничего не нашли' : 'За этот период звонков не было'}</div>`}
         ${CALOG.rows.length < CALOG.total ? '<div style="padding:12px;text-align:center"><button type="button" class="btn btn-ghost btn-sm" data-on-click="caMore">Показать ещё</button></div>' : ''}
       </div></div>`;
   });
+  const list = document.getElementById('cl-list');
+  if (list && keepTop) list.scrollTop = keepTop;
 }
+const caI = {
+  phone: uxSvg('<path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"/>'),
+  missed: uxSvg('<path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"/><path d="m16 2 6 6"/><path d="m22 2-6 6"/>'),
+  off: uxSvg('<path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"/><path d="M22 2 2 22"/>'),
+  video: uxSvg('<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>'),
+  users: uxSvg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
+  arrow: uxSvg('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'),
+  disc: uxSvg('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2"/>')
+};
+// Строка журнала: значок результата, время, «кто → кому» с подписью, длительность, итог, отметка записи и стрелка раскрытия
+function caRow(r) {
+  const open = CALOG.open.has(r.id), res = CALOG_RES[r.result] || ['—', ''], grp = r.kind !== 'direct';
+  const ic = grp ? caI.users : r.result === 'missed' ? caI.missed : r.result === 'ok' ? (r.video ? caI.video : caI.phone) : caI.off;
+  const d = new Date(r.at * 1000), p2 = n => String(n).padStart(2, '0');
+  const who = grp ? `<b>${esc(r.caller)}</b>${r.members.length ? `<span class="ca-arr">${caI.arrow}</span><span class="ca-n">${r.members.length} ${uxPlural(r.members.length, 'участник', 'участника', 'участников')}</span>` : ''}`
+    : `<b>${esc(r.caller)}</b><span class="ca-arr">${caI.arrow}</span><b>${esc(r.callee)}</b>`;
+  const sub = [grp ? (r.kind === 'conf' ? 'Общий звонок' : 'Группа «' + esc(r.group || 'без названия') + '»') : 'Личный', r.video ? 'видео' : 'аудио'];
+  if (r.peer_server) sub.push('сервер «' + esc(r.peer_server) + '»');
+  return `<div class="rb-row" data-id="${esc(String(r.id))}"><div class="pg-top ca-top" aria-expanded="${open}" data-on-click="caTog" data-a-click="${esc(JSON.stringify([r.id]))}">
+    <div class="ca-ic ${res[1]}">${ic}</div>
+    <div class="ca-tm"><b>${p2(d.getHours())}:${p2(d.getMinutes())}</b><span>${p2(d.getDate())}.${p2(d.getMonth() + 1)}</span></div>
+    <div class="ca-who"><div class="ca-nm">${who}</div><div class="ca-sub">${sub.join(' · ')}</div></div>
+    <div class="ca-dur">${caDur(r.duration)}</div>
+    <div class="ca-res"><span class="sp-stat ${res[1]}">${res[0]}</span></div>
+    <div class="ca-rec">${r.recorded ? `<span class="ca-recb" title="Звонок записывался">${caI.disc}Запись</span>` : ''}</div>
+    <div class="ca-cv">${UX_I.chev}</div></div>
+    ${open ? caXw(r, true) : ''}</div>`;
+}
+const caXw = (r, open) => `<div class="ca-xw${open ? ' open' : ''}"><div class="ca-xi">${caDetail(r)}</div></div>`;
 // Раскрытая строка журнала: слева хронология звонка, справа участники с устройствами. У старых записей хронологии нет: показываем то, что есть
 const caClock = t => { const d = new Date(t * 1000), p = n => String(n).padStart(2, '0'); return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; };
 const caSpan = s => (s >= 120 ? Math.round(s / 60) + ' мин' : s >= 60 ? '1 мин ' + (s % 60) + ' с' : Math.max(1, s) + ' с');
@@ -6762,7 +6782,19 @@ function caPeriod(p) { CALOG.period = p; try { localStorage.setItem('calog-perio
 function caKind(k) { CALOG.kind = k; caLoad(false); }
 function caSearch(v) { CALOG.q = v; clearTimeout(CALOG.t); CALOG.t = setTimeout(() => caLoad(false), 300); }
 function caMore() { caLoad(true); }
-function caTog(id) { CALOG.open.has(id) ? CALOG.open.delete(id) : CALOG.open.add(id); caRender(); }
+// Раскрытие без перерисовки списка: прокрутка не сбрасывается, а подробности плавно разворачиваются
+function caTog(id) {
+  const was = CALOG.open.has(id), r = CALOG.rows.find(x => x.id === id);
+  was ? CALOG.open.delete(id) : CALOG.open.add(id);
+  const row = [...document.querySelectorAll('#cl-list .rb-row')].find(e => e.dataset.id === String(id));
+  if (!row || !r) { caRender(); return; }
+  row.querySelector('.ca-top').setAttribute('aria-expanded', String(!was));
+  const old = row.querySelector('.ca-xw');
+  if (was) { if (old) { old.classList.remove('open'); setTimeout(() => old.remove(), 300); } return; }
+  if (old) old.remove();
+  row.insertAdjacentHTML('beforeend', caXw(r, false));
+  const w = row.lastElementChild; w.getBoundingClientRect(); w.classList.add('open');
+}
 
 async function renderAudit() {
   setTopbarActions('');

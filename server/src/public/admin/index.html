@@ -2080,6 +2080,37 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 @container (max-width:1000px){.fb-top{grid-template-columns:22px minmax(0,1.6fr) minmax(0,.9fr) minmax(0,1.2fr) 150px}.fb-top .fb-when{display:none}.fb-exp,.an-exp{grid-template-columns:minmax(0,1fr);padding-left:16px}.an-top{grid-template-columns:22px minmax(0,2fr) minmax(0,1.1fr) 150px}.an-top .an-to,.an-top .an-by{display:none}}
 @container (max-width:700px){.fb-top{grid-template-columns:22px minmax(0,1fr) auto}.fb-top .fb-sz,.fb-top .fb-sd{display:none}.an-top{grid-template-columns:22px minmax(0,1fr) auto}.an-top .an-st{display:none}}
 @media (prefers-reduced-motion:reduce){.fb-exp.fresh,.an-exp.fresh{animation:none}}
+/* Журнал звонков */
+.ca-top{grid-template-columns:38px 62px minmax(0,1fr) 64px 124px 78px 22px;gap:14px;padding:11px 14px}
+.ca-hd{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--c-muted);padding-top:2px;padding-bottom:2px;cursor:default}
+.ca-hd:hover{background:none}
+.ca-ic{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--c-surface2);color:var(--c-muted)}
+.ca-ic svg{width:16px;height:16px}
+.ca-ic.ok{background:var(--c-green-dim);color:var(--c-green-text)}
+.ca-ic.warn{background:var(--c-orange-dim);color:var(--c-orange-text)}
+.ca-tm{display:flex;flex-direction:column;gap:2px;font-variant-numeric:tabular-nums}
+.ca-tm b{font-size:14px;font-weight:700}
+.ca-tm span{font-size:11.5px;color:var(--c-muted)}
+.ca-who{min-width:0;display:flex;flex-direction:column;gap:3px}
+.ca-nm{display:flex;align-items:center;gap:8px;min-width:0;font-size:13.5px}
+.ca-nm b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ca-arr{display:inline-flex;color:var(--c-muted);flex:none}
+.ca-arr svg{width:13px;height:13px}
+.ca-n{font-size:12px;color:var(--c-muted);white-space:nowrap}
+.ca-sub{font-size:11.5px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ca-dur{font:600 13px var(--f-mono);color:var(--c-text2);text-align:right}
+.ca-top .sp-stat:not(.ok):not(.warn){background:var(--c-surface2);color:var(--c-text2)}
+.ca-recb{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:var(--c-red-dim);color:var(--c-red-text)}
+.ca-recb svg{width:12px;height:12px}
+.ca-cv{display:grid;place-items:center;color:var(--c-muted);transition:transform .2s}
+.ca-cv svg{width:14px;height:14px}
+.ca-top[aria-expanded="true"] .ca-cv{transform:rotate(90deg);color:var(--c-primary)}
+.ca-xw{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s cubic-bezier(.4,0,.2,1)}
+.ca-xw.open{grid-template-rows:1fr}
+.ca-xi{overflow:hidden;min-height:0}
+@container (max-width:860px){.ca-top{grid-template-columns:38px 62px minmax(0,1fr) 124px 22px}.ca-top .ca-dur,.ca-top .ca-rec{display:none}}
+@container (max-width:560px){.ca-hd{display:none}.ca-top{grid-template-columns:38px minmax(0,1fr) auto 22px}.ca-top .ca-tm{display:none}}
+@media (prefers-reduced-motion:reduce){.ca-xw,.ca-cv{transition:none}}
 /* Уведомления, вебхуки, релизы, аудит-лог: запись как у остальных страниц */
 .pg-top{display:grid;align-items:center;gap:14px;padding:10px 14px;cursor:pointer}
 .pg-top:hover{background:color-mix(in srgb,var(--c-primary) 5%,transparent)}
