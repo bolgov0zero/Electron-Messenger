@@ -18,6 +18,7 @@
     min: '<polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" x2="21" y1="10" y2="3"/><line x1="3" x2="10" y1="21" y2="14"/>',
     x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
+    activity: '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
     screen: '<path d="m9 10 3-3 3 3"/><path d="M12 13V7"/><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/>',
     flip: '<path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/>',
     msg: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
@@ -70,7 +71,7 @@
     '.cl-hbtn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:19px;cursor:pointer;color:var(--text);background:var(--gl-card,rgba(127,127,127,.14));border:1px solid var(--gl-edge,rgba(255,255,255,.3))}.cl-win.mob.v .cl-hbtn{color:#fff;background:rgba(14,20,26,.46);border-color:rgba(255,255,255,.2)}' +
     '.cl-win .cl-hbtn.l{justify-self:start}.cl-win .cl-hbtn.r{justify-self:end}' +
     // мобильный: экран входящего и аудиоразговора
-    '.cl-full{position:fixed;inset:0;z-index:100002;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 56px) 24px calc(env(safe-area-inset-bottom,0px) + 40px);color:var(--text);background:var(--gl-base,var(--bg,#12171d));animation:cl-fade .25s ease both;text-align:center}.cl-full.dark{color:#fff}' +
+    '.cl-full{position:fixed;inset:0;z-index:100002;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 56px) 24px calc(env(safe-area-inset-bottom,0px) + 40px);color:var(--text);background:var(--gl-base,var(--bg,#12171d));animation:cl-fade .25s ease;text-align:center}.cl-full.dark{color:#fff}' +
     '@keyframes cl-fade{from{opacity:0}to{opacity:1}}.cl-full .lbl{font-size:13.5px;font-weight:600;color:var(--text2)}.cl-full.dark .lbl{color:rgba(255,255,255,.8)}' +
     '.cl-full .nm{font-size:30px;font-weight:700;letter-spacing:-.02em;margin-top:34px}.cl-full .sub{font-size:15px;color:var(--text2);margin-top:6px;font-variant-numeric:tabular-nums}.cl-full.dark .sub{color:rgba(255,255,255,.78)}' +
     '.cl-acts{display:flex;justify-content:center;gap:34px;width:100%}.cl-mb{display:flex;flex-direction:column;align-items:center;gap:9px;font-size:12.5px;font-weight:600;color:var(--text2);cursor:pointer;background:none;border:0;font-family:inherit}.cl-full.dark .cl-mb{color:rgba(255,255,255,.85)}' +
@@ -92,6 +93,7 @@
     '#cl-pick h4{margin:0;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:space-between}#cl-pick h4 button{width:32px;height:32px;border-radius:50%;border:0;display:grid;place-items:center;cursor:pointer;color:var(--text);background:var(--gl-card,rgba(127,127,127,.16))}' +
     '#cl-pick input{height:40px;border-radius:999px;border:1px solid var(--gl-edge,rgba(255,255,255,.3));background:var(--gl-card,rgba(127,127,127,.12));color:var(--text);padding:0 16px;font:inherit;font-size:14px;outline:none}' +
     '#cl-pick .ls{overflow:auto;display:flex;flex-direction:column;gap:2px;min-height:60px}#cl-pick .it{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:16px;cursor:pointer;border:0;background:none;color:inherit;font:inherit;text-align:left}#cl-pick .it:hover{background:var(--gl-card,rgba(127,127,127,.16))}#cl-pick .it b{font-size:14px;font-weight:600}#cl-pick .em{padding:22px 8px;text-align:center;font-size:13px;color:var(--text2)}' +
+    '#cl-diag{position:fixed;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 104px);z-index:100030;background:rgba(0,0,0,.78);color:#fff;font:11.5px/1.55 ui-monospace,Menlo,monospace;padding:9px 11px;border-radius:12px;white-space:pre-wrap;pointer-events:none}' +
     '.cl-sel{height:32px;max-width:220px;border-radius:10px;padding:0 10px;font:inherit;font-size:13px;color:var(--text);background:var(--gl-card,rgba(127,127,127,.14));border:1px solid var(--gl-edge,rgba(127,127,127,.3));outline:none}' +
     '.cl-acc{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;font:inherit;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;border:1px solid transparent}.cl-acc.ok{color:#1f9f4c;background:rgba(31,159,76,.14);border-color:rgba(31,159,76,.3)}.cl-acc.no{color:#d9534f;background:rgba(217,83,79,.14);border-color:rgba(217,83,79,.3)}.cl-acc .i{font-size:14px}.cl-acc[disabled]{opacity:.6}' +
     '@media (prefers-reduced-motion:reduce){.cl-card,.cl-full,.cl-ring::before,.cl-ring::after{animation:none}}';
@@ -119,6 +121,15 @@
   }
   // Звуки вызова играет WebAudio: после вызова контекст закрываем, иначе на iPhone он держит свой маршрут звука и голос собеседника идёт сразу в два динамика
   function closeAc() { try { if (ac) ac.close(); } catch (e) {} ac = null; }
+  // Забытые слои звонка (после сна страницы, после уведомления) перехватывают нажатия на весь экран: снимаем всё, чего уже нет в состоянии
+  function sweep() {
+    if (!st.call) ['cl-dock', 'cl-win', 'cl-dim', 'cl-bar', 'cl-full'].forEach(function (id) { var e = document.getElementById(id); if (e) e.remove(); });
+    if (!st.incoming) document.querySelectorAll('#cl-incoming').forEach(function (e) { e.remove(); });
+    document.querySelectorAll('.cl-note').forEach(function (n) { if (!n.dataset.t) n.dataset.t = Date.now(); else if (Date.now() - n.dataset.t > 6000) n.remove(); });
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) sweep(); });
+  window.addEventListener('pageshow', sweep); window.addEventListener('focus', sweep);
+  setInterval(sweep, 2500);
   function stopRing() { clearInterval(ringT); ringT = null; closeAc(); }
   // Разрешение на микрофон (и камеру) просим сразу при нажатии «Позвонить» или «Принять», пока человек смотрит на экран: в Safari оно запрашивается
   // заново при каждой загрузке страницы, и запрос посреди соединения легко пропустить, тогда звонок так и не соединяется
@@ -294,7 +305,7 @@
   function render() {
     clearInterval(tickT);
     var c = st.call, dock = document.getElementById('cl-dock'), win = document.getElementById('cl-win'), dim = document.getElementById('cl-dim'), bar = document.getElementById('cl-bar'), full = document.getElementById('cl-full');
-    if (!c) { [dock, win, dim, bar, full].forEach(function (e) { e && e.remove(); }); releaseWake(); return; }
+    if (!c) { [dock, win, dim, bar, full].forEach(function (e) { e && e.remove(); }); releaseWake(); diagStop(); return; }
     var videoLayout = c.group || c.cam || c.remoteCam, mob = H.mobile;
     // веб клиент: панель звонка в списке чатов; окно с видео — когда есть видео и оно не свёрнуто
     if (!mob) {
@@ -312,7 +323,7 @@
       win.className = 'cl-win ' + (mob ? 'mob' : 'web') + (videoLayout ? ' v' : '');
       var h = hue(c.peer.id);
       win.style.setProperty('--h', h);
-      var hd = '<div class="cl-hd"><button class="cl-hbtn l" data-cl="min" aria-label="Свернуть">' + svg(mob ? 'down' : 'min') + '</button><div class="c"><b>' + E(c.peer.name) + (c.group ? ' · ' + (room ? room.remoteParticipants.size + 1 : 1) : '') + '</b><small class="cl-tm">' + status() + '</small></div>' + (mob && c.cam ? '<button class="cl-hbtn r" data-cl="flip" aria-label="Сменить камеру">' + svg('flip') + '</button>' : '<span></span>') + '</div>';
+      var hd = '<div class="cl-hd"><button class="cl-hbtn l" data-cl="min" aria-label="Свернуть">' + svg(mob ? 'down' : 'min') + '</button><div class="c"><b>' + E(c.peer.name) + (c.group ? ' · ' + (room ? room.remoteParticipants.size + 1 : 1) : '') + '</b><small class="cl-tm">' + status() + '</small></div>' + '<span style="justify-self:end;display:flex;gap:8px">' + (mob && c.cam ? '<button class="cl-hbtn" data-cl="flip" aria-label="Сменить камеру">' + svg('flip') + '</button>' : '') + '<button class="cl-hbtn" data-cl="diag" aria-label="Состояние соединения">' + svg('activity') + '</button></span></div>';
       if (c.group) {
         win.innerHTML = hd + '<div class="cl-stage"><div class="cl-grid" id="cl-grid"></div><div class="cl-ctrls cl-vg">' + ctrlsHtml(c) + '</div></div>';
         fillGrid($('#cl-grid', win));
@@ -350,6 +361,7 @@
     else if (a === 'mic') setMic(!(st.call && st.call.mic));
     else if (a === 'cam') setCam(!(st.call && st.call.cam));
     else if (a === 'flip') flip();
+    else if (a === 'diag') diagToggle();
     else if (a === 'screen') setScreen(!(st.call && st.call.screen));
     else if (a === 'add') openPick();
     else if (a === 'pclose') closePick();
@@ -359,6 +371,43 @@
   });
   // Свёрнутый звонок на мобильном разворачивается по нажатию на полосу
   document.addEventListener('click', function (e) { var bar = e.target.closest && e.target.closest('#cl-bar'); if (bar && !e.target.closest('[data-cl="end"]')) { st.min = false; render(); } });
+
+  // ── Состояние соединения: что мешает видео (полоса, процессор), на какой картинке и по какому пути идёт связь ──
+  var diagT = null, diagPrev = {};
+  function diagToggle() {
+    var d = document.getElementById('cl-diag');
+    if (d) { d.remove(); clearInterval(diagT); diagT = null; return; }
+    d = document.createElement('div'); d.id = 'cl-diag'; d.textContent = 'Собираю данные…'; document.body.appendChild(d); diagPrev = {};
+    diagTick(); diagT = setInterval(diagTick, 1500);
+  }
+  function diagStop() { var d = document.getElementById('cl-diag'); if (d) d.remove(); clearInterval(diagT); diagT = null; }
+  async function diagTick() {
+    var d = document.getElementById('cl-diag'); if (!d) return;
+    if (!room || !LK) { d.textContent = 'Нет соединения с сервером звонков'; return; }
+    var L = [], T = LK.Track, now = Date.now();
+    var kbps = function (key, bytes) { var p = diagPrev[key]; diagPrev[key] = { b: bytes, t: now }; return p && now > p.t ? Math.round((bytes - p.b) * 8 / (now - p.t)) : 0; };
+    try {
+      var pub = room.localParticipant.getTrackPublication(T.Source.Camera);
+      if (pub && pub.track && pub.track.getSenderStats) {
+        var ss = ((await pub.track.getSenderStats()) || []).filter(Boolean), top = ss.slice().sort(function (a, b) { return (b.frameWidth || 0) - (a.frameWidth || 0); })[0];
+        if (top) L.push('Вы → сервер: ' + (top.frameWidth || '?') + '×' + (top.frameHeight || '?') + ', ' + Math.round(top.framesPerSecond || 0) + ' к/с, ' + kbps('s', ss.reduce(function (a, x) { return a + (x.bytesSent || 0); }, 0)) + ' кбит/с' + (ss.length > 1 ? ', слоёв ' + ss.length : '') + (top.qualityLimitationReason && top.qualityLimitationReason !== 'none' ? '\n  ограничение: ' + ({ bandwidth: 'не хватает канала', cpu: 'не хватает процессора', other: 'другое' }[top.qualityLimitationReason] || top.qualityLimitationReason) : ''));
+      } else L.push('Вы → сервер: камера выключена');
+      var rp = Array.from(room.remoteParticipants.values())[0], rpub = rp && rp.getTrackPublication(T.Source.Camera);
+      if (rpub && rpub.track && rpub.track.getReceiverStats) {
+        var rs = await rpub.track.getReceiverStats();
+        if (rs) { var lost = rs.packetsLost || 0, got = rs.packetsReceived || 0, pl = lost + got ? Math.round(lost * 1000 / (lost + got)) / 10 : 0;
+          L.push('Сервер → вы: ' + (rs.frameWidth || '?') + '×' + (rs.frameHeight || '?') + ', ' + Math.round(rs.framesPerSecond || 0) + ' к/с, ' + kbps('r', rs.bytesReceived || 0) + ' кбит/с\n  потеряно пакетов ' + pl + '%, дрожание ' + Math.round((rs.jitter || 0) * 1000) + ' мс' + (rs.framesDropped ? ', пропущено кадров ' + rs.framesDropped : '')); }
+      } else L.push('Сервер → вы: видео собеседника нет');
+    } catch (e) { L.push('Не удалось прочитать данные видео'); }
+    try {
+      var rep = await room.engine.pcManager.publisher.getStats(), pair = null, byId = {};
+      rep.forEach(function (v) { byId[v.id] = v; if (v.type === 'candidate-pair' && (v.selected || (v.nominated && v.state === 'succeeded')) && (!pair || v.selected)) pair = v; });
+      if (pair) { var lc = byId[pair.localCandidateId], rc = byId[pair.remoteCandidateId];
+        L.push('Путь: ' + String((rc && rc.protocol) || (lc && lc.protocol) || '?').toUpperCase() + ', ' + ({ host: 'напрямую', srflx: 'через NAT', prflx: 'через NAT', relay: 'через TURN' }[(lc && lc.candidateType)] || (lc && lc.candidateType) || '?') + ', задержка ' + Math.round((pair.currentRoundTripTime || 0) * 1000) + ' мс'); }
+    } catch (e) {}
+    try { if (navigator.audioSession) L.push('Звук: сеанс «' + navigator.audioSession.type + '»'); } catch (e) {}
+    d.textContent = L.join('\n');
+  }
 
   // ── LiveKit ──
   function loadLK() {
@@ -376,9 +425,9 @@
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     ensureVideos();
     var R = LK.RoomEvent, T = LK.Track;
-    room = new LK.Room({ adaptiveStream: true, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: H.mobile ? { width: 640, height: 360, frameRate: 24 } : { width: 1280, height: 720, frameRate: 30 }, deviceId: devOpt('videoin') }, publishDefaults: H.mobile ? { videoEncoding: { maxBitrate: 700000, maxFramerate: 24 } } : undefined });
+    room = new LK.Room({ adaptiveStream: true, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: H.mobile ? { width: 960, height: 540, frameRate: 24 } : { width: 1280, height: 720, frameRate: 30 }, deviceId: devOpt('videoin') }, publishDefaults: H.mobile ? { videoEncoding: { maxBitrate: 1200000, maxFramerate: 24 } } : undefined });
     room.on(R.TrackSubscribed, function (track) {
-      if (track.kind === T.Kind.Audio) { document.querySelectorAll('audio[data-sid="' + track.sid + '"]').forEach(function (o) { o.remove(); }); var el = track.attach(); el.dataset.cl = '1'; el.dataset.sid = track.sid; el.setAttribute('playsinline', ''); document.body.appendChild(el); el.play && el.play().catch(function () {}); }
+      if (track.kind === T.Kind.Audio) { document.querySelectorAll('audio[data-sid="' + track.sid + '"]').forEach(function (o) { o.remove(); }); var el = track.attach(); el.dataset.cl = '1'; el.dataset.sid = track.sid; el.setAttribute('playsinline', ''); document.body.appendChild(el); try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {} el.play && el.play().catch(function () {}); }
       remoteState();
     }).on(R.TrackUnsubscribed, function (track) { var els = track.detach(); if (track.kind === T.Kind.Audio) els.forEach(function (el) { el.remove(); }); remoteState(); })
       .on(R.TrackMuted, remoteState).on(R.TrackUnmuted, remoteState).on(R.TrackUnpublished, function () { setTimeout(remoteState, 0); })
@@ -394,6 +443,7 @@
     var so = devGet('audioout'); if (so && so.id && canSink() && room.switchActiveDevice) { try { await room.switchActiveDevice('audiooutput', so.id); } catch (e) {} }
     await room.localParticipant.setMicrophoneEnabled(true);
     c.mic = true;
+    try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     if (c.group) { c.since = Date.now(); liveNow(); }
     else if (room.remoteParticipants.size) { liveNow(); remoteState(); } else { c.phase = c.outgoing ? 'ringing' : 'connecting'; render(); }
     if (withVideo) await setCam(true);
