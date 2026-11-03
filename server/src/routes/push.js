@@ -75,6 +75,8 @@ function inQuietHours(p, now = new Date()) {
 
 // Экспортируем для использования в ws.js
 async function sendPushToUser(userId, payload) {
+  // Приложение на телефоне открыто и в фокусе: системное уведомление было бы дублем (сообщения, звонок, его завершение)
+  try { if (require('../ws').hasFocusedMobile(userId)) return; } catch {}
   const prefs = await getPrefs(userId);
   if (inQuietHours(prefs)) return;                       // тихие часы: уведомлений нет вообще
   if (!prefs.show_text) payload = { ...payload, body: 'Новое сообщение' };

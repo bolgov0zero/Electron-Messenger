@@ -119,6 +119,15 @@ function isConnected(userId) {
   return false;
 }
 
+// Мобильный клиент (/m) открыт и в фокусе: ему системные уведомления не нужны, всё приходит по соединению, а на iOS 18.4+ декларативный пуш
+// система показывает сама, без участия страницы, поэтому отсекать его можно только здесь
+function hasFocusedMobile(userId) {
+  const conns = clients.get(userId);
+  if (!conns) return false;
+  for (const ws of conns) { if (ws.readyState === 1 && ws._mobile === true && ws._status === 'online') return true; }
+  return false;
+}
+
 // Агрегированный статус: online, если хоть одно устройство в фокусе; away («отошёл»),
 // если есть подключённые устройства, но все без фокуса; иначе offline
 function computeStatus(userId) {
@@ -808,4 +817,4 @@ function kick(userId) {
   getConn(userId).forEach(ws => { try { ws.close(4001, 'guest_ended'); } catch {} });
 }
 
-module.exports = { setup, kick, kickDevice, finishMessage, getMessageWithStatus, setRemoteStatus, hasOpenConnection, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, getMobile, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };
+module.exports = { hasFocusedMobile, setup, kick, kickDevice, finishMessage, getMessageWithStatus, setRemoteStatus, hasOpenConnection, onlineUserCount, getPins, broadcast, broadcastAll, sendTo, getStatus, getMobile, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, clearUpdateProgress, getMessageWithStatus };
