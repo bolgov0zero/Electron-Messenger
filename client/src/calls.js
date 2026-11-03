@@ -300,6 +300,8 @@
   // Состояние от окна звонка
   function onState(s) {
     const c = st.call; if (!c || !s) return;
+    // Показ экрана начался или закончился: отмечаем в журнале звонков
+    if (typeof s.screen === 'boolean' && s.screen !== !!c.scr) { c.scr = s.screen; api('POST', `/calls/${c.id}/event`, { k: 'screen', on: s.screen }); }
     if (s.phase === 'end_request' || s.phase === 'peer_left') return hangup();
     if (s.phase === 'closed') { api('POST', c.group ? `/calls/group/${c.id}/leave` : `/calls/${c.id}/end`); st.call = null; stopRing(); renderDock(); return; }
     if (s.phase === 'error' || s.phase === 'dropped') { const m = s.error || 'Связь прервана'; api('POST', c.group ? `/calls/group/${c.id}/leave` : `/calls/${c.id}/end`); return finish(m); }

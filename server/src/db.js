@@ -514,6 +514,7 @@ tryAlter('ALTER TABLE call_log ADD COLUMN callee_name TEXT');
 tryAlter('ALTER TABLE call_log ADD COLUMN members TEXT');
 tryAlter('ALTER TABLE call_log ADD COLUMN peer_server TEXT');
 tryAlter('ALTER TABLE call_log ADD COLUMN recorded INTEGER NOT NULL DEFAULT 0');
+tryAlter('ALTER TABLE call_log ADD COLUMN detail TEXT');
 
 // Версия набора модуля, скачанная на устройство (для статистики «на старой версии»)
 tryAlter('ALTER TABLE module_devices ADD COLUMN pack_version TEXT');

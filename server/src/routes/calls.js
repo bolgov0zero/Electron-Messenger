@@ -18,10 +18,17 @@ const wrap = fn => async (req, res) => {
 };
 const str = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
 
+// Что за устройство звонит, по заголовку User-Agent: приложение, веб клиент или мобильный клиент, и система
+function devOf(req) {
+  const ua = String(req.headers['user-agent'] || '');
+  const os = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS X|Macintosh/.test(ua) ? 'macOS' : /Linux|X11/.test(ua) ? 'Linux' : '';
+  const kind = /Electron\//.test(ua) ? 'Клиент' : /iPhone|iPad|Android|Mobile/.test(ua) ? 'Мобильный клиент' : 'Веб клиент';
+  return kind + (os ? ' · ' + os : '');
+}
 // ── Для клиентов ──
 const user = express.Router();
 user.use(authMiddleware);
-user.use((req, res, next) => (req.user.is_guest ? res.status(403).json({ error: 'Недоступно гостю', code: 'guest_forbidden' }) : next()));
+user.use((req, res, next) => (req.user.is_guest ? res.status(403).json({ error: 'Недоступно гостю', code: 'guest_forbidden' }) : (req.user.dev = devOf(req), next())));
 
 // Доступны ли звонки (кнопки в шапке чата) и нет ли звонка, начатого до перезагрузки клиента
 // scheme нужна браузеру: страница по https не откроет ws://, а значит, звонить с неё нельзя
@@ -46,6 +53,8 @@ user.post('/:id/add', wrap(async (req, res) => {
   if (!Number.isInteger(uid) || uid <= 0) return res.status(400).json({ error: 'Не указан человек', code: 'bad_user' });
   res.json(await calls.callAdd(req.user, req.params.id, uid));
 }));
+// Клиент сообщает о событии звонка (показ экрана) для журнала
+user.post('/:id/event', wrap(async (req, res) => { calls.event(req.user, req.params.id, String(req.body?.k || ''), !!req.body?.on); res.json({ ok: true }); }));
 user.post('/:id/accept', wrap(async (req, res) => res.json(await calls.accept(req.user, req.params.id))));
 user.post('/:id/decline', wrap(async (req, res) => { await calls.decline(req.user, req.params.id); res.json({ ok: true }); }));
 user.post('/:id/end', wrap(async (req, res) => { await calls.end(req.user, req.params.id); res.json({ ok: true }); }));

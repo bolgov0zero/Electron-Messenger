@@ -141,6 +141,14 @@ const hasPush = async uid => { try { return await pushMod().hasPushSubscription(
 const pushCall = (uid, payload) => pushMod().sendPushToUser(uid, payload).catch(e => console.warn('[Звонки] push:', e.message));
 
 const pub = c => ({ call_id: c.id, chat_id: c.chatId, video: c.video, fed: !!c.fed });
+// Хронология звонка для журнала: события (позвонил, ответил, вошёл, вышел, показал экран, завершил) и устройства людей.
+// u — человек (с display_name и dev из запроса) или просто его номер; a — на кого направлено действие (кого добавили)
+const detOf = c => c.det || (c.det = { ev: [], dev: {}, nm: {} });
+function note(c, k, u, a) {
+  const d = detOf(c), id = u && typeof u === 'object' ? u.id : u;
+  if (d.ev.length < 300) d.ev.push({ t: Math.floor(Date.now() / 1000), k, u: id || 0, ...(a ? { a } : {}) });
+  if (u && typeof u === 'object') { if (u.display_name) d.nm[id] = u.display_name; if (u.dev) d.dev[id] = u.dev; }
+}
 const other = (c, uid) => (uid === c.callerId ? c.calleeId : c.callerId);
 
 // Запись о звонке в переписке: обычное сообщение от звонящего (его видят оба, а при звонке на другой сервер оно уходит
@@ -163,24 +171,33 @@ function recordOf(c, reason, duration) {
 
 // Журнал звонков для админки: кто, кому, когда, личный или групповой, сколько, была ли запись. Записывать звонки сервер не умеет,
 // поэтому recorded всегда 0: поле заведено под отметку «запись велась», когда она появится
+// Имена людей, чьи события есть в хронологии, но имя не попало в неё при записи
+async function detailOf(det) {
+  if (!det || !det.ev || !det.ev.length) return null;
+  try {
+    for (const e of det.ev) for (const id of [e.u, e.a]) if (id && !det.nm[id]) det.nm[id] = await nameOf(id);
+    return JSON.stringify(det).slice(0, 20000);
+  } catch { return null; }
+}
 async function logCall(r) {
   try {
     const callerName = r.callerName || (r.callerId ? await nameOf(r.callerId) : '');
     const calleeName = r.kind === 'direct' ? (r.calleeName || (r.calleeId ? await nameOf(r.calleeId) : '')) : '';
-    await dal.run('INSERT INTO call_log (caller_id, callee_id, video, started_at, answered, duration, reason, chat_id, kind, caller_name, callee_name, members, peer_server, recorded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)',
-      r.callerId || null, r.calleeId || null, r.video ? 1 : 0, r.startedAt, r.answered ? 1 : 0, r.duration || 0, r.reason || '', r.chatId || null, r.kind, callerName, calleeName, r.members ? JSON.stringify(r.members) : null, r.peerServer || null);
+    await dal.run('INSERT INTO call_log (caller_id, callee_id, video, started_at, answered, duration, reason, chat_id, kind, caller_name, callee_name, members, peer_server, recorded, detail) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)',
+      r.callerId || null, r.calleeId || null, r.video ? 1 : 0, r.startedAt, r.answered ? 1 : 0, r.duration || 0, r.reason || '', r.chatId || null, r.kind, callerName, calleeName, r.members ? JSON.stringify(r.members) : null, r.peerServer || null, await detailOf(r.det));
   } catch (e) { console.warn('[Звонки] журнал:', e.message); }
 }
 
 // remote — конец пришёл от другого сервера: ему сообщать об этом не нужно
-function finish(c, reason, remote) {
+function finish(c, reason, remote, by) {
   if (!calls.delete(c.id)) return;
+  note(c, 'end', by || 0);
   if (c.fed && !remote) { try { fedMod().sendLive(c.fed.peer.id, { k: 'call_ev', cid: c.id, ev: reason }); } catch {} }
   clearTimeout(c.timer);
   if (busy.get(c.callerId) === c.id) busy.delete(c.callerId);
   if (busy.get(c.calleeId) === c.id) busy.delete(c.calleeId);
   const duration = c.startedAt ? Math.round((Date.now() - c.startedAt) / 1000) : 0;
-  logCall({ callerId: c.callerId, calleeId: c.calleeId, video: c.video, startedAt: c.createdAt, answered: !!c.startedAt, duration, reason, chatId: c.chatId, kind: 'direct', callerName: c.callerName, peerServer: c.fed ? (c.fed.peer.name || c.fed.peer.instance_id) : null });
+  logCall({ callerId: c.callerId, calleeId: c.calleeId, video: c.video, startedAt: c.createdAt, answered: !!c.startedAt, duration, reason, chatId: c.chatId, kind: 'direct', det: c.det, callerName: c.callerName, peerServer: c.fed ? (c.fed.peer.name || c.fed.peer.instance_id) : null });
   recordOf(c, reason, duration);
   const ev = { type: 'call_ended', ...pub(c), reason, duration };
   ws().sendTo(c.callerId, ev);
@@ -226,6 +243,7 @@ async function start(user, chatId, video) {
   c.timer = setTimeout(() => { const x = calls.get(id); if (x && x.state === 'ringing') finish(x, 'missed'); }, RING_MS);
   c.timer.unref?.();
   calls.set(id, c); busy.set(user.id, id); busy.set(peer.id, id);
+  note(c, 'start', user);
   ws().sendTo(peer.id, { type: 'call_incoming', ...pub(c), from: { id: user.id, name: user.display_name }, timeout: RING_MS / 1000 });
   pushCall(peer.id, { title: 'Входящий ' + (video ? 'видеозвонок' : 'аудиозвонок'), body: user.display_name, chatId, call: id });
   return { ...pub(c), url: cfg.url, cert_fp: cfg.certFp || undefined, token: signToken(cfg, { identity: 'u' + user.id, name: user.display_name, room: c.room }), peer: { id: peer.id, name: peer.display_name } };
@@ -245,6 +263,7 @@ async function accept(user, id) {
   const cfg = await getConfig();
   c.state = 'active'; c.startedAt = Date.now();
   clearTimeout(c.timer);
+  note(c, 'answer', user);
   ws().sendTo(c.callerId, { type: 'call_accepted', ...pub(c) });
   // Другие устройства того, кто ответил, перестают звонить
   ws().sendTo(c.calleeId, { type: 'call_answered', ...pub(c) });
@@ -261,7 +280,7 @@ function decline(user, id) {
   if (!calls.has(id) && remoteConfs.has(id)) return remoteConfDecline(user, id);
   const c = mineCall(id, user.id);
   if (c.calleeId !== user.id || c.state !== 'ringing') throw new CallError('gone', 'Звонок уже завершён', 404);
-  finish(c, 'declined');
+  finish(c, 'declined', false, user.id);
 }
 
 // Завершить: звонящий до ответа — «отменён», дальше — обычное завершение
@@ -270,10 +289,17 @@ function end(user, id) {
   if (remoteConfs.has(id)) return remoteConfs.get(id).pending.has(user.id) ? remoteConfDecline(user, id) : remoteConfLeave(user.id, id);
   const c = calls.get(id);
   if (!c || (c.callerId !== user.id && c.calleeId !== user.id)) return;   // уже завершён — не ошибка
-  finish(c, c.state === 'ringing' ? (c.callerId === user.id ? 'cancelled' : 'declined') : 'ended');
+  finish(c, c.state === 'ringing' ? (c.callerId === user.id ? 'cancelled' : 'declined') : 'ended', false, user.id);
 }
 
 // Все соединения пользователя закрылись: его звонок не продолжить
+// Клиент сообщает о показе экрана: попадает в хронологию журнала
+function event(user, id, k, on) {
+  if (k !== 'screen') return;
+  const o = calls.get(id) || confs.get(id) || groupById(id);
+  if (!o || !(o.participants ? o.participants.has(user.id) : (o.callerId === user.id || o.calleeId === user.id))) return;
+  note(o, on ? 'scr_on' : 'scr_off', user);
+}
 function onDisconnect(userId) {
   const id = busy.get(userId);
   const c = id && calls.get(id);
@@ -352,20 +378,20 @@ async function confEnd(cf, reason) {
     if (peer) { try { fedMod().sendLive(peer.id, { k: 'call_ev', ev: 'conf_cancel', cid: cf.id, login: p.login, reason: 'cancelled' }); } catch {} }
     else ws().sendTo(u, { type: 'call_ended', call_id: cf.id, chat_id: cf.chatId, video: cf.video, reason: 'cancelled', duration: 0 });
   }
-  const members = [...cf.participants]; cf.participants.clear();
+  const members = [...cf.participants]; cf.participants.clear(); members.forEach(u => note(cf, 'leave', u));
   confRelay(cf, { event: 'ended', reason, mix: true });
   members.forEach(u => { if (busy.get(u) === cf.id) busy.delete(u); if (!cf.remote.has(u)) ws().sendTo(u, { type: 'call_conf', call_id: cf.id, event: 'ended', reason }); });
   const duration = Math.round((Date.now() - cf.startedAt) / 1000), peers = [...new Set([...cf.remote.values()].map(peerLabel))].join(', ');
   if (reason !== 'disabled') {
     const real = cf.firstCaller && !cf.remote.has(cf.firstCaller) ? cf.firstCaller : (members.find(u => !cf.remote.has(u)) || null);
-    logCall({ callerId: real, video: cf.video, startedAt: cf.createdAt, answered: true, duration, reason: 'group', chatId: cf.chatId, kind: 'conf', members: [...cf.names.values()], peerServer: peers || null });
+    logCall({ callerId: real, video: cf.video, startedAt: cf.createdAt, answered: true, duration, reason: 'group', chatId: cf.chatId, kind: 'conf', det: cf.det, members: [...cf.names.values()], peerServer: peers || null });
     if (duration >= 3 && real && cf.firstCaller === real) chatRecord(cf.chatId, real, (cf.video ? 'Групповой видеозвонок' : 'Групповой аудиозвонок') + ' · ' + fmtDur(duration));
   }
 }
 async function confLeave(userId, id, reason) {
   const cf = confs.get(id);
   if (!cf || !cf.participants.has(userId)) return;
-  cf.participants.delete(userId); cf.remote.delete(userId);
+  cf.participants.delete(userId); cf.remote.delete(userId); note(cf, 'leave', userId);
   if (busy.get(userId) === id) busy.delete(userId);
   // Остался один и никого не ждём: говорить не с кем, звонок заканчивается у всех
   if (cf.participants.size <= 1 && !cf.pending.size) return await confEnd(cf, reason || 'ended');
@@ -376,7 +402,7 @@ async function confUpgrade(c) {
   const names = new Map([[c.callerId, c.callerName || await nameOf(c.callerId)], [c.calleeId, await nameOf(c.calleeId)]]);
   const cf = { id: c.id, names, room: c.room, chatId: c.chatId, video: c.video, participants: new Set([c.callerId, c.calleeId]), pending: new Map(), createdAt: c.createdAt, startedAt: c.startedAt, firstCaller: c.callerId, remote: new Map(), c0: c, fresh: true };
   if (c.fed) { const shadow = c.fed.role === 'caller' ? c.calleeId : c.callerId; cf.remote.set(shadow, c.fed.peer); }
-  calls.delete(c.id); clearTimeout(c.timer); confs.set(cf.id, cf);
+  cf.det = c.det; calls.delete(c.id); clearTimeout(c.timer); confs.set(cf.id, cf);
   if (c.fed) { try { fedMod().sendLive(c.fed.peer.id, { k: 'call_ev', ev: 'conf_up', cid: cf.id }); } catch {} }
   await confTellMembers(cf, { event: 'upgraded', participants: [...cf.participants], pending: [] });
   return cf;
@@ -477,13 +503,14 @@ async function callAdd(user, id, targetId) {
   if (t.is_bot === 2 && cf.remote.size && ![...cf.remote.values()].some(p => p.instance_id === t.fed_instance)) throw new CallError('bad_user', 'Звать можно людей этого сервера и сервера собеседника', 400);
   if (tooOften(user.id)) throw new CallError('rate', CONF_ERR.rate, 429);
   const me = await dal.get('SELECT ' + USER_COLS + ' FROM users WHERE id = ?', user.id);
+  note(cf, 'invite', user, t.id);
   try { const r = await confInvite(cf, me, t, cfg); cf.fresh = false; return r; }
   catch (e) { await confRevert(cf); throw e; }
 }
 // Человек принял, отклонил или не ответил: общая часть для своих людей и «теневых»
 async function confAcceptId(cf, uid, name) {
   const p = cf.pending.get(uid); if (!p) return false;
-  clearTimeout(p.timer); cf.pending.delete(uid); cf.participants.add(uid); cf.names.set(uid, name || await nameOf(uid));
+  clearTimeout(p.timer); cf.pending.delete(uid); cf.participants.add(uid); cf.names.set(uid, name || await nameOf(uid)); note(cf, 'join', uid);
   await confTellMembers(cf, { event: 'update', participants: [...cf.participants], pending: pendingList(cf) }, uid);
   return true;
 }
@@ -497,6 +524,7 @@ async function confPendingDrop(cf, uid, how, name) {
 }
 async function confAccept(user, id) {
   const cf = confs.get(id);
+  if (cf && user.dev) detOf(cf).dev[user.id] = user.dev;
   if (!cf || !(await confAcceptId(cf, user.id, user.display_name))) throw new CallError('gone', 'Звонок уже завершён', 404);
   const cfg = await getConfig();
   return { call_id: cf.id, chat_id: cf.chatId, video: cf.video, group: true, conf: true, mix: cf.remote.size > 0, participants: [...cf.participants], url: cfg.url, cert_fp: cfg.certFp || undefined, token: signToken(cfg, { identity: 'u' + user.id, name: user.display_name, room: cf.room }) };
@@ -697,6 +725,7 @@ async function groupJoin(user, chatId, video) {
   // Свыше 12 человек в звонке новые участники подключаются только со звуком: видео на 12, звук без ограничений
   const micOnly = (groupCalls.get(chatId)?.participants.size || 0) >= GROUP_MAX && !groupCalls.get(chatId)?.participants.has(user.id);
   const { g, created } = await hostAdd(chatId, user.id, video);
+  note(g, 'join', user);
   if (!g.firstLocal) g.firstLocal = user.id;
   // Начавшему звонок приглашение не нужно: остальным — приглашение, а когда кто-то присоединился, всем обновляется число.
   // В комнате (в ней все сотрудники) не звоним и не шлём push: только обновляется отметка «идёт звонок» и кнопка «Присоединиться»
@@ -734,12 +763,12 @@ async function groupLeave(userId, id, reason) {
   }
   const g = groupById(id);
   if (!g || !g.participants.has(userId)) return;
-  g.participants.delete(userId);
+  g.participants.delete(userId); note(g, 'leave', userId);
   if (busy.get(userId) === id) busy.delete(userId);
   if (g.participants.size) return groupTell(g, 'update');
   groupCalls.delete(g.chatId);
   const duration = Math.round((Date.now() - g.startedAt) / 1000);
-  logCall({ callerId: g.firstLocal || g.startedBy, video: g.video, startedAt: g.createdAt, answered: true, duration, reason: reason === 'dropped' ? 'ended' : 'group', chatId: g.chatId, kind: 'group', members: [...(g.names || new Map()).values()] });
+  logCall({ callerId: g.firstLocal || g.startedBy, video: g.video, startedAt: g.createdAt, answered: true, duration, reason: reason === 'dropped' ? 'ended' : 'group', chatId: g.chatId, kind: 'group', det: g.det, members: [...(g.names || new Map()).values()] });
   await groupTell(g, 'ended');
   // Запись в группе делает свой человек: сообщение гостя хозяин сам не рассылает
   if (duration >= 3 && g.firstLocal) chatRecord(g.chatId, g.firstLocal, (g.video ? 'Групповой видеозвонок' : 'Групповой аудиозвонок') + ' · ' + fmtDur(duration));
@@ -989,6 +1018,7 @@ async function cspSources() {
 
 // ── Журнал звонков для раздела «Звонки» в админке ──
 const KIND_SQL = "COALESCE(l.kind, CASE WHEN l.callee_id IS NULL THEN 'group' ELSE 'direct' END)";
+const parseDet = s => { try { const d = s && JSON.parse(s); return d && Array.isArray(d.ev) ? d : null; } catch { return null; } };
 async function logList({ period, kind, q, limit, offset }) {
   const now = Math.floor(Date.now() / 1000);
   const since = { day: now - 86400, week: now - 7 * 86400, month: now - 30 * 86400 }[period] || 0;
@@ -999,12 +1029,12 @@ async function logList({ period, kind, q, limit, offset }) {
   if (text) { where.push('(l.caller_name LIKE ? OR l.callee_name LIKE ? OR l.members LIKE ? OR c.name LIKE ? OR u1.display_name LIKE ? OR u2.display_name LIKE ?)'); const t = '%' + text.replace(/[%_]/g, '') + '%'; args.push(t, t, t, t, t, t); }
   const base = 'FROM call_log l LEFT JOIN chats c ON c.id = l.chat_id LEFT JOIN users u1 ON u1.id = l.caller_id LEFT JOIN users u2 ON u2.id = l.callee_id WHERE ' + where.join(' AND ');
   const sum = await dal.get('SELECT COUNT(*) AS n, SUM(l.answered) AS ok, SUM(l.duration) AS sec, SUM(CASE WHEN ' + KIND_SQL + " IN ('group', 'conf') THEN 1 ELSE 0 END) AS grp, SUM(l.video) AS vid, SUM(l.recorded) AS rec " + base, ...args);
-  const rows = await dal.all('SELECT l.id, l.started_at, l.video, l.answered, l.duration, l.reason, ' + KIND_SQL + ' AS kind, l.chat_id, l.members, l.peer_server, l.recorded, COALESCE(l.caller_name, u1.display_name) AS caller, COALESCE(l.callee_name, u2.display_name) AS callee, c.name AS chat_name ' + base + ' ORDER BY l.started_at DESC, l.id DESC LIMIT ? OFFSET ?', ...args, Math.min(Math.max(Number(limit) || 50, 1), 200), Math.max(Number(offset) || 0, 0));
+  const rows = await dal.all('SELECT l.id, l.started_at, l.video, l.answered, l.duration, l.reason, ' + KIND_SQL + ' AS kind, l.chat_id, l.members, l.peer_server, l.recorded, l.detail, COALESCE(l.caller_name, u1.display_name) AS caller, COALESCE(l.callee_name, u2.display_name) AS callee, c.name AS chat_name ' + base + ' ORDER BY l.started_at DESC, l.id DESC LIMIT ? OFFSET ?', ...args, Math.min(Math.max(Number(limit) || 50, 1), 200), Math.max(Number(offset) || 0, 0));
   const res = r => r.kind !== 'direct' ? 'group' : r.answered ? 'ok' : ({ declined: 'declined', missed: 'missed', cancelled: 'cancelled' }[r.reason] || 'failed');
   return {
     total: Number(sum.n) || 0,
     sum: { ok: Number(sum.ok) || 0, minutes: Math.round((Number(sum.sec) || 0) / 60), group: Number(sum.grp) || 0, video: Number(sum.vid) || 0, recorded: Number(sum.rec) || 0 },
-    rows: rows.map(r => { let m = []; try { m = JSON.parse(r.members || '[]'); } catch {} return { id: r.id, at: r.started_at, kind: r.kind, video: !!r.video, caller: r.caller || 'Удалён', callee: r.kind === 'direct' ? (r.callee || 'Удалён') : '', group: r.kind === 'direct' ? '' : (r.chat_name || ''), members: m, duration: r.duration, result: res(r), peer_server: r.peer_server || '', recorded: !!r.recorded }; }),
+    rows: rows.map(r => { let m = []; try { m = JSON.parse(r.members || '[]'); } catch {} return { id: r.id, at: r.started_at, kind: r.kind, video: !!r.video, caller: r.caller || 'Удалён', callee: r.kind === 'direct' ? (r.callee || 'Удалён') : '', group: r.kind === 'direct' ? '' : (r.chat_name || ''), members: m, duration: r.duration, result: res(r), peer_server: r.peer_server || '', recorded: !!r.recorded, det: parseDet(r.detail) }; }),
   };
 }
 
@@ -1064,4 +1094,4 @@ async function compute(period) {
   return { period, enabled: cfg.enabled, ready, show: ready || any, live, ringing, series, top, totals: { ...tot, minutes: Math.round(tot.minutes) } };
 }
 
-module.exports = { peerAccess, ownOk, activeList, adminEnd, logList, callAdd, inspectCert, afterConfigChange, getPrefs, setPrefs, groupJoin, groupLeave, groupsFor, init, stats, cspSources, getConfig, handleFedReq, recvFedEvent, fedAllowed, setFedAllowed, active, publicConfig, saveConfig, normUrl, check, start, accept, decline, end, onDisconnect, currentFor, CallError };
+module.exports = { event, peerAccess, ownOk, activeList, adminEnd, logList, callAdd, inspectCert, afterConfigChange, getPrefs, setPrefs, groupJoin, groupLeave, groupsFor, init, stats, cspSources, getConfig, handleFedReq, recvFedEvent, fedAllowed, setFedAllowed, active, publicConfig, saveConfig, normUrl, check, start, accept, decline, end, onDisconnect, currentFor, CallError };

@@ -532,7 +532,7 @@
       .on(R.ParticipantConnected, function () { liveNow(); remoteState(); })
       .on(R.ParticipantDisconnected, function () { if (!ended && st.call) { if (st.call.group) render(); else hangup(); } })
       .on(R.ActiveSpeakersChanged, function (list) { speaking = {}; list.forEach(function (p) { speaking[p.identity] = true; }); document.querySelectorAll('.cl-tile').forEach(function (t) { t.classList.toggle('sp', !!speaking[t.dataset.id]); }); })
-      .on(R.LocalTrackUnpublished, function (pub) { if (pub.source === T.Source.ScreenShare && st.call) { st.call.screen = false; render(); } })
+      .on(R.LocalTrackUnpublished, function (pub) { if (pub.source === T.Source.ScreenShare && st.call) { if (st.call.screen) H.api('POST', '/calls/' + st.call.id + '/event', { k: 'screen', on: false }); st.call.screen = false; render(); } })
       .on(R.ConnectionQualityChanged, function (q, p) { if (p !== room.localParticipant && st.call) st.call.quality = q; })
       .on(R.Reconnecting, function () { if (st.call) { st.call.phase = 'reconnecting'; render(); } })
       .on(R.Reconnected, function () { if (st.call) { st.call.phase = room.remoteParticipants.size ? 'live' : 'ringing'; render(); } })
@@ -589,7 +589,7 @@
   // Показ своего экрана (в телефоне браузер этого не умеет)
   async function setScreen(on) {
     var c = st.call; if (!c || !room) return;
-    try { await room.localParticipant.setScreenShareEnabled(on, { audio: false }); c.screen = on; }
+    try { await room.localParticipant.setScreenShareEnabled(on, { audio: false }); c.screen = on; H.api('POST', '/calls/' + c.id + '/event', { k: 'screen', on: !!on }); }
     catch (e) { c.screen = false; if (!e || e.name !== 'NotAllowedError') H.toast('Не удалось показать экран'); }
     render();
   }

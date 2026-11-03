@@ -6711,11 +6711,52 @@ function caRender() {
             <div class="ca-c rb-meta" style="font-variant-numeric:tabular-nums">${caDur(r.duration)}</div>
             <div class="ca-c"><span class="sp-stat ${res[1]}">${res[0]}</span></div>
             <div class="ca-c rb-meta">${r.recorded ? '<b style="color:var(--c-orange-text)">Записывался</b>' : 'Не записывался'}</div></div>
-            ${open && r.members.length ? `<div class="pg-exp" style="grid-template-columns:1fr"><div><h4>Участники</h4><span>${r.members.map(esc).join(', ')}</span></div></div>` : ''}</div>`;
+            ${open ? caDetail(r) : ''}</div>`;
         }).join('') || `<div class="ub-empty">${CALOG.q || CALOG.kind !== 'all' ? 'Ничего не нашли' : 'За этот период звонков не было'}</div>`}
         ${CALOG.rows.length < CALOG.total ? '<div style="padding:12px;text-align:center"><button type="button" class="btn btn-ghost btn-sm" data-on-click="caMore">Показать ещё</button></div>' : ''}
       </div></div>`;
   });
+}
+// Раскрытая строка журнала: слева хронология звонка, справа участники с устройствами. У старых записей хронологии нет: показываем то, что есть
+const caClock = t => { const d = new Date(t * 1000), p = n => String(n).padStart(2, '0'); return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; };
+const caSpan = s => (s >= 120 ? Math.round(s / 60) + ' мин' : s >= 60 ? '1 мин ' + (s % 60) + ' с' : Math.max(1, s) + ' с');
+function caDetail(r) {
+  const det = r.det, nm = id => esc((det && det.nm && det.nm[id]) || '—'), grp = r.kind !== 'direct';
+  const row = (t, html, sub) => `<div style="display:grid;grid-template-columns:62px 1fr;gap:8px;padding:3px 0;font-size:13px"><span class="rb-meta" style="font-variant-numeric:tabular-nums">${t || ''}</span><span>${html}${sub ? ` <span class="rb-meta">· ${sub}</span>` : ''}</span></div>`;
+  const ev = det ? det.ev : [], evs = [], scrOn = {};
+  const t0 = (ev.find(e => e.k === 'start') || {}).t;
+  for (const e of ev) {
+    if (e.k === 'start') evs.push(row(caClock(e.t), `Звонок от <b>${nm(e.u)}</b>`));
+    else if (e.k === 'answer') evs.push(row(caClock(e.t), `Ответ: <b>${nm(e.u)}</b>`, t0 ? 'дозвон ' + caSpan(e.t - t0) : ''));
+    else if (e.k === 'invite') evs.push(row(caClock(e.t), `Приглашение: <b>${nm(e.u)}</b> → <b>${nm(e.a)}</b>`));
+    else if (e.k === 'join') { if (!(e.t === t0 && e.u === (ev.find(x => x.k === 'start') || {}).u)) evs.push(row(caClock(e.t), `Подключение: <b>${nm(e.u)}</b>`)); }
+    else if (e.k === 'leave') evs.push(row(caClock(e.t), `Выход: <b>${nm(e.u)}</b>`));
+    else if (e.k === 'scr_on') { scrOn[e.u] = e.t; const off = ev.find(x => x.k === 'scr_off' && x.u === e.u && x.t >= e.t); evs.push(row(caClock(e.t), `Показ экрана: <b>${nm(e.u)}</b>`, off ? caSpan(off.t - e.t) : '')); }
+    else if (e.k === 'scr_off') { if (scrOn[e.u] === undefined) evs.push(row(caClock(e.t), `Конец показа экрана: <b>${nm(e.u)}</b>`)); }
+    else if (e.k === 'end' && !grp) {
+      const who = e.u ? `<b>${nm(e.u)}</b>` : '';
+      const txt = r.result === 'declined' ? 'Отклонено: ' + who : r.result === 'cancelled' ? 'Отмена: ' + who : r.result === 'missed' ? 'Без ответа' : r.result === 'ok' ? (who ? 'Завершение: ' + who : 'Связь прервалась') : 'Звонок не состоялся';
+      evs.push(row(caClock(e.t), txt));
+    }
+  }
+  // Участники: у личного звонка двое, у группового считаем время по входам и выходам
+  const people = [];
+  if (det && grp) {
+    const by = {};
+    for (const e of ev) if (e.k === 'join') by[e.u] = by[e.u] || { id: e.u, sec: 0, at: e.t, open: e.t }; 
+    for (const e of ev) { const p = by[e.u]; if (!p) continue; if (e.k === 'join' && p.open == null) p.open = e.t; if (e.k === 'leave' && p.open != null) { p.sec += e.t - p.open; p.open = null; } }
+    for (const id in by) people.push({ name: nm(by[id].id), dev: det.dev && det.dev[by[id].id], sec: by[id].sec });
+  } else if (det) {
+    const st = ev.find(e => e.k === 'start'), an = ev.find(e => e.k === 'answer');
+    if (st) people.push({ name: nm(st.u), dev: det.dev && det.dev[st.u], sec: r.duration });
+    if (an) people.push({ name: nm(an.u), dev: det.dev && det.dev[an.u], sec: r.duration });
+  }
+  if (!people.length) { const list = grp ? r.members : [r.caller, r.callee].filter(Boolean); list.forEach(n => people.push({ name: esc(n), dev: '', sec: grp ? 0 : r.duration })); }
+  const ini = n => esc(String(n).replace(/&[^;]+;/g, '').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase());
+  const pe = people.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px"><span style="width:24px;height:24px;border-radius:50%;background:var(--c-accent-bg,rgba(80,150,255,.18));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex:none">${ini(p.name)}</span><span style="min-width:0">${p.name}</span>${p.dev ? `<span class="rb-meta">${esc(p.dev)}</span>` : ''}<span class="rb-meta" style="margin-left:auto;font-variant-numeric:tabular-nums">${p.sec > 0 ? caDur(p.sec) : ''}</span></div>`).join('');
+  const head = t => `<h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--c-text2);margin:0 0 6px">${t}</h4>`;
+  const left = evs.length ? evs.join('') : '<span class="rb-meta">Подробности этого звонка не сохранились: хронология ведётся с версии s2.43.0.</span>';
+  return `<div class="pg-exp" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px"><div>${head('Хронология')}${left}</div><div>${head('Участники')}${pe || '<span class="rb-meta">—</span>'}${r.peer_server ? `<div class="rb-meta" style="margin-top:8px">Сервер собеседника: ${esc(r.peer_server)}</div>` : ''}</div></div>`;
 }
 function caPeriod(p) { CALOG.period = p; try { localStorage.setItem('calog-period', p); } catch {} caLoad(false); }
 function caKind(k) { CALOG.kind = k; caLoad(false); }
