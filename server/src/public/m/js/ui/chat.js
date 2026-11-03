@@ -280,7 +280,7 @@ B.ui.chat = (function () {
     el.innerHTML = B.nav.amb +
       '<div class="nav cn"><button class="nb glass gi" data-back aria-label="Назад">' + I('chevLeft') + '<span class="cnt">' + (n ? (n > 99 ? '99+' : n) : '') + '</span></button>' +
         '<button class="who glass gi" data-c="info">' + whoHtml(chat) + '</button>' +
-        '<div class="nr"><button class="glass gi" data-c="addc" aria-label="Добавить в контакты" hidden>' + I('userPlus') + '</button><button class="navav glass gi" data-c="info" aria-label="Профиль">' + headAvatar(chat) + '</button></div></div>' +
+        '<div class="nr">' + (B.ui.calls ? B.ui.calls.btns(chat) : '') + '<button class="glass gi" data-c="addc" aria-label="Добавить в контакты" hidden>' + I('userPlus') + '</button><button class="navav glass gi" data-c="info" aria-label="Профиль">' + headAvatar(chat) + '</button></div></div>' +
       '<div class="cnbar glass" hidden></div>' +
       '<div class="scroll"><div class="msgs">' + (B.msgs.tail(cid) && !B.S.secretChatIds.has(cid) ? '' : skeleton()) + '</div></div>' +
       '<button class="pinbar glass gi" data-c="pin" hidden></button>' +
@@ -562,6 +562,7 @@ B.ui.chat = (function () {
     else if (c === 'addc') { var pid = B.peerId(B.find(+el.dataset.cid)); if (pid && B.openAddFromChat) B.openAddFromChat(pid); }
     else if (c === 'who') { if (B.ui.composer.mention) B.ui.composer.mention(el, +t.dataset.id, t.dataset.name); }
     else if (c === 'info') info(+el.dataset.cid);
+    else if (c === 'call' || c === 'vcall' || c === 'gjoin') B.ui.calls.start(+el.dataset.cid, c === 'vcall');
     else if (c === 'act') runAction(t);
     else if (c === 'unpin') { e.stopPropagation(); B.pins.unpin(+t.dataset.id); }
     else if (c === 'pin') {

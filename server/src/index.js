@@ -46,13 +46,13 @@ app.use((req, res, next) => {
   // Микрофон, геолокация и платежи: только сам сайт, адрес указан явно (так проверяют сканеры); клиенты ими не пользуются
   const ph = String(req.headers.host || '').replace(/[^\w.:\-\[\]]/g, '');
   const own = ph ? `(self "${req.protocol}://${ph}")` : '(self)';
-  res.setHeader('Permissions-Policy', `camera=(), microphone=${own}, geolocation=${own}, payment=${own}, usb=(), display-capture=(), serial=(), bluetooth=()`);
+  res.setHeader('Permissions-Policy', `camera=${own}, microphone=${own}, geolocation=${own}, payment=${own}, usb=(), display-capture=${own}, serial=(), bluetooth=()`);
   next();
 });
 // Защитные заголовки страниц (админка, веб-клиент, мобильный клиент, страница гостя): их нельзя встроить в чужой сайт, а скрипты,
 // внешние адреса и подключения ограничены. Политика мягкая: inline-скрипты и стили разрешены, потому что клиенты на них построены
 const PAGE_PATH = /^\/(admin|chat|m|g)(\/|$)/;
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   if (!PAGE_PATH.test(req.path)) return next();
   const host = String(req.headers.host || '').replace(/[^\w.:\-\[\]]/g, '');
   // Картинки и видео: в админке только свои файлы. В остальных страницах ещё GIF с Klipy: gif.js пропускает только *.klipy.com.
@@ -71,7 +71,7 @@ app.use((req, res, next) => {
     "font-src 'self' data:",
     imgSrc,
     mediaSrc,
-    `connect-src 'self' blob: data: ws://${host} wss://${host} https://api.klipy.com https://api.giphy.com`,
+    `connect-src 'self' blob: data: ws://${host} wss://${host} https://api.klipy.com https://api.giphy.com${/^\/(chat|m)(\/|$)/.test(req.path) ? await require('./calls').cspSources().catch(() => '') : ''}`,
     "worker-src 'self' blob:",
     "frame-src 'self' blob:",
     "object-src 'none'",
@@ -243,6 +243,10 @@ adminRouter.startBackupSchedule();
 const modulesRouter = require('./routes/modules');
 boot.push(() => modulesRouter.init());
 app.use('/api/modules', modulesRouter.user);
+const callsRouter = require('./routes/calls');
+app.use('/api/calls', callsRouter.user);
+require('./calls').init();
+app.use('/api/admin/calls', callsRouter.admin);
 app.use('/api/admin/modules', modulesRouter.admin);
 const spacesRouter = require('./routes/spaces');
 app.use('/api/contacts', spacesRouter.contacts);

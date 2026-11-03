@@ -680,6 +680,8 @@ async function handleReq(peer, sess, f) {
     if (!file || !fs.existsSync(file)) return await fail('gone');
     return await sendFileFrames(sess, f.rid, file);
   }
+  // Звонки между серверами (calls.js): call_offer
+  if (f.op && f.op.startsWith('call_')) return require('./calls').handleFedReq(peer, f).then(reply, async e => (await fail(e.message || 'error')));
   await fail('unknown');
 }
 
@@ -774,6 +776,28 @@ async function directChat(localId, shadowId) {
   return (await dal.get(`SELECT c.id FROM chats c
     JOIN chat_members a ON a.chat_id = c.id AND a.user_id = ? JOIN chat_members b ON b.chat_id = c.id AND b.user_id = ?
     WHERE c.type = 'direct' AND COALESCE(c.is_secret, 0) = 0 LIMIT 1`, localId, shadowId))?.id || null;
+}
+
+// Личный чат с человеком другого сервера: найти или, если его нет (его закрыли или он ещё не создавался), создать.
+// Нужен звонку: у входящего звонка должен быть чат, в который потом можно перейти. Возвращает id или null, если лимит новых переписок исчерпан
+async function ensureDirect(peer, local, shadow) {
+  let chatId = await directChat(local.id, shadow.id);
+  if (chatId) {
+    if ((await dal.get('SELECT 1 FROM chat_members WHERE chat_id = ? AND user_id = ? AND hidden_at IS NOT NULL', chatId, local.id))) {
+      await dal.run('UPDATE chat_members SET hidden_at = NULL WHERE chat_id = ? AND user_id = ?', chatId, local.id);
+      wsm().sendTo(local.id, { type: 'reload_chats' });
+    }
+    return chatId;
+  }
+  if (!(await newChatAllowed(peer.id))) return null;
+  chatId = await dal.tx(() => (async () => {
+    const r = await dal.run("INSERT INTO chats (type, created_by) VALUES ('direct', ?)", shadow.id);
+    await dal.run('INSERT INTO chat_members (chat_id, user_id) VALUES (?, ?)', r.lastInsertRowid, shadow.id);
+    await dal.run('INSERT INTO chat_members (chat_id, user_id) VALUES (?, ?)', r.lastInsertRowid, local.id);
+    return r.lastInsertRowid;
+  })());
+  wsm().sendTo(local.id, { type: 'reload_chats' });
+  return chatId;
 }
 
 // Не больше N новых переписок в час с одного сервера: защита от массовой рассылки
@@ -931,6 +955,7 @@ async function handleEvent(peer, ev) {
     case 'rej': return await recvReject(peer, ev);
     case 'typing': return await recvTyping(peer, ev);
     case 'presence': return await recvPresence(peer, ev);
+    case 'call_ev': return await require('./calls').recvFedEvent(peer, ev);
     case 'spp': return await spacesMod().recvPresence(peer, ev);
     // Общие пространства: всё, что начинается на sp_
     // Группы и комнаты (версия протокола 2): caps и всё, что начинается на g
@@ -1406,5 +1431,5 @@ module.exports = {
   setShadowTag, lookupRemote, peerOfUser, peerByInstance, realPeerByInstance, ownVersion, peerRow, clearVirtualRow, endVirtual, virtualTick, isOnline,
   onLocalMessage, onGroupMessage, onPin, onEdit, onDelete, onReact, onStatus, onTyping, onPresence, onProfile, onContactAdded, onContactRemoved, afterContactChange,
   // для fedgroups.js
-  enqueue, sendLive, rpc, fetchFile, isRelatedTo: isRelated, ensureShadow, remoteUser, shadowByAddr: shadowRow, findLocalUser, avatarVersion, receiveAttachment, receiveAttachments, describeAtt, describeFwd, removeMessageFiles,
+  enqueue, sendLive, rpc, directChat, ensureDirect, fetchFile, isRelatedTo: isRelated, ensureShadow, remoteUser, shadowByAddr: shadowRow, findLocalUser, avatarVersion, receiveAttachment, receiveAttachments, describeAtt, describeFwd, removeMessageFiles,
 };

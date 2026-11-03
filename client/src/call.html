@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self' ws: wss: http: https:; worker-src 'self' blob:">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Звонок</title>
+<link rel="stylesheet" href="assets/fonts/inter.css">
+<link rel="stylesheet" href="call.css">
+</head>
+<body>
+<div class="amb"><i></i><i></i><i></i></div>
+<div id="app">
+  <header id="hd">
+    <div class="c"><b id="peer"></b><small id="tm">Соединение…</small></div>
+    <span class="qchip" id="q" hidden><span class="sig"><i></i><i></i><i></i><i></i></span><span id="qt"></span></span>
+  </header>
+  <main id="stage">
+    <div class="grid" id="grid" hidden></div>
+    <div class="remote" id="remote">
+      <video id="rv" autoplay playsinline></video>
+      <div class="ph" id="rph"><div class="av" id="rav"></div></div>
+      <div class="nchip vg top" id="rname"><span class="mb" id="rmic" hidden></span><span id="rn"></span></div>
+    </div>
+    <div class="pip" id="pip"><video id="lv" autoplay muted playsinline></video><div class="ph" id="lph"><div class="av sm" id="lav">Вы</div></div><div class="nchip vg"><span>Вы</span></div></div>
+    <div class="ctrls vg" id="ctrls">
+      <button class="rb" id="b-mic" title="Микрофон"></button>
+      <button class="rb" id="b-cam" title="Камера"></button>
+      <button class="rb" id="b-scr" title="Показать экран"></button>
+      <button class="rb" id="b-add" title="Добавить в звонок" hidden></button>
+      <button class="rb end" id="b-end"></button>
+    </div>
+  </main>
+  <div class="note" id="note" hidden></div>
+  <div class="picker" id="addpick" hidden><div class="pbox abox"><b>Добавить в звонок</b><input id="aq" type="search" placeholder="Найти человека" autocomplete="off"><div class="alist" id="alist"></div><button class="pcancel" id="acancel">Отмена</button></div></div>
+  <div class="picker" id="picker" hidden><div class="pbox"><b>Что показать?</b><div class="pgrid" id="pgrid"></div><button class="pcancel" id="pcancel">Отмена</button></div></div>
+</div>
+<div id="audio"></div>
+<script src="vendor/livekit-client.umd.js"></script>
+<script src="call.js"></script>
+</body>
+</html>

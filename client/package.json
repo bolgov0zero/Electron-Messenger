@@ -1,6 +1,6 @@
 {
   "name": "electron",
-  "version": "3.24.6",
+  "version": "3.25.0",
   "description": "Corporate Chat Client",
   "author": "bolgov@me.com",
   "homepage": "https://github.com/bolgov0zero/corp-chat",
@@ -22,6 +22,8 @@
     "files": [
       "main.js",
       "preload.js",
+      "callpreload.js",
+      "callinpreload.js",
       "src/**/*"
     ],
     "mac": {
@@ -36,8 +38,11 @@
       ],
       "icon": "../icons/app/icon-1024.png",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "Требуется для голосовых звонков"
-      }
+        "NSMicrophoneUsageDescription": "Требуется для голосовых и видеозвонков",
+        "NSCameraUsageDescription": "Требуется для видеозвонков"
+      },
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "win": {
       "target": [

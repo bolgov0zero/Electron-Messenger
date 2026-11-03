@@ -1445,6 +1445,7 @@ const CS_PHONE_MQ = '(max-width: 767px), (pointer: coarse)';
 const csIsPhone = () => !csIsApp() && window.matchMedia(CS_PHONE_MQ).matches;
 const csSvg = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const CS_I = {
+  phone: csSvg('<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'),
   user: csSvg('<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'),
   gear: csSvg('<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>'),
   palette: csSvg('<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>'),
@@ -1500,6 +1501,9 @@ function csSections() {
     meta: () => (S.blocked || []).length ? `заблокировано: ${S.blocked.length}` : 'никого нет' });
   list.push({ k: 'modules', label: 'Модули', icon: CS_I.puzzle, desc: 'Дополнительные возможности клиента',
     meta: () => { const l = window.Modules ? Modules.list() : []; if (!l.length) return 'нет доступных'; const n = l.filter(m => m.on).length; return n ? `включено: ${n}` : `${l.length} ${plural(l.length, 'модуль', 'модуля', 'модулей')} доступно`; } });
+  // Звонки: раздел виден, только когда на сервере они включены
+  if (window.Calls?.available?.()) list.push({ k: 'calls', label: 'Звонки', icon: CS_I.phone, desc: 'Аудио, видео и звонки с других серверов',
+    meta: () => { const p = Calls.prefs(); return !p.enabled ? 'выключены' : [p.audio ? 'аудио' : '', p.video ? 'видео' : '', p.fed ? 'другие серверы' : ''].filter(Boolean).join(' · ') || 'выключены'; } });
   list.push({ k: 'folders', label: 'Папки и пространства', icon: CS_I.folder, desc: 'Папки чатов и пространства в баре',
     meta: () => (S.folders || []).length ? `${S.folders.length} ${plural(S.folders.length, 'папка', 'папки', 'папок')}` : 'папок нет' });
   if (csIsApp()) list.push({ k: 'update', label: 'Обновление', icon: CS_I.upd, desc: 'Версия приложения и новые релизы',
@@ -1873,7 +1877,32 @@ function modDownload(key, kind) {
   document.body.appendChild(ov);
   run();
 }
-const CS_PANES = { profile: csPaneProfile, general: csPaneGeneral, appearance: csPaneAppearance, blocks: csPaneBlocks, modules: csPaneModules, folders: () => csPaneFolders(), update: csPaneUpdate };
+// ── Звонки ──
+function csPaneCalls() {
+  const p = window.Calls?.prefs?.() || {};
+  window.Calls?.media?.refresh?.();
+  const row = (k, title, desc, on, dis) => `<div class="cs-r"${dis ? ' style="opacity:.55"' : ''}><div class="cs-l"><b>${title}</b><span>${desc}</span></div>${csTg(on, 'csCallPref', title, k)}</div>`;
+  return `<div class="cs-gt">Звонки</div><div class="cs-g">${row('enabled', 'Все звонки', 'Выключите, чтобы вам не звонили и вы не звонили: кнопок звонка не будет, уведомлений о звонках тоже', !!p.enabled)}</div>
+    <div class="cs-gt">Виды звонков</div><div class="cs-g">${row('audio', 'Аудиозвонки', 'Голосовые звонки без видео', !!p.audio && !!p.enabled, !p.enabled)}${row('video', 'Видеозвонки', 'Звонки с камерой', !!p.video && !!p.enabled, !p.enabled)}</div>
+    <div class="cs-gt">Доступ к устройствам</div><div class="cs-g"><div class="cs-r"><div class="cs-l"><b>Микрофон</b><span>Нужен для любых звонков. Нажмите, чтобы проверить или разрешить доступ</span></div>${Calls.media.chip('audio')}</div><div class="cs-r"><div class="cs-l"><b>Камера</b><span>Нужна для видеозвонков</span></div>${Calls.media.chip('video')}</div>${window.Calls?.media?.hasScreen?.() ? `<div class="cs-r"><div class="cs-l"><b>Запись экрана</b><span>Нужна, чтобы показывать свой экран собеседникам. После включения в системных настройках перезапустите приложение</span></div>${Calls.media.chip('screen')}</div>` : ''}</div>
+    <div class="cs-gt">Устройства для звонков</div><div class="cs-g">${[['audioin', 'Микрофон', 'Каким микрофоном говорить'], ['audioout', 'Динамик', 'Где слышать собеседника'], ['videoin', 'Камера', 'Какую камеру включать']].map(([k, t, d]) => { const sel = window.Calls?.devices?.select(k); return sel ? `<div class="cs-r"><div class="cs-l"><b>${t}</b><span>${d}. Применится к следующему звонку</span></div>${sel}</div>` : ''; }).join('')}</div>
+    <div class="cs-gt">С других серверов</div><div class="cs-g">${row('fed', 'Принимать звонки с других серверов', 'Выключите, чтобы вам могли звонить только люди с вашего сервера', !!p.fed && !!p.enabled, !p.enabled)}</div>`;
+}
+// Звонки включили или выключили на сервере: раздел настроек появляется или исчезает сразу
+function callsSettingsSync() {
+  try {
+    if (typeof CS !== 'undefined' && CS.sec === 'calls' && !window.Calls?.available?.()) CS.sec = 'general';
+    if (_sidebarTab === 'settings') csRefresh();
+  } catch {}
+}
+window.callsSettingsSync = callsSettingsSync;
+let _callsMediaWatched = false;
+function callsMediaWatch() {
+  if (_callsMediaWatched || !window.Calls?.media) return; _callsMediaWatched = true;
+  window.Calls.media.onChange(() => { try { if (typeof CS !== 'undefined' && CS.sec === 'calls' && _sidebarTab === 'settings') csRefresh(); } catch {} });
+}
+async function csCallPref(key) { const p = Calls.prefs(); await Calls.setPref(key, !p[key]); csRefresh(); }
+const CS_PANES = { calls: csPaneCalls, profile: csPaneProfile, general: csPaneGeneral, appearance: csPaneAppearance, blocks: csPaneBlocks, modules: csPaneModules, folders: () => csPaneFolders(), update: csPaneUpdate };
 
 function csNavHtml(list) {
   return csSections().map(s => `<button type="button" class="cs-sn" ${list ? '' : `aria-current="${CS.sec === s.k ? 'page' : 'false'}"`} data-on-click="csGo" data-a-click="${esc(JSON.stringify([`${s.k}`]))}">
@@ -2880,6 +2909,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
       </div>
       <div class="chat-header-actions">
         ${addContactBtn}
+        ${window.Calls ? Calls.btnsHtml(chat, peerId) : ''}
         ${(chat.is_secret || chat.invite) ? '' : `<button class="icon-btn${S.chatSearch?.open ? ' active' : ''}" title="Поиск в чате" data-on-click="toggleChatSearch">
           <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </button>`}
@@ -6305,7 +6335,8 @@ function connectWS() {
 
     if (data.type==='pong') { ws._pongOk = true; return; }
 
-    if (data.type==='connected') { S.editLimit = data.edit_time_limit || 120; S.readUpTo = !!data.read_up_to; syncEmojiFreq(); return; }
+    if (data.type==='connected') { S.editLimit = data.edit_time_limit || 120; S.readUpTo = !!data.read_up_to; syncEmojiFreq(); window.Calls?.init(); callsMediaWatch(); return; }
+    if (typeof data.type==='string' && data.type.startsWith('call_')) { window.Calls?.onWs(data); return; }
     if (data.type==='emoji_freq') { mergeEmojiFreq(data.freq); return; }
     if (data.type==='modules_changed') { window.Modules?.refresh(); return; }
     if (data.type==='forward_count') { applyForwardCount(data.message_id, data.count); return; }

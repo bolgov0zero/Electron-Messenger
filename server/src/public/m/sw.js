@@ -2,7 +2,7 @@
 
 // Service worker /m — push-уведомления, кэш оболочки и запуск без связи, со своим именем кэша и областью видимости (/m/):
 // SW соседних клиентов её не покрывают.
-const CACHE = 'm-v5';
+const CACHE = 'm-v6';
 // index.html (/m/) не прекэшируем: он берётся из сети, а удачная копия остаётся в кэше для запуска без связи.
 const STATIC = ['/m/manifest.json', '/m/manifest-light.json'];
 
@@ -53,9 +53,11 @@ self.addEventListener('push', e => {
     body: data.body || '',
     icon: '/chat/icons/icon.svg',
     badge: '/chat/icons/icon.svg',
-    tag: data.chatId ? `chat-${data.chatId}` : 'msg',
+    tag: data.call ? 'call' : data.chatId ? `chat-${data.chatId}` : 'msg',
     renotify: true,
-    data: { chatId: data.chatId },
+    // Звонок не должен пропасть с экрана, пока человек не ответит
+    ...(data.call ? { requireInteraction: true, vibrate: [300, 150, 300, 150, 300] } : {}),
+    data: { chatId: data.chatId, call: data.call },
   };
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
@@ -75,15 +77,16 @@ self.addEventListener('push', e => {
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const chatId = e.notification.data?.chatId;
+  const chatId = e.notification.data?.chatId, call = e.notification.data?.call;
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       const existing = list.find(c => c.visibilityState === 'visible') || list[0];
       if (existing) {
         existing.focus();
-        if (chatId) existing.postMessage({ type: 'open-chat', chatId });
+        if (call) existing.postMessage({ type: 'open-call', chatId, call });
+        else if (chatId) existing.postMessage({ type: 'open-chat', chatId });
       } else {
-        clients.openWindow(chatId ? `/m/?chatId=${chatId}` : '/m/');
+        clients.openWindow(chatId ? `/m/?chatId=${chatId}${call ? '&call=' + call : ''}` : '/m/');
       }
     })
   );

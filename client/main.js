@@ -1148,6 +1148,176 @@ ipcMain.handle('lightbox-open', (_, payload) => {
   win.loadURL(lightboxUrl(payload));
 });
 
+// ── ЗВОНКИ ──
+// Звук и видео ведёт отдельное окно call.html (там живёт подключение к LiveKit). Для аудиозвонка оно скрыто,
+// для видеозвонка открыто. Окно приложения управляет звонком командами call-cmd, а состояние (микрофон, камера,
+// кто в комнате) получает назад через call-state. Владелец звонка — окно записи, которое его начало: при нескольких
+// учётных записях ответ идёт именно ему. Звонок один на всё приложение.
+let callWin = null, callOwner = null, callInit = null, callLast = null;
+const callAlive = () => !!callWin && !callWin.isDestroyed();
+const callToOwner = st => {
+  callLast = st;
+  if (callOwner && !callOwner.isDestroyed()) callOwner.send('call-state', st);
+};
+// Сервер звонков с самоподписанным сертификатом: администратор принял его по отпечатку, и сервер чата присылает отпечаток
+// вместе с адресом. Доверяем только такому совпадению и только для этого адреса; всё остальное проверяется как обычно
+const pinnedCerts = new Map();   // имя узла → отпечаток SHA-256 (AA:BB:…)
+let certPinSet = false;
+const certFpOf = cert => { try { const der = Buffer.from(String(cert.data).replace(/-----[^-]+-----|\s/g, ''), 'base64'); return require('crypto').createHash('sha256').update(der).digest('hex').toUpperCase().match(/../g).join(':'); } catch { return ''; } };
+function pinCert(url, fp) {
+  try {
+    if (!/^wss:/i.test(url) || !/^([0-9A-F]{2}:){31}[0-9A-F]{2}$/i.test(String(fp || ''))) return;
+    pinnedCerts.set(new URL(url.replace(/^wss:/i, 'https:')).hostname, String(fp).toUpperCase());
+    if (certPinSet) return; certPinSet = true;
+    session.defaultSession.setCertificateVerifyProc((req, cb) => { const fp2 = pinnedCerts.get(req.hostname); cb(fp2 && certFpOf(req.certificate) === fp2 ? 0 : -3); });
+  } catch {}
+}
+// macOS спрашивает разрешение на микрофон и камеру один раз; Windows и Linux — без запроса
+ipcMain.handle('call-media-access', async (_, kind) => {
+  if (process.platform !== 'darwin') return true;
+  const { systemPreferences } = require('electron');
+  const k = kind === 'camera' ? 'camera' : 'microphone';
+  try {
+    if (systemPreferences.getMediaAccessStatus(k) === 'granted') return true;
+    return await systemPreferences.askForMediaAccess(k);
+  } catch { return false; }
+});
+// Раздел «Звонки» в настройках показывает, есть ли у приложения доступ к микрофону и камере, и по нажатию просит его.
+// macOS и Windows знают ответ сами (linux доступ не ограничивает); значения: granted | denied | not-determined | restricted
+const mediaState = k => { try { return process.platform === 'linux' ? 'granted' : require('electron').systemPreferences.getMediaAccessStatus(k); } catch { return 'unknown'; } };
+// «Запись экрана» — отдельное разрешение macOS (нужно, чтобы показывать свой экран); в Windows и Linux его нет
+ipcMain.handle('call-media-status', () => ({ microphone: mediaState('microphone'), camera: mediaState('camera'), screen: process.platform === 'darwin' ? mediaState('screen') : 'granted', platform: process.platform }));
+ipcMain.handle('call-media-ask', async (_, kind) => {
+  const k = kind === 'camera' ? 'camera' : kind === 'screen' ? 'screen' : 'microphone', { systemPreferences, desktopCapturer } = require('electron');
+  let opened = false;
+  try {
+    let st = mediaState(k);
+    // Экран: системный запрос macOS появляется при первой попытке снять экран; если он уже был и разрешения нет, ведём в настройки
+    if (k === 'screen' && st !== 'granted' && process.platform === 'darwin') {
+      await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 } }).catch(() => []);
+      await new Promise(r => setTimeout(r, 700)); st = mediaState('screen');
+      if (st !== 'granted') { await shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'); opened = true; }
+      return { status: st, opened };
+    }
+    if (st === 'not-determined' && process.platform === 'darwin') await systemPreferences.askForMediaAccess(k);
+    else if (st !== 'granted') {
+      // Системный запрос повторно не появляется: ведём человека туда, где разрешение включается
+      const url = process.platform === 'darwin' ? 'x-apple.systempreferences:com.apple.preference.security?Privacy_' + (k === 'camera' ? 'Camera' : 'Microphone')
+        : process.platform === 'win32' ? 'ms-settings:privacy-' + (k === 'camera' ? 'webcam' : 'microphone') : '';
+      if (url) { await shell.openExternal(url); opened = true; }
+    }
+  } catch {}
+  return { status: mediaState(k), opened };
+});
+ipcMain.handle('call-open', (e, p) => {
+  if (callAlive()) return { error: 'busy' };
+  callOwner = e.sender; callLast = null; installDisplayHandler(); pinCert(String(p.url || ''), p.certFp);
+  callInit = {
+    url: String(p.url || ''), token: String(p.token || ''), video: !!p.video, outgoing: !!p.outgoing, group: !!p.group, canAdd: !!p.canAdd,
+    devices: ['audioin', 'audioout', 'videoin'].reduce((o, k) => { const d = p.devices?.[k]; if (d?.id) o[k] = { id: String(d.id).slice(0, 300), label: String(d.label || '').slice(0, 300) }; return o; }, {}),
+    peer: { id: Number(p.peer?.id) || 0, name: String(p.peer?.name || '') },
+    theme: { dark: !!p.theme?.dark, accent: String(p.theme?.accent || '') },
+    platform: process.platform,
+  };
+  const win = new BrowserWindow({
+    width: 1040, height: 700, minWidth: 560, minHeight: 420, show: false,
+    title: callInit.peer.name || 'Звонок',
+    backgroundColor: callInit.theme.dark ? '#12171d' : '#eef1f4',
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 15 } } : { autoHideMenuBar: true }),
+    webPreferences: {
+      preload: path.join(__dirname, 'callpreload.js'), contextIsolation: true, nodeIntegration: false,
+      // Скрытое окно должно жить как обычное: соединение и звук не засыпают
+      backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required',
+    },
+  });
+  callWin = win;
+  win.setMenuBarVisibility(false);
+  // Закрытие окна видеозвонка не обрывает разговор: камера выключается, окно прячется, звонок остаётся аудио
+  win.on('close', ev => { if (!win.__quit && callAlive()) { ev.preventDefault(); win.webContents.send('call-cmd', { cmd: 'window-closed' }); win.hide(); } });
+  win.on('closed', () => { if (callWin === win) { callWin = null; callToOwner({ phase: 'closed' }); callOwner = null; callInit = null; } });
+  win.webContents.on('render-process-gone', (_, d) => { diag(`ОШИБКА: окно звонка аварийно завершилось (причина: ${d.reason})`); callToOwner({ phase: 'error', error: 'Окно звонка завершилось с ошибкой' }); });
+  win.loadFile(path.join(__dirname, 'src', 'call.html'));
+  if (callInit.video || callInit.group) win.once('ready-to-show', () => win.show());
+  return { ok: true };
+});
+// Показ экрана: источник выбирает человек в окне звонка (список с картинками), а на macOS нужно разрешение «Запись экрана»
+let screenCb = null, displayHandlerSet = false;
+function installDisplayHandler() {
+  if (displayHandlerSet) return; displayHandlerSet = true;
+  const { desktopCapturer, systemPreferences } = require('electron');
+  session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
+    if (!callAlive() || request.frame?.processId !== callWin.webContents.mainFrame.processId) return callback({});
+    if (process.platform === 'darwin' && systemPreferences.getMediaAccessStatus('screen') !== 'granted') { callWin.webContents.send('call-screen-denied'); return callback({}); }
+    try {
+      const srcs = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 300, height: 190 }, fetchWindowIcons: false });
+      if (screenCb) screenCb({});
+      screenCb = callback;
+      callWin.webContents.send('call-pick-screen', srcs.map(s => ({ id: s.id, name: s.name, thumb: s.thumbnail.toDataURL(), screen: s.id.startsWith('screen') })));
+    } catch { callback({}); }
+  });
+}
+ipcMain.on('call-screen-chosen', (e, id) => {
+  if (!callAlive() || e.sender !== callWin.webContents || !screenCb) return;
+  const cb = screenCb; screenCb = null;
+  if (!id) return cb({});
+  require('electron').desktopCapturer.getSources({ types: ['screen', 'window'] }).then(list => { const src = list.find(x => x.id === id); cb(src ? { video: src } : {}); }).catch(() => cb({}));
+});
+ipcMain.handle('call-init', e => (callWin && e.sender === callWin.webContents ? callInit : null));
+// Окно приложения пережило перезагрузку: звонок идёт, ему нужно вернуть панель управления
+ipcMain.handle('call-status', () => (callAlive() ? { open: true, peer: callInit?.peer, video: callInit?.video, last: callLast } : { open: false }));
+ipcMain.on('call-cmd', (_, c) => {
+  if (!callAlive()) return;
+  if (c?.cmd === 'show') { callWin.show(); callWin.focus(); return; }
+  if (c?.cmd === 'hide') { callWin.hide(); return; }
+  if (c?.cmd === 'close') { callWin.__quit = true; callWin.close(); return; }
+  // Разговор двоих стал общим: окно запоминает это и показывает сетку
+  if (c?.cmd === 'ungroup') { callInit.group = false; callInit.peer = { id: Number(c.id) || 0, name: String(c.name || '') }; }
+  if (c?.cmd === 'group') { callInit.group = true; callInit.peer = { id: 0, name: String(c.name || 'Групповой звонок') }; callWin.setTitle(callInit.peer.name); if (!callWin.isVisible()) callWin.show(); }
+  callWin.webContents.send('call-cmd', c);
+});
+ipcMain.on('call-state', (e, st) => {
+  if (!callAlive() || e.sender !== callWin.webContents) return;
+  if (st?.window === 'show') { if (!callWin.isVisible()) callWin.show(); return; }
+  if (st?.window === 'hide') { callWin.hide(); return; }
+  callToOwner(st);
+});
+app.on('before-quit', () => { if (callAlive()) { callWin.__quit = true; callWin.close(); } });
+
+// Входящий звонок — маленькое окно поверх всех окон в углу экрана: видно, даже если приложение свёрнуто.
+// Карточку рисует callin.html, нажатия уходят окну записи, которое её показало (call-incoming-action).
+let inWin = null, inOwner = null, inInit = null;
+const closeIncoming = () => { if (inWin && !inWin.isDestroyed()) inWin.close(); };
+ipcMain.handle('call-incoming-show', (e, p) => {
+  closeIncoming();
+  inOwner = e.sender;
+  inInit = {
+    video: !!p.video, camera: process.platform !== 'darwin' || require('electron').systemPreferences.getMediaAccessStatus('camera') === 'granted', name: String(p.name || ''), bg: String(p.bg || ''), timeout: Number(p.timeout) || 45, group: !!p.group, conf: !!p.conf, by: String(p.by || ''), count: Number(p.count) || 0,
+    theme: { dark: !!p.theme?.dark, accent: String(p.theme?.accent || '') },
+  };
+  const W = 372, H = (inInit.video ? (inInit.group ? 206 : 196) : (inInit.group ? 148 : 138)) + (inInit.video && inInit.camera ? 126 : 0);   // с запасом на тень; предпросмотр камеры добавляет высоту
+  const area = screen.getDisplayMatching(mainWindow && !mainWindow.isDestroyed() ? mainWindow.getBounds() : screen.getPrimaryDisplay().bounds).workArea;
+  const win = new BrowserWindow({
+    width: W, height: H, x: area.x + area.width - W - 6, y: area.y + 6,
+    frame: false, transparent: true, resizable: false, movable: false, minimizable: false, maximizable: false, fullscreenable: false,
+    skipTaskbar: true, hasShadow: false, show: false, focusable: true, alwaysOnTop: true,
+    webPreferences: { preload: path.join(__dirname, 'callinpreload.js'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
+  });
+  inWin = win;
+  win.setAlwaysOnTop(true, 'screen-saver');
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  win.once('ready-to-show', () => win.showInactive());
+  win.on('closed', () => { if (inWin === win) { inWin = null; inInit = null; } });
+  win.loadFile(path.join(__dirname, 'src', 'callin.html'));
+  return { ok: true };
+});
+ipcMain.handle('call-incoming-init', e => (inWin && e.sender === inWin.webContents ? inInit : null));
+ipcMain.on('call-incoming-hide', () => closeIncoming());
+ipcMain.on('call-incoming-action', (e, a) => {
+  if (!inWin || e.sender !== inWin.webContents) return;
+  if (inOwner && !inOwner.isDestroyed()) inOwner.send('call-incoming-action', a);
+  closeIncoming();
+});
+
 // Detect if launched at login (should start hidden in tray)
 function shouldStartHidden() {
   // После обновления приложение запускает само себя: окно должно быть видно, а не свёрнуто в трей

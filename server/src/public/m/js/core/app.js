@@ -4,6 +4,7 @@ B.app = {
   // Запуск: восстановить сессию и войти, либо показать экран входа. Экраны слушают 'app:login' и 'app:ready'.
   start: async function () {
     var q = new URLSearchParams(location.search), chatId = q.get('chatId');
+    B.S.pendingCall = q.get('call') || null;   // нажали на уведомление о звонке: входящий покажется сразу после входа
     var restored = await B.auth.restore();
     if (restored && chatId) {
       B.S.pendingOpenChatId = parseInt(chatId, 10);

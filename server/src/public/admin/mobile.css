@@ -169,7 +169,7 @@ input, textarea, select { font-size: 16px; }
 
 /* строки разделов — всегда «стрелка · имя · действия»; остальное видно в раскрытой части строки */
 .pg-top, .an-top, .fb-top, .rb-top { grid-template-columns: 22px minmax(0, 1fr) auto !important; gap: 10px; }
-.pg-top:not(:has(.al-tm2)) > :not(.rb-cv):not(.rb-name):not(.fb-name):not(.ux-actions),
+.pg-top:not(:has(.al-tm2)) > :not(.rb-cv):not(.rb-name):not(.fb-name):not(.ux-actions):not(.ca-c),
 .an-top > :not(.rb-cv):not(.rb-name):not(.fb-name):not(.ux-actions),
 .fb-top > :not(.rb-cv):not(.rb-name):not(.fb-name):not(.ux-actions) { display: none !important; }
 .pg-top .ux-actions, .an-top .ux-actions, .fb-top .ux-actions { width: auto; }
@@ -281,3 +281,10 @@ input, textarea, select { font-size: 16px; }
 .dv-db-big { font-size: 24px; }
 .dv-db-spark { height: 52px; }
 .dv-leg2 { gap: 7px 14px; }
+
+/* журнал звонков: время слева, справа кто, вид, длительность, итог */
+.pg-top.ca-top { grid-template-columns: 46px minmax(0, 1fr) !important; align-items: start; row-gap: 3px; }
+.ca-top > .ca-c { display: block; }
+.ca-top > :nth-child(1) { grid-column: 1; grid-row: 1 / 5; padding-top: 2px; }
+.ca-top > :nth-child(n+2) { grid-column: 2; }
+.ca-top > :nth-child(6) { font-size: 11px; }

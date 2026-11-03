@@ -457,6 +457,9 @@ router.get('/settings', async (req, res) => {
   delete settings.github_token;
   // Секреты не должны уходить в браузер даже админу
   delete settings.jwt_secret;
+  // Секрет сервера звонков показывается только по паролю админа (POST /api/admin/calls/credentials); личные настройки звонков людей здесь не нужны
+  delete settings.calls_secret;
+  for (const k of Object.keys(settings)) if (k.startsWith('calls_prefs_')) delete settings[k];
   delete settings.vapid_private;
   delete settings.fed_priv;
   res.json(settings);

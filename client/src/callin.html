@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:">
+<title>Входящий звонок</title>
+<link rel="stylesheet" href="assets/fonts/inter.css">
+<link rel="stylesheet" href="callin.css">
+</head>
+<body>
+<div class="card" id="card" hidden>
+  <div class="top"><div class="ring"><div class="av" id="av"></div></div><div class="t"><b id="nm"></b><small id="sub"></small></div></div>
+  <div class="prev" id="prev" hidden><video id="pv" autoplay muted playsinline></video><span>Вы · предпросмотр камеры</span></div>
+  <div class="acts" id="acts"></div>
+</div>
+<script src="callin.js"></script>
+</body>
+</html>

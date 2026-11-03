@@ -18,7 +18,7 @@ B.ui.settings = (function () {
     var u = S.user || {}, mods = window.Modules ? Modules.list().filter(function (m) { return m.on; }).length : 0;
     var upd = B.app.newVersion ? '<div class="updc glass">' + I('upd') + '<div class="t"><b>Вышла новая версия</b><span>Применится после перезагрузки</span></div><button class="btn pri sm" data-s="reload">Обновить</button></div>' : '';
     body.innerHTML = upd + '<div class="grp glass"><button class="prow" data-s="me">' + (u.id ? B.avatar.user(u.id, u.display_name || '', 0, true) : '') + '<div style="flex:1;min-width:0"><b>' + B.esc(u.display_name || '') + '</b><span>@' + B.esc(u.username || '') + '</span></div><span class="ch" style="color:var(--muted)">' + I('chevRight') + '</span></button></div>' +
-      '<div class="grp glass">' + cell('appearance', 'palette', '#af52de', 'Внешний вид', { light: 'Светлая', dark: 'Тёмная', navy: 'Тёмно-синяя' }[B.theme.get()]) + cell('notif', 'bell', '#ff3b30', 'Уведомления', notifText()) + cell('modules', 'puzzle', '#34c759', 'Модули', mods || '') + cell('folders', 'folder', '#ff9500', 'Папки', B.folders.list.length || '') + '</div>' +
+      '<div class="grp glass">' + cell('appearance', 'palette', '#af52de', 'Внешний вид', { light: 'Светлая', dark: 'Тёмная', navy: 'Тёмно-синяя' }[B.theme.get()]) + cell('notif', 'bell', '#ff3b30', 'Уведомления', notifText()) + (window.Calls && Calls.available() ? cell('calls', 'phone', '#30b0c7', 'Звонки', callsMeta()) : '') + cell('modules', 'puzzle', '#34c759', 'Модули', mods || '') + cell('folders', 'folder', '#ff9500', 'Папки', B.folders.list.length || '') + '</div>' +
       '<div class="grp glass"><div class="cell"><span class="cl">Отображать пространства</span>' + tg('spaces', B.spaces.on()) + '</div></div><div class="gf">Включите, чтобы выбирать пространство над списком чатов: останутся люди и чаты из него.</div>' +
       '<div class="grp glass">' + cell('blocks', 'ban', '#8e8e93', 'Блокировки', S.blocked.length || '') + cell('diag', 'gear', '#5e6ad2', 'Диагностика') + '</div>' +
       '<div class="grp glass">' + cell('logout', 'logout', '#ff3b30', 'Выйти', '', 1) + '</div><div class="gf" style="text-align:center;margin-top:-8px">Версия ' + B.esc((window.APP_VERSION || '').replace('?v=', '') || '—') + '</div><div class="mcopy">w/ <span style="color:var(--danger)">♥</span> by bolgov0zero</div>';
@@ -32,13 +32,33 @@ B.ui.settings = (function () {
       var t = e.target.closest('[data-tg]');
       if (t && t.dataset.tg === 'spaces') { B.spaces.setOn(!B.spaces.on()); render(); return; }
       var b = e.target.closest('[data-s]'); if (!b) return; var a = b.dataset.s;
-      if (a === 'me') openMe(); else if (a === 'appearance') openAppearance(); else if (a === 'notif') openNotif(); else if (a === 'modules') openModules();
+      if (a === 'me') openMe(); else if (a === 'appearance') openAppearance(); else if (a === 'notif') openNotif(); else if (a === 'calls') openCalls(); else if (a === 'modules') openModules();
       else if (a === 'folders') B.ui.folders.openPage(); else if (a === 'blocks') openBlocks(); else if (a === 'diag') B.ui.diag.open();
       else if (a === 'reload') location.reload();
       else if (a === 'logout') B.actions.confirm('Выйти из аккаунта?', '', 'Выйти', function () { B.auth.logout(); });
     });
   }
 
+  // ── звонки ──
+  function callsMeta() { var p = Calls.prefs(); return !p.enabled ? 'Выключены' : [p.audio ? 'аудио' : '', p.video ? 'видео' : ''].filter(Boolean).join(', ') || 'Выключены'; }
+  var callsEl = null, mediaSub = false;
+  function callsHtml() {
+    var p = Calls.prefs(), on = !!p.enabled, row = function (k, l, v, dis) { return '<div class="cell"' + (dis ? ' style="opacity:.55"' : '') + '><span class="cl">' + l + '</span>' + tg('c-' + k, v) + '</div>'; };
+    return '<div class="grp glass">' + row('enabled', 'Все звонки', on) + '</div><div class="gf">Выключите, чтобы вам не звонили и вы не звонили: кнопок звонка не будет, уведомлений о звонках тоже.</div>' +
+      '<div class="grp glass">' + row('audio', 'Аудиозвонки', on && p.audio, !on) + row('video', 'Видеозвонки', on && p.video, !on) + '</div>' +
+      '<div class="grp glass"><div class="cell"><span class="cl">Микрофон</span>' + Calls.media.chip('audio') + '</div><div class="cell"><span class="cl">Камера</span>' + Calls.media.chip('video') + '</div></div><div class="gf">Нажмите на состояние, чтобы проверить или разрешить доступ. Микрофон нужен для любых звонков, камера для видеозвонков.</div>' +
+      '<div class="grp glass">' + [['audioin', 'Микрофон'], ['audioout', 'Динамик'], ['videoin', 'Камера']].map(function (x) { var sel = Calls.devices.select(x[0]); return sel ? '<div class="cell"><span class="cl">' + x[1] + '</span>' + sel + '</div>' : ''; }).join('') + '</div><div class="gf">Какие микрофон, динамик и камера используются в звонках. Применится к следующему звонку.</div>' +
+      '<div class="grp glass">' + row('fed', 'Принимать звонки с других серверов', on && p.fed, !on) + '</div><div class="gf">Выключите, чтобы вам могли звонить только люди с вашего сервера.</div>';
+  }
+  function openCalls() {
+    var el = setPage('Звонки', callsHtml()); el.dataset.calls = 1;
+    callsEl = el; Calls.media.refresh();
+    if (!mediaSub) { mediaSub = true; Calls.media.onChange(function () { if (callsEl && document.body.contains(callsEl)) $('.scroll', callsEl).innerHTML = callsHtml(); }); }
+    el.addEventListener('click', async function (e) {
+      var t = e.target.closest('[data-tg]'); if (!t || t.dataset.tg.indexOf('c-') !== 0) return;
+      var k = t.dataset.tg.slice(2); await Calls.setPref(k, !Calls.prefs()[k]); $('.scroll', el).innerHTML = callsHtml(); render();
+    });
+  }
   // ── уведомления ──
   function mm(x) { return x == null ? '' : ('0' + Math.floor(x / 60)).slice(-2) + ':' + ('0' + x % 60).slice(-2); }
   function toMin(s) { var m = /^(\d{1,2}):(\d{2})$/.exec(s || ''); return m ? (+m[1]) * 60 + (+m[2]) : null; }

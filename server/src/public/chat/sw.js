@@ -4,7 +4,7 @@
 // мог пережить обновление. После переименования подкомнат в темы это ломало
 // список: свежий index.html содержит узел mobile-topics, а закэшированный
 // сценарий искал mobile-subrooms — список просто некуда было отрисовать.
-const CACHE = 'corp-chat-v60';
+const CACHE = 'corp-chat-v61';
 // index.html (/chat/) намеренно не прекэшируем — он всегда из сети,
 // иначе закэшированная страница может рендериться без актуального viewport/вёрстки.
 // Сценарий и стили тоже не прекэшируем: адреса пришлось бы держать с версией,
@@ -63,9 +63,11 @@ self.addEventListener('push', e => {
     body: data.body || '',
     icon: '/chat/icons/icon.svg',
     badge: '/chat/icons/icon.svg',
-    tag: data.chatId ? `chat-${data.chatId}` : 'msg',
+    tag: data.call ? 'call' : data.chatId ? `chat-${data.chatId}` : 'msg',
     renotify: true,
-    data: { chatId: data.chatId },
+    // Звонок не должен пропасть с экрана, пока человек не ответит
+    ...(data.call ? { requireInteraction: true, vibrate: [300, 150, 300, 150, 300] } : {}),
+    data: { chatId: data.chatId, call: data.call },
   };
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
@@ -88,15 +90,16 @@ self.addEventListener('push', e => {
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const chatId = e.notification.data?.chatId;
+  const chatId = e.notification.data?.chatId, call = e.notification.data?.call;
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
       const existing = list.find(c => c.visibilityState === 'visible') || list[0];
       if (existing) {
         existing.focus();
-        if (chatId) existing.postMessage({ type: 'open-chat', chatId });
+        if (call) existing.postMessage({ type: 'open-call', chatId, call });
+        else if (chatId) existing.postMessage({ type: 'open-chat', chatId });
       } else {
-        clients.openWindow(chatId ? `/chat/?chatId=${chatId}` : '/chat/');
+        clients.openWindow(chatId ? `/chat/?chatId=${chatId}${call ? '&call=' + call : ''}` : '/chat/');
       }
     })
   );

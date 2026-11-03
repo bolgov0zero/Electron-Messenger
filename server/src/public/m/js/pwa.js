@@ -11,6 +11,7 @@ if ('serviceWorker' in navigator) {
     }).catch(function () { B.pwa.sw = 'ошибка'; if (B.onPwaChange) B.onPwaChange(); });
     navigator.serviceWorker.addEventListener('message', function (e) {
       if (e.data && e.data.type === 'open-chat' && B.onOpenChat) B.onOpenChat(e.data.chatId);
+      if (e.data && e.data.type === 'open-call' && B.onOpenCall) B.onOpenCall(e.data.call);
     });
   });
 }

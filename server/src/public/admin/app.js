@@ -146,6 +146,7 @@ function enterApp(user) {
   // Бейджи сайдбара (пользователи/комнаты/чаты) обновляем сразу, независимо от того
   // на какой вкладке восстановились — раньше их считал только renderDashboard.
   updateNavBadges();
+  callsNavSync();
   let savedPage = 'dashboard';
   try { const p = localStorage.getItem('admin-page'); if (p && pageRenders[p]) savedPage = p; } catch {}
   nav(savedPage);
@@ -174,6 +175,7 @@ function startBgListsPolling() {
     if (currentPage === 'users') renderUsers().catch(() => {});
     else if (currentPage === 'chats') renderChats().catch(() => {});
     else if (currentPage === 'rooms') renderRooms().catch(() => {});
+    else if (currentPage === 'calls') caPollActive().catch(() => {});
   }, 5000);
 }
 
@@ -520,7 +522,7 @@ const SB_SETS = [['messages', 'Сообщения', 'редактировани�
 // Слова, по которым страницу можно найти кроме названия (поиск по приставке слова, см. sbPalGroups)
 const SB_KW = { dashboard: 'главная нагрузка процессор память сервер графики', workspaces: 'общее пространство рабочие', federation: 'сервер партнёр ключ подключение карта связь', users: 'люди сотрудники пароль тег блокировка',
   rooms: 'темы подкомнаты комната гостевая ссылка гость', chats: 'группы личные переписка гостевая ссылка гость', clients: 'версии приложение устройства', push: 'уведомления подписки', files: 'вложения хранилище диск', announcements: 'баннер оповещение',
-  webhooks: 'бот интеграция', modules: 'gif klipy гиф модуль', settings: 'параметры конфигурация', audit: 'журнал действий безопасность', releases: 'версии обновление история изменений' };
+  webhooks: 'бот интеграция', modules: 'gif klipy гиф модуль', calls: 'звонки аудио видео журнал запись livekit статистика', settings: 'параметры конфигурация', audit: 'журнал действий безопасность', releases: 'версии обновление история изменений' };
 async function sbCheckFromPal() {
   sbGoHome();
   for (let i = 0; i < 50 && !document.getElementById('hm-upd-panel'); i++) await new Promise(r => setTimeout(r, 100));
@@ -534,7 +536,7 @@ function sbPalGroups() {
   const to = k => () => nav(k), act = (k, fn) => () => { nav(k); fn(); };
   const pg = !!(typeof HM !== 'undefined' && HM.pgService);   // служба postgresql есть только на PostgreSQL
   return [
-    ['Страницы', Object.keys(pageTitles).filter(k => k !== 'more').map(k => ({ t: pageTitles[k], k: SB_KW[k], go: to(k) }))
+    ['Страницы', Object.keys(pageTitles).filter(k => k !== 'more' && (k !== 'calls' || ADMIN_CALLS.on)).map(k => ({ t: pageTitles[k], k: SB_KW[k], go: to(k) }))
       .concat([{ t: 'Федерации → Карта', k: 'карта серверов пространств связи схема', go: () => sbFed('map') }, { t: 'Федерации → Подключения', k: 'серверы правила приёма лимиты ключ', go: () => sbFed('list') }])],
     ['Разделы настроек', SB_SETS.map(([k, n, kw]) => ({ t: 'Настройки → ' + n, k: kw, go: () => openSettingsModal(k) }))],
     ['Действия', [
@@ -731,15 +733,25 @@ addEventListener('resize', fsPlace);
 new MutationObserver(() => { if (!FS.pend) { FS.pend = true; setTimeout(fsScan, 0); } }).observe(document.getElementById('page-body'), { childList: true, subtree: true });
 
 /* ── NAV ── */
-const pageTitles = {dashboard:'Главная',workspaces:'Пространства',federation:'Федерации',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',clients:'Клиенты',push:'Уведомления',files:'Файлы',announcements:'Объявления',webhooks:'Вебхуки',modules:'Модули',settings:'Настройки',audit:'Аудит-лог',releases:'Релизы',more:'Ещё'};
-const pageRenders = {dashboard:renderDashboard,users:renderUsers,workspaces:renderWorkspaces,federation:renderFederation,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements,releases:renderReleases,modules:renderModules,audit:renderAudit,settings:renderSettings,more:renderMore};
+const pageTitles = {dashboard:'Главная',workspaces:'Пространства',federation:'Федерации',users:'Пользователи',rooms:'Комнаты',chats:'Чаты и группы',clients:'Клиенты',push:'Уведомления',files:'Файлы',announcements:'Объявления',webhooks:'Вебхуки',modules:'Модули',calls:'Звонки',settings:'Настройки',audit:'Аудит-лог',releases:'Релизы',more:'Ещё'};
+const pageRenders = {dashboard:renderDashboard,users:renderUsers,workspaces:renderWorkspaces,federation:renderFederation,rooms:renderRooms,chats:renderChats,files:renderFiles,clients:renderClients,push:renderPush,webhooks:renderWebhooks,announcements:renderAnnouncements,releases:renderReleases,modules:renderModules,calls:renderCallsPage,audit:renderAudit,settings:renderSettings,more:renderMore};
 
 // Телефонный вид без масштабирования: страница уже собрана под экран, а случайный щипок сдвигал раскладку.
 // В iOS Safari атрибуты viewport игнорируются, поэтому щипок гасим отменой жестов; на компьютере эти события не приходят
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => { if (matchMedia('(max-width: 820px)').matches) e.preventDefault(); }, { passive: false }));
 // Разделы, вынесенные на нижнюю панель телефонного вида; всё остальное открывается из «Ещё»
 const MTABS = ['dashboard', 'users', 'clients', 'settings', 'more'];
+// Раздел «Звонки» в меню есть, только когда звонки на сервере включены
+const ADMIN_CALLS = { on: false };
+async function callsNavSync() {
+  let on = false;
+  try { const r = await api('GET', '/api/admin/calls'); on = !!(r && r.enabled && r.ready); } catch { return; }
+  ADMIN_CALLS.on = on;
+  const el = document.getElementById('nav-calls'); if (el) el.style.display = on ? '' : 'none';
+  if (!on && currentPage === 'calls') nav('dashboard');
+}
 function nav(page) {
+  if (page === 'calls' && !ADMIN_CALLS.on && token) { ADMIN_CALLS.on = true; }   // открыли по ссылке или из сохранённой страницы: проверка ниже поправит
   currentPage=page;
   document.querySelectorAll('#mnav button').forEach(b => b.classList.toggle('on', b.dataset.page === (MTABS.includes(page) ? page : 'more')));
   document.documentElement.dataset.msub = MTABS.includes(page) ? '0' : '1';
@@ -816,7 +828,7 @@ function confirm(title, text, onOk) {
 // Разделы, которых нет на нижней панели, тема и выход. Значки берём из боковой панели: там они уже нарисованы
 function renderMore() {
   setTopbarActions('');
-  const rows = [['federation', 'Федерации'], ['workspaces', 'Пространства'], ['rooms', 'Комнаты'], ['chats', 'Чаты и группы'], ['push', 'Уведомления'], ['files', 'Файлы'], ['announcements', 'Объявления'], ['webhooks', 'Вебхуки'], ['modules', 'Модули'], ['audit', 'Аудит-лог'], ['releases', 'Релизы']];
+  const rows = [['federation', 'Федерации'], ['workspaces', 'Пространства'], ['rooms', 'Комнаты'], ['chats', 'Чаты и группы'], ['push', 'Уведомления'], ['files', 'Файлы'], ['announcements', 'Объявления'], ['webhooks', 'Вебхуки'], ['modules', 'Модули'], ...(ADMIN_CALLS.on ? [['calls', 'Звонки']] : []), ['audit', 'Аудит-лог'], ['releases', 'Релизы']];
   const me = currentUser?.display_name || currentUser?.username || '';
   document.getElementById('page-body').innerHTML = `<div class="mm">
     <div class="mm-list">${rows.map(([k, n]) => {
@@ -1698,6 +1710,7 @@ async function renderDashboard() {
     <div id="dv-kz"></div>
 
     <section class="hm-panel dv-card fdv" id="dv-fed" aria-label="Федерация" hidden></section>
+    <section class="hm-panel dv-card fdv" id="dv-calls" aria-label="Звонки" hidden></section>
 
     <div class="dv-main">
       <section class="hm-panel dv-card xs" id="dv-swap" aria-live="polite"></section>
@@ -1760,6 +1773,7 @@ async function renderDashboard() {
   hmUpdIdle(true);
   dvMount();
   fdvStart();
+  cdvStart();
   swRender();
   if (SW.tab === 'heat') swLoadHeat();
   HM.ro?.disconnect();
@@ -4316,6 +4330,7 @@ const ST = {
 };
 const stSvg = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const ST_I = {
+  phone: stSvg('<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>'),
   msg: stSvg('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
   clip: stSvg('<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>'),
   db: stSvg('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/>'),
@@ -4712,6 +4727,7 @@ function restartService() {
 
 const SP = { open: new Set(), rate: null, disk: null, q: '', files: [], audit: [], online: 0, pend: null, loaded: false, editCustom: false, editUnit: 60, lifeCustom: false, showBk: false, showLog: false,
   db: { info: null, form: { host: '127.0.0.1', port: 5432, database: 'electron', user: 'electron', password: '', ssl: '' }, test: null, testing: false, confirm: false, job: null, down: false, t: null } };
+SP.calls = { cert: null, fed: null, cfg: null, form: { url: '', key: '', secret: '' }, busy: '', err: '', ok: '' };
 const SP_KEYS = { messages: ['edit', 'statusDays'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime', 'backupRetention'] };
 const SP_DEF = { edit: 120, statusDays: 7, imgMax: 10, imgExt: ['jpeg', 'jpg', 'png', 'gif', 'webp'], videoMax: 50, videoExt: ['mp4', 'mov', 'webm'], fileMax: 50, fileExt: [], life: 0, backupDays: [], backupTime: '03:00', backupRetention: NaN };
 const SP_AUDIT_KEY = { messages: 'edit_time_limit', attachments: 'upload_', backups: 'backup_', github: 'github_token' };
@@ -4750,6 +4766,11 @@ async function renderSettings() {
     api('GET', '/api/admin/files'), api('GET', '/api/admin/users'), api('GET', '/api/admin/audit-log?limit=200'),
     hmGet('/api/admin/overview'), api('GET', '/api/admin/database'),
   ]);
+  const callsCfg = await api('GET', '/api/admin/calls').catch(() => null);
+  SP.calls.cfg = callsCfg && !callsCfg.error ? callsCfg : null;
+  SP.calls.form = { url: SP.calls.cfg?.url || '', key: SP.calls.cfg?.key || '', secret: '' }; SP.calls.err = ''; SP.calls.ok = '';
+  api('GET', '/api/admin/calls/fed').then(r => { SP.calls.fed = r && !r.error ? r : null; if (currentPage === 'settings') spRender(); }).catch(() => {});
+  api('GET', '/api/admin/calls/install').then(r => { if (r?.job?.state === 'running' && currentPage === 'settings') { SP.open.add('calls'); lkiResume(r.job); } }).catch(() => {});
   if (currentPage !== 'settings') return;
   if (!settings || settings.error) { document.getElementById('page-body').innerHTML = '<div class="ux-page"><div class="ux-empty">Не удалось загрузить настройки</div></div>'; return; }
   stFromSettings(settings);
@@ -4904,7 +4925,7 @@ function spTiles() {
   </div>`;
 }
 
-const SP_ORDER = ['messages', 'attachments', 'backups', 'database', 'github', 'history'];
+const SP_ORDER = ['messages', 'attachments', 'backups', 'database', 'calls', 'github', 'history'];
 const spAttn = k => k === 'github' ? !ST.gh.set : k === 'backups' ? stBackupOld() : k === 'database' ? SP.db.job?.state === 'failed' : false;
 const spRow = (title, desc, ctl, extra = '', cls = '', kw = '') => spHit(title, desc, kw) ? `<div class="sp-r ${cls}"><div class="sp-l"><b>${title}</b>${desc ? `<span>${desc}</span>` : ''}${extra}</div><div class="sp-c">${ctl}</div></div>` : '';
 const spStepH = k => `<div class="sp-step"><button type="button" aria-label="Меньше" data-on-click="spStep" data-a-click="${esc(JSON.stringify([`${k}`, -1]))}">−</button><input id="sp-n-${k}" type="number" min="1" max="500" value="${spSv(k)}" aria-label="Размер в мегабайтах" data-on-input="spNum" data-a-input="${esc(JSON.stringify([`${k}`, "__value"]))}"><button type="button" aria-label="Больше" data-on-click="spStep" data-a-click="${esc(JSON.stringify([`${k}`, 1]))}">+</button><span class="u">МБ</span></div>`;
@@ -5124,12 +5145,369 @@ function spGithub() {
     `<span class="sp-stat ${g.set ? 'ok' : 'warn'}">${g.set ? 'задан' : 'не задан'}</span><div class="sp-inp ${g.err ? 'bad' : ''}" style="${g.err ? 'border-color:var(--c-red)' : ''}"><input id="st-gh" type="${g.show ? 'text' : 'password'}" placeholder="${g.set ? '•••••••• (задан)' : 'ghp_…'}" style="width:170px;font-weight:500" autocomplete="off" data-on-keydown="__h79"><button type="button" class="btn btn-ghost btn-sm" style="border:0;background:none;padding:4px 6px" aria-label="${g.show ? 'Скрыть токен' : 'Показать токен'}" data-on-click="stGhShow">${g.show ? ST_I.eyeOff : ST_I.eye}</button></div><button type="button" class="btn ux-solid" ${g.busy ? 'disabled' : ''} data-on-click="stGhSave">Сохранить</button>${g.set ? `<button type="button" class="btn btn-danger" ${g.busy ? 'disabled' : ''} data-on-click="stGhDel">Удалить</button>` : ''}`,
     g.err ? `<em class="w">${esc(g.err)}</em>` : '<span style="margin-top:1px">Достаточно прав public_repo. Токен хранится только на сервере и в браузер не возвращается</span>', 'wide', 'github токен лимит');
 }
+/* ── Звонки ── */
+function spCalls() {
+  const c = SP.calls, f = c.form, on = !!c.cfg?.enabled, busy = !!c.busy;
+  const stat = !c.cfg ? '' : on ? '<span class="sp-stat ok">включены</span>' : `<span class="sp-stat warn">${c.cfg.ready ? 'выключены' : 'не настроены'}</span>`;
+  const inp = (id, k, ph, w, type = 'text') => `<div class="sp-inp"><input id="${id}" type="${type}" value="${esc(f[k])}" placeholder="${esc(ph)}" style="width:${w}px;font-weight:500" autocomplete="off" spellcheck="false" data-on-input="spCallsF" data-a-input='${JSON.stringify([k, '__value'])}'></div>`;
+  return spRow('Звонки в личных чатах', 'Аудио и видео между двумя людьми через сервер LiveKit. Пока выключено, кнопок звонка у пользователей нет',
+    `${stat}<div class="sp-seg"><button type="button" aria-pressed="${!on}" ${busy ? 'disabled' : ''} data-on-click="spCallsOn" data-a-click='[false]'>Выключены</button><button type="button" aria-pressed="${on}" ${busy ? 'disabled' : ''} data-on-click="spCallsOn" data-a-click='[true]'>Включены</button></div>`,
+    '', 'wide', 'звонки аудио видео livekit включить')
+  + spRow('Сервер LiveKit', 'В локальной сети: ws://172.20.0.5:7880. С сертификатом: wss://calls.example.com',
+    inp('sp-ck-url', 'url', 'ws://адрес:7880', 300), '', 'wide', 'адрес сервер livekit url')
+  + spRow('Порты для файрвола', 'Какие порты должны быть открыты у сервера звонков в каждом режиме установки: локальная сеть, публичный сервер с доменом, за обратным прокси',
+    `<button type="button" class="btn btn-ghost btn-sm" data-on-click="lkpOpen">Показать порты…</button>`, '', 'wide', 'порты файрвол firewall открыть 7880 7881 7882 3478 5349 443 turn')
+  + spRow('API key и секрет', c.cfg?.secret_set ? 'Секрет задан и в браузер не возвращается: оставьте поле пустым, чтобы не менять' : 'Пара из конфига LiveKit. По подписи этого ключа LiveKit узнаёт, что токен выдал наш сервер',
+    `${inp('sp-ck-key', 'key', 'API key', 170)}${inp('sp-ck-sec', 'secret', c.cfg?.secret_set ? '•••••••• (задан)' : 'API secret', 200, 'password')}`, '', 'wide', 'ключ секрет api key secret livekit')
+  + spRow('Доступен из интернета', 'Нужно, чтобы люди с других серверов звонили через этот сервер: к нему подключатся и они. Включайте, только если адрес открыт снаружи (wss:// с сертификатом, свой или через обратный прокси)',
+    `<div class="sp-seg"><button type="button" aria-pressed="${!c.cfg?.public}" ${busy ? 'disabled' : ''} data-on-click="spCallsPublic" data-a-click='[false]'>Нет</button><button type="button" aria-pressed="${!!c.cfg?.public}" ${busy ? 'disabled' : ''} data-on-click="spCallsPublic" data-a-click='[true]'>Да</button></div>`, '', 'wide', 'публичный интернет федерация другие серверы')
+  + spCallsFed()
+  + (/^wss:/i.test(f.url) ? spCallsCert() : '')
+  + spRow('Установить на другой сервер', 'Чистый сервер с Debian или Ubuntu: по SSH поставятся LiveKit и, для публичного сервера, Caddy с сертификатом. Адрес, ключ и секрет подставятся сами',
+    `<button type="button" class="btn btn-ghost btn-sm" ${busy ? 'disabled' : ''} data-on-click="lkiOpen">Установить…</button>`, '', 'wide', 'установить ssh сервер livekit caddy сертификат домен')
+  + (c.cfg?.ready ? spRow('Данные для другого сервера', 'Адрес, ключ и секрет этого сервера звонков одним блоком. Вставьте их в такой же раздел на другом сервере чата, и он будет звонить через этот LiveKit. Секрет показывается только по вашему паролю',
+    `<button type="button" class="btn btn-ghost btn-sm" data-on-click="lkcOpen">Скопировать…</button>`, '', 'wide', 'копировать данные подключения ключ секрет другой сервер') : '')
+  + spRow('Подключение', 'Проверка спрашивает у LiveKit список комнат: так видно, что адрес, ключ и секрет верны',
+    `<button type="button" class="btn btn-ghost btn-sm" ${busy ? 'disabled' : ''} data-on-click="spCallsTest">${c.busy === 'test' ? '<span class="st-spin"></span>' : ''}Проверить</button><button type="button" class="btn ux-solid btn-sm" ${busy ? 'disabled' : ''} data-on-click="spCallsSave">${c.busy === 'save' ? '<span class="st-spin"></span>' : ''}Сохранить</button>`,
+    c.err ? `<em class="w">${esc(c.err)}</em>` : c.ok ? `<em style="color:var(--c-green)">${esc(c.ok)}</em>` : '', 'wide', 'проверить подключение сохранить');
+}
+// Сертификат адреса wss://: настоящий ничего не требует, самоподписанный клиент Electron принимает по отпечатку
+function spCallsCert() {
+  const c = SP.calls, cert = c.cert, pin = c.cfg?.cert_fp, busy = !!c.busy;
+  const fp = v => `<span class="mono" style="word-break:break-all;font-size:11.5px">${esc(v)}</span>`;
+  let extra = '', ctl = `<button type="button" class="btn btn-ghost btn-sm" ${busy ? 'disabled' : ''} data-on-click="spCallsCertCheck">${c.busy === 'cert' ? '<span class="st-spin"></span>' : ''}Проверить сертификат</button>`;
+  if (pin) { extra = `<span>Принят самоподписанный сертификат с отпечатком ${fp(pin)}. Клиент Electron доверяет только ему; браузерам такой сертификат не подойдёт.</span>`; ctl += `<button type="button" class="btn btn-ghost btn-sm" data-on-click="spCallsCertPin" data-a-click='[""]'>Убрать</button>`; }
+  else if (cert && cert.trusted) extra = `<span class="sp-stat ok">настоящий</span> <span>Издатель: ${esc(cert.issuer)}, действует до ${esc(cert.valid_to)}. Ничего принимать не нужно.</span>`;
+  else if (cert) { extra = `<span>Сертификат не от известного центра (${esc(cert.issuer || cert.subject)}). Отпечаток: ${fp(cert.fingerprint)}. Если вы сами выпустили или поставили этот сервер, примите его: клиент Electron будет доверять именно ему.</span>`; ctl += `<button type="button" class="btn ux-solid btn-sm" data-on-click="spCallsCertPin" data-a-click='${esc(JSON.stringify([cert.fingerprint]))}'>Принять по отпечатку</button>`; }
+  return spRow('Сертификат сервера', 'Нужен ли для адреса wss:// особый шаг: настоящий сертификат (Let\'s Encrypt и т. п.) ничего не требует, самоподписанный принимается по отпечатку только в клиенте Electron', ctl, extra, 'wide', 'сертификат самоподписанный отпечаток wss tls');
+}
+function spCallsCertCheck() {
+  return spCallsRun('cert', async () => {
+    const r = await api('POST', '/api/admin/calls/cert', { url: SP.calls.form.url.trim() });
+    if (r?.error) { SP.calls.err = r.error; SP.calls.cert = null; } else SP.calls.cert = r;
+  });
+}
+function spCallsPin(fp) {
+  return spCallsRun('pin', async () => {
+    const r = await api('PUT', '/api/admin/calls', { cert_fp: fp });
+    if (r?.error) { SP.calls.err = r.error; return; }
+    SP.calls.cfg = r; SP.calls.ok = fp ? 'Сертификат принят по отпечатку' : 'Отпечаток убран';
+  });
+}
+function spCallsCertPin(fp) { return spCallsPin(fp); }
+// Серверы-соседи, чьим людям разрешён наш LiveKit
+function spCallsFed() {
+  const f = SP.calls.fed, pub = !!SP.calls.cfg?.public;
+  if (!f || !f.peers?.length) return '';
+  const rows = f.peers.map(p => `<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0;${pub ? '' : 'opacity:.55'}"><input type="checkbox" ${p.allowed ? 'checked' : ''} ${pub ? '' : 'disabled'} data-on-change="spCallsAllow" data-a-change='${esc(JSON.stringify([p.instance_id, '__checked']))}'>${esc(p.name)}<span class="rb-meta">${p.online ? '' : 'нет связи'}</span></label>`).join('');
+  return spRow('Звонки с других серверов', pub ? 'Люди этих серверов смогут подключаться к вашему серверу звонков, когда звонят вашим людям или принимают их звонок. Звонок возможен, если сервер звонков публичный хотя бы у одной стороны и разрешён другой' : 'Сначала включите «Доступен из интернета»: иначе чужие люди не смогут подключиться к вашему серверу звонков (звонить они всё равно смогут через публичный сервер второй стороны)',
+    `<div style="display:flex;flex-direction:column;align-items:flex-start;min-width:170px">${rows}</div>`, '', 'wide', 'звонки другие серверы федерация разрешить');
+}
+async function spCallsPublic(on) {
+  return spCallsRun('pub', async () => {
+    const r = await api('PUT', '/api/admin/calls', { public: !!on });
+    if (r?.error) { SP.calls.err = r.error; return; }
+    SP.calls.cfg = r; toast(on ? 'Сервер отмечен как доступный из интернета' : 'Сервер отмечен как закрытый', 'success');
+  });
+}
+async function spCallsAllow(inst, on) {
+  const f = SP.calls.fed; if (!f) return;
+  f.peers.forEach(p => { if (p.instance_id === inst) p.allowed = !!on; });
+  const r = await api('PUT', '/api/admin/calls/fed', { allow: f.peers.filter(p => p.allowed).map(p => p.instance_id) });
+  if (!r?.ok) { toast(esc(r?.error || 'Не удалось сохранить'), 'error'); return; }
+  toast(on ? 'Серверу разрешено пользоваться вашим сервером звонков' : 'Доступ отозван', 'success');
+}
+function spCallsSide() {
+  return `<h5>Как это работает</h5><p class="sp-sd">Звук и видео идут через сервер LiveKit, чат-сервер лишь сводит двоих и выдаёт каждому токен на одну комнату.</p>
+    <p class="sp-sd">Сервер LiveKit можно поставить рядом или на отдельной машине. Ключ и секрет берутся из его конфига (<b>livekit-server generate-keys</b>).</p>
+    <p class="sp-sd">Без сертификата (ws://) звонки работают только в клиенте Electron. Для веб клиента и мобильного нужен wss:// с настоящим сертификатом.</p>
+    <p class="sp-sd">Между серверами комната создаётся там, где сервер звонков доступен из интернета и разрешён второй стороне. Серверу за NAT публичный адрес не нужен: его люди подключаются к чужому наружу. Если публичного нет ни у кого, звонок невозможен.</p>`;
+}
+// В поле адреса вставили блок «Адрес / API key / Секрет» (его копирует другой сервер): раскладываем по полям
+function spCallsF(k, v) {
+  if (k === 'url' && /API\s*key\s*:/i.test(v)) {
+    const g = re => (re.exec(v) || [])[1] || '';
+    const url = g(/(?:Адрес|URL)\s*:\s*(\S+)/i), key = g(/API\s*key\s*:\s*(\S+)/i), sec = g(/(?:Секрет|Secret)\s*:\s*(\S+)/i);
+    if (url && key) { Object.assign(SP.calls.form, { url, key, secret: sec }); SP.calls.ok = 'Данные вставлены: нажмите «Проверить» и «Сохранить»'; SP.calls.err = ''; spRender(); return; }
+  }
+  SP.calls.form[k] = v;
+}
+/* ── Данные подключения для другого сервера ── */
+/* ── Порты сервера звонков ── */
+// Порты берёт установщик (server/livekit-setup.sh): сигнальный 7880, медиа 7881/tcp и 7882/udp, TURN 3478/udp и 5349/tcp
+const LKP = { tab: 'lan' };
+const LKP_MODES = [['lan', 'Локальная сеть'], ['public', 'Публичный, с доменом'], ['proxy', 'За обратным прокси']];
+const LKP_DATA = {
+  lan: {
+    lead: 'Клиенты подключаются прямо по IP: ws://адрес:7880, домен и сертификат не нужны. Откройте эти порты на сервере звонков для адресов вашей сети.',
+    rows: [
+      ['7880', 'TCP', 'клиенты и сервер чата → LiveKit', 'Сигнализация (WebSocket). Сервер чата тоже обращается сюда при проверке подключения'],
+      ['7881', 'TCP', 'клиенты → LiveKit', 'Звук и видео по TCP: запасной путь, если UDP не проходит'],
+      ['7882', 'UDP', 'клиенты → LiveKit', 'Основной поток звука и видео'],
+    ],
+    note: 'TURN в этом режиме не нужен: клиенты и сервер в одной сети, обходить NAT не требуется.',
+  },
+  public: {
+    lead: 'LiveKit и Caddy стоят на одном сервере, домен указывает на него. Эти порты должны быть открыты снаружи, для всех адресов. 7880 наружу открывать не нужно: LiveKit слушает только 127.0.0.1, к нему идёт Caddy.',
+    rows: [
+      ['80', 'TCP', 'интернет → Caddy', 'Выпуск и продление сертификата Let’s Encrypt'],
+      ['443', 'TCP', 'клиенты и сервер чата → Caddy', 'Сигнализация по wss://домен'],
+      ['7881', 'TCP', 'клиенты → LiveKit', 'Звук и видео по TCP: запасной путь'],
+      ['7882', 'UDP', 'клиенты → LiveKit', 'Основной поток звука и видео'],
+      ['5349', 'TCP', 'клиенты → LiveKit', 'TURN по TLS для тех, у кого строгий файрвол'],
+      ['3478', 'UDP', 'клиенты → LiveKit', 'TURN по UDP'],
+    ],
+    note: 'Если включено «Доступен из интернета», к этому серверу подключаются и люди с других серверов: ограничивать эти порты по адресам нельзя.',
+  },
+  proxy: {
+    lead: 'Сертификат и wss:// ведёт ваш обратный прокси (nginx и т. п.), Caddy на сервере звонков нет. Прокси проксирует домен на http://адрес:7880 с поддержкой WebSocket.',
+    rows: [
+      ['443', 'TCP', 'клиенты → ваш прокси', 'Сигнализация по wss://домен: порт открывается на прокси, а не на сервере звонков'],
+      ['7880', 'TCP', 'прокси → LiveKit', 'Только если прокси на другой машине, и только для его адреса. Если прокси на этом же сервере, LiveKit слушает 127.0.0.1 и порт не открывают'],
+      ['7881', 'TCP', 'клиенты → LiveKit', 'Звук и видео по TCP: запасной путь. Пробросьте с внешнего адреса на сервер звонков'],
+      ['7882', 'UDP', 'клиенты → LiveKit', 'Основной поток звука и видео. Тоже пробросьте'],
+      ['3478', 'UDP', 'клиенты → LiveKit', 'TURN по UDP'],
+    ],
+    note: 'Медиа проходит мимо прокси, поэтому 7881 и 7882 должны быть доступны клиентам напрямую.',
+  },
+};
+function lkpOpen() { LKP.tab = /^wss:/i.test(SP.calls?.form?.url || SP.calls?.cfg?.url || '') ? 'public' : 'lan'; lkpRender(); openModal('modal-lkports'); }
+function lkpClose() { closeModal('modal-lkports'); }
+function lkpTab(t) { LKP.tab = t; lkpRender(); }
+function lkpText() {
+  const d = LKP_DATA[LKP.tab];
+  return LKP_MODES.find(m => m[0] === LKP.tab)[1] + '\n' + d.rows.map(r => r[0] + '/' + r[1].toLowerCase() + ' — ' + r[2] + ': ' + r[3]).join('\n');
+}
+async function lkpCopy() { try { await navigator.clipboard.writeText(lkpText()); toast('Список портов скопирован', 'success'); } catch { toast('Не удалось скопировать', 'error'); } }
+function lkpRender() {
+  const box = document.getElementById('lkports-box'); if (!box) return;
+  const d = LKP_DATA[LKP.tab], p = 'font-size:12.5px;color:var(--c-text2);line-height:1.7;margin:0';
+  box.innerHTML = `<div class="modal-head"><h3>Порты для файрвола</h3><button class="modal-close" aria-label="Закрыть" data-on-click="lkpClose">✕</button></div>
+    <div class="modal-body">
+      <div class="sp-seg" style="margin-bottom:12px">${LKP_MODES.map(([k, l]) => `<button type="button" aria-pressed="${LKP.tab === k}" data-on-click="lkpTab" data-a-click='["${k}"]'>${l}</button>`).join('')}</div>
+      <p style="${p};margin-bottom:12px">${esc(d.lead)}</p>
+      <div class="card" style="padding:2px 14px">${d.rows.map(r => `<div style="display:grid;grid-template-columns:64px 52px minmax(0,1fr);gap:12px;align-items:start;padding:10px 0;border-top:1px solid var(--c-border,rgba(127,127,127,.18))"><b class="mono" style="font-size:15px">${r[0]}</b><span class="sp-stat" style="justify-self:start">${r[1]}</span><div style="min-width:0;font-size:12.5px;line-height:1.55"><b style="font-size:13px">${esc(r[2])}</b><br><span style="color:var(--c-text2)">${esc(r[3])}</span></div></div>`).join('').replace('border-top:1px solid var(--c-border,rgba(127,127,127,.18))','')}</div>
+      <p style="${p};margin-top:12px">${esc(d.note)}</p>
+      <p style="${p};margin-top:8px">Порты записаны в конфиге LiveKit (<span class="mono">/etc/livekit/livekit.yaml</span>: port, rtc.tcp_port, rtc.udp_port). Если LiveKit поставлен не нашим установщиком, а порты в конфиге другие, ориентируйтесь на него.</p>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-on-click="lkpClose">Закрыть</button><button class="btn btn-primary" data-on-click="lkpCopy">Копировать список</button></div>`;
+}
+const LKC = { step: 'pw', pw: '', err: '', busy: false, data: null, ok: '' };
+function lkcOpen() { Object.assign(LKC, { step: 'pw', pw: '', err: '', busy: false, data: null, ok: '' }); lkcRender(); openModal('modal-lkcopy'); setTimeout(() => document.getElementById('lkc-pw')?.focus(), 200); }
+function lkcClose() { LKC.data = null; LKC.pw = ''; closeModal('modal-lkcopy'); }
+function lkcApw(v) { LKC.pw = v; }
+function lkcKey(ev) { if (ev.key === 'Enter') lkcGo(); }
+const lkcText = d => `Адрес: ${d.url}\nAPI key: ${d.key}\nСекрет: ${d.secret}`;
+function lkcRender() {
+  const box = document.getElementById('lkcopy-box'); if (!box) return;
+  const p = 'font-size:12.5px;color:var(--c-text2);line-height:1.7;margin:0';
+  if (LKC.step === 'pw') {
+    box.innerHTML = `<div class="modal-head"><h3>Данные подключения</h3><button class="modal-close" aria-label="Закрыть" data-on-click="lkcClose">✕</button></div>
+      <div class="modal-body"><p style="${p};margin-bottom:12px">Секрет даёт право создавать комнаты и выдавать токены на этом сервере звонков: с ним к нему можно подключить другой сервер чата. Передавайте его только доверенным людям. Подтвердите действие своим паролем.</p>
+        <div class="fg"><label>Ваш пароль администратора</label><input id="lkc-pw" type="password" autocomplete="current-password" placeholder="••••••••" value="${esc(LKC.pw)}" data-on-input="lkcApw" data-a-input='["__value"]' data-on-keydown="lkcKey" data-a-keydown='["__event"]'></div>
+        <div class="err">${esc(LKC.err)}</div></div>
+      <div class="modal-foot"><button class="btn btn-ghost" data-on-click="lkcClose">Отмена</button><button class="btn btn-primary" ${LKC.busy ? 'disabled' : ''} data-on-click="lkcGo">${LKC.busy ? 'Проверка…' : 'Показать'}</button></div>`;
+    return;
+  }
+  const d = LKC.data, row = (lab, v, k) => `<div class="sp-r" style="padding:8px 0"><div class="sp-l"><b>${lab}</b><span class="mono" style="word-break:break-all;font-size:12px">${esc(v)}</span></div><div class="sp-c"><button type="button" class="btn btn-ghost btn-sm" data-on-click="lkcCopy" data-a-click='["${k}"]'>Копировать</button></div></div>`;
+  box.innerHTML = `<div class="modal-head"><h3>Данные подключения</h3><button class="modal-close" aria-label="Закрыть" data-on-click="lkcClose">✕</button></div>
+    <div class="modal-body"><div class="card" style="padding:4px 14px;margin-bottom:12px">${row('Адрес', d.url, 'url')}${row('API key', d.key, 'key')}${row('Секрет', d.secret, 'secret')}</div>
+      <p style="${p}">На другом сервере чата откройте «Настройки → Звонки», вставьте скопированный блок в поле «Сервер LiveKit»: адрес, ключ и секрет разложатся сами. Дальше «Проверить», «Сохранить», «Включены».</p>
+      <div class="err" style="color:var(--c-green)">${esc(LKC.ok)}</div></div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-on-click="lkcClose">Закрыть</button><button class="btn btn-primary" data-on-click="lkcCopy" data-a-click='["all"]'>Копировать всё</button></div>`;
+}
+async function lkcGo() {
+  if (LKC.busy) return;
+  const pw = document.getElementById('lkc-pw')?.value || LKC.pw;
+  if (!pw) { LKC.err = 'Введите пароль'; return lkcRender(); }
+  LKC.busy = true; LKC.err = ''; lkcRender();
+  let r; try { r = await api('POST', '/api/admin/calls/credentials', { admin_password: pw }); } catch { r = null; }
+  LKC.busy = false; LKC.pw = '';
+  if (!r || r.error) { LKC.err = r?.error || 'Не удалось получить данные'; return lkcRender(); }
+  LKC.data = r; LKC.step = 'show'; lkcRender();
+}
+async function lkcCopy(what) {
+  const d = LKC.data; if (!d) return;
+  const text = what === 'all' ? lkcText(d) : d[what];
+  try { await navigator.clipboard.writeText(text); LKC.ok = what === 'all' ? 'Скопировано: адрес, ключ и секрет' : 'Скопировано'; }
+  catch { LKC.ok = ''; toast('Браузер не дал скопировать: выделите текст вручную', 'error'); }
+  lkcRender();
+}
+async function spCallsRun(kind, fn) {
+  const c = SP.calls;
+  if (c.busy) return;
+  c.busy = kind; c.err = ''; c.ok = ''; spRender();
+  try { await fn(); } catch { c.err = 'Нет связи с сервером'; }
+  c.busy = ''; spRender();
+}
+const spCallsBody = () => { const f = SP.calls.form, b = { url: f.url.trim(), key: f.key.trim() }; if (f.secret) b.secret = f.secret; return b; };
+function spCallsTest() {
+  return spCallsRun('test', async () => {
+    const r = await api('POST', '/api/admin/calls/test', spCallsBody());
+    if (r?.ok) SP.calls.ok = r.rooms ? `Подключение работает, комнат сейчас: ${r.rooms}` : 'Подключение работает';
+    else SP.calls.err = r?.error || 'Не удалось проверить подключение';
+  });
+}
+function spCallsSave() {
+  return spCallsRun('save', async () => {
+    const r = await api('PUT', '/api/admin/calls', spCallsBody());
+    if (r?.error) { SP.calls.err = r.error; return; }
+    SP.calls.cfg = r; SP.calls.form.secret = ''; SP.calls.ok = 'Сохранено'; toast('Настройки звонков сохранены', 'success');
+  });
+}
+function spCallsOn(on) {
+  return spCallsRun('on', async () => {
+    const r = await api('PUT', '/api/admin/calls', { ...spCallsBody(), enabled: !!on });
+    if (r?.error) { SP.calls.err = r.error; return; }
+    SP.calls.cfg = r; SP.calls.form.secret = ''; toast(on ? 'Звонки включены' : 'Звонки выключены', 'success'); callsNavSync();
+  });
+}
+/* ── Установка LiveKit по SSH ── */
+// Шаги окна: form (адрес и пароль) → confirm (отпечаток сервера и пароль администратора) → run → done | fail
+const LKI = { step: 'form', busy: false, err: '', job: null, t: null, info: null, pw: '', f: { host: '', port: '22', user: 'root', password: '', mode: 'lan', local: false, domain: '' } };
+const LKI_STAGES = ['Проверка системы', 'Установка пакетов', 'Загрузка LiveKit', 'Настройка и ключи', 'Запуск службы', 'Сертификат', 'Порты и проверка'];
+function lkiOpen() { Object.assign(LKI, { step: 'form', busy: false, err: '', job: null, info: null, pw: '' }); LKI.f.password = ''; lkiRender(); openModal('modal-lkinst'); setTimeout(() => document.getElementById('lki-host')?.focus(), 200); }
+function lkiF(k, v) { LKI.f[k] = v; }
+function lkiMode(m) { LKI.f.mode = m; lkiRender(); }
+function lkiLocal(v) { LKI.f.local = !!v; }
+async function lkiClose() {
+  clearInterval(LKI.t);
+  const done = LKI.step === 'done';
+  LKI.f.password = ''; LKI.pw = '';
+  closeModal('modal-lkinst');
+  if (done) {
+    // Адрес, ключ и секрет уже записаны на сервере: показываем их в форме, включает звонки администратор
+    const c = await api('GET', '/api/admin/calls');
+    if (c && !c.error) { SP.calls.cfg = c; SP.calls.form = { url: c.url, key: c.key, secret: '' }; }
+    SP.open.add('calls');
+    if (currentPage === 'settings') { spRender(); spScroll('calls'); }
+    toast('Данные подключения подставлены. Проверьте подключение и включите звонки', 'success');
+  }
+}
+function lkiHead(t, x = true) { return `<div class="modal-head"><h3>${t}</h3>${x ? '<button class="modal-close" aria-label="Закрыть" data-on-click="lkiClose">✕</button>' : ''}</div>`; }
+function lkiRender() {
+  const box = document.getElementById('lkinst-box'); if (!box) return;
+  const f = LKI.f, j = LKI.job, p = 'font-size:12.5px;color:var(--c-text2);line-height:1.7;margin:0';
+  const inp = (id, label, k, type = 'text', ph = '', extra = '') => `<div class="fg" ${extra}><label>${label}</label><input id="${id}" type="${type}" value="${esc(f[k])}" placeholder="${esc(ph)}" autocomplete="off" spellcheck="false" data-on-input="lkiF" data-a-input="${esc(JSON.stringify([k, '__value']))}"></div>`;
+  if (LKI.step === 'form') {
+    box.innerHTML = `${lkiHead('Установить сервер звонков')}
+      <div class="modal-body">
+        <p style="${p};margin-bottom:12px">Нужен чистый сервер с Debian или Ubuntu и доступом по SSH под root. Пароль используется только для этой установки и нигде не сохраняется.</p>
+        <div style="display:grid;grid-template-columns:1fr 90px;gap:10px">${inp('lki-host', 'Адрес сервера', 'host', 'text', '172.20.0.5 или calls.example.com')}${inp('lki-port', 'Порт', 'port', 'text', '22')}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${inp('lki-user', 'Логин', 'user', 'text', 'root')}${inp('lki-pass', 'Пароль', 'password', 'password', '••••••••')}</div>
+        <div class="fg"><label>Тип сервера</label><div class="sp-seg"><button type="button" aria-pressed="${f.mode === 'lan'}" data-on-click="lkiMode" data-a-click='["lan"]'>Локальная сеть</button><button type="button" aria-pressed="${f.mode === 'public'}" data-on-click="lkiMode" data-a-click='["public"]'>Публичный</button><button type="button" aria-pressed="${f.mode === 'proxy'}" data-on-click="lkiMode" data-a-click='["proxy"]'>За прокси</button></div></div>
+        ${f.mode === 'public' ? inp('lki-domain', 'Домен', 'domain', 'text', 'calls.example.com') + `<p style="${p}">Домен уже должен указывать на этот сервер, а порты 80 и 443 быть открыты снаружи: Caddy выпустит сертификат сам. Такой сервер подходит для звонков из браузера и с других серверов. Если на этом сервере уже работает обратный прокси, выберите «За прокси».</p>`
+          : f.mode === 'proxy' ? inp('lki-domain', 'Домен, который отдаёт ваш прокси', 'domain', 'text', 'calls.example.com') + `<label style="display:flex;gap:8px;align-items:center;font-size:12.5px;margin:2px 0 8px"><input type="checkbox" ${f.local ? 'checked' : ''} data-on-change="lkiLocal" data-a-change='["__checked"]'>Прокси работает на этом же сервере</label><p style="${p}">Сертификат и адрес wss:// ведёт ваш обратный прокси (nginx, Caddy, Nginx Proxy Manager…), Caddy не ставится. После установки покажем, что прописать в прокси. Звук и видео идут мимо прокси: на этот сервер нужно пробросить порты 7881/tcp и 7882/udp.</p>`
+          : `<p style="${p}">Без сертификата, по адресу ws://IP:7880. Подходит для клиента Electron внутри одной сети. Браузер и мобильный клиент такой сервер не примут.</p>`}
+        <div class="err" id="lki-err">${esc(LKI.err)}</div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-ghost" data-on-click="lkiClose">Отмена</button><button class="btn btn-primary" ${LKI.busy ? 'disabled' : ''} data-on-click="lkiCheck">${LKI.busy ? 'Проверка…' : 'Проверить подключение'}</button></div>`;
+    return;
+  }
+  if (LKI.step === 'confirm') {
+    const i = LKI.info;
+    box.innerHTML = `${lkiHead('Подтвердите сервер')}
+      <div class="modal-body">
+        <p style="${p};margin-bottom:10px">Подключение удалось. Это тот сервер, который вы имели в виду?</p>
+        <div class="card" style="padding:4px 14px;margin-bottom:12px">
+          <div class="sp-r" style="padding:8px 0"><div class="sp-l"><b>${esc(f.host)}:${esc(f.port)}</b><span>${esc(i.os)}, ${esc(i.arch)}</span></div></div>
+          <div class="sp-r" style="padding:8px 0"><div class="sp-l"><b>Отпечаток ключа сервера</b><span class="mono" style="word-break:break-all;font-size:11.5px">${esc(i.fingerprint)}</span></div></div>
+        </div>
+        <p style="${p};margin-bottom:12px">Если сервер уже знаком, сравните отпечаток с тем, что показывает команда <code class="st-code">ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub</code> на самой машине. На ней будет установлен LiveKit${f.mode === 'public' ? ' и Caddy с сертификатом для ' + esc(f.domain) : f.mode === 'proxy' ? ' для работы за вашим прокси (' + esc(f.domain) + ')' : ''}. Установка занимает несколько минут, действие подтверждается вашим паролем.</p>
+        <div class="fg"><label>Ваш пароль администратора</label><input id="lki-apw" type="password" autocomplete="current-password" placeholder="••••••••" value="${esc(LKI.pw)}" data-on-input="lkiApw" data-a-input='["__value"]' data-on-keydown="lkiKey" data-a-keydown='["__event"]'></div>
+        <div class="err" id="lki-err">${esc(LKI.err)}</div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-ghost" data-on-click="lkiBack">Назад</button><button class="btn btn-primary" ${LKI.busy ? 'disabled' : ''} data-on-click="lkiStart">${LKI.busy ? 'Запуск…' : 'Установить'}</button></div>`;
+    return;
+  }
+  const st = j?.stage || 1, pct = Math.round(j?.pct || 0);
+  if (LKI.step === 'run') {
+    box.innerHTML = `${lkiHead('Установка сервера звонков', false)}
+      <div class="modal-body">
+        <div class="pgi-pc"><b>${pct}%</b><span>${esc(j?.text || '')}</span></div>
+        <div class="sp-pg"><i style="width:${pct}%"></i></div>
+        <div class="pgi-st">${LKI_STAGES.map((n, i) => `<div class="${i + 1 < st ? 'dn' : i + 1 === st ? 'cur' : ''}"><i>${i + 1 < st ? '✓' : i + 1 === st ? '…' : ''}</i>${n}</div>`).join('')}</div>
+        <p class="rb-meta" style="margin:12px 0 0;white-space:normal">Не закрывайте страницу до конца установки. Если закроете, установка продолжится на сервере, а ход можно будет увидеть здесь снова.</p>
+      </div>`;
+    return;
+  }
+  if (LKI.step === 'done') {
+    const r = j?.result || {};
+    box.innerHTML = `${lkiHead('Сервер звонков установлен', false)}
+      <div class="modal-body">
+        <div class="pgi-pc"><b>100%</b><span>Готово</span></div><div class="sp-pg"><i style="width:100%"></i></div>
+        <div class="pgi-st">${LKI_STAGES.map(n => `<div class="dn"><i>✓</i>${n}</div>`).join('')}</div>
+        <p style="${p};margin-top:14px">Адрес <b>${esc(r.url || '')}</b>, ключ и секрет записаны в настройки. Останется проверить подключение и включить звонки. Копия ключа лежит на самом сервере в <code class="st-code">/etc/livekit/key.txt</code> (доступ только у root).${r.public ? '' : ' Сервер без сертификата: звонки работают только в клиенте Electron.'}</p>
+        ${r.proxy ? lkiProxyHint(r) : ''}
+      </div>
+      <div class="modal-foot"><button class="btn btn-primary" data-on-click="lkiClose">Закрыть</button></div>`;
+    return;
+  }
+  box.innerHTML = `${lkiHead('Установка не удалась')}
+    <div class="modal-body">
+      <p style="font-size:12.5px;color:var(--c-red-text);line-height:1.7;margin:0">${esc(j?.error || 'Неизвестная ошибка')}</p>
+      <p style="${p};margin-top:10px">Установку можно повторить: уже сделанные шаги пропустятся, ключи сохранятся.</p>
+      ${(j?.log || []).length ? `<div class="pgi-log">${esc(j.log.slice(-12).join('\n'))}</div>` : ''}
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-on-click="lkiBack">Изменить данные</button><button class="btn btn-primary" data-on-click="lkiClose">Закрыть</button></div>`;
+}
+function lkiApw(v) { LKI.pw = v; }
+function lkiKey(ev) { if (ev.key === 'Enter') lkiStart(); }
+function lkiProxyHint(r) {
+  const up = r.local ? '127.0.0.1' : (r.ip || 'IP-сервера звонков');
+  const cfg = `location / {\n    proxy_pass http://${up}:7880;\n    proxy_http_version 1.1;\n    proxy_set_header Upgrade $http_upgrade;\n    proxy_set_header Connection "upgrade";\n    proxy_set_header Host $host;\n    proxy_read_timeout 3600s;\n    proxy_send_timeout 3600s;\n}`;
+  return `<p style="font-size:12.5px;color:var(--c-text2);line-height:1.7;margin:12px 0 6px"><b>Что прописать в прокси</b> для домена ${esc(r.domain)}: проксирование на <code class="st-code">http://${esc(up)}:7880</code> с поддержкой WebSocket (заголовки Upgrade и Connection). Пример для nginx:</p><div class="pgi-log" style="white-space:pre;max-height:none">${esc(cfg)}</div>
+    <p style="font-size:12.5px;color:var(--c-text2);line-height:1.7;margin:8px 0 0">На роутере пробросьте <b>7881/tcp</b> и <b>7882/udp</b> на ${esc(r.ip || 'этот сервер')}: звук и видео идут напрямую, а не через прокси.</p>`;
+}
+function lkiBack() { clearInterval(LKI.t); Object.assign(LKI, { step: 'form', err: '', busy: false, job: null }); lkiRender(); }
+function lkiBody() { const f = LKI.f; return { host: f.host.trim(), port: f.port, user: f.user, password: f.password, mode: f.mode, local: f.local, domain: f.domain.trim() }; }
+async function lkiCheck() {
+  if (LKI.busy) return;
+  const f = LKI.f;
+  if (!f.host.trim()) { LKI.err = 'Укажите адрес сервера'; return lkiRender(); }
+  if (!f.password) { LKI.err = 'Введите пароль'; return lkiRender(); }
+  if (f.mode !== 'lan' && !f.domain.trim()) { LKI.err = 'Укажите домен'; return lkiRender(); }
+  LKI.busy = true; LKI.err = ''; lkiRender();
+  let r; try { r = await api('POST', '/api/admin/calls/install/check', lkiBody()); } catch { r = null; }
+  LKI.busy = false;
+  if (!r?.ok) { LKI.err = r?.error || 'Не удалось проверить подключение'; return lkiRender(); }
+  LKI.info = r; LKI.step = 'confirm'; LKI.pw = ''; lkiRender();
+  setTimeout(() => document.getElementById('lki-apw')?.focus(), 100);
+}
+async function lkiStart() {
+  if (LKI.busy) return;
+  const apw = document.getElementById('lki-apw')?.value || LKI.pw;
+  if (!apw) { LKI.err = 'Введите пароль'; return lkiRender(); }
+  LKI.busy = true; LKI.err = ''; lkiRender();
+  let r; try { r = await api('POST', '/api/admin/calls/install', { ...lkiBody(), fingerprint: LKI.info.fingerprint, admin_password: apw }); } catch { r = null; }
+  LKI.busy = false; LKI.pw = '';
+  if (!r?.ok) { LKI.err = r?.error || 'Не удалось начать установку'; return lkiRender(); }
+  LKI.f.password = ''; LKI.job = r.job; LKI.step = 'run'; lkiRender(); lkiPoll();
+}
+function lkiPoll() {
+  clearInterval(LKI.t);
+  LKI.t = setInterval(async () => {
+    try {
+      const res = await fetch('/api/admin/calls/install?_t=' + Date.now(), { headers: { Authorization: 'Bearer ' + token, 'Cache-Control': 'no-cache' } });
+      if (!res.ok) return;
+      const { job } = await res.json();
+      if (!job) return;
+      LKI.job = job;
+      if (job.state === 'done') { LKI.step = 'done'; clearInterval(LKI.t); }
+      else if (job.state === 'failed') { LKI.step = 'fail'; clearInterval(LKI.t); }
+      lkiRender();
+    } catch {}
+  }, 1000);
+}
+// Страницу обновили во время установки: возвращаемся в окно
+function lkiResume(job) { LKI.job = job; LKI.step = 'run'; lkiRender(); openModal('modal-lkinst'); lkiPoll(); }
+
 function spHistory() {
   const rows = SP.audit.filter(a => /настрой|копи|обнов|перезапуск/i.test(a.action)), list = SP.showLog ? rows : rows.slice(0, 5);
   if (!rows.length) return spHit('история изменений журнал') ? '<div class="rb-meta" style="padding:14px 4px">Изменений пока не было</div>' : '';
   return `${list.map(a => `<div class="sp-log"><span class="tm">${esc(uaSeen(a.created_at))}</span><span>${esc(a.action)}${a.target ? `: <span class="rb-meta">${esc(a.target)}</span>` : ''}</span><span class="rb-meta">${esc(a.actor_name || '')}</span></div>`).join('')}${rows.length > 5 ? `<div style="padding:10px 4px"><button type="button" class="sp-link" data-on-click="__h88">${SP.showLog ? 'Свернуть' : 'Показать всё · ' + rows.length}</button></div>` : ''}`;
 }
-const SP_BODY = { messages: spMessages, attachments: spAttachments, backups: spBackups, database: spDatabase, github: spGithub, history: spHistory };
+const SP_BODY = { messages: spMessages, attachments: spAttachments, backups: spBackups, database: spDatabase, calls: spCalls, github: spGithub, history: spHistory };
 function spSug2(text, btn, fn, arg) { return `<div class="sp-sg"><span>${text}</span><button type="button" class="btn btn-ghost btn-sm" data-on-click="${fn}" data-a-click="${esc(JSON.stringify([arg]))}" style="color:var(--c-primary)">${btn}</button></div>`; }
 const SP_SIDE = {
   messages: () => `<h5>Как это работает</h5><div class="st-ex" style="margin:0">${stEditExample()}</div><div class="st-cmp" style="margin-top:12px"><span>Для сравнения:</span><span>WhatsApp: <b>15 минут</b></span><span>Telegram: <b>48 часов</b></span></div>`,
@@ -5148,6 +5526,7 @@ const SP_SIDE = {
   },
   github: () => `<h5>Лимит запросов в час</h5><div class="sp-lim"><div><span>без токена</span><i style="width:${ST.gh.set ? 2 : 100}%;background:${ST.gh.set ? 'var(--c-muted)' : 'var(--c-orange)'}"></i><b>60</b></div><div><span>с токеном</span><i style="width:100%;background:${ST.gh.set ? 'var(--c-green)' : 'var(--c-muted)'}"></i><b>5000</b></div></div><p class="sp-sd">Сейчас: <b>${ST.gh.set ? 'с токеном' : 'без токена'}</b>.${SP.rate && !SP.rate.error ? ` Потрачено <b>${SP.rate.used} из ${SP.rate.limit}</b>, остаток обнулится в ${hmClock(SP.rate.reset * 1000)}.` : ''} Проверка обновлений делает несколько запросов.</p>${ST.gh.set ? '' : spSug2('Задайте токен: лимит вырастет в 80 раз', 'К полю токена', 'spSug', 'gh')}`,
   database: () => spDbSide(),
+  calls: () => spCallsSide(),
   history: () => '',
 };
 function spQuickBtn(k) {
@@ -5156,6 +5535,7 @@ function spQuickBtn(k) {
   return '';
 }
 function spSummary(k) {
+  if (k === 'calls') { const c = SP.calls.cfg; return !c ? '—' : c.enabled ? 'включены' : c.ready ? 'выключены' : 'не настроены'; }
   const last = ST.backups[0];
   if (k === 'messages') return `${stDur(spSv('edit'))} на правку`;
   if (k === 'attachments') return `картинки до ${spSv('imgMax')} МБ · видео до ${spSv('videoMax')} МБ · файлы до ${spSv('fileMax')} МБ · хранение ${spSv('life') ? spSv('life') + ' дн' : 'всегда'}`;
@@ -5169,7 +5549,7 @@ function spMini(k) {
   if (k === 'backups') return `<span class="sp-md" title="Копии за 14 дней">${Array.from({ length: 14 }, (_, i) => 13 - i).map(i => { const d = new Date(); d.setDate(d.getDate() - i); return `<i class="${ST.backups.some(b => new Date(b.created_at * 1000).toDateString() === d.toDateString()) ? 'have' : ''}"></i>`; }).join('')}</span>`;
   return '';
 }
-const SP_META = { messages: ['Сообщения', ST_I.msg], attachments: ['Вложения', ST_I.clip], backups: ['Резервные копии', ST_I.db], database: ['База данных', ST_I.db], github: ['GitHub', ST_I.gh], history: ['История', ST_I.clock] };
+const SP_META = { messages: ['Сообщения', ST_I.msg], attachments: ['Вложения', ST_I.clip], backups: ['Резервные копии', ST_I.db], database: ['База данных', ST_I.db], calls: ['Звонки', ST_I.phone], github: ['GitHub', ST_I.gh], history: ['История', ST_I.clock] };
 function spLastChange(k) {
   const key = SP_AUDIT_KEY[k]; if (!key) return null;
   return SP.audit.find(a => a.action === 'Изменение настроек' && String(a.target || '').includes(key));
@@ -5460,20 +5840,20 @@ function fdvNice(mx) {
   const p = Math.pow(10, Math.floor(Math.log10(mx))), f = mx / p;
   return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
 }
-function fdvChart(up, dn, labelsT, fmt) {
+function fdvChart(up, dn, labelsT, fmt, period = FDV.period, names = ['отправлено', 'получено'], label = 'График обмена') {
   const W = 640, H = 170, pad = 30, n = up.length, mid = H / 2 - 6, top = fdvNice(Math.max(1, ...up, ...dn)), bw = (W - pad) / n;
   let s = '';
   [-1, 0, 1].forEach(g => { const y = mid + g * (mid - 8); s += `<line class="${g === 0 ? 'ax' : 'gl'}" x1="${pad}" x2="${W}" y1="${y}" y2="${y}"/>`; });
   s += `<text x="0" y="14">${fmt(top)}</text><text x="0" y="${H - 18}">${fmt(top)}</text><text x="0" y="${mid + 3}">0</text>`;
   for (let i = 0; i < n; i++) {
     const x = pad + i * bw + bw * 0.18, w = bw * 0.64, hu = up[i] / top * (mid - 8), hd = dn[i] / top * (mid - 8);
-    s += `<rect x="${x}" y="${mid - hu}" width="${w}" height="${Math.max(hu, up[i] ? 1.5 : 0)}" rx="2" fill="var(--c-primary)"><title>отправлено: ${fmt(up[i])}</title></rect>`;
-    s += `<rect x="${x}" y="${mid}" width="${w}" height="${Math.max(hd, dn[i] ? 1.5 : 0)}" rx="2" fill="var(--dv-c2,#7c8cff)"><title>получено: ${fmt(dn[i])}</title></rect>`;
+    s += `<rect x="${x}" y="${mid - hu}" width="${w}" height="${Math.max(hu, up[i] ? 1.5 : 0)}" rx="2" fill="var(--c-primary)"><title>${names[0]}: ${fmt(up[i])}</title></rect>`;
+    s += `<rect x="${x}" y="${mid}" width="${w}" height="${Math.max(hd, dn[i] ? 1.5 : 0)}" rx="2" fill="var(--dv-c2,#7c8cff)"><title>${names[1]}: ${fmt(dn[i])}</title></rect>`;
   }
-  const tl = t => { const d = new Date(t * 1000); return FDV.period === 'day' ? String(d.getHours()).padStart(2, '0') + ':00' : FDV.period === 'week' ? ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'][d.getDay()] : String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0'); };
-  const ticks = FDV.period === 'day' ? [0, 6, 12, 18, n - 1] : FDV.period === 'week' ? [...Array(n).keys()] : [0, 7, 14, 21, n - 1];
-  ticks.forEach((i, j) => { const xx = pad + (i + 0.5) * bw; s += `<text x="${xx}" y="${H - 3}" text-anchor="${j === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${i === n - 1 && FDV.period !== 'week' ? (FDV.period === 'day' ? 'сейчас' : 'сегодня') : tl(labelsT[i])}</text>`; });
-  return `<svg class="fdv-ch" viewBox="0 0 ${W} ${H}" role="img" aria-label="График обмена">${s}</svg>`;
+  const tl = t => { const d = new Date(t * 1000); return period === 'day' ? String(d.getHours()).padStart(2, '0') + ':00' : period === 'week' ? ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'][d.getDay()] : String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0'); };
+  const ticks = period === 'day' ? [0, 6, 12, 18, n - 1] : period === 'week' ? [...Array(n).keys()] : [0, 7, 14, 21, n - 1];
+  ticks.forEach((i, j) => { const xx = pad + (i + 0.5) * bw; s += `<text x="${xx}" y="${H - 3}" text-anchor="${j === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${i === n - 1 && period !== 'week' ? (period === 'day' ? 'сейчас' : 'сегодня') : tl(labelsT[i])}</text>`; });
+  return `<svg class="fdv-ch" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">${s}</svg>`;
 }
 function fdvRender() {
   const box = document.getElementById('dv-fed'), d = FDV.data;
@@ -5515,6 +5895,63 @@ function fdvToggle() {
 }
 function fdvMetric(m) { FDV.metric = m; fdvRender(); }
 function fdvPeriod(p) { FDV.period = p; try { localStorage.setItem('fdv-period', p); } catch {} fdvLoad(); }
+
+/* ── Блок «Звонки» на главной ── */
+// Такой же, как «Федерация»: свёрнут — итоги за сутки, раскрыт — график и список тех, кто звонит чаще всего.
+// Виден, когда звонки настроены или уже были. Разметка и стили общие с блоком федерации (fdv-*).
+const CDV = { data: null, open: false, period: 'day', metric: 'calls', timer: null, json: '' };
+try { CDV.open = localStorage.getItem('cdv-open') === '1'; CDV.period = localStorage.getItem('cdv-period') || 'day'; } catch {}
+function cdvStart() {
+  clearInterval(CDV.timer);
+  cdvLoad();
+  CDV.timer = setInterval(() => { if (currentPage !== 'dashboard') { clearInterval(CDV.timer); return; } if (!document.hidden) cdvLoad(); }, 2000);
+}
+async function cdvLoad() {
+  const r = await api('GET', '/api/admin/calls/stats?period=' + CDV.period);
+  if (!r || r.error) return;
+  const j = JSON.stringify(r), same = j === CDV.json && document.getElementById('dv-calls')?.childElementCount;
+  CDV.data = r; CDV.json = j;
+  if (!same) cdvRender();
+}
+function cdvRender() {
+  const box = document.getElementById('dv-calls'), d = CDV.data;
+  if (!box) return;
+  if (!d || !d.show) { box.hidden = true; box.innerHTML = ''; return; }
+  const t = d.totals, per = CDV.period, periodLabel = { day: 'за сутки', week: 'за неделю', month: 'за месяц' }[per];
+  const dot = d.enabled && d.ready ? '' : 'off';
+  const sub = !d.ready ? 'не настроены' : !d.enabled ? 'выключены' : d.live ? `сейчас идёт: ${d.live}` : d.ringing ? 'идёт вызов' : 'сейчас тихо';
+  const one = (lab, v, cls = '') => `<span class="fdv-st">${lab}<span class="vv"><b class="${cls}">${v}</b></span></span>`;
+  const miss = t.miss ? `<span class="fdv-chips"><span class="fdv-chip">не дошли ${t.miss}</span></span>` : '';
+  let h = `<div class="fdv-h"><div class="fdv-ttl"><span class="fdv-dot ${dot}"></span><b>Звонки</b><span class="dv-sub">${sub}</span></div>
+    <div class="fdv-stats">${one('звонков', t.all)}${one('принято', t.ok, 'fdv-up')}${one('минут', t.minutes)}${one('с видео', t.video)}${miss}</div>
+    <button type="button" class="fdv-tg" aria-expanded="${CDV.open}" aria-label="${CDV.open ? 'Свернуть' : 'Развернуть'}" data-on-click="cdvToggle"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>`;
+  const S = d.series, m = CDV.metric;
+  const fmtMin = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
+  const cfg = m === 'calls'
+    ? ['Звонки', S.map(x => x.ok), S.map(x => x.miss), v => v, ['принято', 'не дошли'], ['принято', 'не дошли']]
+    : ['Минуты разговоров', S.map(x => x.audioMin), S.map(x => x.videoMin), fmtMin, ['аудио', 'видео'], ['аудио', 'видео']];
+  const tabs = (items, cur, fn) => `<div class="fdv-tabs">${items.map(x => `<button type="button" aria-pressed="${cur === x[0]}" data-on-click="${fn}" data-a-click="${esc(JSON.stringify([`${x[0]}`]))}">${x[1]}</button>`).join('')}</div>`;
+  const rows = d.top.length ? d.top.map(u => `<div class="fdv-sr" style="grid-template-columns:minmax(0,1fr) auto"><div><b>${esc(u.name)}</b><div class="cap">${u.calls} ${uxPlural(u.calls, 'звонок', 'звонка', 'звонков')}</div></div><div class="m"><span>${u.minutes} мин</span></div></div>`).join('')
+    : '<div class="fdv-note" style="margin:0">За этот период звонков не было</div>';
+  const why = t.miss ? `<b>Не дошли за сутки: ${t.miss}</b> (${[t.declined ? 'отклонено: ' + t.declined : '', t.noanswer ? 'без ответа или отмена: ' + t.noanswer : ''].filter(Boolean).join(', ')})` : t.all ? 'За сутки все звонки были приняты' : 'За сутки звонков не было';
+  h += `<div class="fdv-w${CDV.open ? ' open' : ''}"${CDV.open ? '' : ' inert'}><div class="fdv-in"><div class="fdv-b"><div><div class="fdv-top"><span class="fdv-lab">${cfg[0]}</span>${tabs([['calls', 'Звонки'], ['min', 'Минуты']], m, 'cdvMetric')}${tabs([['day', 'Сутки'], ['week', 'Неделя'], ['month', 'Месяц']], per, 'cdvPeriod')}</div>
+    ${fdvChart(cfg[1], cfg[2], S.map(x => x.t), cfg[3], per, cfg[4], 'График звонков')}
+    <div class="fdv-leg"><span><i style="background:var(--c-primary)"></i>${cfg[5][0]}</span><span><i style="background:var(--dv-c2,#7c8cff)"></i>${cfg[5][1]}</span></div></div>
+    <div><div class="fdv-lab" style="margin-bottom:6px">Кто звонит · ${periodLabel}</div><div class="fdv-sl">${rows}</div><div class="fdv-rej">${why}</div></div></div></div></div>`;
+  box.innerHTML = h; box.hidden = false;
+}
+function cdvToggle() {
+  CDV.open = !CDV.open;
+  try { localStorage.setItem('cdv-open', CDV.open ? '1' : '0'); } catch {}
+  const box = document.getElementById('dv-calls'), w = box?.querySelector('.fdv-w'), tg = box?.querySelector('.fdv-tg');
+  if (!w || !tg) { cdvRender(); return; }
+  w.classList.toggle('open', CDV.open);
+  w.inert = !CDV.open;
+  tg.setAttribute('aria-expanded', String(CDV.open));
+  tg.setAttribute('aria-label', CDV.open ? 'Свернуть' : 'Развернуть');
+}
+function cdvMetric(m) { CDV.metric = m; cdvRender(); }
+function cdvPeriod(p) { CDV.period = p; try { localStorage.setItem('cdv-period', p); } catch {} cdvLoad(); }
 
 /* ── ФЕДЕРАЦИИ ── */
 // Соединения с другими серверами: люди оттуда появляются в «Контактах» и пишут в личные чаты. Через соединение
@@ -6178,6 +6615,104 @@ const AL = { all: [], category: 'all', q: '', open: new Set(), fresh: null };
 const RE = { f: 'all', q: '', open: new Set(), fresh: null, list: [], first: true };
 function alFilter(cat) { AL.category = cat; alRender(); }
 function alSearch(q) { AL.q = q; alRender(); }
+/* ── ЗВОНКИ: журнал ── */
+const CALOG = { active: [], period: 'week', kind: 'all', q: '', rows: [], total: 0, sum: null, open: new Set(), busy: false, t: null };
+try { CALOG.period = localStorage.getItem('calog-period') || 'week'; } catch {}
+async function renderCallsPage() {
+  setTopbarActions('');
+  document.getElementById('page-body').innerHTML = '<div class="ux-page"><div class="ux-empty">Загрузка…</div></div>';
+  await callsNavSync();
+  if (currentPage !== 'calls') return;
+  await caLoad(false);
+}
+async function caLoad(more) {
+  if (CALOG.busy) return; CALOG.busy = true;
+  const r = await api('GET', '/api/admin/calls/log?' + new URLSearchParams({ period: CALOG.period, kind: CALOG.kind, q: CALOG.q, limit: 50, offset: more ? CALOG.rows.length : 0 }));
+  CALOG.busy = false;
+  if (currentPage !== 'calls') return;
+  if (r && !r.error) { CALOG.rows = more ? CALOG.rows.concat(r.rows) : r.rows; CALOG.total = r.total; CALOG.sum = r.sum; }
+  const a = await api('GET', '/api/admin/calls/active'); if (a && !a.error) CALOG.active = a.rows || [];
+  caRender();
+}
+// Идущие сейчас звонки: список обновляется раз в 5 секунд, время идёт каждую секунду
+const caElapsed = since => { const s = Math.max(0, Math.floor((Date.now() - since) / 1000)), m = Math.floor(s / 60), h = Math.floor(m / 60); return (h ? h + ':' + String(m % 60).padStart(2, '0') : String(m)) + ':' + String(s % 60).padStart(2, '0'); };
+function caActiveHtml() {
+  const list = CALOG.active || [];
+  if (!list.length) return '<div class="ub-empty" style="flex:none">Сейчас звонков нет</div>';
+  const KIND = { direct: 'Личный', conf: 'Групповой (из личного)', group: 'Групповой' };
+  return list.map(a => {
+    const who = a.kind === 'direct' ? `<b>${esc(a.people[0] || '')}</b> <span class="rb-meta">→</span> <b>${esc(a.people[1] || '')}</b>${a.peer_server ? ` <span class="rb-meta">· ${esc(a.peer_server)}</span>` : ''}`
+      : `${a.group ? `<b>группа «${esc(a.group)}»</b> · ` : ''}${a.people.map(esc).join(', ') || '—'}${a.mirror ? ' <span class="rb-meta">· только наши люди</span>' : ''}${a.waiting?.length ? ` <span class="rb-meta">· звонят: ${a.waiting.map(esc).join(', ')}</span>` : ''}`;
+    return `<div class="rb-row" style="flex:none;min-height:48px"><div style="display:flex;align-items:center;gap:14px;padding:10px 14px;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px;font-size:13px">${who}</div>
+      <div class="rb-meta">${KIND[a.kind] || ''} · ${a.video ? 'видео' : 'аудио'}</div>
+      <div class="rb-meta" style="font-variant-numeric:tabular-nums;min-width:90px">${a.state === 'ringing' ? 'Идёт вызов…' : 'Идёт <span data-ca-since="' + a.since + '">' + caElapsed(a.since) + '</span>'}</div>
+      <button type="button" class="btn btn-ghost btn-sm" data-on-click="caEnd" data-a-click="${esc(JSON.stringify([a.id]))}">Завершить</button></div></div>`;
+  }).join('');
+}
+async function caPollActive() {
+  if (currentPage !== 'calls' || document.querySelector('.modal-bg.open')) return;
+  const a = await api('GET', '/api/admin/calls/active'); if (!a || a.error || currentPage !== 'calls') return;
+  CALOG.active = a.rows || [];
+  const box = document.getElementById('ca-active'), n = document.getElementById('ca-active-n');
+  if (box) box.innerHTML = caActiveHtml(); if (n) n.textContent = CALOG.active.length;
+}
+function caEnd(id) {
+  const a = (CALOG.active || []).find(x => x.id === id); if (!a) return;
+  const title = a.kind === 'direct' ? a.people.join(' → ') : (a.group ? 'группа «' + a.group + '»' : 'общий звонок');
+  confirm('Завершить звонок?', 'Звонок «' + esc(title) + '» прервётся у всех участников, им покажут «Звонок завершён администратором». Действие попадёт в аудит-лог.', async () => {
+    const r = await api('POST', '/api/admin/calls/active/' + encodeURIComponent(id) + '/end');
+    if (!r || r.error) toast((r && r.error) || 'Не удалось завершить', 'error'); else toast('Звонок завершён', 'success');
+    caPollActive(); caLoad(false);
+  });
+}
+setInterval(() => { if (currentPage === 'calls') document.querySelectorAll('[data-ca-since]').forEach(e => { e.textContent = caElapsed(+e.dataset.caSince); }); }, 1000);
+const caTime = t => { const d = new Date(t * 1000), p = n => String(n).padStart(2, '0'); return `${p(d.getDate())}.${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+const caDur = s => (s > 0 ? (s >= 3600 ? Math.floor(s / 3600) + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') : Math.floor(s / 60)) + ':' + String(s % 60).padStart(2, '0') : '—');
+const CALOG_RES = { ok: ['Принят', 'ok'], declined: ['Отклонён', 'warn'], missed: ['Без ответа', 'warn'], cancelled: ['Отменён', ''], failed: ['Не состоялся', ''], group: ['Состоялся', 'ok'] };
+function caRender() {
+  if (currentPage !== 'calls') return;
+  const page = document.getElementById('page-body'), sm = CALOG.sum || { ok: 0, minutes: 0, group: 0, video: 0, recorded: 0 };
+  const per = [['day', 'Сутки'], ['week', 'Неделя'], ['month', 'Месяц'], ['all', 'Всё время']], kinds = [['all', 'Все'], ['direct', 'Личные'], ['group', 'Групповые']];
+  const seg = (items, cur, fn) => `<div class="ub-sort" role="group">${items.map(([k, t]) => `<button type="button" aria-pressed="${cur === k}" data-on-click="${fn}" data-a-click="${esc(JSON.stringify([k]))}">${t}</button>`).join('')}</div>`;
+  const grid = 'grid-template-columns:112px minmax(0,2.2fr) 150px 74px 110px 130px';
+  uxKeepFocus(() => {
+    page.innerHTML = `<div class="ub" id="cl-page">
+      <div class="ub-tiles">
+        <div class="ub-tile static"><div class="ub-lbl">Звонков</div><div class="ub-big">${CALOG.total}</div><div class="ub-sub">за выбранный период</div></div>
+        <div class="ub-tile static"><div class="ub-lbl">Состоялось</div><div class="ub-big">${sm.ok + sm.group}</div><div class="ub-sub">личных принято ${sm.ok}, групповых ${sm.group}</div></div>
+        <div class="ub-tile static"><div class="ub-lbl">Минут разговоров</div><div class="ub-big">${sm.minutes}</div><div class="ub-sub">видеозвонков: ${sm.video}</div></div>
+        <div class="ub-tile static"><div class="ub-lbl">С записью</div><div class="ub-big">${sm.recorded}</div><div class="ub-sub">${sm.recorded ? 'звонков записывали' : 'звонки не записывались'}</div></div>
+      </div>
+      <div class="ub-head"><h3>Сейчас идут <span id="ca-active-n">${(CALOG.active || []).length}</span></h3></div>
+      <div class="ub-rows" id="ca-active" style="flex:none;display:flex;flex-direction:column;gap:6px;margin-bottom:18px;overflow:visible">${caActiveHtml()}</div>
+      <div class="ub-head"><h3>Журнал <span>${CALOG.total}</span></h3>
+        ${seg(per, CALOG.period, 'caPeriod')}${seg(kinds, CALOG.kind, 'caKind')}
+        ${uxSearch('calog-q', CALOG.q, 'Кто, кому, группа…', 'caSearch')}</div>
+      <div class="ub-rows">
+        <div class="pg-top" style="${grid};font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--c-text2);padding:6px 14px;cursor:default"><span>Когда</span><span>Кто · кому</span><span>Вид</span><span>Длит.</span><span>Итог</span><span>Запись</span></div>
+        ${CALOG.rows.map(r => {
+          const open = CALOG.open.has(r.id), res = CALOG_RES[r.result] || ['—', ''], grp = r.kind !== 'direct';
+          const who = grp ? `<b>${esc(r.caller)}</b> ${r.kind === 'conf' ? '· общий звонок' : '· группа «' + esc(r.group || 'без названия') + '»'}${r.members.length ? ` <span class="rb-meta">· ${r.members.length} ${uxPlural(r.members.length, 'участник', 'участника', 'участников')}</span>` : ''}` : `<b>${esc(r.caller)}</b> <span class="rb-meta">→</span> <b>${esc(r.callee)}</b>${r.peer_server ? ` <span class="rb-meta">· сервер «${esc(r.peer_server)}»</span>` : ''}`;
+          return `<div class="rb-row"><div class="pg-top ca-top" style="${grid}" data-on-click="caTog" data-a-click="${esc(JSON.stringify([r.id]))}">
+            <div class="ca-c" style="font-variant-numeric:tabular-nums;font-weight:600">${caTime(r.at)}</div>
+            <div class="ca-c" style="min-width:0;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${who}</div>
+            <div class="ca-c rb-meta">${grp ? (r.kind === 'conf' ? 'Групповой (из личного)' : 'Групповой') : 'Личный'} · ${r.video ? 'видео' : 'аудио'}</div>
+            <div class="ca-c rb-meta" style="font-variant-numeric:tabular-nums">${caDur(r.duration)}</div>
+            <div class="ca-c"><span class="sp-stat ${res[1]}">${res[0]}</span></div>
+            <div class="ca-c rb-meta">${r.recorded ? '<b style="color:var(--c-orange-text)">Записывался</b>' : 'Не записывался'}</div></div>
+            ${open && r.members.length ? `<div class="pg-exp" style="grid-template-columns:1fr"><div><h4>Участники</h4><span>${r.members.map(esc).join(', ')}</span></div></div>` : ''}</div>`;
+        }).join('') || `<div class="ub-empty">${CALOG.q || CALOG.kind !== 'all' ? 'Ничего не нашли' : 'За этот период звонков не было'}</div>`}
+        ${CALOG.rows.length < CALOG.total ? '<div style="padding:12px;text-align:center"><button type="button" class="btn btn-ghost btn-sm" data-on-click="caMore">Показать ещё</button></div>' : ''}
+      </div></div>`;
+  });
+}
+function caPeriod(p) { CALOG.period = p; try { localStorage.setItem('calog-period', p); } catch {} caLoad(false); }
+function caKind(k) { CALOG.kind = k; caLoad(false); }
+function caSearch(v) { CALOG.q = v; clearTimeout(CALOG.t); CALOG.t = setTimeout(() => caLoad(false), 300); }
+function caMore() { caLoad(true); }
+function caTog(id) { CALOG.open.has(id) ? CALOG.open.delete(id) : CALOG.open.add(id); caRender(); }
+
 async function renderAudit() {
   setTopbarActions('');
   document.getElementById('page-body').innerHTML = `<div class="ux-page"><div class="ux-empty">Загрузка…</div></div>`;

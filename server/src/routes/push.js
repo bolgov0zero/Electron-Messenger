@@ -50,6 +50,7 @@ function buildPayload(appUrl, payload) {
     const u = new URL(appUrl);
     if (u.pathname === '/beta/') u.pathname = '/m/';   // подписки, оформленные в бете (убрана в s2.31.0), открывают /m/
     if (payload.chatId) u.searchParams.set('chatId', String(payload.chatId));
+    if (payload.call) u.searchParams.set('call', String(payload.call));
     navigate = u.toString();
   } catch { return payload; }
   const n = { title: payload.title || 'Новое сообщение', body: payload.body || '', navigate, silent: false };

@@ -59,6 +59,17 @@ contextBridge.exposeInMainWorld('electron', {
   // «Переслать» и «Удалить» в окне просмотра выполняет главное окно
   lightboxAction: (a) => ipcRenderer.invoke('lightbox-action', a),
   onLightboxAction: (cb) => ipcRenderer.on('lightbox-action', (_, a) => cb(a)),
+  // Звонки: окно call.html ведёт разговор, окно приложения им управляет (см. «ЗВОНКИ» в main.js)
+  callOpen: (p) => ipcRenderer.invoke('call-open', p),
+  callStatus: () => ipcRenderer.invoke('call-status'),
+  callMediaStatus: () => ipcRenderer.invoke('call-media-status'),
+  callMediaAsk: (kind) => ipcRenderer.invoke('call-media-ask', kind),
+  callCmd: (c) => ipcRenderer.send('call-cmd', c),
+  onCallState: (cb) => { ipcRenderer.removeAllListeners('call-state'); ipcRenderer.on('call-state', (_, s) => cb(s)); },
+  // Входящий звонок отдельным окном (callin.html)
+  callIncomingShow: (p) => ipcRenderer.invoke('call-incoming-show', p),
+  callIncomingHide: () => ipcRenderer.send('call-incoming-hide'),
+  onCallIncomingAction: (cb) => { ipcRenderer.removeAllListeners('call-incoming-action'); ipcRenderer.on('call-incoming-action', (_, a) => cb(a)); },
   // Ключи устройства и профиль HA (см. main.js)
   deviceInfo: () => ipcRenderer.invoke('device-info'),
   devkeyLoad: () => ipcRenderer.invoke('devkey-load'),

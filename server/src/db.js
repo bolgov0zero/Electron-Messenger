@@ -493,7 +493,27 @@ db.exec(`
     created_at INTEGER DEFAULT (unixepoch())
   );
   CREATE INDEX IF NOT EXISTS idx_module_events_created ON module_events(module, created_at);
+  -- Журнал звонков для статистики на главной админки (сами звонки живут в памяти, см. calls.js)
+  CREATE TABLE IF NOT EXISTS call_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    caller_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    callee_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    video INTEGER NOT NULL DEFAULT 0,
+    started_at INTEGER NOT NULL,
+    answered INTEGER NOT NULL DEFAULT 0,
+    duration INTEGER NOT NULL DEFAULT 0,
+    reason TEXT NOT NULL DEFAULT ''
+  );
+  CREATE INDEX IF NOT EXISTS idx_call_log_started ON call_log(started_at);
 `);
+// Журнал звонков для раздела «Звонки» в админке: чат, вид (direct | group | conf), имена на момент звонка, участники, чужой сервер, запись
+tryAlter('ALTER TABLE call_log ADD COLUMN chat_id INTEGER');
+tryAlter('ALTER TABLE call_log ADD COLUMN kind TEXT');
+tryAlter('ALTER TABLE call_log ADD COLUMN caller_name TEXT');
+tryAlter('ALTER TABLE call_log ADD COLUMN callee_name TEXT');
+tryAlter('ALTER TABLE call_log ADD COLUMN members TEXT');
+tryAlter('ALTER TABLE call_log ADD COLUMN peer_server TEXT');
+tryAlter('ALTER TABLE call_log ADD COLUMN recorded INTEGER NOT NULL DEFAULT 0');
 
 // Версия набора модуля, скачанная на устройство (для статистики «на старой версии»)
 tryAlter('ALTER TABLE module_devices ADD COLUMN pack_version TEXT');
