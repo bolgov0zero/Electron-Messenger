@@ -4594,7 +4594,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     : m.attachment;
   let attachHtml = '';
   if (!isDeleted && att?.enc && !att.expired) attachHtml = scAttachHtml(m, att);
-  else if (!isDeleted && att?.voice && att.url && !att.expired) attachHtml = Voice.html(att, `${httpProto()}://${S.server}${att.url}`, { own: mine, id: m.id > 0 ? m.id : '', unread: !mine, bars: 44, meta: metaHtml });
+  else if (!isDeleted && att?.voice && att.url && !att.expired) attachHtml = Voice.html(att, `${httpProto()}://${S.server}${att.url}`, { own: mine, id: m.id > 0 ? m.id : '', unread: !mine, bars: 36, meta: metaHtml });
   else if (!isDeleted) attachHtml = attachBlockHtml(att);
 
   const attDataAttrs = (att?.url && !att.enc) ? ` data-msg-att-url="${esc(att.url)}" data-msg-att-thumb="${esc(att.thumb||'')}" data-msg-att-mime="${esc(att.mime||'')}" data-msg-att-name="${esc(att.name||'')}"` : '';

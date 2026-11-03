@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Макет: блоки «Звонки» и «Федерация» на главной админки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Макет блока «Звонки» на главной админки. Токены и вид карточек — те же, что у главной (dv-*). Данные вымышленные. */
+:root{
+  --f-ui:'Inter',system-ui,sans-serif;--f-mono:'JetBrains Mono',ui-monospace,monospace;
+  --dv-bg:#eef2f6;--dv-surface:#ffffff;--dv-surface2:#f3f6f9;--dv-border:#dde4ec;--dv-text:#121a24;--dv-muted:#66758a;
+  --dv-accent:#0f9e8e;--dv-accent-soft:rgba(15,158,142,.12);--dv-ok:#12a672;--dv-warn:#d98a0b;--dv-bad:#d64545;
+  --dv-c1:#0f9e8e;--dv-c2:#5b6cf0;--dv-c3:#d98a0b;--dv-c4:#8a97a8;--dv-c5:#c2478a;
+  --dv-shadow:0 1px 2px rgba(18,26,36,.05),0 8px 24px rgba(18,26,36,.06);
+}
+[data-theme="dark"]{
+  --dv-bg:#0a0f15;--dv-surface:#121a23;--dv-surface2:#17212c;--dv-border:#243040;--dv-text:#e7edf4;--dv-muted:#8796a8;
+  --dv-accent:#2fd0b9;--dv-accent-soft:rgba(47,208,185,.14);--dv-ok:#3ddc97;--dv-warn:#f2b13d;--dv-bad:#ff6b6b;
+  --dv-c1:#2fd0b9;--dv-c2:#7c8cff;--dv-c3:#f2b13d;--dv-c4:#6f7f93;--dv-c5:#f06aa8;
+  --dv-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--f-ui);background:var(--dv-bg);color:var(--dv-text);padding:20px 20px 60px;-webkit-font-smoothing:antialiased;transition:background .3s}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--dv-accent);outline-offset:2px}
+.bar{max-width:1280px;margin:0 auto 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.bar h1{font-size:15px;font-weight:700}.bar h1 span{color:var(--dv-muted);font-weight:500}
+.bar .sp{flex:1}
+.tg{height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--dv-border);background:var(--dv-surface);font-size:12.5px;font-weight:600;color:var(--dv-muted)}
+.note{max-width:1280px;margin:0 auto 22px;font-size:13px;line-height:1.55;color:var(--dv-muted)}
+.note b{color:var(--dv-text)}
+.stage{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 375px;gap:28px;align-items:start}
+.lab{font-size:12.5px;color:var(--dv-muted);margin:0 4px 10px}.lab b{color:var(--dv-text)}
+.stack{display:flex;flex-direction:column;gap:14px}
+.ctx{height:70px;border-radius:16px;border:1px dashed var(--dv-border);display:grid;place-items:center;color:var(--dv-muted);font-size:12px}
+.phone{width:375px;max-width:100%;padding:14px;border-radius:30px;background:var(--dv-bg);border:1px solid var(--dv-border);box-shadow:var(--dv-shadow)}
+
+/* ── блок ── */
+.cdv{background:var(--dv-surface);border:1px solid var(--dv-border);border-radius:16px;box-shadow:var(--dv-shadow);overflow:hidden;container-type:inline-size}
+.cdv-h{display:flex;align-items:center;gap:14px;padding:12px 12px 12px 18px;flex-wrap:wrap}
+.cdv-ttl{display:flex;align-items:center;gap:10px;min-width:0;flex:none}
+.cdv-ttl b{font-size:14px}
+.pulse{position:relative;width:8px;height:8px;border-radius:50%;background:var(--dv-ok);flex:none}
+.pulse.live::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--dv-ok);opacity:0;animation:ring 1.6s ease-out infinite}
+@keyframes ring{0%{transform:scale(.5);opacity:.7}100%{transform:scale(1.5);opacity:0}}
+.cdv-sub{font-size:12.5px;color:var(--dv-muted)}
+.cdv-sub b{color:var(--dv-text);font-weight:600}.cdv-sub i{font-style:normal}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:11px;background:var(--dv-surface2);border:1px solid var(--dv-border)}
+.seg button{padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;color:var(--dv-muted);transition:background .2s,color .2s}
+.seg button[aria-pressed=true]{background:var(--dv-surface);color:var(--dv-text);box-shadow:0 1px 2px rgba(0,0,0,.14)}
+.cdv-tg{width:32px;height:32px;border-radius:10px;border:1px solid var(--dv-border);background:var(--dv-surface);display:grid;place-items:center;color:var(--dv-muted);transition:transform .3s,background .2s}
+.cdv-tg:hover{background:var(--dv-surface2);color:var(--dv-text)}.cdv-tg[aria-expanded=true]{transform:rotate(180deg)}
+
+/* компактная строка итогов (только когда блок свёрнут) */
+.cmp{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:6px 22px;justify-content:center}
+.cs{display:flex;align-items:baseline;gap:6px;white-space:nowrap;min-width:0}
+.cs b{font:700 17px/1 var(--f-mono);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.cs span{font-size:12px;color:var(--dv-muted)}
+.cs span{overflow:hidden;text-overflow:ellipsis}.cs i.rt{font-style:normal}
+.cs .dl{align-self:center;font-size:10.5px;padding:1px 6px}
+.cs+.cs{padding-left:22px;border-left:1px solid var(--dv-border)}
+.mini{display:flex;align-items:center;gap:9px;padding-left:22px;border-left:1px solid var(--dv-border);font-size:12px;color:var(--dv-muted);white-space:nowrap}
+.mini .res-b{width:96px;height:7px;border-radius:4px;flex:none}
+.mini b{color:var(--dv-warn);font-weight:600}
+.is-open .cmp,.is-open .pbtn{display:none}
+.is-open .cdv-ttl{flex:1}
+.pbtn{display:none;height:32px;padding:0 11px;border-radius:10px;border:1px solid var(--dv-border);background:var(--dv-surface2);font-size:12px;font-weight:600;color:var(--dv-muted);align-items:center;gap:6px}
+.pbtn svg{width:11px;height:11px}
+.mp{display:none}
+
+/* федерация: числа «отправлено / получено» и чипы */
+.ud{display:inline-flex;gap:8px;font-variant-numeric:tabular-nums}
+.ud u{text-decoration:none}.ud .u{color:var(--dv-accent)}.ud .n{color:var(--dv-c2)}
+.cs b.ud{font-size:15px;gap:7px}
+.k-v b.ud{font-size:19px;gap:10px;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--dv-warn) 17%,transparent);color:var(--dv-warn);white-space:nowrap}
+.chip.info{background:var(--dv-surface2);color:var(--dv-muted)}
+.cmp .chips{display:flex;gap:6px;padding-left:22px;border-left:1px solid var(--dv-border)}
+.sr{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:2px 11px;align-items:center;padding:9px 0}
+.sr+.sr{border-top:1px solid var(--dv-border)}
+.sr .sd{width:8px;height:8px;border-radius:50%;background:var(--dv-ok)}.sr .sd.warn{background:var(--dv-warn)}.sr .sd.off{background:var(--dv-muted)}
+.sr b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr .cap{grid-column:2;font-size:12px;color:var(--dv-muted)}.sr .cap .w{color:var(--dv-warn)}
+.sr .m{grid-column:3;grid-row:1/3;display:flex;flex-direction:column;align-items:flex-end;gap:2px;font-size:12px;color:var(--dv-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.sr .m .ud{gap:8px}
+.leg2{display:flex;gap:16px}
+.ch .ax{stroke:var(--dv-border);stroke-width:1.5}
+
+/* ряд показателей */
+.kp{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--dv-border)}
+.k{padding:14px 18px 14px;border-left:1px solid var(--dv-border);min-width:0}
+.k:first-child{border-left:0}
+.k-l{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dv-muted)}
+.k-v{display:flex;align-items:baseline;gap:8px;margin:6px 0 4px;flex-wrap:wrap}
+.k-v b{font:700 28px/1.1 var(--f-mono);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.k-v small{font:500 13px var(--f-ui);color:var(--dv-muted)}
+.k-s{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dv-muted);flex-wrap:wrap;min-height:20px}
+.dl{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:99px;font-variant-numeric:tabular-nums}
+.dl.up{background:color-mix(in srgb,var(--dv-ok) 16%,transparent);color:var(--dv-ok)}
+.dl.dn{background:color-mix(in srgb,var(--dv-bad) 14%,transparent);color:var(--dv-bad)}
+.dl.eq{background:var(--dv-surface2);color:var(--dv-muted)}
+.dl svg{width:10px;height:10px}
+.meter{height:5px;border-radius:3px;background:var(--dv-surface2);overflow:hidden;flex:1;min-width:48px}
+.meter i{display:block;height:100%;border-radius:3px;background:var(--dv-ok);transition:width .5s cubic-bezier(.22,1,.36,1)}
+.meter.v i{background:var(--dv-c5)}
+
+/* полоса итогов */
+.res{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 18px;align-items:center;padding:12px 18px 16px;border-top:1px solid var(--dv-border)}
+.res-l{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dv-muted);white-space:nowrap}
+.res-b{display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px;background:var(--dv-surface2)}
+.res-b i{display:block;height:100%;min-width:3px;transition:flex .5s cubic-bezier(.22,1,.36,1)}
+.res-lg{grid-column:1/-1;display:flex;gap:6px 18px;flex-wrap:wrap;font-size:12.5px;color:var(--dv-muted)}
+.res-lg span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.res-lg i{width:9px;height:9px;border-radius:3px}
+.res-lg b{color:var(--dv-text);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* раскрытая часть */
+.cdv-w{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s cubic-bezier(.4,0,.2,1)}
+.cdv-w.open{grid-template-rows:1fr}
+.cdv-in{overflow:hidden;min-height:0;opacity:0;visibility:hidden;transition:opacity .2s,visibility 0s .32s}
+.cdv-w.open>.cdv-in{opacity:1;visibility:visible;transition:opacity .26s .06s,visibility 0s}
+.ex{border-top:1px solid var(--dv-border);padding:16px 18px 18px;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(250px,1fr);gap:22px}
+.ex-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.ex-top .ex-l{margin-right:auto}
+.ex-l{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dv-muted)}
+.seg.sm button{padding:4px 10px}
+.ch{width:100%;height:auto;display:block;overflow:visible}
+.ch text{font:500 10px var(--f-ui);fill:var(--dv-muted)}
+.ch .gl{stroke:var(--dv-border);stroke-width:1}
+.ch rect.b{transition:opacity .15s}.ch g:hover rect.b{opacity:.75}
+.leg{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--dv-muted);margin-top:8px}
+.leg i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.tp{display:flex;flex-direction:column}
+.tr{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:2px 11px;align-items:center;padding:9px 0}
+.tr+.tr{border-top:1px solid var(--dv-border)}
+.av{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:11.5px;font-weight:700;color:#fff;grid-row:1/3}
+.tr b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tr .m{font-size:12px;color:var(--dv-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tr .bar2{grid-column:2/4;height:4px;border-radius:2px;background:var(--dv-surface2);overflow:hidden}
+.tr .bar2 i{display:block;height:100%;border-radius:2px;background:var(--dv-accent);opacity:.8}
+.ft{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+.btn{height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--dv-border);background:var(--dv-surface);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;transition:background .2s}
+.btn:hover{background:var(--dv-surface2)}.btn svg{width:14px;height:14px}
+.btn.pri{background:var(--dv-accent-soft);color:var(--dv-accent);border-color:color-mix(in srgb,var(--dv-accent) 30%,transparent)}
+.why{flex:1;min-width:0;font-size:12.5px;color:var(--dv-muted)}.why b{color:var(--dv-warn);font-weight:600}
+
+/* сейчас идёт */
+.live{display:none;align-items:center;gap:10px;margin:0 18px 14px;padding:10px 12px;border-radius:12px;background:var(--dv-accent-soft);border:1px solid color-mix(in srgb,var(--dv-accent) 28%,transparent);font-size:12.5px}
+.live.on{display:flex}
+.live .av{grid-row:auto;width:26px;height:26px;border-radius:8px;font-size:10.5px}
+.live b{font-weight:600}.live span{color:var(--dv-muted)}
+.live .lt{min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.live .lk{font-style:normal;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--dv-surface);color:var(--dv-muted);white-space:nowrap;flex:none}
+.live time{white-space:nowrap;flex:none;margin-left:0;font:600 12.5px var(--f-mono);color:var(--dv-accent)}
+
+/* узкий блок (телефон и узкие окна) */
+@container (max-width:1020px){
+  .cdv-ttl{flex:1}
+  .cmp{order:5;flex:1 1 100%;justify-content:flex-start;padding:0 0 2px}
+}
+@container (max-width:720px){
+  .kp{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .k:nth-child(3){border-left:0}.k:nth-child(n+3){border-top:1px solid var(--dv-border)}
+  .ex{grid-template-columns:1fr}
+  .res{grid-template-columns:1fr}
+}
+@container (max-width:520px){
+  .cdv-h{padding:12px 12px 12px 14px;gap:8px 8px}
+  .cdv-ttl{flex:1 1 0}
+  .cdv-h>.seg{display:none}.pbtn{display:inline-flex}
+  .cmp{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 0;padding:2px 0 0}
+  .cs{flex-direction:column;align-items:flex-start;gap:3px;padding:0 0 0 10px!important;border-left:1px solid var(--dv-border)!important}
+  .cs:first-child{border-left:0!important;padding-left:2px!important}
+  .cs b{font-size:18px}.cs .dl,.cs i.rt{display:none}
+  .mini{grid-column:1/-1;padding:0;border-left:0;gap:10px}.mini .res-b{flex:1;width:auto}
+  .cmp.f{grid-template-columns:repeat(3,minmax(0,1fr))}.cmp.f .cs b.ud{font-size:13.5px;gap:2px;flex-direction:column}.cdv-sub{white-space:nowrap}.cdv-sub i.x{display:none}.cmp .chips{grid-column:1/-1;padding:0;border-left:0}
+  .mp{display:inline-flex;margin:14px 14px 14px;width:calc(100% - 28px)}.mp button{flex:1}
+  .k{padding:12px 14px}.k-v b{font-size:24px}.k-v b.ud{font-size:15px;gap:8px}
+  .res{padding:12px 14px 14px}.ex{padding:14px}
+  .live{margin:0 14px 12px}
+}
+@media (max-width:1100px){.stage{grid-template-columns:1fr;justify-items:center}.stage>section{width:100%}.stage>section:last-child{display:flex;flex-direction:column;align-items:center}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Блоки «Звонки» и «Федерация» на главной <span>· макет, всё кликабельно</span></h1>
+  <span class="sp"></span>
+  <button class="tg" id="liveTg">Идёт звонок: нет</button>
+  <button class="tg" id="fedTg">Федерация: есть проблемы</button>
+  <button class="tg" id="theme">Тёмная тема</button>
+</div>
+<p class="note">Справа вверху — период (раньше он прятался внутри раскрытого блока, а итоги всегда считались за сутки). Цифры сравниваются с прошлым таким же периодом. Вместо «не дошли 16» — полоса итогов: принято, отклонено, без ответа. Раскрыть блок: график, кто звонит чаще всего и переход в журнал. «Федерация» сделана в том же стиле: итоги обмена в одну строку, в раскрытом виде плитки, причины отклонений, график и список серверов. <b>Цифры вымышленные.</b></p>
+
+<main class="stage">
+  <section>
+    <div class="lab"><b>Полная версия админки</b> · блок на всю ширину главной</div>
+    <div class="stack"><div class="ctx">остальные блоки главной</div><div class="cdv" id="d"></div><div class="cdv" id="fd"></div><div class="ctx">остальные блоки главной</div></div>
+  </section>
+  <section>
+    <div class="lab"><b>Телефон</b></div>
+    <div class="phone"><div class="stack"><div class="cdv" id="m"></div><div class="cdv" id="fm"></div></div></div>
+  </section>
+</main>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const I={chev:'<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>',
+  dn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  arr:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>'};
+const PER={day:['Сутки','за сутки','прошлых суток'],week:['Неделя','за неделю','прошлой недели'],month:['Месяц','за месяц','прошлого месяца']};
+// вымышленные данные: итоги, прошлый период, ряд для графика, кто звонит
+const DATA={
+  day:{all:81,ok:65,decl:9,noans:7,video:39,min:49,prev:{all:72,ok:54,min:41,video:30},n:24,lab:i=>String(i).padStart(2,'0')+':00',step:4},
+  week:{all:412,ok:331,decl:44,noans:37,video:188,min:262,prev:{all:455,ok:358,min:290,video:201},n:7,lab:i=>['пн','вт','ср','чт','пт','сб','вс'][i],step:1},
+  month:{all:1630,ok:1304,decl:171,noans:155,video:742,min:1019,prev:{all:1490,ok:1176,min:938,video:660},n:30,lab:i=>String(i+1),step:5}
+};
+const PEOPLE=[['Анна Крылова',31,22,'#c2478a'],['Борис Тестов',24,17,'#5b6cf0'],['Дмитрий Орлов',17,9,'#0f9e8e'],['Елена Власова',11,7,'#d98a0b'],['Игорь Сомов',8,4,'#8a97a8']];
+function series(p){const d=DATA[p],o=[];let s=p==='day'?3:11;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+  for(let i=0;i<d.n;i++){const w=p==='day'?Math.max(0,Math.sin((i-6)/24*Math.PI*2)*.9+.25):.55+r()*.7;const ok=Math.round(d.ok/d.n*(w*1.4)*(.7+r()*.6)),ms=Math.round(d.all/d.n*(w)*.35*(.5+r()));o.push({ok,ms,a:+(d.min/d.n*(w*1.4)*.55).toFixed(1),v:+(d.min/d.n*(w*1.4)*.45).toFixed(1)})}return o}
+const fmtMin=v=>(Math.round(v*10)/10).toString().replace('.',',');
+const pct=(a,b)=>b?Math.round((a-b)/b*100):0;
+function delta(a,b,per,invert){const p=pct(a,b);if(!b)return'';const cls=p===0?'eq':((p>0)!==!!invert?'up':'dn');return`<span class="dl ${cls}" title="${a} против ${b} за ${PER[per][2]}">${p>0?I.up:p<0?I.dn:''}${Math.abs(p)}%</span>`}
+const ST={d:{per:'day',metric:'calls',open:false},m:{per:'day',metric:'calls',open:false}};
+let LIVE=false;
+
+function chart(per,metric){
+  const d=DATA[per],S=series(per),W=640,H=190,L=28,B=22,T=8,pw=W-L,ph=H-B-T;
+  const a=metric==='calls'?S.map(x=>x.ok):S.map(x=>x.a),b=metric==='calls'?S.map(x=>x.ms):S.map(x=>x.v);
+  const max=Math.max(1,...a.map((v,i)=>v+b[i])),top=Math.ceil(max/4)*4||4,bw=pw/d.n*.62;
+  let g='';for(let i=0;i<=4;i++){const y=T+ph-ph*i/4;g+=`<line class="gl" x1="${L}" x2="${W}" y1="${y}" y2="${y}"/><text x="${L-6}" y="${y+3}" text-anchor="end">${fmtMin(top*i/4)}</text>`}
+  let bars='';a.forEach((v,i)=>{const x=L+pw/d.n*i+(pw/d.n-bw)/2,h1=ph*v/top,h2=ph*b[i]/top;
+    bars+=`<g><title>${d.lab(i)}: ${metric==='calls'?`принято ${v}, не дошли ${b[i]}`:`аудио ${fmtMin(v)} мин, видео ${fmtMin(b[i])} мин`}</title>
+      <rect class="b" x="${x}" y="${T+ph-h1}" width="${bw}" height="${h1}" rx="2" fill="var(--dv-c1)"/>
+      <rect class="b" x="${x}" y="${T+ph-h1-h2}" width="${bw}" height="${h2}" rx="2" fill="${metric==='calls'?'var(--dv-c3)':'var(--dv-c2)'}"/></g>`;
+    if(i%d.step===0)bars+=`<text x="${x+bw/2}" y="${H-6}" text-anchor="middle">${d.lab(i)}</text>`});
+  return`<svg class="ch" viewBox="0 0 ${W} ${H}" role="img" aria-label="График звонков">${g}${bars}</svg>`;
+}
+
+function render(id){
+  const st=ST[id],d=DATA[st.per],p=d.prev,box=$('#'+id);
+  const rate=Math.round(d.ok/d.all*100),vshare=Math.round(d.video/d.all*100),avg=d.ok?Math.round(d.min*60/d.ok):0;
+  const miss=d.decl+d.noans,tot=d.ok+miss;
+  const dot=LIVE?'pulse live':'pulse';
+  const sub=LIVE?'<b>идёт 1 звонок</b>':'сейчас тихо';
+  const maxc=PEOPLE[0][1]*(st.per==='day'?1:st.per==='week'?5.1:20);
+  box.classList.toggle('is-open',st.open);
+  box.innerHTML=`
+  <div class="cdv-h">
+    <div class="cdv-ttl"><span class="${dot}"></span><b>Звонки</b><span class="cdv-sub">${sub}</span></div>
+    <div class="cmp" aria-label="Итоги ${PER[st.per][1]}">
+      <div class="cs"><b>${d.all}</b><span>звонков</span>${delta(d.all,p.all,st.per)}</div>
+      <div class="cs"><b>${d.ok}</b><span>принято<i class="rt"> ${rate}%</i></span></div>
+      <div class="cs"><b>${d.min.toLocaleString('ru')}</b><span>минут</span></div>
+      <div class="cs"><b>${d.video}</b><span>с видео</span></div>
+      <div class="mini" title="Принято ${d.ok}, отклонено ${d.decl}, без ответа ${d.noans}"><div class="res-b"><i style="flex:${d.ok};background:var(--dv-ok)"></i><i style="flex:${d.decl};background:var(--dv-warn)"></i><i style="flex:${d.noans};background:var(--dv-c4)"></i></div>${miss?`<span>не дошли <b>${miss}</b></span>`:''}</div>
+    </div>
+    <div class="seg" role="group" aria-label="Период">${Object.keys(PER).map(k=>`<button type="button" aria-pressed="${st.per===k}" data-p="${k}">${PER[k][0]}</button>`).join('')}</div>
+    <button type="button" class="pbtn" data-cycle aria-label="Период: ${PER[st.per][0]}. Нажмите, чтобы сменить">${PER[st.per][0]}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg></button>
+    <button type="button" class="cdv-tg" aria-expanded="${st.open}" aria-label="${st.open?'Свернуть':'Развернуть'}">${I.chev}</button>
+  </div>
+  <div class="live${LIVE?' on':''}"><div class="av" style="background:#c2478a">АК</div><div class="lt"><b>Анна Крылова</b> <span>и</span> <b>Борис Тестов</b></div><em class="lk">видео</em><time>04:12</time></div>
+  <div class="cdv-w${st.open?' open':''}"${st.open?'':' inert'}><div class="cdv-in"><div class="seg mp" role="group" aria-label="Период">${Object.keys(PER).map(k=>`<button type="button" aria-pressed="${st.per===k}" data-p="${k}">${PER[k][0]}</button>`).join('')}</div>  <div class="kp">
+    <div class="k"><div class="k-l">Звонков</div><div class="k-v"><b>${d.all}</b></div><div class="k-s">${delta(d.all,p.all,st.per)}<span>${PER[st.per][1]}</span></div></div>
+    <div class="k"><div class="k-l">Принято</div><div class="k-v"><b>${d.ok}</b><small>${rate}%</small></div><div class="k-s"><div class="meter"><i style="width:${rate}%"></i></div>${delta(d.ok,p.ok,st.per)}</div></div>
+    <div class="k"><div class="k-l">Минут разговоров</div><div class="k-v"><b>${d.min.toLocaleString('ru')}</b></div><div class="k-s">${delta(d.min,p.min,st.per)}<span>в среднем ${Math.floor(avg/60)}:${String(avg%60).padStart(2,'0')}</span></div></div>
+    <div class="k"><div class="k-l">С видео</div><div class="k-v"><b>${d.video}</b><small>${vshare}%</small></div><div class="k-s"><div class="meter v"><i style="width:${vshare}%"></i></div>${delta(d.video,p.video,st.per)}</div></div>
+  </div>
+  <div class="res"><span class="res-l">Итог звонков</span>
+    <div class="res-b" role="img" aria-label="Принято ${d.ok}, отклонено ${d.decl}, без ответа ${d.noans}"><i style="flex:${d.ok};background:var(--dv-ok)"></i><i style="flex:${d.decl};background:var(--dv-warn)"></i><i style="flex:${d.noans};background:var(--dv-c4)"></i></div>
+    <div class="res-lg"><span><i style="background:var(--dv-ok)"></i>принято <b>${d.ok}</b></span><span><i style="background:var(--dv-warn)"></i>отклонено <b>${d.decl}</b></span><span><i style="background:var(--dv-c4)"></i>без ответа или отмена <b>${d.noans}</b></span></div>
+  </div>
+<div class="ex">
+    <div>
+      <div class="ex-top"><span class="ex-l">${st.metric==='calls'?'Звонки':'Минуты разговоров'}</span>
+        <div class="seg sm" role="group">${[['calls','Звонки'],['min','Минуты']].map(x=>`<button type="button" aria-pressed="${st.metric===x[0]}" data-m="${x[0]}">${x[1]}</button>`).join('')}</div></div>
+      ${chart(st.per,st.metric)}
+      <div class="leg">${st.metric==='calls'?'<span><i style="background:var(--dv-c1)"></i>принято</span><span><i style="background:var(--dv-c3)"></i>не дошли</span>':'<span><i style="background:var(--dv-c1)"></i>аудио</span><span><i style="background:var(--dv-c2)"></i>видео</span>'}</div>
+    </div>
+    <div>
+      <div class="ex-top"><span class="ex-l">Кто звонит · ${PER[st.per][1]}</span></div>
+      <div class="tp">${PEOPLE.slice(0,5).map(u=>{const k=st.per==='day'?1:st.per==='week'?5.1:20,c=Math.round(u[1]*k),mm=Math.round(u[2]*k);return`<div class="tr"><div class="av" style="background:${u[3]}">${u[0].split(' ').map(x=>x[0]).join('')}</div><b>${u[0]}</b><span class="m">${c} зв. · ${mm} мин</span><div class="bar2"><i style="width:${Math.round(c/(PEOPLE[0][1]*k)*100)}%"></i></div></div>`}).join('')}</div>
+      <div class="ft"><div class="why"><b>Не дошли ${miss}</b> из ${tot}</div><button type="button" class="btn pri">Журнал звонков${I.arr}</button></div>
+    </div>
+  </div></div></div>`;
+  box.onclick=e=>{
+    const p=e.target.closest('[data-p]'),m=e.target.closest('[data-m]'),tg=e.target.closest('.cdv-tg'),cy=e.target.closest('[data-cycle]');
+    if(cy){const k=Object.keys(PER);st.per=k[(k.indexOf(st.per)+1)%k.length];render(id)}
+    else if(p){st.per=p.dataset.p;render(id)}
+    else if(m){st.metric=m.dataset.m;render(id)}
+    else if(tg){st.open=!st.open;box.classList.toggle('is-open',st.open);const w=$('.cdv-w',box);w.classList.toggle('open',st.open);w.inert=!st.open;tg.setAttribute('aria-expanded',st.open);tg.setAttribute('aria-label',st.open?'Свернуть':'Развернуть')}
+  };
+}
+$('#theme').onclick=()=>{const dk=document.documentElement.dataset.theme!=='dark';document.documentElement.dataset.theme=dk?'dark':'light';$('#theme').textContent=dk?'Светлая тема':'Тёмная тема'};
+$('#liveTg').onclick=()=>{LIVE=!LIVE;$('#liveTg').textContent='Идёт звонок: '+(LIVE?'да':'нет');render('d');render('m')};
+
+/* ───────── Федерация ───────── */
+const FP=[['day',1,.29],['week',6,.19],['month',25,.12]];
+const FDATA={
+  day:{msgOut:142,msgIn:118,fOut:12,fIn:9,bOut:38e6,bIn:22e6,queue:3,rej:{limit:1,rate:1,blocked:0,file:0},prev:{msg:231,b:52e6}},
+  week:{msgOut:861,msgIn:702,fOut:71,fIn:58,bOut:236e6,bIn:141e6,queue:3,rej:{limit:6,rate:2,blocked:1,file:2},prev:{msg:1410,b:340e6}},
+  month:{msgOut:3590,msgIn:2940,fOut:301,fIn:244,bOut:1.02e9,bIn:0.61e9,queue:3,rej:{limit:21,rate:8,blocked:3,file:6},prev:{msg:5980,b:1.5e9}}
+};
+const FPEERS=[
+  {n:'Москва · главный офис',st:'ok',k:1,sub:'на связи'},
+  {n:'Филиал Казань',st:'warn',k:.45,sub:'нет связи 12 мин'},
+  {n:'Партнёр ООО «Север»',st:'off',k:.2,sub:'приостановлено'}
+];
+const fb=b=>{if(!b)return'0';const u=['Б','КБ','МБ','ГБ'];let i=0,v=b;while(v>=1024&&i<u.length-1){v/=1024;i++}return(i===0||v>=100?Math.round(v):v.toFixed(1).replace('.',',')+'')+' '+u[i]};
+const FST={fd:{per:'day',metric:'msg',open:false},fm:{per:'day',metric:'msg',open:false}};
+let FBAD=true;
+function fseries(per,metric){const d=FDATA[per],n=per==='day'?24:per==='week'?7:30,o=[];let s=per==='day'?5:17;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+  const base={msg:[d.msgOut,d.msgIn],file:[d.fOut,d.fIn],vol:[d.bOut,d.bIn]}[metric];
+  for(let i=0;i<n;i++){const w=per==='day'?Math.max(.05,Math.sin((i-5)/24*Math.PI*2)*.9+.3):.5+r()*.9;o.push([base[0]/n*w*(.6+r()*.8),base[1]/n*w*(.6+r()*.8)])}return o}
+function fchart(per,metric){
+  const d=FDATA[per],S=fseries(per,metric),n=S.length,W=640,H=170,pad=30,mid=H/2-6;
+  const fm=metric==='vol'?fb:v=>String(Math.round(v)),mx=Math.max(1,...S.flat());
+  const nice=m=>{if(m<=5)return 5;const p=Math.pow(10,Math.floor(Math.log10(m))),f=m/p;return(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p};
+  const top=metric==='vol'?mx*1.1:nice(mx),bw=(W-pad)/n;let g='';
+  [-1,0,1].forEach(k=>{const y=mid+k*(mid-8);g+=`<line class="${k===0?'ax':'gl'}" x1="${pad}" x2="${W}" y1="${y}" y2="${y}"/>`});
+  g+=`<text x="0" y="14">${fm(top)}</text><text x="0" y="${H-18}">${fm(top)}</text><text x="0" y="${mid+3}">0</text>`;
+  S.forEach((v,i)=>{const x=pad+i*bw+bw*.18,w=bw*.64,hu=v[0]/top*(mid-8),hd=v[1]/top*(mid-8);
+    g+=`<g><title>${DATA[per].lab(i)}: отправлено ${fm(v[0])}, получено ${fm(v[1])}</title><rect class="b" x="${x}" y="${mid-hu}" width="${w}" height="${hu}" rx="2" fill="var(--dv-accent)"/><rect class="b" x="${x}" y="${mid}" width="${w}" height="${hd}" rx="2" fill="var(--dv-c2)"/>`+(i%DATA[per].step===0?`<text x="${x+w/2}" y="${H-3}" text-anchor="middle">${DATA[per].lab(i)}</text>`:'')+'</g>'});
+  return`<svg class="ch" viewBox="0 0 ${W} ${H+4}" role="img" aria-label="График обмена">${g}</svg>`}
+function renderFed(id){
+  const st=FST[id],d=FDATA[st.per],box=$('#'+id),k=FP.find(x=>x[0]===st.per)[1];
+  const act=FBAD?2:3,all=3,rejT=Object.values(d.rej).reduce((a,b)=>a+b,0);
+  const msgT=d.msgOut+d.msgIn,bT=d.bOut+d.bIn;
+  const ud=(a,b)=>`<b class="ud"><u class="u">↑${a}</u><u class="n">↓${b}</u></b>`;
+  box.classList.toggle('is-open',st.open);
+  const peers=FPEERS.map((p,i)=>({...p,st:FBAD||i!==1?p.st:'ok',sub:FBAD||i!==1?p.sub:'на связи'}));
+  const rl=[['правило двух сообщений',d.rej.limit,'var(--dv-warn)'],['лимит новых переписок',d.rej.rate,'var(--dv-c3)'],['блокировка',d.rej.blocked,'var(--dv-bad)'],['вложение не принято',d.rej.file,'var(--dv-c4)']].filter(x=>x[1]);
+  const metricName={msg:'Сообщения',file:'Файлы',vol:'Объём'}[st.metric];
+  box.innerHTML=`
+  <div class="cdv-h">
+    <div class="cdv-ttl"><span class="pulse" style="${FBAD?'background:var(--dv-warn)':''}"></span><b>Федерация</b><span class="cdv-sub">${act} из ${all}<i class="x"> активно</i></span></div>
+    <div class="cmp f" aria-label="Обмен ${PER[st.per][1]}">
+      <div class="cs">${ud(d.msgOut,d.msgIn)}<span>сообщений</span></div>
+      <div class="cs">${ud(d.fOut,d.fIn)}<span>файлов</span></div>
+      <div class="cs">${ud(fb(d.bOut),fb(d.bIn))}<span>объём</span></div>
+      ${(d.queue||rejT)?`<div class="chips">${d.queue?`<span class="chip">очередь ${d.queue}</span>`:''}${rejT?`<span class="chip">отклонено ${rejT}</span>`:''}</div>`:''}
+    </div>
+    <div class="seg" role="group" aria-label="Период">${Object.keys(PER).map(x=>`<button type="button" aria-pressed="${st.per===x}" data-p="${x}">${PER[x][0]}</button>`).join('')}</div>
+    <button type="button" class="pbtn" data-cycle aria-label="Период: ${PER[st.per][0]}">${PER[st.per][0]}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg></button>
+    <button type="button" class="cdv-tg" aria-expanded="${st.open}" aria-label="${st.open?'Свернуть':'Развернуть'}">${I.chev}</button>
+  </div>
+  <div class="cdv-w${st.open?' open':''}"${st.open?'':' inert'}><div class="cdv-in"><div class="seg mp" role="group" aria-label="Период">${Object.keys(PER).map(x=>`<button type="button" aria-pressed="${st.per===x}" data-p="${x}">${PER[x][0]}</button>`).join('')}</div>
+  <div class="kp">
+    <div class="k"><div class="k-l">Сообщения</div><div class="k-v">${ud(d.msgOut,d.msgIn)}</div><div class="k-s">${delta(msgT,d.prev.msg,st.per)}<span>всего ${msgT.toLocaleString('ru')}</span></div></div>
+    <div class="k"><div class="k-l">Файлы</div><div class="k-v">${ud(d.fOut,d.fIn)}</div><div class="k-s"><span>всего ${d.fOut+d.fIn}</span></div></div>
+    <div class="k"><div class="k-l">Объём</div><div class="k-v">${ud(fb(d.bOut),fb(d.bIn))}</div><div class="k-s">${delta(bT,d.prev.b,st.per)}<span>всего ${fb(bT)}</span></div></div>
+    <div class="k"><div class="k-l">Серверы</div><div class="k-v"><b>${act}</b><small>из ${all}</small></div><div class="k-s"><div class="meter${FBAD?'':''}"><i style="width:${act/all*100}%;${FBAD?'background:var(--dv-warn)':''}"></i></div><span>${FBAD?'нет связи: 1':'все на связи'}</span></div></div>
+  </div>
+  <div class="res"><span class="res-l">Отклонено</span>
+    ${rejT?`<div class="res-b" role="img" aria-label="Отклонено ${rejT}">${rl.map(x=>`<i style="flex:${x[1]};background:${x[2]}"></i>`).join('')}</div>
+    <div class="res-lg">${rl.map(x=>`<span><i style="background:${x[2]}"></i>${x[0]} <b>${x[1]}</b></span>`).join('')}${d.queue?`<span><i style="background:var(--dv-muted);border-radius:50%"></i>в очереди на отправку <b>${d.queue}</b></span>`:''}</div>`
+    :`<div class="res-b"><i style="flex:1;background:var(--dv-ok)"></i></div><div class="res-lg"><span>За ${PER[st.per][1].replace('за ','')} всё принято</span></div>`}
+  </div>
+  <div class="ex">
+    <div>
+      <div class="ex-top"><span class="ex-l">${metricName}</span>
+        <div class="seg sm" role="group">${[['msg','Сообщения'],['file','Файлы'],['vol','Объём']].map(x=>`<button type="button" aria-pressed="${st.metric===x[0]}" data-m="${x[0]}">${x[1]}</button>`).join('')}</div></div>
+      ${fchart(st.per,st.metric)}
+      <div class="leg"><span><i style="background:var(--dv-accent)"></i>отправлено</span><span><i style="background:var(--dv-c2)"></i>получено</span></div>
+    </div>
+    <div>
+      <div class="ex-top"><span class="ex-l">Серверы · ${PER[st.per][1]}</span></div>
+      <div class="tp">${peers.map(p=>`<div class="sr"><span class="sd ${p.st==='ok'?'':p.st}"></span><b>${p.n}</b><div class="cap">${p.st==='ok'?p.sub:`<span class="w">${p.sub}</span>`}</div>
+        <div class="m"><span class="ud"><u class="u">↑${Math.round(d.msgOut*p.k*.7)}</u><u class="n">↓${Math.round(d.msgIn*p.k*.7)}</u></span><span>${fb(bT*p.k*.6)}</span></div></div>`).join('')}</div>
+      <div class="ft"><div class="why">${act<all?'<b>Без связи: 1</b> из 3':'Все серверы на связи'}</div><button type="button" class="btn pri">Управление${I.arr}</button></div>
+    </div>
+  </div></div></div>`;
+  box.onclick=e=>{
+    const p=e.target.closest('[data-p]'),m=e.target.closest('[data-m]'),tg=e.target.closest('.cdv-tg'),cy=e.target.closest('[data-cycle]');
+    if(cy){const ks=Object.keys(PER);st.per=ks[(ks.indexOf(st.per)+1)%ks.length];renderFed(id)}
+    else if(p){st.per=p.dataset.p;renderFed(id)}
+    else if(m){st.metric=m.dataset.m;renderFed(id)}
+    else if(tg){st.open=!st.open;box.classList.toggle('is-open',st.open);const w=$('.cdv-w',box);w.classList.toggle('open',st.open);w.inert=!st.open;tg.setAttribute('aria-expanded',st.open);tg.setAttribute('aria-label',st.open?'Свернуть':'Развернуть')}
+  }
+}
+$('#fedTg').onclick=()=>{FBAD=!FBAD;$('#fedTg').textContent='Федерация: '+(FBAD?'есть проблемы':'всё в порядке');renderFed('fd');renderFed('fm')};
+render('d');render('m');renderFed('fd');renderFed('fm');
+</script>
+</body>
+</html>

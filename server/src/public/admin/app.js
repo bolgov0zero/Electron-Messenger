@@ -5822,9 +5822,92 @@ function wsDelete(id) {
   });
 }
 
-/* ── Блок «Федерация» на главной ── */
-// Виден только когда есть подключённые серверы. Свёрнут: итоги за сутки. Раскрыт: график и список серверов.
-const FDV = { data: null, open: false, period: 'day', metric: 'msg', timer: null };
+/* ── Блоки «Федерация» и «Звонки» на главной ── */
+// Один вид для обоих. Свёрнут: одна строка итогов (на телефоне две) и переключатель периода. Раскрыт: плитки с изменением к прошлому
+// такому же периоду, полоса «отклонено / итог», график и список. Стили — dc-* и cdv-* в index.html, макет — docs/glass-mockup/admin-calls-block.html.
+const DC_PER = { day: ['Сутки', 'за сутки', 'прошлых суток'], week: ['Неделя', 'за неделю', 'прошлой недели'], month: ['Месяц', 'за месяц', 'прошлого месяца'] };
+const DC_I = {
+  chev: '<svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>',
+  dn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  arr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>',
+  cyc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>',
+};
+const dcFmtMin = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
+const dcPct = (a, b) => b ? Math.round((a - b) / b * 100) : 0;
+// Значок изменения к прошлому периоду; без данных за прошлый период не показывается
+function dcDelta(a, b, per) {
+  if (!b) return '';
+  const p = dcPct(a, b), cls = p === 0 ? 'dc-eq' : p > 0 ? 'dc-up' : 'dc-dn';
+  return `<span class="dc-dl ${cls}" title="${a} против ${b} за ${DC_PER[per][2]}">${p > 0 ? DC_I.up : p < 0 ? DC_I.dn : ''}${Math.abs(p)}%</span>`;
+}
+const dcSeg = (items, cur, fn, cls = 'dc-seg') => `<div class="${cls}" role="group">${items.map(x => `<button type="button" aria-pressed="${cur === x[0]}" data-on-click="${fn}" data-a-click="${esc(JSON.stringify([`${x[0]}`]))}">${x[1]}</button>`).join('')}</div>`;
+const dcPeriods = Object.keys(DC_PER).map(k => [k, DC_PER[k][0]]);
+const dcLab = (t, per) => { const d = new Date(t * 1000); return per === 'day' ? String(d.getHours()).padStart(2, '0') + ':00' : per === 'week' ? ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'][d.getDay()] : String(d.getDate()).padStart(2, '0'); };
+const dcStep = per => per === 'day' ? 4 : per === 'week' ? 1 : 5;
+function dcNice(mx) {
+  if (mx <= 4) return 4;
+  const p = Math.pow(10, Math.floor(Math.log10(mx))), f = mx / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+}
+// Столбики «принято + не дошли» или «аудио + видео»
+function dcChartStack(a, b, ts, fmt, per, names, c1, c2, label) {
+  const n = a.length, W = 640, H = 190, L = 30, B = 22, T = 8, pw = W - L, ph = H - B - T, bw = pw / n * 0.62;
+  const top = Math.max(4, Math.ceil(Math.max(1, ...a.map((v, i) => v + b[i])) / 4) * 4);
+  let g = '';
+  for (let i = 0; i <= 4; i++) { const y = T + ph - ph * i / 4; g += `<line class="dc-gl" x1="${L}" x2="${W}" y1="${y}" y2="${y}"/><text x="${L - 6}" y="${y + 3}" text-anchor="end">${fmt(top * i / 4)}</text>`; }
+  a.forEach((v, i) => {
+    const x = L + pw / n * i + (pw / n - bw) / 2, h1 = ph * v / top, h2 = ph * b[i] / top;
+    g += `<g><title>${dcLab(ts[i], per)}: ${names[0]} ${fmt(v)}, ${names[1]} ${fmt(b[i])}</title><rect class="dc-b" x="${x}" y="${T + ph - h1}" width="${bw}" height="${h1}" rx="2" fill="${c1}"/><rect class="dc-b" x="${x}" y="${T + ph - h1 - h2}" width="${bw}" height="${h2}" rx="2" fill="${c2}"/></g>`;
+    if (i % dcStep(per) === 0) g += `<text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${dcLab(ts[i], per)}</text>`;
+  });
+  return `<svg class="dc-ch" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">${g}</svg>`;
+}
+// Зеркальный график: отправлено вверх, получено вниз
+function dcChartMirror(up, dn, ts, fmt, per, label) {
+  const n = up.length, W = 640, H = 170, pad = 30, mid = H / 2 - 6, top = dcNice(Math.max(1, ...up, ...dn)), bw = (W - pad) / n;
+  let g = '';
+  [-1, 0, 1].forEach(k => { const y = mid + k * (mid - 8); g += `<line class="${k === 0 ? 'dc-ax' : 'dc-gl'}" x1="${pad}" x2="${W}" y1="${y}" y2="${y}"/>`; });
+  g += `<text x="0" y="14">${fmt(top)}</text><text x="0" y="${H - 18}">${fmt(top)}</text><text x="0" y="${mid + 3}">0</text>`;
+  for (let i = 0; i < n; i++) {
+    const x = pad + i * bw + bw * 0.18, w = bw * 0.64, hu = up[i] / top * (mid - 8), hd = dn[i] / top * (mid - 8);
+    g += `<g><title>${dcLab(ts[i], per)}: отправлено ${fmt(up[i])}, получено ${fmt(dn[i])}</title><rect class="dc-b" x="${x}" y="${mid - hu}" width="${w}" height="${Math.max(hu, up[i] ? 1.5 : 0)}" rx="2" fill="var(--dv-accent)"/><rect class="dc-b" x="${x}" y="${mid}" width="${w}" height="${Math.max(hd, dn[i] ? 1.5 : 0)}" rx="2" fill="var(--dv-c2)"/>`
+      + (i % dcStep(per) === 0 ? `<text x="${x + w / 2}" y="${H - 3}" text-anchor="middle">${dcLab(ts[i], per)}</text>` : '') + '</g>';
+  }
+  return `<svg class="dc-ch" viewBox="0 0 ${W} ${H + 4}" role="img" aria-label="${label}">${g}</svg>`;
+}
+// Общая «оболочка»: заголовок, ряд итогов, период, стрелка, раскрываемое тело
+function dcShell(o) {
+  const { st, p, fn, dot, title, sub, cmp, cmpCls = '', live = '', body, cyc } = o;
+  return `<div class="cdv-h">
+    <div class="cdv-ttl">${dot}<b>${title}</b><span class="cdv-sub">${sub}</span></div>
+    <div class="dc-cmp ${cmpCls}">${cmp}</div>
+    ${dcSeg(dcPeriods, p, fn + 'Period')}
+    <button type="button" class="dc-pbtn" data-on-click="${fn}Cycle" aria-label="Период: ${DC_PER[p][0]}. Нажмите, чтобы сменить">${DC_PER[p][0]}${DC_I.cyc}</button>
+    <button type="button" class="cdv-tg" aria-expanded="${st.open}" aria-label="${st.open ? 'Свернуть' : 'Развернуть'}" data-on-click="${fn}Toggle">${DC_I.chev}</button>
+  </div>${live}
+  <div class="cdv-w${st.open ? ' dc-open' : ''}"${st.open ? '' : ' inert'}><div class="cdv-in">${dcSeg(dcPeriods, p, fn + 'Period', 'dc-seg dc-mp')}${body}</div></div>`;
+}
+// Раскрытие без перерисовки: переключаем класс у уже стоящего тела, оно плавно раскрывается через высоту строки сетки
+function dcToggle(id, st, key) {
+  st.open = !st.open;
+  try { localStorage.setItem(key, st.open ? '1' : '0'); } catch {}
+  const box = document.getElementById(id), w = box?.querySelector('.cdv-w'), tg = box?.querySelector('.cdv-tg');
+  if (!w || !tg) return false;
+  box.classList.toggle('dc-is-open', st.open);
+  w.classList.toggle('dc-open', st.open);
+  w.inert = !st.open;
+  tg.setAttribute('aria-expanded', String(st.open));
+  tg.setAttribute('aria-label', st.open ? 'Свернуть' : 'Развернуть');
+  return true;
+}
+const dcCycle = p => { const k = Object.keys(DC_PER); return k[(k.indexOf(p) + 1) % k.length]; };
+const dcMeter = (pct, color = '', cls = '') => `<div class="dc-meter ${cls}"><i style="width:${Math.max(0, Math.min(100, pct))}%${color ? ';background:' + color : ''}"></i></div>`;
+const dcMin = s => `${Math.floor(s / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;
+
+/* ── Федерация ── */
+// Виден только когда есть подключённые серверы
+const FDV = { data: null, open: false, period: 'day', metric: 'msg', timer: null, json: '' };
 try { FDV.open = localStorage.getItem('fdv-open') === '1'; FDV.period = localStorage.getItem('fdv-period') || 'day'; } catch {}
 function fdvBytes(b) {
   if (!b) return '0';
@@ -5845,77 +5928,66 @@ async function fdvLoad() {
   FDV.data = r; FDV.json = j;
   if (!same) fdvRender();
 }
-function fdvNice(mx) {
-  if (mx <= 5) return 5;
-  const p = Math.pow(10, Math.floor(Math.log10(mx))), f = mx / p;
-  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
-}
-function fdvChart(up, dn, labelsT, fmt, period = FDV.period, names = ['отправлено', 'получено'], label = 'График обмена') {
-  const W = 640, H = 170, pad = 30, n = up.length, mid = H / 2 - 6, top = fdvNice(Math.max(1, ...up, ...dn)), bw = (W - pad) / n;
-  let s = '';
-  [-1, 0, 1].forEach(g => { const y = mid + g * (mid - 8); s += `<line class="${g === 0 ? 'ax' : 'gl'}" x1="${pad}" x2="${W}" y1="${y}" y2="${y}"/>`; });
-  s += `<text x="0" y="14">${fmt(top)}</text><text x="0" y="${H - 18}">${fmt(top)}</text><text x="0" y="${mid + 3}">0</text>`;
-  for (let i = 0; i < n; i++) {
-    const x = pad + i * bw + bw * 0.18, w = bw * 0.64, hu = up[i] / top * (mid - 8), hd = dn[i] / top * (mid - 8);
-    s += `<rect x="${x}" y="${mid - hu}" width="${w}" height="${Math.max(hu, up[i] ? 1.5 : 0)}" rx="2" fill="var(--c-primary)"><title>${names[0]}: ${fmt(up[i])}</title></rect>`;
-    s += `<rect x="${x}" y="${mid}" width="${w}" height="${Math.max(hd, dn[i] ? 1.5 : 0)}" rx="2" fill="var(--dv-c2,#7c8cff)"><title>${names[1]}: ${fmt(dn[i])}</title></rect>`;
-  }
-  const tl = t => { const d = new Date(t * 1000); return period === 'day' ? String(d.getHours()).padStart(2, '0') + ':00' : period === 'week' ? ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'][d.getDay()] : String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0'); };
-  const ticks = period === 'day' ? [0, 6, 12, 18, n - 1] : period === 'week' ? [...Array(n).keys()] : [0, 7, 14, 21, n - 1];
-  ticks.forEach((i, j) => { const xx = pad + (i + 0.5) * bw; s += `<text x="${xx}" y="${H - 3}" text-anchor="${j === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}">${i === n - 1 && period !== 'week' ? (period === 'day' ? 'сейчас' : 'сегодня') : tl(labelsT[i])}</text>`; });
-  return `<svg class="fdv-ch" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">${s}</svg>`;
-}
 function fdvRender() {
   const box = document.getElementById('dv-fed'), d = FDV.data;
   if (!box) return;
   if (!d || !d.peers?.length) { box.hidden = true; box.innerHTML = ''; return; }
-  const t = d.totals, bad = t.active < t.all, sp = FDV.period;
-  const periodLabel = { day: 'за сутки', week: 'за неделю', month: 'за месяц' }[sp];
-  const rejLine = t.rej.total ? `<b>Отклонено за сутки: ${t.rej.total}</b> (${[t.rej.limit ? 'правило двух сообщений: ' + t.rej.limit : '', t.rej.rate ? 'лимит новых переписок: ' + t.rej.rate : '', t.rej.blocked ? 'блокировка: ' + t.rej.blocked : '', t.rej.file ? 'вложение не принято: ' + t.rej.file : ''].filter(Boolean).join(', ')}).` : 'Отклонённых сообщений и вложений за сутки нет.';
-  const stat = (lab, a, b) => `<span class="fdv-st">${lab}<span class="vv"><b class="fdv-up">↑${a}</b><b class="fdv-dn">↓${b}</b></span></span>`;
-  let h = `<div class="fdv-h"><div class="fdv-ttl"><span class="fdv-dot ${bad ? 'warn' : ''}"></span><b>Федерация</b><span class="dv-sub">${t.active} из ${t.all} активно</span></div>
-    <div class="fdv-stats">${stat('сообщения', t.msgOut, t.msgIn)}${stat('файлы', t.fOut, t.fIn)}${stat('объём', fdvBytes(t.bOut), fdvBytes(t.bIn))}${(t.queue || t.rej.total) ? `<span class="fdv-chips">${t.queue ? `<span class="fdv-chip">очередь ${t.queue}</span>` : ''}${t.rej.total ? `<span class="fdv-chip">отклонено ${t.rej.total}</span>` : ''}</span>` : ''}</div>
-    <button type="button" class="fdv-tg" aria-expanded="${FDV.open}" aria-label="${FDV.open ? 'Свернуть' : 'Развернуть'}" data-on-click="fdvToggle"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>`;
-  {
-    const m = FDV.metric, S = d.series;
-    const cfg = { msg: ['Сообщения', S.map(x => x.msgOut), S.map(x => x.msgIn), v => v], file: ['Файлы', S.map(x => x.fOut), S.map(x => x.fIn), v => v], vol: ['Объём', S.map(x => x.bOut), S.map(x => x.bIn), fdvBytes] }[m];
-    const young = Date.now() / 1000 - d.newest_peer_at < 86400;
-    const tabs = (attr, items, cur, fn) => `<div class="fdv-tabs">${items.map(x => `<button type="button" aria-pressed="${cur === x[0]}" data-on-click="${esc(fn)}" data-a-click="${esc(JSON.stringify([`${x[0]}`]))}">${x[1]}</button>`).join('')}</div>`;
-    h += `<div class="fdv-w${FDV.open ? ' open' : ''}"${FDV.open ? '' : ' inert'}><div class="fdv-in"><div class="fdv-b"><div><div class="fdv-top"><span class="fdv-lab">${cfg[0]}</span>${tabs('m', [['msg', 'Сообщения'], ['file', 'Файлы'], ['vol', 'Объём']], m, 'fdvMetric')}${tabs('p', [['day', 'Сутки'], ['week', 'Неделя'], ['month', 'Месяц']], sp, 'fdvPeriod')}</div>
-      ${young ? '<div class="fdv-note">Соединение подключено недавно. График наполнится по мере обмена, объём считается с момента подключения.</div>' : ''}
-      ${fdvChart(cfg[1], cfg[2], S.map(x => x.t), cfg[3])}
-      <div class="fdv-leg"><span><i style="background:var(--c-primary)"></i>отправлено</span><span><i style="background:var(--dv-c2,#7c8cff)"></i>получено</span></div></div>
-      <div><div class="fdv-lab" style="margin-bottom:6px">Серверы · ${periodLabel}</div><div class="fdv-sl">${d.peers.map(p => `<div class="fdv-sr"><span class="fdv-dot ${p.status === 'paused' ? 'off' : p.online ? '' : 'warn'}"></span><div><b>${esc(p.name)}</b><div class="cap">${p.status === 'paused' ? '<span class="w">приостановлено</span> · ' : !p.online ? '<span class="w">нет связи</span> · ' : ''}${p.last_contact_at ? 'обмен ' + esc(uaSeen(p.last_contact_at)) : 'обмена не было'}${p.queue ? ` · <span class="w">очередь ${p.queue}</span>` : ''}</div></div>
-        <div class="m"><span class="fdv-up">↑ ${p.msgOut}</span><span class="fdv-dn">↓ ${p.msgIn}</span><span>${fdvBytes(p.bytes)}</span></div></div>`).join('')}</div>
-      <div class="fdv-rej">${rejLine}</div></div></div></div></div>`;
-  }
-  box.innerHTML = h; box.hidden = false;
+  const t = d.totals, per = FDV.period, prev = d.prev || { msg: 0, b: 0 }, bad = t.active < t.all, msgT = t.msgOut + t.msgIn, bT = t.bOut + t.bIn;
+  const ud = (a, b) => `<b class="dc-ud"><u class="dc-u">↑${a}</u><u class="dc-n">↓${b}</u></b>`;
+  const rl = [['правило двух сообщений', t.rej.limit, 'var(--dv-warn)'], ['лимит новых переписок', t.rej.rate, 'var(--dv-c3)'], ['блокировка', t.rej.blocked, 'var(--dv-bad)'], ['вложение не принято', t.rej.file, 'var(--dv-c4)']].filter(x => x[1]);
+  const m = FDV.metric, S = d.series, ts = S.map(x => x.t);
+  const cfg = { msg: ['Сообщения', S.map(x => x.msgOut), S.map(x => x.msgIn), v => String(Math.round(v))], file: ['Файлы', S.map(x => x.fOut), S.map(x => x.fIn), v => String(Math.round(v))], vol: ['Объём', S.map(x => x.bOut), S.map(x => x.bIn), fdvBytes] }[m];
+  const young = Date.now() / 1000 - d.newest_peer_at < 86400;
+  const offN = t.all - t.active;
+  const peers = d.peers.map(p => {
+    const cls = p.status === 'paused' ? 'dc-off' : p.online ? '' : 'dc-warn';
+    const cap = (p.status === 'paused' ? '<span class="dc-w">приостановлено</span> · ' : !p.online ? '<span class="dc-w">нет связи</span> · ' : '') + (p.last_contact_at ? 'обмен ' + esc(uaSeen(p.last_contact_at)) : 'обмена не было') + (p.queue ? ` · <span class="dc-w">очередь ${p.queue}</span>` : '');
+    return `<div class="dc-sr"><span class="dc-sd ${cls}"></span><b>${esc(p.name)}</b><div class="dc-cap">${cap}</div><div class="dc-m"><span class="dc-ud"><u class="dc-u">↑${p.msgOut}</u><u class="dc-n">↓${p.msgIn}</u></span><span>${fdvBytes(p.bytes)}</span></div></div>`;
+  }).join('');
+  const cmp = `<div class="dc-cs">${ud(t.msgOut, t.msgIn)}<span>сообщений</span></div>
+    <div class="dc-cs">${ud(t.fOut, t.fIn)}<span>файлов</span></div>
+    <div class="dc-cs">${ud(fdvBytes(t.bOut), fdvBytes(t.bIn))}<span>объём</span></div>
+    ${(t.queue || t.rej.total) ? `<div class="dc-chips">${t.queue ? `<span class="dc-chip">очередь ${t.queue}</span>` : ''}${t.rej.total ? `<span class="dc-chip">отклонено ${t.rej.total}</span>` : ''}</div>` : ''}`;
+  const body = `<div class="dc-kp">
+      <div class="dc-k"><div class="dc-k-l">Сообщения</div><div class="dc-k-v">${ud(t.msgOut, t.msgIn)}</div><div class="dc-k-s">${dcDelta(msgT, prev.msg, per)}<span>всего ${msgT.toLocaleString('ru')}</span></div></div>
+      <div class="dc-k"><div class="dc-k-l">Файлы</div><div class="dc-k-v">${ud(t.fOut, t.fIn)}</div><div class="dc-k-s"><span>всего ${t.fOut + t.fIn}</span></div></div>
+      <div class="dc-k"><div class="dc-k-l">Объём</div><div class="dc-k-v">${ud(fdvBytes(t.bOut), fdvBytes(t.bIn))}</div><div class="dc-k-s">${dcDelta(bT, prev.b, per)}<span>всего ${fdvBytes(bT)}</span></div></div>
+      <div class="dc-k"><div class="dc-k-l">Серверы</div><div class="dc-k-v"><b>${t.active}</b><small>из ${t.all}</small></div><div class="dc-k-s">${dcMeter(t.all ? t.active / t.all * 100 : 0, bad ? 'var(--dv-warn)' : '')}<span>${offN ? `нет связи: ${offN}` : 'все на связи'}</span></div></div>
+    </div>
+    <div class="dc-res"><span class="dc-res-l">Отклонено</span>
+      ${t.rej.total ? `<div class="dc-res-b" role="img" aria-label="Отклонено ${t.rej.total}">${rl.map(x => `<i style="flex:${x[1]};background:${x[2]}"></i>`).join('')}</div>
+      <div class="dc-res-lg">${rl.map(x => `<span><i style="background:${x[2]}"></i>${x[0]} <b>${x[1]}</b></span>`).join('')}${t.queue ? `<span><i style="background:var(--dv-muted);border-radius:50%"></i>в очереди на отправку <b>${t.queue}</b></span>` : ''}</div>`
+      : `<div class="dc-res-b"><i style="flex:1;background:var(--dv-ok)"></i></div><div class="dc-res-lg"><span>${DC_PER[per][1][0].toUpperCase() + DC_PER[per][1].slice(1)} всё принято${t.queue ? ` · в очереди на отправку <b>${t.queue}</b>` : ''}</span></div>`}
+    </div>
+    <div class="dc-ex"><div>
+      <div class="dc-ex-top"><span class="dc-ex-l">${cfg[0]}</span>${dcSeg([['msg', 'Сообщения'], ['file', 'Файлы'], ['vol', 'Объём']], m, 'fdvMetric', 'dc-seg dc-sm')}</div>
+      ${young ? '<div class="dc-note">Соединение подключено недавно. График наполнится по мере обмена, объём считается с момента подключения.</div>' : ''}
+      ${dcChartMirror(cfg[1], cfg[2], ts, cfg[3], per, 'График обмена')}
+      <div class="dc-leg"><span><i style="background:var(--dv-accent)"></i>отправлено</span><span><i style="background:var(--dv-c2)"></i>получено</span></div></div>
+      <div><div class="dc-ex-top"><span class="dc-ex-l">Серверы · ${DC_PER[per][1]}</span></div><div class="dc-tp">${peers}</div>
+      <div class="dc-ft"><div class="dc-why">${offN ? `<b>Без связи: ${offN}</b> из ${t.all}` : 'Все серверы на связи'}</div><button type="button" class="dc-btn dc-pri" data-on-click="nav" data-a-click='["federation"]'>Управление${DC_I.arr}</button></div></div>
+    </div>`;
+  box.className = 'hm-panel dv-card cdv' + (FDV.open ? ' dc-is-open' : '');
+  box.innerHTML = dcShell({ st: FDV, p: per, fn: 'fdv', dot: `<span class="dc-pulse"${bad ? ' style="background:var(--dv-warn)"' : ''}></span>`, title: 'Федерация', sub: `${t.active} из ${t.all}<i class="dc-x"> активно</i>`, cmp, cmpCls: 'dc-f', body });
+  box.hidden = false;
 }
-// Раскрытие без перерисовки блока: переключаем класс у уже стоящего тела, и оно плавно
-// раскрывается через высоту строки сетки. Перерисовка (innerHTML) убивала и анимацию, и поворот стрелки
-function fdvToggle() {
-  FDV.open = !FDV.open;
-  try { localStorage.setItem('fdv-open', FDV.open ? '1' : '0'); } catch {}
-  const box = document.getElementById('dv-fed'), w = box?.querySelector('.fdv-w'), tg = box?.querySelector('.fdv-tg');
-  if (!w || !tg) { fdvRender(); return; }
-  w.classList.toggle('open', FDV.open);
-  w.inert = !FDV.open;
-  tg.setAttribute('aria-expanded', String(FDV.open));
-  tg.setAttribute('aria-label', FDV.open ? 'Свернуть' : 'Развернуть');
-}
+function fdvToggle() { if (!dcToggle('dv-fed', FDV, 'fdv-open')) fdvRender(); }
 function fdvMetric(m) { FDV.metric = m; fdvRender(); }
 function fdvPeriod(p) { FDV.period = p; try { localStorage.setItem('fdv-period', p); } catch {} fdvLoad(); }
+function fdvCycle() { fdvPeriod(dcCycle(FDV.period)); }
 
-/* ── Блок «Звонки» на главной ── */
-// Такой же, как «Федерация»: свёрнут — итоги за сутки, раскрыт — график и список тех, кто звонит чаще всего.
-// Виден, когда звонки настроены или уже были. Разметка и стили общие с блоком федерации (fdv-*).
-const CDV = { data: null, open: false, period: 'day', metric: 'calls', timer: null, json: '' };
+/* ── Звонки ── */
+// Виден, когда звонки настроены или уже были
+const CDV = { data: null, open: false, period: 'day', metric: 'calls', timer: null, json: '', tick: null };
 try { CDV.open = localStorage.getItem('cdv-open') === '1'; CDV.period = localStorage.getItem('cdv-period') || 'day'; } catch {}
 function cdvStart() {
-  clearInterval(CDV.timer);
+  clearInterval(CDV.timer); clearInterval(CDV.tick);
   cdvLoad();
-  CDV.timer = setInterval(() => { if (currentPage !== 'dashboard') { clearInterval(CDV.timer); return; } if (!document.hidden) cdvLoad(); }, 2000);
+  CDV.timer = setInterval(() => { if (currentPage !== 'dashboard') { clearInterval(CDV.timer); clearInterval(CDV.tick); return; } if (!document.hidden) cdvLoad(); }, 2000);
+  // Таймер идущего звонка тикает каждую секунду без перерисовки блока
+  CDV.tick = setInterval(() => document.querySelectorAll('#dv-calls time[data-since]').forEach(el => { el.textContent = dcClock(Date.now() - Number(el.dataset.since)); }), 1000);
 }
+const dcClock = ms => { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return (h ? h + ':' + String(m).padStart(2, '0') : String(m).padStart(2, '0')) + ':' + String(s % 60).padStart(2, '0'); };
 async function cdvLoad() {
   const r = await api('GET', '/api/admin/calls/stats?period=' + CDV.period);
   if (!r || r.error) return;
@@ -5927,41 +5999,51 @@ function cdvRender() {
   const box = document.getElementById('dv-calls'), d = CDV.data;
   if (!box) return;
   if (!d || !d.show) { box.hidden = true; box.innerHTML = ''; return; }
-  const t = d.totals, per = CDV.period, periodLabel = { day: 'за сутки', week: 'за неделю', month: 'за месяц' }[per];
-  const dot = d.enabled && d.ready ? '' : 'off';
-  const sub = !d.ready ? 'не настроены' : !d.enabled ? 'выключены' : d.live ? `сейчас идёт: ${d.live}` : d.ringing ? 'идёт вызов' : 'сейчас тихо';
-  const one = (lab, v, cls = '') => `<span class="fdv-st">${lab}<span class="vv"><b class="${cls}">${v}</b></span></span>`;
-  const miss = t.miss ? `<span class="fdv-chips"><span class="fdv-chip">не дошли ${t.miss}</span></span>` : '';
-  let h = `<div class="fdv-h"><div class="fdv-ttl"><span class="fdv-dot ${dot}"></span><b>Звонки</b><span class="dv-sub">${sub}</span></div>
-    <div class="fdv-stats">${one('звонков', t.all)}${one('принято', t.ok, 'fdv-up')}${one('минут', t.minutes)}${one('с видео', t.video)}${miss}</div>
-    <button type="button" class="fdv-tg" aria-expanded="${CDV.open}" aria-label="${CDV.open ? 'Свернуть' : 'Развернуть'}" data-on-click="cdvToggle"><svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>`;
-  const S = d.series, m = CDV.metric;
-  const fmtMin = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
+  const t = d.totals, prev = d.prev || {}, per = CDV.period, m = CDV.metric;
+  const rate = t.all ? Math.round(t.ok / t.all * 100) : 0, vshare = t.all ? Math.round(t.video / t.all * 100) : 0, avg = t.ok ? Math.round(t.minutes * 60 / t.ok) : 0;
+  const off = !(d.enabled && d.ready);
+  const sub = !d.ready ? 'не настроены' : !d.enabled ? 'выключены' : d.live ? `<b>${d.live === 1 ? 'идёт 1 звонок' : 'идёт ' + d.live + ' ' + uxPlural(d.live, 'звонок', 'звонка', 'звонков')}</b>` : d.ringing ? 'идёт вызов' : 'сейчас тихо';
+  const S = d.series, ts = S.map(x => x.t), fm = dcFmtMin;
+  const lc = (d.liveCalls || [])[0];
+  const live = lc ? `<div class="dc-live dc-on"><span class="dc-av">${avHtml((lc.people[0] || '?'), 26, 8, null, false, true)}</span><div class="dc-lt">${lc.group ? `<b>${esc(lc.group)}</b> <span>·</span> ` : ''}${lc.people.map(n => `<b>${esc(n)}</b>`).join(' <span>и</span> ')}${d.liveCalls.length > 1 ? ` <span>и ещё ${d.liveCalls.length - 1}</span>` : ''}</div><em class="dc-lk">${lc.video ? 'видео' : 'аудио'}</em><time data-since="${lc.since}">${dcClock(Date.now() - lc.since)}</time></div>` : '';
+  const miss = t.miss, tot = t.all;
+  const cmp = `<div class="dc-cs"><b>${t.all}</b><span>звонков</span>${dcDelta(t.all, prev.all, per)}</div>
+    <div class="dc-cs"><b>${t.ok}</b><span>принято<i class="dc-rt"> ${rate}%</i></span></div>
+    <div class="dc-cs"><b>${t.minutes.toLocaleString('ru')}</b><span>минут</span></div>
+    <div class="dc-cs"><b>${t.video}</b><span>с видео</span></div>
+    <div class="dc-mini" title="Принято ${t.ok}, отклонено ${t.declined}, без ответа ${t.noanswer}"><div class="dc-res-b"><i style="flex:${t.ok};background:var(--dv-ok)"></i><i style="flex:${t.declined};background:var(--dv-warn)"></i><i style="flex:${t.noanswer};background:var(--dv-c4)"></i></div>${miss ? `<span>не дошли <b>${miss}</b></span>` : ''}</div>`;
+  const top = d.top.slice(0, 5), maxC = Math.max(1, ...top.map(u => u.calls));
+  const people = top.length ? top.map(u => `<div class="dc-tr"><span class="dc-av">${avHtml(u.name, 30, 9, u.id, false, true)}</span><b>${esc(u.name)}</b><span class="dc-m">${u.calls} зв. · ${u.minutes} мин</span><div class="dc-bar2"><i style="width:${Math.round(u.calls / maxC * 100)}%"></i></div></div>`).join('')
+    : '<div class="dc-note" style="margin:0">За этот период звонков не было</div>';
   const cfg = m === 'calls'
-    ? ['Звонки', S.map(x => x.ok), S.map(x => x.miss), v => v, ['принято', 'не дошли'], ['принято', 'не дошли']]
-    : ['Минуты разговоров', S.map(x => x.audioMin), S.map(x => x.videoMin), fmtMin, ['аудио', 'видео'], ['аудио', 'видео']];
-  const tabs = (items, cur, fn) => `<div class="fdv-tabs">${items.map(x => `<button type="button" aria-pressed="${cur === x[0]}" data-on-click="${fn}" data-a-click="${esc(JSON.stringify([`${x[0]}`]))}">${x[1]}</button>`).join('')}</div>`;
-  const rows = d.top.length ? d.top.map(u => `<div class="fdv-sr" style="grid-template-columns:minmax(0,1fr) auto"><div><b>${esc(u.name)}</b><div class="cap">${u.calls} ${uxPlural(u.calls, 'звонок', 'звонка', 'звонков')}</div></div><div class="m"><span>${u.minutes} мин</span></div></div>`).join('')
-    : '<div class="fdv-note" style="margin:0">За этот период звонков не было</div>';
-  const why = t.miss ? `<b>Не дошли за сутки: ${t.miss}</b> (${[t.declined ? 'отклонено: ' + t.declined : '', t.noanswer ? 'без ответа или отмена: ' + t.noanswer : ''].filter(Boolean).join(', ')})` : t.all ? 'За сутки все звонки были приняты' : 'За сутки звонков не было';
-  h += `<div class="fdv-w${CDV.open ? ' open' : ''}"${CDV.open ? '' : ' inert'}><div class="fdv-in"><div class="fdv-b"><div><div class="fdv-top"><span class="fdv-lab">${cfg[0]}</span>${tabs([['calls', 'Звонки'], ['min', 'Минуты']], m, 'cdvMetric')}${tabs([['day', 'Сутки'], ['week', 'Неделя'], ['month', 'Месяц']], per, 'cdvPeriod')}</div>
-    ${fdvChart(cfg[1], cfg[2], S.map(x => x.t), cfg[3], per, cfg[4], 'График звонков')}
-    <div class="fdv-leg"><span><i style="background:var(--c-primary)"></i>${cfg[5][0]}</span><span><i style="background:var(--dv-c2,#7c8cff)"></i>${cfg[5][1]}</span></div></div>
-    <div><div class="fdv-lab" style="margin-bottom:6px">Кто звонит · ${periodLabel}</div><div class="fdv-sl">${rows}</div><div class="fdv-rej">${why}</div></div></div></div></div>`;
-  box.innerHTML = h; box.hidden = false;
+    ? ['Звонки', S.map(x => x.ok), S.map(x => x.miss), v => String(Math.round(v)), ['принято', 'не дошли'], 'var(--dv-c1)', 'var(--dv-c3)']
+    : ['Минуты разговоров', S.map(x => x.audioMin), S.map(x => x.videoMin), fm, ['аудио', 'видео'], 'var(--dv-c1)', 'var(--dv-c2)'];
+  const body = `<div class="dc-kp">
+      <div class="dc-k"><div class="dc-k-l">Звонков</div><div class="dc-k-v"><b>${t.all}</b></div><div class="dc-k-s">${dcDelta(t.all, prev.all, per)}<span>${DC_PER[per][1]}</span></div></div>
+      <div class="dc-k"><div class="dc-k-l">Принято</div><div class="dc-k-v"><b>${t.ok}</b><small>${rate}%</small></div><div class="dc-k-s">${dcMeter(rate)}${dcDelta(t.ok, prev.ok, per)}</div></div>
+      <div class="dc-k"><div class="dc-k-l">Минут разговоров</div><div class="dc-k-v"><b>${t.minutes.toLocaleString('ru')}</b></div><div class="dc-k-s">${dcDelta(t.minutes, prev.minutes, per)}${avg ? `<span>в среднем ${dcMin(avg)}</span>` : ''}</div></div>
+      <div class="dc-k"><div class="dc-k-l">С видео</div><div class="dc-k-v"><b>${t.video}</b><small>${vshare}%</small></div><div class="dc-k-s">${dcMeter(vshare, '', 'dc-v')}${dcDelta(t.video, prev.video, per)}</div></div>
+    </div>
+    <div class="dc-res"><span class="dc-res-l">Итог звонков</span>
+      ${t.all ? `<div class="dc-res-b" role="img" aria-label="Принято ${t.ok}, отклонено ${t.declined}, без ответа ${t.noanswer}"><i style="flex:${t.ok};background:var(--dv-ok)"></i><i style="flex:${t.declined};background:var(--dv-warn)"></i><i style="flex:${t.noanswer};background:var(--dv-c4)"></i></div>
+      <div class="dc-res-lg"><span><i style="background:var(--dv-ok)"></i>принято <b>${t.ok}</b></span><span><i style="background:var(--dv-warn)"></i>отклонено <b>${t.declined}</b></span><span><i style="background:var(--dv-c4)"></i>без ответа или отмена <b>${t.noanswer}</b></span></div>`
+      : `<div class="dc-res-b"></div><div class="dc-res-lg"><span>${DC_PER[per][1][0].toUpperCase() + DC_PER[per][1].slice(1)} звонков не было</span></div>`}
+    </div>
+    <div class="dc-ex"><div>
+      <div class="dc-ex-top"><span class="dc-ex-l">${cfg[0]}</span>${dcSeg([['calls', 'Звонки'], ['min', 'Минуты']], m, 'cdvMetric', 'dc-seg dc-sm')}</div>
+      ${dcChartStack(cfg[1], cfg[2], ts, cfg[3], per, cfg[4], cfg[5], cfg[6], 'График звонков')}
+      <div class="dc-leg"><span><i style="background:${cfg[5]}"></i>${cfg[4][0]}</span><span><i style="background:${cfg[6]}"></i>${cfg[4][1]}</span></div></div>
+      <div><div class="dc-ex-top"><span class="dc-ex-l">Кто звонит · ${DC_PER[per][1]}</span></div><div class="dc-tp">${people}</div>
+      <div class="dc-ft"><div class="dc-why">${miss ? `<b>Не дошли ${miss}</b> из ${tot}` : tot ? 'Все звонки приняты' : ''}</div><button type="button" class="dc-btn dc-pri" data-on-click="nav" data-a-click='["calls"]'>Журнал звонков${DC_I.arr}</button></div></div>
+    </div>`;
+  box.className = 'hm-panel dv-card cdv' + (CDV.open ? ' dc-is-open' : '');
+  box.innerHTML = dcShell({ st: CDV, p: per, fn: 'cdv', dot: `<span class="dc-pulse${d.live && !off ? ' dc-live' : ''}"${off ? ' style="background:var(--dv-muted)"' : ''}></span>`, title: 'Звонки', sub, cmp, live, body });
+  box.hidden = false;
 }
-function cdvToggle() {
-  CDV.open = !CDV.open;
-  try { localStorage.setItem('cdv-open', CDV.open ? '1' : '0'); } catch {}
-  const box = document.getElementById('dv-calls'), w = box?.querySelector('.fdv-w'), tg = box?.querySelector('.fdv-tg');
-  if (!w || !tg) { cdvRender(); return; }
-  w.classList.toggle('open', CDV.open);
-  w.inert = !CDV.open;
-  tg.setAttribute('aria-expanded', String(CDV.open));
-  tg.setAttribute('aria-label', CDV.open ? 'Свернуть' : 'Развернуть');
-}
+function cdvToggle() { if (!dcToggle('dv-calls', CDV, 'cdv-open')) cdvRender(); }
 function cdvMetric(m) { CDV.metric = m; cdvRender(); }
 function cdvPeriod(p) { CDV.period = p; try { localStorage.setItem('cdv-period', p); } catch {} cdvLoad(); }
+function cdvCycle() { cdvPeriod(dcCycle(CDV.period)); }
 
 /* ── ФЕДЕРАЦИИ ── */
 // Соединения с другими серверами: люди оттуда появляются в «Контактах» и пишут в личные чаты. Через соединение

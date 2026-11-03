@@ -4,17 +4,21 @@
 /* ── пузырь в ленте ── */
 .vm{display:flex;align-items:center;gap:12px;min-width:268px;padding:2px 0 0}
 .vm.vm-sm{min-width:226px;gap:10px}
-.vm .pl{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:19px;flex:none;position:relative;transition:transform .35s var(--gl-spring)}
-.vm .pl:active{transform:scale(.9)}
+.vm .pl{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:17px;flex:none;position:relative;transition:transform .35s var(--gl-spring),background .2s,box-shadow .2s}
+.vm .pl:active{transform:scale(.92)}
+.vm .pl .i{fill:currentColor;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}
+.vm .pl .i.p1{margin-left:2px}
 .vm .pl .i{position:absolute;width:1em;height:1em;transition:opacity .2s,transform .35s var(--gl-spring)}
 .vm .pl .i.p2{opacity:0;transform:scale(.4) rotate(-40deg)}
 .vm.playing .pl .i.p1{opacity:0;transform:scale(.4) rotate(40deg)}
 .vm.playing .pl .i.p2{opacity:1;transform:none}
-.vm-in .pl{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;box-shadow:0 4px 12px color-mix(in srgb,var(--gl-out-b) 35%,transparent)}
-.vm-out .pl{background:rgba(255,255,255,.95);color:var(--accent-ink)}
+.vm-in .pl{background:var(--accent-soft);color:var(--accent-ink);box-shadow:inset 0 0 0 1px var(--accent-border)}
+.vm-in .pl:hover{background:color-mix(in srgb,var(--accent) 22%,transparent)}
+.vm-out .pl{background:rgba(255,255,255,.2);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3),inset 0 1px 0 rgba(255,255,255,.22)}
+.vm-out .pl:hover{background:rgba(255,255,255,.3)}
 .vm .vb{flex:1;min-width:0}
-.vm .wv{display:flex;align-items:center;justify-content:space-between;height:30px;cursor:pointer;touch-action:none}
-.vm .wv i{display:block;width:3px;border-radius:2px;--f:0;background:linear-gradient(90deg,currentColor calc(var(--f) * 100%),color-mix(in srgb,currentColor 32%,transparent) calc(var(--f) * 100%))}
+.vm .wv{display:flex;align-items:center;gap:3px;width:max-content;max-width:100%;height:30px;cursor:pointer;touch-action:none}
+.vm .wv i{display:block;flex:none;width:3px;border-radius:3px;--f:0;background:linear-gradient(90deg,currentColor calc(var(--f) * 100%),color-mix(in srgb,currentColor 38%,transparent) calc(var(--f) * 100%))}
 .vm-in .wv{color:var(--accent)}.vm-out .wv{color:#fff}
 .vm .mt{display:flex;align-items:center;gap:7px;font-size:11.5px;font-variant-numeric:tabular-nums;margin-top:1px;color:var(--text2);height:18px}
 .vm-out .mt{color:rgba(255,255,255,.88)}

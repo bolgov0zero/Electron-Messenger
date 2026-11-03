@@ -1344,24 +1344,25 @@ async function statsView(period) {
   const series = bucketsT.map(t => ({ t, msgOut: 0, msgIn: 0, fOut: 0, fIn: 0, bOut: 0, bIn: 0 }));
   const by = new Map((await Promise.all(peers.map(async p => [p.instance_id, { id: p.id, instance_id: p.instance_id, name: p.name, status: p.status, online: isOnline(p.id), role: p.role, last_contact_at: p.last_contact_at, queue: (await queueSize(p.id)), msgOut: 0, msgIn: 0, fOut: 0, fIn: 0, bytes: 0 }]))));
   const byId = new Map([...by.values()].map(p => [p.id, p]));
-  const day24 = hourNow - 23 * 3600;
+  // Итоги — за выбранный период; для сравнения считаем такой же предыдущий
+  const prevSince = since - bucketsT.length * (period === 'day' ? 3600 : 86400), prev = { msg: 0, b: 0 };
   const tot = { msgOut: 0, msgIn: 0, fOut: 0, fIn: 0, bOut: 0, bIn: 0 };
   const rej = { limit: 0, rate: 0, blocked: 0, file: 0 };
   const rows = await dal.all(`SELECT s.fed_instance AS inst, (m.sender_id = s.id) AS inb, (m.sent_at / 3600) * 3600 AS h, COUNT(*) AS n,
       SUM(CASE WHEN m.attachment LIKE '%"url"%' THEN 1 ELSE 0 END) AS f, SUM(CASE WHEN m.attachment LIKE '%"unavailable"%' THEN 1 ELSE 0 END) AS fu
     FROM messages m JOIN chat_members cm ON cm.chat_id = m.chat_id JOIN users s ON s.id = cm.user_id AND s.is_bot = 2
-    WHERE m.fed_uid IS NOT NULL AND m.sent_at >= ? GROUP BY inst, inb, h`, Math.min(since, day24));
+    WHERE m.fed_uid IS NOT NULL AND m.sent_at >= ? GROUP BY inst, inb, h`, prevSince);
   for (const r of rows) {
     const p = by.get(r.inst); if (!p) continue;
     const i = idx.get(keyOf(r.h));
     if (i !== undefined) { const b = series[i]; if (r.inb) { b.msgIn += r.n; b.fIn += r.f; } else { b.msgOut += r.n; b.fOut += r.f; } if (r.h >= since) { if (r.inb) { p.msgIn += r.n; p.fIn += r.f; } else { p.msgOut += r.n; p.fOut += r.f; } } }
-    if (r.h >= day24) { if (r.inb) { tot.msgIn += r.n; tot.fIn += r.f; rej.file += r.fu; } else { tot.msgOut += r.n; tot.fOut += r.f; } }
+    if (r.h < since) prev.msg += r.n; else { if (r.inb) { tot.msgIn += r.n; tot.fIn += r.f; rej.file += r.fu; } else { tot.msgOut += r.n; tot.fOut += r.f; } }
   }
-  const srows = await dal.all('SELECT * FROM fed_stats WHERE bucket >= ?', Math.min(since, day24));
+  const srows = await dal.all('SELECT * FROM fed_stats WHERE bucket >= ?', prevSince);
   for (const r of srows) {
     const i = idx.get(keyOf(r.bucket)), p = byId.get(r.peer_id);
     if (i !== undefined) { series[i].bOut += r.bytes_out; series[i].bIn += r.bytes_in; if (p && r.bucket >= since) p.bytes += r.bytes_out + r.bytes_in; }
-    if (r.bucket >= day24) { tot.bOut += r.bytes_out; tot.bIn += r.bytes_in; rej.limit += r.rej_limit; rej.rate += r.rej_rate; rej.blocked += r.rej_blocked; rej.file += r.rej_other; }
+    if (r.bucket < since) prev.b += r.bytes_out + r.bytes_in; else { tot.bOut += r.bytes_out; tot.bIn += r.bytes_in; rej.limit += r.rej_limit; rej.rate += r.rej_rate; rej.blocked += r.rej_blocked; rej.file += r.rej_other; }
   }
   const list = [...by.values()];
   const active = list.filter(p => p.status === 'active' && p.online).length;
@@ -1369,6 +1370,7 @@ async function statsView(period) {
     period, series,
     peers: list,
     totals: { ...tot, queue: list.reduce((a, p) => a + p.queue, 0), active, all: list.length, rej: { ...rej, total: rej.limit + rej.rate + rej.blocked + rej.file } },
+    prev,
     newest_peer_at: Math.max(...peers.map(p => p.created_at || 0)),
   };
 }

@@ -1063,9 +1063,11 @@ async function compute(period) {
   const keyOf = ts => (period === 'day' ? Math.floor(ts / 3600) * 3600 : dayStart(ts));
   const idx = new Map(buckets.map((t, i) => [t, i]));
   const series = buckets.map(t => ({ t, ok: 0, miss: 0, audioMin: 0, videoMin: 0 }));
-  const since = buckets[0], day24 = hourNow - 23 * 3600;
-  const rows = await dal.all('SELECT caller_id, callee_id, video, started_at, answered, duration, reason FROM call_log WHERE started_at >= ?', Math.min(since, day24));
+  // Итоги — за выбранный период, для сравнения берём такой же предыдущий (за сутки: вчерашние 24 часа, за неделю: неделя до этой)
+  const since = buckets[0], len = buckets.length * (period === 'day' ? 3600 : 86400), prevSince = since - len;
+  const rows = await dal.all('SELECT caller_id, callee_id, video, started_at, answered, duration, reason FROM call_log WHERE started_at >= ?', prevSince);
   const tot = { all: 0, ok: 0, miss: 0, declined: 0, noanswer: 0, video: 0, minutes: 0 };
+  const prev = { all: 0, ok: 0, video: 0, minutes: 0 };
   const people = new Map();
   for (const r of rows) {
     const mins = r.duration / 60, b = series[idx.get(keyOf(r.started_at))];
@@ -1076,7 +1078,9 @@ async function compute(period) {
       u.calls++; if (r.answered) u.minutes += mins;
       people.set(uid, u);
     }
-    if (r.started_at >= day24) {
+    if (r.started_at < since) {
+      prev.all++; if (r.answered) { prev.ok++; prev.minutes += mins; } if (r.video) prev.video++;
+    } else {
       tot.all++; tot.minutes += r.answered ? mins : 0;
       if (r.video) tot.video++;
       if (r.answered) tot.ok++; else { tot.miss++; if (r.reason === 'declined') tot.declined++; else tot.noanswer++; }
@@ -1088,10 +1092,13 @@ async function compute(period) {
     top.forEach(u => { u.name = names.get(u.id) || 'Удалён'; u.minutes = Math.round(u.minutes); });
   }
   let any = rows.length > 0;
+  // Идущие сейчас разговоры для полосы под заголовком блока
+  let liveCalls = [];
+  try { liveCalls = (await activeList()).filter(c => c.state === 'active').slice(0, 3).map(c => ({ kind: c.kind, video: !!c.video, since: c.since, group: c.group || '', people: (c.people || []).slice(0, 4) })); } catch {}
   if (!any) any = !!(await dal.get('SELECT 1 AS x FROM call_log LIMIT 1'));
   series.forEach(b => { b.audioMin = Math.round(b.audioMin * 10) / 10; b.videoMin = Math.round(b.videoMin * 10) / 10; });
   const live = [...calls.values()].filter(c => c.state === 'active').length, ringing = calls.size - live;
-  return { period, enabled: cfg.enabled, ready, show: ready || any, live, ringing, series, top, totals: { ...tot, minutes: Math.round(tot.minutes) } };
+  return { period, enabled: cfg.enabled, ready, show: ready || any, live, ringing, series, top, liveCalls, totals: { ...tot, minutes: Math.round(tot.minutes) }, prev: { ...prev, minutes: Math.round(prev.minutes) } };
 }
 
 module.exports = { event, peerAccess, ownOk, activeList, adminEnd, logList, callAdd, inspectCert, afterConfigChange, getPrefs, setPrefs, groupJoin, groupLeave, groupsFor, init, stats, cspSources, getConfig, handleFedReq, recvFedEvent, fedAllowed, setFedAllowed, active, publicConfig, saveConfig, normUrl, check, start, accept, decline, end, onDisconnect, currentFor, CallError };

@@ -192,7 +192,7 @@ B.ui.chat = (function () {
     if (comp) { var qs = h.slice(qStart); h = h.slice(0, qStart) + (comp.lp ? Fmt.previewCard(comp.lp, B.http() + '://' + B.S.server) : '') + (qs ? '<div class="cpad">' + qs + '</div>' : ''); }
     if (fd && fd.attachment) h += attachments({ attachment: fd.attachment, id: 0 });
     var voice = !!(att && att.voice && att.url && !att.expired && !m.text && !comp);
-    h += voice ? Voice.html(att, B.http() + '://' + B.S.server + att.url, { own: mine, small: true, bars: 30, id: m.id > 0 ? m.id : '', unread: !mine, meta: meta }) : attachments(m);
+    h += voice ? Voice.html(att, B.http() + '://' + B.S.server + att.url, { own: mine, small: true, bars: 28, id: m.id > 0 ? m.id : '', unread: !mine, meta: meta }) : attachments(m);
     if (comp) h += compParts(comp.ps, chat, meta);
     else if (m._skel) h += '<div class="txt">' + m._skel + meta + '</div>';
     else if (m.text) h += '<div class="txt">' + (m.sender_is_bot ? m.text : formatText(m.text, chat || {})) + (bare ? '' : meta) + '</div>';

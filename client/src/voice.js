@@ -113,14 +113,16 @@
   // o: { own — своё сообщение, small — компактный вид, bars — число столбиков, meta — HTML справа (время и статус), unread — показывать точку «не прослушано», id }
   function html(att, src, o) {
     o = o || {};
-    const v = att.voice || {}, dur = Math.max(1, v.dur || 1), n = o.bars || 34;
+    const v = att.voice || {}, dur = Math.max(1, v.dur || 1), n = o.bars || 36;
     const w = Array.isArray(v.wave) && v.wave.length ? v.wave : Array(WAVE_BARS).fill(8);
-    let bars = '';
+    // Волна: интерполяция до нужного числа столбиков, лёгкое сглаживание и сжатие громкости, чтобы тихие участки не превращались в точки
+    const pts = [];
     for (let i = 0; i < n; i++) {
-      const a = Math.floor(i * w.length / n), b = Math.max(a + 1, Math.floor((i + 1) * w.length / n));
-      let m = 0; for (let j = a; j < b && j < w.length; j++) m = Math.max(m, w[j]);
-      bars += '<i style="height:' + Math.round(5 + Math.min(1, m / 28) * 22) + 'px"></i>';
+      const x = n > 1 ? i * (w.length - 1) / (n - 1) : 0, i0 = Math.floor(x), i1 = Math.min(w.length - 1, i0 + 1);
+      pts.push(w[i0] + (w[i1] - w[i0]) * (x - i0));
     }
+    const sm = pts.map((v, i) => (pts[i - 1] === undefined ? v : pts[i - 1]) * 0.25 + v * 0.5 + (pts[i + 1] === undefined ? v : pts[i + 1]) * 0.25);
+    const bars = sm.map(v => '<i style="height:' + Math.round(4 + Math.pow(Math.min(1, Math.max(0, v) / 28), 0.8) * 22) + 'px"></i>').join('');
     const unread = o.unread && o.id && !heard.has(String(o.id));
     return '<div class="vm ' + (o.own ? 'vm-out' : 'vm-in') + (o.small ? ' vm-sm' : '') + '" data-vsrc="' + esc(src) + '" data-vdur="' + dur + '"' + (o.id ? ' data-vid="' + esc(o.id) + '"' : '') + '>' +
       '<button class="pl" type="button" aria-label="Воспроизвести">' + I.play.replace('class="i"', 'class="i p1"') + I.pause.replace('class="i"', 'class="i p2"') + '</button>' +
