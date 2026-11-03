@@ -17,18 +17,27 @@
   const svg = n => `<svg class="i" viewBox="0 0 24 24">${ICON[n]}</svg>`;
   const init = await window.callApi.init();
   if (!init) return;
-  // «Через TCP»: только TURN по TLS и запрет прямых путей (если у сервера нет TURN по TLS, идём как обычно)
+  // «Через TCP»: только TURN по TLS и запрет прямых путей. LiveKit создаёт соединение раньше, чем получает список ICE-серверов, и задаёт его
+  // потом через setConfiguration, поэтому подменяем и конструктор, и setConfiguration (если у сервера нет TURN по TLS, идём как обычно)
   if (init.tcp && window.RTCPeerConnection) {
+    const tcpize = cfg => {
+      if (!cfg) return cfg;
+      const srv = (cfg.iceServers || []).map(s => {
+        const u = [].concat(s.urls || []).filter(x => /^turns:|transport=tcp/i.test(x)), more = [];
+        u.forEach(x => { const m = /^turns:([^:/?]+):443(\?.*)?$/i.exec(x); if (m) more.push('turns:' + m[1] + ':5349' + (m[2] || '?transport=tcp')); });
+        return { ...s, urls: [...u, ...more] };
+      }).filter(s => s.urls.length);
+      if (srv.length) return { ...cfg, iceTransportPolicy: 'relay', iceServers: srv };
+      return cfg.iceServers ? { ...cfg, iceTransportPolicy: 'all' } : cfg;
+    };
     const O = window.RTCPeerConnection;
     const N = function (cfg, c) {
-      if (cfg?.iceServers) {
-        // LiveKit объявляет TURN по TLS на порту 443, а у нас он слушает 5349: пробуем оба адреса
-        const srv = cfg.iceServers.map(s => { const u = [].concat(s.urls || []).filter(x => /^turns:|transport=tcp/i.test(x)), more = []; u.forEach(x => { const m = /^turns:([^:/?]+):443(\?.*)?$/i.exec(x); if (m) more.push('turns:' + m[1] + ':5349' + (m[2] || '?transport=tcp')); }); return { ...s, urls: [...u, ...more] }; }).filter(s => s.urls.length);
-        if (srv.length) cfg = { ...cfg, iceTransportPolicy: 'relay', iceServers: srv };
-      }
+      cfg = cfg && cfg.iceServers ? tcpize(cfg) : { ...(cfg || {}), iceTransportPolicy: 'relay' };
       return c !== undefined ? new O(cfg, c) : new O(cfg);
     };
     N.prototype = O.prototype; if (O.generateCertificate) N.generateCertificate = O.generateCertificate.bind(O);
+    const SC = O.prototype.setConfiguration;
+    if (SC) O.prototype.setConfiguration = function (cfg) { return SC.call(this, tcpize(cfg)); };
     window.RTCPeerConnection = N;
   }
 

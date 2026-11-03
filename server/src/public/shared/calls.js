@@ -645,25 +645,34 @@
   // Свои настройки этого устройства (не на сервере): через TCP
   function lget(k) { try { return localStorage.getItem('cl_' + k) === '1'; } catch (e) { return false; } }
   function lset(k, v) { try { if (v) localStorage.setItem('cl_' + k, '1'); else localStorage.removeItem('cl_' + k); } catch (e) {} }
-  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'tcp-4';
+  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'tcp-5';
+  // Только TURN по TLS (TCP) и запрет прямых путей. LiveKit создаёт соединение раньше, чем получает от сервера список ICE-серверов, и
+  // потом задаёт его через setConfiguration, поэтому подменяем и конструктор, и setConfiguration. Если у сервера нет TURN по TLS, идём как обычно
+  function tcpize(cfg) {
+    if (!tcpMode || !cfg) return cfg;
+    var srv = (cfg.iceServers || []).map(function (s) {
+      var u = [].concat(s.urls || []).filter(function (x) { return /^turns:|transport=tcp/i.test(x); }), more = [];
+      // LiveKit объявляет TURN по TLS на порту 443 (за балансировщиком), а у нас он слушает 5349: пробуем оба адреса
+      u.forEach(function (x) { var m = /^turns:([^:\/?]+):443(\?.*)?$/i.exec(x); if (m) more.push('turns:' + m[1] + ':5349' + (m[2] || '?transport=tcp')); });
+      return Object.assign({}, s, { urls: u.concat(more) });
+    }).filter(function (s) { return s.urls.length; });
+    if (srv.length) { tcpUsed = true; tcpUrls = srv.map(function (s) { return s.urls.join(', '); }).join('; '); return Object.assign({}, cfg, { iceTransportPolicy: 'relay', iceServers: srv }); }
+    return cfg.iceServers ? Object.assign({}, cfg, { iceTransportPolicy: 'all' }) : cfg;
+  }
+  function seen(tag, cfg) { try { iceSeen.push(tag + ': ' + (cfg && cfg.iceServers ? (cfg.iceServers.map(function (s) { return [].concat(s.urls || []).join(' '); }).join(' | ') || 'пусто') : 'без серверов')); if (iceSeen.length > 5) iceSeen.shift(); } catch (e) {} }
   function patchPc() {
     if (pcPatched || !window.RTCPeerConnection) return; pcPatched = true;
     var O = window.RTCPeerConnection;
     var N = function (cfg, c) {
-      try { iceSeen.push(cfg && cfg.iceServers ? cfg.iceServers.map(function (s) { return [].concat(s.urls || []).join(' '); }).join(' | ') || 'без серверов' : 'без настроек'); if (iceSeen.length > 4) iceSeen.shift(); } catch (e) {}
-      if (tcpMode && cfg && cfg.iceServers) {
-        // LiveKit объявляет TURN по TLS на порту 443 (за балансировщиком), а у нас он слушает 5349: пробуем оба адреса
-        var srv = cfg.iceServers.map(function (s) {
-          var u = [].concat(s.urls || []).filter(function (x) { return /^turns:|transport=tcp/i.test(x); }), more = [];
-          u.forEach(function (x) { var m = /^turns:([^:\/?]+):443(\?.*)?$/i.exec(x); if (m) more.push('turns:' + m[1] + ':5349' + (m[2] || '?transport=tcp')); });
-          return Object.assign({}, s, { urls: u.concat(more) });
-        }).filter(function (s) { return s.urls.length; });
-        if (srv.length) { cfg = Object.assign({}, cfg, { iceTransportPolicy: 'relay', iceServers: srv }); tcpUsed = true; tcpUrls = srv.map(function (s) { return s.urls.join(', '); }).join('; '); }   // у сервера нет TURN по TLS: идём как обычно
-      }
+      seen('создано', cfg);
+      // серверов ещё нет (придут позже): сразу запрещаем прямой путь, ICE начнётся только после setConfiguration
+      cfg = cfg && cfg.iceServers ? tcpize(cfg) : (tcpMode ? Object.assign({}, cfg || {}, { iceTransportPolicy: 'relay' }) : cfg);
       return c !== undefined ? new O(cfg, c) : new O(cfg);
     };
     N.prototype = O.prototype;
     if (O.generateCertificate) N.generateCertificate = O.generateCertificate.bind(O);
+    var SC = O.prototype.setConfiguration;
+    if (SC) O.prototype.setConfiguration = function (cfg) { seen('настройка', cfg); return SC.call(this, tcpize(cfg)); };
     window.RTCPeerConnection = N;
   }
   var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
