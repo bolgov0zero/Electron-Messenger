@@ -1603,6 +1603,39 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 
 /* Ресурсы, служба, хранилище */
 
+
+/* Настройки → Звонки: список с группами, значок «?» с подсказкой, окна, порты */
+.sp-gt{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--c-text2);margin:18px 4px 2px}
+.sp-r.sp-lk{cursor:pointer;transition:background .2s;border-radius:10px}
+.sp-r.sp-lk:hover,.sp-r.sp-lk:focus-visible{background:var(--c-surface2)}
+.sp-lk .sp-l b{display:flex;align-items:center;gap:0;flex-wrap:wrap}
+.sp-lki{display:inline-flex;margin-right:10px;color:var(--c-primary)}
+.sp-lk .sp-c{flex-wrap:nowrap;min-width:0}
+.sp-v{font-size:12.5px;color:var(--c-text2);white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}
+.sp-go{color:var(--c-text2);flex:none}
+.sp-hint{width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;font:700 11px var(--f-ui);color:var(--c-text2);border:1px solid var(--c-border);background:var(--c-surface2);margin-left:7px;flex:none;cursor:pointer;vertical-align:1px;padding:0}
+.sp-hint:hover,.sp-hint.on{color:var(--c-primary);border-color:var(--c-primary)}
+.sp-pop{position:fixed;z-index:10050;padding:11px 13px;border-radius:12px;background:var(--c-text);color:var(--c-bg,#fff);font-size:12.5px;line-height:1.55;box-shadow:0 14px 40px rgba(0,0,0,.3);animation:lkk-up .2s;pointer-events:none}
+.sp-pop b{display:block;margin-bottom:3px}
+@keyframes lkk-up{from{opacity:0;transform:translateY(6px)}}
+.lkq-sw{position:relative;width:38px;height:22px;border-radius:99px;background:var(--c-border);flex:none;border:0;padding:0;cursor:pointer;transition:background .25s}
+.lkq-sw::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.lkq-sw[aria-checked=true]{background:var(--c-primary)}.lkq-sw[aria-checked=true]::after{transform:translateX(16px)}
+.lkq-sw[disabled]{opacity:.45;pointer-events:none}
+.lkq-t{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--c-text2);margin:4px 0 4px;display:flex;align-items:center}
+.lkq-pr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;font-size:13px}
+.lkq-pr+.lkq-pr{border-top:1px solid var(--c-border)}.lkq-pr.dim{opacity:.55}
+.lkq-pr em{font-style:normal;font-size:12px;color:var(--c-text2);margin-left:8px}
+.lkq-ck{width:18px;height:18px;accent-color:var(--c-primary);flex:none}
+.lkp-tabs{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+.lkp-tabs button{white-space:normal;text-align:center;line-height:1.25}
+@media (max-width:560px){.lkp-tabs{grid-template-columns:1fr}}
+.lkp-list{padding:2px 14px;container-type:inline-size}
+.lkp-r{display:grid;grid-template-columns:110px minmax(0,1fr);gap:4px 14px;align-items:start;padding:11px 0}
+.lkp-r+.lkp-r{border-top:1px solid var(--c-border)}
+.lkp-p{display:flex;align-items:center;gap:8px}.lkp-p b{font-size:15px}
+.lkp-d{min-width:0;font-size:12.5px;line-height:1.55;overflow-wrap:anywhere}.lkp-d b{display:block;font-size:13px}.lkp-d span{color:var(--c-text2)}
+@container (max-width:440px){.lkp-r{grid-template-columns:1fr}}
 /* Доступ для других серверов: пары ключей LiveKit (Настройки → Звонки) */
 .lkk{padding-top:4px}
 .lkk-wrap{display:flex;flex-direction:column;gap:12px;min-width:0}
@@ -2675,7 +2708,8 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 <!-- Порты сервера звонков (Настройки → Звонки) -->
 <div class="modal-bg" id="modal-lkports"><div class="modal" style="width:720px;max-width:calc(100vw - 24px)" id="lkports-box" role="dialog" aria-modal="true"></div></div>
 
-<div class="modal-bg" id="modal-lkkeys"><div class="modal modal-sm" id="lkkeys-box" role="dialog" aria-modal="true"></div></div>
+<div class="modal-bg" id="modal-lkkeys"><div class="modal" style="width:640px;max-width:calc(100vw - 24px)" id="lkkeys-box" role="dialog" aria-modal="true"></div></div>
+<div class="modal-bg" id="modal-lkset"><div class="modal" style="width:560px;max-width:calc(100vw - 24px)" id="lkset-box" role="dialog" aria-modal="true"></div></div>
 
 <div class="modal-bg" id="modal-lkcopy"><div class="modal modal-sm" id="lkcopy-box" role="dialog" aria-modal="true"></div></div>
 

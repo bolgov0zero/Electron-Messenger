@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Макет: настройки звонков, три варианта</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* Макет: «Настройки → Звонки», три варианта организации. Данные вымышленные, всё кликабельно. */
+:root{
+  --f-ui:'Inter',system-ui,sans-serif;--f-mono:'JetBrains Mono',ui-monospace,monospace;
+  --bg:#eef2f6;--surface:#ffffff;--surface2:#f3f6f9;--border:#dde4ec;--text:#121a24;--muted:#66758a;
+  --accent:#0f9e8e;--accent-soft:rgba(15,158,142,.12);--ok:#12a672;--warn:#d98a0b;--bad:#d64545;
+  --shadow:0 1px 2px rgba(18,26,36,.05),0 8px 24px rgba(18,26,36,.06);--scrim:rgba(18,26,36,.38)
+}
+[data-theme=dark]{
+  --bg:#0a0f15;--surface:#121a23;--surface2:#17212c;--border:#243040;--text:#e7edf4;--muted:#8796a8;
+  --accent:#2fd0b9;--accent-soft:rgba(47,208,185,.14);--ok:#3ddc97;--warn:#f2b13d;--bad:#ff6b6b;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.28);--scrim:rgba(0,0,0,.55)
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--f-ui);background:var(--bg);color:var(--text);padding:20px 20px 60px;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit;border:0;background:none;outline:none}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.bar{max-width:1280px;margin:0 auto 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bar h1{font-size:15px;flex:1;min-width:240px}.bar h1 span{color:var(--muted);font-weight:500}
+.tg{height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12.5px;font-weight:600;color:var(--muted)}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:11px;background:var(--surface);border:1px solid var(--border)}
+.seg button{height:26px;padding:0 13px;border-radius:8px;font-size:12px;font-weight:600;color:var(--muted);transition:background .2s,color .2s}
+.seg button:hover{color:var(--text)}.seg button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent)}
+.note{max-width:1280px;margin:0 auto 20px;font-size:13px;line-height:1.6;color:var(--muted)}.note b{color:var(--text)}
+.stage{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 375px;gap:28px;align-items:start}
+.lab{font-size:12.5px;color:var(--muted);margin:0 4px 10px}.lab b{color:var(--text)}
+@media (max-width:1100px){.stage{grid-template-columns:1fr;justify-items:center}.stage>section{width:100%}.stage>section:last-child{display:flex;flex-direction:column;align-items:center}}
+
+.page{position:relative;background:var(--bg);border:1px solid var(--border);border-radius:18px;padding:18px;min-height:700px;overflow:hidden;container-type:inline-size}
+.phone{width:375px;max-width:100%;border-radius:30px;padding:12px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow)}
+.phone .page{padding:12px;border-radius:20px;min-height:780px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
+.btn{height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;transition:background .2s,transform .2s}
+.btn:hover{background:var(--surface2)}.btn:active{transform:scale(.97)}.btn .i{font-size:15px}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}[data-theme=dark] .btn.pri{color:#06201c}.btn.pri:hover{filter:brightness(1.07)}
+.btn.dng{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 35%,transparent);background:color-mix(in srgb,var(--bad) 8%,transparent)}
+.btn.sm{height:30px;padding:0 11px;font-size:12px}.btn[disabled]{opacity:.45;pointer-events:none}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;white-space:nowrap}
+.chip.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+.chip.warn{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.chip.off{background:var(--surface2);color:var(--muted)}
+.chip.info{background:var(--accent-soft);color:var(--accent)}
+.mono{font-family:var(--f-mono);font-size:11.5px}
+.sw{position:relative;width:38px;height:22px;border-radius:99px;background:var(--border);flex:none;transition:background .25s}
+.sw::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.sw[aria-checked=true]{background:var(--accent)}.sw[aria-checked=true]::after{transform:translateX(16px)}.sw[disabled]{opacity:.45;pointer-events:none}
+.hint{width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;font-size:11px;font-weight:700;color:var(--muted);border:1px solid var(--border);background:var(--surface2);vertical-align:1px;margin-left:6px;flex:none}
+.hint:hover,.hint.on{color:var(--accent);border-color:var(--accent)}
+.pop{position:absolute;z-index:8;width:min(300px,calc(100% - 24px));padding:11px 13px;border-radius:12px;background:var(--text);color:var(--bg);font-size:12.5px;line-height:1.55;box-shadow:0 14px 40px rgba(0,0,0,.3);animation:up .2s}
+.pop b{display:block;margin-bottom:3px}
+@keyframes up{from{opacity:0;transform:translateY(6px)}}
+
+/* шапка раздела */
+.top{display:flex;align-items:center;gap:14px;padding:14px 16px;flex-wrap:wrap}
+.top .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:20px;background:var(--accent-soft);color:var(--accent);flex:none}
+.top .tt{flex:1;min-width:200px}.top h2{font-size:16px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.top p{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.top .acts{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tabs{display:flex;gap:4px;margin:14px 0 12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.tabs button{padding:0 14px;height:34px;border-radius:10px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:center;gap:7px;border:1px solid transparent}
+.tabs button:hover{color:var(--text)}.tabs button[aria-pressed=true]{background:var(--surface);border-color:var(--border);color:var(--accent);box-shadow:var(--shadow)}
+.tabs .n{font-size:10.5px;padding:1px 6px;border-radius:99px;background:var(--surface2);color:var(--muted)}
+
+/* строки */
+.grp{padding:2px 16px}
+.row{display:flex;align-items:center;gap:14px;padding:13px 0;position:relative}
+.row+.row{border-top:1px solid var(--border)}
+.row .l{flex:1;min-width:0}.row .l b{font-size:13.5px;font-weight:600;display:flex;align-items:center;flex-wrap:wrap}
+.row .l span.s{display:block;font-size:12.5px;color:var(--muted);line-height:1.5;margin-top:2px}
+.row .c{display:flex;align-items:center;gap:10px;flex:none}
+.row.link{cursor:pointer;margin:0 -16px;padding:13px 16px;transition:background .2s}.row.link:hover{background:var(--surface2)}
+.row .c.wide{flex:1;max-width:340px}
+.row.link .c{flex:0 1 auto;min-width:0}.row.link .l{flex:1 1 auto}
+.row.link .v{font-size:12.5px;color:var(--muted);text-align:right;white-space:nowrap}
+.row.link .go{color:var(--muted);font-size:16px}
+.gt{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:16px 6px 7px}
+.in{height:34px;padding:0 11px;border-radius:9px;border:1px solid var(--border);background:var(--surface2);font-size:13px;min-width:0;width:100%;transition:border-color .2s,box-shadow .2s}
+.in:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.save{display:flex;gap:10px;align-items:center;justify-content:flex-end;padding:12px 0 14px;border-top:1px solid var(--border)}
+@container (max-width:600px){
+  .row{flex-wrap:wrap}.row .c{flex:1 1 100%}.row .c.wide{max-width:none}.row .c .in{flex:1}.save span{display:none}.save .btn{flex:1}
+  .row.sw,.row.link{flex-wrap:nowrap}.row.sw .c{flex:none}
+  .row.link.row.link .c{flex:none}
+  .top .acts{width:100%}.top .acts .btn{flex:1}
+}
+
+/* плитки (вариант B) */
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+@container (max-width:600px){.tiles{grid-template-columns:1fr}}
+.tile{padding:15px 16px;display:flex;flex-direction:column;gap:9px;cursor:pointer;transition:transform .25s,box-shadow .25s,border-color .25s}
+.tile:hover{border-color:var(--accent);transform:translateY(-1px)}
+.tile .th{display:flex;align-items:center;gap:11px}
+.tile .ti{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-size:17px;background:var(--accent-soft);color:var(--accent);flex:none}
+.tile h3{font-size:14px;flex:1}
+.tile p{font-size:12.5px;color:var(--muted);line-height:1.5}
+.tile .kv{display:flex;flex-direction:column;gap:5px;margin-top:2px}
+.tile .kv div{display:flex;justify-content:space-between;gap:10px;font-size:12.5px}.tile .kv div span:first-child{color:var(--muted)}
+.tile .kv div span:last-child{text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile .ft{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:4px;color:var(--accent);font-size:12.5px;font-weight:600}
+.health{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+/* пары */
+.pr{display:flex;align-items:center;gap:11px;padding:10px 0}.pr+.pr{border-top:1px solid var(--border)}
+.pr .pi{width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:16px;flex:none}
+.pr.off .pi{background:var(--surface2);color:var(--muted)}.pr.off b{text-decoration:line-through;color:var(--muted)}
+.pr div{flex:1;min-width:0}.pr b{font-size:13px}.pr span{display:block;font-size:12px;color:var(--muted);margin-top:1px}
+
+/* окна */
+.ov{position:absolute;inset:0;background:var(--scrim);display:none;align-items:center;justify-content:center;padding:16px;z-index:9;opacity:0}
+.ov.on{display:flex;animation:fi .2s forwards}@keyframes fi{to{opacity:1}}
+.md{width:min(500px,100%);max-height:100%;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:mu .3s cubic-bezier(.22,1,.36,1)}
+@keyframes mu{from{transform:translateY(14px) scale(.98);opacity:0}}
+.phone .ov{align-items:flex-end;padding:0}.phone .md{width:100%;border-radius:22px 22px 0 0;max-height:92%;animation:sh .35s cubic-bezier(.22,1,.36,1)}
+@keyframes sh{from{transform:translateY(40px);opacity:0}}
+.mh{display:flex;align-items:center;gap:10px;padding:16px 18px 6px}.mh h3{flex:1;font-size:15.5px}
+.x{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:var(--muted);font-size:16px}.x:hover{background:var(--surface2);color:var(--text)}
+.mb{padding:6px 18px 14px;font-size:13px;line-height:1.6;color:var(--muted)}.mb p+p{margin-top:8px}.mb b{color:var(--text)}
+.mf{display:flex;gap:10px;justify-content:flex-end;padding:12px 18px 18px;flex-wrap:wrap}.phone .mf .btn{flex:1}
+.fg{margin:12px 0 4px}.fg label{display:block;font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px}
+.fg small{display:block;font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.45}
+.pt{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}.pt th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border)}
+.pt td{padding:7px 0;border-bottom:1px solid var(--border);color:var(--text)}.pt td:last-child{color:var(--muted)}
+.rad{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.rad button{text-align:left;padding:10px 12px;border-radius:11px;border:1px solid var(--border);display:flex;flex-direction:column;gap:2px;font-size:13px;font-weight:600;color:var(--text)}
+.rad button span{font-weight:400;font-size:12px;color:var(--muted)}
+.rad button[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft)}
+.toast{position:absolute;left:50%;bottom:16px;transform:translate(-50%,16px);z-index:12;padding:10px 16px;border-radius:12px;background:var(--text);color:var(--bg);font-size:12.5px;font-weight:600;opacity:0;pointer-events:none;transition:all .35s cubic-bezier(.22,1,.36,1);max-width:90%}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;animation:sp .7s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Настройки → Звонки <span>· три варианта, всё кликабельно</span></h1>
+  <div class="seg" id="vseg"><button data-v="a" aria-pressed="true">A · Вкладки</button><button data-v="b" aria-pressed="false">B · Плитки и окна</button><button data-v="c" aria-pressed="false">C · Список</button></div>
+  <button class="tg" id="tTheme">Тёмная тема</button>
+</div>
+<p class="note" id="note"></p>
+<main class="stage">
+  <section><div class="lab"><b>Полная версия админки</b> · содержимое раздела «Звонки»</div><div class="page" id="d"></div></section>
+  <section><div class="lab"><b>Телефон</b></div><div class="phone"><div class="page" id="m"></div></div></section>
+</main>
+
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const P={phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>',
+ server:'<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/>',
+ globe:'<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+ users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+ key:'<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',
+ shield:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+ wrench:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',
+ chev:'<path d="m9 18 6-6-6-6"/>',x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',check:'<path d="M20 6 9 17l-5-5"/>',
+ lock:'<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+ copy:'<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+ refresh:'<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+ plug:'<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/>',
+ ban:'<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',terminal:'<polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/>'};
+const ic=n=>`<svg class="i" viewBox="0 0 24 24">${P[n]}</svg>`;
+const S={v:'a',live:2,on:true,url:'wss://calls.example.com',key:'APIm1Q7Zs3Xc8b',pub:true,cert:'ok',tab:{d:'srv',m:'srv'},
+ peers:[{n:'Москва · главный офис',on:true,allow:true,theirs:'доступен'},{n:'Филиал Казань',on:false,allow:false,theirs:'нет связи'},{n:'Партнёр Север',on:true,allow:false,theirs:'не разрешён'}],
+ pairs:[{n:'Партнёр Север',k:'APIk3H…m2f',d:'3 ноября 2026',off:false},{n:'Филиал Казань',k:'APIx8T…b6d',d:'21 октября 2026',off:false},{n:'Тестовый стенд',k:'APIp2Y…e0a',d:'2 сентября 2026',off:true}],ssh:true};
+const HINTS={
+ on:['Включить звонки','Пока звонки выключены, у пользователей нет кнопок звонка, а идущие звонки завершаются.'],
+ url:['Адрес сервера LiveKit','В локальной сети: ws://172.20.0.5:7880. С сертификатом: wss://calls.example.com. Поле можно оставить пустым: тогда звонки идут только людям с серверов, которые разрешили вам свой.'],
+ key:['Ключ и секрет','Пара из конфига LiveKit. По подписи ключа LiveKit понимает, что токены выдаёт именно ваш сервер. Секрет в браузер не возвращается.'],
+ pub:['Доступен из интернета','Включайте, только если адрес сервера звонков виден снаружи. Тогда люди с других серверов тоже смогут подключаться к нему. Звонок между серверами возможен, если сервер звонков публичный хотя бы у одной стороны.'],
+ cert:['Сертификат','Настоящий сертификат (Let’s Encrypt и подобные) ничего не требует. Самоподписанный клиент Electron принимает по отпечатку, браузерам он не подойдёт.'],
+ fed:['Звонки с других серверов','Отметьте серверы из федерации, чьи люди могут подключаться к вашему серверу звонков. Нужен публичный адрес.'],
+ theirs:['Серверы звонков соседей','Если сосед разрешил вам свой сервер звонков, вы звоните его людям через него, даже если своего у вас нет. Разрешение выдаёт администратор того сервера.'],
+ pairs:['Посторонние серверы','Серверы вне федерации. Каждому выдаётся своя пара ключей, любую можно отозвать, остальные продолжат работать.'],
+ inst:['Установка на другой сервер','Чистый Debian или Ubuntu: по SSH поставятся LiveKit и, для публичного сервера, Caddy с сертификатом. Адрес, ключ и секрет подставятся сами.']
+};
+const h=(k)=>`<button class="hint" data-hint="${k}" aria-label="Подсказка">?</button>`;
+const sw=(id,on,dis)=>`<button class="sw" role="switch" aria-checked="${on}" data-sw="${id}" ${dis?'disabled':''}></button>`;
+const frames=['d','m'];
+function toast(f,t){const e=$('#'+f+'-t');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),2400)}
+
+/* ── общие куски ── */
+const act=S2=>S.peers.filter(p=>p.allow).length;
+function health(){return `<div class="health"><span class="chip ${S.on?'ok':'off'}">${S.on?'включены':'выключены'}</span><span class="chip ok">LiveKit отвечает</span><span class="chip ${S.pub?'info':'off'}">${S.pub?'публичный':'закрытый'}</span><span class="chip ok">сертификат настоящий</span></div>`}
+function head(f,withTabs){
+  return `<div class="card top"><div class="ic">${ic('phone')}</div><div class="tt"><h2>Звонки ${S.live?`<span class="chip info">идёт: ${S.live}</span>`:''} ${h('on')}</h2><p>Аудио и видео через сервер LiveKit. ${S.on?'Звонки включены, сервер отвечает.':'Звонки выключены: кнопок звонка у пользователей нет.'}</p></div>
+    <div class="acts"><button class="btn" data-a="test">${ic('refresh')}Проверить</button><div class="seg" role="group"><button data-a="onoff" data-v="0" aria-pressed="${!S.on}">Выключены</button><button data-a="onoff" data-v="1" aria-pressed="${S.on}">Включены</button></div></div></div>`;
+}
+function rowSw(label,sub,hk,id,on,dis){return `<div class="row sw"><div class="l"><b>${label}${hk?h(hk):''}</b>${sub?`<span class="s">${sub}</span>`:''}</div><div class="c">${sw(id,on,dis)}</div></div>`}
+function rowLink(label,val,kind,hk,ico){return `<div class="row link" data-m="${kind}" tabindex="0" role="button"><div class="l"><b>${ico?`<span style="margin-right:9px;color:var(--accent);display:inline-flex;font-size:16px">${ic(ico)}</span>`:''}${label}${hk?h(hk):''}</b></div><div class="c"><span class="v">${val}</span><span class="go">${ic('chev')}</span></div></div>`}
+function connFields(){return `<div class="fg"><label>Адрес сервера LiveKit ${h('url')}</label><input class="in" value="${S.url}"></div>
+  <div class="fg"><label>API key ${h('key')}</label><input class="in" value="${S.key}"></div><div class="fg"><label>Секрет</label><input class="in" type="password" placeholder="•••••••• (задан, оставьте пустым, чтобы не менять)"></div>`}
+function peersBlock(){return `<div class="grp"><div class="gt" style="margin-left:0">Могут звонить через ваш сервер ${h('fed')}</div>${S.peers.map((p,i)=>`<div class="row sw"><div class="l"><b>${p.n}</b>${p.on?'':'<span class="s">нет связи</span>'}</div><div class="c">${sw('peer'+i,p.allow,!S.pub)}</div></div>`).join('')}${S.pub?'':'<div class="row"><div class="l"><span class="s">Сервер звонков не публичный: включите «Доступен из интернета», чтобы выдавать доступ.</span></div></div>'}</div>
+  <div class="grp"><div class="gt" style="margin-left:0">Вам разрешили свои серверы ${h('theirs')}</div>${S.peers.map(p=>`<div class="row"><div class="l"><b>${p.n}</b></div><div class="c"><span class="chip ${p.theirs==='доступен'?'ok':'off'}">${p.theirs}</span></div></div>`).join('')}</div>`}
+function pairsBlock(){return `<div class="row" style="padding-top:6px"><div class="l"><b>Посторонние серверы ${h('pairs')}</b><span class="s">Отдельная пара ключей для каждого сервера. Любую можно отозвать, остальные продолжат работать.</span></div><div class="c"><button class="btn pri sm" data-a="newpair" ${S.ssh?'':'disabled'}>${ic('plus')}Создать пару</button></div></div>
+  <div class="card" style="box-shadow:none;margin:6px 0 4px;padding:11px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span class="chip ${S.ssh?'ok':'warn'}">${ic(S.ssh?'shield':'lock')}${S.ssh?'управление без пароля включено':'управление без пароля не настроено'}</span><span style="flex:1;font-size:12px;color:var(--muted);min-width:140px">${S.ssh?'Ограниченный ключ на 172.20.99.250':'Нужно, чтобы создавать и отзывать пары'}</span><button class="btn sm" data-a="ssh">${S.ssh?'Закрыть доступ':'Настроить'}</button></div>
+  <div style="padding:2px 0">${S.pairs.map(p=>`<div class="pr ${p.off?'off':''}"><div class="pi">${ic(p.off?'ban':'server')}</div><div><b>${p.n}</b><span class="mono">${p.k} · ${p.off?'отозвана':'создана '+p.d}</span></div>${p.off?'<span class="chip off">отозвана</span>':'<button class="btn sm" data-a="copypair">'+ic('copy')+'Копировать</button><button class="btn dng sm" data-a="revoke">Отозвать</button>'}</div>`).join('')}</div>`}
+function instBlock(){return `<div class="row"><div class="l"><b>Установить на другой сервер ${h('inst')}</b><span class="s">Чистый Debian или Ubuntu: по SSH поставятся LiveKit и, при необходимости, Caddy с сертификатом.</span></div><div class="c"><button class="btn" data-m="inst">Установить…</button></div></div>
+  <div class="row"><div class="l"><b>Порты для файрвола</b><span class="s">Какие порты открыть у сервера звонков в каждом режиме установки.</span></div><div class="c"><button class="btn" data-m="ports">Показать порты…</button></div></div>`}
+function srvBlock(){return `<div class="grp"><div class="row"><div class="l"><b>Адрес сервера LiveKit ${h('url')}</b></div><div class="c wide"><input class="in" value="${S.url}"></div></div>
+  <div class="row"><div class="l"><b>API key и секрет ${h('key')}</b><span class="s">Секрет задан и в браузер не возвращается</span></div><div class="c"><span class="mono">${S.key.slice(0,6)}…${S.key.slice(-3)}</span><button class="btn sm" data-m="keys">Изменить…</button></div></div>
+  ${rowSw('Доступен из интернета','Чтобы люди с других серверов тоже могли подключаться','pub','pub',S.pub)}
+  ${S.pub?`<div class="row"><div class="l"><b>Сертификат ${h('cert')}</b><span class="s">Настоящий, Let’s Encrypt, до 12 февраля 2027</span></div><div class="c"><span class="chip ok">${ic('check')}в порядке</span><button class="btn sm" data-a="cert">Проверить</button></div></div>`:''}
+  <div class="save"><span style="flex:1;font-size:12.5px;color:var(--muted)">Изменения применяются после сохранения</span><button class="btn" data-a="test">Проверить</button><button class="btn pri" data-a="save">Сохранить</button></div></div>`}
+
+/* ── варианты ── */
+function viewA(f){
+  const t=S.tab[f],tabs=[['srv','Сервер',''],['fed','Другие серверы',S.peers.filter(p=>p.allow).length+'/'+S.peers.length],['ext','Посторонние серверы',S.pairs.filter(p=>!p.off).length],['tools','Установка','']];
+  return head(f)+`<div class="tabs" role="tablist">${tabs.map(x=>`<button aria-pressed="${t===x[0]}" data-tab="${x[0]}">${x[1]}${x[2]!==''?`<span class="n">${x[2]}</span>`:''}</button>`).join('')}</div>
+  <div class="card" style="padding:2px 16px 4px">${t==='srv'?srvBlock().replace('class="grp"','class="grp" style="padding:0"'):t==='fed'?peersBlock().replace(/class="grp"/g,'class="grp" style="padding:0 0 6px"'):t==='ext'?pairsBlock():instBlock()}</div>`;
+}
+function viewB(f){
+  return head(f)+health()+`<div class="tiles">
+   <div class="card tile" data-m="conn"><div class="th"><div class="ti">${ic('server')}</div><h3>Сервер LiveKit</h3><span class="chip ok">работает</span></div><div class="kv"><div><span>Адрес</span><span class="mono">${S.url.replace('wss://','')}</span></div><div><span>Ключ</span><span class="mono">${S.key.slice(0,6)}…${S.key.slice(-3)}</span></div><div><span>Из интернета</span><span>${S.pub?'да, сертификат в порядке':'нет'}</span></div></div><div class="ft">Настроить ${ic('chev')}</div></div>
+   <div class="card tile" data-m="fed"><div class="th"><div class="ti">${ic('users')}</div><h3>Серверы федерации</h3></div><p>Кому из соседей разрешено звонить через ваш сервер и чьи серверы звонков доступны вам.</p><div class="kv"><div><span>Могут звонить к вам</span><span>${S.peers.filter(p=>p.allow).length} из ${S.peers.length}</span></div><div><span>Вам разрешили</span><span>${S.peers.filter(p=>p.theirs==='доступен').length} из ${S.peers.length}</span></div></div><div class="ft">Открыть ${ic('chev')}</div></div>
+   <div class="card tile" data-m="ext"><div class="th"><div class="ti">${ic('key')}</div><h3>Посторонние серверы</h3></div><p>Отдельная пара ключей для каждого сервера вне федерации.</p><div class="kv"><div><span>Активных пар</span><span>${S.pairs.filter(p=>!p.off).length}</span></div><div><span>Управление без пароля</span><span>${S.ssh?'включено':'не настроено'}</span></div></div><div class="ft">Управлять ${ic('chev')}</div></div>
+   <div class="card tile" data-m="tools"><div class="th"><div class="ti">${ic('wrench')}</div><h3>Установка и порты</h3></div><p>Поставить LiveKit на другую машину по SSH и посмотреть, какие порты открыть.</p><div class="ft">Открыть ${ic('chev')}</div></div></div>`;
+}
+function viewC(f){
+  return head(f)+`<div class="gt">Основное</div><div class="card grp">${rowLink('Сервер LiveKit',S.url.replace('wss://',''),'conn','url','server')}${rowLink('API key и секрет','задан','keys','key','key')}</div>
+  <div class="gt">Доступность</div><div class="card grp">${rowSw('Доступен из интернета','Чтобы люди других серверов тоже подключались','pub','pub',S.pub)}${S.pub?rowLink('Сертификат','настоящий','cert','cert','shield'):''}${rowLink('Порты для файрвола','','ports','','plug')}</div>
+  <div class="gt">Другие серверы</div><div class="card grp">${rowLink('Серверы федерации',S.peers.filter(p=>p.allow).length+' из '+S.peers.length,'fed','fed','globe')}${rowLink('Посторонние серверы',S.pairs.filter(p=>!p.off).length+' пары','ext','pairs','users')}</div>
+  <div class="gt">Обслуживание</div><div class="card grp">${rowLink('Установить на другой сервер','','inst','inst','terminal')}</div>`;
+}
+const NOTE={
+ a:'<b>A · Вкладки.</b> Шапка с включением и проверкой всегда на виду. Дальше четыре вкладки по смыслу: «Сервер» (адрес, ключи, доступность, сертификат, одна кнопка «Сохранить»), «Другие серверы» (федерация), «Посторонние серверы» (пары ключей) и «Установка». Всё на странице, окна только для редких действий. Подсказки по значку «?».',
+ b:'<b>B · Плитки и окна.</b> Главный экран почти пустой: статус и четыре плитки с краткой сводкой (адрес, сколько серверов, сколько пар). Всё остальное открывается в окне по нажатию на плитку. Меньше всего шума, но чтобы что-то поменять, нужен лишний клик.',
+ c:'<b>C · Список.</b> Как в настройках телефона: сгруппированные строки с текущим значением справа, переключатели прямо в строке, подробности в окне по нажатию. Самый компактный вариант, одинаково хорошо ложится на телефон и на компьютер.'
+};
+
+/* ── окна ── */
+const hd=t=>`<div class="mh"><h3>${t}</h3><button class="x" data-c aria-label="Закрыть">${ic('x')}</button></div>`;
+const ft=(...b)=>`<div class="mf">${b.join('')}</div>`;
+const MODALS={
+ conn:()=>hd('Сервер LiveKit')+`<div class="mb"><p>Адрес, ключ и секрет сервера звонков. «Проверить» спрашивает у LiveKit список комнат: так видно, что данные верны.</p>${connFields()}<div class="warn" id="chk"></div></div>`+ft('<button class="btn" data-a="mtest">Проверить</button>','<button class="btn pri" data-a="msave">Сохранить</button>'),
+ keys:()=>hd('API key и секрет')+`<div class="mb"><p>Пара из конфига LiveKit. Оставьте секрет пустым, чтобы не менять.</p>${connFields().split('</div>').slice(1).join('</div>')}</div>`+ft('<button class="btn" data-c>Отмена</button>','<button class="btn pri" data-a="msave">Сохранить</button>'),
+ cert:()=>hd('Сертификат сервера')+`<div class="mb"><p><span class="chip ok">настоящий</span> Издатель: Let’s Encrypt, действует до 12 февраля 2027. Ничего принимать не нужно.</p><p>Если бы сертификат был самоподписанным, здесь можно было бы принять его по отпечатку для клиента Electron.</p></div>`+ft('<button class="btn" data-a="cert">Проверить снова</button>','<button class="btn pri" data-c>Готово</button>'),
+ ports:()=>hd('Порты для файрвола')+`<div class="mb"><p>Что открыть у сервера звонков в каждом режиме установки.</p><table class="pt"><tr><th>Режим</th><th>Порты</th></tr><tr><td>Локальная сеть</td><td>7880/tcp, 7881/tcp, 7882/udp</td></tr><tr><td>Публичный, с доменом</td><td>80, 443/tcp, 7881/tcp, 7882/udp, 3478/udp, 5349/tcp</td></tr><tr><td>За обратным прокси</td><td>7881/tcp, 7882/udp, 3478/udp</td></tr></table></div>`+ft('<button class="btn" data-a="cp">Копировать список</button>','<button class="btn pri" data-c>Закрыть</button>'),
+ fed:()=>hd('Серверы федерации')+`<div class="mb">${peersBlock().replace(/class="grp"/g,'class="grp" style="padding:0"')}</div>`+ft('<button class="btn pri" data-c>Готово</button>'),
+ ext:()=>hd('Посторонние серверы')+`<div class="mb">${pairsBlock()}</div>`+ft('<button class="btn pri" data-c>Готово</button>'),
+ tools:()=>hd('Установка и порты')+`<div class="mb">${instBlock()}</div>`+ft('<button class="btn pri" data-c>Готово</button>'),
+ inst:()=>hd('Установить LiveKit на другой сервер')+`<div class="mb"><p>Чистый сервер с Debian или Ubuntu. Пароль используется один раз и нигде не сохраняется.</p><div class="rad" id="mode"><button aria-pressed="true" data-mode>В локальной сети<span>Без сертификата, ws://адрес:7880</span></button><button aria-pressed="false" data-mode>Публичный сервер<span>Свой домен и сертификат через Caddy</span></button><button aria-pressed="false" data-mode>За обратным прокси<span>Сертификат и wss:// ведёт ваш прокси</span></button></div>
+  <div class="fg"><label>Адрес сервера</label><input class="in" placeholder="172.20.0.5"></div><div class="fg"><label>Пароль root</label><input class="in" type="password" placeholder="••••••••"></div></div>`+ft('<button class="btn" data-c>Отмена</button>','<button class="btn pri" data-a="minst">Подключиться</button>')
+};
+function modal(f,k){const o=$('#'+f+'-ov');o.innerHTML=`<div class="md">${MODALS[k]()}</div>`;o.dataset.k=k;o.classList.add('on')}
+function closeM(f){const o=$('#'+f+'-ov');o.classList.remove('on')}
+
+function render(f){
+  const el=$('#'+f);const v=S.v;
+  el.innerHTML=(v==='a'?viewA(f):v==='b'?viewB(f):viewC(f))+`<div class="ov" id="${f}-ov"></div><div class="toast" id="${f}-t"></div>`;
+  el.onclick=e=>onClick(f,e);
+}
+function pop(f,btn,k){
+  $('#'+f).querySelectorAll('.pop').forEach(p=>p.remove());$('#'+f).querySelectorAll('.hint.on').forEach(b=>b.classList.remove('on'));
+  if(btn._open){btn._open=false;return}btn._open=true;btn.classList.add('on');
+  const host=btn.closest('.md')||$('#'+f),r=btn.getBoundingClientRect(),hr=host.getBoundingClientRect();
+  const p=document.createElement('div');p.className='pop';p.innerHTML=`<b>${HINTS[k][0]}</b>${HINTS[k][1]}`;
+  (host.classList.contains('md')?host:host).appendChild(p);
+  const w=p.offsetWidth;p.style.left=Math.max(8,Math.min(hr.width-w-8,r.left-hr.left-w/2+9))+'px';p.style.top=(r.bottom-hr.top+(host.scrollTop||0)+8)+'px';
+  if(host.classList.contains('md')){host.style.position='relative'}
+  setTimeout(()=>{btn._open=true},0)
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.hint')&&!e.target.closest('.pop')){document.querySelectorAll('.pop').forEach(p=>p.remove());document.querySelectorAll('.hint.on').forEach(b=>{b.classList.remove('on');b._open=false})}},true);
+function onClick(f,e){
+  const t=e.target;
+  const hb=t.closest('.hint');if(hb){e.stopPropagation();pop(f,hb,hb.dataset.hint);return}
+  const c=t.closest('[data-c]');if(c){closeM(f);return}
+  if(t.classList.contains('ov')){closeM(f);return}
+  const mode=t.closest('[data-mode]');if(mode){[...mode.parentElement.children].forEach(b=>b.setAttribute('aria-pressed',b===mode));return}
+  const tab=t.closest('[data-tab]');if(tab){S.tab[f]=tab.dataset.tab;render(f);return}
+  const m=t.closest('[data-m]');if(m&&!t.closest('.sw')){modal(f,m.dataset.m);return}
+  const s=t.closest('[data-sw]');if(s){const id=s.dataset.sw;if(id==='pub'){S.pub=!S.pub;sync();return}if(id.startsWith('peer')){const p=S.peers[+id.slice(4)];p.allow=!p.allow;sync();return}}
+  const a=t.closest('[data-a]');if(!a)return;const k=a.dataset.a;
+  if(k==='onoff'){S.on=a.dataset.v==='1';sync();toast(f,S.on?'Звонки включены':'Звонки выключены')}
+  if(k==='test'||k==='mtest'){const old=a.innerHTML;a.innerHTML='<span class="spin"></span>Проверка…';setTimeout(()=>{a.innerHTML=old;const w=$('#chk');if(w){w.className='warn ok';w.innerHTML='Подключение работает, комнат сейчас: '+S.live}else toast(f,'Подключение работает, комнат сейчас: '+S.live)},900)}
+  if(k==='save'||k==='msave'){closeM(f);toast(f,'Настройки звонков сохранены')}
+  if(k==='cert'){toast(f,'Сертификат в порядке')}
+  if(k==='cp'){toast(f,'Список портов скопирован')}
+  if(k==='copypair'){toast(f,'Скопировано: адрес, ключ и секрет')}
+  if(k==='newpair'){toast(f,'Откроется окно «Новая пара ключей»')}
+  if(k==='revoke'){toast(f,'Откроется окно подтверждения отзыва')}
+  if(k==='ssh'){S.ssh=!S.ssh;sync()}
+  if(k==='minst'){closeM(f);toast(f,'Установка запущена: ход по шагам в окне')}
+}
+function sync(){const ks=frames.map(f=>[f,$('#'+f+'-ov').dataset.k,$('#'+f+'-ov').classList.contains('on')]);frames.forEach(render);ks.forEach(([f,k,on])=>{if(on&&k)modal(f,k)})}
+$('#vseg').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.v=b.dataset.v;[...$('#vseg').children].forEach(x=>x.setAttribute('aria-pressed',x===b));$('#note').innerHTML=NOTE[S.v];frames.forEach(render)};
+$('#tTheme').onclick=()=>{const d=document.documentElement.dataset.theme!=='dark';document.documentElement.dataset.theme=d?'dark':'light';$('#tTheme').textContent=d?'Светлая тема':'Тёмная тема'};
+$('#note').innerHTML=NOTE.a;frames.forEach(render);
+</script>
+</body>
+</html>
