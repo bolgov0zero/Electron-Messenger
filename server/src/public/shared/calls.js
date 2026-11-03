@@ -117,7 +117,21 @@
     var play = kind === 'in' ? function () { tone([880, 1175], .32, .07); setTimeout(function () { tone([880, 1175], .32, .07); }, 420); } : function () { tone([425], 1.0, .05); };
     play(); ringT = setInterval(play, kind === 'in' ? 2400 : 3500);
   }
-  function stopRing() { clearInterval(ringT); ringT = null; }
+  // Звуки вызова играет WebAudio: после вызова контекст закрываем, иначе на iPhone он держит свой маршрут звука и голос собеседника идёт сразу в два динамика
+  function closeAc() { try { if (ac) ac.close(); } catch (e) {} ac = null; }
+  function stopRing() { clearInterval(ringT); ringT = null; closeAc(); }
+  // Разрешение на микрофон (и камеру) просим сразу при нажатии «Позвонить» или «Принять», пока человек смотрит на экран: в Safari оно запрашивается
+  // заново при каждой загрузке страницы, и запрос посреди соединения легко пропустить, тогда звонок так и не соединяется
+  async function ensureMedia(video) {
+    if (!hasMedia()) return true;
+    try { var s = await navigator.mediaDevices.getUserMedia({ audio: true }); s.getTracks().forEach(function (t) { t.stop(); }); }
+    catch (e) {
+      H.toast(/NotAllowed|Security|Permission/i.test(e && e.name || '') ? (H.mobile ? 'Нужен доступ к микрофону. Разрешите его в настройках телефона для этого сайта и позвоните снова' : 'Нужен доступ к микрофону. Нажмите на значок замка в адресной строке и разрешите его') : 'Микрофон не найден');
+      return false;
+    }
+    if (video) { try { var v = await navigator.mediaDevices.getUserMedia({ video: true }); v.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} }
+    return true;
+  }
 
   var fmt = function (s) { var m = Math.floor(s / 60), h = Math.floor(m / 60); return (h ? h + ':' + String(m % 60).padStart(2, '0') : String(m)) + ':' + String(s % 60).padStart(2, '0'); };
   var hue = function (id) { return (id * 47) % 360; };
@@ -358,11 +372,13 @@
   async function join(c, url, token, withVideo) {
     if (location.protocol === 'https:' && /^ws:/i.test(url)) throw new Error('Сервер звонков работает без сертификата (ws://): в браузере звонки доступны только с wss://');
     LK = await loadLK(); ended = false;
+    closeAc();
+    try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     ensureVideos();
     var R = LK.RoomEvent, T = LK.Track;
-    room = new LK.Room({ adaptiveStream: true, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: { width: 1280, height: 720, frameRate: 30 }, deviceId: devOpt('videoin') } });
+    room = new LK.Room({ adaptiveStream: true, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: H.mobile ? { width: 640, height: 360, frameRate: 24 } : { width: 1280, height: 720, frameRate: 30 }, deviceId: devOpt('videoin') }, publishDefaults: H.mobile ? { videoEncoding: { maxBitrate: 700000, maxFramerate: 24 } } : undefined });
     room.on(R.TrackSubscribed, function (track) {
-      if (track.kind === T.Kind.Audio) { var el = track.attach(); el.dataset.cl = '1'; document.body.appendChild(el); el.play && el.play().catch(function () {}); }
+      if (track.kind === T.Kind.Audio) { document.querySelectorAll('audio[data-sid="' + track.sid + '"]').forEach(function (o) { o.remove(); }); var el = track.attach(); el.dataset.cl = '1'; el.dataset.sid = track.sid; el.setAttribute('playsinline', ''); document.body.appendChild(el); el.play && el.play().catch(function () {}); }
       remoteState();
     }).on(R.TrackUnsubscribed, function (track) { var els = track.detach(); if (track.kind === T.Kind.Audio) els.forEach(function (el) { el.remove(); }); remoteState(); })
       .on(R.TrackMuted, remoteState).on(R.TrackUnmuted, remoteState).on(R.TrackUnpublished, function () { setTimeout(remoteState, 0); })
@@ -434,6 +450,7 @@
     try { if (room) await room.disconnect(); } catch (e) {}
     room = null; tvids = {}; speaking = {};
     document.querySelectorAll('audio[data-cl]').forEach(function (a) { a.remove(); });
+    try { if (navigator.audioSession) navigator.audioSession.type = 'auto'; } catch (e) {}
     if (lv) lv.srcObject = null; if (rv) rv.srcObject = null;
   }
 
@@ -444,7 +461,16 @@
     if (!st.enabled) return H.toast(ERR.disabled);
     if (st.call || st.incoming) return H.toast(ERR.in_call);
     if (!hasMedia()) return H.toast('Браузер не даёт доступ к микрофону: откройте клиент по https');
+    if (!(await ensureMedia(!!video))) return;
     var r = await H.api('POST', '/calls/start', { chat_id: chatId, video: !!video });
+    // Сервер считает нас в звонке, а на экране его нет (завершение не дошло, страницу усыпила система): закрываем забытый звонок и пробуем ещё раз
+    if (r && r.code === 'in_call' && !st.call) {
+      var cur = await H.api('GET', '/calls/config');
+      if (cur && cur.current && !cur.current.incoming) {
+        await H.api('POST', cur.current.group ? '/calls/group/' + cur.current.call_id + '/leave' : '/calls/' + cur.current.call_id + '/end');
+        r = await H.api('POST', '/calls/start', { chat_id: chatId, video: !!video });
+      }
+    }
     if (!r || r.error) return H.toast(ERR[r && r.code] || (r && r.error) || 'Не удалось начать звонок');
     var c = st.call = { id: r.call_id, chatId: chatId, peer: r.peer, fed: !!r.fed, video: !!video, outgoing: true, phase: 'ringing', mic: true, cam: false, remoteCam: false, remoteMic: true, since: 0 };
     st.min = false; ring('out'); render();
@@ -456,6 +482,7 @@
     if (!st.enabled) return H.toast(ERR.disabled);
     if (st.call) return H.toast(ERR.in_call);
     if (!hasMedia()) return H.toast('Браузер не даёт доступ к микрофону: откройте клиент по https');
+    if (!(await ensureMedia(!!video))) return;
     var r = await H.api('POST', '/calls/group/join', { chat_id: chatId, video: !!video });
     if (!r || r.error) return H.toast({ full: 'В звонке уже много людей' }[r && r.code] || (r && r.error) || 'Не удалось присоединиться');
     var c = st.call = { id: r.call_id, chatId: chatId, fedGroup: !!r.fed_group, peer: { id: 0, name: name || 'Группа' }, group: true, video: !!video, outgoing: false, phase: 'connecting', mic: true, cam: false, remoteCam: false, remoteMic: true, since: 0 };
@@ -465,6 +492,7 @@
   }
   async function accept(withVideo) {
     var inc = st.incoming; if (!inc) return;
+    if (!inc.group && !(await ensureMedia(!!withVideo))) return;
     if (inc.group) { var gi = inc; dismissIncoming(); return joinGroup(gi.chat_id, withVideo, gi.name); }
     stopRing();
     var r = await H.api('POST', '/calls/' + inc.call_id + '/accept');
