@@ -33,14 +33,16 @@ class NotifyService : Service() {
 
     override fun onStartCommand(i: Intent?, f: Int, id: Int): Int {
         val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel("conn", "Приём уведомлений", NotificationManager.IMPORTANCE_MIN))
+        nm.deleteNotificationChannel("conn")
+        // Постоянное уведомление службы без точки на значке приложения: точка должна означать только настоящие сообщения
+        nm.createNotificationChannel(NotificationChannel("conn2", "Приём уведомлений", NotificationManager.IMPORTANCE_MIN).apply { setShowBadge(false) })
         nm.createNotificationChannel(NotificationChannel("msg", "Сообщения", NotificationManager.IMPORTANCE_HIGH))
         nm.createNotificationChannel(NotificationChannel("ring2", "Входящие звонки", NotificationManager.IMPORTANCE_HIGH).apply {
             enableVibration(true); vibrationPattern = longArrayOf(0, 700, 500, 700)
             setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE), AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         })
-        val n = Notification.Builder(this, "conn").setSmallIcon(R.drawable.ic_stat).setContentTitle("Electron").setContentText("Приём уведомлений").setOngoing(true).build()
+        val n = Notification.Builder(this, "conn2").setSmallIcon(R.drawable.ic_stat).setContentTitle("Electron").setContentText("Приём уведомлений").setOngoing(true).build()
         startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         connect()
         return START_STICKY
