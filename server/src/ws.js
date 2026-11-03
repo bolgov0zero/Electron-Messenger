@@ -272,7 +272,7 @@ async function finishMessage(msgId, chat_id, senderId, clientId, exceptDk = null
     // показываем даже тем, у кого ключ есть (защита от подглядывания).
     await pushToUser(user_id, {
       title: chatTitle,
-      body: chat?.is_secret ? 'Новое сообщение' : (String(msg.text || '').replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, '∗∗∗') || (msg.attachment ? (msg.attachment.gif ? 'GIF' : msg.attachment.more?.length ? `📎 Вложений: ${msg.attachment.more.length + 1}` : '🖼 Изображение') : '')),
+      body: chat?.is_secret ? 'Новое сообщение' : (String(msg.text || '').replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, '∗∗∗') || (msg.attachment ? (msg.attachment.gif ? 'GIF' : msg.attachment.voice ? '🎤 Голосовое сообщение' : msg.attachment.more?.length ? `📎 Вложений: ${msg.attachment.more.length + 1}` : '🖼 Изображение') : '')),
       chatId: chat_id,
       unread,
     });
@@ -698,7 +698,7 @@ function setup(server) {
         // «Печатает…» видят те же, кто видит присутствие: иначе по нему можно узнать, что человек в сети
         (await filterAsync((await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?', chat_id, user.id))
           , async m => (await spaces.canSeePresence(m.user_id, user.id))))
-          .forEach(m => sendTo(m.user_id, { type: 'typing', chat_id, user_id: user.id, sender_name: user.display_name }));
+          .forEach(m => sendTo(m.user_id, { type: 'typing', chat_id, user_id: user.id, sender_name: user.display_name, voice: data.voice ? true : undefined }));
         await fed().onTyping(chat_id, user.id);
       }
 

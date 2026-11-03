@@ -18,8 +18,21 @@ function cleanItem(a) {
   if (Number(a.width) > 0 && Number(a.height) > 0) { o.width = Math.floor(Number(a.width)); o.height = Math.floor(Number(a.height)); }
   return o;
 }
+// Голосовое сообщение: аудиофайл с длительностью и огибающей громкости (до 64 столбиков 0..31) для волны в пузыре
+const VOICE_MAX_SEC = 600;
+const VOICE_MIME_RE = /^audio\/(webm|ogg|mp4)$/;
+function cleanVoice(att) {
+  const v = att && att.voice;
+  if (!v || typeof v !== 'object' || typeof att.url !== 'string' || !URL_RE.test(att.url) || att.enc || att.gif !== undefined) return null;
+  const mime = typeof att.mime === 'string' ? att.mime.split(';')[0].trim().toLowerCase() : '';
+  if (!VOICE_MIME_RE.test(mime)) return null;
+  const dur = Math.min(VOICE_MAX_SEC, Math.max(1, Math.round(Number(v.dur)) || 1));
+  const wave = (Array.isArray(v.wave) ? v.wave : []).slice(0, 64).map(n => Math.min(31, Math.max(0, Math.round(Number(n)) || 0)));
+  return { url: att.url, name: 'voice', mime, size: Math.max(0, Math.floor(Number(att.size)) || 0), voice: { dur, wave } };
+}
 // Вложение от клиента: лишнее в more отбрасываем
 function sanitize(att) {
+  if (att && typeof att === 'object' && att.voice !== undefined) return cleanVoice(att);
   if (!att || typeof att !== 'object' || !('more' in att)) return att;
   const { more, ...rest } = att;
   if (att.gif !== undefined || att.enc) return rest;

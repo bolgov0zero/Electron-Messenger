@@ -6593,6 +6593,8 @@ const flSvg = p => `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" 
 const FL_I = {
   eye: flSvg('<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>'),
   down: flSvg('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>'),
+  mic: flSvg('<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>'),
+  lock: flSvg('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
 };
 const FL_PLAY = '<span class="fl-play"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg></span>';
 const FL_EXT = {
@@ -6600,11 +6602,12 @@ const FL_EXT = {
   video: ['mp4', 'mov', 'webm', 'mkv', 'avi', 'm4v'],
   doc: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'odt', 'ods', 'odp', 'csv', 'md'],
 };
-const FL_KIND = { image: ['Картинка', '#0f9e8e'], doc: ['Документ', '#5b6cf0'], video: ['Видео', '#c2478a'], other: ['Файл', '#d98a0b'], encrypted: ['Зашифровано', '#8a97a8'] };
+const FL_KIND = { voice: ['Голосовое', '#8b5cf6'], image: ['Картинка', '#0f9e8e'], doc: ['Документ', '#5b6cf0'], video: ['Видео', '#c2478a'], other: ['Файл', '#d98a0b'], encrypted: ['Зашифровано', '#8a97a8'] };
 const FL_BIG = 20 * 1048576;
 const flExt = f => (String(f.filename).includes('.') ? String(f.filename).split('.').pop() : '').toLowerCase();
 function flKind(f) {
   if (f.encrypted) return 'encrypted';
+  if (f.voice) return 'voice';
   const mime = f.mime || '', ext = flExt(f);
   if (mime.startsWith('image/') || FL_EXT.image.includes(ext)) return 'image';
   if (mime.startsWith('video/') || FL_EXT.video.includes(ext)) return 'video';
@@ -6615,7 +6618,10 @@ const flUrl = name => '/files/' + encodeURIComponent(name);
 const flShort = name => name.length > 42 ? name.slice(0, 40) + '…' : name;
 // Имя на диске — служебное (метка времени + случайный суффикс), человеку показываем
 // то, что он реально загрузил; у файлов без сообщения оригинала не сохранилось
-const flName = f => f.encrypted ? 'Зашифрованный файл' : (f.name || f.filename);
+const flName = f => f.encrypted ? 'Зашифрованный файл' : f.voice ? 'Голосовое сообщение' : (f.name || f.filename);
+// Голосовые видны в списке, но ни прослушать, ни скачать их из админки нельзя (как и зашифрованные)
+const flMeta = (f, kind) => kind === 'voice' ? `Голосовое · ${Math.floor((f.voice.dur || 0) / 60)}:${String((f.voice.dur || 0) % 60).padStart(2, '0')}` : FL_KIND[kind][0];
+const FL_LOCKED = k => k === 'encrypted' || k === 'voice';
 const flChatChip = type => type === 'direct' ? '<span class="rm-chip rm-direct">личный</span>'
   : type === 'group' ? '<span class="rm-chip rm-group">группа</span>' : type === 'room' ? '<span class="rm-chip rm-topics">комната</span>' : '';
 
@@ -6932,10 +6938,11 @@ async function renderFiles() {
 const flTs = f => f.sent_at || Math.floor((f.mtime || 0) / 1000);
 // Сколько дней осталось до автоудаления; null — автоудаление выключено
 const flLeftDays = f => FL.lifetime ? Math.max(0, Math.ceil((flTs(f) + FL.lifetime * 86400 - Date.now() / 1000) / 86400)) : null;
-const FL_KIND_COLOR = { image: 'var(--dv-c1)', doc: 'var(--dv-c2)', video: 'var(--dv-c5)', other: 'var(--dv-c3)', encrypted: 'var(--dv-c4)' };
+const FL_KIND_COLOR = { voice: '#8b5cf6', image: 'var(--dv-c1)', doc: 'var(--dv-c2)', video: 'var(--dv-c5)', other: 'var(--dv-c3)', encrypted: 'var(--dv-c4)' };
 
 function flThumbHtml(f, kind) {
   const imgSrc = kind === 'image' ? flUrl(f.filename) : kind === 'video' ? f.thumb : null;
+  if (kind === 'voice') return `<span class="fl-thumb" style="background:${FL_KIND[kind][1]}">${FL_I.mic}</span>`;
   return `<span class="fl-thumb" style="background:${FL_KIND[kind][1]}">${esc((flExt(f) || '?').slice(0, 4).toUpperCase())}${imgSrc ? `<img src="${esc(imgSrc)}" loading="lazy" alt="" data-on-error="elRemove">` : ''}${kind === 'video' ? FL_PLAY : ''}</span>`;
 }
 
@@ -6955,7 +6962,7 @@ function flRender() {
   const max = Math.max(1, ...FL.files.map(f => f.size || 0));
   const uniq = key => [...new Set(FL.files.map(f => f[key]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru', { numeric: true }));
   const count = k => FL.files.filter(f => k === 'big' ? f.size > FL_BIG : flKind(f) === k).length;
-  const kinds = ['image', 'doc', 'video', 'other', 'encrypted'].map(k => [k, FL.files.filter(f => flKind(f) === k).length]).filter(x => x[1]);
+  const kinds = ['image', 'doc', 'video', 'voice', 'other', 'encrypted'].map(k => [k, FL.files.filter(f => flKind(f) === k).length]).filter(x => x[1]);
   const biggest = FL.files.slice().sort((a, b) => (b.size || 0) - (a.size || 0))[0];
   const soon = FL.lifetime ? FL.files.filter(f => flLeftDays(f) <= 3) : [], soonSize = soon.reduce((s, f) => s + (f.size || 0), 0);
   const keepTop = page.querySelector('.ub-rows')?.scrollTop || 0;
@@ -6975,25 +6982,26 @@ function flRender() {
           : '<div class="ub-tile static"><div class="ub-lbl">Больше всего места</div><div class="ub-sub" style="margin-top:8px">пока нет</div></div>'}
       </div>
       <div class="ub-head"><h3>Файлы <span>${rows.length}</span></h3>
-        <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все'], ['image', 'Картинки'], ['doc', 'Документы'], ['video', 'Видео'], ['big', 'Больше 20 МБ']].map(flt).join('')}</div>
+        <div class="ub-sort" role="group" aria-label="Фильтр">${[['all', 'Все'], ['image', 'Картинки'], ['doc', 'Документы'], ['video', 'Видео'], ['voice', 'Голосовые'], ['big', 'Больше 20 МБ']].map(flt).join('')}</div>
         <div class="ub-sort" role="group" aria-label="Сортировка">${sortBtn('date', 'По дате')}${sortBtn('size', 'По размеру')}${sortBtn('name', 'По имени')}</div>
         ${fselHtml('fl-who', 'Все отправители', uniq('sender_name'), FL.who, 'flWho')}
         ${fselHtml('fl-chat', 'Все чаты', uniq('chat_name'), FL.chat, 'flChat')}
         ${uxSearch('fl-q', FL.q, 'Имя файла', 'flSearch')}</div>
       <div class="ub-rows">${rows.map(f => {
         const kind = flKind(f), name = jesc(f.filename), open = FL.open.has(f.filename), openable = kind === 'image' || kind === 'video', ld = flLeftDays(f);
-        const act = kind === 'encrypted' ? '<button class="btn btn-ghost btn-sm" disabled title="Вложение секретного чата — открыть нельзя">Зашифровано</button>'
+        const act = kind === 'voice' ? `<button class="btn btn-ghost btn-sm" disabled title="Голосовые сообщения из админки не прослушать и не скачать">${FL_I.lock}Недоступно</button>`
+          : kind === 'encrypted' ? '<button class="btn btn-ghost btn-sm" disabled title="Вложение секретного чата — открыть нельзя">Зашифровано</button>'
           : `<button class="btn btn-ghost btn-sm" data-on-click="__h101" data-a-click="${esc(JSON.stringify([name]))}">${openable ? FL_I.eye + 'Открыть' : FL_I.down + 'Скачать'}</button>`;
         return `<div class="rb-row"><div class="fb-top" data-on-click="flTog" data-a-click="${esc(JSON.stringify(["__event", `${name}`]))}">
           <button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть: ${esc(flName(f))}">${UX_I.chev}</button>
-          <div class="fb-name">${flThumbHtml(f, kind)}<div style="min-width:0"><b title="${esc(flName(f))}">${esc(flShort(flName(f)))}</b><span class="rb-meta">${FL_KIND[kind][0]}</span></div></div>
+          <div class="fb-name">${flThumbHtml(f, kind)}<div style="min-width:0"><b title="${esc(flName(f))}">${esc(flShort(flName(f)))}</b><span class="rb-meta">${flMeta(f, kind)}</span></div></div>
           <div class="fb-sz">${hmBytes(f.size || 0)}<div class="meter"><i style="width:${Math.max(4, (f.size || 0) / max * 100)}%;background:${FL_KIND_COLOR[kind]}"></i></div></div>
           <div class="fb-sd">${f.sender_name ? `${avHtml(f.sender_name, 26, 8, f.sender_id, false, true)}<div style="min-width:0"><div class="l1">${esc(f.sender_name)}</div><div class="l2">${esc(f.chat_name || '—')}</div></div>` : `<div><div class="l1" style="font-weight:500;color:var(--c-muted)">без сообщения</div><div class="l2">${esc(f.chat_name || '—')}</div></div>`}</div>
           <div class="fb-when">${esc(uaSeen(flTs(f)))}${ld != null ? `<small class="${ld <= 3 ? 'w' : ''}">удалится через ${ld} ${uxPlural(ld, 'день', 'дня', 'дней')}</small>` : ''}</div>
           <div class="ux-actions">${act}<button class="ux-ibtn" aria-label="Ещё действия: ${esc(flName(f))}" aria-haspopup="menu" aria-expanded="false" data-on-click="__h102" data-a-click="${esc(JSON.stringify([name]))}">${UX_I.more}</button></div></div>
-        ${open ? `<div class="fb-exp${FL.fresh === f.filename ? ' fresh' : ''}"><div><div class="fb-big" style="background:${FL_KIND[kind][1]}">${esc((flExt(f) || '?').toUpperCase())}${kind === 'image' ? `<img src="${esc(flUrl(f.filename))}" alt="" data-on-error="elRemove">` : kind === 'video' && f.thumb ? `<img src="${esc(f.thumb)}" alt="" data-on-error="elRemove">` : ''}</div></div>
-          <div><h4>О файле</h4><div class="rb-kv"><div><span>Тип</span><b>${FL_KIND[kind][0]}${flExt(f) ? ', .' + esc(flExt(f)) : ''}</b></div><div><span>Размер</span><b>${hmBytes(f.size || 0)}</b></div><div><span>Отправил</span><b>${esc(f.sender_name || '—')}</b></div><div><span>Чат</span><b>${esc(f.chat_name || '—')}${flChatChip(f.chat_type)}</b></div><div><span>Когда</span><b>${esc(uaSeen(flTs(f)))}</b></div><div><span>Удалится</span><b>${ld != null ? `через ${ld} ${uxPlural(ld, 'день', 'дня', 'дней')}` : 'не удаляется'}</b></div></div></div>
-          <div><h4>Действия</h4><div style="display:flex;flex-wrap:wrap;gap:8px">${kind === 'encrypted' ? '' : `${openable ? `<button class="btn btn-ghost btn-sm" data-on-click="flOpen" data-a-click="${esc(JSON.stringify([`${name}`]))}">${FL_I.eye}Открыть</button>` : ''}<button class="btn btn-ghost btn-sm" data-on-click="flDownload" data-a-click="${esc(JSON.stringify([`${name}`]))}">${FL_I.down}Скачать</button>`}${f.sender_name ? `<button class="btn btn-ghost btn-sm" data-on-click="flWho" data-a-click="${esc(JSON.stringify([f.sender_name]))}">Все файлы ${esc(f.sender_name.split(' ')[0])}</button>` : ''}<button class="btn btn-danger btn-sm" data-on-click="flDelete" data-a-click="${esc(JSON.stringify([[name]]))}">${UX_I.trash}Удалить</button></div>
+        ${open ? `<div class="fb-exp${FL.fresh === f.filename ? ' fresh' : ''}"><div><div class="fb-big" style="background:${FL_KIND[kind][1]}">${kind === 'voice' ? FL_I.mic : esc((flExt(f) || '?').toUpperCase())}${kind === 'image' ? `<img src="${esc(flUrl(f.filename))}" alt="" data-on-error="elRemove">` : kind === 'video' && f.thumb ? `<img src="${esc(f.thumb)}" alt="" data-on-error="elRemove">` : ''}</div></div>
+          <div><h4>О файле</h4><div class="rb-kv"><div><span>Тип</span><b>${kind === 'voice' ? flMeta(f, kind) : FL_KIND[kind][0] + (flExt(f) ? ', .' + esc(flExt(f)) : '')}</b></div><div><span>Размер</span><b>${hmBytes(f.size || 0)}</b></div><div><span>Отправил</span><b>${esc(f.sender_name || '—')}</b></div><div><span>Чат</span><b>${esc(f.chat_name || '—')}${flChatChip(f.chat_type)}</b></div><div><span>Когда</span><b>${esc(uaSeen(flTs(f)))}</b></div><div><span>Удалится</span><b>${ld != null ? `через ${ld} ${uxPlural(ld, 'день', 'дня', 'дней')}` : 'не удаляется'}</b></div></div></div>
+          <div><h4>Действия</h4><div style="display:flex;flex-wrap:wrap;gap:8px">${FL_LOCKED(kind) ? '' : `${openable ? `<button class="btn btn-ghost btn-sm" data-on-click="flOpen" data-a-click="${esc(JSON.stringify([`${name}`]))}">${FL_I.eye}Открыть</button>` : ''}<button class="btn btn-ghost btn-sm" data-on-click="flDownload" data-a-click="${esc(JSON.stringify([`${name}`]))}">${FL_I.down}Скачать</button>`}${f.sender_name ? `<button class="btn btn-ghost btn-sm" data-on-click="flWho" data-a-click="${esc(JSON.stringify([f.sender_name]))}">Все файлы ${esc(f.sender_name.split(' ')[0])}</button>` : ''}<button class="btn btn-danger btn-sm" data-on-click="flDelete" data-a-click="${esc(JSON.stringify([[name]]))}">${UX_I.trash}Удалить</button></div>
             <div class="rm-sub" style="margin-top:10px">После удаления в чате на месте файла останется «Файл удалён».</div></div></div>` : ''}</div>`;
       }).join('') || `<div class="ub-empty">${FL.files.length ? 'Ничего не нашли. Проверьте запрос или фильтры.' : 'Файлов пока нет'}</div>`}</div></div>`;
   });
@@ -7018,13 +7026,13 @@ function flSettings() { openSettingsModal('attachments'); }
 function flOpen(name) {
   const f = FL.files.find(x => x.filename === name);
   const kind = f && flKind(f);
-  if (kind === 'encrypted') return;
+  if (FL_LOCKED(kind)) return;
   if (kind === 'image' || kind === 'video') openFilePreview(name);
   else flDownload(name);
 }
 function flDownload(name) {
   const f = FL.files.find(x => x.filename === name);
-  if (f?.encrypted) return;
+  if (f?.encrypted || f?.voice) return;
   const a = document.createElement('a');
   a.href = flUrl(name);
   a.download = f ? flName(f) : name;
@@ -7038,7 +7046,7 @@ function flMenu(e, name) {
   const kind = f && flKind(f);
   const openItem = (kind === 'image' || kind === 'video')
     ? `<button role="menuitem" data-on-click="__h103" data-a-click="${esc(JSON.stringify([n]))}">${FL_I.eye}Открыть</button>` : '';
-  const dlItem = kind === 'encrypted' ? '' : `<button role="menuitem" data-on-click="__h104" data-a-click="${esc(JSON.stringify([n]))}">${FL_I.down}Скачать</button>`;
+  const dlItem = FL_LOCKED(kind) ? '' : `<button role="menuitem" data-on-click="__h104" data-a-click="${esc(JSON.stringify([n]))}">${FL_I.down}Скачать</button>`;
   uxOpenMenu(e, 'fl' + name, `
     ${openItem}
     ${dlItem}

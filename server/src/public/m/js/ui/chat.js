@@ -191,11 +191,12 @@ B.ui.chat = (function () {
     if (fd) h += '<div class="quote"><b>Переслано от ' + esc(fd.name || '') + '</b>' + (fd.text ? '<span>' + esc(fd.text) + '</span>' : '') + '</div>';
     if (comp) { var qs = h.slice(qStart); h = h.slice(0, qStart) + (comp.lp ? Fmt.previewCard(comp.lp, B.http() + '://' + B.S.server) : '') + (qs ? '<div class="cpad">' + qs + '</div>' : ''); }
     if (fd && fd.attachment) h += attachments({ attachment: fd.attachment, id: 0 });
-    h += attachments(m);
+    var voice = !!(att && att.voice && att.url && !att.expired && !m.text && !comp);
+    h += voice ? Voice.html(att, B.http() + '://' + B.S.server + att.url, { own: mine, small: true, bars: 30, id: m.id > 0 ? m.id : '', unread: !mine, meta: meta }) : attachments(m);
     if (comp) h += compParts(comp.ps, chat, meta);
     else if (m._skel) h += '<div class="txt">' + m._skel + meta + '</div>';
     else if (m.text) h += '<div class="txt">' + (m.sender_is_bot ? m.text : formatText(m.text, chat || {})) + (bare ? '' : meta) + '</div>';
-    else if (!bare) h += '<div class="txt" style="min-height:4px">' + meta + '</div>';
+    else if (!bare && !voice) h += '<div class="txt" style="min-height:4px">' + meta + '</div>';
     h += msgActions(m);
     if (bare) h += meta;
     h += '</div><span class="swi">' + I('reply') + '</span></div>' + reactions(m) + (fail ? '<div class="failnote" data-c="retry" data-cid="' + m._cid + '">Не отправлено · <b>Повторить</b></div>' : '') + '</div>';
@@ -252,11 +253,11 @@ B.ui.chat = (function () {
     var ty = B.typing.names(chat.id);
     if (chat.type === 'direct') {
       if (B.isSys(chat)) return { t: 'Служебные уведомления' };
-      if (ty.length) return { t: B.typing.label(ty, false), live: 1 };
+      if (ty.length) return { t: B.typing.label(ty, false, chat.id), live: 1 };
       var p = B.peerId(chat), st = B.S.presence[p];
       return { t: p ? B.contacts.peerSub(p) : 'Личный чат', live: st === 'online' };
     }
-    if (ty.length) return { t: B.typing.label(ty, true), live: 1 };
+    if (ty.length) return { t: B.typing.label(ty, true, chat.id), live: 1 };
     if (chat.invite) return { t: 'Приглашение в ' + B.msgs.fedKind(chat) };
     if (B.msgs.fedOffline(chat)) return { t: 'Федеративная группа · нет связи' };
     var o = (B.S.chatOnline || {})[chat.id], cnt = o ? 'в сети ' + o.online + ' из ' + o.total : (chat.members ? chat.members.length : 0) + ' участников';
@@ -342,7 +343,7 @@ B.ui.chat = (function () {
     var ab = $('[data-c="addc"]', el), pid = chat.type === 'direct' && !B.isSys(chat) ? B.peerId(chat) : null; if (ab) ab.hidden = !(pid && B.contacts.needsContact(pid));
   }
   // Панель закрепа: показывает одно закреплённое сообщение, нажатие переходит к нему и листает к следующему, крестик открепляет
-  function pinText(p) { return (p.sender_name || '') + ': ' + (Fmt.plain(p.text || '').replace(/<[^>]*>/g, '') || (p.attachment ? '📎 Вложение' : 'Сообщение')); }
+  function pinText(p) { return (p.sender_name || '') + ': ' + (Fmt.plain(p.text || '').replace(/<[^>]*>/g, '') || (p.attachment ? (p.attachment.voice ? '🎤 Голосовое сообщение' : '📎 Вложение') : 'Сообщение')); }
   function renderPin(el) {
     var bar = $('.pinbar', el), pins = (el.dataset.cid == B.msgs.chatId ? B.msgs.pins : []) || [], cid = +el.dataset.cid;
     if (!bar) return;
@@ -644,7 +645,7 @@ B.ui.chat = (function () {
   B.bus.on('ws:message', function (d) {
     var m = d.message, chat = B.find(m.chat_id);
     if (!chat || m.sender_id === B.S.user.id || chat.muted || m.chat_id === B.S.activeChatId || document.hidden || chat.parent_id) return;
-    var txt = m.text ? Fmt.plain(m.text).replace(/<[^>]*>/g, '') : m.attachment ? '📎 Вложение' : '';
+    var txt = m.text ? Fmt.plain(m.text).replace(/<[^>]*>/g, '') : m.attachment ? (m.attachment.voice ? '🎤 Голосовое сообщение' : '📎 Вложение') : '';
     B.toast.banner(B.avatar.chat(chat, 0, true) + '<div class="tt"><b>' + esc(B.chatName(chat)) + '</b><span>' + esc(txt.slice(0, 80)) + '</span></div>', function () { B.openChat(chat.id); });
   });
 

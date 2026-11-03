@@ -1,0 +1,89 @@
+/* Голосовые сообщения (shared/voice.js). Вид — по макету docs/glass-mockup/voice.html, вариант A.
+   Копия лежит в client/src/voice.css — править только shared/voice.css и копировать. */
+
+/* ── пузырь в ленте ── */
+.vm{display:flex;align-items:center;gap:12px;min-width:268px;padding:2px 0 0}
+.vm.vm-sm{min-width:226px;gap:10px}
+.vm .pl{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:19px;flex:none;position:relative;transition:transform .35s var(--gl-spring)}
+.vm .pl:active{transform:scale(.9)}
+.vm .pl .i{position:absolute;width:1em;height:1em;transition:opacity .2s,transform .35s var(--gl-spring)}
+.vm .pl .i.p2{opacity:0;transform:scale(.4) rotate(-40deg)}
+.vm.playing .pl .i.p1{opacity:0;transform:scale(.4) rotate(40deg)}
+.vm.playing .pl .i.p2{opacity:1;transform:none}
+.vm-in .pl{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;box-shadow:0 4px 12px color-mix(in srgb,var(--gl-out-b) 35%,transparent)}
+.vm-out .pl{background:rgba(255,255,255,.95);color:var(--accent-ink)}
+.vm .vb{flex:1;min-width:0}
+.vm .wv{display:flex;align-items:center;justify-content:space-between;height:30px;cursor:pointer;touch-action:none}
+.vm .wv i{display:block;width:3px;border-radius:2px;background:currentColor;opacity:.32;transition:opacity .15s,transform .2s var(--gl-spring)}
+.vm .wv i.d{opacity:1}
+.vm .wv i.cur{transform:scaleY(1.18)}
+.vm-in .wv{color:var(--accent)}.vm-out .wv{color:#fff}
+.vm .mt{display:flex;align-items:center;gap:7px;font-size:11.5px;font-variant-numeric:tabular-nums;margin-top:1px;color:var(--text2);height:18px}
+.vm-out .mt{color:rgba(255,255,255,.88)}
+.vm .mt .tm{margin-left:auto;display:inline-flex;align-items:center;gap:4px}
+.vm .ud{width:8px;height:8px;border-radius:50%;background:var(--accent);transition:transform .3s var(--gl-spring),opacity .3s}
+.vm .ud.gone{transform:scale(0);opacity:0}
+.vm .spd{height:18px;padding:0 7px;border-radius:9px;font-size:10.5px;font-weight:700;background:var(--accent-soft);color:var(--accent-ink);display:none;transition:transform .3s var(--gl-spring)}
+.vm-out .spd{background:rgba(255,255,255,.22);color:#fff}
+.vm.act .spd{display:inline-block}.vm .spd:active{transform:scale(.9)}
+
+/* ── кнопка: микрофон, пока в поле нет текста ── */
+.vr-btn{position:relative;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.vr-btn>svg{transition:opacity .22s,transform .45s var(--gl-spring)}
+.vr-btn>svg.vr-mic{position:absolute;left:50%;top:50%;width:21px;height:21px;margin:-10.5px 0 0 -10.5px}
+.vr-btn:not(.ready)>svg:not(.vr-mic){opacity:0;transform:scale(.4) rotate(-90deg)}
+.vr-btn.ready>svg.vr-mic{opacity:0;transform:scale(.4) rotate(90deg)}
+.vr-hold .vr-btn:not(.ready){background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;transform:scale(1.32);z-index:11;
+  box-shadow:0 0 0 calc(5px + var(--vlvl,0) * 26px) rgba(var(--accent-rgb),.2),0 10px 28px color-mix(in srgb,var(--gl-out-b) 45%,transparent);transition:background .3s,transform .08s,box-shadow .08s}
+.vr-hold.vr-will .vr-btn:not(.ready){background:linear-gradient(140deg,var(--danger),color-mix(in srgb,var(--danger) 70%,#000));box-shadow:0 0 0 12px var(--danger-bg)}
+
+/* ── строка записи внутри поля ── */
+.vr-row{transition:opacity .25s,transform .4s var(--gl-ease)}
+.vr-rec .vr-row{opacity:0;transform:translateY(-10px);pointer-events:none}
+.vr-field{position:relative}
+.vr-field>*:not(.vr-bar):not(.vr-fx){transition:opacity .25s}
+.vr-rec .vr-field>*:not(.vr-bar):not(.vr-fx){opacity:0;pointer-events:none}
+.vr-side{transition:opacity .25s}
+.vr-rec .vr-side{opacity:.35;pointer-events:none}
+.vr-hold:not(.vr-lockd) .vr-side{opacity:0}
+.vr-bar{position:absolute;inset:0;display:flex;align-items:center;gap:6px;padding:0 6px;opacity:0;pointer-events:none;transform:translateY(10px);color:var(--text);transition:opacity .25s,transform .45s var(--gl-spring)}
+.vr-rec .vr-bar{opacity:1;pointer-events:auto;transform:none}
+.vr-trash{display:none;border:0;padding:0;background:transparent;width:40px;height:40px;border-radius:50%;place-items:center;font-size:19px;color:var(--danger);flex:none;transition:background .2s,transform .35s var(--gl-spring)}
+.vr-trash:hover{background:var(--danger-bg)}.vr-trash:active{transform:scale(.9)}
+.vr-lockd .vr-trash{display:grid}
+.vr-trash .i,.vr-hint .i,.vr-fx .i{width:1em;height:1em}
+.vr-dot{width:11px;height:11px;border-radius:50%;background:var(--danger);margin:0 4px 0 12px;flex:none;box-shadow:0 0 0 calc(var(--vlvl,0) * 7px) var(--danger-bg);transition:box-shadow .08s;animation:vr-blink 1.4s ease-in-out infinite}
+.vr-lockd .vr-dot{margin-left:2px}
+@keyframes vr-blink{50%{opacity:.35}}
+.vr-time{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;min-width:40px}
+.vr-wave{display:none;flex:1;min-width:0;height:34px;color:var(--accent-ink)}
+.vr-lockd .vr-wave{display:block}
+.vr-hint{flex:1;min-width:0;display:flex;align-items:center;gap:4px;font-size:13.5px;color:var(--text2);padding-left:6px;white-space:nowrap;overflow:hidden;transition:color .2s}
+.vr-hint .i{font-size:16px;animation:vr-nudge 1.3s ease-in-out infinite}
+@keyframes vr-nudge{50%{transform:translateX(-4px)}}
+.vr-hint.cx{color:var(--danger);font-weight:600}
+.vr-lockd .vr-hint{display:none}
+
+/* замок над кнопкой: тянуть вверх, чтобы зафиксировать */
+.vr-lock{position:absolute;width:44px;height:100px;border-radius:22px;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:12px 0 10px;font-size:18px;color:var(--text2);overflow:hidden;
+  background:radial-gradient(120% 90% at 0% 0%,var(--gl-spec),transparent 55%),var(--gl);border:1px solid var(--gl-edge);-webkit-backdrop-filter:blur(var(--gl-blur)) saturate(190%);backdrop-filter:blur(var(--gl-blur)) saturate(190%);
+  box-shadow:inset 0 1px 0 var(--gl-hi),inset 0 -1px 0 var(--gl-lo),0 12px 32px var(--gl-shadow);
+  opacity:0;transform:translateY(24px) scale(.9);pointer-events:none;transition:opacity .25s,transform .5s var(--gl-spring)}
+.vr-lock::before{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(var(--vlk,0) * 100%);background:var(--accent-soft)}
+.vr-lock .i{position:relative;width:1em;height:1em}.vr-lock .i.u{animation:vr-rise 1.2s ease-in-out infinite;font-size:16px}
+@keyframes vr-rise{50%{transform:translateY(-4px)}}
+.vr-hold:not(.vr-lockd) .vr-lock{opacity:1;transform:none}
+.vr-lock.full{color:var(--accent-ink)}
+
+/* корзина при отмене и подсказка */
+.vr-fx{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;opacity:0;color:var(--danger);font-size:22px}
+.vr-fx.go{animation:vr-cx .6s var(--gl-spring)}
+@keyframes vr-cx{0%{opacity:0;transform:scale(.3) translateY(10px)}35%{opacity:1;transform:scale(1.25)}55%{transform:scale(1) rotate(-10deg)}70%{transform:scale(1) rotate(8deg)}100%{opacity:0;transform:scale(.9)}}
+.vr-toast{position:absolute;left:50%;transform:translate(-50%,10px);z-index:13;padding:9px 16px;border-radius:999px;font-size:12.5px;font-weight:600;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis;opacity:0;pointer-events:none;color:var(--text);
+  background:var(--gl-pop);border:1px solid var(--gl-edge);-webkit-backdrop-filter:blur(calc(var(--gl-blur) + 6px)) saturate(190%);backdrop-filter:blur(calc(var(--gl-blur) + 6px)) saturate(190%);
+  box-shadow:inset 0 1px 0 var(--gl-hi),0 12px 32px var(--gl-shadow);transition:opacity .25s,transform .45s var(--gl-spring)}
+.vr-toast.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){.vr-dot,.vr-hint .i,.vr-lock .i.u{animation:none}}
+
+/* время и статус внутри строки под волной (клиенты кладут туда свою отметку) */
+.vm .tm .irc-meta,.vm .tm .t.meta{position:static;float:none;display:inline-flex;align-items:center;gap:4px;margin:0;padding:0;transform:none;bottom:auto;right:auto}

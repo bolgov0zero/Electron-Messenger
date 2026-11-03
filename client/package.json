@@ -1,6 +1,6 @@
 {
   "name": "electron",
-  "version": "3.28.0",
+  "version": "3.29.0",
   "description": "Corporate Chat Client",
   "author": "bolgov@me.com",
   "homepage": "https://github.com/bolgov0zero/corp-chat",
@@ -40,7 +40,7 @@
       ],
       "icon": "../icons/app/icon-1024.png",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "Требуется для голосовых и видеозвонков",
+        "NSMicrophoneUsageDescription": "Требуется для голосовых сообщений и звонков",
         "NSCameraUsageDescription": "Требуется для видеозвонков"
       },
       "entitlements": "build/entitlements.mac.plist",

@@ -1142,7 +1142,7 @@ async function collectFiles() {
           const enc = att.enc === 1;
           fileMap.set(fname, {
             filename: fname, encrypted: enc,
-            name: enc ? null : (att.name || null), mime: enc ? null : (att.mime || null), thumb: enc ? null : (att.thumb || null),
+            name: enc ? null : (att.name || null), mime: enc ? null : (att.mime || null), voice: enc ? null : (att.voice || null), thumb: enc ? null : (att.thumb || null),
             message_id: msg.id, chat_id: msg.chat_id, sender_id: msg.sender_id,
             chat_name: msg.chat_name, chat_type: msg.chat_type,
             sender_name: msg.sender_name, sent_at: msg.sent_at,
@@ -1173,7 +1173,7 @@ async function collectFiles() {
         const enc = att.enc === 1;
         fileMap.set(fname, {
           filename: fname, encrypted: enc,
-          name: enc ? null : (att.name || null), mime: enc ? null : (att.mime || null), thumb: enc ? null : (att.thumb || null),
+          name: enc ? null : (att.name || null), mime: enc ? null : (att.mime || null), voice: enc ? null : (att.voice || null), thumb: enc ? null : (att.thumb || null),
           message_id: msg.id, chat_id: msg.chat_id, sender_id: msg.sender_id,
           chat_name: msg.chat_name, chat_type: msg.chat_type,
           sender_name: msg.sender_name, sent_at: msg.sent_at,

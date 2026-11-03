@@ -12,6 +12,7 @@ const execFileP = util.promisify(execFile);
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', '..', '..', 'chat_db', 'chat.db');
 const FILES_DIR = path.join(path.dirname(DB_PATH), 'files');
+const VOICE_MAX_SEC = 600;
 
 async function getSetting(key, def) {
   return (await dal.get('SELECT value FROM settings WHERE key = ?', key))?.value ?? def;
@@ -259,6 +260,40 @@ router.post('/',
         fs.renameSync(req.file.path, path.join(FILES_DIR, encName));
       } catch { return res.status(500).json({ error: 'Не удалось сохранить файл' }); }
       return res.json({ url: `/files/${encName}`, size: req.file.size, enc: 1 });
+    }
+
+    // Голосовое сообщение: свои правила — только короткие аудиозаписи с микрофона, расширения из общих настроек не нужны,
+    // размер ограничен длиной записи (при 16–24 кбит/с это 2–3 КБ на секунду), чтобы под голос нельзя было занять место другим файлом
+    if (req.query.voice === '1') {
+      const drop = msg => { fs.unlink(req.file.path, () => {}); return res.status(400).json({ error: msg }); };
+      const mime = String(req.file.mimetype || '').split(';')[0].trim().toLowerCase();
+      const dur = Math.min(VOICE_MAX_SEC, Math.max(1, Math.round(Number(req.query.dur)) || 1));
+      if (!/^audio\/(webm|ogg|mp4)$/.test(mime)) return drop('Неподдерживаемый формат записи');
+      if (req.file.size > Math.min(5 * 1024 * 1024, 100 * 1024 + dur * 16 * 1024)) return drop('Запись слишком большая');
+      const head = Buffer.alloc(12);
+      try { const fd = fs.openSync(req.file.path, 'r'); fs.readSync(fd, head, 0, 12, 0); fs.closeSync(fd); } catch { return drop('Не удалось прочитать запись'); }
+      const okMagic = mime === 'audio/webm' ? head.readUInt32BE(0) === 0x1A45DFA3 : mime === 'audio/ogg' ? head.toString('latin1', 0, 4) === 'OggS' : head.toString('latin1', 4, 8) === 'ftyp';
+      if (!okMagic) return drop('Файл не похож на запись');
+      // Расширение выбираем сами, по типу: имя от клиента не используем
+      const ext = mime === 'audio/webm' ? '.webm' : mime === 'audio/ogg' ? '.ogg' : '.m4a';
+      const newName = req.file.filename.replace(/\.[^.]*$/, '') + ext;
+      if (newName !== req.file.filename) {
+        try { fs.renameSync(req.file.path, path.join(FILES_DIR, newName)); } catch { return drop('Не удалось сохранить запись'); }
+        req.file.filename = newName; req.file.path = path.join(FILES_DIR, newName);
+      }
+      // MediaRecorder пишет webm без длительности и меток для перемотки: пересобираем контейнер без перекодирования (ffmpeg необязателен)
+      let outDur = dur;
+      if (hasFfmpeg()) {
+        const tmp = path.join(FILES_DIR, req.file.filename + '.tmp' + ext);
+        try {
+          await execFileP('ffmpeg', ['-nostdin', '-v', 'error', '-i', req.file.path, '-map', '0:a:0', '-c', 'copy', '-y', tmp], { timeout: 30000 });
+          fs.renameSync(tmp, req.file.path);
+          req.file.size = fs.statSync(req.file.path).size;
+          const real = await getVideoDuration(req.file.path);
+          if (real && real >= 0.5 && real <= VOICE_MAX_SEC + 5) outDur = Math.min(VOICE_MAX_SEC, Math.max(1, Math.round(real)));
+        } catch (e) { try { fs.unlinkSync(tmp); } catch {} }
+      }
+      return res.json({ url: `/files/${req.file.filename}`, name: 'voice', size: req.file.size, mime, voice: { dur: outDur } });
     }
 
     const settings = await getUploadSettings();

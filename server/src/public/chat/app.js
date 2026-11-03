@@ -1885,7 +1885,7 @@ function topicRow(s) {
     ? (lm.deleted ? 'Сообщение удалено'
       : ((lm.text ? lm.text.replace(/<[^>]*>/g, '') : '')
         || (lm.attachment
-          ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.more?.length ? '🖼 Вложений: ' + (lm.attachment.more.length + 1) : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл'))
+          ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.voice ? '🎤 Голосовое сообщение' : lm.attachment.more?.length ? '🖼 Вложений: ' + (lm.attachment.more.length + 1) : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл'))
           : '')))
     : 'Нет сообщений';
   if (preview.length > 38) preview = preview.slice(0, 38) + '…';
@@ -2344,7 +2344,7 @@ function renderChatRow(c) {
     ? (S.topics[c.id]||[]).reduce((sum,s)=>sum+(S.unreadMentions[s.id]||0),0)
     : S.unreadMentions[c.id]||0;
   const lm = c.last_message;
-  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? Fmt.plain(lm.text).replace(/<[^>]*>/g, '') : (lm.forward_data ? fwdPreview(lm.forward_data) : lm.attachment ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.more?.length ? '🖼 Вложений: ' + (lm.attachment.more.length + 1) : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
+  let preview = lm ? (lm.deleted ? 'Сообщение удалено' : (lm.text ? Fmt.plain(lm.text).replace(/<[^>]*>/g, '') : (lm.forward_data ? fwdPreview(lm.forward_data) : lm.attachment ? (lm.attachment.gif ? '🖼 GIF' : lm.attachment.voice ? '🎤 Голосовое сообщение' : lm.attachment.more?.length ? '🖼 Вложений: ' + (lm.attachment.more.length + 1) : lm.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : lm.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (lm.attachment.name || 'Файл')) : ''))) : 'Нет сообщений';
   if (preview.length>40) preview = preview.slice(0,40)+'…';
   // Черновик приоритетнее последнего сообщения (как в Telegram)
   const draft = (c.id !== S.activeChatId) ? S.drafts[c.id] : null;
@@ -2715,6 +2715,7 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   requestAnimationFrame(syncInputBarHeight);
   initComposerSlot();
   initComposerFmt();
+  initVoice();
   scApplyComposerState(chatId);
   applyAvatars();
   const sendBtn = document.getElementById('send-btn');
@@ -3645,7 +3646,7 @@ let _pinIdx = 0;
 function pinPreviewText(p) {
   if (!p) return '';
   const t = p.text ? Fmt.plain(p.text).replace(/<[^>]*>/g, '')
-    : (p.attachment ? (p.attachment.gif ? '🖼 GIF' : p.attachment.more?.length ? '🖼 Вложений: ' + (p.attachment.more.length + 1) : p.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : p.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (p.attachment.name || 'Файл')) : '');
+    : (p.attachment ? (p.attachment.gif ? '🖼 GIF' : p.attachment.voice ? '🎤 Голосовое сообщение' : p.attachment.more?.length ? '🖼 Вложений: ' + (p.attachment.more.length + 1) : p.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : p.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (p.attachment.name || 'Файл')) : '');
   return t.length > 120 ? t.slice(0, 120) + '…' : t;
 }
 
@@ -4544,6 +4545,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     : m.attachment;
   let attachHtml = '';
   if (!isDeleted && att?.enc && !att.expired) attachHtml = scAttachHtml(m, att);
+  else if (!isDeleted && att?.voice && att.url && !att.expired) attachHtml = Voice.html(att, `${httpProto()}://${S.server}${att.url}`, { own: mine, id: m.id > 0 ? m.id : '', unread: !mine, bars: 44, meta: metaHtml });
   else if (!isDeleted) attachHtml = attachBlockHtml(att);
 
   const attDataAttrs = (att?.url && !att.enc) ? ` data-msg-att-url="${esc(att.url)}" data-msg-att-thumb="${esc(att.thumb||'')}" data-msg-att-mime="${esc(att.mime||'')}" data-msg-att-name="${esc(att.name||'')}"` : '';
@@ -4557,7 +4559,8 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   // Фото с подписью: пузырь по ширине кадра (как в Telegram), а не всегда 280 px; кадр показывается целиком
   const _fitD = (!bareImage && !comp && att?.url && !att.expired && !att.enc && !att.gif && !att.more?.length && /^(image|video)\//.test(att.mime || '')) ? szOf(att, `${httpProto()}://${S.server}${att.url}`) : null;
   const _fitW = _fitD ? Math.max(180, Math.min(280, Math.round(_fitD[0]))) : 0;
-  const posCls = (isFirst ? ' irc-first' : '') + (isTail ? ' irc-tail' : '') + (emojiOnly ? ' emoji-msg' : '');
+  const isVoice = !isDeleted && !!att?.voice && !!att.url && !att.expired;
+  const posCls = (isVoice ? ' irc-voice' : '') + (isFirst ? ' irc-first' : '') + (isTail ? ' irc-tail' : '') + (emojiOnly ? ' emoji-msg' : '');
 
   return `<div class="irc-msg${posCls}${m._optimistic?' msg-optimistic':''}${m._state==='failed'?' msg-failed':''}"${m._cid?` data-cid="${m._cid}"`:''}${mine?` data-mine="1"`:``}${isChatGroup?'':' data-dm="1"'} data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}"${attDataAttrs}${m._optimistic?' data-optimistic="1"':''}
     data-on-contextmenu="${isDeleted ? 'ctxNoop' : 'showCtxMenu'}" data-a-contextmenu="${esc(JSON.stringify(isDeleted ? [] : ['__event', m.id, m.sent_at, mine]))}"
@@ -4571,7 +4574,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
           ${forwardHtml}
           ${attachHtml}
           ${(isSecretChat ? (scLocked || scDecryptedText) : m.text) || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}${emojiOnly?' emoji-only':''}${scLocked?' sc-locked':''}">${bodyText}</div>` : ''}`}
-          ${metaHtml}
+          ${isVoice ? '' : metaHtml}
         </div>
       </div>
       ${reactionsHtml}
@@ -5102,11 +5105,16 @@ function pinMessagesBottom() {
   if (m) m.scrollTop = m.scrollHeight;
 }
 
+const typingVoice = {}; // chatId -> Set(имя): кто из печатающих записывает голосовое
 const typingNames = {}; // chatId -> Map(имя -> таймер сброса): в группе могут печатать несколько человек сразу
 
 // «Имя печатает…», «Имя и Имя печатают…», «Имя и ещё N печатают…». withName=false — для шапки личного чата, там имя и так видно
-function typingLabel(names, withName) {
+function typingLabel(names, withName, voice) {
   const n = names.length;
+  if (voice && names.every(x => voice.has(x))) {
+    if (n === 1) return withName ? `${names[0]} записывает голосовое…` : 'записывает голосовое…';
+    return n === 2 ? `${names[0]} и ${names[1]} записывают голосовые…` : `${names[0]} и ещё ${n - 1} записывают голосовые…`;
+  }
   if (n === 1) return withName ? `${names[0]} печатает…` : 'печатает…';
   if (n === 2) return `${names[0]} и ${names[1]} печатают…`;
   return `${names[0]} и ещё ${n - 1} печатают…`;
@@ -5130,13 +5138,13 @@ function renderTyping(chatId) {
   if (head) {
     head.classList.toggle('typing', on);
     const t = head.querySelector('.ch-typing-text');
-    if (t && on) t.textContent = typingLabel(names, chat?.type !== 'direct');
+    if (t && on) t.textContent = typingLabel(names, chat?.type !== 'direct', typingVoice[chatId]);
   }
   const row = document.getElementById('typing-indicator');
   if (row) {
     row.classList.toggle('show', on);
     const t = row.querySelector('.typing-text');
-    if (t && on) t.textContent = typingLabel(names, true);
+    if (t && on) t.textContent = typingLabel(names, true, typingVoice[chatId]);
   }
   if (stick) pinMessagesBottomFor(300);
 }
@@ -5148,7 +5156,7 @@ function renderTypingPreview(chatId) {
   const names = typingList(chatId);
   if (names.length) {
     if (item.dataset.origText === undefined) item.dataset.origText = item.textContent;
-    item.textContent = typingLabel(names, true);
+    item.textContent = typingLabel(names, true, typingVoice[chatId]);
     item.classList.add('typing-preview');
   } else if (item.dataset.origText !== undefined) {
     item.textContent = item.dataset.origText;
@@ -5157,7 +5165,9 @@ function renderTypingPreview(chatId) {
   }
 }
 
-function showTyping(chatId, senderName) {
+function showTyping(chatId, senderName, voice) {
+  const vs = typingVoice[chatId] || (typingVoice[chatId] = new Set());
+  if (voice) vs.add(senderName); else vs.delete(senderName);
   const m = typingNames[chatId] || (typingNames[chatId] = new Map());
   clearTimeout(m.get(senderName));
   m.set(senderName, setTimeout(() => clearTyping(chatId, senderName), 5000));
@@ -5170,7 +5180,8 @@ function clearTyping(chatId, senderName) {
   const m = typingNames[chatId];
   if (m) {
     for (const [n, t] of [...m]) if (senderName === undefined || n === senderName) { clearTimeout(t); m.delete(n); }
-    if (!m.size) delete typingNames[chatId];
+    if (!m.size) { delete typingNames[chatId]; delete typingVoice[chatId]; }
+    else if (senderName !== undefined) typingVoice[chatId]?.delete(senderName);
   }
   renderTyping(chatId);
   renderTypingPreview(chatId);
@@ -5250,6 +5261,50 @@ function outboxRejected(chatId) {
 function outboxShowFor(chatId) {
   outboxLoad();
   _outbox.filter(x => x.chatId === chatId && !document.querySelector(`.irc-msg[data-cid="${x.cid}"]`)).forEach(it => { appendMsg(it.temp); setOutState(it, it.temp._state); });
+}
+
+// ── ГОЛОСОВЫЕ ──
+let _voiceChat = 0, _voiceTyping = 0;
+function initVoice() {
+  if (!window.Voice) return;
+  Voice.cancelActive();
+  const btn = document.getElementById('send-btn');
+  const main = btn && btn.closest('.composer-main'), row = main && main.querySelector('.composer-field-row');
+  if (!row) return;
+  Voice.mount({
+    btn, field: row, host: main, side: [document.getElementById('up-btn')],
+    canRecord: () => {
+      const chat = findChatAny(S.activeChatId);
+      if (!chat || composerLocked(chat) || S.editingMessageId || S.secretChatIds.has(S.activeChatId) || _atts.length || S.forwardMsg || document.getElementById('msg-input')?.value.trim()) return false;
+      _voiceChat = S.activeChatId; return true;
+    },
+    onState: on => {
+      clearInterval(_voiceTyping);
+      if (!on) return;
+      const ping = () => { if (S.ws?.readyState === 1) S.ws.send(JSON.stringify({ type: 'typing', chat_id: _voiceChat, voice: true })); };
+      ping(); _voiceTyping = setInterval(ping, 2500);
+    },
+    onSend: res => sendVoice(res, _voiceChat),
+  });
+}
+async function sendVoice(res, chatId) {
+  try {
+    const att = await Voice.upload(`${httpProto()}://${S.server}`, S.token, res);
+    if (!findChatAny(chatId)) return;
+    const payload = { type: 'message', chat_id: chatId, text: '', client_id: newClientId(), attachment: att };
+    const reply = S.activeChatId === chatId ? S.replyTo : null;
+    if (reply) payload.reply_to_id = reply.id;
+    const tempMsg = {
+      id: -(Date.now()), chat_id: chatId, sender_id: S.user.id, sender_name: S.user.display_name, sender_tag: S.user.tag || null,
+      text: '', sent_at: Math.floor(Date.now() / 1000), edited_at: null, deleted: 0,
+      reply_to_id: reply?.id || null, reply_text: reply?.text || null, reply_sender_name: reply?.senderName || null, reply_attachment: reply?.attachment || null, reply_deleted: false,
+      forward_data: null, link_preview: null, attachment: att, status: { delivered: 0, read: 0, total: 1 }, reactions: [],
+      _optimistic: true, _cid: payload.client_id, _state: 'sending',
+    };
+    if (S.activeChatId === chatId) { if (!S.chatHasMoreAfter) appendMsg(tempMsg); hideReplyBar(); }
+    queueSend(payload, tempMsg);
+    if (S.activeChatId === chatId && S.chatHasMoreAfter) openChat(chatId, null, true);
+  } catch (e) { showActionToast(e.message || 'Не удалось отправить голосовое'); }
 }
 
 async function sendOrEdit() {
@@ -6433,7 +6488,7 @@ function connectWS() {
           if (message.mentions?.includes(S.user.id)) S.unreadMentions[chatId] = (S.unreadMentions[chatId]||0)+1;
           if (!isChatMuted(chatId, parentId)) {
             const title = chatName(chat) || message.sender_name || 'Electron';
-            const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? Fmt.plain(message.text) : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.more?.length ? '🖼 Вложений: ' + (message.attachment.more.length + 1) : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+            const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? Fmt.plain(message.text) : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.voice ? '🎤 Голосовое сообщение' : message.attachment.more?.length ? '🖼 Вложений: ' + (message.attachment.more.length + 1) : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
             msgNotify(title, body, chatId);
             playNotificationSound();
           }
@@ -6452,7 +6507,7 @@ function connectWS() {
           // был chatName(undefined) → TypeError, и обработчик обрывался.
           const _srObj = parentId ? (S.topics[parentId]||[]).find(s=>s.id===chatId) : null;
           const title = _srObj?.name || chatName(chat) || message.sender_name || 'Electron';
-          const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? Fmt.plain(message.text) : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.more?.length ? '🖼 Вложений: ' + (message.attachment.more.length + 1) : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
+          const body = S.secretChatIds.has(chatId) ? 'Новое сообщение' : `${message.sender_name}: ${(message.text ? Fmt.plain(message.text) : '') || (message.attachment ? (message.attachment.gif ? '🖼 GIF' : message.attachment.voice ? '🎤 Голосовое сообщение' : message.attachment.more?.length ? '🖼 Вложений: ' + (message.attachment.more.length + 1) : message.attachment.mime?.startsWith('image/') ? '🖼 Изображение' : message.attachment.mime?.startsWith('video/') ? '🎬 Видео' : '📎 ' + (message.attachment.name || 'Файл')) : '')}`;
           msgNotify(title, body, chatId);
           playNotificationSound();
         }
@@ -6580,7 +6635,7 @@ function connectWS() {
       }
     }
 
-    if (data.type==='typing') { showTyping(data.chat_id, data.sender_name); }
+    if (data.type==='typing') { showTyping(data.chat_id, data.sender_name, !!data.voice); }
 
     if (data.type==='presence') {
       S.presence[data.user_id] = data.status;

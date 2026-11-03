@@ -122,7 +122,7 @@ B.ws = {
         if (data.last_seen) S.lastSeen[data.user_id] = data.last_seen;
         B.bus.emit('presence:changed', { userId: data.user_id });
         break;
-      case 'typing': B.bus.emit('typing', { chatId: data.chat_id, senderName: data.sender_name }); break;
+      case 'typing': B.bus.emit('typing', { chatId: data.chat_id, senderName: data.sender_name, voice: !!data.voice }); break;
       case 'reload_chats': B.chats.refresh(); B.bus.emit('topics:reload'); break;
       // Счётчик «в сети N из M» открытой группы или комнаты
       case 'chat_online': (S.chatOnline = S.chatOnline || {})[data.chat_id] = { online: data.online, total: data.total }; B.bus.emit('chat:online', { chatId: data.chat_id }); break;

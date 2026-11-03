@@ -21,6 +21,7 @@ B.ui.composer = (function () {
       '<button class="sendb glass gi" data-k="send" aria-label="Отправить">' + I('send', 's') + '</button>' +
       '<div class="lkb" hidden></div><input type="file" multiple style="display:none">';
     CShape.attach(c);
+    mountVoice(el, c);
     var t = ta(el), file = $('input[type=file]', c), cst = cs(el);
     Fmt.init(t);
     cst.lw = Fmt.linkWatch({
@@ -41,6 +42,30 @@ B.ui.composer = (function () {
     c.addEventListener('mousedown', function (e) { if (e.target.closest('input')) return; if (e.target.closest('.cbtn,.sendb,.fmtbar,.lpv,.em')) e.preventDefault(); });   // кнопки не должны убирать клавиатуру
     c.addEventListener('click', function (e) { onClick(el, e); });
     renderCtx(el); sync(el);
+  }
+  // Запись голоса удержанием кнопки (shared/voice.js): пока в поле нет текста и вложений, кнопка отправки — микрофон
+  var voiceTimer = 0;
+  function mountVoice(el, c) {
+    if (!window.Voice) return;
+    Voice.mount({
+      btn: $('.sendb', c), field: $('.cfield', c), host: c, side: [$('[data-k=up]', c)],
+      canRecord: function () {
+        var s = cs(el), chat = chatOf(el);
+        return !!chat && !c.classList.contains('lk') && !s.edit && !s.fwd && !s.atts.length && !ta(el).value.trim() && !B.S.secretChatIds.has(chat.id);
+      },
+      onState: function (on) {
+        clearInterval(voiceTimer); if (!on) return;
+        var ping = function () { B.presence.sendTyping(+el.dataset.cid, true); }; ping(); voiceTimer = setInterval(ping, 2500);
+      },
+      onSend: function (res) { sendVoice(el, res); }
+    });
+  }
+  function sendVoice(el, res) {
+    var cid = +el.dataset.cid, s = cs(el);
+    Voice.upload(B.http() + '://' + B.S.server, B.S.token, res).then(function (att) {
+      if (B.msgs.chatId !== cid) { B.toast.show('Чат закрыт — голосовое не отправлено', 'x'); return; }
+      B.msgs.send({ text: '', reply: s.reply, attachment: att }).then(function (ok) { if (ok) { s.reply = null; renderCtx(el); } });
+    }).catch(function (e) { B.toast.show(e.message || 'Не удалось отправить голосовое', 'x'); });
   }
   function autosize(t) { var f = t.closest('.cfield'); if (f) f.classList.toggle('filled', !!(t.textContent || t.querySelector('pre'))); }
 
@@ -191,7 +216,7 @@ B.ui.composer = (function () {
   function reply(el, m) {
     if (!m || m.deleted) return; var s = cs(el), mine = m.sender_id === B.S.user.id;
     s.edit = null;
-    s.reply = { id: m.id, senderId: m.sender_id, senderTag: m.sender_tag, senderName: mine ? B.S.user.display_name : (m.sender_name || ''), text: (Fmt.noCode(m.text || '') || (m.attachment ? '📎 ' + (m.attachment.name || 'Вложение') : '')).slice(0, 100) };
+    s.reply = { id: m.id, senderId: m.sender_id, senderTag: m.sender_tag, senderName: mine ? B.S.user.display_name : (m.sender_name || ''), text: (Fmt.noCode(m.text || '') || (m.attachment ? (m.attachment.voice ? '🎤 Голосовое сообщение' : '📎 ' + (m.attachment.name || 'Вложение')) : '')).slice(0, 100) };
     renderCtx(el); ta(el).focus();
   }
   function forward(el, fwd) { var s = cs(el); s.fwd = fwd; renderCtx(el); ta(el).focus(); }

@@ -21,7 +21,7 @@ B.ui.chatlist = (function () {
   function chatRow(c, pin) {
     var lm = c.last_message, mine = lm && lm.sender_id === B.S.user.id, u = c.unread || 0, men = c.unread_mentions || 0, ty = B.typing.names(c.id), dm = c.type === 'direct';
     var pv;
-    if (ty.length) pv = '<i>' + B.esc(B.typing.label(ty, true)) + '</i>';
+    if (ty.length) pv = '<i>' + B.esc(B.typing.label(ty, true, c.id)) + '</i>';
     else if (c.invite) pv = '<i>Приглашение в ' + B.msgs.fedKind(c) + '</i>';
     else if (c.is_secret) pv = '<i>Скрытый чат</i>';
     else pv = (!dm && lm && !mine && !lm.deleted && lm.sender_name ? '<i>' + B.esc(String(lm.sender_name).split(' ')[0]) + ': </i>' : '') + B.esc(((mine ? 'Вы: ' : '') + B.chats.preview(c)).slice(0, 220));

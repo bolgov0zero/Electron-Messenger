@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Макет: голосовые сообщения</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════════════════════════════════
+   МАКЕТ: голосовые сообщения (клиент Electron, веб клиент, мобильный клиент).
+   Токены и система форм те же, что в index.html / calls.html (Liquid Glass).
+   Три варианта записи: A — удержание, B — клик + пауза и прослушивание, C — карточка.
+   Запись имитируется (микрофон не используется): уровень голоса генерируется.
+   ════════════════════════════════════════════════════════════════════════ */
+:root{
+  --ff:Inter,-apple-system,system-ui,sans-serif;
+  --side-bg:#ffffff;
+  --text:#111318; --text2:#4f5666; --muted:#6c7484;
+  --accent:#1fa88c; --accent-rgb:29,168,140; --accent-ink:color-mix(in srgb,var(--accent) 72%,#000);
+  --accent-soft:rgba(var(--accent-rgb),.12); --accent-border:rgba(var(--accent-rgb),.28);
+  --danger:#d23a3a; --danger-bg:rgba(210,58,58,.10); --danger-border:rgba(210,58,58,.28);
+  --bubble-bg:#ffffff;
+  --r-panel:30px;--r-card:20px;--r-pill:999px;
+  --gl-k:1;
+  --gl-blur:26px;--gl-spring:cubic-bezier(.34,1.56,.64,1);--gl-ease:cubic-bezier(.22,1,.36,1);
+  --gl:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 46,100) * 1%),transparent);
+  --gl2:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 66,100) * 1%),transparent);
+  --gl-pop:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 30 + 50,100) * 1%),transparent);
+  --gl-card:color-mix(in srgb,var(--text) 5%,transparent);
+  --gl-card2:color-mix(in srgb,var(--text) 9%,transparent);
+  --gl-edge:rgba(255,255,255,.75);--gl-hi:rgba(255,255,255,.85);--gl-lo:rgba(12,26,25,.07);
+  --gl-shadow:rgba(20,50,60,.16);--gl-spec:rgba(255,255,255,.30);--gl-hov:rgba(255,255,255,.34);
+  --gl-in:rgba(255,255,255,.74);
+  --gl-out-a:color-mix(in srgb,var(--accent) 80%,#000);--gl-out-b:color-mix(in srgb,var(--accent) 68%,#0b4f96);
+  --gl-base:#e3f0ef;--amb-1:color-mix(in srgb,var(--accent) 60%,#fff);--amb-2:#8e9cff;--amb-3:#ffb4d3;--amb-4:#ffd391;
+  --scrim:rgba(20,40,50,.22);
+  --stage:linear-gradient(160deg,#c9d9e6 0%,#d8e6df 50%,#e6dcec 100%);
+}
+html.dark{
+  --side-bg:#1e252d;
+  --text:#eef6f5;--text2:rgba(238,246,245,.74);--muted:rgba(238,246,245,.56);
+  --accent:#29d6b8;--accent-rgb:41,214,184;--accent-ink:var(--accent);
+  --danger:#ef6f6f;--danger-bg:rgba(239,111,111,.12);--danger-border:rgba(239,111,111,.32);
+  --bubble-bg:#1b2733;
+  --gl-edge:rgba(255,255,255,.17);--gl-hi:rgba(255,255,255,.20);--gl-lo:rgba(0,0,0,.35);--gl-shadow:rgba(0,0,0,.5);
+  --gl-spec:rgba(255,255,255,.09);--gl-hov:rgba(255,255,255,.08);
+  --gl:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 52,100) * 1%),transparent);
+  --gl2:color-mix(in srgb,color-mix(in srgb,var(--side-bg) 82%,#4a7080) calc(min(var(--gl-k) * 68,100) * 1%),transparent);
+  --gl-pop:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 34 + 50,100) * 1%),transparent);
+  --gl-in:color-mix(in srgb,var(--bubble-bg) 74%,transparent);
+  --gl-out-a:color-mix(in srgb,var(--accent) 58%,#000);--gl-out-b:color-mix(in srgb,var(--accent) 48%,#0b3d7a);
+  --gl-base:color-mix(in srgb,#12171d 70%,#000);--amb-1:color-mix(in srgb,var(--accent) 55%,#000);--amb-2:#4a4fd0;--amb-3:#a33a73;--amb-4:#a8742c;
+  --scrim:rgba(0,0,0,.40);
+  --stage:linear-gradient(160deg,#10181f 0%,#14201f 50%,#1b1626 100%);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{font-family:var(--ff);background:var(--stage);background-attachment:fixed;color:var(--text);-webkit-font-smoothing:antialiased;transition:background .5s var(--gl-ease);padding:20px 20px 60px}
+button,input{font:inherit;color:inherit;border:0;background:none;outline:none}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+.glass{position:relative;background:radial-gradient(120% 90% at 0% 0%,var(--gl-spec),transparent 55%),var(--gl);border:1px solid var(--gl-edge);
+  -webkit-backdrop-filter:blur(var(--gl-blur)) saturate(190%);backdrop-filter:blur(var(--gl-blur)) saturate(190%);
+  box-shadow:inset 0 1px 0 var(--gl-hi),inset 0 -1px 0 var(--gl-lo),0 12px 32px var(--gl-shadow)}
+.glass-pop{position:relative;background:radial-gradient(120% 80% at 0% 0%,var(--gl-spec),transparent 55%),var(--gl-pop);border:1px solid var(--gl-edge);
+  -webkit-backdrop-filter:blur(calc(var(--gl-blur) + 6px)) saturate(190%);backdrop-filter:blur(calc(var(--gl-blur) + 6px)) saturate(190%);
+  box-shadow:inset 0 1px 0 var(--gl-hi),inset 0 -1px 0 var(--gl-lo),0 24px 60px var(--gl-shadow)}
+.gi{transition:transform .35s var(--gl-spring),background .2s,box-shadow .2s,color .2s}
+.gi:hover{background-color:var(--gl2)}
+.gi:active{transform:scale(.95)}
+.ibtn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:19px;color:var(--text2);flex:none;transition:background .2s,color .2s,transform .35s var(--gl-spring)}
+.ibtn:hover{background:var(--gl-card2);color:var(--text)}
+.ibtn:active{transform:scale(.9)}
+.ibtn.danger{color:var(--danger)}.ibtn.danger:hover{background:var(--danger-bg);color:var(--danger)}
+.ibtn.soft{background:var(--accent-soft);color:var(--accent-ink)}.ibtn.soft:hover{background:var(--accent-soft);filter:brightness(.96)}
+.btn{height:42px;padding:0 18px;border-radius:var(--r-pill);display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:13.5px;font-weight:600;white-space:nowrap;
+  background:var(--gl-card);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi);transition:background .2s,transform .35s var(--gl-spring),filter .2s}
+.btn .i{font-size:17px}.btn:hover{background:var(--gl-card2)}.btn:active{transform:scale(.95)}
+.btn.pri{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;border-color:rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px color-mix(in srgb,var(--gl-out-b) 38%,transparent)}
+.btn.pri:hover{filter:brightness(1.12)}
+.btn.danger{background:var(--danger-bg);border-color:var(--danger-border);color:var(--danger)}
+
+/* ── шапка страницы ── */
+.top{max-width:1360px;margin:0 auto 14px;border-radius:var(--r-pill);display:flex;align-items:center;gap:16px;padding:8px 8px 8px 22px;flex-wrap:wrap}
+.top h1{font-size:15px;font-weight:700;white-space:nowrap}.top h1 span{color:var(--muted);font-weight:500}
+.seg{position:relative;display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;height:38px;padding:3px;border-radius:var(--r-pill);background:var(--gl-hov);box-shadow:inset 0 1px 3px var(--gl-lo);margin-left:auto}
+.seg button{position:relative;z-index:1;padding:0 16px;display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text2);border-radius:var(--r-pill);transition:color .25s;white-space:nowrap}
+.seg button.on{color:var(--text)}
+.seg button b{font-weight:800;color:var(--accent-ink)}
+.seg .thumb{position:absolute;top:3px;bottom:3px;border-radius:var(--r-pill);background:var(--gl2);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 8px var(--gl-shadow);transition:left .45s var(--gl-spring),width .45s var(--gl-spring)}
+.how{max-width:1360px;margin:0 auto 18px;padding:0 10px;font-size:13.5px;line-height:1.55;color:var(--text2)}
+.how b{color:var(--text)}
+.how kbd{font:600 11.5px var(--ff);padding:1px 7px;border-radius:6px;background:var(--gl-card2);border:1px solid var(--gl-edge)}
+
+/* ── сцена ── */
+.stage{max-width:1360px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 375px;gap:28px;align-items:start}
+.flabel{display:flex;align-items:center;gap:10px;margin:0 8px 10px;font-size:12.5px;color:var(--muted);min-height:26px;flex-wrap:wrap}
+.flabel b{color:var(--text);font-weight:700;font-size:13px}
+.peer{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 12px;border-radius:var(--r-pill);background:var(--accent-soft);border:1px solid var(--accent-border);color:var(--accent-ink);font-weight:600;font-size:12px;opacity:0;transform:translateY(4px);transition:opacity .3s,transform .4s var(--gl-spring)}
+.peer.on{opacity:1;transform:none}
+.peer i{display:inline-flex;gap:3px}.peer i s{width:4px;height:4px;border-radius:50%;background:currentColor;animation:dot 1.2s infinite}.peer i s:nth-child(2){animation-delay:.15s}.peer i s:nth-child(3){animation-delay:.3s}
+@keyframes dot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-3px);opacity:1}}
+
+/* ── окно ── */
+.frame{--cl:20px;--cr:20px;--cb:20px;--sw:52px;--lvl:0;--lk:0;position:relative;overflow:hidden;isolation:isolate;border-radius:30px;background:var(--gl-base);box-shadow:0 0 0 1px rgba(255,255,255,.25),0 40px 90px rgba(20,40,60,.30)}
+.frame.d{height:700px}
+.frame.m{width:375px;max-width:100%;height:760px;border-radius:54px;--cl:10px;--cr:10px;--cb:28px;--sw:46px}
+.amb{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:-1}
+.amb i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.85}
+.amb i:nth-child(1){width:380px;height:380px;left:20%;top:-120px;background:var(--amb-1)}
+.amb i:nth-child(2){width:340px;height:340px;right:-80px;top:160px;background:var(--amb-2)}
+.amb i:nth-child(3){width:320px;height:320px;left:-60px;bottom:-100px;background:var(--amb-3)}
+.amb i:nth-child(4){width:280px;height:280px;right:10%;bottom:-100px;background:var(--amb-4)}
+.sbar{position:absolute;left:0;right:0;top:0;height:44px;z-index:12;display:flex;align-items:center;justify-content:space-between;padding:6px 32px 0 36px;font-size:15px;font-weight:600}
+.sbar .isl{position:absolute;left:50%;top:11px;width:104px;height:30px;border-radius:16px;background:#000;transform:translateX(-50%)}
+.sbar .bat{width:25px;height:12px;border-radius:4px;border:1.5px solid var(--text2);position:relative}
+.sbar .bat::after{content:"";position:absolute;inset:1.5px 4px 1.5px 1.5px;border-radius:2px;background:var(--text)}
+.home{position:absolute;left:50%;bottom:8px;width:128px;height:5px;border-radius:3px;background:var(--text);opacity:.8;transform:translateX(-50%);z-index:12}
+.chead{position:absolute;left:12px;right:12px;top:12px;height:64px;border-radius:26px;display:flex;align-items:center;gap:12px;padding:0 18px 0 10px;z-index:8}
+.m .chead{top:46px;height:58px;border-radius:24px}
+.chead b{display:block;font-weight:700;font-size:15.5px}
+.chead small{display:block;font-size:12.5px;color:var(--text2);margin-top:1px}
+.chead small::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#34c759;margin-right:6px;vertical-align:1px}
+.av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:15px;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);background:linear-gradient(140deg,#f08a5d,#b83b5e)}
+.m .chead .av{width:38px;height:38px;font-size:13px}
+.msg .av{width:34px;height:34px;font-size:12px}
+
+/* лента */
+.scroll{position:absolute;inset:0;overflow:auto;padding:94px 24px 102px;scrollbar-width:none;scroll-behavior:smooth}
+.scroll::-webkit-scrollbar{display:none}
+.m .scroll{padding:122px 12px 104px}
+.day{display:flex;justify-content:center;margin:2px 0 14px}
+.day span{padding:5px 14px;border-radius:var(--r-pill);font-size:12px;font-weight:600;color:var(--text2)}
+.msg{display:flex;gap:10px;align-items:flex-end;margin-bottom:6px}
+.msg.out{justify-content:flex-end}
+.m .msg>.av{display:none}
+.bub{max-width:min(520px,72%);padding:9px 14px 8px;border-radius:20px;font-size:14.5px;line-height:1.42;position:relative}
+.m .bub{max-width:82%}
+.in .bub{background:var(--gl-in);border:1px solid var(--gl-edge);border-bottom-left-radius:7px;box-shadow:inset 0 1px 0 var(--gl-hi),0 4px 14px var(--gl-shadow)}
+.out .bub{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;border-bottom-right-radius:7px;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -1px 0 rgba(0,0,0,.12),0 8px 20px color-mix(in srgb,var(--gl-out-b) 38%,transparent)}
+.t{display:inline-flex;align-items:center;gap:4px;float:right;margin:8px 0 0 12px;font-size:11.5px;color:var(--text2);font-variant-numeric:tabular-nums}
+.out .t{color:rgba(255,255,255,.88)}.t .i{font-size:14px}
+.msg.pop{animation:pop .55s var(--gl-spring)}
+@keyframes pop{from{opacity:0;transform:translateY(34px) scale(.82);transform-origin:100% 100%}to{opacity:1;transform:none}}
+
+/* ── голосовое в ленте ── */
+.vm{display:flex;align-items:center;gap:12px;min-width:268px;padding:2px 0 0}
+.m .vm{min-width:226px;gap:10px}
+.vm .pl{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:19px;flex:none;position:relative;transition:transform .35s var(--gl-spring)}
+.vm .pl:active{transform:scale(.9)}
+.vm .pl .i{position:absolute;transition:opacity .2s,transform .35s var(--gl-spring)}
+.vm .pl .i.p2{opacity:0;transform:scale(.4) rotate(-40deg)}
+.vm.playing .pl .i.p1{opacity:0;transform:scale(.4) rotate(40deg)}
+.vm.playing .pl .i.p2{opacity:1;transform:none}
+.in .vm .pl{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;box-shadow:0 4px 12px color-mix(in srgb,var(--gl-out-b) 35%,transparent)}
+.out .vm .pl{background:rgba(255,255,255,.95);color:var(--accent-ink)}
+.vb{flex:1;min-width:0}
+.wv{display:flex;align-items:center;justify-content:space-between;height:30px;cursor:pointer;touch-action:none}
+.wv i{display:block;width:3px;border-radius:2px;background:currentColor;opacity:.32;transition:opacity .15s,transform .2s var(--gl-spring)}
+.wv i.d{opacity:1}
+.vm.playing .wv i.d:last-of-type,.vm.playing .wv i.cur{transform:scaleY(1.18)}
+.in .wv{color:var(--accent)}.out .wv{color:#fff}
+.mt{display:flex;align-items:center;gap:7px;font-size:11.5px;font-variant-numeric:tabular-nums;margin-top:1px;color:var(--text2);height:18px}
+.out .mt{color:rgba(255,255,255,.88)}
+.mt .tm{margin-left:auto;display:inline-flex;align-items:center;gap:4px}.mt .tm .i{font-size:14px}
+.ud{width:8px;height:8px;border-radius:50%;background:var(--accent);transition:transform .3s var(--gl-spring),opacity .3s}
+.ud.gone{transform:scale(0);opacity:0}
+.spd{height:18px;padding:0 7px;border-radius:9px;font-size:10.5px;font-weight:700;background:var(--accent-soft);color:var(--accent-ink);display:none;transition:transform .3s var(--gl-spring)}
+.out .spd{background:rgba(255,255,255,.22);color:#fff}
+.vm.act .spd{display:inline-block}.spd:active{transform:scale(.9)}
+
+/* ── поле ввода ── */
+.comp{position:absolute;left:var(--cl);right:var(--cr);bottom:var(--cb);display:flex;align-items:flex-end;gap:10px;z-index:9;transition:opacity .3s,filter .3s}
+.plus{width:var(--sw);height:var(--sw);border-radius:50%;display:grid;place-items:center;font-size:21px;flex:none;color:var(--text2);transition:opacity .25s,transform .35s var(--gl-spring)}
+.field{position:relative;flex:1;height:var(--sw);border-radius:calc(var(--sw)/2);overflow:hidden}
+.row1{display:flex;align-items:center;gap:6px;height:100%;padding:0 6px 0 20px;transition:opacity .25s,transform .4s var(--gl-ease)}
+.row1 input{flex:1;min-width:0;font-size:15px}.row1 input::placeholder{color:var(--muted)}
+.row1 .em{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:21px;color:var(--text2)}
+.send{position:relative;width:var(--sw);height:var(--sw);border-radius:50%;display:grid;place-items:center;font-size:21px;flex:none;color:var(--text2);touch-action:none;user-select:none;-webkit-user-select:none;
+  transition:background .3s,color .3s,transform .4s var(--gl-spring),box-shadow .25s}
+.send .i{position:absolute;transition:opacity .22s,transform .45s var(--gl-spring)}
+.send .i.s{opacity:0;transform:scale(.4) rotate(-90deg)}
+.send.ready{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;border-color:rgba(255,255,255,.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 8px 22px color-mix(in srgb,var(--gl-out-b) 45%,transparent)}
+.send.ready .i.mc{opacity:0;transform:scale(.4) rotate(90deg)}
+.send.ready .i.s{opacity:1;transform:none}
+
+/* запись внутри поля (A и B) */
+.recbar{position:absolute;inset:0;display:flex;align-items:center;gap:6px;padding:0 6px 0 6px;opacity:0;pointer-events:none;transform:translateY(10px);transition:opacity .25s,transform .45s var(--gl-spring)}
+.rec .recbar{opacity:1;pointer-events:auto;transform:none}
+.rec .row1{opacity:0;transform:translateY(-10px)}
+.v-c .recbar{display:none}.v-c.rec .row1{opacity:1;transform:none}
+.rb-trash,.rb-pause,.rb-resume,.rb-play{display:none}
+.v-b .rb-trash,.v-a.locked .rb-trash{display:grid}
+.v-b.rec:not(.paused) .rb-pause{display:grid}
+.paused .rb-resume,.paused .rb-play{display:grid}
+.rb-dot{width:11px;height:11px;border-radius:50%;background:var(--danger);margin:0 4px 0 12px;flex:none;box-shadow:0 0 0 calc(var(--lvl)*7px) var(--danger-bg);transition:box-shadow .08s;animation:blink 1.4s ease-in-out infinite}
+.v-b .rb-dot,.v-a.locked .rb-dot{margin-left:2px}
+.paused .rb-dot{display:none}
+@keyframes blink{50%{opacity:.35}}
+.rb-time{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;min-width:40px}
+.rb-wave{flex:1;min-width:0;height:34px;color:var(--accent-ink)}
+.rb-hint{flex:1;min-width:0;display:flex;align-items:center;gap:4px;font-size:13.5px;color:var(--text2);padding-left:6px;white-space:nowrap;overflow:hidden;transition:color .2s,opacity .15s}
+.rb-hint .i{font-size:16px;animation:nudge 1.3s ease-in-out infinite}
+@keyframes nudge{50%{transform:translateX(-4px)}}
+.rb-hint span{display:inline-block}
+.rb-hint.cx{color:var(--danger);font-weight:600}
+.v-a .rb-wave{display:none}.v-a.locked .rb-wave{display:block}
+.v-a .rb-hint{display:none}.v-a.hold:not(.locked) .rb-hint{display:flex}
+.v-b .rb-hint{display:none}
+/* кружок подсказки-замка (A) */
+.lockhint{position:absolute;right:calc(var(--cr) + (var(--sw) - 44px)/2);bottom:calc(var(--cb) + var(--sw) + 20px);width:44px;height:100px;border-radius:22px;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:12px 0 10px;font-size:18px;color:var(--text2);
+  opacity:0;transform:translateY(24px) scale(.9);pointer-events:none;transition:opacity .25s,transform .5s var(--gl-spring);overflow:hidden}
+.lockhint::before{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(var(--lk) * 100%);background:var(--accent-soft)}
+.lockhint .i{position:relative}.lockhint .i.u{animation:rise 1.2s ease-in-out infinite;font-size:16px}
+@keyframes rise{50%{transform:translateY(-4px)}}
+.hold:not(.locked) .lockhint{opacity:1;transform:none}
+.lockhint.full{color:var(--accent-ink)}
+/* удержание */
+.hold .send{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;transform:scale(1.32);box-shadow:0 0 0 calc(5px + var(--lvl)*26px) rgba(var(--accent-rgb),.2),0 10px 28px color-mix(in srgb,var(--gl-out-b) 45%,transparent);z-index:11;transition:background .3s,transform .08s,box-shadow .08s}
+.hold.willcancel .send{background:linear-gradient(140deg,var(--danger),color-mix(in srgb,var(--danger) 70%,#000));box-shadow:0 0 0 12px var(--danger-bg)}
+.rec .plus{opacity:.35;pointer-events:none}
+.v-a.hold:not(.locked) .plus{opacity:0}
+/* отмена */
+.cxfx{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;opacity:0;color:var(--danger);font-size:22px}
+.cxfx.go{animation:cxfx .6s var(--gl-spring)}
+@keyframes cxfx{0%{opacity:0;transform:scale(.3) translateY(10px)}35%{opacity:1;transform:scale(1.25)}55%{transform:scale(1) rotate(-10deg)}70%{transform:scale(1) rotate(8deg)}100%{opacity:0;transform:scale(.9)}}
+/* подсказка */
+.toast{position:absolute;left:50%;bottom:calc(var(--cb) + var(--sw) + 16px);transform:translate(-50%,10px);z-index:13;padding:9px 16px;border-radius:var(--r-pill);font-size:12.5px;font-weight:600;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .25s,transform .45s var(--gl-spring)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ── карточка записи (C) ── */
+.scrimC{position:absolute;inset:0;background:var(--scrim);z-index:10;opacity:0;pointer-events:none;transition:opacity .3s}
+.card{position:absolute;z-index:11;left:50%;bottom:var(--cb);width:min(440px,calc(100% - 28px));border-radius:34px;padding:16px 22px 22px;text-align:center;opacity:0;pointer-events:none;transform:translate(-50%,40px) scale(.94);transition:opacity .25s,transform .55s var(--gl-spring)}
+.m .card{width:calc(100% - 16px);bottom:8px;border-radius:44px;padding:12px 22px 34px}
+.v-c.rec .scrimC{opacity:1;pointer-events:auto}
+.v-c.rec .card{opacity:1;pointer-events:auto;transform:translate(-50%,0)}
+.v-c.rec .comp{opacity:0;pointer-events:none}
+.grab{width:38px;height:5px;border-radius:3px;background:var(--gl-card2);margin:0 auto 10px;display:none}.m .grab{display:block}
+.ctop{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--text2);height:22px}
+.ctop s{width:8px;height:8px;border-radius:50%;background:var(--danger);animation:blink 1.4s ease-in-out infinite}
+.paused .ctop s{animation:none;background:var(--muted)}
+.orb{position:relative;width:96px;height:96px;margin:22px auto 14px;display:grid;place-items:center}
+.orb u{position:absolute;inset:10px;border-radius:50%;background:rgba(var(--accent-rgb),.16);transform:scale(calc(1 + var(--lvl) * var(--k)));transition:transform .09s linear,opacity .3s;text-decoration:none}
+.orb u:nth-child(1){--k:.38}.orb u:nth-child(2){--k:.7;opacity:.7}.orb u:nth-child(3){--k:1.05;opacity:.4}
+.paused .orb u{transform:scale(1);opacity:0}
+.orb b{position:relative;width:60px;height:60px;border-radius:50%;display:grid;place-items:center;font-size:25px;color:#fff;background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 10px 26px color-mix(in srgb,var(--gl-out-b) 45%,transparent);transition:filter .3s}
+.paused .orb b{filter:grayscale(.85) brightness(1.05)}
+.ctime{font-size:38px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1}
+.ctime small{font-size:16px;color:var(--muted);font-weight:600;letter-spacing:0}
+.cwave{display:block;width:100%;height:56px;margin:16px 0 18px;color:var(--accent-ink)}
+.cbtns{display:flex;gap:10px}
+.cbtns .btn{flex:1;height:48px;font-size:14px}
+.cbtns .btn.pri{flex:1.4}
+.cbtns .btn{min-width:0;flex-basis:0}
+.m .cbtns{gap:8px}.m .cbtns .btn{padding:0 6px;font-size:13px;gap:5px}.m .cbtns .btn .i{font-size:16px}
+.cpause .i.rs{display:none}.paused .cpause .i.ps{display:none}.paused .cpause .i.rs{display:block}
+.cpause span.t1{display:inline}.cpause span.t2{display:none}.paused .cpause span.t1{display:none}.paused .cpause span.t2{display:inline}
+
+/* ── админка ── */
+.admin,.notes{max-width:1360px;margin:28px auto 0}
+.admin h2,.notes h2{font-size:15px;font-weight:700;margin:0 8px 10px}
+.admin h2 span,.notes h2 span{color:var(--muted);font-weight:500;font-size:13px}
+.acard{border-radius:26px;padding:8px 10px 10px;overflow:hidden}
+.afil{display:flex;gap:6px;padding:8px 8px 10px;flex-wrap:wrap}
+.afil span{height:30px;padding:0 14px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text2);background:var(--gl-card)}
+.afil span.on{background:var(--accent-soft);color:var(--accent-ink);box-shadow:inset 0 0 0 1px var(--accent-border)}
+.arow{display:grid;grid-template-columns:44px minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) 150px 190px;align-items:center;gap:14px;padding:10px 12px;border-radius:18px;font-size:13px}
+.arow+.arow{margin-top:2px}
+.arow:not(.head):hover{background:var(--gl-card)}
+.arow.head{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding-bottom:4px}
+.arow .fi{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:19px;background:var(--accent-soft);color:var(--accent-ink)}
+.arow .nm b{display:block;font-weight:600}.arow .nm small{color:var(--muted);font-size:12px}
+.arow .mut{color:var(--text2)}
+.arow.newrow{animation:rowin .6s var(--gl-spring);background:var(--accent-soft)}
+@keyframes rowin{from{opacity:0;transform:translateY(-12px)}}
+.lockchip{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:var(--r-pill);font-size:12px;font-weight:600;color:var(--muted);background:var(--gl-card);border:1px dashed color-mix(in srgb,var(--text) 22%,transparent)}
+.lockchip .i{font-size:14px}
+.dlbtn{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 12px;border-radius:var(--r-pill);font-size:12px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft)}
+.dlbtn .i{font-size:14px}
+.notes ul{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.notes li{border-radius:22px;padding:16px 18px;font-size:13px;line-height:1.55;color:var(--text2)}
+.notes li b{display:block;color:var(--text);font-size:13.5px;margin-bottom:4px}
+
+@media (max-width:1100px){.stage{grid-template-columns:1fr;justify-items:center}.stage>section{width:100%}.stage>section:last-child{display:flex;flex-direction:column;align-items:center}
+  .arow{grid-template-columns:44px minmax(0,1fr) 150px}.arow>:nth-child(3),.arow>:nth-child(4),.arow>:nth-child(5){display:none}.arow .lockchip{font-size:11px}}
+@media (max-width:520px){body{padding:12px 12px 50px}.top{border-radius:26px;padding:12px 14px}.seg{margin-left:0;width:100%}.seg button{padding:0 8px;flex:1;justify-content:center}.frame.d{height:620px}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M3.714 3.048a.498.498 0 0 0-.683.627l2.843 7.627a2 2 0 0 1 0 1.396l-2.842 7.627a.498.498 0 0 0 .682.627l18-8.5a.5.5 0 0 0 0-.904z"/><path d="M6 12h16"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></symbol>
+  <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-checks" viewBox="0 0 24 24"><path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-2.93 1.41-1.41m11.32-11.32 1.41-1.41M2 12h2m16 0h2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+</svg>
+
+<header class="top glass">
+  <h1>Голосовые сообщения <span>· макет, всё кликабельно</span></h1>
+  <div class="seg" id="seg">
+    <span class="thumb"></span>
+    <button data-v="a" class="on"><b>A</b> Удержание</button>
+    <button data-v="b"><b>B</b> Клик и пауза</button>
+    <button data-v="c"><b>C</b> Карточка</button>
+  </div>
+  <button class="ibtn gi" id="theme" title="Тема" style="font-size:18px"><svg class="i"><use href="#i-moon"/></svg></button>
+</header>
+
+<p class="how" id="how"></p>
+
+<main class="stage">
+  <section>
+    <div class="flabel"><b>Клиент и веб клиент</b> фрагмент окна чата <span class="peer" id="peerD">Собеседник видит: «записывает голосовое» <i><s></s><s></s><s></s></i></span></div>
+    <div class="frame d" id="fd"></div>
+  </section>
+  <section>
+    <div class="flabel"><b>Мобильный клиент</b> <span class="peer" id="peerM">Видит: «записывает голосовое» <i><s></s><s></s><s></s></i></span></div>
+    <div class="frame m" id="fm"></div>
+  </section>
+</main>
+
+<section class="admin">
+  <h2>Админка · Файлы <span>голосовые видны в списке, но ни прослушать, ни скачать их нельзя</span></h2>
+  <div class="acard glass">
+    <div class="afil"><span>Все</span><span>Изображения</span><span>Документы</span><span class="on"><svg class="i"><use href="#i-mic"/></svg>Голосовые</span></div>
+    <div class="arow head"><span></span><span>Файл</span><span>Отправитель</span><span>Чат</span><span>Хранится ещё</span><span></span></div>
+    <div id="arows">
+      <div class="arow"><div class="fi"><svg class="i"><use href="#i-mic"/></svg></div><div class="nm"><b>Голосовое сообщение</b><small>0:23 · 91 КБ</small></div><span class="mut">Анна Крылова</span><span class="mut">Анна Крылова</span><span class="mut">28 дней</span><span class="lockchip"><svg class="i"><use href="#i-lock"/></svg>Прослушивание недоступно</span></div>
+      <div class="arow"><div class="fi"><svg class="i"><use href="#i-mic"/></svg></div><div class="nm"><b>Голосовое сообщение</b><small>0:08 · 33 КБ</small></div><span class="mut">Вы</span><span class="mut">Анна Крылова</span><span class="mut">28 дней</span><span class="lockchip"><svg class="i"><use href="#i-lock"/></svg>Прослушивание недоступно</span></div>
+      <div class="arow"><div class="fi" style="background:var(--gl-card2);color:var(--text2)"><svg class="i"><use href="#i-file"/></svg></div><div class="nm"><b>Смета_октябрь.pdf</b><small>PDF · 1,2 МБ</small></div><span class="mut">Дмитрий Орлов</span><span class="mut">Общий</span><span class="mut">12 дней</span><span class="dlbtn"><svg class="i"><use href="#i-dl"/></svg>Скачать</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="notes">
+  <h2>Что стоит решить <span>предложения, не фиксировать без вас</span></h2>
+  <ul>
+    <li class="glass"><b>Лимит длительности</b>Предлагаю 10 минут. За 30 секунд до конца таймер краснеет, на лимите запись сама отправляется.</li>
+    <li class="glass"><b>Формат и вес</b>Opus в WebM (Chrome, Electron, Firefox) и AAC в MP4 (Safari/iOS). Около 4–6 КБ в секунду; хранится по общему сроку хранения файлов.</li>
+    <li class="glass"><b>Разрешение на микрофон</b>При первом нажатии системный запрос. Если отказано — вместо записи короткая подсказка с путём в настройки.</li>
+    <li class="glass"><b>«Прослушано» у отправителя</b>Две галочки становятся акцентными, когда собеседник дослушал до конца (в макете показано точкой у входящего).</li>
+  </ul>
+</section>
+
+<script>
+/* ── вспомогательное ── */
+const $ = (s, r = document) => r.querySelector(s);
+const ic = (n, c = '') => `<svg class="i ${c}"><use href="#i-${n}"/></svg>`;
+const fmt = s => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+let clk = 12 * 60 + 41;
+const nowHM = () => { clk++; return Math.floor(clk / 60) + ':' + String(clk % 60).padStart(2, '0'); };
+let V = 'a';
+const frames = [];
+
+/* псевдо-речь: огибающая слогов */
+function synth(n, seed) {
+  let s = seed, r = () => (s = (s * 16807) % 2147483647) / 2147483647, out = [], ph = r() * 10;
+  for (let i = 0; i < n; i++) {
+    ph += .42;
+    const env = Math.max(0, Math.sin(ph * .9 + Math.sin(ph * .31) * 2.2));
+    out.push(Math.min(1, .1 + Math.pow(env, 1.2) * (.5 + .45 * r())));
+  }
+  return out;
+}
+function resample(d, n) {
+  if (!d.length) return Array(n).fill(.1);
+  const o = [];
+  for (let i = 0; i < n; i++) {
+    const a = Math.floor(i * d.length / n), b = Math.max(a + 1, Math.floor((i + 1) * d.length / n));
+    let m = 0; for (let j = a; j < b && j < d.length; j++) m = Math.max(m, d[j]);
+    o.push(m);
+  }
+  return o;
+}
+function drawWave(cv, data, live, prog) {
+  const dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (!w) return;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, h);
+  const bw = 3, gap = 3, n = Math.floor((w + gap) / (bw + gap));
+  x.fillStyle = getComputedStyle(cv).color;
+  let vals;
+  if (live) { vals = data.slice(-n); while (vals.length < n) vals.unshift(null); }
+  else vals = resample(data, n);
+  const off = w - (n * (bw + gap) - gap);
+  for (let i = 0; i < n; i++) {
+    const v = vals[i], px = off + i * (bw + gap);
+    let bh, al;
+    if (v == null) { bh = 3; al = .25; }
+    else { bh = Math.max(4, Math.min(1, v * 1.15) * h * .95); al = live ? 1 : (i / n < prog ? 1 : .35); }
+    x.globalAlpha = al;
+    x.beginPath(); x.roundRect(px, (h - bh) / 2, bw, bh, 1.5); x.fill();
+  }
+  x.globalAlpha = 1;
+}
+
+/* ── воспроизведение голосовых в ленте ── */
+let playing = null, lastTs = 0;
+function playLoop(ts) {
+  if (!playing) return;
+  const dt = Math.min(.5, (ts - lastTs) / 1000); lastTs = ts;
+  playing.pos += dt * playing.speed;
+  if (playing.pos >= playing.dur) { playing.pos = 0; setPlay(playing, false); return; }
+  paintVoice(playing);
+  requestAnimationFrame(playLoop);
+}
+function setPlay(s, on) {
+  if (on && playing && playing !== s) setPlay(playing, false);
+  s.el.classList.toggle('playing', on);
+  if (on) {
+    s.el.classList.add('act');
+    s.markRead();
+    playing = s; lastTs = performance.now(); requestAnimationFrame(playLoop);
+  } else {
+    if (playing === s) playing = null;
+    if (s.pos === 0) s.el.classList.remove('act');
+  }
+  paintVoice(s);
+}
+function paintVoice(s) {
+  const n = s.bars.length, k = Math.floor(s.pos / s.dur * n);
+  s.bars.forEach((b, i) => { b.classList.toggle('d', i < k); b.classList.toggle('cur', i === k && s.el.classList.contains('playing')); });
+  s.du.textContent = s.pos > 0 || s.el.classList.contains('playing') ? fmt(s.pos) : fmt(s.dur);
+}
+function voiceHTML(kind, o) {
+  const n = kind === 'd' ? 44 : 34, vals = resample(o.samples, n);
+  return `<div class="vm">
+    <button class="pl" aria-label="Воспроизвести">${ic('play', 'p1')}${ic('pause', 'p2')}</button>
+    <div class="vb">
+      <div class="wv">${vals.map(v => `<i style="height:${Math.round(5 + Math.min(1, v * 1.15) * 22)}px"></i>`).join('')}</div>
+      <div class="mt"><span class="du">${fmt(o.dur)}</span>${o.unread ? '<i class="ud"></i>' : ''}<button class="spd">1×</button>
+        <span class="tm">${o.time}${o.dir === 'out' ? ic(o.sent ? 'checks' : 'clock') : ''}</span></div>
+    </div></div>`;
+}
+function bindVoice(root, o) {
+  const el = $('.vm', root);
+  const s = { el, dur: o.dur, pos: 0, speed: 1, bars: [...el.querySelectorAll('.wv i')], du: $('.du', el),
+    markRead() { const u = $('.ud', el); if (u) { u.classList.add('gone'); setTimeout(() => u.remove(), 300); } } };
+  $('.pl', el).onclick = () => setPlay(s, !el.classList.contains('playing'));
+  $('.wv', el).onclick = e => {
+    const r = e.currentTarget.getBoundingClientRect();
+    s.pos = Math.max(0, Math.min(.999, (e.clientX - r.left) / r.width)) * s.dur;
+    el.classList.add('act'); if (!el.classList.contains('playing')) setPlay(s, true); else paintVoice(s);
+  };
+  $('.spd', el).onclick = e => {
+    s.speed = s.speed === 1 ? 1.5 : s.speed === 1.5 ? 2 : 1;
+    e.currentTarget.textContent = (s.speed === 1.5 ? '1,5' : s.speed) + '×';
+  };
+  return s;
+}
+
+/* ── окно ── */
+function buildFrame(host, kind) {
+  const mob = kind === 'm';
+  host.classList.add('v-a');
+  host.innerHTML = `
+    <div class="amb"><i></i><i></i><i></i><i></i></div>
+    ${mob ? '<div class="sbar"><span>9:41</span><span class="isl"></span><span class="bat"></span></div><div class="home"></div>' : ''}
+    <div class="chead glass"><div class="av">АК</div><div><b>Анна Крылова</b><small>в сети</small></div></div>
+    <div class="scroll"></div>
+    <div class="scrimC"></div>
+    <div class="lockhint glass">${ic('lock')}${ic('up', 'u')}</div>
+    <div class="toast glass"></div>
+    <div class="comp">
+      <button class="plus glass gi" aria-label="Прикрепить">${ic('clip')}</button>
+      <div class="field glass">
+        <div class="row1"><input type="text" placeholder="Сообщение" autocomplete="off"><span class="em">${ic('smile')}</span></div>
+        <div class="recbar">
+          <button class="ibtn danger rb-trash" aria-label="Удалить запись">${ic('trash')}</button>
+          <button class="ibtn soft rb-play" aria-label="Прослушать">${ic('play')}</button>
+          <i class="rb-dot"></i>
+          <span class="rb-time">0:00</span>
+          <canvas class="rb-wave"></canvas>
+          <div class="rb-hint">${ic('left')}<span>Влево — отмена</span></div>
+          <button class="ibtn rb-pause" aria-label="Пауза">${ic('pause')}</button>
+          <button class="ibtn soft rb-resume" aria-label="Продолжить запись">${ic('mic')}</button>
+        </div>
+        <div class="cxfx">${ic('trash')}</div>
+      </div>
+      <button class="send glass gi" aria-label="Отправить">${ic('mic', 'mc')}${ic('send', 's')}</button>
+    </div>
+    <div class="card glass-pop">
+      <div class="grab"></div>
+      <div class="ctop"><s></s><span class="cl">Запись голосового сообщения</span></div>
+      <div class="orb"><u></u><u></u><u></u><b>${ic('mic')}</b></div>
+      <div class="ctime">0:00</div>
+      <canvas class="cwave"></canvas>
+      <div class="cbtns">
+        <button class="btn danger c-cancel">${ic('trash')}Отмена</button>
+        <button class="btn cpause">${ic('pause', 'ps')}${ic('mic', 'rs')}<span class="t1">Пауза</span><span class="t2">Продолжить</span></button>
+        <button class="btn pri c-send">${ic('send')}Отправить</button>
+      </div>
+    </div>`;
+
+  const q = s => $(s, host);
+  const scroll = q('.scroll'), input = q('input'), send = q('.send'), peer = $(mob ? '#peerM' : '#peerD');
+  const E = { on: false, el: 0, samples: [], acc: 0, ph: Math.random() * 10, lvl: 0, last: 0 };
+  const P = { on: false, pos: 0, last: 0 };
+  const ctl = { host, kind, st: 'idle', hold: false, locked: false, lastUp: 0 };
+
+  function say(t) {
+    const tt = q('.toast'); tt.textContent = t; tt.classList.add('on');
+    clearTimeout(tt._t); tt._t = setTimeout(() => tt.classList.remove('on'), 2200);
+  }
+  function addMsg(html, dir, extra = '') {
+    const m = document.createElement('div');
+    m.className = 'msg ' + dir + extra;
+    m.innerHTML = (dir === 'in' ? '<div class="av">АК</div>' : '') + '<div class="bub">' + html + '</div>';
+    scroll.appendChild(m);
+    scroll.scrollTop = scroll.scrollHeight;
+    return m;
+  }
+  function addVoice(dir, o) {
+    const m = addMsg(voiceHTML(kind, o), dir, o.pop ? ' pop' : '');
+    bindVoice(m, o);
+    return m;
+  }
+  function addText(t, dir, time = nowHM(), pop) {
+    return addMsg(`${t}<span class="t">${time}${dir === 'out' ? ic('checks') : ''}</span>`, dir, pop ? ' pop' : '');
+  }
+  /* исходная лента */
+  scroll.insertAdjacentHTML('beforeend', '<div class="day"><span class="glass">Сегодня</span></div>');
+  addText('Привет! Посмотрела макет — есть пара мыслей по голосовым', 'in', '12:38');
+  addVoice('in', { dir: 'in', dur: 23, samples: synth(60, 7), unread: true, time: '12:40' });
+  addVoice('out', { dir: 'out', dur: 8, samples: synth(30, 19), time: '12:41', sent: true });
+  addText('Отлично, сейчас попробую', 'out', '12:41');
+
+  /* кнопка: микрофон или отправить */
+  function syncMode() {
+    const text = input.value.trim().length > 0;
+    const recSend = ctl.st !== 'idle' && !(V === 'a' && ctl.hold && !ctl.locked);
+    send.classList.toggle('ready', text || recSend);
+  }
+  input.addEventListener('input', syncMode);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter' && input.value.trim()) sendText(); });
+  function sendText() {
+    addText(input.value.trim().replace(/</g, '&lt;'), 'out', nowHM(), true);
+    input.value = ''; syncMode();
+  }
+
+  /* движок записи */
+  function eLoop(ts) {
+    if (!E.on) return;
+    const dt = Math.min(.5, (ts - E.last) / 1000); E.last = ts;
+    E.el += dt; E.acc += dt; E.ph += dt * 9;
+    const env = Math.max(0, Math.sin(E.ph * .9 + Math.sin(E.ph * .31) * 2.2));
+    E.lvl += ((.08 + Math.pow(env, 1.3) * (.55 + .4 * Math.random())) - E.lvl) * .35;
+    if (E.acc >= .08) { E.acc -= .08; E.samples.push(E.lvl); }
+    host.style.setProperty('--lvl', Math.min(1, E.lvl).toFixed(3));
+    renderRec();
+    requestAnimationFrame(eLoop);
+  }
+  function renderRec() {
+    const t = fmt(E.el);
+    q('.rb-time').textContent = ctl.st === 'paused' && P.on ? fmt(P.pos) : t;
+    q('.ctime').innerHTML = t;
+    if (ctl.st === 'rec') {
+      if (V === 'c') drawWave(q('.cwave'), E.samples, true);
+      else if (V === 'b' || ctl.locked) drawWave(q('.rb-wave'), E.samples, true);
+    }
+  }
+  function drawStatic() {
+    const prog = P.on ? P.pos / Math.max(.1, E.el) : 0;
+    drawWave(q('.rb-wave'), E.samples, false, prog);
+    drawWave(q('.cwave'), E.samples, false, prog);
+    renderRec();
+  }
+  function pLoop(ts) {
+    if (!P.on) return;
+    P.pos += Math.min(.5, (ts - P.last) / 1000); P.last = ts;
+    if (P.pos >= E.el) { stopPreview(); return; }
+    drawStatic(); requestAnimationFrame(pLoop);
+  }
+  function startPreview() { P.on = true; P.pos = P.pos >= E.el ? 0 : P.pos; P.last = performance.now(); q('.rb-play').innerHTML = ic('pause'); requestAnimationFrame(pLoop); }
+  function stopPreview() { P.on = false; P.pos = 0; q('.rb-play').innerHTML = ic('play'); if (ctl.st === 'paused') drawStatic(); }
+
+  function engineOn() { E.on = true; E.last = performance.now(); requestAnimationFrame(eLoop); }
+  function peerShow(on) { peer.classList.toggle('on', on); }
+
+  function startRec() {
+    E.el = 0; E.samples = []; E.acc = 0; E.lvl = 0;
+    ctl.st = 'rec'; ctl.locked = false;
+    host.classList.add('rec'); host.classList.remove('paused');
+    input.disabled = true; input.blur();
+    peerShow(true); engineOn(); syncMode();
+  }
+  function endRec() {
+    E.on = false; stopPreview();
+    ctl.st = 'idle'; ctl.hold = false; ctl.locked = false;
+    host.classList.remove('rec', 'paused', 'hold', 'locked', 'willcancel');
+    host.style.setProperty('--lvl', 0); host.style.setProperty('--lk', 0);
+    send.style.transform = '';
+    q('.lockhint').classList.remove('full');
+    input.disabled = false; peerShow(false); syncMode();
+  }
+  function cancelRec(msg) {
+    const fx = q('.cxfx'); fx.classList.remove('go'); void fx.offsetWidth; fx.classList.add('go');
+    endRec(); if (msg) say(msg);
+  }
+  function sendRec() {
+    if (E.el < .8) { cancelRec('Слишком короткое — запись не отправлена'); return; }
+    const dur = Math.max(1, Math.round(E.el)), samples = E.samples.slice();
+    endRec();
+    addVoice('out', { dir: 'out', dur, samples, time: nowHM(), pop: true });
+    const m = scroll.lastElementChild;
+    setTimeout(() => { const t = $('.tm', m); if (t) t.lastChild.outerHTML = ic('checks'); }, 900);
+    adminAdd(dur);
+  }
+  function pauseRec() {
+    E.on = false; ctl.st = 'paused'; host.classList.add('paused'); P.pos = 0; P.on = false;
+    q('.rb-play').innerHTML = ic('play'); drawStatic();
+  }
+  function resumeRec() {
+    stopPreview(); ctl.st = 'rec'; host.classList.remove('paused'); engineOn();
+  }
+
+  /* кнопки */
+  q('.rb-trash').onclick = () => cancelRec();
+  q('.c-cancel').onclick = () => cancelRec();
+  q('.rb-pause').onclick = pauseRec;
+  q('.rb-resume').onclick = resumeRec;
+  q('.rb-play').onclick = () => (P.on ? stopPreview() : startPreview());
+  q('.c-send').onclick = sendRec;
+  q('.cpause').onclick = () => (ctl.st === 'paused' ? resumeRec() : pauseRec());
+
+  send.addEventListener('click', () => {
+    if (performance.now() - ctl.lastUp < 160) return;
+    if (ctl.st === 'idle') {
+      if (input.value.trim()) sendText();
+      else if (V === 'a') say('Удерживайте микрофон, чтобы записать голосовое');
+      else startRec();
+    } else sendRec();
+  });
+
+  /* удержание (вариант A) */
+  let sx = 0, sy = 0, t0 = 0;
+  send.addEventListener('pointerdown', e => {
+    if (V !== 'a' || ctl.st !== 'idle' || input.value.trim()) return;
+    send.setPointerCapture(e.pointerId);
+    sx = e.clientX; sy = e.clientY; t0 = performance.now();
+    ctl.hold = true; startRec(); host.classList.add('hold');
+  });
+  send.addEventListener('pointermove', e => {
+    if (!ctl.hold || ctl.locked) return;
+    const dx = Math.min(0, e.clientX - sx), dy = Math.min(0, e.clientY - sy);
+    const cx = dx < -110, lk = Math.min(1, -dy / 80);
+    send.style.transform = `translate(${dx * .5}px,${dy * .5}px) scale(1.32)`;
+    const h = q('.rb-hint');
+    h.style.transform = `translateX(${dx * .55}px)`; h.style.opacity = Math.max(.2, 1 + dx / 150);
+    h.classList.toggle('cx', cx);
+    q('.rb-hint span').textContent = cx ? 'Отпустите для отмены' : 'Влево — отмена';
+    host.classList.toggle('willcancel', cx);
+    host.style.setProperty('--lk', lk);
+    q('.lockhint').classList.toggle('full', lk >= 1);
+    if (lk >= 1 && !cx) {
+      ctl.locked = true; host.classList.add('locked');
+      send.style.transform = ''; syncMode(); say('Запись зафиксирована — можно отпустить');
+    }
+  });
+  const up = e => {
+    if (!ctl.hold) return;
+    ctl.lastUp = performance.now();
+    const h = q('.rb-hint'); h.style.transform = ''; h.style.opacity = ''; h.classList.remove('cx'); q('.rb-hint span').textContent = 'Влево — отмена';
+    if (ctl.locked) { ctl.hold = false; host.classList.remove('hold'); send.style.transform = ''; return; }
+    const cancel = e.type === 'pointercancel' || host.classList.contains('willcancel');
+    const short = performance.now() - t0 < 500;
+    if (cancel) cancelRec();
+    else if (short) cancelRec('Удерживайте микрофон, чтобы записать голосовое');
+    else sendRec();
+  };
+  send.addEventListener('pointerup', up);
+  send.addEventListener('pointercancel', up);
+
+  ctl.reset = () => { if (ctl.st !== 'idle') endRec(); };
+  ctl.cancelKey = () => { if (ctl.st !== 'idle') cancelRec(); };
+  ctl.redraw = () => { if (ctl.st === 'paused') drawStatic(); };
+  frames.push(ctl);
+  return ctl;
+}
+
+/* ── админка: новая запись появляется в списке ── */
+function adminAdd(dur) {
+  const r = document.createElement('div');
+  r.className = 'arow newrow';
+  r.innerHTML = `<div class="fi">${ic('mic')}</div><div class="nm"><b>Голосовое сообщение</b><small>${fmt(dur)} · ${Math.max(1, Math.round(dur * 4.1))} КБ</small></div><span class="mut">Вы</span><span class="mut">Анна Крылова</span><span class="mut">30 дней</span><span class="lockchip">${ic('lock')}Прослушивание недоступно</span>`;
+  $('#arows').prepend(r);
+  setTimeout(() => r.classList.remove('newrow'), 1800);
+}
+
+/* ── варианты, тема ── */
+const HOW = {
+  a: '<b>A · Удержание</b> (как в Telegram). Зажмите микрофон и говорите, отпустите — отправится. Не отпуская: <b>влево</b> — отмена, <b>вверх</b> — зафиксировать запись (дальше руки свободны). Короткое нажатие — только подсказка. Напишите текст в поле — микрофон превращается в «Отправить».',
+  b: '<b>B · Клик и пауза</b> (как в WhatsApp и Signal). Нажмите микрофон — запись идёт в самом поле. Корзина — удалить, пауза — остановить: тогда запись можно <b>прослушать</b> и продолжить, стрелка — отправить. <kbd>Esc</kbd> — отмена. Удобнее всего на компьютере.',
+  c: '<b>C · Карточка</b>. Нажмите микрофон — над полем открывается карточка с большим таймером, волной и кругами, которые отзываются на голос. Фон затемняется, поле ввода убирается. На телефоне — нижняя шторка.'
+};
+function setVariant(v) {
+  V = v;
+  frames.forEach(f => { f.reset(); f.host.classList.remove('v-a', 'v-b', 'v-c'); f.host.classList.add('v-' + v); });
+  $('#how').innerHTML = HOW[v];
+  const seg = $('#seg'), on = $(`button[data-v="${v}"]`, seg), th = $('.thumb', seg);
+  seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === on));
+  th.style.left = on.offsetLeft + 'px'; th.style.width = on.offsetWidth + 'px';
+}
+$('#seg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setVariant(b.dataset.v); });
+$('#theme').onclick = () => {
+  const d = document.documentElement.classList.toggle('dark');
+  $('#theme').innerHTML = ic(d ? 'sun' : 'moon');
+  frames.forEach(f => f.redraw());
+};
+document.addEventListener('keydown', e => { if (e.key === 'Escape') frames.forEach(f => f.cancelKey()); });
+addEventListener('resize', () => setVariant(V));
+
+buildFrame($('#fd'), 'd');
+buildFrame($('#fm'), 'm');
+setVariant('a');
+document.fonts && document.fonts.ready.then(() => setVariant(V));
+</script>
+</body>
+</html>

@@ -139,13 +139,13 @@ B.chats.preview = function (c) {
   if (lm.text) return (window.Fmt ? Fmt.plain(lm.text) : lm.text).replace(/<[^>]*>/g, '');
   if (lm.forward_data && !lm.text) {   // пересылка без своего текста: что именно переслали
     var fd = lm.forward_data, fa = fd.attachment, ft = fd.text ? (window.Fmt ? Fmt.plain(fd.text) : fd.text).replace(/<[^>]*>/g, '') : '';
-    var fm = fa ? (fa.gif ? '🖼 GIF' : fa.more && fa.more.length ? '🖼 Вложений: ' + (fa.more.length + 1) : (fa.mime || '').indexOf('image/') === 0 ? '🖼 Изображение' : (fa.mime || '').indexOf('video/') === 0 ? '🎬 Видео' : '📎 ' + (fa.name || 'Файл')) : '';
+    var fm = fa ? (fa.gif ? '🖼 GIF' : fa.voice ? '🎤 Голосовое сообщение' : fa.more && fa.more.length ? '🖼 Вложений: ' + (fa.more.length + 1) : (fa.mime || '').indexOf('image/') === 0 ? '🖼 Изображение' : (fa.mime || '').indexOf('video/') === 0 ? '🎬 Видео' : '📎 ' + (fa.name || 'Файл')) : '';
     return 'Переслано: ' + (ft || fm || 'сообщение');
   }
   if (lm.attachment) {
     var a = lm.attachment, mime = a.mime || '';
     if (a.more && a.more.length) return '🖼 Вложений: ' + (a.more.length + 1);
-    return a.gif ? '🖼 GIF' : mime.indexOf('image/') === 0 ? '🖼 Изображение' : mime.indexOf('video/') === 0 ? '🎬 Видео' : '📎 ' + (a.name || 'Файл');
+    return a.gif ? '🖼 GIF' : a.voice ? '🎤 Голосовое сообщение' : mime.indexOf('image/') === 0 ? '🖼 Изображение' : mime.indexOf('video/') === 0 ? '🎬 Видео' : '📎 ' + (a.name || 'Файл');
   }
   return '';
 };
