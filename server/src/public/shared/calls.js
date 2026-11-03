@@ -157,10 +157,16 @@
     try { await el.setSinkId(id); pendingSpk = 'receiver'; sinkNote('при нажатии: трубка выбрана'); } catch (e) { pendingSpk = null; sinkNote('при нажатии: ' + (e && e.name || e)); }
   }
   // Когда голос собеседника уже пошёл и микрофон захвачен, подтверждаем выбор повторно (без переключения туда-сюда: если система не примет, остаётся как есть)
+  var earDone = false;
   function reapplyEarpiece() {
     var c = st.call, id = ''; try { id = localStorage.getItem('cl_recv') || ''; } catch (e) {}
-    if (!c || c.spk !== 'receiver' || !id || !waEl || !waEl.setSinkId) return;
-    waEl.setSinkId(id).then(function () { sinkNote('повторно: ок'); }).catch(function (e) { sinkNote('повторно: ' + (e && e.name || e)); });
+    if (earDone || !c || c.spk !== 'receiver' || !id || !waEl || !waEl.setSinkId) return;
+    // Повторный выбор того же динамика система считает «ничего не изменилось» и маршрут не обновляет (поэтому помогало «громко → трубка»):
+    // переключаем на системный и сразу обратно на трубку, когда голос уже идёт
+    var el = waEl;
+    el.setSinkId('').then(function () {
+      return el.setSinkId(id).then(function () { earDone = true; sinkNote('переключение туда-обратно: ок'); }, function (e) { sinkNote('назад в трубку: ' + (e && e.name || e)); if (st.call) { st.call.spk = 'speaker'; render(); } });
+    }, function (e) { sinkNote('на системный: ' + (e && e.name || e)); });
   }
   function waAttach(track) {
     try {
@@ -506,6 +512,7 @@
     LK = await loadLK(); ended = false;
     closeAc();
     if (pendingSpk) { c.spk = pendingSpk; pendingSpk = null; }
+    earDone = false;
     // По умолчанию через TCP (TURN по TLS): на Wi-Fi с потерями UDP видео рассыпается. Только для wss:// (при ws:// TURN по TLS не бывает); отключается в настройках
     tcpMode = !lget('udp') && /^wss:/i.test(String(url)); tcpUsed = false; tcpUrls = ''; iceSeen = []; patchPc();
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
@@ -514,7 +521,7 @@
     // В звонке двоих без слоёв качества: приёмник всегда получает полную картинку, а передатчик не гоняет три кодировщика (на телефоне это тяжело, и картинка падала до 180×320 при 7 к/с). Слои нужны только в группе
     room = new LK.Room({ adaptiveStream: !!c.group, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: H.mobile && c.group ? { width: 960, height: 540, frameRate: 24 } : { width: 1280, height: 720, frameRate: 30 }, deviceId: devOpt('videoin') }, publishDefaults: { simulcast: !!c.group, videoCodec: isIOS ? 'h264' : undefined, audioPreset: { maxBitrate: 40000 }, videoEncoding: !c.group ? { maxBitrate: 3000000, maxFramerate: 30 } : (H.mobile ? { maxBitrate: 1200000, maxFramerate: 24 } : undefined) } });
     room.on(R.TrackSubscribed, function (track) {
-      if (track.kind === T.Kind.Audio && waOn() && waAttach(track)) { setTimeout(reapplyEarpiece, 300); remoteState(); return; }
+      if (track.kind === T.Kind.Audio && waOn() && waAttach(track)) { setTimeout(reapplyEarpiece, 800); setTimeout(reapplyEarpiece, 3500); remoteState(); return; }
       if (track.kind === T.Kind.Audio) { document.querySelectorAll('audio[data-sid="' + track.sid + '"]').forEach(function (o) { o.remove(); }); var el = track.attach(); el.dataset.cl = '1'; el.dataset.sid = track.sid; el.setAttribute('playsinline', ''); document.body.appendChild(el);
         // Обход ошибки WebKit 320087: на iOS setSinkId на элементе с одним удалённым треком ничего не меняет, а с двумя работает
         if (lget('two')) { try { var cl = track.mediaStreamTrack.clone(); cl.enabled = false; twoClones[track.sid] = cl; el.srcObject = new MediaStream([track.mediaStreamTrack, cl]); } catch (e) {} } try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {} el.play && el.play().catch(function () {}); }
@@ -532,7 +539,7 @@
     await room.connect(url, token);
     var so = devGet('audioout'); if (so && so.id && canSink() && room.switchActiveDevice) { try { await room.switchActiveDevice('audiooutput', so.id); } catch (e) {} }
     try { await room.localParticipant.setMicrophoneEnabled(true); c.mic = true; } catch (e) { c.mic = false; }
-    releaseMic(); mediaRefresh(); setTimeout(reapplyEarpiece, 600); setTimeout(reapplyEarpiece, 2500);
+    releaseMic(); mediaRefresh(); setTimeout(reapplyEarpiece, 2500);
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     if (c.group) { c.since = Date.now(); liveNow(); }
     else if (room.remoteParticipants.size) { liveNow(); remoteState(); } else { c.phase = c.outgoing ? 'ringing' : 'connecting'; render(); }
@@ -733,7 +740,7 @@
   // Свои настройки этого устройства (не на сервере): через TCP
   function lget(k) { try { return localStorage.getItem('cl_' + k) === '1'; } catch (e) { return false; } }
   function lset(k, v) { try { if (v) localStorage.setItem('cl_' + k, '1'); else localStorage.removeItem('cl_' + k); } catch (e) {} }
-  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'snd-5';
+  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'snd-6';
   // Только TURN по TLS (TCP) и запрет прямых путей. LiveKit создаёт соединение раньше, чем получает от сервера список ICE-серверов, и
   // потом задаёт его через setConfiguration, поэтому подменяем и конструктор, и setConfiguration. Если у сервера нет TURN по TLS, идём как обычно
   function tcpize(cfg) {
