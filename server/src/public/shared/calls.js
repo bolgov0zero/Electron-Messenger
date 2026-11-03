@@ -732,6 +732,9 @@
       st.incoming = { call_id: cur.call_id, chat_id: cur.chat_id, video: cur.video, from: cur.from, timeout: cur.timeout };
       renderIncoming(); ring('in');
     }
+    // «Ответить» в уведомлении приложения Android: входящий уже на экране (пришёл по соединению или из настроек), сразу принимаем
+    var aa = H.autoAnswer && H.autoAnswer();
+    if (aa && st.incoming && st.incoming.call_id === aa && !st.call) accept(!!st.incoming.video);
     var want = H.pendingCall && H.pendingCall();
     if (want && !st.call && !st.incoming) {
       var g = (r && r.groups || []).find(function (x) { return x.call_id === want; });

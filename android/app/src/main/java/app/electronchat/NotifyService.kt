@@ -68,16 +68,18 @@ class NotifyService : Service() {
         h.postDelayed({ connect() }, delay); delay = minOf(delay * 2, 60000L)
     }
 
-    private fun open(chat: String?, call: String?): PendingIntent {
+    private fun open(chat: String?, call: String?, answer: Boolean = false): PendingIntent {
         val i = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        chat?.let { i.putExtra("chatId", it) }; call?.let { i.putExtra("call", it) }
-        return PendingIntent.getActivity(this, (chat ?: call ?: "0").hashCode(), i, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        chat?.let { i.putExtra("chatId", it) }; call?.let { i.putExtra("call", it) }; if (answer) i.putExtra("answer", true)
+        return PendingIntent.getActivity(this, (chat ?: call ?: "0").hashCode() + (if (answer) 1 else 0), i, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
     private fun handle(text: String) {
-        if (MainActivity.visible) return   // приложение открыто: всё видно в нём
         val nm = getSystemService(NotificationManager::class.java)
         val j = try { JSONObject(text) } catch (_: Exception) { return }
+        // Звонок принят, отклонён или закончился где угодно: уведомление убираем, даже если приложение открыто
+        when (j.optString("type")) { "call_ended", "call_answered", "call_accepted" -> { nm.cancel("c" + j.optString("call_id"), 0); return } }
+        if (MainActivity.visible) return   // приложение открыто: всё видно в нём
         when (j.optString("type")) {
             "native_push" -> {
                 val p = j.optJSONObject("payload") ?: return
@@ -92,7 +94,7 @@ class NotifyService : Service() {
                 val id = j.optString("call_id"); val chat = j.opt("chat_id")?.toString()
                 val name = j.optJSONObject("from")?.optString("name").orEmpty().ifEmpty { "Звонок" }
                 val video = j.optBoolean("video")
-                val pi = open(chat, id)
+                val pi = open(chat, id); val ans = open(chat, id, true)
                 val b = Notification.Builder(this, "ring2").setSmallIcon(R.drawable.ic_stat)
                     .setCategory(Notification.CATEGORY_CALL).setContentIntent(pi).setFullScreenIntent(pi, true)
                     .setOngoing(true).setVisibility(Notification.VISIBILITY_PUBLIC)
@@ -100,10 +102,10 @@ class NotifyService : Service() {
                 val decline = PendingIntent.getBroadcast(this, id.hashCode(), Intent(this, DeclineReceiver::class.java).putExtra("call", id), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
                 if (Build.VERSION.SDK_INT >= 31) {
                     val p = Person.Builder().setName(name).setImportant(true).build()
-                    b.setStyle(Notification.CallStyle.forIncomingCall(p, decline, pi))
+                    b.setStyle(Notification.CallStyle.forIncomingCall(p, decline, ans))
                 } else {
                     b.setContentTitle(if (video) "Входящий видеозвонок" else "Входящий аудиозвонок").setContentText(name)
-                    b.addAction(Notification.Action.Builder(null, "Ответить", pi).build())
+                    b.addAction(Notification.Action.Builder(null, "Ответить", ans).build())
                     b.addAction(Notification.Action.Builder(null, "Отклонить", decline).build())
                 }
                 val n = b.build()

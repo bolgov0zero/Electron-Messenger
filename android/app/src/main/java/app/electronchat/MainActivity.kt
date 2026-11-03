@@ -93,7 +93,7 @@ class MainActivity : Activity() {
     private fun open(i: Intent?) {
         val u = StringBuilder(base().trimEnd('/') + "/m/")
         val chat = i?.getStringExtra("chatId"); val call = i?.getStringExtra("call")
-        val q = listOfNotNull(chat?.let { "chatId=$it" }, call?.let { "call=$it" })
+        val q = listOfNotNull(chat?.let { "chatId=$it" }, call?.let { "call=$it" }, if (call != null && i.getBooleanExtra("answer", false)) "answer=1" else null)
         if (q.isNotEmpty()) u.append('?').append(q.joinToString("&"))
         web.loadUrl(u.toString())
     }
@@ -162,8 +162,22 @@ class MainActivity : Activity() {
         }
     }
 
-    override fun onNewIntent(i: Intent) { super.onNewIntent(i); if (base().isNotEmpty()) open(i) }
-    override fun onStart() { super.onStart(); visible = true }
+    // Приложение уже открыто: страницу не перезагружаем (иначе оборвётся идущий звонок), а сообщаем ей, что открыть
+    override fun onNewIntent(i: Intent) {
+        super.onNewIntent(i)
+        if (base().isEmpty()) return
+        val chat = i.getStringExtra("chatId"); val call = i.getStringExtra("call"); val ans = i.getBooleanExtra("answer", false)
+        val loaded = web.url?.startsWith(base()) == true
+        if (!loaded) { open(i); return }
+        fun js(s: String?) = if (s == null) "null" else "'" + s.replace("'", "") + "'"
+        web.evaluateJavascript("(function(){var B=window.B;if(!B)return;if(" + js(chat) + "&&B.onOpenChat)B.onOpenChat(parseInt(" + js(chat) + ",10));if(" + js(call) + "&&B.onOpenCall)B.onOpenCall(" + js(call) + "," + ans + ");})()", null)
+    }
+    override fun onStart() {
+        super.onStart(); visible = true
+        // Приложение открыто: звонок виден в нём, карточки в шторке больше не нужны
+        val nm = getSystemService(android.app.NotificationManager::class.java)
+        nm.activeNotifications.filter { it.tag?.startsWith("c") == true }.forEach { nm.cancel(it.tag, it.id) }
+    }
     override fun onStop() { super.onStop(); visible = false }
     override fun onKeyDown(k: Int, e: KeyEvent): Boolean {
         if (k == KeyEvent.KEYCODE_BACK && web.canGoBack()) { web.goBack(); return true }
