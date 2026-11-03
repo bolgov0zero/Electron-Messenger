@@ -4,6 +4,10 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioAttributes
+import android.media.RingtoneManager
+import android.app.Person
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -31,7 +35,11 @@ class NotifyService : Service() {
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel("conn", "Приём уведомлений", NotificationManager.IMPORTANCE_MIN))
         nm.createNotificationChannel(NotificationChannel("msg", "Сообщения", NotificationManager.IMPORTANCE_HIGH))
-        nm.createNotificationChannel(NotificationChannel("ring", "Входящие звонки", NotificationManager.IMPORTANCE_HIGH).apply { enableVibration(true) })
+        nm.createNotificationChannel(NotificationChannel("ring2", "Входящие звонки", NotificationManager.IMPORTANCE_HIGH).apply {
+            enableVibration(true); vibrationPattern = longArrayOf(0, 700, 500, 700)
+            setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE), AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+        })
         val n = Notification.Builder(this, "conn").setSmallIcon(R.drawable.ic_stat).setContentTitle("Electron").setContentText("Приём уведомлений").setOngoing(true).build()
         startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         connect()
@@ -82,12 +90,24 @@ class NotifyService : Service() {
             }
             "call_incoming" -> {
                 val id = j.optString("call_id"); val chat = j.opt("chat_id")?.toString()
-                val name = j.optJSONObject("from")?.optString("name").orEmpty()
+                val name = j.optJSONObject("from")?.optString("name").orEmpty().ifEmpty { "Звонок" }
+                val video = j.optBoolean("video")
                 val pi = open(chat, id)
-                val n = Notification.Builder(this, "ring").setSmallIcon(R.drawable.ic_stat)
-                    .setContentTitle(if (j.optBoolean("video")) "Входящий видеозвонок" else "Входящий аудиозвонок").setContentText(name)
+                val b = Notification.Builder(this, "ring2").setSmallIcon(R.drawable.ic_stat)
                     .setCategory(Notification.CATEGORY_CALL).setContentIntent(pi).setFullScreenIntent(pi, true)
-                    .setTimeoutAfter(j.optLong("timeout", 30) * 1000).setAutoCancel(true).build()
+                    .setOngoing(true).setVisibility(Notification.VISIBILITY_PUBLIC)
+                    .setTimeoutAfter(j.optLong("timeout", 30) * 1000)
+                val decline = PendingIntent.getBroadcast(this, id.hashCode(), Intent(this, DeclineReceiver::class.java).putExtra("call", id), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+                if (Build.VERSION.SDK_INT >= 31) {
+                    val p = Person.Builder().setName(name).setImportant(true).build()
+                    b.setStyle(Notification.CallStyle.forIncomingCall(p, decline, pi))
+                } else {
+                    b.setContentTitle(if (video) "Входящий видеозвонок" else "Входящий аудиозвонок").setContentText(name)
+                    b.addAction(Notification.Action.Builder(null, "Ответить", pi).build())
+                    b.addAction(Notification.Action.Builder(null, "Отклонить", decline).build())
+                }
+                val n = b.build()
+                n.flags = n.flags or Notification.FLAG_INSISTENT   // звонит и вибрирует, пока не ответят
                 nm.notify("c$id", 0, n)
             }
             "call_ended", "call_answered", "call_accepted" -> nm.cancel("c" + j.optString("call_id"), 0)

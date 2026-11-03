@@ -149,6 +149,11 @@ class MainActivity : Activity() {
         if (Build.VERSION.SDK_INT >= 33) need.add(Manifest.permission.POST_NOTIFICATIONS)
         val miss = need.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
         if (miss.isNotEmpty()) requestPermissions(miss.toTypedArray(), REQ_PERM)
+        // Android 14+: полноэкранное уведомление о звонке разрешается отдельно (один раз открываем настройку)
+        if (Build.VERSION.SDK_INT >= 34 && !getSystemService(android.app.NotificationManager::class.java).canUseFullScreenIntent() && !prefs.getBoolean("fsi_asked", false)) {
+            prefs.edit().putBoolean("fsi_asked", true).apply()
+            try { startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:$packageName"))) } catch (_: Exception) {}
+        }
         // Чтобы система не усыпляла службу уведомлений, просим исключить приложение из экономии батареи (один раз)
         val pm = getSystemService(PowerManager::class.java)
         if (!pm.isIgnoringBatteryOptimizations(packageName) && !prefs.getBoolean("battery_asked", false)) {
