@@ -22,7 +22,8 @@
     const O = window.RTCPeerConnection;
     const N = function (cfg, c) {
       if (cfg?.iceServers) {
-        const srv = cfg.iceServers.map(s => ({ ...s, urls: [].concat(s.urls || []).filter(u => /^turns:|transport=tcp/i.test(u)) })).filter(s => s.urls.length);
+        // LiveKit объявляет TURN по TLS на порту 443, а у нас он слушает 5349: пробуем оба адреса
+        const srv = cfg.iceServers.map(s => { const u = [].concat(s.urls || []).filter(x => /^turns:|transport=tcp/i.test(x)), more = []; u.forEach(x => { const m = /^turns:([^:/?]+):443(\?.*)?$/i.exec(x); if (m) more.push('turns:' + m[1] + ':5349' + (m[2] || '?transport=tcp')); }); return { ...s, urls: [...u, ...more] }; }).filter(s => s.urls.length);
         if (srv.length) cfg = { ...cfg, iceTransportPolicy: 'relay', iceServers: srv };
       }
       return c !== undefined ? new O(cfg, c) : new O(cfg);

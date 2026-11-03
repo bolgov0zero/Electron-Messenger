@@ -405,7 +405,7 @@
       if (pair) { var lc = byId[pair.localCandidateId], rc = byId[pair.remoteCandidateId];
         L.push('Путь: ' + String((rc && rc.protocol) || (lc && lc.protocol) || '?').toUpperCase() + ', ' + ({ host: 'напрямую', srflx: 'через NAT', prflx: 'через NAT', relay: 'через TURN' }[(lc && lc.candidateType)] || (lc && lc.candidateType) || '?') + ', задержка ' + Math.round((pair.currentRoundTripTime || 0) * 1000) + ' мс'); }
     } catch (e) {}
-    L.push('Связь: ' + (tcpMode ? (tcpUsed ? 'принудительно через TCP' : 'TCP включён, но у сервера нет TURN по TLS') : 'по возможности UDP'));
+    L.push('Связь: ' + (tcpMode ? (tcpUsed ? 'принудительно через TCP (' + tcpUrls + ')' : 'TCP включён, но у сервера нет TURN по TLS') : 'по возможности UDP'));
     try { if (navigator.audioSession) L.push('Звук: сеанс «' + navigator.audioSession.type + '»'); } catch (e) {}
     d.textContent = L.join('\n');
   }
@@ -423,7 +423,7 @@
     if (location.protocol === 'https:' && /^ws:/i.test(url)) throw new Error('Сервер звонков работает без сертификата (ws://): в браузере звонки доступны только с wss://');
     LK = await loadLK(); ended = false;
     closeAc();
-    tcpMode = lget('tcp'); patchPc();
+    tcpMode = lget('tcp'); tcpUsed = false; tcpUrls = ''; patchPc();
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     ensureVideos();
     var R = LK.RoomEvent, T = LK.Track;
@@ -644,15 +644,19 @@
   // Свои настройки этого устройства (не на сервере): через TCP
   function lget(k) { try { return localStorage.getItem('cl_' + k) === '1'; } catch (e) { return false; } }
   function lset(k, v) { try { if (v) localStorage.setItem('cl_' + k, '1'); else localStorage.removeItem('cl_' + k); } catch (e) {} }
-  var tcpMode = false, tcpUsed = false, pcPatched = false;
+  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false;
   function patchPc() {
     if (pcPatched || !window.RTCPeerConnection) return; pcPatched = true;
     var O = window.RTCPeerConnection;
     var N = function (cfg, c) {
-      tcpUsed = false;
       if (tcpMode && cfg && cfg.iceServers) {
-        var srv = cfg.iceServers.map(function (s) { return Object.assign({}, s, { urls: [].concat(s.urls || []).filter(function (u) { return /^turns:|transport=tcp/i.test(u); }) }); }).filter(function (s) { return s.urls.length; });
-        if (srv.length) { cfg = Object.assign({}, cfg, { iceTransportPolicy: 'relay', iceServers: srv }); tcpUsed = true; }   // у сервера нет TURN по TLS: идём как обычно
+        // LiveKit объявляет TURN по TLS на порту 443 (за балансировщиком), а у нас он слушает 5349: пробуем оба адреса
+        var srv = cfg.iceServers.map(function (s) {
+          var u = [].concat(s.urls || []).filter(function (x) { return /^turns:|transport=tcp/i.test(x); }), more = [];
+          u.forEach(function (x) { var m = /^turns:([^:\/?]+):443(\?.*)?$/i.exec(x); if (m) more.push('turns:' + m[1] + ':5349' + (m[2] || '?transport=tcp')); });
+          return Object.assign({}, s, { urls: u.concat(more) });
+        }).filter(function (s) { return s.urls.length; });
+        if (srv.length) { cfg = Object.assign({}, cfg, { iceTransportPolicy: 'relay', iceServers: srv }); tcpUsed = true; tcpUrls = srv.map(function (s) { return s.urls.join(', '); }).join('; '); }   // у сервера нет TURN по TLS: идём как обычно
       }
       return c !== undefined ? new O(cfg, c) : new O(cfg);
     };
