@@ -75,11 +75,11 @@
     '.cl-full{position:fixed;inset:0;z-index:100002;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 56px) 24px calc(env(safe-area-inset-bottom,0px) + 40px);color:var(--text);background:var(--gl-base,var(--bg,#12171d));animation:cl-fade .25s ease;text-align:center}.cl-full.dark{color:#fff}' +
     '@keyframes cl-fade{from{opacity:0}to{opacity:1}}.cl-full .lbl{font-size:13.5px;font-weight:600;color:var(--text2)}.cl-full.dark .lbl{color:rgba(255,255,255,.8)}' +
     '.cl-full .nm{font-size:30px;font-weight:700;letter-spacing:-.02em;margin-top:34px}.cl-full .sub{font-size:15px;color:var(--text2);margin-top:6px;font-variant-numeric:tabular-nums}.cl-full.dark .sub{color:rgba(255,255,255,.78)}' +
-    '.cl-acts{display:flex;justify-content:center;gap:34px;width:100%}.cl-mb{display:flex;flex-direction:column;align-items:center;gap:9px;font-size:12.5px;font-weight:600;color:var(--text2);cursor:pointer;background:none;border:0;font-family:inherit}.cl-full.dark .cl-mb{color:rgba(255,255,255,.85)}' +
+    '.cl-acts{display:flex;justify-content:center;gap:34px;width:100%}.cl-win .cl-acts{gap:8px;padding:0 6px;box-sizing:border-box}.cl-win .cl-mb{flex:1 1 0;min-width:0;max-width:76px;font-size:11.5px;white-space:nowrap}.cl-win .cl-mb .rnd.sq{width:58px;height:58px;font-size:24px}.cl-mb{display:flex;flex-direction:column;align-items:center;gap:9px;font-size:12.5px;font-weight:600;color:var(--text2);cursor:pointer;background:none;border:0;font-family:inherit}.cl-full.dark .cl-mb{color:rgba(255,255,255,.85)}' +
     '.cl-mb .rnd{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;font-size:30px;color:#fff;border:1px solid rgba(255,255,255,.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 10px 24px rgba(0,0,0,.22)}.cl-mb .rnd.sq{width:64px;height:64px;font-size:26px}' +
     '.cl-mb .rnd.ok{background:linear-gradient(140deg,#3fd573,#1f9f4c)}.cl-mb .rnd.no{background:linear-gradient(140deg,#ee6060,#c42f2f)}.cl-mb .rnd.gl{background:var(--gl2,rgba(127,127,127,.2));color:var(--text);border-color:var(--gl-edge,rgba(255,255,255,.3))}.cl-full.dark .cl-mb .rnd.gl{background:rgba(255,255,255,.18);color:#fff}.cl-mb .rnd.off{background:var(--text);color:var(--gl-base,#fff)}' +
     '.cl-mid{display:flex;flex-direction:column;align-items:center}' +
-    '#cl-bar{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 8px);height:42px;border-radius:21px;z-index:100003;display:flex;align-items:center;gap:10px;padding:0 6px 0 16px;color:#fff;font-size:13.5px;font-weight:600;cursor:pointer;background:linear-gradient(140deg,#3fd573,#1f9f4c);box-shadow:0 8px 22px rgba(31,159,76,.4),inset 0 1px 0 rgba(255,255,255,.4)}' +
+    '#cl-bar{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 22px);height:42px;border-radius:21px;z-index:100003;display:flex;align-items:center;gap:10px;padding:0 6px 0 16px;color:#fff;font-size:13.5px;font-weight:600;cursor:pointer;background:linear-gradient(140deg,#3fd573,#1f9f4c);box-shadow:0 8px 22px rgba(31,159,76,.4),inset 0 1px 0 rgba(255,255,255,.4)}' +
     '#cl-bar .i{font-size:16px}#cl-bar .tm{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:700}#cl-bar .x{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.22)}#cl-bar .x .i{font-size:15px}' +
     '.cl-note{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 64px);transform:translateX(-50%);z-index:100010;max-width:86vw;padding:9px 16px;border-radius:999px;font-size:13px;font-weight:600;color:#fff;background:rgba(14,20,26,.78)}' +
     '.cl-grid{position:absolute;inset:0 0 84px 0;display:grid;gap:10px;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr}.cl-grid.n1{grid-template-columns:1fr}.cl-grid.n2,.cl-grid.n4{grid-template-columns:repeat(2,1fr)}.cl-grid.n5,.cl-grid.n6,.cl-grid.n9{grid-template-columns:repeat(3,1fr)}.cl-grid.n7,.cl-grid.n8,.cl-grid.n10,.cl-grid.n11,.cl-grid.n12{grid-template-columns:repeat(4,1fr)}' +
@@ -124,15 +124,31 @@
   // Режим «Звук через Web Audio» (для iPhone и iPad, если голос идёт сразу из двух динамиков): удалённый звук играет не элементом audio, а через AudioContext.
   // Контекст создаём при нажатии (до запроса микрофона), как советуют разработчики в багах WebKit про маршрут звука
   var waCtx = null, waNodes = {}, waDst = null, waEl = null, twoClones = {};
-  function waOn() { return lget('wa'); }
+  function waOn() { var v = null; try { v = localStorage.getItem('cl_wa'); } catch (e) {} return v === null ? (isIOS && canSink()) : v === '1'; }
   function waInit() { if (!waOn()) return; try { waCtx = waCtx || new (window.AudioContext || window.webkitAudioContext)(); if (waCtx.state === 'suspended') waCtx.resume(); } catch (e) {} }
+  // Не напрямую в динамики, а через скрытый элемент audio: на iOS 26 ему можно выбрать «трубку» через setSinkId
+  function waEnsureEl() {
+    waInit(); if (!waCtx) return null;
+    waDst = waDst || waCtx.createMediaStreamDestination();
+    if (!waEl) { waEl = document.createElement('audio'); waEl.autoplay = true; waEl.setAttribute('playsinline', ''); waEl.dataset.cl = 'wa'; waEl.srcObject = waDst.stream; document.body.appendChild(waEl); }
+    return waEl;
+  }
+  // Аудиозвонок на iPhone по умолчанию идёт в трубку: setSinkId разрешён только прямо в обработчике нажатия, поэтому вызываем его сразу при нажатии,
+  // пока ничего не ждали. Номер трубки запоминается после первого выбора кнопкой «Трубка»
+  var pendingSpk = null;
+  function prepEarpiece(video) {
+    pendingSpk = null;
+    if (video || !isIOS || !canSink() || !waOn()) return;
+    var id = ''; try { id = localStorage.getItem('cl_recv') || ''; } catch (e) {}
+    var el = id && waEnsureEl(); if (!el || !el.setSinkId) return;
+    pendingSpk = 'receiver';
+    try { el.setSinkId(id).catch(function () { pendingSpk = null; }); } catch (e) { pendingSpk = null; }
+  }
   function waAttach(track) {
     try {
       waInit(); if (!waCtx) return false;
       var src = waCtx.createMediaStreamSource(new MediaStream([track.mediaStreamTrack])), g = waCtx.createGain();
-      // Не напрямую в динамики, а через скрытый элемент audio: на iOS 26 ему можно выбрать «трубку» через setSinkId
-      waDst = waDst || waCtx.createMediaStreamDestination();
-      if (!waEl) { waEl = document.createElement('audio'); waEl.autoplay = true; waEl.setAttribute('playsinline', ''); waEl.dataset.cl = 'wa'; waEl.srcObject = waDst.stream; document.body.appendChild(waEl); }
+      waEnsureEl();
       src.connect(g); g.connect(waDst); waNodes[track.sid] = [src, g]; var pl = waEl.play(); if (pl && pl.catch) pl.catch(function () {}); return true;
     } catch (e) { return false; }
   }
@@ -152,7 +168,7 @@
   // Разрешение на микрофон (и камеру) просим сразу при нажатии «Позвонить» или «Принять», пока человек смотрит на экран: в Safari оно запрашивается
   // заново при каждой загрузке страницы, и запрос посреди соединения легко пропустить, тогда звонок так и не соединяется
   async function ensureMedia(video) {
-    waInit();
+    waInit(); prepEarpiece(video);
     if (!hasMedia()) return true;
     try { var s = await navigator.mediaDevices.getUserMedia({ audio: true }); s.getTracks().forEach(function (t) { t.stop(); }); }
     catch (e) {
@@ -410,7 +426,7 @@
     if (want === 'receiver') {
       var r = outs.filter(function (d) { return /receiver|earpiece|iphone|трубк|приём|приемн|разговор/i.test(d.label || ''); })[0];
       if (!r) { H.toast(outs.length ? 'Трубка не найдена. Динамики: ' + outs.map(function (d) { return d.label || d.deviceId.slice(0, 6); }).join(', ') : 'Список динамиков пуст: разрешите микрофон'); return; }
-      id = r.deviceId;
+      id = r.deviceId; try { localStorage.setItem('cl_recv', id); } catch (e) {}
     }
     var els = [].slice.call(document.querySelectorAll('audio[data-cl]'));
     if (!els.length) { H.toast('Нет звука для переключения'); return; }
@@ -469,6 +485,7 @@
     if (location.protocol === 'https:' && /^ws:/i.test(url)) throw new Error('Сервер звонков работает без сертификата (ws://): в браузере звонки доступны только с wss://');
     LK = await loadLK(); ended = false;
     closeAc();
+    if (pendingSpk) { c.spk = pendingSpk; pendingSpk = null; }
     // По умолчанию через TCP (TURN по TLS): на Wi-Fi с потерями UDP видео рассыпается. Только для wss:// (при ws:// TURN по TLS не бывает); отключается в настройках
     tcpMode = !lget('udp') && /^wss:/i.test(String(url)); tcpUsed = false; tcpUrls = ''; iceSeen = []; patchPc();
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
@@ -696,7 +713,7 @@
   // Свои настройки этого устройства (не на сервере): через TCP
   function lget(k) { try { return localStorage.getItem('cl_' + k) === '1'; } catch (e) { return false; } }
   function lset(k, v) { try { if (v) localStorage.setItem('cl_' + k, '1'); else localStorage.removeItem('cl_' + k); } catch (e) {} }
-  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'snd-1';
+  var tcpMode = false, tcpUsed = false, tcpUrls = '', pcPatched = false, iceSeen = [], CLV = 'snd-2';
   // Только TURN по TLS (TCP) и запрет прямых путей. LiveKit создаёт соединение раньше, чем получает от сервера список ICE-серверов, и
   // потом задаёт его через setConfiguration, поэтому подменяем и конструктор, и setConfiguration. Если у сервера нет TURN по TLS, идём как обычно
   function tcpize(cfg) {
@@ -794,6 +811,6 @@
     if (typeof H.onConfig === 'function') H.onConfig(st);
     return st.prefs;
   }
-  window.Calls = { available: function () { return st.enabled; }, prefs: function () { return st.prefs; }, setPref: setPref, init: init, load: load, onWs: onWs, canCall: canCall, btns: btns, start: start, state: st, local: { get: lget, set: lset }, isIOS: function () { return isIOS; }, devices: { select: devSelect }, media: { chip: mediaChip, refresh: mediaRefresh, ask: mediaAsk, get: function () { return { audio: media.audio, video: media.video }; }, onChange: function (f) { media.subs.push(f); } } };
+  window.Calls = { available: function () { return st.enabled; }, prefs: function () { return st.prefs; }, setPref: setPref, init: init, load: load, onWs: onWs, canCall: canCall, btns: btns, start: start, state: st, local: { get: function (k) { return k === 'wa' ? waOn() : lget(k); }, set: function (k, v) { if (k === 'wa') { try { localStorage.setItem('cl_wa', v ? '1' : '0'); } catch (e) {} } else lset(k, v); } }, isIOS: function () { return isIOS; }, devices: { select: devSelect }, media: { chip: mediaChip, refresh: mediaRefresh, ask: mediaAsk, get: function () { return { audio: media.audio, video: media.video }; }, onChange: function (f) { media.subs.push(f); } } };
   window.callStart = function (chatId, video) { start(Number(chatId), !!video); };
 })();
