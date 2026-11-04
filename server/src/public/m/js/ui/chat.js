@@ -24,13 +24,11 @@ B.ui.chat = (function () {
     var names = Array.from(by.keys()).sort(function (a, b) { return b.length - a.length; }).map(escRe);
     return escaped.replace(new RegExp('@(' + names.join('|') + ')(?![\\wа-яёА-ЯЁ])', 'g'), '<span class="mn">@$1</span>');
   }
-  function md(e) {   // `код`, **жирный**, __курсив__ — применяется к уже экранированному тексту
-    return e.replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>').replace(/__([^_\n]+)__/g, '<i>$1</i>');
-  }
-  function formatText(text, chat) {
-    return text.split(/(https?:\/\/[^\s]+)/g).map(function (p, i) {
-      return i % 2 === 1 ? '<a href="' + esc(p) + '" target="_blank" rel="noopener noreferrer">' + esc(p) + '</a>' : Fmt.spl(md(mentions(esc(p), chat)));
-    }).join('');
+  function formatText(text, chat) {   // `код`, **жирный**, __курсив__, ||секрет||, ссылки и @упоминания (разбор общий, в fmt.js)
+    return Fmt.rich(text, {
+      mentions: function (e) { return mentions(e, chat); },
+      link: function (u) { return '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + esc(u) + '</a>'; }
+    });
   }
   B.fmt.msgText = formatText;
   var EMO_RE = /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|️|‍|\s)+$/u;

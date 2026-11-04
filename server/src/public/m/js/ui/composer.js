@@ -51,7 +51,7 @@ B.ui.composer = (function () {
       btn: $('.sendb', c), field: $('.cfield', c), host: c, side: [$('[data-k=up]', c)],
       canRecord: function () {
         var s = cs(el), chat = chatOf(el);
-        return !!chat && !c.classList.contains('lk') && !s.edit && !s.fwd && !s.atts.length && !ta(el).value.trim() && !B.S.secretChatIds.has(chat.id);
+        return !!chat && !c.classList.contains('lk') && !s.edit && !s.fwd && !s.atts.length && Fmt.isBlank(ta(el).value) && !B.S.secretChatIds.has(chat.id);
       },
       onState: function (on) {
         clearInterval(voiceTimer); if (!on) return;
@@ -126,7 +126,7 @@ B.ui.composer = (function () {
   }
   function syncHas(el) {
     var s = cs(el), t = ta(el); if (!t) return;
-    $('.sendb', comp(el)).classList.toggle('ready', !!(t.value.trim() || s.atts.some(function (a) { return a.done; }) || s.fwd || s.edit));
+    $('.sendb', comp(el)).classList.toggle('ready', !!(!Fmt.isBlank(t.value) || s.atts.some(function (a) { return a.done; }) || s.fwd || s.edit));
   }
 
   // Только чтение, лимит «без ответа», приглашение, скрытый чат без ключа: вместо поля — плашка
@@ -233,7 +233,7 @@ B.ui.composer = (function () {
     Fmt.insertText(t, (before && !/\s$/.test(before) ? ' ' : '') + '@' + name + ' ');
   }
   function send(el) {
-    var s = cs(el), t = ta(el), chat = chatOf(el), text = t.value.trim();
+    var s = cs(el), t = ta(el), chat = chatOf(el), text = Fmt.clean(t.value);
     if (s.edit) {
       if (text) B.msgs.edit(s.edit, text, s.lw.current());
       s.edit = null; t.value = ''; B.drafts[chat.id] = ''; autosize(t); renderCtx(el); s.lw.reset(); closeFmt(el); return;
@@ -248,7 +248,7 @@ B.ui.composer = (function () {
   }
   function sendGif(el, att) {
     var s = cs(el); if (!att || !att.gif || s.edit) return;
-    var t = ta(el), text = t.value.trim();
+    var t = ta(el), text = Fmt.clean(t.value);
     B.msgs.send({ text: text, reply: s.reply, attachment: att }).then(function (ok) { if (ok) { s.reply = null; t.value = ''; B.drafts[+el.dataset.cid] = ''; autosize(t); renderCtx(el); closePanel(el); } });
   }
 

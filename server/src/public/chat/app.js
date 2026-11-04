@@ -76,20 +76,13 @@ const nMembers = n => n + ' ' + plural(n, 'участник', 'участник�
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// Markdown-lite: **жирный**, __курсив__, `код` — применяется к уже экранированному тексту
-function mdLite(escaped) {
-  return escaped
-    .replace(/`([^`\n]+)`/g, '<code class="md-code">$1</code>')
-    .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
-    .replace(/__([^_\n]+)__/g, '<i>$1</i>');
-}
-
+// Текст сообщения → HTML: **жирный**, __курсив__, `код`, ||секрет||, ссылки и @упоминания (разбор общий, в fmt.js)
 function linkifyText(text) {
-  const urlRe = /(https?:\/\/[^\s]+)/g;
-  return text.split(urlRe).map((part, i) => {
-    if (i % 2 !== 1) return Fmt.spl(mdLite(highlightMentions(esc(part))));
-    return `<a class="msg-link" href="#" data-on-click="openExternalLink" data-a-click='["__event", "__this"]' data-url="${esc(part)}">${esc(part)}</a>`;
-  }).join('');
+  return Fmt.rich(text, {
+    codeCls: 'md-code',
+    mentions: highlightMentions,
+    link: url => `<a class="msg-link" href="#" data-on-click="openExternalLink" data-a-click='["__event", "__this"]' data-url="${esc(url)}">${esc(url)}</a>`,
+  });
 }
 
 function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
@@ -4514,7 +4507,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       ${rThumbHtml}
       <div class="irc-reply-body">
         <div class="irc-reply-name">${esc(m.reply_sender_name || '')}</div>
-        <div class="irc-reply-text">${m.reply_sender_is_bot ? (rTextRaw || '') : mdLite(esc(Fmt.noCode(rTextRaw || '')))}</div>
+        <div class="irc-reply-text">${m.reply_sender_is_bot ? (rTextRaw || '') : Fmt.rich(Fmt.noCode(rTextRaw || ''), { codeCls: 'md-code' })}</div>
       </div>
     </div>` : '';
 
@@ -4523,7 +4516,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     // Пересланное вложение показывается превью, как обычное, под шапкой «Переслано от»
     const fa = fd.attachment, fdAtt = fa ? attachBlockHtml(fa) : '';
     const fdText = fd.text || (fa && !fdAtt ? '📎 ' + (fa.name || 'Файл') : '');
-    return `<div class="irc-reply irc-forward-block"><div class="irc-reply-body"><div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div>${fdText ? `<div class="irc-reply-text">${fd.is_bot ? fdText : mdLite(esc(Fmt.noCode(fdText)))}</div>` : ''}</div></div>${fdAtt}`;
+    return `<div class="irc-reply irc-forward-block"><div class="irc-reply-body"><div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div>${fdText ? `<div class="irc-reply-text">${fd.is_bot ? fdText : Fmt.rich(Fmt.noCode(fdText), { codeCls: 'md-code' })}</div>` : ''}</div></div>${fdAtt}`;
   })() : '';
 
 
@@ -5072,7 +5065,7 @@ let typingSendTimer = null;
 function _updateSendBtn(el) {
   const sendBtn = document.getElementById('send-btn');
   if (!sendBtn) return;
-  const hasDraft = el.value.trim().length > 0;
+  const hasDraft = !Fmt.isBlank(el.value);
   sendBtn.classList.toggle('ready', hasDraft);
 }
 
@@ -5275,7 +5268,7 @@ function initVoice() {
     btn, field: row, host: main, side: [document.getElementById('up-btn')],
     canRecord: () => {
       const chat = findChatAny(S.activeChatId);
-      if (!chat || composerLocked(chat) || S.editingMessageId || S.secretChatIds.has(S.activeChatId) || _atts.length || S.forwardMsg || document.getElementById('msg-input')?.value.trim()) return false;
+      if (!chat || composerLocked(chat) || S.editingMessageId || S.secretChatIds.has(S.activeChatId) || _atts.length || S.forwardMsg || !Fmt.isBlank(document.getElementById('msg-input')?.value)) return false;
       _voiceChat = S.activeChatId; return true;
     },
     onState: on => {
@@ -5311,7 +5304,7 @@ async function sendOrEdit() {
   if (S.editingMessageId) { submitEdit(); return; }
   if (composerLocked(findChatAny(S.activeChatId))) return;
   const input = document.getElementById('msg-input');
-  const text = input?.value.trim();
+  const text = Fmt.clean(input?.value);
   const isSecret = S.secretChatIds.has(S.activeChatId);
   if (!text && !_atts.length && !S.forwardMsg) return;
   // Нет соединения — сообщаем и не теряем набранное молча
@@ -5396,7 +5389,7 @@ async function sendOrEdit() {
 
 function submitEdit() {
   const input = document.getElementById('msg-input');
-  const text = input?.value.trim();
+  const text = Fmt.clean(input?.value);
   if (!text || S.secretChatIds.has(S.activeChatId)) { cancelEdit(); return; }
   S.ws.send(JSON.stringify({type:'edit_message', message_id:S.editingMessageId, text, link_preview: CMP.lw?.current() || null}));
   closeEmojiPicker();
@@ -5751,7 +5744,7 @@ function renderAttStrip() {
       + `<button type="button" class="att-x" data-on-click="removeAtt" data-a-click="${esc(JSON.stringify([a.id]))}" aria-label="Убрать"><svg width="10" height="10" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>`;
   }).join('') + (n && n < MAX_ATTACH && !S.secretChatIds.has(S.activeChatId) ? '<button type="button" class="att-add" data-on-click="pickFile" title="Добавить ещё" aria-label="Добавить ещё"><svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>' : '');
   const sendBtn = document.getElementById('send-btn');
-  if (sendBtn) sendBtn.classList.toggle('ready', n > 0 || !!document.getElementById('msg-input')?.value.trim());
+  if (sendBtn) sendBtn.classList.toggle('ready', n > 0 || !Fmt.isBlank(document.getElementById('msg-input')?.value));
   
 }
 function paintAtt(a) {
@@ -5783,7 +5776,7 @@ function clearImagePreview(keepServerFiles) {
   _atts = [];
   renderAttStrip();
   const sendBtn = document.getElementById('send-btn');
-  if (sendBtn && !document.getElementById('msg-input')?.value.trim()) sendBtn.classList.remove('ready');
+  if (sendBtn && Fmt.isBlank(document.getElementById('msg-input')?.value)) sendBtn.classList.remove('ready');
 }
 
 function showSystemAnnouncement(text) {

@@ -6,31 +6,59 @@
   const ZW = '​';
   const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+  // ── Общие правила разметки ──
+  // Блок кода: строки между рядами из трёх и более обратных кавычек. Если в самом коде есть ```, ограда длиннее (````):
+  // закрывает блок только ряд той же длины
+  const fenceRe = () => /(`{3,})\n?([\s\S]*?)\n?\1(?!`)/g;
+  // Курсив __x__ не срабатывает внутри слова и идентификатора (snake__case__name), жирный — как был
+  const ITAL = (() => { try { return new RegExp('(^|[^\\p{L}\\p{N}_])__([^_\\n]+)__(?![\\p{L}\\p{N}_])', 'gu'); } catch { return /(^|[^\w])__([^_\n]+)__(?!\w)/g; } })();
+  const BOLD = /\*\*([^*\n]+)\*\*/g;
+  const SECRET = /\|\|(?! )([^|\n]*[^|\n ])\|\|/g;
+  // Пустым считается и сообщение из одних невидимых знаков (нулевой пробел, соединитель, брайлевский пробел, hangul filler...)
+  const BLANK = (() => { try { return new RegExp('^[\\p{White_Space}\\p{Default_Ignorable_Code_Point}\\u2800\\u3164]*$', 'u'); } catch { return /^[\s\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180b-\u180f\u200b-\u200f\u202a-\u202e\u2060-\u206f\u2800\u3164\ufe00-\ufe0f\ufeff\uffa0]*$/; } })();
+  const isBlank = s => !s || BLANK.test(String(s));
+  // Края сообщения: пустые строки в начале и пробелы в конце убираем, отступ первой строки остаётся
+  const clean = s => { s = String(s == null ? '' : s).replace(/^(?:[^\S\n]*\n)+/, '').replace(/\s+$/, ''); return isBlank(s) ? '' : s; };
+  const md = e => e.replace(BOLD, '<b>$1</b>').replace(ITAL, '$1<i>$2</i>');
+  // Конец ссылки: знаки препинания, скобка без пары и маркеры разметки (** __ ||) в адрес не входят
+  function splitUrl(u) {
+    let tail = '';
+    for (;;) {
+      let m = u.match(/(?:_{2,}|[.,;:!?»”'*|])$/);
+      if (!m) { const c = u.slice(-1), o = c === ')' ? '(' : c === ']' ? '[' : ''; if (o && u.split(c).length > u.split(o).length) m = [c]; }
+      if (!m) break;
+      tail = m[0] + tail; u = u.slice(0, u.length - m[0].length);
+    }
+    return { url: u, tail };
+  }
+  // Последовательность символов по буквам-как-видит-человек: смайл с модификатором или флаг — один знак
+  const graphemes = s => { try { return Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(s), x => x.segment); } catch { return Array.from(s); } };
+
   // ── Разбор текста сообщения ──
   // Блок кода — строки между ``` и ```. Возвращает части в порядке следования: { k: 't' | 'c', v }
   function parts(text) {
     text = String(text || '');
-    const out = []; let last = 0, m; const re = /```\n?([\s\S]*?)\n?```/g;
+    const out = []; let last = 0, m; const re = fenceRe();
     while ((m = re.exec(text))) {
       if (m.index > last) out.push({ k: 't', v: text.slice(last, m.index) });
-      out.push({ k: 'c', v: m[1] });
+      out.push({ k: 'c', v: m[2] });
       last = re.lastIndex;
     }
     if (last < text.length) out.push({ k: 't', v: text.slice(last) });
     // Пустые куски текста вокруг блоков не нужны; у остальных обрезаем переводы строк по краям
     return out.filter(p => p.k === 'c' || p.v.trim()).map(p => p.k === 'c' ? p : { k: 't', v: p.v.replace(/^\n+|\n+$/g, '') });
   }
-  const hasCode = text => /```[\s\S]*?```/.test(String(text || ''));
+  const hasCode = text => fenceRe().test(String(text || ''));
   // Для коротких подписей (список чатов, цитата): блок кода заменяется словом, секрет — точками
-  const noCode = text => String(text || '').replace(/```[\s\S]*?```/g, '[код]').replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, '∗∗∗');
+  const noCode = text => String(text || '').replace(fenceRe(), '[код]').replace(SECRET, '∗∗∗');
 
   // Для списка чатов: без блоков кода и без знаков разметки
-  const plain = text => noCode(text).replace(/\*\*([^*\n]+)\*\*/g, '$1').replace(/__([^_\n]+)__/g, '$1').replace(/`([^`\n]+)`/g, '$1');
+  const plain = text => noCode(text).replace(BOLD, '$1').replace(ITAL, '$1$2').replace(/`([^`\n]+)`/g, '$1');
 
   // Первая ссылка в тексте, кроме тех, что внутри блока кода
   function firstUrl(text) {
-    const m = /https?:\/\/[^\s<>"]+/.exec(String(text || '').replace(/```[\s\S]*?```/g, ' '));
-    return m ? m[0].replace(/[.,;:!?)\]»”']+$/, '') : null;
+    const m = /https?:\/\/[^\s<>"]+/.exec(String(text || '').replace(fenceRe(), ' ').replace(/`[^`\n]+`/g, ' '));
+    return m ? splitUrl(m[0]).url : null;
   }
 
   // Блок кода в сообщении: шапка с кнопкой «Копировать» и сам код. Копирует только кнопка, клик по коду ничего не делает
@@ -67,14 +95,34 @@
   }
 
   // ── Поле ввода ──
-  const inline = s => esc(s).replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>').replace(/__([^_\n]+)__/g, '<i>$1</i>').replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, '<span class="spl-e">$1</span>').replace(/\n/g, '<br>');
+  // Код в строке прячем до разбора остального, чтобы внутри него ничего не оформлялось
+  function inline(s) {
+    const keep = []; s = String(s == null ? '' : s).replace(/[\uE000\uE001]/g, '');
+    s = s.replace(/`([^`\n]+)`/g, (m, c) => '\uE000' + (keep.push('<code>' + esc(c) + '</code>') - 1) + '\uE001');
+    s = md(esc(s)).replace(SECRET, '<span class="spl-e">$1</span>').replace(/\n/g, '<br>');
+    return s.replace(/\uE000(\d+)\uE001/g, (m, i) => keep[+i]);
+  }
+  // Текст сообщения → HTML для пузыря. Код в строке и ссылки выносятся до разбора, поэтому разметка не лезет внутрь них,
+  // а жирный/курсив/секрет могут охватывать ссылку. o: { mentions(escaped), link(url), codeCls }
+  function rich(text, o) {
+    o = o || {};
+    const keep = [], hold = h => '\uE000' + (keep.push(h) - 1) + '\uE001';
+    let t = String(text == null ? '' : text).replace(/[\uE000\uE001]/g, '');
+    const cc = o.codeCls ? ' class="' + o.codeCls + '"' : '';
+    t = t.replace(/`([^`\n]+)`/g, (m, c) => hold('<code' + cc + '>' + esc(c) + '</code>'));
+    t = t.replace(/https?:\/\/[^\s<>"]+/g, m => { const u = splitUrl(m); return hold(o.link ? o.link(u.url) : esc(u.url)) + u.tail; });
+    t = esc(t);
+    if (o.mentions) t = o.mentions(t);
+    t = spl(md(t));
+    return t.replace(/\uE000(\d+)\uE001/g, (m, i) => keep[+i]);
+  }
 
   // Разметка сообщения → HTML поля ввода
   function toEditor(text) {
     const ps = [];
-    let last = 0, m; const re = /```\n?([\s\S]*?)\n?```/g;
+    let last = 0, m; const re = fenceRe();
     text = String(text || '');
-    while ((m = re.exec(text))) { if (m.index > last) ps.push(['t', text.slice(last, m.index)]); ps.push(['c', m[1]]); last = re.lastIndex; }
+    while ((m = re.exec(text))) { if (m.index > last) ps.push(['t', text.slice(last, m.index)]); ps.push(['c', m[2]]); last = re.lastIndex; }
     if (last < text.length) ps.push(['t', text.slice(last)]);
     let html = ps.map(([k, v]) => k === 'c' ? `<pre class="cb">${esc(v)}</pre>` : `<div>${inline(v.replace(/^\n+|\n+$/g, ''))}</div>`).join('');
     if (ps.length && ps[ps.length - 1][0] === 'c') html += '<div><br></div>';   // после блока должна остаться строка, куда можно встать
@@ -94,6 +142,10 @@
 
   // HTML поля ввода → разметка сообщения
   function serialize(ce) {
+    // Блоки кода уходят в запас до сжатия пустых строк: пустые строки внутри кода принадлежат коду
+    const blocks = [];
+    // Оформление ставится на каждую строку отдельно: «**а\nб**» на показе не сработало бы (маркеры не переходят через перенос)
+    const wrap = (r, open, close) => r.split('\n').map(l => l.trim() ? open + l + close : l).join('\n');
     // Строки поля — то голый текст, то блоки div: блок всегда начинается с новой строки, иначе «а» + Enter + «б» слиплись бы в «аб»
     const join = nodes => {
       let acc = '';
@@ -106,29 +158,39 @@
       return acc;
     };
     const walk = n => {
-      if (n.nodeType === 3) return n.textContent.replace(/\u200b/g, '');
+      if (n.nodeType === 3) return n.textContent.replace(/[\u200b\uE010\uE011]/g, '').replace(/\r\n?|[\u2028\u2029]/g, '\n');
       if (n.nodeType !== 1) return '';
       const tag = n.nodeName;
       if (tag === 'BR') return '\n';
-      if (tag === 'PRE') return '```\n' + preText(n).replace(/\n$/, '') + '\n```\n';
+      if (tag === 'PRE') {
+        const body = preText(n).replace(/\n$/, '');
+        // Ограда длиннее самого длинного ряда обратных кавычек в коде
+        const run = (body.match(/`+/g) || []).reduce((m, x) => Math.max(m, x.length), 0), f = '`'.repeat(Math.max(3, run + 1));
+        blocks.push(f + '\n' + body + '\n' + f);
+        return '\uE010' + (blocks.length - 1) + '\uE011\n';
+      }
       const inner = join(n.childNodes);
       const st = n.style || {};
       const bold = tag === 'B' || tag === 'STRONG' || st.fontWeight === 'bold' || +st.fontWeight >= 600;
       const ital = tag === 'I' || tag === 'EM' || st.fontStyle === 'italic';
       let r = inner;
-      if (tag === 'CODE') return inner.trim() ? '`' + inner + '`' : inner;
+      if (tag === 'CODE') return inner.trim() ? wrap(inner, '`', '`') : inner;
       if (tag === 'SPAN' && n.classList.contains('spl-e')) {
         // Пробелы по краям выделения выносим за маркеры: «|| текст||» уже не считается секретом
-        const core = inner.trim(); if (!core) return inner;
-        const lead = inner.match(/^\s*/)[0], trail = inner.match(/\s*$/)[0];
-        return lead + '||' + core + '||' + trail;
+        return inner.split('\n').map(l => {
+          const core = l.trim(); if (!core) return l;
+          return l.match(/^\s*/)[0] + '||' + core + '||' + l.match(/\s*$/)[0];
+        }).join('\n');
       }
-      if (bold && r.trim()) r = '**' + r + '**';
-      if (ital && r.trim()) r = '__' + r + '__';
+      if (bold && r.trim()) r = wrap(r, '**', '**');
+      if (ital && r.trim()) r = wrap(r, '__', '__');
       if (tag === 'DIV' || tag === 'P') return r + '\n';
       return r;
     };
-    return join(ce.childNodes).replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '');
+    // Подряд идущие пустые строки (и строки из одних пробелов) сжимаем в одну, пустые строки в начале и пробелы в конце убираем.
+    // Отступ первой строки остаётся
+    const out = join(ce.childNodes).replace(/\n(?:[^\S\n]*\n){2,}/g, '\n\n').replace(/^(?:[^\S\n]*\n)+/, '').replace(/\s+$/, '');
+    return out.replace(/\uE010(\d+)\uE011/g, (m, i) => blocks[+i]);
   }
 
   const sel = () => (g.getSelection ? g.getSelection() : null);
@@ -169,7 +231,7 @@
     Object.defineProperty(ce, 'value', { get() { return serialize(ce); }, set(v) { setValue(ce, v); }, configurable: true });
     ce.addEventListener('paste', e => {
       e.preventDefault();
-      const t = (e.clipboardData || g.clipboardData).getData('text/plain');
+      const t = (e.clipboardData || g.clipboardData).getData('text/plain').replace(/\r\n?|[\u2028\u2029]/g, '\n');
       document.execCommand('insertText', false, t);
     });
     ce.addEventListener('input', () => { if (!ce.textContent && !ce.querySelector('pre,img')) ce.innerHTML = ''; });
@@ -447,7 +509,7 @@
       if (!prev || prev === n) return;
       n = prev; o = prev.textContent.length;
     }
-    const chars = Array.from(n.textContent.slice(0, o)); chars.pop();
+    const chars = graphemes(n.textContent.slice(0, o)); chars.pop();
     const head = chars.join('');
     n.textContent = head + n.textContent.slice(o);
     r.setStart(n, head.length); r.collapse(true); putRange(ce, r);
@@ -500,7 +562,7 @@
 
   // ── Секрет в сообщении: текст закрыт облачком из частиц, нажатие открывает и закрывает ──
   // Разметка в сообщении: ||текст||. Клиенты превращают её в <span class="spl">; частицы рисует один общий цикл
-  const spl = e => e.replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, '<span class="spl">$1</span>');
+  const spl = e => e.replace(SECRET, '<span class="spl">$1</span>');
   const SP = new Set(), opened = new Set();
   let spRaf = 0, spLast = 0;
   function spKey(sp) {
@@ -572,5 +634,5 @@
   }
 
   g.Fmt = { spl, esc, parts, hasCode, noCode, plain, firstUrl, codeBlock, copyClick, previewCard, toEditor, serialize, setValue, init, cmd, state, keydown,
-    insertText, insertQuiet, backspaceQuiet, textBeforeCaret, replaceBefore, focusEnd, barHtml, linkWatch, inline };
+    insertText, insertQuiet, backspaceQuiet, textBeforeCaret, replaceBefore, focusEnd, barHtml, linkWatch, inline, rich, isBlank, clean };
 })(typeof window !== 'undefined' ? window : globalThis);

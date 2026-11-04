@@ -16,6 +16,16 @@ async function hasPushSubscription(userId) {
   catch { return false; }
 }
 const { wsAuth } = require('./auth');
+
+// Текст сообщения: пустые строки в начале и пробелы в конце убираем (отступ первой строки остаётся), сообщение из одних
+// невидимых знаков считается пустым, обрезка по лимиту не рвёт пару-суррогат смайла
+const BLANK_TEXT = /^[\p{White_Space}\p{Default_Ignorable_Code_Point}\u2800\u3164]*$/u;
+function cleanText(s, max) {
+  s = s.replace(/^(?:[^\S\n]*\n)+/, '').replace(/\s+$/, '');
+  if (BLANK_TEXT.test(s)) return '';
+  s = s.slice(0, max);
+  return /[\ud800-\udbff]$/.test(s) ? s.slice(0, -1) : s;
+}
 // Федерация подключается лениво: federation.js сам требует ws.js
 const fed = () => require('./federation');
 const groups = () => require('./fedgroups');
@@ -421,7 +431,7 @@ function setup(server) {
         const forward_data = isSecret ? null : data.forward_data;
         const text = isSecret
           ? (typeof data.text === 'string' ? data.text.slice(0, 8192) : '')
-          : (typeof data.text === 'string' ? data.text.trim().slice(0, 4096) : '');
+          : (typeof data.text === 'string' ? cleanText(data.text, 4096) : '');
         // Лимит как в Telegram (4096 символов) — иначе одно гигантское сообщение
         // разойдётся всем участникам и осядет в БД
         const hasForward = forward_data && typeof forward_data === 'object' && forward_data.user_id;
@@ -570,7 +580,7 @@ function setup(server) {
 
       if (data.type === 'edit_message') {
         const { message_id } = data;
-        const text = typeof data.text === 'string' ? data.text.trim().slice(0, 4096) : '';
+        const text = typeof data.text === 'string' ? cleanText(data.text, 4096) : '';
         if (!text) return;
         const msg = await dal.get('SELECT * FROM messages WHERE id = ? AND deleted = 0', message_id);
         if (!msg || msg.sender_id !== user.id) return;
@@ -585,7 +595,7 @@ function setup(server) {
           const lp = linkPrev.sanitize(data.link_preview);
           await dal.run('UPDATE messages SET link_preview = ? WHERE id = ?', lp ? JSON.stringify(lp) : null, message_id);
         }
-        await dal.run('UPDATE messages SET text = ?, edited_at = unixepoch() WHERE id = ?', text.trim(), message_id);
+        await dal.run('UPDATE messages SET text = ?, edited_at = unixepoch() WHERE id = ?', text, message_id);
         const updated = await getMessageWithStatus(message_id, user.id);
         await broadcast(msg.chat_id, { type: 'message_edited', message: updated });
         // Если сообщение закреплено — обновим текст в плашке, иначе там останется старый
