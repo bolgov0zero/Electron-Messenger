@@ -484,9 +484,9 @@ html.dark .mrow { --tg-in: var(--bubble-bg); }
 .mrow.out.last .bub { --br: 0px; }
 .bub.dl { --bl: 17px; --br: 17px; }
 /* хвост: кривой треугольник у нижнего угла, цвет в цвет заливки (у пузырей без заливки и с обрезкой по краям его нет) */
-.mrow.last .bub:not(.media):not(.gifm):not(.bcomp):not(.dl)::after { content: ""; position: absolute; bottom: 0; width: 9px; height: 13px; pointer-events: none; }
-.mrow.in.last .bub:not(.media):not(.gifm):not(.bcomp):not(.dl)::after { left: -8px; background: var(--tg-in); clip-path: path('M9 0 V13 H1 C5 12.5 9 9 9 0 Z'); }
-.mrow.out.last .bub:not(.media):not(.gifm):not(.bcomp):not(.dl)::after { right: -8px; background: var(--tg-out); clip-path: path('M0 0 V13 H8 C4 12.5 0 9 0 0 Z'); }
+.mrow.last .bub:not(.bcomp):not(.dl)::after { content: ""; position: absolute; bottom: 0; width: 9px; height: 13px; pointer-events: none; }
+.mrow.in.last .bub:not(.bcomp):not(.dl)::after { left: -8px; background: var(--tg-in); clip-path: path('M9 0 V13 H1 C5 12.5 9 9 9 0 Z'); }
+.mrow.out.last .bub:not(.bcomp):not(.dl)::after { right: -8px; background: var(--tg-out); clip-path: path('M0 0 V13 H8 C4 12.5 0 9 0 0 Z'); }
 .mrow.first { margin-top: 6px; }
 
 /* кадр в пузыре с подписью: до краёв, сверху скруглён как пузырь */
@@ -514,6 +514,15 @@ html.dark .mrow { --tg-in: var(--bubble-bg); }
 .mrow.out .bub > .react button.mine { background: #fff; color: var(--tg-out); }
 .bub > .react .t { float: none; margin: 0 0 0 auto; padding-left: 10px; }
 
-/* кадр или GIF без подписи в группе: пузырь без заливки, а имя отправителя внутри него обрезалось скруглением; с именем пузырь получает заливку, имя стоит строкой над кадром */
-.mrow.in .bub.media:has(> .who-n), .mrow.in .bub.gifm:has(> .who-n) { background: var(--tg-in) !important; box-shadow: 0 1px 2px rgba(10, 30, 40, .16) !important; }
-.bub.media > .who-n, .bub.gifm > .who-n { padding: 7px 12px 5px; }
+/* кадр, видео, GIF без подписи: кадр лежит в рамке пузыря 3 px, а хвост принадлежит самому пузырю (раньше пузыря не было видно, угол оставался прямым, имя обрезалось скруглением).
+   Углы кадра вычислены от углов пузыря (радиус минус рамка), у «срезанного» угла хвоста они остаются прямыми */
+.mrow.in .bub.media, .mrow.in .bub.gifm { background: var(--tg-in) !important; box-shadow: 0 1px 2px rgba(10, 30, 40, .16) !important; }
+.mrow.out .bub.media, .mrow.out .bub.gifm { background: var(--tg-out) !important; box-shadow: 0 1px 2px rgba(10, 40, 90, .24) !important; }
+.bub.media, .bub.gifm { padding: 3px !important; overflow: visible; }
+.bub.media .att-img, .bub.media .agrid, .bub.media .vwrap, .bub.media .vph, .bub.gifm .gif-msg {
+  border-radius: max(0px, calc(var(--tl) - 3px)) max(0px, calc(var(--tr) - 3px)) max(0px, calc(var(--br) - 3px)) max(0px, calc(var(--bl) - 3px)); overflow: hidden;
+}
+.bub.media > .who-n, .bub.gifm > .who-n { padding: 4px 9px 5px; }
+.bub.media > .who-n + .att-img, .bub.media > .who-n + .agrid, .bub.media > .who-n + .vwrap, .bub.gifm > .who-n + .gif-msg {
+  border-radius: 6px 6px max(0px, calc(var(--br) - 3px)) max(0px, calc(var(--bl) - 3px));
+}
