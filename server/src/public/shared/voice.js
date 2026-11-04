@@ -46,21 +46,36 @@
   }
   // Звук «как из бочки» давала обработка микрофона браузером: эхоподавление и шумоподавление глушат верхние частоты и дают гулкий
   // оттенок. При записи голоса эха нет (ничего не играет), поэтому оставляем только выравнивание громкости. Битрейт невысокий:
-  // Opus 20 кбит/с (минута ≈ 150 КБ), на iPhone AAC 32 кбит/с — речь заметно чище, чем на 16 и 24, а файл остаётся небольшим
+  // Opus 20 кбит/с (минута ≈ 150 КБ), на iPhone AAC 32 кбит/с — речь заметно чище, чем на 16 и 24, а файл остаётся небольшим.
+  // Без браузерной обработки запись выходит тише, поэтому громкость добавляем сами: усиление в 1,25 раза и мягкий ограничитель пиков,
+  // чтобы громкая речь не хрипела. Если звуковой граф не запустился (iPhone без жеста), пишем сам поток микрофона без усиления
+  const GAIN = 1.25;
   async function createRecorder(o) {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true, channelCount: 1, sampleRate: 48000 } });
     const mime = pickMime(), bps = /mp4/.test(mime) ? 32000 : 20000;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    let ctx = null, an = null, buf = null, recStream = stream;
+    try {
+      ctx = new AC();
+      if (ctx.state !== 'running') await Promise.race([ctx.resume(), new Promise(r => setTimeout(r, 400))]);
+      const src = ctx.createMediaStreamSource(stream);
+      an = ctx.createAnalyser(); an.fftSize = 512; src.connect(an); buf = new Uint8Array(an.fftSize);
+      if (ctx.state === 'running') {
+        const gain = ctx.createGain(); gain.gain.value = GAIN;
+        // Мягкий ограничитель: до 0,7 сигнал проходит как есть (усиление ровно 1,25), выше плавно прижимается к 1 и не хрипит.
+        // Встроенный компрессор не подходит: он сам добавляет громкость, и прибавка выходила бы заметно больше 25%
+        const lim = ctx.createWaveShaper(), curve = new Float32Array(2049);
+        for (let i = 0; i < curve.length; i++) { const x = (i / 1024) - 1, a = Math.abs(x); curve[i] = a <= 0.7 ? x : Math.sign(x) * (0.7 + 0.3 * Math.tanh((a - 0.7) / 0.3)); }
+        lim.curve = curve; lim.oversample = '2x';
+        const dst = ctx.createMediaStreamDestination(); dst.channelCount = 1;
+        src.connect(gain); gain.connect(lim); lim.connect(dst); recStream = dst.stream;
+      }
+    } catch { if (ctx) { try { ctx.close(); } catch {} } ctx = null; an = null; recStream = stream; }
     let rec;
-    try { rec = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: bps } : { audioBitsPerSecond: bps }); }
-    catch (e) { stream.getTracks().forEach(t => t.stop()); throw e; }
+    try { rec = new MediaRecorder(recStream, mime ? { mimeType: mime, audioBitsPerSecond: bps } : { audioBitsPerSecond: bps }); }
+    catch (e) { stream.getTracks().forEach(t => t.stop()); if (ctx) { try { ctx.close(); } catch {} } throw e; }
     const chunks = [];
     rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-    const AC = window.AudioContext || window.webkitAudioContext;
-    let ctx = null, an = null, buf = null;
-    try {
-      ctx = new AC(); const src = ctx.createMediaStreamSource(stream);
-      an = ctx.createAnalyser(); an.fftSize = 512; src.connect(an); buf = new Uint8Array(an.fftSize);
-    } catch { ctx = null; }
     const samples = [];
     let lvl = 0, t0 = 0, timer = 0, lastS = 0, done = false;
     function tick() {
