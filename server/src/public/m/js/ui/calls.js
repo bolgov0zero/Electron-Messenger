@@ -30,7 +30,9 @@ B.ui.calls = (function () {
     var g = chat.type === 'group' && Calls.state.groups[chat.id];
     // Круглая кнопка того же размера, что и остальные: трубка и число участников друг под другом
     if (g) return '<button class="glass gi cl-mjoin" data-c="gjoin" aria-label="Присоединиться к звонку, участников: ' + g.participants.length + '" style="color:#fff;background:linear-gradient(140deg,#3fd573,#1f9f4c);display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:0;font-weight:800;font-size:11px;line-height:1"><span style="display:grid;place-items:center;font-size:15px;line-height:0">' + I('phone') + '</span><span style="margin-top:2px">' + g.participants.length + '</span></button>';
-    return '<button class="glass gi" data-c="call" aria-label="Аудиозвонок">' + I('phone') + '</button><button class="glass gi" data-c="vcall" aria-label="Видеозвонок">' + I('video') + '</button>';
+    // Кнопка есть, только если этот вид звонка доступен: аудио включает администратор, а человек может отключить любой вид у себя
+    var p = Calls.prefs();
+    return (p.audio ? '<button class="glass gi" data-c="call" aria-label="Аудиозвонок">' + I('phone') + '</button>' : '') + (p.video ? '<button class="glass gi" data-c="vcall" aria-label="Видеозвонок">' + I('video') + '</button>' : '');
   }
   // Настройка пришла уже после отрисовки переписки: кнопки звонка вставляются в готовые шапки
   function rehead() {
