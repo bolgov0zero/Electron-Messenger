@@ -513,3 +513,7 @@ html.dark .mrow { --tg-in: var(--bubble-bg); }
 .mrow.out .bub > .react button { background: rgba(255, 255, 255, .2); color: #fff; }
 .mrow.out .bub > .react button.mine { background: #fff; color: var(--tg-out); }
 .bub > .react .t { float: none; margin: 0 0 0 auto; padding-left: 10px; }
+
+/* кадр или GIF без подписи в группе: пузырь без заливки, а имя отправителя внутри него обрезалось скруглением; с именем пузырь получает заливку, имя стоит строкой над кадром */
+.mrow.in .bub.media:has(> .who-n), .mrow.in .bub.gifm:has(> .who-n) { background: var(--tg-in) !important; box-shadow: 0 1px 2px rgba(10, 30, 40, .16) !important; }
+.bub.media > .who-n, .bub.gifm > .who-n { padding: 7px 12px 5px; }
