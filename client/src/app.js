@@ -379,6 +379,8 @@ function headMenuClose(refocus) {
   const b = document.getElementById('head-more');
   b?.setAttribute('aria-expanded', 'false');
   if (refocus) b?.focus();
+  // Сайдбар остался выдвинутым только из-за меню: курсор уже не над ним, пора прятать
+  if (document.body.classList.contains('sidebar-hidden') && !document.querySelector('.sidebar:hover, #acc-rail:hover, #sidebar-peek-zone:hover')) _scheduleHideSidebar();
 }
 function headMenuToggle(e) { e?.stopPropagation(); _hmOpen ? headMenuClose() : headMenuOpen(); }
 document.addEventListener('click', e => { if (_hmOpen && !e.target.closest('#head-menu, #head-more')) headMenuClose(); });
@@ -1272,6 +1274,9 @@ function toggleSidebar() {
 }
 function _scheduleHideSidebar() {
   if (!document.body.classList.contains('sidebar-hidden')) return;
+  // Меню шапки лежит в body, вне сайдбара: пока оно открыто, панель не прячем. Иначе, стоит перевести мышь на меню,
+  // сайдбар уезжает, и кнопку «Показать сайдбар» не нажать
+  if (_hmOpen) return;
   _sidebarPeekTimer = setTimeout(() => {
     document.body.classList.remove('sidebar-peeking');
   }, 120);
