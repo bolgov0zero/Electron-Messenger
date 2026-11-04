@@ -531,3 +531,6 @@ html.dark .mrow { --tg-in: var(--bubble-bg); }
 .mrow.out.last .bub.gifm .gif-msg { margin-right: -8px; }
 .mrow.in.last .bub.gifm .gif-msg { margin-left: -8px; }
 .mrow.out.last .bub.media .t { right: 18px; }
+
+/* значки аудио- и видеозвонка в шапке переписки: того же размера, что значок микрофона у поля ввода (21 px); раньше брали мелкий размер шрифта шапки */
+.nr [data-c="call"], .nr [data-c="vcall"] { font-size: 21px; }
