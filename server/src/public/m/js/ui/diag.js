@@ -24,11 +24,15 @@ B.ui.diag = (function () {
       '<div class="gl">Устройство</div><div class="grp glass">' + cell('Запуск', B.pwa.standalone ? 'как приложение (PWA)' : 'во вкладке браузера') + cell('Service worker', B.pwa.sw) + cell('Окно', innerWidth + ' × ' + innerHeight) +
         cell('Видимая область', vv ? Math.round(vv.width) + ' × ' + Math.round(vv.height) : '—') + cell('Экран', screen.width + ' × ' + screen.height + ' @' + devicePixelRatio) + cell('Масштаб оболочки', sc.toFixed(3)) + cell('safe-area сверху / снизу', inset('top') + ' / ' + inset('bottom')) + '</div>' +
       '<div class="gl">Последние нажатия (что система считает нажатым)</div><div class="grp glass">' + (taps.length ? taps.map(function (t) { return cell(t.at, t.v); }).join('') : cell('—', 'нажмите на экран и вернитесь сюда')) + '</div>' +
+      '<div class="gl">Звонки</div><div class="grp glass"><div class="cell"><span class="cl">Данные о соединении в звонке</span><button class="tg" data-tg="diag" role="switch" aria-checked="' + !!(window.Calls && Calls.local.get('diag')) + '"></button></div></div><div class="gf">Поверх звонка показываются скорость, потери, задержка и путь связи. Пригодится, если видео или звук идут плохо.</div>' +
       '<button class="abtn" data-r>' + I('upd') + 'Перезагрузить приложение</button>';
   }
   function open() {
     el = B.ui.setPage('Диагностика', html());
-    el.addEventListener('click', function (e) { if (e.target.closest('[data-r]')) location.reload(); });
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-r]')) location.reload();
+      var t = e.target.closest('[data-tg="diag"]'); if (t && window.Calls) { Calls.local.set('diag', !Calls.local.get('diag')); t.setAttribute('aria-checked', String(!!Calls.local.get('diag'))); }
+    });
   }
   function refresh() { if (el && el.isConnected) { var s = $('.scroll', el), y = s.scrollTop; s.innerHTML = html(); s.scrollTop = y; } }
   B.bus.on('ws:state', refresh); window.addEventListener('resize', refresh); B.onPwaChange = refresh;

@@ -97,7 +97,7 @@
     '.cl-pmain{position:relative;flex:1;min-height:0;border-radius:22px;overflow:hidden;background:#000;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}.cl-pmain .cl-tile{position:absolute;inset:0;border-radius:0;box-shadow:none}' +
     '.cl-pself{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#fff;background:radial-gradient(90% 80% at 50% 30%,hsl(var(--h,200) 22% 30%),hsl(var(--h,200) 24% 16%))}.cl-pself .pi{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:30px;background:rgba(var(--accent-rgb,31,168,140),.85)}.cl-pself b{font-size:16px}' +
     '.cl-pself button{height:38px;padding:0 20px;border:0;border-radius:999px;cursor:pointer;font:inherit;font-size:13px;font-weight:700;color:#fff;background:linear-gradient(140deg,#ee6060,#c42f2f);box-shadow:0 6px 18px rgba(196,47,47,.4)}' +
-    '.cl-mb2{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#e04848;font-size:11px}.cl-tile .cl-ph .av,.cl-tile .cl-ph .cl-av{width:min(40%,110px)!important;height:auto!important;aspect-ratio:1;font-size:min(8vmin,34px)!important}' +
+    '.cl-mb2{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#e04848;font-size:11px}.cl-tile .cl-ph .av-wrap{width:100%;display:grid;place-items:center}.cl-tile .cl-ph .av,.cl-tile .cl-ph .cl-av{width:min(40%,110px)!important;height:auto!important;aspect-ratio:1;font-size:min(8vmin,34px)!important}' +
     '.cl-join{width:auto!important;padding:0 14px!important;gap:6px;border-radius:999px!important;color:#fff!important;background:linear-gradient(140deg,#3fd573,#1f9f4c)!important;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center}.cl-join span{white-space:nowrap}' +
     '#cl-pick{position:fixed;inset:0;z-index:100020;display:flex;align-items:center;justify-content:center;background:var(--scrim,rgba(0,0,0,.45));-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}' +
     '#cl-pick .pk{width:360px;max-width:calc(100vw - 24px);max-height:min(560px,80vh);display:flex;flex-direction:column;border-radius:26px;padding:16px;gap:10px;color:var(--text);background:var(--gl-pop,var(--gl2,var(--modal-bg,#1e252d)));border:1px solid var(--gl-edge,rgba(255,255,255,.3));box-shadow:0 30px 80px rgba(0,0,0,.45)}' +
@@ -434,7 +434,7 @@
       win.className = 'cl-win ' + (mob ? 'mob' : 'web') + (videoLayout ? ' v' : '');
       var h = hue(c.peer.id);
       win.style.setProperty('--h', h);
-      var hd = '<div class="cl-hd"><button class="cl-hbtn l" data-cl="min" aria-label="Свернуть">' + svg(mob ? 'down' : 'min') + '</button><div class="c"><b>' + E(c.peer.name) + (c.group ? ' · ' + (room ? room.remoteParticipants.size + 1 : 1) : '') + '</b><small class="cl-tm">' + status() + '</small></div>' + '<span style="justify-self:end;display:flex;gap:8px">' + (mob && c.cam ? '<button class="cl-hbtn" data-cl="flip" aria-label="Сменить камеру">' + svg('flip') + '</button>' : '') + '<button class="cl-hbtn" data-cl="diag" aria-label="Состояние соединения">' + svg('activity') + '</button></span></div>';
+      var hd = '<div class="cl-hd"><button class="cl-hbtn l" data-cl="min" aria-label="Свернуть">' + svg(mob ? 'down' : 'min') + '</button><div class="c"><b>' + E(c.peer.name) + (c.group ? ' · ' + (room ? room.remoteParticipants.size + 1 : 1) : '') + '</b><small class="cl-tm">' + status() + '</small></div>' + '<span style="justify-self:end;display:flex;gap:8px">' + (mob && c.cam ? '<button class="cl-hbtn" data-cl="flip" aria-label="Сменить камеру">' + svg('flip') + '</button>' : '') + '</span></div>';
       if (c.group || screensList().length) {
         win.innerHTML = hd + '<div class="cl-stage"><div class="cl-grid" id="cl-grid"></div>' + admHtml(c) + '<div class="cl-ctrls cl-vg">' + ctrlsHtml(c) + '</div></div>';
         fillGrid($('#cl-grid', win));
@@ -459,6 +459,9 @@
     if (H.decorate) [dock, win, bar].forEach(function (e) { e && document.body.contains(e) && H.decorate(e); });
     tickT = setInterval(function () { var t = status(); document.querySelectorAll('.cl-tm').forEach(function (e) { e.textContent = t; }); }, 1000);
     if (c.phase === 'live') takeWake();
+    // Данные соединения: включаются переключателем в настройках (раздел диагностики), кнопки в звонке нет
+    if (lget('diag') && !document.getElementById('cl-diag')) diagToggle();
+    else if (!lget('diag') && document.getElementById('cl-diag')) diagStop();
   }
   function takeWake() { try { if (!wake && navigator.wakeLock) navigator.wakeLock.request('screen').then(function (w) { wake = w; w.addEventListener('release', function () { wake = null; }); }).catch(function () {}); } catch (e) {} }
   function releaseWake() { try { if (wake) wake.release(); } catch (e) {} wake = null; }
