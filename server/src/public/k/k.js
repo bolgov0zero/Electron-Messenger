@@ -3,7 +3,22 @@
 // Устройство гостя запоминается ключом в браузере: отклонённого и исключённого на нём больше не впускают (см. calllinks.js).
 (function () {
   'use strict';
-  if (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark');
+  // Оформление как в веб клиенте: тема, акцент, плотность стекла и размер шрифта берутся из настроек этого браузера, а без них — по системной теме
+  (function look() {
+    var s = null; try { s = JSON.parse(localStorage.getItem('electron_v2') || 'null'); } catch (e) {}
+    var set = (s && s.settings) || {}, h = document.documentElement;
+    var t = set.theme || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    var dark = t === 'dark' || t === 'navy';
+    if (dark) h.classList.add('dark'); if (t === 'navy') h.classList.add('navy'); h.classList.add('font-' + (set.fontSize || 'medium'));
+    h.style.colorScheme = dark ? 'dark' : 'light';
+    var AC = { teal: [[29, 168, 140], [41, 214, 184]], indigo: [[92, 96, 205], [143, 148, 245]], plum: [[146, 84, 190], [196, 146, 240]], amber: [[186, 120, 38], [236, 176, 92]] };
+    var key = 'teal'; try { var v = localStorage.getItem('accent'); if (AC[v]) key = v; } catch (e) {}
+    var c = AC[key][dark ? 1 : 0], hex = '#' + c.map(function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''), rgba = function (a) { return 'rgba(' + c.join(',') + ',' + a + ')'; };
+    var st = h.style; st.setProperty('--accent', hex); st.setProperty('--accent-rgb', c.join(',')); st.setProperty('--primary', hex); st.setProperty('--accent-soft', rgba(.12)); st.setProperty('--primary-light', rgba(.10));
+    st.setProperty('--accent-border', rgba(.28)); st.setProperty('--accent-shadow', rgba(.22)); st.setProperty('--blob1', rgba(.12));
+    h.classList.toggle('gl-noimg', set.glassImage === false);
+    st.setProperty('--gl-k', Math.max(.15, 1.9 - .018 * (set.glassTransparency == null ? 50 : Math.min(100, Math.max(0, +set.glassTransparency)))).toFixed(3));
+  })();
   var token = decodeURIComponent(location.pathname.split('/')[2] || '');
   var KEY = 'ck_dk:' + token.slice(0, 16), CK = 'ckd_' + token.slice(0, 16);
   var G = '/api/calllink-guest', U = '/api/calllinks';
@@ -42,9 +57,11 @@
   function logo() { return '<div class="login-icon"><div class="login-logo"><img src="/chat/icons/icon-192.png" width="64" height="64" alt=""></div></div><h1 class="login-wordmark"><span>ELECTRON</span><span>MESSENGER</span></h1>'; }
   function gate(html) { $('k-gate').innerHTML = '<div class="login-wrap">' + logo() + html + '</div>'; }
   function closeGate() { $('k-gate').innerHTML = ''; }
+  // Короткое сообщение — тот же #action-toast, что в веб клиенте
+  var toastT = null;
   function toast(t) {
-    var box = $('k-toasts'); if (!box) { box = document.createElement('div'); box.id = 'k-toasts'; document.body.appendChild(box); }
-    var n = document.createElement('div'); n.className = 'k-toast'; n.textContent = t; box.appendChild(n); setTimeout(function () { n.remove(); }, 4500);
+    var el = $('action-toast'); if (!el) { el = document.createElement('div'); el.id = 'action-toast'; document.body.appendChild(el); }
+    el.textContent = t; el.classList.add('visible'); clearTimeout(toastT); toastT = setTimeout(function () { el.classList.remove('visible'); }, 2500);
   }
   function final(icon, title, text, btn) {
     stopPoll(); stopAdmin();
@@ -101,7 +118,6 @@
     var r = await req('POST', U + '/join', { token: token, page: true }, st.emp.token);
     if (!r.ok) return final('off', r.j.code === 'kicked' ? 'Вас исключили из звонка' : 'Не удалось войти', r.j.error || 'Попробуйте ещё раз.', { label: 'Повторить', fn: joinEmployee });
     closeGate();
-    delete r.j.waiting;   // список ожидающих на этой странице ведёт своя панель
     st.linkId = r.j.link_id; st.myName = st.emp.user.display_name;
     clearInterval(st.beatT); st.beatT = setInterval(function () { req('POST', U + '/beat', {}, st.emp.token); }, 10000);
     Calls.joinLink(r.j, { title: 'Видеозвонок' });
@@ -109,28 +125,17 @@
     if (r.j.owner) startAdmin();
   }
 
-  // ── Панель администратора: ожидающие и участники ──
+  // ── Администратор звонка: ожидающие ──
+  // Панель «Ожидают входа» и кнопки «Исключить» на плитках рисует общее окно звонка (shared/calls.js), как в клиентах. У страницы нет
+  // соединения с сервером чата, поэтому состояние ожидающих она опрашивает и передаёт окну тем же событием, что приходит в клиентах
   function startAdmin() {
-    var box = $('k-adm'); if (!box) { box = document.createElement('div'); box.id = 'k-adm'; document.body.appendChild(box); }
     var tick = async function () {
       var r = await req('GET', U + '/' + st.linkId + '/state', null, st.emp.token); if (!r.ok) return;
-      var w = r.j.waiting || [], p = (r.j.participants || []).filter(function (x) { return x.key !== 'u' + st.emp.user.id; });
-      var h = '<h4>Ожидают входа</h4>' + (w.length ? (w.length > 1 ? '<button class="ok all" data-a="all">Впустить всех (' + w.length + ')</button>' : '') + w.map(function (g) { return '<div class="row"><b>' + esc(g.name) + '</b><button class="ok" data-a="admit" data-id="' + g.id + '">Впустить</button><button class="no" data-a="reject" data-id="' + g.id + '">Отклонить</button></div>'; }).join('') : '<div class="none">Никто не ждёт</div>');
-      h += '<h4>В звонке</h4>' + (p.length ? p.map(function (x) { return '<div class="row"><b>' + esc(x.name) + '</b>' + (x.guest ? '<span class="gt">гость</span>' : '') + '<button class="no" data-a="kick" data-key="' + x.key + '">Исключить</button></div>'; }).join('') : '<div class="none">Пока только вы</div>');
-      box.innerHTML = h;
-    };
-    box.onclick = async function (e) {
-      var b = e.target.closest('button[data-a]'); if (!b) return; b.disabled = true;
-      var a = b.dataset.a, base = U + '/' + st.linkId, tok = st.emp.token;
-      if (a === 'all') await req('POST', base + '/admit', { guest_id: 'all' }, tok);
-      else if (a === 'admit') await req('POST', base + '/admit', { guest_id: +b.dataset.id }, tok);
-      else if (a === 'reject') await req('POST', base + '/reject', { guest_id: +b.dataset.id }, tok);
-      else if (a === 'kick') await req('POST', base + '/kick', { key: b.dataset.key }, tok);
-      tick();
+      Calls.onWs({ type: 'call_link', event: 'update', link_id: st.linkId, waiting: r.j.waiting || [] });
     };
     clearInterval(st.admT); tick(); st.admT = setInterval(tick, 2500);
   }
-  function stopAdmin() { clearInterval(st.admT); st.admT = null; var b = $('k-adm'); if (b) b.remove(); }
+  function stopAdmin() { clearInterval(st.admT); st.admT = null; }
 
   // ── Гость ──
   function nameForm(owner, err) {
