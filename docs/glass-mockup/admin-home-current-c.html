@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Главная админки в цветах C</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Нынешняя главная админки один в один по устройству (боковая панель, верхняя полоса, плашка сервера, четыре показателя, «Федерация» и «Звонки» строками,
+   «Требует внимания» и «Хроника»), перекрашенная в палитру варианта C: холодный фон, синий акцент, рамки 1px. Данные вымышленные. */
+:root{
+  --f:'Inter',system-ui,sans-serif;--m:'JetBrains Mono',ui-monospace,monospace;
+  --pg:#e8eaee;--bg:#f6f7f9;--sf:#ffffff;--sf2:#f9fafc;--ink:#0b1220;--mute:#586377;--line:#e3e6ec;--soft:#eef0f4;
+  --ac:#3a4fff;--act:#3345e6;--acs:rgba(58,79,255,.09);--acl:rgba(58,79,255,.35);--on-ac:#fff;
+  --ok:#1fb77a;--okt:#0f7a54;--warn:#f0a000;--warnt:#8f5a00;--bad:#e5484d;--badt:#c0282d;--info:#7c5cff;
+  --okb:rgba(31,183,122,.12);--warnb:rgba(240,160,0,.14);--badb:rgba(229,72,77,.11)
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --pg:#06080c;--bg:#0a0d14;--sf:#121722;--sf2:#0e131c;--ink:#e9edf5;--mute:#9aa5ba;--line:#212838;--soft:#1a2030;
+  --ac:#8ea0ff;--act:#a3b1ff;--acs:rgba(142,160,255,.14);--acl:rgba(142,160,255,.4);--on-ac:#0a0d14;
+  --ok:#3ddc97;--okt:#4ade80;--warn:#fbbf24;--warnt:#fbbf24;--bad:#f87171;--badt:#fca5a5;--info:#a78bfa;
+  --okb:rgba(61,220,151,.13);--warnb:rgba(251,191,36,.14);--badb:rgba(248,113,113,.14);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --pg:#06080c;--bg:#0a0d14;--sf:#121722;--sf2:#0e131c;--ink:#e9edf5;--mute:#9aa5ba;--line:#212838;--soft:#1a2030;
+  --ac:#8ea0ff;--act:#a3b1ff;--acs:rgba(142,160,255,.14);--acl:rgba(142,160,255,.4);--on-ac:#0a0d14;
+  --ok:#3ddc97;--okt:#4ade80;--warn:#fbbf24;--warnt:#fbbf24;--bad:#f87171;--badt:#fca5a5;--info:#a78bfa;
+  --okb:rgba(61,220,151,.13);--warnb:rgba(251,191,36,.14);--badb:rgba(248,113,113,.14);color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--f);background:var(--pg);color:var(--ink);padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));-webkit-font-smoothing:antialiased}
+::selection{background:var(--acs);color:var(--ink)}
+*{scrollbar-color:var(--line) transparent}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.top{max-width:1360px;margin:0 auto 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.top h1{font-size:15px;font-weight:700;flex:1;min-width:220px}.top h1 span{color:var(--mute);font-weight:500}
+.tg{height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--sf);font-size:12.5px;font-weight:600;color:var(--mute)}
+.stage{max-width:1360px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:28px;align-items:start}
+.lab{font-size:12.5px;color:var(--mute);margin:0 4px 10px}.lab b{color:var(--ink)}
+@media (max-width:1180px){.stage{grid-template-columns:1fr;justify-items:center}.stage>section{width:100%}.stage>section:last-child{display:flex;flex-direction:column;align-items:center}}
+.dev{height:860px;border-radius:14px;border:1px solid var(--line);overflow:hidden;background:var(--bg)}
+.dev.mob{width:390px;max-width:100%;border-radius:32px;border:8px solid var(--ink)}
+
+/* ═══ каркас, как в админке ═══ */
+.fr{position:relative;display:flex;height:100%;container:fr/inline-size;background:var(--bg);font-size:13.5px;line-height:1.4}
+.side{width:236px;flex:none;background:var(--sf2);border-right:1px solid var(--line);padding:14px 12px 12px;display:flex;flex-direction:column;gap:2px;overflow:auto}
+.sh{display:flex;align-items:center;gap:8px;padding:2px 4px 12px}
+.wm{font-weight:800;font-size:12px;letter-spacing:.09em;flex:1;white-space:nowrap}.wm b{color:var(--ac);font-weight:800}
+.ib{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--sf);display:grid;place-items:center;color:var(--mute);font-size:14px;flex:none}
+.ib:hover{background:var(--soft);color:var(--ink)}
+.sq{display:flex;align-items:center;gap:8px;height:36px;padding:0 11px;border-radius:10px;background:var(--sf);border:1px solid var(--line);color:var(--mute);font-size:13px;margin-bottom:6px}
+.sq kbd{margin-left:auto;font:600 10.5px var(--m);padding:1px 6px;border-radius:5px;background:var(--soft)}
+.gh{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);padding:12px 8px 5px}
+.ni{display:flex;align-items:center;gap:11px;height:38px;padding:0 11px;border-radius:10px;font-size:13.5px;font-weight:500;color:var(--mute);text-align:left;width:100%;border:1px solid transparent;transition:background .15s,color .15s}
+.ni:hover{background:var(--soft);color:var(--ink)}.ni .i{font-size:17px}
+.ni.on{background:var(--acs);color:var(--act);font-weight:700;border-color:var(--acl)}
+.ni .n{margin-left:auto;font:700 11px var(--m);min-width:22px;height:20px;border-radius:7px;background:var(--soft);color:var(--mute);display:grid;place-items:center;padding:0 5px}
+.ni .n.w{background:var(--warnb);color:var(--warnt)}
+.sf{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:10px}
+.sf .st{border:1px solid var(--line);background:var(--sf);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.sf .st .r1{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px}.sf .st .r1 small{margin-left:auto;font-weight:500;color:var(--mute);font-size:12px}
+.sf .st .r2{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mute)}.sf .st .r2 .chip{font:600 11.5px var(--m)}.sf .st .r2 span:last-child{margin-left:auto}
+.me{display:flex;align-items:center;gap:10px;padding:4px 2px}
+.av{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-size:13px;font-weight:700;flex:none;background:var(--ok);color:#04201c}
+.me b{display:block;font-size:13px}.me span{font-size:12px;color:var(--mute)}.me .ib{margin-left:auto}
+.cn{flex:1;min-width:0;display:flex;flex-direction:column}
+.tbar{height:54px;flex:none;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:1px solid var(--line);background:var(--sf2)}
+.tbar h2{font-size:12.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.tbar .tac{position:absolute;right:18px;display:flex;gap:8px}
+.btn{height:32px;padding:0 12px;border-radius:9px;border:1px solid var(--line);background:var(--sf);font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;transition:background .15s,transform .15s}
+.btn:hover{background:var(--soft)}.btn:active{transform:scale(.97)}.btn .i{font-size:14px;color:var(--mute)}
+.btn.pri{background:var(--ac);border-color:var(--ac);color:var(--on-ac)}.btn.pri .i{color:var(--on-ac)}.btn.pri:hover{filter:brightness(1.08)}
+.btn.sm{height:30px;padding:0 11px}
+.main{flex:1;min-width:0;overflow:auto;padding:20px 22px 24px;display:flex;flex-direction:column;gap:14px;scrollbar-width:thin}
+.pn{background:var(--sf);border:1px solid var(--line);border-radius:14px;min-width:0}
+.lbl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.mono{font-family:var(--m);font-variant-numeric:tabular-nums}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--mute)}.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:99px;white-space:nowrap}
+.chip.ok{background:var(--okb);color:var(--okt)}.chip.warn{background:var(--warnb);color:var(--warnt)}.chip.bad{background:var(--badb);color:var(--badt)}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--bg);border:1px solid var(--line)}
+.seg button{height:26px;padding:0 12px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--mute);white-space:nowrap}
+.seg button[aria-pressed=true]{background:var(--acs);color:var(--act)}
+.bn{display:none}
+.toast{position:absolute;left:50%;bottom:84px;transform:translate(-50%,12px);z-index:40;padding:10px 16px;border-radius:12px;background:var(--ink);color:var(--bg);font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:all .3s;max-width:88%;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.spin{width:13px;height:13px;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;animation:sp .7s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ═══ блоки ═══ */
+.srv{display:flex;align-items:center;gap:18px;padding:16px 18px;flex-wrap:wrap}
+.srv .bx{width:48px;height:48px;border-radius:12px;border:1px solid var(--acl);background:var(--acs);color:var(--act);display:grid;place-items:center;font-size:22px;flex:none}
+.srv .tt{flex:1;min-width:200px}.srv h3{font-size:16px;font-weight:700;display:flex;align-items:center;gap:9px}.srv p{font-size:12.5px;color:var(--mute);margin-top:2px}
+.srv .sts{display:flex;gap:0}.srv .sts>div{padding:0 22px;border-left:1px solid var(--line)}.srv .sts b{display:block;font:600 17px var(--m);margin-top:4px}
+.kp{display:grid;gap:12px;grid-template-columns:repeat(4,minmax(0,1fr))}
+.kt{padding:16px 18px 12px;display:flex;flex-direction:column}
+.kt .v{display:flex;align-items:baseline;gap:7px;margin:8px 0 3px}.kt .v b{font:600 32px var(--m);letter-spacing:-.03em}.kt .v small{font-size:13px;color:var(--mute)}
+.kt .s{font-size:12.5px;color:var(--mute)}.kt .s b{color:var(--ink);font-weight:700}
+.kt svg.ch{display:block;width:100%;height:46px;margin-top:10px}
+.rw{padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.rw .tl{display:flex;align-items:center;gap:9px;font-weight:700;font-size:14.5px}.rw .tl small{font-weight:500;color:var(--mute);font-size:13px}
+.rw .sg{flex:1;display:flex;align-items:center;gap:6px 22px;flex-wrap:wrap;min-width:260px}
+.rw .cs{font-size:13px;color:var(--mute);display:flex;align-items:baseline;gap:6px}.rw .cs b{color:var(--ink);font:600 15.5px var(--m)}
+.rw .cs+.cs{padding-left:22px;border-left:1px solid var(--line)}
+.rw .mini{display:flex;height:6px;width:90px;border-radius:3px;overflow:hidden;gap:2px;background:var(--soft)}.rw .mini i{display:block}
+.rw .ra{margin-left:auto;display:flex;align-items:center;gap:8px}
+.xb{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s}.rwc.open .xb{grid-template-rows:1fr}.xb>div{overflow:hidden;min-height:0}
+.rwc.open .ib .i{transform:rotate(180deg)}.ib .i{transition:transform .25s}
+.xi{padding:2px 18px 16px;display:flex;flex-direction:column}.xi .fr2{display:flex;align-items:center;gap:11px;padding:9px 0;font-size:13px}.xi .fr2+.fr2{border-top:1px solid var(--line)}.xi .fr2 span:nth-child(2){flex:1}.xi small{color:var(--mute);font-size:12.5px}
+.two{display:grid;gap:14px;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+.ph{display:flex;align-items:center;gap:12px;padding:14px 18px 6px;flex-wrap:wrap}.ph h3{font-size:14.5px;font-weight:700;flex:1}
+.tabs{display:inline-flex;gap:3px;padding:3px;border-radius:11px;background:var(--bg);border:1px solid var(--line)}
+.tabs button{height:28px;padding:0 12px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--mute);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.tabs button[aria-pressed=true]{background:var(--acs);color:var(--act);box-shadow:inset 0 0 0 1px var(--acl)}
+.tabs .nn{font-size:10.5px;min-width:17px;height:17px;border-radius:9px;background:var(--bad);color:#fff;display:grid;place-items:center;padding:0 5px}
+.pb{padding:4px 18px 16px}
+.li{display:flex;align-items:center;gap:13px;padding:12px 0}.li+.li{border-top:1px solid var(--line)}
+.li .bg{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:16px;font-weight:800;flex:none}
+.bg.bad{background:var(--badb);color:var(--badt)}.bg.warn{background:var(--warnb);color:var(--warnt)}.bg.ok{background:var(--okb);color:var(--okt)}.bg.ac{background:var(--acs);color:var(--act)}
+.li .t{flex:1;min-width:0}.li .t b{display:block;font-size:14px;font-weight:600}.li .t span{display:block;font-size:12.5px;color:var(--mute);margin-top:1px}
+.ev{display:flex;align-items:flex-start;gap:12px;padding:10px 0}.ev+.ev{border-top:1px solid var(--line)}
+.ev time{font:500 11.5px var(--m);color:var(--mute);width:42px;padding-top:7px;flex:none}.ev .bg{width:26px;height:26px;border-radius:8px;font-size:12px}
+.ev div:last-child{font-size:13px;line-height:1.4}.ev small{display:block;color:var(--mute);font-size:12px;margin-top:1px}
+.mh{display:none}
+@container fr (max-width:1000px){.kp{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:1fr}.srv .sts>div:first-child{border-left:0;padding-left:0}}
+@container fr (max-width:720px){
+  .side{display:none}.tbar{justify-content:space-between;padding:0 14px;height:58px}.tbar h2{font-size:19px;letter-spacing:-.01em;text-transform:none;font-weight:800}
+  .tbar .tac{position:static}.tbar .tac .btn{width:36px;height:36px;padding:0;justify-content:center}.tbar .tac .btn span{display:none}.tbar .tac .btn .i{font-size:17px;color:var(--ink)}
+  .main{padding:12px 14px 96px;gap:12px}.srv{padding:14px}.srv .sts{width:100%}.srv .sts>div{flex:1;padding:0 12px}.srv .sts>div:first-child{padding-left:0;border-left:0}
+  .rw .ra{margin-left:0;width:100%}.rw .cs+.cs{padding-left:0;border-left:0}.rw .sg{gap:8px 18px}
+  .ph .tabs{max-width:100%;overflow-x:auto}.li .btn{display:none}.li .t{min-width:0}
+  .bn{display:flex;position:absolute;left:0;right:0;bottom:0;z-index:30;background:var(--sf2);border-top:1px solid var(--line);padding:6px 6px 14px}
+  .bn button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--mute);padding:4px 0;position:relative}
+  .bn button .i{font-size:21px}.bn button.on{color:var(--act)}
+  .bn .n{position:absolute;top:0;left:56%;font-size:10px;min-width:16px;height:16px;border-radius:8px;background:var(--bad);color:#fff;display:grid;place-items:center;padding:0 4px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Главная админки <span>· нынешняя структура в палитре варианта C</span></h1>
+  <button class="tg" id="tt">Тёмная тема</button>
+</div>
+<main class="stage">
+  <section><div class="lab"><b>Полная версия админки</b></div><div class="dev" id="d"></div></section>
+  <section><div class="lab"><b>Телефон</b></div><div class="dev mob" id="m"></div></section>
+</main>
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const IC={home:'<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+ globe:'<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',layers:'<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+ users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+ door:'<path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/>',
+ chat:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',monitor:'<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>',
+ bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',folder:'<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+ mega:'<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+ box:'<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+ gear:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+ shield:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',tag:'<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>',
+ server:'<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/>',
+ search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',chev:'<path d="m6 9 6 6 6-6"/>',chl:'<path d="m15 18-6-6 6-6"/>',
+ more:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',out:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
+ up:'<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',dn:'<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',check:'<path d="M20 6 9 17l-5-5"/>',key:'<circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>',phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>'};
+const ic=n=>`<svg class="i" viewBox="0 0 24 24">${IC[n]}</svg>`;
+const AU=ic('up'),AD=ic('dn');
+const NAV=[['Обзор',[['home','Главная',0,1]]],['Управление',[['globe','Федерации',3],['layers','Пространства',1],['users','Пользователи',3],['door','Комнаты',0],['chat','Чаты и группы',1],['monitor','Клиенты',0],['bell','Уведомления',0],['folder','Файлы',3],['mega','Объявления',0],['link','Вебхуки',0],['box','Модули',0]]],['Система',[['gear','Настройки',2,0,1],['shield','Аудит-лог',0],['tag','Релизы',0]]]];
+/* графики показателей: рисуются под данные, а не декоративно */
+const chOnline=`<svg class="ch" viewBox="0 0 160 46" preserveAspectRatio="none"><path d="M0 40 H160" stroke="var(--line)" stroke-width="1" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/><path d="M0 36 L25 36 L40 30 L58 33 L80 22 L100 24 L120 14 L140 14 L156 14" fill="none" stroke="var(--ok)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/><circle cx="156" cy="14" r="3" fill="var(--ok)"/></svg>`;
+const chEvents=`<svg class="ch" viewBox="0 0 160 46" preserveAspectRatio="none"><g stroke="var(--acl)" stroke-width="3" vector-effect="non-scaling-stroke">${Array.from({length:24},(_, i)=>`<line x1="${4+i*6.4}" x2="${8+i*6.4}" y1="40" y2="40" stroke-dasharray="4 3"/>`).join('')}</g><g fill="var(--ac)" opacity=".85">${[20,26,18,34,30,22,28,36,24,32,38,26].map((h,i)=>`<rect x="${6+i*12.6}" y="${42-h*.9}" width="7" height="${h*.9}" rx="1.5"/>`).join('')}</g></svg>`;
+const chCpu=`<svg class="ch" viewBox="0 0 160 46" preserveAspectRatio="none"><defs><linearGradient id="gcpu" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--warn)" stop-opacity=".32"/><stop offset="1" stop-color="var(--warn)" stop-opacity="0"/></linearGradient></defs><path d="M0 30 C12 22 20 14 32 18 S52 30 66 24 S84 10 100 14 S124 30 140 24 S152 26 160 28 V46 H0Z" fill="url(#gcpu)"/><path d="M0 30 C12 22 20 14 32 18 S52 30 66 24 S84 10 100 14 S124 30 140 24 S152 26 160 28" fill="none" stroke="var(--warn)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+const chLag=`<svg class="ch" viewBox="0 0 160 46" preserveAspectRatio="none"><path d="M0 14 H160" stroke="var(--bad)" stroke-width="1" stroke-dasharray="3 4" vector-effect="non-scaling-stroke" opacity=".7"/><path d="M0 38 L30 38 L44 37 L60 38 L78 24 L86 38 L110 37 L135 38 L160 36" fill="none" stroke="var(--bad)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`;
+const ATT=[['bad','Память занята на 99%','Свободно 235 МБ из 16 ГБ',''],['warn','Отклик сервера выходил за норму','2 раза за сутки, около 20 мин, последний раз в 00:16','Показать график'],['warn','Резервных копий нет','Сделайте первую копию, чтобы было откуда восстановиться','Создать сейчас']];
+const ONL=[['Анна Крылова','с телефона'],['Борис Тестов','клиент'],['Дмитрий Орлов','веб']];
+const CLI=[['Клиент 3.29.3','8 устройств','ok'],['Мобильный клиент','3 устройства','ok'],['Клиент 3.27.0','устарел, 2 устройства','warn']];
+const EVT=[['08:56','ok','Сервер запущен',''],['01:16','warn','Звонки: пара ключей отозвана','Administrator · Партнёр Север'],['01:16','warn','Звонки: создана пара ключей для сервера','Administrator · Партнёр Север'],['01:16','warn','Звонки: управление ключами без пароля включено','Administrator · 127.0.0.1'],['01:02','warn','Звонки: пара ключей отозвана','Administrator · Партнёр Север']];
+const FED={day:[142,118,12,9,'36,2 МБ','21,0 МБ',3],week:[861,702,71,58,'236 МБ','141 МБ',10],month:[3590,2940,301,244,'1,0 ГБ','0,6 ГБ',38]},CAL={day:[81,65,49,39,16],week:[412,331,262,188,81],month:[1630,1304,1019,742,326]};
+const PEERS=[['Москва · главный офис','на связи','ok'],['Филиал Казань','нет связи 12 мин','warn'],['Партнёр Север','приостановлено','']];
+const TOP=[['Анна Крылова','31 зв. · 22 мин'],['Борис Тестов','24 зв. · 17 мин'],['Дмитрий Орлов','17 зв. · 9 мин']];
+const S0=()=>({tab:'attn',fed:'day',cal:'day',openF:false,openC:false});
+let ST={d:S0(),m:S0()},LOADING=false;
+const seg=(k,cur)=>`<div class="seg">${['day','week','month'].map(p=>`<button data-seg="${k}" data-p="${p}" aria-pressed="${cur===p}">${p==='day'?'Сутки':p==='week'?'Неделя':'Месяц'}</button>`).join('')}</div>`;
+function attn(s){
+  let b='';
+  if(s.tab==='attn')b=ATT.map(a=>`<div class="li"><div class="bg ${a[0]}">!</div><div class="t"><b>${a[1]}</b><span>${a[2]}</span></div>${a[3]?`<button class="btn sm" data-a data-t="${a[3]}">${a[3]}</button>`:''}</div>`).join('');
+  if(s.tab==='on')b=ONL.map(o=>`<div class="li"><div class="bg ac">${o[0].split(' ').map(x=>x[0]).join('')}</div><div class="t"><b>${o[0]}</b><span>${o[1]}</span></div><span class="chip ok">в сети</span></div>`).join('');
+  if(s.tab==='cli')b=CLI.map(c=>`<div class="li"><div class="bg ${c[2]}">${ic('monitor')}</div><div class="t"><b>${c[0]}</b><span>${c[1]}</span></div></div>`).join('');
+  if(s.tab==='act')b=`<div class="li"><div class="bg ac">${ic('chat')}</div><div class="t"><b>342 сообщения за час</b><span>событий нет</span></div></div><div class="li"><div class="bg ac">${ic('phone')}</div><div class="t"><b>81 звонок за сутки</b><span>сейчас тихо</span></div></div>`;
+  const tabs=[['attn','Внимание','3'],['on','В сети',''],['cli','Клиенты',''],['act','Активность','']];
+  return `<div class="pn"><div class="ph"><h3>Требует внимания</h3><div class="tabs">${tabs.map(t=>`<button data-tab="${t[0]}" aria-pressed="${s.tab===t[0]}">${t[1]}${t[2]?`<span class="nn">${t[2]}</span>`:''}</button>`).join('')}</div></div><div class="pb">${b}</div></div>`;
+}
+function render(f){
+  const s=ST[f],el=$('#'+f),fd=FED[s.fed],c=CAL[s.cal];
+  const nav=NAV.map(g=>`<div class="gh">${g[0]}</div>${g[1].map(n=>`<button class="ni${n[3]?' on':''}" data-nav="${n[1]}">${ic(n[0])}<span>${n[1]}</span>${n[2]?`<span class="n${n[4]?' w':''}">${n[2]}</span>`:''}</button>`).join('')}`).join('');
+  const side=`<aside class="side"><div class="sh"><span class="wm">ELECTRON <b>DASHBOARD</b></span><span class="ib">${ic('chl')}</span></div><div class="sq">${ic('search')}Перейти…<kbd>⌘ K</kbd></div>${nav}
+   <div class="sf"><div class="st"><div class="r1"><span class="dot ok"></span>Сервер работает<small>2 ч</small></div><div class="r2"><span class="chip ok">2.48.1 ${ic('check')}</span><span>12 в сети</span></div></div><div class="me"><span class="av">A</span><div><b>Administrator</b><span>@admin</span></div><span class="ib">${ic('out')}</span></div></div></aside>`;
+  const bn=`<nav class="bn">${[['home','Главная',1,3],['users','Люди'],['monitor','Клиенты'],['gear','Настройки',0,2],['more','Ещё']].map(b=>`<button class="${b[2]?'on':''}" data-nav="${b[1]}">${ic(b[0])}${b[1]}${b[3]?`<span class="n">${b[3]}</span>`:''}</button>`).join('')}</nav>`;
+  const tbar=`<div class="tbar"><h2>Главная</h2><div class="tac"><button class="btn" data-a data-t="Создать пользователя">${ic('user')}<span>Создать пользователя</span></button><button class="btn" data-a data-t="Создать комнату">${ic('door')}<span>Создать комнату</span></button><button class="btn" data-a data-t="Объявление">${ic('mega')}<span>Объявление</span></button></div></div>`;
+  const srv=`<div class="pn srv"><div class="bx">${ic('server')}</div><div class="tt"><h3>MacMiniM2.local <span class="dot bad"></span></h3><p>Darwin 27.2.0 · 8 ядер · 16 ГБ ОЗУ · диск 228 ГБ</p></div><div class="sts"><div><span class="lbl">Работает</span><b>15 с</b></div><div><span class="lbl">Версия</span><b>2.48.1</b></div><div><span class="lbl">Подключений</span><b>0</b></div></div><button class="btn" data-upd>${LOADING?'<span class="spin"></span>Проверяем…':'Проверить обновления'}</button></div>`;
+  const kp=`<div class="kp">
+   <div class="pn kt"><span class="lbl">Сейчас в сети</span><div class="v"><b>0</b><small>из 3</small></div><span class="s">подключений: 0</span>${chOnline}</div>
+   <div class="pn kt"><span class="lbl">События за час</span><div class="v"><b>0</b><small>сообщений (<b style="font:600 13px var(--m)">4</b> всего)</small></div><span class="s">событий не было</span>${chEvents}</div>
+   <div class="pn kt"><span class="lbl">Процессор</span><div class="v"><b>28,4</b><small>%</small></div><span class="s">Load average 5,20 · 6,22 · 5,88 на 8 ядер</span>${chCpu}</div>
+   <div class="pn kt"><span class="lbl">Отклик сервера</span><div class="v"><b>5</b><small>мс</small></div><span class="s">в норме (до 50 мс), макс 5 мс за час</span>${chLag}</div></div>`;
+  const fed=`<div class="pn rwc${s.openF?' open':''}"><div class="rw"><span class="tl"><span class="dot warn"></span>Федерация <small>0 из 3 активно</small></span><div class="sg"><span class="cs"><b>${AU}${fd[0]} ${AD}${fd[1]}</b>сообщений</span><span class="cs"><b>${AU}${fd[2]} ${AD}${fd[3]}</b>файлов</span><span class="cs"><b>${AU}${fd[4]} ${AD}${fd[5]}</b>объём</span><span class="chip warn">отклонено ${fd[6]}</span></div><div class="ra">${seg('fed',s.fed)}<button class="ib" data-ex="F" aria-label="Развернуть">${ic('chev')}</button></div></div><div class="xb"><div><div class="xi">${PEERS.map(p=>`<div class="fr2"><span class="dot ${p[2]}"></span><span>${p[0]}</span><small>${p[1]}</small></div>`).join('')}</div></div></div></div>`;
+  const cal=`<div class="pn rwc${s.openC?' open':''}"><div class="rw"><span class="tl"><span class="dot"></span>Звонки <small>выключены</small></span><div class="sg"><span class="cs"><b>${c[0]}</b>звонков</span><span class="cs"><b>${c[1]}</b>принято ${Math.round(c[1]/c[0]*100)}%</span><span class="cs"><b>${c[2]}</b>минут</span><span class="cs"><b>${c[3]}</b>с видео</span><span class="mini"><i style="flex:${c[1]};background:var(--ok)"></i><i style="flex:${c[4]};background:var(--warn)"></i></span><span class="cs">не дошли <b style="color:var(--warnt)">${c[4]}</b></span></div><div class="ra">${seg('cal',s.cal)}<button class="ib" data-ex="C" aria-label="Развернуть">${ic('chev')}</button></div></div><div class="xb"><div><div class="xi">${TOP.map(t=>`<div class="fr2"><span class="bg ac" style="width:28px;height:28px;border-radius:8px;font-size:11px">${t[0].split(' ').map(x=>x[0]).join('')}</span><span>${t[0]}</span><small>${t[1]}</small></div>`).join('')}</div></div></div></div>`;
+  const chron=`<div class="pn"><div class="ph"><h3>Хроника</h3></div><div class="pb">${EVT.map(e=>`<div class="ev"><time>${e[0]}</time><div class="bg ${e[1]}">${e[1]==='ok'?ic('check'):'!'}</div><div>${e[2]}${e[3]?`<small>${e[3]}</small>`:''}</div></div>`).join('')}</div></div>`;
+  el.innerHTML=`<div class="fr">${side}<div class="cn">${tbar}<div class="main">${srv}${kp}${fed}${cal}<div class="two">${attn(s)}${chron}</div></div></div>${bn}<div class="toast" id="${f}-t"></div></div>`;
+  el.onclick=e=>click(f,e);
+}
+function toast(f,t){const e=$('#'+f+'-t');if(!e)return;e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),2300)}
+function click(f,e){
+  const t=e.target,s=ST[f];
+  const tab=t.closest('[data-tab]');if(tab){s.tab=tab.dataset.tab;render(f);return}
+  const sg=t.closest('[data-seg]');if(sg){s[sg.dataset.seg]=sg.dataset.p;render(f);return}
+  const ex=t.closest('[data-ex]');if(ex){const k=ex.dataset.ex==='F'?'openF':'openC';s[k]=!s[k];ex.closest('.rwc').classList.toggle('open',s[k]);return}
+  if(t.closest('[data-upd]')){if(LOADING)return;LOADING=true;['d','m'].forEach(render);setTimeout(()=>{LOADING=false;['d','m'].forEach(render);toast(f,'Установлена последняя версия: 2.48.1')},1300);return}
+  const a=t.closest('[data-a]');if(a){toast(f,'«'+a.dataset.t+'»: в макете не выполняется');return}
+  const n=t.closest('[data-nav]');if(n&&n.dataset.nav!=='Главная')toast(f,'Раздел «'+n.dataset.nav+'» в макет не входит');
+}
+const isDark=()=>{const t=document.documentElement.dataset.theme;return t?t==='dark':matchMedia('(prefers-color-scheme: dark)').matches};
+const tl=()=>{$('#tt').textContent=isDark()?'Светлая тема':'Тёмная тема'};
+$('#tt').onclick=()=>{document.documentElement.dataset.theme=isDark()?'light':'dark';tl()};tl();
+['d','m'].forEach(render);
+</script>
+</body>
+</html>

@@ -86,7 +86,7 @@ const api = async (method, path, body) => {
 
 /* ── HELPERS ── */
 // Цвета аватарок — из палитры макета главной
-const AVcolors = ['#d8456c','#2b8be8','#6a5be0','#e0a02b','#2fa36b','#0f9e8e','#c2478a','#e0562b'];
+const AVcolors = ['#d8456c','#2b8be8','#6a5be0','#e0a02b','#2fa36b','#3a4fff','#c2478a','#e0562b'];
 function avColor(name) { let h=0; for(let c of (name||'')) h=(h*31+c.charCodeAt(0))&0xffff; return AVcolors[h%AVcolors.length]; }
 function initials(name) { return (name||'?').split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?'; }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -6953,7 +6953,7 @@ const FL_EXT = {
   video: ['mp4', 'mov', 'webm', 'mkv', 'avi', 'm4v'],
   doc: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'odt', 'ods', 'odp', 'csv', 'md'],
 };
-const FL_KIND = { voice: ['Голосовое', '#8b5cf6'], image: ['Картинка', '#0f9e8e'], doc: ['Документ', '#5b6cf0'], video: ['Видео', '#c2478a'], other: ['Файл', '#d98a0b'], encrypted: ['Зашифровано', '#8a97a8'] };
+const FL_KIND = { voice: ['Голосовое', '#8b5cf6'], image: ['Картинка', '#3a4fff'], doc: ['Документ', '#8b5cf6'], video: ['Видео', '#c2478a'], other: ['Файл', '#d98a0b'], encrypted: ['Зашифровано', '#8a97a8'] };
 const FL_BIG = 20 * 1048576;
 const flExt = f => (String(f.filename).includes('.') ? String(f.filename).split('.').pop() : '').toLowerCase();
 function flKind(f) {
