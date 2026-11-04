@@ -1214,7 +1214,7 @@ ipcMain.handle('call-open', (e, p) => {
   if (callAlive()) return { error: 'busy' };
   callOwner = e.sender; callLast = null; installDisplayHandler(); pinCert(String(p.url || ''), p.certFp);
   callInit = {
-    url: String(p.url || ''), token: String(p.token || ''), video: !!p.video, outgoing: !!p.outgoing, group: !!p.group, canAdd: !!p.canAdd, tcp: !!p.tcp, link: !!p.link, owner: !!p.owner,
+    url: String(p.url || ''), token: String(p.token || ''), video: !!p.video, outgoing: !!p.outgoing, group: !!p.group, canAdd: !!p.canAdd, tcp: !!p.tcp, link: !!p.link, owner: !!p.owner, quality: ['eco', 'normal', 'high', 'max'].includes(p.quality) ? p.quality : 'high',
     waiting: (Array.isArray(p.waiting) ? p.waiting : []).slice(0, 50).map(g => ({ id: Number(g?.id) || 0, name: String(g?.name || '').slice(0, 100) })),
     devices: ['audioin', 'audioout', 'videoin'].reduce((o, k) => { const d = p.devices?.[k]; if (d?.id) o[k] = { id: String(d.id).slice(0, 300), label: String(d.label || '').slice(0, 300) }; return o; }, {}),
     peer: { id: Number(p.peer?.id) || 0, name: String(p.peer?.name || '') },

@@ -233,12 +233,14 @@
     try {
       // Нет микрофона или доступа к нему — не повод бросать звонок: человек подключается как слушатель и видит собеседника
       const micOk = await window.callApi.mediaAccess('microphone');
+      // Ступень качества видео: [ширина, высота, кадры, битрейт]; «Высокая» в группе — настройки LiveKit по умолчанию
+      const QL = { eco: [640, 360, 15, 400000], normal: [960, 540, 24, 1200000], high: [1280, 720, 30, 3000000], max: [1920, 1080, 30, 5000000] }[init.quality] || [1280, 720, 30, 3000000];
       room = new Room({
         // В звонке двоих без слоёв качества: собеседник всегда получает полную картинку; слои нужны только в группе
         adaptiveStream: !!init.group, dynacast: true,
         audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        videoCaptureDefaults: { resolution: { width: 1280, height: 720, frameRate: 30 } },
-        publishDefaults: { simulcast: !!init.group, audioPreset: { maxBitrate: 40000 }, videoEncoding: init.group ? undefined : { maxBitrate: 3000000, maxFramerate: 30 } },
+        videoCaptureDefaults: { resolution: { width: QL[0], height: QL[1], frameRate: QL[2] } },
+        publishDefaults: { simulcast: !!init.group, audioPreset: { maxBitrate: 40000 }, videoEncoding: init.group && init.quality === 'high' ? undefined : { maxBitrate: QL[3], maxFramerate: QL[2] } },
       });
       room
         .on(RoomEvent.TrackSubscribed, (track, pub, p) => {

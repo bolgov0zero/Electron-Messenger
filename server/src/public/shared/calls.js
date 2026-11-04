@@ -564,6 +564,16 @@
       document.head.appendChild(s);
     });
   }
+  // Качество видео: ступень выбирает администратор (отдельно для личных звонков и для групп). Групповая «Высокая» — настройки LiveKit по умолчанию,
+  // как было раньше; на телефоне в группе не выше «Обычной». c.q — ступень, пришедшая с сервера (звонок по ссылке), иначе из настроек звонков
+  var QUAL = { eco: [640, 360, 15, 400000], normal: [960, 540, 24, 1200000], high: [1280, 720, 30, 3000000], max: [1920, 1080, 30, 5000000] };
+  function qualOf(c) {
+    var lv = c.q || (st.quality && st.quality[c.group ? 'group' : 'direct']) || 'high';
+    if (!QUAL[lv]) lv = 'high';
+    if (H.mobile && c.group && (lv === 'high' || lv === 'max')) lv = 'normal';
+    var q = QUAL[lv];
+    return { w: q[0], h: q[1], fps: q[2], enc: c.group && lv === 'high' && !H.mobile ? undefined : { maxBitrate: q[3], maxFramerate: q[2] } };
+  }
   async function join(c, url, token, withVideo) {
     if (location.protocol === 'https:' && /^ws:/i.test(url)) throw new Error('Сервер звонков работает без сертификата (ws://): в браузере звонки доступны только с wss://');
     LK = await loadLK(); ended = false;
@@ -574,9 +584,9 @@
     tcpMode = !lget('udp') && /^wss:/i.test(String(url)); tcpUsed = false; tcpUrls = ''; iceSeen = []; patchPc();
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
     ensureVideos();
-    var R = LK.RoomEvent, T = LK.Track;
+    var R = LK.RoomEvent, T = LK.Track, Q = qualOf(c);
     // В звонке двоих без слоёв качества: приёмник всегда получает полную картинку, а передатчик не гоняет три кодировщика (на телефоне это тяжело, и картинка падала до 180×320 при 7 к/с). Слои нужны только в группе
-    room = new LK.Room({ adaptiveStream: !!c.group, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: H.mobile && c.group ? { width: 960, height: 540, frameRate: 24 } : { width: 1280, height: 720, frameRate: 30 }, deviceId: devOpt('videoin') }, publishDefaults: { simulcast: !!c.group, videoCodec: isIOS ? 'h264' : undefined, audioPreset: { maxBitrate: 40000 }, videoEncoding: !c.group ? { maxBitrate: 3000000, maxFramerate: 30 } : (H.mobile ? { maxBitrate: 1200000, maxFramerate: 24 } : undefined) } });
+    room = new LK.Room({ adaptiveStream: !!c.group, dynacast: true, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, deviceId: devOpt('audioin') }, videoCaptureDefaults: { resolution: { width: Q.w, height: Q.h, frameRate: Q.fps }, deviceId: devOpt('videoin') }, publishDefaults: { simulcast: !!c.group, videoCodec: isIOS ? 'h264' : undefined, audioPreset: { maxBitrate: 40000 }, videoEncoding: Q.enc } });
     room.on(R.TrackSubscribed, function (track) {
       if (track.kind === T.Kind.Audio && waOn() && waAttach(track)) { setTimeout(reapplyEarpiece, 800); setTimeout(reapplyEarpiece, 3500); remoteState(); return; }
       if (track.kind === T.Kind.Audio) { document.querySelectorAll('audio[data-sid="' + track.sid + '"]').forEach(function (o) { o.remove(); }); var el = track.attach(); el.dataset.cl = '1'; el.dataset.sid = track.sid; el.setAttribute('playsinline', ''); document.body.appendChild(el);
@@ -702,7 +712,7 @@
   async function joinLink(r, o) {
     o = o || {};
     if (st.call) return H.toast(ERR.in_call);
-    var c = st.call = { id: r.call_id, chatId: 0, link: true, linkId: r.link_id || 0, owner: !!r.owner, guest: !!o.guest, peer: { id: 0, name: o.title || 'Видеозвонок по ссылке' }, group: true, video: true, outgoing: false, phase: 'connecting', mic: true, cam: false, remoteCam: false, remoteMic: true, since: 0, adm: { waiting: r.waiting || [] } };
+    var c = st.call = { id: r.call_id, chatId: 0, link: true, linkId: r.link_id || 0, owner: !!r.owner, guest: !!o.guest, q: r.quality, peer: { id: 0, name: o.title || 'Видеозвонок по ссылке' }, group: true, video: true, outgoing: false, phase: 'connecting', mic: true, cam: false, remoteCam: false, remoteMic: true, since: 0, adm: { waiting: r.waiting || [] } };
     if (r.mic_only) { c.micOnly = true; c.video = false; H.toast('В звонке уже 12 человек с видео: вы подключены только со звуком'); }
     st.min = false; render();
     try { await join(c, r.url, r.token, !c.micOnly); }
@@ -753,6 +763,8 @@
       st.enabled = !!d.enabled;
       if (!st.enabled) { dismissIncoming(); if (st.call) finish('Звонки отключены на сервере'); st.groups = {}; if (typeof H.onConfig === 'function') H.onConfig(st); }
       else load();
+    } else if (d.type === 'call_quality') {
+      if (d.quality) st.quality = d.quality;   // для новых звонков; идущие не меняются
     } else if (d.type === 'call_prefs') {
       st.prefs = d.prefs; if (typeof H.onConfig === 'function') H.onConfig(st);
     } else if (d.type === 'call_audio') {
@@ -803,6 +815,7 @@
     var r = await H.api('GET', '/calls/config');
     st.groups = {}; ((r && r.groups) || []).forEach(function (g) { st.groups[g.chat_id] = g; });
     if (r && r.prefs) st.prefs = r.prefs;
+    if (r && r.quality) st.quality = r.quality;
     st.enabled = !!(r && r.enabled); st.secure = !(location.protocol === 'https:' && r && r.scheme === 'ws');
     // Страницу перезагрузили посреди звонка: подключение пропало вместе с ней, сервер надо известить
     var cur = r && r.current;

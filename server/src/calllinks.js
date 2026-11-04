@@ -142,7 +142,7 @@ async function joinEmployee(user, token, page) {
   return {
     call_id: c.id, link_id: link.id, video: true, owner: user.id === c.ownerId, mic_only: micOnly || undefined, participants: people(c),
     waiting: user.id === c.ownerId ? await waitingOf(link.id) : undefined,
-    url: cfg.url, cert_fp: cfg.certFp || undefined,
+    url: cfg.url, cert_fp: cfg.certFp || undefined, quality: (await calls.getQuality()).group,
     token: calls.signToken(cfg, { identity: 'u' + user.id, name: user.display_name, room: c.room, micOnly }),
   };
 }
@@ -297,7 +297,7 @@ async function guestEnter(token, dk) {
   if (!c.guests.has(g.id)) calls.note(c, 'join', 'g' + g.id);
   c.guests.set(g.id, { name: g.name, seen: Date.now() });
   await tell(c);
-  return { call_id: c.id, video: true, mic_only: micOnly || undefined, participants: people(c), name: g.name, identity: 'g' + g.id, url: cfg.url, cert_fp: cfg.certFp || undefined,
+  return { call_id: c.id, video: true, mic_only: micOnly || undefined, participants: people(c), name: g.name, identity: 'g' + g.id, url: cfg.url, cert_fp: cfg.certFp || undefined, quality: (await calls.getQuality()).group,
     token: calls.signToken(cfg, { identity: 'g' + g.id, name: g.name, room: c.room, micOnly, ttl: GUEST_TOKEN_TTL }) };
 }
 async function guestLeave(token, dk) {

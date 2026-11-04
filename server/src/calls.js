@@ -116,6 +116,18 @@ async function check(cfg) {
 const PREF_KEYS = ['enabled', 'audio', 'video', 'fed'];
 // Аудиозвонки (звонок без видео, камеры в нём нет в принципе) включает администратор, по умолчанию они выключены.
 // Видеозвонок остаётся видеозвонком, даже если ни у кого нет камеры: вид звонка задаёт кнопка при его создании
+// Качество видео: четыре ступени отдельно для личных звонков и для групп (группы, комнаты, звонки по ссылке). Значения ступеней
+// (разрешение, кадры, битрейт) лежат в клиентах; сервер хранит только выбор администратора. По умолчанию — «Высокая», как было до настройки
+const QUAL_LEVELS = ['eco', 'normal', 'high', 'max'], QUAL_KEYS = { direct: 'calls_q_direct', group: 'calls_q_group' };
+async function getQuality() {
+  const out = {};
+  for (const k of Object.keys(QUAL_KEYS)) { const v = await getS(QUAL_KEYS[k]); out[k] = QUAL_LEVELS.includes(v) ? v : 'high'; }
+  return out;
+}
+async function setQuality(patch) {
+  for (const k of Object.keys(QUAL_KEYS)) if (patch && QUAL_LEVELS.includes(patch[k])) await setS(QUAL_KEYS[k], patch[k]);
+  return await getQuality();
+}
 const AUDIO_KEY = 'calls_audio';
 const audioOn = async () => (await getS(AUDIO_KEY)) === '1';
 const setAudioOn = on => setS(AUDIO_KEY, on ? '1' : '0');
@@ -1127,4 +1139,4 @@ async function compute(period) {
   return { period, enabled: cfg.enabled, ready, show: ready || any, live, ringing, series, top, liveCalls, totals: { ...tot, minutes: Math.round(tot.minutes) }, prev: { ...prev, minutes: Math.round(prev.minutes) } };
 }
 
-module.exports = { busy, note, logCall, signToken, killRoom, removeParticipant, nameOf, pushCall, GROUP_MAX, event, peerAccess, ownOk, activeList, adminEnd, logList, callAdd, inspectCert, afterConfigChange, getPrefs, setPrefs, audioOn, setAudioOn, groupJoin, groupLeave, groupsFor, init, stats, cspSources, getConfig, handleFedReq, recvFedEvent, fedAllowed, setFedAllowed, active, publicConfig, saveConfig, normUrl, check, start, accept, decline, end, onDisconnect, currentFor, CallError };
+module.exports = { getQuality, setQuality, QUAL_LEVELS, busy, note, logCall, signToken, killRoom, removeParticipant, nameOf, pushCall, GROUP_MAX, event, peerAccess, ownOk, activeList, adminEnd, logList, callAdd, inspectCert, afterConfigChange, getPrefs, setPrefs, audioOn, setAudioOn, groupJoin, groupLeave, groupsFor, init, stats, cspSources, getConfig, handleFedReq, recvFedEvent, fedAllowed, setFedAllowed, active, publicConfig, saveConfig, normUrl, check, start, accept, decline, end, onDisconnect, currentFor, CallError };

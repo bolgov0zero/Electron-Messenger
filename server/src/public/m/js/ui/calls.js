@@ -46,7 +46,7 @@ B.ui.calls = (function () {
   B.bus.on('ws:connected', function () { init(); Calls.load().then(rehead); });
   // Нажали на уведомление, когда приложение уже открыто в фоне
   B.onOpenCall = function (callId) { init(); B.S.pendingCall = callId || null; if (window.Calls) Calls.load().then(rehead); };
-  ['incoming', 'accepted', 'answered', 'ended', 'group', 'prefs', 'config', 'conf', 'audio', 'link'].forEach(function (t) { B.bus.on('ws:call_' + t, function (d) { if (window.Calls) Calls.onWs(d); }); });
+  ['incoming', 'accepted', 'answered', 'ended', 'group', 'prefs', 'config', 'conf', 'audio', 'link', 'quality'].forEach(function (t) { B.bus.on('ws:call_' + t, function (d) { if (window.Calls) Calls.onWs(d); }); });
   // Ссылка на видеозвонок этого сервера (/k/<токен>): в мобильном клиенте открывается как обычный звонок, человек входит как сотрудник
   function linkToken(href) {
     try { var u = new URL(href, location.href); var m = u.origin === location.origin && /^\/k\/([\w-]{16,100})\/?$/.exec(u.pathname); return m ? m[1] : null; } catch (e) { return null; }

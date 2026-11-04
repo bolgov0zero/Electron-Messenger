@@ -36,7 +36,7 @@ user.use((req, res, next) => (req.user.is_guest ? res.status(403).json({ error: 
 
 // Доступны ли звонки (кнопки в шапке чата) и нет ли звонка, начатого до перезагрузки клиента
 // scheme нужна браузеру: страница по https не откроет ws://, а значит, звонить с неё нельзя
-user.get('/config', wrap(async (req, res) => { const c = await calls.getConfig(); res.json({ prefs: await calls.getPrefs(req.user.id), enabled: await calls.active(), guest: !calls.ownOk(c), scheme: /^wss:/i.test(c.url) ? 'wss' : 'ws', current: calls.currentFor(req.user.id), groups: await calls.groupsFor(req.user.id) }); }));
+user.get('/config', wrap(async (req, res) => { const c = await calls.getConfig(); res.json({ quality: await calls.getQuality(), prefs: await calls.getPrefs(req.user.id), enabled: await calls.active(), guest: !calls.ownOk(c), scheme: /^wss:/i.test(c.url) ? 'wss' : 'ws', current: calls.currentFor(req.user.id), groups: await calls.groupsFor(req.user.id) }); }));
 user.post('/start', wrap(async (req, res) => {
   const chatId = Number(req.body?.chat_id);
   if (!Number.isInteger(chatId) || chatId <= 0) return res.status(400).json({ error: 'Не указан чат', code: 'bad_chat' });
@@ -130,6 +130,19 @@ admin.put('/audio', wrap(async (req, res) => {
   logAudit(req, 'server', 'Звонки: настройки', 'аудиозвонки ' + (on ? 'включены' : 'выключены'));
   try { require('../ws').broadcastAll({ type: 'call_audio', allowed: on }); } catch (e) { console.warn('[Аудиозвонки] не удалось разослать:', e.message); }
   res.json({ enabled: on });
+}));
+
+// Качество видео: ступень отдельно для личных звонков (direct) и для групп, комнат и звонков по ссылке (group): eco | normal | high | max.
+// Клиенты узнают сразу (call_quality); применяется к новым звонкам
+admin.get('/quality', wrap(async (req, res) => res.json(await calls.getQuality())));
+admin.put('/quality', wrap(async (req, res) => {
+  const b = req.body || {}, bad = k => b[k] !== undefined && !calls.QUAL_LEVELS.includes(b[k]);
+  if (bad('direct') || bad('group')) return res.status(400).json({ error: 'Неизвестная ступень качества' });
+  const q = await calls.setQuality(b);
+  const NAME = { eco: 'экономная', normal: 'обычная', high: 'высокая', max: 'максимальная' };
+  logAudit(req, 'server', 'Звонки: настройки', 'качество видео: личные — ' + NAME[q.direct] + ', группы — ' + NAME[q.group]);
+  try { require('../ws').broadcastAll({ type: 'call_quality', quality: q }); } catch (e) { console.warn('[Звонки] качество не разослано:', e.message); }
+  res.json(q);
 }));
 
 admin.get('/access', wrap(async (req, res) => res.json({ peers: await calls.peerAccess() })));
