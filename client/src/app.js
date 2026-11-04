@@ -5247,6 +5247,7 @@ let _voiceChat = 0, _voiceTyping = 0;
 function initVoice() {
   if (!window.Voice) return;
   Voice.cancelActive();
+  Voice.sync(`${httpProto()}://${S.server}`, S.token);   // включены ли голосовые (решает администратор)
   const btn = document.getElementById('send-btn');
   const main = btn && btn.closest('.composer-main'), row = main && main.querySelector('.composer-field-row');
   if (!row) return;
@@ -6390,6 +6391,7 @@ function connectWS() {
     if (typeof data.type==='string' && data.type.startsWith('call_')) { window.Calls?.onWs(data); return; }
     if (data.type==='emoji_freq') { mergeEmojiFreq(data.freq); return; }
     if (data.type==='modules_changed') { window.Modules?.refresh(); return; }
+    if (data.type==='voice_changed') { window.Voice?.setEnabled(data.enabled); return; }
     if (data.type==='forward_count') { applyForwardCount(data.message_id, data.count); return; }
 
     if (data.type==='secret_key_ready') { scPollPending(data.chat_id); return; }

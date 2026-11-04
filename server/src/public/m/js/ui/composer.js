@@ -47,6 +47,7 @@ B.ui.composer = (function () {
   var voiceTimer = 0;
   function mountVoice(el, c) {
     if (!window.Voice) return;
+    Voice.sync(B.http() + '://' + B.S.server, B.S.token);   // включены ли голосовые (решает администратор)
     Voice.mount({
       btn: $('.sendb', c), field: $('.cfield', c), host: c, side: [$('[data-k=up]', c)],
       canRecord: function () {

@@ -4738,7 +4738,7 @@ function restartService() {
 
 const SP = { open: new Set(), rate: null, disk: null, q: '', files: [], audit: [], online: 0, pend: null, loaded: false, editCustom: false, editUnit: 60, lifeCustom: false, showBk: false, showLog: false,
   db: { info: null, form: { host: '127.0.0.1', port: 5432, database: 'electron', user: 'electron', password: '', ssl: '' }, test: null, testing: false, confirm: false, job: null, down: false, t: null } };
-SP.calls = { cert: null, fed: null, cfg: null, form: { url: '', key: '', secret: '' }, busy: '', err: '', ok: '' };
+SP.calls = { cert: null, fed: null, cfg: null, voice: null, form: { url: '', key: '', secret: '' }, busy: '', err: '', ok: '' };
 const SP_KEYS = { messages: ['edit', 'statusDays'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime', 'backupRetention'] };
 const SP_DEF = { edit: 120, statusDays: 7, imgMax: 10, imgExt: ['jpeg', 'jpg', 'png', 'gif', 'webp'], videoMax: 50, videoExt: ['mp4', 'mov', 'webm'], fileMax: 50, fileExt: [], life: 0, backupDays: [], backupTime: '03:00', backupRetention: NaN };
 const SP_AUDIT_KEY = { messages: 'edit_time_limit', attachments: 'upload_', backups: 'backup_', github: 'github_token' };
@@ -4781,6 +4781,7 @@ async function renderSettings() {
   SP.calls.cfg = callsCfg && !callsCfg.error ? callsCfg : null;
   SP.calls.form = { url: SP.calls.cfg?.url || '', key: SP.calls.cfg?.key || '', secret: '' }; SP.calls.err = ''; SP.calls.ok = '';
   api('GET', '/api/admin/calls/access').then(r => { SP.calls.access = r && !r.error ? r.peers : null; if (currentPage === 'settings') spRender(); }).catch(() => {});
+  api('GET', '/api/admin/calls/voice').then(r => { SP.calls.voice = r && !r.error ? !!r.enabled : null; if (currentPage === 'settings') spRender(); }).catch(() => {});
   lkkLoad();
   api('GET', '/api/admin/calls/fed').then(r => { SP.calls.fed = r && !r.error ? r : null; if (currentPage === 'settings') spRender(); }).catch(() => {});
   api('GET', '/api/admin/calls/install').then(r => { if (r?.job?.state === 'running' && currentPage === 'settings') { SP.open.add('calls'); lkiResume(r.job); } }).catch(() => {});
@@ -5172,6 +5173,7 @@ const SP_HINTS = {
   fed: ['Серверы федерации', 'Отметьте серверы, чьи люди могут подключаться к вашему серверу звонков. Нужен публичный адрес. Ниже видно, чьи серверы звонков разрешили вам пользоваться ими.'],
   theirs: ['Серверы звонков соседей', 'Если сосед разрешил вам свой сервер звонков, вы звоните его людям через него, даже если своего у вас нет. Разрешение выдаёт администратор того сервера, подтверждать ничего не нужно.'],
   ext: ['Посторонние серверы', 'Серверы вне федерации. Каждому выдаётся своя пара ключей, любую можно отозвать, остальные продолжат работать. Создание и отзыв перезапускают LiveKit на несколько секунд.'],
+  voice: ['Голосовые сообщения', 'Пока выключены, у пользователей нет записи голосом: кнопка отправки всегда остаётся обычной. Уже отправленные голосовые продолжают воспроизводиться.'],
   inst: ['Установка на другой сервер', 'Чистый сервер с Debian или Ubuntu: по SSH поставятся LiveKit и, для публичного сервера, Caddy с сертификатом. Адрес, ключ и секрет подставятся сами.'],
 };
 const spHintBtn = k => `<button type="button" class="sp-hint" aria-label="Подсказка" data-on-click="spHint" data-a-click='["__event","${k}"]'>?</button>`;
@@ -5224,7 +5226,10 @@ function spCalls() {
     `${stat}<button type="button" class="btn btn-ghost btn-sm" ${busy ? 'disabled' : ''} data-on-click="spCallsTest">${c.busy === 'test' ? '<span class="st-spin"></span>' : ''}Проверить</button><div class="sp-seg"><button type="button" aria-pressed="${!on}" ${busy ? 'disabled' : ''} data-on-click="spCallsOn" data-a-click='[false]'>Выключены</button><button type="button" aria-pressed="${on}" ${busy ? 'disabled' : ''} data-on-click="spCallsOn" data-a-click='[true]'>Включены</button></div>`,
     c.err ? `<em class="w">${esc(c.err)}</em>` : c.ok ? `<em style="color:var(--c-green)">${esc(c.ok)}</em>` : '', 'wide', 'звонки аудио видео livekit включить проверить подключение');
   const pub = spHit('Доступен из интернета', 'люди с других серверов', 'интернет публичный') ? `<div class="sp-r sp-sw"><div class="sp-l"><b>Доступен из интернета${spHintBtn('pub')}</b><span>Чтобы люди с других серверов тоже могли подключаться</span></div><div class="sp-c"><button type="button" class="lkq-sw" role="switch" aria-checked="${!!cfg?.public}" aria-label="Доступен из интернета" ${busy ? 'disabled' : ''} data-on-click="spCallsPublic" data-a-click='[${!cfg?.public}]'></button></div></div>` : '';
-  return head
+  const vOn = c.voice !== false;
+  const voiceRow = spHit('Голосовые сообщения', 'запись микрофон голос голосовые', 'голосовые') ? `<div class="sp-r sp-sw"><div class="sp-l"><b>Голосовые сообщения${spHintBtn('voice')}</b><span>Запись и отправка голосом в чатах</span></div><div class="sp-c"><button type="button" class="lkq-sw" role="switch" aria-checked="${vOn}" aria-label="Голосовые сообщения" data-on-click="spCallsVoice" data-a-click='[${!vOn}]'></button></div></div>` : '';
+  return spGrp('Голосовые сообщения', voiceRow)
+    + head
     + spGrp('Основное',
       spLk('Сервер LiveKit', url ? esc(url.replace(/^wss?:\/\//i, '')) : 'не задан', 'lkqOpen', 'conn', 'url', 'адрес сервер livekit url', spLkI(SPI.server)),
       spLk('API key и секрет', cfg?.secret_set ? 'задан' : 'не задан', 'lkqOpen', 'conn:key', 'key', 'ключ секрет api key secret', spLkI(SPI.key)))
@@ -5316,6 +5321,13 @@ async function spCallsPublic(on) {
     if (r?.error) { SP.calls.err = r.error; return; }
     SP.calls.cfg = r; toast(on ? 'Сервер отмечен как доступный из интернета' : 'Сервер отмечен как закрытый', 'success');
   });
+}
+async function spCallsVoice(on) {
+  const r = await api('PUT', '/api/admin/calls/voice', { enabled: !!on });
+  if (!r || r.error || r.enabled === undefined) { toast(esc(r?.error || 'Не удалось сохранить настройку'), 'error'); return; }
+  SP.calls.voice = !!r.enabled;
+  toast(on ? 'Голосовые сообщения включены' : 'Голосовые сообщения выключены', 'success');
+  spRender();
 }
 async function spCallsAllow(inst, on) {
   const f = SP.calls.fed; if (!f) return;
@@ -5420,7 +5432,7 @@ function lkcRender() {
   const d = LKC.data, row = (lab, v, k) => `<div class="sp-r" style="padding:8px 0"><div class="sp-l"><b>${lab}</b><span class="mono" style="word-break:break-all;font-size:12px">${esc(v)}</span></div><div class="sp-c"><button type="button" class="btn btn-ghost btn-sm" data-on-click="lkcCopy" data-a-click='["${k}"]'>Копировать</button></div></div>`;
   box.innerHTML = `<div class="modal-head"><h3>Данные подключения</h3><button class="modal-close" aria-label="Закрыть" data-on-click="lkcClose">✕</button></div>
     <div class="modal-body"><div class="card" style="padding:4px 14px;margin-bottom:12px">${row('Адрес', d.url, 'url')}${row('API key', d.key, 'key')}${row('Секрет', d.secret, 'secret')}</div>
-      <p style="${p}">На другом сервере чата откройте «Настройки → Звонки», вставьте скопированный блок в поле «Сервер LiveKit»: адрес, ключ и секрет разложатся сами. Дальше «Проверить», «Сохранить», «Включены».</p>
+      <p style="${p}">На другом сервере чата откройте «Настройки → Звонки и голос», вставьте скопированный блок в поле «Сервер LiveKit»: адрес, ключ и секрет разложатся сами. Дальше «Проверить», «Сохранить», «Включены».</p>
       <div class="err" style="color:var(--c-green)">${esc(LKC.ok)}</div></div>
     <div class="modal-foot"><button class="btn btn-ghost" data-on-click="lkcClose">Закрыть</button><button class="btn btn-primary" data-on-click="lkcCopy" data-a-click='["all"]'>Копировать всё</button></div>`;
 }
@@ -5657,7 +5669,7 @@ function spMini(k) {
   if (k === 'backups') return `<span class="sp-md" title="Копии за 14 дней">${Array.from({ length: 14 }, (_, i) => 13 - i).map(i => { const d = new Date(); d.setDate(d.getDate() - i); return `<i class="${ST.backups.some(b => new Date(b.created_at * 1000).toDateString() === d.toDateString()) ? 'have' : ''}"></i>`; }).join('')}</span>`;
   return '';
 }
-const SP_META = { messages: ['Сообщения', ST_I.msg], attachments: ['Вложения', ST_I.clip], backups: ['Резервные копии', ST_I.db], database: ['База данных', ST_I.db], calls: ['Звонки', ST_I.phone], github: ['GitHub', ST_I.gh], history: ['История', ST_I.clock] };
+const SP_META = { messages: ['Сообщения', ST_I.msg], attachments: ['Вложения', ST_I.clip], backups: ['Резервные копии', ST_I.db], database: ['База данных', ST_I.db], calls: ['Звонки и голос', ST_I.phone], github: ['GitHub', ST_I.gh], history: ['История', ST_I.clock] };
 function spLastChange(k) {
   const key = SP_AUDIT_KEY[k]; if (!key) return null;
   return SP.audit.find(a => a.action === 'Изменение настроек' && String(a.target || '').includes(key));
@@ -5921,7 +5933,7 @@ function wsDelete(id) {
 }
 
 /* ── Доступ для других серверов: отдельная пара ключей LiveKit на каждый, любую можно отозвать ── */
-// Раздел «Настройки → Звонки». Логика на сервере: lkkeys.js. Создание и отзыв перезапускают LiveKit на несколько секунд,
+// Раздел «Настройки → Звонки и голос». Логика на сервере: lkkeys.js. Создание и отзыв перезапускают LiveKit на несколько секунд,
 // поэтому окна предупреждают об идущих звонках. Макет: docs/glass-mockup/admin-calls-keys.html.
 const LKK = { d: null, m: null, name: '', apw: '', spw: '', f: { host: '', port: '22', user: 'root' }, fp: '', os: '', err: '', can_local: false, id: '', run: null, res: null, ok: '' };
 const LKK_I = {
@@ -5988,7 +6000,7 @@ function lkkRender() {
     box.innerHTML = `${lkkHead(r.title, false)}<div class="modal-body"><ul class="lkk-steps">${r.labels.map((l, i) => `<li class="${r.done ? 'done' : i < r.i ? 'done' : i === r.i ? 'run' : ''}"><span class="d">${lkkIc('ok')}</span>${esc(l)}</li>`).join('')}</ul></div>`;
   } else if (m === 'cred') {
     const c = LKK.res, row = (lab, v, k) => `<div class="lkk-cr"><div><span>${lab}</span><b class="mono">${esc(v)}</b></div><button type="button" class="btn btn-ghost btn-sm" data-on-click="lkkCp" data-a-click="${esc(JSON.stringify([k]))}">${lkkIc('copy')}Копировать</button></div>`;
-    box.innerHTML = `${lkkHead(LKK.fresh ? 'Пара создана' : 'Данные подключения')}<div class="modal-body"><p style="${lkkP};margin-bottom:10px"><b style="color:var(--c-text)">${esc(c.name)}</b>${LKK.fresh ? ': передайте эти данные его администратору через защищённый канал.' : ''}</p><div class="card" style="padding:2px 14px;margin-bottom:12px">${row('Адрес', c.url, 'url')}${row('API key', c.key, 'key')}${row('Секрет', c.secret, 'secret')}</div><p style="${lkkP}">На другом сервере чата откройте «Настройки → Звонки», вставьте блок в поле «Сервер LiveKit».${LKK.fresh ? ' Секрет позже можно показать кнопкой «Данные» (потребуется ваш пароль администратора).' : ''}</p><div class="err" style="color:var(--c-green)">${esc(LKK.ok)}</div></div>${foot('<button class="btn btn-ghost" data-on-click="lkkClose">Закрыть</button>', '<button class="btn btn-primary" data-on-click="lkkCp" data-a-click=\'["all"]\'>Копировать всё</button>')}`;
+    box.innerHTML = `${lkkHead(LKK.fresh ? 'Пара создана' : 'Данные подключения')}<div class="modal-body"><p style="${lkkP};margin-bottom:10px"><b style="color:var(--c-text)">${esc(c.name)}</b>${LKK.fresh ? ': передайте эти данные его администратору через защищённый канал.' : ''}</p><div class="card" style="padding:2px 14px;margin-bottom:12px">${row('Адрес', c.url, 'url')}${row('API key', c.key, 'key')}${row('Секрет', c.secret, 'secret')}</div><p style="${lkkP}">На другом сервере чата откройте «Настройки → Звонки и голос», вставьте блок в поле «Сервер LiveKit».${LKK.fresh ? ' Секрет позже можно показать кнопкой «Данные» (потребуется ваш пароль администратора).' : ''}</p><div class="err" style="color:var(--c-green)">${esc(LKK.ok)}</div></div>${foot('<button class="btn btn-ghost" data-on-click="lkkClose">Закрыть</button>', '<button class="btn btn-primary" data-on-click="lkkCp" data-a-click=\'["all"]\'>Копировать всё</button>')}`;
   } else if (m === 'pw') {
     const copy = LKK.act === 'copy';
     box.innerHTML = `${lkkHead(copy ? 'Копировать данные подключения' : 'Данные подключения')}<div class="modal-body"><p style="${lkkP};margin-bottom:12px"><b style="color:var(--c-text)">${esc(LKK.pname)}</b>: ${copy ? 'в буфер попадут адрес сервера, API key и секрет одним блоком, как его принимает поле «Сервер LiveKit» на другом сервере чата.' : 'секрет даёт право создавать комнаты на этом сервере звонков.'} Подтвердите действие паролем администратора.</p>${lkkApwF().replace('<input', '<input data-on-keydown="lkkKey" data-a-keydown=\'["__event","lkkPwGo"]\'')}${err}</div>${foot(cancel, `<button class="btn btn-primary" data-on-click="lkkPwGo">${copy ? 'Скопировать' : 'Показать'}</button>`)}`;

@@ -266,6 +266,7 @@ router.post('/',
     // размер ограничен длиной записи (при 16–24 кбит/с это 2–3 КБ на секунду), чтобы под голос нельзя было занять место другим файлом
     if (req.query.voice === '1') {
       const drop = msg => { fs.unlink(req.file.path, () => {}); return res.status(400).json({ error: msg }); };
+      if (!(await require('../voice').isOn())) return drop('Голосовые сообщения отключены администратором');
       const mime = String(req.file.mimetype || '').split(';')[0].trim().toLowerCase();
       const dur = Math.min(VOICE_MAX_SEC, Math.max(1, Math.round(Number(req.query.dur)) || 1));
       if (!/^audio\/(webm|ogg|mp4)$/.test(mime)) return drop('Неподдерживаемый формат записи');

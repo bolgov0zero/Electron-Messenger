@@ -44,10 +44,12 @@
     }
     return out;
   }
-  // Битрейт низкий намеренно: речь в Opus 16 кбит/с звучит нормально, а минута занимает около 120 КБ
+  // Звук «как из бочки» давала обработка микрофона браузером: эхоподавление и шумоподавление глушат верхние частоты и дают гулкий
+  // оттенок. При записи голоса эха нет (ничего не играет), поэтому оставляем только выравнивание громкости. Битрейт невысокий:
+  // Opus 20 кбит/с (минута ≈ 150 КБ), на iPhone AAC 32 кбит/с — речь заметно чище, чем на 16 и 24, а файл остаётся небольшим
   async function createRecorder(o) {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
-    const mime = pickMime(), bps = /mp4/.test(mime) ? 24000 : 16000;
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true, channelCount: 1, sampleRate: 48000 } });
+    const mime = pickMime(), bps = /mp4/.test(mime) ? 32000 : 20000;
     let rec;
     try { rec = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: bps } : { audioBitsPerSecond: bps }); }
     catch (e) { stream.getTracks().forEach(t => t.stop()); throw e; }
@@ -212,11 +214,29 @@
   //      side — [элементы], которые гаснут на время записи (например, скрепка),
   //      canRecord() — можно ли записывать сейчас, onSend(result) — запись готова, onState(on) — началась/закончилась запись }
   let activeAbort = null; // отмена идущей записи: чат переключили, пока шла запись
+  // Голосовые включает администратор. Выключены: микрофона нет (кнопка всегда «Отправить»), запись не начинается. Плеер работает как раньше
+  let enabled = true;
+  const mounted = new Set();
+  function setEnabled(on) {
+    enabled = on !== false;
+    mounted.forEach(b => b.classList.toggle('vr-off', !enabled));
+    if (!enabled && activeAbort) activeAbort();
+  }
+  // Спросить у сервера, включены ли голосовые; сбой сети оставляет прежнее значение
+  async function sync(base, token) {
+    try {
+      const r = await fetch(base + '/api/calls/voice', { headers: { Authorization: 'Bearer ' + token } });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j && typeof j.enabled === 'boolean') setEnabled(j.enabled);
+    } catch {}
+  }
   function mount(o) {
     if (!o.btn || o.btn._voice) return;
     o.btn._voice = true;
     const { btn, field, host } = o;
     btn.classList.add('vr-btn');
+    btn.classList.toggle('vr-off', !enabled); mounted.add(btn);
     field.classList.add('vr-field');
     if (o.row) o.row.classList.add('vr-row');
     (o.side || []).forEach(el => el && el.classList.add('vr-side'));
@@ -305,7 +325,7 @@
     }
 
     btn.addEventListener('pointerdown', e => {
-      if (st !== 'idle' || btn.classList.contains('ready') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      if (!enabled || st !== 'idle' || btn.classList.contains('ready') || (e.pointerType === 'mouse' && e.button !== 0)) return;
       if (o.canRecord && !o.canRecord()) return;
       if (!supported()) { say('Запись голоса не поддерживается в этом браузере'); return; }
       try { btn.setPointerCapture(e.pointerId); } catch {}
@@ -343,5 +363,5 @@
     window.addEventListener('blur', () => { if (st === 'rec' && hold && !locked) { hold = false; cancel(); } });
   }
 
-  window.Voice = { supported, mount, html, upload, fmt, stopPlayback: stopCur, cancelActive: () => { if (activeAbort) activeAbort(); }, MAX_SEC };
+  window.Voice = { supported, mount, html, upload, fmt, setEnabled, sync, isEnabled: () => enabled, stopPlayback: stopCur, cancelActive: () => { if (activeAbort) activeAbort(); }, MAX_SEC };
 })();

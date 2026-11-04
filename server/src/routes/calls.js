@@ -8,6 +8,7 @@ const calls = require('../calls');
 const lk = require('../lkinstall');
 const lkk = require('../lkkeys');
 const fed = require('../federation');
+const voice = require('../voice');
 
 const wrap = fn => async (req, res) => {
   try { await fn(req, res); }
@@ -29,6 +30,8 @@ function devOf(req) {
 // ── Для клиентов ──
 const user = express.Router();
 user.use(authMiddleware);
+// Включены ли голосовые сообщения: нужно и гостю (кнопка отправки меняет вид)
+user.get('/voice', wrap(async (req, res) => res.json({ enabled: await voice.isOn() })));
 user.use((req, res, next) => (req.user.is_guest ? res.status(403).json({ error: 'Недоступно гостю', code: 'guest_forbidden' }) : (req.user.dev = devOf(req), next())));
 
 // Доступны ли звонки (кнопки в шапке чата) и нет ли звонка, начатого до перезагрузки клиента
@@ -108,6 +111,16 @@ admin.put('/', wrap(async (req, res) => {
 }));
 
 // Каким соседям мы доступны: чей LiveKit нам разрешён (запрашивается у соседей)
+// Голосовые сообщения: включены ли. Меняется в настройках, раздел «Звонки и голос»; клиенты узнают сразу (voice_changed)
+admin.get('/voice', wrap(async (req, res) => res.json({ enabled: await voice.isOn() })));
+admin.put('/voice', wrap(async (req, res) => {
+  const on = !!req.body?.enabled;
+  await voice.setOn(on);
+  logAudit(req, 'server', 'Звонки: настройки', 'голосовые сообщения ' + (on ? 'включены' : 'выключены'));
+  try { require('../ws').broadcastAll({ type: 'voice_changed', enabled: on }); } catch (e) { console.warn('[Голосовые] не удалось разослать:', e.message); }
+  res.json({ enabled: on });
+}));
+
 admin.get('/access', wrap(async (req, res) => res.json({ peers: await calls.peerAccess() })));
 
 // Звонки с других серверов: какие соседи могут пользоваться нашим LiveKit (только если он доступен из интернета)

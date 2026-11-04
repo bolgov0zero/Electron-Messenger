@@ -36,6 +36,9 @@ html.dark .vm-in .pl{color:#07201c}
 .vr-btn>svg.vr-mic{position:absolute;left:50%;top:50%;width:21px;height:21px;margin:-10.5px 0 0 -10.5px}
 .vr-btn:not(.ready)>svg:not(.vr-mic){opacity:0;transform:scale(.4) rotate(-90deg)}
 .vr-btn.ready>svg.vr-mic{opacity:0;transform:scale(.4) rotate(90deg)}
+/* Голосовые выключены администратором: микрофона нет, кнопка всегда показывает «Отправить» */
+.vr-btn.vr-off>svg.vr-mic{display:none}
+.vr-btn.vr-off:not(.ready)>svg:not(.vr-mic){opacity:1;transform:none}
 .vr-hold .vr-btn:not(.ready){background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;transform:scale(1.32);z-index:11;
   box-shadow:0 0 0 calc(5px + var(--vlvl,0) * 26px) rgba(var(--accent-rgb),.2),0 10px 28px color-mix(in srgb,var(--gl-out-b) 45%,transparent);transition:background .3s,transform .08s,box-shadow .08s}
 .vr-hold.vr-will .vr-btn:not(.ready){background:linear-gradient(140deg,var(--danger),color-mix(in srgb,var(--danger) 70%,#000));box-shadow:0 0 0 12px var(--danger-bg)}

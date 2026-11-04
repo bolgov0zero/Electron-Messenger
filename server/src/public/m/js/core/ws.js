@@ -63,6 +63,7 @@ B.ws = {
         break;
       }
       case 'modules_changed': B.bus.emit('modules:reload'); break;
+      case 'voice_changed': if (window.Voice) Voice.setEnabled(data.enabled); break;
       case 'message': {
         var m = data.message; chat = B.find(m.chat_id);
         if (chat) chat.last_message = m;
