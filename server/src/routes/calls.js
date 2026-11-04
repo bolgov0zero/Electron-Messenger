@@ -121,6 +121,17 @@ admin.put('/voice', wrap(async (req, res) => {
   res.json({ enabled: on });
 }));
 
+// Аудиозвонки (звонок без видео): включены ли. Меняется в настройках, раздел «Звонки и голос»; по умолчанию выключены.
+// Клиенты узнают сразу (call_audio): без включения нет кнопки аудиозвонка и переключателя в настройках человека
+admin.get('/audio', wrap(async (req, res) => res.json({ enabled: await calls.audioOn() })));
+admin.put('/audio', wrap(async (req, res) => {
+  const on = !!req.body?.enabled;
+  await calls.setAudioOn(on);
+  logAudit(req, 'server', 'Звонки: настройки', 'аудиозвонки ' + (on ? 'включены' : 'выключены'));
+  try { require('../ws').broadcastAll({ type: 'call_audio', allowed: on }); } catch (e) { console.warn('[Аудиозвонки] не удалось разослать:', e.message); }
+  res.json({ enabled: on });
+}));
+
 admin.get('/access', wrap(async (req, res) => res.json({ peers: await calls.peerAccess() })));
 
 // Звонки с других серверов: какие соседи могут пользоваться нашим LiveKit (только если он доступен из интернета)

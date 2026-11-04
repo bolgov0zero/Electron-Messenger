@@ -683,6 +683,9 @@
       else load();
     } else if (d.type === 'call_prefs') {
       st.prefs = d.prefs; if (typeof H.onConfig === 'function') H.onConfig(st);
+    } else if (d.type === 'call_audio') {
+      // Администратор включил или выключил аудиозвонки: настройки человека пересчитываются на сервере, кнопки и настройки обновляются
+      H.api('GET', '/calls/prefs').then(function (r) { if (r && !r.error) { st.prefs = r; if (typeof H.onConfig === 'function') H.onConfig(st); } });
     } else if (d.type === 'call_group') {
       if (d.event === 'ended') { delete st.groups[d.chat_id]; if (st.incoming && st.incoming.group && st.incoming.chat_id === d.chat_id) dismissIncoming(); }
       else { st.groups[d.chat_id] = { call_id: d.call_id, participants: d.participants, video: d.video, started_by: d.started_by }; if (st.incoming && st.incoming.group && st.incoming.chat_id === d.chat_id) { st.incoming.participants = d.participants; } }

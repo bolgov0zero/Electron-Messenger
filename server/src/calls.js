@@ -114,17 +114,30 @@ async function check(cfg) {
 // Звонки на сервере включены — значит у всех они включены по умолчанию. Человек может выключить все звонки сразу, отдельно
 // аудио и видео, а также приём звонков с других серверов (тогда ему звонят только свои). Хранится в settings под ключом calls_prefs_<id>
 const PREF_KEYS = ['enabled', 'audio', 'video', 'fed'];
-async function getPrefs(userId) {
+// Аудиозвонки (звонок без видео, камеры в нём нет в принципе) включает администратор, по умолчанию они выключены.
+// Видеозвонок остаётся видеозвонком, даже если ни у кого нет камеры: вид звонка задаёт кнопка при его создании
+const AUDIO_KEY = 'calls_audio';
+const audioOn = async () => (await getS(AUDIO_KEY)) === '1';
+const setAudioOn = on => setS(AUDIO_KEY, on ? '1' : '0');
+async function rawPrefs(userId) {
   let p = {}; try { p = JSON.parse((await getS('calls_prefs_' + userId)) || '{}') || {}; } catch {}
   return Object.fromEntries(PREF_KEYS.map(k => [k, p[k] !== false]));
 }
-async function setPrefs(userId, patch) {
-  const cur = await getPrefs(userId);
-  for (const k of PREF_KEYS) if (typeof patch?.[k] === 'boolean') cur[k] = patch[k];
-  await setS('calls_prefs_' + userId, JSON.stringify(cur));
-  ws().sendTo(userId, { type: 'call_prefs', prefs: cur });   // остальные устройства подхватят сразу
-  return cur;
+// Настройки как их видят клиенты и проверки звонков: аудио доступно, только если оно включено и у администратора, и у человека.
+// audio_allowed — включено ли оно на сервере: клиенты без него не показывают переключатель аудиозвонков вовсе
+async function getPrefs(userId) {
+  const p = await rawPrefs(userId), allowed = await audioOn();
+  return { ...p, audio: p.audio && allowed, audio_allowed: allowed };
 }
+async function setPrefs(userId, patch) {
+  const cur = await rawPrefs(userId);
+  for (const k of PREF_KEYS) if (typeof patch?.[k] === 'boolean') cur[k] = patch[k];
+  await setS('calls_prefs_' + userId, JSON.stringify(cur));   // сохраняется собственный выбор человека, а не итог с учётом сервера
+  const out = await getPrefs(userId);
+  ws().sendTo(userId, { type: 'call_prefs', prefs: out });   // остальные устройства подхватят сразу
+  return out;
+}
+const AUDIO_OFF = 'Аудиозвонки отключены администратором';
 // Почему звонок этому человеку невозможен по его настройкам (null — можно)
 const prefBlock = (p, video) => (!p.enabled ? 'all' : video && !p.video ? 'video' : !video && !p.audio ? 'audio' : null);
 
@@ -229,7 +242,7 @@ async function start(user, chatId, video) {
   if (busy.has(user.id)) throw new CallError('in_call', 'Вы уже в звонке');
   if (tooOften(user.id)) throw new CallError('rate', 'Слишком много звонков подряд: подождите минуту', 429);
   const myp = await getPrefs(user.id), mb = prefBlock(myp, !!video);
-  if (mb) throw new CallError('prefs_self', mb === 'all' ? 'У вас выключены звонки в настройках' : mb === 'video' ? 'У вас выключены видеозвонки в настройках' : 'У вас выключены аудиозвонки в настройках', 403);
+  if (mb) throw new CallError('prefs_self', mb === 'all' ? 'У вас выключены звонки в настройках' : mb === 'video' ? 'У вас выключены видеозвонки в настройках' : !myp.audio_allowed ? AUDIO_OFF : 'У вас выключены аудиозвонки в настройках', 403);
   if (await spaces().isFed(peer.id)) return await startFed(cfg, user, chatId, peer, video);
   if (!ownOk(cfg)) throw new CallError('no_own', NO_OWN, 400);
   if (busy.has(peer.id)) throw new CallError('busy', 'Собеседник занят');
@@ -721,6 +734,8 @@ async function groupJoin(user, chatId, video) {
   if (chat.is_secret) throw new CallError('bad_chat', 'В этой группе звонки недоступны', 400);
   if (busy.has(user.id)) throw new CallError('in_call', 'Вы уже в звонке');
   if (!(await getPrefs(user.id)).enabled) throw new CallError('prefs_self', 'У вас выключены звонки в настройках', 403);
+  // Звонок без видео создаётся только при включённых аудиозвонках; подключиться к идущему можно всегда
+  if (!video && !groupCalls.get(chatId) && !chat.fed_instance && !(await audioOn())) throw new CallError('prefs_self', AUDIO_OFF, 403);
   if (chat.fed_instance) return await groupJoinMirror(user, chatId, chat, video);
   // Свыше 12 человек в звонке новые участники подключаются только со звуком: видео на 12, звук без ограничений
   const micOnly = (groupCalls.get(chatId)?.participants.size || 0) >= GROUP_MAX && !groupCalls.get(chatId)?.participants.has(user.id);
@@ -834,6 +849,7 @@ async function fedGroupReq(peer, f) {
   if (!(await dal.get('SELECT 1 AS x FROM chat_members WHERE chat_id = ? AND user_id = ?', chat.id, sh.id))) throw new Error('not_found');
   if (busy.has(sh.id) && !groupCalls.get(chat.id)?.participants.has(sh.id)) throw new Error('busy');
   const micOnly = (groupCalls.get(chat.id)?.participants.size || 0) >= GROUP_MAX && !groupCalls.get(chat.id)?.participants.has(sh.id);
+  if (!f.video && !groupCalls.get(chat.id) && !(await audioOn())) throw new Error('prefs');   // новый звонок без видео, а аудио у нас выключено
   const { g, created } = await hostAdd(chat.id, sh.id, !!f.video);
   if (created) await groupTell(g, 'started', sh.id); else await groupTell(g, 'update');
   return { call_id: g.id, video: g.video, participants: [...g.participants], from: { id: g.startedBy, name: await sendersName(g.startedBy) }, url: cfg.url, fp: cfg.certFp || '', token: signToken(cfg, { identity: 'u' + sh.id, name: sh.display_name, room: g.room, micOnly }) };
@@ -1101,4 +1117,4 @@ async function compute(period) {
   return { period, enabled: cfg.enabled, ready, show: ready || any, live, ringing, series, top, liveCalls, totals: { ...tot, minutes: Math.round(tot.minutes) }, prev: { ...prev, minutes: Math.round(prev.minutes) } };
 }
 
-module.exports = { event, peerAccess, ownOk, activeList, adminEnd, logList, callAdd, inspectCert, afterConfigChange, getPrefs, setPrefs, groupJoin, groupLeave, groupsFor, init, stats, cspSources, getConfig, handleFedReq, recvFedEvent, fedAllowed, setFedAllowed, active, publicConfig, saveConfig, normUrl, check, start, accept, decline, end, onDisconnect, currentFor, CallError };
+module.exports = { event, peerAccess, ownOk, activeList, adminEnd, logList, callAdd, inspectCert, afterConfigChange, getPrefs, setPrefs, audioOn, setAudioOn, groupJoin, groupLeave, groupsFor, init, stats, cspSources, getConfig, handleFedReq, recvFedEvent, fedAllowed, setFedAllowed, active, publicConfig, saveConfig, normUrl, check, start, accept, decline, end, onDisconnect, currentFor, CallError };

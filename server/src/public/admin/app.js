@@ -4738,7 +4738,7 @@ function restartService() {
 
 const SP = { open: new Set(), rate: null, disk: null, q: '', files: [], audit: [], online: 0, pend: null, loaded: false, editCustom: false, editUnit: 60, lifeCustom: false, showBk: false, showLog: false,
   db: { info: null, form: { host: '127.0.0.1', port: 5432, database: 'electron', user: 'electron', password: '', ssl: '' }, test: null, testing: false, confirm: false, job: null, down: false, t: null } };
-SP.calls = { cert: null, fed: null, cfg: null, voice: null, form: { url: '', key: '', secret: '' }, busy: '', err: '', ok: '' };
+SP.calls = { cert: null, fed: null, cfg: null, voice: null, audio: null, form: { url: '', key: '', secret: '' }, busy: '', err: '', ok: '' };
 const SP_KEYS = { messages: ['edit', 'statusDays'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime', 'backupRetention'] };
 const SP_DEF = { edit: 120, statusDays: 7, imgMax: 10, imgExt: ['jpeg', 'jpg', 'png', 'gif', 'webp'], videoMax: 50, videoExt: ['mp4', 'mov', 'webm'], fileMax: 50, fileExt: [], life: 0, backupDays: [], backupTime: '03:00', backupRetention: NaN };
 const SP_AUDIT_KEY = { messages: 'edit_time_limit', attachments: 'upload_', backups: 'backup_', github: 'github_token' };
@@ -4782,6 +4782,7 @@ async function renderSettings() {
   SP.calls.form = { url: SP.calls.cfg?.url || '', key: SP.calls.cfg?.key || '', secret: '' }; SP.calls.err = ''; SP.calls.ok = '';
   api('GET', '/api/admin/calls/access').then(r => { SP.calls.access = r && !r.error ? r.peers : null; if (currentPage === 'settings') spRender(); }).catch(() => {});
   api('GET', '/api/admin/calls/voice').then(r => { SP.calls.voice = r && !r.error ? !!r.enabled : null; if (currentPage === 'settings') spRender(); }).catch(() => {});
+  api('GET', '/api/admin/calls/audio').then(r => { SP.calls.audio = r && !r.error ? !!r.enabled : null; if (currentPage === 'settings') spRender(); }).catch(() => {});
   lkkLoad();
   api('GET', '/api/admin/calls/fed').then(r => { SP.calls.fed = r && !r.error ? r : null; if (currentPage === 'settings') spRender(); }).catch(() => {});
   api('GET', '/api/admin/calls/install').then(r => { if (r?.job?.state === 'running' && currentPage === 'settings') { SP.open.add('calls'); lkiResume(r.job); } }).catch(() => {});
@@ -5173,6 +5174,7 @@ const SP_HINTS = {
   fed: ['Серверы федерации', 'Отметьте серверы, чьи люди могут подключаться к вашему серверу звонков. Нужен публичный адрес. Ниже видно, чьи серверы звонков разрешили вам пользоваться ими.'],
   theirs: ['Серверы звонков соседей', 'Если сосед разрешил вам свой сервер звонков, вы звоните его людям через него, даже если своего у вас нет. Разрешение выдаёт администратор того сервера, подтверждать ничего не нужно.'],
   ext: ['Посторонние серверы', 'Серверы вне федерации. Каждому выдаётся своя пара ключей, любую можно отозвать, остальные продолжат работать. Создание и отзыв перезапускают LiveKit на несколько секунд.'],
+  audio: ['Аудиозвонки', 'Аудиозвонок — звонок без видео: камеры в нём нет в принципе. Пока выключены, у людей нет кнопки аудиозвонка и переключателя в настройках, а сервер не принимает звонки без видео, в том числе от других серверов. Видеозвонок можно начать и принять без камеры, он остаётся видеозвонком. Идущие звонки при выключении не обрываются. Аудиозвонки в мобильном клиенте могут работать некорректно: он работает как веб-приложение, а не нативное.'],
   voice: ['Голосовые сообщения', 'Пока выключены, у пользователей нет записи голосом: кнопка отправки всегда остаётся обычной. Уже отправленные голосовые продолжают воспроизводиться.'],
   inst: ['Установка на другой сервер', 'Чистый сервер с Debian или Ubuntu: по SSH поставятся LiveKit и, для публичного сервера, Caddy с сертификатом. Адрес, ключ и секрет подставятся сами.'],
 };
@@ -5228,8 +5230,11 @@ function spCalls() {
   const pub = spHit('Доступен из интернета', 'люди с других серверов', 'интернет публичный') ? `<div class="sp-r sp-sw"><div class="sp-l"><b>Доступен из интернета${spHintBtn('pub')}</b><span>Чтобы люди с других серверов тоже могли подключаться</span></div><div class="sp-c"><button type="button" class="lkq-sw" role="switch" aria-checked="${!!cfg?.public}" aria-label="Доступен из интернета" ${busy ? 'disabled' : ''} data-on-click="spCallsPublic" data-a-click='[${!cfg?.public}]'></button></div></div>` : '';
   const vOn = c.voice !== false;
   const voiceRow = spHit('Голосовые сообщения', 'запись микрофон голос голосовые', 'голосовые') ? `<div class="sp-r sp-sw"><div class="sp-l"><b>Голосовые сообщения${spHintBtn('voice')}</b><span>Запись и отправка голосом в чатах</span></div><div class="sp-c"><button type="button" class="lkq-sw" role="switch" aria-checked="${vOn}" aria-label="Голосовые сообщения" data-on-click="spCallsVoice" data-a-click='[${!vOn}]'></button></div></div>` : '';
+  const aOn = c.audio === true;
+  const audioRow = spHit('Аудиозвонки', 'звонок без видео аудио голос', 'аудио') ? `<div class="sp-r sp-sw"><div class="sp-l"><b>Аудиозвонки${spHintBtn('audio')}</b><span>Звонки без видео. Видеозвонки доступны всегда</span></div><div class="sp-c"><button type="button" class="lkq-sw" role="switch" aria-checked="${aOn}" aria-label="Аудиозвонки" data-on-click="spCallsAudio" data-a-click='[${!aOn}]'></button></div></div>` : '';
   return spGrp('Голосовые сообщения', voiceRow)
     + head
+    + spGrp('Аудиозвонки', audioRow)
     + spGrp('Основное',
       spLk('Сервер LiveKit', url ? esc(url.replace(/^wss?:\/\//i, '')) : 'не задан', 'lkqOpen', 'conn', 'url', 'адрес сервер livekit url', spLkI(SPI.server)),
       spLk('API key и секрет', cfg?.secret_set ? 'задан' : 'не задан', 'lkqOpen', 'conn:key', 'key', 'ключ секрет api key secret', spLkI(SPI.key)))
@@ -5327,6 +5332,13 @@ async function spCallsVoice(on) {
   if (!r || r.error || r.enabled === undefined) { toast(esc(r?.error || 'Не удалось сохранить настройку'), 'error'); return; }
   SP.calls.voice = !!r.enabled;
   toast(on ? 'Голосовые сообщения включены' : 'Голосовые сообщения выключены', 'success');
+  spRender();
+}
+async function spCallsAudio(on) {
+  const r = await api('PUT', '/api/admin/calls/audio', { enabled: !!on });
+  if (!r || r.error || r.enabled === undefined) { toast(esc(r?.error || 'Не удалось сохранить настройку'), 'error'); return; }
+  SP.calls.audio = !!r.enabled;
+  toast(on ? 'Аудиозвонки включены' : 'Аудиозвонки выключены', 'success');
   spRender();
 }
 async function spCallsAllow(inst, on) {

@@ -44,6 +44,6 @@ B.ui.calls = (function () {
   B.bus.on('ws:connected', function () { init(); Calls.load().then(rehead); });
   // Нажали на уведомление, когда приложение уже открыто в фоне
   B.onOpenCall = function (callId) { init(); B.S.pendingCall = callId || null; if (window.Calls) Calls.load().then(rehead); };
-  ['incoming', 'accepted', 'answered', 'ended', 'group', 'prefs', 'config', 'conf'].forEach(function (t) { B.bus.on('ws:call_' + t, function (d) { if (window.Calls) Calls.onWs(d); }); });
+  ['incoming', 'accepted', 'answered', 'ended', 'group', 'prefs', 'config', 'conf', 'audio'].forEach(function (t) { B.bus.on('ws:call_' + t, function (d) { if (window.Calls) Calls.onWs(d); }); });
   return { init: init, btns: btns, start: function (cid, video) { if (window.Calls) Calls.start(cid, video); } };
 })();

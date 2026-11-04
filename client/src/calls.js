@@ -259,6 +259,8 @@
       else load().then(() => window.callsSettingsSync?.());
     } else if (d.type === 'call_prefs') {
       st.prefs = d.prefs; rehead();
+    } else if (d.type === 'call_audio') {
+      load();   // администратор включил или выключил аудиозвонки: настройки и кнопки в шапке обновляются сразу
     } else if (d.type === 'call_group') {
       if (d.event === 'ended') { delete st.groups[d.chat_id]; if (st.incoming?.group && st.incoming.chat_id === d.chat_id) dismissIncoming(); }
       else {
