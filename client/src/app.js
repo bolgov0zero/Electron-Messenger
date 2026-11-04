@@ -4565,7 +4565,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     // Пересланное вложение показывается превью, как обычное, под шапкой «Переслано от»
     const fa = fd.attachment, fdAtt = fa ? attachBlockHtml(fa) : '';
     const fdText = fd.text || (fa && !fdAtt ? '📎 ' + (fa.name || 'Файл') : '');
-    return `<div class="irc-reply irc-forward-block"><div class="irc-reply-body"><div class="irc-reply-name">Переслано от ${esc(fd.name || '')}</div>${fdText ? `<div class="irc-reply-text">${fd.is_bot ? fdText : Fmt.rich(Fmt.noCode(fdText), { codeCls: 'md-code' })}</div>` : ''}</div></div>${fdAtt}`;
+    return `<div class="irc-reply irc-forward-block"><div class="irc-reply-body"><div class="irc-reply-name">Переслано от <b>${esc(fd.name || '')}</b></div>${fdText ? `<div class="irc-reply-text">${fd.is_bot ? fdText : Fmt.rich(Fmt.noCode(fdText), { codeCls: 'md-code' })}</div>` : ''}</div></div>${fdAtt}`;
   })() : '';
 
 
@@ -4608,18 +4608,20 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     data-on-contextmenu="${isDeleted ? 'ctxNoop' : 'showCtxMenu'}" data-a-contextmenu="${esc(JSON.stringify(isDeleted ? [] : ['__event', m.id, m.sent_at, mine]))}"
     data-on-dblclick="${isDeleted ? 'noop' : 'dblReply'}" data-a-dblclick="${esc(JSON.stringify(isDeleted ? [] : [m.id]))}">
     <div class="irc-content">
-      ${header}
+      ${emojiOnly ? header : ''}
       <div class="bubble-row">
         ${avCol}
         <div class="msg-bubble${bareImage ? ' bubble-photo' : ''}${_fitW ? ' bubble-fit' : ''}${emojiOnly ? ' bubble-emoji' : ''}${comp ? comp.cls : ''}${fwdN ? ' has-fwd' : ''}"${(fwdN || _fitW) ? ` style="${fwdN ? `--fwd-w:${fwdReserve(fwdN)}px;` : ''}${_fitW ? `--bw:${_fitW}px` : ''}"` : ''}>
+          ${emojiOnly ? '' : header}
           ${comp ? `${comp.lpHtml}${(m.reply_to_id || fd) ? `<div class="ct-pad">${replyHtml}${forwardHtml}</div>` : ''}${attachHtml}${comp.html}` : `${replyHtml}
           ${forwardHtml}
           ${attachHtml}
           ${(isSecretChat ? (scLocked || scDecryptedText) : m.text) || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}${emojiOnly?' emoji-only':''}${scLocked?' sc-locked':''}">${bodyText}</div>` : ''}`}
+          ${emojiOnly ? '' : reactionsHtml}
           ${isVoice ? '' : metaHtml}
         </div>
       </div>
-      ${reactionsHtml}
+      ${emojiOnly ? reactionsHtml : ''}
       ${m._state==='failed' ? failNoteHtml(m._cid) : ''}
     </div>
   </div>`;
@@ -6566,11 +6568,16 @@ function connectWS() {
           if (existing) {
             existing.outerHTML = reactionsHtml || '';
           } else if (reactionsHtml) {
-            // Сосед .bubble-row (аватар+пузырь) внутри .irc-content — как и при
-            // полной отрисовке в renderMsgIRC. Не .msg-bubble: он теперь вложен
-            // в .bubble-row, и вставка рядом с ним попала бы внутрь этой строки.
-            const bubbleRow = msgEl.querySelector('.bubble-row');
-            if (bubbleRow) bubbleRow.insertAdjacentHTML('afterend', reactionsHtml);
+            // Реакции лежат внутри пузыря, перед отметкой времени. Смайл без пузыря (.emoji-msg) держит их
+            // отдельной строкой под .bubble-row, как при полной отрисовке в renderMsgIRC.
+            const bubble = msgEl.classList.contains('emoji-msg') ? null : msgEl.querySelector('.msg-bubble');
+            if (bubble) {
+              const meta = bubble.querySelector(':scope > .irc-meta');
+              if (meta) meta.insertAdjacentHTML('beforebegin', reactionsHtml); else bubble.insertAdjacentHTML('beforeend', reactionsHtml);
+            } else {
+              const bubbleRow = msgEl.querySelector('.bubble-row');
+              if (bubbleRow) bubbleRow.insertAdjacentHTML('afterend', reactionsHtml);
+            }
           }
           // Появление/исчезновение реакции может разорвать срезанный угол серии
           // (см. .irc-reaction-split в reflowSeries)

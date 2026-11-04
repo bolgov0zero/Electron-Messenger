@@ -30,6 +30,15 @@ function cleanText(s, max) {
 const fed = () => require('./federation');
 const groups = () => require('./fedgroups');
 
+// Секрет в тексте пуша — ряд брайлевских точек, как в списке чатов клиентов (та же функция, что Fmt.noCode в shared/fmt.js)
+const SECRET_DOTS = ['⠶', '⠖', '⠲', '⠦', '⠴', '⠢', '⠒', '⠔', '⠐', '⠠'];
+function maskSecret(t) {
+  let h = 7, s = '';
+  for (const c of t) h = (h * 31 + c.codePointAt(0)) >>> 0;
+  for (let i = 0, n = 3 + t.length % 4; i < n; i++) { h = (h * 1103515245 + 12345) >>> 0; s += SECRET_DOTS[(h >>> 16) % SECRET_DOTS.length]; }
+  return s;
+}
+
 // Ленивая загрузка чтобы избежать циклических зависимостей
 async function pushToUser(userId, payload) {
   try { await require('./routes/push').sendPushToUser(userId, payload); } catch (e) {
@@ -282,7 +291,7 @@ async function finishMessage(msgId, chat_id, senderId, clientId, exceptDk = null
     // показываем даже тем, у кого ключ есть (защита от подглядывания).
     await pushToUser(user_id, {
       title: chatTitle,
-      body: chat?.is_secret ? 'Новое сообщение' : (String(msg.text || '').replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, '∗∗∗') || (msg.attachment ? (msg.attachment.gif ? 'GIF' : msg.attachment.voice ? '🎤 Голосовое сообщение' : msg.attachment.more?.length ? `📎 Вложений: ${msg.attachment.more.length + 1}` : '🖼 Изображение') : '')),
+      body: chat?.is_secret ? 'Новое сообщение' : (String(msg.text || '').replace(/\|\|(?! )([^|\n]*[^|\n ])\|\|/g, (m, t) => maskSecret(t)) || (msg.attachment ? (msg.attachment.gif ? 'GIF' : msg.attachment.voice ? '🎤 Голосовое сообщение' : msg.attachment.more?.length ? `📎 Вложений: ${msg.attachment.more.length + 1}` : '🖼 Изображение') : '')),
       chatId: chat_id,
       unread,
     });

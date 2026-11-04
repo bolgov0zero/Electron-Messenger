@@ -468,3 +468,48 @@ html, body { background: var(--gl-base); }
 /* Скрытые всплывающие сообщения и баннеры лежат поверх шапки и перехватывают нажатия: правило «#layer > *» делало их нажимаемыми
    даже при нулевой прозрачности, поэтому после любого баннера (например, о новом сообщении) кнопки шапки нажимались только по нижнему краю */
 #layer > .toast:not(.on) { pointer-events: none; }
+
+/* ══════════ Пузыри «Телеграм» (как в Electron и веб клиенте: радиус 17, у соседей по серии 5, у последнего сообщения серии хвост) ══════════
+   Заливка плотная: хвост не должен просвечивать. Реакции внутри пузыря, время справа в том же ряду; имя отправителя первой строкой пузыря */
+.mrow { --tg-in: #fff; --tg-out: color-mix(in srgb, var(--gl-out-a) 46%, var(--gl-out-b)); }
+html.dark .mrow { --tg-in: var(--bubble-bg); }
+.bub { --tl: 17px; --tr: 17px; --br: 17px; --bl: 17px; border-radius: var(--tl) var(--tr) var(--br) var(--bl); padding: 7px 12px 6px; }
+.mrow.in .bub { background: var(--tg-in); border: 0; border-radius: var(--tl) var(--tr) var(--br) var(--bl); box-shadow: 0 1px 2px rgba(10, 30, 40, .16); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.mrow.out .bub { background: var(--tg-out); border: 0; border-radius: var(--tl) var(--tr) var(--br) var(--bl); box-shadow: 0 1px 2px rgba(10, 40, 90, .24); }
+.mrow.in:not(.first) .bub { --tl: 5px; }
+.mrow.in:not(.last) .bub { --bl: 5px; }
+.mrow.in.last .bub { --bl: 0px; }
+.mrow.out:not(.first) .bub { --tr: 5px; }
+.mrow.out:not(.last) .bub { --br: 5px; }
+.mrow.out.last .bub { --br: 0px; }
+.bub.dl { --bl: 17px; --br: 17px; }
+/* хвост: кривой треугольник у нижнего угла, цвет в цвет заливки (у пузырей без заливки и с обрезкой по краям его нет) */
+.mrow.last .bub:not(.media):not(.gifm):not(.bcomp):not(.dl)::after { content: ""; position: absolute; bottom: 0; width: 9px; height: 13px; pointer-events: none; }
+.mrow.in.last .bub:not(.media):not(.gifm):not(.bcomp):not(.dl)::after { left: -8px; background: var(--tg-in); clip-path: path('M9 0 V13 H1 C5 12.5 9 9 9 0 Z'); }
+.mrow.out.last .bub:not(.media):not(.gifm):not(.bcomp):not(.dl)::after { right: -8px; background: var(--tg-out); clip-path: path('M0 0 V13 H8 C4 12.5 0 9 0 0 Z'); }
+.mrow.first { margin-top: 6px; }
+
+/* кадр в пузыре с подписью: до краёв, сверху скруглён как пузырь */
+.bub:not(.media):not(.bcomp) > .att-img, .bub:not(.media):not(.bcomp) > .vwrap, .bub:not(.media):not(.bcomp) > .agrid { margin: 6px -12px 6px; width: calc(100% + 24px); max-width: none; border-radius: 0; }
+.bub:not(.media):not(.bcomp) > .att-img:first-child, .bub:not(.media):not(.bcomp) > .vwrap:first-child, .bub:not(.media):not(.bcomp) > .agrid:first-child { margin-top: -7px; border-radius: var(--tl) var(--tr) 0 0; }
+
+/* имя отправителя */
+.bub > .who-n { padding: 0 0 2px; margin: 0; font-size: 13px; line-height: 1.2; }
+.bub.bcomp > .who-n { padding: 7px 12px 4px; }
+
+/* пересылка: строка «Переслано от Имя» акцентом, пересланный текст обычным */
+.mrow .quote.fwq { border: 0; background: none; padding: 0; border-radius: 0; margin: 0 0 3px; cursor: default; }
+.mrow .quote.fwq b { color: var(--accent-ink); font-weight: 600; font-size: 13px; }
+.mrow.out .quote.fwq b { color: #fff; }
+.mrow .quote.fwq em { font-style: normal; font-weight: 700; }
+.mrow .quote.fwq span { display: block; -webkit-line-clamp: unset; overflow: visible; color: inherit; }
+
+/* реакции внутри пузыря; время стоит справа в том же ряду */
+.bub > .react { margin: 0; padding: 1px 0 0; gap: 4px; align-items: center; }
+.bub.bcomp > .react { padding: 2px 12px 7px; }
+.bub > .react button { height: 24px; padding: 0 8px; border-radius: 12px; font-size: 12.5px; font-weight: 700; gap: 3px; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent-ink); }
+.bub > .react button.mine { background: var(--gl-out-a); color: #fff; }
+.mrow.out .bub > .react button { background: rgba(255, 255, 255, .2); color: #fff; }
+.mrow.out .bub > .react button.mine { background: #fff; color: var(--tg-out); }
+.bub > .react .t { float: none; margin: 0 0 0 auto; padding-left: 10px; }

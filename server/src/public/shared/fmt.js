@@ -50,7 +50,10 @@
   }
   const hasCode = text => fenceRe().test(String(text || ''));
   // Для коротких подписей (список чатов, цитата): блок кода заменяется словом, секрет — точками
-  const noCode = text => String(text || '').replace(fenceRe(), '[код]').replace(SECRET, '∗∗∗');
+  // Секрет в подписях (список чатов, цитата, уведомление) — ряд брайлевских точек, как в Telegram; число знаков зависит от длины текста, но не раскрывает его
+  const DOTS = ['⠶', '⠖', '⠲', '⠦', '⠴', '⠢', '⠒', '⠔', '⠐', '⠠'];
+  const mask = t => { let h = 7, s = ''; for (const c of t) h = (h * 31 + c.codePointAt(0)) >>> 0; for (let i = 0, n = 3 + t.length % 4; i < n; i++) { h = (h * 1103515245 + 12345) >>> 0; s += DOTS[(h >>> 16) % DOTS.length]; } return s; };
+  const noCode = text => String(text || '').replace(fenceRe(), '[код]').replace(SECRET, (m, t) => mask(t));
 
   // Для списка чатов: без блоков кода и без знаков разметки
   const plain = text => noCode(text).replace(BOLD, '$1').replace(ITAL, '$1$2').replace(/`([^`\n]+)`/g, '$1');
@@ -581,9 +584,10 @@
       o.k = k || 1; o.W = host.offsetWidth; o.H = host.offsetHeight;
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       cv.width = o.W * dpr; cv.height = o.H * dpr; cv.style.width = o.W + 'px'; cv.style.height = o.H + 'px'; o.dpr = dpr;
+      o.dirty = true;
       o.boxes = [...sp.getClientRects()].filter(r => r.width > 2).map(r => {
         const b = { x: (r.left - hr.left) / o.k, y: (r.top - hr.top) / o.k, w: r.width / o.k, h: r.height / o.k };
-        b.p = Array.from({ length: Math.round(b.w * b.h / 6.5) }, () => { const p = {}; spawn(b, p, true); return p; });
+        b.p = Array.from({ length: Math.max(24, Math.round(b.w * b.h / 5.2)) }, () => { const p = {}; spawn(b, p, true); return p; });
         return b;
       });
     };
@@ -594,34 +598,53 @@
     sp.addEventListener('click', () => {
       const sl = window.getSelection && window.getSelection();
       if (sl && !sl.isCollapsed && sl.toString()) return;      // текст выделяют, чтобы скопировать: облако при этом не трогаем
-      const on = sp.classList.toggle('open'); cv.style.opacity = on ? '0' : '';
+      const on = sp.classList.toggle('open'); cv.style.opacity = on ? '0' : ''; o.dirty = true;
       if (o.key) { if (on) opened.add(o.key); else opened.delete(o.key); }
     });
     SP.add(o);
     if (!spRaf) spRaf = requestAnimationFrame(spLoop);
   }
+  // Пыль подобрана по записи Telegram кадр за кадром: треть точек неподвижна, остальные живут 0,2–0,8 с,
+  // ползут 1,5–4,5 px/с и возникают в новом месте. Класс точки (стоит или ползёт) закреплён за ней.
+  // Края не режутся: пыль шире строки, а прозрачность падает за границей скруглённой «капсулы» вокруг текста
+  const SP_PX = 9, SP_PY = 6, SP_FADE = 8;
+  const spReduce = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function spSoft(b, x, y) {
+    const hx = b.w / 2 + 1, hy = b.h / 2, r = Math.min(hx, hy);
+    const qx = Math.abs(x - b.w / 2) - (hx - r), qy = Math.abs(y - b.h / 2) - (hy - r);
+    const d = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
+    if (d <= 0) return 1;
+    const f = 1 - d / SP_FADE; return f > 0 ? f * f : 0;
+  }
   function spawn(b, p, fresh) {
-    p.x = Math.random() * b.w; p.y = Math.random() * b.h; p.a = Math.random() * 6.28; p.s = .1 + Math.random() * .32;
-    p.life = fresh ? Math.random() : 0; p.span = .5 + Math.random(); p.r = .45 + Math.random() * .9;
+    let g = 0;
+    do { p.x = -SP_PX + Math.random() * (b.w + SP_PX * 2); p.y = -SP_PY + Math.random() * (b.h + SP_PY * 2); } while (spSoft(b, p.x, p.y) < .3 && g++ < 40);
+    if (p.slow === undefined) p.slow = Math.random() < .34;
+    const sp = p.slow ? Math.random() * .05 : 1.5 + Math.random() * 3, a = Math.random() * 6.283;
+    p.vx = Math.cos(a) * sp; p.vy = Math.sin(a) * sp;
+    p.life = p.slow ? 20 + Math.random() * 30 : .2 + Math.random() * .6;
+    p.age = fresh ? Math.random() * p.life : 0; p.al = .55 + Math.random() * .45;
   }
   function spLoop(t) {
-    const dt = Math.min(50, t - spLast || 16); spLast = t;
+    const dt = spLast ? Math.max(0, Math.min(.05, (t - spLast) / 1000)) : 0; spLast = t;
     for (const o of SP) {
       if (!o.sp.isConnected) { SP.delete(o); continue; }
       if (o.sp.classList.contains('open') || document.hidden) continue;
+      if (spReduce && !o.dirty) continue;      // без анимации пыль рисуется один раз
+      o.dirty = false;
       if (!(++o.n % 90)) o.col = getComputedStyle(o.host).color;    // цвет текста мог смениться вместе с темой
-      const g = o.g; g.setTransform(o.dpr, 0, 0, o.dpr, 0, 0); g.clearRect(0, 0, o.W, o.H); g.fillStyle = o.col;
+      const g = o.g, d = o.dpr; g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, o.W, o.H); g.fillStyle = o.col;
       for (const b of o.boxes) {
-        const cx = b.w / 2 || 1, cy = b.h / 2 || 1;
         for (const p of b.p) {
-          p.life += dt / 1000 / p.span; if (p.life >= 1) { spawn(b, p, false); continue; }
-          // частицы медленно разлетаются от центра строки и бледнеют: у облака нет чёткой границы
-          const dx = p.x - cx, dy = p.y - cy, d = Math.hypot(dx, dy) || 1;
-          p.a += (Math.random() - .5) * .6;
-          p.x += Math.cos(p.a) * p.s + dx / d * .06 * dt / 16 * Math.min(1, Math.abs(dx) / cx + .2); p.y += Math.sin(p.a) * p.s + dy / d * .03 * dt / 16;
-          g.globalAlpha = Math.sin(Math.PI * p.life) * .9; g.beginPath(); g.arc(b.x + p.x, b.y + p.y, p.r, 0, 6.28); g.fill();
+          if (!spReduce) { p.x += p.vx * dt; p.y += p.vy * dt; p.age += dt; }
+          let f = spSoft(b, p.x, p.y);
+          if (p.age >= p.life || f < .03) { spawn(b, p, false); f = 1; }
+          const ft = Math.min(.2, p.life * .2), e = Math.min(1, p.age / ft, (p.life - p.age) / ft);
+          g.globalAlpha = p.al * f * (e > 0 ? e : 0);
+          g.fillRect(Math.round((b.x + p.x) * d) / d, Math.round((b.y + p.y) * d) / d, 1, 1);    // по целым пикселям: точки чёткие
         }
       }
+      g.globalAlpha = 1;
     }
     spRaf = SP.size ? requestAnimationFrame(spLoop) : 0;
   }

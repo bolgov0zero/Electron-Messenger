@@ -2562,10 +2562,6 @@ html.dark .announcement-title { color: var(--danger); }
 /* Серия: углы, которыми соседние пузыри стыкуются, уменьшены до 5px со стороны автора.
    У последнего пузыря серии среза нет, а реакция между сообщениями отдельного среза угла
    не требует: стык уже скруглён одинаково */
-.irc-msg:not([data-mine]):not(.irc-tail) .msg-bubble { border-bottom-left-radius: 5px; }
-.irc-msg:not([data-mine]):not(.irc-first) .msg-bubble { border-top-left-radius: 5px; }
-.irc-msg[data-mine]:not(.irc-tail) .msg-bubble { border-bottom-right-radius: 5px; }
-.irc-msg[data-mine]:not(.irc-first) .msg-bubble { border-top-right-radius: 5px; }
 
 /* аватарка стоит у последнего сообщения серии; у своих её нет вовсе */
 .irc-msg:not(.irc-tail) .irc-av { visibility: hidden; }

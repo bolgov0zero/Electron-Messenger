@@ -113,12 +113,13 @@ B.ui.chat = (function () {
     files.forEach(function (x) { h += attachment(x[0], mid, x[1]); });
     return h;
   }
-  function reactions(m) {
+  // meta: время и галочки в конце ряда (реакции внутри пузыря; время стоит справа в той же строке)
+  function reactions(m, meta) {
     if (!m.reactions || !m.reactions.length) return '';
     return '<div class="react">' + m.reactions.map(function (r) {
       var mine = String(r.user_ids || '').split(',').map(Number).indexOf(B.S.user.id) >= 0;
       return '<button class="' + (mine ? 'mine' : '') + '" data-c="react" data-id="' + m.id + '" data-e="' + esc(r.reaction) + '">' + esc(r.reaction) + ' ' + r.count + '</button>';
-    }).join('') + '</div>';
+    }).join('') + (meta || '') + '</div>';
   }
 
   // ── сообщение из частей: превью ссылки, текст и блоки кода ──
@@ -169,10 +170,12 @@ B.ui.chat = (function () {
     if (m.sender_username === '__system__' && !m.deleted) return '<div class="sys" data-mid="' + m.id + '"><span class="glass">' + esc(m.text) + ' · ' + B.fmt.time(m.sent_at) + '</span></div>';
     var groupish = chat && (chat.type === 'group' || chat.type === 'room');
     var h = '<div class="mg" data-mid="' + m.id + '">';
-    if (groupish && !mine && pos.first) h += '<div class="who-n" style="color:' + nameColor(m.sender_id, m.sender_tag) + '" data-c="who" data-id="' + m.sender_id + '" data-name="' + esc(m.sender_name || '') + '">' + esc(m.sender_name || '') + '</div>';
+    // Имя отправителя — первой строкой внутри пузыря; у удалённого сообщения и у смайла без пузыря остаётся над строкой
+    var who = (groupish && !mine && pos.first) ? '<div class="who-n" style="color:' + nameColor(m.sender_id, m.sender_tag) + '" data-c="who" data-id="' + m.sender_id + '" data-name="' + esc(m.sender_name || '') + '">' + esc(m.sender_name || '') + '</div>' : '';
+    var att = m.attachment, eo = !m.deleted && !att && !m.reply_to_id && !m.forward_data && emojiOnly(m.text);
+    if (m.deleted || eo) { h += who; who = ''; }
     h += '<div class="mrow ' + (mine ? 'out' : 'in') + (pos.first ? ' first' : '') + (pos.last ? ' last' : '') + '" data-mid="' + m.id + '">';
     if (m.deleted) return h + '<div class="bub dl"><span class="txt">Сообщение удалено</span></div></div></div>';
-    var att = m.attachment, eo = !att && !m.reply_to_id && !m.forward_data && emojiOnly(m.text);
     if (eo) return h + '<span class="big" data-big>' + esc(m.text.trim()) + '</span>' + (mine ? '<span class="swi">' + I('reply') + '</span>' : '<span class="swi">' + I('reply') + '</span>') + '</div>' + reactions(m) + '</div>';
     var bare = !m.text && !m.reply_to_id && !m.forward_data && att && (att.gif || (att.url && !att.expired && (att.enc ? /^(image|video)\//.test(att.mime || '') : B.media.listOf(att).every(B.media.isMedia))));
     var fail = !!m._optimistic && m._state === 'failed';
@@ -180,24 +183,28 @@ B.ui.chat = (function () {
     var meta = '<span class="t meta">' + (fwn > 0 ? '<span class="fwd" data-c="fwd" data-n="' + fwn + '">' + I('fwd') + fwn + '</span>' : '') + (m.edited_at ? 'изм. ' : '') + B.fmt.time(m.sent_at) +
       (mine ? (fail ? '<i class="er">!</i>' : m._optimistic ? '<span class="dv">' + I('check') + '</span>' : B.ticks(m.status)) : '') + '</span>';
     var comp = compOf(m);
+    var inRx = !!(m.reactions && m.reactions.length) && !bare;   // реакции внутри пузыря; у кадра без подписи остаются под ним
+    var metaT = inRx ? '' : meta;                                  // время тогда стоит в ряду реакций
     h += '<div class="bub' + (bare ? ' media' : '') + (bare && att.gif ? ' gifm' : '') + (comp ? ' bcomp' + (!comp.lp && comp.ps.length === 1 ? ' conly' : '') : '') + (fail ? ' fail' : '') + '"' + (fail ? ' data-c="retry" data-cid="' + m._cid + '"' : '') + '>';
+    h += who;
     var qStart = h.length;
     if (m.reply_to_id) {
       h += '<div class="quote"' + (m.reply_deleted ? '' : ' data-c="jump" data-id="' + m.reply_to_id + '"') + '><b>' + esc(m.reply_sender_name || '') + '</b><span>' + (m.reply_deleted ? 'Сообщение удалено' : esc(Fmt.noCode(m.reply_text || ''))) + '</span></div>';
     }
     var fd = m.forward_data;
-    if (fd) h += '<div class="quote"><b>Переслано от ' + esc(fd.name || '') + '</b>' + (fd.text ? '<span>' + esc(fd.text) + '</span>' : '') + '</div>';
+    if (fd) h += '<div class="quote fwq"><b>Переслано от <em>' + esc(fd.name || '') + '</em></b>' + (fd.text ? '<span>' + esc(fd.text) + '</span>' : '') + '</div>';
     if (comp) { var qs = h.slice(qStart); h = h.slice(0, qStart) + (comp.lp ? Fmt.previewCard(comp.lp, B.http() + '://' + B.S.server) : '') + (qs ? '<div class="cpad">' + qs + '</div>' : ''); }
     if (fd && fd.attachment) h += attachments({ attachment: fd.attachment, id: 0 });
     var voice = !!(att && att.voice && att.url && !att.expired && !m.text && !comp);
-    h += voice ? Voice.html(att, B.http() + '://' + B.S.server + att.url, { own: mine, small: true, bars: 30, id: m.id > 0 ? m.id : '', unread: !mine, meta: meta }) : attachments(m);
-    if (comp) h += compParts(comp.ps, chat, meta);
-    else if (m._skel) h += '<div class="txt">' + m._skel + meta + '</div>';
-    else if (m.text) h += '<div class="txt">' + (m.sender_is_bot ? m.text : formatText(m.text, chat || {})) + (bare ? '' : meta) + '</div>';
-    else if (!bare && !voice) h += '<div class="txt" style="min-height:4px">' + meta + '</div>';
+    h += voice ? Voice.html(att, B.http() + '://' + B.S.server + att.url, { own: mine, small: true, bars: 30, id: m.id > 0 ? m.id : '', unread: !mine, meta: metaT }) : attachments(m);
+    if (comp) h += compParts(comp.ps, chat, metaT);
+    else if (m._skel) h += '<div class="txt">' + m._skel + metaT + '</div>';
+    else if (m.text) h += '<div class="txt">' + (m.sender_is_bot ? m.text : formatText(m.text, chat || {})) + (bare ? '' : metaT) + '</div>';
+    else if (!bare && !voice) h += '<div class="txt" style="min-height:4px">' + metaT + '</div>';
     h += msgActions(m);
+    if (inRx) h += reactions(m, meta);
     if (bare) h += meta;
-    h += '</div><span class="swi">' + I('reply') + '</span></div>' + reactions(m) + (fail ? '<div class="failnote" data-c="retry" data-cid="' + m._cid + '">Не отправлено · <b>Повторить</b></div>' : '') + '</div>';
+    h += '</div><span class="swi">' + I('reply') + '</span></div>' + (inRx ? '' : reactions(m)) + (fail ? '<div class="failnote" data-c="retry" data-cid="' + m._cid + '">Не отправлено · <b>Повторить</b></div>' : '') + '</div>';
     return h;
   }
 
