@@ -14,6 +14,12 @@
     '.cll .cll-it{display:flex;flex-direction:column;gap:8px;padding:10px 12px}.cll .cll-it+.cll-it{border-top:1px solid var(--gl-bd)}' +
     '.cll .cll-url{display:flex;gap:8px;align-items:center}.cll .cll-url input{flex:1}' +
     '.cll .cll-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:calc(var(--gl-fs) - 1px);color:var(--gl-mt)}.cll .cll-meta .sp{flex:1}' +
+    '.cll .cll-ask{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-radius:var(--gl-r);background:color-mix(in srgb,var(--gl-bad) 10%,transparent);border:1px solid color-mix(in srgb,var(--gl-bad) 30%,transparent);line-height:1.35}.cll .cll-ask .sp{flex:1}' +
+    '.cll .cll-ask .q{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 220px}.cll .cll-ask .q b{font-size:var(--gl-fs)}.cll .cll-ask .q small{font-size:calc(var(--gl-fs) - 1.5px);color:var(--gl-mt)}' +
+    /* в веб клиенте кнопки окон — «таблетки» со своим цветом (glass.css): перебиваем их по весу селектора */
+    '.cll button.gl-btn.cll-no,.cll button.gl-btn.cll-act,.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-no:not(.gl-ic),.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-act:not(.gl-ic){border:1px solid var(--gl-bd);background:transparent;color:var(--gl-tx)}' +
+    '.cll button.gl-btn.cll-no:hover:not(:disabled),.cll button.gl-btn.cll-act:hover:not(:disabled){background:var(--gl-hv);filter:none}' +
+    '.cll button.gl-btn.cll-yes,.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-yes:not(.gl-ic){border:1px solid var(--gl-bad);background:var(--gl-bad);color:#fff}' +
     '.cll .cll-warn{color:var(--gl-wn);font-size:calc(var(--gl-fs) - .5px);line-height:1.45;margin:0}';
   var IC_X = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
 
@@ -40,24 +46,37 @@
     $('.gl-x').onclick = close;
     var urlOf = function (l) { return String(o.base || location.origin).replace(/\/+$/, '') + '/k/' + l.token; };
 
-    async function load() {
-      var r = await o.request('GET', '/calllinks');
+    // Подтверждение прямо в строке ссылки: вопрос и две кнопки, а не «Точно?» на месте значка
+    var links = [], ask = null, askT = null;
+    var setAsk = function (v) { ask = v; clearTimeout(askT); if (v) askT = setTimeout(function () { ask = null; paint(true); }, 8000); paint(true); };
+    function paint(force) {
       var box = $('#cll-list'); if (!box) return;
-      if (!r.ok) { box.innerHTML = '<div class="gl-err">' + esc((r.data && r.data.error) || 'Не удалось загрузить список') + '</div>'; return; }
-      var links = r.data.links || [];
-      $('#cll-warn').innerHTML = (r.data.warnings || []).map(function (w) { return WARN[w] ? '<p class="cll-warn">' + esc(WARN[w]) + '</p>' : ''; }).join('');
-      // Не перерисовываем, пока человек выделяет ссылку или печатает: список обновляется только если что-то изменилось
-      var sig = JSON.stringify(links.map(function (l) { return [l.id, l.live, l.people, l.waiting, l.expires_at]; }));
-      if (box.dataset.sig === sig && box.children.length) return;
+      // Не перерисовываем, пока ничего не изменилось: иначе сбивается выделение ссылки
+      var sig = JSON.stringify([links.map(function (l) { return [l.id, l.live, l.people, l.waiting, l.expires_at]; }), ask]);
+      if (!force && box.dataset.sig === sig && box.children.length) return;
       box.dataset.sig = sig;
       box.innerHTML = links.length ? links.map(function (l) {
         var chip = l.live ? '<span class="gl-chip ok">Идёт звонок · ' + l.people + '</span>' : '<span class="gl-chip">Звонка нет</span>';
-        return '<div class="cll-it" data-id="' + l.id + '"><div class="cll-url"><input readonly value="' + esc(urlOf(l)) + '" aria-label="Ссылка"><button class="gl-btn" data-copy="' + l.id + '">Копировать</button></div>' +
-          '<div class="cll-meta">' + chip + (l.waiting ? '<span class="gl-chip warn">Ждут входа: ' + l.waiting + '</span>' : '') + '<span>до ' + fmtAt(l.expires_at) + '</span><span class="sp"></span>' +
-          (l.live ? '<button class="gl-btn gl-ic ask" data-end="' + l.id + '" style="width:auto;padding:0 10px">Завершить звонок</button>' : '') +
-          '<button class="gl-btn gl-ic dng" data-del="' + l.id + '" title="Удалить ссылку" aria-label="Удалить ссылку">' + IC_X + '</button></div></div>';
+        var tail;
+        if (ask && ask.id === l.id) {
+          var end = ask.kind === 'end';
+          tail = '<div class="cll-ask"><div class="q"><b>' + (end ? 'Завершить звонок?' : 'Удалить ссылку?') + '</b><small>' + (end ? 'Звонок закончится у всех участников.' : 'Новые гости не войдут, идущий звонок продолжится.') + '</small></div>' +
+            '<button class="gl-btn cll-no" data-ask-no>Отмена</button><button class="gl-btn cll-yes" data-ask-yes="' + ask.kind + '" data-id="' + l.id + '">' + (end ? 'Завершить' : 'Удалить') + '</button></div>';
+        } else {
+          tail = '<div class="cll-meta">' + chip + (l.waiting ? '<span class="gl-chip warn">Ждут входа: ' + l.waiting + '</span>' : '') + '<span>до ' + fmtAt(l.expires_at) + '</span><span class="sp"></span>' +
+            (l.live ? '<button class="gl-btn cll-act" data-end="' + l.id + '">Завершить звонок</button>' : '') +
+            '<button class="gl-btn gl-ic dng" data-del="' + l.id + '" title="Удалить ссылку" aria-label="Удалить ссылку">' + IC_X + '</button></div>';
+        }
+        return '<div class="cll-it" data-id="' + l.id + '"><div class="cll-url"><input readonly value="' + esc(urlOf(l)) + '" aria-label="Ссылка"><button class="gl-btn" data-copy="' + l.id + '">Копировать</button></div>' + tail + '</div>';
       }).join('') : '<div class="gl-none">Ссылок пока нет</div>';
-      box.dataset.links = JSON.stringify(links.map(function (l) { return [l.id, urlOf(l)]; }));
+    }
+    async function load() {
+      var r = await o.request('GET', '/calllinks');
+      var box = $('#cll-list'); if (!box) return;
+      if (!r.ok) { box.innerHTML = '<div class="gl-err">' + esc((r.data && r.data.error) || 'Не удалось загрузить список') + '</div>'; box.dataset.sig = ''; return; }
+      links = r.data.links || [];
+      $('#cll-warn').innerHTML = (r.data.warnings || []).map(function (w) { return WARN[w] ? '<p class="cll-warn">' + esc(WARN[w]) + '</p>' : ''; }).join('');
+      paint();
     }
     $('#cll-make').onclick = async function () {
       var b = this; b.disabled = true; $('#cll-err').textContent = '';
@@ -69,21 +88,24 @@
     $('#cll-list').addEventListener('click', async function (e) {
       var cp = e.target.closest('[data-copy]');
       if (cp) {
-        var map = {}; try { JSON.parse($('#cll-list').dataset.links || '[]').forEach(function (x) { map[x[0]] = x[1]; }); } catch (er) {}
-        var url = map[cp.dataset.copy], inp = cp.parentNode.querySelector('input'), done = function () { cp.textContent = 'Скопировано'; setTimeout(function () { cp.textContent = 'Копировать'; }, 1800); };
+        var l = links.filter(function (x) { return String(x.id) === cp.dataset.copy; })[0]; if (!l) return;
+        var url = urlOf(l), inp = cp.parentNode.querySelector('input'), done = function () { cp.textContent = 'Скопировано'; setTimeout(function () { cp.textContent = 'Копировать'; }, 1800); };
         if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, function () { inp.select(); document.execCommand('copy'); done(); });
         else { inp.select(); document.execCommand('copy'); done(); }
         return;
       }
-      var sure = function (b, back) {
-        if (b.dataset.sure === '1') return true;
-        b.dataset.sure = '1'; var old = b.innerHTML; b.textContent = 'Точно?'; b.classList.add('ask');
-        setTimeout(function () { if (b.isConnected) { b.dataset.sure = ''; b.innerHTML = old; if (!back) b.classList.remove('ask'); } }, 3000);
-        return false;
-      };
       var en = e.target.closest('[data-end]'), dl = e.target.closest('[data-del]');
-      if (en) { if (!sure(en, true)) return; var r1 = await o.request('POST', '/calllinks/' + en.dataset.end + '/end'); if (!r1.ok) $('#cll-err').textContent = (r1.data && r1.data.error) || 'Не удалось завершить'; else $('#cll-err').textContent = ''; $('#cll-list').dataset.sig = ''; load(); }
-      if (dl) { if (!sure(dl)) return; var r2 = await o.request('DELETE', '/calllinks/' + dl.dataset.del); if (!r2.ok) $('#cll-err').textContent = (r2.data && r2.data.error) || 'Не удалось удалить'; else $('#cll-err').textContent = ''; $('#cll-list').dataset.sig = ''; load(); }
+      if (en) { setAsk({ id: Number(en.dataset.end), kind: 'end' }); return; }
+      if (dl) { setAsk({ id: Number(dl.dataset.del), kind: 'del' }); return; }
+      if (e.target.closest('[data-ask-no]')) { setAsk(null); return; }
+      var yes = e.target.closest('[data-ask-yes]');
+      if (yes) {
+        yes.disabled = true;
+        var id = yes.dataset.id, kind = yes.dataset.askYes;
+        var r = kind === 'end' ? await o.request('POST', '/calllinks/' + id + '/end') : await o.request('DELETE', '/calllinks/' + id);
+        $('#cll-err').textContent = r.ok ? '' : ((r.data && r.data.error) || (kind === 'end' ? 'Не удалось завершить' : 'Не удалось удалить'));
+        setAsk(null); load();
+      }
     });
     timer = setInterval(function () { if (!bg.isConnected) { clearInterval(timer); return; } load(); }, 4000);
     load();
