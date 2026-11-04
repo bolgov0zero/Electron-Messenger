@@ -86,6 +86,14 @@
     '.cl-win.mob .cl-grid{inset:calc(env(safe-area-inset-top,0px) + 76px) 8px calc(env(safe-area-inset-bottom,0px) + 100px) 8px;gap:8px;grid-template-columns:repeat(2,1fr)}.cl-win.mob .cl-grid.n1{grid-template-columns:1fr}' +
     '.cl-tile{position:relative;min-height:0;min-width:0;border-radius:22px;overflow:hidden;background:#0d1217;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}.cl-tile video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.cl-tile video.mirror{transform:scaleX(-1)}' +
     '.cl-tile.sp{box-shadow:0 0 0 3px var(--accent),0 0 28px rgba(var(--accent-rgb,31,168,140),.55)}.cl-tile.self .cl-chip{background:rgba(var(--accent-rgb,31,168,140),.55)}.cl-tile .cl-chip{font-size:12px;height:26px;padding:0 10px 0 6px}.cl-tile .cl-chip:not(:has(.cl-mb2)){padding-left:10px}' +
+    '.cl-grid.pres,.cl-win.mob .cl-grid.pres{display:flex;flex-direction:column;gap:8px}.cl-strip{flex:none;display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-height:216px;overflow-y:auto;scrollbar-width:none}.cl-strip::-webkit-scrollbar{display:none}' +
+    '.cl-strip .cl-tile{flex:none;width:168px;height:104px;border-radius:14px}.cl-win.mob .cl-strip{max-height:136px;gap:6px}.cl-win.mob .cl-strip .cl-tile{width:calc((100% - 18px)/4);min-width:70px;height:62px;border-radius:12px}' +
+    '.cl-strip .cl-tile .cl-ph .av,.cl-strip .cl-tile .cl-ph .cl-av{width:40px!important;font-size:14px!important}.cl-win.mob .cl-strip .cl-tile .cl-ph .av,.cl-win.mob .cl-strip .cl-tile .cl-ph .cl-av{width:30px!important;font-size:11px!important}' +
+    '.cl-strip .cl-tile .cl-chip{left:6px!important;bottom:6px!important;height:20px;font-size:11px;padding:0 8px!important;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis}.cl-win.mob .cl-strip .cl-tile .cl-chip{display:none!important}' +
+    '.cl-tile.pick{cursor:pointer}.cl-tile.pick:hover{box-shadow:0 0 0 2px var(--accent)}' +
+    '.cl-pmain{position:relative;flex:1;min-height:0;border-radius:22px;overflow:hidden;background:#000;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}.cl-pmain .cl-tile{position:absolute;inset:0;border-radius:0;box-shadow:none}' +
+    '.cl-pself{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#fff;background:radial-gradient(90% 80% at 50% 30%,hsl(var(--h,200) 22% 30%),hsl(var(--h,200) 24% 16%))}.cl-pself .pi{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:30px;background:rgba(var(--accent-rgb,31,168,140),.85)}.cl-pself b{font-size:16px}' +
+    '.cl-pself button{height:38px;padding:0 20px;border:0;border-radius:999px;cursor:pointer;font:inherit;font-size:13px;font-weight:700;color:#fff;background:linear-gradient(140deg,#ee6060,#c42f2f);box-shadow:0 6px 18px rgba(196,47,47,.4)}' +
     '.cl-mb2{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:#e04848;font-size:11px}.cl-tile .cl-ph .av,.cl-tile .cl-ph .cl-av{width:min(40%,110px)!important;height:auto!important;aspect-ratio:1;font-size:min(8vmin,34px)!important}' +
     '.cl-join{width:auto!important;padding:0 14px!important;gap:6px;border-radius:999px!important;color:#fff!important;background:linear-gradient(140deg,#3fd573,#1f9f4c)!important;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center}.cl-join span{white-space:nowrap}' +
     '#cl-pick{position:fixed;inset:0;z-index:100020;display:flex;align-items:center;justify-content:center;background:var(--scrim,rgba(0,0,0,.45));-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}' +
@@ -292,35 +300,63 @@
     return tvids[id];
   }
   var idOf = function (identity) { return +String(identity || '').replace(/^\D+/, '') || 0; };
+  // Показ экрана: кто показывает (в порядке появления) и какой из экранов сейчас главный
+  var scrOrder = [], scrPick = null;
+  function screensList() {
+    var out = [], c = st.call;
+    if (c && c.screen) out.push({ id: 'me', self: true, name: 'Вы' });
+    if (room && LK) room.remoteParticipants.forEach(function (p) { var pub = p.getTrackPublication(LK.Track.Source.ScreenShare); if (pub && pub.track) out.push({ id: p.identity, pub: pub, name: p.name || 'Участник' }); });
+    if (out.some(function (x) { return scrOrder.indexOf(x.id) < 0; })) scrPick = null;   // новый показ становится главным
+    scrOrder = scrOrder.filter(function (id) { return out.some(function (x) { return x.id === id; }); });
+    out.forEach(function (x) { if (scrOrder.indexOf(x.id) < 0) scrOrder.push(x.id); });
+    if (scrPick && !out.some(function (x) { return x.id === scrPick; })) scrPick = null;
+    return out;
+  }
+  var CHIP = '<div class="cl-chip cl-vg" style="display:flex;left:10px;top:auto;bottom:10px">';
+  function personTile(p) {
+    var T = LK.Track, self = p === room.localParticipant, cam = p.getTrackPublication(T.Source.Camera), mic = p.getTrackPublication(T.Source.Microphone);
+    var camOn = !!cam && !cam.isMuted && !!cam.track, micOn = !!mic && !mic.isMuted, uid = idOf(p.identity), name = self ? 'Вы' : (p.name || 'Участник');
+    if (st.call && (st.call.fedGroup || st.call.mix || st.call.fed)) uid = 0;   // номера людей чужого сервера у нас означают других людей: аватарки и фото только по имени
+    var t = document.createElement('div'); t.className = 'cl-tile' + (speaking[p.identity] ? ' sp' : '') + (self ? ' self' : ''); t.dataset.id = p.identity; t.style.setProperty('--h', hue(uid));
+    t.innerHTML = '<div class="cl-ph" ' + (camOn ? 'hidden' : '') + '>' + H.avatar(uid, name, 120) + '</div>' + CHIP + (micOn ? '' : '<span class="cl-mb2">' + svg('micOff') + '</span>') + E(name) + '</div>';
+    var v = self ? lv : tv(p.identity); v.style.display = camOn ? '' : 'none'; v.classList.toggle('mirror', self);
+    if (camOn) { try { cam.track.attach(v); } catch (e) {} }
+    t.insertBefore(v, t.firstChild);
+    return t;
+  }
+  function screenTile(x, small) {
+    var t = document.createElement('div'); t.className = 'cl-tile scr'; t.dataset.id = x.id + '#s';
+    var sv = tv(x.id + '#s'); sv.style.display = ''; try { x.pub.track.attach(sv); } catch (e) {}
+    t.innerHTML = CHIP + E(x.name) + ' · экран</div>'; t.insertBefore(sv, t.firstChild);
+    if (small) { t.classList.add('pick'); t.dataset.cl = 'scrpick'; t.dataset.sid = x.id; }
+    return t;
+  }
   function fillGrid(grid) {
     if (!grid || !room || !LK) return;
-    var T = LK.Track, list = [room.localParticipant].concat(Array.from(room.remoteParticipants.values())), n = list.length;
-    list.forEach(function (p) { if (p !== room.localParticipant) { var sp = p.getTrackPublication(T.Source.ScreenShare); if (sp && sp.track) n++; } });
-    var pend = (st.call && st.call.pending) || []; n += pend.length;
-    grid.className = 'cl-grid n' + Math.min(n, 12);
-    list.forEach(function (p) {
-      var self = p === room.localParticipant, cam = p.getTrackPublication(T.Source.Camera), mic = p.getTrackPublication(T.Source.Microphone);
-      var camOn = !!cam && !cam.isMuted && !!cam.track, micOn = !!mic && !mic.isMuted, uid = idOf(p.identity), name = self ? 'Вы' : (p.name || 'Участник');
-      if (st.call && (st.call.fedGroup || st.call.mix || st.call.fed)) uid = 0;   // номера людей чужого сервера у нас означают других людей: аватарки и фото только по имени
-      var t = document.createElement('div'); t.className = 'cl-tile' + (speaking[p.identity] ? ' sp' : '') + (self ? ' self' : ''); t.dataset.id = p.identity; t.style.setProperty('--h', hue(uid));
-      t.innerHTML = '<div class="cl-ph" ' + (camOn ? 'hidden' : '') + '>' + H.avatar(uid, name, 120) + '</div><div class="cl-chip cl-vg" style="display:flex;left:10px;top:auto;bottom:10px">' + (micOn ? '' : '<span class="cl-mb2">' + svg('micOff') + '</span>') + E(name) + '</div>';
-      var v = self ? lv : tv(p.identity); v.style.display = camOn ? '' : 'none'; v.classList.toggle('mirror', self);
-      if (camOn) { try { cam.track.attach(v); } catch (e) {} }
-      t.insertBefore(v, t.firstChild);
-      grid.appendChild(t);
-      // Показ экрана участника — отдельная плитка рядом с его камерой
-      var scr = !self && p.getTrackPublication(T.Source.ScreenShare);
-      if (scr && scr.track) {
-        var st2 = document.createElement('div'); st2.className = 'cl-tile scr'; st2.dataset.id = p.identity + '#s';
-        var sv = tv(p.identity + '#s'); sv.style.display = ''; try { scr.track.attach(sv); } catch (e) {}
-        st2.innerHTML = '<div class="cl-chip cl-vg" style="display:flex;left:10px;top:auto;bottom:10px">' + E(name) + ' · экран</div>'; st2.insertBefore(sv, st2.firstChild); grid.appendChild(st2);
-      }
-    });
-    pend.forEach(function (u) {
+    var list = [room.localParticipant].concat(Array.from(room.remoteParticipants.values()));
+    var pend = (st.call && st.call.pending) || [];
+    var scrs = screensList(), want = scrPick || scrOrder[scrOrder.length - 1], main = scrs.filter(function (x) { return x.id === want; })[0];
+    function pendTile(u) {
       var t = document.createElement('div'); t.className = 'cl-tile'; var pid = st.call && (st.call.mix || st.call.fed) ? 0 : u.id; t.style.setProperty('--h', hue(pid)); t.style.opacity = '.78';
-      t.innerHTML = '<div class="cl-ph">' + H.avatar(pid, u.name, 120) + '</div><div class="cl-chip cl-vg" style="display:flex;left:10px;top:auto;bottom:10px">' + E(u.name) + ' · звоним…</div>';
-      grid.appendChild(t);
-    });
+      t.innerHTML = '<div class="cl-ph">' + H.avatar(pid, u.name, 120) + '</div>' + CHIP + E(u.name) + ' · звоним…</div>';
+      return t;
+    }
+    if (!main) {
+      grid.className = 'cl-grid n' + Math.min(list.length + pend.length, 12);
+      list.forEach(function (p) { grid.appendChild(personTile(p)); });
+      pend.forEach(function (u) { grid.appendChild(pendTile(u)); });
+      return;
+    }
+    // Режим «докладчик»: сверху полоса из уменьшенных плиток (в два ряда, если не помещаются), остальное окно — показываемый экран
+    grid.className = 'cl-grid pres';
+    var strip = document.createElement('div'); strip.className = 'cl-strip';
+    var pm = document.createElement('div'); pm.className = 'cl-pmain';
+    list.forEach(function (p) { strip.appendChild(personTile(p)); });
+    scrs.forEach(function (x) { if (x !== main && !x.self) strip.appendChild(screenTile(x, true)); });
+    pend.forEach(function (u) { strip.appendChild(pendTile(u)); });
+    if (main.self) pm.innerHTML = '<div class="cl-pself"><div class="pi">' + svg('screen') + '</div><b>Вы показываете экран</b><button data-cl="screen">Остановить показ</button></div>';
+    else pm.appendChild(screenTile(main, false));
+    grid.appendChild(strip); grid.appendChild(pm);
   }
   // Позвать ещё человека можно в разговоре двоих и в звонке, который уже стал общим; в группе чата люди входят сами, на чужом сервере не звонят
   function canAdd(c) { return !!(c && c.phase === 'live' && !c.fedGroup && (c.conf || !c.group) && H.contacts); }
@@ -387,7 +423,7 @@
       var h = hue(c.peer.id);
       win.style.setProperty('--h', h);
       var hd = '<div class="cl-hd"><button class="cl-hbtn l" data-cl="min" aria-label="Свернуть">' + svg(mob ? 'down' : 'min') + '</button><div class="c"><b>' + E(c.peer.name) + (c.group ? ' · ' + (room ? room.remoteParticipants.size + 1 : 1) : '') + '</b><small class="cl-tm">' + status() + '</small></div>' + '<span style="justify-self:end;display:flex;gap:8px">' + (mob && c.cam ? '<button class="cl-hbtn" data-cl="flip" aria-label="Сменить камеру">' + svg('flip') + '</button>' : '') + '<button class="cl-hbtn" data-cl="diag" aria-label="Состояние соединения">' + svg('activity') + '</button></span></div>';
-      if (c.group) {
+      if (c.group || screensList().length) {
         win.innerHTML = hd + '<div class="cl-stage"><div class="cl-grid" id="cl-grid"></div><div class="cl-ctrls cl-vg">' + ctrlsHtml(c) + '</div></div>';
         fillGrid($('#cl-grid', win));
       } else if (videoLayout) {
@@ -395,6 +431,7 @@
           (c.cam ? '<div class="cl-pip" id="cl-pip"></div>' : '') + '<div class="cl-ctrls cl-vg">' + ctrlsHtml(c) + '</div></div>';
         $('#cl-remote', win).insertBefore(rv, $('#cl-remote', win).firstChild); rv.style.display = c.remoteCam ? '' : 'none';
         if (c.cam) $('#cl-pip', win).appendChild(lv);
+        [rv, lv].forEach(function (v) { try { var pr = v.play(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {} });
       } else {
         // аудиоразговор на мобильном: экран с аватаркой и кнопками
         win.innerHTML = hd + '<div class="cl-full" id="cl-full-in" style="position:absolute;z-index:1;background:none;animation:none">' +
@@ -427,6 +464,7 @@
     else if (a === 'diag') diagToggle();
     else if (a === 'spk') spkToggle();
     else if (a === 'screen') setScreen(!(st.call && st.call.screen));
+    else if (a === 'scrpick') { scrPick = b.dataset.sid; render(); }
     else if (a === 'add') openPick();
     else if (a === 'pclose') closePick();
     else if (a === 'padd') addPerson(+b.dataset.id, b.dataset.nm);
@@ -596,7 +634,7 @@
   async function leave() {
     ended = true; releaseMic();
     try { if (room) await room.disconnect(); } catch (e) {}
-    room = null; tvids = {}; speaking = {};
+    room = null; tvids = {}; speaking = {}; scrOrder = []; scrPick = null;
     document.querySelectorAll('audio[data-cl]').forEach(function (a) { a.remove(); });
     waClose();
     try { if (navigator.audioSession) navigator.audioSession.type = 'auto'; } catch (e) {}

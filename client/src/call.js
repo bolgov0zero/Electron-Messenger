@@ -70,40 +70,74 @@
   // Плитки группового звонка: свой и все, кто в комнате; видео каждого — постоянный элемент, его переносим при перерисовке
   const tvids = {}; let speaking = {}, pendingList = [];
   const tvid = id => (tvids[id] = tvids[id] || Object.assign(document.createElement('video'), { autoplay: true, playsInline: true }));
+  // Показ экрана: кто показывает (в порядке появления) и какой из экранов сейчас главный
+  let scrOrder = [], scrPick = null;
+  function screens() {
+    const out = [];
+    if (st.screen) out.push({ id: 'me', self: true, name: 'Вы' });
+    if (room) for (const p of room.remoteParticipants.values()) { const pub = p.getTrackPublication(Track.Source.ScreenShare); if (pub?.track) out.push({ id: p.identity, pub, name: p.name || 'Участник' }); }
+    if (out.some(s => !scrOrder.includes(s.id))) scrPick = null;   // новый показ становится главным
+    scrOrder = scrOrder.filter(id => out.some(s => s.id === id)); out.forEach(s => { if (!scrOrder.includes(s.id)) scrOrder.push(s.id); });
+    if (scrPick && !out.some(s => s.id === scrPick)) scrPick = null;
+    return out;
+  }
+  const ini = n => esc(String(n).split(/\s+/).slice(0, 2).map(w => w[0] || '').join('')).toUpperCase();
+  function personTile(p) {
+    const T = Track, self = p === room.localParticipant, cam = p.getTrackPublication(T.Source.Camera), mic = p.getTrackPublication(T.Source.Microphone);
+    const camOn = !!cam && !cam.isMuted && !!cam.track, micOn = !!mic && !mic.isMuted, uid = +String(p.identity).replace(/^\D+/, '') || 0, name = self ? 'Вы' : (p.name || 'Участник');
+    const t = document.createElement('div'); t.className = 'tile' + (speaking[p.identity] ? ' sp' : '') + (self ? ' self' : ''); t.dataset.id = p.identity; t.style.setProperty('--h', (uid * 47) % 360);
+    t.innerHTML = `<div class="ph" ${camOn ? 'hidden' : ''}><div class="av">${ini(name)}</div></div><div class="nchip vg">${micOn ? '' : `<span class="mb">${svg('micOff')}</span>`}${esc(name)}</div>`;
+    const v = self ? LV : tvid(p.identity); v.style.display = camOn ? '' : 'none'; v.classList.toggle('mirror', self);
+    if (camOn) cam.track.attach(v);
+    t.insertBefore(v, t.firstChild);
+    return t;
+  }
+  function screenTile(s, small) {
+    const t = document.createElement('div'); t.className = 'tile scr'; t.dataset.id = s.id + '#s';
+    const sv = tvid(s.id + '#s'); sv.style.display = ''; s.pub.track.attach(sv);
+    t.innerHTML = `<div class="nchip vg">${esc(s.name)} · экран</div>`; t.insertBefore(sv, t.firstChild);
+    if (small) { t.classList.add('pick'); t.onclick = () => { scrPick = s.id; renderGrid(); }; }
+    return t;
+  }
+  function pendingTile(u) {
+    const t = document.createElement('div'); t.className = 'tile'; t.style.opacity = '.78'; t.style.setProperty('--h', (u.id * 47) % 360);
+    t.innerHTML = `<div class="ph"><div class="av">${ini(u.name)}</div></div><div class="nchip vg">${esc(u.name)} · звоним…</div>`;
+    return t;
+  }
   function renderGrid() {
-    if (!init.group || !room) return;
-    const T = Track, list = [room.localParticipant, ...room.remoteParticipants.values()], g = $('grid');
-    const nScr = list.filter(p => p !== room.localParticipant && p.getTrackPublication(T.Source.ScreenShare)?.track).length;
-    g.className = 'grid n' + Math.min(list.length + nScr + pendingList.length, 12);
+    if (!room) return;
+    const scrs = screens();
+    if (!init.group && !scrs.length) return;
+    const list = [room.localParticipant, ...room.remoteParticipants.values()], g = $('grid');
+    const main = scrs.find(s => s.id === (scrPick || scrOrder[scrOrder.length - 1]));
     g.textContent = '';
-    for (const p of list) {
-      const self = p === room.localParticipant, cam = p.getTrackPublication(T.Source.Camera), mic = p.getTrackPublication(T.Source.Microphone);
-      const camOn = !!cam && !cam.isMuted && !!cam.track, micOn = !!mic && !mic.isMuted, uid = +String(p.identity).replace(/^\D+/, '') || 0, name = self ? 'Вы' : (p.name || 'Участник');
-      const t = document.createElement('div'); t.className = 'tile' + (speaking[p.identity] ? ' sp' : '') + (self ? ' self' : ''); t.dataset.id = p.identity; t.style.setProperty('--h', (uid * 47) % 360);
-      t.innerHTML = `<div class="ph" ${camOn ? 'hidden' : ''}><div class="av">${esc(name.split(/\s+/).slice(0, 2).map(w => w[0] || '').join('')).toUpperCase()}</div></div><div class="nchip vg">${micOn ? '' : `<span class="mb">${svg('micOff')}</span>`}${esc(name)}</div>`;
-      const v = self ? LV : tvid(p.identity); v.style.display = camOn ? '' : 'none'; v.classList.toggle('mirror', self);
-      if (camOn) cam.track.attach(v);
-      t.insertBefore(v, t.firstChild); g.appendChild(t);
-      const scr = !self && p.getTrackPublication(T.Source.ScreenShare);
-      if (scr?.track) {
-        const t2 = document.createElement('div'); t2.className = 'tile scr'; t2.dataset.id = p.identity + '#s';
-        const sv = tvid(p.identity + '#s'); sv.style.display = ''; scr.track.attach(sv);
-        t2.innerHTML = `<div class="nchip vg">${esc(name)} · экран</div>`; t2.insertBefore(sv, t2.firstChild); g.appendChild(t2);
-      }
+    if (!main) {
+      g.className = 'grid n' + Math.min(list.length + pendingList.length, 12);
+      for (const p of list) g.appendChild(personTile(p));
+      for (const u of pendingList) g.appendChild(pendingTile(u));
+    } else {
+      // Режим «докладчик»: сверху полоса из уменьшенных плиток, остальное окно — показываемый экран
+      g.className = 'grid pres';
+      const strip = document.createElement('div'); strip.className = 'strip'; const pm = document.createElement('div'); pm.className = 'pmain';
+      for (const p of list) strip.appendChild(personTile(p));
+      for (const s of scrs) if (s !== main && !s.self) strip.appendChild(screenTile(s, true));
+      for (const u of pendingList) strip.appendChild(pendingTile(u));
+      if (main.self) {
+        pm.innerHTML = `<div class="pself"><div class="pi">${svg('screen')}</div><b>Вы показываете экран</b><button class="pstop">Остановить показ</button></div>`;
+        pm.querySelector('.pstop').onclick = () => setScreen(false);
+      } else pm.appendChild(screenTile(main, false));
+      g.append(strip, pm);
     }
-    for (const u of pendingList) {
-      const t = document.createElement('div'); t.className = 'tile'; t.style.opacity = '.78'; t.style.setProperty('--h', (u.id * 47) % 360);
-      t.innerHTML = `<div class="ph"><div class="av">${esc(String(u.name).split(/\s+/).slice(0, 2).map(w => w[0] || '').join('').toUpperCase())}</div></div><div class="nchip vg">${esc(u.name)} · звоним…</div>`;
-      g.appendChild(t);
-    }
-    $('peer').textContent = (init.peer.name || 'Группа') + ' · ' + list.length;
+    $('peer').textContent = init.group ? (init.peer.name || 'Группа') + ' · ' + list.length : (init.peer.name || 'Звонок');
   }
   function render() {
     $('b-mic').innerHTML = svg(st.mic ? 'mic' : 'micOff'); $('b-mic').classList.toggle('off', !st.mic);
     $('b-cam').innerHTML = svg(st.cam ? 'cam' : 'camOff'); $('b-cam').classList.toggle('off', !st.cam);
     $('b-scr').innerHTML = svg('screen'); $('b-scr').classList.toggle('ac', st.screen);
     $('b-add').hidden = !(init.canAdd && st.phase === 'live');
-    if (init.group) { $('remote').hidden = true; $('pip').hidden = true; $('grid').hidden = false; renderGrid(); } else {
+    if (init.group || screens().length) { $('remote').hidden = true; $('pip').hidden = true; $('grid').hidden = false; renderGrid(); } else {
+    $('grid').hidden = true; $('remote').hidden = false;
+    { const pip = $('pip'); if (LV.parentNode !== pip) { pip.insertBefore(LV, pip.firstChild); room?.localParticipant.getTrackPublication(Track.Source.Camera)?.track?.attach(LV); } }   // из сетки или докладчика своё видео возвращаем в окошко
     $('rv').style.display = st.remoteCam ? '' : 'none';
     $('rph').hidden = st.remoteCam;
     $('rmic').hidden = st.remoteMic; $('rmic').innerHTML = svg('micOff');
