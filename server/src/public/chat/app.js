@@ -115,6 +115,8 @@ function highlightMentions(escapedText) {
 
 function openExternalLink(e, el) {
   e.preventDefault();
+  const lt = callLinkToken(el.dataset.url);
+  if (lt) { joinCallLink(lt); return; }
   document.getElementById('modal-link').dataset.url = el.dataset.url;
   document.getElementById('link-modal-url').textContent = el.dataset.url;
   openModal('modal-link');
@@ -5051,6 +5053,8 @@ function bubbleBody(text, lp, edited) {
   return { lpHtml, html: out.join(''), cls: ' bubble-comp' + (lp ? ' has-lcard' : '') + (endsCode ? ' ends-code' : '') + (!lp && ps.length === 1 && ps[0].k === 'c' ? ' code-only' : ''), endsCode };
 }
 function openLinkUrl(url) {
+  const lt = callLinkToken(url);
+  if (lt) { joinCallLink(lt); return; }
   document.getElementById('modal-link').dataset.url = url;
   document.getElementById('link-modal-url').textContent = url;
   openModal('modal-link');
@@ -6758,7 +6762,7 @@ function connectWS() {
     if (data.type==='send_rejected') outboxRejected(data.chat_id);
     if (data.type==='send_rejected') showActionToast(data.reason === 'limit' ? 'Больше писать нельзя, пока собеседник не ответит или не добавит вас в контакты' : data.reason === 'you_blocked' ? 'Вы заблокировали этого человека. Разблокируйте его в настройках.' : data.reason === 'blocked' || data.reason === 'rate' ? 'Сообщение не доставлено' : data.reason === 'federation_off' ? 'Нет связи с сервером этого человека' : data.reason === 'fed_offline' ? 'Нет связи с сервером этой группы. Писать пока нельзя' : data.reason === 'gif_off' ? 'GIF сейчас недоступны' : 'Писать сюда нельзя');
     if (data.type==='user_updated') applyUserUpdate(data);
-    if (data.type==='perms') annSetAllowed(data.can_announce);
+    if (data.type==='perms') { if ('can_announce' in data) annSetAllowed(data.can_announce); if ('can_call_links' in data) clSetAllowed(data.can_call_links); }
 
     if (data.type === 'force_logout') { logout(true); }
     // Администратор восстановил чаты из копии: данные на экране устарели, берём заново

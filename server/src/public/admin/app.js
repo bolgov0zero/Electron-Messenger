@@ -2809,7 +2809,7 @@ const uaTotpBadge = u => !u.is_admin ? '' : u.totp_configured
   : u.totp_required
   ? `<span class="ua-totp-badge pending" title="2FA включена, но ещё не настроена пользователем">${UX_I.key}</span>`
   : '';
-const uaRole = u => u.is_admin ? `<span class="ua-role admin">${UX_I.shield}Администратор</span>${uaTotpBadge(u)}` : `<span class="ua-role">Пользователь</span>${u.can_announce ? '<span class="ua-totp-badge on" title="Может отправлять объявления"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>' : ''}`;
+const uaRole = u => u.is_admin ? `<span class="ua-role admin">${UX_I.shield}Администратор</span>${uaTotpBadge(u)}` : `<span class="ua-role">Пользователь</span>${u.can_announce ? '<span class="ua-totp-badge on" title="Может отправлять объявления"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>' : ''}${u.can_call_links ? '<span class="ua-totp-badge on" title="Может создавать ссылки на видеозвонок"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></span>' : ''}`;
 
 function uaRows() {
   const q = UA.q.trim().toLowerCase();
@@ -3133,7 +3133,7 @@ function uaWsPills(u) {
   return shown.map(w => `<span class="ws-pill">${esc(w.name)}</span>`).join(' ') + (rest > 0 ? ` <span class="ws-pill more" title="${esc(list.slice(2).map(w => w.name).join(', '))}">+${rest}</span>` : '');
 }
 const uaBlank = u => ({ name: u?.display_name || '', login: u?.username || '', tag: u?.tag || '', admin: !!u?.is_admin,
-  totpRequired: !!u?.totp_required, canAnnounce: !!u?.can_announce, wss: uaUserWs(u), wsOpen: false, wsErr: false,
+  totpRequired: !!u?.totp_required, canAnnounce: !!u?.can_announce, canCallLinks: !!u?.can_call_links, wss: uaUserWs(u), wsOpen: false, wsErr: false,
   password: '', show: false, pwOpen: false, generated: false, closeSessions: true, errors: {}, busy: false, more: false });
 const uaAv = (name, size) => `<span class="av" style="width:${size}px;height:${size}px;border-radius:${Math.round(size * .26)}px;font-size:${Math.round(size * .36)}px;background:${avColor(name || '?')}">${esc(initials(name))}</span>`;
 
@@ -3159,6 +3159,18 @@ function openEditUser(id) {
 
 // Право отправлять объявления из клиента: кнопка с колокольчиком у человека в шапке, окно как в этой панели.
 // Админам не нужно: у них это есть в панели.
+// Право создавать ссылки на видеозвонок для гостей: в клиенте (веб и приложение) появляется кнопка рядом с объявлением
+function uaCallLinksSection(f) {
+  return `<div class="ua-totp-box" style="margin-top:10px">
+    <div class="ua-totp-row">
+      <div><b>Ссылки на видеозвонок</b><span>Человек создаёт ссылку на видеозвонок для гостей без учётной записи и сам впускает их в звонок. Нужен свой сервер звонков, доступный из интернета (раздел «Звонки»)</span></div>
+      <label class="toggle-switch" style="gap:0">
+        <input type="checkbox" ${f.canCallLinks ? 'checked' : ''} data-on-change="uaSet" data-a-change='["canCallLinks", "__checked"]'>
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      </label>
+    </div>
+  </div>`;
+}
 function uaAnnSection(f) {
   return `<div class="ua-totp-box" style="margin-top:10px">
     <div class="ua-totp-row">
@@ -3295,13 +3307,13 @@ function uaRenderForm(focusId) {
     ${wsPick}
     ${!editing ? `<div class="fm-pw">${UX_I.key}<span>${f.generated ? 'Пароль придуман:' : 'Пароль:'}</span><code id="ua-auto-pw">${esc(f.password)}</code>
         <button type="button" class="btn btn-ghost btn-sm" data-on-click="uaCopy" title="Скопировать логин и пароль" aria-label="Скопировать логин и пароль">${UX_I.copy}</button><button type="button" class="btn btn-ghost btn-sm" data-on-click="uaGenerate">Другой</button></div>${err('password')}` : ''}`;
-  const accessSu = f.admin ? 'Администратор' + (f.totpRequired ? ' · 2FA' : '') : 'Пользователь' + (f.canAnnounce ? ' · объявления' : '');
+  const accessSu = f.admin ? 'Администратор' + (f.totpRequired ? ' · 2FA' : '') : 'Пользователь' + (f.canAnnounce ? ' · объявления' : '') + (f.canCallLinks ? ' · ссылки на звонок' : '');
   const pwSu = editing ? (f.pwOpen ? 'Будет изменён' : 'Остаётся прежним') : (f.generated ? 'Придуман автоматически' : f.password ? 'Задан вручную' : 'Не задан');
   const secs = [
     { id: 'a', t: 'Доступ', su: accessSu, body: `<div class="ua-roles" role="radiogroup" aria-label="Роль">
         <button type="button" role="radio" class="ua-role-opt" aria-checked="${!f.admin}" data-on-click="uaSet" data-a-click='["admin", false, true]'><b>Пользователь</b><span>Чаты, комнаты и файлы</span></button>
         <button type="button" role="radio" class="ua-role-opt" aria-checked="${f.admin}" data-on-click="uaSet" data-a-click='["admin", true, true]'><b>${UX_I.shield}Администратор</b><span>И управление в этой панели</span></button></div>
-      ${f.admin ? uaTotpSection(f, editing, u) : uaAnnSection(f)}` },
+      ${f.admin ? uaTotpSection(f, editing, u) : uaAnnSection(f) + uaCallLinksSection(f)}` },
     { id: 'w', t: 'Пароль', su: pwSu, body: editing && !f.pwOpen
         ? `<div class="ua-pw-closed"><div><b>Пароль</b><span>Остаётся прежним</span></div><button type="button" class="btn btn-ghost btn-sm" data-on-click="uaSet" data-a-click='["pwOpen", true, true, "ua-pass"]'>${UX_I.key}Сменить пароль</button></div>`
         : uaPasswordField(f, editing) },
@@ -3422,6 +3434,9 @@ async function uaSave() {
   }
   if ((r?.ok || r?.id) && !f.admin && f.canAnnounce !== !!u?.can_announce) {
     await api('PATCH', `/api/admin/users/${u ? u.id : r.id}/announce`, { allowed: f.canAnnounce });
+  }
+  if ((r?.ok || r?.id) && !f.admin && f.canCallLinks !== !!u?.can_call_links) {
+    await api('PATCH', `/api/admin/users/${u ? u.id : r.id}/call-links`, { allowed: f.canCallLinks });
   }
   f.busy = false;
   if (r?.ok || r?.id) {
@@ -7047,7 +7062,7 @@ function caActiveHtml() {
       : `${a.group ? `<b>группа «${esc(a.group)}»</b> · ` : ''}${a.people.map(esc).join(', ') || '—'}${a.mirror ? ' <span class="rb-meta">· только наши люди</span>' : ''}${a.waiting?.length ? ` <span class="rb-meta">· звонят: ${a.waiting.map(esc).join(', ')}</span>` : ''}`;
     return `<div class="rb-row" style="flex:none;min-height:48px"><div style="display:flex;align-items:center;gap:14px;padding:10px 14px;flex-wrap:wrap">
       <div style="flex:1;min-width:220px;font-size:13px">${who}</div>
-      <div class="rb-meta">${KIND[a.kind] || ''} · ${a.video ? 'видео' : 'аудио'}</div>
+      <div class="rb-meta">${a.link ? 'По ссылке' : KIND[a.kind] || ''} · ${a.video ? 'видео' : 'аудио'}</div>
       <div class="rb-meta" style="font-variant-numeric:tabular-nums;min-width:90px">${a.state === 'ringing' ? 'Идёт вызов…' : 'Идёт <span data-ca-since="' + a.since + '">' + caElapsed(a.since) + '</span>'}</div>
       <button type="button" class="btn btn-ghost btn-sm" data-on-click="caEnd" data-a-click="${esc(JSON.stringify([a.id]))}">Завершить</button></div></div>`;
   }).join('');
@@ -7116,7 +7131,7 @@ function caRow(r) {
   const d = new Date(r.at * 1000), p2 = n => String(n).padStart(2, '0');
   const who = grp ? `<b>${esc(r.caller)}</b>${r.members.length ? `<span class="ca-arr">${caI.arrow}</span><span class="ca-n">${r.members.length} ${uxPlural(r.members.length, 'участник', 'участника', 'участников')}</span>` : ''}`
     : `<b>${esc(r.caller)}</b><span class="ca-arr">${caI.arrow}</span><b>${esc(r.callee)}</b>`;
-  const sub = [grp ? (r.kind === 'conf' ? 'Общий звонок' : 'Группа «' + esc(r.group || 'без названия') + '»') : 'Личный', r.video ? 'видео' : 'аудио'];
+  const sub = [r.link ? 'По ссылке для гостей' : grp ? (r.kind === 'conf' ? 'Общий звонок' : 'Группа «' + esc(r.group || 'без названия') + '»') : 'Личный', r.video ? 'видео' : 'аудио'];
   if (r.peer_server) sub.push('сервер «' + esc(r.peer_server) + '»');
   return `<div class="rb-row" data-id="${esc(String(r.id))}"><div class="pg-top ca-top" aria-expanded="${open}" data-on-click="caTog" data-a-click="${esc(JSON.stringify([r.id]))}">
     <div class="ca-ic ${res[1]}">${ic}</div>

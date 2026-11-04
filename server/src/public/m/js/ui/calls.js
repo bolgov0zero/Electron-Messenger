@@ -46,6 +46,23 @@ B.ui.calls = (function () {
   B.bus.on('ws:connected', function () { init(); Calls.load().then(rehead); });
   // Нажали на уведомление, когда приложение уже открыто в фоне
   B.onOpenCall = function (callId) { init(); B.S.pendingCall = callId || null; if (window.Calls) Calls.load().then(rehead); };
-  ['incoming', 'accepted', 'answered', 'ended', 'group', 'prefs', 'config', 'conf', 'audio'].forEach(function (t) { B.bus.on('ws:call_' + t, function (d) { if (window.Calls) Calls.onWs(d); }); });
-  return { init: init, btns: btns, start: function (cid, video) { if (window.Calls) Calls.start(cid, video); } };
+  ['incoming', 'accepted', 'answered', 'ended', 'group', 'prefs', 'config', 'conf', 'audio', 'link'].forEach(function (t) { B.bus.on('ws:call_' + t, function (d) { if (window.Calls) Calls.onWs(d); }); });
+  // Ссылка на видеозвонок этого сервера (/k/<токен>): в мобильном клиенте открывается как обычный звонок, человек входит как сотрудник
+  function linkToken(href) {
+    try { var u = new URL(href, location.href); var m = u.origin === location.origin && /^\/k\/([\w-]{16,100})\/?$/.exec(u.pathname); return m ? m[1] : null; } catch (e) { return null; }
+  }
+  async function joinLink(token) {
+    init(); if (!window.Calls) return;
+    if (Calls.state.call) { B.toast.show('Вы уже в звонке'); return; }
+    await Calls.ensureMedia(true);
+    var r = await B.api('POST', '/calllinks/join', { token: token });
+    if (!r || r.error) { B.toast.show((r && r.error) || 'Не удалось войти в звонок'); return; }
+    Calls.joinLink(r, { title: 'Видеозвонок по ссылке' });
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href]'); if (!a) return;
+    var t = linkToken(a.getAttribute('href')); if (!t) return;
+    e.preventDefault(); e.stopPropagation(); joinLink(t);
+  }, true);
+  return { joinLink: joinLink, linkToken: linkToken, init: init, btns: btns, start: function (cid, video) { if (window.Calls) Calls.start(cid, video); } };
 })();

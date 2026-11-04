@@ -239,6 +239,8 @@ tryAlter('ALTER TABLE users ADD COLUMN totp_pending_secret TEXT');
 tryAlter('ALTER TABLE users ADD COLUMN totp_required INTEGER DEFAULT 0');
 // Право отправлять объявления из клиента (включает админ в карточке пользователя)
 tryAlter('ALTER TABLE users ADD COLUMN can_announce INTEGER DEFAULT 0');
+// Право создавать ссылки на видеозвонок для гостей (включает админ сервера в карточке пользователя; у админа есть всегда)
+tryAlter('ALTER TABLE users ADD COLUMN can_call_links INTEGER DEFAULT 0');
 
 // Секретные чаты (E2E-шифрование). is_secret — отдельная сущность от обычного
 // personal-чата с тем же собеседником: они могут существовать одновременно,
@@ -768,6 +770,30 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_guest_links_chat ON guest_links(chat_id);
   CREATE INDEX IF NOT EXISTS idx_guest_links_user ON guest_links(guest_user_id);
+`);
+
+// Ссылки на видеозвонок для гостей (см. calllinks.js). Ссылка многоразовая; гость — запись без учётной записи, привязанная к устройству
+db.exec(`
+  CREATE TABLE IF NOT EXISTS call_links (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    token      TEXT NOT NULL UNIQUE,
+    room       TEXT NOT NULL,
+    created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    expires_at INTEGER NOT NULL,
+    closed_at  INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_call_links_owner ON call_links(created_by);
+  CREATE TABLE IF NOT EXISTS call_link_guests (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    link_id     INTEGER NOT NULL REFERENCES call_links(id) ON DELETE CASCADE,
+    name        TEXT NOT NULL,
+    device_hash TEXT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'wait',
+    asked_at    INTEGER NOT NULL DEFAULT (unixepoch()),
+    created_at  INTEGER NOT NULL DEFAULT (unixepoch())
+  );
+  CREATE INDEX IF NOT EXISTS idx_call_link_guests_link ON call_link_guests(link_id);
 `);
 
 // Ключи устройств: вход без пароля, когда токен не принят (см. devices.js). kind = 'device' — ключ пары «человек + устройство»,

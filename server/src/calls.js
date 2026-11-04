@@ -58,10 +58,10 @@ async function saveConfig({ enabled, url, key, secret, public: pub, certFp }) {
 }
 
 // Токен доступа LiveKit (JWT HS256). iss — API key, sub — идентификатор участника, video — права
-function signToken(cfg, { identity, name, room, admin, kill, micOnly, ttl = TOKEN_TTL }) {
+function signToken(cfg, { identity, name, room, admin, kill, micOnly, roomAdmin, ttl = TOKEN_TTL }) {
   const video = room
     ? { roomJoin: true, room, canPublish: true, canSubscribe: true, canPublishData: true, ...(micOnly ? { canPublishSources: ['microphone'] } : {}) }
-    : kill ? { roomCreate: true } : admin ? { roomList: true } : {};
+    : roomAdmin ? { roomAdmin: true, room: roomAdmin } : kill ? { roomCreate: true } : admin ? { roomList: true } : {};
   return jwt.sign({ name, video }, cfg.secret, { algorithm: 'HS256', issuer: cfg.key, subject: identity, expiresIn: ttl });
 }
 
@@ -315,6 +315,7 @@ function event(user, id, k, on) {
 }
 function onDisconnect(userId) {
   const id = busy.get(userId);
+  if (id && require('./calllinks').has(id)) { require('./calllinks').leave(userId, 'dropped').catch(() => {}); return; }
   const c = id && calls.get(id);
   if (c) finish(c, 'dropped');
   const g = id && (groupById(id) || remoteGroupById(id));
@@ -798,6 +799,7 @@ async function activeList() {
   for (const rc of remoteConfs.values()) if (rc.locals.size) out.push({ id: rc.id, kind: 'conf', state: 'active', video: rc.video, since: rc.startedAt || Date.now(), people: [...rc.locals].map(u => rc.names.get(u) || ''), mirror: true, peer_server: peerLabel(rc.peer) });
   for (const g of groupCalls.values()) out.push({ id: g.id, kind: 'group', state: 'active', video: g.video, since: g.startedAt, group: (await dal.get('SELECT name FROM chats WHERE id = ?', g.chatId))?.name || '', people: g.names ? [...g.names.values()] : await nm(g.participants) });
   for (const r of remoteGroups.values()) out.push({ id: r.id, kind: 'group', state: 'active', video: r.video, since: r.joined?.size ? Math.min(...r.joined.values()) : Date.now(), group: (await dal.get('SELECT name FROM chats WHERE id = ?', r.chatId))?.name || '', people: await nm(r.locals), mirror: true });
+  out.push(...require('./calllinks').activeRows());
   return out.sort((a, b) => a.since - b.since);
 }
 // Выключить комнату на LiveKit: всех, кто в ней, отключает сразу, даже если у кого-то клиент не отреагировал
@@ -806,6 +808,13 @@ async function killRoom(room) {
     const cfg = await getConfig(); if (!(cfg.url && cfg.key && cfg.secret && room)) return;
     await lkPost(httpBase(cfg.url) + '/twirp/livekit.RoomService/DeleteRoom', { 'Content-Type': 'application/json', Authorization: 'Bearer ' + signToken(cfg, { identity: 'server', kill: true, ttl: 60 }) }, JSON.stringify({ room }), cfg.certFp);
   } catch (e) { console.warn('[Звонки] комната не закрылась:', e.message); }
+}
+// Отключить одного участника от комнаты на LiveKit (исключение из звонка по ссылке): сразу, не дожидаясь клиента
+async function removeParticipant(room, identity) {
+  try {
+    const cfg = await getConfig(); if (!(cfg.url && cfg.key && cfg.secret && room && identity)) return;
+    await lkPost(httpBase(cfg.url) + '/twirp/livekit.RoomService/RemoveParticipant', { 'Content-Type': 'application/json', Authorization: 'Bearer ' + signToken(cfg, { identity: 'server', roomAdmin: room, ttl: 60 }) }, JSON.stringify({ room, identity }), cfg.certFp);
+  } catch (e) { console.warn('[Звонки] участник не отключён:', e.message); }
 }
 // Администратор завершает звонок. Участникам приходит причина «admin» (клиенты пишут «Звонок завершён администратором»)
 async function adminEnd(id) {
@@ -830,6 +839,7 @@ async function adminEnd(id) {
     for (const u of [...rg.locals]) { ws().sendTo(u, { type: 'call_ended', call_id: rg.id, chat_id: rg.chatId, video: rg.video, reason: 'admin', duration: 0 }); await groupLeave(u, rg.id, 'admin'); }
     return { ok: true, what: 'mirror' };
   }
+  if (await require('./calllinks').adminEnd(id)) return { ok: true, what: 'link' };
   throw new CallError('gone', 'Звонок уже завершён', 404);
 }
 
@@ -900,7 +910,7 @@ async function shutdownAll() {
 async function afterConfigChange(was) {
   const now = await active();
   if (was === now) return;
-  if (!now) await shutdownAll();
+  if (!now) { await shutdownAll(); await require('./calllinks').endAll('disabled'); }
   ws().broadcastAll({ type: 'call_config', enabled: now });
 }
 
@@ -1050,7 +1060,7 @@ async function logList({ period, kind, q, limit, offset }) {
   return {
     total: Number(sum.n) || 0,
     sum: { ok: Number(sum.ok) || 0, minutes: Math.round((Number(sum.sec) || 0) / 60), group: Number(sum.grp) || 0, video: Number(sum.vid) || 0, recorded: Number(sum.rec) || 0 },
-    rows: rows.map(r => { let m = []; try { m = JSON.parse(r.members || '[]'); } catch {} return { id: r.id, at: r.started_at, kind: r.kind, video: !!r.video, caller: r.caller || 'Удалён', callee: r.kind === 'direct' ? (r.callee || 'Удалён') : '', group: r.kind === 'direct' ? '' : (r.chat_name || ''), members: m, duration: r.duration, result: res(r), peer_server: r.peer_server || '', recorded: !!r.recorded, det: parseDet(r.detail) }; }),
+    rows: rows.map(r => { let m = []; try { m = JSON.parse(r.members || '[]'); } catch {} return { id: r.id, at: r.started_at, kind: r.kind, video: !!r.video, caller: r.caller || 'Удалён', callee: r.kind === 'direct' ? (r.callee || 'Удалён') : '', group: r.kind === 'direct' ? '' : (r.chat_name || ''), members: m, duration: r.duration, result: res(r), peer_server: r.peer_server || '', link: r.reason === 'link', recorded: !!r.recorded, det: parseDet(r.detail) }; }),
   };
 }
 
@@ -1117,4 +1127,4 @@ async function compute(period) {
   return { period, enabled: cfg.enabled, ready, show: ready || any, live, ringing, series, top, liveCalls, totals: { ...tot, minutes: Math.round(tot.minutes) }, prev: { ...prev, minutes: Math.round(prev.minutes) } };
 }
 
-module.exports = { event, peerAccess, ownOk, activeList, adminEnd, logList, callAdd, inspectCert, afterConfigChange, getPrefs, setPrefs, audioOn, setAudioOn, groupJoin, groupLeave, groupsFor, init, stats, cspSources, getConfig, handleFedReq, recvFedEvent, fedAllowed, setFedAllowed, active, publicConfig, saveConfig, normUrl, check, start, accept, decline, end, onDisconnect, currentFor, CallError };
+module.exports = { busy, note, logCall, signToken, killRoom, removeParticipant, nameOf, pushCall, GROUP_MAX, event, peerAccess, ownOk, activeList, adminEnd, logList, callAdd, inspectCert, afterConfigChange, getPrefs, setPrefs, audioOn, setAudioOn, groupJoin, groupLeave, groupsFor, init, stats, cspSources, getConfig, handleFedReq, recvFedEvent, fedAllowed, setFedAllowed, active, publicConfig, saveConfig, normUrl, check, start, accept, decline, end, onDisconnect, currentFor, CallError };

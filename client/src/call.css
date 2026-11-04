@@ -98,3 +98,13 @@ html.dark #hd small{color:var(--accent)}
 .aitem{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:14px;text-align:left;color:var(--text);cursor:pointer;font-weight:600;font-size:14px}
 .aitem:hover{background:rgba(var(--accent-rgb),.18)}.aitem .av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex:none;font-size:13px;color:#fff;background:hsl(var(--h,200) 40% 42%)}
 .aempty{padding:20px 8px;text-align:center;font-size:13px;opacity:.7}
+
+/* Звонок по ссылке: тег «гость», исключение с плитки, список ожидающих для администратора */
+.nchip .gt{margin-left:4px;padding:1px 6px;border-radius:8px;font-size:10.5px;font-weight:700;background:rgba(255,255,255,.22)}
+.tile .kick{position:absolute;z-index:4;top:8px;right:8px;width:28px;height:28px;border:0;border-radius:50%;display:none;place-items:center;cursor:pointer;color:#fff;background:rgba(0,0,0,.5)}
+.tile:hover .kick{display:grid}.tile .kick:hover{background:#e5484d}.tile .kick .i{width:15px;height:15px}
+.adm{position:absolute;z-index:8;top:10px;right:10px;width:270px;max-height:50%;overflow:auto;border-radius:18px;padding:12px;color:#fff;background:rgba(20,26,33,.82);border:1px solid rgba(255,255,255,.16);box-shadow:0 14px 36px rgba(0,0,0,.4);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);font-size:13px}
+.adm[hidden]{display:none}.adm h5{margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+.adm .r{display:flex;align-items:center;gap:6px;padding:5px 0}.adm .r b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.adm button{border:0;border-radius:11px;padding:5px 10px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:#fff;background:rgba(255,255,255,.14)}
+.adm button.ok{background:#1fa88f}.adm button.no{color:#ff7b80}.adm .all{width:100%;margin:2px 0 6px}

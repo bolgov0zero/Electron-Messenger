@@ -321,7 +321,7 @@ router.get('/users', async (req, res) => {
   const fs = require('fs');
   const path = require('path');
   const avatarDir = path.join(path.dirname(DB_PATH), 'avatar');
-  const users = await dal.all('SELECT u.id, u.username, u.display_name, u.is_admin, u.tag, u.banned, u.created_at, u.last_seen_at, u.totp_required, u.totp_secret, u.can_announce, u.workspace_id, w.name AS workspace_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE u.is_bot IS NULL OR u.is_bot = 0 ORDER BY u.created_at DESC');
+  const users = await dal.all('SELECT u.id, u.username, u.display_name, u.is_admin, u.tag, u.banned, u.created_at, u.last_seen_at, u.totp_required, u.totp_secret, u.can_announce, u.can_call_links, u.workspace_id, w.name AS workspace_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE u.is_bot IS NULL OR u.is_bot = 0 ORDER BY u.created_at DESC');
   // Устройства, с которых человек сейчас в сети: в списке это «Electron 2.15.9 · macOS»
   const devices = new Map();
   for (const c of getClients()) {
@@ -344,6 +344,7 @@ router.get('/users', async (req, res) => {
       device_count: devCounts.get(u.id) || 0,   // действующие устройства (ключи для входа без пароля), не только подключённые сейчас
       has_avatar: fs.existsSync(path.join(avatarDir, `${u.id}.jpg`)),
       can_announce: !!u.can_announce,
+      can_call_links: !!u.can_call_links,
       totp_required: !!u.totp_required,
       totp_configured: !!totp_secret, // сам секрет наружу никогда не отдаём
     };
@@ -618,6 +619,18 @@ router.patch('/users/:id/announce', async (req, res) => {
   await dal.run('UPDATE users SET can_announce = ? WHERE id = ?', allowed ? 1 : 0, userId);
   logAudit(req, 'security', allowed ? 'Включено право отправлять объявления' : 'Отключено право отправлять объявления', user.display_name);
   sendTo(userId, { type: 'perms', can_announce: allowed });
+  res.json({ ok: true });
+});
+
+// Право создавать ссылки на видеозвонок для гостей. Клиент узнаёт о смене сразу, если человек в сети
+router.patch('/users/:id/call-links', async (req, res) => {
+  const userId = Number(req.params.id);
+  const user = await dal.get('SELECT display_name FROM users WHERE id = ?', userId);
+  if (!user) return res.status(404).json({ error: 'Not found' });
+  const allowed = !!req.body.allowed;
+  await dal.run('UPDATE users SET can_call_links = ? WHERE id = ?', allowed ? 1 : 0, userId);
+  logAudit(req, 'security', allowed ? 'Включено право создавать ссылки на видеозвонок' : 'Отключено право создавать ссылки на видеозвонок', user.display_name);
+  sendTo(userId, { type: 'perms', can_call_links: allowed });
   res.json({ ok: true });
 });
 

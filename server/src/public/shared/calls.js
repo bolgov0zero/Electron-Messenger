@@ -35,6 +35,9 @@
   var ERR = { disabled: 'Звонки не включены на сервере', offline: 'Собеседник не в сети', busy: 'Собеседник занят', in_call: 'Вы уже в звонке' };
 
   var CSS = '' +
+    '.cl-adm{position:absolute;z-index:6;top:10px;right:10px;width:320px;max-width:calc(100% - 20px);max-height:50%;overflow:auto;border-radius:18px;padding:12px;color:var(--text);background:var(--gl-pop,var(--modal-bg));border:1px solid var(--gl-edge);box-shadow:0 14px 36px var(--gl-shadow);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);font-size:13px}.cl-adm h5{margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text2)}.cl-adm .r{display:flex;align-items:center;gap:6px;padding:5px 0}.cl-adm .r b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.cl-adm button{border:0;border-radius:11px;padding:5px 10px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--text);background:var(--gl-card2,rgba(127,127,127,.18))}.cl-adm button.ok{background:var(--accent);color:var(--accent-on,#fff)}.cl-adm button.no{color:#e5484d}.cl-adm .all{width:100%;margin:2px 0 6px}' +
+    '.cl-kick{position:absolute;z-index:3;top:8px;right:8px;width:28px;height:28px;border:0;border-radius:50%;display:none;place-items:center;cursor:pointer;color:#fff;background:rgba(0,0,0,.5)}.cl-tile:hover .cl-kick,.cl-tile .cl-kick:focus-visible{display:grid}@media (hover:none){.cl-kick{display:grid}}.cl-kick:hover{background:#e5484d}' +
+    '.cl-gt{margin-left:6px;padding:1px 6px;border-radius:8px;font-size:10.5px;font-weight:700;background:rgba(255,255,255,.22)}' +
     '.cl-card{position:fixed;right:20px;top:20px;width:340px;max-width:calc(100vw - 24px);z-index:100000;border-radius:26px;padding:16px;display:flex;flex-direction:column;gap:14px;color:var(--text);background:radial-gradient(120% 80% at 0% 0%,var(--gl-spec,rgba(255,255,255,.3)),transparent 55%),var(--gl-pop,var(--gl2,var(--modal-bg,#fff)));border:1px solid var(--gl-edge,rgba(255,255,255,.4));-webkit-backdrop-filter:blur(32px) saturate(190%);backdrop-filter:blur(32px) saturate(190%);box-shadow:inset 0 1px 0 var(--gl-hi,transparent),0 24px 60px var(--gl-shadow,rgba(0,0,0,.3));animation:cl-in .35s cubic-bezier(.34,1.56,.64,1) both}' +
     '.cl-card.out{animation:cl-out .2s ease-in both}@keyframes cl-in{from{opacity:0;transform:translateY(-14px) scale(.95)}to{opacity:1;transform:none}}@keyframes cl-out{to{opacity:0;transform:translateY(-8px) scale(.96)}}' +
     '.cl-top{display:flex;align-items:center;gap:14px;padding:2px 4px 0}.cl-t{min-width:0;flex:1}.cl-t b{display:block;font-size:16px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cl-t small{display:block;font-size:12.5px;color:var(--text2);margin-top:3px}' +
@@ -315,13 +318,15 @@
   var CHIP = '<div class="cl-chip cl-vg" style="display:flex;left:10px;top:auto;bottom:10px">';
   function personTile(p) {
     var T = LK.Track, self = p === room.localParticipant, cam = p.getTrackPublication(T.Source.Camera), mic = p.getTrackPublication(T.Source.Microphone);
-    var camOn = !!cam && !cam.isMuted && !!cam.track, micOn = !!mic && !mic.isMuted, uid = idOf(p.identity), name = self ? 'Вы' : (p.name || 'Участник');
+    var camOn = !!cam && !cam.isMuted && !!cam.track, micOn = !!mic && !mic.isMuted, isG = /^g\d/.test(p.identity || ''), uid = isG ? 0 : idOf(p.identity), name = self ? 'Вы' : (p.name || 'Участник');
     if (st.call && (st.call.fedGroup || st.call.mix || st.call.fed)) uid = 0;   // номера людей чужого сервера у нас означают других людей: аватарки и фото только по имени
     var t = document.createElement('div'); t.className = 'cl-tile' + (speaking[p.identity] ? ' sp' : '') + (self ? ' self' : ''); t.dataset.id = p.identity; t.style.setProperty('--h', hue(uid));
-    t.innerHTML = '<div class="cl-ph" ' + (camOn ? 'hidden' : '') + '>' + H.avatar(uid, name, 120) + '</div>' + CHIP + (micOn ? '' : '<span class="cl-mb2">' + svg('micOff') + '</span>') + E(name) + '</div>';
+    t.innerHTML = '<div class="cl-ph" ' + (camOn ? 'hidden' : '') + '>' + H.avatar(uid, name, 120) + '</div>' + CHIP + (micOn ? '' : '<span class="cl-mb2">' + svg('micOff') + '</span>') + E(name) + (isG && !self ? '<span class="cl-gt">гость</span>' : '') + '</div>';
     var v = self ? lv : tv(p.identity); v.style.display = camOn ? '' : 'none'; v.classList.toggle('mirror', self);
     if (camOn) { try { cam.track.attach(v); } catch (e) {} }
     t.insertBefore(v, t.firstChild);
+    // Администратор звонка по ссылке исключает участника прямо с плитки (ключ участника совпадает с его именем в комнате)
+    if (st.call && st.call.link && st.call.owner && !self && /^[gu]\d+$/.test(p.identity || '')) { var kb = document.createElement('button'); kb.className = 'cl-kick'; kb.dataset.cl = 'kick'; kb.dataset.key = p.identity; kb.title = 'Исключить из звонка'; kb.setAttribute('aria-label', 'Исключить из звонка'); kb.innerHTML = svg('x'); t.appendChild(kb); }
     return t;
   }
   function screenTile(x, small) {
@@ -360,6 +365,13 @@
   }
   // Позвать ещё человека можно в разговоре двоих и в звонке, который уже стал общим; в группе чата люди входят сами, на чужом сервере не звонят
   function canAdd(c) { return !!(c && c.phase === 'live' && !c.fedGroup && (c.conf || !c.group) && H.contacts); }
+  // Администратор звонка по ссылке: кто ждёт входа (список приходит событием call_link, при входе — в ответе сервера)
+  function admHtml(c) {
+    var w = c && c.link && c.owner && c.adm && c.adm.waiting || []; if (!w.length) return '';
+    return '<div class="cl-adm"><h5>Ожидают входа</h5>' + (w.length > 1 ? '<button class="ok all" data-cl="ladmit" data-id="all">Впустить всех (' + w.length + ')</button>' : '') +
+      w.map(function (g) { return '<div class="r"><b>' + E(g.name) + '</b><button class="ok" data-cl="ladmit" data-id="' + g.id + '">Впустить</button><button class="no" data-cl="lreject" data-id="' + g.id + '">Отклонить</button></div>'; }).join('') + '</div>';
+  }
+  function linkAct(path, body) { var c = st.call; if (!c || !c.link) return; H.api('POST', '/calllinks/' + c.linkId + '/' + path, body).then(function (r) { if (r && r.error) H.toast(r.error); }); }
   function canSpk() { return isIOS && canSink(); }
   function spkBtn(c) { return canSpk() ? '<button class="cl-rb ' + (c.spk === 'receiver' ? 'ac' : '') + '" data-cl="spk" aria-label="Трубка или громкая связь">' + svg('volume') + '</button>' : ''; }
   function ctrlsHtml(c) {
@@ -424,7 +436,7 @@
       win.style.setProperty('--h', h);
       var hd = '<div class="cl-hd"><button class="cl-hbtn l" data-cl="min" aria-label="Свернуть">' + svg(mob ? 'down' : 'min') + '</button><div class="c"><b>' + E(c.peer.name) + (c.group ? ' · ' + (room ? room.remoteParticipants.size + 1 : 1) : '') + '</b><small class="cl-tm">' + status() + '</small></div>' + '<span style="justify-self:end;display:flex;gap:8px">' + (mob && c.cam ? '<button class="cl-hbtn" data-cl="flip" aria-label="Сменить камеру">' + svg('flip') + '</button>' : '') + '<button class="cl-hbtn" data-cl="diag" aria-label="Состояние соединения">' + svg('activity') + '</button></span></div>';
       if (c.group || screensList().length) {
-        win.innerHTML = hd + '<div class="cl-stage"><div class="cl-grid" id="cl-grid"></div><div class="cl-ctrls cl-vg">' + ctrlsHtml(c) + '</div></div>';
+        win.innerHTML = hd + '<div class="cl-stage"><div class="cl-grid" id="cl-grid"></div>' + admHtml(c) + '<div class="cl-ctrls cl-vg">' + ctrlsHtml(c) + '</div></div>';
         fillGrid($('#cl-grid', win));
       } else if (videoLayout) {
         win.innerHTML = hd + '<div class="cl-stage"><div class="cl-remote" id="cl-remote"><div class="cl-ph" ' + (c.remoteCam ? 'hidden' : '') + '>' + H.avatar(c.peer.id, c.peer.name, 160) + '</div><div class="cl-chip cl-vg">' + E(c.peer.name) + '</div></div>' +
@@ -465,6 +477,9 @@
     else if (a === 'spk') spkToggle();
     else if (a === 'screen') setScreen(!(st.call && st.call.screen));
     else if (a === 'scrpick') { scrPick = b.dataset.sid; render(); }
+    else if (a === 'kick') { e.stopPropagation(); linkAct('kick', { key: b.dataset.key }); }
+    else if (a === 'ladmit') linkAct('admit', { guest_id: b.dataset.id === 'all' ? 'all' : +b.dataset.id });
+    else if (a === 'lreject') linkAct('reject', { guest_id: +b.dataset.id });
     else if (a === 'add') openPick();
     else if (a === 'pclose') closePick();
     else if (a === 'padd') addPerson(+b.dataset.id, b.dataset.nm);
@@ -570,7 +585,7 @@
       .on(R.ParticipantConnected, function () { liveNow(); remoteState(); })
       .on(R.ParticipantDisconnected, function () { if (!ended && st.call) { if (st.call.group) render(); else hangup(); } })
       .on(R.ActiveSpeakersChanged, function (list) { speaking = {}; list.forEach(function (p) { speaking[p.identity] = true; }); document.querySelectorAll('.cl-tile').forEach(function (t) { t.classList.toggle('sp', !!speaking[t.dataset.id]); }); })
-      .on(R.LocalTrackUnpublished, function (pub) { if (pub.source === T.Source.ScreenShare && st.call) { if (st.call.screen) H.api('POST', '/calls/' + st.call.id + '/event', { k: 'screen', on: false }); st.call.screen = false; render(); } })
+      .on(R.LocalTrackUnpublished, function (pub) { if (pub.source === T.Source.ScreenShare && st.call) { if (st.call.screen && !st.call.link) H.api('POST', '/calls/' + st.call.id + '/event', { k: 'screen', on: false }); st.call.screen = false; render(); } })
       .on(R.ConnectionQualityChanged, function (q, p) { if (p !== room.localParticipant && st.call) st.call.quality = q; })
       .on(R.Reconnecting, function () { if (st.call) { st.call.phase = 'reconnecting'; render(); } })
       .on(R.Reconnected, function () { if (st.call) { st.call.phase = room.remoteParticipants.size ? 'live' : 'ringing'; render(); } })
@@ -627,7 +642,7 @@
   // Показ своего экрана (в телефоне браузер этого не умеет)
   async function setScreen(on) {
     var c = st.call; if (!c || !room) return;
-    try { await room.localParticipant.setScreenShareEnabled(on, { audio: false }); c.screen = on; H.api('POST', '/calls/' + c.id + '/event', { k: 'screen', on: !!on }); }
+    try { await room.localParticipant.setScreenShareEnabled(on, { audio: false }); c.screen = on; if (!c.link) H.api('POST', '/calls/' + c.id + '/event', { k: 'screen', on: !!on }); }
     catch (e) { c.screen = false; if (!e || e.name !== 'NotAllowedError') H.toast('Не удалось показать экран'); }
     render();
   }
@@ -679,6 +694,17 @@
     try { await join(c, r.url, r.token, !!video); }
     catch (e) { fail(e); }
   }
+  // Звонок по ссылке: ответ сервера (r: call_id, url, token, mic_only) уже получен — страница гостя или клиент человека с учётной записью.
+  // Это групповой звонок без чата: o.guest — вход гостя, o.title — заголовок окна
+  async function joinLink(r, o) {
+    o = o || {};
+    if (st.call) return H.toast(ERR.in_call);
+    var c = st.call = { id: r.call_id, chatId: 0, link: true, linkId: r.link_id || 0, owner: !!r.owner, guest: !!o.guest, peer: { id: 0, name: o.title || 'Видеозвонок по ссылке' }, group: true, video: true, outgoing: false, phase: 'connecting', mic: true, cam: false, remoteCam: false, remoteMic: true, since: 0, adm: { waiting: r.waiting || [] } };
+    if (r.mic_only) { c.micOnly = true; c.video = false; H.toast('В звонке уже 12 человек с видео: вы подключены только со звуком'); }
+    st.min = false; render();
+    try { await join(c, r.url, r.token, !c.micOnly); }
+    catch (e) { fail(e); }
+  }
   async function accept(withVideo) {
     var inc = st.incoming; if (!inc) return;
     if (!inc.group && !(await ensureMedia(!!withVideo))) return;
@@ -696,7 +722,7 @@
   function fail(e) {
     var m = String(e && e.message || e), c = st.call;
     var t = /NotAllowed|Permission|mic|микрофон/i.test(m) ? 'Нет доступа к микрофону. Разрешите его в настройках браузера' : /wss:\/\//.test(m) ? m : 'Не удалось подключиться к серверу звонков';
-    if (c) H.api('POST', c.group ? '/calls/group/' + c.id + '/leave' : '/calls/' + c.id + '/end');
+    if (c) leaveReq(c);
     finish(t);
   }
   function decline() { var inc = st.incoming; if (!inc) return; if (!inc.group) H.api('POST', '/calls/' + inc.call_id + '/decline'); dismissIncoming(); }
@@ -707,7 +733,12 @@
     if (H.mobile) { setTimeout(fixViewport, 60); setTimeout(fixViewport, 600); }
     if (msg) H.toast(msg);
   }
-  function hangup() { var c = st.call; if (!c) return; H.api('POST', c.group ? '/calls/group/' + c.id + '/leave' : '/calls/' + c.id + '/end'); finish(); }
+  // Сообщить серверу, что выходим. Звонок по ссылке: человек с учётной записью — свой запрос, гость — запрос страницы гостя (H.linkLeave)
+  function leaveReq(c) {
+    if (c.link) return H.linkLeave ? H.linkLeave(c) : H.api('POST', '/calllinks/leave');
+    return H.api('POST', c.group ? '/calls/group/' + c.id + '/leave' : '/calls/' + c.id + '/end');
+  }
+  function hangup() { var c = st.call; if (!c) return; leaveReq(c); finish(); }
 
   // ── события сервера ──
   function onWs(d) {
@@ -743,6 +774,14 @@
       else if (d.event === 'declined') { dropPending(cc, d.user); H.toast((d.user && d.user.name || 'Человек') + ' отклонил(а) приглашение'); render(); }
       else if (d.event === 'missed') { dropPending(cc, d.user); H.toast((d.user && d.user.name || 'Человек') + ' не ответил'); render(); }
       else if (d.event === 'ended') { closePick(); finish(d.reason === 'admin' ? 'Звонок завершён администратором' : ''); }
+    } else if (d.type === 'call_link') {
+      // Звонок по ссылке: состав и ожидающие (администратору); событие waiting — гость ждёт, а администратора в звонке нет
+      var lk = st.call;
+      if (d.event === 'waiting') { if (!lk || !lk.link) H.toast('Гость «' + (d.guest && d.guest.name || '') + '» ждёт входа в звонок по ссылке'); }
+      else if (lk && lk.link && lk.linkId === d.link_id) {
+        if (d.waiting) { if (d.waiting.length > ((lk.adm && lk.adm.waiting) || []).length) tone([880, 1175], .25, .05); lk.adm = { waiting: d.waiting }; }
+        render();
+      }
     } else if (d.type === 'call_accepted') {
       if (st.call && st.call.id === d.call_id) { stopRing(); if (st.call.phase === 'ringing') st.call.phase = 'connecting'; render(); }
     } else if (d.type === 'call_answered') {
@@ -751,7 +790,7 @@
       if (st.incoming && st.incoming.call_id === d.call_id) { var n = st.incoming.from.name; dismissIncoming(); if (d.reason === 'missed' || d.reason === 'cancelled') H.toast('Пропущенный звонок: ' + n); }
       if (st.call && st.call.id === d.call_id) {
         var c = st.call, why = { declined: 'Звонок отклонён', missed: 'Нет ответа', dropped: 'Связь прервана', disabled: 'Звонки отключены на сервере' }[d.reason];
-        finish(d.reason === 'admin' ? 'Звонок завершён администратором' : c.outgoing ? why : (d.reason === 'dropped' ? why : ''));
+        finish(d.reason === 'admin' ? 'Звонок завершён администратором' : d.reason === 'kicked' ? 'Вас исключили из звонка' : c.outgoing ? why : (d.reason === 'dropped' ? why : ''));
       }
     }
   }
@@ -882,6 +921,6 @@
     if (typeof H.onConfig === 'function') H.onConfig(st);
     return st.prefs;
   }
-  window.Calls = { available: function () { return st.enabled; }, prefs: function () { return st.prefs; }, setPref: setPref, init: init, load: load, onWs: onWs, canCall: canCall, btns: btns, start: start, state: st, inCall: function (chatId) { return !!st.groups[chatId]; }, local: { get: function (k) { return k === 'wa' ? waOn() : lget(k); }, set: function (k, v) { if (k === 'wa') { try { localStorage.setItem('cl_wa', v ? '1' : '0'); } catch (e) {} } else lset(k, v); } }, isIOS: function () { return isIOS; }, devices: { select: devSelect }, media: { chip: mediaChip, refresh: mediaRefresh, ask: mediaAsk, get: function () { return { audio: media.audio, video: media.video }; }, onChange: function (f) { media.subs.push(f); } } };
+  window.Calls = { joinLink: joinLink, hangup: hangup, ensureMedia: ensureMedia, available: function () { return st.enabled; }, prefs: function () { return st.prefs; }, setPref: setPref, init: init, load: load, onWs: onWs, canCall: canCall, btns: btns, start: start, state: st, inCall: function (chatId) { return !!st.groups[chatId]; }, local: { get: function (k) { return k === 'wa' ? waOn() : lget(k); }, set: function (k, v) { if (k === 'wa') { try { localStorage.setItem('cl_wa', v ? '1' : '0'); } catch (e) {} } else lset(k, v); } }, isIOS: function () { return isIOS; }, devices: { select: devSelect }, media: { chip: mediaChip, refresh: mediaRefresh, ask: mediaAsk, get: function () { return { audio: media.audio, video: media.video }; }, onChange: function (f) { media.subs.push(f); } } };
   window.callStart = function (chatId, video) { start(Number(chatId), !!video); };
 })();

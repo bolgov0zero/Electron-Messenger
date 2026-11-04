@@ -552,7 +552,7 @@ B.ui.chat = (function () {
   function onClick(el, e) {
     if (Fmt.copyClick(e)) return;                               // «Копировать» в шапке блока кода
     var lc = e.target.closest('.lcard[data-fmt-url]');
-    if (lc) { window.open(lc.dataset.fmtUrl, '_blank', 'noopener,noreferrer'); return; }
+    if (lc) { var lt = B.ui.calls && B.ui.calls.linkToken(lc.dataset.fmtUrl); if (lt) { B.ui.calls.joinLink(lt); return; } window.open(lc.dataset.fmtUrl, '_blank', 'noopener,noreferrer'); return; }
     var t = e.target.closest('[data-c]'); if (!t) { if (!e.target.closest('.comp,.epanel')) hideKb(); return; }
     var c = t.dataset.c;
     if (c === 'lb') { if (t.dataset.mid) B.media.openMsg(+t.dataset.mid, +t.dataset.i); else B.lightbox.open(t.dataset.url, t.dataset.type); }

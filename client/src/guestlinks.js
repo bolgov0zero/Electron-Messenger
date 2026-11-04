@@ -67,9 +67,11 @@
     return '<div class="gl-sel" data-sel="' + key + '" data-value="' + list[sel][1] + '" data-list="' + (list === EXT ? 'ext' : 'ttl') + '"><button type="button" class="gl-sel-b" aria-haspopup="listbox" aria-expanded="false" aria-label="' + label + '"><span class="gl-sel-t">' + list[sel][0] + '</span>' + CHEV + '</button></div>';
   };
 
+  // Стили окна: их же берёт окно ссылок на видеозвонок (shared/calllinks.js)
+  function ensureCss() { if (!document.getElementById('gl-css')) { var st = document.createElement('style'); st.id = 'gl-css'; st.textContent = CSS; document.head.appendChild(st); } }
   function open(o) {
     if (document.querySelector('.gl-bg')) return;
-    if (!document.getElementById('gl-css')) { var st = document.createElement('style'); st.id = 'gl-css'; st.textContent = CSS; document.head.appendChild(st); }
+    ensureCss();
     var bg = document.createElement('div'); bg.className = 'gl-bg';
     bg.className += /^\/admin/.test(location.pathname) ? ' gl-adm' : /^\/m(\/|$)/.test(location.pathname) ? ' gl-m' : '';
     bg.innerHTML = '<div class="gl" role="dialog" aria-label="Гостевая ссылка"><div class="gl-h"><div class="tt"><b>Гостевая ссылка</b><small>' + esc(o.chatName || 'чат') + '</small></div><button class="gl-x" aria-label="Закрыть">✕</button></div>' +
@@ -183,5 +185,5 @@
     }, 5000);
     load();
   }
-  window.GuestLinks = { open: open };
+  window.GuestLinks = { open: open, ensureCss: ensureCss };
 })();

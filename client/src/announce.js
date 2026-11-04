@@ -29,12 +29,45 @@ function annSetAllowed(v) {
 }
 async function annSync() {
   annSetAllowed(!!S.user?.can_announce);
+  clSetAllowed(!!S.user?.can_call_links);
   const me = await api('GET', '/auth/me');
   if (me?.id) {
     if (S.user && !!S.user.is_admin !== !!me.is_admin) { S.user.is_admin = !!me.is_admin; try { saveSession(); } catch {} }
     annSetAllowed(!!me.can_announce);
+    clSetAllowed(!!me.can_call_links);
   }
 }
+
+// ── Ссылка на видеозвонок для гостей ──
+// Кнопка рядом с объявлением: администратору доступна всегда, остальным её включает админ в карточке пользователя (can_call_links)
+const clCan = () => !!(S.user?.is_admin || S.user?.can_call_links);
+function clSetAllowed(v) {
+  v = !!v;
+  if (S.user && !!S.user.can_call_links !== v) { S.user.can_call_links = v; try { saveSession(); } catch {} }
+  const b = document.getElementById('btn-calllinks');
+  if (b) b.style.display = clCan() ? '' : 'none';
+}
+function openCallLinks() {
+  if (!clCan() || typeof CallLinks === 'undefined') return;
+  headMenuClose();
+  CallLinks.open({ base: `${httpProto()}://${S.server}`, request: async (method, path, body) => {
+    try {
+      const res = await fetch(`${httpProto()}://${S.server}/api${path}`, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${S.token}` }, body: body ? JSON.stringify(body) : undefined });
+      let data = null; try { data = await res.json(); } catch {}
+      return { ok: res.ok, status: res.status, data: data || {} };
+    } catch { return { ok: false, status: 0, data: { error: 'Нет связи с сервером' } }; }
+  } });
+}
+// Ссылка на звонок этого сервера (/k/<токен>) в клиенте открывается как обычный звонок, без браузера
+function callLinkToken(url) {
+  try {
+    const u = new URL(url);
+    if (u.origin !== `${httpProto()}://${S.server}`) return null;
+    const m = /^\/k\/([\w-]{16,100})\/?$/.exec(u.pathname);
+    return m ? m[1] : null;
+  } catch { return null; }
+}
+function joinCallLink(token) { return window.Calls?.joinLink?.(token); }
 
 async function openAnnounce() {
   if (!annCan()) return;

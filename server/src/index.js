@@ -59,7 +59,7 @@ app.use(async (req, res, next) => {
   // Превью ссылок (/lp), аватарки и вложения федерации сервер хранит у себя, поэтому внешних адресов больше не нужно
   const isAdmin = /^\/admin(\/|$)/.test(req.path);
   // Скрипты админки, веб-клиента, мобильной версии и страницы гостя без встроенного кода
-  const noInlineScripts = isAdmin || /^\/(chat|g|m)(\/|$)/.test(req.path);
+  const noInlineScripts = isAdmin || /^\/(chat|g|k|m)(\/|$)/.test(req.path);
   const imgSrc = isAdmin ? "img-src 'self' data: blob:" : "img-src 'self' data: blob: https://*.klipy.com";
   const mediaSrc = isAdmin ? "media-src 'self' blob:" : "media-src 'self' data: blob: https://*.klipy.com";
   res.setHeader('X-Frame-Options', 'DENY');
@@ -71,7 +71,7 @@ app.use(async (req, res, next) => {
     "font-src 'self' data:",
     imgSrc,
     mediaSrc,
-    `connect-src 'self' blob: data: ws://${host} wss://${host} https://api.klipy.com https://api.giphy.com${/^\/(chat|m)(\/|$)/.test(req.path) ? await require('./calls').cspSources().catch(() => '') : ''}`,
+    `connect-src 'self' blob: data: ws://${host} wss://${host} https://api.klipy.com https://api.giphy.com${/^\/(chat|k|m)(\/|$)/.test(req.path) ? await require('./calls').cspSources().catch(() => '') : ''}`,
     "worker-src 'self' blob:",
     "frame-src 'self' blob:",
     "object-src 'none'",
@@ -161,6 +161,14 @@ app.get('/g/:token', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   try { res.type('html').send(guestPageHtml()); } catch { res.status(500).send('Страница недоступна'); }
 });
+// Страница гостя на видеозвонок: /k/<ссылка>. Лёгкая страница с окном звонка из shared/calls.js (чата на ней нет); ни кэша, ни индексации,
+// ссылка не уходит в Referer. Устройство гостя запоминается ключом в браузере (см. calllinks.js)
+app.use('/k', (req, res, next) => { res.setHeader('Referrer-Policy', 'no-referrer'); res.setHeader('X-Robots-Tag', 'noindex, nofollow'); next(); });
+app.use('/k', express.static(path.join(__dirname, 'public/k'), { index: false, maxAge: 0 }));
+app.get('/k/:token', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.sendFile(path.join(__dirname, 'public/k/index.html'));
+});
 app.use('/shared', express.static(path.join(__dirname, 'public/shared')));
 
 // /m — мобильный клиент (PWA для iOS), отдельный от /chat; тот же принцип
@@ -247,6 +255,9 @@ const callsRouter = require('./routes/calls');
 app.use('/api/calls', callsRouter.user);
 require('./calls').init();
 app.use('/api/admin/calls', callsRouter.admin);
+const callLinksRouter = require('./routes/calllinks');
+app.use('/api/calllinks', callLinksRouter.user);
+app.use('/api/calllink-guest', callLinksRouter.guest);
 app.use('/api/admin/modules', modulesRouter.admin);
 const spacesRouter = require('./routes/spaces');
 app.use('/api/contacts', spacesRouter.contacts);
@@ -279,6 +290,8 @@ boot.push(() => require('./federation').mount(server));
 boot.push(() => require('./announcements').startScheduler());
 // Гостевые ссылки: загрузка действующих гостей и закрытие тех, у кого срок вышел, пока сервер не работал
 boot.push(() => require('./guest').startScheduler());
+// Ссылки на видеозвонок: впущенные гости после перезапуска просят заново; уборка просроченных ссылок и ушедших гостей
+boot.push(() => require('./calllinks').startScheduler());
 // Журнал времени доставки и прочтения: раз в сутки убираются записи старше окна
 boot.push(() => require('./statusmarks').start());
 // Нагрузка сервера для живых графиков на главной админки; история переживает перезапуск

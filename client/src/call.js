@@ -14,6 +14,7 @@
     userPlus: '<path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="M19 16v6"/><path d="M22 19h-6"/>',
     phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
   };
+  ICON.x = '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>';
   const svg = n => `<svg class="i" viewBox="0 0 24 24">${ICON[n]}</svg>`;
   const init = await window.callApi.init();
   if (!init) return;
@@ -84,9 +85,11 @@
   const ini = n => esc(String(n).split(/\s+/).slice(0, 2).map(w => w[0] || '').join('')).toUpperCase();
   function personTile(p) {
     const T = Track, self = p === room.localParticipant, cam = p.getTrackPublication(T.Source.Camera), mic = p.getTrackPublication(T.Source.Microphone);
-    const camOn = !!cam && !cam.isMuted && !!cam.track, micOn = !!mic && !mic.isMuted, uid = +String(p.identity).replace(/^\D+/, '') || 0, name = self ? 'Вы' : (p.name || 'Участник');
+    const camOn = !!cam && !cam.isMuted && !!cam.track, micOn = !!mic && !mic.isMuted, isG = /^g\d/.test(p.identity), uid = isG ? 0 : (+String(p.identity).replace(/^\D+/, '') || 0), name = self ? 'Вы' : (p.name || 'Участник');
     const t = document.createElement('div'); t.className = 'tile' + (speaking[p.identity] ? ' sp' : '') + (self ? ' self' : ''); t.dataset.id = p.identity; t.style.setProperty('--h', (uid * 47) % 360);
-    t.innerHTML = `<div class="ph" ${camOn ? 'hidden' : ''}><div class="av">${ini(name)}</div></div><div class="nchip vg">${micOn ? '' : `<span class="mb">${svg('micOff')}</span>`}${esc(name)}</div>`;
+    t.innerHTML = `<div class="ph" ${camOn ? 'hidden' : ''}><div class="av">${ini(name)}</div></div><div class="nchip vg">${micOn ? '' : `<span class="mb">${svg('micOff')}</span>`}${esc(name)}${isG && !self ? '<span class="gt">гость</span>' : ''}</div>`;
+    // Администратор звонка по ссылке исключает участника с плитки (ключ участника совпадает с его именем в комнате)
+    if (init.link && init.owner && !self && /^[gu]\d+$/.test(p.identity)) { const kb = document.createElement('button'); kb.className = 'kick'; kb.title = 'Исключить из звонка'; kb.setAttribute('aria-label', 'Исключить из звонка'); kb.innerHTML = svg('x'); kb.onclick = e => { e.stopPropagation(); send({ phase: 'link_act', path: 'kick', body: { key: p.identity } }); }; t.appendChild(kb); }
     const v = self ? LV : tvid(p.identity); v.style.display = camOn ? '' : 'none'; v.classList.toggle('mirror', self);
     if (camOn) cam.track.attach(v);
     t.insertBefore(v, t.firstChild);
@@ -275,7 +278,23 @@
     send({ phase: 'ended' });
   }
 
+  // Администратор звонка по ссылке: кто ждёт входа (список присылает окно приложения, начальный — при открытии)
+  let admWait = Array.isArray(init.waiting) ? init.waiting : [];
+  function renderAdm() {
+    const box = $('adm'); if (!box) return;
+    if (!(init.link && init.owner) || !admWait.length) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    box.innerHTML = '<h5>Ожидают входа</h5>' + (admWait.length > 1 ? `<button class="ok all" data-a="all">Впустить всех (${admWait.length})</button>` : '') +
+      admWait.map(g => `<div class="r"><b>${esc(g.name)}</b><button class="ok" data-a="admit" data-id="${g.id}">Впустить</button><button class="no" data-a="reject" data-id="${g.id}">Отклонить</button></div>`).join('');
+  }
+  $('adm').onclick = e => {
+    const b = e.target.closest('button[data-a]'); if (!b) return;
+    const a = b.dataset.a;
+    send({ phase: 'link_act', path: a === 'reject' ? 'reject' : 'admit', body: { guest_id: a === 'all' ? 'all' : +b.dataset.id } });
+  };
+  renderAdm();
   window.callApi.onCmd(c => {
+    if (c.cmd === 'linkadm') { admWait = Array.isArray(c.waiting) ? c.waiting : []; renderAdm(); return; }
     if (c.cmd === 'mic') setMic(c.on !== undefined ? !!c.on : !st.mic);
     else if (c.cmd === 'cam') setCam(c.on !== undefined ? !!c.on : !st.cam);
     else if (c.cmd === 'end') end();

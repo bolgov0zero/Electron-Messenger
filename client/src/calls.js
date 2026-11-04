@@ -197,6 +197,20 @@
     st.call = { id: r.call_id, chatId, peer: { id: 0, name: name || 'Группа' }, group: true, video: !!video, outgoing: false, phase: 'connecting', mic: true, cam: !!video, since: 0 };
     dismissIncoming(); renderDock();
   }
+  // Звонок по ссылке (/k/<токен>): сотрудник входит сразу, без подтверждения. Разговор ведёт то же окно звонка, плитка гостя с тегом
+  async function joinLink(token) {
+    if (!st.enabled) return toast(ERR.disabled);
+    if (st.call) return toast(ERR.in_call);
+    const r = await api('POST', '/calllinks/join', { token });
+    if (!r || r.error) return toast(r?.error || 'Не удалось войти в звонок');
+    const name = 'Видеозвонок по ссылке', video = !r.mic_only;
+    const o = await el.callOpen({ devices: devAll(), tcp: localStorage.getItem('cl_udp') !== '1' && /^wss:/i.test(String(r.url)), url: r.url, certFp: r.cert_fp, token: r.token, video, group: true, outgoing: false, link: true, owner: !!r.owner, waiting: r.waiting || [], peer: { id: 0, name }, theme: theme() });
+    if (!o?.ok) { api('POST', '/calllinks/leave', {}); return toast(ERR.in_call); }
+    st.call = { id: r.call_id, linkId: r.link_id, link: true, owner: !!r.owner, waitN: (r.waiting || []).length, chatId: 0, peer: { id: 0, name }, group: true, video, outgoing: false, phase: 'connecting', mic: true, cam: video, since: 0 };
+    dismissIncoming(); renderDock();
+  }
+  // Выход из звонка: у звонка по ссылке свой запрос
+  const leaveReq = c => (c.link ? api('POST', '/calllinks/leave', {}) : api('POST', c.group ? `/calls/group/${c.id}/leave` : `/calls/${c.id}/end`));
   async function start(chatId, video) {
     const chat = (S.chats || []).find(c => c.id === chatId);
     if (chat?.type === 'group' || chat?.type === 'room') return joinGroup(chatId, video, chatName(chat));
@@ -237,7 +251,7 @@
   }
   function hangup() {
     const c = st.call; if (!c) return;
-    api('POST', c.group ? `/calls/group/${c.id}/leave` : `/calls/${c.id}/end`);
+    leaveReq(c);
     finish();
   }
   function toggle(what) {
@@ -257,6 +271,14 @@
       st.enabled = !!d.enabled;
       if (!st.enabled) { dismissIncoming(); if (st.call) finish('Звонки отключены на сервере'); st.groups = {}; rehead(); window.callsSettingsSync?.(); }
       else load().then(() => window.callsSettingsSync?.());
+    } else if (d.type === 'call_link') {
+      // Звонок по ссылке: ожидающие (администратору); событие waiting — гость ждёт, а администратора в звонке нет
+      const c = st.call;
+      if (d.event === 'waiting') { if (!c?.link) toast(`Гость «${d.guest?.name || ''}» ждёт входа в звонок по ссылке`); }
+      else if (c?.link && c.linkId === d.link_id && Array.isArray(d.waiting)) {
+        if (d.waiting.length > (c.waitN || 0)) tone([880, 1175], .25, .05);
+        c.waitN = d.waiting.length; el.callCmd({ cmd: 'linkadm', waiting: d.waiting });
+      }
     } else if (d.type === 'call_prefs') {
       st.prefs = d.prefs; rehead();
     } else if (d.type === 'call_audio') {
@@ -295,7 +317,7 @@
       if (st.call?.id === d.call_id) {
         const c = st.call;
         const why = { declined: 'Звонок отклонён', missed: 'Нет ответа', dropped: 'Связь прервана', disabled: 'Звонки отключены на сервере' }[d.reason];
-        finish(d.reason === 'admin' ? 'Звонок завершён администратором' : c.outgoing ? why : (d.reason === 'dropped' ? why : ''));
+        finish(d.reason === 'admin' ? 'Звонок завершён администратором' : d.reason === 'kicked' ? 'Вас исключили из звонка' : c.outgoing ? why : (d.reason === 'dropped' ? why : ''));
       }
     }
   }
@@ -304,9 +326,14 @@
     const c = st.call; if (!c || !s) return;
     // Показ экрана начался или закончился: отмечаем в журнале звонков
     if (typeof s.screen === 'boolean' && s.screen !== !!c.scr) { c.scr = s.screen; api('POST', `/calls/${c.id}/event`, { k: 'screen', on: s.screen }); }
+    // Администратор звонка по ссылке: впустить, отклонить, исключить (запросы идут от его имени)
+    if (s.phase === 'link_act') {
+      if (c.link && c.owner && ['kick', 'admit', 'reject'].includes(s.path)) api('POST', `/calllinks/${c.linkId}/${s.path}`, s.body || {}).then(r => { if (r?.error) toast(r.error); });
+      return;
+    }
     if (s.phase === 'end_request' || s.phase === 'peer_left') return hangup();
-    if (s.phase === 'closed') { api('POST', c.group ? `/calls/group/${c.id}/leave` : `/calls/${c.id}/end`); st.call = null; stopRing(); renderDock(); return; }
-    if (s.phase === 'error' || s.phase === 'dropped') { const m = s.error || 'Связь прервана'; api('POST', c.group ? `/calls/group/${c.id}/leave` : `/calls/${c.id}/end`); return finish(m); }
+    if (s.phase === 'closed') { leaveReq(c); st.call = null; stopRing(); renderDock(); return; }
+    if (s.phase === 'error' || s.phase === 'dropped') { const m = s.error || 'Связь прервана'; leaveReq(c); return finish(m); }
     if (s.phase === 'add_request') {
       const list = (S.allUsers || []).filter(u => u.id !== S.user.id && !u.is_bot && !u.banned && u.rel !== 'chat').map(u => ({ id: u.id, name: (u.display_name || u.username) + (u.federated ? ' · ' + (u.server_name || u.server_id || 'другой сервер') : '') }));
       return el.callCmd({ cmd: 'pick', list });
@@ -406,7 +433,7 @@
     rehead();
     return st.prefs;
   }
-  window.Calls = { inCall: chatId => !!st.groups[chatId], available: () => st.enabled, prefs: () => st.prefs, setPref, init, load, onWs, btnsHtml, rehead, start, local: { get: k => { try { return localStorage.getItem('cl_' + k) === '1'; } catch { return false; } }, set: (k, v) => { try { v ? localStorage.setItem('cl_' + k, '1') : localStorage.removeItem('cl_' + k); } catch {} } }, devices: { select: devSelect }, media: { chip: mediaChip, refresh: mediaRefresh, ask: mediaAsk, get: () => ({ audio: media.audio, video: media.video }), hasScreen: () => media.hasScreen, onChange: f => media.subs.push(f) } };
+  window.Calls = { joinLink, inCall: chatId => !!st.groups[chatId], available: () => st.enabled, prefs: () => st.prefs, setPref, init, load, onWs, btnsHtml, rehead, start, local: { get: k => { try { return localStorage.getItem('cl_' + k) === '1'; } catch { return false; } }, set: (k, v) => { try { v ? localStorage.setItem('cl_' + k, '1') : localStorage.removeItem('cl_' + k); } catch {} } }, devices: { select: devSelect }, media: { chip: mediaChip, refresh: mediaRefresh, ask: mediaAsk, get: () => ({ audio: media.audio, video: media.video }), hasScreen: () => media.hasScreen, onChange: f => media.subs.push(f) } };
   window.callStart = (chatId, video) => start(Number(chatId), !!video);
   window.callAccept = v => accept(!!v);
   window.callDecline = () => decline();
