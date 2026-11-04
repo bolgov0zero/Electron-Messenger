@@ -18,7 +18,7 @@ html.dark .vm-in .pl{color:#07201c}
 .vm-out .pl{background:rgba(255,255,255,.96);color:var(--gl-out-b)}
 .vm-out .pl:hover{background:#fff}
 .vm .vb{flex:1;min-width:150px}
-.vm .wv{display:flex;align-items:center;gap:2px;width:max-content;max-width:100%;height:30px;cursor:pointer;touch-action:none}
+.vm .wv{display:flex;align-items:center;gap:2px;width:max-content;max-width:100%;height:30px;cursor:pointer;touch-action:manipulation}
 .vm .wv i{display:block;flex:none;width:3px;border-radius:2px;--f:0;background:linear-gradient(90deg,currentColor calc(var(--f) * 100%),color-mix(in srgb,currentColor 38%,transparent) calc(var(--f) * 100%))}
 .vm-in .wv{color:var(--accent)}.vm-out .wv{color:#fff}
 .vm .mt{display:flex;align-items:center;gap:7px;font-size:11.5px;font-variant-numeric:tabular-nums;margin-top:1px;color:var(--text2);height:18px}
