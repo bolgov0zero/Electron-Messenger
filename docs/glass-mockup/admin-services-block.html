@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Макет: блок «Службы» на главной админки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Макет блока «Службы» (electron + postgresql). Токены и вид карточек те же, что у главной (dv-*). Данные вымышленные.
+   Четыре варианта, каждый в трёх ширинах: узкая карточка в ряду из четырёх, карточка на две колонки и телефон.
+   Раскладка внутри карточки подстраивается под её ширину (container query), а не под окно. */
+:root{
+  --f-ui:'Inter',system-ui,sans-serif;--f-mono:'JetBrains Mono',ui-monospace,monospace;
+  --bg:#f6f7f9;--surface:#fff;--surface2:#eef0f4;--border:#e3e6ec;--text:#0b1220;--muted:#586377;
+  --accent:#3a4fff;--accent-soft:rgba(58,79,255,.09);--ok:#16a06c;--warn:#d98a00;--bad:#dc3f45;
+  --ok-bg:rgba(22,160,108,.12);--warn-bg:rgba(217,138,0,.14);--bad-bg:rgba(220,63,69,.11);
+  --shadow:0 1px 2px rgba(11,18,32,.05),0 8px 24px rgba(11,18,32,.06);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0a0d14;--surface:#121722;--surface2:#1a2030;--border:#212838;--text:#e9edf5;--muted:#9aa5ba;
+  --accent:#8ea0ff;--accent-soft:rgba(142,160,255,.14);--ok:#3ddc97;--warn:#fbbf24;--bad:#f87171;
+  --ok-bg:rgba(61,220,151,.13);--warn-bg:rgba(251,191,36,.14);--bad-bg:rgba(248,113,113,.14);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.28);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0a0d14;--surface:#121722;--surface2:#1a2030;--border:#212838;--text:#e9edf5;--muted:#9aa5ba;
+  --accent:#8ea0ff;--accent-soft:rgba(142,160,255,.14);--ok:#3ddc97;--warn:#fbbf24;--bad:#f87171;
+  --ok-bg:rgba(61,220,151,.13);--warn-bg:rgba(251,191,36,.14);--bad-bg:rgba(248,113,113,.14);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.28);color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:14px/1.45 var(--f-ui);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;
+  padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ── обвязка макета ── */
+.page{max-width:1240px;margin:0 auto}
+.top{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:6px}
+.top h1{font-size:16px;font-weight:700;flex:1 1 280px}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:12px;background:var(--surface);border:1px solid var(--border);max-width:100%;overflow-x:auto}
+.seg button{height:30px;padding:0 13px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.seg button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent)}
+.lab{font-size:11.5px;font-weight:600;color:var(--muted);letter-spacing:.03em;margin:0 2px 2px}
+.ctl{display:flex;flex-direction:column;gap:4px}
+.ctls{display:flex;flex-wrap:wrap;gap:12px 20px;margin:12px 0 4px}
+.note{font-size:13px;color:var(--muted);max-width:78ch;line-height:1.6}
+.variant{margin-top:40px}
+.variant h2{font-size:15px;font-weight:700;display:flex;align-items:center;gap:10px}
+.variant h2 em{font-style:normal;display:grid;place-items:center;width:24px;height:24px;border-radius:8px;background:var(--accent);color:var(--surface);font-size:12.5px}
+.variant>p{margin-top:6px;font-size:13px;color:var(--muted);max-width:78ch;line-height:1.6}
+.variant>p b{color:var(--text);font-weight:600}
+.frames{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start;margin-top:14px}
+.frame{min-width:0}
+.frame figcaption{font-size:12px;color:var(--muted);margin:0 2px 8px}
+.w340{width:340px;max-width:100%}.w700{width:700px;max-width:100%}
+.phone{width:375px;max-width:100%;border:8px solid var(--text);border-radius:36px;background:var(--bg);padding:12px 12px 18px;display:grid;gap:12px}
+.phone .sb{display:flex;justify-content:space-between;font-size:11.5px;font-weight:600;padding:0 8px}
+.ghost{height:64px;border-radius:14px;background:var(--surface);border:1px dashed var(--border)}
+
+/* ── карточка главной ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);padding:16px;container:card/inline-size}
+.card h3{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.card h3 .pill{margin-left:auto}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:700;white-space:nowrap}
+.pill::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}.pill.warn{background:var(--warn-bg);color:var(--warn)}.pill.crit{background:var(--bad-bg);color:var(--bad)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--ok);animation:pulse 2.6s ease-in-out infinite}
+.dot.warn{background:var(--warn)}.dot.crit{background:var(--bad);animation:none}
+@keyframes pulse{50%{box-shadow:0 0 0 4px transparent;opacity:.55}}
+.sub{font-size:12px;color:var(--muted)}
+.bar{height:6px;border-radius:99px;background:var(--surface2);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:var(--accent);transition:width .4s}
+.bar.warn i{background:var(--warn)}.bar.off i{background:var(--muted);opacity:.4}
+.w{color:var(--warn)}.x{color:var(--bad)}
+.spark{display:block;width:100%;height:24px;color:var(--accent)}
+.spark.warn{color:var(--warn)}.spark.off{color:var(--muted)}
+
+/* кнопка перезапуска */
+.rst{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:34px;padding:0 13px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--bad);font-size:12.5px;font-weight:600;white-space:nowrap;transition:transform .12s,background .15s}
+.rst:hover:not(:disabled){background:var(--bad-bg)}.rst:active:not(:disabled){transform:scale(.97)}
+.rst:disabled{color:var(--muted);opacity:.55;cursor:not-allowed}
+.rst .i{font-size:14px}.rst.busy .i{animation:spin .9s linear infinite}
+.rst.sq{width:34px;padding:0}.rst.full{width:100%}
+@keyframes spin{to{transform:rotate(360deg)}}
+.touch .rst{height:44px;border-radius:12px;font-size:13.5px}.touch .rst.sq{width:44px}
+.touch .c-head{min-height:52px}
+
+/* ═══ A. Строки со шкалами ═══ */
+.a-row{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name act" "cpu mem" "meta meta";gap:10px 14px;padding:14px 0;border-top:1px solid var(--border)}
+.a-row:first-of-type{border-top:0;padding-top:2px}
+.a-name{grid-area:name;display:flex;align-items:center;flex-wrap:wrap;gap:1px 9px;min-width:0}
+.a-name b{font-size:14px;font-weight:700}
+.a-name .sub{white-space:nowrap;flex-basis:100%;padding-left:17px}
+@container card (min-width:560px){.a-name .sub{flex-basis:auto;padding-left:0}}
+.a-act{grid-area:act}
+.a-m{min-width:0;display:grid;gap:5px}
+.a-m.cpu{grid-area:cpu}.a-m.mem{grid-area:mem}
+.a-m div:first-child{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
+.a-m div:first-child b{font:600 12.5px var(--f-mono);color:var(--text)}
+.a-m div:first-child b.w{color:var(--warn)}
+.a-meta{grid-area:meta;font-size:12px;color:var(--muted)}
+@container card (min-width:560px){
+  .a-row{grid-template-columns:200px minmax(0,1fr) minmax(0,1fr) auto;grid-template-areas:"name cpu mem act" "meta cpu mem act";align-items:center;gap:4px 24px;padding:12px 0}
+}
+
+/* ═══ B. Две плитки рядом ═══ */
+.b-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.b-tile{border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0;background:var(--surface)}
+.b-tile.warn{border-color:color-mix(in srgb,var(--warn) 45%,var(--border))}.b-tile.crit{border-color:color-mix(in srgb,var(--bad) 45%,var(--border));background:var(--bad-bg)}
+.b-h{display:flex;align-items:center;gap:7px;font-size:13px;min-width:0}
+.b-h .i{font-size:15px;color:var(--muted)}.b-h b{font-weight:700;overflow:hidden;text-overflow:ellipsis}.b-h .dot{margin-left:auto}
+.b-big{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.b-big b{font:700 24px/1 var(--f-mono)}.b-big small{font-size:11.5px;color:var(--muted)}
+.b-list{display:grid;gap:5px;font-size:12px}
+.b-list div{display:flex;justify-content:space-between;gap:8px}
+.b-list span{color:var(--muted)}.b-list b{font:600 11.5px var(--f-mono);text-align:right;white-space:nowrap}
+.b-tile .rst{margin-top:auto}
+.b-cap{margin-top:10px}
+@container card (min-width:560px){.b-big b{font-size:30px}.b-tile{padding:14px}.b-grid{gap:14px}}
+
+/* ═══ C. Компактный список с раскрытием ═══ */
+.c-item{border-top:1px solid var(--border)}.c-item:first-of-type{border-top:0}
+.c-head{list-style:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto;align-items:center;gap:10px;padding:10px 0;cursor:pointer;min-height:44px}
+.c-head::-webkit-details-marker{display:none}
+.c-head b{font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis}
+.c-sp{display:none;width:64px}
+.c-v{display:grid;text-align:right;gap:1px;font:600 12.5px var(--f-mono)}
+.c-v em{font:600 10px var(--f-ui);font-style:normal;letter-spacing:.04em;color:var(--muted)}
+.c-chev{color:var(--muted);font-size:15px;transition:transform .2s}
+.c-item[open] .c-chev{transform:rotate(180deg)}
+.c-body{padding:2px 0 14px 18px;display:grid;gap:10px}
+.c-kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.c-kv div{background:var(--surface2);border-radius:10px;padding:8px 10px;display:grid;gap:2px;min-width:0}
+.c-kv span{font-size:11px;color:var(--muted)}.c-kv b{font:600 12.5px var(--f-mono);white-space:nowrap}
+.c-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+@container card (min-width:420px){.c-sp{display:block}.c-head{grid-template-columns:auto minmax(0,1fr) 64px auto auto auto;gap:14px}}
+@container card (min-width:560px){.c-head{grid-template-columns:auto 130px 90px 90px 90px minmax(0,1fr) auto;gap:16px}.c-head .pad{display:block}.c-body{padding-left:24px}}
+.c-head .pad{display:none}
+
+/* ═══ D. Цепочка: сервер, связь, база ═══ */
+.d-flow{display:grid;gap:0;grid-template-columns:minmax(0,1fr)}
+.d-node{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:12px;border:1px solid var(--border);border-radius:12px}
+.d-node.warn{border-color:color-mix(in srgb,var(--warn) 45%,var(--border))}.d-node.crit{border-color:color-mix(in srgb,var(--bad) 45%,var(--border));background:var(--bad-bg)}
+.d-ic{grid-row:1/3;width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-size:19px}
+.d-node.warn .d-ic{background:var(--warn-bg);color:var(--warn)}.d-node.crit .d-ic{background:var(--bad-bg);color:var(--bad)}
+.d-t{display:flex;align-items:center;flex-wrap:wrap;gap:2px 8px;min-width:0}.d-t b{font-size:14px;font-weight:700}
+.d-st{font-size:12px;color:var(--muted)}.d-node.warn .d-st{color:var(--warn)}.d-node.crit .d-st{color:var(--bad)}
+.d-act{grid-row:1/3;grid-column:3}
+.d-nums{grid-column:2/4;display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:4px}
+.d-nums b{font:600 12.5px var(--f-mono);color:var(--text);margin-left:4px}.d-nums b.w{color:var(--warn)}
+.d-link{display:flex;align-items:center;gap:10px;padding:0 0 0 31px;height:44px}
+.d-line{width:2px;height:100%;background:var(--accent);opacity:.45;border-radius:2px;position:relative}
+.d-link.crit .d-line{background:repeating-linear-gradient(var(--bad) 0 4px,transparent 4px 8px);opacity:.9}
+.d-link.warn .d-line{background:var(--warn);opacity:.7}
+.d-lbl{font-size:11.5px;color:var(--muted);display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:99px;background:var(--surface2)}
+.d-link.crit .d-lbl{color:var(--bad);background:var(--bad-bg)}.d-link.warn .d-lbl{color:var(--warn);background:var(--warn-bg)}
+.d-lbl .i{font-size:12px}
+@container card (min-width:560px){
+  .d-flow{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center}
+  .d-link{flex-direction:column;padding:0 14px;height:auto;gap:6px;min-width:150px}
+  .d-line{width:100%;height:2px}
+  .d-link.crit .d-line{background:repeating-linear-gradient(90deg,var(--bad) 0 4px,transparent 4px 8px)}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <h1>Блок «Службы» на главной админки · макет</h1>
+    <div class="seg" role="group" aria-label="Тема" id="theme">
+      <button type="button" data-t="auto" aria-pressed="true">Авто</button>
+      <button type="button" data-t="light" aria-pressed="false">Светлая</button>
+      <button type="button" data-t="dark" aria-pressed="false">Тёмная</button>
+    </div>
+  </div>
+  <p class="note">Что показывает блок: две службы сервера, <b>electron</b> (сам чат) и <b>postgresql</b> (база), с нагрузкой на процессор и память, числом задач, временем запуска и сбоями. У каждой есть перезапуск. Состояния ниже переключаются, чтобы увидеть, как вариант ведёт себя не только в норме. Кнопка перезапуска в макете ничего не перезапускает.</p>
+  <div class="ctls">
+    <div class="ctl"><span class="lab">СОСТОЯНИЕ</span>
+      <div class="seg" role="group" aria-label="Состояние" id="state">
+        <button type="button" data-s="ok" aria-pressed="true">Норма</button>
+        <button type="button" data-s="warn" aria-pressed="false">Нагрузка на базу</button>
+        <button type="button" data-s="crit" aria-pressed="false">База остановлена</button>
+        <button type="button" data-s="remote" aria-pressed="false">База на другом сервере</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="variant" data-v="A">
+    <h2><em>A</em>Строки со шкалами</h2>
+    <p><b>Идея:</b> каждая служба — строка, процессор и память показаны шкалами, а не только числами: нагрузку видно с первого взгляда. Перезапуск — подписанная кнопка. На широкой карточке строка вытягивается в одну линию, как в таблице.</p>
+    <div class="frames"></div>
+  </section>
+
+  <section class="variant" data-v="B">
+    <h2><em>B</em>Две плитки рядом</h2>
+    <p><b>Идея:</b> службы сравниваются глазами: у каждой крупное число процессора, под ним остальное, внизу кнопка. Самый «приборный» вид, лучше всего читается издалека.</p>
+    <div class="frames"></div>
+  </section>
+
+  <section class="variant" data-v="C">
+    <h2><em>C</em>Компактный список с раскрытием</h2>
+    <p><b>Идея:</b> в свёрнутом виде одна короткая строка на службу: точка, имя, график процессора, два числа. Подробности и перезапуск прячутся под нажатие, поэтому по ошибке службу не перезапустить, а блок занимает минимум места. Строки нажимаются.</p>
+    <div class="frames"></div>
+  </section>
+
+  <section class="variant" data-v="D">
+    <h2><em>D</em>Цепочка: сервер, связь, база</h2>
+    <p><b>Идея:</b> показывает, что службы зависят друг от друга: между ними линия-связь с числом соединений. Если база встала или недоступна, обрыв виден прямо на линии. На широкой карточке цепочка ложится горизонтально.</p>
+    <div class="frames"></div>
+  </section>
+</div>
+
+<script>
+/* Данные вымышленные. Память в МБ, память сервера для шкалы — 4 ГБ. */
+const HOST_MEM = 4096;
+const SCEN = {
+  ok: {
+    el: { st: 'ok', cpu: 12.4, mem: 186, tasks: 23, since: '03.11 09:14', fails: 0, ser: [10,12,9,14,11,13,12,16,12,11,13,12] },
+    pg: { st: 'ok', cpu: 3.1, mem: 412, tasks: 14, since: '03.11 09:13', fails: 0, conn: 18, max: 100, ser: [3,2,4,3,3,5,2,3,4,3,3,3] }
+  },
+  warn: {
+    el: { st: 'ok', cpu: 18.9, mem: 204, tasks: 31, since: '03.11 09:14', fails: 0, ser: [12,14,15,13,16,18,17,19,18,20,19,19] },
+    pg: { st: 'warn', cpu: 61.8, mem: 1433, tasks: 96, since: '03.11 09:13', fails: 0, conn: 86, max: 100, ser: [20,25,31,40,38,52,60,58,64,62,61,62] }
+  },
+  crit: {
+    el: { st: 'ok', cpu: 9.7, mem: 190, tasks: 21, since: '03.11 09:14', fails: 0, ser: [10,12,9,14,11,13,12,10,9,10,9,10] },
+    pg: { st: 'crit', off: true, cpu: null, mem: null, tasks: null, since: '—', fails: 2, conn: 0, max: 100, ser: [] }
+  },
+  remote: {
+    el: { st: 'ok', cpu: 12.4, mem: 186, tasks: 23, since: '03.11 09:14', fails: 0, ser: [10,12,9,14,11,13,12,16,12,11,13,12] },
+    pg: { st: 'ok', remote: true, cpu: null, mem: null, tasks: null, since: '—', fails: null, conn: 18, max: 100, latency: 4, ser: [] }
+  }
+};
+const S = { state: 'ok' };
+
+const P = {
+  rotate: '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
+  server: '<rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/>',
+  db: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/>',
+  chev: '<path d="m6 9 6 6 6-6"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  unlink: '<path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"/><path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"/><line x1="8" x2="8" y1="2" y2="5"/><line x1="2" x2="5" y1="8" y2="8"/><line x1="16" x2="16" y1="19" y2="22"/><line x1="19" x2="22" y1="16" y2="16"/>',
+  globe: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>'
+};
+const ic = n => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+
+const f1 = n => n.toFixed(1).replace('.', ',');
+const fmem = mb => mb == null ? '—' : mb >= 1024 ? f1(mb / 1024) + ' ГБ' : Math.round(mb) + ' МБ';
+const fcpu = v => v == null ? '—' : f1(v) + '%';
+const stText = s => s.st === 'crit' ? 'Остановлена' : s.st === 'warn' ? 'Нагрузка' : s.remote ? 'Другой сервер' : 'Работает';
+const hot = s => s.st === 'warn';
+const cpuPct = s => s.cpu == null ? 0 : Math.min(100, s.cpu);
+const memPct = s => s.mem == null ? 0 : Math.min(100, s.mem / HOST_MEM * 100);
+
+function summary(d) {
+  const sts = [d.el.st, d.pg.st];
+  if (sts.includes('crit')) return ['crit', 'Есть сбой'];
+  if (sts.includes('warn')) return ['warn', 'Нагрузка'];
+  return ['ok', 'Всё работает'];
+}
+function spark(s) {
+  if (!s.ser.length) return `<svg class="spark off" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="12" x2="60" y2="12" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 4" opacity=".5"/></svg>`;
+  const top = Math.max(20, ...s.ser) * 1.15, n = s.ser.length;
+  const pts = s.ser.map((v, i) => `${(i / (n - 1) * 60).toFixed(1)},${(22 - v / top * 20).toFixed(1)}`).join(' ');
+  return `<svg class="spark ${hot(s) ? 'warn' : ''}" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
+}
+const dot = s => `<span class="dot ${s.st === 'ok' ? '' : s.st}"></span>`;
+function rst(k, s, mode) {
+  const dis = s.remote ? ' disabled title="PostgreSQL на другом сервере: перезапуск отсюда недоступен"' : ` title="Перезапустить ${k}"`;
+  if (mode === 'sq') return `<button type="button" class="rst sq" data-rst aria-label="Перезапустить ${k}"${dis}>${ic('rotate')}</button>`;
+  return `<button type="button" class="rst ${mode || ''}" data-rst${dis}>${ic('rotate')}<span>Перезапустить</span></button>`;
+}
+const metaLine = s => s.remote ? 'Связь 4 мс · подробности на другом сервере'
+  : s.off ? `Не запущена · сбоев ${s.fails}` : `${s.tasks} задач · с ${s.since} · сбоев ${s.fails}`;
+const head = d => { const [t, x] = summary(d); return `<h3>Службы<span class="pill ${t}">${x}</span></h3>`; };
+
+/* ── A ── */
+function rowA(k, s) {
+  const bar = (v, off) => `<div class="bar ${hot(s) ? 'warn' : ''} ${off ? 'off' : ''}"><i style="width:${v}%"></i></div>`;
+  const noData = s.cpu == null;
+  return `<div class="a-row">
+    <div class="a-name">${dot(s)}<b>${k}</b><span class="sub ${s.st === 'crit' ? 'x' : ''}">${stText(s)}</span></div>
+    <div class="a-act">${rst(k, s)}</div>
+    <div class="a-m cpu"><div><span>Процессор</span><b class="${hot(s) ? 'w' : ''}">${fcpu(s.cpu)}</b></div>${bar(cpuPct(s), noData)}</div>
+    <div class="a-m mem"><div><span>Память</span><b class="${hot(s) ? 'w' : ''}">${fmem(s.mem)}</b></div>${bar(memPct(s), noData)}</div>
+    <div class="a-meta">${metaLine(s)}</div>
+  </div>`;
+}
+const renderA = d => `<div class="card">${head(d)}${rowA('electron', d.el)}${rowA('postgresql', d.pg)}</div>`;
+
+/* ── B ── */
+function tileB(k, s, icon) {
+  return `<div class="b-tile ${s.st}">
+    <div class="b-h">${ic(icon)}<b>${k}</b>${dot(s)}</div>
+    <div class="b-big"><b class="${hot(s) ? 'w' : s.st === 'crit' ? 'x' : ''}">${s.off ? 'стоп' : s.remote ? '—' : f1(s.cpu)}</b><small>${s.cpu == null ? stText(s).toLowerCase() : '% процессора'}</small></div>
+    ${spark(s)}
+    <div class="b-list">
+      <div><span>Память</span><b class="${hot(s) ? 'w' : ''}">${fmem(s.mem)}</b></div>
+      <div><span>Задач</span><b>${s.tasks ?? '—'}</b></div>
+      <div><span>Старт</span><b>${s.since}</b></div>
+      <div><span>Сбоев</span><b>${s.fails ?? '—'}</b></div>
+    </div>
+    ${rst(k, s, 'full')}
+  </div>`;
+}
+const renderB = d => `<div class="card">${head(d)}<div class="b-grid">${tileB('electron', d.el, 'server')}${tileB('postgresql', d.pg, 'db')}</div>${d.pg.remote ? '<div class="sub b-cap">PostgreSQL на другом сервере · связь 4 мс</div>' : ''}</div>`;
+
+/* ── C ── */
+function itemC(k, s, open) {
+  return `<details class="c-item"${open ? ' open' : ''}>
+    <summary class="c-head">${dot(s)}<b>${k}</b><span class="c-sp">${spark(s)}</span>
+      <span class="c-v"><em>ПРОЦ.</em><span class="${hot(s) ? 'w' : ''}">${fcpu(s.cpu)}</span></span>
+      <span class="c-v"><em>ПАМЯТЬ</em><span class="${hot(s) ? 'w' : ''}">${fmem(s.mem)}</span></span>
+      <span class="c-chev">${ic('chev')}</span></summary>
+    <div class="c-body">
+      <div class="c-kv"><div><span>Задач</span><b>${s.tasks ?? '—'}</b></div><div><span>Запущена</span><b>${s.since}</b></div><div><span>Сбоев</span><b>${s.fails ?? '—'}</b></div></div>
+      <div class="c-foot">${rst(k, s)}<span class="sub ${s.st === 'crit' ? 'x' : ''}">${s.remote ? 'Связь 4 мс' : stText(s)}</span></div>
+    </div>
+  </details>`;
+}
+const renderC = d => `<div class="card">${head(d)}${itemC('electron', d.el, true)}${itemC('postgresql', d.pg, d.pg.st !== 'ok' || d.pg.remote)}</div>`;
+
+/* ── D ── */
+function nodeD(k, s, icon) {
+  return `<div class="d-node ${s.st}">
+    <div class="d-ic">${ic(icon)}</div>
+    <div class="d-t"><b>${k}</b>${dot(s)}<span class="d-st">${stText(s)}</span></div>
+    <div class="d-act">${rst(k, s, 'sq')}</div>
+    <div class="d-nums"><span>Проц.<b class="${hot(s) ? 'w' : ''}">${fcpu(s.cpu)}</b></span><span>Память<b class="${hot(s) ? 'w' : ''}">${fmem(s.mem)}</b></span>${s.remote ? '' : `<span>Задач<b>${s.tasks ?? '—'}</b></span>`}</div>
+  </div>`;
+}
+function renderD(d) {
+  const p = d.pg;
+  const lk = p.st === 'crit' ? ['crit', 'unlink', 'нет связи с базой']
+    : p.remote ? ['', 'globe', `по сети · ${p.latency} мс`]
+    : [p.st === 'warn' ? 'warn' : '', 'link', `${p.conn} из ${p.max} соединений`];
+  return `<div class="card">${head(d)}<div class="d-flow">${nodeD('electron', d.el, 'server')}<div class="d-link ${lk[0]}"><span class="d-line"></span><span class="d-lbl">${ic(lk[1])}${lk[2]}</span></div>${nodeD('postgresql', p, 'db')}</div>
+    <div class="sub" style="margin-top:12px">electron: с ${d.el.since}, сбоев ${d.el.fails}${p.remote ? '' : ` · postgresql: ${p.off ? 'не запущена' : 'с ' + p.since}, сбоев ${p.fails}`}</div></div>`;
+}
+
+const R = { A: renderA, B: renderB, C: renderC, D: renderD };
+const FRAMES = [
+  ['w340', 'Десктоп: карточка в ряду из четырёх (≈340 px)', false],
+  ['w700', 'Десктоп: карточка на две колонки (≈700 px)', false],
+  ['phone', 'Телефон: главная в одну колонку (375 px)', true]
+];
+function draw() {
+  const d = SCEN[S.state];
+  document.querySelectorAll('.variant').forEach(sec => {
+    const v = sec.dataset.v, html = R[v](d);
+    sec.querySelector('.frames').innerHTML = FRAMES.map(([cls, cap, ph]) => `<figure class="frame ${cls === 'phone' ? '' : cls}">
+      <figcaption>${cap}</figcaption>
+      ${ph ? `<div class="phone touch"><div class="sb"><span>9:41</span><span>Админка</span></div><div class="ghost"></div>${html}<div class="ghost"></div></div>` : html}
+    </figure>`).join('');
+  });
+}
+draw();
+
+document.getElementById('state').addEventListener('click', e => {
+  const b = e.target.closest('button[data-s]'); if (!b) return;
+  S.state = b.dataset.s;
+  document.querySelectorAll('#state button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  draw();
+});
+document.getElementById('theme').addEventListener('click', e => {
+  const b = e.target.closest('button[data-t]'); if (!b) return;
+  const t = b.dataset.t;
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t;
+  document.querySelectorAll('#theme button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-rst]'); if (!b || b.disabled) return;
+  e.preventDefault();
+  b.classList.add('busy'); b.disabled = true;
+  setTimeout(() => { b.classList.remove('busy'); b.disabled = false; }, 1600);
+});
+</script>
+</body>
+</html>

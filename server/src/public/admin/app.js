@@ -1013,6 +1013,16 @@ function pgTick(id, text) {
   el.textContent = text; el.dataset.set = '1';
   if (had) { el.classList.remove('dv-tick'); void el.offsetWidth; el.classList.add('dv-tick'); }
 }
+// Строка службы: имя и состояние, кнопка перезапуска, шкалы процессора и памяти, строка подробностей
+function svcRowHtml(k, name, act) {
+  const m = (id, label) => `<div class="sv-m ${id}"><div><span>${label}</span><b class="hm-mono" id="hm-m-${k}-${id}">—</b></div><div class="sv-bar" id="hm-m-${k}-${id}-bar"><i></i></div></div>`;
+  return `<div class="sv-row">
+            <div class="sv-name"><span class="dv-dot" id="hm-m-${k}-dot"></span><b>${name}</b><span class="dv-sub" id="hm-m-${k}-st">—</span></div>
+            <button type="button" class="sv-btn" id="hm-m-${k}-btn" data-on-click="${act}" title="Перезапустить ${name}" aria-label="Перезапустить ${name}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><span>Перезапустить</span></button>
+            ${m('cpu', 'Процессор')}${m('mem', 'Память')}
+            <div class="dv-sub sv-meta" id="hm-m-${k}-meta">&nbsp;</div>
+          </div>`;
+}
 const pgSince = ts => (ts ? `${new Date(ts).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} в ${hmClock(ts)}` : '—');
 function hmRenderPg() {
   const o = HM.overview, pg = o?.pg;
@@ -1029,28 +1039,34 @@ function hmRenderPg() {
   // Службы
   // Нагрузка службы базы приходит вместе с точками electron (раз в 2 секунды); снимок из обзора — запасной
   const s = HM.samples[HM.samples.length - 1], live = HM.live || {}, svc = pg.service ? { ...pg.service, ...(HM.pgService || {}) } : null, el = o.service;
+  const memTotal = hmMemTotal();
   const dot = (id, lv) => { const d = $hm(id); if (d) d.className = 'dv-dot' + (lv && lv !== 'ok' ? ' ' + lv : ''); };
-  dot('hm-m-el-dot', el && el.state !== 'active' ? 'crit' : 'ok');
-  // у electron значения обновляются каждые 2 секунды: без подсветки, иначе мерцало бы постоянно
+  const bar = (id, pct, lv) => { const b = $hm(id); if (!b) return; b.className = 'sv-bar' + (lv ? ' ' + lv : ''); b.firstElementChild.style.width = (pct == null ? 0 : Math.max(0, Math.min(100, pct))) + '%'; };
+  const short = ts => (ts ? `${new Date(ts).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} ${hmClock(ts)}` : '—');
+  const meta = (tasks, since, restarts) => [`${tasks ?? '—'} ${hmPlural(tasks ?? 0, 'задача', 'задачи', 'задач')}`, `с ${short(since)}`, restarts != null ? `сбоев ${restarts}` : null].filter(Boolean).join(' · ');
+  const load = pg.conn / pg.maxConn, hot = load > .8 || (pg.cache != null && pg.cache < 95);
+  // electron: значения обновляются каждые 2 секунды, подсветки у них нет, иначе мерцало бы постоянно
+  const elLv = el && el.state !== 'active' ? 'crit' : 'ok';
+  dot('hm-m-el-dot', elLv);
+  hmText('hm-m-el-st', elLv === 'crit' ? 'Остановлена' : 'Работает');
   hmText('hm-m-el-cpu', s?.[2] == null ? '—' : `${hmFmt(s[2], 1)}%`);
   hmText('hm-m-el-mem', s?.[4] == null ? '—' : hmBytes(s[4]));
-  const load = pg.conn / pg.maxConn, hot = load > .8 || (pg.cache != null && pg.cache < 95);
-  dot('hm-m-pg-dot', svc ? (svc.state !== 'active' ? 'crit' : hot ? 'warn' : 'ok') : (hot ? 'warn' : pg.local ? 'off' : 'ok'));
+  bar('hm-m-el-cpu-bar', s?.[2], s?.[2] == null ? 'off' : '');
+  bar('hm-m-el-mem-bar', s?.[4] == null ? null : s[4] / memTotal * 100, s?.[4] == null ? 'off' : '');
+  hmText('hm-m-el-meta', meta(live.tasks, el?.since, el?.restarts));
+  const pgLv = svc ? (svc.state !== 'active' ? 'crit' : hot ? 'warn' : 'ok') : (hot ? 'warn' : 'ok');
+  dot('hm-m-pg-dot', svc || pg.local ? pgLv : 'ok');
+  hmText('hm-m-pg-st', pgLv === 'crit' ? 'Остановлена' : pgLv === 'warn' ? 'Нагрузка' : svc || pg.local ? 'Работает' : 'Другой сервер');
   hmText('hm-m-pg-cpu', svc?.cpu == null ? '—' : `${hmFmt(svc.cpu, 1)}%`);
   hmText('hm-m-pg-mem', svc?.mem == null ? '—' : hmBytes(svc.mem));
   for (const id of ['hm-m-pg-cpu', 'hm-m-pg-mem']) $hm(id)?.classList.toggle('w', !!svc && hot);
+  bar('hm-m-pg-cpu-bar', svc?.cpu, svc?.cpu == null ? 'off' : hot ? 'warn' : '');
+  bar('hm-m-pg-mem-bar', svc?.mem == null ? null : svc.mem / memTotal * 100, svc?.mem == null ? 'off' : hot ? 'warn' : '');
+  hmText('hm-m-pg-meta', svc ? meta(svc.tasks, svc.since || pg.started, svc.restarts) : pg.local ? `с ${short(pg.started)}` : `PostgreSQL на другом сервере · связь ${pg.latency} мс`);
   const pb = $hm('hm-m-pg-btn');
   if (pb) { pb.disabled = !svc || PGR.busy; pb.title = svc ? 'Перезапустить postgresql' : 'PostgreSQL на другом сервере: перезапуск отсюда недоступен'; }
-  // Подробности двумя колонками (electron, postgresql): так в узкой карточке строки не переносятся
-  const short = ts => (ts ? `${new Date(ts).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} ${hmClock(ts)}` : '—');
-  const row = (l, a, b) => `<span>${l}</span><b>${esc(String(a))}</b><b>${esc(String(b))}</b>`;
-  let grid = `<div class="dv-m-grid"><i></i><em>electron</em><em>postgresql</em>`
-    + row('Задач', live.tasks ?? '—', svc?.tasks ?? '—')
-    + row('Запущена', short(el?.since), short(svc?.since || pg.started))
-    + (el?.restarts != null || svc?.restarts != null ? row('Сбоев', el?.restarts ?? '—', svc ? (svc.restarts ?? '—') : '—') : '')
-    + '</div>';
-  if (!pg.local) grid += `<div class="dv-sub" style="margin-top:6px">PostgreSQL на другом сервере · связь ${esc(String(pg.latency))} мс</div>`;
-  hmHtml('hm-m-sub', grid);
+  const sum = elLv === 'crit' || pgLv === 'crit' ? 'crit' : pgLv === 'warn' ? 'warn' : 'ok';
+  hmSetPill('hm-m-sum', sum, sum === 'crit' ? 'Есть сбой' : sum === 'warn' ? 'Нагрузка' : 'Всё работает');
 
   // Блок базы
   hmText('dv-db-ver', pg.version || '');
@@ -1737,14 +1753,9 @@ async function renderDashboard() {
         <div style="margin-top:12px"><button class="btn btn-danger btn-sm" data-on-click="restartService">Перезапустить</button></div>
         </div>
         <div id="hm-svc-many" hidden>
-          <h3 id="hm-h-svcs">Службы</h3>
-          <table class="dv-tbl"><thead><tr><th>Служба</th><th>Проц.</th><th>Память</th><th><span class="dv-vh">Перезапуск</span></th></tr></thead><tbody>
-            <tr><td><span class="dv-dot" id="hm-m-el-dot"></span>electron</td><td class="hm-mono" id="hm-m-el-cpu">—</td><td class="hm-mono" id="hm-m-el-mem">—</td>
-              <td><button type="button" class="dv-ib" id="hm-m-el-btn" data-on-click="restartService" title="Перезапустить electron" aria-label="Перезапустить electron"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button></td></tr>
-            <tr><td><span class="dv-dot" id="hm-m-pg-dot"></span>postgresql</td><td class="hm-mono" id="hm-m-pg-cpu">—</td><td class="hm-mono" id="hm-m-pg-mem">—</td>
-              <td><button type="button" class="dv-ib" id="hm-m-pg-btn" data-on-click="restartPostgres" title="Перезапустить postgresql" aria-label="Перезапустить postgresql"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button></td></tr>
-          </tbody></table>
-          <div class="dv-sub dv-m-sub" id="hm-m-sub">&nbsp;</div>
+          <h3 id="hm-h-svcs"><span>Службы</span><span class="hm-pill muted" id="hm-m-sum" style="margin-left:auto">—</span></h3>
+          ${svcRowHtml('el', 'electron', 'restartService')}
+          ${svcRowHtml('pg', 'postgresql', 'restartPostgres')}
         </div>
       </section>
       <section class="hm-panel dv-card" aria-labelledby="hm-h-store">
