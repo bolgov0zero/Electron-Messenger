@@ -29,6 +29,8 @@ B.app = {
     window.addEventListener('pageshow', function (e) { if (e.persisted && B.S.token) { B.ws.connect(); B.app.resume(); } });
     window.addEventListener('online', function () { if (B.S.token) { B.ws.connect(); B.app.resume(); } });
     setTimeout(B.app.checkForUpdate, 3000);
+    // Звонок закончился: отложенное из-за него обновление проверяем снова
+    B.bus.on('ws:call_ended', function () { setTimeout(B.app.checkForUpdate, 2500); });
   },
   // Догнать всё, что пропустили в фоне: список чатов (новые сообщения, счётчики), присутствие, открытый чат
   _resumeAt: 0,
@@ -59,6 +61,12 @@ B.app = {
     B.bus.emit('app:ready');
   },
   // У установленного PWA нет кнопки «обновить страницу»: сверяем версию в свежем HTML и перезагружаемся
+  // Обновление по нажатию на баннер: во время звонка сначала спрашиваем, потому что звонок при перезагрузке завершится у обоих
+  reloadSafe: function () {
+    var inCall = !!(window.Calls && Calls.state && Calls.state.call);
+    if (!inCall) { location.reload(); return; }
+    B.sheet.confirm('Обновить приложение?', 'Идёт звонок: при обновлении он завершится у вас и у собеседника.', 'Обновить и завершить звонок', function () { location.reload(); });
+  },
   checkForUpdate: async function () {
     if (B.app._checking) return;
     B.app._checking = true;
@@ -67,9 +75,11 @@ B.app = {
       var m = html.match(/\?v=([\w.\-]+)/), cur = (window.APP_VERSION || '').replace('?v=', '');
       if (m && m[1] && cur && m[1] !== cur) {
         // Перезагружаемся сами, только если это никому не мешает: открыт список чатов, нет черновиков и неотправленного
-        var busy = B.nav.depth() > 1 || (B.sheet && B.sheet.isOpen()) || (B.lightbox && B.lightbox.open_) || Object.keys(B.drafts || {}).some(function (k) { return B.drafts[k]; }) || (B.msgs.outbox || []).length;
+        // Идёт звонок или звонят — не перезагружаем: перезагрузка рвёт соединение, и звонок завершается у обоих
+        var inCall = !!(window.Calls && Calls.state && (Calls.state.call || Calls.state.incoming));
+        var busy = inCall || B.nav.depth() > 1 || (B.sheet && B.sheet.isOpen()) || (B.lightbox && B.lightbox.open_) || Object.keys(B.drafts || {}).some(function (k) { return B.drafts[k]; }) || (B.msgs.outbox || []).length;
         if (!busy) { location.reload(); return; }
-        if (!B.app.newVersion) { B.app.newVersion = m[1]; B.bus.emit('app:update'); B.toast.banner('<div class="tt"><b>Вышла новая версия</b><span>Нажмите, чтобы обновить</span></div>', function () { location.reload(); }); }
+        if (!B.app.newVersion) { B.app.newVersion = m[1]; B.bus.emit('app:update'); B.toast.banner('<div class="tt"><b>Вышла новая версия</b><span>Нажмите, чтобы обновить</span></div>', B.app.reloadSafe); }
       }
     } catch (e) {} finally { B.app._checking = false; }
   }

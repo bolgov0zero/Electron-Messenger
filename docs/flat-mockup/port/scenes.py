@@ -59,6 +59,8 @@ def A(body, wait=800):
 TEAM = "B.S.chats.find(c=>c.name==='Команда продукта').id"
 SET = lambda k: A("B.setTab('settings');" + (W % 400) + "document.querySelector('.tabview[data-tab=settings] [data-s=\"%s\"]').click();" % k, 900)
 LIVE.update({
+ 'updcall': A("B.nav.popToRoot();B.setTab('chats');window.__mk=1;window.APP_VERSION='?v=0';Calls.state.call={id:1,peer:{id:1,name:'x'}};B.app.checkForUpdate();setTimeout(function(){B.toast.show('страница не перезагружена, marker='+window.__mk)},2500);", 3500),
+ 'updnocall': A("B.nav.popToRoot();B.setTab('chats');window.__mk=1;window.APP_VERSION='?v=0';Calls.state.call=null;B.app.checkForUpdate();setTimeout(function(){B.toast.show('страница не перезагружена, marker='+window.__mk)},2500);", 3500),
  'contacts': A("B.setTab('contacts');", 900),
  'addcontact': A("B.setTab('contacts');" + (W % 300) + "document.querySelector('.tabview[data-tab=contacts] [data-act=add]').click();", 900),
  'group': A("B.setTab('chats');B.openGroupProfile(%s);" % TEAM, 1300),
