@@ -449,3 +449,11 @@ html .cl-acc{border-radius:10px}
 html .cl-prev{border-radius:16px}
 html .cl-kick{border-radius:8px}
 html .cl-gt{border-radius:6px}
+
+/* окно «Гостевая ссылка» в /m — шторка снизу, как «Добавить контакт» (shared/guestlinks.js не меняем: класс gl-m ставит он сам) */
+.gl-bg.gl-m{align-items:flex-end;justify-content:center;padding:0 8px 8px}
+.gl-bg.gl-m .gl{width:100%;max-width:none;max-height:86dvh;border-radius:22px;padding-bottom:calc(max(20px,env(safe-area-inset-bottom,0px)) - 8px);animation:gl-sheet-in .4s var(--gl-ease) both}
+.gl-bg.gl-m .gl::before{content:"";display:block;width:40px;height:5px;border-radius:3px;background:var(--text);opacity:.2;margin:8px auto 0;flex:none}
+.gl-bg.gl-m.closing .gl{animation:gl-sheet-out .25s var(--gl-ease) forwards}
+@keyframes gl-sheet-in{from{transform:translateY(110%)}to{transform:none}}
+@keyframes gl-sheet-out{to{transform:translateY(110%)}}
