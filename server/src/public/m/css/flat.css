@@ -428,7 +428,8 @@ html .cl-rb.end{width:auto;padding:0 22px;border-radius:14px;background:var(--no
 html .cl-hbtn{border-radius:12px;border:0}
 html .cl-win.mob.v .cl-hbtn{background:var(--vpanel);border:0}
 html #cl-bar{height:44px;border-radius:12px;background:var(--ok);box-shadow:none}
-html #cl-bar .x{border-radius:8px}
+/* кнопка завершения звонка на зелёной полосе — красная */
+html #cl-bar .x{width:32px;height:32px;border-radius:8px;background:var(--danger);color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.85)}
 html .cl-note{border-radius:10px}
 html #cl-dock{border-radius:16px;background:var(--side-bg);border:0;box-shadow:var(--flat-shadow);-webkit-backdrop-filter:none;backdrop-filter:none}
 html .cl-adm{border-radius:16px;background:var(--side-bg);border:0;box-shadow:var(--pop-shadow);-webkit-backdrop-filter:none;backdrop-filter:none}
