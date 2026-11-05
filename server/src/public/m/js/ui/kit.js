@@ -57,22 +57,33 @@ function hideKb() {
 }
 
 // ── тема, акцент ──
-// Тема: светлая / тёмная / тёмно-синяя. Общая с /chat и /m настройка (electron_v2.settings.theme) хранит только light или dark;
-// «тёмно-синяя» запоминается отдельно (beta_navy)
+// Тема: «Система» (следует за темой устройства: светлая или тёмная) / «Светлая» / «Синяя». Выбор хранится в beta_theme (system, light, navy);
+// общая с /chat настройка (electron_v2.settings.theme) получает light или dark по действующей теме
 B.theme = {
   TC: { light: '#ece9e4', dark: '#131211', navy: '#10161d' },
+  // выбор человека: system | light | navy (прежнее «dark» читается как «system»)
+  pref: function () { var v = null; try { v = localStorage.getItem('beta_theme'); } catch (e) {} return v === 'light' || v === 'navy' || v === 'system' ? v : v === 'dark' ? 'system' : (B.theme._shared() === 'light' ? 'light' : 'system'); },
+  _shared: function () { try { var s = JSON.parse(localStorage.getItem(B.SESSION_KEY) || '{}'); return s.settings && s.settings.theme; } catch (e) { return null; } },
+  sysDark: function () { try { return !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches); } catch (e) { return false; } },
+  // действующая тема: light | dark | navy
   get: function () { return root.classList.contains('navy') ? 'navy' : root.classList.contains('dark') ? 'dark' : 'light'; },
-  set: function (t) {
+  effective: function () { var p = B.theme.pref(); return p === 'system' ? (B.theme.sysDark() ? 'dark' : 'light') : p; },
+  apply: function () {
+    var t = B.theme.effective();
     var m = document.getElementById('theme-color-meta'); if (m) m.setAttribute('content', B.theme.TC[t] || B.theme.TC.dark);
     root.classList.toggle('dark', t !== 'light'); root.classList.toggle('navy', t === 'navy');
-    try {
-      localStorage.setItem('beta_theme', t);
-      var s = JSON.parse(localStorage.getItem(B.SESSION_KEY) || '{}'); s.settings = s.settings || {};
-      if (t === 'light') s.settings.theme = 'light'; else if (!s.settings.theme || s.settings.theme === 'light') s.settings.theme = 'dark';
-      localStorage.setItem(B.SESSION_KEY, JSON.stringify(s));
-    } catch (e) {}
     var link = document.getElementById('manifest-link'); if (link) link.href = t === 'light' ? '/m/manifest-light.json' : t === 'navy' ? '/m/manifest-navy.json' : '/m/manifest.json';
     B.theme.accent();
+  },
+  set: function (pref) {
+    if (pref !== 'system' && pref !== 'light' && pref !== 'navy') return;
+    try {
+      localStorage.setItem('beta_theme', pref);
+      var s = JSON.parse(localStorage.getItem(B.SESSION_KEY) || '{}'); s.settings = s.settings || {};
+      s.settings.theme = B.theme.effective() === 'light' ? 'light' : 'dark';
+      localStorage.setItem(B.SESSION_KEY, JSON.stringify(s));
+    } catch (e) {}
+    B.theme.apply();
   },
   // Акцент макета: те же пять цветов, что у остальных клиентов, но свои оттенки
   ACC: { teal: ['Бирюзовый', [29, 168, 140], [41, 214, 184]], indigo: ['Индиго', [92, 96, 205], [143, 148, 245]], plum: ['Сливовый', [146, 84, 190], [196, 146, 240]], amber: ['Янтарный', [186, 120, 38], [236, 176, 92]] },
@@ -88,6 +99,8 @@ B.theme = {
   setFs: function (k) { phone.style.setProperty('--fs', B.theme.FS[k][0]); if (B.appearance) B.appearance.saveSetting('fontSize', k === 's' ? 'small' : k === 'l' ? 'large' : 'medium'); },
   init: function () {
     B.theme.accent(); phone.style.setProperty('--fs', B.theme.FS[B.theme.fsKey()][0]);
+    // Тема «Система»: меняется сама вместе с темой устройства
+    try { var mq = matchMedia('(prefers-color-scheme: dark)'), on = function () { if (B.theme.pref() === 'system') { B.theme.apply(); B.bus.emit('theme:changed'); } }; mq.addEventListener ? mq.addEventListener('change', on) : mq.addListener(on); } catch (e) {}
   }
 };
 // «Бегунок» сегмента (.seg > .thumb): ставится под активную кнопку

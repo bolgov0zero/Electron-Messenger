@@ -18,7 +18,7 @@ B.ui.settings = (function () {
     var u = S.user || {}, mods = window.Modules ? Modules.list().filter(function (m) { return m.on; }).length : 0;
     var upd = B.app.newVersion ? '<div class="updc glass">' + I('upd') + '<div class="t"><b>Вышла новая версия</b><span>Применится после перезагрузки</span></div><button class="btn pri sm" data-s="reload">Обновить</button></div>' : '';
     body.innerHTML = upd + '<div class="grp glass"><button class="prow" data-s="me">' + (u.id ? B.avatar.user(u.id, u.display_name || '', 0, true) : '') + '<div style="flex:1;min-width:0"><b>' + B.esc(u.display_name || '') + '</b><span>@' + B.esc(u.username || '') + '</span></div><span class="ch" style="color:var(--muted)">' + I('chevRight') + '</span></button></div>' +
-      '<div class="grp glass">' + cell('appearance', 'palette', '#af52de', 'Внешний вид', { light: 'Светлая', dark: 'Тёмная', navy: 'Тёмно-синяя' }[B.theme.get()]) + cell('notif', 'bell', '#ff3b30', 'Уведомления', notifText()) + (window.Calls && Calls.available() ? cell('calls', 'phone', '#30b0c7', 'Звонки', callsMeta()) : '') + cell('modules', 'puzzle', '#34c759', 'Модули', mods || '') + cell('folders', 'folder', '#ff9500', 'Папки', B.folders.list.length || '') + '</div>' +
+      '<div class="grp glass">' + cell('appearance', 'palette', '#af52de', 'Внешний вид', { system: 'Система', light: 'Светлая', navy: 'Синяя' }[B.theme.pref()]) + cell('notif', 'bell', '#ff3b30', 'Уведомления', notifText()) + (window.Calls && Calls.available() ? cell('calls', 'phone', '#30b0c7', 'Звонки', callsMeta()) : '') + cell('modules', 'puzzle', '#34c759', 'Модули', mods || '') + cell('folders', 'folder', '#ff9500', 'Папки', B.folders.list.length || '') + '</div>' +
       '<div class="grp glass"><div class="cell"><span class="cl">Отображать пространства</span>' + tg('spaces', B.spaces.on()) + '</div></div><div class="gf">Включите, чтобы выбирать пространство над списком чатов: останутся люди и чаты из него.</div>' +
       '<div class="grp glass">' + cell('blocks', 'ban', '#8e8e93', 'Блокировки', S.blocked.length || '') + cell('diag', 'gear', '#5e6ad2', 'Диагностика') + '</div>' +
       '<div class="grp glass">' + cell('logout', 'logout', '#ff3b30', 'Выйти', '', 1) + '</div><div class="gf" style="text-align:center;margin-top:-8px">Версия ' + B.esc((window.APP_VERSION || '').replace('?v=', '') || '—') + '</div><div class="mcopy">w/ <span style="color:var(--danger)">♥</span> by bolgov0zero</div>';
@@ -127,10 +127,10 @@ B.ui.settings = (function () {
 
   // ── внешний вид ──
   function appearanceHtml() {
-    var A = B.appearance, th = B.theme, pat = A.pattern(), fs = th.fsKey(), t = th.get();
+    var A = B.appearance, th = B.theme, pat = A.pattern(), fs = th.fsKey(), t = th.pref();
     return '<div class="pvw"><div class="m a">Созвон переносим на 15:30</div><div class="m b">Отлично, успеваю</div></div>' +
       '<div class="gh">Тема и цвет</div><div class="grp glass"><div class="cell" style="flex-direction:column;align-items:stretch"><div class="seg f" id="tseg" style="margin:0"><i class="thumb"></i>' +
-        [['light', 'Светлая'], ['dark', 'Тёмная'], ['navy', 'Синяя']].map(function (x) { return '<button class="' + (t === x[0] ? 'on' : '') + '" data-t="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div></div>' +
+        [['system', 'Система'], ['light', 'Светлая'], ['navy', 'Синяя']].map(function (x) { return '<button class="' + (t === x[0] ? 'on' : '') + '" data-t="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div></div>' +
       '<div class="cell"><span class="cl">Цвет акцента</span><div class="dots">' + Object.keys(th.ACC).map(function (k) { var a = th.ACC[k]; return '<button class="dot2' + (th.accentKey() === k ? ' on' : '') + '" data-a="' + k + '" aria-label="' + a[0] + '" style="--dot:rgb(' + (root.classList.contains('dark') ? a[2] : a[1]) + ')"></button>'; }).join('') + '</div></div>' +
       '</div>' +
       '<div class="gh">Фон</div><div class="grp glass">' +

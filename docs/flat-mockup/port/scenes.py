@@ -32,6 +32,7 @@ LIVE.update({
  'msgmenu': "(async()=>{" + OPEN_TEAM + ROW_OUT + MENU + "})()",
  'react': "(async()=>{" + OPEN_TEAM + ROW_IN + MENU + "})()",
  'reactall': "(async()=>{" + OPEN_TEAM + ROW_IN + MENU + (W % 500) + "document.querySelector('.cmr .more').click();})()",
+ 'epsw': "(async()=>{" + OPEN_TEAM + "window.GifKlipy={on:()=>true,mark:'',setUser(){},mount(){},messageHtml(){return ''}};" + "document.querySelector('.page.chat [data-k=emo]').click();await new Promise(r=>setTimeout(r,900));document.querySelector('.epanel .ep-sw [data-m=gif]').click();await new Promise(r=>setTimeout(r,500));})()",
  'emoji': "(async()=>{" + OPEN_TEAM + "document.querySelector('.page.chat [data-k=emo]').click();})()",
  'plusmenu': "(async()=>{" + OPEN_TEAM + "document.querySelector('.page.chat [data-k=up]').click();})()",
  'chatmenu': "(async()=>{" + CLR + "B.nav.popToRoot();B.setTab('chats');" + (W % 600) + "const r=document.querySelector('.row[data-id=\"'+B.S.chats.find(c=>c.name==='Проект Север: запуск').id+'\"]');r.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,clientX:100,clientY:300}));" + (W % 700) + "})()",
@@ -62,6 +63,7 @@ LIVE.update({
  'updcall': A("B.nav.popToRoot();B.setTab('chats');window.__mk=1;window.APP_VERSION='?v=0';Calls.state.call={id:1,peer:{id:1,name:'x'}};B.app.checkForUpdate();setTimeout(function(){B.toast.show('страница не перезагружена, marker='+window.__mk)},2500);", 3500),
  'updnocall': A("B.nav.popToRoot();B.setTab('chats');window.__mk=1;window.APP_VERSION='?v=0';Calls.state.call=null;B.app.checkForUpdate();setTimeout(function(){B.toast.show('страница не перезагружена, marker='+window.__mk)},2500);", 3500),
  'clbar': A("B.nav.popToRoot();B.setTab('chats');if(!document.getElementById('cl-bar')){const b=document.createElement('div');b.id='cl-bar';b.innerHTML='<svg class=\"i\" viewBox=\"0 0 24 24\" width=\"16\" height=\"16\"><path d=\"M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z\"/></svg><span>Звонок · Дмитрий</span><span class=\"tm\">02:14</span><span class=\"x\" data-cl=\"end\">✕</span>';document.body.appendChild(b)};", 900),
+ 'clbar': A("B.nav.popToRoot();B.setTab('chats');const o=document.getElementById('cl-bar');o&&o.remove();const b=document.createElement('div');b.id='cl-bar';b.innerHTML=\"<svg class=\\\"i \\\" width=\\\"1em\\\" height=\\\"1em\\\" viewBox=\\\"0 0 24 24\\\" fill=\\\"none\\\" stroke=\\\"currentColor\\\" stroke-width=\\\"2\\\" stroke-linecap=\\\"round\\\" stroke-linejoin=\\\"round\\\"><path d=\\\"M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z\\\"/></svg><span>Звонок · Дмитрий</span><span class=\\\"tm cl-tm\\\">02:14</span><span class=\\\"x\\\" data-cl=\\\"end\\\"><svg class=\\\"i hang\\\" width=\\\"1em\\\" height=\\\"1em\\\" viewBox=\\\"0 0 24 24\\\" fill=\\\"none\\\" stroke=\\\"currentColor\\\" stroke-width=\\\"2\\\" stroke-linecap=\\\"round\\\" stroke-linejoin=\\\"round\\\"><path d=\\\"M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z\\\"/></svg></span>\";document.body.appendChild(b);", 900),
  'contacts': A("B.setTab('contacts');", 900),
  'addcontact': A("B.setTab('contacts');" + (W % 300) + "document.querySelector('.tabview[data-tab=contacts] [data-act=add]').click();", 900),
  'group': A("B.setTab('chats');B.openGroupProfile(%s);" % TEAM, 1300),
@@ -98,7 +100,7 @@ MOCK = {  # сцены макета (data-s) для тех же экранов
 REF_JS = {
  'chats-q': "(()=>{const i=document.getElementById('cq');document.querySelector('#scenes [data-s=chats]').click();setTimeout(()=>{i.value='Дм';i.dispatchEvent(new Event('input'))},500)})()",
 }
-WAITS = {'dev': 2400, 'kb': 2400, 'kbep': 2800, 'reply': 2400, 'fmt': 2800, 'chat': 1800, 'profile': 1800, 'room': 1500, 'msgmenu': 2400, 'react': 2400, 'reactall': 3000, 'emoji': 2600, 'plusmenu': 2400, 'chatmenu': 1800, 'fwd': 3000, 'chats-q': 1800}
+WAITS = {'epsw': 2800, 'dev': 2400, 'kb': 2400, 'kbep': 2800, 'reply': 2400, 'fmt': 2800, 'chat': 1800, 'profile': 1800, 'room': 1500, 'msgmenu': 2400, 'react': 2400, 'reactall': 3000, 'emoji': 2600, 'plusmenu': 2400, 'chatmenu': 1800, 'fwd': 3000, 'chats-q': 1800}
 shots = []
 for s in want:
     w = WAITS.get(s, 900)

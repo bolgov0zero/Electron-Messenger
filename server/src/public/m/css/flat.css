@@ -109,10 +109,11 @@ html.dark .page:not(.base){box-shadow:-12px 0 30px rgba(0,0,0,.4)}
 .seg button{border-radius:10px}
 .seg .thumb{border-radius:10px;background:var(--side-bg);box-shadow:0 1px 2px rgba(60,40,20,.14);transition:left .25s var(--gl-ease),width .25s var(--gl-ease)}
 html.dark .seg .thumb{background:var(--gl-card2);box-shadow:none}
-.ep-sw{border-radius:12px;background:var(--surf2);box-shadow:none}
-.ep-sw button{border-radius:10px}
-.ep-sw button[aria-pressed="true"]{background:var(--side-bg);box-shadow:0 1px 2px rgba(60,40,20,.14)}
-html.dark .ep-sw button[aria-pressed="true"]{background:var(--gl-card2);box-shadow:none}
+.ep-sw{position:relative;border-radius:14px;background:var(--surf2);box-shadow:none}
+.ep-sw button{position:relative;z-index:1;border-radius:11px;background:none;box-shadow:none}
+.ep-sw button[aria-pressed="true"]{background:none;box-shadow:none;color:var(--text)}
+.ep-sw .thumb{position:absolute;top:3px;bottom:3px;left:3px;width:0;border-radius:11px;background:var(--side-bg);box-shadow:0 1px 2px rgba(60,40,20,.14);transition:left .25s var(--gl-ease),width .25s var(--gl-ease)}
+html.dark .ep-sw .thumb{background:var(--gl-card2);box-shadow:none}
 /* слайдер: дорожка 6 радиус 3, ползунок 18×18 радиус 6 */
 .rng::-webkit-slider-runnable-track{height:6px;border-radius:3px}
 .rng::-webkit-slider-thumb{width:18px;height:18px;margin-top:-6px;border-radius:6px;background:#fff;box-shadow:0 0 0 1px color-mix(in srgb,var(--text) 16%,transparent)}
@@ -429,6 +430,7 @@ html .cl-hbtn{border-radius:12px;border:0}
 html .cl-win.mob.v .cl-hbtn{background:var(--vpanel);border:0}
 html #cl-bar{height:44px;border-radius:12px;background:var(--ok);box-shadow:none}
 /* кнопка завершения звонка на зелёной полосе — красная */
+html #cl-bar .x .i{font-size:18px}
 html #cl-bar .x{width:32px;height:32px;border-radius:8px;background:var(--danger);color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.85)}
 html .cl-note{border-radius:10px}
 html #cl-dock{border-radius:16px;background:var(--side-bg);border:0;box-shadow:var(--flat-shadow);-webkit-backdrop-filter:none;backdrop-filter:none}

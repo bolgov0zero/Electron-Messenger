@@ -1,13 +1,16 @@
 // Тема — до первой отрисовки, без вспышки. Настройка общая с /chat и /m (electron_v2 → settings.theme):
 // «light» — светлая, любое другое значение (dark, night) — тёмно-синяя.
 (function () {
-  var t = 'dark';
+  // Выбор темы: system (следует за системной), light или navy. Прежнее «dark» читается как «система»
+  var pref = 'system';
   try {
-    var s = JSON.parse(localStorage.getItem('electron_v2') || '{}');
-    t = (s.settings && s.settings.theme) || 'dark';
+    var s0 = JSON.parse(localStorage.getItem('electron_v2') || '{}');
+    if (s0.settings && s0.settings.theme === 'light') pref = 'light';
   } catch (e) {}
-  // Своя настройка беты («тёмно-синяя» хранится только здесь): light, dark или navy
-  try { var bt = localStorage.getItem('beta_theme'); if (bt === 'light' || bt === 'dark' || bt === 'navy') t = bt; } catch (e) {}
+  try { var bt = localStorage.getItem('beta_theme'); if (bt === 'light' || bt === 'navy' || bt === 'system') pref = bt; else if (bt === 'dark') pref = 'system'; } catch (e) {}
+  var sysDark = false;
+  try { sysDark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
+  var t = pref === 'system' ? (sysDark ? 'dark' : 'light') : pref;
   var dark = t !== 'light';
   document.documentElement.classList.toggle('dark', dark);
   document.documentElement.classList.toggle('navy', t === 'navy');

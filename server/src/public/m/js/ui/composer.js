@@ -285,7 +285,7 @@ B.ui.composer = (function () {
   }
 
   // ── панель смайлов и GIF (под полем вместо клавиатуры) ──
-  var epMode = 'emoji', epEl = null;
+  var epMode = 'emoji', epEl = null, epLast = null;   // epLast — режим при прошлой отрисовке: от него едет бегунок переключателя
   function gifOn(el) { return !!(window.GifKlipy && GifKlipy.on()) && !cs(el).edit && !B.S.secretChatIds.has(+el.dataset.cid); }
   var BK = '<svg class="i" viewBox="0 0 24 24"><path d="M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z"/><line x1="18" x2="12" y1="9" y2="15"/><line x1="12" x2="18" y1="9" y2="15"/></svg>';
   function epPanel() {
@@ -305,8 +305,17 @@ B.ui.composer = (function () {
     var el = epEl, p = epPanel(), gif = epMode === 'gif' && gifOn(el), secs = B.emoji.sections();
     p.innerHTML = (gif ? '' : '<div class="ep-top"><label class="ep-s">' + I('search') + '<input class="ep-q" type="search" placeholder="Поиск смайла" autocomplete="off" autocapitalize="none"></label><div class="ep-tabs">' + B.emoji.tabsHtml(secs) + '</div></div>') +
       '<div class="ep-body' + (gif ? ' ep-gifb' : '') + '">' + (gif ? '<div class="ep-gif"></div>' : B.emoji.gridHtml(secs, 'data-k="em"')) + '</div>' +
-      '<div class="ep-dock">' + (gifOn(el) ? '<div class="ep-sw"><button data-m="emoji" aria-pressed="' + !gif + '">Смайлы</button><button data-m="gif" aria-pressed="' + gif + '">GIF</button></div>' : '<span></span>') +
+      '<div class="ep-dock">' + (gifOn(el) ? '<div class="ep-sw"><i class="thumb"></i><button data-m="emoji" aria-pressed="' + !gif + '">Смайлы</button><button data-m="gif" aria-pressed="' + gif + '">GIF</button></div>' : '<span></span>') +
       '<div class="ep-r">' + (gif ? '<span class="ep-pw"><span>Powered by</span> ' + GifKlipy.mark + '</span>' : '') + '<button class="ep-del" data-del aria-label="Удалить символ">' + BK + '</button></div></div>';
+    // Бегунок переключателя «Смайлы | GIF» плавно переезжает от прошлого режима к новому, как в сегментах настроек
+    var sw = $('.ep-sw', p);
+    if (sw) {
+      var th = $('.thumb', sw), cur = $('button[aria-pressed="true"]', sw), old = epLast && epLast !== epMode ? $('[data-m="' + epLast + '"]', sw) : null;
+      var put = function (b) { th.style.left = b.offsetLeft + 'px'; th.style.width = b.offsetWidth + 'px'; };
+      if (old) { th.style.transition = 'none'; put(old); void th.offsetWidth; th.style.transition = ''; }
+      put(cur);
+    }
+    epLast = epMode;
     if (!gif) {
       var eg = $('.ep-body', p), tabs = $('.ep-tabs', p), q = $('.ep-q', p), all = eg.innerHTML;
       B.emoji.bindTabs(eg, tabs, 0);
@@ -318,7 +327,7 @@ B.ui.composer = (function () {
   function openPanel(el) {
     if (!el._cs || phone.classList.contains('ep')) return;
     epEl = el; var sc_ = $('.scroll', el), near = sc_.scrollHeight - sc_.scrollTop - sc_.clientHeight < 400;
-    ta(el).blur(); phone.classList.remove('kbr'); epRender(); phone.classList.add('kb', 'ep'); $('.em', comp(el)).classList.add('on');
+    ta(el).blur(); phone.classList.remove('kbr'); epLast = null; epRender(); phone.classList.add('kb', 'ep'); $('.em', comp(el)).classList.add('on');
     B.bus.emit('kbd:changed', {}); if (near) { sc_.scrollTop = 1e6; setTimeout(function () { sc_.scrollTop = 1e6; }, 360); }
   }
   function closePanel(el) {
