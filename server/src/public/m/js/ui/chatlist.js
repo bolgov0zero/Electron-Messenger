@@ -68,8 +68,8 @@ B.ui.chatlist = (function () {
   // Панель папок липнет под бейджем раздела
   function stuck() {
     var fb = bar.querySelector('.fbar'); if (!fb) return;
-    var pad = parseFloat(getComputedStyle(scroller).paddingTop) || 0;
-    fb.classList.toggle('stuck', rel(fb).y - rel(scroller).y <= pad + 51);
+    var nav = $('.nav', v), top = rel(nav).y + nav.offsetHeight - rel(scroller).y;   // низ шапки в координатах ленты
+    fb.classList.toggle('stuck', rel(fb).y - rel(scroller).y <= top + 1);
   }
   function badge() {
     var b = $('#chbd'); if (!b) return;
@@ -123,12 +123,11 @@ B.ui.chatlist = (function () {
 
   function mount(el) {
     v = el;
-    // Шапка списка — сплошная плоская панель: заголовок с кнопкой и папки (#cbar); строка поиска лежит в ленте и уходит при прокрутке, как раньше
-    v.innerHTML = '<div class="chdr"><div class="chtop"><h1 class="lt">Чаты</h1><button class="nb glass gi" data-act="compose" aria-label="Новый чат">' + I('edit') + '</button></div>' +
-      '<div id="cbar"></div></div>' +
-      '<div class="scroll"><label class="srch glass">' + I('search') + '<input id="cq" placeholder="Поиск" autocomplete="off" autocapitalize="none" enterkeyhint="search"></label><div id="clist"></div></div>';
+    // Как «Контакты» и настройки: большой заголовок лежит в ленте и при прокрутке уменьшается в центр шапки; панель папок липнет под шапкой
+    v.innerHTML = '<div class="nav lg"><div class="nb" style="visibility:hidden"></div><div class="nt"><span class="glass">Чаты</span></div><div class="nr"><button class="nb glass gi" data-act="compose" aria-label="Новый чат">' + I('edit') + '</button></div></div>' +
+      '<div class="scroll"><h1 class="lt">Чаты</h1><label class="srch glass">' + I('search') + '<input id="cq" placeholder="Поиск" autocomplete="off" autocapitalize="none" enterkeyhint="search"></label><div id="cbar"></div><div id="clist"></div></div>';
     scroller = $('.scroll', v); dyn = $('#clist', v); bar = $('#cbar', v); input = $('#cq', v);
-    scroller.addEventListener('scroll', stuck, { passive: true });
+    B.nav.watch(v); scroller.addEventListener('scroll', stuck, { passive: true });
     input.addEventListener('input', onInput); input.addEventListener('focus', function () { showKb(); }); input.addEventListener('keydown', function (e) { if (e.key === 'Enter') input.blur(); });
     v.addEventListener('click', function (e) {
       var fo = e.target.closest('[data-fo]');

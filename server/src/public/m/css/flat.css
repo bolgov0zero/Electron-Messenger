@@ -238,19 +238,13 @@ html.dark .edge.t{background:linear-gradient(color-mix(in srgb,var(--side-bg) 92
 .hero .av{box-shadow:none}
 
 /* ═══════════════ 1.3 список чатов ═══════════════ */
-/* заголовок, кнопка, поиск и папки — одна сплошная плоская шапка (разметка в chatlist.js); строка с заголовком там же, где была строка прежней шапки (padding-top --sat − 6, высота 44) */
-.tabview[data-tab="chats"]{display:flex;flex-direction:column}
-.chdr{flex:none;position:relative;z-index:10;background:var(--side-bg);box-shadow:var(--bar-sh);padding:calc(var(--sat) - 6px) 14px 10px}
-.chtop{display:flex;align-items:center;justify-content:space-between;height:44px}
-.chtop .lt{margin:0;padding:0;line-height:44px;font-size:30px}
-.chtop .nb{background:var(--surf2);width:44px}
-.tabview[data-tab="chats"] .scroll .srch{margin:0 0 12px}
-.chdr>.chips{margin:0 0 8px;padding:0}
-.chdr .fbar{position:static;margin:12px -14px 0;display:block}
-.chdr .fbar .chips{padding:0 14px;margin:0}
+/* как «Контакты» и настройки: большой заголовок в ленте уходит в центр шапки; панель папок липнет под шапкой и становится сплошной. top:52px = низ шапки (sat+46) минус верхний отступ ленты (sat−6): sticky считает от внутреннего края ленты */
+.fbar{position:sticky;top:52px;z-index:6;margin:0 -16px 6px;display:flow-root}
+.fbar .chips{margin:0;padding:6px 16px 10px}
+.fbar.stuck{background:var(--side-bg);box-shadow:var(--bar-sh)}
+.tabview[data-tab="chats"]:has(.fbar) .nav.sc{box-shadow:none}
 .chips.fo>.fgrp,.chips.fo>.fgrp.glass{margin:0}
 .fgrp .fin{margin:0;gap:8px;border-radius:0}
-.tabview[data-tab="chats"] .scroll{position:static;flex:1;min-height:0;padding-top:12px;overflow-y:auto}
 .nbanner,.updc,.how{background:var(--tint);box-shadow:none;border-radius:16px}
 .row .av .type{border-radius:6px}
 
