@@ -244,10 +244,9 @@ html.dark .edge.t{background:linear-gradient(color-mix(in srgb,var(--side-bg) 92
 .chtop{display:flex;align-items:center;justify-content:space-between;height:44px}
 .chtop .lt{margin:0;padding:0;line-height:44px;font-size:30px}
 .chtop .nb{background:var(--surf2);width:44px}
-.chdr #cbar{margin-top:6px}
 .tabview[data-tab="chats"] .scroll .srch{margin:0 0 12px}
 .chdr>.chips{margin:0 0 8px;padding:0}
-.chdr .fbar{position:static;margin:0 -14px;display:block}
+.chdr .fbar{position:static;margin:12px -14px 0;display:block}
 .chdr .fbar .chips{padding:0 14px;margin:0}
 .chips.fo>.fgrp,.chips.fo>.fgrp.glass{margin:0}
 .fgrp .fin{margin:0;gap:8px;border-radius:0}
