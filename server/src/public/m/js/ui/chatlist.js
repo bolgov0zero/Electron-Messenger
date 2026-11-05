@@ -123,10 +123,10 @@ B.ui.chatlist = (function () {
 
   function mount(el) {
     v = el;
-    // Шапка списка — одна сплошная плоская панель: заголовок с кнопкой, поиск и папки (#cbar); сам список прокручивается под ней
+    // Шапка списка — сплошная плоская панель: заголовок с кнопкой и папки (#cbar); строка поиска лежит в ленте и уходит при прокрутке, как раньше
     v.innerHTML = '<div class="chdr"><div class="chtop"><h1 class="lt">Чаты</h1><button class="nb glass gi" data-act="compose" aria-label="Новый чат">' + I('edit') + '</button></div>' +
-      '<label class="srch glass">' + I('search') + '<input id="cq" placeholder="Поиск" autocomplete="off" autocapitalize="none" enterkeyhint="search"></label><div id="cbar"></div></div>' +
-      '<div class="scroll"><div id="clist"></div></div>';
+      '<div id="cbar"></div></div>' +
+      '<div class="scroll"><label class="srch glass">' + I('search') + '<input id="cq" placeholder="Поиск" autocomplete="off" autocapitalize="none" enterkeyhint="search"></label><div id="clist"></div></div>';
     scroller = $('.scroll', v); dyn = $('#clist', v); bar = $('#cbar', v); input = $('#cq', v);
     scroller.addEventListener('scroll', stuck, { passive: true });
     input.addEventListener('input', onInput); input.addEventListener('focus', function () { showKb(); }); input.addEventListener('keydown', function (e) { if (e.key === 'Enter') input.blur(); });

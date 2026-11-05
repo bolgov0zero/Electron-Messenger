@@ -12,6 +12,7 @@ cfgpath = sys.argv[6] if len(sys.argv) > 6 else os.path.join(SCRATCH, 'cfg-%s.js
 
 LIVE = {
  'chats': "B.nav.popToRoot();B.setTab('chats');(()=>{const q=document.getElementById('cq');if(q&&q.value){q.value='';q.dispatchEvent(new Event('input'))}})()",
+ 'chatsscroll': "B.nav.popToRoot();B.setTab('chats');document.querySelector('.tabview[data-tab=\"chats\"] .scroll').scrollTop=150",
  'chat': "B.nav.popToRoot();B.setTab('chats');B.openChat(B.S.chats.find(c=>c.name==='Команда продукта').id)",
  'room': "B.nav.popToRoot();B.setTab('chats');B.openChat(B.S.chats.find(c=>c.name==='Вся компания').id)",
  'settings': "B.nav.popToRoot();B.setTab('settings')",
