@@ -1,4 +1,4 @@
-// /m — поле ввода переписки по макету: «+», стеклянное поле со смайлами, отправка. Текст, ответ, пересылка, правка,
+// /m — поле ввода переписки по макету: «+», поле со смайлами, отправка. Текст, ответ, пересылка, правка,
 // вложения с загрузкой, форматирование (Fmt), смайлы и GIF. Состояние каждого открытого чата хранится на его странице (el._cs), черновики — в B.drafts.
 B.ui = B.ui || {};
 B.drafts = B.drafts || {};
@@ -10,9 +10,22 @@ B.ui.composer = (function () {
   function chatOf(el) { return B.find(+el.dataset.cid); }
 
   var FMT = [['bold', 'b', 'Жирный'], ['italic', 'i', 'Курсив'], ['code', 'c', 'Код в строке'], ['braces', 'blk', 'Блок кода'], ['eyeOff', 's', 'Секрет']];
+  // Воздух под панелями .xtra (до 16 px) и сетка поля (класс cs): считается по высоте содержимого панелей
+  function xtraFit(comp) {
+    if (comp._cs) return;
+    var xtra = comp.querySelector('.xtra'); comp.classList.add('cs');
+    function fit() {
+      if (!xtra) return;
+      var ph = 0; for (var i = 0; i < xtra.children.length; i++) ph += xtra.children[i].offsetHeight;
+      var pb = Math.round(16 * Math.max(0, Math.min(1, ph / 24)));
+      if (xtra._pb !== pb) { xtra._pb = pb; xtra.style.paddingBottom = pb + 'px'; }
+    }
+    if (xtra) new ResizeObserver(fit).observe(xtra);
+    comp._cs = { burst: fit }; fit();
+  }
   function mount(el, chat) {
     var c = comp(el); el._cs = { reply: null, fwd: null, edit: null, atts: [], mode: 'emoji', fmt: false, prev: false, lw: null };
-    // Дополнительные панели (.xtra) лежат над рядом на всю ширину и огибают кнопки; подложку рисует CShape по их высоте
+    // Дополнительные панели (.xtra) лежат над рядом на всю ширину; воздух под ними выставляет xtraFit по высоте содержимого
     c.innerHTML =
       '<div class="xtra"><div class="rnote" hidden></div><div class="ctx"></div><div class="lpv" hidden></div><div class="fpv" hidden><div class="fpl">Превью — так увидят получатели</div><div class="fpb"></div></div>' +
         '<div class="fmtbar" hidden>' + FMT.map(function (x) { return '<button data-f="' + x[1] + '" aria-label="' + x[2] + '" title="' + x[2] + '">' + I(x[0]) + '</button>'; }).join('') + '<span class="fsep"></span><button data-f="prev" aria-label="Превью" title="Показать превью">' + I('eye') + '</button><span class="fgrow"></span><button data-f="close" aria-label="Закрыть" title="Закрыть панель форматирования">' + I('x') + '</button></div></div>' +
@@ -20,7 +33,7 @@ B.ui.composer = (function () {
       '<div class="cfield"><div class="cin"><span class="ph">Сообщение</span><div class="ce fmt-ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Сообщение" enterkeyhint="return" autocapitalize="sentences" spellcheck="true"></div><button class="em" data-k="emo" aria-label="Смайлы">' + I('smile') + '</button></div></div>' +
       '<button class="sendb glass gi" data-k="send" aria-label="Отправить">' + I('send', 's') + '</button>' +
       '<div class="lkb" hidden></div><input type="file" multiple style="display:none">';
-    CShape.attach(c);
+    xtraFit(c);
     mountVoice(el, c);
     var t = ta(el), file = $('input[type=file]', c), cst = cs(el);
     Fmt.init(t);

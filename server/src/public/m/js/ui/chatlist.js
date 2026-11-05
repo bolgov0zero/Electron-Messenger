@@ -39,9 +39,9 @@ B.ui.chatlist = (function () {
   function listHtml() {
     var g = B.chats.groups(q), h = '';
     var rows = g.pinned.concat(g.rest);
-    h += g.rooms.length ? '<div class="gl">Комнаты</div><div class="grp glass">' + g.rooms.map(function (c) { return chatRow(c); }).join('') + '</div>' : '';
-    h += rows.length ? '<div class="gl">' + (q ? 'Чаты' : B.folders.label()) + '</div><div class="grp glass">' + g.pinned.map(function (c) { return chatRow(c, 1); }).join('') + g.rest.map(function (c) { return chatRow(c); }).join('') + '</div>' : '';
-    if (q && results && results.length) h += '<div class="gl">Сообщения</div><div class="grp glass">' + results.map(msgRow).join('') + '</div>';
+    h += g.rooms.length ? '<div class="gh">Комнаты</div><div class="grp glass">' + g.rooms.map(function (c) { return chatRow(c); }).join('') + '</div>' : '';
+    h += rows.length ? '<div class="gh">' + (q ? 'Чаты' : B.folders.label()) + '</div><div class="grp glass">' + g.pinned.map(function (c) { return chatRow(c, 1); }).join('') + g.rest.map(function (c) { return chatRow(c); }).join('') + '</div>' : '';
+    if (q && results && results.length) h += '<div class="gh">Сообщения</div><div class="grp glass">' + results.map(msgRow).join('') + '</div>';
     if (!g.rooms.length && !rows.length && !(results && results.length)) {
       h += '<div class="empty"><span class="ei glass">' + I('search') + '</span><b>' + (B.S.chats.length ? 'Ничего не найдено' : 'Чатов пока нет') + '</b><span>' + (B.S.chats.length ? 'Измените запрос или папку' : 'Начните разговор кнопкой в углу') + '</span></div>';
     }
@@ -123,10 +123,12 @@ B.ui.chatlist = (function () {
 
   function mount(el) {
     v = el;
-    v.innerHTML = '<div class="nav lg"><div class="nb" style="visibility:hidden"></div><div class="nt"><span class="glass">Чаты</span></div><div class="nr"><button class="nb glass gi" data-act="compose" aria-label="Новый чат">' + I('edit') + '</button></div></div>' +
-      '<div class="scroll"><h1 class="lt">Чаты</h1><label class="srch glass">' + I('search') + '<input id="cq" placeholder="Поиск" autocomplete="off" autocapitalize="none" enterkeyhint="search"></label><div id="cbar"></div><div id="clist"></div></div>';
+    // Шапка списка — одна сплошная плоская панель: заголовок с кнопкой, поиск и папки (#cbar); сам список прокручивается под ней
+    v.innerHTML = '<div class="chdr"><div class="chtop"><h1 class="lt">Чаты</h1><button class="nb glass gi" data-act="compose" aria-label="Новый чат">' + I('edit') + '</button></div>' +
+      '<label class="srch glass">' + I('search') + '<input id="cq" placeholder="Поиск" autocomplete="off" autocapitalize="none" enterkeyhint="search"></label><div id="cbar"></div></div>' +
+      '<div class="scroll"><div id="clist"></div></div>';
     scroller = $('.scroll', v); dyn = $('#clist', v); bar = $('#cbar', v); input = $('#cq', v);
-    B.nav.watch(v); scroller.addEventListener('scroll', stuck, { passive: true });
+    scroller.addEventListener('scroll', stuck, { passive: true });
     input.addEventListener('input', onInput); input.addEventListener('focus', function () { showKb(); }); input.addEventListener('keydown', function (e) { if (e.key === 'Enter') input.blur(); });
     v.addEventListener('click', function (e) {
       var fo = e.target.closest('[data-fo]');

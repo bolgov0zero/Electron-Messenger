@@ -1,0 +1,260 @@
+/* токены (из клиента /m, область чата) */
+.chatreal{--ff:Inter,-apple-system,system-ui,sans-serif;--app-bg:#eef1f4;--side-bg:#ffffff;--card-bg:#ffffff;--modal-bg:#ffffff;--chat-bg:#eef1f4;--text:#111318;--text2:#4f5666;--muted:#6c7484;--danger:#d23a3a;--danger-bg:rgba(210,58,58,.10);--danger-border:rgba(210,58,58,.28);--presence-online:#34c759;--presence-away:#ff9f0a;--bubble-bg:#ffffff;--tag-1:41,50,96;--tag-2:37,131,37;--tag-3:131,78,37;--tag-4:34,119,114;--tag-5:131,37,78;--r-panel:30px;--r-bar:26px;--r-card:20px;--r-menu:20px;--r-item:14px;--r-row:18px;--r-pill:999px;--ic-s:16px;--ic-m:18px;--ic-l:22px;--z-bar:20;--z-pop:30;--z-modal:40;--z-toast:50;--gl-k:1;--gl-blur:26px;--gl-spring:cubic-bezier(.34,1.56,.64,1);--gl-ease:cubic-bezier(.22,1,.36,1);--gl:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 46,100) * 1%),transparent);--gl2:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 66,100) * 1%),transparent);--gl-pop:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 30 + 50,100) * 1%),transparent);--gl-card:color-mix(in srgb,var(--text) 5%,transparent);--gl-card2:color-mix(in srgb,var(--text) 9%,transparent);--gl-inset:color-mix(in srgb,var(--text) 6%,transparent);--gl-edge:rgba(255,255,255,.75);--gl-hi:rgba(255,255,255,.85);--gl-lo:rgba(12,26,25,.07);--gl-shadow:rgba(20,50,60,.16);--gl-spec:rgba(255,255,255,.30);--gl-hov:rgba(255,255,255,.34);--gl-spotlight:rgba(255,255,255,.55);--gl-in:rgba(255,255,255,.74);--gl-out-a:color-mix(in srgb,var(--accent) 80%,#000);--gl-out-b:color-mix(in srgb,var(--accent) 68%,#0b4f96);--gl-base:#e3f0ef;--amb-1:color-mix(in srgb,var(--accent) 60%,#fff);--amb-2:#8e9cff;--amb-3:#ffb4d3;--amb-4:#ffd391;--scrim:rgba(20,40,50,.22)}
+html.dark .chatreal{--app-bg:#12171d;--side-bg:#1e252d;--card-bg:#1e252d;--modal-bg:#1e252d;--chat-bg:#12171d;--text:#eef6f5;--text2:rgba(238,246,245,.74);--muted:rgba(238,246,245,.56);--danger:#ef6f6f;--danger-bg:rgba(239,111,111,.12);--danger-border:rgba(239,111,111,.32);--bubble-bg:#1b2733;--tag-1:125,136,191;--tag-2:98,218,98;--tag-3:218,150,98;--tag-4:98,218,210;--tag-5:218,98,150;--gl-edge:rgba(255,255,255,.17);--gl-hi:rgba(255,255,255,.20);--gl-lo:rgba(0,0,0,.35);--gl-shadow:rgba(0,0,0,.5);--gl-spec:rgba(255,255,255,.09);--gl-hov:rgba(255,255,255,.08);--gl-spotlight:rgba(255,255,255,.20);--gl:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 52,100) * 1%),transparent);--gl2:color-mix(in srgb,color-mix(in srgb,var(--side-bg) 82%,#4a7080) calc(min(var(--gl-k) * 68,100) * 1%),transparent);--gl-pop:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 34 + 50,100) * 1%),transparent);--gl-in:color-mix(in srgb,var(--bubble-bg) 74%,transparent);--gl-out-a:color-mix(in srgb,var(--accent) 58%,#000);--gl-out-b:color-mix(in srgb,var(--accent) 48%,#0b3d7a);--gl-base:color-mix(in srgb,var(--chat-bg) 70%,#000);--amb-1:color-mix(in srgb,var(--accent) 55%,#000);--amb-2:#4a4fd0;--amb-3:#a33a73;--amb-4:#a8742c;--scrim:rgba(0,0,0,.40)}
+html.dark.navy .chatreal{--app-bg:#111a24;--side-bg:#182430;--card-bg:#213040;--modal-bg:#1b2836;--chat-bg:#0f1b27;--bubble-bg:#213040;--text:#eef2f6;--text2:rgba(238,242,246,.74);--muted:rgba(238,242,246,.56)}
+.chatreal{--r-card:26px;--r-sheet:32px;--r-row:20px}
+.chatreal{--read:#3ea6ff}
+.chatreal{--ease: cubic-bezier(.32, .72, 0, 1);--fg: var(--text);--fg2: var(--text2);--fg3: var(--muted);--red: var(--danger);--fill: var(--gl-hov);--bar2: var(--gl-pop);--card: var(--gl);--sep: var(--gl-lo);--bg: var(--gl-base);--bg2: var(--gl-base);--green: #34c759;--mfs: 16px;--font: Inter, -apple-system, system-ui, sans-serif}
+/* правила переписки (из клиента /m, порядок сохранён) */
+.chatreal .day{align-self:center;margin:6px 0 12px}
+.chatreal .day span{display:block;padding:5px 14px;border-radius:99px;font-size:12.5px;font-weight:600;color:var(--text2)}
+.chatreal .mrow{display:flex;flex-direction:column;margin-bottom:4px}
+.chatreal .mrow.out{align-items:flex-end}
+.chatreal .mrow.in{align-items:flex-start}
+.chatreal .who-n{font-size:12.5px;font-weight:700;padding:0 14px 3px;margin-top:8px}
+.chatreal .bub{max-width:min(300px,80%);padding:9px 13px 8px;border-radius:21px;font-size:calc(15.5px * var(--fs,1));line-height:1.38;position:relative;-webkit-user-select:none;user-select:none;transition:transform .3s var(--gl-spring)}
+.chatreal .mrow.in .bub{background:var(--gl-in);border:1px solid var(--gl-edge);border-bottom-left-radius:7px;box-shadow:inset 0 1px 0 var(--gl-hi),0 3px 12px var(--gl-shadow);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.chatreal .mrow.out .bub{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;border-bottom-right-radius:7px;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -1px 0 rgba(0,0,0,.12),0 6px 16px color-mix(in srgb,var(--gl-out-b) 38%,transparent)}
+.chatreal .bub .t{float:right;margin:7px 0 -3px 12px;font-size:11px;opacity:.7;display:inline-flex;gap:3px;align-items:center;line-height:1}
+.chatreal .bub .t .i{font-size:14px}
+.chatreal .mrow.in .bub .t{color:var(--text2);opacity:1}
+.chatreal .bub.pop{animation:bpop .4s var(--gl-spring)}
+.chatreal .quote{border-left:3px solid rgba(255,255,255,.85);background:rgba(255,255,255,.16);border-radius:4px 12px 12px 4px;padding:5px 10px;margin:0 0 6px;font-size:13px}
+.chatreal .quote b{display:block;font-weight:600;font-size:12.5px}
+.chatreal .quote span{color:rgba(255,255,255,.9)}
+.chatreal .mrow.in .quote{border-left-color:var(--accent);background:var(--accent-soft)}
+.chatreal .mrow.in .quote span{color:var(--text2)}
+.chatreal .mrow.in .quote b{color:var(--accent-ink)}
+.chatreal .file{display:flex;align-items:center;gap:11px;padding:8px 10px;margin:-3px -7px 6px;border-radius:15px;background:var(--gl-card);border:1px solid var(--gl-edge);min-width:236px}
+.chatreal .mrow.out .file{background:rgba(255,255,255,.15)}
+.chatreal .file .fi{width:40px;height:40px;border-radius:12px;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;font-size:20px}
+.chatreal .mrow.out .file .fi{background:rgba(255,255,255,.2);color:#fff}
+.chatreal .file b{display:block;font-weight:600;font-size:14px}
+.chatreal .file small{font-size:12px;opacity:.75}
+.chatreal .file .dl{margin-left:auto;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:16px}
+.chatreal .big{font-size:56px;line-height:1.1;padding:0 6px}
+.chatreal .react{display:flex;gap:6px;margin:3px 6px 8px;flex-wrap:wrap}
+.chatreal .mrow.out+.react{justify-content:flex-end}
+.chatreal .react button{height:30px;padding:0 11px;border-radius:15px;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:5px;background:var(--gl);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 8px var(--gl-shadow);transition:background .2s,transform .35s var(--gl-spring)}
+.chatreal .react button:active{transform:scale(.9)}
+.chatreal .react button.mine{background:color-mix(in srgb,var(--accent) 24%,var(--gl2));border-color:var(--accent)}
+.chatreal .mrow.hl .bub{box-shadow:0 0 0 2px var(--accent),0 0 0 10px var(--accent-soft)}
+.cmc.chatreal .mrow .bub{max-width:none;width:100%}
+.chatreal .day-group{display:flex;flex-direction:column}
+.chatreal .day{position:sticky;top:6px;z-index:5;align-self:stretch;display:flex;justify-content:center;margin:6px 0 12px;pointer-events:none}
+.chatreal .mrow .bub .t .i{color:var(--read)}
+.chatreal .mrow.out .bub .t{opacity:1;color:rgba(255,255,255,.78)}
+.chatreal .bub.gifb{padding:4px}
+.chatreal .bub.gifb .t{position:absolute;right:10px;bottom:9px;margin:0;float:none;padding:2px 7px;border-radius:10px;background:rgba(0,0,0,.45);color:#fff!important}
+.chatreal .mrow .bub, .chatreal .mrow .bub *{-webkit-user-select:text;user-select:text}
+.chatreal .mrow .bub .t, .chatreal .mrow .bub .file, .chatreal .mrow .bub .pic, .chatreal .mrow .bub .quote{-webkit-user-select:none;user-select:none}
+.chatreal .msgs, .chatreal .msgs{display: flex; flex-direction: column; min-width: 0; flex-shrink: 0;}
+.chatreal .msgs > *, .chatreal .vwrap{flex-shrink: 0;}
+.chatreal .mg{display: flex; flex-direction: column; min-width: 0;}
+.chatreal .mrow{position: relative; transition: transform .28s var(--ease); touch-action: pan-y;}
+.chatreal .mrow.dg{transition: none;}
+.chatreal .mrow.first{margin-top: 2px;}
+.chatreal .mrow .big + .swi, .chatreal .mrow .bub + .swi{}
+.chatreal .swi{position: absolute; right: -40px; top: 50%; margin-top: -16px; width: 32px; height: 32px; border-radius: 50%; background: var(--gl-card2); color: var(--accent-ink); display: grid; place-items: center; font-size: 17px; opacity: 0; pointer-events: none; transition: background .15s, color .15s;}
+.chatreal .swi.arm{background: var(--accent); color: #fff;}
+.chatreal .mrow.out .big{align-self: flex-end;}
+.chatreal .who-n{cursor: pointer;}
+.chatreal .unrd{align-self: stretch; display: flex; justify-content: center; margin: 12px 0 8px;}
+.chatreal .unrd span{padding: 5px 14px; border-radius: 99px; font-size: 12.5px; font-weight: 600; color: var(--text2);}
+.chatreal .sys{align-self: center; max-width: 88%; margin: 6px 0; text-align: center; font-size: 12px; color: var(--text2); overflow-wrap: anywhere;}
+.chatreal .sys span{display: inline-block; padding: 5px 14px; border-radius: 16px;}
+.chatreal .bub{overflow-wrap: anywhere; min-width: 0;}
+.chatreal .bub .txt{white-space: pre-wrap;}
+.chatreal .bub .txt a{color: inherit; text-decoration: underline; word-break: break-all;}
+.chatreal .txt .mn{font-weight: 600; color: var(--accent-ink);}
+.chatreal .mrow.out .txt .mn{color: inherit; text-decoration: underline;}
+.chatreal .txt code{font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; background: rgba(127, 127, 127, .18); border-radius: 4px; padding: 0 4px;}
+.chatreal .bub.dl{font-style: italic; opacity: .65;}
+.chatreal .bub .t .fwd{display: inline-flex; align-items: center; gap: 2px; font-weight: 600; margin-right: 2px; cursor: pointer;}
+.chatreal .bub .t .dv .i{color: currentColor; opacity: .6;}
+.chatreal .mrow.out .bub .t .dv .i{color: rgba(255, 255, 255, .7); opacity: 1;}
+.chatreal .bub .t .dv.part .i, .chatreal .mrow.out .bub .t .dv.part .i{opacity: 1;}
+.chatreal .bub .t .dv.part .i path:first-child{stroke: var(--read);}
+.chatreal .bub .t .dv.part .i path:last-child{opacity: .6;}
+.chatreal .mrow.out .bub .t .dv.part .i path:last-child{opacity: 1; stroke: rgba(255, 255, 255, .7);}
+.chatreal .bub .t .er{width: 15px; height: 15px; border-radius: 50%; background: var(--danger); color: #fff; font-style: normal; font-weight: 700; font-size: 10.5px; display: inline-flex; align-items: center; justify-content: center;}
+.chatreal .bub.fail{outline: 1.5px solid var(--danger); outline-offset: -1px;}
+.chatreal .failnote{font-size: 12.5px; color: var(--danger); text-align: right; padding: 3px 4px 0; cursor: pointer;}
+.chatreal .quote{cursor: pointer;}
+.chatreal .quote span{display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;}
+.chatreal .bub.media{padding: 4px;}
+.chatreal .bub.media .t{position: absolute; right: 10px; bottom: 9px; float: none; margin: 0; padding: 2px 7px; border-radius: 10px; background: rgba(0, 0, 0, .45); color: #fff !important;}
+.chatreal .bub.gifm{padding: 4px;}
+.chatreal .mrow.hl .bub{animation: bflash 1.9s cubic-bezier(.3, .6, .3, 1);}
+.chatreal .att-img{display: block; width: 100%; max-width: 280px; min-width: 160px; border-radius: 15px; background: var(--gl-card); cursor: zoom-in; object-fit: cover;}
+.chatreal .bub:not(.media) .att-img{margin: -3px -7px 7px; width: calc(100% + 14px); max-width: none;}
+.chatreal .vwrap{position: relative; cursor: pointer;}
+.chatreal .vwrap{overflow: hidden; border-radius: 15px; max-height: 300px; background: var(--gl-card);}
+.chatreal .bub:not(.media) .vwrap{margin: -3px -7px 7px;}
+.chatreal .bub.bcomp .vwrap{margin: 0 0 5px; border-radius: 0;}
+.chatreal .vwrap .vph{height: 160px; border-radius: 15px; background: var(--gl-card);}
+.chatreal .vplay{position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(0, 0, 0, .5); color: #fff; display: grid; place-items: center; font-size: 22px;}
+.chatreal .agrid{display: grid; gap: 2px; width: 280px; max-width: 100%; border-radius: 15px; overflow: hidden; background: var(--gl-card);}
+.chatreal .bub:not(.media) .agrid{margin: -3px -7px 7px; width: calc(100% + 14px); max-width: none;}
+.chatreal .agt{position: relative; overflow: hidden; background: var(--gl-card); cursor: zoom-in; min-width: 0;}
+.chatreal .agt img, .chatreal .agt .vph{display: block; width: 100%; height: 100%; object-fit: cover;}
+.chatreal .agt .vplay{width: 34px; height: 34px; margin: -17px 0 0 -17px; font-size: 17px;}
+.chatreal .agrid.n2{grid-template-columns: 1fr 1fr; aspect-ratio: 2 / 1;}
+.chatreal .agrid.n3{grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; aspect-ratio: 3 / 2;}
+.chatreal .agrid.n3 .agt:first-child{grid-row: span 2;}
+.chatreal .agrid.n4{grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; aspect-ratio: 1 / 1;}
+.chatreal .agrid.n5{grid-template-columns: repeat(6, 1fr); aspect-ratio: 6 / 5;}
+.chatreal .agrid.n5 .agt{grid-column: span 2;}
+.chatreal .agrid.n5 .agt:nth-child(-n+2){grid-column: span 3;}
+.chatreal .agrid.n6{grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; aspect-ratio: 3 / 2;}
+.chatreal .agrid.n7{grid-template-columns: repeat(6, 1fr);}
+.chatreal .agrid.n7 .agt{grid-column: span 2; aspect-ratio: 1 / 1;}
+.chatreal .agrid.n7.r1 .agt:last-child{grid-column: span 6; aspect-ratio: 3 / 1;}
+.chatreal .agrid.n7.r2 .agt:nth-last-child(-n+2){grid-column: span 3; aspect-ratio: 3 / 2;}
+.chatreal .file{cursor: pointer;}
+.chatreal .file small{display: block;}
+.chatreal .bacts{display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;}
+.chatreal .bbtn{font: inherit; font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--danger-border); background: var(--danger-bg); color: var(--danger); cursor: pointer;}
+.chatreal .bbtn.ok{border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent-ink);}
+.chatreal .bbtn:disabled{opacity: .55;}
+.chatreal .bbtn.done{border-color: var(--gl-edge); background: none; color: var(--muted); cursor: default;}
+.chatreal .sk{display: flex; flex-direction: column; gap: 8px; padding: 14px 0 0;}
+.chatreal .sk i{display: block; height: 38px; border-radius: 20px; background: var(--gl-card2); animation: skp 1.4s ease-in-out infinite;}
+.chatreal .sk i.l{align-self: flex-start; border-bottom-left-radius: 7px;}
+.chatreal .sk i.r{align-self: flex-end; border-bottom-right-radius: 7px;}
+.chatreal .sk i.w1{width: 52%;}
+.chatreal .sk i.w2{width: 38%; height: 32px;}
+.chatreal .sk i.w3{width: 46%;}
+.chatreal .sk i.w4{width: 64%; height: 54px;}
+.chatreal .sk i.w5{width: 34%; height: 32px;}
+.chatreal .bub.bcomp{padding: 0; overflow: hidden; min-width: 240px;}
+.chatreal .bub.bcomp > .cpad{padding: 8px 13px 0;}
+.chatreal .bub.bcomp > .txt.ct{padding: 8px 13px 8px;}
+.chatreal .bub.bcomp .att-img{margin: 0 0 5px; border-radius: 0; max-width: none; width: 100%;}
+.chatreal .bub.bcomp .file{margin: 6px 12px;}
+.chatreal .bub.bcomp:has(> .lcard){width: min(300px, 100%);}
+.cmc.chatreal .mrow .bub{max-width: none; width: 100%;}
+.cmc.chatreal .big{font-size: 56px;}
+.chatreal .gif-msg{position: relative; overflow: hidden; border-radius: 15px; background: var(--gl-card2); max-width: 100%; width: min(226px, 100%) !important;}
+.chatreal .gif-v{display: block; width: 100%; height: 100%; object-fit: cover;}
+.chatreal .gif-badge{position: absolute; left: 8px; top: 8px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 7px; border-radius: 8px; background: rgba(0, 0, 0, .5); color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .05em; z-index: 2; pointer-events: none;}
+.chatreal .gif-badge .gp-kl{color: #fff; font-size: 9.5px;}
+.chatreal .bub.gifm .gif-msg{border-radius: 17px;}
+.chatreal .bub.media, .chatreal .bub.gifm{padding: 0 !important; overflow: hidden; width: fit-content; background: none !important; border: 0 !important; box-shadow: none !important; -webkit-backdrop-filter: none; backdrop-filter: none;}
+.chatreal .bub.media .att-img, .chatreal .bub.media .agrid, .chatreal .bub.media .vwrap, .chatreal .bub.media .vph, .chatreal .bub.gifm .gif-msg{border-radius: 0; margin: 0;}
+.chatreal .bub.gifm .gif-msg{width: 226px !important; max-width: 100%;}
+.chatreal .gp-kl{display: inline-flex; align-items: center; gap: 5px; font-weight: 800; letter-spacing: .09em; font-size: 10px; color: #8b72ff;}
+.chatreal .gp-kl i{width: 12px; height: 12px; border-radius: 4px; display: inline-block; background: conic-gradient(from 210deg, #7a5cff, #ff5ca8, #ffb347, #7a5cff);}
+.chatreal .bub.bcomp{padding: 0; overflow: hidden;}
+.chatreal .bub.bcomp > .cpad{padding: 7px 12px 0;}
+.chatreal .bub.bcomp > .txt.ct{padding: 7px 12px 8px;}
+.chatreal .bub.bcomp .att-img{margin: 0 0 5px; border-radius: 0; max-width: none;}
+.chatreal .bub.bcomp .file{margin: 6px 12px;}
+.chatreal .bub.bcomp:has(> .lcard){width: min(300px, 100%);}
+.chatreal .lcard{cursor: pointer; background: rgba(127, 127, 127, .12);}
+.chatreal .lcard .lc-im{aspect-ratio: 16 / 9; overflow: hidden; background: var(--fill);}
+.chatreal .lcard .lc-im img{width: 100%; height: 100%; object-fit: cover; display: block;}
+.chatreal .lcard .lc-b{padding: 7px 12px 8px; min-width: 0;}
+.chatreal .lcard .lc-t{font-weight: 600; font-size: calc(var(--mfs, 16px) - 2px); line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;}
+.chatreal .lcard .lc-d{font-size: 12.5px; opacity: .7; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.chatreal .cblk{background: #0b0e13; color: #d6e2ee;}
+.chatreal .cblk .cbh{display: flex; justify-content: space-between; align-items: center; padding: 4px 8px 4px 12px; font-size: 12px; color: #8b9aaa; background: #151a21;}
+.chatreal .cblk .cblk-cp{display: flex; align-items: center; gap: 5px; border: 0; background: none; color: inherit; font: inherit; padding: 4px 6px; border-radius: 6px;}
+.chatreal .cblk .cblk-cp:active{background: rgba(255, 255, 255, .12);}
+.chatreal .cblk .cblk-cp i{font-style: normal;}
+.chatreal .cblk.done .cblk-cp{color: var(--green);}
+.chatreal .cblk pre{margin: 0; padding: 8px 12px; white-space: pre-wrap; overflow-wrap: anywhere; font: 0.88em/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: #d6e2ee;}
+.chatreal .cblk .cbf{display: flow-root; text-align: right; padding: 0 12px 6px; min-height: 8px; color: #8b9aaa;}
+.chatreal .cblk .cbf .meta{float: none; margin: 0; top: 0;}
+.chatreal .bub.bcomp{min-width: 240px;}
+.chatreal .cblk .cbh{gap: 12px; white-space: nowrap;}
+.chatreal .cblk .cblk-cp{white-space: nowrap; flex: none;}
+.chatreal .spl{color: transparent; cursor: pointer; -webkit-user-select: none; user-select: none; transition: color .45s ease;}
+.chatreal .spl.open{color: inherit;}
+.chatreal .spl-host{position: relative;}
+.chatreal .spl-cv{position: absolute; left: 0; top: 0; pointer-events: none; transition: opacity .45s ease;}
+.chatreal .spl-e{background: rgba(142, 108, 240, .22); border-bottom: 1.5px dotted #b79bff; border-radius: 3px;}
+.chatreal .mrow .bub, .chatreal .mrow .bub *, .chatreal .big{-webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important;}
+.chatreal .mrow.in .bub, .chatreal .mrow.in .bub, .chatreal .day .glass, .chatreal .day .glass{-webkit-backdrop-filter: none; backdrop-filter: none;}
+.chatreal .att-img{max-height: 300px;}
+.chatreal .mrow{--tg-in: #fff; --tg-out: color-mix(in srgb, var(--gl-out-a) 46%, var(--gl-out-b));}
+html.dark .chatreal .mrow{--tg-in: var(--bubble-bg);}
+.chatreal .bub{--tl: 17px; --tr: 17px; --br: 17px; --bl: 17px; border-radius: var(--tl) var(--tr) var(--br) var(--bl); padding: 7px 12px 6px;}
+.chatreal .mrow.in .bub{background: var(--tg-in); border: 0; border-radius: var(--tl) var(--tr) var(--br) var(--bl); box-shadow: 0 1px 2px rgba(10, 30, 40, .16); -webkit-backdrop-filter: none; backdrop-filter: none;}
+.chatreal .mrow.out .bub{background: var(--tg-out); border: 0; border-radius: var(--tl) var(--tr) var(--br) var(--bl); box-shadow: 0 1px 2px rgba(10, 40, 90, .24);}
+.chatreal .mrow.in:not(.first) .bub{--tl: 5px;}
+.chatreal .mrow.in:not(.last) .bub{--bl: 5px;}
+.chatreal .mrow.in.last .bub{--bl: 0px;}
+.chatreal .mrow.out:not(.first) .bub{--tr: 5px;}
+.chatreal .mrow.out:not(.last) .bub{--br: 5px;}
+.chatreal .mrow.out.last .bub{--br: 0px;}
+.chatreal .bub.dl{--bl: 17px; --br: 17px;}
+.chatreal .mrow.last .bub:not(.media):not(.gifm):not(.bcomp):not(.dl)::after{content: ""; position: absolute; bottom: 0; width: 9px; height: 13px; pointer-events: none;}
+.chatreal .mrow.in.last .bub:not(.media):not(.gifm):not(.bcomp):not(.dl)::after{left: -8px; background: var(--tg-in); clip-path: path('M9 0 V13 H1 C5 12.5 9 9 9 0 Z');}
+.chatreal .mrow.out.last .bub:not(.media):not(.gifm):not(.bcomp):not(.dl)::after{right: -8px; background: var(--tg-out); clip-path: path('M0 0 V13 H8 C4 12.5 0 9 0 0 Z');}
+.chatreal .mrow.first{margin-top: 6px;}
+.chatreal .bub:not(.media):not(.bcomp) > .att-img, .chatreal .bub:not(.media):not(.bcomp) > .vwrap, .chatreal .bub:not(.media):not(.bcomp) > .agrid{margin: 6px -12px 6px; width: calc(100% + 24px); max-width: none; border-radius: 0;}
+.chatreal .bub:not(.media):not(.bcomp) > .att-img:first-child, .chatreal .bub:not(.media):not(.bcomp) > .vwrap:first-child, .chatreal .bub:not(.media):not(.bcomp) > .agrid:first-child{margin-top: -7px; border-radius: var(--tl) var(--tr) 0 0;}
+.chatreal .bub > .who-n{padding: 0 0 2px; margin: 0; font-size: 13px; line-height: 1.2;}
+.chatreal .bub.bcomp > .who-n{padding: 7px 12px 4px;}
+.chatreal .mrow .quote.fwq{border: 0; background: none; padding: 0; border-radius: 0; margin: 0 0 3px; cursor: default;}
+.chatreal .mrow .quote.fwq b{color: var(--accent-ink); font-weight: 600; font-size: 13px;}
+.chatreal .mrow.out .quote.fwq b{color: #fff;}
+.chatreal .mrow .quote.fwq em{font-style: normal; font-weight: 700;}
+.chatreal .mrow .quote.fwq span{display: block; -webkit-line-clamp: unset; overflow: visible; color: inherit;}
+.chatreal .bub > .react{margin: 0; padding: 1px 0 0; gap: 4px; align-items: center;}
+.chatreal .bub.bcomp > .react{padding: 2px 12px 7px;}
+.chatreal .bub > .react button{height: 24px; padding: 0 8px; border-radius: 12px; font-size: 12.5px; font-weight: 700; gap: 3px; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent-ink);}
+.chatreal .bub > .react button.mine{background: var(--gl-out-a); color: #fff;}
+.chatreal .mrow.out .bub > .react button{background: rgba(255, 255, 255, .2); color: #fff;}
+.chatreal .mrow.out .bub > .react button.mine{background: #fff; color: var(--tg-out);}
+.chatreal .bub > .react .t{float: none; margin: 0 0 0 auto; padding-left: 10px;}
+.chatreal .mrow.in .bub.media, .chatreal .mrow.in .bub.gifm{background: var(--tg-in) !important;}
+.chatreal .mrow.out .bub.media, .chatreal .mrow.out .bub.gifm{background: var(--tg-out) !important;}
+.chatreal .bub.media > .who-n, .chatreal .bub.gifm > .who-n{padding: 7px 12px 5px;}
+.chatreal .bub.media > .who-n + .att-img, .chatreal .bub.media > .who-n + .agrid, .chatreal .bub.media > .who-n + .vwrap, .chatreal .bub.gifm > .who-n + .gif-msg{border-radius: 0 0 var(--br) var(--bl);}
+.chatreal .mrow.last .bub.media, .chatreal .mrow.last .bub.gifm{overflow: visible; border-radius: 0; box-shadow: none !important;}
+.chatreal .mrow.last .bub.media .att-img, .chatreal .mrow.last .bub.media .agrid, .chatreal .mrow.last .bub.media .vwrap, .chatreal .mrow.last .bub.gifm .gif-msg{border-radius: 0;}
+.chatreal .mrow.out.last .bub.media, .chatreal .mrow.out.last .bub.gifm{margin-right: -8px; padding-right: 8px !important; clip-path: polygon(0 calc(1 * var(--tl)), calc(0.0761 * var(--tl)) calc(0.6173 * var(--tl)), calc(0.2929 * var(--tl)) calc(0.2929 * var(--tl)), calc(0.6173 * var(--tl)) calc(0.0761 * var(--tl)), calc(1 * var(--tl)) 0, calc(100% - 1 * var(--tr) - 8px) 0, calc(100% - 0.6173 * var(--tr) - 8px) calc(0.0761 * var(--tr)), calc(100% - 0.2929 * var(--tr) - 8px) calc(0.2929 * var(--tr)), calc(100% - 0.0761 * var(--tr) - 8px) calc(0.6173 * var(--tr)), calc(100% - 8px) calc(1 * var(--tr)), calc(100% - 7.552px) calc(100% - 8.24px), calc(100% - 6.336px) calc(100% - 4.68px), calc(100% - 4.544px) calc(100% - 2.2px), calc(100% - 2.368px) calc(100% - 0.68px), 100% 100%, calc(1 * var(--bl)) 100%, calc(0.6173 * var(--bl)) calc(100% - 0.0761 * var(--bl)), calc(0.2929 * var(--bl)) calc(100% - 0.2929 * var(--bl)), calc(0.0761 * var(--bl)) calc(100% - 0.6173 * var(--bl)), 0 calc(100% - 1 * var(--bl)));}
+.chatreal .mrow.in.last .bub.media, .chatreal .mrow.in.last .bub.gifm{margin-left: -8px; padding-left: 8px !important; clip-path: polygon(calc(8px) calc(1 * var(--tl)), calc(0.0761 * var(--tl) + 8px) calc(0.6173 * var(--tl)), calc(0.2929 * var(--tl) + 8px) calc(0.2929 * var(--tl)), calc(0.6173 * var(--tl) + 8px) calc(0.0761 * var(--tl)), calc(1 * var(--tl) + 8px) 0, calc(100% - 1 * var(--tr)) 0, calc(100% - 0.6173 * var(--tr)) calc(0.0761 * var(--tr)), calc(100% - 0.2929 * var(--tr)) calc(0.2929 * var(--tr)), calc(100% - 0.0761 * var(--tr)) calc(0.6173 * var(--tr)), 100% calc(1 * var(--tr)), 100% calc(100% - 1 * var(--br)), calc(100% - 0.0761 * var(--br)) calc(100% - 0.6173 * var(--br)), calc(100% - 0.2929 * var(--br)) calc(100% - 0.2929 * var(--br)), calc(100% - 0.6173 * var(--br)) calc(100% - 0.0761 * var(--br)), calc(100% - 1 * var(--br)) 100%, 0 100%, calc(2.368px) calc(100% - 0.68px), calc(4.544px) calc(100% - 2.2px), calc(6.336px) calc(100% - 4.68px), calc(7.552px) calc(100% - 8.24px), calc(8px) calc(100% - 13px));}
+.chatreal .mrow.out.last .bub.media .att-img, .chatreal .mrow.out.last .bub.media .vwrap, .chatreal .mrow.out.last .bub.media .agrid{margin-right: -8px;}
+.chatreal .mrow.in.last .bub.media .att-img, .chatreal .mrow.in.last .bub.media .vwrap, .chatreal .mrow.in.last .bub.media .agrid{margin-left: -8px;}
+.chatreal .mrow.last .bub.media .att-img{width: calc(100% + 8px); max-width: none;}
+.chatreal .mrow.last .bub.gifm .gif-msg{width: 234px !important;}
+.chatreal .mrow.out.last .bub.gifm .gif-msg{margin-right: -8px;}
+.chatreal .mrow.in.last .bub.gifm .gif-msg{margin-left: -8px;}
+.chatreal .mrow.out.last .bub.media .t{right: 18px;}
+.chatreal .vm{display:flex;align-items:center;gap:12px;padding:2px 0 0}
+.chatreal .vm.vm-sm{gap:10px}
+.chatreal .vm .pl{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;font-size:16px;flex:none;position:relative;transition:transform .35s var(--gl-spring),background .2s,box-shadow .2s}
+.chatreal .vm .pl:active{transform:scale(.92)}
+.chatreal .vm .pl .i{fill:currentColor;stroke:currentColor;stroke-width:1.4;stroke-linejoin:round}
+.chatreal .vm .pl .i.p1{margin-left:1px}
+.chatreal .vm .pl .i{position:absolute;width:1em;height:1em;transition:opacity .2s,transform .35s var(--gl-spring)}
+.chatreal .vm .pl .i.p2{opacity:0;transform:scale(.4) rotate(-40deg)}
+.chatreal .vm.playing .pl .i.p1{opacity:0;transform:scale(.4) rotate(40deg)}
+.chatreal .vm.playing .pl .i.p2{opacity:1;transform:none}
+.chatreal .vm-in .pl{background:var(--accent);color:#fff;box-shadow:0 3px 10px color-mix(in srgb,var(--accent) 32%,transparent)}
+html.dark .chatreal .vm-in .pl{color:#07201c}
+.chatreal .vm-in .pl:hover{filter:brightness(1.08)}
+.chatreal .vm-out .pl{background:rgba(255,255,255,.96);color:var(--gl-out-b)}
+.chatreal .vm-out .pl:hover{background:#fff}
+.chatreal .vm .vb{flex:1;min-width:150px}
+.chatreal .vm .wv{display:flex;align-items:center;gap:2px;width:max-content;max-width:100%;height:30px;cursor:pointer;touch-action:manipulation}
+.chatreal .vm .wv i{display:block;flex:none;width:3px;border-radius:2px;--f:0;background:linear-gradient(90deg,currentColor calc(var(--f) * 100%),color-mix(in srgb,currentColor 38%,transparent) calc(var(--f) * 100%))}
+.chatreal .vm-in .wv{color:var(--accent)}
+.chatreal .vm-out .wv{color:#fff}
+.chatreal .vm .mt{display:flex;align-items:center;gap:7px;font-size:11.5px;font-variant-numeric:tabular-nums;margin-top:1px;color:var(--text2);height:18px}
+.chatreal .vm-out .mt{color:rgba(255,255,255,.88)}
+.chatreal .vm .mt .tm{margin-left:auto;display:inline-flex;align-items:center;gap:4px}
+.chatreal .vm .ud{width:8px;height:8px;border-radius:50%;background:var(--accent);transition:transform .3s var(--gl-spring),opacity .3s}
+.chatreal .vm .ud.gone{transform:scale(0);opacity:0}
+.chatreal .vm .spd{height:18px;padding:0 7px;border-radius:9px;font-size:10.5px;font-weight:700;background:var(--accent-soft);color:var(--accent-ink);display:none;transition:transform .3s var(--gl-spring)}
+.chatreal .vm-out .spd{background:rgba(255,255,255,.22);color:#fff}
+.chatreal .vm.act .spd{display:inline-block}
+.chatreal .vm .spd:active{transform:scale(.9)}
+.chatreal .vm .tm .irc-meta, .chatreal .vm .tm .t.meta{position:static;float:none;display:inline-flex;align-items:center;gap:4px;margin:0;padding:0;transform:none;bottom:auto;right:auto}
+@keyframes bpop{from{transform:scale(.7) translateY(12px);opacity:0}}
+@keyframes bflash{ 0% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0); } 12% { box-shadow: 0 0 0 2px var(--accent), 0 0 0 0 rgba(var(--accent-rgb), .38); } 50% { box-shadow: 0 0 0 2px var(--accent), 0 0 0 12px rgba(var(--accent-rgb), 0); } 100% { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0), 0 0 0 12px rgba(var(--accent-rgb), 0); } }
+@keyframes skp{ 50% { opacity: .55; } }

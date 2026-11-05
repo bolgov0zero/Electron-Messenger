@@ -1,0 +1,18 @@
+/* Поле ввода: сетка из панелей .xtra (строка 1, на всю ширину) и ряда «+» / поле / отправка (строка 2). Докованную подложку рисует flat.css (.comp::before) */
+.comp.cs { display: grid; grid-template-columns: 46px minmax(0, 1fr) 46px; gap: 0 8px; align-items: end; }   /* gap: 0 8px — между строками зазор даёт сама панель (8 px внизу), общий gap макета добавлял второй */
+.comp.cs > .xtra { grid-column: 1 / -1; grid-row: 1; position: relative; z-index: 2; overflow: hidden; }
+.comp.cs > .cbtn { grid-column: 1; grid-row: 2; z-index: 2; }
+.comp.cs > .cfield { grid-column: 2; grid-row: 2; z-index: 2; }
+.comp.cs > .sendb { grid-column: 3; grid-row: 2; z-index: 2; }
+.comp.cs > .lkb { grid-column: 1 / -1; grid-row: 2; z-index: 2; }
+.xtra:empty { display: none; }
+
+/* панели: зазор снизу появляется вместе с содержимым; содержимое не ближе ~20 px к скруглённому краю */
+.comp.cs > .xtra { padding-bottom: 0; }   /* отступ снизу выставляет xtraFit (composer.js) */
+.xtra .ctx:empty { display: none; }
+.xtra .cbar { padding: 14px 12px 0 22px; }
+.xtra .fmtbar { padding: 12px 12px 0 18px; }
+.xtra .axs { padding: 14px 20px 0; }
+.xtra .lpv { padding: 14px 14px 0 22px; }
+.xtra .fpv { padding: 12px 22px 0; }
+.xtra .rnote { padding: 14px 22px 0; }

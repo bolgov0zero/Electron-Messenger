@@ -1,0 +1,93 @@
+
+/* ───── ЗВОНКИ под вариант B: плоские карточки, без стекла и размытия; на видео — сплошные тёмные панели ───── */
+:root{--ok:#2f9e5b;--no:#d94a4a;--vpanel:#25221f;--vbtn:#38342f;--vbtn2:#45403a}
+html.dark{--ok:#3aae68;--no:#e05a5a;--vpanel:#2a2724;--vbtn:#3b3733;--vbtn2:#48433d}
+body{background:var(--stage)}
+.glass,.glass-pop{background:var(--side-bg);border:0;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:var(--flat-shadow)}
+.glass-pop{box-shadow:var(--pop-shadow)}
+.gi:hover{background-color:var(--gl-hov)}
+.ibtn{border-radius:12px}
+.btn{height:40px;border-radius:12px;background:var(--gl-card2);border:0;box-shadow:none}
+.btn:hover{background:color-mix(in srgb,var(--text) 14%,var(--side-bg))}
+.btn.pri{background:var(--accent-fill);color:#fff;border:0;box-shadow:none}
+.btn.soft{background:var(--accent-soft);border:0}
+.btn.danger{background:var(--danger-bg);border:0}
+.btn.sm{height:34px;border-radius:12px}
+.btn.ok{background:var(--ok);color:#fff;border:0;box-shadow:none}
+.btn.ok:hover{background:var(--ok);filter:brightness(1.1)}
+.btn.no{background:var(--no);color:#fff;border:0;box-shadow:none}
+.btn.no:hover{background:var(--no);filter:brightness(1.1)}
+.seg{border-radius:14px;background:var(--surf2);box-shadow:none}
+.seg button{border-radius:11px}
+.seg .thumb{border-radius:11px;background:var(--side-bg);box-shadow:0 1px 2px rgba(60,40,20,.12);transition:left .25s var(--gl-ease),width .25s var(--gl-ease)}
+html.dark .seg .thumb{background:var(--gl-card2);box-shadow:none}
+.srch{border-radius:12px;background:var(--surf2);box-shadow:none}
+.av.sq{border-radius:12px}
+.tagp{border-radius:8px;border:0}
+.ctl.glass{border-radius:16px;margin:12px 12px 0}
+.holder{border-radius:26px}
+.win{border-radius:26px;background:var(--app-bg);box-shadow:0 0 0 1px rgba(60,40,20,.08),0 30px 70px rgba(40,28,16,.22)}
+.amb{display:none}
+.app{padding:10px;gap:10px}
+.side,.chat{border-radius:22px}
+.crow{border-radius:16px}
+.crow.sel{background:var(--sel);box-shadow:none}
+.chat .hd{border-bottom:0;box-shadow:0 8px 20px -10px rgba(60,40,20,.18)}
+.chat{background:var(--chat-bg)}
+.bub{background:var(--bubble-bg);border:0;box-shadow:0 1px 2px rgba(60,40,20,.09);border-radius:18px;color:var(--text)}
+html.dark .bub{box-shadow:none}
+.bub.out{background:var(--accent-fill);color:#fff;box-shadow:none}
+.chat .comp.glass{border-radius:12px;background:var(--surf2);box-shadow:none;height:46px}
+.chat .comp .send{border-radius:10px;background:var(--accent-fill)}
+.scrim{-webkit-backdrop-filter:none;backdrop-filter:none}
+.notes.glass{border-radius:16px}
+.notes p{border-top:1px solid var(--gl-lo)}
+
+/* входящий звонок: карточка */
+.inc{border-radius:22px}
+.prev{border-radius:16px;box-shadow:none}
+.ringav::before,.ringav::after{border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.vid.blur{filter:none;transform:none}
+
+/* поверх видео: сплошные тёмные панели вместо стекла */
+.vg{background:var(--vpanel);border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.nchip{height:26px;border-radius:8px}
+.qchip{height:26px;border-radius:8px}
+.nchip .mb{border-radius:6px;background:var(--no)}
+.tile{border-radius:16px;box-shadow:none}
+.tile.sp{box-shadow:0 0 0 3px var(--accent)}
+.tile .sp-b{border-radius:8px;background:var(--accent-fill)}
+.tile.self .nchip{background:var(--accent-fill)}
+.gridv.m .tile{border-radius:14px}
+.remote{border-radius:16px;box-shadow:none}
+.pip{border-radius:12px;box-shadow:0 0 0 2px #fff,0 8px 20px rgba(0,0,0,.35)}
+.ctrls{border-radius:16px;gap:8px;padding:8px}
+.rb{border-radius:14px;background:var(--vbtn);border:0}
+.rb:hover{background:var(--vbtn2)}
+.rb.off{background:#fff;color:#1d1b19}
+.rb.sm{border-radius:10px}
+.rb.end{border-radius:14px;background:var(--no);border:0;box-shadow:none;padding:0 22px}
+.rb.ac{background:var(--accent-fill);border:0}
+.cw.el,.cw.web{border-radius:22px;background:var(--modal-bg);box-shadow:var(--pop-shadow)}
+.cw .th{height:52px}
+
+/* мобильный клиент */
+.phone{background:var(--app-bg)}
+.mb2 .rnd{width:72px;height:72px;border-radius:24px;border:0;box-shadow:none}
+.mb2 .rnd.ok{background:var(--ok)}
+.mb2 .rnd.no{background:var(--no)}
+.mb2 .rnd.gl{background:var(--gl-card2);color:var(--text);border:0;-webkit-backdrop-filter:none;backdrop-filter:none}
+.mscr.v .mb2 .rnd.gl{background:var(--vbtn);color:#fff}
+.mb2 .rnd.sq{width:60px;height:60px;border-radius:20px}
+.mchip{border-radius:12px;height:40px}
+.mchip.glass{background:var(--gl-card2);box-shadow:none}
+.mscr.v .mchip{background:var(--vbtn)}
+.mpip{border-radius:14px;box-shadow:0 0 0 2px #fff,0 8px 20px rgba(0,0,0,.35)}
+.mctrl{border-radius:16px;gap:8px;padding:8px}
+.mctrl .rb{width:54px;height:54px;border-radius:14px}
+.mctrl .rb.end{width:auto;padding:0 22px}
+.mbar{border-radius:12px;background:var(--ok);box-shadow:none;height:44px;left:14px;right:14px}
+.mbar .x{border-radius:8px;background:rgba(255,255,255,.22)}
+.mchat .hd2.glass{border-radius:16px}
+.mchat .cmp2.glass{border-radius:12px;background:var(--surf2);box-shadow:none}
+.mtop .rb{border-radius:12px}

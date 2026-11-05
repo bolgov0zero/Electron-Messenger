@@ -20,11 +20,11 @@ B.ui.diag = (function () {
   function cell(l, x) { return '<div class="cell"><span class="cl">' + l + '</span><span class="cv">' + B.esc(x) + '</span></div>'; }
   function html() {
     var vv = window.visualViewport, S = B.S, ws = !S.ws ? 'нет' : ['подключение', 'открыто', 'закрывается', 'закрыто'][S.ws.readyState];
-    return '<div class="gl">Связь</div><div class="grp glass">' + cell('Сервер', S.server) + cell('WebSocket', ws) + cell('Чатов загружено', S.chats.length) + cell('Непрочитанных', B.chats.totalUnread()) + '</div>' +
-      '<div class="gl">Устройство</div><div class="grp glass">' + cell('Запуск', B.pwa.standalone ? 'как приложение (PWA)' : 'во вкладке браузера') + cell('Service worker', B.pwa.sw) + cell('Окно', innerWidth + ' × ' + innerHeight) +
+    return '<div class="gh">Связь</div><div class="grp glass">' + cell('Сервер', S.server) + cell('WebSocket', ws) + cell('Чатов загружено', S.chats.length) + cell('Непрочитанных', B.chats.totalUnread()) + '</div>' +
+      '<div class="gh">Устройство</div><div class="grp glass">' + cell('Запуск', B.pwa.standalone ? 'как приложение (PWA)' : 'во вкладке браузера') + cell('Service worker', B.pwa.sw) + cell('Окно', innerWidth + ' × ' + innerHeight) +
         cell('Видимая область', vv ? Math.round(vv.width) + ' × ' + Math.round(vv.height) : '—') + cell('Экран', screen.width + ' × ' + screen.height + ' @' + devicePixelRatio) + cell('Масштаб оболочки', sc.toFixed(3)) + cell('safe-area сверху / снизу', inset('top') + ' / ' + inset('bottom')) + '</div>' +
-      '<div class="gl">Последние нажатия (что система считает нажатым)</div><div class="grp glass">' + (taps.length ? taps.map(function (t) { return cell(t.at, t.v); }).join('') : cell('—', 'нажмите на экран и вернитесь сюда')) + '</div>' +
-      '<div class="gl">Звонки</div><div class="grp glass"><div class="cell"><span class="cl">Данные о соединении в звонке</span><button class="tg" data-tg="diag" role="switch" aria-checked="' + !!(window.Calls && Calls.local.get('diag')) + '"></button></div></div><div class="gf">Поверх звонка показываются скорость, потери, задержка и путь связи. Пригодится, если видео или звук идут плохо.</div>' +
+      '<div class="gh">Последние нажатия (что система считает нажатым)</div><div class="grp glass">' + (taps.length ? taps.map(function (t) { return cell(t.at, t.v); }).join('') : cell('—', 'нажмите на экран и вернитесь сюда')) + '</div>' +
+      '<div class="gh">Звонки</div><div class="grp glass"><div class="cell"><span class="cl">Данные о соединении в звонке</span><button class="tg" data-tg="diag" role="switch" aria-checked="' + !!(window.Calls && Calls.local.get('diag')) + '"></button></div></div><div class="gf">Поверх звонка показываются скорость, потери, задержка и путь связи. Пригодится, если видео или звук идут плохо.</div>' +
       '<button class="abtn" data-r>' + I('upd') + 'Перезагрузить приложение</button>';
   }
   function open() {

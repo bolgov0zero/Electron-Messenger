@@ -2,9 +2,9 @@
 
 // Service worker /m — push-уведомления, кэш оболочки и запуск без связи, со своим именем кэша и областью видимости (/m/):
 // SW соседних клиентов её не покрывают.
-const CACHE = 'm-v19';
+const CACHE = 'm-v22';
 // index.html (/m/) не прекэшируем: он берётся из сети, а удачная копия остаётся в кэше для запуска без связи.
-const STATIC = ['/m/manifest.json', '/m/manifest-light.json'];
+const STATIC = ['/m/manifest.json', '/m/manifest-light.json', '/m/manifest-navy.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC).catch(() => {})));

@@ -1,0 +1,359 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ВАРИАНТ B «Мягкий» — без стекла. Этот блок идёт после стилей макета Liquid Glass и переопределяет
+   токены и поверхности: плоские карточки с мягкими тенями, радиусы 12–22, тёплая нейтраль, Inter.
+   Переписка (.chatreal) от этих токенов не зависит: её токены заданы в области чата отдельно.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --ff:Inter,-apple-system,system-ui,sans-serif;
+  --app-bg:#ece9e4;--side-bg:#fdfcfa;--card-bg:#fdfcfa;--modal-bg:#fdfcfa;--chat-bg:#f7f5f1;--bubble-bg:#ffffff;
+  --text:#1d1b19;--text2:#5b554e;--muted:#766e65;
+  --surf2:#f3f0eb;--sel:#efebe5;
+  --accent-fill:color-mix(in srgb,var(--accent) 80%,#000);
+  --r-panel:22px;--r-bar:16px;--r-card:16px;--r-menu:16px;--r-item:12px;--r-row:16px;--r-ctl:12px;--r-pill:12px;--gl-in:var(--bubble-bg);--chip-bg:color-mix(in srgb,var(--text) 9%,var(--chat-bg));
+  --flat-shadow:0 1px 2px rgba(60,40,20,.05),0 10px 30px rgba(60,40,20,.07);
+  --pop-shadow:0 2px 6px rgba(60,40,20,.08),0 18px 44px rgba(60,40,20,.16);
+  --gl:var(--side-bg);--gl2:var(--surf2);--gl-pop:var(--side-bg);
+  --gl-card:color-mix(in srgb,var(--text) 4%,var(--side-bg));
+  --gl-card2:color-mix(in srgb,var(--text) 8%,var(--side-bg));
+  --gl-inset:color-mix(in srgb,var(--text) 5%,var(--side-bg));
+  --gl-edge:transparent;--gl-hi:transparent;--gl-lo:color-mix(in srgb,var(--text) 9%,transparent);
+  --gl-shadow:rgba(60,40,20,.14);--gl-spec:transparent;--gl-spotlight:transparent;
+  --gl-hov:color-mix(in srgb,var(--text) 5%,transparent);
+  --gl-blur:0px;--gl-out-a:var(--accent-fill);--gl-out-b:var(--accent-fill);
+  --gl-base:#ece9e4;
+  --scrim:rgba(40,28,16,.32);
+  --stage:#dedad4;
+}
+html.dark{
+  --app-bg:#131211;--side-bg:#1d1c1a;--card-bg:#1d1c1a;--modal-bg:#1d1c1a;--chat-bg:#181715;--bubble-bg:#2a2825;
+  --text:#f2efeb;--text2:#b4aea6;--muted:#968f86;
+  --surf2:#292724;--sel:#2b2926;
+  --accent-fill:color-mix(in srgb,var(--accent) 70%,#000);
+  --flat-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  --pop-shadow:0 2px 6px rgba(0,0,0,.4),0 18px 44px rgba(0,0,0,.55);
+  --gl-card:color-mix(in srgb,var(--text) 5%,var(--side-bg));
+  --gl-card2:color-mix(in srgb,var(--text) 10%,var(--side-bg));
+  --gl-inset:color-mix(in srgb,var(--text) 6%,var(--side-bg));
+  --gl-lo:color-mix(in srgb,var(--text) 10%,transparent);
+  --gl-shadow:rgba(0,0,0,.5);--gl-hov:color-mix(in srgb,var(--text) 7%,transparent);
+  --gl-out-a:var(--accent-fill);--gl-out-b:var(--accent-fill);
+  --gl-base:#0f0e0d;--scrim:rgba(0,0,0,.5);--stage:#0a0908;
+}
+html.dark.navy{
+  --app-bg:#10161d;--side-bg:#18202a;--card-bg:#18202a;--modal-bg:#18202a;--chat-bg:#0f1b27;--bubble-bg:#213040;
+  --text:#eef2f6;--text2:rgba(238,242,246,.74);--muted:rgba(238,242,246,.56);
+  --surf2:#222d3a;--sel:#243242;--gl-base:#0c1219;--stage:#080c11;
+}
+
+/* ───── поверхности: плоские карточки вместо стекла ───── */
+body{background:var(--stage)}
+.glass,.glass-pop{background:var(--side-bg);border:0;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:var(--flat-shadow)}
+.glass-pop{box-shadow:var(--pop-shadow)}
+.gi::after{display:none}
+.gi:hover{background-color:var(--gl-hov)}
+.win{border-radius:26px;background:var(--app-bg);box-shadow:0 0 0 1px rgba(60,40,20,.08),0 30px 70px rgba(40,28,16,.22)}
+.win>.amb{display:none}
+.app{padding:10px;gap:10px}
+.side{border-radius:var(--r-panel)}
+.rail{border-right:0;background:var(--surf2)}
+.ws:hover{background:var(--gl-hov)}
+.ws.on{background:var(--side-bg);box-shadow:0 1px 3px rgba(60,40,20,.12)}
+.sel{background:var(--sel);border:0;box-shadow:0 1px 2px rgba(60,40,20,.06)}
+.row:hover,.pp-row:hover,.cs-sn:hover{background:var(--gl-hov)}
+.pp-row.on{background:var(--accent-soft)}
+
+/* кнопки, поля, переключатели */
+.ibtn{border-radius:var(--r-ctl)}
+.cap.glass{background:none;box-shadow:none;padding:0}
+.cap>button{border-radius:var(--r-ctl);width:38px;height:38px}
+.head .cap>button{width:36px;height:36px}
+.btn{border-radius:var(--r-ctl);background:var(--gl-card2);border:0;box-shadow:none}
+.btn.pri{background:var(--accent-fill);color:#fff;border:0;box-shadow:none}
+.btn.pri:hover:not(:disabled){background:var(--accent-fill);filter:brightness(1.1)}
+.btn.soft{background:var(--accent-soft);border:0;box-shadow:none}
+.btn.danger{background:var(--danger-bg);border:0}
+.btn.danger.fill{background:var(--danger);color:#fff;border:0;box-shadow:none}
+.fld{border-radius:12px;background:var(--surf2);border:1px solid transparent;box-shadow:none}
+.fld:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.seg{border-radius:14px;background:var(--surf2);box-shadow:none}
+.seg button{border-radius:11px}
+.seg .thumb{border-radius:11px;background:var(--side-bg);box-shadow:0 1px 3px rgba(60,40,20,.14)}
+html.dark .seg .thumb{background:var(--gl-card2)}
+.bd{background:var(--accent-fill)}
+.sep{background:var(--gl-lo)}
+
+/* меню шапки сайдбара — карточка вместо капсулы */
+.head-menu{border-radius:var(--r-menu);padding:6px}
+.head-menu button{border-radius:var(--r-item)}
+.head-menu button::after{border-radius:8px}
+
+/* чат: карточка с докованными шапкой и полем ввода; цветной фон переписки живёт внутри карточки */
+.chat{border-radius:var(--r-panel);overflow:hidden;background:var(--gl-base);box-shadow:var(--flat-shadow)}
+.chat>.amb{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.chat>.amb i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.85}
+.chat>.amb i:nth-child(1){width:420px;height:420px;left:60px;top:-140px;background:var(--amb-1)}
+.chat>.amb i:nth-child(2){width:380px;height:380px;right:-100px;top:80px;background:var(--amb-2)}
+.chat>.amb i:nth-child(3){width:360px;height:360px;left:20px;bottom:-140px;background:var(--amb-3)}
+.chat>.amb i:nth-child(4){width:320px;height:320px;right:80px;bottom:-120px;background:var(--amb-4)}
+.chat.settings,.chat.empty{background:var(--side-bg)}
+.chat.settings>.amb,.chat.empty>.amb{display:none}
+.scroll{border-radius:0;padding:84px 0 96px}
+.chat.haspin .scroll,.chat.hassearch .scroll{padding-top:140px}.chat.hasbar .scroll{padding-bottom:154px}
+.chead{height:68px;border-radius:0;box-shadow:0 8px 20px -10px rgba(60,40,20,.18);padding:0 14px 0 10px}
+.chead .who{border-radius:var(--r-item)}
+.chead .who.link:hover{background:var(--gl-hov);box-shadow:none;border-color:transparent}
+.strip{border-radius:12px;left:12px;right:12px;top:78px}
+.jump{border-radius:12px}
+.comp{background:var(--side-bg);padding:10px 14px 14px;gap:8px;box-shadow:0 -8px 20px -10px rgba(60,40,20,.18);z-index:var(--z-bar)}
+.comp .plus,.comp .send{border-radius:12px;width:48px;height:48px;background:var(--surf2);box-shadow:none}
+.field.glass{background:var(--surf2);box-shadow:none;border-radius:12px;min-height:48px}
+.field .row1{min-height:48px}
+.field .em{border-radius:12px}
+.send.ready{background:var(--accent-fill);box-shadow:none;border:0;transform:none;color:#fff}
+.replybar{border-radius:12px}
+.fmtbar{border-radius:12px}.fmtbar button{border-radius:10px}
+.plus,.send{border:0}
+.menu,.ep,.mention{border-radius:var(--r-menu)}
+.ep-tabs button,.ep-grid button,.ctx-react button{border-radius:12px}
+.ctx-react{border-radius:14px}
+.ctx-menu button,.fly button,.menu button{border-radius:var(--r-item)}
+.emptyst .eic.glass{background:var(--surf2);box-shadow:none}
+
+/* окна */
+.modal{border-radius:var(--r-panel);box-shadow:var(--pop-shadow)}
+.modal-hdr .ibtn{background:var(--surf2)}
+.nc-kind,.gm-tile,.gm-box,.pf-g,.cm-tile{border:0}
+.nc-kind-ic{border-radius:12px}
+.pp-chk{border-radius:8px}
+.pf-cover{background:linear-gradient(135deg,color-mix(in srgb,var(--cv) 70%,var(--side-bg)),color-mix(in srgb,var(--cv) 22%,var(--side-bg)))}
+.cm-tile::after{display:none}
+.cs-sn-ic{border-radius:12px}
+.cs-sn.on .cs-sn-ic::before{background:var(--accent-fill)}
+.toast{border-radius:var(--r-bar)}
+
+/* окна «Гостевая ссылка» и «Ссылка на видеозвонок» (настоящий код клиента) — в стиле B */
+.gl-bg{background:var(--scrim);-webkit-backdrop-filter:none;backdrop-filter:none;font-family:var(--ff)}
+.gl-bg .gl{border:0;border-radius:var(--r-panel);box-shadow:var(--pop-shadow);max-width:640px}
+.gl-bg .gl-h{border-bottom:0;padding:18px 18px 6px 24px}
+.gl-bg .gl-h b{font-size:15px}
+.gl-bg .gl-top{border-bottom:0;padding:8px 24px 6px}
+.gl-bg .gl-b{padding:6px 24px 22px}
+.gl-bg .gl-x{border-radius:12px;background:var(--surf2)}
+.gl-bg .gl-list{border:0;border-radius:var(--r-card);background:var(--gl-card)}
+.gl-bg .gl-th{border-bottom:0}
+.gl-bg .gl-it+.gl-it,.gl-bg .cll .cll-it+.cll-it{border-top:1px solid var(--gl-lo)}
+.gl-bg .gl input,.gl-bg .gl select,.gl-bg .gl-sel-b{border:1px solid transparent;border-radius:12px;background:var(--surf2)}
+.gl-bg .gl input:focus,.gl-bg .gl-sel-b:focus-visible,.gl-bg .gl-sel.open .gl-sel-b{border-color:var(--accent)}
+.gl-bg .gl button.gl-btn{border:0;border-radius:12px;background:var(--accent-fill);color:#fff}
+.gl-bg .gl button.gl-btn.cll-no,.gl-bg .gl button.gl-btn.cll-act,.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-no:not(.gl-ic),.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-act:not(.gl-ic){border:0;background:var(--surf2);color:var(--text)}
+.gl-bg .gl button.gl-ic.sub,.gl-bg .gl button.gl-ic.dng{background:var(--surf2);border:0}
+.gl-bg .gl button.gl-ic.dng{color:var(--danger)}
+.gl-bg .gl button.gl-btn.cll-yes,.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-yes:not(.gl-ic){background:var(--danger);border:0;color:#fff}
+.gl-bg .gl-new{border:0;border-radius:var(--r-card);background:var(--accent-soft)}
+.gl-bg .cll .cll-ask{border:0;border-radius:12px}
+.gl-pop{border:0;border-radius:14px;box-shadow:var(--pop-shadow)}
+
+/* плашка «переписка — как в клиенте» и верхняя панель */
+.chatnote{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:var(--r-bar);background:var(--side-bg);box-shadow:var(--flat-shadow);font-size:12.5px;font-weight:600;color:var(--text2)}
+.chatnote i{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.slider{display:none}
+
+/* окно макета: переписка не растягивается (в клиенте .messages сама прокручивается, тут прокручивает .scroll) */
+.convo .chatreal{display:block}
+.convo .chatreal .messages{overflow:visible;height:auto;flex:none;min-height:0}
+.convo .chatreal .messages>*{max-width:none}
+.convo .chatreal .typing-indicator{position:static}
+
+html .gl-bg{--gl-bg2:var(--surf2);--gl-bd:var(--gl-lo);--gl-hv:var(--gl-hov);--gl-bg:var(--modal-bg);--gl-tx:var(--text);--gl-mt:var(--muted);--gl-ac:var(--accent-fill)}
+.win.noamb .chat>.amb{opacity:0}
+.rpick .ep-grid button{height:36px;padding:0;width:auto;justify-content:center;gap:0}
+.cs-r[hidden]{display:none}
+html .gl-bg{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.gm-go{transform:rotate(180deg);color:var(--muted)}
+a.btn{text-decoration:none;color:var(--text)}
+
+/* ───── единая система: радиусы кнопок 12, карточек 16, панелей 22, чипов 8–10 ───── */
+.ws{border-radius:12px}
+.back{border-radius:12px}
+.fp-ic,.fp-acts button{border-radius:12px}
+.fp-acts{border-radius:12px}
+.accent-dot{border-radius:8px;box-shadow:none}.accent-dot.on{box-shadow:0 0 0 2px var(--side-bg),0 0 0 4px var(--dot)}.accent-dot:hover{transform:none;filter:brightness(1.08)}
+.cs-chip,.cs-pill,.pill-tag{border-radius:8px}
+.ctx-menu .cap2{border-radius:0}
+
+/* ───── переключатели: плоские, радиус 8/6 ───── */
+.tg{width:40px;height:24px;border-radius:8px;background:color-mix(in srgb,var(--text) 18%,var(--side-bg));box-shadow:none;transition:background .2s}
+.tg::after{top:3px;left:3px;width:18px;height:18px;border-radius:6px;background:#fff;box-shadow:none;transition:transform .2s}
+.tg[aria-checked="true"]{background:var(--accent-fill)}
+.tg[aria-checked="true"]::after{transform:translateX(16px)}
+.seg .thumb{box-shadow:0 1px 2px rgba(60,40,20,.12);transition:left .25s var(--gl-ease),width .25s var(--gl-ease)}
+.rng::-webkit-slider-runnable-track{height:6px;border-radius:3px;box-shadow:none;background:linear-gradient(90deg,var(--accent-fill) var(--v,50%),color-mix(in srgb,var(--text) 14%,var(--side-bg)) var(--v,50%))}
+.rng::-webkit-slider-thumb{width:18px;height:18px;margin-top:-6px;border-radius:6px;background:#fff;border:2px solid var(--accent-fill);box-shadow:none}
+.rng:hover::-webkit-slider-thumb{transform:none}
+
+/* ───── нижняя панель сайдбара: плоская, значок и подпись ───── */
+.foot{padding:0;display:block}
+.tabs.glass{display:flex;width:100%;gap:0;padding:8px 10px 10px;border-radius:0;background:var(--side-bg);box-shadow:0 -8px 20px -10px rgba(60,40,20,.14)}
+html.dark .tabs.glass{box-shadow:0 -8px 20px -10px rgba(0,0,0,.5)}
+.tabs .thumb{display:none}
+.tabs button{flex:1;width:auto;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:500;color:var(--muted);border-radius:12px;position:relative}
+.tabs button .i{font-size:21px}
+.tabs button.on{color:var(--accent-ink)}
+.tabs button:not(.on):hover{color:var(--text);background:var(--gl-hov)}
+.tabs button .upd{top:6px;right:calc(50% - 16px)}
+
+/* ───── аккаунты в баре: как переключатель папок ───── */
+.accs{display:flex;flex-direction:column;align-items:center;gap:10px}
+.ws.acc{padding:0}
+.ws.acc .ava{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px}
+.ws.acc .pd{position:absolute;right:4px;bottom:4px;width:12px;height:12px;border-radius:50%;background:var(--presence-online);box-shadow:0 0 0 2.5px var(--surf2)}
+.ws.acc.on .pd{box-shadow:0 0 0 2.5px var(--side-bg)}
+.ws.acc .pd.away{background:var(--presence-away)}.ws.acc .pd.off{display:none}
+
+/* ───── ПЕРЕПИСКА под B: без стекла; хвостик и логика углов в серии — как в клиенте, радиус 18 ───── */
+.chat{background:var(--chat-bg)}
+.chat>.amb{display:none}
+.chatreal *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.chatreal{--tg-in:var(--bubble-bg);--tg-out:var(--accent-fill)}
+.chatreal .irc-msg .msg-bubble{--tl:18px;--tr:18px;--br:18px;--bl:18px;background:var(--bubble-bg);border:0;box-shadow:0 1px 2px rgba(60,40,20,.09)}
+html.dark .chatreal .irc-msg .msg-bubble{box-shadow:none}
+.chatreal .irc-msg[data-mine] .msg-bubble{background:var(--accent-fill);box-shadow:none}
+.chatreal .bubble-image{border-radius:12px}
+.chatreal .role-pill{border-radius:8px}
+.chatreal .irc-reply{border-radius:8px}
+.chatreal .date-divider span{background:var(--chip-bg);border:0;border-radius:10px;box-shadow:none;color:var(--text2);font-size:12px;font-weight:600;padding:4px 12px}
+.chatreal .typing-pill{background:var(--chip-bg);border:0;border-radius:10px;box-shadow:none}
+.chatreal .reaction-btn{background:color-mix(in srgb,var(--text) 8%,var(--bubble-bg));border:0;border-radius:10px;box-shadow:none;color:var(--text)}
+.chatreal .msg-bubble>.reactions .reaction-btn{border-radius:10px}
+.chatreal .reaction-btn.mine,.chatreal .msg-bubble>.reactions .reaction-btn.mine{background:var(--accent-fill);color:#fff}
+.chatreal .irc-msg[data-mine] .msg-bubble>.reactions .reaction-btn{background:rgba(255,255,255,.2);color:#fff}
+.chatreal .irc-msg[data-mine] .msg-bubble>.reactions .reaction-btn.mine{background:#fff;color:var(--accent-fill)}
+.chatreal .irc-content>.reactions .reaction-btn{background:var(--bubble-bg);box-shadow:0 1px 2px rgba(60,40,20,.09)}
+.chatreal .irc-content>.reactions .reaction-btn.mine{background:var(--accent-fill)}
+.chatreal .msg-bubble.bubble-emoji>.irc-meta{background:var(--chip-bg);border-radius:8px}
+.chatreal .bubble-file{background:color-mix(in srgb,var(--text) 6%,var(--bubble-bg));border:0;border-radius:12px;min-width:240px;padding:8px 10px;box-shadow:none}
+.chatreal .bubble-file:hover{background:color-mix(in srgb,var(--text) 10%,var(--bubble-bg))}
+.chatreal .bubble-file>svg:first-child{border-radius:10px;background:var(--accent-soft);color:var(--accent-ink)}
+.chatreal .bubble-file>svg:last-child:not(:first-child){border-radius:10px;background:color-mix(in srgb,var(--text) 8%,transparent);border:0;box-shadow:none;color:var(--text2)}
+.chatreal .irc-msg[data-mine] .bubble-file{background:rgba(255,255,255,.16)}
+.chatreal .irc-msg[data-mine] .bubble-file>svg:first-child{background:rgba(255,255,255,.22);color:#fff}
+.chatreal .irc-msg[data-mine] .bubble-file>svg:last-child:not(:first-child){background:rgba(255,255,255,.2);color:#fff}
+.chatreal .irc-msg[data-mine] .bubble-file-size{color:rgba(255,255,255,.75)}
+/* служебные уведомления в переписке */
+.chatreal .sysnote{align-self:center;display:flex;align-items:center;gap:6px;max-width:80%;padding:5px 12px;margin:6px 0;border-radius:10px;background:var(--chip-bg);color:var(--text2);font-size:12px;line-height:1.35}
+.chatreal .sysnote svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.chatreal .sysnote.add{background:var(--accent-soft);color:var(--accent-ink)}
+.chatreal .sysnote.ann{background:var(--danger-bg);color:var(--danger)}
+.chatreal .sysnote time{opacity:.6;font-size:11px;margin-left:2px}
+.chatreal .unread-divider span{background:var(--accent-soft);color:var(--accent-ink)}
+
+/* ───── настройки: плоские группы строк ───── */
+.chat.settings{background:var(--side-bg)}
+.cs-g{gap:0;background:var(--gl-card);border-radius:16px;overflow:hidden}
+.cs-r,.cs-g>.cs-r:first-child,.cs-g>.cs-r:last-child,.cs-g>.cs-r:only-child{background:none;border:0;box-shadow:none;border-radius:0}
+.cs-g>.cs-r+.cs-r{border-top:1px solid var(--gl-lo)}
+.cs-gt{margin:4px 0 -12px 6px}
+.cs-hero,.cs-ver,.cs-notes,.fp-row,.bg-card,.pat-card,.cs-logout,.cs-pv{border:0;box-shadow:none;background:var(--gl-card);border-radius:16px}
+.cs-hero{background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 12%,var(--side-bg)),var(--gl-card) 75%)}
+.cs-logout{background:var(--danger-bg)}
+.cs-pv{display:grid;overflow:hidden}
+.bg-card:hover,.pat-card:hover{transform:none}
+.bg-card.on,.pat-card.on{box-shadow:0 0 0 2px var(--accent-fill)}
+.bg-card .bg-skel,.pat-card .pat-swatch{border-radius:0}
+.cs-pv-msg.in{background:var(--bubble-bg);border:0;border-radius:12px;box-shadow:0 1px 2px rgba(60,40,20,.09)}
+.cs-pv-msg.out{background:var(--accent-fill);border-radius:12px}
+.cs-pv-side i.on{background:var(--side-bg);box-shadow:none}
+.cs-badge{background:var(--accent-fill)}
+.cs-logo{background:var(--accent-fill);border-radius:16px}
+.am-prog i{background:var(--accent-fill)}
+.cs-body>*{flex:none}
+.cs-g{flex:none}
+.chat{clip-path:inset(0 round var(--r-panel))}
+.comp::after{content:"";position:absolute;left:0;right:0;top:100%;height:12px;background:var(--side-bg)}
+
+/* хвостик: тень пузыря его не обводит, поэтому в светлой теме снимаем тень у крайнего в серии */
+.chatreal .irc-msg:not(.emoji-msg) .msg-bubble::after{box-shadow:none}
+
+/* ───── окно «Объявление»: переключатели, поля, чипы — плоские ───── */
+.anx-types,.anx-tabsbar,.anx-sg{border:0;box-shadow:none;background:var(--surf2);border-radius:14px}
+.anx-types button,.anx-tabsbar button,.anx-sg button{border-radius:10px}
+.anx-types button[aria-checked="true"],.anx-tabsbar button[aria-selected="true"],.anx-sg button[aria-pressed="true"]{background:var(--side-bg);color:var(--text);box-shadow:0 1px 2px rgba(60,40,20,.12)}
+html.dark .anx-types button[aria-checked="true"],html.dark .anx-tabsbar button[aria-selected="true"],html.dark .anx-sg button[aria-pressed="true"]{background:var(--gl-card2);box-shadow:none}
+.anx-ta,.anx-search,.anx-time input,.pl-f{border:1px solid transparent;background:var(--surf2);box-shadow:none;border-radius:12px}
+.anx-ta:focus,.anx-search:focus-within,.anx-time input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.anx-ch{border:0;background:var(--surf2);border-radius:10px}
+.anx-ch:hover{background:var(--gl-card2)}
+.anx-ch[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent-ink);border:0}
+.anx-li[aria-pressed="true"]{box-shadow:none}
+.anx-day{border-radius:10px}.anx-day.sel{background:var(--accent-fill)}.anx-day.today{box-shadow:inset 0 0 0 1px var(--accent)}
+.anx-ph2 button{border-radius:10px}
+.anx-app,.anx-feed{border:0;border-radius:16px}
+.anx-sys,.anx-pick{border:0}
+
+/* ───── кнопка закрытия окна: одинаковая во всех модалках ───── */
+.modal-bg [aria-label="Закрыть"],.gl-bg .gl-x{width:36px;height:36px;min-width:36px;padding:0;border-radius:12px;background:var(--surf2);color:var(--text2);font-size:18px;display:grid;place-items:center;line-height:1;flex:none;border:0}
+.modal-bg [aria-label="Закрыть"]:hover,.gl-bg .gl-x:hover{background:var(--gl-card2);color:var(--text)}
+.pf-cover .ibtn[aria-label="Закрыть"]{background:var(--side-bg);color:var(--text)}
+.gl-bg .gl-x svg{width:18px;height:18px}
+
+/* ───── аккаунты: выделение круглое ───── */
+.ws.acc{width:46px;height:46px;border-radius:50%}
+.ws.acc .pd{right:2px;bottom:2px}
+.modal-bg .ibtn[data-a="close"]{width:36px!important;height:36px!important;min-width:36px}
+
+/* ───── экран входа, окна обновления, уведомление о недоступности сервера ───── */
+.loginscr{position:absolute;inset:0;z-index:38;background:var(--app-bg);display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity .25s}
+.loginscr.on{opacity:1;pointer-events:auto}
+.loginscr .lights{position:absolute;left:0;top:0;padding-top:0}
+.lg-ha{position:absolute;right:18px;top:14px;height:36px;padding:0 14px;border-radius:12px;background:var(--side-bg);box-shadow:var(--flat-shadow);display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--text2)}
+.lg-ha:hover{color:var(--text)}
+.lg-card{width:400px;background:var(--side-bg);border-radius:22px;box-shadow:var(--pop-shadow);padding:34px 34px 22px;display:flex;flex-direction:column}
+.lg-logo{width:60px;height:60px;border-radius:16px;background:var(--accent-fill);color:#fff;display:grid;place-items:center;margin:0 auto 14px;font-size:28px}
+.lg-word{text-align:center;font-weight:700;font-size:15px;letter-spacing:.9px}.lg-word span:last-child{color:var(--accent-ink)}
+.lg-sub{text-align:center;color:var(--text2);font-size:13px;margin:4px 0 22px}
+.lg-f{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.lg-f label{font-size:12px;font-weight:600;color:var(--text2);margin-left:2px}
+.lg-f input{height:46px;border-radius:12px;background:var(--surf2);border:1px solid transparent;padding:0 14px;font-size:14.5px;color:var(--text);outline:0;transition:border-color .2s,box-shadow .2s}
+.lg-f input::placeholder{color:var(--muted)}
+.lg-f input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.lg-btn{height:46px;border-radius:12px;background:var(--accent-fill);color:#fff;font-weight:600;font-size:14.5px;margin-top:6px}
+.lg-btn:hover{filter:brightness(1.1)}
+.lg-err{min-height:20px;margin-top:12px;color:var(--danger);font-size:12.5px;text-align:center}
+.lg-copy{text-align:center;color:var(--muted);font-size:11.5px;margin-top:6px}
+.lg-boot{display:flex;flex-direction:column;align-items:center;gap:14px;padding:26px 0 10px}
+.lg-bt{color:var(--text2);font-size:13.5px}
+.spin{width:28px;height:28px;border-radius:50%;border:3px solid var(--gl-lo);border-top-color:var(--accent-fill);animation:spin .8s linear infinite;display:inline-block;flex:none}
+.spin.sm{width:16px;height:16px;border-width:2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.srvtoast{position:absolute;top:16px;left:50%;transform:translate(-50%,-90px);z-index:55;display:flex;align-items:center;gap:10px;padding:11px 18px;border-radius:12px;background:var(--side-bg);box-shadow:var(--pop-shadow);font-size:13px;font-weight:600;color:var(--text);transition:transform .35s var(--gl-ease);white-space:nowrap}
+.srvtoast.on{transform:translate(-50%,0)}
+.srvtoast::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--danger)}
+.up-ic{width:44px;height:44px;border-radius:12px;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;font-size:22px;flex:none}
+.modal-hdr .up-t{font-size:15px;font-weight:700}.modal-hdr .up-v{font-size:12px;font-weight:500;color:var(--text2);margin-top:2px}
+.up-body{padding:6px 24px 10px;display:flex;flex-direction:column;gap:8px}
+.up-l{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.up-notes{margin:0;padding:12px 16px 12px 32px;border-radius:16px;background:var(--gl-card);font-size:13px;line-height:1.55;color:var(--text2)}
+.up-notes li+li{margin-top:4px}
+.up-prog{margin-top:4px}
+.up-bar{height:8px;border-radius:4px;background:color-mix(in srgb,var(--text) 12%,var(--side-bg));overflow:hidden}
+.up-bar i{display:block;height:100%;width:0;border-radius:4px;background:var(--accent-fill);transition:width .25s}
+.up-pt,.up-pct{font-size:12px;color:var(--text2);margin-top:8px;font-variant-numeric:tabular-nums}
+.modal.up-force{padding:30px 28px 28px;align-items:center;text-align:center;gap:0;width:360px}
+.up-fi{width:56px;height:56px;border-radius:16px;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;font-size:26px;margin-bottom:14px}
+.up-ft{font-size:16px;font-weight:700}.up-fs{font-size:13px;color:var(--text2);margin-top:4px}
+.up-fbar{width:100%;margin-top:18px}
+.up-fbar .up-pct{text-align:center}
+.scenes{flex-wrap:wrap;justify-content:center;max-width:1240px}
+.scenes button{white-space:nowrap}
+.srvtoast{top:84px;left:874px;transform:translate(-50%,-12px);opacity:0;pointer-events:none;transition:transform .3s var(--gl-ease),opacity .25s}
+.srvtoast.on{transform:translate(-50%,0);opacity:1}
+/* плашка «печатает…»: прямоугольник с радиусом 10, а не капсула */
+.chatreal .typing-indicator.show{height:36px}
+.chatreal .typing-pill{height:28px;padding:0 12px;border-radius:10px;font-size:12.5px;align-items:center}
+
+/* правая колонка «Объявления» тонирована: поля и переключатель на ней светлее/темнее подложки, чтобы читалась рамка блока */
+.anx-half.r .anx-sg,.anx-half.r .anx-search{background:var(--side-bg)}
+.anx-half.r .anx-sg button[aria-pressed="true"]{background:var(--surf2);box-shadow:none}
+html.dark .anx-half.r .anx-sg button[aria-pressed="true"]{background:var(--gl-card2)}
+/* кнопки с data-a="close" без иконки — обычные текстовые кнопки */
+.modal-bg .btn[data-a="close"]{width:auto;height:36px;padding:0 18px}

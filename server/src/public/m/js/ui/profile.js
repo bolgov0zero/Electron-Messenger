@@ -27,7 +27,7 @@ B.ui.profile = (function () {
     if (dm && canContact) h += '<button class="cell glass" style="border-radius:var(--r-card);margin-bottom:16px" data-p="media" data-id="' + dm.id + '"><span class="ci" style="background:#5b8def">' + I('image') + '</span><span class="cl">Медиа, файлы и ссылки</span><span class="ch">' + I('chevRight') + '</span></button>';
     h += '<div class="grp glass"><button class="cell" data-p="copy" data-v="' + B.esc(loginTxt) + '"><span class="cl">Логин</span><span class="cv">' + B.esc(loginTxt) + '</span><span class="ch">' + I('copy') + '</span></button>' +
       rows.map(function (r) { return '<div class="cell"><span class="cl">' + r[0] + '</span><span class="cv">' + B.esc(r[1]) + '</span></div>'; }).join('') + '</div>';
-    if (groups.length) h += '<div class="gl">Общие группы · ' + groups.length + '</div><div class="grp glass">' + groups.map(function (c) {
+    if (groups.length) h += '<div class="gh">Общие группы · ' + groups.length + '</div><div class="grp glass">' + groups.map(function (c) {
       return '<button class="mini" data-p="chat" data-id="' + c.id + '">' + B.avatar.chat(c, 0, true) + '<span class="rt"><b>' + B.esc(B.chatName(c)) + '</b><small>' + (c.type === 'room' ? 'Комната' : 'Группа') + ' · ' + (c.members || []).length + ' уч.</small></span><span class="ch">' + I('chevRight') + '</span></button>';
     }).join('') + '</div>';
     return h;

@@ -1,0 +1,36 @@
+/* окна гостевой ссылки и звонка: без рамок, метки и кнопки плоские */
+html .gl-bg>.gl{border:0}
+html .gl-bg .gl-chip{border:0;border-radius:10px;background:color-mix(in srgb,currentColor 12%,transparent)}
+html .gl-bg .gl-ib,html .gl-bg .gl button.gl-ib{border:0;background:var(--surf2);border-radius:12px}
+html .annp-c{-webkit-backdrop-filter:none;backdrop-filter:none}
+
+/* ═══ вход, обновление, нет связи (как в /m: экран входа, баннер «Вышла новая версия», плашка .cnbar) ═══ */
+.login{position:absolute;inset:0;z-index:60;background:var(--app-bg);display:flex;flex-direction:column;justify-content:center;padding:calc(var(--sat) + 12px) 20px calc(var(--sab) + 12px);overflow:auto}
+.lcard{background:var(--side-bg);border-radius:22px;box-shadow:var(--flat-shadow);padding:28px 22px 20px;display:flex;flex-direction:column;align-items:center}
+.lgo{width:72px;height:72px;border-radius:18px;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;font-size:36px;margin-bottom:14px}
+.lcard h1{font-size:28px;font-weight:700;letter-spacing:-.02em;margin-bottom:2px}
+.lcard .lsub{font-size:15px;color:var(--text2);margin-bottom:22px}
+.lcard .fld{width:100%;height:48px;margin:5px 0}
+.lerr{width:100%;min-height:22px;margin:6px 0 4px;padding:0 2px;color:var(--danger);font-size:14px;font-weight:500}
+.lbtn{width:100%;height:48px;border-radius:12px;background:var(--accent-fill);color:#fff;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:10px}
+.lbtn:disabled{opacity:.75}
+.lver{margin-top:14px;font-size:12.5px;color:var(--muted);text-align:center;width:100%}
+.cspin{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:cspin 1s linear infinite;flex:none}
+@keyframes cspin{to{transform:rotate(360deg)}}
+.cnbar{position:absolute;left:0;right:0;top:calc(var(--sat) + 46px);height:34px;z-index:9;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;font-size:13px;font-weight:600;color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,var(--side-bg));white-space:nowrap;border-radius:0}
+.cnbar.bt{top:auto;bottom:calc(var(--sab) + 48px)}
+.upb{position:absolute;left:12px;right:12px;top:calc(var(--sat) + 4px);z-index:55;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:16px;background:var(--side-bg);box-shadow:var(--pop-shadow);text-align:left}
+.upb .ui{width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;font-size:20px;flex:none}
+.upb b{display:block;font-size:14.5px}.upb span{display:block;font-size:13px;color:var(--text2)}
+.upl{background:var(--tint);border-radius:16px;padding:12px 16px;margin:2px 0 12px;font-size:14.5px;line-height:1.4}
+.upl b{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.upl ul{padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.upp{height:6px;border-radius:3px;background:var(--surf2);overflow:hidden;margin:2px 0 6px}.upp i{display:block;height:100%;width:0;background:var(--accent-fill);border-radius:3px}
+.upp[hidden]{display:none}
+/* мелкие плашки: радиус меньше половины высоты (не капсулы); индикатор набора — плоская сплошная плашка 28px / 10 */
+.pvw .m{border-radius:10px}
+.accr .pd,.accr .acct em{z-index:2}
+.chatreal .swi{border-radius:10px}
+.typing,.typ-chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:10px;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;background:color-mix(in srgb,var(--text) 8%,var(--chat-bg));color:var(--text2);font-size:12px;font-weight:600}
+.typing i{width:5px;height:5px;border-radius:50%}
+.upn{font-size:13px;color:var(--text2);text-align:center;min-height:18px;margin-bottom:6px}

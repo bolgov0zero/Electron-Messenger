@@ -22,9 +22,9 @@
   // при запуске — поэтому <link rel="manifest"> ставим сами, сразу под нужную тему
   var link = document.createElement('link');
   link.rel = 'manifest'; link.id = 'manifest-link';
-  link.href = dark ? '/m/manifest.json' : '/m/manifest-light.json';
+  link.href = t === 'navy' ? '/m/manifest-navy.json' : dark ? '/m/manifest.json' : '/m/manifest-light.json';
   document.head.appendChild(link);
   var meta = document.createElement('meta');
-  meta.name = 'theme-color'; meta.id = 'theme-color-meta'; meta.content = t === 'navy' ? '#0f1b27' : dark ? '#12171d' : '#e3f0ef';
+  meta.name = 'theme-color'; meta.id = 'theme-color-meta'; meta.content = t === 'navy' ? '#10161d' : dark ? '#131211' : '#ece9e4';
   document.head.appendChild(meta);
 })();

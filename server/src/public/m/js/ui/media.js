@@ -293,7 +293,7 @@ B.media = (function () {
       var last = '';
       list.forEach(function (x, k) {
         var mk = monthKey(x.sent_at);
-        if (mk !== last) { if (last) h += st.tab === 'media' ? '</div>' : '</div>'; h += '<div class="gl">' + mk + '</div><div class="' + (st.tab === 'media' ? 'mgrid' : 'grp glass') + '">'; last = mk; }
+        if (mk !== last) { if (last) h += st.tab === 'media' ? '</div>' : '</div>'; h += '<div class="gh">' + mk + '</div><div class="' + (st.tab === 'media' ? 'mgrid' : 'grp glass') + '">'; last = mk; }
         if (st.tab === 'media') h += '<button class="mt" data-k="' + k + '" style="background-image:url(\'' + esc(abs(x.att.thumb || x.att.url)) + '\')">' + (/^video\//.test(x.att.mime) ? '<span class="mv">' + I('play') + '</span>' : '') + '</button>';
         else if (st.tab === 'files') h += '<button class="mini" data-k="' + k + '"><span class="mfi">' + I('file') + '</span><span class="rt"><b>' + esc(x.att.name || 'Файл') + '</b><small>' + esc([fmtSize(x.att.size), x.sender_name, when(x.sent_at)].join(' · ')) + '</small></span></button>';
         else h += '<a class="mini" href="' + esc(x.urls[0]) + '" target="_blank" rel="noopener noreferrer"><span class="mfi">' + I('link') + '</span><span class="rt"><b>' + esc(x.title || x.site || x.urls[0]) + '</b><small>' + esc(x.urls[0].replace(/^https?:\/\//, '').slice(0, 60)) + ' · ' + esc(x.sender_name) + ' · ' + when(x.sent_at) + '</small></span></a>';

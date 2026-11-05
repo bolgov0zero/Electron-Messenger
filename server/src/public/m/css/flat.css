@@ -1,0 +1,451 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   /m — дизайн B «Мягкий»: единственное место оформления. Подключается ПОСЛЕ app.css, extra.css, composer.css и /shared/voice.css.
+   Здесь: токены тем, плоские поверхности, примитивы (кнопки, поля, сегмент, тумблер, чипы, бейджи, аватарки), каркас (шапки, нижняя панель, страницы, шторки),
+   переписка, поле ввода, меню, окна и звонки. Источник — docs/flat-mockup/mobile.html (src-mobile/flat-b-m.css) и PLAN.md, раздел 2. Шрифт — Inter (токен --ff не менять).
+   Геометрия /m (PLAN.md, 4.1) не меняется: переменные --sat0/--sat/--sab/--co/--ch/--kbh и якоря .nav, .scroll, .tabbar, .comp, .jump, .sheet, .pinbar, верхний краевой эффект .edge.t лежат в app.css.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───── 1.0 токены ───── */
+:root{
+  --ff:Inter,-apple-system,system-ui,sans-serif;
+  --accent:#1fa88c;--accent-rgb:29,168,140;--danger:#d23a3a;
+  --presence-online:#34c759;--presence-away:#ff9f0a;--read:#3ea6ff;
+  --tag-1:41,50,96;--tag-2:37,131,37;--tag-3:131,78,37;--tag-4:34,119,114;--tag-5:131,37,78;
+  --ic-s:16px;--ic-m:18px;--ic-l:22px;--z-bar:20;--z-pop:30;--z-modal:40;--z-toast:50;
+  --gl-ease:cubic-bezier(.22,1,.36,1);
+  --app-bg:#ece9e4;--side-bg:#fdfcfa;--card-bg:#fdfcfa;--modal-bg:#fdfcfa;--chat-bg:#f7f5f1;--bubble-bg:#ffffff;
+  --text:#1d1b19;--text2:#5b554e;--muted:#6f675e;
+  --surf2:#f3f0eb;--sel:#efebe5;--tint:color-mix(in srgb,var(--text) 4%,var(--side-bg));
+  --accent-fill:color-mix(in srgb,var(--accent) 80%,#000);
+  --accent-ink:color-mix(in srgb,var(--accent) 72%,#000);
+  --accent-soft:color-mix(in srgb,var(--accent) 13%,var(--side-bg));
+  --accent-border:transparent;
+  --danger-bg:color-mix(in srgb,var(--danger) 11%,var(--side-bg));--danger-border:transparent;
+  /* радиусы (PLAN 2.2): кнопки, поля, пункты 12 · карточки 16 · панели и листы 22 · мелкие чипы 8–10 */
+  --r-panel:22px;--r-bar:12px;--r-card:16px;--r-menu:16px;--r-item:12px;--r-row:16px;--r-pill:12px;--r-ctl:12px;--r-sheet:22px;
+  --flat-shadow:0 1px 2px rgba(60,40,20,.05),0 10px 30px rgba(60,40,20,.07);
+  --pop-shadow:0 2px 6px rgba(60,40,20,.08),0 18px 44px rgba(60,40,20,.16);
+  --bar-sh:0 8px 20px -10px rgba(60,40,20,.18);--bar-sh-up:0 -8px 20px -10px rgba(60,40,20,.14);
+  --bub-sh:0 1px 2px rgba(60,40,20,.09);
+  /* плоские алиасы прежних токенов: их читает общий код shared/* (окна ссылок, звонки, голосовые) */
+  --gl:var(--side-bg);--gl2:var(--surf2);--gl-pop:var(--side-bg);
+  --gl-card:color-mix(in srgb,var(--text) 4%,var(--side-bg));
+  --gl-card2:color-mix(in srgb,var(--text) 8%,var(--side-bg));
+  --gl-inset:color-mix(in srgb,var(--text) 5%,var(--side-bg));
+  --gl-edge:transparent;--gl-hi:transparent;--gl-lo:color-mix(in srgb,var(--text) 9%,transparent);
+  --gl-shadow:rgba(60,40,20,.14);--gl-spec:transparent;
+  --gl-hov:color-mix(in srgb,var(--text) 5%,transparent);
+  --gl-blur:0px;--gl-in:var(--bubble-bg);--gl-out-a:var(--accent-fill);--gl-out-b:var(--accent-fill);
+  --gl-base:var(--app-bg);--scrim:rgba(40,28,16,.32);
+  --gl-spring:cubic-bezier(.22,1,.36,1);
+  --ok:#2f9e5b;--no:#d94a4a;--vpanel:#25221f;--vbtn:#38342f;--vbtn2:#45403a;
+}
+html.dark{
+  --accent:#29d6b8;--accent-rgb:41,214,184;--danger:#ef6f6f;
+  --tag-1:125,136,191;--tag-2:98,218,98;--tag-3:218,150,98;--tag-4:98,218,210;--tag-5:218,98,150;
+  --app-bg:#131211;--side-bg:#1d1c1a;--card-bg:#1d1c1a;--modal-bg:#1d1c1a;--chat-bg:#181715;--bubble-bg:#2a2825;
+  --text:#f2efeb;--text2:#b4aea6;--muted:#968f86;
+  --surf2:#292724;--sel:#2b2926;
+  --accent-fill:color-mix(in srgb,var(--accent) 70%,#000);
+  --accent-ink:color-mix(in srgb,var(--accent) 70%,#fff);
+  --flat-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  --pop-shadow:0 2px 6px rgba(0,0,0,.4),0 18px 44px rgba(0,0,0,.55);
+  --bar-sh:0 8px 20px -10px rgba(0,0,0,.5);--bar-sh-up:0 -8px 20px -10px rgba(0,0,0,.5);
+  --bub-sh:none;
+  --gl-card:color-mix(in srgb,var(--text) 5%,var(--side-bg));
+  --gl-card2:color-mix(in srgb,var(--text) 10%,var(--side-bg));
+  --gl-inset:color-mix(in srgb,var(--text) 6%,var(--side-bg));
+  --gl-lo:color-mix(in srgb,var(--text) 10%,transparent);
+  --gl-shadow:rgba(0,0,0,.5);--gl-hov:color-mix(in srgb,var(--text) 7%,transparent);
+  --scrim:rgba(0,0,0,.5);
+  --ok:#3aae68;--no:#e05a5a;--vpanel:#2a2724;--vbtn:#3b3733;--vbtn2:#48433d;
+}
+html.dark.navy{
+  --app-bg:#10161d;--side-bg:#18202a;--card-bg:#18202a;--modal-bg:#18202a;--chat-bg:#0f1b27;--bubble-bg:#213040;
+  --text:#eef2f6;--text2:rgba(238,242,246,.74);--muted:rgba(238,242,246,.56);
+  --surf2:#222d3a;--sel:#243242;
+}
+html,body{background:var(--app-bg)}   /* цвет html виден голой полосой, если iOS даст окну короче экрана (PLAN 4.1): тот же, что у theme-color, манифеста и splash */
+html.dark .sep,.sep{background:var(--gl-lo)}
+
+/* ───── поверхности: плоские непрозрачные карточки ───── */
+.glass,.glass-pop{background:var(--side-bg);border:0;box-shadow:var(--flat-shadow)}
+.glass-pop{box-shadow:var(--pop-shadow)}
+.phone,.page,.page.base{background:var(--side-bg)}
+.page.chat{background:var(--chat-bg)}
+.page:not(.base){box-shadow:-12px 0 30px rgba(40,28,16,.14)}
+html.dark .page:not(.base){box-shadow:-12px 0 30px rgba(0,0,0,.4)}
+.page.under{visibility:hidden;transition:transform .45s var(--gl-ease),visibility 0s .45s}
+.page.under.drag{visibility:visible;transition:none}
+
+/* ───── 1.1 примитивы ───── */
+/* кнопки */
+.ibtn,.cap>button{border-radius:12px;transition:background .15s,color .15s}
+.cap{border-radius:12px}
+.ibtn:active,.cap>button:active,.btn:active,.abtn:active,.chip:active,.tb:active,.tile:active,.nb:active{transform:none;background:var(--gl-card2)}
+.btn{height:44px;padding:0 18px;border-radius:12px;background:var(--surf2);border:0;box-shadow:none;font-size:15px;transition:background .15s,color .15s}
+.btn.sm{height:36px;padding:0 14px;font-size:14px;border-radius:12px}
+.btn:hover:not(:disabled){background:var(--gl-card2)}
+.btn.pri,.btn.pri:hover:not(:disabled){background:var(--accent-fill);color:#fff;border:0;box-shadow:none;filter:none}
+.btn.soft{background:var(--accent-soft);border:0;box-shadow:none;color:var(--accent-ink)}
+.btn.danger{background:var(--danger-bg);border:0;color:var(--danger)}
+.btn.danger.fill{background:var(--danger);color:#fff;border:0;box-shadow:none}
+.abtn{height:52px;border-radius:12px;background:var(--surf2);border:0;box-shadow:none;font-size:16px;transition:background .15s}
+.abtn.pri{background:var(--accent-fill);color:#fff;border:0}
+.abtn.d{color:var(--danger)}
+/* поля */
+.fld,.fld.m,.srch,.ep-s,.ann-ta{border:0;box-shadow:none;border-radius:12px;background:var(--surf2)}
+.fld.m{height:48px}
+.srch{height:44px;margin:0 0 12px}
+.fld:focus-within,.srch:focus-within,.ep-s:focus-within{border:0;box-shadow:0 0 0 2px var(--accent)}
+.fld.bad{box-shadow:0 0 0 2px var(--danger)}
+/* тумблер: дорожка 40×24 радиус 8, ползунок 18×18 радиус 6, без тени */
+.tg{width:40px;height:24px;border-radius:8px;background:color-mix(in srgb,var(--text) 16%,var(--side-bg));box-shadow:none;transition:background .15s}
+.tg::after{top:3px;left:3px;width:18px;height:18px;border-radius:6px;background:#fff;box-shadow:none;transition:transform .15s var(--gl-ease)}
+.tg[aria-checked="true"]{background:var(--accent-fill)}
+.tg[aria-checked="true"]::after{transform:translateX(16px)}
+/* сегмент: контейнер 14, плашка 10, плашка едет за 250 мс */
+.seg{border-radius:14px;background:var(--surf2);box-shadow:none;border:0}
+.seg button{border-radius:10px}
+.seg .thumb{border-radius:10px;background:var(--side-bg);box-shadow:0 1px 2px rgba(60,40,20,.14);transition:left .25s var(--gl-ease),width .25s var(--gl-ease)}
+html.dark .seg .thumb{background:var(--gl-card2);box-shadow:none}
+.ep-sw{border-radius:12px;background:var(--surf2);box-shadow:none}
+.ep-sw button{border-radius:10px}
+.ep-sw button[aria-pressed="true"]{background:var(--side-bg);box-shadow:0 1px 2px rgba(60,40,20,.14)}
+html.dark .ep-sw button[aria-pressed="true"]{background:var(--gl-card2);box-shadow:none}
+/* слайдер: дорожка 6 радиус 3, ползунок 18×18 радиус 6 */
+.rng::-webkit-slider-runnable-track{height:6px;border-radius:3px}
+.rng::-webkit-slider-thumb{width:18px;height:18px;margin-top:-6px;border-radius:6px;background:#fff;box-shadow:0 0 0 1px color-mix(in srgb,var(--text) 16%,transparent)}
+/* чипы (в том числе папки): радиус 10, плоские; выбранный — мягкий акцентный фон */
+.chip,.fgrp .chip,.ep-chip,.gp-chip{height:36px;border:0;box-shadow:none;border-radius:10px;background:var(--surf2);}
+.chip.on,.fgrp .chip.on{background:var(--accent-soft);color:var(--accent-ink);border:0;box-shadow:none}
+.chips.fo>.fgrp,.chips.fo>.fgrp.glass{background:none;border:0;box-shadow:none;border-radius:0;padding:0;gap:8px;}
+.fgrp .thumb{display:none}
+.ep-chip{height:32px}
+.gp-chip{height:28px}
+.pill-tag{border:0;border-radius:10px;background:color-mix(in srgb,currentColor 12%,transparent)}
+.chip .cb,.bd{background:var(--accent-fill)}
+.ck{border-radius:8px}
+/* бейджи: счётчик — круглый, число по центру */
+.bd,.tb .bd{background:var(--accent-fill);color:#fff}
+.bd.mute{background:var(--muted)}
+/* аватарки и точка присутствия: настоящие фото остаются, обводка точки — цвета фона */
+.av{box-shadow:none}
+.av.sq{border-radius:15px}
+.av .dot{box-shadow:0 0 0 2.5px var(--side-bg)}
+.av .dot.mob{box-shadow:0 0 0 2.5px var(--side-bg),inset 0 0 0 1.5px var(--side-bg)}
+.av .type{background:var(--side-bg);border-radius:6px;box-shadow:0 1px 3px var(--gl-shadow)}
+.ci,.atile span.ic{box-shadow:none}
+.ci{width:32px;height:32px;border-radius:10px;font-size:18px}
+.atile span.ic{border-radius:16px}
+.dot2{border-radius:10px;box-shadow:none}.dot2.on{box-shadow:0 0 0 2px var(--side-bg),0 0 0 4px var(--dot)}
+.fcols button{border-radius:10px;box-shadow:none}.fcols button.on{box-shadow:0 0 0 2px var(--side-bg),0 0 0 4px var(--fc)}
+.fic,.ficons button{border-radius:12px}
+.empty .ei{border-radius:16px;background:var(--surf2);box-shadow:none}
+/* карточки и группы строк 16; разделители */
+.grp,.grp.glass,.tile,.tile.glass,.glass.cell,.pl,.pcard,.pvw,.mgrid,.fcard{border-radius:16px}
+.grp,.grp.glass,.tile,.tile.glass,.glass.cell,.pl,.fcard{background:var(--tint);box-shadow:none;border:0}
+.grp>*+*{border-top:1px solid var(--gl-lo)}
+html.dark .grp>*+*{border-top-color:var(--gl-lo)}
+.pcard,.pvw{background:var(--tint);border:0;box-shadow:none}
+.pcard.on{box-shadow:0 0 0 2px var(--accent)}
+.pvw .a{background:var(--bubble-bg);border:0}.pvw .b{background:var(--accent-fill)}
+.pl{height:48px}
+.row.pinned{background:color-mix(in srgb,var(--text) 6%,var(--side-bg))}
+.cell:active,.row:active{background:var(--gl-card2)}
+.cell{padding:10px 16px;min-height:52px}
+/* скрим без размытия; меню и просмотр */
+.scrim{background:var(--scrim)}
+.cml .cmb{background:var(--scrim);}
+.lb{background:rgba(20,14,8,.86)}
+/* тосты */
+.toast{height:44px;border-radius:12px}
+.toast.bn{border-radius:16px}
+/* крестик закрытия окна и листа: 36×36, радиус 12, значок 18 */
+.sx{position:absolute;top:12px;right:12px;z-index:3;width:36px;height:36px;min-width:36px;padding:0;border-radius:12px;background:var(--surf2);color:var(--text2);display:grid;place-items:center;font-size:18px;line-height:1;flex:none}
+.sx svg{width:18px;height:18px}
+.sheet h3{padding:0 44px}
+
+/* ───── 1.2 каркас ───── */
+/* верхний краевой эффект .edge.t (геометрия app.css: высота --sat0 + 8px, blur 10px, маска) остаётся: он читаемо подкрашивает время и значки
+   статус-бара iOS, поэтому лежит над докованной шапкой. В тёмных темах градиент — цвет шапки (сливается с ней); в светлой остаётся прежняя
+   тёмная подложка (белый текст статус-бара). Нижний край .edge.b скрыт в app.css и остаётся скрытым. */
+.edge{z-index:11}
+html.dark .edge.t{background:linear-gradient(color-mix(in srgb,var(--side-bg) 92%,transparent),transparent)}
+/* шапка страницы: докованная — сплошной фон тянется от верха экрана (под статус-бар) до низа строки; строка с кнопками там же (padding-top и кнопки 44 px — как в app.css) */
+.page:not(.base) .nav,.nav.sc{background:var(--side-bg);box-shadow:var(--bar-sh)}
+.nav.lg:not(.sc){background:none;box-shadow:none}
+.page.chat .nav{background:var(--side-bg);box-shadow:var(--bar-sh)}
+.nb,.nb.glass,.nav .nr>button,.nav .nr>button.glass,.nr.cap,.nr.cap.glass{background:none;box-shadow:none;border:0}
+.nb{border-radius:12px;transition:background .15s,color .15s}
+.nr>button{border-radius:12px}
+.nr>button.navav{border-radius:50%}
+.nb.t{font-size:15px;font-weight:700;color:var(--accent-ink)}
+.nr.cap{padding:0;gap:2px}
+.nt>span,.nt>span.glass{background:none;box-shadow:none;border:0;padding:0;border-radius:0;font-size:17px;font-weight:700;transition:opacity .25s}
+.nav.lg .nt>span{transform:none}
+.nav.lg .nb.glass{background:var(--surf2)}
+.nb .cnt{padding-right:2px}
+.nav.cn .nb{position:relative}
+.who,.who.glass{background:none;box-shadow:none;border:0;border-radius:12px;max-width:none}
+.who small.on{color:var(--accent-ink)}
+.lt{font-weight:700;letter-spacing:-.02em;font-size:30px}
+.pinbar,.pinbar.glass{border-radius:12px;background:var(--side-bg);box-shadow:var(--flat-shadow)}
+.jump,.jump.glass{border-radius:12px}
+.cnbar{border-radius:10px;background:var(--side-bg);box-shadow:var(--flat-shadow)}
+
+/* нижняя панель вкладок: докованная на всю ширину, значок + подпись, выбранная — только цветом значка и подписи; бейдж-счётчик остаётся.
+   Положение значков и подписей — прежнее (относительно --sab): кнопки 48 px, нижний край кнопок на --sab − 5 px от низа экрана (было bottom: --sab − 10 + рамка и отступ 5);
+   сплошной фон тянется от нижнего края экрана до верха панели, отступ ленты (.scroll, --sab + 84) не менялся */
+.tabbar,.tabbar.glass{left:0;right:0;bottom:0;transform:none;width:auto;border-radius:0;gap:0;padding:5px 8px calc(var(--sab) - 5px);background:var(--side-bg);box-shadow:var(--bar-sh-up)}
+.tb{flex:1;width:auto;min-width:0;height:48px;border-radius:12px;font-size:22px;gap:2px;color:var(--text2);background:none!important;transition:color .15s}
+.tb span{display:block;font-size:10.5px;font-weight:600;line-height:1.2}
+.tb.on{color:var(--accent-ink)}
+.tb .bd{top:2px;right:calc(50% - 32px);left:auto}
+
+/* шторки: плоский лист 22, ручка, без размытия; логика --kbh и bottom: 8px + --kbh в app.css остаётся */
+.sheet,.sheet.glass-pop{border-radius:22px;background:var(--side-bg);box-shadow:var(--pop-shadow);border:0}
+.sheet .gr{opacity:.2}
+.sheet{transition:transform .35s var(--gl-ease),bottom .3s var(--gl-ease)}
+.sheet .sb{padding:0 4px;margin:0 -4px}
+
+/* ───── поле ввода: докованная панель от низа экрана до верха поля + 9 px (само поле и --co/--ch не менялись) ───── */
+.comp::before{content:"";position:absolute;z-index:-1;left:-10px;right:-10px;top:-9px;bottom:calc(-1 * var(--co,20px));background:var(--side-bg);box-shadow:var(--bar-sh-up);pointer-events:none}
+.phone.kb .comp::before,.phone.kbr .comp::before,.phone.ep .comp::before,.phone.kbo.ep .comp::before{bottom:-8px}
+.comp.cs>.cfield{background:var(--surf2);border-radius:12px;overflow:hidden}
+.comp .cbtn,.sendb{border-radius:12px;background:var(--surf2);box-shadow:none}
+.cfield,.cfield.glass{border-radius:12px;background:var(--surf2);box-shadow:none}
+.sendb.ready{background:var(--accent-fill);color:#fff;border:0;box-shadow:none}
+.kbd,.epanel{background:var(--side-bg);border-top:0;box-shadow:0 -8px 24px -12px rgba(60,40,20,.2)}
+.kr button{background:var(--surf2);box-shadow:none;border-radius:8px}
+.kr.last .go{background:var(--accent-fill)}
+.ep-tab{border-radius:12px}.ep-tab[aria-selected="true"]{background:var(--sel);box-shadow:none}
+.ep-row button,.fmtbar button{border-radius:12px}
+.gt{box-shadow:none;border-radius:16px}
+
+/* ───── прочие плоские поверхности ───── */
+.cmr{border-radius:16px;padding:6px;gap:2px}
+.cmm,.upm{border-radius:16px;padding:6px}
+.cmm button,.upm button{border-radius:12px}
+.annb{border-radius:12px;background:var(--side-bg);border:0;box-shadow:var(--pop-shadow);}
+.annp{}
+.annp-c{border-radius:22px;background:var(--side-bg);border:0;box-shadow:var(--pop-shadow);}
+.annp-ok{background:var(--accent-fill);border:0;border-radius:12px}
+.annp-r{border:0;border-radius:10px}
+.login{background:var(--app-bg)}
+.fcard{background:var(--tint);border:0}
+.tiles .tile{border-radius:16px}
+.hero .av{box-shadow:none}
+
+/* ═══════════════ 1.3 список чатов ═══════════════ */
+/* заголовок, кнопка, поиск и папки — одна сплошная плоская шапка (разметка в chatlist.js); строка с заголовком там же, где была строка прежней шапки (padding-top --sat − 6, высота 44) */
+.tabview[data-tab="chats"]{display:flex;flex-direction:column}
+.chdr{flex:none;position:relative;z-index:10;background:var(--side-bg);box-shadow:var(--bar-sh);padding:calc(var(--sat) - 6px) 14px 10px}
+.chtop{display:flex;align-items:center;justify-content:space-between;height:44px}
+.chtop .lt{margin:0;padding:0;line-height:44px;font-size:30px}
+.chtop .nb{background:var(--surf2);width:44px}
+.chdr .srch{margin:6px 0 8px;background:var(--surf2)}
+.chdr>.chips{margin:0 0 8px;padding:0}
+.chdr .fbar{position:static;margin:0 -14px;display:block}
+.chdr .fbar .chips{padding:0 14px;margin:0}
+.chips.fo>.fgrp,.chips.fo>.fgrp.glass{margin:0}
+.fgrp .fin{margin:0;gap:8px;border-radius:0}
+.tabview[data-tab="chats"] .scroll{position:static;flex:1;min-height:0;padding-top:12px;overflow-y:auto}
+.nbanner,.updc,.how{background:var(--tint);box-shadow:none;border-radius:16px}
+.row .av .type{border-radius:6px}
+
+/* ═══════════════ 1.4 переписка ═══════════════ */
+/* шапка чата: назад со счётчиком-значком, аватар, имя и подстрока, справа кнопки звонка (если они есть). Разметка прежняя; порядок задан CSS: аватарка-кнопка (она открывает профиль) стоит слева от имени */
+.page.chat .nav{padding-left:4px;padding-right:8px;gap:4px}
+.nav.cn .nr{display:contents}
+.nav.cn .nb{order:0;width:44px;padding:0}
+.nav.cn .navav{order:1}
+.nav.cn .who{order:2;flex:1;height:46px;justify-content:flex-start;text-align:left;padding:0 6px;border-radius:12px}
+.nav.cn .who>span{text-align:left}
+.nav.cn .nr>button{order:3;pointer-events:auto;width:44px;height:46px;border-radius:12px}
+.nav.cn .nr>button.navav{order:1;width:40px;border-radius:12px}
+.nav.cn .navav .av{width:38px;height:38px}
+.nav.cn .nb .cnt{position:absolute;top:1px;right:-2px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent-fill);color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center}
+.who b{font-size:15px}
+/* плашка закреплённого: ниже шапки на зазор 8 px (PLAN 4.1: было --sat + 44, стало --sat + 56; отступ ленты .chat.pinned .scroll было --sat + 112, стало --sat + 124) */
+.pinbar,.pinbar.glass{top:calc(var(--sat) + 56px);left:10px;right:10px}
+.chat.pinned .scroll{padding-top:calc(var(--sat) + 124px)}
+/* пузыри: сплошные, радиус 18; соседи по серии 5, у последнего хвост — логика и форма хвоста из extra.css не меняются */
+.bub{--tl:18px;--tr:18px;--br:18px;--bl:18px;transition:none}
+.bub.dl{--bl:18px;--br:18px}
+.mrow.in .bub,.mrow.out .bub{box-shadow:var(--bub-sh)}
+.bub.pop{animation:bflat .18s ease-out}@keyframes bflat{from{opacity:0}}
+.mrow.hl .bub{animation:none;box-shadow:0 0 0 2px var(--accent)}
+.vplay{border-radius:12px;}
+.mrow .quote,.mrow.in .quote{border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent);border-radius:8px}
+.mrow.out .quote{border-left-color:rgba(255,255,255,.9);background:rgba(255,255,255,.16)}
+.mrow.out .quote span{color:rgba(255,255,255,.92)}
+.mrow .quote.fwq{border:0;background:none;border-radius:0}
+.file{background:color-mix(in srgb,var(--text) 6%,transparent);border:0;border-radius:12px;box-shadow:none}
+.mrow.out .file{background:rgba(255,255,255,.16)}
+.file .fi{width:40px;height:40px;border-radius:10px;background:var(--accent-soft);color:var(--accent-ink)}
+.mrow.out .file .fi{background:rgba(255,255,255,.22);color:#fff}
+.file .dl{border-radius:10px;width:32px;height:32px;background:none}
+.lcard{border-radius:0}
+.bbtn{border-radius:12px}
+.vm-in .pl,.vm-out .pl{box-shadow:none;border-radius:12px}
+.vm-in .pl{background:var(--accent-fill)}
+.vm-out .pl{color:var(--accent-fill)}
+.vm .pl{border:0;width:36px;height:36px}
+/* реакции внутри пузыря: радиус 10 */
+.bub>.react button{height:24px;padding:0 8px;border-radius:10px;font-size:12.5px;border:0;box-shadow:none;background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text)}
+.bub>.react button.mine{background:var(--accent-fill);color:#fff}
+.mrow.out .bub>.react button{background:rgba(255,255,255,.2);color:#fff}
+.mrow.out .bub>.react button.mine{background:#fff;color:var(--accent-fill)}
+.react button{border-radius:10px;border:0;box-shadow:none;background:color-mix(in srgb,var(--text) 8%,var(--chat-bg));color:var(--text)}
+.react button.mine{background:var(--accent-fill);color:#fff}
+/* бейдж даты (липкий), служебные плашки, «Новые сообщения» */
+.day .glass,.sys .glass,.unrd .glass,.day span,.sys span,.unrd span{background:color-mix(in srgb,var(--text) 8%,var(--chat-bg));border:0;box-shadow:none;border-radius:10px;color:var(--text2);font-size:12px;font-weight:600;padding:4px 12px}
+.swi{border-radius:10px}
+.typing{border-radius:10px;background:color-mix(in srgb,var(--text) 8%,var(--chat-bg))}
+.jump .bd{box-shadow:none}
+.sk i{border-radius:14px}
+
+/* ═══════════════ 1.5 поле ввода и панели ═══════════════ */
+.cin .ce pre.cb{border-radius:10px}
+.cbar .tk,.lpt{border-radius:2px}
+.lpv .lth,.ax,.ax img,.axp{border-radius:10px}
+.ax .rm{border-radius:6px}
+.lkb{border-radius:12px;background:var(--surf2);box-shadow:none}
+.lkb input{border-radius:10px;background:var(--side-bg);border:0}
+.upm button .i{color:var(--accent-ink)}
+.fmtbar button{border-radius:10px}
+.fmtbar button.on{background:var(--accent-soft)}
+.fpb code,.fpb pre,.fpb .sec{border-radius:8px}
+.ep-s{height:40px}
+.ep-tab{height:36px}
+.ep-del{border-radius:12px}
+.gp-search{border-radius:12px}
+.gp-item{border-radius:10px}
+.ep-gif .gp-item{border-radius:10px}
+.gp-retry{border-radius:10px}
+
+/* ═══════════════ 1.6 меню ═══════════════ */
+.cmr{background:var(--side-bg);box-shadow:var(--pop-shadow);border-radius:16px;padding:6px;gap:2px}
+.cmr button{border-radius:12px;width:44px;height:44px;transition:background .15s}
+.cmr button:active{transform:none;background:var(--surf2)}
+.cmm,.upm{background:var(--side-bg);box-shadow:var(--pop-shadow);border-radius:16px;padding:6px}
+.cmm button,.upm button{border-radius:12px}
+.cmm .sp{background:var(--gl-lo)}
+.cmc .mrow .bub{box-shadow:var(--bub-sh)}
+
+/* ═══════════════ 1.7–1.9 профили, настройки, окна и состояния ═══════════════ */
+/* подпись группы строк: класс .gh (был .gl — совпадал с корнем окна гостевой ссылки в shared/guestlinks.js) */
+.gh{padding:2px 4px 8px}
+.gf{padding:0 4px 14px}
+.hero .av,.pgav .av{box-shadow:none}
+.pgcam{border-color:var(--side-bg);border-radius:10px}
+.mgrid i,.mgrid .mt{border-radius:0}
+.mini .ck,.ck{border-radius:8px}
+.ficons button{background:var(--surf2)}
+.ficons button.on{box-shadow:0 0 0 2px var(--fc)}
+.cell input.tm{background:var(--surf2);border-radius:10px}
+.nbanner>.ibtn{margin-left:auto}
+
+/* вход: карточка по центру на фоне --app-bg */
+.login{background:var(--app-bg)}
+.login-in{background:var(--side-bg);border-radius:22px;box-shadow:var(--flat-shadow);padding:28px 22px 20px;max-width:none;width:100%}
+.login .lg{width:72px;height:72px;border-radius:18px;background:var(--accent-soft);color:var(--accent-ink);box-shadow:none;margin-bottom:14px;font-size:36px}
+.login h1{font-size:28px;font-weight:700;letter-spacing:-.02em}
+.login .fld{height:48px;margin:5px 0}
+.login .err{text-align:left;margin:6px 0 4px;font-weight:500}
+.login .abtn{height:48px;border-radius:12px;background:var(--accent-fill);color:#fff;margin-top:6px}
+.login .abtn:disabled{opacity:.75}
+
+/* плашка «нет связи» в переписке: на 8 px ниже шапки (шапка заканчивается на --sat + 48); закреплённое при этом уходит ниже неё */
+.cnbar{top:calc(var(--sat) + 56px);left:10px;right:10px;transform:none;height:34px;padding:0 14px;justify-content:center;border-radius:10px;box-shadow:var(--flat-shadow)}
+.page.chat:has(.cnbar:not([hidden])) .pinbar{top:calc(var(--sat) + 98px)}
+
+/* объявления */
+.annb-x{border-radius:12px;background:var(--surf2)}
+.annb-i{color:var(--danger)}
+.annp{background:var(--scrim)}
+
+/* окна «Гостевая ссылка» (shared/guestlinks.js, класс gl-m) — в стиле B через переопределения; код shared не менялся */
+html .gl-bg{--gl-bg2:var(--surf2);--gl-bd:var(--gl-lo);--gl-hv:var(--gl-hov);--gl-bg:var(--modal-bg);--gl-tx:var(--text);--gl-mt:var(--muted);--gl-ac:var(--accent-fill);-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.gl-bg{background:var(--scrim);font-family:var(--ff);padding:12px}
+.gl-bg .gl{border:0;border-radius:22px;box-shadow:var(--pop-shadow);max-width:100%;animation:none}
+.gl-bg .gl-h{border-bottom:0;padding:12px 12px 6px 20px}
+.gl-bg .gl-h b{font-size:16px}
+.gl-bg .gl-top{border-bottom:0;padding:8px 20px 6px}
+.gl-bg .gl-b{padding:6px 20px 20px}
+.gl-bg .gl-list{border:0;border-radius:16px;background:var(--gl-card)}
+.gl-bg .gl-th{border-bottom:0}
+.gl-bg .gl-it+.gl-it,.gl-bg .cll .cll-it+.cll-it{border-top:1px solid var(--gl-lo)}
+.gl-bg .gl input,.gl-bg .gl select,.gl-bg .gl-sel-b{border:1px solid transparent;border-radius:12px;background:var(--surf2)}
+.gl-bg .gl input:focus,.gl-bg .gl-sel-b:focus-visible,.gl-bg .gl-sel.open .gl-sel-b{border-color:var(--accent)}
+.gl-bg .gl button.gl-btn{border:0;border-radius:12px;background:var(--accent-fill);color:#fff}
+.gl-bg .gl button.gl-btn.cll-no,.gl-bg .gl button.gl-btn.cll-act{border:0;background:var(--surf2);color:var(--text)}
+.gl-bg .gl button.gl-ic.sub,.gl-bg .gl button.gl-ic.dng{background:var(--surf2);border:0}
+.gl-bg .gl button.gl-ic.dng{color:var(--danger)}
+.gl-bg .gl button.gl-btn.cll-yes{background:var(--danger);border:0;color:#fff}
+.gl-bg .gl-new{border:0;border-radius:16px;background:var(--accent-soft)}
+.gl-bg .gl-x{width:36px;height:36px;min-width:36px;border-radius:12px;background:var(--surf2);color:var(--text2);border:0}
+.gl-bg .gl-chip,html .gl-bg .gl-chip{border:0;border-radius:10px;background:color-mix(in srgb,currentColor 12%,transparent)}
+.gl-bg .gl-ib,.gl-bg .gl button.gl-ib{border:0;background:var(--surf2);border-radius:12px}
+.gl-pop{border:0;border-radius:14px;box-shadow:var(--pop-shadow);background:var(--side-bg)}
+.login{padding-left:20px;padding-right:20px}
+
+/* ═══════════════ 1.10 звонки ═══════════════
+   Разметку и CSS рисует /shared/calls.js (стили вставляются в <head> после этого файла), поэтому здесь селекторы с префиксом html — они сильнее по специфичности.
+   Размеры кнопок — пропорциональная система: принять/отклонить 72 px радиус 24, малые 60 → 20, управление на видео 54 → 14; поверх видео сплошные тёмные панели вместо стекла.
+   Положения (safe-area, top/bottom) не менялись. */
+html .cl-full{background:var(--app-bg)}
+html .cl-ring::before,html .cl-ring::after{border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+html .cl-mb .rnd{width:72px;height:72px;border-radius:24px;border:0;box-shadow:none}
+html .cl-mb .rnd.sq{width:60px;height:60px;border-radius:20px}
+html .cl-win .cl-mb .rnd.sq{width:58px;height:58px}
+html .cl-mb .rnd.ok{background:var(--ok)}
+html .cl-mb .rnd.no{background:var(--no)}
+html .cl-mb .rnd.clg{background:var(--gl-card2);color:var(--text);border:0}
+html .cl-full.dark .cl-mb .rnd.clg{background:var(--vbtn);color:#fff}
+html .cl-mb .rnd.off{background:#fff;color:#1d1b19}
+html .cl-b{height:44px;border-radius:12px;background:var(--surf2);border:0;box-shadow:none}
+html .cl-b:hover{background:var(--gl-card2)}
+html .cl-b:active{transform:none}
+html .cl-b.ok{background:var(--ok);color:#fff;box-shadow:none}
+html .cl-b.no{background:var(--no);color:#fff;box-shadow:none}
+html .cl-b.ok:hover,html .cl-b.no:hover{filter:brightness(1.08)}
+html .cl-card{border-radius:22px;background:var(--side-bg);border:0;box-shadow:var(--pop-shadow);-webkit-backdrop-filter:none;backdrop-filter:none}
+html .cl-win{background:var(--app-bg);border:0;-webkit-backdrop-filter:none;backdrop-filter:none}
+html .cl-win.mob{background:var(--app-bg)}
+html .cl-dim,html #cl-pick{-webkit-backdrop-filter:none;backdrop-filter:none}
+html .cl-vg{background:var(--vpanel);border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+html .cl-chip{border-radius:8px}
+html .cl-tile{border-radius:16px;box-shadow:none}
+html .cl-tile.sp{box-shadow:0 0 0 3px var(--accent)}
+html .cl-win.mob .cl-grid .cl-tile{border-radius:14px}
+html .cl-remote{border-radius:16px;box-shadow:none}
+html .cl-win.mob .cl-remote{border-radius:0}
+html .cl-pip{border-radius:12px;box-shadow:0 0 0 2px #fff,0 8px 20px rgba(0,0,0,.35)}
+html .cl-win.mob .cl-pip{border-radius:14px}
+html .cl-ctrls{border-radius:16px;gap:8px}
+html .cl-rb{width:54px;height:54px;border-radius:14px;background:var(--vbtn);border:0}
+html .cl-rb:hover{background:var(--vbtn2)}
+html .cl-rb:active{transform:none}
+html .cl-rb.off{background:#fff;color:#1d1b19}
+html .cl-rb.ac{background:var(--accent-fill);border:0}
+html .cl-rb.end{width:auto;padding:0 22px;border-radius:14px;background:var(--no);border:0;box-shadow:none}
+html .cl-hbtn{border-radius:12px;border:0}
+html .cl-win.mob.v .cl-hbtn{background:var(--vpanel);border:0}
+html #cl-bar{height:44px;border-radius:12px;background:var(--ok);box-shadow:none}
+html #cl-bar .x{border-radius:8px}
+html .cl-note{border-radius:10px}
+html #cl-dock{border-radius:16px;background:var(--side-bg);border:0;box-shadow:var(--flat-shadow);-webkit-backdrop-filter:none;backdrop-filter:none}
+html .cl-adm{border-radius:16px;background:var(--side-bg);border:0;box-shadow:var(--pop-shadow);-webkit-backdrop-filter:none;backdrop-filter:none}
+html .cl-join{border-radius:12px!important;background:var(--ok)!important}
+html #cl-pick .pk{border-radius:22px;border:0;background:var(--modal-bg);box-shadow:var(--pop-shadow)}
+html #cl-pick.mob .pk{border-radius:22px 22px 0 0}
+html #cl-pick h4 button{width:36px;height:36px;border-radius:12px;background:var(--surf2)}
+html #cl-pick input{height:44px;border-radius:12px;border:0;background:var(--surf2)}
+html #cl-pick .it{border-radius:12px}
+html .cl-sel{border-radius:10px;border:0;background:var(--surf2)}
+html .cl-acc{border-radius:10px}
+html .cl-prev{border-radius:16px}
+html .cl-kick{border-radius:8px}
+html .cl-gt{border-radius:6px}

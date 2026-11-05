@@ -102,8 +102,8 @@ B.ui.settings = (function () {
   function openMe() {
     var u = S.user;
     var el = setPage('Профиль', '<div class="hero"><button data-m="photo" aria-label="Изменить фото" style="border-radius:50%">' + B.avatar.user(u.id, u.display_name, 0, true) + '</button><button class="btn sm" data-m="photo" style="margin-top:6px">Изменить фото</button><input type="file" accept="image/*" hidden id="mefile"></div>' +
-      '<div class="gl">Ссылка на профиль</div>' + links().map(function (l, i) { return '<button class="pl" data-m="copy" data-i="' + i + '"><span class="k">' + l[0] + '</span><span class="v">' + B.esc(l[1]) + '</span><span class="ic">' + I('copy') + '</span></button>'; }).join('') +
-      '<div class="gl" style="margin-top:12px">Имя</div><label class="fld m glass-inset"><input id="nm" value="' + B.esc(u.display_name) + '" maxlength="40" aria-label="Имя"><span class="cnt">' + u.display_name.length + '/40</span></label><button class="abtn pri" data-m="save" disabled style="margin-bottom:16px">Сохранить</button>');
+      '<div class="gh">Ссылка на профиль</div>' + links().map(function (l, i) { return '<button class="pl" data-m="copy" data-i="' + i + '"><span class="k">' + l[0] + '</span><span class="v">' + B.esc(l[1]) + '</span><span class="ic">' + I('copy') + '</span></button>'; }).join('') +
+      '<div class="gh" style="margin-top:12px">Имя</div><label class="fld m glass-inset"><input id="nm" value="' + B.esc(u.display_name) + '" maxlength="40" aria-label="Имя"><span class="cnt">' + u.display_name.length + '/40</span></label><button class="abtn pri" data-m="save" disabled style="margin-bottom:16px">Сохранить</button>');
     var inp = $('#nm', el), sv = $('[data-m="save"]', el);
     inp.addEventListener('focus', function () { showKb(); });
     inp.oninput = function () { sv.disabled = !inp.value.trim() || inp.value.trim() === S.user.display_name; $('.cnt', el).textContent = inp.value.length + '/40'; };
@@ -129,15 +129,15 @@ B.ui.settings = (function () {
   function appearanceHtml() {
     var A = B.appearance, th = B.theme, pat = A.pattern(), fs = th.fsKey(), t = th.get();
     return '<div class="pvw"><div class="m a">Созвон переносим на 15:30</div><div class="m b">Отлично, успеваю</div></div>' +
-      '<div class="gl">Тема и цвет</div><div class="grp glass"><div class="cell" style="flex-direction:column;align-items:stretch"><div class="seg f" id="tseg" style="margin:0"><i class="thumb"></i>' +
+      '<div class="gh">Тема и цвет</div><div class="grp glass"><div class="cell" style="flex-direction:column;align-items:stretch"><div class="seg f" id="tseg" style="margin:0"><i class="thumb"></i>' +
         [['light', 'Светлая'], ['dark', 'Тёмная'], ['navy', 'Синяя']].map(function (x) { return '<button class="' + (t === x[0] ? 'on' : '') + '" data-t="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div></div>' +
       '<div class="cell"><span class="cl">Цвет акцента</span><div class="dots">' + Object.keys(th.ACC).map(function (k) { var a = th.ACC[k]; return '<button class="dot2' + (th.accentKey() === k ? ' on' : '') + '" data-a="' + k + '" aria-label="' + a[0] + '" style="--dot:rgb(' + (root.classList.contains('dark') ? a[2] : a[1]) + ')"></button>'; }).join('') + '</div></div>' +
-      '<div class="cell"><span class="cl">Прозрачность</span><input class="rng" type="range" min="0" max="100" value="' + th.glass() + '" style="--v:' + th.glass() + '%" aria-label="Прозрачность стекла"></div></div>' +
-      '<div class="gl">Фон</div><div class="grp glass"><div class="cell"><span class="cl">Цветная картинка</span>' + tg('amb', th.amb()) + '</div>' +
+      '</div>' +
+      '<div class="gh">Фон</div><div class="grp glass">' +
       '<div class="pcards">' + A.PATTERNS.map(function (p) { return '<button class="pcard' + (p.id === pat ? ' on' : '') + '" data-p="' + p.id + '"><i' + (p.id ? ' data-pat="' + p.id + '"' : '') + '></i><span>' + p.name + '</span></button>'; }).join('') + '</div>' +
       (pat ? '<div class="cell" style="flex-direction:column;align-items:stretch"><div class="seg f" id="lseg" style="margin:0"><i class="thumb"></i>' + [[1, 'Слабо'], [2, 'Средне'], [3, 'Сильно']].map(function (x) { return '<button class="' + (A.patternLevel() === x[0] ? 'on' : '') + '" data-l="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div></div>' : '') + '</div>' +
       '<div class="gf">Узор рисуется поверх фона переписки и с цветной картинкой не связан.</div>' +
-      '<div class="gl">Текст</div><div class="grp glass"><div class="cell" style="flex-direction:column;align-items:stretch"><div class="seg f" id="fsg" style="margin:0"><i class="thumb"></i>' + Object.keys(th.FS).map(function (k) { return '<button class="' + (fs === k ? 'on' : '') + '" data-fs="' + k + '">' + th.FS[k][1] + '</button>'; }).join('') + '</div></div></div>';
+      '<div class="gh">Текст</div><div class="grp glass"><div class="cell" style="flex-direction:column;align-items:stretch"><div class="seg f" id="fsg" style="margin:0"><i class="thumb"></i>' + Object.keys(th.FS).map(function (k) { return '<button class="' + (fs === k ? 'on' : '') + '" data-fs="' + k + '">' + th.FS[k][1] + '</button>'; }).join('') + '</div></div></div>';
   }
   function paintPats(r) { $$('[data-pat]', r).forEach(function (i) { var u = 'url("/chat/assets/patterns/' + i.dataset.pat + '.png")'; i.style.webkitMaskImage = u; i.style.maskImage = u; i.style.background = 'var(--text)'; i.style.opacity = '.45'; i.style.webkitMaskSize = '130%'; i.style.maskSize = '130%'; }); }
   function openAppearance() {
@@ -148,12 +148,10 @@ B.ui.settings = (function () {
       var t = e.target.closest('[data-t]'), a = e.target.closest('[data-a]'), p = e.target.closest('[data-p]'), l = e.target.closest('[data-l]'), f = e.target.closest('[data-fs]'), g = e.target.closest('[data-tg]');
       if (t) { $$('#tseg button', el).forEach(function (b) { b.classList.toggle('on', b === t); }); segMove($('#tseg', el)); th.set(t.dataset.t); render(); return; }
       if (a) { th.setAccent(a.dataset.a); $$('.dot2', el).forEach(function (d) { d.classList.toggle('on', d === a); }); return; }
-      if (g && g.dataset.tg === 'amb') { var on = g.getAttribute('aria-checked') !== 'true'; g.setAttribute('aria-checked', on); th.setAmb(on); return; }
       if (p) { A.setPattern(p.dataset.p); redraw(); return; }
       if (l) { A.setPatternLevel(+l.dataset.l); $$('#lseg button', el).forEach(function (b) { b.classList.toggle('on', b === l); }); segMove($('#lseg', el)); return; }
       if (f) { th.setFs(f.dataset.fs); $$('#fsg button', el).forEach(function (b) { b.classList.toggle('on', b === f); }); segMove($('#fsg', el)); }
     });
-    $('.rng', el).oninput = function (e) { var x = +e.target.value; e.target.style.setProperty('--v', x + '%'); th.setGlass(x, true); };
   }
 
   // ── модули ──

@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Макет: звонки, вариант B (без стекла)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════════════════════════════════
+   МАКЕТ: аудио- и видеозвонки (клиент Electron, веб клиент, мобильный клиент).
+   Токены и система форм те же, что в index.html / profile.html (Liquid Glass).
+   Шесть сценариев: входящий аудио, аудио-разговор, входящий видео, видео-разговор, входящая группа, групповой разговор.
+   Видеозвонки: клиент — отдельное окно, веб клиент — модалка на всё окно, мобильный клиент — отдельный экран.
+   ════════════════════════════════════════════════════════════════════════ */
+:root{
+  --ff:Inter,-apple-system,system-ui,sans-serif;
+  --app-bg:#eef1f4; --side-bg:#ffffff; --card-bg:#ffffff; --modal-bg:#ffffff; --chat-bg:#eef1f4;
+  --text:#111318; --text2:#4f5666; --muted:#6c7484;
+  --accent:#1fa88c; --accent-rgb:29,168,140; --accent-ink:color-mix(in srgb,var(--accent) 72%,#000);
+  --accent-soft:rgba(var(--accent-rgb),.12); --accent-border:rgba(var(--accent-rgb),.28);
+  --danger:#d23a3a; --danger-bg:rgba(210,58,58,.10); --danger-border:rgba(210,58,58,.28);
+  --presence-online:#34c759; --presence-away:#ff9f0a;
+  --bubble-bg:#ffffff;
+  --r-panel:30px;--r-bar:26px;--r-card:20px;--r-item:14px;--r-row:18px;--r-pill:999px;
+  --gl-k:1;
+  --gl-blur:26px;--gl-spring:cubic-bezier(.34,1.56,.64,1);--gl-ease:cubic-bezier(.22,1,.36,1);
+  --gl:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 46,100) * 1%),transparent);
+  --gl2:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 66,100) * 1%),transparent);
+  --gl-pop:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 30 + 50,100) * 1%),transparent);
+  --gl-card:color-mix(in srgb,var(--text) 5%,transparent);
+  --gl-card2:color-mix(in srgb,var(--text) 9%,transparent);
+  --gl-edge:rgba(255,255,255,.75);--gl-hi:rgba(255,255,255,.85);--gl-lo:rgba(12,26,25,.07);
+  --gl-shadow:rgba(20,50,60,.16);--gl-spec:rgba(255,255,255,.30);--gl-hov:rgba(255,255,255,.34);--gl-spotlight:rgba(255,255,255,.55);
+  --gl-in:rgba(255,255,255,.74);
+  --gl-out-a:color-mix(in srgb,var(--accent) 80%,#000);--gl-out-b:color-mix(in srgb,var(--accent) 68%,#0b4f96);
+  --gl-base:#e3f0ef;--amb-1:color-mix(in srgb,var(--accent) 60%,#fff);--amb-2:#8e9cff;--amb-3:#ffb4d3;--amb-4:#ffd391;
+  --scrim:rgba(20,40,50,.22);
+  --stage:linear-gradient(160deg,#c9d9e6 0%,#d8e6df 50%,#e6dcec 100%);
+}
+html.dark{
+  --app-bg:#12171d;--side-bg:#1e252d;--card-bg:#1e252d;--modal-bg:#1e252d;--chat-bg:#12171d;
+  --text:#eef6f5;--text2:rgba(238,246,245,.74);--muted:rgba(238,246,245,.56);
+  --accent:#29d6b8;--accent-rgb:41,214,184;--accent-ink:var(--accent);
+  --danger:#ef6f6f;--danger-bg:rgba(239,111,111,.12);--danger-border:rgba(239,111,111,.32);
+  --bubble-bg:#1b2733;
+  --gl-edge:rgba(255,255,255,.17);--gl-hi:rgba(255,255,255,.20);--gl-lo:rgba(0,0,0,.35);--gl-shadow:rgba(0,0,0,.5);
+  --gl-spec:rgba(255,255,255,.09);--gl-hov:rgba(255,255,255,.08);--gl-spotlight:rgba(255,255,255,.20);
+  --gl:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 52,100) * 1%),transparent);
+  --gl2:color-mix(in srgb,color-mix(in srgb,var(--side-bg) 82%,#4a7080) calc(min(var(--gl-k) * 68,100) * 1%),transparent);
+  --gl-pop:color-mix(in srgb,var(--side-bg) calc(min(var(--gl-k) * 34 + 50,100) * 1%),transparent);
+  --gl-in:color-mix(in srgb,var(--bubble-bg) 74%,transparent);
+  --gl-out-a:color-mix(in srgb,var(--accent) 58%,#000);--gl-out-b:color-mix(in srgb,var(--accent) 48%,#0b3d7a);
+  --gl-base:color-mix(in srgb,var(--chat-bg) 70%,#000);--amb-1:color-mix(in srgb,var(--accent) 55%,#000);--amb-2:#4a4fd0;--amb-3:#a33a73;--amb-4:#a8742c;
+  --scrim:rgba(0,0,0,.40);
+  --stage:linear-gradient(160deg,#10181f 0%,#14201f 50%,#1b1626 100%);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{font-family:var(--ff);background:var(--stage);background-attachment:fixed;color:var(--text);-webkit-font-smoothing:antialiased;transition:background .5s var(--gl-ease)}
+button,input{font:inherit;color:inherit;border:0;background:none;outline:none}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+svg.i{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* стекло */
+.glass{position:relative;background:radial-gradient(120% 90% at 0% 0%,var(--gl-spec),transparent 55%),var(--gl);border:1px solid var(--gl-edge);
+  -webkit-backdrop-filter:blur(var(--gl-blur)) saturate(190%);backdrop-filter:blur(var(--gl-blur)) saturate(190%);
+  box-shadow:inset 0 1px 0 var(--gl-hi),inset 0 -1px 0 var(--gl-lo),0 12px 32px var(--gl-shadow)}
+.glass-pop{position:relative;background:radial-gradient(120% 80% at 0% 0%,var(--gl-spec),transparent 55%),var(--gl-pop);border:1px solid var(--gl-edge);
+  -webkit-backdrop-filter:blur(calc(var(--gl-blur) + 6px)) saturate(190%);backdrop-filter:blur(calc(var(--gl-blur) + 6px)) saturate(190%);
+  box-shadow:inset 0 1px 0 var(--gl-hi),inset 0 -1px 0 var(--gl-lo),0 24px 60px var(--gl-shadow)}
+.gi{position:relative;transition:transform .35s var(--gl-spring),background .2s,box-shadow .2s}
+.gi:hover{background-color:var(--gl2)}
+.gi:active{transform:scale(.97)}
+
+/* кнопки */
+.ibtn{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:18px;color:var(--text2);flex:none;transition:background .2s,color .2s,transform .35s var(--gl-spring)}
+.ibtn:hover{background:var(--gl-card2);color:var(--text)}
+.ibtn:active{transform:scale(.92)}
+.ibtn.danger:hover{background:var(--danger-bg);color:var(--danger)}
+.btn{height:38px;padding:0 18px;border-radius:var(--r-pill);display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600;white-space:nowrap;
+  background:var(--gl-card);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi);transition:background .2s,transform .35s var(--gl-spring),filter .2s}
+.btn .i{font-size:16px}
+.btn:hover{background:var(--gl-card2)}
+.btn:active{transform:scale(.95)}
+.btn.pri{background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;border-color:rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px color-mix(in srgb,var(--gl-out-b) 38%,transparent)}
+.btn.pri:hover{filter:brightness(1.12);background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b))}
+.btn.soft{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent-ink)}
+.btn.danger{background:var(--danger-bg);border-color:var(--danger-border);color:var(--danger)}
+.btn.block{width:100%;justify-content:flex-start;padding:0 16px;height:42px}
+.btn.sm{height:32px;padding:0 14px;font-size:12.5px}
+.seg{position:relative;display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;height:36px;padding:3px;border-radius:var(--r-pill);background:var(--gl-hov);box-shadow:inset 0 1px 3px var(--gl-lo)}
+.seg button{position:relative;z-index:1;padding:0 14px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text2);border-radius:var(--r-pill);transition:color .25s;white-space:nowrap}
+.seg button.on{color:var(--text)}
+.seg button small{font-size:11px;font-weight:600;color:var(--muted)}
+.seg .thumb{position:absolute;top:3px;bottom:3px;border-radius:var(--r-pill);background:var(--gl2);box-shadow:inset 0 1px 0 var(--gl-hi),0 2px 8px var(--gl-shadow);transition:left .45s var(--gl-spring),width .45s var(--gl-spring)}
+.seg.full{display:grid;width:100%}
+.srch{display:flex;align-items:center;gap:10px;height:40px;padding:0 14px;border-radius:var(--r-pill);color:var(--muted);font-size:13px}
+.srch .i{font-size:16px}
+
+/* аватарки */
+.av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:15px;position:relative;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);text-transform:uppercase}
+.av.sm{width:34px;height:34px;font-size:12px}.av.xs{width:28px;height:28px;font-size:11px}
+.av.xl{width:104px;height:104px;font-size:34px}.av.lg{width:88px;height:88px;font-size:29px}.av.md{width:72px;height:72px;font-size:24px}
+.av.sq{border-radius:26%}
+.av .dot{position:absolute;right:1px;bottom:1px;width:14px;height:14px;border-radius:50%;background:var(--presence-online);box-shadow:0 0 0 3px color-mix(in srgb,var(--side-bg) 85%,transparent)}
+.av.sm .dot,.av.xs .dot{width:11px;height:11px;box-shadow:0 0 0 2px color-mix(in srgb,var(--side-bg) 85%,transparent)}
+.av .dot.away{background:var(--presence-away)}
+.tagp{display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:var(--r-pill);font-size:11.5px;font-weight:700;color:var(--accent-ink);background:var(--accent-soft);border:1px solid var(--accent-border)}
+.on{color:var(--accent-ink)}
+.holder{position:relative;overflow:hidden;border-radius:30px}
+.win{width:1360px;height:860px;position:absolute;left:0;top:0;overflow:hidden;border-radius:30px;background:var(--gl-base);box-shadow:0 0 0 1px rgba(255,255,255,.25),0 40px 90px rgba(20,40,60,.35);transform-origin:top left}
+.amb{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.amb i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.85}
+.amb i:nth-child(1){width:560px;height:560px;left:380px;top:-160px;background:var(--amb-1)}
+.amb i:nth-child(2){width:520px;height:520px;right:-120px;top:120px;background:var(--amb-2)}
+.amb i:nth-child(3){width:480px;height:480px;left:120px;bottom:-180px;background:var(--amb-3)}
+.amb i:nth-child(4){width:420px;height:420px;right:160px;bottom:-140px;background:var(--amb-4)}
+.app{position:absolute;inset:0;padding:12px;display:grid;grid-template-columns:340px 1fr;gap:12px}
+.app.withpanel{grid-template-columns:340px 1fr 420px}
+.side{border-radius:var(--r-panel);padding:14px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.side h2{font-size:20px;font-weight:700;padding:4px 8px}
+.crow{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:var(--r-row)}
+.crow.sel{background:var(--gl2);box-shadow:inset 0 1px 0 var(--gl-hi)}
+.crow b{display:block;font-size:13.5px;font-weight:600}
+.crow small{display:block;font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+.chat{border-radius:var(--r-panel);display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.chat .hd{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--gl-lo)}
+.chat .hd b{font-size:15px;font-weight:700}.chat .hd small{display:block;font-size:12px;color:var(--muted);margin-top:1px}
+.chat .msgs{flex:1;padding:18px;display:flex;flex-direction:column;gap:8px;justify-content:flex-end}
+.bub{max-width:420px;padding:9px 14px;border-radius:18px;font-size:13.5px;line-height:1.45;background:var(--gl-in);border:1px solid var(--gl-edge)}
+.bub.out{align-self:flex-end;background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b));color:#fff;border-color:rgba(255,255,255,.3)}
+.scrim{position:absolute;inset:0;background:var(--scrim);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);z-index:40}
+.pm{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:41;border-radius:var(--r-panel);overflow:hidden;display:flex;flex-direction:column}
+.xbtn{position:absolute;top:14px;right:14px;z-index:5}
+
+/* ══════════ МАКЕТ: звонки ══════════ */
+body{overflow-x:hidden}
+.ctl{position:sticky;top:0;z-index:100;display:flex;align-items:center;flex-wrap:wrap;gap:10px 22px;padding:12px 20px;margin:12px 12px 0;border-radius:var(--r-bar)}
+.ctl h1{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.ctl .grp{display:flex;align-items:center;gap:8px}
+.ctl .lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.ctl .seg{max-width:100%;overflow-x:auto}
+.vdesc{width:100%;font-size:13px;line-height:1.5;color:var(--text2);padding:2px 4px 0}
+.vdesc b{color:var(--text)}
+
+.board{display:grid;grid-template-columns:1fr 1fr;gap:18px 20px;width:100%;max-width:1760px;margin:0 auto;padding:16px 14px 50px}
+.board.one{grid-template-columns:1fr}
+.cell{display:flex;flex-direction:column;gap:8px;min-width:0}
+.cell>h3{font-size:13px;font-weight:700;padding-left:6px;display:flex;gap:8px;align-items:baseline}
+.cell>h3 small{font-weight:500;color:var(--muted);font-size:12px}
+.mrow{grid-column:1/-1;display:flex;gap:30px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.mcell{display:flex;flex-direction:column;gap:10px;align-items:center}
+.mcell>h3{font-size:13px;font-weight:700;align-self:flex-start;padding-left:6px}
+.mcell>h3 small{font-weight:500;color:var(--muted);font-size:12px;margin-left:6px}
+.pholder{position:relative;margin:12px}
+.notes{width:420px;max-width:100%;border-radius:var(--r-card);padding:18px 20px;align-self:flex-start;margin-top:30px}
+.notes h4{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.notes p{font-size:13px;line-height:1.5;color:var(--text2);padding:7px 0;border-top:1px solid var(--gl-lo)}
+.notes p:first-of-type{border-top:0}
+.notes b{color:var(--text)}
+
+/* значки и общие детали */
+.av.xxl{width:140px;height:140px;font-size:46px}
+.av.lgg{width:112px;height:112px;font-size:38px}
+.stk{display:flex}.stk .av{box-shadow:0 0 0 3px var(--stk-ring,var(--side-bg));margin-left:-10px}.stk .av:first-child{margin-left:0}
+.stk .more{background:var(--gl-card2);color:var(--text2);font-size:12px}
+.crow .ctm{margin-left:auto;font-size:11px;color:var(--muted);flex:none;align-self:flex-start;padding-top:2px}
+.crow .ctm .i{color:var(--accent-ink);font-size:15px}
+.chat .comp{margin:0 14px 14px;height:46px;border-radius:var(--r-pill);display:flex;align-items:center;gap:10px;padding:0 6px 0 20px;color:var(--muted);font-size:13.5px}
+.chat .comp span{flex:1}
+.chat .comp .send{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:16px;background:linear-gradient(140deg,var(--gl-out-a),var(--gl-out-b))}
+.chat .hd .sp{flex:1}
+.btn.ok{background:linear-gradient(140deg,#3fd573,#1f9f4c);color:#fff;border-color:rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 18px rgba(31,159,76,.35)}
+.btn.ok:hover{filter:brightness(1.1);background:linear-gradient(140deg,#3fd573,#1f9f4c)}
+.btn.no{background:linear-gradient(140deg,#ee6060,#c42f2f);color:#fff;border-color:rgba(255,255,255,.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(196,47,47,.32)}
+.btn.no:hover{filter:brightness(1.1);background:linear-gradient(140deg,#ee6060,#c42f2f)}
+.btn.no .i.hang,.rb .i.hang,.mb2 .i.hang{transform:rotate(135deg)}
+
+/* пульсация вокруг аватарки звонящего */
+.ringav{position:relative;display:grid;place-items:center;flex:none}
+.ringav::before,.ringav::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:1.5px solid rgba(var(--accent-rgb),.42);animation:rg 2.6s ease-out infinite}
+.ringav::after{animation-delay:1.3s}
+.ringav.big::before,.ringav.big::after{inset:-18px}
+@keyframes rg{from{transform:scale(.9);opacity:.9}to{transform:scale(1.55);opacity:0}}
+@media (prefers-reduced-motion:reduce){.ringav::before,.ringav::after{animation:none;opacity:.5}}
+
+/* карточка входящего звонка (клиент и веб) */
+.inc{position:absolute;right:26px;top:26px;width:352px;border-radius:var(--r-bar);padding:16px;z-index:60;display:flex;flex-direction:column;gap:14px}
+.inc .top{display:flex;align-items:center;gap:14px;padding:2px 4px 0}
+.inc .top .t{min-width:0;flex:1}
+.inc .top b{display:block;font-size:16px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inc .top small{display:block;font-size:12.5px;color:var(--text2);margin-top:3px}
+.inc .row2{display:flex;gap:8px}.inc .row2 .btn{flex:1}
+.inc .act{display:flex;gap:8px;flex-direction:column}
+.inc .act .btn.big{height:44px;font-size:14px}
+.prev{position:relative;height:178px;border-radius:var(--r-card);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}
+.prev .tg{position:absolute;right:10px;bottom:10px;display:flex;gap:6px}
+.grpmeta{display:flex;align-items:center;gap:12px;padding:0 4px}
+.grpmeta small{font-size:12.5px;color:var(--text2);line-height:1.35}
+
+/* заглушки видео: силуэт на цветном фоне */
+.vid{position:absolute;inset:0;container-type:size;overflow:hidden;--hs:min(24cqw,30cqh);
+  background:radial-gradient(90% 70% at 30% 18%,hsl(var(--h) 46% 48%),hsl(var(--h) 42% 22%) 72%),hsl(var(--h) 40% 18%)}
+.vid::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 50%,rgba(0,0,0,.38))}
+.vid .vh{position:absolute;left:50%;width:var(--hs);aspect-ratio:1;top:calc(36cqh - var(--hs) / 2);transform:translateX(-50%);border-radius:50%;background:hsl(var(--h) 34% 66% / .55)}
+.vid .vb{position:absolute;left:50%;width:calc(var(--hs) * 2.5);height:calc(var(--hs) * 4);top:calc(36cqh + var(--hs) * .62);transform:translateX(-50%);border-radius:50% 50% 0 0;background:hsl(var(--h) 34% 52% / .5)}
+.vid.off{background:radial-gradient(90% 80% at 50% 30%,hsl(var(--h) 22% 30%),hsl(var(--h) 24% 16%))}
+.vid.off::after{display:none}
+.vid .vbig{position:absolute;left:50%;top:50%;width:min(36cqw,44cqh);aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:min(12cqw,15cqh);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.vid.blur{filter:blur(18px) saturate(1.2);transform:scale(1.15)}
+
+/* элементы поверх видео — всегда тёмное стекло */
+.vg{background:rgba(14,20,26,.46);-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);border:1px solid rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+.nchip{position:absolute;left:12px;bottom:12px;height:28px;padding:0 12px 0 6px;border-radius:var(--r-pill);display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#fff;z-index:3;white-space:nowrap}
+.nchip:not(:has(.mb)){padding-left:12px}
+.nchip.top{bottom:auto;top:12px}
+.nchip .mb{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#e04848;font-size:12px}
+.nchip .i{font-size:13px}
+.qchip{position:absolute;right:12px;top:12px;height:28px;padding:0 11px;border-radius:var(--r-pill);display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#fff;z-index:3}
+.sig{display:inline-flex;align-items:flex-end;gap:2px;height:12px}.sig i{width:3px;border-radius:1px;background:#4be08a}.sig i:nth-child(1){height:4px}.sig i:nth-child(2){height:7px}.sig i:nth-child(3){height:10px}.sig i:nth-child(4){height:12px;opacity:.35}
+.tile{position:relative;border-radius:22px;overflow:hidden;min-height:0;min-width:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.tile.sp{box-shadow:0 0 0 3px var(--accent),0 0 28px rgba(var(--accent-rgb),.55)}
+.tile .sp-b{position:absolute;right:12px;top:12px;z-index:3;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:14px;background:rgba(var(--accent-rgb),.9)}
+.tile.self .nchip{background:rgba(var(--accent-rgb),.55)}
+
+/* кнопки управления звонком */
+.ctrls{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--r-pill);z-index:10}
+.rb{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;flex:none;font-size:22px;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);transition:transform .35s var(--gl-spring),background .2s}
+.rb:hover{background:rgba(255,255,255,.24)}.rb:active{transform:scale(.92)}
+.rb.off{background:#fff;color:#18222b;border-color:#fff}
+.rb.sm{width:34px;height:34px;font-size:16px}
+.rb.end{display:inline-flex;align-items:center;justify-content:center;width:auto;padding:0 24px;gap:9px;font-size:14px;font-weight:700;border-radius:var(--r-pill);border-color:rgba(255,255,255,.3);background:linear-gradient(140deg,#ee6060,#c42f2f);box-shadow:0 6px 18px rgba(196,47,47,.4)}
+.rb.end .i{transform:rotate(135deg)}
+.rb.ac{background:rgba(var(--accent-rgb),.85);border-color:rgba(255,255,255,.3)}
+
+/* окно звонка: отдельное окно клиента или модалка веба */
+.cw{position:absolute;display:flex;flex-direction:column;overflow:hidden;z-index:50}
+.cw.el{border-radius:14px;background:color-mix(in srgb,var(--modal-bg) 96%,transparent);box-shadow:0 0 0 1px rgba(255,255,255,.18),0 50px 110px rgba(0,0,0,.5)}
+.cw.web{border-radius:var(--r-panel)}
+.cw .th{height:48px;display:grid;grid-template-columns:200px 1fr 200px;align-items:center;padding:0 14px;flex:none}
+.cw .th .l{display:flex;align-items:center}.cw .th .r{display:flex;align-items:center;justify-content:flex-end;gap:4px}
+.cw .th .c{text-align:center;min-width:0}
+.cw .th .c b{font-size:13.5px;font-weight:700}
+.cw .th .c small{font-size:12.5px;color:var(--accent-ink);font-weight:600;margin-left:8px;font-variant-numeric:tabular-nums}
+.tl{display:flex;gap:8px;padding-left:4px}.tl i{width:12px;height:12px;border-radius:50%}
+.cw .sv{position:absolute;left:12px;right:12px;top:48px;bottom:12px}
+.cw .sv.g{bottom:92px}
+.remote{position:absolute;inset:0;border-radius:22px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.pip{position:absolute;right:16px;bottom:88px;width:220px;aspect-ratio:16/10;border-radius:16px;overflow:hidden;z-index:4;box-shadow:0 0 0 2px rgba(255,255,255,.4),0 12px 30px rgba(0,0,0,.4)}
+.pip .nchip{left:8px;bottom:8px;height:22px;font-size:11px;padding:0 9px}
+.gridv{position:absolute;inset:0;display:grid;gap:10px;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr)}
+.gridv.m{grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(3,1fr);gap:8px}
+.gridv.m .tile{border-radius:20px}
+
+/* мобильный клиент */
+.phone{width:393px;height:852px;position:absolute;left:0;top:0;border-radius:58px;overflow:hidden;background:var(--gl-base);isolation:isolate;transform-origin:top left;box-shadow:0 0 0 10px #0a0c0f,0 0 0 11px rgba(255,255,255,.2),0 40px 90px rgba(10,20,30,.45);font-size:16px}
+.phone .amb i:nth-child(1){width:340px;height:340px;left:-60px;top:-80px;background:var(--amb-1)}
+.phone .amb i:nth-child(2){width:320px;height:320px;right:-110px;top:230px;background:var(--amb-2)}
+.phone .amb i:nth-child(3){width:340px;height:340px;left:-90px;bottom:-60px;background:var(--amb-3)}
+.phone .amb i:nth-child(4){width:260px;height:260px;right:-40px;bottom:30px;background:var(--amb-4)}
+.phone .amb i{filter:blur(55px)}
+.isl{position:absolute;top:11px;left:50%;width:122px;height:35px;border-radius:20px;background:#000;transform:translateX(-50%);z-index:120}
+.sbar{position:absolute;left:0;right:0;top:0;height:54px;z-index:110;display:flex;justify-content:space-between;align-items:center;padding:6px 34px 0 46px;font-size:16px;font-weight:700;pointer-events:none}
+.sbar .bat{width:26px;height:13px;border-radius:4px;border:1.5px solid currentColor;opacity:.8;position:relative}
+.sbar .bat::after{content:"";position:absolute;inset:1.5px;right:5px;border-radius:2px;background:currentColor}
+.home{position:absolute;left:50%;bottom:8px;width:138px;height:5px;border-radius:3px;background:currentColor;opacity:.55;transform:translateX(-50%);z-index:120}
+.phone.dk{color:#fff}
+.mscr{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center}
+.mscr .lbl{font-size:13.5px;font-weight:600;color:var(--text2)}
+.mscr.v .lbl{color:rgba(255,255,255,.8)}
+.mscr .nm2{font-size:30px;font-weight:700;letter-spacing:-.02em;text-align:center}
+.mscr .sub2{font-size:15px;color:var(--text2);margin-top:6px;text-align:center}
+.mscr.v .nm2{color:#fff}.mscr.v .sub2{color:rgba(255,255,255,.78)}
+.macts{display:flex;justify-content:center;gap:34px;width:100%}
+.mb2{display:flex;flex-direction:column;align-items:center;gap:9px;font-size:12.5px;font-weight:600;color:var(--text2)}
+.mscr.v .mb2{color:rgba(255,255,255,.85)}
+.mb2 .rnd{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;font-size:30px;color:#fff;border:1px solid rgba(255,255,255,.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 10px 24px rgba(0,0,0,.22)}
+.mb2 .rnd.ok{background:linear-gradient(140deg,#3fd573,#1f9f4c)}
+.mb2 .rnd.no{background:linear-gradient(140deg,#ee6060,#c42f2f)}
+.mb2 .rnd.gl{background:var(--gl2);color:var(--text);border-color:var(--gl-edge);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+.mscr.v .mb2 .rnd.gl{background:rgba(255,255,255,.18);color:#fff;border-color:rgba(255,255,255,.3)}
+.mb2 .rnd.sq{width:64px;height:64px;font-size:26px}
+.mb2 .rnd .i.hang{transform:rotate(135deg)}
+.mchips{display:flex;gap:10px;justify-content:center}
+.mchip{height:38px;padding:0 16px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600}
+.mchip .i{font-size:16px;color:var(--accent-ink)}
+.mscr.v .mchip{color:#fff}.mscr.v .mchip .i{color:#fff}
+.mtop{position:absolute;left:0;right:0;top:56px;height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:5}
+.mtop .c{text-align:center;color:#fff;min-width:0}
+.mtop .c b{display:block;font-size:15px;font-weight:700}.mtop .c small{display:block;font-size:12.5px;opacity:.85;font-variant-numeric:tabular-nums}
+.mtop .rb{width:40px;height:40px;font-size:19px}
+.mpip{position:absolute;right:14px;top:112px;width:100px;height:136px;border-radius:20px;overflow:hidden;z-index:6;box-shadow:0 0 0 2px rgba(255,255,255,.4),0 10px 26px rgba(0,0,0,.4)}
+.mctrl{position:absolute;left:50%;transform:translateX(-50%);bottom:30px;display:flex;align-items:center;gap:12px;padding:9px;border-radius:var(--r-pill);z-index:10}
+.mctrl .rb{width:56px;height:56px;font-size:23px}
+.mctrl .rb.end{width:auto;padding:0 22px;height:56px}
+.mbar{position:absolute;left:12px;right:12px;top:54px;height:42px;border-radius:21px;z-index:30;display:flex;align-items:center;gap:10px;padding:0 6px 0 16px;color:#fff;font-size:13.5px;font-weight:600;background:linear-gradient(140deg,#3fd573,#1f9f4c);box-shadow:0 8px 22px rgba(31,159,76,.4),inset 0 1px 0 rgba(255,255,255,.4)}
+.mbar .i{font-size:16px}.mbar .tm{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:700}
+.mbar .x{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.22)}
+.mbar .x .i{transform:rotate(135deg);font-size:15px}
+.mchat{position:absolute;inset:0;z-index:2}
+.mchat .hd2{position:absolute;left:12px;right:12px;top:106px;height:54px;border-radius:27px;display:flex;align-items:center;gap:10px;padding:0 8px 0 8px}
+.mchat .hd2 b{font-size:14.5px;font-weight:700;display:block}.mchat .hd2 small{font-size:11.5px;color:var(--muted)}
+.mchat .hd2 .sp{flex:1}
+.mchat .ms{position:absolute;left:14px;right:14px;top:176px;display:flex;flex-direction:column;gap:8px}
+.mchat .ms .bub{max-width:270px;font-size:14px}
+.mchat .cmp2{position:absolute;left:12px;right:12px;bottom:28px;height:48px;border-radius:24px;display:flex;align-items:center;padding:0 18px;color:var(--muted);font-size:14px}
+.dock .btn.sm{padding:0;width:40px;flex:none}.dock .btn.sm.no{flex:1;width:auto;padding:0 12px}
+.mgrid2{position:absolute;left:10px;right:10px;top:108px;bottom:112px;z-index:3}
+/* ═══════════════════════════════════════════════════════════════════════════
+   ВАРИАНТ B «Мягкий» — без стекла. Этот блок идёт после стилей макета Liquid Glass и переопределяет
+   токены и поверхности: плоские карточки с мягкими тенями, радиусы 12–22, тёплая нейтраль, Inter.
+   Переписка (.chatreal) от этих токенов не зависит: её токены заданы в области чата отдельно.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root{
+  --ff:Inter,-apple-system,system-ui,sans-serif;
+  --app-bg:#ece9e4;--side-bg:#fdfcfa;--card-bg:#fdfcfa;--modal-bg:#fdfcfa;--chat-bg:#f7f5f1;--bubble-bg:#ffffff;
+  --text:#1d1b19;--text2:#5b554e;--muted:#766e65;
+  --surf2:#f3f0eb;--sel:#efebe5;
+  --accent-fill:color-mix(in srgb,var(--accent) 80%,#000);
+  --r-panel:22px;--r-bar:16px;--r-card:16px;--r-menu:16px;--r-item:12px;--r-row:16px;--r-ctl:12px;--r-pill:12px;--gl-in:var(--bubble-bg);--chip-bg:color-mix(in srgb,var(--text) 9%,var(--chat-bg));
+  --flat-shadow:0 1px 2px rgba(60,40,20,.05),0 10px 30px rgba(60,40,20,.07);
+  --pop-shadow:0 2px 6px rgba(60,40,20,.08),0 18px 44px rgba(60,40,20,.16);
+  --gl:var(--side-bg);--gl2:var(--surf2);--gl-pop:var(--side-bg);
+  --gl-card:color-mix(in srgb,var(--text) 4%,var(--side-bg));
+  --gl-card2:color-mix(in srgb,var(--text) 8%,var(--side-bg));
+  --gl-inset:color-mix(in srgb,var(--text) 5%,var(--side-bg));
+  --gl-edge:transparent;--gl-hi:transparent;--gl-lo:color-mix(in srgb,var(--text) 9%,transparent);
+  --gl-shadow:rgba(60,40,20,.14);--gl-spec:transparent;--gl-spotlight:transparent;
+  --gl-hov:color-mix(in srgb,var(--text) 5%,transparent);
+  --gl-blur:0px;--gl-out-a:var(--accent-fill);--gl-out-b:var(--accent-fill);
+  --gl-base:#ece9e4;
+  --scrim:rgba(40,28,16,.32);
+  --stage:#dedad4;
+}
+html.dark{
+  --app-bg:#131211;--side-bg:#1d1c1a;--card-bg:#1d1c1a;--modal-bg:#1d1c1a;--chat-bg:#181715;--bubble-bg:#2a2825;
+  --text:#f2efeb;--text2:#b4aea6;--muted:#968f86;
+  --surf2:#292724;--sel:#2b2926;
+  --accent-fill:color-mix(in srgb,var(--accent) 70%,#000);
+  --flat-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  --pop-shadow:0 2px 6px rgba(0,0,0,.4),0 18px 44px rgba(0,0,0,.55);
+  --gl-card:color-mix(in srgb,var(--text) 5%,var(--side-bg));
+  --gl-card2:color-mix(in srgb,var(--text) 10%,var(--side-bg));
+  --gl-inset:color-mix(in srgb,var(--text) 6%,var(--side-bg));
+  --gl-lo:color-mix(in srgb,var(--text) 10%,transparent);
+  --gl-shadow:rgba(0,0,0,.5);--gl-hov:color-mix(in srgb,var(--text) 7%,transparent);
+  --gl-out-a:var(--accent-fill);--gl-out-b:var(--accent-fill);
+  --gl-base:#0f0e0d;--scrim:rgba(0,0,0,.5);--stage:#0a0908;
+}
+html.dark.navy{
+  --app-bg:#10161d;--side-bg:#18202a;--card-bg:#18202a;--modal-bg:#18202a;--chat-bg:#0f1b27;--bubble-bg:#213040;
+  --text:#eef2f6;--text2:rgba(238,242,246,.74);--muted:rgba(238,242,246,.56);
+  --surf2:#222d3a;--sel:#243242;--gl-base:#0c1219;--stage:#080c11;
+}
+
+
+
+/* ───── ЗВОНКИ под вариант B: плоские карточки, без стекла и размытия; на видео — сплошные тёмные панели ───── */
+:root{--ok:#2f9e5b;--no:#d94a4a;--vpanel:#25221f;--vbtn:#38342f;--vbtn2:#45403a}
+html.dark{--ok:#3aae68;--no:#e05a5a;--vpanel:#2a2724;--vbtn:#3b3733;--vbtn2:#48433d}
+body{background:var(--stage)}
+.glass,.glass-pop{background:var(--side-bg);border:0;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:var(--flat-shadow)}
+.glass-pop{box-shadow:var(--pop-shadow)}
+.gi:hover{background-color:var(--gl-hov)}
+.ibtn{border-radius:12px}
+.btn{height:40px;border-radius:12px;background:var(--gl-card2);border:0;box-shadow:none}
+.btn:hover{background:color-mix(in srgb,var(--text) 14%,var(--side-bg))}
+.btn.pri{background:var(--accent-fill);color:#fff;border:0;box-shadow:none}
+.btn.soft{background:var(--accent-soft);border:0}
+.btn.danger{background:var(--danger-bg);border:0}
+.btn.sm{height:34px;border-radius:12px}
+.btn.ok{background:var(--ok);color:#fff;border:0;box-shadow:none}
+.btn.ok:hover{background:var(--ok);filter:brightness(1.1)}
+.btn.no{background:var(--no);color:#fff;border:0;box-shadow:none}
+.btn.no:hover{background:var(--no);filter:brightness(1.1)}
+.seg{border-radius:14px;background:var(--surf2);box-shadow:none}
+.seg button{border-radius:11px}
+.seg .thumb{border-radius:11px;background:var(--side-bg);box-shadow:0 1px 2px rgba(60,40,20,.12);transition:left .25s var(--gl-ease),width .25s var(--gl-ease)}
+html.dark .seg .thumb{background:var(--gl-card2);box-shadow:none}
+.srch{border-radius:12px;background:var(--surf2);box-shadow:none}
+.av.sq{border-radius:12px}
+.tagp{border-radius:8px;border:0}
+.ctl.glass{border-radius:16px;margin:12px 12px 0}
+.holder{border-radius:26px}
+.win{border-radius:26px;background:var(--app-bg);box-shadow:0 0 0 1px rgba(60,40,20,.08),0 30px 70px rgba(40,28,16,.22)}
+.amb{display:none}
+.app{padding:10px;gap:10px}
+.side,.chat{border-radius:22px}
+.crow{border-radius:16px}
+.crow.sel{background:var(--sel);box-shadow:none}
+.chat .hd{border-bottom:0;box-shadow:0 8px 20px -10px rgba(60,40,20,.18)}
+.chat{background:var(--chat-bg)}
+.bub{background:var(--bubble-bg);border:0;box-shadow:0 1px 2px rgba(60,40,20,.09);border-radius:18px;color:var(--text)}
+html.dark .bub{box-shadow:none}
+.bub.out{background:var(--accent-fill);color:#fff;box-shadow:none}
+.chat .comp.glass{border-radius:12px;background:var(--surf2);box-shadow:none;height:46px}
+.chat .comp .send{border-radius:10px;background:var(--accent-fill)}
+.scrim{-webkit-backdrop-filter:none;backdrop-filter:none}
+.notes.glass{border-radius:16px}
+.notes p{border-top:1px solid var(--gl-lo)}
+
+/* входящий звонок: карточка */
+.inc{border-radius:22px}
+.prev{border-radius:16px;box-shadow:none}
+.ringav::before,.ringav::after{border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.vid.blur{filter:none;transform:none}
+
+/* поверх видео: сплошные тёмные панели вместо стекла */
+.vg{background:var(--vpanel);border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.nchip{height:26px;border-radius:8px}
+.qchip{height:26px;border-radius:8px}
+.nchip .mb{border-radius:6px;background:var(--no)}
+.tile{border-radius:16px;box-shadow:none}
+.tile.sp{box-shadow:0 0 0 3px var(--accent)}
+.tile .sp-b{border-radius:8px;background:var(--accent-fill)}
+.tile.self .nchip{background:var(--accent-fill)}
+.gridv.m .tile{border-radius:14px}
+.remote{border-radius:16px;box-shadow:none}
+.pip{border-radius:12px;box-shadow:0 0 0 2px #fff,0 8px 20px rgba(0,0,0,.35)}
+.ctrls{border-radius:16px;gap:8px;padding:8px}
+.rb{border-radius:14px;background:var(--vbtn);border:0}
+.rb:hover{background:var(--vbtn2)}
+.rb.off{background:#fff;color:#1d1b19}
+.rb.sm{border-radius:10px}
+.rb.end{border-radius:14px;background:var(--no);border:0;box-shadow:none;padding:0 22px}
+.rb.ac{background:var(--accent-fill);border:0}
+.cw.el,.cw.web{border-radius:22px;background:var(--modal-bg);box-shadow:var(--pop-shadow)}
+.cw .th{height:52px}
+
+/* мобильный клиент */
+.phone{background:var(--app-bg)}
+.mb2 .rnd{width:72px;height:72px;border-radius:24px;border:0;box-shadow:none}
+.mb2 .rnd.ok{background:var(--ok)}
+.mb2 .rnd.no{background:var(--no)}
+.mb2 .rnd.gl{background:var(--gl-card2);color:var(--text);border:0;-webkit-backdrop-filter:none;backdrop-filter:none}
+.mscr.v .mb2 .rnd.gl{background:var(--vbtn);color:#fff}
+.mb2 .rnd.sq{width:60px;height:60px;border-radius:20px}
+.mchip{border-radius:12px;height:40px}
+.mchip.glass{background:var(--gl-card2);box-shadow:none}
+.mscr.v .mchip{background:var(--vbtn)}
+.mpip{border-radius:14px;box-shadow:0 0 0 2px #fff,0 8px 20px rgba(0,0,0,.35)}
+.mctrl{border-radius:16px;gap:8px;padding:8px}
+.mctrl .rb{width:54px;height:54px;border-radius:14px}
+.mctrl .rb.end{width:auto;padding:0 22px}
+.mbar{border-radius:12px;background:var(--ok);box-shadow:none;height:44px;left:14px;right:14px}
+.mbar .x{border-radius:8px;background:rgba(255,255,255,.22)}
+.mchat .hd2.glass{border-radius:16px}
+.mchat .cmp2.glass{border-radius:12px;background:var(--surf2);box-shadow:none}
+.mtop .rb{border-radius:12px}
+
+</style>
+</head>
+<body>
+<div class="ctl glass" id="ctl"></div>
+<div class="board" id="board"></div>
+<script>
+/* ── иконки Lucide ── */
+const ICON = {
+  phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+  video:'<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+  videoOff:'<path d="M10.66 6H14a2 2 0 0 1 2 2v2.5l5.248-3.062A.5.5 0 0 1 22 7.87v8.196"/><path d="M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/><path d="m2 2 20 20"/>',
+  mic:'<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
+  micOff:'<line x1="2" x2="22" y1="2" y2="22"/><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"/><path d="M5 10v2a7 7 0 0 0 12 5"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><line x1="12" x2="12" y1="19" y2="22"/>',
+  vol:'<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',
+  screen:'<path d="m9 10 3-3 3 3"/><path d="M12 13V7"/><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/>',
+  userPlus:'<path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="M19 16v6"/><path d="M22 19h-6"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  msg:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  min:'<polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" x2="21" y1="10" y2="3"/><line x1="3" x2="10" y1="21" y2="14"/>',
+  down:'<path d="m6 9 6 6 6-6"/>',
+  flip:'<path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/>',
+  pin:'<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
+  grid:'<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
+  more:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  hash:'<path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 3 8 21"/><path d="M16 3l-2 18"/>',
+  send:'<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
+  lock:'<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+};
+const I = (n, c = '') => `<svg class="i ${c}" viewBox="0 0 24 24">${ICON[n]}</svg>`;
+const col = h => `linear-gradient(135deg,hsl(${h} 62% 52%),hsl(${(h + 28) % 360} 68% 40%))`;
+const ini = s => s.split(' ').slice(0, 2).map(w => w[0]).join('');
+
+/* ── люди ── */
+const ALICE = ['Алиса Иванова', 210], ME = ['Вы', 200], ATLAS = ['Проект Атлас', 160];
+const PPL = [['Борис Кузнецов', 212], ['Мария Орлова', 330], ['Дмитрий Волков', 28], ['Елена Смирнова', 95], ['Игорь Попов', 262]];
+const av = (p, cls = '', extra = '') => `<div class="av ${cls}" style="background:${col(p[1])}">${ini(p[0])}${extra}</div>`;
+const stack = (list, cls = 'sm', more = 0) => `<div class="stk">${list.map(p => av(p, cls)).join('')}${more ? `<div class="av ${cls} more">+${more}</div>` : ''}</div>`;
+const vid = (h, cls = '') => `<div class="vid ${cls}" style="--h:${h}"><i class="vh"></i><i class="vb"></i></div>`;
+const vidOff = p => `<div class="vid off" style="--h:${p[1]}"><div class="vbig" style="background:${col(p[1])}">${ini(p[0])}</div></div>`;
+
+/* ── фон: окно приложения за звонком ── */
+const AMB = '<div class="amb"><i></i><i></i><i></i><i></i></div>';
+const CHATS = [['Алиса Иванова', 210, 'Посмотри макет, когда будет время', '10:42'], ['Проект Атлас', 160, 'Борис: релиз переносим на пятницу', '10:30'], ['Мария Орлова', 330, 'Спасибо!', '09:15'], ['Дмитрий Волков', 28, 'Окей, договорились', 'вчера'], ['Общий зал', 285, 'Елена: всем хорошего дня', 'вчера'], ['Игорь Попов', 262, 'Файл отправил', 'пн']];
+const MSG = {
+  0: [['in', 'Посмотри макет, когда будет время'], ['out', 'Сейчас гляну, пару минут'], ['in', 'Отлично! Если удобно — можем созвониться']],
+  1: [['in', 'Борис: релиз переносим на пятницу'], ['out', 'Ок, обновлю план'], ['in', 'Мария: давайте коротко созвонимся и всё обсудим']]
+};
+const sideHtml = (ci, inCall) => `<aside class="side glass"><h2>Чаты</h2><div class="srch glass">${I('search')}<span>Поиск</span></div>
+  ${CHATS.map((c, k) => `<div class="crow ${k === ci ? 'sel' : ''}"><div class="av sm ${k === 4 ? 'sq' : ''}" style="background:${col(c[1])}">${k === 4 ? I('hash') : ini(c[0])}</div><div><b>${c[0]}</b><small>${c[2]}</small></div><span class="ctm">${inCall && k === ci ? I('phone') : c[3]}</span></div>`).join('')}</aside>`;
+const chatHtml = ci => {
+  const c = CHATS[ci];
+  return `<section class="chat glass"><div class="hd"><div class="av sm" style="background:${col(c[1])}">${ini(c[0])}</div><div><b>${c[0]}</b><small>${ci === 0 ? 'в сети' : '14 участников · 9 в сети'}</small></div><span class="sp"></span>
+    <button class="ibtn">${I('phone')}</button><button class="ibtn">${I('video')}</button><button class="ibtn">${I('search')}</button><button class="ibtn">${I('more')}</button></div>
+    <div class="msgs">${MSG[ci].map(m => `<div class="bub ${m[0]}">${m[1]}</div>`).join('')}</div>
+    <div class="comp glass"><span>Сообщение</span><i class="send">${I('send')}</i></div></section>`;
+};
+const desk = (ci, inCall, overlay) => `<div class="holder" data-w="1360" data-h="860"><div class="win">${AMB}<div class="app">${sideHtml(ci, inCall)}${chatHtml(ci)}</div>${overlay}</div></div>`;
+
+/* ── входящий (клиент и веб) ── */
+const camPrev = label => `<div class="prev"><div class="vid" style="--h:200"><i class="vh"></i><i class="vb"></i></div><div class="nchip top vg">${label}</div><div class="tg"><button class="rb sm vg">${I('video')}</button><button class="rb sm vg">${I('mic')}</button></div></div>`;
+function incDesk(type) {
+  if (type === 'audio') return `<div class="inc glass-pop"><div class="top"><div class="ringav">${av(ALICE, 'lg')}</div><div class="t"><b>Алиса Иванова</b><small>Входящий аудиозвонок…</small></div></div>
+    <div class="row2"><button class="btn no">${I('phone', 'hang')}Отклонить</button><button class="btn ok">${I('phone')}Принять</button></div></div>`;
+  if (type === 'video') return `<div class="inc glass-pop"><div class="top"><div class="ringav">${av(ALICE, 'lg')}</div><div class="t"><b>Алиса Иванова</b><small>Входящий видеозвонок…</small></div></div>
+    ${camPrev('Вы · предпросмотр камеры')}
+    <div class="act"><button class="btn ok big">${I('video')}Принять с видео</button><div class="row2"><button class="btn">${I('phone')}Только звук</button><button class="btn danger">${I('phone', 'hang')}Отклонить</button></div></div></div>`;
+  return `<div class="inc glass-pop"><div class="grpmeta">${stack(PPL.slice(0, 4), 'sm', 1)}<small><b style="color:var(--text);font-size:15px;display:block">Проект Атлас</b>Групповой видеозвонок</small></div>
+    <div class="top" style="padding-top:0"><div class="t"><small>Борис Кузнецов начал звонок · сейчас в нём 5 человек</small></div></div>
+    ${camPrev('Вы · предпросмотр камеры')}
+    <div class="act"><button class="btn ok big">${I('video')}Присоединиться</button><div class="row2"><button class="btn">${I('phone')}Только звук</button><button class="btn">Не сейчас</button></div></div></div>`;
+}
+
+/* ── окно звонка ── */
+const rb = (ic, off = '', cls = '') => `<button class="rb ${off ? 'off' : ''} ${cls}">${I(ic)}</button>`;
+const END = `<button class="rb end">${I('phone')}Завершить</button>`;
+const tl = '<div class="tl"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>';
+function cwHtml(kind, x, y, w, h, title, sub, right, body, ctrl, g) {
+  const left = kind === 'el' ? tl : `<button class="btn sm">${I('min')}Свернуть</button>`;
+  return `<div class="cw ${kind} glass-pop" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px"><div class="th"><div class="l">${left}</div><div class="c"><b>${title}</b><small>${sub}</small></div><div class="r">${right}</div></div>
+    <div class="sv ${g ? 'g' : ''}">${body}</div><div class="ctrls vg">${ctrl}</div></div>`;
+}
+const body11 = `<div class="remote">${vid(210)}<div class="nchip top vg">Алиса Иванова</div><div class="qchip vg"><span class="sig"><i></i><i></i><i></i><i></i></span>HD</div></div>
+  <div class="pip">${vid(200)}<div class="nchip vg">Вы</div></div>`;
+const ctrl11 = rb('mic') + rb('video') + rb('screen') + rb('more') + END;
+const GT = [
+  { n: 'Борис Кузнецов', h: 212, cam: 1, sp: 1 }, { n: 'Мария Орлова', h: 330, cam: 1 }, { n: 'Дмитрий Волков', h: 28, cam: 1, mute: 1 },
+  { n: 'Елена Смирнова', h: 95, cam: 0 }, { n: 'Игорь Попов', h: 262, cam: 1, mute: 1 }, { n: 'Вы', h: 200, cam: 1, self: 1 }
+];
+const tile = t => `<div class="tile ${t.sp ? 'sp' : ''} ${t.self ? 'self' : ''}">${t.cam ? vid(t.h) : vidOff([t.n, t.h])}${t.sp ? `<span class="sp-b">${I('mic')}</span>` : ''}<div class="nchip vg">${t.mute ? `<span class="mb">${I('micOff')}</span>` : ''}${t.n}</div></div>`;
+const bodyG = `<div class="gridv">${GT.map(tile).join('')}</div>`;
+const ctrlG = rb('mic') + rb('video') + rb('screen') + rb('userPlus') + rb('msg') + END;
+const iconsEl = I('pin');
+const rightG = `<button class="ibtn">${I('grid')}</button><button class="btn sm">${I('users')}6</button>`;
+
+/* ── мобильный: оболочка и экраны ── */
+const phone = (inner, dk) => `<div class="pholder"><div class="phone ${dk ? 'dk' : ''}">${AMB}${inner}<div class="isl"></div><div class="sbar"><span>9:41</span><span><span class="bat"></span></span></div><div class="home"></div></div></div>`;
+function mIncoming(type) {
+  if (type === 'audio') return phone(`<div class="mscr" style="justify-content:space-between;padding:96px 24px 62px">
+    <div style="text-align:center"><div class="lbl">Входящий аудиозвонок</div></div>
+    <div style="display:flex;flex-direction:column;align-items:center"><div class="ringav big">${av(ALICE, 'xxl')}</div><div class="nm2" style="margin-top:36px">Алиса Иванова</div><div class="sub2">в сети</div></div>
+    <div style="display:flex;flex-direction:column;gap:42px;width:100%"><div class="mchips"><span class="mchip glass">${I('msg')}Сообщение</span><span class="mchip glass">${I('clock')}Напомнить</span></div>
+    <div class="macts"><div class="mb2"><span class="rnd no">${I('phone', 'hang')}</span>Отклонить</div><div class="mb2"><span class="rnd ok">${I('phone')}</span>Принять</div></div></div></div>`);
+  const grp = type === 'group';
+  return phone(`<div class="vid blur" style="--h:200"><i class="vh"></i><i class="vb"></i></div><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,12,18,.32),rgba(8,12,18,.5))"></div>
+    <div class="mscr v" style="justify-content:space-between;padding:96px 24px 62px">
+    <div style="text-align:center"><div class="lbl">${grp ? 'Групповой видеозвонок' : 'Входящий видеозвонок'}</div></div>
+    <div style="display:flex;flex-direction:column;align-items:center">${grp ? `<div class="ringav big">${av(ATLAS, 'xxl')}</div><div class="nm2" style="margin-top:36px">Проект Атлас</div><div class="sub2">Борис Кузнецов начал звонок</div><div style="margin-top:20px;display:flex;align-items:center;gap:12px;--stk-ring:#1b2530">${stack(PPL.slice(0, 4), 'sm', 1)}<span style="font-size:13px;color:rgba(255,255,255,.85)">5 в звонке</span></div>`
+      : `<div class="ringav big">${av(ALICE, 'xxl')}</div><div class="nm2" style="margin-top:36px">Алиса Иванова</div><div class="sub2">в сети</div>`}</div>
+    <div class="macts"><div class="mb2"><span class="rnd no">${I(grp ? 'x' : 'phone', grp ? '' : 'hang')}</span>${grp ? 'Не сейчас' : 'Отклонить'}</div><div class="mb2"><span class="rnd gl">${I('phone')}</span>Только звук</div><div class="mb2"><span class="rnd ok">${I('video')}</span>${grp ? 'Присоединиться' : 'Принять'}</div></div></div>`, true);
+}
+const mAudioCall = () => phone(`<div class="mtop"><button class="rb vg" style="color:var(--text);background:var(--gl2);border-color:var(--gl-edge)">${I('down')}</button><div class="c" style="color:var(--text)"><b>Аудиозвонок</b></div><button class="rb vg" style="color:var(--text);background:var(--gl2);border-color:var(--gl-edge)">${I('userPlus')}</button></div>
+  <div class="mscr" style="justify-content:space-between;padding:150px 24px 54px">
+  <div style="display:flex;flex-direction:column;align-items:center"><div style="padding:14px;border-radius:50%;box-shadow:0 0 0 3px var(--accent),0 0 38px rgba(var(--accent-rgb),.45)">${av(ALICE, 'xxl')}</div><div class="nm2" style="margin-top:34px">Алиса Иванова</div><div class="sub2" style="font-variant-numeric:tabular-nums;font-weight:600;color:var(--accent-ink)">02:14</div><div style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)"><span class="sig"><i></i><i></i><i></i><i></i></span>Хорошее соединение</div></div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:36px;width:100%"><div class="macts"><div class="mb2"><span class="rnd gl sq">${I('vol')}</span>Динамик</div><div class="mb2"><span class="rnd gl sq">${I('video')}</span>Видео</div><div class="mb2"><span class="rnd gl sq">${I('mic')}</span>Микрофон</div></div>
+  <div class="mb2"><span class="rnd no">${I('phone', 'hang')}</span>Завершить</div></div></div>`);
+const mMinimized = () => phone(`<div class="mbar">${I('phone')}Звонок · Алиса Иванова<span class="tm">02:14</span><span class="x">${I('phone')}</span></div>
+  <div class="mchat"><div class="hd2 glass"><div class="av sm" style="background:${col(210)}">АИ</div><div><b>Алиса Иванова</b><small>в сети</small></div><span class="sp"></span><button class="ibtn">${I('phone')}</button><button class="ibtn">${I('video')}</button></div>
+  <div class="ms">${MSG[0].map(m => `<div class="bub ${m[0]}">${m[1]}</div>`).join('')}</div><div class="cmp2 glass">Сообщение</div></div>`);
+const mVideoCall = () => phone(`<div class="vid" style="--h:210"><i class="vh"></i><i class="vb"></i></div><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,12,18,.5),transparent 24%,transparent 70%,rgba(8,12,18,.55))"></div>
+  <div class="mtop"><button class="rb vg">${I('down')}</button><div class="c"><b>Алиса Иванова</b><small>02:14</small></div><button class="rb vg">${I('flip')}</button></div>
+  <div class="mpip"><div class="vid" style="--h:200"><i class="vh"></i><i class="vb"></i></div></div>
+  <div class="mctrl vg">${rb('vol')}${rb('video')}${rb('mic')}${END.replace('Завершить', '')}</div>`, true);
+const GM = GT.map(t => ({ ...t }));
+const mGroupCall = () => phone(`<div class="mtop"><button class="rb vg" style="color:#fff">${I('down')}</button><div class="c" style="color:var(--text)"><b>Проект Атлас</b><small style="opacity:.8">02:14 · 6 участников</small></div><button class="rb vg" style="color:#fff">${I('flip')}</button></div>
+  <div class="mgrid2"><div class="gridv m">${GM.map(tile).join('')}</div></div>
+  <div class="mctrl vg">${rb('vol')}${rb('video')}${rb('mic')}${rb('users')}${END.replace('Завершить', '')}</div>`);
+
+/* ── сценарии ── */
+const SCN = [
+  { t: 'Входящий аудио', d: '<b>Входящий аудиозвонок.</b> Клиент и веб клиент — одна карточка в углу окна, мобильный клиент — полный экран.',
+    el: () => desk(0, false, incDesk('audio')), web: () => desk(0, false, incDesk('audio')), mob: () => [['Мобильный клиент', '', mIncoming('audio')]],
+    notes: [['Клиент', 'Карточка — отдельное маленькое окно поверх всех окон: видно, даже если основное окно свёрнуто. Звонит рингтон.'], ['Веб клиент', 'Карточка в углу окна. Если вкладка скрыта — системное уведомление браузера со звуком.'], ['Мобильный клиент', 'Полный экран, пока приложение открыто. Если закрыто — обычное push-уведомление: полноэкранный звонок, как у системного, веб не умеет.']] },
+  { t: 'Аудио: разговор', d: '<b>Идёт аудиозвонок.</b> Основное окно остаётся доступным: звонок закреплён карточкой внизу списка чатов. Мобильный клиент — свой экран, его можно свернуть в зелёную полосу.',
+    el: () => desk(0, true, `<div class="inc glass-pop dock" style="right:auto;left:22px;top:auto;bottom:22px;width:296px;padding:12px 14px;gap:12px"><div class="top"><div style="padding:3px;border-radius:50%;box-shadow:0 0 0 2px var(--accent)">${av(ALICE, 'sm')}</div><div class="t"><b style="font-size:14px">Алиса Иванова</b><small style="color:var(--accent-ink);font-weight:600;font-variant-numeric:tabular-nums">02:14 · хорошее соединение</small></div></div><div class="row2" style="gap:6px"><button class="btn sm">${I('mic')}</button><button class="btn sm">${I('vol')}</button><button class="btn sm">${I('video')}</button><button class="btn sm no" style="flex:1.4">${I('phone', 'hang')}Завершить</button></div></div>`),
+    web: null, mob: () => [['Звонок', 'полный экран', mAudioCall()], ['Свёрнут', 'можно переписываться', mMinimized()]],
+    notes: [['Клиент и веб клиент', 'Карточка звонка закреплена внизу списка чатов, чат с собеседником помечен значком трубки. Кнопка «Видео» превращает звонок в видеозвонок.'], ['Мобильный клиент', 'Кнопка со стрелкой вниз сворачивает звонок в зелёную полосу под островом. Нажатие на полосу возвращает экран звонка.']] },
+  { t: 'Входящий видео', d: '<b>Входящий видеозвонок.</b> Можно ответить с видео, только со звуком или отклонить. Камера не включается до ответа — виден предпросмотр.',
+    el: () => desk(0, false, incDesk('video')), web: () => desk(0, false, incDesk('video')), mob: () => [['Мобильный клиент', '', mIncoming('video')]],
+    notes: [['Клиент и веб клиент', 'Карточка выше аудио-версии из-за предпросмотра камеры. Значки камеры и микрофона на предпросмотре настраивают вход в звонок.'], ['Мобильный клиент', 'Фон — размытая картинка своей камеры, три круглые кнопки: отклонить, только звук, принять с видео.']] },
+  { t: 'Видео: разговор', d: '<b>Идёт видеозвонок.</b> Клиент открывает отдельное окно, веб клиент — модалку на всё окно, мобильный — отдельный экран.',
+    el: () => desk(0, true, cwHtml('el', 170, 100, 1020, 660, 'Алиса Иванова', '02:14', `<button class="ibtn" title="Поверх всех окон">${iconsEl}</button><button class="ibtn">${I('more')}</button>`, body11, ctrl11)),
+    web: () => desk(0, true, `<div class="scrim"></div>` + cwHtml('web', 12, 12, 1336, 836, 'Алиса Иванова', '02:14', `<button class="ibtn">${I('more')}</button>`, body11, ctrl11)),
+    mob: () => [['Мобильный клиент', '', mVideoCall()]],
+    notes: [['Клиент', 'Отдельное окно: его можно переместить на другой монитор, закрепить поверх остальных, основное окно остаётся рабочим.'], ['Веб клиент', 'Модалка на всё окно браузера, «Свернуть» уменьшает звонок до карточки в списке чатов.'], ['Мобильный клиент', 'Полноэкранный собеседник, своё видео в углу, панель управления внизу. Стрелка вниз сворачивает в полосу.']] },
+  { t: 'Входящая группа', d: '<b>Групповой видеозвонок начался.</b> Это не «звонок», а приглашение: можно присоединиться сейчас или позже, пока звонок идёт.',
+    el: () => desk(1, false, incDesk('group')), web: () => desk(1, false, incDesk('group')), mob: () => [['Мобильный клиент', '', mIncoming('group')]],
+    notes: [['Все клиенты', 'Показываем, кто уже в звонке (аватарки и число). Рингтон не играет — только мягкий сигнал, чтобы не мешать в большой группе.'], ['После «Не сейчас»', 'В шапке чата остаётся значок «Идёт звонок · 5» с кнопкой «Присоединиться».']] },
+  { t: 'Группа: разговор', d: '<b>Идёт групповой видеозвонок.</b> Сетка плиток, говорящий выделен рамкой акцентного цвета, у выключенной камеры — аватарка.',
+    el: () => desk(1, true, cwHtml('el', 130, 70, 1100, 720, 'Проект Атлас', '02:14', rightG, bodyG, ctrlG, true)),
+    web: () => desk(1, true, `<div class="scrim"></div>` + cwHtml('web', 12, 12, 1336, 836, 'Проект Атлас', '02:14', rightG, bodyG, ctrlG, true)),
+    mob: () => [['Мобильный клиент', '', mGroupCall()]],
+    notes: [['Плитки', 'Выделение говорящего — рамка и значок микрофона. У отключённого микрофона — красный значок слева от имени.'], ['Клиент и веб клиент', 'Кнопка «Участники» открывает список с приглашением новых. Макет сетки меняется (сетка / говорящий крупно) значком рядом.'], ['Мобильный клиент', 'Две колонки, до шести плиток на экране, дальше — прокрутка. Своя плитка подсвечена акцентом.']] }
+];
+const PF = ['Все', 'Клиент', 'Веб клиент', 'Мобильный клиент'];
+const st = { sc: 0, pf: 0, dark: true };
+
+function segHtml(items, cur, act) { return `<div class="seg" data-seg="1"><i class="thumb"></i>${items.map((t, k) => `<button class="${k === cur ? 'on' : ''}" data-act="${act}" data-v="${k}">${t}</button>`).join('')}</div>`; }
+function render() {
+  document.documentElement.classList.toggle('dark', st.dark);
+  const S = SCN[st.sc], pf = st.pf;
+  document.getElementById('ctl').innerHTML = `<h1>Звонки · вариант B</h1><a class="btn sm" href="index.html">← Десктоп</a><a class="btn sm" href="mobile.html">Мобильный →</a><div class="grp"><span class="lbl">Сценарий</span>${segHtml(SCN.map(s => s.t), st.sc, 'sc')}</div>
+    <div class="grp"><span class="lbl">Платформа</span>${segHtml(PF, pf, 'pf')}</div><div class="grp"><span class="lbl">Тема</span>${segHtml(['Светлая', 'Тёмная'], st.dark ? 1 : 0, 'th')}</div><div class="vdesc">${S.d}</div>`;
+  const el = S.el(), web = (S.web || S.el)();
+  let h = '';
+  if (pf === 0 || pf === 1) h += `<div class="cell"><h3>Клиент (Electron)</h3>${el}</div>`;
+  if (pf === 0 || pf === 2) h += `<div class="cell"><h3>Веб клиент</h3>${web}</div>`;
+  if (pf === 0 || pf === 3) {
+    const notes = S.notes.map(n => `<p><b>${n[0]}.</b> ${n[1]}</p>`).join('');
+    h += `<div class="mrow">${S.mob().map(m => `<div class="mcell"><h3>${m[0]}<small>${m[1]}</small></h3>${m[2]}</div>`).join('')}<div class="notes glass"><h4>Как это работает</h4>${notes}</div></div>`;
+  }
+  const b = document.getElementById('board');
+  b.className = 'board' + (pf === 1 || pf === 2 || pf === 3 ? ' one' : '');
+  b.innerHTML = h;
+  requestAnimationFrame(fit);
+}
+function fit() {
+  const PS = st.pf === 3 ? 1 : .88;
+  document.querySelectorAll('.holder[data-w]').forEach(h => { const s = h.parentElement.clientWidth / +h.dataset.w; h.style.height = (+h.dataset.h * s) + 'px'; h.firstElementChild.style.transform = `scale(${s})`; });
+  document.querySelectorAll('.pholder').forEach(p => { p.style.width = 393 * PS + 'px'; p.style.height = 852 * PS + 'px'; p.firstElementChild.style.transform = `scale(${PS})`; });
+  document.querySelectorAll('.seg[data-seg]').forEach(sg => { const on = sg.querySelector('.on'), t = sg.querySelector('.thumb'); t.style.left = on.offsetLeft + 'px'; t.style.width = on.offsetWidth + 'px'; });
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const v = +b.dataset.v;
+  if (b.dataset.act === 'sc') st.sc = v; else if (b.dataset.act === 'pf') st.pf = v; else st.dark = v === 1;
+  render();
+});
+window.addEventListener('resize', fit);
+render();
+</script>
+</body>
+</html>

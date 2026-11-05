@@ -1,4 +1,4 @@
-// /m — экран переписки по макету: шапка со «стеклянной» капсулой собеседника, лента сообщений по дням, пузыри, вложения, реакции,
+// /m — экран переписки по макету: шапка с собеседником, лента сообщений по дням, пузыри, вложения, реакции,
 // панель закрепа, кнопка «вниз». Данные и сеть — в B.msgs (core/messages.js); поле ввода — B.ui.composer, меню сообщения — B.ui.msgmenu.
 B.ui = B.ui || {};
 B.ui.chat = (function () {
@@ -283,7 +283,7 @@ B.ui.chat = (function () {
     var chat = B.find(cid), el = document.createElement('div');
     el.className = 'page chat'; el.dataset.cid = cid; el._title = B.chatName(chat); el._inv = !!chat.invite;
     var n = othersUnread(cid);
-    el.innerHTML = B.nav.amb +
+    el.innerHTML = B.nav.edge +
       '<div class="nav cn"><button class="nb glass gi" data-back aria-label="Назад">' + I('chevLeft') + '<span class="cnt">' + (n ? (n > 99 ? '99+' : n) : '') + '</span></button>' +
         '<button class="who glass gi" data-c="info">' + whoHtml(chat) + '</button>' +
         '<div class="nr">' + (B.ui.calls ? B.ui.calls.btns(chat) : '') + '<button class="glass gi" data-c="addc" aria-label="Добавить в контакты" hidden>' + I('userPlus') + '</button><button class="navav glass gi" data-c="info" aria-label="Профиль">' + headAvatar(chat) + '</button></div></div>' +

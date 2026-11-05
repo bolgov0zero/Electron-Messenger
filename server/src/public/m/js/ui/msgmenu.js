@@ -65,7 +65,7 @@ B.ui.msgmenu = (function () {
     var list = $('#rd-list', S.el); if (!list || !data || data.error) return;
     var rd = data.statuses.filter(function (s) { return s.read || s.read_at; }), dlv = data.statuses.filter(function (s) { return s.delivered || s.delivered_at || s.read_at; }).length, dr = data.chat_type === 'direct';
     $('#rd-l', S.el).textContent = rdLabel(dr, rd.length, dlv, rd[0] && rd[0].read_at, (m.status && m.status.total) || data.statuses.length);
-    list.innerHTML = rd.length ? '<div class="gl">Прочитали</div><div class="grp glass">' + rd.map(function (s) {
+    list.innerHTML = rd.length ? '<div class="gh">Прочитали</div><div class="grp glass">' + rd.map(function (s) {
       return '<div class="mini">' + B.avatar.user(s.user_id, s.display_name, 0, true) + '<span class="rt"><b>' + B.esc(s.display_name) + '</b>' + (s.read_at ? '<small>Прочитано в ' + rdTime(s.read_at) + '</small>' : '') + '</span></div>';
     }).join('') + '</div>' : '<div class="gf" style="margin-top:0">' + (dr ? 'Собеседник ещё не открыл сообщение.' : dlv ? 'Пока никто не прочитал. Сообщение получили ' + dlv + '.' : 'Сообщение пока никому не доставлено.') + '</div>';
     B.avatar.apply(list);
@@ -85,8 +85,8 @@ B.ui.msgmenu = (function () {
       var peers = new Set(B.S.chats.filter(function (c) { return c.type === 'direct'; }).map(B.peerId).filter(Boolean));
       var users = B.S.contacts.filter(function (u) { return !peers.has(u.id) && (!s || u.display_name.toLowerCase().indexOf(s) >= 0 || (u.username || '').toLowerCase().indexOf(s) >= 0); });
       var h = '';
-      if (chats.length) h += '<div class="gl">Чаты</div><div class="grp glass">' + chats.map(function (c) { return '<button class="mini" data-chat="' + c.id + '">' + B.avatar.chat(c, 0, true) + '<span class="rt"><b>' + B.esc(B.chatName(c)) + '</b></span></button>'; }).join('') + '</div>';
-      if (users.length) h += '<div class="gl">Контакты</div><div class="grp glass">' + users.map(function (u) { return '<button class="mini" data-user="' + u.id + '">' + B.avatar.user(u.id, u.display_name, 0, true) + '<span class="rt"><b>' + B.esc(u.display_name) + '</b></span></button>'; }).join('') + '</div>';
+      if (chats.length) h += '<div class="gh">Чаты</div><div class="grp glass">' + chats.map(function (c) { return '<button class="mini" data-chat="' + c.id + '">' + B.avatar.chat(c, 0, true) + '<span class="rt"><b>' + B.esc(B.chatName(c)) + '</b></span></button>'; }).join('') + '</div>';
+      if (users.length) h += '<div class="gh">Контакты</div><div class="grp glass">' + users.map(function (u) { return '<button class="mini" data-user="' + u.id + '">' + B.avatar.user(u.id, u.display_name, 0, true) + '<span class="rt"><b>' + B.esc(u.display_name) + '</b></span></button>'; }).join('') + '</div>';
       list.innerHTML = h || '<div class="empty" style="padding:30px">Ничего не нашли</div>'; B.avatar.apply(list);
     };
     q.addEventListener('input', paint); paint();

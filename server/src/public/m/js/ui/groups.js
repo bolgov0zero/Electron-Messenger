@@ -17,7 +17,7 @@ B.ui.groups = (function () {
     var el = B.nav.page({ title: 'Новый чат', body: '<label class="srch glass">' + I('search') + '<input id="nq" placeholder="Кому" autocomplete="off" autocapitalize="none"></label>' +
       '<div class="grp glass"><button class="cell" data-g="group"><span class="ci" style="background:var(--accent)">' + I('users') + '</span><span class="cl">Новая группа</span><span class="ch">' + I('chevRight') + '</span></button>' +
       '<button class="cell" data-g="add"><span class="ci" style="background:#5b8def">' + I('userPlus') + '</span><span class="cl">Добавить контакт</span><span class="ch">' + I('chevRight') + '</span></button></div>' +
-      '<div class="gl">Люди</div><div id="nlist"></div>' });
+      '<div class="gh">Люди</div><div id="nlist"></div>' });
     var list = $('#nlist', el), paint = function (q) {
       var l = peopleHtml(q); list.innerHTML = l ? '<div class="grp glass">' + l.map(function (u) { return personRow(u); }).join('') + '</div>' : '<div class="empty" style="padding:30px"><b>Никого не нашли</b></div>'; B.avatar.apply(list);
     };
@@ -56,7 +56,7 @@ B.ui.groups = (function () {
     var el = B.nav.page({ title: 'Новая группа', right: '<button class="nb glass gi t" data-mk disabled style="opacity:.5">Создать</button>',
       body: '<div style="display:flex;justify-content:center;margin-bottom:6px"><button class="av xl glass gi" data-pick style="background:var(--gl);color:var(--text2);font-size:30px" aria-label="Фото группы">' + I('image') + '</button><input type="file" accept="image/*" hidden id="gfile"></div>' +
         '<label class="fld m glass-inset">' + I('users') + '<input id="gn" placeholder="Название группы" maxlength="60" autocomplete="off"></label>' +
-        '<div class="gl" style="margin-top:10px">Участники</div><div id="glist"></div>' });
+        '<div class="gh" style="margin-top:10px">Участники</div><div id="glist"></div>' });
     var list = $('#glist', el), mk = $('[data-mk]', el);
     var paint = function () {
       var l = peopleHtml('', true);
@@ -137,7 +137,7 @@ B.ui.groups = (function () {
   function renderTopics() {
     var pg = B.nav.stack.map(function (s) { return s.el; }).find(function (e) { return e.dataset.room; }); if (!pg) return;
     var subs = B.chats.topicsOf(+pg.dataset.room), box = $('#tlist', pg);
-    box.innerHTML = subs.length ? '<div class="gl">Темы</div><div class="grp glass">' + subs.map(topicRow).join('') + '</div>' : '<div class="empty"><b>Тем пока нет</b></div>';
+    box.innerHTML = subs.length ? '<div class="gh">Темы</div><div class="grp glass">' + subs.map(topicRow).join('') + '</div>' : '<div class="empty"><b>Тем пока нет</b></div>';
     var p = $('.hero p', pg), room = B.find(+pg.dataset.room); if (p && room) p.textContent = 'Комната · ' + subs.length + ' тем';
     B.avatar.apply(pg);
   }

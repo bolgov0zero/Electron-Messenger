@@ -1,0 +1,817 @@
+/* токены (из клиента, область чата) */
+.chatreal{--active-row:        rgba(41,214,184,0.10);--active-row-border: rgba(41,214,184,0.25);--hover-row:         rgba(0,0,0,0.04);--border:      rgba(0,0,0,0.09);--daypill:     rgba(238,240,244,0.92);--reply-bg:    rgba(29,168,140,0.08);--reaction-mine: rgba(29,168,140,0.13);--role-indigo:        #5050c8;--role-indigo-bg:     rgba(80,80,200,0.10);--role-indigo-border: rgba(80,80,200,0.25);--role-teal-bg:       rgba(29,168,140,0.10);--role-teal-border:   rgba(29,168,140,0.25);--tag-1: 41,50,96;--tag-2: 37,131,37;--tag-3: 131,78,37;--tag-4: 34,119,114;--tag-5: 131,37,78;--tag-6: 106,37,131;--tag-7: 78,96,41;--tag-8: 34,91,119;--tag-9: 131,37,37;--tag-10: 44,125,79;--tag-11: 30,30,107;--tag-12: 131,112,37;--tag-13: 96,41,95;--tag-14: 96,49,41;--tag-1-av: 57,67,116;--tag-2-av: 48,145,48;--tag-3-av: 161,100,54;--tag-4-av: 56,138,132;--tag-5-av: 161,54,100;--tag-6-av: 132,54,161;--tag-7-av: 97,116,57;--tag-8-av: 54,125,161;--tag-9-av: 116,57,57;--tag-10-av: 43,130,81;--tag-11-av: 43,43,130;--tag-12-av: 145,126,48;--tag-13-av: 116,57,114;--tag-14-av: 161,68,54;--blob1: rgba(29,168,140,0.12);--blob2: rgba(80,80,200,0.10);--primary:       #1fa88c;--primary-light: rgba(29,168,140,0.10);--radius-sm:   8px;--radius-md:   12px;--radius-lg:   16px;--radius-pill: 999px;--font-size: 14px;--sidebar-w: 350px;--topbar-h: 48px;--vh100: 100vh;--bg:         var(--app-bg);--card:       var(--modal-bg);--input-bg:   var(--search-bg);--chat-split:   #e6e9ec;--bubble-split: #ffffff;--hover:      var(--hover-row);--sidebar-bg:    var(--side-bg);--sidebar-hover: var(--hover-row);--sidebar-active: var(--active-row);--sidebar-text:   var(--text);--sidebar-muted:  var(--muted)}
+html.dark .chatreal{--active-row:        rgba(41,214,184,0.10);--active-row-border: rgba(41,214,184,0.25);--hover-row:         rgba(255,255,255,0.04);--border:   rgba(255,255,255,0.08);--daypill:  rgba(38,42,48,0.92);--reply-bg: rgba(41,214,184,0.08);--reaction-mine: rgba(41,214,184,0.15);--role-indigo:        #6c6cf0;--role-indigo-bg:     rgba(108,108,240,0.12);--role-indigo-border: rgba(108,108,240,0.3);--role-teal-bg:       rgba(41,214,184,0.12);--role-teal-border:   rgba(41,214,184,0.3);--tag-1: 125,136,191;--tag-2: 98,218,98;--tag-3: 218,150,98;--tag-4: 98,218,210;--tag-5: 218,98,150;--tag-6: 186,98,218;--tag-7: 200,223,154;--tag-8: 166,196,211;--tag-9: 214,164,164;--tag-10: 108,218,156;--tag-11: 123,123,224;--tag-12: 218,194,98;--tag-13: 221,157,218;--tag-14: 218,114,98;--blob1: rgba(41,214,184,0.12);--blob2: rgba(108,108,240,0.12);--primary-light: rgba(41,214,184,0.10);--bg:         var(--app-bg);--card:       var(--modal-bg);--input-bg:   var(--search-bg);--chat-split:   #12171d;--bubble-split: #1b2733;--hover:      var(--hover-row);--sidebar-bg:    var(--side-bg);--sidebar-hover: var(--hover-row);--sidebar-active: var(--active-row);--sidebar-text:   var(--text);--sidebar-muted:  var(--muted)}
+html.dark.navy .chatreal{--active-row:        rgba(var(--accent-rgb,51,144,236),.16);--active-row-border: rgba(var(--accent-rgb,51,144,236),.28);--hover-row:         rgba(150,170,195,.08);--border:   rgba(120,140,162,.22);--daypill:  rgba(20,28,40,.62);--reply-bg: rgba(var(--accent-rgb,51,144,236),.10);--chat-split:   #0f1b27;--bubble-split: #213040}
+.chatreal{--ic-s: 16px;--ic-m: 18px;--ic-l: 22px;--z-bar: 20;--z-pop: 30;--z-modal: 40;--z-toast: 50;--amb-1: color-mix(in srgb, var(--accent) 60%, #fff);--amb-2: #8e9cff;--amb-3: #ffb4d3;--amb-4: #ffd391}
+html.dark .chatreal{--amb-1: color-mix(in srgb, var(--accent) 55%, #000);--amb-2: #4a4fd0;--amb-3: #a33a73;--amb-4: #a8742c}
+.chatreal{--sidebar-w: 376px}
+/* правила переписки (из клиента, порядок сохранён) */
+html.emoji-svg .chatreal body, html.emoji-svg .chatreal .ra-emoji{font-family: 'Noto Emoji SVG', 'Inter', -apple-system, BlinkMacSystemFont, system-ui,
+               'Noto Emoji SVG Keys', sans-serif;}
+html.emoji-svg .chatreal .md-code{font-family: 'Noto Emoji SVG', ui-monospace, 'SF Mono', Consolas, monospace;}
+html.no-emoji-font .chatreal .ra-emoji{font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui,
+               'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;}
+html.no-emoji-font .chatreal .md-code{font-family: ui-monospace, 'SF Mono', Consolas, monospace;}
+.chatreal .chat-item .av-md{width: 40px; height: 40px; font-size: 14px;}
+.chatreal .av{border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: #fff;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  overflow: hidden;
+  position: relative;}
+.chatreal .av-sm{width: 32px; height: 32px; font-size: 13px;}
+.chatreal .av-md{width: 50px; height: 50px; font-size: 18px;}
+.chatreal .av-round{border-radius: 50% !important;}
+.chatreal .av-sq{border-radius: 9px !important;}
+.chatreal .av-lg{width: 44px; height: 44px; font-size: 17px;}
+.chatreal .av-xl{width: 64px; height: 64px; font-size: 22px;}
+.chatreal .av-wrap{position: relative; flex-shrink: 0;}
+.chatreal .av-blue{background-image: linear-gradient(135deg, #4f46e5, color-mix(in srgb, #4f46e5 65%, #000));}
+.chatreal .av-green{background-image: linear-gradient(135deg, #059669, color-mix(in srgb, #059669 65%, #000));}
+.chatreal .av-purple{background-image: linear-gradient(135deg, #7c3aed, color-mix(in srgb, #7c3aed 65%, #000));}
+.chatreal .av-orange{background-image: linear-gradient(135deg, #d97706, color-mix(in srgb, #d97706 65%, #000));}
+.chatreal .av-tag-1{background-image: linear-gradient(135deg, rgb(var(--tag-1-av)), color-mix(in srgb, rgb(var(--tag-1-av)) 65%, #000));}
+.chatreal .av-tag-2{background-image: linear-gradient(135deg, rgb(var(--tag-2-av)), color-mix(in srgb, rgb(var(--tag-2-av)) 65%, #000));}
+.chatreal .av-tag-3{background-image: linear-gradient(135deg, rgb(var(--tag-3-av)), color-mix(in srgb, rgb(var(--tag-3-av)) 65%, #000));}
+.chatreal .av-tag-4{background-image: linear-gradient(135deg, rgb(var(--tag-4-av)), color-mix(in srgb, rgb(var(--tag-4-av)) 65%, #000));}
+.chatreal .av-tag-5{background-image: linear-gradient(135deg, rgb(var(--tag-5-av)), color-mix(in srgb, rgb(var(--tag-5-av)) 65%, #000));}
+.chatreal .av-tag-6{background-image: linear-gradient(135deg, rgb(var(--tag-6-av)), color-mix(in srgb, rgb(var(--tag-6-av)) 65%, #000));}
+.chatreal .av-tag-7{background-image: linear-gradient(135deg, rgb(var(--tag-7-av)), color-mix(in srgb, rgb(var(--tag-7-av)) 65%, #000));}
+.chatreal .av-tag-8{background-image: linear-gradient(135deg, rgb(var(--tag-8-av)), color-mix(in srgb, rgb(var(--tag-8-av)) 65%, #000));}
+.chatreal .av-tag-9{background-image: linear-gradient(135deg, rgb(var(--tag-9-av)), color-mix(in srgb, rgb(var(--tag-9-av)) 65%, #000));}
+.chatreal .av-tag-10{background-image: linear-gradient(135deg, rgb(var(--tag-10-av)), color-mix(in srgb, rgb(var(--tag-10-av)) 65%, #000));}
+.chatreal .av-tag-11{background-image: linear-gradient(135deg, rgb(var(--tag-11-av)), color-mix(in srgb, rgb(var(--tag-11-av)) 65%, #000));}
+.chatreal .av-tag-12{background-image: linear-gradient(135deg, rgb(var(--tag-12-av)), color-mix(in srgb, rgb(var(--tag-12-av)) 65%, #000));}
+.chatreal .av-tag-13{background-image: linear-gradient(135deg, rgb(var(--tag-13-av)), color-mix(in srgb, rgb(var(--tag-13-av)) 65%, #000));}
+.chatreal .av-tag-14{background-image: linear-gradient(135deg, rgb(var(--tag-14-av)), color-mix(in srgb, rgb(var(--tag-14-av)) 65%, #000));}
+.chatreal .irc-text, .chatreal .reply-quote-text{user-select: text;
+  -webkit-user-select: text;}
+.chatreal .messages-wrap{flex: 1; min-height: 0;
+  position: relative;
+  display: flex;}
+.chatreal .messages-wrap .messages{flex: 1;}
+.chatreal .messages{flex: 1; overflow-y: auto;
+  padding: 20px 24px 12px;
+  display: flex; flex-direction: column;
+  gap: 4px;}
+.chatreal .scroll-bottom-btn{position: absolute;
+  
+  right: 20px; bottom: calc(14px + var(--composer-h, 70px));
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: var(--modal-bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,.18);
+  z-index: 5;
+  
+  opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(8px) scale(.85);
+  transition: opacity .18s, transform .2s cubic-bezier(.32,.72,0,1), visibility 0s .2s, background .12s, color .12s;}
+.chatreal .scroll-bottom-btn.visible{opacity: 1; visibility: visible; pointer-events: auto; transform: none; transition-delay: 0s;}
+.chatreal .scroll-bottom-btn:hover{background: var(--modal-bg);
+  border-color: var(--accent);
+  color: var(--accent);}
+.chatreal .date-divider{align-self: center;
+  position: sticky;
+  top: 8px;
+  z-index: 3;
+  margin: 6px 0;
+  pointer-events: none;}
+.chatreal .unread-divider{position: static;}
+.chatreal .date-divider span{display: inline-block;
+  padding: 4px 12px;
+  background: var(--daypill);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: 12px; color: var(--muted);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: auto;}
+.chatreal .edited-tag{font-size: 10px; opacity: .55; margin-left: 4px; color: var(--muted);}
+.chatreal .bubble-image{margin: 4px 0; cursor: zoom-in; border-radius: 9px; overflow: hidden; max-width: 280px; min-height: 160px; background: var(--hover-row);}
+.chatreal .bubble-image img{display: block; width: 100%; max-height: 300px; min-height: 160px; object-fit: cover;}
+.chatreal .bubble-video{position: relative;}
+.chatreal .bubble-video video{display: block; width: 100%; max-height: 300px; min-height: 160px; object-fit: cover; pointer-events: none;}
+.chatreal .bubble-video-play{position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 52px; height: 52px; border-radius: 50%; background: rgba(0,0,0,.5); color: #fff; display: flex; align-items: center; justify-content: center; padding-left: 3px; box-shadow: 0 4px 16px rgba(0,0,0,.4); transition: background .15s, transform .15s;}
+.chatreal .bubble-video:hover .bubble-video-play{background: rgba(0,0,0,.7); transform: translate(-50%,-50%) scale(1.06);}
+.chatreal .bubble-file{display: flex; align-items: center; gap: 10px; margin: 4px 0; padding: 10px 12px; border-radius: 9px; background: var(--hover-row); cursor: pointer; max-width: 320px; transition: background .15s;}
+.chatreal .bubble-file:hover{background: var(--surface2);}
+.chatreal .bubble-file-info{flex: 1; min-width: 0;}
+.chatreal .bubble-file-name{font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.chatreal .bubble-file-size{font-size: 11px; color: var(--muted); margin-top: 2px;}
+.chatreal .bubble-file-open-label{font-size: 11px; font-weight: 600; color: var(--accent); flex-shrink: 0;}
+.chatreal .bubble-file-done .bubble-file-name{color: var(--accent);}
+.chatreal .msg-status{display: inline-flex; align-items: center;
+  line-height: 0; flex-shrink: 0;}
+.chatreal .msg-status svg{display: block;}
+.chatreal .irc-meta .status-sent{color: var(--muted); opacity: .45;}
+.chatreal .irc-meta .status-delivered{color: var(--muted);}
+.chatreal .irc-meta .status-read{color: var(--tick-read, #3ea6ff);}
+.chatreal .irc-meta .status-part{color: var(--muted);}
+.chatreal .status-part .tk1{stroke: var(--tick-read, #3ea6ff);}
+.chatreal .irc-msg{display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  align-self: stretch;
+  max-width: 100%;
+  gap: 10px;
+  padding: 3px 6px;
+  border-radius: 9px;
+  position: relative;}
+.chatreal .irc-msg:hover{background: var(--hover-row);}
+.chatreal .irc-av{width: 32px; height: 32px;
+  font-size: 12px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: #fff;
+  overflow: hidden;}
+.chatreal .irc-content{flex: 1; min-width: 0; cursor: default;}
+.chatreal .irc-header{display: flex; align-items: baseline;
+  gap: 8px; margin-bottom: 3px;}
+.chatreal .irc-name{font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer;}
+.chatreal .irc-name.mine{color: var(--accent);}
+.chatreal .irc-meta{display: flex; align-items: center; gap: 4px; flex-shrink: 0;}
+.chatreal .fwd-mark{display: inline-flex; align-items: center; gap: 2px; margin-right: 3px; font-size: 11px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; cursor: default;}
+.chatreal .fwd-mark svg{flex: none;}
+.chatreal .bubble-photo .fwd-mark{color: #fff;}
+.chatreal .irc-time{font-size: 11px; color: var(--muted);
+  font-variant-numeric: tabular-nums;}
+.chatreal .irc-text{font-size: 1rem; white-space: pre-wrap; word-break: break-word; color: var(--text); line-height: 1.5;}
+.chatreal .irc-text blockquote{display: block; margin: 0; padding: 4px 10px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 6px;}
+.chatreal .irc-deleted{opacity: .55; font-style: italic;}
+.chatreal .av-blue-text{color: #6366f1;}
+.chatreal .av-green-text{color: #10b981;}
+.chatreal .av-purple-text{color: #a855f7;}
+.chatreal .av-orange-text{color: #f59e0b;}
+.chatreal .role-pill{display: inline-flex; align-items: center;
+  height: 18px; line-height: 1;
+  font-size: 11px; padding: 0 8px; border-radius: 7px;
+  font-weight: 500; white-space: nowrap;
+  
+  align-self: center;}
+.chatreal .role-pill.tag-1{background: color-mix(in srgb, rgb(var(--tag-1)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-1),.30); color: rgb(var(--tag-1));}
+.chatreal .role-pill.tag-2{background: color-mix(in srgb, rgb(var(--tag-2)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-2),.30); color: rgb(var(--tag-2));}
+.chatreal .role-pill.tag-3{background: color-mix(in srgb, rgb(var(--tag-3)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-3),.30); color: rgb(var(--tag-3));}
+.chatreal .role-pill.tag-4{background: color-mix(in srgb, rgb(var(--tag-4)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-4),.30); color: rgb(var(--tag-4));}
+.chatreal .role-pill.tag-5{background: color-mix(in srgb, rgb(var(--tag-5)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-5),.30); color: rgb(var(--tag-5));}
+.chatreal .role-pill.tag-6{background: color-mix(in srgb, rgb(var(--tag-6)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-6),.30); color: rgb(var(--tag-6));}
+.chatreal .role-pill.tag-7{background: color-mix(in srgb, rgb(var(--tag-7)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-7),.30); color: rgb(var(--tag-7));}
+.chatreal .role-pill.tag-8{background: color-mix(in srgb, rgb(var(--tag-8)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-8),.30); color: rgb(var(--tag-8));}
+.chatreal .role-pill.tag-9{background: color-mix(in srgb, rgb(var(--tag-9)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-9),.30); color: rgb(var(--tag-9));}
+.chatreal .role-pill.tag-10{background: color-mix(in srgb, rgb(var(--tag-10)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-10),.30); color: rgb(var(--tag-10));}
+.chatreal .role-pill.tag-11{background: color-mix(in srgb, rgb(var(--tag-11)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-11),.30); color: rgb(var(--tag-11));}
+.chatreal .role-pill.tag-12{background: color-mix(in srgb, rgb(var(--tag-12)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-12),.30); color: rgb(var(--tag-12));}
+.chatreal .role-pill.tag-13{background: color-mix(in srgb, rgb(var(--tag-13)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-13),.30); color: rgb(var(--tag-13));}
+.chatreal .role-pill.tag-14{background: color-mix(in srgb, rgb(var(--tag-14)) 15%, var(--card-bg)); border: 1px solid rgba(var(--tag-14),.30); color: rgb(var(--tag-14));}
+.chatreal .role-pill.default{background: var(--hover-row); border: 1px solid var(--border); color: var(--text2);}
+.chatreal .msg-sender-name.tag-1{color: rgb(var(--tag-1));}
+.chatreal .msg-sender-name.tag-2{color: rgb(var(--tag-2));}
+.chatreal .msg-sender-name.tag-3{color: rgb(var(--tag-3));}
+.chatreal .msg-sender-name.tag-4{color: rgb(var(--tag-4));}
+.chatreal .msg-sender-name.tag-5{color: rgb(var(--tag-5));}
+.chatreal .msg-sender-name.tag-6{color: rgb(var(--tag-6));}
+.chatreal .msg-sender-name.tag-7{color: rgb(var(--tag-7));}
+.chatreal .msg-sender-name.tag-8{color: rgb(var(--tag-8));}
+.chatreal .msg-sender-name.tag-9{color: rgb(var(--tag-9));}
+.chatreal .msg-sender-name.tag-10{color: rgb(var(--tag-10));}
+.chatreal .msg-sender-name.tag-11{color: rgb(var(--tag-11));}
+.chatreal .msg-sender-name.tag-12{color: rgb(var(--tag-12));}
+.chatreal .msg-sender-name.tag-13{color: rgb(var(--tag-13));}
+.chatreal .msg-sender-name.tag-14{color: rgb(var(--tag-14));}
+.chatreal .msg-sender-name.default{color: var(--text);}
+.chatreal .reply-bar-content{flex: 1; overflow: hidden; min-width: 0;}
+.chatreal .reply-bar-name{font-weight: 700; color: var(--accent); font-size: 12px;}
+.chatreal .reply-bar-text{color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px;}
+.chatreal .reply-bar-thumb{width: 36px; height: 36px;
+  border-radius: 9px;
+  object-fit: cover;
+  flex-shrink: 0;}
+.chatreal .irc-reply{--rc: var(--accent);
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 8px;
+  background: color-mix(in srgb, var(--rc) 12%, transparent);
+  border-radius: 8px 12px 12px 8px;
+  padding: 4px 10px 4px 12px;
+  margin: 0 0 5px;
+  color: var(--text2); font-size: 12.5px; line-height: 17px;
+  cursor: pointer;}
+.chatreal .irc-reply::before{content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--rc);}
+.chatreal .irc-reply-thumb{width: 32px; height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;}
+.chatreal .irc-reply-file{display: flex; align-items: center; justify-content: center;
+  background: var(--surface2, var(--hover-row));
+  color: var(--muted);}
+.chatreal .irc-reply-body{flex: 1; min-width: 0; overflow: hidden;}
+.chatreal .irc-reply-name{color: var(--rc); font-weight: 600;}
+.chatreal .irc-reply-text{color: var(--text2); word-break: break-word; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;}
+.chatreal .typing-indicator{display: flex; align-items: center;
+  height: 0; overflow: hidden; opacity: 0; padding-left: 4px;
+  pointer-events: none;
+  transition: height .22s var(--ease, ease), opacity .22s;}
+.chatreal .typing-indicator.show{height: 24px; opacity: 1;}
+.chatreal .typing-pill{display: flex; align-items: center; gap: 6px;
+  padding: 2px 10px 3px;
+  border-radius: 9px;
+  background: var(--chat-bg);}
+.chatreal .typing-text{font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.chatreal .typing-dots{display: flex; align-items: center; gap: 2px;}
+.chatreal .typing-dots span{width: 3px; height: 3px; border-radius: 50%;
+  background: var(--muted);
+  animation: typing-bounce 1.2s infinite ease-in-out;}
+.chatreal .typing-dots span:nth-child(2){animation-delay: .2s;}
+.chatreal .typing-dots span:nth-child(3){animation-delay: .4s;}
+.chatreal .typing-preview{color: var(--muted) !important; font-style: italic;}
+.chatreal .ch-subwrap .ch-typing{position: absolute; left: 0; right: 0; top: 0; line-height: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: transform .25s, opacity .25s;}
+.chatreal .ch-subwrap .ch-typing{display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--accent); transform: translateY(100%); opacity: 0;}
+.chatreal .ch-typing .typing-dots span{background: var(--accent);}
+.chatreal .msg-link{color: var(--accent); text-decoration: underline; cursor: pointer; word-break: break-all;}
+.chatreal .msg-link:hover{opacity: .8;}
+.chatreal .pp-tag.tag-1{background: color-mix(in srgb, rgb(var(--tag-1)) 15%, var(--card-bg)); border-color: rgba(var(--tag-1),.30); color: rgb(var(--tag-1));}
+.chatreal .pp-tag.tag-2{background: color-mix(in srgb, rgb(var(--tag-2)) 15%, var(--card-bg)); border-color: rgba(var(--tag-2),.30); color: rgb(var(--tag-2));}
+.chatreal .pp-tag.tag-3{background: color-mix(in srgb, rgb(var(--tag-3)) 15%, var(--card-bg)); border-color: rgba(var(--tag-3),.30); color: rgb(var(--tag-3));}
+.chatreal .pp-tag.tag-4{background: color-mix(in srgb, rgb(var(--tag-4)) 15%, var(--card-bg)); border-color: rgba(var(--tag-4),.30); color: rgb(var(--tag-4));}
+.chatreal .pp-tag.tag-5{background: color-mix(in srgb, rgb(var(--tag-5)) 15%, var(--card-bg)); border-color: rgba(var(--tag-5),.30); color: rgb(var(--tag-5));}
+.chatreal .pp-tag.tag-6{background: color-mix(in srgb, rgb(var(--tag-6)) 15%, var(--card-bg)); border-color: rgba(var(--tag-6),.30); color: rgb(var(--tag-6));}
+.chatreal .pp-tag.tag-7{background: color-mix(in srgb, rgb(var(--tag-7)) 15%, var(--card-bg)); border-color: rgba(var(--tag-7),.30); color: rgb(var(--tag-7));}
+.chatreal .pp-tag.tag-8{background: color-mix(in srgb, rgb(var(--tag-8)) 15%, var(--card-bg)); border-color: rgba(var(--tag-8),.30); color: rgb(var(--tag-8));}
+.chatreal .pp-tag.tag-9{background: color-mix(in srgb, rgb(var(--tag-9)) 15%, var(--card-bg)); border-color: rgba(var(--tag-9),.30); color: rgb(var(--tag-9));}
+.chatreal .pp-tag.tag-10{background: color-mix(in srgb, rgb(var(--tag-10)) 15%, var(--card-bg)); border-color: rgba(var(--tag-10),.30); color: rgb(var(--tag-10));}
+.chatreal .pp-tag.tag-11{background: color-mix(in srgb, rgb(var(--tag-11)) 15%, var(--card-bg)); border-color: rgba(var(--tag-11),.30); color: rgb(var(--tag-11));}
+.chatreal .pp-tag.tag-12{background: color-mix(in srgb, rgb(var(--tag-12)) 15%, var(--card-bg)); border-color: rgba(var(--tag-12),.30); color: rgb(var(--tag-12));}
+.chatreal .pp-tag.tag-13{background: color-mix(in srgb, rgb(var(--tag-13)) 15%, var(--card-bg)); border-color: rgba(var(--tag-13),.30); color: rgb(var(--tag-13));}
+.chatreal .pp-tag.tag-14{background: color-mix(in srgb, rgb(var(--tag-14)) 15%, var(--card-bg)); border-color: rgba(var(--tag-14),.30); color: rgb(var(--tag-14));}
+.chatreal #reaction-picker{position: fixed; z-index: 9999;
+  background: var(--modal-bg); border: 1px solid var(--border);
+  border-radius: 14px; padding: 5px;
+  box-shadow: var(--shadow-pop);
+  display: none; width: 250px;
+  overflow: hidden;}
+.chatreal #reaction-picker.open{display: flex; flex-direction: column;}
+.chatreal #reaction-picker .emoji-item{width: 30px; height: 30px; font-size: 18px;}
+.chatreal #mention-popup{position: fixed;
+  display: none;
+  background: var(--modal-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-pop);
+  z-index: 400;
+  overflow-y: auto;
+  max-height: 224px;
+  padding: 6px;
+  min-width: 200px;}
+.chatreal .mention-item{display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .12s;}
+.chatreal .mention-item:hover, .chatreal .mention-item.mn-active{background: var(--hover-row);}
+.chatreal .mention-item .mn-name{font-size: 13px; font-weight: 500; color: var(--text);}
+.chatreal .messages{will-change: scroll-position;}
+.chatreal .irc-msg{contain: layout style;}
+.chatreal .msg-new{animation: msgIn 150ms ease-out;}
+.chatreal .msg-highlight .msg-bubble{animation: msgHighlight 1.9s cubic-bezier(.3,.6,.3,1);}
+.chatreal .msg-optimistic{opacity: 0.6;}
+.chatreal .unread-divider span{color: var(--accent);
+  font-weight: 600;}
+.chatreal .mention{color: var(--accent); font-weight: 700;}
+.chatreal .mention.mtag-blue{color: #4f46e5;}
+.chatreal .mention.mtag-green{color: #059669;}
+.chatreal .mention.mtag-purple{color: #7c3aed;}
+.chatreal .mention.mtag-orange{color: #d97706;}
+.chatreal .mention.mtag-tag-1{color: rgb(var(--tag-1-av));}
+.chatreal .mention.mtag-tag-2{color: rgb(var(--tag-2-av));}
+.chatreal .mention.mtag-tag-3{color: rgb(var(--tag-3-av));}
+.chatreal .mention.mtag-tag-4{color: rgb(var(--tag-4-av));}
+.chatreal .mention.mtag-tag-5{color: rgb(var(--tag-5-av));}
+.chatreal .mention.mtag-tag-6{color: rgb(var(--tag-6-av));}
+.chatreal .mention.mtag-tag-7{color: rgb(var(--tag-7-av));}
+.chatreal .mention.mtag-tag-8{color: rgb(var(--tag-8-av));}
+.chatreal .mention.mtag-tag-9{color: rgb(var(--tag-9-av));}
+.chatreal .mention.mtag-tag-10{color: rgb(var(--tag-10-av));}
+.chatreal .mention.mtag-tag-11{color: rgb(var(--tag-11-av));}
+.chatreal .mention.mtag-tag-12{color: rgb(var(--tag-12-av));}
+.chatreal .mention.mtag-tag-13{color: rgb(var(--tag-13-av));}
+.chatreal .mention.mtag-tag-14{color: rgb(var(--tag-14-av));}
+.chatreal .md-code{font-family: 'Noto Color Emoji', ui-monospace, 'SF Mono', Consolas, monospace;
+  font-size: 0.88em;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 9px;
+  padding: 1px 5px;}
+.chatreal .reaction-tip{position: fixed; z-index: 400; min-width: 190px; max-width: 260px;
+  padding: 6px; border-radius: 12px;
+  background: var(--card-bg); border: 1px solid var(--border);
+  box-shadow: 0 10px 28px rgba(0,0,0,.28);
+  font-size: 12px; line-height: 1.4; color: var(--text);
+  pointer-events: none; opacity: 0; transform: scale(.94);
+  transform-origin: left top;
+  transition: opacity .18s ease, transform .24s cubic-bezier(.2,.9,.3,1.15);}
+.chatreal .reaction-tip.above{transform-origin: left bottom;}
+.chatreal .reaction-tip.from-right{transform-origin: right top;}
+.chatreal .reaction-tip.above.from-right{transform-origin: right bottom;}
+.chatreal .reaction-tip.visible{opacity: 1; transform: none;}
+.chatreal .reaction-tip.visible .rt-row{opacity: 1; transform: none;}
+@media (prefers-reduced-motion: reduce){
+.chatreal .reaction-tip{transition: none;}
+}
+.chatreal .ci-name .msg-status{flex-shrink: 0; display: flex; align-items: center;}
+.chatreal .ci-name .status-sent{color: var(--muted); opacity: .45;}
+.chatreal .ci-name .status-delivered{color: var(--muted);}
+.chatreal .ci-name .status-read{color: var(--tick-read, #3ea6ff);}
+.chatreal .ci-name .status-part .tk1{stroke: var(--tick-read, #3ea6ff);}
+.chatreal .ci-name .status-part{color: var(--muted);}
+.chatreal .irc-msg{padding: 1px 12px; background: none; align-items: flex-end;}
+.chatreal .irc-msg:hover{background: none;}
+.chatreal .irc-msg[data-mine]{flex-direction: row-reverse;}
+.chatreal .irc-content{position: relative;
+  
+  flex: 0 1 auto; max-width: min(560px, 82%);
+  display: flex; flex-direction: column; align-items: flex-start;}
+.chatreal .irc-msg[data-mine] .irc-content{align-items: flex-end;}
+.chatreal .bubble-row{display: flex; align-items: flex-end; gap: 9px;}
+.chatreal .irc-header{align-items: center; margin: 0 0 3px; padding: 0 3px;}
+.chatreal .irc-msg[data-mine] .irc-header, .chatreal .irc-msg:not(.irc-first) .irc-header{display: none;}
+.chatreal .msg-bubble{position: relative;
+  background: var(--bubble-bg);
+  border-radius: 16px;
+  padding: 6px 12px;
+  max-width: 100%;}
+.chatreal .irc-msg[data-mine] .msg-bubble{background: color-mix(in srgb, var(--accent) 15%, var(--chat-bg));}
+.chatreal .irc-msg:not(.irc-tail) .irc-av{visibility: hidden;}
+.chatreal .irc-msg[data-mine] .irc-av{display: none;}
+.chatreal .irc-msg[data-dm] .irc-av{display: none;}
+.chatreal .irc-msg[data-dm] .irc-header{display: none;}
+.chatreal .irc-msg[data-dm]:not([data-mine]) .reactions{margin-left: 0;}
+.chatreal .msg-bubble > .irc-meta{position: absolute; right: 12px; bottom: 6px; gap: 3px;
+  display: flex; align-items: center;}
+.chatreal .msg-bubble:not(.bubble-photo) > .irc-meta{bottom: 10px; align-items: flex-end;}
+.chatreal .msg-bubble:not(.bubble-photo) > .irc-meta .irc-time{line-height: 1;}
+.chatreal .msg-bubble:not(.bubble-photo) > .irc-meta .status-wrap{margin-bottom: 1.5px; display: flex;}
+.chatreal .irc-text::after{content: ''; display: inline-block; width: 50px;}
+.chatreal .msg-bubble:not(.bubble-photo) > .irc-text{transform: translateY(var(--bubble-text-shift, -0.107em));}
+.chatreal .irc-msg[data-mine] .irc-text::after{width: 60px;}
+.chatreal .msg-bubble.has-fwd .irc-text::after{width: calc(50px + var(--fwd-w, 0px));}
+.chatreal .irc-msg[data-mine] .msg-bubble.has-fwd .irc-text::after{width: calc(60px + var(--fwd-w, 0px));}
+.chatreal .msg-bubble .bubble-image{margin: -6px -12px 6px; border-radius: 10px; border-top-left-radius: inherit; border-top-right-radius: inherit; overflow: hidden;}
+.chatreal .msg-bubble:has(> .bubble-image):has(> .irc-text){width: 280px; max-width: 100%;}
+.chatreal .msg-bubble .bubble-file{margin: -1px -5px;}
+.chatreal .msg-bubble:has(> .bubble-file):not(:has(.irc-text)){padding-bottom: 23px;}
+.chatreal .irc-text.emoji-only{font-size: 4em; line-height: 1.15;}
+.chatreal .irc-msg.emoji-msg .msg-bubble{background: none;
+  transition: background .13s ease;}
+.chatreal .irc-msg.emoji-msg .msg-bubble:hover{background: var(--card-bg);}
+.chatreal .irc-msg.emoji-msg[data-mine] .msg-bubble:hover{background: color-mix(in srgb, var(--accent) 15%, var(--chat-bg));}
+.chatreal .irc-reply.reply-mine{--rc: var(--accent);}
+.chatreal .irc-reply.reply-plain{--rc: var(--text2);}
+.chatreal .irc-reply.reply-tag-1{--rc: rgb(var(--tag-1));}
+.chatreal .irc-reply.reply-tag-2{--rc: rgb(var(--tag-2));}
+.chatreal .irc-reply.reply-tag-3{--rc: rgb(var(--tag-3));}
+.chatreal .irc-reply.reply-tag-4{--rc: rgb(var(--tag-4));}
+.chatreal .irc-reply.reply-tag-5{--rc: rgb(var(--tag-5));}
+.chatreal .irc-reply.reply-tag-6{--rc: rgb(var(--tag-6));}
+.chatreal .irc-reply.reply-tag-7{--rc: rgb(var(--tag-7));}
+.chatreal .irc-reply.reply-tag-8{--rc: rgb(var(--tag-8));}
+.chatreal .irc-reply.reply-tag-9{--rc: rgb(var(--tag-9));}
+.chatreal .irc-reply.reply-tag-10{--rc: rgb(var(--tag-10));}
+.chatreal .irc-reply.reply-tag-11{--rc: rgb(var(--tag-11));}
+.chatreal .irc-reply.reply-tag-12{--rc: rgb(var(--tag-12));}
+.chatreal .irc-reply.reply-tag-13{--rc: rgb(var(--tag-13));}
+.chatreal .irc-reply.reply-tag-14{--rc: rgb(var(--tag-14));}
+.chatreal .msg-bubble.bubble-photo{padding: 0;}
+.chatreal .msg-bubble.bubble-photo .bubble-image{margin: 0; border-radius: inherit;
+  
+  width: 280px; max-width: 100%;}
+.chatreal .msg-bubble.bubble-photo > .irc-meta, .chatreal .irc-msg[data-mine] .msg-bubble.bubble-photo > .irc-meta{bottom: 9px; right: 9px;
+  background: rgba(0,0,0,.5); border-radius: 9px; padding: 2px 7px;}
+.chatreal .msg-bubble.bubble-photo > .irc-meta .irc-time, .chatreal .msg-bubble.bubble-photo > .irc-meta .msg-status{color: #fff;}
+.chatreal .msg-bubble.bubble-photo > .irc-meta .status-read{color: var(--tick-read, #3ea6ff);}
+@media (prefers-reduced-motion: reduce){
+.chatreal .irc-msg.emoji-msg .msg-bubble{transition: none;}
+}
+.chatreal .reactions{display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px;}
+.chatreal .irc-msg:not([data-mine]) .reactions{margin-left: 41px;}
+.chatreal .reaction-btn{display: inline-flex; align-items: center; gap: 5px;
+  height: 24px; padding: 0 8px;
+  
+  background: var(--daypill);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  cursor: pointer; font-family: inherit; line-height: 1;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background .12s, border-color .12s;}
+.chatreal .reaction-btn:hover{border-color: var(--accent-border);}
+.chatreal .reaction-btn.mine{background: color-mix(in srgb, var(--accent) 22%, var(--daypill));
+  border-color: var(--role-teal-border);}
+.chatreal .ra-emoji{width: 16px; height: 16px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+  font-size: 14px;
+  font-family: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji Keys', sans-serif;
+  
+  transform: translateY(var(--emoji-ink, 0em));}
+.chatreal .ra-count{font-size: 11px; font-weight: 600; color: inherit; line-height: 1;}
+.chatreal .chat-main .messages{padding-top: calc(var(--chat-top-h, 64px) + 8px);
+  padding-bottom: calc(10px + var(--composer-h, 70px));}
+.chatreal .irc-text.sc-locked{pointer-events: none;}
+.chatreal .sc-skel{display: block; height: 12px; min-width: 40px; border-radius: 6px; margin: 6px 0; background: linear-gradient(90deg, var(--hover-row, rgba(127,127,127,.12)) 25%, var(--border, rgba(127,127,127,.25)) 50%, var(--hover-row, rgba(127,127,127,.12)) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite;}
+.chatreal .sc-skel:first-child{margin-top: 2px;}
+.chatreal .sc-sync-body{padding: 18px; display: flex; flex-direction: column; gap: 12px;}
+.chatreal .sc-sync-hint{margin: 0; font-size: 13px; color: var(--text2); line-height: 1.5;}
+.chatreal .sc-sync-device{font-weight: 600;
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;}
+.chatreal .sc-sync-foot{display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;}
+.chatreal .sc-locked-banner{display: flex; align-items: center; gap: 10px;
+  max-width: 760px; height: 40px; box-sizing: border-box; margin: 0 auto; padding: 0 5px;
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px;
+  font-size: 13px; color: var(--text);}
+.chatreal .sc-lock{width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex-shrink: 0;}
+.chatreal .sc-lock svg{width: 15px; height: 15px;}
+.chatreal .sc-b-txt{flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;}
+.chatreal .sc-b-t{font-weight: 600; font-size: 13px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.chatreal .sc-b-s{color: var(--muted); font-size: 11.5px; line-height: 1.25; display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.chatreal .sc-locked-banner.sc-open .sc-b-s{display: none;}
+.chatreal .sc-btn{height: 30px; padding: 0 14px; border-radius: 15px; border: 0; background: var(--accent); color: #fff; font-weight: 600; font-size: 12.5px; cursor: pointer; white-space: nowrap; flex-shrink: 0;}
+.chatreal .sc-btn.ghost{background: transparent; color: var(--muted); border: 1px solid var(--border);}
+.chatreal .sc-btn.ghost:hover{background: var(--hover-row); color: var(--text);}
+.chatreal .sc-b-inp{height: 30px; flex: 1 1 120px; min-width: 0; max-width: 150px; border: 1px solid var(--border); border-radius: 15px; background: var(--search-bg); color: var(--text); padding: 0 12px; font: 500 13px -apple-system, "Segoe UI", Roboto, sans-serif; text-transform: uppercase; letter-spacing: .08em; outline: none;}
+.chatreal .sc-b-inp::placeholder{text-transform: none; letter-spacing: 0; color: var(--muted);}
+.chatreal .sc-b-x{width: 30px; height: 30px; border-radius: 50%; border: 0; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1; flex-shrink: 0;}
+.chatreal .sc-b-x:hover{background: var(--hover-row); color: var(--text);}
+.chatreal .sc-dot{width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; animation: sc-pulse 1.2s infinite ease-in-out;}
+.chatreal .sc-m{padding: 4px 16px 12px; display: flex; flex-direction: column; gap: 10px;}
+.chatreal .sc-m-hint{margin: 0; color: var(--text2); font-size: 12.5px;}
+.chatreal .sc-codebox{display: flex; align-items: center; justify-content: space-between; gap: 8px; white-space: nowrap; background: var(--card-bg); border: 1px dashed var(--accent); border-radius: 12px; padding: 10px 12px;}
+.chatreal .sc-code{font: 700 22px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .14em; color: var(--text); white-space: nowrap; flex-shrink: 0;}
+.chatreal .sc-copy{height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); font-size: 12px; cursor: pointer;}
+.chatreal .sc-wait{color: var(--text2); font-size: 12px; display: flex; align-items: center; gap: 8px;}
+.chatreal .sc-dev{display: flex; align-items: center; gap: 10px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 9px 11px;}
+.chatreal .sc-dev-ico{width: 30px; height: 30px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex-shrink: 0;}
+.chatreal .sc-dev-n{font-weight: 600;}
+.chatreal .sc-dev-s{color: var(--text2); font-size: 12px; white-space: nowrap;}
+.chatreal .sc-meta{color: var(--muted); font-size: 11.5px; margin: 0;}
+.chatreal .sc-mfoot{display: flex; justify-content: flex-end; gap: 8px; padding: 0 16px 14px;}
+.chatreal .sc-mfoot .sc-btn{height: 32px;}
+.chatreal .msg-bubble:not(.bubble-photo):not(.bubble-comp):not(:has(.irc-text)){padding-bottom: 26px;}
+.chatreal .sc-tag{display: inline-flex; align-items: center; height: 18px; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 600; white-space: nowrap; flex-shrink: 0;}
+.chatreal .msg-search-hl{background: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: inherit; border-radius: 3px; padding: 0 1px;}
+.chatreal .msg-search-hl.cur{background: color-mix(in srgb, var(--accent) 65%, transparent);}
+.chatreal .acc-btn .av{position: relative; overflow: hidden; width: 44px; height: 44px;
+  display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 15px;
+  transition: transform .16s ease;}
+.chatreal .acc-btn .av img{position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;}
+.chatreal .acc-btn:hover .av{transform: scale(1.06);}
+.chatreal .acc-btn .av{position: relative;}
+.chatreal .acc-btn .av::after{content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 2px var(--accent); opacity: 0; transition: opacity .2s ease; pointer-events: none;}
+.chatreal .acc-btn.active .av::after{opacity: 1;}
+.chatreal .acc-btn .av{transition: transform .16s ease, opacity .2s ease;}
+.chatreal .acc-btn:not(.active) .av{opacity: .8;}
+.chatreal .acc-btn:hover .av{opacity: 1;}
+.chatreal .sc-sync-body, .chatreal .sc-m{padding: 4px 22px 18px;}
+.chatreal .sc-sync-device{border: 0; border-radius: 14px; background: var(--md-card); padding: 12px 14px;}
+.chatreal .sc-codebox{border: 1px dashed var(--accent-border); border-radius: 16px; background: var(--md-card);}
+.chatreal .msg-bubble.bubble-photo .gif-msg, .chatreal .bubble.bubble-photo .gif-msg{border-radius: inherit;}
+.chatreal .msg-bubble.bubble-comp{padding: 0; overflow: hidden;}
+.chatreal .msg-bubble.bubble-comp > .ct-pad{padding: 6px 12px 0;}
+.chatreal .msg-bubble.bubble-comp > .irc-text.ct{padding: 6px 12px;}
+.chatreal .msg-bubble.bubble-comp > .irc-text.ct:not(.ct-last)::after{display: none;}
+.chatreal .msg-bubble.bubble-comp .bubble-image{margin: 0 0 4px; border-radius: 0;}
+.chatreal .msg-bubble.bubble-comp .bubble-file{margin: 4px 7px;}
+.chatreal .msg-bubble.bubble-comp.has-lcard{width: 300px; max-width: 100%;}
+.chatreal .msg-bubble.bubble-comp.fmt-prev-bubble.has-lcard{width: 300px;}
+.chatreal .msg-bubble.bubble-comp.ends-code > .irc-meta{bottom: 4px;}
+.chatreal .msg-bubble.bubble-comp.ends-code:not(.bubble-photo) > .irc-meta{bottom: 4px;}
+.chatreal .lcard{cursor: pointer; background: color-mix(in srgb, var(--text) 5%, transparent);}
+.chatreal .lcard .lc-im{aspect-ratio: 16 / 9; overflow: hidden; background: var(--hover-row);}
+.chatreal .lcard .lc-im img{width: 100%; height: 100%; object-fit: cover; display: block;}
+.chatreal .lcard .lc-b{padding: 7px 12px 8px; min-width: 0;}
+.chatreal .lcard .lc-t{font-weight: 600; font-size: 13px; line-height: 1.3; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;}
+.chatreal .lcard .lc-d{font-size: 11.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.chatreal .lcard:hover .lc-t{color: var(--accent);}
+.chatreal .acc-btn:focus-visible .av{outline: 2px solid var(--accent); outline-offset: 2px;}
+.chatreal .msg-bubble.bubble-comp.ends-code > .irc-meta .irc-time{color: #8b9aaa;}
+.chatreal .irc-msg[data-mine] .md-code{background: color-mix(in srgb, var(--accent) 28%, transparent);}
+.chatreal .msg-bubble.bubble-comp{min-width: 260px;}
+.chatreal #mention-popup[style*="block"]{animation: ctxIn 120ms ease-out; transform-origin: bottom left;}
+.chatreal #reaction-picker.open{animation: popIn 130ms ease-out;}
+.chatreal .bubble-grid{display: grid; gap: 2px; width: 300px; max-width: 100%; border-radius: 10px; overflow: hidden; margin: 4px 0; background: var(--hover-row);}
+.chatreal .bubble-tile{position: relative; overflow: hidden; cursor: zoom-in; min-width: 0; background: var(--hover-row);}
+.chatreal .bubble-tile img, .chatreal .bubble-tile video{display: block; width: 100%; height: 100%; object-fit: cover;}
+.chatreal .bubble-tile .bubble-video-play{transform: translate(-50%, -50%) scale(.8);}
+.chatreal .bubble-grid.n2{grid-template-columns: 1fr 1fr; aspect-ratio: 2 / 1;}
+.chatreal .bubble-grid.n3{grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; aspect-ratio: 3 / 2;}
+.chatreal .bubble-grid.n3 .bubble-tile:first-child{grid-row: span 2;}
+.chatreal .bubble-grid.n4{grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; aspect-ratio: 1 / 1;}
+.chatreal .bubble-grid.n5{grid-template-columns: repeat(6, 1fr); aspect-ratio: 6 / 5;}
+.chatreal .bubble-grid.n5 .bubble-tile{grid-column: span 2;}
+.chatreal .bubble-grid.n5 .bubble-tile:nth-child(-n+2){grid-column: span 3;}
+.chatreal .bubble-grid.n6{grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; aspect-ratio: 3 / 2;}
+.chatreal .bubble-grid.n7{grid-template-columns: repeat(6, 1fr);}
+.chatreal .bubble-grid.n7 .bubble-tile{grid-column: span 2; aspect-ratio: 1 / 1;}
+.chatreal .bubble-grid.n7.r1 .bubble-tile:last-child{grid-column: span 6; aspect-ratio: 3 / 1;}
+.chatreal .bubble-grid.n7.r2 .bubble-tile:nth-last-child(-n+2){grid-column: span 3; aspect-ratio: 3 / 2;}
+.chatreal .msg-bubble .bubble-grid{margin: -6px -12px 6px; border-radius: 10px; border-top-left-radius: inherit; border-top-right-radius: inherit; width: 300px; max-width: calc(100% + 24px);}
+.chatreal .msg-bubble:has(> .bubble-grid):has(> .irc-text){width: 300px; max-width: 100%;}
+.chatreal .msg-bubble.bubble-photo .bubble-grid{margin: 0; border-radius: inherit;}
+.chatreal .irc-msg.msg-failed .msg-bubble{outline: 1.5px solid var(--red, #e5484d); outline-offset: -1px; opacity: 1;}
+.chatreal .msg-failnote{font-size: 12px; color: var(--red, #e5484d); padding: 3px 4px 0; text-align: right;}
+.chatreal .msg-failnote button{background: none; border: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; font-weight: 600;}
+.chatreal .msg-failnote button:hover{text-decoration: underline;}
+.chatreal .msg-actions{display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;}
+.chatreal .msg-act{font: inherit; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--danger, #d23737) 45%, transparent); background: color-mix(in srgb, var(--danger, #d23737) 10%, transparent); color: var(--danger, #d23737); cursor: pointer;}
+.chatreal .msg-act:hover:not(:disabled){background: color-mix(in srgb, var(--danger, #d23737) 18%, transparent);}
+.chatreal .msg-act.ok{border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent);}
+.chatreal .msg-act.ok:hover:not(:disabled){background: color-mix(in srgb, var(--accent) 18%, transparent);}
+.chatreal .msg-act:disabled{opacity: .55; cursor: default;}
+.chatreal .msg-act.done{border-color: var(--border); background: none; color: var(--muted); cursor: default;}
+.chatreal .bubble-image.bubble-sized{position: relative; min-height: 0; max-height: 300px; aspect-ratio: var(--w) / var(--h);}
+.chatreal .bubble-image.bubble-sized img, .chatreal .bubble-image.bubble-sized video{position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; max-height: none; object-fit: cover;}
+.chatreal .msg-bubble.bubble-photo .bubble-image.bubble-sized{width: max(96px, min(280px, calc(var(--w) * 1px)));}
+.chatreal .msg-bubble:not(.bubble-photo) .bubble-image.bubble-sized:not(.bubble-tile){width: -webkit-fill-available; width: stretch;}
+.chatreal .scroll-bottom-btn{overflow: visible;}
+.chatreal .mention-btn{bottom: calc(14px + 52px + var(--composer-h, 70px)); font-size: 17px; font-weight: 700;}
+.chatreal .msg-bubble.bubble-fit:has(> .bubble-image):has(> .irc-text){width: var(--bw);}
+.chatreal .messages-wrap{overflow: visible;}
+.chatreal .sc-locked-banner, .chatreal .scroll-bottom-btn{background:
+    radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%),
+    var(--gl);
+  border: 1px solid var(--gl-edge);
+  -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%);
+          backdrop-filter: blur(var(--gl-blur)) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 12px 32px var(--gl-shadow);}
+.chatreal #reaction-picker, .chatreal #mention-popup, .chatreal .reaction-tip{background:
+    radial-gradient(120% 80% at 0% 0%, var(--gl-spec), transparent 55%),
+    var(--gl-pop);
+  border: 1px solid var(--gl-edge);
+  -webkit-backdrop-filter: blur(calc(var(--gl-blur) + 6px)) saturate(190%);
+          backdrop-filter: blur(calc(var(--gl-blur) + 6px)) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 24px 60px var(--gl-shadow);}
+.chatreal #reaction-picker, .chatreal #mention-popup{border-radius: 20px;}
+.chatreal .sc-locked-banner{border-radius: 999px;}
+.chatreal .sc-locked-banner{max-width: none;}
+.chatreal .typing-pill{background: var(--gl); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);}
+.chatreal .scroll-bottom-btn{box-shadow: inset 0 1px 0 var(--gl-hi), 0 10px 26px var(--gl-shadow);}
+.chatreal .scroll-bottom-btn:hover{background: var(--gl2);}
+.chatreal .mention-item:hover, .chatreal .mention-item.mn-active{background: var(--gl-card2);}
+.chatreal .msg-bubble{background: var(--gl-in); border: 1px solid var(--gl-edge);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 14px var(--gl-shadow);}
+.chatreal .irc-msg[data-mine] .msg-bubble{background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b));
+  border-color: rgba(255, 255, 255, .22); color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 -1px 0 rgba(0, 0, 0, .12),
+              0 8px 20px color-mix(in srgb, var(--gl-out-b) 38%, transparent);}
+.chatreal .irc-msg.emoji-msg .msg-bubble, .chatreal .irc-msg.emoji-msg[data-mine] .msg-bubble{background: none; border-color: transparent; box-shadow: none;}
+.chatreal .irc-msg.emoji-msg .msg-bubble:hover{background: var(--gl-in); border-color: var(--gl-edge);}
+.chatreal .irc-msg.emoji-msg[data-mine] .msg-bubble:hover{background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); border-color: rgba(255,255,255,.22);}
+.chatreal .msg-bubble.bubble-photo{border: 0;}
+.chatreal .irc-msg[data-mine] .irc-text, .chatreal .irc-msg[data-mine] .irc-time, .chatreal .irc-msg[data-mine] .fwd-mark, .chatreal .irc-msg[data-mine] .edited-tag{color: rgba(255, 255, 255, .92);}
+.chatreal .irc-msg[data-mine] .irc-time, .chatreal .irc-msg[data-mine] .fwd-mark, .chatreal .irc-msg[data-mine] .edited-tag{color: rgba(255, 255, 255, .8);}
+.chatreal .irc-msg[data-mine] .irc-meta .status-sent, .chatreal .irc-msg[data-mine] .irc-meta .status-delivered, .chatreal .irc-msg[data-mine] .irc-meta .status-part{color: rgba(255, 255, 255, .75);}
+.chatreal .irc-msg[data-mine] .irc-meta .status-read, .chatreal .irc-msg[data-mine] .status-part .tk1{color: #3ea6ff; stroke: #3ea6ff;}
+.chatreal .irc-msg[data-mine] .irc-meta .status-read svg, .chatreal .irc-msg[data-mine] .irc-meta .status-read path{stroke: #3ea6ff;}
+.chatreal .irc-msg[data-mine] .msg-link, .chatreal .irc-msg[data-mine] .mention, .chatreal .irc-msg[data-mine] .mention[class*="mtag-"]{color: #fff;}
+.chatreal .irc-msg[data-mine] .md-code{background: rgba(255, 255, 255, .2);}
+.chatreal .irc-msg[data-mine] .irc-text blockquote{background: rgba(255, 255, 255, .16); border-left-color: rgba(255, 255, 255, .85);}
+.chatreal .irc-msg[data-mine] .irc-reply, .chatreal .irc-msg[data-mine] .irc-reply[class*="reply-"]{--rc: #fff; background: rgba(255, 255, 255, .16);}
+.chatreal .irc-msg[data-mine] .irc-reply-text, .chatreal .irc-msg[data-mine] .irc-reply-name{color: rgba(255, 255, 255, .92);}
+.chatreal .irc-msg[data-mine] .bubble-file, .chatreal .irc-msg[data-mine] .lcard{background: rgba(255, 255, 255, .15);}
+.chatreal .irc-msg[data-mine] .bubble-file-size, .chatreal .irc-msg[data-mine] .lc-d{color: rgba(255, 255, 255, .75);}
+.chatreal .irc-msg[data-mine] .lcard .lc-t, .chatreal .irc-msg[data-mine] .lcard:hover .lc-t{color: #fff;}
+.chatreal .irc-msg[data-mine] .msg-search-hl{color: #fff;}
+.chatreal .irc-msg[data-mine] .msg-bubble.bubble-photo > .irc-meta .status-read{color: #3ea6ff;}
+.chatreal .bubble-file{background: var(--gl-card);}
+.chatreal .bubble-file:hover{background: var(--gl-card2);}
+.chatreal .lcard{background: var(--gl-card);}
+.chatreal .date-divider span{background: var(--gl); border: 1px solid var(--gl-edge); color: var(--text2);
+  border-radius: 999px; padding: 4px 14px; font-weight: 600;
+  -webkit-backdrop-filter: blur(12px) saturate(170%); backdrop-filter: blur(12px) saturate(170%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 4px 12px var(--gl-shadow);}
+.chatreal .reaction-btn{background: var(--gl); border-color: var(--gl-edge); -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: inset 0 1px 0 var(--gl-hi), 0 2px 8px var(--gl-shadow);
+  transition: background .2s, border-color .2s, transform .35s var(--gl-spring);}
+.chatreal .reaction-btn:hover{background: var(--gl2);}
+.chatreal .reaction-btn:active{transform: scale(.92);}
+.chatreal .reaction-btn.mine{background: color-mix(in srgb, var(--accent) 24%, var(--gl2)); border-color: var(--accent);}
+.chatreal .role-pill[class*="tag-"]{background: color-mix(in srgb, currentColor 14%, transparent);}
+.chatreal .role-pill.default{background: var(--gl-card);}
+.chatreal .sc-btn, .chatreal .msg-act{transition: background .2s, color .2s, transform .35s var(--gl-spring), box-shadow .2s, filter .2s;}
+.chatreal .sc-btn:active, .chatreal .msg-act:active{transform: scale(.95);}
+.chatreal .msg-act{border-radius: 999px;}
+.chatreal .sc-b-inp{background: var(--gl-inset); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 3px var(--gl-lo);}
+.chatreal .sc-sync-device, .chatreal .sc-codebox{background: var(--gl-card); border: 1px solid var(--gl-edge);}
+.chatreal .chat-item .av-md{width: 48px; height: 48px; font-size: 16px;}
+.chatreal .scroll-bottom-btn{width: 44px; height: 44px;}
+.chatreal .scroll-bottom-btn > svg{transform: translateY(.5px);}
+.chatreal .msg-bubble{border-radius: 20px; padding: 7px 14px;}
+.chatreal .msg-bubble > .irc-meta{right: 14px;}
+.chatreal .msg-bubble:not(.bubble-photo) > .irc-meta{bottom: 11px;}
+.chatreal .msg-bubble .bubble-image, .chatreal .msg-bubble .bubble-grid{margin: -7px -14px 6px; border-radius: 12px; border-top-left-radius: inherit; border-top-right-radius: inherit;}
+.chatreal .msg-bubble.bubble-photo .bubble-image, .chatreal .msg-bubble.bubble-photo .bubble-grid{margin: 0; border-radius: inherit;}
+.chatreal .msg-bubble.bubble-comp > .ct-pad{padding: 7px 14px 0;}
+.chatreal .msg-bubble.bubble-comp > .irc-text.ct{padding: 7px 14px;}
+.chatreal .irc-av, .chatreal .irc-msg .irc-av{width: 36px; height: 36px; border-radius: 50%;}
+.chatreal .bubble-row{gap: 10px;}
+.chatreal .irc-msg:not([data-mine]) .reactions{margin-left: 46px;}
+.chatreal .irc-msg[data-dm]:not([data-mine]) .reactions{margin-left: 0;}
+.chatreal .reaction-btn{height: 28px; padding: 0 10px; gap: 5px;}
+.chatreal .ra-count{font-size: 12px;}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+.chatreal .sc-locked-banner, .chatreal .scroll-bottom-btn, .chatreal #reaction-picker, .chatreal #mention-popup, .chatreal .reaction-tip{background: var(--modal-bg);}
+}
+@media (prefers-reduced-transparency: reduce){
+.chatreal .sc-locked-banner, .chatreal .scroll-bottom-btn, .chatreal #reaction-picker, .chatreal #mention-popup, .chatreal .reaction-tip, .chatreal .date-divider span, .chatreal .typing-pill{-webkit-backdrop-filter: none; backdrop-filter: none; background: var(--modal-bg);}
+}
+@media (prefers-reduced-motion: reduce){
+.chatreal .reaction-btn:active{transform: none;}
+}
+.chatreal .rail-me .av-wrap, .chatreal .rail-me .av{display: block; width: 44px; height: 44px; font-size: 14px; display: flex;}
+.chatreal .rail-me .av{align-items: center; justify-content: center;}
+.chatreal .av-sq{border-radius: 15px !important;}
+.chatreal .av[class*="av-tag-"], .chatreal .chats-list .av-round, .chatreal .topics-panel .av-round{box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25);}
+.chatreal .topics-panel .av-md{font-size: 22px; font-weight: 600;}
+.chatreal .reaction-btn{position: relative;}
+.chatreal .scroll-bottom-btn::after, .chatreal .reaction-btn::after{content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .2s;
+  background: radial-gradient(90px circle at var(--mx, 50%) var(--my, 50%), var(--gl-spotlight), transparent 70%);}
+.chatreal .scroll-bottom-btn:hover::after, .chatreal .reaction-btn:hover::after{opacity: 1;}
+.chatreal .scroll-bottom-btn:active{transform: scale(.95);}
+@media (prefers-reduced-motion: reduce){
+.chatreal .scroll-bottom-btn:active{transform: none;}
+}
+.chatreal .av, .chatreal .av-md, .chatreal .av-sm, .chatreal .av-lg, .chatreal .av-xl{box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25);}
+.chatreal .rail-me .av{box-shadow: none;}
+.chatreal .date-divider span{padding: 5px 14px; font-size: 12px; font-weight: 600; color: var(--text2); border-radius: var(--r-pill);
+  background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), var(--gl); border: 1px solid var(--gl-edge);
+  -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(190%); backdrop-filter: blur(var(--gl-blur)) saturate(190%);
+  box-shadow: inset 0 1px 0 var(--gl-hi), inset 0 -1px 0 var(--gl-lo), 0 12px 32px var(--gl-shadow);}
+.chatreal .role-pill{font-weight: 600; font-size: 11px; padding: 1px 8px; border-radius: var(--r-pill);}
+.chatreal .role-pill[class*="tag-"]{background: color-mix(in srgb, currentColor 14%, transparent); border-color: color-mix(in srgb, currentColor 25%, transparent);}
+.chatreal .irc-name{font-weight: 600;}
+@media (min-width: 768px) and (pointer: fine){
+.chatreal .chat-main .messages{padding-left: 28px; padding-right: 28px; padding-bottom: calc(var(--composer-h, 70px) + 28px);}
+}
+.chatreal .msg-bubble{padding: 9px 14px 8px;}
+.chatreal .irc-text{font-size: calc(var(--font-size) * 1.0357); line-height: 1.42;}
+.chatreal .msg-bubble:not(.bubble-photo) > .irc-text{transform: none; margin-bottom: 3.74px;}
+.chatreal .msg-bubble > .irc-meta, .chatreal .msg-bubble:not(.bubble-photo) > .irc-meta{right: 14px; bottom: 8px; gap: 4px; align-items: center;}
+.chatreal .irc-time{font-size: 11.5px; line-height: 1.42; color: var(--text2);}
+.chatreal .irc-msg[data-mine] .msg-bubble{border: 0;}
+.chatreal .msg-bubble .bubble-image, .chatreal .msg-bubble .bubble-grid{margin: -9px -14px 6px;}
+.chatreal .msg-bubble.bubble-photo .bubble-image, .chatreal .msg-bubble.bubble-photo .bubble-grid{margin: 0;}
+.chatreal .msg-bubble.bubble-comp > .ct-pad{padding: 9px 14px 0;}
+.chatreal .msg-bubble.bubble-comp > .irc-text.ct{padding: 9px 14px;}
+.chatreal .msg-bubble:not(.bubble-photo) > .irc-meta .irc-time, .chatreal .msg-bubble > .irc-meta .irc-time{line-height: 1.42;}
+.chatreal #mention-popup{padding: 6px; min-width: 230px; border-radius: var(--r-menu);}
+.chatreal .mention-item{padding: 6px 10px; gap: 10px; border-radius: var(--r-item);}
+.chatreal .mention-item .mn-name{font-size: 13.5px; font-weight: 500;}
+.chatreal #reaction-picker{width: 260px; padding: 6px; border-radius: var(--r-menu);}
+.chatreal #reaction-picker .emoji-item{width: 36px; height: 36px; font-size: 20px;}
+.chatreal .irc-reply{border-radius: 4px 10px 10px 4px; padding: 5px 10px 5px 13px; margin: 0 0 6px; font-size: 13px; line-height: 1.42;}
+.chatreal .irc-reply.reply-plain{--rc: var(--accent);}
+.chatreal .irc-reply-name{font-size: 12.5px;}
+.chatreal .irc-reply.reply-plain .irc-reply-name{color: var(--accent-ink);}
+.chatreal .bubble-file{gap: 12px; padding: 8px 10px; margin: -3px -6px 6px; border-radius: 14px; background: var(--gl-card); border: 1px solid var(--gl-edge); min-width: 300px; max-width: none;}
+.chatreal .bubble-file > svg:first-child{width: 42px; height: 42px; padding: 11px; box-sizing: border-box; border-radius: 12px; background: var(--accent-soft); color: var(--accent-ink);}
+.chatreal .bubble-file-name{font-size: 14px; font-weight: 600;}
+.chatreal .bubble-file-size{font-size: 12px; color: var(--text2); margin-top: 0;}
+.chatreal .bubble-file > svg:last-child:not(:first-child){width: 34px; height: 34px; padding: 9px; box-sizing: border-box; border-radius: 50%; opacity: 1 !important; margin-left: auto; background: var(--gl); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 0 var(--gl-hi);}
+.chatreal .msg-bubble:not(.bubble-photo) .bubble-image, .chatreal .msg-bubble:not(.bubble-photo) .bubble-grid{margin: -3px -8px 8px; border-radius: 14px;}
+.chatreal .scroll-bottom-btn{border-color: var(--gl-edge); color: var(--text2);}
+.chatreal .scroll-bottom-btn:hover{background: var(--gl2); border-color: var(--gl-edge); color: var(--text);}
+.chatreal .scroll-bottom-btn:focus, .chatreal .scroll-bottom-btn:focus-visible{outline: none;}
+.chatreal .msg-bubble{-webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);}
+.chatreal .irc-msg[data-mine] .msg-bubble{-webkit-backdrop-filter: none; backdrop-filter: none;}
+.chatreal .irc-msg.emoji-msg .msg-bubble, .chatreal .irc-msg.emoji-msg[data-mine] .msg-bubble{border-radius: 21px !important;}
+.chatreal .msg-bubble.bubble-photo{overflow: hidden;}
+.chatreal #mention-popup{min-width: 200px; padding: 5px;}
+.chatreal .mention-item{padding: 5px 8px;}
+.chatreal .mention-item .mn-name{font-size: 13px;}
+.chatreal #reaction-picker{width: 232px; padding: 5px;}
+.chatreal #reaction-picker .emoji-item{width: 32px; height: 32px; font-size: 18px;}
+.chatreal .msg-bubble.bubble-emoji, .chatreal .irc-msg .msg-bubble.bubble-emoji{background: none !important; border-color: transparent !important; box-shadow: none !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;}
+.chatreal .msg-bubble.bubble-emoji::before, .chatreal .msg-bubble.bubble-emoji::after{display: none !important;}
+.chatreal .msg-bubble.bubble-emoji > .irc-meta{background: var(--gl-card); border-radius: 99px; padding: 1px 8px; color: var(--text2);}
+.chatreal .msg-bubble.bubble-emoji > .irc-meta .irc-time, .chatreal .msg-bubble.bubble-emoji > .irc-meta .msg-status{color: var(--text2);}
+.chatreal .messages.fast-scroll, .chatreal .messages.fast-scroll *{-webkit-backdrop-filter: none !important; backdrop-filter: none !important;}
+.chatreal .irc-msg{--tg-in: var(--bubble-bg);
+  --tg-out: color-mix(in srgb, var(--gl-out-a) 46%, var(--gl-out-b));
+  --tg-px: 12px;}
+.chatreal .irc-msg .msg-bubble{--tl: 17px; --tr: 17px; --br: 17px; --bl: 17px;
+  border-radius: var(--tl) var(--tr) var(--br) var(--bl);
+  border: 0; padding: 7px 12px 3.5px;
+  background: var(--tg-in);
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: 0 1px 2px rgba(10, 30, 40, .16);}
+.chatreal .irc-msg[data-mine] .msg-bubble{background: var(--tg-out); box-shadow: 0 1px 2px rgba(10, 40, 90, .24);}
+.chatreal .irc-msg .msg-bubble.bubble-comp, .chatreal .irc-msg .msg-bubble.bubble-photo{padding: 0;}
+.chatreal .irc-msg:not([data-mine]):not(.irc-first) .msg-bubble{--tl: 5px;}
+.chatreal .irc-msg:not([data-mine]):not(.irc-tail) .msg-bubble{--bl: 5px;}
+.chatreal .irc-msg:not([data-mine]).irc-tail .msg-bubble{--bl: 0px;}
+.chatreal .irc-msg[data-mine]:not(.irc-first) .msg-bubble{--tr: 5px;}
+.chatreal .irc-msg[data-mine]:not(.irc-tail) .msg-bubble{--br: 5px;}
+.chatreal .irc-msg[data-mine].irc-tail .msg-bubble{--br: 0px;}
+.chatreal .irc-msg.emoji-msg .msg-bubble{--tl: 21px; --tr: 21px; --br: 21px; --bl: 21px;}
+.chatreal .bubble-row{gap: 12px;}
+.chatreal .irc-msg.irc-tail .msg-bubble::after{content: ""; position: absolute; bottom: 0; width: 9px; height: 13px; pointer-events: none;}
+.chatreal .irc-msg:not([data-mine]).irc-tail .msg-bubble::after{left: -8px; background: var(--tg-in); clip-path: path('M9 0 V13 H1 C5 12.5 9 9 9 0 Z');}
+.chatreal .irc-msg[data-mine].irc-tail .msg-bubble::after{right: -8px; background: var(--tg-out); clip-path: path('M0 0 V13 H8 C4 12.5 0 9 0 0 Z');}
+.chatreal .irc-msg.emoji-msg .msg-bubble::after{display: none;}
+.chatreal .irc-msg .msg-bubble.bubble-photo{overflow: visible;}
+.chatreal .irc-msg .msg-bubble.bubble-photo .bubble-image, .chatreal .irc-msg .msg-bubble.bubble-photo .bubble-grid{overflow: hidden;}
+.chatreal .irc-msg .msg-bubble:not(.bubble-photo) > .irc-meta{right: 12px; bottom: 5.5px;}
+.chatreal .irc-msg .msg-bubble.bubble-comp > .ct-pad{padding: 7px 12px 0;}
+.chatreal .irc-msg .msg-bubble.bubble-comp > .irc-text.ct{padding: 7px 12px;}
+.chatreal .irc-msg .msg-bubble:not(.bubble-photo) > .bubble-image, .chatreal .irc-msg .msg-bubble:not(.bubble-photo) > .bubble-grid{margin: 6px -12px 6px; border-radius: 0;}
+.chatreal .irc-msg .msg-bubble:not(.bubble-photo) > .bubble-image:first-child, .chatreal .irc-msg .msg-bubble:not(.bubble-photo) > .bubble-grid:first-child{margin-top: -7px; border-radius: var(--tl) var(--tr) 0 0;}
+.chatreal .irc-msg .msg-bubble.bubble-photo .bubble-image, .chatreal .irc-msg .msg-bubble.bubble-photo .bubble-grid{border-radius: var(--tl) var(--tr) var(--br) var(--bl);}
+.chatreal .irc-msg .irc-reply.irc-forward-block, .chatreal .irc-msg[data-mine] .irc-reply.irc-forward-block{background: none; padding: 0; border-radius: 0; margin: 0 0 3px;}
+.chatreal .irc-reply.irc-forward-block::before{display: none;}
+.chatreal .irc-forward-block .irc-reply-name{color: var(--accent-ink); font-size: 13px; font-weight: 600;}
+.chatreal .irc-forward-block .irc-reply-name b{font-weight: 700;}
+.chatreal .irc-msg[data-mine] .irc-forward-block .irc-reply-name{color: #fff;}
+.chatreal .irc-forward-block .irc-reply-text{color: inherit; display: block; -webkit-line-clamp: unset; overflow: visible; font-size: calc(var(--font-size) * 1.0357); line-height: 1.42;}
+.chatreal .irc-msg[data-mine] .irc-forward-block .irc-reply-text{color: rgba(255, 255, 255, .92);}
+.chatreal .irc-msg .msg-bubble > .reactions{margin: 0; gap: 4px; padding: 1px calc(50px + var(--fwd-w, 0px)) 3px 0;}
+.chatreal .irc-msg[data-mine] .msg-bubble > .reactions{padding-right: calc(60px + var(--fwd-w, 0px));}
+.chatreal .irc-msg .msg-bubble.bubble-photo > .reactions, .chatreal .irc-msg .msg-bubble.bubble-comp > .reactions{padding: 7px calc(var(--tg-px) + 50px + var(--fwd-w, 0px)) 6px var(--tg-px);}
+.chatreal .irc-msg[data-mine] .msg-bubble.bubble-photo > .reactions, .chatreal .irc-msg[data-mine] .msg-bubble.bubble-comp > .reactions{padding-right: calc(var(--tg-px) + 60px + var(--fwd-w, 0px));}
+.chatreal .msg-bubble:has(> .reactions) > .irc-text::after{display: none;}
+.chatreal .msg-bubble:has(> .reactions) > .irc-text{margin-bottom: 0;}
+.chatreal .irc-msg .msg-bubble:not(.bubble-photo):has(> .reactions) > .irc-meta, .chatreal .irc-msg .msg-bubble.bubble-comp.ends-code:has(> .reactions) > .irc-meta{bottom: 10px;}
+.chatreal .msg-bubble > .reactions .reaction-btn{height: 24px; padding: 0 8px; gap: 3px; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent-ink);}
+.chatreal .msg-bubble > .reactions .reaction-btn:hover{background: color-mix(in srgb, var(--accent) 24%, transparent);}
+.chatreal .msg-bubble > .reactions .reaction-btn.mine{background: var(--gl-out-a); color: #fff;}
+.chatreal .msg-bubble > .reactions .ra-count{font-size: 12.5px; font-weight: 700;}
+.chatreal .irc-msg[data-mine] .msg-bubble > .reactions .reaction-btn{background: rgba(255, 255, 255, .2); color: #fff;}
+.chatreal .irc-msg[data-mine] .msg-bubble > .reactions .reaction-btn:hover{background: rgba(255, 255, 255, .3);}
+.chatreal .irc-msg[data-mine] .msg-bubble > .reactions .reaction-btn.mine{background: #fff; color: var(--tg-out);}
+.chatreal .irc-msg .msg-bubble.bubble-photo:has(> .reactions) .bubble-image, .chatreal .irc-msg .msg-bubble.bubble-photo:has(> .reactions) .bubble-grid{border-radius: var(--tl) var(--tr) 0 0;}
+.chatreal .irc-msg .msg-bubble.bubble-photo:has(> .reactions) > .irc-meta{background: none; padding: 0; border-radius: 0; bottom: 10px; right: 12px; -webkit-backdrop-filter: none; backdrop-filter: none;}
+.chatreal .irc-msg:not([data-mine]) .msg-bubble.bubble-photo:has(> .reactions) > .irc-meta .irc-time, .chatreal .irc-msg:not([data-mine]) .msg-bubble.bubble-photo:has(> .reactions) > .irc-meta .msg-status{color: var(--text2);}
+.chatreal .irc-msg[data-mine] .msg-bubble.bubble-photo:has(> .reactions) > .irc-meta .irc-time{color: rgba(255, 255, 255, .8);}
+.chatreal .irc-msg .msg-bubble.bubble-comp.ends-code:has(> .reactions) > .irc-meta .irc-time{color: var(--text2);}
+.chatreal .irc-msg[data-mine] .msg-bubble.bubble-comp.ends-code:has(> .reactions) > .irc-meta .irc-time{color: rgba(255, 255, 255, .8);}
+.chatreal .irc-msg .msg-bubble > .irc-header{margin: 0 0 2px; padding: 0; line-height: 1.2;}
+.chatreal .irc-msg .msg-bubble.bubble-photo > .irc-header, .chatreal .irc-msg .msg-bubble.bubble-comp > .irc-header{margin: 0; padding: 7px 12px 5px;}
+.chatreal .irc-msg .msg-bubble.bubble-photo > .irc-header + .bubble-image, .chatreal .irc-msg .msg-bubble.bubble-photo > .irc-header + .bubble-grid{border-radius: 0 0 var(--br) var(--bl);}
+.chatreal .irc-msg .msg-bubble.bubble-photo:has(> .reactions) > .irc-header + .bubble-image, .chatreal .irc-msg .msg-bubble.bubble-photo:has(> .reactions) > .irc-header + .bubble-grid{border-radius: 0;}
+.chatreal .irc-msg .msg-bubble.bubble-photo > .irc-header + .gif-msg{border-radius: 0 0 var(--br) var(--bl);}
+.chatreal .irc-msg .msg-bubble.bubble-photo:has(> .reactions) > .irc-header + .gif-msg{border-radius: 0;}
+.chatreal .irc-msg .msg-bubble.bubble-photo:has(> .reactions) .gif-msg{border-radius: var(--tl) var(--tr) 0 0;}
+.chatreal .irc-msg.irc-tail .msg-bubble.bubble-photo::after{display: none;}
+.chatreal .irc-msg.irc-tail .msg-bubble.bubble-photo{border-radius: 0; box-shadow: none;}
+.chatreal .irc-msg.irc-tail .msg-bubble.bubble-photo .bubble-image, .chatreal .irc-msg.irc-tail .msg-bubble.bubble-photo .bubble-grid, .chatreal .irc-msg.irc-tail .msg-bubble.bubble-photo .gif-msg{border-radius: 0;}
+.chatreal .irc-msg[data-mine].irc-tail .msg-bubble.bubble-photo{margin-right: -8px; padding-right: 8px; clip-path: polygon(0 calc(1 * var(--tl)), calc(0.0761 * var(--tl)) calc(0.6173 * var(--tl)), calc(0.2929 * var(--tl)) calc(0.2929 * var(--tl)), calc(0.6173 * var(--tl)) calc(0.0761 * var(--tl)), calc(1 * var(--tl)) 0, calc(100% - 1 * var(--tr) - 8px) 0, calc(100% - 0.6173 * var(--tr) - 8px) calc(0.0761 * var(--tr)), calc(100% - 0.2929 * var(--tr) - 8px) calc(0.2929 * var(--tr)), calc(100% - 0.0761 * var(--tr) - 8px) calc(0.6173 * var(--tr)), calc(100% - 8px) calc(1 * var(--tr)), calc(100% - 7.552px) calc(100% - 8.24px), calc(100% - 6.336px) calc(100% - 4.68px), calc(100% - 4.544px) calc(100% - 2.2px), calc(100% - 2.368px) calc(100% - 0.68px), 100% 100%, calc(1 * var(--bl)) 100%, calc(0.6173 * var(--bl)) calc(100% - 0.0761 * var(--bl)), calc(0.2929 * var(--bl)) calc(100% - 0.2929 * var(--bl)), calc(0.0761 * var(--bl)) calc(100% - 0.6173 * var(--bl)), 0 calc(100% - 1 * var(--bl)));}
+.chatreal .irc-msg:not([data-mine]).irc-tail .msg-bubble.bubble-photo{margin-left: -8px; padding-left: 8px; clip-path: polygon(calc(8px) calc(1 * var(--tl)), calc(0.0761 * var(--tl) + 8px) calc(0.6173 * var(--tl)), calc(0.2929 * var(--tl) + 8px) calc(0.2929 * var(--tl)), calc(0.6173 * var(--tl) + 8px) calc(0.0761 * var(--tl)), calc(1 * var(--tl) + 8px) 0, calc(100% - 1 * var(--tr)) 0, calc(100% - 0.6173 * var(--tr)) calc(0.0761 * var(--tr)), calc(100% - 0.2929 * var(--tr)) calc(0.2929 * var(--tr)), calc(100% - 0.0761 * var(--tr)) calc(0.6173 * var(--tr)), 100% calc(1 * var(--tr)), 100% calc(100% - 1 * var(--br)), calc(100% - 0.0761 * var(--br)) calc(100% - 0.6173 * var(--br)), calc(100% - 0.2929 * var(--br)) calc(100% - 0.2929 * var(--br)), calc(100% - 0.6173 * var(--br)) calc(100% - 0.0761 * var(--br)), calc(100% - 1 * var(--br)) 100%, 0 100%, calc(2.368px) calc(100% - 0.68px), calc(4.544px) calc(100% - 2.2px), calc(6.336px) calc(100% - 4.68px), calc(7.552px) calc(100% - 8.24px), calc(8px) calc(100% - 13px));}
+.chatreal .irc-msg[data-mine].irc-tail .msg-bubble.bubble-photo .bubble-image{margin-right: -8px; padding-right: 8px; box-sizing: content-box;}
+.chatreal .irc-msg:not([data-mine]).irc-tail .msg-bubble.bubble-photo .bubble-image{margin-left: -8px; padding-left: 8px; box-sizing: content-box;}
+.chatreal .irc-msg[data-mine].irc-tail .msg-bubble.bubble-photo > .irc-meta{right: 17px;}
+.chatreal .irc-msg[data-mine].irc-tail .msg-bubble.bubble-photo:has(> .reactions) > .irc-meta{right: 20px;}
+.chatreal .irc-msg:not([data-mine]).irc-tail .msg-bubble.bubble-photo > .irc-header{padding-left: 12px;}
+.chatreal .rail-accs .acc-round .av{width: 38px; height: 38px; font-size: 13px; opacity: 1; transform: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22);}
+.chatreal .rail-accs .acc-round .av::after{display: none;}
+.chatreal .rail-accs .acc-round:hover .av{transform: none;}
+.chatreal .vm.vm-sm{gap:10px}
+.chatreal .vm-in .pl{background:var(--accent);color:#fff;box-shadow:0 3px 10px color-mix(in srgb,var(--accent) 32%,transparent)}
+html.dark .chatreal .vm-in .pl{color:#07201c}
+.chatreal .vm-in .pl:hover{filter:brightness(1.08)}
+.chatreal .vm-out .pl{background:rgba(255,255,255,.96);color:var(--gl-out-b)}
+.chatreal .vm-out .pl:hover{background:#fff}
+.chatreal .vm-in .wv{color:var(--accent)}
+.chatreal .vm-out .wv{color:#fff}
+.chatreal .vm-out .mt{color:rgba(255,255,255,.88)}
+.chatreal .vm-out .spd{background:rgba(255,255,255,.22);color:#fff}
+.chatreal .vm .tm .irc-meta{position:static;float:none;display:inline-flex;align-items:center;gap:4px;margin:0;padding:0;transform:none;bottom:auto;right:auto}
+@keyframes typing-bounce{ 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-3px); } }
+@keyframes msgIn{
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes msgHighlight{
+  0%   { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0), 0 0 0 0 rgba(var(--accent-rgb), .38); }
+  12%  { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 1), 0 0 0 0 rgba(var(--accent-rgb), .38); }
+  50%  { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 1), 0 0 0 12px rgba(var(--accent-rgb), 0); }
+  78%  { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), .9), 0 0 0 12px rgba(var(--accent-rgb), 0); }
+  100% { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0), 0 0 0 12px rgba(var(--accent-rgb), 0); }
+}
+@keyframes shimmer{
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes ctxIn{
+  from { opacity: 0; transform: scale(.96); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes sc-pulse{ 0%, 100% { opacity: .25 } 50% { opacity: 1 } }
+@keyframes popIn{ from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }

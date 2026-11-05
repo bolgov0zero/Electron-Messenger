@@ -5,7 +5,7 @@ B.ui.login = {
   mount: function (host) {
     var el = this.el = document.createElement('div');
     el.className = 'login'; el.hidden = true;
-    el.innerHTML = B.nav.amb +
+    el.innerHTML = B.nav.edge +
       '<div class="login-in"><div class="lg glass">' + I('chat') + '</div><h1>Electron</h1><p class="sub">Корпоративный мессенджер</p>' +
       '<label class="fld m glass-inset">' + I('user') + '<input id="l-user" type="text" placeholder="Логин" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next"></label>' +
       '<label class="fld m glass-inset">' + I('lock') + '<input id="l-pass" type="password" placeholder="Пароль" autocomplete="current-password" enterkeyhint="go"></label>' +

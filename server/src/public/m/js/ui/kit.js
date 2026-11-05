@@ -1,5 +1,5 @@
-// /m — каркас интерфейса по макету Liquid Glass: оболочка-«телефон» 393 px (на телефоне масштабируется на всю ширину),
-// стек страниц со свайпом назад, шторки, меню-оверлей, тосты, клавиатура. Разметка и классы — как в макете (mock.html).
+// /m — каркас интерфейса: оболочка-«телефон» 393 px (на телефоне масштабируется на всю ширину),
+// стек страниц со свайпом назад, шторки, меню-оверлей, тосты, клавиатура. Разметка и классы — как в макете (docs/flat-mockup/mobile.html).
 // Данные и сеть — ядро (core/*); здесь только вид и жесты.
 B.ui = B.ui || {};
 var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -60,7 +60,7 @@ function hideKb() {
 // Тема: светлая / тёмная / тёмно-синяя. Общая с /chat и /m настройка (electron_v2.settings.theme) хранит только light или dark;
 // «тёмно-синяя» запоминается отдельно (beta_navy)
 B.theme = {
-  TC: { light: '#e3f0ef', dark: '#12171d', navy: '#0f1b27' },
+  TC: { light: '#ece9e4', dark: '#131211', navy: '#10161d' },
   get: function () { return root.classList.contains('navy') ? 'navy' : root.classList.contains('dark') ? 'dark' : 'light'; },
   set: function (t) {
     var m = document.getElementById('theme-color-meta'); if (m) m.setAttribute('content', B.theme.TC[t] || B.theme.TC.dark);
@@ -71,7 +71,7 @@ B.theme = {
       if (t === 'light') s.settings.theme = 'light'; else if (!s.settings.theme || s.settings.theme === 'light') s.settings.theme = 'dark';
       localStorage.setItem(B.SESSION_KEY, JSON.stringify(s));
     } catch (e) {}
-    var link = document.getElementById('manifest-link'); if (link) link.href = t === 'light' ? '/m/manifest-light.json' : '/m/manifest.json';
+    var link = document.getElementById('manifest-link'); if (link) link.href = t === 'light' ? '/m/manifest-light.json' : t === 'navy' ? '/m/manifest-navy.json' : '/m/manifest.json';
     B.theme.accent();
   },
   // Акцент макета: те же пять цветов, что у остальных клиентов, но свои оттенки
@@ -82,16 +82,12 @@ B.theme = {
     root.style.setProperty('--accent', 'rgb(' + c + ')'); root.style.setProperty('--accent-rgb', c.join(','));
   },
   setAccent: function (k) { if (!B.theme.ACC[k]) return; try { localStorage.setItem('accent', k); } catch (e) {} B.theme.accent(); },
-  // «Прозрачность стекла» 0..100 и размер текста
-  glass: function () { var v = 50; try { var n = parseInt(localStorage.getItem('beta_glass'), 10); if (n >= 0 && n <= 100) v = n; } catch (e) {} return v; },
-  setGlass: function (v, save) { root.style.setProperty('--gl-k', Math.max(0.15, 1.9 - 0.018 * v).toFixed(3)); if (save) try { localStorage.setItem('beta_glass', String(v)); } catch (e) {} },
+  // Размер текста. «Прозрачность» и «Цветная картинка» (beta_glass, beta_amb) убраны вместе со стеклом: сохранённые значения игнорируются
   FS: { s: [0.9, 'Мелкий'], m: [1, 'Обычный'], l: [1.12, 'Крупный'] },
   fsKey: function () { var f = B.appearance && B.appearance.settings().fontSize; return f === 'small' ? 's' : f === 'large' ? 'l' : 'm'; },
   setFs: function (k) { phone.style.setProperty('--fs', B.theme.FS[k][0]); if (B.appearance) B.appearance.saveSetting('fontSize', k === 's' ? 'small' : k === 'l' ? 'large' : 'medium'); },
-  amb: function () { try { return localStorage.getItem('beta_amb') !== '0'; } catch (e) { return true; } },
-  setAmb: function (on) { phone.classList.toggle('noamb', !on); try { localStorage.setItem('beta_amb', on ? '1' : '0'); } catch (e) {} },
   init: function () {
-    B.theme.accent(); B.theme.setGlass(B.theme.glass()); phone.style.setProperty('--fs', B.theme.FS[B.theme.fsKey()][0]); phone.classList.toggle('noamb', !B.theme.amb());
+    B.theme.accent(); phone.style.setProperty('--fs', B.theme.FS[B.theme.fsKey()][0]);
   }
 };
 // «Бегунок» сегмента (.seg > .thumb): ставится под активную кнопку
@@ -111,9 +107,6 @@ function av(o, cls) {
 
 // ── стек страниц ──
 // o: { title, back (не выводится: кнопка — стрелка), right, cap (правые кнопки капсулой), lg (большой заголовок), body, cls, nav (своя шапка), bottom, nobot }
-// Пока страницы едут (переход, свайп назад), у них временно снимается размытие под пузырями: десятки слоёв backdrop-filter на движущейся
-// странице пересчитывались каждый кадр, и свайп назад из чата подтормаживал. Класс mv держится чуть дольше анимации (.45 с)
-function moving(els) { els.forEach(function (e) { if (!e) return; e.classList.add('mv'); clearTimeout(e._mvT); e._mvT = setTimeout(function () { e.classList.remove('mv'); }, 520); }); }
 B.nav = {
   stack: [], el: null,
   init: function (stackEl) {
@@ -124,12 +117,12 @@ B.nav = {
   setRoot: function (el) { el.classList.add('base'); this.el.appendChild(el); this.stack = [{ el: el, title: 'Чаты' }]; },
   depth: function () { return this.stack.length; },
   top: function () { return this.stack[this.stack.length - 1]; },
-  amb: '<div class="amb"><i></i><i></i><i></i><i></i></div><i class="edge t"></i><i class="edge b"></i>',
+  edge: '<i class="edge t"></i>',   // краевой эффект под статус-баром iOS
   page: function (o) {
     var el = document.createElement('div'); el.className = 'page' + (o.cls ? ' ' + o.cls : '');
     var nav = o.nav || '<div class="nav' + (o.lg ? ' lg' : '') + '"><button class="nb glass gi" data-back aria-label="Назад">' + I('chevLeft') + '</button><div class="nt"><span class="glass">' + (o.title || '') + '</span></div>' +
       '<div class="nr' + (o.cap ? ' cap glass' : '') + '">' + (o.right || '') + '</div></div>';
-    el.innerHTML = B.nav.amb + nav + '<div class="scroll' + (o.nobot === false ? '' : ' nobot') + '">' + (o.lg ? '<h1 class="lt">' + o.title + '</h1>' : '') + (o.body || '') + '</div>' + (o.bottom || '');
+    el.innerHTML = B.nav.edge + nav + '<div class="scroll' + (o.nobot === false ? '' : ' nobot') + '">' + (o.lg ? '<h1 class="lt">' + o.title + '</h1>' : '') + (o.body || '') + '</div>' + (o.bottom || '');
     el._title = o.title || ''; B.nav.watch(el);
     return el;
   },
@@ -140,7 +133,7 @@ B.nav = {
   },
   push: function (el, title) {
     var prev = this.top(); if (!prev) return;
-    hideKb(); moving([el, prev.el]); el.classList.add('enter'); this.el.appendChild(el);
+    hideKb(); el.classList.add('enter'); this.el.appendChild(el);
     this.stack.push({ el: el, title: title !== undefined ? title : el._title || '' });
     void el.offsetWidth; el._t0 = performance.now();
     el.classList.remove('enter'); prev.el.classList.add('under');
@@ -149,7 +142,7 @@ B.nav = {
   pop: function () {
     if (this.stack.length < 2) return;
     hideKb();
-    var top = this.stack.pop(), under = this.top().el; moving([top.el, under]);
+    var top = this.stack.pop(), under = this.top().el;
     top.el.classList.remove('drag'); under.classList.remove('drag'); void top.el.offsetWidth;
     top.el.style.transform = 'translateX(100%)'; under.style.transform = ''; under.classList.remove('under');
     setTimeout(function () { top.el.remove(); }, 460);
@@ -179,7 +172,7 @@ B.nav = {
       if (!G || e.pointerId !== G.id) return; var g = G; G = null; if (!g.m) return;
       var dx = (e.clientX - g.x) / sc, dt = performance.now() - g.t;
       if (!c && (dx > 130 || dx / dt * sc > 0.6)) { N.pop(); return; }
-      moving([g.top, g.und]); g.top.classList.remove('drag'); g.und.classList.remove('drag'); g.top.style.transform = ''; g.und.style.transform = '';
+      g.top.classList.remove('drag'); g.und.classList.remove('drag'); g.top.style.transform = ''; g.und.style.transform = '';
     };
     host.addEventListener('pointerup', function (e) { end(e, 0); });
     host.addEventListener('pointercancel', function (e) { end(e, 1); });
@@ -228,7 +221,7 @@ B.sheet = {
     hideKb();
     var sc_ = document.createElement('div'); sc_.className = 'scrim';
     var el = document.createElement('div'); el.className = 'sheet glass-pop';
-    el.innerHTML = '<div class="gr"></div>' + (o.title ? '<h3>' + o.title + '</h3>' : '') + (o.sub ? '<div class="sub">' + o.sub + '</div>' : '') + '<div class="sb">' + (o.body || '') + '</div>';
+    el.innerHTML = '<div class="gr"></div><button class="sx" data-close aria-label="Закрыть">' + I('x') + '</button>' + (o.title ? '<h3>' + o.title + '</h3>' : '') + (o.sub ? '<div class="sub">' + o.sub + '</div>' : '') + '<div class="sb">' + (o.body || '') + '</div>';
     layer.append(sc_, el); void el.offsetWidth; sc_.classList.add('on'); el.classList.add('on');
     var S = { el: el, scrim: sc_, o: o, close: function () { B.sheet.close(); } };
     B.sheet.cur = S;
@@ -280,8 +273,8 @@ B.menu = {
     o = o || {}; B.menu.close();
     var r = rel(elem), rx = o.rx, mine = o.mine, isRow = elem.classList.contains('row');
     var L = document.createElement('div'); L.className = 'cml'; L.innerHTML = '<div class="cmb"></div>';
-    var clone = document.createElement('div'); clone.className = 'cmc' + (isRow ? ' glass grp' : ''); clone.style.cssText = 'left:' + r.x + 'px;top:' + r.y + 'px;width:' + r.w + 'px;' + (isRow ? 'border-radius:26px;overflow:hidden' : '');
-    clone.innerHTML = elem.classList.contains('bub') ? '<div class="mrow ' + (mine ? 'out' : 'in') + '" style="margin:0">' + elem.outerHTML + '</div>' : elem.outerHTML;
+    var clone = document.createElement('div'); clone.className = 'cmc' + (isRow ? ' glass grp' : ''); clone.style.cssText = 'left:' + r.x + 'px;top:' + r.y + 'px;width:' + r.w + 'px;' + (isRow ? 'border-radius:16px;overflow:hidden' : '');
+    clone.innerHTML = elem.classList.contains('bub') ? '<div class="' + (elem.closest('.mrow') ? elem.closest('.mrow').className.replace(/\s*\b(dg|hl)\b/g, '') : 'mrow ' + (mine ? 'out' : 'in')) + '" style="margin:0">' + elem.outerHTML + '</div>' : elem.outerHTML;
     var inner = clone.firstElementChild; if (inner) inner.style.pointerEvents = 'none';
     var W = 393, H = phone.offsetHeight, menuW = 250, mh = items.reduce(function (s, i) { return s + (i.sp ? 9 : 46); }, 12), rxh = rx ? 52 : 0, gap = 10;
     var chH = Math.min(r.h, 320), top = r.y, minTop = 64 + rxh + gap, maxB = H - 34 - 12;
@@ -324,10 +317,7 @@ B.menu = {
   }
 };
 
-// Блик за пальцем на интерактивном стекле; кнопка после нажатия мышью не остаётся в фокусе
-document.addEventListener('pointerdown', function (e) {
-  var g = e.target.closest('.gi'); if (g) { var r = g.getBoundingClientRect(); g.style.setProperty('--mx', (e.clientX - r.left) / sc + 'px'); g.style.setProperty('--my', (e.clientY - r.top) / sc + 'px'); }
-});
+// Кнопка после нажатия мышью не остаётся в фокусе
 document.addEventListener('click', function (e) {
   if (e.detail > 0) { var b = e.target.closest('button'); if (b && !b.matches('textarea,input')) setTimeout(function () { if (document.activeElement === b) b.blur(); }, 0); }
 });

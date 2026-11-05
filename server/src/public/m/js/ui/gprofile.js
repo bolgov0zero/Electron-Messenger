@@ -55,7 +55,7 @@ B.ui.gprofile = (function () {
     var topics = '';
     if (P.room) {
       var subs = B.chats.topicsOf(chat.id);
-      if (subs.length) topics = '<div class="gl">Темы · ' + subs.length + '</div><div class="grp glass">' + subs.map(function (t) {
+      if (subs.length) topics = '<div class="gh">Темы · ' + subs.length + '</div><div class="grp glass">' + subs.map(function (t) {
         return '<button class="mini" data-r="topic" data-id="' + t.id + '">' + B.avatar.html({ id: t.id, chat: t.id, text: '#', sq: true }) + '<span class="rt"><b>' + B.esc(t.name) + '</b><small>' + (t.last_message ? 'есть сообщения' : 'нет сообщений') + '</small></span><span class="ch">' + I('chevRight') + '</span></button>';
       }).join('') + '</div><div class="gf">Названия и порядок тем, а также режим «только чтение» меняет администратор в админке.</div>';
     }
@@ -69,9 +69,9 @@ B.ui.gprofile = (function () {
     var lf = local.filter(function (m) { return match(m, q); }), ff = fed.filter(function (m) { return match(m, q); }), pf = pend.filter(function (m) { return match(m, q); });
     var show = function (k) { return g.f === 'all' || g.f === k; }, none = '<div class="cell"><span class="cl" style="color:var(--text2)">Никого не нашли</span></div>';
     var h = '';
-    if (show('local')) h += '<div class="gl">' + (fed.length ? 'На этом сервере' : 'Участники') + ' · ' + lf.length + (lf.length !== local.length ? ' из ' + local.length : '') + '</div><div class="grp glass">' + (lf.map(function (m) { return row(m, chat, P); }).join('') || none) + (P.canEdit && g.f !== 'pend' && !q ? '<button class="mini" data-r="add"><span class="ci" style="background:var(--accent)">' + I('userPlus') + '</span><span class="rt"><b style="color:var(--accent-ink)">Добавить участников</b></span></button>' : '') + '</div>';
-    if (fed.length && show('fed')) h += '<div class="gl">С других серверов · ' + ff.length + '</div><div class="grp glass">' + (ff.map(function (m) { return row(m, chat, P); }).join('') || none) + '</div>';
-    if (pend.length && show('pend')) h += '<div class="gl">Ждут ответа · ' + pf.length + '</div><div class="grp glass">' + (pf.map(function (m) { return row(Object.assign({}, m, { federated: true }), chat, P, true); }).join('') || none) + '</div>';
+    if (show('local')) h += '<div class="gh">' + (fed.length ? 'На этом сервере' : 'Участники') + ' · ' + lf.length + (lf.length !== local.length ? ' из ' + local.length : '') + '</div><div class="grp glass">' + (lf.map(function (m) { return row(m, chat, P); }).join('') || none) + (P.canEdit && g.f !== 'pend' && !q ? '<button class="mini" data-r="add"><span class="ci" style="background:var(--accent)">' + I('userPlus') + '</span><span class="rt"><b style="color:var(--accent-ink)">Добавить участников</b></span></button>' : '') + '</div>';
+    if (fed.length && show('fed')) h += '<div class="gh">С других серверов · ' + ff.length + '</div><div class="grp glass">' + (ff.map(function (m) { return row(m, chat, P); }).join('') || none) + '</div>';
+    if (pend.length && show('pend')) h += '<div class="gh">Ждут ответа · ' + pf.length + '</div><div class="grp glass">' + (pf.map(function (m) { return row(Object.assign({}, m, { federated: true }), chat, P, true); }).join('') || none) + '</div>';
     if (P.canDelete && g.f === 'all' && !q) h += '<div class="grp glass"><button class="cell" data-r="delete"><span class="cl red">Удалить группу</span></button></div>';
     return h;
   }

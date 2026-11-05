@@ -26,7 +26,7 @@ B.ui.contacts = (function () {
       return;
     }
     var on = list.filter(function (u) { return rank(u) < 2; }), off = list.filter(function (u) { return rank(u) === 2; });
-    dyn.innerHTML = (on.length ? '<div class="gl">В сети · ' + on.length + '</div><div class="grp glass">' + on.map(row).join('') + '</div>' : '') + (off.length ? '<div class="gl">Не в сети · ' + off.length + '</div><div class="grp glass">' + off.map(row).join('') + '</div>' : '');
+    dyn.innerHTML = (on.length ? '<div class="gh">В сети · ' + on.length + '</div><div class="grp glass">' + on.map(row).join('') + '</div>' : '') + (off.length ? '<div class="gh">Не в сети · ' + off.length + '</div><div class="grp glass">' + off.map(row).join('') + '</div>' : '');
     B.avatar.apply(dyn);
   }
   function menu(row) {
