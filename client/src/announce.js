@@ -68,6 +68,11 @@ function callLinkToken(url) {
   } catch { return null; }
 }
 function joinCallLink(token) { return window.Calls?.joinLink?.(token); }
+// «Открыть в приложении» со страницы /k: звонок открывается как сотрудник; ссылка с другого сервера — подсказка
+window.electron?.onDeepLinkCall?.(url => {
+  const t = callLinkToken(url);
+  if (t) joinCallLink(t); else showActionToast('Эта ссылка с другого сервера. Войдите на нужный сервер и откройте её снова');
+});
 
 async function openAnnounce() {
   if (!annCan()) return;

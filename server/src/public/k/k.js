@@ -57,6 +57,22 @@
   function logo() { return '<div class="login-icon"><div class="login-logo"><img src="/chat/icons/icon-192.png" width="64" height="64" alt=""></div></div><h1 class="login-wordmark"><span>ELECTRON</span><span>MESSENGER</span></h1>'; }
   function gate(html) { $('k-gate').innerHTML = '<div class="login-wrap">' + logo() + html + '</div>'; }
   function closeGate() { $('k-gate').innerHTML = ''; }
+  // «Открыть в приложении»: адрес electron-messenger:// запускает установленный клиент (Electron). На телефонах кнопки нет: там просто новая сессия в браузере.
+  // Браузер не сообщает, есть ли приложение: если после нажатия окно не потеряло фокус и не скрылось — считаем, что клиент не установлен, и продолжаем в браузере
+  function appBlock() { return mobile ? '' : '<button type="button" class="k-app" id="k-app">Открыть в приложении</button><p class="k-appnote" id="k-appn" hidden></p>'; }
+  function bindApp() {
+    var b = $('k-app'); if (!b) return;
+    b.onclick = function () {
+      var n = $('k-appn'), left = false, mark = function () { left = true; };
+      n.hidden = true; n.textContent = '';
+      window.addEventListener('blur', mark, { once: true }); document.addEventListener('visibilitychange', mark, { once: true });
+      location.href = 'electron-messenger://call?u=' + encodeURIComponent(location.origin + '/k/' + token);
+      setTimeout(function () {
+        window.removeEventListener('blur', mark); document.removeEventListener('visibilitychange', mark);
+        if (!left && !document.hidden) { n.textContent = 'Клиент не установлен или не отвечает. Продолжайте в браузере.'; n.hidden = false; }
+      }, 2200);
+    };
+  }
   // Короткое сообщение — тот же #action-toast, что в веб клиенте
   var toastT = null;
   function toast(t) {
@@ -142,8 +158,8 @@
     gate('<p class="login-sub">Вас пригласили на видеозвонок' + (owner ? ': ' + esc(owner) : '') + '</p>' +
       '<form id="k-form"><div class="field"><label>Ваше имя</label><input id="k-name" placeholder="Иванов Иван" maxlength="60" autocomplete="name"></div>' +
       '<p class="k-note">Имя увидят участники звонка. Администратор должен вас впустить.</p>' +
-      '<button class="btn-login" id="k-go" type="submit" style="width:100%">Присоединиться</button><div class="k-err" id="k-err">' + esc(err || '') + '</div></form>');
-    $('k-name').focus();
+      '<button class="btn-login" id="k-go" type="submit" style="width:100%">Присоединиться</button><div class="k-err" id="k-err">' + esc(err || '') + '</div></form>' + appBlock());
+    bindApp(); $('k-name').focus();
     $('k-form').addEventListener('submit', async function (e) {
       e.preventDefault(); var name = $('k-name').value.trim();
       if (name.length < 2) { $('k-err').textContent = 'Введите имя (от 2 до 60 символов)'; return; }
@@ -206,8 +222,8 @@
     st.dk = loadDk();
     if (st.emp) {
       gate(ico('video') + '<div class="k-title">Видеозвонок' + (owner ? ': ' + esc(owner) : '') + '</div><p class="k-note">Вы вошли как ' + esc(st.emp.user.display_name) + '.</p>' +
-        '<button class="btn-login" id="k-emp" style="width:100%">Присоединиться</button><button class="k-sub" id="k-asg">Войти как гость</button>');
-      $('k-emp').onclick = joinEmployee;
+        '<button class="btn-login" id="k-emp" style="width:100%">Присоединиться</button><button class="k-sub" id="k-asg">Войти как гость</button>' + appBlock());
+      bindApp(); $('k-emp').onclick = joinEmployee;
       $('k-asg').onclick = function () { st.emp = null; guestStart(owner); };
       return;
     }

@@ -1343,10 +1343,31 @@ if (process.platform === 'win32') app.setAppUserModelId('Electron');
 
 // Одна копия приложения: повторный запуск (клик по иконке / вызов из терминала)
 // не создаёт второй процесс, а фокусит уже открытое окно.
+// «Открыть в приложении» со страницы звонка по ссылке (/k): адрес electron-messenger://call?u=<адрес страницы>.
+// Клиент открывает звонок как сотрудник (разбор ссылки — в announce.js)
+const DEEP_PROTO = 'electron-messenger';
+let pendingDeepLink = null;
+const deepLinkFrom = argv => (argv || []).find(a => typeof a === 'string' && a.startsWith(DEEP_PROTO + '://')) || null;
+function handleDeepLink(raw) {
+  let target = null;
+  try { const u = new URL(raw); if (u.protocol === DEEP_PROTO + ':' && u.hostname === 'call') target = u.searchParams.get('u'); } catch {}
+  if (!target) return;
+  const view = accountViews.get(activeAccountId);
+  if (!mainWindow || !view) { pendingDeepLink = raw; return; }   // приложение ещё запускается: повторим чуть позже
+  pendingDeepLink = null;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+  try { view.webContents.send('deeplink-call', target); } catch {}
+}
+app.on('open-url', (e, url) => { e.preventDefault(); handleDeepLink(url); });   // macOS
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_e, argv) => {
+    const d = deepLinkFrom(argv);
+    if (d) { handleDeepLink(d); return; }
     if (!mainWindow) return;
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.show();
@@ -1355,7 +1376,16 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 app.whenReady().then(() => {
+  // Регистрация адреса electron-messenger:// в системе (для собранного приложения; из исходников — с путём к скрипту)
+  try {
+    if (process.defaultApp) { if (process.argv.length >= 2) app.setAsDefaultProtocolClient(DEEP_PROTO, process.execPath, [path.resolve(process.argv[1])]); }
+    else app.setAsDefaultProtocolClient(DEEP_PROTO);
+  } catch {}
   createWindow();
+  // Холодный запуск по ссылке (Windows/Linux передают её в аргументах): ждём, пока откроется окно записи
+  const coldLink = deepLinkFrom(process.argv);
+  if (coldLink) pendingDeepLink = coldLink;
+  if (pendingDeepLink) { let n = 0; const t = setInterval(() => { if (!pendingDeepLink || ++n > 20) { clearInterval(t); return; } handleDeepLink(pendingDeepLink); }, 1000); }
   diag(`Приложение запущено, версия ${app.getVersion()}, учётных записей: ${accounts.length}`);
   createTray();
   if (shouldStartHidden()) {

@@ -13,3 +13,8 @@ body.k-body { height: 100%; margin: 0; overflow: auto; background: transparent; 
 @keyframes k-pulse { 0%, 100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.1); } }
 /* В звонке по ссылке окно не сворачивается: вернуться из свёрнутого состояния на этой странице некуда */
 .cl-win [data-cl="min"], #cl-bar { display: none !important; }
+
+/* «Открыть в приложении» на странице гостя (только компьютеры) */
+.k-app { width: 100%; height: 40px; margin-top: 10px; border-radius: 12px; border: 1px solid var(--border, rgba(127,127,127,.3)); background: none; color: var(--text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.k-app:hover { background: var(--hover-row, rgba(127,127,127,.12)); }
+.k-appnote { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); text-align: center; }

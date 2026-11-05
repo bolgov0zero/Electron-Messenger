@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('electron', {
   getPlatform: () => ipcRenderer.invoke('get-platform'),
   // macOS: выезжающая полоса шапки (см. initMacTitlebar в app.js)
   onTitlebar: cb => ipcRenderer.on('titlebar-open', (_, on) => cb(on)),
+  // «Открыть в приложении» со страницы /k: адрес страницы звонка по ссылке
+  onDeepLinkCall: cb => ipcRenderer.on('deeplink-call', (_, url) => cb(url)),
   tbDrag: on => ipcRenderer.send('tb-drag', !!on),
   tbZoom: () => ipcRenderer.send('tb-zoom'),
   sessionSave: (json) => ipcRenderer.invoke('session-save', json),
