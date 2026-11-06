@@ -53,7 +53,10 @@ async function setup() {
 }
 const warnings = cfg => [!cfg.public && 'not_public', !/^wss:/i.test(cfg.url) && 'insecure'].filter(Boolean);
 
-async function create(userId, ttlSec) {
+// Название звонка: одна строка, до 80 знаков; пустое — значит «без названия»
+const cleanTitle = v => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) : '');
+
+async function create(userId, ttlSec, title) {
   if (!(await canCreate(userId))) throw err('forbidden', 'Нет права создавать ссылки на звонок', 403);
   const cfg = await setup();
   const ttl = ttlSec === undefined || ttlSec === null || ttlSec === '' ? DEF_TTL : Math.floor(Number(ttlSec));
@@ -61,17 +64,17 @@ async function create(userId, ttlSec) {
   const n = await dal.get('SELECT COUNT(*) AS n FROM call_links WHERE created_by = ? AND closed_at IS NULL AND expires_at > ?', userId, now());
   if (Number(n.n) >= MAX_LINKS) throw err('too_many', 'Слишком много действующих ссылок: удалите ненужные', 400);
   const token = crypto.randomBytes(24).toString('base64url'), room = 'lnk-' + crypto.randomBytes(8).toString('hex'), expires = now() + ttl;
-  const r = await dal.run('INSERT INTO call_links (token, room, created_by, expires_at) VALUES (?, ?, ?, ?)', token, room, userId, expires);
-  return { id: r.lastInsertRowid, token, expires_at: expires, warnings: warnings(cfg) };
+  const r = await dal.run('INSERT INTO call_links (token, room, created_by, expires_at, title) VALUES (?, ?, ?, ?, ?)', token, room, userId, expires, cleanTitle(title) || null);
+  return { id: r.lastInsertRowid, token, expires_at: expires, title: cleanTitle(title), warnings: warnings(cfg) };
 }
 
 async function list(userId) {
-  const rows = await dal.all('SELECT id, token, created_at, expires_at FROM call_links WHERE created_by = ? AND closed_at IS NULL AND expires_at > ? ORDER BY id DESC', userId, now());
+  const rows = await dal.all('SELECT id, token, created_at, expires_at, title FROM call_links WHERE created_by = ? AND closed_at IS NULL AND expires_at > ? ORDER BY id DESC', userId, now());
   const cfg = await calls.getConfig();
   const out = [];
   for (const r of rows) {
     const c = live.get(r.id);
-    out.push({ id: r.id, token: r.token, created_at: r.created_at, expires_at: r.expires_at, live: !!c, people: c ? c.emp.size + c.guests.size : 0, waiting: (await waitingOf(r.id)).length });
+    out.push({ id: r.id, token: r.token, title: r.title || '', created_at: r.created_at, expires_at: r.expires_at, live: !!c, people: c ? c.emp.size + c.guests.size : 0, waiting: (await waitingOf(r.id)).length });
   }
   return { links: out, warnings: warnings(cfg) };
 }
@@ -129,7 +132,7 @@ async function joinEmployee(user, token, page) {
   const mine = calls.busy.get(user.id);
   if (mine && mine !== callId(link.id)) throw err('in_call', 'Вы уже в звонке');
   if (!c) {
-    c = { id: callId(link.id), linkId: link.id, room: link.room, ownerId: link.created_by, emp: new Set(), page: new Map(), guests: new Map(), names: new Map(), banned: new Set(), createdAt: now(), startedAt: Date.now(), det: null };
+    c = { id: callId(link.id), linkId: link.id, room: link.room, ownerId: link.created_by, emp: new Set(), page: new Map(), guests: new Map(), names: new Map(), banned: new Set(), createdAt: now(), startedAt: Date.now(), det: null, title: link.title || '' };
     live.set(link.id, c);
   }
   const micOnly = c.emp.size + c.guests.size >= calls.GROUP_MAX && !c.emp.has(user.id);
@@ -140,7 +143,7 @@ async function joinEmployee(user, token, page) {
   calls.note(c, 'join', user);
   await tell(c);
   return {
-    call_id: c.id, link_id: link.id, video: true, owner: user.id === c.ownerId, mic_only: micOnly || undefined, participants: people(c),
+    call_id: c.id, link_id: link.id, title: link.title || '', video: true, owner: user.id === c.ownerId, mic_only: micOnly || undefined, participants: people(c),
     waiting: user.id === c.ownerId ? await waitingOf(link.id) : undefined,
     url: cfg.url, cert_fp: cfg.certFp || undefined, quality: (await calls.getQuality()).group,
     token: calls.signToken(cfg, { identity: 'u' + user.id, name: user.display_name, room: c.room, micOnly }),
@@ -167,6 +170,7 @@ async function finish(c, reason) {
   try {
     await dal.run("UPDATE call_link_guests SET status = 'idle' WHERE link_id = ? AND status = 'in'", c.linkId);
     const names = [...c.names.values(), ...[...(c.gnames || new Map()).values()].map(n => n + ' (гость)')];
+    if (c.title && c.det) c.det.title = c.title;   // название звонка для журнала
     calls.logCall({ callerId: c.ownerId, video: true, startedAt: c.createdAt, answered: true, duration: Math.round((Date.now() - c.startedAt) / 1000), reason: 'link', kind: 'group', det: c.det, members: names });
   } catch (e) { console.warn('[Ссылки на звонок] завершение:', e.message); }
   await purge();
@@ -231,14 +235,14 @@ async function kick(userId, linkId, key) {
 }
 
 // ── Гости ──
-const gcheck = (token, dk) => dal.get('SELECT g.*, l.created_by, l.expires_at, l.closed_at, l.room AS link_room, l.id AS lid FROM call_link_guests g JOIN call_links l ON l.id = g.link_id WHERE l.token = ? AND g.device_hash = ?', String(token || ''), sha(dk || ''));
+const gcheck = (token, dk) => dal.get('SELECT g.*, l.created_by, l.expires_at, l.closed_at, l.room AS link_room, l.title AS link_title, l.id AS lid FROM call_link_guests g JOIN call_links l ON l.id = g.link_id WHERE l.token = ? AND g.device_hash = ?', String(token || ''), sha(dk || ''));
 
 // Сведения о ссылке для страницы гостя: до ввода имени
 async function peek(token) {
   const link = await dal.get('SELECT l.*, u.display_name AS owner FROM call_links l JOIN users u ON u.id = l.created_by WHERE l.token = ?', String(token || ''));
   if (!link) return { status: 404, code: 'not_found' };
   if (closed(link) && !live.has(link.id)) return { status: 410, code: 'expired' };
-  return { status: 200, owner: link.owner, expires_at: link.expires_at, live: live.has(link.id), closed: closed(link) };
+  return { status: 200, owner: link.owner, title: link.title || '', expires_at: link.expires_at, live: live.has(link.id), closed: closed(link) };
 }
 
 // Гость просит впустить. Первый раз — с именем, дальше — по ключу устройства
@@ -298,7 +302,7 @@ async function guestEnter(token, dk) {
   (c.gnames || (c.gnames = new Map())).set(g.id, g.name);   // для журнала: гость мог уже выйти к концу звонка
   c.guests.set(g.id, { name: g.name, seen: Date.now() });
   await tell(c);
-  return { call_id: c.id, video: true, mic_only: micOnly || undefined, participants: people(c), name: g.name, identity: 'g' + g.id, url: cfg.url, cert_fp: cfg.certFp || undefined, quality: (await calls.getQuality()).group,
+  return { call_id: c.id, title: g.link_title || '', video: true, mic_only: micOnly || undefined, participants: people(c), name: g.name, identity: 'g' + g.id, url: cfg.url, cert_fp: cfg.certFp || undefined, quality: (await calls.getQuality()).group,
     token: calls.signToken(cfg, { identity: 'g' + g.id, name: g.name, room: c.room, micOnly, ttl: GUEST_TOKEN_TTL }) };
 }
 async function guestLeave(token, dk) {

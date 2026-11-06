@@ -795,6 +795,7 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_call_link_guests_link ON call_link_guests(link_id);
 `);
+tryAlter('ALTER TABLE call_links ADD COLUMN title TEXT');
 
 // Ключи устройств: вход без пароля, когда токен не принят (см. devices.js). kind = 'device' — ключ пары «человек + устройство»,
 // 'profile' — ключ профиля на сетевом диске (режим «Высокая доступность»): им новый компьютер регистрирует своё устройство.

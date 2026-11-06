@@ -136,7 +136,7 @@
     closeGate();
     st.linkId = r.j.link_id; st.myName = st.emp.user.display_name;
     clearInterval(st.beatT); st.beatT = setInterval(function () { req('POST', U + '/beat', {}, st.emp.token); }, 10000);
-    Calls.joinLink(r.j, { title: 'Видеозвонок' });
+    Calls.joinLink(r.j, { title: st.title || 'Видеозвонок' });
     watchCall(function () { clearInterval(st.beatT); final('off', 'Вы вышли из звонка', 'Можно вернуться, пока ссылка действует.', { label: 'Войти снова', fn: joinEmployee }); });
     if (r.j.owner) startAdmin();
   }
@@ -155,7 +155,7 @@
 
   // ── Гость ──
   function nameForm(owner, err) {
-    gate('<p class="login-sub">Вас пригласили на видеозвонок' + (owner ? ': ' + esc(owner) : '') + '</p>' +
+    gate((st.title ? '<div class="k-title">' + esc(st.title) + '</div>' : '') + '<p class="login-sub">Вас пригласили на видеозвонок' + (owner ? ': ' + esc(owner) : '') + '</p>' +
       '<form id="k-form"><div class="field"><label>Ваше имя</label><input id="k-name" placeholder="Иванов Иван" maxlength="60" autocomplete="name"></div>' +
       '<p class="k-note">Имя увидят участники звонка. Администратор должен вас впустить.</p>' +
       '<button class="btn-login" id="k-go" type="submit" style="width:100%">Присоединиться</button><div class="k-err" id="k-err">' + esc(err || '') + '</div></form>' + appBlock());
@@ -205,7 +205,7 @@
     var r = await gpost('/enter');
     if (!r.ok) { if (r.j.code === 'not_admitted') return startGuestPoll(); if (r.j.code === 'ended') return ending('ended', { label: 'Попросить впустить снова', fn: rejoin }); return final('off', 'Не удалось войти', r.j.error || 'Попробуйте ещё раз.', { label: 'Повторить', fn: startGuestPoll }); }
     closeGate(); st.myName = st.name;
-    Calls.joinLink(r.j, { guest: true, title: 'Видеозвонок' });
+    Calls.joinLink(r.j, { guest: true, title: st.title || 'Видеозвонок' });
     watchCall(function () { post_leave(); startGuestPoll(); });
     stopPoll(); st.pollT = setInterval(async function () { var s = await gpost('/status'); if (s.ok && st.inCall && s.j.state !== 'in') Calls.hangup(); }, 4000);
   }
@@ -217,11 +217,13 @@
     var r = await req('GET', G + '/link/' + encodeURIComponent(token));
     if (!r.ok) return ending(END[r.j.code] ? r.j.code : 'not_found');
     var owner = r.j.owner;
+    st.title = r.j.title || '';
+    if (st.title) document.title = st.title;
     st.emp = await session();
     initCalls(function () { return st.mode === 'emp' ? req('POST', U + '/leave', {}, st.emp.token) : gpost('/leave'); });
     st.dk = loadDk();
     if (st.emp) {
-      gate(ico('video') + '<div class="k-title">Видеозвонок' + (owner ? ': ' + esc(owner) : '') + '</div><p class="k-note">Вы вошли как ' + esc(st.emp.user.display_name) + '.</p>' +
+      gate(ico('video') + '<div class="k-title">' + (st.title ? esc(st.title) : 'Видеозвонок' + (owner ? ': ' + esc(owner) : '')) + '</div><p class="k-note">Вы вошли как ' + esc(st.emp.user.display_name) + '.</p>' +
         '<button class="btn-login" id="k-emp" style="width:100%">Присоединиться</button><button class="k-sub" id="k-asg">Войти как гость</button>' + appBlock());
       bindApp(); $('k-emp').onclick = joinEmployee;
       $('k-asg').onclick = function () { st.emp = null; guestStart(owner); };

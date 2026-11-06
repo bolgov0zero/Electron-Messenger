@@ -205,7 +205,7 @@
     if (st.call) return toast(ERR.in_call);
     const r = await api('POST', '/calllinks/join', { token });
     if (!r || r.error) return toast(r?.error || 'Не удалось войти в звонок');
-    const name = 'Видеозвонок по ссылке', video = !r.mic_only;
+    const name = r.title || 'Видеозвонок по ссылке', video = !r.mic_only;
     const o = await el.callOpen({ quality: r.quality || qlv(true), devices: devAll(), tcp: localStorage.getItem('cl_udp') !== '1' && /^wss:/i.test(String(r.url)), url: r.url, certFp: r.cert_fp, token: r.token, video, group: true, outgoing: false, link: true, owner: !!r.owner, waiting: r.waiting || [], peer: { id: 0, name }, theme: theme() });
     if (!o?.ok) { api('POST', '/calllinks/leave', {}); return toast(ERR.in_call); }
     st.call = { id: r.call_id, linkId: r.link_id, link: true, owner: !!r.owner, waitN: (r.waiting || []).length, chatId: 0, peer: { id: 0, name }, group: true, video, outgoing: false, phase: 'connecting', mic: true, cam: video, since: 0 };

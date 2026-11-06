@@ -22,7 +22,7 @@ user.use((req, res, next) => (req.user.is_guest ? res.status(403).json({ error: 
 
 // Можно ли мне создавать ссылки и какие у меня есть
 user.get('/', wrap(async (req, res) => res.json({ can_create: await links.canCreate(req.user.id), ...(await links.list(req.user.id)) })));
-user.post('/', wrap(async (req, res) => res.json(await links.create(req.user.id, req.body?.ttl))));
+user.post('/', wrap(async (req, res) => res.json(await links.create(req.user.id, req.body?.ttl, req.body?.title))));
 user.delete('/:id', wrap(async (req, res) => res.json(await links.remove(req.user.id, req.params.id))));
 user.post('/:id/end', wrap(async (req, res) => res.json(await links.endByOwner(req.user.id, req.params.id))));
 
@@ -60,7 +60,7 @@ guest.get('/link/:token', wrap(async (req, res) => {
   if (tooMany(req, res)) return;
   const r = await links.peek(str(req.params.token, 100));
   if (r.status !== 200) return bad(req, res, r);
-  res.json({ owner: r.owner, expires_at: r.expires_at, live: r.live });
+  res.json({ owner: r.owner, title: r.title, expires_at: r.expires_at, live: r.live });
 }));
 guest.post('/join', wrap(async (req, res) => {
   if (tooMany(req, res)) return;

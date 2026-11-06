@@ -50,7 +50,7 @@ function clSetAllowed(v) {
 function openCallLinks() {
   if (!clCan() || typeof CallLinks === 'undefined') return;
   headMenuClose();
-  CallLinks.open({ base: `${httpProto()}://${S.server}`, request: async (method, path, body) => {
+  CallLinks.open({ base: `${httpProto()}://${S.server}`, join: joinCallLink, request: async (method, path, body) => {
     try {
       const res = await fetch(`${httpProto()}://${S.server}/api${path}`, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${S.token}` }, body: body ? JSON.stringify(body) : undefined });
       let data = null; try { data = await res.json(); } catch {}

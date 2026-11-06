@@ -7146,7 +7146,7 @@ function caRow(r) {
   const d = new Date(r.at * 1000), p2 = n => String(n).padStart(2, '0');
   const who = grp ? `<b>${esc(r.caller)}</b>${r.members.length ? `<span class="ca-arr">${caI.arrow}</span><span class="ca-n">${r.members.length} ${uxPlural(r.members.length, 'участник', 'участника', 'участников')}</span>` : ''}`
     : `<b>${esc(r.caller)}</b><span class="ca-arr">${caI.arrow}</span><b>${esc(r.callee)}</b>`;
-  const sub = [r.link ? 'По ссылке для гостей' : grp ? (r.kind === 'conf' ? 'Общий звонок' : 'Группа «' + esc(r.group || 'без названия') + '»') : 'Личный', r.video ? 'видео' : 'аудио'];
+  const sub = [r.link ? (r.det && r.det.title ? esc(r.det.title) : 'По ссылке для гостей') : grp ? (r.kind === 'conf' ? 'Общий звонок' : 'Группа «' + esc(r.group || 'без названия') + '»') : 'Личный', r.video ? 'видео' : 'аудио'];
   if (r.peer_server) sub.push('сервер «' + esc(r.peer_server) + '»');
   return `<div class="rb-row" data-id="${esc(String(r.id))}"><div class="pg-top ca-top" aria-expanded="${open}" data-on-click="caTog" data-a-click="${esc(JSON.stringify([r.id]))}">
     <div class="ca-ic ${res[1]}">${ic}</div>
