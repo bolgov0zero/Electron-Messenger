@@ -1228,20 +1228,27 @@ async function collectFiles() {
   for (const f of fileMap.values()) {
     let stat;
     try { stat = fs.statSync(path.join(FILES_DIR, f.filename)); } catch { continue; }
-    out.push({ ...f, size: stat.size, mtime: stat.mtimeMs });
+    // Админка не получает ни настоящего имени файла на диске (по нему он открывается по адресу /files/…), ни миниатюры, ни волны голосового:
+    // содержимое через неё узнать нельзя. Вместо имени — непрозрачный ключ с тем же расширением (по нему файл можно только удалить)
+    const { thumb, ...rest } = f;
+    out.push({ ...rest, filename: fileKey(f.filename), voice: f.voice ? { dur: f.voice.dur } : null, size: stat.size, mtime: stat.mtimeMs });
   }
   return out.sort((a, b) => b.mtime - a.mtime);
 }
+
+const fileKey = fn => crypto.createHash('sha256').update('adminfile:' + fn).digest('hex').slice(0, 20) + path.extname(fn);
+// Ключ из списка файлов → настоящее имя на диске (только среди файлов, что лежат в папке)
+const realFileName = key => { try { return fs.readdirSync(FILES_DIR).find(n => fileKey(n) === key) || null; } catch { return null; } };
 
 router.get('/files', async (req, res) => {
   res.json((await collectFiles()));
 });
 
 router.delete('/files/:filename', async (req, res) => {
-  const filename = path.basename(req.params.filename);
-  if (!filename) return res.status(400).json({ error: 'Invalid filename' });
+  const filename = realFileName(path.basename(req.params.filename));
+  if (!filename) return res.status(404).json({ error: 'Файл не найден' });
 
-  logAudit(req, 'moderation', 'Удалён файл', filename);
+  logAudit(req, 'moderation', 'Удалён файл', fileKey(filename));
   const withAtt = await dal.all('SELECT id, chat_id FROM messages WHERE deleted = 0 AND attachment LIKE ?', `%${filename}%`);
   const withFwd = await dal.all('SELECT id, chat_id, forward_data FROM messages WHERE deleted = 0 AND forward_data LIKE ?', `%${filename}%`);
 
