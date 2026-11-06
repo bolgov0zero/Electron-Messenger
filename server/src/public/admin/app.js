@@ -7077,7 +7077,7 @@ function caActiveHtml() {
       : `${a.group ? `<b>группа «${esc(a.group)}»</b> · ` : ''}${a.people.map(esc).join(', ') || '—'}${a.mirror ? ' <span class="rb-meta">· только наши люди</span>' : ''}${a.waiting?.length ? ` <span class="rb-meta">· звонят: ${a.waiting.map(esc).join(', ')}</span>` : ''}`;
     return `<div class="rb-row" style="flex:none;min-height:48px"><div style="display:flex;align-items:center;gap:14px;padding:10px 14px;flex-wrap:wrap">
       <div style="flex:1;min-width:220px;font-size:13px">${who}</div>
-      <div class="rb-meta">${a.link ? 'По ссылке' : KIND[a.kind] || ''} · ${a.video ? 'видео' : 'аудио'}</div>
+      <div class="rb-meta">${a.link ? (a.title ? esc(a.title) : 'По ссылке') : KIND[a.kind] || ''} · ${a.video ? 'видео' : 'аудио'}</div>
       <div class="rb-meta" style="font-variant-numeric:tabular-nums;min-width:90px">${a.state === 'ringing' ? 'Идёт вызов…' : 'Идёт <span data-ca-since="' + a.since + '">' + caElapsed(a.since) + '</span>'}</div>
       <button type="button" class="btn btn-ghost btn-sm" data-on-click="caEnd" data-a-click="${esc(JSON.stringify([a.id]))}">Завершить</button></div></div>`;
   }).join('');

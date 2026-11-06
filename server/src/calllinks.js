@@ -179,7 +179,7 @@ async function endAll(reason) { for (const c of [...live.values()]) await finish
 async function adminEnd(id) { const c = has(id) && live.get(Number(id.slice(5))); if (!c) return false; await finish(c, 'admin'); return true; }
 
 function activeRows() {
-  return [...live.values()].map(c => ({ id: c.id, kind: 'conf', state: 'active', video: true, since: c.startedAt, link: true, people: people(c).map(p => p.name + (p.guest ? ' (гость)' : '')) }));
+  return [...live.values()].map(c => ({ id: c.id, kind: 'conf', state: 'active', video: true, since: c.startedAt, link: true, title: c.title || '', people: people(c).map(p => p.name + (p.guest ? ' (гость)' : '')) }));
 }
 
 function beat(userId) { const c = byUser(userId); if (c && c.page.has(userId)) c.page.set(userId, Date.now()); }
