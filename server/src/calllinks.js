@@ -166,7 +166,7 @@ async function finish(c, reason) {
   await calls.killRoom(c.room);
   try {
     await dal.run("UPDATE call_link_guests SET status = 'idle' WHERE link_id = ? AND status = 'in'", c.linkId);
-    const names = [...c.names.values(), ...[...c.guests.values()].map(g => g.name + ' (гость)')];
+    const names = [...c.names.values(), ...[...(c.gnames || new Map()).values()].map(n => n + ' (гость)')];
     calls.logCall({ callerId: c.ownerId, video: true, startedAt: c.createdAt, answered: true, duration: Math.round((Date.now() - c.startedAt) / 1000), reason: 'link', kind: 'group', det: c.det, members: names });
   } catch (e) { console.warn('[Ссылки на звонок] завершение:', e.message); }
   await purge();
@@ -294,7 +294,8 @@ async function guestEnter(token, dk) {
   if (!c) throw err('ended', 'Звонок закончился', 410);
   const cfg = await setup();
   const micOnly = c.emp.size + c.guests.size >= calls.GROUP_MAX && !c.guests.has(g.id);
-  if (!c.guests.has(g.id)) calls.note(c, 'join', 'g' + g.id);
+  if (!c.guests.has(g.id)) calls.note(c, 'join', { id: 'g' + g.id, display_name: g.name });
+  (c.gnames || (c.gnames = new Map())).set(g.id, g.name);   // для журнала: гость мог уже выйти к концу звонка
   c.guests.set(g.id, { name: g.name, seen: Date.now() });
   await tell(c);
   return { call_id: c.id, video: true, mic_only: micOnly || undefined, participants: people(c), name: g.name, identity: 'g' + g.id, url: cfg.url, cert_fp: cfg.certFp || undefined, quality: (await calls.getQuality()).group,

@@ -200,7 +200,7 @@ function recordOf(c, reason, duration) {
 async function detailOf(det) {
   if (!det || !det.ev || !det.ev.length) return null;
   try {
-    for (const e of det.ev) for (const id of [e.u, e.a]) if (id && !det.nm[id]) det.nm[id] = await nameOf(id);
+    for (const e of det.ev) for (const id of [e.u, e.a]) if (id && !det.nm[id] && /^\d+$/.test(String(id))) det.nm[id] = await nameOf(id);   // гости ссылок ('g5') — не пользователи: имя берём из самой хронологии
     return JSON.stringify(det).slice(0, 20000);
   } catch { return null; }
 }

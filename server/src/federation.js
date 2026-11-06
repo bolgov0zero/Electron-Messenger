@@ -589,7 +589,7 @@ function onReply(f) {
 // Скачать файл на диск. max — предельный размер в байтах: больше не принимаем
 // Описание вложения для другого сервера: сам файл он потом запросит отдельно (op 'file', idx — номер среди нескольких)
 function describeAtt(a) {
-  const one = x => ({ name: x.name, size: x.size, mime: x.mime, w: x.width || null, h: x.height || null, thumb: !!x.thumb });
+  const one = x => ({ name: x.name, size: x.size, mime: x.mime, w: x.width || null, h: x.height || null, thumb: !!x.thumb, ...(x.voice ? { voice: x.voice } : {}) });
   const out = one(a);
   if (Array.isArray(a.more) && a.more.length) out.more = a.more.filter(x => x && x.url).map(one);
   return out;
@@ -1039,11 +1039,37 @@ async function receiveAttachments(peer, uid, a, extra = {}) {
   }
   return first;
 }
+// Голосовое сообщение с другого сервера: свои правила (как в routes/upload.js), настройки расширений файлов не действуют
+async function receiveVoice(peer, uid, a, idx, extra) {
+  const mime = str(a.mime, 100).split(';')[0].trim().toLowerCase();
+  const dur = Math.min(600, Math.max(1, Math.round(Number(a.voice.dur)) || 1));
+  const meta = { name: 'voice', size: Math.max(0, Math.floor(Number(a.size)) || 0), mime };
+  const max = Math.min(5 * 1024 * 1024, 100 * 1024 + dur * 16 * 1024);
+  if (!/^audio\/(webm|ogg|mp4)$/.test(mime) || !meta.size || meta.size > max) return { ...meta, unavailable: 'policy' };
+  const ext = mime === 'audio/webm' ? '.webm' : mime === 'audio/ogg' ? '.ogg' : '.m4a';
+  const fname = `${Date.now()}_${crypto.randomBytes(12).toString('hex')}${ext}`;
+  const dest = path.join(FILES_DIR, fname);
+  try {
+    const r = await fetchFile(peer.id, { uid, which: 'file', idx, ...extra }, dest, max);
+    if (!r.size) throw new Error('empty');
+    const head = Buffer.alloc(12), fd = fs.openSync(dest, 'r');
+    try { fs.readSync(fd, head, 0, 12, 0); } finally { fs.closeSync(fd); }
+    const ok = mime === 'audio/webm' ? head.readUInt32BE(0) === 0x1A45DFA3 : mime === 'audio/ogg' ? head.toString('latin1', 0, 4) === 'OggS' : head.toString('latin1', 4, 8) === 'ftyp';
+    if (!ok) throw new Error('bad');
+  } catch (e) {
+    try { fs.unlinkSync(dest); } catch {}
+    return { ...meta, unavailable: e.message === 'too_big' || e.message === 'bad' ? 'policy' : 'fetch' };
+  }
+  const out = require('./attach').sanitize({ url: `/files/${fname}`, mime, size: fs.statSync(dest).size, voice: a.voice });
+  if (!out) { try { fs.unlinkSync(dest); } catch {} return { ...meta, unavailable: 'policy' }; }
+  return out;
+}
 async function receiveAttachment(peer, uid, a, idx = 0, extra = {}) {
   const name = str(a.name, 200) || 'file';
   const size = Math.max(0, Math.floor(Number(a.size)) || 0);
   const mime = str(a.mime, 100);
   const meta = { name, size, mime };
+  if (a.voice && typeof a.voice === 'object') return await receiveVoice(peer, uid, a, idx, extra);   // голосовые принимаем всегда, мимо списка расширений
   const cfg = await uploadCfg();
   const kind = mime.startsWith('image/') ? 'image' : mime.startsWith('video/') ? 'video' : 'file';
   const c = cfg[kind];
