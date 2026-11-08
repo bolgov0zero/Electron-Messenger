@@ -1,4 +1,4 @@
-// /m — панель пространств: список чатов сдвигается вправо до середины окна и открывает слева выбор пространства.
+// /m — панель пространств: список чатов сдвигается вправо на 70% окна и открывает слева выбор пространства.
 // Открывается свайпом вправо по списку (за пальцем), закрывается свайпом влево, нажатием на сдвинутый список или выбором.
 // Работает при включённом «Отображать пространства» (Настройки), только на корневом экране вкладки «Чаты».
 B.ui = B.ui || {};
@@ -41,7 +41,7 @@ B.ui.spaces = (function () {
     tv.style.transform = x ? 'translateX(' + x + 'px)' : '';
     tv.style.boxShadow = x ? '-10px 0 28px rgba(0,0,0,' + (.28 * Math.min(1, x / Math.max(1, W))).toFixed(2) + ')' : '';
   }
-  function width() { return Math.round((tv.offsetWidth || window.innerWidth) / 2); }
+  function width() { return Math.round((tv.offsetWidth || window.innerWidth) * 0.7); }
   function open() {
     if (!SP.shown() || !ensure() || B.nav.depth() > 1) return;
     clearTimeout(closeT); W = width(); paint();
