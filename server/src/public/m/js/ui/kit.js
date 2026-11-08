@@ -74,6 +74,7 @@ B.theme = {
     root.classList.toggle('dark', t !== 'light'); root.classList.toggle('navy', t === 'navy');
     var link = document.getElementById('manifest-link'); if (link) link.href = t === 'light' ? '/m/manifest-light.json' : '/m/manifest-navy.json';
     B.theme.accent();
+    if (B.appearance) B.appearance.apply();   // узор фона переписки красится по теме: при смене темы пересчитываем
   },
   set: function (pref) {
     if (pref !== 'system' && pref !== 'light' && pref !== 'navy') return;
