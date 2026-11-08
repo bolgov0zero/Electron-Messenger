@@ -435,7 +435,7 @@ html:not(.dark) .edge.t{--ea:.46}
 .fpv{padding:10px 16px 2px;font-size:14px}.fpv[hidden]{display:none}
 .fpl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .fpb{color:var(--text);line-height:1.4;max-height:90px;overflow:auto;word-break:break-word}.fpb .fe{color:var(--muted)}
-.fpb code{font-family:ui-monospace,Menlo,monospace;font-size:13px;padding:1px 6px;border-radius:6px;background:var(--gl-card2)}
+.fpb code{font-family:ui-monospace,Menlo,monospace;font-size:13px;padding:1px 6px;border-radius:6px;background:color-mix(in srgb,var(--read) 32%,transparent)}
 .fpb pre{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;padding:8px 10px;border-radius:12px;background:var(--gl-card);margin:4px 0;white-space:pre-wrap}
 .fpb .sec{filter:blur(5px);background:var(--gl-card2);border-radius:6px;padding:0 3px}
 
