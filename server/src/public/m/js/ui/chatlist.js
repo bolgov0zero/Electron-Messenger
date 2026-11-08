@@ -1,4 +1,4 @@
-// /m — вкладка «Чаты» по макету: большой заголовок, поиск, чипы пространства и папок, список карточками, меню по долгому нажатию.
+// /m — вкладка «Чаты» по макету: большой заголовок, поиск, чипы папок, список карточками, меню по долгому нажатию.
 // Данные и действия — B.chats (core/chats.js).
 B.ui = B.ui || {};
 B.ui.chatlist = (function () {
@@ -52,7 +52,6 @@ B.ui.chatlist = (function () {
     var h = '';
     if (B.conn && B.conn.state === 'offline') h += '<div class="nbanner glass">' + I('bellOff') + '<span><b>Нет связи с сервером.</b> Показаны сохранённые чаты.</span></div>';
     if (B.push.shouldAsk() && !q) h += '<div class="nbanner glass">' + I('bell') + '<span>Разрешите уведомления, чтобы получать сообщения в фоне. <b data-act="allow">Разрешить</b></span><button class="ibtn" data-act="hidepush" aria-label="Закрыть">' + I('x') + '</button></div>';
-    if (B.spaces.shown() && !q) h += '<div class="chips"><button class="chip on" data-act="space">' + I('grid') + B.esc(B.spaces.label()) + I('chevDown') + '</button></div>';
     if (!q) h += B.ui.folders.barHtml();
     return h;
   }
@@ -101,15 +100,6 @@ B.ui.chatlist = (function () {
       else B.toast.show('Чат удалён', 'trash');
     });
   }
-  function spaceSheet() {
-    var SP = B.spaces, item = function (id, name, sub, on, n) {
-      return '<button class="cell" data-sp="' + id + '"><span class="cl">' + B.esc(name) + (sub ? '<br><small style="color:var(--text2);font-weight:400">' + B.esc(sub) + '</small>' : '') + '</span>' + (n ? '<span class="bd">' + (n > 99 ? '99+' : n) + '</span>' : '') + (on ? '<span class="ch" style="color:var(--accent-ink)">' + I('check') + '</span>' : '') + '</button>';
-    };
-    var S = B.sheet.open({ title: 'Пространство', sub: 'Останутся люди и чаты из выбранного пространства', body: '<div class="grp glass">' + item('all', 'Общий вид', 'Все чаты и контакты', SP.filter === 'all', SP.unread('all')) +
-      SP.list.map(function (s) { return item(s.id, s.name, s.shared ? 'Общее · ' + s.servers + ' серв.' : s.people + ' чел.', SP.filter === s.id, SP.unread(s.id)); }).join('') + '</div>' });
-    S.el.addEventListener('click', function (e) { var b = e.target.closest('[data-sp]'); if (!b) return; SP.select(b.dataset.sp === 'all' ? 'all' : +b.dataset.sp); B.sheet.close(); });
-  }
-
   function onInput() {
     q = input.value.trim().toLowerCase(); results = null; clearTimeout(searchT);
     dyn.innerHTML = listHtml(); bar.innerHTML = barHtml(); B.avatar.apply(dyn);
@@ -135,13 +125,14 @@ B.ui.chatlist = (function () {
       var a = e.target.closest('[data-act]');
       if (a) {
         var k = a.dataset.act;
-        if (k === 'compose') B.ui.groups.newChat(); else if (k === 'space') spaceSheet();
+        if (k === 'compose') B.ui.groups.newChat();
         else if (k === 'allow') B.push.request().then(render); else if (k === 'hidepush') { B.push.dismissAsk(); render(); }
         return;
       }
       var r = e.target.closest('.row'); if (r) { hideKb(); B.openChat(+r.dataset.id, r.dataset.msg ? +r.dataset.msg : undefined); }
     });
     longPress(v, '.row', chatMenu);
+    if (B.ui.spaces) B.ui.spaces.attach(v);
     render();
   }
   ['chats:changed', 'folders:changed', 'spaces:changed', 'presence:changed', 'typing:changed', 'conn:changed'].forEach(function (ev) { B.bus.on(ev, schedule); });
