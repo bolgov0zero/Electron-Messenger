@@ -455,7 +455,7 @@ html .cl-gt{border-radius:6px}
 
 /* ───── панель пространств: список чатов сдвигается вправо и открывает её слева (js/ui/spaces.js) ───── */
 .tabview[data-tab="chats"]{touch-action:pan-y}
-.tabview[data-tab="chats"].spslide{background:var(--app-bg);z-index:2}
+.tabview[data-tab="chats"].spslide{background:var(--side-bg);z-index:2}
 .tabview.sp-open>*{pointer-events:none}
 .spdr{position:absolute;left:0;top:0;bottom:0;width:50%;visibility:hidden;overflow-y:auto;background:var(--app-bg);padding:calc(var(--sat,env(safe-area-inset-top,0px)) + 64px) 10px 110px}
 .spdr .gf{padding:10px 6px;font-size:12px;line-height:1.4;color:var(--muted)}
