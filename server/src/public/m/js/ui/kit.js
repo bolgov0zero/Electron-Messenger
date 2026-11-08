@@ -60,19 +60,19 @@ function hideKb() {
 // Тема: «Система» (следует за темой устройства: светлая или тёмная) / «Светлая» / «Синяя». Выбор хранится в beta_theme (system, light, navy);
 // общая с /chat настройка (electron_v2.settings.theme) получает light или dark по действующей теме
 B.theme = {
-  TC: { light: '#ece9e4', dark: '#131211', navy: '#10161d' },
+  TC: { light: '#ece9e4', navy: '#10161d' },
   // выбор человека: system | light | navy (прежнее «dark» читается как «system»)
   pref: function () { var v = null; try { v = localStorage.getItem('beta_theme'); } catch (e) {} return v === 'light' || v === 'navy' || v === 'system' ? v : v === 'dark' ? 'system' : (B.theme._shared() === 'light' ? 'light' : 'system'); },
   _shared: function () { try { var s = JSON.parse(localStorage.getItem(B.SESSION_KEY) || '{}'); return s.settings && s.settings.theme; } catch (e) { return null; } },
   sysDark: function () { try { return !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches); } catch (e) { return false; } },
-  // действующая тема: light | dark | navy
-  get: function () { return root.classList.contains('navy') ? 'navy' : root.classList.contains('dark') ? 'dark' : 'light'; },
-  effective: function () { var p = B.theme.pref(); return p === 'system' ? (B.theme.sysDark() ? 'dark' : 'light') : p; },
+  // действующая тема: light | navy (класс dark означает «любая тёмная», сейчас это только navy)
+  get: function () { return root.classList.contains('dark') ? 'navy' : 'light'; },
+  effective: function () { var p = B.theme.pref(); return p === 'system' ? (B.theme.sysDark() ? 'navy' : 'light') : p; },
   apply: function () {
     var t = B.theme.effective();
-    var m = document.getElementById('theme-color-meta'); if (m) m.setAttribute('content', B.theme.TC[t] || B.theme.TC.dark);
+    var m = document.getElementById('theme-color-meta'); if (m) m.setAttribute('content', B.theme.TC[t] || B.theme.TC.navy);
     root.classList.toggle('dark', t !== 'light'); root.classList.toggle('navy', t === 'navy');
-    var link = document.getElementById('manifest-link'); if (link) link.href = t === 'light' ? '/m/manifest-light.json' : t === 'navy' ? '/m/manifest-navy.json' : '/m/manifest.json';
+    var link = document.getElementById('manifest-link'); if (link) link.href = t === 'light' ? '/m/manifest-light.json' : '/m/manifest-navy.json';
     B.theme.accent();
   },
   set: function (pref) {

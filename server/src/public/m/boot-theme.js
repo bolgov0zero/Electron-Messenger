@@ -1,5 +1,5 @@
 // Тема — до первой отрисовки, без вспышки. Настройка общая с /chat и /m (electron_v2 → settings.theme):
-// «light» — светлая, любое другое значение (dark, night) — тёмно-синяя.
+// «light» — светлая, любое другое значение — тёмно-синяя (единственная тёмная тема).
 (function () {
   // Выбор темы: system (следует за системной), light или navy. Прежнее «dark» читается как «система»
   var pref = 'system';
@@ -10,7 +10,7 @@
   try { var bt = localStorage.getItem('beta_theme'); if (bt === 'light' || bt === 'navy' || bt === 'system') pref = bt; else if (bt === 'dark') pref = 'system'; } catch (e) {}
   var sysDark = false;
   try { sysDark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
-  var t = pref === 'system' ? (sysDark ? 'dark' : 'light') : pref;
+  var t = pref === 'system' ? (sysDark ? 'navy' : 'light') : pref;
   var dark = t !== 'light';
   document.documentElement.classList.toggle('dark', dark);
   document.documentElement.classList.toggle('navy', t === 'navy');
@@ -25,9 +25,9 @@
   // при запуске — поэтому <link rel="manifest"> ставим сами, сразу под нужную тему
   var link = document.createElement('link');
   link.rel = 'manifest'; link.id = 'manifest-link';
-  link.href = t === 'navy' ? '/m/manifest-navy.json' : dark ? '/m/manifest.json' : '/m/manifest-light.json';
+  link.href = dark ? '/m/manifest-navy.json' : '/m/manifest-light.json';
   document.head.appendChild(link);
   var meta = document.createElement('meta');
-  meta.name = 'theme-color'; meta.id = 'theme-color-meta'; meta.content = t === 'navy' ? '#10161d' : dark ? '#131211' : '#ece9e4';
+  meta.name = 'theme-color'; meta.id = 'theme-color-meta'; meta.content = dark ? '#10161d' : '#ece9e4';
   document.head.appendChild(meta);
 })();

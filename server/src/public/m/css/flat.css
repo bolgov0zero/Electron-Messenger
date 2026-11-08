@@ -43,9 +43,9 @@
 html.dark{
   --accent:#29d6b8;--accent-rgb:41,214,184;--danger:#ef6f6f;
   --tag-1:125,136,191;--tag-2:98,218,98;--tag-3:218,150,98;--tag-4:98,218,210;--tag-5:218,98,150;
-  --app-bg:#131211;--side-bg:#1d1c1a;--card-bg:#1d1c1a;--modal-bg:#1d1c1a;--chat-bg:#181715;--bubble-bg:#2a2825;
-  --text:#f2efeb;--text2:#b4aea6;--muted:#968f86;
-  --surf2:#292724;--sel:#2b2926;
+  --app-bg:#10161d;--side-bg:#18202a;--card-bg:#18202a;--modal-bg:#18202a;--chat-bg:#0f1b27;--bubble-bg:#213040;
+  --text:#eef2f6;--text2:rgba(238,242,246,.74);--muted:rgba(238,242,246,.56);
+  --surf2:#222d3a;--sel:#243242;
   --accent-fill:color-mix(in srgb,var(--accent) 70%,#000);
   --accent-ink:color-mix(in srgb,var(--accent) 70%,#fff);
   --flat-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
@@ -59,11 +59,6 @@ html.dark{
   --gl-shadow:rgba(0,0,0,.5);--gl-hov:color-mix(in srgb,var(--text) 7%,transparent);
   --scrim:rgba(0,0,0,.5);
   --ok:#3aae68;--no:#e05a5a;--vpanel:#2a2724;--vbtn:#3b3733;--vbtn2:#48433d;
-}
-html.dark.navy{
-  --app-bg:#10161d;--side-bg:#18202a;--card-bg:#18202a;--modal-bg:#18202a;--chat-bg:#0f1b27;--bubble-bg:#213040;
-  --text:#eef2f6;--text2:rgba(238,242,246,.74);--muted:rgba(238,242,246,.56);
-  --surf2:#222d3a;--sel:#243242;
 }
 html,body{background:var(--app-bg)}   /* цвет html виден голой полосой, если iOS даст окну короче экрана (PLAN 4.1): тот же, что у theme-color, манифеста и splash */
 html.dark .sep,.sep{background:var(--gl-lo)}
