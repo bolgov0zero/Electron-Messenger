@@ -6,7 +6,7 @@ html.guest:not(.g-topics) .chat-main { width: 100% !important; max-width: none !
 html.guest.g-topics .sidebar-head .topbar-actions, html.guest.g-topics .sidebar-tabbar, html.guest.g-topics #chats-list, html.guest.g-topics .strip-back { display: none !important; }
 /* Сверху сайдбара — таймер вместо кнопок; в шапке чата он нужен только на узком экране, где список скрыт */
 html.guest.g-topics .chat-header-actions { display: none !important; }
-.g-back { display: none; flex: none; align-items: center; justify-content: center; width: 28px; height: 28px; margin: 0 -4px 0 -2px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
+.g-back { display: none; flex: none; align-items: center; justify-content: center; width: 28px; height: 28px; margin: 0 -4px 0 -2px; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
 .g-back:hover { background: var(--gl-card2, var(--hover-row)); color: var(--text); }
 @media (max-width: 700px) {
   html.guest.g-topics .sidebar { width: auto; min-width: 0; flex: 1; margin: 12px; position: static; }
@@ -23,18 +23,18 @@ html.guest #ctx-forward-btn, html.guest #ctx-menu button[onclick="ctxTogglePin()
 html.guest .pin-bar button, html.guest #chats-list { display: none !important; }
 
 /* Вход и итоговые экраны */
-#g-gate { position: fixed; inset: 0; z-index: 9000; background: color-mix(in srgb, var(--chat-bg) 30%, transparent); -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; overflow: auto; }
+#g-gate { position: fixed; inset: 0; z-index: 9000; background: var(--app-bg); display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; overflow: auto; }
 #g-gate .login-wrap { margin: auto; }
-.g-note { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 6px 0 14px; text-align: center; }
+.g-note { color: var(--text2); font-size: 13px; line-height: 1.5; margin: 6px 0 14px; text-align: center; }
 .g-err { color: var(--danger, #d23737); font-size: 13px; min-height: 18px; text-align: center; margin-top: 10px; }
-.g-end-icon { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--gl2); color: var(--accent-ink, var(--accent)); margin: 0 auto 14px; border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 0 var(--gl-hi), 0 8px 20px var(--gl-shadow); }
-.g-warn { background: color-mix(in srgb, #e8a33a 14%, var(--gl-card)); border: 1px solid color-mix(in srgb, #e8a33a 38%, var(--gl-edge)); box-shadow: inset 0 1px 0 var(--gl-hi); color: var(--text); border-radius: 18px; padding: 12px 14px; font-size: 12.5px; line-height: 1.5; margin: 12px 0 4px; }
-.g-warn b { display: block; color: #e8a33a; font-size: 13px; margin-bottom: 2px; }
+.g-end-icon { width: 56px; height: 56px; border-radius: var(--r-card, 16px); display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-ink); margin: 0 auto 14px; border: 0; box-shadow: none; }
+.g-warn { background: color-mix(in srgb, var(--presence-away) 14%, var(--side-bg)); border: 0; box-shadow: none; color: var(--text); border-radius: var(--r-card, 16px); padding: 12px 14px; font-size: 12.5px; line-height: 1.5; margin: 12px 0 4px; }
+.g-warn b { display: block; color: color-mix(in srgb, var(--presence-away) 80%, var(--text)); font-size: 13px; margin-bottom: 2px; }
 
 /* Сколько ещё действует ссылка: правый блок шапки, такой же, как блок с кнопками в /chat */
 .g-timer { display: flex; align-items: center; gap: 8px; padding: 0 14px 0 12px; height: 100%; color: var(--muted); font-size: 12px; white-space: nowrap; }
-.g-timer svg { flex: none; color: var(--accent); }
-.g-timer b { font-size: 14px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.g-timer svg { flex: none; color: var(--accent-ink); }
+.g-timer b { font-size: 14px; font-weight: 700; color: var(--accent-ink); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
 .g-timer.low b, .g-timer.low svg { color: var(--danger, #d23737); }
 @media (max-width: 520px) { .g-timer span { display: none; } }
 

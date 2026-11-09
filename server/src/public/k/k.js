@@ -4,21 +4,23 @@
 (function () {
   'use strict';
   // Оформление как в веб клиенте: тема, акцент, плотность стекла и размер шрифта берутся из настроек этого браузера, а без них — по системной теме
-  (function look() {
+  function look() {
     var s = null; try { s = JSON.parse(localStorage.getItem('electron_v2') || 'null'); } catch (e) {}
     var set = (s && s.settings) || {}, h = document.documentElement;
-    var t = set.theme || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    var dark = t === 'dark' || t === 'navy';
-    if (dark) h.classList.add('dark'); if (t === 'navy') h.classList.add('navy'); h.classList.add('font-' + (set.fontSize || 'medium'));
+    // Тема как в веб клиенте: «Система» (по устройству) / «Светлая» / «Тёмно-синяя» (прежнее «dark» читается как «система»)
+    var pref = set.theme === 'light' || set.theme === 'navy' ? set.theme : 'system', mq = window.matchMedia && matchMedia('(prefers-color-scheme: dark)');
+    var dark = pref === 'navy' || (pref === 'system' && !!(mq && mq.matches));
+    h.classList.toggle('dark', dark); h.classList.toggle('navy', dark); h.classList.add('font-' + (set.fontSize || 'medium'));
     h.style.colorScheme = dark ? 'dark' : 'light';
+    var tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.content = dark ? '#10161d' : '#ece9e4';
     var AC = { teal: [[29, 168, 140], [41, 214, 184]], indigo: [[92, 96, 205], [143, 148, 245]], plum: [[146, 84, 190], [196, 146, 240]], amber: [[186, 120, 38], [236, 176, 92]] };
     var key = 'teal'; try { var v = localStorage.getItem('accent'); if (AC[v]) key = v; } catch (e) {}
     var c = AC[key][dark ? 1 : 0], hex = '#' + c.map(function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''), rgba = function (a) { return 'rgba(' + c.join(',') + ',' + a + ')'; };
     var st = h.style; st.setProperty('--accent', hex); st.setProperty('--accent-rgb', c.join(',')); st.setProperty('--primary', hex); st.setProperty('--accent-soft', rgba(.12)); st.setProperty('--primary-light', rgba(.10));
     st.setProperty('--accent-border', rgba(.28)); st.setProperty('--accent-shadow', rgba(.22)); st.setProperty('--blob1', rgba(.12));
-    h.classList.toggle('gl-noimg', set.glassImage === false);
-    st.setProperty('--gl-k', Math.max(.15, 1.9 - .018 * (set.glassTransparency == null ? 50 : Math.min(100, Math.max(0, +set.glassTransparency)))).toFixed(3));
-  })();
+  }
+  look();
+  try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', look); } catch (e) {}
   var token = decodeURIComponent(location.pathname.split('/')[2] || '');
   var KEY = 'ck_dk:' + token.slice(0, 16), CK = 'ckd_' + token.slice(0, 16);
   var G = '/api/calllink-guest', U = '/api/calllinks';

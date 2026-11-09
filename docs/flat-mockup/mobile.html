@@ -606,24 +606,22 @@ html:not(.dark) .edge.t{--ea:.46}
 
 /* ── объявления ── */
 .annb { display: flex; align-items: center; gap: 10px; padding: 10px 6px 10px 14px; border-radius: 24px; pointer-events: auto; touch-action: pan-x; color: var(--text); font-size: 14.5px; font-weight: 500; line-height: 1.35;
-  background: radial-gradient(120% 90% at 0% 0%, var(--gl-spec), transparent 55%), color-mix(in srgb, var(--danger) 16%, var(--gl-pop)); border: 1px solid var(--danger-border);
-  -webkit-backdrop-filter: blur(calc(var(--gl-blur) + 6px)) saturate(190%); backdrop-filter: blur(calc(var(--gl-blur) + 6px)) saturate(190%);
-  box-shadow: inset 0 1px 0 var(--gl-hi), 0 12px 32px var(--gl-shadow); opacity: 0; transform: translateY(-140%); transition: transform .5s var(--ease), opacity .25s; }
+  background: color-mix(in srgb, var(--danger) 16%, var(--gl-pop)); border: 1px solid var(--danger-border);
+  box-shadow: 0 12px 32px var(--gl-shadow); opacity: 0; transform: translateY(-140%); transition: transform .5s var(--ease), opacity .25s; }
 #ann-banners { position: absolute; left: 12px; right: 12px; top: calc(var(--sat) + 8px); z-index: 55; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
 .annb.on { opacity: 1; transform: none; }
 .annb-i { flex: none; width: 18px; height: 18px; color: var(--danger); display: grid; place-items: center; } .annb-i svg { width: 17px; height: 17px; }
 .annb-t { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .annb-x { flex: none; width: 36px; height: 36px; border-radius: 50%; color: var(--text2); display: grid; place-items: center; } .annb-x svg { width: 15px; height: 15px; }
-.annp { position: absolute; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--scrim); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); opacity: 0; transition: opacity .22s; }
+.annp { position: absolute; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--scrim); opacity: 0; transition: opacity .22s; }
 .annp.on { opacity: 1; }
-.annp-c { width: min(330px, 100%); padding: 22px 20px 16px; border-radius: var(--r-sheet); color: var(--text); background: radial-gradient(120% 80% at 0% 0%, var(--gl-spec), transparent 55%), color-mix(in srgb, var(--danger) 12%, var(--gl-pop)); border: 1px solid var(--danger-border);
-  -webkit-backdrop-filter: blur(calc(var(--gl-blur) + 6px)) saturate(190%); backdrop-filter: blur(calc(var(--gl-blur) + 6px)) saturate(190%); box-shadow: inset 0 1px 0 var(--gl-hi), 0 24px 60px var(--gl-shadow);
+.annp-c { width: min(330px, 100%); padding: 22px 20px 16px; border-radius: var(--r-sheet); color: var(--text); background: color-mix(in srgb, var(--danger) 12%, var(--gl-pop)); border: 1px solid var(--danger-border); box-shadow: 0 24px 60px var(--gl-shadow);
   transform: scale(.92) translateY(12px); opacity: 0; transition: transform .38s var(--ease), opacity .2s; }
 .annp.on .annp-c { transform: none; opacity: 1; }
 .annp-h { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: var(--danger); }
 .annp-r { width: 30px; height: 30px; border-radius: 50%; background: var(--danger-bg); border: 1px solid var(--danger-border); display: grid; place-items: center; flex: none; } .annp-r svg { width: 15px; height: 15px; }
 .annp-t { margin-top: 12px; font-size: 15px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 50vh; overflow: auto; }
-.annp-ok { margin-top: 16px; width: 100%; height: 48px; border-radius: 999px; font-size: 16px; font-weight: 600; color: #fff; background: linear-gradient(140deg, var(--gl-out-a), var(--gl-out-b)); border: 1px solid rgba(255, 255, 255, .35); }
+.annp-ok { margin-top: 16px; width: 100%; height: 48px; border-radius: 999px; font-size: 16px; font-weight: 600; color: #fff; background: var(--accent-fill); border: 1px solid rgba(255, 255, 255, .35); }
 
 
 /* токены (из клиента /m, область чата) */
@@ -1250,7 +1248,8 @@ html.dark .accr.on .acct::after{background:var(--gl-card2)}
 .fld,.fld.m,.srch,.ep-s,.ann-ta{border:0;box-shadow:none;border-radius:12px;background:var(--surf2)}
 .fld:focus-within,.srch:focus-within,.ep-s:focus-within{box-shadow:0 0 0 2px var(--accent)}
 .sx,.gl-bg .gl-x{width:36px;height:36px;min-width:36px;min-height:36px;padding:0;border-radius:12px;background:var(--surf2);color:var(--text2);display:grid;place-items:center;font-size:18px;line-height:1;border:0;flex:none}
-.sx svg{width:18px;height:18px}
+.sx svg,.gl-bg .gl-x svg,.annb-x svg{width:18px;height:18px}
+.annb-x{width:36px;height:36px;border-radius:12px;background:var(--surf2);color:var(--text2)}
 .sx{position:absolute;top:12px;right:12px;z-index:3}
 .sheet h3{padding:0 44px}
 .gl-bg .gl-h{padding:12px 12px 6px 20px}
@@ -2468,7 +2467,7 @@ html .annp-c{-webkit-backdrop-filter:none;backdrop-filter:none}
     ensureCss();
     var bg = document.createElement('div'); bg.className = 'gl-bg';
     bg.className += /^\/admin/.test(location.pathname) ? ' gl-adm' : true ? ' gl-m' : '';
-    bg.innerHTML = '<div class="gl" role="dialog" aria-label="Гостевая ссылка"><div class="gl-h"><div class="tt"><b>Гостевая ссылка</b><small>' + esc(o.chatName || 'чат') + '</small></div><button class="gl-x" aria-label="Закрыть">✕</button></div>' +
+    bg.innerHTML = '<div class="gl" role="dialog" aria-label="Гостевая ссылка"><div class="gl-h"><div class="tt"><b>Гостевая ссылка</b><small>' + esc(o.chatName || 'чат') + '</small></div><button class="gl-x" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>' +
       '<div class="gl-top">' + selHtml('ttl', TTLS, 2, 'Срок ссылки') + '<button class="gl-btn" id="gl-make">Создать ссылку</button><span class="gl-sp"></span><button type="button" class="gl-ib" id="gl-info" aria-expanded="false" title="Как это работает">' + IC.info + '</button></div>' +
       '<div class="gl-b"><p class="gl-note" id="gl-note" hidden>Человек без учётной записи входит по ссылке в этот чат на время: пишет и отвечает, но не видит прошлой переписки и профилей. Одна ссылка — один гость, и работает она только с его устройства.</p><div class="gl-err" id="gl-err"></div>' +
       '<div id="gl-new"></div><div class="gl-list" id="gl-list"></div></div></div>';
@@ -2606,6 +2605,7 @@ html .annp-c{-webkit-backdrop-filter:none;backdrop-filter:none}
     '.cll button.gl-btn.cll-no,.cll button.gl-btn.cll-act,.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-no:not(.gl-ic),.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-act:not(.gl-ic){border:1px solid var(--gl-bd);background:transparent;color:var(--gl-tx)}' +
     '.cll button.gl-btn.cll-no:hover:not(:disabled),.cll button.gl-btn.cll-act:hover:not(:disabled){background:var(--gl-hv);filter:none}' +
     '.cll button.gl-btn.cll-yes,.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-yes:not(.gl-ic){border:1px solid var(--gl-bad);background:var(--gl-bad);color:#fff}' +
+    '.cll .cll-nm{flex:1 1 200px;min-width:0}.cll .cll-tt{font-size:var(--gl-fs);font-weight:600;overflow-wrap:anywhere}' +
     '.cll .cll-warn{color:var(--gl-wn);font-size:calc(var(--gl-fs) - .5px);line-height:1.45;margin:0}';
   var IC_X = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
 
@@ -2614,8 +2614,8 @@ html .annp-c{-webkit-backdrop-filter:none;backdrop-filter:none}
     if (window.GuestLinks && GuestLinks.ensureCss) GuestLinks.ensureCss();
     if (!document.getElementById('cll-css')) { var st = document.createElement('style'); st.id = 'cll-css'; st.textContent = CSS; document.head.appendChild(st); }
     var bg = document.createElement('div'); bg.className = 'gl-bg' + (true ? ' gl-m' : '');
-    bg.innerHTML = '<div class="gl cll" role="dialog" aria-label="Ссылка на видеозвонок"><div class="gl-h"><div class="tt"><b>Ссылка на видеозвонок</b><small>Для гостей без учётной записи</small></div><button class="gl-x" aria-label="Закрыть">✕</button></div>' +
-      '<div class="gl-top"><select class="cll-ttl" aria-label="Срок ссылки">' + TTLS.map(function (t, i) { return '<option value="' + t[1] + '"' + (i === 2 ? ' selected' : '') + '>' + t[0] + '</option>'; }).join('') + '</select><button class="gl-btn" id="cll-make">Создать ссылку</button><span class="gl-sp"></span></div>' +
+    bg.innerHTML = '<div class="gl cll" role="dialog" aria-label="Ссылка на видеозвонок"><div class="gl-h"><div class="tt"><b>Ссылка на видеозвонок</b><small>Для гостей без учётной записи</small></div><button class="gl-x" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>' +
+      '<div class="gl-top"><input class="cll-nm" id="cll-nm" maxlength="80" placeholder="Название звонка (необязательно)" aria-label="Название звонка" autocomplete="off"><select class="cll-ttl" aria-label="Срок ссылки">' + TTLS.map(function (t, i) { return '<option value="' + t[1] + '"' + (i === 2 ? ' selected' : '') + '>' + t[0] + '</option>'; }).join('') + '</select><button class="gl-btn" id="cll-make">Создать ссылку</button><span class="gl-sp"></span></div>' +
       '<div class="gl-b"><p class="gl-note">Тот, кто создал ссылку, ведёт звонок: гостей он впускает сам. Сотрудники входят без подтверждения. Если удалить ссылку, новые гости не войдут, а идущий звонок продолжится.</p>' +
       '<div id="cll-warn"></div><div class="gl-err" id="cll-err"></div><div class="gl-list" id="cll-list"></div></div></div>';
     (document.getElementById('layer')||document.body).appendChild(bg);
@@ -2638,7 +2638,7 @@ html .annp-c{-webkit-backdrop-filter:none;backdrop-filter:none}
     function paint(force) {
       var box = $('#cll-list'); if (!box) return;
       // Не перерисовываем, пока ничего не изменилось: иначе сбивается выделение ссылки
-      var sig = JSON.stringify([links.map(function (l) { return [l.id, l.live, l.people, l.waiting, l.expires_at]; }), ask]);
+      var sig = JSON.stringify([links.map(function (l) { return [l.id, l.live, l.people, l.waiting, l.expires_at, l.title]; }), ask]);
       if (!force && box.dataset.sig === sig && box.children.length) return;
       box.dataset.sig = sig;
       box.innerHTML = links.length ? links.map(function (l) {
@@ -2650,10 +2650,11 @@ html .annp-c{-webkit-backdrop-filter:none;backdrop-filter:none}
             '<button class="gl-btn cll-no" data-ask-no>Отмена</button><button class="gl-btn cll-yes" data-ask-yes="' + ask.kind + '" data-id="' + l.id + '">' + (end ? 'Завершить' : 'Удалить') + '</button></div>';
         } else {
           tail = '<div class="cll-meta">' + chip + (l.waiting ? '<span class="gl-chip warn">Ждут входа: ' + l.waiting + '</span>' : '') + '<span>до ' + fmtAt(l.expires_at) + '</span><span class="sp"></span>' +
+            (o.join ? '<button class="gl-btn" data-join="' + l.id + '">' + (l.live ? 'Присоединиться' : 'Начать звонок') + '</button>' : '') +
             (l.live ? '<button class="gl-btn cll-act" data-end="' + l.id + '">Завершить звонок</button>' : '') +
             '<button class="gl-btn gl-ic dng" data-del="' + l.id + '" title="Удалить ссылку" aria-label="Удалить ссылку">' + IC_X + '</button></div>';
         }
-        return '<div class="cll-it" data-id="' + l.id + '"><div class="cll-url"><input readonly value="' + esc(urlOf(l)) + '" aria-label="Ссылка"><button class="gl-btn" data-copy="' + l.id + '">Копировать</button></div>' + tail + '</div>';
+        return '<div class="cll-it" data-id="' + l.id + '">' + (l.title ? '<div class="cll-tt">' + esc(l.title) + '</div>' : '') + '<div class="cll-url"><input readonly value="' + esc(urlOf(l)) + '" aria-label="Ссылка"><button class="gl-btn" data-copy="' + l.id + '">Копировать</button></div>' + tail + '</div>';
       }).join('') : '<div class="gl-none">Ссылок пока нет</div>';
     }
     async function load() {
@@ -2666,9 +2667,10 @@ html .annp-c{-webkit-backdrop-filter:none;backdrop-filter:none}
     }
     $('#cll-make').onclick = async function () {
       var b = this; b.disabled = true; $('#cll-err').textContent = '';
-      var r = await o.request('POST', '/calllinks', { ttl: Number($('.cll-ttl').value) });
+      var r = await o.request('POST', '/calllinks', { ttl: Number($('.cll-ttl').value), title: $('#cll-nm').value.trim() });
       b.disabled = false;
       if (!r.ok) { $('#cll-err').textContent = (r.data && r.data.error) || 'Не удалось создать ссылку'; return; }
+      $('#cll-nm').value = '';
       await load();
     };
     $('#cll-list').addEventListener('click', async function (e) {
@@ -2678,6 +2680,12 @@ html .annp-c{-webkit-backdrop-filter:none;backdrop-filter:none}
         var url = urlOf(l), inp = cp.parentNode.querySelector('input'), done = function () { cp.textContent = 'Скопировано'; setTimeout(function () { cp.textContent = 'Копировать'; }, 1800); };
         if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, function () { inp.select(); document.execCommand('copy'); done(); });
         else { inp.select(); document.execCommand('copy'); done(); }
+        return;
+      }
+      var jn = e.target.closest('[data-join]');
+      if (jn) {
+        var jl = links.filter(function (x) { return String(x.id) === jn.dataset.join; })[0];
+        if (jl && o.join) { close(); o.join(jl.token); }
         return;
       }
       var en = e.target.closest('[data-end]'), dl = e.target.closest('[data-del]');

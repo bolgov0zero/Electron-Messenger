@@ -1,0 +1,204 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   /chat — дизайн B «Мягкий»: переписка (пузыри, цитаты, реакции, служебные, дата) и поле ввода.
+   Подключается после flat.css (токены и база). Здесь только правила этой области; токены и алиасы стекла — в flat.css.
+   Не забывать гасить «блики» прежнего стекла (flat-base.css) в своей области (::before/::after с --gl-spec/--gl-spotlight, inset-тени --gl-hi/--gl-lo, радиальные градиенты).
+   Эталон — docs/flat-mockup (index.html, src/flat-b.css, extra-a/extra-b.css), PLAN.md разд. 2.2 (радиусы).
+   Порядок: 1 пузыри и вложения · 2 реакции · 3 дата, служебные, «печатает», прокрутка · 4 голосовые · 5 док-композер ·
+            6 плашки над полем · 7 меню «+», форматирование, смайлы, упоминания · 8 плашки вместо поля · 9 оверлеи.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═════════ 1. Пузыри: плотная заливка, радиус 18, хвост и углы серии — как раньше (меньше), без стекла ═════════ */
+.irc-msg .msg-bubble { --tl: 18px; --tr: 18px; --br: 18px; --bl: 18px; box-shadow: var(--bub-sh); }
+.irc-msg[data-mine] .msg-bubble { box-shadow: none; }
+.irc-msg.emoji-msg .msg-bubble { --tl: 18px; --tr: 18px; --br: 18px; --bl: 18px; }
+.irc-msg:not([data-mine]):not(.irc-first) .msg-bubble { --tl: 5px; }
+.irc-msg:not([data-mine]):not(.irc-tail) .msg-bubble { --bl: 5px; }
+.irc-msg:not([data-mine]).irc-tail .msg-bubble { --bl: 0px; }
+.irc-msg[data-mine]:not(.irc-first) .msg-bubble { --tr: 5px; }
+.irc-msg[data-mine]:not(.irc-tail) .msg-bubble { --br: 5px; }
+.irc-msg[data-mine].irc-tail .msg-bubble { --br: 0px; }
+.irc-msg[data-mine] .msg-bubble { --tg-out: var(--accent-fill); }
+/* Цитата, роль, файл, превью ссылки — мелкие внутренние плашки */
+.irc-reply, .irc-msg[data-mine] .irc-reply { border-radius: 8px; }
+.irc-msg[data-mine] .irc-reply .irc-reply-name, .irc-msg[data-mine] .irc-reply.reply-plain .irc-reply-name { color: rgba(255, 255, 255, .95); }
+.role-pill, .pp-tag { border-radius: 8px; border-color: transparent; }
+.role-pill[class*="tag-"], .pp-tag[class*="tag-"] { border-color: transparent; }
+.msg-bubble .bubble-image, .msg-bubble .bubble-grid { border-radius: 12px; }
+.bubble-file {
+  background: color-mix(in srgb, var(--text) 6%, var(--bubble-bg)); border: 0; border-radius: 12px; box-shadow: none;
+}
+.bubble-file:hover { background: color-mix(in srgb, var(--text) 10%, var(--bubble-bg)); }
+.bubble-file > svg:first-child { border-radius: 10px; background: var(--accent-soft); color: var(--accent-ink); }
+.bubble-file > svg:last-child:not(:first-child) {
+  border-radius: 10px; background: color-mix(in srgb, var(--text) 8%, transparent); border: 0; box-shadow: none; color: var(--text2);
+}
+.irc-msg[data-mine] .bubble-file, .irc-msg[data-mine] .lcard { background: rgba(255, 255, 255, .16); }
+.irc-msg[data-mine] .bubble-file:hover { background: rgba(255, 255, 255, .22); }
+.irc-msg[data-mine] .bubble-file > svg:first-child { background: rgba(255, 255, 255, .22); color: #fff; }
+.irc-msg[data-mine] .bubble-file > svg:last-child:not(:first-child) { background: rgba(255, 255, 255, .2); color: #fff; }
+.lcard { border: 0; border-radius: 12px; background: color-mix(in srgb, var(--text) 6%, var(--bubble-bg)); box-shadow: none; }
+/* Одиночный смайл без пузыря: время — плоская плашка 8 */
+.msg-bubble.bubble-emoji > .irc-meta { background: var(--chip-bg); border-radius: 8px; padding: 1px 8px; }
+.msg-bubble.bubble-emoji > .irc-meta .irc-time, .msg-bubble.bubble-emoji > .irc-meta .msg-status { color: var(--text2); }
+.irc-msg.emoji-msg .msg-bubble:hover { background: none; }
+.irc-msg.emoji-msg[data-mine] .msg-bubble:hover { background: none; }
+
+/* ═════════ 2. Реакции: чипы 10 внутри пузыря ═════════ */
+.reaction-btn {
+  height: 28px; border: 0; border-radius: 10px; box-shadow: none; background: color-mix(in srgb, var(--text) 8%, var(--bubble-bg)); color: var(--text);
+  transition: background .15s, color .15s;
+}
+.reaction-btn:hover { background: color-mix(in srgb, var(--text) 14%, var(--bubble-bg)); }
+.reaction-btn:active { transform: none; }
+.reaction-btn.mine { background: var(--accent-fill); color: #fff; }
+.msg-bubble > .reactions .reaction-btn { height: 24px; border-radius: 10px; background: color-mix(in srgb, var(--text) 8%, var(--bubble-bg)); color: var(--text); }
+.msg-bubble > .reactions .reaction-btn:hover { background: color-mix(in srgb, var(--text) 14%, var(--bubble-bg)); }
+.msg-bubble > .reactions .reaction-btn.mine { background: var(--accent-fill); color: #fff; }
+.irc-msg[data-mine] .msg-bubble > .reactions .reaction-btn { background: rgba(255, 255, 255, .2); color: #fff; }
+.irc-msg[data-mine] .msg-bubble > .reactions .reaction-btn:hover { background: rgba(255, 255, 255, .3); }
+.irc-msg[data-mine] .msg-bubble > .reactions .reaction-btn.mine { background: #fff; color: var(--accent-fill); }
+/* Реакции вне пузыря (смайл без пузыря, под фото): белая карточка с тенью пузыря */
+.irc-content > .reactions .reaction-btn, .irc-content > .bubble-row ~ .reactions .reaction-btn { background: var(--bubble-bg); box-shadow: var(--bub-sh); color: var(--text); }
+.irc-content > .reactions .reaction-btn.mine, .irc-content > .bubble-row ~ .reactions .reaction-btn.mine { background: var(--accent-fill); color: #fff; box-shadow: none; }
+
+/* ═════════ 3. Дата, служебные, «Непрочитанные», «печатает…», кнопка вниз ═════════ */
+.date-divider span {
+  background: var(--chip-bg); border: 0; border-radius: 10px; box-shadow: none; color: var(--text2);
+  font-size: 12px; font-weight: 600; padding: 4px 12px;
+}
+.date-divider.unread-divider span { background: var(--accent-soft); color: var(--accent-ink); }
+/* Служебные сообщения (app.js: класс sysnote вместо прежних inline-стилей) */
+.sysnote {
+  display: flex; align-items: center; gap: 6px; max-width: 80%; padding: 5px 12px; border-radius: 10px;
+  background: var(--chip-bg); color: var(--text2); font-size: 12px; line-height: 1.35;
+}
+.sysnote svg { width: 13px; height: 13px; flex: none; opacity: 1; }
+.sysnote.add { background: var(--accent-soft); color: var(--accent-ink); }
+.sysnote.ann { background: var(--danger-bg); color: var(--danger); }
+.sysnote .sys-t { opacity: .6; font-size: 11px; margin-left: 2px; flex: none; }
+/* «Печатает…»: плашка 28 px, радиус 10; сидит в строке над полем внутри дока */
+.typing-indicator.show { height: 36px; }
+.typing-pill { height: 28px; padding: 0 12px; gap: 6px; border-radius: 10px; background: var(--chip-bg); border: 0; box-shadow: none; align-items: center; }
+/* Кнопка «вниз» и «к упоминанию»: плоская карточка 44, радиус 12 */
+.scroll-bottom-btn {
+  width: 44px; height: 44px; border: 0; border-radius: 12px; background: var(--side-bg); color: var(--text2); box-shadow: var(--flat-shadow);
+}
+.scroll-bottom-btn:hover { background: var(--gl-card2); color: var(--text); border: 0; }
+.scroll-bottom-btn:active { transform: none; }
+.scroll-bottom-btn > svg { transform: none; }
+.mention-btn { bottom: calc(14px + 54px + var(--composer-h, 70px)); }
+.sb-badge { border-radius: 10px; background: var(--accent-fill); box-shadow: none; }
+
+/* ═════════ 4. Голосовые сообщения (shared/voice.css под B) ═════════ */
+.vm { min-width: 238px; }
+.vm .pl { width: 38px; height: 38px; border-radius: 12px; box-shadow: none; transition: background .2s; }
+.vm .pl:active { transform: none; }
+.vm-in .pl, .vm-in .pl:hover { background: var(--accent-fill); color: #fff; box-shadow: none; filter: none; }
+html.dark .vm-in .pl { color: #fff; }
+.vm-out .pl, .vm-out .pl:hover { background: #fff; color: var(--accent-fill); }
+.vm .wv i { background: linear-gradient(90deg, currentColor calc(var(--f) * 100%), color-mix(in srgb, currentColor 34%, transparent) calc(var(--f) * 100%)); }
+.vm-in .wv { color: var(--accent-ink); }
+.vm-out .wv { color: #fff; }
+.vm .mt { height: 22px; }
+.vm .spd { height: 22px; border-radius: 8px; padding: 0 8px; }
+.irc-msg.irc-voice .msg-bubble { padding-bottom: 7px; }
+/* Запись: строка в поле, замок над кнопкой, подсказка */
+.vr-hold .vr-btn:not(.ready) {
+  background: var(--accent-fill); color: #fff; transform: scale(1.12); box-shadow: 0 0 0 calc(3px + var(--vlvl, 0) * 10px) rgba(var(--accent-rgb), .2);
+}
+.vr-hold.vr-will .vr-btn:not(.ready) { background: var(--danger); box-shadow: 0 0 0 8px var(--danger-bg); }
+.vr-trash { width: 36px; height: 36px; border-radius: 12px; }
+.vr-lock {
+  width: 44px; height: 100px; border-radius: 16px; border: 0; background: var(--side-bg); box-shadow: var(--pop-shadow); transition: opacity .25s, transform .25s var(--gl-ease);
+}
+.vr-toast { padding: 0 16px; height: 34px; display: flex; align-items: center; border-radius: 12px; border: 0; background: var(--side-bg); box-shadow: var(--pop-shadow); }
+
+/* ═════════ 5. Поле ввода: докованная полоса внизу чата ═════════ */
+.chat-input-wrap {
+  padding: 10px 14px 14px; background: var(--side-bg); box-shadow: var(--bar-sh-up);
+  border-radius: 0 0 var(--r-panel) var(--r-panel);
+}
+.composer-inner { max-width: none; border-radius: 0; }
+.composer-main { gap: 8px; }
+.composer-main .composer-attach, .composer-main .send-btn:not(.ready), .composer-main .send-btn {
+  width: 48px; height: 48px; border-radius: 12px; border: 0; background: var(--surf2); box-shadow: none; color: var(--text2); transition: background .2s, color .2s;
+}
+.composer-main .composer-attach { color: var(--text); }
+.composer-main .composer-attach:hover, .composer-main .send-btn:not(.ready):hover { background: var(--gl-card2); color: var(--text); }
+.composer-main .send-btn.ready { background: var(--accent-fill); color: #fff; border: 0; box-shadow: none; transform: none; }
+.composer-main .send-btn.ready:hover { background: color-mix(in srgb, var(--accent-fill) 88%, #fff); }
+.composer-main .composer-attach:active, .composer-main .send-btn:active, .composer-main .send-btn.ready:active { transform: scale(.95); }
+.composer-main .send-btn svg { top: 0; }
+.composer-field { background: var(--surf2); border: 0; border-radius: 12px; box-shadow: none; min-height: 48px; }
+.composer-field-row { min-height: 48px; padding: 0 6px 0 20px; }
+.composer-field-row.multi { padding-top: 11px; padding-bottom: 11px; }
+.composer-field-row .composer-icon-btn { width: 36px; height: 36px; border-radius: 12px; color: var(--text2); }
+.composer-field-row .composer-icon-btn:hover { background: var(--gl-card2); color: var(--text); }
+.composer-pill .fmt-ce { font-size: 15px; }
+/* Док без «пилюль»: пока идёт запись голоса, поле остаётся плоским */
+.vr-field { border-radius: 12px; }
+
+/* ═════════ 6. Плашки внутри поля: ответ, пересылка, правка, вложения, превью ссылки, форматирование, «Без ответа» ═════════ */
+.composer-slot .input-reply-bar, .composer-slot .input-edit-bar { background: var(--accent-soft); border-radius: 12px; }
+.composer-slot .lprev-bar { background: color-mix(in srgb, var(--text) 7%, var(--surf2)); border-radius: 12px; }
+.composer-slot .fmt-bar, .composer-slot .fmt-prev, .composer-slot .dm-bar {
+  background: color-mix(in srgb, var(--text) 7%, var(--surf2)); border-radius: 12px; border: 0; box-shadow: none;
+}
+.composer-slot .dm-bar { color: var(--text2); align-items: flex-start; padding: 8px 12px; }
+.composer-slot .dm-bar svg { margin-top: 2px; color: var(--muted); }
+.fmt-bar button { border-radius: 10px; }
+.fmt-bar button:hover { background: var(--gl-card2); color: var(--text); }
+.fmt-bar button.on { background: var(--accent-soft); color: var(--accent-ink); }
+.att-item { border-radius: 10px; }
+.att-item img, .att-prog { border-radius: 10px; }
+.lprev-thumb { border-radius: 10px; }
+
+/* ═════════ 7. «+»-меню, смайлы и GIF, выбор реакции, упоминания ═════════ */
+.composer-main .up-menu, .ep-grid, #reaction-picker, #mention-popup {
+  border: 0; border-radius: var(--r-menu); background: var(--side-bg); box-shadow: var(--pop-shadow);
+}
+.composer-main .up-menu { padding: 6px; }
+.composer-main .up-menu:not([hidden]) { animation: none; }
+.composer-main .up-menu button { height: 40px; border-radius: 12px; }
+.composer-main .up-menu button:hover { background: var(--gl-card2); }
+.composer-main .up-menu button svg { color: var(--accent-ink); }
+.composer-main .up-menu button.on { background: var(--accent-soft); }
+.ep-grid { padding: 8px; }
+.ep-head { background: transparent; }
+.ep-tab { border-radius: 12px; }
+.ep-tab:hover { background: var(--gl-card2); }
+.ep-tab[aria-selected="true"] { background: var(--accent-soft); }
+.emoji-item { border-radius: 12px; }
+.emoji-item:hover { background: var(--gl-card2); transform: none; }
+.ep-dock { border-top-color: var(--gl-lo); }
+.gp-retry { border: 0; border-radius: 12px; }
+.gif-off-i, .gif-badge { border-radius: 10px; }
+#mention-popup { padding: 6px; }
+.mention-item { padding: 6px 10px; border-radius: 12px; }
+.mention-item:hover, .mention-item.mn-active { background: var(--gl-card2); }
+
+/* ═════════ 8. Плашки вместо поля: только чтение, нельзя писать, нет связи, приглашение, секретный чат ═════════ */
+.ro-banner {
+  max-width: none; min-height: 48px; height: auto; margin: 0; padding: 8px 16px; border: 0; border-radius: 12px; background: var(--surf2); box-shadow: none;
+  color: var(--text2); font-size: 13.5px; line-height: 1.35;
+}
+.ro-banner svg { width: 16px; height: 16px; color: var(--muted); }
+.ro-banner.soft { opacity: 1; }
+.inv-bar {
+  max-width: none; min-height: 52px; margin: 0; padding: 8px 8px 8px 16px; flex-wrap: nowrap; border: 0; border-radius: 12px; background: var(--surf2); box-shadow: none;
+}
+.inv-bar .inv-txt { flex: 1; min-width: 0; }
+.inv-bar .modal-btn-ghost { background: var(--side-bg); }
+.sc-locked-banner {
+  max-width: none; height: auto; min-height: 48px; margin: 0; padding: 0 8px; border: 0; border-radius: 12px; background: var(--surf2); box-shadow: none;
+}
+.sc-lock { width: 32px; height: 32px; border-radius: 10px; background: var(--accent-soft); color: var(--accent-ink); }
+.sc-lock svg { width: 16px; height: 16px; }
+.sc-dot { background: var(--accent); }
+.sc-tag { border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink); }
+
+/* ═════════ 9. Оверлеи: пересылка, перетаскивание файлов ═════════ */
+#drag-overlay { border-radius: 22px; background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.drag-overlay-inner {
+  padding: 26px 40px; border-radius: 22px; background: var(--side-bg); box-shadow: var(--pop-shadow); color: var(--accent-ink);
+}

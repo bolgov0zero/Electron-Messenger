@@ -101,7 +101,7 @@
     S.allUsers = toMembers(info.members);
     S.chats = [guestChat(info)];
     st.hasTopics = !!info.chat.has_topics; setMode();
-    S.settings.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    S.settings.theme = 'system';   // тема гостя — по устройству (applySettings следит за prefers-color-scheme)
     applySettings();
     document.title = (info.chat.name || 'Чат') + ' · Электрон';
     closeGate();

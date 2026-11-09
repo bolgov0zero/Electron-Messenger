@@ -1,0 +1,129 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   /chat — дизайн B «Мягкий»: настройки (cs-*), состояния (вход, нет соединения, тосты, пустые), гостевые и служебные окна, просмотрщик.
+   Подключается после flat.css (токены и база). Здесь только правила этой области; токены и алиасы стекла — в flat.css.
+   Не забывать гасить «блики» прежнего стекла (flat-base.css) в своей области (::before/::after с --gl-spec/--gl-spotlight, inset-тени --gl-hi/--gl-lo, радиальные градиенты).
+   Эталон — docs/flat-mockup (index.html, src/flat-b.css, extra-a/extra-b.css), PLAN.md разд. 2.2 (радиусы).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───── 1. НАСТРОЙКИ (cs-*): плоские группы строк, одна карточка r16 ───── */
+.cs-g { gap: 0; background: var(--gl-card); border-radius: var(--r-card); overflow: hidden; flex: none; }
+.cs-g > .cs-r, .cs-g > .cs-r:first-child, .cs-g > .cs-r:last-child, .cs-g > .cs-r:only-child { background: none; border: 0; box-shadow: none; border-radius: 0; }
+.cs-g > .cs-r + .cs-r, .cs-g > .cs-r + .cs-notes, .cs-g > .cs-ver + .cs-notes { border-top: 1px solid var(--gl-lo); }
+.cs-g > .cs-notes, .cs-g > .cs-ver { background: none; border: 0; box-shadow: none; border-radius: 0; }
+.cs-gt { margin: 4px 0 -12px 6px; }
+.cs-body > * { flex: none; }
+.cs-hero, .cs-ver, .cs-notes, .fp-row, .bg-card, .pat-card, .cs-pv { border: 0; box-shadow: none; background: var(--gl-card); border-radius: var(--r-card); }
+.cs-hero { background: color-mix(in srgb, var(--accent) 12%, var(--side-bg)); }
+.cs-logout { background: var(--danger-bg); border: 0; border-radius: var(--r-card); }
+.cs-stub-i { background: var(--accent-soft); border-radius: var(--r-panel); }
+.cs-pv { display: grid; overflow: hidden; }
+.cs-pv-side { background: var(--side-bg); }
+.cs-pv-side i { border-radius: var(--r-btn); }
+.cs-pv-side i.on { background: var(--gl-card2); box-shadow: none; }
+.cs-pv-chat { background: var(--chat-bg); }
+.cs-pv-cap { background: var(--gl-card); border-radius: 8px; }
+.cs-pv-msg.in { background: var(--bubble-bg); border: 0; border-radius: var(--r-btn); box-shadow: var(--bub-sh); }
+.cs-pv-msg.out { background: var(--accent-fill); color: #fff; border-radius: var(--r-btn); }
+.bg-card:hover, .pat-card:hover, .bg-card:active, .pat-card:active { transform: none; }
+.bg-card.on, .pat-card.on, .bg-card.active, .pat-card.active { box-shadow: 0 0 0 2px var(--accent-fill); }
+.bg-card.bg-card, .pat-card.pat-card { border: 0; }
+.bg-card .bg-skel, .pat-card .pat-swatch { border-radius: 0; }
+.bs-chat { background: var(--chat-bg); }
+.bs-chat.split { background: color-mix(in srgb, var(--text) 5%, var(--chat-bg)); }
+.bs-side { background: var(--side-bg); }
+.bs-chat i.c { background: var(--accent-fill); opacity: 1; }
+.bg-card.on .bg-cap b, .pat-card.on .pat-cap, .bg-card.active .bg-cap b, .pat-card.active .pat-cap { color: var(--accent-ink); }
+.accent-dot { border-radius: var(--kit-tag-r, 8px); box-shadow: none; transition: filter .15s; }
+.accent-dot:hover { transform: none; filter: brightness(1.08); }
+.accent-dot.on, .accent-dot.active { box-shadow: 0 0 0 2px var(--side-bg), 0 0 0 4px var(--dot); }
+.cs-sn[aria-current="page"], .cs-sn[aria-current="true"], .cs-sn[aria-current="page"]:hover, .cs-sn[aria-current="true"]:hover { background: var(--sel); box-shadow: none; }
+.cs-sn:hover { background: var(--hover-row); }
+.cs-sn-ic { border-radius: var(--r-btn); }
+.cs-sn-ic::before { background: var(--accent-fill); }
+.cs-badge { background: var(--accent-fill); }
+.cs-logo { background: var(--accent-fill); border-radius: var(--r-card); }
+.cs-sn .cs-dot { box-shadow: none; }
+.cs-pill { border-radius: 8px; }
+.am-prog, .update-progress-bar, .force-update-bar { background: var(--gl-inset); }
+.am-prog i, .update-progress-fill, .force-update-fill { background: var(--accent-fill); }
+.pat-swatch { background: color-mix(in srgb, var(--text) 34%, transparent); }
+.pat-card:first-child .pat-swatch { background: var(--gl-inset); }
+
+/* ───── 2. СОСТОЯНИЯ: вход, загрузка, нет соединения, тосты, баннеры, пустое, подтверждение, обновление ───── */
+.login-wrap { border-radius: var(--r-panel); padding: 34px 34px 22px; background: var(--side-bg); border: 0; box-shadow: var(--pop-shadow); }
+.login-logo { border-radius: var(--r-card); box-shadow: none; }
+.login-wordmark span:last-child { color: var(--accent-ink); }
+.login-sub { color: var(--text2); }
+.login-wrap .field label { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text2); margin-left: 2px; }
+.login-copy { color: var(--muted); font-size: 11.5px; }
+/* загрузка: поверх формы входа, без размытия */
+.boot-overlay { background: color-mix(in srgb, var(--app-bg) 90%, transparent); }
+.boot-spin { border: 3px solid var(--gl-lo); border-top-color: var(--accent-fill); }
+.boot-text { color: var(--text); }
+.boot-manual { border-radius: 8px; padding: 6px 10px; }
+/* нет соединения и тост действий */
+#server-toast, #action-toast { border-radius: var(--r-btn); padding: 11px 18px; font-weight: 600; transition: transform .35s var(--gl-ease), opacity .25s; }
+#server-toast { position: fixed; }
+#server-toast::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--danger); }
+.server-toast-spinner { border: 2px solid var(--gl-lo); border-top-color: var(--accent-fill); }
+/* баннеры объявлений */
+.ann-banner { border: 0; border-radius: var(--r-card); background-image: none; background-color: color-mix(in srgb, var(--danger) 9%, var(--side-bg)); box-shadow: var(--pop-shadow); padding: 10px 8px 10px 16px; position: relative; transition: transform .45s var(--gl-ease), opacity .3s; }
+.ann-banner::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--danger); }
+.ann-banner-icon { width: 16px; height: 16px; }
+/* запрос разрешения на уведомления: плавающая плашка по центру */
+.notif-banner { left: 50%; right: auto; top: 14px; transform: translateX(-50%); width: 620px; max-width: calc(100% - 40px); box-sizing: border-box; gap: 12px; padding: 8px 8px 8px 16px; border-radius: var(--r-card); font-size: 13px; }
+.notif-banner > svg { width: 18px; height: 18px; }
+/* пустое состояние: «нет выбранного чата» */
+.empty-icon { border-radius: var(--r-panel); background: var(--surf2); border: 0; box-shadow: none; }
+.empty-title { font-weight: 700; }
+/* подтверждение внешней ссылки */
+.link-modal { width: 380px; padding: 28px 24px 22px; gap: 8px; }
+.link-modal-icon { width: 44px; height: 44px; border-radius: var(--r-btn); background: color-mix(in srgb, var(--presence-away, #e0a030) 16%, transparent); color: var(--presence-away, #e0a030); }
+.link-modal-title { font-size: 15px; margin-top: 6px; }
+.link-modal-desc { color: var(--muted); }
+.link-modal-url { border: 0; border-radius: var(--r-btn); background: var(--surf2); color: var(--text2); padding: 10px 14px; line-height: 1.5; }
+.link-modal-footer { margin-top: 10px; }
+/* окна обновления (вид из Electron-клиента; в веб-версии разметки нет) */
+.update-modal-icon { border-radius: var(--r-btn); background: var(--accent-soft); color: var(--accent-ink); }
+.update-notes { border: 0; border-radius: var(--r-card); background: var(--gl-card); }
+.update-progress-bar, .force-update-bar { height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--text) 12%, var(--side-bg)); }
+.update-progress-fill, .force-update-fill { border-radius: 4px; background: var(--accent-fill); }
+.force-update-modal { padding: 30px 28px 28px; }
+.force-update-icon { border-radius: var(--r-card); background: var(--accent-soft); color: var(--accent-ink); }
+/* логотип входа: плитка акцента с значком чата (Lucide message-circle) вместо картинки */
+.login-logo { position: relative; width: 60px; height: 60px; background: var(--accent-fill); }
+.login-logo img { visibility: hidden; width: 60px; height: 60px; }
+.login-logo::after { content: ""; position: absolute; inset: 0; margin: auto; width: 28px; height: 28px; background: #fff;
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7.9 20A9 9 0 1 0 4 16.1L2 22Z'/></svg>") center / contain no-repeat;
+          mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M7.9 20A9 9 0 1 0 4 16.1L2 22Z'/></svg>") center / contain no-repeat; }
+#screen-phone-guard .btn-login { display: flex !important; align-items: center; justify-content: center; }   /* inline display:block ставит текст к верху кнопки высотой 46 */
+
+/* ───── 3. ОКНА ГОСТЕВОЙ ССЫЛКИ И ССЫЛКИ НА ВИДЕОЗВОНОК (shared/guestlinks.js, calllinks.js) ─────
+   Стили этих окон вставляются в <head> при открытии, поэтому правила идут с префиксом .gl-bg:not(.gl-adm):not(.gl-m) —
+   админка и /m не меняются. Кнопки, крестик, поля, список выбора — в ките (flat.css). */
+.gl-bg:not(.gl-adm):not(.gl-m) { background: var(--scrim); animation-duration: .2s; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl { border: 0; border-radius: var(--r-panel); background: var(--side-bg); box-shadow: var(--pop-shadow); animation: gl-in .25s var(--gl-ease) both; }
+.gl-bg:not(.gl-adm):not(.gl-m).closing .gl { animation: gl-out .15s ease-in forwards; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-h { padding: 18px 20px 8px; border-bottom: 0; align-items: flex-start; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-h b { font-size: 15px; font-weight: 700; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-top { padding: 8px 20px 12px; border-bottom: 0; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-b { padding: 4px 20px 20px; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-note { color: var(--text2); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-new { border: 0; border-radius: var(--r-card); background: var(--accent-soft); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-list { border: 0; border-radius: var(--r-card); background: var(--gl-card); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-th { border-bottom: 1px solid var(--gl-lo); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-it + .gl-it, .gl-bg:not(.gl-adm):not(.gl-m) .cll .cll-it + .cll-it { border-top: 1px solid var(--gl-lo); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-pop { border: 0; box-shadow: var(--pop-shadow); animation-duration: .15s; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-opt { border-radius: var(--r-btn); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-opt.act { background: var(--hover-row); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-chip { border: 0; border-radius: 8px; padding: 2px 9px; background: var(--surf2); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-chip.ok { background: color-mix(in srgb, var(--gl-ok) 14%, var(--side-bg)); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-chip.warn { background: color-mix(in srgb, var(--gl-wn) 14%, var(--side-bg)); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-tm { color: var(--accent-ink); }
+.gl-bg:not(.gl-adm):not(.gl-m) .cll .cll-ask { border: 0; border-radius: var(--r-btn); background: var(--danger-bg); }
+.gl-bg:not(.gl-adm):not(.gl-m) .cll .cll-warn { color: var(--gl-wn); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-btn.gl-ic:not(.sub):not(.dng):not(.ask) { background: var(--kit-pri-bg); color: var(--kit-pri-fg); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-btn.gl-ic:not(.sub):not(.dng):not(.ask):hover:not(:disabled) { background: var(--kit-pri-bg-h, var(--kit-pri-bg)); filter: brightness(1.1); }
+.gp-item { border-radius: var(--r-btn); }
+.gp-retry { height: var(--kit-btn-h-sm); padding: 0 var(--kit-btn-px-sm); border: 0; border-radius: var(--kit-r); background: var(--kit-soft-bg); color: var(--kit-soft-fg); }
+.gp-retry:hover { background: var(--kit-soft-bg-h); }

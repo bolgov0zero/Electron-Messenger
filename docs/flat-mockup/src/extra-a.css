@@ -1,0 +1,75 @@
+/* ═══ extra-a.css: состояния чата, секретные чаты, федерация, черновик (вариант B) ═══ */
+
+/* плашка вместо поля ввода: «только чтение», «писать нельзя», «нет связи», секретный чат, приглашение */
+.xbar{flex:1;min-width:0;display:flex}
+.xbar:empty{display:none}
+.xbar>*{flex:1;min-width:0}
+.chat.xlock .comp>.plus,.chat.xlock .comp>.field,.chat.xlock .comp>.send{display:none}
+.ro-banner{min-height:48px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;border-radius:12px;background:var(--surf2);color:var(--text2);font-size:13.5px;font-weight:500;line-height:1.35;text-align:center;user-select:none}
+.ro-banner svg{width:16px;height:16px;flex:none;color:var(--muted)}
+
+/* мягкая подсказка о счётчике внутри поля ввода */
+.dm-bar{display:flex;align-items:flex-start;gap:8px;padding:8px 12px;border-radius:12px;background:color-mix(in srgb,var(--text) 7%,var(--surf2));color:var(--text2);font-size:12.5px;line-height:1.4}
+.dm-bar svg{width:14px;height:14px;flex:none;margin-top:2px;color:var(--muted)}
+
+/* приглашение */
+.inv-bar{min-height:52px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:8px 8px 8px 16px;border-radius:12px;background:var(--surf2);font-size:13px;color:var(--text2)}
+.inv-bar .inv-txt{flex:1;min-width:0;line-height:1.4}
+.inv-bar .inv-txt b{color:var(--text)}
+.inv-bar .inv-btns{display:flex;gap:8px;flex:none}
+.inv-bar .btn:not(.pri){background:var(--side-bg)}
+.inv-bar .btn:not(.pri):hover:not(:disabled){background:var(--gl-card2)}
+.chat.xinv #bsearch,.chat.xinv #bmore{display:none}
+.inv-empty{min-height:560px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;color:var(--text2)}
+.inv-empty .eic{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;background:var(--surf2);color:var(--accent-ink)}
+.inv-empty p{margin:0;max-width:340px;font-size:13.5px;line-height:1.5}
+
+/* группы и люди с других серверов: значок в углу аватарки, метка справа, подпись в шапке */
+.fed-dot{position:absolute;right:-3px;bottom:-3px;width:18px;height:18px;border-radius:50%;background:var(--accent-fill);color:#fff;border:2px solid var(--side-bg);box-sizing:border-box;display:block}
+.fed-dot svg{position:absolute;inset:0;margin:auto;width:10px;height:10px;display:block}
+.av.sm .fed-dot,.av.xs .fed-dot{width:16px;height:16px;right:-3px;bottom:-3px}
+.av.sm .fed-dot svg,.av.xs .fed-dot svg{width:9px;height:9px}
+.row.on .fed-dot,.pp-row.on .fed-dot{border-color:var(--sel)}
+.gm-row:hover .fed-dot{border-color:var(--gl-card2)}
+.gm-fedbig{position:absolute;right:0;bottom:0;width:26px;height:26px;border-radius:50%;background:var(--accent-fill);color:#fff;border:3px solid var(--side-bg);box-sizing:border-box}
+.gm-fedbig svg{position:absolute;inset:0;margin:auto;width:13px;height:13px}
+.ws-chip{flex:none;display:inline-flex;align-items:center;justify-content:center;height:24px;min-width:28px;padding:0 7px;border-radius:8px;background:var(--accent-soft);color:var(--accent-ink);font-size:11px;font-weight:600}
+.ws-chip svg{display:block}
+.chead small .fed-off{display:inline-flex;align-items:center;gap:5px;color:var(--danger)}
+.chead small .fed-off svg{flex:none}
+.fx-note{display:flex;align-items:flex-start;gap:10px;margin:0 18px 12px;padding:12px 14px;border-radius:16px;background:var(--accent-soft);color:var(--text2);font-size:12.5px;line-height:1.45}
+.fx-note .i{width:18px;height:18px;flex:none;color:var(--accent-ink);margin-top:1px}
+.fx-note b{color:var(--text)}
+
+/* секретный чат: метка вместо превью, плашка вместо поля ввода, полоски вместо недорасшифрованного текста */
+.rt>span .sc-tag{display:inline-flex;align-items:center;height:18px;padding:0 8px;border-radius:8px;background:var(--accent-soft);color:var(--accent-ink);font-size:11px;font-weight:600;white-space:nowrap;vertical-align:middle}
+.chat.xsec #bsearch,.chat.xsec #ep .sw{display:none}
+.sc-locked-banner{min-height:48px;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:0 8px;border-radius:12px;background:var(--surf2);color:var(--text)}
+.sc-lock{width:32px;height:32px;border-radius:10px;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.sc-lock svg{width:16px;height:16px}
+.sc-b-txt{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+.sc-b-t{font-weight:600;font-size:13px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-b-s{color:var(--muted);font-size:11.5px;line-height:1.25;display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-locked-banner.sc-open .sc-b-s{display:none}
+.sc-btn{height:32px;padding:0 14px;border-radius:10px;border:0;background:var(--accent-fill);color:#fff;font-weight:600;font-size:12.5px;cursor:pointer;white-space:nowrap;flex:none}
+.sc-btn:hover{filter:brightness(1.1)}
+.sc-btn.ghost{background:var(--side-bg);color:var(--text)}
+.sc-btn.ghost:hover{background:var(--gl-card2);filter:none}
+.sc-b-inp{height:32px;flex:1 1 120px;min-width:0;max-width:160px;border:1px solid transparent;border-radius:10px;background:var(--side-bg);color:var(--text);padding:0 12px;font:500 13px var(--ff);text-transform:uppercase;letter-spacing:.08em;outline:none}
+.sc-b-inp::placeholder{text-transform:none;letter-spacing:0;color:var(--muted)}
+.sc-b-inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.sc-b-x{width:32px;height:32px;border-radius:10px;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none}
+.sc-b-x:hover{background:var(--gl-card2);color:var(--text)}
+.sc-b-x svg{width:16px;height:16px}
+.sc-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;animation:xsc-pulse 1.2s infinite ease-in-out}
+@keyframes xsc-pulse{0%,100%{opacity:.25}50%{opacity:1}}
+.chatreal .irc-text.sc-locked{pointer-events:none}
+.chatreal .sc-skel{display:block;height:12px;min-width:40px;border-radius:6px;margin:6px 0;background:linear-gradient(90deg,color-mix(in srgb,var(--text) 8%,transparent) 25%,color-mix(in srgb,var(--text) 17%,transparent) 50%,color-mix(in srgb,var(--text) 8%,transparent) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite}
+.chatreal .sc-skel:first-child{margin-top:2px}
+.chatreal .irc-msg[data-mine] .sc-skel{background:linear-gradient(90deg,rgba(255,255,255,.2) 25%,rgba(255,255,255,.4) 50%,rgba(255,255,255,.2) 75%);background-size:200% 100%}
+.sc-sync-body{padding:4px 24px 12px;display:flex;flex-direction:column;gap:10px}
+.sc-sync-hint{margin:0 0 2px;font-size:13px;color:var(--text2);line-height:1.5}
+.sc-sync-device{font-weight:600;font-size:14px;padding:12px 14px;border-radius:12px;background:var(--gl-card)}
+
+/* черновик в списке чатов */
+.rt>span .dr{color:var(--danger);font-weight:500}

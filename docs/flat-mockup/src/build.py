@@ -98,6 +98,18 @@ rsub(r'<div class="notes glass-pop" id="notes">.*?</div>\s*(?=<div class="fit">)
 # 8. окна гостевой ссылки и звонка: настоящий код клиента + заглушка запросов
 gl_js = rd(os.path.join(ROOT, 'client/src/guestlinks.js'))
 cl_js = rd(os.path.join(ROOT, 'client/src/calllinks.js'))
+# крестик окон: в настоящем коде текстовый «✕», в макете — тот же значок Lucide, что и в остальных окнах
+XSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>'
+for _n in ('gl_js', 'cl_js'):
+    assert '>✕</button>' in globals()[_n], _n
+# окна — внутри масштабируемого окна макета (#win), иначе они крупнее остальных
+INTO_WIN = ('document.body.appendChild(bg)', "(document.getElementById('win')||document.body).appendChild(bg)")
+for _n in ('gl_js', 'cl_js'):
+    assert INTO_WIN[0] in globals()[_n], _n
+gl_js = gl_js.replace(*INTO_WIN)
+cl_js = cl_js.replace(*INTO_WIN)
+gl_js = gl_js.replace('>✕</button>', '>' + XSVG + '</button>')
+cl_js = cl_js.replace('>✕</button>', '>' + XSVG + '</button>')
 mock_js = rd(os.path.join(HERE, 'windows.js'))
 sub('<script>\n', '<script>\n' + gl_js + '\n</script>\n<script>\n' + cl_js + '\n</script>\n<script>\n', 1)
 # заглушка и сцены — в конец основного скрипта
@@ -129,6 +141,20 @@ sub('<button data-s="settings">Настройки</button>', '<button data-s="se
 sub("else if(s==='guest')openGuest();", "else if(s==='login')loginShow('form');else if(s==='update')modalUpdate();else if(s==='forceupd')modalForceUpdate();else if(s==='offline')toggleOffline();else if(s==='guest')openGuest();")
 
 sub('<span class="chatnote"', '<a class="btn glass gi" href="mobile.html" style="height:36px">Мобильный клиент →</a>\n    <a class="btn glass gi" href="calls.html" style="height:36px">Звонки →</a>\n    <span class="chatnote"')
+# 11. новые сцены: файлы src/extra-*.js и src/extra-*.css подключаются сами; вторая панель кнопок «Новое в клиенте»
+import glob
+extra_js = ''.join(rd(f) + '\n' for f in sorted(glob.glob(os.path.join(HERE, 'extra-*.js'))))
+extra_css = ''.join(rd(f) + '\n' for f in sorted(glob.glob(os.path.join(HERE, 'extra-*.css'))))
+sub('\n</style>\n</head>', '\n' + extra_css + '</style>\n</head>')
+sub('<a class="btn glass gi" href="mobile.html"', '<div class="scenes glass" id="scenes2" role="group" aria-label="Новое в клиенте"></div>\n    <a class="btn glass gi" href="mobile.html"')
+HOOK = r"""/* ---------- новые сцены (extra-*.js): addScene(id, подпись, async ()=>{...}); RESETS.push(()=>{...}) — убрать за собой ---------- */
+const NEWSC={},RESETS=[];
+function addScene(id,label,fn){NEWSC[id]=fn;$('#scenes2').insertAdjacentHTML('beforeend','<button data-s="'+id+'">'+label+'</button>')}
+async function resetScene(){$$('.modal-bg.open').forEach(closeModal);$$('.gl-bg,.xo').forEach(n=>n.remove());closeMenus();try{hmSet(false)}catch(e){}RESETS.forEach(f=>{try{f()}catch(e){console.error(e)}});if(S.tab!=='chats')setTab('chats')}
+$('#scenes2').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;await resetScene();await sleep(60);await NEWSC[b.dataset.s]()});
+"""
+sub('/* ---------- сцены, запуск ---------- */', HOOK + extra_js + '\n/* ---------- сцены, запуск ---------- */')
+
 out = os.path.join(ROOT, 'docs/flat-mockup/index.html')
 open(out, 'w', encoding='utf-8').write(src)
 print('готово:', out, len(src), 'байт')

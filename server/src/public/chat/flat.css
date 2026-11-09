@@ -1,0 +1,519 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   /chat — дизайн B «Мягкий»: токены и база. Подключается ПОСЛЕ style.css и glass.css (index.html), затем идут flat-frame/chat/menus/misc/calls.css.
+   Источник — docs/flat-mockup (src/flat-b.css), PLAN.md разд. 2–3 и 5; образец перенесённых токенов — m/css/flat.css.
+   Темы: светлая — :root; тёмная — html.dark (это ТОЛЬКО тёмно-синяя: нейтральной тёмной нет, как в /m); html.dark.navy — тот же набор (старый код со ссылкой на .navy).
+   Акцент: app.js applyAccent() ставит инлайном на <html> --accent/--accent-rgb/--primary/--accent-soft/--accent-border/--active-row…; инлайн перебивает таблицы стилей,
+   поэтому всё, что должно быть плоским (--accent-soft, --accent-border, --active-row*), здесь с !important (важное правило таблицы стилей сильнее инлайн-значения без !important).
+   Порядок и специфичность: style.css и glass.css используют селекторы :root, html.dark, html.dark.navy; тут те же селекторы и более поздний порядок — побеждает flat.css.
+   Не менять расположение/раскладку здесь: только токены, глобальное выключение стекла и общие плоские поверхности.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───── токены: светлая тема ───── */
+:root {
+  --ff: Inter, -apple-system, system-ui, sans-serif;
+  --app-bg: #ece9e4; --side-bg: #fdfcfa; --card-bg: #fdfcfa; --modal-bg: #fdfcfa; --menu-bg: #fdfcfa;
+  --header-bg: #fdfcfa; --composer-bg: #fdfcfa; --search-bg: #f3f0eb;
+  --chat-bg: #f7f5f1; --bubble-bg: #ffffff; --chat-split: #f7f5f1; --bubble-split: #ffffff;
+  --text: #1d1b19; --text2: #5b554e; --muted: #766e65;
+  --surf2: #f3f0eb; --sel: #efebe5;
+  --tint: color-mix(in srgb, var(--text) 4%, var(--side-bg));
+  --border: color-mix(in srgb, var(--text) 9%, transparent);
+  --hover-row: color-mix(in srgb, var(--text) 5%, transparent);
+  --daypill: color-mix(in srgb, var(--text) 9%, var(--chat-bg));
+  --chip-bg: color-mix(in srgb, var(--text) 9%, var(--chat-bg));
+
+  /* акцент: сам --accent и --accent-rgb ставит JS; производные считаются от него */
+  --accent-fill: color-mix(in srgb, var(--accent) 80%, #000);
+  --accent-ink: color-mix(in srgb, var(--accent) 72%, #000);
+  --accent-soft: color-mix(in srgb, var(--accent) 13%, var(--side-bg)) !important;
+  --accent-border: transparent !important;
+  --active-row: var(--sel) !important; --active-row-border: transparent !important;
+  --danger: #d23a3a; --danger-bg: color-mix(in srgb, var(--danger) 11%, var(--side-bg)); --danger-border: transparent;
+
+  /* тени: карточка и всплывающее; тень пузыря — только в светлой */
+  --flat-shadow: 0 1px 2px rgba(60,40,20,.05), 0 10px 30px rgba(60,40,20,.07);
+  --pop-shadow: 0 2px 6px rgba(60,40,20,.08), 0 18px 44px rgba(60,40,20,.16);
+  --shadow-pop: var(--pop-shadow);
+  --bub-sh: 0 1px 2px rgba(60,40,20,.09);
+  --bar-sh: 0 8px 20px -10px rgba(60,40,20,.18); --bar-sh-up: 0 -8px 20px -10px rgba(60,40,20,.14);
+
+  /* радиусы (PLAN 2.2) */
+  --r-btn: 12px; --r-card: 16px; --r-panel: 22px; --r-bubble: 18px; --r-chip: 10px;
+  --r-bar: 16px; --r-menu: 16px; --r-item: 12px; --r-row: 16px; --r-ctl: 12px; --r-pill: 12px; --r-sheet: 22px;
+
+  /* плоские алиасы прежних токенов стекла: старый код получает плоский вид */
+  --gl: var(--side-bg); --gl2: var(--surf2); --gl-pop: var(--side-bg);
+  --gl-card: color-mix(in srgb, var(--text) 4%, var(--side-bg));
+  --gl-card2: color-mix(in srgb, var(--text) 8%, var(--side-bg));
+  --gl-inset: color-mix(in srgb, var(--text) 5%, var(--side-bg));
+  --gl-edge: transparent; --gl-hi: transparent; --gl-lo: color-mix(in srgb, var(--text) 9%, transparent);
+  --gl-shadow: rgba(60,40,20,.14); --gl-spec: transparent;
+  --gl-hov: color-mix(in srgb, var(--text) 5%, transparent);
+  --gl-blur: 0px; --gl-k: 1; --gl-in: var(--bubble-bg); --gl-out-a: var(--accent-fill); --gl-out-b: var(--accent-fill);
+  --gl-base: var(--app-bg); --scrim: rgba(40,28,16,.32);
+  --gl-spring: cubic-bezier(.22, 1, .36, 1); --gl-ease: cubic-bezier(.22, 1, .36, 1);
+  --amb-1: transparent; --amb-2: transparent; --amb-3: transparent; --amb-4: transparent;
+  --ok: #2f9e5b; --no: #d94a4a;
+}
+
+/* ───── тёмная = тёмно-синяя (единственная тёмная тема) ───── */
+html.dark, html.dark.navy {
+  --danger-bg: color-mix(in srgb, var(--danger) 14%, var(--side-bg));
+  --app-bg: #10161d; --side-bg: #18202a; --card-bg: #18202a; --modal-bg: #18202a; --menu-bg: #18202a;
+  --header-bg: #18202a; --composer-bg: #18202a; --search-bg: #222d3a;
+  --chat-bg: #0f1b27; --bubble-bg: #213040; --chat-split: #0f1b27; --bubble-split: #213040;
+  --text: #eef2f6; --text2: rgba(238,242,246,.74); --muted: rgba(238,242,246,.56);
+  --surf2: #222d3a; --sel: #243242;
+  --border: color-mix(in srgb, var(--text) 10%, transparent);
+  --hover-row: color-mix(in srgb, var(--text) 7%, transparent);
+  --daypill: color-mix(in srgb, var(--text) 9%, var(--chat-bg));
+  --chip-bg: color-mix(in srgb, var(--text) 9%, var(--chat-bg));
+  --accent-fill: color-mix(in srgb, var(--accent) 70%, #000);
+  --accent-ink: color-mix(in srgb, var(--accent) 70%, #fff);
+  --danger: #ef6f6f;
+  --flat-shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  --pop-shadow: 0 2px 6px rgba(0,0,0,.4), 0 18px 44px rgba(0,0,0,.55);
+  --bub-sh: none;
+  --bar-sh: 0 8px 20px -10px rgba(0,0,0,.5); --bar-sh-up: 0 -8px 20px -10px rgba(0,0,0,.5);
+  --gl-card: color-mix(in srgb, var(--text) 5%, var(--side-bg));
+  --gl-card2: color-mix(in srgb, var(--text) 10%, var(--side-bg));
+  --gl-inset: color-mix(in srgb, var(--text) 6%, var(--side-bg));
+  --gl-lo: color-mix(in srgb, var(--text) 10%, transparent);
+  --gl-shadow: rgba(0,0,0,.5); --gl-hov: color-mix(in srgb, var(--text) 7%, transparent);
+  --gl-edge: transparent; --gl-hi: transparent; --gl-spec: transparent;
+  --gl2: var(--surf2); --gl-in: var(--bubble-bg);
+  --gl-out-a: var(--accent-fill); --gl-out-b: var(--accent-fill);
+  --gl-base: var(--app-bg); --scrim: rgba(0,0,0,.5);
+  --ok: #3aae68; --no: #e05a5a;
+}
+
+html, body { background: var(--app-bg); font-family: var(--ff); }
+
+/* ───── глобально: никакого стекла ───── */
+*, *::before, *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+
+/* ───── плоские поверхности: те же списки селекторов, что у стекла в glass.css (106–131) ───── */
+.sidebar, .acc-rail, .chat-header, .chat-header-actions, .pin-bar, .chat-search,
+.ro-banner, .sc-locked-banner, .inv-bar, .composer-field, .scroll-bottom-btn, .login-wrap,
+.composer-main .composer-attach, .composer-main .send-btn:not(.ready) {
+  background: var(--side-bg); border: 0; box-shadow: var(--flat-shadow);
+}
+.modal, .ctx-menu, #reaction-picker, #mention-popup, .head-menu, .up-menu, .ep-grid, .ha-pop,
+.reaction-tip, .acc-tip, #server-toast, #action-toast, .am-dlg, .ctx-read-fly, .anx-card, .force-update-modal {
+  background: var(--side-bg); border: 0; box-shadow: var(--pop-shadow);
+}
+.topics-panel { background: var(--side-bg); box-shadow: none; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UI-КИТ веб клиента: единый вид повторяющихся элементов (правило: одна функция — один вид везде).
+   Покрывает: (1) кнопки закрытия, (2) переключатели-тумблеры, (3) кнопки действий (основная / вторичная / «мягкая» / опасная / опасная-заливка),
+   (4) иконочные кнопки, (5) сегментные переключатели, (6) чипы-фильтры и метки, (7) флажки, (8) слайдер, (9) поля ввода и выпадающие списки.
+   Эталон: docs/flat-mockup (src/flat-b.css, extra-a/b.css), PLAN.md п. 2.2. Инвентарь и таблица «функция → селекторы»: docs/flat-mockup/web-kit.md.
+   Значения — только через переменные --kit-* (первый блок ниже). Чтобы поменять вид элемента везде, правят переменную; чтобы добавить новый элемент — дописывают его
+   селектор в нужный список (см. «КАК ДОБАВИТЬ СЕЛЕКТОР В КИТ» в самом конце раздела). Свои кнопки/тумблеры/крестики в других flat-*.css не рисуем.
+   Специфичность: правила стоят после style.css/glass.css; где у старых правил селектор тяжелее (обновления для .gl-bg, .diag-foot…), в списке стоит такой же по весу.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── переменные кита ── */
+:root {
+  --kit-r: 12px;                                   /* радиус кнопок, полей, крестиков, иконочных кнопок */
+  --kit-r-sm: 8px;                                 /* мелкие кнопки внутри строк/полей, флажки, метки */
+  --kit-r-chip: 10px;                              /* чипы-фильтры */
+  --kit-press: .95;                                /* масштаб при нажатии */
+  --kit-focus: 2px solid var(--accent);            /* кольцо фокуса с клавиатуры */
+  /* кнопки действий */
+  --kit-btn-h: 36px; --kit-btn-h-sm: 30px; --kit-btn-h-lg: 46px;
+  --kit-btn-px: 18px; --kit-btn-px-sm: 14px;
+  --kit-btn-fs: 13px; --kit-btn-fs-sm: 12.5px; --kit-btn-fs-lg: 14.5px; --kit-btn-fw: 600; --kit-btn-gap: 8px;
+  --kit-sec-bg: var(--gl-card2); --kit-sec-bg-h: color-mix(in srgb, var(--text) 14%, var(--side-bg)); --kit-sec-fg: var(--text);
+  --kit-pri-bg: var(--accent-fill); --kit-pri-fg: #fff;
+  --kit-soft-bg: var(--accent-soft); --kit-soft-bg-h: color-mix(in srgb, var(--accent) 22%, var(--side-bg)); --kit-soft-fg: var(--accent-ink);
+  --kit-dng-bg: var(--danger-bg); --kit-dng-bg-h: color-mix(in srgb, var(--danger) 20%, var(--side-bg)); --kit-dng-fg: var(--danger);
+  --kit-dngf-bg: var(--danger); --kit-dngf-fg: #fff;
+  /* иконочная кнопка (без фона) и «тональная» (фон --surf2, как крестик) */
+  --kit-ibtn: 36px; --kit-ibtn-icon: 18px;
+  --kit-ibtn-fg: var(--text2); --kit-ibtn-fg-h: var(--text); --kit-ibtn-bg-h: var(--gl-card2);
+  /* кнопка закрытия */
+  --kit-close-size: 36px; --kit-close-icon: 18px;
+  --kit-close-bg: var(--surf2); --kit-close-bg-h: var(--gl-card2); --kit-close-fg: var(--text2); --kit-close-fg-h: var(--text);
+  --kit-close-dark-size: 40px; --kit-close-dark-bg: rgba(255,255,255,.14); --kit-close-dark-bg-h: rgba(255,255,255,.26);   /* на тёмной плёнке и цветной плашке */
+  --kit-x-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M18 6 6 18'/><path d='m6 6 12 12'/></svg>");   /* значок X Lucide для крестиков-текстов (✕, ×) */
+  /* тумблер */
+  --kit-tg-w: 40px; --kit-tg-h: 24px; --kit-tg-r: 8px; --kit-tg-knob: 18px; --kit-tg-knob-r: 6px; --kit-tg-pad: 3px; --kit-tg-dur: .2s;
+  --kit-tg-off: color-mix(in srgb, var(--text) 18%, var(--side-bg)); --kit-tg-on: var(--accent-fill); --kit-tg-knob-bg: #fff;
+  /* сегментный переключатель */
+  --kit-seg-r: 14px; --kit-seg-btn-r: 11px; --kit-seg-pad: 3px; --kit-seg-h: 34px; --kit-seg-fs: 12.5px;
+  --kit-seg-bg: var(--surf2); --kit-seg-fg: var(--text2); --kit-seg-on-bg: var(--side-bg); --kit-seg-on-fg: var(--text); --kit-seg-on-sh: 0 1px 2px rgba(60,40,20,.12);
+  /* чипы-фильтры и метки */
+  --kit-chip-h: 30px; --kit-chip-bg: var(--surf2); --kit-chip-bg-h: var(--gl-card2); --kit-chip-fg: var(--text2);
+  --kit-chip-on-bg: var(--accent-soft); --kit-chip-on-fg: var(--accent-ink); --kit-tag-r: 8px;
+  /* флажок */
+  --kit-chk: 22px; --kit-chk-r: 8px; --kit-chk-line: color-mix(in srgb, var(--text) 28%, transparent);
+  /* слайдер */
+  --kit-rng-track: 6px; --kit-rng-thumb: 18px; --kit-rng-off: color-mix(in srgb, var(--text) 14%, var(--side-bg));
+  /* поля и выпадающие списки */
+  --kit-field-h: 40px; --kit-field-h-sm: 34px; --kit-field-h-lg: 46px; --kit-field-bg: var(--surf2); --kit-field-fg: var(--text);
+  --kit-field-ring: 0 0 0 3px var(--accent-soft); --kit-field-fs: 14px;
+}
+html.dark, html.dark.navy {
+  --kit-seg-on-bg: var(--gl-card2); --kit-seg-on-sh: none;
+}
+
+/* ───────────────────────── 1. КНОПКИ ЗАКРЫТИЯ ─────────────────────────
+   Тональная (по умолчанию): 36×36, радиус 12, фон --surf2, значок X Lucide 18, цвет --text2; hover — фон --gl-card2, цвет --text.
+   Сюда попадают и прочие кнопки заголовка окна (назад и т. п.): в заголовке окна все иконочные кнопки одинаковые. */
+.modal-hdr .icon-btn, .ha-close, .diag-head .icon-btn, .gm-top .icon-btn,
+.pf-x,
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-x,
+.chat-search > .icon-btn:last-child, .chat-search .icon-btn:last-child, .pin-bar .pin-unpin, .pin-bar > .pin-unpin:last-child,
+.input-reply-bar > .icon-btn, .input-edit-bar > .icon-btn,
+.fmt-bar button[data-f="close"], .composer-slot .fmt-bar button[data-f="close"],
+.ann-banner-close, .sc-b-x {
+  width: var(--kit-close-size); height: var(--kit-close-size); min-width: var(--kit-close-size); min-height: var(--kit-close-size);
+  padding: 0; margin: 0; border: 0; border-radius: var(--kit-r); flex: none;
+  display: grid; place-items: center; line-height: 1; cursor: pointer;
+  background: var(--kit-close-bg); color: var(--kit-close-fg); box-shadow: none;
+  transition: background .2s, color .2s, transform .15s;
+}
+.modal-hdr .icon-btn:hover, .ha-close:hover, .diag-head .icon-btn:hover, .gm-top .icon-btn:hover,
+.pf-x:hover,
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-x:hover,
+.chat-search > .icon-btn:last-child:hover, .chat-search .icon-btn:last-child:hover, .pin-bar .pin-unpin:hover, .pin-bar > .pin-unpin:last-child:hover,
+.input-reply-bar > .icon-btn:hover, .input-edit-bar > .icon-btn:hover,
+.fmt-bar button[data-f="close"]:hover, .composer-slot .fmt-bar button[data-f="close"]:hover,
+.ann-banner-close:hover, .sc-b-x:hover {
+  background: var(--kit-close-bg-h); color: var(--kit-close-fg-h);
+}
+.modal-hdr .icon-btn:active, .ha-close:active, .diag-head .icon-btn:active, .gm-top .icon-btn:active, .pf-x:active,
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-x:active, .input-reply-bar > .icon-btn:active, .input-edit-bar > .icon-btn:active { transform: scale(var(--kit-press)); }
+.modal-hdr .icon-btn svg, .ha-close svg, .diag-head .icon-btn svg, .gm-top .icon-btn svg, .pf-x svg,
+.chat-search .icon-btn:last-child svg, .pin-bar .pin-unpin svg, .input-reply-bar > .icon-btn svg, .input-edit-bar > .icon-btn svg,
+.fmt-bar button[data-f="close"] svg, .ann-banner-close svg { width: var(--kit-close-icon); height: var(--kit-close-icon); }
+/* кнопки с встроенным style="width:24px;height:24px;color:…" (панели ответа и правки): инлайн перебиваем !important */
+.input-reply-bar > .icon-btn, .input-edit-bar > .icon-btn {
+  width: var(--kit-close-size) !important; height: var(--kit-close-size) !important; color: var(--kit-close-fg) !important;
+}
+.input-reply-bar > .icon-btn:hover, .input-edit-bar > .icon-btn:hover { color: var(--kit-close-fg-h) !important; }
+/* крестики-тексты (✕, ×): глиф прячем, рисуем X Lucide маской; при открытом профиле значок тоже --text2 (не белый) */
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-x, .notif-banner-close, .sc-b-x { font-size: 0 !important; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-x::before, .notif-banner-close::before, .sc-b-x::before {
+  content: ""; display: block; width: var(--kit-close-icon); height: var(--kit-close-icon); background: currentColor;
+  -webkit-mask: var(--kit-x-mask) center / contain no-repeat; mask: var(--kit-x-mask) center / contain no-repeat;
+}
+.pf-x { position: absolute; right: 12px; top: 12px; }
+/* на тёмной плёнке (просмотрщик) и на цветной плашке (запрос уведомлений): полупрозрачный белый, значок белый */
+#lightbox-close {
+  width: var(--kit-close-dark-size); height: var(--kit-close-dark-size); border: 0; border-radius: var(--kit-r); padding: 0;
+  background: var(--kit-close-dark-bg); color: #fff; box-shadow: none; display: grid; place-items: center; transition: background .15s;
+}
+#lightbox-close:hover { background: var(--kit-close-dark-bg-h); }
+.notif-banner .notif-banner-close {
+  width: 34px; height: 34px; padding: 0 !important; border: 0; border-radius: var(--kit-r); flex: none;
+  display: grid; place-items: center; color: #fff; background: transparent !important; transition: background .2s;
+}
+.notif-banner .notif-banner-close:hover { background: var(--kit-close-dark-bg) !important; }
+.notif-banner button:not(.notif-banner-close) {     /* «Разрешить» на той же плашке: тот же радиус и высота */
+  height: 34px; padding: 0 16px; border: 0; border-radius: var(--kit-r); background: var(--kit-close-dark-bg); color: #fff; font-size: 12.5px; font-weight: 600; transition: background .2s;
+}
+.notif-banner button:not(.notif-banner-close):hover { background: var(--kit-close-dark-bg-h); }
+.notif-banner { background: var(--accent-fill); box-shadow: var(--pop-shadow); }
+
+/* ───────────────────────── 2. ПЕРЕКЛЮЧАТЕЛИ (ТУМБЛЕРЫ) ─────────────────────────
+   Дорожка 40×24, радиус 8; ползунок 18×18, радиус 6, без тени; включён — --accent-fill, выключен — чуть темнее поверхности; ход 0,2 с. */
+.cs-tg, .tg, button[role="switch"] {
+  position: relative; width: var(--kit-tg-w); height: var(--kit-tg-h); flex: none; padding: 0; border: 0; cursor: pointer;
+  border-radius: var(--kit-tg-r); background: var(--kit-tg-off); box-shadow: none; transition: background var(--kit-tg-dur);
+}
+.cs-tg::after, .tg::after, button[role="switch"]::after {
+  content: ""; position: absolute; top: var(--kit-tg-pad); left: var(--kit-tg-pad); width: var(--kit-tg-knob); height: var(--kit-tg-knob);
+  border-radius: var(--kit-tg-knob-r); background: var(--kit-tg-knob-bg); box-shadow: none; transition: transform var(--kit-tg-dur);
+}
+.cs-tg[aria-checked="true"], .tg[aria-checked="true"], button[role="switch"][aria-checked="true"],
+.cs-tg.on, .tg.on { background: var(--kit-tg-on); box-shadow: none; }
+.cs-tg[aria-checked="true"]::after, .tg[aria-checked="true"]::after, button[role="switch"][aria-checked="true"]::after,
+.cs-tg.on::after, .tg.on::after { transform: translateX(calc(var(--kit-tg-w) - var(--kit-tg-knob) - 2 * var(--kit-tg-pad))); }
+.cs-tg:focus-visible, .tg:focus-visible, button[role="switch"]:focus-visible { outline: var(--kit-focus); outline-offset: 2px; }
+.cs-tg:disabled, .tg:disabled, button[role="switch"]:disabled { opacity: .45; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .cs-tg, .cs-tg::after, .tg, .tg::after { transition: none; } }
+
+/* ───────────────────────── 3. КНОПКИ ДЕЙСТВИЙ ─────────────────────────
+   Высота 36 (в окнах), радиус 12, текст 13/600, отступ 0 18, значок 16. Виды:
+     основная  — --accent-fill, текст белый
+     вторичная — --gl-card2 (нейтральная), текст --text
+     «мягкая»  — --accent-soft, текст --accent-ink (второстепенное действие акцентом: «Добавить…», кнопки в настройках)
+     опасная   — --danger-bg, текст --danger;  опасная-заливка — --danger, текст белый (подтверждение удаления)
+   Состояния: hover — темнее фон; active — масштаб .95; disabled — прозрачность .45; focus-visible — кольцо --accent.
+   Размеры: .sm — 30 (мелкие места: баннеры, строки), большая — 46 (вход). Старые «таблетки» 999px, градиенты, блики и тени убраны. */
+/* 3.0 база: геометрия, шрифт, нейтральная окраска (все виды — те же селекторы с вариантами ниже) */
+.cs-btn, .cs-btn.solid, .cs-btn.ghost, .cs-btn.danger, .diag-foot .cs-btn, .diag-foot .cs-btn.solid,
+.modal-btn-primary, .modal-btn-ghost, .modal-btn-danger, .ha-btn-cancel, .ha-btn-apply, .ha-btn-danger,
+.anx-btn, .anx-solid, .anx-btn.anx-solid, html.dark .anx-solid, .am-btn, .am-btn.pri,
+.gi-btn, .gi-btn-add, .gi-btn-leave, .gi-btn-delete, .pf-danger, .addc-btn, .gi-addc, .fp-new,
+.sc-btn, .sc-btn.ghost, .btn-login, .msg-act, .msg-act.ok, .msg-act.done {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--kit-btn-gap);
+  height: var(--kit-btn-h); min-height: 0; padding: 0 var(--kit-btn-px); margin-block: 0;
+  border: 0; border-radius: var(--kit-r); box-shadow: none; filter: none;
+  background: var(--kit-sec-bg); color: var(--kit-sec-fg);
+  font-family: inherit; font-size: var(--kit-btn-fs); font-weight: var(--kit-btn-fw); line-height: 1; white-space: nowrap; cursor: pointer;
+  transition: background .2s, color .2s, transform .15s;
+}
+.cs-btn svg, .modal-btn-primary svg, .modal-btn-ghost svg, .modal-btn-danger svg, .ha-btn-apply svg, .ha-btn-cancel svg, .anx-btn svg, .am-btn svg,
+.gi-btn svg, .fp-new svg, .addc-btn svg, .pf-danger svg { width: 16px; height: 16px; flex: none; }
+/* мелкий размер */
+.cs-btn.sm, .anx-btn.sm, .sc-btn, .sc-btn.ghost, .addc-btn, .gi-addc, .msg-act, .msg-act.ok {
+  height: var(--kit-btn-h-sm); padding: 0 var(--kit-btn-px-sm); font-size: var(--kit-btn-fs-sm);
+}
+/* большая (вход) */
+.btn-login { height: var(--kit-btn-h-lg); width: 100%; padding: 0; font-size: var(--kit-btn-fs-lg); margin-top: 6px; }
+/* 3.1 «мягкая» (акцентный текст на --accent-soft) */
+.cs-btn, .gi-btn-add, .addc-btn, .gi-addc, .fp-new, .msg-act.ok { background: var(--kit-soft-bg); color: var(--kit-soft-fg); }
+/* 3.2 вторичная (нейтральная) */
+.cs-btn.ghost, .diag-foot .cs-btn, .modal-btn-ghost, .ha-btn-cancel, .anx-btn, .am-btn, .gi-btn, .gi-btn-leave, .sc-btn.ghost, .msg-act.done {
+  background: var(--kit-sec-bg); color: var(--kit-sec-fg);
+}
+.msg-act.done { color: var(--muted); cursor: default; }
+/* 3.3 основная */
+.cs-btn.solid, .diag-foot .cs-btn.solid, .modal-btn-primary, .ha-btn-apply, .anx-solid, .anx-btn.anx-solid, html.dark .anx-solid, .am-btn.pri, .sc-btn, .btn-login {
+  background: var(--kit-pri-bg); color: var(--kit-pri-fg);
+}
+.sc-btn.ghost { background: var(--kit-sec-bg); color: var(--kit-sec-fg); }
+/* 3.4 опасная (тон) и опасная-заливка */
+.cs-btn.danger, .gi-btn-delete, .pf-danger, .msg-act { background: var(--kit-dng-bg); color: var(--kit-dng-fg); }
+.modal-btn-danger, .ha-btn-danger { background: var(--kit-dngf-bg); color: var(--kit-dngf-fg); }
+/* 3.5 hover: нейтральная и «мягкая» — темнее фон; основная и заливка — ярче; опасная — гуще тон */
+.cs-btn:hover:not(:disabled):not([disabled]), .cs-btn.ghost:hover:not(:disabled):not([disabled]), .diag-foot .cs-btn:hover:not(:disabled):not([disabled]),
+.modal-btn-ghost:hover:not(:disabled):not([disabled]), .ha-btn-cancel:hover:not(:disabled):not([disabled]), .anx-btn:hover:not(:disabled):not([disabled]),
+.am-btn:hover:not(:disabled):not([disabled]), .gi-btn:hover:not(:disabled):not([disabled]), .gi-btn-leave:hover:not(:disabled):not([disabled]),
+.sc-btn.ghost:hover:not(:disabled):not([disabled]) { background: var(--kit-sec-bg-h); color: var(--kit-sec-fg); border: 0; filter: none; }
+.cs-btn:hover:not(:disabled):not([disabled]), .gi-btn-add:hover:not(:disabled):not([disabled]), .addc-btn:hover:not(:disabled):not([disabled]),
+.gi-addc:hover:not(:disabled):not([disabled]), .fp-new:hover:not(:disabled):not([disabled]), .msg-act.ok:hover:not(:disabled):not([disabled]) {
+  background: var(--kit-soft-bg-h); color: var(--kit-soft-fg); border: 0; filter: none;
+}
+.cs-btn.ghost:hover:not(:disabled):not([disabled]), .diag-foot .cs-btn:hover:not(:disabled):not([disabled]) { background: var(--kit-sec-bg-h); color: var(--kit-sec-fg); }
+.cs-btn.solid:hover:not(:disabled):not([disabled]), .diag-foot .cs-btn.solid:hover:not(:disabled):not([disabled]), .modal-btn-primary:hover:not(:disabled):not([disabled]),
+.ha-btn-apply:hover:not(:disabled):not([disabled]), .anx-solid:hover:not(:disabled):not([disabled]), .anx-btn.anx-solid:hover:not(:disabled):not([disabled]),
+.am-btn.pri:hover:not(:disabled):not([disabled]), .sc-btn:hover:not(:disabled):not([disabled]), .btn-login:hover:not(:disabled):not([disabled]),
+.modal-btn-danger:hover:not(:disabled):not([disabled]), .ha-btn-danger:hover:not(:disabled):not([disabled]) { filter: brightness(1.1); border: 0; }
+.cs-btn.solid:hover:not(:disabled):not([disabled]), .diag-foot .cs-btn.solid:hover:not(:disabled):not([disabled]), .modal-btn-primary:hover:not(:disabled):not([disabled]),
+.ha-btn-apply:hover:not(:disabled):not([disabled]), .anx-solid:hover:not(:disabled):not([disabled]), .anx-btn.anx-solid:hover:not(:disabled):not([disabled]),
+.am-btn.pri:hover:not(:disabled):not([disabled]), .sc-btn:hover:not(:disabled):not([disabled]), .btn-login:hover:not(:disabled):not([disabled]) { background: var(--kit-pri-bg); color: var(--kit-pri-fg); }
+.modal-btn-danger:hover:not(:disabled):not([disabled]), .ha-btn-danger:hover:not(:disabled):not([disabled]) { background: var(--kit-dngf-bg); color: var(--kit-dngf-fg); }
+.cs-btn.danger:hover:not(:disabled):not([disabled]), .gi-btn-delete:hover:not(:disabled):not([disabled]), .pf-danger:hover:not(:disabled):not([disabled]),
+.msg-act:hover:not(:disabled):not([disabled]):not(.ok):not(.done) { background: var(--kit-dng-bg-h); color: var(--kit-dng-fg); filter: none; border: 0; }
+.sc-btn.ghost:hover:not(:disabled):not([disabled]) { filter: none; }
+/* 3.6 нажатие, отключено, фокус */
+.cs-btn:active:not(:disabled):not([disabled]), .modal-btn-primary:active:not(:disabled), .modal-btn-ghost:active:not(:disabled), .modal-btn-danger:active:not(:disabled),
+.ha-btn-cancel:active, .ha-btn-apply:active, .ha-btn-danger:active, .anx-btn:active:not(:disabled), .am-btn:active:not(:disabled), .gi-btn:active, .pf-danger:active,
+.addc-btn:active, .gi-addc:active, .fp-new:active:not(:disabled), .sc-btn:active, .btn-login:active:not(:disabled), .msg-act:active:not(:disabled) { transform: scale(var(--kit-press)); }
+.cs-btn:disabled, .cs-btn[disabled], .modal-btn-primary:disabled, .modal-btn-ghost:disabled, .modal-btn-danger:disabled, .ha-btn-apply:disabled, .ha-btn-cancel:disabled,
+.anx-btn:disabled, .am-btn:disabled, .gi-btn:disabled, .fp-new:disabled, .sc-btn:disabled, .btn-login:disabled, .msg-act:disabled { opacity: .45; cursor: default; }
+.cs-btn:focus-visible, .modal-btn-primary:focus-visible, .modal-btn-ghost:focus-visible, .modal-btn-danger:focus-visible, .ha-btn-apply:focus-visible, .ha-btn-cancel:focus-visible,
+.ha-btn-danger:focus-visible, .anx-btn:focus-visible, .am-btn:focus-visible, .gi-btn:focus-visible, .pf-danger:focus-visible, .addc-btn:focus-visible, .gi-addc:focus-visible,
+.fp-new:focus-visible, .sc-btn:focus-visible, .btn-login:focus-visible, .msg-act:focus-visible,
+.cs-tg:focus-visible, .icon-btn:focus-visible, .modal-hdr .icon-btn:focus-visible { outline: var(--kit-focus); outline-offset: 2px; }
+.gi-footer .modal-btn-ghost, .gi-footer .modal-btn-primary { flex: 1; }
+/* кнопки окон гостевой ссылки и ссылки на видеозвонок (shared/guestlinks.js, calllinks.js: их стили встают в <head> после flat.css, поэтому префикс тяжелее) */
+.gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-btn:not(.gl-ic) {
+  height: var(--kit-btn-h); padding: 0 var(--kit-btn-px); border: 0; border-radius: var(--kit-r); box-shadow: none; filter: none;
+  background: var(--kit-pri-bg); color: var(--kit-pri-fg); font-size: var(--kit-btn-fs); font-weight: var(--kit-btn-fw); gap: var(--kit-btn-gap);
+  transition: background .2s, color .2s, transform .15s;
+}
+.gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-btn:not(.gl-ic):hover:not(:disabled) { background: var(--kit-pri-bg); color: var(--kit-pri-fg); filter: brightness(1.1); }
+.gl-bg.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-no:not(.gl-ic), .gl-bg.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-act:not(.gl-ic) {
+  border: 0; background: var(--kit-sec-bg); color: var(--kit-sec-fg);
+}
+.gl-bg.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-no:not(.gl-ic):hover:not(:disabled), .gl-bg.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-act:not(.gl-ic):hover:not(:disabled) {
+  background: var(--kit-sec-bg-h); color: var(--kit-sec-fg); filter: none;
+}
+.gl-bg.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-yes:not(.gl-ic) { border: 0; background: var(--kit-dngf-bg); color: var(--kit-dngf-fg); }
+.gl-bg.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-yes:not(.gl-ic):hover:not(:disabled) { background: var(--kit-dngf-bg); filter: brightness(1.1); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-btn:not(.gl-ic):active:not(:disabled) { transform: scale(var(--kit-press)); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-grid > button.gl-btn:not(.gl-ic), .gl-bg:not(.gl-adm):not(.gl-m) .cll-url > button.gl-btn:not(.gl-ic) { height: var(--kit-field-h); }   /* кнопка в одной строке с полем — высота поля */
+/* значковые кнопки списка гостевых ссылок: тональные 36×36 радиус 12 (как крестик), опасная — красный значок */
+.gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-ic, .gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-ib {
+  width: var(--kit-ibtn); height: var(--kit-ibtn); padding: 0; border: 0; border-radius: var(--kit-r); box-shadow: none; filter: none;
+  background: var(--kit-close-bg); color: var(--kit-close-fg); transition: background .2s, color .2s;
+}
+.gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-ic:hover:not(:disabled), .gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-ib:hover, .gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-ib[aria-expanded="true"] {
+  background: var(--kit-close-bg-h); color: var(--kit-close-fg-h); filter: none;
+}
+.gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-ic.dng { background: var(--kit-dng-bg); color: var(--kit-dng-fg); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-ic.dng:hover:not(:disabled) { background: var(--kit-dng-bg-h); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl button.gl-ic.ask { width: auto; padding: 0 12px; background: var(--kit-dngf-bg); color: var(--kit-dngf-fg); }
+
+/* ───────────────────────── 4. ИКОНОЧНЫЕ КНОПКИ ─────────────────────────
+   Без фона, радиус 12, hover — фон --gl-card2 (размер задаёт место: 36 в окнах, 34–40 в шапках — это раскладка, её держат flat-frame/chat).
+   Мелкие значки в строках (убрать участника, убрать из выбора, глаз пароля, убрать вложение): радиус 8. */
+.icon-btn, .composer-icon-btn, .btn-new-chat,
+.chat-header-actions > .icon-btn, .chat-header-actions > .icon-btn:first-child, .chat-header-actions > .icon-btn:last-child, .chat-header-actions > .icon-btn:only-child,
+.sidebar-head .btn-new-chat, .topbar-actions .icon-btn, .chat-search .icon-btn, .chat-search > .icon-btn:last-child, .pin-bar .pin-unpin, .pin-bar > .pin-unpin:last-child,
+.composer-main .composer-attach, .composer-main .send-btn, .composer-main .send-btn.ready, .scroll-bottom-btn, .fp-acts button { border-radius: var(--kit-r); }
+.modal-hdr .icon-btn, .ha-close, .diag-head .icon-btn, .gm-top .icon-btn, .pf-x, .chat-search > .icon-btn:last-child, .pin-bar > .pin-unpin:last-child,
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-x { border-radius: var(--kit-r); }   /* перебивает более тяжёлые правила стекла для крестиков */
+.icon-btn:hover:not(:disabled), .composer-icon-btn:hover:not(:disabled) { background: var(--kit-ibtn-bg-h); }
+.fp-acts { border-radius: var(--kit-r); }
+.fp-acts button:hover:not(:disabled) { background: var(--kit-ibtn-bg-h); color: var(--kit-ibtn-fg-h); }
+.gm-x, .pp-x, .rm-btn, .cs-eye, .att-x { border-radius: var(--kit-r-sm); }
+.gm-x:hover, #gm-modal.gmm .mini .gm-x:hover { background: var(--danger-bg); color: var(--danger); }
+#gm-modal.gmm .mini .gm-x { border-radius: var(--kit-r-sm); }
+.gm-x, #gm-modal.gmm .mini .gm-x { width: 28px; height: 28px; }
+
+/* ───────────────────────── 5. СЕГМЕНТНЫЕ ПЕРЕКЛЮЧАТЕЛИ ─────────────────────────
+   Контейнер: радиус 14, фон --surf2, отступ 3, без рамки и тени; кнопка: радиус 11, текст --text2 12.5/600;
+   выбранная: плашка --side-bg (в тёмной --gl-card2), текст --text, тонкая тень (в тёмной нет). Плашка «скользит» (shared/slidesel.js копирует вид выбранной кнопки).
+   Сюда: фильтр списка чатов, тема, смайлы|GIF, тип/получатели/режим объявления, вкладки окон профиля и группы, настройки. */
+.seg, .cs-seg, .pa-seg, .ep-sw, .anx-sg, .anx-types, .anx-tabsbar {
+  box-sizing: border-box; height: var(--kit-seg-h); min-height: 0; padding: var(--kit-seg-pad); gap: 2px;
+  border: 0; border-radius: var(--kit-seg-r); background: var(--kit-seg-bg); box-shadow: none; overflow: visible;
+}
+.seg button, .cs-seg button, .pa-seg button, .ep-sw button, .anx-sg button, .anx-types button, .anx-tabsbar button {
+  height: auto; min-height: 0; align-self: stretch; padding: 0 12px; border: 0; border-radius: var(--kit-seg-btn-r);
+  background: none; box-shadow: none; color: var(--kit-seg-fg);
+  font-family: inherit; font-size: var(--kit-seg-fs); font-weight: 600; line-height: 1; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer;
+  transition: color .25s, background .2s, box-shadow .2s;
+}
+.seg button:hover, .cs-seg button:hover, .pa-seg button:hover, .ep-sw button:hover, .anx-sg button:hover, .anx-types button:hover, .anx-tabsbar button:hover { background: none; color: var(--kit-seg-on-fg); }
+.seg button.active, .cs-seg button[aria-pressed="true"], .pa-seg button.on, .ep-sw button[aria-pressed="true"], .anx-sg button[aria-pressed="true"],
+.anx-types button[aria-checked="true"], .anx-tabsbar button[aria-selected="true"],
+.seg button.active:hover, .cs-seg button[aria-pressed="true"]:hover, .pa-seg button.on:hover, .ep-sw button[aria-pressed="true"]:hover, .anx-sg button[aria-pressed="true"]:hover,
+.anx-types button[aria-checked="true"]:hover, .anx-tabsbar button[aria-selected="true"]:hover {
+  background: var(--kit-seg-on-bg); color: var(--kit-seg-on-fg); box-shadow: var(--kit-seg-on-sh); border: 0;
+}
+.pa-seg button:disabled, .seg button:disabled { opacity: .4; cursor: default; }
+.seg button:focus-visible, .cs-seg button:focus-visible, .pa-seg button:focus-visible, .ep-sw button:focus-visible, .anx-sg button:focus-visible,
+.anx-types button:focus-visible, .anx-tabsbar button:focus-visible { outline: var(--kit-focus); outline-offset: -2px; }
+.anx-sg, .ep-sw { display: inline-flex; }
+
+/* ───────────────────────── 6. ЧИПЫ-ФИЛЬТРЫ И МЕТКИ ─────────────────────────
+   Чип-фильтр (нажимается, можно несколько/один): высота 30, радиус 10, фон --surf2, текст --text2; hover — --gl-card2; выбран — --accent-soft и --accent-ink, без рамки.
+   Метка (не нажимается): радиус 8, фон --accent-soft, текст --accent-ink. */
+.gm-chips button, .cm-tabs button, .gp-chip, .anx-ch {
+  height: var(--kit-chip-h); min-height: 0; padding: 0 12px; border: 0; border-radius: var(--kit-r-chip); box-shadow: none;
+  background: var(--kit-chip-bg); color: var(--kit-chip-fg); font-family: inherit; font-size: var(--kit-seg-fs); font-weight: 600; line-height: 1; white-space: nowrap; cursor: pointer;
+  transition: background .2s, color .2s, transform .15s;
+}
+.gm-chips button:hover, .cm-tabs button:hover, .gp-chip:hover, .anx-ch:hover { background: var(--kit-chip-bg-h); color: var(--text); border: 0; }
+.gm-chips button.on, .cm-tabs button.on, .gp-chip[aria-pressed="true"], .anx-ch[aria-pressed="true"],
+.gm-chips button.on:hover, .cm-tabs button.on:hover, .gp-chip[aria-pressed="true"]:hover, .anx-ch[aria-pressed="true"]:hover {
+  background: var(--kit-chip-on-bg); color: var(--kit-chip-on-fg); border: 0;
+}
+.gm-chips button:active, .cm-tabs button:active, .gp-chip:active, .anx-ch:active { transform: scale(var(--kit-press)); }
+.gm-chips button:focus-visible, .cm-tabs button:focus-visible, .gp-chip:focus-visible, .anx-ch:focus-visible { outline: var(--kit-focus); outline-offset: 2px; }
+.gm-chips button { display: inline-flex; align-items: center; }
+.gp-chip { height: 28px; }
+.cs-chip, .ws-chip, .ws-chip.pf-chip, .gm-chip, .anx-pill, .accent-dot { border-radius: var(--kit-tag-r); }
+.cs-chip, .ws-chip { background: var(--accent-soft); color: var(--accent-ink); }
+
+.gl-bg .gl-chip { border: 0; border-radius: var(--kit-tag-r); padding: 3px 9px; background: var(--surf2); color: var(--muted); }                 /* метки окон гостевых ссылок: статус */
+.gl-bg .gl-chip.ok { background: color-mix(in srgb, var(--gl-ok) 14%, var(--side-bg)); color: var(--gl-ok); }
+.gl-bg .gl-chip.warn { background: color-mix(in srgb, var(--gl-wn) 16%, var(--side-bg)); color: var(--gl-wn); }
+
+/* ───────────────────────── 7. ФЛАЖКИ ─────────────────────────
+   Квадрат 22, радиус 8, линия 1,5 px; отмечен — --accent-fill с белой галочкой. Работает и для родных input[type=checkbox]. */
+.pp-chk, .gm-chk {
+  width: var(--kit-chk); height: var(--kit-chk); border-radius: var(--kit-chk-r); border: 1.5px solid var(--kit-chk-line); background: transparent;
+  display: grid; place-items: center; color: transparent; flex: none; box-shadow: none; transition: background .2s, border-color .2s, color .2s;
+}
+.pp-chk svg, .gm-chk svg { width: 14px; height: 14px; }
+.pp-row.on .pp-chk, .gm-pick.on .gm-chk { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; transform: none; }
+input[type="checkbox"] {
+  -webkit-appearance: none; appearance: none; width: 20px; height: 20px; margin: 0; flex: none; cursor: pointer; vertical-align: middle;
+  border: 1.5px solid var(--kit-chk-line); border-radius: var(--kit-r-sm); background: transparent; transition: background .2s, border-color .2s;
+}
+input[type="checkbox"]:checked {
+  background: var(--accent-fill) center / 14px no-repeat url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'><path d='M20 6 9 17l-5-5'/></svg>");
+  border-color: var(--accent-fill);
+}
+input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { outline: var(--kit-focus); outline-offset: 2px; }
+input[type="radio"] { accent-color: var(--accent-fill); }
+
+/* ───────────────────────── 8. СЛАЙДЕР ─────────────────────────
+   Дорожка 6 px (радиус 3), закрашенная часть --accent-fill; ползунок 18×18, радиус 6, белый с обводкой --accent-fill, без тени. */
+.rng, input[type="range"] { -webkit-appearance: none; appearance: none; background: none; height: 24px; cursor: pointer; }
+.rng::-webkit-slider-runnable-track, input[type="range"]::-webkit-slider-runnable-track {
+  height: var(--kit-rng-track); border-radius: 3px; box-shadow: none;
+  background: linear-gradient(90deg, var(--accent-fill) var(--v, 50%), var(--kit-rng-off) var(--v, 50%));
+}
+.rng::-webkit-slider-thumb, input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: var(--kit-rng-thumb); height: var(--kit-rng-thumb); margin-top: calc((var(--kit-rng-track) - var(--kit-rng-thumb)) / 2);
+  border-radius: 6px; background: #fff; border: 2px solid var(--accent-fill); box-shadow: none; transition: none;
+}
+.rng:hover::-webkit-slider-thumb, .rng:active::-webkit-slider-thumb { transform: none; }
+.rng:focus-visible { outline: var(--kit-focus); outline-offset: 4px; border-radius: 3px; }
+
+/* ───────────────────────── 9. ПОЛЯ ВВОДА И ВЫПАДАЮЩИЕ СПИСКИ ─────────────────────────
+   Высота 40, радиус 12, фон --surf2, рамка 1 px прозрачная; фокус — рамка --accent и кольцо 3 px --accent-soft; подсказка --muted.
+   Малые (34): поиск в панели смайлов и GIF, время, поле в плашке. Большие (46): вход. */
+/* 9.1 сами поля (input/textarea/select) */
+.field input, .field textarea, .nc-name-input, #group-name, .gi-name-input:not([readonly]), .profile-name-input, .anx-time input, .cs-time, .sc-b-inp, .gm-nm1 input, .anx-ta,
+.gl-bg:not(.gl-adm):not(.gl-m) .gl input, .cll select, select.cl-sel {
+  box-sizing: border-box; border: 1px solid transparent; border-radius: var(--kit-r); background: var(--kit-field-bg); color: var(--kit-field-fg);
+  box-shadow: none; outline: 0; font-family: inherit; font-size: var(--kit-field-fs); transition: border-color .2s, box-shadow .2s;
+}
+.field input, .nc-name-input, #group-name, .gi-name-input:not([readonly]), .profile-name-input, .gl-bg:not(.gl-adm):not(.gl-m) .gl input, .cll select { height: var(--kit-field-h); padding: 0 14px; }
+.field input { height: var(--kit-field-h-lg); }
+.field textarea, .anx-ta { padding: 12px 14px; line-height: 1.5; }
+.anx-time input, .cs-time, .sc-b-inp, .gm-nm1 input { height: var(--kit-field-h-sm); padding: 0 10px; border-radius: var(--kit-r); }
+.anx-time input { padding: 0; }
+.field input:focus, .field textarea:focus, .nc-name-input:focus, #group-name:focus, .gi-name-input:not([readonly]):focus, .profile-name-input:focus, .anx-time input:focus,
+.cs-time:focus, .sc-b-inp:focus, .gm-nm1 input:focus, .anx-ta:focus, .gl-bg:not(.gl-adm):not(.gl-m) .gl input:focus, .cll select:focus {
+  border-color: var(--accent); box-shadow: var(--kit-field-ring);
+}
+.field input::placeholder, .field textarea::placeholder, .nc-name-input::placeholder, .anx-ta::placeholder, .gl input::placeholder { color: var(--muted); }
+/* 9.2 обёртки полей (внутри — прозрачный input) */
+.cs-inp, .ac-fld, .nc-search, .anx-search, .gm-search, .gp-search, .ep-search, .pl-f, .gl-bg:not(.gl-adm):not(.gl-m) .gl-sel-b {
+  box-sizing: border-box; height: var(--kit-field-h); border: 1px solid transparent; border-radius: var(--kit-r); background: var(--kit-field-bg); color: var(--kit-field-fg);
+  box-shadow: none; transition: border-color .2s, box-shadow .2s;
+}
+.nc-search, .anx-search, .gm-search, .ac-fld, .cs-inp { padding: 0 14px; }
+.cs-inp { padding-right: 6px; }
+.gp-search, .ep-search { height: var(--kit-field-h-sm); padding: 0 12px; }
+.pl-f { padding: 0 8px 0 14px; }
+.cs-inp:focus-within, .ac-fld:focus-within, .nc-search:focus-within, .anx-search:focus-within, .gm-search:focus-within, .gp-search:focus-within, .ep-search:focus-within,
+.pl-f:focus-visible, .gl-bg:not(.gl-adm):not(.gl-m) .gl-sel-b:focus-visible, .gl-bg:not(.gl-adm):not(.gl-m) .gl-sel.open .gl-sel-b {
+  border-color: var(--accent); box-shadow: var(--kit-field-ring);
+}
+.pl-f:hover, .gl-bg:not(.gl-adm):not(.gl-m) .gl-sel-b:hover { background: var(--kit-field-bg); border-color: transparent; }
+.pl-f.done { background: var(--accent-soft); border-color: transparent; }
+.cs-inp.bad, .ac-fld.err { border-color: var(--danger); }
+.cs-inp input, .ac-fld input, .nc-search input, .anx-search input, .gm-search input, .gp-search input, .ep-search input { background: none; border: 0; box-shadow: none; outline: 0; color: var(--kit-field-fg); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-sel-b { padding: 0 12px 0 14px; font-size: var(--kit-field-fs); }
+/* 9.3 раскрывающийся список (меню выбора): плоский, радиус 16 / 12, без рамки */
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-pop { background: var(--side-bg); border: 0; border-radius: var(--r-menu); box-shadow: var(--pop-shadow); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-opt { border-radius: var(--kit-r); padding: 8px 12px; }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-opt.act { background: var(--hover-row); }
+.gl-bg:not(.gl-adm):not(.gl-m) .gl-opt.sel { color: var(--accent-ink); }
+.gl-bg:not(.gl-adm):not(.gl-m) { --gl-h: var(--kit-field-h); --gl-r: var(--kit-r); }
+
+/* ═══════════ КАК ДОБАВИТЬ НОВЫЙ СЕЛЕКТОР В КИТ (для следующих агентов) ═══════════
+   Свою кнопку/тумблер/крестик/поле в flat-frame/chat/menus/misc/calls.css не рисуем: дописываем селектор в список здесь.
+   1) Крестик (закрывает окно, панель, плашку, строку): добавить селектор в тональный список раздела 1 (правило, значок и :hover — это три списка подряд; добавить во все три).
+      Если крестик — текстовый глиф (✕, ×): добавить ещё в списки «font-size:0» и «::before» (значок X рисуется маской). Если он стоит на тёмной/цветной подложке — в блок «#lightbox-close, .notif-banner-close».
+      Если у кнопки в разметке inline style с width/height/color — добавить в блок с !important под списком (единственное место, где !important нужен).
+   2) Тумблер: ему нужен класс .cs-tg (или .tg, или role="switch"): список раздела 2 подхватит сам, дописывать ничего не надо. Размеры — только через --kit-tg-*.
+   3) Кнопка действия: выбрать вид — основная / вторичная / «мягкая» / опасная / опасная-заливка — и дописать селектор в базовый список 3.0 (геометрия), в список нужного вида (3.1–3.4) и в три списка состояний 3.5 (hover) и 3.6 (active/disabled/focus).
+      Вес селектора берётся таким же, как у старого правила кнопки в style.css/glass.css (например .diag-foot .cs-btn — со своим родителем), иначе старое правило перебьёт кит. Новую кнопку проще строить на готовом классе: cs-btn (+ solid / ghost / danger / sm).
+   4) Иконочная кнопка: радиус — список раздела 4; размер и место — у того, кто делает раскладку. Мелкая в строке (радиус 8) — в строку с .gm-x, .pp-x.
+   5) Сегментный переключатель: контейнер и кнопки — в два списка раздела 5 (контейнер; кнопки), выбранный пункт — в список «.active / [aria-pressed] / .on …», и добавить группу в shared/slidesel.js не нужно (его правят отдельно).
+   6) Чип-фильтр — раздел 6 (3 списка: база, hover, выбран); метка без нажатия — список «.cs-chip, .ws-chip…» (радиус 8).
+   7) Флажок — раздел 7; слайдер — класс .rng; поле — раздел 9.1 (само поле) или 9.2 (обёртка с вложенным input), высота — по размеру: 40 / 34 / 46.
+   8) Значения (цвет, размер, радиус) в селекторах не писать — только var(--kit-*) из первого блока. Нужно новое значение — завести переменную там.
+   9) Отступы и место элемента в раскладке (margin, flex, grid) — не часть кита, их задают flat-* файлы своих областей.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───── Доступность: фокус с клавиатуры и уменьшенное движение ───── */
+/* Единое кольцо фокуса (--accent) у кнопок, ссылок, полей и пунктов меню. Нулевая специфичность (:where): более точные правила выше (переключатели, сегменты, чипы) и поля с рамкой-обёрткой остаются как есть */
+:where(button, a[href], summary, select, textarea, input, [role="button"], [role="menuitem"], [role="tab"], [role="switch"], [role="radio"], [tabindex]:not([tabindex="-1"])):focus-visible { outline: var(--kit-focus); outline-offset: 2px; }
+/* в style.css у этих кнопок кольцо снято (outline: none) — возвращаем */
+.composer-pill .send-btn:focus-visible, .fld-btn:focus-visible, .acc-btn:focus-visible, .scroll-bottom-btn:focus-visible { outline: var(--kit-focus); outline-offset: 2px; }
+/* внутри меню и списков кольцо не выходит за край (обрезалось бы родителем) */
+:where(.ctx-menu, .head-menu, .up-menu, #mention-popup, .chats-list, .modal) :where(button, [role="menuitem"], [tabindex]):focus-visible { outline-offset: -2px; }
+
+/* Уменьшенное движение: переходы мгновенные; входные и выходные анимации окон, меню и карточек сжаты до одного кадра (animationend срабатывает, закрытие не зависает);
+   бесконечные индикаторы (спиннеры, «печатает…», загрузка) не трогаем */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .001ms !important; transition-delay: 0s !important; scroll-behavior: auto !important; }
+  .modal-bg, .modal-bg::before, .modal, #lightbox, #lightbox img, #lightbox video, .msg-bubble, .gi-closing, .head-menu, .ctx-menu, #ctx-chat-menu,
+  .pop-out, .up-menu, #mention-popup, #reaction-picker, .chats-list, .cl-card, .gl-bg .gl, .vr-fx { animation-duration: .001ms !important; animation-delay: 0s !important; }
+}

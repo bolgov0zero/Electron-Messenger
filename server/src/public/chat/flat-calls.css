@@ -1,0 +1,131 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   /chat — дизайн B «Мягкий»: звонки: входящая карточка, окно звонка, свёрнутая карточка, видео 1:1, группа.
+   Подключается после flat.css (токены и база). Здесь только правила этой области; токены и алиасы стекла — в flat.css.
+   Разметку и CSS рисует /shared/calls.js (общий с /m, не редактируется): его <style id="cl-css"> вставляется в <head> ПОСЛЕ этого файла,
+   поэтому все селекторы здесь с префиксом html — они сильнее по специфичности (так же сделано в m/css/flat.css, раздел «звонки»).
+   Эталон — docs/flat-mockup/calls.html (src-calls/calls-b.css), PLAN.md п. 2.2 и 2.9.
+   Размеры кнопок — пропорциональная система: управление на видео 54 px → радиус 14, карточки 16, окно и карточка входящего 22, чипы 8–10.
+   Положения (top/right, inset) не менялись, кроме отступа панели управления от низа (см. «панель управления»).
+   Реальные разговоры идут только через LiveKit; для проверки вида состояния собираются из состояния Calls.state (см. отчёт).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───── токены: сплошные панели поверх видео ───── */
+:root { --vpanel: #25221f; --vbtn: #38342f; --vbtn2: #45403a; }
+html.dark, html.dark.navy { --vpanel: #0d141b; --vbtn: #283444; --vbtn2: #344457; }
+
+/* ───── входящий звонок: карточка в углу окна ───── */
+html .cl-card {
+  border-radius: 22px; background: var(--modal-bg); border: 0; box-shadow: var(--pop-shadow);
+  animation: cl-in .28s cubic-bezier(.22, 1, .36, 1) both;
+}
+html .cl-card.out { animation: cl-out .2s ease-in both; }
+html .cl-ring::before, html .cl-ring::after { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+html .cl-prev { border-radius: 16px; box-shadow: none; }
+
+/* кнопки карточки и панели звонка: 12 px, плоские, без блеска */
+html .cl-b {
+  height: 40px; border-radius: 12px; border: 0; box-shadow: none; padding: 0 18px;
+  background: var(--gl-card2); color: var(--text); transition: background .15s, transform .15s ease;
+}
+html .cl-b:hover { background: color-mix(in srgb, var(--text) 14%, var(--side-bg)); }
+html .cl-b:active { transform: scale(var(--kit-press, .95)); }
+html .cl-b.big { height: 46px; }
+html .cl-b.ok { background: var(--ok); color: #fff; box-shadow: none; }
+html .cl-b.no { background: var(--no); color: #fff; box-shadow: none; }
+html .cl-b.ok:hover, html .cl-b.no:hover { filter: brightness(1.08); }
+/* «Отклонить» рядом с принять-с-видео — мягкая красная (как в макете) */
+html .cl-col .cl-row .cl-b.no { background: var(--danger-bg); color: var(--danger); }
+html .cl-col .cl-row .cl-b.no:hover { background: color-mix(in srgb, var(--danger) 20%, var(--side-bg)); filter: none; }
+
+/* ───── панель звонка внизу списка чатов (аудиоразговор и свёрнутый звонок) ───── */
+html #cl-dock {
+  border-radius: 16px; background: var(--side-bg); border: 0; box-shadow: var(--pop-shadow);
+}
+html #cl-dock .cl-b { height: 36px; width: 40px; padding: 0; }
+html #cl-dock .cl-b.off { background: var(--text); color: var(--side-bg); border: 0; }
+html #cl-dock .cl-b.no { width: auto; flex: 1; padding: 0 12px; }
+html #cl-dock .cl-top:hover .cl-t b { color: var(--accent-ink); }
+
+/* ───── окно звонка (веб клиент): модалка на всё окно ───── */
+html .cl-win { background: var(--modal-bg); border: 0; box-shadow: var(--pop-shadow); }
+html .cl-win.web { border-radius: 22px; box-shadow: var(--pop-shadow); }
+html .cl-dim { background: var(--scrim); }
+html .cl-hd { height: 52px; }
+html .cl-hd .c b { font-size: 13.5px; font-weight: 700; }
+html .cl-hd small { color: var(--accent-ink); }
+/* «Свернуть»: кнопка с подписью, как в макете (разметка — значок; подпись добавляет CSS) */
+html .cl-hbtn { width: 36px; height: 36px; border-radius: 12px; border: 0; background: var(--surf2); color: var(--text2); font-size: 18px; transition: background .15s, color .15s; }
+html .cl-hbtn:hover { background: var(--gl-card2); color: var(--text); }
+html .cl-win.web .cl-hbtn.l { width: auto; height: 34px; padding: 0 14px 0 12px; display: inline-flex; align-items: center; gap: 8px; font-size: 16px; color: var(--text); }
+html .cl-win.web .cl-hbtn.l::after { content: "Свернуть"; font-size: 13px; font-weight: 600; font-family: inherit; }
+html .cl-stage { top: 52px; }
+
+/* видео собеседника, своё превью */
+html .cl-remote { border-radius: 16px; box-shadow: none; }
+html .cl-pip { border-radius: 12px; box-shadow: 0 0 0 2px #fff, 0 8px 20px rgba(0, 0, 0, .35); bottom: 88px; }
+
+/* поверх видео — сплошные панели вместо стекла */
+html .cl-vg { background: var(--vpanel); border: 0; box-shadow: none; }
+html .cl-chip { height: 26px; border-radius: 8px; padding: 0 10px; }
+html .cl-tile .cl-chip { height: 26px; border-radius: 8px; }
+html .cl-note { border-radius: 10px; background: var(--vpanel); }
+
+/* ───── панель управления: микрофон / камера / экран / добавить / завершить ───── */
+html .cl-ctrls { bottom: 8px; border-radius: 16px; gap: 8px; padding: 8px; }
+html .cl-rb {
+  width: 54px; height: 54px; border-radius: 14px; border: 0; background: var(--vbtn);
+  transition: background .15s, transform .15s ease;
+}
+html .cl-rb:hover { background: var(--vbtn2); }
+html .cl-rb:active { transform: scale(var(--kit-press, .95)); }
+html .cl-rb.off { background: #fff; color: #1d1b19; }
+html .cl-rb.ac { background: var(--accent-fill); border: 0; }
+html .cl-rb.end {
+  width: auto; height: 54px; padding: 0 22px; border-radius: 14px; border: 0; background: var(--no); box-shadow: none;
+}
+html .cl-rb.end:hover { background: var(--no); filter: brightness(1.1); }
+
+/* ───── сетка группового звонка ───── */
+html .cl-grid { inset: 0 0 84px 0; }
+html .cl-tile { border-radius: 16px; box-shadow: none; }
+html .cl-tile.sp { box-shadow: 0 0 0 3px var(--accent); }
+html .cl-tile.self .cl-chip { background: var(--accent-fill); }
+html .cl-tile.pick:hover { box-shadow: 0 0 0 2px var(--accent); }
+html .cl-mb2 { width: 18px; height: 18px; border-radius: 6px; background: var(--no); }
+html .cl-pmain { border-radius: 16px; box-shadow: none; }
+html .cl-pself .pi { width: 64px; height: 64px; border-radius: 20px; background: var(--accent-fill); }
+html .cl-pself button { height: 38px; border-radius: 12px; background: var(--no); box-shadow: none; }
+html .cl-kick { border-radius: 8px; }
+html .cl-gt { border-radius: 6px; }
+
+/* звонок по ссылке: «Ожидают входа» — плашка поверх сетки */
+html .cl-adm { border-radius: 16px; background: var(--modal-bg); border: 0; box-shadow: var(--pop-shadow); }
+html .cl-adm h5 { color: var(--muted); }
+html .cl-adm button { border-radius: 10px; background: var(--surf2); }
+html .cl-adm button:hover { background: var(--gl-card2); }
+html .cl-adm button.ok { background: var(--accent-fill); color: #fff; }
+html .cl-adm button.no { color: var(--danger); }
+
+/* кнопка «Присоединиться» в шапке чата, пока в группе идёт звонок */
+html .cl-join { border-radius: 12px !important; background: var(--ok) !important; }
+
+/* ───── «Добавить в звонок» (выбор человека) ───── */
+html #cl-pick { background: var(--scrim); }
+html #cl-pick .pk { border-radius: 22px; border: 0; background: var(--modal-bg); box-shadow: var(--pop-shadow); }
+html #cl-pick h4 button { width: 36px; height: 36px; border-radius: 12px; background: var(--surf2); color: var(--text2); }
+html #cl-pick h4 button:hover { background: var(--gl-card2); color: var(--text); }
+html #cl-pick input { height: 44px; border-radius: 12px; border: 1px solid transparent; background: var(--surf2); }
+html #cl-pick input:focus { border-color: var(--accent); }
+html #cl-pick .it { border-radius: 12px; }
+html #cl-pick .it:hover { background: var(--gl-hov); }
+
+/* ───── выбор устройств и доступ (настройки звонков) и данные соединения ───── */
+html .cl-acc { border-radius: 10px; border: 0; }
+html .cl-acc.ok { background: color-mix(in srgb, var(--ok) 14%, var(--side-bg)); color: var(--ok); }
+html .cl-acc.no { background: var(--danger-bg); color: var(--danger); }
+html #cl-diag { border-radius: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html .cl-card, html .cl-card.out { animation: none; }
+  html .cl-b, html .cl-rb { transition: none; }
+}

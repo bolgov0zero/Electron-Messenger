@@ -1,0 +1,176 @@
+/* ═══ Новое в клиенте, часть B (extra-b.js): оверлеи, просмотрщик, голосовые, скрытый текст ═══ */
+.xo{position:absolute}
+@keyframes xfade{from{opacity:0}to{opacity:1}}
+@keyframes xdrop{from{opacity:0;transform:translate(-50%,-70px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes xdrop2{from{opacity:0;transform:translateY(-70px)}to{opacity:1;transform:none}}
+
+/* ───── экран-заглушка для телефона (screen-phone-guard) ───── */
+.xph-bg{inset:0;z-index:45;background:var(--scrim);display:grid;place-items:center;animation:xfade .2s both}
+.xph{position:relative;width:344px;height:692px;border-radius:46px;background:var(--app-bg);display:grid;place-items:center;padding:30px 18px;
+  box-shadow:0 0 0 9px color-mix(in srgb,var(--text) 16%,var(--side-bg)),var(--pop-shadow)}
+.xph-isl{position:absolute;top:14px;left:50%;width:88px;height:24px;border-radius:12px;transform:translateX(-50%);background:color-mix(in srgb,var(--text) 18%,var(--side-bg))}
+.xph-card{width:100%;background:var(--side-bg);border-radius:22px;box-shadow:var(--flat-shadow);padding:30px 22px 22px;display:flex;flex-direction:column}
+.xph-cap{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);padding:0 14px;height:30px;display:flex;align-items:center;border-radius:10px;background:var(--side-bg);box-shadow:var(--flat-shadow);font-size:12.5px;font-weight:600;color:var(--text2)}
+
+/* ───── экран загрузки (boot-overlay) — поверх формы входа ───── */
+.xboot{inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--app-bg) 90%,transparent);animation:xfade .25s both}
+.xboot .bx{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:0 24px}
+.xboot .bt{font-size:14px;color:var(--text)}
+.xboot .bm{border:0;background:none;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:6px 10px;border-radius:8px}
+.xboot .bm:hover{color:var(--text)}
+
+/* ───── запрос разрешения на уведомления (notif-banner) ───── */
+.xnotif{left:50%;top:14px;z-index:36;transform:translateX(-50%);width:560px;max-width:calc(100% - 40px);display:flex;align-items:center;gap:12px;padding:8px 8px 8px 16px;border-radius:16px;
+  background:var(--accent-fill);color:#fff;box-shadow:var(--pop-shadow);font-size:13px;animation:xdrop .5s var(--gl-spring) both}
+.xnotif>.i{font-size:18px}
+.xnotif>span{flex:1}
+.xnotif .xb{height:34px;padding:0 16px;border-radius:12px;background:rgba(255,255,255,.2);color:#fff;font-size:12.5px;font-weight:600;transition:background .2s}
+.xnotif .xb:hover{background:rgba(255,255,255,.32)}
+.xnotif .xb.x{width:34px;padding:0;display:grid;place-items:center;background:transparent;font-size:16px}
+.xnotif .xb.x:hover{background:rgba(255,255,255,.2)}
+
+/* ───── перетаскивание файла (drag-overlay) ───── */
+.xdrag{inset:10px;z-index:35;border:3px dashed var(--accent);border-radius:22px;background:color-mix(in srgb,var(--accent) 12%,transparent);display:grid;place-items:center;pointer-events:none;animation:xfade .2s both}
+.xdrag .xdc{display:flex;flex-direction:column;align-items:center;gap:12px;padding:26px 40px;border-radius:22px;background:var(--side-bg);box-shadow:var(--pop-shadow);color:var(--accent-ink);font-size:15px;font-weight:600}
+.xdrag .xdc>.i{width:48px;height:48px;stroke-width:1.5}
+
+/* ───── подтверждение внешней ссылки (modal-link) ───── */
+.modal.xlink{width:380px;padding:28px 24px 22px;align-items:center;gap:8px;text-align:center}
+.xlink .xi{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:24px;background:color-mix(in srgb,var(--presence-away) 16%,transparent);color:var(--presence-away)}
+.xlink .xt{font-size:15px;font-weight:700;margin-top:6px}
+.xlink .xd{font-size:13px;color:var(--muted);line-height:1.6}
+.xlink .xu{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5;color:var(--text2);background:var(--surf2);border-radius:12px;padding:10px 14px;word-break:break-all;text-align:left}
+.xlink .xf{display:flex;gap:8px;margin-top:10px}
+.xlink .xf .btn{height:38px;padding:0 20px}
+
+/* ───── просмотрщик (lightbox): тёмная плёнка на всё окно, кнопки — плоские, радиус 12 ───── */
+.xlb{inset:0;z-index:39;border-radius:26px;background:rgba(8,8,10,.88);display:flex;align-items:center;justify-content:center;color:#fff;cursor:zoom-out;animation:xfade .18s both}
+.xlb.out{opacity:0;transition:opacity .15s}
+.xlb .lb-stage{position:relative;display:grid;place-items:center;max-width:78%;max-height:64%;cursor:default}
+.xlb .lb-img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.55);transition:transform .15s;user-select:none}
+.xlb .lb-vid{position:absolute;inset:0;border-radius:12px;display:grid;place-items:center}
+.xlb .lb-vp{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:26px;background:rgba(0,0,0,.5);color:#fff}
+.xlb .lb-vp .i{fill:currentColor;margin-left:3px}
+.xlb .lb-vc{position:absolute;left:12px;right:12px;bottom:12px;height:40px;border-radius:12px;background:rgba(20,20,24,.72);display:flex;align-items:center;gap:10px;padding:0 10px;font-size:12px;font-variant-numeric:tabular-nums}
+.xlb .lb-vc button{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:16px;color:#fff}
+.xlb .lb-vc button:hover{background:rgba(255,255,255,.16)}
+.xlb .lb-vc .i{fill:none}.xlb .lb-vc button:first-child .i{fill:currentColor;stroke-width:1.4}
+.xlb .lb-vt{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.28);overflow:hidden}.xlb .lb-vt i{display:block;height:100%;background:#fff;border-radius:2px}
+.xlb:not(.lb-video) .lb-vid{display:none}
+.xlb .lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:64px;border-radius:12px;background:rgba(255,255,255,.12);color:#fff;display:none;place-items:center;font-size:22px;z-index:2;transition:background .15s}
+.xlb.lb-gallery .lb-nav{display:grid}
+.xlb .lb-nav:hover{background:rgba(255,255,255,.24)}
+.xlb .lb-prev{left:20px}.xlb .lb-next{right:20px}
+.xlb .lb-count{position:absolute;top:30px;left:50%;transform:translateX(-50%);height:28px;padding:0 14px;border-radius:10px;background:rgba(255,255,255,.12);font-size:13px;font-weight:600;display:none;align-items:center}
+.xlb.lb-gallery .lb-count{display:flex}
+.xlb .lb-info{position:absolute;top:22px;left:24px;display:none;flex-direction:column;line-height:1.25;background:rgba(255,255,255,.12);padding:8px 14px;border-radius:12px;max-width:34%;z-index:2}
+.xlb.lb-meta .lb-info{display:flex}
+.xlb .lb-info b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xlb .lb-info span{font-size:12px;opacity:.75}
+.xlb .lb-act{position:absolute;top:24px;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center;font-size:19px;z-index:2;transition:background .15s}
+.xlb .lb-act:hover{background:rgba(255,255,255,.24)}
+.xlb .lb-zoom{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2}
+.xlb.lb-video .lb-zoom{display:none}
+.xlb .lb-zoom button{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center;font-size:18px;transition:background .15s}
+.xlb .lb-zoom button:hover{background:rgba(255,255,255,.24)}
+.xlb .lb-bottom{position:absolute;left:0;right:0;bottom:84px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 90px;pointer-events:none;z-index:2}
+.xlb.lb-video .lb-bottom{bottom:32px}
+.xlb .lb-cap{font-size:14px;text-align:center;max-width:640px;background:rgba(255,255,255,.12);padding:7px 16px;border-radius:12px;pointer-events:auto}
+.xlb .lb-thumbs{display:flex;gap:6px;pointer-events:auto}
+.xlb .lb-thumbs i{width:40px;height:40px;border-radius:8px;background:#222 center/cover;opacity:.55;cursor:pointer;transition:opacity .15s}
+.xlb .lb-thumbs i.on{opacity:1;outline:2px solid #fff;outline-offset:2px}
+.xlb .lb-thumbs i:hover{opacity:.9}
+
+/* ───── пересылка ───── */
+.xlbl{padding:10px 12px 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* ───── полосы объявлений (ann-banner) и значок обновления ───── */
+.xanns{left:50%;top:16px;z-index:36;transform:translateX(-50%);width:min(560px,calc(100% - 40px));display:flex;flex-direction:column;gap:8px}
+.xann{position:relative;display:flex;align-items:center;gap:10px;padding:10px 8px 10px 16px;border-radius:16px;background:color-mix(in srgb,var(--danger) 9%,var(--side-bg));box-shadow:var(--pop-shadow);font-size:13px;font-weight:500;color:var(--text);animation:xdrop2 .45s var(--gl-spring) both}
+.xann:nth-child(2){animation-delay:.12s}
+.xann::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--danger)}
+.xann>.i{font-size:16px;color:var(--danger)}
+.xann .xt{flex:1;min-width:0;line-height:1.4}
+.xann .xc{width:28px;height:28px;border-radius:10px;display:grid;place-items:center;flex:none;font-size:14px;color:var(--muted);transition:background .15s,color .15s}
+.xann .xc:hover{background:var(--gl-card2);color:var(--text)}
+.tabs button .upd.xo{position:absolute;top:6px;right:calc(50% - 16px);width:8px;height:8px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 2.5px var(--side-bg)}
+
+/* ───── голосовое сообщение в пузыре (shared/voice.css, под B) ───── */
+.chatreal .vm{display:flex;align-items:center;gap:12px;padding:2px 0 0;min-width:238px}
+.chatreal .vm .pl{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:16px;flex:none;position:relative;transition:transform .35s var(--gl-spring),background .2s;box-shadow:none}
+.chatreal .vm .pl:active{transform:scale(.92)}
+.chatreal .vm .pl .i{position:absolute;width:1em;height:1em;fill:currentColor;stroke:currentColor;stroke-width:1.4;stroke-linejoin:round;transition:opacity .2s,transform .35s var(--gl-spring)}
+.chatreal .vm .pl .i.p1{margin-left:1px}
+.chatreal .vm .pl .i.p2{opacity:0;transform:scale(.4) rotate(-40deg)}
+.chatreal .vm.playing .pl .i.p1{opacity:0;transform:scale(.4) rotate(40deg)}
+.chatreal .vm.playing .pl .i.p2{opacity:1;transform:none}
+.chatreal .vm-in .pl{background:var(--accent-fill);color:#fff;box-shadow:none}
+.chatreal .vm-out .pl{background:#fff;color:var(--accent-fill)}
+.chatreal .vm .vb{flex:1;min-width:150px}
+.chatreal .vm .wv{display:flex;align-items:center;gap:2px;width:max-content;max-width:100%;height:30px;cursor:pointer}
+.chatreal .vm .wv i{display:block;flex:none;width:3px;border-radius:2px;--f:0;background:linear-gradient(90deg,currentColor calc(var(--f) * 100%),color-mix(in srgb,currentColor 34%,transparent) calc(var(--f) * 100%))}
+.chatreal .vm-in .wv{color:var(--accent-ink)}.chatreal .vm-out .wv{color:#fff}
+.chatreal .vm .mt{display:flex;align-items:center;gap:7px;font-size:11.5px;font-variant-numeric:tabular-nums;margin-top:1px;color:var(--text2);height:22px}
+.chatreal .vm-out .mt{color:rgba(255,255,255,.88)}
+.chatreal .vm .mt .tm{margin-left:auto;display:inline-flex;align-items:center;gap:4px}
+.chatreal .vm .ud{width:8px;height:8px;border-radius:50%;background:var(--accent);transition:transform .3s var(--gl-spring),opacity .3s}
+.chatreal .vm .ud.gone{transform:scale(0);opacity:0}
+.chatreal .vm .spd{height:22px;padding:0 8px;border-radius:8px;font-size:10.5px;font-weight:700;background:var(--accent-soft);color:var(--accent-ink);display:none;transition:transform .3s var(--gl-spring)}
+.chatreal .vm-out .spd{background:rgba(255,255,255,.22);color:#fff}
+.chatreal .vm.act .spd{display:inline-block}.chatreal .vm .spd:active{transform:scale(.9)}
+.chatreal .irc-msg.irc-voice .msg-bubble{padding-bottom:7px!important}
+
+/* ───── запись голосового: строка в поле, замок над кнопкой (voice.css, под B) ───── */
+.vr-btn{position:relative;user-select:none;-webkit-user-select:none}
+.vr-field{position:relative}
+.vr-row{transition:opacity .25s,transform .4s var(--gl-ease)}
+.vr-rec .vr-row{opacity:0;transform:translateY(-10px);pointer-events:none}
+.vr-field>*:not(.vr-bar):not(.vr-fx){transition:opacity .25s}
+.vr-rec .vr-field>*:not(.vr-bar):not(.vr-fx){opacity:0;pointer-events:none}
+.vr-side{transition:opacity .25s}
+.vr-rec .vr-side{opacity:.35;pointer-events:none}
+.vr-hold:not(.vr-lockd) .vr-side{opacity:0}
+.vr-hold .vr-btn:not(.ready){background:var(--accent-fill);color:#fff;transform:scale(1.18);z-index:11;
+  box-shadow:0 0 0 calc(3px + var(--vlvl,0) * 10px) rgba(var(--accent-rgb),.2);transition:background .3s,transform .25s var(--gl-spring),box-shadow .08s}
+.vr-bar{position:absolute;inset:0;display:flex;align-items:center;gap:6px;padding:0 6px;opacity:0;pointer-events:none;transform:translateY(10px);color:var(--text);transition:opacity .25s,transform .45s var(--gl-spring)}
+.vr-rec .vr-bar{opacity:1;pointer-events:auto;transform:none}
+.vr-trash{display:none;width:36px;height:36px;border-radius:12px;place-items:center;font-size:19px;color:var(--danger);flex:none;transition:background .2s,transform .35s var(--gl-spring)}
+.vr-trash:hover{background:var(--danger-bg)}.vr-trash:active{transform:scale(.9)}
+.vr-lockd .vr-trash{display:grid}
+.vr-trash .i,.vr-hint .i,.vr-fx .i{width:1em;height:1em}
+.vr-dot{width:11px;height:11px;border-radius:50%;background:var(--danger);margin:0 4px 0 12px;flex:none;box-shadow:0 0 0 calc(var(--vlvl,0) * 7px) var(--danger-bg);transition:box-shadow .08s;animation:vr-blink 1.4s ease-in-out infinite}
+.vr-lockd .vr-dot{margin-left:2px}
+@keyframes vr-blink{50%{opacity:.35}}
+.vr-time{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;min-width:40px}
+.vr-wave{display:none;flex:1;min-width:0;height:34px;color:var(--accent-ink)}
+.vr-lockd .vr-wave{display:block}
+.vr-hint{flex:1;min-width:0;display:flex;align-items:center;gap:4px;font-size:13.5px;color:var(--text2);padding-left:6px;white-space:nowrap;overflow:hidden}
+.vr-hint .i{font-size:16px;animation:vr-nudge 1.3s ease-in-out infinite}
+@keyframes vr-nudge{50%{transform:translateX(-4px)}}
+.vr-lockd .vr-hint{display:none}
+.vr-lock{position:absolute;width:44px;height:100px;border-radius:16px;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:12px 0 10px;font-size:18px;color:var(--text2);overflow:hidden;
+  background:var(--side-bg);box-shadow:var(--pop-shadow);opacity:0;transform:translateY(24px) scale(.9);pointer-events:none;transition:opacity .25s,transform .5s var(--gl-spring);cursor:pointer}
+.vr-lock::before{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(var(--vlk,0) * 100%);background:var(--accent-soft)}
+.vr-lock .i{position:relative;width:1em;height:1em}.vr-lock .i.u{animation:vr-rise 1.2s ease-in-out infinite;font-size:16px}
+@keyframes vr-rise{50%{transform:translateY(-4px)}}
+.vr-hold:not(.vr-lockd) .vr-lock{opacity:1;transform:none;pointer-events:auto}
+.vr-fx{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;opacity:0;color:var(--danger);font-size:22px}
+.vr-fx.go{animation:vr-cx .6s var(--gl-spring)}
+@keyframes vr-cx{0%{opacity:0;transform:scale(.3) translateY(10px)}35%{opacity:1;transform:scale(1.25)}55%{transform:scale(1) rotate(-10deg)}70%{transform:scale(1) rotate(8deg)}100%{opacity:0;transform:scale(.9)}}
+.vr-toast{position:absolute;left:50%;transform:translate(-50%,10px);z-index:13;padding:0 16px;height:34px;display:flex;align-items:center;border-radius:12px;font-size:12.5px;font-weight:600;white-space:nowrap;opacity:0;pointer-events:none;color:var(--text);
+  background:var(--side-bg);box-shadow:var(--pop-shadow);transition:opacity .25s,transform .45s var(--gl-spring)}
+.vr-toast.on{opacity:1;transform:translate(-50%,0)}
+.comp .vr-lock{right:14px}
+
+/* ───── скрытый текст: облачко из частиц (fmt.js) ───── */
+.chatreal .spl{color:transparent;cursor:pointer;-webkit-user-select:none;user-select:none;transition:color .45s ease}
+.chatreal .spl.open{color:inherit;-webkit-user-select:text;user-select:text}
+.chatreal .spl-host{position:relative}
+.chatreal .spl-cv{position:absolute;left:0;top:0;pointer-events:none;transition:opacity .45s ease}
+
+/* ───── меню: «Прочитано 2/3» с цветными галочками ───── */
+.ctx-menu button .cnt{margin-left:6px;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+.ctx-menu button .cnt b{color:var(--tick-read,#3ea6ff);font-weight:700}
+.ctx-menu button.rd-part>.i path:first-child{stroke:var(--tick-read,#3ea6ff)}
+.ctx-menu button.rd-part>.i path:last-child{stroke:var(--muted)}
+.fly .rdh{font-weight:600}

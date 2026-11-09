@@ -362,7 +362,8 @@ html.dark .accr.on .acct::after{background:var(--gl-card2)}
 .fld,.fld.m,.srch,.ep-s,.ann-ta{border:0;box-shadow:none;border-radius:12px;background:var(--surf2)}
 .fld:focus-within,.srch:focus-within,.ep-s:focus-within{box-shadow:0 0 0 2px var(--accent)}
 .sx,.gl-bg .gl-x{width:36px;height:36px;min-width:36px;min-height:36px;padding:0;border-radius:12px;background:var(--surf2);color:var(--text2);display:grid;place-items:center;font-size:18px;line-height:1;border:0;flex:none}
-.sx svg{width:18px;height:18px}
+.sx svg,.gl-bg .gl-x svg,.annb-x svg{width:18px;height:18px}
+.annb-x{width:36px;height:36px;border-radius:12px;background:var(--surf2);color:var(--text2)}
 .sx{position:absolute;top:12px;right:12px;z-index:3}
 .sheet h3{padding:0 44px}
 .gl-bg .gl-h{padding:12px 12px 6px 20px}

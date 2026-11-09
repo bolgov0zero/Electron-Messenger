@@ -19,7 +19,7 @@ const S = {
   chats: [], activeChatId: null,
   ws: null, wsRetry: 0,
   unread: {}, unreadMentions: {}, allUsers: [], drafts: (()=>{ try { return JSON.parse(localStorage.getItem('chat_drafts'))||{}; } catch { return {}; } })(),
-  settings: { theme: 'dark', fontSize: 'medium', uiScale: 100 },
+  settings: { theme: 'system', fontSize: 'medium', uiScale: 100 },
   ctx: { messageId: null, canEdit: false, isMine: false, replyText: '', replySenderName: '' },
   editingMessageId: null,
   replyTo: null,
@@ -771,7 +771,7 @@ function enterApp() {
 
 
 function updateSidebarThemeIcon() {
-  const isDark = S.settings.theme !== 'light';
+  const isDark = themeEffective() === 'navy';   // в тёмной теме солнце (переключит на светлую), в светлой луна
   const sun = document.getElementById('sidebar-theme-sun');
   if (sun) sun.style.display = isDark ? '' : 'none';
   const moon = document.getElementById('sidebar-theme-moon');
@@ -981,16 +981,22 @@ function chatBgCardsHtml() {
   </div>`;
 }
 
-// Прозрачность стекла → множитель плотности --gl-k: 50% = 1, 0% = 1,9 (плотнее), 100% = 0,15 (почти прозрачное)
-function glassK(t) { return Math.max(.15, 1.9 - .018 * (t == null ? 50 : Math.min(100, Math.max(0, +t)))); }
+// Тема: «Система» (следует за устройством) / «Светлая» / «Тёмно-синяя». Прежнее «dark» читается как «система». Класс dark = любая тёмная (она одна: navy)
+function themePref() { const t = S.settings.theme; return t === 'light' || t === 'navy' ? t : 'system'; }
+function themeSysDark() { try { return !!matchMedia('(prefers-color-scheme: dark)').matches; } catch { return false; } }
+function themeEffective() { const p = themePref(); return p === 'system' ? (themeSysDark() ? 'navy' : 'light') : p; }
+try {
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (themePref() === 'system') { animateThemeSwitch(); applySettings(); }
+  });
+} catch {}
 function applySettings() {
   headMenuClose();
-  const isDark = S.settings.theme === 'dark' || S.settings.theme === 'navy';
+  const isDark = themeEffective() === 'navy';
   document.documentElement.classList.toggle('dark', isDark);
-  document.documentElement.classList.toggle('navy', S.settings.theme === 'navy');
+  document.documentElement.classList.toggle('navy', isDark);
   document.documentElement.className = document.documentElement.className.replace(/font-\w+/,'');
   document.documentElement.classList.add('font-'+S.settings.fontSize);
-  document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('active', b.textContent.trim()===(S.settings.theme==='light'?'Светлая':'Тёмная')));
   document.querySelectorAll('#font-seg button').forEach(b => b.classList.toggle('active', b.textContent.trim()===S.settings.fontSize[0].toUpperCase()));
   const _scale = S.settings.uiScale || 100;
   const _ratio = _scale / 100;
@@ -1014,10 +1020,7 @@ function applySettings() {
   // Цвет системного UI (статус-бар, клавиатура) следует теме
   document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-  if (themeColorMeta) themeColorMeta.content = S.settings.theme === 'navy' ? '#1c2835' : isDark ? '#0b0d14' : '#f7f7fb';
-  // Стекло: «Цветная картинка» (пятна под стеклом) и «Прозрачность» (0–100, 50 — стандартная плотность)
-  document.documentElement.classList.toggle('gl-noimg', S.settings.glassImage === false);
-  document.documentElement.style.setProperty('--gl-k', glassK(S.settings.glassTransparency).toFixed(3));
+  if (themeColorMeta) themeColorMeta.content = isDark ? '#10161d' : '#ece9e4';
   applyAccent();
   applyChatBg();
   applyChatPattern();
@@ -1034,8 +1037,8 @@ function animateThemeSwitch() {
   _themeAnimTimer = setTimeout(() => html.classList.remove('theme-anim'), 260);
 }
 function setTheme(t) { animateThemeSwitch(); S.settings.theme=t; applySettings(); saveSession(); }
-// Кнопка в меню шапки листает темы по кругу: светлая, тёмная, тёмно-синяя
-function toggleTheme() { setTheme({ light: 'dark', dark: 'navy', navy: 'light' }[S.settings.theme] || 'dark'); }
+// Кнопка в меню шапки переключает действующую тему: светлая ↔ тёмно-синяя (выбор «Система» заменяется явным)
+function toggleTheme() { setTheme(themeEffective() === 'navy' ? 'light' : 'navy'); }
 function setFontSize(f) { S.settings.fontSize=f; applySettings(); saveSession(); }
 function setUiScale(v) { S.settings.uiScale = v; applySettings(); saveSession(); }
 // ── НАСТРОЙКИ ──
@@ -1066,6 +1069,7 @@ const CS_I = {
   check: csSvg('<path d="M20 6 9 17l-5-5"/>'),
   sun: csSvg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>'),
   moon: csSvg('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>'),
+  monitor: csSvg('<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>'),
   navy: csSvg('<path fill="currentColor" d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>'),
   play: csSvg('<polygon points="6 3 20 12 6 21 6 3"/>'),
   back: csSvg('<path d="m15 18-6-6 6-6"/>'),
@@ -1236,7 +1240,7 @@ function csSections() {
     { k: 'general', label: 'Основные', icon: CS_I.gear, desc: csIsApp() ? 'Звук и поведение приложения' : 'Звук сообщений',
       meta: () => [s.soundEnabled !== false ? 'звук включён' : 'без звука', csIsApp() && CS.autostart ? 'автозапуск' : ''].filter(Boolean).join(' · ') },
     { k: 'appearance', label: 'Внешний вид', icon: CS_I.palette, desc: 'Тема, цвет, фон переписки и размер текста',
-      meta: () => `${s.theme === 'dark' ? 'Тёмная' : s.theme === 'navy' ? 'Тёмно-синяя' : 'Светлая'} · ${ACCENTS[currentAccent()].name.toLowerCase()}` },
+      meta: () => `${{ system: 'Система', light: 'Светлая', navy: 'Тёмно-синяя' }[themePref()]} · ${ACCENTS[currentAccent()].name.toLowerCase()}` },
   ];
   list.push({ k: 'blocks', label: 'Блокировки', icon: CS_I.ban, desc: 'Люди, которые не могут вам писать',
     meta: () => (S.blocked || []).length ? `заблокировано: ${S.blocked.length}` : 'никого нет' });
@@ -1420,14 +1424,6 @@ function csPaneGeneral() {
       <div class="cs-r"><div class="cs-l"><b>Скрыть сайдбар</b><span>Список чатов прячется и выезжает при наведении на левый край окна</span></div>${csTg(document.body.classList.contains('sidebar-hidden'), 'csHideSidebar', 'Скрыть сайдбар')}</div>
     </div>` : `<p class="cs-hint">Разрешение на уведомления меняется в настройках сайта в самом браузере.</p>`}`;
 }
-function csGlassTr(v) {
-  v = Math.min(100, Math.max(0, +v || 0));
-  S.settings.glassTransparency = v; document.documentElement.style.setProperty('--gl-k', glassK(v).toFixed(3)); saveSession();
-  const r = document.getElementById('cs-tr'), o = document.getElementById('cs-trval');
-  if (r) r.style.setProperty('--v', v + '%');
-  if (o) o.textContent = v + '%';
-}
-function csGlassImage() { S.settings.glassImage = S.settings.glassImage === false; applySettings(); saveSession(); csRefresh(); }
 function csSound() { S.settings.soundEnabled = S.settings.soundEnabled === false; saveSession(); csRefresh(); }
 async function csAutostart() { CS.autostart = !CS.autostart; csRefresh(); await setAutostart(CS.autostart); }
 function csHideSidebar() { toggleSidebar(); csRefresh(); }
@@ -1436,7 +1432,7 @@ function csHideSidebar() { toggleSidebar(); csRefresh(); }
 // Выбор в сегментированном переключателе: вызываем функцию по имени и обновляем панель
 function csPick(name, v) { window[name](v); csRefresh(); }
 function csPaneAppearance() {
-  const s = S.settings, tr = s.glassTransparency == null ? 50 : s.glassTransparency, lvl = currentPatternLevel(), scales = csIsApp() ? [80, 90, 100] : [80, 90, 100, 110];
+  const s = S.settings, lvl = currentPatternLevel(), scales = csIsApp() ? [80, 90, 100] : [80, 90, 100, 110];
   const seg = (items, cur, fn, label) => `<div class="cs-seg" role="group" aria-label="${label}">${items.map(([v, t, title]) =>
     `<button type="button" aria-pressed="${cur === v}" ${title ? `aria-label="${title}" title="${title}"` : ''} data-on-click="csPick" data-a-click="${esc(JSON.stringify([fn, v]))}">${t}</button>`).join('')}</div>`;
   return `<div class="cs-pv" aria-hidden="true">
@@ -1447,17 +1443,14 @@ function csPaneAppearance() {
     </div>
     <div class="cs-gt">Тема и цвет</div>
     <div class="cs-g">
-      <div class="cs-r"><div class="cs-l"><b>Тема</b></div>${seg([['light', CS_I.sun + 'Светлая'], ['dark', CS_I.moon + 'Тёмная'], ['navy', CS_I.navy + 'Тёмно-синяя']], s.theme, 'setTheme', 'Тема')}</div>
+      <div class="cs-r"><div class="cs-l"><b>Тема</b></div>${seg([['system', CS_I.monitor + 'Система'], ['light', CS_I.sun + 'Светлая'], ['navy', CS_I.navy + 'Тёмно-синяя']], themePref(), 'setTheme', 'Тема')}</div>
       <div class="cs-r"><div class="cs-l"><b>Цвет акцента</b><span>Кнопки, свои сообщения, выделение</span></div>
         <div class="cs-ctl"><span class="cs-aname">${ACCENTS[currentAccent()].name}</span><div id="accent-seg" class="accent-seg" data-on-click="__h17">${accentDotsHtml()}</div></div></div>
-      <div class="cs-r"><div class="cs-l"><b>Прозрачность</b><span>Стекло панелей, меню и окон: правее — прозрачнее, левее — плотнее</span></div>
-        <div class="cs-ctl"><input id="cs-tr" class="rng" type="range" min="0" max="100" step="1" value="${tr}" style="--v:${tr}%" aria-label="Прозрачность стекла" data-on-input="csGlassTr" data-a-input='["__value"]'><span class="rng-val" id="cs-trval">${tr}%</span></div></div>
     </div>
     <div class="cs-gt">Фон переписки</div>
     <div data-on-click="__h18">${chatBgCardsHtml()}</div>
     <div class="cs-gt">Фон</div>
     <div class="cs-g">
-      <div class="cs-r"><div class="cs-l"><b>Цветная картинка</b><span>Размытые цветные пятна за стеклом. Выключите — фон станет ровным. С узором не связана.</span></div>${csTg(s.glassImage !== false, 'csGlassImage', 'Цветная картинка')}</div>
       <div class="cs-r stack"><div class="cs-l"><b>Узор</b><span>Рисунок поверх фона переписки</span></div>
       <div data-on-click="__h19">${chatPatternCardsHtml()}</div>
       ${currentPattern() ? `<div class="cs-ctl cs-between"><div class="cs-l"><b>Заметность узора</b></div>${seg([[1, 'Слабая'], [2, 'Средняя'], [3, 'Сильная']], lvl, 'setPatternLevel', 'Заметность узора')}</div>` : ''}
@@ -4447,11 +4440,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     // своя пара иконка+цвет на добавление/удаление участника
     const isMemberAdd = m.system_kind === 'member_add';
     const isMemberRemove = m.system_kind === 'member_remove';
-    const pillStyle = isMemberAdd
-      ? 'background:linear-gradient(var(--accent-soft),var(--accent-soft)) var(--chat-bg);border:1px solid var(--role-teal-border);'
-      : isMemberRemove
-      ? 'background:var(--card-bg);border:1px solid var(--border);'
-      : 'background:linear-gradient(rgba(210,55,55,.08),rgba(210,55,55,.08)) var(--chat-bg);border:1px solid rgba(210,55,55,.2);';
+    const pillCls = isMemberAdd ? 'add' : isMemberRemove ? 'rm' : 'ann';
     const iconSvg = isMemberAdd
       ? '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/>'
       : isMemberRemove
@@ -4459,10 +4448,10 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       : '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>';
     return `<div class="irc-msg" data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}" data-on-contextmenu="__h21" style="padding:2px 0">
       <div style="width:100%;display:flex;justify-content:center;padding:0 20px;box-sizing:border-box">
-        <div style="${pillStyle}border-radius:14px;padding:5px 14px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;max-width:80%">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.7">${iconSvg}</svg>
+        <div class="sysnote ${pillCls}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">${iconSvg}</svg>
           <span style="word-break:break-word">${esc(m.text)}</span>
-          <span style="font-size:10px;opacity:.4;flex-shrink:0;margin-left:2px">${time}</span>
+          <span class="sys-t">${time}</span>
         </div>
       </div>
     </div>`;
@@ -8187,3 +8176,49 @@ window.peerSubText = peerSubText;
 window.personAv = personAv;
 window.scEncryptFileForUpload = scEncryptFileForUpload;
 window.wsTag = wsTag;
+
+// ── Мелочи поведения интерфейса (раньше жили в glass.js) ──
+// Зелёная точка у подписи «в сети …» в шапке. Текст подписи меняется из разных мест, поэтому следим за изменениями, а не правим каждое
+(function () {
+  let tm = 0;
+  const mark = () => {
+    tm = 0;
+    const el = document.querySelector('.chat-header .ch-sub');
+    if (el) el.classList.toggle('gl-online', /^\s*в сети/.test(el.textContent || ''));
+  };
+  // setTimeout, а не rAF: в свёрнутом окне кадры не рисуются и rAF не вызывается
+  const schedule = () => { if (!tm) tm = setTimeout(mark, 30); };
+  const init = () => { new MutationObserver(schedule).observe(document.body, { subtree: true, childList: true, characterData: true }); schedule(); };
+  if (document.body) init(); else document.addEventListener('DOMContentLoaded', init);
+})();
+
+// После щелчка мышью фокус снимается у кнопок (рамка остаётся только при управлении с клавиатуры)
+document.addEventListener('click', e => {
+  if (e.detail > 0) { const b = e.target.closest('button,[role=button],[role=tab],[role=radio],.chat-item,.sb-tab,.cs-sn'); if (b) setTimeout(() => { if (document.activeElement === b) b.blur(); }, 0); }
+});
+
+// Выделять текст можно только в полях ввода и внутри одного пузыря сообщения: протяжка через несколько пузырей
+// (и «выделить всё» вне полей) обрезается краем пузыря, с которого она началась
+(function () {
+  let busy = false;
+  const owner = n => { const el = n && (n.nodeType === 1 ? n : n.parentElement); return el || null; };
+  const inField = n => !!(owner(n) && owner(n).closest('input,textarea,[contenteditable]'));
+  document.addEventListener('selectionchange', () => {
+    if (busy) return;
+    const s = getSelection();
+    if (!s || s.isCollapsed || !s.anchorNode || inField(s.anchorNode) || inField(s.focusNode)) return;
+    const a = owner(s.anchorNode)?.closest('.msg-bubble'), f = owner(s.focusNode)?.closest('.msg-bubble');
+    if (a === f && a) return;
+    busy = true;
+    try {
+      if (!a) s.removeAllRanges();
+      else {
+        const after = !!(a.compareDocumentPosition(s.focusNode) & Node.DOCUMENT_POSITION_FOLLOWING) && !a.contains(s.focusNode);
+        s.setBaseAndExtent(s.anchorNode, s.anchorOffset, a, after ? a.childNodes.length : 0);
+      }
+    } finally { setTimeout(() => { busy = false; }, 0); }
+  });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'a' || e.key === 'ф' || e.key === 'A') && !inField(e.target)) e.preventDefault();
+  }, true);
+})();

@@ -1809,7 +1809,12 @@ html.dark .anx-types button[aria-checked="true"],html.dark .anx-tabsbar button[a
 /* ───── кнопка закрытия окна: одинаковая во всех модалках ───── */
 .modal-bg [aria-label="Закрыть"],.gl-bg .gl-x{width:36px;height:36px;min-width:36px;padding:0;border-radius:12px;background:var(--surf2);color:var(--text2);font-size:18px;display:grid;place-items:center;line-height:1;flex:none;border:0}
 .modal-bg [aria-label="Закрыть"]:hover,.gl-bg .gl-x:hover{background:var(--gl-card2);color:var(--text)}
-.pf-cover .ibtn[aria-label="Закрыть"]{background:var(--side-bg);color:var(--text)}
+/* крестик везде один: 36×36, радиус 12, фон --surf2, значок 18 (как в окне нового чата) */
+.pf-cover .ibtn[aria-label="Закрыть"]{background:var(--surf2);color:var(--text2)}
+.pf-cover .ibtn[aria-label="Закрыть"]:hover{background:var(--gl-card2);color:var(--text)}
+#unpin,#sclose,.replybar .ibtn[data-x],.fmtbar [data-x="fmt"]{width:36px;height:36px;min-width:36px;padding:0;border-radius:12px;background:var(--surf2);color:var(--text2);display:grid;place-items:center;flex:none;border:0}
+#unpin:hover,#sclose:hover,.replybar .ibtn[data-x]:hover,.fmtbar [data-x="fmt"]:hover{background:var(--gl-card2);color:var(--text)}
+#unpin svg,#sclose svg,.replybar .ibtn[data-x] svg,.fmtbar [data-x="fmt"] svg{width:18px;height:18px}
 .gl-bg .gl-x svg{width:18px;height:18px}
 
 /* ───── аккаунты: выделение круглое ───── */
@@ -1874,6 +1879,259 @@ html.dark .anx-half.r .anx-sg button[aria-pressed="true"]{background:var(--gl-ca
 /* кнопки с data-a="close" без иконки — обычные текстовые кнопки */
 .modal-bg .btn[data-a="close"]{width:auto;height:36px;padding:0 18px}
 
+/* ═══ extra-a.css: состояния чата, секретные чаты, федерация, черновик (вариант B) ═══ */
+
+/* плашка вместо поля ввода: «только чтение», «писать нельзя», «нет связи», секретный чат, приглашение */
+.xbar{flex:1;min-width:0;display:flex}
+.xbar:empty{display:none}
+.xbar>*{flex:1;min-width:0}
+.chat.xlock .comp>.plus,.chat.xlock .comp>.field,.chat.xlock .comp>.send{display:none}
+.ro-banner{min-height:48px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;border-radius:12px;background:var(--surf2);color:var(--text2);font-size:13.5px;font-weight:500;line-height:1.35;text-align:center;user-select:none}
+.ro-banner svg{width:16px;height:16px;flex:none;color:var(--muted)}
+
+/* мягкая подсказка о счётчике внутри поля ввода */
+.dm-bar{display:flex;align-items:flex-start;gap:8px;padding:8px 12px;border-radius:12px;background:color-mix(in srgb,var(--text) 7%,var(--surf2));color:var(--text2);font-size:12.5px;line-height:1.4}
+.dm-bar svg{width:14px;height:14px;flex:none;margin-top:2px;color:var(--muted)}
+
+/* приглашение */
+.inv-bar{min-height:52px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:8px 8px 8px 16px;border-radius:12px;background:var(--surf2);font-size:13px;color:var(--text2)}
+.inv-bar .inv-txt{flex:1;min-width:0;line-height:1.4}
+.inv-bar .inv-txt b{color:var(--text)}
+.inv-bar .inv-btns{display:flex;gap:8px;flex:none}
+.inv-bar .btn:not(.pri){background:var(--side-bg)}
+.inv-bar .btn:not(.pri):hover:not(:disabled){background:var(--gl-card2)}
+.chat.xinv #bsearch,.chat.xinv #bmore{display:none}
+.inv-empty{min-height:560px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;color:var(--text2)}
+.inv-empty .eic{width:72px;height:72px;border-radius:50%;display:grid;place-items:center;background:var(--surf2);color:var(--accent-ink)}
+.inv-empty p{margin:0;max-width:340px;font-size:13.5px;line-height:1.5}
+
+/* группы и люди с других серверов: значок в углу аватарки, метка справа, подпись в шапке */
+.fed-dot{position:absolute;right:-3px;bottom:-3px;width:18px;height:18px;border-radius:50%;background:var(--accent-fill);color:#fff;border:2px solid var(--side-bg);box-sizing:border-box;display:block}
+.fed-dot svg{position:absolute;inset:0;margin:auto;width:10px;height:10px;display:block}
+.av.sm .fed-dot,.av.xs .fed-dot{width:16px;height:16px;right:-3px;bottom:-3px}
+.av.sm .fed-dot svg,.av.xs .fed-dot svg{width:9px;height:9px}
+.row.on .fed-dot,.pp-row.on .fed-dot{border-color:var(--sel)}
+.gm-row:hover .fed-dot{border-color:var(--gl-card2)}
+.gm-fedbig{position:absolute;right:0;bottom:0;width:26px;height:26px;border-radius:50%;background:var(--accent-fill);color:#fff;border:3px solid var(--side-bg);box-sizing:border-box}
+.gm-fedbig svg{position:absolute;inset:0;margin:auto;width:13px;height:13px}
+.ws-chip{flex:none;display:inline-flex;align-items:center;justify-content:center;height:24px;min-width:28px;padding:0 7px;border-radius:8px;background:var(--accent-soft);color:var(--accent-ink);font-size:11px;font-weight:600}
+.ws-chip svg{display:block}
+.chead small .fed-off{display:inline-flex;align-items:center;gap:5px;color:var(--danger)}
+.chead small .fed-off svg{flex:none}
+.fx-note{display:flex;align-items:flex-start;gap:10px;margin:0 18px 12px;padding:12px 14px;border-radius:16px;background:var(--accent-soft);color:var(--text2);font-size:12.5px;line-height:1.45}
+.fx-note .i{width:18px;height:18px;flex:none;color:var(--accent-ink);margin-top:1px}
+.fx-note b{color:var(--text)}
+
+/* секретный чат: метка вместо превью, плашка вместо поля ввода, полоски вместо недорасшифрованного текста */
+.rt>span .sc-tag{display:inline-flex;align-items:center;height:18px;padding:0 8px;border-radius:8px;background:var(--accent-soft);color:var(--accent-ink);font-size:11px;font-weight:600;white-space:nowrap;vertical-align:middle}
+.chat.xsec #bsearch,.chat.xsec #ep .sw{display:none}
+.sc-locked-banner{min-height:48px;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:0 8px;border-radius:12px;background:var(--surf2);color:var(--text)}
+.sc-lock{width:32px;height:32px;border-radius:10px;background:var(--accent-soft);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.sc-lock svg{width:16px;height:16px}
+.sc-b-txt{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+.sc-b-t{font-weight:600;font-size:13px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-b-s{color:var(--muted);font-size:11.5px;line-height:1.25;display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-locked-banner.sc-open .sc-b-s{display:none}
+.sc-btn{height:32px;padding:0 14px;border-radius:10px;border:0;background:var(--accent-fill);color:#fff;font-weight:600;font-size:12.5px;cursor:pointer;white-space:nowrap;flex:none}
+.sc-btn:hover{filter:brightness(1.1)}
+.sc-btn.ghost{background:var(--side-bg);color:var(--text)}
+.sc-btn.ghost:hover{background:var(--gl-card2);filter:none}
+.sc-b-inp{height:32px;flex:1 1 120px;min-width:0;max-width:160px;border:1px solid transparent;border-radius:10px;background:var(--side-bg);color:var(--text);padding:0 12px;font:500 13px var(--ff);text-transform:uppercase;letter-spacing:.08em;outline:none}
+.sc-b-inp::placeholder{text-transform:none;letter-spacing:0;color:var(--muted)}
+.sc-b-inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.sc-b-x{width:32px;height:32px;border-radius:10px;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none}
+.sc-b-x:hover{background:var(--gl-card2);color:var(--text)}
+.sc-b-x svg{width:16px;height:16px}
+.sc-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;animation:xsc-pulse 1.2s infinite ease-in-out}
+@keyframes xsc-pulse{0%,100%{opacity:.25}50%{opacity:1}}
+.chatreal .irc-text.sc-locked{pointer-events:none}
+.chatreal .sc-skel{display:block;height:12px;min-width:40px;border-radius:6px;margin:6px 0;background:linear-gradient(90deg,color-mix(in srgb,var(--text) 8%,transparent) 25%,color-mix(in srgb,var(--text) 17%,transparent) 50%,color-mix(in srgb,var(--text) 8%,transparent) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite}
+.chatreal .sc-skel:first-child{margin-top:2px}
+.chatreal .irc-msg[data-mine] .sc-skel{background:linear-gradient(90deg,rgba(255,255,255,.2) 25%,rgba(255,255,255,.4) 50%,rgba(255,255,255,.2) 75%);background-size:200% 100%}
+.sc-sync-body{padding:4px 24px 12px;display:flex;flex-direction:column;gap:10px}
+.sc-sync-hint{margin:0 0 2px;font-size:13px;color:var(--text2);line-height:1.5}
+.sc-sync-device{font-weight:600;font-size:14px;padding:12px 14px;border-radius:12px;background:var(--gl-card)}
+
+/* черновик в списке чатов */
+.rt>span .dr{color:var(--danger);font-weight:500}
+
+/* ═══ Новое в клиенте, часть B (extra-b.js): оверлеи, просмотрщик, голосовые, скрытый текст ═══ */
+.xo{position:absolute}
+@keyframes xfade{from{opacity:0}to{opacity:1}}
+@keyframes xdrop{from{opacity:0;transform:translate(-50%,-70px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes xdrop2{from{opacity:0;transform:translateY(-70px)}to{opacity:1;transform:none}}
+
+/* ───── экран-заглушка для телефона (screen-phone-guard) ───── */
+.xph-bg{inset:0;z-index:45;background:var(--scrim);display:grid;place-items:center;animation:xfade .2s both}
+.xph{position:relative;width:344px;height:692px;border-radius:46px;background:var(--app-bg);display:grid;place-items:center;padding:30px 18px;
+  box-shadow:0 0 0 9px color-mix(in srgb,var(--text) 16%,var(--side-bg)),var(--pop-shadow)}
+.xph-isl{position:absolute;top:14px;left:50%;width:88px;height:24px;border-radius:12px;transform:translateX(-50%);background:color-mix(in srgb,var(--text) 18%,var(--side-bg))}
+.xph-card{width:100%;background:var(--side-bg);border-radius:22px;box-shadow:var(--flat-shadow);padding:30px 22px 22px;display:flex;flex-direction:column}
+.xph-cap{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);padding:0 14px;height:30px;display:flex;align-items:center;border-radius:10px;background:var(--side-bg);box-shadow:var(--flat-shadow);font-size:12.5px;font-weight:600;color:var(--text2)}
+
+/* ───── экран загрузки (boot-overlay) — поверх формы входа ───── */
+.xboot{inset:0;z-index:5;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--app-bg) 90%,transparent);animation:xfade .25s both}
+.xboot .bx{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:0 24px}
+.xboot .bt{font-size:14px;color:var(--text)}
+.xboot .bm{border:0;background:none;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:6px 10px;border-radius:8px}
+.xboot .bm:hover{color:var(--text)}
+
+/* ───── запрос разрешения на уведомления (notif-banner) ───── */
+.xnotif{left:50%;top:14px;z-index:36;transform:translateX(-50%);width:560px;max-width:calc(100% - 40px);display:flex;align-items:center;gap:12px;padding:8px 8px 8px 16px;border-radius:16px;
+  background:var(--accent-fill);color:#fff;box-shadow:var(--pop-shadow);font-size:13px;animation:xdrop .5s var(--gl-spring) both}
+.xnotif>.i{font-size:18px}
+.xnotif>span{flex:1}
+.xnotif .xb{height:34px;padding:0 16px;border-radius:12px;background:rgba(255,255,255,.2);color:#fff;font-size:12.5px;font-weight:600;transition:background .2s}
+.xnotif .xb:hover{background:rgba(255,255,255,.32)}
+.xnotif .xb.x{width:34px;padding:0;display:grid;place-items:center;background:transparent;font-size:16px}
+.xnotif .xb.x:hover{background:rgba(255,255,255,.2)}
+
+/* ───── перетаскивание файла (drag-overlay) ───── */
+.xdrag{inset:10px;z-index:35;border:3px dashed var(--accent);border-radius:22px;background:color-mix(in srgb,var(--accent) 12%,transparent);display:grid;place-items:center;pointer-events:none;animation:xfade .2s both}
+.xdrag .xdc{display:flex;flex-direction:column;align-items:center;gap:12px;padding:26px 40px;border-radius:22px;background:var(--side-bg);box-shadow:var(--pop-shadow);color:var(--accent-ink);font-size:15px;font-weight:600}
+.xdrag .xdc>.i{width:48px;height:48px;stroke-width:1.5}
+
+/* ───── подтверждение внешней ссылки (modal-link) ───── */
+.modal.xlink{width:380px;padding:28px 24px 22px;align-items:center;gap:8px;text-align:center}
+.xlink .xi{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:24px;background:color-mix(in srgb,var(--presence-away) 16%,transparent);color:var(--presence-away)}
+.xlink .xt{font-size:15px;font-weight:700;margin-top:6px}
+.xlink .xd{font-size:13px;color:var(--muted);line-height:1.6}
+.xlink .xu{width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5;color:var(--text2);background:var(--surf2);border-radius:12px;padding:10px 14px;word-break:break-all;text-align:left}
+.xlink .xf{display:flex;gap:8px;margin-top:10px}
+.xlink .xf .btn{height:38px;padding:0 20px}
+
+/* ───── просмотрщик (lightbox): тёмная плёнка на всё окно, кнопки — плоские, радиус 12 ───── */
+.xlb{inset:0;z-index:39;border-radius:26px;background:rgba(8,8,10,.88);display:flex;align-items:center;justify-content:center;color:#fff;cursor:zoom-out;animation:xfade .18s both}
+.xlb.out{opacity:0;transition:opacity .15s}
+.xlb .lb-stage{position:relative;display:grid;place-items:center;max-width:78%;max-height:64%;cursor:default}
+.xlb .lb-img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.55);transition:transform .15s;user-select:none}
+.xlb .lb-vid{position:absolute;inset:0;border-radius:12px;display:grid;place-items:center}
+.xlb .lb-vp{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:26px;background:rgba(0,0,0,.5);color:#fff}
+.xlb .lb-vp .i{fill:currentColor;margin-left:3px}
+.xlb .lb-vc{position:absolute;left:12px;right:12px;bottom:12px;height:40px;border-radius:12px;background:rgba(20,20,24,.72);display:flex;align-items:center;gap:10px;padding:0 10px;font-size:12px;font-variant-numeric:tabular-nums}
+.xlb .lb-vc button{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:16px;color:#fff}
+.xlb .lb-vc button:hover{background:rgba(255,255,255,.16)}
+.xlb .lb-vc .i{fill:none}.xlb .lb-vc button:first-child .i{fill:currentColor;stroke-width:1.4}
+.xlb .lb-vt{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.28);overflow:hidden}.xlb .lb-vt i{display:block;height:100%;background:#fff;border-radius:2px}
+.xlb:not(.lb-video) .lb-vid{display:none}
+.xlb .lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:64px;border-radius:12px;background:rgba(255,255,255,.12);color:#fff;display:none;place-items:center;font-size:22px;z-index:2;transition:background .15s}
+.xlb.lb-gallery .lb-nav{display:grid}
+.xlb .lb-nav:hover{background:rgba(255,255,255,.24)}
+.xlb .lb-prev{left:20px}.xlb .lb-next{right:20px}
+.xlb .lb-count{position:absolute;top:30px;left:50%;transform:translateX(-50%);height:28px;padding:0 14px;border-radius:10px;background:rgba(255,255,255,.12);font-size:13px;font-weight:600;display:none;align-items:center}
+.xlb.lb-gallery .lb-count{display:flex}
+.xlb .lb-info{position:absolute;top:22px;left:24px;display:none;flex-direction:column;line-height:1.25;background:rgba(255,255,255,.12);padding:8px 14px;border-radius:12px;max-width:34%;z-index:2}
+.xlb.lb-meta .lb-info{display:flex}
+.xlb .lb-info b{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xlb .lb-info span{font-size:12px;opacity:.75}
+.xlb .lb-act{position:absolute;top:24px;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center;font-size:19px;z-index:2;transition:background .15s}
+.xlb .lb-act:hover{background:rgba(255,255,255,.24)}
+.xlb .lb-zoom{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:2}
+.xlb.lb-video .lb-zoom{display:none}
+.xlb .lb-zoom button{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.12);color:#fff;display:grid;place-items:center;font-size:18px;transition:background .15s}
+.xlb .lb-zoom button:hover{background:rgba(255,255,255,.24)}
+.xlb .lb-bottom{position:absolute;left:0;right:0;bottom:84px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 90px;pointer-events:none;z-index:2}
+.xlb.lb-video .lb-bottom{bottom:32px}
+.xlb .lb-cap{font-size:14px;text-align:center;max-width:640px;background:rgba(255,255,255,.12);padding:7px 16px;border-radius:12px;pointer-events:auto}
+.xlb .lb-thumbs{display:flex;gap:6px;pointer-events:auto}
+.xlb .lb-thumbs i{width:40px;height:40px;border-radius:8px;background:#222 center/cover;opacity:.55;cursor:pointer;transition:opacity .15s}
+.xlb .lb-thumbs i.on{opacity:1;outline:2px solid #fff;outline-offset:2px}
+.xlb .lb-thumbs i:hover{opacity:.9}
+
+/* ───── пересылка ───── */
+.xlbl{padding:10px 12px 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* ───── полосы объявлений (ann-banner) и значок обновления ───── */
+.xanns{left:50%;top:16px;z-index:36;transform:translateX(-50%);width:min(560px,calc(100% - 40px));display:flex;flex-direction:column;gap:8px}
+.xann{position:relative;display:flex;align-items:center;gap:10px;padding:10px 8px 10px 16px;border-radius:16px;background:color-mix(in srgb,var(--danger) 9%,var(--side-bg));box-shadow:var(--pop-shadow);font-size:13px;font-weight:500;color:var(--text);animation:xdrop2 .45s var(--gl-spring) both}
+.xann:nth-child(2){animation-delay:.12s}
+.xann::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--danger)}
+.xann>.i{font-size:16px;color:var(--danger)}
+.xann .xt{flex:1;min-width:0;line-height:1.4}
+.xann .xc{width:28px;height:28px;border-radius:10px;display:grid;place-items:center;flex:none;font-size:14px;color:var(--muted);transition:background .15s,color .15s}
+.xann .xc:hover{background:var(--gl-card2);color:var(--text)}
+.tabs button .upd.xo{position:absolute;top:6px;right:calc(50% - 16px);width:8px;height:8px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 2.5px var(--side-bg)}
+
+/* ───── голосовое сообщение в пузыре (shared/voice.css, под B) ───── */
+.chatreal .vm{display:flex;align-items:center;gap:12px;padding:2px 0 0;min-width:238px}
+.chatreal .vm .pl{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:16px;flex:none;position:relative;transition:transform .35s var(--gl-spring),background .2s;box-shadow:none}
+.chatreal .vm .pl:active{transform:scale(.92)}
+.chatreal .vm .pl .i{position:absolute;width:1em;height:1em;fill:currentColor;stroke:currentColor;stroke-width:1.4;stroke-linejoin:round;transition:opacity .2s,transform .35s var(--gl-spring)}
+.chatreal .vm .pl .i.p1{margin-left:1px}
+.chatreal .vm .pl .i.p2{opacity:0;transform:scale(.4) rotate(-40deg)}
+.chatreal .vm.playing .pl .i.p1{opacity:0;transform:scale(.4) rotate(40deg)}
+.chatreal .vm.playing .pl .i.p2{opacity:1;transform:none}
+.chatreal .vm-in .pl{background:var(--accent-fill);color:#fff;box-shadow:none}
+.chatreal .vm-out .pl{background:#fff;color:var(--accent-fill)}
+.chatreal .vm .vb{flex:1;min-width:150px}
+.chatreal .vm .wv{display:flex;align-items:center;gap:2px;width:max-content;max-width:100%;height:30px;cursor:pointer}
+.chatreal .vm .wv i{display:block;flex:none;width:3px;border-radius:2px;--f:0;background:linear-gradient(90deg,currentColor calc(var(--f) * 100%),color-mix(in srgb,currentColor 34%,transparent) calc(var(--f) * 100%))}
+.chatreal .vm-in .wv{color:var(--accent-ink)}.chatreal .vm-out .wv{color:#fff}
+.chatreal .vm .mt{display:flex;align-items:center;gap:7px;font-size:11.5px;font-variant-numeric:tabular-nums;margin-top:1px;color:var(--text2);height:22px}
+.chatreal .vm-out .mt{color:rgba(255,255,255,.88)}
+.chatreal .vm .mt .tm{margin-left:auto;display:inline-flex;align-items:center;gap:4px}
+.chatreal .vm .ud{width:8px;height:8px;border-radius:50%;background:var(--accent);transition:transform .3s var(--gl-spring),opacity .3s}
+.chatreal .vm .ud.gone{transform:scale(0);opacity:0}
+.chatreal .vm .spd{height:22px;padding:0 8px;border-radius:8px;font-size:10.5px;font-weight:700;background:var(--accent-soft);color:var(--accent-ink);display:none;transition:transform .3s var(--gl-spring)}
+.chatreal .vm-out .spd{background:rgba(255,255,255,.22);color:#fff}
+.chatreal .vm.act .spd{display:inline-block}.chatreal .vm .spd:active{transform:scale(.9)}
+.chatreal .irc-msg.irc-voice .msg-bubble{padding-bottom:7px!important}
+
+/* ───── запись голосового: строка в поле, замок над кнопкой (voice.css, под B) ───── */
+.vr-btn{position:relative;user-select:none;-webkit-user-select:none}
+.vr-field{position:relative}
+.vr-row{transition:opacity .25s,transform .4s var(--gl-ease)}
+.vr-rec .vr-row{opacity:0;transform:translateY(-10px);pointer-events:none}
+.vr-field>*:not(.vr-bar):not(.vr-fx){transition:opacity .25s}
+.vr-rec .vr-field>*:not(.vr-bar):not(.vr-fx){opacity:0;pointer-events:none}
+.vr-side{transition:opacity .25s}
+.vr-rec .vr-side{opacity:.35;pointer-events:none}
+.vr-hold:not(.vr-lockd) .vr-side{opacity:0}
+.vr-hold .vr-btn:not(.ready){background:var(--accent-fill);color:#fff;transform:scale(1.18);z-index:11;
+  box-shadow:0 0 0 calc(3px + var(--vlvl,0) * 10px) rgba(var(--accent-rgb),.2);transition:background .3s,transform .25s var(--gl-spring),box-shadow .08s}
+.vr-bar{position:absolute;inset:0;display:flex;align-items:center;gap:6px;padding:0 6px;opacity:0;pointer-events:none;transform:translateY(10px);color:var(--text);transition:opacity .25s,transform .45s var(--gl-spring)}
+.vr-rec .vr-bar{opacity:1;pointer-events:auto;transform:none}
+.vr-trash{display:none;width:36px;height:36px;border-radius:12px;place-items:center;font-size:19px;color:var(--danger);flex:none;transition:background .2s,transform .35s var(--gl-spring)}
+.vr-trash:hover{background:var(--danger-bg)}.vr-trash:active{transform:scale(.9)}
+.vr-lockd .vr-trash{display:grid}
+.vr-trash .i,.vr-hint .i,.vr-fx .i{width:1em;height:1em}
+.vr-dot{width:11px;height:11px;border-radius:50%;background:var(--danger);margin:0 4px 0 12px;flex:none;box-shadow:0 0 0 calc(var(--vlvl,0) * 7px) var(--danger-bg);transition:box-shadow .08s;animation:vr-blink 1.4s ease-in-out infinite}
+.vr-lockd .vr-dot{margin-left:2px}
+@keyframes vr-blink{50%{opacity:.35}}
+.vr-time{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;min-width:40px}
+.vr-wave{display:none;flex:1;min-width:0;height:34px;color:var(--accent-ink)}
+.vr-lockd .vr-wave{display:block}
+.vr-hint{flex:1;min-width:0;display:flex;align-items:center;gap:4px;font-size:13.5px;color:var(--text2);padding-left:6px;white-space:nowrap;overflow:hidden}
+.vr-hint .i{font-size:16px;animation:vr-nudge 1.3s ease-in-out infinite}
+@keyframes vr-nudge{50%{transform:translateX(-4px)}}
+.vr-lockd .vr-hint{display:none}
+.vr-lock{position:absolute;width:44px;height:100px;border-radius:16px;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:12px 0 10px;font-size:18px;color:var(--text2);overflow:hidden;
+  background:var(--side-bg);box-shadow:var(--pop-shadow);opacity:0;transform:translateY(24px) scale(.9);pointer-events:none;transition:opacity .25s,transform .5s var(--gl-spring);cursor:pointer}
+.vr-lock::before{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(var(--vlk,0) * 100%);background:var(--accent-soft)}
+.vr-lock .i{position:relative;width:1em;height:1em}.vr-lock .i.u{animation:vr-rise 1.2s ease-in-out infinite;font-size:16px}
+@keyframes vr-rise{50%{transform:translateY(-4px)}}
+.vr-hold:not(.vr-lockd) .vr-lock{opacity:1;transform:none;pointer-events:auto}
+.vr-fx{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;opacity:0;color:var(--danger);font-size:22px}
+.vr-fx.go{animation:vr-cx .6s var(--gl-spring)}
+@keyframes vr-cx{0%{opacity:0;transform:scale(.3) translateY(10px)}35%{opacity:1;transform:scale(1.25)}55%{transform:scale(1) rotate(-10deg)}70%{transform:scale(1) rotate(8deg)}100%{opacity:0;transform:scale(.9)}}
+.vr-toast{position:absolute;left:50%;transform:translate(-50%,10px);z-index:13;padding:0 16px;height:34px;display:flex;align-items:center;border-radius:12px;font-size:12.5px;font-weight:600;white-space:nowrap;opacity:0;pointer-events:none;color:var(--text);
+  background:var(--side-bg);box-shadow:var(--pop-shadow);transition:opacity .25s,transform .45s var(--gl-spring)}
+.vr-toast.on{opacity:1;transform:translate(-50%,0)}
+.comp .vr-lock{right:14px}
+
+/* ───── скрытый текст: облачко из частиц (fmt.js) ───── */
+.chatreal .spl{color:transparent;cursor:pointer;-webkit-user-select:none;user-select:none;transition:color .45s ease}
+.chatreal .spl.open{color:inherit;-webkit-user-select:text;user-select:text}
+.chatreal .spl-host{position:relative}
+.chatreal .spl-cv{position:absolute;left:0;top:0;pointer-events:none;transition:opacity .45s ease}
+
+/* ───── меню: «Прочитано 2/3» с цветными галочками ───── */
+.ctx-menu button .cnt{margin-left:6px;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+.ctx-menu button .cnt b{color:var(--tick-read,#3ea6ff);font-weight:700}
+.ctx-menu button.rd-part>.i path:first-child{stroke:var(--tick-read,#3ea6ff)}
+.ctx-menu button.rd-part>.i path:last-child{stroke:var(--muted)}
+.fly .rdh{font-weight:600}
+
 </style>
 </head>
 <body>
@@ -1885,6 +2143,7 @@ html.dark .anx-half.r .anx-sg button[aria-pressed="true"]{background:var(--gl-ca
       <button data-s="sidemenu">Меню сайдбара</button><button data-s="newchat">Новый чат</button><button data-s="announce">Объявление</button><button data-s="profile">Профиль</button><button data-s="media">Медиа</button><button data-s="group">Группа</button>
       <button data-s="msgmenu">Меню сообщения</button><button data-s="react">Реакции</button><button data-s="emoji">Смайлы</button><button data-s="chatmenu">Меню чата</button><button data-s="settings">Настройки</button><button data-s="login">Вход</button><button data-s="update">Обновление</button><button data-s="forceupd">Принудит. обновление</button><button data-s="offline">Сервер недоступен</button><button data-s="guest">Гостевая ссылка</button><button data-s="calllink">Ссылка на звонок</button>
     </div>
+    <div class="scenes glass" id="scenes2" role="group" aria-label="Новое в клиенте"></div>
     <a class="btn glass gi" href="mobile.html" style="height:36px">Мобильный клиент →</a>
     <a class="btn glass gi" href="calls.html" style="height:36px">Звонки →</a>
     <span class="chatnote" title="Пузыри, цитаты, файлы, реакции, дата и индикатор набора взяты из клиента как есть"><i></i>Переписка — как в клиенте c3.35.1, без изменений</span>
@@ -2045,11 +2304,11 @@ html.dark .anx-half.r .anx-sg button[aria-pressed="true"]{background:var(--gl-ca
     ensureCss();
     var bg = document.createElement('div'); bg.className = 'gl-bg';
     bg.className += /^\/admin/.test(location.pathname) ? ' gl-adm' : /^\/m(\/|$)/.test(location.pathname) ? ' gl-m' : '';
-    bg.innerHTML = '<div class="gl" role="dialog" aria-label="Гостевая ссылка"><div class="gl-h"><div class="tt"><b>Гостевая ссылка</b><small>' + esc(o.chatName || 'чат') + '</small></div><button class="gl-x" aria-label="Закрыть">✕</button></div>' +
+    bg.innerHTML = '<div class="gl" role="dialog" aria-label="Гостевая ссылка"><div class="gl-h"><div class="tt"><b>Гостевая ссылка</b><small>' + esc(o.chatName || 'чат') + '</small></div><button class="gl-x" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>' +
       '<div class="gl-top">' + selHtml('ttl', TTLS, 2, 'Срок ссылки') + '<button class="gl-btn" id="gl-make">Создать ссылку</button><span class="gl-sp"></span><button type="button" class="gl-ib" id="gl-info" aria-expanded="false" title="Как это работает">' + IC.info + '</button></div>' +
       '<div class="gl-b"><p class="gl-note" id="gl-note" hidden>Человек без учётной записи входит по ссылке в этот чат на время: пишет и отвечает, но не видит прошлой переписки и профилей. Одна ссылка — один гость, и работает она только с его устройства.</p><div class="gl-err" id="gl-err"></div>' +
       '<div id="gl-new"></div><div class="gl-list" id="gl-list"></div></div></div>';
-    document.body.appendChild(bg);
+    (document.getElementById('win')||document.body).appendChild(bg);
     var $ = function (s) { return bg.querySelector(s); };
     var closed = false;
     var close = function () {
@@ -2183,6 +2442,7 @@ html.dark .anx-half.r .anx-sg button[aria-pressed="true"]{background:var(--gl-ca
     '.cll button.gl-btn.cll-no,.cll button.gl-btn.cll-act,.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-no:not(.gl-ic),.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-act:not(.gl-ic){border:1px solid var(--gl-bd);background:transparent;color:var(--gl-tx)}' +
     '.cll button.gl-btn.cll-no:hover:not(:disabled),.cll button.gl-btn.cll-act:hover:not(:disabled){background:var(--gl-hv);filter:none}' +
     '.cll button.gl-btn.cll-yes,.gl-bg:not(.gl-adm):not(.gl-m) .cll button.gl-btn.cll-yes:not(.gl-ic){border:1px solid var(--gl-bad);background:var(--gl-bad);color:#fff}' +
+    '.cll .cll-nm{flex:1 1 200px;min-width:0}.cll .cll-tt{font-size:var(--gl-fs);font-weight:600;overflow-wrap:anywhere}' +
     '.cll .cll-warn{color:var(--gl-wn);font-size:calc(var(--gl-fs) - .5px);line-height:1.45;margin:0}';
   var IC_X = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
 
@@ -2191,11 +2451,11 @@ html.dark .anx-half.r .anx-sg button[aria-pressed="true"]{background:var(--gl-ca
     if (window.GuestLinks && GuestLinks.ensureCss) GuestLinks.ensureCss();
     if (!document.getElementById('cll-css')) { var st = document.createElement('style'); st.id = 'cll-css'; st.textContent = CSS; document.head.appendChild(st); }
     var bg = document.createElement('div'); bg.className = 'gl-bg' + (/^\/m(\/|$)/.test(location.pathname) ? ' gl-m' : '');
-    bg.innerHTML = '<div class="gl cll" role="dialog" aria-label="Ссылка на видеозвонок"><div class="gl-h"><div class="tt"><b>Ссылка на видеозвонок</b><small>Для гостей без учётной записи</small></div><button class="gl-x" aria-label="Закрыть">✕</button></div>' +
-      '<div class="gl-top"><select class="cll-ttl" aria-label="Срок ссылки">' + TTLS.map(function (t, i) { return '<option value="' + t[1] + '"' + (i === 2 ? ' selected' : '') + '>' + t[0] + '</option>'; }).join('') + '</select><button class="gl-btn" id="cll-make">Создать ссылку</button><span class="gl-sp"></span></div>' +
+    bg.innerHTML = '<div class="gl cll" role="dialog" aria-label="Ссылка на видеозвонок"><div class="gl-h"><div class="tt"><b>Ссылка на видеозвонок</b><small>Для гостей без учётной записи</small></div><button class="gl-x" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>' +
+      '<div class="gl-top"><input class="cll-nm" id="cll-nm" maxlength="80" placeholder="Название звонка (необязательно)" aria-label="Название звонка" autocomplete="off"><select class="cll-ttl" aria-label="Срок ссылки">' + TTLS.map(function (t, i) { return '<option value="' + t[1] + '"' + (i === 2 ? ' selected' : '') + '>' + t[0] + '</option>'; }).join('') + '</select><button class="gl-btn" id="cll-make">Создать ссылку</button><span class="gl-sp"></span></div>' +
       '<div class="gl-b"><p class="gl-note">Тот, кто создал ссылку, ведёт звонок: гостей он впускает сам. Сотрудники входят без подтверждения. Если удалить ссылку, новые гости не войдут, а идущий звонок продолжится.</p>' +
       '<div id="cll-warn"></div><div class="gl-err" id="cll-err"></div><div class="gl-list" id="cll-list"></div></div></div>';
-    document.body.appendChild(bg);
+    (document.getElementById('win')||document.body).appendChild(bg);
     var $ = function (s) { return bg.querySelector(s); };
     var closed = false, timer = null;
     var close = function () {
@@ -2215,7 +2475,7 @@ html.dark .anx-half.r .anx-sg button[aria-pressed="true"]{background:var(--gl-ca
     function paint(force) {
       var box = $('#cll-list'); if (!box) return;
       // Не перерисовываем, пока ничего не изменилось: иначе сбивается выделение ссылки
-      var sig = JSON.stringify([links.map(function (l) { return [l.id, l.live, l.people, l.waiting, l.expires_at]; }), ask]);
+      var sig = JSON.stringify([links.map(function (l) { return [l.id, l.live, l.people, l.waiting, l.expires_at, l.title]; }), ask]);
       if (!force && box.dataset.sig === sig && box.children.length) return;
       box.dataset.sig = sig;
       box.innerHTML = links.length ? links.map(function (l) {
@@ -2227,10 +2487,11 @@ html.dark .anx-half.r .anx-sg button[aria-pressed="true"]{background:var(--gl-ca
             '<button class="gl-btn cll-no" data-ask-no>Отмена</button><button class="gl-btn cll-yes" data-ask-yes="' + ask.kind + '" data-id="' + l.id + '">' + (end ? 'Завершить' : 'Удалить') + '</button></div>';
         } else {
           tail = '<div class="cll-meta">' + chip + (l.waiting ? '<span class="gl-chip warn">Ждут входа: ' + l.waiting + '</span>' : '') + '<span>до ' + fmtAt(l.expires_at) + '</span><span class="sp"></span>' +
+            (o.join ? '<button class="gl-btn" data-join="' + l.id + '">' + (l.live ? 'Присоединиться' : 'Начать звонок') + '</button>' : '') +
             (l.live ? '<button class="gl-btn cll-act" data-end="' + l.id + '">Завершить звонок</button>' : '') +
             '<button class="gl-btn gl-ic dng" data-del="' + l.id + '" title="Удалить ссылку" aria-label="Удалить ссылку">' + IC_X + '</button></div>';
         }
-        return '<div class="cll-it" data-id="' + l.id + '"><div class="cll-url"><input readonly value="' + esc(urlOf(l)) + '" aria-label="Ссылка"><button class="gl-btn" data-copy="' + l.id + '">Копировать</button></div>' + tail + '</div>';
+        return '<div class="cll-it" data-id="' + l.id + '">' + (l.title ? '<div class="cll-tt">' + esc(l.title) + '</div>' : '') + '<div class="cll-url"><input readonly value="' + esc(urlOf(l)) + '" aria-label="Ссылка"><button class="gl-btn" data-copy="' + l.id + '">Копировать</button></div>' + tail + '</div>';
       }).join('') : '<div class="gl-none">Ссылок пока нет</div>';
     }
     async function load() {
@@ -2243,9 +2504,10 @@ html.dark .anx-half.r .anx-sg button[aria-pressed="true"]{background:var(--gl-ca
     }
     $('#cll-make').onclick = async function () {
       var b = this; b.disabled = true; $('#cll-err').textContent = '';
-      var r = await o.request('POST', '/calllinks', { ttl: Number($('.cll-ttl').value) });
+      var r = await o.request('POST', '/calllinks', { ttl: Number($('.cll-ttl').value), title: $('#cll-nm').value.trim() });
       b.disabled = false;
       if (!r.ok) { $('#cll-err').textContent = (r.data && r.data.error) || 'Не удалось создать ссылку'; return; }
+      $('#cll-nm').value = '';
       await load();
     };
     $('#cll-list').addEventListener('click', async function (e) {
@@ -2255,6 +2517,12 @@ html.dark .anx-half.r .anx-sg button[aria-pressed="true"]{background:var(--gl-ca
         var url = urlOf(l), inp = cp.parentNode.querySelector('input'), done = function () { cp.textContent = 'Скопировано'; setTimeout(function () { cp.textContent = 'Копировать'; }, 1800); };
         if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, function () { inp.select(); document.execCommand('copy'); done(); });
         else { inp.select(); document.execCommand('copy'); done(); }
+        return;
+      }
+      var jn = e.target.closest('[data-join]');
+      if (jn) {
+        var jl = links.filter(function (x) { return String(x.id) === jn.dataset.join; })[0];
+        if (jl && o.join) { close(); o.join(jl.token); }
         return;
       }
       var en = e.target.closest('[data-end]'), dl = e.target.closest('[data-del]');
@@ -2999,19 +3267,19 @@ function openGuest(cid){
   const c=CHATS.find(x=>x.id===cid)||CHATS.find(x=>x.id===S.chat)||CHATS.find(x=>x.id==='team');
   GuestLinks.open({chatId:c.id,chatName:c.n,request:glRequest});
 }
-const CL=[{id:1,token:'q7Hk2mZp9XaB',live:true,people:3,waiting:1,expires_at:NOW()+30000},
-  {id:2,token:'T4nR8vLc1WdE',live:false,people:0,waiting:0,expires_at:NOW()+250000}];
+const CL=[{id:1,token:'q7Hk2mZp9XaB',title:'Планёрка по релизу',live:true,people:3,waiting:1,expires_at:NOW()+30000},
+  {id:2,token:'T4nR8vLc1WdE',title:'',live:false,people:0,waiting:0,expires_at:NOW()+250000}];
 let clSeq=10;
 async function clRequest(method,path,body){
   await sleep(100);
   if(method==='GET')return{ok:true,data:{links:CL.slice(),warnings:['not_public']}};
-  if(method==='POST'&&/\/calllinks$/.test(path)){CL.unshift({id:++clSeq,token:Math.random().toString(36).slice(2,14),live:false,people:0,waiting:0,expires_at:NOW()+body.ttl});return{ok:true,data:{}}}
+  if(method==='POST'&&/\/calllinks$/.test(path)){CL.unshift({id:++clSeq,token:Math.random().toString(36).slice(2,14),title:(body.title||'').slice(0,80),live:false,people:0,waiting:0,expires_at:NOW()+body.ttl});return{ok:true,data:{}}}
   const id=+(path.match(/calllinks\/(\d+)/)||[])[1],i=CL.findIndex(x=>x.id===id);
   if(method==='POST'&&/end/.test(path)&&i>=0){CL[i].live=false;CL[i].people=0;CL[i].waiting=0}
   if(method==='DELETE'&&i>=0)CL.splice(i,1);
   return{ok:true,data:{}};
 }
-function openCallLink(){if(document.querySelector('.gl-bg'))return;CallLinks.open({base:'https://chat.example.com',request:clRequest})}
+function openCallLink(){if(document.querySelector('.gl-bg'))return;CallLinks.open({base:'https://chat.example.com',request:clRequest,join:()=>toast('Вход в звонок по ссылке')})}
 /* окно группы: гостевая ссылка — из плитки/строки, как в клиенте */
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act="guestlink"]');if(b){e.preventDefault();openGuest()}});
 /* аккаунты в баре: выбор записи */
@@ -3081,6 +3349,699 @@ function modalForceUpdate(){
 }
 /* уведомление о недоступности сервера */
 function toggleOffline(){const el=$('#srvtoast'),on=!el.classList.contains('on');el.classList.toggle('on',on);if(on)closeMenus()}
+
+/* ---------- новые сцены (extra-*.js): addScene(id, подпись, async ()=>{...}); RESETS.push(()=>{...}) — убрать за собой ---------- */
+const NEWSC={},RESETS=[];
+function addScene(id,label,fn){NEWSC[id]=fn;$('#scenes2').insertAdjacentHTML('beforeend','<button data-s="'+id+'">'+label+'</button>')}
+async function resetScene(){$$('.modal-bg.open').forEach(closeModal);$$('.gl-bg,.xo').forEach(n=>n.remove());closeMenus();try{hmSet(false)}catch(e){}RESETS.forEach(f=>{try{f()}catch(e){console.error(e)}});if(S.tab!=='chats')setTab('chats')}
+$('#scenes2').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;await resetScene();await sleep(60);await NEWSC[b.dataset.s]()});
+/* ═══ extra-a.js: состояния чата, секретные чаты, федерация, черновики ═══
+   Разметка и тексты — из настоящего клиента (server/src/public/chat/app.js): composerNote, readOnlyBannerHtml, inviteBarHtml,
+   fedDotRaw, groupSubHtml, scRenderBanner, scOpenDevices, renderChatRow. Весь код в функции, чтобы не пересекаться с extra-b. */
+(function () {
+const GLOBE = '<svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>';
+IC.monitor = '<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>';
+const FDOT = `<span class="fed-dot" title="С другого сервера">${GLOBE}</span>`;
+const FCHIP = `<span class="ws-chip ws-fed" title="С другого сервера">${GLOBE}</span>`;
+
+/* ---------- люди с других серверов: не попадают в Object.keys(PPL), поэтому их нет в «Новом чате» и «Добавить контакт» ---------- */
+const addPerson = (k, o) => Object.defineProperty(PPL, k, { value: o, enumerable: false, configurable: true, writable: true });
+addPerson('orlov', { n: 'Игорь Орлов', bg: '#d9a21a,#a06c06', ini: 'ИО', c: 'var(--tag-2)', login: 'iorlov', addr: '@north:iorlov', on: 1, fed: 1, ws: 'Сервер north' });
+addPerson('vasina', { n: 'Вера Васина', bg: '#3b8fb8,#215a80', ini: 'ВВ', c: 'var(--tag-4)', login: 'vvasina', addr: '@north:vvasina', st: 'был(а) час назад', fed: 1, ws: 'Сервер north' });
+addPerson('kuzmin', { n: 'Тимур Кузьмин', bg: '#8f6fe0,#5a3cb0', ini: 'ТК', c: 'var(--tag-1)', login: 'tkuzmin', addr: '@south:tkuzmin', on: 1, fed: 1, ws: 'Сервер south' });
+S.contacts.add('orlov'); S.contacts.add('vasina');
+MEMBERS.fedA = ['dmitry', 'petr', 'orlov', 'vasina', 'kuzmin'];
+MEMBERS.fedB = ['kuzmin', 'vasina'];
+MEMBERS.inv = ['orlov', 'kuzmin', 'dmitry'];
+
+/* ---------- чаты: один раз при загрузке ---------- */
+const NEWCH = {
+  ann: { id: 'ann', k: 'room', n: 'Анонсы', bg: '#e8571f,#b83a0d', ico: 'bell', sq: 1, p: 'Администратор: Версия 2.4 выпущена', t: '10:40', u: 1, sub: 'Комната · в сети 4 из 12', f: 'work', ro: 1 },
+  sec1: { id: 'sec1', k: 'dm', n: 'Анна Лебедева', bg: '#ff9a5a,#e8571f', ini: 'АЛ', on: 1, p: '<span class="sc-tag">Скрытый чат</span>', t: '10:15', sub: 'в сети', peer: 'anna', f: 'people', secret: 1, key: true },
+  fedA: { id: 'fedA', k: 'group', n: 'Логистика: Север–Юг', bg: '#d9a21a,#a06c06', ini: 'ЛС', fed: 1, p: 'Игорь: Состав партии', t: '10:03', u: 2, sub: 'в сети 3 из 7', f: 'work' },
+  fedB: { id: 'fedB', k: 'group', n: 'Поставщики', bg: '#8f6fe0,#5a3cb0', ini: 'П', fed: 1, fedOff: 1, p: 'Тимур: Следующая поставка в среду', t: 'вчера', sub: 'Группа на другом сервере · нет связи', f: 'work' },
+  sec2: { id: 'sec2', k: 'dm', n: 'Алексей Крылов', bg: '#3b8fb8,#215a80', ini: 'АК', p: '<span class="sc-tag">Скрытый чат</span>', t: '08:48', sub: 'был(а) 12 минут назад', peer: 'akrylov', f: 'people', secret: 1, key: false, scMode: 'closed' },
+  inv: { id: 'inv', k: 'group', n: 'Закупки: Север–Юг', bg: '#34a1a0,#1f6f78', ini: 'ЗС', fed: 1, invite: { from: 'Игорь Орлов' }, p: '<span style="color:var(--accent-ink)">Приглашение в группу</span>', t: '08:40', sub: 'Приглашение в группу', f: 'work' }
+};
+const after = (id, ...cs) => { const i = CHATS.findIndex(c => c.id === id); CHATS.splice(i + 1, 0, ...cs) };
+after('room', NEWCH.ann);
+after('marat', NEWCH.sec1);
+after('dev', NEWCH.fedA);
+after('team', NEWCH.fedB);
+after('olga', NEWCH.sec2);
+after('elena', NEWCH.inv);
+
+Object.assign(CONVO, {
+  fedA: [{ a: 'orlov', t: 'Коллеги, партия №14 вышла со склада, ожидаем у вас завтра к обеду', tm: '09:58' },
+    { a: 'me', t: 'Приняли. Ячейки под новую партию уже готовы', tm: '10:00' },
+    { a: 'vasina', t: 'Накладные приложу к вечеру', tm: '10:01' },
+    { a: 'dmitry', t: 'Подключу вас к общему графику', tm: '10:02', re: ['👍 2'] },
+    { a: 'orlov', file: ['Партия_14.xlsx', '48 КБ'], t: 'Состав партии', tm: '10:03' }],
+  fedB: [{ a: 'kuzmin', t: 'Накладные отправили, проверьте почту', tm: 'вчера' }, { a: 'me', t: 'Получили, спасибо!', tm: 'вчера' }, { a: 'kuzmin', t: 'Следующая поставка в среду', tm: 'вчера' }],
+  inv: [{ a: 'orlov', t: 'Добро пожаловать в группу!', tm: '08:40' }],
+  sec1: [{ a: 'anna', t: 'Ключ у тебя уже на этом устройстве?', tm: '10:08' }, { a: 'me', t: 'Да, расшифровалось. Видишь сообщения?', tm: '10:10' },
+    { a: 'anna', t: 'Вижу. Отправляю реквизиты, в секретном чате файлы по одному', tm: '10:12' },
+    { a: 'anna', file: ['Реквизиты.pdf', '212 КБ'], t: 'Для договора', tm: '10:13' },
+    { a: 'anna', pend: 1, t: 'Это сообщение ещё не расшифровано на этом устройстве, поэтому вместо текста полоски', tm: '10:15' }],
+  sec2: [{ a: 'akrylov', t: 'Пароль от тестового стенда отправил отдельно', tm: '08:30' }, { a: 'me', t: 'Принято, зайду сегодня', tm: '08:34' }, { a: 'akrylov', t: 'И не пересылай эти сообщения никому', tm: '08:35' }],
+  'a-rel': [{ a: 'admin', t: 'Версия 2.4 выпущена. Что нового: плоский вид интерфейса, гостевые ссылки на видеозвонок, исправлена отправка нескольких вложений', tm: '10:40', re: ['🎉 12', '👍 7|mine'] },
+    { a: 'admin', file: ['Release_notes_2.4.pdf', '96 КБ'], t: 'Подробности в файле', tm: '10:41', re: ['👍 4'] }],
+  'a-tech': [{ a: 'admin', t: 'Сегодня в 22:00 сервис будет недоступен около 10 минут', tm: 'вчера', re: ['👀 3'] }, { a: 'admin', t: 'Работы завершены, всё работает штатно', tm: 'вчера', re: ['✅ 5'] }],
+  'a-news': [{ a: 'admin', t: 'С понедельника офис работает по новому графику: с 9:00 до 18:00', tm: 'пн', re: ['👍 9', '❤️ 2'] }]
+});
+const ANN_TOPICS = [
+  { id: 'a-rel', n: 'Релизы', bg: '#4b8df0,#2a55c4', who: 'Админ', p: 'Версия 2.4 выпущена', t: '10:40', u: 1 },
+  { id: 'a-tech', n: 'Технические работы', bg: '#ff9a5a,#e8571f', who: 'Админ', p: 'Работы завершены, всё работает', t: 'вчера' },
+  { id: 'a-news', n: 'Новости компании', bg: '#19b394,#0b7e6c', who: 'Админ', p: 'С понедельника новый график', t: 'пн' }
+];
+const MAIN_TOPICS = TOPICS.slice();
+const useTopics = arr => { TOPICS.length = 0; arr.forEach(t => TOPICS.push(t)) };
+
+/* ---------- комнаты: вторая комната со своими темами ---------- */
+function enterRoomX(id) {
+  const c = CHATS.find(x => x.id === id);
+  useTopics(id === 'ann' ? ANN_TOPICS : MAIN_TOPICS);
+  col.classList.add('room'); S.chat = id; S.topic = null;
+  $('#rtn').textContent = c.n; $('#rts').textContent = TOPICS.length + ' тем';
+  renderList(); renderTopics(); setEmpty('hash', 'Выберите тему', 'Комната «' + c.n + '» · ' + TOPICS.length + ' тем');
+}
+enterRoom = function () { enterRoomX('room') };
+
+/* ---------- счётчики: у каждой комнаты свои темы ---------- */
+roomUnread = function () { return MAIN_TOPICS.reduce((s, t) => s + (t.u || 0), 0) };
+const _renderList = renderList;
+renderList = function () { NEWCH.ann.u = ANN_TOPICS.reduce((s, t) => s + (t.u || 0), 0); _renderList() };
+
+/* ---------- черновики ---------- */
+let DR = {};
+const _openChat = openChat;
+openChat = function (id) {
+  const c = CHATS.find(x => x.id === id);
+  if (S.cur && S.cur !== id && !S.edit && CHATS.some(x => x.id === S.cur && !x.secret && !x.invite)) {
+    const v = inp.value.trim();
+    if (v) { DR[S.cur] = v; inp.value = ''; upd() }
+  }
+  if (c && c.k === 'room') { enterRoomX(id); return }
+  _openChat(id);
+  if (DR[id]) { inp.value = DR[id]; delete DR[id]; upd(); renderList() }
+};
+
+/* ---------- список: значок «с другого сервера», черновик ---------- */
+const _rowHtml = rowHtml;
+rowHtml = function (c) {
+  const saved = c.p, draft = DR[c.id] && S.chat !== c.id && !c.secret && !c.invite;
+  if (draft) c.p = `<span class="dr">Черновик:</span> ${esc(DR[c.id].slice(0, 34))}`;
+  let h; try { h = _rowHtml(c) } finally { c.p = saved }
+  if (c.fed) h = h.replace('</span><span class="rt">', FDOT + '</span><span class="rt">');
+  return h;
+};
+const _renderContacts = renderContacts;
+renderContacts = function () {
+  _renderContacts();
+  $$('.pp-row', contactsEl).forEach(r => {
+    const p = PPL[r.dataset.k]; if (!p || !p.fed) return;
+    const av = $('.av', r); $('.dot', av)?.remove(); av.insertAdjacentHTML('beforeend', FDOT);
+    const sub = $('.pp-sub', r); if (sub) sub.textContent = p.addr + ' · ' + (p.on ? 'в сети' : p.st);
+    r.insertAdjacentHTML('beforeend', FCHIP);
+  });
+};
+renderContacts();
+
+/* ---------- шапка чата ---------- */
+const _setHead = setHead;
+setHead = function (o) {
+  _setHead(o);
+  if (o.fed) $('#hav').insertAdjacentHTML('beforeend', FDOT);
+  if (o.fedOff) { const s = $('#cs'); s.classList.remove('on'); s.innerHTML = `<span class="fed-off">${GLOBE}Группа на другом сервере · нет связи</span>` }
+};
+
+/* ---------- плашка вместо поля ввода, подсказка-счётчик, приглашение, секретный чат ---------- */
+$('#comp').insertAdjacentHTML('beforeend', '<div class="xbar" id="xbar"></div>');
+const LOCK = I('lock');
+const curInfo = () => {
+  if (!S.cur) return null;
+  if (TOPICS.some(x => x.id === S.cur)) { const r = CHATS.find(c => c.id === S.chat); return r ? { c: r, topic: true, ro: !!r.ro } : null }
+  const c = CHATS.find(x => x.id === S.cur); return c ? { c, ro: !!c.ro } : null;
+};
+/* как composerNote в клиенте */
+function note() {
+  const i = curInfo(); if (!i) return null; const c = i.c;
+  if (i.ro) return { t: 'Доступно только для чтения' };
+  if (c.lim && c.lim.used >= c.lim.max) return { t: 'Больше писать нельзя: собеседник не ответил и не добавил вас в контакты' };
+  if (c.fedOff) return { t: 'Группа на другом сервере, связи с ним нет. Писать пока нельзя' };
+  if (c.lim && c.lim.used > 0) return { t: `Без ответа: ${c.lim.used} из ${c.lim.max}. Дальше нужно дождаться ответа или добавления в контакты`, soft: 1 };
+  return null;
+}
+const invBar = c => `<div class="inv-bar"><div class="inv-txt">${c.invite.from ? `<b>${esc(c.invite.from)}</b> приглашает вас в группу` : 'Вас приглашают в группу'}. Пока вы не вступили, участников и сообщений не видно.</div><div class="inv-btns"><button class="btn" data-inv="no">Отклонить</button><button class="btn pri" data-inv="yes">Вступить</button></div></div>`;
+function scBanner(c) {
+  const m = c.scMode || 'closed'; let inner;
+  if (m === 'closed') inner = '<div class="sc-b-txt"><div class="sc-b-t">Чат зашифрован</div><div class="sc-b-s">Сообщения видны после расшифровки</div></div><button class="sc-btn" data-sc="open">Расшифровать</button>';
+  else if (m === 'open') inner = `<div class="sc-b-txt"><div class="sc-b-t">Введите код</div><div class="sc-b-s">Код назвал собеседник</div></div><input id="sc-code" class="sc-b-inp" placeholder="КОД" maxlength="12" autocomplete="off" aria-label="Код"><button class="sc-btn" data-sc="redeem">Подтвердить</button><button class="sc-b-x" data-sc="close" aria-label="Свернуть">${I('x')}</button>`;
+  else inner = '<div class="sc-b-txt"><div class="sc-b-t">Код принят</div><div class="sc-b-s"><span class="sc-dot"></span>Ждём подтверждения собеседника</div></div><button class="sc-btn ghost" data-sc="cancel">Отменить</button>';
+  return `<div class="sc-locked-banner sc-${m}"><div class="sc-lock">${LOCK}</div>${inner}</div>`;
+}
+function xSync() {
+  const i = curInfo(), c = i && i.c; let h = '';
+  if (c && !i.topic && c.invite) h = invBar(c);
+  else if (c && !i.topic && c.secret && !c.key) h = scBanner(c);
+  else { const n = note(); if (n && !n.soft) h = `<div class="ro-banner">${LOCK}<span>${n.t}</span></div>` }
+  const bar = $('#xbar'); if (bar.innerHTML !== h) { bar.innerHTML = h; if (c && c.scMode === 'open') setTimeout(() => $('#sc-code')?.focus(), 30) }
+  chatEl.classList.toggle('xlock', !!h);
+  chatEl.classList.toggle('xsec', !!(c && !i.topic && c.secret));
+  chatEl.classList.toggle('xinv', !!(c && !i.topic && c.invite));
+  slotSync();
+}
+/* мягкая подсказка о счётчике — плашка внутри поля ввода (dm-bar), как панель форматирования */
+const _slotSync = slotSync;
+slotSync = function () {
+  _slotSync();
+  const n = note(); if (!n || !n.soft) return;
+  $('#slotin').insertAdjacentHTML('afterbegin', `<div class="dm-bar">${LOCK}<span>${n.t}</span></div>`);
+  $('#slot').classList.add('open'); chatEl.classList.add('hasbar');
+};
+const _showConvo = showConvo;
+showConvo = function (id, dm) {
+  _showConvo(id, dm);
+  const c = CHATS.find(x => x.id === id), cv = $('#cv-' + id);
+  if (c && c.invite && cv) { cv.dataset.inv = '1'; cv.innerHTML = `<div class="inv-empty"><div class="eic">${GLOBE.replace('width="12" height="12"', 'width="34" height="34"')}</div><p>Вас пригласили в группу «${esc(c.n)}».<br>Сообщения появятся после вступления.</p></div>` }
+  xSync();
+};
+const _setEmpty = setEmpty;
+setEmpty = function (...a) { _setEmpty(...a); xSync() };
+
+/* сообщения секретного чата: недорасшифрованное показывается полосками (SC.skeletonHtml в клиенте) */
+const _msgHtml = msgHtml;
+msgHtml = function (cid, m, prev, dm, next) {
+  let h = _msgHtml(cid, m, prev, dm, next);
+  const ch = CHATS.find(c => c.id === cid);
+  if (!ch || !ch.secret || !(m.pend || !ch.key) || m.big) return h;
+  const n = Math.round(((m.t || '').replace(/<[^>]+>/g, '').length) * 1.4 + 24);
+  const w1 = Math.min(Math.max(Math.round(n * .5), 90), 220), w2 = Math.min(Math.max(Math.round(n * .3), 50), 140);
+  const sk = `<span class="sc-skel" style="width:${w1}px"></span>` + (n > 120 ? `<span class="sc-skel" style="width:${w2}px"></span>` : '');
+  h = h.replace(/<div class="irc-text">.*?<\/div>/s, `<div class="irc-text sc-locked">${sk}</div>`);
+  return h.replace('<div class="irc-msg', '<div data-sc="1" class="irc-msg');
+};
+let scT = 0, invGone = null;
+function scUnlock(c) {
+  c.key = true; c.scMode = null;
+  $$(`#cv-${c.id} [data-sc]`).forEach(el => { const m = MSG[el.dataset.m], tx = $('.irc-text', el); if (m && !m.pend && tx) { tx.classList.remove('sc-locked'); tx.innerHTML = m.t; el.removeAttribute('data-sc') } });
+  if (S.cur === c.id) xSync();
+  toast('Секретный чат расшифрован на этом устройстве');
+}
+$('#xbar').addEventListener('click', e => {
+  const c = CHATS.find(x => x.id === S.cur); if (!c) return;
+  const sc = e.target.closest('[data-sc]'), iv = e.target.closest('[data-inv]');
+  if (sc) {
+    const a = sc.dataset.sc;
+    if (a === 'open') c.scMode = 'open';
+    else if (a === 'close' || a === 'cancel') { c.scMode = 'closed'; clearTimeout(scT) }
+    else if (a === 'redeem') { if (!$('#sc-code').value.trim()) { $('#sc-code').focus(); return } c.scMode = 'wait'; clearTimeout(scT); scT = setTimeout(() => { if (c.scMode === 'wait') scUnlock(c) }, 3800) }
+    xSync();
+  }
+  if (iv) {
+    if (iv.dataset.inv === 'yes') { c.invite = null; c.p = 'Игорь: Добро пожаловать в группу!'; c.sub = 'в сети 3 из 4'; c.u = 0; $('#cv-' + c.id)?.remove(); renderList(); openChat(c.id); toast('Вы вступили в группу') }
+    else { const i = CHATS.indexOf(c); CHATS.splice(i, 1); invGone = { c, i }; setEmpty('chat', 'Electron', 'Выберите чат или создайте новый'); S.chat = null; renderList(); toast('Приглашение отклонено') }
+  }
+});
+
+/* ---------- устройства секретного чата (окно modal-secret-sync) и пункт меню ---------- */
+function secDevices() {
+  const rows = [['Electron · Windows', 'Мария Иванова', 1], ['Мобильный клиент · iPhone', 'Мария Иванова'], ['Chrome · macOS', 'Анна Лебедева']];
+  openModal('w500', `<div class="modal-hdr"><span class="grow">Устройства секретного чата</span><button class="ibtn" data-a="close" aria-label="Закрыть">${I('x')}</button></div>
+    <div class="sc-sync-body"><p class="sc-sync-hint">Здесь видно, на каких устройствах открыт доступ к чату. Ключ не переносится сам: новое устройство подключается только с подтверждения собеседника.</p>
+    ${rows.map(([d, n, me]) => `<div class="sc-sync-device">${d} · ${n}${me ? ' — это устройство' : ''}</div>`).join('')}</div>
+    <div class="modal-footer"><button class="btn" data-a="close">Закрыть</button></div>`);
+}
+const _chatMenu = chatMenu;
+chatMenu = function (cid, x, y) {
+  const c = CHATS.find(z => z.id === cid);
+  if (!c || !c.secret) return _chatMenu(cid, x, y);
+  const _om = openMenu;
+  openMenu = function (items, px, py, o) {
+    openMenu = _om;
+    const i = items.findIndex(it => it.i === 'ban'); items.splice(i < 0 ? items.length : i, 0, { i: 'monitor', t: 'Устройства чата', fn: secDevices });
+    const tr = items.find(it => it.i === 'trash'); if (tr) tr.fn = () => delChat(cid, 'Удалить секретный чат на этом устройстве? Ключ будет стёрт — чтобы вернуть доступ, понадобится подтверждение собеседника.', 'Удалить');
+    return _om(items, px, py, o);
+  };
+  try { _chatMenu(cid, x, y) } finally { openMenu = _om }
+};
+
+/* ---------- профиль группы с другого сервера (зеркало) ---------- */
+function openFedGroup(cid) {
+  const c = CHATS.find(x => x.id === cid), ids = MEMBERS[cid] || [];
+  const loc = ['me', ...ids.filter(k => !PPL[k].fed)], fed = ids.filter(k => PPL[k].fed);
+  const row = k => {
+    const p = k === 'me' ? { n: 'Мария Иванова (вы)', bg: '#f6a35a,#e0507a', ini: 'АБ', on: 1, login: 'admin' } : PPL[k];
+    const av = avHtml({ ...p, on: p.fed ? 0 : p.on }, 'sm').replace(/<\/span>$/, (p.fed ? FDOT : '') + '</span>');
+    return `<button class="gm-row" data-k="${k}">${av}<span class="gm-nm"><b>${p.n}</b><span>${p.fed ? p.addr : '@' + p.login}</span></span>${p.fed ? FCHIP : ''}<span style="font-size:12px;color:var(--text2)">${p.on ? 'в сети' : p.st || 'давно'}</span></button>`;
+  };
+  const bg = openModal('gm-modal', `<div class="modal-hdr"><span class="grow">Группа</span><button class="ibtn" data-a="close" aria-label="Закрыть">${I('x')}</button></div>
+   <div class="mscroll"><div class="gm-hero"><span class="av xl" style="background:linear-gradient(135deg,${c.bg})">${c.ini}<span class="gm-fedbig">${GLOBE.replace('width="12" height="12"', 'width="13" height="13"')}</span></span><div class="name">${c.n}</div><div class="sub">${ids.length + 1} участников · в сети 3</div></div>
+   <div class="gm-tiles"><button class="gm-tile" data-a="search">${I('search')}Поиск</button><button class="gm-tile" data-a="media">${I('image')}Медиа</button><button class="gm-tile" data-a="mute">${I(S.muted.has(cid) ? 'bell' : 'bellOff')}${S.muted.has(cid) ? 'Включить' : 'Без звука'}</button><button class="gm-tile d" data-a="leave">${I('logout')}Выйти</button></div>
+   <div class="fx-note">${I('info')}<span><b>Группа на другом сервере.</b> Название, состав и аватарку меняет только её владелец. Писать и ставить реакции можно, а также выйти.</span></div>
+   <div class="gm-sec"><span>На этом сервере</span><span>${loc.length}</span></div><div class="gm-box">${loc.map(row).join('')}</div>
+   <div class="gm-sec"><span>С других серверов</span><span>${fed.length}</span></div><div class="gm-box">${fed.map(row).join('')}</div></div>`);
+  bg.addEventListener('click', e => {
+    const r = e.target.closest('.gm-row'), a = e.target.closest('[data-a]');
+    if (r && r.dataset.k !== 'me') { closeModal(bg); openProfile(r.dataset.k); return }
+    if (!a) return;
+    if (a.dataset.a === 'media') openMedia(cid); else if (a.dataset.a === 'search') { closeModal(bg); searchOpen() }
+    else if (a.dataset.a === 'mute') { S.muted.has(cid) ? S.muted.delete(cid) : S.muted.add(cid); closeModal(bg); renderList(); toast('Готово') }
+    else if (a.dataset.a === 'leave') { closeModal(bg); delChat(cid, 'Выйти из группы «' + c.n + '»?', 'Выйти') }
+  });
+}
+const _openGroup = openGroup;
+openGroup = function (cid) { const c = CHATS.find(x => x.id === cid); if (c && c.invite) return; return c && c.fed ? openFedGroup(cid) : _openGroup(cid) };
+
+/* ---------- откат состояния между сценами ---------- */
+RESETS.push(() => {
+  clearTimeout(scT);
+  CHATS.find(c => c.id === 'marat').lim = null;
+  DR = {}; if (inp.value && !S.edit) { inp.value = ''; upd() }
+  const s2 = NEWCH.sec2; s2.key = false; s2.scMode = 'closed';
+  if (invGone) { CHATS.splice(invGone.i, 0, invGone.c); invGone = null }
+  const iv = NEWCH.inv; iv.invite = { from: 'Игорь Орлов' }; iv.sub = 'Приглашение в группу'; iv.p = '<span style="color:var(--accent-ink)">Приглашение в группу</span>';
+  ['sec2', 'inv'].forEach(id => $('#cv-' + id)?.remove());
+  if (col.classList.contains('room')) { col.classList.remove('room'); S.chat = null; S.topic = null; setEmpty('chat', 'Electron', 'Выберите чат или создайте новый') }
+  else if (S.cur === 'sec2' || S.cur === 'inv') { const id = S.cur; S.cur = null; openChat('team') }
+  ANN_TOPICS[0].u = 1; ANN_TOPICS.forEach(t => { t.at = 0 });
+  renderList();
+});
+
+/* ---------- сцены ---------- */
+const reveal = id => { const r = $('#list [data-id="' + id + '"]'); if (r && (r.offsetTop < list.scrollTop || r.offsetTop + r.offsetHeight > list.scrollTop + list.clientHeight)) list.scrollTop = Math.max(0, r.offsetTop - 200) };
+const show = async id => { if (col.classList.contains('room')) { col.classList.remove('room') } openChat(id); reveal(id) };
+addScene('ro', 'Только чтение', async () => { openChat('ann'); await sleep(1300); openTopic('a-rel') });
+addScene('locked', 'Нельзя писать', async () => { CHATS.find(c => c.id === 'marat').lim = { used: 3, max: 3 }; await show('marat') });
+addScene('fedoff', 'Нет связи с группой', async () => { await show('fedB') });
+addScene('noans', 'Счётчик без ответа', async () => { CHATS.find(c => c.id === 'marat').lim = { used: 2, max: 3 }; await show('marat') });
+addScene('invite', 'Приглашение', async () => { await show('inv') });
+addScene('fed', 'Федерация', async () => { await show('fedA'); await sleep(450); openGroup('fedA') });
+addScene('secret', 'Секретный чат', async () => { await show('sec1') });
+addScene('seckey', 'Секретный чат: ключ', async () => { await show('sec2') });
+addScene('secdev', 'Секретный чат: устройства', async () => { await show('sec1'); await sleep(350); secDevices() });
+addScene('draft', 'Черновик', async () => {
+  await show('olga'); await sleep(300);
+  inp.value = 'Подписала график, отправлю на почту'; upd(); await sleep(500);
+  await show('team'); reveal('olga');
+});
+})();
+
+/* ═══ Новое в клиенте, часть B: служебные состояния, оверлеи, просмотрщик, пересылка, баннеры, голосовые, скрытый текст ═══
+   Разметка и тексты — по настоящему клиенту (server/src/public/chat/index.html, app.js, shared/voice.js, shared/fmt.js).
+   Подхватывается build.py сам; всё, что сцена кладёт поверх окна, — класс .xo (чистит resetScene), состояние откатывается через RESETS. */
+IC.alert='<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>';
+IC.extlink='<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>';
+IC.zoomIn='<circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/>';
+IC.zoomOut='<circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="8" x2="14" y1="11" y2="11"/>';
+IC.volume='<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>';
+IC.pause='<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>';
+
+const xo=(cls,html,host=win)=>{const e=document.createElement('div');e.className='xo '+cls;e.innerHTML=html;host.appendChild(e);return e};
+const xChat=async id=>{if(S.tab!=='chats')setTab('chats');openChat(id);await sleep(220)};
+const xScrollTo=(el,off=150)=>{const sc=$('#scroll');sc.scrollTo({top:sc.scrollTop+rectIn(el).t-off,behavior:'smooth'})};
+
+/* ───── значок темы в меню шапки: как в клиенте (в тёмной теме — солнце, в светлой — луна; updateSidebarThemeIcon) ───── */
+{const _st=setTheme;setTheme=function(t){_st(t);const m=$('#hm-theme');if(m)m.innerHTML=I(t==='light'?'moon':'sun')}}
+
+/* ───── данные: голосовые и ссылка в «Разработке», скрытый текст в «Команде продукта» ───── */
+{
+  const dev=CONVO.dev;
+  dev.push({a:'dmitry',t:'Ссылка на ТЗ по интеграции: <a class="msg-link" href="#" data-url="https://docs.example.com/spec/integration?v=4&amp;ref=chat">https://docs.example.com/spec/integration</a>',tm:'10:11'},
+    {a:'akrylov',voice:{dur:23,seed:3},tm:'10:14',nh:1},
+    {a:'me',voice:{dur:12,seed:7},tm:'10:16'},
+    {a:'petr',voice:{dur:41,seed:11},tm:'10:19',nh:1});
+  const t=CONVO.team,i=t.findIndex(m=>(m.t||'').startsWith('Дорожная карта'));
+  t.splice(i+1,0,
+    {a:'dmitry',t:'К пятнице заказал для команды <span class="spl">пиццу и мороженое</span>, а ещё сюрприз: <span class="spl">билеты на выставку</span>. Только никому!',tm:'09:31'},
+    {a:'me',q:['Дмитрий Соколов','К пятнице заказал для команды ⠶⠖⠲⠦⠴, а ещё сюрприз: ⠒⠔⠐⠠. Только никому!'],t:'Ура, жду!',tm:'09:32'});
+  CHATS.find(c=>c.id==='dev').p='Пётр: 🎤 Голосовое сообщение';
+  const el=$('#cv-team');if(el)el.remove();const el2=$('#cv-dev');if(el2)el2.remove();
+}
+
+/* ───── msgHtml: голосовое сообщение и «Переслано от» (разметка — как у клиента: irc-voice, vm, irc-forward-block) ───── */
+const VSP=[1,1.5,2],VS={speed:1,play:new Set(),timer:0};
+const vmFmt=s=>{s=Math.max(0,Math.floor(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+const vmSpeed=()=>(VS.speed===1.5?'1,5':VS.speed)+'×';
+function vmBars(seed,n=38){
+  let s=seed*9301+49297;const r=()=>{s=(s*9301+49297)%233280;return s/233280};
+  const p=[];for(let i=0;i<n;i++)p.push(.14+.86*Math.abs(Math.sin(i*.52+seed))*(.35+.65*r()));
+  return p.map((v,i)=>{const sm=(p[i-1]??v)*.25+v*.5+(p[i+1]??v)*.25;return '<i style="width:3px;height:'+(4+Math.pow(Math.min(1,sm),.8)*22).toFixed(0)+'px"></i>'}).join('');
+}
+function vmHtml(m,own,id,meta){
+  const v=m.voice;
+  return `<div class="vm ${own?'vm-out':'vm-in'}" data-vdur="${v.dur}" data-vid="${id}"><button class="pl" type="button" aria-label="Воспроизвести">${I('play','p1')}${I('pause','p2')}</button>`
+    +`<div class="vb"><div class="wv">${vmBars(v.seed||1)}</div><div class="mt"><span class="du">${vmFmt(v.dur)}</span>${m.nh?'<i class="ud"></i>':''}<button class="spd" type="button">${vmSpeed()}</button><span class="tm">${meta}</span></div></div></div>`;
+}
+{
+  const _mh=msgHtml;
+  msgHtml=function(cid,m,prev,dm,next){
+    const own=m.a==='me';
+    let h=_mh(cid,m.voice?{...m,t:'',voice:undefined,_voice:m.voice}:m,prev,dm,next);
+    if(m.voice){
+      const mt=/<div class="irc-meta">(.*?)<\/div>/s.exec(h),id=/data-m="([^"]+)"/.exec(h)[1];
+      if(mt)h=h.replace(mt[0],'');
+      h=h.replace(/<div class="irc-text"><\/div>/,vmHtml(m,own,id,mt?mt[0]:'')).replace('class="irc-msg','class="irc-msg irc-voice');
+      if(MSG[id])MSG[id].text='Голосовое сообщение';
+    }
+    if(m.fwd)h=h.replace('<div class="irc-text">',`<div class="irc-reply irc-forward-block"><div class="irc-reply-body"><div class="irc-reply-name">Переслано от <b>${esc(m.fwd[0])}</b></div>${m.fwd[1]?`<div class="irc-reply-text">${esc(m.fwd[1])}</div>`:''}</div></div><div class="irc-text">`);
+    return h;
+  };
+}
+
+/* ───── голосовое: проигрывание (в макете звука нет — ход и скорость идут по таймеру, как у shared/voice.js) ───── */
+function vmPaint(el,pos,playing){
+  const dur=+el.dataset.vdur||1,bars=el.querySelectorAll('.wv i'),x=Math.min(1,pos/dur)*bars.length,k=Math.floor(x);
+  bars.forEach((b,i)=>{const f=i<k?1:i===k?+(x-k).toFixed(3):0;if(b._f!==f){b._f=f;b.style.setProperty('--f',f)}});
+  el.classList.toggle('playing',playing);el.classList.toggle('act',playing||pos>0);
+  const du=el.querySelector('.du');if(du)du.textContent=playing||pos>0?vmFmt(pos):vmFmt(dur);
+  const s=el.querySelector('.spd');if(s)s.textContent=vmSpeed();
+}
+function vmTick(){
+  VS.play.forEach(el=>{
+    if(!el.isConnected){VS.play.delete(el);return}
+    el._pos+=.1*VS.speed;const dur=+el.dataset.vdur;
+    if(el._pos>=dur){el._pos=0;VS.play.delete(el);vmPaint(el,0,false)}else vmPaint(el,el._pos,true)});
+  if(!VS.play.size){clearInterval(VS.timer);VS.timer=0}
+}
+function vmPlay(el,from){
+  VS.play.forEach(o=>{if(o!==el){VS.play.delete(o);vmPaint(o,0,false)}});
+  if(from!=null)el._pos=from;el._pos=el._pos||0;VS.play.add(el);
+  const u=el.querySelector('.ud');if(u){u.classList.add('gone');setTimeout(()=>u.remove(),300)}
+  vmPaint(el,el._pos,true);if(!VS.timer)VS.timer=setInterval(vmTick,100);
+}
+function vmStopAll(){VS.play.forEach(o=>vmPaint(o,0,false));VS.play.clear();clearInterval(VS.timer);VS.timer=0;$$('.vm').forEach(el=>{el._pos=0;vmPaint(el,0,false)})}
+document.addEventListener('click',e=>{
+  const el=e.target.closest('.vm');if(!el)return;
+  const pl=e.target.closest('.pl'),wv=e.target.closest('.wv'),sp=e.target.closest('.spd');if(!pl&&!wv&&!sp)return;
+  e.stopPropagation();
+  if(sp){VS.speed=VSP[(VSP.indexOf(VS.speed)+1)%VSP.length];$$('.vm .spd').forEach(b=>{b.textContent=vmSpeed()});return}
+  if(wv){const r=wv.getBoundingClientRect(),f=Math.max(0,Math.min(.999,(e.clientX-r.left)/r.width));vmPlay(el,f*(+el.dataset.vdur||1));return}
+  if(VS.play.has(el)){VS.play.delete(el);vmPaint(el,el._pos,false)}else vmPlay(el,null);
+},true);
+RESETS.push(()=>{vmStopAll();VS.speed=1});
+
+/* ───── скрытый текст: пыль и нажатие — тот же расчёт, что у Fmt (shared/fmt.js) ───── */
+const SPS=new Set(),SPopen=new Set();let spRaf=0,spLast=0;
+const spReduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function spKey(sp){const m=sp.closest('[data-msg-id]');if(!m)return null;return m.dataset.msgId+':'+[...m.querySelectorAll('.spl')].indexOf(sp)}
+function spSoft(b,x,y){const hx=b.w/2+1,hy=b.h/2,r=Math.min(hx,hy),qx=Math.abs(x-b.w/2)-(hx-r),qy=Math.abs(y-b.h/2)-(hy-r);
+  const d=Math.hypot(Math.max(qx,0),Math.max(qy,0))+Math.min(Math.max(qx,qy),0)-r;if(d<=0)return 1;const f=1-d/8;return f>0?f*f:0}
+function spSpawn(b,p,fresh){
+  let g=0;do{p.x=-9+Math.random()*(b.w+18);p.y=-6+Math.random()*(b.h+12)}while(spSoft(b,p.x,p.y)<.3&&g++<40);
+  if(p.slow===undefined)p.slow=Math.random()<.34;
+  const s=p.slow?Math.random()*.05:1.5+Math.random()*3,a=Math.random()*6.283;
+  p.vx=Math.cos(a)*s;p.vy=Math.sin(a)*s;p.life=p.slow?20+Math.random()*30:.2+Math.random()*.6;p.age=fresh?Math.random()*p.life:0;p.al=.55+Math.random()*.45;
+}
+function spInit(sp){
+  sp.setAttribute('data-sp','1');
+  const host=sp.closest('.irc-text')||sp.parentElement;if(!host)return;host.classList.add('spl-host');
+  const cv=document.createElement('canvas');cv.className='spl-cv';host.appendChild(cv);
+  const o={sp,host,cv,g:cv.getContext('2d'),boxes:[],W:0,H:0,k:1,col:'#888',n:0,key:spKey(sp)};
+  o.place=()=>{
+    const hr=host.getBoundingClientRect(),k=host.offsetWidth?hr.width/host.offsetWidth:1;o.k=k||1;o.W=host.offsetWidth;o.H=host.offsetHeight;
+    const dpr=Math.min(2,window.devicePixelRatio||1);cv.width=o.W*dpr;cv.height=o.H*dpr;cv.style.width=o.W+'px';cv.style.height=o.H+'px';o.dpr=dpr;o.dirty=true;
+    o.boxes=[...sp.getClientRects()].filter(r=>r.width>2).map(r=>{const b={x:(r.left-hr.left)/o.k,y:(r.top-hr.top)/o.k,w:r.width/o.k,h:r.height/o.k};
+      b.p=Array.from({length:Math.max(24,Math.round(b.w*b.h/5.2))},()=>{const p={};spSpawn(b,p,true);return p});return b});
+  };
+  try{new ResizeObserver(o.place).observe(host)}catch(e){}
+  o.place();
+  if(o.key&&SPopen.has(o.key)){sp.classList.add('open');cv.style.opacity='0'}
+  sp.addEventListener('click',()=>{const on=sp.classList.toggle('open');cv.style.opacity=on?'0':'';o.dirty=true;if(o.key){on?SPopen.add(o.key):SPopen.delete(o.key)}});
+  SPS.add(o);if(!spRaf)spRaf=requestAnimationFrame(spLoop);
+}
+function spLoop(t){
+  const dt=spLast?Math.max(0,Math.min(.05,(t-spLast)/1000)):0;spLast=t;
+  for(const o of SPS){
+    if(!o.sp.isConnected){SPS.delete(o);continue}
+    if(o.sp.classList.contains('open')||document.hidden||!o.W)continue;
+    if(spReduce&&!o.dirty)continue;o.dirty=false;
+    if(!(++o.n%90))o.col=getComputedStyle(o.host).color;
+    if(o.n===1)o.col=getComputedStyle(o.host).color;
+    const g=o.g,d=o.dpr;g.setTransform(d,0,0,d,0,0);g.clearRect(0,0,o.W,o.H);g.fillStyle=o.col;
+    for(const b of o.boxes)for(const p of b.p){
+      if(!spReduce){p.x+=p.vx*dt;p.y+=p.vy*dt;p.age+=dt}
+      let f=spSoft(b,p.x,p.y);if(p.age>=p.life||f<.03){spSpawn(b,p,false);f=1}
+      const ft=Math.min(.2,p.life*.2),e=Math.min(1,p.age/ft,(p.life-p.age)/ft);
+      g.globalAlpha=p.al*f*(e>0?e:0);g.fillRect(Math.round((b.x+p.x)*d)/d,Math.round((b.y+p.y)*d)/d,1,1)}
+    g.globalAlpha=1;
+  }
+  spRaf=SPS.size?requestAnimationFrame(spLoop):0;
+}
+{let q=0;const scan=()=>{q=0;$$('.spl:not([data-sp])').forEach(spInit)};
+ new MutationObserver(()=>{if(!q)q=requestAnimationFrame(scan)}).observe(document.body,{childList:true,subtree:true});scan()}
+RESETS.push(()=>{$$('.spl.open').forEach(s=>{s.classList.remove('open');const c=s.closest('.spl-host')?.querySelector('.spl-cv');if(c)c.style.opacity=''});SPopen.clear();SPS.forEach(o=>{o.dirty=true})});
+
+/* ───── меню сообщения и чата: «Прочитано», «Разблокировать» (тексты и состав — как в клиенте) ───── */
+const XB={cid:null};
+{
+  const _om=openMenu;
+  openMenu=function(items,x,y,o){
+    items=items.map(it=>{
+      if(it&&it.fly&&/^Прочитано/.test(it.t||'')){
+        const rows=[['dmitry','09:40'],['elena','09:47']];
+        return {...it,t:'Прочитано <span class="cnt"><b>2</b>/3</span>',rd:1,fly:()=>`<div class="rdh">Прочитали 2 из 3</div>`+rows.map(([k,t])=>`<div class="rdr">${avHtml({...PPL[k],on:0},'xs')}<span>${PPL[k].n}</span><time>${t}</time></div>`).join('')};
+      }
+      if(it&&it.i==='ban'&&XB.cid){
+        const c=CHATS.find(z=>z.id===XB.cid);
+        if(c&&S.blocked.includes(c.peer))return {i:'unban',t:'Разблокировать',fn:()=>{S.blocked=S.blocked.filter(k=>k!==c.peer);renderCsNav();toast(c.n+' разблокирован')}};
+      }
+      return it});
+    const m=_om(items,x,y,o);
+    items.forEach((it,i)=>{if(it&&it.rd){const b=m.querySelector('button[data-k="'+i+'"]');if(b)b.classList.add('rd-part')}});
+    return m;
+  };
+  const _cm=chatMenu;chatMenu=function(cid,x,y){XB.cid=cid;try{_cm(cid,x,y)}finally{XB.cid=null}};
+}
+const blk0=[...S.blocked];RESETS.push(()=>{S.blocked=[...blk0];renderCsNav()});
+
+/* ───── пересылка: выбор чата → панель «Переслано от» над полем ввода (forward-bar) ───── */
+let FWsrc=null;
+document.addEventListener('contextmenu',e=>{const m=e.target.closest('.irc-msg');if(m)FWsrc=m.dataset.m},true);
+{
+  const _ss=slotSync;slotSync=function(){_ss();
+    if(S.fwd){$('#slotin').insertAdjacentHTML('afterbegin',`<div class="replybar fwdbar">${I('fwd')}<div class="tx"><b>Переслано от ${esc(S.fwd.name)}</b><span>${esc(S.fwd.text)}</span></div><button class="ibtn" data-x="fwd" aria-label="Отменить пересылку">${I('x')}</button></div>`);
+      $('#slot').classList.add('open');chatEl.classList.add('hasbar')}};
+  const _sr=slotReset;slotReset=function(){S.fwd=null;_sr()};
+}
+$('#slotin').addEventListener('click',e=>{const b=e.target.closest('[data-x="fwd"]');if(b){S.fwd=null;slotSync()}});
+function fwdSend(){
+  if(!S.fwd)return false;
+  const v=inp.value.trim(),f=S.fwd;S.fwd=null;addMsg({a:'me',t:esc(v),fwd:[f.name,f.text],tm:'сейчас'});inp.value='';upd();slotReset();return true;
+}
+send.addEventListener('click',e=>{if(fwdSend())e.stopImmediatePropagation()},true);
+inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&fwdSend())e.stopImmediatePropagation()},true);
+function fwdInfo(sid){
+  const m=sid&&MSG[sid];
+  if(!m)return{name:'Дмитрий Соколов',text:'Макеты профиля готовы, посмотрите вариант B'};
+  return{name:m.a==='me'?'Мария Иванова':PPL[m.a].n,text:(m.text||'').slice(0,80)||(m.pic||m.file?'Вложение':'')};
+}
+async function fwdTo(cid,sid){
+  await xChat(cid);S.fwd=fwdInfo(sid);slotSync();inp.focus();
+}
+modalForward=function(src){
+  const sid=src||FWsrc||($$('#cv-team .irc-msg:not([data-mine])')[0]||{dataset:{}}).dataset.m;
+  const bg=openModal('w380',`<div class="modal-hdr"><span class="grow">Переслать в...</span><button class="ibtn" data-a="close" aria-label="Закрыть">${I('x')}</button></div><label class="fld nc-search" style="height:36px;margin-top:2px">${I('search')}<input id="fq" placeholder="Поиск..." aria-label="Поиск"></label><div class="nc-list" id="fl" style="max-height:340px;padding-bottom:14px"></div>`);
+  const paint=()=>{const q=$('#fq',bg).value.toLowerCase(),ls=CHATS.filter(c=>c.k!=='room'&&c.n.toLowerCase().includes(q));
+    $('#fl',bg).innerHTML=ls.length?'<div class="xlbl">Чаты</div>'+ls.map(c=>`<button class="pp-row" data-c="${c.id}">${avHtml(c,'sm')}<span class="pp-name">${c.n}</span></button>`).join(''):'<div class="emptylist">Нет результатов</div>'};
+  paint();$('#fq',bg).oninput=paint;
+  bg.addEventListener('click',e=>{const r=e.target.closest('[data-c]');if(r){closeModal(bg);fwdTo(r.dataset.c,sid)}});
+};
+
+/* ───── ссылка в сообщении: окно подтверждения (modal-link) ───── */
+function openLinkUrl(url){
+  const bg=openModal('w380 xlink',`<div class="xi">${I('alert')}</div><div class="xt">Внешняя ссылка</div><div class="xd">Эта страница может быть потенциально опасной. Вы уверены, что хотите её открыть?</div><div class="xu" id="link-modal-url">${esc(url)}</div>
+    <div class="xf"><button class="btn" data-a="close">Отмена</button><button class="btn pri" data-a="open">${I('extlink')}Открыть</button></div>`);
+  bg.addEventListener('click',e=>{if(e.target.closest('[data-a="open"]')){closeModal(bg);toast('Ссылка откроется в браузере')}});
+  setTimeout(()=>{try{document.activeElement.blur()}catch(e){}},120);
+  return bg;
+}
+document.addEventListener('click',e=>{const a=e.target.closest('.msg-link[data-url]');if(a){e.preventDefault();openLinkUrl(a.dataset.url.replace(/&amp;/g,'&'))}});
+
+/* ───── просмотрщик фото и видео (lightbox) ───── */
+const mkPic=(a,b,c,sun,seed)=>'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="640" viewBox="0 0 1120 640"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset=".62" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></linearGradient></defs><rect width="1120" height="640" fill="url(#g)"/><circle cx="${300+seed*140}" cy="${190+seed*20}" r="${70+seed*10}" fill="${sun}" opacity=".9"/><path d="M0 470 190 330 380 450 600 270 840 440 1010 340 1120 410V640H0Z" fill="#000" opacity=".22"/><path d="M0 540 250 430 470 530 720 400 1000 520 1120 470V640H0Z" fill="#000" opacity=".34"/></svg>`);
+const LBP=[mkPic('#2ed3b7','#6a6cf0','#f0a020','#fff3c4',0),mkPic('#f6a35a','#d0566a','#5a2a6a','#ffe9d0',1),mkPic('#4b8df0','#2a55c4','#1b2a6a','#e8f0ff',2)];
+const LBI=[
+  {pic:0,type:'image',sender:'Елена Миронова',at:'сегодня, 09:27',caption:'Короткая демонстрация анимации:',mine:0},
+  {pic:1,type:'image',sender:'Мария Иванова',at:'сегодня, 09:35',caption:'',mine:1},
+  {pic:2,type:'video',sender:'Дмитрий Соколов',at:'вчера, 18:12',caption:'Запись экрана: как работает новое меню',mine:0,dur:34}];
+function openLb(items,idx=0){
+  $('.xlb')?.remove();
+  const lb=document.createElement('div');lb.className='xo xlb';layer.appendChild(lb);
+  let i=idx,sc=1,it;
+  const paint=()=>{
+    it=items[i];const n=items.length,vid=it.type==='video';
+    lb.classList.toggle('lb-gallery',n>1);lb.classList.toggle('lb-video',vid);lb.classList.toggle('lb-meta',!!(it.sender||it.caption||n>1));
+    lb.innerHTML=`<button class="lb-nav lb-prev" type="button" aria-label="Назад" style="visibility:${i>0?'visible':'hidden'}">${I('chevLeft')}</button><button class="lb-nav lb-next" type="button" aria-label="Дальше" style="visibility:${i<n-1?'visible':'hidden'}">${I('chevRight')}</button>
+      <div class="lb-count">${i+1} из ${n}</div>
+      <div class="lb-info"><b>${esc(it.sender||'')}</b><span>${esc(it.at||'')}</span></div>
+      <div class="lb-stage"><img class="lb-img" alt="" src="${LBP[it.pic]}" style="transform:scale(${sc})">${vid?`<div class="lb-vid"><button class="lb-vp" type="button" aria-label="Воспроизвести">${I('play')}</button><div class="lb-vc"><button type="button" aria-label="Воспроизвести">${I('play')}</button><span>0:12</span><div class="lb-vt"><i style="width:36%"></i></div><span>${vmFmt(it.dur||34)}</span><button type="button" aria-label="Звук">${I('volume')}</button></div></div>`:''}</div>
+      <div class="lb-zoom"><button type="button" data-z="-" title="Уменьшить" aria-label="Уменьшить">${I('zoomOut')}</button><button type="button" data-z="0" title="Сбросить масштаб" aria-label="Сбросить масштаб">${I('search')}</button><button type="button" data-z="+" title="Увеличить" aria-label="Увеличить">${I('zoomIn')}</button></div>
+      <button class="lb-act" id="lb-close" type="button" title="Закрыть (Esc)" aria-label="Закрыть" style="right:24px">${I('x')}</button>
+      <button class="lb-act" data-k="dl" type="button" title="Скачать" aria-label="Скачать" style="right:72px">${I('dl')}</button>
+      <button class="lb-act" data-k="fwd" type="button" title="Переслать" aria-label="Переслать" style="right:120px">${I('fwd')}</button>
+      ${it.mine?`<button class="lb-act" data-k="del" type="button" title="Удалить" aria-label="Удалить" style="right:168px">${I('trash')}</button>`:''}
+      <div class="lb-bottom">${it.caption?`<div class="lb-cap">${esc(it.caption)}</div>`:''}${n>1?`<div class="lb-thumbs">${items.map((x,k)=>`<i class="${k===i?'on':''}" data-k="${k}" style="background-image:url('${LBP[x.pic]}')"></i>`).join('')}</div>`:''}</div>`;
+  };
+  const go=d=>{const k=i+d;if(k<0||k>=items.length)return;i=k;sc=1;paint()};
+  const close=()=>{document.removeEventListener('keydown',key,true);lb.classList.add('out');setTimeout(()=>lb.remove(),160)};
+  const key=e=>{if(!lb.isConnected)return document.removeEventListener('keydown',key,true);
+    if(e.key==='ArrowLeft')go(-1);else if(e.key==='ArrowRight')go(1);else if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();close()}};
+  document.addEventListener('keydown',key,true);
+  lb.addEventListener('click',async e=>{
+    const b=e.target.closest('button,i[data-k]');
+    if(!b){if(e.target===lb||e.target.classList.contains('lb-stage'))close();return}
+    if(b.classList.contains('lb-prev'))go(-1);else if(b.classList.contains('lb-next'))go(1);
+    else if(b.id==='lb-close')close();
+    else if(b.dataset.z){sc=b.dataset.z==='0'?1:Math.max(1,Math.min(4,sc+(b.dataset.z==='+'?.5:-.5)));$('.lb-img',lb).style.transform='scale('+sc+')'}
+    else if(b.tagName==='I'){i=+b.dataset.k;sc=1;paint()}
+    else if(b.dataset.k==='dl')toast('Скачивание: '+(it.type==='video'?'video.mp4':'image.jpg'));
+    else if(b.dataset.k==='fwd'){close();modalForward(null)}
+    else if(b.dataset.k==='del'){const ok=await confirmBox('Удалить сообщение? Оно исчезнет у всех участников.','Удалить');if(ok){items.splice(i,1);if(!items.length){close();return}i=Math.min(i,items.length-1);sc=1;paint();toast('Сообщение удалено')}}
+  });
+  paint();return lb;
+}
+/* нажатие на фото в переписке открывает просмотр (один кадр: у него есть автор, время и подпись) */
+document.addEventListener('click',e=>{
+  const im=e.target.closest('.bubble-image');if(!im)return;
+  const msg=im.closest('.irc-msg'),m=msg&&MSG[msg.dataset.m];if(!m)return;
+  openLb([{pic:0,type:'image',sender:PPL[m.a]?.n||'Мария Иванова',at:'сегодня, '+m.tm,caption:(m.text||'').trim(),mine:m.a==='me'}],0);
+});
+
+/* ═══ СЦЕНЫ ═══ */
+addScene('xb-phone','Экран для телефона',async()=>{
+  const o=xo('xph-bg',`<div class="xph"><i class="xph-isl"></i><div class="xph-card"><div class="lg-logo">${I('chat')}</div><h1 class="lg-word"><span>ELECTRON</span> <span>MESSENGER</span></h1>
+    <p class="lg-sub" style="margin:6px 0 22px;line-height:1.5">Эта версия сделана для компьютера — на телефоне пользуйтесь мобильной версией.</p>
+    <button class="lg-btn" type="button" style="width:100%">Перейти на мобильную версию</button></div></div><div class="xph-cap">Так /chat выглядит на экране телефона</div>`);
+  o.addEventListener('click',e=>{if(e.target.closest('.lg-btn'))toast('Открывается мобильная версия /m/');else if(!e.target.closest('.xph'))o.remove()});
+});
+
+addScene('xb-boot','Загрузка',async()=>{
+  loginShow('form');
+  const o=xo('xboot',`<div class="bx"><i class="spin"></i><div class="bt" id="boot-text">Подключаюсь к серверу…</div><button class="bm" type="button">Войти вручную</button></div>`,$('#loginscr'));
+  const t=setTimeout(()=>{const b=$('#boot-text');if(b)b.textContent='Сервер отвечает медленно, пробую ещё раз…'},3200);
+  RESETS.push(function f(){clearTimeout(t);loginHide();const i=RESETS.indexOf(f);if(i>=0)RESETS.splice(i,1)});
+  o.querySelector('.bm').onclick=()=>o.remove();
+});
+
+addScene('xb-notif','Уведомления',async()=>{
+  const o=xo('xnotif',`${I('bell')}<span>Разрешите уведомления, чтобы получать сообщения в фоне</span><button class="xb" type="button" data-k="ok">Разрешить</button><button class="xb x" type="button" data-k="x" aria-label="Скрыть">${I('x')}</button>`);
+  o.addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b)return;o.remove();if(b.dataset.k==='ok')toast('Уведомления разрешены')});
+});
+
+addScene('xb-drag','Перетаскивание файла',async()=>{
+  await xChat('team');
+  xo('xdrag',`<div class="xdc">${I('image')}<span>Отпустите для отправки</span></div>`);
+});
+
+addScene('xb-link','Внешняя ссылка',async()=>{
+  await xChat('dev');
+  const a=$('#cv-dev .msg-link');if(a)xScrollTo(a.closest('.irc-msg'),260);
+  await sleep(250);openLinkUrl('https://docs.example.com/spec/integration?v=4&ref=chat');
+});
+
+addScene('xb-lightbox','Просмотрщик',async()=>{openLb(LBI.map(x=>({...x})),0)});
+
+addScene('xb-forward','Пересылка',async()=>{
+  await xChat('team');
+  const m=$$('#cv-team .irc-msg:not([data-mine])')[0];FWsrc=m&&m.dataset.m;
+  modalForward(FWsrc);
+});
+addScene('xb-fwdbar','Панель пересылки',async()=>{
+  await xChat('team');const m=$$('#cv-team .irc-msg:not([data-mine])')[0];
+  await fwdTo('marat',m&&m.dataset.m);
+});
+
+addScene('xb-banners','Баннеры',async()=>{
+  const o=xo('xanns',['Завтра в 22:00 обновление сервера. Чат будет недоступен около 10 минут.','Сегодня до 18:00 принимаем заявки на отпуск: пишите Анне Лебедевой.'].map(t=>
+    `<div class="xann">${I('bell')}<span class="xt">${t}</span><button class="xc" type="button" title="Скрыть" aria-label="Скрыть">${I('x')}</button></div>`).join(''));
+  o.addEventListener('click',e=>{const b=e.target.closest('.xc');if(b)b.closest('.xann').remove()});
+  const st=$('#tabs [data-tab="settings"]');
+  if(st&&!$('#xupd')){st.insertAdjacentHTML('beforeend','<i class="upd xo" id="xupd" title="Доступно обновление"></i>')}
+  RESETS.push(function f(){$('#xupd')?.remove();const i=RESETS.indexOf(f);if(i>=0)RESETS.splice(i,1)});
+  await sleep(200);hmSet(true);
+});
+
+/* запись голосового: строка записи внутри поля, замок над кнопкой (shared/voice.js, voice.css) */
+const VR={st:null,timer:0,t0:0,smp:[]};
+function vrStop(){
+  clearInterval(VR.timer);VR.timer=0;VR.st=null;
+  const comp=$('#comp');['vr-rec','vr-hold','vr-lockd','vr-will'].forEach(c=>comp.classList.remove(c));
+  comp.style.removeProperty('--vlvl');comp.style.removeProperty('--vlk');
+  $$('.vr-bar,.vr-fx,.vr-lock,.vr-toast',comp).forEach(n=>n.remove());
+  $('#send').classList.remove('vr-btn','ready');$('.field',comp)?.classList.remove('vr-field');$('.row1',comp)?.classList.remove('vr-row');$('#plus').classList.remove('vr-side');
+  upd();
+}
+function vrDraw(){
+  const cv=$('.vr-wave',$('#comp'));if(!cv||!cv.clientWidth)return;
+  const w=cv.clientWidth,h=cv.clientHeight,dpr=2;if(cv.width!==w*dpr){cv.width=w*dpr;cv.height=h*dpr}
+  const x=cv.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,w,h);
+  const bw=3,gap=3,n=Math.floor((w+gap)/(bw+gap)),vals=VR.smp.slice(-n);while(vals.length<n)vals.unshift(null);
+  x.fillStyle=getComputedStyle(cv).color;const off=w-(n*(bw+gap)-gap);
+  for(let i=0;i<n;i++){const v=vals[i];let bh,al;if(v==null){bh=3;al=.25}else{bh=Math.max(4,Math.min(1,v*1.15)*h*.95);al=1}
+    x.globalAlpha=al;x.beginPath();x.roundRect(off+i*(bw+gap),(h-bh)/2,bw,bh,1.5);x.fill()}
+  x.globalAlpha=1;
+}
+function vrStart(){
+  vrStop();
+  const comp=$('#comp'),field=$('.field',comp),btn=$('#send');
+  field.classList.add('vr-field');$('.row1',field).classList.add('vr-row');$('#plus').classList.add('vr-side');btn.classList.add('vr-btn');
+  field.insertAdjacentHTML('beforeend',`<div class="vr-bar"><button type="button" class="vr-trash" aria-label="Удалить запись">${I('trash')}</button><i class="vr-dot"></i><span class="vr-time">0:07</span><canvas class="vr-wave"></canvas><div class="vr-hint">${I('chevLeft')}<span>Влево — отмена</span></div></div><div class="vr-fx">${I('trash')}</div>`);
+  comp.insertAdjacentHTML('beforeend',`<div class="vr-lock">${I('lock')}${I('chevUp','u')}</div><div class="vr-toast"></div>`);
+  const lock=$('.vr-lock',comp),hr=rectIn(comp),br=rectIn(btn);
+  lock.style.right=(hr.r-br.r+(br.r-br.l-44)/2)+'px';lock.style.bottom=(hr.b-br.t+20)+'px';
+  const toast2=$('.vr-toast',comp);toast2.style.bottom=(hr.b-br.t+16)+'px';
+  comp.classList.add('vr-rec','vr-hold');comp.style.setProperty('--vlk','.55');
+  VR.st='hold';VR.t0=Date.now()-7000;VR.smp=Array.from({length:40},(_,i)=>.25+.6*Math.abs(Math.sin(i*.7))*Math.random());
+  const time=$('.vr-time',comp);
+  VR.timer=setInterval(()=>{
+    const l=.25+Math.random()*.6;comp.style.setProperty('--vlvl',l.toFixed(2));VR.smp.push(l);if(VR.smp.length>200)VR.smp.shift();
+    time.textContent=vmFmt((Date.now()-VR.t0)/1000);if(VR.st==='lock')vrDraw()},90);
+}
+function vrLock(){
+  const comp=$('#comp');if(VR.st!=='hold')return;VR.st='lock';
+  comp.classList.add('vr-lockd');comp.classList.remove('vr-hold');
+  $('#send').classList.add('ready');$('#send').innerHTML=I('up');
+  const t=$('.vr-toast',comp);t.textContent='Запись зафиксирована — можно отпустить';t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2300);
+}
+$('#comp').addEventListener('click',e=>{
+  if(!VR.st)return;
+  if(e.target.closest('.vr-lock')){vrLock();return}
+  if(e.target.closest('.vr-trash')){const fx=$('.vr-fx');fx.classList.remove('go');void fx.offsetWidth;fx.classList.add('go');setTimeout(vrStop,550);return}
+  if(e.target.closest('#send')&&VR.st==='lock'){e.stopImmediatePropagation();const d=Math.round((Date.now()-VR.t0)/1000);vrStop();addMsg({a:'me',voice:{dur:d,seed:Date.now()%17},tm:'сейчас'})}
+},true);
+addScene('xb-vrec','Запись голосового',async()=>{await xChat('dev');vrStart()});
+RESETS.push(vrStop);
+
+addScene('xb-voice','Голосовые в чате',async()=>{
+  await xChat('dev');
+  const v=$$('#cv-dev .vm');if(!v.length)return;
+  xScrollTo(v[0].closest('.irc-msg'),300);
+  await sleep(500);vmPlay(v[0],9.4);
+});
+
+addScene('xb-spoiler','Скрытый текст',async()=>{
+  await xChat('team');
+  const s=$('#cv-team .spl');if(!s)return;
+  xScrollTo(s.closest('.irc-msg'),300);
+  await sleep(1300);s.click();
+});
+
+addScene('xb-readby','Кто прочитал',async()=>{
+  await xChat('team');
+  const ms=$$('#cv-team .irc-msg[data-mine]:not(.emoji-msg)'),m=ms[ms.length-1]||$('#cv-team .irc-msg');
+  const r=rectIn(m);msgMenu(m.dataset.m,r.l+(r.r-r.l)*.5,r.t+10);
+  await sleep(350);
+  const b=[...$$('.ctx-menu button')].find(x=>/Прочитано/.test(x.textContent));
+  if(b)b.dispatchEvent(new MouseEvent('mouseover',{bubbles:true}));
+});
+
+addScene('xb-blocked','Заблокированный',async()=>{
+  await xChat('olga');
+  const row=$('#list [data-id="olga"]');row.scrollIntoView({block:'center'});await sleep(120);
+  const r=rectIn(row);chatMenu('olga',r.l+110,r.t+30);
+});
+
 
 /* ---------- сцены, запуск ---------- */
 $('#scenes').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;const s=b.dataset.s;

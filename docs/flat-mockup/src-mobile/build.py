@@ -192,7 +192,10 @@ MCHK = ("/^\\/m(\\/|$)/.test(location.pathname)", "true")        # в макет
 INTO_PHONE = ("document.body.appendChild(bg)", "(document.getElementById('layer')||document.body).appendChild(bg)")  # окна — внутри экрана телефона
 # в самом клиенте /m общий класс .gl (подпись группы) пересекается с корнем окна гостевой ссылки: в макете правило окна сужено до .gl-bg>.gl
 GL_ROOT = ("'.gl{background:var(--gl-bg);", "'.gl-bg>.gl{background:var(--gl-bg);")
-mods = (shared('fmt.js') + shared('voice.js') + shared('guestlinks.js', [MCHK, INTO_PHONE, GL_ROOT]) + shared('calllinks.js', [MCHK, INTO_PHONE]))
+XSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>'
+XFIX = ('>✕</button>', '>' + XSVG + '</button>')   # крестик окон — значок Lucide, как в остальных окнах
+MCHK2 = MCHK
+mods = (shared('fmt.js') + shared('voice.js') + shared('guestlinks.js', [MCHK, INTO_PHONE, GL_ROOT, XFIX]) + shared('calllinks.js', [MCHK, INTO_PHONE, XFIX]))
 sub('<script>\nconst IC={', mods + '<script>\nconst IC={')
 
 out = os.path.join(ROOT, 'docs/flat-mockup/mobile.html')

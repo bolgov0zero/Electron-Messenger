@@ -293,7 +293,12 @@ html.dark .anx-types button[aria-checked="true"],html.dark .anx-tabsbar button[a
 /* ───── кнопка закрытия окна: одинаковая во всех модалках ───── */
 .modal-bg [aria-label="Закрыть"],.gl-bg .gl-x{width:36px;height:36px;min-width:36px;padding:0;border-radius:12px;background:var(--surf2);color:var(--text2);font-size:18px;display:grid;place-items:center;line-height:1;flex:none;border:0}
 .modal-bg [aria-label="Закрыть"]:hover,.gl-bg .gl-x:hover{background:var(--gl-card2);color:var(--text)}
-.pf-cover .ibtn[aria-label="Закрыть"]{background:var(--side-bg);color:var(--text)}
+/* крестик везде один: 36×36, радиус 12, фон --surf2, значок 18 (как в окне нового чата) */
+.pf-cover .ibtn[aria-label="Закрыть"]{background:var(--surf2);color:var(--text2)}
+.pf-cover .ibtn[aria-label="Закрыть"]:hover{background:var(--gl-card2);color:var(--text)}
+#unpin,#sclose,.replybar .ibtn[data-x],.fmtbar [data-x="fmt"]{width:36px;height:36px;min-width:36px;padding:0;border-radius:12px;background:var(--surf2);color:var(--text2);display:grid;place-items:center;flex:none;border:0}
+#unpin:hover,#sclose:hover,.replybar .ibtn[data-x]:hover,.fmtbar [data-x="fmt"]:hover{background:var(--gl-card2);color:var(--text)}
+#unpin svg,#sclose svg,.replybar .ibtn[data-x] svg,.fmtbar [data-x="fmt"] svg{width:18px;height:18px}
 .gl-bg .gl-x svg{width:18px;height:18px}
 
 /* ───── аккаунты: выделение круглое ───── */

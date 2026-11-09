@@ -1,0 +1,144 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   /chat — дизайн B «Мягкий»: контекстные меню, меню шапки, реакции в меню, подсказки; окна (nc/pf/gm/cm/fp/ac/anx), подтверждения, пересылка, просмотрщик.
+   Подключается после flat.css (токены и база). Здесь только правила этой области; токены и алиасы стекла — в flat.css.
+   Не забывать гасить «блики» прежнего стекла (flat-base.css) в своей области (::before/::after с --gl-spec/--gl-spotlight, inset-тени --gl-hi/--gl-lo, радиальные градиенты).
+   Эталон — docs/flat-mockup (index.html, src/flat-b.css, extra-a/extra-b.css), PLAN.md разд. 2.2 (радиусы).
+   Порядок: 1 меню (контекстные, подменю, шапки, реакции, подсказки) · 2 окна: скрим, форма, шапка, подвал · 3 новый чат, пересылка, добавить контакт ·
+            4 профиль, группа, медиа · 5 папки · 6 объявление · 7 подтверждения, ссылка, синхронизация, обновление · 8 просмотрщик.
+   Кнопки закрытия, действий, тумблеры, сегменты, чипы, поля — из UI-кита flat.css; здесь не рисуются.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═════════ 1. Меню: карточка r16, пункты r12, плоская всплывающая тень, без пружины ═════════ */
+.ctx-menu, #reaction-picker, #mention-popup, .head-menu, .up-menu, .ha-pop, .ctx-read-fly, .ctx-sub-fly {
+  border-radius: var(--r-menu); border: 0; box-shadow: var(--pop-shadow); background: var(--side-bg);
+}
+.ctx-menu .ctx-read-fly, .ctx-menu .ctx-sub-fly, .ctx-read-fly, .ctx-sub-fly {
+  background: var(--side-bg); border: 0; box-shadow: var(--pop-shadow);
+}
+.ctx-menu.open, #ctx-chat-menu[style*="block"] { animation-duration: .18s; animation-timing-function: var(--gl-ease); }
+.ctx-menu button, .up-menu button, .mention-item, .ctx-read-row { border-radius: var(--r-item); }
+.ctx-menu button:active { transform: none; }
+.ctx-menu button svg { color: var(--accent-ink); }
+.ctx-menu button.ctx-danger svg, .ctx-menu button.ctx-danger:hover svg { color: var(--danger); }
+.ctx-sep, html.dark .ctx-sep { background: var(--gl-lo); }
+.ctx-menu button:hover, .up-menu button:hover, .ctx-read.open > button, .mention-item:hover, .mention-item.mn-active, .ctx-read-row:hover { background: var(--hover-row); }
+.ctx-menu button.ctx-danger:hover { background: var(--danger-bg); }
+/* ряд быстрых реакций в меню сообщения */
+.ctx-reactions { border-radius: 14px; background: var(--surf2); }
+.ctx-menu .ctx-reactions button { border-radius: var(--r-item); }
+.ctx-menu .ctx-reactions button:hover { background: var(--gl-card2); transform: none; }
+.ctx-menu .ctx-reactions button.mine { background: var(--accent-soft); }
+.ctx-read-fly, .ctx-sub-fly { transition: opacity .15s, transform .18s var(--gl-ease); }
+.ctx-read-h { border-bottom: 1px solid var(--gl-lo); }
+/* меню шапки сайдбара: карточка из четырёх значков (r16), пункты r12 */
+.head-menu { padding: 6px; border-radius: var(--r-menu); }
+.hm-i { border-radius: var(--r-item); }
+.hm-i:hover, .hm-i:focus-visible { background: var(--hover-row); color: var(--text); }
+.hm-i::after { border-radius: 8px; }
+/* выбор реакции и подсказки */
+#reaction-picker { border-radius: var(--r-menu); }
+#reaction-picker .emoji-item, .ctx-reactions button { border-radius: var(--r-item); }
+#reaction-picker .emoji-item:hover { background: var(--gl-card2); transform: none; }
+.reaction-tip, .acc-tip { border-radius: 10px; border: 0; box-shadow: var(--pop-shadow); background: var(--side-bg); }
+
+/* ═════════ 2. Окна единой формы: скрим, радиус 22, плоский фон, заголовок и подвал ═════════ */
+.modal-bg::before, html.dark .modal-bg::before, .am-dlg-bg, html.dark .am-dlg-bg { background: var(--scrim); }
+html:not(.dark) .modal, .modal {
+  border-radius: var(--r-panel); border: 0; background: var(--modal-bg); box-shadow: var(--pop-shadow);
+  --md-card: var(--gl-card); --md-hover: var(--gl-card2);
+}
+.modal-hdr { border-bottom: 0; }
+.modal-footer, .nc-foot, .ha-footer, .update-modal-footer, .ac-foot { border-top: 0; }
+.am-dlg, .force-update-modal { border-radius: var(--r-panel); border: 0; box-shadow: var(--pop-shadow); background: var(--modal-bg); }
+.pf-danger { box-shadow: none; }
+
+/* ═════════ 3. Новый чат, пересылка, добавить контакт: плитки r16, значки r12, поля из кита ═════════ */
+.nc-kind, .gm-tile, .gm-box, .pf-g, .cm-tile { border: 0; box-shadow: none; }
+.nc-kind { background: var(--gl-card); border-radius: var(--r-card); }
+.nc-kind:hover { background: var(--gl-card2); }
+.nc-kind-ic { border-radius: var(--r-btn); }
+.nc-group-bar { background: none; }
+.modal .pp-row { border-radius: var(--r-row); }
+.modal .pp-row:hover { background: var(--hover-row); }
+.modal .pp-row .pp-av, .pf-av { box-shadow: none; }
+
+/* ═════════ 4. Профиль, группа и комната, медиа: плитки r16 со значком r12, блоки без бликов, метки r8 ═════════ */
+.pa-btn { border: 0; border-radius: var(--r-card); box-shadow: none; }
+.pa-btn:active:not(:disabled) { transform: none; }
+.pa-btn svg { border-radius: var(--r-btn); }
+.pa-btn.d { border: 0; }
+.pa-btn.d svg { background: color-mix(in srgb, var(--danger) 18%, var(--side-bg)); }
+.pa-l, .pa-l .pa-who { border-color: var(--gl-lo); }
+.pf-av, .pa-who .pf-av { box-shadow: none; }
+#pf-modal .glass, #gm-modal.gmm .glass, #pf-modal .cell.glass, #gm-modal.gmm .cell.glass { background: var(--gl-card); border: 0; box-shadow: none; }
+#pf-modal .grp, #gm-modal.gmm .grp { border-radius: var(--r-card); }
+#pf-modal .nbanner, #gm-modal.gmm .nbanner { border-radius: var(--r-card); }
+#pf-modal .cell .ci, #gm-modal.gmm .cell .ci, #pf-modal .mini .ci, #gm-modal.gmm .mini .ci { border-radius: var(--r-btn); box-shadow: none; }
+#pf-modal .grp > button.cell:hover, #pf-modal .mini:hover, #gm-modal.gmm .grp > button.cell:hover, #gm-modal.gmm .mini:hover { background: var(--gl-card2); }
+#gm-modal.gmm .gm-pen { border-radius: var(--r-chip); background: var(--surf2); }
+#gm-modal.gmm .gm-nm1 input { border: 1px solid var(--accent); border-radius: var(--r-btn); background: var(--surf2); box-shadow: 0 0 0 3px var(--accent-soft); }
+#gm-modal.gmm .gm-fedbig { box-shadow: none; }
+#gm-modal.gmm .srch { background: var(--surf2); border: 1px solid transparent; border-radius: var(--r-btn); box-shadow: none; }
+#gm-modal.gmm .srch:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+#gm-modal.gmm .mini .pill-tag { border: 0; border-radius: 8px; }
+#gm-modal.gmm .mini .gm-mini { border: 0; border-radius: var(--r-chip); background: var(--accent-soft); }
+#gm-modal.gmm .mini .gm-x { border-radius: var(--kit-r-sm); }
+.gm-cam, .gm-tile, .gm-box, .gm-chips button, .cm-tabs button, .pf-g, .fp-row, .anx-pick, .nc-group-bar { box-shadow: none; }
+.gm-tile { border-radius: var(--r-card); }
+/* медиа и файлы: сетка с плитками r8, строки файлов r12 */
+.cm-scroll { border-top: 0; }
+.cm-tile { border-radius: 8px; }
+.cm-row { border-radius: var(--r-btn); }
+.cm-ic { border-radius: var(--r-btn); }
+.cm-scroll::-webkit-scrollbar-thumb { border-radius: 3px; }
+
+/* ═════════ 5. Папки и редактор папки ═════════ */
+.fp-row { background: var(--gl-card); border: 0; border-radius: var(--r-card); box-shadow: none; transition: opacity .2s; }
+.fp-row.drag { transform: none; }
+.fp-ic { border-radius: var(--r-btn); background: color-mix(in srgb, var(--fc) 16%, var(--side-bg)); }
+.fe-cols button, .fe-icons button { box-shadow: none; }
+.fe-cols button { border-radius: var(--r-btn); }
+.fe-icons button { border-radius: var(--r-btn); }
+.ha-pick-btn, .ha-path-row { border-radius: var(--r-btn); }
+.ha-pick-ic { border-radius: var(--r-btn); }
+
+/* ═════════ 6. Объявление: плоские карточки предпросмотра, дни и часы r10, правая колонка тонирована ═════════ */
+.anx-app, .anx-feed { border: 0; border-radius: var(--r-card); background: var(--gl-inset); }
+.anx-app > i, .anx-feed > i { border-radius: 4px; }
+.anx-card { border: 0; border-radius: var(--r-btn); background: var(--side-bg); box-shadow: var(--pop-shadow); }
+.anx-ok { border-radius: 8px; background: var(--accent-fill); }
+.anx-banner { border-bottom: 0; }
+.anx-sys, .anx-pick { border: 0; border-radius: 10px; }
+.anx-li[aria-pressed="true"] { background: var(--accent-soft); box-shadow: none; }
+.anx-ph2 button { border-radius: var(--r-chip); }
+.anx-day { border-radius: var(--r-chip); }
+.anx-day.sel { background: var(--accent-fill); }
+.anx-day.today { box-shadow: inset 0 0 0 1px var(--accent); }
+.anx-half.l { border-right-color: var(--gl-lo); }
+.anx-half.r .anx-sg, .anx-half.r .anx-search { background: var(--side-bg); }
+.anx-half.r .anx-sg button[aria-pressed="true"] { background: var(--surf2); box-shadow: none; }
+html.dark .anx-half.r .anx-sg button[aria-pressed="true"] { background: var(--gl-card2); }
+.anx-ta { border-radius: var(--r-btn); }
+
+/* ═════════ 7. Подтверждения, внешняя ссылка, синхронизация секретного чата, обновление ═════════ */
+.sc-sync-device, .sc-codebox, .update-notes { border: 0; border-radius: var(--r-card); }
+.sc-codebox { border: 0; background: var(--gl-card); }
+.sc-sync-device { background: var(--gl-card); }
+.sc-tag { border-radius: 8px; }
+.force-update-modal { border-radius: var(--r-panel); }
+.force-update-icon { border-radius: var(--r-card); }
+.update-progress-bar, .force-update-bar, .am-prog { background: color-mix(in srgb, var(--text) 12%, var(--side-bg)); }
+.update-progress-fill, .force-update-fill, .am-prog i { background: var(--accent-fill); }
+
+/* ═════════ 8. Просмотрщик фото и видео: тёмная плёнка, плоские полупрозрачные кнопки r12, счётчик и подписи r10–12, миниатюры r8 ═════════ */
+#lightbox { background: rgba(8, 8, 10, .88); }
+#lightbox img, #lightbox video { border-radius: var(--r-btn); box-shadow: 0 8px 40px rgba(0, 0, 0, .55); }
+.lb-nav, .lb-act, #lightbox-download, .lb-zoom button, .lb-info, .lb-cap, .lb-count {
+  background: rgba(255, 255, 255, .12); border: 0; box-shadow: none;
+}
+.lb-nav:hover, .lb-act:hover, #lightbox-download:hover, .lb-zoom button:hover { background: rgba(255, 255, 255, .24); }
+.lb-nav, .lb-act, #lightbox-download, .lb-zoom button { border-radius: var(--r-btn); }
+.lb-info, .lb-cap { border-radius: var(--r-btn); }
+.lb-count { border-radius: var(--r-chip); font-weight: 600; }
+.lb-thumbs i { border-radius: 8px; }
+.cm-play { box-shadow: none; }

@@ -1,0 +1,1 @@
+{ "name": "flat-port-web-tools", "private": true, "version": "1.0.0", "description": "Снимки живого /chat и макета для переноса дизайна B", "dependencies": { "playwright-core": "1.60.0" } }
