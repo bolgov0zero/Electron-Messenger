@@ -1,5 +1,7 @@
 name: Beta macOS
 
+# Нативный прототип клиента на Rust/egui (native/). Собирается на каждый push в beta
+# и по ручному запуску; артефакт — .dmg с универсальным приложением (Apple Silicon + Intel).
 on:
   push:
     branches:
@@ -8,25 +10,77 @@ on:
 
 jobs:
   build:
-    name: Build macOS
+    name: Build macOS (Rust)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          node-version: 20
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
-      - name: Install dependencies
-        working-directory: client
-        run: npm install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native
 
-      - name: Build
-        working-directory: client
-        run: npm run build:mac
+      - name: Build (arm64 + x86_64)
+        working-directory: native
+        run: |
+          cargo build --release --target aarch64-apple-darwin
+          cargo build --release --target x86_64-apple-darwin
+
+      - name: Bundle .app and .dmg
+        working-directory: native
+        run: |
+          APP="dist/Chat.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          lipo -create \
+            target/aarch64-apple-darwin/release/chat-native \
+            target/x86_64-apple-darwin/release/chat-native \
+            -output "$APP/Contents/MacOS/chat-native"
+
+          # Иконка из icons/app
+          ICONSET="$RUNNER_TEMP/AppIcon.iconset"
+          mkdir -p "$ICONSET"
+          SRC="../icons/app"
+          cp "$SRC/icon-16.png"   "$ICONSET/icon_16x16.png"
+          cp "$SRC/icon-32.png"   "$ICONSET/icon_16x16@2x.png"
+          cp "$SRC/icon-32.png"   "$ICONSET/icon_32x32.png"
+          cp "$SRC/icon-64.png"   "$ICONSET/icon_32x32@2x.png"
+          cp "$SRC/icon-128.png"  "$ICONSET/icon_128x128.png"
+          cp "$SRC/icon-256.png"  "$ICONSET/icon_128x128@2x.png"
+          cp "$SRC/icon-256.png"  "$ICONSET/icon_256x256.png"
+          cp "$SRC/icon-512.png"  "$ICONSET/icon_256x256@2x.png"
+          cp "$SRC/icon-512.png"  "$ICONSET/icon_512x512.png"
+          cp "$SRC/icon-1024.png" "$ICONSET/icon_512x512@2x.png"
+          iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+
+          cat > "$APP/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key><string>Chat</string>
+            <key>CFBundleDisplayName</key><string>Chat</string>
+            <key>CFBundleIdentifier</key><string>com.corpchat.native.beta</string>
+            <key>CFBundleExecutable</key><string>chat-native</string>
+            <key>CFBundleIconFile</key><string>AppIcon</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>0.1.0</string>
+            <key>CFBundleVersion</key><string>1</string>
+            <key>LSMinimumSystemVersion</key><string>11.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+
+          # Подпись «ad hoc» (без сертификата разработчика), иначе универсальный бинарник не запустится на arm64
+          codesign --force --deep --sign - "$APP"
+
+          hdiutil create -volname "Chat" -srcfolder dist -ov -format UDZO "Chat-native-beta.dmg"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Electron-macOS-beta
-          path: client/dist/*.dmg
+          name: Chat-native-macOS-beta
+          path: native/Chat-native-beta.dmg
