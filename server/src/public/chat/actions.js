@@ -39,7 +39,6 @@ window.__h37 = function (el, ev, a) { ev.stopPropagation();lbGo(a[0]) };
 window.__h38 = function (el, ev, a) { if(ev.key==='Enter')submitAddContact() };
 window.__h39 = function (el, ev, a) { ev.stopPropagation(); addContactFromChat(a[0]) };
 window.__h40 = function (el, ev, a) { ev.stopPropagation(); gmKick(a[0], a[1]) };
-window.__h41 = function (el, ev, a) { document.getElementById('gm-q')?.focus() };
 window.__h42 = function (el, ev, a) { if(ev.key==='Enter'){ev.preventDefault();gmRenameSave(el.value)} if(ev.key==='Escape'){ev.stopPropagation();S.gm.rename=false;renderGroupProfile(true)} };
 window.__h43 = function (el, ev, a) { el.parentNode.remove() };
 window.__h44 = function (el, ev, a) { if(ev.key==='Enter')feSave() };

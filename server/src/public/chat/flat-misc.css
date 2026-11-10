@@ -14,7 +14,7 @@
 .cs-body > * { flex: none; }
 .cs-hero, .cs-ver, .cs-notes, .fp-row, .bg-card, .pat-card, .cs-pv { border: 0; box-shadow: none; background: var(--gl-card); border-radius: var(--r-card); }
 .cs-hero { background: color-mix(in srgb, var(--accent) 12%, var(--side-bg)); }
-.cs-logout { background: var(--danger-bg); border: 0; border-radius: var(--r-card); }
+.cs-logout { background: var(--gl-card); border: 0; border-radius: var(--r-card); }   /* нейтральная карточка, как соседние; красная — только кнопка «Выйти» (опасная кнопка кита), иначе сливалась бы с плашкой */
 .cs-stub-i { background: var(--accent-soft); border-radius: var(--r-panel); }
 .cs-pv { display: grid; overflow: hidden; }
 .cs-pv-side { background: var(--side-bg); }
@@ -44,8 +44,8 @@
 .cs-logo { background: var(--accent-fill); border-radius: var(--r-card); }
 .cs-sn .cs-dot { box-shadow: none; }
 .cs-pill { border-radius: 8px; }
-.am-prog, .update-progress-bar, .force-update-bar { background: var(--gl-inset); }
-.am-prog i, .update-progress-fill, .force-update-fill { background: var(--accent-fill); }
+.am-prog { background: var(--gl-inset); }
+.am-prog i { background: var(--accent-fill); }
 .pat-swatch { background: color-mix(in srgb, var(--text) 34%, transparent); }
 .pat-card:first-child .pat-swatch { background: var(--gl-inset); }
 
@@ -83,13 +83,6 @@
 .link-modal-desc { color: var(--muted); }
 .link-modal-url { border: 0; border-radius: var(--r-btn); background: var(--surf2); color: var(--text2); padding: 10px 14px; line-height: 1.5; }
 .link-modal-footer { margin-top: 10px; }
-/* окна обновления (вид из Electron-клиента; в веб-версии разметки нет) */
-.update-modal-icon { border-radius: var(--r-btn); background: var(--accent-soft); color: var(--accent-ink); }
-.update-notes { border: 0; border-radius: var(--r-card); background: var(--gl-card); }
-.update-progress-bar, .force-update-bar { height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--text) 12%, var(--side-bg)); }
-.update-progress-fill, .force-update-fill { border-radius: 4px; background: var(--accent-fill); }
-.force-update-modal { padding: 30px 28px 28px; }
-.force-update-icon { border-radius: var(--r-card); background: var(--accent-soft); color: var(--accent-ink); }
 /* логотип входа: плитка акцента с значком чата (Lucide message-circle) вместо картинки */
 .login-logo { position: relative; width: 60px; height: 60px; background: var(--accent-fill); }
 .login-logo img { visibility: hidden; width: 60px; height: 60px; }

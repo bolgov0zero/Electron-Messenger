@@ -1,7 +1,7 @@
 :root {
   /* размеры значков и слои (радиусы и цвета — в flat.css) */
   --ic-s: 16px; --ic-m: 18px; --ic-l: 22px;
-  --z-bar: 20; --z-pop: 30; --z-modal: 40; --z-toast: 50;
+  --z-pop: 30; --z-toast: 50;
 }
 #screen-login { background: transparent; }
 .chat-main { isolation: auto; overflow: visible; }
@@ -36,9 +36,7 @@ html.dark .am-dlg-bg { background: rgba(0, 0, 0, .38); }
 .inv-bar { border-radius: 26px; }
 body.sidebar-hidden .sidebar { left: 12px; top: 12px; bottom: 12px; }
 .sidebar-head .btn-new-chat:hover, .topbar-actions .icon-btn:hover { background: var(--gl2); color: var(--text); }
-.topbar-actions .head-more[aria-expanded="true"] { background: var(--gl2); border-radius: 50%; }
 .search-wrap:focus-within { border-color: var(--accent); box-shadow: inset 0 1px 3px var(--gl-lo), 0 0 0 3px var(--accent-soft); }
-.strip-back:hover { background: var(--gl2); }
 .chats-list .chat-item:hover::after, .topics-panel .chat-item:hover::after, .chats-list .pp-row:hover::after { background: color-mix(in srgb, var(--text) 6%, transparent); }
 .sb-tab { border-radius: 999px; height: 38px; transition: color .15s, background .25s, box-shadow .25s, transform .35s var(--gl-spring); }
 .sb-tab:active { transform: scale(.94); }
@@ -103,7 +101,6 @@ html.dark .anx-solid { color: #fff; }
 .cs-tg[aria-checked="true"] { background: var(--accent-fill); box-shadow: inset 0 1px 3px rgba(0,0,0,.2); }
 .accent-dot { box-shadow: 0 3px 8px var(--gl-shadow); transition: transform .35s var(--gl-spring), box-shadow .2s; }
 .accent-dot.active { box-shadow: 0 0 0 3px var(--gl2), 0 0 0 5px var(--dot); }
-.nc-kind:hover { background: var(--gl-card2); border-color: var(--gl-edge); }
 .am-prog { background: var(--gl-inset); }
 .am-prog i { background: linear-gradient(90deg, var(--gl-out-a), var(--accent)); }
 .cs-sn-ic { position: relative; isolation: isolate; transition: color .35s var(--gl-ease, cubic-bezier(.22,1,.36,1)); }
@@ -433,12 +430,6 @@ html.dark { --gl-hov: rgba(255, 255, 255, .08); }
 .anx-pf { display:flex; align-items:center; gap:8px; }
 .anx-time { display:inline-flex; align-items:center; gap:4px; font-weight:700; }
 .anx-time input { width:44px; height:34px; text-align:center; border:1px solid var(--gl-edge); background:var(--gl-hov); box-shadow:inset 0 1px 3px var(--gl-lo); color:var(--text); border-radius:var(--r-pill); padding:0; font:inherit; font-size:14px; outline:none; }
-.rng { -webkit-appearance:none; appearance:none; width:200px; height:24px; background:none; cursor:pointer; }
-.rng::-webkit-slider-runnable-track { height:6px; border-radius:99px; background:linear-gradient(90deg,var(--accent) var(--v,50%),var(--gl-card2) var(--v,50%)); box-shadow:inset 0 1px 2px var(--gl-lo); }
-.rng::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; margin-top:-7px; border-radius:50%; background:#fff; border:0; box-shadow:0 2px 6px rgba(0,0,0,.3),inset 0 1px 0 #fff; transition:transform .35s var(--gl-spring); }
-.rng:hover::-webkit-slider-thumb { transform:scale(1.12); }
-.rng:active::-webkit-slider-thumb { transform:scale(.94); }
-.rng:focus-visible { outline:2px solid var(--accent); outline-offset:4px; border-radius:99px; }
 .cs-gt { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin:0 0 -10px 8px; }
 .cs-r { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 18px; border-radius:8px; background:var(--gl); border:1px solid var(--gl-edge); box-shadow:0 6px 18px var(--gl-shadow); transition:background .2s; }
 .cs-r.stack { flex-direction:column; align-items:stretch; gap:12px; }
@@ -563,7 +554,6 @@ html.dark { --gl-hov: rgba(255, 255, 255, .08); }
 .cs-body { flex:1; overflow:auto; padding:4px 8px 28px; display:flex; flex-direction:column; gap:18px; scrollbar-width:none; }
 .cs-body::-webkit-scrollbar { display:none; }
 .cs-sn-ic svg { width: var(--ic-m); height: var(--ic-m); }
-.fld-btn.active { background: var(--gl2); box-shadow: 0 4px 14px var(--gl-shadow); }
 .fld-btn.ss-mute::before { opacity: 0; }
 .acc-rail .ss-ghost::before { content: ""; position: absolute; left: -14px; top: 14px; width: 4px; height: 20px; border-radius: 0 4px 4px 0; background: var(--accent); }
 .acc-btn.active::before, .fld-btn.active::before, .acc-rail .ss-ghost::before { left: -12px; width: 2px; border-radius: 0 2px 2px 0; }
@@ -694,7 +684,6 @@ html.dark { --gl-hov: rgba(255, 255, 255, .08); }
 #pf-modal .mini small, #gm-modal.gmm .mini small { font-size: 12.5px; }
 #gm-modal.gmm .srch { height: 40px; border-radius: var(--r-pill); padding: 0 14px; font-size: 14px; background: var(--gl-hov); border: 1px solid var(--gl-edge); box-shadow: inset 0 1px 3px var(--gl-lo); }
 #gm-modal.gmm .srch input { font-size: 14px; }
-#gm-modal.gmm .cell .cl.red { color: var(--danger); }
 #gm-modal.gmm .mini .rt small.on { color: var(--accent-ink); }
 #gm-modal.gmm .mini .pill-tag { flex: none; font-weight: 600; font-size: 11px; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, currentColor 14%, transparent); border: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
 #gm-modal.gmm .mini .gm-mini { flex: none; height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid var(--gl-edge); background: var(--gl-card); color: var(--accent-ink); font: 600 12px var(--ff, inherit); cursor: pointer; }
@@ -705,8 +694,6 @@ html.dark { --gl-hov: rgba(255, 255, 255, .08); }
 .msg-bubble.bubble-emoji, .irc-msg .msg-bubble.bubble-emoji { background: none !important; border-color: transparent !important; box-shadow: none !important; }
 .msg-bubble.bubble-emoji::before, .msg-bubble.bubble-emoji::after { display: none !important; }
 .msg-bubble.bubble-emoji > .irc-meta { background: var(--gl-card); border-radius: 99px; padding: 1px 8px; color: var(--text2); }
-.nc-kind:hover, .anx-ch:hover, .modal-btn-primary:hover, .ha-btn-apply:hover, .anx-solid:hover:not(:disabled) { border-style: solid; border-width: 1px; }
-.anx-ch:hover { border-color: var(--gl-edge); }
 .nc-name-input:focus, .anx-ta:focus, .anx-search:focus-within { border-style: solid; border-width: 1px; border-color: var(--accent); }
 .cs-sn[aria-current="page"]:hover, .cs-sn[aria-current="true"]:hover { background: var(--gl2); color: var(--text); }
 .gm-scroll { gap: 2px; padding: 8px 14px 10px; }

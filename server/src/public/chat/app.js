@@ -822,20 +822,15 @@ function applyAccent() {
   const s = document.documentElement.style;
   s.setProperty('--accent', hex(c));
   s.setProperty('--accent-rgb', c.join(','));
-  s.setProperty('--primary', hex(c));
   s.setProperty('--accent-soft', rgba(c, .12));
-  s.setProperty('--primary-light', rgba(c, .10));
   s.setProperty('--accent-border', rgba(c, .28));
   s.setProperty('--accent-shadow', rgba(c, .22));
-  s.setProperty('--reaction-mine', rgba(c, dark ? .15 : .13));
   s.setProperty('--reply-bg', rgba(c, .08));
-  s.setProperty('--blob1', rgba(c, .12));
   s.setProperty('--role-teal-bg', rgba(c, dark ? .12 : .10));
   s.setProperty('--role-teal-border', rgba(c, dark ? .30 : .25));
   // Подсветку активного чата обе темы берут из светлого варианта — так было и
   // с бирюзовым, менять не стали
   s.setProperty('--active-row', rgba(a.dark, .10));
-  s.setProperty('--active-row-border', rgba(a.dark, .25));
 }
 
 function accentDotsHtml() {
@@ -1009,10 +1004,8 @@ function applySettings() {
   htmlStyle.zoom = _scale === 100 ? '' : (_scale + '%');
   if (_ratio === 1) {
     htmlStyle.setProperty('--vh100', '100dvh');
-    htmlStyle.setProperty('--vw100', '100vw');
   } else {
     htmlStyle.setProperty('--vh100', `calc(100dvh / ${_ratio})`);
-    htmlStyle.setProperty('--vw100', `calc(100vw / ${_ratio})`);
   }
   document.querySelectorAll('#scale-seg button').forEach(b => b.classList.toggle('active', parseInt(b.textContent) === _scale));
   updateAppHeight();
@@ -1081,21 +1074,7 @@ const CS_I = {
   lock: csSvg('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
 };
 
-// Настройки живут во вкладке сайдбара (см. setSidebarTab), а не в модалке —
-// openSettings/closeSettings оставлены как обёртки над ней, чтобы не искать
-// все старые вызовы по коду.
-async function openSettings(section = 'profile') {
-  Object.assign(CS, {
-    sec: section, nameDraft: S.user?.display_name || '', nameBusy: false, nameMsg: '',
-    pwOpen: false, pw: { old: '', a: '', b: '' }, pwShow: false, pwErr: '', pwBusy: false, pwDone: false, avatar: undefined,
-  });
-  setSidebarTab('settings');
-  if (csIsApp()) {
-    window.electron?.getAutostart?.().then(v => { CS.autostart = !!v; csRefresh(); });
-    window.electron?.getVersion?.().then(v => { CS.version = v || null; csRefresh(); });
-  }
-}
-
+// Настройки живут во вкладке сайдбара (см. setSidebarTab), а не в модалке.
 function closeSettings() { if (_sidebarTab === 'settings') setSidebarTab('chats'); }
 
 // ── ВКЛАДКИ САЙДБАРА (Чаты / Контакты / Настройки) ──
@@ -1162,8 +1141,7 @@ function setSidebarTab(tab) {
   sidebarSwap(_swap);
 }
 
-// Сброс формы настроек к разделу «Профиль» — то же самое, что раньше делал
-// openSettings() перед открытием модалки.
+// Сброс формы настроек к разделу «Профиль»
 function openSettingsInline(section) {
   Object.assign(CS, {
     sec: section || CS.sec || 'profile', nameDraft: S.user?.display_name || '', nameBusy: false, nameMsg: '',
@@ -2542,8 +2520,6 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   const isGroup = chat.type==='group';
   const isRoom = chat.type==='room';
   const isTopic = !!chat?.parent_id;
-  const isCreator = chat.created_by === S.user.id;
-  const memberCount = chat.members?.length||0;
   const peerId = getPeerUserId(chat);
   const addContactBtn = peerId && !isSysChat(chat) && needsContact(peerId) ? `<button class="addc-btn" id="ch-add-contact" data-on-click="addContactFromChat" data-a-click="${esc(JSON.stringify([peerId]))}"><svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.1" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg><span>Добавить контакт</span></button>` : '';
   const peerDot = peerId && !isSysChat(chat) ? presenceDot(peerId) : '';
@@ -2551,7 +2527,6 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   const sub = (isTopic || isRoom || isGroup) ? groupSubHtml(chat) : (isSysChat(chat) ? 'Служебные уведомления' : peerId ? peerSubText(peerId) : 'Личный чат');
   const nameClickable = (!chat.invite && (isGroup || (isRoom && !isTopic))) ? `style="cursor:pointer" data-on-click="openGroupInfo" data-a-click="${esc(JSON.stringify([chatId]))}"` : (peerId && !isSysChat(chat) ? `style="cursor:pointer" data-on-click="openProfile" data-a-click="${esc(JSON.stringify([peerId]))}"` : '');
 
-  const main = document.getElementById('chat-main');
   setChatMainContent(`
     <div class="chat-header">
       <div class="chat-header-main">
@@ -2887,9 +2862,6 @@ document.addEventListener('touchmove', e => {
 // собирается скриптом scripts/build-emoji.js из данных Unicode и CLDR. Раньше он
 // был написан руками и урезан до тех смайлов, что рисовались в Windows; теперь
 // шрифт вшит в клиент, и ограничение снято — набор полный.
-
-// Плоский список — им пользуется панель реакций
-const EMOJIS = EMOJI_GROUPS.flatMap(g => g.items);
 
 const EMOJIS_DEFAULT_FREQ = ['👍','❤️','😂','🔥','😎','🎉','😭','🤔'];
 function getEmojiFreq() { try { return JSON.parse(localStorage.getItem('emoji_freq')||'{}'); } catch { return {}; } }
@@ -3314,7 +3286,6 @@ function renderMessages(msgs) {
 // возврат на прежнее место в чате и счётчики на кнопках «вниз» и «@»
 var FEED_MAX = 320, FEED_KEEP = 200;
 var _trimT = null, _readT = null, _lastScroll = 0;
-var _vTop = 0, _vAt = 0, _fastT = null;
 var _readSent = {};
 S.lastPos = S.lastPos || {};
 function feedEdge(c) { return Math.max(1400, c.clientHeight * 2); }
@@ -3453,12 +3424,6 @@ document.addEventListener('load', e => {
 function onMessagesScroll() {
   const container = document.getElementById('messages');
   if (!container) return;
-  // Быстрая прокрутка: у каждого пузыря своё размытие фона (backdrop-filter), и при полёте ленты слои не успевают отрисоваться —
-  // вместо сообщений мелькают замыленные прямоугольники. Пока лента летит, размытие снимаем, а после остановки возвращаем
-  const _t = performance.now(), _v = Math.abs(container.scrollTop - _vTop) / Math.max(1, _t - _vAt);
-  _vTop = container.scrollTop; _vAt = _t;
-  if (_v > 1 && !_anchor) container.classList.add('fast-scroll');
-  if (container.classList.contains('fast-scroll')) { clearTimeout(_fastT); _fastT = setTimeout(() => container.classList.remove('fast-scroll'), 160); }
   // Отслеживаем, находится ли пользователь у нижнего края (для авто-прокрутки)
   const dist = container.scrollHeight - container.scrollTop - container.clientHeight;
   _stickBottom = dist < 80 && !S.chatHasMoreAfter;
@@ -5479,17 +5444,17 @@ function placeCtxMenu(menu, clientX, clientY, anchor) {
   const mr = menu.getBoundingClientRect();
   const w = mr.width, h = mr.height;
   const margin = 6;
-  let x, y, fromRight = false, above = false;
+  let x, y;
   if (anchor) {
     // Меню рядом с кнопкой: правый край по правому краю кнопки, под ней; нет места — над ней
-    x = anchor.right - w; fromRight = true;
+    x = anchor.right - w;
     y = anchor.bottom + margin;
-    if (y + h + margin > m.vh && anchor.top - h - margin >= margin) { y = anchor.top - h - margin; above = true; }
+    if (y + h + margin > m.vh && anchor.top - h - margin >= margin) { y = anchor.top - h - margin; }
   } else {
     const cx = clientX * m.f, cy = clientY * m.f;
     x = cx; y = cy;
-    if (x + w + margin > m.vw) { x = cx - w; fromRight = true; }
-    if (y + h + margin > m.vh) { y = cy - h; above = true; }
+    if (x + w + margin > m.vw) { x = cx - w; }
+    if (y + h + margin > m.vh) { y = cy - h; }
   }
   // Не выходим за окно ни с одной стороны
   x = Math.max(margin, Math.min(x, m.vw - w - margin));
@@ -5781,7 +5746,7 @@ function showSystemAnnouncement(text) {
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'announcement-modal';
-    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.4);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center';
     modal.innerHTML = `<div id="announcement-card" style="background-color:var(--modal-bg);background-image:linear-gradient(rgba(210,55,55,.14),rgba(210,55,55,.14));border-radius:24px;padding:26px 24px 24px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3);border:1px solid rgba(210,55,55,.22)">
       <div class="announcement-title">
         <div style="width:28px;height:28px;border-radius:50%;background:var(--danger-bg);border:1px solid var(--danger-border);display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -7130,7 +7095,6 @@ function renderChatMedia(keep) {
 function cmScroll(el) {
   if (_cm && _cm.more[_cm.tab] && el.scrollHeight - el.scrollTop - el.clientHeight < 400) loadChatMedia();
 }
-function pfMedia(chatId) { openChatMedia(chatId); }
 // Вкладки окон профиля человека и группы: «Медиа», «Файлы» и «Ссылки» показывают то же, что окно «Медиа», но внутри профиля
 function paMedia(chatId, tab, host) {   // host — id панели справа: у окон человека и группы они разные, окна остаются в странице после закрытия
   if (_cm && _cm.host === host && _cm.id === chatId) _cm.tab = tab;
@@ -7184,7 +7148,6 @@ function renderProfile(keep) {
   if (canContact) rows.push(cellRow('В ваших контактах', u.contact ? 'Да' : 'Нет'));
   const groups = (S.chats || []).filter(c => (c.type === 'group' || c.type === 'room') && !c.parent_id && !c.is_secret && c.members?.some(m => m.id === id));
   const dmChat = (S.chats || []).find(c => c.type === 'direct' && !c.is_secret && getPeerUserId(c) === id);
-  const mediaAttr = dmChat ? `data-on-click="pfMedia" data-a-click="${esc(JSON.stringify([dmChat.id]))}"` : 'disabled';
   // Оформление — вариант A макета docs/glass-mockup/profile.html: слева личность, действия и сведения, справа вкладки и списки
   const tab = S.pfTab || 'groups', mediaTab = tab !== 'groups';
   const acts = `
@@ -7583,7 +7546,6 @@ function renderGroupProfile(keep) {
   const lf = gmFilter(local, g.q), ff = gmFilter(fed, g.q), pf = gmFilter(pend, g.q);
   const show = k => g.f === 'all' || g.f === k;
   const kind = chat.type === 'room' ? 'Комната' : 'Группа';
-  const q = g.q.trim();
   const none = '<div class="cell"><span class="cl" style="color:var(--text2)">Никого не нашли</span></div>';
   const chip = (k, label, n) => `<button type="button" role="tab" aria-selected="${g.f === k}" class="${g.f === k ? 'on' : ''}" data-on-click="gmFilterSet" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label} ${n}</button>`;
   // Оформление перенесено из мобильного клиента (/m, профиль группы и комнаты): шапка-капсула, аватарка, плитки, поиск, переключатель фильтров как у папок и стеклянные списки
@@ -7709,8 +7671,20 @@ function gmAvailable(chat) {
   return S.allUsers.filter(u => isPickable(u) && (!u.federated || (isGroup && (u.contact || u.rel === 'ws'))) && !pending.has(u.id) && !existing.has(u.id)
     && (!q || (u.display_name || '').toLowerCase().includes(q) || (u.username || '').toLowerCase().includes(q)));
 }
-function gmAddView() { S.gm.view = 'add'; S.gm.add = new Set(); S.gm.aq = ''; renderGroupProfile(); }
-function gmAddBack() { S.gm.view = 'main'; renderGroupProfile(); }
+// Переход «окно группы ⇄ добавление участников» происходит внутри одного окна: прежнее содержимое гаснет (120 мс), новое появляется (200 мс)
+function gmSwapView(apply) {
+  const box = document.getElementById('gm-modal');
+  if (!box || !box.offsetParent || matchMedia('(prefers-reduced-motion: reduce)').matches) { apply(); return; }
+  clearTimeout(gmSwapView.t);
+  box.classList.remove('gm-vin'); box.classList.add('gm-vout');
+  gmSwapView.t = setTimeout(() => {
+    apply();
+    box.classList.remove('gm-vout'); box.classList.add('gm-vin');
+    gmSwapView.t = setTimeout(() => box.classList.remove('gm-vin'), 260);
+  }, 120);
+}
+function gmAddView() { gmSwapView(() => { S.gm.view = 'add'; S.gm.add = new Set(); S.gm.aq = ''; renderGroupProfile(); }); }
+function gmAddBack() { gmSwapView(() => { S.gm.view = 'main'; renderGroupProfile(); }); }
 function renderGroupAdd(keep) {
   const g = S.gm, chat = gmChat(), box = document.getElementById('gm-modal');
   if (!chat) return;
@@ -7739,9 +7713,9 @@ async function gmAddConfirm() {
   const err = res.find(r => r?.error);
   if (err) showActionToast(err.error);
   else if (res.some(r => r?.pending)) showActionToast('Приглашение отправлено. Человек появится в группе после согласия');
-  S.gm.view = 'main'; S.gm.add = new Set();
+  S.gm.add = new Set();
   await loadChats();
-  renderGroupProfile();
+  gmSwapView(() => { S.gm.view = 'main'; renderGroupProfile(); });
 }
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
@@ -8177,7 +8151,7 @@ window.personAv = personAv;
 window.scEncryptFileForUpload = scEncryptFileForUpload;
 window.wsTag = wsTag;
 
-// ── Мелочи поведения интерфейса (раньше жили в glass.js) ──
+// ── Мелочи поведения интерфейса ──
 // Зелёная точка у подписи «в сети …» в шапке. Текст подписи меняется из разных мест, поэтому следим за изменениями, а не правим каждое
 (function () {
   let tm = 0;

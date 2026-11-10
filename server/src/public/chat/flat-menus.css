@@ -9,7 +9,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ═════════ 1. Меню: карточка r16, пункты r12, плоская всплывающая тень, без пружины ═════════ */
-.ctx-menu, #reaction-picker, #mention-popup, .head-menu, .up-menu, .ha-pop, .ctx-read-fly, .ctx-sub-fly {
+.ctx-menu, #reaction-picker, #mention-popup, .head-menu, .up-menu, .ctx-read-fly, .ctx-sub-fly {
   border-radius: var(--r-menu); border: 0; box-shadow: var(--pop-shadow); background: var(--side-bg);
 }
 .ctx-menu .ctx-read-fly, .ctx-menu .ctx-sub-fly, .ctx-read-fly, .ctx-sub-fly {
@@ -48,14 +48,13 @@ html:not(.dark) .modal, .modal {
   --md-card: var(--gl-card); --md-hover: var(--gl-card2);
 }
 .modal-hdr { border-bottom: 0; }
-.modal-footer, .nc-foot, .ha-footer, .update-modal-footer, .ac-foot { border-top: 0; }
-.am-dlg, .force-update-modal { border-radius: var(--r-panel); border: 0; box-shadow: var(--pop-shadow); background: var(--modal-bg); }
-.pf-danger { box-shadow: none; }
+.modal-footer, .nc-foot, .ac-foot { border-top: 0; }
+.am-dlg { border-radius: var(--r-panel); border: 0; box-shadow: var(--pop-shadow); background: var(--modal-bg); }
 
 /* ═════════ 3. Новый чат, пересылка, добавить контакт: плитки r16, значки r12, поля из кита ═════════ */
-.nc-kind, .gm-tile, .gm-box, .pf-g, .cm-tile { border: 0; box-shadow: none; }
+.nc-kind, .cm-tile { border: 0; box-shadow: none; }
 .nc-kind { background: var(--gl-card); border-radius: var(--r-card); }
-.nc-kind:hover { background: var(--gl-card2); }
+.nc-kind:hover { background: var(--gl-card2); border: 0; }   /* наведение меняет только фон: без рамки */
 .nc-kind-ic { border-radius: var(--r-btn); }
 .nc-group-bar { background: none; }
 .modal .pp-row { border-radius: var(--r-row); }
@@ -83,8 +82,7 @@ html:not(.dark) .modal, .modal {
 #gm-modal.gmm .mini .pill-tag { border: 0; border-radius: 8px; }
 #gm-modal.gmm .mini .gm-mini { border: 0; border-radius: var(--r-chip); background: var(--accent-soft); }
 #gm-modal.gmm .mini .gm-x { border-radius: var(--kit-r-sm); }
-.gm-cam, .gm-tile, .gm-box, .gm-chips button, .cm-tabs button, .pf-g, .fp-row, .anx-pick, .nc-group-bar { box-shadow: none; }
-.gm-tile { border-radius: var(--r-card); }
+.cm-tabs button, .fp-row, .anx-pick, .nc-group-bar { box-shadow: none; }
 /* медиа и файлы: сетка с плитками r8, строки файлов r12 */
 .cm-scroll { border-top: 0; }
 .cm-tile { border-radius: 8px; }
@@ -99,8 +97,6 @@ html:not(.dark) .modal, .modal {
 .fe-cols button, .fe-icons button { box-shadow: none; }
 .fe-cols button { border-radius: var(--r-btn); }
 .fe-icons button { border-radius: var(--r-btn); }
-.ha-pick-btn, .ha-path-row { border-radius: var(--r-btn); }
-.ha-pick-ic { border-radius: var(--r-btn); }
 
 /* ═════════ 6. Объявление: плоские карточки предпросмотра, дни и часы r10, правая колонка тонирована ═════════ */
 .anx-app, .anx-feed { border: 0; border-radius: var(--r-card); background: var(--gl-inset); }
@@ -121,14 +117,12 @@ html.dark .anx-half.r .anx-sg button[aria-pressed="true"] { background: var(--gl
 .anx-ta { border-radius: var(--r-btn); }
 
 /* ═════════ 7. Подтверждения, внешняя ссылка, синхронизация секретного чата, обновление ═════════ */
-.sc-sync-device, .sc-codebox, .update-notes { border: 0; border-radius: var(--r-card); }
+.sc-sync-device, .sc-codebox { border: 0; border-radius: var(--r-card); }
 .sc-codebox { border: 0; background: var(--gl-card); }
 .sc-sync-device { background: var(--gl-card); }
 .sc-tag { border-radius: 8px; }
-.force-update-modal { border-radius: var(--r-panel); }
-.force-update-icon { border-radius: var(--r-card); }
-.update-progress-bar, .force-update-bar, .am-prog { background: color-mix(in srgb, var(--text) 12%, var(--side-bg)); }
-.update-progress-fill, .force-update-fill, .am-prog i { background: var(--accent-fill); }
+.am-prog { background: color-mix(in srgb, var(--text) 12%, var(--side-bg)); }
+.am-prog i { background: var(--accent-fill); }
 
 /* ═════════ 8. Просмотрщик фото и видео: тёмная плёнка, плоские полупрозрачные кнопки r12, счётчик и подписи r10–12, миниатюры r8 ═════════ */
 #lightbox { background: rgba(8, 8, 10, .88); }
@@ -142,3 +136,10 @@ html.dark .anx-half.r .anx-sg button[aria-pressed="true"] { background: var(--gl
 .lb-count { border-radius: var(--r-chip); font-weight: 600; }
 .lb-thumbs i { border-radius: 8px; }
 .cm-play { box-shadow: none; }
+
+/* Переход внутри окна группы (список ⇄ добавление участников): содержимое гаснет и появляется, само окно остаётся на месте */
+@keyframes gmViewIn  { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes gmViewOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-4px); } }
+#gm-modal.gm-vin > * { animation: gmViewIn .2s var(--gl-ease, ease-out); }
+#gm-modal.gm-vout > * { animation: gmViewOut .12s ease-in forwards; }
+.gm-pick, .gm-pick.on { border: 0; }   /* выбор людей: выбранная строка отличается фоном --accent-soft, без рамки */
