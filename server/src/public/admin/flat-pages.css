@@ -1,0 +1,144 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Админка, дизайн B «Мягкий» — РАЗДЕЛЫ (страницы-списки и настройки: Пользователи, Комнаты, Объявления, Файлы, Журнал, Настройки, Пространства, Федерация, Звонки…).
+   Область агентов «разделы». Подключается после flat.css и flat-home.css. Раскладка страниц, шапки разделов, панели инструментов, карточки настроек.
+   Кнопки, тумблеры, сегменты, чипы, поля, таблицы, пустые состояния — из кита flat.css (дописывать селекторы в его списки; новый раздел = новые селекторы в списках кита, не новые правила вида).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   СПИСКИ: «Пользователи», «Комнаты», «Чаты и группы», «Клиенты», «Файлы», «Аудит-лог», «Релизы» (общая раскладка .ub — ею же пользуются и другие страницы-списки).
+   Страница = плитки-сводка (.ub-tiles) → шапка списка (.ub-head: заголовок со счётчиком, сегменты .ub-sort, поиск) → одна карточка-панель .ub-rows со строками,
+   разделёнными линией. Строка 56 px, hover --hover-row, выбранная --accent-soft, раскрытая часть на --surf2. Бейджи/чипы статуса — из кита (раздел 7), сегменты — кит (раздел 5, .ub-sort).
+   Раскладка списков на телефоне (≤820 px) — отдельный проход (mobile.css), поэтому устройство панели и строк обёрнуто в min-width: 821px.
+   ═══════════════════════════════════════════════════════════════════════════ */
+/* ───── Меню строки «⋯» (всплывающее, как в веб клиенте: радиус 16, пункты 12) — для всех размеров ───── */
+.ux-menu { background: var(--side-bg); border: 0; border-radius: var(--r-card); box-shadow: var(--pop-shadow); padding: 6px; min-width: 224px; }
+.ux-menu button { height: 38px; padding: 0 10px; gap: 10px; border-radius: var(--r-btn); font-size: 13px; font-weight: 500; color: var(--text); text-align: left; }
+.ux-menu button svg { width: 16px; height: 16px; flex: none; color: var(--text2); }
+.ux-menu button small { margin-left: auto; font-family: inherit; font-size: 12px; font-weight: 600; color: var(--muted); }
+.ux-menu button:hover:not([disabled]) { background: var(--hover-row); color: var(--text); }
+.ux-menu button[disabled] { opacity: .45; }
+.ux-menu .danger, .ux-menu .danger svg { color: var(--bad); }
+.ux-menu .danger:hover:not([disabled]) { background: var(--bad-soft); color: var(--bad); }
+.ux-menu hr { border-top: 1px solid var(--border-soft); margin: 4px 6px; }
+.ux-menu .note { font-size: 12px; color: var(--muted); padding: 6px 10px 8px; max-width: 250px; line-height: 1.4; }
+/* точки в бейджах статуса (меньше прежних) */
+.ub-pill::before, .al-t2::before { width: 6px; height: 6px; }
+.ub-pill { gap: 6px; }
+.ws-pill::before { width: 6px; height: 6px; }
+.ws-pill { gap: 5px; }
+.al-t2 { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+@media (min-width: 821px) {
+  .ub { gap: 16px; }
+  /* плитки-сводка: карточка B (радиус 16, без рамки, мягкая тень); нажимаемая — подсветка, выбранная — акцентная подложка */
+  .ub-tiles { gap: 16px; }
+  .ub-tile { padding: 16px 20px; color: var(--text); background: var(--side-bg); border: 0; border-radius: var(--r-card); box-shadow: var(--flat-shadow); transition: background .15s, box-shadow .2s; }
+  button.ub-tile { display: flex; flex-direction: column; justify-content: flex-start; }
+  .ub-tile:not(.static):hover { background: color-mix(in srgb, var(--text) 2.5%, var(--side-bg)); box-shadow: var(--flat-shadow), 0 0 0 1px var(--border); }
+  .ub-tile.static:hover { border: 0; }
+  .ub-tile[aria-pressed="true"], .ub-tile[aria-pressed="true"]:hover { background: var(--accent-soft); box-shadow: var(--flat-shadow), inset 0 0 0 2px var(--accent); }
+  .ub-lbl { font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+  .ub-big { font: 800 28px/1.1 var(--ff); letter-spacing: -.02em; margin: 6px 0 2px; color: var(--text); }
+  .ub-big small { font: 500 13px var(--ff); color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+  .ub-sub { font-size: 12.5px; color: var(--muted); }
+  .ub-meter, .ub-stack { height: 8px; border-radius: 4px; background: var(--meter-bg); }
+  .ub-stack { height: 10px; border-radius: 5px; }
+  .ub-meter i { border-radius: 4px; }
+  .ub-leg { font-size: 12.5px; color: var(--muted); }
+  .ub-leg i { border-radius: 3px; }
+  .ub-leg b { font-family: inherit; font-size: inherit; font-weight: 700; color: var(--text); }
+  .rb-bars span { font-size: 11px; }
+  .rb-bars i { border-radius: 4px; background: var(--accent); opacity: .55; }
+  .rb-bars i.cur { opacity: 1; }
+
+  /* шапка списка */
+  .ub-head { gap: 10px 12px; min-height: 36px; }
+  .ub-head h3 { font-size: 15px; font-weight: 700; letter-spacing: -.005em; gap: 8px; align-items: center; }
+  .ub-head h3 span { font-family: inherit; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .ub-sort button .n { font: 600 12px var(--ff); opacity: 1; color: var(--muted); margin-left: 6px; }
+  .ub-sort button[aria-pressed="true"] .n { color: var(--text2); }
+  .ub-sort button.warn .n { color: var(--warn); }
+  .ub .ux-bulk, .ub-head .ux-bulk { background: var(--accent-soft); border: 0; border-radius: 14px; box-shadow: none; font-size: 13px; color: var(--text); padding: 0 8px 0 16px; }
+  .ux-bulk b { color: var(--accent-ink); font-weight: 700; margin-right: 6px; }
+
+  /* панель-список: одна карточка, строки с разделителями */
+  .ub-rows { flex: 0 1 auto; gap: 0; padding: 0; margin: 0; background: var(--side-bg); border-radius: var(--r-card); box-shadow: var(--flat-shadow); }
+  .ub-row, .cb-row, .rb-row, .rl { background: none; border: 0; border-radius: 0; box-shadow: none; border-bottom: 1px solid var(--border-soft); }
+  .ub-row:last-child, .cb-row:last-child, .rb-row:last-child, .rl:last-child { border-bottom: 0; }
+  .ub-row, .cb-row { padding: 9px 16px; gap: 16px; }
+  .rb-top, .fb-top, .an-top, .pg-top { padding: 9px 16px; gap: 16px; }
+  .ub-row:hover, .cb-row:hover, .rb-top:hover, .fb-top:hover, .an-top:hover, .pg-top:hover { background: var(--hover-row); border-color: var(--border-soft); }
+  .ub-row.sel, .cb-row.sel, .ub-row.sel:hover, .cb-row.sel:hover { background: var(--accent-soft); }
+  .rb-row { overflow: visible; }
+  .rb-row:hover { border-color: var(--border-soft); }
+  .ub-row:hover, .cb-row:hover { border-color: var(--border-soft); }
+  /* раскрытая часть строки */
+  .rb-exp, .fb-exp, .an-exp, .pg-exp { background: var(--surf2); border-top: 0; padding: 16px 20px 18px 56px; }
+  .rb-exp h4, .fb-exp h4, .an-exp h4, .pg-exp h4 { margin: 0 0 8px; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+  .pg-dev, .pg-code { background: var(--side-bg); border: 0; border-radius: 12px; }
+  .pg-code { font-family: var(--ff); }
+  .rb-tp .meter { background: var(--meter-bg); }
+  .rb-tp .meter i, .rb-pb { border-radius: 4px; }
+  .rb-pb { background: var(--meter-bg); }
+  .rb-cv { width: 24px; height: 24px; border-radius: 8px; }
+  .rb-cv:hover { background: var(--gl-card2); color: var(--text); }
+  .rb-cv[aria-expanded="true"] { color: var(--accent-ink); }
+  .ub-dev { height: 30px; border-radius: var(--kit-r-sm); font-size: 13px; color: var(--text2); }
+  .ub-dev:hover { background: var(--surf2); color: var(--text); }
+
+  /* текст в строках */
+  .ux-name, .rb-nl b, .fb-name b { font-size: 13.5px; font-weight: 600; color: var(--text); }
+  .ux-login, .rb-meta, .fb-sd .l2, .rb-act .t small, .fb-when small, .ub-role small, .ub-st small { font-family: inherit; font-size: 12.5px; font-weight: 400; color: var(--muted); }
+  .ub-role small, .ub-st small { font-weight: 400; margin-top: 2px; }
+  .ua-role { font-size: 13px; color: var(--text2); gap: 6px; }
+  .ua-role svg { width: 14px; height: 14px; }
+  .ua-role.admin { font-weight: 600; }
+  .ua-totp-badge { margin-left: 6px; }
+  .rb-pt, .rb-pt b, .rb-act .t, .rb-act .t b, .fb-when, .fb-sz, .fb-sd .l1 { font-family: inherit; }
+  .rb-pt { font-size: 12.5px; }
+  .rb-pt b, .rb-act .t b, .fb-sz { font-size: 13px; font-weight: 700; color: var(--text); }
+  .fb-sd .l1 { font-size: 13px; font-weight: 600; color: var(--text); }
+  .fb-when { font-size: 13px; color: var(--text2); }
+  .fb-when small.w { color: var(--warn); }
+  .rb-wk i { background: var(--accent); }
+  .rb-p .s, .rb-p .nm { font-family: inherit; font-size: 13px; }
+  .rb-p .s { font-size: 12.5px; }
+  .rb-p .s.on { color: var(--ok); } .rb-p .s.aw { color: var(--warn); } .rb-p .s.bn { color: var(--bad); }
+  .rb-kv, .pg-kv { font-size: 13px; }
+  .rb-kv span, .pg-kv span { color: var(--muted); }
+  .rb-kv b, .pg-kv b { color: var(--text); font-weight: 600; }
+  .rb-pt .bl { color: var(--bad); }
+  .cb-bw .bd { border-color: var(--side-bg); }
+  /* клиенты */
+  .cl-host { font-size: 13.5px; font-weight: 600; color: var(--text); }
+  .cl-ip, .cl-plat small { font-size: 12.5px; font-weight: 400; color: var(--muted); }
+  .cl-plat small { font-family: inherit; }
+  .cl-plat { font-size: 13px; color: var(--text); }
+  .cl-plat svg { width: 16px; height: 16px; color: var(--text2); }
+  .cl-scope { margin-top: 4px; }
+  .cl-ver { font-family: inherit; font-size: 13px; font-weight: 600; }
+  .cl-ver svg { width: 14px; height: 14px; }
+  .cl-ver.ok { color: var(--ok); } .cl-ver.old { color: var(--warn); } .cl-ver.web, .cl-ver .note { color: var(--muted); }
+  .cl-prog-line { font-size: 12.5px; } .cl-prog-bar { height: 6px; border-radius: 3px; background: var(--meter-bg); }
+  .cl-prog.error .cl-prog-line { color: var(--bad); }
+  .cl-prog-err button { color: var(--accent-ink); font: 600 12.5px var(--ff); }
+  .cb-dur { font-family: inherit; font-size: 13px; font-weight: 500; color: var(--text2); }
+  .cb-dur i { background: var(--accent); height: 4px; opacity: .6; }
+  /* файлы */
+  .fb-top .fl-thumb { width: 38px; height: 38px; border-radius: 12px; font-family: inherit; font-weight: 700; }
+  .fb-big { border-radius: var(--r-card); font-family: inherit; }
+  .fl-thumb { font-family: inherit; }
+  .fb-sz .meter { background: var(--meter-bg); height: 4px; }
+  /* журнал */
+  .al-day2 { padding: 10px 20px; margin: 0; background: var(--surf2); font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); border-bottom: 1px solid var(--border-soft); position: sticky; top: 0; z-index: 2; }
+  .al-tm2 { font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text); }
+  /* релизы */
+  .rl { padding: 14px 20px; gap: 8px; }
+  .rl ul { font-size: 13.5px; line-height: 1.5; gap: 4px; }
+  .rl-sl { font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; margin-top: 10px; }
+  .rl-sl.add { color: var(--ok); } .rl-sl.fix { color: var(--warn); } .rl-sl.chg { color: var(--accent-ink); }
+  .rl-pre { font-size: 13px; color: var(--muted); }
+  .rl-h .rb-cv { margin-left: -4px; }
+  /* пустое состояние внутри панели — по центру, без своей карточки (вид кита, раздел 13) */
+  .ub-rows > .ub-empty { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 44px 16px; font-size: 13px; }
+}

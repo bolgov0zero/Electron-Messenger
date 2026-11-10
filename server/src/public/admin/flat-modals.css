@@ -1,0 +1,290 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Админка, дизайн B «Мягкий» — ОКНА И ШТОРКИ (.modal-bg, .modal, .modal-head/.modal-body/.modal-foot, окна пользователя/комнаты/объявления/вебхука, выпадающие меню «⋯», подтверждения, тосты).
+   Область агента «окна». Подключается после flat.css и flat-pages.css. Общая оболочка окна (радиус 22, тень) уже в «Основе» flat.css; крестик закрытия, кнопки и поля — из кита.
+   Окна гостевых ссылок (shared/guestlinks.js, .gl-adm) оформлены в разделе 14 flat.css; здесь только скрим, шапка и анимация.
+   Образец: chat/flat-menus.css (окна и меню веб клиента) и web-kit.md. Кнопки, тумблеры, сегменты, чипы, поля — из UI-кита flat.css; здесь не рисуются.
+   Порядок: 0 токены · 1 скрим, окно, анимации · 2 шапка, тело, подвал · 3 формы · 4 плитки выбора · 5 списки в окнах · 6 окна по одному ·
+            7 меню, выпадающие списки, подсказки · 8 тосты · 9 экран входа · 10 окна гостевых ссылок.
+   Мобильный вид (≤820 px): окна — шторки снизу (mobile.css, зона мобильного агента); правила, не годящиеся на узком, обёрнуты в @media (min-width: 821px).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═════════ 0. Токены окон ═════════ */
+:root { --scrim: rgba(40, 28, 16, .32); --md-row: 48px; --md-pad: 22px; }
+:root[data-theme="dark"] { --scrim: rgba(0, 0, 0, .5); }
+
+/* ═════════ 1. Скрим, окно, анимации появления и закрытия (150–250 мс, без пружины и размытия) ═════════ */
+.modal-bg, :root[data-theme="dark"] .modal-bg { background: var(--scrim); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.modal { border: 0; border-radius: var(--r-panel); background: var(--side-bg); box-shadow: var(--pop-shadow); }
+@keyframes mdIn  { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes mdOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(6px) scale(.985); } }
+@keyframes mdPop { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes mdView { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes mdToast { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (min-width: 821px) {
+  .modal-bg.open { animation: modalBgIn .2s ease; }
+  .modal-bg.open .modal { animation: mdIn .2s var(--ease) both; }
+  .modal-bg.closing { animation: modalBgOut .15s ease forwards; }
+  .modal-bg.closing .modal { animation: mdOut .15s ease-in forwards; }
+}
+/* Смена вида внутри открытого окна (вкладка, шаг мастера, «Подключить сервер» → «Ключ»): окно стоит на месте, содержимое мягко появляется (mdView() в app.js) */
+.md-vin > * { animation: mdView .2s var(--ease) both; }
+@media (prefers-reduced-motion: reduce) { .md-vin > *, .modal-bg.open .modal, .modal-bg.closing .modal { animation-duration: .001ms !important; } }
+
+/* ═════════ 2. Шапка, тело, подвал: без линий, шапка = название + подзаголовок + крестик из кита ═════════ */
+.modal-head, .ua-head, .rs-h { padding: 18px 18px 8px var(--md-pad); gap: 12px; border: 0; background: none; }
+.modal-head h3, .ua-title, .rs-t h3 { font-size: 15px; font-weight: 700; letter-spacing: -.005em; color: var(--text); margin: 0; }
+.ua-sub, .rs-sub, .dvc-hd span { font-size: 12.5px; font-weight: 400; color: var(--muted); }
+.ua-sub { margin-top: 1px; }
+.modal-head .modal-close, .ua-head .modal-close { flex-shrink: 0; }
+.modal-body { padding: 8px var(--md-pad) 18px; }
+.ua-body { padding: 8px var(--md-pad) 18px; gap: 18px; }
+.rs-b { padding: 8px var(--md-pad) 14px; gap: 14px; }
+.modal-foot, .ua-foot, .an-foot, .rs-f { padding: 8px var(--md-pad) 20px; border: 0; background: none; gap: 8px; }
+.an-rfoot { padding: 10px var(--md-pad) 18px; border: 0; font-size: 12.5px; color: var(--muted); }
+.modal-foot { align-items: center; }
+.fm-note, .rs-note, .mdl-foot { font-size: 12.5px; color: var(--muted); }
+.fm-note b { color: var(--warn); }
+.fm-note.ok b, .rs-note.ok b { color: var(--ok); }
+.rs-note b { color: var(--warn); }
+/* Заголовок с подзаголовком в одной строке (устройства) и значок-плитка в шапке */
+.dvc-hd { gap: 10px; }
+.rs-ic { border-radius: var(--kit-r); }
+.modal-sm { width: 400px; }
+.modal.ua-modal.ua-sm { width: 440px; }
+
+/* ═════════ 3. Формы: подписи, подсказки, ошибки, блоки ═════════ */
+.ua-field label, .fg label, .rs-lbl { font-size: 12.5px; font-weight: 600; color: var(--text2); text-transform: none; letter-spacing: 0; }
+.fg label, .rs-lbl { margin-bottom: 6px; }
+.ua-field { gap: 6px; }
+.ua-field label .opt { font-weight: 500; color: var(--muted); }
+.ua-hint, .rm-hint, #modal-fed .fd-hint, .dvc-note { font-size: 12px; line-height: 1.45; color: var(--muted); }
+.ua-err, .err { font-size: 12px; line-height: 1.4; color: var(--bad); }
+.ua-inp.bad { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-soft); }
+.ua-inp .pre { font-family: var(--ff); color: var(--muted); }
+.ua-sec { gap: 12px; }
+.ua-sec-title, .rm-sect, .dvc-grp, .lkq-t, .an-letter { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.dvc-grp { margin-bottom: 8px; }
+.an-letter { padding: 8px 4px 2px; }
+.ua-strength i { background: var(--meter-bg); border-radius: 3px; height: 4px; }
+.ua-strength i.on { background: var(--warn); }
+.ua-strength.good i.on { background: var(--ok); }
+/* карточки-пояснения внутри окон: пароль придуман, ключ, готово */
+.ua-creds, .wh-ok { border: 0; border-radius: var(--r-card); background: var(--ok-soft); }
+.ua-creds span, .wh-ok span { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ok); }
+.ua-creds code, .wh-ok code, .wh-code, #modal-fed .fd-key, #modal-fed .fd-fp, #modal-fed .fd-ta, .pgi-log, .lkk-fp { font: 500 12.5px/1.5 var(--ff); font-variant-numeric: tabular-nums; }
+.wh-code, #modal-fed .fd-key, #modal-fed .fd-fp, .pgi-log { border: 0; border-radius: var(--kit-r); background: var(--surf2); color: var(--text2); }
+#modal-fed .fd-key { color: var(--text); }
+#modal-fed .fd-fp { font-size: 15px; font-weight: 600; letter-spacing: .06em; }
+#modal-fed .fd-ta { border: 1px solid transparent; border-radius: var(--kit-r); background: var(--kit-field-bg); color: var(--text); padding: 10px 12px; }
+#modal-fed .fd-ta:focus { outline: 0; border-color: var(--accent); box-shadow: var(--kit-field-ring); }
+#modal-fed .fd-note, .rs-adm { display: flex; gap: 10px; padding: 12px 14px; border: 0; border-radius: var(--r-card); background: var(--accent-soft); color: var(--text); font-size: 12.5px; line-height: 1.5; }
+.rs-adm svg { color: var(--accent-ink); }
+.rs-pill { border-radius: var(--kit-r-tag); background: var(--accent-soft); color: var(--accent-ink); }
+.rs-err { border: 0; border-radius: var(--kit-r); background: var(--bad-soft); color: var(--bad); }
+#modal-fed .fd-kv { font-size: 12.5px; }
+#modal-fed .fd-kv span { color: var(--muted); }
+.ua-pw-closed, .ua-totp-box, .rm-card, .rs-sw, .lkk-ssh, .lkk-list { border: 0; border-radius: var(--r-card); background: var(--surf2); }
+.ua-dz-row { border-top: 1px solid var(--border-soft); }
+.ua-dz-row span, .ua-pw-closed span, .ua-totp-row span, .rm-rt span { font-size: 12px; color: var(--muted); }
+.ua-pw-closed b, .ua-totp-row b, .ua-dz-row b, .rm-rt b { font-size: 13px; font-weight: 600; }
+.fm-more { border: 0; border-radius: var(--r-card); background: var(--surf2); }
+.fm-more > button { font: 600 13px var(--ff); padding: 12px 14px; }
+.fm-more .fm-chip:not(.static) { background: var(--side-bg); }
+.fm-more .fm-chip:not(.static):hover { background: var(--gl-card2); }
+.fm-more.open > button { padding-bottom: 8px; }
+.fm-chips { padding: 0 14px 12px; }
+.fm-mb { border-top: 0; padding: 4px 14px 16px; }
+.fm-pw { border: 0; border-radius: var(--kit-r); background: var(--side-bg); }
+.rm-card .rm-row { min-height: var(--md-row); padding: 8px 14px; }
+.rm-rt b { color: var(--text); }
+.rm-avb .rm-cam { border: 0; background: var(--side-bg); box-shadow: var(--flat-shadow); }
+.rm-rename { border: 1px solid var(--accent); border-radius: var(--kit-r-sm); background: var(--kit-field-bg); }
+.rs-lbl { display: block; }
+.rs-sw { transition: background .2s; }
+.rs-sw.on { background: var(--accent-soft); }
+.rs-sw b { font-size: 13.5px; }
+.rs-drop { border: 1.5px dashed var(--border); border-radius: var(--r-card); background: var(--surf2); }
+.rs-drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.rs-ic2 { border-radius: 14px; background: var(--accent-soft); color: var(--accent-ink); }
+.rs-bar { background: var(--meter-bg); } .rs-bar i { background: var(--accent-fill); }
+.rs-word input { border: 1px solid transparent; border-radius: var(--kit-r); background: var(--kit-field-bg); font: 600 15px var(--ff); }
+.rs-word input:focus { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad-soft); }
+.rs-word input.ok { border-color: var(--ok); }
+.rs-cmp th { text-transform: none; letter-spacing: 0; font-size: 12px; background: none; }
+.rs-cmp td { border-top: 1px solid var(--border-soft); font-family: var(--ff); }
+.rs-cmp td.up, .rs-eff .g, .rs-warns .ok, .rs-warns .ok svg { color: var(--ok); }
+.rs-cmp td.dn, .rs-eff .w { color: var(--bad); }
+.rs-warns svg { color: var(--warn); }
+.rs-dot { border-color: var(--border); }
+.rs-st.on .rs-dot { border-color: var(--accent); border-top-color: transparent; }
+.rs-st.done .rs-dot { background: var(--ok); border-color: var(--ok); color: var(--kit-pri-fg); }
+.rs-ck { background: var(--ok-soft); color: var(--ok); animation: mdIn .3s var(--ease) both; }
+.pgi-st i { border-color: var(--border); }
+.pgi-st .dn i { background: var(--ok-soft); color: var(--ok); }
+.pgi-st .cur i { border-color: var(--accent); color: var(--accent-ink); }
+.pgi-pc b { font: 700 26px var(--ff); }
+.pgi-log { padding: 10px 12px; }
+
+/* ═════════ 4. Плитки выбора (радио-карточки): одного вида везде ═════════ */
+.ua-role-opt, #modal-fed .fd-opt { border: 0; border-radius: var(--r-card); background: var(--surf2); padding: 12px 14px; transition: background .15s, box-shadow .15s; }
+.ua-role-opt:hover, #modal-fed .fd-opt:hover { background: var(--gl-card2); border-color: transparent; }
+.ua-role-opt[aria-checked="true"], #modal-fed .fd-opt[aria-checked="true"], #modal-fed .fd-opt.on { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 50%, transparent); }
+.ua-role-opt b, #modal-fed .fd-opt b { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.ua-role-opt b svg { color: var(--accent-ink); }
+.ua-role-opt span, #modal-fed .fd-opt span { font-size: 12px; line-height: 1.4; color: var(--muted); }
+#modal-fed .fd-opt { gap: 14px; align-items: center; }
+#modal-fed .fd-opt .fd-ic { flex: none; margin: 0; width: 40px; height: 40px; border-radius: var(--kit-r); display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-ink); }
+#modal-fed .fd-opt .fd-ic svg { width: 20px; height: 20px; }
+
+/* ═════════ 5. Списки в окнах: участники, получатели, устройства — строки 48 px, без рамок ═════════ */
+.rm-list, .dvc-list { border: 0; border-radius: var(--r-card); background: var(--surf2); overflow: hidden; }
+.rm-li, .dvc-r { min-height: var(--md-row); padding: 6px 12px; background: none; border: 0; border-top: 1px solid var(--border-soft); box-sizing: border-box; }
+.rm-li:first-child, .rm-li + .rm-li { border-top-width: 1px; }
+.rm-li:first-child, .dvc-r:first-child { border-top: 0; }
+.rm-li + .rm-li { border-top: 1px solid var(--border-soft); }
+/* выбор людей и чатов (.fm-li: окно комнаты, получатели объявления): строка 48 px, выбранная — --accent-soft, без рамки */
+.fm-li { min-height: var(--md-row); padding: 6px 12px; border: 0; border-radius: var(--kit-r); background: none; transition: background .15s; }
+.fm-li:hover { background: var(--hover-row); }
+.fm-li[aria-pressed="true"] { background: var(--accent-soft); }
+.fm-li[aria-pressed="true"]:hover { background: var(--kit-soft-bg-h); }
+.fm-li .n { font-size: 13px; }
+.fm-li .n small { font-size: 12px; color: var(--muted); }
+.fm-li .tg2 { border: 0; border-radius: var(--kit-r-tag); background: var(--surf2); color: var(--text2); font-size: 12px; font-weight: 600; padding: 2px 8px; }
+.fm-li[aria-pressed="true"] .tg2 { background: var(--side-bg); }
+.fm-li .ck { color: var(--accent-ink); }
+.rm-ml, .an-rlist { gap: 2px; }
+.fm-empty { font-size: 13px; }
+.rm-li[draggable="true"]:hover { background: var(--hover-row); }
+.rm-li.drop { box-shadow: inset 0 2px 0 var(--accent); }
+.modal .ux-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.rm-empty-l, .dvc-empty { border: 0; border-radius: var(--r-card); background: var(--surf2); color: var(--muted); font-size: 13px; }
+.rm-empty-l { padding: 16px; }
+.dvc-ic { border-radius: var(--kit-r); background: var(--side-bg); }
+.dvc-chip.bad { background: var(--bad-soft); color: var(--bad); }
+.dvc-danger { color: var(--bad); }
+.dvc-r.off .dvc-ic, .dvc-r.off .dvc-nm b { opacity: .5; }
+.lkk-row, .lkp-r, .lkq-pr { min-height: var(--md-row); }
+.lkk-row + .lkk-row, .lkp-r + .lkp-r, .lkq-pr + .lkq-pr { border-top: 1px solid var(--border-soft); }
+.lkk-ic { border-radius: var(--kit-r); background: var(--warn-soft); color: var(--warn); }
+.lkk-ssh.on .lkk-ic { background: var(--ok-soft); color: var(--ok); }
+.lkk-row .lkk-ic { background: var(--accent-soft); color: var(--accent-ink); }
+.lkk-row.main .lkk-ic, .lkk-row.off .lkk-ic { background: var(--side-bg); color: var(--text2); }
+.lkk-red { color: var(--bad) !important; }
+.lkk-fp { background: var(--side-bg); border-radius: var(--kit-r-tag); }
+
+/* ═════════ 6. Окна по одному ═════════ */
+/* Объявление (две половины): правая тонирована, без линий; предпросмотр — плоские карточки на токенах */
+.an-half.r { border: 0; background: color-mix(in srgb, var(--surf2) 55%, var(--side-bg)); }
+.an-pv { border-radius: var(--r-card); background: var(--surf2); padding: 14px; }
+.an-pv-app, .an-pv-feed { border: 0; border-radius: var(--kit-r); background: var(--side-bg); }
+.an-pv-banner, .an-pv-card, .an-pv-sys { border: 0; background-color: var(--side-bg); background-image: linear-gradient(color-mix(in srgb, var(--bad) 13%, transparent), color-mix(in srgb, var(--bad) 13%, transparent)); box-shadow: var(--flat-shadow); }
+.an-pv-card { border-radius: var(--kit-r); }
+.an-pv-sys { box-shadow: none; }
+.an-pv-ring { background: var(--bad-soft); border: 0; }
+.an-pv-title { color: var(--bad); }
+.an-pv-ok { border-radius: var(--kit-r-sm); background: var(--accent-fill); color: var(--kit-pri-fg); }
+.an-pv-dim::after { background: var(--scrim); }
+.an-red { background: var(--bad-soft); color: var(--bad); }
+.an-area { border-radius: var(--kit-r); }
+.an-meta dt { color: var(--muted); }
+.an-bar { background: var(--meter-bg); } .an-bar i { background: var(--warn); }
+/* карточка внутри окна — вложенная: --surf2, без тени (кит 11) */
+.modal .card { background: var(--surf2); box-shadow: none; }
+/* Окно комнаты: вкладки (кит 10) отделены от шапки, список участников и тем — раздел 5 */
+.rm-body { padding-top: 14px; }
+.rm-handle { color: var(--muted); }
+.rm-wait { border-radius: var(--kit-r-tag); background: var(--warn-soft); color: var(--warn); }
+.rm-link { color: var(--accent-ink); border-radius: var(--kit-r-tag); }
+.rm-link:hover { background: var(--accent-soft); }
+/* Подтверждение: компактное окно, заголовок и текст, кнопки справа (вторичная + основная/опасная) */
+#modal-confirm .modal-body { padding-top: 4px; font-size: 13px; line-height: 1.55; color: var(--text2); }
+#modal-confirm .modal-foot { padding-top: 6px; }
+/* Журнал модуля, справка вебхука и ключа */
+.mdl-filters { padding: 8px var(--md-pad) 10px; border: 0; }
+.mdk-steps li { font-size: 13px; line-height: 1.5; }
+
+/* ═════════ 7. Меню «⋯», выпадающие списки, календарь, подсказки ═════════ */
+.ux-menu, .rm-menu, .uaws-pop, .dtp-pop { background: var(--side-bg); border: 0; border-radius: var(--r-card); box-shadow: var(--pop-shadow); padding: 6px; }
+.ux-menu, .ux-selp { animation: mdPop .15s var(--ease) both; }
+.ux-menu button, .rm-menu button, .uaws-opt { min-height: 38px; padding: 6px 10px; border-radius: var(--kit-r); font: 500 13px var(--ff); color: var(--text); gap: 10px; }
+.ux-menu button svg, .rm-menu button svg { width: 16px; height: 16px; color: var(--accent-ink); flex: none; }
+.ux-menu button small { font: 500 12px var(--ff); color: var(--muted); }
+.ux-menu button:hover:not([disabled]), .rm-menu button:hover, .uaws-opt:hover { background: var(--hover-row); color: var(--text); }
+.ux-menu .danger, .rm-menu button.d { color: var(--bad); }
+.ux-menu .danger svg, .rm-menu button.d svg { color: var(--bad); }
+.ux-menu .danger:hover:not([disabled]), .rm-menu button.d:hover { background: var(--bad-soft); color: var(--bad); }
+.ux-menu hr { border: 0; height: 1px; background: var(--border-soft); margin: 4px 6px; }
+.ux-menu .note { font-size: 12px; color: var(--muted); padding: 4px 10px 6px; }
+.uaws-foot { border-top: 1px solid var(--border-soft); font-size: 12px; padding: 8px 10px 4px; }
+.uaws-pop { gap: 2px; }
+.ux-selp [role=option], .fsel-opt { min-height: 36px; }
+.ux-selp .o-t small { font-size: 12px; color: var(--muted); }
+.ux-selp .ck, .ux-sel-b svg { color: var(--accent-ink); }
+.ux-sel-b svg { color: var(--muted); }
+/* календарь выбора даты и времени */
+.dtp-pop { width: 252px; padding: 12px; }
+.dtp-head-title { font-size: 13px; font-weight: 600; }
+.dtp-nav { width: 28px; height: 28px; border-radius: var(--kit-r-sm); font-size: 15px; }
+.dtp-nav:hover { background: var(--hover-row); }
+.dtp-dow { font-size: 11px; letter-spacing: 0; text-transform: none; }
+.dtp-day { height: 30px; border-radius: var(--kit-r-sm); font-size: 12.5px; }
+.dtp-day:hover:not(:disabled) { background: var(--hover-row); }
+.dtp-day:disabled { color: var(--muted); opacity: .4; }
+.dtp-day.today { box-shadow: inset 0 0 0 1px var(--accent); }
+.dtp-day.sel { background: var(--accent-fill); color: var(--kit-pri-fg); }
+.dtp-foot { border-top: 1px solid var(--border-soft); margin-top: 10px; padding-top: 10px; }
+.dtp-time input { border: 1px solid transparent; border-radius: var(--kit-r-tag); background: var(--kit-field-bg); font-family: var(--ff); height: 28px; }
+.dtp-time input:focus { border-color: var(--accent); box-shadow: var(--kit-field-ring); }
+/* подсказки: плоская карточка, как в клиенте */
+.sb-tip, .sp-pop { background: var(--side-bg); color: var(--text); border: 0; box-shadow: var(--pop-shadow), 0 0 0 1px var(--border); }   /* как .tip в макете admin-home.html: светлая плоская карточка */
+.sb-tip { border-radius: 10px; font-size: 12.5px; font-weight: 600; padding: 6px 10px; }
+.sp-pop { border-radius: var(--r-btn); font-size: 12.5px; line-height: 1.5; color: var(--text2); animation: mdPop .15s var(--ease) both; }
+.sp-pop b { color: var(--text); }
+
+/* ═════════ 8. Тосты и баннеры: плоская карточка, значок-плитка тоном состояния ═════════ */
+#toast-container { gap: 8px; }
+.toast, .toast.success, .toast.error { background: var(--side-bg); color: var(--text); border: 0; border-radius: var(--r-btn); box-shadow: var(--pop-shadow); padding: 10px 14px 10px 10px; min-height: 44px; font-size: 13px; font-weight: 500; line-height: 1.4; gap: 10px; max-width: 340px; animation: mdToast .2s var(--ease) both; }
+.toast > span:first-child { flex: none; width: 24px; height: 24px; border-radius: var(--kit-r-tag); display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-ink); font-size: 0 !important; }
+.toast.success > span:first-child { background: var(--ok-soft); color: var(--ok); }
+.toast.error > span:first-child { background: var(--bad-soft); color: var(--bad); }
+.toast > span:first-child svg { width: 16px; height: 16px; }
+.sp-toast { background: var(--side-bg); color: var(--text); border: 0; border-radius: var(--r-btn); box-shadow: var(--pop-shadow); font-size: 13px; font-weight: 500; padding: 8px 8px 8px 16px; }
+.sp-toast button { background: var(--accent-soft); color: var(--accent-ink); border-radius: var(--kit-r-sm); height: 28px; padding: 0 12px; font: 600 12.5px var(--ff); }
+.sp-toast button:hover { background: var(--kit-soft-bg-h); }
+.sp-toast s { opacity: .5; }
+
+/* ═════════ 9. Экран входа и двухфакторный ввод ═════════ */
+#login, #login-totp { background: var(--app-bg); }
+.login-logo-text { font-size: 20px; font-weight: 700; letter-spacing: .06em; margin-bottom: 22px; }
+.login-logo-text span { color: var(--accent-ink); }
+.login-card { border: 0; border-radius: var(--r-panel); background: var(--side-bg); box-shadow: var(--pop-shadow); padding: 28px; width: 380px; animation: mdIn .25s var(--ease) both; }
+.login-card .fg { margin-bottom: 16px; }
+.login-card .fg input { height: 46px; padding: 0 14px; font-size: 14px; }
+.login-card #totp-secret { height: 46px; padding: 0 14px; border: 1px solid transparent; border-radius: var(--kit-r); background: var(--kit-field-bg); color: var(--text); font-size: 14px !important; letter-spacing: .02em !important; outline: 0; }
+.login-card #totp-code { letter-spacing: .3em !important; font-size: 18px !important; font-weight: 600; }
+.login-card .btn-ghost.btn-full { height: 40px; }
+.login-card .toggle-switch { margin-bottom: 18px !important; }
+.login-card .btn-full { height: 46px; font-size: 14px; }
+.login-card .err { margin-top: 12px; text-align: center; }
+.login-card .err:empty { display: none; }
+.login-copy { font-size: 12px; letter-spacing: 0; }
+
+/* ═════════ 10. Окна гостевых ссылок и ссылок на видеозвонок (shared, .gl-adm): скрим, шапка и анимация как у остальных окон ═════════ */
+.gl-bg.gl-adm { background: var(--scrim); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.gl-bg.gl-adm .gl { background: var(--side-bg); }
+.gl-bg.gl-adm .gl-h { padding: 18px 18px 8px var(--md-pad); border-bottom: 0; gap: 12px; }
+.gl-bg.gl-adm .gl-h b { font-size: 15px; font-weight: 700; color: var(--text); }
+.gl-bg.gl-adm .gl-h small { font-size: 12.5px; color: var(--muted); }
+.gl-bg.gl-adm .gl-top { padding: 8px var(--md-pad) 12px; border-bottom: 0; }
+.gl-bg.gl-adm .gl-b { padding: 8px var(--md-pad) 20px; }
+.gl-bg.gl-adm .gl-th { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; border-bottom: 1px solid var(--border-soft); }
+.gl-bg.gl-adm .gl-it { min-height: var(--md-row); }
+.gl-bg.gl-adm .gl-it + .gl-it { border-top: 1px solid var(--border-soft); }
+.gl-bg.gl-adm .gl-tm { color: var(--accent-ink); }
+.gl-bg.gl-adm .gl-tm.no { color: var(--muted); }
+.gl-bg.gl-adm .gl-err { color: var(--bad); }
+@media (min-width: 821px) {
+  .gl-bg.gl-adm .gl { animation: mdIn .2s var(--ease) both; }
+  .gl-bg.gl-adm.closing .gl { animation: mdOut .15s ease-in forwards; }
+  .gl-bg.gl-adm .gl-pop { animation: mdPop .15s var(--ease) both; }
+}

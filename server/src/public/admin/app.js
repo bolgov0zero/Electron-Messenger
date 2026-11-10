@@ -44,14 +44,15 @@ function animateThemeSwitch() {
   clearTimeout(_themeAnimTimer);
   _themeAnimTimer = setTimeout(() => html.classList.remove('theme-anim'), 260);
 }
-function toggleTheme() {
-  const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-  localStorage.setItem(THEME_KEY, t);
-  animateThemeSwitch();
-  applyTheme(t);
-}
 
 applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+// Акцент плоского дизайна B: data-accent на <html> (teal | indigo | plum | amber), CSS — в flat.css. Выбора в интерфейсе пока нет: ключ можно задать вручную
+const ACCENT_KEY = 'electron-admin.accent';
+function applyAdminAccent(a) {
+  if (!['teal', 'indigo', 'plum', 'amber'].includes(a)) a = 'teal';
+  document.documentElement.dataset.accent = a;
+}
+applyAdminAccent((() => { try { return localStorage.getItem(ACCENT_KEY); } catch { return null; } })());
 
 /* ── API ── */
 let _sessionExpired = false;
@@ -123,8 +124,9 @@ function failText(rs) { const b = [].concat(rs).find(failed); return b ? esc((b 
 function toast(msg, type='') {
   const el = document.createElement('div');
   el.className = 'toast'+(type?' '+type:'');
-  const icon = type==='success'?'✓':type==='error'?'✕':'ℹ';
-  el.innerHTML = `<span style="font-size:13px">${icon}</span><span>${msg}</span>`;
+  const L = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;   // значки Lucide: check, x, info
+  const icon = type==='success'?L('<path d="M20 6 9 17l-5-5"/>'):type==='error'?L('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'):L('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>');
+  el.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
   document.getElementById('toast-container').appendChild(el);
   setTimeout(() => {
     el.classList.add('removing');
@@ -349,7 +351,7 @@ const sbUptime = sec => { const d = Math.floor(sec / 86400), h = Math.floor(sec 
 function sbInit(u) {
   document.getElementById('sb-name').textContent = u.display_name;
   document.getElementById('sb-email').textContent = u.username ? '@' + u.username : '';
-  document.getElementById('sb-av').innerHTML = avHtml(u.display_name, 32, 10, u.id, false, true) + '<i></i>';
+  document.getElementById('sb-av').innerHTML = avHtml(u.display_name, 34, 17, u.id, false, true);
   document.getElementById('sb-me').dataset.tip = u.display_name;
   const mac = /Mac|iPhone|iPad/.test(navigator.platform), kbd = document.querySelector('.sb-jump kbd');
   if (kbd) kbd.textContent = mac ? '⌘ K' : 'Ctrl K';
@@ -372,7 +374,11 @@ function sbRailBtn() {
   const t = SB.rail ? 'Развернуть панель' : 'Свернуть панель';
   b.innerHTML = SB.rail ? SB_I.expand : SB_I.collapse;
   b.title = t; b.setAttribute('aria-label', t);
+  // в свёрнутом виде значок-логотип разворачивает панель (кнопка «свернуть» скрыта)
+  const mk = document.getElementById('sb-mk');
+  if (mk) { mk.setAttribute('role', SB.rail ? 'button' : 'presentation'); mk.tabIndex = SB.rail ? 0 : -1; mk.title = SB.rail ? t : ''; }
 }
+function sbMkClick() { if (SB.rail) sbToggleRail(); }
 function sbToggleRail() {
   SB.rail = !SB.rail;
   try { localStorage.setItem('admin-sb-rail', SB.rail ? '1' : '0'); } catch {}
@@ -465,17 +471,19 @@ function sbMenuClose() {
   document.getElementById('sb-me').setAttribute('aria-expanded', 'false');
 }
 function sbMenuPos() {
-  const m = document.getElementById('sb-menu'), r = document.querySelector('.sb-bottom').getBoundingClientRect();
-  m.style.width = '244px';
-  if (SB.rail) { m.style.left = (r.right + 6) + 'px'; m.style.bottom = (innerHeight - r.bottom + 8) + 'px'; }
-  else { m.style.left = (r.left + 10) + 'px'; m.style.bottom = (innerHeight - r.top - 6) + 'px'; }
+  // меню открывается вверх от карточки пользователя: на всю её ширину, в свёрнутом виде — справа от рельсы
+  const m = document.getElementById('sb-menu'), r = document.getElementById('sb-me').getBoundingClientRect();
+  if (SB.rail) { m.style.width = '250px'; m.style.left = (r.right + 14) + 'px'; m.style.bottom = (innerHeight - r.bottom) + 'px'; }
+  else { m.style.width = Math.max(r.width, 264) + 'px'; m.style.left = r.left + 'px'; m.style.bottom = (innerHeight - r.top + 8) + 'px'; }
 }
 function sbMenuRender() {
   const u = currentUser || {}, dark = document.documentElement.dataset.theme !== 'light', t = SB.totp;
   const st = !t ? '' : t.totp_required ? (t.totp_configured ? 'вкл' : 'ждёт настройки') : 'выкл';
-  document.getElementById('sb-menu').innerHTML = `<div class="sb-who"><span class="sb-av">${avHtml(u.display_name || '?', 32, 10, u.id, false, true)}<i></i></span><div><b>${esc(u.display_name || '')}</b><small>${u.username ? '@' + esc(u.username) + ' · ' : ''}в сети</small></div></div>
-    <div class="sb-th" role="group" aria-label="Тема"><button type="button" data-on-click="sbTheme" data-a-click='["dark"]' aria-pressed="${dark}">Тёмная</button><button type="button" data-on-click="sbTheme" data-a-click='["light"]' aria-pressed="${!dark}">Светлая</button></div>
+  // «Тёмная» как отдельной темы больше нет: сохранённое значение «dark» — это тёмно-синяя
+  document.getElementById('sb-menu').innerHTML = `<div class="sb-who">${u.username ? '@' + esc(u.username) + ' · ' : ''}в сети</div>
+    <div class="sb-tm"><span>Тема</span><div class="sb-th" role="group" aria-label="Тема"><button type="button" data-on-click="sbTheme" data-a-click='["light"]' aria-pressed="${!dark}">Светлая</button><button type="button" data-on-click="sbTheme" data-a-click='["dark"]' aria-pressed="${dark}">Тёмно-синяя</button></div></div>
     <button type="button" class="sb-mi" role="menuitem" data-on-click="sb2fa">${SB_I.key}Двухфакторная защита<small>${st}</small></button>
+    <hr class="sb-hr">
     <button type="button" class="sb-mi bad" role="menuitem" data-on-click="logout">${SB_I.out}Выйти</button>`;
 }
 function sbTheme(t) {
@@ -483,6 +491,7 @@ function sbTheme(t) {
   animateThemeSwitch();
   applyTheme(t);
   sbMenuRender();
+  if (currentPage === 'more') renderMore();
 }
 // 2FA настраивается в окне пользователя (переключатель «требовать») — открываем своё
 async function sb2fa() {
@@ -753,11 +762,13 @@ async function callsNavSync() {
 function nav(page) {
   if (page === 'calls' && !ADMIN_CALLS.on && token) { ADMIN_CALLS.on = true; }   // открыли по ссылке или из сохранённой страницы: проверка ниже поправит
   currentPage=page;
+  document.documentElement.dataset.pg = page;   // для плоских стилей: html[data-pg="settings"] …
   document.querySelectorAll('#mnav button').forEach(b => b.classList.toggle('on', b.dataset.page === (MTABS.includes(page) ? page : 'more')));
   document.documentElement.dataset.msub = MTABS.includes(page) ? '0' : '1';
   try { localStorage.setItem('admin-page', page); } catch {}
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.page===page));
   document.getElementById('page-title').textContent=pageTitles[page];
+  topState();
 
   // Сбросить extra кнопки
   const extraEl = document.getElementById('topbar-extra');
@@ -800,12 +811,22 @@ function openModal(id) {
   el.classList.remove('closing');
   el.classList.add('open');
 }
+// Смена вида внутри открытого окна (вкладка, шаг мастера): окно остаётся на месте, содержимое мягко появляется (класс md-vin, flat-modals.css).
+// key — признак вида: пока он тот же (перерисовка при вводе), ничего не двигается; в закрытом окне только запоминается
+function mdView(box, key) {
+  if (!box) return;
+  const k = String(key), was = box.dataset.view;
+  box.dataset.view = k;
+  if (was === undefined || was === k || !box.closest('.modal-bg.open:not(.closing)')) return;
+  box.classList.remove('md-vin'); void box.offsetWidth; box.classList.add('md-vin');
+  clearTimeout(box._mdt); box._mdt = setTimeout(() => box.classList.remove('md-vin'), 260);
+}
 function closeModal(id) {
   const el = document.getElementById(id);
   if (!el || el.classList.contains('closing')) return;
   el.classList.add('closing');
   let done = false;
-  const cleanup = () => { if (done) return; done = true; clearTimeout(timer); el.removeEventListener('animationend', onEnd); el.classList.remove('open', 'closing'); };
+  const cleanup = () => { if (done) return; done = true; clearTimeout(timer); el.removeEventListener('animationend', onEnd); el.classList.remove('open', 'closing'); el.querySelectorAll('[data-view]').forEach(n => { delete n.dataset.view; }); };
   // Закрытие заканчивает анимация самого окна или подложки: события вложенных элементов не в счёт, иначе окно исчезало бы сразу
   const onEnd = e => { if (e.target === el || e.target.parentElement === el) cleanup(); };
   el.addEventListener('animationend', onEnd);
@@ -825,20 +846,25 @@ function confirm(title, text, onOk) {
 }
 
 /* ── «ЕЩЁ» (телефонный вид) ── */
-// Разделы, которых нет на нижней панели, тема и выход. Значки берём из боковой панели: там они уже нарисованы
+// Карточка пользователя (тема, 2FA, выход) и разделы, которых нет на нижней панели, по тем же группам, что в боковом меню. Значки берём из боковой панели: там они уже нарисованы
 function renderMore() {
   setTopbarActions('');
-  const rows = [['federation', 'Федерации'], ['workspaces', 'Пространства'], ['rooms', 'Комнаты'], ['chats', 'Чаты и группы'], ['push', 'Уведомления'], ['files', 'Файлы'], ['announcements', 'Объявления'], ['webhooks', 'Вебхуки'], ['modules', 'Модули'], ...(ADMIN_CALLS.on ? [['calls', 'Звонки']] : []), ['audit', 'Аудит-лог'], ['releases', 'Релизы']];
-  const me = currentUser?.display_name || currentUser?.username || '';
+  const groups = [['Управление', [['federation', 'Федерации'], ['workspaces', 'Пространства'], ['rooms', 'Комнаты'], ['chats', 'Чаты и группы'], ['push', 'Уведомления'], ['files', 'Файлы'], ['announcements', 'Объявления'], ['webhooks', 'Вебхуки'], ['modules', 'Модули'], ...(ADMIN_CALLS.on ? [['calls', 'Звонки']] : [])]], ['Система', [['audit', 'Аудит-лог'], ['releases', 'Релизы']]]];
+  const u = currentUser || {}, me = u.display_name || u.username || '', dark = document.documentElement.dataset.theme !== 'light', t = SB.totp;
+  const st = !t ? '' : t.totp_required ? (t.totp_configured ? 'вкл' : 'ждёт настройки') : 'выкл';
+  const chev = '<svg class="mm-ch" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>';
   document.getElementById('page-body').innerHTML = `<div class="mm">
-    <div class="mm-list">${rows.map(([k, n]) => {
+    <div class="mm-card mm-me">
+      <div class="mm-who"><span class="mm-av">${avHtml(me, 44, 18, u.id, false, true)}</span><span class="mm-t"><b>${esc(me)}</b><small>${u.username ? '@' + esc(u.username) : 'администратор'}</small></span></div>
+      <div class="mm-set"><span class="mm-t">Тема</span><div class="sb-th" role="group" aria-label="Тема"><button type="button" data-on-click="sbTheme" data-a-click='["light"]' aria-pressed="${!dark}">Светлая</button><button type="button" data-on-click="sbTheme" data-a-click='["dark"]' aria-pressed="${dark}">Тёмно-синяя</button></div></div>
+      <button type="button" class="mm-row" data-on-click="sb2fa">${SB_I.key}<span class="mm-t">Двухфакторная защита</span>${st ? `<span class="mm-n">${st}</span>` : ''}${chev}</button>
+      <button type="button" class="mm-row bad" data-on-click="logout">${SB_I.out}<span class="mm-t">Выйти</span></button>
+    </div>
+    ${groups.map(([title, rows]) => `<div class="mm-grp"><h4>${title}</h4><div class="mm-card">${rows.map(([k, n]) => {
       const ico = document.querySelector(`.nav-item[data-page="${k}"] svg`)?.outerHTML || '', b = document.getElementById('nb-' + k)?.textContent;
-      return `<button type="button" class="mm-row" data-on-click="nav" data-a-click="${esc(JSON.stringify([`${k}`]))}"><span class="mm-ic">${ico}</span><span class="mm-t">${n}</span>${b && b !== '—' && b !== '0' ? `<span class="mm-n">${esc(b)}</span>` : ''}<svg class="mm-ch" width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>`;
-    }).join('')}</div>
-    <div class="mm-card">
-      <div class="mm-set"><span class="mm-t">Тёмная тема</span><button type="button" class="mm-tg" role="switch" aria-checked="${document.documentElement.dataset.theme === 'dark'}" data-on-click="__h14"></button></div>
-      <div class="mm-set"><span class="mm-t">${esc(me)}<small>учётная запись администратора</small></span><button type="button" class="btn btn-danger btn-sm" data-on-click="logout">Выйти</button></div>
-    </div></div>`;
+      return `<button type="button" class="mm-row" data-on-click="nav" data-a-click="${esc(JSON.stringify([`${k}`]))}"><span class="mm-ic">${ico}</span><span class="mm-t">${n}</span>${b && b !== '—' && b !== '0' ? `<span class="mm-n">${esc(b)}</span>` : ''}${chev}</button>`;
+    }).join('')}</div></div>`).join('')}</div>`;
+  if (!SB.totp) hmGet('/api/admin/users').then(us => { const m = Array.isArray(us) && us.find(x => x.id === currentUser?.id); if (m) { SB.totp = m; if (currentPage === 'more') renderMore(); } });
 }
 
 /* ── UPDATE NAV BADGES ── */
@@ -967,7 +993,7 @@ function hmRenderOnlineTile() {
     const d = cur - pts[0][8], ago = spanMin >= 55 ? 'час' : `${Math.round(spanMin)} мин`;
     hmHtml('dv-s-online', d === 0 ? `как и ${ago} назад` : `на <b>${Math.abs(d)}</b> ${d > 0 ? 'больше' : 'меньше'}, чем ${ago} назад`);
   } else hmHtml('dv-s-online', `подключений: <b>${hmFmt(HM.ws ?? 0)}</b>`);
-  hmHtml('dv-g-online', hmSpark(hmDown(pts.map(r => r[8]), 90, 'avg'), 'var(--dv-c1)'));
+  hmHtml('dv-g-online', hmSpark(hmDown(pts.map(r => r[8]), 90, 'avg'), 'var(--accent)'));
 }
 
 // Мини-график: линия с заливкой по последним значениям; растягивается на всю плитку
@@ -996,7 +1022,7 @@ function hmRenderChron() {
   const seen = [], out = [];
   for (const it of items) { if (seen.some(t => Math.abs(t - it.t) < 90e3 && it.ic === '▲')) continue; if (it.ic === '▲') seen.push(it.t); out.push(it); }
   const label = ts => day(ts) === new Date().toDateString() ? hmClock(ts) : hmPad(new Date(ts).getDate()) + '.' + hmPad(new Date(ts).getMonth() + 1);
-  el.innerHTML = out.slice(0, 7).map(it => `<div class="dv-ev"><span class="dv-ev-t">${label(it.t)}</span><span class="dv-ev-i ${it.kind}">${it.ic}</span><span class="dv-ev-x">${it.text}${it.sub ? `<small>${it.sub}</small>` : ''}</span></div>`).join('')
+  el.innerHTML = out.slice(0, 7).map(it => `<div class="dv-ev"><span class="dv-ev-t">${label(it.t)}</span><span class="dv-ev-i ${it.kind}">${xi(HM_CHI[it.ic] || 'act', 14, 'currentColor', 2)}</span><span class="dv-ev-x">${it.text}${it.sub ? `<small>${it.sub}</small>` : ''}</span></div>`).join('')
     || '<div class="dv-empty">Событий пока нет</div>';
 }
 
@@ -1023,7 +1049,6 @@ function svcRowHtml(k, name, act) {
             <div class="dv-sub sv-meta" id="hm-m-${k}-meta">&nbsp;</div>
           </div>`;
 }
-const pgSince = ts => (ts ? `${new Date(ts).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} в ${hmClock(ts)}` : '—');
 function hmRenderPg() {
   const o = HM.overview, pg = o?.pg;
   const one = $hm('hm-svc-one'), many = $hm('hm-svc-many'), card = $hm('dv-db');
@@ -1182,7 +1207,7 @@ function hmRenderOverview() {
 
 
 // ── Живые графики ──
-const HM_GIB = 1073741824, HM_MIB = 1048576;
+const HM_GIB = 1073741824;
 const hmMemTotal = () => HM.live.mem?.total || HM.overview?.host.memTotal || HM_GIB;
 
 function hmRenderHeadlines() {
@@ -1193,11 +1218,11 @@ function hmRenderHeadlines() {
   // Плитки «Процессор» и «Отклик» с мини-графиком по накопленным точкам
   hmHtml('dv-v-cpu', `${hmFmt(s[1], 1)}<small>%</small>`);
   hmHtml('dv-s-cpu', live.load ? `Load average <b>${live.load.map(v => hmFmt(v, 2)).join(' · ')}</b> на ${HM.cores} ${hmPlural(HM.cores, 'ядро', 'ядра', 'ядер')}` : '&nbsp;');
-  hmHtml('dv-g-cpu', hmSpark(hmDown(HM.samples.map(r => r[1]), 90, 'avg'), 'var(--dv-c3)', { smooth: true }));
+  hmHtml('dv-g-cpu', hmSpark(hmDown(HM.samples.map(r => r[1]), 90, 'avg'), 'var(--accent)', { smooth: true }));
   hmHtml('dv-v-lag', `${hmFmt(s[7])}<small>мс</small>`);
   const lagVals = HM.samples.map(r => r[7]).filter(v => v != null), lagPeak = Math.max(0, ...lagVals), lagOver = lagVals.filter(v => v > LAG_LIM).length;
   hmHtml('dv-s-lag', lagOver ? `<b style="color:var(--dv-bad)">выше нормы ${hmDurText(lagOver * 2000)}</b> · макс ${hmFmt(lagPeak)} мс за час` : (lagVals.length ? `в норме (до ${LAG_LIM} мс), макс <b>${hmFmt(lagPeak)} мс</b> за час` : '&nbsp;'));
-  hmHtml('dv-g-lag', hmSpark(hmDown(HM.samples.map(r => r[7]), 90, 'max'), 'var(--dv-c5)', { smooth: true, lim: LAG_LIM }));
+  hmHtml('dv-g-lag', hmSpark(hmDown(HM.samples.map(r => r[7]), 90, 'max'), 'var(--accent)', { smooth: true, lim: LAG_LIM }));
 
   hmRenderOnlineTile();
 
@@ -1265,21 +1290,6 @@ function hmStartMonitor() {
 }
 function hmStopMonitor() { clearInterval(HM.timer); HM.timer = null; }
 
-// Плашка активного пункта — двигаем transform'ом между реальными координатами кнопок
-// (а не CSS-переключением фона), с отскоком, как в таб-баре мобильного клиента.
-function hmSyncSegHl(seg, hl, animate = true) {
-  if (!seg || !hl) return;
-  const btn = seg.querySelector('button[aria-pressed="true"]');
-  if (!btn) return;
-  const segRect = seg.getBoundingClientRect();
-  const btnRect = btn.getBoundingClientRect();
-  if (!btnRect.width) return;
-  if (!animate) hl.style.transition = 'none';
-  hl.style.width = btnRect.width + 'px';
-  hl.style.transform = `translateX(${(btnRect.left - segRect.left).toFixed(2)}px)`;
-  if (!animate) { void hl.offsetWidth; hl.style.transition = ''; }
-}
-
 /* ── ГЛАВНАЯ: ТАЙМЛАЙН СОБЫТИЙ, РАСКРЫТИЕ ПЛИТОК ── */
 // Плитка «События за час» заменила «Сообщения за 24 часа»: столбики сообщений по пять минут и значки событий
 // (обновления и перезапуски сервера, системные сообщения). Любая из четырёх плиток раскрывается на всю ширину:
@@ -1289,9 +1299,9 @@ function hmSyncSegHl(seg, hl, animate = true) {
 
 const LAG_LIM = 50;   // граница нормального отклика, мс
 const XT = {
-  msg: { n: 'Сообщения', c: 'var(--dv-c2)' },
+  msg: { n: 'Сообщения', c: 'var(--accent)' },
   upd: { n: 'Обновления и перезапуски', c: 'var(--dv-ok)' },
-  sys: { n: 'Системные сообщения', c: 'var(--dv-bad)' },
+  sys: { n: 'Системные сообщения', c: 'var(--warn)' },
 };
 const XI = {
   upd: '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>',
@@ -1302,16 +1312,22 @@ const XI = {
   up: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
   chk: '<polyline class="xh-tk" points="20 6 9 17 4 12"/>',
   warn: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  act: '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+  pwr: '<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>',
+  dl: '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
 };
+// значки хроники (Lucide) по условным меткам событий
+const HM_CHI = { '●': 'act', '!': 'shield', '↻': 'upd', '▲': 'pwr', '◼': 'dl' };
 const xi = (k, s = 12, col = '#fff', sw = 2.6, cls = '') => `<svg class="${cls}" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${XI[k]}</svg>`;
 
 const XTABS = {
-  online: { n: 'Сейчас в сети', short: 'В сети', c: 'var(--dv-c1)', key: 'online', col: 8, fmt: v => hmFmt(v) },
-  ev: { n: 'События', short: 'События', c: 'var(--dv-c2)' },
-  cpu: { n: 'Процессор', short: 'Процессор', c: 'var(--dv-c3)', key: 'cpu', col: 1, smooth: true, fmt: v => hmFmt(v, 1) + ' %' },
-  lag: { n: 'Отклик сервера', short: 'Отклик', c: 'var(--dv-c5)', key: 'lag', col: 7, smooth: true, lim: LAG_LIM, fmt: v => hmFmt(v) + ' мс' },
+  online: { n: 'Сейчас в сети', short: 'В сети', c: 'var(--accent)', key: 'online', col: 8, fmt: v => hmFmt(v) },
+  ev: { n: 'События', short: 'События', c: 'var(--accent)' },
+  cpu: { n: 'Процессор', short: 'Процессор', c: 'var(--accent)', key: 'cpu', col: 1, smooth: true, fmt: v => hmFmt(v, 1) + ' %' },
+  lag: { n: 'Отклик сервера', short: 'Отклик', c: 'var(--accent)', key: 'lag', col: 7, smooth: true, lim: LAG_LIM, fmt: v => hmFmt(v) + ' мс' },
 };
-const XP = { open: false, tab: 'ev', range: '24h', types: { msg: true, upd: true, sys: true }, hover: null, all: false, g: null, events: [], req: 0, ox: 0 };
+const XP = { open: false, tab: 'ev', range: '24h', types: { msg: true, upd: true, sys: true }, hover: null, all: false, g: null, events: [], req: 0 };
 try { const r = localStorage.getItem('hm-msg-range'); if (['24h', '7d', '30d', '1y'].includes(r)) XP.range = r; } catch {}
 const XRANGE = { '24h': 'Сутки', '7d': 'Неделя', '30d': 'Месяц', '1y': 'Год' };
 const XSPAN = { '24h': 25 * 3600e3, '7d': 8 * 86400e3, '30d': 31 * 86400e3, '1y': 400 * 86400e3 };
@@ -1351,7 +1367,7 @@ function hmSpark(vals, color, o = {}) {
       + `<path d="${area}" fill="var(--dv-bad)" opacity=".3" clip-path="url(#c${id})"/><path d="${d}" fill="none" stroke="var(--dv-bad)" stroke-width="2.4" stroke-linejoin="round" vector-effect="non-scaling-stroke" clip-path="url(#c${id})"/>`;
     if (v[n - 1] > o.lim) endC = 'var(--dv-bad)';
   }
-  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs><path d="${area}" fill="url(#${id})"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>${over}<circle cx="${x(n - 1)}" cy="${y(v[n - 1])}" r="3" fill="${endC}"/></svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${area}" fill="${color}" opacity=".13"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>${over}<circle cx="${x(n - 1)}" cy="${y(v[n - 1])}" r="3" fill="${endC}"/></svg>`;
 }
 // Выходы отклика за границу нормы: непрерывные участки точек выше неё
 function hmOverRuns(vals, lim) {
@@ -1475,7 +1491,7 @@ function xpTabValue(k) {
   return live ? hmFmt(live[7]) + ' мс' : '—';
 }
 function xpPanelHtml() {
-  return `<section class="hm-panel xp" style="--ox:${XP.ox}px" aria-label="Подробный график">
+  return `<section class="hm-panel xp" aria-label="Подробный график">
     <div class="xp-head">
       <div class="xp-tabs" role="tablist">${['online', 'ev', 'cpu', 'lag'].map(k => `<button type="button" class="xp-tab" role="tab" aria-selected="${XP.tab === k}" data-xtab="${k}">${XTABS[k].short}<b>${xpTabValue(k)}</b></button>`).join('')}</div>
       <div class="xp-seg" role="group" aria-label="Период">${Object.entries(XRANGE).map(([k, n]) => `<button type="button" aria-pressed="${XP.range === k}" data-xrange="${k}">${n}</button>`).join('')}</div>
@@ -1715,9 +1731,9 @@ async function renderDashboard() {
   hmStopMonitor();
   const I = HM_ICON;
   setTopbarActions(`
-    <button class="btn btn-ghost btn-sm" data-on-click="openCreateUser">${I.user}Создать пользователя</button>
-    <button class="btn btn-ghost btn-sm" data-on-click="openCreateRoom">${I.room}Создать комнату</button>
-    <button class="btn btn-ghost btn-sm" data-on-click="openAnnouncementModal">${I.ann}Объявление</button>
+    <button class="btn" data-on-click="openCreateUser">${I.user}Создать пользователя</button>
+    <button class="btn" data-on-click="openCreateRoom">${I.room}Создать комнату</button>
+    <button class="btn" data-on-click="openAnnouncementModal">${I.ann}Объявление</button>
   `);
   document.getElementById('page-body').innerHTML = `
   <div class="hm dv" id="hm">
@@ -1847,7 +1863,16 @@ function hostProg() {
   hmText('xh-pct', HOST.pct + '%');
   hmText('xh-sub', HOST.sub);
 }
-function hmSetDot() { const d = $hm('hm-dot'), x = HM.dot; if (d && x) { d.className = 'xh-dot ' + x.lv; d.title = x.text; } }
+function hmSetDot() { const d = $hm('hm-dot'), x = HM.dot; if (d && x) { d.className = 'xh-dot ' + x.lv; d.title = x.text; } topState(); }
+// Общий статус в верхней строке главной: тот же уровень, что у точки рядом с именем сервера
+function topState() {
+  const el = document.getElementById('top-state'); if (!el) return;
+  const x = HM.dot;
+  if (currentPage !== 'dashboard' || !x || x.lv === 'muted') { el.hidden = true; return; }
+  el.hidden = false; el.dataset.lv = x.lv;
+  const h = `<i></i>${esc(x.text)}`;
+  if (el._h !== h) { el._h = h; el.innerHTML = h; }
+}
 
 // События «найдено» и «начато» сразу попадают в хронику; завершение в ней и так есть (запуск службы)
 function hmLocalEv(text, kind) {
@@ -2075,15 +2100,14 @@ async function swBackup() {
   hmLoadOverview();
 }
 
-const SW_SEV = { bad: 'var(--dv-bad)', warn: 'var(--dv-warn)', info: 'var(--dv-c2)' };
 const SW_SYM = { bad: '!', warn: '!', info: 'i' };
 function swBody(att) {
   if (SW.tab === 'att') {
     const { items, ok } = att, shown = SW.all ? items : items.slice(0, 4);
     const list = items.length
-      ? `<div class="xs-att">${shown.map((i, k) => `<div class="xs-ar"><span class="xs-ai" style="background:${SW_SEV[i.s]}">${SW_SYM[i.s]}</span><div class="xs-m"><b>${i.t}</b><div class="dv-sub">${i.d}</div></div>${i.b ? `<button type="button" class="btn" data-sw-go="${k}">${i.b}</button>` : ''}</div>`).join('')}</div>${items.length > 4 ? `<button type="button" class="xs-lnk" data-sw-all>${SW.all ? 'Свернуть' : 'Ещё ' + (items.length - 4)}</button>` : ''}`
-      : `<div class="xs-calm"><span class="xs-ai" style="background:var(--dv-ok)">✓</span><div><b>Всё в порядке</b><div class="dv-sub">Клиенты обновлены, копии свежие, отклик в норме</div></div></div>`;
-    return list + `<div class="dv-chips xs-bt">${ok.map(x => `<span class="dv-chip"><span style="color:var(--dv-ok)">✓</span> ${esc(x)}</span>`).join('')}</div>`;
+      ? `<div class="xs-att">${shown.map((i, k) => `<div class="xs-ar"><span class="xs-ai" data-s="${i.s}">${SW_SYM[i.s]}</span><div class="xs-m"><b>${i.t}</b><div class="dv-sub">${i.d}</div></div>${i.b ? `<button type="button" class="btn" data-sw-go="${k}">${i.b}</button>` : ''}</div>`).join('')}</div>${items.length > 4 ? `<button type="button" class="xs-lnk" data-sw-all>${SW.all ? 'Свернуть' : 'Ещё ' + (items.length - 4)}</button>` : ''}`
+      : `<div class="xs-calm"><span class="xs-ai" data-s="ok">✓</span><div><b>Всё в порядке</b><div class="dv-sub">Клиенты обновлены, копии свежие, отклик в норме</div></div></div>`;
+    return list + `<div class="dv-chips xs-bt">${ok.map(x => `<span class="dv-chip ok">${HM_ICON.tick}${esc(x)}</span>`).join('')}</div>`;
   }
   if (SW.tab === 'who') {
     const o = HM.overview?.online || [];
@@ -2158,11 +2182,6 @@ const RM_I = {
 const rmFmt = n => Number(n || 0).toLocaleString('ru-RU');
 const rmMsgs = n => `${rmFmt(n)} ${uxPlural(n, 'сообщение', 'сообщения', 'сообщений')}`;
 const rmLast = ts => ts ? uaSeen(ts) : 'сообщений нет';
-// Участники — с настоящими фото: avHtml показывает фото, а под ним буквы на случай, если его нет
-const rmStack = (members, max = 4) => members.length
-  ? `<span class="rm-stack">${members.slice(0, max).map(m => avHtml(m.name, 24, 7, m.id, false, m.has_avatar)).join('')}${members.length > max ? `<span class="more">+${members.length - max}</span>` : `<span class="more">${members.length}</span>`}</span>`
-  : '<span class="rm-sub">никого</span>';
-const rmSpark = w => `<span class="rm-spark" title="Сообщения по дням за неделю: ${w.join(', ')}">${w.map(n => `<i style="height:${Math.max(1, Math.round(n / Math.max(1, ...w) * 16))}px"></i>`).join('')}</span>`;
 const rmWeek = r => r.week.reduce((a, b) => a + b, 0);
 
 async function renderRooms() {
@@ -2333,7 +2352,6 @@ async function rmOpen(id, tab = 'main') {
     pending: r ? ((await api('GET', `/api/admin/chats/${r.id}/pending`)) || []) : [],
     mq: '', mf: 'all', mg: '', mlimit: 60, menu: false, renaming: null, busy: false, err: '',
   };
-  PK.ctx = null;
   rmRenderForm(tab === 'topics' ? 'rm-nt' : tab === 'members' ? 'rm-mq' : 'rm-name');
   openModal('modal-room');
 }
@@ -2429,7 +2447,6 @@ function rmMenuHtml(f, r) {
     <button type="button" role="menuitem" data-on-click="__h29" data-a-click="${esc(JSON.stringify([r.id]))}">${RM_I.clear}Очистить историю…</button>
     <button type="button" role="menuitem" class="d" data-on-click="__h30" data-a-click="${esc(JSON.stringify([r.id]))}">${UX_I.trash}Удалить комнату…</button></div>`;
 }
-const rmMore = id => { rmSetTab(id === 't' ? 'topics' : id === 'm' ? 'members' : 'main'); };
 function rmFootSync() {
   const f = RM.form; if (!f) return;
   const miss = f.name.trim() ? [] : ['название'], n = document.getElementById('rm-note'), b = document.getElementById('rm-go');
@@ -2441,6 +2458,7 @@ function rmSetReadOnly(el) { RM.form.readOnly = el.checked; }
 function rmRenderForm(focusId) {
   const f = RM.form, el = document.getElementById('rm-form');
   if (!f || !el) return;
+  mdView(el, f.tab);
   const r = f.id ? allRooms.find(x => x.id === f.id) : null;
   const live = f.topics.filter(t => !t.removed).length, miss = f.name.trim() ? [] : ['название'];
   const tabs = [['main', 'Основное', ''], ['topics', 'Темы', live], ['members', 'Участники', f.members.size]];
@@ -3043,7 +3061,6 @@ function fmMoreHtml(prefix, open, toggleFn, secs) {
 }
 const fmScroll = id => setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 40);
 
-const PK = { ctx: null, host: null, q: '', f: 'all', g: '', limit: 40, groups: [] };
 const pkUsers = () => allUsersCache.filter(u => !u.banned).map(u => ({ id: u.id, name: u.display_name || u.username, sub: '@' + u.username + (WS.list.length > 1 && u.workspace_name ? ' · ' + (u.workspaces || [{ name: u.workspace_name }]).map(w => w.name).join(', ') : ''), tag: u.tag || '',
   av: avHtml(u.display_name || u.username, 26, 8, u.id, false, u.has_avatar) }));
 const pkChats = () => AN.chats.map(c => ({ id: c.id, name: chName(c), sub: c.type === 'room' ? 'комната' : c.type === 'direct' ? 'личный чат' : 'группа',
@@ -3053,74 +3070,6 @@ function pkCfg(ctx) {
   const chat = AN.form?.kind === 'chat';
   return { title: chat ? 'Куда отправить' : 'Кому отправить', people: !chat, items: chat ? pkChats : pkUsers, sel: () => AN.form.who, rerender: f => anRenderForm(f) };
 }
-const pkNoun = (c, n) => c.people ? uxPlural(n, 'человек', 'человека', 'человек') : uxPlural(n, 'чат', 'чата', 'чатов');
-function pkFound() {
-  const c = pkCfg(PK.ctx), sel = c.sel(), q = PK.q.trim().toLowerCase();
-  return c.items().filter(p => (!q || p.name.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q) || p.tag.toLowerCase().includes(q))
-    && (!PK.g || (p.tag || 'Без тега') === PK.g) && (PK.f === 'all' || (PK.f === 'sel') === sel.has(p.id)));
-}
-function pkSummary(ctx, label) {
-  const c = pkCfg(ctx), items = c.items(), sel = c.sel(), chosen = items.filter(p => sel.has(p.id));
-  const short = n => n.length > 22 ? n.slice(0, 21) + '…' : n;
-  const chips = chosen.slice(0, 5).map(p => `<span class="fm-chip static">${esc(short(p.name))}<button type="button" aria-label="Убрать" data-on-click="pkRm" data-a-click="${esc(JSON.stringify([`${ctx}`, p.id]))}">×</button></span>`).join('')
-    + (chosen.length > 5 ? `<button type="button" class="fm-chip cnt" data-on-click="pkOpen" data-a-click="${esc(JSON.stringify([`${ctx}`]))}">+${chosen.length - 5}</button>` : '');
-  return `<div class="fm-pick"><div class="fm-pickhead"><span class="fm-pill ${chosen.length ? 'on' : ''}">${chosen.length ? `${chosen.length} ${pkNoun(c, chosen.length)}` : 'никого'}</span><span class="ua-hint">из ${items.length}</span></div>
-    ${chips ? `<div class="fm-chips2">${chips}</div>` : ''}
-    <div class="fm-pickacts"><button type="button" class="btn ux-solid btn-sm" data-on-click="pkOpen" data-a-click="${esc(JSON.stringify([`${ctx}`]))}">${label}</button><button type="button" class="btn btn-ghost btn-sm" data-on-click="pkAll" data-a-click="${esc(JSON.stringify([`${ctx}`]))}">Добавить всех (${items.length})</button>${chosen.length ? `<button type="button" class="btn btn-ghost btn-sm" data-on-click="pkClear" data-a-click="${esc(JSON.stringify([`${ctx}`]))}">Очистить</button>` : ''}</div></div>`;
-}
-function pkSheet() {
-  if (!PK.ctx) return '';
-  const c = pkCfg(PK.ctx), items = c.items(), sel = c.sel();
-  const gm = new Map(); items.forEach(p => { const g = p.tag || 'Без тега'; gm.set(g, (gm.get(g) || 0) + 1); });
-  const groups = [...gm.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-  PK.groups = groups.map(g => g[0]);
-  if (PK.g && !PK.groups.includes(PK.g)) PK.g = '';
-  const found = pkFound(), shown = found.slice(0, PK.limit), allSel = found.length > 0 && found.every(p => sel.has(p.id));
-  const roomsCopy = PK.ctx === 'room' ? allRooms.filter(r => !RM.form.id || r.id !== RM.form.id) : [];
-  return `<div class="fm-sheet"><div class="fm-sh"><button type="button" class="modal-close" data-on-click="pkClose" aria-label="Назад">‹</button>
-    <div><div class="t">${c.title}</div><div class="s">${items.length} ${c.people ? 'людей' : 'чатов'}: найдите, отметьте, нажмите «Готово»</div></div><span class="fm-pill on" style="margin-left:auto">${sel.size}</span></div>
-    <div class="fm-tools"><label class="ux-search" style="min-width:0">${UX_I.search}<input id="pk-q" value="${esc(PK.q)}" placeholder="Имя, логин или тег" autocomplete="off" data-on-input="pkSearch" data-a-input='["__value"]'></label>
-      <div class="fm-grp" role="group" aria-label="Показать">${[['all', 'Все', items.length], ['sel', 'Выбранные', sel.size], ['unsel', 'Не выбранные', items.length - sel.size]].map(([v, l, n]) => `<button type="button" data-on-click="pkFilter" data-a-click="${esc(JSON.stringify([`${v}`]))}" aria-pressed="${PK.f === v}">${l}<small>${n}</small></button>`).join('')}</div>
-      ${groups.length > 1 ? `<div class="fm-grp" role="group" aria-label="Группа"><button type="button" data-on-click="pkGroup" data-a-click='[-1]' aria-pressed="${!PK.g}">Все группы</button>${groups.map((g, i) => `<button type="button" data-on-click="pkGroup" data-a-click="${esc(JSON.stringify([i]))}" aria-pressed="${PK.g === g[0]}">${esc(g[0])}<small>${g[1]}</small></button>`).join('')}</div>` : ''}
-      <div class="fm-acts"><button type="button" class="btn btn-ghost btn-sm" data-on-click="pkSelFound" ${found.length && !allSel ? '' : 'disabled'}>Выбрать найденных (${found.length})</button><button type="button" class="btn btn-ghost btn-sm" data-on-click="pkUnselFound" ${found.some(p => sel.has(p.id)) ? '' : 'disabled'}>Снять</button>
-        ${roomsCopy.length ? `<select aria-label="Добавить участников другой комнаты" title="Добавить участников другой комнаты" data-on-change="pkCopy" data-a-change='["__this"]'><option value="">Из комнаты…</option>${roomsCopy.map(r => `<option value="${r.id}">${esc(r.name)}</option>`).join('')}</select>` : ''}</div></div>
-    <div class="fm-list">${shown.map(p => `<button type="button" class="fm-li" aria-pressed="${sel.has(p.id)}" data-on-click="pkToggle" data-a-click="${esc(JSON.stringify([p.id]))}">${p.av}<span class="n">${esc(p.name)}<small>${esc(p.sub)}</small></span>${p.tag ? `<span class="tg2">${esc(p.tag)}</span>` : ''}<span class="ck">${sel.has(p.id) ? '✓' : ''}</span></button>`).join('') || '<div class="fm-empty">Ничего не найдено. Измените запрос или фильтр</div>'}
-      ${found.length > shown.length ? `<button type="button" class="btn btn-ghost btn-sm" style="align-self:center;margin:4px 0" data-on-click="pkMore">Показать ещё ${Math.min(40, found.length - shown.length)} из ${found.length - shown.length}</button>` : ''}</div>
-    <div class="fm-sf"><span class="fm-note">Выбрано <b>${sel.size}</b> из ${items.length}</span><button type="button" class="btn ux-solid" data-on-click="pkClose">Готово</button></div></div>`;
-}
-function pkRender(focusId, keep) {
-  const sc = keep ? document.querySelector('.fm-sheet .fm-list')?.scrollTop : 0;
-  pkCfg(PK.host).rerender(focusId);
-  if (keep && sc) { const l = document.querySelector('.fm-sheet .fm-list'); if (l) l.scrollTop = sc; }
-}
-function pkOpen(ctx) { Object.assign(PK, { ctx, host: ctx, q: '', f: 'all', g: '', limit: 40 }); pkRender('pk-q'); }
-function pkClose() {
-  const sh = document.querySelector('.fm-sheet');
-  if (!sh) { PK.ctx = null; pkRender(); return; }
-  if (sh.classList.contains('out')) return;
-  sh.classList.add('out');
-  setTimeout(() => { PK.ctx = null; pkRender(); }, 150);
-}
-function pkSearch(v) { PK.q = v; PK.limit = 40; pkRender('pk-q'); }
-function pkFilter(v) { PK.f = v; PK.limit = 40; pkRender(); }
-function pkGroup(i) { PK.g = i < 0 ? '' : PK.groups[i]; PK.limit = 40; pkRender(); }
-function pkToggle(id) { const sel = pkCfg(PK.ctx).sel(); sel.has(id) ? sel.delete(id) : sel.add(id); pkRender(null, true); }
-function pkSelFound() { const sel = pkCfg(PK.ctx).sel(); pkFound().forEach(p => sel.add(p.id)); pkRender(null, true); }
-function pkUnselFound() { const sel = pkCfg(PK.ctx).sel(); pkFound().forEach(p => sel.delete(p.id)); pkRender(null, true); }
-function pkMore() { PK.limit += 40; pkRender(null, true); }
-function pkAll(ctx) { const c = pkCfg(ctx), sel = c.sel(); c.items().forEach(p => sel.add(p.id)); PK.host = ctx; c.rerender(); }
-function pkClear(ctx) { const c = pkCfg(ctx); c.sel().clear(); PK.host = ctx; c.rerender(); }
-function pkRm(ctx, id) { const c = pkCfg(ctx); c.sel().delete(id); PK.host = ctx; c.rerender(); }
-async function pkCopy(el) {
-  const id = Number(el.value); el.value = '';
-  if (!id) return;
-  const members = (await api('GET', `/api/admin/chats/${id}/members`)) || [], sel = pkCfg(PK.ctx).sel();
-  members.forEach(m => sel.add(m.id));
-  toast(`Добавлены участники комнаты «${esc(allRooms.find(r => r.id === id)?.name || '')}»`, 'success');
-  pkRender(null, true);
-}
-// Escape закрывает лист выбора, а не всё окно
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && PK.ctx) { e.preventDefault(); e.stopImmediatePropagation(); pkClose(); } }, true);
 
 // ── Окно: добавление и изменение ──
 // Пространства человека (номера): у нового основное, у существующего его членства
@@ -4275,6 +4224,7 @@ function whHeadAv() {
 function whRenderForm(focusId) {
   const f = WH.form, el = document.getElementById('wh-form');
   if (!f || !el) return;
+  mdView(el, f.created ? 'done' : 'form');
   const close = `<button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-webhook"]'>✕</button>`;
   if (f.created) {
     const url = whUrl(f.created);
@@ -4379,7 +4329,6 @@ const ST_I = {
 const ST_EDIT = [[60, '1 мин'], [120, '2 мин'], [900, '15 мин'], [3600, '1 час'], [172800, '48 часов']];
 const ST_STATUS = [[0, 'Не хранить'], [1, '1 день'], [3, '3 дня'], [7, '7 дней'], [14, '14 дней'], [30, '30 дней']];
 const ST_LIFE = [[0, 'Всегда'], [30, '30 дней'], [90, '90 дней'], [365, '1 год']];
-const ST_FORM = { messages: ['edit', 'statusDays'], attachments: ['imgMax', 'imgExt', 'videoMax', 'videoExt', 'fileMax', 'fileExt', 'life'], backups: ['backupDays', 'backupTime', 'backupRetention'] };
 const ST_QUICK = { 'Документы': ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'], 'Архивы': ['zip', 'rar', '7z'] };
 const ST_KEYS = {
   edit: ['edit_time_limit', String], statusDays: ['status_window_days', String], imgMax: ['upload_image_max_size', String], imgExt: ['upload_image_extensions', v => v.join(',')],
@@ -4420,8 +4369,6 @@ function stFromSettings(s) {
 }
 
 
-const stChanged = () => ST.draft ? Object.entries(ST_FORM).flatMap(([sec, keys]) =>
-  keys.filter(k => JSON.stringify(ST.draft[k]) !== JSON.stringify(ST.saved[k])).map(k => ({ sec, k }))) : [];
 function stErrors() {
   const d = ST.draft, e = {};
   if (!(d.edit >= 10)) e.edit = 'Срок правки — не меньше 10 секунд';
@@ -4455,7 +4402,6 @@ function stNextBackupLabel() {
   }
   return '';
 }
-const stVersion = () => ST.stats?.serverVersion || '—';
 
 
 // ── Сообщения ──
@@ -4584,6 +4530,7 @@ function rsEff() {
 }
 function rsRender(keepScroll) {
   const box = document.getElementById('rs-box'); if (!box) return;
+  mdView(box, RS.step);
   const sc = keepScroll ? box.querySelector('.rs-b')?.scrollTop : 0;
   const head = (title, sub, close = true) => `<div class="rs-h"><span class="rs-ic">${rsIc('restore', 20)}</span><div class="rs-t"><h3>${title}</h3><div class="rs-sub">${sub}</div></div>${close ? `<button type="button" class="ux-ibtn" aria-label="Закрыть" data-on-click="rsClose">${rsIc('x', 14)}</button>` : ''}</div>`;
   const stepsHtml = (list) => `<div class="rs-steps">${list.map(([t, st]) => `<div class="rs-st ${st}"><span class="rs-dot">${st === 'done' ? rsIc('chk', 12, 3) : ''}</span>${t}</div>`).join('')}</div>`;
@@ -5064,6 +5011,7 @@ function pgiClose() {
 }
 function pgiRender() {
   const box = document.getElementById('pginst-box'); if (!box) return;
+  mdView(box, PGI.step);
   const j = PGI.job;
   if (PGI.step === 'confirm') {
     box.innerHTML = `<div class="modal-head"><h3>Установить PostgreSQL</h3><button class="modal-close" aria-label="Закрыть" data-on-click="pgiClose">✕</button></div>
@@ -5384,15 +5332,6 @@ function spCallsSide() {
     <p class="sp-sd">Без сертификата (ws://) звонки работают только в клиенте Electron. Для веб клиента и мобильного нужен wss:// с настоящим сертификатом.</p>
     <p class="sp-sd">Между серверами комната создаётся там, где сервер звонков доступен из интернета и разрешён второй стороне. Серверу за NAT публичный адрес не нужен: его люди подключаются к чужому наружу. Если публичного нет ни у кого, звонок невозможен.</p>`;
 }
-// В поле адреса вставили блок «Адрес / API key / Секрет» (его копирует другой сервер): раскладываем по полям
-function spCallsF(k, v) {
-  if (k === 'url' && /API\s*key\s*:/i.test(v)) {
-    const g = re => (re.exec(v) || [])[1] || '';
-    const url = g(/(?:Адрес|URL)\s*:\s*(\S+)/i), key = g(/API\s*key\s*:\s*(\S+)/i), sec = g(/(?:Секрет|Secret)\s*:\s*(\S+)/i);
-    if (url && key) { Object.assign(SP.calls.form, { url, key, secret: sec }); SP.calls.ok = 'Данные вставлены: нажмите «Проверить» и «Сохранить»'; SP.calls.err = ''; spRender(); return; }
-  }
-  SP.calls.form[k] = v;
-}
 /* ── Данные подключения для другого сервера ── */
 /* ── Порты сервера звонков ── */
 // Порты берёт установщик (server/livekit-setup.sh): сигнальный 7880, медиа 7881/tcp и 7882/udp, TURN 3478/udp и 5349/tcp
@@ -5442,6 +5381,7 @@ function lkpText() {
 async function lkpCopy() { try { await navigator.clipboard.writeText(lkpText()); toast('Список портов скопирован', 'success'); } catch { toast('Не удалось скопировать', 'error'); } }
 function lkpRender() {
   const box = document.getElementById('lkports-box'); if (!box) return;
+  mdView(box, LKP.tab);
   const d = LKP_DATA[LKP.tab], p = 'font-size:12.5px;color:var(--c-text2);line-height:1.7;margin:0';
   box.innerHTML = `<div class="modal-head"><h3>Порты для файрвола</h3><button class="modal-close" aria-label="Закрыть" data-on-click="lkpClose">✕</button></div>
     <div class="modal-body">
@@ -5461,6 +5401,7 @@ function lkcKey(ev) { if (ev.key === 'Enter') lkcGo(); }
 const lkcText = d => `Адрес: ${d.url}\nAPI key: ${d.key}\nСекрет: ${d.secret}`;
 function lkcRender() {
   const box = document.getElementById('lkcopy-box'); if (!box) return;
+  mdView(box, LKC.step);
   const p = 'font-size:12.5px;color:var(--c-text2);line-height:1.7;margin:0';
   if (LKC.step === 'pw') {
     box.innerHTML = `<div class="modal-head"><h3>Данные подключения</h3><button class="modal-close" aria-label="Закрыть" data-on-click="lkcClose">✕</button></div>
@@ -5509,13 +5450,6 @@ function spCallsTest() {
     else SP.calls.err = r?.error || 'Не удалось проверить подключение';
   });
 }
-function spCallsSave() {
-  return spCallsRun('save', async () => {
-    const r = await api('PUT', '/api/admin/calls', spCallsBody());
-    if (r?.error) { SP.calls.err = r.error; return; }
-    SP.calls.cfg = r; SP.calls.form.secret = ''; SP.calls.ok = 'Сохранено'; toast('Настройки звонков сохранены', 'success');
-  });
-}
 function spCallsOn(on) {
   return spCallsRun('on', async () => {
     const r = await api('PUT', '/api/admin/calls', { ...spCallsBody(), enabled: !!on });
@@ -5548,6 +5482,7 @@ async function lkiClose() {
 function lkiHead(t, x = true) { return `<div class="modal-head"><h3>${t}</h3>${x ? '<button class="modal-close" aria-label="Закрыть" data-on-click="lkiClose">✕</button>' : ''}</div>`; }
 function lkiRender() {
   const box = document.getElementById('lkinst-box'); if (!box) return;
+  mdView(box, LKI.step);
   const f = LKI.f, j = LKI.job, p = 'font-size:12.5px;color:var(--c-text2);line-height:1.7;margin:0';
   const inp = (id, label, k, type = 'text', ph = '', extra = '') => `<div class="fg" ${extra}><label>${label}</label><input id="${id}" type="${type}" value="${esc(f[k])}" placeholder="${esc(ph)}" autocomplete="off" spellcheck="false" data-on-input="lkiF" data-a-input="${esc(JSON.stringify([k, '__value']))}"></div>`;
   if (LKI.step === 'form') {
@@ -5865,7 +5800,7 @@ function wsRender() {
           : '<div class="fd-hint">Нет серверов, которых можно добавить: подключите ещё сервер в разделе «Федерации».</div>'}</div>` : ''}</div>`;
   }
   document.getElementById('page-body').innerHTML = `<div class="ux-page">
-    <div><div style="font-size:17px;font-weight:700">Пространства</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Люди видят друг друга, если у них есть общее пространство. Человек может состоять в нескольких. Если общего нет, связать их можно через контакты, группы и комнаты. Пространства человека выбираются в его профиле. Пространство можно сделать общим для нескольких серверов федерации: люди всех серверов в нём видят друг друга.</div></div>
+    <div class="pg-hd"><div class="pg-hd-t">Пространства</div><div class="pg-hd-s">Люди видят друг друга, если у них есть общее пространство. Человек может состоять в нескольких. Если общего нет, связать их можно через контакты, группы и комнаты. Пространства человека выбираются в его профиле. Пространство можно сделать общим для нескольких серверов федерации: люди всех серверов в нём видят друг друга.</div></div>
     ${WS.offers.map((o, i) => `<div class="card wsf-offer"><div class="wsf-ot"><b>«${esc(o.from_name)}» предлагает общее пространство «${esc(o.name)}»</b><span>Хозяин: ${esc(o.host_name)}. Серверы в пространстве: ${o.servers.map(esc).join(', ')}. Ваши люди увидят людей этих серверов, а они ваших, но только тех, кого вы сами добавите в это пространство. Название пространства задаёт хозяин.</span>
       <span class="wsf-att">${uxSelHtml('wsf-att-' + i, [{ v: '', t: 'Создать новое пространство' }, ...(o.local || []).map(l => ({ v: String(l.id), t: `Объединить с моим «${l.name}»`, s: `${l.users} ${uxPlural(l.users, 'человек', 'человека', 'человек')}` }))], o.same ? String(o.same) : '', 'Что сделать с пространством')}</span>
       ${o.same ? '<span>У вас уже есть пространство с таким названием: при объединении оно станет общим, его люди сразу попадут в общее пространство.</span>' : ''}</div>
@@ -6029,6 +5964,7 @@ const lkkInp = (id, label, v, type, ph, on, extra = '') => `<div class="fg" ${ex
 const lkkApwF = () => lkkInp('lkk-apw', 'Ваш пароль администратора', LKK.apw, 'password', '••••••••', ['lkkF', ['apw', '__value']]);
 function lkkRender() {
   const box = document.getElementById('lkkeys-box'); if (!box) return;
+  mdView(box, LKK.m);
   const m = LKK.m, d = LKK.d, err = `<div class="err">${esc(LKK.err)}</div>`;
   const foot = (a, b) => `<div class="modal-foot">${a}${b}</div>`;
   const cancel = '<button class="btn btn-ghost" data-on-click="lkkClose">Отмена</button>';
@@ -6431,7 +6367,7 @@ function fdRender() {
       </div></div>`;
   const q = FD.peers.reduce((a, p) => a + p.queue, 0);
   document.getElementById('page-body').innerHTML = `<div class="ux-page">
-    <div><div style="font-size:17px;font-weight:700">Федерации</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Соединения с другими серверами. Люди оттуда добавляются в контакты по адресу «@сервер:логин» и пишут в личные чаты. Пространство можно сделать общим для нескольких серверов: на странице «Пространства».</div></div>
+    <div class="pg-hd"><div class="pg-hd-t">Федерации</div><div class="pg-hd-s">Соединения с другими серверами. Люди оттуда добавляются в контакты по адресу «@сервер:логин» и пишут в личные чаты. Пространство можно сделать общим для нескольких серверов: на странице «Пространства».</div></div>
     ${fdTabs()}
     <div class="fd-cols">
       <div class="card fd-card"><div class="fd-head">Соединения <span class="fd-n">${FD.peers.length}</span>${q ? `<span class="fd-qh">в очереди: ${q}</span>` : ''}</div>${fdPeers()}</div>
@@ -6530,6 +6466,7 @@ async function fdGroupsIn(on) {
 }
 // Окно: заголовок, тело, кнопки в подвале
 function fdModal(title, body, foot) {
+  mdView(document.querySelector('#modal-fed .modal'), title);
   document.getElementById('fd-title').textContent = title;
   document.getElementById('fd-body').innerHTML = body;
   document.getElementById('fd-foot').innerHTML = foot;
@@ -6538,8 +6475,8 @@ function fdModal(title, body, foot) {
 const fdCancel = '<button class="btn btn-ghost" data-on-click="__h94">Отмена</button>';
 function fdChoose() {
   if (!FD.me?.configured) { toast('Сначала задайте идентификатор сервера', 'error'); return; }
-  fdModal('Подключить сервер', `<button class="fd-opt" type="button" data-on-click="fdMake"><div style="font-size:20px">🔑</div><div><b>Создать ключ активации</b><span>Вы передаёте ключ администратору другого сервера. Подходит, если ваш сервер доступен снаружи.</span></div></button>
-    <button class="fd-opt" type="button" data-on-click="fdEnter"><div style="font-size:20px">📥</div><div><b>У меня есть ключ</b><span>Вставьте ключ, полученный от партнёра. Подключаться будете вы, поэтому открытый адрес у вас не нужен.</span></div></button>`, fdCancel);
+  fdModal('Подключить сервер', `<button class="fd-opt" type="button" data-on-click="fdMake"><span class="fd-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg></span><div><b>Создать ключ активации</b><span>Вы передаёте ключ администратору другого сервера. Подходит, если ваш сервер доступен снаружи.</span></div></button>
+    <button class="fd-opt" type="button" data-on-click="fdEnter"><span class="fd-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg></span><div><b>У меня есть ключ</b><span>Вставьте ключ, полученный от партнёра. Подключаться будете вы, поэтому открытый адрес у вас не нужен.</span></div></button>`, fdCancel);
 }
 async function fdMake() {
   const r = await api('POST', '/api/admin/federation/invites');
@@ -6604,7 +6541,7 @@ function fdDelete(i) {
 const FM = { data: null, pos: {}, sel: null, selLink: null, space: 'all', k: 1, tx: 20, ty: 20, timer: null, drag: null, fitted: false };
 try { FM.pos = JSON.parse(localStorage.getItem('fm-pos') || '{}') || {}; } catch {}
 const FM_W = 188, FM_H = 64;
-const FM_COL = ['var(--dv-c1)', 'var(--dv-c2)', 'var(--dv-c3)', 'var(--dv-c5)', 'var(--dv-c4)', '#12a672'];
+const FM_COL = ['var(--dv-c1)', 'var(--dv-c2)', 'var(--dv-c3)', 'var(--dv-c5)', 'var(--dv-c4)', 'var(--ok)'];
 const FM_SRV = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>';
 function fdTabs() {
   return `<div class="fm-tabs" role="tablist"><button type="button" aria-pressed="${FD.tab !== 'map'}" data-on-click="fdTab" data-a-click='["list"]'>Подключения</button><button type="button" aria-pressed="${FD.tab === 'map'}" data-on-click="fdTab" data-a-click='["map"]'>Карта</button></div>`;
@@ -6616,7 +6553,7 @@ function fdTab(t) {
 }
 async function renderMap() {
   if (currentPage !== 'federation') return;
-  document.getElementById('page-body').innerHTML = `<div class="ux-page"><div><div style="font-size:17px;font-weight:700">Федерации</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Карта подключений и общих пространств. Серверы можно двигать, колесо мыши меняет масштаб, фон двигается перетаскиванием.</div></div>${fdTabs()}<div class="ux-empty">Загрузка…</div></div>`;
+  document.getElementById('page-body').innerHTML = `<div class="ux-page"><div class="pg-hd"><div class="pg-hd-t">Федерации</div><div class="pg-hd-s">Карта подключений и общих пространств. Серверы можно двигать, колесо мыши меняет масштаб, фон двигается перетаскиванием.</div></div>${fdTabs()}<div class="ux-empty">Загрузка…</div></div>`;
   await fmLoad();
   if (currentPage !== 'federation' || FD.tab !== 'map') return;
   fmPage();
@@ -6665,7 +6602,7 @@ function fmPage() {
     document.getElementById('page-body').innerHTML = `<div class="ux-page"><div><div style="font-size:17px;font-weight:700">Федерации</div></div>${fdTabs()}<div class="card"><div class="fd-empty"><div><b>Федерация не настроена</b><span>Задайте идентификатор сервера на вкладке «Подключения».</span></div></div></div></div>`;
     return;
   }
-  document.getElementById('page-body').innerHTML = `<div class="ux-page"><div><div style="font-size:17px;font-weight:700">Федерации</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Карта подключений и общих пространств. Серверы можно двигать, колесо мыши меняет масштаб, фон двигается перетаскиванием.</div></div>${fdTabs()}
+  document.getElementById('page-body').innerHTML = `<div class="ux-page"><div class="pg-hd"><div class="pg-hd-t">Федерации</div><div class="pg-hd-s">Карта подключений и общих пространств. Серверы можно двигать, колесо мыши меняет масштаб, фон двигается перетаскиванием.</div></div>${fdTabs()}
     <div class="fm-map"><div class="card fm-main"><div class="fm-tb" id="fm-tb"></div><div class="fm-stage" id="fm-stage"><div class="fm-world" id="fm-world"></div><div class="fm-lg"><span><i style="background:repeating-linear-gradient(90deg,var(--c-primary) 0 8px,transparent 8px 17px)"></i>подключение идёт от одного сервера к другому</span><span><i style="background:repeating-linear-gradient(90deg,var(--c-muted) 0 7px,transparent 7px 13px)"></i>нет связи</span><span><i style="height:5px;background:var(--c-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--c-primary) 20%,transparent)"></i>маршрут до выбранного</span></div></div></div>
     <aside class="fm-side" id="fm-side"></aside></div></div>`;
   const st = document.getElementById('fm-stage');
@@ -6894,7 +6831,7 @@ async function renderModules() {
 function mdRender() {
   if (currentPage !== 'modules') return;
   document.getElementById('page-body').innerHTML = `<div class="ux-page">
-    <div><div style="font-size:17px;font-weight:700">Модули</div><div style="margin-top:2px;font-size:12.5px;color:var(--c-text2)">Дополнительные возможности. Включённый модуль становится доступен пользователям в настройках клиента, и каждый включает его у себя сам.</div></div>
+    <div class="pg-hd"><div class="pg-hd-t">Модули</div><div class="pg-hd-s">Дополнительные возможности. Включённый модуль становится доступен пользователям в настройках клиента, и каждый включает его у себя сам.</div></div>
     ${MOD.list.map(m => { const st = m.stats || {}, bc = st.byClient || {};
       return `<div class="card"><div class="mdl-card"><div class="mdl-ico${/^[A-Za-z]/.test(m.icon || '') ? ' t' : ''}">${esc(m.icon || '🧩')}</div>
         <div class="mdl-tx"><b>${esc(m.title)}</b><span>${esc(m.description)}${m.needsDownload ? ` Набор: ${mdNum(m.count)} файлов, около ${mdBytes(m.bytes)}, лежит на сервере.` : ''}</span></div>
@@ -7011,13 +6948,12 @@ const FL_I = {
   mic: flSvg('<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>'),
   lock: flSvg('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
 };
-const FL_PLAY = '<span class="fl-play"><svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><polygon points="6 3 20 12 6 21 6 3"/></svg></span>';
 const FL_EXT = {
   image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'heic', 'avif', 'bmp'],
   video: ['mp4', 'mov', 'webm', 'mkv', 'avi', 'm4v'],
   doc: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'odt', 'ods', 'odp', 'csv', 'md'],
 };
-const FL_KIND = { voice: ['Голосовое', '#8b5cf6'], image: ['Картинка', '#3a4fff'], doc: ['Документ', '#8b5cf6'], video: ['Видео', '#c2478a'], other: ['Файл', '#d98a0b'], encrypted: ['Зашифровано', '#8a97a8'] };
+const FL_KIND = { voice: ['Голосовое', 'var(--accent-fill)'], image: ['Картинка', 'var(--dv-c1)'], doc: ['Документ', 'var(--dv-c2)'], video: ['Видео', 'var(--dv-c5)'], other: ['Файл', 'var(--dv-c3)'], encrypted: ['Зашифровано', 'var(--dv-c4)'] };
 const FL_BIG = 20 * 1048576;
 const flExt = f => (String(f.filename).includes('.') ? String(f.filename).split('.').pop() : '').toLowerCase();
 function flKind(f) {
@@ -7029,15 +6965,12 @@ function flKind(f) {
   if (FL_EXT.doc.includes(ext)) return 'doc';
   return 'other';
 }
-const flUrl = name => '/files/' + encodeURIComponent(name);
 const flShort = name => name.length > 42 ? name.slice(0, 40) + '…' : name;
 // Имя на диске — служебное (метка времени + случайный суффикс), человеку показываем
 // то, что он реально загрузил; у файлов без сообщения оригинала не сохранилось
 const flName = f => f.encrypted ? 'Зашифрованный файл' : f.voice ? 'Голосовое сообщение' : (f.name || f.filename);
 // Голосовые видны в списке, но ни прослушать, ни скачать их из админки нельзя (как и зашифрованные)
 const flMeta = (f, kind) => kind === 'voice' ? `Голосовое · ${Math.floor((f.voice.dur || 0) / 60)}:${String((f.voice.dur || 0) % 60).padStart(2, '0')}` : FL_KIND[kind][0];
-// Содержимое файлов из админки не открыть и не скачать ни у какого типа: видно только имя, размер и расширение
-const FL_LOCKED = () => true;
 const flChatChip = type => type === 'direct' ? '<span class="rm-chip rm-direct">личный</span>'
   : type === 'group' ? '<span class="rm-chip rm-group">группа</span>' : type === 'room' ? '<span class="rm-chip rm-topics">комната</span>' : '';
 
@@ -7099,7 +7032,6 @@ function caEnd(id) {
   });
 }
 setInterval(() => { if (currentPage === 'calls') document.querySelectorAll('[data-ca-since]').forEach(e => { e.textContent = caElapsed(+e.dataset.caSince); }); }, 1000);
-const caTime = t => { const d = new Date(t * 1000), p = n => String(n).padStart(2, '0'); return `${p(d.getDate())}.${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`; };
 const caDur = s => (s > 0 ? (s >= 3600 ? Math.floor(s / 3600) + ':' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') : Math.floor(s / 60)) + ':' + String(s % 60).padStart(2, '0') : '—');
 const CALOG_RES = { ok: ['Принят', 'ok'], declined: ['Отклонён', 'warn'], missed: ['Без ответа', 'warn'], cancelled: ['Отменён', ''], failed: ['Не состоялся', ''], group: ['Состоялся', 'ok'] };
 function caRender() {
@@ -7195,8 +7127,8 @@ function caDetail(r) {
   }
   if (!people.length) { const list = grp ? r.members : [r.caller, r.callee].filter(Boolean); list.forEach(n => people.push({ name: esc(n), dev: '', sec: grp ? 0 : r.duration })); }
   const ini = n => esc(String(n).replace(/&[^;]+;/g, '').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase());
-  const pe = people.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px"><span style="width:24px;height:24px;border-radius:50%;background:var(--c-accent-bg,rgba(80,150,255,.18));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex:none">${ini(p.name)}</span><span style="min-width:0">${p.name}</span>${p.dev ? `<span class="rb-meta">${esc(p.dev)}</span>` : ''}<span class="rb-meta" style="margin-left:auto;font-variant-numeric:tabular-nums">${p.sec > 0 ? caDur(p.sec) : ''}</span></div>`).join('');
-  const head = t => `<h4 style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--c-text2);margin:0 0 6px">${t}</h4>`;
+  const pe = people.map(p => `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px"><span style="width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent-ink);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex:none">${ini(p.name)}</span><span style="min-width:0">${p.name}</span>${p.dev ? `<span class="rb-meta">${esc(p.dev)}</span>` : ''}<span class="rb-meta" style="margin-left:auto;font-variant-numeric:tabular-nums">${p.sec > 0 ? caDur(p.sec) : ''}</span></div>`).join('');
+  const head = t => `<h4>${t}</h4>`;
   const left = evs.length ? evs.join('') : '<span class="rb-meta">Подробности этого звонка не сохранились: хронология ведётся с версии s2.43.0.</span>';
   return `<div class="pg-exp" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px"><div>${head('Хронология')}${left}</div><div>${head('Участники')}${pe || '<span class="rb-meta">—</span>'}${r.peer_server ? `<div class="rb-meta" style="margin-top:8px">Сервер собеседника: ${esc(r.peer_server)}</div>` : ''}</div></div>`;
 }
@@ -7328,7 +7260,7 @@ function reRender() {
         const key = r.k + r.version, open = RE.open.has(key), secs = r.sections || [];
         return `<div class="rl"><div class="rl-h" data-on-click="reTog" data-a-click="${esc(JSON.stringify([`${esc(key)}`]))}"><button class="rb-cv" aria-expanded="${open}" aria-label="Развернуть">${UX_I.chev}</button>
           <span class="rl-v ${r.k}">${esc(r.version)}</span><span class="rb-meta">${esc(r.dateLabel)}</span><span style="flex:1"></span>
-          ${secs.map(s => { const c = (RE_SEC[s.label] || ['', 'var(--c-muted)'])[1]; return `<span class="pg-mini" style="background:color-mix(in srgb,${c} 16%,transparent);color:${c}">${esc(s.label)} ${s.items.length}</span>`; }).join('')}</div>
+          ${secs.map(s => `<span class="pg-mini ${(RE_SEC[s.label] || [''])[0]}">${esc(s.label)} ${s.items.length}</span>`).join('')}</div>
           ${open ? secs.map(s => `<div><div class="rl-sl ${(RE_SEC[s.label] || [''])[0]}">${esc(s.label)}</div><ul>${s.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('') : `<div class="rl-pre">${esc(secs[0]?.items[0] || '')}</div>`}</div>`;
       }).join('') || `<div class="ub-empty">${RE.list.length ? 'Ничего не нашли.' : 'Пока пусто'}</div>`}</div></div>`;
   });
@@ -7354,7 +7286,7 @@ async function renderFiles() {
 const flTs = f => f.sent_at || Math.floor((f.mtime || 0) / 1000);
 // Сколько дней осталось до автоудаления; null — автоудаление выключено
 const flLeftDays = f => FL.lifetime ? Math.max(0, Math.ceil((flTs(f) + FL.lifetime * 86400 - Date.now() / 1000) / 86400)) : null;
-const FL_KIND_COLOR = { voice: '#8b5cf6', image: 'var(--dv-c1)', doc: 'var(--dv-c2)', video: 'var(--dv-c5)', other: 'var(--dv-c3)', encrypted: 'var(--dv-c4)' };
+const FL_KIND_COLOR = { voice: 'var(--accent-fill)', image: 'var(--dv-c1)', doc: 'var(--dv-c2)', video: 'var(--dv-c5)', other: 'var(--dv-c3)', encrypted: 'var(--dv-c4)' };
 
 function flThumbHtml(f, kind) {
   if (kind === 'voice') return `<span class="fl-thumb" style="background:${FL_KIND[kind][1]}">${FL_I.mic}</span>`;
@@ -7436,8 +7368,6 @@ function flWho(v) { FL.who = v || ''; FL.sel.clear(); flRender(); }
 function flChat(v) { FL.chat = v || ''; FL.sel.clear(); flRender(); }
 function flSettings() { openSettingsModal('attachments'); }
 
-// Открытие и скачивание файлов из админки отключено намеренно: содержимое через неё узнать нельзя
-const flOpen = () => {}, flDownload = () => {};
 function flMenu(e, name) {
   const n = jesc(name);
   const f = FL.files.find(x => x.filename === name);
@@ -7500,50 +7430,6 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.fsel')) document.querySelectorAll('.fsel-pop').forEach(p => p.hidden = true);
 });
 
-/* Вид чата рядом с названием: у личных своего имени нет, там имена собеседников */
-
-/* ── ПРОСМОТР КАРТИНКИ И ВИДЕО ── */
-let _flPreviewTimer = null;   // отложенное закрытие: при повторном открытии его нужно отменить
-function openFilePreview(name) {
-  const f = FL.files.find(x => x.filename === name);
-  const kind = f ? flKind(f) : 'image';
-  const box = document.getElementById('file-lightbox');
-  const img = document.getElementById('fl-img'), vid = document.getElementById('fl-vid');
-  clearTimeout(_flPreviewTimer);
-  box.classList.remove('closing');
-  box.classList.toggle('video', kind === 'video');
-  if (kind === 'video') {
-    img.src = '';
-    vid.src = flUrl(name);
-    vid.play().catch(() => {});
-  } else {
-    vid.pause(); vid.src = '';
-    img.src = flUrl(name);
-  }
-  document.getElementById('fl-cap').textContent = f ? flName(f) : name;
-  box.classList.add('open');
-  // CSS-анимация появления объявлена статично на #file-lightbox (не через класс),
-  // поэтому смена display:none→flex перезапускает её только один раз за всю жизнь
-  // страницы — при повторных открытиях декларация animation не меняется, и браузер
-  // её не перезапускает. Сбрасываем в none и форсим reflow, чтобы включалась каждый раз.
-  [box, img, vid].forEach(el => { el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; });
-}
-function closeFilePreview() {
-  const box = document.getElementById('file-lightbox');
-  if (!box || !box.classList.contains('open') || box.classList.contains('closing')) return;
-  box.classList.add('closing');
-  document.getElementById('fl-vid')?.pause();
-  _flPreviewTimer = setTimeout(() => {
-    box.classList.remove('open', 'closing', 'video');
-    document.getElementById('fl-img').src = '';
-    const vid = document.getElementById('fl-vid');
-    if (vid) vid.src = '';
-  }, 150);
-}
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && document.getElementById('file-lightbox')?.classList.contains('open')) closeFilePreview();
-});
-
 /* ── ANNOUNCEMENTS ── */
 // Раздел «Объявления»: журнал с состоянием каждой записи — показывается, запланировано, прошло.
 // Окно создания показывает, как объявление увидят люди: полоса, карточка или строка в ленте.
@@ -7552,11 +7438,6 @@ const ANN_KINDS = {
   chat:   { label: 'В чаты',      chip: 'rm-direct' },
   popup:  { label: 'Всплывающее', chip: 'rm-group' },
   banner: { label: 'Полоса',      chip: 'an-red' },
-};
-const ANN_HINTS = {
-  chat:   'Строка от системы в группах и комнатах — останется в переписке',
-  popup:  'Карточка поверх окна у тех, кто в сети в момент отправки',
-  banner: 'Тонкая полоса сверху, держится заданное время и догоняет тех, кого не было в сети',
 };
 const AN = { filter: 'all', q: '', open: new Set(), fresh: null, sel: new Set(), list: [], form: null, chats: [] };
 let annStartAt = null;   // unix-секунды или null = «сейчас»; его же меняет календарь
@@ -7800,7 +7681,6 @@ async function openAnnouncementModal() {
   if (Array.isArray(users)) allUsersCache = users;
   annStartAt = null;
   AN.form = { kind: 'chat', text: '', pick: false, sp: false, spSel: new Set(), who: new Set(), q: '', only: false, lim: 60, wk: 'now', duration: 60, err: '', busy: false };
-  PK.ctx = null;
   anRenderForm('an-text');
   openModal('modal-announcement');
 }
@@ -8134,7 +8014,6 @@ window.flName = flName;
 window.flShort = flShort;
 window.flSvg = flSvg;
 window.flTs = flTs;
-window.flUrl = flUrl;
 window.fmNote = fmNote;
 window.fmP = fmP;
 window.fmScroll = fmScroll;
@@ -8148,9 +8027,7 @@ window.hmText = hmText;
 window.kzReduced = kzReduced;
 window.mdBytes = mdBytes;
 window.mdNum = mdNum;
-window.pgSince = pgSince;
 window.pkChats = pkChats;
-window.pkNoun = pkNoun;
 window.pkUsers = pkUsers;
 window.psChip = psChip;
 window.rbDays = rbDays;
@@ -8159,11 +8036,8 @@ window.rbWk = rbWk;
 window.rmFmt = rmFmt;
 window.rmLast = rmLast;
 window.rmMenuToggle = rmMenuToggle;
-window.rmMore = rmMore;
 window.rmMsgs = rmMsgs;
 window.rmSetTab = rmSetTab;
-window.rmSpark = rmSpark;
-window.rmStack = rmStack;
 window.rmSvg = rmSvg;
 window.rmSwitch = rmSwitch;
 window.rmWeek = rmWeek;
@@ -8191,13 +8065,11 @@ window.spStepH = spStepH;
 window.spSv = spSv;
 window.spTokH = spTokH;
 window.stBackupOld = stBackupOld;
-window.stChanged = stChanged;
 window.stClock = stClock;
 window.stClone = stClone;
 window.stLastBackup = stLastBackup;
 window.stPad = stPad;
 window.stSvg = stSvg;
-window.stVersion = stVersion;
 window.uaAv = uaAv;
 window.uaAway = uaAway;
 window.uaBlank = uaBlank;

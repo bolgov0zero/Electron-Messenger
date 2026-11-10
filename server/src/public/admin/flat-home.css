@@ -1,0 +1,263 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Админка, дизайн B «Мягкий» — ГЛАВНАЯ (.dv, .hm-*, .xh-*, .xp-*, .cdv-*/.dc-*, .fdv-*, .ub-* на главной, плитки показателей, графики).
+   Область агента «оболочка и главная». Подключается после flat.css и flat-shell.css. Образец: docs/flat-mockup/admin-home.html (.card .xh .kpi .xp .cdv .k .sr2 .ar .dvb).
+   Кнопки, сегменты, чипы, бейджи — из кита flat.css (дописывать селекторы в его списки), здесь только раскладка и уникальные блоки.
+   Старые правила главной остаются в index.html (.dv …); здесь они переопределяются тем же или большим весом.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───── раскладка и карточки ───── */
+.dv { max-width: 1600px; gap: 16px; font-family: var(--ff); }
+.dv .hm-panel { background: var(--side-bg); border: 0; border-radius: var(--r-card); box-shadow: var(--flat-shadow); padding: 16px 20px; }
+.dv-card h3 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.005em; gap: 8px; }
+.dv-sub { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+.dv-sub b { color: var(--text2); font-weight: 600; }
+.dv-lbl { font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.dv-big { font: 800 28px/1.1 var(--ff); letter-spacing: -.02em; margin: 6px 0 0; font-variant-numeric: tabular-nums; }
+.dv-big small { font: 500 13px var(--ff); color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+.dv-empty { color: var(--muted); font-size: 13px; padding: 12px 0; }
+.dv-chip { height: auto; font-size: 12.5px; }
+
+/* ───── панель сервера ───── */
+.dv .hm-panel.xh { padding: 0; height: 92px; }
+.xh-lay { padding: 0 20px; }
+.xh-row { gap: 16px; }
+.xh-ico { width: 52px; height: 52px; border-radius: 16px; }
+.xh-ico svg { width: 24px; height: 24px; }
+.xh-ico.ok { background: var(--ok-soft); color: var(--ok); }
+.xh-ico.wait { background: var(--warn-soft); color: var(--warn); }
+.xh-ico.bad { background: var(--bad-soft); color: var(--bad); }
+.xh-ico.busy { background: var(--accent-soft); color: var(--accent-ink); }
+.xh-t { font-size: 17px; font-weight: 700; letter-spacing: -.01em; gap: 10px; }
+.xh-s { font-size: 13px; margin-top: 2px; color: var(--muted); }
+.xh-dot { background: var(--muted); }
+.xh-dot.ok { background: var(--ok); } .xh-dot.warn { background: var(--warn); } .xh-dot.crit { background: var(--bad); }
+.xh-stats { gap: 6px; }
+.xh-stat { padding: 6px 18px; min-width: 104px; gap: 2px; border-left: 1px solid var(--border); }
+.xh-stat small { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.xh-stat b { font-size: 16px; font-weight: 700; }
+.xh-pw { gap: 12px; }
+.xh-bar { height: 10px; border-radius: 5px; background: var(--meter-bg); }
+.xh-bar i { border-radius: 5px; background: var(--accent); }
+.xh-pct { color: var(--accent-ink); font-weight: 700; }
+.xh-flash { border-radius: 6px; }
+
+/* ───── плитки показателей ───── */
+.dv-kpis { gap: 16px; }
+.dv-kpi { min-height: 172px; display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.dv-kpi .dv-big { margin-top: 6px; }
+.dv-spark { height: 56px; margin-top: auto; padding-top: 10px; position: relative; }
+.dv-kpi .dv-spark:has(.xk-tlw) { height: 56px; }
+.xk { transition: background .15s, box-shadow .2s; }
+.xk:hover { transform: none; border: 0; background: color-mix(in srgb, var(--text) 2.5%, var(--side-bg)); box-shadow: var(--flat-shadow), 0 0 0 1px var(--border); }
+.xk-ex { top: 12px; right: 12px; width: 28px; height: 28px; border-radius: 9px; background: transparent; }
+.xk:hover .xk-ex, .xk:focus-visible .xk-ex { background: var(--surf2); }
+.xk-tlw { height: 100%; }
+.xk-tlb { height: calc(100% - 14px); gap: 2px; }
+.xk-tlb i { background: var(--accent); opacity: .85; border-radius: 3px 3px 0 0; min-height: 3px; }
+.xk-tlm { box-shadow: 0 0 0 2px var(--side-bg); color: #fff; }
+.xk-tlm::after { display: none; }
+
+/* ───── раскрытая панель графика ───── */
+.xp { padding: 14px 20px 18px; }
+.xp-head { gap: 12px; }
+.xp-tabs { margin-right: auto; }
+.xp-tab { gap: 6px; align-items: center; }
+.xp-tab b { font: 700 12.5px var(--ff); color: var(--text); }
+.xp-sum { gap: 8px 20px; margin: 14px 0 4px; }
+.xp-sum .dv-big { font-size: 28px; margin: 0; }
+.xp-tgs { gap: 6px; }
+.xp-chart text { font: 500 11.5px var(--ff); fill: var(--muted); }
+.xp-chart text.lim { fill: var(--bad); font-weight: 600; }
+.xp-tip { border: 0; border-radius: 12px; background: var(--side-bg); box-shadow: var(--pop-shadow), 0 0 0 1px var(--border); padding: 8px 12px; font-size: 12.5px; line-height: 1.4; }
+.xp-tv b { font: 700 12.5px var(--ff); }
+.xp-list { margin-top: 12px; padding-top: 0; border-top: 0; }
+.xp-list h4 { margin: 14px 0 8px; font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--text); gap: 10px; }
+.xp-list h4 button { margin-left: auto; padding: 4px 8px; border-radius: 8px; color: var(--accent-ink); font: 600 12.5px var(--ff); }
+.xp-list h4 button:hover { background: var(--accent-soft); }
+.xp-grid { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 4px 16px; }
+.xp-ev { gap: 10px; padding: 7px 8px; border-radius: 10px; }
+.xp-ev:hover, .xp-ev.on { background: var(--hover-row); }
+.xp-ev .tm { font: 500 12px var(--ff); }
+.xp-ev b { font-size: 13px; }
+.xp-ev .tx { color: var(--text2); font-size: 13px; }
+.xp-ev small { font-size: 12px; }
+
+/* ───── федерация и звонки: свёрнутая полоса и раскрытая часть ───── */
+.cdv { padding: 0 !important; }
+.cdv-h { padding: 14px 20px; gap: 8px 16px; }
+.cdv-ttl { gap: 10px; }
+.cdv-ttl b { font-size: 15px; font-weight: 700; }
+.dc-pulse { width: 10px; height: 10px; background: var(--ok); }
+.dc-pulse.dc-live::after { border-color: var(--ok); }
+.cdv-sub { color: var(--muted); font-size: 12.5px; }
+.cdv-sub b { color: var(--accent-ink); font-weight: 700; }
+.dc-cmp { gap: 6px 16px; justify-content: flex-start; }
+.dc-cs { gap: 6px; }
+.dc-cs b { font: 700 15px/1.2 var(--ff); letter-spacing: 0; }
+.dc-cs span { color: var(--muted); font-size: 12.5px; }
+.dc-cs+.dc-cs { padding-left: 0; border-left: 0; }
+.dc-cs i.dc-rt { color: var(--ok); font-weight: 600; }
+.dc-mini { padding-left: 0; border-left: 0; gap: 8px; font-size: 12px; color: var(--muted); }
+.dc-mini .dc-res-b { width: 150px; height: 8px; }
+.dc-mini b { color: var(--text); }
+.dc-cmp .dc-chips { padding-left: 0; border-left: 0; }
+.dc-ud .dc-u { color: var(--text); } .dc-ud .dc-n { color: var(--text2); }
+.dc-dl { padding: 0; border-radius: 0; background: none; font-size: 12px; font-weight: 700; gap: 3px; }
+.dc-dl.dc-up { background: none; color: var(--ok); } .dc-dl.dc-dn { background: none; color: var(--bad); } .dc-dl.dc-eq { background: none; color: var(--muted); }
+.dc-dl svg { width: 12px; height: 12px; }
+.dc-cs .dc-dl { font-size: 12px; padding: 0; }
+.dc-note { border-radius: 12px; background: var(--surf2); font-size: 12.5px; }
+.dc-live { margin: 0 20px 12px; padding: 8px 12px; border: 0; border-radius: 12px; background: var(--accent-soft); font-size: 13px; }
+.dc-live b { font-weight: 600; } .dc-live span { color: var(--text2); }
+.dc-live .dc-lk { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 8px; background: var(--side-bg); color: var(--accent-ink); }
+.dc-live time { font: 700 13px var(--ff); color: var(--accent-ink); }
+.dc-kp { display: grid; gap: 12px; padding: 16px 20px 0; border-top: 1px solid var(--border); }
+.dc-k { background: var(--surf2); border: 0; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.dc-k:first-child { border-left: 0; }
+.dc-k-l { font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.dc-k-v { margin: 0; gap: 4px; }
+.dc-k-v b { font: 800 20px/1.2 var(--ff); letter-spacing: -.01em; }
+.dc-k-v small { font: 500 12.5px var(--ff); color: var(--muted); }
+.dc-k-v b.dc-ud { font-size: 20px; }
+.dc-k-s { font-size: 12px; min-height: 18px; gap: 8px; }
+.dc-meter { height: 6px; border-radius: 3px; background: var(--meter-bg); flex: none; width: 56px; min-width: 0; }
+.dc-meter i { background: var(--accent); }
+.dc-meter.dc-v i { background: var(--s5); }
+.dc-res { padding: 14px 20px 0; border-top: 0; gap: 8px 14px; grid-template-columns: 92px minmax(0, 1fr); }
+.dc-res-l { font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.dc-res-b { height: 10px; border-radius: 5px; background: var(--meter-bg); }
+.dc-res-b i { border-radius: 2px; }
+.dc-res-lg { grid-column: 1 / -1; padding-left: 106px; font-size: 12.5px; color: var(--muted); gap: 6px 16px; }
+.dc-res-lg i { width: 8px; height: 8px; }
+.dc-ex { border-top: 0; padding: 18px 20px 20px; gap: 24px; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+.dc-ex-top { gap: 10px; margin-bottom: 8px; min-height: 30px; }
+.dc-ex-l { font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.dc-ch text { font: 500 11px var(--ff); fill: var(--muted); }
+.dc-ch .dc-gl, .dc-ch .dc-ax { stroke: var(--border); }
+.dc-leg { gap: 16px; font-size: 12.5px; color: var(--text2); margin-top: 6px; }
+.dc-leg i { width: 10px; height: 10px; }
+.dc-tr, .dc-sr { padding: 8px 10px; margin: 0 -10px; border-radius: 12px; border-top: 0; }
+.dc-tr+.dc-tr, .dc-sr+.dc-sr { border-top: 0; }
+.dc-tr:hover, .dc-sr:hover { background: var(--hover-row); }
+.dc-tr b, .dc-sr b { font-size: 13.5px; }
+.dc-tr .dc-m, .dc-sr .dc-m { font-size: 12.5px; color: var(--text2); }
+.dc-sr .dc-cap { font-size: 12px; } .dc-sr .dc-cap .dc-w { color: var(--warn); font-weight: 600; }
+.dc-sr .dc-sd { background: var(--ok); } .dc-sr .dc-sd.dc-warn { background: var(--warn); } .dc-sr .dc-sd.dc-off { background: var(--muted); }
+.dc-tr .dc-bar2 { height: 4px; background: var(--meter-bg); }
+.dc-tr .dc-bar2 i { background: var(--accent); opacity: 1; }
+.dc-av { border-radius: 50%; }
+.dc-ft { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border); gap: 12px; }
+.dc-why { font-size: 13px; color: var(--text2); }
+.dc-why b { color: var(--warn); }
+
+/* ───── «Требует внимания» и хроника ───── */
+.dv-main { gap: 16px; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+.xs-head { gap: 12px; margin-bottom: 12px; min-height: 0; }
+.xs-head h3 { flex: 1; }
+.xs-cnt { font-size: 12px; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9px; background: var(--bad); color: #fff; margin-left: 6px; }
+:root[data-theme="dark"] .xs-cnt { color: #1a1a1a; }
+.xs-ar { gap: 12px; padding: 10px 12px; margin: 0 -12px; border-top: 0; border-radius: 14px; transition: background .15s; }
+.xs-ar:hover { background: var(--hover-row); }
+.xs-ai { width: 32px; height: 32px; border-radius: 10px; font-size: 14px; font-weight: 800; background: var(--c-soft); color: var(--c); }
+.xs-ai[data-s="bad"], .xs-ai.bad { --c: var(--bad); --c-soft: var(--bad-soft); }
+.xs-ai[data-s="warn"], .xs-ai.warn { --c: var(--warn); --c-soft: var(--warn-soft); }
+.xs-ai[data-s="info"], .xs-ai.info { --c: var(--accent-ink); --c-soft: var(--accent-soft); }
+.xs-ai[data-s="ok"], .xs-ai.ok { --c: var(--ok); --c-soft: var(--ok-soft); }
+:root[data-theme="dark"] .xs-ai { color: var(--c); }
+.xs-m b { font-size: 13.5px; font-weight: 600; }
+.xs-lnk { font: 600 12.5px var(--ff); color: var(--accent-ink); padding: 6px 8px; border-radius: 8px; margin-top: 4px; }
+.xs-lnk:hover { background: var(--accent-soft); }
+.xs-calm { padding: 14px 12px; border-radius: 14px; background: var(--ok-soft); margin: 0; }
+.xs-bt { margin-top: auto; padding-top: 12px; }
+.xs-body { height: auto; min-height: 312px; }
+.xs-pgrid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 2px 12px; margin-top: 0; grid-auto-rows: auto; flex: none; }
+.xs-pr { padding: 7px 8px; border-top: 0; border-radius: 12px; min-width: 0; }
+.xs-pr:hover { background: var(--hover-row); }
+.xs-badge { border-radius: var(--kit-r-tag); }
+.xs-vb { display: grid; grid-template-columns: 78px minmax(0, 1fr) 28px 84px; gap: 10px; padding: 5px 0; font-size: 13px; }
+.xs-vb>span:first-child { width: auto; }
+.xs-vb .dv-meter { margin-top: 0; }
+.xs-vb b { width: auto; font-size: 13px; font-weight: 600; }
+.xs-vb .dv-sub { width: auto; }
+.xs-heat { font-size: 12px; gap: 3px; }
+.xs-heat i { border-radius: 4px; min-height: 14px; }
+.dv-ev { gap: 10px; padding: 9px 0; font-size: 13px; border-top: 1px solid var(--border); }
+.dv-ev:first-child { padding-top: 2px; border-top: 0; }
+.dv-ev-t { font: 500 12px var(--ff); width: 44px; padding-top: 3px; color: var(--muted); }
+.dv-ev-i { width: 24px; height: 24px; border-radius: 8px; font-size: 12px; background: var(--ok-soft); color: var(--ok); }
+.dv-ev-i.warn { background: var(--warn-soft); color: var(--warn); }
+.dv-ev-i.info { background: var(--accent-soft); color: var(--accent-ink); }
+.dv-ev-x { color: var(--text); }
+.dv-ev-x small { font-size: 12px; margin-top: 0; }
+.dv-chron { margin-top: 12px; }
+
+/* ───── нижний ряд: ресурсы, службы, хранилище, PostgreSQL ───── */
+.dv-bottom { gap: 16px; }
+.dv-bottom .hm-panel h3 { margin-bottom: 10px; }
+.dv-res-row { margin: 0 0 14px; display: flex; flex-direction: column; gap: 6px; }
+.dv-res-row:last-child { margin-bottom: 0; }
+.dv-res-top { align-items: baseline; gap: 8px; }
+.dv-res-top b { font-size: 13.5px; }
+.dv-res-top span { font-size: 12.5px; color: var(--muted); }
+.dv-meter { height: 8px; border-radius: 4px; background: var(--meter-bg); margin-top: 0; }
+.dv-meter i { border-radius: 4px; background: var(--accent); }
+.dv-meter i.warn { background: var(--warn); } .dv-meter i.crit { background: var(--bad); }
+.dv-store-bar { height: 10px; border-radius: 5px; background: transparent; gap: 2px; }
+.dv-store-bar span { min-width: 3px; border-radius: 2px; }
+.dv-leg { padding: 4px 6px; margin: 0 -6px; border-radius: 8px; gap: 8px; font-size: 13px; color: var(--text2); }
+.dv-leg:hover { background: var(--hover-row); }
+.dv-leg i { width: 10px; height: 10px; }
+.dv-leg .v { font: 600 13px var(--ff); color: var(--text); }
+.dv-leg2 { gap: 2px 12px; margin-top: 10px; }
+.dv-leg2 div { font-size: 12.5px; }
+.dv-leg2 b { font: 600 12.5px var(--ff); }
+.sv-row { padding: 10px 0; gap: 8px 12px; }
+.sv-name b { font-size: 13.5px; font-weight: 600; }
+.sv-m>div:first-child { font-size: 12px; }
+.sv-m b { font-size: 12.5px; font-weight: 600; }
+.sv-bar { height: 4px; border-radius: 2px; background: var(--meter-bg); }
+.sv-bar i { border-radius: 2px; background: var(--accent); }
+.sv-bar.warn i { background: var(--warn); }
+.dv-dot { margin-right: 6px; width: 8px; height: 8px; animation: none; background: var(--ok); }
+.dv-dot.warn { background: var(--warn); } .dv-dot.crit { background: var(--bad); } .dv-dot.off { background: var(--muted); }
+.dv-db-big { font: 800 28px/1.1 var(--ff); letter-spacing: -.02em; margin-top: 4px; }
+.dv-db-big small { font: 500 13px var(--ff); color: var(--muted); }
+.dv-db-spark { height: 48px; margin: 10px 0; }
+.dv-chips { gap: 6px; }
+
+/* ───── общие виды графиков: сетка и подписи тонкие, цвета — токены ───── */
+.dv svg text { font-family: var(--ff); }
+
+/* ───── правки к киту и старым правилам ───── */
+/* кнопка «период по кругу» только в узком блоке (кит ставит кнопкам display:inline-flex), кнопка раскрытия справа */
+.cdv-h .dc-pbtn { display: none; }
+@container (max-width: 520px) { .cdv-h .dc-pbtn { display: inline-flex; } }
+.cdv-tg { margin-left: 0; }
+/* точка «идёт звонок»: класс dc-live у неё общий с полосой «сейчас идёт» (display:none) — показываем */
+.dc-pulse.dc-live { display: block; width: 10px; height: 10px; margin: 0; padding: 0; border-radius: 50%; background: var(--ok); }
+.xs-bt .dv-chip { gap: 6px; }
+/* широкий блок: заголовок, итоги, период и стрелка в одну строку, итоги переносятся внутри себя */
+@container (min-width: 1021px) {
+  .cdv-h { flex-wrap: nowrap; }
+  .dc-cmp { flex-wrap: wrap; flex: 1 1 0; min-width: 0; }
+  .cdv-ttl { flex: none; }
+}
+.xp-tabs .xp-tab[aria-selected="true"] b { color: inherit; }
+/* службы: имя, статус и значок «перезапустить» в одну строку, шкалы процессора и памяти делят ширину поровну */
+.sv-row { position: relative; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "name name" "cpu mem" "meta meta"; gap: 8px 14px; }
+.sv-name { padding-right: 38px; flex-wrap: nowrap; }
+.sv-name .dv-sub { flex-basis: auto; padding-left: 8px; }
+.sv-row .sv-btn { position: absolute; top: 6px; right: 0; width: var(--kit-ibtn-sm); height: var(--kit-ibtn-sm); padding: 0; gap: 0; }
+.sv-row:first-of-type .sv-btn { top: -4px; }
+.sv-row .sv-btn span { display: none; }
+@container svc (min-width: 560px) {
+  .sv-row { grid-template-columns: 200px minmax(0, 1fr) minmax(0, 1fr) 30px; grid-template-areas: "name cpu mem btn" "meta cpu mem btn"; }
+  .sv-row .sv-btn { position: static; grid-area: btn; }
+  .sv-name { padding-right: 0; }
+}
+/* легенда PostgreSQL — одной колонкой, как в «Хранилище» */
+.dv-leg2 { grid-template-columns: 1fr; gap: 2px; }
+.dv-leg2 div { padding: 4px 6px; margin: 0 -6px; border-radius: 8px; font-size: 13px; color: var(--text2); }
+.dv-leg2 div:hover { background: var(--hover-row); }
+.dv-leg2 i { width: 10px; height: 10px; }
+.dv-leg2 b { font: 600 13px var(--ff); color: var(--text); }

@@ -1,0 +1,253 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Админка, дизайн B «Мягкий» — МОБИЛЬНЫЙ ВИД (<= 820 px). Подключается ПОСЛЕ mobile.css (media="(max-width: 820px)"), поэтому может править его правила.
+   Область агента «мобильный вид»: нижняя панель .mnav (в макете mnav на 780 px), шторки вместо окон, страница «Ещё». Токены B и кит приходят из flat.css (общие для всех размеров);
+   mobile.css использует переменные --c-* (уже в палитре B) и только местами рисует свои кнопки (.mm-tg, .mback, .topbar-right .btn…) — приводить их к киту здесь.
+   Образец: docs/flat-mockup/admin-home.html (@media max-width:780px, .mnav).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═════════ 0. Токены телефона: крупные цели касания (>= 44 px) через переменные кита, тени панелей ═════════ */
+:root {
+  --topbar-h: 56px; --mnav-h: 60px;
+  --bar-sh: 0 8px 20px -10px rgba(60, 40, 20, .18); --bar-sh-up: 0 -8px 20px -10px rgba(60, 40, 20, .14);
+  --kit-btn-h: 44px; --kit-btn-h-sm: 44px; --kit-btn-px: 16px; --kit-btn-px-sm: 14px; --kit-btn-fs: 14px; --kit-btn-fs-sm: 13.5px; 
+  --kit-ibtn-sm: 44px; --kit-close-size: 44px; --kit-close-icon: 20px;
+  --kit-seg-h: 44px; --kit-seg-h-sm: 40px; --kit-seg-fs: 13.5px; --kit-chip-h: 36px;
+  --kit-field-h: 48px; --kit-field-h-sm: 44px; --kit-field-fs: 16px; --kit-field-fs-sm: 16px;
+  --kit-tab-h: 44px; --kit-tag-fs: 12px;
+}
+:root[data-theme="dark"] { --bar-sh: 0 8px 20px -10px rgba(0, 0, 0, .5); --bar-sh-up: 0 -8px 20px -10px rgba(0, 0, 0, .5); }
+body { font-size: 14px; background: var(--app-bg); }
+
+/* ═════════ 1. Верхняя строка: заголовок, «назад», действия ═════════ */
+.topbar { height: var(--topbar-h); padding: 0 8px 0 12px; gap: 8px; background: var(--side-bg); border: 0; box-shadow: var(--bar-sh); z-index: 55; }
+html[data-msub="1"] .topbar { padding-left: 6px; }
+.topbar-center { padding-left: 0; }
+.topbar-center span { font-size: 20px; font-weight: 800; letter-spacing: -.015em; color: var(--text); }
+html[data-msub="1"] .topbar-center { padding-left: 0; }
+.mback { width: 44px; height: 44px; border-radius: var(--kit-r); background: var(--kit-ibtn-bg); color: var(--kit-ibtn-fg); }
+.mback svg { width: 20px; height: 20px; }
+.mback:active { background: var(--kit-ibtn-bg-h); transform: scale(var(--kit-press)); }
+/* общий статус «Главной»: только точка рядом с заголовком, текст читается из подписи */
+.top-state { display: none; }
+.topbar-right { gap: 8px; }
+#topbar-extra { gap: 8px !important; }
+/* действия верхней строки — значки 44×44 из кита: вторичные — как иконочные, «создать» — заливка акцентом */
+.topbar-right .btn { width: 44px; min-width: 44px; height: 44px; padding: 0; border-radius: var(--kit-r); }
+.topbar-right .btn:not(.btn-primary) { background: var(--kit-ibtn-bg); color: var(--kit-ibtn-fg); }
+.topbar-right .btn:not(.btn-primary):active { background: var(--kit-ibtn-bg-h); }
+.topbar-right .btn svg { width: 20px; height: 20px; }
+.app-layout { bottom: calc(var(--mnav-h) + var(--msafe)); }
+.page-body { padding: 12px 12px 20px; }
+.app-copy { display: none; height: 24px; font-size: 12px; }
+html[data-pg="more"] .app-copy { display: flex; }
+
+/* ═════════ 2. Нижняя панель: плоская, значок + подпись, активная — цвет акцента без плашки ═════════ */
+.mnav { height: calc(var(--mnav-h) + var(--msafe)); padding: 6px 4px var(--msafe); background: var(--side-bg); border: 0; box-shadow: var(--bar-sh-up); }
+.mnav button { gap: 2px; min-height: 48px; border-radius: var(--kit-r); font: 600 12px/1.2 var(--ff); color: var(--text2); transition: color .15s; -webkit-tap-highlight-color: transparent; }
+.mnav button svg { width: 24px; height: 24px; }
+.mnav button.on { color: var(--accent-ink); }
+.mnav button.on::before { display: none; }
+.mnav button:active { transform: scale(var(--kit-press)); }
+.mnav .mn-b { top: 2px; left: calc(50% + 4px); min-width: 18px; height: 18px; border-radius: 9px; background: var(--bad); color: #fff; font: 700 12px var(--ff); }
+
+/* ═════════ 3. «Ещё»: карточка пользователя и группы разделов ═════════ */
+.mm { gap: 16px; }
+.mm-card { padding: 0; background: var(--side-bg); border: 0; border-radius: var(--r-card); box-shadow: var(--flat-shadow); overflow: hidden; }
+.mm-grp { display: flex; flex-direction: column; gap: 6px; }
+.mm-grp h4 { margin: 0; padding: 0 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.mm-row { gap: 12px; min-height: 56px; padding: 0 14px; background: none; border: 0; border-radius: 0; font: 500 15px var(--ff); color: var(--text); -webkit-tap-highlight-color: transparent; transition: background .15s; }
+.mm-row + .mm-row { border-top: 1px solid var(--border-soft); }
+.mm-row:active { background: var(--hover-row); }
+.mm-row > svg:not(.mm-ch) { width: 20px; height: 20px; color: var(--text2); flex: none; }
+.mm-row.bad, .mm-row.bad > svg { color: var(--bad); }
+.mm-ic { width: 36px; height: 36px; border-radius: var(--kit-r); background: var(--accent-soft); color: var(--accent-ink); }
+.mm-ic svg { width: 20px; height: 20px; }
+.mm-t { font-size: 15px; font-weight: 500; }
+.mm-t small { margin-top: 1px; font-size: 12px; font-weight: 400; color: var(--muted); }
+.mm-n { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 8px; border-radius: var(--kit-r-tag); background: var(--surf2); color: var(--text2); font: 600 12px var(--ff); }
+.mm-ch { color: var(--muted); }
+.mm-me .mm-who { display: flex; align-items: center; gap: 12px; padding: 14px 14px 10px; }
+.mm-me .mm-who .mm-t { display: flex; flex-direction: column; min-width: 0; }
+.mm-me .mm-who b { font-size: 16px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mm-av { display: grid; width: 44px; height: 44px; flex: none; }
+.mm-av > div, .mm-av > .av { border-radius: 50%; }
+.mm-av i { display: none; }
+.mm-set { display: flex; align-items: center; gap: 12px; padding: 4px 14px 12px; border: 0; }
+.mm-set .mm-t { flex: none; font-size: 14px; color: var(--text2); }
+.mm-set .sb-th { flex: 1; margin: 0; }
+.mm-set .sb-th button { flex: 1; padding: 0 6px; }
+.mm-me .mm-row { border-top: 1px solid var(--border-soft); }
+
+/* ═════════ 4. Шторки: лист снизу, ручка, крестик из кита, кнопки подвала на всю ширину ═════════ */
+.modal-bg.open { animation: modalBgIn .22s ease; }
+.modal-bg.closing { animation: modalBgOut .22s ease forwards; }
+.modal-bg.open .modal { animation: mSheetIn .26s var(--ease) both; }
+.modal-bg.closing .modal { animation: mSheetOut .22s ease-in forwards; }
+.modal-bg .modal, .modal-bg .modal.modal-sm { max-height: 92dvh; border-radius: var(--r-panel) var(--r-panel) 0 0 !important; background: var(--side-bg); box-shadow: var(--pop-shadow); padding-bottom: 0; }
+.modal-bg .modal::before { width: 36px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: color-mix(in srgb, var(--text) 20%, transparent); }
+.modal-head, .ua-head, .rs-h { padding: 12px 12px 8px 18px; }
+.modal-head h3, .ua-title, .rs-t h3 { font-size: 17px; }
+.ua-sub, .rs-sub { font-size: 12.5px; }
+.modal-body, .ua-body, .rs-b { padding-left: 18px; padding-right: 18px; }
+.modal-foot, .ua-foot, .an-foot, .rs-f { flex-wrap: wrap; padding: 8px 18px calc(16px + var(--msafe)); }
+.modal-foot > .btn, .ua-foot > .btn, .an-foot > .btn, .rs-f > .btn { flex: 1 1 0; justify-content: center; }
+.modal-foot > :is(.fm-note, .ua-note, .rs-note, span, small, div):not(.btn), .ua-foot > :is(.fm-note, span, small):not(.btn) { flex: 1 1 100%; order: -1; }
+
+/* ═════════ 5. Разделы-списки: вся страница листается одной лентой, сводка сворачивается, строки — одна карточка с линиями ═════════ */
+.page-body:has(.ub), .page-body:has(.sp) { overflow-y: auto; display: block; -webkit-overflow-scrolling: touch; }
+.ub { display: flex; flex-direction: column; gap: 12px; flex: none; min-height: 0; }
+.ub-rows { flex: none; overflow: hidden; gap: 0; padding: 0; margin: 0; background: var(--side-bg); border-radius: var(--r-card); box-shadow: var(--flat-shadow); }
+.ub-row, .cb-row, .rb-row, .rl { background: none; border: 0; border-radius: 0; box-shadow: none; border-bottom: 1px solid var(--border-soft); }
+.ub-row:last-child, .cb-row:last-child, .rb-row:last-child, .rl:last-child { border-bottom: 0; }
+.ub-row, .cb-row { min-height: 64px; padding: 8px 8px 8px 14px; gap: 10px; }
+.rb-top, .fb-top, .an-top, .pg-top { min-height: 64px; padding: 8px 8px 8px 12px; gap: 10px; }
+.ub-row:hover, .cb-row:hover, .rb-top:hover, .fb-top:hover, .an-top:hover, .pg-top:hover { background: none; border-color: var(--border-soft); }
+.ub-row:active, .cb-row:active, .rb-top:active, .fb-top:active, .an-top:active, .pg-top:active { background: var(--hover-row); }
+.ub-row.sel, .cb-row.sel { background: var(--accent-soft); }
+.rb-row { overflow: visible; }
+.rb-exp, .fb-exp, .an-exp, .pg-exp { background: var(--surf2); border-top: 0; padding: 14px 16px 16px; }
+.rb-exp h4, .fb-exp h4, .an-exp h4, .pg-exp h4 { margin: 0 0 8px; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.pg-dev, .pg-code { background: var(--side-bg); border: 0; border-radius: 12px; }
+.rb-pb, .rb-tp .meter { background: var(--meter-bg); }
+.ub-rows > .ub-empty { background: none; border: 0; border-radius: 0; box-shadow: none; padding: 40px 16px; font-size: 13px; }
+.ub > .ub-empty { border: 0; border-radius: var(--r-card); background: var(--side-bg); box-shadow: var(--flat-shadow); padding: 32px 16px; font-size: 13px; color: var(--muted); }
+/* шапка списка: заголовок со счётчиком, дальше фильтр и поиск */
+.ub-head { gap: 10px; min-height: 0; padding: 0 2px; }
+.ub-head h3 { font-size: 15px; font-weight: 700; letter-spacing: -.005em; gap: 8px; align-items: center; color: var(--text); }
+.ub-head h3 span { font: 600 13px var(--ff); color: var(--muted); }
+.ub .ux-bulk, .ub-head .ux-bulk { background: var(--accent-soft); border: 0; border-radius: 14px; box-shadow: none; flex-wrap: wrap; gap: 6px; padding: 6px 8px 6px 14px; color: var(--text); }
+.ux-bulk b { color: var(--accent-ink); }
+/* строка раскрывается стрелкой: цель 44 за счёт невидимой подложки */
+.rb-cv, .rl-h .rb-cv { position: relative; width: 24px; height: 24px; border-radius: 8px; }
+.rb-cv::after { content: ""; position: absolute; inset: -10px; }
+.rb-cv[aria-expanded="true"] { color: var(--accent-ink); }
+input[type="checkbox"]:not(.toggle-switch > input) { position: relative; }
+input[type="checkbox"]:not(.toggle-switch > input)::before { content: ""; position: absolute; inset: -12px; }
+/* кнопки в строках: значки 44×44, имя получает остальное место */
+.ux-actions { gap: 4px; }
+.ux-ibtn, .ux-actions .btn:not(.btn-primary):not(.btn-danger), .ux-actions .btn-sm { width: 44px; height: 44px; min-width: 44px; padding: 0; border-radius: var(--kit-r); }
+.ux-ibtn svg, .ux-actions .btn:not(.btn-primary):not(.btn-danger) svg { width: 18px; height: 18px; }
+.ub-dev { display: none; }
+.ux-name, .rb-nl b, .fb-name b { font-size: 15px; font-weight: 600; color: var(--text); }
+.ux-login, .rb-meta, .fb-sd .l2, .rb-act .t small, .fb-when small, .ub-role small, .ub-st small, .cl-plat small { font-family: inherit; font-size: 12.5px; font-weight: 400; color: var(--muted); }
+.cl-ip { font-size: 12.5px; font-weight: 400; color: var(--muted); }
+.fb-top .fl-thumb { width: 40px; height: 40px; border-radius: 12px; font-family: inherit; font-weight: 700; }
+.an-top .kt { width: 40px; height: 40px; border-radius: 12px; }
+.ca-ic { width: 40px; height: 40px; }
+.al-day2 { padding: 8px 14px; margin: 0; background: var(--surf2); font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); border-bottom: 1px solid var(--border-soft); position: sticky; top: 0; z-index: 2; }
+.al-tm2 { font-family: inherit; font-size: 13px; font-weight: 600; color: var(--text); }
+.rl { padding: 14px 16px; gap: 8px; }
+.rl ul { font-size: 14px; line-height: 1.5; gap: 4px; }
+.rl-sl { font-size: 12px; font-weight: 700; letter-spacing: 0; text-transform: none; margin-top: 10px; }
+.rl-sl.add { color: var(--ok); } .rl-sl.fix { color: var(--warn); } .rl-sl.chg { color: var(--accent-ink); }
+/* ленточка сводки (.cx): одна строка 48 px с показателями и стрелкой справа; раскрытая — плитки по две */
+.cx { background: var(--side-bg); border: 0; border-radius: var(--r-card); box-shadow: var(--flat-shadow); padding-bottom: 0; }
+.cx-h { position: relative; min-height: 52px; padding: 8px 44px 8px 14px; gap: 2px 14px; font: 13px var(--ff); }
+.cx[data-open="true"] .cx-h { padding-bottom: 8px; }
+.cx-h .p { gap: 5px; }
+.cx-h .p b { font: 700 16px var(--ff); letter-spacing: -.01em; }
+.cx-h .p span { font-size: 12.5px; color: var(--muted); }
+.cx-h svg { left: auto; right: 6px; top: 50%; bottom: auto; width: 16px; height: 16px; padding: 14px; transform: translateY(-50%); stroke: var(--muted); stroke-width: 2; }
+.cx[data-open="true"] .cx-h svg { transform: translateY(-50%) rotate(180deg); }
+.cx-b { border-top: 1px solid var(--border-soft); padding: 12px; }
+.ub-tile { color: var(--text); }
+.cx-b .ub-tiles > * { background: var(--surf2); border-radius: 14px; padding: 12px !important; }
+.cx-b .ub-tiles > .ub-tile[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.ub-lbl { font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.ub-big { font: 800 24px/1.1 var(--ff); letter-spacing: -.02em; margin: 4px 0 2px; color: var(--text); }
+.ub-big small { font: 500 13px var(--ff); color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+.ub-sub, .ub-leg { font-size: 12.5px; color: var(--muted); }
+.ub-meter, .ub-stack { height: 8px; border-radius: 4px; background: var(--meter-bg); }
+.ub-meter i { border-radius: 4px; }
+.rb-bars span { font-size: 12px; }
+.ub > .ub-upd { background: var(--side-bg); border: 0; border-radius: var(--r-card); box-shadow: var(--flat-shadow); }
+.ub > .ub-upd:has(.cl-ver.ok) { border: 0; }
+/* поиск и фильтр в одном виде: поле кита 48 */
+.ub-head .ux-search { height: var(--kit-field-h); }
+.fsm-b { min-height: var(--kit-field-h); padding: 6px 14px; background: var(--kit-field-bg); border: 0; border-radius: var(--kit-r); grid-template-columns: minmax(0, 1fr) 20px; }
+.fsm-b[aria-expanded="true"] { box-shadow: inset 0 0 0 1.5px var(--accent), var(--kit-field-ring); }
+.fsm-b .k { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.fsm-b .v { font-size: 14px; font-weight: 600; }
+.fsm-b .v b, .fsm-b .v .n, .fsm-o b, .fsm-o .n { font: 600 12px var(--ff); }
+.fsm-b svg { width: 18px; height: 18px; stroke-width: 2; }
+.fsm-p { padding: 6px; background: var(--side-bg); border: 0; border-radius: var(--r-card); box-shadow: var(--pop-shadow); animation: mdPop .15s var(--ease) both; }
+.fsm-g { padding: 10px 12px 4px; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--muted); }
+.fsm-o { min-height: 48px; padding: 0 12px; border-radius: var(--kit-r); font: 500 14.5px var(--ff); }
+.fsm-o.on { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+.fsm-o.on b, .fsm-o.on .n { color: var(--accent-ink); }
+
+/* ═════════ 6. Главная ═════════ */
+.dv .hm-panel { padding: 14px; border-radius: var(--r-card); }
+.dv-kpi { padding: 12px !important; }
+.dv-lbl { font-size: 12px; letter-spacing: 0; text-transform: none; }
+.dv-sub { font-size: 12px; }
+.dv-big { font-size: 24px; }
+.xh-stat small { font-size: 12px; }
+.xh-stat b { font-size: 14px; }
+.xh-btn, .xh-act .btn { min-height: 44px; padding: 0 16px; font-size: 13.5px; border-radius: var(--kit-r); }
+.xs-seg button, .xp-seg button, .xp-tab, .xp-tg { min-height: 44px; font-size: 13px; }
+.xs-seg, .xp-seg { padding: 2px; }
+.xp-tabs { gap: 4px; }
+.xp-tg { padding: 0 12px; }
+.xs-ar .btn { min-height: 44px; padding: 0 14px; }
+.xs-pr small, .xs-pr .s { font-size: 12px; }
+.dv small, .dv .hm-panel small { font-size: 12px; }
+
+/* ═════════ 7. Настройки, федерации, пространства, модули ═════════ */
+.sp-seg button, .st-seg button, .an-seg button, .fm-tabs button, .lkp-tabs button, .dc-seg button { min-height: 44px; }
+.sp-chv { font-size: 12px; }
+.mdk-i { position: relative; }
+.mdk-i::after { content: ""; position: absolute; inset: -13px; }
+.mdk-eye { width: 44px; height: 44px; }
+.mdk-lnk { display: inline-flex; align-items: center; min-height: 44px; }
+.fl-thumb { font-size: 12px; }
+button[data-on-click="wsFilter"] { min-height: 44px; font-size: 13px; }
+.mdk-i { font-size: 12px; }
+.al-t2, .al-day2 span { font-size: 12px; }
+
+/* ═════════ 8. Окно «Новое объявление»: две половины друг под другом, лента прокручивается, кнопки внизу всегда на виду, крестик — вверху листа ═════════ */
+.modal-bg .modal.an-new { position: relative; height: 92dvh; max-height: 92dvh; }
+.an-new .an-halves { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
+.an-new .an-lbody, .an-new .an-rbar, .an-new .an-rlist { flex: none; }
+.an-new .an-half.l .an-foot { order: 10; position: sticky; bottom: 0; z-index: 2; background: var(--side-bg); box-shadow: 0 -8px 16px -12px rgba(60, 40, 20, .2); }
+.an-new .an-half.r .an-rfoot { order: 9; }
+.an-new .an-half.l .ua-head { padding-right: 70px; }
+.an-new .an-half.r .ua-head { border-top: 0; }
+.an-new .an-half.r .ua-head .modal-close { position: absolute; top: 14px; right: 14px; z-index: 3; }
+.an-new .an-half.r .ua-head { order: 5; }
+.an-new .an-half.r .an-rbar { order: 6; } .an-new .an-half.r .an-rlist { order: 7; }
+.an-new .an-half.r { background: none; }
+
+/* строка настройки: название и стрелка на первой линии, быстрое действие — второй, на всю ширину */
+.sp-ah { flex-wrap: wrap; row-gap: 0; padding-right: 4px; }
+.sp-ahm { flex: 1 1 0; min-height: 64px; }
+.sp-ahc { width: 44px; min-height: 44px; }
+.sp-aq { order: 3; flex: 1 1 100%; padding: 0 12px 12px 66px; }
+.sp-aq .btn { flex: 1; justify-content: center; }
+.fm-chip, .ux-chip, .an-ch { min-height: 44px; }
+
+/* ═════════ 9. Федерации: карта двигается пальцем (панорама) и кнопками «+ −», боковая карточка — под картой ═════════ */
+.fd-stp button { width: 44px; min-height: 44px; }
+.fm-tb { padding: 12px 14px; }
+.fm-zoom { gap: 8px; }
+.fm-zoom button { min-width: 44px; height: 44px; border-radius: var(--kit-r); font-size: 18px; }
+.fm-pill, .fm-tb .fm-pill { min-height: 44px; padding: 0 14px; font-size: 13px; }
+.fm-stage { height: min(56dvh, 460px); min-height: 320px; }
+.fm-vt, .fm-el, .fm-me { font-size: 12px; }
+.fm-lg { left: 10px; bottom: 10px; gap: 6px 12px; font-size: 12px; }
+.fm-side { width: 100%; }
+.fm-sh { padding: 16px; }
+.fm-f { padding: 8px 16px; font-size: 13px; }
+.fm-ac { padding: 12px 16px; }
+.fm-ac .btn { flex: 1 1 auto; justify-content: center; }
+
+/* ═════════ 10. Мелочи окон: чипы и «Дополнительно» не ниже 44, подписи не меньше 12 ═════════ */
+.fm-chip, .fm-chip.cnt, .dtp-field.an-ch, .an-ch, .ux-chip { height: 44px; min-height: 44px; }
+button[data-on-click="uaMore"][aria-expanded] { min-height: 44px; }
+.btn[data-on-click="uaCopy"] { min-width: 44px; }
+.mm-set .sb-th button { min-height: 44px; }
+.an-pv-ph, .an-pv small, .rm-tabs small, .fm-tabs small, .fm-tabs button span, .rm-tabs button span { font-size: 12px; }
+.modal-bg small { font-size: 12px; }
+
+/* Числа: цифры одной ширины (шорткат font: выше сбрасывает наследуемое значение) */
+html body .mnav .mn-b, html body .fsm-b .v .n, html body .fsm-b .v b { font-variant-numeric: tabular-nums; }

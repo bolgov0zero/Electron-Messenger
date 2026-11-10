@@ -1,0 +1,164 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Админка, дизайн B «Мягкий» — ОБОЛОЧКА: боковое меню (.sidebar, .nav-item, .sb-*), свёрнутый вид (html.sb-rail), верхняя строка (.topbar), меню профиля, палитра Ctrl K.
+   Область агента «оболочка и главная». Подключается после flat.css (токены и UI-кит там). Кнопки, тумблеры, сегменты, чипы, поля — НЕ рисовать здесь: дописывать в кит flat.css.
+   Образец: docs/flat-mockup/admin-home.html (.app .side .logo .jump .nav .ni .srvw .top .me .menu). Мобильный вид — flat-mobile.css.
+   Правила каркаса (боковое меню — плавающая карточка, верхняя строка, страница) только для экранов шире 820 px: на телефоне боковое меню скрыто, каркас в mobile.css.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* общий статус в верхней строке (на телефоне не показываем) */
+.top-state { display: none; }
+.sb-mk { display: none; }
+
+@media (min-width: 821px) {
+  /* ───── каркас: окно с фоном --app-bg, отступы 10; меню — плавающая карточка, страница рядом без своей рамки ───── */
+  :root { --sb-w: 252px; --sidebar-w: calc(var(--sb-w) + 20px); --topbar-h: 66px; }
+  html.sb-rail { --sb-w: 68px; --sidebar-w: calc(var(--sb-w) + 20px); }
+  .sidebar {
+    left: 10px; top: 10px; bottom: 10px; width: var(--sb-w); padding: 14px 10px 10px;
+    background: var(--side-bg); border: 0; border-radius: var(--r-panel); box-shadow: var(--flat-shadow); overflow: hidden;
+    transition: width .22s var(--ease);
+  }
+  .topbar {
+    left: var(--sidebar-w); right: 0; height: var(--topbar-h); padding: 10px 10px 0 6px; gap: 12px;
+    background: transparent; border: 0; justify-content: flex-start; transition: left .22s var(--ease);
+  }
+  .app-layout { left: var(--sidebar-w); transition: left .22s var(--ease); }
+  .page-body { padding: 0 10px 8px 0; }
+  .app-copy { height: 26px; border: 0; background: none; color: var(--muted); }
+
+  /* ───── верхняя строка: заголовок, общий статус, быстрые действия ───── */
+  .topbar-center { position: static; transform: none; pointer-events: auto; flex: none; }
+  .topbar-center span { font-size: 22px; font-weight: 800; letter-spacing: -.015em; text-transform: none; white-space: nowrap; color: var(--text); }
+  .topbar-right { margin-left: auto; min-width: 0; }
+  .top-state {
+    display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; border-radius: var(--r-tag);
+    background: var(--side-bg); box-shadow: var(--flat-shadow); font-size: 12.5px; font-weight: 600; color: var(--text2); white-space: nowrap;
+  }
+  .top-state[hidden] { display: none; }
+  .top-state i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+  .top-state[data-lv="warn"] i { background: var(--warn); }
+  .top-state[data-lv="crit"] i { background: var(--bad); }
+  /* кнопки верхней строки одной высоты 36 (вторичные, как в макете), основная — заливкой */
+  .topbar .btn { height: var(--kit-btn-h); padding: 0 var(--kit-btn-px); font-size: var(--kit-btn-fs); }
+  .topbar .btn svg { width: 16px; height: 16px; }
+
+  /* ───── логотип и сворачивание ───── */
+  .sb-top { height: auto; padding: 2px 2px 12px 6px; gap: 8px; }
+  .sb-mk { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; flex: none; background: var(--accent-fill); color: #fff; }
+  .sb-mk svg { width: 16px; height: 16px; }
+  .sb-logo { font-size: 12px; font-weight: 800; letter-spacing: .02em; }
+  .sb-logo b { color: var(--accent-ink); }
+
+  /* ───── «Перейти… Ctrl K» ───── */
+  .sb-jump {
+    margin: 0 0 8px; height: 38px; padding: 0 10px; gap: 8px; border: 0; border-radius: var(--r-btn);
+    background: var(--surf2); color: var(--muted); font: 500 13px var(--ff); transition: background .15s;
+  }
+  .sb-jump:hover { background: var(--gl-card2); color: var(--muted); }
+  .sb-jump span { flex: 1; text-align: left; }
+  .sb-jump kbd { margin-left: auto; font: 600 11px var(--ff); padding: 2px 6px; border: 0; border-radius: 6px; background: var(--side-bg); color: var(--muted); }
+
+  /* ───── разделы ───── */
+  .sidebar nav { display: flex; flex-direction: column; gap: 2px; margin: 0 -4px; padding: 0 4px 4px; scrollbar-width: thin; }
+  .nav-item, .nav-section { flex-shrink: 0; }
+  .nav-section { margin: 0; padding: 12px 10px 4px; font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--muted); }
+  .sidebar nav .nav-section:first-child { margin: 0; padding-top: 2px; }
+  .nav-item {
+    height: 44px; padding: 0 12px; gap: 12px; margin: 0; border: 0; border-radius: var(--r-btn);
+    color: var(--text2); font-size: 14px; font-weight: 500; transition: background .15s, color .15s;
+  }
+  .nav-item:hover { background: var(--hover-row); color: var(--text); }
+  .nav-item.active { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; border: 0; }
+  .nav-item svg { width: 20px; height: 20px; opacity: 1; }
+  .nav-item .lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .nav-badge {
+    display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 10px; margin-left: auto;
+    background: var(--surf2); color: var(--text2); font: 600 12px var(--ff); font-variant-numeric: tabular-nums;
+  }
+  .nav-item.active .nav-badge { background: var(--side-bg); color: var(--accent-ink); }
+  .nav-badge.warn, .nav-item.active .nav-badge.warn { background: var(--warn-soft); color: var(--warn); }
+
+  /* ───── низ меню: виджет сервера и карточка пользователя закреплены ───── */
+  .sb-bottom { border: 0; padding: 0; margin-top: 8px; gap: 8px; }
+  .sb-srv { gap: 6px; padding: 10px 12px; border: 0; border-radius: 14px; background: var(--surf2); transition: background .15s; }
+  .sb-srv:hover { background: var(--gl-card2); }
+  .sb-srv.bad { background: var(--bad-soft); }
+  .sb-l1 { font-size: 13px; font-weight: 600; }
+  .sb-l1 .r { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .sb-l2 { font-size: 12px; color: var(--muted); flex-wrap: nowrap; }
+  .sb-sd, .sb-sd.warn, .sb-sd.bad { width: 8px; height: 8px; box-shadow: none; }
+  .sb-sd { background: var(--ok); } .sb-sd.warn { background: var(--warn); } .sb-sd.bad { background: var(--bad); }
+  .sb-pill { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border: 0; border-radius: var(--r-tag); background: var(--side-bg); color: var(--text2); font: 600 12px var(--ff); white-space: nowrap; }
+  .sb-srv .sb-pill:not(.up) { background: var(--side-bg); }
+  .sb-srv .sb-pill.ok { color: var(--ok); }
+  button.sb-pill.up { background: var(--accent-soft); color: var(--accent-ink); }
+  button.sb-pill.up:hover { background: color-mix(in srgb, var(--accent) 22%, var(--side-bg)); }
+  .sb-bad { color: var(--bad); font-weight: 600; }
+  .sb-bar2 { height: 6px; border-radius: 3px; background: var(--meter-bg); }
+  .sb-bar2 i { background: var(--accent); }
+  .sb-spn { border-color: color-mix(in srgb, var(--accent) 30%, transparent); border-top-color: var(--accent); }
+
+  .sb-merow { gap: 0; }
+  .sb-me { width: 100%; height: 48px; padding: 0 6px 0 8px; gap: 10px; border: 0; border-radius: 14px; background: var(--surf2); transition: background .15s; }
+  .sb-me:hover, .sb-me[aria-expanded="true"] { background: var(--gl-card2); border: 0; }
+  .sb-av { width: 34px; height: 34px; }
+  .sb-av > div:first-child, .sb-av > .av { border-radius: 50%; }
+  .sb-av i { display: none; }
+  .sb-tx { line-height: 1.2; }
+  .sb-tx b { font-size: 13px; font-weight: 600; }
+  .sb-tx small { font-size: 12px; color: var(--muted); }
+  .sb-chev { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; flex: none; color: var(--text2); }
+  .sb-chev svg { transition: transform .2s var(--ease); }
+  .sb-me[aria-expanded="true"] .sb-chev svg { transform: rotate(180deg); }
+
+  /* ───── меню профиля: открывается вверх, поверх всего (fixed) ───── */
+  .sb-menu { width: 264px; padding: 6px; border: 0; border-radius: 16px; background: var(--side-bg); box-shadow: var(--pop-shadow); }
+  .sb-who { display: block; margin: 0; padding: 8px 10px 6px; border: 0; font-size: 12.5px; color: var(--muted); }
+  .sb-tm { display: flex; flex-direction: column; gap: 6px; padding: 2px 4px 8px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .sb-tm > span { padding-left: 6px; }
+  .sb-th { margin: 0; }
+  .sb-th button { flex: 1; padding: 0 6px; }
+  .sb-mi { height: 40px; padding: 0 10px; gap: 10px; border-radius: var(--r-btn); font: 500 13.5px var(--ff); color: var(--text); }
+  .sb-mi:hover { background: var(--hover-row); }
+  .sb-mi svg { width: 18px; height: 18px; color: var(--text2); }
+  .sb-mi small { font: 500 12px var(--ff); color: var(--muted); }
+  .sb-mi.bad, .sb-mi.bad svg { color: var(--bad); }
+  .sb-hr { border: 0; border-top: 1px solid var(--border); margin: 4px 6px; }
+
+  /* подсказка свёрнутой панели */
+  .sb-tip { padding: 6px 10px; border-radius: 10px; background: var(--text); color: var(--side-bg); font: 600 12.5px var(--ff); box-shadow: var(--pop-shadow); }
+
+  /* ───── быстрый переход (Ctrl K) ───── */
+  .sb-pal-bg { background: rgba(8, 12, 18, .5); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  :root[data-theme="dark"] .sb-pal-bg { background: rgba(0, 0, 0, .6); }
+  .sb-pal { border: 0; border-radius: var(--r-panel); background: var(--side-bg); box-shadow: var(--pop-shadow); }
+  .sb-pal input { height: 54px; padding: 0 20px; border: 0; border-bottom: 1px solid var(--border); font: 500 15px var(--ff); color: var(--text); }
+  .sb-pal input::placeholder { color: var(--muted); }
+  .sb-pl { padding: 8px; }
+  .sb-pg { padding: 10px 10px 4px; font-size: 12px; letter-spacing: .06em; color: var(--muted); }
+  .sb-pi { height: 40px; padding: 0 10px; border-radius: var(--r-btn); font: 600 13.5px var(--ff); color: var(--text); }
+  .sb-pi[aria-selected="true"] { background: var(--accent-soft); color: var(--accent-ink); }
+  .sb-pi svg { width: 16px; height: 16px; color: var(--accent-ink); }
+  .sb-pi small { font: 500 12px var(--ff); color: var(--muted); }
+  .sb-pe { color: var(--muted); }
+
+  /* ───── свёрнутый вид (рельса 68 px): значки, счётчик только у «Настроек», виджет сервера — точка ───── */
+  html.sb-rail .sidebar { padding: 14px 8px 10px; }
+  html.sb-rail .sb-top { justify-content: center; padding: 2px 0 12px; }
+  html.sb-rail .sb-mk { cursor: pointer; }
+  html.sb-rail .sb-col, html.sb-rail .sb-logo { display: none; }
+  html.sb-rail .sb-jump { margin-inline: 0; padding: 0; justify-content: center; }
+  html.sb-rail .sb-jump span, html.sb-rail .sb-jump kbd { display: none; }
+  html.sb-rail .nav-section { height: 1px; margin: 8px 10px; padding: 0; background: var(--border); font-size: 0; }
+  html.sb-rail .sidebar nav .nav-section:first-child { display: none; }
+  html.sb-rail .nav-item { justify-content: center; padding: 0; }
+  html.sb-rail .nav-item .lb { display: none; }
+  html.sb-rail .nav-badge { position: absolute; top: 2px; right: 2px; width: auto; min-width: 16px; height: 16px; padding: 0 4px; margin: 0; font-size: 12px; }
+  html.sb-rail .nav-badge:not(.warn) { display: none; }
+  html.sb-rail .nav-badge.warn { background: var(--warn-soft); color: var(--warn); }
+  html.sb-rail .sb-me { justify-content: center; padding: 0; height: 44px; }
+  html.sb-rail .sb-tx, html.sb-rail .sb-chev { display: none; }
+  html.sb-rail .sb-srvb { display: grid; place-items: center; position: relative; width: 100%; height: 40px; margin: 0; border: 0; border-radius: 14px; background: var(--surf2); }
+  html.sb-rail .sb-srvb:hover { background: var(--gl-card2); }
+  .sb-srvb .ar { background: var(--warn); color: var(--on-accent); }
+}

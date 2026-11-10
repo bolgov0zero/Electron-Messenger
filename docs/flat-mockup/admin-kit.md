@@ -1,0 +1,42 @@
+# UI-кит админки (дизайн B «Мягкий»)
+
+Правило: одна функция — один вид везде. Код — раздел «UI-КИТ» в `server/src/public/admin/flat.css`; значения — переменные `--kit-*` в его первом блоке.
+Эталон — `docs/flat-mockup/admin-home.html` (`.btn .btn.pri .ibtn .seg .chip .pill .tg`) и `docs/flat-mockup/web-kit.md` (кит веб клиента /chat; значения те же, кроме размеров кнопок и чипов — по макету админки).
+Шрифт везде Medeo Sans (`--f-ui` и `--f-mono` одинаковы), цифры — `font-variant-numeric: tabular-nums` (у body; проверено: ширина «1111» = «0000»).
+
+Подключение (`index.html`, после основного `<style>` и `emoji-font.css`): `flat.css` → `flat-shell.css` → `flat-home.css` → `flat-pages.css` → `flat-modals.css` → `mobile.css` (≤820 px) → `flat-mobile.css` (≤820 px). У всех `?v=1`.
+
+## Инвентарь и что сделано
+
+Колонка «Было» — вид в основном `<style>` index.html / mobile.css; «Стало» — раздел flat.css. Старые рамки, тинты, градиенты и «капсулы 99px» убраны.
+
+| Функция | Где (селекторы; разметка в app.js / index.html) | Было | Стало (раздел flat.css) |
+|---|---|---|---|
+| **Закрытие окна** | `.modal-close` (23 места в app.js, текст «✕»), `.xp-close` (панель графика, svg), `.fl-close` (просмотрщик файла, на тёмной плёнке), `.gl-x` в `.gl-bg.gl-adm` (shared/guestlinks.js, текст «✕»), мелкое «убрать» `.pp-x` | 26×26, рамка, радиус 6, красный тинт при наведении; `.fl-close` 32 с тёмной плёнкой; `.gl-x` текст 16 px | 1: 36×36, радиус 12, фон `--surf2`, значок X Lucide 18 (глиф ✕ скрыт, X рисуется маской), hover — красный (`--bad` на `--bad-soft`); `.fl-close` 40, полупрозрачный белый; `.pp-x` 28, радиус 8 |
+| **Тумблер** | `label.toggle-switch > input + .toggle-track > .toggle-thumb` (8 мест), `button.rs-tg` (настройки комнат), `button.lkq-sw` (звонки, 3), `button.mm-tg` (мобильная страница «Ещё», в mobile.css), любой `button[role="switch"]` | 32×18 (36×18 у `.toggle`), 44×26 `.rs-tg`, 38×22 `.lkq-sw`, 44×26 `.mm-tg`; круглые, у `.rs-tg/.lkq-sw` ползунок с тенью | 2: 40×24, радиус 8, ползунок 18×18 радиус 6 без тени, вкл `--accent-fill`, выкл `--kit-tg-off`, ход 0,2 с. Для `.mm-tg` селектор `button.mm-tg` (перебивает mobile.css) |
+| **Кнопки действий** | основная: `.btn-primary`, `.ux-solid`, `.xh-btn.pri`, `.dv .btn-primary`; вторичная: `.btn` (без вида), `.btn-ghost` (134 вхождения), `.dc-btn`, `.xh-btn`, `.dc-pbtn`; «мягкая»: `.btn-success`, `.dc-btn.dc-pri`, `.btn-update`; опасная: `.btn-danger`, `.sv-btn`, `.dv .btn-danger`; размеры `.btn-sm` (131), `.btn-xs`, `.btn-full` | высота 32 (sm 28, xs 24), радиус 8, рамка 1px с тинтом (`.btn-primary` — тонированная, не заливка), `.dv .btn` — padding 6 11 | 3: высота 36 (sm 30, xs 26), радиус 12, 13/600, без рамок. Основная — заливка `--accent-fill`/белый; вторичная — `--gl-card2`; «мягкая» — `--accent-soft`/`--accent-ink`; опасная — `--bad-soft`/`--bad`. hover темнее, active .96, disabled .45, focus-visible кольцо |
+| **Иконочные** | `.ux-ibtn` (16 мест, ⋯ и действия в строках), `.btn-icon`, `.cdv-tg` (свернуть блок), `.sb-col`, `.sb-out`, `.fd-ib`, `.fd-kb` | 28–32, рамка, фон поверхности; `.fd-ib/.fd-kb` без фона, радиус 7–8 | 4: 30×30, радиус 10, фон `--surf2`, hover `--gl-card2`; `.sb-out` — красный hover. Крупные 36 — только закрытие |
+| **Сегменты** | `.hm-seg` (+ `.hm-seg-hl` плашка, `.hm-seg-sm`), `.dc-seg` (+ `.dc-sm`), `.xp-seg`, `.st-seg`, `.sp-seg`, `.an-seg`, вкладки-сегменты `.fm-tabs`, `.lkp-tabs`; в slidesel.js есть группы `.an-seg .st-seg .xp-seg .sp-seg .dc-seg` | радиус 8–11, рамка, выбранная — рамка/акцент-тинт или поверхность с тенью | 5: контейнер радиус 14 `--surf2` pad 3, min-height 34 (sm 30); кнопка радиус 11, 12.5/600; выбранная — плашка `--side-bg` (в тёмно-синей `--gl-card2`, без тени). `.hm-seg-hl` рисует ту же плашку |
+| **Чипы-фильтры** | `.ux-chip` (+`b` счётчик), `.al-chip`, `.an-ch`, `.pill`/`.filter-pills`, `.xp-tab`, `.fm-chip`, `.fm-grp button` (фильтр людей в окне комнаты), `.fm-pill[aria-pressed]`, `.an-dtp .dtp-field`, переключатели серий `.xp-tg` | капсулы 99px/радиус 9–10 с рамкой, счётчик моно 10.5 px | 6: высота 28, радиус 10, `--surf2`, 12.5/600, без рамки; выбран — `--accent-soft`/`--accent-ink` |
+| **Бейджи статуса** (не кнопки) | `.badge(-green/-orange/-red/-blue/-gray/-purple)` (10), `.hm-pill` (с точкой), `.sb-pill`, `.st-chip`, `.lkk-chip`, `.dc-chip`, `.dvc-chip`, `.xs-badge`, `.rm-chip`, `.fm-pill` (без `aria-pressed`), `.dv-chip`, `.ua-totp-badge`, `.gl-chip` (окна ссылок) | 9.5–11 px, радиус 6–999, часть с рамкой, моно | 7: высота 22, радиус 8, 12/600; тона ok/warn/bad/акцент/нейтральная на `--*-soft`; `.badge-blue/-purple` → акцентный тон |
+| **Флажки / радио** | родной `input[type=checkbox]` (16 мест), `.pp-check`, `.uaws-ck`, `.fd-chk`, `.ua-check input`; радио — `accent-color` | 17×17 радиус 5, галочка `--c-on-primary` | 8: 20×20 радиус 7, линия 1,5, отмечен `--accent-fill` с белой галочкой; радио `accent-color` |
+| **Поля** | сами: `.fg input/select/textarea` (вход, формы), `.pp-search input`, `.an-durin input`, `.fm-acts select`, `.rm-mtools select`; обёртки: `.ua-inp`, `.ux-search`, `.search-box`; кнопки-поля выпадающих списков: `.ux-sel-b`, `.fsel-f .fsel-btn`, `.uaws-btn`, `.dtp-field`; тулбарный `.fsel-btn`; popup `.ux-selp`, `.fsel-pop` | высота 34–36, радиус 8–9, рамка `--border-input`, глиф-кольцо `--accent-glow` | 9: высота 40 (малые 34), радиус 12, фон `--surf2`, рамка прозрачная, фокус — рамка `--accent` + кольцо 3px `--accent-soft`; popup радиус 16 без рамки, пункты радиус 12 |
+| **Вкладки с подчёркиванием** | `.rm-tabs` (окно комнаты) | 12px, линия `--c-primary` | 10: 40 px, 13/600, линия 2px `--accent-fill`, счётчик — метка |
+| **Карточки** | `.card`, `.hm-panel` (главная) | радиус 12, рамка, тень | 11: радиус 16, без рамки, `--flat-shadow`; вложенная карточка — `--surf2` |
+| **Окна** | `.modal` (+ `.modal-bg`) | радиус 12, рамка, `--shadow-xl` | «Основа»: радиус 22, без рамки, `--pop-shadow` (раскладку и шапки окон — агент окон) |
+| **Таблицы** | глобальные `table/th/td`, `.ux-tbl`, `.fl-tbl` | `th` 10 px uppercase, фон `--c-surface2` | 12: `th` 36 px, 12/600 без регистра, фон `--surf2`, строка с линией `--border-soft`, hover `--hover-row`, выбранная `--accent-soft` |
+| **Пустые состояния** | `.empty-state` (со значком), `.ux-empty`, `.an-empty`, `.fm-empty`, `.rm-empty`, `.pp-empty`, `.ub-empty`, `.mdl-empty`, `.fd-empty`, `.dvc-empty` (в `.dv-empty`/`.hm-empty` — только цвет текста) | по-разному, значок прозрачный | 13: по центру, `--muted` 13px; значок — плитка 44×44 радиус 14 `--surf2` |
+| **Окна гостевых ссылок** | `.gl-bg.gl-adm …` (shared/guestlinks.js: `.gl`, `.gl-x`, `.gl-btn`, `.gl-ic`, `.gl-ib`, `.gl-chip`, `.gl-sel-b`, `.gl-pop`, `.gl-opt`, `.gl-new`, `.gl-list`) | 30 px, радиус 8, рамки, тонированные кнопки | 14: те же размеры и виды, что у кнопок/полей/бейджей кита, через переопределения (shared/*.js не правятся) |
+
+## Что кит не покрывает (намеренно: за агентами областей)
+- Оболочка: `.sidebar`, `.nav-item`, `.nav-badge`, `.sb-*` (кроме `.sb-col/.sb-out/.sb-pill`), `.topbar`, меню профиля `.sb-me/.sb-mi`, палитра `.sb-pal`; мобильные `.mnav`, `.mback`, `.mm-*` (кроме `.mm-tg`), шторки.
+- Главная: `.xh-*`, `.xp-*` (кроме `.xp-close/.xp-seg/.xp-tab/.xp-tg`), `.dv-*`, `.dc-*`, `.cdv-*` (кроме `.cdv-tg`), плитки `.ub-tile`, `.hm-*` (кроме сегмента и пилюли).
+- Плитки-выбор (карточка-кнопка): `.ua-role-opt`, `.fd-opt`, `.uaws-opt`, `.fsm-b/.fsm-o`, `.sp-link`, `.fm-li`, `.rb-cv`, `.ws-it`, `.dtp-nav` — это строки/карточки, а не кнопки действий.
+- Раскладка и отступы (margin/flex/grid) — не часть кита; заголовок окна `.modal-head/.modal-body/.modal-foot` — раскладка окон.
+- Остальные одиночные кнопки `.ua-sfx`, `.mdk-eye`, `.xs-lnk`, `.rm-link`, `.sp-ahm`, `.dg` — кнопки-ссылки/текстовые; вид «текстовая кнопка» в ките не заведён (кандидат: `.lnk` из макета — `--accent-ink` 12.5/600, радиус 8, hover `--accent-soft`).
+
+## Как дописывать
+См. комментарий «КАК ДОБАВИТЬ СЕЛЕКТОР В КИТ» в конце `flat.css`. Кратко: свой селектор — в нужные списки раздела (правило + hover + состояния), цвета/размеры только через `--kit-*`, вес селектора — как у старого правила; селекторы mobile.css (грузится позже) перебиваются только более тяжёлыми.
+
+## Проверка
+скрипты `docs/flat-mockup/port/web/admin-snap.js` — снимки главной / «Пользователи» / окна / свёрнутого меню; `admin-kit-gallery.js` — образец всех видов кита в обеих темах (элементы вставляются в открытую админку).

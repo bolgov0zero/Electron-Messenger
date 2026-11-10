@@ -42,7 +42,6 @@ html[data-msub="1"] .topbar-center { padding-left: 2px; }
 
 /* ── «Ещё» ── */
 .mm { display: flex; flex-direction: column; gap: 12px; }
-.mm-list { display: flex; flex-direction: column; gap: 8px; }
 .mm-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 14px; text-align: left; cursor: pointer; font: inherit; color: var(--c-text); }
 .mm-row:active { background: var(--c-surface2); }
 .mm-ic { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; flex-shrink: 0; background: var(--c-primary-dim); color: var(--c-primary); }
@@ -54,10 +53,6 @@ html[data-msub="1"] .topbar-center { padding-left: 2px; }
 .mm-card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 16px; padding: 4px 14px; }
 .mm-set { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--c-border); }
 .mm-set:first-child { border-top: 0; }
-.mm-tg { width: 44px; height: 26px; border-radius: 99px; background: var(--c-surface2); border: 1px solid var(--c-border); position: relative; cursor: pointer; flex-shrink: 0; padding: 0; transition: background .2s; }
-.mm-tg::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--c-muted); transition: transform .2s, background .2s; }
-.mm-tg[aria-checked="true"] { background: var(--c-primary); border-color: transparent; }
-.mm-tg[aria-checked="true"]::after { transform: translateX(18px); background: #fff; }
 
 /* ── Главная ── */
 .dv { gap: 12px; }
@@ -129,7 +124,7 @@ html[data-msub="1"] .topbar-center { padding-left: 2px; }
 @keyframes mSheetIn { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes mSheetOut { from { transform: none; } to { transform: translateY(100%); } }
 .modal-bg .modal, .modal-bg .modal.modal-sm { width: 100% !important; max-width: none !important; max-height: 92dvh; border-radius: 22px 22px 0 0 !important; padding-bottom: var(--msafe); }
-.modal-bg .modal.fm, .modal-bg .modal.ua-modal, .modal-bg .modal.st-modal { height: auto; max-height: 94dvh; }
+.modal-bg .modal.fm, .modal-bg .modal.ua-modal { height: auto; max-height: 94dvh; }
 .modal-bg .modal::before { content: ""; display: block; width: 38px; height: 4px; border-radius: 2px; background: var(--c-border); margin: 8px auto 0; flex-shrink: 0; }
 
 /* ── Разделы со списками ── */
@@ -204,7 +199,6 @@ input, textarea, select { font-size: 16px; }
 /* контекстные меню и подсказки не должны вылезать за экран */
 .ux-menu { max-width: calc(100vw - 16px); }
 /* таблицы, которые остались таблицами, листаются вбок, а не растягивают страницу */
-.table-scroll { max-height: none; overflow-x: auto; }
 .xp { position: relative; }
 
 /* вход */
@@ -216,8 +210,6 @@ input, textarea, select { font-size: 16px; }
 .rs-f .btn { flex: 1; justify-content: center; padding: 11px 8px; }
 .rs-cmp small { display: none; }
 .rs-cmp td, .rs-cmp th { padding-inline: 4px; }
-.st-stat-acts { width: 100%; margin-left: 0; }
-.st-stat-acts .btn { flex: 1; justify-content: center; }
 
 /* ── Сводный блок вместо ленты плиток (собирается скриптом, см. cxWrap в index.html) ── */
 .cx { display: block; position: relative; flex-shrink: 0; padding-bottom: 13px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 16px; overflow: hidden; }
