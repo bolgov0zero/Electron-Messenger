@@ -4,6 +4,7 @@ mod model;
 mod net;
 mod store;
 mod theme;
+mod update;
 mod view;
 
 use std::collections::{HashMap, HashSet};
@@ -99,6 +100,11 @@ struct App {
     feed_chat: Option<i64>,
     anchor: Option<(f32, f32)>,
     force_offset: Option<f32>,
+
+    upd_avail: Option<update::Info>,
+    upd_modal: bool,
+    upd_checking: bool,
+    upd_progress: Option<f32>,
 }
 
 impl App {
@@ -158,6 +164,10 @@ impl App {
             feed_chat: None,
             anchor: None,
             force_offset: None,
+            upd_avail: None,
+            upd_modal: false,
+            upd_checking: false,
+            upd_progress: None,
         };
         if let Some(s) = store::load_session() {
             app.enter(s);
@@ -175,6 +185,7 @@ impl App {
         self.ws_stop = Some(stop);
         self.net.fetch_chats(&s);
         self.net.fetch_presence(&s);
+        self.net.check_update(true);
         self.session = Some(s);
         self.screen = Screen::Main;
     }
@@ -387,6 +398,32 @@ impl App {
                         self.net.fetch_chats(s);
                     }
                 }
+                Event::Update(u) => match u {
+                    update::Upd::Checked { silent, info, latest } => {
+                        self.upd_checking = false;
+                        match info {
+                            Some(i) => {
+                                self.upd_avail = Some(i);
+                                if !silent {
+                                    self.upd_modal = true;
+                                }
+                            }
+                            None => {
+                                self.upd_avail = None;
+                                if !silent {
+                                    self.say(format!("Установлена последняя сборка ({})", update::short(&latest)));
+                                }
+                            }
+                        }
+                    }
+                    update::Upd::Progress(p) => self.upd_progress = Some(p),
+                    update::Upd::Restarting => self.net.ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+                    update::Upd::Failed(e) => {
+                        self.upd_checking = false;
+                        self.upd_progress = None;
+                        self.say(e);
+                    }
+                },
                 Event::AuthExpired => self.logout("Сессия истекла — войдите снова"),
                 Event::Error(e) => self.say(e),
             }
@@ -511,6 +548,7 @@ impl eframe::App for App {
             Screen::Login => self.login_ui(ui, &pal),
             Screen::Main => self.main_ui(ui, &pal),
         }
+        self.update_modal(&ctx, &pal);
         self.toast_ui(&ctx, &pal);
     }
 }
@@ -635,6 +673,8 @@ impl App {
             ui.add_space(4.0);
             let name = self.session.as_ref().map(|s| s.name.clone()).unwrap_or_default();
             let mut out = false;
+            let mut upd_click = false;
+            let (upd_avail, upd_busy) = (self.upd_avail.is_some(), self.upd_checking || self.upd_progress.is_some());
             ui.horizontal(|ui| {
                 let (r, _) = ui.allocate_exact_size(vec2(40.0, 40.0), Sense::hover());
                 draw_avatar(ui, r, &server, Some(me), &name, me);
@@ -649,10 +689,44 @@ impl App {
                         .fill(pal.surf2)
                         .corner_radius(12);
                     out = ui.add(b).clicked();
+                    // Кнопка «проверить обновление»: круговая стрелка, точка — если есть новая сборка
+                    let (r, resp) = ui.allocate_exact_size(vec2(34.0, 34.0), Sense::click());
+                    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(if upd_avail {
+                        "Доступно обновление"
+                    } else {
+                        "Проверить обновления"
+                    });
+                    let p = ui.painter();
+                    p.rect_filled(r, 12, if resp.hovered() { pal.hover2 } else { pal.surf2 });
+                    let col = if upd_busy { pal.muted } else { pal.text2 };
+                    let c = r.center();
+                    let pts: Vec<egui::Pos2> = (0..=22)
+                        .map(|i| {
+                            let a = (50.0 + i as f32 / 22.0 * 270.0).to_radians();
+                            pos2(c.x + 6.5 * a.cos(), c.y - 6.5 * a.sin())
+                        })
+                        .collect();
+                    let end = pts[pts.len() - 1];
+                    p.add(egui::Shape::line(pts, Stroke::new(1.8, col)));
+                    p.line_segment([end, pos2(end.x + 4.5, end.y - 0.5)], Stroke::new(1.8, col));
+                    p.line_segment([end, pos2(end.x + 0.5, end.y + 4.5)], Stroke::new(1.8, col));
+                    if upd_avail {
+                        p.circle_filled(pos2(r.right() - 4.0, r.top() + 4.0), 4.5, pal.accent);
+                        p.circle_stroke(pos2(r.right() - 4.0, r.top() + 4.0), 4.5, Stroke::new(1.5, pal.side_bg));
+                    }
+                    upd_click = resp.clicked();
                 });
             });
             if out {
                 self.logout("");
+            }
+            if upd_click {
+                if self.upd_avail.is_some() {
+                    self.upd_modal = true;
+                } else if !self.upd_checking {
+                    self.upd_checking = true;
+                    self.net.check_update(false);
+                }
             }
         });
     }
@@ -721,64 +795,62 @@ impl App {
             ui.painter().text(pos2(tx, sub_y), Align2::LEFT_TOP, t, FontId::proportional(12.5), pal.text2);
         }
 
-        // ── Остальное — снизу вверх: полоса ввода, затем лента ──
+        // ── Полоса ввода: padding 10 14 14, радиус 0 0 22 22; поле min-height 48, радиус 12, кнопка 48×48 ──
+        // Все прямоугольники заданы явно: раскладка «снизу вверх» обрезала поле по нижнему краю.
         let body = Rect::from_min_max(pos2(full.min.x, head.max.y), full.max);
-        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(body).layout(egui::Layout::bottom_up(Align::Min)));
-        child.set_clip_rect(body);
-
-        // Полоса ввода: padding 10 14 14, радиус 0 0 22 22; поле min-height 48, радиус 12, кнопка 48×48
         let bottom_r = CornerRadius { nw: 0, ne: 0, sw: 22, se: 22 };
+        let (gap, btn) = (8.0f32, 48.0f32);
         let mut do_send = false;
         let id = Id::new("composer");
+        let band_top: f32;
         if !chat.read_only {
-            let enter = child.memory(|m| m.has_focus(id)) && child.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Enter));
+            // высота поля — по числу строк текста (до 120 px), минимум 48
+            let font = FontId::proportional(15.0);
+            let text_w = (body.width() - 28.0 - btn - gap - 26.0).max(60.0);
+            let sample = if self.input.is_empty() || self.input.ends_with('\n') { format!("{} ", self.input) } else { self.input.clone() };
+            let text_h = ui.painter().layout(sample, font.clone(), pal.text, text_w).size().y.clamp(18.0, 120.0);
+            let field_h = (text_h + 28.0).max(48.0);
+            let band = Rect::from_min_max(pos2(body.left(), body.bottom() - (10.0 + field_h + 14.0)), body.max);
+            band_top = band.top();
+            ui.painter().rect_filled(band, bottom_r, pal.side_bg);
+            let field = Rect::from_min_size(pos2(band.left() + 14.0, band.top() + 10.0), vec2(body.width() - 28.0 - btn - gap, field_h));
+            ui.painter().rect_filled(field, 12, pal.surf2);
+
+            let enter = ui.memory(|m| m.has_focus(id)) && ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Enter));
             if enter {
                 do_send = true;
             }
-            egui::Frame::new()
-                .fill(pal.side_bg)
-                .corner_radius(bottom_r)
-                .inner_margin(Margin { left: 14, right: 14, top: 10, bottom: 14 })
-                .show(&mut child, |ui| {
-                    ui.set_width(body.width() - 28.0);
-                    let (gap, btn) = (8.0, 48.0);
-                    let field_w = body.width() - 28.0 - btn - gap;
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = gap;
-                        egui::Frame::new().fill(pal.surf2).corner_radius(12).inner_margin(Margin { left: 20, right: 6, top: 0, bottom: 0 }).show(ui, |ui| {
-                            ui.set_width(field_w - 26.0);
-                            ui.allocate_ui_with_layout(vec2(field_w - 26.0, 120.0), egui::Layout::top_down(Align::Min), |ui| {
-                                egui::ScrollArea::vertical().max_height(120.0).auto_shrink([false, true]).show(ui, |ui| {
-                                    ui.add(
-                                        TextEdit::multiline(&mut self.input)
-                                            .id(id)
-                                            .hint_text(RichText::new("Сообщение").color(pal.muted))
-                                            .desired_rows(1)
-                                            .desired_width(f32::INFINITY)
-                                            .frame(egui::Frame::NONE.inner_margin(Margin::symmetric(0, 14)))
-                                            .font(FontId::proportional(15.0)),
-                                    );
-                                });
-                            });
-                        });
-                        let ready = !self.input.trim().is_empty();
-                        let (r, resp) = ui.allocate_exact_size(vec2(btn, btn), Sense::click());
-                        let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
-                        let bg = if ready { pal.accent_fill } else if resp.hovered() { pal.hover2 } else { pal.surf2 };
-                        let p = ui.painter();
-                        p.rect_filled(r, 12, bg);
-                        let c = r.center();
-                        let st = Stroke::new(2.2, if ready { Color32::WHITE } else { pal.text2 });
-                        p.line_segment([pos2(c.x, c.y + 7.0), pos2(c.x, c.y - 7.0)], st);
-                        p.line_segment([pos2(c.x, c.y - 7.0), pos2(c.x - 6.0, c.y - 1.0)], st);
-                        p.line_segment([pos2(c.x, c.y - 7.0), pos2(c.x + 6.0, c.y - 1.0)], st);
-                        if resp.clicked() {
-                            do_send = true;
-                        }
-                    });
-                });
+            let text_rect = Rect::from_min_max(pos2(field.left() + 20.0, field.top()), pos2(field.right() - 6.0, field.bottom()));
+            let mut fui = ui.new_child(egui::UiBuilder::new().max_rect(text_rect).layout(egui::Layout::top_down(Align::Min)));
+            fui.set_clip_rect(field);
+            egui::ScrollArea::vertical().id_salt("composer_scroll").auto_shrink([false, false]).show(&mut fui, |ui| {
+                ui.add(
+                    TextEdit::multiline(&mut self.input)
+                        .id(id)
+                        .hint_text(RichText::new("Сообщение").color(pal.muted))
+                        .desired_rows(1)
+                        .desired_width(f32::INFINITY)
+                        .frame(egui::Frame::NONE.inner_margin(Margin::symmetric(0, 14)))
+                        .font(font),
+                );
+            });
+
+            // Кнопка отправки: у нижнего края поля
+            let r = Rect::from_min_size(pos2(band.right() - 14.0 - btn, band.bottom() - 14.0 - btn), vec2(btn, btn));
+            let resp = ui.interact(r, Id::new("send_btn"), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+            let ready = !self.input.trim().is_empty();
+            let p = ui.painter();
+            p.rect_filled(r, 12, if ready { pal.accent_fill } else if resp.hovered() { pal.hover2 } else { pal.surf2 });
+            let c = r.center();
+            let st = Stroke::new(2.2, if ready { Color32::WHITE } else { pal.text2 });
+            p.line_segment([pos2(c.x, c.y + 7.0), pos2(c.x, c.y - 7.0)], st);
+            p.line_segment([pos2(c.x, c.y - 7.0), pos2(c.x - 6.0, c.y - 1.0)], st);
+            p.line_segment([pos2(c.x, c.y - 7.0), pos2(c.x + 6.0, c.y - 1.0)], st);
+            if resp.clicked() {
+                do_send = true;
+            }
             if self.focus_input {
-                child.memory_mut(|m| m.request_focus(id));
+                ui.memory_mut(|m| m.request_focus(id));
                 self.focus_input = false;
             }
             // Событие набора текста: при вводе, не чаще раза в 2 секунды
@@ -790,17 +862,19 @@ impl App {
                 self.prev_input = self.input.clone();
             }
         } else {
-            egui::Frame::new().fill(pal.side_bg).corner_radius(bottom_r).inner_margin(Margin { left: 14, right: 14, top: 10, bottom: 14 }).show(&mut child, |ui| {
-                ui.set_width(body.width() - 28.0);
-                egui::Frame::new().fill(pal.surf2).corner_radius(12).inner_margin(Margin::symmetric(12, 14)).show(ui, |ui| {
-                    ui.set_width(body.width() - 52.0);
-                    ui.vertical_centered(|ui| ui.label(RichText::new("В этот чат нельзя писать").size(13.5).color(pal.text2)));
-                });
-            });
+            let band = Rect::from_min_max(pos2(body.left(), body.bottom() - 72.0), body.max);
+            band_top = band.top();
+            ui.painter().rect_filled(band, bottom_r, pal.side_bg);
+            let field = Rect::from_min_size(pos2(band.left() + 14.0, band.top() + 10.0), vec2(body.width() - 28.0, 48.0));
+            ui.painter().rect_filled(field, 12, pal.surf2);
+            ui.painter().text(field.center(), Align2::CENTER_CENTER, "В этот чат нельзя писать", FontId::proportional(13.5), pal.text2);
         }
-        let band_top = child.min_rect().top();
 
-        // ── Лента ──
+        // ── Лента: область между шапкой и полосой ввода ──
+        let feed_rect = Rect::from_min_max(body.min, pos2(body.right(), band_top));
+        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(feed_rect).layout(egui::Layout::top_down(Align::Min)));
+        child.set_clip_rect(feed_rect);
+
         let loading = self.loading.contains(&cid);
         let force = self.force_offset.take();
         let group = chat.kind != "direct";
@@ -887,7 +961,7 @@ impl App {
         let dist = ch - vh - off;
         if ch > 0.0 && dist > 200.0 {
             let r = Rect::from_min_size(pos2(full.right() - 20.0 - 44.0, band_top - 14.0 - 44.0), vec2(44.0, 44.0));
-            let resp = child.interact(r, Id::new("scroll_bottom"), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+            let resp = ui.interact(r, Id::new("scroll_bottom"), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
             let p = ui.painter().clone();
             p.rect_filled(r.translate(vec2(0.0, 2.0)).expand(1.0), 13, Color32::from_black_alpha(if pal.dark { 80 } else { 22 }));
             p.rect_filled(r, 12, if resp.hovered() { pal.hover2 } else { pal.side_bg });
@@ -913,6 +987,59 @@ impl App {
             self.send();
         }
         let _ = alpha;
+    }
+
+    /// Окно «Доступно обновление»: установка и ход загрузки.
+    fn update_modal(&mut self, ctx: &egui::Context, pal: &Pal) {
+        if !self.upd_modal {
+            return;
+        }
+        let Some(info) = self.upd_avail.clone() else {
+            self.upd_modal = false;
+            return;
+        };
+        let (mut install, mut close) = (false, false);
+        let progress = self.upd_progress;
+        let resp = egui::Modal::new(Id::new("upd_modal")).show(ctx, |ui| {
+            ui.set_width(360.0);
+            ui.label(RichText::new("Доступно обновление").font(FontId::new(18.0, bold())).color(pal.text));
+            ui.add_space(6.0);
+            let mb = info.size as f64 / (1u64 << 20) as f64;
+            ui.label(
+                RichText::new(format!("Сборка {} ({}), {:.1} МБ. После установки приложение перезапустится.", info.build, update::short(&info.sha), mb))
+                    .size(14.0)
+                    .color(pal.text2),
+            );
+            ui.label(
+                RichText::new(format!("Сейчас установлена: {} ({})", update::current_build(), update::short(update::current_sha())))
+                    .size(13.0)
+                    .color(pal.muted),
+            );
+            ui.add_space(14.0);
+            if let Some(p) = progress {
+                ui.add(egui::ProgressBar::new(p).fill(pal.accent_fill).show_percentage());
+            } else {
+                ui.horizontal(|ui| {
+                    let b = egui::Button::new(RichText::new("Установить").font(FontId::new(14.5, bold())).color(Color32::WHITE))
+                        .fill(pal.accent_fill)
+                        .corner_radius(12)
+                        .min_size(vec2(140.0, 40.0));
+                    install = ui.add(b).clicked();
+                    let b = egui::Button::new(RichText::new("Позже").size(14.5).color(pal.text2))
+                        .fill(pal.surf2)
+                        .corner_radius(12)
+                        .min_size(vec2(100.0, 40.0));
+                    close = ui.add(b).clicked();
+                });
+            }
+        });
+        if progress.is_none() && (close || resp.should_close()) {
+            self.upd_modal = false;
+        }
+        if install {
+            self.upd_progress = Some(0.0);
+            self.net.install_update(info);
+        }
     }
 
     fn toast_ui(&mut self, ctx: &egui::Context, pal: &Pal) {

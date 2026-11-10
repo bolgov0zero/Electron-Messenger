@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use crate::store::Session;
 
 pub enum Event {
+    Update(crate::update::Upd),
     LoggedIn(Session),
     LoginFailed(String),
     Chats(Vec<Chat>),
@@ -71,7 +72,7 @@ fn api_error(v: &Value, status: reqwest::StatusCode) -> String {
 }
 
 impl Net {
-    fn emit(&self, e: Event) {
+    pub(crate) fn emit(&self, e: Event) {
         let _ = self.tx.send(e);
         self.ctx.request_repaint();
     }

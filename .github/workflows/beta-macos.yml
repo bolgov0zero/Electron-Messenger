@@ -12,6 +12,8 @@ jobs:
   build:
     name: Build macOS (Rust)
     runs-on: macos-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -25,6 +27,10 @@ jobs:
 
       - name: Build (arm64 + x86_64)
         working-directory: native
+        env:
+          # Зашиваются в приложение: по ним оно узнаёт, есть ли более новая сборка
+          GIT_SHA: ${{ github.sha }}
+          BUILD_NUM: ${{ github.run_number }}
         run: |
           cargo build --release --target aarch64-apple-darwin
           cargo build --release --target x86_64-apple-darwin
@@ -79,8 +85,27 @@ jobs:
 
           hdiutil create -volname "Chat" -srcfolder dist -ov -format UDZO "Chat-native-beta.dmg"
 
+          # Для обновления внутри приложения: zip с .app и описание версии
+          ditto -c -k --keepParent "$APP" Chat-native-beta.zip
+          SIZE=$(stat -f%z Chat-native-beta.zip)
+          printf '{"sha":"%s","build":%s,"size":%s}\n' "$GITHUB_SHA" "$GITHUB_RUN_NUMBER" "$SIZE" > version.json
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: Chat-native-macOS-beta
           path: native/Chat-native-beta.dmg
+
+      # Скользящий пререлиз: приложение скачивает его без токена (артефакты Actions требуют авторизации).
+      # Тег native-beta не совпадает с c* и v*, поэтому релизная сборка Electron не запускается,
+      # а пререлиз не попадает в releases/latest.
+      - name: Publish rolling prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete native-beta --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+          gh release create native-beta --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --prerelease --latest=false \
+            --title "Native beta (скользящая сборка)" \
+            --notes "Автоматическая сборка нативного клиента из ветки beta: сборка $GITHUB_RUN_NUMBER, коммит ${GITHUB_SHA:0:7}. Нужна для обновления внутри приложения." \
+            native/Chat-native-beta.dmg native/Chat-native-beta.zip native/version.json
