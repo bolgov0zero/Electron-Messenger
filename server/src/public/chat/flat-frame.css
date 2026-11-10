@@ -119,7 +119,7 @@ html.dark .chats-list .chat-item.active::after, html.dark .topics-panel .chat-it
 
 /* ───── 2.2.б Шапка чата: докованная карточка, закреплённое, поиск, «вниз» ───── */
 .chat-header {
-  top: 0; left: 0; right: 0; height: 68px; padding: 0 14px 0 10px; border: 0; border-radius: 0;
+  top: 0; left: 0; right: 0; height: 68px; padding: 0 14px 0 10px; border: 0; border-radius: var(--r-panel) var(--r-panel) 0 0;
   background: var(--header-bg); box-shadow: var(--bar-sh);
 }
 .chat-header-main { border-radius: var(--r-item); }
