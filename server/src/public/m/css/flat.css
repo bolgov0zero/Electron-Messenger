@@ -7,7 +7,7 @@
 
 /* ───── 1.0 токены ───── */
 :root{
-  --ff:Inter,-apple-system,system-ui,sans-serif;
+  --ff:"Medeo Sans",Inter,-apple-system,system-ui,sans-serif;--ff-mono:"Medeo Mono",ui-monospace,Menlo,monospace;
   --accent:#1fa88c;--accent-rgb:29,168,140;--danger:#d23a3a;
   --presence-online:#34c759;--presence-away:#ff9f0a;--read:#3ea6ff;
   --tag-1:41,50,96;--tag-2:37,131,37;--tag-3:131,78,37;--tag-4:34,119,114;--tag-5:131,37,78;
@@ -467,3 +467,6 @@ html .cl-gt{border-radius:6px}
 .spi-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
 .spi-t b{font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .spi-t small{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Medeo Sans: цифры одной ширины — время, счётчики, таймер звонка */
+.r1 .tm,.bd,.cl-tm{font-variant-numeric:tabular-nums}

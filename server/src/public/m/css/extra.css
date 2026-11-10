@@ -4,7 +4,7 @@
   --ease: cubic-bezier(.32, .72, 0, 1);
   /* имена токенов, на которые опираются общие компоненты (шторки Klipy, объявления, просмотр) */
   --fg: var(--text); --fg2: var(--text2); --fg3: var(--muted); --red: var(--danger); --fill: var(--gl-hov); --bar2: var(--gl-pop);
-  --card: var(--gl); --sep: var(--gl-lo); --bg: var(--gl-base); --bg2: var(--gl-base); --green: #34c759; --mfs: 16px; --font: Inter, -apple-system, system-ui, sans-serif;
+  --card: var(--gl); --sep: var(--gl-lo); --bg: var(--gl-base); --bg2: var(--gl-base); --green: #34c759; --mfs: 16px; --font: "Medeo Sans", Inter, -apple-system, system-ui, sans-serif;
   --sab-extra: 0px;
 }
 svg.ic { display: block; flex: none; }
@@ -47,7 +47,7 @@ html, body { background: var(--gl-base); }
 .bub .txt a { color: inherit; text-decoration: underline; word-break: break-all; }
 .txt .mn { font-weight: 600; color: var(--accent-ink); }
 .mrow.out .txt .mn { color: inherit; text-decoration: underline; }
-.txt code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; background: color-mix(in srgb, var(--read) 32%, transparent); border-radius: 4px; padding: 0 4px; }
+.txt code { font: 0.9em "Medeo Mono", ui-monospace, SFMono-Regular, Menlo, monospace; background: color-mix(in srgb, var(--read) 32%, transparent); border-radius: 4px; padding: 0 4px; }
 .bub.dl { font-style: italic; opacity: .65; }
 .bub .t .fwd { display: inline-flex; align-items: center; gap: 2px; font-weight: 600; margin-right: 2px; cursor: pointer; }
 .bub .t .dv .i { color: currentColor; opacity: .6; }
@@ -121,8 +121,8 @@ html, body { background: var(--gl-base); }
 .cfield.filled .ph { display: none; }
 .cin .ce { flex: 1; min-width: 0; min-height: 46px; max-height: 120px; overflow-y: auto; padding: 13px 4px 13px 0; font-size: 16px; line-height: 20px; color: var(--text); word-break: break-word; }
 .cin .ce b { font-weight: 700; }
-.cin .ce code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; background: color-mix(in srgb, var(--read) 32%, transparent); border-radius: 5px; padding: 0 4px; }
-.cin .ce pre.cb { margin: 3px 8px 3px 0; padding: 7px 10px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: #0b0e13; color: #d6e2ee; }
+.cin .ce code { font: 0.9em "Medeo Mono", ui-monospace, SFMono-Regular, Menlo, monospace; background: color-mix(in srgb, var(--read) 32%, transparent); border-radius: 5px; padding: 0 4px; }
+.cin .ce pre.cb { margin: 3px 8px 3px 0; padding: 7px 10px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.4 "Medeo Mono", ui-monospace, SFMono-Regular, Menlo, monospace; background: #0b0e13; color: #d6e2ee; }
 .cin .em.on { color: var(--accent-ink); }
 .rnote { padding: 8px 16px 0; font-size: 13px; color: var(--text2); }
 .rnote[hidden] { display: none; } .rnote.soft { color: var(--accent-ink); }
@@ -306,8 +306,8 @@ html, body { background: var(--gl-base); }
 .gif-off { display: flex; align-items: center; gap: 10px; padding: 6px 4px; font-size: 12.5px; color: var(--fg2); line-height: 1.4; }
 .gif-off small { font-size: 11.5px; }
 .gif-off-i { width: 36px; height: 36px; border-radius: 10px; background: var(--fill); display: grid; place-items: center; flex: none; font-size: 10px; font-weight: 800; }.cfield .ce b { font-weight: 700; }
-.cfield .ce code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; background: color-mix(in srgb, var(--read) 32%, transparent); border-radius: 5px; padding: 0 4px; }
-.cfield .ce pre.cb { margin: 3px 8px 3px 0; padding: 7px 10px; border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: #0b0e13; color: #d6e2ee; }
+.cfield .ce code { font: 0.9em "Medeo Mono", ui-monospace, SFMono-Regular, Menlo, monospace; background: color-mix(in srgb, var(--read) 32%, transparent); border-radius: 5px; padding: 0 4px; }
+.cfield .ce pre.cb { margin: 3px 8px 3px 0; padding: 7px 10px; border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; font: 14px/1.4 "Medeo Mono", ui-monospace, SFMono-Regular, Menlo, monospace; background: #0b0e13; color: #d6e2ee; }
 .bub.bcomp { padding: 0; overflow: hidden; }
 .bub.bcomp > .who { padding: 7px 12px 0; }
 .bub.bcomp > .cpad { padding: 7px 12px 0; }
@@ -327,7 +327,7 @@ html, body { background: var(--gl-base); }
 .cblk .cblk-cp:active { background: rgba(255, 255, 255, .12); }
 .cblk .cblk-cp i { font-style: normal; }
 .cblk.done .cblk-cp { color: var(--green); }
-.cblk pre { margin: 0; padding: 8px 12px; white-space: pre-wrap; overflow-wrap: anywhere; font: 0.88em/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: #d6e2ee; }
+.cblk pre { margin: 0; padding: 8px 12px; white-space: pre-wrap; overflow-wrap: anywhere; font: 0.88em/1.45 "Medeo Mono", ui-monospace, SFMono-Regular, Menlo, monospace; color: #d6e2ee; }
 .cblk .cbf { display: flow-root; text-align: right; padding: 0 12px 6px; min-height: 8px; color: #8b9aaa; }
 .cblk .cbf .meta { float: none; margin: 0; top: 0; }
 .bub.bcomp { min-width: 240px; }

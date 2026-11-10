@@ -221,11 +221,11 @@ html.font-large  { --font-size: 16px; }
 button, input, textarea, select { font-family: inherit; }
 
 body {
-  /* Вшитый шрифт смайлов стоит сразу после Inter, но ДО системных шрифтов. Inter остаётся первым, поэтому
+  /* Вшитый шрифт смайлов стоит сразу после Medeo Sans и Inter, но ДО системных шрифтов. Medeo Sans остаётся первым, поэтому
      выравнивание текста в пузыре на macOS и Linux не страдает (так было, когда смайлы стояли впереди всех).
      А ⚠ ✈ ✂ ☎ и ещё около двух сотен знаков, которые есть и в системных шрифтах, достаются цветному Noto:
      иначе системный шрифт находил их раньше и рисовал чёрный контур вместо смайла */
-  font-family: 'Inter', 'Noto Color Emoji', -apple-system, BlinkMacSystemFont, system-ui, 'Noto Color Emoji Keys', sans-serif;
+  font-family: 'Medeo Sans', 'Inter', 'Noto Color Emoji', -apple-system, BlinkMacSystemFont, system-ui, 'Noto Color Emoji Keys', sans-serif;
   background: var(--chat-bg);
   color: var(--text);
   height: var(--vh100);
@@ -1651,7 +1651,7 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 .link-modal-title { font-size: 14px; font-weight: 700; color: var(--text); }
 .link-modal-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
 .link-modal-url {
-  width: 100%; font-family: monospace; font-size: 12px;
+  width: 100%; font-family: 'Medeo Mono', monospace; font-size: 12px;
   color: var(--muted); background: var(--card-bg);
   border: 1px solid var(--border); border-radius: 9px;
   padding: 8px 12px; word-break: break-all; text-align: left;
@@ -2035,7 +2035,7 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 /* Markdown-lite: инлайновый код */
 .md-code {
   /* Эмодзи-шрифт и здесь первым: иначе смайл внутри блока кода остаётся чёрным */
-  font-family: 'Noto Color Emoji', ui-monospace, 'SF Mono', Consolas, monospace;
+  font-family: 'Noto Color Emoji', 'Medeo Mono', ui-monospace, 'SF Mono', Consolas, monospace;
   font-size: 0.88em;
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   border-radius: 9px;
@@ -2871,7 +2871,7 @@ html.dark .anx-solid { color: #0c0e10; }
 .pl-f { display: flex; align-items: center; gap: 10px; height: 44px; border-radius: 999px; background: var(--search-bg); padding: 0 8px 0 16px; border: 1px solid transparent; cursor: pointer; text-align: left; width: 100%; font-family: inherit; color: var(--text); }
 .pl-f:hover { border-color: var(--accent-border); }
 .pl-k { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); width: 82px; flex-shrink: 0; }
-.pl-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 600; }
+.pl-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Medeo Mono', ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 600; }
 .pl-i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--text2); flex-shrink: 0; }
 .pl-i svg { width: 15px; height: 15px; }
 .pl-f.done { border-color: var(--accent-border); background: var(--accent-soft); }
@@ -2992,10 +2992,10 @@ html.dark .anx-solid { color: #0c0e10; }
    ══════════════════════════════════════════ */
 /* Поле ввода: оформление видно прямо в нём */
 .fmt-ce b { font-weight: 700; }
-.fmt-ce code { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: .88em; background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 6px; padding: 1px 4px; }
+.fmt-ce code { font-family: 'Medeo Mono', ui-monospace, 'SF Mono', Consolas, monospace; font-size: .88em; background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 6px; padding: 1px 4px; }
 .fmt-ce pre.cb {
   margin: 2px 0; padding: 8px 10px; border-radius: 10px; white-space: pre-wrap; word-break: break-word;
-  font: 12.5px/1.5 ui-monospace, 'SF Mono', Consolas, monospace; background: #0b0e13; color: #d6e2ee;
+  font: 12.5px/1.5 'Medeo Mono', ui-monospace, 'SF Mono', Consolas, monospace; background: #0b0e13; color: #d6e2ee;
 }
 
 /* Меню «Прикрепить файл / Форматирование» над кнопкой со стрелкой */
@@ -3067,7 +3067,7 @@ html.dark .anx-solid { color: #0c0e10; }
 .cblk.done .cblk-cp { color: #4ade80; opacity: 1; }
 .cblk pre {
   margin: 0; padding: 8px 12px; white-space: pre-wrap; word-break: break-word; color: #d6e2ee;
-  font: 12.5px/1.5 'Noto Color Emoji', ui-monospace, 'SF Mono', Consolas, monospace; user-select: text; -webkit-user-select: text; cursor: text;
+  font: 12.5px/1.5 'Noto Color Emoji', 'Medeo Mono', ui-monospace, 'SF Mono', Consolas, monospace; user-select: text; -webkit-user-select: text; cursor: text;
 }
 .cblk .cbf { height: 22px; }
 
@@ -3232,7 +3232,7 @@ html.dark .anx-solid { color: #0c0e10; }
 .gm-pick { display: flex; align-items: center; gap: 11px; padding: 7px 12px; min-height: 50px; width: 100%; text-align: left; background: none; border: 0; color: inherit; font: inherit; }
 .gm-nm { flex: 1; min-width: 0; }
 .gm-nm b { display: block; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
-.gm-l { font-size: 11.5px; color: var(--text2); font-family: ui-monospace, 'SF Mono', Consolas, monospace; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm-l { font-size: 11.5px; color: var(--text2); font-family: 'Medeo Mono', ui-monospace, 'SF Mono', Consolas, monospace; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gm-mini { height: 24px; padding: 0 9px; border-radius: 99px; border: 0; background: rgba(255,159,10,.14); color: var(--presence-away); font-weight: 600; font-size: 11px; font-family: inherit; cursor: pointer; white-space: nowrap; }
 .gm-x { width: 26px; height: 26px; border-radius: 8px; border: 0; background: none; color: var(--muted); cursor: pointer; display: grid; place-items: center; flex: none; }
 .gm-x:hover { color: var(--danger); background: var(--danger-bg); }

@@ -24,18 +24,23 @@
   function forget() { try { real.removeItem(KEY); } catch (e) {} document.cookie = CK + '=; path=/g; max-age=0'; }
 
   // ── Экраны входа и окончания доступа (поверх клиента) ──
-  var LOCK = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+  var ICO = {
+    clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
+    off: '<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/><path d="m8 8 6 6"/><path d="m14 8-6 6"/>',
+    device: '<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>'
+  };
   var END = {
-    expired: ['Доступ закончился', 'Срок действия ссылки истёк. Нужен новый доступ — попросите прислать ссылку заново.'],
-    revoked: ['Ссылка отозвана', 'Организатор закрыл эту ссылку. Если доступ нужен, попросите новую.'],
-    other_device: ['Ссылка уже открыта на другом устройстве', 'Её можно использовать только с устройства, где она была открыта первой. Попросите прислать новую ссылку.'],
-    not_found: ['Ссылка не найдена', 'Проверьте адрес или попросите прислать ссылку заново.'],
-    busy: ['Слишком много попыток', 'Подождите несколько минут и откройте ссылку снова.']
+    expired: ['Доступ закончился', 'Срок действия ссылки истёк. Нужен новый доступ — попросите прислать ссылку заново.', 'clock', 'warn'],
+    revoked: ['Ссылка отозвана', 'Организатор закрыл эту ссылку. Если доступ нужен, попросите новую.', 'ban', 'bad'],
+    other_device: ['Ссылка уже открыта на другом устройстве', 'Её можно использовать только с устройства, где она была открыта первой. Попросите прислать новую ссылку.', 'device', 'warn'],
+    not_found: ['Ссылка не найдена', 'Проверьте адрес или попросите прислать ссылку заново.', 'off', 'bad'],
+    busy: ['Слишком много попыток', 'Подождите несколько минут и откройте ссылку снова.', 'clock', 'warn']
   };
   function logo() { return '<div class="login-icon"><div class="login-logo"><img src="/chat/icons/icon-192.png" width="64" height="64" alt=""></div></div><h1 class="login-wordmark"><span>ELECTRON</span><span>MESSENGER</span></h1>'; }
   function gate(html) {
     var g = $('g-gate'); if (!g) { g = document.createElement('div'); g.id = 'g-gate'; document.body.appendChild(g); }
-    g.innerHTML = '<div class="login-wrap">' + logo() + html + '</div>';
+    g.innerHTML = '<div class="login-wrap">' + logo() + html + '<p class="g-foot">Гостевой доступ · Электрон</p></div>';
   }
   function closeGate() { var g = $('g-gate'); if (g) g.remove(); }
   function end(kind) {
@@ -44,10 +49,11 @@
     S.token = null;
     if (kind === 'expired' || kind === 'revoked' || kind === 'not_found') forget();
     var t = END[kind] || END.expired;
-    gate('<div class="g-end-icon">' + LOCK + '</div><div class="login-sub" style="font-weight:700;color:var(--text)">' + esc(t[0]) + '</div><p class="g-note">' + esc(t[1]) + '</p>');
+    var ic = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (ICO[t[2]] || ICO.clock) + '</svg>';
+    gate('<div class="g-end-icon ' + (t[3] || 'warn') + '">' + ic + '</div><div class="g-title">' + esc(t[0]) + '</div><p class="g-note">' + esc(t[1]) + '</p>');
   }
   function nameForm(chatName, err) {
-    gate('<p class="login-sub">Вас пригласили в чат «' + esc(chatName) + '»</p>' +
+    gate('<p class="login-sub">Вас пригласили в чат</p><div class="g-title">' + esc(chatName) + '</div>' +
       '<form id="g-name-form"><div class="field"><label>Ваше имя</label><input id="g-name" placeholder="Иванов Иван" maxlength="60" autocomplete="name"></div>' +
       '<div class="g-warn"><b>Ссылка одноразовая</b>После входа она будет работать только на этом устройстве, с другого открыть её уже не получится. Входом считается нажатие «Войти в чат» после ввода имени: до этого ссылку можно открыть и на другом устройстве.</div>' +
       '<p class="g-note">Имя увидят участники чата. Сообщения, написанные до вашего входа, вам не показываются.</p>' +
@@ -74,7 +80,7 @@
     return { ok: false, error: j.error || 'Не удалось войти' };
   }
   async function boot() {
-    gate('<p class="g-note">Подключаюсь…</p>');
+    gate('<div class="g-end-icon"><span class="g-wait-dot"></span></div><p class="g-note">Подключаюсь…</p>');
     if (!token) return end('not_found');
     var saved = loadSaved();
     if (saved.dk) { var r = await open(null, saved.dk); if (r.ok || st.ended) return; }
@@ -263,6 +269,8 @@
 
   // Что гостю недоступно: профили, сведения о группе, поиск по чату, переслать и закрепить
   var noop = function () {};
+  // Модули (необязательные возможности клиента) гостю недоступны: список не запрашиваем, иначе в консоли каждый раз 403
+  try { if (window.Modules && typeof window.Modules.refresh === 'function') window.Modules.refresh = function () { return Promise.resolve(); }; } catch (e) {}
   ['openProfile', 'openGroupInfo', 'toggleChatSearch', 'showChatCtx', 'ctxForward', 'ctxTogglePin', 'ctxReadToggle', 'addContactFromChat', 'openChatMedia',
     'leaveRoom', 'maybeShowNotifBanner', 'subscribePush', 'loadPushPrefs', 'loadBanners'].forEach(function (n) { if (typeof window[n] === 'function') window[n] = noop; });
 

@@ -26,7 +26,7 @@
    ему для клавишных смайлов 1️⃣ #️⃣. Поставь его первым целиком — и обычные цифры
    в тексте станут плитками («цена 1500 ₽» превращается в набор картинок).
    Поэтому эти пять диапазонов вынесены в отдельное семейство, которое стоит
-   ПОСЛЕ текстовых шрифтов: цифра в тексте достаётся Inter, а в связке с U+20E3
+   ПОСЛЕ текстовых шрифтов: цифра в тексте достаётся Medeo Sans, а в связке с U+20E3
    браузер подбирает шрифт под всю последовательность целиком и находит нужный.
    Цветными не остаются только ©️ и ®️ — у них нет такого хвоста, и отличить их
    от © и ® всё равно нельзя. */
@@ -387,11 +387,11 @@ html.font-large  { --font-size: 16px; }
 button, input, textarea, select { font-family: inherit; }
 
 body {
-  /* Вшитый шрифт смайлов стоит сразу после Inter, но ДО системных шрифтов. Inter остаётся первым, поэтому
+  /* Вшитый шрифт смайлов стоит сразу после Medeo Sans и Inter, но ДО системных шрифтов. Medeo Sans остаётся первым, поэтому
      выравнивание текста в пузыре на macOS и Linux не страдает (так было, когда смайлы стояли впереди всех).
      А ⚠ ✈ ✂ ☎ и ещё около двух сотен знаков, которые есть и в системных шрифтах, достаются цветному Noto:
      иначе системный шрифт находил их раньше и рисовал чёрный контур вместо смайла */
-  font-family: 'Inter', 'Noto Color Emoji', -apple-system, BlinkMacSystemFont, system-ui, 'Noto Color Emoji Keys', sans-serif;
+  font-family: 'Medeo Sans', 'Inter', 'Noto Color Emoji', -apple-system, BlinkMacSystemFont, system-ui, 'Noto Color Emoji Keys', sans-serif;
   background: var(--chat-bg);
   color: var(--text);
   height: var(--vh100);
@@ -403,21 +403,21 @@ body {
 /* Браузер не рисует COLRv1 (Safari) — переключаемся на SVG-набор */
 html.emoji-svg body,
 html.emoji-svg .ra-emoji {
-  font-family: 'Noto Emoji SVG', 'Inter', -apple-system, BlinkMacSystemFont, system-ui,
+  font-family: 'Noto Emoji SVG', 'Medeo Sans', 'Inter', -apple-system, BlinkMacSystemFont, system-ui,
                'Noto Emoji SVG Keys', sans-serif;
 }
 html.emoji-svg .md-code {
-  font-family: 'Noto Emoji SVG', ui-monospace, 'SF Mono', Consolas, monospace;
+  font-family: 'Noto Emoji SVG', 'Medeo Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 /* Не рисует ни тот, ни другой — отдаём системные смайлы: они разные на разных
    системах, но это несравнимо лучше пустых мест */
 html.no-emoji-font body,
 html.no-emoji-font .ra-emoji {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui,
+  font-family: 'Medeo Sans', 'Inter', -apple-system, BlinkMacSystemFont, system-ui,
                'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
 }
 html.no-emoji-font .md-code {
-  font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+  font-family: 'Medeo Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 /* ── SCREENS ── */
@@ -1868,7 +1868,7 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 .link-modal-title { font-size: 16px; font-weight: 700; color: var(--text); }
 .link-modal-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
 .link-modal-url {
-  width: 100%; font-family: monospace; font-size: 12px;
+  width: 100%; font-family: 'Medeo Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px;
   color: var(--muted); background: var(--card-bg);
   border: 1px solid var(--border); border-radius: 9px;
   padding: 8px 12px; word-break: break-all; text-align: left;
@@ -1972,7 +1972,7 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
   padding: 8px 11px; background: var(--card-bg); border-radius: 9px;
 }
 .ha-path-row svg { color: var(--muted); flex-shrink: 0; }
-.ha-path-row code { font-family: monospace; font-size: 12.5px; color: var(--text); }
+.ha-path-row code { font-family: 'Medeo Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; color: var(--text); }
 .ha-footer {
   padding: 10px 16px; border-top: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -2439,7 +2439,7 @@ select:focus-visible, .chat-item:focus-visible {
 /* Markdown-lite: инлайновый код */
 .md-code {
   /* Эмодзи-шрифт и здесь первым: иначе смайл внутри блока кода остаётся чёрным */
-  font-family: 'Noto Color Emoji', ui-monospace, 'SF Mono', Consolas, monospace;
+  font-family: 'Noto Color Emoji', 'Medeo Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.88em;
   background: color-mix(in srgb, var(--accent) 12%, transparent);
   border-radius: 9px;
@@ -2885,7 +2885,7 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 .sc-m { padding: 4px 16px 12px; display: flex; flex-direction: column; gap: 10px; }
 .sc-m-hint { margin: 0; color: var(--text2); font-size: 12.5px; }
 .sc-codebox { display: flex; align-items: center; justify-content: space-between; gap: 8px; white-space: nowrap; background: var(--card-bg); border: 1px dashed var(--accent); border-radius: 12px; padding: 10px 12px; }
-.sc-code { font: 700 22px ui-monospace, Menlo, Consolas, monospace; letter-spacing: .14em; color: var(--text); white-space: nowrap; flex-shrink: 0; }
+.sc-code { font: 700 22px 'Medeo Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .14em; color: var(--text); white-space: nowrap; flex-shrink: 0; }
 .sc-copy { height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); font-size: 12px; cursor: pointer; }
 .sc-wait { color: var(--text2); font-size: 12px; display: flex; align-items: center; gap: 8px; }
 .sc-dev { display: flex; align-items: center; gap: 10px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 9px 11px; }
@@ -3018,7 +3018,7 @@ body.has-rail.sidebar-overlay.sidebar-peeking .sidebar { transform: translateX(0
 .diag-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; font-size: 14px; }
 .diag-text {
   flex: 1; min-height: 0; margin: 0 16px; padding: 10px 12px; resize: none;
-  font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; overflow: auto;
+  font: 12px/1.6 'Medeo Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; overflow: auto;
   background: var(--search-bg); color: var(--text); border: 1px solid var(--border); border-radius: 12px;
   user-select: text; -webkit-user-select: text; outline: none;
 }
@@ -3470,7 +3470,7 @@ html.dark .anx-solid { color: #0c0e10; }
 .pl-f { display: flex; align-items: center; gap: 10px; height: 44px; border-radius: 999px; background: var(--search-bg); padding: 0 8px 0 16px; border: 1px solid transparent; cursor: pointer; text-align: left; width: 100%; font-family: inherit; color: var(--text); }
 .pl-f:hover { border-color: var(--accent-border); }
 .pl-k { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); width: 82px; flex-shrink: 0; }
-.pl-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 13px; font-weight: 600; }
+.pl-v { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'Medeo Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; font-weight: 600; }
 .pl-i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--text2); flex-shrink: 0; }
 .pl-i svg { width: 15px; height: 15px; }
 .pl-f.done { border-color: var(--accent-border); background: var(--accent-soft); }
@@ -3546,10 +3546,10 @@ html.dark .anx-solid { color: #0c0e10; }
    ══════════════════════════════════════════ */
 /* Поле ввода: оформление видно прямо в нём */
 .fmt-ce b { font-weight: 700; }
-.fmt-ce code { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: .88em; background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 6px; padding: 1px 4px; }
+.fmt-ce code { font-family: 'Medeo Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .88em; background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 6px; padding: 1px 4px; }
 .fmt-ce pre.cb {
   margin: 2px 0; padding: 8px 10px; border-radius: 10px; white-space: pre-wrap; word-break: break-word;
-  font: 12.5px/1.5 ui-monospace, 'SF Mono', Consolas, monospace; background: #0b0e13; color: #d6e2ee;
+  font: 12.5px/1.5 'Medeo Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #0b0e13; color: #d6e2ee;
 }
 
 /* Меню «Прикрепить файл / Форматирование» над кнопкой со стрелкой */
@@ -3621,7 +3621,7 @@ html.dark .anx-solid { color: #0c0e10; }
 .cblk.done .cblk-cp { color: #4ade80; opacity: 1; }
 .cblk pre {
   margin: 0; padding: 8px 12px; white-space: pre-wrap; word-break: break-word; color: #d6e2ee;
-  font: 12.5px/1.5 'Noto Color Emoji', ui-monospace, 'SF Mono', Consolas, monospace; user-select: text; -webkit-user-select: text; cursor: text;
+  font: 12.5px/1.5 'Noto Color Emoji', 'Medeo Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; user-select: text; -webkit-user-select: text; cursor: text;
 }
 .cblk .cbf { height: 22px; }
 
@@ -3790,7 +3790,7 @@ html.tb-open #tb-strip { transform: none; pointer-events: auto; }
 .gm-pick { display: flex; align-items: center; gap: 11px; padding: 7px 12px; min-height: 50px; width: 100%; text-align: left; background: none; border: 0; color: inherit; font: inherit; }
 .gm-nm { flex: 1; min-width: 0; }
 .gm-nm b { display: block; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
-.gm-l { font-size: 11.5px; color: var(--text2); font-family: ui-monospace, 'SF Mono', Consolas, monospace; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm-l { font-size: 11.5px; color: var(--text2); font-family: 'Medeo Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gm-mini { height: 24px; padding: 0 9px; border-radius: 99px; border: 0; background: rgba(255,159,10,.14); color: var(--presence-away); font-weight: 600; font-size: 11px; font-family: inherit; cursor: pointer; white-space: nowrap; }
 .gm-x { width: 26px; height: 26px; border-radius: 8px; border: 0; background: none; color: var(--muted); cursor: pointer; display: grid; place-items: center; flex: none; }
 .gm-x:hover { color: var(--danger); background: var(--danger-bg); }

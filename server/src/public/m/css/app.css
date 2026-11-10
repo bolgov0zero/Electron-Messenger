@@ -277,7 +277,7 @@ html.dark .grp>*+*{border-top-color:rgba(255,255,255,.07)}
 .pvw .a{align-self:flex-start;background:var(--gl-in);border:1px solid var(--gl-edge)}.pvw .b{align-self:flex-end;background:var(--accent-fill);color:#fff}
 .fld.m{height:46px;margin:6px 0}
 .pl{display:flex;align-items:center;gap:10px;height:48px;border-radius:24px;background:var(--gl-inset);padding:0 6px 0 16px;border:1px solid var(--gl-edge);box-shadow:inset 0 1px 3px var(--gl-lo);width:100%;text-align:left;margin-bottom:8px}
-.pl .k{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);width:84px}.pl .v{flex:1;font-family:ui-monospace,Menlo,monospace;font-size:14px;font-weight:600}
+.pl .k{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);width:84px}.pl .v{flex:1;font-family:"Medeo Mono",ui-monospace,Menlo,monospace;font-size:14px;font-weight:600}
 .pl .ic{width:34px;height:34px;display:grid;place-items:center;color:var(--text2);font-size:16px}
 .mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;border-radius:var(--r-card);overflow:hidden}
 .mgrid i{display:block;aspect-ratio:1;background:conic-gradient(from var(--a,0deg) at 30% 110%,#2ed3b7,#6a6cf0,#f0a020,#2ed3b7);transition:transform .3s var(--gl-ease)}.mgrid i:active{transform:scale(.94)}
@@ -435,8 +435,8 @@ html:not(.dark) .edge.t{--ea:.46}
 .fpv{padding:10px 16px 2px;font-size:14px}.fpv[hidden]{display:none}
 .fpl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
 .fpb{color:var(--text);line-height:1.4;max-height:90px;overflow:auto;word-break:break-word}.fpb .fe{color:var(--muted)}
-.fpb code{font-family:ui-monospace,Menlo,monospace;font-size:13px;padding:1px 6px;border-radius:6px;background:color-mix(in srgb,var(--read) 32%,transparent)}
-.fpb pre{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;padding:8px 10px;border-radius:12px;background:var(--gl-card);margin:4px 0;white-space:pre-wrap}
+.fpb code{font-family:"Medeo Mono",ui-monospace,Menlo,monospace;font-size:13px;padding:1px 6px;border-radius:6px;background:color-mix(in srgb,var(--read) 32%,transparent)}
+.fpb pre{font-family:"Medeo Mono",ui-monospace,Menlo,monospace;font-size:12.5px;padding:8px 10px;border-radius:12px;background:var(--gl-card);margin:4px 0;white-space:pre-wrap}
 .fpb .sec{filter:blur(5px);background:var(--gl-card2);border-radius:6px;padding:0 3px}
 
 /* Выделение: везде выключено, кроме полей ввода и текста внутри пузыря (время, реакции, вложения и всё в слое меню не выделяются) */

@@ -13,9 +13,97 @@ body.k-body { height: 100%; margin: 0; overflow: auto; background: transparent; 
 .k-wait-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-fill); margin-right: 8px; animation: k-pulse 1.4s ease-in-out infinite; }
 @keyframes k-pulse { 0%, 100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.1); } }
 /* В звонке по ссылке окно не сворачивается: вернуться из свёрнутого состояния на этой странице некуда */
-.cl-win [data-cl="min"], #cl-bar { display: none !important; }
+#cl-bar { display: none !important; }
+.cl-win [data-cl="min"] { visibility: hidden !important; pointer-events: none !important; }   /* место остаётся: заголовок по центру сетки шапки */
 
 /* «Открыть в приложении» на странице гостя (только компьютеры) */
 .k-app { width: 100%; height: var(--kit-btn-h, 36px); margin-top: 10px; border-radius: var(--kit-r, 12px); border: 0; background: var(--kit-sec-bg); color: var(--kit-sec-fg, var(--text)); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s; }
 .k-app:hover { background: var(--kit-sec-bg-h); }
 .k-appnote { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); text-align: center; }
+
+/* ═══════════ Дизайн B «Мягкий»: вход, ожидание, итоговые экраны, окно звонка ═══════════
+   Карточки радиуса 22, поля и кнопки из кита flat.css (--kit-*). Ссылку чаще открывают на телефоне:
+   поля 16 px (iOS не увеличивает страницу), цели касания от 40 px, безопасные зоны, без горизонтальной прокрутки. */
+html, body.k-body { max-width: 100%; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+#k-gate {
+  min-height: 100%; align-items: center; justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  overscroll-behavior: contain;
+}
+#k-gate .login-wrap { width: min(100%, 400px); box-sizing: border-box; gap: 14px; padding: 32px 30px 22px; }
+#k-gate .login-wordmark { font-size: 20px; letter-spacing: .3px; margin-top: 0; flex-wrap: wrap; text-align: center; }
+#k-gate .login-sub { margin: 0; font-size: 13.5px; line-height: 1.45; }
+#k-gate .field input { font-size: 16px; }
+#k-gate .btn-login { margin-top: 2px; font-size: 15px; }
+.k-title { font-size: 18px; line-height: 1.3; margin: 2px 0 0; overflow-wrap: anywhere; }
+.k-note { margin: 0; font-size: 13.5px; }
+.k-err { min-height: 0; margin: 0; }
+.k-err:empty { display: none; }
+.k-icon { width: 64px; height: 64px; border-radius: var(--r-panel, 22px); margin: 2px auto 2px; }
+.k-icon.bad { background: var(--danger-bg); color: var(--danger); }
+.k-icon.warn { background: color-mix(in srgb, var(--presence-away, #e0a030) 16%, var(--side-bg)); color: color-mix(in srgb, var(--presence-away, #e0a030) 82%, var(--text)); }
+.k-sub { min-height: 40px; padding: 0 14px; margin: 0 auto; font-size: 13px; font-weight: 600; text-decoration: none; color: var(--text2); border-radius: var(--kit-r, 12px); }
+.k-sub:hover { background: var(--surf2); color: var(--text); }
+.k-wait-dot { width: 14px; height: 14px; margin: 0; background: var(--accent-fill); }
+.k-chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+.k-chip { display: inline-flex; align-items: center; height: 28px; max-width: 100%; padding: 0 12px; border-radius: var(--kit-r-sm, 8px); background: var(--surf2); color: var(--text2); font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.k-chip b { color: var(--accent-ink); font-weight: 700; margin-left: 5px; }
+#k-form { display: flex; flex-direction: column; gap: 14px; }
+#k-form .field { gap: 8px; }
+.k-foot { margin: 2px 0 0; text-align: center; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
+.k-app { height: var(--kit-btn-h-lg, 46px); margin-top: 0; font-size: var(--kit-btn-fs-lg, 14.5px); }
+#k-gate .k-app + .k-appnote { margin-top: -4px; }
+
+/* проверка устройств перед входом (общие чипы доступа и выбор устройства из shared/calls.js) */
+.k-dev { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: var(--r-card, 16px); background: var(--surf2); }
+.k-dev h6 { margin: 0 0 2px; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.k-dev-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; font-size: 13.5px; font-weight: 600; }
+.k-dev-row > span { min-width: 0; }
+.k-dev-row select.cl-sel { flex: 1 1 0; min-width: 0; max-width: 220px; height: var(--kit-field-h, 40px); font-size: 16px; background: var(--side-bg); }
+.k-dev .cl-acc { height: 36px; padding: 0 12px; border-radius: var(--kit-r, 12px); flex: none; }
+.k-dev .cl-acc:disabled { opacity: .6; }
+
+/* ── окно звонка на телефоне (shared/calls.js рисует .cl-win.mob; правила как в /m, раздел «звонки») ── */
+html .cl-win.mob { background: var(--app-bg); border: 0; }
+html .cl-win.mob.v .cl-hd .c, html .cl-win.mob.v .cl-hd .c b { color: var(--text); }
+html .cl-win.mob.v .cl-hd small { color: var(--accent-ink); opacity: 1; }
+html .cl-win.mob .cl-hbtn, html .cl-win.mob.v .cl-hbtn { border: 0; border-radius: 12px; background: var(--surf2); color: var(--text2); }
+html .cl-win.mob .cl-grid .cl-tile { border-radius: 14px; }
+html .cl-win.mob .cl-remote { border-radius: 0; }
+html .cl-win.mob .cl-pip { border-radius: 14px; }
+html .cl-win.mob .cl-ctrls { border-radius: 16px; }
+html .cl-win.mob .cl-adm { top: calc(env(safe-area-inset-top, 0px) + 76px); left: 8px; right: 8px; width: auto; max-width: none; max-height: 42%; }
+html .cl-adm button { min-height: 32px; padding: 0 12px; }
+html .cl-adm button.all { min-height: 36px; }
+@media (orientation: portrait) { html .cl-win.mob .cl-grid.n2 { grid-template-columns: 1fr; } }
+@media (orientation: landscape) and (max-height: 520px) {
+  html .cl-win.mob .cl-grid.n3, html .cl-win.mob .cl-grid.n5, html .cl-win.mob .cl-grid.n6 { grid-template-columns: repeat(3, 1fr); }
+  html .cl-win.mob .cl-grid.n7, html .cl-win.mob .cl-grid.n8, html .cl-win.mob .cl-grid.n9 { grid-template-columns: repeat(4, 1fr); }
+  html .cl-win.mob .cl-tile .cl-ph .cl-av { width: min(40%, 110px, 15vh) !important; }
+}
+@media (pointer: coarse) {
+  html .cl-adm button { min-height: 40px; padding: 0 14px; }
+  html .cl-adm .r { gap: 8px; padding: 4px 0; }
+  html .cl-kick { width: 36px; height: 36px; top: 6px; right: 6px; border-radius: 10px; }
+  html .cl-hbtn { width: 40px; height: 40px; }
+  .k-dev .cl-acc { height: 40px; }
+}
+/* окно звонка на компьютере: карточка по центру, а не на всё окно браузера, когда окно браузера огромное */
+@media (min-width: 1100px) and (min-height: 700px) { html .cl-win.web { inset: 24px max(24px, calc((100vw - 1280px) / 2)); } }
+
+/* ── узкие экраны: карточка почти на всю ширину ── */
+@media (max-width: 520px) {
+  #k-gate { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+  #k-gate .login-wrap { padding: 26px 20px 18px; }
+  #k-gate .login-wordmark { font-size: 18px; }
+  #k-gate .login-logo, #k-gate .login-logo img { width: 56px; height: 56px; }
+}
+@media (max-width: 360px) { #k-gate .login-wrap { padding: 22px 16px 16px; } #k-gate .login-wordmark { font-size: 16.5px; } }
+/* альбомная ориентация телефона: карточка сверху, прокрутка внутри, без пустого логотипа */
+@media (max-height: 520px) {
+  #k-gate { align-items: flex-start; }
+  #k-gate .login-wrap { margin: 0 auto; padding: 16px 20px 14px; gap: 10px; }
+  #k-gate .login-icon, #k-gate .login-wordmark { display: none; }
+  .k-icon { width: 48px; height: 48px; border-radius: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .k-wait-dot { animation: none; opacity: 1; } }

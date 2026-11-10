@@ -55,10 +55,24 @@
     ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
     off: '<path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="22" x2="2" y1="2" y2="22"/>',
   };
-  var ico = function (n) { return '<div class="k-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + ICON[n] + '</svg></div>'; };
+  var ico = function (n, tone) { return '<div class="k-icon' + (tone ? ' ' + tone : '') + '"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + ICON[n] + '</svg></div>'; };
   function logo() { return '<div class="login-icon"><div class="login-logo"><img src="/chat/icons/icon-192.png" width="64" height="64" alt=""></div></div><h1 class="login-wordmark"><span>ELECTRON</span><span>MESSENGER</span></h1>'; }
-  function gate(html) { $('k-gate').innerHTML = '<div class="login-wrap">' + logo() + html + '</div>'; }
+  function gate(html) { $('k-gate').innerHTML = '<div class="login-wrap">' + logo() + html + '<p class="k-foot">Видеозвонок по ссылке · Электрон</p></div>'; }
   function closeGate() { $('k-gate').innerHTML = ''; }
+  // Проверка устройств перед входом: доступ к микрофону и камере (общие чипы окна звонка) и, на компьютере, выбор устройства
+  function devInner() {
+    var M = window.Calls && Calls.media; if (!M) return '';
+    var g = M.get(), pick = function (k, kind) { return !mobile && g[kind] === 'granted' ? '<div class="k-dev-row">' + Calls.devices.select(k) + '</div>' : ''; };
+    return '<h6>Устройства</h6><div class="k-dev-row"><span>Микрофон</span>' + M.chip('audio') + '</div>' + pick('audioin', 'audio') +
+      '<div class="k-dev-row"><span>Камера</span>' + M.chip('video') + '</div>' + pick('videoin', 'video');
+  }
+  var devSub = false;
+  function devBlock() {
+    if (!window.Calls || !Calls.media) return '';
+    if (!devSub) { devSub = true; Calls.media.onChange(function () { var d = $('k-dev'); if (d) d.innerHTML = devInner(); }); }
+    setTimeout(function () { Calls.media.refresh(); }, 0);
+    return '<div class="k-dev" id="k-dev">' + devInner() + '</div>';
+  }
   // «Открыть в приложении»: адрес electron-messenger:// запускает установленный клиент (Electron). На телефонах кнопки нет: там просто новая сессия в браузере.
   // Браузер не сообщает, есть ли приложение: если после нажатия окно не потеряло фокус и не скрылось — считаем, что клиент не установлен, и продолжаем в браузере
   function appBlock() { return mobile ? '' : '<button type="button" class="k-app" id="k-app">Открыть в приложении</button><p class="k-appnote" id="k-appn" hidden></p>'; }
@@ -81,20 +95,20 @@
     var el = $('action-toast'); if (!el) { el = document.createElement('div'); el.id = 'action-toast'; document.body.appendChild(el); }
     el.textContent = t; el.classList.add('visible'); clearTimeout(toastT); toastT = setTimeout(function () { el.classList.remove('visible'); }, 2500);
   }
-  function final(icon, title, text, btn) {
+  function final(icon, title, text, btn, tone) {
     stopPoll(); stopAdmin();
-    gate(ico(icon) + '<div class="k-title">' + esc(title) + '</div><p class="k-note">' + esc(text) + '</p>' + (btn ? '<button class="btn-login" id="k-btn" style="width:100%">' + esc(btn.label) + '</button>' : ''));
+    gate(ico(icon, tone === undefined ? 'bad' : tone) + '<div class="k-title">' + esc(title) + '</div><p class="k-note">' + esc(text) + '</p>' + (btn ? '<button class="btn-login" id="k-btn" style="width:100%">' + esc(btn.label) + '</button>' : ''));
     if (btn) $('k-btn').onclick = btn.fn;
   }
   var END = {
-    not_found: ['off', 'Ссылка не найдена', 'Проверьте адрес или попросите прислать ссылку заново.'],
-    expired: ['clock', 'Срок ссылки закончился', 'Попросите организатора прислать новую ссылку.'],
-    rejected: ['ban', 'Вас не впустили', 'Администратор отклонил запрос на вход в звонок.'],
-    kicked: ['ban', 'Вас исключили из звонка', 'Вернуться по этой ссылке с этого устройства нельзя.'],
-    ended: ['off', 'Звонок завершён', 'Если встреча продолжается, попросите администратора впустить вас снова.'],
-    busy: ['clock', 'Слишком много ожидающих', 'Попробуйте открыть ссылку позже.'],
+    not_found: ['off', 'Ссылка не найдена', 'Проверьте адрес или попросите прислать ссылку заново.', 'bad'],
+    expired: ['clock', 'Срок ссылки закончился', 'Попросите организатора прислать новую ссылку.', 'warn'],
+    rejected: ['ban', 'Вас не впустили', 'Администратор отклонил запрос на вход в звонок.', 'bad'],
+    kicked: ['ban', 'Вас исключили из звонка', 'Вернуться по этой ссылке с этого устройства нельзя.', 'bad'],
+    ended: ['off', 'Звонок завершён', 'Если встреча продолжается, попросите администратора впустить вас снова.', ''],
+    busy: ['clock', 'Слишком много ожидающих', 'Попробуйте открыть ссылку позже.', 'warn'],
   };
-  function ending(kind, btn) { var t = END[kind] || END.expired; final(t[0], t[1], t[2], btn); }
+  function ending(kind, btn) { var t = END[kind] || END.expired; final(t[0], t[1], t[2], btn, t[3]); }
 
   // ── Окно звонка: общее с клиентами ──
   function initCalls(linkLeave) {
@@ -105,7 +119,7 @@
       avatar: function (id, name, size) {
         if (name === 'Вы' && st.myName) name = st.myName;
         var h = (String(name || '?').split('').reduce(function (a, c) { return a + c.charCodeAt(0); }, 0) * 47) % 360, s = Math.min(size || 80, 120);
-        return '<div style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;display:grid;place-items:center;background:hsl(' + h + ',42%,44%);color:#fff;font-weight:700;font-size:' + Math.round(s * .4) + 'px">' + esc(String(name || '?').trim().charAt(0).toUpperCase()) + '</div>';
+        return '<div class="cl-av" style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;display:grid;place-items:center;background:hsl(' + h + ',42%,44%);color:#fff;font-weight:700;font-size:' + Math.round(s * .4) + 'px">' + esc(String(name || '?').trim().charAt(0).toUpperCase()) + '</div>';
       },
       linkLeave: linkLeave,
     });
@@ -139,7 +153,7 @@
     st.linkId = r.j.link_id; st.myName = st.emp.user.display_name;
     clearInterval(st.beatT); st.beatT = setInterval(function () { req('POST', U + '/beat', {}, st.emp.token); }, 10000);
     Calls.joinLink(r.j, { title: st.title || 'Видеозвонок' });
-    watchCall(function () { clearInterval(st.beatT); final('off', 'Вы вышли из звонка', 'Можно вернуться, пока ссылка действует.', { label: 'Войти снова', fn: joinEmployee }); });
+    watchCall(function () { clearInterval(st.beatT); final('off', 'Вы вышли из звонка', 'Можно вернуться, пока ссылка действует.', { label: 'Войти снова', fn: joinEmployee }, ''); });
     if (r.j.owner) startAdmin();
   }
 
@@ -159,7 +173,7 @@
   function nameForm(owner, err) {
     gate((st.title ? '<div class="k-title">' + esc(st.title) + '</div>' : '') + '<p class="login-sub">Вас пригласили на видеозвонок' + (owner ? ': ' + esc(owner) : '') + '</p>' +
       '<form id="k-form"><div class="field"><label>Ваше имя</label><input id="k-name" placeholder="Иванов Иван" maxlength="60" autocomplete="name"></div>' +
-      '<p class="k-note">Имя увидят участники звонка. Администратор должен вас впустить.</p>' +
+      '<p class="k-note">Имя увидят участники звонка. Администратор должен вас впустить.</p>' + devBlock() +
       '<button class="btn-login" id="k-go" type="submit" style="width:100%">Присоединиться</button><div class="k-err" id="k-err">' + esc(err || '') + '</div></form>' + appBlock());
     bindApp(); $('k-name').focus();
     $('k-form').addEventListener('submit', async function (e) {
@@ -171,7 +185,7 @@
       saveDk(r.j.device_key); st.name = r.j.name; startGuestPoll();
     });
   }
-  function stopPoll() { clearInterval(st.pollT); st.pollT = null; }
+  function stopPoll() { clearInterval(st.pollT); st.pollT = null; clearInterval(st.waitT); st.waitT = null; }
   function fmtLeft(s) { s = Math.max(0, s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
   // Опрос состояния: ждёт — впущен — отклонён — исключён. В звонке тот же опрос сообщает серверу, что гость на месте
   function startGuestPoll() {
@@ -181,14 +195,17 @@
       if (st.inCall) { if (s.state !== 'in') { Calls.hangup(); } return; }
       if (s.state === 'unknown') { stopPoll(); return nameForm(); }
       if (s.state === 'wait') {
-        var left = s.until ? s.until - Math.floor(Date.now() / 1000) : 0;
-        gate('<div class="k-icon"><span class="k-wait-dot" style="margin:0"></span></div><div class="k-title">Ожидайте подтверждения</div>' +
-          '<p class="k-note">' + (s.admin_in ? 'Администратор получил ваш запрос и скоро вас впустит.' : 'Администратор ещё не подключился к звонку. Как только он зайдёт, вас впустят.') + '</p><p class="k-note">' + esc(st.name) + (left ? ' · ' + fmtLeft(left) : '') + '</p>');
+        st.until = s.until || 0;
+        var note = s.admin_in ? 'Администратор получил ваш запрос и скоро вас впустит.' : 'Администратор ещё не подключился к звонку. Как только он зайдёт, вас впустят.';
+        if ($('k-wait')) { $('k-wait').textContent = note; return; }
+        gate('<div class="k-icon"><span class="k-wait-dot"></span></div><div class="k-title">Ожидайте подтверждения</div>' +
+          '<p class="k-note" id="k-wait">' + note + '</p><div class="k-chips"><span class="k-chip">' + esc(st.name) + '</span>' + (st.until ? '<span class="k-chip">Ждём ещё <b id="k-wl">' + fmtLeft(st.until - Math.floor(Date.now() / 1000)) + '</b></span>' : '') + '</div>');
+        clearInterval(st.waitT); st.waitT = setInterval(function () { var e = $('k-wl'); if (e && st.until) e.textContent = fmtLeft(st.until - Math.floor(Date.now() / 1000)); }, 1000);
       } else if (s.state === 'timeout') {
-        stopPoll(); final('clock', 'Администратор не подключился', 'Вас так и не впустили. Можно попросить впустить ещё раз.', { label: 'Попросить снова', fn: function () { rejoin(); } });
+        stopPoll(); final('clock', 'Администратор не подключился', 'Вас так и не впустили. Можно попросить впустить ещё раз.', { label: 'Попросить снова', fn: function () { rejoin(); } }, 'warn');
       } else if (s.state === 'in') {
         stopPoll();
-        gate(ico('video') + '<div class="k-title">Вас впустили</div><p class="k-note">Камера и микрофон включатся при входе, их можно выключить в звонке.</p><button class="btn-login" id="k-enter" style="width:100%">Войти в звонок</button>');
+        gate(ico('video') + '<div class="k-title">Вас впустили</div><p class="k-note">Камера и микрофон включатся при входе, их можно выключить в звонке.</p>' + devBlock() + '<button class="btn-login" id="k-enter" style="width:100%">Войти в звонок</button>');
         $('k-enter').onclick = enterGuest;
       } else if (s.state === 'rejected' || s.state === 'kicked' || s.state === 'expired') { stopPoll(); ending(s.state); }
       else if (s.state === 'ended') { stopPoll(); ending('ended', { label: 'Попросить впустить снова', fn: function () { rejoin(); } }); }
@@ -226,7 +243,7 @@
     st.dk = loadDk();
     if (st.emp) {
       gate(ico('video') + '<div class="k-title">' + (st.title ? esc(st.title) : 'Видеозвонок' + (owner ? ': ' + esc(owner) : '')) + '</div><p class="k-note">Вы вошли как ' + esc(st.emp.user.display_name) + '.</p>' +
-        '<button class="btn-login" id="k-emp" style="width:100%">Присоединиться</button><button class="k-sub" id="k-asg">Войти как гость</button>' + appBlock());
+        devBlock() + '<button class="btn-login" id="k-emp" style="width:100%">Присоединиться</button><button class="k-sub" id="k-asg">Войти как гость</button>' + appBlock());
       bindApp(); $('k-emp').onclick = joinEmployee;
       $('k-asg').onclick = function () { st.emp = null; guestStart(owner); };
       return;

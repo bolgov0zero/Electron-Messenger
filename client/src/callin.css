@@ -2,7 +2,7 @@
    Окно прозрачное, без системной тени (hasShadow:false): скругление 22 и тень рисует сама карточка, поэтому поля body (8/12/18) вмещают тень —
    она мягче общей --pop-shadow, чтобы не обрезаться краем окна. Токены — минимум из flat.css; тема: html.dark (тёмно-синяя) и --accent из call-in. */
 :root{
-  --ff:Inter,-apple-system,system-ui,sans-serif;
+  --ff:"Medeo Sans",Inter,-apple-system,system-ui,sans-serif;
   --modal-bg:#fdfcfa;--surf2:#f3f0eb;--text:#1d1b19;--text2:#5b554e;--accent:#1fa88c;
   --gl-card2:color-mix(in srgb,var(--text) 8%,var(--modal-bg));
   --danger:#d23a3a;--danger-bg:color-mix(in srgb,var(--danger) 11%,var(--modal-bg));--ok:#2f9e5b;--no:#d94a4a;

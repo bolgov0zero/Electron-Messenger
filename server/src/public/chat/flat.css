@@ -10,7 +10,8 @@
 
 /* ───── токены: светлая тема ───── */
 :root {
-  --ff: Inter, -apple-system, system-ui, sans-serif;
+  --ff: "Medeo Sans", Inter, -apple-system, system-ui, sans-serif;
+  --ff-mono: "Medeo Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --app-bg: #ece9e4; --side-bg: #fdfcfa; --card-bg: #fdfcfa; --modal-bg: #fdfcfa;
   --header-bg: #fdfcfa; --composer-bg: #fdfcfa; --search-bg: #f3f0eb;
   --chat-bg: #f7f5f1; --bubble-bg: #ffffff; --text: #1d1b19; --text2: #5b554e; --muted: #766e65;
@@ -513,3 +514,6 @@ input[type="range"]::-webkit-slider-thumb {
   .modal-bg, .modal-bg::before, .modal, #lightbox, #lightbox img, #lightbox video, .msg-bubble, .head-menu, .ctx-menu, #ctx-chat-menu,
   .pop-out, .up-menu, #mention-popup, #reaction-picker, .chats-list, .cl-card, .gl-bg .gl, .vr-fx { animation-duration: .001ms !important; animation-delay: 0s !important; }
 }
+
+/* Medeo Sans: цифры одной ширины там, где числа выравниваются или меняются на месте (время, счётчики, таймер звонка) */
+.ci-time, .unread-badge, .irc-time, .cs-count, .cl-tm { font-variant-numeric: tabular-nums; }

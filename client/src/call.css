@@ -4,7 +4,7 @@
    Поверх видео — сплошные панели --vpanel (картинка с камеры тёмная в любой теме), без размытия, бликов и градиентов на кнопках.
    Форма: кнопки 12, кнопки управления 54 px → 14, плитки и видео 16, окна выбора 22, чипы 8. */
 :root{
-  --ff:Inter,-apple-system,system-ui,sans-serif;
+  --ff:"Medeo Sans",Inter,-apple-system,system-ui,sans-serif;
   --modal-bg:#fdfcfa;--surf2:#f3f0eb;--text:#1d1b19;--text2:#5b554e;--muted:#766e65;
   --accent:#1fa88c;--accent-rgb:31,168,140;
   --accent-fill:color-mix(in srgb,var(--accent) 80%,#000);--accent-ink:color-mix(in srgb,var(--accent) 72%,#000);

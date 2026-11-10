@@ -157,19 +157,19 @@
 /* Браузер не рисует COLRv1 (Safari) — переключаемся на sbix-набор (класс ставит emoji-font.js) */
 html.emoji-sbix body,
 html.emoji-sbix .ra-emoji {
-  font-family: 'Noto Emoji Sbix', 'Inter', -apple-system, BlinkMacSystemFont, system-ui,
+  font-family: 'Noto Emoji Sbix', 'Medeo Sans', 'Inter', -apple-system, BlinkMacSystemFont, system-ui,
                'Noto Emoji Sbix Keys', sans-serif;
 }
 html.emoji-sbix .md-code {
-  font-family: 'Noto Emoji Sbix', ui-monospace, 'SF Mono', Consolas, monospace;
+  font-family: 'Noto Emoji Sbix', 'Medeo Mono', ui-monospace, 'SF Mono', Consolas, monospace;
 }
 /* Не рисует ни тот, ни другой — отдаём системные смайлы: они разные на разных
    системах, но это несравнимо лучше пустых мест */
 html.no-emoji-font body,
 html.no-emoji-font .ra-emoji {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui,
+  font-family: 'Medeo Sans', 'Inter', -apple-system, BlinkMacSystemFont, system-ui,
                'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
 }
 html.no-emoji-font .md-code {
-  font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+  font-family: 'Medeo Mono', ui-monospace, 'SF Mono', Consolas, monospace;
 }
