@@ -12,21 +12,10 @@
 .cs-g > .cs-notes, .cs-g > .cs-ver { background: none; border: 0; box-shadow: none; border-radius: 0; }
 .cs-gt { margin: 4px 0 -12px 6px; }
 .cs-body > * { flex: none; }
-.cs-hero, .cs-ver, .cs-notes, .fp-row, .pat-card, .cs-pv { border: 0; box-shadow: none; background: var(--gl-card); border-radius: var(--r-card); }
+.cs-hero, .cs-ver, .cs-notes, .fp-row { border: 0; box-shadow: none; background: var(--gl-card); border-radius: var(--r-card); }
 .cs-hero { background: color-mix(in srgb, var(--accent) 12%, var(--side-bg)); }
 .cs-logout { background: var(--gl-card); border: 0; border-radius: var(--r-card); }   /* нейтральная карточка, как соседние; красная — только кнопка «Выйти» (опасная кнопка кита), иначе сливалась бы с плашкой */
 .cs-stub-i { background: var(--accent-soft); border-radius: var(--r-panel); }
-.cs-pv { display: grid; overflow: hidden; }
-.cs-pv-side { background: var(--side-bg); }
-.cs-pv-side i { border-radius: var(--r-btn); }
-.cs-pv-side i.on { background: var(--gl-card2); box-shadow: none; }
-.cs-pv-chat { background: var(--chat-bg); }
-.cs-pv-cap { background: var(--gl-card); border-radius: 8px; }
-.cs-pv-msg.in { background: var(--bubble-bg); border: 0; border-radius: var(--r-btn); box-shadow: var(--bub-sh); }
-.cs-pv-msg.out { background: var(--accent-fill); color: #fff; border-radius: var(--r-btn); } .pat-card:hover, .pat-card:active { transform: none; } .pat-card.on, .pat-card.active { box-shadow: 0 0 0 2px var(--accent-fill); } .pat-card.pat-card { border: 0; } .pat-card .pat-swatch { border-radius: 0; } .pat-card.on .pat-cap, .pat-card.active .pat-cap { color: var(--accent-ink); }
-.accent-dot { border-radius: var(--kit-tag-r, 8px); box-shadow: none; transition: filter .15s; }
-.accent-dot:hover { transform: none; filter: brightness(1.08); }
-.accent-dot.on, .accent-dot.active { box-shadow: 0 0 0 2px var(--side-bg), 0 0 0 4px var(--dot); }
 .cs-sn[aria-current="page"], .cs-sn[aria-current="true"], .cs-sn[aria-current="page"]:hover, .cs-sn[aria-current="true"]:hover { background: var(--sel); box-shadow: none; }
 .cs-sn:hover { background: var(--hover-row); }
 .cs-sn-ic { border-radius: var(--r-btn); }
@@ -37,8 +26,73 @@
 .cs-pill { border-radius: 8px; }
 .am-prog { background: var(--gl-inset); }
 .am-prog i { background: var(--accent-fill); }
-.pat-swatch { background: color-mix(in srgb, var(--text) 34%, transparent); }
-.pat-card:first-child .pat-swatch { background: var(--gl-inset); }
+
+/* ───── 1а. «ВНЕШНИЙ ВИД»: слева группы настроек, справа липкий живой образец переписки ─────
+   Эталон — docs/flat-mockup/appearance.html, вариант B. Образец берёт те же переменные, что и сама переписка (тема, акцент, узор и его заметность,
+   размер текста), а масштаб интерфейса применяется ко всей странице, поэтому показывает всё это «вживую». Уже 820 px — один столбец, образец под настройками. */
+.cs-ap { container-type: inline-size; }
+.ap-cols { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: 20px; align-items: stretch; }
+.ap-left { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ap-grp { display: flex; flex-direction: column; gap: 5px; }
+.ap-grp > .cs-gt { margin: 0 0 0 4px; font-size: 12px; letter-spacing: .06em; }
+.cs-ap .cs-g > .cs-r { min-height: 48px; padding: 6px 12px 6px 14px; gap: 10px; }
+.cs-ap .cs-l b { font-size: 13.5px; }
+.cs-ap .cs-seg svg { width: 16px; height: 16px; flex: none; }
+.cs-ap .cs-seg.is-off { opacity: .45; pointer-events: none; }
+/* кружки акцента: 22 px в зоне нажатия 30, выбранный — в кольце; цвет тёмной темы берётся из --dc-d */
+.ap-dots { display: flex; gap: 4px; }
+.ap-dot { --dc: var(--dc-l); width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: none; display: grid; place-items: center; cursor: pointer; transition: transform .15s; }
+html.dark .ap-dot { --dc: var(--dc-d); }
+.ap-dot i { display: block; width: 22px; height: 22px; border-radius: 50%; background: var(--dc); transition: box-shadow .15s; }
+.ap-dot:hover { transform: scale(1.1); }
+.ap-dot[aria-pressed="true"] i { box-shadow: 0 0 0 2px var(--gl-card), 0 0 0 4px var(--dc); }
+.ap-dot:focus-visible { outline: var(--kit-focus); outline-offset: 0; }
+/* плитки узоров 3×2: сам узор (маска) и подпись */
+.ap-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px 12px 0; }
+.ap-pt { position: relative; display: flex; flex-direction: column; align-items: stretch; padding: 0; border: 0; overflow: hidden; border-radius: 10px; background: var(--surf2); text-align: left; font-family: inherit; cursor: pointer; transition: box-shadow .15s; }
+.ap-pt:hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--text) 22%, transparent); }
+.ap-pt[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--accent-fill); }
+.ap-pt:focus-visible { outline: var(--kit-focus); outline-offset: 2px; }
+.ap-swb { position: relative; display: block; height: 44px; }
+.ap-sw { position: absolute; inset: 0; background: var(--text2); opacity: .75; -webkit-mask-repeat: repeat; mask-repeat: repeat; -webkit-mask-size: 300px; mask-size: 300px; -webkit-mask-position: 30% 22%; mask-position: 30% 22%; }
+.ap-none { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
+.ap-none svg { width: 18px; height: 18px; }
+.ap-cp { display: block; padding: 3px 8px 5px; font-size: 12px; font-weight: 600; line-height: 1.3; color: var(--text2); }
+.ap-pt[aria-pressed="true"] .ap-cp { color: var(--accent-ink); }
+.cs-ap .cs-g > .ap-lvl { margin-top: 8px; border-top: 1px solid var(--gl-lo); }
+/* образец: шапка чата, сообщения на фоне с узором, поле ввода */
+.ap-pc { position: sticky; top: 4px; align-self: start; min-height: 100%; display: flex; flex-direction: column; overflow: hidden; border-radius: var(--r-card); background: var(--chat-bg); }
+.ap-pc-h { position: relative; z-index: 2; flex: none; display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 14px; background: var(--side-bg); box-shadow: var(--bar-sh); }
+.ap-av { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; background: var(--accent-soft); color: var(--accent-ink); }
+.ap-n { display: flex; flex-direction: column; min-width: 0; margin-right: auto; line-height: 1.25; }
+.ap-n b { font-size: 14px; font-weight: 700; }
+.ap-n span { font-size: 12px; color: var(--accent-ink); }
+.ap-ib { flex: none; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: var(--text2); }
+.ap-ib svg { width: 16px; height: 16px; }
+.ap-pv { position: relative; isolation: isolate; overflow: hidden; flex: 1; min-height: 260px; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; padding: 14px 16px; background: var(--chat-bg); }
+.ap-pv::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: var(--chat-pattern-ink, transparent);
+  -webkit-mask-image: var(--chat-pattern, none); mask-image: var(--chat-pattern, none); -webkit-mask-size: var(--chat-pattern-size, auto); mask-size: var(--chat-pattern-size, auto);
+  -webkit-mask-repeat: repeat; mask-repeat: repeat; opacity: var(--chat-pattern-alpha, 0); }
+.ap-day { align-self: center; margin-bottom: 4px; padding: 2px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--text2); background: color-mix(in srgb, var(--text) 9%, var(--chat-bg)); }
+.ap-msg { position: relative; width: fit-content; max-width: 78%; padding: 6px 12px 5px; border-radius: var(--r-btn); font-size: calc(var(--font-size) * 1.0357); line-height: 1.4; }
+.ap-msg b { display: block; font-size: .84em; font-weight: 700; line-height: 1.3; color: var(--accent-ink); }
+.ap-msg small { float: right; display: inline-block; margin: 3px 0 0 10px; font-size: 12px; line-height: 1.4; opacity: .6; }
+.ap-msg small svg { width: 14px; height: 14px; vertical-align: -3px; }
+.ap-msg.in { background: var(--bubble-bg); box-shadow: var(--bub-sh); border-bottom-left-radius: 5px; }
+.ap-msg.out { margin-left: auto; background: var(--accent-fill); color: #fff; border-bottom-right-radius: 5px; }
+.ap-msg.out small { opacity: .75; }
+.ap-pc-f { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--side-bg); }
+.ap-fld { flex: 1; min-width: 0; height: 38px; display: flex; align-items: center; padding: 0 12px; border-radius: var(--r-btn); background: var(--surf2); font-size: 13px; color: var(--muted); }
+.ap-snd { flex: none; width: 38px; height: 38px; border-radius: var(--r-btn); display: grid; place-items: center; background: var(--accent-fill); color: #fff; }
+.ap-snd svg { width: 16px; height: 16px; }
+@container (width < 820px) {
+  .ap-cols { grid-template-columns: 1fr; }
+  .ap-pc { position: relative; top: 0; min-height: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ap-dot, .ap-dot i, .ap-pt { transition: none; }
+  .ap-dot:hover { transform: none; }
+}
 
 /* ───── 2. СОСТОЯНИЯ: вход, загрузка, нет соединения, тосты, баннеры, пустое, подтверждение, обновление ───── */
 .login-wrap { border-radius: var(--r-panel); padding: 34px 34px 22px; background: var(--side-bg); border: 0; box-shadow: var(--pop-shadow); }

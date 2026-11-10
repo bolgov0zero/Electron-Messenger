@@ -21,8 +21,6 @@ window.__h19 = function (el, ev, a) { ev.stopPropagation();openProfile(a[0]) };
 window.__h20 = function (el, ev, a) { if(ev.key==='Enter')csSaveName(); if(ev.key==='Escape'){ev.stopPropagation(); el.value=S.user.display_name; csNameInput(el.value)} };
 window.__h21 = function (el, ev, a) { if(ev.key==='Enter')submitOwnPassword() };
 window.__h22 = function (el, ev, a) { window.electron.accountAdd() };
-window.__h23 = function (el, ev, a) { if(ev.target.closest('.accent-dot'))csRefresh() };
-window.__h25 = function (el, ev, a) { if(ev.target.closest('.pat-card'))csRefresh() };
 window.__h26 = function (el, ev, a) { closeSettings(); openModal('modal-update') };
 window.__h27 = function (el, ev, a) { ev.preventDefault() };
 window.__h28 = function (el, ev, a) { ev.stopPropagation();mentionUserInComposer(a[0]) };

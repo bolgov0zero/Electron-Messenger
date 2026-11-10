@@ -15,8 +15,6 @@ window.__h13 = function (el, ev, a) { renderForwardList(el.value.toLowerCase()) 
 window.__h14 = function (el, ev, a) { ev.stopPropagation();openProfile(a[0]) };
 window.__h15 = function (el, ev, a) { if(ev.key==='Enter')csSaveName(); if(ev.key==='Escape'){ev.stopPropagation(); el.value=S.user.display_name; csNameInput(el.value)} };
 window.__h16 = function (el, ev, a) { if(ev.key==='Enter')submitOwnPassword() };
-window.__h17 = function (el, ev, a) { if(ev.target.closest('.accent-dot'))csRefresh() };
-window.__h19 = function (el, ev, a) { if(ev.target.closest('.pat-card'))csRefresh() };
 window.__h20 = function (el, ev, a) { closeSettings(); openModal('modal-update') };
 window.__h21 = function (el, ev, a) { ev.preventDefault() };
 window.__h22 = function (el, ev, a) { el.style.display='none' };

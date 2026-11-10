@@ -335,48 +335,6 @@ html.chat-phone #screen-phone-guard { display: flex; }
 .login-copy { font-size: 12px; color: var(--muted); text-align: center; }
 .login-copy span { margin-left: 6px; }
 
-/* Выбор узора: образцом служит сам узор */
-.pat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
-.pat-card {
-  padding: 0; overflow: hidden; cursor: pointer; font-family: inherit;
-  background: none; border: 1px solid var(--border); border-radius: 10px;
-  transition: border-color .12s, box-shadow .12s;
-}
-.pat-card:hover { border-color: var(--accent-border); }
-.pat-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
-/* Образец красится так же, как сама переписка, только заметнее — иначе на
-   карточке 80px шириной узора почти не видно */
-.pat-swatch {
-  display: block; height: 58px;
-  background: var(--text2);
-  /* Рисунок вдвое мельче, чем в переписке: на карточке шириной 160px при полном
-     масштабе поместилась бы пара значков, и узор было бы не узнать. Положение
-     не трогаем — от левого верхнего угла плитки, иначе центр попадает ровно на
-     ось зеркала и образец выглядит симметричной кляксой. */
-  -webkit-mask-size: 480px; mask-size: 480px;
-  -webkit-mask-repeat: repeat; mask-repeat: repeat;
-  opacity: .6;
-}
-.pat-card[data-pattern=""] .pat-swatch { background: var(--chat-bg); opacity: 1; }
-.pat-cap {
-  display: block; padding: 5px 6px 6px; border-top: 1px solid var(--border);
-  font-size: 11px; color: var(--text2); text-align: center;
-}
-.pat-card.active .pat-cap { color: var(--accent); }
-/* Обе половины красим явно: иначе «как обычно» брал бы фон модалки и выглядел
-   разноцветным, хотя подпись обещает один цвет */
-
-/* Выбор цветового акцента: кружки-образцы в настройках */
-.accent-seg { display: flex; align-items: center; gap: 9px; }
-.accent-dot {
-  width: 22px; height: 22px; padding: 0; flex-shrink: 0;
-  border: none; border-radius: 50%; cursor: pointer;
-  background: var(--dot);
-  transition: transform .12s ease, box-shadow .12s ease;
-}
-.accent-dot:hover { transform: scale(1.12); }
-.accent-dot.active { box-shadow: 0 0 0 2px var(--modal-bg), 0 0 0 4px var(--dot); }
-@media (prefers-reduced-motion: reduce) { .accent-dot:hover { transform: none; } }
 
 /* ── ANNOUNCEMENT BANNER ── */
 /* Занимает то же место, что и плашка «нет соединения»; когда полосы висят,
@@ -1531,7 +1489,6 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 .cs-seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
 .cs-seg svg { width: 13px; height: 13px; }
 .cs-aa { font-weight: 700; line-height: 1; }
-.cs-aname { font-size: 12px; color: var(--text2); min-width: 70px; text-align: right; }
 
 .cs-tg { position: relative; width: 38px; height: 22px; flex-shrink: 0; border: 0; border-radius: 99px; background: var(--search-bg); box-shadow: inset 0 0 0 1px var(--border); cursor: pointer; transition: background .18s; padding: 0; }
 .cs-tg::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .18s; }
@@ -1554,26 +1511,6 @@ html:not(.dark) .modal { box-shadow: 0 24px 60px rgba(15,23,42,.12); }
 .cs-logout { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 13px; border: 1px solid var(--danger-border); background: var(--danger-bg); }
 .cs-logout .cs-l { flex: 1; }
 .cs-logout .cs-l b { color: var(--danger); }
-
-/* Живое превью: те же переменные, что красят переписку */
-.cs-pv { display: grid; grid-template-columns: 110px minmax(0, 1fr); height: 172px; border: 1px solid var(--border); border-radius: 13px; overflow: hidden; flex-shrink: 0; }
-.cs-pv-side { background: var(--side-bg); border-right: 1px solid var(--border); padding: 10px 8px; display: flex; flex-direction: column; gap: 7px; }
-.cs-pv-side i { display: flex; align-items: center; gap: 6px; height: 24px; border-radius: 7px; padding: 0 5px; }
-.cs-pv-side i::before { content: ""; width: 16px; height: 16px; border-radius: 50%; background: var(--search-bg); flex-shrink: 0; }
-.cs-pv-side i::after { content: ""; flex: 1; height: 6px; border-radius: 3px; background: var(--search-bg); }
-.cs-pv-side i.on { background: var(--active-row); }
-.cs-pv-side i.on::before { background: var(--accent); }
-.cs-pv-chat { position: relative; background: var(--chat-bg); padding: 12px 14px; display: flex; flex-direction: column; justify-content: flex-end; gap: 7px; overflow: hidden; font-size: var(--font-size); }
-.cs-pv-pat { position: absolute; inset: 0; pointer-events: none; background: var(--chat-pattern-ink, transparent);
-  -webkit-mask-image: var(--chat-pattern, none); mask-image: var(--chat-pattern, none);
-  -webkit-mask-size: calc(var(--chat-pattern-size, 680px) * .5); mask-size: calc(var(--chat-pattern-size, 680px) * .5);
-  opacity: var(--chat-pattern-alpha, 0); }
-.cs-pv-cap { position: absolute; top: 8px; right: 10px; font-size: 10px; font-weight: 600; color: var(--muted); background: var(--modal-bg); border: 1px solid var(--border); border-radius: 6px; padding: 0 6px; z-index: 1; }
-.cs-pv-msg { position: relative; max-width: 78%; padding: 6px 10px; border-radius: 12px; line-height: 1.4; font-size: .92em; }
-.cs-pv-msg small { display: block; font-size: .72em; opacity: .6; text-align: right; margin-top: 1px; }
-.cs-pv-msg b { display: block; font-size: .85em; color: var(--accent); }
-.cs-pv-msg.in { align-self: flex-start; background: var(--bubble-bg); color: var(--text); border-bottom-left-radius: 4px; }
-.cs-pv-msg.out { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
 
 .cs-ver { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--card-bg); flex-wrap: wrap; }
 .cs-logo { width: 46px; height: 46px; border-radius: 13px; background: var(--accent); display: grid; place-items: center; color: #fff; flex-shrink: 0; }
@@ -2873,18 +2810,6 @@ html.dark .anx-solid { color: #0c0e10; }
 .cs-badge { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--card-bg); color: #0c0e10; }
 .cs-chip { border-radius: 999px; padding: 2px 9px; }
 .cs-logout { padding: 13px 16px; border: 0; border-radius: 20px; }
-.cs-pv { grid-template-columns: 96px minmax(0, 1fr); border: 0; border-radius: 22px; box-shadow: inset 0 0 0 1px var(--border); }
-.cs-pv-cap { display: none; }
-.cs-pv-side { border-right: 0; }
-.cs-pv-side i { border-radius: 9px; }
-.cs-pv-side i.on { background: var(--accent-soft); }
-.cs-pv-msg { border-radius: 16px; }
-.cs-pv-msg.in { border-bottom-left-radius: 5px; }
-.cs-pv-msg.out { background: color-mix(in srgb, var(--accent) 22%, var(--card-bg)); color: var(--text); border-bottom-right-radius: 5px; } .pat-card { border: 0; box-shadow: none; }
-.pat-card { border-radius: 16px; background: var(--search-bg); } .pat-card:hover { border: 0; } .pat-card.active { border: 0; box-shadow: 0 0 0 2px var(--accent); }
-.pat-cap { border-top: 0; }
-.accent-dot { width: 24px; height: 24px; }
-.accent-dot.active { box-shadow: 0 0 0 3px var(--card-bg), 0 0 0 5px var(--dot); }
 .cs-ver { padding: 18px; border: 0; border-radius: 24px; background: var(--card-bg); }
 .cs-g > .cs-ver:first-child { border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
 .cs-g > .cs-ver:only-child { border-radius: 24px; }

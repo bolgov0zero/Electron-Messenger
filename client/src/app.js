@@ -608,7 +608,10 @@ function initMacTitlebar() {
   strip.addEventListener('mousedown', e => { if (e.button === 0) window.electron.tbDrag(true); });
   strip.addEventListener('dblclick', () => window.electron.tbZoom());
   window.addEventListener('mouseup', () => window.electron.tbDrag(false));
-  window.electron.onTitlebar(on => document.documentElement.classList.toggle('tb-open', !!on));
+  window.electron.onTitlebar(on => {
+    document.documentElement.classList.toggle('tb-open', !!on);
+    if (!on && document.body.classList.contains('sidebar-hidden') && !document.querySelector('.sidebar:hover, #acc-rail:hover, #sidebar-peek-zone:hover')) _scheduleHideSidebar();
+  });
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -977,15 +980,6 @@ function setAccent(key) {
   try { localStorage.setItem('accent', key); } catch {}
   applyAccent();
   pushAppSettings();
-  document.querySelectorAll('#accent-seg .accent-dot').forEach(b => {
-    b.classList.toggle('active', b.dataset.accent === key);
-    const a = ACCENTS[b.dataset.accent];
-    b.style.setProperty('--dot', 'rgb(' + accentRgb(a).join(',') + ')');
-  });
-}
-
-function accentRgb(a) {
-  return document.documentElement.classList.contains('dark') ? a.dark : a.light;
 }
 
 // Переменные ставим инлайном на <html>: так они перебивают оба набора из таблицы
@@ -1012,10 +1006,11 @@ function applyAccent() {
 
 function accentDotsHtml() {
   const cur = currentAccent();
-  return Object.entries(ACCENTS).map(([k, a]) =>
-    '<button class="accent-dot' + (k === cur ? ' active' : '') + '" data-accent="' + k + '"' +
+  return '<div class="ap-dots" role="group" aria-label="Цвет акцента">' + Object.entries(ACCENTS).map(([k, a]) =>
+    '<button type="button" class="ap-dot" id="cs-ap-accent-' + k + '" aria-pressed="' + (k === cur) + '"' +
     ' title="' + a.name + '" aria-label="' + a.name + '"' +
-    ' style="--dot:rgb(' + accentRgb(a).join(',') + ')" data-on-click="setAccent" data-a-click="' + esc(JSON.stringify([k])) + '"></button>').join('');
+    ' style="--dc-l:rgb(' + a.light.join(',') + ');--dc-d:rgb(' + a.dark.join(',') + ')"' +
+    ' data-on-click="csPick" data-a-click="' + esc(JSON.stringify(['setAccent', k])) + '"><i></i></button>').join('') + '</div>';
 }
 
 
@@ -1053,18 +1048,12 @@ function setChatPattern(id) {
   try { localStorage.setItem('chatPattern', id || ''); } catch {}
   applyChatPattern();
   pushAppSettings();
-  document.querySelectorAll('#pattern-cards .pat-card').forEach(c =>
-    c.classList.toggle('active', c.dataset.pattern === currentPattern()));
-  const line = document.getElementById('pattern-level-line');
-  if (line) line.style.display = currentPattern() ? '' : 'none';
 }
 
 function setPatternLevel(n) {
   try { localStorage.setItem('chatPatternLevel', String(n)); } catch {}
   applyChatPattern();
   pushAppSettings();
-  document.querySelectorAll('#pattern-seg button').forEach((b, i) =>
-    b.classList.toggle('active', i + 1 === currentPatternLevel()));
 }
 
 function patternUrl(id) {
@@ -1090,22 +1079,24 @@ function applyChatPattern() {
     String(PATTERN_ALPHA[dark ? 'dark' : 'light'][currentPatternLevel() - 1]));
 }
 
-// Карточки выбора в настройках: сам узор и служит образцом
+// Плитки выбора узора в настройках: сам узор и служит образцом (маску кладём из кода, см. paintPatternSwatches)
 function chatPatternCardsHtml() {
   const cur = currentPattern();
-  return '<div class="pat-cards" id="pattern-cards">' + PATTERNS.map(p =>
-    '<button class="pat-card' + (p.id === cur ? ' active' : '') + '" data-pattern="' + p.id + '"' +
-    ' data-on-click="setChatPattern" data-a-click="' + esc(JSON.stringify([p.id])) + '">' +
-      '<span class="pat-swatch"></span>' +
-      '<span class="pat-cap">' + p.name + '</span>' +
+  return '<div class="ap-tiles" id="ap-tiles" role="group" aria-label="Узор переписки">' + PATTERNS.map(p =>
+    '<button type="button" class="ap-pt" id="cs-ap-pat-' + (p.id || 'none') + '" data-pattern="' + p.id + '"' +
+    ' aria-pressed="' + (p.id === cur) + '" aria-label="' + p.name + '"' +
+    ' data-on-click="csPick" data-a-click="' + esc(JSON.stringify(['setChatPattern', p.id])) + '">' +
+      '<span class="ap-swb">' + (p.id ? '<span class="ap-sw"></span>' : '<span class="ap-none">' + CS_I.ban + '</span>') + '</span>' +
+      '<span class="ap-cp">' + p.name + '</span>' +
     '</button>').join('') + '</div>';
 }
 
 // Маску образцов ставим из кода: в url() есть кавычки, в inline-атрибуте они рвут значение
 function paintPatternSwatches() {
-  document.querySelectorAll('#pattern-cards .pat-card').forEach(card => {
-    const el = card.querySelector('.pat-swatch');
-    const url = patternUrl(card.dataset.pattern) || 'none';
+  document.querySelectorAll('#ap-tiles .ap-pt').forEach(t => {
+    const el = t.querySelector('.ap-sw');
+    if (!el) return;
+    const url = patternUrl(t.dataset.pattern) || 'none';
     el.style.webkitMaskImage = url;
     el.style.maskImage = url;
   });
@@ -1127,7 +1118,6 @@ function applySettings() {
   document.documentElement.classList.toggle('navy', isDark);
   document.documentElement.className = document.documentElement.className.replace(/font-\w+/,'');
   document.documentElement.classList.add('font-'+S.settings.fontSize);
-  document.querySelectorAll('#font-seg button').forEach(b => b.classList.toggle('active', b.textContent.trim()===S.settings.fontSize[0].toUpperCase()));
   const _scale = S.settings.uiScale || 100;
   document.documentElement.style.zoom = _scale !== 100 ? _scale + '%' : '';
   // Сдвиг текста в пузыре (центровка по x-высоте): при масштабе меньше 100% размеры строки
@@ -1136,12 +1126,9 @@ function applySettings() {
   document.documentElement.style.minHeight = '';
   document.body.style.height = '';
   document.documentElement.style.setProperty('--vh100', _scale !== 100 ? `calc(100vh / ${_scale / 100})` : '100vh');
-  document.querySelectorAll('#scale-seg button').forEach(b => b.classList.toggle('active', parseInt(b.textContent) === _scale));
   applyAccent();
   applyChatPattern();
   applySidebarW();
-  document.querySelectorAll('#pattern-seg button').forEach((b, i) =>
-    b.classList.toggle('active', i + 1 === currentPatternLevel()));
   updateSidebarThemeIcon();
 }
 // Плавная смена темы: включаем переход цветов только на время переключения,
@@ -1228,6 +1215,9 @@ function _scheduleHideSidebar() {
   // Меню шапки лежит в body, вне сайдбара: пока оно открыто, панель не прячем. Иначе, стоит перевести мышь на меню,
   // сайдбар уезжает, и кнопку «Показать сайдбар» не нажать
   if (_hmOpen) return;
+  // macOS: пока выдвинута полоса заголовка окна, она лежит поверх шапки сайдбара и «забирает» курсор; панель не прячем
+  // (когда полоса уберётся, initMacTitlebar перепроверит наведение и спрячет панель, если курсор ушёл)
+  if (document.documentElement.classList.contains('tb-open')) return;
   _sidebarPeekTimer = setTimeout(() => {
     document.body.classList.remove('sidebar-peeking');
   }, 120);
@@ -1431,7 +1421,7 @@ function csSections() {
     { k: 'profile', label: 'Профиль', icon: CS_I.user, desc: 'Фото, имя и пароль', meta: () => '@' + (S.user?.username || '') },
     { k: 'general', label: 'Основные', icon: CS_I.gear, desc: csIsApp() ? 'Звук и поведение приложения' : 'Звук сообщений',
       meta: () => [s.soundEnabled !== false ? 'звук включён' : 'без звука', csIsApp() && CS.autostart ? 'автозапуск' : ''].filter(Boolean).join(' · ') },
-    { k: 'appearance', label: 'Внешний вид', icon: CS_I.palette, desc: 'Тема, цвет, фон переписки и размер текста',
+    { k: 'appearance', label: 'Внешний вид', icon: CS_I.palette, desc: 'Тема, цвет, узор и размер текста',
       meta: () => `${{ system: 'Система', light: 'Светлая', navy: 'Тёмно-синяя' }[themePref()]} · ${ACCENTS[currentAccent()].name.toLowerCase()}` },
   ];
   list.push({ k: 'blocks', label: 'Блокировки', icon: CS_I.ban, desc: 'Люди, которые не могут вам писать',
@@ -1671,40 +1661,40 @@ async function csAutostart() { CS.autostart = !CS.autostart; csRefresh(); await 
 function csHideSidebar() { toggleSidebar(); csRefresh(); }
 
 // ── Внешний вид ──
-// Выбор в сегментированном переключателе: вызываем функцию по имени и обновляем панель
+// Выбор: вызываем функцию по имени и перерисовываем панель; id кнопок начинаются с cs-, поэтому фокус после перерисовки остаётся на той же кнопке
 function csPick(name, v) { window[name](v); csRefresh(); }
-// Меню сообщения для удалённых не открывается: только отменяем системное меню браузера
-function ctxNoop(ev) { ev.preventDefault(); }
-function noop() {}
+CS_I.clip = csSvg('<path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"/>');
+CS_I.send = csSvg('<path d="M3.714 3.048a.498.498 0 0 0-.683.627l2.843 7.627a2 2 0 0 1 0 1.396l-2.842 7.627a.498.498 0 0 0 .682.627l18-8.5a.5.5 0 0 0 0-.904z"/><path d="M6 12h16"/>');
+CS_I.checks = csSvg('<path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/>');
 function csPaneAppearance() {
-  const s = S.settings, lvl = currentPatternLevel(), scales = csIsApp() ? [80, 90, 100] : [80, 90, 100, 110];
-  const seg = (items, cur, fn, label) => `<div class="cs-seg" role="group" aria-label="${label}">${items.map(([v, t, title]) =>
-    `<button type="button" aria-pressed="${cur === v}" ${title ? `aria-label="${title}" title="${title}"` : ''} data-on-click="csPick" data-a-click="${esc(JSON.stringify([fn, v]))}">${t}</button>`).join('')}</div>`;
-  return `<div class="cs-pv" aria-hidden="true">
-      <div class="cs-pv-side"><i></i><i class="on"></i><i></i><i></i><i></i></div>
-      <div class="cs-pv-chat"><div class="cs-pv-pat"></div><span class="cs-pv-cap">Так будет выглядеть</span>
-        <div class="cs-pv-msg in"><b>Мария</b>Созвон переносим на 15:30<small>14:18</small></div>
-        <div class="cs-pv-msg out">Отлично, успеваю<small>14:19</small></div></div>
+  const s = S.settings, pat = currentPattern(), scales = csIsApp() ? [80, 90, 100] : [80, 90, 100, 110];
+  const seg = (items, cur, fn, label, off) => `<div class="cs-seg${off ? ' is-off' : ''}" role="group" aria-label="${label}">${items.map(([v, t, title]) =>
+    `<button type="button" id="cs-ap-${fn}-${v}" aria-pressed="${cur === v}"${title ? ` aria-label="${title}" title="${title}"` : ''}${off ? ' disabled' : ''} data-on-click="csPick" data-a-click="${esc(JSON.stringify([fn, v]))}">${t}</button>`).join('')}</div>`;
+  const aa = px => `<span class="cs-aa" style="font-size:${px}px">Aa</span>`;
+  const msg = (cls, txt, time, who, ticks) => `<div class="ap-msg ${cls}">${who ? `<b>${who}</b>` : ''}${txt}<small>${time}${ticks ? ' ' + CS_I.checks : ''}</small></div>`;
+  return `<div class="cs-ap"><div class="ap-cols">
+    <div class="ap-left">
+      <div class="ap-grp"><div class="cs-gt">Тема и цвет</div><div class="cs-g">
+        <div class="cs-r"><div class="cs-l"><b>Тема</b></div>${seg([['system', CS_I.monitor + 'Система'], ['light', CS_I.sun + 'Светлая'], ['navy', CS_I.navy + 'Тёмно-синяя']], themePref(), 'setTheme', 'Тема')}</div>
+        <div class="cs-r"><div class="cs-l"><b>Акцент</b><span>${ACCENTS[currentAccent()].name}</span></div>${accentDotsHtml()}</div>
+      </div></div>
+      <div class="ap-grp"><div class="cs-gt">Текст и масштаб</div><div class="cs-g">
+        <div class="cs-r"><div class="cs-l"><b>Размер текста</b></div>${seg([['small', aa(12), 'Мелкий'], ['medium', aa(14), 'Обычный'], ['large', aa(17), 'Крупный']], s.fontSize, 'setFontSize', 'Размер текста')}</div>
+        <div class="cs-r"><div class="cs-l"><b>Масштаб</b></div>${seg(scales.map(v => [v, v + '%']), s.uiScale || 100, 'setUiScale', 'Масштаб интерфейса')}</div>
+      </div></div>
+      <div class="ap-grp"><div class="cs-gt">Узор переписки</div><div class="cs-g">
+        ${chatPatternCardsHtml()}
+        <div class="cs-r ap-lvl"><div class="cs-l"><b>Заметность</b></div>${seg([[1, 'Едва', 'Едва заметный узор'], [2, 'Заметно'], [3, 'Ярко']], currentPatternLevel(), 'setPatternLevel', 'Заметность узора', !pat)}</div>
+      </div></div>
     </div>
-    <div class="cs-gt">Тема и цвет</div>
-    <div class="cs-g">
-      <div class="cs-r"><div class="cs-l"><b>Тема</b></div>${seg([['system', CS_I.monitor + 'Система'], ['light', CS_I.sun + 'Светлая'], ['navy', CS_I.navy + 'Тёмно-синяя']], themePref(), 'setTheme', 'Тема')}</div>
-      <div class="cs-r"><div class="cs-l"><b>Цвет акцента</b><span>Кнопки, свои сообщения, выделение</span></div>
-        <div class="cs-ctl"><span class="cs-aname">${ACCENTS[currentAccent()].name}</span><div id="accent-seg" class="accent-seg" data-on-click="__h23">${accentDotsHtml()}</div></div></div>
+    <div class="ap-pc" role="img" aria-label="Образец переписки: так выглядят выбранные тема, цвет, узор и размер текста">
+      <div class="ap-pc-h"><span class="ap-av">МИ</span><span class="ap-n"><b>Мария Иванова</b><span>в сети</span></span><span class="ap-ib">${CS_I.search}</span><span class="ap-ib">${CS_I.phone}</span></div>
+      <div class="ap-pv"><span class="ap-day">Сегодня</span>
+        ${msg('in', 'Созвон переносим на 15:30', '14:18', 'Мария')}${msg('out', 'Отлично, успеваю', '14:19', '', true)}${msg('in', 'Тогда в 15:30 в переговорке на втором этаже', '14:20', 'Мария')}${msg('out', 'Договорились, скину повестку заранее', '14:21')}
+      </div>
+      <div class="ap-pc-f"><span class="ap-ib">${CS_I.clip}</span><span class="ap-fld">Сообщение</span><span class="ap-snd">${CS_I.send}</span></div>
     </div>
-    <div class="cs-gt">Фон</div>
-    <div class="cs-g">
-      <div class="cs-r stack"><div class="cs-l"><b>Узор</b><span>Рисунок поверх фона переписки</span></div>
-      <div data-on-click="__h25">${chatPatternCardsHtml()}</div>
-      ${currentPattern() ? `<div class="cs-ctl cs-between"><div class="cs-l"><b>Заметность узора</b></div>${seg([[1, 'Слабая'], [2, 'Средняя'], [3, 'Сильная']], lvl, 'setPatternLevel', 'Заметность узора')}</div>` : ''}
-    </div></div>
-    <div class="cs-gt">Текст</div>
-    <div class="cs-g">
-      <div class="cs-r"><div class="cs-l"><b>Размер текста</b><span>Сообщения и список чатов</span></div>
-        ${seg([['small', '<span class="cs-aa" style="font-size:11px">Aa</span>', 'Мелкий'], ['medium', '<span class="cs-aa" style="font-size:13px">Aa</span>', 'Обычный'], ['large', '<span class="cs-aa" style="font-size:16px">Aa</span>', 'Крупный']], s.fontSize, 'setFontSize', 'Размер текста')}</div>
-      <div class="cs-r"><div class="cs-l"><b>Масштаб интерфейса</b><span>Всё окно целиком</span></div>
-        ${seg(scales.map(v => [v, v + '%']), s.uiScale || 100, 'setUiScale', 'Масштаб интерфейса')}</div>
-    </div>`;
+  </div></div>`;
 }
 
 // ── Обновление (только приложение) ──
@@ -1860,7 +1850,7 @@ function csRenderInline(focusId) {
     </section>`;
   if (CS.avatar === undefined) { CS.avatar = null; updateSettingsAvatar(); }
   csPaintAvatars();
-  if (document.getElementById('pattern-cards')) paintPatternSwatches();
+  if (document.getElementById('ap-tiles')) paintPatternSwatches();
   // Пароли кладём в поля свойством, а не атрибутом разметки
   [['cs-pw0', 'old'], ['cs-pw1', 'a'], ['cs-pw2', 'b']].forEach(([id, k]) => { const i = document.getElementById(id); if (i) i.value = CS.pw[k]; });
   const body = document.getElementById('cs-body');

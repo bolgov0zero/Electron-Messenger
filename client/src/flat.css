@@ -401,7 +401,7 @@ html.dark, html.dark.navy {
 .cm-tabs button:active, .gp-chip:active, .anx-ch:active { transform: scale(var(--kit-press)); }
 .cm-tabs button:focus-visible, .gp-chip:focus-visible, .anx-ch:focus-visible { outline: var(--kit-focus); outline-offset: 2px; }
 .gp-chip { height: 28px; }
-.cs-chip, .ws-chip, .anx-pill, .accent-dot { border-radius: var(--kit-tag-r); }
+.cs-chip, .ws-chip, .anx-pill { border-radius: var(--kit-tag-r); }
 .cs-chip, .ws-chip { background: var(--accent-soft); color: var(--accent-ink); }
 
 .gl-bg .gl-chip { border: 0; border-radius: var(--kit-tag-r); padding: 3px 9px; background: var(--surf2); color: var(--muted); }                 /* метки окон гостевых ссылок: статус */
