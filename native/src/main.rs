@@ -626,9 +626,10 @@ impl App {
         egui::Frame::new().fill(pal.side_bg).corner_radius(22).inner_margin(Margin::same(10)).show(ui, |ui| {
             ui.set_min_size(vec2(outer_w - 20.0, outer_h - 20.0));
             ui.set_max_width(outer_w - 20.0);
-            ui.add_space(2.0);
-            ui.label(RichText::new("Чаты").font(FontId::new(22.0, bold())).color(pal.text));
-            ui.add_space(4.0);
+            // Шапка сайдбара: высота 56 (с отступом карточки), название клиента слева с отступом 16
+            let (hr, _) = ui.allocate_exact_size(vec2(ui.available_width(), 46.0), Sense::hover());
+            let wm = view::wordmark(ui.painter(), pal);
+            ui.painter().galley(pos2(hr.left() + 6.0, hr.center().y - wm.size().y / 2.0), wm, pal.text);
             ui.add(
                 TextEdit::singleline(&mut self.search)
                     .hint_text("Поиск")

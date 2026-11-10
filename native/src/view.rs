@@ -455,6 +455,50 @@ fn fmt_size(n: i64) -> String {
     }
 }
 
+/// Хвостик пузыря: та же кривая, что в CSS клиента (clip-path 9×13: `M9 0 V13 H1 C5 12.5 9 9 9 0 Z`
+/// у входящих и зеркальная у исходящих). Заливка — веером треугольников от угла, края сглажены линией.
+fn draw_tail(p: &egui::Painter, b: Rect, mine: bool, fill: Color32) {
+    let (origin, corner, c) = if mine {
+        (pos2(b.right() - 1.0, b.bottom() - 13.0), [0.0, 13.0], [[8.0, 13.0], [4.0, 12.5], [0.0, 9.0], [0.0, 0.0]])
+    } else {
+        (pos2(b.left() - 8.0, b.bottom() - 13.0), [9.0, 13.0], [[1.0, 13.0], [5.0, 12.5], [9.0, 9.0], [9.0, 0.0]])
+    };
+    let at = |x: f32, y: f32| origin + vec2(x, y);
+    const N: usize = 16;
+    let pts: Vec<egui::Pos2> = (0..=N)
+        .map(|i| {
+            let t = i as f32 / N as f32;
+            let u = 1.0 - t;
+            let f = |k: usize| u * u * u * c[0][k] + 3.0 * u * u * t * c[1][k] + 3.0 * u * t * t * c[2][k] + t * t * t * c[3][k];
+            at(f(0), f(1))
+        })
+        .collect();
+    let mut mesh = egui::Mesh::default();
+    mesh.colored_vertex(at(corner[0], corner[1]), fill);
+    for pt in &pts {
+        mesh.colored_vertex(*pt, fill);
+    }
+    for i in 0..pts.len() - 1 {
+        mesh.add_triangle(0, (i + 1) as u32, (i + 2) as u32);
+    }
+    p.add(Shape::mesh(mesh));
+    p.add(Shape::line(pts, Stroke::new(1.0, fill)));
+}
+
+/// Название клиента в шапке сайдбара: «ELECTRON» + «MESSENGER» акцентным цветом, 13 px, жирный, разрядка 0,9.
+pub fn wordmark(p: &egui::Painter, pal: &Pal) -> Arc<egui::Galley> {
+    let mut job = egui::text::LayoutJob::default();
+    let fmt = |color| egui::TextFormat {
+        font_id: FontId::new(13.0, bold()),
+        color,
+        extra_letter_spacing: 0.9,
+        ..Default::default()
+    };
+    job.append("ELECTRON", 0.0, fmt(pal.text));
+    job.append("MESSENGER", 6.0, fmt(pal.accent_ink));
+    p.layout_job(job)
+}
+
 /// Пузырь сообщения: радиус 18 (в серии 5, у хвоста 0), padding 7×12, текст 14.5/1.42, время 11.5.
 pub fn draw_msg(ui: &mut Ui, pal: &Pal, m: &Msg, first: bool, last: bool, show_name: bool, cx: &MsgCx) {
     let p = ui.painter().clone();
@@ -593,12 +637,7 @@ pub fn draw_msg(ui: &mut Ui, pal: &Pal, m: &Msg, first: bool, last: bool, show_n
     }
     p.rect_filled(b, cr, fill);
     if last {
-        let pts = if mine {
-            vec![pos2(b.right() - 0.5, b.bottom() - 13.0), pos2(b.right() + 8.0, b.bottom()), pos2(b.right() - 0.5, b.bottom())]
-        } else {
-            vec![pos2(b.left() + 0.5, b.bottom() - 13.0), pos2(b.left() - 8.0, b.bottom()), pos2(b.left() + 0.5, b.bottom())]
-        };
-        p.add(Shape::convex_polygon(pts, fill, Stroke::NONE));
+        draw_tail(&p, b, mine, fill);
     }
     if cx.group && !mine && last {
         let ar = Rect::from_min_size(pos2(row.left() + inset, b.bottom() - 36.0), vec2(36.0, 36.0));
