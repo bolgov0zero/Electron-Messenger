@@ -241,6 +241,8 @@ tryAlter('ALTER TABLE users ADD COLUMN totp_required INTEGER DEFAULT 0');
 tryAlter('ALTER TABLE users ADD COLUMN can_announce INTEGER DEFAULT 0');
 // Право создавать ссылки на видеозвонок для гостей (включает админ сервера в карточке пользователя; у админа есть всегда)
 tryAlter('ALTER TABLE users ADD COLUMN can_call_links INTEGER DEFAULT 0');
+// Роль «Менеджер»: урезанный админ (см. auth.js, staffMiddleware). is_admin у менеджера всегда 0
+tryAlter('ALTER TABLE users ADD COLUMN is_manager INTEGER DEFAULT 0');
 
 // Секретные чаты (E2E-шифрование). is_secret — отдельная сущность от обычного
 // personal-чата с тем же собеседником: они могут существовать одновременно,

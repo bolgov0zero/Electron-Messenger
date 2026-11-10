@@ -19,7 +19,7 @@ const AN_DURS = [[15, '15 мин'], [60, '1 ч'], [180, '3 ч'], [1440, 'Сут�
 
 // Администраторам кнопка доступна всегда; остальным её включает админ в карточке пользователя.
 // Право узнаём при входе и сразу по сообщению сервера
-const annCan = () => !!(S.user?.is_admin || S.user?.can_announce);
+const annCan = () => !!(S.user?.is_admin || S.user?.is_manager || S.user?.can_announce);
 function annSetAllowed(v) {
   v = !!v;
   if (S.user && !!S.user.can_announce !== v) { S.user.can_announce = v; try { saveSession(); } catch {} }
@@ -32,7 +32,7 @@ async function annSync() {
   clSetAllowed(!!S.user?.can_call_links);
   const me = await api('GET', '/auth/me');
   if (me?.id) {
-    if (S.user && !!S.user.is_admin !== !!me.is_admin) { S.user.is_admin = !!me.is_admin; try { saveSession(); } catch {} }
+    if (S.user && (!!S.user.is_admin !== !!me.is_admin || !!S.user.is_manager !== !!me.is_manager)) { S.user.is_admin = !!me.is_admin; S.user.is_manager = !!me.is_manager; try { saveSession(); } catch {} }
     annSetAllowed(!!me.can_announce);
     clSetAllowed(!!me.can_call_links);
   }

@@ -2,7 +2,7 @@
 // Правило видимости — в spaces.js, здесь только маршруты.
 const express = require('express');
 const dal = require('../dal');
-const { authMiddleware, adminMiddleware } = require('../auth');
+const { authMiddleware, adminMiddleware, staffMiddleware } = require('../auth');
 const { sendTo, broadcastAll } = require('../ws');
 const { logAudit } = require('../audit');
 const spaces = require('../spaces');
@@ -115,7 +115,15 @@ blocks.delete('/:id', async (req, res) => {
 
 // ── Администрирование пространств ──
 const admin = express.Router();
-admin.use(authMiddleware, adminMiddleware);
+admin.use(authMiddleware, staffMiddleware);
+// Менеджеру доступны только создание, переименование и удаление обычных пространств и их список;
+// всё, что связано с федерацией (общие пространства, серверы, приглашения), — только админу
+admin.use((req, res, next) => {
+  if (!req.user.is_manager) return next();
+  const ok = (req.method === 'GET' && req.path === '/') || (req.method === 'POST' && req.path === '/') ||
+    (['PATCH', 'DELETE'].includes(req.method) && /^\/[^/]+$/.test(req.path));
+  return ok ? next() : res.status(403).json({ error: 'Недоступно менеджеру' });
+});
 
 const nameOk = n => { const s = String(n || '').trim().replace(/\s+/g, ' '); return s && s.length <= 60 ? s : null; };
 
@@ -124,7 +132,7 @@ admin.get('/', async (req, res) => {
       (SELECT COUNT(*) FROM user_workspaces m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = w.id AND COALESCE(u.is_bot, 0) = 0) AS users,
       (SELECT COUNT(*) FROM user_workspaces m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = w.id AND COALESCE(u.is_bot, 0) = 0
         AND (SELECT COUNT(*) FROM user_workspaces m2 WHERE m2.user_id = m.user_id) = 1) AS only_here
-    FROM workspaces w ORDER BY w.id`, spaces.DEFAULT_WS)).map(async w => ({ ...w, is_default: !!w.is_default, fed: (await fsp.adminInfo(w)), candidates: (await fsp.candidates(w)) })))));
+    FROM workspaces w ORDER BY w.id`, spaces.DEFAULT_WS)).map(async w => ({ ...w, is_default: !!w.is_default, fed: (await fsp.adminInfo(w)), candidates: (await fsp.candidates(w)) })))).map(w => req.user.is_manager ? { ...w, fed: { shared: false }, candidates: [], fed_uid: null, fed_host: null } : w));
 });
 // Приглашения и просьбы общих пространств
 admin.get('/fed/offers', async (req, res) => res.json((await fsp.offersList())));
@@ -196,6 +204,7 @@ admin.patch('/:id', async (req, res) => {
   const id = Number(req.params.id), name = nameOk(req.body?.name);
   const w = await dal.get('SELECT name, fed_uid, fed_host FROM workspaces WHERE id = ?', id);
   if (!w) return res.status(404).json({ error: 'Пространство не найдено' });
+  if (req.user.is_manager && w.fed_uid) return res.status(403).json({ error: 'Недоступно менеджеру' });
   if (!name) return res.status(400).json({ error: 'Введите название (до 60 символов)' });
   if (w.fed_uid && w.fed_host !== (await fed.identity()).id) return res.status(400).json({ error: 'Название общего пространства задаёт его хозяин' });
   try {

@@ -13,7 +13,7 @@ const dal = require('./dal');
 const DEFAULT_WS = 1;
 
 const q = {
-  user: 'SELECT id, workspace_id, is_admin, is_bot FROM users WHERE id = ?',
+  user: 'SELECT id, workspace_id, is_admin, is_manager, is_bot FROM users WHERE id = ?',
   contact: 'SELECT 1 FROM contacts WHERE owner_id = ? AND contact_id = ?',
 };
 
@@ -52,6 +52,8 @@ const FED = 2;
 const GUEST = 3;   // users.is_bot у гостя по ссылке
 async function isFed(userId) { return (await dal.get(q.user, userId))?.is_bot === FED; }
 async function isAdminUser(userId) { return !!(await dal.get(q.user, userId))?.is_admin; }
+// Админ или менеджер: объявления и прочие действия «от персонала» без ограничения своим пространством
+async function isStaffUser(userId) { const u = await dal.get(q.user, userId); return !!(u?.is_admin || u?.is_manager); }
 
 // Видит ли viewer человека target в списках и поиске
 async function canSee(viewerId, targetId) {
@@ -237,4 +239,4 @@ const directChatIds = async (a, b) => (await dal.all(`SELECT c.id FROM chats c
   JOIN chat_members m2 ON m2.chat_id = c.id AND m2.user_id = ?
   WHERE c.type = 'direct'`, a, b)).map(r => r.id);
 
-module.exports = { FED, isFed, recipientCount, mutualContact, canSeePresence, presenceViewers, presenceIds, DM_LIMIT, limitApplies, limitUsed, limitFor, limitBump, limitReset, directChatIds, DEFAULT_WS, wsOf, wsIdsOf, sharedIds, shares, setWorkspaces, usersInSpaces, isAdminUser, canSee, viewersOf, knownByOf, isBlocked, listFor, visibleIds, afterMove };
+module.exports = { FED, isFed, recipientCount, mutualContact, canSeePresence, presenceViewers, presenceIds, DM_LIMIT, limitApplies, limitUsed, limitFor, limitBump, limitReset, directChatIds, DEFAULT_WS, wsOf, wsIdsOf, sharedIds, shares, setWorkspaces, usersInSpaces, isAdminUser, isStaffUser, canSee, viewersOf, knownByOf, isBlocked, listFor, visibleIds, afterMove };

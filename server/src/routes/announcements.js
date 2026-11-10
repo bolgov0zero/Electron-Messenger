@@ -9,8 +9,8 @@ const { logAudit } = require('../audit');
 // Отправлять может тот, кому админ включил право (или сам админ). Проверяем по базе, а не по токену:
 // право отзывается сразу, не дожидаясь, пока истечёт сессия
 async function canSend(userId) {
-  const u = await dal.get('SELECT is_admin, can_announce, banned FROM users WHERE id = ?', userId);
-  return !!u && !u.banned && !!(u.is_admin || u.can_announce);
+  const u = await dal.get('SELECT is_admin, is_manager, can_announce, banned FROM users WHERE id = ?', userId);
+  return !!u && !u.banned && !!(u.is_admin || u.is_manager || u.can_announce);
 }
 const needRight = async (req, res, next) => (await canSend(req.user.id)) ? next() : res.status(403).json({ error: 'Нет права отправлять объявления' });
 
@@ -30,8 +30,8 @@ router.post('/:id/dismiss', authMiddleware, async (req, res) => {
 
 // Кому и куда можно отправить: те же списки, что видит админ в окне объявления
 router.get('/targets', authMiddleware, needRight, async (req, res) => {
-  const me = await dal.get('SELECT is_admin, workspace_id FROM users WHERE id = ?', req.user.id);
-  const admin = !!me?.is_admin;
+  const me = await dal.get('SELECT is_admin, is_manager, workspace_id FROM users WHERE id = ?', req.user.id);
+  const admin = !!(me?.is_admin || me?.is_manager);
   // Пользователь с правом видит только свои пространства и чаты, где все свои
   const myWs = await spaces.wsIdsOf(req.user.id), myWsIn = myWs.map(Number).join(',');
   const allowedChats = admin ? null : new Set((await announcements.chatsOfSpaces(myWs, true)));

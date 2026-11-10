@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const crypto = require('crypto');
-const { authMiddleware, adminMiddleware } = require('../auth');
+const { authMiddleware, staffMiddleware } = require('../auth');
 const announcements = require('../announcements');
 const { sendTo, broadcast, broadcastAll, getStatus, isConnected, getClients, sendToConn, getConnCount, getConnMeta, initUpdateProgress, getUpdateProgress, getMessageWithStatus } = require('../ws');
 const monitor = require('../monitor');
@@ -93,10 +93,58 @@ async function fetchRemoteVersion() {
   try { return JSON.parse(content).version; } catch { return null; }
 }
 
-router.use(authMiddleware, adminMiddleware);
+router.use(authMiddleware, staffMiddleware);
+
+// Менеджер (урезанный админ): разрешено только то, что перечислено здесь, всё остальное — 403.
+// Список белый, чтобы новый маршрут по умолчанию оставался закрытым для менеджера.
+// Настройки, вебхуки, федерация, клиенты, аудит-лог, релизы, модули, резервные копии, база,
+// перезапуски, обновления и мониторинг сервера сюда намеренно не входят.
+const SEG = '[^/]+';
+const MANAGER_ROUTES = [
+  ['GET', /^\/(stats|activity|heatmap|overview|users|chats|files|announcements)$/],
+  ['POST', /^\/(rooms|topics|topics\/reorder|announcement)$/],
+  ['PATCH', new RegExp(`^/(rooms|topics)/${SEG}$`)],
+  ['DELETE', new RegExp(`^/(topics|announcements|files)/${SEG}$`)],
+  ['POST', new RegExp(`^/(chats/${SEG}/(members|avatar)|topics/${SEG}/avatar|announcements/${SEG}/stop)$`)],
+  ['GET', new RegExp(`^/(chats/${SEG}/(pending|members)|topics/${SEG})$`)],
+  ['DELETE', new RegExp(`^/chats/${SEG}/members/${SEG}$`)],
+  // Действия над пользователем (цель дополнительно проверяет managerTarget)
+  ['GET', new RegExp(`^/users/${SEG}/devices$`)],
+  ['POST', new RegExp(`^/users/${SEG}/(logout|ban|unban|totp/reset|devices/revoke-all|devices/${SEG}/(revoke|allow|delete))$`)],
+  ['PATCH', new RegExp(`^/users/${SEG}/(totp|announce|call-links)$`)],
+];
+router.use(async (req, res, next) => {
+  if (!req.user.is_manager) return next();
+  // Разделы с собственными роутерами (звонки, пространства, федерация, модули) проверяют менеджера сами
+  if (/^\/(calls|workspaces|federation|modules)(\/|$)/.test(req.path)) return next();
+  if (!MANAGER_ROUTES.some(([m, re]) => m === req.method && re.test(req.path))) return res.status(403).json({ error: 'Недоступно менеджеру' });
+  // Менеджер действует только над обычными пользователями: админа он не видит вовсе, другого менеджера видит, но не трогает
+  const t = req.path.match(/^\/users\/([^/]+)\//);
+  if (t) {
+    const u = await dal.get('SELECT is_admin, is_manager FROM users WHERE id = ?', Number(t[1]));
+    if (!u || u.is_admin) return res.status(404).json({ error: 'Not found' });
+    if (u.is_manager) return res.status(403).json({ error: 'Недоступно менеджеру' });
+  }
+  // Приглашать людей с других серверов менеджеру нельзя
+  if (req.method === 'POST' && /^\/chats\/[^/]+\/members$/.test(req.path) && (await require('../spaces').isFed(Number(req.body?.user_id)))) {
+    return res.status(403).json({ error: 'Недоступно менеджеру' });
+  }
+  next();
+});
 router.use('/database', require('./dbadmin'));
 
 router.get('/stats', async (req, res) => {
+  if (req.user.is_manager) {
+    // Менеджеру — только счётчики; нагрузка, диск, версия и подписки сервера ему не показываются
+    return res.json({
+      users:    (await dal.get('SELECT COUNT(*) as c FROM users WHERE (is_bot IS NULL OR is_bot = 0) AND is_admin = 0')).c,
+      chats:    (await dal.get("SELECT COUNT(*) as c FROM chats WHERE type='direct' AND system_kind IS NULL")).c,
+      groups:   (await dal.get("SELECT COUNT(*) as c FROM chats WHERE type='group'")).c,
+      rooms:    (await dal.get("SELECT COUNT(*) as c FROM chats WHERE type='room' AND parent_id IS NULL")).c,
+      messages: (await dal.get('SELECT COUNT(*) as c FROM messages WHERE deleted = 0')).c,
+      filesCount: (await collectFiles()).length,
+    });
+  }
   const dbBytes = dal.pg ? (await dal.get('SELECT pg_database_size(current_database()) AS b')).b
     : (await dal.get('PRAGMA page_count')).page_count * (await dal.get('PRAGMA page_size')).page_size;
   res.json({
@@ -321,7 +369,7 @@ router.get('/users', async (req, res) => {
   const fs = require('fs');
   const path = require('path');
   const avatarDir = path.join(path.dirname(DB_PATH), 'avatar');
-  const users = await dal.all('SELECT u.id, u.username, u.display_name, u.is_admin, u.tag, u.banned, u.created_at, u.last_seen_at, u.totp_required, u.totp_secret, u.can_announce, u.can_call_links, u.workspace_id, w.name AS workspace_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE u.is_bot IS NULL OR u.is_bot = 0 ORDER BY u.created_at DESC');
+  const users = await dal.all('SELECT u.id, u.username, u.display_name, u.is_admin, u.is_manager, u.tag, u.banned, u.created_at, u.last_seen_at, u.totp_required, u.totp_secret, u.can_announce, u.can_call_links, u.workspace_id, w.name AS workspace_name FROM users u JOIN workspaces w ON w.id = u.workspace_id WHERE (u.is_bot IS NULL OR u.is_bot = 0)' + (req.user.is_manager ? ' AND u.is_admin = 0' : '') + ' ORDER BY u.created_at DESC');
   // Устройства, с которых человек сейчас в сети: в списке это «Electron 2.15.9 · macOS»
   const devices = new Map();
   for (const c of getClients()) {
@@ -338,6 +386,7 @@ router.get('/users', async (req, res) => {
     return {
       ...rest,
       banned: !!u.banned,
+      is_manager: !!u.is_manager,
       connected: isConnected(u.id),
       status: getStatus(u.id), // online / away / offline — с учётом фокуса окон
       clients: devices.get(u.id) || [],
@@ -934,9 +983,24 @@ router.get('/overview', async (req, res) => {
     u.clients.push({ version: c.clientVersion, platform: c.osPlatform, hostname: c.hostname });
     byUser.set(c.userId, u);
   }
+  // Менеджер администраторов не видит и в списке «в сети»
+  const hidden = req.user.is_manager ? new Set((await dal.all('SELECT id FROM users WHERE is_admin = 1')).map(r => r.id)) : new Set();
   const online = [...byUser.values()]
+    .filter(u => !hidden.has(u.id))
     .sort((a, b) => b.since - a.since)
     .map(u => ({ ...u, has_avatar: fs.existsSync(path.join(avatarDir, `${u.id}.jpg`)) }));
+
+  if (req.user.is_manager) {
+    // Менеджеру — только число людей и чатов и список «в сети»: без сведений о сервере, службе и хранилище
+    return res.json({ manager: true, chat: {
+      users: (await count('SELECT COUNT(*) AS c FROM users WHERE (is_bot IS NULL OR is_bot = 0) AND is_admin = 0')),
+      rooms: (await count("SELECT COUNT(*) AS c FROM chats WHERE type='room' AND parent_id IS NULL")),
+      groups: (await count("SELECT COUNT(*) AS c FROM chats WHERE type='group'")),
+      chats: (await count("SELECT COUNT(*) AS c FROM chats WHERE type='direct' AND system_kind IS NULL")),
+      messages: (await count('SELECT COUNT(*) AS c FROM messages WHERE deleted = 0')),
+      files: (await collectFiles()).length,
+    }, online });
+  }
 
   const storage = await monitor.storageInfo();
   const cacheSize = db ? db.pragma('cache_size', { simple: true }) : 0;

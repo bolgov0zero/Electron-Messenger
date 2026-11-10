@@ -421,3 +421,23 @@
   .sp-abg { grid-template-columns: minmax(0, 1fr) 320px; }
   .sp-side { margin: 12px 12px 12px 0; }
 }
+
+/* ── Менеджер: скрыты разделы, которых у него нет; плитки главной ── */
+html[data-role="manager"] .nav-item[data-page="settings"],
+html[data-role="manager"] .nav-item[data-page="webhooks"],
+html[data-role="manager"] .nav-item[data-page="federation"],
+html[data-role="manager"] .nav-item[data-page="clients"],
+html[data-role="manager"] .nav-item[data-page="push"],
+html[data-role="manager"] .nav-item[data-page="audit"],
+html[data-role="manager"] .nav-item[data-page="releases"],
+html[data-role="manager"] .nav-item[data-page="modules"],
+html[data-role="manager"] #mnav button[data-page="clients"],
+html[data-role="manager"] #mnav button[data-page="settings"],
+html[data-role="manager"] .nav-sys,
+html[data-role="manager"] #sb-srv-wrap { display: none !important; }
+.mg-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.mg-t { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 14px; background: var(--surface, rgba(127,127,127,.08)); }
+.mg-t b { font-size: 26px; line-height: 1.1; }
+.mg-t span { font-size: 13px; opacity: .7; }
+.mg-on { display: flex; flex-wrap: wrap; gap: 10px 18px; padding-top: 8px; }
+.mg-u { display: flex; align-items: center; gap: 8px; font-size: 14px; }

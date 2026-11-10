@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const path2 = require('path');
 const fs = require('fs');
 const dal = require('../dal');
-const { authMiddleware, adminMiddleware } = require('../auth');
+const { authMiddleware, staffMiddleware } = require('../auth');
 const { getStatus, getMobile, sendTo, broadcastAll } = require('../ws');
 const spaces = require('../spaces');
 const { logAudit } = require('../audit');
@@ -117,9 +117,23 @@ async function parseWsIds(body, fallback) {
   return ids.every(id => have.has(id)) ? ids : null;
 }
 
+// Менеджер действует только над обычными пользователями: админа он не видит вовсе (404),
+// другого менеджера видит, но не трогает (403). Для админа проверка всегда пропускает.
+async function managerBlocked(req, res, id) {
+  if (!req.user.is_manager) return false;
+  const u = await dal.get('SELECT is_admin, is_manager FROM users WHERE id = ?', Number(id));
+  if (!u || u.is_admin) { res.status(404).json({ error: 'Not found' }); return true; }
+  if (u.is_manager) { res.status(403).json({ error: 'Недоступно менеджеру' }); return true; }
+  return false;
+}
+
 // Admin: create user
-router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
-  const { username, password, display_name, is_admin, tag } = req.body;
+router.post('/', authMiddleware, staffMiddleware, async (req, res) => {
+  const { username, password, display_name, tag } = req.body;
+  // Роль выдаёт только админ; менеджер создаёт только обычных пользователей
+  const is_admin = req.user.is_manager ? false : !!req.body.is_admin;
+  const is_manager = req.user.is_manager ? false : (!is_admin && !!req.body.is_manager);
+  if (req.user.is_manager && (req.body.is_admin || req.body.is_manager)) return res.status(403).json({ error: 'Недоступно менеджеру' });
   if (!username?.trim() || !password || !display_name?.trim()) return res.status(400).json({ error: 'Missing fields' });
   if (String(username).includes(':')) return res.status(400).json({ error: 'В логине нельзя использовать двоеточие' });
   // Пространства: список workspace_ids (старый одиночный workspace_id тоже принимается); по умолчанию — основное
@@ -128,15 +142,15 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const hash = bcrypt.hashSync(password, 10);
     const result = await dal.tx(() => (async () => {
-      const r = await dal.run('INSERT INTO users (username, password_hash, display_name, is_admin, tag, workspace_id) VALUES (?, ?, ?, ?, ?, ?)', username.trim(), hash, display_name.trim(), is_admin ? 1 : 0, tag?.trim() || null, wsIds[0]);
+      const r = await dal.run('INSERT INTO users (username, password_hash, display_name, is_admin, is_manager, tag, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?)', username.trim(), hash, display_name.trim(), is_admin ? 1 : 0, is_manager ? 1 : 0, tag?.trim() || null, wsIds[0]);
       await spaces.setWorkspaces(r.lastInsertRowid, wsIds);
       return r;
     })());
     // Иначе новый человек не появляется в списках (упоминания, «написать») до
     // перезапуска клиента — список людей грузится один раз при входе
     broadcastAll({ type: 'user_created' });
-    logAudit(req, 'moderation', 'Создан пользователь', `${display_name.trim()} (@${username.trim()})${is_admin ? ', администратор' : ''}`);
-    res.json({ id: result.lastInsertRowid, username, display_name, is_admin: !!is_admin, tag: tag?.trim() || null });
+    logAudit(req, 'moderation', 'Создан пользователь', `${display_name.trim()} (@${username.trim()})${is_admin ? ', администратор' : is_manager ? ', менеджер' : ''}`);
+    res.json({ id: result.lastInsertRowid, username, display_name, is_admin: !!is_admin, is_manager: !!is_manager, tag: tag?.trim() || null });
   } catch (e) {
     if (!/UNIQUE|unique|duplicate|23505/.test(String(e && e.message) + String(e && e.code))) { console.warn('[users.js]', e && e.message); return res.status(500).json({ error: 'Internal error' }); }
     res.status(409).json({ error: 'Username already exists' });
@@ -144,8 +158,12 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
 });
 
 // Admin: edit user
-router.patch('/:id', authMiddleware, adminMiddleware, async (req, res) => {
-  const { username, display_name, is_admin, tag } = req.body;
+router.patch('/:id', authMiddleware, staffMiddleware, async (req, res) => {
+  if (await managerBlocked(req, res, req.params.id)) return;
+  // Роль меняет только админ; у менеджера эти поля игнорируются
+  const { username, display_name, tag } = req.body;
+  const is_admin = req.user.is_manager ? undefined : req.body.is_admin;
+  const is_manager = req.user.is_manager ? undefined : req.body.is_manager;
   const user = await dal.get('SELECT * FROM users WHERE id = ?', req.params.id);
   if (!user) return res.status(404).json({ error: 'Not found' });
   if (username !== undefined && String(username).includes(':') && String(username) !== user.username) return res.status(400).json({ error: 'В логине нельзя использовать двоеточие' });
@@ -160,6 +178,15 @@ router.patch('/:id', authMiddleware, adminMiddleware, async (req, res) => {
     if (tag !== undefined && (tag?.trim() || null) !== (user.tag || null)) diff.push(`тег «${user.tag || ''}» → «${tag?.trim() || ''}»`);
     if (diff.length) logAudit(req, !!nu.is_admin !== !!user.is_admin ? 'security' : 'moderation', 'Изменён пользователь', `${user.display_name}: ${diff.join('; ')}`);
     await dal.run('UPDATE users SET username = ?, display_name = ?, is_admin = ?, tag = ? WHERE id = ?', username?.trim() || user.username, display_name?.trim() || user.display_name, is_admin !== undefined ? (is_admin ? 1 : 0) : user.is_admin, tag !== undefined ? (tag?.trim() || null) : user.tag, req.params.id);
+    // Менеджер и админ взаимоисключающие: при выдаче одной роли другая снимается
+    if (is_admin !== undefined || is_manager !== undefined) {
+      const admin = is_admin !== undefined ? !!is_admin : !!user.is_admin;
+      const mgr = admin ? false : (is_manager !== undefined ? !!is_manager : !!user.is_manager);
+      if (mgr !== !!user.is_manager) {
+        logAudit(req, 'security', 'Изменён пользователь', `${user.display_name}: ${mgr ? 'выдана роль менеджера' : 'снята роль менеджера'}`);
+      }
+      await dal.run('UPDATE users SET is_manager = ? WHERE id = ?', mgr ? 1 : 0, req.params.id);
+    }
     // Люди других серверов в общих пространствах увидят новое имя и тег
     try { await require('../federation').onProfile(Number(req.params.id)); await require('../fedspaces').membersChanged((await spaces.wsIdsOf(Number(req.params.id)))); } catch {}
     // Клиенты обновляют имя и тег без перезапуска (отправляем и тогда, когда поменялся только тег)
@@ -185,7 +212,8 @@ router.patch('/:id', authMiddleware, adminMiddleware, async (req, res) => {
 });
 
 // Admin: change password
-router.patch('/:id/password', authMiddleware, adminMiddleware, async (req, res) => {
+router.patch('/:id/password', authMiddleware, staffMiddleware, async (req, res) => {
+  if (await managerBlocked(req, res, req.params.id)) return;
   const { password } = req.body;
   if (!password) return res.status(400).json({ error: 'Missing password' });
   if (String(password).length < MIN_PASSWORD_LEN)
@@ -241,7 +269,8 @@ router.post('/me/password', authMiddleware, async (req, res) => {
 // Сообщения и чаты сохраняются: sender_id/created_by обнуляются, отправитель
 // отображается как «Удалённый аккаунт» (практика Telegram). Иначе DELETE падает
 // по FK (messages.sender_id REFERENCES users), если пользователь что-то писал.
-router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, staffMiddleware, async (req, res) => {
+  if (await managerBlocked(req, res, req.params.id)) return;
   const userId = Number(req.params.id);
   const delUser = await dal.get('SELECT display_name, username, is_admin FROM users WHERE id = ?', userId);
   if (!delUser) return res.status(404).json({ error: 'Not found' });

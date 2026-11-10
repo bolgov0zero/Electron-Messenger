@@ -3,7 +3,7 @@ const { someAsync, filterAsync } = require('../aiter.js');
 const path2 = require('path');
 const fs = require('fs');
 const dal = require('../dal');
-const { authMiddleware, adminMiddleware } = require('../auth');
+const { authMiddleware, adminMiddleware, staffMiddleware } = require('../auth');
 const { sendTo } = require('../ws');
 const unreadCounts = require('../unread');
 const announcements = require('../announcements');
@@ -288,7 +288,7 @@ router.patch('/:id', authMiddleware, async (req, res) => {
     return res.status(403).json({ error: 'Not a member' });
   // Название меняет только создатель группы или администратор; зеркало группы с другого сервера не меняет никто
   if (chat.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: её меняет только владелец' });
-  if (!(req.user.is_admin || chat.created_by === req.user.id)) return res.status(403).json({ error: 'Forbidden' });
+  if (!(req.user.is_admin || req.user.is_manager || chat.created_by === req.user.id)) return res.status(403).json({ error: 'Forbidden' });
   const { name } = req.body;
   if (name?.trim()) {
     await dal.run('UPDATE chats SET name = ? WHERE id = ?', name.trim(), req.params.id);
@@ -312,7 +312,7 @@ router.post('/:id/members', authMiddleware, async (req, res) => {
   if (!chat || (chat.type !== 'group' && chat.type !== 'room')) return res.status(404).json({ error: 'Not found' });
   // Состав группы меняет её создатель или администратор, комнаты — администратор; зеркало с другого сервера не меняет никто
   if (chat.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: состав меняет её владелец' });
-  if (chat.type === 'room' ? !req.user.is_admin : !(req.user.is_admin || chat.created_by === req.user.id)) return res.status(403).json({ error: 'Forbidden' });
+  if (chat.type === 'room' ? !(req.user.is_admin || req.user.is_manager) : !(req.user.is_admin || req.user.is_manager || chat.created_by === req.user.id)) return res.status(403).json({ error: 'Forbidden' });
   // В группу добавляют только тех, кого видишь; в комнату любого добавляет администратор
   if (!(await spaces.canSee(req.user.id, userId))) return res.status(403).json({ error: 'Этот человек вам недоступен' });
   if ((await spaces.isFed(userId))) {
@@ -343,7 +343,7 @@ router.delete('/:id/members/:userId', authMiddleware, async (req, res) => {
   if (!chat || (chat.type !== 'group' && chat.type !== 'room')) return res.status(404).json({ error: 'Not found' });
   // Убирает создатель группы или администратор (комнаты — администратор); зеркало с другого сервера не меняет никто
   if (chat.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: состав меняет её владелец' });
-  if (chat.type === 'room' ? !req.user.is_admin : !(req.user.is_admin || chat.created_by === req.user.id)) return res.status(403).json({ error: 'Forbidden' });
+  if (chat.type === 'room' ? !(req.user.is_admin || req.user.is_manager) : !(req.user.is_admin || req.user.is_manager || chat.created_by === req.user.id)) return res.status(403).json({ error: 'Forbidden' });
   const kickedId = Number(req.params.userId);
   const chatId = Number(req.params.id);
   // Гостя «убирают» отзывом его ссылки: доступ закрывается полностью, в чате появляется «отключился»
@@ -467,8 +467,8 @@ router.post('/:id/avatar', authMiddleware, async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   // Аватарку меняет создатель группы или администратор; зеркало с другого сервера не меняет никто
   if (chat.fed_instance) return res.status(403).json({ error: 'Группа находится на другом сервере: её меняет только владелец' });
-  if (chat.type === 'group' && !(req.user.is_admin || chat.created_by === req.user.id)) return res.status(403).json({ error: 'Forbidden' });
-  if (chat.type === 'room' && !req.user.is_admin) return res.status(403).json({ error: 'Forbidden' });
+  if (chat.type === 'group' && !(req.user.is_admin || req.user.is_manager || chat.created_by === req.user.id)) return res.status(403).json({ error: 'Forbidden' });
+  if (chat.type === 'room' && !(req.user.is_admin || req.user.is_manager)) return res.status(403).json({ error: 'Forbidden' });
   const { data } = req.body;
   if (!data) return res.status(400).json({ error: 'No data' });
   try {
@@ -542,7 +542,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     if (chat.fed_instance) return await leaveMirror(chat, req, res);
     // Комнатами управляет только админ через админку (DELETE /api/chats/admin/:id)
     if (chat.type === 'room') return res.status(403).json({ error: 'Rooms are managed by admins only' });
-    if (!req.user.is_admin && chat.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+    if (!req.user.is_admin && !req.user.is_manager && chat.created_by !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
     const members = await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ?', id);
     await fedgroups.dropAll(chat);
     await deleteChatFiles(id);
@@ -553,9 +553,14 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 });
 
 // Admin: delete any chat — Fix 3: notify all members
-router.delete('/admin/:id', authMiddleware, adminMiddleware, async (req, res) => {
+router.delete('/admin/:id', authMiddleware, staffMiddleware, async (req, res) => {
   const id = Number(req.params.id);
   const chat = await dal.get('SELECT name, type, is_secret FROM chats WHERE id = ?', id);
+  // Менеджер удаляет только свои, обычные группы и комнаты: не личные и не секретные чаты, не зеркала групп с других серверов
+  if (req.user.is_manager) {
+    const f = await dal.get('SELECT type, is_secret, fed_instance FROM chats WHERE id = ?', id);
+    if (!f || !['group', 'room'].includes(f.type) || f.is_secret || f.fed_instance) return res.status(403).json({ error: 'Недоступно менеджеру' });
+  }
   const members = await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ?', id);
   // Группа в федерации: хозяин сообщает гостям об удалении, у зеркала каждый наш участник «выходит» у хозяина
   const full = await dal.get('SELECT * FROM chats WHERE id = ?', id);

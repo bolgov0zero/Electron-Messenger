@@ -4,9 +4,9 @@ B.ui = B.ui || {};
 B.ui.gprofile = (function () {
   function chatOf(el) { return B.find(+el.dataset.gid); }
   function perms(chat) {
-    var room = chat.type === 'room', mirror = !!chat.fed_mirror, boss = chat.created_by === B.S.user.id || !!B.S.user.is_admin;
+    var room = chat.type === 'room', mirror = !!chat.fed_mirror, boss = chat.created_by === B.S.user.id || !!B.S.user.is_admin || !!B.S.user.is_manager;
     return { mirror: mirror, room: room,
-      canEdit: !mirror && (room ? !!B.S.user.is_admin : boss),     // состав и аватарка
+      canEdit: !mirror && (room ? !!(B.S.user.is_admin || B.S.user.is_manager) : boss),     // состав и аватарка
       canRename: !mirror && !room && boss,                          // название комнаты меняется в админке
       canLeave: !room || mirror,                                    // из своей комнаты не выйти
       canDelete: !mirror && !room && boss };

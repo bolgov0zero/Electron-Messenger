@@ -55,7 +55,7 @@ async function resolveUser(token) {
   // Токен-вызов 2FA (purpose: totp_setup/totp_verify) — не настоящая сессия,
   // иначе его можно было бы подсунуть сюда как Bearer-токен и обойти 2FA целиком
   if (payload.purpose) throw new AuthError('invalid');
-  const user = await dal.get('SELECT id, username, display_name, is_admin, banned, must_change_password, sessions_valid_from, is_bot FROM users WHERE id = ?', payload.id);
+  const user = await dal.get('SELECT id, username, display_name, is_admin, is_manager, banned, must_change_password, sessions_valid_from, is_bot FROM users WHERE id = ?', payload.id);
   if (!user) throw new AuthError(payload.guest ? 'guest_expired' : 'user_not_found');   // гостя по окончании срока удаляют целиком
   // Гость (is_bot = 3): доступ только пока действует его ссылка; о закрытии клиент узнаёт по коду guest_expired
   if (user.is_bot === 3) {
@@ -69,7 +69,7 @@ async function resolveUser(token) {
   if (user.sessions_valid_from && payload.iat <= user.sessions_valid_from) throw new AuthError('revoked');
   // Токен, выданный устройству по его ключу (dk — номер ключа): ключ отозван — токен тоже закрыт (см. devices.js)
   if (payload.dk && !(await require('./devices').alive(payload.dk))) throw new AuthError('revoked');
-  return { ...user, is_admin: !!user.is_admin, must_change_password: !!user.must_change_password, dk: payload.dk || null };
+  return { ...user, is_admin: !!user.is_admin, is_manager: !user.is_admin && !!user.is_manager, must_change_password: !!user.must_change_password, dk: payload.dk || null };
 }
 
 // Пока пароль по умолчанию не сменён, токен даёт доступ только к смене пароля и обновлению токена
@@ -100,6 +100,14 @@ function adminMiddleware(req, res, next) {
   next();
 }
 
+// Менеджер — урезанный админ: is_admin у него ложь, чтобы он не получил обход изоляции
+// пространств и прочие права админа. Доступ к админке открывает staffMiddleware,
+// а что именно ему можно — решает managerGate в routes/admin.js (запрещено всё, чего нет в списке).
+function staffMiddleware(req, res, next) {
+  if (!req.user?.is_admin && !req.user?.is_manager) return res.status(403).json({ error: 'Forbidden' });
+  next();
+}
+
 async function wsAuth(token) {
   const user = await resolveUser(token);
   if (!user) throw new Error('User not found');
@@ -109,4 +117,4 @@ async function wsAuth(token) {
 // Токен гостя действует ровно до конца ссылки
 function signGuestToken(payload, ttlSec) { return jwt.sign(payload, SECRET, { expiresIn: Math.max(1, Math.floor(ttlSec)) }); }
 
-module.exports = { init, signToken, signGuestToken, verifyToken, signChallengeToken, verifyChallengeToken, authMiddleware, adminMiddleware, wsAuth, AuthError };
+module.exports = { init, signToken, signGuestToken, verifyToken, signChallengeToken, verifyChallengeToken, authMiddleware, adminMiddleware, staffMiddleware, wsAuth, AuthError };

@@ -78,7 +78,7 @@ router.post('/login', async (req, res) => {
   // 2FA защищает только вход в админ-панель (req.body.context === 'admin'),
   // обычный чат-клиент как был на логине/пароле, так и остаётся — см. [[feedback]]
   // про осознанный выбор защищать именно админ-поверхность, а не аккаунт целиком.
-  if (req.body.context === 'admin' && user.is_admin && user.totp_required) {
+  if (req.body.context === 'admin' && (user.is_admin || user.is_manager) && user.totp_required) {
     if (!user.totp_secret) {
       const challenge_token = signChallengeToken(user.id, 'totp_setup');
       return res.json({ needs_totp_setup: true, challenge_token });
@@ -108,7 +108,7 @@ router.post('/login', async (req, res) => {
 
 // Ответ о начатой сессии: токен и сведения о человеке (одинаковы для входа по паролю и по ключу устройства)
 async function sessionReply(user, token) {
-  return { token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, can_call_links: !!(user.is_admin || user.can_call_links), ...(await wsInfo(user.id)) } };
+  return { token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, is_manager: !user.is_admin && !!user.is_manager, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, can_call_links: !!(user.is_admin || user.can_call_links), ...(await wsInfo(user.id)) } };
 }
 
 // ── ВХОД ПО КЛЮЧУ УСТРОЙСТВА ──
@@ -220,7 +220,7 @@ router.post('/totp/confirm', async (req, res) => {
   await dal.run('UPDATE users SET totp_secret = ?, totp_pending_secret = NULL WHERE id = ?', user.totp_pending_secret, user.id);
   logAudit({ user: { id: user.id }, ip: req.ip }, 'security', 'Настройка 2FA', user.display_name);
   const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin });
-  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, can_call_links: !!(user.is_admin || user.can_call_links), ...(await wsInfo(user.id)) } });
+  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, is_manager: !user.is_admin && !!user.is_manager, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, can_call_links: !!(user.is_admin || user.can_call_links), ...(await wsInfo(user.id)) } });
 });
 
 // Обычный вход при уже настроенной 2FA — просто проверка кода
@@ -234,7 +234,7 @@ router.post('/totp/verify', async (req, res) => {
   if (!totp.verifyTotp(user.totp_secret, req.body.code))
     return res.status(401).json({ error: 'Неверный код' });
   const token = signToken({ id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin });
-  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, can_call_links: !!(user.is_admin || user.can_call_links), ...(await wsInfo(user.id)) } });
+  res.json({ token, user: { id: user.id, username: user.username, display_name: user.display_name, is_admin: !!user.is_admin, is_manager: !user.is_admin && !!user.is_manager, tag: user.tag || null, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, can_call_links: !!(user.is_admin || user.can_call_links), ...(await wsInfo(user.id)) } });
 });
 
 router.get('/refresh', authMiddleware, (req, res) => {
@@ -248,9 +248,9 @@ router.get('/me', async (req, res) => {
   try {
     const { verifyToken } = require('../auth');
     const payload = verifyToken(auth);
-    const user = await dal.get('SELECT id, username, display_name, is_admin, tag, must_change_password, can_announce, can_call_links, is_bot FROM users WHERE id = ?', payload.id);
+    const user = await dal.get('SELECT id, username, display_name, is_admin, is_manager, tag, must_change_password, can_announce, can_call_links, is_bot FROM users WHERE id = ?', payload.id);
     if (!user || user.is_bot === 3) return res.status(401).json({ error: 'User not found' });   // гость входит только через /api/guest
-    res.json({ ...user, is_admin: !!user.is_admin, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, can_call_links: !!(user.is_admin || user.can_call_links), can_call_links: !!(user.is_admin || user.can_call_links), ...(await wsInfo(user.id)) });
+    res.json({ ...user, is_admin: !!user.is_admin, is_manager: !user.is_admin && !!user.is_manager, must_change_password: !!user.must_change_password, can_announce: !!user.can_announce, can_call_links: !!(user.is_admin || user.can_call_links), can_call_links: !!(user.is_admin || user.can_call_links), ...(await wsInfo(user.id)) });
   } catch { res.status(401).json({ error: 'Invalid token' }); }
 });
 

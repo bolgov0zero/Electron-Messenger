@@ -2,7 +2,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const dal = require('../dal');
-const { authMiddleware, adminMiddleware } = require('../auth');
+const { authMiddleware, adminMiddleware, staffMiddleware } = require('../auth');
 const { logAudit } = require('../audit');
 const calls = require('../calls');
 const lk = require('../lkinstall');
@@ -65,8 +65,15 @@ user.post('/:id/end', wrap(async (req, res) => { await calls.end(req.user, req.p
 
 // ── Для админки ──
 const admin = express.Router();
-admin.use(authMiddleware, adminMiddleware);
+admin.use(authMiddleware, staffMiddleware);
+// Менеджер только смотрит журнал, активные звонки и статистику; настройки LiveKit, ключи и установка — админу
+admin.use((req, res, next) => {
+  if (!req.user.is_manager) return next();
+  return req.method === 'GET' && /^\/(state|log|active|stats)$/.test(req.path) ? next() : res.status(403).json({ error: 'Недоступно менеджеру' });
+});
 
+// Включены ли звонки: единственное, что нужно менеджеру из настроек (ни ключей, ни адресов он не получает)
+admin.get('/state', wrap(async (req, res) => { const c = await calls.publicConfig(); res.json({ enabled: !!c.enabled, ready: !!c.ready }); }));
 admin.get('/', wrap(async (req, res) => res.json(await calls.publicConfig())));
 // Журнал звонков: период day | week | month | all, вид direct | group, поиск по именам и названию группы
 admin.get('/log', wrap(async (req, res) => res.json(await calls.logList(req.query))));

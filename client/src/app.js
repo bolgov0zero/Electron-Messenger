@@ -7907,10 +7907,10 @@ const gmIsOpen = () => !!S.gm && !!document.getElementById('modal-group')?.class
 const gmChat = () => S.chats.find(c => c.id === S.gm?.id);
 
 function gmPerms(chat) {
-  const room = chat.type === 'room', mirror = !!chat.fed_mirror, boss = chat.created_by === S.user.id || !!S.user.is_admin;
+  const room = chat.type === 'room', mirror = !!chat.fed_mirror, boss = chat.created_by === S.user.id || !!S.user.is_admin || !!S.user.is_manager;
   return {
     mirror, room,
-    canEdit: !mirror && (room ? !!S.user.is_admin : boss),       // состав и аватарка
+    canEdit: !mirror && (room ? !!(S.user.is_admin || S.user.is_manager) : boss),       // состав и аватарка
     canRename: !mirror && !room && boss,                          // название комнаты меняется в админке
     canLeave: !room || mirror,                                    // из своей комнаты не выйти
     canDelete: !mirror && !room && boss,
@@ -8180,7 +8180,7 @@ function showChatCtx(e, chatId) {
   const pinLabel = document.getElementById('ctx-chat-pin-label');
   if (pinBtn) pinBtn.style.display = isRoom ? 'none' : '';
   if (pinLabel) pinLabel.textContent = chat?.pinned ? 'Открепить' : 'Закрепить';
-  const canDelete = !isGroup || (!chat.fed_mirror && (chat.created_by === S.user.id || S.user.is_admin));
+  const canDelete = !isGroup || (!chat.fed_mirror && (chat.created_by === S.user.id || S.user.is_admin || S.user.is_manager));
   const delBtn = document.getElementById('ctx-chat-delete');
   const leaveBtn = document.getElementById('ctx-chat-leave');
   if (delBtn) delBtn.style.display = (isRoom || (!isRoom && !canDelete)) ? 'none' : '';

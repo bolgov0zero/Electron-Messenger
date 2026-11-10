@@ -83,7 +83,7 @@ async function deliver(row) {
     if (!sysId) return 0;
     // «Всем» — только группы и комнаты. Выбранные вручную могут быть и личными чатами (системное
     // сообщение видят оба участника); секретные чаты исключены: их тексты зашифрованы
-    const authorAdmin = row.author_id ? (await spaces.isAdminUser(row.author_id)) : true;
+    const authorAdmin = row.author_id ? (await spaces.isStaffUser(row.author_id)) : true;
     const chatIds = row.target === 'all'
       ? (await dal.all("SELECT id FROM chats WHERE type IN ('group', 'room')")).map(r => r.id)
       : row.target === 'spaces' ? (await chatsOfSpaces(parseTargets(row), !authorAdmin))
@@ -228,8 +228,8 @@ async function parseRequest(body, authorId) {
   let list = (targets || []).map(Number).filter(Boolean);
   let tgt = target === 'select' ? 'select' : target === 'spaces' ? 'spaces' : 'all';
   // Пользователь с правом объявлений работает только внутри своего пространства; администратор — где угодно
-  const author = authorId ? (await dal.get('SELECT is_admin, workspace_id FROM users WHERE id = ?', authorId)) : null;
-  if (author && !author.is_admin) {
+  const author = authorId ? (await dal.get('SELECT is_admin, is_manager, workspace_id FROM users WHERE id = ?', authorId)) : null;
+  if (author && !author.is_admin && !author.is_manager) {
     // Все пространства автора: человек может состоять в нескольких
     const own = await spaces.wsIdsOf(authorId);
     if (tgt === 'all' || tgt === 'spaces') { tgt = 'spaces'; list = own; }

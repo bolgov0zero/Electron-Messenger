@@ -139,6 +139,8 @@ function toast(msg, type='') {
 document.getElementById('l-pass').addEventListener('keydown', e => e.key==='Enter' && doLogin());
 
 function enterApp(user) {
+  // Менеджер — урезанный админ: часть разделов скрыта стилем (html[data-role="manager"]), а сервер всё равно ответит 403
+  document.documentElement.dataset.role = user.is_manager ? 'manager' : 'admin';
   document.getElementById('login').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   sbInit(user);
@@ -158,6 +160,7 @@ function enterApp(user) {
 
 function startBgClientsPolling() {
   if (window._bgClientsInterval) clearInterval(window._bgClientsInterval);
+  if (isMgr()) return;   // список клиентов менеджеру недоступен
   window._bgClientsInterval = setInterval(() => { if (token) loadClients(); }, 5000);
 }
 
@@ -165,6 +168,7 @@ function startBgClientsPolling() {
 // Графики живут своим опросом раз в 2 секунды — см. hmStartMonitor.
 async function refreshDashboardData() {
   if (!token || currentPage !== 'dashboard') return;
+  if (isMgr()) { try { await mgDraw(); } catch {} return; }
   try { await hmLoadOverview(); } catch {}
 }
 
@@ -193,7 +197,7 @@ function startBgDashPolling() {
 let _rememberMe = localStorage.getItem('admin_remember') === '1';
 
 function finishLogin(data, username) {
-  if (!data.user.is_admin) { document.getElementById('l-err').textContent = 'Нет прав администратора'; return; }
+  if (!data.user.is_admin && !data.user.is_manager) { document.getElementById('l-err').textContent = 'Нет прав администратора'; return; }
   token = data.token; currentUser = data.user;
   localStorage.setItem('admin_last_user', username);
   if (_rememberMe) {
@@ -323,7 +327,7 @@ function logout() {
     token=saved;
     try {
       const me = await api('GET','/api/auth/me');
-      if (me?.id && me.is_admin) { currentUser=me; enterApp(me); return; }
+      if (me?.id && (me.is_admin || me.is_manager)) { currentUser=me; enterApp(me); return; }
     } catch {}
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_user');
@@ -359,6 +363,7 @@ function sbInit(u) {
   sbRailBtn();
   sbRender();
   SB.timers.forEach(clearInterval);
+  if (isMgr()) { SB.timers = []; return; }   // сводка сервера, копии и версия — только админу
   SB.timers = [
     setInterval(() => { if (token && currentPage !== 'dashboard') sbLoad(); }, 15000),   // на главной сводку обновляет она сама
     setInterval(() => { if (token) sbAttn(); }, 60000),
@@ -754,12 +759,16 @@ const MTABS = ['dashboard', 'users', 'clients', 'settings', 'more'];
 const ADMIN_CALLS = { on: false };
 async function callsNavSync() {
   let on = false;
-  try { const r = await api('GET', '/api/admin/calls'); on = !!(r && r.enabled && r.ready); } catch { return; }
+  try { const r = await api('GET', isMgr() ? '/api/admin/calls/state' : '/api/admin/calls'); on = !!(r && r.enabled && r.ready); } catch { return; }
   ADMIN_CALLS.on = on;
   const el = document.getElementById('nav-calls'); if (el) el.style.display = on ? '' : 'none';
   if (!on && currentPage === 'calls') nav('dashboard');
 }
+// Разделы, недоступные менеджеру (и в меню они скрыты)
+const MGR_DENIED = ['settings', 'webhooks', 'federation', 'clients', 'push', 'audit', 'releases', 'modules'];
+const isMgr = () => !!currentUser?.is_manager;
 function nav(page) {
+  if (isMgr() && MGR_DENIED.includes(page)) page = 'dashboard';
   if (page === 'calls' && !ADMIN_CALLS.on && token) { ADMIN_CALLS.on = true; }   // открыли по ссылке или из сохранённой страницы: проверка ниже поправит
   currentPage=page;
   document.documentElement.dataset.pg = page;   // для плоских стилей: html[data-pg="settings"] …
@@ -877,6 +886,7 @@ async function updateNavBadges() {
     setB('nb-chats', (s.chats||0)+(s.groups||0));
     setB('nb-push',  s.pushSubscriptions||0);
     setB('nb-files', s.filesCount||0);
+    if (isMgr()) { try { const anns=await api('GET','/api/admin/announcements'); setB('nb-announcements',anns.length||0); } catch {} try { const wss=await wsLoad(); setB('nb-workspaces',wss.length||0); } catch {} return; }
     try { const whs=await api('GET','/api/admin/webhooks'); setB('nb-webhooks',whs.length||0); } catch {}
     try { const anns=await api('GET','/api/admin/announcements'); setB('nb-announcements',anns.length||0); } catch {}
     try { const wss=await wsLoad(); setB('nb-workspaces',wss.length||0); } catch {}
@@ -1727,7 +1737,30 @@ document.addEventListener('mousemove', e => {
 });
 
 
+// Главная менеджера: только счётчики и список «в сети», без сведений о сервере
+async function mgDraw() {
+  const el = document.getElementById('mg');
+  if (!el) return;
+  const [s, o] = await Promise.all([hmGet('/api/admin/stats'), hmGet('/api/admin/overview')]);
+  if (!s || !o || !document.getElementById('mg')) return;
+  const online = o.online || [];
+  const tile = (n, l) => `<div class="mg-t"><b class="hm-mono">${Number(n || 0).toLocaleString('ru-RU')}</b><span>${l}</span></div>`;
+  el.innerHTML = `<div class="mg-tiles">${tile(s.users, 'Пользователей')}${tile(online.length, 'В сети')}${tile(s.rooms, 'Комнат')}${tile(s.groups, 'Групп')}${tile(s.chats, 'Личных чатов')}${tile(s.messages, 'Сообщений')}${tile(s.filesCount, 'Файлов')}</div>
+    <section class="hm-panel dv-card"><h3>Сейчас в сети</h3>${online.length ? `<div class="mg-on">${online.map(u => `<div class="mg-u">${avHtml(u.name, 28, 8, u.id, false, u.has_avatar)}<span>${esc(u.name)}</span></div>`).join('')}</div>` : '<div class="dv-empty">Никого нет в сети</div>'}</section>`;
+}
+async function renderManagerDashboard() {
+  hmStopMonitor();
+  const I = HM_ICON;
+  setTopbarActions(`
+    <button class="btn" data-on-click="openCreateUser">${I.user}Создать пользователя</button>
+    <button class="btn" data-on-click="openCreateRoom">${I.room}Создать комнату</button>
+    <button class="btn" data-on-click="openAnnouncementModal">${I.ann}Объявление</button>
+  `);
+  document.getElementById('page-body').innerHTML = '<div class="hm dv mg" id="mg"><div class="dv-empty">Загрузка…</div></div>';
+  await mgDraw();
+}
 async function renderDashboard() {
+  if (isMgr()) return renderManagerDashboard();
   hmStopMonitor();
   const I = HM_ICON;
   setTopbarActions(`
@@ -2490,8 +2523,8 @@ function rmRemoteHtml(f, r) {
     + f.pending.map(m => row(m, 'rmRemoteCancel', 'Отменить приглашение', esc('@' + m.username), ' <span class="rm-wait">ждёт ответа</span>')).join('');
   return `<div>${head}
     ${rows ? `<div class="rm-list" style="margin-top:8px">${rows}</div>` : ''}
-    <div class="rm-add" style="margin-top:8px"><div class="ua-inp" style="flex:1"><input id="rm-addr" placeholder="@сервер:логин" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Адрес человека с другого сервера" data-on-keydown="__h31"></div><button type="button" class="btn btn-primary" data-on-click="rmInviteAddr">Пригласить</button></div>
-    <p class="rm-hint" style="margin-top:6px">Человек получит приглашение и сам решит, вступать ли: до согласия он не виден участникам. Нужно соединение с его сервером (раздел «Федерации»).</p></div>`;
+    ${isMgr() ? '' : `<div class="rm-add" style="margin-top:8px"><div class="ua-inp" style="flex:1"><input id="rm-addr" placeholder="@сервер:логин" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Адрес человека с другого сервера" data-on-keydown="__h31"></div><button type="button" class="btn btn-primary" data-on-click="rmInviteAddr">Пригласить</button></div>
+    <p class="rm-hint" style="margin-top:6px">Человек получит приглашение и сам решит, вступать ли: до согласия он не виден участникам. Нужно соединение с его сервером (раздел «Федерации»).</p>`}</div>`;
 }
 async function rmInviteAddr() {
   const f = RM.form, v = (document.getElementById('rm-addr')?.value || '').trim();
@@ -2822,12 +2855,12 @@ function uaSeen(ts) {
 // Значок 2FA рядом с ролью — только для админов: заполненный ключ, если уже
 // настроена, пунктирный — если включили требование, а сам ещё не настроил
 // при следующем входе в админ-панель
-const uaTotpBadge = u => !u.is_admin ? '' : u.totp_configured
+const uaTotpBadge = u => !u.is_admin && !u.is_manager ? '' : u.totp_configured
   ? `<span class="ua-totp-badge on" title="2FA настроена">${UX_I.key}</span>`
   : u.totp_required
   ? `<span class="ua-totp-badge pending" title="2FA включена, но ещё не настроена пользователем">${UX_I.key}</span>`
   : '';
-const uaRole = u => u.is_admin ? `<span class="ua-role admin">${UX_I.shield}Администратор</span>${uaTotpBadge(u)}` : `<span class="ua-role">Пользователь</span>${u.can_announce ? '<span class="ua-totp-badge on" title="Может отправлять объявления"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>' : ''}${u.can_call_links ? '<span class="ua-totp-badge on" title="Может создавать ссылки на видеозвонок"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></span>' : ''}`;
+const uaRole = u => u.is_manager ? `<span class="ua-role admin">${UX_I.shield}Менеджер</span>${uaTotpBadge(u)}` : u.is_admin ? `<span class="ua-role admin">${UX_I.shield}Администратор</span>${uaTotpBadge(u)}` : `<span class="ua-role">Пользователь</span>${u.can_announce ? '<span class="ua-totp-badge on" title="Может отправлять объявления"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span>' : ''}${u.can_call_links ? '<span class="ua-totp-badge on" title="Может создавать ссылки на видеозвонок"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></span>' : ''}`;
 
 function uaRows() {
   const q = UA.q.trim().toLowerCase();
@@ -2837,7 +2870,7 @@ function uaRows() {
   const nowS = Date.now() / 1000;
   const seen = u => (uaOnline(u) || uaAway(u)) ? nowS : (u.last_seen_at || 0);
   return allUsers
-    .filter(u => UA.filter === 'all' || (UA.filter === 'online' && uaOnline(u)) || (UA.filter === 'away' && uaAway(u)) || (UA.filter === 'admins' && u.is_admin) || (UA.filter === 'banned' && u.banned))
+    .filter(u => UA.filter === 'all' || (UA.filter === 'online' && uaOnline(u)) || (UA.filter === 'away' && uaAway(u)) || (UA.filter === 'admins' && (u.is_admin || u.is_manager)) || (UA.filter === 'banned' && u.banned))
     .filter(u => UA.ws == null || uaInWs(u, UA.ws))
     .filter(u => !q || [u.display_name, u.username, u.tag || ''].some(x => x.toLowerCase().includes(q)))
     .sort((a, b) => {
@@ -2849,8 +2882,8 @@ function uaRows() {
 function uaRender() {
   if (currentPage !== 'users') return;
   const rows = uaRows();
-  const n = { all: allUsers.length, online: allUsers.filter(uaOnline).length, away: allUsers.filter(uaAway).length, admins: allUsers.filter(u => u.is_admin).length, banned: allUsers.filter(u => u.banned).length };
-  const title = { all: 'Все', online: 'В сети', away: 'Отошли', admins: 'Администраторы', banned: 'Заблокированы' }[UA.filter];
+  const n = { all: allUsers.length, online: allUsers.filter(uaOnline).length, away: allUsers.filter(uaAway).length, admins: allUsers.filter(u => u.is_admin || u.is_manager).length, banned: allUsers.filter(u => u.banned).length };
+  const title = { all: 'Все', online: 'В сети', away: 'Отошли', admins: isMgr() ? 'Менеджеры' : 'Администраторы и менеджеры', banned: 'Заблокированы' }[UA.filter];
   const tile = (key, label, num, unit, color) => `<button type="button" class="ub-tile" aria-pressed="${UA.filter === key}" data-on-click="uaFilter" data-a-click="${esc(JSON.stringify([`${key}`]))}">
     <div class="ub-lbl">${label}</div><div class="ub-big">${num}<small>${unit}</small></div>
     <div class="ub-meter"><i style="width:${n.all ? Math.round(num / n.all * 100) : 0}%;background:${color}"></i></div></button>`;
@@ -2861,7 +2894,7 @@ function uaRender() {
     uxSet(document.getElementById('page-body'), `<div class="ub">
       <div class="ub-tiles">
         ${tile('all', 'Всего', n.all, 'человек', 'var(--dv-c2)')}${tile('online', 'В сети', n.online, 'сейчас', 'var(--c-green)')}
-        ${tile('away', 'Отошли', n.away, 'из них', 'var(--c-orange)')}${tile('admins', 'Администраторы', n.admins, 'чел.', 'var(--c-primary)')}
+        ${tile('away', 'Отошли', n.away, 'из них', 'var(--c-orange)')}${tile('admins', isMgr() ? 'Менеджеры' : 'Админы и менеджеры', n.admins, 'чел.', 'var(--c-primary)')}
       </div>
       ${WS.list.length > 1 ? uxChips([['all', 'Все пространства', allUsers.length], ...WS.list.map(w => ['w' + w.id, w.name, allUsers.filter(u => uaInWs(u, w.id)).length])], UA.ws == null ? 'all' : 'w' + UA.ws, 'uaWsFilter', 'Пространство') : ''}
       <div class="ub-head"><h3>${title} <span>${rows.length}</span></h3>
@@ -2909,6 +2942,7 @@ function uaBanModal(id, banned) { closeModal('modal-user'); banned ? uaUnban(id)
 function uaMenu(e, id) {
   const u = allUsers.find(x => x.id === id);
   if (!u) return;
+  if (isMgr() && u.is_manager) return uxOpenMenu(e, 'ua' + id, '<button role="menuitem" disabled>Менеджера меняет только администратор</button>');
   const self = currentUser?.id === id, devices = (u.clients || []).length;
   uxOpenMenu(e, 'ua' + id, `
     <button role="menuitem" data-on-click="__h35" data-a-click="${esc(JSON.stringify([id]))}">${UX_I.key}Сменить пароль</button>
@@ -3081,7 +3115,7 @@ function uaWsPills(u) {
   const shown = list.slice(0, 2), rest = list.length - shown.length;
   return shown.map(w => `<span class="ws-pill">${esc(w.name)}</span>`).join(' ') + (rest > 0 ? ` <span class="ws-pill more" title="${esc(list.slice(2).map(w => w.name).join(', '))}">+${rest}</span>` : '');
 }
-const uaBlank = u => ({ name: u?.display_name || '', login: u?.username || '', tag: u?.tag || '', admin: !!u?.is_admin,
+const uaBlank = u => ({ name: u?.display_name || '', login: u?.username || '', tag: u?.tag || '', admin: !!u?.is_admin, mgr: !!u?.is_manager,
   totpRequired: !!u?.totp_required, canAnnounce: !!u?.can_announce, canCallLinks: !!u?.can_call_links, wss: uaUserWs(u), wsOpen: false, wsErr: false,
   password: '', show: false, pwOpen: false, generated: false, closeSessions: true, errors: {}, busy: false, more: false });
 const uaAv = (name, size) => `<span class="av" style="width:${size}px;height:${size}px;border-radius:${Math.round(size * .26)}px;font-size:${Math.round(size * .36)}px;background:${avColor(name || '?')}">${esc(initials(name))}</span>`;
@@ -3098,6 +3132,7 @@ function openCreateUser() {
 function openEditUser(id) {
   const u = allUsers.find(x => x.id === id);
   if (!u) return;
+  if (isMgr() && u.is_manager) { toast('Менеджера может менять только администратор', 'info'); return; }
   UA.editId = id;
   UA.form = uaBlank(u);
   document.getElementById('ua-pass-form').innerHTML = '';
@@ -3256,13 +3291,14 @@ function uaRenderForm(focusId) {
     ${wsPick}
     ${!editing ? `<div class="fm-pw">${UX_I.key}<span>${f.generated ? 'Пароль придуман:' : 'Пароль:'}</span><code id="ua-auto-pw">${esc(f.password)}</code>
         <button type="button" class="btn btn-ghost btn-sm" data-on-click="uaCopy" title="Скопировать логин и пароль" aria-label="Скопировать логин и пароль">${UX_I.copy}</button><button type="button" class="btn btn-ghost btn-sm" data-on-click="uaGenerate">Другой</button></div>${err('password')}` : ''}`;
-  const accessSu = f.admin ? 'Администратор' + (f.totpRequired ? ' · 2FA' : '') : 'Пользователь' + (f.canAnnounce ? ' · объявления' : '') + (f.canCallLinks ? ' · ссылки на звонок' : '');
+  const accessSu = f.mgr ? 'Менеджер' + (f.totpRequired ? ' · 2FA' : '') : f.admin ? 'Администратор' + (f.totpRequired ? ' · 2FA' : '') : 'Пользователь' + (f.canAnnounce ? ' · объявления' : '') + (f.canCallLinks ? ' · ссылки на звонок' : '');
   const pwSu = editing ? (f.pwOpen ? 'Будет изменён' : 'Остаётся прежним') : (f.generated ? 'Придуман автоматически' : f.password ? 'Задан вручную' : 'Не задан');
   const secs = [
-    { id: 'a', t: 'Доступ', su: accessSu, body: `<div class="ua-roles" role="radiogroup" aria-label="Роль">
-        <button type="button" role="radio" class="ua-role-opt" aria-checked="${!f.admin}" data-on-click="uaSet" data-a-click='["admin", false, true]'><b>Пользователь</b><span>Чаты, комнаты и файлы</span></button>
-        <button type="button" role="radio" class="ua-role-opt" aria-checked="${f.admin}" data-on-click="uaSet" data-a-click='["admin", true, true]'><b>${UX_I.shield}Администратор</b><span>И управление в этой панели</span></button></div>
-      ${f.admin ? uaTotpSection(f, editing, u) : uaAnnSection(f) + uaCallLinksSection(f)}` },
+    { id: 'a', t: 'Доступ', su: accessSu, body: `${isMgr() ? '' : `<div class="ua-roles" role="radiogroup" aria-label="Роль">
+        <button type="button" role="radio" class="ua-role-opt" aria-checked="${!f.admin && !f.mgr}" data-on-click="uaSetRole" data-a-click='["user"]'><b>Пользователь</b><span>Чаты, комнаты и файлы</span></button>
+        <button type="button" role="radio" class="ua-role-opt" aria-checked="${f.mgr}" data-on-click="uaSetRole" data-a-click='["manager"]'><b>${UX_I.shield}Менеджер</b><span>Люди, комнаты, пространства</span></button>
+        <button type="button" role="radio" class="ua-role-opt" aria-checked="${f.admin}" data-on-click="uaSetRole" data-a-click='["admin"]'><b>${UX_I.shield}Администратор</b><span>Вся панель управления</span></button></div>`}
+      ${(f.admin || f.mgr) ? uaTotpSection(f, editing, u) : uaAnnSection(f) + uaCallLinksSection(f)}` },
     { id: 'w', t: 'Пароль', su: pwSu, body: editing && !f.pwOpen
         ? `<div class="ua-pw-closed"><div><b>Пароль</b><span>Остаётся прежним</span></div><button type="button" class="btn btn-ghost btn-sm" data-on-click="uaSet" data-a-click='["pwOpen", true, true, "ua-pass"]'>${UX_I.key}Сменить пароль</button></div>`
         : uaPasswordField(f, editing) },
@@ -3320,6 +3356,13 @@ function uaWsFit() {
   else if (h > below) pop.scrollIntoView({ block: 'nearest' });
 }
 
+// Роль в окне пользователя: админ и менеджер взаимоисключающие
+function uaSetRole(role) {
+  const f = UA.form;
+  if (!f) return;
+  f.admin = role === 'admin'; f.mgr = role === 'manager';
+  uaRerender();
+}
 function uaSet(key, value, rerender, focusId) {
   const f = UA.form;
   if (!f) return;
@@ -3366,7 +3409,7 @@ async function uaSave() {
 
   f.busy = true;
   uaRenderForm();
-  const body = { username: f.login.trim(), display_name: f.name.trim(), is_admin: f.admin, tag: f.tag.trim() || null, workspace_ids: f.wss };
+  const body = { username: f.login.trim(), display_name: f.name.trim(), is_admin: f.admin, is_manager: f.mgr, tag: f.tag.trim() || null, workspace_ids: f.wss };
   let r;
   if (u) {
     r = await api('PATCH', '/api/users/' + u.id, body);
@@ -3377,14 +3420,14 @@ async function uaSave() {
   } else {
     r = await api('POST', '/api/users', { ...body, password: f.password });
   }
-  if ((r?.ok || r?.id) && f.admin) {
+  if ((r?.ok || r?.id) && (f.admin || f.mgr)) {
     const userId = u ? u.id : r.id;
     await api('PATCH', `/api/admin/users/${userId}/totp`, { required: f.totpRequired });
   }
-  if ((r?.ok || r?.id) && !f.admin && f.canAnnounce !== !!u?.can_announce) {
+  if ((r?.ok || r?.id) && !f.admin && !f.mgr && f.canAnnounce !== !!u?.can_announce) {
     await api('PATCH', `/api/admin/users/${u ? u.id : r.id}/announce`, { allowed: f.canAnnounce });
   }
-  if ((r?.ok || r?.id) && !f.admin && f.canCallLinks !== !!u?.can_call_links) {
+  if ((r?.ok || r?.id) && !f.admin && !f.mgr && f.canCallLinks !== !!u?.can_call_links) {
     await api('PATCH', `/api/admin/users/${u ? u.id : r.id}/call-links`, { allowed: f.canCallLinks });
   }
   f.busy = false;
@@ -3592,7 +3635,7 @@ function chRenderMembers() {
       ${(CH.pending || []).length ? `<div class="rm-hint" style="margin-top:12px">Ожидают ответа (приглашены с другого сервера)</div><div class="rm-list">${CH.pending.map(m => `<div class="rm-li">${avHtml(m.display_name, 30, 8, m.id, false, true)}
         <div style="flex:1;min-width:0"><div class="ux-name">${esc(m.display_name)}</div><div class="rm-sub">@${esc(m.username)}</div></div>
         <button type="button" class="ux-ibtn" aria-label="Отменить приглашение: ${esc(m.display_name)}" data-on-click="chCancelInvite" data-a-click="${esc(JSON.stringify([m.id]))}">${RM_I.x}</button></div>`).join('')}</div>` : ''}
-      ${direct ? '' : `<div class="rm-hint" style="margin-top:14px">Пригласить человека с другого сервера</div>
+      ${direct || isMgr() ? '' : `<div class="rm-hint" style="margin-top:14px">Пригласить человека с другого сервера</div>
         <div class="fd-inl"><div class="ua-inp"><input id="cm-addr" placeholder="@сервер:логин" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Адрес человека с другого сервера" data-on-keydown="__h52"></div><button class="btn btn-ghost btn-sm" data-on-click="chInviteAddr">Пригласить</button></div>
         <p class="rm-hint">Человек получит приглашение и сам решит, вступать ли: до согласия он не виден участникам и не получает сообщений. Нужно подключённое соединение с его сервером.</p>`}
       ${direct ? '<p class="rm-hint">В личном чате участников не меняют. Если переписка больше не нужна — удалите чат.</p>' : ''}
@@ -5688,7 +5731,7 @@ function setTopbarActions(html) {
 // без общего не видят (связать их можно контактами, группами и комнатами). Комнаты к пространству не привязаны.
 const WS = { list: [], editId: null, offers: [], filter: 'all', sel: null };
 async function wsLoad() {
-  const [r, o] = await Promise.all([api('GET', '/api/admin/workspaces'), api('GET', '/api/admin/workspaces/fed/offers')]);
+  const [r, o] = await Promise.all([api('GET', '/api/admin/workspaces'), isMgr() ? [] : api('GET', '/api/admin/workspaces/fed/offers')]);
   if (Array.isArray(r)) WS.list = r;
   WS.offers = Array.isArray(o) ? o : [];
   const nb = document.getElementById('nb-workspaces');
@@ -7273,7 +7316,7 @@ function reSearch(v) { RE.q = v; reRender(); }
 
 async function renderFiles() {
   setTopbarActions('');
-  const [files, settings] = await Promise.all([api('GET', '/api/admin/files'), api('GET', '/api/admin/settings')]);
+  const [files, settings] = await Promise.all([api('GET', '/api/admin/files'), isMgr() ? null : api('GET', '/api/admin/settings')]);
   FL.files = Array.isArray(files) ? files : [];
   FL.lifetime = Number(settings?.upload_file_lifetime || 0);
   const nb = document.getElementById('nb-files');
