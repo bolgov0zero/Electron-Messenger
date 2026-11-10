@@ -4,12 +4,19 @@
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: file: http: https:; media-src 'self' data: blob: file: http: https:; connect-src 'self' ws: wss: http: https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-src 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="boot.js"></script>
 <title>Electron</title>
 <link rel="stylesheet" href="assets/fonts/inter.css">
 <link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="glass.css">
-<link rel="stylesheet" href="glass-app.css">
+<link rel="stylesheet" href="flat-base.css">
+<link rel="stylesheet" href="flat.css">
+<link rel="stylesheet" href="flat-frame.css">
+<link rel="stylesheet" href="flat-chat.css">
+<link rel="stylesheet" href="flat-menus.css">
+<link rel="stylesheet" href="flat-misc.css">
+<link rel="stylesheet" href="flat-calls.css">
 <link rel="stylesheet" href="voice.css">
+<link rel="stylesheet" href="flat-electron.css">
 </head>
 <body>
 
@@ -250,13 +257,13 @@
       </div>
       <div class="sidebar-tabbar" id="sidebar-tabbar">
         <button type="button" class="sb-tab on" data-tab="chats" data-on-click="setSidebarTab" data-a-click='["chats"]' title="Чаты">
-          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg>
+          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg><span class="sb-l">Чаты</span>
         </button>
         <button type="button" class="sb-tab" data-tab="contacts" data-on-click="setSidebarTab" data-a-click='["contacts"]' title="Контакты">
-          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/></svg>
+          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="sb-l">Контакты</span>
         </button>
         <button type="button" class="sb-tab" data-tab="settings" data-on-click="setSidebarTab" data-a-click='["settings"]' title="Настройки" style="position:relative">
-          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="sb-l">Настройки</span>
           <span id="update-badge" style="display:none;position:absolute;top:4px;right:9px;width:7px;height:7px;border-radius:50%;background:#ef4444;pointer-events:none"></span>
         </button>
       </div>
@@ -515,9 +522,9 @@
 <script src="slidesel.js"></script>
 <script src="voice.js"></script>
 <script src="app.js"></script>
-<script src="glass.js"></script>
 <script src="guestlinks.js"></script>
 <script src="calllinks.js"></script>
+<script src="flat-select.js"></script>
 <script src="folders.js"></script>
 <script src="spaces.js"></script>
 <script src="announce.js"></script>

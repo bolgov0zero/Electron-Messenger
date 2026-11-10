@@ -1,7 +1,7 @@
 // Звонки в окне приложения: кнопки в шапке личного чата, карточка входящего, панель идущего звонка внизу списка чатов.
 // Сам разговор ведёт отдельное окно call.html (см. «ЗВОНКИ» в main.js); здесь — сигналы с сервера (/api/calls, события call_*)
 // и управление окном. Только клиент Electron: веб и мобильный клиенты звонков пока не умеют.
-// Вид — по макету docs/glass-mockup/calls.html.
+// Вид — по макету docs/flat-mockup/calls.html (дизайн B «Мягкий»).
 (function () {
   'use strict';
   const IC = {
@@ -21,49 +21,56 @@
   const st = { enabled: false, call: null, incoming: null, groups: {}, prefs: { enabled: true, audio: true, video: true, fed: true } };
   let dockTimer = null, incTimer = null;
 
+  // Дизайн B «Мягкий» (docs/flat-mockup/calls.html): плоские сплошные карточки, кнопки 12 px, без блеска и размытия. Токены — из flat.css
   const CSS = `
 .call-btns{display:contents}
-.call-card{position:fixed;right:20px;top:20px;width:340px;z-index:100000;border-radius:26px;padding:16px;display:flex;flex-direction:column;gap:14px;color:var(--text);
-  background:radial-gradient(120% 80% at 0% 0%,var(--gl-spec,rgba(255,255,255,.3)),transparent 55%),var(--gl-pop);border:1px solid var(--gl-edge);
-  -webkit-backdrop-filter:blur(32px) saturate(190%);backdrop-filter:blur(32px) saturate(190%);box-shadow:inset 0 1px 0 var(--gl-hi),inset 0 -1px 0 var(--gl-lo),0 24px 60px var(--gl-shadow);animation:call-in .35s cubic-bezier(.34,1.56,.64,1) both}
+.call-card{position:fixed;right:20px;top:20px;width:340px;z-index:100000;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:14px;color:var(--text);
+  background:var(--modal-bg);border:0;box-shadow:var(--pop-shadow);animation:call-in .28s cubic-bezier(.22,1,.36,1) both}
 .call-card.out{animation:call-out .2s ease-in both}
-@keyframes call-in{from{opacity:0;transform:translateY(-14px) scale(.95)}to{opacity:1;transform:none}}
-@keyframes call-out{to{opacity:0;transform:translateY(-8px) scale(.96)}}
+@keyframes call-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@keyframes call-out{to{opacity:0;transform:translateY(-8px)}}
 .call-card .top{display:flex;align-items:center;gap:14px;padding:2px 4px 0}
 .call-card .t{min-width:0;flex:1}
 .call-card .t b{display:block;font-size:16px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .call-card .t small{display:block;font-size:12.5px;color:var(--text2);margin-top:3px}
 .call-ring{position:relative;display:grid;place-items:center;flex:none}
-.call-ring::before,.call-ring::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:1.5px solid rgba(var(--accent-rgb),.42);animation:call-rg 2.6s ease-out infinite}
+.call-ring::before,.call-ring::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--accent) 45%,transparent);animation:call-rg 2.6s ease-out infinite}
 .call-ring::after{animation-delay:1.3s}
 @keyframes call-rg{from{transform:scale(.9);opacity:.9}to{transform:scale(1.55);opacity:0}}
 .call-row{display:flex;gap:8px}.call-row .cbtn{flex:1}
 .call-col{display:flex;flex-direction:column;gap:8px}
-.cbtn{height:38px;padding:0 18px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;color:var(--text);
-  background:var(--gl-card);border:1px solid var(--gl-edge);box-shadow:inset 0 1px 0 var(--gl-hi);transition:background .2s,transform .35s cubic-bezier(.34,1.56,.64,1),filter .2s}
-.cbtn:hover{background:var(--gl-card2)}.cbtn:active{transform:scale(.95)}
-.cbtn.big{height:44px;font-size:14px}
-.cbtn.ok{background:linear-gradient(140deg,#3fd573,#1f9f4c);color:#fff;border-color:rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 18px rgba(31,159,76,.35)}
-.cbtn.no{background:linear-gradient(140deg,#ee6060,#c42f2f);color:#fff;border-color:rgba(255,255,255,.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(196,47,47,.32)}
-.cbtn.ok:hover,.cbtn.no:hover{filter:brightness(1.1)}
+.cbtn{height:40px;padding:0 18px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;color:var(--text);
+  background:var(--gl-card2);border:0;box-shadow:none;transition:background .15s,transform .15s ease,filter .15s}
+.cbtn:hover{background:color-mix(in srgb,var(--text) 14%,var(--side-bg))}.cbtn:active{transform:scale(var(--kit-press,.95))}
+.cbtn.big{height:46px;font-size:14px}
+.cbtn.ok{background:var(--ok);color:#fff}
+.cbtn.no{background:var(--no);color:#fff}
+.cbtn.ok:hover,.cbtn.no:hover{filter:brightness(1.08)}
+.cbtn.ok:hover{background:var(--ok)}.cbtn.no:hover{background:var(--no)}
+.call-col .call-row .cbtn.no{background:var(--danger-bg);color:var(--danger)}
+.call-col .call-row .cbtn.no:hover{background:color-mix(in srgb,var(--danger) 20%,var(--side-bg));filter:none}
 .cbtn.no .i.hang{transform:rotate(135deg)}
 .cbtn .i{font-size:16px}
-#call-dock{position:absolute;left:10px;right:10px;bottom:76px;z-index:4;border-radius:20px;padding:10px 12px;display:flex;flex-direction:column;gap:10px;
-  background:radial-gradient(120% 90% at 0% 0%,var(--gl-spec,rgba(255,255,255,.3)),transparent 55%),var(--gl);border:1px solid var(--gl-edge);
-  -webkit-backdrop-filter:blur(26px) saturate(190%);backdrop-filter:blur(26px) saturate(190%);box-shadow:inset 0 1px 0 var(--gl-hi),0 8px 24px var(--gl-shadow)}
+#call-dock{position:absolute;left:10px;right:10px;bottom:76px;z-index:4;border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:10px;
+  background:var(--side-bg);border:0;box-shadow:var(--pop-shadow)}
 #call-dock .top{display:flex;align-items:center;gap:10px;cursor:pointer;min-width:0}
 #call-dock .ring{border-radius:50%;padding:2px;box-shadow:0 0 0 2px var(--accent);flex:none}
 #call-dock .t{min-width:0;flex:1}
 #call-dock .t b{display:block;font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#call-dock .top:hover .t b{color:var(--accent-ink)}
 #call-dock .t small{display:block;font-size:12px;font-weight:600;color:var(--accent-ink,var(--accent));font-variant-numeric:tabular-nums}
 #call-dock .row{display:flex;gap:6px}
-#call-dock .cbtn{height:34px;padding:0;width:40px;flex:none}
-#call-dock .cbtn.off{background:var(--text);color:var(--side-bg,#fff);border-color:var(--text)}
+#call-dock .cbtn{height:36px;padding:0;width:40px;flex:none}
+#call-dock .cbtn.off{background:var(--text);color:var(--side-bg,#fff)}
 #call-dock .cbtn.no{flex:1;width:auto;padding:0 12px}
-.cl-sel{height:32px;max-width:220px;border-radius:10px;padding:0 10px;font:inherit;font-size:13px;color:var(--text);background:var(--gl-card,rgba(127,127,127,.14));border:1px solid var(--gl-edge,rgba(127,127,127,.3));outline:none}
-.cl-acc{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;font:inherit;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;border:1px solid transparent}
-.cl-acc.ok{color:#1f9f4c;background:rgba(31,159,76,.14);border-color:rgba(31,159,76,.3)}.cl-acc.no{color:#d9534f;background:rgba(217,83,79,.14);border-color:rgba(217,83,79,.3)}.cl-acc .i{font-size:14px}.cl-acc[disabled]{opacity:.6}
-@media (prefers-reduced-motion:reduce){.call-card,.call-ring::before,.call-ring::after{animation:none}}
+/* «Присоединиться · N» в шапке группы, пока в ней идёт звонок */
+.call-join{width:auto!important;padding:0 14px!important;gap:6px;border-radius:12px!important;color:#fff!important;background:var(--ok)!important;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center}
+.call-join span{white-space:nowrap}
+.cl-sel{height:32px;max-width:220px;border-radius:12px;padding:0 10px;font:inherit;font-size:13px;color:var(--text);background:var(--surf2);border:1px solid transparent;outline:none}
+.cl-sel:focus{border-color:var(--accent)}
+.cl-acc{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:10px;font:inherit;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;border:0}
+.cl-acc.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,var(--side-bg))}.cl-acc.no{color:var(--danger);background:var(--danger-bg)}.cl-acc .i{font-size:14px}.cl-acc[disabled]{opacity:.6}
+@media (prefers-reduced-motion:reduce){.call-card,.call-ring::before,.call-ring::after{animation:none}.cbtn{transition:none}}
 `;
   function css() {
     if (document.getElementById('calls-css')) return;

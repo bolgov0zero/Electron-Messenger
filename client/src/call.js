@@ -61,7 +61,7 @@
 
   // ── состояние ──
   const st = { phase: 'connecting', mic: true, cam: false, screen: false, remoteScreen: false, remoteCam: false, remoteMic: true, quality: '', since: 0 };
-  let room = null, ended = false, timer = null, hadPeer = false;
+  let room = null, ended = false, timer = null;
   const send = extra => window.callApi.state({ ...st, ...extra });
   const esc = s => String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
   const fmt = s => { const m = Math.floor(s / 60), h = Math.floor(m / 60); return (h ? h + ':' + String(m % 60).padStart(2, '0') : String(m)) + ':' + String(s % 60).padStart(2, '0'); };
@@ -251,8 +251,8 @@
         .on(RoomEvent.TrackUnsubscribed, (track, pub) => { const els = track.detach(); if (track.kind === Track.Kind.Audio) els.forEach(el => el.remove()); onRemoteState(); })
         .on(RoomEvent.TrackUnpublished, () => setTimeout(onRemoteState, 0))
         .on(RoomEvent.TrackMuted, onRemoteState).on(RoomEvent.TrackUnmuted, onRemoteState)
-        .on(RoomEvent.ParticipantConnected, () => { hadPeer = true; setPhase('live'); onRemoteState(); })
-        .on(RoomEvent.ParticipantDisconnected, () => { if (init.group) { render(); return; } if (!ended) { hadPeer = true; setPhase('live', { phase: 'peer_left' }); } })
+        .on(RoomEvent.ParticipantConnected, () => { setPhase('live'); onRemoteState(); })
+        .on(RoomEvent.ParticipantDisconnected, () => { if (init.group) { render(); return; } if (!ended) { setPhase('live', { phase: 'peer_left' }); } })
         .on(RoomEvent.LocalTrackUnpublished, pub => { if (pub.source === Track.Source.ScreenShare) { st.screen = false; render(); send(); } })
         .on(RoomEvent.ActiveSpeakersChanged, list => { speaking = {}; list.forEach(p => { speaking[p.identity] = true; }); document.querySelectorAll('.tile').forEach(t => t.classList.toggle('sp', !!speaking[t.dataset.id])); })
         .on(RoomEvent.ConnectionQualityChanged, (q, p) => { if (p !== room.localParticipant) { st.quality = q; render(); send(); } })
@@ -266,7 +266,7 @@
         catch { note('Микрофон не найден: вы только слушаете'); }
       } else note('Нет доступа к микрофону: вы только слушаете. Разрешите его в настройках системы, чтобы говорить');
       { const oid = await devId('audioout'); if (oid) { try { await room.switchActiveDevice('audiooutput', oid); } catch {} } }
-      if (init.group || room.remoteParticipants.size) { hadPeer = true; setPhase('live'); onRemoteState(); } else setPhase('waiting');
+      if (init.group || room.remoteParticipants.size) { setPhase('live'); onRemoteState(); } else setPhase('waiting');
       if (init.video) await setCam(true);
     } catch (e) {
       const m = String(e?.message || e);

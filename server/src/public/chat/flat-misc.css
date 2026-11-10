@@ -12,7 +12,7 @@
 .cs-g > .cs-notes, .cs-g > .cs-ver { background: none; border: 0; box-shadow: none; border-radius: 0; }
 .cs-gt { margin: 4px 0 -12px 6px; }
 .cs-body > * { flex: none; }
-.cs-hero, .cs-ver, .cs-notes, .fp-row, .bg-card, .pat-card, .cs-pv { border: 0; box-shadow: none; background: var(--gl-card); border-radius: var(--r-card); }
+.cs-hero, .cs-ver, .cs-notes, .fp-row, .pat-card, .cs-pv { border: 0; box-shadow: none; background: var(--gl-card); border-radius: var(--r-card); }
 .cs-hero { background: color-mix(in srgb, var(--accent) 12%, var(--side-bg)); }
 .cs-logout { background: var(--gl-card); border: 0; border-radius: var(--r-card); }   /* нейтральная карточка, как соседние; красная — только кнопка «Выйти» (опасная кнопка кита), иначе сливалась бы с плашкой */
 .cs-stub-i { background: var(--accent-soft); border-radius: var(--r-panel); }
@@ -23,16 +23,7 @@
 .cs-pv-chat { background: var(--chat-bg); }
 .cs-pv-cap { background: var(--gl-card); border-radius: 8px; }
 .cs-pv-msg.in { background: var(--bubble-bg); border: 0; border-radius: var(--r-btn); box-shadow: var(--bub-sh); }
-.cs-pv-msg.out { background: var(--accent-fill); color: #fff; border-radius: var(--r-btn); }
-.bg-card:hover, .pat-card:hover, .bg-card:active, .pat-card:active { transform: none; }
-.bg-card.on, .pat-card.on, .bg-card.active, .pat-card.active { box-shadow: 0 0 0 2px var(--accent-fill); }
-.bg-card.bg-card, .pat-card.pat-card { border: 0; }
-.bg-card .bg-skel, .pat-card .pat-swatch { border-radius: 0; }
-.bs-chat { background: var(--chat-bg); }
-.bs-chat.split { background: color-mix(in srgb, var(--text) 5%, var(--chat-bg)); }
-.bs-side { background: var(--side-bg); }
-.bs-chat i.c { background: var(--accent-fill); opacity: 1; }
-.bg-card.on .bg-cap b, .pat-card.on .pat-cap, .bg-card.active .bg-cap b, .pat-card.active .pat-cap { color: var(--accent-ink); }
+.cs-pv-msg.out { background: var(--accent-fill); color: #fff; border-radius: var(--r-btn); } .pat-card:hover, .pat-card:active { transform: none; } .pat-card.on, .pat-card.active { box-shadow: 0 0 0 2px var(--accent-fill); } .pat-card.pat-card { border: 0; } .pat-card .pat-swatch { border-radius: 0; } .pat-card.on .pat-cap, .pat-card.active .pat-cap { color: var(--accent-ink); }
 .accent-dot { border-radius: var(--kit-tag-r, 8px); box-shadow: none; transition: filter .15s; }
 .accent-dot:hover { transform: none; filter: brightness(1.08); }
 .accent-dot.on, .accent-dot.active { box-shadow: 0 0 0 2px var(--side-bg), 0 0 0 4px var(--dot); }
@@ -120,3 +111,5 @@
 .gp-item { border-radius: var(--r-btn); }
 .gp-retry { height: var(--kit-btn-h-sm); padding: 0 var(--kit-btn-px-sm); border: 0; border-radius: var(--kit-r); background: var(--kit-soft-bg); color: var(--kit-soft-fg); }
 .gp-retry:hover { background: var(--kit-soft-bg-h); }
+
+/* Карточки «Фон переписки» в настройках: образец показывает реальные цвета (сайдбар / переписка) */

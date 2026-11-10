@@ -525,17 +525,18 @@ for (const f of [HA_SETTINGS_FILE, HA_ROOT && path.join(HA_ROOT, 'app-settings.j
 function cleanAppSettings(d) {
   const out = {};
   if (!d || typeof d !== 'object') return out;
-  if (d.theme === 'dark' || d.theme === 'navy' || d.theme === 'light') out.theme = d.theme;
+  // Тема: system | light | navy; прежнее «dark» значит «система» (простой тёмной больше нет, тёмная — тёмно-синяя)
+  if (d.theme === 'system' || d.theme === 'dark') out.theme = 'system';
+  else if (d.theme === 'navy' || d.theme === 'light') out.theme = d.theme;
   if (['small', 'medium', 'large'].includes(d.fontSize)) out.fontSize = d.fontSize;
   const z = Number(d.uiScale); if (Number.isFinite(z) && z >= 50 && z <= 200) out.uiScale = z;
   if (typeof d.accent === 'string' && /^[\w-]{1,24}$/.test(d.accent)) out.accent = d.accent;
   if (typeof d.chatPattern === 'string' && /^[\w-]{0,40}$/.test(d.chatPattern)) out.chatPattern = d.chatPattern;
   if ([1, 2, 3].includes(Number(d.chatPatternLevel))) out.chatPatternLevel = Number(d.chatPatternLevel);
-  if (d.chatBg === 'plain' || d.chatBg === 'split') out.chatBg = d.chatBg;
   const sw = Number(d.sidebarW); if (Number.isFinite(sw) && sw >= 66 && sw <= 460) out.sidebarW = Math.round(sw);
   return out;
 }
-// Windows и Linux: системная шапка окна следует теме клиента (светлая или тёмная; тёмно-синяя — тёмная).
+// Windows и Linux: системная шапка окна следует теме клиента: светлая — светлая, тёмно-синяя — тёмная, «система» — как в системе.
 // themeSource меняет и значение nativeTheme.shouldUseDarkColors, а значок в трее на Linux должен следовать системной панели,
 // поэтому системную тему читаем отдельно (см. systemDark)
 let _sysDark = null, _themeSetAt = 0;
@@ -544,20 +545,33 @@ function applyTitleTheme() {
   const t = appSettings && appSettings.theme;
   if (!t) return;
   if (_sysDark === null) _sysDark = nativeTheme.shouldUseDarkColors;    // до первого переопределения это ещё системное значение
-  const want = t === 'light' ? 'light' : 'dark';
+  const want = t === 'light' ? 'light' : t === 'navy' ? 'dark' : 'system';
   if (nativeTheme.themeSource !== want) { _themeSetAt = Date.now(); nativeTheme.themeSource = want; }
+  if (want === 'system') _sysDark = nativeTheme.shouldUseDarkColors;
 }
 function systemDark() {
-  if (process.platform === 'darwin' || _sysDark === null) return nativeTheme.shouldUseDarkColors;
+  if (process.platform === 'darwin' || _sysDark === null || nativeTheme.themeSource === 'system') return nativeTheme.shouldUseDarkColors;
   return _sysDark;
 }
+// Цвет подложки окон (виден до отрисовки страницы и при изменении размера): токены плоского дизайна B, светлая — #ece9e4, тёмно-синяя — #10161d.
+// «Система» (и прежнее «dark») — по системной теме; dark — решение страницы окна звонка, если оно известно
+const BG_LIGHT = '#ece9e4', BG_NAVY = '#10161d';
+function windowBg(dark) {
+  if (typeof dark === 'boolean') return dark ? BG_NAVY : BG_LIGHT;
+  const t = appSettings && appSettings.theme;
+  if (t === 'light') return BG_LIGHT;
+  if (t === 'navy') return BG_NAVY;
+  return systemDark() ? BG_NAVY : BG_LIGHT;
+}
+function refreshWindowBg() { if (mainWindow && !mainWindow.isDestroyed()) { try { mainWindow.setBackgroundColor(windowBg()); } catch {} } }
 applyTitleTheme();
+nativeTheme.on('updated', refreshWindowBg);   // системная тема сменилась — подложка окна при теме «Система» следует за ней
 ipcMain.handle('app-settings-get', () => appSettings);
 ipcMain.on('app-settings-set', (e, patch) => {
   const clean = cleanAppSettings(patch);
   if (!Object.keys(clean).length) return;
   appSettings = { ...(appSettings || {}), ...clean };
-  if (clean.theme) applyTitleTheme();
+  if (clean.theme) { applyTitleTheme(); refreshWindowBg(); }
   try { fs.writeFileSync(APP_SETTINGS_FILE, JSON.stringify(appSettings)); } catch {}
   if (HA_SETTINGS_FILE) { try { fs.mkdirSync(HA_DIR, { recursive: true }); fs.writeFileSync(HA_SETTINGS_FILE, JSON.stringify(appSettings)); } catch {} }
   // Остальным записям — сразу; отправившая уже применила у себя
@@ -702,7 +716,7 @@ function createWindow() {
     title: 'Electron',
     // Linux: без скруглённой тёмной подложки — только стрелка, как у значка в трее
     icon: path.join(_ASSETS, process.platform === 'linux' ? 'icon-arrow-512.png' : 'icon-512.png'),
-    backgroundColor: '#12171d',
+    backgroundColor: windowBg(),
     // macOS: системной шапки не видно, светофор и полоса шапки выезжают у верхнего края (см. setupMacTitlebar)
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 14, y: 7 } } : {}),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
@@ -1224,8 +1238,8 @@ ipcMain.handle('call-open', (e, p) => {
   const win = new BrowserWindow({
     width: 1040, height: 700, minWidth: 560, minHeight: 420, show: false,
     title: callInit.peer.name || 'Звонок',
-    backgroundColor: callInit.theme.dark ? '#12171d' : '#eef1f4',
-    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 15 } } : { autoHideMenuBar: true }),
+    backgroundColor: callInit.theme.dark ? '#18202a' : '#fdfcfa',   // окно звонка целиком на цвете панели (--modal-bg)
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 20 } } : { autoHideMenuBar: true }),
     webPreferences: {
       preload: path.join(__dirname, 'callpreload.js'), contextIsolation: true, nodeIntegration: false,
       // Скрытое окно должно жить как обычное: соединение и звук не засыпают
@@ -1301,7 +1315,7 @@ ipcMain.handle('call-incoming-show', (e, p) => {
     video: !!p.video, camera: process.platform !== 'darwin' || require('electron').systemPreferences.getMediaAccessStatus('camera') === 'granted', name: String(p.name || ''), bg: String(p.bg || ''), timeout: Number(p.timeout) || 45, group: !!p.group, conf: !!p.conf, by: String(p.by || ''), count: Number(p.count) || 0,
     theme: { dark: !!p.theme?.dark, accent: String(p.theme?.accent || '') },
   };
-  const W = 372, H = (inInit.video ? (inInit.group ? 206 : 196) : (inInit.group ? 148 : 138)) + (inInit.video && inInit.camera ? 126 : 0);   // с запасом на тень; предпросмотр камеры добавляет высоту
+  const W = 372, H = (inInit.video ? (inInit.group ? 221 : 216) : (inInit.group ? 167 : 162)) + (inInit.video && inInit.camera ? 126 : 0);   // с запасом на тень; предпросмотр камеры добавляет высоту
   const area = screen.getDisplayMatching(mainWindow && !mainWindow.isDestroyed() ? mainWindow.getBounds() : screen.getPrimaryDisplay().bounds).workArea;
   const win = new BrowserWindow({
     width: W, height: H, x: area.x + area.width - W - 6, y: area.y + 6,

@@ -932,50 +932,6 @@ function paintPatternSwatches() {
   });
 }
 
-// ── ФОН ПЕРЕПИСКИ ──
-// «Как обычно» — сайдбар и переписка одного цвета; «с разделением» — переписка
-// отделена оттенком: в тёмной теме светлее сайдбара, в светлой темнее.
-// Значения на каждую тему заданы в стилях, здесь только переключаем ссылки.
-// Хранится на устройстве, как и цвет акцента.
-function currentChatBg() {
-  try { return localStorage.getItem('chatBg') === 'split' ? 'split' : 'plain'; } catch { return 'plain'; }
-}
-
-function setChatBg(mode) {
-  try { localStorage.setItem('chatBg', mode === 'split' ? 'split' : 'plain'); } catch {}
-  applyChatBg();
-  document.querySelectorAll('#chatbg-cards .bg-card').forEach(c =>
-    c.classList.toggle('active', c.dataset.bg === currentChatBg()));
-}
-
-function applyChatBg() {
-  const s = document.documentElement.style;
-  if (currentChatBg() === 'split') {
-    s.setProperty('--chat-bg', 'var(--chat-split)');
-    s.setProperty('--bubble-bg', 'var(--bubble-split)');
-  } else {
-    s.removeProperty('--chat-bg');
-    s.removeProperty('--bubble-bg');
-  }
-}
-
-// Карточки выбора: скелетон окна — слева сайдбар, справа переписка
-function chatBgCardsHtml() {
-  const cur = currentChatBg();
-  const skel = split => `<span class="bg-skel">
-      <span class="bs-side"><i></i><i></i><i></i></span>
-      <span class="bs-chat${split ? ' split' : ''}"><i class="a"></i><i class="b"></i><i class="c"></i></span>
-    </span>`;
-  const card = (mode, title, sub) => `<button class="bg-card${cur === mode ? ' active' : ''}" data-bg="${mode}" data-on-click="setChatBg" data-a-click="${esc(JSON.stringify([`${mode}`]))}">
-      ${skel(mode === 'split')}
-      <span class="bg-cap"><b>${title}</b>${sub}</span>
-    </button>`;
-  return `<div class="bg-cards" id="chatbg-cards">
-    ${card('plain', 'Как обычно', 'Сайдбар и переписка одного цвета')}
-    ${card('split', 'С разделением', 'Переписка отделена оттенком')}
-  </div>`;
-}
-
 // Тема: «Система» (следует за устройством) / «Светлая» / «Тёмно-синяя». Прежнее «dark» читается как «система». Класс dark = любая тёмная (она одна: navy)
 function themePref() { const t = S.settings.theme; return t === 'light' || t === 'navy' ? t : 'system'; }
 function themeSysDark() { try { return !!matchMedia('(prefers-color-scheme: dark)').matches; } catch { return false; } }
@@ -1015,7 +971,6 @@ function applySettings() {
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');
   if (themeColorMeta) themeColorMeta.content = isDark ? '#10161d' : '#ece9e4';
   applyAccent();
-  applyChatBg();
   applyChatPattern();
   document.querySelectorAll('#pattern-seg button').forEach((b, i) =>
     b.classList.toggle('active', i + 1 === currentPatternLevel()));
@@ -1425,8 +1380,6 @@ function csPaneAppearance() {
       <div class="cs-r"><div class="cs-l"><b>Цвет акцента</b><span>Кнопки, свои сообщения, выделение</span></div>
         <div class="cs-ctl"><span class="cs-aname">${ACCENTS[currentAccent()].name}</span><div id="accent-seg" class="accent-seg" data-on-click="__h17">${accentDotsHtml()}</div></div></div>
     </div>
-    <div class="cs-gt">Фон переписки</div>
-    <div data-on-click="__h18">${chatBgCardsHtml()}</div>
     <div class="cs-gt">Фон</div>
     <div class="cs-g">
       <div class="cs-r stack"><div class="cs-l"><b>Узор</b><span>Рисунок поверх фона переписки</span></div>

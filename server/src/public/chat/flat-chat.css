@@ -202,3 +202,19 @@ html.dark .vm-in .pl { color: #fff; }
 .drag-overlay-inner {
   padding: 26px 40px; border-radius: 22px; background: var(--side-bg); box-shadow: var(--pop-shadow); color: var(--accent-ink);
 }
+
+/* ═════════ 10. Фон переписки: узор ═════════
+   Карточка чата сплошная (--chat-bg), поэтому прежний слой узора на всё окно (body::before)
+   оказывался под ней и не был виден. Узор теперь лежит внутри карточки чата: над её фоном,
+   под сообщениями (z-index -1 в собственном контексте наложения). Настройки и пустое состояние — без узора. */
+body::before { content: none; }
+.chat-main { isolation: isolate; }
+.chat-main::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; border-radius: inherit;
+  background: var(--chat-pattern-ink, transparent);
+  -webkit-mask-image: var(--chat-pattern, none); mask-image: var(--chat-pattern, none);
+  -webkit-mask-size: var(--chat-pattern-size, auto); mask-size: var(--chat-pattern-size, auto);
+  -webkit-mask-repeat: repeat; mask-repeat: repeat;
+  opacity: var(--chat-pattern-alpha, 0);
+}
+.chat-main:has(> .cs-pane)::before, .chat-main:has(> .empty-state)::before { opacity: 0; }

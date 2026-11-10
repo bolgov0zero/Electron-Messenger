@@ -22,7 +22,6 @@ window.__h20 = function (el, ev, a) { if(ev.key==='Enter')csSaveName(); if(ev.ke
 window.__h21 = function (el, ev, a) { if(ev.key==='Enter')submitOwnPassword() };
 window.__h22 = function (el, ev, a) { window.electron.accountAdd() };
 window.__h23 = function (el, ev, a) { if(ev.target.closest('.accent-dot'))csRefresh() };
-window.__h24 = function (el, ev, a) { if(ev.target.closest('.bg-card'))csRefresh() };
 window.__h25 = function (el, ev, a) { if(ev.target.closest('.pat-card'))csRefresh() };
 window.__h26 = function (el, ev, a) { closeSettings(); openModal('modal-update') };
 window.__h27 = function (el, ev, a) { ev.preventDefault() };
@@ -34,7 +33,6 @@ window.__h32 = function (el, ev, a) { if(ev.key==='Enter')submitAddContact() };
 window.__h33 = function (el, ev, a) { if(ev.key==='Enter')scRedeem(a[0]) };
 window.__h34 = function (el, ev, a) { ev.stopPropagation(); addContactFromChat(a[0]) };
 window.__h35 = function (el, ev, a) { ev.stopPropagation(); gmKick(a[0], a[1]) };
-window.__h36 = function (el, ev, a) { document.getElementById('gm-q')?.focus() };
 window.__h37 = function (el, ev, a) { if(ev.key==='Enter'){ev.preventDefault();gmRenameSave(el.value)} if(ev.key==='Escape'){ev.stopPropagation();S.gm.rename=false;renderGroupProfile(true)} };
 window.__h38 = function (el, ev, a) { if(ev.key==='Enter')feSave() };
 window.__h39 = function (el, ev, a) { el.parentNode.remove() };

@@ -155,6 +155,9 @@ $('#scenes2').addEventListener('click',async e=>{const b=e.target.closest('butto
 """
 sub('/* ---------- сцены, запуск ---------- */', HOOK + extra_js + '\n/* ---------- сцены, запуск ---------- */')
 
+# 12. блок «Фон переписки» (Как обычно / С разделением) убран из настроек во всех клиентах
+rsub(r"\n <div class=\"cs-gt\">Фон переписки</div><div class=\"bg-cards\">.*?\.join\(''\)\}</div>", "")
+
 out = os.path.join(ROOT, 'docs/flat-mockup/index.html')
 open(out, 'w', encoding='utf-8').write(src)
 print('готово:', out, len(src), 'байт')

@@ -4,22 +4,25 @@
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: file: http: https:; media-src 'self' data: blob: file: http: https:; connect-src 'self' ws: wss: http: https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-src 'none'">
 <title>Просмотр</title>
+<link rel="stylesheet" href="assets/fonts/inter.css">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { width: 100%; height: 100%; background: transparent; overflow: hidden; }
-  /* Окно прозрачное (см. main.js) — тёмная подложка рисуется здесь, полупрозрачной,
-     как в Telegram: сквозь неё чуть видно то, что было на экране до открытия */
+  /* Плоский дизайн B. Окно прозрачное (см. main.js): тёмная плёнка рисуется здесь, как в веб клиенте (#lightbox),
+     сквозь неё чуть видно то, что было на экране. Кнопки — плоские полупрозрачные белые, радиус 12, без стекла и размытия */
+  :root { --lb-btn: rgba(255,255,255,.14); --lb-btn-h: rgba(255,255,255,.26); --lb-r: 12px; }
   body {
-    width: 100%; height: 100%; background: rgba(8,8,10,.85); overflow: hidden;
+    width: 100%; height: 100%; background: rgba(8,8,10,.88); overflow: hidden;
     display: flex; align-items: center; justify-content: center;
     cursor: zoom-out; -webkit-user-select: none; user-select: none;
+    font-family: Inter, -apple-system, system-ui, sans-serif; color: #fff;
     animation: bgIn 150ms ease-out;
   }
   body.closing { animation: bgOut 150ms ease-in forwards; }
   @keyframes bgIn  { from { opacity: 0; } to { opacity: 1; } }
   @keyframes bgOut { from { opacity: 1; } to { opacity: 0; } }
 
-  img, video { max-width: 100vw; max-height: 100vh; object-fit: contain; }
+  img, video { max-width: 100vw; max-height: 100vh; object-fit: contain; border-radius: var(--lb-r); box-shadow: 0 8px 40px rgba(0,0,0,.55); }
   /* :not(.opened) снимает анимацию сразу после её конца — иначе её «forwards»-значение
      transform держится с более высоким приоритетом, чем inline-стиль, и зум не работает */
   body:not(.opened) img, body:not(.opened) video { animation: mediaIn 220ms cubic-bezier(.34,1.56,.64,1) forwards; }
@@ -34,48 +37,32 @@
   body.zoomed img { cursor: grab; }
   body.zoomed img:active { cursor: grabbing; }
 
-  #dl {
-    position: absolute; top: 24px; right: 72px; width: 40px; height: 40px; border-radius: 50%;
-    background: rgba(255,255,255,.12); color: #fff; border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; transition: background .15s;
+  /* все кнопки: плоский полупрозрачный фон, без рамки, тени и размытия */
+  .nav, .act, #cl, #dl, .zoom button {
+    border: 0; border-radius: var(--lb-r); background: var(--lb-btn); color: #fff; cursor: pointer; box-shadow: none;
+    display: flex; align-items: center; justify-content: center; transition: background .15s, transform .15s;
   }
-  #dl:hover { background: rgba(255,255,255,.22); }
-  #cl {
-    position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; border-radius: 50%;
-    background: rgba(255,255,255,.12); color: #fff; border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; transition: background .15s;
-  }
-  #cl:hover { background: rgba(255,255,255,.22); }
-  .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 72px; border-radius: 14px; background: rgba(255,255,255,.12); color: #fff; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; transition: background .15s; }
-  .nav:hover { background: rgba(255,255,255,.22); }
+  .nav:hover, .act:hover, #cl:hover, #dl:hover, .zoom button:hover { background: var(--lb-btn-h); }
+  .nav:active, .act:active, #cl:active, #dl:active, .zoom button:active { transform: scale(.95); }
+  .nav:active { transform: translateY(-50%) scale(.95); }
+  #cl, #dl, .act, .zoom button { width: 40px; height: 40px; }
+  #cl { position: absolute; top: 24px; right: 24px; }
+  #dl { position: absolute; top: 24px; right: 72px; }
+  .act { position: absolute; top: 24px; display: none; }
+  #fw { right: 120px; } #rm { right: 168px; }
+  .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 64px; display: none; }
   body.gallery .nav { display: flex; }
   #prev { left: 24px; } #next { right: 24px; }
-  .act { position: absolute; top: 24px; width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; border: none; cursor: pointer; display: none; align-items: center; justify-content: center; transition: background .15s; }
-  .act:hover { background: rgba(255,255,255,.22); }
-  #fw { right: 120px; } #rm { right: 168px; }
-  #info { position: absolute; top: 22px; left: 24px; color: #fff; font: 14px -apple-system, system-ui, sans-serif; display: none; flex-direction: column; line-height: 1.25; background: rgba(255,255,255,.12); padding: 7px 14px; border-radius: 12px; max-width: 40vw; }
+  #info { position: absolute; top: 22px; left: 24px; font-size: 14px; display: none; flex-direction: column; line-height: 1.25; background: var(--lb-btn); padding: 8px 14px; border-radius: var(--lb-r); max-width: 40vw; }
   #info b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } #info span { font-size: 12px; opacity: .75; }
-  #bottom { position: absolute; left: 0; right: 0; bottom: 84px; display: none; flex-direction: column; align-items: center; gap: 8px; padding: 0 90px; pointer-events: none; }
-  #cap { color: #fff; font: 14px -apple-system, system-ui, sans-serif; text-align: center; max-width: 640px; background: rgba(0,0,0,.45); padding: 6px 14px; border-radius: 12px; pointer-events: auto; cursor: default; }
-  #thumbs { display: flex; gap: 4px; pointer-events: auto; }
-  #thumbs i { width: 38px; height: 38px; border-radius: 6px; background: #222 center / cover; opacity: .55; cursor: pointer; }
-  #thumbs i.on { opacity: 1; outline: 2px solid #fff; outline-offset: 1px; } #thumbs i:hover { opacity: .9; }
-  #count { position: absolute; top: 30px; left: 50%; transform: translateX(-50%); color: #fff; font: 14px -apple-system, system-ui, sans-serif; background: rgba(255,255,255,.12); padding: 4px 12px; border-radius: 999px; display: none; }
-  body.gallery #count { display: block; }
+  #bottom { position: absolute; left: 0; right: 0; bottom: 84px; display: none; flex-direction: column; align-items: center; gap: 10px; padding: 0 90px; pointer-events: none; }
+  #cap { font-size: 14px; text-align: center; max-width: 640px; background: var(--lb-btn); padding: 7px 16px; border-radius: var(--lb-r); pointer-events: auto; cursor: default; }
+  #thumbs { display: flex; gap: 6px; pointer-events: auto; }
+  #thumbs i { width: 40px; height: 40px; border-radius: 8px; background: #222 center / cover; opacity: .55; cursor: pointer; transition: opacity .15s; }
+  #thumbs i.on { opacity: 1; outline: 2px solid #fff; outline-offset: 2px; } #thumbs i:hover { opacity: .9; }
+  #count { position: absolute; top: 30px; left: 50%; transform: translateX(-50%); height: 28px; padding: 0 14px; align-items: center; font-size: 13px; font-weight: 600; background: var(--lb-btn); border-radius: 10px; display: none; }
+  body.gallery #count { display: flex; }
   .zoom { position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
-  .zoom button {
-    width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.12);
-    color: #fff; border: none; cursor: pointer; display: flex; align-items: center;
-    justify-content: center; transition: background .15s;
-  }
-  .zoom button:hover { background: rgba(255,255,255,.22); }
-  /* стекло, как у кнопок просмотра медиа в основном окне (glass.css): полупрозрачная подложка с размытием, светлая кромка и блик сверху */
-  .nav, .act, #cl, #dl, .zoom button, #info, #cap, #count {
-    background: rgba(30, 40, 46, .42); border: 1px solid rgba(255, 255, 255, .18);
-    -webkit-backdrop-filter: blur(16px) saturate(180%); backdrop-filter: blur(16px) saturate(180%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2);
-  }
-  .nav:hover, .act:hover, #cl:hover, #dl:hover, .zoom button:hover { background: rgba(30, 40, 46, .6); }
 </style>
 </head>
 <body>

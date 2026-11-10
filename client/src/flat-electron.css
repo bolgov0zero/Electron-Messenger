@@ -1,0 +1,95 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Электрон (основное окно) — дизайн B «Мягкий»: то, чего нет в веб клиенте. Подключается ПОСЛЕДНИМ, после flat*.css и voice.css.
+   Бар с учётными записями, скрытие панели (бар и список уезжают вместе), выезжающая полоса шапки macOS, закрытие окна входа новой записи,
+   журнал работы. Единые кнопки, переключатели и крестики берутся из кита (flat.css), здесь их не рисуем.
+   Эталон — docs/flat-mockup (index.html, src/flat-b.css, screens.js, windows.js).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───── Бар слева: учётные записи — внизу, под пространствами и папками; одна запись — просто свой аватар ───── */
+.rail-accs { margin-top: auto; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.rail-folders.scroll + .rail-accs, .acc-rail > :not(.rail-accs):last-of-type + .rail-accs { margin-top: auto; }
+/* Кнопка записи: круглая 46 (выбранная запись — круглая плитка), аватарка 36 с отступом 5 от края */
+.rail-accs .acc-round, .rail-accs .acc-btn.fld-btn.acc-round { width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0; }
+.rail-accs .acc-round .fld-ic, .rail-accs .acc-btn.fld-btn.acc-round .fld-ic {
+  width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: transparent; box-shadow: none; opacity: 1;
+}
+.rail-accs .acc-round:hover .fld-ic { background: var(--gl-hov); }
+.rail-accs .acc-round.active .fld-ic { background: var(--side-bg); box-shadow: 0 1px 3px rgba(60, 40, 20, .12); }
+html.dark .rail-accs .acc-round.active .fld-ic { box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
+.rail-accs .acc-round .av { width: 36px; height: 36px; font-size: 13px; opacity: 1; transform: none; box-shadow: none; }
+.rail-accs .acc-round .av::after { display: none; }
+.rail-accs .acc-round:hover .av { transform: none; }
+.rail-accs .acc-round .acc-badge { right: -2px; top: -2px; }
+.rail-accs .acc-round .presence-dot { position: absolute; right: 2px; bottom: 2px; z-index: 2; width: 12px; height: 12px; box-shadow: 0 0 0 2.5px var(--surf2); }
+.rail-accs .acc-round.active .presence-dot { box-shadow: 0 0 0 2.5px var(--side-bg); }
+
+/* ───── Скрытие панели: бар и список уезжают за левый край и выезжают одним блоком ───── */
+body.sidebar-overlay .sidebar {
+  left: 10px; top: 10px; bottom: 10px; margin: 0; border-radius: var(--r-panel);
+  transform: translateX(calc(-100% - 10px));
+}
+body.has-rail.sidebar-overlay { --unit-w: calc(303px + 73px + 10px); }
+body.sidebar-overlay .acc-rail:not([hidden]) {
+  position: absolute; left: 10px; top: 10px; bottom: 10px; z-index: 21; flex: none; width: 73px; min-width: 73px; margin: 0; padding: 56px 0 14px;
+  overflow: visible; transform: translateX(calc(-1 * var(--unit-w)));
+  transition: transform .22s cubic-bezier(.4, 0, .2, 1), box-shadow .22s;
+}
+body.has-rail.sidebar-overlay .sidebar { left: 83px; transform: translateX(calc(-1 * var(--unit-w))); border-radius: 0 var(--r-panel) var(--r-panel) 0; }
+body.sidebar-overlay.sidebar-peeking .acc-rail,
+body.has-rail.sidebar-overlay.sidebar-peeking .sidebar,
+body.sidebar-overlay.sidebar-peeking .sidebar { transform: translateX(0); }
+body.sidebar-overlay.sidebar-peeking .acc-rail, body.sidebar-overlay.sidebar-peeking .sidebar { box-shadow: var(--pop-shadow); }
+
+/* ───── macOS: выезжающая полоса шапки окна — сплошная, без размытия ───── */
+#tb-strip { background: var(--side-bg); border-bottom: 1px solid var(--gl-lo); -webkit-backdrop-filter: none; backdrop-filter: none; }
+html.tb-open #tb-strip { box-shadow: var(--flat-shadow); }
+
+/* ───── Вход: карточка 400, логотип — плитка акцента со значком чата (рисует flat-misc.css), адрес сервера и «Высокая доступность» ───── */
+.login-wrap { width: 400px; box-sizing: border-box; gap: 0; padding: 34px 34px 22px; }
+.login-icon { margin: 0 0 14px; line-height: 0; }
+.login-logo { width: 60px; height: 60px; border-radius: 16px; background: var(--accent-fill); }
+.login-logo svg { display: none; }
+.login-wordmark { margin: 0; gap: 6px; font-size: 15px; font-weight: 700; letter-spacing: .9px; }
+.login-sub { margin: 4px 0 22px; font-size: 13px; }
+.login-wrap .field { margin-bottom: 12px; }
+.login-err { min-height: 20px; margin-top: 12px; font-size: 12.5px; }
+.login-copy { margin-top: 6px; }
+.login-copy #login-version { margin-left: 0; color: inherit; opacity: 1; font-weight: 400; }
+.login-copy #login-version::before { content: "\00a0\00b7\00a0"; }
+#ha-toggle-btn {
+  top: 14px; right: 18px; height: 36px; padding: 0 14px; gap: 8px; border: 0; border-radius: var(--r-btn);
+  background: var(--side-bg); box-shadow: var(--flat-shadow); color: var(--text2); font-size: 12.5px; font-weight: 600;
+}
+#ha-toggle-btn:hover { background: var(--side-bg); color: var(--text); }
+#ha-toggle-btn.ha-active { border: 0; background: var(--side-bg); color: var(--presence-online); }
+.login-close { top: 14px; right: 18px; width: 36px; height: 36px; border: 0; border-radius: var(--r-btn); background: var(--surf2); color: var(--text2); }
+.login-close:hover { background: var(--gl-card2); color: var(--text); }
+
+/* ───── Окна обновления: «Доступно обновление» (440) и «Дистанционное обновление» (360, закрыть нельзя) ───── */
+.update-modal { width: 440px; }
+.update-modal-icon { width: 44px; height: 44px; border-radius: var(--r-btn); background: var(--accent-soft); color: var(--accent-ink); }
+.update-modal-title { font-size: 15px; }
+.update-modal-version { font-size: 12px; font-weight: 500; color: var(--text2); }
+.update-notes-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.update-notes { border-radius: var(--r-card); background: var(--gl-card); color: var(--text2); font-size: 13px; line-height: 1.55; }
+.update-progress-bar { height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--text) 12%, var(--side-bg)); overflow: hidden; }
+.update-progress-fill { border-radius: 4px; background: var(--accent-fill); }
+.update-progress-text { color: var(--text2); font-variant-numeric: tabular-nums; }
+.update-modal-footer { justify-content: flex-end; }
+.update-modal-footer .ha-btn-cancel, .update-modal-footer .ha-btn-apply { flex: 0 0 auto; }
+.force-update-modal { width: 360px; padding: 30px 28px 28px; gap: 0; border: 0; background: var(--modal-bg); }
+.force-update-icon { width: 56px; height: 56px; border-radius: 16px; margin-bottom: 14px; background: var(--accent-soft); color: var(--accent-ink); }
+.force-update-title { font-size: 16px; }
+.force-update-sub { margin-top: 4px; color: var(--text2); }
+.force-update-bar-wrap { flex-direction: column; align-items: stretch; gap: 0; margin-top: 18px; }
+.force-update-bar { flex: none; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--text) 12%, var(--side-bg)); }
+.force-update-fill { border-radius: 4px; background: var(--accent-fill); }
+.force-update-pct { margin-top: 8px; text-align: center; color: var(--text2); }
+
+/* ───── Журнал работы: подвал в одну строку, подсказка сокращается ───── */
+.diag-foot { flex-wrap: nowrap; }
+.diag-hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.diag-text { border-radius: var(--r-card); border: 0; background: var(--surf2); }
+
+/* Панель скрыта: переписка занимает всё окно, без отступа под бар и сайдбар */
+body.sidebar-hidden .chat-main { margin-left: 0; }

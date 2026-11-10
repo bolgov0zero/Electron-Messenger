@@ -13,8 +13,7 @@
   --ff: Inter, -apple-system, system-ui, sans-serif;
   --app-bg: #ece9e4; --side-bg: #fdfcfa; --card-bg: #fdfcfa; --modal-bg: #fdfcfa;
   --header-bg: #fdfcfa; --composer-bg: #fdfcfa; --search-bg: #f3f0eb;
-  --chat-bg: #f7f5f1; --bubble-bg: #ffffff; --chat-split: #f7f5f1; --bubble-split: #ffffff;
-  --text: #1d1b19; --text2: #5b554e; --muted: #766e65;
+  --chat-bg: #f7f5f1; --bubble-bg: #ffffff; --text: #1d1b19; --text2: #5b554e; --muted: #766e65;
   --surf2: #f3f0eb; --sel: #efebe5;
   --border: color-mix(in srgb, var(--text) 9%, transparent);
   --hover-row: color-mix(in srgb, var(--text) 5%, transparent);
@@ -59,8 +58,7 @@ html.dark, html.dark.navy {
   --danger-bg: color-mix(in srgb, var(--danger) 14%, var(--side-bg));
   --app-bg: #10161d; --side-bg: #18202a; --card-bg: #18202a; --modal-bg: #18202a;
   --header-bg: #18202a; --composer-bg: #18202a; --search-bg: #222d3a;
-  --chat-bg: #0f1b27; --bubble-bg: #213040; --chat-split: #0f1b27; --bubble-split: #213040;
-  --text: #eef2f6; --text2: rgba(238,242,246,.74); --muted: rgba(238,242,246,.56);
+  --chat-bg: #0f1b27; --bubble-bg: #213040; --text: #eef2f6; --text2: rgba(238,242,246,.74); --muted: rgba(238,242,246,.56);
   --surf2: #222d3a; --sel: #243242;
   --border: color-mix(in srgb, var(--text) 10%, transparent);
   --hover-row: color-mix(in srgb, var(--text) 7%, transparent);

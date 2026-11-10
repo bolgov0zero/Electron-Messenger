@@ -4,16 +4,20 @@
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
 <title>Показ экрана</title>
+<link rel="stylesheet" href="assets/fonts/inter.css">
 <style>
+/* Плоский дизайн B: плашка — сплошная тёмно-синяя карточка (как панели тёмно-синей темы, она одна для обеих тем: лежит поверх чужих окон), кнопка «Остановить» — опасная кнопка кита.
+   Рамка — сплошная зелёная линия: это сигнал «экран виден собеседникам», цвет не зависит от темы и акцента */
 [hidden]{display:none!important}
-html,body{margin:0;height:100%;background:transparent;overflow:hidden;font:600 13px -apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;background:transparent;overflow:hidden;font:600 13px Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;-webkit-user-select:none;user-select:none}
 #frame{position:fixed;inset:0;border:4px solid #1fa84c;box-sizing:border-box;pointer-events:none}
 #pill{position:fixed;left:0;right:0;top:0;bottom:0;padding:4px;box-sizing:border-box;display:flex;align-items:center;justify-content:center}
-#bar{box-sizing:border-box;display:flex;align-items:center;gap:10px;max-width:100%;padding:6px 7px 6px 14px;border-radius:999px;background:rgba(24,30,36,.94);color:#fff;border:1px solid rgba(255,255,255,.22)}
+#bar{box-sizing:border-box;display:flex;align-items:center;gap:10px;max-width:100%;height:44px;padding:0 6px 0 16px;border-radius:16px;background:#18202a;color:#eef2f6}
 #dot{width:8px;height:8px;border-radius:50%;background:#3fd573;flex:none}
 #t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-#stop{flex:none;border:0;border-radius:999px;padding:5px 12px;font:600 12px inherit;color:#fff;background:#e24b4a;cursor:pointer}
-#stop:hover{background:#cf3e3d}
+#stop{flex:none;height:32px;border:0;border-radius:12px;padding:0 14px;font:600 12.5px Inter,-apple-system,system-ui,sans-serif;color:#fff;background:#ef6f6f;cursor:pointer;transition:filter .2s,transform .15s}
+#stop:hover{filter:brightness(1.1)}
+#stop:active{transform:scale(.95)}
 </style>
 </head>
 <body>

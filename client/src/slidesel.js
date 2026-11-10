@@ -12,28 +12,30 @@
   // b — контейнер, i — пункт, o — признак выбранного, p — выделение рисуется псевдоэлементом,
   // above — у невыбранных пунктов свой фон, плашку рисуем поверх (иначе её не видно под ними)
   // Пружина для списков чатов (стеклянный вид веб клиента); остальные группы едут без перелёта
-  var SPRING = 'cubic-bezier(.34,1.56,.64,1)';
+  // Плоский дизайн B (веб клиент ставит window.SLIDESEL_FLAT = true): без пружины и быстрее; админка остаётся как была
+  var FLAT = !!window.SLIDESEL_FLAT, DUR = FLAT ? 250 : 450;
+  var SPRING = FLAT ? 'cubic-bezier(.22,1,.36,1)' : 'cubic-bezier(.34,1.56,.64,1)';
   var A = '[aria-pressed="true"]';
   var G = [
     // клиент и веб
     // веб клиент: выделение едет с пружиной (перелёт), как нижняя панель в мобильной версии
-    { b: '.seg', i: 'button', o: '.active', ease: SPRING, dur: 450 },
-    { b: '.cs-seg', i: 'button', o: A, ease: SPRING, dur: 450 },
-    { b: '.pa-seg', i: 'button', o: '.on', ease: SPRING, dur: 450 },   // вкладки окон профиля человека и группы: пружина, как у фильтров в сайдбаре
-    { b: '.sidebar-tabbar', i: '.sb-tab', o: '.on', ease: SPRING, dur: 450 },
+    { b: '.seg', i: 'button', o: '.active', ease: SPRING, dur: DUR },
+    { b: '.cs-seg', i: 'button', o: A, ease: SPRING, dur: DUR },
+    { b: '.pa-seg', i: 'button', o: '.on', ease: SPRING, dur: DUR },   // вкладки окон профиля человека и группы: пружина, как у фильтров в сайдбаре
+    { b: '.sidebar-tabbar', i: '.sb-tab', o: '.on', ease: SPRING, dur: DUR },
     // Бар: папки, пространства и учётные записи лежат в нём тремя отдельными блоками, и в каждом свой выбранный пункт.
     // Одной группой на весь бар они не работали: выбранных пунктов несколько, и выделение «не было переключателем»
-    { b: '.rail-folders', i: '.fld-btn', o: '.active', ease: SPRING, dur: 450 },   // папки и пространства: плитка и полоска едут вместе
-    { b: '.rail-accs', i: '.fld-btn', o: '.active', ease: SPRING, dur: 450 },   // бар папок и пространств веб клиента: плитка и полоска едут вместе   // нижняя панель сайдбара веб клиента
-    { b: '.ep-sw', i: 'button', o: A, ease: SPRING, dur: 450 },
-    { b: '.anx-sg', i: 'button', o: A, ease: SPRING, dur: 450 },
-    { b: '.anx-types', i: 'button', o: '[aria-checked="true"]', above: true, ease: SPRING, dur: 450 },
-    { b: '.gp-chips', i: '.gp-chip', o: A, ease: SPRING, dur: 450 },
-    { b: '.ep-tabs', i: '.ep-tab', o: '[aria-selected="true"]', ease: SPRING, dur: 450 },   // группы смайлов
-    { b: '.cs-nav-list', i: '.cs-sn', o: '[aria-current="page"],[aria-current="true"]', ease: SPRING, dur: 500 },
+    { b: '.rail-folders', i: '.fld-btn', o: '.active', ease: SPRING, dur: DUR },   // папки и пространства: плитка и полоска едут вместе
+    { b: '.rail-accs', i: '.fld-btn', o: '.active', ease: SPRING, dur: DUR },   // бар папок и пространств веб клиента: плитка и полоска едут вместе   // нижняя панель сайдбара веб клиента
+    { b: '.ep-sw', i: 'button', o: A, ease: SPRING, dur: DUR },
+    { b: '.anx-sg', i: 'button', o: A, ease: SPRING, dur: DUR },
+    { b: '.anx-types', i: 'button', o: '[aria-checked="true"]', above: true, ease: SPRING, dur: DUR },
+    { b: '.gp-chips', i: '.gp-chip', o: A, ease: SPRING, dur: DUR },
+    { b: '.ep-tabs', i: '.ep-tab', o: '[aria-selected="true"]', ease: SPRING, dur: DUR },   // группы смайлов
+    { b: '.cs-nav-list', i: '.cs-sn', o: '[aria-current="page"],[aria-current="true"]', ease: SPRING, dur: DUR },
     // списки чатов и тем: выделение — псевдоэлемент строки, плашка едет под текстом строк
-    { b: '.chats-list', i: '.chat-item', o: '.active', p: '::after', below: true, ease: SPRING, dur: 500 },
-    { b: '.topics-panel', i: '.chat-item', o: '.active', p: '::after', below: true, ease: SPRING, dur: 500 },
+    { b: '.chats-list', i: '.chat-item', o: '.active', p: '::after', below: true, ease: SPRING, dur: DUR },
+    { b: '.topics-panel', i: '.chat-item', o: '.active', p: '::after', below: true, ease: SPRING, dur: DUR },
     // мобильная версия
     { b: '.seg2', i: 'button', o: '.on' },
     { b: '.mtabs-in', i: '.mtab', o: '.on', p: '::after' },

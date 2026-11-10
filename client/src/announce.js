@@ -134,7 +134,6 @@ function annTs() {
   }
 }
 const annDate = ts => new Date(ts * 1000).toLocaleString('ru', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
-const annWhenText = () => AN.wk === 'now' ? 'Сейчас' : annDate(annTs());
 const annVerb = () => AN.wk === 'now' ? 'Отправить' : 'Запланировать';
 function annWhenChips() {
   const chips = [['now', 'Сейчас'], ['hour', 'Через час']];
@@ -379,4 +378,3 @@ window.annPlural = annPlural;
 window.annSpPeople = annSpPeople;
 window.annTag = annTag;
 window.annVerb = annVerb;
-window.annWhenText = annWhenText;

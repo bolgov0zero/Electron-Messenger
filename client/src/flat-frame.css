@@ -1,0 +1,141 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   /chat — дизайн B «Мягкий»: каркас окна, бар слева, сайдбар (шапка, поиск, фильтр, список, нижняя панель), шапка чата.
+   Подключается после flat.css (токены и база). Здесь только правила этой области; токены и алиасы стекла — в flat.css.
+   Не забывать гасить «блики» прежнего стекла (flat-base.css) в своей области (::before/::after с --gl-spec/--gl-spotlight, inset-тени --gl-hi/--gl-lo, радиальные градиенты).
+   Эталон — docs/flat-mockup (index.html, src/flat-b.css, extra-a/extra-b.css), PLAN.md разд. 2.2 (радиусы).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───── 2.1.а Окно: фон, отступы 10, сайдбар и чат — карточки радиуса 22 ───── */
+.app-body { padding: 10px; background: var(--app-bg); }
+.acc-rail, .sidebar, .chat-main { margin: 0; }
+.chat-main { margin-left: 10px; }
+.chat-main {
+  border-radius: var(--r-panel); background: var(--chat-bg); box-shadow: var(--flat-shadow);
+}
+/* пустое состояние и настройки лежат на панельной поверхности, а не на фоне переписки */
+.chat-main:has(> .cs-pane), .chat-main:has(> .empty-state) { background: var(--side-bg); }
+body.sidebar-hidden .sidebar { left: 10px; top: 10px; bottom: 10px; border-radius: var(--r-panel); }
+
+/* бар слева и список — одна карточка: у бара скруглена левая сторона, у списка правая; бар тоном --surf2 */
+.acc-rail:not([hidden]) {
+  flex-basis: 73px; border-radius: var(--r-panel) 0 0 var(--r-panel); background: var(--surf2); border: 0;
+  box-shadow: var(--flat-shadow); gap: 10px; padding: 56px 0 14px;
+}
+.acc-rail:not([hidden]) + .sidebar {
+  --sidebar-w: 303px; margin-left: 0; border-radius: 0 var(--r-panel) var(--r-panel) 0; border: 0; background: var(--side-bg);
+  box-shadow: var(--flat-shadow);
+}
+.sidebar { border: 0; border-radius: var(--r-panel); background: var(--side-bg); box-shadow: var(--flat-shadow); }
+.acc-rail:not([hidden]) + .sidebar, .acc-rail:not([hidden]) { clip-path: none; }
+
+/* ───── 2.1.б Бар слева: пространства и папки ───── */
+.fld-btn, .acc-btn.fld-btn { width: 49px; height: 49px; border-radius: var(--r-btn); }
+.fld-btn .fld-ic, .acc-btn.fld-btn .fld-ic { width: 49px; height: 49px; border-radius: var(--r-btn); background: transparent; box-shadow: none; transition: background .2s, color .2s; }
+.fld-btn:hover .fld-ic { background: var(--gl-hov); transform: none; }
+.fld-btn:active .fld-ic { transform: none; }
+.fld-btn.active .fld-ic { background: var(--side-bg); box-shadow: 0 1px 3px rgba(60, 40, 20, .12); }
+html.dark .fld-btn.active .fld-ic { box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
+.fld-btn .fld-ic::after { display: none; }
+.fld-btn:not(.active) .fld-ic { opacity: 1; }
+.spc-btn .fld-ic { color: var(--text2); }
+.spc-btn.active .fld-ic { color: var(--accent-ink); }
+.acc-badge { border: 0; box-shadow: 0 0 0 2px var(--surf2); background: var(--accent-fill); }
+.fld-btn.active .acc-badge, .acc-btn.active .acc-badge { box-shadow: 0 0 0 2px var(--side-bg); }
+.rail-sep { background: var(--gl-lo); }
+.rail-me, .rail-me .av { border-radius: 50%; box-shadow: none; transition: none; }
+.rail-me:active { transform: none; }
+
+/* ───── 2.1.в Шапка сайдбара: подпись, меню шапки, «+» ───── */
+.topbar-actions {
+  gap: 2px; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
+}
+.topbar-actions .icon-btn, .sidebar-head .btn-new-chat {
+  width: 36px; height: 36px; border-radius: var(--r-btn); background: transparent; color: var(--text); border: 0;
+}
+.topbar-actions .icon-btn:hover, .sidebar-head .btn-new-chat:hover { background: var(--gl-card2); }
+.topbar-actions .head-more[aria-expanded="true"] { background: var(--accent-soft); color: var(--accent-ink); border-radius: var(--r-btn); }
+.sidebar-head { height: 56px; min-height: 56px; }
+
+/* ───── 2.1.г Поиск и фильтр ───── */
+.search-wrap, .strip-back {
+  background: var(--surf2); border: 1px solid transparent; border-radius: var(--r-btn); box-shadow: none; transition: border-color .2s, box-shadow .2s;
+}
+.search-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.strip-back { color: var(--text); width: 40px; height: 40px; }
+.strip-back:hover { background: var(--gl-card2); }
+.strip-back:active { transform: none; }
+.search-clear { border-radius: 8px; }
+
+/* ───── 2.1.д Нижняя панель сайдбара: значок и подпись, выбранная — только цветом ───── */
+.sidebar-tabbar {
+  position: relative; left: auto; bottom: auto; transform: none; z-index: 3; width: auto; margin: 0; padding: 8px 10px 10px; gap: 0;
+  justify-content: stretch; border: 0; border-radius: 0; background: var(--side-bg); box-shadow: var(--bar-sh-up);
+}
+.sidebar .chats-list { padding-bottom: 10px; }
+.sb-tab {
+  flex: 1 1 0; width: auto; height: 52px; flex-direction: column; justify-content: center; gap: 3px; border-radius: var(--r-btn);
+  color: var(--muted); background: none; box-shadow: none; font-size: 11px; font-weight: 500; transition: color .2s, background .2s;
+}
+.sb-tab svg { width: 21px; height: 21px; }
+.sb-tab .sb-l { font-size: 11px; line-height: 1.1; font-weight: 500; pointer-events: none; }
+.sb-tab.on { background: none; box-shadow: none; color: var(--accent-ink); }
+.sb-tab.on::after { display: none; }
+.sb-tab:hover:not(.on) { color: var(--text); background: var(--gl-hov); }
+.sb-tab:active { transform: none; }
+#update-badge { top: 6px !important; right: calc(50% - 16px) !important; width: 8px !important; height: 8px !important; background: var(--danger) !important; border-radius: 50% !important; }
+
+/* ───── 2.2.а Список: строки радиуса 16, плоская плашка выбора ───── */
+.chats-list .chat-item, .topics-panel .chat-item, .chats-list .pp-row { border-radius: var(--r-row); }
+.chats-list .chat-item::after, .topics-panel .chat-item::after, .chats-list .pp-row::after,
+.chats-list .pp-row.cg-first::after, .chats-list .pp-row.cg-last::after { inset: 1px 0; border-radius: var(--r-row); }
+.chats-list .cg-first::after, .topics-panel .cg-first::after { top: 1px; }
+.chats-list .cg-last::after, .topics-panel .cg-last::after { bottom: 1px; }
+.chats-list .chat-item.active::after, .topics-panel .chat-item.active::after, .chats-list .chat-item.active:hover::after, .topics-panel .chat-item.active:hover::after {
+  background: var(--sel); border: 0; box-shadow: 0 1px 2px rgba(60, 40, 20, .06);
+}
+html.dark .chats-list .chat-item.active::after, html.dark .topics-panel .chat-item.active::after { box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+.chats-list .chat-item:hover::after, .topics-panel .chat-item:hover::after, .chats-list .pp-row:hover::after { background: var(--gl-hov); }
+.chats-list .chat-item.active:hover::after, .topics-panel .chat-item.active:hover::after { background: var(--sel); }
+.chat-list-section-label { color: var(--muted); }
+.ci-time { color: var(--muted); }
+
+/* счётчики и @-метка: плоская заливка, круглые */
+.unread-badge { background: var(--accent-fill) !important; box-shadow: none; border-radius: 11px; }
+
+/* аватарки: круглые, без блика (градиент заливки остаётся); комнаты — скруглённый квадрат */
+.av, .av-md, .av-sm, .av-lg, .av-xl, .av[class*="av-tag-"], .chats-list .av-round, .topics-panel .av-round { box-shadow: none; }
+.av-sq { border-radius: 16px !important; }
+.chat-header .av-sq { border-radius: 14px !important; }
+
+/* значок папки на аватарке: цвет папки, плоский, кольцо цвета подложки */
+.fbd { background: var(--surf2); box-shadow: 0 0 0 2px var(--side-bg); border: 0; }
+.chat-item.active .fbd { box-shadow: 0 0 0 2px var(--sel); }
+/* значок-глобус федерации */
+.fed-dot { background: var(--accent-fill); border-color: var(--side-bg); box-shadow: none; }
+.chat-item.active .fed-dot { border-color: var(--sel); }
+.chat-header .fed-dot { border-color: var(--side-bg); }
+/* метка «Скрытый чат» */
+.sc-tag { border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink); }
+
+/* ───── 2.2.б Шапка чата: докованная карточка, закреплённое, поиск, «вниз» ───── */
+.chat-header {
+  top: 0; left: 0; right: 0; height: 68px; padding: 0 14px 0 10px; border: 0; border-radius: var(--r-panel) var(--r-panel) 0 0;
+  background: var(--header-bg); box-shadow: var(--bar-sh);
+}
+.chat-header-main { border-radius: var(--r-item); }
+.chat-header-main:has([data-on-click]):hover { background: var(--gl-hov); box-shadow: none; border-color: transparent; }
+.chat-header-main:has([data-on-click]):active { transform: none; }
+.chat-header-actions { height: auto; padding: 0; gap: 2px; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.chat-header-actions > .icon-btn, .chat-header-actions > .icon-btn:first-child, .chat-header-actions > .icon-btn:last-child,
+.chat-header-actions > .icon-btn:only-child { width: 36px; height: 36px; border-radius: var(--r-btn); }
+.chat-header-actions .icon-btn.active { background: var(--accent-soft); color: var(--accent-ink); }
+.pin-bar, .chat-search { top: 78px; left: 12px; right: 12px; height: 48px; border-radius: var(--r-btn); padding: 0 6px 0 14px; }
+.pin-bar { gap: 12px; }
+.chat-search { padding-left: 14px; }
+.scroll-bottom-btn { width: 36px; height: 36px; border-radius: var(--r-btn); box-shadow: var(--flat-shadow); }
+@media (min-width: 768px) and (pointer: fine) {
+  /* лента под докованной шапкой: --chat-top-h задаёт app.js (102 без закреплённого, 154 с ним) */
+  .chat-main .messages { padding-top: calc(var(--chat-top-h, 102px) - 14px); }
+}
+/* пустое состояние области чата: плоский круг-плитка вместо стеклянного */
+.empty-icon { background: var(--surf2); border: 0; box-shadow: none; }

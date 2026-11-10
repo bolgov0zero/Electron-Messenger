@@ -6,7 +6,7 @@ const S = {
   chats: [], activeChatId: null,
   ws: null, wsRetry: 0,
   unread: {}, unreadMentions: {}, allUsers: [], drafts: (()=>{ try { return JSON.parse(localStorage.getItem('chat_drafts'))||{}; } catch { return {}; } })(),
-  settings: { theme: 'dark', fontSize: 'medium', uiScale: 100 },
+  settings: { theme: 'system', fontSize: 'medium', uiScale: 100 },
   ctx: { messageId: null, canEdit: false, isMine: false, replyText: '', replySenderName: '' },
   editingMessageId: null,
   replyTo: null, // { id, text, senderName }
@@ -812,7 +812,7 @@ function showLoginScreen(intentional) {
 let _sharedLoaded = false, _applyingShared = false;
 function collectAppSettings() {
   return { theme: S.settings.theme, fontSize: S.settings.fontSize, uiScale: S.settings.uiScale || 100,
-    accent: currentAccent(), chatPattern: currentPattern(), chatPatternLevel: currentPatternLevel(), chatBg: currentChatBg(),
+    accent: currentAccent(), chatPattern: currentPattern(), chatPatternLevel: currentPatternLevel(),
     sidebarW: currentSidebarW() };
 }
 function pushAppSettings() {
@@ -830,7 +830,6 @@ function applyAppSettings(d) {
     if (d.accent && ACCENTS[d.accent]) setAccent(d.accent);
     if (d.chatPattern !== undefined) setChatPattern(d.chatPattern);
     if (d.chatPatternLevel) setPatternLevel(d.chatPatternLevel);
-    if (d.chatBg) setChatBg(d.chatBg);
     updateSidebarThemeIcon();
     if (S.token) saveSession();
   } finally { _applyingShared = false; }
@@ -949,7 +948,7 @@ function enterApp() {
 
 
 function updateSidebarThemeIcon() {
-  const isDark = S.settings.theme !== 'light';
+  const isDark = themeEffective() === 'navy';   // в тёмной теме солнце (переключит на светлую), в светлой луна
   const sun = document.getElementById('sidebar-theme-sun');
   const moon = document.getElementById('sidebar-theme-moon');
   if (sun) sun.style.display = isDark ? '' : 'none';
@@ -1000,20 +999,15 @@ function applyAccent() {
   const s = document.documentElement.style;
   s.setProperty('--accent', hex(c));
   s.setProperty('--accent-rgb', c.join(','));
-  s.setProperty('--primary', hex(c));
   s.setProperty('--accent-soft', rgba(c, .12));
-  s.setProperty('--primary-light', rgba(c, .10));
   s.setProperty('--accent-border', rgba(c, .28));
   s.setProperty('--accent-shadow', rgba(c, .22));
-  s.setProperty('--reaction-mine', rgba(c, dark ? .15 : .13));
   s.setProperty('--reply-bg', rgba(c, .08));
-  s.setProperty('--blob1', rgba(c, .12));
   s.setProperty('--role-teal-bg', rgba(c, dark ? .12 : .10));
   s.setProperty('--role-teal-border', rgba(c, dark ? .30 : .25));
   // Подсветку активного чата обе темы берут из светлого варианта — так было и
   // с бирюзовым, менять не стали
   s.setProperty('--active-row', rgba(a.dark, .10));
-  s.setProperty('--active-row-border', rgba(a.dark, .25));
 }
 
 function accentDotsHtml() {
@@ -1117,61 +1111,22 @@ function paintPatternSwatches() {
   });
 }
 
-// ── ФОН ПЕРЕПИСКИ ──
-// «Как обычно» — сайдбар и переписка одного цвета; «с разделением» — переписка
-// отделена оттенком: в тёмной теме светлее сайдбара, в светлой темнее.
-// Значения на каждую тему заданы в стилях, здесь только переключаем ссылки.
-// Хранится на устройстве, как и цвет акцента.
-function currentChatBg() {
-  try { return localStorage.getItem('chatBg') === 'split' ? 'split' : 'plain'; } catch { return 'plain'; }
-}
-
-function setChatBg(mode) {
-  try { localStorage.setItem('chatBg', mode === 'split' ? 'split' : 'plain'); } catch {}
-  applyChatBg();
-  pushAppSettings();
-  document.querySelectorAll('#chatbg-cards .bg-card').forEach(c =>
-    c.classList.toggle('active', c.dataset.bg === currentChatBg()));
-}
-
-function applyChatBg() {
-  const s = document.documentElement.style;
-  if (currentChatBg() === 'split') {
-    s.setProperty('--chat-bg', 'var(--chat-split)');
-    s.setProperty('--bubble-bg', 'var(--bubble-split)');
-  } else {
-    s.removeProperty('--chat-bg');
-    s.removeProperty('--bubble-bg');
-  }
-}
-
-// Карточки выбора: скелетон окна — слева сайдбар, справа переписка
-function chatBgCardsHtml() {
-  const cur = currentChatBg();
-  const skel = split => `<span class="bg-skel">
-      <span class="bs-side"><i></i><i></i><i></i></span>
-      <span class="bs-chat${split ? ' split' : ''}"><i class="a"></i><i class="b"></i><i class="c"></i></span>
-    </span>`;
-  const card = (mode, title, sub) => `<button class="bg-card${cur === mode ? ' active' : ''}" data-bg="${mode}" data-on-click="setChatBg" data-a-click="${esc(JSON.stringify([`${mode}`]))}">
-      ${skel(mode === 'split')}
-      <span class="bg-cap"><b>${title}</b>${sub}</span>
-    </button>`;
-  return `<div class="bg-cards" id="chatbg-cards">
-    ${card('plain', 'Как обычно', 'Сайдбар и переписка одного цвета')}
-    ${card('split', 'С разделением', 'Переписка отделена оттенком')}
-  </div>`;
-}
-
-// Прозрачность стекла → множитель плотности --gl-k: 50% = 1, 0% = 1,9 (плотнее), 100% = 0,15 (почти прозрачное)
-function glassK(t) { return Math.max(.15, 1.9 - .018 * (t == null ? 50 : Math.min(100, Math.max(0, +t)))); }
+// Тема: «Система» (следует за устройством) / «Светлая» / «Тёмно-синяя». Прежнее «dark» читается как «система». Класс dark = любая тёмная (она одна: navy)
+function themePref() { const t = S.settings.theme; return t === 'light' || t === 'navy' ? t : 'system'; }
+function themeSysDark() { try { return !!matchMedia('(prefers-color-scheme: dark)').matches; } catch { return false; } }
+function themeEffective() { const p = themePref(); return p === 'system' ? (themeSysDark() ? 'navy' : 'light') : p; }
+try {
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (themePref() === 'system') { animateThemeSwitch(); applySettings(); }
+  });
+} catch {}
 function applySettings() {
   headMenuClose();
-  const isDark = S.settings.theme === 'dark' || S.settings.theme === 'navy';
+  const isDark = themeEffective() === 'navy';
   document.documentElement.classList.toggle('dark', isDark);
-  document.documentElement.classList.toggle('navy', S.settings.theme === 'navy');
+  document.documentElement.classList.toggle('navy', isDark);
   document.documentElement.className = document.documentElement.className.replace(/font-\w+/,'');
   document.documentElement.classList.add('font-'+S.settings.fontSize);
-  document.querySelectorAll('#theme-seg button').forEach(b => b.classList.toggle('active', b.textContent.trim()===(S.settings.theme==='light'?'Светлая':'Тёмная')));
   document.querySelectorAll('#font-seg button').forEach(b => b.classList.toggle('active', b.textContent.trim()===S.settings.fontSize[0].toUpperCase()));
   const _scale = S.settings.uiScale || 100;
   document.documentElement.style.zoom = _scale !== 100 ? _scale + '%' : '';
@@ -1182,11 +1137,7 @@ function applySettings() {
   document.body.style.height = '';
   document.documentElement.style.setProperty('--vh100', _scale !== 100 ? `calc(100vh / ${_scale / 100})` : '100vh');
   document.querySelectorAll('#scale-seg button').forEach(b => b.classList.toggle('active', parseInt(b.textContent) === _scale));
-  // Стекло: «Цветная картинка» (пятна под стеклом) и «Прозрачность» (0–100, 50 — стандартная плотность)
-  document.documentElement.classList.toggle('gl-noimg', S.settings.glassImage === false);
-  document.documentElement.style.setProperty('--gl-k', glassK(S.settings.glassTransparency).toFixed(3));
   applyAccent();
-  applyChatBg();
   applyChatPattern();
   applySidebarW();
   document.querySelectorAll('#pattern-seg button').forEach((b, i) =>
@@ -1204,7 +1155,7 @@ function animateThemeSwitch() {
 }
 function setTheme(t) { animateThemeSwitch(); S.settings.theme=t; applySettings(); saveSession(); pushAppSettings(); }
 // Кнопка в меню шапки листает темы по кругу: светлая, тёмная, тёмно-синяя
-function toggleTheme() { setTheme({ light: 'dark', dark: 'navy', navy: 'light' }[S.settings.theme] || 'dark'); }
+function toggleTheme() { setTheme(themeEffective() === 'navy' ? 'light' : 'navy'); }
 function setFontSize(f) { S.settings.fontSize=f; applySettings(); saveSession(); pushAppSettings(); }
 function setUiScale(v) { S.settings.uiScale=v; applySettings(); saveSession(); pushAppSettings(); }
 // ── Ширина сайдбара ──
@@ -1214,7 +1165,7 @@ function setUiScale(v) { S.settings.uiScale=v; applySettings(); saveSession(); p
 // Ширина списка по умолчанию: с баром весь блок (бар 72 + список) 376, как в макете; без бара список занимает все 376
 const sbDefault = () => document.body.classList.contains('has-rail') ? 304 : 376;
 let _sbHideDelta = null;
-// Ширина сайдбара фиксирована (задаётся в glass.css: бар 72 + список 304, без бара 376): изменение ширины убрано
+// Ширина сайдбара фиксирована (задаётся в flat-base.css / flat-frame.css: бар 73 + список 303, без бара 376): изменение ширины убрано
 function currentSidebarW() { return sbDefault(); }
 function applySidebarW() { document.documentElement.style.removeProperty('--sidebar-w'); }
 // Подсказки у значков в узком сайдбаре: когда подписи скрыты, название показывается справа от значка
@@ -1360,8 +1311,7 @@ function setSidebarTab(tab) {
   sidebarSwap(_swap);
 }
 
-// Сброс формы настроек к разделу «Профиль» — то же самое, что раньше делал
-// openSettings() перед открытием модалки.
+// Сброс формы настроек к разделу «Профиль»
 function openSettingsInline(section) {
   Object.assign(CS, {
     sec: section || CS.sec || 'profile', nameDraft: S.user?.display_name || '', nameBusy: false, nameMsg: '',
@@ -1458,6 +1408,7 @@ const CS_I = {
   check: csSvg('<path d="M20 6 9 17l-5-5"/>'),
   sun: csSvg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>'),
   moon: csSvg('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>'),
+  monitor: csSvg('<rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/>'),
   navy: csSvg('<path fill="currentColor" d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>'),
   play: csSvg('<polygon points="6 3 20 12 6 21 6 3"/>'),
   back: csSvg('<path d="m15 18-6-6 6-6"/>'),
@@ -1471,21 +1422,7 @@ const CS_I = {
   folder: csSvg('<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>'),
 };
 
-// Настройки живут во вкладке сайдбара (см. setSidebarTab), а не в модалке —
-// openSettings/closeSettings оставлены как обёртки над ней, чтобы не искать
-// все старые вызовы по коду.
-async function openSettings(section = 'profile') {
-  Object.assign(CS, {
-    sec: section, nameDraft: S.user?.display_name || '', nameBusy: false, nameMsg: '',
-    pwOpen: false, pw: { old: '', a: '', b: '' }, pwShow: false, pwErr: '', pwBusy: false, pwDone: false, avatar: undefined,
-  });
-  setSidebarTab('settings');
-  if (csIsApp()) {
-    window.electron?.getAutostart?.().then(v => { CS.autostart = !!v; csRefresh(); });
-    window.electron?.getVersion?.().then(v => { CS.version = v || null; csRefresh(); });
-  }
-}
-
+// Настройки живут во вкладке сайдбара (см. setSidebarTab), а не в модалке.
 function closeSettings() { if (_sidebarTab === 'settings') setSidebarTab('chats'); }
 
 function csSections() {
@@ -1495,7 +1432,7 @@ function csSections() {
     { k: 'general', label: 'Основные', icon: CS_I.gear, desc: csIsApp() ? 'Звук и поведение приложения' : 'Звук сообщений',
       meta: () => [s.soundEnabled !== false ? 'звук включён' : 'без звука', csIsApp() && CS.autostart ? 'автозапуск' : ''].filter(Boolean).join(' · ') },
     { k: 'appearance', label: 'Внешний вид', icon: CS_I.palette, desc: 'Тема, цвет, фон переписки и размер текста',
-      meta: () => `${s.theme === 'dark' ? 'Тёмная' : s.theme === 'navy' ? 'Тёмно-синяя' : 'Светлая'} · ${ACCENTS[currentAccent()].name.toLowerCase()}` },
+      meta: () => `${{ system: 'Система', light: 'Светлая', navy: 'Тёмно-синяя' }[themePref()]} · ${ACCENTS[currentAccent()].name.toLowerCase()}` },
   ];
   list.push({ k: 'blocks', label: 'Блокировки', icon: CS_I.ban, desc: 'Люди, которые не могут вам писать',
     meta: () => (S.blocked || []).length ? `заблокировано: ${S.blocked.length}` : 'никого нет' });
@@ -1729,14 +1666,6 @@ function diagCopy(all) {
   navigator.clipboard.writeText(text).then(() => showActionToast(all ? 'Журнал скопирован' : 'Выделенное скопировано')).catch(() => {});
 }
 
-function csGlassTr(v) {
-  v = Math.min(100, Math.max(0, +v || 0));
-  S.settings.glassTransparency = v; document.documentElement.style.setProperty('--gl-k', glassK(v).toFixed(3)); saveSession();
-  const r = document.getElementById('cs-tr'), o = document.getElementById('cs-trval');
-  if (r) r.style.setProperty('--v', v + '%');
-  if (o) o.textContent = v + '%';
-}
-function csGlassImage() { S.settings.glassImage = S.settings.glassImage === false; applySettings(); saveSession(); csRefresh(); }
 function csSound() { S.settings.soundEnabled = S.settings.soundEnabled === false; saveSession(); csRefresh(); }
 async function csAutostart() { CS.autostart = !CS.autostart; csRefresh(); await setAutostart(CS.autostart); }
 function csHideSidebar() { toggleSidebar(); csRefresh(); }
@@ -1748,7 +1677,7 @@ function csPick(name, v) { window[name](v); csRefresh(); }
 function ctxNoop(ev) { ev.preventDefault(); }
 function noop() {}
 function csPaneAppearance() {
-  const s = S.settings, tr = s.glassTransparency == null ? 50 : s.glassTransparency, lvl = currentPatternLevel(), scales = csIsApp() ? [80, 90, 100] : [80, 90, 100, 110];
+  const s = S.settings, lvl = currentPatternLevel(), scales = csIsApp() ? [80, 90, 100] : [80, 90, 100, 110];
   const seg = (items, cur, fn, label) => `<div class="cs-seg" role="group" aria-label="${label}">${items.map(([v, t, title]) =>
     `<button type="button" aria-pressed="${cur === v}" ${title ? `aria-label="${title}" title="${title}"` : ''} data-on-click="csPick" data-a-click="${esc(JSON.stringify([fn, v]))}">${t}</button>`).join('')}</div>`;
   return `<div class="cs-pv" aria-hidden="true">
@@ -1759,17 +1688,12 @@ function csPaneAppearance() {
     </div>
     <div class="cs-gt">Тема и цвет</div>
     <div class="cs-g">
-      <div class="cs-r"><div class="cs-l"><b>Тема</b></div>${seg([['light', CS_I.sun + 'Светлая'], ['dark', CS_I.moon + 'Тёмная'], ['navy', CS_I.navy + 'Тёмно-синяя']], s.theme, 'setTheme', 'Тема')}</div>
+      <div class="cs-r"><div class="cs-l"><b>Тема</b></div>${seg([['system', CS_I.monitor + 'Система'], ['light', CS_I.sun + 'Светлая'], ['navy', CS_I.navy + 'Тёмно-синяя']], themePref(), 'setTheme', 'Тема')}</div>
       <div class="cs-r"><div class="cs-l"><b>Цвет акцента</b><span>Кнопки, свои сообщения, выделение</span></div>
         <div class="cs-ctl"><span class="cs-aname">${ACCENTS[currentAccent()].name}</span><div id="accent-seg" class="accent-seg" data-on-click="__h23">${accentDotsHtml()}</div></div></div>
-      <div class="cs-r"><div class="cs-l"><b>Прозрачность</b><span>Стекло панелей, меню и окон: правее — прозрачнее, левее — плотнее</span></div>
-        <div class="cs-ctl"><input id="cs-tr" class="rng" type="range" min="0" max="100" step="1" value="${tr}" style="--v:${tr}%" aria-label="Прозрачность стекла" data-on-input="csGlassTr" data-a-input='["__value"]'><span class="rng-val" id="cs-trval">${tr}%</span></div></div>
     </div>
-    <div class="cs-gt">Фон переписки</div>
-    <div data-on-click="__h24">${chatBgCardsHtml()}</div>
     <div class="cs-gt">Фон</div>
     <div class="cs-g">
-      <div class="cs-r"><div class="cs-l"><b>Цветная картинка</b><span>Размытые цветные пятна за стеклом. Выключите — фон станет ровным. С узором не связана.</span></div>${csTg(s.glassImage !== false, 'csGlassImage', 'Цветная картинка')}</div>
       <div class="cs-r stack"><div class="cs-l"><b>Узор</b><span>Рисунок поверх фона переписки</span></div>
       <div data-on-click="__h25">${chatPatternCardsHtml()}</div>
       ${currentPattern() ? `<div class="cs-ctl cs-between"><div class="cs-l"><b>Заметность узора</b></div>${seg([[1, 'Слабая'], [2, 'Средняя'], [3, 'Сильная']], lvl, 'setPatternLevel', 'Заметность узора')}</div>` : ''}
@@ -2882,8 +2806,6 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   const name = chatName(chat);
   const isGroup = chat.type==='group';
   const isRoom = chat.type==='room';
-  const isCreator = chat.created_by === S.user.id;
-  const memberCount = chat.members?.length||0;
   const peerId = getPeerUserId(chat);
   const peerDot = peerId && !isSysChat(chat) ? presenceDot(peerId) : '';
   const isTopic = !!chat?.parent_id;
@@ -2891,9 +2813,6 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
   S.activeInvite = !!chat.invite;
   const sub = (isTopic || isRoom || isGroup) ? groupSubHtml(chat) : (isSysChat(chat) ? 'Служебные уведомления' : peerId ? peerSubText(peerId) : 'Личный чат');
   const nameClickable = (!chat.invite && (isGroup || (isRoom && !isTopic))) ? `style="cursor:pointer" data-on-click="openGroupInfo" data-a-click="${esc(JSON.stringify([chatId]))}"` : (peerId && !isSysChat(chat) ? `style="cursor:pointer" data-on-click="openProfile" data-a-click="${esc(JSON.stringify([peerId]))}"` : '');
-
-  // Delete button: visible for direct chats and for group creator / admins
-  const canDelete = chat.type === 'direct' || S.user.is_admin || isCreator;
 
   const main = document.getElementById('chat-main');
   main.innerHTML = `
@@ -3132,9 +3051,6 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
 // собирается скриптом scripts/build-emoji.js из данных Unicode и CLDR. Раньше он
 // был написан руками и урезан до тех смайлов, что рисовались в Windows; теперь
 // шрифт вшит в клиент, и ограничение снято — набор полный.
-
-// Плоский список — им пользуется панель реакций
-const EMOJIS = EMOJI_GROUPS.flatMap(g => g.items);
 
 const EMOJIS_DEFAULT_FREQ = ['👍','❤️','😂','🔥','😎','🎉','😭','🤔'];
 function getEmojiFreq() { try { return JSON.parse(localStorage.getItem('emoji_freq')||'{}'); } catch { return {}; } }
@@ -3560,7 +3476,6 @@ function renderMessages(msgs) {
 // возврат на прежнее место в чате и счётчики на кнопках «вниз» и «@»
 var FEED_MAX = 320, FEED_KEEP = 200;
 var _trimT = null, _readT = null, _lastScroll = 0;
-var _vTop = 0, _vAt = 0, _fastT = null;
 var _readSent = {};
 S.lastPos = S.lastPos || {};
 function feedEdge(c) { return Math.max(1400, c.clientHeight * 2); }
@@ -3700,12 +3615,6 @@ document.addEventListener('load', e => {
 function onMessagesScroll() {
   const container = document.getElementById('messages');
   if (!container) return;
-  // Быстрая прокрутка: у каждого пузыря своё размытие фона (backdrop-filter), и при полёте ленты слои не успевают отрисоваться —
-  // вместо сообщений мелькают замыленные прямоугольники. Пока лента летит, размытие снимаем, а после остановки возвращаем
-  const _t = performance.now(), _v = Math.abs(container.scrollTop - _vTop) / Math.max(1, _t - _vAt);
-  _vTop = container.scrollTop; _vAt = _t;
-  if (_v > 1 && !_anchor) container.classList.add('fast-scroll');
-  if (container.classList.contains('fast-scroll')) { clearTimeout(_fastT); _fastT = setTimeout(() => container.classList.remove('fast-scroll'), 160); }
   const dist = container.scrollHeight - container.scrollTop - container.clientHeight;
   if (!_loadingMore) {
     if (S.chatHasMore && container.scrollTop < feedEdge(container)) loadMoreMessages();
@@ -4496,11 +4405,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     // своя пара иконка+цвет на добавление/удаление участника
     const isMemberAdd = m.system_kind === 'member_add';
     const isMemberRemove = m.system_kind === 'member_remove';
-    const pillStyle = isMemberAdd
-      ? 'background:linear-gradient(var(--accent-soft),var(--accent-soft)) var(--chat-bg);border:1px solid var(--role-teal-border);'
-      : isMemberRemove
-      ? 'background:var(--card-bg);border:1px solid var(--border);'
-      : 'background:linear-gradient(rgba(210,55,55,.08),rgba(210,55,55,.08)) var(--chat-bg);border:1px solid rgba(210,55,55,.2);';
+    const pillCls = isMemberAdd ? 'add' : isMemberRemove ? 'rm' : 'ann';
     const iconSvg = isMemberAdd
       ? '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/>'
       : isMemberRemove
@@ -4508,10 +4413,10 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       : '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>';
     return `<div class="irc-msg" data-msg-id="${m.id}" data-sender-id="${m.sender_id}" data-sent-at="${m.sent_at}" data-on-contextmenu="__h27" style="padding:2px 0">
       <div style="width:100%;display:flex;justify-content:center;padding:0 20px;box-sizing:border-box">
-        <div style="${pillStyle}border-radius:14px;padding:5px 14px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;max-width:80%">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.7">${iconSvg}</svg>
+        <div class="sysnote ${pillCls}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">${iconSvg}</svg>
           <span style="word-break:break-word">${esc(m.text)}</span>
-          <span style="font-size:10px;opacity:.4;flex-shrink:0;margin-left:2px">${time}</span>
+          <span class="sys-t">${time}</span>
         </div>
       </div>
     </div>`;
@@ -5485,17 +5390,17 @@ function placeCtxMenu(menu, clientX, clientY, anchor) {
   const mr = menu.getBoundingClientRect();
   const w = mr.width, h = mr.height;
   const margin = 6;
-  let x, y, fromRight = false, above = false;
+  let x, y;
   if (anchor) {
     // Меню рядом с кнопкой: правый край по правому краю кнопки, под ней; нет места — над ней
-    x = anchor.right - w; fromRight = true;
+    x = anchor.right - w;
     y = anchor.bottom + margin;
-    if (y + h + margin > m.vh && anchor.top - h - margin >= margin) { y = anchor.top - h - margin; above = true; }
+    if (y + h + margin > m.vh && anchor.top - h - margin >= margin) { y = anchor.top - h - margin; }
   } else {
     const cx = clientX * m.f, cy = clientY * m.f;
     x = cx; y = cy;
-    if (x + w + margin > m.vw) { x = cx - w; fromRight = true; }
-    if (y + h + margin > m.vh) { y = cy - h; above = true; }
+    if (x + w + margin > m.vw) { x = cx - w; }
+    if (y + h + margin > m.vh) { y = cy - h; }
   }
   // Не выходим за окно ни с одной стороны
   x = Math.max(margin, Math.min(x, m.vw - w - margin));
@@ -5787,7 +5692,7 @@ function showSystemAnnouncement(text) {
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'announcement-modal';
-    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.4);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center';
     modal.innerHTML = `<div id="announcement-card" style="background-color:var(--modal-bg);background-image:linear-gradient(rgba(210,55,55,.14),rgba(210,55,55,.14));border-radius:24px;padding:26px 24px 24px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3);border:1px solid rgba(210,55,55,.22)">
       <div class="announcement-title">
         <div style="width:28px;height:28px;border-radius:50%;background:var(--danger-bg);border:1px solid var(--danger-border);display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -7059,14 +6964,6 @@ function cmWhen(ts) {
   if (d.toDateString() === n.toDateString()) return 'сегодня, ' + hm;
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', ...(d.getFullYear() !== n.getFullYear() ? { year: 'numeric' } : {}) }) + ', ' + hm;
 }
-function openChatMedia(chatId) {
-  const chat = findChatAny(chatId);
-  if (!chat) return;
-  _cm = { id: chatId, tab: 'media', data: {}, more: {}, cursor: {}, busy: false };
-  renderChatMedia();
-  openModal('modal-media');
-  loadChatMedia();
-}
 function cmTab(t) {
   if (!_cm) return;
   _cm.tab = t;
@@ -7135,7 +7032,6 @@ function renderChatMedia(keep) {
 function cmScroll(el) {
   if (_cm && _cm.more[_cm.tab] && el.scrollHeight - el.scrollTop - el.clientHeight < 400) loadChatMedia();
 }
-function pfMedia(chatId) { openChatMedia(chatId); }
 // Вкладки окон профиля человека и группы: «Медиа», «Файлы» и «Ссылки» показывают то же, что окно «Медиа», но внутри профиля
 function paMedia(chatId, tab, host) {   // host — id панели справа: у окон человека и группы они разные, окна остаются в странице после закрытия
   if (_cm && _cm.host === host && _cm.id === chatId) _cm.tab = tab;
@@ -7189,7 +7085,6 @@ function renderProfile(keep) {
   if (canContact) rows.push(cellRow('В ваших контактах', u.contact ? 'Да' : 'Нет'));
   const groups = (S.chats || []).filter(c => (c.type === 'group' || c.type === 'room') && !c.parent_id && !c.is_secret && c.members?.some(m => m.id === id));
   const dmChat = (S.chats || []).find(c => c.type === 'direct' && !c.is_secret && getPeerUserId(c) === id);
-  const mediaAttr = dmChat ? `data-on-click="pfMedia" data-a-click="${esc(JSON.stringify([dmChat.id]))}"` : 'disabled';
   // Оформление — вариант A макета docs/glass-mockup/profile.html: слева личность, действия и сведения, справа вкладки и списки
   const tab = S.pfTab || 'groups', mediaTab = tab !== 'groups';
   const acts = `
@@ -7281,7 +7176,7 @@ async function loadPresence() {
 // Текст статуса собеседника для шапки чата (как в Telegram)
 function formatLastSeen(ts) {
   if (!ts) return 'Был в сети';
-  const d = new Date(ts * 1000), now = new Date();
+  const d = new Date(ts * 1000);
   const diffSec = Math.floor((Date.now() - ts * 1000) / 1000);
   if (diffSec < 60) return 'Был в сети только что';
   const diffMin = Math.floor(diffSec / 60);
@@ -8100,7 +7995,6 @@ function renderGroupProfile(keep) {
   const lf = gmFilter(local, g.q), ff = gmFilter(fed, g.q), pf = gmFilter(pend, g.q);
   const show = k => g.f === 'all' || g.f === k;
   const kind = chat.type === 'room' ? 'Комната' : 'Группа';
-  const q = g.q.trim();
   const none = '<div class="cell"><span class="cl" style="color:var(--text2)">Никого не нашли</span></div>';
   const chip = (k, label, n) => `<button type="button" role="tab" aria-selected="${g.f === k}" class="${g.f === k ? 'on' : ''}" data-on-click="gmFilterSet" data-a-click="${esc(JSON.stringify([`${k}`]))}">${label} ${n}</button>`;
   // Оформление перенесено из мобильного клиента (/m, профиль группы и комнаты): шапка-капсула, аватарка, плитки, поиск, переключатель фильтров как у папок и стеклянные списки
@@ -8225,8 +8119,20 @@ function gmAvailable(chat) {
   return S.allUsers.filter(u => isPickable(u) && (!u.federated || (isGroup && (u.contact || u.rel === 'ws'))) && !pending.has(u.id) && !existing.has(u.id)
     && (!q || (u.display_name || '').toLowerCase().includes(q) || (u.username || '').toLowerCase().includes(q)));
 }
-function gmAddView() { S.gm.view = 'add'; S.gm.add = new Set(); S.gm.aq = ''; renderGroupProfile(); }
-function gmAddBack() { S.gm.view = 'main'; renderGroupProfile(); }
+// Переход «окно группы ⇄ добавление участников» происходит внутри одного окна: прежнее содержимое гаснет (120 мс), новое появляется (200 мс)
+function gmSwapView(apply) {
+  const box = document.getElementById('gm-modal');
+  if (!box || !box.offsetParent || matchMedia('(prefers-reduced-motion: reduce)').matches) { apply(); return; }
+  clearTimeout(gmSwapView.t);
+  box.classList.remove('gm-vin'); box.classList.add('gm-vout');
+  gmSwapView.t = setTimeout(() => {
+    apply();
+    box.classList.remove('gm-vout'); box.classList.add('gm-vin');
+    gmSwapView.t = setTimeout(() => box.classList.remove('gm-vin'), 260);
+  }, 120);
+}
+function gmAddView() { gmSwapView(() => { S.gm.view = 'add'; S.gm.add = new Set(); S.gm.aq = ''; renderGroupProfile(); }); }
+function gmAddBack() { gmSwapView(() => { S.gm.view = 'main'; renderGroupProfile(); }); }
 function renderGroupAdd(keep) {
   const g = S.gm, chat = gmChat(), box = document.getElementById('gm-modal');
   if (!chat) return;
@@ -8255,9 +8161,9 @@ async function gmAddConfirm() {
   const err = res.find(r => r?.error);
   if (err) showActionToast(err.error);
   else if (res.some(r => r?.pending)) showActionToast('Приглашение отправлено. Человек появится в группе после согласия');
-  S.gm.view = 'main'; S.gm.add = new Set();
+  S.gm.add = new Set();
   await loadChats();
-  renderGroupProfile();
+  gmSwapView(() => { S.gm.view = 'main'; renderGroupProfile(); });
 }
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
@@ -8969,3 +8875,49 @@ window.peerSubText = peerSubText;
 window.personAv = personAv;
 window.scFmtCode = scFmtCode;
 window.wsTag = wsTag;
+
+// ── Мелочи поведения интерфейса ──
+// Зелёная точка у подписи «в сети …» в шапке. Текст подписи меняется из разных мест, поэтому следим за изменениями, а не правим каждое
+(function () {
+  let tm = 0;
+  const mark = () => {
+    tm = 0;
+    const el = document.querySelector('.chat-header .ch-sub');
+    if (el) el.classList.toggle('gl-online', /^\s*в сети/.test(el.textContent || ''));
+  };
+  // setTimeout, а не rAF: в свёрнутом окне кадры не рисуются и rAF не вызывается
+  const schedule = () => { if (!tm) tm = setTimeout(mark, 30); };
+  const init = () => { new MutationObserver(schedule).observe(document.body, { subtree: true, childList: true, characterData: true }); schedule(); };
+  if (document.body) init(); else document.addEventListener('DOMContentLoaded', init);
+})();
+
+// После щелчка мышью фокус снимается у кнопок (рамка остаётся только при управлении с клавиатуры)
+document.addEventListener('click', e => {
+  if (e.detail > 0) { const b = e.target.closest('button,[role=button],[role=tab],[role=radio],.chat-item,.sb-tab,.cs-sn'); if (b) setTimeout(() => { if (document.activeElement === b) b.blur(); }, 0); }
+});
+
+// Выделять текст можно только в полях ввода и внутри одного пузыря сообщения: протяжка через несколько пузырей
+// (и «выделить всё» вне полей) обрезается краем пузыря, с которого она началась
+(function () {
+  let busy = false;
+  const owner = n => { const el = n && (n.nodeType === 1 ? n : n.parentElement); return el || null; };
+  const inField = n => !!(owner(n) && owner(n).closest('input,textarea,[contenteditable]'));
+  document.addEventListener('selectionchange', () => {
+    if (busy) return;
+    const s = getSelection();
+    if (!s || s.isCollapsed || !s.anchorNode || inField(s.anchorNode) || inField(s.focusNode)) return;
+    const a = owner(s.anchorNode)?.closest('.msg-bubble'), f = owner(s.focusNode)?.closest('.msg-bubble');
+    if (a === f && a) return;
+    busy = true;
+    try {
+      if (!a) s.removeAllRanges();
+      else {
+        const after = !!(a.compareDocumentPosition(s.focusNode) & Node.DOCUMENT_POSITION_FOLLOWING) && !a.contains(s.focusNode);
+        s.setBaseAndExtent(s.anchorNode, s.anchorOffset, a, after ? a.childNodes.length : 0);
+      }
+    } finally { setTimeout(() => { busy = false; }, 0); }
+  });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'a' || e.key === 'ф' || e.key === 'A') && !inField(e.target)) e.preventDefault();
+  }, true);
+})();

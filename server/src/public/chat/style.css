@@ -103,8 +103,6 @@
   --chat-bg:    var(--app-bg);
   --bubble-bg:  var(--card-bg);
   /* Раздельный фон переписки: в светлой теме она чуть темнее сайдбара, пузыри белые */
-  --chat-split:   #e6e9ec;
-  --bubble-split: #ffffff;
   --hover:      var(--hover-row);
 }
 
@@ -163,8 +161,6 @@ html.dark {
   --chat-bg:    var(--app-bg);
   --bubble-bg:  #1b2733;
   /* В тёмной теме наоборот — переписка светлее сайдбара, пузыри ещё светлее */
-  --chat-split:   #12171d;
-  --bubble-split: #1b2733;
   --hover:      var(--hover-row);
 }
 
@@ -199,9 +195,7 @@ html.dark.navy {
 
   --bubble-bg:    #213040;
   --chat-bg:      #0f1b27;
-  --chat-split:   #0f1b27;
-  --bubble-split: #213040;
-}
+  }
 
 /* ── RESET & BASE ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -369,40 +363,8 @@ html.chat-phone #screen-phone-guard { display: flex; }
   font-size: 11px; color: var(--text2); text-align: center;
 }
 .pat-card.active .pat-cap { color: var(--accent); }
-
-.bg-cards { display: flex; gap: 10px; }
-.bg-card {
-  flex: 1; padding: 0; overflow: hidden; cursor: pointer;
-  background: none; border: 1px solid var(--border); border-radius: 10px;
-  transition: border-color .12s, box-shadow .12s;
-  font-family: inherit; text-align: left;
-}
-.bg-card:hover { border-color: var(--accent-border); }
-.bg-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 /* Обе половины красим явно: иначе «как обычно» брал бы фон модалки и выглядел
    разноцветным, хотя подпись обещает один цвет */
-.bg-skel { display: flex; width: 100%; height: 62px; background: var(--app-bg); }
-.bs-side {
-  width: 34%; background: var(--side-bg); border-right: 1px solid var(--border);
-  padding: 7px 5px; display: flex; flex-direction: column; gap: 5px;
-}
-.bs-chat {
-  flex: 1; background: var(--app-bg);
-  padding: 8px 7px; display: flex; flex-direction: column; gap: 5px; align-items: flex-start;
-}
-.bs-chat.split { background: var(--chat-split); }
-.bg-skel i { display: block; height: 4px; border-radius: 2px; background: var(--muted); opacity: .5; }
-.bs-side i { width: 100%; }
-.bs-chat i { background: var(--text2); opacity: .45; }
-.bs-chat i.a { width: 60%; }
-.bs-chat i.b { width: 78%; }
-.bs-chat i.c { width: 44%; align-self: flex-end; background: var(--accent); opacity: .75; }
-.bg-cap {
-  display: block; padding: 7px 9px 9px; border-top: 1px solid var(--border);
-  font-size: 11.5px; color: var(--text2); line-height: 1.35;
-}
-.bg-cap b { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 1px; }
-.bg-card.active .bg-cap b { color: var(--accent); }
 
 /* Выбор цветового акцента: кружки-образцы в настройках */
 .accent-seg { display: flex; align-items: center; gap: 9px; }
@@ -2918,15 +2880,9 @@ html.dark .anx-solid { color: #0c0e10; }
 .cs-pv-side i.on { background: var(--accent-soft); }
 .cs-pv-msg { border-radius: 16px; }
 .cs-pv-msg.in { border-bottom-left-radius: 5px; }
-.cs-pv-msg.out { background: color-mix(in srgb, var(--accent) 22%, var(--card-bg)); color: var(--text); border-bottom-right-radius: 5px; }
-.bg-card, .pat-card { border: 0; box-shadow: none; }
-.bg-card { border-radius: 20px; background: var(--card-bg); }
-.pat-card { border-radius: 16px; background: var(--search-bg); }
-.bg-card:hover, .pat-card:hover { border: 0; }
-.bg-card.active, .pat-card.active { border: 0; box-shadow: 0 0 0 2px var(--accent); }
-.bg-cap { border-top: 0; padding: 9px 13px 11px; }
+.cs-pv-msg.out { background: color-mix(in srgb, var(--accent) 22%, var(--card-bg)); color: var(--text); border-bottom-right-radius: 5px; } .pat-card { border: 0; box-shadow: none; }
+.pat-card { border-radius: 16px; background: var(--search-bg); } .pat-card:hover { border: 0; } .pat-card.active { border: 0; box-shadow: 0 0 0 2px var(--accent); }
 .pat-cap { border-top: 0; }
-.bs-side { border-right: 0; }
 .accent-dot { width: 24px; height: 24px; }
 .accent-dot.active { box-shadow: 0 0 0 3px var(--card-bg), 0 0 0 5px var(--dot); }
 .cs-ver { padding: 18px; border: 0; border-radius: 24px; background: var(--card-bg); }
