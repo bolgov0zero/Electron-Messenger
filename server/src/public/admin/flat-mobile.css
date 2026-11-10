@@ -9,11 +9,11 @@
 :root {
   --topbar-h: 56px; --mnav-h: 60px;
   --bar-sh: 0 8px 20px -10px rgba(60, 40, 20, .18); --bar-sh-up: 0 -8px 20px -10px rgba(60, 40, 20, .14);
-  --kit-btn-h: 44px; --kit-btn-h-sm: 44px; --kit-btn-px: 16px; --kit-btn-px-sm: 14px; --kit-btn-fs: 14px; --kit-btn-fs-sm: 13.5px; 
-  --kit-ibtn-sm: 44px; --kit-close-size: 44px; --kit-close-icon: 20px;
-  --kit-seg-h: 44px; --kit-seg-h-sm: 40px; --kit-seg-fs: 13.5px; --kit-chip-h: 36px;
-  --kit-field-h: 48px; --kit-field-h-sm: 44px; --kit-field-fs: 16px; --kit-field-fs-sm: 16px;
-  --kit-tab-h: 44px; --kit-tag-fs: 12px;
+  --kit-btn-h: 40px; --kit-btn-h-sm: 36px; --kit-btn-px: 16px; --kit-btn-px-sm: 14px; --kit-btn-fs: 14px; --kit-btn-fs-sm: 13.5px; 
+  --kit-ibtn-sm: 40px; --kit-close-size: 40px; --kit-close-icon: 18px;
+  --kit-seg-h: 36px; --kit-seg-h-sm: 32px; --kit-seg-fs: 13px; --kit-chip-h: 32px;
+  --kit-field-h: 44px; --kit-field-h-sm: 40px; --kit-field-fs: 16px; --kit-field-fs-sm: 16px;
+  --kit-tab-h: 40px; --kit-tag-fs: 12px;
 }
 :root[data-theme="dark"] { --bar-sh: 0 8px 20px -10px rgba(0, 0, 0, .5); --bar-sh-up: 0 -8px 20px -10px rgba(0, 0, 0, .5); }
 body { font-size: 14px; background: var(--app-bg); }
@@ -24,7 +24,7 @@ html[data-msub="1"] .topbar { padding-left: 6px; }
 .topbar-center { padding-left: 0; }
 .topbar-center span { font-size: 20px; font-weight: 800; letter-spacing: -.015em; color: var(--text); }
 html[data-msub="1"] .topbar-center { padding-left: 0; }
-.mback { width: 44px; height: 44px; border-radius: var(--kit-r); background: var(--kit-ibtn-bg); color: var(--kit-ibtn-fg); }
+.mback { width: 40px; height: 40px; border-radius: var(--kit-r); background: var(--kit-ibtn-bg); color: var(--kit-ibtn-fg); }
 .mback svg { width: 20px; height: 20px; }
 .mback:active { background: var(--kit-ibtn-bg-h); transform: scale(var(--kit-press)); }
 /* общий статус «Главной»: только точка рядом с заголовком, текст читается из подписи */
@@ -32,7 +32,7 @@ html[data-msub="1"] .topbar-center { padding-left: 0; }
 .topbar-right { gap: 8px; }
 #topbar-extra { gap: 8px !important; }
 /* действия верхней строки — значки 44×44 из кита: вторичные — как иконочные, «создать» — заливка акцентом */
-.topbar-right .btn { width: 44px; min-width: 44px; height: 44px; padding: 0; border-radius: var(--kit-r); }
+.topbar-right .btn { width: 40px; min-width: 40px; height: 40px; padding: 0; border-radius: var(--kit-r); }
 .topbar-right .btn:not(.btn-primary) { background: var(--kit-ibtn-bg); color: var(--kit-ibtn-fg); }
 .topbar-right .btn:not(.btn-primary):active { background: var(--kit-ibtn-bg-h); }
 .topbar-right .btn svg { width: 20px; height: 20px; }
@@ -125,7 +125,7 @@ input[type="checkbox"]:not(.toggle-switch > input) { position: relative; }
 input[type="checkbox"]:not(.toggle-switch > input)::before { content: ""; position: absolute; inset: -12px; }
 /* кнопки в строках: значки 44×44, имя получает остальное место */
 .ux-actions { gap: 4px; }
-.ux-ibtn, .ux-actions .btn:not(.btn-primary):not(.btn-danger), .ux-actions .btn-sm { width: 44px; height: 44px; min-width: 44px; padding: 0; border-radius: var(--kit-r); }
+.ux-ibtn, .ux-actions .btn:not(.btn-primary):not(.btn-danger), .ux-actions .btn-sm { width: 40px; height: 40px; min-width: 40px; padding: 0; border-radius: var(--kit-r); }
 .ux-ibtn svg, .ux-actions .btn:not(.btn-primary):not(.btn-danger) svg { width: 18px; height: 18px; }
 .ub-dev { display: none; }
 .ux-name, .rb-nl b, .fb-name b { font-size: 15px; font-weight: 600; color: var(--text); }
@@ -184,24 +184,24 @@ input[type="checkbox"]:not(.toggle-switch > input)::before { content: ""; positi
 .dv-big { font-size: 24px; }
 .xh-stat small { font-size: 12px; }
 .xh-stat b { font-size: 14px; }
-.xh-btn, .xh-act .btn { min-height: 44px; padding: 0 16px; font-size: 13.5px; border-radius: var(--kit-r); }
-.xs-seg button, .xp-seg button, .xp-tab, .xp-tg { min-height: 44px; font-size: 13px; }
+.xh-btn, .xh-act .btn { min-height: 40px; padding: 0 16px; font-size: 13.5px; border-radius: var(--kit-r); }
+.xs-seg button, .xp-seg button, .xp-tab, .xp-tg { min-height: 32px; font-size: 13px; }
 .xs-seg, .xp-seg { padding: 2px; }
 .xp-tabs { gap: 4px; }
 .xp-tg { padding: 0 12px; }
-.xs-ar .btn { min-height: 44px; padding: 0 14px; }
+.xs-ar .btn { min-height: 40px; padding: 0 14px; }
 .xs-pr small, .xs-pr .s { font-size: 12px; }
 .dv small, .dv .hm-panel small { font-size: 12px; }
 
 /* ═════════ 7. Настройки, федерации, пространства, модули ═════════ */
-.sp-seg button, .st-seg button, .an-seg button, .fm-tabs button, .lkp-tabs button, .dc-seg button { min-height: 44px; }
+.sp-seg button, .st-seg button, .an-seg button, .fm-tabs button, .lkp-tabs button, .dc-seg button { min-height: 32px; }
 .sp-chv { font-size: 12px; }
 .mdk-i { position: relative; }
 .mdk-i::after { content: ""; position: absolute; inset: -13px; }
-.mdk-eye { width: 44px; height: 44px; }
-.mdk-lnk { display: inline-flex; align-items: center; min-height: 44px; }
+.mdk-eye { width: 40px; height: 40px; }
+.mdk-lnk { display: inline-flex; align-items: center; min-height: 40px; }
 .fl-thumb { font-size: 12px; }
-button[data-on-click="wsFilter"] { min-height: 44px; font-size: 13px; }
+button[data-on-click="wsFilter"] { min-height: 32px; font-size: 13px; }
 .mdk-i { font-size: 12px; }
 .al-t2, .al-day2 span { font-size: 12px; }
 
@@ -221,17 +221,17 @@ button[data-on-click="wsFilter"] { min-height: 44px; font-size: 13px; }
 /* строка настройки: название и стрелка на первой линии, быстрое действие — второй, на всю ширину */
 .sp-ah { flex-wrap: wrap; row-gap: 0; padding-right: 4px; }
 .sp-ahm { flex: 1 1 0; min-height: 64px; }
-.sp-ahc { width: 44px; min-height: 44px; }
+.sp-ahc { width: 40px; min-height: 40px; }
 .sp-aq { order: 3; flex: 1 1 100%; padding: 0 12px 12px 66px; }
 .sp-aq .btn { flex: 1; justify-content: center; }
-.fm-chip, .ux-chip, .an-ch { min-height: 44px; }
+.fm-chip, .ux-chip, .an-ch { min-height: 32px; }
 
 /* ═════════ 9. Федерации: карта двигается пальцем (панорама) и кнопками «+ −», боковая карточка — под картой ═════════ */
-.fd-stp button { width: 44px; min-height: 44px; }
+.fd-stp button { width: 40px; min-height: 40px; }
 .fm-tb { padding: 12px 14px; }
 .fm-zoom { gap: 8px; }
-.fm-zoom button { min-width: 44px; height: 44px; border-radius: var(--kit-r); font-size: 18px; }
-.fm-pill, .fm-tb .fm-pill { min-height: 44px; padding: 0 14px; font-size: 13px; }
+.fm-zoom button { min-width: 40px; height: 40px; border-radius: var(--kit-r); font-size: 18px; }
+.fm-pill, .fm-tb .fm-pill { min-height: 32px; padding: 0 14px; font-size: 13px; }
 .fm-stage { height: min(56dvh, 460px); min-height: 320px; }
 .fm-vt, .fm-el, .fm-me { font-size: 12px; }
 .fm-lg { left: 10px; bottom: 10px; gap: 6px 12px; font-size: 12px; }
@@ -242,10 +242,10 @@ button[data-on-click="wsFilter"] { min-height: 44px; font-size: 13px; }
 .fm-ac .btn { flex: 1 1 auto; justify-content: center; }
 
 /* ═════════ 10. Мелочи окон: чипы и «Дополнительно» не ниже 44, подписи не меньше 12 ═════════ */
-.fm-chip, .fm-chip.cnt, .dtp-field.an-ch, .an-ch, .ux-chip { height: 44px; min-height: 44px; }
-button[data-on-click="uaMore"][aria-expanded] { min-height: 44px; }
-.btn[data-on-click="uaCopy"] { min-width: 44px; }
-.mm-set .sb-th button { min-height: 44px; }
+.fm-chip, .fm-chip.cnt, .dtp-field.an-ch, .an-ch, .ux-chip { height: 32px; min-height: 32px; }
+button[data-on-click="uaMore"][aria-expanded] { min-height: 36px; }
+.btn[data-on-click="uaCopy"] { min-width: 40px; }
+.mm-set .sb-th button { min-height: 32px; }
 .an-pv-ph, .an-pv small, .rm-tabs small, .fm-tabs small, .fm-tabs button span, .rm-tabs button span { font-size: 12px; }
 .modal-bg small { font-size: 12px; }
 
@@ -273,7 +273,7 @@ html, body { overflow-x: clip; max-width: 100%; }
 .dc-ex, .dc-res, .dc-kp { grid-template-columns: minmax(0, 1fr); }
 .dc-kp { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .dc-ex > *, .dc-res > *, .dc-kp > *, .dc-cmp > *, .dc-tp > *, .dc-tr > *, .dc-sr > * { min-width: 0; }
-.dc-ft .dc-btn { max-width: 100%; height: auto; min-height: 44px; padding-top: 6px; padding-bottom: 6px; white-space: normal; text-align: left; }
+.dc-ft .dc-btn { max-width: 100%; height: auto; min-height: 40px; padding-top: 6px; padding-bottom: 6px; white-space: normal; text-align: left; }
 .xs-heat { grid-template-columns: 22px repeat(24, minmax(0, 1fr)); }
 .xs-heat > span { min-width: 0; white-space: nowrap; }
 /* фильтр: длинные названия в списке переносятся, число справа не сжимается */
@@ -305,7 +305,7 @@ html[data-msub="1"] .topbar { padding-left: calc(6px + var(--safe-l)); }
 #login, #login-totp { padding: var(--safe-t) var(--safe-r) env(safe-area-inset-bottom, 0px) var(--safe-l); }
 
 /* «Обновить» в строке клиента: только значок 44×44 (подпись — для скринридера, title и aria-label «Обновить» остаются) */
-.ux-actions .cl-upd { width: 44px; min-width: 44px; height: 44px; padding: 0; gap: 0; justify-content: center; }
+.ux-actions .cl-upd { width: 40px; min-width: 40px; height: 40px; padding: 0; gap: 0; justify-content: center; }
 .ux-actions .cl-upd svg { width: 20px; height: 20px; }
 .cl-upd .cl-upd-t { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
 .ux-actions .cl-upd { position: relative; }
@@ -344,3 +344,23 @@ html[data-msub="1"] .topbar { padding-left: calc(6px + var(--safe-l)); }
 .fm-li .n small, .fm-li .n b { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* поля ввода не меньше 16 px: iOS не приближает страницу при фокусе */
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select { font-size: 16px !important; }
+
+/* ═════════ 14. Ряды переключателей и чипов: одна строка, горизонтальный скролл внутри ряда ═════════
+   Если сегменты, вкладки или чипы не помещаются в одну строку, они не переносятся и не ломают сетку, а прокручиваются по горизонтали
+   внутри своего ряда (страница при этом не скроллится). Подписи не сжимаются и не обрезаются. */
+@media (max-width: 820px) {
+  .xs-seg, .xp-seg, .an-seg, .sp-seg, .st-seg, .fm-tabs, .lkp-tabs, .dc-seg, .rm-tabs, .ub-sort, .ws-fl, .fm-grp, .xp-tabs,
+  :has(> .fm-chip), :has(> .ux-chip), :has(> .an-ch) {
+    display: flex; flex-wrap: nowrap; grid-template-columns: none; max-width: 100%; min-width: 0;
+    overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;
+    scrollbar-width: none; scroll-snap-type: x proximity;
+  }
+  .xs-seg::-webkit-scrollbar, .xp-seg::-webkit-scrollbar, .an-seg::-webkit-scrollbar, .sp-seg::-webkit-scrollbar, .st-seg::-webkit-scrollbar,
+  .fm-tabs::-webkit-scrollbar, .lkp-tabs::-webkit-scrollbar, .dc-seg::-webkit-scrollbar, .rm-tabs::-webkit-scrollbar, .ub-sort::-webkit-scrollbar,
+  .ws-fl::-webkit-scrollbar, .fm-grp::-webkit-scrollbar, .xp-tabs::-webkit-scrollbar { display: none; }
+  .xs-seg > *, .xp-seg > *, .an-seg > *, .sp-seg > *, .st-seg > *, .fm-tabs > *, .lkp-tabs > *, .dc-seg > *, .rm-tabs > *, .ub-sort > *,
+  .ws-fl > *, .fm-grp > *, .xp-tabs > *, .fm-chip, .ux-chip, .an-ch {
+    flex: 0 0 auto; min-width: 0; white-space: nowrap; overflow: visible; text-overflow: clip; scroll-snap-align: start;
+  }
+  .xs-seg button, .xp-seg button, .an-seg button { flex: 0 0 auto; padding-left: 14px; padding-right: 14px; overflow: visible; text-overflow: clip; }
+}
