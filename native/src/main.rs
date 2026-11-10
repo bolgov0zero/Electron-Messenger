@@ -1,5 +1,6 @@
 //! Прототип нативного клиента на egui: вход, список чатов, лента, отправка.
 //! Дизайн — «Мягкий» (flat) из client/src/flat*.css.
+mod icons;
 mod model;
 mod net;
 mod store;
@@ -697,20 +698,10 @@ impl App {
                     } else {
                         "Проверить обновления"
                     });
-                    let p = ui.painter();
+                    let p = ui.painter().clone();
                     p.rect_filled(r, 12, if resp.hovered() { pal.hover2 } else { pal.surf2 });
-                    let col = if upd_busy { pal.muted } else { pal.text2 };
-                    let c = r.center();
-                    let pts: Vec<egui::Pos2> = (0..=22)
-                        .map(|i| {
-                            let a = (50.0 + i as f32 / 22.0 * 270.0).to_radians();
-                            pos2(c.x + 6.5 * a.cos(), c.y - 6.5 * a.sin())
-                        })
-                        .collect();
-                    let end = pts[pts.len() - 1];
-                    p.add(egui::Shape::line(pts, Stroke::new(1.8, col)));
-                    p.line_segment([end, pos2(end.x + 4.5, end.y - 0.5)], Stroke::new(1.8, col));
-                    p.line_segment([end, pos2(end.x + 0.5, end.y + 4.5)], Stroke::new(1.8, col));
+                    let col = if upd_busy { pal.muted } else if resp.hovered() { pal.text } else { pal.text2 };
+                    icons::paint(ui, &icons::REFRESH_CW, Rect::from_center_size(r.center(), vec2(18.0, 18.0)), col, 2.0);
                     if upd_avail {
                         p.circle_filled(pos2(r.right() - 4.0, r.top() + 4.0), 4.5, pal.accent);
                         p.circle_stroke(pos2(r.right() - 4.0, r.top() + 4.0), 4.5, Stroke::new(1.5, pal.side_bg));
@@ -840,13 +831,9 @@ impl App {
             let r = Rect::from_min_size(pos2(band.right() - 14.0 - btn, band.bottom() - 14.0 - btn), vec2(btn, btn));
             let resp = ui.interact(r, Id::new("send_btn"), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
             let ready = !self.input.trim().is_empty();
-            let p = ui.painter();
-            p.rect_filled(r, 12, if ready { pal.accent_fill } else if resp.hovered() { pal.hover2 } else { pal.surf2 });
-            let c = r.center();
-            let st = Stroke::new(2.2, if ready { Color32::WHITE } else { pal.text2 });
-            p.line_segment([pos2(c.x, c.y + 7.0), pos2(c.x, c.y - 7.0)], st);
-            p.line_segment([pos2(c.x, c.y - 7.0), pos2(c.x - 6.0, c.y - 1.0)], st);
-            p.line_segment([pos2(c.x, c.y - 7.0), pos2(c.x + 6.0, c.y - 1.0)], st);
+            ui.painter().rect_filled(r, 12, if ready { pal.accent_fill } else if resp.hovered() { pal.hover2 } else { pal.surf2 });
+            let ic = if ready { Color32::WHITE } else if resp.hovered() { pal.text } else { pal.text2 };
+            icons::paint(ui, &icons::SEND, Rect::from_center_size(r.center(), vec2(16.0, 16.0)), ic, 2.5);
             if resp.clicked() {
                 do_send = true;
             }
@@ -966,10 +953,8 @@ impl App {
             let p = ui.painter().clone();
             p.rect_filled(r.translate(vec2(0.0, 2.0)).expand(1.0), 13, Color32::from_black_alpha(if pal.dark { 80 } else { 22 }));
             p.rect_filled(r, 12, if resp.hovered() { pal.hover2 } else { pal.side_bg });
-            let c = r.center();
-            let st = Stroke::new(2.5, if resp.hovered() { pal.text } else { pal.text2 });
-            p.line_segment([pos2(c.x - 6.0, c.y - 3.0), pos2(c.x, c.y + 3.0)], st);
-            p.line_segment([pos2(c.x, c.y + 3.0), pos2(c.x + 6.0, c.y - 3.0)], st);
+            let ic = if resp.hovered() { pal.text } else { pal.text2 };
+            icons::paint(ui, &icons::CHEVRON_DOWN, Rect::from_center_size(r.center(), vec2(20.0, 20.0)), ic, 2.5);
             if chat.unread > 0 {
                 let label = if chat.unread > 99 { "99+".to_string() } else { chat.unread.to_string() };
                 let g = p.layout_no_wrap(label, FontId::new(11.0, bold()), Color32::WHITE);
