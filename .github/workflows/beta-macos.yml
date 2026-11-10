@@ -37,6 +37,9 @@ jobs:
 
       - name: Bundle .app and .dmg
         working-directory: native
+        env:
+          P12_B64: ${{ secrets.NATIVE_SIGN_P12_BASE64 }}
+          P12_PASS: ${{ secrets.NATIVE_SIGN_P12_PASSWORD }}
         run: |
           APP="dist/Chat.app"
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -80,8 +83,26 @@ jobs:
           </plist>
           PLIST
 
-          # Подпись «ad hoc» (без сертификата разработчика), иначе универсальный бинарник не запустится на arm64
-          codesign --force --deep --sign - "$APP"
+          # Подпись одним и тем же самоподписанным сертификатом: требование подписи (identifier + хэш сертификата)
+          # не меняется от сборки к сборке, поэтому связка ключей и Little Snitch узнают приложение после обновления.
+          # Без секретов — запасной вариант «ad hoc» (подпись меняется с каждой сборкой).
+          if [ -n "$P12_B64" ]; then
+            KC="$RUNNER_TEMP/sign.keychain-db"
+            KCPASS="$(uuidgen)"
+            echo "$P12_B64" | base64 --decode > "$RUNNER_TEMP/sign.p12"
+            security create-keychain -p "$KCPASS" "$KC"
+            security set-keychain-settings -lut 3600 "$KC"
+            security unlock-keychain -p "$KCPASS" "$KC"
+            security import "$RUNNER_TEMP/sign.p12" -k "$KC" -P "$P12_PASS" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple: -s -k "$KCPASS" "$KC" > /dev/null
+            codesign --force --deep --keychain "$KC" --sign "Chat Native Beta" "$APP"
+            security delete-keychain "$KC"
+            rm -f "$RUNNER_TEMP/sign.p12"
+          else
+            codesign --force --deep --sign - "$APP"
+          fi
+          codesign --verify --deep --strict "$APP"
+          codesign -d -r- "$APP" 2>&1 | grep designated
 
           hdiutil create -volname "Chat" -srcfolder dist -ov -format UDZO "Chat-native-beta.dmg"
 
