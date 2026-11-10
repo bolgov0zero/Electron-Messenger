@@ -251,3 +251,96 @@ button[data-on-click="uaMore"][aria-expanded] { min-height: 44px; }
 
 /* Числа: цифры одной ширины (шорткат font: выше сбрасывает наследуемое значение) */
 html body .mnav .mn-b, html body .fsm-b .v .n, html body .fsm-b .v b { font-variant-numeric: tabular-nums; }
+
+/* ═════════ 11. Длинные данные и узкие экраны (320–430 px): ничего не выходит за край и страница не листается вбок ═════════
+   Прогон: все разделы × 6 ширин × 2 темы × свёрнуто/раскрыто + все окна, с длинными ФИО, логинами, тегами, адресами и ключами.
+   Широкий блок листается только внутри себя (overflow-x: auto); длинные слова переносятся (overflow-wrap: anywhere), подписи — с многоточием. */
+html, body { overflow-x: clip; max-width: 100%; }
+#app, .modal-bg, #toast-container, #login, #login-totp { overflow-wrap: anywhere; }
+/* имя, логин, тег, пространства: в узкой колонке имя — отдельная строка (многоточием), ниже в строку идут логин, тег и пилюли пространств, лишнее переносится */
+.ux-cell > div:has(> .ux-name > .ux-nm) { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; }
+.ux-cell > div:has(> .ux-name > .ux-nm) > :is(.ux-name, .ux-login) { display: contents; }
+.ux-nm { order: 0; flex: 1 1 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ux-lg { order: 1; flex: 1 1 0; min-width: 3em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ux-name > .ux-tag { order: 2; display: block; flex: 0 1 auto; min-width: 0; max-width: 50%; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ux-login > .ws-pill { order: 3; display: block; flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ux-login > .ws-pill::before { display: inline-block; margin-right: 5px; vertical-align: middle; }
+.ux-login > .ws-pill.more { padding-left: 7px; }
+/* остальные .ux-name / .ux-login (клиенты, комнаты, окна): одна строка с многоточием */
+.ux-name:not(:has(> .ux-nm)), .ux-login:not(:has(> .ux-lg)) { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ub-row .ux-cell, .cb-row .ux-cell { -webkit-mask-image: none; mask-image: none; }
+/* Главная и «Звонки»: раскрытая плитка — одна колонка без минимальной ширины, кнопки переносятся */
+.dc-ex, .dc-res, .dc-kp { grid-template-columns: minmax(0, 1fr); }
+.dc-kp { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dc-ex > *, .dc-res > *, .dc-kp > *, .dc-cmp > *, .dc-tp > *, .dc-tr > *, .dc-sr > * { min-width: 0; }
+.dc-ft .dc-btn { max-width: 100%; height: auto; min-height: 44px; padding-top: 6px; padding-bottom: 6px; white-space: normal; text-align: left; }
+.xs-heat { grid-template-columns: 22px repeat(24, minmax(0, 1fr)); }
+.xs-heat > span { min-width: 0; white-space: nowrap; }
+/* фильтр: длинные названия в списке переносятся, число справа не сжимается */
+.fsm-p { max-width: calc(100vw - 16px); overflow-x: hidden; }
+.fsm-o { white-space: normal; text-align: left; overflow-wrap: anywhere; height: auto; padding-top: 8px; padding-bottom: 8px; }
+.fsm-o > b, .fsm-o > .n { flex: none; }
+/* «Настройки → Резервные копии»: одна колонка без минимальной ширины */
+.sp-abg { grid-template-columns: minmax(0, 1fr); }
+.sp-abg > * { min-width: 0; }
+/* Главная: переключатель «Внимание / В сети / Клиенты / Активность» на самых узких экранах — два ряда по два */
+@media (max-width: 380px) {
+  .xs-seg { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .xs-seg button { padding-left: 4px; padding-right: 4px; }
+}
+
+/* ═════════ 12. Вырезы и жесты (viewport-fit=cover): верхняя строка, нижняя панель, уведомления и шторки не уходят под вырез, «домашнюю» полосу и скругления ═════════ */
+:root { --safe-t: env(safe-area-inset-top, 0px); --safe-l: env(safe-area-inset-left, 0px); --safe-r: env(safe-area-inset-right, 0px); }
+.topbar { height: calc(var(--topbar-h) + var(--safe-t)); padding: var(--safe-t) calc(8px + var(--safe-r)) 0 calc(12px + var(--safe-l)); }
+html[data-msub="1"] .topbar { padding-left: calc(6px + var(--safe-l)); }
+.app-layout { top: calc(var(--topbar-h) + var(--safe-t)); left: var(--safe-l); right: var(--safe-r); }
+.mnav { padding-left: calc(4px + var(--safe-l)); padding-right: calc(4px + var(--safe-r)); }
+#toast-container { left: calc(12px + var(--safe-l)); right: calc(12px + var(--safe-r)); }
+.sp-toast { bottom: calc(var(--mnav-h) + var(--msafe) + 10px); max-width: calc(100vw - 24px - var(--safe-l) - var(--safe-r)); }
+.modal-body, .ua-body, .rs-b, .modal-head, .ua-head, .rs-h { padding-left: max(18px, calc(var(--safe-l) + 12px)); padding-right: max(18px, calc(var(--safe-r) + 12px)); }
+.modal-head, .ua-head, .rs-h { padding-right: max(12px, calc(var(--safe-r) + 8px)); }
+.modal-foot, .ua-foot, .an-foot, .rs-f { padding-left: max(18px, calc(var(--safe-l) + 12px)); padding-right: max(18px, calc(var(--safe-r) + 12px)); }
+.login-card { max-width: min(360px, calc(100vw - 32px - var(--safe-l) - var(--safe-r))); }
+@supports (height: 100dvh) { #app, #login, #login-totp { height: 100dvh; } }
+#login, #login-totp { padding: var(--safe-t) var(--safe-r) env(safe-area-inset-bottom, 0px) var(--safe-l); }
+
+/* «Обновить» в строке клиента: только значок 44×44 (подпись — для скринридера, title и aria-label «Обновить» остаются) */
+.ux-actions .cl-upd { width: 44px; min-width: 44px; height: 44px; padding: 0; gap: 0; justify-content: center; }
+.ux-actions .cl-upd svg { width: 20px; height: 20px; }
+.cl-upd .cl-upd-t { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.ux-actions .cl-upd { position: relative; }
+
+/* ═════════ 13. Значения не вылетают из своих карточек (проверка: края текста, чисел, svg и ячеек не шире карточки/плитки/строки) ═════════ */
+.xs-seg, .xp-seg { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 380px) { .xs-seg { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.xs-seg button, .xp-seg button { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xs-seg button > *, .xp-seg button > * { min-width: 0; }
+.xh-stats, .xh-stat { min-width: 0; }
+.xh-stat b, .xh-stat small { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-cs { min-width: 0; max-width: 100%; }
+.dc-cs b, .dc-k-v b, .dc-cs span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.dc-res-lg span { white-space: normal; min-width: 0; }
+.dv-big, .ub-big, .xp-sum .dv-big { min-width: 0; max-width: 100%; font-size: clamp(18px, 6vw, 24px); overflow-wrap: anywhere; }
+.dv-lbl, .ub-lbl, .dv-sub, .ub-sub { min-width: 0; overflow-wrap: anywhere; }
+.sp-link { margin: 0; }
+/* версия клиента (в т.ч. длинная «3.38.2-beta.1+build…») переносится внутри строки, а не вылетает за карточку */
+.cb-row > :nth-child(5) { min-width: 0; max-width: 100%; }
+.cl-ver { flex-wrap: wrap; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.cl-ver > .to { min-width: 0; }
+.ub-leg { flex-wrap: wrap; min-width: 0; }
+.ub-leg > span { min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+/* Главная → «Клиенты»: версии в строках шкал не вылезают из своей колонки */
+.xs-vb { grid-template-columns: minmax(0, 78px) minmax(0, 1fr) 28px minmax(0, 84px); }
+.xs-vb > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* переключатель «Внимание · В сети · Клиенты · Активность» — два ряда по два до 480 px: подпись со счётчиком не помещается в четвёртую часть строки */
+@media (max-width: 480px) { .xs-seg { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.xs-cnt { flex: none; }
+/* вход: ключ 2FA и кнопка «Копировать» в одну строку, поле сжимается */
+#totp-secret { min-width: 0; }
+/* окно «Новое объявление»: переключатель вида на всю ширину, подписи сжимаются */
+.an-seg { width: 100%; }
+.an-seg button { flex: 1 1 0; min-width: 0; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* список людей в окнах: логин под именем — одной строкой с многоточием */
+.fm-li .n small, .fm-li .n b { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* поля ввода не меньше 16 px: iOS не приближает страницу при фокусе */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select { font-size: 16px !important; }

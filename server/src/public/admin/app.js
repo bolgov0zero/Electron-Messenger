@@ -2874,7 +2874,7 @@ function uaRender() {
       <div class="ub-rows">${rows.map(u => `<div class="ub-row${UA.sel.has(u.id) ? ' sel' : ''}${u.banned ? ' ua-banned' : ''}" data-k="${u.id}">
         <input type="checkbox" aria-label="Выбрать: ${esc(u.display_name)}" ${UA.sel.has(u.id) ? 'checked' : ''} data-on-change="uaToggle" data-a-change="${esc(JSON.stringify([u.id]))}">
         <div class="ux-cell">${avHtml(u.display_name, 38, 11, u.id, uaDot(u), u.has_avatar)}
-          <div style="min-width:0"><div class="ux-name">${esc(u.display_name)}${uxTag(u.tag)}</div><div class="ux-login">@${esc(u.username)}${WS.list.length > 1 ? ' ' + uaWsPills(u) : ''}</div></div></div>
+          <div style="min-width:0"><div class="ux-name"><span class="ux-nm">${esc(u.display_name)}</span>${uxTag(u.tag)}</div><div class="ux-login"><span class="ux-lg">@${esc(u.username)}</span>${WS.list.length > 1 ? ' ' + uaWsPills(u) : ''}</div></div></div>
         <div class="ub-role">${uaRole(u)}<small>создан ${fmtDate(u.created_at)}</small></div>
         <div class="ub-st">${uaStatusPill(u)}</div>
         <div class="ux-actions">
@@ -3718,7 +3718,7 @@ function clVersion(c) {
   return `<span class="cl-ver ok">${UX_I.check}${esc(c.clientVersion)}${p?.status === 'restarted' && c.clientVersion === CL.latest ? ' <span class="note">· только что обновлён</span>' : ''}</span>`;
 }
 function clActions(c) {
-  const update = clOutdated(c) && !clBusy(c) ? `<button class="btn btn-primary btn-sm" data-on-click="clUpdate" data-a-click="${esc(JSON.stringify([[c.connId]]))}">${UX_I.up}Обновить</button>` : '';
+  const update = clOutdated(c) && !clBusy(c) ? `<button class="btn btn-primary btn-sm cl-upd" title="Обновить" aria-label="Обновить" data-on-click="clUpdate" data-a-click="${esc(JSON.stringify([[c.connId]]))}">${UX_I.up}<span class="cl-upd-t">Обновить</span></button>` : '';
   return `<div class="ux-actions">${update}<button class="ux-ibtn" aria-label="Действия: ${esc(clHost(c))}" aria-haspopup="menu" aria-expanded="false" data-on-click="clMenu" data-a-click="${esc(JSON.stringify(["__event", c.connId]))}">${UX_I.more}</button></div>`;
 }
 
