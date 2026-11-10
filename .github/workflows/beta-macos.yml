@@ -99,8 +99,11 @@ jobs:
             # доверенным для подписи кода (только на этой временной виртуальной машине)
             /usr/bin/openssl pkcs12 -in "$RUNNER_TEMP/sign.p12" -clcerts -nokeys -passin env:P12_PASS -out "$RUNNER_TEMP/sign-cert.pem"
             sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain "$RUNNER_TEMP/sign-cert.pem"
-            security find-identity -p codesigning "$KC"
-            codesign --force --deep --keychain "$KC" --sign "Chat Native Beta" "$APP"
+            # связка должна быть в списке поиска, а подписывать надёжнее по хэшу сертификата, а не по имени
+            security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+            HASH="$(security find-identity -v -p codesigning "$KC" | awk '/Chat Native Beta/ {print $2; exit}')"
+            echo "Идентичность подписи: $HASH"
+            codesign --force --deep --keychain "$KC" --sign "$HASH" "$APP"
             security delete-keychain "$KC"
             rm -f "$RUNNER_TEMP/sign.p12" "$RUNNER_TEMP/sign-cert.pem"
           else
