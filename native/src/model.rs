@@ -28,6 +28,14 @@ pub struct Member {
     pub name: String,
 }
 
+/// Статус доставки своего сообщения: сколько получателей получили и прочитали.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Status {
+    pub delivered: i64,
+    pub read: i64,
+    pub total: i64,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Msg {
     pub id: i64,
@@ -44,6 +52,7 @@ pub struct Msg {
     pub reply_text: String,
     pub client_id: String,
     pub pending: bool,
+    pub status: Option<Status>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -90,6 +99,11 @@ pub fn parse_msg(v: &Value) -> Msg {
         reply_text: gs(v, "reply_text"),
         client_id: gs(v, "client_id"),
         pending: false,
+        status: v.get("status").filter(|s| s.is_object()).map(|s| Status {
+            delivered: gi(s, "delivered"),
+            read: gi(s, "read"),
+            total: gi(s, "total"),
+        }),
     }
 }
 

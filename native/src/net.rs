@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::model::{gb, gi, gs, parse_chat, parse_msg, Chat, Msg};
+use crate::model::{gb, gi, gs, parse_chat, parse_msg, Chat, Msg, Status};
 use crate::store::Session;
 
 pub enum Event {
@@ -19,6 +19,8 @@ pub enum Event {
     History { chat_id: i64, msgs: Vec<Msg> },
     Message(Msg),
     Rejected { chat_id: i64, reason: String },
+    Status { chat_id: i64, id: i64, status: Status },
+    StatusRange { chat_id: i64, kind: String, min: i64, max: i64, reader: i64 },
     WsState(bool),
     ReloadChats,
     AuthExpired,
@@ -214,6 +216,21 @@ impl Net {
             }
             "send_rejected" => self.emit(Event::Rejected { chat_id: gi(&v, "chat_id"), reason: gs(&v, "reason") }),
             "reload_chats" => self.emit(Event::ReloadChats),
+            "status_update" => {
+                if let Some(m) = v.get("message") {
+                    let msg = parse_msg(m);
+                    if let Some(status) = msg.status {
+                        self.emit(Event::Status { chat_id: msg.chat_id, id: msg.id, status });
+                    }
+                }
+            }
+            "status_range" => self.emit(Event::StatusRange {
+                chat_id: gi(&v, "chat_id"),
+                kind: gs(&v, "kind"),
+                min: gi(&v, "min_id"),
+                max: gi(&v, "max_id"),
+                reader: gi(&v, "reader_id"),
+            }),
             _ => {}
         }
     }
