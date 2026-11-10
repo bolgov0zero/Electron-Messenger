@@ -19,6 +19,10 @@ pub struct Pal {
     pub danger: Color32,
     pub hover: Color32,
     pub daypill: Color32,
+    pub online: Color32,
+    pub away: Color32,
+    pub chip: Color32,
+    pub hover2: Color32,
     pub dark: bool,
 }
 
@@ -62,6 +66,10 @@ impl Pal {
             danger: rgb(0xd23a3a),
             hover: alpha(text, 13),
             daypill: mix(chat, text, 0.09),
+            online: rgb(0x34c759),
+            away: rgb(0xff9f0a),
+            chip: rgb(0xe3e1de),
+            hover2: rgb(0xebeae8),
             dark: false,
         }
     }
@@ -85,6 +93,10 @@ impl Pal {
             danger: rgb(0xef6f6f),
             hover: alpha(text, 18),
             daypill: mix(chat, text, 0.09),
+            online: rgb(0x30d158),
+            away: rgb(0xff9f0a),
+            chip: rgb(0x232e3a),
+            hover2: rgb(0x2d353e),
             dark: true,
         }
     }

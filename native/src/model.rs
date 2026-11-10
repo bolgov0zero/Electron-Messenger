@@ -28,6 +28,38 @@ pub struct Member {
     pub name: String,
 }
 
+/// Вложение сообщения (основное или из `more`).
+#[derive(Clone, Debug, Default)]
+pub struct Attachment {
+    pub url: String,
+    pub name: String,
+    pub mime: String,
+    pub size: i64,
+    pub w: i64,
+    pub h: i64,
+    pub gif: bool,
+    pub expired: bool,
+    pub voice: bool,
+}
+
+impl Attachment {
+    pub fn is_image(&self) -> bool {
+        self.mime.starts_with("image/") && !self.expired
+    }
+    /// Имя файла без каталога: /files/abc.jpg → abc.jpg
+    pub fn file_name(&self) -> &str {
+        self.url.rsplit('/').next().unwrap_or("")
+    }
+}
+
+/// Присутствие пользователя: online | away | offline.
+#[derive(Clone, Debug, Default)]
+pub struct Presence {
+    pub status: String,
+    pub last_seen: i64,
+    pub mobile: bool,
+}
+
 /// Статус доставки своего сообщения: сколько получателей получили и прочитали.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Status {
@@ -47,7 +79,7 @@ pub struct Msg {
     pub deleted: bool,
     pub edited: bool,
     pub system: bool,
-    pub attach: Option<String>,
+    pub attachments: Vec<Attachment>,
     pub reply_name: String,
     pub reply_text: String,
     pub client_id: String,
@@ -68,18 +100,32 @@ pub struct Chat {
     pub read_only: bool,
 }
 
+pub fn parse_attachment(a: &Value) -> Attachment {
+    Attachment {
+        url: gs(a, "url"),
+        name: gs(a, "name"),
+        mime: gs(a, "mime"),
+        size: gi(a, "size"),
+        w: gi(a, "width"),
+        h: gi(a, "height"),
+        gif: a.get("gif").map_or(false, |x| !x.is_null() && x.as_bool() != Some(false)),
+        expired: gb(a, "expired"),
+        voice: a.get("voice").map_or(false, |x| x.is_object()),
+    }
+}
+
 pub fn parse_msg(v: &Value) -> Msg {
     let mut sent = v.get("sent_at").and_then(|x| x.as_f64()).unwrap_or(0.0);
     if sent > 1e11 {
         sent /= 1000.0; // на случай миллисекунд
     }
-    let attach = match v.get("attachment") {
-        Some(a) if a.is_object() => {
-            let n = ["name", "filename", "file_name"].iter().map(|k| gs(a, k)).find(|s| !s.is_empty());
-            Some(n.unwrap_or_else(|| "Вложение".to_string()))
+    let mut attachments = Vec::new();
+    if let Some(a) = v.get("attachment").filter(|a| a.is_object()) {
+        attachments.push(parse_attachment(a));
+        if let Some(more) = a.get("more").and_then(|m| m.as_array()) {
+            attachments.extend(more.iter().filter(|m| m.is_object()).map(parse_attachment));
         }
-        _ => None,
-    };
+    }
     let mut name = gs(v, "sender_name");
     if name.is_empty() {
         name = gs(v, "sender_username");
@@ -94,7 +140,7 @@ pub fn parse_msg(v: &Value) -> Msg {
         deleted: gb(v, "deleted"),
         edited: v.get("edited_at").map_or(false, |x| !x.is_null()),
         system: v.get("system_kind").map_or(false, |x| x.as_str().map_or(false, |s| !s.is_empty())),
-        attach,
+        attachments,
         reply_name: gs(v, "reply_sender_name"),
         reply_text: gs(v, "reply_text"),
         client_id: gs(v, "client_id"),

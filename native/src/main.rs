@@ -1,24 +1,26 @@
 //! Прототип нативного клиента на egui: вход, список чатов, лента, отправка.
-//! Дизайн — «Мягкий» (flat) из client/src/flat.css.
+//! Дизайн — «Мягкий» (flat) из client/src/flat*.css.
 mod model;
 mod net;
 mod store;
 mod theme;
+mod view;
 
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
 
-use chrono::{Datelike, Local, TimeZone};
+use chrono::Local;
 use eframe::egui::{
-    self, pos2, vec2, Align, Align2, Color32, CornerRadius, FontId, Id, Key, Margin, Modifiers, Rect,
-    RichText, Sense, Shape, Stroke, TextEdit, Ui,
+    self, pos2, vec2, Align, Align2, Color32, CornerRadius, FontId, Id, Key, Margin, Modifiers, Rect, RichText, Sense,
+    Stroke, TextEdit, Ui,
 };
-use model::{Chat, Msg, Status};
+use model::{Chat, Msg, Presence};
 use net::{Event, Net};
 use store::Session;
-use theme::{alpha, av_color, bold, Pal};
+use theme::{alpha, bold, Pal};
+use view::{chat_row, day_label, day_of, day_pill, draw_avatar, draw_msg, plural, presence_dot, typing_label, MsgCx, Row};
 
 fn main() -> eframe::Result {
     let rt = tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build().expect("tokio");
@@ -36,6 +38,20 @@ fn main() -> eframe::Result {
 enum Screen {
     Login,
     Main,
+}
+
+struct Typer {
+    user_id: i64,
+    name: String,
+    voice: bool,
+    at: Instant,
+}
+
+#[derive(Default, Clone, Copy)]
+struct Feed {
+    offset: f32,
+    content_h: f32,
+    view_h: f32,
 }
 
 struct App {
@@ -59,12 +75,30 @@ struct App {
     selected: Option<i64>,
     msgs: HashMap<i64, Vec<Msg>>,
     loading: HashSet<i64>,
+    has_more: HashMap<i64, bool>,
+    loading_more: HashSet<i64>,
     search: String,
     input: String,
+    prev_input: String,
     focus_input: bool,
     toast: Option<(String, Instant)>,
     seq: i64,
     applied: HashSet<(i64, String)>,
+
+    presence: HashMap<i64, Presence>,
+    presence_ready: bool,
+    chat_online: HashMap<i64, (i64, i64)>,
+    typing: HashMap<i64, Vec<Typer>>,
+    last_typing_sent: Option<Instant>,
+    watching: Option<i64>,
+    focused: bool,
+    unfocused_since: Option<Instant>,
+    away: bool,
+
+    feed: Feed,
+    feed_chat: Option<i64>,
+    anchor: Option<(f32, f32)>,
+    force_offset: Option<f32>,
 }
 
 impl App {
@@ -102,12 +136,28 @@ impl App {
             selected: None,
             msgs: HashMap::new(),
             loading: HashSet::new(),
+            has_more: HashMap::new(),
+            loading_more: HashSet::new(),
             search: String::new(),
             input: String::new(),
+            prev_input: String::new(),
             focus_input: false,
             toast: None,
             seq: 0,
             applied: HashSet::new(),
+            presence: HashMap::new(),
+            presence_ready: false,
+            chat_online: HashMap::new(),
+            typing: HashMap::new(),
+            last_typing_sent: None,
+            watching: None,
+            focused: true,
+            unfocused_since: None,
+            away: false,
+            feed: Feed::default(),
+            feed_chat: None,
+            anchor: None,
+            force_offset: None,
         };
         if let Some(s) = store::load_session() {
             app.enter(s);
@@ -124,6 +174,7 @@ impl App {
         self.ws_out = Some(out);
         self.ws_stop = Some(stop);
         self.net.fetch_chats(&s);
+        self.net.fetch_presence(&s);
         self.session = Some(s);
         self.screen = Screen::Main;
     }
@@ -141,6 +192,12 @@ impl App {
         self.selected = None;
         self.msgs.clear();
         self.loading.clear();
+        self.has_more.clear();
+        self.loading_more.clear();
+        self.presence.clear();
+        self.presence_ready = false;
+        self.typing.clear();
+        self.watching = None;
         self.password.clear();
         self.login_busy = false;
         self.login_err = why.to_string();
@@ -151,11 +208,27 @@ impl App {
         self.toast = Some((text.into(), Instant::now()));
     }
 
+    fn ws_send(&self, v: serde_json::Value) {
+        if let Some(out) = &self.ws_out {
+            let _ = out.send(v.to_string());
+        }
+    }
+
+    fn set_status(&mut self, status: &str) {
+        self.away = status == "away";
+        self.ws_send(serde_json::json!({ "type": "set_status", "status": status }));
+    }
+
     fn sort_chats(&mut self) {
         self.chats.sort_by(|a, b| b.pinned.cmp(&a.pinned).then(b.last_ts().cmp(&a.last_ts())));
     }
 
     fn select(&mut self, id: i64) {
+        if self.watching.is_some() && self.watching != Some(id) {
+            self.ws_send(serde_json::json!({ "type": "unwatch_chat" }));
+        }
+        self.ws_send(serde_json::json!({ "type": "watch_chat", "chat_id": id }));
+        self.watching = Some(id);
         self.selected = Some(id);
         self.focus_input = true;
         let had_unread = self.chats.iter().find(|c| c.id == id).map_or(false, |c| c.unread > 0);
@@ -168,9 +241,17 @@ impl App {
         if !self.msgs.contains_key(&id) && !self.loading.contains(&id) {
             if let Some(s) = &self.session {
                 self.loading.insert(id);
-                self.net.fetch_history(s, id);
+                self.net.fetch_history(s, id, None);
             }
         }
+    }
+
+    /// Кто сейчас печатает в чате (без устаревших записей: 5 секунд без обновления).
+    fn typers(&self, chat_id: i64) -> Vec<(String, bool)> {
+        self.typing
+            .get(&chat_id)
+            .map(|v| v.iter().filter(|t| t.at.elapsed() < Duration::from_secs(5)).map(|t| (t.name.clone(), t.voice)).collect())
+            .unwrap_or_default()
     }
 
     fn drain_events(&mut self) {
@@ -193,13 +274,28 @@ impl App {
                     self.chats_loaded = true;
                     self.sort_chats();
                 }
-                Event::History { chat_id, msgs } => {
+                Event::History { chat_id, msgs, has_more } => {
                     self.loading.remove(&chat_id);
                     let mut all = msgs;
                     if let Some(old) = self.msgs.get(&chat_id) {
                         all.extend(old.iter().filter(|m| m.pending).cloned());
                     }
                     self.msgs.insert(chat_id, all);
+                    self.has_more.insert(chat_id, has_more);
+                }
+                Event::Older { chat_id, msgs, has_more } => {
+                    self.loading_more.remove(&chat_id);
+                    self.has_more.insert(chat_id, has_more);
+                    if let Some(list) = self.msgs.get_mut(&chat_id) {
+                        let known: HashSet<i64> = list.iter().map(|m| m.id).collect();
+                        let fresh: Vec<Msg> = msgs.into_iter().filter(|m| !known.contains(&m.id)).collect();
+                        if !fresh.is_empty() {
+                            list.splice(0..0, fresh);
+                            if self.selected == Some(chat_id) {
+                                self.anchor = Some((self.feed.content_h, self.feed.offset));
+                            }
+                        }
+                    }
                 }
                 Event::Message(m) => self.on_message(m),
                 Event::Rejected { chat_id, reason } => {
@@ -251,7 +347,41 @@ impl App {
                         bump(l);
                     }
                 }
-                Event::WsState(b) => self.ws_online = b,
+                Event::PresenceAll(map) => {
+                    self.presence = map;
+                    self.presence_ready = true;
+                }
+                Event::PresenceOne { user_id, p } => {
+                    self.presence.insert(user_id, p);
+                }
+                Event::PresenceRefresh => {
+                    if let Some(s) = &self.session {
+                        self.net.fetch_presence(s);
+                    }
+                }
+                Event::Typing { chat_id, user_id, name, voice } => {
+                    if user_id != self.me() {
+                        let list = self.typing.entry(chat_id).or_default();
+                        list.retain(|t| t.user_id != user_id && t.at.elapsed() < Duration::from_secs(5));
+                        list.push(Typer { user_id, name, voice, at: Instant::now() });
+                    }
+                }
+                Event::ChatOnline { chat_id, online, total } => {
+                    self.chat_online.insert(chat_id, (online, total));
+                }
+                Event::WsState(b) => {
+                    self.ws_online = b;
+                    if b {
+                        let st = if self.focused { "online" } else { "away" };
+                        self.set_status(st);
+                        if let Some(s) = &self.session {
+                            self.net.fetch_presence(s);
+                        }
+                        if let Some(id) = self.selected {
+                            self.ws_send(serde_json::json!({ "type": "watch_chat", "chat_id": id }));
+                        }
+                    }
+                }
                 Event::ReloadChats => {
                     if let Some(s) = &self.session {
                         self.net.fetch_chats(s);
@@ -260,12 +390,6 @@ impl App {
                 Event::AuthExpired => self.logout("Сессия истекла — войдите снова"),
                 Event::Error(e) => self.say(e),
             }
-        }
-    }
-
-    fn ws_send(&self, v: serde_json::Value) {
-        if let Some(out) = &self.ws_out {
-            let _ = out.send(v.to_string());
         }
     }
 
@@ -278,6 +402,9 @@ impl App {
             if self.selected == Some(cid) {
                 self.ws_send(serde_json::json!({ "type": "read", "chat_id": cid }));
             }
+        }
+        if let Some(list) = self.typing.get_mut(&cid) {
+            list.retain(|t| t.user_id != m.sender_id);
         }
         if let Some(list) = self.msgs.get_mut(&cid) {
             if !m.client_id.is_empty() {
@@ -333,145 +460,53 @@ impl App {
                 ..Default::default()
             });
         }
-        if let Some(out) = &self.ws_out {
-            let _ = out.send(
-                serde_json::json!({ "type": "message", "chat_id": cid, "text": text, "client_id": client_id }).to_string(),
-            );
-        }
+        self.ws_send(serde_json::json!({ "type": "message", "chat_id": cid, "text": text, "client_id": client_id }));
         self.input.clear();
+        self.prev_input.clear();
         self.focus_input = true;
+        self.force_offset = Some(1.0e9);
     }
 }
-
-// ───────────────────────── вспомогательные функции ─────────────────────────
 
 fn pal_for(ctx: &egui::Context) -> Pal {
     if ctx.global_style().visuals.dark_mode { Pal::dark() } else { Pal::light() }
 }
 
-fn fmt_time(ts: i64) -> String {
-    Local.timestamp_opt(ts, 0).single().map(|d| d.format("%H:%M").to_string()).unwrap_or_default()
-}
-
-fn day_of(ts: i64) -> Option<chrono::NaiveDate> {
-    Local.timestamp_opt(ts, 0).single().map(|d| d.date_naive())
-}
-
-const MONTHS: [&str; 12] = [
-    "января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря",
-];
-const WEEKDAYS: [&str; 7] = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
-
-fn day_label(ts: i64) -> String {
-    let Some(d) = day_of(ts) else { return String::new() };
-    let today = Local::now().date_naive();
-    if d == today {
-        "Сегодня".into()
-    } else if Some(d) == today.pred_opt() {
-        "Вчера".into()
-    } else if d.year() == today.year() {
-        format!("{} {}", d.day(), MONTHS[d.month0() as usize])
-    } else {
-        format!("{} {} {}", d.day(), MONTHS[d.month0() as usize], d.year())
-    }
-}
-
-fn list_time(ts: i64) -> String {
-    if ts == 0 {
-        return String::new();
-    }
-    let Some(d) = day_of(ts) else { return String::new() };
-    let today = Local::now().date_naive();
-    let age = (today - d).num_days();
-    if age == 0 {
-        fmt_time(ts)
-    } else if (1..7).contains(&age) {
-        WEEKDAYS[d.weekday().num_days_from_monday() as usize].to_string()
-    } else {
-        format!("{:02}.{:02}.{:02}", d.day(), d.month(), d.year() % 100)
-    }
-}
-
-fn plural(n: usize, one: &str, few: &str, many: &str) -> String {
-    let w = if n % 100 >= 11 && n % 100 <= 14 {
-        many
-    } else {
-        match n % 10 {
-            1 => one,
-            2..=4 => few,
-            _ => many,
-        }
-    };
-    format!("{n} {w}")
-}
-
-fn preview(c: &Chat, me: i64) -> String {
-    let Some(m) = &c.last else { return "Нет сообщений".into() };
-    let body = if m.deleted {
-        "Сообщение удалено".to_string()
-    } else if !m.text.trim().is_empty() {
-        m.text.replace('\n', " ")
-    } else if m.attach.is_some() {
-        "Вложение".to_string()
-    } else {
-        String::new()
-    };
-    if m.sender_id == me {
-        format!("Вы: {body}")
-    } else if c.kind != "direct" && !m.sender_name.is_empty() {
-        format!("{}: {}", m.sender_name, body)
-    } else {
-        body
-    }
-}
-
-/// Однострочный текст с «…» вместо переноса.
-fn elided(p: &egui::Painter, text: &str, font: FontId, color: Color32, width: f32) -> Arc<egui::Galley> {
-    let mut job = egui::text::LayoutJob::simple(text.to_string(), font, color, width.max(8.0));
-    job.wrap.max_rows = 1;
-    job.wrap.break_anywhere = true;
-    p.layout_job(job)
-}
-
-fn draw_avatar(ui: &mut Ui, rect: Rect, pal: &Pal, server: &str, user_id: Option<i64>, name: &str, key: i64) {
-    if let Some(id) = user_id {
-        let uri = format!("{server}/api/users/{id}/avatar");
-        if let Ok(egui::load::TexturePoll::Ready { texture }) =
-            ui.ctx().try_load_texture(&uri, egui::TextureOptions::LINEAR, egui::load::SizeHint::default())
-        {
-            let r = rect.size().x / 2.0;
-            ui.put(
-                rect,
-                egui::Image::from_texture(texture)
-                    .fit_to_exact_size(rect.size())
-                    .corner_radius(CornerRadius::same(r as u8)),
-            );
-            return;
-        }
-    }
-    let p = ui.painter();
-    p.circle_filled(rect.center(), rect.size().x / 2.0, av_color(key));
-    let letter = name.chars().find(|c| c.is_alphanumeric()).map(|c| c.to_uppercase().to_string()).unwrap_or("?".into());
-    p.text(
-        rect.center(),
-        Align2::CENTER_CENTER,
-        letter,
-        FontId::new(rect.size().x * 0.42, bold()),
-        Color32::WHITE,
-    );
-    let _ = pal;
-}
-
 // ───────────────────────────── интерфейс ─────────────────────────────
 
 impl eframe::App for App {
-    fn logic(&mut self, _ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.drain_events();
+        // Присутствие: в фокусе — online, без фокуса 5 секунд — away
+        let focused = ctx.input(|i| i.viewport().focused.unwrap_or(true));
+        if focused != self.focused {
+            self.focused = focused;
+            if focused {
+                self.unfocused_since = None;
+                if self.away && self.ws_online {
+                    self.set_status("online");
+                }
+            } else {
+                self.unfocused_since = Some(Instant::now());
+            }
+        }
+        if let Some(t) = self.unfocused_since {
+            if !self.away && self.ws_online {
+                if t.elapsed() >= Duration::from_secs(5) {
+                    self.set_status("away");
+                } else {
+                    ctx.request_repaint_after(Duration::from_millis(600));
+                }
+            }
+        }
     }
 
     fn ui(&mut self, ui: &mut Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         let pal = pal_for(&ctx);
+        if self.typing.values().any(|v| !v.is_empty()) {
+            ctx.request_repaint_after(Duration::from_millis(400));
+        }
         match self.screen {
             Screen::Login => self.login_ui(ui, &pal),
             Screen::Main => self.main_ui(ui, &pal),
@@ -538,12 +573,12 @@ impl App {
 
     fn main_ui(&mut self, ui: &mut Ui, pal: &Pal) {
         egui::Panel::left("side")
-            .exact_size(344.0)
+            .exact_size(388.0)
             .resizable(false)
             .frame(egui::Frame::new().fill(pal.app_bg).inner_margin(Margin { left: 12, right: 0, top: 12, bottom: 12 }))
             .show(ui, |ui| self.sidebar_ui(ui, pal));
         egui::CentralPanel::default()
-            .frame(egui::Frame::new().fill(pal.app_bg).inner_margin(Margin::same(12)))
+            .frame(egui::Frame::new().fill(pal.app_bg).inner_margin(Margin { left: 10, right: 12, top: 12, bottom: 12 }))
             .show(ui, |ui| self.chat_ui(ui, pal));
     }
 
@@ -570,7 +605,7 @@ impl App {
             let list_h = ui.available_height() - 60.0;
             let mut clicked = None;
             egui::ScrollArea::vertical().auto_shrink([false, false]).max_height(list_h).show(ui, |ui| {
-                ui.spacing_mut().item_spacing.y = 2.0;
+                ui.spacing_mut().item_spacing.y = 0.0;
                 if !self.chats_loaded {
                     ui.add_space(16.0);
                     ui.vertical_centered(|ui| ui.label(RichText::new("Загрузка…").color(pal.muted)));
@@ -579,7 +614,11 @@ impl App {
                     if !q.is_empty() && !c.title(me).to_lowercase().contains(&q) {
                         continue;
                     }
-                    if chat_row(ui, pal, c, me, &server, self.selected == Some(c.id)) {
+                    let typers = self.typers(c.id);
+                    let typing = (!typers.is_empty()).then(|| typing_label(&typers, c.kind != "direct"));
+                    let presence = c.peer(me).and_then(|m| self.presence.get(&m.id));
+                    let row = Row { c, me, server: &server, active: self.selected == Some(c.id), typing, presence };
+                    if chat_row(ui, pal, &row) {
                         clicked = Some(c.id);
                     }
                 }
@@ -598,7 +637,7 @@ impl App {
             let mut out = false;
             ui.horizontal(|ui| {
                 let (r, _) = ui.allocate_exact_size(vec2(40.0, 40.0), Sense::hover());
-                draw_avatar(ui, r, pal, &server, Some(me), &name, me);
+                draw_avatar(ui, r, &server, Some(me), &name, me);
                 ui.vertical(|ui| {
                     ui.add_space(2.0);
                     ui.label(RichText::new(&name).font(FontId::new(14.5, bold())).color(pal.text));
@@ -634,29 +673,60 @@ impl App {
         let Some(chat) = self.chats.iter().find(|c| c.id == cid).cloned() else { return };
         let me = self.me();
         let server = self.session.as_ref().map(|s| s.server.clone()).unwrap_or_default();
+        if self.feed_chat != Some(cid) {
+            self.feed = Feed::default();
+            self.feed_chat = Some(cid);
+            self.anchor = None;
+            self.force_offset = None;
+        }
 
-        // Шапка — часть области чата: полоса сверху на всю ширину
-        let head = Rect::from_min_size(full.min, vec2(full.width(), 66.0));
+        // ── Шапка: .chat-header, высота 68, padding 0 14 0 10, радиус 22 22 0 0 ──
+        let head = Rect::from_min_size(full.min, vec2(full.width(), 68.0));
         ui.painter().rect_filled(head, CornerRadius { nw: 22, ne: 22, sw: 0, se: 0 }, pal.side_bg);
         let title = chat.title(me);
         let peer = chat.peer(me).map(|m| m.id);
-        let av = Rect::from_center_size(pos2(head.left() + 18.0 + 21.0, head.center().y), vec2(42.0, 42.0));
-        draw_avatar(ui, av, pal, &server, peer, &title, peer.unwrap_or(chat.id));
-        let tx = av.right() + 14.0;
-        let sub = if chat.kind == "direct" {
-            "личный чат".to_string()
+        let pr = peer.and_then(|id| self.presence.get(&id)).cloned();
+        let av = Rect::from_min_size(pos2(head.left() + 16.0, head.center().y - 22.0), vec2(44.0, 44.0));
+        draw_avatar(ui, av, &server, peer, &title, peer.unwrap_or(chat.id));
+        if peer.is_some() {
+            presence_dot(ui.painter(), av, pr.as_ref(), pal, pal.chat_bg);
+        }
+        let tx = av.right() + 12.0;
+        let typers = self.typers(cid);
+        let name_g = view::elided(ui.painter(), &title, FontId::new(16.0, bold()), pal.text, head.right() - tx - 20.0);
+        ui.painter().galley(pos2(tx, head.center().y - 19.0), name_g, pal.text);
+        let sub_y = head.center().y + 2.0;
+        if !typers.is_empty() {
+            let t = typing_label(&typers, chat.kind != "direct");
+            ui.painter().text(pos2(tx, sub_y), Align2::LEFT_TOP, t, FontId::proportional(11.0), pal.accent);
+        } else if chat.kind == "direct" {
+            let (text, online) = match &pr {
+                Some(p) if p.status == "online" => ("Онлайн".to_string(), true),
+                Some(p) if p.status == "away" => ("Отошёл".to_string(), false),
+                Some(p) => (view::last_seen_text(p.last_seen), false),
+                None if self.presence_ready => ("Был давно".to_string(), false),
+                None => (String::new(), false),
+            };
+            let mut sx = tx;
+            if online {
+                ui.painter().circle_filled(pos2(tx + 3.5, sub_y + 8.0), 3.5, pal.online);
+                sx += 13.0;
+            }
+            ui.painter().text(pos2(sx, sub_y), Align2::LEFT_TOP, text, FontId::proportional(12.5), pal.text2);
         } else {
-            plural(chat.members.len(), "участник", "участника", "участников")
-        };
-        let g = elided(ui.painter(), &title, FontId::new(16.0, bold()), pal.text, head.right() - tx - 20.0);
-        ui.painter().galley(pos2(tx, head.center().y - 20.0), g, pal.text);
-        ui.painter().text(pos2(tx, head.center().y + 10.0), Align2::LEFT_CENTER, sub, FontId::proportional(12.5), pal.text2);
+            let t = match self.chat_online.get(&cid) {
+                Some((o, total)) => format!("в сети {o} из {total}"),
+                None => plural(chat.members.len(), "участник", "участника", "участников"),
+            };
+            ui.painter().text(pos2(tx, sub_y), Align2::LEFT_TOP, t, FontId::proportional(12.5), pal.text2);
+        }
 
-        // Остальное — снизу вверх: полоса ввода, затем лента
+        // ── Остальное — снизу вверх: полоса ввода, затем лента ──
         let body = Rect::from_min_max(pos2(full.min.x, head.max.y), full.max);
         let mut child = ui.new_child(egui::UiBuilder::new().max_rect(body).layout(egui::Layout::bottom_up(Align::Min)));
         child.set_clip_rect(body);
 
+        // Полоса ввода: padding 10 14 14, радиус 0 0 22 22; поле min-height 48, радиус 12, кнопка 48×48
         let bottom_r = CornerRadius { nw: 0, ne: 0, sw: 22, se: 22 };
         let mut do_send = false;
         let id = Id::new("composer");
@@ -665,64 +735,86 @@ impl App {
             if enter {
                 do_send = true;
             }
-            egui::Frame::new().fill(pal.side_bg).corner_radius(bottom_r).inner_margin(Margin::symmetric(14, 12)).show(&mut child, |ui| {
-                ui.set_width(body.width() - 28.0);
-                let (gap, btn) = (8.0, 46.0);
-                let field_w = body.width() - 28.0 - btn - gap;
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = gap;
-                    egui::Frame::new().fill(pal.surf2).corner_radius(16).inner_margin(Margin::symmetric(16, 0)).show(ui, |ui| {
-                        ui.set_width(field_w - 32.0);
-                        ui.allocate_ui_with_layout(vec2(field_w - 32.0, 120.0), egui::Layout::top_down(Align::Min), |ui| {
-                            egui::ScrollArea::vertical().max_height(120.0).auto_shrink([false, true]).show(ui, |ui| {
-                                ui.add(
-                                    TextEdit::multiline(&mut self.input)
-                                        .id(id)
-                                        .hint_text("Сообщение")
-                                        .desired_rows(1)
-                                        .desired_width(f32::INFINITY)
-                                        .frame(egui::Frame::NONE)
-                                        .margin(vec2(0.0, 13.0))
-                                        .font(FontId::proportional(15.5)),
-                                );
+            egui::Frame::new()
+                .fill(pal.side_bg)
+                .corner_radius(bottom_r)
+                .inner_margin(Margin { left: 14, right: 14, top: 10, bottom: 14 })
+                .show(&mut child, |ui| {
+                    ui.set_width(body.width() - 28.0);
+                    let (gap, btn) = (8.0, 48.0);
+                    let field_w = body.width() - 28.0 - btn - gap;
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = gap;
+                        egui::Frame::new().fill(pal.surf2).corner_radius(12).inner_margin(Margin { left: 20, right: 6, top: 0, bottom: 0 }).show(ui, |ui| {
+                            ui.set_width(field_w - 26.0);
+                            ui.allocate_ui_with_layout(vec2(field_w - 26.0, 120.0), egui::Layout::top_down(Align::Min), |ui| {
+                                egui::ScrollArea::vertical().max_height(120.0).auto_shrink([false, true]).show(ui, |ui| {
+                                    ui.add(
+                                        TextEdit::multiline(&mut self.input)
+                                            .id(id)
+                                            .hint_text(RichText::new("Сообщение").color(pal.muted))
+                                            .desired_rows(1)
+                                            .desired_width(f32::INFINITY)
+                                            .frame(egui::Frame::NONE.inner_margin(Margin::symmetric(0, 14)))
+                                            .font(FontId::proportional(15.0)),
+                                    );
+                                });
                             });
                         });
+                        let ready = !self.input.trim().is_empty();
+                        let (r, resp) = ui.allocate_exact_size(vec2(btn, btn), Sense::click());
+                        let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+                        let bg = if ready { pal.accent_fill } else if resp.hovered() { pal.hover2 } else { pal.surf2 };
+                        let p = ui.painter();
+                        p.rect_filled(r, 12, bg);
+                        let c = r.center();
+                        let st = Stroke::new(2.2, if ready { Color32::WHITE } else { pal.text2 });
+                        p.line_segment([pos2(c.x, c.y + 7.0), pos2(c.x, c.y - 7.0)], st);
+                        p.line_segment([pos2(c.x, c.y - 7.0), pos2(c.x - 6.0, c.y - 1.0)], st);
+                        p.line_segment([pos2(c.x, c.y - 7.0), pos2(c.x + 6.0, c.y - 1.0)], st);
+                        if resp.clicked() {
+                            do_send = true;
+                        }
                     });
-                    let ready = !self.input.trim().is_empty();
-                    let (r, resp) = ui.allocate_exact_size(vec2(btn, btn), Sense::click());
-                    let p = ui.painter();
-                    p.rect_filled(r, 16, if ready { pal.accent_fill } else { pal.surf2 });
-                    let c = r.center();
-                    let st = Stroke::new(2.2, if ready { Color32::WHITE } else { pal.muted });
-                    p.line_segment([pos2(c.x, c.y + 7.0), pos2(c.x, c.y - 7.0)], st);
-                    p.line_segment([pos2(c.x, c.y - 7.0), pos2(c.x - 6.0, c.y - 1.0)], st);
-                    p.line_segment([pos2(c.x, c.y - 7.0), pos2(c.x + 6.0, c.y - 1.0)], st);
-                    if resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
-                        do_send = true;
-                    }
                 });
-            });
             if self.focus_input {
                 child.memory_mut(|m| m.request_focus(id));
                 self.focus_input = false;
             }
+            // Событие набора текста: при вводе, не чаще раза в 2 секунды
+            if self.input != self.prev_input {
+                if !self.input.is_empty() && self.last_typing_sent.map_or(true, |t| t.elapsed() >= Duration::from_secs(2)) {
+                    self.ws_send(serde_json::json!({ "type": "typing", "chat_id": cid }));
+                    self.last_typing_sent = Some(Instant::now());
+                }
+                self.prev_input = self.input.clone();
+            }
         } else {
-            egui::Frame::new().fill(pal.side_bg).corner_radius(bottom_r).inner_margin(Margin::symmetric(14, 18)).show(&mut child, |ui| {
+            egui::Frame::new().fill(pal.side_bg).corner_radius(bottom_r).inner_margin(Margin { left: 14, right: 14, top: 10, bottom: 14 }).show(&mut child, |ui| {
                 ui.set_width(body.width() - 28.0);
-                ui.vertical_centered(|ui| ui.label(RichText::new("В этот чат нельзя писать").color(pal.muted)));
+                egui::Frame::new().fill(pal.surf2).corner_radius(12).inner_margin(Margin::symmetric(12, 14)).show(ui, |ui| {
+                    ui.set_width(body.width() - 52.0);
+                    ui.vertical_centered(|ui| ui.label(RichText::new("В этот чат нельзя писать").size(13.5).color(pal.text2)));
+                });
             });
         }
+        let band_top = child.min_rect().top();
 
-        // Лента
+        // ── Лента ──
         let loading = self.loading.contains(&cid);
+        let force = self.force_offset.take();
+        let group = chat.kind != "direct";
+        let cx = MsgCx { server: &server, me, group };
         let list: &[Msg] = self.msgs.get(&cid).map(|v| v.as_slice()).unwrap_or(&[]);
-        child.with_layout(egui::Layout::top_down(Align::Min), |ui| {
-            egui::ScrollArea::vertical()
-                .id_salt(("feed", cid))
-                .auto_shrink([false, false])
-                .stick_to_bottom(true)
-                .show(ui, |ui| {
+        let out = child
+            .with_layout(egui::Layout::top_down(Align::Min), |ui| {
+                let mut sa = egui::ScrollArea::vertical().id_salt(("feed", cid)).auto_shrink([false, false]).stick_to_bottom(true);
+                if let Some(f) = force {
+                    sa = sa.vertical_scroll_offset(f);
+                }
+                sa.show(ui, |ui| {
                     ui.spacing_mut().item_spacing.y = 0.0;
+                    ui.add_space(20.0);
                     if loading {
                         ui.add_space(24.0);
                         ui.vertical_centered(|ui| ui.label(RichText::new("Загрузка…").color(pal.muted)));
@@ -730,8 +822,6 @@ impl App {
                         ui.add_space(24.0);
                         ui.vertical_centered(|ui| ui.label(RichText::new("Сообщений пока нет").color(pal.muted)));
                     }
-                    let group = chat.kind != "direct";
-                    ui.add_space(8.0);
                     for (i, m) in list.iter().enumerate() {
                         let prev = if i > 0 { list.get(i - 1) } else { None };
                         let next = list.get(i + 1);
@@ -744,15 +834,85 @@ impl App {
                         };
                         let first = prev.map_or(true, |p| !same(p, m));
                         let last = next.map_or(true, |n| !same(m, n));
-                        draw_msg(ui, pal, m, first, last, group && first, me);
+                        draw_msg(ui, pal, m, first, last, group && first, &cx);
                     }
-                    ui.add_space(8.0);
-                });
-        });
+                    ui.add_space(20.0);
+                })
+            })
+            .inner;
+        let (off, ch, vh) = (out.state.offset().y, out.content_size.y, out.inner_rect.height());
+        if let Some((ph, po)) = self.anchor {
+            if ch > ph + 1.0 {
+                // После подгрузки сверху сохраняем положение прокрутки
+                self.force_offset = Some(po + (ch - ph));
+                self.anchor = None;
+                ui.ctx().request_repaint();
+            }
+        }
+        self.feed = Feed { offset: off, content_h: ch, view_h: vh };
+
+        // Подгрузка ранних сообщений при приближении к верху (порог max(1400, 2 высоты окна))
+        if !loading
+            && ch > 0.0
+            && self.anchor.is_none()
+            && self.has_more.get(&cid).copied().unwrap_or(false)
+            && !self.loading_more.contains(&cid)
+            && off < 1400.0f32.max(vh * 2.0)
+        {
+            let before = self.msgs.get(&cid).and_then(|l| l.iter().filter(|m| m.id > 0).map(|m| m.id).min());
+            if let (Some(b), Some(s)) = (before, &self.session) {
+                self.loading_more.insert(cid);
+                self.net.fetch_history(s, cid, Some(b));
+            }
+        }
+
+        // «печатает…» над полосой ввода: .typing-pill 28 px, радиус 10
+        if !typers.is_empty() {
+            let t = typing_label(&typers, true);
+            let p = ui.painter().clone();
+            let g = p.layout_no_wrap(t, FontId::proportional(12.0), pal.muted);
+            let w = g.size().x + 24.0 + 20.0;
+            let r = Rect::from_min_size(pos2(body.left() + 18.0, band_top - 6.0 - 28.0), vec2(w, 28.0));
+            p.rect_filled(r, 10, pal.chip);
+            p.galley(pos2(r.left() + 12.0, r.center().y - g.size().y / 2.0), g.clone(), pal.muted);
+            let time = ui.input(|i| i.time) as f32;
+            for k in 0..3 {
+                let phase = ((time * 5.0 - k as f32 * 0.8).sin() * 0.5 + 0.5).powi(2);
+                let cx = r.left() + 12.0 + g.size().x + 8.0 + k as f32 * 6.0;
+                p.circle_filled(pos2(cx, r.center().y + 2.0 - phase * 3.0), 1.5, pal.muted);
+            }
+        }
+
+        // Кнопка «к последнему сообщению»: 44×44, радиус 12, right 20, bottom 14 над полосой ввода
+        let dist = ch - vh - off;
+        if ch > 0.0 && dist > 200.0 {
+            let r = Rect::from_min_size(pos2(full.right() - 20.0 - 44.0, band_top - 14.0 - 44.0), vec2(44.0, 44.0));
+            let resp = child.interact(r, Id::new("scroll_bottom"), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
+            let p = ui.painter().clone();
+            p.rect_filled(r.translate(vec2(0.0, 2.0)).expand(1.0), 13, Color32::from_black_alpha(if pal.dark { 80 } else { 22 }));
+            p.rect_filled(r, 12, if resp.hovered() { pal.hover2 } else { pal.side_bg });
+            let c = r.center();
+            let st = Stroke::new(2.5, if resp.hovered() { pal.text } else { pal.text2 });
+            p.line_segment([pos2(c.x - 6.0, c.y - 3.0), pos2(c.x, c.y + 3.0)], st);
+            p.line_segment([pos2(c.x, c.y + 3.0), pos2(c.x + 6.0, c.y - 3.0)], st);
+            if chat.unread > 0 {
+                let label = if chat.unread > 99 { "99+".to_string() } else { chat.unread.to_string() };
+                let g = p.layout_no_wrap(label, FontId::new(11.0, bold()), Color32::WHITE);
+                let bw = (g.size().x + 12.0).max(20.0);
+                let br = Rect::from_min_size(pos2(r.right() + 4.0 - bw, r.top() - 7.0), vec2(bw, 20.0));
+                p.rect_filled(br, 10, pal.accent_fill);
+                p.galley(br.center() - g.size() / 2.0, g, Color32::WHITE);
+            }
+            if resp.clicked() {
+                self.force_offset = Some(1.0e9);
+                ui.ctx().request_repaint();
+            }
+        }
 
         if do_send {
             self.send();
         }
+        let _ = alpha;
     }
 
     fn toast_ui(&mut self, ctx: &egui::Context, pal: &Pal) {
@@ -768,201 +928,4 @@ impl App {
             });
         });
     }
-}
-
-// ─────────────────────────── строки и пузыри ───────────────────────────
-
-fn chat_row(ui: &mut Ui, pal: &Pal, c: &Chat, me: i64, server: &str, active: bool) -> bool {
-    let w = ui.available_width();
-    let (rect, resp) = ui.allocate_exact_size(vec2(w, 66.0), Sense::click());
-    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
-    if active {
-        ui.painter().rect_filled(rect, 16, pal.sel);
-    } else if resp.hovered() {
-        ui.painter().rect_filled(rect, 16, pal.hover);
-    }
-    let title = c.title(me);
-    let av = Rect::from_min_size(rect.min + vec2(10.0, 9.0), vec2(48.0, 48.0));
-    let peer = c.peer(me).map(|m| m.id);
-    draw_avatar(ui, av, pal, server, peer, &title, peer.unwrap_or(c.id));
-
-    let x = av.right() + 12.0;
-    let right = rect.right() - 12.0;
-    let p = ui.painter().clone();
-    let time = list_time(c.last_ts());
-    let tg = p.layout_no_wrap(time, FontId::proportional(12.0), if c.unread > 0 && !c.muted { pal.accent } else { pal.muted });
-    let tw = tg.size().x;
-    let own_status = c.last.as_ref().filter(|m| m.sender_id == me && !m.deleted).and_then(|m| m.status).filter(|s| s.total > 0);
-    let tick_w = if own_status.is_some() { 20.0 } else { 0.0 };
-    p.galley(pos2(right - tw, rect.top() + 14.0), tg.clone(), pal.muted);
-    if let Some(s) = own_status {
-        draw_ticks(&p, right - tw - 4.0, rect.top() + 14.0 + tg.size().y / 2.0, &s, pal.muted);
-    }
-    let ng = elided(&p, &title, FontId::new(15.0, bold()), pal.text, right - x - tw - tick_w - 10.0);
-    p.galley(pos2(x, rect.top() + 12.0), ng, pal.text);
-
-    let mut badge_w = 0.0;
-    if c.unread > 0 {
-        let label = if c.unread > 99 { "99+".to_string() } else { c.unread.to_string() };
-        let bg = p.layout_no_wrap(label, FontId::new(12.0, bold()), Color32::WHITE);
-        let bw = (bg.size().x + 14.0).max(22.0);
-        let br = Rect::from_min_size(pos2(right - bw, rect.bottom() - 12.0 - 22.0), vec2(bw, 22.0));
-        p.rect_filled(br, 11, if c.muted { pal.muted } else { pal.accent_fill });
-        p.galley(br.center() - bg.size() / 2.0, bg, Color32::WHITE);
-        badge_w = bw + 8.0;
-    }
-    let pg = elided(&p, &preview(c, me), FontId::proportional(13.5), pal.text2, right - x - badge_w);
-    p.galley(pos2(x, rect.bottom() - 12.0 - 18.0), pg, pal.text2);
-    resp.clicked()
-}
-
-fn day_pill(ui: &mut Ui, pal: &Pal, text: &str) {
-    let p = ui.painter().clone();
-    let g = p.layout_no_wrap(text.to_string(), FontId::proportional(12.5), pal.text2);
-    let w = ui.available_width();
-    let (rect, _) = ui.allocate_exact_size(vec2(w, 40.0), Sense::hover());
-    let pill = Rect::from_center_size(rect.center(), g.size() + vec2(24.0, 10.0));
-    p.rect_filled(pill, 12, pal.daypill);
-    p.galley(pill.center() - g.size() / 2.0, g, pal.text2);
-}
-
-fn draw_msg(ui: &mut Ui, pal: &Pal, m: &Msg, first: bool, last: bool, show_name: bool, me: i64) {
-    let p = ui.painter().clone();
-    let avail = ui.available_width();
-
-    // служебные сообщения — по центру
-    if m.system {
-        let g = p.layout(m.text.clone(), FontId::proportional(13.0), pal.text2, (avail - 80.0).max(100.0));
-        let (rect, _) = ui.allocate_exact_size(vec2(avail, g.size().y + 14.0), Sense::hover());
-        p.galley(pos2(rect.center().x - g.size().x / 2.0, rect.top() + 7.0), g, pal.text2);
-        return;
-    }
-
-    let mine = m.sender_id == me;
-    let (px, py) = (12.0, 8.0);
-    let max_w = (avail * 0.74).min(580.0).max(140.0);
-    let tw = max_w - 2.0 * px;
-    let (fg, fg2) = if mine { (Color32::WHITE, alpha(Color32::WHITE, 200)) } else { (pal.text, pal.muted) };
-
-    let body = if m.deleted {
-        "Сообщение удалено".to_string()
-    } else if !m.text.is_empty() {
-        m.text.clone()
-    } else if let Some(a) = &m.attach {
-        format!("Вложение: {a}")
-    } else {
-        String::new()
-    };
-    let g = p.layout(body, FontId::proportional(15.0), if m.deleted { fg2 } else { fg }, tw);
-
-    let mut time = fmt_time(m.sent_at);
-    if m.pending {
-        time = "отправка…".into();
-    } else if m.edited {
-        time = format!("изм. {time}");
-    }
-    let tg = p.layout_no_wrap(time, FontId::proportional(11.5), fg2);
-    let st = if mine && !m.pending && !m.deleted { m.status.filter(|s| s.total > 0) } else { None };
-    let tick_w = if st.is_some() { 18.0 } else { 0.0 };
-    let tgw = tg.size().x + tick_w;
-
-    let name_g = show_name.then(|| {
-        let n = if m.sender_name.is_empty() { "Пользователь".to_string() } else { m.sender_name.clone() };
-        elided(&p, &n, FontId::new(13.5, bold()), av_color(m.sender_id), tw)
-    });
-    let reply_g = (!m.reply_text.is_empty()).then(|| {
-        let rn = elided(&p, &m.reply_name, FontId::new(12.5, bold()), if mine { Color32::WHITE } else { pal.accent }, tw - 10.0);
-        let rt = elided(&p, &m.reply_text.replace('\n', " "), FontId::proportional(12.5), fg2, tw - 10.0);
-        (rn, rt)
-    });
-
-    let last_w = g.rows.last().map_or(0.0, |r| r.rect().max.x);
-    let inline = last_w + 10.0 + tgw <= tw;
-    let mut cw = g.size().x.max(if inline { last_w + 10.0 + tgw } else { tgw });
-    if let Some(n) = &name_g {
-        cw = cw.max(n.size().x);
-    }
-    if let Some((a, b)) = &reply_g {
-        cw = cw.max(a.size().x.max(b.size().x) + 10.0);
-    }
-    let name_h = name_g.as_ref().map_or(0.0, |n| n.size().y + 2.0);
-    let reply_h = reply_g.as_ref().map_or(0.0, |(a, b)| a.size().y + b.size().y + 8.0);
-    let time_h = if inline { 0.0 } else { tg.size().y + 1.0 };
-    let bw = cw + 2.0 * px;
-    let bh = py + name_h + reply_h + g.size().y + time_h + py;
-
-    let gap = if last { 8.0 } else { 2.0 };
-    let (row, _) = ui.allocate_exact_size(vec2(avail, bh + gap), Sense::hover());
-    let x0 = if mine { row.right() - bw - 12.0 } else { row.left() + 12.0 };
-    let b = Rect::from_min_size(pos2(x0, row.top()), vec2(bw, bh));
-
-    let fill = if mine { pal.accent_fill } else { pal.bubble_bg };
-    let (big, small) = (18u8, 5u8);
-    let tail = last;
-    let cr = CornerRadius {
-        nw: big,
-        ne: big,
-        sw: if !mine && tail { small } else { big },
-        se: if mine && tail { small } else { big },
-    };
-    if !pal.dark && !mine {
-        p.rect_filled(b.translate(vec2(0.0, 1.0)), cr, Color32::from_rgba_unmultiplied(60, 40, 20, 22));
-    }
-    p.rect_filled(b, cr, fill);
-    if tail {
-        let pts = if mine {
-            vec![pos2(b.right() - 2.0, b.bottom() - 13.0), pos2(b.right() + 6.0, b.bottom()), pos2(b.right() - 10.0, b.bottom())]
-        } else {
-            vec![pos2(b.left() + 2.0, b.bottom() - 13.0), pos2(b.left() - 6.0, b.bottom()), pos2(b.left() + 10.0, b.bottom())]
-        };
-        p.add(Shape::convex_polygon(pts, fill, Stroke::NONE));
-    }
-
-    let mut y = b.top() + py;
-    let x = b.left() + px;
-    if let Some(n) = name_g {
-        let h = n.size().y + 2.0;
-        p.galley(pos2(x, y), n, pal.text);
-        y += h;
-    }
-    if let Some((rn, rt)) = reply_g {
-        let (rn_h, rt_h) = (rn.size().y, rt.size().y);
-        let h = rn_h + rt_h + 4.0;
-        let bar = if mine { alpha(Color32::WHITE, 220) } else { pal.accent };
-        p.rect_filled(Rect::from_min_size(pos2(x, y), vec2(2.5, h)), 1, bar);
-        p.galley(pos2(x + 8.0, y), rn, fg);
-        p.galley(pos2(x + 8.0, y + rn_h + 2.0), rt, fg2);
-        y += h + 4.0;
-    }
-    let text_h = g.size().y;
-    p.galley(pos2(x, y), g, fg);
-    let tgs = tg.size();
-    let tx = b.right() - px - tick_w - tgs.x;
-    let tpos = if inline { pos2(tx, y + text_h - tgs.y - 1.0) } else { pos2(tx, y + text_h + 1.0) };
-    if let Some(s) = st {
-        draw_ticks(&p, b.right() - px, tpos.y + tgs.y / 2.0, &s, fg2);
-    }
-    p.galley(tpos, tg, fg2);
-    let _ = first;
-}
-
-/// Галочки статуса, как в клиенте: одна — отправлено, две серые — доставлено,
-/// первая цветная — прочитал часть получателей, обе цветные — прочитали все.
-fn draw_ticks(p: &egui::Painter, x_right: f32, y_center: f32, st: &Status, normal: Color32) {
-    const SC: f32 = 0.85;
-    let blue = theme::rgb(0x3ea6ff);
-    let (read_all, read_some, double) = (st.read >= st.total, st.read > 0, st.delivered > 0 || st.read > 0);
-    let x0 = x_right - 15.0 * SC;
-    let y0 = y_center - 4.0 * SC;
-    let pt = |x: f32, y: f32| pos2(x0 + x * SC, y0 + y * SC);
-    let line = |pts: [egui::Pos2; 3], c: Color32| {
-        let s = Stroke::new(1.6, c);
-        p.line_segment([pts[0], pts[1]], s);
-        p.line_segment([pts[1], pts[2]], s);
-    };
-    let second = if read_all { blue } else { normal };
-    if double {
-        line([pt(1.0, 5.5), pt(3.5, 8.0), pt(9.0, 1.0)], if read_some { blue } else { normal });
-    }
-    line([pt(7.0, 5.5), pt(9.5, 8.0), pt(15.0, 1.0)], second);
 }

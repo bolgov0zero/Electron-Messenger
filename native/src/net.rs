@@ -9,14 +9,21 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::model::{gb, gi, gs, parse_chat, parse_msg, Chat, Msg, Status};
+use crate::model::{gb, gi, gs, parse_chat, parse_msg, Chat, Msg, Presence, Status};
+use std::collections::HashMap;
 use crate::store::Session;
 
 pub enum Event {
     LoggedIn(Session),
     LoginFailed(String),
     Chats(Vec<Chat>),
-    History { chat_id: i64, msgs: Vec<Msg> },
+    History { chat_id: i64, msgs: Vec<Msg>, has_more: bool },
+    Older { chat_id: i64, msgs: Vec<Msg>, has_more: bool },
+    PresenceAll(HashMap<i64, Presence>),
+    PresenceOne { user_id: i64, p: Presence },
+    PresenceRefresh,
+    Typing { chat_id: i64, user_id: i64, name: String, voice: bool },
+    ChatOnline { chat_id: i64, online: i64, total: i64 },
     Message(Msg),
     Rejected { chat_id: i64, reason: String },
     Status { chat_id: i64, id: i64, status: Status },
@@ -127,10 +134,14 @@ impl Net {
         });
     }
 
-    pub fn fetch_history(&self, s: &Session, chat_id: i64) {
+    /// Первая страница истории (before = None) или более ранние сообщения.
+    pub fn fetch_history(&self, s: &Session, chat_id: i64, before: Option<i64>) {
         let (n, s) = (self.clone(), s.clone());
         self.rt.spawn(async move {
-            let url = format!("{}/api/messages/chat/{chat_id}?limit=80", s.server);
+            let mut url = format!("{}/api/messages/chat/{chat_id}?limit=50", s.server);
+            if let Some(b) = before {
+                url.push_str(&format!("&before={b}"));
+            }
             let res = n.http.get(url).bearer_auth(&s.token).send().await;
             let resp = match res {
                 Ok(r) => r,
@@ -139,7 +150,7 @@ impl Net {
             let status = resp.status();
             let body: Value = resp.json().await.unwrap_or(Value::Null);
             if !status.is_success() {
-                n.emit(Event::History { chat_id, msgs: vec![] });
+                n.emit(Event::History { chat_id, msgs: vec![], has_more: false });
                 return n.emit(Event::Error(api_error(&body, status)));
             }
             let msgs = body
@@ -147,7 +158,29 @@ impl Net {
                 .and_then(|m| m.as_array())
                 .map(|a| a.iter().map(parse_msg).collect())
                 .unwrap_or_default();
-            n.emit(Event::History { chat_id, msgs });
+            let has_more = gb(&body, "hasMore");
+            n.emit(if before.is_some() {
+                Event::Older { chat_id, msgs, has_more }
+            } else {
+                Event::History { chat_id, msgs, has_more }
+            });
+        });
+    }
+
+    pub fn fetch_presence(&self, s: &Session) {
+        let (n, s) = (self.clone(), s.clone());
+        self.rt.spawn(async move {
+            let Ok(resp) = n.http.get(format!("{}/api/users/presence", s.server)).bearer_auth(&s.token).send().await else { return };
+            let body: Value = resp.json().await.unwrap_or(Value::Null);
+            let mut map = HashMap::new();
+            if let Some(o) = body.as_object() {
+                for (k, v) in o {
+                    let Ok(id) = k.parse::<i64>() else { continue };
+                    let status = if v.is_string() { v.as_str().unwrap_or("").to_string() } else { gs(v, "status") };
+                    map.insert(id, Presence { status, last_seen: gi(v, "last_seen"), mobile: gb(v, "mobile") });
+                }
+            }
+            n.emit(Event::PresenceAll(map));
         });
     }
 
@@ -216,6 +249,18 @@ impl Net {
             }
             "send_rejected" => self.emit(Event::Rejected { chat_id: gi(&v, "chat_id"), reason: gs(&v, "reason") }),
             "reload_chats" => self.emit(Event::ReloadChats),
+            "presence" => self.emit(Event::PresenceOne {
+                user_id: gi(&v, "user_id"),
+                p: Presence { status: gs(&v, "status"), last_seen: gi(&v, "last_seen"), mobile: gb(&v, "mobile") },
+            }),
+            "presence_refresh" => self.emit(Event::PresenceRefresh),
+            "typing" => self.emit(Event::Typing {
+                chat_id: gi(&v, "chat_id"),
+                user_id: gi(&v, "user_id"),
+                name: gs(&v, "sender_name"),
+                voice: gb(&v, "voice"),
+            }),
+            "chat_online" => self.emit(Event::ChatOnline { chat_id: gi(&v, "chat_id"), online: gi(&v, "online"), total: gi(&v, "total") }),
             "status_update" => {
                 if let Some(m) = v.get("message") {
                     let msg = parse_msg(m);
