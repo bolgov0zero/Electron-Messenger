@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Макет: окно пользователя (создание и изменение), три варианта</title>
+<link rel="stylesheet" href="https://cdn.prtner.ai/1.0.0/sans.css"><!-- Medeo Sans (SIL OFL 1.1); запасной шрифт ниже -->
+<style>
+/* ═══════════════════════════════════════════════════════════
+   МАКЕТ: окно «Новый пользователь» / «Изменить пользователя» админ-панели (дизайн B «Мягкий»).
+   Сейчас: uaRenderForm в server/src/public/admin/app.js. Токены и кит — как в admin-home.html.
+   Три варианта: A «Вкладки», B «Боковое меню», C «Один экран». Данные демонстрационные.
+   Иконки — Lucide. Файл самодостаточный.
+   ═══════════════════════════════════════════════════════════ */
+:root{
+  --ff:"Medeo Sans",Inter,-apple-system,system-ui,"Segoe UI",sans-serif;
+  --app-bg:#ece9e4; --side-bg:#fdfcfa; --surf2:#f3f0eb; --sel:#efebe5;
+  --text:#1d1b19; --text2:#5b554e; --muted:#766e65;
+  --border:color-mix(in srgb,var(--text) 9%,transparent);
+  --hover-row:color-mix(in srgb,var(--text) 5%,transparent);
+  --gl-card2:color-mix(in srgb,var(--text) 8%,var(--side-bg));
+  --acc-rgb:29,168,140; --accent:rgb(var(--acc-rgb));
+  --accent-fill:color-mix(in srgb,var(--accent) 80%,#000);
+  --accent-ink:color-mix(in srgb,var(--accent) 72%,#000);
+  --accent-soft:color-mix(in srgb,var(--accent) 13%,var(--side-bg));
+  --pop-shadow:0 2px 6px rgba(60,40,20,.08),0 18px 44px rgba(60,40,20,.16);
+  --seg-bg:color-mix(in srgb,var(--text) 7%,var(--side-bg)); --seg-on:var(--side-bg); --seg-on-sh:0 1px 2px rgba(60,40,20,.14);
+  --ok:#1f7a45; --warn:#935d00; --bad:#c0392b;
+  --ok-soft:color-mix(in srgb,var(--ok) 12%,var(--side-bg)); --warn-soft:color-mix(in srgb,var(--warn) 13%,var(--side-bg)); --bad-soft:color-mix(in srgb,var(--bad) 11%,var(--side-bg));
+  --r-btn:12px; --r-card:16px; --r-panel:22px;
+  --ease:cubic-bezier(.22,1,.36,1);
+  color-scheme:light;
+}
+html.navy{
+  --app-bg:#10161d; --side-bg:#18202a; --surf2:#222d3a; --sel:#243242;
+  --text:#eef2f6; --text2:rgba(238,242,246,.74); --muted:rgba(238,242,246,.56);
+  --gl-card2:color-mix(in srgb,var(--text) 10%,var(--side-bg));
+  --accent-fill:color-mix(in srgb,var(--accent) 70%,#000);
+  --accent-ink:color-mix(in srgb,var(--accent) 70%,#fff);
+  --pop-shadow:0 2px 6px rgba(0,0,0,.4),0 18px 44px rgba(0,0,0,.55);
+  --seg-bg:var(--side-bg); --seg-on:var(--gl-card2); --seg-on-sh:none;
+  --ok:#4cc27c; --warn:#f0b04f; --bad:#f27c7c;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--ff);background:var(--app-bg);color:var(--text);font-size:14px;line-height:1.4;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;transition:background .25s,color .25s}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input{font:inherit;color:inherit}
+.ic{flex:none;display:block}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── Панель управления макетом ── */
+.bar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--app-bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+.bar h1{font-size:15px;font-weight:700;margin-right:auto}
+.bar .g{display:flex;align-items:center;gap:8px}
+.bar .g>span{font-size:12px;color:var(--muted)}
+.seg{display:inline-flex;background:var(--seg-bg);border-radius:12px;padding:3px;gap:2px}
+.seg button{height:30px;padding:0 12px;border-radius:9px;font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap}
+.seg button[aria-pressed=true]{background:var(--seg-on);color:var(--text);box-shadow:var(--seg-on-sh)}
+.note-top{max-width:1100px;margin:18px auto 0;padding:0 20px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:820px){.note-top{grid-template-columns:1fr}}
+.card{background:var(--side-bg);border-radius:var(--r-card);padding:14px 16px;font-size:13px;color:var(--text2)}
+.card h3{font-size:12px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.card ul{padding-left:18px;display:grid;gap:3px}
+.card b{color:var(--text)}
+
+/* ── Сцена: окно поверх затемнённой страницы ── */
+.stage-wrap{max-width:1100px;margin:16px auto 40px;padding:0 20px}
+.stage{container-type:inline-size;margin:0 auto;width:min(100%,var(--sw,100%));background:color-mix(in srgb,var(--text) 38%,var(--app-bg));border-radius:var(--r-panel);padding:28px 16px;display:flex;justify-content:center;align-items:flex-start;min-height:760px;transition:width .3s var(--ease)}
+.stage.phone{--sw:390px;padding:12px 0 0;align-items:flex-end;min-height:820px}
+.cap{text-align:center;font-size:12px;color:var(--muted);margin:10px 0 0}
+
+/* ── Окно ── */
+.modal{background:var(--side-bg);border-radius:var(--r-panel);box-shadow:var(--pop-shadow);width:100%;display:flex;flex-direction:column;max-height:720px;overflow:hidden}
+.v-A .modal,.v-C .modal{max-width:540px}
+.v-B .modal{max-width:780px}
+.stage.phone .modal{max-width:none;max-height:790px;border-radius:var(--r-panel) var(--r-panel) 0 0}
+.m-head{display:flex;align-items:center;gap:12px;padding:16px 18px 14px}
+.m-head .tt{min-width:0;flex:1}
+.m-title{font-size:17px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-sub{font-size:12.5px;color:var(--muted);margin-top:1px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.m-body{flex:1;overflow:auto;padding:4px 18px 18px;scroll-behavior:smooth}
+.m-foot{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--border)}
+.m-foot .fn{flex:1;font-size:12.5px;color:var(--muted);min-width:0}
+.m-foot .fn.ok{color:var(--ok)}
+.av{border-radius:30%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none;letter-spacing:.01em}
+.ibtn{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;color:var(--text2)}
+.ibtn:hover{background:var(--hover-row);color:var(--text)}
+.btn{height:38px;padding:0 16px;border-radius:var(--r-btn);font-weight:600;font-size:13.5px;display:inline-flex;align-items:center;gap:7px;background:var(--surf2);white-space:nowrap}
+.btn:hover{background:var(--gl-card2)}
+.btn.pri{background:var(--accent-fill);color:#fff}
+.btn.pri:hover{background:color-mix(in srgb,var(--accent-fill) 88%,#000)}
+.btn.pri[disabled]{opacity:.4;cursor:not-allowed}
+.btn.sm{height:32px;padding:0 12px;font-size:13px;border-radius:10px}
+.btn.ghost{background:transparent}
+.btn.ghost:hover{background:var(--hover-row)}
+.btn.dng{background:var(--bad-soft);color:var(--bad)}
+.btn.dng:hover{background:color-mix(in srgb,var(--bad) 18%,var(--side-bg))}
+
+/* Статусные пилюли */
+.pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:99px;font-size:12px;font-weight:600;background:var(--surf2);color:var(--text2)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.acc{background:var(--accent-soft);color:var(--accent-ink)}
+.pill i{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* Поля */
+.sec{margin-top:18px}
+.sec:first-child{margin-top:6px}
+.sec-h{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.sec-h .sp{flex:1}
+.fld{display:grid;gap:5px;margin-top:12px}
+.sec>.fld:first-of-type,.sec-h+.fld{margin-top:0}
+.fld label{font-size:13px;font-weight:600}
+.fld label .opt{font-weight:400;color:var(--muted)}
+.inp{display:flex;align-items:center;height:42px;border-radius:var(--r-btn);background:var(--surf2);padding:0 13px;gap:6px;transition:box-shadow .15s}
+.inp:focus-within{box-shadow:inset 0 0 0 1.5px var(--accent)}
+.inp input{flex:1;min-width:0;background:none;border:0;outline:0;height:100%}
+.inp .pre{color:var(--muted)}
+.inp input::placeholder{color:color-mix(in srgb,var(--text) 38%,transparent)}
+.hint{font-size:12px;color:var(--muted)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.row2 .fld{margin-top:0}
+@container (max-width:520px){.row2{grid-template-columns:1fr}}
+
+/* Чипы пространств */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{height:32px;padding:0 12px;border-radius:99px;background:var(--surf2);font-size:13px;font-weight:600;color:var(--text2);display:inline-flex;align-items:center;gap:6px}
+.chip[aria-pressed=true]{background:var(--accent-soft);color:var(--accent-ink);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--accent) 45%,transparent)}
+
+/* Роль: список-радио */
+.roles{display:grid;gap:8px}
+.role{display:flex;gap:12px;align-items:flex-start;text-align:left;padding:12px 14px;border-radius:var(--r-card);background:var(--surf2);transition:background .15s,box-shadow .15s}
+.role:hover{background:var(--gl-card2)}
+.role[aria-checked=true]{background:var(--accent-soft);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--accent) 50%,transparent)}
+.role .rd{width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--text) 30%,transparent);margin-top:2px;flex:none;display:grid;place-items:center}
+.role[aria-checked=true] .rd{box-shadow:inset 0 0 0 5px var(--accent-fill)}
+.role b{display:flex;align-items:center;gap:6px;font-size:14px}
+.role b .ic{color:var(--accent-ink)}
+.role span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.4}
+.lockline{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-radius:var(--r-btn);background:var(--surf2);font-size:12.5px;color:var(--text2)}
+.lockline .ic{margin-top:1px;color:var(--muted)}
+
+/* Строки-переключатели */
+.rows{display:grid;border-radius:var(--r-card);background:var(--surf2);overflow:hidden}
+.rw{display:flex;align-items:center;gap:12px;padding:12px 14px}
+.rw+.rw{border-top:1px solid var(--border)}
+.rw .tx{flex:1;min-width:0}
+.rw .tx b{display:block;font-size:13.5px}
+.rw .tx span{display:block;font-size:12.5px;color:var(--muted);margin-top:1px}
+.rw .gi{width:32px;height:32px;border-radius:10px;background:var(--side-bg);display:grid;place-items:center;color:var(--text2);flex:none}
+.tg{width:42px;height:24px;border-radius:99px;background:color-mix(in srgb,var(--text) 22%,transparent);position:relative;flex:none;transition:background .2s}
+.tg::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s var(--ease)}
+.tg[aria-checked=true]{background:var(--accent-fill)}
+.tg[aria-checked=true]::after{transform:translateX(18px)}
+
+/* Пароль */
+.pw{border-radius:var(--r-card);background:var(--surf2);padding:12px 14px;display:grid;gap:10px}
+.pw .top{display:flex;align-items:center;gap:10px}
+.pw code{flex:1;min-width:0;font-family:var(--ff);font-size:17px;font-weight:600;letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pw .acts{display:flex;gap:6px;flex-wrap:wrap}
+.pw.closed{grid-auto-flow:column;grid-template-columns:1fr auto;align-items:center}
+.pw.closed .tx b{display:block;font-size:13.5px}
+.pw.closed .tx span{font-size:12.5px;color:var(--muted)}
+.chk{display:flex;gap:9px;align-items:center;font-size:13px;color:var(--text2)}
+.chk i{width:18px;height:18px;border-radius:6px;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--text) 30%,transparent);display:grid;place-items:center;color:#fff;flex:none}
+.chk[aria-checked=true] i{background:var(--accent-fill);box-shadow:none}
+
+/* Управление учётной записью */
+.manage .rw .gi{background:var(--side-bg)}
+.manage .rw.d .gi{background:var(--bad-soft);color:var(--bad)}
+
+/* Вариант A: вкладки */
+.tabs{display:flex;gap:2px;padding:0 14px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{height:42px;padding:0 12px;font-size:13.5px;font-weight:600;color:var(--muted);position:relative;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.tabs button[aria-selected=true]{color:var(--text)}
+.tabs button[aria-selected=true]::after{content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:2px;border-radius:2px;background:var(--accent-fill)}
+.tabs .dot{width:7px;height:7px;border-radius:50%;background:var(--warn)}
+.tabs .cnt{font-size:11.5px;color:var(--muted);font-weight:600}
+.v-A .m-body{min-height:420px}
+
+/* Вариант B: боковое меню */
+.b-grid{display:grid;grid-template-columns:210px 1fr;flex:1;min-height:0}
+.rail{border-right:1px solid var(--border);padding:16px 12px;display:flex;flex-direction:column;gap:14px;background:color-mix(in srgb,var(--surf2) 45%,var(--side-bg))}
+.pv{display:grid;justify-items:center;text-align:center;gap:6px;padding:6px 4px 4px}
+.pv .n{font-weight:700;font-size:14.5px;line-height:1.25;word-break:break-word}
+.pv .l{font-size:12.5px;color:var(--muted);word-break:break-all}
+.pv .pl{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.rnav{display:grid;gap:2px}
+.rnav button{display:flex;align-items:center;gap:10px;height:38px;padding:0 10px;border-radius:11px;font-size:13.5px;font-weight:600;color:var(--text2);text-align:left}
+.rnav button:hover{background:var(--hover-row)}
+.rnav button[aria-current=true]{background:var(--sel);color:var(--text)}
+.rnav button .ic{color:var(--muted)}
+.rnav button[aria-current=true] .ic{color:var(--accent-ink)}
+.rnav .dot{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--warn)}
+.b-main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.b-main .m-body{padding-top:14px}
+.b-sec{scroll-margin-top:6px}
+.b-sec+.b-sec{margin-top:26px;padding-top:22px;border-top:1px solid var(--border)}
+.b-sec>h4{font-size:15px;font-weight:700;margin-bottom:2px}
+.b-sec>p{font-size:12.5px;color:var(--muted);margin-bottom:12px}
+@container (max-width:640px){
+  .b-grid{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .rail{border-right:0;border-bottom:1px solid var(--border);padding:10px 14px;flex-direction:row;align-items:center;gap:10px;overflow-x:auto}
+  .pv{display:none}
+  .rnav{display:flex;gap:4px}
+  .rnav button{white-space:nowrap;height:34px}
+}
+
+/* Вариант C: меню ⋯ */
+.pop{position:absolute;right:14px;top:56px;z-index:6;min-width:250px;background:var(--side-bg);border-radius:var(--r-card);box-shadow:var(--pop-shadow);padding:6px}
+.pop button{display:flex;align-items:center;gap:10px;width:100%;height:40px;padding:0 10px;border-radius:10px;font-size:13.5px;font-weight:600;text-align:left}
+.pop button:hover{background:var(--hover-row)}
+.pop button.d{color:var(--bad)}
+.pop hr{border:0;border-top:1px solid var(--border);margin:5px 4px}
+.pop small{margin-left:auto;font-size:12px;color:var(--muted);font-weight:500}
+.seg.full{display:flex;width:100%}
+.seg.full button{flex:1;height:36px}
+.seg-desc{font-size:12.5px;color:var(--muted);margin-top:8px}
+.m-wrap{position:relative;display:flex;flex-direction:column;min-height:0;flex:1}
+
+/* Тост */
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);background:var(--text);color:var(--app-bg);padding:11px 18px;border-radius:14px;font-weight:600;font-size:13.5px;opacity:0;pointer-events:none;transition:.25s var(--ease);z-index:50}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <h1>Окно пользователя: три варианта</h1>
+  <div class="g"><span>Вариант</span><div class="seg" id="c-variant">
+    <button data-v="A" aria-pressed="true">A · Вкладки</button><button data-v="B" aria-pressed="false">B · Боковое меню</button><button data-v="C" aria-pressed="false">C · Один экран</button></div></div>
+  <div class="g"><span>Режим</span><div class="seg" id="c-mode">
+    <button data-v="create" aria-pressed="true">Создание</button><button data-v="edit" aria-pressed="false">Изменение</button></div></div>
+  <div class="g"><span>Открыл</span><div class="seg" id="c-viewer">
+    <button data-v="admin" aria-pressed="true">Администратор</button><button data-v="manager" aria-pressed="false">Менеджер</button></div></div>
+  <div class="g"><span>Экран</span><div class="seg" id="c-screen">
+    <button data-v="desk" aria-pressed="true">Компьютер</button><button data-v="phone" aria-pressed="false">Телефон</button></div></div>
+  <div class="g"><span>Тема</span><div class="seg" id="c-theme">
+    <button data-v="light" aria-pressed="true">Светлая</button><button data-v="navy" aria-pressed="false">Тёмно-синяя</button></div></div>
+</div>
+
+<div class="note-top">
+  <div class="card"><h3>Что не так сейчас</h3><ul>
+    <li><b>Аккордеон в аккордеоне:</b> главное сверху, всё остальное свёрнуто в «Дополнительно», а внутри ещё три свёрнутых раздела.</li>
+    <li><b>Роль спрятана:</b> чтобы сделать менеджером или включить 2FA, надо раскрыть два уровня.</li>
+    <li><b>Пароль в трёх местах:</b> блок при создании, раздел при изменении и отдельное окно «Новый пароль».</li>
+    <li><b>Опасные действия внутри формы</b> рядом с полями, которые сохраняются кнопкой «Сохранить».</li>
+  </ul></div>
+  <div class="card"><h3>Общие правила во всех вариантах</h3><ul>
+    <li><b>Одна форма</b> для создания и изменения: при изменении добавляются статус, «Управление» и пустой пароль («не меняется»).</li>
+    <li><b>Роль видна сразу</b>, права под ней меняются по роли: у пользователя объявления и звонки, у менеджера и админа 2FA.</li>
+    <li><b>Логин подставляется из имени</b>, пока его не правили руками.</li>
+    <li><b>Менеджеру роль не показываем:</b> одна строка о том, что роли выдаёт администратор. Переключатель «Открыл» наверху.</li>
+  </ul></div>
+</div>
+
+<div class="stage-wrap">
+  <div class="stage v-A" id="stage"><div id="mount" style="width:100%;display:flex;justify-content:center"></div></div>
+  <p class="cap" id="cap"></p>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── Иконки Lucide ── */
+const IC={
+  x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  shield:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  key:'<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>',
+  copy:'<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  eye:'<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+  eyeoff:'<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/>',
+  refresh:'<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  ban:'<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
+  logout:'<path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>',
+  trash:'<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
+  check:'<path d="M20 6 9 18l-5-5"/>',
+  mega:'<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
+  video:'<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+  layers:'<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',
+  more:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  lock:'<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  idcard:'<path d="M16 10h2"/><path d="M16 14h2"/><path d="M6.17 15a3 3 0 0 1 5.66 0"/><circle cx="9" cy="11" r="2"/><rect x="2" y="5" width="20" height="14" rx="2"/>',
+  laptop:'<path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16"/>',
+  sliders:'<path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/>'
+};
+const ic=(n,s=16)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+
+/* ── Данные и состояние ── */
+const SPACES=['Основное','Бухгалтерия','Склад'];
+const ROLES=[
+  {id:'user',t:'Пользователь',d:'Обычная учётная запись: чаты, комнаты, файлы и звонки',i:'user'},
+  {id:'manager',t:'Менеджер',d:'Помогает управлять: люди, комнаты, пространства и объявления. Без настроек сервера',i:'shield'},
+  {id:'admin',t:'Администратор',d:'Вся админ-панель и настройки сервера',i:'shield'}
+];
+const PW_ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+const genPw=()=>[0,1,2].map(()=>Array.from({length:4},()=>PW_ALPHA[Math.floor(Math.random()*PW_ALPHA.length)]).join('')).join('-');
+const BASE={
+  create:()=>({name:'',login:'',loginTouched:false,tag:'',spaces:['Основное'],role:'user',announce:false,calls:false,totp:false,pw:genPw(),pwShown:true,pwOpen:false,closeSess:true}),
+  edit:()=>({name:'Анна Смирнова',login:'a.smirnova',loginTouched:true,tag:'HR',spaces:['Основное','Бухгалтерия'],role:'user',announce:true,calls:false,totp:false,totpConfigured:false,pw:'',pwShown:false,pwOpen:false,closeSess:true})
+};
+const S={variant:'A',mode:'create',viewer:'admin',phone:false,tabA:'profile',navB:'profile',menu:false,dirty:false,f:BASE.create()};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TR={а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'sch',ы:'y',э:'e',ю:'yu',я:'ya',ь:'',ъ:''};
+function loginFrom(name){
+  const w=name.trim().toLowerCase().split(/\s+/).filter(Boolean).map(x=>[...x].map(c=>TR[c]??c).join('').replace(/[^a-z0-9._-]/g,'')).filter(Boolean);
+  return w.length>1?w[0][0]+'.'+w[w.length-1]:(w[0]||'');
+}
+const COLORS=['#2a78d6','#7a5af0','#1da88c','#d9622b','#c8467d','#3f8f4f','#b8860b'];
+const avColor=n=>COLORS[[...n].reduce((a,c)=>a+c.charCodeAt(0),0)%COLORS.length];
+const initials=n=>n.trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase()||'?';
+const av=(n,s)=>`<span class="av" data-av style="width:${s}px;height:${s}px;font-size:${Math.round(s*.38)}px;background:${n.trim()?avColor(n):'color-mix(in srgb,var(--text) 28%,var(--side-bg))'}">${n.trim()?esc(initials(n)):ic('user',Math.round(s*.5))}</span>`;
+const isEdit=()=>S.mode==='edit', isMgrView=()=>S.viewer==='manager';
+const miss=()=>[!S.f.name.trim()&&'имя',!S.f.login.trim()&&'логин'].filter(Boolean);
+const roleName=()=>ROLES.find(r=>r.id===S.f.role).t;
+
+/* ── Общие блоки ── */
+function head(){
+  const f=S.f;
+  const sub=isEdit()?`<span>@${esc(f.login)} · создан 3 мая 2026</span><span class="pill ok"><i></i>В сети</span>`:'Имя и логин, остальное можно настроить позже';
+  const more=S.variant==='C'&&isEdit()?`<button class="ibtn" data-act="menu" aria-label="Действия с учётной записью" aria-haspopup="menu">${ic('more',20)}</button>`:'';
+  return `<div class="m-head">${S.variant==='B'?'':`<span data-live="av">${av(f.name,40)}</span>`}<div class="tt"><div class="m-title" data-live="title">${isEdit()?esc(f.name||'Без имени'):'Новый пользователь'}</div><div class="m-sub">${sub}</div></div>${more}<button class="ibtn" data-act="close" aria-label="Закрыть">${ic('x',18)}</button></div>`;
+}
+function foot(){
+  const m=miss(), dis=m.length||(isEdit()&&!S.dirty);
+  const note=m.length?'Осталось: '+m.join(', '):(isEdit()&&!S.dirty?'Изменений нет':'Всё готово');
+  return `<div class="m-foot"><span class="fn ${!m.length&&(S.dirty||!isEdit())?'ok':''}" data-live="note">${note}</span><button class="btn ghost" data-act="close">Отмена</button><button class="btn pri" data-act="submit" data-live="go" ${dis?'disabled':''}>${isEdit()?'Сохранить':'Создать'}</button></div>`;
+}
+const fProfile=()=>{const f=S.f;return `
+  <div class="fld"><label for="i-name">Имя и фамилия</label><div class="inp"><input id="i-name" data-in="name" value="${esc(f.name)}" placeholder="Анна Смирнова" autocomplete="off"></div></div>
+  <div class="row2">
+    <div class="fld"><label for="i-login">Логин</label><div class="inp"><span class="pre">@</span><input id="i-login" data-in="login" value="${esc(f.login)}" placeholder="a.smirnova" autocomplete="off" spellcheck="false"></div><span class="hint" data-live="lhint">${f.loginTouched?'Латиница, цифры, точка':'Подставлен из имени, можно поправить'}</span></div>
+    <div class="fld"><label for="i-tag">Тег <span class="opt">· необязательно</span></label><div class="inp"><input id="i-tag" data-in="tag" value="${esc(f.tag)}" maxlength="20" placeholder="HR, Dev, Склад" autocomplete="off"></div><span class="hint">Виден рядом с именем в чате</span></div>
+  </div>`;};
+const fSpaces=()=>`<div class="chips" role="group" aria-label="Пространства">${SPACES.map(s=>`<button class="chip" data-act="space" data-v="${esc(s)}" aria-pressed="${S.f.spaces.includes(s)}">${ic('layers',14)}${esc(s)}</button>`).join('')}</div><p class="hint" style="margin-top:8px">Человек виден в выбранных пространствах и видит людей из них</p>`;
+function fRole(style){
+  const f=S.f;
+  if(isMgrView()) return `<div class="lockline">${ic('lock')}<div>${isEdit()?`Роль: <b>${roleName()}</b>. `:'Вы создаёте обычного пользователя. '}Роли «Менеджер» и «Администратор» выдаёт только администратор.</div></div>`;
+  if(style==='seg') return `<div class="seg full" role="radiogroup" aria-label="Роль">${ROLES.map(r=>`<button role="radio" data-act="role" data-v="${r.id}" aria-pressed="${f.role===r.id}" aria-checked="${f.role===r.id}">${r.t}</button>`).join('')}</div><p class="seg-desc">${ROLES.find(r=>r.id===f.role).d}</p>`;
+  return `<div class="roles" role="radiogroup" aria-label="Роль">${ROLES.map(r=>`<button class="role" role="radio" data-act="role" data-v="${r.id}" aria-checked="${f.role===r.id}"><span class="rd"></span><div><b>${r.t}${r.id!=='user'?ic(r.i,14):''}</b><span>${r.d}</span></div></button>`).join('')}</div>`;
+}
+const tgRow=(k,icn,t,d)=>`<div class="rw"><span class="gi">${ic(icn)}</span><div class="tx"><b>${t}</b><span>${d}</span></div><button class="tg" role="switch" data-act="tg" data-v="${k}" aria-checked="${S.f[k]}" aria-label="${t}"></button></div>`;
+function fPerms(){
+  const f=S.f, staff=f.role!=='user';
+  if(!staff) return `<div class="rows">${tgRow('announce','mega','Отправлять объявления','В клиенте появится кнопка: всплывающее, полоса и сообщение в чаты')}${tgRow('calls','video','Ссылки на видеозвонок','Ссылки для гостей без учётной записи. Нужен свой сервер звонков')}</div>`;
+  const reset=isEdit()&&f.totpConfigured?`<div class="rw"><span class="gi">${ic('key')}</span><div class="tx"><b>2FA настроена</b><span>Если потерян доступ к приложению-аутентификатору</span></div><button class="btn sm" data-act="reset2fa">Сбросить</button></div>`:'';
+  return `<div class="rows">${tgRow('totp','shield','Требовать 2FA при входе в админ-панель','Код из приложения-аутентификатора; человек настроит его при первом входе')}${reset}</div>`;
+}
+function fPassword(){
+  const f=S.f;
+  if(!isEdit()) return `<div class="pw"><div class="top"><span class="gi" style="display:none"></span>${ic('key',18)}<code data-live="pw">${f.pwShown?esc(f.pw):'•••• •••• ••••'}</code><button class="ibtn" data-act="show" aria-label="${f.pwShown?'Скрыть пароль':'Показать пароль'}">${ic(f.pwShown?'eyeoff':'eye')}</button></div>
+    <div class="acts"><button class="btn sm" data-act="copy">${ic('copy',14)}Скопировать логин и пароль</button><button class="btn sm ghost" data-act="gen">${ic('refresh',14)}Другой</button></div>
+    <p class="hint">Пароль придуман автоматически и хранится только в виде хеша: скопируйте и передайте человеку до создания.</p></div>`;
+  if(!f.pwOpen) return `<div class="pw closed"><div class="tx"><b>Пароль не меняется</b><span>Войти по нему можно как раньше</span></div><button class="btn sm" data-act="pwopen">${ic('key',14)}Сменить пароль</button></div>`;
+  return `<div class="pw"><div class="top">${ic('key',18)}<code>${esc(f.pw)}</code><button class="ibtn" data-act="show" aria-label="Показать или скрыть">${ic(f.pwShown?'eyeoff':'eye')}</button></div>
+    <div class="acts"><button class="btn sm" data-act="copy">${ic('copy',14)}Скопировать</button><button class="btn sm ghost" data-act="gen">${ic('refresh',14)}Другой</button><button class="btn sm ghost" data-act="pwclose">Не менять</button></div>
+    <button class="chk" data-act="sess" role="checkbox" aria-checked="${f.closeSess}"><i>${f.closeSess?ic('check',12):''}</i>Завершить сеансы на всех устройствах</button></div>`;
+}
+const manageRows=()=>`<div class="rows manage">
+  <div class="rw"><span class="gi">${ic('logout')}</span><div class="tx"><b>Завершить все сеансы</b><span>Выход на всех устройствах; войти снова можно</span></div><button class="btn sm" data-act="x-sess">Завершить</button></div>
+  <div class="rw"><span class="gi">${ic('ban')}</span><div class="tx"><b>Заблокировать</b><span>Не сможет войти, пока не разблокируете</span></div><button class="btn sm" data-act="x-ban">Заблокировать</button></div>
+  <div class="rw d"><span class="gi">${ic('trash')}</span><div class="tx"><b>Удалить пользователя</b><span>Навсегда; сообщения в чатах останутся</span></div><button class="btn sm dng" data-act="x-del">Удалить</button></div></div>`;
+
+/* ── Вариант A: вкладки ── */
+function renderA(){
+  const hasMiss=miss().length;
+  const tabs=[['profile','Профиль',hasMiss?'<span class="dot" title="Не заполнено"></span>':''],['access','Доступ',''],['login','Вход',''],...(isEdit()?[['manage','Управление','']]:[])];
+  if(!tabs.some(t=>t[0]===S.tabA)) S.tabA='profile';
+  const body={
+    profile:`<div class="sec">${fProfile()}</div><div class="sec"><div class="sec-h">Пространства</div>${fSpaces()}</div>`,
+    access:`<div class="sec"><div class="sec-h">Роль</div>${fRole('list')}</div><div class="sec"><div class="sec-h">${S.f.role==='user'?'Дополнительные права':'Безопасность входа'}</div>${fPerms()}</div>`,
+    login:`<div class="sec"><div class="sec-h">Пароль</div>${fPassword()}</div>`,
+    manage:`<div class="sec"><div class="sec-h">Управление учётной записью</div>${manageRows()}</div>`
+  }[S.tabA];
+  return `<div class="modal">${head()}<div class="tabs" role="tablist">${tabs.map(t=>`<button role="tab" data-act="tabA" data-v="${t[0]}" aria-selected="${S.tabA===t[0]}">${t[1]}${t[2]}</button>`).join('')}</div><div class="m-body">${body}</div>${foot()}</div>`;
+}
+
+/* ── Вариант B: боковое меню со скроллом по разделам ── */
+function renderB(){
+  const f=S.f, hasMiss=miss().length;
+  const secs=[['profile','Профиль','idcard'],['access','Роль и права','shield'],['login','Пароль и вход','key'],...(isEdit()?[['manage','Управление','sliders']]:[])];
+  const pillRole=f.role==='user'?'':`<span class="pill acc">${ic('shield',12)}${roleName()}</span>`;
+  const rail=`<aside class="rail"><div class="pv"><span data-live="avbig">${av(f.name,64)}</span><div class="n" data-live="pvn">${esc(f.name)||'<span style="color:var(--muted);font-weight:500">Имя появится здесь</span>'}</div><div class="l" data-live="pvl">${f.login?'@'+esc(f.login):''}</div><div class="pl" data-live="pvp">${f.tag?`<span class="pill">${esc(f.tag)}</span>`:''}${pillRole}</div></div>
+    <nav class="rnav" aria-label="Разделы">${secs.map(s=>`<button data-act="navB" data-v="${s[0]}" aria-current="${S.navB===s[0]}">${ic(s[2],17)}${s[1]}${s[0]==='profile'&&hasMiss?'<span class="dot"></span>':''}</button>`).join('')}</nav></aside>`;
+  const sec=(id,t,p,html)=>`<section class="b-sec" id="b-${id}" data-sec="${id}"><h4>${t}</h4><p>${p}</p>${html}</section>`;
+  const main=`<div class="m-body" id="b-scroll">
+    ${sec('profile','Профиль','Как человека видят в чатах и списках',fProfile()+`<div class="fld" style="margin-top:16px"><label>Пространства</label>${fSpaces()}</div>`)}
+    ${sec('access','Роль и права','Что человеку доступно в панели и в клиенте',fRole('list')+`<div style="margin-top:12px">${fPerms()}</div>`)}
+    ${sec('login','Пароль и вход',isEdit()?'Пароль можно оставить прежним':'Передайте пароль человеку до создания',fPassword())}
+    ${isEdit()?sec('manage','Управление','Действия сразу применяются и не зависят от кнопки «Сохранить»',manageRows()):''}
+    <div style="height:140px"></div></div>`;
+  return `<div class="modal">${head()}<div class="b-grid" style="border-top:1px solid var(--border)">${rail}<div class="b-main">${main}${foot()}</div></div></div>`;
+}
+
+/* ── Вариант C: один экран ── */
+function renderC(){
+  const menu=S.menu?`<div class="pop" role="menu"><button role="menuitem" data-act="x-sess">${ic('logout',17)}Завершить сеансы<small>2</small></button><button role="menuitem" data-act="x-ban">${ic('ban',17)}Заблокировать</button><hr><button role="menuitem" class="d" data-act="x-del">${ic('trash',17)}Удалить пользователя</button></div>`:'';
+  return `<div class="modal"><div class="m-wrap">${head()}${menu}<div class="m-body">
+    <div class="sec">${fProfile()}</div>
+    <div class="sec"><div class="sec-h">Пространства</div>${fSpaces()}</div>
+    <div class="sec"><div class="sec-h">Роль</div>${fRole('seg')}${isMgrView()?'':`<div style="margin-top:12px">${fPerms()}</div>`}${isMgrView()?`<div style="margin-top:12px">${fPerms()}</div>`:''}</div>
+    <div class="sec"><div class="sec-h">Пароль</div>${fPassword()}</div>
+  </div>${foot()}</div></div>`;
+}
+
+/* ── Отрисовка ── */
+const CAPS={
+  A:'A · Вкладки: профиль, доступ, вход, управление. Каждая вкладка короткая, вложенных раскрытий нет; точка у вкладки — что не заполнено.',
+  B:'B · Боковое меню: слева живая карточка человека и разделы, справа вся форма одним прокручиваемым полотном. На телефоне меню превращается в полосу сверху.',
+  C:'C · Один экран: всё подряд без вкладок и раскрытий, опасные действия убраны в меню «⋯» в шапке (только при изменении).'
+};
+function render(){
+  const body=$('#mount').querySelector('.m-body'), top=body?body.scrollTop:0;
+  const st=$('#stage');
+  st.className='stage v-'+S.variant+(S.phone?' phone':'');
+  $('#mount').innerHTML=S.variant==='A'?renderA():S.variant==='B'?renderB():renderC();
+  const nb=$('#mount').querySelector('.m-body'); if(nb){nb.style.scrollBehavior='auto';nb.scrollTop=top;requestAnimationFrame(()=>nb.style.scrollBehavior='');}
+  $('#cap').textContent=CAPS[S.variant];
+  if(S.variant==='B') bindSpy();
+}
+function reset(){S.f=BASE[S.mode]();S.dirty=false;S.menu=false;S.tabA='profile';S.navB='profile';}
+function live(){ /* точечные обновления без потери фокуса */
+  const f=S.f, root=$('#mount');
+  const set=(k,h)=>root.querySelectorAll(`[data-live="${k}"]`).forEach(e=>e.innerHTML=h);
+  set('av',av(f.name,40)); set('avbig',av(f.name,64));
+  if(isEdit()) set('title',esc(f.name||'Без имени'));
+  set('pvn',esc(f.name)||'<span style="color:var(--muted);font-weight:500">Имя появится здесь</span>');
+  set('pvl',f.login?'@'+esc(f.login):'');
+  set('pvp',(f.tag?`<span class="pill">${esc(f.tag)}</span>`:'')+(f.role==='user'?'':`<span class="pill acc">${ic('shield',12)}${roleName()}</span>`));
+  const m=miss(), dis=m.length||(isEdit()&&!S.dirty), note=root.querySelector('[data-live="note"]');
+  if(note){note.textContent=m.length?'Осталось: '+m.join(', '):(isEdit()&&!S.dirty?'Изменений нет':'Всё готово');note.classList.toggle('ok',!m.length&&(S.dirty||!isEdit()));}
+  const go=root.querySelector('[data-live="go"]'); if(go) go.disabled=!!dis;
+  const lh=root.querySelector('[data-live="lhint"]'); if(lh) lh.textContent=f.loginTouched?'Латиница, цифры, точка':'Подставлен из имени, можно поправить';
+  const li=root.querySelector('#i-login'); if(li&&document.activeElement!==li) li.value=f.login;
+  const dots=root.querySelectorAll('.tabs .dot,.rnav .dot');
+  if(!m.length) dots.forEach(d=>d.remove());
+}
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),2200);}
+function bindSpy(){
+  const sc=$('#b-scroll'); if(!sc) return;
+  sc.addEventListener('scroll',()=>{
+    const secs=[...sc.querySelectorAll('.b-sec')]; let cur=secs[0].dataset.sec;
+    secs.forEach(s=>{if(s.offsetTop-sc.offsetTop<=sc.scrollTop+40) cur=s.dataset.sec;});
+    if(sc.scrollTop+sc.clientHeight>=sc.scrollHeight-4) cur=secs[secs.length-1].dataset.sec;
+    if(cur!==S.navB){S.navB=cur;document.querySelectorAll('.rnav button').forEach(b=>b.setAttribute('aria-current',b.dataset.v===cur));}
+  },{passive:true});
+}
+
+/* ── События ── */
+document.addEventListener('click',e=>{
+  const seg=e.target.closest('.bar .seg button');
+  if(seg){
+    const id=seg.parentElement.id, v=seg.dataset.v;
+    seg.parentElement.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===seg));
+    if(id==='c-variant') S.variant=v;
+    if(id==='c-mode'){S.mode=v;reset();}
+    if(id==='c-viewer'){S.viewer=v;if(v==='manager'&&!isEdit()) S.f.role='user';}
+    if(id==='c-screen') S.phone=v==='phone';
+    if(id==='c-theme') document.documentElement.classList.toggle('navy',v==='navy');
+    return render();
+  }
+  if(S.menu&&!e.target.closest('.pop')&&!e.target.closest('[data-act="menu"]')){S.menu=false;render();}
+  const a=e.target.closest('[data-act]'); if(!a) return;
+  const act=a.dataset.act, v=a.dataset.v, f=S.f, d=()=>{S.dirty=true;};
+  if(act==='tabA'){S.tabA=v;return render();}
+  if(act==='navB'){S.navB=v;document.querySelectorAll('.rnav button').forEach(b=>b.setAttribute('aria-current',b.dataset.v===v));const t=$('#b-'+v),sc=$('#b-scroll');if(t&&sc) sc.scrollTo({top:t.offsetTop-sc.offsetTop-6,behavior:'smooth'});return;}
+  if(act==='role'){f.role=v;d();return render();}
+  if(act==='tg'){f[v]=!f[v];d();return render();}
+  if(act==='space'){f.spaces=f.spaces.includes(v)?(f.spaces.length>1?f.spaces.filter(x=>x!==v):f.spaces):[...f.spaces,v];d();return render();}
+  if(act==='gen'){f.pw=genPw();f.pwShown=true;d();return render();}
+  if(act==='show'){f.pwShown=!f.pwShown;return render();}
+  if(act==='pwopen'){f.pwOpen=true;f.pw=genPw();f.pwShown=true;d();return render();}
+  if(act==='pwclose'){f.pwOpen=false;f.pw='';return render();}
+  if(act==='sess'){f.closeSess=!f.closeSess;return render();}
+  if(act==='menu'){S.menu=!S.menu;return render();}
+  if(act==='copy') return toast('Скопировано: логин и пароль');
+  if(act==='reset2fa') return toast('2FA сброшена, человек настроит её при следующем входе');
+  if(act.startsWith('x-')){S.menu=false;render();return toast({'x-sess':'Сеансы завершены','x-ban':'Пользователь заблокирован','x-del':'Здесь появится подтверждение удаления'}[act]);}
+  if(act==='submit') return toast(isEdit()?'Сохранено (макет)':'Пользователь создан (макет)');
+  if(act==='close') return toast('Окно закрылось бы (макет)');
+});
+document.addEventListener('input',e=>{
+  const k=e.target.dataset.in; if(!k) return;
+  const f=S.f; S.dirty=true;
+  if(k==='login'){f.login=e.target.value=e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g,'');f.loginTouched=true;}
+  else f[k]=e.target.value;
+  if(k==='name'&&!f.loginTouched&&!isEdit()) f.login=loginFrom(f.name);
+  live();
+});
+render();
+</script>
+</body>
+</html>

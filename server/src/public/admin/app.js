@@ -2666,6 +2666,9 @@ const UX_I = {
   eyeOff: uxSvg('<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/>'),
   wand: uxSvg('<path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/>'),
   copy: uxSvg('<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>'),
+  idcard: uxSvg('<path d="M16 10h2"/><path d="M16 14h2"/><path d="M6.17 15a3 3 0 0 1 5.66 0"/><circle cx="9" cy="11" r="2"/><rect x="2" y="5" width="20" height="14" rx="2"/>'),
+  lock: uxSvg('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
+  sliders: uxSvg('<path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/>'),
   shield: uxSvg('<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>'),
   check: uxSvg('<path d="M20 6 9 17l-5-5"/>', 2.5),
   chev: uxSvg('<path d="m9 18 6-6-6-6"/>', 2.5),
@@ -2823,7 +2826,7 @@ function uxOsName(platform) {
 }
 
 // ── Пользователи ──
-const UA = { ws: null, filter: 'all', q: '', sort: { key: 'name', dir: 1 }, sel: new Set(), form: null, editId: null, passId: null };
+const UA = { ws: null, filter: 'all', q: '', sort: { key: 'name', dir: 1 }, sel: new Set(), form: null, editId: null, snap: '', nav: 'profile' };
 
 async function renderUsers() {
   const [users] = await Promise.all([api('GET', '/api/admin/users'), wsLoad()]);
@@ -3117,14 +3120,13 @@ function uaWsPills(u) {
 }
 const uaBlank = u => ({ name: u?.display_name || '', login: u?.username || '', tag: u?.tag || '', admin: !!u?.is_admin, mgr: !!u?.is_manager,
   totpRequired: !!u?.totp_required, canAnnounce: !!u?.can_announce, canCallLinks: !!u?.can_call_links, wss: uaUserWs(u), wsOpen: false, wsErr: false,
-  password: '', show: false, pwOpen: false, generated: false, closeSessions: true, errors: {}, busy: false, more: false });
+  password: '', show: false, pwOpen: false, generated: false, closeSessions: true, loginTouched: !!u, errors: {}, busy: false });
 const uaAv = (name, size) => `<span class="av" style="width:${size}px;height:${size}px;border-radius:${Math.round(size * .26)}px;font-size:${Math.round(size * .36)}px;background:${avColor(name || '?')}">${esc(initials(name))}</span>`;
 
 function openCreateUser() {
-  UA.editId = null;
+  UA.editId = null; UA.nav = 'profile'; UA.snap = '';
   UA.form = uaBlank();
-  uaMakePw(UA.form);   // пароль придумывается сам: его видно в окне, при желании меняется в «Дополнительно»
-  document.getElementById('ua-pass-form').innerHTML = '';
+  uaMakePw(UA.form);   // пароль придумывается сам: его видно в разделе «Пароль и вход», при желании меняется
   uaRenderForm();
   openModal('modal-user');
   setTimeout(() => document.getElementById('ua-name')?.focus(), 60);
@@ -3133,9 +3135,9 @@ function openEditUser(id) {
   const u = allUsers.find(x => x.id === id);
   if (!u) return;
   if (isMgr() && u.is_manager) { toast('Менеджера может менять только администратор', 'info'); return; }
-  UA.editId = id;
+  UA.editId = id; UA.nav = 'profile';
   UA.form = uaBlank(u);
-  document.getElementById('ua-pass-form').innerHTML = '';
+  UA.snap = uaSnap(UA.form);
   uaRenderForm();
   openModal('modal-user');
   setTimeout(() => document.getElementById('ua-name')?.focus(), 60);
@@ -3235,14 +3237,20 @@ function uaMakePw(f) {
   f.password = [...crypto.getRandomValues(new Uint32Array(12))].map(n => abc[n % abc.length]).join('').replace(/^(.{4})(.{4})/, '$1-$2-');
   f.show = true; f.generated = true;
 }
-const uaMore = id => { UA.form.more = id ? true : !UA.form.more; uaRenderForm(); if (id) fmScroll('ua-sec-' + id); };
+// Что изменено в форме: без изменений «Сохранить» недоступно
+const uaSnap = f => JSON.stringify([f.name.trim(), f.login.trim(), f.tag.trim(), f.wss, f.admin, f.mgr, f.totpRequired, f.canAnnounce, f.canCallLinks, f.pwOpen ? f.password : '']);
+const uaDirty = f => !UA.editId || uaSnap(f) !== UA.snap;
+const uaNote = f => { const m = uaMissing(f, !!UA.editId); return m.length ? fmNote(m) : uaDirty(f) ? fmNote([]) : 'Изменений нет'; };
 function uaFootSync() {
   const f = UA.form; if (!f) return;
-  const miss = uaMissing(f, !!UA.editId), n = document.getElementById('ua-note'), b = document.getElementById('ua-go'), ap = document.getElementById('ua-auto-pw');
-  if (n) { n.innerHTML = fmNote(miss); n.classList.toggle('ok', !miss.length); }
-  if (b) b.disabled = !!f.busy || !!miss.length;
-  if (ap) ap.textContent = f.password;
+  const miss = uaMissing(f, !!UA.editId), n = document.getElementById('ua-note'), b = document.getElementById('ua-go');
+  if (n) { n.innerHTML = uaNote(f); n.classList.toggle('ok', !miss.length && uaDirty(f)); }
+  if (b) b.disabled = !!f.busy || !!miss.length || !uaDirty(f);
+  // Точка у раздела «Профиль» и «Пароль и вход», пока там чего-то не хватает
+  const need = uaMissSecs(f, !!UA.editId);
+  document.querySelectorAll('.uw-nav button').forEach(x => { const d = x.querySelector('.dot'); if (need.has(x.dataset.sec) && !d) x.insertAdjacentHTML('beforeend', '<i class="dot" title="Не заполнено"></i>'); else if (!need.has(x.dataset.sec) && d) d.remove(); });
 }
+const uaMissSecs = (f, editing) => { const s = new Set(); if (!f.name.trim() || !f.login.trim()) s.add('profile'); if ((!editing || f.pwOpen) && f.password.length < 6) s.add('login'); return s; };
 // Выбор пространств: выпадающий список с галочками. Выбранные — чипами в поле, оставить нужно хотя бы одно
 const UA_CHEV = '<svg class="chev" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>';
 const UA_TICK = '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="3.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
@@ -3269,53 +3277,91 @@ function uaWsToggle(id) {
 }
 // Список закрывается по нажатию вне него
 document.addEventListener('click', e => { const f = UA.form; if (f && f.wsOpen && !e.target.closest('#ua-ws')) { f.wsOpen = false; uaRerender(); } });
+// ── Окно пользователя: боковое меню и одна прокручиваемая форма ──
+const UW_ROLES = [
+  ['user', 'Пользователь', 'Обычная учётная запись: чаты, комнаты, файлы и звонки'],
+  ['manager', 'Менеджер', 'Помогает управлять: люди, комнаты, пространства и объявления. Без настроек сервера'],
+  ['admin', 'Администратор', 'Вся админ-панель и настройки сервера'],
+];
+const uaRoleName = f => f.admin ? 'Администратор' : f.mgr ? 'Менеджер' : 'Пользователь';
+const uaPvPills = f => (f.tag.trim() ? `<span class="uw-pill">${esc(f.tag.trim())}</span>` : '') + (f.admin || f.mgr ? `<span class="uw-pill acc">${UX_I.shield}${uaRoleName(f)}</span>` : '');
+function uaSections(editing, u) {
+  return [['profile', 'Профиль', UX_I.idcard], ['access', 'Роль и права', UX_I.shield], ['login', 'Пароль и вход', UX_I.key],
+    ...(editing && u && u.id !== currentUser?.id ? [['manage', 'Управление', UX_I.sliders]] : [])];
+}
+function uaRoleList(f) {
+  if (isMgr()) return `<div class="uw-lock">${UX_I.lock}<div>${UA.editId ? `Роль: <b>${uaRoleName(f)}</b>. ` : 'Вы создаёте обычного пользователя. '}Роли «Менеджер» и «Администратор» выдаёт только администратор.</div></div>`;
+  return `<div class="uw-roles" role="radiogroup" aria-label="Роль">${UW_ROLES.map(([id, t, d]) => {
+    const on = id === 'admin' ? f.admin : id === 'manager' ? f.mgr : !f.admin && !f.mgr;
+    return `<button type="button" role="radio" class="uw-role" aria-checked="${on}" data-on-click="uaSetRole" data-a-click='["${id}"]'><i class="rd"></i><div><b>${t}${id !== 'user' ? UX_I.shield : ''}</b><span>${d}</span></div></button>`;
+  }).join('')}</div>`;
+}
+function uaPwSection(f, editing) {
+  if (editing && !f.pwOpen) return `<div class="uw-pwclosed"><div><b>Пароль не меняется</b><span>Человек входит по прежнему паролю</span></div><button type="button" class="btn btn-ghost btn-sm" data-on-click="uaSet" data-a-click='["pwOpen", true, true, "ua-pass"]'>${UX_I.key}Сменить пароль</button></div>`;
+  return uaPasswordField(f, editing) + (editing
+    ? `<div class="uw-pwrow"><label class="ua-check"><input type="checkbox" ${f.closeSessions ? 'checked' : ''} data-on-change="__h45">Завершить сеансы на всех устройствах</label><button type="button" class="btn btn-ghost btn-sm" data-on-click="uaPwCancel">Не менять</button></div>`
+    : '<p class="ua-hint">Пароль хранится только в виде хеша: скопируйте данные и передайте человеку до создания.</p>');
+}
+function uaPwCancel() { const f = UA.form; if (!f) return; f.pwOpen = false; f.password = ''; f.generated = false; f.show = false; delete f.errors.password; uaRerender(); }
 function uaRenderForm(focusId) {
   const f = UA.form, u = UA.editId ? allUsers.find(x => x.id === UA.editId) : null;
   const form = document.getElementById('ua-form');
   if (!form || !f) return;
-  const editing = !!u, miss = uaMissing(f, editing);
+  const editing = !!u;
   const err = k => f.errors[k] ? `<span class="ua-err">${f.errors[k]}</span>` : '';
   const wsPick = WS.list.length > 1 || (u && !(uaUserWs(u).length === 1 && uaUserWs(u)[0] === 1)) ? uaWsField(f, u) : '';
-  const quick = `<div class="ua-sec">
-      <div class="ua-field"><label for="ua-name">Имя и фамилия</label>
-        <div class="ua-inp${f.errors.name ? ' bad' : ''}"><input id="ua-name" value="${esc(f.name)}" placeholder="Анна Смирнова" autocomplete="off" aria-invalid="${!!f.errors.name}" data-on-input="uaSet" data-a-input='["name", "__value"]'></div>${err('name')}</div>
-      <div class="ua-row2">
-        <div class="ua-field"><label for="ua-login">Логин</label>
-          <div class="ua-inp${f.errors.login ? ' bad' : ''}"><span class="pre">@</span><input id="ua-login" value="${esc(f.login)}" placeholder="a.smirnova" autocomplete="off" spellcheck="false" aria-invalid="${!!f.errors.login}"
-            data-on-input="__h39"></div>
-          ${err('login') || '<span class="ua-hint">Латиница, цифры, точка</span>'}</div>
-        <div class="ua-field"><label for="ua-tag">Тег <span class="opt">· необязательно</span></label>
-          <div class="ua-inp"><input id="ua-tag" value="${esc(f.tag)}" maxlength="20" placeholder="HR, Dev, Склад" autocomplete="off" data-on-input="uaSet" data-a-input='["tag", "__value"]'></div>
-          <span class="ua-hint">Виден рядом с именем в чате</span></div>
-      </div></div>
-    ${wsPick}
-    ${!editing ? `<div class="fm-pw">${UX_I.key}<span>${f.generated ? 'Пароль придуман:' : 'Пароль:'}</span><code id="ua-auto-pw">${esc(f.password)}</code>
-        <button type="button" class="btn btn-ghost btn-sm" data-on-click="uaCopy" title="Скопировать логин и пароль" aria-label="Скопировать логин и пароль">${UX_I.copy}</button><button type="button" class="btn btn-ghost btn-sm" data-on-click="uaGenerate">Другой</button></div>${err('password')}` : ''}`;
-  const accessSu = f.mgr ? 'Менеджер' + (f.totpRequired ? ' · 2FA' : '') : f.admin ? 'Администратор' + (f.totpRequired ? ' · 2FA' : '') : 'Пользователь' + (f.canAnnounce ? ' · объявления' : '') + (f.canCallLinks ? ' · ссылки на звонок' : '');
-  const pwSu = editing ? (f.pwOpen ? 'Будет изменён' : 'Остаётся прежним') : (f.generated ? 'Придуман автоматически' : f.password ? 'Задан вручную' : 'Не задан');
-  const secs = [
-    { id: 'a', t: 'Доступ', su: accessSu, body: `${isMgr() ? '' : `<div class="ua-roles" role="radiogroup" aria-label="Роль">
-        <button type="button" role="radio" class="ua-role-opt" aria-checked="${!f.admin && !f.mgr}" data-on-click="uaSetRole" data-a-click='["user"]'><b>Пользователь</b><span>Чаты, комнаты и файлы</span></button>
-        <button type="button" role="radio" class="ua-role-opt" aria-checked="${f.mgr}" data-on-click="uaSetRole" data-a-click='["manager"]'><b>${UX_I.shield}Менеджер</b><span>Люди, комнаты, пространства</span></button>
-        <button type="button" role="radio" class="ua-role-opt" aria-checked="${f.admin}" data-on-click="uaSetRole" data-a-click='["admin"]'><b>${UX_I.shield}Администратор</b><span>Вся панель управления</span></button></div>`}
-      ${(f.admin || f.mgr) ? uaTotpSection(f, editing, u) : uaAnnSection(f) + uaCallLinksSection(f)}` },
-    { id: 'w', t: 'Пароль', su: pwSu, body: editing && !f.pwOpen
-        ? `<div class="ua-pw-closed"><div><b>Пароль</b><span>Остаётся прежним</span></div><button type="button" class="btn btn-ghost btn-sm" data-on-click="uaSet" data-a-click='["pwOpen", true, true, "ua-pass"]'>${UX_I.key}Сменить пароль</button></div>`
-        : uaPasswordField(f, editing) },
-    ...(u && u.id !== currentUser?.id ? [{ id: 'z', t: 'Действия с учётной записью', su: 'Сеансы, блокировка, удаление', body: uaDangerRows(u) }] : []),
-  ];
+  const secs = uaSections(editing, u);
+  if (!secs.some(x => x[0] === UA.nav)) UA.nav = 'profile';
+  const need = uaMissSecs(f, editing);
+  const sec = (id, t, p, html) => `<section class="uw-sec" id="uw-${id}" data-sec="${id}"><h4>${t}</h4><p>${p}</p>${html}</section>`;
+  const profile = `<div class="ua-field"><label for="ua-name">Имя и фамилия</label>
+      <div class="ua-inp${f.errors.name ? ' bad' : ''}"><input id="ua-name" value="${esc(f.name)}" placeholder="Анна Смирнова" autocomplete="off" aria-invalid="${!!f.errors.name}" data-on-input="uaSet" data-a-input='["name", "__value"]'></div>${err('name')}</div>
+    <div class="ua-row2">
+      <div class="ua-field"><label for="ua-login">Логин</label>
+        <div class="ua-inp${f.errors.login ? ' bad' : ''}"><span class="pre">@</span><input id="ua-login" value="${esc(f.login)}" placeholder="a.smirnova" autocomplete="off" spellcheck="false" aria-invalid="${!!f.errors.login}" data-on-input="__h39"></div>
+        ${err('login') || `<span class="ua-hint" id="ua-login-hint">${f.loginTouched ? 'Латиница, цифры, точка' : 'Подставлен из имени, можно поправить'}</span>`}</div>
+      <div class="ua-field"><label for="ua-tag">Тег <span class="opt">· необязательно</span></label>
+        <div class="ua-inp"><input id="ua-tag" value="${esc(f.tag)}" maxlength="20" placeholder="HR, Dev, Склад" autocomplete="off" data-on-input="uaSet" data-a-input='["tag", "__value"]'></div>
+        <span class="ua-hint">Виден рядом с именем в чате</span></div>
+    </div>${wsPick}`;
+  const perms = f.admin || f.mgr ? uaTotpSection(f, editing, u) : uaAnnSection(f) + uaCallLinksSection(f);
+  const body = sec('profile', 'Профиль', 'Как человека видят в чатах и списках', profile)
+    + sec('access', 'Роль и права', 'Что человеку доступно в панели и в клиенте', uaRoleList(f) + perms)
+    + sec('login', 'Пароль и вход', editing ? 'Пароль можно оставить прежним' : 'Передайте пароль человеку до создания', uaPwSection(f, editing) + err('password'))
+    + (secs.some(x => x[0] === 'manage') ? sec('manage', 'Управление', 'Действия применяются сразу и не зависят от кнопки «Сохранить»', uaDangerRows(u)) : '');
+  const keepTop = document.getElementById('uw-scroll')?.scrollTop || 0;
   uaRestoreFocus(() => {
     form.innerHTML = `
-      <div class="ua-head"><span id="ua-head-av">${uaAv(f.name, 38)}</span>
-        <div><div class="ua-title">${u ? esc(u.display_name) : 'Новый пользователь'}</div>
-          <div class="ua-sub">${u ? `@${esc(u.username)} · создан ${fmtDate(u.created_at)}` : 'Имя и логин, остальное можно позже'}</div></div>
+      <div class="ua-head"><div class="uw-tt"><div class="ua-title" id="ua-title">${u ? esc(u.display_name) : 'Новый пользователь'}</div>
+          <div class="ua-sub">${u ? `@${esc(u.username)} · создан ${fmtDate(u.created_at)} ${uaStatusPill(u).replace(/<small>.*?<\/small>/, '')}` : 'Имя и логин, остальное можно настроить позже'}</div></div>
         <button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-user"]'>✕</button></div>
-      <div class="ua-body">${quick}${fmMoreHtml('ua', f.more, 'uaMore', secs)}</div>
-      <div class="ua-foot">${f.errors.form ? `<span class="ua-err">${esc(f.errors.form)}</span>` : ''}<span class="fm-note ${miss.length ? '' : 'ok'}" id="ua-note">${fmNote(miss)}</span>
-        <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a-click='["modal-user"]'>Отмена</button>
-        <button class="btn ux-solid" id="ua-go" ${f.busy || miss.length ? 'disabled' : ''}>${f.busy ? 'Сохраняю…' : u ? 'Сохранить' : 'Создать'}</button></div>`;
+      <div class="uw-grid">
+        <aside class="uw-rail"><div class="uw-pv"><span id="ua-pv-av">${uaAv(f.name, 64)}</span><div class="n" id="ua-pv-name">${f.name ? esc(f.name) : '<span class="ph">Имя появится здесь</span>'}</div>
+            <div class="l" id="ua-pv-login">${f.login ? '@' + esc(f.login) : ''}</div><div class="pl" id="ua-pv-pills">${uaPvPills(f)}</div></div>
+          <nav class="uw-nav" aria-label="Разделы">${secs.map(([id, t, i]) => `<button type="button" data-sec="${id}" aria-current="${UA.nav === id}" data-on-click="uaNav" data-a-click='["${id}"]'>${i}${t}${need.has(id) ? '<i class="dot" title="Не заполнено"></i>' : ''}</button>`).join('')}</nav></aside>
+        <div class="uw-main"><div class="ua-body uw-body" id="uw-scroll">${body}<div class="uw-pad"></div></div>
+          <div class="ua-foot">${f.errors.form ? `<span class="ua-err">${esc(f.errors.form)}</span>` : ''}<span class="fm-note ${!uaMissing(f, editing).length && uaDirty(f) ? 'ok' : ''}" id="ua-note">${uaNote(f)}</span>
+            <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a-click='["modal-user"]'>Отмена</button>
+            <button class="btn ux-solid" id="ua-go" ${f.busy || uaMissing(f, editing).length || !uaDirty(f) ? 'disabled' : ''}>${f.busy ? 'Сохраняю…' : u ? 'Сохранить' : 'Создать'}</button></div></div></div>`;
   }, focusId);
+  const sc = document.getElementById('uw-scroll');
+  if (sc && keepTop) { sc.style.scrollBehavior = 'auto'; sc.scrollTop = keepTop; requestAnimationFrame(() => { sc.style.scrollBehavior = ''; }); }
 }
+// Разделы и подсветка текущего при прокрутке
+function uaNav(id) {
+  UA.nav = id;
+  document.querySelectorAll('.uw-nav button').forEach(b => b.setAttribute('aria-current', b.dataset.sec === id));
+  const t = document.getElementById('uw-' + id), sc = document.getElementById('uw-scroll');
+  if (t && sc) sc.scrollTo({ top: t.offsetTop - sc.offsetTop - 6, behavior: 'smooth' });
+}
+document.getElementById('ua-form')?.addEventListener('scroll', e => {
+  const sc = e.target; if (sc.id !== 'uw-scroll') return;
+  const secs = [...sc.querySelectorAll('.uw-sec')]; if (!secs.length) return;
+  let cur = secs[0].dataset.sec;
+  secs.forEach(x => { if (x.offsetTop - sc.offsetTop <= sc.scrollTop + 40) cur = x.dataset.sec; });
+  if (sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 4) cur = secs[secs.length - 1].dataset.sec;
+  if (cur !== UA.nav) { UA.nav = cur; document.querySelectorAll('.uw-nav button').forEach(b => b.setAttribute('aria-current', b.dataset.sec === cur)); }
+}, true);
 function uaDangerRows(u) {
   const devices = (u.clients || []).length;
   return `<div class="ua-dz-row"><div><b>Завершить все сеансы</b><span>Выход на всех устройствах; войти снова можно</span></div>
@@ -3325,23 +3371,7 @@ function uaDangerRows(u) {
     <div class="ua-dz-row"><div><b>Удалить пользователя</b><span>Навсегда; сообщения в чатах останутся</span></div>
       <button type="button" class="btn btn-danger btn-sm" data-on-click="__h44" data-a-click="${esc(JSON.stringify([u.id]))}">${UX_I.trash}Удалить</button></div>`;
 }
-function uaRenderPassword(focusId) {
-  const f = UA.form, u = allUsers.find(x => x.id === UA.passId);
-  const form = document.getElementById('ua-pass-form');
-  if (!form || !f || !u) return;
-  uaRestoreFocus(() => {
-    form.innerHTML = `
-      <div class="ua-head">${avHtml(u.display_name, 34, 9, u.id, false, u.has_avatar)}
-        <div><div class="ua-title">Новый пароль</div><div class="ua-sub">${esc(u.display_name)} · @${esc(u.username)}</div></div>
-        <button type="button" class="modal-close" aria-label="Закрыть" data-on-click="closeModal" data-a-click='["modal-user-pass"]'>✕</button></div>
-      <div class="ua-body">${uaPasswordField(f, true)}
-        <label class="ua-check"><input type="checkbox" ${f.closeSessions ? 'checked' : ''} data-on-change="__h45">Завершить сеансы на всех устройствах</label></div>
-      <div class="ua-foot">${f.errors.form ? `<span class="ua-err">${esc(f.errors.form)}</span>` : ''}<span class="ux-grow"></span>
-        <button type="button" class="btn btn-ghost" data-on-click="closeModal" data-a-click='["modal-user-pass"]'>Отмена</button>
-        <button class="btn ux-solid" ${f.busy ? 'disabled' : ''}>${f.busy ? 'Сохраняю…' : 'Сохранить пароль'}</button></div>`;
-  }, focusId);
-}
-const uaRerender = focusId => { const r = UA.passId ? uaRenderPassword(focusId) : uaRenderForm(focusId); uaWsFit(); return r; };
+const uaRerender = focusId => { const r = uaRenderForm(focusId); uaWsFit(); return r; };
 // Список пространств лежит внутри прокручиваемого тела окна: если снизу он не помещается и уходит под кнопки,
 // открываем его вверх (когда сверху места больше), иначе прокручиваем окно, чтобы список был виден целиком
 function uaWsFit() {
@@ -3370,25 +3400,37 @@ function uaSet(key, value, rerender, focusId) {
   if (key === 'password') f.generated = false;
   if (f.errors[key]) { delete f.errors[key]; rerender = true; }
   if (rerender) return uaRerender(focusId);
-  // Превью обновляем точечно, без перерисовки формы — чтобы не терять курсор
-  if (key === 'name' || key === 'tag') {
-    const pv = document.getElementById('ua-pv-av'); if (pv) pv.innerHTML = uaAv(f.name, 32);
-    const hv = document.getElementById('ua-head-av'); if (hv) hv.innerHTML = uaAv(f.name, 38);
-    const pn = document.getElementById('ua-pv-name'); if (pn) pn.innerHTML = (f.name ? esc(f.name) : '<span class="ph">Имя появится здесь</span>') + uxTag(f.tag);
+  // Превью и подсказки обновляем точечно, без перерисовки формы — чтобы не терять курсор
+  if (key === 'name' && !f.loginTouched && !UA.editId) {
+    f.login = uaLoginFrom(f.name);
+    const li = document.getElementById('ua-login'); if (li) li.value = f.login;
+  }
+  if (key === 'name' || key === 'tag' || key === 'login') {
+    const pv = document.getElementById('ua-pv-av'); if (pv) pv.innerHTML = uaAv(f.name, 64);
+    const pn = document.getElementById('ua-pv-name'); if (pn) pn.innerHTML = f.name ? esc(f.name) : '<span class="ph">Имя появится здесь</span>';
+    const pl = document.getElementById('ua-pv-login'); if (pl) pl.textContent = f.login ? '@' + f.login : '';
+    const pp = document.getElementById('ua-pv-pills'); if (pp) pp.innerHTML = uaPvPills(f);
+    const tt = document.getElementById('ua-title'); if (tt && UA.editId) tt.textContent = f.name || 'Без имени';
   }
   if (key === 'password') {
     const s = uaStrength(f.password), el = document.getElementById('ua-strength');
     if (el) { el.className = 'ua-strength' + (s.good ? ' good' : ''); el.innerHTML = s.html; }
   }
-  if (key === 'login' || key === 'password') { const c = document.getElementById('ua-creds'); if (c) c.innerHTML = uaCreds(f); }
-  if (key === 'name' || key === 'login' || key === 'password') uaFootSync();
+  if (key === 'login' || key === 'password' || key === 'name') { const c = document.getElementById('ua-creds'); if (c) c.innerHTML = uaCreds(f); }
+  uaFootSync();
+}
+// Логин из имени: «Анна Смирнова» → a.smirnova, пока его не правили руками
+const UA_TR = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y', к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'h', ц: 'c', ч: 'ch', ш: 'sh', щ: 'sch', ы: 'y', э: 'e', ю: 'yu', я: 'ya', ь: '', ъ: '' };
+function uaLoginFrom(name) {
+  const w = name.trim().toLowerCase().split(/\s+/).filter(Boolean).map(x => [...x].map(c => UA_TR[c] ?? c).join('').replace(/[^a-z0-9._-]/g, '')).filter(Boolean);
+  return w.length > 1 ? w[0][0] + '.' + w[w.length - 1] : (w[0] || '');
 }
 function uaGenerate() {
   const abc = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const p = [...crypto.getRandomValues(new Uint32Array(12))].map(n => abc[n % abc.length]).join('').replace(/^(.{4})(.{4})/, '$1-$2-');
   Object.assign(UA.form, { password: p, show: true, generated: true });
   delete UA.form.errors.password;
-  uaRerender(UA.form.more || UA.passId ? 'ua-pass' : null);
+  uaRerender(UA.form.pwOpen || !UA.editId ? 'ua-pass' : null);
 }
 async function uaCopy() {
   const f = UA.form;
@@ -3404,7 +3446,6 @@ async function uaSave() {
   if (!f.login.trim()) e.login = 'Укажите логин';
   if ((!u || f.pwOpen) && f.password.length < 6) e.password = u ? 'Не короче 6 символов — или обновите окно, чтобы оставить прежний' : 'Не короче 6 символов';
   f.errors = e;
-  if (e.password && !(e.name || e.login)) f.more = true;
   if (Object.keys(e).length) return uaRenderForm(e.name ? 'ua-name' : e.login ? 'ua-login' : 'ua-pass');
 
   f.busy = true;
@@ -3416,6 +3457,7 @@ async function uaSave() {
     if (r?.ok && f.pwOpen) {
       const p = await api('PATCH', `/api/users/${u.id}/password`, { password: f.password });
       if (!p?.ok) r = { error: p?.error || 'Пароль не сохранён' };
+      else if (f.closeSessions) await api('POST', `/api/admin/users/${u.id}/logout`);
     }
   } else {
     r = await api('POST', '/api/users', { ...body, password: f.password });
@@ -3443,35 +3485,16 @@ async function uaSave() {
   uaRenderForm(f.errors.login ? 'ua-login' : null);
 }
 
+// «Сменить пароль» в меню строки открывает то же окно сразу на разделе «Пароль и вход»
 function uaOpenPassword(id) {
   const u = allUsers.find(x => x.id === id);
   if (!u) return;
-  UA.passId = id;
-  UA.form = { ...uaBlank(u), pwOpen: true };
-  document.getElementById('ua-form').innerHTML = '';
-  uaRenderPassword();
-  openModal('modal-user-pass');
-  setTimeout(() => document.getElementById('ua-pass')?.focus(), 60);
+  openEditUser(id);
+  if (UA.editId !== id) return;
+  UA.form.pwOpen = true; UA.nav = 'login';
+  uaRenderForm();
+  setTimeout(() => { uaNav('login'); setTimeout(() => document.getElementById('ua-pass')?.focus({ preventScroll: true }), 450); }, 120);
 }
-async function uaSavePassword() {
-  const f = UA.form, id = UA.passId;
-  if (!f || f.busy) return;
-  if (f.password.length < 6) { f.errors.password = 'Не короче 6 символов'; return uaRenderPassword('ua-pass'); }
-  f.busy = true;
-  uaRenderPassword();
-  const r = await api('PATCH', `/api/users/${id}/password`, { password: f.password });
-  if (r?.ok && f.closeSessions) await api('POST', `/api/admin/users/${id}/logout`);
-  f.busy = false;
-  if (!r?.ok) { f.errors.form = r?.error || 'Не удалось сменить пароль'; return uaRenderPassword(); }
-  closeModal('modal-user-pass');
-  UA.passId = null;
-  toast(f.closeSessions ? 'Пароль изменён, сеансы завершены' : 'Пароль изменён', 'success');
-  if (currentPage === 'users') renderUsers();
-}
-// Окно пароля закрыли без сохранения — следующая перерисовка формы идёт в окно пользователя
-document.getElementById('modal-user-pass')?.addEventListener('animationend', e => {
-  if (e.currentTarget.classList.contains('closing')) UA.passId = null;
-});
 
 /* ── CHATS ── */
 // Раздел «Чаты и группы»: сводка, фильтры, таблица. У личного чата — оба собеседника,
@@ -8120,7 +8143,9 @@ window.uaCreds = uaCreds;
 window.uaDot = uaDot;
 window.uaInWs = uaInWs;
 window.uaMissing = uaMissing;
-window.uaMore = uaMore;
+window.uaNav = uaNav;
+window.uaPwCancel = uaPwCancel;
+window.uaSetRole = uaSetRole;
 window.uaNames = uaNames;
 window.uaOnline = uaOnline;
 window.uaRerender = uaRerender;

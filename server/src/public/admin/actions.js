@@ -7,7 +7,6 @@ window.__h5 = function (el, ev, a) { if(ev.key==='Enter')document.getElementById
 window.__h6 = function (el, ev, a) { if(ev.key==='Enter')document.getElementById('fp-new2').focus() };
 window.__h7 = function (el, ev, a) { if(ev.key==='Enter')submitForcePassword() };
 window.__h8 = function (el, ev, a) { ev.preventDefault(); uaSave() };
-window.__h9 = function (el, ev, a) { ev.preventDefault(); uaSavePassword() };
 window.__h10 = function (el, ev, a) { if(ev.key==='Enter')wsSave() };
 window.__h11 = function (el, ev, a) { document.getElementById('ws-err').textContent='' };
 window.__h13 = function (el, ev, a) { el.style.display='none' };
@@ -34,7 +33,7 @@ window.__h34 = function (el, ev, a) { UA.sel.clear(); uaRender() };
 window.__h35 = function (el, ev, a) { uxCloseMenu(); uaOpenPassword(a[0]) };
 window.__h36 = function (el, ev, a) { uxCloseMenu(); uaLogout([a[0]]) };
 window.__h38 = function (el, ev, a) { uxCloseMenu(); uaDelete(a[0]) };
-window.__h39 = function (el, ev, a) { el.value = el.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''); uaSet('login', el.value) };
+window.__h39 = function (el, ev, a) { el.value = el.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''); UA.form.loginTouched = true; const h = document.getElementById('ua-login-hint'); if (h) h.textContent = 'Латиница, цифры, точка'; uaSet('login', el.value) };
 window.__h40 = function (el, ev, a) { closeModal('modal-user'); uaResetTotp(a[0]) };
 window.__h41 = function (el, ev, a) { uaSet('show', !UA.form.show, true) };
 window.__h42 = function (el, ev, a) { closeModal('modal-user'); uaLogout([a[0]]) };
