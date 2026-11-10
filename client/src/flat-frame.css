@@ -134,8 +134,14 @@ html.dark .chats-list .chat-item.active::after, html.dark .topics-panel .chat-it
 .chat-search { padding-left: 14px; }
 .scroll-bottom-btn { width: 36px; height: 36px; border-radius: var(--r-btn); box-shadow: var(--flat-shadow); }
 @media (min-width: 768px) and (pointer: fine) {
-  /* лента под докованной шапкой: --chat-top-h задаёт app.js (102 без закреплённого, 154 с ним) */
-  .chat-main .messages { padding-top: calc(var(--chat-top-h, 102px) - 14px); }
+  /* лента под докованной шапкой: отступ постоянный. Строки поиска и закреплённого лежат ПОВЕРХ ленты и её не двигают
+     (--chat-top-h с закреплённым или поиском больше не меняет отступ) */
+  .chat-main .messages { padding-top: 88px; }
 }
+/* появление строк «Поиск в чате» и «Закреплённое»: плавно сверху, без сдвига переписки */
+@keyframes flat-bar-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.pin-bar { animation: flat-bar-in .22s cubic-bezier(.22, 1, .36, 1) both; }
+.chat-search.open { animation: flat-bar-in .22s cubic-bezier(.22, 1, .36, 1) both; }
+@media (prefers-reduced-motion: reduce) { .pin-bar, .chat-search.open { animation: none; } }
 /* пустое состояние области чата: плоский круг-плитка вместо стеклянного */
 .empty-icon { background: var(--surf2); border: 0; box-shadow: none; }

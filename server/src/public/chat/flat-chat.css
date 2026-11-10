@@ -76,8 +76,13 @@
 .sysnote.add { background: var(--accent-soft); color: var(--accent-ink); }
 .sysnote.ann { background: var(--danger-bg); color: var(--danger); }
 .sysnote .sys-t { opacity: .6; font-size: 11px; margin-left: 2px; flex: none; }
-/* «Печатает…»: плашка 28 px, радиус 10; сидит в строке над полем внутри дока */
-.typing-indicator.show { height: 36px; }
+/* «Печатает…»: плашка 28 px, радиус 10. Лежит НАД полем ввода и не занимает места в потоке: поле не растёт,
+   лента не сдвигается (раньше строка входила в высоту дока и толкала сообщения вверх) */
+.typing-indicator {
+  position: absolute; left: 4px; bottom: calc(100% + 6px); height: auto; overflow: visible; padding-left: 0; z-index: 2;
+  transform: translateY(4px); transition: opacity .2s var(--ease, ease), transform .2s var(--ease, ease);
+}
+.typing-indicator.show { height: auto; transform: none; }
 .typing-pill { height: 28px; padding: 0 12px; gap: 6px; border-radius: 10px; background: var(--chip-bg); border: 0; box-shadow: none; align-items: center; }
 /* Кнопка «вниз» и «к упоминанию»: плоская карточка 44, радиус 12 */
 .scroll-bottom-btn {
