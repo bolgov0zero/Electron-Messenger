@@ -104,6 +104,51 @@ pub const SETTINGS: Icon = Icon {
     body: r#"<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>"#,
 };
 
+pub const GLOBE: Icon = Icon {
+    name: "globe",
+    body: r#"<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>"#,
+};
+
+pub const USER: Icon = Icon {
+    name: "user",
+    body: r#"<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>"#,
+};
+
+pub const BELL: Icon = Icon {
+    name: "bell",
+    body: r#"<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>"#,
+};
+
+pub const BAN: Icon = Icon {
+    name: "ban",
+    body: r#"<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>"#,
+};
+
+pub const REPLY: Icon = Icon {
+    name: "reply",
+    body: r#"<polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>"#,
+};
+
+pub const FORWARD: Icon = Icon {
+    name: "forward",
+    body: r#"<polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/>"#,
+};
+
+pub const COPY: Icon = Icon {
+    name: "copy",
+    body: r#"<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>"#,
+};
+
+pub const PENCIL: Icon = Icon {
+    name: "square-pen",
+    body: r#"<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>"#,
+};
+
+pub const CHECK_CHECK: Icon = Icon {
+    name: "check-check",
+    body: r#"<path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/>"#,
+};
+
 /// SVG-разметка значка с подставленным цветом и толщиной штриха.
 fn svg_text(icon: &Icon, color: Color32, stroke: f32) -> String {
     let hex = format!("#{:02x}{:02x}{:02x}", color.r(), color.g(), color.b());
@@ -136,7 +181,7 @@ pub fn paint(ui: &mut Ui, icon: &Icon, rect: Rect, color: Color32, stroke: f32) 
 mod tests {
     use super::*;
 
-    const ALL: &[&Icon] = &[&SEND, &CHEVRON_DOWN, &REFRESH_CW, &CHEVRON_UP, &CHEVRON_RIGHT, &PLUS, &SEARCH, &X, &PANEL_LEFT, &SUN, &MOON, &LOG_OUT, &PIN, &BELL_OFF, &FOLDER, &TRASH, &MESSAGE_CIRCLE, &USERS, &SETTINGS];
+    const ALL: &[&Icon] = &[&BELL, &BAN, &REPLY, &FORWARD, &COPY, &PENCIL, &CHECK_CHECK, &GLOBE, &USER, &SEND, &CHEVRON_DOWN, &REFRESH_CW, &CHEVRON_UP, &CHEVRON_RIGHT, &PLUS, &SEARCH, &X, &PANEL_LEFT, &SUN, &MOON, &LOG_OUT, &PIN, &BELL_OFF, &FOLDER, &TRASH, &MESSAGE_CIRCLE, &USERS, &SETTINGS];
 
     #[test]
     fn all_icons_render() {

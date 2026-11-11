@@ -3,19 +3,11 @@
 //! проверка обновления и выход.
 use super::*;
 use crate::icons::{self, Icon};
-use crate::view::{self, RowOut};
+use crate::view::{self, ContactRow, RowOut};
+use crate::menus::pop_shadow;
 use eframe::egui::{Order, Shadow, StrokeKind};
 
 const TABBAR_H: f32 = 70.0;
-
-fn pop_shadow(pal: &Pal) -> Shadow {
-    Shadow {
-        offset: [0, 18],
-        blur: 44,
-        spread: 0,
-        color: if pal.dark { Color32::from_black_alpha(140) } else { Color32::from_rgba_unmultiplied(60, 40, 20, 41) },
-    }
-}
 
 /// Тёмная подсказка справа от пункта меню (.hm-i::after).
 fn tip_right(ctx: &egui::Context, pal: &Pal, r: Rect, text: &str) {
@@ -81,6 +73,7 @@ impl App {
         // ── Поиск: высота 40, радиус 12, фон surf2, лупа 14 ──
         let sr = Rect::from_min_size(pos2(card.left() + 14.0, head.bottom() + 4.0), vec2(card.width() - 28.0, 40.0));
         let sid = Id::new("chat_search");
+        let tab = self.tab;
         let focused = ui.memory(|m| m.has_focus(sid));
         ui.painter().rect_filled(sr, 12, pal.surf2);
         if focused {
@@ -88,16 +81,18 @@ impl App {
             ui.painter().rect_stroke(sr, 12, Stroke::new(1.0, pal.accent), StrokeKind::Inside);
         }
         icons::paint(ui, &icons::SEARCH, Rect::from_center_size(pos2(sr.left() + 14.0 + 7.0, sr.center().y), vec2(14.0, 14.0)), pal.text2, 2.0);
-        let has_text = !self.search.is_empty();
+        let hint = if tab == 1 { "Поиск контактов..." } else { "Поиск чатов..." };
+        let buf: &mut String = if tab == 1 { &mut self.contacts_search } else { &mut self.search };
+        let has_text = !buf.is_empty();
         let text_rect = Rect::from_min_max(
             pos2(sr.left() + 14.0 + 14.0 + 8.0, sr.top()),
             pos2(sr.right() - 14.0 - if has_text { 24.0 } else { 0.0 }, sr.bottom()),
         );
         ui.put(
             text_rect,
-            TextEdit::singleline(&mut self.search)
+            TextEdit::singleline(&mut *buf)
                 .id(sid)
-                .hint_text(RichText::new("Поиск чатов...").color(pal.muted))
+                .hint_text(RichText::new(hint).color(pal.muted))
                 .desired_width(f32::INFINITY)
                 .frame(egui::Frame::NONE)
                 .vertical_align(Align::Center)
@@ -108,12 +103,13 @@ impl App {
             let resp = ui.interact(cr, Id::new("search_clear"), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
             icons::paint(ui, &icons::X, Rect::from_center_size(cr.center(), vec2(12.0, 12.0)), if resp.hovered() { pal.text } else { pal.muted }, 2.5);
             if resp.clicked() {
-                self.search.clear();
+                buf.clear();
             }
         }
 
         // ── Фильтр-сегмент: высота 34, padding 3, gap 2, радиус 14 ──
         let fr = Rect::from_min_size(pos2(card.left() + 14.0, sr.bottom() + 10.0), vec2(card.width() - 28.0, 34.0));
+        if tab == 0 {
         ui.painter().rect_filled(fr, 14, pal.surf2);
         let inner = fr.shrink(3.0);
         let bw = (inner.width() - 3.0 * 2.0) / 4.0;
@@ -133,9 +129,16 @@ impl App {
                 self.filter = i;
             }
         }
+        }
 
         // ── Список: от фильтра (+8) до таббара; padding 0 10 10 ──
-        let list_rect = Rect::from_min_max(pos2(card.left() + 10.0, fr.bottom() + 8.0), pos2(card.right() - 10.0, card.bottom() - TABBAR_H));
+        let list_top = if tab == 0 { fr.bottom() + 8.0 } else { sr.bottom() + 10.0 };
+        let list_rect = Rect::from_min_max(pos2(card.left() + 10.0, list_top), pos2(card.right() - 10.0, card.bottom() - TABBAR_H));
+        let (mut clicked, mut menu_for): (Option<i64>, Option<(i64, egui::Pos2)>) = (None, None);
+        if tab == 1 {
+            self.contacts_list(ui, pal, list_rect);
+        }
+        if tab == 0 {
         let me = self.me();
         let server = self.session.as_ref().map(|s| s.server.clone()).unwrap_or_default();
         let q = self.search.trim().to_lowercase();
@@ -152,7 +155,6 @@ impl App {
             })
             .collect();
         let (pinned, rest): (Vec<&Chat>, Vec<&Chat>) = visible.into_iter().partition(|c| c.pinned);
-        let (mut clicked, mut menu_for) = (None, None);
         let mut child = ui.new_child(egui::UiBuilder::new().max_rect(list_rect).layout(egui::Layout::top_down(Align::Min)));
         child.set_clip_rect(list_rect);
         egui::ScrollArea::vertical().id_salt("chat_list").auto_shrink([false, false]).show(&mut child, |ui| {
@@ -191,6 +193,7 @@ impl App {
                 ui.vertical_centered(|ui| ui.label(RichText::new(t).color(pal.muted)));
             }
         });
+        }
         if let Some(id) = clicked {
             self.select(id);
             self.ctx_menu = None;
@@ -198,6 +201,7 @@ impl App {
         let opened_now = menu_for.is_some();
         if let Some(m) = menu_for {
             self.ctx_menu = Some(m);
+            self.msg_menu = None;
             self.head_menu = false;
         }
 
@@ -238,6 +242,60 @@ impl App {
 
         self.head_menu_ui(&ctx, pal, more, more_resp.clicked());
         self.chat_menu_ui(&ctx, pal, opened_now);
+    }
+
+    /// Вкладка «Контакты»: люди из каталога, секции «Онлайн / Отошёл / Не в сети», клик — личный чат.
+    fn contacts_list(&mut self, ui: &mut Ui, pal: &Pal, rect: Rect) {
+        let me = self.me();
+        let server = self.session.as_ref().map(|s| s.server.clone()).unwrap_or_default();
+        let show_ws = self.session.as_ref().map_or(false, |s| s.ws_count > 1);
+        let q = self.contacts_search.trim().to_lowercase();
+        let rank = |id: i64| match self.presence.get(&id).map(|p| p.status.as_str()) {
+            Some("online") => 0usize,
+            Some("away") => 1,
+            _ => 2,
+        };
+        let mut list: Vec<&model::Contact> = self
+            .contacts
+            .iter()
+            .filter(|u| u.id != me && u.rel != "chat")
+            .filter(|u| q.is_empty() || u.name.to_lowercase().contains(&q) || u.username.to_lowercase().contains(&q))
+            .collect();
+        list.sort_by(|a, b| rank(a.id).cmp(&rank(b.id)).then(a.name.to_lowercase().cmp(&b.name.to_lowercase())));
+        let mut open: Option<i64> = None;
+        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(egui::Layout::top_down(Align::Min)));
+        child.set_clip_rect(rect);
+        egui::ScrollArea::vertical().id_salt("contacts_list").auto_shrink([false, false]).show(&mut child, |ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
+            if !self.contacts_loaded {
+                ui.add_space(16.0);
+                ui.vertical_centered(|ui| ui.label(RichText::new("Загрузка…").color(pal.muted)));
+                return;
+            }
+            if list.is_empty() {
+                contacts_stub(ui, pal, !q.is_empty());
+                return;
+            }
+            let titles = ["ОНЛАЙН", "ОТОШЁЛ", "НЕ В СЕТИ"];
+            let mut last: Option<usize> = None;
+            for u in &list {
+                let r = rank(u.id);
+                if last != Some(r) {
+                    section_label(ui, pal, titles[r], last.is_none());
+                    last = Some(r);
+                }
+                let row = ContactRow { u, server: &server, presence: self.presence.get(&u.id), show_ws };
+                if view::contact_row(ui, pal, &row) {
+                    open = Some(u.id);
+                }
+                ui.add_space(2.0);
+            }
+        });
+        if let Some(id) = open {
+            if let Some(s) = &self.session {
+                self.net.open_direct(s, id);
+            }
+        }
     }
 
     /// Меню «Ещё»: узкая колонка значков 30×30 с подсказками справа.
@@ -302,61 +360,36 @@ impl App {
             None => {}
         }
     }
+}
 
-    /// Контекстное меню строки чата (правый клик): пункты только визуальные.
-    fn chat_menu_ui(&mut self, ctx: &egui::Context, pal: &Pal, opened_now: bool) {
-        let Some((cid, pos)) = self.ctx_menu else { return };
-        let Some(chat) = self.chats.iter().find(|c| c.id == cid).cloned() else {
-            self.ctx_menu = None;
-            return;
-        };
-        // (значок, подпись, есть подменю); None — разделитель
-        let mut items: Vec<Option<(&Icon, &str, bool)>> = vec![
-            Some((&icons::PIN, if chat.pinned { "Открепить" } else { "Закрепить" }, false)),
-            Some((&icons::FOLDER, "В папку", true)),
-            Some((&icons::BELL_OFF, "Уведомления", true)),
-            None,
-            Some((&icons::TRASH, "Удалить чат", false)),
-        ];
-        if chat.kind != "direct" {
-            items.push(Some((&icons::LOG_OUT, "Выйти из группы", false)));
-        }
-        let mut picked = false;
-        let area = egui::Area::new(Id::new("chat_menu")).order(Order::Foreground).fixed_pos(pos).show(ctx, |ui| {
-            egui::Frame::new().fill(pal.side_bg).corner_radius(16).inner_margin(Margin::same(5)).shadow(pop_shadow(pal)).show(ui, |ui| {
-                ui.spacing_mut().item_spacing.y = 1.0;
-                ui.set_min_width(182.0);
-                for (i, it) in items.iter().enumerate() {
-                    match it {
-                        None => {
-                            let (r, _) = ui.allocate_exact_size(vec2(182.0, 7.0), Sense::hover());
-                            ui.painter().line_segment(
-                                [pos2(r.left() + 10.0, r.center().y), pos2(r.right() - 10.0, r.center().y)],
-                                Stroke::new(1.0, alpha(pal.text, 23)),
-                            );
-                        }
-                        Some((icon, label, sub)) => {
-                            let (r, _) = ui.allocate_exact_size(vec2(182.0, 34.0), Sense::hover());
-                            let resp = ui.interact(r, Id::new(("cm_item", i)), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
-                            if resp.hovered() {
-                                ui.painter().rect_filled(r, 12, pal.hover);
-                            }
-                            icons::paint(ui, icon, Rect::from_center_size(pos2(r.left() + 10.0 + 8.0, r.center().y), vec2(16.0, 16.0)), pal.accent_ink, 2.0);
-                            ui.painter().text(pos2(r.left() + 10.0 + 16.0 + 10.0, r.center().y), Align2::LEFT_CENTER, *label, FontId::proportional(13.0), pal.text);
-                            if *sub {
-                                icons::paint(ui, &icons::CHEVRON_RIGHT, Rect::from_center_size(pos2(r.right() - 10.0 - 7.0, r.center().y), vec2(14.0, 14.0)), pal.muted, 2.4);
-                            }
-                            if resp.clicked() && !*sub {
-                                picked = true;
-                            }
-                        }
-                    }
-                }
-            });
+/// Заглушка пустого списка (.cs-stub): круг 64 с акцентным значком, заголовок, пояснение, кнопка.
+fn contacts_stub(ui: &mut Ui, pal: &Pal, searching: bool) {
+    let (icon, title, text) = if searching {
+        (&icons::SEARCH, "Никого не нашлось", "Проверьте написание имени или логина.")
+    } else {
+        (&icons::USER, "Контактов пока нет", "В вашем пространстве больше никого нет. Человека из другого пространства можно добавить по логину.")
+    };
+    ui.add_space(40.0);
+    let w = ui.available_width();
+    let (r, _) = ui.allocate_exact_size(vec2(w, 64.0), Sense::hover());
+    let circle = Rect::from_center_size(r.center(), vec2(64.0, 64.0));
+    ui.painter().circle_filled(circle.center(), 32.0, pal.accent_soft);
+    icons::paint(ui, icon, Rect::from_center_size(circle.center(), vec2(28.0, 28.0)), pal.accent_ink, 2.0);
+    ui.add_space(14.0);
+    ui.vertical_centered(|ui| {
+        ui.label(RichText::new(title).font(FontId::new(16.0, bold())).color(pal.text));
+        ui.add_space(4.0);
+        ui.scope(|ui| {
+            ui.set_max_width(280.0);
+            ui.label(RichText::new(text).size(13.0).color(pal.text2));
         });
-        let outside = !opened_now && ctx.input(|i| i.pointer.any_click()) && !ctx.input(|i| i.pointer.interact_pos()).map_or(false, |p| area.response.rect.contains(p));
-        if outside || picked || ctx.input(|i| i.key_pressed(Key::Escape)) {
-            self.ctx_menu = None;
+        if !searching {
+            ui.add_space(12.0);
+            let b = egui::Button::new(RichText::new("Добавить контакт").font(FontId::new(14.0, bold())).color(Color32::WHITE))
+                .fill(pal.accent_fill)
+                .corner_radius(12)
+                .min_size(vec2(180.0, 40.0));
+            ui.add(b);
         }
-    }
+    });
 }

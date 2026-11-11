@@ -52,6 +52,39 @@ impl Attachment {
     }
 }
 
+/// Человек из каталога (GET /api/users).
+#[derive(Clone, Debug, Default)]
+pub struct Contact {
+    pub id: i64,
+    pub name: String,
+    pub username: String,
+    pub tag: String,
+    /// ws — общее пространство, other — из другого/ручной контакт, chat — известен только по общему чату
+    pub rel: String,
+    pub federated: bool,
+    pub shared: Vec<String>,
+}
+
+pub fn parse_contact(v: &Value) -> Contact {
+    let mut name = gs(v, "display_name");
+    if name.is_empty() {
+        name = gs(v, "username");
+    }
+    Contact {
+        id: gi(v, "id"),
+        name,
+        username: gs(v, "username"),
+        tag: gs(v, "tag"),
+        rel: gs(v, "rel"),
+        federated: gb(v, "federated"),
+        shared: v
+            .get("shared_workspaces")
+            .and_then(|a| a.as_array())
+            .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+            .unwrap_or_default(),
+    }
+}
+
 /// Присутствие пользователя: online | away | offline.
 #[derive(Clone, Debug, Default)]
 pub struct Presence {
@@ -98,6 +131,8 @@ pub struct Chat {
     pub pinned: bool,
     pub muted: bool,
     pub read_only: bool,
+    pub created_by: i64,
+    pub fed_mirror: bool,
 }
 
 pub fn parse_attachment(a: &Value) -> Attachment {
@@ -187,6 +222,8 @@ pub fn parse_chat(v: &Value) -> Option<Chat> {
         pinned: v.get("pinned").map_or(false, |x| !x.is_null() && x.as_i64() != Some(0)),
         muted: gb(v, "muted"),
         read_only: gb(v, "read_only"),
+        created_by: gi(v, "created_by"),
+        fed_mirror: gb(v, "fed_mirror"),
     })
 }
 

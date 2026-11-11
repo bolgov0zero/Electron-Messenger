@@ -1,6 +1,7 @@
 //! Прототип нативного клиента на egui: вход, список чатов, лента, отправка.
 //! Дизайн — «Мягкий» (flat) из client/src/flat*.css.
 mod icons;
+mod menus;
 mod model;
 mod net;
 mod sidebar;
@@ -30,8 +31,8 @@ fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Chat")
-            .with_inner_size([1120.0, 740.0])
-            .with_min_inner_size([760.0, 500.0]),
+            .with_inner_size([1100.0, 720.0])
+            .with_min_inner_size([1000.0, 700.0]),
         ..Default::default()
     };
     eframe::run_native("Chat", options, Box::new(move |cc| Ok(Box::new(App::new(cc, rt)))))
@@ -105,8 +106,15 @@ struct App {
 
     filter: usize,
     tab: usize,
+    contacts: Vec<model::Contact>,
+    contacts_loaded: bool,
+    contacts_search: String,
+    pending_select: Option<i64>,
     head_menu: bool,
     ctx_menu: Option<(i64, egui::Pos2)>,
+    msg_menu: Option<(i64, i64, egui::Pos2)>,
+    menu_sub: Option<(usize, Rect)>,
+    menu_fly: Option<Rect>,
 
     upd_avail: Option<update::Info>,
     upd_modal: bool,
@@ -173,8 +181,15 @@ impl App {
             force_offset: None,
             filter: 0,
             tab: 0,
+            contacts: vec![],
+            contacts_loaded: false,
+            contacts_search: String::new(),
+            pending_select: None,
             head_menu: false,
             ctx_menu: None,
+            msg_menu: None,
+            menu_sub: None,
+            menu_fly: None,
             upd_avail: None,
             upd_modal: false,
             upd_checking: false,
@@ -196,6 +211,7 @@ impl App {
         self.ws_stop = Some(stop);
         self.net.fetch_chats(&s);
         self.net.fetch_presence(&s);
+        self.net.fetch_users(&s);
         self.net.check_update(true);
         self.session = Some(s);
         self.screen = Screen::Main;
@@ -218,6 +234,10 @@ impl App {
         self.loading_more.clear();
         self.presence.clear();
         self.presence_ready = false;
+        self.contacts.clear();
+        self.contacts_loaded = false;
+        self.contacts_search.clear();
+        self.tab = 0;
         self.typing.clear();
         self.watching = None;
         self.password.clear();
@@ -295,6 +315,29 @@ impl App {
                     self.chats = v;
                     self.chats_loaded = true;
                     self.sort_chats();
+                    if let Some(id) = self.pending_select.take() {
+                        if self.chats.iter().any(|c| c.id == id) {
+                            self.tab = 0;
+                            self.select(id);
+                        } else {
+                            self.say("Не удалось открыть чат");
+                        }
+                    }
+                }
+                Event::Users(u) => {
+                    self.contacts = u;
+                    self.contacts_loaded = true;
+                }
+                Event::DirectoryChanged => {
+                    if let Some(s) = &self.session {
+                        self.net.fetch_users(s);
+                    }
+                }
+                Event::OpenChat(id) => {
+                    self.pending_select = Some(id);
+                    if let Some(s) = &self.session {
+                        self.net.fetch_chats(s);
+                    }
                 }
                 Event::History { chat_id, msgs, has_more } => {
                     self.loading.remove(&chat_id);
@@ -622,12 +665,12 @@ impl App {
 
     fn main_ui(&mut self, ui: &mut Ui, pal: &Pal) {
         egui::Panel::left("side")
-            .exact_size(388.0)
+            .exact_size(386.0)
             .resizable(false)
-            .frame(egui::Frame::new().fill(pal.app_bg).inner_margin(Margin { left: 12, right: 0, top: 12, bottom: 12 }))
+            .frame(egui::Frame::new().fill(pal.app_bg).inner_margin(Margin { left: 10, right: 0, top: 10, bottom: 10 }))
             .show(ui, |ui| self.sidebar_ui(ui, pal));
         egui::CentralPanel::default()
-            .frame(egui::Frame::new().fill(pal.app_bg).inner_margin(Margin { left: 10, right: 12, top: 12, bottom: 12 }))
+            .frame(egui::Frame::new().fill(pal.app_bg).inner_margin(Margin { left: 10, right: 10, top: 10, bottom: 10 }))
             .show(ui, |ui| self.chat_ui(ui, pal));
     }
 
@@ -876,6 +919,18 @@ impl App {
                 ui.ctx().request_repaint();
             }
         }
+
+        // Контекстное меню сообщения: запрос приходит из draw_msg (правый клик по пузырю)
+        let ctx = ui.ctx().clone();
+        let mut msg_opened = false;
+        if let Some((mid, pos)) = ctx.data_mut(|d| d.remove_temp::<(i64, egui::Pos2)>(Id::new("msg_menu_req"))) {
+            self.msg_menu = Some((cid, mid, pos));
+            self.ctx_menu = None;
+            self.head_menu = false;
+            self.menu_sub = None;
+            msg_opened = true;
+        }
+        self.msg_menu_ui(&ctx, pal, msg_opened);
 
         if do_send {
             self.send();

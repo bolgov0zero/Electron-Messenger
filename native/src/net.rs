@@ -9,11 +9,14 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::model::{gb, gi, gs, parse_chat, parse_msg, Chat, Msg, Presence, Status};
+use crate::model::{gb, gi, gs, parse_chat, parse_contact, parse_msg, Chat, Contact, Msg, Presence, Status};
 use std::collections::HashMap;
 use crate::store::Session;
 
 pub enum Event {
+    Users(Vec<Contact>),
+    DirectoryChanged,
+    OpenChat(i64),
     Update(crate::update::Upd),
     LoggedIn(Session),
     LoginFailed(String),
@@ -110,7 +113,8 @@ impl Net {
             if name.is_empty() {
                 name = gs(&user, "username");
             }
-            n.emit(Event::LoggedIn(Session { server: base, token, user_id: gi(&user, "id"), name }));
+            let ws_count = user.get("workspaces").and_then(|w| w.as_array()).map_or(0, |w| w.len() as i64);
+            n.emit(Event::LoggedIn(Session { server: base, token, user_id: gi(&user, "id"), name, ws_count }));
         });
     }
 
@@ -165,6 +169,34 @@ impl Net {
             } else {
                 Event::History { chat_id, msgs, has_more }
             });
+        });
+    }
+
+    /// Каталог людей для вкладки «Контакты».
+    pub fn fetch_users(&self, s: &Session) {
+        let (n, s) = (self.clone(), s.clone());
+        self.rt.spawn(async move {
+            let Ok(resp) = n.http.get(format!("{}/api/users", s.server)).bearer_auth(&s.token).send().await else { return };
+            let body: Value = resp.json().await.unwrap_or(Value::Null);
+            let users = body.as_array().map(|a| a.iter().map(parse_contact).collect()).unwrap_or_default();
+            n.emit(Event::Users(users));
+        });
+    }
+
+    /// Личный чат с человеком: сервер сам находит существующий или создаёт новый.
+    pub fn open_direct(&self, s: &Session, user_id: i64) {
+        let (n, s) = (self.clone(), s.clone());
+        self.rt.spawn(async move {
+            let res = n.http.post(format!("{}/api/chats/direct", s.server)).bearer_auth(&s.token).json(&json!({ "user_id": user_id })).send().await;
+            let Ok(resp) = res else { return n.emit(Event::Error("Не удалось открыть чат".into())) };
+            let status = resp.status();
+            let body: Value = resp.json().await.unwrap_or(Value::Null);
+            if status.is_success() && gi(&body, "id") != 0 {
+                n.emit(Event::OpenChat(gi(&body, "id")));
+            } else {
+                let msg = gs(&body, "error");
+                n.emit(Event::Error(if msg.is_empty() { "Не удалось открыть чат".into() } else { msg }));
+            }
         });
     }
 
@@ -255,6 +287,7 @@ impl Net {
                 p: Presence { status: gs(&v, "status"), last_seen: gi(&v, "last_seen"), mobile: gb(&v, "mobile") },
             }),
             "presence_refresh" => self.emit(Event::PresenceRefresh),
+            "directory_changed" | "contacts_changed" => self.emit(Event::DirectoryChanged),
             "typing" => self.emit(Event::Typing {
                 chat_id: gi(&v, "chat_id"),
                 user_id: gi(&v, "user_id"),

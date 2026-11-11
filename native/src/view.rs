@@ -425,6 +425,73 @@ pub fn chat_row(ui: &mut Ui, pal: &Pal, r: &Row) -> RowOut {
     RowOut { clicked: resp.clicked(), menu_at: resp.secondary_clicked().then(|| resp.interact_pointer_pos()).flatten() }
 }
 
+pub struct ContactRow<'a> {
+    pub u: &'a crate::model::Contact,
+    pub server: &'a str,
+    pub presence: Option<&'a Presence>,
+    /// Показывать названия общих пространств (у человека их больше одного).
+    pub show_ws: bool,
+}
+
+fn fnv(s: &str) -> i64 {
+    let mut h: u32 = 0x811c9dc5;
+    for b in s.bytes() {
+        h ^= b as u32;
+        h = h.wrapping_mul(16777619);
+    }
+    (h % 14) as i64
+}
+
+/// Строка контакта (.pp-row): padding 9×12, аватар 36, gap 10, радиус 16; имя 13.5, чип пространства под ним.
+pub fn contact_row(ui: &mut Ui, pal: &Pal, r: &ContactRow) -> bool {
+    let u = r.u;
+    let ws_text: Option<String> = if !u.federated && r.show_ws && u.rel == "ws" && !u.shared.is_empty() {
+        let joined = u.shared.join(" · ");
+        Some(if joined.chars().count() > 22 { format!("{} +{}", u.shared[0], u.shared.len() - 1) } else { joined })
+    } else {
+        None
+    };
+    let has_chip = u.federated || ws_text.is_some();
+    let h = if has_chip { 57.0 } else { 54.0 };
+    let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), h), Sense::click());
+    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+    if resp.hovered() {
+        ui.painter().rect_filled(rect.shrink2(vec2(0.0, 1.0)), 16, pal.hover);
+    }
+    let av = Rect::from_min_size(rect.min + vec2(12.0, (h - 36.0) / 2.0), vec2(36.0, 36.0));
+    draw_avatar(ui, av, r.server, Some(u.id), &u.name, u.id);
+    presence_dot(ui.painter(), av, r.presence, pal, alpha(pal.side_bg, 217));
+
+    let x = av.right() + 10.0;
+    let right = rect.right() - 12.0;
+    let p = ui.painter().clone();
+    let tag_g = (!u.tag.is_empty()).then(|| p.layout_no_wrap(u.tag.clone(), FontId::new(11.0, bold()), av_color(fnv(&u.tag))));
+    let tag_w = tag_g.as_ref().map_or(0.0, |g| g.size().x + 14.0 + 8.0);
+    let ng = elided(&p, &u.name, FontId::proportional(13.5), pal.text, right - x - tag_w);
+    let line_h = ng.size().y;
+    let block_h = line_h + if has_chip { 3.0 + 19.0 } else { 0.0 };
+    let y = rect.top() + (h - block_h) / 2.0;
+    let name_w = ng.size().x;
+    p.galley(pos2(x, y), ng, pal.text);
+    if let Some(g) = tag_g {
+        let cr = Rect::from_min_size(pos2(x + name_w + 8.0, y + (line_h - (g.size().y + 4.0)) / 2.0), vec2(g.size().x + 14.0, g.size().y + 4.0));
+        p.rect_filled(cr, 7, alpha(av_color(fnv(&u.tag)), 36));
+        p.galley(pos2(cr.left() + 7.0, cr.top() + 2.0), g, pal.text);
+    }
+    let cy = y + line_h + 3.0;
+    if u.federated {
+        let cr = Rect::from_min_size(pos2(x, cy), vec2(26.0, 19.0));
+        p.rect_filled(cr, 8, pal.accent_soft);
+        icons::paint(ui, &icons::GLOBE, Rect::from_center_size(cr.center(), vec2(12.0, 12.0)), pal.accent_ink, 2.0);
+    } else if let Some(t) = ws_text {
+        let g = p.layout_no_wrap(t, FontId::new(11.0, bold()), pal.accent_ink);
+        let cr = Rect::from_min_size(pos2(x, cy), vec2((g.size().x + 16.0).min(right - x), 19.0));
+        p.rect_filled(cr, 8, pal.accent_soft);
+        p.galley(pos2(cr.left() + 8.0, cr.center().y - g.size().y / 2.0), g, pal.accent_ink);
+    }
+    resp.clicked()
+}
+
 // ───────────────────────────── сообщения ─────────────────────────────
 
 pub fn day_pill(ui: &mut Ui, pal: &Pal, text: &str) {
@@ -611,6 +678,11 @@ pub fn draw_msg(ui: &mut Ui, pal: &Pal, m: &Msg, first: bool, last: bool, show_n
 
     let gap = if last { 8.0 } else { 2.0 };
     let (row, resp) = ui.allocate_exact_size(vec2(avail, bh + gap), Sense::click());
+    if resp.secondary_clicked() && !m.deleted && !m.pending && m.id > 0 {
+        if let Some(pos) = resp.interact_pointer_pos() {
+            ui.ctx().data_mut(|d| d.insert_temp(egui::Id::new("msg_menu_req"), (m.id, pos)));
+        }
+    }
     let bx = if mine { row.right() - inset - bw } else { row.left() + inset + av_w };
     let b = Rect::from_min_size(pos2(bx, row.top()), vec2(bw, bh));
 

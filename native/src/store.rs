@@ -10,6 +10,9 @@ pub struct Session {
     pub token: String,
     pub user_id: i64,
     pub name: String,
+    /// Сколько пространств у пользователя: названия общих пространств в контактах показываются, если больше одного.
+    #[serde(default)]
+    pub ws_count: i64,
 }
 
 #[derive(Default, Serialize, Deserialize)]
