@@ -50,7 +50,8 @@
 .pk-tones .tn.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--side-bg) inset}
 .pk-tones span{margin-left:auto;font-size:12px;color:var(--muted)}
 /* вертикальная колонка категорий (боковая панель) */
-.pk.rail{flex-direction:row}
+.pk.rail{flex-direction:column}
+.pk-rbody{display:flex;flex:1;min-height:0}
 .pk.rail .pk-rcol{display:flex;flex-direction:column;gap:2px;padding:10px 6px;border-right:1px solid var(--pk-lo);overflow:auto;flex:none}
 .pk.rail .pk-rcol .pk-tab{flex:none;max-width:none;width:38px;height:38px}
 .pk.rail .pk-rmain{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -60,10 +61,11 @@
 .pk-sw button{height:30px;padding:0 10px;border-radius:9px;font:inherit;font-size:12px;font-weight:700;color:var(--text2);background:none;border:0;cursor:pointer;transition:background .2s,color .2s}
 .pk-sw button[aria-pressed="true"]{background:var(--seg-on,var(--side-bg));box-shadow:var(--seg-on-sh,0 1px 2px rgba(60,40,20,.14));color:var(--text)}
 .pk-gif{display:none;flex:1;min-height:0;overflow:auto}
-.pk-pw{display:none;align-items:center;height:34px;padding:0 14px;border-top:1px solid var(--pk-lo);flex:none}
+.pk-pw{display:none;align-items:center;flex:1;font-size:12.5px;color:var(--muted)}
 .pk.gif .pk-gif{display:flex;flex-direction:column}
 .pk.gif .pk-pw{display:flex}
-.pk.gif .pk-s,.pk.gif .pk-tabs,.pk.gif .pk-scroll,.pk.gif .pk-foot,.pk.gif .pk-rcol{display:none}
+.pk.gif .pk-foot .pk-pv,.pk.gif .pk-foot .pk-tonebtn,.pk.gif .pk-foot .pk-tones{display:none}
+.pk.gif .pk-s,.pk.gif .pk-tabs,.pk.gif .pk-scroll,.pk.gif .pk-rcol{display:none}
 .pk.gif .pk-top{justify-content:flex-start}
 
 /* ── поповер у кнопки ☺ в поле ввода ── */
@@ -71,20 +73,38 @@
 .pk-pop.show{display:flex;animation:pkIn .16s cubic-bezier(.22,1,.36,1)}
 .pk-pop .pk{flex:1;width:100%}
 @keyframes pkIn{from{opacity:0;transform:scale(.94) translateY(6px)}to{opacity:1;transform:none}}
-/* ── боковая панель ── */
-.pk-drawer{width:0;flex:none;background:var(--side-bg);border-left:1px solid var(--pk-lo,var(--gl-lo));overflow:hidden;transition:width .3s cubic-bezier(.22,1,.36,1)}
+/* ── боковая панель: продолжение карточки чата ──
+   Чат и панель — одна карточка: скругления только по внешнему контуру, шапка и нижняя полоса продолжаются через панель.
+   Высоты шапки (--hh) и полосы поля ввода (--fh) JS берёт у чата при открытии. */
+.pk-drawer{width:0;flex:none;background:var(--side-bg);overflow:hidden;transition:width .3s cubic-bezier(.22,1,.36,1);border-radius:0 var(--r-panel,22px) var(--r-panel,22px) 0;box-shadow:var(--flat-shadow);clip-path:inset(-40px -40px -40px 0)}
 .pk-drawer.open{width:344px}
+/* линия между чатом и панелью: поверх шапки и нижней полосы, чтобы и они читались как два соседних блока */
+.pk-drawer{position:relative}
+.pk-drawer::before{content:'';position:absolute;left:0;top:0;bottom:0;width:1px;z-index:5;background:var(--gl-lo);pointer-events:none}
 .pk-drawer .in{width:344px;height:100%;display:flex;flex-direction:column}
-.pk-dh{display:flex;align-items:center;gap:8px;height:60px;padding:0 10px 0 16px;border-bottom:1px solid var(--gl-lo);flex:none}
-.pk-dh b{flex:1;font-size:14.5px;font-weight:700;color:var(--text)}
-.pk-dh button{width:32px;height:32px;border-radius:11px;display:grid;place-items:center;color:var(--muted);background:none;border:0;cursor:pointer;padding:0}
+.pk-dh{display:flex;align-items:center;gap:8px;height:var(--hh,68px);padding:0 14px 0 18px;flex:none;position:relative;z-index:2;background:var(--header-bg,var(--side-bg));box-shadow:var(--bar-sh);border-radius:0 var(--r-panel,22px) 0 0}
+.pk-dh b{flex:1;font-size:15px;font-weight:700;color:var(--text)}
+.pk-dh button{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:var(--muted);background:none;border:0;cursor:pointer;padding:0}
 .pk-dh button:hover{background:var(--hover-row);color:var(--text)}
 .pk-dh button svg{width:18px;height:18px}
-.pk-drawer .pk{flex:1}
+.pk-drawer .pk{flex:1;min-height:0}
+/* нижняя полоса — той же высоты и вида, что и поле ввода слева: плашка предпросмотра и кнопка оттенка как кнопки поля */
+.pk-drawer .pk-foot{height:var(--fh,72px);padding:10px 14px 14px;gap:8px;border-top:0;background:var(--side-bg);box-shadow:var(--bar-sh-up);position:relative;z-index:2;border-radius:0 0 var(--r-panel,22px) 0}
+.pk-drawer .pk-pv{height:48px;border-radius:12px;background:var(--surf2);padding:0 12px;flex:1}
+.pk-drawer .pk-tonebtn{width:48px;height:48px;border-radius:12px;background:var(--surf2)}
+.pk-drawer .pk-tonebtn:hover{background:var(--hover-row)}
+.pk-drawer .pk-tones{inset:0;padding:0 14px;border-radius:0 0 var(--r-panel,22px) 0}
+.pk-drawer .pk-pw{height:48px}
+@media (min-width:901px){
+  /* чат с открытой панелью: правые углы карточки, шапки и поля ввода прямые, они продолжаются в панели */
+  body.pk-drawer-on .chat-main{border-top-right-radius:0;border-bottom-right-radius:0}
+  body.pk-drawer-on .chat-main .chat-header{border-top-right-radius:0}
+  body.pk-drawer-on .chat-main .chat-input-wrap{border-bottom-right-radius:0}
+}
 /* на узком окне панель ложится поверх чата, а не сжимает его */
 @media (max-width:900px){
   .app-body{position:relative}
-  .pk-drawer{position:absolute;right:0;top:0;bottom:0;z-index:35;box-shadow:var(--pop-shadow)}
+  .pk-drawer{position:absolute;right:10px;top:10px;bottom:10px;z-index:35;clip-path:none}
 }
 
 /* ── реакции: капсула над сообщением ── */

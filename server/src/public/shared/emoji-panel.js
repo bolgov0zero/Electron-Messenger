@@ -94,9 +94,9 @@
     const top = `<div class="pk-top"><label class="pk-s">${I('search')}<input placeholder="Поиск смайла" autocomplete="off" spellcheck="false"><button class="pk-cl" type="button" hidden>${I('x')}</button></label>` +
       (o.dock ? `<button class="pk-dock" type="button" title="Открыть панелью сбоку">${I('panel')}</button>` : '') +
       (o.gif ? `<div class="pk-sw" hidden><button type="button" data-m="e" aria-pressed="true">Смайлы</button><button type="button" data-m="g" aria-pressed="false">GIF</button></div>` : '') + '</div>';
-    const body = '<div class="pk-scroll"></div>' + (o.gif ? '<div class="pk-gif"></div><div class="pk-pw">Powered by <span class="gp-kl"><i></i>KLIPY</span></div>' : '');
-    const foot = o.preview ? `<div class="pk-foot"><div class="pk-pv"><span class="hint">Наведите на смайл — здесь его название</span></div><button class="pk-tonebtn" type="button" title="Оттенок кожи">👋</button><div class="pk-tones">${TONEC.map((c, i) => `<button class="tn" type="button" data-i="${i}" style="--c:${c}" title="${i ? 'Оттенок ' + i : 'Без оттенка'}"></button>`).join('')}<span>Оттенок кожи</span></div></div>` : '';
-    if (o.rail) root.innerHTML = `<div class="pk-rcol pk-tabs-host">${tabsHtml}</div><div class="pk-rmain">${top}${body}${foot}</div>`;
+    const body = '<div class="pk-scroll"></div>' + (o.gif ? '<div class="pk-gif"></div>' : '');
+    const foot = o.preview ? `<div class="pk-foot"><div class="pk-pv"><span class="hint">Наведите на смайл — здесь его название</span></div><button class="pk-tonebtn" type="button" title="Оттенок кожи">👋</button><div class="pk-tones">${TONEC.map((c, i) => `<button class="tn" type="button" data-i="${i}" style="--c:${c}" title="${i ? 'Оттенок ' + i : 'Без оттенка'}"></button>`).join('')}<span>Оттенок кожи</span></div>${o.gif ? '<div class="pk-pw">Powered by <span class="gp-kl"><i></i>KLIPY</span></div>' : ''}</div>` : '';
+    if (o.rail) root.innerHTML = `<div class="pk-rbody"><div class="pk-rcol pk-tabs-host">${tabsHtml}</div><div class="pk-rmain">${top}${body}</div></div>${foot}`;
     else root.innerHTML = `${top}<div class="pk-tabs pk-tabs-host">${tabsHtml}</div>${body}${foot}`;
 
     const sc = $('.pk-scroll', root), inp = $('.pk-s input', root), cl = $('.pk-cl', root), tabs = $$('.pk-tab', root), gifEl = $('.pk-gif', root), sw = $('.pk-sw', root);
@@ -294,8 +294,12 @@
     closePop();
     if (!pkB) pkB = makePicker({ cols: 7, cell: 40, preview: true, gif: true, rail: true, onPick: e => H.insert(e) });
     if (pkB.root.parentNode !== $('.in', d)) $('.in', d).appendChild(pkB.root);
+    // Шапка и нижняя полоса панели повторяют высоту шапки и поля ввода чата: они продолжаются через панель
+    const hh = document.querySelector('.chat-header')?.offsetHeight, fh = document.querySelector('.chat-input-wrap')?.offsetHeight;
+    d.style.setProperty('--hh', (hh || 68) + 'px');
+    d.style.setProperty('--fh', (fh || 72) + 'px');
     d.classList.add('open');
-    document.body.classList.add('pk-drawer-open');
+    document.body.classList.add('pk-drawer-open', 'pk-drawer-on');
     pkB.onShow();
     setTimeout(() => { if (drawerOpen()) pkB.focus(); }, 300);
   }
@@ -303,6 +307,9 @@
     if (!drawerEl) return;
     drawerEl.classList.remove('open');
     document.body.classList.remove('pk-drawer-open');
+    // Скругления чата возвращаем, когда панель уже убралась, а не в начале анимации
+    clearTimeout(drawerEl._offT);
+    drawerEl._offT = setTimeout(() => { if (!drawerOpen()) document.body.classList.remove('pk-drawer-on'); }, 320);
   }
 
   // Поповер живёт, пока указатель над кнопкой или над ним, либо пока в его поиске стоит курсор
