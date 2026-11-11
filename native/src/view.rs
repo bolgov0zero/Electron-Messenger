@@ -5,6 +5,7 @@ use std::sync::Arc;
 use chrono::{Datelike, Local, TimeZone};
 use eframe::egui::{self, pos2, vec2, Align2, Color32, CornerRadius, FontId, Rect, Sense, Stroke, Ui};
 
+use crate::icons;
 use crate::model::{Attachment, Chat, Msg, Presence, Status};
 use crate::theme::{self, alpha, av_color, bold, Pal};
 
@@ -344,11 +345,17 @@ pub struct Row<'a> {
     pub presence: Option<&'a Presence>,
 }
 
-/// .chat-item: padding 9×12, аватар 48, gap 12, радиус 16.
-pub fn chat_row(ui: &mut Ui, pal: &Pal, r: &Row) -> bool {
+pub struct RowOut {
+    pub clicked: bool,
+    /// Правый клик: где открыть контекстное меню.
+    pub menu_at: Option<egui::Pos2>,
+}
+
+/// .chat-item: padding 7×12, аватар 48, gap 12, радиус 16, высота 62.
+pub fn chat_row(ui: &mut Ui, pal: &Pal, r: &Row) -> RowOut {
     let c = r.c;
     let w = ui.available_width();
-    let (rect, resp) = ui.allocate_exact_size(vec2(w, 66.0), Sense::click());
+    let (rect, resp) = ui.allocate_exact_size(vec2(w, 62.0), Sense::click());
     let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
     let hl = rect.shrink2(vec2(0.0, 1.0));
     if r.active {
@@ -358,7 +365,7 @@ pub fn chat_row(ui: &mut Ui, pal: &Pal, r: &Row) -> bool {
     }
     let title = c.title(r.me);
     let peer = c.peer(r.me).map(|m| m.id);
-    let av = Rect::from_min_size(rect.min + vec2(12.0, 9.0), vec2(48.0, 48.0));
+    let av = Rect::from_min_size(rect.min + vec2(12.0, 7.0), vec2(48.0, 48.0));
     draw_avatar(ui, av, r.server, peer, &title, peer.unwrap_or(c.id));
     if peer.is_some() {
         presence_dot(ui.painter(), av, r.presence, pal, alpha(pal.side_bg, 217));
@@ -368,23 +375,35 @@ pub fn chat_row(ui: &mut Ui, pal: &Pal, r: &Row) -> bool {
     let right = rect.right() - 12.0;
     let p = ui.painter().clone();
     let unread = c.unread > 0 && !c.muted;
-    let tg = p.layout_no_wrap(list_time(c.last_ts()), FontId::proportional(11.2), if unread { pal.accent } else { pal.muted });
+    let tg = p.layout_no_wrap(list_time(c.last_ts()), FontId::proportional(11.6), if unread { pal.accent } else { pal.muted });
     let tw = tg.size().x;
+    let ty = rect.top() + 14.0;
+    p.galley(pos2(right - tw, ty), tg.clone(), pal.muted);
+    // справа налево: время, галочки, «без звука», булавка (по 12 px)
+    let mut cur = right - tw - 6.0;
+    let mut cluster = 0.0;
     let own = c.last.as_ref().filter(|m| m.sender_id == r.me && !m.deleted).and_then(|m| m.status).filter(|s| s.total > 0);
-    let tick_w = if own.is_some() { 20.0 } else { 0.0 };
-    p.galley(pos2(right - tw, rect.top() + 17.0), tg.clone(), pal.muted);
     if let Some(s) = own {
-        draw_ticks(&p, right - tw - 4.0, rect.top() + 17.0 + tg.size().y / 2.0, &s, pal.muted);
+        draw_ticks(&p, cur, ty + tg.size().y / 2.0, &s, pal.muted);
+        cur -= 20.0;
+        cluster += 20.0;
     }
-    let ng = elided(&p, &title, FontId::new(14.5, bold()), pal.text, right - x - tw - tick_w - 10.0);
-    p.galley(pos2(x, rect.top() + 15.0), ng, pal.text);
+    let faint = alpha(pal.muted, 178);
+    for icon in [c.muted.then_some(&icons::BELL_OFF), c.pinned.then_some(&icons::PIN)].into_iter().flatten() {
+        let ir = Rect::from_center_size(pos2(cur - 6.0, ty + tg.size().y / 2.0), vec2(12.0, 12.0));
+        icons::paint(ui, icon, ir, faint, 2.0);
+        cur -= 16.0;
+        cluster += 16.0;
+    }
+    let ng = elided(&p, &title, FontId::new(14.5, bold()), pal.text, right - x - tw - cluster - 14.0);
+    p.galley(pos2(x, rect.top() + 12.0), ng, pal.text);
 
     let mut badge_w = 0.0;
     if c.unread > 0 {
-        let label = if c.unread > 99 { "99+".to_string() } else { c.unread.to_string() };
+        let label = c.unread.to_string();
         let bg = p.layout_no_wrap(label, FontId::new(12.0, bold()), Color32::WHITE);
         let bw = (bg.size().x + 14.0).max(22.0);
-        let br = Rect::from_min_size(pos2(right - bw, rect.top() + 32.0), vec2(bw, 22.0));
+        let br = Rect::from_min_size(pos2(right - bw, rect.top() + 30.0), vec2(bw, 22.0));
         p.rect_filled(br, 11, if c.muted { pal.muted } else { pal.accent_fill });
         p.galley(br.center() - bg.size() / 2.0, bg, Color32::WHITE);
         badge_w = bw + 8.0;
@@ -402,8 +421,8 @@ pub fn chat_row(ui: &mut Ui, pal: &Pal, r: &Row) -> bool {
         }
     }
     let pg = p.layout_job(job);
-    p.galley(pos2(x, rect.top() + 34.0), pg, color);
-    resp.clicked()
+    p.galley(pos2(x, rect.top() + 33.0), pg, color);
+    RowOut { clicked: resp.clicked(), menu_at: resp.secondary_clicked().then(|| resp.interact_pointer_pos()).flatten() }
 }
 
 // ───────────────────────────── сообщения ─────────────────────────────

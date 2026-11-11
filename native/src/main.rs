@@ -3,6 +3,7 @@
 mod icons;
 mod model;
 mod net;
+mod sidebar;
 mod store;
 mod theme;
 mod update;
@@ -102,6 +103,11 @@ struct App {
     anchor: Option<(f32, f32)>,
     force_offset: Option<f32>,
 
+    filter: usize,
+    tab: usize,
+    head_menu: bool,
+    ctx_menu: Option<(i64, egui::Pos2)>,
+
     upd_avail: Option<update::Info>,
     upd_modal: bool,
     upd_checking: bool,
@@ -165,6 +171,10 @@ impl App {
             feed_chat: None,
             anchor: None,
             force_offset: None,
+            filter: 0,
+            tab: 0,
+            head_menu: false,
+            ctx_menu: None,
             upd_avail: None,
             upd_modal: false,
             upd_checking: false,
@@ -619,108 +629,6 @@ impl App {
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(pal.app_bg).inner_margin(Margin { left: 10, right: 12, top: 12, bottom: 12 }))
             .show(ui, |ui| self.chat_ui(ui, pal));
-    }
-
-    fn sidebar_ui(&mut self, ui: &mut Ui, pal: &Pal) {
-        let outer_h = ui.available_height();
-        let outer_w = ui.available_width();
-        egui::Frame::new().fill(pal.side_bg).corner_radius(22).inner_margin(Margin::same(10)).show(ui, |ui| {
-            ui.set_min_size(vec2(outer_w - 20.0, outer_h - 20.0));
-            ui.set_max_width(outer_w - 20.0);
-            // Шапка сайдбара: высота 56 (с отступом карточки), название клиента слева с отступом 16
-            let (hr, _) = ui.allocate_exact_size(vec2(ui.available_width(), 46.0), Sense::hover());
-            let wm = view::wordmark(ui.painter(), pal);
-            ui.painter().galley(pos2(hr.left() + 6.0, hr.center().y - wm.size().y / 2.0), wm, pal.text);
-            ui.add(
-                TextEdit::singleline(&mut self.search)
-                    .hint_text("Поиск")
-                    .desired_width(f32::INFINITY)
-                    .margin(vec2(14.0, 9.0)),
-            );
-            ui.add_space(6.0);
-
-            let me = self.me();
-            let server = self.session.as_ref().map(|s| s.server.clone()).unwrap_or_default();
-            let q = self.search.trim().to_lowercase();
-            let list_h = ui.available_height() - 60.0;
-            let mut clicked = None;
-            egui::ScrollArea::vertical().auto_shrink([false, false]).max_height(list_h).show(ui, |ui| {
-                ui.spacing_mut().item_spacing.y = 0.0;
-                if !self.chats_loaded {
-                    ui.add_space(16.0);
-                    ui.vertical_centered(|ui| ui.label(RichText::new("Загрузка…").color(pal.muted)));
-                }
-                for c in &self.chats {
-                    if !q.is_empty() && !c.title(me).to_lowercase().contains(&q) {
-                        continue;
-                    }
-                    let typers = self.typers(c.id);
-                    let typing = (!typers.is_empty()).then(|| typing_label(&typers, c.kind != "direct"));
-                    let presence = c.peer(me).and_then(|m| self.presence.get(&m.id));
-                    let row = Row { c, me, server: &server, active: self.selected == Some(c.id), typing, presence };
-                    if chat_row(ui, pal, &row) {
-                        clicked = Some(c.id);
-                    }
-                }
-                if self.chats_loaded && self.chats.is_empty() {
-                    ui.add_space(16.0);
-                    ui.vertical_centered(|ui| ui.label(RichText::new("Чатов пока нет").color(pal.muted)));
-                }
-            });
-            if let Some(id) = clicked {
-                self.select(id);
-            }
-
-            // Нижняя строка: пользователь и выход
-            ui.add_space(4.0);
-            let name = self.session.as_ref().map(|s| s.name.clone()).unwrap_or_default();
-            let mut out = false;
-            let mut upd_click = false;
-            let (upd_avail, upd_busy) = (self.upd_avail.is_some(), self.upd_checking || self.upd_progress.is_some());
-            ui.horizontal(|ui| {
-                let (r, _) = ui.allocate_exact_size(vec2(40.0, 40.0), Sense::hover());
-                draw_avatar(ui, r, &server, Some(me), &name, me);
-                ui.vertical(|ui| {
-                    ui.add_space(2.0);
-                    ui.label(RichText::new(&name).font(FontId::new(14.5, bold())).color(pal.text));
-                    let (dot, txt) = if self.ws_online { (pal.accent, "в сети") } else { (pal.muted, "подключение…") };
-                    ui.label(RichText::new(txt).size(12.0).color(dot));
-                });
-                ui.with_layout(egui::Layout::right_to_left(Align::Center), |ui| {
-                    let b = egui::Button::new(RichText::new("Выйти").size(13.5).color(pal.text2))
-                        .fill(pal.surf2)
-                        .corner_radius(12);
-                    out = ui.add(b).clicked();
-                    // Кнопка «проверить обновление»: круговая стрелка, точка — если есть новая сборка
-                    let (r, resp) = ui.allocate_exact_size(vec2(34.0, 34.0), Sense::click());
-                    let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(if upd_avail {
-                        "Доступно обновление"
-                    } else {
-                        "Проверить обновления"
-                    });
-                    let p = ui.painter().clone();
-                    p.rect_filled(r, 12, if resp.hovered() { pal.hover2 } else { pal.surf2 });
-                    let col = if upd_busy { pal.muted } else if resp.hovered() { pal.text } else { pal.text2 };
-                    icons::paint(ui, &icons::REFRESH_CW, Rect::from_center_size(r.center(), vec2(18.0, 18.0)), col, 2.0);
-                    if upd_avail {
-                        p.circle_filled(pos2(r.right() - 4.0, r.top() + 4.0), 4.5, pal.accent);
-                        p.circle_stroke(pos2(r.right() - 4.0, r.top() + 4.0), 4.5, Stroke::new(1.5, pal.side_bg));
-                    }
-                    upd_click = resp.clicked();
-                });
-            });
-            if out {
-                self.logout("");
-            }
-            if upd_click {
-                if self.upd_avail.is_some() {
-                    self.upd_modal = true;
-                } else if !self.upd_checking {
-                    self.upd_checking = true;
-                    self.net.check_update(false);
-                }
-            }
-        });
     }
 
     fn chat_ui(&mut self, ui: &mut Ui, pal: &Pal) {
