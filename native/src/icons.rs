@@ -24,22 +24,6 @@ pub const REFRESH_CW: Icon = Icon {
     body: r#"<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>"#,
 };
 
-/// Рисует значок в `rect` цветом `color` с толщиной штриха `stroke` (в единицах viewBox 24).
-pub fn paint(ui: &mut Ui, icon: &Icon, rect: Rect, color: Color32, stroke: f32) {
-    let hex = format!("#{:02x}{:02x}{:02x}", color.r(), color.g(), color.b());
-    let opacity = color.a() as f32 / 255.0;
-    let svg = format!(
-        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="{hex}" stroke-opacity="{opacity:.2}" stroke-width="{stroke}" stroke-linecap="round" stroke-linejoin="round">{}</svg>"#,
-        icon.body
-    );
-    let uri = format!("bytes://icon-{}-{hex}-{:.0}-{stroke}.svg", icon.name, opacity * 100.0);
-    ui.put(
-        rect,
-        egui::Image::new(egui::ImageSource::Bytes { uri: Cow::Owned(uri), bytes: svg.into_bytes().into() })
-            .fit_to_exact_size(rect.size()),
-    );
-}
-
 pub const CHEVRON_UP: Icon = Icon {
     name: "chevron-up",
     body: r#"<path d="m18 15-6-6-6 6"/>"#,
@@ -119,3 +103,50 @@ pub const SETTINGS: Icon = Icon {
     name: "settings",
     body: r#"<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>"#,
 };
+
+/// SVG-разметка значка с подставленным цветом и толщиной штриха.
+fn svg_text(icon: &Icon, color: Color32, stroke: f32) -> String {
+    let hex = format!("#{:02x}{:02x}{:02x}", color.r(), color.g(), color.b());
+    let opacity = color.a() as f32 / 255.0;
+    format!(
+        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="{hex}" stroke-opacity="{opacity:.2}" stroke-width="{stroke}" stroke-linecap="round" stroke-linejoin="round">{}</svg>"#,
+        icon.body
+    )
+}
+
+/// Адрес картинки в кэше egui. Решётки в нём быть не должно: egui считает остаток фрагментом
+/// и теряет расширение .svg, после чего загрузчик SVG отказывается работать.
+fn uri_for(icon: &Icon, color: Color32, stroke: f32) -> String {
+    let hex = format!("{:02x}{:02x}{:02x}", color.r(), color.g(), color.b());
+    format!("bytes://icon-{}-{hex}-{}-{stroke}.svg", icon.name, color.a())
+}
+
+/// Рисует значок в `rect` цветом `color` с толщиной штриха `stroke` (в единицах viewBox 24).
+pub fn paint(ui: &mut Ui, icon: &Icon, rect: Rect, color: Color32, stroke: f32) {
+    let svg = svg_text(icon, color, stroke);
+    let uri = uri_for(icon, color, stroke);
+    ui.put(
+        rect,
+        egui::Image::new(egui::ImageSource::Bytes { uri: Cow::Owned(uri), bytes: svg.into_bytes().into() })
+            .fit_to_exact_size(rect.size()),
+    );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const ALL: &[&Icon] = &[&SEND, &CHEVRON_DOWN, &REFRESH_CW, &CHEVRON_UP, &CHEVRON_RIGHT, &PLUS, &SEARCH, &X, &PANEL_LEFT, &SUN, &MOON, &LOG_OUT, &PIN, &BELL_OFF, &FOLDER, &TRASH, &MESSAGE_CIRCLE, &USERS, &SETTINGS];
+
+    #[test]
+    fn all_icons_render() {
+        let color = Color32::from_rgb(29, 27, 25);
+        for icon in ALL {
+            let svg = svg_text(icon, color, 2.0);
+            let img = egui_extras::image::load_svg_bytes(svg.as_bytes(), &Default::default());
+            let img = img.unwrap_or_else(|e| panic!("{}: {e}", icon.name));
+            assert!(img.pixels.iter().any(|p| p.a() > 0), "{}: пустая картинка", icon.name);
+            assert!(egui::load::has_extension(&uri_for(icon, color, 2.5), "svg"), "{}: адрес без .svg", icon.name);
+        }
+    }
+}
