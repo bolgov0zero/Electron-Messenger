@@ -688,6 +688,15 @@ html.dark { --gl-hov: rgba(255, 255, 255, .08); }
 .irc-msg:not([data-mine]).irc-tail .msg-bubble::after { left: -8px; background: var(--tg-in); clip-path: path('M9 0 V13 H1 C5 12.5 9 9 9 0 Z'); }
 .irc-msg[data-mine].irc-tail .msg-bubble::after { right: -8px; background: var(--tg-out); clip-path: path('M0 0 V13 H8 C4 12.5 0 9 0 0 Z'); }
 .irc-msg .msg-bubble.bubble-photo { overflow: visible; }
+/* Пузырь, оканчивающийся блоком кода, с хвостиком: overflow:hidden обрезал хвост, который выходит за край пузыря.
+   Снимаем обрезку, а углы тёмному блоку скругляем сами по радиусам пузыря (--br у «своих» с хвостом равен 0).
+   Хвост без реакций продолжает тёмный низ пузыря, поэтому красим его в цвет блока */
+.irc-msg.irc-tail .msg-bubble.bubble-comp.ends-code { overflow: visible; }
+.irc-msg.irc-tail .msg-bubble.bubble-comp.ends-code > .cblk { overflow: hidden; }
+.irc-msg.irc-tail .msg-bubble.bubble-comp.ends-code > .cblk:first-child { border-radius: var(--tl) var(--tr) 0 0; }
+.irc-msg.irc-tail .msg-bubble.bubble-comp.ends-code:not(:has(> .reactions)) > .cblk:not(:has(~ .cblk)) { border-radius: 0 0 var(--br) var(--bl); }
+.irc-msg.irc-tail .msg-bubble.bubble-comp.ends-code:not(:has(> .reactions)) > .cblk:first-child:not(:has(~ .cblk)) { border-radius: var(--tl) var(--tr) var(--br) var(--bl); }
+.irc-msg.irc-tail .msg-bubble.bubble-comp.ends-code:not(:has(> .reactions))::after { background: #0b0e13; }
 .irc-msg .msg-bubble.bubble-photo .bubble-image, .irc-msg .msg-bubble.bubble-photo .bubble-grid { overflow: hidden; }
 .irc-msg .msg-bubble:not(.bubble-photo) > .irc-meta { right: 12px; bottom: 5.5px; }
 .irc-msg .msg-bubble.bubble-comp > .ct-pad { padding: 7px 12px 0; }

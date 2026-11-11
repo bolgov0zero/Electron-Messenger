@@ -10,7 +10,9 @@
 
 /* ───── токены: светлая тема ───── */
 :root {
-  --ff: "Medeo Sans", Inter, -apple-system, system-ui, sans-serif;
+  /* Вшитый шрифт смайлов обязан стоять в стеке: этот файл грузится после style.css и
+     перекрывает его font-family у body, без смайлов здесь вернутся системные (Apple) */
+  --ff: "Medeo Sans", Inter, "Noto Color Emoji", -apple-system, system-ui, "Noto Color Emoji Keys", sans-serif;
   --ff-mono: "Medeo Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --app-bg: #ece9e4; --side-bg: #fdfcfa; --card-bg: #fdfcfa; --modal-bg: #fdfcfa;
   --header-bg: #fdfcfa; --composer-bg: #fdfcfa; --search-bg: #f3f0eb;
