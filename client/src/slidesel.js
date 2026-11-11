@@ -31,7 +31,7 @@
     { b: '.anx-sg', i: 'button', o: A, ease: SPRING, dur: DUR },
     { b: '.anx-types', i: 'button', o: '[aria-checked="true"]', above: true, ease: SPRING, dur: DUR },
     { b: '.gp-chips', i: '.gp-chip', o: A, ease: SPRING, dur: DUR },
-    { b: '.ep-tabs', i: '.ep-tab', o: '[aria-selected="true"]', ease: SPRING, dur: DUR },   // группы смайлов
+    { b: '.pk-tabs-host', i: '.pk-tab', o: '[aria-selected="true"]', ease: SPRING, dur: DUR },   // группы смайлов
     { b: '.cs-nav-list', i: '.cs-sn', o: '[aria-current="page"],[aria-current="true"]', ease: SPRING, dur: DUR },
     // списки чатов и тем: выделение — псевдоэлемент строки, плашка едет под текстом строк
     { b: '.chats-list', i: '.chat-item', o: '.active', p: '::after', below: true, ease: SPRING, dur: DUR },

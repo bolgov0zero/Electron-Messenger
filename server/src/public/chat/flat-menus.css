@@ -9,7 +9,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ═════════ 1. Меню: карточка r16, пункты r12, плоская всплывающая тень, без пружины ═════════ */
-.ctx-menu, #reaction-picker, #mention-popup, .head-menu, .up-menu, .ctx-read-fly, .ctx-sub-fly {
+.ctx-menu, #mention-popup, .head-menu, .up-menu, .ctx-read-fly, .ctx-sub-fly {
   border-radius: var(--r-menu); border: 0; box-shadow: var(--pop-shadow); background: var(--side-bg);
 }
 .ctx-menu .ctx-read-fly, .ctx-menu .ctx-sub-fly, .ctx-read-fly, .ctx-sub-fly {
@@ -23,11 +23,6 @@
 .ctx-sep, html.dark .ctx-sep { background: var(--gl-lo); }
 .ctx-menu button:hover, .up-menu button:hover, .ctx-read.open > button, .mention-item:hover, .mention-item.mn-active, .ctx-read-row:hover { background: var(--hover-row); }
 .ctx-menu button.ctx-danger:hover { background: var(--danger-bg); }
-/* ряд быстрых реакций в меню сообщения */
-.ctx-reactions { border-radius: 14px; background: var(--surf2); }
-.ctx-menu .ctx-reactions button { border-radius: var(--r-item); }
-.ctx-menu .ctx-reactions button:hover { background: var(--gl-card2); transform: none; }
-.ctx-menu .ctx-reactions button.mine { background: var(--accent-soft); }
 .ctx-read-fly, .ctx-sub-fly { transition: opacity .15s, transform .18s var(--gl-ease); }
 .ctx-read-h { border-bottom: 1px solid var(--gl-lo); }
 /* меню шапки сайдбара: карточка из четырёх значков (r16), пункты r12 */
@@ -35,10 +30,6 @@
 .hm-i { border-radius: var(--r-item); }
 .hm-i:hover, .hm-i:focus-visible { background: var(--hover-row); color: var(--text); }
 .hm-i::after { border-radius: 8px; }
-/* выбор реакции и подсказки */
-#reaction-picker { border-radius: var(--r-menu); }
-#reaction-picker .emoji-item, .ctx-reactions button { border-radius: var(--r-item); }
-#reaction-picker .emoji-item:hover { background: var(--gl-card2); transform: none; }
 .reaction-tip, .acc-tip { border-radius: 10px; border: 0; box-shadow: var(--pop-shadow); background: var(--side-bg); }
 
 /* ═════════ 2. Окна единой формы: скрим, радиус 22, плоский фон, заголовок и подвал ═════════ */

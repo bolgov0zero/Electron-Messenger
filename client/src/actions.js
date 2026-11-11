@@ -3,7 +3,6 @@ window.__h1 = function (el, ev, a) { window.electron.accountCancelAdd() };
 window.__h2 = function (el, ev, a) { headMenuClose();toggleSidebar() };
 window.__h3 = function (el, ev, a) { headMenuClose();toggleTheme() };
 window.__h4 = function (el, ev, a) { headMenuClose();openAnnounce() };
-window.__h5 = function (el, ev, a) { ctxReact(el.dataset.r) };
 window.__h6 = function (el, ev, a) { if(ev.target===el)_confirmReject() };
 window.__h7 = function (el, ev, a) { if(ev.target===el)closeModal('modal-folder') };
 window.__h8 = function (el, ev, a) { if(ev.target===el)closeModal('modal-addcontact') };
@@ -25,8 +24,6 @@ window.__h26 = function (el, ev, a) { closeSettings(); openModal('modal-update')
 window.__h27 = function (el, ev, a) { ev.preventDefault() };
 window.__h28 = function (el, ev, a) { ev.stopPropagation();mentionUserInComposer(a[0]) };
 window.__h29 = function (el, ev, a) { el.remove() };
-window.__h30 = function (el, ev, a) { filterEmoji(el.value, 'rp') };
-window.__h31 = function (el, ev, a) { syncEmojiTabs('rp') };
 window.__h32 = function (el, ev, a) { if(ev.key==='Enter')submitAddContact() };
 window.__h33 = function (el, ev, a) { if(ev.key==='Enter')scRedeem(a[0]) };
 window.__h34 = function (el, ev, a) { ev.stopPropagation(); addContactFromChat(a[0]) };

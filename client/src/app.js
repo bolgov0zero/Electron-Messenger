@@ -682,18 +682,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     hideChatCtx();
     const _cm = document.getElementById('ctx-contact-menu'); if (_cm) _cm.style.display = 'none';
     if (!e.target.closest('#mention-popup')) hideMentionPopup();
-    if (!e.target.closest('.composer-pill')) closeEmojiPicker();
-    if (!e.target.closest('#reaction-picker')) hideReactionPicker();
   });
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     const anyOpen = document.getElementById('ctx-menu')?.classList.contains('open') ||
-      document.getElementById('reaction-picker')?.classList.contains('open') ||
-      document.getElementById('ep-grid')?.classList.contains('open') ||
+      EmojiPanel.isOpen() || EmojiPanel.capsuleOpen() ||
       document.querySelector('[id^="modal-"].open') ||
       S.editingMessageId;
-    hideCtxMenu(); hideReactionPicker(); closeSettings();
-    document.getElementById('ep-grid')?.classList.remove('open');
+    hideCtxMenu(); closeSettings();
+    EmojiPanel.escape();
     if (S.editingMessageId) { cancelEdit(); return; }
     if (anyOpen) return;
     // Escape разбирает открытое по одному уровню за нажатие:
@@ -2850,22 +2847,6 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
           </span>
         </div>
         <div class="composer-pill" id="composer-pill">
-          <div class="ep-grid" id="ep-grid">
-            <div class="ep-search">
-              <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-              <input id="ep-search-input" placeholder="Поиск смайла" autocomplete="off" data-on-input="filterEmoji" data-a-input='["__value"]'>
-            </div>
-            <div class="ep-tabs" id="ep-tabs"></div>
-            <div class="ep-scroll" id="ep-scroll" data-on-scroll="syncEmojiTabs"></div>
-            <div class="ep-gif" id="ep-gif" hidden></div>
-            <div class="ep-dock" id="ep-dock" hidden>
-              <div class="ep-sw" role="group" aria-label="Смайлы или GIF">
-                <button type="button" id="ep-sw-emoji" aria-pressed="true" data-on-click="epMode" data-a-click='["emoji"]'>Смайлы</button>
-                <button type="button" id="ep-sw-gif" aria-pressed="false" data-on-click="epMode" data-a-click='["gif"]'>GIF</button>
-              </div>
-              <span class="ep-pw" id="ep-pw" hidden>Powered by <span class="gp-kl"><i></i>KLIPY</span></span>
-            </div>
-          </div>
           <div class="composer-main">
             <button class="composer-icon-btn composer-attach" id="up-btn" title="Прикрепить, форматирование" aria-haspopup="menu" aria-expanded="false" data-on-click="toggleUpMenu" data-a-click='["__event"]'>
               <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
@@ -2935,8 +2916,8 @@ async function openChat(chatId, aroundId = null, forceBottom = false) {
           <div id="fmt-bar" style="display:none" class="fmt-bar" data-on-mousedown="__h27" data-on-click="fmtBarClick" data-a-click='["__event"]'>${Fmt.barHtml()}</div>
           </div></div>
               <div class="composer-field-row">
-              <div id="msg-input" class="fmt-ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Сообщение" data-ph="Сообщение…" spellcheck="true" data-on-keydown="handleKey" data-a-keydown='["__event"]' data-on-input="onMsgInput" data-a-input='["__this"]' data-on-focus="closeEmojiPicker" data-on-pointerdown="closeEmojiPicker"></div>
-              <button class="composer-icon-btn" title="Эмодзи" data-on-click="toggleEmojiPicker" data-a-click='["__event"]'>
+              <div id="msg-input" class="fmt-ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Сообщение" data-ph="Сообщение…" spellcheck="true" data-on-keydown="handleKey" data-a-keydown='["__event"]' data-on-input="onMsgInput" data-a-input='["__this"]'></div>
+              <button class="composer-icon-btn" id="emoji-btn" type="button" title="Эмодзи" aria-haspopup="true">
                 <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>
               </button>
               </div>
@@ -3073,78 +3054,7 @@ function getFreqEmojis(n) {
   return sorted.slice(0,n);
 }
 
-// Разделы панели: часто используемые собираются заново при каждом открытии
-function emojiSections() {
-  return [{ key: 'freq', icon: '🕘', name: 'Часто используемые', items: getFreqEmojis(16) }, ...EMOJI_GROUPS];
-}
-
-// Смайлов почти две тысячи, и собирать столько кнопок заново на каждое открытие
-// заметно дорого. Разделы, кроме «часто используемых», не меняются — держим их
-// разметку готовой строкой. Плюс каждому разделу проставляем ожидаемую высоту:
-// она нужна правилу content-visibility, чтобы браузер мог не размечать разделы
-// вне видимой части и при этом знал, сколько места под них отвести.
-// Панель одна на два места: композер и выбор реакции. Отличаются шириной,
-// размером ячейки и тем, что делает нажатие; остальное — разделы, вкладки,
-// липкие заголовки, поиск — общее. Раньше у реакций была своя плоская сетка
-// без разделов и поиска, и полторы тысячи смайлов приходилось листать наугад.
-const EP_KIND = {
-  ep: { cols: 8, cell: 36, pick: 'insertEmoji' },   // композер
-  rp: { cols: 7, cell: 30, pick: 'pickerReact' },   // реакции
-};
-const _epStatic = { ep: null, rp: null };
-
-function emojiSectionHtml(g, kind) {
-  const k = EP_KIND[kind];
-  const h = Math.ceil(g.items.length / k.cols) * k.cell;
-  return '<div class="ep-head" data-head="' + g.key + '">' + g.name + '</div>' +
-    '<div class="ep-row" data-row="' + g.key + '" style="contain-intrinsic-size:auto ' + h + 'px">' +
-      g.items.map(em => '<button class="emoji-item" data-em="' + em + '" data-on-click="' + k.pick + '" data-a-click="' + esc(JSON.stringify([em])) + '">' + em + '</button>').join('') +
-    '</div>';
-}
-
-
-// Готовая разметка панели: постоянная часть из кэша, «часто используемые» заново
-function emojiPickerCached(kind) {
-  if (_epStatic[kind] === null) _epStatic[kind] = EMOJI_GROUPS.map(g => emojiSectionHtml(g, kind)).join('');
-  return emojiSectionHtml(emojiSections()[0], kind) + _epStatic[kind];
-}
-
-function closeEmojiPicker() {
-  if (_emojiInserting) return;   // фокус вернули после вставки смайла
-  document.getElementById('ep-grid')?.classList.remove('open');
-}
-
 // ── GIF из Klipy в панели смайлов (модуль «GIF», см. shared/gif-klipy.js) ──
-// Переключатель «Смайлы / GIF» стоит внизу панели и есть, только если модуль включён у этого человека и чат не секретный
-let _epMode = 'emoji';
-function epDockSync() {
-  const dock = document.getElementById('ep-dock'); if (!dock) return;
-  const can = !!(window.GifKlipy && GifKlipy.on()) && !S.secretChatIds.has(S.activeChatId) && !S.editingMessageId;
-  dock.hidden = !can;
-  if (!can && _epMode === 'gif') epMode('emoji');
-}
-function epMode(mode) {
-  const panel = document.getElementById('ep-grid'); if (!panel) return;
-  if (mode === 'gif' && !(window.GifKlipy && GifKlipy.on())) mode = 'emoji';
-  _epMode = mode;
-  const gif = mode === 'gif';
-  panel.classList.toggle('gif-mode', gif);
-  panel.querySelector('.ep-search').hidden = gif;
-  document.getElementById('ep-tabs').hidden = gif;
-  document.getElementById('ep-scroll').hidden = gif;
-  const host = document.getElementById('ep-gif'); host.hidden = !gif;
-  document.getElementById('ep-pw').hidden = !gif;
-  document.getElementById('ep-sw-emoji').setAttribute('aria-pressed', String(!gif));
-  document.getElementById('ep-sw-gif').setAttribute('aria-pressed', String(gif));
-  // Признак на самом контейнере, а не общий флаг: панель создаётся заново при каждой смене чата, и в новую её нужно смонтировать снова
-  if (gif && !host.dataset.mounted) {
-    host.dataset.mounted = '1';
-    GifKlipy.setUser(`${S.server}:${S.user?.id || 0}`, 'ru');
-    host._gif = GifKlipy.mount(host, { onPick: pickGif });
-  }
-  // На телефоне фокус поднимает клавиатуру и закрывает панель, поэтому только там, где есть мышь
-  if (gif && !window.matchMedia('(max-width: 767px), (pointer: coarse)').matches) host._gif?.focus();
-}
 // Выбранная GIF уходит сразу: если в поле есть текст, он станет подписью
 function pickGif(att) {
   if (!att || !att.gif || S.editingMessageId) return;
@@ -3152,147 +3062,24 @@ function pickGif(att) {
   sendOrEdit();
 }
 
-function toggleEmojiPicker(e) {
-  e.stopPropagation();
-  const panel = document.getElementById('ep-grid');
-  if (!panel) return;
-  if (panel.classList.contains('open')) { panel.classList.remove('open'); return; }
+// Панель смайлов и капсула реакций живут в shared/emoji-panel.js; от приложения им нужны только эти крючки
+EmojiPanel.init({
+  freq: getFreqEmojis,
+  track: trackEmojiUse,
+  insert: insertEmoji,
+  // Вкладка GIF есть, только если модуль включён у этого человека, чат не секретный и сообщение не редактируется
+  canGif: () => !!(window.GifKlipy && GifKlipy.on()) && !S.secretChatIds.has(S.activeChatId) && !S.editingMessageId,
+  mountGif: el => { GifKlipy.setUser(`${S.server}:${S.user?.id || 0}`, 'ru'); el._gif = GifKlipy.mount(el, { onPick: pickGif }); },
+  focusGif: el => el._gif?.focus(),
+  metrics: zoomMetrics,
+});
 
-  const sections = emojiSections();
-  const tabs = document.getElementById('ep-tabs');
-  const scroll = document.getElementById('ep-scroll');
-  if (tabs && !tabs.firstChild) tabs.innerHTML = emojiTabsHtml('ep');
-  // Разметка остаётся в DOM между открытиями: разобрать полторы тысячи кнопок
-  // заново — это те же двадцать миллисекунд на каждый показ панели. Пересобираем,
-  // только если её там нет (первый раз, после поиска) или поменялись «часто
-  // используемые».
-  if (scroll) {
-    const freq = sections[0].items.join('');
-    if (!scroll.firstChild || scroll.dataset.freq !== freq) {
-      scroll.innerHTML = emojiPickerCached('ep');
-      scroll.dataset.freq = freq;
-    }
-    scroll.scrollTop = 0;
-  }
-  const input = document.getElementById('ep-search-input');
-  if (input) input.value = '';
-  panel.classList.add('open');
-  epDockSync();
-  // На телефоне фокус в поиске поднимает клавиатуру, и она закрывает саму панель
-  if (!window.matchMedia('(max-width: 767px), (pointer: coarse)').matches) {
-    if (_epMode === 'gif') document.getElementById('ep-gif')?._gif?.focus(); else input?.focus();
-  }
-}
-
-// Считаем по рядам, а не по заголовкам: заголовки липкие, и их offsetTop/rect
-// в прилипшем состоянии показывают не место раздела, а верх ленты
-// Ряд вкладок с иконками разделов — одинаковый для обеих панелей
-function emojiTabsHtml(kind) {
-  return emojiSections().map((g, i) =>
-    '<button class="ep-tab" data-tab="' + g.key + '" title="' + g.name + '"' +
-    ' aria-selected="' + (i === 0) + '" data-on-click="emojiTabTo" data-a-click="' + esc(JSON.stringify([g.key, kind])) + '">' +
-    g.icon + '</button>').join('');
-}
-
-function emojiTabTo(key, kind = 'ep') {
-  const scroll = document.getElementById(kind + '-scroll');
-  const row = scroll?.querySelector('[data-row="' + key + '"]');
-  const head = scroll?.querySelector('[data-head="' + key + '"]');
-  if (!row) return;
-  const delta = row.getBoundingClientRect().top - scroll.getBoundingClientRect().top - (head?.offsetHeight || 0);
-  scroll.scrollTo({ top: scroll.scrollTop + delta, behavior: 'smooth' });
-  // Выбранную вкладку ставим сразу и держим, пока человек сам не прокрутит: иначе подсветка бежала бы по группам
-  // по пути, а у групп, которые не могут подняться к верху списка (самые последние), останавливалась на соседней
-  scroll._tabLock = key;
-  document.querySelectorAll('#' + kind + '-tabs .ep-tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === key)));
-  if (!scroll._lockBound) {
-    scroll._lockBound = true;
-    ['wheel', 'touchstart', 'pointerdown', 'keydown'].forEach(ev => scroll.addEventListener(ev, () => { scroll._tabLock = null; }, { passive: true }));
-  }
-}
-
-// Активная вкладка следует за прокруткой — как в телеграме
-function syncEmojiTabs(kind = 'ep') {
-  const scroll = document.getElementById(kind + '-scroll');
-  if (!scroll || scroll._tabLock) return;
-  const top = scroll.getBoundingClientRect().top;
-  let cur = null, first = null, last = null;
-  scroll.querySelectorAll('[data-row]').forEach(row => {
-    if (row.hidden) return;
-    if (!first) first = row.dataset.row;
-    last = row.dataset.row;
-    if (row.getBoundingClientRect().top - top <= 30) cur = row.dataset.row;
-  });
-  // У дна последний раздел уже не может подняться к верху — подсвечиваем его сами
-  if (scroll.scrollHeight - scroll.scrollTop - scroll.clientHeight < 4) cur = last;
-  cur = cur || first;
-  document.querySelectorAll('#' + kind + '-tabs .ep-tab').forEach(t =>
-    t.setAttribute('aria-selected', String(t.dataset.tab === cur)));
-}
-
-// Поиск: показываем одну ленту найденного, отсортированную по близости совпадения,
-// и возвращаемся к её началу. Раньше совпадения оставались на своих местах в
-// разделах — по запросу «сердце» лента внешне не менялась, и найденное приходилось
-// искать прокруткой у самого низа.
-function filterEmoji(q, kind = 'ep') {
-  const scroll = document.getElementById(kind + '-scroll');
-  if (!scroll) return;
-  scroll._tabLock = null;
-  const query = (q || '').trim().toLowerCase();
-
-  if (!query) {
-    scroll.innerHTML = emojiPickerCached(kind);
-    scroll.dataset.freq = emojiSections()[0].items.join('');
-    scroll.scrollTop = 0;
-    syncEmojiTabs(kind);
-    return;
-  }
-
-  const seen = new Set();
-  const hits = [];
-  EMOJI_GROUPS.forEach(g => {
-    const groupHit = g.name.toLowerCase().includes(query);
-    g.items.forEach(em => {
-      if (seen.has(em)) return;
-      const words = (EMOJI_KEYWORDS[em] || '').split(' ');
-      let score = 0;
-      if (words.includes(query)) score = 3;                      // слово целиком
-      else if (words.some(w => w.startsWith(query))) score = 2;  // начало слова
-      else if (groupHit) score = 1.5;                            // совпало название раздела
-      else if (words.some(w => w.includes(query))) score = 1;    // где-то внутри слова
-      if (score) { seen.add(em); hits.push({ em, score }); }
-    });
-  });
-  hits.sort((a, b) => b.score - a.score);
-
-  // В ленте теперь найденное, а не разделы. Снимаем отметку «частых»: по ней
-  // открытие панели решает, пересобирать ли ленту, и без этого после повторного
-  // открытия поле поиска было пустым, а результаты прошлого поиска оставались
-  delete scroll.dataset.freq;
-  scroll.innerHTML = hits.length
-    ? '<div class="ep-head" data-head="found">Найдено: ' + hits.length + '</div>' +
-      '<div class="ep-row" data-row="found">' + hits.map(h =>
-        '<button class="emoji-item" data-em="' + h.em + '" data-on-click="' + EP_KIND[kind].pick + '" data-a-click="' + esc(JSON.stringify([h.em])) + '">' + h.em + '</button>').join('') +
-      '</div>'
-    : '<div class="ep-miss">Ничего не нашлось</div>';
-  scroll.scrollTop = 0;
-  document.querySelectorAll('#' + kind + '-tabs .ep-tab').forEach(t => t.setAttribute('aria-selected', 'false'));
-}
-
-// Панель после выбора остаётся открытой: обычно ставят не один смайл, а
-// несколько подряд, и каждый раз открывать её заново утомительно. Закрыть —
-// повторным нажатием на кнопку, кликом мимо композера, Escape или установкой
-// курсора в поле ввода.
-let _emojiInserting = false;
+// Смайл из панели вставляем в позицию курсора; фокус возвращается в поле, событие input обновит остальное.
+// Учёт частоты ведёт сама панель (track), здесь только вставка
 function insertEmoji(em) {
-  trackEmojiUse(em);
   const input = document.getElementById('msg-input');
   if (!input) return;
-  // Возвращаем курсор в поле, но это не то же самое, что поставить его туда
-  // руками: там закрытие панели как раз нужно, поэтому помечаем свой вызов
-  _emojiInserting = true;
-  Fmt.insertText(input, em);   // фокус возвращается в поле, событие input обновит остальное
-  _emojiInserting = false;
+  Fmt.insertText(input, em);
 }
 
 // ── RENDER MESSAGES ──
@@ -4714,7 +4501,6 @@ function sendReaction(messageId, reaction) {
 }
 
 function ctxReact(reaction) {
-  trackEmojiUse(reaction);
   hideCtxMenu();
   sendReaction(S.ctx.messageId, reaction);
 }
@@ -5275,7 +5061,7 @@ async function sendOrEdit() {
   // Сообщение ушло — панель смайлов больше не нужна. Закрываем именно здесь, а
   // не в начале: при пустом поле или без связи отправки не было, и панель
   // должна остаться открытой.
-  closeEmojiPicker();
+  EmojiPanel.closePop();
   delete S.drafts[S.activeChatId]; saveDrafts(); // черновик отправлен — очищаем
   input.value='';
   CMP.lw?.reset();
@@ -5291,7 +5077,7 @@ function submitEdit() {
   if (!text) { cancelEdit(); return; }
   if (S.secretChatIds.has(S.activeChatId)) { cancelEdit(); return; } // редактирование в секретных чатах не поддерживается
   S.ws.send(JSON.stringify({type:'edit_message', message_id:S.editingMessageId, text, link_preview: CMP.lw?.current() || null}));
-  closeEmojiPicker();
+  EmojiPanel.closePop();
   CMP.fmt = false; CMP.prev = false;
   cancelEdit();
 }
@@ -5323,13 +5109,6 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
   document.getElementById('ctx-copy-btn').style.display = '';
   document.getElementById('ctx-edit-btn').style.display = (isMine && S.ctx.canEdit && !S.secretChatIds.has(S.activeChatId)) ? '' : 'none';
   document.getElementById('ctx-delete-btn').style.display = isMine ? '' : 'none';
-  const ctxReactEl = menu.querySelector('.ctx-reactions');
-  if (ctxReactEl) {
-    const _freq = getFreqEmojis(7);
-    // Уже поставленная вами реакция подсвечена
-    const _mine = new Set([...document.querySelectorAll(`.reaction-btn.mine[data-msg-id="${msgId}"]`)].map(b => b.dataset.reaction));
-    ctxReactEl.innerHTML = _freq.map(em=>`<button class="ctx-reaction-btn${_mine.has(em) ? ' mine' : ''}" data-on-click="ctxReact" data-a-click="${esc(JSON.stringify([`${em}`]))}">${em}</button>`).join('')+`<button class="ctx-reaction-btn ctx-reaction-more" data-on-click="showReactionPicker" data-a-click='["__event"]'>→</button>`;
-  }
   const _cap = document.getElementById('ctx-cap');
   if (_cap) {
     const _d = new Date(sentAt * 1000), _n = new Date(), _y = new Date(_n.getTime() - 86400000);
@@ -5342,7 +5121,7 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
   ctxReadSetup(msgId, isMine);
   popShow(menu);
   menu.classList.add('open');
-  placeCtxMenu(menu, e.clientX, e.clientY);
+  placeMsgCtx(menu, msgId, e, isMine);
 }
 
 function syncCtxSeparators(menu) {
@@ -5369,6 +5148,42 @@ function zoomMetrics() {
   const r = p.getBoundingClientRect();
   p.remove();
   return { k: r.left / 100 || 1, vw: r.right, vh: r.bottom, f: r.right / window.innerWidth || 1 };
+}
+
+// Реакции и меню рядом с сообщением: капсула над пузырём, меню под ним.
+// Не хватает места (пузырь очень высокий или у края окна) — меню у указателя, а капсула над ним или, если сверху тесно, под ним
+function placeMsgCtx(menu, msgId, e, isMine) {
+  syncCtxSeparators(menu);
+  menu.style.left = '-9999px'; menu.style.top = '-9999px';
+  menu.style.animation = 'none';
+  const m = zoomMetrics(), mr = menu.getBoundingClientRect(), w = mr.width, h = mr.height;
+  const margin = 6, GAP = 6, CH = 46;
+  const bub = document.querySelector(`.irc-msg[data-msg-id="${msgId}"] .msg-bubble`);
+  const br = bub?.getBoundingClientRect();
+  let mx, my, capY, anchorX, align = 'left';
+  if (br && br.top - CH - GAP >= margin && br.bottom + GAP + h <= m.vh - margin) {
+    capY = br.top - CH - GAP; my = br.bottom + GAP;
+    mx = isMine ? br.right - w : br.left;
+    anchorX = isMine ? br.right : br.left; align = isMine ? 'right' : 'left';
+  } else {
+    const cx = e.clientX * m.f, cy = e.clientY * m.f;
+    mx = cx; my = cy;
+    if (mx + w + margin > m.vw) mx = cx - w;
+    if (my + h + margin > m.vh) my = cy - h;
+    mx = Math.max(margin, Math.min(mx, m.vw - w - margin));
+    my = Math.max(margin, Math.min(my, m.vh - h - margin));
+    capY = my - CH - GAP;
+    if (capY < margin) capY = Math.min(my + h + GAP, m.vh - CH - margin);
+    anchorX = mx;
+  }
+  mx = Math.max(margin, Math.min(mx, m.vw - w - margin));
+  menu.style.transformOrigin = 'top left';
+  menu.style.left = (mx / m.k) + 'px';
+  menu.style.top = (my / m.k) + 'px';
+  menu.style.animation = '';
+  // Уже поставленные вами реакции подсвечены
+  const reacted = new Set([...document.querySelectorAll(`.reaction-btn.mine[data-msg-id="${msgId}"]`)].map(b => b.dataset.reaction));
+  EmojiPanel.showCapsule({ anchorX: anchorX / m.k, align, top: capY / m.k, reacted, onPick: ctxReact });
 }
 
 function placeCtxMenu(menu, clientX, clientY, anchor) {
@@ -5979,69 +5794,9 @@ function scrollToMsg(msgId, force = false) {
   el.addEventListener('animationend', () => el.classList.remove('msg-highlight'), { once: true });
 }
 function hideCtxMenu() {
+  EmojiPanel.hideCapsule();
   const m = document.getElementById('ctx-menu');
   popHide(m, () => m.classList.remove('open'));
-}
-
-function showReactionPicker(e) {
-  e.stopPropagation();
-  const menu = document.getElementById('ctx-menu');
-  const x = parseInt(menu.style.left);
-  const y = parseInt(menu.style.top);
-  menu.classList.remove('open');
-  const picker = document.getElementById('reaction-picker');
-  // Разметку строим один раз: полторы тысячи кнопок разбирать заново на каждый
-  // показ — те же миллисекунды, что были у панели композера
-  if (!picker.firstChild) {
-    picker.innerHTML =
-      '<div class="ep-search">' + "<svg viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg>" +
-        '<input id="rp-search-input" placeholder="Поиск смайла" autocomplete="off"' +
-        ' data-on-input="__h30"></div>' +
-      '<div class="ep-tabs" id="rp-tabs">' + emojiTabsHtml('rp') + '</div>' +
-      '<div class="ep-scroll" id="rp-scroll" data-on-scroll="__h31"></div>';
-  }
-  // «Часто используемые» меняются от нажатий — сверяем и пересобираем при сдвиге
-  const scroll = document.getElementById('rp-scroll');
-  const freq = emojiSections()[0].items.join('');
-  if (!scroll.firstChild || scroll.dataset.freq !== freq) {
-    scroll.innerHTML = emojiPickerCached('rp');
-    scroll.dataset.freq = freq;
-  }
-  const search = document.getElementById('rp-search-input');
-  if (search) search.value = '';
-  scroll.scrollTop = 0;
-  picker.style.left = '-9999px'; picker.style.top = '-9999px';
-  popShow(picker);
-  picker.classList.add('open');
-  // Выбранная вкладка считается по размерам прокрутки, поэтому только когда панель уже показана
-  // (скрытая, она даёт нулевую высоту, и подсвечивался последний раздел)
-  syncEmojiTabs('rp');
-  // Размер панели переводим в те же единицы, что style.left/top
-  const _pr = picker.getBoundingClientRect(), _mk = zoomMetrics().k;
-  const pw = _pr.width / _mk, ph = _pr.height / _mk;
-  const margin = 6;
-  const _z = (S.settings.uiScale || 100) / 100;
-  // Вьюпорт переводим в те же единицы, что и style.left/top: при масштабе интерфейса
-  // они не совпадают с window.innerWidth, и меню у края экрана уезжало за границу
-  const vw = window.innerWidth / _z, vh = window.innerHeight / _z;
-  let px = x, py = y;
-  if (px + pw + margin > vw) px = vw - pw - margin;
-  if (py + ph + margin > vh) py = y - ph;
-  if (py < margin) py = margin;
-  if (px < margin) px = margin;
-  picker.style.left = px + 'px';
-  picker.style.top = py + 'px';
-}
-
-function pickerReact(reaction) {
-  trackEmojiUse(reaction);
-  hideReactionPicker();
-  sendReaction(S.ctx.messageId, reaction);
-}
-
-function hideReactionPicker() {
-  const p = document.getElementById('reaction-picker');
-  popHide(p, () => p.classList.remove('open'));
 }
 
 function ctxEdit() {

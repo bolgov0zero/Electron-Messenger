@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Макет: панель смайлов и реакции</title>
+<link rel="stylesheet" href="https://cdn.prtner.ai/1.0.0/sans.css"><!-- Medeo Sans (SIL OFL 1.1) -->
+<link rel="stylesheet" href="../../server/src/public/chat/emoji-font.css"><!-- вшитый набор Noto, как в клиенте; без него смайлы рисуются системным шрифтом -->
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   МАКЕТ: панель смайлов (Electron и веб клиент) и реакции. Дизайн B «Мягкий».
+   Токены — из appearance.html / flat.css. Панели смайлов: A «Поповер», B «Боковая», C «Быстрый ввод».
+   Реакции: 1 «Меню с рядом», 2 «Полоска при наведении», 3 «Капсула + меню».
+   Данные смайлов и русские ключи поиска — настоящие (client/src/emoji-data.js), встроены при сборке build.py.
+   ═══════════════════════════════════════════════════════════════ */
+:root{
+  --ff:"Medeo Sans",Inter,"Noto Color Emoji",-apple-system,system-ui,"Noto Color Emoji Keys",sans-serif;
+  --app-bg:#ece9e4; --side-bg:#fdfcfa; --chat-bg:#f7f5f1; --bubble-bg:#ffffff;
+  --text:#1d1b19; --text2:#5b554e; --muted:#766e65; --surf2:#f3f0eb; --sel:#efebe5;
+  --accent:rgb(29,168,140);
+  --accent-fill:color-mix(in srgb,var(--accent) 80%,#000);
+  --accent-ink:color-mix(in srgb,var(--accent) 72%,#000);
+  --accent-soft:color-mix(in srgb,var(--accent) 13%,var(--side-bg));
+  --lo:color-mix(in srgb,var(--text) 9%,transparent);
+  --hov:color-mix(in srgb,var(--text) 6%,transparent);
+  --flat-shadow:0 1px 2px rgba(60,40,20,.05),0 10px 30px rgba(60,40,20,.07);
+  --pop-shadow:0 2px 6px rgba(60,40,20,.08),0 18px 44px rgba(60,40,20,.16);
+  --bub-sh:0 1px 2px rgba(60,40,20,.09);
+  --r-btn:12px; --r-card:16px; --r-panel:22px;
+  --seg-bg:color-mix(in srgb,var(--text) 7%,var(--side-bg));
+  --seg-on:var(--side-bg); --seg-on-sh:0 1px 2px rgba(60,40,20,.14);
+  --ease:cubic-bezier(.22,1,.36,1);
+  color-scheme:light;
+}
+html[data-theme=dark]{
+  --app-bg:#131211; --side-bg:#1d1c1a; --chat-bg:#181715; --bubble-bg:#2a2825;
+  --text:#f2efeb; --text2:#b4aea6; --muted:#968f86; --surf2:#292724; --sel:#2b2926;
+  --accent-fill:color-mix(in srgb,var(--accent) 70%,#000);
+  --accent-ink:color-mix(in srgb,var(--accent) 70%,#fff);
+  --accent-soft:color-mix(in srgb,var(--accent) 16%,var(--side-bg));
+  --lo:color-mix(in srgb,var(--text) 10%,transparent);
+  --hov:color-mix(in srgb,var(--text) 8%,transparent);
+  --flat-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  --pop-shadow:0 2px 6px rgba(0,0,0,.4),0 18px 44px rgba(0,0,0,.55);
+  --bub-sh:none;
+  --seg-bg:var(--side-bg); --seg-on:color-mix(in srgb,var(--text) 10%,var(--side-bg)); --seg-on-sh:none;
+  color-scheme:dark;
+}
+html[data-theme=navy]{
+  --app-bg:#10161d; --side-bg:#18202a; --chat-bg:#0f1b27; --bubble-bg:#213040;
+  --text:#eef2f6; --text2:rgba(238,242,246,.74); --muted:rgba(238,242,246,.56); --surf2:#222d3a; --sel:#243242;
+  --accent-fill:color-mix(in srgb,var(--accent) 70%,#000);
+  --accent-ink:color-mix(in srgb,var(--accent) 70%,#fff);
+  --accent-soft:color-mix(in srgb,var(--accent) 16%,var(--side-bg));
+  --lo:color-mix(in srgb,var(--text) 10%,transparent);
+  --hov:color-mix(in srgb,var(--text) 8%,transparent);
+  --flat-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  --pop-shadow:0 2px 6px rgba(0,0,0,.4),0 18px 44px rgba(0,0,0,.55);
+  --bub-sh:none;
+  --seg-bg:var(--side-bg); --seg-on:color-mix(in srgb,var(--text) 10%,var(--side-bg)); --seg-on-sh:none;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--ff);background:var(--app-bg);color:var(--text);font-size:14px;line-height:1.4;-webkit-font-smoothing:antialiased;transition:background .25s}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input{font:inherit;color:inherit}
+svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+/* ───── панель макета (не часть клиента) ───── */
+.wrap{max-width:1360px;margin:0 auto;padding:14px 16px 24px}
+.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin-bottom:12px}
+.ctl h1{font-size:15px;font-weight:800;letter-spacing:-.01em;margin-right:auto}
+.ctl .g{display:flex;align-items:center;gap:8px}
+.ctl .lab{font-size:12px;font-weight:600;color:var(--muted)}
+.seg{display:flex;padding:3px;gap:2px;border-radius:14px;background:var(--seg-bg);position:relative}
+.seg button{position:relative;z-index:1;height:30px;padding:0 12px;border-radius:11px;font-size:12.5px;font-weight:600;color:var(--text2);white-space:nowrap;transition:color .2s}
+.seg button.on{color:var(--text)}
+.seg .pl{position:absolute;top:3px;bottom:3px;left:0;border-radius:11px;background:var(--seg-on);box-shadow:var(--seg-on-sh);transition:transform .25s var(--ease),width .25s var(--ease)}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:14px;align-items:start}
+.notes{display:flex;flex-direction:column;gap:12px}
+.note{background:var(--side-bg);border-radius:var(--r-card);padding:12px 14px;box-shadow:var(--flat-shadow);font-size:12.5px;color:var(--text2);line-height:1.5}
+.note h2{font-size:13.5px;font-weight:800;color:var(--text);margin-bottom:4px}
+.note b{color:var(--accent-ink);font-weight:700}
+.note dl{display:grid;grid-template-columns:auto 1fr;gap:2px 8px}
+.note dt{font-weight:700;color:var(--text)}
+.note .pm{margin-top:6px;padding-top:6px;border-top:1px solid var(--lo)}
+.note kbd{font:600 11px var(--ff);padding:1px 5px;border-radius:5px;background:var(--surf2);border:1px solid var(--lo);color:var(--text)}
+@media (max-width:1060px){.stage{grid-template-columns:1fr}}
+
+/* ───── окно чата ───── */
+.win{position:relative;height:640px;display:flex;border-radius:var(--r-panel);background:var(--chat-bg);box-shadow:var(--flat-shadow);overflow:hidden}
+.chat{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
+.ch-h{display:flex;align-items:center;gap:12px;height:60px;padding:0 18px;background:var(--side-bg);border-bottom:1px solid var(--lo);flex:none}
+.av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#e7a77a,#c9734b);color:#fff;display:grid;place-items:center;font-weight:700;font-size:14px}
+.ch-h b{display:block;font-size:14.5px;font-weight:700;line-height:1.2}
+.ch-h small{font-size:12px;color:var(--accent-ink)}
+.msgs{flex:1;overflow:auto;padding:26px 18px 12px;display:flex;flex-direction:column;gap:3px}
+.m{position:relative;display:flex;flex-direction:column;max-width:78%;align-self:flex-start;padding-top:2px}
+.m.out{align-self:flex-end;align-items:flex-end}
+.m+.m.gap{margin-top:8px}
+.bub{position:relative;padding:7px 12px 7px;border-radius:18px;background:var(--bubble-bg);box-shadow:var(--bub-sh);font-size:14.5px;line-height:1.38;cursor:default;-webkit-user-select:none;user-select:none}
+.m.out .bub{background:var(--accent-fill);color:#fff;box-shadow:none}
+.m:not(.out) .bub{border-bottom-left-radius:5px}
+.m.out .bub{border-bottom-right-radius:5px}
+.m.tl:not(.out) .bub{border-bottom-left-radius:0}
+.m.tl.out .bub{border-bottom-right-radius:0}
+.bub .t{float:right;margin:8px 0 -3px 12px;font-size:11px;opacity:.62}
+.m.tl .bub::after{content:"";position:absolute;bottom:0;width:9px;height:13px;background:var(--bubble-bg);left:-8px;clip-path:path('M9 0 V13 H1 C5 12.5 9 9 9 0 Z')}
+.m.tl.out .bub::after{background:var(--accent-fill);left:auto;right:-8px;clip-path:path('M0 0 V13 H8 C4 12.5 0 9 0 0 Z')}
+.m.sel .bub{outline:2px solid color-mix(in srgb,var(--accent) 55%,transparent);outline-offset:1px}
+/* плашки реакций под текстом, внутри пузыря */
+.rx{display:flex;flex-wrap:wrap;gap:5px;margin:5px 0 2px;clear:both}
+.rx:empty{display:none}
+.rb{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border-radius:10px;background:color-mix(in srgb,var(--text) 8%,var(--bubble-bg));color:var(--text);font-size:12.5px;font-weight:700;transition:background .15s,transform .15s}
+.rb:hover{background:color-mix(in srgb,var(--text) 14%,var(--bubble-bg))}
+.rb:active{transform:scale(.94)}
+.rb .e{font-size:15px;line-height:1}
+.rb.mine{background:var(--accent-fill);color:#fff}
+.m.out .rb{background:rgba(255,255,255,.2);color:#fff}
+.m.out .rb.mine{background:#fff;color:var(--accent-ink)}
+.m.out @keyframes rpop{0%{transform:scale(.6)}60%{transform:scale(1.12)}100%{transform:none}}
+
+/* поле ввода */
+.comp-w{position:relative;padding:8px 18px 16px;flex:none}
+.comp{display:flex;align-items:flex-end;gap:4px;min-height:48px;padding:6px 6px 6px 8px;border-radius:18px;background:var(--side-bg);box-shadow:var(--flat-shadow)}
+.ib{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:var(--muted);flex:none;transition:background .15s,color .15s}
+.ib:hover{background:var(--hov);color:var(--text)}
+.ib.on{background:var(--accent-soft);color:var(--accent-ink)}
+#inp{flex:1;min-width:0;max-height:120px;overflow:auto;padding:8px 6px;font-size:15px;line-height:1.4;outline:none;white-space:pre-wrap;word-break:break-word}
+#inp:empty:before{content:attr(data-ph);color:var(--muted)}
+.send{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;flex:none;background:var(--hov);color:var(--muted);transition:background .2s,color .2s}
+.send.ready{background:var(--accent-fill);color:#fff}
+
+/* ───── панель смайлов (общая) ───── */
+.ep{display:flex;flex-direction:column;min-height:0;min-width:0;color:var(--text)}
+.ep-top{display:flex;align-items:center;gap:8px;padding:10px 10px 6px;flex:none}
+.ep-s{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:36px;padding:0 10px;border-radius:12px;background:var(--surf2);border:1px solid transparent;color:var(--muted);transition:border-color .2s,box-shadow .2s}
+.ep-s:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);background:var(--side-bg)}
+.ep-s svg{width:16px;height:16px}
+.ep-s input{flex:1;width:0;min-width:0;background:none;border:0;outline:0;font-size:13.5px;color:var(--text)}
+.ep-s input::placeholder{color:var(--muted)}
+.ep-s .cl{width:20px;height:20px;border-radius:7px;display:grid;place-items:center}
+.ep-s .cl:hover{background:var(--hov)}
+.ep-s .cl svg{width:14px;height:14px}
+.ep-s .cl[hidden]{display:none}
+.dockb{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;color:var(--muted);flex:none;transition:background .15s,color .15s}
+.dockb:hover{background:var(--hov);color:var(--text)}
+.dockb svg{width:17px;height:17px}
+.ep-tabs{display:flex;gap:2px;padding:2px 10px 6px;flex:none;border-bottom:1px solid var(--lo)}
+.ep-tab{flex:1;max-width:36px;height:32px;border-radius:10px;display:grid;place-items:center;color:var(--muted);transition:background .15s,color .15s}
+.ep-tab svg{width:17px;height:17px}
+.ep-tab:hover{background:var(--hov);color:var(--text)}
+.ep-tab.on{background:var(--accent-soft);color:var(--accent-ink)}
+.ep-scroll{flex:1;min-height:0;overflow:auto;padding:0 8px 8px;scroll-behavior:smooth;overscroll-behavior:contain}
+.ep-scroll.nosmooth{scroll-behavior:auto}
+.ep-scroll::-webkit-scrollbar{width:8px}
+.ep-scroll::-webkit-scrollbar-thumb{background:var(--lo);border-radius:4px;border:2px solid transparent;background-clip:padding-box}
+.sec h4{position:sticky;top:0;z-index:2;margin:0 -8px;padding:10px 12px 5px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);background:var(--side-bg)}
+.grid{display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:1px}
+.em{aspect-ratio:1;border-radius:11px;display:grid;place-items:center;font-size:var(--fs,22px);line-height:1;transition:background .12s,transform .12s}
+.em:hover,.em:focus-visible{background:var(--hov);outline:0}
+.em:focus-visible{box-shadow:inset 0 0 0 2px var(--accent)}
+.em:active{transform:scale(.9)}
+.empty{padding:34px 10px;text-align:center;color:var(--muted);font-size:13px}
+.empty b{display:block;font-size:26px;margin-bottom:6px}
+.ep-foot{display:flex;align-items:center;gap:10px;height:50px;padding:0 10px 0 14px;border-top:1px solid var(--lo);flex:none;position:relative}
+.ep-pv{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.ep-pv .big{font-size:28px;line-height:1;width:34px;text-align:center;flex:none}
+.ep-pv .nm{font-size:12.5px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ep-pv .nm b{display:block;color:var(--text);font-size:13px;font-weight:700;text-transform:capitalize}
+.ep-pv .hint{font-size:12.5px;color:var(--muted)}
+.tonebtn{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;font-size:19px;flex:none;transition:background .15s}
+.tonebtn:hover,.tonebtn.on{background:var(--hov)}
+.tones{position:absolute;inset:0;display:none;align-items:center;gap:6px;padding:0 12px;background:var(--side-bg);z-index:3}
+.tones.open{display:flex}
+.tones .tn{width:28px;height:28px;border-radius:50%;border:2px solid transparent;background:var(--c);transition:transform .15s}
+.tones .tn:hover{transform:scale(1.12)}
+.tones .tn.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--side-bg) inset}
+.tones span{margin-left:auto;font-size:12px;color:var(--muted)}
+/* вертикальная колонка категорий (B) */
+.ep.rail{flex-direction:row}
+.ep.rail .rcol{display:flex;flex-direction:column;gap:2px;padding:10px 6px;border-right:1px solid var(--lo);overflow:auto}
+.ep.rail .rcol .ep-tab{flex:none;max-width:none;width:38px;height:38px}
+.ep.rail .rmain{flex:1;min-width:0;display:flex;flex-direction:column}
+/* переключатель Смайлы|GIF */
+.ep-sw{display:flex;padding:3px;gap:2px;border-radius:12px;background:var(--seg-bg);flex:none}
+.ep-sw button{height:30px;padding:0 10px;border-radius:9px;font-size:12px;font-weight:700;color:var(--text2)}
+.ep-sw button.on{background:var(--seg-on);box-shadow:var(--seg-on-sh);color:var(--text)}
+.gifs{display:none;grid-template-columns:1fr 1fr;gap:6px;padding:4px 10px 10px;overflow:auto;flex:1;min-height:0}
+.gifs i{display:block;aspect-ratio:4/3;border-radius:12px;background:linear-gradient(135deg,var(--a),var(--b));opacity:.85}
+.ep.gif .gifs{display:grid}
+.ep.gif .ep-tabs,.ep.gif .ep-scroll,.ep.gif .ep-foot,.ep.gif .more{display:none}
+
+/* ───── поповеры ───── */
+.pop{position:absolute;z-index:40;background:var(--side-bg);border-radius:var(--r-panel);box-shadow:var(--pop-shadow);display:none;overflow:hidden;transform-origin:var(--ox,100%) var(--oy,100%)}
+.pop.show{display:flex;animation:popin .16s var(--ease)}
+@keyframes popin{from{opacity:0;transform:scale(.94) translateY(6px)}to{opacity:1;transform:none}}
+#popA{width:372px;height:432px}
+#popA .ep{flex:1;width:100%}
+/* боковая панель */
+.drawer{width:0;flex:none;background:var(--side-bg);border-left:1px solid var(--lo);overflow:hidden;transition:width .3s var(--ease)}
+.drawer .in{width:344px;height:100%;display:flex;flex-direction:column}
+.drawer.open{width:344px}
+.dh{display:flex;align-items:center;gap:8px;height:60px;padding:0 10px 0 16px;border-bottom:1px solid var(--lo);flex:none}
+.dh b{flex:1;font-size:14.5px;font-weight:700}
+.dh .ib{width:32px;height:32px}
+.drawer .ep{flex:1}
+.drawer .ep-top{padding-top:10px}
+/* капсула реакций + меню */
+#cap{position:absolute;z-index:50;width:max-content;display:none;flex-direction:column;gap:6px;transition:left .3s var(--ease),top .3s var(--ease)}
+#cap.show{display:flex}
+#cap .capsule{background:var(--side-bg);border-radius:var(--r-card);box-shadow:var(--pop-shadow);overflow:hidden;height:46px;width:var(--cw,auto);transition:height .3s var(--ease),width .3s var(--ease);animation:popin .16s var(--ease)}
+#cap.exp .capsule{height:352px;width:312px}
+#cap .qrow{display:flex;align-items:center;gap:1px;height:46px;padding:0 6px;transition:opacity .15s}
+#cap .qrow button.q{width:34px;height:34px;border-radius:11px;font-size:20px;display:grid;place-items:center;transition:background .12s,transform .12s}
+#cap .qrow button.q:hover{background:var(--hov);transform:scale(1.12)}
+#cap .qrow .pl{margin-left:2px;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;color:var(--muted);background:var(--surf2)}
+#cap .qrow .pl:hover{background:var(--hov);color:var(--text)}
+#cap .pick{display:none;height:352px;width:312px}
+#cap .pick .ep{flex:1;width:100%}
+#cap.exp .qrow{display:none}
+#cap.exp .pick{display:flex}
+#cap .menu{margin-top:var(--bh,0px);background:var(--side-bg);border-radius:var(--r-card);box-shadow:var(--pop-shadow);padding:5px;transition:opacity .2s;animation:popin .18s var(--ease)}
+#cap.exp .menu{opacity:0;pointer-events:none}
+#cap .menu .it{display:flex;align-items:center;gap:12px;width:100%;height:36px;padding:0 10px;border-radius:11px;font-size:13.5px;text-align:left}
+#cap .menu .it svg{width:17px;height:17px;color:var(--muted)}
+#cap .menu .it:hover{background:var(--hov)}
+#cap .menu .it.dn{color:#d64545}#cap .menu .it.dn svg{color:inherit}
+.toast{position:absolute;left:50%;bottom:86px;transform:translate(-50%,8px);background:var(--text);color:var(--side-bg);padding:7px 14px;border-radius:12px;font-size:12.5px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:80}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="ctl">
+    <h1>Панель смайлов и реакции · макет</h1>
+    <div class="g"><span class="lab">Тема</span><div class="seg" id="segT"><i class="pl"></i><button data-v="light" class="on">Светлая</button><button data-v="dark">Тёмная</button><button data-v="navy">Синяя</button></div></div>
+  </div>
+  <div class="stage">
+  <div class="win" id="win">
+    <div class="chat" id="chat">
+      <div class="ch-h"><div class="av">АС</div><div><b>Анна Смирнова</b><small>в сети</small></div></div>
+      <div class="msgs" id="msgs"></div>
+      <div class="comp-w" id="compw">
+        <div class="comp">
+          <button class="ib" title="Прикрепить"><svg class="i" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+          <div id="inp" contenteditable="true" data-ph="Сообщение" spellcheck="false"></div>
+          <button class="ib" id="smBtn" title="Смайлы"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg></button>
+          <button class="send" id="sendBtn" title="Отправить"><svg class="i" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <aside class="drawer" id="drawer"><div class="in"><div class="dh"><b>Смайлы</b><button class="ib" id="drClose" title="Закрыть (Esc)"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div></div></aside>
+    <div class="pop" id="popA"></div>
+    <div id="cap"><div class="capsule"><div class="qrow" id="capQ"></div><div class="pick" id="capP"></div></div><div class="menu" id="capM"></div></div>
+    <div class="toast" id="toast"></div>
+  </div>
+  <div class="notes" id="notes"></div>
+  </div>
+</div>
+
+<script>
+/*DATA*/
+</script>
+<script>
+(()=>{
+'use strict';
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+/* значки Lucide (ISC) */
+const IC={
+ search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+ x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+ plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+ 'smile-plus':'<path d="M22 11v1a10 10 0 1 1-9-10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/><path d="M16 5h6"/><path d="M19 2v6"/>',
+ smile:'<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/>',
+ clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+ hand:'<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+ users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+ paw:'<circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>',
+ utensils:'<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+ plane:'<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
+ trophy:'<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+ bulb:'<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+ heart:'<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+ flag:'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>',
+ reply:'<polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/>',
+ copy:'<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+ fwd:'<polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/>',
+ pin:'<line x1="12" x2="12" y1="17" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>',
+ trash:'<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
+ more:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+ down:'<path d="m6 9 6 6 6-6"/>',
+ panel:'<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/>'
+};
+const I=n=>`<svg class="i" viewBox="0 0 24 24">${IC[n]}</svg>`;
+
+/* ───── данные ───── */
+const GICON={smile:'smile',hands:'hand',people:'users',nature:'paw',food:'utensils',travel:'plane',act:'trophy',obj:'bulb',sym:'heart',flag:'flag'};
+const KW=EMOJI_KEYWORDS, GROUPS=EMOJI_GROUPS;
+const S={p:'A',r:'1',tone:0,freq:{'👍':9,'❤️':8,'😂':7,'🔥':6,'😎':5,'🎉':4,'😭':3,'🤔':3,'👌':2,'🙏':2,'😍':1,'👏':1,'🥳':1,'😅':1,'💯':1,'✅':1}};
+const freqList=n=>Object.entries(S.freq).sort((a,b)=>b[1]-a[1]).slice(0,n).map(x=>x[0]);
+const TONES=['','\u{1F3FB}','\u{1F3FC}','\u{1F3FD}','\u{1F3FE}','\u{1F3FF}'];
+const TONEC=['#ffcc4d','#f7dece','#e0bb95','#bf8f68','#9b643d','#594539'];
+const MB=/^\p{Emoji_Modifier_Base}/u;
+const toned=e=>{if(!S.tone)return e;const c=[...e.replace(/\uFE0F/g,'')];return(c.length===1&&MB.test(c[0]))?c[0]+TONES[S.tone]:e};
+const nameOf=e=>{const k=(KW[e]||'').split(' ');return k.slice(0,4).join(' ')};
+function search(q){
+  q=q.trim().toLowerCase();if(!q)return null;const out=[];
+  for(const g of GROUPS){const gn=g.name.toLowerCase().includes(q);
+    for(const e of g.items){const ws=(KW[e]||'').split(' ');let sc=0;
+      for(const w of ws){if(w===q)sc=Math.max(sc,3);else if(w.startsWith(q))sc=Math.max(sc,2);else if(w.includes(q))sc=Math.max(sc,1)}
+      if(!sc&&gn)sc=1.5;if(sc)out.push([e,sc])}}
+  return out.sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+}
+const pickers=new Set();
+
+/* ───── общий компонент панели ───── */
+function makePicker(o){
+  const root=el('div','ep'+(o.rail?' rail':'')+(o.compact?' compact':'')),cols=o.cols||8;
+  const secs=[{key:'freq',name:'Часто используемые',icon:'clock',items:freqList(16)},...GROUPS.map(g=>({key:g.key,name:g.name,icon:GICON[g.key],items:g.items}))];
+  const tabsHtml=secs.map(s=>`<button class="ep-tab" data-k="${s.key}" title="${s.name}">${I(s.icon)}</button>`).join('');
+  const searchHtml=`<div class="ep-top"><label class="ep-s">${I('search')}<input placeholder="Поиск смайла" spellcheck="false"><button class="cl" hidden>${I('x')}</button></label>${o.dock?`<button class="dockb" title="Открыть панелью сбоку">${I('panel')}</button>`:''}${o.gif?'<div class="ep-sw"><button class="on" data-m="e">Смайлы</button><button data-m="g">GIF</button></div>':''}</div>`;
+  const body=`<div class="ep-scroll"></div>${o.compact?`<button class="more">${I('down')}Все смайлы</button>`:''}`;
+  const foot=o.preview?`<div class="ep-foot"><div class="ep-pv"><span class="hint">Наведите на смайл — здесь его название</span></div><button class="tonebtn" title="Оттенок кожи">👋</button><div class="tones">${TONEC.map((c,i)=>`<button class="tn" data-i="${i}" style="--c:${c}" title="${i?'Оттенок '+i:'Без оттенка'}"></button>`).join('')}<span>Оттенок кожи</span></div></div>`:'';
+  const gif=o.gif?`<div class="gifs">${Array.from({length:8},(_,i)=>`<i style="--a:hsl(${i*47} 60% 62%);--b:hsl(${i*47+50} 55% 48%)"></i>`).join('')}</div>`:'';
+  if(o.rail){
+    root.innerHTML=`<div class="rcol">${tabsHtml}</div><div class="rmain">${searchHtml}${body}${gif}${foot}</div>`;
+  }else{
+    root.innerHTML=`${searchHtml}<div class="ep-tabs">${tabsHtml}</div>${body}${gif}${foot}`;
+  }
+  const sc=$('.ep-scroll',root),inp=$('input',root),cl=$('.cl',root),tabs=$$('.ep-tab',root);
+  const cell=h=>`<button class="em" data-e="${h}" tabindex="-1">${toned(h)}</button>`;
+  function renderAll(){
+    secs[0].items=freqList(16);
+    sc.innerHTML=secs.map(s=>`<section class="sec${s.key==='freq'?' freq':''}" data-k="${s.key}"><h4>${s.name}</h4><div class="grid" style="--cols:${cols}">${s.items.map(cell).join('')}</div></section>`).join('');
+  }
+  renderAll();
+  let searching=false;
+  function doSearch(){
+    const q=inp.value,r=search(q);cl.hidden=!q;
+    if(r===null){if(searching){searching=false;renderAll();root.classList.remove('searching')}return}
+    searching=true;root.classList.add('searching');
+    sc.scrollTop=0;
+    sc.innerHTML=r.length?`<section class="sec"><h4>Найдено: ${r.length}</h4><div class="grid" style="--cols:${cols}">${r.slice(0,240).map(cell).join('')}</div></section>`:`<div class="empty"><b>🔍</b>Ничего не нашлось</div>`;
+    if(o.compact)root.classList.add('open');
+  }
+  inp.addEventListener('input',doSearch);
+  cl.addEventListener('click',()=>{inp.value='';doSearch();inp.focus()});
+  /* вкладки и прокрутка */
+  function spy(){if(searching)return;let cur=secs[0].key;const top=sc.scrollTop+24;
+    for(const s of $$('.sec',sc)){if(s.offsetTop<=top)cur=s.dataset.k}
+    if(sc.scrollTop+sc.clientHeight>=sc.scrollHeight-4)cur=secs[secs.length-1].key;
+    tabs.forEach(t=>t.classList.toggle('on',t.dataset.k===cur))}
+  sc.addEventListener('scroll',spy);
+  tabs.forEach(t=>t.addEventListener('click',()=>{if(searching){inp.value='';doSearch()}const s=$(`.sec[data-k="${t.dataset.k}"]`,sc);if(s)sc.scrollTo({top:s.offsetTop-2})}));
+  /* выбор и превью */
+  const dk=$('.dockb',root);if(dk)dk.addEventListener('click',()=>o.onDock&&o.onDock());
+  sc.addEventListener('click',e=>{const b=e.target.closest('.em');if(!b)return;const em=toned(b.dataset.e);S.freq[b.dataset.e]=(S.freq[b.dataset.e]||0)+1;o.onPick&&o.onPick(em,b)});
+  const pv=$('.ep-pv',root);
+  function showPv(b){if(!pv)return;if(!b){pv.innerHTML='<span class="hint">Наведите на смайл — здесь его название</span>';return}const e=b.dataset.e;pv.innerHTML=`<span class="big">${toned(e)}</span><span class="nm"><b>${nameOf(e).split(' ')[0]||''}</b>${nameOf(e).split(' ').slice(1).join(' ')}</span>`}
+  sc.addEventListener('mouseover',e=>{const b=e.target.closest('.em');if(b)showPv(b)});
+  sc.addEventListener('focusin',e=>{const b=e.target.closest('.em');if(b)showPv(b)});
+  sc.addEventListener('mouseleave',()=>showPv(null));
+  /* оттенок */
+  const tb=$('.tonebtn',root),tn=$('.tones',root);
+  if(tb){tb.addEventListener('click',()=>tn.classList.toggle('open'));
+    tn.addEventListener('click',e=>{const b=e.target.closest('.tn');if(!b)return;S.tone=+b.dataset.i;tn.classList.remove('open');pickers.forEach(p=>p.refresh())})}
+  /* «Все смайлы» и GIF */
+  const more=$('.more',root);if(more)more.addEventListener('click',()=>{root.classList.add('open');spy()});
+  $$('.ep-sw button',root).forEach(b=>b.addEventListener('click',()=>{$$('.ep-sw button',root).forEach(x=>x.classList.toggle('on',x===b));root.classList.toggle('gif',b.dataset.m==='g')}));
+  /* клавиатура по сетке */
+  const ems=()=>$$('.em',sc).filter(b=>b.offsetParent);
+  function move(cur,dir){const list=ems(),i=list.indexOf(cur);if(i<0)return list[0];
+    if(dir==='l')return list[i-1]||cur;if(dir==='r')return list[i+1]||cur;
+    const r=cur.getBoundingClientRect(),cx=r.left+r.width/2;let best=null,bd=1e9;
+    for(const b of list){const q=b.getBoundingClientRect();const dy=dir==='d'?q.top-r.top:r.top-q.top;if(dy<4)continue;
+      const d=dy*1000+Math.abs(q.left+q.width/2-cx);if(d<bd){bd=d;best=b}}
+    return best||cur}
+  root.addEventListener('keydown',e=>{
+    const t=e.target,isEm=t.classList&&t.classList.contains('em'),map={ArrowLeft:'l',ArrowRight:'r',ArrowUp:'u',ArrowDown:'d'};
+    if(t===inp&&e.key==='ArrowDown'){const f=ems()[0];if(f){e.preventDefault();f.focus();f.scrollIntoView({block:'nearest'})}return}
+    if(isEm&&map[e.key]){e.preventDefault();if(e.key==='ArrowUp'&&move(t,'u')===t){inp.focus();return}const n=move(t,map[e.key]);n.focus();n.scrollIntoView({block:'nearest'});return}
+    if(isEm&&e.key.length===1&&!e.ctrlKey&&!e.metaKey&&!e.altKey){inp.focus()}
+  });
+  const api={root,focus(){inp.focus();inp.select()},reset(){inp.value='';doSearch();sc.classList.add('nosmooth');sc.scrollTop=0;sc.classList.remove('nosmooth');if(o.compact)root.classList.remove('open');tn&&tn.classList.remove('open');spy()},
+    refresh(){if(searching)doSearch();else{const t=sc.scrollTop;renderAll();sc.classList.add('nosmooth');sc.scrollTop=t;sc.classList.remove('nosmooth')}$$('.tonebtn',root).forEach(b=>b.textContent=toned('👋'));$$('.tones .tn',root).forEach(b=>b.classList.toggle('on',+b.dataset.i===S.tone))},
+    onShow(){api.refresh();spy()}};
+  pickers.add(api);api.refresh();
+  return api;
+}
+
+/* ───── окно, сообщения ───── */
+const win=$('#win'),msgs=$('#msgs'),inp=$('#inp'),sendBtn=$('#sendBtn'),smBtn=$('#smBtn');
+const MS=[
+ {id:1,out:0,t:'Привет! Макет панели смайлов готов, посмотри, пожалуйста 🙏',time:'10:41'},
+ {id:2,out:1,t:'Супер, смотрю! А реакции тоже переделаем?',time:'10:42',rx:{'👍':{n:2,me:1},'❤️':{n:1}}},
+ {id:3,out:0,t:'Да, хочу, чтобы их было проще ставить: сейчас только через правую кнопку мыши',time:'10:43',gap:1},
+ {id:4,out:0,t:'Особенно когда сообщение длинное и нужно быстро отреагировать',time:'10:43',tl:1,rx:{'🔥':{n:1}}},
+ {id:5,out:1,t:'Понял, попробую 👌',time:'10:45',gap:1,tl:1}
+];
+const msgEl={};
+const rxHtml=m=>Object.entries(m.rx||{}).map(([e,v])=>`<button class="rb${v.me?' mine':''}" data-e="${e}"><span class="e">${e}</span>${v.n}</button>`).join('');
+function renderMsg(m){
+  let n=msgEl[m.id];
+  if(!n){n=el('div','m'+(m.out?' out':'')+(m.gap?' gap':'')+(m.tl?' tl':''));n.dataset.id=m.id;msgEl[m.id]=n;msgs.appendChild(n)}
+  n.innerHTML=`<div class="bub">${m.t}<span class="t">${m.time}</span><div class="rx">${rxHtml(m)}</div></div>`;
+}
+MS.forEach(renderMsg);msgs.scrollTop=msgs.scrollHeight;
+function react(id,e){
+  const m=MS.find(x=>x.id==id);m.rx=m.rx||{};const v=m.rx[e];
+  if(v&&v.me){v.n--;v.me=0;if(v.n<=0)delete m.rx[e]}else if(v){v.n++;v.me=1}else m.rx[e]={n:1,me:1};
+  S.freq[e]=(S.freq[e]||0)+1;renderMsg(m);
+  const b=$(`.rb[data-e="${e}"]`,msgEl[id]);b&&b.classList.add('pop');
+}
+msgs.addEventListener('click',e=>{
+  const m=e.target.closest('.m');if(!m)return;
+  const rb=e.target.closest('.rb');if(rb)react(m.dataset.id,rb.dataset.e);
+});
+msgs.addEventListener('contextmenu',e=>{const m=e.target.closest('.m');if(!m)return;e.preventDefault();closeAll();openCap(m.dataset.id)});
+
+const relRect=r=>{const w=win.getBoundingClientRect();return{l:r.left-w.left,t:r.top-w.top,r:r.right-w.left,b:r.bottom-w.top,W:w.width,H:w.height}};
+const show=n=>n.classList.add('show');
+
+/* ───── поле ввода ───── */
+const upd=()=>{sendBtn.classList.toggle('ready',inp.textContent.trim().length>0)};
+function insert(text){
+  inp.focus();const sel=getSelection();let r;
+  if(sel.rangeCount&&inp.contains(sel.anchorNode))r=sel.getRangeAt(0);else{r=document.createRange();r.selectNodeContents(inp);r.collapse(false)}
+  r.deleteContents();const n=document.createTextNode(text);r.insertNode(n);r.setStartAfter(n);r.collapse(true);sel.removeAllRanges();sel.addRange(r);upd();
+}
+inp.addEventListener('input',upd);
+inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});
+function send(){
+  const t=inp.textContent.trim();if(!t)return;const d=new Date(),prev=MS[MS.length-1];
+  prev.tl=0;renderMsg(prev);
+  const m={id:MS.length+1,out:1,t:t.replace(/</g,'&lt;'),time:String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'),gap:prev.out?0:1,tl:1};
+  MS.push(m);renderMsg(m);inp.textContent='';upd();msgs.scrollTop=msgs.scrollHeight;
+}
+sendBtn.addEventListener('click',send);
+
+/* ───── смайлы: наведение — поповер, клик — боковая панель ───── */
+const popA=$('#popA'),drawer=$('#drawer');
+let pkA,pkB,pkCap,hoverT=0,closeT=0;
+pkA=makePicker({cols:8,preview:true,gif:true,dock:true,onPick:e=>insert(e),onDock:()=>openDrawer()});popA.appendChild(pkA.root);
+pkB=makePicker({cols:7,preview:true,gif:true,rail:true,onPick:e=>insert(e)});$('.drawer .in').appendChild(pkB.root);
+const popOpen=()=>popA.classList.contains('show'),drawerOpen=()=>drawer.classList.contains('open');
+function openPop(){
+  if(drawerOpen()||popOpen())return;
+  const b=relRect(smBtn.getBoundingClientRect()),c=relRect($('.comp').getBoundingClientRect());
+  popA.style.right=(b.W-b.r-4)+'px';popA.style.bottom=(b.H-c.t+8)+'px';
+  show(popA);pkA.onShow();smBtn.classList.add('on');
+}
+function closePop(){clearTimeout(hoverT);clearTimeout(closeT);popA.classList.remove('show');if(!drawerOpen())smBtn.classList.remove('on')}
+function openDrawer(){closePop();drawer.classList.add('open');smBtn.classList.add('on');pkB.onShow();setTimeout(()=>pkB.focus(),300)}
+function closeDrawer(){drawer.classList.remove('open');smBtn.classList.remove('on')}
+/* поповер живёт, пока над кнопкой или над ним указатель, либо пока в его поиске стоит курсор */
+const searchBusy=()=>popA.contains(document.activeElement)&&document.activeElement.tagName==='INPUT';
+function schedClose(){clearTimeout(hoverT);clearTimeout(closeT);closeT=setTimeout(()=>{if(!smBtn.matches(':hover')&&!popA.matches(':hover')&&!searchBusy())closePop()},300)}
+smBtn.addEventListener('mouseenter',()=>{clearTimeout(closeT);if(drawerOpen()||popOpen())return;clearTimeout(hoverT);hoverT=setTimeout(openPop,140)});
+smBtn.addEventListener('mouseleave',schedClose);
+popA.addEventListener('mouseenter',()=>clearTimeout(closeT));
+popA.addEventListener('mouseleave',schedClose);
+popA.addEventListener('focusout',()=>setTimeout(()=>{if(popOpen()&&!popA.matches(':hover')&&!smBtn.matches(':hover')&&!searchBusy())schedClose()},0));
+smBtn.addEventListener('click',e=>{e.stopPropagation();drawerOpen()?closeDrawer():openDrawer()});
+$('#drClose').addEventListener('click',closeDrawer);
+
+/* ───── реакции: капсула + меню ───── */
+const cap=$('#cap');
+const ITEMS=[['reply','Ответить'],['copy','Копировать'],['fwd','Переслать'],['pin','Закрепить'],['trash','Удалить','dn']];
+let curId=null;
+function holdMsg(id){$$('.m.sel').forEach(x=>x.classList.remove('sel'));if(id)msgEl[id].classList.add('sel')}
+function toast(t){const n=$('#toast');n.textContent=t;n.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>n.classList.remove('show'),1400)}
+function openCap(id){
+  closeCap();closePop();curId=id;holdMsg(id);
+  $('#capQ').innerHTML=freqList(7).map(e=>`<button class="q" data-e="${e}">${e}</button>`).join('')+`<button class="pl" title="Все реакции">${I('plus')}</button>`;
+  $('#capM').innerHTML=ITEMS.map(([i,t,d])=>`<button class="it${d?' '+d:''}" data-t="${t}">${I(i)}${t}</button>`).join('');
+  if(!pkCap){pkCap=makePicker({cols:8,preview:false,onPick:e=>{react(curId,e);closeCap()}});$('#capP').appendChild(pkCap.root)}
+  cap.classList.remove('exp');cap.classList.add('show');
+  const b=relRect(msgEl[id].querySelector('.bub').getBoundingClientRect()),bh=Math.round(b.b-b.t);
+  cap.style.setProperty('--bh',bh+'px');
+  const h=46+6+bh+6+5*36+10;let top=b.t-52;if(top+h>b.H-10)top=b.H-10-h;if(top<10)top=10;
+  /* ширина капсулы — по содержимому: 7 реакций и «+» */
+  const kids=[...$('#capQ').children],cw=kids.reduce((a,c)=>a+c.offsetWidth,0)+(kids.length-1)+12,ew=312,out=msgEl[id].classList.contains('out');
+  const fit=(l,w)=>Math.max(10,Math.min(l,b.W-10-w));
+  cap.style.setProperty('--cw',cw+'px');
+  cap._l0=fit(out?b.r-cw:b.l,cw);cap._l1=fit(out?b.r-ew:b.l,ew);
+  cap._t0=top;cap._t1=Math.max(10,Math.min(top,b.H-10-352));
+  cap.style.transition='none';cap.style.left=cap._l0+'px';cap.style.top=top+'px';void cap.offsetWidth;cap.style.transition='';
+}
+$('#capQ').addEventListener('click',e=>{
+  const q=e.target.closest('button.q');if(q){react(curId,q.dataset.e);closeCap();return}
+  if(e.target.closest('.pl')){cap.classList.add('exp');cap.style.left=cap._l1+'px';cap.style.top=cap._t1+'px';pkCap.reset();pkCap.onShow();setTimeout(()=>pkCap.focus(),220)}
+});
+$('#capM').addEventListener('click',e=>{const it=e.target.closest('.it');if(it){toast(it.dataset.t+' — только в макете');closeCap()}});
+function closeCap(){const was=cap.classList.contains('show');cap.classList.remove('show','exp');holdMsg(null);return was}
+function closeAll(){closeCap();closePop()}
+
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  if(closeCap())return;
+  if(popOpen()){closePop();inp.focus();return}
+  if(drawerOpen()){closeDrawer();inp.focus()}
+});
+document.addEventListener('mousedown',e=>{
+  if(!e.target.closest('#cap'))closeCap();
+  if(!e.target.closest('#popA,#smBtn'))closePop();
+});
+
+/* ───── тема ───── */
+(()=>{
+  const root=$('#segT'),btns=$$('button',root),pl=$('.pl',root);
+  const mv=()=>{const b=$('button.on',root);pl.style.width=b.offsetWidth+'px';pl.style.transform=`translateX(${b.offsetLeft-3}px)`};
+  btns.forEach(b=>b.addEventListener('click',()=>{btns.forEach(x=>x.classList.toggle('on',x===b));mv();document.documentElement.dataset.theme=b.dataset.v==='light'?'':b.dataset.v}));
+  requestAnimationFrame(mv);setTimeout(mv,300);if(document.fonts)document.fonts.ready.then(mv);addEventListener('resize',mv);
+})();
+
+/* ───── заметки ───── */
+const card=(h,lead,rows,pm)=>`<div class="note"><h2>${h}</h2><p>${lead}</p><dl style="margin-top:6px">${rows.map(x=>`<dt>${x[0]}</dt><dd>${x[1]}</dd>`).join('')}</dl>${pm?`<div class="pm">${pm}</div>`:''}</div>`;
+$('#notes').innerHTML=
+ card('Смайлы в поле ввода','Одна кнопка ☺, два способа открыть панель.',[
+  ['Наведение','через 0,14 с над кнопкой вырастает <b>поповер</b> для быстрой вставки; живёт, пока указатель над кнопкой или поповером, или пока в его поиске курсор'],
+  ['Клик','открывает <b>боковую панель</b>: чат сужается, панель остаётся, пока её не закроют; повторный клик по ☺ закрывает'],
+  ['Из поповера в панель','значок в строке поиска «открыть сбоку» (необязательная связка двух режимов)'],
+  ['Выбор','клик вставляет в позицию курсора, панель остаётся открытой; <kbd>←↑↓→</kbd> по сетке, <kbd>Enter</kbd> вставляет, печать сразу идёт в поиск'],
+  ['Поиск','по-русски и по части слова; под сеткой название наведённого смайла и выбор оттенка кожи'],
+  ['Закрытие','поповер: увести указатель, <kbd>Esc</kbd> или клик вне; панель: ✕, <kbd>Esc</kbd> или клик по ☺']
+ ],'С клавиатуры поповера нет: <kbd>Tab</kbd> до ☺ и <kbd>Enter</kbd> сразу открывают боковую панель.')+
+ card('Реакции: капсула + меню','Правый клик по сообщению.',[
+  ['Вызов','над пузырём капсула с быстрыми реакциями, под пузырём меню действий'],
+  ['Все реакции','«+» разворачивает капсулу на месте в панель с поиском и категориями, меню на это время уходит'],
+  ['Плашки','клик по плашке под текстом ставит или снимает свою реакцию'],
+  ['Закрытие','<kbd>Esc</kbd>, клик вне, выбор реакции']
+ ],'Попробуйте: правый клик по любому сообщению, затем «+».')+
+ `<div class="note"><h2>Что нового по сравнению с текущим клиентом</h2><dl><dt>Оттенки кожи</dt><dd>кнопка 👋 в нижней строке панели, выбор запоминается</dd><dt>Предпросмотр</dt><dd>наведите на смайл: крупно и название</dd><dt>Клавиатура</dt><dd>стрелки по сетке, печать сразу в поиск</dd><dt>Один компонент</dt><dd>поповер, панель и панель реакций — одна и та же сетка</dd><dt>GIF</dt><dd>переключатель «Смайлы | GIF»; здесь заглушка</dd></dl></div>`;
+})();
+</script>
+</body>
+</html>

@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="flat-chat.css">
 <link rel="stylesheet" href="flat-menus.css">
 <link rel="stylesheet" href="flat-misc.css">
+<link rel="stylesheet" href="emoji-panel.css">
 <link rel="stylesheet" href="flat-calls.css">
 <link rel="stylesheet" href="voice.css">
 <link rel="stylesheet" href="flat-electron.css">
@@ -351,16 +352,6 @@
 
 <!-- Context menu -->
 <div class="ctx-menu" id="ctx-menu">
-  <div class="ctx-reactions">
-    <button class="ctx-reaction-btn" data-r="👍" data-on-click="__h5">👍</button>
-    <button class="ctx-reaction-btn" data-r="❤️" data-on-click="__h5">❤️</button>
-    <button class="ctx-reaction-btn" data-r="😂" data-on-click="__h5">😂</button>
-    <button class="ctx-reaction-btn" data-r="🤔" data-on-click="__h5">🤔</button>
-    <button class="ctx-reaction-btn" data-r="🔥" data-on-click="__h5">🔥</button>
-    <button class="ctx-reaction-btn" data-r="🎉" data-on-click="__h5">🎉</button>
-    <button class="ctx-reaction-btn" data-r="😢" data-on-click="__h5">😢</button>
-    <button class="ctx-reaction-btn ctx-reaction-more" data-on-click="showReactionPicker" data-a-click='["__event"]'>→</button>
-  </div>
   <button id="ctx-reply-btn" data-on-click="ctxReply">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
     Ответить
@@ -397,9 +388,6 @@
   </button>
   <div class="ctx-cap" id="ctx-cap"></div>
 </div>
-
-<!-- Reaction picker -->
-<div id="reaction-picker"></div>
 
 <!-- Confirm modal (replaces native confirm() to avoid Electron focus bug on Windows) -->
 <div class="modal-bg" id="modal-confirm" data-on-click="__h6">
@@ -517,6 +505,7 @@
 <script src="act.js"></script>
 <script src="actions.js"></script>
 <script src="emoji-data.js"></script>
+<script src="emoji-panel.js"></script>
 <script src="modules.js"></script>
 <script src="gif-klipy.js"></script>
 <script src="fmt.js"></script>

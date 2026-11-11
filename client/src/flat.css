@@ -97,8 +97,7 @@ html, body { background: var(--app-bg); font-family: var(--ff); }
 .composer-main .composer-attach, .composer-main .send-btn:not(.ready) {
   background: var(--side-bg); border: 0; box-shadow: var(--flat-shadow);
 }
-.modal, .ctx-menu, #reaction-picker, #mention-popup, .head-menu, .up-menu, .ep-grid,
-.reaction-tip, .acc-tip, #server-toast, #action-toast, .am-dlg, .ctx-read-fly, .anx-card {
+.modal, .ctx-menu, #mention-popup, .head-menu, .up-menu, .reaction-tip, .acc-tip, #server-toast, #action-toast, .am-dlg, .ctx-read-fly, .anx-card {
   background: var(--side-bg); border: 0; box-shadow: var(--pop-shadow);
 }
 .topics-panel { background: var(--side-bg); box-shadow: none; }
@@ -367,27 +366,27 @@ html.dark, html.dark.navy {
    Контейнер: радиус 14, фон --surf2, отступ 3, без рамки и тени; кнопка: радиус 11, текст --text2 12.5/600;
    выбранная: плашка --side-bg (в тёмной --gl-card2), текст --text, тонкая тень (в тёмной нет). Плашка «скользит» (shared/slidesel.js копирует вид выбранной кнопки).
    Сюда: фильтр списка чатов, тема, смайлы|GIF, тип/получатели/режим объявления, вкладки окон профиля и группы, настройки. */
-.seg, .cs-seg, .pa-seg, .ep-sw, .anx-sg, .anx-types, .anx-tabsbar {
+.seg, .cs-seg, .pa-seg, .pk-sw, .anx-sg, .anx-types, .anx-tabsbar {
   box-sizing: border-box; height: var(--kit-seg-h); min-height: 0; padding: var(--kit-seg-pad); gap: 2px;
   border: 0; border-radius: var(--kit-seg-r); background: var(--kit-seg-bg); box-shadow: none; overflow: visible;
 }
-.seg button, .cs-seg button, .pa-seg button, .ep-sw button, .anx-sg button, .anx-types button, .anx-tabsbar button {
+.seg button, .cs-seg button, .pa-seg button, .pk-sw button, .anx-sg button, .anx-types button, .anx-tabsbar button {
   height: auto; min-height: 0; align-self: stretch; padding: 0 12px; border: 0; border-radius: var(--kit-seg-btn-r);
   background: none; box-shadow: none; color: var(--kit-seg-fg);
   font-family: inherit; font-size: var(--kit-seg-fs); font-weight: 600; line-height: 1; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer;
   transition: color .25s, background .2s, box-shadow .2s;
 }
-.seg button:hover, .cs-seg button:hover, .pa-seg button:hover, .ep-sw button:hover, .anx-sg button:hover, .anx-types button:hover, .anx-tabsbar button:hover { background: none; color: var(--kit-seg-on-fg); }
-.seg button.active, .cs-seg button[aria-pressed="true"], .pa-seg button.on, .ep-sw button[aria-pressed="true"], .anx-sg button[aria-pressed="true"],
+.seg button:hover, .cs-seg button:hover, .pa-seg button:hover, .pk-sw button:hover, .anx-sg button:hover, .anx-types button:hover, .anx-tabsbar button:hover { background: none; color: var(--kit-seg-on-fg); }
+.seg button.active, .cs-seg button[aria-pressed="true"], .pa-seg button.on, .pk-sw button[aria-pressed="true"], .anx-sg button[aria-pressed="true"],
 .anx-types button[aria-checked="true"], .anx-tabsbar button[aria-selected="true"],
-.seg button.active:hover, .cs-seg button[aria-pressed="true"]:hover, .pa-seg button.on:hover, .ep-sw button[aria-pressed="true"]:hover, .anx-sg button[aria-pressed="true"]:hover,
+.seg button.active:hover, .cs-seg button[aria-pressed="true"]:hover, .pa-seg button.on:hover, .pk-sw button[aria-pressed="true"]:hover, .anx-sg button[aria-pressed="true"]:hover,
 .anx-types button[aria-checked="true"]:hover, .anx-tabsbar button[aria-selected="true"]:hover {
   background: var(--kit-seg-on-bg); color: var(--kit-seg-on-fg); box-shadow: var(--kit-seg-on-sh); border: 0;
 }
 .pa-seg button:disabled, .seg button:disabled { opacity: .4; cursor: default; }
-.seg button:focus-visible, .cs-seg button:focus-visible, .pa-seg button:focus-visible, .ep-sw button:focus-visible, .anx-sg button:focus-visible,
+.seg button:focus-visible, .cs-seg button:focus-visible, .pa-seg button:focus-visible, .pk-sw button:focus-visible, .anx-sg button:focus-visible,
 .anx-types button:focus-visible, .anx-tabsbar button:focus-visible { outline: var(--kit-focus); outline-offset: -2px; }
-.anx-sg, .ep-sw { display: inline-flex; }
+.anx-sg, .pk-sw { display: inline-flex; }
 
 /* ───────────────────────── 6. ЧИПЫ-ФИЛЬТРЫ И МЕТКИ ─────────────────────────
    Чип-фильтр (нажимается, можно несколько/один): высота 30, радиус 10, фон --surf2, текст --text2; hover — --gl-card2; выбран — --accent-soft и --accent-ink, без рамки.
@@ -462,22 +461,21 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .field input::placeholder, .field textarea::placeholder, .nc-name-input::placeholder, .anx-ta::placeholder, .gl input::placeholder { color: var(--muted); }
 /* 9.2 обёртки полей (внутри — прозрачный input) */
-.cs-inp, .ac-fld, .nc-search, .anx-search, .gm-search, .gp-search, .ep-search, .pl-f, .gl-bg:not(.gl-adm):not(.gl-m) .gl-sel-b {
+.cs-inp, .ac-fld, .nc-search, .anx-search, .gm-search, .gp-search, .pl-f, .gl-bg:not(.gl-adm):not(.gl-m) .gl-sel-b {
   box-sizing: border-box; height: var(--kit-field-h); border: 1px solid transparent; border-radius: var(--kit-r); background: var(--kit-field-bg); color: var(--kit-field-fg);
   box-shadow: none; transition: border-color .2s, box-shadow .2s;
 }
 .nc-search, .anx-search, .gm-search, .ac-fld, .cs-inp { padding: 0 14px; }
 .cs-inp { padding-right: 6px; }
-.gp-search, .ep-search { height: var(--kit-field-h-sm); padding: 0 12px; }
+.gp-search { height: var(--kit-field-h-sm); padding: 0 12px; }
 .pl-f { padding: 0 8px 0 14px; }
-.cs-inp:focus-within, .ac-fld:focus-within, .nc-search:focus-within, .anx-search:focus-within, .gm-search:focus-within, .gp-search:focus-within, .ep-search:focus-within,
-.pl-f:focus-visible, .gl-bg:not(.gl-adm):not(.gl-m) .gl-sel-b:focus-visible, .gl-bg:not(.gl-adm):not(.gl-m) .gl-sel.open .gl-sel-b {
+.cs-inp:focus-within, .ac-fld:focus-within, .nc-search:focus-within, .anx-search:focus-within, .gm-search:focus-within, .gp-search:focus-within, .pl-f:focus-visible, .gl-bg:not(.gl-adm):not(.gl-m) .gl-sel-b:focus-visible, .gl-bg:not(.gl-adm):not(.gl-m) .gl-sel.open .gl-sel-b {
   border-color: var(--accent); box-shadow: var(--kit-field-ring);
 }
 .pl-f:hover, .gl-bg:not(.gl-adm):not(.gl-m) .gl-sel-b:hover { background: var(--kit-field-bg); border-color: transparent; }
 .pl-f.done { background: var(--accent-soft); border-color: transparent; }
 .cs-inp.bad, .ac-fld.err { border-color: var(--danger); }
-.cs-inp input, .ac-fld input, .nc-search input, .anx-search input, .gm-search input, .gp-search input, .ep-search input { background: none; border: 0; box-shadow: none; outline: 0; color: var(--kit-field-fg); }
+.cs-inp input, .ac-fld input, .nc-search input, .anx-search input, .gm-search input, .gp-search input { background: none; border: 0; box-shadow: none; outline: 0; color: var(--kit-field-fg); }
 .gl-bg:not(.gl-adm):not(.gl-m) .gl-sel-b { padding: 0 12px 0 14px; font-size: var(--kit-field-fs); }
 /* 9.3 раскрывающийся список (меню выбора): плоский, радиус 16 / 12, без рамки */
 .gl-bg:not(.gl-adm):not(.gl-m) .gl-pop { background: var(--side-bg); border: 0; border-radius: var(--r-menu); box-shadow: var(--pop-shadow); }
@@ -514,8 +512,7 @@ input[type="range"]::-webkit-slider-thumb {
    бесконечные индикаторы (спиннеры, «печатает…», загрузка) не трогаем */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .001ms !important; transition-delay: 0s !important; scroll-behavior: auto !important; }
-  .modal-bg, .modal-bg::before, .modal, #lightbox, #lightbox img, #lightbox video, .msg-bubble, .head-menu, .ctx-menu, #ctx-chat-menu,
-  .pop-out, .up-menu, #mention-popup, #reaction-picker, .chats-list, .cl-card, .gl-bg .gl, .vr-fx { animation-duration: .001ms !important; animation-delay: 0s !important; }
+  .modal-bg, .modal-bg::before, .modal, #lightbox, #lightbox img, #lightbox video, .msg-bubble, .head-menu, .ctx-menu, #ctx-chat-menu, .pop-out, .up-menu, #mention-popup, .chats-list, .cl-card, .gl-bg .gl, .vr-fx { animation-duration: .001ms !important; animation-delay: 0s !important; }
 }
 
 /* Medeo Sans: цифры одной ширины там, где числа выравниваются или меняются на месте (время, счётчики, таймер звонка) */

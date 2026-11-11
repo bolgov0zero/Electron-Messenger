@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <script src="boot.js?v=2"></script>
 <script src="/shared/act.js?v=1"></script>
-<script src="actions.js?v=1"></script>
+<script src="actions.js?v=2"></script>
 <meta name="theme-color" content="#0a0e13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,13 +17,14 @@
 <link rel="stylesheet" href="/shared/fonts/medeo-sans/medeo-sans.css?v=1">
 <link rel="stylesheet" href="/shared/fonts/medeo-mono/medeo-mono.css?v=1">
 <link rel="stylesheet" href="emoji-font.css?v=1.2.172">
-<link rel="stylesheet" href="style.css?v=1.2.171">
-<link rel="stylesheet" href="flat-base.css?v=3">
-<link rel="stylesheet" href="flat.css?v=3">
+<link rel="stylesheet" href="style.css?v=1.2.173">
+<link rel="stylesheet" href="flat-base.css?v=6">
+<link rel="stylesheet" href="flat.css?v=4">
 <link rel="stylesheet" href="flat-frame.css?v=3">
-<link rel="stylesheet" href="flat-chat.css?v=2">
-<link rel="stylesheet" href="flat-menus.css?v=2">
+<link rel="stylesheet" href="flat-chat.css?v=3">
+<link rel="stylesheet" href="flat-menus.css?v=3">
 <link rel="stylesheet" href="flat-misc.css?v=3">
+<link rel="stylesheet" href="/shared/emoji-panel.css?v=1">
 <link rel="stylesheet" href="flat-calls.css?v=2">
 <link rel="stylesheet" href="/shared/voice.css?v=5">
 
@@ -253,16 +254,6 @@
 
 <!-- Context menu -->
 <div class="ctx-menu" id="ctx-menu">
-  <div class="ctx-reactions">
-    <button class="ctx-reaction-btn" data-r="👍" data-on-click="__h3">👍</button>
-    <button class="ctx-reaction-btn" data-r="❤️" data-on-click="__h3">❤️</button>
-    <button class="ctx-reaction-btn" data-r="😂" data-on-click="__h3">😂</button>
-    <button class="ctx-reaction-btn" data-r="🤔" data-on-click="__h3">🤔</button>
-    <button class="ctx-reaction-btn" data-r="🔥" data-on-click="__h3">🔥</button>
-    <button class="ctx-reaction-btn" data-r="🎉" data-on-click="__h3">🎉</button>
-    <button class="ctx-reaction-btn" data-r="😢" data-on-click="__h3">😢</button>
-    <button class="ctx-reaction-btn ctx-reaction-more" data-on-click="showReactionPicker" data-a-click='["__event"]'>→</button>
-  </div>
   <button id="ctx-reply-btn" data-on-click="ctxReply">
     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
     Ответить
@@ -399,17 +390,17 @@
 </div>
 
 <div id="mention-popup"></div>
-<div id="reaction-picker"></div>
 <script src="emoji-font.js?v=1.2.169"></script>
 <script src="emoji-data.js?v=1.2.165"></script>
+<script src="/shared/emoji-panel.js?v=1"></script>
 <script src="/shared/secret-core.js?v=1"></script>
 <script src="/shared/modules.js?v=1"></script>
 <script src="/shared/gif-klipy.js?v=1"></script>
 <script src="/shared/fmt.js?v=4"></script>
 <script src="/shared/devicekey.js?v=1"></script>
-<script src="/shared/slidesel.js?v=3"></script>
+<script src="/shared/slidesel.js?v=4"></script>
 <script src="/shared/voice.js?v=7"></script>
-<script src="app.js?v=1.2.172"></script>
+<script src="app.js?v=1.2.173"></script>
 <script src="/shared/guestlinks.js?v=2"></script>
 <script src="/shared/calllinks.js?v=4"></script>
 <script src="flat-select.js?v=1"></script>

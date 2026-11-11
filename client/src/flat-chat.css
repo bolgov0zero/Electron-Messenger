@@ -159,7 +159,7 @@ html.dark .vm-in .pl { color: #fff; }
 .lprev-thumb { border-radius: 10px; }
 
 /* ═════════ 7. «+»-меню, смайлы и GIF, выбор реакции, упоминания ═════════ */
-.composer-main .up-menu, .ep-grid, #reaction-picker, #mention-popup {
+.composer-main .up-menu, #mention-popup {
   border: 0; border-radius: var(--r-menu); background: var(--side-bg); box-shadow: var(--pop-shadow);
 }
 .composer-main .up-menu { padding: 6px; }
@@ -168,14 +168,6 @@ html.dark .vm-in .pl { color: #fff; }
 .composer-main .up-menu button:hover { background: var(--gl-card2); }
 .composer-main .up-menu button svg { color: var(--accent-ink); }
 .composer-main .up-menu button.on { background: var(--accent-soft); }
-.ep-grid { padding: 8px; }
-.ep-head { background: transparent; }
-.ep-tab { border-radius: 12px; }
-.ep-tab:hover { background: var(--gl-card2); }
-.ep-tab[aria-selected="true"] { background: var(--accent-soft); }
-.emoji-item { border-radius: 12px; }
-.emoji-item:hover { background: var(--gl-card2); transform: none; }
-.ep-dock { border-top-color: var(--gl-lo); }
 .gp-retry { border: 0; border-radius: 12px; }
 .gif-off-i, .gif-badge { border-radius: 10px; }
 #mention-popup { padding: 6px; }

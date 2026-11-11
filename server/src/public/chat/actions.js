@@ -20,8 +20,6 @@ window.__h21 = function (el, ev, a) { ev.preventDefault() };
 window.__h22 = function (el, ev, a) { el.style.display='none' };
 window.__h23 = function (el, ev, a) { if(ev.key==='Enter')scRedeem(a[0]) };
 window.__h24 = function (el, ev, a) { ev.stopPropagation();mentionUserInComposer(a[0]) };
-window.__h25 = function (el, ev, a) { filterEmoji(el.value, 'rp') };
-window.__h26 = function (el, ev, a) { syncEmojiTabs('rp') };
 window.__h27 = function (el, ev, a) { el.remove() };
 window.__h28 = function (el, ev, a) { ev.stopPropagation();lbNav(-1) };
 window.__h29 = function (el, ev, a) { ev.stopPropagation();lbNav(1) };

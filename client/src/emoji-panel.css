@@ -1,0 +1,108 @@
+/* Панель смайлов и реакции (Electron и веб клиент). Дизайн B «Мягкий».
+   Логика — emoji-panel.js, макет — docs/flat-mockup/emoji.html.
+   Файл общий: server/src/public/shared/emoji-panel.css, копия лежит в client/src, держать синхронно. */
+
+/* ── сетка и общие части ── */
+.pk{--pk-lo:var(--gl-lo);--pk-hov:var(--hover-row);display:flex;flex-direction:column;min-height:0;min-width:0;color:var(--text);font-family:inherit}
+.pk-top{display:flex;align-items:center;gap:8px;padding:10px 10px 6px;flex:none}
+.pk-s{flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:36px;padding:0 10px;border-radius:12px;background:var(--surf2);border:1px solid transparent;color:var(--muted);transition:border-color .2s,box-shadow .2s,background .2s}
+.pk-s:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);background:var(--side-bg)}
+.pk-s svg{width:16px;height:16px;flex:none}
+.pk-s input{flex:1;width:0;min-width:0;background:none;border:0;outline:0;font:inherit;font-size:13.5px;color:var(--text);padding:0}
+.pk-s input::placeholder{color:var(--muted)}
+.pk-s .pk-cl{width:20px;height:20px;border-radius:7px;display:grid;place-items:center;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+.pk-s .pk-cl:hover{background:var(--pk-hov)}
+.pk-s .pk-cl svg{width:14px;height:14px}
+.pk-s .pk-cl[hidden]{display:none}
+.pk-dock{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;color:var(--muted);flex:none;background:none;border:0;cursor:pointer;padding:0;transition:background .15s,color .15s}
+.pk-dock:hover{background:var(--pk-hov);color:var(--text)}
+.pk-dock svg{width:17px;height:17px}
+.pk-tabs{display:flex;gap:2px;padding:2px 10px 6px;flex:none;border-bottom:1px solid var(--pk-lo)}
+.pk-tab{flex:1;max-width:36px;height:32px;border-radius:10px;display:grid;place-items:center;color:var(--muted);background:none;border:0;cursor:pointer;padding:0;transition:background .15s,color .15s}
+.pk-tab svg{width:17px;height:17px}
+.pk-tab:hover{background:var(--pk-hov);color:var(--text)}
+.pk-tab[aria-selected="true"]{background:var(--accent-soft);color:var(--accent-ink)}
+.pk-scroll{flex:1;min-height:0;overflow:auto;padding:0 8px 8px;scroll-behavior:smooth;overscroll-behavior:contain}
+.pk-scroll.nosmooth{scroll-behavior:auto}
+.pk-scroll::-webkit-scrollbar{width:8px}
+.pk-scroll::-webkit-scrollbar-thumb{background:var(--pk-lo);border-radius:4px;border:2px solid transparent;background-clip:padding-box}
+.pk-sec h4{position:sticky;top:0;z-index:2;margin:0 -8px;padding:10px 12px 5px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);background:var(--side-bg)}
+/* Смайлов почти две тысячи: разделы вне видимой части не размечаем, а место под них держим по расчётной высоте */
+.pk-grid{display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:1px;content-visibility:auto;contain-intrinsic-size:auto var(--ih,200px)}
+.pk-em{aspect-ratio:1;border-radius:11px;display:grid;place-items:center;font-size:var(--fs,22px);line-height:1;background:none;border:0;cursor:pointer;padding:0;color:inherit;font-family:inherit;transition:background .12s,transform .12s}
+.pk-em:hover,.pk-em:focus-visible{background:var(--pk-hov);outline:0}
+.pk-em:focus-visible{box-shadow:inset 0 0 0 2px var(--accent)}
+.pk-em:active{transform:scale(.9)}
+.pk-empty{padding:34px 10px;text-align:center;color:var(--muted);font-size:13px}
+.pk-empty b{display:block;font-size:26px;margin-bottom:6px;font-weight:400}
+.pk-foot{display:flex;align-items:center;gap:10px;height:50px;padding:0 10px 0 14px;border-top:1px solid var(--pk-lo);flex:none;position:relative}
+.pk-pv{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.pk-pv .big{font-size:28px;line-height:1;width:34px;text-align:center;flex:none}
+.pk-pv .nm{font-size:12.5px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pk-pv .nm b{display:block;color:var(--text);font-size:13px;font-weight:700;text-transform:capitalize}
+.pk-pv .hint{font-size:12.5px;color:var(--muted)}
+.pk-tonebtn{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;font-size:19px;flex:none;background:none;border:0;cursor:pointer;padding:0;transition:background .15s}
+.pk-tonebtn:hover{background:var(--pk-hov)}
+.pk-tones{position:absolute;inset:0;display:none;align-items:center;gap:6px;padding:0 12px;background:var(--side-bg);z-index:3}
+.pk-tones.open{display:flex}
+.pk-tones .tn{width:28px;height:28px;border-radius:50%;border:2px solid transparent;background:var(--c);cursor:pointer;padding:0;transition:transform .15s}
+.pk-tones .tn:hover{transform:scale(1.12)}
+.pk-tones .tn.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--side-bg) inset}
+.pk-tones span{margin-left:auto;font-size:12px;color:var(--muted)}
+/* вертикальная колонка категорий (боковая панель) */
+.pk.rail{flex-direction:row}
+.pk.rail .pk-rcol{display:flex;flex-direction:column;gap:2px;padding:10px 6px;border-right:1px solid var(--pk-lo);overflow:auto;flex:none}
+.pk.rail .pk-rcol .pk-tab{flex:none;max-width:none;width:38px;height:38px}
+.pk.rail .pk-rmain{flex:1;min-width:0;display:flex;flex-direction:column}
+/* переключатель Смайлы | GIF */
+.pk-sw{display:flex;padding:3px;gap:2px;border-radius:12px;background:var(--seg-bg,var(--surf2));flex:none}
+.pk-sw[hidden]{display:none}
+.pk-sw button{height:30px;padding:0 10px;border-radius:9px;font:inherit;font-size:12px;font-weight:700;color:var(--text2);background:none;border:0;cursor:pointer;transition:background .2s,color .2s}
+.pk-sw button[aria-pressed="true"]{background:var(--seg-on,var(--side-bg));box-shadow:var(--seg-on-sh,0 1px 2px rgba(60,40,20,.14));color:var(--text)}
+.pk-gif{display:none;flex:1;min-height:0;overflow:auto}
+.pk-pw{display:none;align-items:center;height:34px;padding:0 14px;border-top:1px solid var(--pk-lo);flex:none}
+.pk.gif .pk-gif{display:flex;flex-direction:column}
+.pk.gif .pk-pw{display:flex}
+.pk.gif .pk-s,.pk.gif .pk-tabs,.pk.gif .pk-scroll,.pk.gif .pk-foot,.pk.gif .pk-rcol{display:none}
+.pk.gif .pk-top{justify-content:flex-start}
+
+/* ── поповер у кнопки ☺ в поле ввода ── */
+.pk-pop{position:absolute;z-index:40;width:372px;height:432px;max-height:calc(100vh - 140px);display:none;background:var(--side-bg);border-radius:22px;box-shadow:var(--pop-shadow);overflow:hidden;transform-origin:100% 100%}
+.pk-pop.show{display:flex;animation:pkIn .16s cubic-bezier(.22,1,.36,1)}
+.pk-pop .pk{flex:1;width:100%}
+@keyframes pkIn{from{opacity:0;transform:scale(.94) translateY(6px)}to{opacity:1;transform:none}}
+/* ── боковая панель ── */
+.pk-drawer{width:0;flex:none;background:var(--side-bg);border-left:1px solid var(--pk-lo,var(--gl-lo));overflow:hidden;transition:width .3s cubic-bezier(.22,1,.36,1)}
+.pk-drawer.open{width:344px}
+.pk-drawer .in{width:344px;height:100%;display:flex;flex-direction:column}
+.pk-dh{display:flex;align-items:center;gap:8px;height:60px;padding:0 10px 0 16px;border-bottom:1px solid var(--gl-lo);flex:none}
+.pk-dh b{flex:1;font-size:14.5px;font-weight:700;color:var(--text)}
+.pk-dh button{width:32px;height:32px;border-radius:11px;display:grid;place-items:center;color:var(--muted);background:none;border:0;cursor:pointer;padding:0}
+.pk-dh button:hover{background:var(--hover-row);color:var(--text)}
+.pk-dh button svg{width:18px;height:18px}
+.pk-drawer .pk{flex:1}
+/* на узком окне панель ложится поверх чата, а не сжимает его */
+@media (max-width:900px){
+  .app-body{position:relative}
+  .pk-drawer{position:absolute;right:0;top:0;bottom:0;z-index:35;box-shadow:var(--pop-shadow)}
+}
+
+/* ── реакции: капсула над сообщением ── */
+.rx-cap{position:fixed;z-index:60;display:none;width:var(--cw,auto);height:46px;background:var(--side-bg);border-radius:16px;box-shadow:var(--pop-shadow);overflow:hidden;transition:height .3s cubic-bezier(.22,1,.36,1),width .3s cubic-bezier(.22,1,.36,1),left .3s cubic-bezier(.22,1,.36,1),top .3s cubic-bezier(.22,1,.36,1)}
+.rx-cap.show{display:block;animation:pkIn .16s cubic-bezier(.22,1,.36,1)}
+.rx-cap.exp{height:352px;width:312px}
+.rx-cap.pop-out{animation:pkOut .12s ease forwards}
+@keyframes pkOut{to{opacity:0;transform:scale(.96)}}
+.rx-q{display:flex;align-items:center;gap:1px;height:46px;padding:0 6px;width:max-content}
+.rx-cap.exp .rx-q{display:none}
+.rx-q .q{width:34px;height:34px;border-radius:11px;font-size:20px;line-height:1;display:grid;place-items:center;background:none;border:0;cursor:pointer;padding:0;font-family:inherit;transition:background .12s,transform .12s}
+.rx-q .q:hover{background:var(--hover-row);transform:scale(1.12)}
+.rx-q .q.mine{background:var(--accent-soft)}
+.rx-q .pl{margin-left:2px;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;color:var(--muted);background:var(--surf2);border:0;cursor:pointer;padding:0}
+.rx-q .pl:hover{background:var(--hover-row);color:var(--text)}
+.rx-q .pl svg{width:18px;height:18px}
+.rx-pick{display:none;height:352px;width:312px}
+.rx-cap.exp .rx-pick{display:flex}
+.rx-pick .pk{flex:1;width:100%}
+/* меню действий при капсуле на месте, пока капсула развёрнута, прячем */
+body.rx-exp #ctx-menu{opacity:0;pointer-events:none;transition:opacity .2s}
