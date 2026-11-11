@@ -162,9 +162,14 @@
 /* ═══════════ ФЕДЕРАЦИИ (html[data-pg="federation"]; .fd-*, .fh-*, .fm-*) ═══════════ */
 .fd-cols { gap: 16px; }
 .fd-side { gap: 16px; }
-.fd-card { overflow: hidden; }
+/* Меню строки (⋯) раскрывается вниз и у последнего соединения выходило за карточку: overflow:hidden его обрезал.
+   Обрезку снимаем, а углы шапки и последней строки скругляем сами */
+.fd-card { overflow: visible; }
+.fd-card > :first-child { border-radius: var(--r-card) var(--r-card) 0 0; }
+.fd-card > :last-child { border-radius: 0 0 var(--r-card) var(--r-card); }
+.fd-card > :only-child { border-radius: var(--r-card); }
 .fd-head { padding: 16px 20px; font-size: 15px; font-weight: 700; letter-spacing: -.005em; border-bottom: 1px solid var(--border-soft); }
-.fd-card .fd-head { padding: 16px 20px; font-size: 15px; border-radius: 0; }
+.fd-card .fd-head { padding: 16px 20px; font-size: 15px; }
 .fd-head small { font-size: 12.5px; font-weight: 500; color: var(--muted); }
 .fd-qh { font-size: 12.5px; color: var(--muted); }
 .fd-n { height: 22px; }
