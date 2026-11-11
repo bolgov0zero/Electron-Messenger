@@ -230,7 +230,7 @@ impl App {
             }
             let col = if on { pal.accent_ink } else if resp.hovered() { pal.text } else { pal.muted };
             icons::paint(ui, icon, Rect::from_center_size(pos2(r.center().x, r.top() + 8.0 + 10.5), vec2(21.0, 21.0)), col, 2.0);
-            ui.painter().text(pos2(r.center().x, r.top() + 8.0 + 21.0 + 3.0), Align2::CENTER_TOP, *label, FontId::new(11.0, bold()), col);
+            ui.painter().text(pos2(r.center().x, r.top() + 8.0 + 21.0 + 3.0), Align2::CENTER_TOP, *label, FontId::new(11.0, crate::theme::medium()), col);
             if i == 2 && self.upd_avail.is_some() {
                 let c = pos2(r.center().x + 12.0, r.top() + 10.0);
                 ui.painter().circle_filled(c, 4.0, pal.danger);

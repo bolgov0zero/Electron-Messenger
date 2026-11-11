@@ -286,14 +286,12 @@ pub fn draw_avatar(ui: &mut Ui, rect: Rect, server: &str, user_id: Option<i64>, 
             ui.ctx().try_load_texture(&uri, egui::TextureOptions::LINEAR, egui::load::SizeHint::default())
         {
             let uv = cover_uv(texture.size, rect);
-            ui.put(
-                rect,
-                egui::Image::from_texture(texture)
-                    .uv(uv)
-                    .maintain_aspect_ratio(false)
-                    .fit_to_exact_size(rect.size())
-                    .corner_radius(CornerRadius::same((rect.size().x / 2.0) as u8)),
-            );
+            egui::Image::from_texture(texture)
+                .uv(uv)
+                .maintain_aspect_ratio(false)
+                .fit_to_exact_size(rect.size())
+                .corner_radius(CornerRadius::same((rect.size().x / 2.0) as u8))
+                .paint_at(ui, rect);
             return;
         }
     }
@@ -467,7 +465,7 @@ pub fn contact_row(ui: &mut Ui, pal: &Pal, r: &ContactRow) -> bool {
     let p = ui.painter().clone();
     let tag_g = (!u.tag.is_empty()).then(|| p.layout_no_wrap(u.tag.clone(), FontId::new(11.0, bold()), av_color(fnv(&u.tag))));
     let tag_w = tag_g.as_ref().map_or(0.0, |g| g.size().x + 14.0 + 8.0);
-    let ng = elided(&p, &u.name, FontId::proportional(13.5), pal.text, right - x - tag_w);
+    let ng = elided(&p, &u.name, FontId::new(13.5, crate::theme::medium()), pal.text, right - x - tag_w);
     let line_h = ng.size().y;
     let block_h = line_h + if has_chip { 3.0 + 19.0 } else { 0.0 };
     let y = rect.top() + (h - block_h) / 2.0;
@@ -524,10 +522,7 @@ fn image_view(ui: &mut Ui, pal: &Pal, rect: Rect, uri: &str, cr: CornerRadius) {
         ui.ctx().try_load_texture(uri, egui::TextureOptions::LINEAR, egui::load::SizeHint::default())
     {
         let uv = cover_uv(texture.size, rect);
-        ui.put(
-            rect,
-            egui::Image::from_texture(texture).uv(uv).maintain_aspect_ratio(false).fit_to_exact_size(rect.size()).corner_radius(cr),
-        );
+        egui::Image::from_texture(texture).uv(uv).maintain_aspect_ratio(false).fit_to_exact_size(rect.size()).corner_radius(cr).paint_at(ui, rect);
     } else {
         ui.painter().rect_filled(rect, cr, pal.surf2);
     }

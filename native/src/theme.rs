@@ -109,16 +109,24 @@ pub fn bold() -> FontFamily {
     FontFamily::Name("bold".into())
 }
 
+/// Средняя жирность (500): подписи пунктов меню, названия вкладок, имена контактов.
+pub fn medium() -> FontFamily {
+    FontFamily::Name("medium".into())
+}
+
 /// Medeo Sans (обычный и жирный, латиница + кириллица + символы) поверх шрифтов egui.
 pub fn install_fonts(ctx: &egui::Context) {
     let mut fonts = FontDefinitions::default();
-    let files: [(&str, &[u8]); 6] = [
+    let files: [(&str, &[u8]); 9] = [
         ("m-lat-4", include_bytes!("../assets/fonts/medeo-latin-400.ttf")),
         ("m-cyr-4", include_bytes!("../assets/fonts/medeo-cyrillic-400.ttf")),
         ("m-sym-4", include_bytes!("../assets/fonts/medeo-symbols-400.ttf")),
         ("m-lat-7", include_bytes!("../assets/fonts/medeo-latin-700.ttf")),
         ("m-cyr-7", include_bytes!("../assets/fonts/medeo-cyrillic-700.ttf")),
         ("m-sym-7", include_bytes!("../assets/fonts/medeo-symbols-700.ttf")),
+        ("m-lat-5", include_bytes!("../assets/fonts/medeo-latin-500.ttf")),
+        ("m-cyr-5", include_bytes!("../assets/fonts/medeo-cyrillic-500.ttf")),
+        ("m-sym-5", include_bytes!("../assets/fonts/medeo-symbols-500.ttf")),
     ];
     for (name, bytes) in files {
         fonts.font_data.insert(name.to_owned(), Arc::new(FontData::from_static(bytes)));
@@ -127,7 +135,10 @@ pub fn install_fonts(ctx: &egui::Context) {
     let mut regular: Vec<String> = ["m-lat-4", "m-cyr-4", "m-sym-4"].iter().map(|s| s.to_string()).collect();
     regular.extend(fallback.clone());
     let mut heavy: Vec<String> = ["m-lat-7", "m-cyr-7", "m-sym-7"].iter().map(|s| s.to_string()).collect();
-    heavy.extend(fallback);
+    heavy.extend(fallback.clone());
+    let mut mid: Vec<String> = ["m-lat-5", "m-cyr-5", "m-sym-5"].iter().map(|s| s.to_string()).collect();
+    mid.extend(fallback);
+    fonts.families.insert(medium(), mid);
     fonts.families.insert(FontFamily::Proportional, regular);
     fonts.families.insert(bold(), heavy);
     ctx.set_fonts(fonts);

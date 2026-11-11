@@ -170,11 +170,10 @@ fn uri_for(icon: &Icon, color: Color32, stroke: f32) -> String {
 pub fn paint(ui: &mut Ui, icon: &Icon, rect: Rect, color: Color32, stroke: f32) {
     let svg = svg_text(icon, color, stroke);
     let uri = uri_for(icon, color, stroke);
-    ui.put(
-        rect,
-        egui::Image::new(egui::ImageSource::Bytes { uri: Cow::Owned(uri), bytes: svg.into_bytes().into() })
-            .fit_to_exact_size(rect.size()),
-    );
+    // paint_at: рисуем без сдвига курсора раскладки (ui.put сдвигал его и пункты наезжали друг на друга)
+    egui::Image::new(egui::ImageSource::Bytes { uri: Cow::Owned(uri), bytes: svg.into_bytes().into() })
+        .fit_to_exact_size(rect.size())
+        .paint_at(ui, rect);
 }
 
 #[cfg(test)]
