@@ -154,6 +154,18 @@
   unicode-range: U+1f6d9, U+1fa8b-1fa8d, U+1facc, U+1fadd, U+1faeb;
 }
 
+/* Браузер рисует COLRv1 (класс ставит emoji-font.js). Стек со вшитым шрифтом задаём здесь, а не только
+   в style.css: flat.css грузится позже и своим body { font-family: var(--ff) } его перекрывал, из-за чего
+   возвращались системные смайлы, а в мобильном клиенте (/m) стека со смайлами не было вовсе.
+   Селектор с классом сильнее простого body, поэтому порядок подключения файлов не важен */
+html.emoji-colr body,
+html.emoji-colr .ra-emoji {
+  font-family: 'Medeo Sans', 'Inter', 'Noto Color Emoji', -apple-system, BlinkMacSystemFont, system-ui,
+               'Noto Color Emoji Keys', sans-serif;
+}
+html.emoji-colr .md-code {
+  font-family: 'Noto Color Emoji', 'Medeo Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+}
 /* Браузер не рисует COLRv1 (Safari) — переключаемся на sbix-набор (класс ставит emoji-font.js) */
 html.emoji-sbix body,
 html.emoji-sbix .ra-emoji {
