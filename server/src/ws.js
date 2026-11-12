@@ -234,7 +234,7 @@ async function getMessageWithStatus(msgId, viewerId) {
   const msg = await dal.get(`
     SELECT m.id, m.chat_id, m.text, m.iv, m.sent_at, m.edited_at, m.deleted, m.attachment, m.mentions, m.forward_data, m.link_preview, m.system_kind, m.actions, (SELECT COUNT(*) FROM messages fx WHERE fx.fwd_src = m.id AND fx.deleted = 0) AS forward_count,
       u.id as sender_id, u.username as sender_username, COALESCE(u.display_name, m.guest_name, 'Удалённый аккаунт') as sender_name, COALESCE(u.tag, m.guest_tag) as sender_tag, (u.is_bot = 1) as sender_is_bot,
-      m.reply_to_id,
+      m.reply_to_id, m.reply_quote,
       rm.text as reply_text, rm.attachment as reply_attachment, rm.deleted as reply_deleted,
       COALESCE(ru.display_name, rm.guest_name, 'Удалённый аккаунт') as reply_sender_name, (ru.is_bot = 1) as reply_sender_is_bot,
       ru.id as reply_sender_id, COALESCE(ru.tag, rm.guest_tag) as reply_sender_tag
@@ -450,6 +450,8 @@ function setup(server) {
           const ref = await dal.get('SELECT chat_id FROM messages WHERE id = ?', reply_to_id);
           if (!ref || ref.chat_id !== chat_id) return;
         }
+        // Цитата выделенного фрагмента: только простой текст и только с ответом; в секретных чатах её нет
+        const replyQuote = (reply_to_id && !isSecret && typeof data.reply_quote === 'string') ? (data.reply_quote.replace(/\s+/g, ' ').trim().slice(0, 500) || null) : null;
 
         // Unhide chat for any members who had hidden it (e.g. deleted direct chat)
         const hidden = await dal.all('SELECT user_id FROM chat_members WHERE chat_id = ? AND hidden_at IS NOT NULL', chat_id);
@@ -490,12 +492,12 @@ function setup(server) {
         }
 
         // Подготавливаем стейтменты вне транзакции — db.prepare нельзя вызывать внутри неё
-        const stmtInsertMsg = 'INSERT INTO messages (chat_id, sender_id, text, iv, reply_to_id, attachment, mentions, forward_data, link_preview, fwd_src) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        const stmtInsertMsg = 'INSERT INTO messages (chat_id, sender_id, text, iv, reply_to_id, attachment, mentions, forward_data, link_preview, fwd_src, reply_quote) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
         const stmtGetMembers = 'SELECT user_id FROM chat_members WHERE chat_id = ? AND user_id != ?';
 
         // Вставка сообщения и статусов доставки в одной транзакции
         const msgId = await dal.tx(() => (async () => {
-          const result = await dal.run(stmtInsertMsg, chat_id, user.id, text, isSecret && typeof iv === 'string' ? iv.slice(0, 256) : null, reply_to_id || null, attJson, mentionsJson, fdJson, lpJson, fwdSrc);
+          const result = await dal.run(stmtInsertMsg, chat_id, user.id, text, isSecret && typeof iv === 'string' ? iv.slice(0, 256) : null, reply_to_id || null, attJson, mentionsJson, fdJson, lpJson, fwdSrc, replyQuote);
           const newMsgId = result.lastInsertRowid;
           // Пометить как delivered тем участникам, которые сейчас онлайн (кроме отправителя)
           const members = await dal.all(stmtGetMembers, chat_id, user.id);

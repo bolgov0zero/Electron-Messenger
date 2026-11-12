@@ -1,0 +1,23 @@
+/* Подъём сообщения над затемнённой перепиской (shared/msglift.js). Подключать после остальных стилей меню и реакций. */
+.irc-msg.ml-src { visibility: hidden; }
+.ml-layer { position: absolute; inset: 0; z-index: 50; border-radius: inherit; overflow: hidden; }
+.ml-layer.off { pointer-events: none; }
+.ml-scrim { position: absolute; inset: 0; background: color-mix(in srgb, var(--scrim, rgba(0,0,0,.4)) 80%, transparent); opacity: 0; transition: opacity .25s; }
+.ml-layer.on .ml-scrim { opacity: 1; }
+.ml-layer.off .ml-scrim { opacity: 0; transition-duration: .35s; }
+.ml-clone { position: absolute; margin: 0 !important; pointer-events: none; animation: none !important; }
+.ml-clone .msg-bubble, .ml-clone .irc-content { animation: none !important; }
+
+/* меню и капсула реакций выезжают из угла у сообщения: из .6 в натуральный размер, как в /m */
+@keyframes mlPopIn { from { transform: scale(.6); } to { transform: none; } }
+@keyframes mlPopOut { from { transform: none; opacity: 1; } to { transform: scale(.6); opacity: 0; } }
+@keyframes mlFade { from { opacity: 0; } to { opacity: 1; } }
+.ctx-menu.open.lifted { animation: mlPopIn .4s var(--gl-ease, cubic-bezier(.22,1,.36,1)) backwards, mlFade .2s linear backwards; }
+.ctx-menu.lifted.pop-out { animation: mlPopOut .22s ease-in forwards !important; }
+.rx-cap.show.lift { animation: mlPopIn .4s var(--gl-ease, cubic-bezier(.22,1,.36,1)) backwards, mlFade .2s linear backwards; }
+.rx-cap.show.lift.pop-out { animation: mlPopOut .22s ease-in forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ml-scrim { transition-duration: .01s !important; }
+  .ctx-menu.open.lifted, .ctx-menu.lifted.pop-out, .rx-cap.show.lift, .rx-cap.show.lift.pop-out { animation-duration: .001ms !important; }
+}

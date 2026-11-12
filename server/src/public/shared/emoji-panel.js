@@ -364,7 +364,11 @@
   function showCapsule(o) {
     const el = ensureCap();
     capOpts = o;
+    clearTimeout(el._outT);
     el.classList.remove('exp', 'pop-out');
+    // o.lift: сообщение поднято над затемнением, капсула выезжает из угла у него (shared/msglift.css)
+    el.classList.toggle('lift', !!o.lift);
+    el.style.transformOrigin = o.lift ? (o.align === 'right' ? 'right' : 'left') + ' bottom' : '';
     document.body.classList.remove('rx-exp');
     const mine = o.reacted || new Set();
     $('.rx-q', el).innerHTML = H.freq(7).map(e => `<button class="q${mine.has(e) ? ' mine' : ''}" type="button" data-e="${e}">${e}</button>`).join('') +
@@ -402,12 +406,19 @@
     setTimeout(() => { if (el.classList.contains('exp')) pkR.focus(); }, 240);
   }
   function hideCapsule() {
-    const el = capEl; if (!el || !el.classList.contains('show')) return;
-    el.classList.remove('show', 'exp');
+    const el = capEl; if (!el || !el.classList.contains('show') || el.classList.contains('pop-out')) return;
     document.body.classList.remove('rx-exp');
     capOpts = null;
+    // Поднятое сообщение: капсула уходит с анимацией, как и меню
+    if (el.classList.contains('lift') && !el.classList.contains('exp')) {
+      el.classList.add('pop-out');
+      clearTimeout(el._outT);
+      el._outT = setTimeout(() => el.classList.remove('show', 'exp', 'pop-out', 'lift'), 230);
+      return;
+    }
+    el.classList.remove('show', 'exp', 'lift');
   }
-  const capsuleOpen = () => !!capEl && capEl.classList.contains('show');
+  const capsuleOpen = () => !!capEl && capEl.classList.contains('show') && !capEl.classList.contains('pop-out');
 
   let inited = false;
   window.EmojiPanel = {

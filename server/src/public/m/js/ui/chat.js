@@ -189,7 +189,7 @@ B.ui.chat = (function () {
     h += who;
     var qStart = h.length;
     if (m.reply_to_id) {
-      h += '<div class="quote"' + (m.reply_deleted ? '' : ' data-c="jump" data-id="' + m.reply_to_id + '"') + '><b>' + esc(m.reply_sender_name || '') + '</b><span>' + (m.reply_deleted ? 'Сообщение удалено' : esc(Fmt.noCode(m.reply_text || ''))) + '</span></div>';
+      h += '<div class="quote"' + (m.reply_deleted ? '' : ' data-c="jump" data-id="' + m.reply_to_id + '"') + '><b>' + esc(m.reply_sender_name || '') + '</b><span>' + (m.reply_deleted ? 'Сообщение удалено' : m.reply_quote && !B.S.secretChatIds.has(m.chat_id) ? esc(m.reply_quote) : esc(Fmt.noCode(m.reply_text || ''))) + '</span></div>';
     }
     var fd = m.forward_data;
     if (fd) h += '<div class="quote fwq"><b>Переслано от <em>' + esc(fd.name || '') + '</em></b>' + (fd.text ? '<span>' + esc(fd.text) + '</span>' : '') + '</div>';

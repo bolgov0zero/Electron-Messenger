@@ -4171,7 +4171,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
   const rAtt = m.reply_attachment;
   const rIsImg = rAtt?.mime?.startsWith('image/');
   const rIsVideo = rAtt?.mime?.startsWith('video/');
-  const rThumbHtml = rAtt && !m.reply_deleted ? ((rIsImg || (rIsVideo && rAtt.thumb))
+  const rThumbHtml = rAtt && !m.reply_deleted && !m.reply_quote ? ((rIsImg || (rIsVideo && rAtt.thumb))
     ? `<img src="${httpProto()}://${S.server}${rAtt.thumb || rAtt.url}" class="irc-reply-thumb" data-on-error="__h22">`
     : `<div class="irc-reply-thumb irc-reply-file"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg></div>`
   ) : '';
@@ -4179,7 +4179,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     ? 'Сообщение удалено'
     : isSecretChat
     ? (S.scDecrypted.get(m.reply_to_id) ?? 'Зашифровано')
-    : (m.reply_text || (rAtt ? (rIsImg ? '📷 Фото' : rIsVideo ? '🎬 Видео' : ('📎 ' + (rAtt.name || 'Файл'))) : ''));
+    : (m.reply_quote || m.reply_text || (rAtt ? (rIsImg ? '📷 Фото' : rIsVideo ? '🎬 Видео' : ('📎 ' + (rAtt.name || 'Файл'))) : ''));
   // цвет цитаты берём у автора цитируемого: своё — цветом своего пузыря,
   // чужое — цветом его тега. Стрелка не нужна: полоса слева и так читается.
   const _replyTagCls = senderNameClass(m.reply_sender_tag);
@@ -4191,7 +4191,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       ${rThumbHtml}
       <div class="irc-reply-body">
         <div class="irc-reply-name">${esc(m.reply_sender_name || '')}</div>
-        <div class="irc-reply-text">${m.reply_sender_is_bot ? (rTextRaw || '') : Fmt.rich(Fmt.noCode(rTextRaw || ''), { codeCls: 'md-code' })}</div>
+        <div class="irc-reply-text${m.reply_quote && !m.reply_deleted && !isSecretChat ? ' q' : ''}">${(m.reply_quote && !m.reply_deleted && !isSecretChat) ? esc(m.reply_quote) : m.reply_sender_is_bot ? (rTextRaw || '') : Fmt.rich(Fmt.noCode(rTextRaw || ''), { codeCls: 'md-code' })}</div>
       </div>
     </div>` : '';
 
@@ -4913,11 +4913,11 @@ async function sendVoice(res, chatId) {
     if (!findChatAny(chatId)) return;
     const payload = { type: 'message', chat_id: chatId, text: '', client_id: newClientId(), attachment: att };
     const reply = S.activeChatId === chatId ? S.replyTo : null;
-    if (reply) payload.reply_to_id = reply.id;
+    if (reply) { payload.reply_to_id = reply.id; if (reply.quote) payload.reply_quote = reply.quote; }
     const tempMsg = {
       id: -(Date.now()), chat_id: chatId, sender_id: S.user.id, sender_name: S.user.display_name, sender_tag: S.user.tag || null,
       text: '', sent_at: Math.floor(Date.now() / 1000), edited_at: null, deleted: 0,
-      reply_to_id: reply?.id || null, reply_text: reply?.text || null, reply_sender_name: reply?.senderName || null, reply_attachment: reply?.attachment || null, reply_deleted: false,
+      reply_to_id: reply?.id || null, reply_text: reply?.text || null, reply_quote: reply?.quote || null, reply_sender_name: reply?.senderName || null, reply_attachment: reply?.attachment || null, reply_deleted: false,
       forward_data: null, link_preview: null, attachment: att, status: { delivered: 0, read: 0, total: 1 }, reactions: [],
       _optimistic: true, _cid: payload.client_id, _state: 'sending',
     };
@@ -4957,7 +4957,7 @@ async function sendOrEdit() {
     _atts = [];   // файл уже уходит в сообщении: clearImagePreview ниже его не тронет
   } else {
     payload = { type:'message', chat_id:S.activeChatId, text: text || '', client_id: newClientId() };
-    if (S.replyTo) payload.reply_to_id = S.replyTo.id;
+    if (S.replyTo) { payload.reply_to_id = S.replyTo.id; if (S.replyTo.quote) payload.reply_quote = S.replyTo.quote; }
     if (pendAtt) payload.attachment = pendAtt;
     if (S.forwardMsg) payload.forward_data = S.forwardMsg;
     if (sendLp) payload.link_preview = sendLp;
@@ -4975,6 +4975,7 @@ async function sendOrEdit() {
     deleted: 0,
     reply_to_id: S.replyTo?.id || null,
     reply_text: S.replyTo?.text || null,
+    reply_quote: S.replyTo?.quote || null,
     reply_sender_name: S.replyTo?.senderName || null,
     reply_attachment: S.replyTo?.attachment || null,
     reply_deleted: false,
@@ -5039,6 +5040,25 @@ function cancelEdit() {
 // Меню сообщения для удалённых не открывается: только отменяем системное меню браузера
 function ctxNoop(ev) { ev.preventDefault(); }
 function noop() {}
+// Выделение на момент правого клика. На macOS правый клик сам выделяет слово под указателем, поэтому снимок берём до этого:
+// для «Цитировать» важно то, что человек выделил сам. Годится выделение внутри текста одного сообщения
+let _quoteSnap = null;
+document.addEventListener('mousedown', e => {
+  _quoteSnap = null;
+  if (e.button !== 2) return;
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+  const r = sel.getRangeAt(0);
+  const host = r.commonAncestorContainer.nodeType === 1 ? r.commonAncestorContainer : r.commonAncestorContainer.parentElement;
+  const t = host?.closest('.irc-text');
+  const row = t?.closest('.irc-msg[data-msg-id]');
+  if (!t || !row) return;
+  const text = sel.toString().replace(/\s+/g, ' ').trim();
+  if (!text) return;
+  const pre = document.createRange(); pre.selectNodeContents(t); pre.setEnd(r.startContainer, r.startOffset);
+  const start = pre.toString().length;
+  _quoteSnap = { msgId: parseInt(row.dataset.msgId), text: text.slice(0, 500), start, end: start + r.toString().length, t: Date.now() };
+}, true);
 function showCtxMenu(e, msgId, sentAt, isMine) {
   // «Закрепить» или «Открепить» — по текущему состоянию сообщения
   const _pinLbl = document.getElementById('ctx-pin-label');
@@ -5047,7 +5067,12 @@ function showCtxMenu(e, msgId, sentAt, isMine) {
   S.ctx.messageId = msgId;
   S.ctx.canEdit = isMine && (Date.now()/1000 - sentAt) < (S.editLimit || 120);
   S.ctx.isMine = isMine;
+  // «Цитировать» — только если выделен текст этого же сообщения (не в секретном чате: там цитата ушла бы открытым текстом)
+  const _qs = _quoteSnap && _quoteSnap.msgId === msgId && Date.now() - _quoteSnap.t < 1500 && !S.secretChatIds.has(S.activeChatId) ? _quoteSnap : null;
+  S.ctx.quote = _qs;
+  _quoteSnap = null;
   const menu = document.getElementById('ctx-menu');
+  document.getElementById('ctx-quote-btn').style.display = _qs ? '' : 'none';
   document.getElementById('ctx-reply-btn').style.display = '';
   document.getElementById('ctx-forward-btn').style.display = S.secretChatIds.has(S.activeChatId) ? 'none' : '';
   document.getElementById('ctx-copy-btn').style.display = '';
@@ -5093,19 +5118,25 @@ function zoomMetrics() {
   return { k: r.left / 100 || 1, vw: r.right, vh: r.bottom, f: r.right / window.innerWidth || 1 };
 }
 
-// Реакции и меню рядом с сообщением: капсула над пузырём, меню под ним.
-// Не хватает места (пузырь очень высокий или у края окна) — меню у указателя, а капсула над ним или, если сверху тесно, под ним
+// Реакции и меню рядом с сообщением. Область чата затемняется, сообщение поднимается над затемнением (shared/msglift.js)
+// и при нехватке места плавно сдвигается: над ним капсула реакций, под ним меню.
+// Если поднять нельзя (нет самого сообщения на экране) — меню у указателя, а капсула над ним или, если сверху тесно, под ним
 function placeMsgCtx(menu, msgId, e, isMine) {
   syncCtxSeparators(menu);
   menu.style.left = '-9999px'; menu.style.top = '-9999px';
   menu.style.animation = 'none';
   const m = zoomMetrics(), mr = menu.getBoundingClientRect(), w = mr.width, h = mr.height;
   const margin = 6, GAP = 6, CH = 46;
-  const bub = document.querySelector(`.irc-msg[data-msg-id="${msgId}"] .msg-bubble`);
-  const br = bub?.getBoundingClientRect();
+  const row = document.querySelector(`.irc-msg[data-msg-id="${msgId}"]`);
+  const lift = window.MsgLift ? MsgLift.show({
+    row, host: document.getElementById('chat-main'), area: document.querySelector('.messages-wrap'),
+    k: m.k, needTop: CH + GAP, needBottom: GAP + h, onDismiss: hideCtxMenu,
+    selection: S.ctx.quote ? { start: S.ctx.quote.start, end: S.ctx.quote.end } : null,
+  }) : null;
   let mx, my, capY, anchorX, align = 'left';
-  if (br && br.top - CH - GAP >= margin && br.bottom + GAP + h <= m.vh - margin) {
-    capY = br.top - CH - GAP; my = br.bottom + GAP;
+  if (lift) {
+    const br = lift.bubble;
+    capY = br.top - CH - GAP; my = lift.bottom + GAP;
     mx = isMine ? br.right - w : br.left;
     anchorX = isMine ? br.right : br.left; align = isMine ? 'right' : 'left';
   } else {
@@ -5120,13 +5151,14 @@ function placeMsgCtx(menu, msgId, e, isMine) {
     anchorX = mx;
   }
   mx = Math.max(margin, Math.min(mx, m.vw - w - margin));
-  menu.style.transformOrigin = 'top left';
+  menu.classList.toggle('lifted', !!lift);
+  menu.style.transformOrigin = lift && isMine ? 'top right' : 'top left';
   menu.style.left = (mx / m.k) + 'px';
   menu.style.top = (my / m.k) + 'px';
   menu.style.animation = '';
   // Уже поставленные вами реакции подсвечены
   const reacted = new Set([...document.querySelectorAll(`.reaction-btn.mine[data-msg-id="${msgId}"]`)].map(b => b.dataset.reaction));
-  EmojiPanel.showCapsule({ anchorX: anchorX / m.k, align, top: capY / m.k, reacted, onPick: ctxReact });
+  EmojiPanel.showCapsule({ anchorX: anchorX / m.k, align, top: capY / m.k, reacted, onPick: ctxReact, lift: !!lift });
 }
 
 function placeCtxMenu(menu, clientX, clientY, anchor) {
@@ -5176,7 +5208,9 @@ function ctxCopy() {
   navigator.clipboard.writeText(el.innerText).catch(() => {});
 }
 
-function ctxReply() {
+// Ответ с цитатой выделенного фрагмента (пункт «Цитировать»)
+function ctxQuote() { ctxReply(true); }
+function ctxReply(withQuote) {
   hideCtxMenu();
   const msgId = S.ctx.messageId;
   if (!msgId) return;
@@ -5200,7 +5234,7 @@ function ctxReply() {
   } : null;
   // Если у цитируемого сообщения только вложение (без текста) — используем имя файла как «текст»
   const displayText = text.trim() || (att ? (att.mime.startsWith('image/') ? '📷 Фото' : att.mime.startsWith('video/') ? '🎬 Видео' : ('📎 ' + (att.name || 'Файл'))) : '');
-  S.replyTo = { id: msgId, text: displayText.slice(0, 100), senderName, attachment: att };
+  S.replyTo = { id: msgId, text: displayText.slice(0, 100), senderName, attachment: att, quote: (withQuote === true && S.ctx.quote?.msgId === msgId) ? S.ctx.quote.text : null };
   showReplyBar();
 }
 
@@ -5208,10 +5242,10 @@ function showReplyBar() {
   const bar = document.getElementById('reply-bar');
   if (!bar || !S.replyTo) return;
   document.getElementById('reply-bar-name').textContent = S.replyTo.senderName;
-  document.getElementById('reply-bar-text').textContent = S.replyTo.text;
+  document.getElementById('reply-bar-text').textContent = S.replyTo.quote || S.replyTo.text;
   const thumb = document.getElementById('reply-bar-thumb');
   if (thumb) {
-    const att = S.replyTo.attachment;
+    const att = S.replyTo.quote ? null : S.replyTo.attachment;
     if (att?.url && (att.mime?.startsWith('image/') || (att.mime?.startsWith('video/') && att.thumb))) {
       thumb.src = `${httpProto()}://${S.server}${att.thumb || att.url}`;
       thumb.style.display = '';
@@ -5847,9 +5881,11 @@ function scrollToMsg(msgId, force = false) {
   setTimeout(() => el.classList.remove('msg-highlight'), 1900);
 }
 function hideCtxMenu() {
+  const lifted = window.MsgLift && MsgLift.isOpen();
   EmojiPanel.hideCapsule();
+  if (lifted) MsgLift.hide();
   const m = document.getElementById('ctx-menu');
-  popHide(m, () => m.classList.remove('open'));
+  popHide(m, () => m.classList.remove('open', 'lifted'), lifted ? 220 : 120);
 }
 
 function ctxEdit() {
@@ -7681,7 +7717,7 @@ function hideForwardBar() {
 // ── MODAL HELPERS ──
 // Мягкое закрытие всплывающих окон (меню, подсказки, выбор реакции): та же анимация, что при открытии, только в обратную сторону.
 // finish() делает настоящее скрытие. Если окно открыли снова, пока оно закрывается, вызывается popShow(el).
-function popHide(el, finish) {
+function popHide(el, finish, ms = 120) {
   if (!el || el._popOut || getComputedStyle(el).display === 'none') return;
   el._popOut = true;
   el.classList.add('pop-out');
@@ -7690,7 +7726,7 @@ function popHide(el, finish) {
     el._popOut = false;
     el.classList.remove('pop-out');
     finish();
-  }, 120);
+  }, ms);
 }
 function popShow(el) {
   if (!el || !el._popOut) return;

@@ -1379,6 +1379,7 @@ textarea, input[type="text"], input[type="password"], input[type="search"], inpu
 .irc-reply-body { flex: 1; min-width: 0; overflow: hidden; }
 .irc-reply-name { color: var(--rc); font-weight: 600; }
 .irc-reply-text { color: var(--text2); word-break: break-word; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.irc-reply-text.q { -webkit-line-clamp: 3; }   /* цитата выделенного фрагмента: до трёх строк */
 
 /* Edit bar */
 .input-edit-bar {

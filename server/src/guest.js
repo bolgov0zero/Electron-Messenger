@@ -54,7 +54,7 @@ function scrub(m) {
 }
 // Цитата сообщения, написанного до подключения гостя: текст и автор скрываются
 function hideQuote(m) {
-  return { ...m, reply_text: null, reply_attachment: null, reply_sender_name: '', reply_sender_id: null, reply_sender_tag: null, reply_sender_is_bot: 0, reply_hidden: true };
+  return { ...m, reply_text: null, reply_quote: null, reply_attachment: null, reply_sender_name: '', reply_sender_id: null, reply_sender_tag: null, reply_sender_is_bot: 0, reply_hidden: true };
 }
 function sanitizeRows(userId, rows) {
   const base = floorOf(userId);

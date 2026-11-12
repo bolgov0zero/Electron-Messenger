@@ -829,6 +829,8 @@ tryAlter('ALTER TABLE device_keys ADD COLUMN ip TEXT');
 tryAlter('ALTER TABLE device_keys ADD COLUMN last_ip TEXT');
 tryAlter("ALTER TABLE device_keys ADD COLUMN os TEXT NOT NULL DEFAULT ''");   // система устройства: macOS / Windows / Linux
 tryAlter('ALTER TABLE messages ADD COLUMN hide_dk INTEGER');   // уведомление скрыто от этого устройства (ключ устройства, notify.js)
+// Цитата: выделенный фрагмент сообщения, на которое отвечают (простой текст, до 500 символов); нет у секретных чатов
+tryAlter('ALTER TABLE messages ADD COLUMN reply_quote TEXT');
 
 // Системный пользователь для объявлений (is_bot=1, скрыт из обычных списков)
 const sysExists = db.prepare("SELECT id FROM users WHERE username = '__system__'").get();
