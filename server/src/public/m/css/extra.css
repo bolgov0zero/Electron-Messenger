@@ -515,9 +515,16 @@ html, body { background: var(--gl-base); }
 /* реакции на кадре, видео и GIF без подписи: плашки слева внизу, как время справа */
 .phone .mrow .bub.media > .react, .phone .mrow .bub.gifm > .react { position: absolute; left: 8px; bottom: 8px; z-index: 1; margin: 0; padding: 0; gap: 4px; flex-wrap: wrap; align-content: flex-end; max-width: calc(100% - 90px); }
 .mrow.in.last .bub.media > .react, .mrow.in.last .bub.gifm > .react { left: 16px; }
-.phone .mrow .bub.media > .react button, .phone .mrow .bub.gifm > .react button { height: 22px; padding: 0 7px; border-radius: 11px; font-size: 12px; background: rgba(0, 0, 0, .45); color: #fff; }
+.phone .mrow .bub.media > .react button, .phone .mrow .bub.gifm > .react button { height: 24px; padding: 0 8px; border-radius: 10px; font-size: 12.5px; background: rgba(0, 0, 0, .45); color: #fff; }
 .phone .mrow .bub.media > .react button.mine, .phone .mrow .bub.gifm > .react button.mine { background: #fff; color: var(--accent-fill); }
 
 
 /* значки аудио- и видеозвонка в шапке переписки: того же размера, что значок микрофона у поля ввода (21 px); раньше брали мелкий размер шрифта шапки */
 .nr [data-c="call"], .nr [data-c="vcall"] { font-size: 21px; }
+
+/* миниатюра вложения в цитате ответа, как в веб клиенте: 32 px слева, текст справа */
+.quote.qt { display: flex; align-items: center; gap: 8px; }
+.quote .qbody { flex: 1; min-width: 0; }
+.quote .qthumb { width: 32px; height: 32px; flex: none; border-radius: 6px; object-fit: cover; }
+.quote .qfile { display: grid; place-items: center; background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text2); font-size: 16px; }
+.mrow.out .quote .qfile { background: rgba(255, 255, 255, .2); color: #fff; }

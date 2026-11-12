@@ -4213,7 +4213,7 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
     ? bubbleBody(m.text, lp, m.edited_at) : null;
   const bodyText0 = isDeleted ? '<em class="irc-deleted">Сообщение удалено</em>'
     : scLocked ? scSkelHtml(m.text)
-    : m.sender_is_bot ? effectiveText + (m.edited_at ? ' <span class="edited-tag">изм.</span>' : '') : linkifyText(effectiveText) + (m.edited_at?` <span class="edited-tag">изм.</span>`:'');
+    : m.sender_is_bot ? effectiveText : linkifyText(effectiveText);
   const bodyText = bodyText0 + (isDeleted ? '' : msgActionsHtml(m));
   const statusIcon = mine && !isDeleted ? renderStatus(m.status) : '';
   const reactionsHtml = isDeleted ? '' : renderReactions(m.id);
@@ -4268,7 +4268,9 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       <span class="irc-name msg-sender-name ${senderCls}${mine?' mine':''}" data-on-click="__h28" data-a-click="${esc(JSON.stringify([m.sender_id]))}">${senderName}</span>${ircTagHtml}
     </div>`;
   const fwdN = isDeleted ? 0 : (Number(m.forward_count) || 0);   // пересылали: в конце текста резервируется место под отметку
-  const metaHtml = `<div class="irc-meta">${fwdMarkHtml(m)}<span class="status-wrap">${statusIcon}</span><span class="irc-time">${time}</span></div>`;
+  // порядок как в мобильной версии: пересылки, «изм.», время, затем галочки
+  const editedHtml = (!isDeleted && m.edited_at) ? '<span class="edited-tag">изм.</span>' : '';
+  const metaHtml = `<div class="irc-meta">${fwdMarkHtml(m)}${editedHtml}<span class="irc-time">${time}</span><span class="status-wrap">${statusIcon}</span></div>`;
 
   const scAttMeta = isSecretChat ? S.scAtt.get(m.id) : null;
   const att = isSecretChat
@@ -4300,14 +4302,14 @@ function renderMsgIRC(m, isFirst = true, isTail = true, isChatGroup = true) {
       ${emojiOnly ? header : ''}
       <div class="bubble-row">
         ${avCol}
-        <div class="msg-bubble${bareImage ? ' bubble-photo' : ''}${_fitW ? ' bubble-fit' : ''}${emojiOnly ? ' bubble-emoji' : ''}${comp ? comp.cls : ''}${fwdN ? ' has-fwd' : ''}"${(fwdN || _fitW) ? ` style="${fwdN ? `--fwd-w:${fwdReserve(fwdN)}px;` : ''}${_fitW ? `--bw:${_fitW}px` : ''}"` : ''}>
+        <div class="msg-bubble${bareImage ? ' bubble-photo' : ''}${_fitW ? ' bubble-fit' : ''}${emojiOnly ? ' bubble-emoji' : ''}${comp ? comp.cls : ''}${fwdN ? ' has-fwd' : ''}${editedHtml ? ' is-edited' : ''}"${(fwdN || _fitW) ? ` style="${fwdN ? `--fwd-w:${fwdReserve(fwdN)}px;` : ''}${_fitW ? `--bw:${_fitW}px` : ''}"` : ''}>
           ${emojiOnly ? '' : header}
           ${comp ? `${comp.lpHtml}${(m.reply_to_id || fd) ? `<div class="ct-pad">${replyHtml}${forwardHtml}</div>` : ''}${attachHtml}${comp.html}` : `${replyHtml}
           ${forwardHtml}
           ${attachHtml}
           ${(isSecretChat ? (scLocked || scDecryptedText) : m.text) || isDeleted ? `<div class="irc-text${isDeleted?' irc-deleted':''}${emojiOnly?' emoji-only':''}${scLocked?' sc-locked':''}">${bodyText}</div>` : ''}`}
           ${emojiOnly ? '' : reactionsHtml}
-          ${isVoice ? '' : metaHtml}
+          ${(isVoice || isDeleted) ? '' : metaHtml}
         </div>
       </div>
       ${emojiOnly ? reactionsHtml : ''}
@@ -4713,7 +4715,7 @@ function bubbleBody(text, lp, edited) {
   ps.forEach((p, i) => {
     const last = i === ps.length - 1;
     out.push(p.k === 'c' ? Fmt.codeBlock(p.v, last)
-      : `<div class="irc-text ct${last ? ' ct-last' : ''}">${linkifyText(p.v)}${last && edited ? ' <span class="edited-tag">изм.</span>' : ''}</div>`);
+      : `<div class="irc-text ct${last ? ' ct-last' : ''}">${linkifyText(p.v)}</div>`);
   });
   const endsCode = ps.length && ps[ps.length - 1].k === 'c';
   return { lpHtml, html: out.join(''), cls: ' bubble-comp' + (lp ? ' has-lcard' : '') + (endsCode ? ' ends-code' : '') + (!lp && ps.length === 1 && ps[0].k === 'c' ? ' code-only' : ''), endsCode };

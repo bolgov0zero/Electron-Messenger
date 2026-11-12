@@ -168,7 +168,7 @@ B.msgs = {
     var cid = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     var payload = { type: 'message', chat_id: chat.id, text: text, client_id: cid };
     var temp = { id: -Date.now(), chat_id: chat.id, sender_id: S.user.id, text: text, sent_at: Math.floor(Date.now() / 1000), deleted: 0, status: { delivered: 0, read: 0, total: 1 }, _optimistic: true, _cid: cid, _state: 'sending' };
-    if (o.reply) { payload.reply_to_id = temp.reply_to_id = o.reply.id; temp.reply_sender_name = o.reply.senderName; temp.reply_text = o.reply.text; temp.reply_sender_id = o.reply.senderId; temp.reply_sender_tag = o.reply.senderTag; }
+    if (o.reply) { payload.reply_to_id = temp.reply_to_id = o.reply.id; temp.reply_sender_name = o.reply.senderName; temp.reply_text = o.reply.raw != null ? o.reply.raw : o.reply.text; temp.reply_attachment = o.reply.attachment || null; temp.reply_sender_id = o.reply.senderId; temp.reply_sender_tag = o.reply.senderTag; }
     if (o.attachment) { payload.attachment = temp.attachment = o.attachment; }
     if (o.forward) { payload.forward_data = temp.forward_data = o.forward; }
     if (o.linkPreview && !S.secretChatIds.has(chat.id)) { payload.link_preview = temp.link_preview = o.linkPreview; }

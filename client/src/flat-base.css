@@ -227,7 +227,7 @@ html.dark { --gl-hov: rgba(255, 255, 255, .08); }
   .chat-main .messages { padding-left: 28px; padding-right: 28px; padding-bottom: calc(var(--composer-h, 70px) + 28px); }
 }
 .irc-text { font-size: calc(var(--font-size) * 1.0357); line-height: 1.42; }
-.msg-bubble:not(.bubble-photo) > .irc-text { transform: none; margin-bottom: 3.74px; }
+.msg-bubble:not(.bubble-photo) > .irc-text { transform: none; margin-bottom: 2.54px; }   /* вместе с нижним отступом пузыря 3,5 px даёт 6 px, как в мобильной версии */
 .msg-bubble > .irc-meta, .msg-bubble:not(.bubble-photo) > .irc-meta { right: 14px; bottom: 8px; gap: 4px; align-items: center; }
 .irc-time { font-size: 11.5px; line-height: 1.42; color: var(--text2); }
 .irc-msg[data-mine] .msg-bubble { border: 0; }
@@ -632,6 +632,11 @@ html.dark { --gl-hov: rgba(255, 255, 255, .08); }
 .msg-bubble.bubble-emoji, .irc-msg .msg-bubble.bubble-emoji { background: none !important; border-color: transparent !important; box-shadow: none !important; }
 .msg-bubble.bubble-emoji::before, .msg-bubble.bubble-emoji::after { display: none !important; }
 .msg-bubble.bubble-emoji > .irc-meta { background: var(--gl-card); border-radius: 99px; padding: 1px 8px; color: var(--text2); }
+/* как в мобильной версии время и статус у смайла без текста скрыты; здесь они проявляются при наведении на смайл */
+.irc-msg.emoji-msg .msg-bubble > .irc-meta { opacity: 0; pointer-events: none; transition: opacity .15s; }
+.irc-msg.emoji-msg .msg-bubble:hover > .irc-meta { opacity: 1; }
+/* удалённое сообщение без времени, как в мобильной версии: распорка под время не нужна */
+.irc-text.irc-deleted::after { display: none; }
 .nc-name-input:focus, .anx-ta:focus, .anx-search:focus-within { border-style: solid; border-width: 1px; border-color: var(--accent); }
 .cs-sn[aria-current="page"]:hover, .cs-sn[aria-current="true"]:hover { background: var(--gl2); color: var(--text); }
 .gm-scroll { gap: 2px; padding: 8px 14px 10px; }
@@ -681,7 +686,7 @@ html.dark { --gl-hov: rgba(255, 255, 255, .08); }
 .irc-msg.irc-tail .msg-bubble.bubble-comp.ends-code:not(:has(> .reactions)) > .cblk:first-child:not(:has(~ .cblk)) { border-radius: var(--tl) var(--tr) var(--br) var(--bl); }
 .irc-msg.irc-tail .msg-bubble.bubble-comp.ends-code:not(:has(> .reactions))::after { background: #0b0e13; }
 .irc-msg .msg-bubble.bubble-photo .bubble-image, .irc-msg .msg-bubble.bubble-photo .bubble-grid { overflow: hidden; }
-.irc-msg .msg-bubble:not(.bubble-photo) > .irc-meta { right: 12px; bottom: 5.5px; }
+.irc-msg .msg-bubble:not(.bubble-photo) > .irc-meta { right: 12px; bottom: 4.3px; }
 .irc-msg .msg-bubble.bubble-comp > .ct-pad { padding: 7px 12px 0; }
 .irc-msg .msg-bubble.bubble-comp > .irc-text.ct { padding: 7px 12px; }
 .irc-msg .msg-bubble:not(.bubble-photo) > .bubble-image, .irc-msg .msg-bubble:not(.bubble-photo) > .bubble-grid { margin: 6px -12px 6px; border-radius: 0; }
@@ -696,10 +701,10 @@ html.dark { --gl-hov: rgba(255, 255, 255, .08); }
 .irc-msg[data-mine] .irc-forward-block .irc-reply-name { color: #fff; }
 .irc-forward-block .irc-reply-text { color: inherit; display: block; -webkit-line-clamp: unset; overflow: visible; font-size: calc(var(--font-size) * 1.0357); line-height: 1.42; }
 .irc-msg[data-mine] .irc-forward-block .irc-reply-text { color: rgba(255, 255, 255, .92); }
-.irc-msg .msg-bubble > .reactions { margin: 0; gap: 4px; padding: 1px calc(50px + var(--fwd-w, 0px)) 3px 0; }
-.irc-msg[data-mine] .msg-bubble > .reactions { padding-right: calc(60px + var(--fwd-w, 0px)); }
-.irc-msg .msg-bubble.bubble-comp > .reactions { padding: 7px calc(var(--tg-px) + 50px + var(--fwd-w, 0px)) 6px var(--tg-px); }
-.irc-msg[data-mine] .msg-bubble.bubble-comp > .reactions { padding-right: calc(var(--tg-px) + 60px + var(--fwd-w, 0px)); }
+.irc-msg .msg-bubble > .reactions { margin: 0; gap: 4px; padding: 1px calc(50px + var(--fwd-w, 0px) + var(--ed-w, 0px)) 3px 0; }
+.irc-msg[data-mine] .msg-bubble > .reactions { padding-right: calc(60px + var(--fwd-w, 0px) + var(--ed-w, 0px)); }
+.irc-msg .msg-bubble.bubble-comp > .reactions { padding: 7px calc(var(--tg-px) + 50px + var(--fwd-w, 0px) + var(--ed-w, 0px)) 6px var(--tg-px); }
+.irc-msg[data-mine] .msg-bubble.bubble-comp > .reactions { padding-right: calc(var(--tg-px) + 60px + var(--fwd-w, 0px) + var(--ed-w, 0px)); }
 .msg-bubble:has(> .reactions) > .irc-text::after { display: none; }
 .msg-bubble:has(> .reactions) > .irc-text { margin-bottom: 0; }
 .irc-msg .msg-bubble:not(.bubble-photo):has(> .reactions) > .irc-meta, .irc-msg .msg-bubble.bubble-comp.ends-code:has(> .reactions) > .irc-meta { bottom: 10px; }
@@ -713,10 +718,15 @@ html.dark { --gl-hov: rgba(255, 255, 255, .08); }
    Тройной .irc-msg нужен, чтобы перебить общие цвета кнопок реакций (и в копии при подъёме сообщения, где нет #messages) */
 .irc-msg .msg-bubble.bubble-photo > .reactions { position: absolute; left: 8px; bottom: 8px; z-index: 2; margin: 0; padding: 0; gap: 4px; flex-wrap: wrap; align-content: flex-end; max-width: calc(100% - 90px); }
 .irc-msg:not([data-mine]).irc-tail .msg-bubble.bubble-photo > .reactions { left: 16px; }
-.irc-msg.irc-msg.irc-msg .msg-bubble.bubble-photo > .reactions .reaction-btn { height: 22px; padding: 0 7px; gap: 3px; border-radius: 11px; background: rgba(0, 0, 0, .5); color: #fff; box-shadow: none; }
+.irc-msg.irc-msg.irc-msg .msg-bubble.bubble-photo > .reactions .reaction-btn { height: 24px; padding: 0 8px; gap: 3px; border-radius: 10px; background: rgba(0, 0, 0, .5); color: #fff; box-shadow: none; }
 .irc-msg.irc-msg.irc-msg .msg-bubble.bubble-photo > .reactions .reaction-btn:hover { background: rgba(0, 0, 0, .62); }
 .irc-msg.irc-msg.irc-msg .msg-bubble.bubble-photo > .reactions .reaction-btn.mine { background: #fff; color: var(--accent-fill); }
-.irc-msg.irc-msg.irc-msg .msg-bubble.bubble-photo > .reactions .ra-count { font-size: 12px; }
+.irc-msg.irc-msg.irc-msg .msg-bubble.bubble-photo > .reactions .ra-count { font-size: 12.5px; }
+/* «изм.» стоит в отметке перед временем, как в мобильной версии; в тексте под него оставлена распорка (--ed-w) */
+.msg-bubble.is-edited { --ed-w: 28px; }
+.irc-meta .edited-tag { margin: 0; font-size: 11.5px; line-height: 1.42; opacity: 1; }
+.irc-msg:not([data-mine]) .irc-meta .edited-tag { color: var(--text2); }
+.msg-bubble.bubble-photo > .irc-meta .edited-tag { color: #fff; }
 .irc-msg .msg-bubble > .irc-header { margin: 0 0 2px; padding: 0; line-height: 1.2; }
 .irc-msg .msg-bubble.bubble-photo > .irc-header, .irc-msg .msg-bubble.bubble-comp > .irc-header { margin: 0; padding: 7px 12px 5px; }
 .irc-msg.irc-first:not([data-mine]):not([data-dm]) .msg-bubble.bubble-photo > .irc-header + .bubble-image, .irc-msg.irc-first:not([data-mine]):not([data-dm]) .msg-bubble.bubble-photo > .irc-header + .bubble-grid { border-radius: 0 0 var(--br) var(--bl); }
