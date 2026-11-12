@@ -509,5 +509,15 @@ html, body { background: var(--gl-base); }
 .mrow.in.last .bub.gifm .gif-msg { margin-left: -8px; }
 .mrow.out.last .bub.media .t { right: 18px; }
 
+/* копия пузыря в меню лежит в обёртке ровно по его рамке: отрицательные отступы под хвост у кадра и GIF там сдвигали бы копию на 8 px вбок */
+.cmc .mrow.last .bub.media, .cmc .mrow.last .bub.gifm { margin-left: 0 !important; margin-right: 0 !important; }
+
+/* реакции на кадре, видео и GIF без подписи: плашки слева внизу, как время справа */
+.phone .mrow .bub.media > .react, .phone .mrow .bub.gifm > .react { position: absolute; left: 8px; bottom: 8px; z-index: 1; margin: 0; padding: 0; gap: 4px; flex-wrap: wrap; align-content: flex-end; max-width: calc(100% - 90px); }
+.mrow.in.last .bub.media > .react, .mrow.in.last .bub.gifm > .react { left: 16px; }
+.phone .mrow .bub.media > .react button, .phone .mrow .bub.gifm > .react button { height: 22px; padding: 0 7px; border-radius: 11px; font-size: 12px; background: rgba(0, 0, 0, .45); color: #fff; }
+.phone .mrow .bub.media > .react button.mine, .phone .mrow .bub.gifm > .react button.mine { background: #fff; color: var(--accent-fill); }
+
+
 /* значки аудио- и видеозвонка в шапке переписки: того же размера, что значок микрофона у поля ввода (21 px); раньше брали мелкий размер шрифта шапки */
 .nr [data-c="call"], .nr [data-c="vcall"] { font-size: 21px; }

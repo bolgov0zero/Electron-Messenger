@@ -178,12 +178,13 @@ B.ui.chat = (function () {
     if (m.deleted) return h + '<div class="bub dl"><span class="txt">Сообщение удалено</span></div></div></div>';
     if (eo) return h + '<span class="big" data-big>' + esc(m.text.trim()) + '</span>' + (mine ? '<span class="swi">' + I('reply') + '</span>' : '<span class="swi">' + I('reply') + '</span>') + '</div>' + reactions(m) + '</div>';
     var bare = !m.text && !m.reply_to_id && !m.forward_data && att && (att.gif || (att.url && !att.expired && (att.enc ? /^(image|video)\//.test(att.mime || '') : B.media.listOf(att).every(B.media.isMedia))));
+    var hasRx = !!(m.reactions && m.reactions.length);
     var fail = !!m._optimistic && m._state === 'failed';
     var fwn = Number(m.forward_count) || 0;
     var meta = '<span class="t meta">' + (fwn > 0 ? '<span class="fwd" data-c="fwd" data-n="' + fwn + '">' + I('fwd') + fwn + '</span>' : '') + (m.edited_at ? 'изм. ' : '') + B.fmt.time(m.sent_at) +
       (mine ? (fail ? '<i class="er">!</i>' : m._optimistic ? '<span class="dv">' + I('check') + '</span>' : B.ticks(m.status)) : '') + '</span>';
     var comp = compOf(m);
-    var inRx = !!(m.reactions && m.reactions.length) && !bare;   // реакции внутри пузыря; у кадра без подписи остаются под ним
+    var inRx = hasRx && !bare;                                     // реакции внутри пузыря; у кадра без подписи они лежат плашками на кадре, как время
     var metaT = inRx ? '' : meta;                                  // время тогда стоит в ряду реакций
     h += '<div class="bub' + (bare ? ' media' : '') + (bare && att.gif ? ' gifm' : '') + (comp ? ' bcomp' + (!comp.lp && comp.ps.length === 1 ? ' conly' : '') : '') + (fail ? ' fail' : '') + '"' + (fail ? ' data-c="retry" data-cid="' + m._cid + '"' : '') + '>';
     h += who;
@@ -203,8 +204,8 @@ B.ui.chat = (function () {
     else if (!bare && !voice) h += '<div class="txt" style="min-height:4px">' + metaT + '</div>';
     h += msgActions(m);
     if (inRx) h += reactions(m, meta);
-    if (bare) h += meta;
-    h += '</div><span class="swi">' + I('reply') + '</span></div>' + (inRx ? '' : reactions(m)) + (fail ? '<div class="failnote" data-c="retry" data-cid="' + m._cid + '">Не отправлено · <b>Повторить</b></div>' : '') + '</div>';
+    if (bare) h += (hasRx ? reactions(m) : '') + meta;   // плашки реакций слева внизу кадра, время справа
+    h += '</div><span class="swi">' + I('reply') + '</span></div>' + (fail ? '<div class="failnote" data-c="retry" data-cid="' + m._cid + '">Не отправлено · <b>Повторить</b></div>' : '') + '</div>';
     return h;
   }
 
