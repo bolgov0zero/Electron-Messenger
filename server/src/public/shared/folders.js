@@ -37,7 +37,7 @@ const FOLDER_ICONS = {
   trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
 };
 const FOLDER_ICON_KEYS = Object.keys(FOLDER_ICONS);
-const folderSvg = (name, size) => `<svg class="fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" width="${size || 20}" height="${size || 20}">${FOLDER_ICONS[name] || FOLDER_ICONS.folder}</svg>`;
+const folderSvg = (name, size, viewBox) => `<svg class="fi" viewBox="${viewBox || '0 0 24 24'}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" width="${size || 20}" height="${size || 20}">${FOLDER_ICONS[name] || FOLDER_ICONS.folder}</svg>`;
 const fsvg = (p, size) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" width="${size || 16}" height="${size || 16}">${p}</svg>`;
 const FI_X = '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>', FI_EDIT = '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>', FI_TRASH = '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>';
 const FI_UP = '<path d="m18 15-6-6-6 6"/>', FI_DOWN = '<path d="m6 9 6 6 6-6"/>', FI_PLUS = '<path d="M5 12h14"/><path d="M12 5v14"/>', FI_CHECK = '<path d="M20 6 9 17l-5-5"/>';
@@ -83,10 +83,13 @@ const chatInFolder = (c, f) => !!f && f.chat_ids.includes(c.id);
 function folderPass(c) { return S.folderFilter === 'all' || chatInFolder(c, folderById(S.folderFilter)); }
 // Папка для значка на аватарке: первая по порядку из тех, в которых лежит чат
 function folderOfChat(c) { return S.folders.find(f => f.chat_ids.includes(c.id)) || null; }
+// Значок на аватарке занимает весь круг, а рисунок (11 px) отступает внутри самого viewBox:
+// размер рамки совпадает с кругом, и при любом масштабе интерфейса нечему округляться по-разному
+const FOLDER_BADGE_VIEWBOX = '-9.8 -9.8 43.6 43.6';
 function folderBadgeHtml(c) {
   if (S.folderFilter !== 'all') return '';   // внутри папки значок лишний: и так понятно
   const f = folderOfChat(c);
-  return f ? `<span class="fbd" style="--fc:${f.color}" title="Папка «${esc(f.name)}»">${folderSvg(f.icon, 11)}</span>` : '';
+  return f ? `<span class="fbd" style="--fc:${f.color}" title="Папка «${esc(f.name)}»">${folderSvg(f.icon, 20, FOLDER_BADGE_VIEWBOX)}</span>` : '';
 }
 function folderUnread(f) {
   let n = 0;

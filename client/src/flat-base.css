@@ -515,7 +515,7 @@ html.dark { --gl-hov: rgba(255, 255, 255, .08); }
 .hm-i { width: 30px; height: 30px; }
 .hm-i svg { width: 16px; height: 16px; }
 .topbar-actions svg, .topbar-actions .head-more svg { width: 16px; height: 16px; }
-.fbd svg { transform: translateX(-.7px); }
+.fbd svg { width: 100%; height: 100%; display: block; }
 #pf-modal.pf-modal, #gm-modal.gmm.gm-modal { position: relative; width: min(900px, 94vw); height: min(620px, 90vh); max-height: none; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
 .pa { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .pa-scroll { flex: 1; min-height: 0; display: grid; grid-template-columns: 310px minmax(0, 1fr); }
