@@ -505,7 +505,7 @@ html, body { background: var(--gl-base); }
 .mrow.out.last .bub.media .att-img, .mrow.out.last .bub.media .vwrap, .mrow.out.last .bub.media .agrid { margin-right: -8px; }
 .mrow.in.last .bub.media .att-img, .mrow.in.last .bub.media .vwrap, .mrow.in.last .bub.media .agrid { margin-left: -8px; }
 .mrow.last .bub.media .att-img { width: calc(100% + 8px); max-width: none; }
-.mrow.last .bub.gifm .gif-msg { width: 234px !important; }
+.mrow.last .bub.gifm .gif-msg { width: 234px !important; max-width: none; }   /* max-width:100% от общего правила урезал кадр до 226 px, и 8 px хвоста оставались цветом пузыря */
 .mrow.out.last .bub.gifm .gif-msg { margin-right: -8px; }
 .mrow.in.last .bub.gifm .gif-msg { margin-left: -8px; }
 .mrow.out.last .bub.media .t { right: 18px; }

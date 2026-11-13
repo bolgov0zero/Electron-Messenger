@@ -38,7 +38,7 @@ body.sidebar-hidden .sidebar { left: 12px; top: 12px; bottom: 12px; }
 .chats-list .chat-item:hover::after, .topics-panel .chat-item:hover::after, .chats-list .pp-row:hover::after { background: color-mix(in srgb, var(--text) 6%, transparent); }
 .sb-tab { border-radius: 999px; height: 38px; transition: color .15s, background .25s, box-shadow .25s, transform .35s var(--gl-spring); }
 .sb-tab:active { transform: scale(.94); }
-.fbd { left: -3px; top: -3px; width: 20px; height: 20px; background: color-mix(in srgb, var(--side-bg) 86%, #fff); color: var(--fc); border: 0; box-shadow: 0 0 0 1.5px var(--gl-edge), 0 2px 6px var(--gl-shadow); }
+.fbd { left: -3px; top: -3px; width: 20px; height: 20px; border-radius: 6px; background: color-mix(in srgb, var(--side-bg) 86%, #fff); color: var(--fc); border: 0; box-shadow: 0 0 0 1.5px var(--gl-edge), 0 2px 6px var(--gl-shadow); }
 .chat-item.active .fbd { border: 0; }
 .presence-dot { --halo: color-mix(in srgb, var(--side-bg) 85%, transparent); }
 .rail-sep { background: var(--gl-lo); }
