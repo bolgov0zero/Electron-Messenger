@@ -461,9 +461,10 @@ html, body { background: var(--gl-base); }
 .mrow.out.last .bub { --br: 0px; }
 .bub.dl { --bl: 17px; --br: 17px; }
 /* хвост: кривой треугольник у нижнего угла, цвет в цвет заливки (у пузырей без заливки и с обрезкой по краям его нет) */
+/* Форма хвоста задана маской-картинкой, а не clip-path: контур clip-path рисуется со сдвигом на дробную часть положения пузыря, и хвост у разных пузырей выходил то плавным, то ступенчатым. Маска ложится на целые пиксели */
 .mrow.last .bub:not(.media):not(.gifm):not(.bcomp):not(.dl)::after { content: ""; position: absolute; bottom: 0; width: 9px; height: 13px; pointer-events: none; }
-.mrow.in.last .bub:not(.media):not(.gifm):not(.bcomp):not(.dl)::after { left: -8px; background: var(--tg-in); clip-path: path('M9 0 V13 H1 C5 12.5 9 9 9 0 Z'); }
-.mrow.out.last .bub:not(.media):not(.gifm):not(.bcomp):not(.dl)::after { right: -8px; background: var(--tg-out); clip-path: path('M0 0 V13 H8 C4 12.5 0 9 0 0 Z'); }
+.mrow.in.last .bub:not(.media):not(.gifm):not(.bcomp):not(.dl)::after { left: -8px; background: var(--tg-in); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='13' viewBox='0 0 9 13'%3E%3Cpath d='M9 0 V13 H1 C5 12.5 9 9 9 0 Z'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='13' viewBox='0 0 9 13'%3E%3Cpath d='M9 0 V13 H1 C5 12.5 9 9 9 0 Z'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat; }
+.mrow.out.last .bub:not(.media):not(.gifm):not(.bcomp):not(.dl)::after { right: -8px; background: var(--tg-out); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='13' viewBox='0 0 9 13'%3E%3Cpath d='M0 0 V13 H8 C4 12.5 0 9 0 0 Z'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='13' viewBox='0 0 9 13'%3E%3Cpath d='M0 0 V13 H8 C4 12.5 0 9 0 0 Z'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat; }
 .mrow.first { margin-top: 6px; }
 
 /* кадр в пузыре с подписью: до краёв, сверху скруглён как пузырь */

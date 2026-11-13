@@ -1228,11 +1228,23 @@ function initSidebarPeek() {
     document.body.classList.add('sidebar-peeking');
   });
   // Бар записей выезжает вместе с сайдбаром, поэтому наведение на него тоже держит панель открытой
-  for (const el of [sidebar, document.getElementById('acc-rail')]) {
+  const rail = document.getElementById('acc-rail');
+  const over = (x, y) => [sidebar, rail].some(el => {
+    if (!el || el.hidden) return false;
+    const r = el.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  });
+  for (const el of [sidebar, rail]) {
     if (!el) continue;
-    el.addEventListener('mouseleave', _scheduleHideSidebar);
+    // macOS: родная верхняя область окна (у скрытой шапки) забирает движения мыши у страницы, и та получает mouseleave, хотя курсор
+    // по координатам ещё над панелью (шапка сайдбара, место над поиском). Реальный выход за край даёт точку вне панели
+    el.addEventListener('mouseleave', e => { if (!over(e.clientX, e.clientY)) _scheduleHideSidebar(); });
     el.addEventListener('mouseenter', () => clearTimeout(_sidebarPeekTimer));
   }
+  // Курсор снова виден странице над панелью — отменяем уже назначенное сворачивание
+  document.addEventListener('mousemove', e => {
+    if (_sidebarPeekTimer && document.body.classList.contains('sidebar-peeking') && over(e.clientX, e.clientY)) clearTimeout(_sidebarPeekTimer);
+  }, true);
 }
 // ── ВКЛАДКИ САЙДБАРА (Чаты / Контакты / Настройки) ──
 // Раньше внизу сайдбара была карточка «я» с шестерёнкой в модалку настроек.

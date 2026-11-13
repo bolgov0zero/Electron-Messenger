@@ -672,9 +672,10 @@ html.dark { --gl-hov: rgba(255, 255, 255, .08); }
 .irc-msg[data-mine].irc-tail .msg-bubble { --br: 0px; }
 .irc-msg.emoji-msg .msg-bubble { --tl: 21px; --tr: 21px; --br: 21px; --bl: 21px; }
 .bubble-row { gap: 12px; }
+/* Форма хвоста задана маской-картинкой, а не clip-path: контур clip-path рисуется со сдвигом на дробную часть положения пузыря, и хвост у разных пузырей выходил то плавным, то ступенчатым. Маска ложится на целые пиксели */
 .irc-msg.irc-tail .msg-bubble::after { content: ""; position: absolute; bottom: 0; width: 9px; height: 13px; pointer-events: none; }
-.irc-msg:not([data-mine]).irc-tail .msg-bubble::after { left: -8px; background: var(--tg-in); clip-path: path('M9 0 V13 H1 C5 12.5 9 9 9 0 Z'); }
-.irc-msg[data-mine].irc-tail .msg-bubble::after { right: -8px; background: var(--tg-out); clip-path: path('M0 0 V13 H8 C4 12.5 0 9 0 0 Z'); }
+.irc-msg:not([data-mine]).irc-tail .msg-bubble::after { left: -8px; background: var(--tg-in); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='13' viewBox='0 0 9 13'%3E%3Cpath d='M9 0 V13 H1 C5 12.5 9 9 9 0 Z'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='13' viewBox='0 0 9 13'%3E%3Cpath d='M9 0 V13 H1 C5 12.5 9 9 9 0 Z'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat; }
+.irc-msg[data-mine].irc-tail .msg-bubble::after { right: -8px; background: var(--tg-out); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='13' viewBox='0 0 9 13'%3E%3Cpath d='M0 0 V13 H8 C4 12.5 0 9 0 0 Z'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='13' viewBox='0 0 9 13'%3E%3Cpath d='M0 0 V13 H8 C4 12.5 0 9 0 0 Z'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat; }
 .irc-msg .msg-bubble.bubble-photo { overflow: visible; }
 /* Пузырь, оканчивающийся блоком кода, с хвостиком: overflow:hidden обрезал хвост, который выходит за край пузыря.
    Снимаем обрезку, а углы тёмному блоку скругляем сами по радиусам пузыря (--br у «своих» с хвостом равен 0).
