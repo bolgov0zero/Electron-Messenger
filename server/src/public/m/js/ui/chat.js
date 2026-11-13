@@ -535,7 +535,7 @@ B.ui.chat = (function () {
       var dx = (e.clientX - G.x) / sc, dy = (e.clientY - G.y) / sc;
       if (!G.mode) {
         if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; clearTimeout(G.lp);
-        if (dx < 0 && Math.abs(dx) > Math.abs(dy) && G.row.querySelector('.swi')) { G.mode = 'swipe'; G.row.classList.add('dg'); try { box.setPointerCapture(e.pointerId); } catch (_) {} hideKb(); }
+        if (dx < 0 && Math.abs(dx) > Math.abs(dy) && G.row.querySelector('.swi')) { G.mode = 'swipe'; G.row.classList.add('dg'); try { box.setPointerCapture(e.pointerId); } catch (_) {} }
         else { G = null; return; }
       }
       if (G.mode !== 'swipe') return;
