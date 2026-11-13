@@ -18,7 +18,7 @@
   const el = window.electron;
   // Ступень качества видео (задаёт администратор отдельно для личных звонков и групп); окно звонка превращает её в разрешение и битрейт
   const qlv = group => (st.quality && st.quality[group ? 'group' : 'direct']) || 'high';
-  const st = { enabled: false, call: null, incoming: null, groups: {}, prefs: { enabled: true, audio: true, video: true, fed: true } };
+  const st = { enabled: false, guest: false, call: null, incoming: null, groups: {}, prefs: { enabled: true, audio: true, video: true, fed: true } };
   let dockTimer = null, incTimer = null;
 
   // Дизайн B «Мягкий» (docs/flat-mockup/calls.html): плоские сплошные карточки, кнопки 12 px, без блеска и размытия. Токены — из flat.css
@@ -118,6 +118,13 @@
     if (!st.enabled || !el?.callOpen || !chat || chat.is_secret) return false;
     if (!st.prefs.enabled || (!st.prefs.audio && !st.prefs.video)) return false;   // человек выключил звонки в настройках
     if (typeof isSysChat === 'function' && isSysChat(chat)) return false;
+    // Своего сервера звонков нет (звонки включены по разрешению другого сервера): звонить можно людям с этих серверов и в группах, которые у них
+    if (st.guest) {
+      if (chat.type === 'group' || chat.type === 'room') return !!chat.fed_mirror && !(chat.type === 'room' && chat.has_topics);
+      if (chat.type !== 'direct' || !peerId) return false;
+      const f = (S.allUsers || []).find(x => x.id === peerId);
+      return !!f && !!f.federated && !f.is_bot;
+    }
     if (chat.type === 'group') return true;
     if (chat.type === 'room') return !chat.has_topics;   // комната с подкомнатами — только «папка»: звонок идёт в самой подкомнате
     if (chat.type !== 'direct' || !peerId) return false;
@@ -419,7 +426,7 @@
     if (r?.prefs) st.prefs = r.prefs;
     if (r?.quality) st.quality = r.quality;
     st.groups = {}; (r?.groups || []).forEach(g => { st.groups[g.chat_id] = g; });
-    st.enabled = !!r?.enabled;
+    st.enabled = !!r?.enabled; st.guest = !!r?.guest;
     rehead(); window.callsSettingsSync?.(); mediaRefresh();
     if (!el?.callStatus) return;
     // Окно приложения могли перезагрузить посреди звонка: если звонок ещё идёт на сервере — возвращаем панель

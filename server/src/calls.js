@@ -738,7 +738,6 @@ async function hostAdd(chatId, userId, video) {
 async function groupJoin(user, chatId, video) {
   const cfg = await getConfig();
   if (!cfg.enabled) throw new CallError('disabled', 'Звонки не включены на сервере', 403);
-  if (!ownOk(cfg)) throw new CallError('no_own', NO_OWN, 400);
   const chat = await dal.get('SELECT type, is_secret, fed_instance, fed_chat_id FROM chats WHERE id = ?', chatId);
   const mine = await dal.get('SELECT 1 AS x FROM chat_members WHERE chat_id = ? AND user_id = ?', chatId, user.id);
   if (!chat || !mine || (chat.type !== 'group' && chat.type !== 'room')) throw new CallError('bad_chat', 'Групповой звонок возможен в группе или комнате', 400);
@@ -749,7 +748,8 @@ async function groupJoin(user, chatId, video) {
   if (!(await getPrefs(user.id)).enabled) throw new CallError('prefs_self', 'У вас выключены звонки в настройках', 403);
   // Звонок без видео создаётся только при включённых аудиозвонках; подключиться к идущему можно всегда
   if (!video && !groupCalls.get(chatId) && !chat.fed_instance && !(await audioOn())) throw new CallError('prefs_self', AUDIO_OFF, 403);
-  if (chat.fed_instance) return await groupJoinMirror(user, chatId, chat, video);
+  if (chat.fed_instance) return await groupJoinMirror(user, chatId, chat, video);   // звонок у хозяина группы: свой LiveKit не нужен
+  if (!ownOk(cfg)) throw new CallError('no_own', NO_OWN, 400);
   // Свыше 12 человек в звонке новые участники подключаются только со звуком: видео на 12, звук без ограничений
   const micOnly = (groupCalls.get(chatId)?.participants.size || 0) >= GROUP_MAX && !groupCalls.get(chatId)?.participants.has(user.id);
   const { g, created } = await hostAdd(chatId, user.id, video);

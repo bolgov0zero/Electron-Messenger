@@ -28,7 +28,7 @@
   var svg = function (n, c) { return '<svg class="i ' + (c || '') + '" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + IC[n] + '</svg>'; };
   var E = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var H = null;
-  var st = { enabled: false, secure: false, call: null, incoming: null, min: false, groups: {}, prefs: { enabled: true, audio: true, video: true, fed: true } };
+  var st = { enabled: false, guest: false, secure: false, call: null, incoming: null, min: false, groups: {}, prefs: { enabled: true, audio: true, video: true, fed: true } };
   var speaking = {}, tvids = {};   // кто сейчас говорит (identity → true); видео участников группового звонка
   var room = null, LK = null, ended = false, tickT = null, incT = null, wake = null;
   var rv = null, lv = null;      // видео собеседника и своё: создаются один раз и переносятся между экранами
@@ -226,6 +226,11 @@
   function canCall(chat, peerId) {
     if (!st.enabled || !st.secure || !hasMedia() || !chat || chat.is_secret || chat.system_kind) return false;
     if (!st.prefs.enabled || (!st.prefs.audio && !st.prefs.video)) return false;   // человек выключил звонки в настройках
+    // Своего сервера звонков нет (звонки включены по разрешению другого сервера): звонить можно людям с этих серверов и в группах, которые у них
+    if (st.guest) {
+      if (chat.type === 'direct') return !!peerId && !!H.isFed && !!H.isFed(peerId);
+      return !!chat.fed_mirror && (chat.type === 'group' || (chat.type === 'room' && !chat.has_topics));
+    }
     if (chat.type === 'group') return true;
     if (chat.type === 'room') return !chat.has_topics;   // комната с подкомнатами — только «папка»: звонок идёт в самой подкомнате
     return chat.type === 'direct' && !!peerId;
@@ -816,7 +821,7 @@
     st.groups = {}; ((r && r.groups) || []).forEach(function (g) { st.groups[g.chat_id] = g; });
     if (r && r.prefs) st.prefs = r.prefs;
     if (r && r.quality) st.quality = r.quality;
-    st.enabled = !!(r && r.enabled); st.secure = !(location.protocol === 'https:' && r && r.scheme === 'ws');
+    st.enabled = !!(r && r.enabled); st.guest = !!(r && r.guest); st.secure = !(location.protocol === 'https:' && r && r.scheme === 'ws');
     // Страницу перезагрузили посреди звонка: подключение пропало вместе с ней, сервер надо известить
     var cur = r && r.current;
     // Нажали на уведомление (или страницу открыли, пока звонок ещё звонит): показываем входящий сразу

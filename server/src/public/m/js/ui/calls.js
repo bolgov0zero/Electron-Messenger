@@ -12,6 +12,7 @@ B.ui.calls = (function () {
       avatar: function (id, name, size) { return B.avatar.user(id, name, size, true); },
       decorate: function (el) { try { B.avatar.apply(el); } catch (e) {} },
       openChat: function (id) { B.openChat(id); },
+      isFed: function (id) { return B.S.contacts.some(function (u) { return u.id === id && u.federated; }); },
       chatInfo: function (id) { var c = B.find(id); return c ? { type: c.type, name: B.chatName(c) } : null; },
       onConfig: function () {
         rehead(); B.bus.emit('chats:changed'); if (B.ui.settings && B.ui.settings.render) B.ui.settings.render();

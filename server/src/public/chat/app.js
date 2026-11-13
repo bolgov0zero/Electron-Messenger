@@ -7791,6 +7791,7 @@ function initCalls() {
       toast: t => showActionToast(t),
       avatar: (id, name, size) => personAv({ id, display_name: name }, size >= 100 ? 'av-xl' : size >= 50 ? 'av-lg' : 'av-sm'),
       openChat: id => openChat(id),
+      isFed: id => !!S.allUsers.find(u => u.id === id)?.federated,
       chatInfo: id => { const c = S.chats.find(x => x.id === id); return c ? { type: c.type, name: chatName(c) } : null; },
       contacts: () => S.allUsers.filter(u => u.id !== S.user.id && !u.is_bot && !u.banned && (typeof isPickable !== 'function' || isPickable(u))).map(u => ({ id: u.id, name: (u.display_name || u.username) + (u.federated ? ' · ' + (u.server_name || u.server_id || 'другой сервер') : '') })),
       onConfig: () => { rehead(); callsSettingsSync(); if (typeof renderChatListSoon === 'function') renderChatListSoon(); },
